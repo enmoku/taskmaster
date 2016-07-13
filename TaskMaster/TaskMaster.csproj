@@ -50,7 +50,6 @@
     <Compile Include="MicMonitor.cs" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="favicon.ico" />
     <None Include="packages.config" />
     <None Include="README.md">
       <Link>Resources\README.md</Link>
@@ -58,6 +57,8 @@
     <None Include="LICENSE">
       <Link>Resources\LICENSE</Link>
     </None>
+    <None Include="app.manifest" />
+    <None Include="favicon.ico" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="Properties\" />
