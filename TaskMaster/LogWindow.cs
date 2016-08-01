@@ -23,13 +23,66 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
+
 using System;
+using System.Windows.Forms;
+
 namespace TaskMaster
 {
-	public class LogWindow
+
+	public class LogEventArgs : EventArgs
+	{
+		public readonly NLog.LogEventInfo Info;
+		public readonly string Message;
+
+		public LogEventArgs(NLog.LogEventInfo loginfo, string logmessage=null)
+		{
+			Info = loginfo;
+			Message = logmessage;
+		}
+	}
+
+	[NLog.Targets.Target("MemLog")]
+	public sealed class MemLog : NLog.Targets.TargetWithLayout
+	{
+		private static NLog.Logger Log = NLog.LogManager.GetCurrentClassLogger();
+
+		public int Max = int.MaxValue;
+
+		public System.Collections.Generic.List<string> Logs;
+		public event System.EventHandler<LogEventArgs> OnNewLog;
+
+		public MemLog()
+		{
+			Logs = new System.Collections.Generic.List<string>(25);
+			Layout = "${callsite} :: ${message}";
+		}
+
+		void onNewLogHandler(object sender, LogEventArgs e)
+		{
+			System.Console.WriteLine("New log! #" + Logs.Count + " :: " + e.Message);
+			EventHandler<LogEventArgs> handler = OnNewLog;
+			if (handler != null)
+				handler(this, e);
+			if (Logs.Count > Max)
+			{
+				//Logs.RemoveAt(0);
+			}
+		}
+
+		protected override void Write(NLog.LogEventInfo logEvent)
+		{
+			string logMessage = this.Layout.Render(logEvent);
+			Logs.Add(logMessage);
+			onNewLogHandler(this, new LogEventArgs(logEvent, logMessage));
+		}
+	}
+
+	public class LogWindow : Form
 	{
 		public LogWindow()
 		{
+			
 		}
 	}
 }

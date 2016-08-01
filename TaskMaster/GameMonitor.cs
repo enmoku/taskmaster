@@ -23,16 +23,153 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
+using System.Windows.Forms;
 
 namespace TaskMaster
 {
 	using System;
 	using System.Diagnostics;
+	using System.Runtime.InteropServices;
 
-	public class GameMonitor
+	public class WindowChangedArgs : EventArgs
 	{
+		public IntPtr hwnd { get; set; }
+		public string title { get; set; }
+	}
+
+	public class GameMonitor : IDisposable
+	{
+		private static NLog.Logger Log = NLog.LogManager.GetCurrentClassLogger();
+
+		WinEventDelegate dele = null;
+		IntPtr m_hhook = IntPtr.Zero;
+
+		public void SetupEventHook()
+		{
+			m_hhook = SetWinEventHook(EVENT_SYSTEM_FOREGROUND, EVENT_SYSTEM_FOREGROUND, IntPtr.Zero, dele, 0, 0, WINEVENT_OUTOFCONTEXT);
+			// FIXME: Seems to stop functioning really easily? Possibly from other events being caught.
+			if (m_hhook == IntPtr.Zero)
+			{
+				//System.Console.WriteLine("GameMon: Failed to set foreground app monitor.");
+				Log.Error("Foreground window event hook not attached.");
+			}
+		}
+
+		public void SetupEventHookEvent(object sender, ProcessEventArgs e)
+		{
+			//SetupEventHook();
+		}
+
+		public GameMonitor()
+		{
+			Log.Trace("Starting...");
+			//Snatch();
+			//D3DDevice();
+			dele = new WinEventDelegate(WinEventProc);
+			SetupEventHook();
+		}
+
+		public void Dispose()
+		{
+			Log.Trace("Disposing...");
+			//UnhookWinEvent(m_hhook); // Automatic
+		}
+
+		delegate void WinEventDelegate(IntPtr hWinEventHook, uint eventType, IntPtr hwnd, int idObject, int idChild, uint dwEventThread, uint dwmsEventTime);
+
+		[DllImport("user32.dll")]
+		static extern IntPtr SetWinEventHook(uint eventMin, uint eventMax, IntPtr hmodWinEventProc, WinEventDelegate lpfnWinEventProc, uint idProcess, uint idThread, uint dwFlags);
+		//[DllImport("user32.dll")]
+		//static extern bool UnhookWinEvent(IntPtr hWinEventHook); // automatic
+
+		private const uint WINEVENT_OUTOFCONTEXT = 0;
+		private const uint EVENT_SYSTEM_FOREGROUND = 3;
+
+		[DllImport("user32.dll")]
+		static extern IntPtr GetForegroundWindow();
+
+		[DllImport("user32.dll")]
+		static extern int GetWindowText(IntPtr hWnd, System.Text.StringBuilder text, int count);
+
+		/*
+		public static string GetActiveWindowTitle()
+		{
+			const int nChars = 256;
+			IntPtr handle = IntPtr.Zero;
+			System.Text.StringBuilder Buff = new System.Text.StringBuilder(nChars);
+			handle = GetForegroundWindow();
+
+			if (GetWindowText(handle, Buff, nChars) > 0)
+				return Buff.ToString();
+			
+			return null;
+		}
+		*/
+
+		public event System.EventHandler<WindowChangedArgs> ActiveChanged;
+
+		protected virtual void OnActiveChanged(WindowChangedArgs e)
+		{
+			System.EventHandler<WindowChangedArgs> handler = ActiveChanged;
+			if (handler != null)
+				handler(this, e);
+		}
+
+		public void WinEventProc(IntPtr hWinEventHook, uint eventType, IntPtr hwnd, int idObject, int idChild, uint dwEventThread, uint dwmsEventTime)
+		{
+			if (eventType == EVENT_SYSTEM_FOREGROUND)
+			{
+				#if DEBUG
+				const int nChars = 256;
+				IntPtr handle = IntPtr.Zero;
+				System.Text.StringBuilder buff = new System.Text.StringBuilder(nChars);
+				//handle = GetForegroundWindow();
+
+				if (GetWindowText(hwnd, buff, nChars) > 0)
+				{
+					//System.Console.WriteLine("Active window: {0}", buff);
+				}
+				else
+				{
+					//System.Console.WriteLine("Couldn't get title of active window.");
+				}
+				#endif
+
+				// ?? why does it return here already sometimes? takes too long?
+
+				//Console.WriteLine("Noob!");
+				if (System.Windows.Forms.Screen.FromHandle(hwnd).Bounds == System.Windows.Forms.Form.FromHandle(hwnd).Bounds)
+				{
+					//Console.WriteLine("Full screen.");
+
+				}
+				else
+				{
+					//Console.WriteLine("Not full screen.");
+				}
+
+				//SlimDX.Windows.DisplayMonitor.FromWindow(hwnd);
+				/*
+				Microsoft.DirectX.Direct3D.AdapterInformation inf = new Microsoft.DirectX.Direct3D.AdapterInformation
+				Microsoft.DirectX.Direct3D.DisplayMode mode = inf.CurrentDisplayMode;
+				Microsoft.DirectX.Direct3D.Format form = mode.Format;
+				System.Console.WriteLine("Format: {0}", mode.Format);
+				*/
+				WindowChangedArgs e = new WindowChangedArgs();
+				e.hwnd = hwnd;
+				e.title = buff.ToString();
+				OnActiveChanged(e);
+			}
+		}
+
+		public bool D3DDevice()
+		{
+			return false;
+		}
+
 		public void Snatch()
 		{
+			/*
 			Process procs[] = Process.GetProcessesByName("chrome.exe");
 			Process proc;
 			proc.PriorityBoostEnabled = true; // boost focused apps
@@ -41,12 +178,8 @@ namespace TaskMaster
 			{
 				// kill it?
 			}
+			*/
 			//proc.StartTime//when process was started
-
-		}
-
-		public GameMonitor()
-		{
 
 		}
 	}

@@ -26,10 +26,48 @@
 using System;
 namespace TaskMaster
 {
-	public class EmptyClass
+	public class Util
 	{
-		public EmptyClass()
+		public enum Timescale : int
 		{
+			Seconds = 0,
+			Minutes = 1,
+			Hours = 2,
+		}
+
+		public static string TimescaleString(Timescale t)
+		{
+			switch (t)
+			{
+				case Timescale.Seconds:
+					return "second(s)";
+				case Timescale.Minutes:
+					return "minute(s)";
+				case Timescale.Hours:
+					return "hour(s)";
+			}
+			return null;
+		}
+
+		public static double SimpleTime(double seconds, out Timescale scale)
+		{
+			if (seconds > (120.0 * 60.0))
+			{
+				double hours = seconds / 60.0 / 60.0;
+				scale = Timescale.Hours;
+				return hours;
+			}
+			else if (seconds > 120.0)
+			{
+				double minutes = seconds / 60.0;
+				scale = Timescale.Minutes;
+				return minutes;
+			}
+			else
+			{
+				scale = Timescale.Seconds;
+				return seconds;
+			}
 		}
 	}
 }
