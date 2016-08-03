@@ -40,7 +40,7 @@ namespace TaskMaster
 	{
 		private static NLog.Logger Log = NLog.LogManager.GetCurrentClassLogger();
 
-		NotifyIcon nicon = null;
+		NotifyIcon nicon = null; // separate this from mainwindow
 
 		void TrayShowConfig(object sender, System.EventArgs e)
 		{
@@ -161,18 +161,11 @@ namespace TaskMaster
 
 #if DEBUG
 		bool debugMicTooltips = true;
-		bool debugProcTooltips = true;
 		MenuItem toggleMicDebugTooltips;
-		MenuItem toggleProcDebugTooltips;
 		void DebugMicTooltips(object sender, EventArgs e)
 		{
 			debugMicTooltips = !debugMicTooltips;
 			toggleMicDebugTooltips.Checked = debugMicTooltips;
-		}
-		void DebugProcTooltips(object sender, EventArgs e)
-		{
-			debugProcTooltips = !debugProcTooltips;
-			toggleProcDebugTooltips.Checked = debugProcTooltips;
 		}
 #endif
 
@@ -183,15 +176,12 @@ namespace TaskMaster
 			MenuItem configMenuItem = new MenuItem("Configuration", new System.EventHandler(TrayShowConfig));
 			MenuItem exitMenuItem = new MenuItem("Exit", new System.EventHandler(TrayExit));
 #if DEBUG
-			toggleProcDebugTooltips = new MenuItem("Debug processes", new System.EventHandler(DebugProcTooltips));
-			if (debugProcTooltips)
-				toggleProcDebugTooltips.Checked = true;
 			toggleMicDebugTooltips = new MenuItem("Debug microphone", new System.EventHandler(DebugMicTooltips));
 			if (debugMicTooltips)
 				toggleMicDebugTooltips.Checked = true;
 #endif
 
-			nicon = new NotifyIcon();
+			nicon = new NotifyIcon(); // TODO: separate this from main window
 			nicon.Text = "TaskMaster!"; // Tooltip so people know WTF I am.
 #if DEBUG
 			nicon.Text = "DEBUGMaster!";
@@ -201,7 +191,7 @@ namespace TaskMaster
 			nicon.Icon = System.Drawing.Icon.ExtractAssociatedIcon(System.Reflection.Assembly.GetExecutingAssembly().Location); // is this really the best way?
 
 #if DEBUG
-			nicon.ContextMenu = new ContextMenu(new MenuItem[] { toggleVisibility, configMenuItem, toggleProcDebugTooltips, toggleMicDebugTooltips, exitMenuItem });
+			nicon.ContextMenu = new ContextMenu(new MenuItem[] { toggleVisibility, configMenuItem, toggleMicDebugTooltips, exitMenuItem });
 #else
 			nicon.ContextMenu = new ContextMenu(new MenuItem[] { toggleVisibility, configMenuItem, exitMenuItem });
 #endif
@@ -226,8 +216,6 @@ namespace TaskMaster
 								   // TODO: Hook device changes
 		}
 
-		//int cyclestarts = 1;
-		int adjusts = 0;
 		#if DEBUG
 		System.DateTime lastballoon = System.DateTime.MinValue;
 		#endif
@@ -239,46 +227,12 @@ namespace TaskMaster
 			{
 				item.SubItems[5].Text = e.control.Adjusts.ToString();
 				item.SubItems[6].Text = e.control.lastSeen.ToString();
-				adjusts += 1;
-				//Util.Timescale t;
-				#if DEBUG
-				if (debugProcTooltips)
-				{
-					System.DateTime n = System.DateTime.Now;
-					if ((n - lastballoon).TotalMilliseconds > 900) // balloon hysterisis
-					{
-						lastballoon = n;
-						nicon.ShowBalloonTip(1000, "Taskmaster!", e.control.Executable + " (#" + e.process.Id + ") adjusted.", ToolTipIcon.Info);
-						//+ Environment.NewLine + "Started " + Math.Round(Util.SimpleTime((System.DateTime.Now - e.process.StartTime).TotalSeconds, out t),1)
-						//+ " " + Util.TimescaleString(t) +" ago.", ToolTipIcon.Info);
-					}
-				}
-				#endif
 			}
 			else
 			{
 				Log.Error(System.String.Format("{0} not found in app list.", e.control.Executable));
 			}
 		}
-
-		/*
-		public void CycleEventStart(object sender, EventArgs e)
-		{
-			#if DEBUG
-			//nicon.ShowBalloonTip(2000, "Taskmaster!", "Process handling cycle "+(cyclestarts++)+" started", ToolTipIcon.Info);
-			#endif
-		}
-		*/
-
-		/*
-		int cycleends = 1;
-		public void CycleEventEnd(object sender, EventArgs e)
-		{
-			#if DEBUG
-			//nicon.ShowBalloonTip(2000, "Taskmaster!", "Process handling cycle " + (cycleends++) + " ended."+Environment.NewLine +"Done " + adjusts + " adjusts total.", ToolTipIcon.Info);
-			#endif
-		}
-		*/
 
 		GameMonitor gamemon = null;
 		public void setGameMonitor(GameMonitor gamemonitor)
@@ -296,8 +250,6 @@ namespace TaskMaster
 		public void setProcControl(ProcessManager control)
 		{
 			procCntrl = control;
-			//control.onStart += CycleEventStart;
-			//control.onStart += CycleEventEnd;
 			control.onAdjust += ProcAdjust;
 			foreach (ProcessControl item in control.images)
 			{

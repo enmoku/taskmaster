@@ -48,32 +48,20 @@
  * Other:
  *  - Multiple windows or tabbed window?
  */
+using NLog.LayoutRenderers.Wrappers;
 
 namespace TaskMaster
 {
 	using System;
-	/*
-	public class AppListener : MarshalByRefObject
-	{
-		public static event System.EventHandler Message;
-
-		public void OnMessage(EventArgs e)
-		{
-			System.EventHandler handler = Message;
-			if (handler != null)
-				handler(this, e);
-		}
-	}
-	*/
 
 	//[Guid("088f7210-51b2-4e06-9bd4-93c27a973874")]//there's no point to this, is there?
 	public class TaskMaster
 	{
-		public static SharpConfig.Configuration cfg = null;
-		public static string cfgpath = null;
+		public static SharpConfig.Configuration cfg;
+		public static string cfgpath = System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Taskmaster");
 
 		static NLog.Logger Log = NLog.LogManager.GetCurrentClassLogger();
-		static MemLog memlog = new MemLog();
+		static MemLog memlog;
 
 		public static void saveConfig(string configfile, SharpConfig.Configuration config)
 		{
@@ -102,9 +90,9 @@ namespace TaskMaster
 			return retcfg;
 		}
 
-		static MicMonitor mon = null;
-		static MainWindow tmw = null;
-		static ProcessManager pmn = null;
+		static MicMonitor mon;
+		static MainWindow tmw;
+		static ProcessManager pmn;
 		static void Setup()
 		{
 			mon = new MicMonitor();
@@ -117,7 +105,6 @@ namespace TaskMaster
 
 			pmn = new ProcessManager();
 			tmw.setProcControl(pmn);
-			pmn.Cycle();
 			pmn.Start();
 			tmw.setLog(memlog);
 
@@ -170,7 +157,7 @@ namespace TaskMaster
 			monitorCleanShutdown();
 		}
 
-		static SharpConfig.Configuration corestats = null;
+		static SharpConfig.Configuration corestats;
 		static string corestatfile = "Core.statistics.ini";
 		static void monitorCleanShutdown()
 		{
@@ -198,6 +185,12 @@ namespace TaskMaster
 		//[STAThread] // supposedly needed to avoid shit happening with the WinForms GUI. Haven't noticed any of that shit.
 		static public void Main()
 		{
+			if (memlog == null)
+				memlog = new MemLog();
+			NLog.LogManager.Configuration.AddTarget("MemLog", memlog);
+			NLog.LogManager.Configuration.LoggingRules.Add(new NLog.Config.LoggingRule("*", NLog.LogLevel.Debug, memlog));
+			NLog.LogManager.Configuration.Reload();
+
 			System.Threading.Mutex singleton = null;
 
 			{
@@ -212,22 +205,18 @@ namespace TaskMaster
 					return;
 				}
 			}
-			NLog.Config.SimpleConfigurator.ConfigureForTargetLogging(memlog, NLog.LogLevel.Debug);
 
 			Log.Info(System.String.Format("Taskmaster (#{0}) START!", System.Diagnostics.Process.GetCurrentProcess().Id));
 
-			cfgpath = System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Taskmaster");
-			var cfgfile = System.IO.Path.Combine(cfgpath, coreconfig);
-
 			cfg = loadConfig(coreconfig);
-
 			defaultConfig();
-
-			cfg.SaveToFile(cfgfile);
+			saveConfig(coreconfig, cfg); // why?
 
 			TaskMaster.Setup();
 
 			Log.Info("Startup complete...");
+
+			pmn.SlowWatch();
 			try
 			{
 				System.Windows.Forms.Application.Run();

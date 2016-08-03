@@ -60,7 +60,6 @@ namespace TaskMaster
 
 		void onNewLogHandler(object sender, LogEventArgs e)
 		{
-			System.Console.WriteLine("New log! #" + Logs.Count + " :: " + e.Message);
 			EventHandler<LogEventArgs> handler = OnNewLog;
 			if (handler != null)
 				handler(this, e);
