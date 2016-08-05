@@ -52,12 +52,6 @@
       <HintPath>packages\NLog.4.3.6\lib\net45\NLog.dll</HintPath>
     </Reference>
     <Reference Include="PresentationCore" />
-    <Reference Include="NLog.Windows.Forms">
-      <HintPath>packages\NLog.Windows.Forms.4.2.3\lib\net35\NLog.Windows.Forms.dll</HintPath>
-    </Reference>
-    <Reference Include="PostSharp">
-      <HintPath>packages\PostSharp.4.3.14\lib\net35-client\PostSharp.dll</HintPath>
-    </Reference>
     <Reference Include="System.Management" />
   </ItemGroup>
   <ItemGroup>

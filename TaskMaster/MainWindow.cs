@@ -38,7 +38,7 @@ namespace TaskMaster
 
 	public class MainWindow : Form
 	{
-		private static NLog.Logger Log = NLog.LogManager.GetCurrentClassLogger();
+		static NLog.Logger Log = NLog.LogManager.GetCurrentClassLogger();
 
 		NotifyIcon nicon = null; // separate this from mainwindow
 
@@ -59,18 +59,13 @@ namespace TaskMaster
 
 		void ExitCleanup()
 		{
-			Log.Debug("Cleaning...");
+			Log.Trace("Cleaning...");
 			Save();
 
 			Hide();
 			if (nicon != null)
 			{
 				nicon.Visible = false;
-				if (nicon.Icon != null)
-				{
-					nicon.Icon.Dispose();
-					nicon.Icon = null;
-				}
 				nicon.Dispose();
 				nicon = null;
 			}
@@ -85,7 +80,7 @@ namespace TaskMaster
 
 		void WindowClose(object sender, FormClosingEventArgs e)
 		{
-			Log.Debug("Window close");
+			Log.Trace("Window close");
 			switch (e.CloseReason)
 			{
 				case CloseReason.UserClosing:
@@ -105,7 +100,7 @@ namespace TaskMaster
 					goto Cleanup;
 				default:
 					Log.Warn(System.String.Format("Exit: Unidentified close reason: {0}", e.CloseReason));
-					Cleanup:
+				Cleanup:
 					ExitCleanup();
 					Application.Exit();
 					break;
@@ -135,6 +130,7 @@ namespace TaskMaster
 			explorer.Refresh();
 
 			// TODO: register it again
+			RegisterExplorerExit();
 		}
 
 		void RegisterExplorerExit()
@@ -159,39 +155,25 @@ namespace TaskMaster
 			}
 		}
 
-#if DEBUG
-		bool debugMicTooltips = true;
-		MenuItem toggleMicDebugTooltips;
-		void DebugMicTooltips(object sender, EventArgs e)
-		{
-			debugMicTooltips = !debugMicTooltips;
-			toggleMicDebugTooltips.Checked = debugMicTooltips;
-		}
-#endif
-
 		void MakeTrayIcon()
 		{
 			Log.Debug("Generating tray icon.");
 			MenuItem toggleVisibility = new MenuItem("Open", new System.EventHandler(TrayShowWindow));
 			MenuItem configMenuItem = new MenuItem("Configuration", new System.EventHandler(TrayShowConfig));
 			MenuItem exitMenuItem = new MenuItem("Exit", new System.EventHandler(TrayExit));
-#if DEBUG
-			toggleMicDebugTooltips = new MenuItem("Debug microphone", new System.EventHandler(DebugMicTooltips));
-			if (debugMicTooltips)
-				toggleMicDebugTooltips.Checked = true;
-#endif
 
 			nicon = new NotifyIcon(); // TODO: separate this from main window
-			nicon.Text = "TaskMaster!"; // Tooltip so people know WTF I am.
 #if DEBUG
 			nicon.Text = "DEBUGMaster!";
+#else
+			nicon.Text = "TaskMaster!"; // Tooltip so people know WTF I am.
 #endif
 			nicon.Click += TrayShowWindow;
 			nicon.DoubleClick += TrayRestoreWindow;
 			nicon.Icon = System.Drawing.Icon.ExtractAssociatedIcon(System.Reflection.Assembly.GetExecutingAssembly().Location); // is this really the best way?
 
 #if DEBUG
-			nicon.ContextMenu = new ContextMenu(new MenuItem[] { toggleVisibility, configMenuItem, toggleMicDebugTooltips, exitMenuItem });
+			nicon.ContextMenu = new ContextMenu(new MenuItem[] { toggleVisibility, configMenuItem, exitMenuItem });
 #else
 			nicon.ContextMenu = new ContextMenu(new MenuItem[] { toggleVisibility, configMenuItem, exitMenuItem });
 #endif
@@ -216,9 +198,6 @@ namespace TaskMaster
 								   // TODO: Hook device changes
 		}
 
-		#if DEBUG
-		System.DateTime lastballoon = System.DateTime.MinValue;
-		#endif
 		public void ProcAdjust(object sender, ProcessEventArgs e)
 		{
 			Log.Trace("Process adjust received.");
@@ -250,7 +229,7 @@ namespace TaskMaster
 		public void setProcControl(ProcessManager control)
 		{
 			procCntrl = control;
-			control.onAdjust += ProcAdjust;
+			control.onProcAdjust += ProcAdjust;
 			foreach (ProcessControl item in control.images)
 			{
 
@@ -266,14 +245,39 @@ namespace TaskMaster
 				appc.Add(item.Executable, litem);
 				appList.Items.Add(litem);
 			}
+			foreach (PathControl path in procCntrl.ActivePaths())
+			{
+				ListViewItem ni = new ListViewItem(new string[] { path.FriendlyName, path.Path, path.Adjusts.ToString() });
+				appw.Add(path, ni);
+				pathList.Items.Add(ni);
+			}
+			procCntrl.onPathLocated += PathUpdateEvent;
+			procCntrl.onPathAdjust += PathAdjustEvent;
 		}
 
-		Label micName = null;
-		NumericUpDown micVol = null;
-		ListView micList = null;
-		ListView appList = null;
+		public void PathAdjustEvent(object sender, PathControlEventArgs e)
+		{
+			ListViewItem ni;
+			if (appw.TryGetValue(e.Control, out ni))
+				ni.SubItems[2].Text = e.Control.Adjusts.ToString();
+		}
+
+		public void PathUpdateEvent(object sender, PathControlEventArgs e)
+		{
+			Log.Trace(e.Control.FriendlyName + " // " + e.Control.Path);
+			ListViewItem ni = new ListViewItem(new string[] { e.Control.FriendlyName, e.Control.Path, "0" });
+			appw.Add(e.Control, ni);
+			pathList.Items.Add(ni);
+		}
+
+		Label micName;
+		NumericUpDown micVol;
+		ListView micList;
+		ListView appList;
+		ListView pathList;
+		Dictionary<PathControl, ListViewItem> appw = new Dictionary<PathControl, ListViewItem>();
 		Dictionary<string, ListViewItem> appc = new Dictionary<string, ListViewItem>();
-		Label corCountLabel = null;
+		Label corCountLabel;
 
 		void UserMicVol(object sender, System.EventArgs e)
 		{
@@ -284,24 +288,18 @@ namespace TaskMaster
 		void volumeChangeDetected(object sender, VolumeChangedEventArgs e)
 		{
 			micVol.Value = System.Convert.ToInt32(e.New);
-			corCountLabel.Text = micMonitor.getCorrections().ToString();
-			corCountLabel.Refresh();
-			#if DEBUG
-			if (debugMicTooltips)
+			if(e.Corrected)
 			{
-				Log.Trace(System.String.Format("Volume change notification, from {0:N1}% to {1:N1}%", e.Old, e.New));
-				nicon.ShowBalloonTip(2000, "TaskMaster!", System.String.Format("Volume change detected!{2}From {0:N1}% to {1:N1}%", e.Old, e.New, Environment.NewLine), ToolTipIcon.Info);
+				corCountLabel.Text = micMonitor.getCorrections().ToString();
+				//corCountLabel.Refresh();
 			}
-			#endif
 		}
 
 		void MicEnum()
 		{
 			// hopefully this creates temp variable instead of repeatedly calling the func...
 			foreach (KeyValuePair<string, string> dev in micMonitor.enumerate())
-			{
 				micList.Items.Add(new ListViewItem(new string[] { dev.Value, dev.Key }));
-			}
 		}
 		#endregion // Microphone control code
 
@@ -310,6 +308,7 @@ namespace TaskMaster
 		#endregion
 
 		#region Internet handling functionality
+		/*
 		bool netAvailable = false;
 		Label inetLabel = null;
 		void NetworkChanged(object sender, System.EventArgs e)
@@ -317,7 +316,9 @@ namespace TaskMaster
 			netAvailable = NetworkInterface.GetIsNetworkAvailable();
 			inetLabel.Text = netAvailable ? "Network of tubes connected." : "Tubes broken.";
 		}
+		*/
 
+		/*
 		string netSpeed(long speed)
 		{
 			if (speed >= 1000000000)
@@ -329,7 +330,9 @@ namespace TaskMaster
 			else
 				return speed + " b/s";
 		}
+		*/
 
+		/*
 		ListView ifaceList;
 		void NetEnum()
 		{
@@ -347,7 +350,9 @@ namespace TaskMaster
 		{
 			NetEnum();
 		}
+		*/
 
+		/*
 		void NetworkSetup()
 		{
 			NetworkChanged(null, null);
@@ -358,7 +363,7 @@ namespace TaskMaster
 			NetworkChange.NetworkAvailabilityChanged += NetworkChanged;
 			NetworkChange.NetworkAddressChanged += NetAddrChanged;
 
-			/*
+			////---*
 			// only recognizes changes related to Internet adapters
 			if (NetworkInterface.GetIsNetworkAvailable()) {
 				// however, this will include all adapters
@@ -380,113 +385,118 @@ namespace TaskMaster
 					}
 				}
 			}
-			*/
+			*---//
 		}
+		*/
 		#endregion
 
+		/*
 		ProcessControl editproc;
 		void saveAppData(Object sender, EventArgs e)
 		{
 			Log.Debug("Save button pressed!");
 		}
+		*/
 
 		//void appEditEvent(Object sender, System.Windows.Input.MouseButtonEventArgs e)
-		void appEditEvent(Object sender, EventArgs e)
+		/*
+	void appEditEvent(Object sender, EventArgs e)
+	{
+		if (appList.SelectedItems.Count == 1)
 		{
-			if (appList.SelectedItems.Count == 1)
+			//ListView.SelectedListViewItemCollection items = appList.SelectedItems;
+			//ListViewItem itm = items[0];
+			ListViewItem.ListViewSubItemCollection sit = appList.SelectedItems[0].SubItems;
+
+			// TODO: Find the actuall ProcessControl for this item
+			editproc = procCntrl.getControl(sit[1].Text);
+			if (editproc == null)
 			{
-				//ListView.SelectedListViewItemCollection items = appList.SelectedItems;
-				//ListViewItem itm = items[0];
-				ListViewItem.ListViewSubItemCollection sit = appList.SelectedItems[0].SubItems;
-
-				// TODO: Find the actuall ProcessControl for this item
-				editproc = procCntrl.getControl(sit[1].Text);
-				if (editproc == null)
-				{
-					Log.Warn(sit[1].Text + " not found in process manager!");
-					return;
-				}
-
-				Log.Trace(System.String.Format("[{0}] {1}", editproc.FriendlyName, editproc.Executable));
-
-				Form f = new Form();
-				f.Padding = new Padding(12);
-				TableLayoutPanel lay = new TableLayoutPanel();
-				lay.Parent = f;
-				lay.ColumnCount = 2;
-				lay.RowCount = 6;
-				lay.Dock = DockStyle.Fill;
-				lay.AutoSize = true;
-
-				Label e_appname = new Label();
-				e_appname.Text = "Application";
-				e_appname.TextAlign = ContentAlignment.MiddleLeft;
-				e_appname.Width = 120;
-				lay.Controls.Add(e_appname, 0, 0);
-				TextBox i_appname = new TextBox();
-				i_appname.Text = editproc.FriendlyName;
-				lay.Controls.Add(i_appname, 1, 0);
-
-				Label e_exename = new Label();
-				e_exename.Text = "Executable";
-				e_exename.TextAlign = ContentAlignment.MiddleLeft;
-				e_exename.Width = 120;
-				lay.Controls.Add(e_exename, 0, 1);
-				TextBox i_exename = new TextBox();
-				i_exename.Text = editproc.Executable;
-				lay.Controls.Add(i_exename, 1, 1);
-
-				Label e_priority = new Label();
-				e_priority.Text = "Priority";
-				e_priority.TextAlign = ContentAlignment.MiddleLeft;
-				lay.Controls.Add(e_priority, 0, 2);
-				ComboBox i_priority = new ComboBox();
-				i_priority.Items.Add(ProcessPriorityClass.AboveNormal);
-				i_priority.Items.Add(ProcessPriorityClass.Normal);
-				i_priority.Items.Add(ProcessPriorityClass.BelowNormal);
-				i_priority.Items.Add(ProcessPriorityClass.Idle);
-				i_priority.SelectedText = editproc.Priority.ToString();
-				lay.Controls.Add(i_priority, 1, 2);
-
-				Label e_affinity = new Label();
-				e_affinity.Text = "Affinity";
-				e_affinity.TextAlign = ContentAlignment.MiddleLeft;
-				lay.Controls.Add(e_affinity, 0, 3);
-
-
-				Label e_boost = new Label();
-				e_boost.Text = "Boost";
-				e_boost.TextAlign = ContentAlignment.MiddleLeft;
-				lay.Controls.Add(e_boost, 0, 4);
-				CheckBox i_boost = new CheckBox();
-				i_boost.Checked = editproc.Boost;
-				//Log.Debug("Boost:"+sit[4]);
-				lay.Controls.Add(i_boost, 1, 4);
-
-				Button savebut = new Button();
-				savebut.Text = "Save";
-				lay.Controls.Add(savebut, 1, 5);
-
-				savebut.Click += saveAppData;
-
-				f.MinimumSize = new Size(200,120);
-				f.ShowDialog(this);
+				Log.Warn(sit[1].Text + " not found in process manager!");
+				return;
 			}
+
+			Log.Trace(System.String.Format("[{0}] {1}", editproc.FriendlyName, editproc.Executable));
+
+			Form f = new Form();
+			f.Padding = new Padding(12);
+			TableLayoutPanel lay = new TableLayoutPanel();
+			lay.Parent = f;
+			lay.ColumnCount = 2;
+			lay.RowCount = 6;
+			lay.Dock = DockStyle.Fill;
+			lay.AutoSize = true;
+
+			Label e_appname = new Label();
+			e_appname.Text = "Application";
+			e_appname.TextAlign = ContentAlignment.MiddleLeft;
+			e_appname.Width = 120;
+			lay.Controls.Add(e_appname, 0, 0);
+			TextBox i_appname = new TextBox();
+			i_appname.Text = editproc.FriendlyName;
+			lay.Controls.Add(i_appname, 1, 0);
+
+			Label e_exename = new Label();
+			e_exename.Text = "Executable";
+			e_exename.TextAlign = ContentAlignment.MiddleLeft;
+			e_exename.Width = 120;
+			lay.Controls.Add(e_exename, 0, 1);
+			TextBox i_exename = new TextBox();
+			i_exename.Text = editproc.Executable;
+			lay.Controls.Add(i_exename, 1, 1);
+
+			Label e_priority = new Label();
+			e_priority.Text = "Priority";
+			e_priority.TextAlign = ContentAlignment.MiddleLeft;
+			lay.Controls.Add(e_priority, 0, 2);
+			ComboBox i_priority = new ComboBox();
+			i_priority.Items.Add(ProcessPriorityClass.AboveNormal);
+			i_priority.Items.Add(ProcessPriorityClass.Normal);
+			i_priority.Items.Add(ProcessPriorityClass.BelowNormal);
+			i_priority.Items.Add(ProcessPriorityClass.Idle);
+			i_priority.SelectedText = editproc.Priority.ToString();
+			lay.Controls.Add(i_priority, 1, 2);
+
+			Label e_affinity = new Label();
+			e_affinity.Text = "Affinity";
+			e_affinity.TextAlign = ContentAlignment.MiddleLeft;
+			lay.Controls.Add(e_affinity, 0, 3);
+
+
+			Label e_boost = new Label();
+			e_boost.Text = "Boost";
+			e_boost.TextAlign = ContentAlignment.MiddleLeft;
+			lay.Controls.Add(e_boost, 0, 4);
+			CheckBox i_boost = new CheckBox();
+			i_boost.Checked = editproc.Boost;
+			//Log.Debug("Boost:"+sit[4]);
+			lay.Controls.Add(i_boost, 1, 4);
+
+			Button savebut = new Button();
+			savebut.Text = "Save";
+			lay.Controls.Add(savebut, 1, 5);
+
+			savebut.Click += saveAppData;
+
+			f.MinimumSize = new Size(200,120);
+			f.ShowDialog(this);
 		}
+	}
+		*/
 
 		void BuildUI()
 		{
 			Text = "Taskmaster";
 			AutoSize = true;
 			Padding = new Padding(12);
-			Size = new System.Drawing.Size(680, 760);
+			Size = new System.Drawing.Size(720, 580);
 			//Padding = 12;
 			//margin
 
 			TableLayoutPanel lrows = new TableLayoutPanel();
 			lrows.Parent = this;
 			lrows.ColumnCount = 1;
-			lrows.RowCount = 10;
+			//lrows.RowCount = 10;
 			lrows.Dock = DockStyle.Fill;
 
 			#region Main Window Row 1, microphone device
@@ -506,11 +516,12 @@ namespace TaskMaster
 			micNameRow.Controls.Add(micName, 1, 0);
 			micNameRow.Dock = DockStyle.Fill;
 			micNameRow.AutoSize = true;
-			lrows.Controls.Add(micNameRow, 0, 0);
+			//lrows.Controls.Add(micNameRow, 0, 0);
+			lrows.Controls.Add(micNameRow);
 			#endregion
 
 			// uhh???
-			#region Main Window Row 2, volume control
+			// Main Window Row 2, volume control
 			TableLayoutPanel miccntrl = new TableLayoutPanel();
 			miccntrl.ColumnCount = 5;
 			miccntrl.RowCount = 1;
@@ -520,15 +531,8 @@ namespace TaskMaster
 			//miccntrl.Location = new System.Drawing.Point(0, 0);
 			miccntrl.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
 			miccntrl.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-			lrows.Controls.Add(miccntrl, 0, 1);
-
-			/*
-			Panel micPanel = new Panel();
-			micPanel.Parent = this;
-			//micPanel.Height = 40;
-			micPanel.AutoSize = true;
-			micPanel.Dock = DockStyle.Bottom;
-			*/
+			//lrows.Controls.Add(miccntrl, 0, 1);
+			lrows.Controls.Add(miccntrl);
 
 			Label micVolLabel = new Label();
 			micVolLabel.Text = "Mic volume";
@@ -565,21 +569,24 @@ namespace TaskMaster
 			corCountLabel.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
 			miccntrl.Controls.Add(corLbll, 3, 0);
 			miccntrl.Controls.Add(corCountLabel, 4, 0);
-			#endregion
+			// End: Volume control
 
-			#region Main Window row 3, microphone device enumeration
+			// Main Window row 3, microphone device enumeration
 			micList = new ListView();
 			micList.Dock = DockStyle.Top;
 			micList.Width = lrows.Width - 3; // FIXME: 3 for the bevel, but how to do this "right"?
+			micList.Height = 60;
 			micList.View = View.Details;
 			micList.FullRowSelect = true;
 			micList.Columns.Add("Name", 200);
 			micList.Columns.Add("GUID", 220);
 
-			lrows.Controls.Add(micList, 0, 2);
-			#endregion
+			//lrows.Controls.Add(micList, 0, 2);
+			lrows.Controls.Add(micList);
+			// End: Microphone enumeration
 
-			#region Main Window row 4-5, internet status
+			// Main Window row 4-5, internet status
+			/*
 			inetLabel = new Label();
 			inetLabel.Dock = DockStyle.Top;
 			inetLabel.Text = "Uninitialized";
@@ -587,7 +594,9 @@ namespace TaskMaster
 			inetLabel.AutoSize = true;
 			inetLabel.BackColor = Color.LightGoldenrodYellow;
 			lrows.Controls.Add(inetLabel, 0, 3);
+			*/
 
+			/*
 			activeLabel = new Label();
 			activeLabel.Dock = DockStyle.Top;
 			activeLabel.Text = "no active window found";
@@ -595,7 +604,9 @@ namespace TaskMaster
 			activeLabel.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
 			activeLabel.BackColor = Color.Aquamarine;
 			lrows.Controls.Add(activeLabel, 0, 4);
+			*/
 
+			/*
 			ifaceList = new ListView();
 			ifaceList.Dock = DockStyle.Top;
 			ifaceList.Width = lrows.Width - 3; // FIXME: why does 3 work? can't we do this automatically?
@@ -607,9 +618,11 @@ namespace TaskMaster
 			ifaceList.Columns.Add("Link speed", 80);
 			ifaceList.Scrollable = true;
 			lrows.Controls.Add(ifaceList, 0, 5);
-			#endregion
+			*/
+			// End: Inet status
 
-			#region Main Window row 6, settings
+			// Main Window row 6, settings
+			/*
 			ListView settingList = new ListView();
 			settingList.Dock = DockStyle.Top;
 			settingList.Width = lrows.Width - 3; // FIXME: why does 3 work? can't we do this automatically?
@@ -627,9 +640,24 @@ namespace TaskMaster
 				}
 			}
 			lrows.Controls.Add(settingList, 0, 6);
-			#endregion
+			*/
+			// End: Settings
 
-			#region Main Window row 7, app list
+			// Main Window, Path list
+			pathList = new ListView();
+			pathList.View = View.Details;
+			pathList.Dock = DockStyle.Top;
+			pathList.Width = lrows.Width - 3;
+			pathList.Height = 60;
+			pathList.FullRowSelect = true;
+			pathList.Columns.Add("Name", 120);
+			pathList.Columns.Add("Path", 300);
+			pathList.Columns.Add("Adjusts", 60);
+			pathList.Scrollable = true;
+			lrows.Controls.Add(pathList);
+			// End: Path list
+
+			// Main Window row 7, app list
 			appList = new ListView();
 			appList.View = View.Details;
 			appList.Dock = DockStyle.Top;
@@ -645,22 +673,23 @@ namespace TaskMaster
 			appList.Columns.Add("Last seen", 120);
 			appList.Scrollable = true;
 			appList.Alignment = ListViewAlignment.Left;
-			appList.DoubleClick += appEditEvent;
-			lrows.Controls.Add(appList, 0, 7);
-			#endregion
+			//appList.DoubleClick += appEditEvent; // for in-app editing, probably not going to actually do that
+			//lrows.Controls.Add(appList, 0, 7);
+			lrows.Controls.Add(appList);
+			// End: App list
 
-			#region Log
+			// UI Log
 			loglist = new ListView();
 			loglist.Dock = DockStyle.Fill;
 			loglist.View = View.Details;
 			loglist.FullRowSelect = true;
-			loglist.Columns.Add("Log");
+			loglist.Columns.Add("Log content");
 			loglist.Columns[0].Width = lrows.Width - 25;
 			loglist.HeaderStyle = ColumnHeaderStyle.None;
 			loglist.Scrollable = true;
 			loglist.Height = 100;
 			lrows.Controls.Add(loglist, 0, 11);
-			#endregion
+			// End: UI Log
 
 			//layout.Visible = true;
 
@@ -688,14 +717,12 @@ namespace TaskMaster
 		{
 			memlog = log;
 			foreach (string msg in memlog.Logs)
-			{
 				loglist.Items.Add(msg);
-			}
 			memlog.OnNewLog += onNewLog;
 		}
 
 		// DO NOT LOG INSIDE THIS FOR FUCKS SAKE
-		// it creates an infinite loop
+		// it creates an infinite log loop
 		void onNewLog(object sender, LogEventArgs e)
 		{
 			if (loglist.Items.Count > 19)
@@ -712,7 +739,8 @@ namespace TaskMaster
 
 			BuildUI();
 
-			NetworkSetup();
+			//DISABLED
+			//NetworkSetup();
 
 			// TODO: Detect mic device changes
 			// TODO: Delay fixing by 5 seconds to prevent fix diarrhea
@@ -735,8 +763,13 @@ namespace TaskMaster
 		}
 		*/
 
+		//string cfgfile = "GUI.ini";
+		//SharpConfig.Configuration guicfg;
+
 		~MainWindow()
 		{
+			//TaskMaster.saveConfig(cfgfile, guicfg);
+
 			base.Dispose(false);
 		}
 	}

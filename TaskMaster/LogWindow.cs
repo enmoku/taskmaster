@@ -47,7 +47,7 @@ namespace TaskMaster
 	{
 		private static NLog.Logger Log = NLog.LogManager.GetCurrentClassLogger();
 
-		public int Max = int.MaxValue;
+		public int Max = 50;
 
 		public System.Collections.Generic.List<string> Logs;
 		public event System.EventHandler<LogEventArgs> OnNewLog;
@@ -58,15 +58,13 @@ namespace TaskMaster
 			Layout = "${callsite} :: ${message}";
 		}
 
-		void onNewLogHandler(object sender, LogEventArgs e)
+		async void onNewLogHandler(object sender, LogEventArgs e)
 		{
 			EventHandler<LogEventArgs> handler = OnNewLog;
 			if (handler != null)
 				handler(this, e);
 			if (Logs.Count > Max)
-			{
-				//Logs.RemoveAt(0);
-			}
+				Logs.RemoveAt(0);
 		}
 
 		protected override void Write(NLog.LogEventInfo logEvent)

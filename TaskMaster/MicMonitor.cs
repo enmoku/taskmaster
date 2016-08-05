@@ -36,11 +36,23 @@ namespace TaskMaster
 	{
 		public double Old { get; set; }
 		public double New { get; set; }
+		public bool Corrected { get; set; }
+
+		public VolumeChangedEventArgs()
+		{
+		}
+
+		public VolumeChangedEventArgs(double oldvolume=double.NaN, double newvolume=double.NaN, bool corrected=false)
+		{
+			Old = oldvolume;
+			New = newvolume;
+			Corrected = corrected;
+		}
 	}
 
 	public class MicMonitor : IDisposable
 	{
-		private static NLog.Logger Log = NLog.LogManager.GetCurrentClassLogger();
+		static NLog.Logger Log = NLog.LogManager.GetCurrentClassLogger();
 
 		public event EventHandler<VolumeChangedEventArgs> VolumeChanged;
 
@@ -64,7 +76,7 @@ namespace TaskMaster
 		}
 
 		SharpConfig.Configuration stats;
-		private const string statfile = "MicMon.statistics.ini";
+		const string statfile = "MicMon.statistics.ini";
 		// ctor, constructor
 		public MicMonitor()
 		{
@@ -88,7 +100,7 @@ namespace TaskMaster
 			TaskMaster.saveConfig(statfile, stats);
 		}
 
-		protected virtual void OnVolumeChanged(VolumeChangedEventArgs e)
+		async void OnVolumeChanged(VolumeChangedEventArgs e)
 		{
 			EventHandler<VolumeChangedEventArgs> handler = VolumeChanged;
 			if (handler != null)
@@ -105,13 +117,11 @@ namespace TaskMaster
 				foreach (var dev in devs)
 				{
 					string[] parts = dev.ID.Split('}');
-					#if DEBUG
 					Log.Trace(System.String.Format("{0} [guid: {1}]", dev.DeviceFriendlyName, parts[1].Substring(2)));
-					#endif
 					devices.Add(new devicePair(parts[1].Substring(2), dev.DeviceFriendlyName));
 				}
 			}
-			Log.Info(String.Format("{0} device(s)", devices.Count));
+			Log.Info(String.Format("{0} microphone(s)", devices.Count));
 
 			return devices;
 		}
@@ -192,6 +202,7 @@ namespace TaskMaster
 		{
 			double oldVol = Volume;
 			Volume = data.MasterVolume * 100;
+			OnVolumeChanged(new VolumeChangedEventArgs(oldVol, Volume));
 
 			// This is a light HYSTERISIS limiter in case someone is sliding a volume bar around,
 			// we act on it only once every [AdjustDelay] ms.
@@ -200,7 +211,7 @@ namespace TaskMaster
 			// TODO: Delay this even more if volume is changed ~2 seconds before we try to do so.
 			if (Volume != Target)
 			{
-				Log.Info(String.Format("Volume change detected: {0:N1}% -> {1:N1}%", oldVol, Volume));
+				Log.Info(String.Format("{0:N1}% -> {1:N1}%", oldVol, Volume));
 				if (System.Threading.Interlocked.CompareExchange(ref correcting, 1, 0) == 0) // correcting==0, set it to 1, return original 0
 				{
 					//Log.Trace("Thread ID (dispatch): " + System.Threading.Thread.CurrentThread.ManagedThreadId);
@@ -208,13 +219,10 @@ namespace TaskMaster
 					{
 						//Log.Trace("Thread ID (task): "+ System.Threading.Thread.CurrentThread.ManagedThreadId);
 						await System.Threading.Tasks.Task.Delay(AdjustDelay);
-						var e = new VolumeChangedEventArgs();
-						e.Old = Volume;
 						setVolume(Target);
-						e.New = Volume;
 						corrections += 1;
 						System.Threading.Interlocked.Exchange(ref correcting, 0);
-						OnVolumeChanged(e);
+						OnVolumeChanged(new VolumeChangedEventArgs(oldVol, Volume, true));
 					});
 				}
 			}
@@ -225,11 +233,19 @@ namespace TaskMaster
 			Log.Info(String.Format("Setting volume to {0:N1}%", volume));
 			if (Control != null)
 			{
-				if (Control.Percent != Target)
+				if (Control.Percent < (Target + 0.05))
 				{
 					Control.Percent = volume;
 					Volume = volume;
 				}
+				else
+				{
+					Log.Debug("Volume already above target.");
+				}
+			}
+			else
+			{
+				Log.Error("Volume control not set up.");
 			}
 		}
 	}

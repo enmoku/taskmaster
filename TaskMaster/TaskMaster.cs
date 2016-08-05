@@ -26,10 +26,9 @@
 
 
 /*
- * TODO: Fix process priorities, both CPU and IO
+ * TODO: Fix process IO priority
  * TODO: Detect full screen or GPU accelerated apps and adjust their priorities.
  * TODO: Detect if the above apps hang and lower their processing priorities.
- * TODO: Alternatively detect applications launching from specific locations. Works for things like Steam games, and anyone who installs their games in central locations.
  * TODO: Empty working set, detect if it does anything and report it. Probably not worth doing.
  * 
  * MAYBE:
@@ -48,12 +47,11 @@
  * Other:
  *  - Multiple windows or tabbed window?
  */
-using NLog.LayoutRenderers.Wrappers;
+
+using System;
 
 namespace TaskMaster
 {
-	using System;
-
 	//[Guid("088f7210-51b2-4e06-9bd4-93c27a973874")]//there's no point to this, is there?
 	public class TaskMaster
 	{
@@ -76,12 +74,12 @@ namespace TaskMaster
 		{
 			string path = System.IO.Path.Combine(cfgpath, configfile);
 			Log.Info("Opening: "+path);
-			SharpConfig.Configuration retcfg = null;
-			try
+			SharpConfig.Configuration retcfg;
+			if (System.IO.File.Exists(path))
 			{
 				retcfg = SharpConfig.Configuration.LoadFromFile(path);
 			}
-			catch (System.IO.FileNotFoundException)
+		    else
 			{
 				Log.Warn("Not found: "+path);
 				retcfg = new SharpConfig.Configuration();
@@ -93,19 +91,22 @@ namespace TaskMaster
 		static MicMonitor mon;
 		static MainWindow tmw;
 		static ProcessManager pmn;
+
+		[System.Diagnostics.Conditional("DEBUG")]
+		static void DebugStart()
+		{
+			tmw.Show();
+		}
 		static void Setup()
 		{
 			mon = new MicMonitor();
 			tmw = new MainWindow();
 			tmw.setMicMonitor(mon);
 
-			#if DEBUG
-			tmw.Show();
-			#endif
+			DebugStart();
 
 			pmn = new ProcessManager();
 			tmw.setProcControl(pmn);
-			pmn.Start();
 			tmw.setLog(memlog);
 
 			/*
@@ -181,6 +182,11 @@ namespace TaskMaster
 			saveConfig(corestatfile, corestats);
 		}
 
+		static public void CrossInstanceMessageHandler(object sender, EventArgs e)
+		{
+			Log.Info("Cross-instance message! Pid:" + System.Diagnostics.Process.GetCurrentProcess().Id);
+		}
+
 		// entry point to the application
 		//[STAThread] // supposedly needed to avoid shit happening with the WinForms GUI. Haven't noticed any of that shit.
 		static public void Main()
@@ -189,8 +195,10 @@ namespace TaskMaster
 				memlog = new MemLog();
 			NLog.LogManager.Configuration.AddTarget("MemLog", memlog);
 			NLog.LogManager.Configuration.LoggingRules.Add(new NLog.Config.LoggingRule("*", NLog.LogLevel.Debug, memlog));
+			memlog.Layout = @"[${date:format=HH\:mm\:ss}] ${message}"; ;
 			NLog.LogManager.Configuration.Reload();
 
+			Log.Trace("Testing for single instance.");
 			System.Threading.Mutex singleton = null;
 
 			{
@@ -201,7 +209,7 @@ namespace TaskMaster
 					// already running
 					// signal original process
 					System.Windows.Forms.MessageBox.Show("Already operational.", "Taskmaster!");
-					Log.Warn(System.String.Format("Exiting (#{0}); already running.", System.Diagnostics.Process.GetCurrentProcess().Id));
+					Log.Warn(System.String.Format("Exiting (pid:{0}); already running.", System.Diagnostics.Process.GetCurrentProcess().Id));
 					return;
 				}
 			}
@@ -210,19 +218,21 @@ namespace TaskMaster
 
 			cfg = loadConfig(coreconfig);
 			defaultConfig();
-			saveConfig(coreconfig, cfg); // why?
 
 			TaskMaster.Setup();
 
 			Log.Info("Startup complete...");
 
-			pmn.SlowWatch();
+			pmn.ProcessEverything();
 			try
 			{
 				System.Windows.Forms.Application.Run();
 			}
-			catch (Exception)
+			catch (Exception ex)
 			{
+				Log.Error("Unhandled exception! Dying.");
+				Log.Fatal(ex);
+				NLog.LogManager.Flush();
 				throw;
 			}
 			finally
@@ -247,7 +257,7 @@ namespace TaskMaster
 
 			singleton.ReleaseMutex();
 			CleanShutdown();
-			Log.Info(System.String.Format("Taskmaster (#{0}) END!", System.Diagnostics.Process.GetCurrentProcess().Id));
+			Log.Info(System.String.Format("Taskmaster (#{0}) END! [Clean]", System.Diagnostics.Process.GetCurrentProcess().Id));
 		}
 	}
 }
