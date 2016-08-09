@@ -87,9 +87,6 @@ namespace TaskMaster
 		/// <param name="boost">Foreground process priority boost.</param>
 		public ProcessControl(string friendlyname, string executable, ProcessPriorityClass priority=ProcessPriorityClass.Normal, bool increase=false, int affinity=0, bool boost=true)
 		{
-			Log.Debug(friendlyname + " (" + executable + "), " + priority + (affinity!=0?", Mask:"+affinity:""));
-			//System.String.Format("{0} ({1}), {2}, Mask:{3}", friendlyname, executable, priority, affinity)
-
 			FriendlyName = friendlyname;
 			Executable = executable;
 			ExecutableFriendlyName = System.IO.Path.GetFileNameWithoutExtension(executable);
@@ -102,6 +99,111 @@ namespace TaskMaster
 			lastTouch = System.DateTime.MinValue;
 
 			Adjusts = 0;
+
+			Log.Debug("Trace: " + FriendlyName + " (" + Executable + "), " + Priority + (Affinity != IntPtr.Zero ? ", Mask:" + Affinity : ""));
+		}
+
+		// TODO EVENT
+		public bool Touch(Process process)
+		{
+			if (process.HasExited)
+			{
+				Log.Trace(System.String.Format("{0} (pid:{1}) has already exited.", Executable, process.Id));
+				return false;
+			}
+
+			//process.Refresh(); // is this necessary?
+			Log.Trace(System.String.Format("{0} ({1}, pid:{2})", FriendlyName, Executable, process.Id));
+			bool mAffinity = false;
+			IntPtr oldAffinity = process.ProcessorAffinity;
+			bool mPriority = false;
+			ProcessPriorityClass oldPriority = process.PriorityClass;
+			bool mBoost = false;
+			lastSeen = System.DateTime.Now;
+			if (((ProcessManager.PriorityToInt(process.PriorityClass) < ProcessManager.PriorityToInt(Priority)) && Increase) ||
+			    (ProcessManager.PriorityToInt(process.PriorityClass) > ProcessManager.PriorityToInt(Priority)))
+			{
+				process.PriorityClass = Priority;
+				mPriority = true;
+			}
+			if (process.ProcessorAffinity != Affinity) // FIXME: 0 and all cores selected should match
+			{
+				if (Affinity == IntPtr.Zero && process.ProcessorAffinity.ToInt32() == ProcessManager.allCPUsMask)
+				{
+					//System.Console.WriteLine("Current and target affinity set to OS control. No action needed.");
+					// No action needed.
+				}
+				else
+				{
+					//System.Console.WriteLine("Current affinity: {0}", Convert.ToString(item.ProcessorAffinity.ToInt32(), 2));
+					//System.Console.WriteLine("Target affinity: {0}", Convert.ToString(proc.Affinity.ToInt32(), 2));
+					try
+					{
+						process.ProcessorAffinity = Affinity;
+						mAffinity = true;
+					}
+					catch (Win32Exception)
+					{
+						Log.Warn(System.String.Format("Couldn't modify process ({0}, #{1}) affinity.", Executable, process.Id));
+					}
+				}
+			}
+			if (process.PriorityBoostEnabled != Boost)
+			{
+				process.PriorityBoostEnabled = Boost;
+				mBoost = true;
+			}
+			if (mPriority || mAffinity || mBoost)
+			{
+				Adjusts += 1;
+
+				lastTouch = System.DateTime.Now;
+
+				// TODO: Is StringBuilder fast enough for this to be good idea?
+				System.Text.StringBuilder ls = new System.Text.StringBuilder();
+				ls.Append(Executable).Append(" (pid:").Append(process.Id).Append("); ");
+				//ls.Append("(").Append(control.Executable).Append(") =");
+				if (mPriority)
+					ls.Append(" Priority(").Append(oldPriority).Append(" -> ").Append(Priority).Append(")");
+				if (mAffinity)
+					ls.Append(" Afffinity(").Append(oldAffinity).Append(" -> ").Append(Affinity).Append(")");
+				if (mBoost)
+					ls.Append(" Boost(").Append(Boost).Append(")");
+				//ls.Append("; Start: ").Append(process.StartTime); // when the process was started // DEBUG
+				Log.Info(ls.ToString());
+				//Log.Info(System.String.Format("{0} (#{1}) = Priority({2}), Mask({3}), Boost({4}) - Start: {5}",
+				//                            proc.Executable, item.Id, Priority, Affinity, Boost, item.StartTime));
+
+				ProcessEventArgs e = new ProcessEventArgs();
+				e.Control = this;
+				e.Process = process;
+				e.Modified = true;
+				onTouchHandler(this, e);
+			}
+			else
+			{
+				Log.Trace(System.String.Format("'{0}' (pid:{1}) seems to be OK already.", Executable, process.Id));
+			}
+
+			return (mPriority || mAffinity || mBoost);
+		}
+
+		public static event EventHandler<ProcessEventArgs> onTouch;
+		void onTouchHandler(object sender, ProcessEventArgs e)
+		{
+			EventHandler<ProcessEventArgs> handler = onTouch;
+			if (handler != null)
+				handler(this, e);
+		}
+
+		public ProcessEventArgs getEventArgs()
+		{
+			var e = new ProcessEventArgs();
+			//e.Affinity = Affinity;
+			//e.Priority = Priority;
+			//e.Boost = Boost;
+			e.Control = this;
+			return e;
 		}
 	}
 
@@ -154,11 +256,11 @@ namespace TaskMaster
 			{
 				Log.Debug(System.String.Format("{0} (pid:{1}); looks OK, not touched.", name, process.Id));
 			}
-
 		}
 
 		public bool Locate()
 		{
+			Log.Trace(FriendlyName + " (" + Executable + ")");
 			if (Path != null && System.IO.Directory.Exists(Path))
 				return true;
 			
@@ -205,11 +307,12 @@ namespace TaskMaster
 
 	public class ProcessEventArgs : EventArgs
 	{
-		public ProcessControl control { get; set; }
-		public Process process { get; set; }
-		public bool Priority { get; set; }
-		public bool Affinity { get; set; }
-		public bool Boost { get; set; }
+		public ProcessControl Control { get; set; }
+		public Process Process { get; set; }
+		public bool Modified { get; set; }
+		//public bool Priority { get; set; }
+		//public bool Affinity { get; set; }
+		//public bool Boost { get; set; }
 	}
 
 	public class ProcessManager : IDisposable
@@ -233,12 +336,12 @@ namespace TaskMaster
 		/// </summary>
 		IDictionary<string, ProcessControl> execontrol = new Dictionary<string,ProcessControl>();
 
-		public event EventHandler<ProcessEventArgs> onProcAdjust;
+		//public event EventHandler<ProcessEventArgs> onProcAdjust;
 		public event EventHandler<PathControlEventArgs> onPathAdjust;
 		public event EventHandler<PathControlEventArgs> onPathLocated;
 
 		int numCPUs = 1;
-		int allCPUsMask = 1;
+		public static int allCPUsMask = 1;
 
 		/// <summary>
 		/// Gets the control class instance of the executable if it exists.
@@ -256,16 +359,18 @@ namespace TaskMaster
 			return null;
 		}
 
+		/*
 		void onProcAdjustHandler(object sender, ProcessEventArgs e)
 		{
 			EventHandler<ProcessEventArgs> handler = onProcAdjust;
 			if (handler != null)
 				handler(this, e);
 		}
+		*/
 
+		// TODO: Move this to ProcessControl
 		public bool Control(ProcessControl control, Process process)
 		{
-			// TODO: move this to ProcessControl if possible
 			if (process.HasExited)
 			{
 				Log.Trace(System.String.Format("{0} (pid:{1}) has already exited.", control.Executable, process.Id));
@@ -327,12 +432,6 @@ namespace TaskMaster
 			if (Priority || Affinity || Boost)
 			{
 				control.Adjusts += 1;
-				ProcessEventArgs e = new ProcessEventArgs();
-				e.Affinity = Affinity;
-				e.Priority = Priority;
-				e.Boost = Boost;
-				e.control = control;
-				e.process = process;
 
 				control.lastTouch = System.DateTime.Now;
 
@@ -350,7 +449,6 @@ namespace TaskMaster
 				Log.Info(ls.ToString());
 				//Log.Info(System.String.Format("{0} (#{1}) = Priority({2}), Mask({3}), Boost({4}) - Start: {5}",
 				//                            proc.Executable, item.Id, Priority, Affinity, Boost, item.StartTime));
-				onProcAdjustHandler(this, e);
 			}
 			else
 			{
@@ -362,6 +460,8 @@ namespace TaskMaster
 
 		async void onPathLocatedHandler(PathControlEventArgs e)
 		{
+			await System.Threading.Tasks.Task.Delay(100); // force async
+
 			// TODO: Event
 			EventHandler<PathControlEventArgs> handler = onPathLocated;
 			if (handler != null)
@@ -370,6 +470,8 @@ namespace TaskMaster
 
 		async void onPathAdjustHandler(PathControlEventArgs e)
 		{
+			await System.Threading.Tasks.Task.Delay(100); // force async
+
 			// TODO: Event
 			EventHandler<PathControlEventArgs> handler = onPathAdjust;
 			if (handler != null)
@@ -378,45 +480,73 @@ namespace TaskMaster
 
 		void UpdatePathWatch()
 		{
+			Log.Trace("Locating watched paths.");
 			if (pathinit.Count > 0)
 			{
 				foreach (PathControl path in pathinit.ToArray())
 				{
-					if (path.Locate())
+					if (!pathwatch.Contains(path) && path.Locate())
 					{
 						pathwatch.Add(path);
 						pathinit.Remove(path);
+						Log.Trace("Informing others of path having been located.");
 						onPathLocatedHandler(new PathControlEventArgs(path));
 					}
 				}
 			}
+			Log.Trace("Path location complete.");
 		}
 
-		public void ProcessEverything()
+		/// <summary>
+		/// Processes everything. Pointlessly thorough, but there's no nicer way around for now.
+		/// </summary>
+		public async void ProcessEverything()
 		{
-			foreach (ProcessControl proc in images)
+			await System.Threading.Tasks.Task.Delay(100); // force async
+
+			Log.Trace("Processing everything.");
 			{
-				Process[] procs = Process.GetProcessesByName(proc.ExecutableFriendlyName);
+				Process[] procs = Process.GetProcesses();
+				Log.Trace(System.String.Format("Scanning {0} processes.", procs.Count()));
+				foreach (Process proc in procs)
+				{
+					CheckPathWatch(proc);
+				}
+				Log.Trace("Initial scan complete.");
+			}
+
+			Log.Trace("Going through process control list.");
+			foreach (ProcessControl control in images)
+			{
+				Process[] procs = Process.GetProcessesByName(control.ExecutableFriendlyName);
 				if (procs.Count() > 0)
 				{
-					proc.lastSeen = System.DateTime.Now;
+					control.lastSeen = System.DateTime.Now;
 				}
 
-				foreach (Process item in procs)
+				foreach (Process process in procs)
 				{
 					try
 					{
-						Control(proc, item);
+						bool mod = control.Touch(process); //Control(control, process);
+
+						/*
+						ProcessEventArgs e = control.getEventArgs();
+						e.Process = process;
+						e.Modified = mod;
+						*/
+						//onProcAdjustHandler(this, e);
 					}
 					catch (Exception ex)
 					{
-						Log.Warn(System.String.Format("Failed to control '{0}' (pid:{1})", proc.Executable, item.Id));
+						Log.Warn(System.String.Format("Failed to control '{0}' (pid:{1})", control.Executable, process.Id));
 						Console.Error.WriteLine(ex);
 					}
 				}
 			}
 
 			UpdatePathWatch();
+			Log.Trace("Done processing everything.");
 		}
 
 		// wish this wasn't necessary
@@ -503,7 +633,7 @@ namespace TaskMaster
 		}
 
 		[Conditional("DEBUG")]
-		void NewInstanceHandler_NativeError(Process process, int pid, System.ComponentModel.Win32Exception ex)
+		void Process_NativeError(Process process, int pid, System.ComponentModel.Win32Exception ex)
 		{
 			switch (ex.NativeErrorCode)
 			{
@@ -520,36 +650,27 @@ namespace TaskMaster
 			}
 		}
 
-		public void NewInstanceHandler(object sender, System.Management.EventArrivedEventArgs e)
+		void CheckPathWatch(Process process)
 		{
-			System.Management.ManagementBaseObject targetInstance = (System.Management.ManagementBaseObject)e.NewEvent.Properties["TargetInstance"].Value;
-			Process process;
-			try
-			{
-				process = Process.GetProcessById(Convert.ToInt32(targetInstance.Properties["Handle"].Value));
-			}
-			catch (Exception)
-			{
-				Log.Error("Process exited before we had time to act on it.");
-				return;
-			}
-
-			// since targetinstance actually has fuckall information, we need to extract it...
-
 			string path;
 			try
 			{
 				if (process.HasExited)
+				{
+					Log.Trace("Process '{0}' (pid:{1}) already gone.", process.ProcessName, process.Id);
 					return;
+				}
 				path = process.MainModule.FileName; // this will cause win32exception of various types, we don't Really care which error it is
 			}
 			catch (System.ComponentModel.Win32Exception ex)
 			{
-				NewInstanceHandler_NativeError(process, process.Id, ex);
+				Process_NativeError(process, process.Id, ex);
 				// we can not touch this so we shouldn't even bother trying
-				Log.Trace("Failed to access '{0}' (pid:{1})", process.ProcessName, process.Id);
+				Log.Trace("Failed to access '{0}' (pid:{1}).", process.ProcessName, process.Id);
 				return;
 			}
+
+			Log.Trace("Processing: " + path);
 
 			// TODO: check proc.processName for presence in images.
 			ProcessControl control;
@@ -560,7 +681,13 @@ namespace TaskMaster
 				{
 					await System.Threading.Tasks.Task.Delay(1200); // wait before we touch this, to let them do their own stuff in case they want to be smart
 					Log.Trace(System.String.Format("Controlling '{0}' (pid:{1})", control.Executable, process.Id));
-					Control(control, process);
+					bool mod = control.Touch(process); //Control(control, process);
+													   /*
+													   ProcessEventArgs e = control.getEventArgs();
+													   e.Process = process;
+													   e.Modified = mod;
+													   */
+													   //onProcAdjustHandler(this, e);
 				});
 			}
 			else if (pathwatch.Count > 0)
@@ -590,16 +717,34 @@ namespace TaskMaster
 					}
 				});
 			}
-			/* detected 
 			else
 			{
-				Log.Trace("IGNORED: " + process.ProcessName + " = " + path);
+				Log.Trace("Ignored: " + path);
 			}
-			*/
+		}
+
+		void NewInstanceHandler(object sender, System.Management.EventArrivedEventArgs e)
+		{
+			System.Management.ManagementBaseObject targetInstance = (System.Management.ManagementBaseObject)e.NewEvent.Properties["TargetInstance"].Value;
+			Process process;
+			try
+			{
+				// since targetinstance actually has fuckall information, we need to extract it...
+				process = Process.GetProcessById(Convert.ToInt32(targetInstance.Properties["Handle"].Value));
+			}
+			catch (Exception)
+			{
+				Log.Debug("Process exited before we had time to act on it or identify it."); // technically an error, but not that interesting for users
+				return;
+			}
+
+			Log.Debug("Caught: " + process.ProcessName + " (pid:"+process.Id+")");
+			CheckPathWatch(process);
 		}
 
 		void LoadPathList()
 		{
+			Log.Trace("Loading user defined paths...");
 			pathcfg = TaskMaster.loadConfig(pathfile);
 			foreach (SharpConfig.Section section in pathcfg.AsEnumerable())
 			{
@@ -636,17 +781,25 @@ namespace TaskMaster
 				if (pc.Locate())
 				{
 					pathwatch.Add(pc);
+					pathinit.Remove(pc);
+					Log.Debug(name + " (" + pc.Path + ") added to active watch list.");
+					Log.Trace("Informing others of path having been located.");
 					onPathLocatedHandler(new PathControlEventArgs(pc));
-					Log.Info(name + " ("+pc.Path+") added to active watch list.");
 					section["path"].StringValue = pc.Path;
 					pathfilemodified = true;
 				}
 				else
 				{
 					pathinit.Add(pc);
-					Log.Info(name + " ("+subpath+") added to init list.");
+					Log.Debug(name + " ("+subpath+") added to init list.");
 				}
 			}
+			Log.Trace("Path loading complete.");
+		}
+
+		public void WatcherStopped(object sender, System.Management.StoppedEventArgs e)
+		{
+			Log.Warn("Event watcher stopped.");
 		}
 
 		void InitProcessWatcher()
@@ -655,7 +808,9 @@ namespace TaskMaster
 				"SELECT TargetInstance FROM __InstanceCreationEvent WITHIN 1 WHERE TargetInstance ISA 'Win32_Process'");
 			if (watcher != null)
 			{
+				watcher.Options.BlockSize = 1;
 				watcher.EventArrived += NewInstanceHandler;
+				watcher.Stopped += WatcherStopped;
 				watcher.Start();
 				Log.Trace("New process watcher initialized.");
 			}
@@ -706,7 +861,7 @@ namespace TaskMaster
 		{
 			if (pathfilemodified)
 				TaskMaster.saveConfig(pathfile, pathcfg);
-			
+			Dispose();
 			watcher.Stop();
 		}
 

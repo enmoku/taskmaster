@@ -60,6 +60,8 @@ namespace TaskMaster
 
 		async void onNewLogHandler(object sender, LogEventArgs e)
 		{
+			await System.Threading.Tasks.Task.Delay(100); // force async
+
 			EventHandler<LogEventArgs> handler = OnNewLog;
 			if (handler != null)
 				handler(this, e);

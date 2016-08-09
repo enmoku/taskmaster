@@ -23,27 +23,21 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
-using System.Windows.Forms.Layout;
-using System.Diagnostics;
 
 namespace TaskMaster
 {
 	using System;
-	using System.Drawing;
 	using System.Collections.Generic;
-	using System.Configuration;
 	using System.Linq;
 	using System.Windows.Forms;
-	using System.Net.NetworkInformation;
 
-	public class MainWindow : Form
+	public class MainWindow : System.Windows.Forms.Form
 	{
 		static NLog.Logger Log = NLog.LogManager.GetCurrentClassLogger();
 
-		NotifyIcon nicon = null; // separate this from mainwindow
-
-		void TrayShowConfig(object sender, System.EventArgs e)
+		public void ShowConfigRequest(object sender, System.EventArgs e)
 		{
+			Log.Warn("User wanted to config TaskMaster!");
 		}
 
 		void Save()
@@ -63,17 +57,12 @@ namespace TaskMaster
 			Save();
 
 			Hide();
-			if (nicon != null)
-			{
-				nicon.Visible = false;
-				nicon.Dispose();
-				nicon = null;
-			}
-			Enabled = false;// mono.nexe hangs if disabled, so...
+
+			//Enabled = false;// mono.nexe hangs if disabled, so...
 			Application.Exit();
 		}
 
-		void TrayExit(object sender, System.EventArgs e)
+		public void ExitRequest(object sender, System.EventArgs e)
 		{
 			ExitCleanup();
 		}
@@ -108,86 +97,25 @@ namespace TaskMaster
 		}
 
 		// this restores the main window to a place where it can be easily found if it's lost
-		void TrayRestoreWindow(object sender, System.EventArgs e)
+		public void RestoreWindowRequest(object sender, System.EventArgs e)
 		{
 			CenterToScreen();
-			TopMost = true;
+			SetTopLevel(true); // this doesn't Keep it topmost, does it?
+			//TopMost = true;
 			// toggle because we don't want to keep it there
-			TopMost = false;
+			//TopMost = false;
 		}
 
-		void TrayShowWindow(object sender, EventArgs e)
+		public void ShowWindowRequest(object sender, EventArgs e)
 		{
 			Show(); // FIXME: Gets triggered when menuitem is clicked
-		}
-
-		System.Diagnostics.Process explorer;
-		void ExplorerCrashHandler(object sender, EventArgs e)
-		{
-			Log.Info("Explorer crash detected.");
-			nicon.Visible = true; // TODO: Is this enough?
-			explorer.Exited -= ExplorerCrashHandler;
-			explorer.Refresh();
-
-			// TODO: register it again
-			RegisterExplorerExit();
-		}
-
-		void RegisterExplorerExit()
-		{
-			Log.Trace("Registering Explorer crash monitor.");
-			// this is for dealing with notify icon disappearing on explorer.exe crash/restart
-
-			System.Diagnostics.Process[] procs = System.Diagnostics.Process.GetProcessesByName(System.IO.Path.GetFileNameWithoutExtension("explorer.exe"));
-			if (procs.Count() > 0)
-			{
-				foreach (System.Diagnostics.Process proc in procs)
-				{
-					explorer = proc;
-					break;
-				}
-				explorer.Exited += ExplorerCrashHandler;
-				Log.Info(System.String.Format("Explorer (#{0}) registered.", explorer.Id));
-			}
-			else
-			{
-				Log.Warn("Explorer not found.");
-			}
-		}
-
-		void MakeTrayIcon()
-		{
-			Log.Debug("Generating tray icon.");
-			MenuItem toggleVisibility = new MenuItem("Open", new System.EventHandler(TrayShowWindow));
-			MenuItem configMenuItem = new MenuItem("Configuration", new System.EventHandler(TrayShowConfig));
-			MenuItem exitMenuItem = new MenuItem("Exit", new System.EventHandler(TrayExit));
-
-			nicon = new NotifyIcon(); // TODO: separate this from main window
-#if DEBUG
-			nicon.Text = "DEBUGMaster!";
-#else
-			nicon.Text = "TaskMaster!"; // Tooltip so people know WTF I am.
-#endif
-			nicon.Click += TrayShowWindow;
-			nicon.DoubleClick += TrayRestoreWindow;
-			nicon.Icon = System.Drawing.Icon.ExtractAssociatedIcon(System.Reflection.Assembly.GetExecutingAssembly().Location); // is this really the best way?
-
-#if DEBUG
-			nicon.ContextMenu = new ContextMenu(new MenuItem[] { toggleVisibility, configMenuItem, exitMenuItem });
-#else
-			nicon.ContextMenu = new ContextMenu(new MenuItem[] { toggleVisibility, configMenuItem, exitMenuItem });
-#endif
-			nicon.BalloonTipText = "Taskmaster!";
-			nicon.Visible = true;
-
-			RegisterExplorerExit();
 		}
 
 		#region Microphone control code
 		MicMonitor micMonitor = null;
 		public void setMicMonitor(MicMonitor micmonitor)
 		{
-			Log.Info("Hooking microphone monitor.");
+			Log.Trace("Hooking microphone monitor.");
 			micMonitor = micmonitor;
 			micName.Text = micMonitor.DeviceName;
 			corCountLabel.Text = micMonitor.getCorrections().ToString();
@@ -202,14 +130,14 @@ namespace TaskMaster
 		{
 			Log.Trace("Process adjust received.");
 			ListViewItem item;
-			if (appc.TryGetValue(e.control.Executable, out item))
+			if (appc.TryGetValue(e.Control.Executable, out item))
 			{
-				item.SubItems[5].Text = e.control.Adjusts.ToString();
-				item.SubItems[6].Text = e.control.lastSeen.ToString();
+				item.SubItems[5].Text = e.Control.Adjusts.ToString();
+				item.SubItems[6].Text = e.Control.lastSeen.ToString();
 			}
 			else
 			{
-				Log.Error(System.String.Format("{0} not found in app list.", e.control.Executable));
+				Log.Error(System.String.Format("{0} not found in app list.", e.Control.Executable));
 			}
 		}
 
@@ -229,7 +157,7 @@ namespace TaskMaster
 		public void setProcControl(ProcessManager control)
 		{
 			procCntrl = control;
-			control.onProcAdjust += ProcAdjust;
+			//control.onProcAdjust += ProcAdjust;
 			foreach (ProcessControl item in control.images)
 			{
 
@@ -245,13 +173,15 @@ namespace TaskMaster
 				appc.Add(item.Executable, litem);
 				appList.Items.Add(litem);
 			}
+
 			foreach (PathControl path in procCntrl.ActivePaths())
 			{
 				ListViewItem ni = new ListViewItem(new string[] { path.FriendlyName, path.Path, path.Adjusts.ToString() });
 				appw.Add(path, ni);
 				pathList.Items.Add(ni);
 			}
-			procCntrl.onPathLocated += PathUpdateEvent;
+
+			procCntrl.onPathLocated += PathLocatedEvent;
 			procCntrl.onPathAdjust += PathAdjustEvent;
 		}
 
@@ -262,12 +192,20 @@ namespace TaskMaster
 				ni.SubItems[2].Text = e.Control.Adjusts.ToString();
 		}
 
-		public void PathUpdateEvent(object sender, PathControlEventArgs e)
+		public void PathLocatedEvent(object sender, PathControlEventArgs e)
 		{
 			Log.Trace(e.Control.FriendlyName + " // " + e.Control.Path);
 			ListViewItem ni = new ListViewItem(new string[] { e.Control.FriendlyName, e.Control.Path, "0" });
-			appw.Add(e.Control, ni);
-			pathList.Items.Add(ni);
+			try
+			{
+				appw.Add(e.Control, ni);
+				pathList.Items.Add(ni);
+			}
+			catch (Exception)
+			{
+				// FIXME: This happens mostly because Application.Run() is triggered after we do ProcessEverything() and the events are processed only after
+				Log.Warn("Superfluous path watch update: " + e.Control.FriendlyName);
+			}
 		}
 
 		Label micName;
@@ -321,12 +259,12 @@ namespace TaskMaster
 		/*
 		string netSpeed(long speed)
 		{
-			if (speed >= 1000000000)
-				return Math.Round(speed / 1000000000.0, 2) + " Gb/s";
+			if (speed >= 1000000000d)
+				return Math.Round(speed / 1000000000d, 2) + " Gb/s";
 			else if (speed >= 1000000)
-				return Math.Round(speed / 1000000.0, 2) + " Mb/s";
+				return Math.Round(speed / 1000000d, 2) + " Mb/s";
 			else if (speed >= 1000)
-				return Math.Round(speed / 1000.0, 2) + " kb/s";
+				return Math.Round(speed / 1000d, 2) + " kb/s";
 			else
 				return speed + " b/s";
 		}
@@ -486,11 +424,10 @@ namespace TaskMaster
 
 		void BuildUI()
 		{
-			Text = "Taskmaster";
+			Text = Application.ProductName;
 			AutoSize = true;
 			Padding = new Padding(12);
 			Size = new System.Drawing.Size(720, 580);
-			//Padding = 12;
 			//margin
 
 			TableLayoutPanel lrows = new TableLayoutPanel();
@@ -723,10 +660,19 @@ namespace TaskMaster
 
 		// DO NOT LOG INSIDE THIS FOR FUCKS SAKE
 		// it creates an infinite log loop
+		int MaxLogSize = 20;
 		void onNewLog(object sender, LogEventArgs e)
 		{
-			if (loglist.Items.Count > 19)
-				loglist.Items.RemoveAt(0);
+			try
+			{
+				while (loglist.Items.Count > MaxLogSize)
+					loglist.Items.RemoveAt(0);
+			}
+			catch (System.NullReferenceException)
+			{
+				Log.Warn("Couldn't remove old log entries from GUI.");
+			}
+
 			loglist.Items.Add(e.Message).EnsureVisible();
 		}
 
@@ -735,7 +681,7 @@ namespace TaskMaster
 		{
 			FormClosing += WindowClose;
 
-			MakeTrayIcon();
+			//MakeTrayIcon();
 
 			BuildUI();
 
@@ -753,7 +699,7 @@ namespace TaskMaster
 			Hide();
 			//CenterToScreen();
 
-			//nicon.ShowBalloonTip(3000, "TaskMaster!", "TaskMaster is running!" + Environment.NewLine + "Right click on the icon for more options.", ToolTipIcon.Info);
+			ProcessControl.onTouch += ProcAdjust;
 		}
 
 		/*
@@ -770,7 +716,7 @@ namespace TaskMaster
 		{
 			//TaskMaster.saveConfig(cfgfile, guicfg);
 
-			base.Dispose(false);
+			//base.Dispose();
 		}
 	}
 }

@@ -102,6 +102,8 @@ namespace TaskMaster
 
 		async void OnVolumeChanged(VolumeChangedEventArgs e)
 		{
+			await System.Threading.Tasks.Task.Delay(100); // force async
+
 			EventHandler<VolumeChangedEventArgs> handler = VolumeChanged;
 			if (handler != null)
 				handler(this, e);
@@ -181,9 +183,9 @@ namespace TaskMaster
 					m_dev.AudioEndpointVolume.OnVolumeNotification += volumeChangeDetected;
 			}
 			if (m_dev != null)
-				Log.Info(String.Format("Device: {0}", m_dev.FriendlyName));
+				Log.Info(String.Format("Default communications device: {0}", m_dev.FriendlyName));
 			else
-				Log.Error("No device found!");
+				Log.Error("No communications device found!");
 			return m_dev;
 		}
 
@@ -197,7 +199,7 @@ namespace TaskMaster
 			return corrections;
 		}
 
-		int correcting = 0;
+		static int correcting = 0;
 		void volumeChangeDetected(NAudio.CoreAudioApi.AudioVolumeNotificationData data)
 		{
 			double oldVol = Volume;
@@ -209,9 +211,9 @@ namespace TaskMaster
 			// HOPEFULLY there are no edge cases with this triggering just before last adjustment
 			// and the notification for the last adjustment coming slightly before. Seems super unlikely tho.
 			// TODO: Delay this even more if volume is changed ~2 seconds before we try to do so.
-			if (Volume != Target)
+			if (correcting==0 && Math.Abs(Volume-Target) > 0.05) // Volume != Target for double
 			{
-				Log.Info(String.Format("{0:N1}% -> {1:N1}%", oldVol, Volume));
+				Log.Info(String.Format("{0:N1}% -> {1:N1}% {2}", oldVol, Volume, Math.Abs(Volume - Target)));
 				if (System.Threading.Interlocked.CompareExchange(ref correcting, 1, 0) == 0) // correcting==0, set it to 1, return original 0
 				{
 					//Log.Trace("Thread ID (dispatch): " + System.Threading.Thread.CurrentThread.ManagedThreadId);
@@ -233,7 +235,7 @@ namespace TaskMaster
 			Log.Info(String.Format("Setting volume to {0:N1}%", volume));
 			if (Control != null)
 			{
-				if (Control.Percent < (Target + 0.05))
+				if (Math.Abs(Control.Percent - volume) > 0.05)
 				{
 					Control.Percent = volume;
 					Volume = volume;

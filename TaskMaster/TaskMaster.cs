@@ -73,7 +73,7 @@ namespace TaskMaster
 		public static SharpConfig.Configuration loadConfig(string configfile)
 		{
 			string path = System.IO.Path.Combine(cfgpath, configfile);
-			Log.Info("Opening: "+path);
+			Log.Trace("Opening: "+path);
 			SharpConfig.Configuration retcfg;
 			if (System.IO.File.Exists(path))
 			{
@@ -91,6 +91,7 @@ namespace TaskMaster
 		static MicMonitor mon;
 		static MainWindow tmw;
 		static ProcessManager pmn;
+		static TrayAccess tri;
 
 		[System.Diagnostics.Conditional("DEBUG")]
 		static void DebugStart()
@@ -100,7 +101,9 @@ namespace TaskMaster
 		static void Setup()
 		{
 			mon = new MicMonitor();
+			tri = new TrayAccess();
 			tmw = new MainWindow();
+			tri.RegisterMain(tmw);
 			tmw.setMicMonitor(mon);
 
 			DebugStart();
@@ -195,7 +198,7 @@ namespace TaskMaster
 				memlog = new MemLog();
 			NLog.LogManager.Configuration.AddTarget("MemLog", memlog);
 			NLog.LogManager.Configuration.LoggingRules.Add(new NLog.Config.LoggingRule("*", NLog.LogLevel.Debug, memlog));
-			memlog.Layout = @"[${date:format=HH\:mm\:ss}] ${message}"; ;
+			memlog.Layout = @"[${date:format=HH\:mm\:ss}] [${level}] ${message}"; ;
 			NLog.LogManager.Configuration.Reload();
 
 			Log.Trace("Testing for single instance.");
@@ -208,13 +211,13 @@ namespace TaskMaster
 				{
 					// already running
 					// signal original process
-					System.Windows.Forms.MessageBox.Show("Already operational.", "Taskmaster!");
+					System.Windows.Forms.MessageBox.Show("Already operational.", System.Windows.Forms.Application.ProductName + "!");
 					Log.Warn(System.String.Format("Exiting (pid:{0}); already running.", System.Diagnostics.Process.GetCurrentProcess().Id));
 					return;
 				}
 			}
 
-			Log.Info(System.String.Format("Taskmaster (#{0}) START!", System.Diagnostics.Process.GetCurrentProcess().Id));
+			Log.Info(System.String.Format("{0} (#{1}) START!", System.Windows.Forms.Application.ProductName, System.Diagnostics.Process.GetCurrentProcess().Id));
 
 			cfg = loadConfig(coreconfig);
 			defaultConfig();
@@ -245,7 +248,7 @@ namespace TaskMaster
 				}
 				if (tmw != null)
 				{
-					tmw.Dispose();
+					//tmw.Dispose();
 					tmw = null;
 				}
 				if (pmn != null)
@@ -253,11 +256,16 @@ namespace TaskMaster
 					pmn.Dispose();
 					pmn = null;
 				}
+				if (tri != null)
+				{
+					tri.Dispose();
+					tri = null;
+				}
 			}
 
 			singleton.ReleaseMutex();
 			CleanShutdown();
-			Log.Info(System.String.Format("Taskmaster (#{0}) END! [Clean]", System.Diagnostics.Process.GetCurrentProcess().Id));
+			Log.Info(System.String.Format("{0} (#{1}) END! [Clean]", System.Windows.Forms.Application.ProductName, System.Diagnostics.Process.GetCurrentProcess().Id));
 		}
 	}
 }

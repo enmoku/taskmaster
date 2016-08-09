@@ -119,7 +119,6 @@ namespace TaskMaster
 		{
 			if (eventType == EVENT_SYSTEM_FOREGROUND)
 			{
-				#if DEBUG
 				const int nChars = 256;
 				IntPtr handle = IntPtr.Zero;
 				System.Text.StringBuilder buff = new System.Text.StringBuilder(nChars);
@@ -133,7 +132,6 @@ namespace TaskMaster
 				{
 					//System.Console.WriteLine("Couldn't get title of active window.");
 				}
-				#endif
 
 				// ?? why does it return here already sometimes? takes too long?
 
