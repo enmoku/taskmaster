@@ -73,11 +73,33 @@ namespace TaskMaster
 				Window.ExitRequest(sender, e);
 		}
 
+		void RestoreMain(object sender, EventArgs e)
+		{
+			if (TaskMaster.tmw == null)
+			{
+				Log.Debug("Reconstructing main window.");
+				TaskMaster.tmw = new MainWindow();
+				TaskMaster.HookMainWindow();
+				Tray.Click -= RestoreMain;
+			}
+			TaskMaster.tmw.Show();
+		}
+
+		void WindowClosed(object sender, EventArgs e)
+		{
+			Tray.Click -= Window.ShowWindowRequest;
+			Tray.DoubleClick -= Window.RestoreWindowRequest;
+			Window = null;
+
+			Tray.Click += RestoreMain;
+		}
+
 		public void RegisterMain(MainWindow window)
 		{
 			Window = window;
 			Tray.Click += Window.ShowWindowRequest;
 			Tray.DoubleClick += Window.RestoreWindowRequest;
+			Window.FormClosing += WindowClosed;
 		}
 
 		System.Diagnostics.Process Explorer;

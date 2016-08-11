@@ -58,15 +58,27 @@ namespace TaskMaster
 			Layout = "${callsite} :: ${message}";
 		}
 
-		async void onNewLogHandler(object sender, LogEventArgs e)
-		{
-			await System.Threading.Tasks.Task.Delay(100); // force async
+		int culling = 0;
 
+		void onNewLogHandler(object sender, LogEventArgs e)
+		{
 			EventHandler<LogEventArgs> handler = OnNewLog;
 			if (handler != null)
 				handler(this, e);
-			if (Logs.Count > Max)
-				Logs.RemoveAt(0);
+
+			// hysterisis and such for log culling
+			if ((Logs.Count > Max+10) && System.Threading.Interlocked.CompareExchange(ref culling, 1, 0) == 1)
+			{
+				System.Threading.Tasks.Task.Run(async () =>
+				{
+					await System.Threading.Tasks.Task.Delay(500);
+
+					while (Logs.Count > Max)
+						Logs.RemoveAt(0);
+
+					System.Threading.Interlocked.Exchange(ref culling, 0);
+				});
+			}
 		}
 
 		protected override void Write(NLog.LogEventInfo logEvent)

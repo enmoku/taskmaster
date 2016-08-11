@@ -28,7 +28,6 @@ namespace TaskMaster
 {
 	using System;
 	using System.Collections.Generic;
-	using System.Linq;
 	using System.Windows.Forms;
 
 	public class MainWindow : System.Windows.Forms.Form
@@ -75,8 +74,16 @@ namespace TaskMaster
 				case CloseReason.UserClosing:
 					// X was pressed or similar, we're just hiding to tray.
 					// TODO: Destroy the window and save memory
-					Hide();
-					e.Cancel = true;
+					if (!lowmemory)
+					{
+						Log.Debug("Hiding window, keeping in memory.");
+						e.Cancel = true;
+						Hide();
+					}
+					else
+					{
+						Log.Debug("Closing window, freeing memory.");
+					}
 					break;
 				case CloseReason.WindowsShutDown:
 					Log.Info("Exit: Windows shutting down.");
@@ -101,9 +108,9 @@ namespace TaskMaster
 		{
 			CenterToScreen();
 			SetTopLevel(true); // this doesn't Keep it topmost, does it?
-			//TopMost = true;
+			TopMost = true;
 			// toggle because we don't want to keep it there
-			//TopMost = false;
+			TopMost = false;
 		}
 
 		public void ShowWindowRequest(object sender, EventArgs e)
@@ -122,8 +129,7 @@ namespace TaskMaster
 			micMonitor.VolumeChanged += volumeChangeDetected;
 			micVol.Value = System.Convert.ToInt32(micMonitor.Volume);
 			MicEnum();
-			micMonitor.minimize(); // this breaks followup calls to MicEnum()
-								   // TODO: Hook device changes
+		   // TODO: Hook device changes
 		}
 
 		public void ProcAdjust(object sender, ProcessEventArgs e)
@@ -165,7 +171,7 @@ namespace TaskMaster
 					item.FriendlyName.ToString(),
 					item.Executable,
 					item.Priority.ToString(),
-					item.Affinity.ToInt32() == 0 ? "OS controlled" : Convert.ToString(item.Affinity.ToInt32(), 2) ,
+						(item.Affinity.ToInt32() == ProcessManager.allCPUsMask ? "OS controlled" : Convert.ToString(item.Affinity.ToInt32(), 2)),
 					item.Boost.ToString(),
 					item.Adjusts.ToString(),
 					item.lastSeen != System.DateTime.MinValue ? item.lastSeen.ToString() : "Never"
@@ -204,7 +210,7 @@ namespace TaskMaster
 			catch (Exception)
 			{
 				// FIXME: This happens mostly because Application.Run() is triggered after we do ProcessEverything() and the events are processed only after
-				Log.Warn("Superfluous path watch update: " + e.Control.FriendlyName);
+				Log.Warn("[Expected] Superfluous path watch update: " + e.Control.FriendlyName);
 			}
 		}
 
@@ -653,7 +659,8 @@ namespace TaskMaster
 		public void setLog(MemLog log)
 		{
 			memlog = log;
-			foreach (string msg in memlog.Logs)
+			Log.Trace("Filling GUI log.");
+			foreach (string msg in memlog.Logs.ToArray())
 				loglist.Items.Add(msg);
 			memlog.OnNewLog += onNewLog;
 		}
@@ -670,15 +677,30 @@ namespace TaskMaster
 			}
 			catch (System.NullReferenceException)
 			{
-				Log.Warn("Couldn't remove old log entries from GUI.");
+				Log.Warn("Couldn't remove old log entries from GUI."); // POSSIBLY REALLY BAD IDEA
+				System.Console.WriteLine("ERROR: Null reference");
 			}
 
 			loglist.Items.Add(e.Message).EnsureVisible();
 		}
 
+		static bool onetime = false;
+		static bool lowmemory = false;
+
 		// constructor
 		public MainWindow()
 		{
+			if (!onetime)
+			{
+				SharpConfig.Configuration cfg = TaskMaster.loadConfig("Core.ini");
+				if (cfg.Contains("Options") && cfg["Options"].Contains("Low memory"))
+				{
+					lowmemory = cfg["Options"]["Low memory"].BoolValue;
+					Log.Info("Low memory mode enabled.");
+				}
+				onetime = true;
+			}
+
 			FormClosing += WindowClose;
 
 			//MakeTrayIcon();

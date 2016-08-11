@@ -1,5 +1,5 @@
 ﻿//
-// EmptyClass.cs
+// ProcessManager.cs
 //
 // Author:
 //       M.A. (enmoku) <>
@@ -31,6 +31,7 @@ using System.Timers;
 using System.ComponentModel;
 using NLog.Fluent;
 using System.Windows;
+using System.Windows.Forms;
 
 namespace TaskMaster
 {
@@ -92,7 +93,14 @@ namespace TaskMaster
 			ExecutableFriendlyName = System.IO.Path.GetFileNameWithoutExtension(executable);
 			Priority = priority;
 			Increase = increase;
-			Affinity = new IntPtr(affinity);
+			if (affinity != 0)
+			{
+				Affinity = new IntPtr(affinity);
+			}
+			else
+			{
+				Affinity = new IntPtr(ProcessManager.allCPUsMask);
+			}
 			Boost = boost;
 
 			lastSeen = System.DateTime.MinValue;
@@ -100,7 +108,7 @@ namespace TaskMaster
 
 			Adjusts = 0;
 
-			Log.Debug("Trace: " + FriendlyName + " (" + Executable + "), " + Priority + (Affinity != IntPtr.Zero ? ", Mask:" + Affinity : ""));
+			Log.Debug(FriendlyName + " (" + Executable + "), " + Priority + (Affinity != IntPtr.Zero ? ", Mask:" + Affinity : ""));
 		}
 
 		// TODO EVENT
@@ -108,7 +116,7 @@ namespace TaskMaster
 		{
 			if (process.HasExited)
 			{
-				Log.Trace(System.String.Format("{0} (pid:{1}) has already exited.", Executable, process.Id));
+				Log.Warn(System.String.Format("{0} (pid:{1}) has already exited.", Executable, process.Id));
 				return false;
 			}
 
@@ -120,39 +128,35 @@ namespace TaskMaster
 			ProcessPriorityClass oldPriority = process.PriorityClass;
 			bool mBoost = false;
 			lastSeen = System.DateTime.Now;
+
 			if (((ProcessManager.PriorityToInt(process.PriorityClass) < ProcessManager.PriorityToInt(Priority)) && Increase) ||
 			    (ProcessManager.PriorityToInt(process.PriorityClass) > ProcessManager.PriorityToInt(Priority)))
 			{
 				process.PriorityClass = Priority;
 				mPriority = true;
 			}
+
 			if (process.ProcessorAffinity != Affinity) // FIXME: 0 and all cores selected should match
 			{
-				if (Affinity == IntPtr.Zero && process.ProcessorAffinity.ToInt32() == ProcessManager.allCPUsMask)
+				//System.Console.WriteLine("Current affinity: {0}", Convert.ToString(item.ProcessorAffinity.ToInt32(), 2));
+				//System.Console.WriteLine("Target affinity: {0}", Convert.ToString(proc.Affinity.ToInt32(), 2));
+				try
 				{
-					//System.Console.WriteLine("Current and target affinity set to OS control. No action needed.");
-					// No action needed.
+					process.ProcessorAffinity = Affinity;
+					mAffinity = true;
 				}
-				else
+				catch (Win32Exception)
 				{
-					//System.Console.WriteLine("Current affinity: {0}", Convert.ToString(item.ProcessorAffinity.ToInt32(), 2));
-					//System.Console.WriteLine("Target affinity: {0}", Convert.ToString(proc.Affinity.ToInt32(), 2));
-					try
-					{
-						process.ProcessorAffinity = Affinity;
-						mAffinity = true;
-					}
-					catch (Win32Exception)
-					{
-						Log.Warn(System.String.Format("Couldn't modify process ({0}, #{1}) affinity.", Executable, process.Id));
-					}
+					Log.Warn(System.String.Format("Couldn't modify process ({0}, #{1}) affinity [{2} -> {3}].", Executable, process.Id, process.ProcessorAffinity.ToInt32(), Affinity.ToInt32()));
 				}
 			}
+
 			if (process.PriorityBoostEnabled != Boost)
 			{
 				process.PriorityBoostEnabled = Boost;
 				mBoost = true;
 			}
+
 			if (mPriority || mAffinity || mBoost)
 			{
 				Adjusts += 1;
@@ -166,7 +170,7 @@ namespace TaskMaster
 				if (mPriority)
 					ls.Append(" Priority(").Append(oldPriority).Append(" -> ").Append(Priority).Append(")");
 				if (mAffinity)
-					ls.Append(" Afffinity(").Append(oldAffinity).Append(" -> ").Append(Affinity).Append(")");
+					ls.Append(" Affinity(").Append(oldAffinity).Append(" -> ").Append(Affinity).Append(")");
 				if (mBoost)
 					ls.Append(" Boost(").Append(Boost).Append(")");
 				//ls.Append("; Start: ").Append(process.StartTime); // when the process was started // DEBUG
@@ -280,12 +284,6 @@ namespace TaskMaster
 
 					return true;
 				}
-				/*
-				else
-				{
-					Log.Trace("Not found! " + fullpath);
-				}
-				*/
 			}
 			catch (Exception ex)
 			{
@@ -336,12 +334,12 @@ namespace TaskMaster
 		/// </summary>
 		IDictionary<string, ProcessControl> execontrol = new Dictionary<string,ProcessControl>();
 
-		//public event EventHandler<ProcessEventArgs> onProcAdjust;
 		public event EventHandler<PathControlEventArgs> onPathAdjust;
 		public event EventHandler<PathControlEventArgs> onPathLocated;
 
 		int numCPUs = 1;
-		public static int allCPUsMask = 1;
+
+		public static volatile int allCPUsMask = 1;
 
 		/// <summary>
 		/// Gets the control class instance of the executable if it exists.
@@ -358,15 +356,6 @@ namespace TaskMaster
 			Log.Warn(executable + " was not found!");
 			return null;
 		}
-
-		/*
-		void onProcAdjustHandler(object sender, ProcessEventArgs e)
-		{
-			EventHandler<ProcessEventArgs> handler = onProcAdjust;
-			if (handler != null)
-				handler(this, e);
-		}
-		*/
 
 		// TODO: Move this to ProcessControl
 		public bool Control(ProcessControl control, Process process)
@@ -385,45 +374,26 @@ namespace TaskMaster
 			ProcessPriorityClass oldPriority = process.PriorityClass;
 			bool Boost = false;
 			control.lastSeen = System.DateTime.Now;
+
 			if (((PriorityToInt(process.PriorityClass) < PriorityToInt(control.Priority)) && control.Increase) || (PriorityToInt(process.PriorityClass) > PriorityToInt(control.Priority)))
 			{
-				/*
-				Console.WriteLine(System.String.Format(
-					"increase {0} < {1} = {5}*; decrease {2} > {3} = {6}; increase:{4}",
-					PriorityToInt(process.PriorityClass),
-					PriorityToInt(control.Priority),
-					PriorityToInt(process.PriorityClass),
-					PriorityToInt(control.Priority),
-					control.Increase,
-					(PriorityToInt(process.PriorityClass) < PriorityToInt(control.Priority) && control.Increase),
-					(PriorityToInt(process.PriorityClass) > PriorityToInt(control.Priority))
-				));
-				*/
 				process.PriorityClass = control.Priority;
 				Priority = true;
 			}
+
 			if (process.ProcessorAffinity != control.Affinity) // FIXME: 0 and all cores selected should match
 			{
-				if (control.Affinity == IntPtr.Zero && process.ProcessorAffinity.ToInt32() == allCPUsMask)
+				try
 				{
-					//System.Console.WriteLine("Current and target affinity set to OS control. No action needed.");
-					// No action needed.
+					process.ProcessorAffinity = control.Affinity;
+					Affinity = true;
 				}
-				else
+				catch (Win32Exception)
 				{
-					//System.Console.WriteLine("Current affinity: {0}", Convert.ToString(item.ProcessorAffinity.ToInt32(), 2));
-					//System.Console.WriteLine("Target affinity: {0}", Convert.ToString(proc.Affinity.ToInt32(), 2));
-					try
-					{
-						process.ProcessorAffinity = control.Affinity;
-						Affinity = true;
-					}
-					catch (Win32Exception)
-					{
-						Log.Warn(System.String.Format("Couldn't modify process ({0}, #{1}) affinity.", control.Executable, process.Id));
-					}
+					Log.Warn(System.String.Format("Couldn't modify process ({0}, #{1}) affinity.", control.Executable, process.Id));
 				}
 			}
+
 			if (process.PriorityBoostEnabled != control.Boost)
 			{
 				process.PriorityBoostEnabled = control.Boost;
@@ -497,6 +467,8 @@ namespace TaskMaster
 			Log.Trace("Path location complete.");
 		}
 
+
+		string[] ignoredProcesses = { "svchost", "taskeng", "dllhost", "consent", "taskeng", "taskhost", "rundll32", "conhost", "dwm", "wininit", "csrss", "winlogon" };
 		/// <summary>
 		/// Processes everything. Pointlessly thorough, but there's no nicer way around for now.
 		/// </summary>
@@ -510,7 +482,11 @@ namespace TaskMaster
 				Log.Trace(System.String.Format("Scanning {0} processes.", procs.Count()));
 				foreach (Process proc in procs)
 				{
-					CheckPathWatch(proc);
+					if (proc.Id <= 4) // skip 0 [Idle] and 4 [System]
+						continue;
+					if (ignoredProcesses.Contains(proc.ProcessName))
+						continue;
+					CheckProcess(proc);
 				}
 				Log.Trace("Initial scan complete.");
 			}
@@ -528,14 +504,8 @@ namespace TaskMaster
 				{
 					try
 					{
-						bool mod = control.Touch(process); //Control(control, process);
-
-						/*
-						ProcessEventArgs e = control.getEventArgs();
-						e.Process = process;
-						e.Modified = mod;
-						*/
-						//onProcAdjustHandler(this, e);
+						Log.Trace("Control group: "+control.FriendlyName+", process: " + process.ProcessName);
+						bool mod = control.Touch(process);
 					}
 					catch (Exception ex)
 					{
@@ -644,14 +614,16 @@ namespace TaskMaster
 					Log.Trace(System.String.Format("Can not access 64 bit app '{0}' (pid:{1})", process.ProcessName, pid));
 					break;
 				default:
-					Log.Trace(System.String.Format("Unknown failure with '{0}' (pid:{1}), error: {2}", process.ProcessName, pid, ex.NativeErrorCode));
-					Log.Trace(ex);
+					Log.Debug(System.String.Format("Unknown failure with '{0}' (pid:{1}), error: {2}", process.ProcessName, pid, ex.NativeErrorCode));
+					Log.Debug(ex);
 					break;
 			}
 		}
 
-		void CheckPathWatch(Process process)
+		async void CheckPathWatch(Process process)
 		{
+			await System.Threading.Tasks.Task.Delay(1200); // waith 5 seconds before we do anything about it
+
 			string path;
 			try
 			{
@@ -661,16 +633,43 @@ namespace TaskMaster
 					return;
 				}
 				path = process.MainModule.FileName; // this will cause win32exception of various types, we don't Really care which error it is
+				Log.Trace(process.ProcessName + " = " + path);
 			}
 			catch (System.ComponentModel.Win32Exception ex)
 			{
 				Process_NativeError(process, process.Id, ex);
 				// we can not touch this so we shouldn't even bother trying
-				Log.Trace("Failed to access '{0}' (pid:{1}).", process.ProcessName, process.Id);
+				Log.Warn("Failed to access '{0}' (pid:{1}).", process.ProcessName, process.Id);
 				return;
 			}
 
-			Log.Trace("Processing: " + path);
+			Log.Trace(pathwatch.Count + " paths to be tested against " + path);
+
+			// TODO: This needs to be FASTER
+			//Log.Debug("test: "+path);
+			bool matched = false;
+			foreach (PathControl pc in pathwatch)
+			{
+				//Log.Debug("with: "+ pc.Path);
+				if (path.StartsWith(pc.Path, StringComparison.InvariantCultureIgnoreCase)) // TODO: make this compatible with OSes that aren't case insensitive?
+				{
+					await System.Threading.Tasks.Task.Delay(3800); // wait a little more.
+					Log.Debug(pc.FriendlyName + " [" + process.ProcessName + "] matched " + path);
+					pc.Touch(process, path);
+					onPathAdjustHandler(new PathControlEventArgs(pc));
+					matched = true;
+					break;
+				}
+				else
+					Log.Trace("Not matched: " + path);
+			}
+			if (!matched)
+				Log.Trace("Not for us: " + path);
+		}
+
+		void CheckProcess(Process process)
+		{
+			Log.Trace("Processing: " + process.ProcessName);
 
 			// TODO: check proc.processName for presence in images.
 			ProcessControl control;
@@ -681,46 +680,16 @@ namespace TaskMaster
 				{
 					await System.Threading.Tasks.Task.Delay(1200); // wait before we touch this, to let them do their own stuff in case they want to be smart
 					Log.Trace(System.String.Format("Controlling '{0}' (pid:{1})", control.Executable, process.Id));
-					bool mod = control.Touch(process); //Control(control, process);
-													   /*
-													   ProcessEventArgs e = control.getEventArgs();
-													   e.Process = process;
-													   e.Modified = mod;
-													   */
-													   //onProcAdjustHandler(this, e);
+					Log.Trace("Control group: "+control.FriendlyName+", process: "+process.ProcessName);
+					bool mod = control.Touch(process);
 				});
 			}
 			else if (pathwatch.Count > 0)
 			{
-				Log.Trace(pathwatch.Count + " paths to be tested against " + path);
-				System.Threading.Tasks.Task.Run(async () =>
-				{
-					await System.Threading.Tasks.Task.Delay(1200); // waith 5 seconds before we do anything about it
-
-					// TODO: This needs to be FASTER
-					//Log.Debug("test: "+path);
-					foreach (PathControl pc in pathwatch)
-					{
-						//Log.Debug("with: "+ pc.Path);
-						if (path.StartsWith(pc.Path, StringComparison.InvariantCultureIgnoreCase)) // TODO: make this compatible with OSes that aren't case insensitive?
-						{
-							Log.Trace(pc.FriendlyName + " matched " + path);
-							await System.Threading.Tasks.Task.Delay(3800); // wait a little more.
-							pc.Touch(process, path);
-							onPathAdjustHandler(new PathControlEventArgs(pc));
-							break;
-						}
-						else
-						{
-							Log.Trace("Not matched: " + path);
-						}
-					}
-				});
+				CheckPathWatch(process);
 			}
 			else
-			{
-				Log.Trace("Ignored: " + path);
-			}
+				Log.Trace("No paths watched, ignoring: " + process.ProcessName);
 		}
 
 		void NewInstanceHandler(object sender, System.Management.EventArrivedEventArgs e)
@@ -738,8 +707,8 @@ namespace TaskMaster
 				return;
 			}
 
-			Log.Debug("Caught: " + process.ProcessName + " (pid:"+process.Id+")");
-			CheckPathWatch(process);
+			Log.Trace("Caught: " + process.ProcessName + " (pid:"+process.Id+")");
+			CheckProcess(process);
 		}
 
 		void LoadPathList()
@@ -830,6 +799,7 @@ namespace TaskMaster
 			numCPUs = Environment.ProcessorCount;
 			Log.Info(System.String.Format("Processor count: {0}", numCPUs));
 
+			// TODO: Use something simpler?
 			// is there really no easier way?
 			System.Collections.BitArray bits = new System.Collections.BitArray(numCPUs);
 			for (int i = 0; i < numCPUs; i++)
@@ -837,7 +807,7 @@ namespace TaskMaster
 			int[] bint = new int[1];
 			bits.CopyTo(bint, 0);
 			allCPUsMask = bint[0];
-			Log.Info(System.String.Format("Full mask: {0} ({1})", Convert.ToString(allCPUsMask, 2),allCPUsMask));
+			Log.Info(System.String.Format("Full mask: {0} ({1})", Convert.ToString(allCPUsMask, 2), allCPUsMask));
 		}
 
 		System.Management.ManagementEventWatcher watcher;
@@ -851,10 +821,10 @@ namespace TaskMaster
 		public ProcessManager()
 		{
 			Log.Trace("Starting...");
+			ConfigureProcessors();
 			loadConfig();
 			LoadPathList();
 			InitProcessWatcher();
-			ConfigureProcessors();
 		}
 
 		~ProcessManager()

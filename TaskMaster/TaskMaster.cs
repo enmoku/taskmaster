@@ -49,6 +49,7 @@
  */
 
 using System;
+using System.Security.Policy;
 
 namespace TaskMaster
 {
@@ -88,29 +89,38 @@ namespace TaskMaster
 			return retcfg;
 		}
 
-		static MicMonitor mon;
-		static MainWindow tmw;
-		static ProcessManager pmn;
-		static TrayAccess tri;
+		public static MicMonitor mon;
+		public static MainWindow tmw;
+		public static ProcessManager pmn;
+		public static TrayAccess tri;
 
 		[System.Diagnostics.Conditional("DEBUG")]
 		static void DebugStart()
 		{
 			tmw.Show();
 		}
+
+		public static void MainWindowClose(object sender, EventArgs e)
+		{
+			tmw = null;
+		}
+
+		public static void HookMainWindow()
+		{
+			tri.RegisterMain(tmw);
+			tmw.setMicMonitor(mon);
+			tmw.setProcControl(pmn);
+			tmw.setLog(memlog);
+			tmw.FormClosing += MainWindowClose;
+		}
 		static void Setup()
 		{
 			mon = new MicMonitor();
 			tri = new TrayAccess();
-			tmw = new MainWindow();
-			tri.RegisterMain(tmw);
-			tmw.setMicMonitor(mon);
-
-			DebugStart();
-
 			pmn = new ProcessManager();
-			tmw.setProcControl(pmn);
-			tmw.setLog(memlog);
+			tmw = new MainWindow();
+			HookMainWindow();
+			DebugStart();
 
 			/*
 			GameMonitor gmmon = new GameMonitor();
@@ -130,6 +140,7 @@ namespace TaskMaster
 		static bool NetworkMonitorEnabled = true;
 
 		static string coreconfig = "Core.ini";
+		static bool coreconfigdirty = false;
 		static void defaultConfig()
 		{
 			cfg["Core"]["Hello"].SetValue("Hi");
@@ -147,7 +158,7 @@ namespace TaskMaster
 				cfg["Components"]["Microphone"].BoolValue = true;
 				cfg["Components"]["Media"].BoolValue = true;
 				cfg["Components"]["Network"].BoolValue = true;
-				saveConfig(coreconfig, cfg);
+				coreconfigdirty = true;
 			}
 
 			ProcessMonitorEnabled = true;
@@ -183,6 +194,8 @@ namespace TaskMaster
 				corestats = loadConfig(corestatfile);
 			corestats["Core"]["Running"].BoolValue = false;
 			saveConfig(corestatfile, corestats);
+			if (coreconfigdirty)
+				saveConfig(coreconfig, cfg);
 		}
 
 		static public void CrossInstanceMessageHandler(object sender, EventArgs e)
@@ -198,12 +211,12 @@ namespace TaskMaster
 				memlog = new MemLog();
 			NLog.LogManager.Configuration.AddTarget("MemLog", memlog);
 			NLog.LogManager.Configuration.LoggingRules.Add(new NLog.Config.LoggingRule("*", NLog.LogLevel.Debug, memlog));
-			memlog.Layout = @"[${date:format=HH\:mm\:ss}] [${level}] ${message}"; ;
+			memlog.Layout = @"[${date:format=HH\:mm\:ss.fff}] [${level}] ${message}"; ;
 			NLog.LogManager.Configuration.Reload();
 
+			#region SINGLETON
 			Log.Trace("Testing for single instance.");
 			System.Threading.Mutex singleton = null;
-
 			{
 				bool mutexgained = false;
 				singleton = new System.Threading.Mutex(true, "088f7210-51b2-4e06-9bd4-93c27a973874.taskmaster", out mutexgained);
@@ -216,6 +229,7 @@ namespace TaskMaster
 					return;
 				}
 			}
+			#endregion
 
 			Log.Info(System.String.Format("{0} (#{1}) START!", System.Windows.Forms.Application.ProductName, System.Diagnostics.Process.GetCurrentProcess().Id));
 
@@ -234,7 +248,7 @@ namespace TaskMaster
 			catch (Exception ex)
 			{
 				Log.Error("Unhandled exception! Dying.");
-				Log.Fatal(ex);
+				Log.Fatal("Unhandled exception! Dying." + System.Environment.NewLine + ex);
 				NLog.LogManager.Flush();
 				throw;
 			}

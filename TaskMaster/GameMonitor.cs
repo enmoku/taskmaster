@@ -1,5 +1,5 @@
 ﻿//
-// EmptyClass.cs
+// GameMonitor.cs
 //
 // Author:
 //       M.A. (enmoku) <>

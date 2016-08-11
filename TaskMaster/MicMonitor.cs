@@ -65,7 +65,6 @@ namespace TaskMaster
 
 		NAudio.Mixer.UnsignedMixerControl Control = null;
 		NAudio.CoreAudioApi.MMDevice m_dev = null;
-		NAudio.CoreAudioApi.MMDeviceEnumerator m_enum = null;
 
 		public string DeviceName
 		{
@@ -113,9 +112,10 @@ namespace TaskMaster
 		{
 			Log.Trace("Enumerating devices...");
 			List<devicePair> devices = new List<devicePair>();
-			if (m_enum != null)
+			NAudio.CoreAudioApi.MMDeviceEnumerator mm_enum = new NAudio.CoreAudioApi.MMDeviceEnumerator();
+			if (mm_enum != null)
 			{
-				NAudio.CoreAudioApi.MMDeviceCollection devs = m_enum.EnumerateAudioEndPoints(NAudio.CoreAudioApi.DataFlow.Capture, NAudio.CoreAudioApi.DeviceState.Active);
+				NAudio.CoreAudioApi.MMDeviceCollection devs = mm_enum.EnumerateAudioEndPoints(NAudio.CoreAudioApi.DataFlow.Capture, NAudio.CoreAudioApi.DeviceState.Active);
 				foreach (var dev in devs)
 				{
 					string[] parts = dev.ID.Split('}');
@@ -123,7 +123,7 @@ namespace TaskMaster
 					devices.Add(new devicePair(parts[1].Substring(2), dev.DeviceFriendlyName));
 				}
 			}
-			Log.Info(String.Format("{0} microphone(s)", devices.Count));
+			Log.Trace(String.Format("{0} microphone(s)", devices.Count));
 
 			return devices;
 		}
@@ -133,13 +133,6 @@ namespace TaskMaster
 			Log.Trace("Stopping.");
 			if (m_dev != null)
 				m_dev.AudioEndpointVolume.OnVolumeNotification -= volumeChangeDetected;
-		}
-
-		public void minimize()
-		{
-			Log.Trace("Reducing memory footprint.");
-			m_enum = null;
-			//m_dev = null; //needed for volume monitoring
 		}
 
 		bool setupControl()
@@ -176,12 +169,15 @@ namespace TaskMaster
 			if (Control != null)
 			{
 				// get default communications device
-				if (m_enum == null)
-					m_enum = new NAudio.CoreAudioApi.MMDeviceEnumerator();
-				m_dev = m_enum.GetDefaultAudioEndpoint(NAudio.CoreAudioApi.DataFlow.Capture, NAudio.CoreAudioApi.Role.Communications);
-				if (m_dev != null)
-					m_dev.AudioEndpointVolume.OnVolumeNotification += volumeChangeDetected;
+				NAudio.CoreAudioApi.MMDeviceEnumerator mm_enum = new NAudio.CoreAudioApi.MMDeviceEnumerator();
+				if (mm_enum != null)
+				{
+					m_dev = mm_enum.GetDefaultAudioEndpoint(NAudio.CoreAudioApi.DataFlow.Capture, NAudio.CoreAudioApi.Role.Communications);
+					if (m_dev != null)
+						m_dev.AudioEndpointVolume.OnVolumeNotification += volumeChangeDetected;
+				}
 			}
+
 			if (m_dev != null)
 				Log.Info(String.Format("Default communications device: {0}", m_dev.FriendlyName));
 			else
@@ -242,7 +238,7 @@ namespace TaskMaster
 				}
 				else
 				{
-					Log.Debug("Volume already above target.");
+					Log.Debug("Volume already at target.");
 				}
 			}
 			else

@@ -1,5 +1,5 @@
 ﻿//
-// EmptyClass.cs
+// Utility.cs
 //
 // Author:
 //       M.A. (enmoku) <>
