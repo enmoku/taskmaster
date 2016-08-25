@@ -237,14 +237,10 @@ namespace TaskMaster
 					Volume = volume;
 				}
 				else
-				{
 					Log.Debug("Volume already at target.");
-				}
 			}
 			else
-			{
 				Log.Error("Volume control not set up.");
-			}
 		}
 	}
 }

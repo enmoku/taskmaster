@@ -1,0 +1,26 @@
+﻿<Window x:Class="TaskMaster.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="TaskMaster" Height="720" Width="580">
+    <Grid>
+		<StackPanel Orientation="Horizontal">
+			<TextBlock FontSize="12">Default communications device</TextBlock>
+			
+		</StackPanel>
+		
+		<StackPanel Orientation="Horizontal">
+			<TextBlock FontSize="12">Microphone volume</TextBlock>
+		
+			<TextBlock FontSize="12">%</TextBlock>
+			<TextBlock FontSize="12">Correction count</TextBlock>
+			
+		</StackPanel>
+
+		<StackPanel>
+			<ListView Margin="10" Name="MicList" />
+			<ListView Margin="10" Name="PathList" />
+			<ListView Margin="10" Name="AppList" />
+			<ListView Margin="10" Name="LogList" />
+		</StackPanel>
+    </Grid>
+</Window>

@@ -49,6 +49,8 @@
     <Reference Include="NLog">
       <HintPath>packages\NLog.4.3.7\lib\net45\NLog.dll</HintPath>
     </Reference>
+    <Reference Include="PresentationFramework" />
+    <Reference Include="System.Net" />
   </ItemGroup>
   <ItemGroup>
     <Compile Include="TaskMaster.cs" />
@@ -59,7 +61,7 @@
     <Compile Include="ProcessManager.cs" />
     <Compile Include="Utility.cs" />
     <Compile Include="LogWindow.cs" />
-    <Compile Include="MainWindow.cs" />
+    <Compile Include="MainWindowWinforms.cs" />
     <Compile Include="TrayAccess.cs" />
   </ItemGroup>
   <ItemGroup>
@@ -73,6 +75,7 @@
     <None Include="packages.config" />
     <None Include="taskmaster-volume.ico" />
     <None Include="app.config" />
+    <None Include="MainWindow.xaml" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="Properties\" />

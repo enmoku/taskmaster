@@ -61,7 +61,7 @@ namespace TaskMaster
 		/// Target priority class for the process.
 		/// </summary>
 		public ProcessPriorityClass Priority = ProcessPriorityClass.Normal;
-		public bool Increase = false; // TODO: UNUSED
+		public bool Increase = false;
 		/// <summary>
 		/// CPU core affinity.
 		/// </summary>
@@ -93,14 +93,7 @@ namespace TaskMaster
 			ExecutableFriendlyName = System.IO.Path.GetFileNameWithoutExtension(executable);
 			Priority = priority;
 			Increase = increase;
-			if (affinity != 0)
-			{
-				Affinity = new IntPtr(affinity);
-			}
-			else
-			{
-				Affinity = new IntPtr(ProcessManager.allCPUsMask);
-			}
+			Affinity = new IntPtr(affinity != 0 ? affinity : ProcessManager.allCPUsMask);
 			Boost = boost;
 
 			lastSeen = System.DateTime.MinValue;
@@ -136,7 +129,7 @@ namespace TaskMaster
 				mPriority = true;
 			}
 
-			if (process.ProcessorAffinity != Affinity) // FIXME: 0 and all cores selected should match
+			if (process.ProcessorAffinity != Affinity)
 			{
 				//System.Console.WriteLine("Current affinity: {0}", Convert.ToString(item.ProcessorAffinity.ToInt32(), 2));
 				//System.Console.WriteLine("Target affinity: {0}", Convert.ToString(proc.Affinity.ToInt32(), 2));
@@ -185,9 +178,7 @@ namespace TaskMaster
 				onTouchHandler(this, e);
 			}
 			else
-			{
 				Log.Trace(System.String.Format("'{0}' (pid:{1}) seems to be OK already.", Executable, process.Id));
-			}
 
 			return (mPriority || mAffinity || mBoost);
 		}
@@ -235,13 +226,9 @@ namespace TaskMaster
 			Subpath = subpath;
 			Path = path;
 			if (path != null)
-			{
 				Log.Info(System.String.Format("'{0}' watched in: {1} [{2}]", FriendlyName, Path, Priority));
-			}
 			else
-			{
 				Log.Info(System.String.Format("'{0}' matching for '{1}' [{2}]", Executable, Subpath, Priority));
-			}
 			Adjusts = 0;
 		}
 
@@ -257,9 +244,7 @@ namespace TaskMaster
 				Log.Info(System.String.Format("{0} (pid:{1}); Priority({2} -> {3})", name, process.Id, oldPriority, Priority));
 			}
 			else
-			{
 				Log.Debug(System.String.Format("{0} (pid:{1}); looks OK, not touched.", name, process.Id));
-			}
 		}
 
 		public bool Locate()
@@ -421,9 +406,7 @@ namespace TaskMaster
 				//                            proc.Executable, item.Id, Priority, Affinity, Boost, item.StartTime));
 			}
 			else
-			{
 				Log.Trace(System.String.Format("'{0}' (pid:{1}) seems to be OK already.", control.Executable, process.Id));
-			}
 
 			return (Priority || Affinity || Boost);
 		}
@@ -467,7 +450,6 @@ namespace TaskMaster
 			Log.Trace("Path location complete.");
 		}
 
-
 		string[] ignoredProcesses = { "svchost", "taskeng", "dllhost", "consent", "taskeng", "taskhost", "rundll32", "conhost", "dwm", "wininit", "csrss", "winlogon" };
 		/// <summary>
 		/// Processes everything. Pointlessly thorough, but there's no nicer way around for now.
@@ -482,10 +464,6 @@ namespace TaskMaster
 				Log.Trace(System.String.Format("Scanning {0} processes.", procs.Count()));
 				foreach (Process proc in procs)
 				{
-					if (proc.Id <= 4) // skip 0 [Idle] and 4 [System]
-						continue;
-					if (ignoredProcesses.Contains(proc.ProcessName))
-						continue;
 					CheckProcess(proc);
 				}
 				Log.Trace("Initial scan complete.");
@@ -627,6 +605,7 @@ namespace TaskMaster
 			string path;
 			try
 			{
+				
 				if (process.HasExited)
 				{
 					Log.Trace("Process '{0}' (pid:{1}) already gone.", process.ProcessName, process.Id);
@@ -639,7 +618,7 @@ namespace TaskMaster
 			{
 				Process_NativeError(process, process.Id, ex);
 				// we can not touch this so we shouldn't even bother trying
-				Log.Warn("Failed to access '{0}' (pid:{1}).", process.ProcessName, process.Id);
+				Log.Trace("Failed to access '{0}' (pid:{1})", process.ProcessName, process.Id);
 				return;
 			}
 
@@ -647,29 +626,32 @@ namespace TaskMaster
 
 			// TODO: This needs to be FASTER
 			//Log.Debug("test: "+path);
-			bool matched = false;
 			foreach (PathControl pc in pathwatch)
 			{
 				//Log.Debug("with: "+ pc.Path);
 				if (path.StartsWith(pc.Path, StringComparison.InvariantCultureIgnoreCase)) // TODO: make this compatible with OSes that aren't case insensitive?
 				{
 					await System.Threading.Tasks.Task.Delay(3800); // wait a little more.
-					Log.Debug(pc.FriendlyName + " [" + process.ProcessName + "] matched " + path);
+					Log.Debug(pc.FriendlyName + " [" + process.ProcessName + "] matched at " + path);
 					pc.Touch(process, path);
 					onPathAdjustHandler(new PathControlEventArgs(pc));
-					matched = true;
-					break;
+					return;
 				}
-				else
-					Log.Trace("Not matched: " + path);
+				Log.Trace("Not matched: " + path);
 			}
-			if (!matched)
-				Log.Trace("Not for us: " + path);
+			Log.Trace("Not for us: " + path);
 		}
 
 		void CheckProcess(Process process)
 		{
 			Log.Trace("Processing: " + process.ProcessName);
+
+			// Skip 0 [Idle] and 4 [System], shouldn't rely on this, but nothing else to do about it.
+			if (process.Id <= 4 || ignoredProcesses.Contains(process.ProcessName))
+			{
+				Log.Trace("Ignoring system process: " + process.ProcessName + " (" + process.Id + ")");
+				return;
+			}
 
 			// TODO: check proc.processName for presence in images.
 			ProcessControl control;
@@ -685,9 +667,7 @@ namespace TaskMaster
 				});
 			}
 			else if (pathwatch.Count > 0)
-			{
 				CheckPathWatch(process);
-			}
 			else
 				Log.Trace("No paths watched, ignoring: " + process.ProcessName);
 		}
@@ -695,15 +675,16 @@ namespace TaskMaster
 		void NewInstanceHandler(object sender, System.Management.EventArrivedEventArgs e)
 		{
 			System.Management.ManagementBaseObject targetInstance = (System.Management.ManagementBaseObject)e.NewEvent.Properties["TargetInstance"].Value;
+			int pid = Convert.ToInt32(targetInstance.Properties["Handle"].Value);
 			Process process;
 			try
 			{
 				// since targetinstance actually has fuckall information, we need to extract it...
-				process = Process.GetProcessById(Convert.ToInt32(targetInstance.Properties["Handle"].Value));
+				process = Process.GetProcessById(pid);
 			}
 			catch (Exception)
 			{
-				Log.Debug("Process exited before we had time to act on it or identify it."); // technically an error, but not that interesting for users
+				Log.Trace("Process exited before we had time to identify it."); // technically an error [Warn], but not that interesting for anyone
 				return;
 			}
 
@@ -784,9 +765,7 @@ namespace TaskMaster
 				Log.Trace("New process watcher initialized.");
 			}
 			else
-			{
 				Log.Error("Failed to initialize new process watcher.");
-			}
 		}
 
 		public List<PathControl> ActivePaths()

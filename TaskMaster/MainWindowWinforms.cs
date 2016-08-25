@@ -23,13 +23,17 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
+using System.Windows.Controls;
+using System.Net;
 
 namespace TaskMaster
 {
 	using System;
 	using System.Collections.Generic;
 	using System.Windows.Forms;
+	using System.Net.NetworkInformation;
 
+	// public class MainWindow : System.Windows.Window; // TODO: WPF
 	public class MainWindow : System.Windows.Forms.Form
 	{
 		static NLog.Logger Log = NLog.LogManager.GetCurrentClassLogger();
@@ -37,6 +41,7 @@ namespace TaskMaster
 		public void ShowConfigRequest(object sender, System.EventArgs e)
 		{
 			Log.Warn("User wanted to config TaskMaster!");
+
 		}
 
 		void Save()
@@ -57,7 +62,7 @@ namespace TaskMaster
 
 			Hide();
 
-			//Enabled = false;// mono.nexe hangs if disabled, so...
+			//Enabled = false;// mono.exe hangs if disabled, so...
 			Application.Exit();
 		}
 
@@ -73,17 +78,14 @@ namespace TaskMaster
 			{
 				case CloseReason.UserClosing:
 					// X was pressed or similar, we're just hiding to tray.
-					// TODO: Destroy the window and save memory
 					if (!lowmemory)
 					{
-						Log.Debug("Hiding window, keeping in memory.");
+						Log.Trace("Hiding window, keeping in memory.");
 						e.Cancel = true;
 						Hide();
 					}
 					else
-					{
-						Log.Debug("Closing window, freeing memory.");
-					}
+						Log.Trace("Closing window, freeing memory.");
 					break;
 				case CloseReason.WindowsShutDown:
 					Log.Info("Exit: Windows shutting down.");
@@ -98,13 +100,12 @@ namespace TaskMaster
 					Log.Warn(System.String.Format("Exit: Unidentified close reason: {0}", e.CloseReason));
 				Cleanup:
 					ExitCleanup();
-					Application.Exit();
 					break;
 			}
 		}
 
 		// this restores the main window to a place where it can be easily found if it's lost
-		public void RestoreWindowRequest(object sender, System.EventArgs e)
+		public void RestoreWindowRequest(object sender, EventArgs e)
 		{
 			CenterToScreen();
 			SetTopLevel(true); // this doesn't Keep it topmost, does it?
@@ -119,7 +120,7 @@ namespace TaskMaster
 		}
 
 		#region Microphone control code
-		MicMonitor micMonitor = null;
+		MicMonitor micMonitor;
 		public void setMicMonitor(MicMonitor micmonitor)
 		{
 			Log.Trace("Hooking microphone monitor.");
@@ -142,12 +143,10 @@ namespace TaskMaster
 				item.SubItems[6].Text = e.Control.lastSeen.ToString();
 			}
 			else
-			{
 				Log.Error(System.String.Format("{0} not found in app list.", e.Control.Executable));
-			}
 		}
 
-		GameMonitor gamemon = null;
+		GameMonitor gamemon;
 		public void setGameMonitor(GameMonitor gamemonitor)
 		{
 			gamemon = gamemonitor;
@@ -159,7 +158,7 @@ namespace TaskMaster
 			activeLabel.Text = "Active window: " + e.title;
 		}
 
-		ProcessManager procCntrl = null;
+		ProcessManager procCntrl;
 		public void setProcControl(ProcessManager control)
 		{
 			procCntrl = control;
@@ -174,7 +173,7 @@ namespace TaskMaster
 						(item.Affinity.ToInt32() == ProcessManager.allCPUsMask ? "OS controlled" : Convert.ToString(item.Affinity.ToInt32(), 2)),
 					item.Boost.ToString(),
 					item.Adjusts.ToString(),
-					item.lastSeen != System.DateTime.MinValue ? item.lastSeen.ToString() : "Never"
+					    (item.lastSeen != System.DateTime.MinValue ? item.lastSeen.ToString() : "Never")
 				});
 				appc.Add(item.Executable, litem);
 				appList.Items.Add(litem);
@@ -248,90 +247,107 @@ namespace TaskMaster
 		#endregion // Microphone control code
 
 		#region Game Monitor
-		Label activeLabel = null;
+		Label activeLabel;
 		#endregion
 
 		#region Internet handling functionality
-		/*
-		bool netAvailable = false;
-		Label inetLabel = null;
-		void NetworkChanged(object sender, System.EventArgs e)
+		bool netAvailable;
+		bool inetAvailable;
+		Label netstatuslabel;
+		Label inetstatuslabel;
+		void NetworkChanged(object sender, EventArgs e)
 		{
 			netAvailable = NetworkInterface.GetIsNetworkAvailable();
-			inetLabel.Text = netAvailable ? "Network of tubes connected." : "Tubes broken.";
-		}
-		*/
+			if (netAvailable)
+			{
+				try
+				{
+					System.Net.Dns.GetHostEntry("www.google.com"); // FIXME: don't rely on Google existing
+					inetAvailable = true;
+				}
+				catch (System.Net.Sockets.SocketException)
+				{
+					inetAvailable = false;
+				}
+			}
+			else
+				inetAvailable = false;
+			
+			inetstatuslabel.Text = inetAvailable.ToString();
+			netstatuslabel.Text = netAvailable.ToString();
+			netstatuslabel.BackColor = netAvailable ? System.Drawing.Color.LightGoldenrodYellow : System.Drawing.Color.Red;
+			inetstatuslabel.BackColor = inetAvailable ? System.Drawing.Color.LightGoldenrodYellow : System.Drawing.Color.Red;
 
-		/*
+			Log.Info("Network status: " + (netAvailable?"Up":"Down") + ", Inet status: " + (inetAvailable?"Connected":"Disconnected"));
+		}
+
 		string netSpeed(long speed)
 		{
 			if (speed >= 1000000000d)
 				return Math.Round(speed / 1000000000d, 2) + " Gb/s";
-			else if (speed >= 1000000)
+			if (speed >= 1000000d)
 				return Math.Round(speed / 1000000d, 2) + " Mb/s";
-			else if (speed >= 1000)
+			if (speed >= 1000d)
 				return Math.Round(speed / 1000d, 2) + " kb/s";
-			else
-				return speed + " b/s";
+			return speed + " b/s";
 		}
-		*/
 
-		/*
+		//System.Net.IPAddress[] inetAddress;
+
 		ListView ifaceList;
 		void NetEnum()
 		{
 			ifaceList.Items.Clear();
+			//List<IPAddress> addrs = new List<IPAddress>();
 			NetworkInterface[] adapters = NetworkInterface.GetAllNetworkInterfaces();
 			foreach (NetworkInterface n in adapters)
 			{
-				//if (n.NetworkInterfaceType != NetworkInterfaceType.Ethernet) continue;
+				if (n.NetworkInterfaceType == NetworkInterfaceType.Loopback || n.NetworkInterfaceType == NetworkInterfaceType.Tunnel)
+					continue;
 
-				ifaceList.Items.Add(new ListViewItem(new string[] { n.Name, n.NetworkInterfaceType.ToString(), n.OperationalStatus.ToString(), netSpeed(n.Speed) }));
+				IPAddress IPv4_addr=null, IPv6_addr=null;
+
+				foreach (UnicastIPAddressInformation ip in n.GetIPProperties().UnicastAddresses)
+				{
+					if (ip.Address.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork || ip.Address.AddressFamily == System.Net.Sockets.AddressFamily.InterNetworkV6)
+					{
+						//addrs.Add(ip.Address);
+						if (ip.Address.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork)
+							IPv4_addr = ip.Address;
+						else if (ip.Address.AddressFamily == System.Net.Sockets.AddressFamily.InterNetworkV6)
+							IPv6_addr = ip.Address;
+						Log.Debug(n.Name + " = " + ip.Address);
+					}
+				}
+				ifaceList.Items.Add(new ListViewItem(new string[] {
+					n.Name,
+					n.NetworkInterfaceType.ToString(),
+					n.OperationalStatus.ToString(),
+					netSpeed(n.Speed),
+					IPv4_addr!=null?IPv4_addr.ToString():"n/a",
+					IPv6_addr!=null?IPv6_addr.ToString():"n/a"
+				}));
 			}
+			//inetAddress = addrs.ToArray();
 		}
 
 		void NetAddrChanged(object sender, System.EventArgs e)
 		{
 			NetEnum();
+			NetworkChanged(null,null);
+			//Log.Info("Internet address changed: " + );
 		}
-		*/
 
-		/*
 		void NetworkSetup()
 		{
 			NetworkChanged(null, null);
-			//netAvailable = NetworkInterface.GetIsNetworkAvailable();
-			//inetLabel.Text = netAvailable ? "Network of tubes connected." : "Tubes broken.";
+			netAvailable = NetworkInterface.GetIsNetworkAvailable();
+			netstatuslabel.Text = netAvailable.ToString();
 
 			NetEnum();
 			NetworkChange.NetworkAvailabilityChanged += NetworkChanged;
 			NetworkChange.NetworkAddressChanged += NetAddrChanged;
-
-			////---*
-			// only recognizes changes related to Internet adapters
-			if (NetworkInterface.GetIsNetworkAvailable()) {
-				// however, this will include all adapters
-				NetworkInterface[] interfaces =
-					NetworkInterface.GetAllNetworkInterfaces();
-
-				foreach (NetworkInterface face in interfaces) {
-					// filter so we see only Internet adapters
-					if (face.OperationalStatus == OperationalStatus.Up) {
-						if ((face.NetworkInterfaceType != NetworkInterfaceType.Tunnel) &&
-							(face.NetworkInterfaceType != NetworkInterfaceType.Loopback)) {
-							IPv4InterfaceStatistics statistics =
-								face.GetIPv4Statistics();
-
-							// all testing seems to prove that once an interface
-							// comes online it has already accrued statistics for
-							// both received and sent...
-						}
-					}
-				}
-			}
-			*---//
 		}
-		*/
 		#endregion
 
 		/*
@@ -428,12 +444,17 @@ namespace TaskMaster
 	}
 		*/
 
+		CheckBox logcheck_warn;
+		bool log_include_warn = true;
+		CheckBox logcheck_debug;
+		bool log_include_debug = true;
+
 		void BuildUI()
 		{
 			Text = Application.ProductName;
 			AutoSize = true;
 			Padding = new Padding(12);
-			Size = new System.Drawing.Size(720, 580);
+			Size = new System.Drawing.Size(720, 740); // width, height
 			//margin
 
 			TableLayoutPanel lrows = new TableLayoutPanel();
@@ -529,15 +550,40 @@ namespace TaskMaster
 			// End: Microphone enumeration
 
 			// Main Window row 4-5, internet status
-			/*
-			inetLabel = new Label();
-			inetLabel.Dock = DockStyle.Top;
-			inetLabel.Text = "Uninitialized";
-			inetLabel.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
+			Label netLabel = new Label();
+			netLabel.Text = "Network status:";
+			netLabel.Dock = DockStyle.Left;
+			Label inetLabel = new Label();
+			inetLabel.Text = "Internet status:";
+			inetLabel.Dock = DockStyle.Left;
+
+			netstatuslabel = new Label();
+			netstatuslabel.Dock = DockStyle.Top;
+			inetstatuslabel = new Label();
+			inetstatuslabel.Dock = DockStyle.Top;
+
+			netstatuslabel.Text = "Uninitialized";
+			inetstatuslabel.Text = "Uninitialized";
+
+			netstatuslabel.AutoSize = true;
+			inetstatuslabel.AutoSize = true;
+			netLabel.AutoSize = true;
 			inetLabel.AutoSize = true;
-			inetLabel.BackColor = Color.LightGoldenrodYellow;
-			lrows.Controls.Add(inetLabel, 0, 3);
-			*/
+
+			netstatuslabel.BackColor = System.Drawing.Color.LightGoldenrodYellow;
+			inetstatuslabel.BackColor = System.Drawing.Color.LightGoldenrodYellow;
+
+			TableLayoutPanel netlayout = new TableLayoutPanel();
+			netlayout.ColumnCount = 4;
+			netlayout.RowCount = 1;
+			netlayout.Dock = DockStyle.Top;
+			netlayout.AutoSize = true;
+			netlayout.Controls.Add(netLabel, 0, 0);
+			netlayout.Controls.Add(netstatuslabel, 1, 0);
+			netlayout.Controls.Add(inetLabel, 2, 0);
+			netlayout.Controls.Add(inetstatuslabel, 3, 0);
+
+			lrows.Controls.Add(netlayout, 0, 3);
 
 			/*
 			activeLabel = new Label();
@@ -549,19 +595,19 @@ namespace TaskMaster
 			lrows.Controls.Add(activeLabel, 0, 4);
 			*/
 
-			/*
 			ifaceList = new ListView();
 			ifaceList.Dock = DockStyle.Top;
 			ifaceList.Width = lrows.Width - 3; // FIXME: why does 3 work? can't we do this automatically?
 			ifaceList.View = View.Details;
 			ifaceList.FullRowSelect = true;
-			ifaceList.Columns.Add("Device", 220);
-			ifaceList.Columns.Add("Type", 80);
-			ifaceList.Columns.Add("Status", 60);
-			ifaceList.Columns.Add("Link speed", 80);
+			ifaceList.Columns.Add("Device",120);
+			ifaceList.Columns.Add("Type", 60);
+			ifaceList.Columns.Add("Status", 50);
+			ifaceList.Columns.Add("Link speed", 70);
+			ifaceList.Columns.Add("IPv4", 90);
+			ifaceList.Columns.Add("IPv6", 200);
 			ifaceList.Scrollable = true;
 			lrows.Controls.Add(ifaceList, 0, 5);
-			*/
 			// End: Inet status
 
 			// Main Window row 6, settings
@@ -630,8 +676,37 @@ namespace TaskMaster
 			loglist.Columns[0].Width = lrows.Width - 25;
 			loglist.HeaderStyle = ColumnHeaderStyle.None;
 			loglist.Scrollable = true;
-			loglist.Height = 100;
+			loglist.Height = 200;
 			lrows.Controls.Add(loglist, 0, 11);
+
+			TableLayoutPanel logpanel = new TableLayoutPanel();
+			Label loglabel_warn = new Label();
+			loglabel_warn.Text = "Warnings";
+			loglabel_warn.Dock = DockStyle.Left;
+			logcheck_warn = new CheckBox();
+			logcheck_warn.Dock = DockStyle.Left;
+			logcheck_warn.Checked = log_include_warn;
+			logcheck_warn.CheckedChanged += (sender, e) => {
+				log_include_warn = (logcheck_warn.CheckState == CheckState.Checked);
+			};
+			logpanel.Controls.Add(loglabel_warn, 0, 0);
+			logpanel.Controls.Add(logcheck_warn, 1, 0);
+			Label loglabel_debug = new Label();
+			loglabel_debug.Text = "Debug";
+			loglabel_debug.Dock = DockStyle.Left;
+			logcheck_debug = new CheckBox();
+			logcheck_debug.Dock = DockStyle.Left;
+			logcheck_debug.Checked = log_include_debug;
+			logcheck_debug.CheckedChanged += (sender, e) => {
+				log_include_debug = (logcheck_debug.CheckState == CheckState.Checked);
+			};
+			logpanel.Controls.Add(loglabel_debug, 2, 0);
+			logpanel.Controls.Add(logcheck_debug, 3, 0);
+			logpanel.AutoSize = true;
+			logpanel.Dock = DockStyle.Fill;
+
+			lrows.Controls.Add(logpanel, 0, 12);
+
 			// End: UI Log
 
 			//layout.Visible = true;
@@ -681,22 +756,36 @@ namespace TaskMaster
 				System.Console.WriteLine("ERROR: Null reference");
 			}
 
+			if (!log_include_debug && e.Info.Level == NLog.LogLevel.Debug)
+			{
+				Console.WriteLine("UI log skip: " + e.Message);
+				return;
+			}
+			if (!log_include_warn && e.Info.Level == NLog.LogLevel.Warn)
+			{
+				Console.WriteLine("UI log skip: " + e.Message);
+				return;
+			}
+
 			loglist.Items.Add(e.Message).EnsureVisible();
 		}
 
 		static bool onetime = false;
-		static bool lowmemory = false;
+		static bool lowmemory = false; // low memory mode; figure out way to auto-enable this
+		public bool LowMemory { get { return lowmemory; } }
 
 		// constructor
 		public MainWindow()
 		{
+			//InitializeComponent(); // TODO: WPF
+
 			if (!onetime)
 			{
 				SharpConfig.Configuration cfg = TaskMaster.loadConfig("Core.ini");
 				if (cfg.Contains("Options") && cfg["Options"].Contains("Low memory"))
 				{
 					lowmemory = cfg["Options"]["Low memory"].BoolValue;
-					Log.Info("Low memory mode enabled.");
+					Log.Info("Low memory mode: " + (lowmemory ? "Enabled." : "Disabled."));
 				}
 				onetime = true;
 			}
@@ -707,8 +796,7 @@ namespace TaskMaster
 
 			BuildUI();
 
-			//DISABLED
-			//NetworkSetup();
+			NetworkSetup();
 
 			// TODO: Detect mic device changes
 			// TODO: Delay fixing by 5 seconds to prevent fix diarrhea
@@ -722,6 +810,16 @@ namespace TaskMaster
 			//CenterToScreen();
 
 			ProcessControl.onTouch += ProcAdjust;
+
+			// TODO: WPF
+			/*
+			System.Windows.Shell.JumpList jumplist = System.Windows.Shell.JumpList.GetJumpList(System.Windows.Application.Current);
+			//System.Windows.Shell.JumpTask task = new System.Windows.Shell.JumpTask();
+			System.Windows.Shell.JumpPath jpath = new System.Windows.Shell.JumpPath();
+			jpath.Path = TaskMaster.cfgpath;
+			jumplist.JumpItems.Add(jpath);
+			jumplist.Apply();
+			*/
 		}
 
 		/*

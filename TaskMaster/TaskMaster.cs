@@ -50,6 +50,7 @@
 
 using System;
 using System.Security.Policy;
+using NAudio.MediaFoundation;
 
 namespace TaskMaster
 {
@@ -77,9 +78,7 @@ namespace TaskMaster
 			Log.Trace("Opening: "+path);
 			SharpConfig.Configuration retcfg;
 			if (System.IO.File.Exists(path))
-			{
 				retcfg = SharpConfig.Configuration.LoadFromFile(path);
-			}
 		    else
 			{
 				Log.Warn("Not found: "+path);
@@ -102,7 +101,12 @@ namespace TaskMaster
 
 		public static void MainWindowClose(object sender, EventArgs e)
 		{
-			tmw = null;
+			if (tmw.LowMemory)
+			{
+				//tmw.FormClosing -= MainWindowClose // unnecessary?
+				tmw.Enabled = false;
+				tmw = null;
+			}
 		}
 
 		public static void HookMainWindow()

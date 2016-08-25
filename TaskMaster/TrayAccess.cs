@@ -45,32 +45,45 @@ namespace TaskMaster
 			Tray.Icon = System.Drawing.Icon.ExtractAssociatedIcon(System.Reflection.Assembly.GetExecutingAssembly().Location); // is this really the best way?
 
 			Log.Trace("Generating tray icon.");
-			MenuItem toggleVisibility = new MenuItem("Open", ShowWindowRequest);
-			MenuItem configMenuItem = new MenuItem("Configuration", ShowConfigRequest);
-			MenuItem exitMenuItem = new MenuItem("Exit", ExitRequest);
-			Tray.ContextMenu = new ContextMenu(new MenuItem[] { toggleVisibility, configMenuItem, exitMenuItem });
+
+			//MenuItem toggleVisibility = new MenuItem("Open", ShowWindowRequest);
+			//MenuItem configMenuItem = new MenuItem("Configuration", ShowConfigRequest);
+			//MenuItem exitMenuItem = new MenuItem("Exit", ExitRequest);
+			//Tray.ContextMenu = new ContextMenu(new MenuItem[] { toggleVisibility, configMenuItem, exitMenuItem });
+			ContextMenuStrip ms = new ContextMenuStrip();
+			ms.Items.Add("Open", null, ShowWindowRequest);
+			ms.Items.Add("Configuration", null, ShowConfigRequest);
+			ms.Items.Add("Exit", null, ExitRequest);
+			Tray.ContextMenuStrip = ms;
 
 			RegisterExplorerExit();
 			Tray.Visible = true;
+
+
 		}
 
-		MainWindow Window;
 		void ShowWindowRequest(object sender, EventArgs e)
 		{
-			if (Window != null)
-				Window.ShowWindowRequest(sender,e);
+			if (TaskMaster.tmw != null)
+				TaskMaster.tmw.ShowWindowRequest(sender, null);
+			else
+				RestoreMain(sender, e);
 		}
 
 		void ShowConfigRequest(object sender, EventArgs e)
 		{
-			if (Window != null)
-				Window.ShowConfigRequest(sender, e);
+			if (TaskMaster.tmw != null)
+				TaskMaster.tmw.ShowConfigRequest(sender, e);
+			else
+				Log.Warn("Can't open configuration.");
 		}
 
 		void ExitRequest(object sender, EventArgs e)
 		{
-			if (Window != null)
-				Window.ExitRequest(sender, e);
+			if (TaskMaster.tmw != null)
+				TaskMaster.tmw.ExitRequest(sender, e);
+			else
+				Application.Exit();
 		}
 
 		void RestoreMain(object sender, EventArgs e)
@@ -80,26 +93,49 @@ namespace TaskMaster
 				Log.Debug("Reconstructing main window.");
 				TaskMaster.tmw = new MainWindow();
 				TaskMaster.HookMainWindow();
-				Tray.Click -= RestoreMain;
+				Tray.MouseClick -= RestoreMain;
 			}
+
 			TaskMaster.tmw.Show();
+		}
+
+		void RestoreMainRequest(object sender, MouseEventArgs e)
+		{
+			if (e.Button == MouseButtons.Left)
+			{
+				RestoreMain(sender, null);
+			}
+		}
+
+		void ShowWindow(object sender, MouseEventArgs e)
+		{
+			if (e.Button == MouseButtons.Left)
+			{
+				TaskMaster.tmw.ShowWindowRequest(sender, null);
+			}
+		}
+
+		void UnloseWindow(object sender, MouseEventArgs e)
+		{
+			if (e.Button == MouseButtons.Left)
+			{
+				TaskMaster.tmw.RestoreWindowRequest(sender, null);
+			}
 		}
 
 		void WindowClosed(object sender, EventArgs e)
 		{
-			Tray.Click -= Window.ShowWindowRequest;
-			Tray.DoubleClick -= Window.RestoreWindowRequest;
-			Window = null;
+			Tray.MouseClick -= ShowWindow;
+			Tray.MouseDoubleClick -= UnloseWindow;
 
-			Tray.Click += RestoreMain;
+			Tray.MouseClick += RestoreMainRequest;
 		}
 
 		public void RegisterMain(MainWindow window)
 		{
-			Window = window;
-			Tray.Click += Window.ShowWindowRequest;
-			Tray.DoubleClick += Window.RestoreWindowRequest;
-			Window.FormClosing += WindowClosed;
+			Tray.MouseClick += ShowWindow;
+			Tray.MouseDoubleClick += UnloseWindow;
+			TaskMaster.tmw.FormClosing += WindowClosed;
 		}
 
 		System.Diagnostics.Process Explorer;
@@ -145,9 +181,7 @@ namespace TaskMaster
 				Log.Info(System.String.Format("Explorer (#{0}) registered.", Explorer.Id));
 			}
 			else
-			{
 				Log.Warn("Explorer not found.");
-			}
 		}
 
 		~TrayAccess()
