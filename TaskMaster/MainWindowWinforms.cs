@@ -316,7 +316,6 @@ namespace TaskMaster
 							IPv4_addr = ip.Address;
 						else if (ip.Address.AddressFamily == System.Net.Sockets.AddressFamily.InterNetworkV6)
 							IPv6_addr = ip.Address;
-						Log.Debug(n.Name + " = " + ip.Address);
 					}
 				}
 				ifaceList.Items.Add(new ListViewItem(new string[] {
@@ -454,7 +453,7 @@ namespace TaskMaster
 			Text = Application.ProductName;
 			AutoSize = true;
 			Padding = new Padding(12);
-			Size = new System.Drawing.Size(720, 740); // width, height
+			Size = new System.Drawing.Size(720, 720); // width, height
 			//margin
 
 			TableLayoutPanel lrows = new TableLayoutPanel();
@@ -473,14 +472,13 @@ namespace TaskMaster
 			micNameRow.RowCount = 1;
 			micNameRow.ColumnCount = 2;
 			micNameRow.BackColor = System.Drawing.Color.BlanchedAlmond; // DEBUG
-			micNameRow.Controls.Add(micDevLbl, 0, 0);
+			micNameRow.Controls.Add(micDevLbl);
 			micName = new Label();
 			micName.Dock = DockStyle.Left;
 			micName.AutoSize = true;
-			micNameRow.Controls.Add(micName, 1, 0);
+			micNameRow.Controls.Add(micName);
 			micNameRow.Dock = DockStyle.Fill;
 			micNameRow.AutoSize = true;
-			//lrows.Controls.Add(micNameRow, 0, 0);
 			lrows.Controls.Add(micNameRow);
 			#endregion
 
@@ -495,7 +493,6 @@ namespace TaskMaster
 			//miccntrl.Location = new System.Drawing.Point(0, 0);
 			miccntrl.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
 			miccntrl.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-			//lrows.Controls.Add(miccntrl, 0, 1);
 			lrows.Controls.Add(miccntrl);
 
 			Label micVolLabel = new Label();
@@ -517,9 +514,9 @@ namespace TaskMaster
 			micVol.ValueChanged += UserMicVol;
 			micVol.Dock = DockStyle.Left;
 
-			miccntrl.Controls.Add(micVolLabel, 0, 0);
-			miccntrl.Controls.Add(micVol, 1, 0);
-			miccntrl.Controls.Add(micVolLabel2, 2, 0);
+			miccntrl.Controls.Add(micVolLabel);
+			miccntrl.Controls.Add(micVol);
+			miccntrl.Controls.Add(micVolLabel2);
 
 			Label corLbll = new Label();
 			corLbll.Text = "Correction count:";
@@ -531,8 +528,8 @@ namespace TaskMaster
 			corCountLabel.Text = "0";
 			corCountLabel.AutoSize = true;
 			corCountLabel.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
-			miccntrl.Controls.Add(corLbll, 3, 0);
-			miccntrl.Controls.Add(corCountLabel, 4, 0);
+			miccntrl.Controls.Add(corLbll);
+			miccntrl.Controls.Add(corCountLabel);
 			// End: Volume control
 
 			// Main Window row 3, microphone device enumeration
@@ -545,7 +542,6 @@ namespace TaskMaster
 			micList.Columns.Add("Name", 200);
 			micList.Columns.Add("GUID", 220);
 
-			//lrows.Controls.Add(micList, 0, 2);
 			lrows.Controls.Add(micList);
 			// End: Microphone enumeration
 
@@ -578,12 +574,12 @@ namespace TaskMaster
 			netlayout.RowCount = 1;
 			netlayout.Dock = DockStyle.Top;
 			netlayout.AutoSize = true;
-			netlayout.Controls.Add(netLabel, 0, 0);
-			netlayout.Controls.Add(netstatuslabel, 1, 0);
-			netlayout.Controls.Add(inetLabel, 2, 0);
-			netlayout.Controls.Add(inetstatuslabel, 3, 0);
+			netlayout.Controls.Add(netLabel);
+			netlayout.Controls.Add(netstatuslabel);
+			netlayout.Controls.Add(inetLabel);
+			netlayout.Controls.Add(inetstatuslabel);
 
-			lrows.Controls.Add(netlayout, 0, 3);
+			lrows.Controls.Add(netlayout);
 
 			/*
 			activeLabel = new Label();
@@ -598,6 +594,7 @@ namespace TaskMaster
 			ifaceList = new ListView();
 			ifaceList.Dock = DockStyle.Top;
 			ifaceList.Width = lrows.Width - 3; // FIXME: why does 3 work? can't we do this automatically?
+			ifaceList.Height = 60;
 			ifaceList.View = View.Details;
 			ifaceList.FullRowSelect = true;
 			ifaceList.Columns.Add("Device",120);
@@ -607,7 +604,7 @@ namespace TaskMaster
 			ifaceList.Columns.Add("IPv4", 90);
 			ifaceList.Columns.Add("IPv6", 200);
 			ifaceList.Scrollable = true;
-			lrows.Controls.Add(ifaceList, 0, 5);
+			lrows.Controls.Add(ifaceList);
 			// End: Inet status
 
 			// Main Window row 6, settings
@@ -663,7 +660,6 @@ namespace TaskMaster
 			appList.Scrollable = true;
 			appList.Alignment = ListViewAlignment.Left;
 			//appList.DoubleClick += appEditEvent; // for in-app editing, probably not going to actually do that
-			//lrows.Controls.Add(appList, 0, 7);
 			lrows.Controls.Add(appList);
 			// End: App list
 
@@ -677,35 +673,40 @@ namespace TaskMaster
 			loglist.HeaderStyle = ColumnHeaderStyle.None;
 			loglist.Scrollable = true;
 			loglist.Height = 200;
-			lrows.Controls.Add(loglist, 0, 11);
+			lrows.Controls.Add(loglist);
 
 			TableLayoutPanel logpanel = new TableLayoutPanel();
+			logpanel.Dock = DockStyle.Top;
+			logpanel.RowCount = 1;
+			logpanel.ColumnCount = 4;
+			logpanel.Height = 40;
 			Label loglabel_warn = new Label();
 			loglabel_warn.Text = "Warnings";
 			loglabel_warn.Dock = DockStyle.Left;
+			loglabel_warn.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
 			logcheck_warn = new CheckBox();
 			logcheck_warn.Dock = DockStyle.Left;
 			logcheck_warn.Checked = log_include_warn;
 			logcheck_warn.CheckedChanged += (sender, e) => {
 				log_include_warn = (logcheck_warn.CheckState == CheckState.Checked);
 			};
-			logpanel.Controls.Add(loglabel_warn, 0, 0);
-			logpanel.Controls.Add(logcheck_warn, 1, 0);
+			logpanel.Controls.Add(loglabel_warn);
+			logpanel.Controls.Add(logcheck_warn);
 			Label loglabel_debug = new Label();
 			loglabel_debug.Text = "Debug";
 			loglabel_debug.Dock = DockStyle.Left;
+			loglabel_debug.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
 			logcheck_debug = new CheckBox();
 			logcheck_debug.Dock = DockStyle.Left;
 			logcheck_debug.Checked = log_include_debug;
 			logcheck_debug.CheckedChanged += (sender, e) => {
 				log_include_debug = (logcheck_debug.CheckState == CheckState.Checked);
 			};
-			logpanel.Controls.Add(loglabel_debug, 2, 0);
-			logpanel.Controls.Add(logcheck_debug, 3, 0);
+			logpanel.Controls.Add(loglabel_debug);
+			logpanel.Controls.Add(logcheck_debug);
 			logpanel.AutoSize = true;
-			logpanel.Dock = DockStyle.Fill;
 
-			lrows.Controls.Add(logpanel, 0, 12);
+			lrows.Controls.Add(logpanel);
 
 			// End: UI Log
 

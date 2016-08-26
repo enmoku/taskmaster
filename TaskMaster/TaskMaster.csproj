@@ -42,15 +42,15 @@
     <Reference Include="NAudio">
       <HintPath>..\packages\NAudio.1.7.3\lib\net35\NAudio.dll</HintPath>
     </Reference>
-    <Reference Include="SharpConfig">
-      <HintPath>packages\sharpconfig.1.5.6\lib\net20\SharpConfig.dll</HintPath>
-    </Reference>
     <Reference Include="System.Management" />
     <Reference Include="NLog">
       <HintPath>packages\NLog.4.3.7\lib\net45\NLog.dll</HintPath>
     </Reference>
     <Reference Include="PresentationFramework" />
     <Reference Include="System.Net" />
+    <Reference Include="SharpConfig">
+      <HintPath>packages\sharpconfig.2.0\lib\net20\SharpConfig.dll</HintPath>
+    </Reference>
   </ItemGroup>
   <ItemGroup>
     <Compile Include="TaskMaster.cs" />

@@ -101,7 +101,7 @@ namespace TaskMaster
 
 			Adjusts = 0;
 
-			Log.Debug(FriendlyName + " (" + Executable + "), " + Priority + (Affinity != IntPtr.Zero ? ", Mask:" + Affinity : ""));
+			Log.Trace(FriendlyName + " (" + Executable + "), " + Priority + (Affinity != IntPtr.Zero ? ", Mask:" + Affinity : ""));
 		}
 
 		// TODO EVENT
@@ -123,7 +123,7 @@ namespace TaskMaster
 			lastSeen = System.DateTime.Now;
 
 			if (((ProcessManager.PriorityToInt(process.PriorityClass) < ProcessManager.PriorityToInt(Priority)) && Increase) ||
-			    (ProcessManager.PriorityToInt(process.PriorityClass) > ProcessManager.PriorityToInt(Priority)))
+			     (ProcessManager.PriorityToInt(process.PriorityClass) > ProcessManager.PriorityToInt(Priority)))
 			{
 				process.PriorityClass = Priority;
 				mPriority = true;
@@ -157,6 +157,7 @@ namespace TaskMaster
 				lastTouch = System.DateTime.Now;
 
 				// TODO: Is StringBuilder fast enough for this to be good idea?
+				#if DEBUG
 				System.Text.StringBuilder ls = new System.Text.StringBuilder();
 				ls.Append(Executable).Append(" (pid:").Append(process.Id).Append("); ");
 				//ls.Append("(").Append(control.Executable).Append(") =");
@@ -167,15 +168,10 @@ namespace TaskMaster
 				if (mBoost)
 					ls.Append(" Boost(").Append(Boost).Append(")");
 				//ls.Append("; Start: ").Append(process.StartTime); // when the process was started // DEBUG
-				Log.Info(ls.ToString());
-				//Log.Info(System.String.Format("{0} (#{1}) = Priority({2}), Mask({3}), Boost({4}) - Start: {5}",
-				//                            proc.Executable, item.Id, Priority, Affinity, Boost, item.StartTime));
+				Log.Debug(ls.ToString());
+				#endif
 
-				ProcessEventArgs e = new ProcessEventArgs();
-				e.Control = this;
-				e.Process = process;
-				e.Modified = true;
-				onTouchHandler(this, e);
+				onTouchHandler(this, new ProcessEventArgs(this, process, true));
 			}
 			else
 				Log.Trace(System.String.Format("'{0}' (pid:{1}) seems to be OK already.", Executable, process.Id));
@@ -189,16 +185,6 @@ namespace TaskMaster
 			EventHandler<ProcessEventArgs> handler = onTouch;
 			if (handler != null)
 				handler(this, e);
-		}
-
-		public ProcessEventArgs getEventArgs()
-		{
-			var e = new ProcessEventArgs();
-			//e.Affinity = Affinity;
-			//e.Priority = Priority;
-			//e.Boost = Boost;
-			e.Control = this;
-			return e;
 		}
 	}
 
@@ -282,6 +268,7 @@ namespace TaskMaster
 	public class PathControlEventArgs : EventArgs
 	{
 		public PathControl Control;
+
 		public PathControlEventArgs(PathControl control)
 		{
 			Control = control;
@@ -296,6 +283,13 @@ namespace TaskMaster
 		//public bool Priority { get; set; }
 		//public bool Affinity { get; set; }
 		//public bool Boost { get; set; }
+
+		public ProcessEventArgs(ProcessControl control, Process process=null, bool modified=false)
+		{
+			Control = control;
+			Process = process;
+			Modified = modified;
+		}
 	}
 
 	public class ProcessManager : IDisposable
@@ -340,75 +334,6 @@ namespace TaskMaster
 			}
 			Log.Warn(executable + " was not found!");
 			return null;
-		}
-
-		// TODO: Move this to ProcessControl
-		public bool Control(ProcessControl control, Process process)
-		{
-			if (process.HasExited)
-			{
-				Log.Trace(System.String.Format("{0} (pid:{1}) has already exited.", control.Executable, process.Id));
-				return false;
-			}
-
-			//process.Refresh(); // is this necessary?
-			Log.Trace(System.String.Format("{0} ({1}, pid:{2})", control.FriendlyName, control.Executable, process.Id));
-			bool Affinity = false;
-			IntPtr oldAffinity = process.ProcessorAffinity;
-			bool Priority = false;
-			ProcessPriorityClass oldPriority = process.PriorityClass;
-			bool Boost = false;
-			control.lastSeen = System.DateTime.Now;
-
-			if (((PriorityToInt(process.PriorityClass) < PriorityToInt(control.Priority)) && control.Increase) || (PriorityToInt(process.PriorityClass) > PriorityToInt(control.Priority)))
-			{
-				process.PriorityClass = control.Priority;
-				Priority = true;
-			}
-
-			if (process.ProcessorAffinity != control.Affinity) // FIXME: 0 and all cores selected should match
-			{
-				try
-				{
-					process.ProcessorAffinity = control.Affinity;
-					Affinity = true;
-				}
-				catch (Win32Exception)
-				{
-					Log.Warn(System.String.Format("Couldn't modify process ({0}, #{1}) affinity.", control.Executable, process.Id));
-				}
-			}
-
-			if (process.PriorityBoostEnabled != control.Boost)
-			{
-				process.PriorityBoostEnabled = control.Boost;
-				Boost = true;
-			}
-			if (Priority || Affinity || Boost)
-			{
-				control.Adjusts += 1;
-
-				control.lastTouch = System.DateTime.Now;
-
-				// TODO: Is StringBuilder fast enough for this to be good idea?
-				System.Text.StringBuilder ls = new System.Text.StringBuilder();
-				ls.Append(control.Executable).Append(" (pid:").Append(process.Id).Append("); ");
-				//ls.Append("(").Append(control.Executable).Append(") =");
-				if (Priority)
-					ls.Append(" Priority(").Append(oldPriority).Append(" -> ").Append(control.Priority).Append(")");
-				if (Affinity)
-					ls.Append(" Afffinity(").Append(oldAffinity).Append(" -> ").Append(control.Affinity).Append(")");
-				if (Boost)
-					ls.Append(" Boost(").Append(Boost).Append(")");
-				//ls.Append("; Start: ").Append(process.StartTime); // when the process was started // DEBUG
-				Log.Info(ls.ToString());
-				//Log.Info(System.String.Format("{0} (#{1}) = Priority({2}), Mask({3}), Boost({4}) - Start: {5}",
-				//                            proc.Executable, item.Id, Priority, Affinity, Boost, item.StartTime));
-			}
-			else
-				Log.Trace(System.String.Format("'{0}' (pid:{1}) seems to be OK already.", control.Executable, process.Id));
-
-			return (Priority || Affinity || Boost);
 		}
 
 		async void onPathLocatedHandler(PathControlEventArgs e)
@@ -497,41 +422,27 @@ namespace TaskMaster
 			Log.Trace("Done processing everything.");
 		}
 
-		// wish this wasn't necessary
-		public static ProcessPriorityClass IntToPriority(int priority)
-		{
-			switch (priority)
-			{
-				case 0:
-					return ProcessPriorityClass.Idle;
-				case 1:
-					return ProcessPriorityClass.BelowNormal;
-				default:
-					return ProcessPriorityClass.Normal;
-				case 3:
-					return ProcessPriorityClass.AboveNormal;
-				case 4:
-					return ProcessPriorityClass.High;
-			}
-		}
-
-		// wish this wasn't necessary
 		public static int PriorityToInt(ProcessPriorityClass priority)
 		{
 			switch (priority)
 			{
-				case ProcessPriorityClass.Idle:
-					return 0;
-				case ProcessPriorityClass.BelowNormal:
-					return 1;
-				case ProcessPriorityClass.Normal:
-					return 2;
-				case ProcessPriorityClass.AboveNormal:
-					return 3;
-				case ProcessPriorityClass.High:
-					return 4;
-				default:
-					return 2; // normal
+				case ProcessPriorityClass.Idle: return 0;
+				case ProcessPriorityClass.BelowNormal: return 1;
+				default: return 2; //ProcessPriorityClass.Normal, 2
+				case ProcessPriorityClass.AboveNormal: return 3;
+				case ProcessPriorityClass.High: return 4;
+			}
+		}
+
+		public static ProcessPriorityClass IntToPriority(int priority)
+		{
+			switch (priority)
+			{
+				case 0: return ProcessPriorityClass.Idle;
+				case 1: return ProcessPriorityClass.BelowNormal;
+				default: return ProcessPriorityClass.Normal;
+				case 3: return ProcessPriorityClass.AboveNormal;
+				case 4: return ProcessPriorityClass.High;
 			}
 		}
 
@@ -563,7 +474,7 @@ namespace TaskMaster
 					section.Name,
 					section["image"].StringValue,
 					section.Contains("priority") ? IntToPriority(section["priority"].IntValue) : ProcessPriorityClass.Normal,
-					section.Contains("increase") ? section["increase"].BoolValue : true,
+					section.Contains("increase") ? section["increase"].BoolValue : false,
 					section.Contains("affinity") ? section["affinity"].IntValue : 0,
 					section.Contains("boost") ? section["boost"].BoolValue : true
 				);
@@ -674,8 +585,19 @@ namespace TaskMaster
 
 		void NewInstanceHandler(object sender, System.Management.EventArrivedEventArgs e)
 		{
-			System.Management.ManagementBaseObject targetInstance = (System.Management.ManagementBaseObject)e.NewEvent.Properties["TargetInstance"].Value;
-			int pid = Convert.ToInt32(targetInstance.Properties["Handle"].Value);
+			System.Management.ManagementBaseObject targetInstance;
+			int pid;
+			try
+			{
+				targetInstance = (System.Management.ManagementBaseObject)e.NewEvent.Properties["TargetInstance"].Value;
+				pid = Convert.ToInt32(targetInstance.Properties["Handle"].Value);
+			}
+			catch (Exception)
+			{
+				Log.Warn("Failed to extract process ID from WMI event.");
+				throw;
+			}
+
 			Process process;
 			try
 			{
@@ -747,22 +669,35 @@ namespace TaskMaster
 			Log.Trace("Path loading complete.");
 		}
 
+		/*
 		public void WatcherStopped(object sender, System.Management.StoppedEventArgs e)
 		{
 			Log.Warn("Event watcher stopped.");
 		}
+		*/
 
 		void InitProcessWatcher()
 		{
-			watcher = new System.Management.ManagementEventWatcher(@"\\.\root\CIMV2",
-				"SELECT TargetInstance FROM __InstanceCreationEvent WITHIN 1 WHERE TargetInstance ISA 'Win32_Process'");
+			// FIXME: doesn't seem to work when lots of new processes start at the same time.
+			try
+			{
+				watcher = new System.Management.ManagementEventWatcher(
+					@"\\.\root\CIMV2", // @"\\.\root\CIMV2"
+					"SELECT TargetInstance FROM __InstanceCreationEvent WITHIN 1 WHERE TargetInstance ISA 'Win32_Process'"
+				);
+			}
+			catch (System.Management.ManagementException e)
+			{
+				Log.Error("Failed to initialize WMI event watcher: " + e.Message);
+				throw;
+			}
 			if (watcher != null)
 			{
-				watcher.Options.BlockSize = 1;
+				//watcher.Options.BlockSize = 1; // default=1
 				watcher.EventArrived += NewInstanceHandler;
-				watcher.Stopped += WatcherStopped;
+				//watcher.Stopped += WatcherStopped;
 				watcher.Start();
-				Log.Trace("New process watcher initialized.");
+				Log.Debug("New process watcher initialized.");
 			}
 			else
 				Log.Error("Failed to initialize new process watcher.");
