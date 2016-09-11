@@ -46,10 +46,6 @@ namespace TaskMaster
 
 			Log.Trace("Generating tray icon.");
 
-			//MenuItem toggleVisibility = new MenuItem("Open", ShowWindowRequest);
-			//MenuItem configMenuItem = new MenuItem("Configuration", ShowConfigRequest);
-			//MenuItem exitMenuItem = new MenuItem("Exit", ExitRequest);
-			//Tray.ContextMenu = new ContextMenu(new MenuItem[] { toggleVisibility, configMenuItem, exitMenuItem });
 			ContextMenuStrip ms = new ContextMenuStrip();
 			ms.Items.Add("Open", null, ShowWindowRequest);
 			ms.Items.Add("Configuration", null, ShowConfigRequest);
@@ -72,6 +68,7 @@ namespace TaskMaster
 
 		void ShowConfigRequest(object sender, EventArgs e)
 		{
+			System.Diagnostics.Process.Start(TaskMaster.cfgpath);
 			if (TaskMaster.tmw != null)
 				TaskMaster.tmw.ShowConfigRequest(sender, e);
 			else
@@ -80,10 +77,8 @@ namespace TaskMaster
 
 		void ExitRequest(object sender, EventArgs e)
 		{
-			if (TaskMaster.tmw != null)
-				TaskMaster.tmw.ExitRequest(sender, e);
-			else
-				Application.Exit();
+			Application.Exit();
+			Console.WriteLine("END::Tray.ExitRequest()");
 		}
 
 		void RestoreMain(object sender, EventArgs e)
@@ -94,6 +89,7 @@ namespace TaskMaster
 				TaskMaster.tmw = new MainWindow();
 				TaskMaster.HookMainWindow();
 				Tray.MouseClick -= RestoreMain;
+
 			}
 
 			TaskMaster.tmw.Show();
@@ -125,45 +121,36 @@ namespace TaskMaster
 
 		void WindowClosed(object sender, EventArgs e)
 		{
-			Tray.MouseClick -= ShowWindow;
-			Tray.MouseDoubleClick -= UnloseWindow;
+			if (TaskMaster.tmw.LowMemory)
+			{
+				Tray.MouseClick -= ShowWindow;
+				Tray.MouseDoubleClick -= UnloseWindow;
 
-			Tray.MouseClick += RestoreMainRequest;
+				Tray.MouseClick += RestoreMainRequest;
+			}
 		}
 
-		public void RegisterMain(MainWindow window)
+		public void RegisterMain(ref MainWindow window)
 		{
 			Tray.MouseClick += ShowWindow;
 			Tray.MouseDoubleClick += UnloseWindow;
-			TaskMaster.tmw.FormClosing += WindowClosed;
+			window.FormClosing += WindowClosed;
 		}
 
 		System.Diagnostics.Process Explorer;
 		async void ExplorerCrashHandler(object sender, EventArgs e)
 		{
-			await System.Threading.Tasks.Task.Delay(100); // force async
-
 			Log.Warn("Explorer crash detected!");
-			Tray.Visible = true; // TODO: Is this enough?
-			try
-			{
-				Log.Debug("Unregistering");
-				Explorer.Exited -= ExplorerCrashHandler;
-				Log.Debug("Refreshing");
-				Explorer.Refresh(); // do we need this?
-			}
-			catch (Exception)
-			{
-				Log.Error("Failed to unregister explorer crash handler.");
-				throw;
-			}
+			await System.Threading.Tasks.Task.Delay(8000); // force async
 
-			// TODO: register it again
-			//RegisterExplorerExit();
+			if (RegisterExplorerExit())
+			{
+				Tray.Visible = true; // TODO: Is this enough/necessary?
+			}
 			Log.Debug("Explorer crash handling done!");
 		}
 
-		void RegisterExplorerExit()
+		bool RegisterExplorerExit()
 		{
 			Log.Trace("Registering Explorer crash monitor.");
 			// this is for dealing with notify icon disappearing on explorer.exe crash/restart
@@ -171,22 +158,25 @@ namespace TaskMaster
 			System.Diagnostics.Process[] procs = System.Diagnostics.Process.GetProcessesByName(System.IO.Path.GetFileNameWithoutExtension("explorer.exe"));
 			if (procs.Count() > 0)
 			{
-				foreach (System.Diagnostics.Process proc in procs)
-				{
-					Explorer = proc;
-					break;
-				}
+				Explorer = procs[0];
 				Explorer.Exited += ExplorerCrashHandler;
 				Explorer.EnableRaisingEvents = true;
 				Log.Info(System.String.Format("Explorer (#{0}) registered.", Explorer.Id));
+				return true;
 			}
-			else
-				Log.Warn("Explorer not found.");
+
+			Log.Warn("Explorer not found.");
+			return false;
 		}
 
 		~TrayAccess()
 		{
 			//Dispose();
+		}
+
+		public void Tooltip(int timeout, string message, string title, ToolTipIcon icon)
+		{
+			Tray.ShowBalloonTip(timeout, title, message, icon);
 		}
 
 		public void Refresh()

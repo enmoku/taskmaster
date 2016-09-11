@@ -29,7 +29,6 @@ using System.Windows.Forms;
 
 namespace TaskMaster
 {
-
 	public class LogEventArgs : EventArgs
 	{
 		public readonly NLog.LogEventInfo Info;
@@ -45,7 +44,7 @@ namespace TaskMaster
 	[NLog.Targets.Target("MemLog")]
 	public sealed class MemLog : NLog.Targets.TargetWithLayout
 	{
-		private static NLog.Logger Log = NLog.LogManager.GetCurrentClassLogger();
+		static NLog.Logger Log = NLog.LogManager.GetCurrentClassLogger();
 
 		public int Max = 50;
 
@@ -58,7 +57,7 @@ namespace TaskMaster
 			Layout = "${callsite} :: ${message}";
 		}
 
-		int culling = 0;
+		int culling;
 
 		void onNewLogHandler(object sender, LogEventArgs e)
 		{
@@ -86,14 +85,6 @@ namespace TaskMaster
 			string logMessage = this.Layout.Render(logEvent);
 			Logs.Add(logMessage);
 			onNewLogHandler(this, new LogEventArgs(logEvent, logMessage));
-		}
-	}
-
-	public class LogWindow : Form
-	{
-		public LogWindow()
-		{
-			
 		}
 	}
 }

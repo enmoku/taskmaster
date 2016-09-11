@@ -25,6 +25,9 @@
 // THE SOFTWARE.
 using System.Windows.Controls;
 using System.Net;
+using SharpConfig;
+using System.Linq;
+using System.Windows;
 
 namespace TaskMaster
 {
@@ -40,40 +43,11 @@ namespace TaskMaster
 
 		public void ShowConfigRequest(object sender, System.EventArgs e)
 		{
-			Log.Warn("User wanted to config TaskMaster!");
-
-		}
-
-		void Save()
-		{
-			TaskMaster.saveConfig("Core.ini", TaskMaster.cfg);
-		}
-
-		void FastCleanup()
-		{
-			//stop
-			Save();
-		}
-
-		void ExitCleanup()
-		{
-			Log.Trace("Cleaning...");
-			Save();
-
-			Hide();
-
-			//Enabled = false;// mono.exe hangs if disabled, so...
-			Application.Exit();
-		}
-
-		public void ExitRequest(object sender, System.EventArgs e)
-		{
-			ExitCleanup();
+			Log.Warn("No config window available.");
 		}
 
 		void WindowClose(object sender, FormClosingEventArgs e)
 		{
-			Log.Trace("Window close");
 			switch (e.CloseReason)
 			{
 				case CloseReason.UserClosing:
@@ -95,11 +69,10 @@ namespace TaskMaster
 					goto Cleanup;
 				case CloseReason.ApplicationExitCall:
 					Log.Info("Exit: User asked to close.");
-					goto Cleanup;
+					break;
 				default:
 					Log.Warn(System.String.Format("Exit: Unidentified close reason: {0}", e.CloseReason));
 				Cleanup:
-					ExitCleanup();
 					break;
 			}
 		}
@@ -117,20 +90,22 @@ namespace TaskMaster
 		public void ShowWindowRequest(object sender, EventArgs e)
 		{
 			Show(); // FIXME: Gets triggered when menuitem is clicked
+			AutoSize = true;
 		}
 
 		#region Microphone control code
-		MicMonitor micMonitor;
 		public void setMicMonitor(MicMonitor micmonitor)
 		{
 			Log.Trace("Hooking microphone monitor.");
-			micMonitor = micmonitor;
-			micName.Text = micMonitor.DeviceName;
-			corCountLabel.Text = micMonitor.getCorrections().ToString();
-			micMonitor.VolumeChanged += volumeChangeDetected;
-			micVol.Value = System.Convert.ToInt32(micMonitor.Volume);
-			MicEnum();
-		   // TODO: Hook device changes
+			micName.Text = micmonitor.DeviceName;
+			corCountLabel.Text = micmonitor.getCorrections().ToString();
+			micmonitor.VolumeChanged += volumeChangeDetected;
+			micVol.Value = System.Convert.ToInt32(micmonitor.Volume);
+
+			foreach (KeyValuePair<string, string> dev in micmonitor.enumerate())
+				micList.Items.Add(new ListViewItem(new string[] { dev.Value, dev.Key }));
+			
+			// TODO: Hook device changes
 		}
 
 		public void ProcAdjust(object sender, ProcessEventArgs e)
@@ -144,13 +119,6 @@ namespace TaskMaster
 			}
 			else
 				Log.Error(System.String.Format("{0} not found in app list.", e.Control.Executable));
-		}
-
-		GameMonitor gamemon;
-		public void setGameMonitor(GameMonitor gamemonitor)
-		{
-			gamemon = gamemonitor;
-			gamemon.ActiveChanged += OnActiveWindowChanged;
 		}
 
 		public void OnActiveWindowChanged(object sender, WindowChangedArgs e)
@@ -186,30 +154,32 @@ namespace TaskMaster
 				pathList.Items.Add(ni);
 			}
 
-			procCntrl.onPathLocated += PathLocatedEvent;
-			procCntrl.onPathAdjust += PathAdjustEvent;
+			PathControl.onLocate += PathLocatedEvent;
+			PathControl.onTouch += PathAdjustEvent;
 		}
 
 		public void PathAdjustEvent(object sender, PathControlEventArgs e)
 		{
 			ListViewItem ni;
-			if (appw.TryGetValue(e.Control, out ni))
-				ni.SubItems[2].Text = e.Control.Adjusts.ToString();
+			PathControl pc = (PathControl)sender;
+			if (appw.TryGetValue(pc, out ni))
+				ni.SubItems[2].Text = pc.Adjusts.ToString();
 		}
 
 		public void PathLocatedEvent(object sender, PathControlEventArgs e)
 		{
-			Log.Trace(e.Control.FriendlyName + " // " + e.Control.Path);
-			ListViewItem ni = new ListViewItem(new string[] { e.Control.FriendlyName, e.Control.Path, "0" });
+			PathControl pc = (PathControl)sender;
+			Log.Trace(pc.FriendlyName + " // " + pc.Path);
+			ListViewItem ni = new ListViewItem(new string[] { pc.FriendlyName, pc.Path, "0" });
 			try
 			{
-				appw.Add(e.Control, ni);
+				appw.Add(pc, ni);
 				pathList.Items.Add(ni);
 			}
 			catch (Exception)
 			{
 				// FIXME: This happens mostly because Application.Run() is triggered after we do ProcessEverything() and the events are processed only after
-				Log.Warn("[Expected] Superfluous path watch update: " + e.Control.FriendlyName);
+				Log.Warn("[Expected] Superfluous path watch update: " + pc.FriendlyName);
 			}
 		}
 
@@ -233,16 +203,9 @@ namespace TaskMaster
 			micVol.Value = System.Convert.ToInt32(e.New);
 			if(e.Corrected)
 			{
-				corCountLabel.Text = micMonitor.getCorrections().ToString();
+				corCountLabel.Text = e.Corrections.ToString();
 				//corCountLabel.Refresh();
 			}
-		}
-
-		void MicEnum()
-		{
-			// hopefully this creates temp variable instead of repeatedly calling the func...
-			foreach (KeyValuePair<string, string> dev in micMonitor.enumerate())
-				micList.Items.Add(new ListViewItem(new string[] { dev.Value, dev.Key }));
 		}
 		#endregion // Microphone control code
 
@@ -251,13 +214,100 @@ namespace TaskMaster
 		#endregion
 
 		#region Internet handling functionality
+
 		bool netAvailable;
 		bool inetAvailable;
 		Label netstatuslabel;
 		Label inetstatuslabel;
 		void NetworkChanged(object sender, EventArgs e)
 		{
+			bool oldNetAvailable = netAvailable;
 			netAvailable = NetworkInterface.GetIsNetworkAvailable();
+
+			// do stuff only if this is different from last time
+			if (oldNetAvailable != netAvailable)
+			{
+				Log.Debug("Network status changed: " + (netAvailable?"Connected":"Disconnected"));
+				netstatuslabel.Text = netAvailable.ToString();
+				netstatuslabel.BackColor = netAvailable ? System.Drawing.Color.LightGoldenrodYellow : System.Drawing.Color.Red;
+				CheckInet();
+			}
+		}
+
+		int uptimeSamples = 0;
+		double uptimeTotal = 0;
+		List<double> upTime = new List<double>();
+		System.DateTime lastUptimeStart;
+
+		void ReportCurrentUptime()
+		{
+			Log.Info(System.String.Format("Current internet uptime: {0:1} minutes", (lastUptimeStart - System.DateTime.Now).TotalMinutes));
+		}
+
+		void ReportUptime()
+		{
+			if (uptimeSamples > 3)
+			{
+				double uptimeLast3 = upTime.GetRange(upTime.Count - 3, 3).Sum();
+				Log.Info(System.String.Format("Average uptime: {0:1} minutes ({1:1 minutes} for last 3 samples).", (uptimeTotal / uptimeSamples), (uptimeLast3 / 3)));
+			}
+			else
+				Log.Info(System.String.Format("Average uptime: {0:1} minutes.", (uptimeTotal / uptimeSamples)));
+
+			ReportCurrentUptime();
+		}
+
+		bool lastOnlineState = false;
+		static int upstateTesting = 0;
+		void RecordSample(bool online_state, bool address_changed)
+		{
+			if (online_state != lastOnlineState)
+			{
+				lastOnlineState = online_state;
+
+				if (online_state)
+				{
+					lastUptimeStart = System.DateTime.Now;
+
+					if (System.Threading.Interlocked.CompareExchange(ref upstateTesting, 1, 0) == 1)
+					{
+						System.Threading.Tasks.Task.Run(async () =>
+						{
+							Console.WriteLine("Debug: Queued internet uptime report");
+							await System.Threading.Tasks.Task.Delay(new TimeSpan(0, 5, 0)); // wait 5 minutes
+
+							ReportCurrentUptime();
+							upstateTesting = 0;
+						});
+					}
+				}
+				else // went offline
+				{
+					double newUptime = (System.DateTime.Now - lastUptimeStart).TotalMinutes;
+					upTime.Add(newUptime);
+					uptimeTotal += newUptime;
+					uptimeSamples += 1;
+					if (uptimeSamples > 20)
+					{
+						uptimeTotal -= upTime[0];
+						uptimeSamples -= 1;
+						upTime.RemoveAt(0);
+					}
+
+					ReportUptime();
+				}
+			}
+			else if (address_changed)
+			{
+				// same state but address change was detected
+				Console.WriteLine("Debug: Address changed but internet connectivity unaffected.");
+				ReportCurrentUptime();
+			}
+		}
+
+		bool CheckInet(bool address_changed=false)
+		{
+			bool oldInetAvailable = inetAvailable;
 			if (netAvailable)
 			{
 				try
@@ -272,13 +322,27 @@ namespace TaskMaster
 			}
 			else
 				inetAvailable = false;
-			
-			inetstatuslabel.Text = inetAvailable.ToString();
-			netstatuslabel.Text = netAvailable.ToString();
-			netstatuslabel.BackColor = netAvailable ? System.Drawing.Color.LightGoldenrodYellow : System.Drawing.Color.Red;
-			inetstatuslabel.BackColor = inetAvailable ? System.Drawing.Color.LightGoldenrodYellow : System.Drawing.Color.Red;
 
-			Log.Info("Network status: " + (netAvailable?"Up":"Down") + ", Inet status: " + (inetAvailable?"Connected":"Disconnected"));
+			RecordSample(inetAvailable, address_changed);
+
+			if (oldInetAvailable != inetAvailable)
+			{
+				inetstatuslabel.Text = inetAvailable.ToString();
+				inetstatuslabel.BackColor = inetAvailable ? System.Drawing.Color.LightGoldenrodYellow : System.Drawing.Color.Red;
+
+				if (Tray != null)
+					Tray.Tooltip(2000, "Internet " + (inetAvailable ? "available" : "unavailable"), "TaskMaster", inetAvailable ? ToolTipIcon.Info : ToolTipIcon.Warning);
+
+				Log.Info("Network status: " + (netAvailable ? "Up" : "Down") + ", Inet status: " + (inetAvailable ? "Connected" : "Disconnected"));
+			}
+
+			return inetAvailable;
+		}
+
+		TrayAccess Tray;
+		public void setTray(TrayAccess tray)
+		{
+			Tray = tray;
 		}
 
 		string netSpeed(long speed)
@@ -292,30 +356,27 @@ namespace TaskMaster
 			return speed + " b/s";
 		}
 
-		//System.Net.IPAddress[] inetAddress;
+		System.Net.IPAddress IPv4Address;
+		System.Net.IPAddress IPv6Address;
 
 		ListView ifaceList;
 		void NetEnum()
 		{
 			ifaceList.Items.Clear();
-			//List<IPAddress> addrs = new List<IPAddress>();
 			NetworkInterface[] adapters = NetworkInterface.GetAllNetworkInterfaces();
 			foreach (NetworkInterface n in adapters)
 			{
 				if (n.NetworkInterfaceType == NetworkInterfaceType.Loopback || n.NetworkInterfaceType == NetworkInterfaceType.Tunnel)
 					continue;
 
-				IPAddress IPv4_addr=null, IPv6_addr=null;
-
 				foreach (UnicastIPAddressInformation ip in n.GetIPProperties().UnicastAddresses)
 				{
 					if (ip.Address.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork || ip.Address.AddressFamily == System.Net.Sockets.AddressFamily.InterNetworkV6)
 					{
-						//addrs.Add(ip.Address);
 						if (ip.Address.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork)
-							IPv4_addr = ip.Address;
+							IPv4Address = ip.Address;
 						else if (ip.Address.AddressFamily == System.Net.Sockets.AddressFamily.InterNetworkV6)
-							IPv6_addr = ip.Address;
+							IPv6Address = ip.Address;
 					}
 				}
 				ifaceList.Items.Add(new ListViewItem(new string[] {
@@ -323,18 +384,47 @@ namespace TaskMaster
 					n.NetworkInterfaceType.ToString(),
 					n.OperationalStatus.ToString(),
 					netSpeed(n.Speed),
-					IPv4_addr!=null?IPv4_addr.ToString():"n/a",
-					IPv6_addr!=null?IPv6_addr.ToString():"n/a"
+					IPv4Address!=null?IPv4Address.ToString():"n/a",
+					IPv6Address!=null?IPv6Address.ToString():"n/a"
 				}));
 			}
-			//inetAddress = addrs.ToArray();
 		}
 
 		void NetAddrChanged(object sender, System.EventArgs e)
 		{
+			IPAddress oldV6Address = IPv6Address;
+			IPAddress oldV4Address = IPv4Address;
+
 			NetEnum();
-			NetworkChanged(null,null);
-			//Log.Info("Internet address changed: " + );
+			CheckInet(address_changed:true);
+
+			if (inetAvailable)
+			{
+				Console.WriteLine("DEBUG: AddrChange: " + oldV4Address + " -> " + IPv4Address);
+				Console.WriteLine("DEBUG: AddrChange: " + oldV6Address + " -> " + IPv6Address);
+				bool ipv4changed = !oldV4Address.Equals(IPv4Address);
+				if (ipv4changed)
+				{
+					System.Text.StringBuilder outstr4 = new System.Text.StringBuilder();
+					outstr4.Append("IPv4 address changed: ");
+					outstr4.Append(oldV4Address).Append(" -> ").Append(IPv4Address);
+					Log.Debug(outstr4.ToString());
+					Tray.Tooltip(2000, outstr4.ToString(), "TaskMaster", ToolTipIcon.Info);
+				}
+				bool ipv6changed = !oldV6Address.Equals(IPv6Address);
+				if (ipv6changed)
+				{
+					System.Text.StringBuilder outstr6 = new System.Text.StringBuilder();
+					outstr6.Append("IPv6 address changed: ");
+					outstr6.Append(oldV6Address).Append(" -> ").Append(IPv6Address);
+					Log.Debug(outstr6.ToString());
+				}
+
+				if (!ipv4changed && !ipv6changed)
+					Log.Warn("Unstable internet connectivity detected.");
+			}
+
+			//NetworkChanged(null,null);
 		}
 
 		void NetworkSetup()
@@ -344,6 +434,7 @@ namespace TaskMaster
 			netstatuslabel.Text = netAvailable.ToString();
 
 			NetEnum();
+
 			NetworkChange.NetworkAvailabilityChanged += NetworkChanged;
 			NetworkChange.NetworkAddressChanged += NetAddrChanged;
 		}
@@ -448,12 +539,19 @@ namespace TaskMaster
 		CheckBox logcheck_debug;
 		bool log_include_debug = true;
 
+		void SetWindowSize()
+		{
+			Size = new System.Drawing.Size(720, 720); // width, height
+			AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowOnly;
+			AutoSize = true;
+		}
+
 		void BuildUI()
 		{
+			SetWindowSize();
+
 			Text = Application.ProductName;
-			AutoSize = true;
 			Padding = new Padding(12);
-			Size = new System.Drawing.Size(720, 720); // width, height
 			//margin
 
 			TableLayoutPanel lrows = new TableLayoutPanel();
@@ -730,43 +828,33 @@ namespace TaskMaster
 			*/
 		}
 
-		MemLog memlog;
 		ListView loglist;
 		public void setLog(MemLog log)
 		{
-			memlog = log;
 			Log.Trace("Filling GUI log.");
-			foreach (string msg in memlog.Logs.ToArray())
+			foreach (string msg in log.Logs.ToArray())
 				loglist.Items.Add(msg);
-			memlog.OnNewLog += onNewLog;
 		}
 
 		// DO NOT LOG INSIDE THIS FOR FUCKS SAKE
 		// it creates an infinite log loop
 		int MaxLogSize = 20;
-		void onNewLog(object sender, LogEventArgs e)
+		public void onNewLog(object sender, LogEventArgs e)
 		{
 			try
 			{
-				while (loglist.Items.Count > MaxLogSize)
+				int excessitems = loglist.Items.Count - MaxLogSize;
+				while (excessitems-- > 0)
 					loglist.Items.RemoveAt(0);
 			}
-			catch (System.NullReferenceException)
+			catch (System.NullReferenceException) // this shouldn't happen
 			{
 				Log.Warn("Couldn't remove old log entries from GUI."); // POSSIBLY REALLY BAD IDEA
 				System.Console.WriteLine("ERROR: Null reference");
 			}
 
-			if (!log_include_debug && e.Info.Level == NLog.LogLevel.Debug)
-			{
-				Console.WriteLine("UI log skip: " + e.Message);
+			if ((!log_include_debug && e.Info.Level == NLog.LogLevel.Debug) || (!log_include_warn && e.Info.Level == NLog.LogLevel.Warn))
 				return;
-			}
-			if (!log_include_warn && e.Info.Level == NLog.LogLevel.Warn)
-			{
-				Console.WriteLine("UI log skip: " + e.Message);
-				return;
-			}
 
 			loglist.Items.Add(e.Message).EnsureVisible();
 		}
@@ -779,6 +867,7 @@ namespace TaskMaster
 		public MainWindow()
 		{
 			//InitializeComponent(); // TODO: WPF
+			lastUptimeStart = System.DateTime.Now;
 
 			if (!onetime)
 			{

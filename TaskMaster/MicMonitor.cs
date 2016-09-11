@@ -37,15 +37,17 @@ namespace TaskMaster
 		public double Old { get; set; }
 		public double New { get; set; }
 		public bool Corrected { get; set; }
+		public int Corrections { get; set; }
 
 		public VolumeChangedEventArgs()
 		{
 		}
 
-		public VolumeChangedEventArgs(double oldvolume=double.NaN, double newvolume=double.NaN, bool corrected=false)
+		public VolumeChangedEventArgs(double oldvolume=double.NaN, double newvolume=double.NaN, int corrections = 0, bool corrected=false)
 		{
 			Old = oldvolume;
 			New = newvolume;
+			Corrections = corrections;
 			Corrected = corrected;
 		}
 	}
@@ -75,7 +77,7 @@ namespace TaskMaster
 		}
 
 		SharpConfig.Configuration stats;
-		const string statfile = "MicMon.statistics.ini";
+		const string statfile = "MicMon.Statistics.ini";
 		// ctor, constructor
 		public MicMonitor()
 		{
@@ -200,7 +202,7 @@ namespace TaskMaster
 		{
 			double oldVol = Volume;
 			Volume = data.MasterVolume * 100;
-			OnVolumeChanged(new VolumeChangedEventArgs(oldVol, Volume));
+			OnVolumeChanged(new VolumeChangedEventArgs(oldVol, Volume, corrections));
 
 			// This is a light HYSTERISIS limiter in case someone is sliding a volume bar around,
 			// we act on it only once every [AdjustDelay] ms.
@@ -220,7 +222,7 @@ namespace TaskMaster
 						setVolume(Target);
 						corrections += 1;
 						System.Threading.Interlocked.Exchange(ref correcting, 0);
-						OnVolumeChanged(new VolumeChangedEventArgs(oldVol, Volume, true));
+						OnVolumeChanged(new VolumeChangedEventArgs(oldVol, Volume, corrections, true));
 					});
 				}
 			}
@@ -237,10 +239,10 @@ namespace TaskMaster
 					Volume = volume;
 				}
 				else
-					Log.Debug("Volume already at target.");
+					Log.Warn("Volume already at target.");
 			}
 			else
-				Log.Error("Volume control not set up.");
+				Log.Error("Volume control not set up."); // this should never happen, checking for it is a little superfluous as such
 		}
 	}
 }

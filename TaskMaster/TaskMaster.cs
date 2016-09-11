@@ -65,6 +65,7 @@ namespace TaskMaster
 
 		public static void saveConfig(string configfile, SharpConfig.Configuration config)
 		{
+			//Console.WriteLine("Saving: " + configfile);
 			System.IO.Directory.CreateDirectory(cfgpath);
 			string targetfile = System.IO.Path.Combine(cfgpath, configfile);
 			if (System.IO.File.Exists(targetfile))
@@ -75,13 +76,13 @@ namespace TaskMaster
 		public static SharpConfig.Configuration loadConfig(string configfile)
 		{
 			string path = System.IO.Path.Combine(cfgpath, configfile);
-			Log.Trace("Opening: "+path);
+			//Log.Trace("Opening: "+path);
 			SharpConfig.Configuration retcfg;
 			if (System.IO.File.Exists(path))
 				retcfg = SharpConfig.Configuration.LoadFromFile(path);
 		    else
 			{
-				Log.Warn("Not found: "+path);
+				Log.Warn("Not found: " + path);
 				retcfg = new SharpConfig.Configuration();
 				System.IO.Directory.CreateDirectory(cfgpath);
 			}
@@ -92,12 +93,6 @@ namespace TaskMaster
 		public static MainWindow tmw;
 		public static ProcessManager pmn;
 		public static TrayAccess tri;
-
-		[System.Diagnostics.Conditional("DEBUG")]
-		static void DebugStart()
-		{
-			tmw.Show();
-		}
 
 		public static void MainWindowClose(object sender, EventArgs e)
 		{
@@ -111,11 +106,21 @@ namespace TaskMaster
 
 		public static void HookMainWindow()
 		{
-			tri.RegisterMain(tmw);
+			tri.RegisterMain(ref tmw);
+
 			tmw.setMicMonitor(mon);
 			tmw.setProcControl(pmn);
 			tmw.setLog(memlog);
+			tmw.setTray(tri);
+			memlog.OnNewLog += tmw.onNewLog;
+
 			tmw.FormClosing += MainWindowClose;
+
+			/*
+			GameMonitor gmmon = new GameMonitor();
+			pmn.onAdjust += gmmon.SetupEventHookEvent;
+			gmmon.ActiveChanged += tmw.OnActiveWindowChanged;
+			*/
 		}
 		static void Setup()
 		{
@@ -124,13 +129,9 @@ namespace TaskMaster
 			pmn = new ProcessManager();
 			tmw = new MainWindow();
 			HookMainWindow();
-			DebugStart();
-
-			/*
-			GameMonitor gmmon = new GameMonitor();
-			tmw.setGameMonitor(gmmon);
-			pmn.onAdjust += gmmon.SetupEventHookEvent;
-			*/
+			#if DEBUG
+			tmw.Show();
+			#endif
 
 			// Self-optimization
 			var self = System.Diagnostics.Process.GetCurrentProcess();
@@ -177,7 +178,7 @@ namespace TaskMaster
 		}
 
 		static SharpConfig.Configuration corestats;
-		static string corestatfile = "Core.statistics.ini";
+		static string corestatfile = "Core.Statistics.ini";
 		static void monitorCleanShutdown()
 		{
 			if (corestats == null)
