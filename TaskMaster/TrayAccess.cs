@@ -39,10 +39,12 @@ namespace TaskMaster
 
 		public TrayAccess()
 		{
-			Tray = new NotifyIcon();
-			Tray.Text = Application.ProductName + "!"; // Tooltip so people know WTF I am.
+			Tray = new NotifyIcon
+			{
+				Text = Application.ProductName + "!", // Tooltip so people know WTF I am.
+				Icon = System.Drawing.Icon.ExtractAssociatedIcon(System.Reflection.Assembly.GetExecutingAssembly().Location) // is this really the best way?
+			};
 			Tray.BalloonTipText = Tray.Text;
-			Tray.Icon = System.Drawing.Icon.ExtractAssociatedIcon(System.Reflection.Assembly.GetExecutingAssembly().Location); // is this really the best way?
 
 			Log.Trace("Generating tray icon.");
 
@@ -54,8 +56,6 @@ namespace TaskMaster
 
 			RegisterExplorerExit();
 			Tray.Visible = true;
-
-
 		}
 
 		void ShowWindowRequest(object sender, EventArgs e)
@@ -89,7 +89,6 @@ namespace TaskMaster
 				TaskMaster.tmw = new MainWindow();
 				TaskMaster.HookMainWindow();
 				Tray.MouseClick -= RestoreMain;
-
 			}
 
 			TaskMaster.tmw.Show();
@@ -169,9 +168,57 @@ namespace TaskMaster
 			return false;
 		}
 
+		/// <summary>
+		/// Hides tray icon.
+		/// Should be called before the app exits to make sure there's no lingering icon.
+		/// </summary>
+		public void Close()
+		{
+			if (Tray != null)
+			{
+				Tray.Visible = false;
+				Tray.Dispose();
+				Tray = null;
+			}
+		}
+
 		~TrayAccess()
 		{
-			//Dispose();
+			Log.Trace("Destructing");
+			#if DEBUG
+			if (!disposed)
+				Log.Warn("Not disposed");
+			#endif
+		}
+
+		bool disposed = false;
+		public void Dispose()
+		{
+			Dispose(true);
+			//GC.SuppressFinalize(this);
+		}
+
+		protected virtual void Dispose(bool disposing)
+		{
+			if (disposed)
+				return;
+
+			if (disposing)
+			{
+				Close();
+				if (Tray != null)
+				{
+					Tray.Dispose();
+					Tray = null;
+				}
+
+				// Free any other managed objects here.
+				//
+			}
+
+			// Free any unmanaged objects here.
+			//
+			disposed = true;
 		}
 
 		public void Tooltip(int timeout, string message, string title, ToolTipIcon icon)
@@ -182,25 +229,6 @@ namespace TaskMaster
 		public void Refresh()
 		{
 			Tray.Visible = true;
-		}
-
-		public void Dispose()
-		{
-			Dispose(true);
-			System.GC.SuppressFinalize(this);
-		}
-
-		protected virtual void Dispose(bool disposing)
-		{
-			if (disposing)
-			{
-				if (Tray != null)
-				{
-					Tray.Visible = false;
-					Tray.Dispose();
-					Tray = null;
-				}
-			}
 		}
 	}
 }

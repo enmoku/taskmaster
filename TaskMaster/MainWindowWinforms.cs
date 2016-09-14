@@ -104,13 +104,14 @@ namespace TaskMaster
 
 			foreach (KeyValuePair<string, string> dev in micmonitor.enumerate())
 				micList.Items.Add(new ListViewItem(new string[] { dev.Value, dev.Key }));
-			
+
 			// TODO: Hook device changes
 		}
 
 		public void ProcAdjust(object sender, ProcessEventArgs e)
 		{
-			Log.Trace("Process adjust received.");
+			if (TaskMaster.Verbose)
+				Log.Trace("Process adjust received.");
 			ListViewItem item;
 			if (appc.TryGetValue(e.Control.Executable, out item))
 			{
@@ -123,7 +124,7 @@ namespace TaskMaster
 
 		public void OnActiveWindowChanged(object sender, WindowChangedArgs e)
 		{
-			activeLabel.Text = "Active window: " + e.title;
+			//activeLabel.Text = "Active window: " + e.title;
 		}
 
 		ProcessManager procCntrl;
@@ -141,7 +142,8 @@ namespace TaskMaster
 						(item.Affinity.ToInt32() == ProcessManager.allCPUsMask ? "OS controlled" : Convert.ToString(item.Affinity.ToInt32(), 2)),
 					item.Boost.ToString(),
 					item.Adjusts.ToString(),
-					    (item.lastSeen != System.DateTime.MinValue ? item.lastSeen.ToString() : "Never")
+						(item.lastSeen != System.DateTime.MinValue ? item.lastSeen.ToString() : "Never"),
+						(item.Rescan>0?item.Rescan.ToString():"n/a")
 				});
 				appc.Add(item.Executable, litem);
 				appList.Items.Add(litem);
@@ -201,7 +203,7 @@ namespace TaskMaster
 		void volumeChangeDetected(object sender, VolumeChangedEventArgs e)
 		{
 			micVol.Value = System.Convert.ToInt32(e.New);
-			if(e.Corrected)
+			if (e.Corrected)
 			{
 				corCountLabel.Text = e.Corrections.ToString();
 				//corCountLabel.Refresh();
@@ -210,7 +212,7 @@ namespace TaskMaster
 		#endregion // Microphone control code
 
 		#region Game Monitor
-		Label activeLabel;
+		//Label activeLabel;
 		#endregion
 
 		#region Internet handling functionality
@@ -227,7 +229,7 @@ namespace TaskMaster
 			// do stuff only if this is different from last time
 			if (oldNetAvailable != netAvailable)
 			{
-				Log.Debug("Network status changed: " + (netAvailable?"Connected":"Disconnected"));
+				Log.Debug("Network status changed: " + (netAvailable ? "Connected" : "Disconnected"));
 				netstatuslabel.Text = netAvailable.ToString();
 				netstatuslabel.BackColor = netAvailable ? System.Drawing.Color.LightGoldenrodYellow : System.Drawing.Color.Red;
 				CheckInet();
@@ -241,7 +243,7 @@ namespace TaskMaster
 
 		void ReportCurrentUptime()
 		{
-			Log.Info(System.String.Format("Current internet uptime: {0:1} minutes", (lastUptimeStart - System.DateTime.Now).TotalMinutes));
+			Log.Info(System.String.Format("Current internet uptime: {0:1} minutes", (System.DateTime.Now - lastUptimeStart).TotalMinutes));
 		}
 
 		void ReportUptime()
@@ -305,7 +307,7 @@ namespace TaskMaster
 			}
 		}
 
-		bool CheckInet(bool address_changed=false)
+		bool CheckInet(bool address_changed = false)
 		{
 			bool oldInetAvailable = inetAvailable;
 			if (netAvailable)
@@ -339,11 +341,8 @@ namespace TaskMaster
 			return inetAvailable;
 		}
 
-		TrayAccess Tray;
-		public void setTray(TrayAccess tray)
-		{
-			Tray = tray;
-		}
+		TrayAccess tray;
+		public TrayAccess Tray { private get { return tray; } set { tray = value; } }
 
 		string netSpeed(long speed)
 		{
@@ -384,8 +383,8 @@ namespace TaskMaster
 					n.NetworkInterfaceType.ToString(),
 					n.OperationalStatus.ToString(),
 					netSpeed(n.Speed),
-					IPv4Address!=null?IPv4Address.ToString():"n/a",
-					IPv6Address!=null?IPv6Address.ToString():"n/a"
+					(IPv4Address!=null?IPv4Address.ToString():"n/a"),
+					(IPv6Address!=null?IPv6Address.ToString():"n/a")
 				}));
 			}
 		}
@@ -554,89 +553,110 @@ namespace TaskMaster
 			Padding = new Padding(12);
 			//margin
 
-			TableLayoutPanel lrows = new TableLayoutPanel();
-			lrows.Parent = this;
-			lrows.ColumnCount = 1;
-			//lrows.RowCount = 10;
-			lrows.Dock = DockStyle.Fill;
-
+			TableLayoutPanel lrows = new TableLayoutPanel
+			{
+				Parent = this,
+				ColumnCount = 1,
+				//lrows.RowCount = 10;
+				Dock = DockStyle.Fill
+			};
 			#region Main Window Row 1, microphone device
-			Label micDevLbl = new Label();
-			micDevLbl.Text = "Default communications device:";
-			micDevLbl.Dock = DockStyle.Left;
-			micDevLbl.AutoSize = true;
-			TableLayoutPanel micNameRow = new TableLayoutPanel();
-			micNameRow.Dock = DockStyle.Top;
-			micNameRow.RowCount = 1;
-			micNameRow.ColumnCount = 2;
-			micNameRow.BackColor = System.Drawing.Color.BlanchedAlmond; // DEBUG
+			var micDevLbl = new Label
+			{
+				Text = "Default communications device:",
+				Dock = DockStyle.Left,
+				AutoSize = true
+			};
+			micName = new Label
+			{
+				Dock = DockStyle.Left,
+				AutoSize = true
+			};
+			var micNameRow = new TableLayoutPanel
+			{
+				Dock = DockStyle.Top,
+				RowCount = 1,
+				ColumnCount = 2,
+				BackColor = System.Drawing.Color.BlanchedAlmond, // DEBUG
+				AutoSize = true
+			};
 			micNameRow.Controls.Add(micDevLbl);
-			micName = new Label();
-			micName.Dock = DockStyle.Left;
-			micName.AutoSize = true;
 			micNameRow.Controls.Add(micName);
-			micNameRow.Dock = DockStyle.Fill;
-			micNameRow.AutoSize = true;
 			lrows.Controls.Add(micNameRow);
 			#endregion
 
 			// uhh???
 			// Main Window Row 2, volume control
-			TableLayoutPanel miccntrl = new TableLayoutPanel();
-			miccntrl.ColumnCount = 5;
-			miccntrl.RowCount = 1;
-			miccntrl.BackColor = System.Drawing.Color.Azure; // DEBUG
-			miccntrl.Dock = DockStyle.Top;
-			miccntrl.AutoSize = true;
-			//miccntrl.Location = new System.Drawing.Point(0, 0);
+			TableLayoutPanel miccntrl = new TableLayoutPanel
+			{
+				ColumnCount = 5,
+				RowCount = 1,
+				BackColor = System.Drawing.Color.Azure, // DEBUG
+				Dock = DockStyle.Top,
+				AutoSize = true,
+				//miccntrl.Location = new System.Drawing.Point(0, 0);
+			};
 			miccntrl.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
 			miccntrl.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 			lrows.Controls.Add(miccntrl);
 
-			Label micVolLabel = new Label();
-			micVolLabel.Text = "Mic volume";
-			micVolLabel.Dock = DockStyle.Left;
-			micVolLabel.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
+			Label micVolLabel = new Label
+			{
+				Text = "Mic volume",
+				Dock = DockStyle.Left,
+				TextAlign = System.Drawing.ContentAlignment.MiddleLeft
+			};
 
-			Label micVolLabel2 = new Label();
-			micVolLabel2.Text = "%";
-			micVolLabel2.Dock = DockStyle.Left;
-			micVolLabel2.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
+			Label micVolLabel2 = new Label
+			{
+				Text = "%",
+				Dock = DockStyle.Left,
+				TextAlign = System.Drawing.ContentAlignment.MiddleLeft
+			};
 
-			micVol = new NumericUpDown();
-			micVol.Maximum = 100;
-			micVol.Minimum = 0;
-			micVol.Width = 60;
-			micVol.ReadOnly = true;
-			micVol.Enabled = false;
+			micVol = new NumericUpDown
+			{
+				Maximum = 100,
+				Minimum = 0,
+				Width = 60,
+				ReadOnly = true,
+				Enabled = false,
+				Dock = DockStyle.Left
+			};
 			micVol.ValueChanged += UserMicVol;
-			micVol.Dock = DockStyle.Left;
 
 			miccntrl.Controls.Add(micVolLabel);
 			miccntrl.Controls.Add(micVol);
 			miccntrl.Controls.Add(micVolLabel2);
 
-			Label corLbll = new Label();
-			corLbll.Text = "Correction count:";
-			corLbll.Dock = DockStyle.Fill;
-			corLbll.AutoSize = true;
-			corLbll.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
-			corCountLabel = new Label();
-			corCountLabel.Dock = DockStyle.Left;
-			corCountLabel.Text = "0";
-			corCountLabel.AutoSize = true;
-			corCountLabel.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
+			Label corLbll = new Label
+			{
+				Text = "Correction count:",
+				Dock = DockStyle.Fill,
+				AutoSize = true,
+				TextAlign = System.Drawing.ContentAlignment.MiddleLeft
+			};
+
+			corCountLabel = new Label
+			{
+				Dock = DockStyle.Left,
+				Text = "0",
+				AutoSize = true,
+				TextAlign = System.Drawing.ContentAlignment.MiddleLeft
+			};
 			miccntrl.Controls.Add(corLbll);
 			miccntrl.Controls.Add(corCountLabel);
 			// End: Volume control
 
 			// Main Window row 3, microphone device enumeration
-			micList = new ListView();
-			micList.Dock = DockStyle.Top;
-			micList.Width = lrows.Width - 3; // FIXME: 3 for the bevel, but how to do this "right"?
-			micList.Height = 60;
-			micList.View = View.Details;
-			micList.FullRowSelect = true;
+			micList = new ListView
+			{
+				Dock = DockStyle.Top,
+				Width = lrows.Width - 3, // FIXME: 3 for the bevel, but how to do this "right"?
+				Height = 60,
+				View = View.Details,
+				FullRowSelect = true
+			};
 			micList.Columns.Add("Name", 200);
 			micList.Columns.Add("GUID", 220);
 
@@ -644,34 +664,13 @@ namespace TaskMaster
 			// End: Microphone enumeration
 
 			// Main Window row 4-5, internet status
-			Label netLabel = new Label();
-			netLabel.Text = "Network status:";
-			netLabel.Dock = DockStyle.Left;
-			Label inetLabel = new Label();
-			inetLabel.Text = "Internet status:";
-			inetLabel.Dock = DockStyle.Left;
+			Label netLabel = new Label { Text = "Network status:", Dock = DockStyle.Left, AutoSize = true };
+			Label inetLabel = new Label { Text = "Internet status:", Dock = DockStyle.Left, AutoSize = true };
 
-			netstatuslabel = new Label();
-			netstatuslabel.Dock = DockStyle.Top;
-			inetstatuslabel = new Label();
-			inetstatuslabel.Dock = DockStyle.Top;
+			netstatuslabel = new Label { Dock = DockStyle.Top, Text = "Uninitialized", AutoSize = true, BackColor = System.Drawing.Color.LightGoldenrodYellow };
+			inetstatuslabel = new Label { Dock = DockStyle.Top, Text = "Uninitialized", AutoSize = true, BackColor = System.Drawing.Color.LightGoldenrodYellow };
 
-			netstatuslabel.Text = "Uninitialized";
-			inetstatuslabel.Text = "Uninitialized";
-
-			netstatuslabel.AutoSize = true;
-			inetstatuslabel.AutoSize = true;
-			netLabel.AutoSize = true;
-			inetLabel.AutoSize = true;
-
-			netstatuslabel.BackColor = System.Drawing.Color.LightGoldenrodYellow;
-			inetstatuslabel.BackColor = System.Drawing.Color.LightGoldenrodYellow;
-
-			TableLayoutPanel netlayout = new TableLayoutPanel();
-			netlayout.ColumnCount = 4;
-			netlayout.RowCount = 1;
-			netlayout.Dock = DockStyle.Top;
-			netlayout.AutoSize = true;
+			TableLayoutPanel netlayout = new TableLayoutPanel { ColumnCount = 4, RowCount = 1, Dock = DockStyle.Top, AutoSize = true };
 			netlayout.Controls.Add(netLabel);
 			netlayout.Controls.Add(netstatuslabel);
 			netlayout.Controls.Add(inetLabel);
@@ -689,13 +688,15 @@ namespace TaskMaster
 			lrows.Controls.Add(activeLabel, 0, 4);
 			*/
 
-			ifaceList = new ListView();
-			ifaceList.Dock = DockStyle.Top;
-			ifaceList.Width = lrows.Width - 3; // FIXME: why does 3 work? can't we do this automatically?
-			ifaceList.Height = 60;
-			ifaceList.View = View.Details;
-			ifaceList.FullRowSelect = true;
-			ifaceList.Columns.Add("Device",120);
+			ifaceList = new ListView
+			{
+				Dock = DockStyle.Top,
+				Width = lrows.Width - 3, // FIXME: why does 3 work? can't we do this automatically?
+				Height = 60,
+				View = View.Details,
+				FullRowSelect = true
+			};
+			ifaceList.Columns.Add("Device", 120);
 			ifaceList.Columns.Add("Type", 60);
 			ifaceList.Columns.Add("Status", 50);
 			ifaceList.Columns.Add("Link speed", 70);
@@ -728,12 +729,14 @@ namespace TaskMaster
 			// End: Settings
 
 			// Main Window, Path list
-			pathList = new ListView();
-			pathList.View = View.Details;
-			pathList.Dock = DockStyle.Top;
-			pathList.Width = lrows.Width - 3;
-			pathList.Height = 60;
-			pathList.FullRowSelect = true;
+			pathList = new ListView
+			{
+				View = View.Details,
+				Dock = DockStyle.Top,
+				Width = lrows.Width - 3,
+				Height = 60,
+				FullRowSelect = true
+			};
 			pathList.Columns.Add("Name", 120);
 			pathList.Columns.Add("Path", 300);
 			pathList.Columns.Add("Adjusts", 60);
@@ -742,19 +745,22 @@ namespace TaskMaster
 			// End: Path list
 
 			// Main Window row 7, app list
-			appList = new ListView();
-			appList.View = View.Details;
-			appList.Dock = DockStyle.Top;
-			appList.Width = lrows.Width - 3; // FIXME: why does 3 work? can't we do this automatically?
-			appList.Height = 140; // FIXME: Should use remaining space
-			appList.FullRowSelect = true;
+			appList = new ListView
+			{
+				View = View.Details,
+				Dock = DockStyle.Top,
+				Width = lrows.Width - 3, // FIXME: why does 3 work? can't we do this automatically?
+				Height = 140, // FIXME: Should use remaining space
+				FullRowSelect = true
+			};
 			appList.Columns.Add("Name", 100);
-			appList.Columns.Add("Executable", 140);
+			appList.Columns.Add("Executable", 110);
 			appList.Columns.Add("Priority", 80);
 			appList.Columns.Add("Affinity", 80);
 			appList.Columns.Add("Boost", 40);
 			appList.Columns.Add("Adjusts", 60);
 			appList.Columns.Add("Last seen", 120);
+			appList.Columns.Add("Rescan", 40);
 			appList.Scrollable = true;
 			appList.Alignment = ListViewAlignment.Left;
 			//appList.DoubleClick += appEditEvent; // for in-app editing, probably not going to actually do that
@@ -762,47 +768,46 @@ namespace TaskMaster
 			// End: App list
 
 			// UI Log
-			loglist = new ListView();
-			loglist.Dock = DockStyle.Fill;
-			loglist.View = View.Details;
-			loglist.FullRowSelect = true;
+			loglist = new ListView
+			{
+				Dock = DockStyle.Fill,
+				View = View.Details,
+				FullRowSelect = true,
+				HeaderStyle = ColumnHeaderStyle.None,
+				Scrollable = true,
+				Height = 200
+			};
 			loglist.Columns.Add("Log content");
 			loglist.Columns[0].Width = lrows.Width - 25;
-			loglist.HeaderStyle = ColumnHeaderStyle.None;
-			loglist.Scrollable = true;
-			loglist.Height = 200;
 			lrows.Controls.Add(loglist);
 
-			TableLayoutPanel logpanel = new TableLayoutPanel();
-			logpanel.Dock = DockStyle.Top;
-			logpanel.RowCount = 1;
-			logpanel.ColumnCount = 4;
-			logpanel.Height = 40;
-			Label loglabel_warn = new Label();
-			loglabel_warn.Text = "Warnings";
-			loglabel_warn.Dock = DockStyle.Left;
-			loglabel_warn.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
-			logcheck_warn = new CheckBox();
-			logcheck_warn.Dock = DockStyle.Left;
-			logcheck_warn.Checked = log_include_warn;
+			TableLayoutPanel logpanel = new TableLayoutPanel
+			{
+				Dock = DockStyle.Top,
+				RowCount = 1,
+				ColumnCount = 4,
+				Height = 40,
+				AutoSize = true
+			};
+			Label loglabel_warn = new Label
+			{
+				Text = "Warnings",
+				Dock = DockStyle.Left,
+				TextAlign = System.Drawing.ContentAlignment.MiddleLeft
+			};
+			logcheck_warn = new CheckBox { Dock = DockStyle.Left, Checked = log_include_warn };
 			logcheck_warn.CheckedChanged += (sender, e) => {
 				log_include_warn = (logcheck_warn.CheckState == CheckState.Checked);
 			};
 			logpanel.Controls.Add(loglabel_warn);
 			logpanel.Controls.Add(logcheck_warn);
-			Label loglabel_debug = new Label();
-			loglabel_debug.Text = "Debug";
-			loglabel_debug.Dock = DockStyle.Left;
-			loglabel_debug.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
-			logcheck_debug = new CheckBox();
-			logcheck_debug.Dock = DockStyle.Left;
-			logcheck_debug.Checked = log_include_debug;
+			Label loglabel_debug = new Label { Text = "Debug", Dock = DockStyle.Left, TextAlign = System.Drawing.ContentAlignment.MiddleLeft };
+			logcheck_debug = new CheckBox { Dock = DockStyle.Left, Checked = log_include_debug };
 			logcheck_debug.CheckedChanged += (sender, e) => {
 				log_include_debug = (logcheck_debug.CheckState == CheckState.Checked);
 			};
 			logpanel.Controls.Add(loglabel_debug);
 			logpanel.Controls.Add(logcheck_debug);
-			logpanel.AutoSize = true;
 
 			lrows.Controls.Add(logpanel);
 
@@ -849,7 +854,7 @@ namespace TaskMaster
 			}
 			catch (System.NullReferenceException) // this shouldn't happen
 			{
-				Log.Warn("Couldn't remove old log entries from GUI."); // POSSIBLY REALLY BAD IDEA
+				System.Console.WriteLine("Couldn't remove old log entries from GUI.");
 				System.Console.WriteLine("ERROR: Null reference");
 			}
 
@@ -924,9 +929,8 @@ namespace TaskMaster
 
 		~MainWindow()
 		{
+			Log.Trace("Destructing");
 			//TaskMaster.saveConfig(cfgfile, guicfg);
-
-			//base.Dispose();
 		}
 	}
 }

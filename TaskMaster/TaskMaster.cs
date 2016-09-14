@@ -86,6 +86,7 @@ namespace TaskMaster
 				retcfg = new SharpConfig.Configuration();
 				System.IO.Directory.CreateDirectory(cfgpath);
 			}
+
 			return retcfg;
 		}
 
@@ -111,7 +112,7 @@ namespace TaskMaster
 			tmw.setMicMonitor(mon);
 			tmw.setProcControl(pmn);
 			tmw.setLog(memlog);
-			tmw.setTray(tri);
+			tmw.Tray = tri;
 			memlog.OnNewLog += tmw.onNewLog;
 
 			tmw.FormClosing += MainWindowClose;
@@ -139,6 +140,8 @@ namespace TaskMaster
 			//self.ProcessorAffinity = 1; // run this only on the first processor/core; not needed, this app is not time critical
 		}
 
+		public static bool Verbose = true;
+
 		static bool ProcessMonitorEnabled = true;
 		static bool MicrophoneMonitorEnabled = true;
 		static bool MediaMonitorEnabled = true;
@@ -150,28 +153,49 @@ namespace TaskMaster
 		{
 			cfg["Core"]["Hello"].SetValue("Hi");
 
-			if (cfg.Contains("Components"))
+			SharpConfig.Section compsec;
+			if (!cfg.Contains("Components"))
 			{
-				ProcessMonitorEnabled = cfg["Components"]["Process"].BoolValue;
-				MicrophoneMonitorEnabled = cfg["Components"]["Microphone"].BoolValue;
-				MediaMonitorEnabled = cfg["Components"]["Media"].BoolValue;
-				NetworkMonitorEnabled = cfg["Components"]["Network"].BoolValue;
-			}
-			else
-			{
-				cfg["Components"]["Process"].BoolValue = true;
-				cfg["Components"]["Microphone"].BoolValue = true;
-				cfg["Components"]["Media"].BoolValue = true;
-				cfg["Components"]["Network"].BoolValue = true;
+				compsec = new SharpConfig.Section("Components");
+				cfg.Add(compsec);
 				coreconfigdirty = true;
 			}
+			else
+				compsec = cfg["Components"];
 
-			ProcessMonitorEnabled = true;
-			MicrophoneMonitorEnabled = true;
-			MediaMonitorEnabled = true;
-			NetworkMonitorEnabled = true;
+			if (!compsec.Contains("Process"))
+			{
+				compsec["Process"].BoolValue = true;
+				coreconfigdirty = true;
+			}
+			else
+				ProcessMonitorEnabled = compsec["Process"].BoolValue;
+			
+			if (!compsec.Contains("Microphone"))
+			{
+				compsec["Microphone"].BoolValue = true;
+				coreconfigdirty = true;
+			}
+			else
+				MicrophoneMonitorEnabled = compsec["Microphone"].BoolValue;
+			
+			if (!compsec.Contains("Media"))
+			{
+				compsec["Media"].BoolValue = true;
+				coreconfigdirty = true;
+			}
+			else
+				MediaMonitorEnabled = compsec["Media"].BoolValue;
 
-			if (!cfg.Contains("Options"))
+			if (!compsec.Contains("Network"))
+			{
+				compsec["Network"].BoolValue = true;
+				coreconfigdirty = true;
+			}
+			else
+				NetworkMonitorEnabled = compsec["Network"].BoolValue;
+
+			if (!cfg.Contains("Options") || !cfg["Options"].Contains("Self-optimize"))
 				cfg["Options"]["Self-optimize"].BoolValue = true;
 
 			monitorCleanShutdown();
@@ -209,11 +233,10 @@ namespace TaskMaster
 		}
 
 		// entry point to the application
-		//[STAThread] // supposedly needed to avoid shit happening with the WinForms GUI. Haven't noticed any of that shit.
+		[STAThread] // supposedly needed to avoid shit happening with the WinForms GUI
 		static public void Main()
 		{
-			if (memlog == null)
-				memlog = new MemLog();
+			memlog = new MemLog();
 			NLog.LogManager.Configuration.AddTarget("MemLog", memlog);
 			NLog.LogManager.Configuration.LoggingRules.Add(new NLog.Config.LoggingRule("*", NLog.LogLevel.Debug, memlog));
 			memlog.Layout = @"[${date:format=HH\:mm\:ss.fff}] [${level}] ${message}"; ;
@@ -260,30 +283,16 @@ namespace TaskMaster
 			finally
 			{
 				Log.Info("Exiting...");
-				if (mon != null)
-				{
-					mon.Dispose();
-					mon = null;
-				}
-				if (tmw != null)
-				{
-					//tmw.Dispose();
-					tmw = null;
-				}
-				if (pmn != null)
-				{
-					pmn.Dispose();
-					pmn = null;
-				}
-				if (tri != null)
-				{
-					tri.Dispose();
-					tri = null;
-				}
 			}
 
-			singleton.ReleaseMutex();
+			tri.Dispose();
+			pmn.Dispose();
+			mon.Dispose();
+			tmw.Dispose();
+
 			CleanShutdown();
+			singleton.ReleaseMutex();
+
 			Log.Info(System.String.Format("{0} (#{1}) END! [Clean]", System.Windows.Forms.Application.ProductName, System.Diagnostics.Process.GetCurrentProcess().Id));
 		}
 	}

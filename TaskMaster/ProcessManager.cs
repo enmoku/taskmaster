@@ -27,6 +27,8 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.Remoting.Messaging;
+using System.Runtime.Remoting.Channels;
 
 namespace TaskMaster
 {
@@ -66,6 +68,16 @@ namespace TaskMaster
 		/// </summary>
 		public bool Boost = true;
 
+		int _rescan;
+		/// <summary>
+		/// Delay before we try to use WideTouch again.
+		/// </summary>
+		public int Rescan
+		{
+			get { return _rescan; }
+			set { _rescan = value >= 0 ? value : 0; }
+		}
+
 		/// <summary>
 		/// How many times we've touched associated processes.
 		/// </summary>
@@ -90,7 +102,7 @@ namespace TaskMaster
 		/// <param name="increase">Increase.</param>
 		/// <param name="affinity">CPU core affinity.</param>
 		/// <param name="boost">Foreground process priority boost.</param>
-		public ProcessControl(string friendlyname, string executable, ProcessPriorityClass priority=ProcessPriorityClass.Normal, bool increase=false, int affinity=0, bool boost=true)
+		public ProcessControl(string friendlyname, string executable, ProcessPriorityClass priority=ProcessPriorityClass.Normal, bool increase=false, int affinity=0, bool boost=true, int rescan=0)
 		{
 			FriendlyName = friendlyname;
 			Executable = executable;
@@ -105,7 +117,9 @@ namespace TaskMaster
 
 			Adjusts = 0;
 
-			Log.Trace(FriendlyName + " (" + Executable + "), " + Priority + (Affinity != IntPtr.Zero ? ", Mask:" + Affinity : ""));
+			Rescan = rescan;
+
+			Log.Trace(FriendlyName + " (" + Executable + "), " + Priority + (Affinity != IntPtr.Zero ? ", Mask:" + Affinity : "") + (Rescan>0 ? ", Rescan: " + Rescan + " minutes":""));
 		}
 
 		// TODO EVENT(??)
@@ -128,8 +142,8 @@ namespace TaskMaster
 				return; // we don't care wwhat this error is
 			}
 
-			//process.Refresh(); // is this necessary?
-			Log.Trace(System.String.Format("{0} ({1}, pid:{2})", FriendlyName, Executable, process.Id));
+			if (TaskMaster.Verbose)
+				Log.Trace(System.String.Format("{0} ({1}, pid:{2})", FriendlyName, Executable, process.Id));
 			bool mAffinity = false;
 			IntPtr oldAffinity = process.ProcessorAffinity;
 			bool mPriority = false;
@@ -189,18 +203,38 @@ namespace TaskMaster
 				onTouchHandler(this, new ProcessEventArgs(this, process, true));
 			}
 			else
-				Log.Trace(System.String.Format("'{0}' (pid:{1}) seems to be OK already.", Executable, process.Id));
+				if (TaskMaster.Verbose)
+					Log.Trace(System.String.Format("'{0}' (pid:{1}) seems to be OK already.", Executable, process.Id));
+
+			if (Rescan > 0 && WideTouchScheduled == 0 && (System.DateTime.Now - lastWideTouch).TotalMinutes > Rescan)
+			{
+				if (System.Threading.Interlocked.CompareExchange(ref WideTouchScheduled, 1, 0) == 1)
+				{
+					Console.WriteLine("Debug: Scheduling wide touch.");
+					System.Threading.Tasks.Task.Run(async () =>
+					{
+						await System.Threading.Tasks.Task.Delay(new TimeSpan(0, 2, 0));
+						WideTouch();
+						WideTouchScheduled = 0;
+					});
+				}
+			}
 		}
 
+		int WideTouchScheduled = 0;
+		System.DateTime lastWideTouch = System.DateTime.MinValue;
 		public void WideTouch()
 		{
+			lastWideTouch = System.DateTime.Now;
 			Process[] procs = Process.GetProcessesByName(ExecutableFriendlyName);
 
 			if (procs.Length > 0)
 			{
-				lastSeen = System.DateTime.Now;
+				lastSeen = lastWideTouch;
 
-				Log.Trace("Control group: " + FriendlyName + ", process: " + Executable);
+				if (TaskMaster.Verbose)
+					Log.Trace("Control group: " + FriendlyName + ", process: " + Executable);
+
 				foreach (Process process in procs)
 				{
 					try
@@ -301,7 +335,8 @@ namespace TaskMaster
 
 		public bool Locate()
 		{
-			Log.Trace(FriendlyName + " (" + Executable + ")");
+			if (TaskMaster.Verbose)
+				Log.Trace(FriendlyName + " (" + Executable + ")");
 			if (Path != null && System.IO.Directory.Exists(Path))
 				return true;
 			
@@ -435,26 +470,20 @@ namespace TaskMaster
 		/// <summary>
 		/// Processes everything. Pointlessly thorough, but there's no nicer way around for now.
 		/// </summary>
-		public async void ProcessEverything()
+		public void ProcessEverything()
 		{
-			await System.Threading.Tasks.Task.Delay(100); // force async
-
 			Log.Trace("Processing everything.");
 			{
 				Process[] procs = Process.GetProcesses();
 				Log.Trace(System.String.Format("Scanning {0} processes.", procs.Length));
 				foreach (Process process in procs)
-				{
 					CheckProcess(process);
-				}
 				Log.Trace("Initial scan complete.");
 			}
 
 			Log.Trace("Going through process control list.");
 			foreach (ProcessControl control in images)
-			{
 				control.WideTouch();
-			}
 
 			UpdatePathWatch();
 			Log.Trace("Done processing everything.");
@@ -504,7 +533,8 @@ namespace TaskMaster
 
 			foreach (SharpConfig.Section section in cfg)
 			{
-				Log.Trace("Section: "+section.Name);
+				if (TaskMaster.Verbose)
+					Log.Trace("Section: "+section.Name);
 				if (!section.Contains("image"))
 				{
 					// TODO: Deal with incorrect configuration lacking image
@@ -524,8 +554,10 @@ namespace TaskMaster
 					section.Contains("priority") ? IntToPriority(section["priority"].IntValue) : ProcessPriorityClass.Normal,
 					section.Contains("increase") ? section["increase"].BoolValue : false,
 					section.Contains("affinity") ? section["affinity"].IntValue : 0,
-					section.Contains("boost") ? section["boost"].BoolValue : true
+					section.Contains("boost") ? section["boost"].BoolValue : true,
+					section.Contains("rescan") ? section["rescan"].IntValue : 0
 				);
+
 				//cnt.delay = section.Contains("delay") ? section["delay"].IntValue : 30; // TODO: Add centralized default delay
 				//cnt.delayIncrement = section.Contains("delay increment") ? section["delay increment"].IntValue : 15; // TODO: Add centralized default increment
 				if (stats.Contains(cnt.Executable))
@@ -534,9 +566,11 @@ namespace TaskMaster
 					cnt.lastSeen = stats[cnt.Executable].Contains("Last seen") ? stats[cnt.Executable]["Last seen"].DateTimeValue : System.DateTime.MinValue;
 					stats_dirty = true;
 				}
+
 				images.Add(cnt);
 				execontrol.Add(new KeyValuePair<string,ProcessControl>(cnt.ExecutableFriendlyName, cnt));
-				Log.Trace(System.String.Format("'{0}' added to monitoring.", section.Name));
+				if (TaskMaster.Verbose)
+					Log.Trace(System.String.Format("'{0}' added to monitoring.", section.Name));
 			}
 		}
 
@@ -591,6 +625,16 @@ namespace TaskMaster
 			{
 				path = process.MainModule.FileName; // this will cause win32exception of various types, we don't Really care which error it is
 			}
+			catch (System.NullReferenceException)
+			{
+				Log.Warn("[Unexpected] Null reference: " + process.ProcessName + " (pid:" + process.Id + ")");
+				return;
+			}
+			catch (System.NotSupportedException)
+			{
+				Log.Warn("[Unexpected] Not supported operation: " + process.ProcessName + " (pid:" + process.Id + ")");
+				return;
+			}
 			catch (System.ComponentModel.Win32Exception ex)
 			{
 				path = GetProcessPath(process.Id);
@@ -623,25 +667,28 @@ namespace TaskMaster
 				if (path.StartsWith(pc.Path, StringComparison.InvariantCultureIgnoreCase)) // TODO: make this compatible with OSes that aren't case insensitive?
 				{
 					await System.Threading.Tasks.Task.Delay(3800); // wait a little more.
-					pc.Touch(process, path);
 					Log.Info("[" + pc.FriendlyName + "] matched " + (slow ? "~slowly~ " : "") + "at: " + path);
+					pc.Touch(process, path);
 					return;
 				}
 			}
-			Log.Trace("Not for us: " + path);
+
+			if (TaskMaster.Verbose)
+				Log.Trace("Not for us: " + path);
 		}
 
 		void CheckProcess(Process process)
 		{
 			Debug.Assert(process != null);
 
-			Log.Trace("Processing: " + process.ProcessName);
+			if (TaskMaster.Verbose)
+				Log.Trace("Processing: " + process.ProcessName);
 
 			// Skip 0 [Idle] and 4 [System], shouldn't rely on this, but nothing else to do about it.
-
 			if (process.Id <= 4 || ignoredProcesses.Contains(process.ProcessName))
 			{
-				Log.Trace("Ignoring system process: " + process.ProcessName + " (" + process.Id + ")");
+				if (TaskMaster.Verbose)
+					Log.Trace("Ignoring system process: " + process.ProcessName + " (" + process.Id + ")");
 				return;
 			}
 
@@ -649,12 +696,16 @@ namespace TaskMaster
 			ProcessControl control;
 			if (execontrol.TryGetValue(process.ProcessName, out control))
 			{
-				Log.Trace(System.String.Format("Delaying touching of '{0}' (pid:{1})", control.Executable, process.Id));
+				if (TaskMaster.Verbose)
+					Log.Trace(System.String.Format("Delaying touching of '{0}' (pid:{1})", control.Executable, process.Id));
 				System.Threading.Tasks.Task.Run(async () =>
 				{
 					await System.Threading.Tasks.Task.Delay(2800); // wait before we touch this, to let them do their own stuff in case they want to be smart
-					Log.Trace(System.String.Format("Controlling '{0}' (pid:{1})", control.Executable, process.Id));
-					Log.Trace("Control group: " + control.FriendlyName + ", process: " + process.ProcessName);
+					if (TaskMaster.Verbose)
+					{
+						Log.Trace(System.String.Format("Controlling '{0}' (pid:{1})", control.Executable, process.Id));
+						Log.Trace("Control group: " + control.FriendlyName + ", process: " + process.ProcessName);
+					}
 					control.Touch(process);
 				});
 			}
@@ -775,6 +826,10 @@ namespace TaskMaster
 			{
 				//watcher.Options.BlockSize = 1; // default=1
 				watcher.EventArrived += NewInstanceHandler;
+				watcher.Stopped += (object sender, System.Management.StoppedEventArgs e) =>
+				{
+					Log.Warn("New instance watcher stopped.");
+				};
 				//watcher.Stopped += WatcherStopped;
 				watcher.Start();
 				Log.Debug("New process watcher initialized.");
@@ -823,10 +878,46 @@ namespace TaskMaster
 
 		~ProcessManager()
 		{
+			Log.Trace("Destructing");
+			#if DEBUG
+			if (!disposed)
+				Log.Warn("Not disposed");
+			#endif
+		}
+
+		void Close()
+		{
+			//TaskMaster.saveConfig(configfile, cfg); // we aren't modifyin it yet
+			if (stats_dirty)
+				saveStats();
 			if (pathfile_dirty)
 				TaskMaster.saveConfig(pathfile, pathcfg);
-			Dispose();
 			watcher.Stop();
+		}
+
+		bool disposed = false;
+		public void Dispose()
+		{
+			Dispose(true);
+			//GC.SuppressFinalize(this);
+		}
+
+		protected virtual void Dispose(bool disposing)
+		{
+			if (disposed)
+				return;
+
+			if (disposing)
+			{
+				Close();
+
+				// Free any other managed objects here.
+				//
+			}
+
+			// Free any unmanaged objects here.
+			//
+			disposed = true;
 		}
 
 		void saveStats()
@@ -850,14 +941,6 @@ namespace TaskMaster
 			}
 
 			TaskMaster.saveConfig(statfile, stats);
-		}
-
-		public void Dispose()
-		{
-			Log.Trace("Disposing...");
-			//TaskMaster.saveConfig(configfile, cfg); // we aren't modifyin it yet
-			if (stats_dirty)
-				saveStats();
 		}
 	}
 }

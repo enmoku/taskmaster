@@ -36,29 +36,16 @@ namespace TaskMaster
 	{
 		public double Old { get; set; }
 		public double New { get; set; }
-		public bool Corrected { get; set; }
 		public int Corrections { get; set; }
-
-		public VolumeChangedEventArgs()
-		{
-		}
-
-		public VolumeChangedEventArgs(double oldvolume=double.NaN, double newvolume=double.NaN, int corrections = 0, bool corrected=false)
-		{
-			Old = oldvolume;
-			New = newvolume;
-			Corrections = corrections;
-			Corrected = corrected;
-		}
+		public bool Corrected { get; set; }
 	}
 
-	public class MicMonitor : IDisposable
+	public class MicMonitor
 	{
 		static NLog.Logger Log = NLog.LogManager.GetCurrentClassLogger();
 
 		public event EventHandler<VolumeChangedEventArgs> VolumeChanged;
 
-		public double Volume = 0;
 		public double Target = Maximum;
 		public const double Minimum = 0;
 		public const double Maximum = 100;
@@ -86,7 +73,7 @@ namespace TaskMaster
 			// there should be easier way for this, right?
 			corrections = (stats.Contains("Statistics") && stats["Statistics"].Contains("Corrections")) ? stats["Statistics"]["Corrections"].IntValue : 0;
 			FindDefaultComms();
-			setVolume(Target);
+			Volume = Target;
 		}
 
 		~MicMonitor()
@@ -94,11 +81,35 @@ namespace TaskMaster
 			Log.Trace("Destructing");
 		}
 
-		public void Dispose()
+		void Close()
 		{
-			Log.Trace("Exiting...");
 			stats["Statistics"]["Corrections"].IntValue = corrections;
 			TaskMaster.saveConfig(statfile, stats);
+		}
+
+		bool disposed = false;
+		public void Dispose()
+		{
+			Dispose(true);
+			//GC.SuppressFinalize(this);
+		}
+
+		protected virtual void Dispose(bool disposing)
+		{
+			if (disposed)
+				return;
+
+			if (disposing)
+			{
+				Close();
+
+				// Free any other managed objects here.
+				//
+			}
+
+			// Free any unmanaged objects here.
+			//
+			disposed = true;
 		}
 
 		async void OnVolumeChanged(VolumeChangedEventArgs e)
@@ -202,7 +213,7 @@ namespace TaskMaster
 		{
 			double oldVol = Volume;
 			Volume = data.MasterVolume * 100;
-			OnVolumeChanged(new VolumeChangedEventArgs(oldVol, Volume, corrections));
+			OnVolumeChanged(new VolumeChangedEventArgs { Old = oldVol, New = Volume, Corrections = corrections, Corrected=false });
 
 			// This is a light HYSTERISIS limiter in case someone is sliding a volume bar around,
 			// we act on it only once every [AdjustDelay] ms.
@@ -219,30 +230,38 @@ namespace TaskMaster
 					{
 						//Log.Trace("Thread ID (task): "+ System.Threading.Thread.CurrentThread.ManagedThreadId);
 						await System.Threading.Tasks.Task.Delay(AdjustDelay);
-						setVolume(Target);
+						Volume = Target;
 						corrections += 1;
 						System.Threading.Interlocked.Exchange(ref correcting, 0);
-						OnVolumeChanged(new VolumeChangedEventArgs(oldVol, Volume, corrections, true));
+						OnVolumeChanged(new VolumeChangedEventArgs { Old = oldVol, New = Volume, Corrections = corrections, Corrected=true});
 					});
 				}
 			}
 		}
 
-		public void setVolume(double volume)
+		double _volume = 0;
+		public double Volume
 		{
-			Log.Info(String.Format("Setting volume to {0:N1}%", volume));
-			if (Control != null)
+			get
 			{
-				if (Math.Abs(Control.Percent - volume) > 0.05)
+				return _volume;
+			}
+			set
+			{
+				Log.Info(String.Format("Setting volume to {0:N1}%", value));
+				if (Control != null)
 				{
-					Control.Percent = volume;
-					Volume = volume;
+					if (Math.Abs(Control.Percent - value) > 0.05)
+					{
+						Control.Percent = value;
+						_volume = value;
+					}
+					else
+						Log.Warn("Volume already at target.");
 				}
 				else
-					Log.Warn("Volume already at target.");
+					Log.Error("Volume control not set up."); // this should never happen, checking for it is a little superfluous as such
 			}
-			else
-				Log.Error("Volume control not set up."); // this should never happen, checking for it is a little superfluous as such
 		}
 	}
 }
