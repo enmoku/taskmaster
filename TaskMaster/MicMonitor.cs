@@ -68,17 +68,11 @@ namespace TaskMaster
 		// ctor, constructor
 		public MicMonitor()
 		{
-			Log.Trace("Starting...");
 			stats = TaskMaster.loadConfig(statfile);
 			// there should be easier way for this, right?
 			corrections = (stats.Contains("Statistics") && stats["Statistics"].Contains("Corrections")) ? stats["Statistics"]["Corrections"].IntValue : 0;
 			FindDefaultComms();
-			Volume = Target;
-		}
-
-		~MicMonitor()
-		{
-			Log.Trace("Destructing");
+			//Volume = Target;// finddefaultcomms does this via setupcontrol
 		}
 
 		void Close()
@@ -112,11 +106,10 @@ namespace TaskMaster
 			disposed = true;
 		}
 
-		async void OnVolumeChanged(VolumeChangedEventArgs e)
+		void OnVolumeChanged(VolumeChangedEventArgs e)
 		{
-			await System.Threading.Tasks.Task.Delay(100); // force async
-
 			EventHandler<VolumeChangedEventArgs> handler = VolumeChanged;
+
 			if (handler != null)
 				handler(this, e);
 		}
@@ -150,7 +143,6 @@ namespace TaskMaster
 
 		bool setupControl()
 		{
-			Log.Trace("Setup.");
 			int waveInDeviceNumber = 0;
 			var mixerLine = new NAudio.Mixer.MixerLine((IntPtr)waveInDeviceNumber, 0, NAudio.Mixer.MixerFlags.WaveIn);
 
@@ -203,9 +195,16 @@ namespace TaskMaster
 		// TODO: Add per device behaviour
 
 		int corrections = 0;
-		public int getCorrections()
+		public int Corrections
 		{
-			return corrections;
+			get
+			{
+				return corrections;
+			}
+			set
+			{
+				corrections = value;
+			}
 		}
 
 		static int correcting = 0;
@@ -214,25 +213,26 @@ namespace TaskMaster
 			double oldVol = Volume;
 			Volume = data.MasterVolume * 100;
 			OnVolumeChanged(new VolumeChangedEventArgs { Old = oldVol, New = Volume, Corrections = corrections, Corrected=false });
-
 			// This is a light HYSTERISIS limiter in case someone is sliding a volume bar around,
 			// we act on it only once every [AdjustDelay] ms.
 			// HOPEFULLY there are no edge cases with this triggering just before last adjustment
 			// and the notification for the last adjustment coming slightly before. Seems super unlikely tho.
 			// TODO: Delay this even more if volume is changed ~2 seconds before we try to do so.
-			if (correcting==0 && Math.Abs(Volume-Target) > 0.05) // Volume != Target for double
+			if (correcting==0 && Math.Abs(Volume-Target) < 0.05) // Volume != Target for double
 			{
-				Log.Info(String.Format("{0:N1}% -> {1:N1}% {2}", oldVol, Volume, Math.Abs(Volume - Target)));
-				if (System.Threading.Interlocked.CompareExchange(ref correcting, 1, 0) == 0) // correcting==0, set it to 1, return original 0
+				if (System.Threading.Interlocked.CompareExchange(ref correcting, 1, 0) == 0)
 				{
+					Log.Info(String.Format("{0:N1}% -> {1:N1}% ({2})", oldVol, Volume, Math.Abs(Volume - Target)));
+
 					//Log.Trace("Thread ID (dispatch): " + System.Threading.Thread.CurrentThread.ManagedThreadId);
 					System.Threading.Tasks.Task.Run(async () =>
 					{
 						//Log.Trace("Thread ID (task): "+ System.Threading.Thread.CurrentThread.ManagedThreadId);
 						await System.Threading.Tasks.Task.Delay(AdjustDelay);
+						Log.Info(System.String.Format("Correcting microphone volume from {0:N1} to {1:N1}", Volume, Target));
 						Volume = Target;
 						corrections += 1;
-						System.Threading.Interlocked.Exchange(ref correcting, 0);
+						correcting = 0;
 						OnVolumeChanged(new VolumeChangedEventArgs { Old = oldVol, New = Volume, Corrections = corrections, Corrected=true});
 					});
 				}
@@ -248,19 +248,7 @@ namespace TaskMaster
 			}
 			set
 			{
-				Log.Info(String.Format("Setting volume to {0:N1}%", value));
-				if (Control != null)
-				{
-					if (Math.Abs(Control.Percent - value) > 0.05)
-					{
-						Control.Percent = value;
-						_volume = value;
-					}
-					else
-						Log.Warn("Volume already at target.");
-				}
-				else
-					Log.Error("Volume control not set up."); // this should never happen, checking for it is a little superfluous as such
+				Control.Percent = _volume = value;
 			}
 		}
 	}

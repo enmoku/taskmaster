@@ -37,6 +37,11 @@ namespace TaskMaster
 
 		NotifyIcon Tray;
 
+		ContextMenuStrip ms;
+		ToolStripMenuItem swr_menu;
+		ToolStripMenuItem scr_menu;
+		ToolStripMenuItem er_menu;
+
 		public TrayAccess()
 		{
 			Tray = new NotifyIcon
@@ -48,14 +53,20 @@ namespace TaskMaster
 
 			Log.Trace("Generating tray icon.");
 
-			ContextMenuStrip ms = new ContextMenuStrip();
-			ms.Items.Add("Open", null, ShowWindowRequest);
-			ms.Items.Add("Configuration", null, ShowConfigRequest);
-			ms.Items.Add("Exit", null, ExitRequest);
+			ms = new ContextMenuStrip();
+			swr_menu = new ToolStripMenuItem("Open", null, ShowWindowRequest);
+			scr_menu = new ToolStripMenuItem("Configuration", null, ShowConfigRequest);
+			er_menu = new ToolStripMenuItem("Exit", null, ExitRequest);
+			ms.Items.Add(swr_menu);
+			ms.Items.Add(scr_menu);
+			ms.Items.Add(er_menu);
 			Tray.ContextMenuStrip = ms;
+			Log.Trace("Tray menu ready");
 
 			RegisterExplorerExit();
 			Tray.Visible = true;
+
+			Log.Trace("Tray icon generated.");
 		}
 
 		void ShowWindowRequest(object sender, EventArgs e)
@@ -75,9 +86,19 @@ namespace TaskMaster
 				Log.Warn("Can't open configuration.");
 		}
 
+		public static event EventHandler onExit;
+		void onExitHandler(object sender, EventArgs e)
+		{
+			EventHandler handler = onExit;
+			if (handler != null)
+				handler(this, e);
+		}
+
 		void ExitRequest(object sender, EventArgs e)
 		{
-			Application.Exit();
+			Console.WriteLine("START:Tray.ExitRequest()");
+			er_menu.Enabled = false;
+			onExitHandler(this, null);
 			Console.WriteLine("END::Tray.ExitRequest()");
 		}
 
@@ -97,25 +118,19 @@ namespace TaskMaster
 		void RestoreMainRequest(object sender, MouseEventArgs e)
 		{
 			if (e.Button == MouseButtons.Left)
-			{
 				RestoreMain(sender, null);
-			}
 		}
 
 		void ShowWindow(object sender, MouseEventArgs e)
 		{
 			if (e.Button == MouseButtons.Left)
-			{
 				TaskMaster.tmw.ShowWindowRequest(sender, null);
-			}
 		}
 
 		void UnloseWindow(object sender, MouseEventArgs e)
 		{
 			if (e.Button == MouseButtons.Left)
-			{
 				TaskMaster.tmw.RestoreWindowRequest(sender, null);
-			}
 		}
 
 		void WindowClosed(object sender, EventArgs e)
@@ -137,16 +152,21 @@ namespace TaskMaster
 		}
 
 		System.Diagnostics.Process Explorer;
-		async void ExplorerCrashHandler(object sender, EventArgs e)
+		void ExplorerCrashHandler(object sender, EventArgs e)
 		{
 			Log.Warn("Explorer crash detected!");
-			await System.Threading.Tasks.Task.Delay(8000); // force async
 
-			if (RegisterExplorerExit())
+			System.Threading.Tasks.Task.Run(async () =>
 			{
-				Tray.Visible = true; // TODO: Is this enough/necessary?
-			}
-			Log.Debug("Explorer crash handling done!");
+				await System.Threading.Tasks.Task.Delay(8000); // force async
+
+				if (RegisterExplorerExit())
+					Tray.Visible = true; // TODO: Is this enough/necessary?
+				else
+					Log.Trace("Failed to register explorer exit handler");
+
+				Log.Debug("Explorer crash handling done!");
+			});
 		}
 
 		bool RegisterExplorerExit()

@@ -49,8 +49,7 @@
  */
 
 using System;
-using System.Security.Policy;
-using NAudio.MediaFoundation;
+using System.Windows;
 
 namespace TaskMaster
 {
@@ -100,13 +99,23 @@ namespace TaskMaster
 			if (tmw.LowMemory)
 			{
 				//tmw.FormClosing -= MainWindowClose // unnecessary?
+				TrayAccess.onExit -= tmw.ExitRequest;
 				tmw.Enabled = false;
 				tmw = null;
 			}
 		}
 
+		public static void ExitRequest(object sender, EventArgs e)
+		{
+			Console.WriteLine("START:Core.ExitRequest");
+			System.Windows.Forms.Application.Exit();
+			Console.WriteLine("END:Core.ExitRequest");
+		}
+
 		public static void HookMainWindow()
 		{
+			TrayAccess.onExit += tmw.ExitRequest;
+
 			tri.RegisterMain(ref tmw);
 
 			tmw.setMicMonitor(mon);
@@ -134,6 +143,8 @@ namespace TaskMaster
 			tmw.Show();
 			#endif
 
+			TrayAccess.onExit += TaskMaster.ExitRequest;
+
 			// Self-optimization
 			var self = System.Diagnostics.Process.GetCurrentProcess();
 			self.PriorityClass = System.Diagnostics.ProcessPriorityClass.Idle;
@@ -141,6 +152,7 @@ namespace TaskMaster
 		}
 
 		public static bool Verbose = true;
+		public static bool VeryVerbose = false;
 
 		static bool ProcessMonitorEnabled = true;
 		static bool MicrophoneMonitorEnabled = true;
@@ -269,8 +281,10 @@ namespace TaskMaster
 			Log.Info("Startup complete...");
 
 			pmn.ProcessEverything();
+
 			try
 			{
+				System.GC.Collect();
 				System.Windows.Forms.Application.Run();
 			}
 			catch (Exception ex)

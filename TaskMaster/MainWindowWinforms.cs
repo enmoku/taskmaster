@@ -23,15 +23,12 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
-using System.Windows.Controls;
-using System.Net;
-using SharpConfig;
-using System.Linq;
-using System.Windows;
 
 namespace TaskMaster
 {
 	using System;
+	using System.Net;
+	using System.Linq;
 	using System.Collections.Generic;
 	using System.Windows.Forms;
 	using System.Net.NetworkInformation;
@@ -44,6 +41,13 @@ namespace TaskMaster
 		public void ShowConfigRequest(object sender, System.EventArgs e)
 		{
 			Log.Warn("No config window available.");
+		}
+
+		public void ExitRequest(object sender, EventArgs e)
+		{
+			Console.WriteLine("START:Window.ExitRequest");
+			// nothing
+			Console.WriteLine("END:Window.ExitRequest");
 		}
 
 		void WindowClose(object sender, FormClosingEventArgs e)
@@ -98,7 +102,7 @@ namespace TaskMaster
 		{
 			Log.Trace("Hooking microphone monitor.");
 			micName.Text = micmonitor.DeviceName;
-			corCountLabel.Text = micmonitor.getCorrections().ToString();
+			corCountLabel.Text = micmonitor.Corrections.ToString();
 			micmonitor.VolumeChanged += volumeChangeDetected;
 			micVol.Value = System.Convert.ToInt32(micmonitor.Volume);
 
@@ -110,13 +114,13 @@ namespace TaskMaster
 
 		public void ProcAdjust(object sender, ProcessEventArgs e)
 		{
-			if (TaskMaster.Verbose)
-				Log.Trace("Process adjust received.");
+			if (TaskMaster.VeryVerbose)
+				Log.Debug("Process adjust received.");
 			ListViewItem item;
 			if (appc.TryGetValue(e.Control.Executable, out item))
 			{
 				item.SubItems[5].Text = e.Control.Adjusts.ToString();
-				item.SubItems[6].Text = e.Control.lastSeen.ToString();
+				item.SubItems[6].Text = e.Control.LastSeen.ToString();
 			}
 			else
 				Log.Error(System.String.Format("{0} not found in app list.", e.Control.Executable));
@@ -132,7 +136,7 @@ namespace TaskMaster
 		{
 			procCntrl = control;
 			//control.onProcAdjust += ProcAdjust;
-			foreach (ProcessControl item in control.images)
+			foreach (ProcessController item in control.images)
 			{
 
 				ListViewItem litem = new ListViewItem(new string[] {
@@ -142,7 +146,7 @@ namespace TaskMaster
 						(item.Affinity.ToInt32() == ProcessManager.allCPUsMask ? "OS controlled" : Convert.ToString(item.Affinity.ToInt32(), 2)),
 					item.Boost.ToString(),
 					item.Adjusts.ToString(),
-						(item.lastSeen != System.DateTime.MinValue ? item.lastSeen.ToString() : "Never"),
+						(item.LastSeen != System.DateTime.MinValue ? item.LastSeen.ToString() : "Never"),
 						(item.Rescan>0?item.Rescan.ToString():"n/a")
 				});
 				appc.Add(item.Executable, litem);
@@ -217,8 +221,8 @@ namespace TaskMaster
 
 		#region Internet handling functionality
 
-		bool netAvailable;
-		bool inetAvailable;
+		bool netAvailable = false;
+		bool inetAvailable = false;
 		Label netstatuslabel;
 		Label inetstatuslabel;
 		void NetworkChanged(object sender, EventArgs e)
@@ -232,7 +236,11 @@ namespace TaskMaster
 				Log.Debug("Network status changed: " + (netAvailable ? "Connected" : "Disconnected"));
 				netstatuslabel.Text = netAvailable.ToString();
 				netstatuslabel.BackColor = netAvailable ? System.Drawing.Color.LightGoldenrodYellow : System.Drawing.Color.Red;
-				CheckInet();
+				System.Threading.Tasks.Task.Run(async () =>
+				{
+					await System.Threading.Tasks.Task.Delay(200);
+					await CheckInet();
+				});
 			}
 		}
 
@@ -307,8 +315,17 @@ namespace TaskMaster
 			}
 		}
 
-		bool CheckInet(bool address_changed = false)
+		int checking_inet = 0;
+		async System.Threading.Tasks.Task CheckInet(bool address_changed = false)
 		{
+			if (System.Threading.Interlocked.CompareExchange(ref checking_inet, 1, 0) == 0)
+				return;
+
+			if (TaskMaster.Verbose)
+				Log.Trace("Checking internet connectivity...");
+
+			await System.Threading.Tasks.Task.Delay(100);
+
 			bool oldInetAvailable = inetAvailable;
 			if (netAvailable)
 			{
@@ -338,7 +355,7 @@ namespace TaskMaster
 				Log.Info("Network status: " + (netAvailable ? "Up" : "Down") + ", Inet status: " + (inetAvailable ? "Connected" : "Disconnected"));
 			}
 
-			return inetAvailable;
+			checking_inet = 0;
 		}
 
 		TrayAccess tray;
@@ -359,8 +376,15 @@ namespace TaskMaster
 		System.Net.IPAddress IPv6Address;
 
 		ListView ifaceList;
+		int enumerating_inet = 0;
 		void NetEnum()
 		{
+			if (System.Threading.Interlocked.CompareExchange(ref enumerating_inet, 1, 0) == 0)
+				return;
+
+			if (TaskMaster.Verbose)
+				Log.Trace("Enumerating network interfaces...");
+
 			ifaceList.Items.Clear();
 			NetworkInterface[] adapters = NetworkInterface.GetAllNetworkInterfaces();
 			foreach (NetworkInterface n in adapters)
@@ -387,6 +411,8 @@ namespace TaskMaster
 					(IPv6Address!=null?IPv6Address.ToString():"n/a")
 				}));
 			}
+
+			enumerating_inet = 0;
 		}
 
 		void NetAddrChanged(object sender, System.EventArgs e)
@@ -395,28 +421,36 @@ namespace TaskMaster
 			IPAddress oldV4Address = IPv4Address;
 
 			NetEnum();
-			CheckInet(address_changed:true);
+			CheckInet(address_changed:true).Wait();
 
 			if (inetAvailable)
 			{
 				Console.WriteLine("DEBUG: AddrChange: " + oldV4Address + " -> " + IPv4Address);
 				Console.WriteLine("DEBUG: AddrChange: " + oldV6Address + " -> " + IPv6Address);
-				bool ipv4changed = !oldV4Address.Equals(IPv4Address);
-				if (ipv4changed)
+
+				bool ipv4changed = false, ipv6changed = false;
+				if (oldV4Address != null)
 				{
-					System.Text.StringBuilder outstr4 = new System.Text.StringBuilder();
-					outstr4.Append("IPv4 address changed: ");
-					outstr4.Append(oldV4Address).Append(" -> ").Append(IPv4Address);
-					Log.Debug(outstr4.ToString());
-					Tray.Tooltip(2000, outstr4.ToString(), "TaskMaster", ToolTipIcon.Info);
+					ipv4changed = !oldV4Address.Equals(IPv4Address);
+					if (ipv4changed)
+					{
+						System.Text.StringBuilder outstr4 = new System.Text.StringBuilder();
+						outstr4.Append("IPv4 address changed: ");
+						outstr4.Append(oldV4Address).Append(" -> ").Append(IPv4Address);
+						Log.Debug(outstr4.ToString());
+						Tray.Tooltip(2000, outstr4.ToString(), "TaskMaster", ToolTipIcon.Info);
+					}
 				}
-				bool ipv6changed = !oldV6Address.Equals(IPv6Address);
-				if (ipv6changed)
+				if (oldV6Address != null)
 				{
-					System.Text.StringBuilder outstr6 = new System.Text.StringBuilder();
-					outstr6.Append("IPv6 address changed: ");
-					outstr6.Append(oldV6Address).Append(" -> ").Append(IPv6Address);
-					Log.Debug(outstr6.ToString());
+					ipv6changed = !oldV6Address.Equals(IPv6Address);
+					if (ipv6changed)
+					{
+						System.Text.StringBuilder outstr6 = new System.Text.StringBuilder();
+						outstr6.Append("IPv6 address changed: ");
+						outstr6.Append(oldV6Address).Append(" -> ").Append(IPv6Address);
+						Log.Debug(outstr6.ToString());
+					}
 				}
 
 				if (!ipv4changed && !ipv6changed)
@@ -436,6 +470,8 @@ namespace TaskMaster
 
 			NetworkChange.NetworkAvailabilityChanged += NetworkChanged;
 			NetworkChange.NetworkAddressChanged += NetAddrChanged;
+
+			CheckInet().Wait();
 		}
 		#endregion
 
@@ -530,7 +566,7 @@ namespace TaskMaster
 			f.MinimumSize = new Size(200,120);
 			f.ShowDialog(this);
 		}
-	}
+	}e
 		*/
 
 		CheckBox logcheck_warn;
@@ -836,7 +872,9 @@ namespace TaskMaster
 		ListView loglist;
 		public void setLog(MemLog log)
 		{
-			Log.Trace("Filling GUI log.");
+			if (TaskMaster.VeryVerbose)
+				Log.Debug("Filling GUI log.");
+			
 			foreach (string msg in log.Logs.ToArray())
 				loglist.Items.Add(msg);
 		}
@@ -904,7 +942,7 @@ namespace TaskMaster
 			Hide();
 			//CenterToScreen();
 
-			ProcessControl.onTouch += ProcAdjust;
+			ProcessController.onTouch += ProcAdjust;
 
 			// TODO: WPF
 			/*

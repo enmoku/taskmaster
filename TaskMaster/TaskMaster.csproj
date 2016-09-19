@@ -63,6 +63,7 @@
     <Compile Include="MemLog.cs" />
     <Compile Include="MainWindowWinforms.cs" />
     <Compile Include="TrayAccess.cs" />
+    <Compile Include="ProcessControlAbstract.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="README.md">
