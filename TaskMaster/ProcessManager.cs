@@ -93,7 +93,7 @@ namespace TaskMaster
 			{
 				if (process.HasExited)
 				{
-					if (TaskMaster.Verbose)
+					if (TaskMaster.VeryVerbose)
 						Log.Warn(System.String.Format("{0} (pid:{1}) has already exited.", Executable, process.Id));
 					return;
 				}
