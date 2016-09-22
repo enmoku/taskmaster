@@ -1,5 +1,5 @@
 ﻿//
-// Utility.cs
+// InitFailure.cs
 //
 // Author:
 //       M.A. (enmoku) <>
@@ -23,52 +23,23 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
+
 using System;
+
 namespace TaskMaster
 {
-	public class Utility
+	public class InitFailure : Exception
 	{
-		public enum Timescale : int
+		string Failure;
+
+		public InitFailure(string description)
 		{
-			Seconds = 0,
-			Minutes = 1,
-			Hours = 2,
+			Failure = description;
 		}
 
-		public static string TimescaleString(Timescale t)
+		public override string ToString()
 		{
-			switch (t)
-			{
-				case Timescale.Seconds:
-					return "second(s)";
-				case Timescale.Minutes:
-					return "minute(s)";
-				case Timescale.Hours:
-					return "hour(s)";
-			}
-			return null;
-		}
-
-		public static double SimpleTime(double seconds, out Timescale scale)
-		{
-			if (seconds > (120.0 * 60.0))
-			{
-				double hours = seconds / 60.0 / 60.0;
-				scale = Timescale.Hours;
-				return hours;
-			}
-			else if (seconds > 120.0)
-			{
-				double minutes = seconds / 60.0;
-				scale = Timescale.Minutes;
-				return minutes;
-			}
-			else
-			{
-				scale = Timescale.Seconds;
-				return seconds;
-			}
+			return string.Format("[InitFailure] {0}", Failure);
 		}
 	}
 }
-

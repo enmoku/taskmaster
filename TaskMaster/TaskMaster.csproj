@@ -45,11 +45,11 @@
     <Reference Include="System.Management" />
     <Reference Include="PresentationFramework" />
     <Reference Include="System.Net" />
-    <Reference Include="NLog">
-      <HintPath>packages\NLog.4.3.8\lib\net45\NLog.dll</HintPath>
-    </Reference>
     <Reference Include="SharpConfig">
       <HintPath>packages\sharpconfig.2.0.1\lib\net20\SharpConfig.dll</HintPath>
+    </Reference>
+    <Reference Include="NLog">
+      <HintPath>packages\NLog.4.3.9\lib\net45\NLog.dll</HintPath>
     </Reference>
   </ItemGroup>
   <ItemGroup>
@@ -64,6 +64,7 @@
     <Compile Include="MainWindowWinforms.cs" />
     <Compile Include="TrayAccess.cs" />
     <Compile Include="ProcessControlAbstract.cs" />
+    <Compile Include="InitFailure.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="README.md">

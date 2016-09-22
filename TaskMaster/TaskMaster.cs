@@ -99,17 +99,16 @@ namespace TaskMaster
 			if (tmw.LowMemory)
 			{
 				//tmw.FormClosing -= MainWindowClose // unnecessary?
-				TrayAccess.onExit -= tmw.ExitRequest;
-				tmw.Enabled = false;
+				tmw.Dispose();
 				tmw = null;
 			}
 		}
 
 		public static void ExitRequest(object sender, EventArgs e)
 		{
-			Console.WriteLine("START:Core.ExitRequest");
+			Console.WriteLine("START:Core.ExitRequest - Exit hang expected");
 			System.Windows.Forms.Application.Exit();
-			Console.WriteLine("END:Core.ExitRequest");
+			Console.WriteLine("END:Core.ExitRequest - Exit hang averted");
 		}
 
 		public static void HookMainWindow()
@@ -138,6 +137,7 @@ namespace TaskMaster
 			tri = new TrayAccess();
 			pmn = new ProcessManager();
 			tmw = new MainWindow();
+			tmw.Disposed += (sender, e) => { tmw = null; Console.WriteLine("DEBUG: TMW.Disposed caught"); };
 			HookMainWindow();
 			#if DEBUG
 			tmw.Show();
@@ -176,34 +176,22 @@ namespace TaskMaster
 				compsec = cfg["Components"];
 
 			if (!compsec.Contains("Process"))
-			{
-				compsec["Process"].BoolValue = true;
-				coreconfigdirty = true;
-			}
+				compsec["Process"].BoolValue = coreconfigdirty = true;
 			else
 				ProcessMonitorEnabled = compsec["Process"].BoolValue;
 			
 			if (!compsec.Contains("Microphone"))
-			{
-				compsec["Microphone"].BoolValue = true;
-				coreconfigdirty = true;
-			}
+				compsec["Microphone"].BoolValue = coreconfigdirty = true;
 			else
 				MicrophoneMonitorEnabled = compsec["Microphone"].BoolValue;
 			
 			if (!compsec.Contains("Media"))
-			{
-				compsec["Media"].BoolValue = true;
-				coreconfigdirty = true;
-			}
+				compsec["Media"].BoolValue = coreconfigdirty = true;
 			else
 				MediaMonitorEnabled = compsec["Media"].BoolValue;
 
 			if (!compsec.Contains("Network"))
-			{
-				compsec["Network"].BoolValue = true;
-				coreconfigdirty = true;
-			}
+				compsec["Network"].BoolValue = coreconfigdirty = true;
 			else
 				NetworkMonitorEnabled = compsec["Network"].BoolValue;
 
@@ -246,8 +234,14 @@ namespace TaskMaster
 
 		// entry point to the application
 		[STAThread] // supposedly needed to avoid shit happening with the WinForms GUI
-		static public void Main()
+		static public void Main(string[] args)
 		{
+			if (args.Length == 1 && args[0] == "-delay")
+			{
+				Console.WriteLine("Delaying proper startup for 30 seconds.");
+				System.Threading.Thread.Sleep(30 * 1000);
+			}
+
 			memlog = new MemLog();
 			NLog.LogManager.Configuration.AddTarget("MemLog", memlog);
 			NLog.LogManager.Configuration.LoggingRules.Add(new NLog.Config.LoggingRule("*", NLog.LogLevel.Debug, memlog));
@@ -255,7 +249,8 @@ namespace TaskMaster
 			NLog.LogManager.Configuration.Reload();
 
 			#region SINGLETON
-			Log.Trace("Testing for single instance.");
+			if (TaskMaster.VeryVerbose)
+				Log.Trace("Testing for single instance.");
 			System.Threading.Mutex singleton = null;
 			{
 				bool mutexgained = false;
@@ -265,13 +260,13 @@ namespace TaskMaster
 					// already running
 					// signal original process
 					System.Windows.Forms.MessageBox.Show("Already operational.", System.Windows.Forms.Application.ProductName + "!");
-					Log.Warn(System.String.Format("Exiting (pid:{0}); already running.", System.Diagnostics.Process.GetCurrentProcess().Id));
+					Log.Warn(string.Format("Exiting (pid:{0}); already running.", System.Diagnostics.Process.GetCurrentProcess().Id));
 					return;
 				}
 			}
 			#endregion
 
-			Log.Info(System.String.Format("{0} (#{1}) START!", System.Windows.Forms.Application.ProductName, System.Diagnostics.Process.GetCurrentProcess().Id));
+			Log.Info(string.Format("{0} (#{1}) START!", System.Windows.Forms.Application.ProductName, System.Diagnostics.Process.GetCurrentProcess().Id));
 
 			cfg = loadConfig(coreconfig);
 			defaultConfig();
@@ -284,30 +279,28 @@ namespace TaskMaster
 
 			try
 			{
-				System.GC.Collect();
 				System.Windows.Forms.Application.Run();
 			}
 			catch (Exception ex)
 			{
-				Log.Error("Unhandled exception! Dying.");
 				Log.Fatal("Unhandled exception! Dying." + System.Environment.NewLine + ex);
-				NLog.LogManager.Flush();
 				throw;
 			}
 			finally
 			{
 				Log.Info("Exiting...");
+				NLog.LogManager.Flush();
 			}
 
 			tri.Dispose();
 			pmn.Dispose();
 			mon.Dispose();
-			tmw.Dispose();
+			//tmw.Dispose();//already disposed by App.Exit?
 
 			CleanShutdown();
 			singleton.ReleaseMutex();
 
-			Log.Info(System.String.Format("{0} (#{1}) END! [Clean]", System.Windows.Forms.Application.ProductName, System.Diagnostics.Process.GetCurrentProcess().Id));
+			Log.Info(string.Format("{0} (#{1}) END! [Clean]", System.Windows.Forms.Application.ProductName, System.Diagnostics.Process.GetCurrentProcess().Id));
 		}
 	}
 }

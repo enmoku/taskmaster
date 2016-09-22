@@ -28,6 +28,8 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.CompilerServices;
+using System.ComponentModel.Design;
+using NLog.LayoutRenderers.Wrappers;
 
 namespace TaskMaster
 {
@@ -57,8 +59,6 @@ namespace TaskMaster
 			get { return _rescan; }
 			set { _rescan = value >= 0 ? value : 0; }
 		}
-
-		//public bool EmptyWorkingSet = true; // pointless?
 
 		/// <summary>
 		/// Initializes a new instance of the <see cref="T:TaskMaster.ProcessControl"/> class.
@@ -94,7 +94,7 @@ namespace TaskMaster
 				if (process.HasExited)
 				{
 					if (TaskMaster.VeryVerbose)
-						Log.Warn(System.String.Format("{0} (pid:{1}) has already exited.", Executable, process.Id));
+						Log.Warn(string.Format("{0} (pid:{1}) has already exited.", Executable, process.Id));
 					return;
 				}
 			}
@@ -106,22 +106,21 @@ namespace TaskMaster
 			}
 
 			if (TaskMaster.VeryVerbose)
-				Log.Debug(System.String.Format("{0} ({1}, pid:{2})", FriendlyName, Executable, process.Id));
+				Log.Debug(string.Format("{0} ({1}, pid:{2})", FriendlyName, Executable, process.Id));
 
+			bool mAffinity, mPriority, mBoost, mModified=false;
 			lock (process)
 			{
-				bool mAffinity = false;
+				mBoost = mPriority = mAffinity = false;
 				IntPtr oldAffinity = process.ProcessorAffinity;
-				bool mPriority = false;
 				ProcessPriorityClass oldPriority = process.PriorityClass;
-				bool mBoost = false;
 				LastSeen = System.DateTime.Now;
 
 				if (((ProcessManager.PriorityToInt(process.PriorityClass) < ProcessManager.PriorityToInt(Priority)) && Increase) ||
 					 (ProcessManager.PriorityToInt(process.PriorityClass) > ProcessManager.PriorityToInt(Priority)))
 				{
 					process.PriorityClass = Priority;
-					mPriority = true;
+					mModified = mPriority = true;
 				}
 
 				if (process.ProcessorAffinity != Affinity)
@@ -131,21 +130,21 @@ namespace TaskMaster
 					try
 					{
 						process.ProcessorAffinity = Affinity;
-						mAffinity = true;
+						mModified = mAffinity = true;
 					}
 					catch (System.ComponentModel.Win32Exception)
 					{
-						Log.Warn(System.String.Format("Couldn't modify process ({0}, #{1}) affinity [{2} -> {3}].", Executable, process.Id, process.ProcessorAffinity.ToInt32(), Affinity.ToInt32()));
+						Log.Warn(string.Format("Couldn't modify process ({0}, #{1}) affinity [{2} -> {3}].", Executable, process.Id, process.ProcessorAffinity.ToInt32(), Affinity.ToInt32()));
 					}
 				}
 
 				if (process.PriorityBoostEnabled != Boost)
 				{
 					process.PriorityBoostEnabled = Boost;
-					mBoost = true;
+					mModified = mBoost = true;
 				}
 
-				if (mPriority || mAffinity || mBoost)
+				if (mModified)
 				{
 					Adjusts += 1;
 
@@ -163,13 +162,15 @@ namespace TaskMaster
 						ls.Append(" Boost(").Append(Boost).Append(")");
 					//ls.Append("; Start: ").Append(process.StartTime); // when the process was started // DEBUG
 					Log.Info(ls.ToString());
-
-					onTouchHandler(this, new ProcessEventArgs(this, process, true));
 				}
 				else
 					if (TaskMaster.VeryVerbose)
-						Log.Trace(System.String.Format("'{0}' (pid:{1}) seems to be OK already.", Executable, process.Id));
+						Log.Trace(string.Format("'{0}' (pid:{1}) seems to be OK already.", Executable, process.Id));
 			}
+
+			if (mModified)
+				onTouchHandler(this, new ProcessEventArgs { Control = this, Process = process });
+
 			WideTouchScheduler();
 		}
 
@@ -178,29 +179,23 @@ namespace TaskMaster
 		{
 			if (Rescan > 0 && (System.DateTime.Now - lastWideTouch).TotalMinutes >= Rescan)
 			{
-				Console.WriteLine("++ DEBUG: Attempting to gain lock for WideTouch");
-				if (System.Threading.Interlocked.CompareExchange(ref WideTouchScheduled, 1, 0) == 0)
+				if (System.Threading.Interlocked.CompareExchange(ref WideTouchScheduled, 1, 0) == 1)
+					return;
+
+				Log.Info(string.Format("'{0}' detected, wide rescan queued.", FriendlyName));
+				System.Threading.Tasks.Task.Run(async () =>
 				{
-					Console.WriteLine("++ DEBUG: Scheduling wide touch.");
-					System.Threading.Tasks.Task.Run(async () =>
-					{
-						Console.WriteLine("-- WTS delay complete");
-						//await WideTouch();
-						WideTouch();
-						WideTouchScheduled = 0;
-						Console.WriteLine("-- WideTouch done");
-					});
-				}
-				else
-					Console.WriteLine("--DEBUG: WideTouch lock failed: " + WideTouchScheduled); // should usually be 2
+					await WideTouch();
+					WideTouchScheduled = 0;
+				});
 			}
 		}
 
 		System.DateTime lastWideTouch = System.DateTime.MinValue;
-		//public async System.Threading.Tasks.Task WideTouch()
-		public async void WideTouch()
+		public async System.Threading.Tasks.Task WideTouch()
 		{
 			await System.Threading.Tasks.Task.Delay(100);
+
 			Process[] procs = Process.GetProcessesByName(ExecutableFriendlyName);
 			if (procs.Length == 0)
 				return;
@@ -219,7 +214,7 @@ namespace TaskMaster
 				}
 				catch (Exception ex)
 				{
-					Log.Warn(System.String.Format("Failed to control '{0}' (pid:{1})", Executable, process.Id));
+					Log.Warn(string.Format("Failed to control '{0}' (pid:{1})", Executable, process.Id));
 					Console.Error.WriteLine(ex);
 				}
 			}
@@ -248,9 +243,9 @@ namespace TaskMaster
 			Subpath = subpath;
 			Path = path;
 			if (path != null)
-				Log.Info(System.String.Format("'{0}' watched in: {1} [{2}]", FriendlyName, Path, Priority));
+				Log.Info(string.Format("'{0}' watched in: {1} [{2}]", FriendlyName, Path, Priority));
 			else
-				Log.Info(System.String.Format("'{0}' matching for '{1}' [{2}]", Executable, Subpath, Priority));
+				Log.Info(string.Format("'{0}' matching for '{1}' [{2}]", Executable, Subpath, Priority));
 		}
 
 		public void Touch(Process process, string path)
@@ -263,7 +258,7 @@ namespace TaskMaster
 				if (process.HasExited)
 				{
 					if (TaskMaster.Verbose)
-						Log.Warn(System.String.Format("{0} (pid:{1}) has already exited.", process.ProcessName, process.Id));
+						Log.Warn(string.Format("{0} (pid:{1}) has already exited.", process.ProcessName, process.Id));
 					return;
 				}
 			}
@@ -285,16 +280,16 @@ namespace TaskMaster
 					Adjusts += 1;
 					onTouchHandler(this, new PathControlEventArgs());
 
-					Log.Info(System.String.Format("{0} (pid:{1}); Priority({2} -> {3})", name, process.Id, oldPriority, Priority));
+					Log.Info(string.Format("{0} (pid:{1}); Priority({2} -> {3})", name, process.Id, oldPriority, Priority));
 
 					return;
 				}
 
-				Log.Debug(System.String.Format("{0} (pid:{1}); looks OK, not touched.", name, process.Id));
+				Log.Debug(string.Format("{0} (pid:{1}); looks OK, not touched.", name, process.Id));
 			}
 			catch
 			{
-				Log.Info(System.String.Format("Failed to touch '{0}' (pid:{1})", name, process.Id));
+				Log.Info(string.Format("Failed to touch '{0}' (pid:{1})", name, process.Id));
 			}
 		}
 
@@ -317,7 +312,7 @@ namespace TaskMaster
 				if (System.IO.Directory.Exists(fullpath))
 				{
 					Path = fullpath;
-					Log.Debug(System.String.Format("'{0}' bound to: {1}", FriendlyName, Path));
+					Log.Debug(string.Format("'{0}' bound to: {1}", FriendlyName, Path));
 
 					onLocateHandler(this, new PathControlEventArgs());
 
@@ -326,7 +321,7 @@ namespace TaskMaster
 			}
 			catch (Exception ex)
 			{
-				Log.Warn(System.String.Format("Access failure with '{0}'", FriendlyName));
+				Log.Warn(string.Format("Access failure with '{0}'", FriendlyName));
 				Console.Error.WriteLine(ex);
 			}
 			return false;
@@ -358,24 +353,11 @@ namespace TaskMaster
 	{
 		public ProcessController Control { get; set; }
 		public Process Process { get; set; }
-		public bool Modified { get; set; }
-		//public bool Priority { get; set; }
-		//public bool Affinity { get; set; }
-		//public bool Boost { get; set; }
-
-		public ProcessEventArgs(ProcessController control, Process process=null, bool modified=false)
-		{
-			Debug.Assert(control != null);
-
-			Control = control;
-			Process = process;
-			Modified = modified;
-		}
 	}
 
 	public class ProcessManager : IDisposable
 	{
-		static NLog.Logger Log = NLog.LogManager.GetCurrentClassLogger();
+		static readonly NLog.Logger Log = NLog.LogManager.GetCurrentClassLogger();
 
 		/// <summary>
 		/// Actively watched process images.
@@ -396,7 +378,7 @@ namespace TaskMaster
 
 		int numCPUs = 1;
 
-		public static volatile int allCPUsMask = 1;
+		public static int allCPUsMask = 1;
 
 		/// <summary>
 		/// Gets the control class instance of the executable if it exists.
@@ -441,7 +423,7 @@ namespace TaskMaster
 
 			Process[] procs = Process.GetProcesses();
 
-			Log.Trace(System.String.Format("Scanning {0} processes.", procs.Length));
+			Log.Trace(string.Format("Scanning {0} processes.", procs.Length));
 			foreach (Process process in procs)
 			{
 				// Skip 0 [Idle] and 4 [System], shouldn't rely on this, but nothing else to do about it.
@@ -511,13 +493,13 @@ namespace TaskMaster
 				if (!section.Contains("image"))
 				{
 					// TODO: Deal with incorrect configuration lacking image
-					Log.Warn(System.String.Format("'{0}' has no image.", section.Name));
+					Log.Warn(string.Format("'{0}' has no image.", section.Name));
 					continue;
 				}
 				if (!section.Contains("priority") && !section.Contains("affinity"))
 				{
 					// TODO: Deal with incorrect configuration lacking image
-					Log.Warn(System.String.Format("'{0}' has no priority or affinity.", section.Name));
+					Log.Warn(string.Format("'{0}' has no priority or affinity.", section.Name));
 					continue;
 				}
 
@@ -543,7 +525,7 @@ namespace TaskMaster
 				images.Add(cnt);
 				execontrol.Add(new KeyValuePair<string,ProcessController>(cnt.ExecutableFriendlyName, cnt));
 				if (TaskMaster.VeryVerbose)
-					Log.Trace(System.String.Format("'{0}' added to monitoring.", section.Name));
+					Log.Trace(string.Format("'{0}' added to monitoring.", section.Name));
 			}
 		}
 
@@ -581,7 +563,7 @@ namespace TaskMaster
 				if (process.HasExited)
 				{
 					if (TaskMaster.Verbose)
-						Log.Warn(System.String.Format("{0} (pid:{1}) has already exited.", process.ProcessName, process.Id));
+						Log.Warn(string.Format("{0} (pid:{1}) has already exited.", process.ProcessName, process.Id));
 					return;
 				}
 			}
@@ -616,13 +598,13 @@ namespace TaskMaster
 					switch (ex.NativeErrorCode)
 					{
 						case 5:
-							Log.Trace(System.String.Format("Access denied to '{0}' (pid:{1})", process.ProcessName, process.Id));
+							Log.Trace(string.Format("Access denied to '{0}' (pid:{1})", process.ProcessName, process.Id));
 							break;
 						case 299: // 32/64 bit taskmaster accessing opposite
-							Log.Debug(System.String.Format("Can not fully access '{0}' (pid:{1})", process.ProcessName, process.Id));
+							Log.Debug(string.Format("Can not fully access '{0}' (pid:{1})", process.ProcessName, process.Id));
 							break;
 						default:
-							Log.Debug(System.String.Format("Unknown failure with '{0}' (pid:{1}), error: {2}", process.ProcessName, process.Id, ex.NativeErrorCode));
+							Log.Debug(string.Format("Unknown failure with '{0}' (pid:{1}), error: {2}", process.ProcessName, process.Id, ex.NativeErrorCode));
 							Log.Debug(ex);
 							break;
 					}
@@ -661,7 +643,7 @@ namespace TaskMaster
 			if (execontrol.TryGetValue(process.ProcessName, out control))
 			{
 				if (TaskMaster.VeryVerbose)
-					Log.Debug(System.String.Format("Delaying touching of '{0}' (pid:{1})", control.Executable, process.Id));
+					Log.Debug(string.Format("Delaying touching of '{0}' (pid:{1})", control.Executable, process.Id));
 				await System.Threading.Tasks.Task.Delay(2800);
 				if (TaskMaster.VeryVerbose)
 					Log.Debug("Control group: " + control.FriendlyName + ", process: " + process.ProcessName + " (#" + process.Id + ")");
@@ -670,7 +652,7 @@ namespace TaskMaster
 			else if (pathwatch.Count > 0)
 			{
 				if (TaskMaster.VeryVerbose)
-					Log.Debug(System.String.Format("Checking paths for '{0}' (pid:{1})", process.ProcessName, process.Id));
+					Log.Debug(string.Format("Checking paths for '{0}' (pid:{1})", process.ProcessName, process.Id));
 				CheckPathWatch(process);
 			}
 			else
@@ -706,6 +688,7 @@ namespace TaskMaster
 
 			if (TaskMaster.Verbose)
 				Log.Trace("Caught: " + process.ProcessName + " (pid:"+process.Id+")");
+			
 			CheckProcess(process);
 		}
 
@@ -723,17 +706,21 @@ namespace TaskMaster
 				ProcessPriorityClass priority = section.Contains("priority") ? IntToPriority(section["priority"].IntValue) : ProcessPriorityClass.Normal;
 
 				// TODO: technically subpath should be enough...
-				if (path == null && subpath == null)
+				if (path == null)
 				{
-					Log.Warn(name + " does not have 'path' nor 'subpath'.");
-					continue;
+					if (subpath == null)
+					{
+						Log.Warn(name + " does not have 'path' nor 'subpath'.");
+						continue;
+					}
+					if (executable == string.Empty)
+					{
+						Log.Warn(name + " has no 'path' nor 'image'.");
+						continue;
+					}
 				}
-				else if (path == null && executable == string.Empty)
-				{
-					Log.Warn(name + " has no 'path' nor 'image'.");
-					continue;
-				}
-				else if (path != null && !System.IO.Directory.Exists(path))
+
+				if (!System.IO.Directory.Exists(path))
 				{
 					Log.Warn(path + "(" + name + ") does not exist.");
 					if (subpath == null && executable != null)
@@ -749,22 +736,55 @@ namespace TaskMaster
 				{
 					pathwatch.Add(pc);
 					pathinit.Remove(pc);
-					Log.Debug(name + " (" + pc.Path + ") added to active watch list.");
-					Log.Trace("Informing others of path having been located.");
-					section["path"].StringValue = pc.Path;
-					pathfile_dirty = true;
+					if (!section.Contains("path") || section["path"].StringValue != pc.Path)
+					{
+						section["path"].StringValue = pc.Path;
+						pathfile_dirty = true;
+					}
+					Log.Trace(name + " (" + pc.Path + ") added to active watch list.");
 				}
 				else
 				{
 					pathinit.Add(pc);
-					Log.Debug(name + " ("+subpath+") added to init list.");
+					Log.Trace(name + " ("+subpath+") added to init list.");
 				}
 			}
 			Log.Trace("Path loading complete.");
 		}
 
-		void InitProcessWatcher()
+		public List<PathControl> ActivePaths()
 		{
+			return pathwatch;
+		}
+
+		System.Management.ManagementEventWatcher watcher;
+		SharpConfig.Configuration cfg;
+		SharpConfig.Configuration pathcfg;
+		const string configfile = "Apps.ini";
+		const string pathfile = "Paths.ini";
+		bool pathfile_dirty = false;
+		const string statfile = "Apps.Statistics.ini";
+		// ctor, constructor
+		public ProcessManager()
+		{
+			Log.Trace("Starting...");
+
+			numCPUs = Environment.ProcessorCount;
+			Log.Info(string.Format("Processor count: {0}", numCPUs));
+
+			// TODO: Use something simpler?
+			// is there really no easier way?
+			System.Collections.BitArray bits = new System.Collections.BitArray(numCPUs);
+			for (int i = 0; i < numCPUs; i++)
+				bits.Set(i, true);
+			int[] bint = new int[1];
+			bits.CopyTo(bint, 0);
+			allCPUsMask = bint[0];
+			Log.Info(string.Format("Full mask: {0} ({1})", Convert.ToString(allCPUsMask, 2), allCPUsMask));
+
+			loadConfig();
+			LoadPathList();
+
 			// FIXME: doesn't seem to work when lots of new processes start at the same time.
 			try
 			{
@@ -789,71 +809,17 @@ namespace TaskMaster
 				Log.Debug("New instance watcher initialized.");
 			}
 			else
-				Log.Error("Failed to initialize new process watcher.");
-		}
-
-		public List<PathControl> ActivePaths()
-		{
-			return pathwatch;
-		}
-
-		void ConfigureProcessors()
-		{
-			numCPUs = Environment.ProcessorCount;
-			Log.Info(System.String.Format("Processor count: {0}", numCPUs));
-
-			// TODO: Use something simpler?
-			// is there really no easier way?
-			System.Collections.BitArray bits = new System.Collections.BitArray(numCPUs);
-			for (int i = 0; i < numCPUs; i++)
-				bits.Set(i, true);
-			int[] bint = new int[1];
-			bits.CopyTo(bint, 0);
-			allCPUsMask = bint[0];
-			Log.Info(System.String.Format("Full mask: {0} ({1})", Convert.ToString(allCPUsMask, 2), allCPUsMask));
-		}
-
-		System.Management.ManagementEventWatcher watcher;
-		SharpConfig.Configuration cfg;
-		SharpConfig.Configuration pathcfg;
-		const string configfile = "Apps.ini";
-		const string pathfile = "Paths.ini";
-		bool pathfile_dirty = false;
-		const string statfile = "Apps.Statistics.ini";
-		// ctor, constructor
-		public ProcessManager()
-		{
-			Log.Trace("Starting...");
-			ConfigureProcessors();
-			loadConfig();
-			LoadPathList();
-			InitProcessWatcher();
-		}
-
-		~ProcessManager()
-		{
-			Log.Trace("Destructing");
-			#if DEBUG
-			if (!disposed)
-				Log.Warn("Not disposed");
-			#endif
-		}
-
-		void Close()
-		{
-			//TaskMaster.saveConfig(configfile, cfg); // we aren't modifyin it yet
-			if (stats_dirty)
-				saveStats();
-			if (pathfile_dirty)
-				TaskMaster.saveConfig(pathfile, pathcfg);
-			watcher.Stop();
+			{
+				Log.Error("Failed to initialize new instance watcher.");
+				throw new InitFailure("New instance watcher not initialized");
+			}
 		}
 
 		bool disposed = false;
 		public void Dispose()
 		{
 			Dispose(true);
-			//GC.SuppressFinalize(this);
+			GC.SuppressFinalize(this);
 		}
 
 		protected virtual void Dispose(bool disposing)
@@ -863,7 +829,12 @@ namespace TaskMaster
 
 			if (disposing)
 			{
-				Close();
+				//TaskMaster.saveConfig(configfile, cfg); // we aren't modifyin it yet
+				if (stats_dirty)
+					saveStats();
+				if (pathfile_dirty)
+					TaskMaster.saveConfig(pathfile, pathcfg);
+				watcher.Stop();
 
 				// Free any other managed objects here.
 				//

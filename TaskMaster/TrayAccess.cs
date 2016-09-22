@@ -26,6 +26,8 @@
 
 using System;
 using System.Linq;
+using NLog.Config;
+using System.Runtime.Remoting.Channels;
 
 namespace TaskMaster
 {
@@ -33,7 +35,7 @@ namespace TaskMaster
 
 	public class TrayAccess : IDisposable
 	{
-		static NLog.Logger Log = NLog.LogManager.GetCurrentClassLogger();
+		static readonly NLog.Logger Log = NLog.LogManager.GetCurrentClassLogger();
 
 		NotifyIcon Tray;
 
@@ -50,6 +52,10 @@ namespace TaskMaster
 				Icon = System.Drawing.Icon.ExtractAssociatedIcon(System.Reflection.Assembly.GetExecutingAssembly().Location) // is this really the best way?
 			};
 			Tray.BalloonTipText = Tray.Text;
+			Tray.Disposed += (object sender, EventArgs e) => {
+				Tray = null;
+				Console.WriteLine("DEBUG: Tray.Disposed caught");
+			};
 
 			Log.Trace("Generating tray icon.");
 
@@ -63,7 +69,9 @@ namespace TaskMaster
 			Tray.ContextMenuStrip = ms;
 			Log.Trace("Tray menu ready");
 
-			RegisterExplorerExit();
+			if (!RegisterExplorerExit())
+				throw new InitFailure("Explorer registeriong failed; not running?");
+			
 			Tray.Visible = true;
 
 			Log.Trace("Tray icon generated.");
@@ -79,11 +87,14 @@ namespace TaskMaster
 
 		void ShowConfigRequest(object sender, EventArgs e)
 		{
+			Console.WriteLine("Opening config folder.");
 			System.Diagnostics.Process.Start(TaskMaster.cfgpath);
+
 			if (TaskMaster.tmw != null)
 				TaskMaster.tmw.ShowConfigRequest(sender, e);
 			else
 				Log.Warn("Can't open configuration.");
+			Console.WriteLine("Done opening config folder.");
 		}
 
 		public static event EventHandler onExit;
@@ -133,15 +144,27 @@ namespace TaskMaster
 				TaskMaster.tmw.RestoreWindowRequest(sender, null);
 		}
 
-		void WindowClosed(object sender, EventArgs e)
+		void WindowClosed(object sender, FormClosingEventArgs e)
 		{
+			Console.WriteLine("START:TrayAccess.WindowClosed");
+
+			switch (e.CloseReason)
+			{
+				case CloseReason.ApplicationExitCall:
+					Console.WriteLine("BAIL:TrayAccess.WindowClosed");
+					return;
+			}
+
 			if (TaskMaster.tmw.LowMemory)
 			{
+				Console.WriteLine("DEBUG:TrayAccess.WindowClosed.SaveMemory");
+
 				Tray.MouseClick -= ShowWindow;
 				Tray.MouseDoubleClick -= UnloseWindow;
 
 				Tray.MouseClick += RestoreMainRequest;
 			}
+			Console.WriteLine("END:TrayAccess.WindowClosed");
 		}
 
 		public void RegisterMain(ref MainWindow window)
@@ -180,7 +203,7 @@ namespace TaskMaster
 				Explorer = procs[0];
 				Explorer.Exited += ExplorerCrashHandler;
 				Explorer.EnableRaisingEvents = true;
-				Log.Info(System.String.Format("Explorer (#{0}) registered.", Explorer.Id));
+				Log.Info(string.Format("Explorer (#{0}) registered.", Explorer.Id));
 				return true;
 			}
 
@@ -188,34 +211,11 @@ namespace TaskMaster
 			return false;
 		}
 
-		/// <summary>
-		/// Hides tray icon.
-		/// Should be called before the app exits to make sure there's no lingering icon.
-		/// </summary>
-		public void Close()
-		{
-			if (Tray != null)
-			{
-				Tray.Visible = false;
-				Tray.Dispose();
-				Tray = null;
-			}
-		}
-
-		~TrayAccess()
-		{
-			Log.Trace("Destructing");
-			#if DEBUG
-			if (!disposed)
-				Log.Warn("Not disposed");
-			#endif
-		}
-
 		bool disposed = false;
 		public void Dispose()
 		{
 			Dispose(true);
-			//GC.SuppressFinalize(this);
+			GC.SuppressFinalize(this);
 		}
 
 		protected virtual void Dispose(bool disposing)
@@ -225,9 +225,9 @@ namespace TaskMaster
 
 			if (disposing)
 			{
-				Close();
 				if (Tray != null)
 				{
+					Tray.Visible = false;
 					Tray.Dispose();
 					Tray = null;
 				}

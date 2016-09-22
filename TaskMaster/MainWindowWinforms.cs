@@ -23,6 +23,7 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
+using System.IO;
 
 namespace TaskMaster
 {
@@ -36,9 +37,9 @@ namespace TaskMaster
 	// public class MainWindow : System.Windows.Window; // TODO: WPF
 	public class MainWindow : System.Windows.Forms.Form
 	{
-		static NLog.Logger Log = NLog.LogManager.GetCurrentClassLogger();
+		static readonly NLog.Logger Log = NLog.LogManager.GetCurrentClassLogger();
 
-		public void ShowConfigRequest(object sender, System.EventArgs e)
+		public void ShowConfigRequest(object sender, EventArgs e)
 		{
 			Log.Warn("No config window available.");
 		}
@@ -52,6 +53,7 @@ namespace TaskMaster
 
 		void WindowClose(object sender, FormClosingEventArgs e)
 		{
+			Console.WriteLine("WindowClose = " + e.CloseReason);
 			switch (e.CloseReason)
 			{
 				case CloseReason.UserClosing:
@@ -67,18 +69,18 @@ namespace TaskMaster
 					break;
 				case CloseReason.WindowsShutDown:
 					Log.Info("Exit: Windows shutting down.");
-					goto Cleanup;
+					break;
 				case CloseReason.TaskManagerClosing:
 					Log.Info("Exit: Task manager told us to close.");
-					goto Cleanup;
+					break;
 				case CloseReason.ApplicationExitCall:
 					Log.Info("Exit: User asked to close.");
 					break;
 				default:
-					Log.Warn(System.String.Format("Exit: Unidentified close reason: {0}", e.CloseReason));
-				Cleanup:
+					Log.Warn(string.Format("Exit: Unidentified close reason: {0}", e.CloseReason));
 					break;
 			}
+			Console.WriteLine("WindowClose.Handled");
 		}
 
 		// this restores the main window to a place where it can be easily found if it's lost
@@ -123,7 +125,7 @@ namespace TaskMaster
 				item.SubItems[6].Text = e.Control.LastSeen.ToString();
 			}
 			else
-				Log.Error(System.String.Format("{0} not found in app list.", e.Control.Executable));
+				Log.Error(string.Format("{0} not found in app list.", e.Control.Executable));
 		}
 
 		public void OnActiveWindowChanged(object sender, WindowChangedArgs e)
@@ -131,10 +133,8 @@ namespace TaskMaster
 			//activeLabel.Text = "Active window: " + e.title;
 		}
 
-		ProcessManager procCntrl;
 		public void setProcControl(ProcessManager control)
 		{
-			procCntrl = control;
 			//control.onProcAdjust += ProcAdjust;
 			foreach (ProcessController item in control.images)
 			{
@@ -153,7 +153,7 @@ namespace TaskMaster
 				appList.Items.Add(litem);
 			}
 
-			foreach (PathControl path in procCntrl.ActivePaths())
+			foreach (PathControl path in control.ActivePaths())
 			{
 				ListViewItem ni = new ListViewItem(new string[] { path.FriendlyName, path.Path, path.Adjusts.ToString() });
 				appw.Add(path, ni);
@@ -207,11 +207,7 @@ namespace TaskMaster
 		void volumeChangeDetected(object sender, VolumeChangedEventArgs e)
 		{
 			micVol.Value = System.Convert.ToInt32(e.New);
-			if (e.Corrected)
-			{
-				corCountLabel.Text = e.Corrections.ToString();
-				//corCountLabel.Refresh();
-			}
+			corCountLabel.Text = e.Corrections.ToString();
 		}
 		#endregion // Microphone control code
 
@@ -251,7 +247,7 @@ namespace TaskMaster
 
 		void ReportCurrentUptime()
 		{
-			Log.Info(System.String.Format("Current internet uptime: {0:1} minutes", (System.DateTime.Now - lastUptimeStart).TotalMinutes));
+			Log.Info(string.Format("Current internet uptime: {0:1} minutes", (System.DateTime.Now - lastUptimeStart).TotalMinutes));
 		}
 
 		void ReportUptime()
@@ -259,10 +255,10 @@ namespace TaskMaster
 			if (uptimeSamples > 3)
 			{
 				double uptimeLast3 = upTime.GetRange(upTime.Count - 3, 3).Sum();
-				Log.Info(System.String.Format("Average uptime: {0:1} minutes ({1:1 minutes} for last 3 samples).", (uptimeTotal / uptimeSamples), (uptimeLast3 / 3)));
+				Log.Info(string.Format("Average uptime: {0:1} minutes ({1:1 minutes} for last 3 samples).", (uptimeTotal / uptimeSamples), (uptimeLast3 / 3)));
 			}
 			else
-				Log.Info(System.String.Format("Average uptime: {0:1} minutes.", (uptimeTotal / uptimeSamples)));
+				Log.Info(string.Format("Average uptime: {0:1} minutes.", (uptimeTotal / uptimeSamples)));
 
 			ReportCurrentUptime();
 		}
@@ -379,8 +375,8 @@ namespace TaskMaster
 		int enumerating_inet = 0;
 		void NetEnum()
 		{
-			if (System.Threading.Interlocked.CompareExchange(ref enumerating_inet, 1, 0) == 0)
-				return;
+			if (System.Threading.Interlocked.CompareExchange(ref enumerating_inet, 1, 0) == 1)
+				return; // bail if we were already doing this
 
 			if (TaskMaster.Verbose)
 				Log.Trace("Enumerating network interfaces...");
@@ -394,14 +390,18 @@ namespace TaskMaster
 
 				foreach (UnicastIPAddressInformation ip in n.GetIPProperties().UnicastAddresses)
 				{
-					if (ip.Address.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork || ip.Address.AddressFamily == System.Net.Sockets.AddressFamily.InterNetworkV6)
+					// TODO: Maybe figure out better way and early bailout from the foreach
+					switch (ip.Address.AddressFamily)
 					{
-						if (ip.Address.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork)
+						case System.Net.Sockets.AddressFamily.InterNetwork:
 							IPv4Address = ip.Address;
-						else if (ip.Address.AddressFamily == System.Net.Sockets.AddressFamily.InterNetworkV6)
+							break;
+						case System.Net.Sockets.AddressFamily.InterNetworkV6:
 							IPv6Address = ip.Address;
+							break;
 					}
 				}
+
 				ifaceList.Items.Add(new ListViewItem(new string[] {
 					n.Name,
 					n.NetworkInterfaceType.ToString(),
@@ -475,121 +475,22 @@ namespace TaskMaster
 		}
 		#endregion
 
-		/*
-		ProcessControl editproc;
-		void saveAppData(Object sender, EventArgs e)
-		{
-			Log.Debug("Save button pressed!");
-		}
-		*/
-
-		//void appEditEvent(Object sender, System.Windows.Input.MouseButtonEventArgs e)
-		/*
-	void appEditEvent(Object sender, EventArgs e)
-	{
-		if (appList.SelectedItems.Count == 1)
-		{
-			//ListView.SelectedListViewItemCollection items = appList.SelectedItems;
-			//ListViewItem itm = items[0];
-			ListViewItem.ListViewSubItemCollection sit = appList.SelectedItems[0].SubItems;
-
-			// TODO: Find the actuall ProcessControl for this item
-			editproc = procCntrl.getControl(sit[1].Text);
-			if (editproc == null)
-			{
-				Log.Warn(sit[1].Text + " not found in process manager!");
-				return;
-			}
-
-			Log.Trace(System.String.Format("[{0}] {1}", editproc.FriendlyName, editproc.Executable));
-
-			Form f = new Form();
-			f.Padding = new Padding(12);
-			TableLayoutPanel lay = new TableLayoutPanel();
-			lay.Parent = f;
-			lay.ColumnCount = 2;
-			lay.RowCount = 6;
-			lay.Dock = DockStyle.Fill;
-			lay.AutoSize = true;
-
-			Label e_appname = new Label();
-			e_appname.Text = "Application";
-			e_appname.TextAlign = ContentAlignment.MiddleLeft;
-			e_appname.Width = 120;
-			lay.Controls.Add(e_appname, 0, 0);
-			TextBox i_appname = new TextBox();
-			i_appname.Text = editproc.FriendlyName;
-			lay.Controls.Add(i_appname, 1, 0);
-
-			Label e_exename = new Label();
-			e_exename.Text = "Executable";
-			e_exename.TextAlign = ContentAlignment.MiddleLeft;
-			e_exename.Width = 120;
-			lay.Controls.Add(e_exename, 0, 1);
-			TextBox i_exename = new TextBox();
-			i_exename.Text = editproc.Executable;
-			lay.Controls.Add(i_exename, 1, 1);
-
-			Label e_priority = new Label();
-			e_priority.Text = "Priority";
-			e_priority.TextAlign = ContentAlignment.MiddleLeft;
-			lay.Controls.Add(e_priority, 0, 2);
-			ComboBox i_priority = new ComboBox();
-			i_priority.Items.Add(ProcessPriorityClass.AboveNormal);
-			i_priority.Items.Add(ProcessPriorityClass.Normal);
-			i_priority.Items.Add(ProcessPriorityClass.BelowNormal);
-			i_priority.Items.Add(ProcessPriorityClass.Idle);
-			i_priority.SelectedText = editproc.Priority.ToString();
-			lay.Controls.Add(i_priority, 1, 2);
-
-			Label e_affinity = new Label();
-			e_affinity.Text = "Affinity";
-			e_affinity.TextAlign = ContentAlignment.MiddleLeft;
-			lay.Controls.Add(e_affinity, 0, 3);
-
-
-			Label e_boost = new Label();
-			e_boost.Text = "Boost";
-			e_boost.TextAlign = ContentAlignment.MiddleLeft;
-			lay.Controls.Add(e_boost, 0, 4);
-			CheckBox i_boost = new CheckBox();
-			i_boost.Checked = editproc.Boost;
-			//Log.Debug("Boost:"+sit[4]);
-			lay.Controls.Add(i_boost, 1, 4);
-
-			Button savebut = new Button();
-			savebut.Text = "Save";
-			lay.Controls.Add(savebut, 1, 5);
-
-			savebut.Click += saveAppData;
-
-			f.MinimumSize = new Size(200,120);
-			f.ShowDialog(this);
-		}
-	}e
-		*/
-
 		CheckBox logcheck_warn;
 		bool log_include_warn = true;
 		CheckBox logcheck_debug;
 		bool log_include_debug = true;
 
-		void SetWindowSize()
+		void BuildUI()
 		{
 			Size = new System.Drawing.Size(720, 720); // width, height
 			AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowOnly;
 			AutoSize = true;
-		}
-
-		void BuildUI()
-		{
-			SetWindowSize();
 
 			Text = Application.ProductName;
 			Padding = new Padding(12);
 			//margin
 
-			TableLayoutPanel lrows = new TableLayoutPanel
+			var lrows = new TableLayoutPanel
 			{
 				Parent = this,
 				ColumnCount = 1,
@@ -623,7 +524,7 @@ namespace TaskMaster
 
 			// uhh???
 			// Main Window Row 2, volume control
-			TableLayoutPanel miccntrl = new TableLayoutPanel
+			var miccntrl = new TableLayoutPanel
 			{
 				ColumnCount = 5,
 				RowCount = 1,
@@ -636,14 +537,14 @@ namespace TaskMaster
 			miccntrl.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 			lrows.Controls.Add(miccntrl);
 
-			Label micVolLabel = new Label
+			var micVolLabel = new Label
 			{
 				Text = "Mic volume",
 				Dock = DockStyle.Left,
 				TextAlign = System.Drawing.ContentAlignment.MiddleLeft
 			};
 
-			Label micVolLabel2 = new Label
+			var micVolLabel2 = new Label
 			{
 				Text = "%",
 				Dock = DockStyle.Left,
@@ -665,7 +566,7 @@ namespace TaskMaster
 			miccntrl.Controls.Add(micVol);
 			miccntrl.Controls.Add(micVolLabel2);
 
-			Label corLbll = new Label
+			var corLbll = new Label
 			{
 				Text = "Correction count:",
 				Dock = DockStyle.Fill,
@@ -700,13 +601,13 @@ namespace TaskMaster
 			// End: Microphone enumeration
 
 			// Main Window row 4-5, internet status
-			Label netLabel = new Label { Text = "Network status:", Dock = DockStyle.Left, AutoSize = true };
-			Label inetLabel = new Label { Text = "Internet status:", Dock = DockStyle.Left, AutoSize = true };
+			var netLabel = new Label { Text = "Network status:", Dock = DockStyle.Left, AutoSize = true };
+			var inetLabel = new Label { Text = "Internet status:", Dock = DockStyle.Left, AutoSize = true };
 
 			netstatuslabel = new Label { Dock = DockStyle.Top, Text = "Uninitialized", AutoSize = true, BackColor = System.Drawing.Color.LightGoldenrodYellow };
 			inetstatuslabel = new Label { Dock = DockStyle.Top, Text = "Uninitialized", AutoSize = true, BackColor = System.Drawing.Color.LightGoldenrodYellow };
 
-			TableLayoutPanel netlayout = new TableLayoutPanel { ColumnCount = 4, RowCount = 1, Dock = DockStyle.Top, AutoSize = true };
+			var netlayout = new TableLayoutPanel { ColumnCount = 4, RowCount = 1, Dock = DockStyle.Top, AutoSize = true };
 			netlayout.Controls.Add(netLabel);
 			netlayout.Controls.Add(netstatuslabel);
 			netlayout.Controls.Add(inetLabel);
@@ -817,7 +718,7 @@ namespace TaskMaster
 			loglist.Columns[0].Width = lrows.Width - 25;
 			lrows.Controls.Add(loglist);
 
-			TableLayoutPanel logpanel = new TableLayoutPanel
+			var logpanel = new TableLayoutPanel
 			{
 				Dock = DockStyle.Top,
 				RowCount = 1,
@@ -825,7 +726,7 @@ namespace TaskMaster
 				Height = 40,
 				AutoSize = true
 			};
-			Label loglabel_warn = new Label
+			var loglabel_warn = new Label
 			{
 				Text = "Warnings",
 				Dock = DockStyle.Left,
@@ -837,7 +738,7 @@ namespace TaskMaster
 			};
 			logpanel.Controls.Add(loglabel_warn);
 			logpanel.Controls.Add(logcheck_warn);
-			Label loglabel_debug = new Label { Text = "Debug", Dock = DockStyle.Left, TextAlign = System.Drawing.ContentAlignment.MiddleLeft };
+			var loglabel_debug = new Label { Text = "Debug", Dock = DockStyle.Left, TextAlign = System.Drawing.ContentAlignment.MiddleLeft };
 			logcheck_debug = new CheckBox { Dock = DockStyle.Left, Checked = log_include_debug };
 			logcheck_debug.CheckedChanged += (sender, e) => {
 				log_include_debug = (logcheck_debug.CheckState == CheckState.Checked);
@@ -953,22 +854,6 @@ namespace TaskMaster
 			jumplist.JumpItems.Add(jpath);
 			jumplist.Apply();
 			*/
-		}
-
-		/*
-		protected override void OnLoad(EventArgs e)
-		{
-			base.OnLoad(e);
-		}
-		*/
-
-		//string cfgfile = "GUI.ini";
-		//SharpConfig.Configuration guicfg;
-
-		~MainWindow()
-		{
-			Log.Trace("Destructing");
-			//TaskMaster.saveConfig(cfgfile, guicfg);
 		}
 	}
 }
