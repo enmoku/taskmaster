@@ -24,13 +24,13 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-using System.Collections.Generic;
-using System.Linq;
-
 namespace TaskMaster
 {
 	using System;
-	using devicePair = KeyValuePair<string, string>;
+	using System.Collections.Generic;
+	using System.Linq;
+
+	using devicePair = System.Collections.Generic.KeyValuePair<string, string>;
 
 	public class VolumeChangedEventArgs : EventArgs
 	{
@@ -61,6 +61,7 @@ namespace TaskMaster
 		public const double Minimum = 0;
 		public const double Maximum = 100;
 
+		public double VolumeHysterisis { get; } = 0.05;
 		public int AdjustDelay { get; } = 5000;
 
 		NAudio.Mixer.UnsignedMixerControl Control = null;
@@ -71,10 +72,14 @@ namespace TaskMaster
 			{
 				return Control.Percent;
 			}
+			/// <summary>
+			/// This will trigger VolumeChangedEvent so make sure you don't do infinite loops.
+			/// </summary>
+			/// <param name="value">New volume as 0 to 100 double</param>
 			set
 			{
 				Control.Percent = value;
-				Console.WriteLine("Mic.Volume = " + value);
+				Log.Trace("Mic.Volume = " + value);
 			}
 		}
 
@@ -149,9 +154,12 @@ namespace TaskMaster
 			{
 				if (m_dev != null)
 					m_dev.AudioEndpointVolume.OnVolumeNotification -= VolumeChangedHandler;
-				
-				stats["Statistics"]["Corrections"].IntValue = Corrections;
-				TaskMaster.saveConfig(statfile, stats);
+
+				if (micstatsdirty)
+				{
+					stats["Statistics"]["Corrections"].IntValue = Corrections;
+					TaskMaster.saveConfig(statfile, stats);
+				}
 			}
 
 			disposed = true;
@@ -191,24 +199,28 @@ namespace TaskMaster
 		// TODO: Add per device behaviour
 
 		public int Corrections { get; set; }
+		bool micstatsdirty = false;
 
 		static int correcting = 0;
 		void VolumeChangedHandler(NAudio.CoreAudioApi.AudioVolumeNotificationData data)
 		{
 			double oldVol = Volume;
-			Console.WriteLine("Mic.Volume.Changed = " + data.MasterVolume*100);
-			Volume = data.MasterVolume * 100;
+			double newVol = data.MasterVolume * 100;
+			Log.Trace("Mic.Volume.Changed[{0:N1}->{1:N1}] - Checking for correction", oldVol, newVol);
+
+			if (Math.Abs(newVol - oldVol) >= VolumeHysterisis)
+				Volume = newVol; // this will trigger call to VolumeChangedHandler again
+
 			// This is a light HYSTERISIS limiter in case someone is sliding a volume bar around,
 			// we act on it only once every [AdjustDelay] ms.
 			// HOPEFULLY there are no edge cases with this triggering just before last adjustment
 			// and the notification for the last adjustment coming slightly before. Seems super unlikely tho.
 			// TODO: Delay this even more if volume is changed ~2 seconds before we try to do so.
-			if (Math.Abs(Volume - Target) >= 0.05) // Volume != Target for double
+			if (Math.Abs(Volume - Target) >= VolumeHysterisis) // Volume != Target for double
 			{
-				Console.WriteLine("Mic.Volume.Difference = " + Math.Abs(Volume - Target));
 				if (System.Threading.Interlocked.CompareExchange(ref correcting, 1, 0) == 0)
 				{
-					Log.Info(string.Format("{0:N1}% -> {1:N1}% ({2})", oldVol, Volume, Math.Abs(Volume - Target)));
+					Log.Trace("Mic.Volume.Difference = " + Math.Abs(oldVol - Target));
 
 					//Log.Trace("Thread ID (dispatch): " + System.Threading.Thread.CurrentThread.ManagedThreadId);
 					System.Threading.Tasks.Task.Run(async () =>
@@ -218,13 +230,16 @@ namespace TaskMaster
 						Log.Info(string.Format("Correcting microphone volume from {0:N1} to {1:N1}", Volume, Target));
 						Volume = Target;
 						Corrections += 1;
+						micstatsdirty = true;
 						correcting = 0;
 						OnVolumeChanged(new VolumeChangedEventArgs { Old = oldVol, New = Volume, Corrections = Corrections });
 					});
 				}
+				else
+					Log.Trace("Mic.Volume.CorrectionAlreadyQueued");
 			}
 			else
-				Console.WriteLine("Mic.Volume.NotCorrected");
+				Log.Trace("Mic.Volume.NotCorrected");
 		}
 	}
 }

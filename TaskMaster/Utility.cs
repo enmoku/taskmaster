@@ -23,9 +23,11 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
-using System;
+
 namespace TaskMaster
 {
+	using System;
+
 	public class Utility
 	{
 		public enum Timescale : int
@@ -68,6 +70,17 @@ namespace TaskMaster
 				scale = Timescale.Seconds;
 				return seconds;
 			}
+		}
+
+		public static string ByterateString(long bps)
+		{
+			if (bps >= 1000000000d)
+				return Math.Round(bps * 0.000000001d, 2) + " Gb/s";
+			if (bps >= 1000000d)
+				return Math.Round(bps * 0.000001d, 2) + " Mb/s";
+			if (bps >= 1000d)
+				return Math.Round(bps * 0.001d, 2) + " kb/s";
+			return bps + " b/s";
 		}
 	}
 }

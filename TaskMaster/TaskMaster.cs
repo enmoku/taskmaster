@@ -48,18 +48,17 @@
  *  - Multiple windows or tabbed window?
  */
 
-using System;
-using System.Windows;
-
 namespace TaskMaster
 {
+	using System;
+
 	//[Guid("088f7210-51b2-4e06-9bd4-93c27a973874")]//there's no point to this, is there?
 	public class TaskMaster
 	{
 		public static SharpConfig.Configuration cfg;
 		public static string cfgpath = System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Taskmaster");
 
-		static NLog.Logger Log = NLog.LogManager.GetCurrentClassLogger();
+		static readonly NLog.Logger Log = NLog.LogManager.GetCurrentClassLogger();
 		static MemLog memlog;
 
 		public static void saveConfig(string configfile, SharpConfig.Configuration config)
@@ -106,9 +105,9 @@ namespace TaskMaster
 
 		public static void ExitRequest(object sender, EventArgs e)
 		{
-			Console.WriteLine("START:Core.ExitRequest - Exit hang expected");
+			//CLEANUP: Console.WriteLine("START:Core.ExitRequest - Exit hang expected");
 			System.Windows.Forms.Application.Exit();
-			Console.WriteLine("END:Core.ExitRequest - Exit hang averted");
+			//CLEANUP: Console.WriteLine("END:Core.ExitRequest - Exit hang averted");
 		}
 
 		public static void HookMainWindow()
@@ -137,7 +136,7 @@ namespace TaskMaster
 			tri = new TrayAccess();
 			pmn = new ProcessManager();
 			tmw = new MainWindow();
-			tmw.Disposed += (sender, e) => { tmw = null; Console.WriteLine("DEBUG: TMW.Disposed caught"); };
+			//CLEANUP: tmw.Disposed += (sender, e) => { tmw = null; Console.WriteLine("DEBUG: TMW.Disposed caught"); };
 			HookMainWindow();
 			#if DEBUG
 			tmw.Show();
@@ -160,10 +159,11 @@ namespace TaskMaster
 		static bool NetworkMonitorEnabled = true;
 
 		static string coreconfig = "Core.ini";
-		static bool coreconfigdirty = false;
 		static void defaultConfig()
 		{
 			cfg["Core"]["Hello"].SetValue("Hi");
+
+			bool coreconfigdirty = false;
 
 			SharpConfig.Section compsec;
 			if (!cfg.Contains("Components"))
@@ -197,6 +197,9 @@ namespace TaskMaster
 
 			if (!cfg.Contains("Options") || !cfg["Options"].Contains("Self-optimize"))
 				cfg["Options"]["Self-optimize"].BoolValue = true;
+			
+			if (coreconfigdirty)
+				saveConfig(coreconfig, cfg);
 
 			monitorCleanShutdown();
 		}
@@ -223,8 +226,6 @@ namespace TaskMaster
 				corestats = loadConfig(corestatfile);
 			corestats["Core"]["Running"].BoolValue = false;
 			saveConfig(corestatfile, corestats);
-			if (coreconfigdirty)
-				saveConfig(coreconfig, cfg);
 		}
 
 		static public void CrossInstanceMessageHandler(object sender, EventArgs e)
@@ -245,8 +246,8 @@ namespace TaskMaster
 			memlog = new MemLog();
 			NLog.LogManager.Configuration.AddTarget("MemLog", memlog);
 			NLog.LogManager.Configuration.LoggingRules.Add(new NLog.Config.LoggingRule("*", NLog.LogLevel.Debug, memlog));
-			memlog.Layout = @"[${date:format=HH\:mm\:ss.fff}] [${level}] ${message}"; ;
-			NLog.LogManager.Configuration.Reload();
+			memlog.Layout = @"[${date:format=HH\:mm\:ss.fff}] [${level}] ${message}";
+			NLog.LogManager.ReconfigExistingLoggers(); // better than reload since we didn't modify the files
 
 			#region SINGLETON
 			if (TaskMaster.VeryVerbose)
@@ -283,24 +284,24 @@ namespace TaskMaster
 			}
 			catch (Exception ex)
 			{
-				Log.Fatal("Unhandled exception! Dying." + System.Environment.NewLine + ex);
+				Log.Fatal("Unhandled exception! Dying." + Environment.NewLine + ex);
 				throw;
 			}
 			finally
 			{
 				Log.Info("Exiting...");
-				NLog.LogManager.Flush();
+				pmn.Dispose();
+				mon.Dispose();
+				tri.Dispose();
+				singleton.ReleaseMutex();
 			}
 
-			tri.Dispose();
-			pmn.Dispose();
-			mon.Dispose();
 			//tmw.Dispose();//already disposed by App.Exit?
 
 			CleanShutdown();
-			singleton.ReleaseMutex();
 
 			Log.Info(string.Format("{0} (#{1}) END! [Clean]", System.Windows.Forms.Application.ProductName, System.Diagnostics.Process.GetCurrentProcess().Id));
+			//NLog.LogManager.Flush(); // 
 		}
 	}
 }

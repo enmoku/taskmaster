@@ -23,7 +23,6 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
-using System.IO;
 
 namespace TaskMaster
 {
@@ -46,9 +45,9 @@ namespace TaskMaster
 
 		public void ExitRequest(object sender, EventArgs e)
 		{
-			Console.WriteLine("START:Window.ExitRequest");
+			//CLEANUP: Console.WriteLine("START:Window.ExitRequest");
 			// nothing
-			Console.WriteLine("END:Window.ExitRequest");
+			//CLEANUP: Console.WriteLine("END:Window.ExitRequest");
 		}
 
 		void WindowClose(object sender, FormClosingEventArgs e)
@@ -69,6 +68,7 @@ namespace TaskMaster
 					break;
 				case CloseReason.WindowsShutDown:
 					Log.Info("Exit: Windows shutting down.");
+
 					break;
 				case CloseReason.TaskManagerClosing:
 					Log.Info("Exit: Task manager told us to close.");
@@ -80,7 +80,7 @@ namespace TaskMaster
 					Log.Warn(string.Format("Exit: Unidentified close reason: {0}", e.CloseReason));
 					break;
 			}
-			Console.WriteLine("WindowClose.Handled");
+			//CLEANUP: Console.WriteLine("WindowClose.Handled");
 		}
 
 		// this restores the main window to a place where it can be easily found if it's lost
@@ -93,10 +93,13 @@ namespace TaskMaster
 			TopMost = false;
 		}
 
+		static readonly System.Drawing.Size SetSizeDefault = new System.Drawing.Size(720, 720);
+
 		public void ShowWindowRequest(object sender, EventArgs e)
 		{
 			Show(); // FIXME: Gets triggered when menuitem is clicked
 			AutoSize = true;
+			Size = SetSizeDefault;
 		}
 
 		#region Microphone control code
@@ -119,13 +122,16 @@ namespace TaskMaster
 			if (TaskMaster.VeryVerbose)
 				Log.Debug("Process adjust received.");
 			ListViewItem item;
-			if (appc.TryGetValue(e.Control.Executable, out item))
+			lock (appc)
 			{
-				item.SubItems[5].Text = e.Control.Adjusts.ToString();
-				item.SubItems[6].Text = e.Control.LastSeen.ToString();
+				if (appc.TryGetValue(e.Control.Executable, out item))
+				{
+					item.SubItems[5].Text = e.Control.Adjusts.ToString();
+					item.SubItems[6].Text = e.Control.LastSeen.ToString();
+				}
+				else
+					Log.Error(string.Format("{0} not found in app list.", e.Control.Executable));
 			}
-			else
-				Log.Error(string.Format("{0} not found in app list.", e.Control.Executable));
 		}
 
 		public void OnActiveWindowChanged(object sender, WindowChangedArgs e)
@@ -136,10 +142,11 @@ namespace TaskMaster
 		public void setProcControl(ProcessManager control)
 		{
 			//control.onProcAdjust += ProcAdjust;
-			foreach (ProcessController item in control.images)
+			lock (appc)
 			{
-
-				ListViewItem litem = new ListViewItem(new string[] {
+				foreach (ProcessController item in control.images)
+				{
+					var litem = new ListViewItem(new string[] {
 					item.FriendlyName.ToString(),
 					item.Executable,
 					item.Priority.ToString(),
@@ -149,15 +156,19 @@ namespace TaskMaster
 						(item.LastSeen != System.DateTime.MinValue ? item.LastSeen.ToString() : "Never"),
 						(item.Rescan>0?item.Rescan.ToString():"n/a")
 				});
-				appc.Add(item.Executable, litem);
-				appList.Items.Add(litem);
+					appc.Add(item.Executable, litem);
+				}
+				appList.Items.AddRange(appc.Values.ToArray());
 			}
 
-			foreach (PathControl path in control.ActivePaths())
+			lock (appw)
 			{
-				ListViewItem ni = new ListViewItem(new string[] { path.FriendlyName, path.Path, path.Adjusts.ToString() });
-				appw.Add(path, ni);
-				pathList.Items.Add(ni);
+				foreach (PathControl path in control.ActivePaths())
+				{
+					var ni = new ListViewItem(new string[] { path.FriendlyName, path.Path, path.Adjusts.ToString() });
+					appw.Add(path, ni);
+				}
+				pathList.Items.AddRange(appw.Values.ToArray());
 			}
 
 			PathControl.onLocate += PathLocatedEvent;
@@ -168,8 +179,11 @@ namespace TaskMaster
 		{
 			ListViewItem ni;
 			PathControl pc = (PathControl)sender;
-			if (appw.TryGetValue(pc, out ni))
-				ni.SubItems[2].Text = pc.Adjusts.ToString();
+			lock (appw)
+			{
+				if (appw.TryGetValue(pc, out ni))
+					ni.SubItems[2].Text = pc.Adjusts.ToString();
+			}
 		}
 
 		public void PathLocatedEvent(object sender, PathControlEventArgs e)
@@ -179,7 +193,8 @@ namespace TaskMaster
 			ListViewItem ni = new ListViewItem(new string[] { pc.FriendlyName, pc.Path, "0" });
 			try
 			{
-				appw.Add(pc, ni);
+				lock (appw)
+					appw.Add(pc, ni);
 				pathList.Items.Add(ni);
 			}
 			catch (Exception)
@@ -243,11 +258,11 @@ namespace TaskMaster
 		int uptimeSamples = 0;
 		double uptimeTotal = 0;
 		List<double> upTime = new List<double>();
-		System.DateTime lastUptimeStart;
+		DateTime lastUptimeStart;
 
 		void ReportCurrentUptime()
 		{
-			Log.Info(string.Format("Current internet uptime: {0:1} minutes", (System.DateTime.Now - lastUptimeStart).TotalMinutes));
+			Log.Info(string.Format("Current internet uptime: {0:1} minutes", (DateTime.Now - lastUptimeStart).TotalMinutes));
 		}
 
 		void ReportUptime()
@@ -273,13 +288,13 @@ namespace TaskMaster
 
 				if (online_state)
 				{
-					lastUptimeStart = System.DateTime.Now;
+					lastUptimeStart = DateTime.Now;
 
 					if (System.Threading.Interlocked.CompareExchange(ref upstateTesting, 1, 0) == 1)
 					{
 						System.Threading.Tasks.Task.Run(async () =>
 						{
-							Console.WriteLine("Debug: Queued internet uptime report");
+							//CLEANUP: Console.WriteLine("Debug: Queued internet uptime report");
 							await System.Threading.Tasks.Task.Delay(new TimeSpan(0, 5, 0)); // wait 5 minutes
 
 							ReportCurrentUptime();
@@ -289,7 +304,7 @@ namespace TaskMaster
 				}
 				else // went offline
 				{
-					double newUptime = (System.DateTime.Now - lastUptimeStart).TotalMinutes;
+					double newUptime = (DateTime.Now - lastUptimeStart).TotalMinutes;
 					upTime.Add(newUptime);
 					uptimeTotal += newUptime;
 					uptimeSamples += 1;
@@ -306,7 +321,7 @@ namespace TaskMaster
 			else if (address_changed)
 			{
 				// same state but address change was detected
-				Console.WriteLine("Debug: Address changed but internet connectivity unaffected.");
+				Console.WriteLine("DEBUG: Address changed but internet connectivity unaffected.");
 				ReportCurrentUptime();
 			}
 		}
@@ -357,19 +372,8 @@ namespace TaskMaster
 		TrayAccess tray;
 		public TrayAccess Tray { private get { return tray; } set { tray = value; } }
 
-		string netSpeed(long speed)
-		{
-			if (speed >= 1000000000d)
-				return Math.Round(speed / 1000000000d, 2) + " Gb/s";
-			if (speed >= 1000000d)
-				return Math.Round(speed / 1000000d, 2) + " Mb/s";
-			if (speed >= 1000d)
-				return Math.Round(speed / 1000d, 2) + " kb/s";
-			return speed + " b/s";
-		}
-
-		System.Net.IPAddress IPv4Address;
-		System.Net.IPAddress IPv6Address;
+		IPAddress IPv4Address;
+		IPAddress IPv6Address;
 
 		ListView ifaceList;
 		int enumerating_inet = 0;
@@ -406,7 +410,7 @@ namespace TaskMaster
 					n.Name,
 					n.NetworkInterfaceType.ToString(),
 					n.OperationalStatus.ToString(),
-					netSpeed(n.Speed),
+					Utility.ByterateString(n.Speed),
 					(IPv4Address!=null?IPv4Address.ToString():"n/a"),
 					(IPv6Address!=null?IPv6Address.ToString():"n/a")
 				}));
@@ -415,7 +419,7 @@ namespace TaskMaster
 			enumerating_inet = 0;
 		}
 
-		void NetAddrChanged(object sender, System.EventArgs e)
+		void NetAddrChanged(object sender, EventArgs e)
 		{
 			IPAddress oldV6Address = IPv6Address;
 			IPAddress oldV4Address = IPv4Address;
@@ -425,8 +429,8 @@ namespace TaskMaster
 
 			if (inetAvailable)
 			{
-				Console.WriteLine("DEBUG: AddrChange: " + oldV4Address + " -> " + IPv4Address);
-				Console.WriteLine("DEBUG: AddrChange: " + oldV6Address + " -> " + IPv6Address);
+				//CLEANUP: Console.WriteLine("DEBUG: AddrChange: " + oldV4Address + " -> " + IPv4Address);
+				//CLEANUP: Console.WriteLine("DEBUG: AddrChange: " + oldV6Address + " -> " + IPv6Address);
 
 				bool ipv4changed = false, ipv6changed = false;
 				if (oldV4Address != null)
@@ -482,8 +486,8 @@ namespace TaskMaster
 
 		void BuildUI()
 		{
-			Size = new System.Drawing.Size(720, 720); // width, height
-			AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowOnly;
+			Size = SetSizeDefault;
+			AutoSizeMode = AutoSizeMode.GrowOnly;
 			AutoSize = true;
 
 			Text = Application.ProductName;
@@ -791,10 +795,10 @@ namespace TaskMaster
 				while (excessitems-- > 0)
 					loglist.Items.RemoveAt(0);
 			}
-			catch (System.NullReferenceException) // this shouldn't happen
+			catch (NullReferenceException) // this shouldn't happen
 			{
-				System.Console.WriteLine("Couldn't remove old log entries from GUI.");
-				System.Console.WriteLine("ERROR: Null reference");
+				Console.WriteLine("UNEXPECTED: Couldn't remove old log entries from GUI.");
+				Console.WriteLine("ERROR: Null reference");
 			}
 
 			if ((!log_include_debug && e.Info.Level == NLog.LogLevel.Debug) || (!log_include_warn && e.Info.Level == NLog.LogLevel.Warn))

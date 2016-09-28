@@ -24,15 +24,11 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Runtime.CompilerServices;
-using System.ComponentModel.Design;
-using NLog.LayoutRenderers.Wrappers;
-
 namespace TaskMaster
 {
+	using System;
+	using System.Collections.Generic;
+	using System.Linq;
 	using System.Diagnostics;
 
 	/// <summary>
@@ -52,7 +48,7 @@ namespace TaskMaster
 
 		int _rescan;
 		/// <summary>
-		/// Delay before we try to use WideTouch again.
+		/// Delay before we try to use Scan again.
 		/// </summary>
 		public int Rescan
 		{
@@ -85,7 +81,7 @@ namespace TaskMaster
 		}
 
 		// TODO EVENT(??)
-		public void Touch(Process process)
+		public bool Touch(Process process)
 		{
 			Debug.Assert(process != null);
 
@@ -95,14 +91,14 @@ namespace TaskMaster
 				{
 					if (TaskMaster.VeryVerbose)
 						Log.Warn(string.Format("{0} (pid:{1}) has already exited.", Executable, process.Id));
-					return;
+					return false;
 				}
 			}
 			catch (System.ComponentModel.Win32Exception ex)
 			{
 				if (ex.NativeErrorCode != 5)
 					Log.Warn("Access error: " + process.ProcessName + " (pid:" + process.Id + ")");
-				return; // we don't care wwhat this error is
+				return false; // we don't care what this error is
 			}
 
 			if (TaskMaster.VeryVerbose)
@@ -114,7 +110,7 @@ namespace TaskMaster
 				mBoost = mPriority = mAffinity = false;
 				IntPtr oldAffinity = process.ProcessorAffinity;
 				ProcessPriorityClass oldPriority = process.PriorityClass;
-				LastSeen = System.DateTime.Now;
+				LastSeen = DateTime.Now;
 
 				if (((ProcessManager.PriorityToInt(process.PriorityClass) < ProcessManager.PriorityToInt(Priority)) && Increase) ||
 					 (ProcessManager.PriorityToInt(process.PriorityClass) > ProcessManager.PriorityToInt(Priority)))
@@ -125,8 +121,8 @@ namespace TaskMaster
 
 				if (process.ProcessorAffinity != Affinity)
 				{
-					//System.Console.WriteLine("Current affinity: {0}", Convert.ToString(item.ProcessorAffinity.ToInt32(), 2));
-					//System.Console.WriteLine("Target affinity: {0}", Convert.ToString(proc.Affinity.ToInt32(), 2));
+					//CLEANUP: System.Console.WriteLine("Current affinity: {0}", Convert.ToString(item.ProcessorAffinity.ToInt32(), 2));
+					//CLEANUP: System.Console.WriteLine("Target affinity: {0}", Convert.ToString(proc.Affinity.ToInt32(), 2));
 					try
 					{
 						process.ProcessorAffinity = Affinity;
@@ -148,11 +144,11 @@ namespace TaskMaster
 				{
 					Adjusts += 1;
 
-					LastTouch = System.DateTime.Now;
+					LastTouch = DateTime.Now;
 
 					// TODO: Is StringBuilder fast enough for this to be good idea?
 					System.Text.StringBuilder ls = new System.Text.StringBuilder();
-					ls.Append(Executable).Append(" (pid:").Append(process.Id).Append("); ");
+					ls.Append(Executable).Append(" (pid:").Append(process.Id).Append(") - ");
 					//ls.Append("(").Append(control.Executable).Append(") =");
 					if (mPriority)
 						ls.Append(" Priority(").Append(oldPriority).Append(" -> ").Append(Priority).Append(")");
@@ -171,28 +167,30 @@ namespace TaskMaster
 			if (mModified)
 				onTouchHandler(this, new ProcessEventArgs { Control = this, Process = process });
 
-			WideTouchScheduler();
+			ScanScheduler();
+
+			return mModified;
 		}
 
-		int WideTouchScheduled = 0;
-		void WideTouchScheduler()
+		int ScanScheduled = 0;
+		void ScanScheduler()
 		{
-			if (Rescan > 0 && (System.DateTime.Now - lastWideTouch).TotalMinutes >= Rescan)
+			if (Rescan > 0 && (DateTime.Now - LastScan).TotalMinutes >= Rescan)
 			{
-				if (System.Threading.Interlocked.CompareExchange(ref WideTouchScheduled, 1, 0) == 1)
+				if (System.Threading.Interlocked.CompareExchange(ref ScanScheduled, 1, 0) == 1)
 					return;
 
-				Log.Info(string.Format("'{0}' detected, wide rescan queued.", FriendlyName));
+				Log.Info(string.Format("'{0}' detected, rescanning.", FriendlyName));
 				System.Threading.Tasks.Task.Run(async () =>
 				{
-					await WideTouch();
-					WideTouchScheduled = 0;
+					await Scan();
+					ScanScheduled = 0;
 				});
 			}
 		}
 
-		System.DateTime lastWideTouch = System.DateTime.MinValue;
-		public async System.Threading.Tasks.Task WideTouch()
+		DateTime LastScan = DateTime.MinValue;
+		public async System.Threading.Tasks.Task Scan()
 		{
 			await System.Threading.Tasks.Task.Delay(100);
 
@@ -200,17 +198,19 @@ namespace TaskMaster
 			if (procs.Length == 0)
 				return;
 
-			LastSeen = lastWideTouch;
-			lastWideTouch = System.DateTime.Now;
+			LastSeen = LastScan;
+			LastScan = DateTime.Now;
 
 			if (TaskMaster.VeryVerbose)
-				Log.Trace("Control group: " + FriendlyName + ", process: " + Executable + " (" + procs.Length + " instances)");
+				Log.Trace("Scanning '" + FriendlyName + "' (found " + procs.Length + " instances)");
 
+			int tc = 0;
 			foreach (Process process in procs)
 			{
 				try
 				{
-					Touch(process);
+					if (Touch(process))
+						tc++;
 				}
 				catch (Exception ex)
 				{
@@ -218,6 +218,9 @@ namespace TaskMaster
 					Console.Error.WriteLine(ex);
 				}
 			}
+
+			if (TaskMaster.Verbose)
+				Log.Trace("Scan for '" + FriendlyName + "' modified " + tc + " instance(s)");
 		}
 
 		public static event EventHandler<ProcessEventArgs> onTouch;
@@ -248,7 +251,7 @@ namespace TaskMaster
 				Log.Info(string.Format("'{0}' matching for '{1}' [{2}]", Executable, Subpath, Priority));
 		}
 
-		public void Touch(Process process, string path)
+		public bool Touch(Process process, string path)
 		{
 			Debug.Assert(process != null);
 			Debug.Assert(path != null && path.Length != 0);
@@ -259,14 +262,14 @@ namespace TaskMaster
 				{
 					if (TaskMaster.Verbose)
 						Log.Warn(string.Format("{0} (pid:{1}) has already exited.", process.ProcessName, process.Id));
-					return;
+					return false;
 				}
 			}
 			catch (System.ComponentModel.Win32Exception ex)
 			{
 				if (ex.NativeErrorCode != 5)
 					Log.Warn("Access error: " + process.ProcessName + " (pid:" + process.Id + ")");
-				return; // we don't care wwhat this error is
+				return false; // we don't care wwhat this error is
 			}
 
 			string name = System.IO.Path.GetFileName(path);
@@ -276,13 +279,13 @@ namespace TaskMaster
 				if (ProcessManager.PriorityToInt(process.PriorityClass) < ProcessManager.PriorityToInt(Priority)) // TODO: possibly allow decreasing priority, but for this 
 				{
 					process.PriorityClass = Priority;
-					LastSeen = System.DateTime.Now;
+					LastSeen = DateTime.Now;
 					Adjusts += 1;
 					onTouchHandler(this, new PathControlEventArgs());
 
 					Log.Info(string.Format("{0} (pid:{1}); Priority({2} -> {3})", name, process.Id, oldPriority, Priority));
 
-					return;
+					return true;
 				}
 
 				Log.Debug(string.Format("{0} (pid:{1}); looks OK, not touched.", name, process.Id));
@@ -291,6 +294,8 @@ namespace TaskMaster
 			{
 				Log.Info(string.Format("Failed to touch '{0}' (pid:{1})", name, process.Id));
 			}
+
+			return false;
 		}
 
 		public bool Locate()
@@ -438,7 +443,7 @@ namespace TaskMaster
 
 			Log.Trace("Going through process control list.");
 			foreach (ProcessController control in images)
-				control.WideTouch();
+				control.Scan();
 
 			UpdatePathWatch();
 			Log.Trace("Done processing everything.");
@@ -518,12 +523,12 @@ namespace TaskMaster
 				if (stats.Contains(cnt.Executable))
 				{
 					cnt.Adjusts = stats[cnt.Executable].Contains("Adjusts") ? stats[cnt.Executable]["Adjusts"].IntValue : 0;
-					cnt.LastSeen = stats[cnt.Executable].Contains("Last seen") ? stats[cnt.Executable]["Last seen"].DateTimeValue : System.DateTime.MinValue;
+					cnt.LastSeen = stats[cnt.Executable].Contains("Last seen") ? stats[cnt.Executable]["Last seen"].DateTimeValue : DateTime.MinValue;
 					stats_dirty = true;
 				}
 
 				images.Add(cnt);
-				execontrol.Add(new KeyValuePair<string,ProcessController>(cnt.ExecutableFriendlyName, cnt));
+				execontrol.Add(new KeyValuePair<string, ProcessController>(cnt.ExecutableFriendlyName, cnt));
 				if (TaskMaster.VeryVerbose)
 					Log.Trace(string.Format("'{0}' added to monitoring.", section.Name));
 			}
@@ -580,12 +585,12 @@ namespace TaskMaster
 			{
 				path = process.MainModule.FileName; // this will cause win32exception of various types, we don't Really care which error it is
 			}
-			catch (System.NullReferenceException)
+			catch (NullReferenceException)
 			{
 				Log.Warn("[Unexpected] Null reference: " + process.ProcessName + " (pid:" + process.Id + ")");
 				return;
 			}
-			catch (System.NotSupportedException)
+			catch (NotSupportedException)
 			{
 				Log.Warn("[Unexpected] Not supported operation: " + process.ProcessName + " (pid:" + process.Id + ")");
 				return;
@@ -644,7 +649,6 @@ namespace TaskMaster
 			{
 				if (TaskMaster.VeryVerbose)
 					Log.Debug(string.Format("Delaying touching of '{0}' (pid:{1})", control.Executable, process.Id));
-				await System.Threading.Tasks.Task.Delay(2800);
 				if (TaskMaster.VeryVerbose)
 					Log.Debug("Control group: " + control.FriendlyName + ", process: " + process.ProcessName + " (#" + process.Id + ")");
 				control.Touch(process);
@@ -801,10 +805,13 @@ namespace TaskMaster
 			if (watcher != null)
 			{
 				watcher.EventArrived += NewInstanceHandler;
+				/*
+				// Only useful for debugging the watcher, but there doesn't seem to be any unwanted stops happening.
 				watcher.Stopped += (object sender, System.Management.StoppedEventArgs e) =>
 				{
 					Log.Warn("New instance watcher stopped.");
 				};
+				*/
 				watcher.Start();
 				Log.Debug("New instance watcher initialized.");
 			}
@@ -834,7 +841,8 @@ namespace TaskMaster
 					saveStats();
 				if (pathfile_dirty)
 					TaskMaster.saveConfig(pathfile, pathcfg);
-				watcher.Stop();
+				
+				watcher.Stop(); // shouldn't be necessary
 
 				// Free any other managed objects here.
 				//
@@ -858,7 +866,7 @@ namespace TaskMaster
 					stats[proc.Executable]["Adjusts"].IntValue = proc.Adjusts;
 					stats_dirty = true;
 				}
-				if (proc.LastSeen != System.DateTime.MinValue)
+				if (proc.LastSeen != DateTime.MinValue)
 				{
 					stats[proc.Executable]["Last seen"].DateTimeValue = proc.LastSeen;
 					stats_dirty = true;

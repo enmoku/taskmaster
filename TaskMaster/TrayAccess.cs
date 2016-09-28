@@ -24,13 +24,10 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-using System;
-using System.Linq;
-using NLog.Config;
-using System.Runtime.Remoting.Channels;
-
 namespace TaskMaster
 {
+	using System;
+	using System.Linq;
 	using System.Windows.Forms;
 
 	public class TrayAccess : IDisposable
@@ -54,7 +51,7 @@ namespace TaskMaster
 			Tray.BalloonTipText = Tray.Text;
 			Tray.Disposed += (object sender, EventArgs e) => {
 				Tray = null;
-				Console.WriteLine("DEBUG: Tray.Disposed caught");
+				//CLEANUP: Console.WriteLine("DEBUG: Tray.Disposed caught");
 			};
 
 			Log.Trace("Generating tray icon.");
@@ -87,14 +84,14 @@ namespace TaskMaster
 
 		void ShowConfigRequest(object sender, EventArgs e)
 		{
-			Console.WriteLine("Opening config folder.");
+			//CLEANUP: Console.WriteLine("Opening config folder.");
 			System.Diagnostics.Process.Start(TaskMaster.cfgpath);
 
 			if (TaskMaster.tmw != null)
 				TaskMaster.tmw.ShowConfigRequest(sender, e);
 			else
 				Log.Warn("Can't open configuration.");
-			Console.WriteLine("Done opening config folder.");
+			//CLEANUP: Console.WriteLine("Done opening config folder.");
 		}
 
 		public static event EventHandler onExit;
@@ -107,10 +104,10 @@ namespace TaskMaster
 
 		void ExitRequest(object sender, EventArgs e)
 		{
-			Console.WriteLine("START:Tray.ExitRequest()");
+			//CLEANUP: Console.WriteLine("START:Tray.ExitRequest()");
 			er_menu.Enabled = false;
 			onExitHandler(this, null);
-			Console.WriteLine("END::Tray.ExitRequest()");
+			//CLEANUP: Console.WriteLine("END::Tray.ExitRequest()");
 		}
 
 		void RestoreMain(object sender, EventArgs e)
@@ -146,25 +143,25 @@ namespace TaskMaster
 
 		void WindowClosed(object sender, FormClosingEventArgs e)
 		{
-			Console.WriteLine("START:TrayAccess.WindowClosed");
+			//CLEANUP: Console.WriteLine("START:TrayAccess.WindowClosed");
 
 			switch (e.CloseReason)
 			{
 				case CloseReason.ApplicationExitCall:
-					Console.WriteLine("BAIL:TrayAccess.WindowClosed");
+					//CLEANUP: Console.WriteLine("BAIL:TrayAccess.WindowClosed");
 					return;
 			}
 
 			if (TaskMaster.tmw.LowMemory)
 			{
-				Console.WriteLine("DEBUG:TrayAccess.WindowClosed.SaveMemory");
+				//CLEANUP: Console.WriteLine("DEBUG:TrayAccess.WindowClosed.SaveMemory");
 
 				Tray.MouseClick -= ShowWindow;
 				Tray.MouseDoubleClick -= UnloseWindow;
 
 				Tray.MouseClick += RestoreMainRequest;
 			}
-			Console.WriteLine("END:TrayAccess.WindowClosed");
+			//CLEANUP: Console.WriteLine("END:TrayAccess.WindowClosed");
 		}
 
 		public void RegisterMain(ref MainWindow window)
