@@ -23,6 +23,7 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
+using System.IO;
 
 namespace TaskMaster
 {
@@ -34,7 +35,7 @@ namespace TaskMaster
 	using System.Net.NetworkInformation;
 
 	// public class MainWindow : System.Windows.Window; // TODO: WPF
-	public class MainWindow : System.Windows.Forms.Form
+	sealed public class MainWindow : System.Windows.Forms.Form, WindowInterface
 	{
 		static readonly NLog.Logger Log = NLog.LogManager.GetCurrentClassLogger();
 
@@ -52,12 +53,12 @@ namespace TaskMaster
 
 		void WindowClose(object sender, FormClosingEventArgs e)
 		{
-			Console.WriteLine("WindowClose = " + e.CloseReason);
+			//Console.WriteLine("WindowClose = " + e.CloseReason);
 			switch (e.CloseReason)
 			{
 				case CloseReason.UserClosing:
 					// X was pressed or similar, we're just hiding to tray.
-					if (!lowmemory)
+					if (!TaskMaster.LowMemory)
 					{
 						Log.Trace("Hiding window, keeping in memory.");
 						e.Cancel = true;
@@ -68,7 +69,6 @@ namespace TaskMaster
 					break;
 				case CloseReason.WindowsShutDown:
 					Log.Info("Exit: Windows shutting down.");
-
 					break;
 				case CloseReason.TaskManagerClosing:
 					Log.Info("Exit: Task manager told us to close.");
@@ -93,7 +93,7 @@ namespace TaskMaster
 			TopMost = false;
 		}
 
-		static readonly System.Drawing.Size SetSizeDefault = new System.Drawing.Size(720, 720);
+		static readonly System.Drawing.Size SetSizeDefault = new System.Drawing.Size(720, 760); // width, height
 
 		public void ShowWindowRequest(object sender, EventArgs e)
 		{
@@ -122,16 +122,13 @@ namespace TaskMaster
 			if (TaskMaster.VeryVerbose)
 				Log.Debug("Process adjust received.");
 			ListViewItem item;
-			lock (appc)
+			if (appc.TryGetValue(e.Control.Executable, out item))
 			{
-				if (appc.TryGetValue(e.Control.Executable, out item))
-				{
-					item.SubItems[5].Text = e.Control.Adjusts.ToString();
-					item.SubItems[6].Text = e.Control.LastSeen.ToString();
-				}
-				else
-					Log.Error(string.Format("{0} not found in app list.", e.Control.Executable));
+				item.SubItems[6].Text = e.Control.Adjusts.ToString();
+				item.SubItems[7].Text = e.Control.LastSeen.ToString();
 			}
+			else
+				Log.Error(string.Format("{0} not found in app list.", e.Control.Executable));
 		}
 
 		public void OnActiveWindowChanged(object sender, WindowChangedArgs e)
@@ -142,24 +139,22 @@ namespace TaskMaster
 		public void setProcControl(ProcessManager control)
 		{
 			//control.onProcAdjust += ProcAdjust;
-			lock (appc)
+			foreach (ProcessController item in control.images)
 			{
-				foreach (ProcessController item in control.images)
-				{
-					var litem = new ListViewItem(new string[] {
+				var litem = new ListViewItem(new string[] {
 					item.FriendlyName.ToString(),
 					item.Executable,
 					item.Priority.ToString(),
-						(item.Affinity.ToInt32() == ProcessManager.allCPUsMask ? "OS controlled" : Convert.ToString(item.Affinity.ToInt32(), 2)),
+						(item.Affinity.ToInt32() == ProcessManager.allCPUsMask ? "OS" : Convert.ToString(item.Affinity.ToInt32(), 2)),
 					item.Boost.ToString(),
+						(item.Children ? item.ChildPriority.ToString() : "n/a"),
 					item.Adjusts.ToString(),
 						(item.LastSeen != System.DateTime.MinValue ? item.LastSeen.ToString() : "Never"),
 						(item.Rescan>0?item.Rescan.ToString():"n/a")
 				});
-					appc.Add(item.Executable, litem);
-				}
-				appList.Items.AddRange(appc.Values.ToArray());
+				lock (appc) appc.Add(item.Executable, litem);
 			}
+			lock (appList) appList.Items.AddRange(appc.Values.ToArray());
 
 			lock (appw)
 			{
@@ -178,7 +173,7 @@ namespace TaskMaster
 		public void PathAdjustEvent(object sender, PathControlEventArgs e)
 		{
 			ListViewItem ni;
-			PathControl pc = (PathControl)sender;
+			var pc = sender as PathControl;
 			lock (appw)
 			{
 				if (appw.TryGetValue(pc, out ni))
@@ -188,14 +183,13 @@ namespace TaskMaster
 
 		public void PathLocatedEvent(object sender, PathControlEventArgs e)
 		{
-			PathControl pc = (PathControl)sender;
+			var pc = sender as PathControl;
 			Log.Trace(pc.FriendlyName + " // " + pc.Path);
-			ListViewItem ni = new ListViewItem(new string[] { pc.FriendlyName, pc.Path, "0" });
+			var ni = new ListViewItem(new string[] { pc.FriendlyName, pc.Path, "0" });
 			try
 			{
-				lock (appw)
-					appw.Add(pc, ni);
-				pathList.Items.Add(ni);
+				lock (appw) appw.Add(pc, ni);
+				lock (pathList) pathList.Items.Add(ni);
 			}
 			catch (Exception)
 			{
@@ -234,9 +228,11 @@ namespace TaskMaster
 
 		bool netAvailable = false;
 		bool inetAvailable = false;
-		Label netstatuslabel;
-		Label inetstatuslabel;
-		void NetworkChanged(object sender, EventArgs e)
+		Label netstatuslabel = new Label { Dock = DockStyle.Top, Text = "Uninitialized", AutoSize = true, BackColor = System.Drawing.Color.LightGoldenrodYellow };
+		Label inetstatuslabel = new Label { Dock = DockStyle.Top, Text = "Uninitialized", AutoSize = true, BackColor = System.Drawing.Color.LightGoldenrodYellow };
+		Label uptimestatuslabel = new Label { Dock = DockStyle.Top, Text = "Uninitialized", AutoSize = true, BackColor = System.Drawing.Color.LightGoldenrodYellow };
+
+		async void NetworkChanged(object sender, EventArgs e)
 		{
 			bool oldNetAvailable = netAvailable;
 			netAvailable = NetworkInterface.GetIsNetworkAvailable();
@@ -247,11 +243,10 @@ namespace TaskMaster
 				Log.Debug("Network status changed: " + (netAvailable ? "Connected" : "Disconnected"));
 				netstatuslabel.Text = netAvailable.ToString();
 				netstatuslabel.BackColor = netAvailable ? System.Drawing.Color.LightGoldenrodYellow : System.Drawing.Color.Red;
-				System.Threading.Tasks.Task.Run(async () =>
-				{
-					await System.Threading.Tasks.Task.Delay(200);
-					await CheckInet();
-				});
+
+				await System.Threading.Tasks.Task.Delay(200);
+
+				await CheckInet();
 			}
 		}
 
@@ -260,9 +255,23 @@ namespace TaskMaster
 		List<double> upTime = new List<double>();
 		DateTime lastUptimeStart;
 
+		/// <summary>
+		/// Current uptime in minutes.
+		/// </summary>
+		/// <value>The uptime.</value>
+		double Uptime
+		{
+			get
+			{
+				if (TaskMaster.NetworkMonitorEnabled)
+					return (DateTime.Now - lastUptimeStart).TotalMinutes;
+				return double.NaN;
+			}
+		}
+
 		void ReportCurrentUptime()
 		{
-			Log.Info(string.Format("Current internet uptime: {0:1} minutes", (DateTime.Now - lastUptimeStart).TotalMinutes));
+			Log.Info(string.Format("Current internet uptime: {0:1} minutes", Uptime));
 		}
 
 		void ReportUptime()
@@ -329,6 +338,8 @@ namespace TaskMaster
 		int checking_inet = 0;
 		async System.Threading.Tasks.Task CheckInet(bool address_changed = false)
 		{
+			// TODO: Figure out how to get Actual start time of internet connectivity.
+
 			if (System.Threading.Interlocked.CompareExchange(ref checking_inet, 1, 0) == 0)
 				return;
 
@@ -357,7 +368,7 @@ namespace TaskMaster
 
 			if (oldInetAvailable != inetAvailable)
 			{
-				inetstatuslabel.Text = inetAvailable.ToString();
+				inetstatuslabel.Text = inetAvailable ? "Connected" : "Disconnected";
 				inetstatuslabel.BackColor = inetAvailable ? System.Drawing.Color.LightGoldenrodYellow : System.Drawing.Color.Red;
 
 				if (Tray != null)
@@ -372,9 +383,8 @@ namespace TaskMaster
 		TrayAccess tray;
 		public TrayAccess Tray { private get { return tray; } set { tray = value; } }
 
-		IPAddress IPv4Address;
-		IPAddress IPv6Address;
-
+		IPAddress IPv4Address = IPAddress.None;
+		IPAddress IPv6Address = IPAddress.IPv6None;
 		ListView ifaceList;
 		int enumerating_inet = 0;
 		void NetEnum()
@@ -411,8 +421,8 @@ namespace TaskMaster
 					n.NetworkInterfaceType.ToString(),
 					n.OperationalStatus.ToString(),
 					Utility.ByterateString(n.Speed),
-					(IPv4Address!=null?IPv4Address.ToString():"n/a"),
-					(IPv6Address!=null?IPv6Address.ToString():"n/a")
+					IPv4Address?.ToString() ?? "n/a",
+					IPv6Address?.ToString() ?? "n/a"
 				}));
 			}
 
@@ -425,7 +435,7 @@ namespace TaskMaster
 			IPAddress oldV4Address = IPv4Address;
 
 			NetEnum();
-			CheckInet(address_changed:true).Wait();
+			CheckInet(address_changed: true).Wait();
 
 			if (inetAvailable)
 			{
@@ -433,29 +443,27 @@ namespace TaskMaster
 				//CLEANUP: Console.WriteLine("DEBUG: AddrChange: " + oldV6Address + " -> " + IPv6Address);
 
 				bool ipv4changed = false, ipv6changed = false;
-				if (oldV4Address != null)
+				ipv4changed = !oldV4Address.Equals(IPv4Address);
+#if DEBUG
+				if (ipv4changed)
 				{
-					ipv4changed = !oldV4Address.Equals(IPv4Address);
-					if (ipv4changed)
-					{
-						System.Text.StringBuilder outstr4 = new System.Text.StringBuilder();
-						outstr4.Append("IPv4 address changed: ");
-						outstr4.Append(oldV4Address).Append(" -> ").Append(IPv4Address);
-						Log.Debug(outstr4.ToString());
-						Tray.Tooltip(2000, outstr4.ToString(), "TaskMaster", ToolTipIcon.Info);
-					}
+					var outstr4 = new System.Text.StringBuilder();
+					outstr4.Append("IPv4 address changed: ");
+					outstr4.Append(oldV4Address).Append(" -> ").Append(IPv4Address);
+					Log.Debug(outstr4.ToString());
+					Tray.Tooltip(2000, outstr4.ToString(), "TaskMaster", ToolTipIcon.Info);
 				}
-				if (oldV6Address != null)
+#endif
+				ipv6changed = !oldV6Address.Equals(IPv6Address);
+#if DEBUG
+				if (ipv6changed)
 				{
-					ipv6changed = !oldV6Address.Equals(IPv6Address);
-					if (ipv6changed)
-					{
-						System.Text.StringBuilder outstr6 = new System.Text.StringBuilder();
-						outstr6.Append("IPv6 address changed: ");
-						outstr6.Append(oldV6Address).Append(" -> ").Append(IPv6Address);
-						Log.Debug(outstr6.ToString());
-					}
+					var outstr6 = new System.Text.StringBuilder();
+					outstr6.Append("IPv6 address changed: ");
+					outstr6.Append(oldV6Address).Append(" -> ").Append(IPv6Address);
+					Log.Debug(outstr6.ToString());
 				}
+#endif
 
 				if (!ipv4changed && !ipv6changed)
 					Log.Warn("Unstable internet connectivity detected.");
@@ -468,7 +476,7 @@ namespace TaskMaster
 		{
 			NetworkChanged(null, null);
 			netAvailable = NetworkInterface.GetIsNetworkAvailable();
-			netstatuslabel.Text = netAvailable.ToString();
+			netstatuslabel.Text = netAvailable ? "Up" : "Down";
 
 			NetEnum();
 
@@ -483,6 +491,35 @@ namespace TaskMaster
 		bool log_include_warn = true;
 		CheckBox logcheck_debug;
 		bool log_include_debug = true;
+
+		void ChangeUIVisibility(object sender, EventArgs e)
+		{
+			if (Visible)
+			{
+				UpdateUptime(sender, e);
+				StartUIUpdates(sender, e);
+			}
+			else
+			{
+				StopUIUpdates(sender, e);
+			}
+		}
+
+		void UpdateUptime(object sender, EventArgs e)
+		{
+			uptimestatuslabel.Text = string.Format("{0:N1} min(s)", Uptime);
+		}
+
+		Timer timer = new Timer { Interval = 5000 };
+		void StartUIUpdates(object sender, EventArgs e)
+		{
+			if (!timer.Enabled) timer.Start();
+		}
+
+		void StopUIUpdates(object sender, EventArgs e)
+		{
+			if (timer.Enabled) timer.Stop();
+		}
 
 		void BuildUI()
 		{
@@ -607,17 +644,25 @@ namespace TaskMaster
 			// Main Window row 4-5, internet status
 			var netLabel = new Label { Text = "Network status:", Dock = DockStyle.Left, AutoSize = true };
 			var inetLabel = new Label { Text = "Internet status:", Dock = DockStyle.Left, AutoSize = true };
+			var uptimeLabel = new Label { Text = "Uptime:", Dock = Dock = DockStyle.Left, AutoSize = true };
 
-			netstatuslabel = new Label { Dock = DockStyle.Top, Text = "Uninitialized", AutoSize = true, BackColor = System.Drawing.Color.LightGoldenrodYellow };
-			inetstatuslabel = new Label { Dock = DockStyle.Top, Text = "Uninitialized", AutoSize = true, BackColor = System.Drawing.Color.LightGoldenrodYellow };
-
-			var netlayout = new TableLayoutPanel { ColumnCount = 4, RowCount = 1, Dock = DockStyle.Top, AutoSize = true };
+			var netlayout = new TableLayoutPanel { ColumnCount = 6, RowCount = 1, Dock = DockStyle.Top, AutoSize = true };
 			netlayout.Controls.Add(netLabel);
 			netlayout.Controls.Add(netstatuslabel);
 			netlayout.Controls.Add(inetLabel);
 			netlayout.Controls.Add(inetstatuslabel);
+			netlayout.Controls.Add(uptimeLabel);
+			netlayout.Controls.Add(uptimestatuslabel);
 
 			lrows.Controls.Add(netlayout);
+
+			GotFocus += UpdateUptime;
+			GotFocus += StartUIUpdates;
+			FormClosing += StopUIUpdates;
+			VisibleChanged += ChangeUIVisibility;
+
+			if (TaskMaster.NetworkMonitorEnabled)
+				timer.Tick += UpdateUptime;
 
 			/*
 			activeLabel = new Label();
@@ -675,7 +720,7 @@ namespace TaskMaster
 				View = View.Details,
 				Dock = DockStyle.Top,
 				Width = lrows.Width - 3,
-				Height = 60,
+				Height = 80,
 				FullRowSelect = true
 			};
 			pathList.Columns.Add("Name", 120);
@@ -695,10 +740,11 @@ namespace TaskMaster
 				FullRowSelect = true
 			};
 			appList.Columns.Add("Name", 100);
-			appList.Columns.Add("Executable", 110);
-			appList.Columns.Add("Priority", 80);
-			appList.Columns.Add("Affinity", 80);
+			appList.Columns.Add("Executable", 90);
+			appList.Columns.Add("Priority", 72);
+			appList.Columns.Add("Affinity", 40);
 			appList.Columns.Add("Boost", 40);
+			appList.Columns.Add("Children", 72);
 			appList.Columns.Add("Adjusts", 60);
 			appList.Columns.Add("Last seen", 120);
 			appList.Columns.Add("Rescan", 40);
@@ -789,17 +835,10 @@ namespace TaskMaster
 		int MaxLogSize = 20;
 		public void onNewLog(object sender, LogEventArgs e)
 		{
-			try
-			{
-				int excessitems = loglist.Items.Count - MaxLogSize;
-				while (excessitems-- > 0)
-					loglist.Items.RemoveAt(0);
-			}
-			catch (NullReferenceException) // this shouldn't happen
-			{
-				Console.WriteLine("UNEXPECTED: Couldn't remove old log entries from GUI.");
-				Console.WriteLine("ERROR: Null reference");
-			}
+			int excessitems = (loglist.Items.Count - MaxLogSize).Min(0);
+
+			while (excessitems-- > 0)
+				loglist.Items.RemoveAt(0);
 
 			if ((!log_include_debug && e.Info.Level == NLog.LogLevel.Debug) || (!log_include_warn && e.Info.Level == NLog.LogLevel.Warn))
 				return;
@@ -807,26 +846,11 @@ namespace TaskMaster
 			loglist.Items.Add(e.Message).EnsureVisible();
 		}
 
-		static bool onetime = false;
-		static bool lowmemory = false; // low memory mode; figure out way to auto-enable this
-		public bool LowMemory { get { return lowmemory; } }
-
 		// constructor
 		public MainWindow()
 		{
 			//InitializeComponent(); // TODO: WPF
 			lastUptimeStart = System.DateTime.Now;
-
-			if (!onetime)
-			{
-				SharpConfig.Configuration cfg = TaskMaster.loadConfig("Core.ini");
-				if (cfg.Contains("Options") && cfg["Options"].Contains("Low memory"))
-				{
-					lowmemory = cfg["Options"]["Low memory"].BoolValue;
-					Log.Info("Low memory mode: " + (lowmemory ? "Enabled." : "Disabled."));
-				}
-				onetime = true;
-			}
 
 			FormClosing += WindowClose;
 
@@ -858,6 +882,21 @@ namespace TaskMaster
 			jumplist.JumpItems.Add(jpath);
 			jumplist.Apply();
 			*/
+		}
+
+		bool disposed = false;
+		protected override void Dispose(bool disposing)
+		{
+			if (disposed) return;
+
+			base.Dispose(disposing);
+
+			if (disposing)
+			{
+				timer.Dispose();
+			}
+
+			disposed = true;
 		}
 	}
 }

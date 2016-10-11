@@ -23,11 +23,13 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
-
-using System;
+using System.Linq;
 
 namespace TaskMaster
 {
+	using System;
+	using System.Diagnostics;
+
 	public abstract class AbstractProcessControl
 	{
 		static readonly NLog.Logger log = NLog.LogManager.GetCurrentClassLogger();
@@ -37,10 +39,24 @@ namespace TaskMaster
 		/// Human-readable friendly name for the process.
 		/// </summary>
 		public string FriendlyName { get; set; }
+
+		string p_executable;
 		/// <summary>
 		/// Executable filename related to this.
 		/// </summary>
-		public string Executable { get; set; }
+		public string Executable
+		{
+			get
+			{
+				return p_executable;
+			}
+			set
+			{
+				p_executable = value;
+				ExecutableFriendlyName = System.IO.Path.GetFileNameWithoutExtension(value);
+			}
+		}
+
 		/// <summary>
 		/// Frienly executable name as required by various System.Process functions.
 		/// Same as <see cref="T:TaskMaster.ProcessControl.Executable"/> but with the extension missing.

@@ -23,6 +23,7 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
+using System.Runtime.InteropServices;
 
 namespace TaskMaster
 {
@@ -30,7 +31,7 @@ namespace TaskMaster
 	using System.Linq;
 	using System.Windows.Forms;
 
-	public class TrayAccess : IDisposable
+	sealed public class TrayAccess : IDisposable
 	{
 		static readonly NLog.Logger Log = NLog.LogManager.GetCurrentClassLogger();
 
@@ -49,10 +50,7 @@ namespace TaskMaster
 				Icon = System.Drawing.Icon.ExtractAssociatedIcon(System.Reflection.Assembly.GetExecutingAssembly().Location) // is this really the best way?
 			};
 			Tray.BalloonTipText = Tray.Text;
-			Tray.Disposed += (object sender, EventArgs e) => {
-				Tray = null;
-				//CLEANUP: Console.WriteLine("DEBUG: Tray.Disposed caught");
-			};
+			Tray.Disposed += (object sender, EventArgs e) => { Tray = null; };
 
 			Log.Trace("Generating tray icon.");
 
@@ -87,44 +85,29 @@ namespace TaskMaster
 			//CLEANUP: Console.WriteLine("Opening config folder.");
 			System.Diagnostics.Process.Start(TaskMaster.cfgpath);
 
-			if (TaskMaster.tmw != null)
-				TaskMaster.tmw.ShowConfigRequest(sender, e);
-			else
-				Log.Warn("Can't open configuration.");
+			TaskMaster.tmw?.ShowConfigRequest(sender, e);
 			//CLEANUP: Console.WriteLine("Done opening config folder.");
 		}
 
 		public static event EventHandler onExit;
-		void onExitHandler(object sender, EventArgs e)
-		{
-			EventHandler handler = onExit;
-			if (handler != null)
-				handler(this, e);
-		}
 
 		void ExitRequest(object sender, EventArgs e)
 		{
 			//CLEANUP: Console.WriteLine("START:Tray.ExitRequest()");
 			er_menu.Enabled = false;
-			onExitHandler(this, null);
+			onExit?.Invoke(this, null);
 			//CLEANUP: Console.WriteLine("END::Tray.ExitRequest()");
 		}
 
 		void RestoreMain(object sender, EventArgs e)
 		{
-			if (TaskMaster.tmw == null)
-			{
-				Log.Debug("Reconstructing main window.");
-				TaskMaster.tmw = new MainWindow();
-				TaskMaster.HookMainWindow();
-				Tray.MouseClick -= RestoreMain;
-			}
-
+			TaskMaster.BuildMain();
 			TaskMaster.tmw.Show();
 		}
 
 		void RestoreMainRequest(object sender, MouseEventArgs e)
 		{
+			// this should really be system defined activation button in case the buttons are swapped, but C#/OS might handle that for us already?
 			if (e.Button == MouseButtons.Left)
 				RestoreMain(sender, null);
 		}
@@ -141,6 +124,12 @@ namespace TaskMaster
 				TaskMaster.tmw.RestoreWindowRequest(sender, null);
 		}
 
+		void CompactEvent(object sender, EventArgs e)
+		{
+			System.Runtime.GCSettings.LargeObjectHeapCompactionMode = System.Runtime.GCLargeObjectHeapCompactionMode.CompactOnce;
+			GC.Collect(5, GCCollectionMode.Forced, true, true);
+		}
+
 		void WindowClosed(object sender, FormClosingEventArgs e)
 		{
 			//CLEANUP: Console.WriteLine("START:TrayAccess.WindowClosed");
@@ -152,7 +141,7 @@ namespace TaskMaster
 					return;
 			}
 
-			if (TaskMaster.tmw.LowMemory)
+			if (TaskMaster.LowMemory)
 			{
 				//CLEANUP: Console.WriteLine("DEBUG:TrayAccess.WindowClosed.SaveMemory");
 
@@ -169,38 +158,65 @@ namespace TaskMaster
 			Tray.MouseClick += ShowWindow;
 			Tray.MouseDoubleClick += UnloseWindow;
 			window.FormClosing += WindowClosed;
+			window.FormClosed += CompactEvent;
 		}
 
-		System.Diagnostics.Process Explorer;
+		System.Diagnostics.Process[] Explorer;
 		void ExplorerCrashHandler(object sender, EventArgs e)
 		{
 			Log.Warn("Explorer crash detected!");
 
 			System.Threading.Tasks.Task.Run(async () =>
 			{
-				await System.Threading.Tasks.Task.Delay(8000); // force async
+				Log.Trace("Giving explorer some time to recover on its own...");
 
-				if (RegisterExplorerExit())
-					Tray.Visible = true; // TODO: Is this enough/necessary?
-				else
-					Log.Trace("Failed to register explorer exit handler");
+				await System.Threading.Tasks.Task.Delay(12000); // force async
 
-				Log.Debug("Explorer crash handling done!");
+				System.Diagnostics.Process[] procs = ExplorerInstances;
+				if (procs.Count() > 0)
+					return;
+
+				int i = 0;
+				while (!RegisterExplorerExit(procs))
+				{
+					procs = null;
+
+					if (++i >= 10)
+					{
+						Log.Warn("Explorer registration failed. System unable to recover?");
+						return;
+					}
+
+					await System.Threading.Tasks.Task.Delay(8000);
+				}
+				Tray.Visible = true; // TODO: Is this enough/necessary?
 			});
 		}
 
-		bool RegisterExplorerExit()
+		System.Diagnostics.Process[] ExplorerInstances
+		{
+			get
+			{
+				return System.Diagnostics.Process.GetProcessesByName(System.IO.Path.GetFileNameWithoutExtension("explorer.exe"));
+			}
+		}
+
+		bool RegisterExplorerExit(System.Diagnostics.Process[] procs=null)
 		{
 			Log.Trace("Registering Explorer crash monitor.");
 			// this is for dealing with notify icon disappearing on explorer.exe crash/restart
 
-			System.Diagnostics.Process[] procs = System.Diagnostics.Process.GetProcessesByName(System.IO.Path.GetFileNameWithoutExtension("explorer.exe"));
+			if (procs == null) procs = ExplorerInstances;
+
 			if (procs.Count() > 0)
 			{
-				Explorer = procs[0];
-				Explorer.Exited += ExplorerCrashHandler;
-				Explorer.EnableRaisingEvents = true;
-				Log.Info(string.Format("Explorer (#{0}) registered.", Explorer.Id));
+				Explorer = procs;
+				foreach (var proc in procs)
+				{
+					proc.Exited += ExplorerCrashHandler;
+					proc.EnableRaisingEvents = true;
+					Log.Info(string.Format("Explorer (#{0}) registered.", proc.Id));
+				}
 				return true;
 			}
 
@@ -215,7 +231,7 @@ namespace TaskMaster
 			GC.SuppressFinalize(this);
 		}
 
-		protected virtual void Dispose(bool disposing)
+		void Dispose(bool disposing)
 		{
 			if (disposed)
 				return;

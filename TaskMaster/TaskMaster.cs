@@ -47,6 +47,7 @@
  * Other:
  *  - Multiple windows or tabbed window?
  */
+using System.Runtime.CompilerServices;
 
 namespace TaskMaster
 {
@@ -95,7 +96,7 @@ namespace TaskMaster
 
 		public static void MainWindowClose(object sender, EventArgs e)
 		{
-			if (tmw.LowMemory)
+			if (LowMemory)
 			{
 				//tmw.FormClosing -= MainWindowClose // unnecessary?
 				tmw.Dispose();
@@ -116,8 +117,12 @@ namespace TaskMaster
 
 			tri.RegisterMain(ref tmw);
 
-			tmw.setMicMonitor(mon);
-			tmw.setProcControl(pmn);
+			if (MicrophoneMonitorEnabled)
+				tmw.setMicMonitor(mon);
+
+			if (ProcessMonitorEnabled)
+				tmw.setProcControl(pmn);
+			
 			tmw.setLog(memlog);
 			tmw.Tray = tri;
 			memlog.OnNewLog += tmw.onNewLog;
@@ -130,78 +135,114 @@ namespace TaskMaster
 			gmmon.ActiveChanged += tmw.OnActiveWindowChanged;
 			*/
 		}
+
+		public static void BuildMain()
+		{
+			if (tmw == null)
+			{
+				tmw = new MainWindow();
+				HookMainWindow();
+			}
+		}
 		static void Setup()
 		{
-			mon = new MicMonitor();
 			tri = new TrayAccess();
-			pmn = new ProcessManager();
-			tmw = new MainWindow();
-			//CLEANUP: tmw.Disposed += (sender, e) => { tmw = null; Console.WriteLine("DEBUG: TMW.Disposed caught"); };
-			HookMainWindow();
+
+			if (MicrophoneMonitorEnabled)
+				mon = new MicMonitor();
+			
+			if (ProcessMonitorEnabled)
+				pmn = new ProcessManager();
+			
+			BuildMain();
 			#if DEBUG
 			tmw.Show();
 			#endif
 
-			TrayAccess.onExit += TaskMaster.ExitRequest;
+			TrayAccess.onExit += ExitRequest;
 
 			// Self-optimization
-			var self = System.Diagnostics.Process.GetCurrentProcess();
-			self.PriorityClass = System.Diagnostics.ProcessPriorityClass.Idle;
-			//self.ProcessorAffinity = 1; // run this only on the first processor/core; not needed, this app is not time critical
+			if (SelfOptimize)
+			{
+				var self = System.Diagnostics.Process.GetCurrentProcess();
+				self.PriorityClass = System.Diagnostics.ProcessPriorityClass.Idle;
+				//self.ProcessorAffinity = 1; // run this only on the first processor/core; not needed, this app is not time critical
+			}
 		}
 
 		public static bool Verbose = true;
 		public static bool VeryVerbose = false;
+		public static bool CaseSensitive = false;
 
 		static bool ProcessMonitorEnabled = true;
 		static bool MicrophoneMonitorEnabled = true;
 		static bool MediaMonitorEnabled = true;
-		static bool NetworkMonitorEnabled = true;
+		static bool _NetworkMonitorEnabled = true;
+		public static bool NetworkMonitorEnabled
+		{
+			get { return _NetworkMonitorEnabled; }
+			private set { _NetworkMonitorEnabled = value; }
+		}
+			
+		static bool _SelfOptimize = true;
+		public static bool SelfOptimize
+		{
+			get { return _SelfOptimize; }
+			private set { _SelfOptimize = value; }
+		}
+
+		static bool lowmemory = false; // low memory mode; figure out way to auto-enable this when system is low on memory
+		public static bool LowMemory { get { return lowmemory; } private set { lowmemory = value; } }
+
+		static bool wmiqueries = true;
+		/// <summary>
+		/// Whether to use WMI queries for investigating failed path checks to determine if an application was launched in watched path.
+		/// </summary>
+		/// <value><c>true</c> if WMI queries are enabled; otherwise, <c>false</c>.</value>
+		public static bool WMIqueries { get { return wmiqueries; } private set { wmiqueries = value; } }
 
 		static string coreconfig = "Core.ini";
-		static void defaultConfig()
+		static void LoadCoreConfig()
 		{
+			cfg = loadConfig(coreconfig);
+
 			cfg["Core"]["Hello"].SetValue("Hi");
 
 			bool coreconfigdirty = false;
 
-			SharpConfig.Section compsec;
-			if (!cfg.Contains("Components"))
-			{
-				compsec = new SharpConfig.Section("Components");
-				cfg.Add(compsec);
-				coreconfigdirty = true;
-			}
-			else
-				compsec = cfg["Components"];
+			SharpConfig.Section compsec = cfg["Components"];
+			SharpConfig.Section optsec = cfg["Options"];
+			SharpConfig.Section perfsec = cfg["Performance"];
 
-			if (!compsec.Contains("Process"))
-				compsec["Process"].BoolValue = coreconfigdirty = true;
-			else
-				ProcessMonitorEnabled = compsec["Process"].BoolValue;
-			
-			if (!compsec.Contains("Microphone"))
-				compsec["Microphone"].BoolValue = coreconfigdirty = true;
-			else
-				MicrophoneMonitorEnabled = compsec["Microphone"].BoolValue;
-			
-			if (!compsec.Contains("Media"))
-				compsec["Media"].BoolValue = coreconfigdirty = true;
-			else
-				MediaMonitorEnabled = compsec["Media"].BoolValue;
+			int oldsettings = optsec?.SettingCount ?? 0 + compsec?.SettingCount ?? 0 + perfsec?.SettingCount ?? 0;
 
-			if (!compsec.Contains("Network"))
-				compsec["Network"].BoolValue = coreconfigdirty = true;
-			else
-				NetworkMonitorEnabled = compsec["Network"].BoolValue;
+			ProcessMonitorEnabled = compsec.GetSetDefault("Process", true).BoolValue;
+			MicrophoneMonitorEnabled = compsec.GetSetDefault("Microphone", true).BoolValue;
+			MediaMonitorEnabled = compsec.GetSetDefault("Media", true).BoolValue;
+			NetworkMonitorEnabled = compsec.GetSetDefault("Network", true).BoolValue;
 
-			if (!cfg.Contains("Options") || !cfg["Options"].Contains("Self-optimize"))
-				cfg["Options"]["Self-optimize"].BoolValue = true;
-			
-			if (coreconfigdirty)
+			Verbose = optsec.GetSetDefault("Verbose", false).BoolValue;
+			VeryVerbose = optsec.GetSetDefault("Very verbose", false).BoolValue;
+			CaseSensitive = optsec.GetSetDefault("Case sensitive", false).BoolValue;
+
+			SelfOptimize = perfsec.GetSetDefault("Self-optimize", true).BoolValue;
+			LowMemory = perfsec.GetSetDefault("Low memory", false).BoolValue;
+			WMIqueries = perfsec.GetSetDefault("WMI queries", false).BoolValue;
+			perfsec.GetSetDefault("Child processes", false); // unused here
+
+			int newsettings = optsec?.SettingCount ?? 0 + compsec?.SettingCount ?? 0 + perfsec?.SettingCount ?? 0;
+
+			if (coreconfigdirty || (oldsettings!=newsettings)) // really unreliable, but meh
 				saveConfig(coreconfig, cfg);
 
 			monitorCleanShutdown();
+
+			Verbose |= VeryVerbose;
+
+			Log.Info("Verbosity: " + (VeryVerbose ? "Extreme" : (Verbose ? "High" : "Normal")));
+			Log.Info("Self-optimize: " + (SelfOptimize ? "Enabled." : "Disabled."));
+			Log.Info("Low memory mode: " + (LowMemory ? "Enabled." : "Disabled."));
+			Log.Info("WMI queries: " + (WMIqueries ? "Enabled." : "Disabled."));
 		}
 
 		static SharpConfig.Configuration corestats;
@@ -210,12 +251,11 @@ namespace TaskMaster
 		{
 			if (corestats == null)
 				corestats = loadConfig(corestatfile);
-			if (corestats.Contains("Core") && corestats["Core"].Contains("Running"))
-			{
-				bool running = corestats["Core"]["Running"].BoolValue;
-				if (running)
-					Log.Warn("Unclean shutdown.");
-			}
+			
+			bool running = corestats.TryGet("Core")?.TryGet("Running")?.BoolValue ?? false;
+			if (running)
+				Log.Warn("Unclean shutdown.");
+			
 			corestats["Core"]["Running"].BoolValue = true;
 			saveConfig(corestatfile, corestats);
 		}
@@ -224,7 +264,17 @@ namespace TaskMaster
 		{
 			if (corestats == null)
 				corestats = loadConfig(corestatfile);
+
+			SharpConfig.Section wmi = corestats["WMI queries"];
+			string timespent = "Time", querycount = "Queries";
+			wmi[timespent].DoubleValue = wmi.GetSetDefault(timespent, 0d).DoubleValue + Statistics.WMIquerytime;
+			wmi[querycount].IntValue = wmi.GetSetDefault(querycount, 0).IntValue + Statistics.WMIqueries;
+			SharpConfig.Section ps = corestats["Parent seeking"];
+			ps[timespent].DoubleValue = ps.GetSetDefault(timespent, 0d).DoubleValue + Statistics.Parentseektime;
+			ps[querycount].IntValue = ps.GetSetDefault(querycount, 0).IntValue + Statistics.ParentSeeks;
+
 			corestats["Core"]["Running"].BoolValue = false;
+
 			saveConfig(corestatfile, corestats);
 		}
 
@@ -250,8 +300,8 @@ namespace TaskMaster
 			NLog.LogManager.ReconfigExistingLoggers(); // better than reload since we didn't modify the files
 
 			#region SINGLETON
-			if (TaskMaster.VeryVerbose)
-				Log.Trace("Testing for single instance.");
+			if (VeryVerbose) Log.Trace("Testing for single instance.");
+
 			System.Threading.Mutex singleton = null;
 			{
 				bool mutexgained = false;
@@ -269,14 +319,16 @@ namespace TaskMaster
 
 			Log.Info(string.Format("{0} (#{1}) START!", System.Windows.Forms.Application.ProductName, System.Diagnostics.Process.GetCurrentProcess().Id));
 
-			cfg = loadConfig(coreconfig);
-			defaultConfig();
+			LoadCoreConfig();
 
-			TaskMaster.Setup();
+			Setup();
 
 			Log.Info("Startup complete...");
 
 			pmn.ProcessEverything();
+
+			System.Runtime.GCSettings.LargeObjectHeapCompactionMode = System.Runtime.GCLargeObjectHeapCompactionMode.CompactOnce;
+			GC.Collect(5, GCCollectionMode.Forced, true, true);
 
 			try
 			{
@@ -294,6 +346,10 @@ namespace TaskMaster
 				mon.Dispose();
 				tri.Dispose();
 				singleton.ReleaseMutex();
+
+				Log.Info(string.Format("WMI queries: {0:N1}s [{1}]; Parent seeking: {2:N1}s [{3}]",
+				                       Statistics.WMIquerytime, Statistics.WMIqueries,
+				                       Statistics.Parentseektime, Statistics.ParentSeeks));
 			}
 
 			//tmw.Dispose();//already disposed by App.Exit?

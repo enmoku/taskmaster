@@ -59,14 +59,9 @@ namespace TaskMaster
 
 		int culling;
 
-		void onNewLogHandler(object sender, LogEventArgs e)
+		void CullLogSize()
 		{
-			EventHandler<LogEventArgs> handler = OnNewLog;
-			if (handler != null)
-				handler(this, e);
-
-			// hysterisis and such for log culling
-			if ((Logs.Count > Max+10) && System.Threading.Interlocked.CompareExchange(ref culling, 1, 0) == 1)
+			if ((Logs.Count > Max + 10) && System.Threading.Interlocked.CompareExchange(ref culling, 1, 0) == 1)
 			{
 				System.Threading.Tasks.Task.Run(async () =>
 				{
@@ -84,7 +79,10 @@ namespace TaskMaster
 		{
 			string logMessage = this.Layout.Render(logEvent);
 			Logs.Add(logMessage);
-			onNewLogHandler(this, new LogEventArgs(logEvent, logMessage));
+
+			OnNewLog?.Invoke(this, new LogEventArgs(logEvent, logMessage));
+
+			CullLogSize();
 		}
 	}
 }

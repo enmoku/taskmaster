@@ -23,20 +23,30 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
+using NLog.LogReceiverService;
+using System.Windows.Forms;
 
 namespace TaskMaster
 {
 	using System;
 
-	public class Utility
+	public enum OpStatus
 	{
-		public enum Timescale : int
-		{
-			Seconds = 0,
-			Minutes = 1,
-			Hours = 2,
-		}
+		Done,
+		Retry,
+		NoRetry,
+		Fail
+	}
 
+	public enum Timescale
+	{
+		Seconds,
+		Minutes,
+		Hours,
+	}
+
+	public static class Utility
+	{
 		public static string TimescaleString(Timescale t)
 		{
 			switch (t)
@@ -85,3 +95,19 @@ namespace TaskMaster
 	}
 }
 
+public static class TypeExtensions
+{
+	// Core Type extensions
+	public static int Limit(this int value, int InclusiveMinimum, int InclusiveMaximum)
+	{
+		if (value < InclusiveMinimum) { return InclusiveMinimum; }
+		if (value > InclusiveMaximum) { return InclusiveMaximum; }
+		return value;
+	}
+
+	public static int Min(this int value, int Minimum)
+	{
+		if (value < Minimum) { return Minimum; }
+		return value;
+	}
+}

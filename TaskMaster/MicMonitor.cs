@@ -23,6 +23,7 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
+using System.Windows.Documents;
 
 namespace TaskMaster
 {
@@ -55,22 +56,33 @@ namespace TaskMaster
 			set
 			{
 				if (Maximum >= value && value >= Minimum)
+				{
 					_target = value;
+					Log.Info(string.Format("Microphone target volume set to: {0:N1}%", value));
+				}
 			}
 		}
 		public const double Minimum = 0;
 		public const double Maximum = 100;
 
 		public double VolumeHysterisis { get; } = 0.05;
+		public double SmallVolumeHysterisis { get; } = 0.05/4;
 		public int AdjustDelay { get; } = 5000;
 
-		NAudio.Mixer.UnsignedMixerControl Control = null;
+		NAudio.Mixer.UnsignedMixerControl Control;
 
+		double _volume;
 		public double Volume
 		{
+			/// <summary>
+			/// Return cached volume. Use Control.Percent for actual current volume.
+			/// </summary>
+			/// <returns>The volume.</returns>
 			get
 			{
-				return Control.Percent;
+				// We need this to not directly refer to Control.Percent to avoid adding extra cache variables and managing them.
+				// Much easier this way since you still have Control.Percent for up-to-date volume where necessary (shouldn't be, the _volume is updated decently).
+				return _volume;
 			}
 			/// <summary>
 			/// This will trigger VolumeChangedEvent so make sure you don't do infinite loops.
@@ -78,13 +90,16 @@ namespace TaskMaster
 			/// <param name="value">New volume as 0 to 100 double</param>
 			set
 			{
-				Control.Percent = value;
+				lock (Control)
+				{
+					Control.Percent = _volume = value;
+				}
 				Log.Trace("Mic.Volume = " + value);
 			}
 		}
 
 
-		NAudio.CoreAudioApi.MMDevice m_dev = null;
+		NAudio.CoreAudioApi.MMDevice m_dev;
 
 		public string DeviceName
 		{
@@ -103,13 +118,17 @@ namespace TaskMaster
 			// there should be easier way for this, right?
 			Corrections = (stats.Contains("Statistics") && stats["Statistics"].Contains("Corrections")) ? stats["Statistics"]["Corrections"].IntValue : 0;
 
+			var mvol = "Microphone volume";
+			bool save = false || !TaskMaster.cfg["Media"].Contains(mvol);
+			Target = TaskMaster.cfg["Media"].GetSetDefault(mvol, 100d).DoubleValue;
+			if (save) TaskMaster.saveConfig("Core.ini", TaskMaster.cfg);
+
 			// find control interface
 			// FIXME: Deal with multiple recording devices.
 			IntPtr waveInDeviceNumber = IntPtr.Zero; // 0 is default or first?
 			var mixerLine = new NAudio.Mixer.MixerLine(waveInDeviceNumber, 0, NAudio.Mixer.MixerFlags.WaveIn);
 
-			Control = (from control
-				in mixerLine.Controls
+			Control = (from control in mixerLine.Controls
 				where (control.ControlType == NAudio.Mixer.MixerControlType.Volume)
 			            select control).First() as NAudio.Mixer.UnsignedMixerControl;
 
@@ -119,15 +138,14 @@ namespace TaskMaster
 				throw new InitFailure("Mic monitor control not acquired.");
 			}
 
+			_volume = Control.Percent;
+
 			// get default communications device
 			var mm_enum = new NAudio.CoreAudioApi.MMDeviceEnumerator();
-			if (mm_enum != null)
-			{
-				m_dev = mm_enum.GetDefaultAudioEndpoint(NAudio.CoreAudioApi.DataFlow.Capture, NAudio.CoreAudioApi.Role.Communications);
-				if (m_dev != null)
-					m_dev.AudioEndpointVolume.OnVolumeNotification += VolumeChangedHandler;
-			}
-			mm_enum = null;
+			m_dev = mm_enum?.GetDefaultAudioEndpoint(NAudio.CoreAudioApi.DataFlow.Capture, NAudio.CoreAudioApi.Role.Communications);
+			if (m_dev != null)
+				m_dev.AudioEndpointVolume.OnVolumeNotification += VolumeChangedHandler;
+			mm_enum = null; // unnecessary?
 
 			if (m_dev != null)
 				Log.Info(string.Format("Default communications device: {0}", m_dev.FriendlyName));
@@ -138,7 +156,7 @@ namespace TaskMaster
 			}
 		}
 
-		bool disposed = false;
+		bool disposed; // false
 		public void Dispose()
 		{
 			Dispose(true);
@@ -153,7 +171,10 @@ namespace TaskMaster
 			if (disposing)
 			{
 				if (m_dev != null)
+				{
 					m_dev.AudioEndpointVolume.OnVolumeNotification -= VolumeChangedHandler;
+					m_dev = null;
+				}
 
 				if (micstatsdirty)
 				{
@@ -163,14 +184,6 @@ namespace TaskMaster
 			}
 
 			disposed = true;
-		}
-
-		void OnVolumeChanged(VolumeChangedEventArgs e)
-		{
-			EventHandler<VolumeChangedEventArgs> handler = VolumeChanged;
-
-			if (handler != null)
-				handler(this, e);
 		}
 
 		public List<devicePair> enumerate()
@@ -199,47 +212,57 @@ namespace TaskMaster
 		// TODO: Add per device behaviour
 
 		public int Corrections { get; set; }
-		bool micstatsdirty = false;
+		bool micstatsdirty; // false
 
 		static int correcting = 0;
+
 		void VolumeChangedHandler(NAudio.CoreAudioApi.AudioVolumeNotificationData data)
 		{
-			double oldVol = Volume;
-			double newVol = data.MasterVolume * 100;
-			Log.Trace("Mic.Volume.Changed[{0:N1}->{1:N1}] - Checking for correction", oldVol, newVol);
+			double oldVol = _volume;
+			double newVol = _volume = data.MasterVolume * 100;
 
-			if (Math.Abs(newVol - oldVol) >= VolumeHysterisis)
-				Volume = newVol; // this will trigger call to VolumeChangedHandler again
+			if (Math.Abs(newVol - Target) <= SmallVolumeHysterisis)
+				return;
+
+			if (TaskMaster.VeryVerbose)
+				Log.Trace("Mic volume changed from " + oldVol + " to " + newVol);
 
 			// This is a light HYSTERISIS limiter in case someone is sliding a volume bar around,
 			// we act on it only once every [AdjustDelay] ms.
 			// HOPEFULLY there are no edge cases with this triggering just before last adjustment
 			// and the notification for the last adjustment coming slightly before. Seems super unlikely tho.
 			// TODO: Delay this even more if volume is changed ~2 seconds before we try to do so.
-			if (Math.Abs(Volume - Target) >= VolumeHysterisis) // Volume != Target for double
+			if (Math.Abs(newVol - Target) >= VolumeHysterisis) // Volume != Target for double
 			{
+				Log.Trace("Mic.Volume.Changed = [{0:N1} -> {1:N1}], From.Target: {2:N1}", oldVol, newVol, Math.Abs(newVol - Target));
+
 				if (System.Threading.Interlocked.CompareExchange(ref correcting, 1, 0) == 0)
 				{
-					Log.Trace("Mic.Volume.Difference = " + Math.Abs(oldVol - Target));
-
 					//Log.Trace("Thread ID (dispatch): " + System.Threading.Thread.CurrentThread.ManagedThreadId);
 					System.Threading.Tasks.Task.Run(async () =>
 					{
 						//Log.Trace("Thread ID (task): "+ System.Threading.Thread.CurrentThread.ManagedThreadId);
 						await System.Threading.Tasks.Task.Delay(AdjustDelay); // actual hysterisis, this should be cancellable
-						Log.Info(string.Format("Correcting microphone volume from {0:N1} to {1:N1}", Volume, Target));
+						Log.Info(string.Format("Correcting microphone volume from {0:N1} to {1:N1}", newVol, Target));
 						Volume = Target;
 						Corrections += 1;
 						micstatsdirty = true;
 						correcting = 0;
-						OnVolumeChanged(new VolumeChangedEventArgs { Old = oldVol, New = Volume, Corrections = Corrections });
+
+						VolumeChanged?.Invoke(this, new VolumeChangedEventArgs { Old = oldVol, New = Target, Corrections = Corrections });
 					});
 				}
 				else
-					Log.Trace("Mic.Volume.CorrectionAlreadyQueued");
+				{
+					if (TaskMaster.VeryVerbose)
+						Log.Trace("Mic.Volume.CorrectionAlreadyQueued");
+				}
 			}
 			else
-				Log.Trace("Mic.Volume.NotCorrected");
+			{
+				if (TaskMaster.VeryVerbose)
+					Log.Trace("Mic.Volume.NotCorrected");
+			}
 		}
 	}
 }
