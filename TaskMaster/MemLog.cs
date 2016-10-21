@@ -24,11 +24,10 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-using System;
-using System.Windows.Forms;
-
 namespace TaskMaster
 {
+	using System;
+
 	public class LogEventArgs : EventArgs
 	{
 		public readonly NLog.LogEventInfo Info;
@@ -54,7 +53,8 @@ namespace TaskMaster
 		public MemLog()
 		{
 			Logs = new System.Collections.Generic.List<string>(25);
-			Layout = "${callsite} :: ${message}";
+			//Layout = "${callsite} :: ${message}";
+			Layout = @"[${date:format=HH\:mm\:ss.fff}] [${level}] ${message}";
 		}
 
 		int culling;

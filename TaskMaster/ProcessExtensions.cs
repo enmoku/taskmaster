@@ -24,12 +24,10 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-using System;
-using System.Diagnostics;
-using System.Runtime.CompilerServices;
-
 namespace TaskMaster
 {
+	using System.Diagnostics;
+
 	public static class ProcessExtensions
 	{
 		public static bool SetLimitedPriority(this Process process, ProcessPriorityClass target, bool canIncrease = false, bool canDecrease = false)

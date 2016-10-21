@@ -23,7 +23,6 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
-using System.IO;
 
 namespace TaskMaster
 {
@@ -111,8 +110,7 @@ namespace TaskMaster
 			micmonitor.VolumeChanged += volumeChangeDetected;
 			micVol.Value = System.Convert.ToInt32(micmonitor.Volume);
 
-			foreach (KeyValuePair<string, string> dev in micmonitor.enumerate())
-				micList.Items.Add(new ListViewItem(new string[] { dev.Value, dev.Key }));
+			micmonitor.enumerate().ForEach((dev) => micList.Items.Add(new ListViewItem(new string[] { dev.Value, dev.Key })));
 
 			// TODO: Hook device changes
 		}
@@ -139,9 +137,11 @@ namespace TaskMaster
 		public void setProcControl(ProcessManager control)
 		{
 			//control.onProcAdjust += ProcAdjust;
-			foreach (ProcessController item in control.images)
+			lock (appc)
 			{
-				var litem = new ListViewItem(new string[] {
+				foreach (ProcessController item in control.images)
+				{
+					var litem = new ListViewItem(new string[] {
 					item.FriendlyName.ToString(),
 					item.Executable,
 					item.Priority.ToString(),
@@ -151,18 +151,20 @@ namespace TaskMaster
 					item.Adjusts.ToString(),
 						(item.LastSeen != System.DateTime.MinValue ? item.LastSeen.ToString() : "Never"),
 						(item.Rescan>0?item.Rescan.ToString():"n/a")
-				});
-				lock (appc) appc.Add(item.Executable, litem);
+					});
+					appc.Add(item.Executable, litem);
+				}
 			}
+
 			lock (appList) appList.Items.AddRange(appc.Values.ToArray());
 
 			lock (appw)
 			{
-				foreach (PathControl path in control.ActivePaths())
-				{
-					var ni = new ListViewItem(new string[] { path.FriendlyName, path.Path, path.Adjusts.ToString() });
-					appw.Add(path, ni);
-				}
+				control.ActivePaths().ForEach(
+					(PathControl path) =>
+					appw.Add(path, new ListViewItem(new string[] { path.FriendlyName, path.Path, path.Adjusts.ToString() }))
+				);
+
 				pathList.Items.AddRange(appw.Values.ToArray());
 			}
 
@@ -276,13 +278,16 @@ namespace TaskMaster
 
 		void ReportUptime()
 		{
+			var ups = new System.Text.StringBuilder();
+
+			ups.Append("Average uptime: ").Append(string.Format("{0:N1}", (uptimeTotal / uptimeSamples))).Append(" minutes");
+
 			if (uptimeSamples > 3)
-			{
-				double uptimeLast3 = upTime.GetRange(upTime.Count - 3, 3).Sum();
-				Log.Info(string.Format("Average uptime: {0:1} minutes ({1:1 minutes} for last 3 samples).", (uptimeTotal / uptimeSamples), (uptimeLast3 / 3)));
-			}
-			else
-				Log.Info(string.Format("Average uptime: {0:1} minutes.", (uptimeTotal / uptimeSamples)));
+				ups.Append(" (").Append(string.Format("{0:N1}", upTime.GetRange(upTime.Count - 3, 3).Sum() / 3)).Append(" minutes for last 3 samples");
+			
+			ups.Append(".");
+
+			Log.Info(ups.ToString());
 
 			ReportCurrentUptime();
 		}
@@ -825,7 +830,7 @@ namespace TaskMaster
 		{
 			if (TaskMaster.VeryVerbose)
 				Log.Debug("Filling GUI log.");
-			
+
 			foreach (string msg in log.Logs.ToArray())
 				loglist.Items.Add(msg);
 		}
@@ -894,6 +899,7 @@ namespace TaskMaster
 			if (disposing)
 			{
 				timer.Dispose();
+				ReportUptime();
 			}
 
 			disposed = true;

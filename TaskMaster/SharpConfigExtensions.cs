@@ -24,10 +24,6 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-using System;
-using NLog.Targets.Wrappers;
-using System.Windows.Controls;
-
 public static class SharpConfigExtensions
 {
 	public static SharpConfig.Section TryGet(this SharpConfig.Configuration config, string section)

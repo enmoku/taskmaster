@@ -69,34 +69,6 @@ namespace TaskMaster
 			set { p_rescan = value >= 0 ? value : 0; }
 		}
 
-		/// <summary>
-		/// Initializes a new instance of the <see cref="T:TaskMaster.ProcessControl"/> class.
-		/// </summary>
-		/// <param name="friendlyname">Human-readable name for the process. For display purposes only.</param>
-		/// <param name="executable">Executable filename.</param>
-		/// <param name="priority">Target process priority.</param>
-		/// <param name="increase">Increase.</param>
-		/// <param name="affinity">CPU core affinity.</param>
-		/// <param name="boost">Foreground process priority boost.</param>
-		/*
-		public ProcessController(string friendlyname, string executable, ProcessPriorityClass priority=ProcessPriorityClass.Normal, bool increase=false, int affinity=0, bool boost=true, int rescan=0)
-		{
-			FriendlyName = friendlyname;
-			Executable = executable;
-			ExecutableFriendlyName = System.IO.Path.GetFileNameWithoutExtension(executable);
-			Priority = priority;
-			Increase = increase;
-			Affinity = new IntPtr(affinity != 0 ? affinity : ProcessManager.allCPUsMask);
-			Boost = boost;
-
-			Rescan = rescan;
-
-			ChildPriority = priority;
-
-			Log.Trace(FriendlyName + " (" + Executable + "), " + Priority + (Affinity != IntPtr.Zero ? ", Mask:" + Affinity : "") + (Rescan>0 ? ", Rescan: " + Rescan + " minutes":""));
-		}
-		*/
-
 		// TODO EVENT(??)
 		/// <summary>
 		/// Touch the specified process and child.
@@ -193,7 +165,6 @@ namespace TaskMaster
 
 			ScanScheduler();
 
-
 			return modified;
 		}
 
@@ -207,7 +178,7 @@ namespace TaskMaster
 				if (System.Threading.Interlocked.CompareExchange(ref ScanScheduled, 1, 0) == 1)
 					return;
 
-				if (TaskMaster.Verbose)
+				if (TaskMaster.VeryVerbose)
 					Log.Trace(string.Format("'{0}' detected, rescanning.", FriendlyName));
 				
 				await Scan();
@@ -238,7 +209,7 @@ namespace TaskMaster
 					tc++;
 			}
 
-			if (TaskMaster.Verbose)
+			if (TaskMaster.VeryVerbose)
 				Log.Trace("Scan for '" + FriendlyName + "' modified " + tc + " instance(s)");
 		}
 
@@ -282,7 +253,7 @@ namespace TaskMaster
 			}
 			catch (System.ComponentModel.Win32Exception ex)
 			{
-				if (ex.NativeErrorCode != 5)
+				if (ex.NativeErrorCode != 5) // 5 was what?
 					Log.Warn("Access error: " + process.ProcessName + " (pid:" + process.Id + ")");
 				state = ProcessState.AccessDenied;
 				return false; // we don't care wwhat this error is
@@ -309,13 +280,13 @@ namespace TaskMaster
 
 				state = ProcessState.OK;
 
-				Log.Debug(string.Format("{0} (pid:{1}); looks OK, not touched.", name, process.Id));
+				Log.Info(string.Format("{0} (pid:{1}); looks OK, not touched.", name, process.Id));
 			}
 			catch
 			{
 				state = ProcessState.AccessDenied;
 
-				Log.Info(string.Format("Failed to touch '{0}' (pid:{1})", name, process.Id));
+				Log.Warn(string.Format("Failed to touch '{0}' (pid:{1})", name, process.Id));
 			}
 
 			return false;
@@ -443,13 +414,6 @@ namespace TaskMaster
 			foreach (Process process in procs)
 				CheckProcess(process);
 
-			/*
-			// Does the same as the above
-			Log.Trace("Going through process control list.");
-			foreach (ProcessController control in images)
-				control.Scan();
-			*/
-
 			UpdatePathWatch();
 			Log.Trace("Done processing everything.");
 		}
@@ -505,7 +469,8 @@ namespace TaskMaster
 				else
 					ControlChildren |= cnt.Children;
 
-				Log.Trace(cnt.FriendlyName + " (" + cnt.Executable + "), " + cnt.Priority + (cnt.Affinity != IntPtr.Zero ? ", Mask:" + cnt.Affinity : "") + (cnt.Rescan > 0 ? ", Rescan: " + cnt.Rescan + " minutes" : "") + (cnt.Children ? ", Children: " + cnt.ChildPriority : ""));
+				if (TaskMaster.VeryVerbose)
+					Log.Trace(cnt.FriendlyName + " (" + cnt.Executable + "), " + cnt.Priority + (cnt.Affinity != IntPtr.Zero ? ", Mask:" + cnt.Affinity : "") + (cnt.Rescan > 0 ? ", Rescan: " + cnt.Rescan + " minutes" : "") + (cnt.Children ? ", Children: " + cnt.ChildPriority : ""));
 
 				//cnt.delay = section.Contains("delay") ? section["delay"].IntValue : 30; // TODO: Add centralized default delay
 				//cnt.delayIncrement = section.Contains("delay increment") ? section["delay increment"].IntValue : 15; // TODO: Add centralized default increment
@@ -608,26 +573,34 @@ namespace TaskMaster
 			}
 			catch (System.ComponentModel.Win32Exception ex)
 			{
+				state = ProcessState.AccessDenied; // unless we accomplish something
+
 				if ((path = GetProcessPath(process.Id)) == null)
 				{
-					#if DEBUG
+					string friendlyerror;
 					switch (ex.NativeErrorCode)
 					{
 						case 5:
-							Log.Trace(string.Format("Access denied to '{0}' (pid:{1})", process.ProcessName, process.Id));
+							friendlyerror = "Access denied";
+							if (TaskMaster.VeryVerbose)
+								Log.Trace(string.Format("Access denied to '{0}' (pid:{1})", process.ProcessName, process.Id));
 							break;
 						case 299: // 32/64 bit taskmaster accessing opposite
-							Log.Debug(string.Format("Can not fully access '{0}' (pid:{1})", process.ProcessName, process.Id));
+							friendlyerror = "Partial access";
+							if (TaskMaster.VeryVerbose)
+								Log.Debug(string.Format("Can not fully access '{0}' (pid:{1})", process.ProcessName, process.Id));
 							break;
 						default:
-							Log.Debug(string.Format("Unknown failure with '{0}' (pid:{1}), error: {2}", process.ProcessName, process.Id, ex.NativeErrorCode));
-							Log.Debug(ex);
+							friendlyerror = "Unknown";
+							if (TaskMaster.VeryVerbose)
+							{
+								Log.Debug(string.Format("Unknown failure with '{0}' (pid:{1}), error: {2}", process.ProcessName, process.Id, ex.NativeErrorCode));
+								Log.Debug(ex);
+							}
 							break;
 					}
-					#endif
-					// we can not touch this so we shouldn't even bother trying
-					Log.Trace("Failed to access '{0}' (pid:{1})", process.ProcessName, process.Id);
-					state = ProcessState.AccessDenied;
+					// we can not touch this so we shouldn't even bother trying. we also do not really care about this error
+					Log.Trace("Failed to access '{0}' (pid:{1}) - Error: {2} ({3})", process.ProcessName, process.Id, ex.NativeErrorCode, friendlyerror);
 					return false;
 				}
 				slow = true;
@@ -639,15 +612,15 @@ namespace TaskMaster
 				//Log.Debug("with: "+ pc.Path);
 				if (path.StartsWith(pc.Path, StringComparison.InvariantCultureIgnoreCase)) // TODO: make this compatible with OSes that aren't case insensitive?
 				{
-					Log.Info("[" + pc.FriendlyName + "] matched " + (slow ? "~slowly~ " : "") + "at: " + path);
+					if (TaskMaster.VeryVerbose)
+						Log.Info("[" + pc.FriendlyName + "] matched " + (slow ? "~slowly~ " : "") + "at: " + path);
+					
 					bool touched = pc.Touch(process, path, out state);
+					state = touched ? ProcessState.Modified : ProcessState.OK;
 					return true;
 				}
 			}
 
-			if (TaskMaster.VeryVerbose)
-				Log.Trace("Not for us: " + path);
-			
 			return false;
 		}
 
@@ -662,8 +635,8 @@ namespace TaskMaster
 		{
 			if (TaskMaster.CaseSensitive)
 				return IgnoreList.Contains(name);
-			else
-				return IgnoreList.Contains(name, StringComparer.InvariantCultureIgnoreCase);
+			
+			return IgnoreList.Contains(name, StringComparer.InvariantCultureIgnoreCase);
 		}
 
 		async System.Threading.Tasks.Task CheckProcess(Process process)
@@ -700,8 +673,12 @@ namespace TaskMaster
 
 			switch (state)
 			{
-				case ProcessState.Invalid: break;
-				default: return;
+				case ProcessState.Invalid:
+					Log.Debug("Control group: " + control.FriendlyName + ", process: " + process.ProcessName + " (#" + process.Id + ") is INVALID thus checking for parents.");
+					break;
+				default:
+					Log.Debug("Control group: " + control.FriendlyName + ", process: " + process.ProcessName + " (#" + process.Id + ") is not to be touched farther");
+					return;
 			}
 
 			if (ControlChildren) // this slows things down a lot it seems
@@ -838,17 +815,20 @@ namespace TaskMaster
 						section["path"].StringValue = pc.Path;
 						pathfile_dirty = true;
 					}
-					Log.Trace(name + " (" + pc.Path + ") added to active watch list.");
+					if (TaskMaster.VeryVerbose)
+						Log.Trace(name + " (" + pc.Path + ") added to active watch list.");
 				}
 				else
 				{
 					if (pathinit == null) pathinit = new List<PathControl>();
 					pathinit.Add(pc);
-					Log.Trace(name + " ("+subpath+") added to init list.");
+					if (TaskMaster.VeryVerbose)
+						Log.Trace(name + " ("+subpath+") added to init list.");
 				}
-				if (pathinit != null) Log.Debug("Path init list has " + pathinit.Count + " item(s), should be 0.");
-				else Log.Debug("Path init list is not present. Huzzah!");
 			}
+
+			if (pathinit != null) Log.Debug("Path init list has " + pathinit.Count + " item(s), should be 0.");
+			else Log.Debug("Path init list is not present. Huzzah!");
 
 			if (pathinit != null && pathinit.Count == 0) pathinit = null;
 

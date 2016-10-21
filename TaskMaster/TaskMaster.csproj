@@ -50,7 +50,7 @@
       <HintPath>packages\sharpconfig.2.0.1\lib\net20\SharpConfig.dll</HintPath>
     </Reference>
     <Reference Include="NLog">
-      <HintPath>packages\NLog.4.3.9\lib\net45\NLog.dll</HintPath>
+      <HintPath>packages\NLog.4.3.10\lib\net45\NLog.dll</HintPath>
     </Reference>
   </ItemGroup>
   <ItemGroup>

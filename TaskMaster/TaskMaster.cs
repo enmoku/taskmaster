@@ -29,7 +29,6 @@
  * TODO: Fix process IO priority
  * TODO: Detect full screen or GPU accelerated apps and adjust their priorities.
  * TODO: Detect if the above apps hang and lower their processing priorities.
- * TODO: Empty working set, detect if it does anything and report it. Probably not worth doing.
  * 
  * MAYBE:
  *  - Monitor [MFT] fragmentation?
@@ -47,7 +46,6 @@
  * Other:
  *  - Multiple windows or tabbed window?
  */
-using System.Runtime.CompilerServices;
 
 namespace TaskMaster
 {
@@ -68,7 +66,7 @@ namespace TaskMaster
 			System.IO.Directory.CreateDirectory(cfgpath);
 			string targetfile = System.IO.Path.Combine(cfgpath, configfile);
 			if (System.IO.File.Exists(targetfile))
-				System.IO.File.Copy(targetfile, targetfile + ".bak.1", true); // backup
+				System.IO.File.Copy(targetfile, targetfile + ".bak", true); // backup
 			config.SaveToFile(targetfile);
 		}
 
@@ -294,9 +292,9 @@ namespace TaskMaster
 			}
 
 			memlog = new MemLog();
+			NLog.LogManager.ThrowExceptions = true;
 			NLog.LogManager.Configuration.AddTarget("MemLog", memlog);
 			NLog.LogManager.Configuration.LoggingRules.Add(new NLog.Config.LoggingRule("*", NLog.LogLevel.Debug, memlog));
-			memlog.Layout = @"[${date:format=HH\:mm\:ss.fff}] [${level}] ${message}";
 			NLog.LogManager.ReconfigExistingLoggers(); // better than reload since we didn't modify the files
 
 			#region SINGLETON
@@ -317,7 +315,7 @@ namespace TaskMaster
 			}
 			#endregion
 
-			Log.Info(string.Format("{0} (#{1}) START!", System.Windows.Forms.Application.ProductName, System.Diagnostics.Process.GetCurrentProcess().Id));
+			Log.Info(string.Format("TaskMaster! (#{0}) START!", System.Diagnostics.Process.GetCurrentProcess().Id));
 
 			LoadCoreConfig();
 
@@ -330,6 +328,7 @@ namespace TaskMaster
 			System.Runtime.GCSettings.LargeObjectHeapCompactionMode = System.Runtime.GCLargeObjectHeapCompactionMode.CompactOnce;
 			GC.Collect(5, GCCollectionMode.Forced, true, true);
 
+			NLog.LogManager.Flush();
 			try
 			{
 				System.Windows.Forms.Application.Run();
@@ -356,7 +355,7 @@ namespace TaskMaster
 
 			CleanShutdown();
 
-			Log.Info(string.Format("{0} (#{1}) END! [Clean]", System.Windows.Forms.Application.ProductName, System.Diagnostics.Process.GetCurrentProcess().Id));
+			Log.Info(string.Format("TaskMaster! (#{0}) END! [Clean]", System.Diagnostics.Process.GetCurrentProcess().Id));
 			//NLog.LogManager.Flush(); // 
 		}
 	}
