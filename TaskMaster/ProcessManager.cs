@@ -23,6 +23,8 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
+using System.Runtime.CompilerServices;
+using System.Threading.Tasks;
 
 namespace TaskMaster
 {
@@ -45,7 +47,7 @@ namespace TaskMaster
 	/// </summary>
 	sealed public class ProcessController : AbstractProcessControl
 	{
-		public bool Increase = false;
+		public bool Increase; // false
 		/// <summary>
 		/// CPU core affinity.
 		/// </summary>
@@ -57,7 +59,7 @@ namespace TaskMaster
 		public bool Boost = true;
 
 		public bool Children = true;
-		public ProcessPriorityClass ChildPriority = System.Diagnostics.ProcessPriorityClass.Normal;
+		public ProcessPriorityClass ChildPriority = ProcessPriorityClass.Normal;
 
 		int p_rescan;
 		/// <summary>
@@ -74,8 +76,7 @@ namespace TaskMaster
 		/// Touch the specified process and child.
 		/// </summary>
 		/// <param name="process">Process.</param>
-		/// <param name="child">If set to <c>true</c> child.</param>
-		public bool Touch(Process process, out ProcessState state)
+		public bool Touch(Process process, out ProcessState state, bool schedule_next=true)
 		{
 			state = ProcessState.Invalid;
 			Debug.Assert(process != null);
@@ -119,7 +120,7 @@ namespace TaskMaster
 						process.ProcessorAffinity = Affinity;
 						modified = mAffinity = true;
 					}
-					catch (System.ComponentModel.Win32Exception)
+					catch (Win32Exception)
 					{
 						Log.Warn(string.Format("Couldn't modify process ({0}, #{1}) affinity [{2} -> {3}].", Executable, process.Id, process.ProcessorAffinity.ToInt32(), Affinity.ToInt32()));
 					}
@@ -163,12 +164,12 @@ namespace TaskMaster
 				}
 			}
 
-			ScanScheduler();
+			if (schedule_next) ScanScheduler();
 
 			return modified;
 		}
 
-		int ScanScheduled = 0;
+		int ScanScheduled; // = 0;
 		async System.Threading.Tasks.Task ScanScheduler()
 		{
 			double n = (DateTime.Now - LastScan).TotalMinutes;
@@ -178,8 +179,8 @@ namespace TaskMaster
 				if (System.Threading.Interlocked.CompareExchange(ref ScanScheduled, 1, 0) == 1)
 					return;
 
-				if (TaskMaster.VeryVerbose)
-					Log.Trace(string.Format("'{0}' detected, rescanning.", FriendlyName));
+				if (TaskMaster.Verbose)
+					Log.Info(string.Format("'{0}' detected, rescanning.", FriendlyName));
 				
 				await Scan();
 
@@ -210,7 +211,7 @@ namespace TaskMaster
 			}
 
 			if (TaskMaster.VeryVerbose)
-				Log.Trace("Scan for '" + FriendlyName + "' modified " + tc + " instance(s)");
+				Log.Info("Scan for '" + FriendlyName + "' modified " + tc + " instance(s)");
 		}
 
 		public static event EventHandler<ProcessEventArgs> onTouch;
@@ -251,7 +252,7 @@ namespace TaskMaster
 					return false;
 				}
 			}
-			catch (System.ComponentModel.Win32Exception ex)
+			catch (Win32Exception ex)
 			{
 				if (ex.NativeErrorCode != 5) // 5 was what?
 					Log.Warn("Access error: " + process.ProcessName + " (pid:" + process.Id + ")");
@@ -363,6 +364,8 @@ namespace TaskMaster
 
 		public static int allCPUsMask = 1;
 
+		int ProcessModifyDelay = 4800;
+
 		/// <summary>
 		/// Gets the control class instance of the executable if it exists.
 		/// </summary>
@@ -401,26 +404,39 @@ namespace TaskMaster
 			}
 		}
 
+		public void ProcessEverythingRequest(object sender, EventArgs e)
+		{
+			if (TaskMaster.Verbose) Log.Info("Rescan requested.");
+			ProcessEverything();
+			if (TaskMaster.VeryVerbose) Log.Info("Rescan complete.");
+		}
+
 		/// <summary>
 		/// Processes everything. Pointlessly thorough, but there's no nicer way around for now.
 		/// </summary>
 		public void ProcessEverything()
 		{
-			Log.Trace("Processing everything.");
+			if (TaskMaster.VeryVerbose) Log.Trace("Processing everything.");
 
 			Process[] procs = Process.GetProcesses();
 
-			Log.Trace(string.Format("Scanning {0} processes.", procs.Length));
-			foreach (Process process in procs)
-				CheckProcess(process);
+			if (TaskMaster.Verbose) Log.Trace(string.Format("Scanning {0} processes.", procs.Length));
 
+			var tasks = new List<Task>();
+			foreach (Process process in procs)
+				tasks.Add(CheckProcess(process, schedule_next:false));
+			
 			UpdatePathWatch();
-			Log.Trace("Done processing everything.");
+
+			if (TaskMaster.VeryVerbose) Log.Trace("Dispatched work orders.");
+			Task.WhenAll(tasks);
+
+			if (TaskMaster.VeryVerbose) Log.Trace("Done processing everything.");
 		}
 
-		static bool ControlChildren = false;
+		static bool ControlChildren; // = false;
 		SharpConfig.Configuration stats;
-		bool stats_dirty = false;
+		bool stats_dirty; // = false;
 		public void loadConfig()
 		{
 			Log.Trace("Loading watchlist");
@@ -515,12 +531,13 @@ namespace TaskMaster
 			Stopwatch n = Stopwatch.StartNew();
 
 			string path = null;
-			string wmiQueryString = "SELECT ProcessId, ExecutablePath FROM Win32_Process WHERE ProcessId = " + processId;
+			//string wmiQueryString = "SELECT ProcessId, ExecutablePath FROM Win32_Process WHERE ProcessId = " + processId;
+			string wmiQueryString = "SELECT ExecutablePath FROM Win32_Process WHERE ProcessId = " + processId;
 			using (var searcher = new System.Management.ManagementObjectSearcher(wmiQueryString))
 			{
 				using (var results = searcher.Get())
 				{
-					System.Management.ManagementObject mo = results.Cast<System.Management.ManagementObject>().FirstOrDefault();
+					var mo = results.Cast<System.Management.ManagementObject>().FirstOrDefault();
 					if (mo != null)
 					{
 						path = (string)mo["ExecutablePath"];
@@ -552,7 +569,7 @@ namespace TaskMaster
 					return false;
 				}
 			}
-			catch (System.ComponentModel.Win32Exception ex)
+			catch (Win32Exception ex)
 			{
 				if (ex.NativeErrorCode != 5)
 					Log.Warn("Access error: " + process.ProcessName + " (pid:" + process.Id + ")");
@@ -571,7 +588,7 @@ namespace TaskMaster
 				state = ProcessState.AccessDenied;
 				return false;
 			}
-			catch (System.ComponentModel.Win32Exception ex)
+			catch (Win32Exception ex)
 			{
 				state = ProcessState.AccessDenied; // unless we accomplish something
 
@@ -639,7 +656,7 @@ namespace TaskMaster
 			return IgnoreList.Contains(name, StringComparer.InvariantCultureIgnoreCase);
 		}
 
-		async System.Threading.Tasks.Task CheckProcess(Process process)
+		async System.Threading.Tasks.Task CheckProcess(Process process, bool schedule_next=true)
 		{
 			Debug.Assert(process != null);
 
@@ -657,9 +674,9 @@ namespace TaskMaster
 			ProcessController control;
 			if (execontrol.TryGetValue(process.ProcessName, out control))
 			{
-				await System.Threading.Tasks.Task.Delay(100);
+				await System.Threading.Tasks.Task.Delay(ProcessModifyDelay);
 
-				if (control.Touch(process, out state))
+				if (control.Touch(process, out state, schedule_next))
 					if (TaskMaster.VeryVerbose)
 						Log.Debug("Control group: " + control.FriendlyName + ", process: " + process.ProcessName + " (#" + process.Id + ")");
 				return; // execontrol had this, we don't care about anything else for this.
@@ -867,7 +884,7 @@ namespace TaskMaster
 			// FIXME: doesn't seem to work when lots of new processes start at the same time.
 			try
 			{
-				var query = new System.Management.EventQuery("SELECT TargetInstance FROM __InstanceCreationEvent WITHIN 1 WHERE TargetInstance ISA 'Win32_Process'");
+				var query = new System.Management.EventQuery("SELECT TargetInstance FROM __InstanceCreationEvent WITHIN 5 WHERE TargetInstance ISA 'Win32_Process'");
 				var scope = new System.Management.ManagementScope(new System.Management.ManagementPath(@"\\.\root\CIMV2")); // @"\\.\root\CIMV2"
 				watcher = new System.Management.ManagementEventWatcher(scope, query);
 			}
@@ -896,7 +913,7 @@ namespace TaskMaster
 			}
 		}
 
-		bool disposed = false;
+		bool disposed; // = false;
 		public void Dispose()
 		{
 			Dispose(true);

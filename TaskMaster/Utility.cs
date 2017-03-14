@@ -23,6 +23,9 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
+using System.Net;
+using System.Net.NetworkInformation;
+using System.Collections.Generic;
 
 namespace TaskMaster
 {
@@ -107,5 +110,24 @@ public static class TypeExtensions
 	{
 		if (value < Minimum) { return Minimum; }
 		return value;
+	}
+
+	public static IPAddress GetAddress(this NetworkInterface iface)
+	{
+		return GetAddresses(iface)[0] ?? IPAddress.None;
+	}
+
+	public static IPAddress[] GetAddresses(this NetworkInterface iface)
+	{
+		if (iface.NetworkInterfaceType == NetworkInterfaceType.Loopback || iface.NetworkInterfaceType == NetworkInterfaceType.Tunnel)
+			return null;
+		
+		var ipa = new List<IPAddress>(2);
+		foreach (UnicastIPAddressInformation ip in iface.GetIPProperties().UnicastAddresses)
+		{
+			ipa.Add(ip.Address);
+		}
+
+		return ipa.ToArray();
 	}
 }

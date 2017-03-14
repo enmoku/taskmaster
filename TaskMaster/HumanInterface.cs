@@ -1,5 +1,5 @@
 ﻿//
-// SampleSet.cs
+// HumanInterface.cs
 //
 // Author:
 //       M.A. (enmoku) <>
@@ -23,41 +23,49 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
-
+using System;
 namespace TaskMaster
 {
-	public class UptimeTracker
+	public static class HumanInterface
 	{
-		readonly System.Collections.Queue stack;
-		readonly System.Collections.Queue stamp;
-
-		public int Max { get; set; }
-		public int Min { get; set; }
-
-		UptimeTracker(int capacity=10, int cap=10)
+		public static string TimeString(TimeSpan time)
 		{
-			Capacity = capacity;
-			Cap = cap;
-			stack = new System.Collections.Queue(capacity);
-		}
+			var s = new System.Text.StringBuilder();
 
-		public void Push(int obj)
-		{
-			stack.Enqueue(obj);
-		}
+			bool days = false;
+			if (time.Days > 0)
+			{
+				s.Append(time.Days);
+				s.Append(" day");
+				if (time.Days != 1)
+					s.Append("s");
+				days = true;
+			}
 
-		public void Pull()
-		{
-		}
+			bool hours = false;
+			if (time.Hours > 0)
+			{
+				if (days)
+					s.Append(", ");
+				s.Append(time.Hours);
+				s.Append(" hour");
+				if (time.Hours != 1)
+					s.Append("s");
+				hours = true;
+			}
 
-		public int Pop()
-		{
-			return (int)stack.Dequeue();
-		}
+			//if (time.Minutes > 0)
+			//{
+			if (hours || days)
+				s.Append(", ");
+			double min = time.Minutes + (time.Seconds / 60.0);
+			s.Append(string.Format("{0:N1}", min));
+			s.Append(" minute");
+			if (min > 1 || min < 1)
+				s.Append("s");
+			//}
 
-		public int Total { get; set; } = 0;
-		public int Cap { get; set; } = 10;
-		public int Capacity { get; set; } = 10;
-		public int Count { get; set; } = 0;
+			return s.ToString();
+		}
 	}
 }

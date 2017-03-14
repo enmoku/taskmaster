@@ -48,7 +48,7 @@ namespace TaskMaster
 		public int Max = 50;
 
 		public System.Collections.Generic.List<string> Logs;
-		public event System.EventHandler<LogEventArgs> OnNewLog;
+		public event EventHandler<LogEventArgs> OnNewLog;
 
 		public MemLog()
 		{
@@ -77,7 +77,7 @@ namespace TaskMaster
 
 		protected override void Write(NLog.LogEventInfo logEvent)
 		{
-			string logMessage = this.Layout.Render(logEvent);
+			string logMessage = Layout.Render(logEvent);
 			Logs.Add(logMessage);
 
 			OnNewLog?.Invoke(this, new LogEventArgs(logEvent, logMessage));

@@ -27,11 +27,9 @@
 namespace TaskMaster
 {
 	using System;
-	using System.Net;
 	using System.Linq;
 	using System.Collections.Generic;
 	using System.Windows.Forms;
-	using System.Net.NetworkInformation;
 
 	// public class MainWindow : System.Windows.Window; // TODO: WPF
 	sealed public class MainWindow : System.Windows.Forms.Form, WindowInterface
@@ -94,11 +92,16 @@ namespace TaskMaster
 
 		static readonly System.Drawing.Size SetSizeDefault = new System.Drawing.Size(720, 760); // width, height
 
+		public void ShowLastLog()
+		{
+			loglist.EnsureVisible(loglist.Items.Count - 1);
+		}
+
 		public void ShowWindowRequest(object sender, EventArgs e)
 		{
 			Show(); // FIXME: Gets triggered when menuitem is clicked
 			AutoSize = true;
-			Size = SetSizeDefault;
+			Size = SetSizeDefault; // shouldn't be done always, but ensures the window is right size iff desktop was resized to something smaller.
 		}
 
 		#region Microphone control code
@@ -108,7 +111,9 @@ namespace TaskMaster
 			micName.Text = micmonitor.DeviceName;
 			corCountLabel.Text = micmonitor.Corrections.ToString();
 			micmonitor.VolumeChanged += volumeChangeDetected;
-			micVol.Value = System.Convert.ToInt32(micmonitor.Volume);
+			micVol.Maximum = Convert.ToDecimal(micmonitor.Maximum);
+			micVol.Minimum = Convert.ToDecimal(micmonitor.Minimum);
+			micVol.Value = Convert.ToInt32(micmonitor.Volume);
 
 			micmonitor.enumerate().ForEach((dev) => micList.Items.Add(new ListViewItem(new string[] { dev.Value, dev.Key })));
 
@@ -134,6 +139,8 @@ namespace TaskMaster
 			//activeLabel.Text = "Active window: " + e.title;
 		}
 
+		public event EventHandler rescanRequest;
+
 		public void setProcControl(ProcessManager control)
 		{
 			//control.onProcAdjust += ProcAdjust;
@@ -142,14 +149,14 @@ namespace TaskMaster
 				foreach (ProcessController item in control.images)
 				{
 					var litem = new ListViewItem(new string[] {
-					item.FriendlyName.ToString(),
+					item.FriendlyName, //.ToString(),
 					item.Executable,
 					item.Priority.ToString(),
 						(item.Affinity.ToInt32() == ProcessManager.allCPUsMask ? "OS" : Convert.ToString(item.Affinity.ToInt32(), 2)),
 					item.Boost.ToString(),
 						(item.Children ? item.ChildPriority.ToString() : "n/a"),
 					item.Adjusts.ToString(),
-						(item.LastSeen != System.DateTime.MinValue ? item.LastSeen.ToString() : "Never"),
+						(item.LastSeen != DateTime.MinValue ? item.LastSeen.ToString() : "Never"),
 						(item.Rescan>0?item.Rescan.ToString():"n/a")
 					});
 					appc.Add(item.Executable, litem);
@@ -209,7 +216,7 @@ namespace TaskMaster
 		Dictionary<string, ListViewItem> appc = new Dictionary<string, ListViewItem>();
 		Label corCountLabel;
 
-		void UserMicVol(object sender, System.EventArgs e)
+		void UserMicVol(object sender, EventArgs e)
 		{
 			// TODO: Handle volume changes. Not really needed. Give presets?
 			//micMonitor.setVolume(micVol.Value);
@@ -217,7 +224,7 @@ namespace TaskMaster
 
 		void volumeChangeDetected(object sender, VolumeChangedEventArgs e)
 		{
-			micVol.Value = System.Convert.ToInt32(e.New);
+			micVol.Value = Convert.ToInt32(e.New);
 			corCountLabel.Text = e.Corrections.ToString();
 		}
 		#endregion // Microphone control code
@@ -226,276 +233,19 @@ namespace TaskMaster
 		//Label activeLabel;
 		#endregion
 
-		#region Internet handling functionality
-
-		bool netAvailable = false;
-		bool inetAvailable = false;
 		Label netstatuslabel = new Label { Dock = DockStyle.Top, Text = "Uninitialized", AutoSize = true, BackColor = System.Drawing.Color.LightGoldenrodYellow };
 		Label inetstatuslabel = new Label { Dock = DockStyle.Top, Text = "Uninitialized", AutoSize = true, BackColor = System.Drawing.Color.LightGoldenrodYellow };
 		Label uptimestatuslabel = new Label { Dock = DockStyle.Top, Text = "Uninitialized", AutoSize = true, BackColor = System.Drawing.Color.LightGoldenrodYellow };
 
-		async void NetworkChanged(object sender, EventArgs e)
-		{
-			bool oldNetAvailable = netAvailable;
-			netAvailable = NetworkInterface.GetIsNetworkAvailable();
-
-			// do stuff only if this is different from last time
-			if (oldNetAvailable != netAvailable)
-			{
-				Log.Debug("Network status changed: " + (netAvailable ? "Connected" : "Disconnected"));
-				netstatuslabel.Text = netAvailable.ToString();
-				netstatuslabel.BackColor = netAvailable ? System.Drawing.Color.LightGoldenrodYellow : System.Drawing.Color.Red;
-
-				await System.Threading.Tasks.Task.Delay(200);
-
-				await CheckInet();
-			}
-		}
-
-		int uptimeSamples = 0;
-		double uptimeTotal = 0;
-		List<double> upTime = new List<double>();
-		DateTime lastUptimeStart;
-
-		/// <summary>
-		/// Current uptime in minutes.
-		/// </summary>
-		/// <value>The uptime.</value>
-		double Uptime
-		{
-			get
-			{
-				if (TaskMaster.NetworkMonitorEnabled)
-					return (DateTime.Now - lastUptimeStart).TotalMinutes;
-				return double.NaN;
-			}
-		}
-
-		void ReportCurrentUptime()
-		{
-			Log.Info(string.Format("Current internet uptime: {0:1} minutes", Uptime));
-		}
-
-		void ReportUptime()
-		{
-			var ups = new System.Text.StringBuilder();
-
-			ups.Append("Average uptime: ").Append(string.Format("{0:N1}", (uptimeTotal / uptimeSamples))).Append(" minutes");
-
-			if (uptimeSamples > 3)
-				ups.Append(" (").Append(string.Format("{0:N1}", upTime.GetRange(upTime.Count - 3, 3).Sum() / 3)).Append(" minutes for last 3 samples");
-			
-			ups.Append(".");
-
-			Log.Info(ups.ToString());
-
-			ReportCurrentUptime();
-		}
-
-		bool lastOnlineState = false;
-		static int upstateTesting = 0;
-		void RecordSample(bool online_state, bool address_changed)
-		{
-			if (online_state != lastOnlineState)
-			{
-				lastOnlineState = online_state;
-
-				if (online_state)
-				{
-					lastUptimeStart = DateTime.Now;
-
-					if (System.Threading.Interlocked.CompareExchange(ref upstateTesting, 1, 0) == 1)
-					{
-						System.Threading.Tasks.Task.Run(async () =>
-						{
-							//CLEANUP: Console.WriteLine("Debug: Queued internet uptime report");
-							await System.Threading.Tasks.Task.Delay(new TimeSpan(0, 5, 0)); // wait 5 minutes
-
-							ReportCurrentUptime();
-							upstateTesting = 0;
-						});
-					}
-				}
-				else // went offline
-				{
-					double newUptime = (DateTime.Now - lastUptimeStart).TotalMinutes;
-					upTime.Add(newUptime);
-					uptimeTotal += newUptime;
-					uptimeSamples += 1;
-					if (uptimeSamples > 20)
-					{
-						uptimeTotal -= upTime[0];
-						uptimeSamples -= 1;
-						upTime.RemoveAt(0);
-					}
-
-					ReportUptime();
-				}
-			}
-			else if (address_changed)
-			{
-				// same state but address change was detected
-				Console.WriteLine("DEBUG: Address changed but internet connectivity unaffected.");
-				ReportCurrentUptime();
-			}
-		}
-
-		int checking_inet = 0;
-		async System.Threading.Tasks.Task CheckInet(bool address_changed = false)
-		{
-			// TODO: Figure out how to get Actual start time of internet connectivity.
-
-			if (System.Threading.Interlocked.CompareExchange(ref checking_inet, 1, 0) == 0)
-				return;
-
-			if (TaskMaster.Verbose)
-				Log.Trace("Checking internet connectivity...");
-
-			await System.Threading.Tasks.Task.Delay(100);
-
-			bool oldInetAvailable = inetAvailable;
-			if (netAvailable)
-			{
-				try
-				{
-					System.Net.Dns.GetHostEntry("www.google.com"); // FIXME: don't rely on Google existing
-					inetAvailable = true;
-				}
-				catch (System.Net.Sockets.SocketException)
-				{
-					inetAvailable = false;
-				}
-			}
-			else
-				inetAvailable = false;
-
-			RecordSample(inetAvailable, address_changed);
-
-			if (oldInetAvailable != inetAvailable)
-			{
-				inetstatuslabel.Text = inetAvailable ? "Connected" : "Disconnected";
-				inetstatuslabel.BackColor = inetAvailable ? System.Drawing.Color.LightGoldenrodYellow : System.Drawing.Color.Red;
-
-				if (Tray != null)
-					Tray.Tooltip(2000, "Internet " + (inetAvailable ? "available" : "unavailable"), "TaskMaster", inetAvailable ? ToolTipIcon.Info : ToolTipIcon.Warning);
-
-				Log.Info("Network status: " + (netAvailable ? "Up" : "Down") + ", Inet status: " + (inetAvailable ? "Connected" : "Disconnected"));
-			}
-
-			checking_inet = 0;
-		}
-
 		TrayAccess tray;
 		public TrayAccess Tray { private get { return tray; } set { tray = value; } }
-
-		IPAddress IPv4Address = IPAddress.None;
-		IPAddress IPv6Address = IPAddress.IPv6None;
-		ListView ifaceList;
-		int enumerating_inet = 0;
-		void NetEnum()
-		{
-			if (System.Threading.Interlocked.CompareExchange(ref enumerating_inet, 1, 0) == 1)
-				return; // bail if we were already doing this
-
-			if (TaskMaster.Verbose)
-				Log.Trace("Enumerating network interfaces...");
-
-			ifaceList.Items.Clear();
-			NetworkInterface[] adapters = NetworkInterface.GetAllNetworkInterfaces();
-			foreach (NetworkInterface n in adapters)
-			{
-				if (n.NetworkInterfaceType == NetworkInterfaceType.Loopback || n.NetworkInterfaceType == NetworkInterfaceType.Tunnel)
-					continue;
-
-				foreach (UnicastIPAddressInformation ip in n.GetIPProperties().UnicastAddresses)
-				{
-					// TODO: Maybe figure out better way and early bailout from the foreach
-					switch (ip.Address.AddressFamily)
-					{
-						case System.Net.Sockets.AddressFamily.InterNetwork:
-							IPv4Address = ip.Address;
-							break;
-						case System.Net.Sockets.AddressFamily.InterNetworkV6:
-							IPv6Address = ip.Address;
-							break;
-					}
-				}
-
-				ifaceList.Items.Add(new ListViewItem(new string[] {
-					n.Name,
-					n.NetworkInterfaceType.ToString(),
-					n.OperationalStatus.ToString(),
-					Utility.ByterateString(n.Speed),
-					IPv4Address?.ToString() ?? "n/a",
-					IPv6Address?.ToString() ?? "n/a"
-				}));
-			}
-
-			enumerating_inet = 0;
-		}
-
-		void NetAddrChanged(object sender, EventArgs e)
-		{
-			IPAddress oldV6Address = IPv6Address;
-			IPAddress oldV4Address = IPv4Address;
-
-			NetEnum();
-			CheckInet(address_changed: true).Wait();
-
-			if (inetAvailable)
-			{
-				//CLEANUP: Console.WriteLine("DEBUG: AddrChange: " + oldV4Address + " -> " + IPv4Address);
-				//CLEANUP: Console.WriteLine("DEBUG: AddrChange: " + oldV6Address + " -> " + IPv6Address);
-
-				bool ipv4changed = false, ipv6changed = false;
-				ipv4changed = !oldV4Address.Equals(IPv4Address);
-#if DEBUG
-				if (ipv4changed)
-				{
-					var outstr4 = new System.Text.StringBuilder();
-					outstr4.Append("IPv4 address changed: ");
-					outstr4.Append(oldV4Address).Append(" -> ").Append(IPv4Address);
-					Log.Debug(outstr4.ToString());
-					Tray.Tooltip(2000, outstr4.ToString(), "TaskMaster", ToolTipIcon.Info);
-				}
-#endif
-				ipv6changed = !oldV6Address.Equals(IPv6Address);
-#if DEBUG
-				if (ipv6changed)
-				{
-					var outstr6 = new System.Text.StringBuilder();
-					outstr6.Append("IPv6 address changed: ");
-					outstr6.Append(oldV6Address).Append(" -> ").Append(IPv6Address);
-					Log.Debug(outstr6.ToString());
-				}
-#endif
-
-				if (!ipv4changed && !ipv6changed)
-					Log.Warn("Unstable internet connectivity detected.");
-			}
-
-			//NetworkChanged(null,null);
-		}
-
-		void NetworkSetup()
-		{
-			NetworkChanged(null, null);
-			netAvailable = NetworkInterface.GetIsNetworkAvailable();
-			netstatuslabel.Text = netAvailable ? "Up" : "Down";
-
-			NetEnum();
-
-			NetworkChange.NetworkAvailabilityChanged += NetworkChanged;
-			NetworkChange.NetworkAddressChanged += NetAddrChanged;
-
-			CheckInet().Wait();
-		}
-		#endregion
 
 		CheckBox logcheck_warn;
 		bool log_include_warn = true;
 		CheckBox logcheck_debug;
 		bool log_include_debug = true;
+		CheckBox logcheck_trace;
+		bool log_include_trace = false;
 
 		void ChangeUIVisibility(object sender, EventArgs e)
 		{
@@ -510,12 +260,7 @@ namespace TaskMaster
 			}
 		}
 
-		void UpdateUptime(object sender, EventArgs e)
-		{
-			uptimestatuslabel.Text = string.Format("{0:N1} min(s)", Uptime);
-		}
-
-		Timer timer = new Timer { Interval = 5000 };
+		readonly Timer timer = new Timer { Interval = 5000 };
 		void StartUIUpdates(object sender, EventArgs e)
 		{
 			if (!timer.Enabled) timer.Start();
@@ -525,6 +270,15 @@ namespace TaskMaster
 		{
 			if (timer.Enabled) timer.Stop();
 		}
+
+		void UpdateUptime(object sender, EventArgs e)
+		{
+			uptimestatuslabel.Text = HumanInterface.TimeString(net.Uptime);
+			//string.Format("{0:N1} min(s)", net.Uptime.TotalMinutes);
+		}
+
+		ListView ifaceList;
+		Button rescanbutton;
 
 		void BuildUI()
 		{
@@ -777,7 +531,7 @@ namespace TaskMaster
 			{
 				Dock = DockStyle.Top,
 				RowCount = 1,
-				ColumnCount = 4,
+				ColumnCount = 7,
 				Height = 40,
 				AutoSize = true
 			};
@@ -785,23 +539,46 @@ namespace TaskMaster
 			{
 				Text = "Warnings",
 				Dock = DockStyle.Left,
-				TextAlign = System.Drawing.ContentAlignment.MiddleLeft
+				TextAlign = System.Drawing.ContentAlignment.MiddleLeft,
+				Width = 60
 			};
 			logcheck_warn = new CheckBox { Dock = DockStyle.Left, Checked = log_include_warn };
-			logcheck_warn.CheckedChanged += (sender, e) => {
+			logcheck_warn.CheckedChanged += (sender, e) =>
+			{
 				log_include_warn = (logcheck_warn.CheckState == CheckState.Checked);
 			};
 			logpanel.Controls.Add(loglabel_warn);
 			logpanel.Controls.Add(logcheck_warn);
-			var loglabel_debug = new Label { Text = "Debug", Dock = DockStyle.Left, TextAlign = System.Drawing.ContentAlignment.MiddleLeft };
+			var loglabel_debug = new Label { Text = "Debug", Dock = DockStyle.Left, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, Width = 60 };
 			logcheck_debug = new CheckBox { Dock = DockStyle.Left, Checked = log_include_debug };
-			logcheck_debug.CheckedChanged += (sender, e) => {
+			logcheck_debug.CheckedChanged += (sender, e) =>
+			{
 				log_include_debug = (logcheck_debug.CheckState == CheckState.Checked);
 			};
 			logpanel.Controls.Add(loglabel_debug);
 			logpanel.Controls.Add(logcheck_debug);
+			var loglabel_trace = new Label { Text = "Trace", Dock = DockStyle.Left, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, Width = 60 };
+			logcheck_trace = new CheckBox { Dock = DockStyle.Left, Checked = false };
+			logcheck_trace.Enabled = false;
+			logcheck_trace.CheckedChanged += (sender, e) =>
+			{
+				log_include_trace = (logcheck_trace.CheckState == CheckState.Checked);
+			};
+			logpanel.Controls.Add(loglabel_trace);
+			logpanel.Controls.Add(logcheck_trace);
+
+			rescanbutton = new Button { Text = "Rescan", Dock = DockStyle.Right, FlatStyle=FlatStyle.Flat };
+			rescanbutton.Click += async (object sender, EventArgs e) =>
+			{
+				rescanbutton.Enabled = false;
+				rescanRequest?.Invoke(this, new EventArgs());
+				rescanbutton.Enabled = true;
+			};
+			logpanel.Controls.Add(rescanbutton);
 
 			lrows.Controls.Add(logpanel);
+
+
 
 			// End: UI Log
 
@@ -833,6 +610,46 @@ namespace TaskMaster
 
 			foreach (string msg in log.Logs.ToArray())
 				loglist.Items.Add(msg);
+
+			ShowLastLog();
+		}
+
+		NetMonitor net;
+		public void setNet(ref NetMonitor net)
+		{
+			this.net = net;
+
+			foreach (var items in net.Interfaces()) ifaceList.Items.Add(new ListViewItem(items));
+
+			net.InternetStatusChange += InetStatus;
+			net.NetworkStatusChange += NetStatus;
+
+			InetStatusLabel(net.InternetAvailable);
+			NetStatusLabel(net.NetworkAvailable);
+
+			//Tray?.Tooltip(2000, "Internet " + (net.InternetAvailable ? "available" : "unavailable"), "TaskMaster", net.InternetAvailable ? ToolTipIcon.Info : ToolTipIcon.Warning);
+		}
+
+		void InetStatusLabel(bool available)
+		{
+			inetstatuslabel.Text = available ? "Connected" : "Disconnected";
+			inetstatuslabel.BackColor = available ? System.Drawing.Color.LightGoldenrodYellow : System.Drawing.Color.Red;
+		}
+
+		public void InetStatus(object sender, InternetStatus e)
+		{
+			InetStatusLabel(e.Available);
+		}
+
+		void NetStatusLabel(bool available)
+		{
+			netstatuslabel.Text = available ? "Up" : "Down";
+			netstatuslabel.BackColor = available ? System.Drawing.Color.LightGoldenrodYellow : System.Drawing.Color.Red;
+		}
+
+		public void NetStatus(object sender, NetworkStatus e)
+		{
+			NetStatusLabel(e.Available);
 		}
 
 		// DO NOT LOG INSIDE THIS FOR FUCKS SAKE
@@ -855,15 +672,11 @@ namespace TaskMaster
 		public MainWindow()
 		{
 			//InitializeComponent(); // TODO: WPF
-			lastUptimeStart = System.DateTime.Now;
-
 			FormClosing += WindowClose;
 
 			//MakeTrayIcon();
 
 			BuildUI();
-
-			NetworkSetup();
 
 			// TODO: Detect mic device changes
 			// TODO: Delay fixing by 5 seconds to prevent fix diarrhea
@@ -878,6 +691,9 @@ namespace TaskMaster
 
 			ProcessController.onTouch += ProcAdjust;
 
+			this.Shown += (object sender, EventArgs e) => { ShowLastLog(); };
+
+
 			// TODO: WPF
 			/*
 			System.Windows.Shell.JumpList jumplist = System.Windows.Shell.JumpList.GetJumpList(System.Windows.Application.Current);
@@ -889,7 +705,7 @@ namespace TaskMaster
 			*/
 		}
 
-		bool disposed = false;
+		bool disposed; // = false;
 		protected override void Dispose(bool disposing)
 		{
 			if (disposed) return;
@@ -899,7 +715,6 @@ namespace TaskMaster
 			if (disposing)
 			{
 				timer.Dispose();
-				ReportUptime();
 			}
 
 			disposed = true;

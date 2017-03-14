@@ -82,7 +82,7 @@ namespace TaskMaster
 		void ShowConfigRequest(object sender, EventArgs e)
 		{
 			//CLEANUP: Console.WriteLine("Opening config folder.");
-			System.Diagnostics.Process.Start(TaskMaster.cfgpath);
+			System.Diagnostics.Process.Start(TaskMaster.datapath);
 
 			TaskMaster.tmw?.ShowConfigRequest(sender, e);
 			//CLEANUP: Console.WriteLine("Done opening config folder.");
@@ -92,10 +92,12 @@ namespace TaskMaster
 
 		void ExitRequest(object sender, EventArgs e)
 		{
-			//CLEANUP: Console.WriteLine("START:Tray.ExitRequest()");
+			//CLEANUP:
+			Console.WriteLine("START:Tray.ExitRequest()");
 			er_menu.Enabled = false;
-			onExit?.Invoke(this, null);
-			//CLEANUP: Console.WriteLine("END::Tray.ExitRequest()");
+			onExit?.Invoke(this, null); // call something else to properly manage exit
+			//CLEANUP:
+			Console.WriteLine("END::Tray.ExitRequest()");
 		}
 
 		void RestoreMain(object sender, EventArgs e)
@@ -223,7 +225,7 @@ namespace TaskMaster
 			return false;
 		}
 
-		bool disposed = false;
+		bool disposed; // = false;
 		public void Dispose()
 		{
 			Dispose(true);

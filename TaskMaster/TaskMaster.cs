@@ -46,6 +46,7 @@
  * Other:
  *  - Multiple windows or tabbed window?
  */
+using System.IO;
 
 namespace TaskMaster
 {
@@ -55,24 +56,27 @@ namespace TaskMaster
 	public class TaskMaster
 	{
 		public static SharpConfig.Configuration cfg;
-		public static string cfgpath = System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Taskmaster");
+		public static string datapath = System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Taskmaster");
 
 		static readonly NLog.Logger Log = NLog.LogManager.GetCurrentClassLogger();
 		static MemLog memlog;
 
+		// TODO: Pre-allocate space for the log files.
+
 		public static void saveConfig(string configfile, SharpConfig.Configuration config)
 		{
 			//Console.WriteLine("Saving: " + configfile);
-			System.IO.Directory.CreateDirectory(cfgpath);
-			string targetfile = System.IO.Path.Combine(cfgpath, configfile);
+			System.IO.Directory.CreateDirectory(datapath);
+			string targetfile = System.IO.Path.Combine(datapath, configfile);
 			if (System.IO.File.Exists(targetfile))
 				System.IO.File.Copy(targetfile, targetfile + ".bak", true); // backup
 			config.SaveToFile(targetfile);
+			// TODO: Pre-allocate some space for the config file?
 		}
 
 		public static SharpConfig.Configuration loadConfig(string configfile)
 		{
-			string path = System.IO.Path.Combine(cfgpath, configfile);
+			string path = System.IO.Path.Combine(datapath, configfile);
 			//Log.Trace("Opening: "+path);
 			SharpConfig.Configuration retcfg;
 			if (System.IO.File.Exists(path))
@@ -81,7 +85,7 @@ namespace TaskMaster
 			{
 				Log.Warn("Not found: " + path);
 				retcfg = new SharpConfig.Configuration();
-				System.IO.Directory.CreateDirectory(cfgpath);
+				System.IO.Directory.CreateDirectory(datapath);
 			}
 
 			return retcfg;
@@ -91,6 +95,7 @@ namespace TaskMaster
 		public static MainWindow tmw;
 		public static ProcessManager pmn;
 		public static TrayAccess tri;
+		public static NetMonitor nmn;
 
 		public static void MainWindowClose(object sender, EventArgs e)
 		{
@@ -104,34 +109,17 @@ namespace TaskMaster
 
 		public static void ExitRequest(object sender, EventArgs e)
 		{
-			//CLEANUP: Console.WriteLine("START:Core.ExitRequest - Exit hang expected");
+			//CLEANUP:
+			Console.WriteLine("START:Core.ExitRequest - Exit hang expected");
+			if (tmw != null)
+			{
+				tmw.Dispose();
+				tmw = null;
+			}
+
 			System.Windows.Forms.Application.Exit();
-			//CLEANUP: Console.WriteLine("END:Core.ExitRequest - Exit hang averted");
-		}
-
-		public static void HookMainWindow()
-		{
-			TrayAccess.onExit += tmw.ExitRequest;
-
-			tri.RegisterMain(ref tmw);
-
-			if (MicrophoneMonitorEnabled)
-				tmw.setMicMonitor(mon);
-
-			if (ProcessMonitorEnabled)
-				tmw.setProcControl(pmn);
-			
-			tmw.setLog(memlog);
-			tmw.Tray = tri;
-			memlog.OnNewLog += tmw.onNewLog;
-
-			tmw.FormClosing += MainWindowClose;
-
-			/*
-			GameMonitor gmmon = new GameMonitor();
-			pmn.onAdjust += gmmon.SetupEventHookEvent;
-			gmmon.ActiveChanged += tmw.OnActiveWindowChanged;
-			*/
+			//CLEANUP:
+			Console.WriteLine("END:Core.ExitRequest - Exit hang averted");
 		}
 
 		public static void BuildMain()
@@ -139,25 +127,56 @@ namespace TaskMaster
 			if (tmw == null)
 			{
 				tmw = new MainWindow();
-				HookMainWindow();
+				TrayAccess.onExit += tmw.ExitRequest;
+
+				tri.RegisterMain(ref tmw);
+
+				if (MicrophoneMonitorEnabled)
+					tmw.setMicMonitor(mon);
+
+				if (ProcessMonitorEnabled)
+					tmw.setProcControl(pmn);
+
+				tmw.setLog(memlog);
+				tmw.Tray = tri;
+
+				memlog.OnNewLog += tmw.onNewLog;
+
+				tmw.FormClosing += MainWindowClose;
+
+				tmw.rescanRequest += pmn.ProcessEverythingRequest;
+
+				tmw.setNet(ref nmn);
+
+				/*
+				GameMonitor gmmon = new GameMonitor();
+				pmn.onAdjust += gmmon.SetupEventHookEvent;
+				gmmon.ActiveChanged += tmw.OnActiveWindowChanged;
+				*/
 			}
 		}
 		static void Setup()
 		{
 			tri = new TrayAccess();
+			TrayAccess.onExit += ExitRequest;
 
 			if (MicrophoneMonitorEnabled)
 				mon = new MicMonitor();
 			
 			if (ProcessMonitorEnabled)
 				pmn = new ProcessManager();
-			
+
+			if (NetworkMonitorEnabled)
+			{
+				nmn = new NetMonitor();
+				nmn.Tray = tri;
+			}
+
 			BuildMain();
+
 			#if DEBUG
 			tmw.Show();
 			#endif
-
-			TrayAccess.onExit += ExitRequest;
 
 			// Self-optimization
 			if (SelfOptimize)
@@ -169,8 +188,9 @@ namespace TaskMaster
 		}
 
 		public static bool Verbose = true;
-		public static bool VeryVerbose = false;
-		public static bool CaseSensitive = false;
+		public static bool VeryVerbose; // = false;
+		public static int VerbosityThreshold = 3;
+		public static bool CaseSensitive; // = false;
 
 		static bool ProcessMonitorEnabled = true;
 		static bool MicrophoneMonitorEnabled = true;
@@ -189,7 +209,7 @@ namespace TaskMaster
 			private set { _SelfOptimize = value; }
 		}
 
-		static bool lowmemory = false; // low memory mode; figure out way to auto-enable this when system is low on memory
+		static bool lowmemory; // = false; // low memory mode; figure out way to auto-enable this when system is low on memory
 		public static bool LowMemory { get { return lowmemory; } private set { lowmemory = value; } }
 
 		static bool wmiqueries = true;
@@ -221,6 +241,7 @@ namespace TaskMaster
 
 			Verbose = optsec.GetSetDefault("Verbose", false).BoolValue;
 			VeryVerbose = optsec.GetSetDefault("Very verbose", false).BoolValue;
+			VerbosityThreshold = optsec.GetSetDefault("Verbosity threshold", 3).IntValue;
 			CaseSensitive = optsec.GetSetDefault("Case sensitive", false).BoolValue;
 
 			SelfOptimize = perfsec.GetSetDefault("Self-optimize", true).BoolValue;
@@ -237,7 +258,7 @@ namespace TaskMaster
 
 			Verbose |= VeryVerbose;
 
-			Log.Info("Verbosity: " + (VeryVerbose ? "Extreme" : (Verbose ? "High" : "Normal")));
+			Log.Info("Verbosity: " + (VeryVerbose ? "Extreme" : (Verbose ? "High" : "Normal")) + ", Threshold: " + VerbosityThreshold);
 			Log.Info("Self-optimize: " + (SelfOptimize ? "Enabled." : "Disabled."));
 			Log.Info("Low memory mode: " + (LowMemory ? "Enabled." : "Disabled."));
 			Log.Info("WMI queries: " + (WMIqueries ? "Enabled." : "Disabled."));
@@ -281,6 +302,27 @@ namespace TaskMaster
 			Log.Info("Cross-instance message! Pid:" + System.Diagnostics.Process.GetCurrentProcess().Id);
 		}
 
+		static public void Prealloc(string filename, long minkB)
+		{
+			string path = System.IO.Path.Combine(datapath, filename);
+			try
+			{
+				FileStream fs = System.IO.File.Open(path, FileMode.Open, FileAccess.ReadWrite, FileShare.ReadWrite);
+				long oldsize = fs.Length;
+				if (fs.Length < (1024 * minkB))
+				{
+					// TODO: Make sparse. Unfortunately requires P/Invoke.
+					fs.SetLength(1024 * minkB);
+					Console.WriteLine("Pre-allocated file: " + filename + " (" + oldsize / 1024 + "kB -> " + minkB + "kB)");
+				}
+				fs.Close();
+			}
+			catch (System.IO.FileNotFoundException)
+			{
+				Console.WriteLine("Failed to open file: " + filename);
+			}
+		}
+
 		// entry point to the application
 		[STAThread] // supposedly needed to avoid shit happening with the WinForms GUI
 		static public void Main(string[] args)
@@ -296,6 +338,14 @@ namespace TaskMaster
 			NLog.LogManager.Configuration.AddTarget("MemLog", memlog);
 			NLog.LogManager.Configuration.LoggingRules.Add(new NLog.Config.LoggingRule("*", NLog.LogLevel.Debug, memlog));
 			NLog.LogManager.ReconfigExistingLoggers(); // better than reload since we didn't modify the files
+
+			/*
+			// Append as used by the logger fucks this up.
+			// Unable to mark as sparse file easily.
+			Prealloc("Logs/debug.log", 256);
+			Prealloc("Logs/error.log", 2);
+			Prealloc("Logs/info.log", 32);
+			*/
 
 			#region SINGLETON
 			if (VeryVerbose) Log.Trace("Testing for single instance.");
@@ -341,9 +391,12 @@ namespace TaskMaster
 			finally
 			{
 				Log.Info("Exiting...");
-				pmn.Dispose();
-				mon.Dispose();
-				tri.Dispose();
+				tmw?.Dispose();
+				pmn?.Dispose();
+				mon?.Dispose();
+				tri?.Dispose();
+				nmn?.Dispose();
+				tmw = null; pmn = null; mon = null; tri = null; nmn = null;
 				singleton.ReleaseMutex();
 
 				Log.Info(string.Format("WMI queries: {0:N1}s [{1}]; Parent seeking: {2:N1}s [{3}]",

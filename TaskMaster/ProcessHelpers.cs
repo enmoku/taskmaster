@@ -69,6 +69,11 @@ namespace TaskMaster
 				case 4: return ProcessPriorityClass.High;
 			}
 		}
+
+		/*
+		[DllImport("psapi.dll")]
+		public static extern uint GetProcessImageFileName(IntPtr hProcess, [Out] System.Text.StringBuilder lpImageFileName, [In] [MarshalAs(UnmanagedType.U4)] int nSize);
+		*/
 	}
 }
 

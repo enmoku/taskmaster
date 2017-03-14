@@ -37,9 +37,9 @@ namespace TaskMaster
 
 	public class GameMonitor : IDisposable
 	{
-		private static NLog.Logger Log = NLog.LogManager.GetCurrentClassLogger();
+		static NLog.Logger Log = NLog.LogManager.GetCurrentClassLogger();
 
-		WinEventDelegate dele = null;
+		WinEventDelegate dele;
 		IntPtr m_hhook = IntPtr.Zero;
 
 		public void SetupEventHook()
@@ -80,8 +80,8 @@ namespace TaskMaster
 		//[DllImport("user32.dll")]
 		//static extern bool UnhookWinEvent(IntPtr hWinEventHook); // automatic
 
-		private const uint WINEVENT_OUTOFCONTEXT = 0;
-		private const uint EVENT_SYSTEM_FOREGROUND = 3;
+		const uint WINEVENT_OUTOFCONTEXT = 0;
+		const uint EVENT_SYSTEM_FOREGROUND = 3;
 
 		[DllImport("user32.dll")]
 		static extern IntPtr GetForegroundWindow();
@@ -104,11 +104,11 @@ namespace TaskMaster
 		}
 		*/
 
-		public event System.EventHandler<WindowChangedArgs> ActiveChanged;
+		public event EventHandler<WindowChangedArgs> ActiveChanged;
 
 		protected virtual void OnActiveChanged(WindowChangedArgs e)
 		{
-			System.EventHandler<WindowChangedArgs> handler = ActiveChanged;
+			EventHandler<WindowChangedArgs> handler = ActiveChanged;
 			if (handler != null)
 				handler(this, e);
 		}
@@ -119,7 +119,7 @@ namespace TaskMaster
 			{
 				const int nChars = 256;
 				IntPtr handle = IntPtr.Zero;
-				System.Text.StringBuilder buff = new System.Text.StringBuilder(nChars);
+				var buff = new System.Text.StringBuilder(nChars);
 				//handle = GetForegroundWindow();
 
 				if (GetWindowText(hwnd, buff, nChars) > 0)
@@ -134,7 +134,7 @@ namespace TaskMaster
 				// ?? why does it return here already sometimes? takes too long?
 
 				//Console.WriteLine("Noob!");
-				if (System.Windows.Forms.Screen.FromHandle(hwnd).Bounds == System.Windows.Forms.Form.FromHandle(hwnd).Bounds)
+				if (System.Windows.Forms.Screen.FromHandle(hwnd).Bounds == System.Windows.Forms.Control.FromHandle(hwnd).Bounds)
 				{
 					//Console.WriteLine("Full screen.");
 
@@ -151,7 +151,7 @@ namespace TaskMaster
 				Microsoft.DirectX.Direct3D.Format form = mode.Format;
 				System.Console.WriteLine("Format: {0}", mode.Format);
 				*/
-				WindowChangedArgs e = new WindowChangedArgs();
+				var e = new WindowChangedArgs();
 				e.hwnd = hwnd;
 				e.title = buff.ToString();
 				OnActiveChanged(e);

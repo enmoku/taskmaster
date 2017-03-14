@@ -30,7 +30,7 @@ namespace TaskMaster
 
 	public class InitFailure : Exception
 	{
-		string Failure;
+		readonly string Failure;
 
 		public InitFailure(string description)
 		{
