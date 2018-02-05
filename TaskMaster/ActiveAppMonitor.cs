@@ -1,5 +1,5 @@
 ﻿//
-// GameMonitor.cs
+// ActiveAppMonitor.cs
 //
 // Author:
 //       M.A. (enmoku) <>
@@ -23,22 +23,25 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
+using System.Diagnostics;
 
 namespace TaskMaster
 {
 	using System;
 	using System.Runtime.InteropServices;
+	using Serilog;
 
 	public class WindowChangedArgs : EventArgs
 	{
-		public IntPtr hwnd { get; set; }
-		public string title { get; set; }
+		public IntPtr hWnd { get; set; }
+		public int Id { get; set; }
+		public string Title { get; set; }
+		public Trinary Fullscreen { get; set; }
+		public string Executable { get; set; }
 	}
 
-	public class GameMonitor : IDisposable
+	public class ActiveAppMonitor : IDisposable
 	{
-		static NLog.Logger Log = NLog.LogManager.GetCurrentClassLogger();
-
 		WinEventDelegate dele;
 		IntPtr m_hhook = IntPtr.Zero;
 
@@ -47,10 +50,7 @@ namespace TaskMaster
 			m_hhook = SetWinEventHook(EVENT_SYSTEM_FOREGROUND, EVENT_SYSTEM_FOREGROUND, IntPtr.Zero, dele, 0, 0, WINEVENT_OUTOFCONTEXT);
 			// FIXME: Seems to stop functioning really easily? Possibly from other events being caught.
 			if (m_hhook == IntPtr.Zero)
-			{
-				//System.Console.WriteLine("GameMon: Failed to set foreground app monitor.");
 				Log.Error("Foreground window event hook not attached.");
-			}
 		}
 
 		public void SetupEventHookEvent(object sender, ProcessEventArgs e)
@@ -58,9 +58,9 @@ namespace TaskMaster
 			//SetupEventHook();
 		}
 
-		public GameMonitor()
+		public ActiveAppMonitor()
 		{
-			Log.Trace("Starting...");
+			Log.Verbose("Starting...");
 			//Snatch();
 			//D3DDevice();
 			dele = new WinEventDelegate(WinEventProc);
@@ -69,7 +69,7 @@ namespace TaskMaster
 
 		public void Dispose()
 		{
-			Log.Trace("Disposing...");
+			Log.Verbose("Disposing...");
 			//UnhookWinEvent(m_hhook); // Automatic
 		}
 
@@ -106,23 +106,29 @@ namespace TaskMaster
 
 		public event EventHandler<WindowChangedArgs> ActiveChanged;
 
+		/*
 		protected virtual void OnActiveChanged(WindowChangedArgs e)
 		{
 			EventHandler<WindowChangedArgs> handler = ActiveChanged;
 			if (handler != null)
 				handler(this, e);
 		}
+		*/
 
-		public void WinEventProc(IntPtr hWinEventHook, uint eventType, IntPtr hwnd, int idObject, int idChild, uint dwEventThread, uint dwmsEventTime)
+		public async void WinEventProc(IntPtr hWinEventHook, uint eventType, IntPtr hwnd, int idObject, int idChild, uint dwEventThread, uint dwmsEventTime)
 		{
 			if (eventType == EVENT_SYSTEM_FOREGROUND)
 			{
+				await System.Threading.Tasks.Task.Delay(100).ConfigureAwait(true);
+
 				const int nChars = 256;
 				IntPtr handle = IntPtr.Zero;
 				var buff = new System.Text.StringBuilder(nChars);
 				//handle = GetForegroundWindow();
 
-				if (GetWindowText(hwnd, buff, nChars) > 0)
+				//http://www.pinvoke.net/default.aspx/user32.GetWindowPlacement
+
+				if (GetWindowText(hwnd, buff, nChars) > 0) // get title?
 				{
 					//System.Console.WriteLine("Active window: {0}", buff);
 				}
@@ -133,7 +139,7 @@ namespace TaskMaster
 
 				// ?? why does it return here already sometimes? takes too long?
 
-				//Console.WriteLine("Noob!");
+				/*
 				if (System.Windows.Forms.Screen.FromHandle(hwnd).Bounds == System.Windows.Forms.Control.FromHandle(hwnd).Bounds)
 				{
 					//Console.WriteLine("Full screen.");
@@ -143,6 +149,7 @@ namespace TaskMaster
 				{
 					//Console.WriteLine("Not full screen.");
 				}
+				*/
 
 				//SlimDX.Windows.DisplayMonitor.FromWindow(hwnd);
 				/*
@@ -151,10 +158,21 @@ namespace TaskMaster
 				Microsoft.DirectX.Direct3D.Format form = mode.Format;
 				System.Console.WriteLine("Format: {0}", mode.Format);
 				*/
+
 				var e = new WindowChangedArgs();
-				e.hwnd = hwnd;
-				e.title = buff.ToString();
-				OnActiveChanged(e);
+				e.hWnd = hwnd;
+				e.Title = buff.ToString();
+				e.Fullscreen = Trinary.Nonce;
+				int pid = 0;
+				GetWindowThreadProcessId(hwnd, out pid);
+				e.Id = pid;
+				try
+				{
+					Process proc = Process.GetProcessById(e.Id);
+					e.Executable = proc.ProcessName;
+				}
+				catch { }
+				ActiveChanged?.Invoke(this, e);
 			}
 		}
 
@@ -178,6 +196,9 @@ namespace TaskMaster
 			//proc.StartTime//when process was started
 
 		}
+
+		[DllImport("user32.dll", SetLastError = true)]
+		static extern uint GetWindowThreadProcessId(IntPtr hWnd, out int lpdwProcessId);
 	}
 }
 

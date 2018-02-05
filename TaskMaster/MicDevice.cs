@@ -1,10 +1,10 @@
 ﻿//
-// UserOptions.cs
+// MicDevice.cs
 //
 // Author:
-//       Mayflower
+//       M.A. (enmoku) <>
 //
-// Copyright (c) 2016 
+// Copyright (c) 2017 M.A. (enmoku)
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -23,12 +23,12 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
-
+using System;
 namespace TaskMaster
 {
-	public struct UserOptions
+	public class MicDevice
 	{
-		public bool RestoreOnDoubleClick;// () { get; set; };
+		public string Name { get; set; }
+		public string GUID { get; set; }
 	}
 }
-

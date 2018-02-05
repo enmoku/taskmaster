@@ -1,4 +1,4 @@
-﻿//
+//
 // TrayAccess.cs
 //
 // Author:
@@ -23,58 +23,125 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
+using System.Diagnostics;
 
 namespace TaskMaster
 {
 	using System;
-	using System.Linq;
 	using System.Windows.Forms;
+	using Serilog;
 
 	sealed public class TrayAccess : IDisposable
 	{
-		static readonly NLog.Logger Log = NLog.LogManager.GetCurrentClassLogger();
-
 		NotifyIcon Tray;
 
 		ContextMenuStrip ms;
 		ToolStripMenuItem swr_menu;
 		ToolStripMenuItem scr_menu;
 		ToolStripMenuItem er_menu;
+		ToolStripMenuItem power_highperf;
+		ToolStripMenuItem power_balanced;
+		ToolStripMenuItem power_saving;
 
 		public TrayAccess()
 		{
 			Tray = new NotifyIcon
 			{
-				Text = Application.ProductName + "!", // Tooltip so people know WTF I am.
+				Text = System.Windows.Forms.Application.ProductName + "!", // Tooltip so people know WTF I am.
 				Icon = System.Drawing.Icon.ExtractAssociatedIcon(System.Reflection.Assembly.GetExecutingAssembly().Location) // is this really the best way?
 			};
 			Tray.BalloonTipText = Tray.Text;
 			Tray.Disposed += (object sender, EventArgs e) => { Tray = null; };
 
-			Log.Trace("Generating tray icon.");
+			Log.Verbose("Generating tray icon.");
 
 			ms = new ContextMenuStrip();
 			swr_menu = new ToolStripMenuItem("Open", null, ShowWindowRequest);
+			if (TaskMaster.PowerManagerEnabled)
+			{
+				power_highperf = new ToolStripMenuItem("Performance", null, SetPowerPerformance);
+				power_balanced = new ToolStripMenuItem("Balanced", null, SetPowerBalanced);
+				power_saving = new ToolStripMenuItem("Power Saving", null, SetPowerSaving);
+			}
 			scr_menu = new ToolStripMenuItem("Configuration", null, ShowConfigRequest);
 			er_menu = new ToolStripMenuItem("Exit", null, ExitRequest);
 			ms.Items.Add(swr_menu);
+			ms.Items.Add(new ToolStripSeparator());
 			ms.Items.Add(scr_menu);
+			if (TaskMaster.PowerManagerEnabled)
+			{
+				ms.Items.Add(new ToolStripSeparator());
+				var plab = new ToolStripLabel("--- Power Plan ---");
+				plab.ForeColor = System.Drawing.SystemColors.GrayText;
+				ms.Items.Add(plab);
+				ms.Items.Add(power_highperf);
+				ms.Items.Add(power_balanced);
+				ms.Items.Add(power_saving);
+				HighlightPowerMode();
+				PowerManager.onModeChange += HighlightPowerModeEvent;
+			}
+			ms.Items.Add(new ToolStripSeparator());
 			ms.Items.Add(er_menu);
 			Tray.ContextMenuStrip = ms;
-			Log.Trace("Tray menu ready");
+			Log.Verbose("Tray menu ready");
 
 			if (!RegisterExplorerExit())
 				throw new InitFailure("Explorer registeriong failed; not running?");
-			
+
 			Tray.Visible = true;
 
-			Log.Trace("Tray icon generated.");
+
+			Log.Verbose("Tray icon generated.");
+		}
+
+		void HighlightPowerModeEvent(object sender, PowerModeEventArgs ev)
+		{
+			HighlightPowerMode();
+		}
+
+		void HighlightPowerMode()
+		{
+			switch (PowerManager.Current)
+			{
+				case PowerManager.PowerMode.Balanced:
+					power_saving.Checked = false;
+					power_balanced.Checked = true;
+					power_highperf.Checked = false;
+					break;
+				case PowerManager.PowerMode.HighPerformance:
+					power_saving.Checked = false;
+					power_balanced.Checked = false;
+					power_highperf.Checked = true;
+					break;
+				case PowerManager.PowerMode.PowerSaver:
+					power_saving.Checked = true;
+					power_balanced.Checked = false;
+					power_highperf.Checked = false;
+					break;
+			}
+		}
+
+		void SetPowerSaving(object sender, EventArgs e)
+		{
+			PowerManager.setMode(PowerManager.PowerMode.PowerSaver);
+			HighlightPowerMode();
+		}
+
+		void SetPowerBalanced(object sender, EventArgs e)
+		{
+			PowerManager.setMode(PowerManager.PowerMode.Balanced);
+			HighlightPowerMode();
+		}
+		void SetPowerPerformance(object sender, EventArgs e)
+		{
+			PowerManager.setMode(PowerManager.PowerMode.HighPerformance);
+			HighlightPowerMode();
 		}
 
 		void ShowWindowRequest(object sender, EventArgs e)
 		{
-			if (TaskMaster.tmw != null)
-				TaskMaster.tmw.ShowWindowRequest(sender, null);
+			if (TaskMaster.mainwindow != null)
+				TaskMaster.mainwindow.ShowWindowRequest(sender, null);
 			else
 				RestoreMain(sender, e);
 		}
@@ -84,7 +151,7 @@ namespace TaskMaster
 			//CLEANUP: Console.WriteLine("Opening config folder.");
 			System.Diagnostics.Process.Start(TaskMaster.datapath);
 
-			TaskMaster.tmw?.ShowConfigRequest(sender, e);
+			TaskMaster.mainwindow?.ShowConfigRequest(sender, e);
 			//CLEANUP: Console.WriteLine("Done opening config folder.");
 		}
 
@@ -93,17 +160,20 @@ namespace TaskMaster
 		void ExitRequest(object sender, EventArgs e)
 		{
 			//CLEANUP:
-			Console.WriteLine("START:Tray.ExitRequest()");
+			//if (TaskMaster.VeryVerbose) Console.WriteLine("START:Tray.ExitRequest()");
 			er_menu.Enabled = false;
 			onExit?.Invoke(this, null); // call something else to properly manage exit
-			//CLEANUP:
-			Console.WriteLine("END::Tray.ExitRequest()");
+										//CLEANUP:
+										//if (TaskMaster.VeryVerbose) Console.WriteLine("END::Tray.ExitRequest()");
 		}
 
 		void RestoreMain(object sender, EventArgs e)
 		{
+#if DEBUG
+			Log.Information("Show Main Window");
+#endif
 			TaskMaster.BuildMain();
-			TaskMaster.tmw.Show();
+			TaskMaster.mainwindow.Show();
 		}
 
 		void RestoreMainRequest(object sender, MouseEventArgs e)
@@ -116,13 +186,13 @@ namespace TaskMaster
 		void ShowWindow(object sender, MouseEventArgs e)
 		{
 			if (e.Button == MouseButtons.Left)
-				TaskMaster.tmw.ShowWindowRequest(sender, null);
+				TaskMaster.mainwindow.ShowWindowRequest(sender, null);
 		}
 
 		void UnloseWindow(object sender, MouseEventArgs e)
 		{
 			if (e.Button == MouseButtons.Left)
-				TaskMaster.tmw.RestoreWindowRequest(sender, null);
+				TaskMaster.mainwindow.RestoreWindowRequest(sender, null);
 		}
 
 		void CompactEvent(object sender, EventArgs e)
@@ -156,6 +226,8 @@ namespace TaskMaster
 
 		public void RegisterMain(ref MainWindow window)
 		{
+			Debug.Assert(window != null);
+
 			Tray.MouseClick += ShowWindow;
 			Tray.MouseDoubleClick += UnloseWindow;
 			window.FormClosing += WindowClosed;
@@ -165,32 +237,36 @@ namespace TaskMaster
 		System.Diagnostics.Process[] Explorer;
 		void ExplorerCrashHandler(object sender, EventArgs e)
 		{
-			Log.Warn("Explorer crash detected!");
+			Log.Warning("Explorer crash detected!");
 
 			System.Threading.Tasks.Task.Run(async () =>
 			{
-				Log.Trace("Giving explorer some time to recover on its own...");
-
-				await System.Threading.Tasks.Task.Delay(12000); // force async
-
-				System.Diagnostics.Process[] procs = ExplorerInstances;
-				if (procs.Count() > 0)
-					return;
-
-				int i = 0;
-				while (!RegisterExplorerExit(procs))
+				Log.Information("Giving explorer some time to recover on its own...");
+				await System.Threading.Tasks.Task.Delay(12000).ConfigureAwait(false); // force async
+				Stopwatch n = new Stopwatch();
+				n.Start();
+				System.Diagnostics.Process[] procs;
+				while ((procs = ExplorerInstances).Length == 0)
 				{
-					procs = null;
-
-					if (++i >= 10)
+					if (n.Elapsed.TotalHours >= 24)
 					{
-						Log.Warn("Explorer registration failed. System unable to recover?");
+						Log.Error("Explorer has not recovered in excessive timeframe, giving up.");
 						return;
 					}
-
-					await System.Threading.Tasks.Task.Delay(8000);
+					await System.Threading.Tasks.Task.Delay(1000 * 60 * 5); // wait 5 minutes
 				}
-				Tray.Visible = true; // TODO: Is this enough/necessary?
+				n.Stop();
+
+				if (RegisterExplorerExit(procs))
+				{
+				}
+				else
+				{
+					Log.Warning("Explorer registration failed.");
+					return;
+				}
+
+				Tray.Visible = true; // TODO: Is this enough/necessary? Doesn't seem to be. WinForms appears to recover on its own.
 			});
 		}
 
@@ -202,26 +278,26 @@ namespace TaskMaster
 			}
 		}
 
-		bool RegisterExplorerExit(System.Diagnostics.Process[] procs=null)
+		bool RegisterExplorerExit(System.Diagnostics.Process[] procs = null)
 		{
-			Log.Trace("Registering Explorer crash monitor.");
+			Log.Verbose("Registering Explorer crash monitor.");
 			// this is for dealing with notify icon disappearing on explorer.exe crash/restart
 
 			if (procs == null) procs = ExplorerInstances;
 
-			if (procs.Count() > 0)
+			if (procs.Length > 0)
 			{
 				Explorer = procs;
 				foreach (var proc in procs)
 				{
 					proc.Exited += ExplorerCrashHandler;
 					proc.EnableRaisingEvents = true;
-					Log.Info(string.Format("Explorer (#{0}) registered.", proc.Id));
+					Log.Information("Explorer (#{ExplorerProcessID}) registered.", proc.Id);
 				}
 				return true;
 			}
 
-			Log.Warn("Explorer not found.");
+			Log.Warning("Explorer not found.");
 			return false;
 		}
 
@@ -239,6 +315,12 @@ namespace TaskMaster
 
 			if (disposing)
 			{
+				try
+				{
+					PowerManager.onModeChange -= HighlightPowerModeEvent;
+				}
+				catch { }
+
 				if (Tray != null)
 				{
 					Tray.Visible = false;
@@ -266,4 +348,3 @@ namespace TaskMaster
 		}
 	}
 }
-

@@ -7,11 +7,11 @@
     <OutputType>WinExe</OutputType>
     <RootNamespace>TaskMaster</RootNamespace>
     <AssemblyName>TaskMaster</AssemblyName>
-    <TargetFrameworkVersion>v4.6.1</TargetFrameworkVersion>
+    <TargetFrameworkVersion>v4.7.1</TargetFrameworkVersion>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <ApplicationIcon>taskmaster-volume.ico</ApplicationIcon>
     <CodePage>65001</CodePage>
-    <ReleaseVersion>0.5</ReleaseVersion>
+    <ReleaseVersion></ReleaseVersion>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|x86' ">
     <DebugSymbols>true</DebugSymbols>
@@ -43,14 +43,25 @@
     <Reference Include="System.Management" />
     <Reference Include="PresentationFramework" />
     <Reference Include="System.Net" />
+    <Reference Include="Microsoft.CSharp" />
+    <Reference Include="System.Core" />
+    <Reference Include="Serilog.Sinks.RollingFile">
+      <HintPath>packages\Serilog.Sinks.RollingFile.3.3.0\lib\net45\Serilog.Sinks.RollingFile.dll</HintPath>
+    </Reference>
     <Reference Include="NAudio">
-      <HintPath>packages\NAudio.1.8.0\lib\net35\NAudio.dll</HintPath>
+      <HintPath>packages\NAudio.1.8.4\lib\net35\NAudio.dll</HintPath>
+    </Reference>
+    <Reference Include="Serilog">
+      <HintPath>packages\Serilog.2.6.0\lib\net46\Serilog.dll</HintPath>
+    </Reference>
+    <Reference Include="Serilog.Sinks.Console">
+      <HintPath>packages\Serilog.Sinks.Console.3.1.1\lib\net45\Serilog.Sinks.Console.dll</HintPath>
+    </Reference>
+    <Reference Include="Serilog.Sinks.File">
+      <HintPath>packages\Serilog.Sinks.File.4.0.0\lib\net45\Serilog.Sinks.File.dll</HintPath>
     </Reference>
     <Reference Include="SharpConfig">
-      <HintPath>packages\sharpconfig.3.0.1\lib\net20\SharpConfig.dll</HintPath>
-    </Reference>
-    <Reference Include="NLog">
-      <HintPath>packages\NLog.4.4.4\lib\net45\NLog.dll</HintPath>
+      <HintPath>packages\sharpconfig.3.2.5\lib\net20\SharpConfig.dll</HintPath>
     </Reference>
   </ItemGroup>
   <ItemGroup>
@@ -58,22 +69,30 @@
     <Compile Include="UserOptions.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="MicMonitor.cs" />
-    <Compile Include="GameMonitor.cs" />
+    <Compile Include="ActiveAppMonitor.cs" />
     <Compile Include="ProcessManager.cs" />
     <Compile Include="Utility.cs" />
-    <Compile Include="MemLog.cs" />
+    <Compile Include="MemoryLog.cs" />
     <Compile Include="MainWindowWinforms.cs" />
     <Compile Include="TrayAccess.cs" />
     <Compile Include="ProcessControlAbstract.cs" />
     <Compile Include="InitFailure.cs" />
     <Compile Include="ProcessHelpers.cs" />
-    <Compile Include="ProcessExtensions.cs" />
-    <Compile Include="SharpConfigExtensions.cs" />
     <Compile Include="Statistics.cs" />
     <Compile Include="WindowInterface.cs" />
     <Compile Include="SampleSet.cs" />
     <Compile Include="NetMonitor.cs" />
     <Compile Include="HumanInterface.cs" />
+    <Compile Include="NetDevice.cs" />
+    <Compile Include="MicDevice.cs" />
+    <Compile Include="Extensions\SharpConfigExtensions.cs" />
+    <Compile Include="Extensions\ProcessExtensions.cs" />
+    <Compile Include="Extensions\TypeExtensions.cs" />
+    <Compile Include="MemoryManager.cs" />
+    <Compile Include="DiskManager.cs" />
+    <Compile Include="PowerManager.cs" />
+    <Compile Include="AppEditWindow.cs" />
+    <Compile Include="MainWindowColumnSorter.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="README.md">
@@ -92,11 +111,7 @@
     <Folder Include="Properties\" />
     <Folder Include="UI\" />
     <Folder Include="Resources\" />
-  </ItemGroup>
-  <ItemGroup>
-    <Content Include="NLog.config">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
+    <Folder Include="Extensions\" />
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
   <ProjectExtensions>

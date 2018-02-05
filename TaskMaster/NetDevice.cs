@@ -1,10 +1,10 @@
 ﻿//
-// UserOptions.cs
+// NetDevice.cs
 //
 // Author:
-//       Mayflower
+//       M.A. (enmoku) <>
 //
-// Copyright (c) 2016 
+// Copyright (c) 2017 M.A. (enmoku)
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -24,11 +24,19 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
+using System;
+using System.Net;
+using System.Net.NetworkInformation;
+
 namespace TaskMaster
 {
-	public struct UserOptions
+	public class NetDevice
 	{
-		public bool RestoreOnDoubleClick;// () { get; set; };
+		public string Name { get; set; }
+		public NetworkInterfaceType Type { get; set; }
+		public OperationalStatus Status { get; set; }
+		public long Speed { get; set; }
+		public IPAddress IPv4Address { get; set; }
+		public IPAddress IPv6Address { get; set; }
 	}
 }
-

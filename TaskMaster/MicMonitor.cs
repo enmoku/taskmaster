@@ -28,6 +28,7 @@ namespace TaskMaster
 {
 	using System;
 	using System.Collections.Generic;
+	using Serilog;
 
 	public class VolumeChangedEventArgs : EventArgs
 	{
@@ -38,8 +39,6 @@ namespace TaskMaster
 
 	public class MicMonitor
 	{
-		static readonly NLog.Logger Log = NLog.LogManager.GetCurrentClassLogger();
-
 		public event EventHandler<VolumeChangedEventArgs> VolumeChanged;
 
 		double _target;
@@ -59,7 +58,7 @@ namespace TaskMaster
 
 				_target = value;
 
-				Log.Info(string.Format("Microphone target volume set to: {0:N1}%", value));
+				Log.Information("Microphone target volume set to: {Volume:N1}%", value);
 			}
 		}
 
@@ -93,7 +92,7 @@ namespace TaskMaster
 			{
 				Control.Percent = _volume = value;
 
-				Log.Trace(string.Format("Mic.Volume = {0:N1}% (actual: {1:N1}%)", value, Control.Percent));
+				Log.Verbose("Mic.Volume = {Volume:N1}% (actual: {ActualVolume:N1}%)", value, Control.Percent);
 			}
 		}
 
@@ -156,7 +155,7 @@ namespace TaskMaster
 			var mvol = "Microphone volume";
 			bool save = false || !TaskMaster.cfg["Media"].Contains(mvol);
 			double defaultvol = TaskMaster.cfg["Media"].GetSetDefault(mvol, 100d).DoubleValue;
-			if (save) TaskMaster.saveConfig("Core.ini", TaskMaster.cfg);
+			if (save) TaskMaster.saveConfig(TaskMaster.cfg);
 
 			string fname = "MicMon.Devices.ini";
 			string vname = "Volume";
@@ -167,10 +166,10 @@ namespace TaskMaster
 			bool unset = !(devcfg[guid].Contains(vname));
 			double devvol = devcfg[guid].GetSetDefault(vname, defaultvol).DoubleValue;
 			devcfg[guid]["Name"].StringValue = devname;
-			if (unset) TaskMaster.saveConfig(fname, devcfg);
+			if (unset) TaskMaster.saveConfig(devcfg);
 
 			Target = devvol;
-			Log.Info(string.Format("Communications device: {0} (volume: {1:N1}%)", m_dev.FriendlyName, Target));
+			Log.Information("Communications device: {Device} (volume: {TargetVolume:N1}%)", m_dev.FriendlyName, Target);
 			Volume = Target;
 		}
 
@@ -197,30 +196,35 @@ namespace TaskMaster
 				if (micstatsdirty)
 				{
 					stats["Statistics"]["Corrections"].IntValue = Corrections;
-					TaskMaster.saveConfig(statfile, stats);
+					TaskMaster.saveConfig(stats);
 				}
 			}
 
 			disposed = true;
 		}
 
-		public List<KeyValuePair<string, string>> enumerate()
+		/// <summary>
+		/// Enumerate this instance.
+		/// </summary>
+		/// <returns>Enumeration of audio input devices as GUID/FriendlyName string pair.</returns>
+		public List<MicDevice> enumerate()
 		{
-			Log.Trace("Enumerating devices...");
+			Log.Verbose("Enumerating devices...");
 
-			var devices = new List<KeyValuePair<string, string>>();
+			var devices = new List<MicDevice>();
 			var mm_enum = new NAudio.CoreAudioApi.MMDeviceEnumerator();
 			if (mm_enum != null)
 			{
 				NAudio.CoreAudioApi.MMDeviceCollection devs = mm_enum.EnumerateAudioEndPoints(NAudio.CoreAudioApi.DataFlow.Capture, NAudio.CoreAudioApi.DeviceState.Active);
 				foreach (var dev in devs)
 				{
-					string[] parts = dev.ID.Split('}');
-					Log.Trace(string.Format("{0} [guid: {1}]", dev.DeviceFriendlyName, parts[1].Substring(2)));
-					devices.Add(new KeyValuePair<string, string>(parts[1].Substring(2), dev.DeviceFriendlyName));
+					var mdev = new MicDevice { Name = dev.DeviceFriendlyName, GUID = dev.ID.Split('}')[1].Substring(2) };
+					devices.Add(mdev);
+					Log.Verbose("{Microphone} [GUID: {GUID}]", mdev.Name, mdev.GUID);
 				}
 			}
-			Log.Trace(string.Format("{0} microphone(s)", devices.Count));
+
+			Log.Verbose("{DeviceCount} microphone(s)", devices.Count);
 
 			return devices;
 		}
@@ -240,13 +244,11 @@ namespace TaskMaster
 
 			if (Math.Abs(newVol - Target) <= SmallVolumeHysterisis)
 			{
-				if (TaskMaster.VeryVerbose)
-					Log.Trace(string.Format("Mic volume change too small ({0:N1}%) to act on.", Math.Abs(newVol - Target)));
+				Log.Verbose("Mic volume change too small ({VolumeChange:N1}%) to act on.", Math.Abs(newVol - Target));
 				return;
 			}
 
-			if (TaskMaster.VeryVerbose)
-				Log.Trace(string.Format("Mic volume changed from {0:N1}% to {1:N1}%", oldVol, newVol));
+			Log.Verbose("Mic volume changed from {OldVolume:N1}% to {NewVolume:N1}%", oldVol, newVol);
 
 			// This is a light HYSTERISIS limiter in case someone is sliding a volume bar around,
 			// we act on it only once every [AdjustDelay] ms.
@@ -255,14 +257,14 @@ namespace TaskMaster
 			// TODO: Delay this even more if volume is changed ~2 seconds before we try to do so.
 			if (Math.Abs(newVol - Target) >= VolumeHysterisis) // Volume != Target for double
 			{
-				Log.Trace(string.Format("Mic.Volume.Changed = [{0:N1} -> {1:N1}], Off.Target: {2:N1}", oldVol, newVol, Math.Abs(newVol - Target)));
+				Log.Verbose("Mic.Volume.Changed = [{OldVolume:N1} -> {NewVolume:N1}], Off.Target: {VolumeOffset:N1}", oldVol, newVol, Math.Abs(newVol - Target));
 
 				if (System.Threading.Interlocked.CompareExchange(ref correcting, 1, 0) == 0)
 				{
-					await System.Threading.Tasks.Task.Delay(AdjustDelay); // actual hysterisis, this should be cancellable
+					await System.Threading.Tasks.Task.Delay(AdjustDelay).ConfigureAwait(false); // actual hysterisis, this should be cancellable
 
 					oldVol = Control.Percent;
-					Log.Info(string.Format("Correcting microphone volume from {0:N1} to {1:N1}", oldVol, Target));
+					Log.Information("Correcting microphone volume from {OldVolume:N1} to {NewVolume:N1}", oldVol, Target);
 					Volume = Target;
 					Corrections += 1;
 					micstatsdirty = true;
@@ -272,14 +274,12 @@ namespace TaskMaster
 				}
 				else
 				{
-					if (TaskMaster.VeryVerbose)
-						Log.Trace("Mic.Volume.CorrectionAlreadyQueued");
+					Log.Verbose("Mic.Volume.CorrectionAlreadyQueued");
 				}
 			}
 			else
 			{
-				if (TaskMaster.VeryVerbose)
-					Log.Trace("Mic.Volume.NotCorrected");
+				Log.Verbose("Mic.Volume.NotCorrected");
 			}
 		}
 	}

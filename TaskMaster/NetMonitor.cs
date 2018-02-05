@@ -24,6 +24,12 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
+using System.Reflection;
+using System.Windows.Forms;
+using System.Threading.Tasks;
+using System.Timers;
+using System.Runtime.Remoting.Messaging;
+
 namespace TaskMaster
 {
 	using System;
@@ -31,6 +37,8 @@ namespace TaskMaster
 	using System.Net.NetworkInformation;
 	using System.Collections.Generic;
 	using System.Linq;
+	using System.Diagnostics;
+	using Serilog;
 
 	public class NetworkStatus : EventArgs
 	{
@@ -45,14 +53,17 @@ namespace TaskMaster
 
 	public class NetMonitor : IDisposable
 	{
-		static readonly NLog.Logger Log = NLog.LogManager.GetCurrentClassLogger();
-
 		DateTime lastUptimeStart;
 
 		public event EventHandler<InternetStatus> InternetStatusChange;
 		public event EventHandler<NetworkStatus> NetworkStatusChange;
 
 		string dnstestaddress = "www.google.com";
+		int sampleinterval = 15;
+
+		object StateLock = new object();
+
+		System.Timers.Timer sampleTimer = new System.Timers.Timer();
 
 		public NetMonitor()
 		{
@@ -61,13 +72,27 @@ namespace TaskMaster
 			var cfg = TaskMaster.loadConfig("Net.ini");
 			SharpConfig.Section monsec = cfg["Monitor"];
 			int oldsettings = monsec?.SettingCount ?? 0;
-			dnstestaddress = monsec.GetSetDefault("DNS test", "www.google.com").StringValue;
-			if (oldsettings != (monsec?.SettingCount ?? 0))
-				TaskMaster.saveConfig("Net.ini", cfg);
+			bool dirty = false;
+			bool dirtyconf = false;
+			dnstestaddress = monsec.GetSetDefault("DNS test", "www.google.com", out dirty).StringValue;
+			dirtyconf |= dirty;
+			var smpsec = cfg["Sampler"];
+			sampleinterval = smpsec.GetSetDefault("Interval", 15, out dirty).IntValue;
+			dirtyconf |= dirty;
+			if ((oldsettings != (monsec?.SettingCount ?? 0)) || dirtyconf)
+				TaskMaster.saveConfig(cfg);
 
 			InterfaceInitialization();
 
 			NetworkSetup();
+
+			LastChange.Enqueue(DateTime.MinValue);
+			LastChange.Enqueue(DateTime.MinValue);
+			LastChange.Enqueue(DateTime.MinValue);
+
+			sampleTimer.Interval = sampleinterval * 60000;
+			sampleTimer.Elapsed += Sample;
+			sampleTimer.Start();
 		}
 
 		TrayAccess tray;
@@ -109,31 +134,53 @@ namespace TaskMaster
 		{
 			get
 			{
-				if (TaskMaster.NetworkMonitorEnabled)
+				if (TaskMaster.NetworkMonitorEnabled && InternetAvailable)
 					return (DateTime.Now - lastUptimeStart);
-				
+
 				return TimeSpan.Zero;
 			}
 		}
 
+		bool InternetAvailableLast = false;
+
+		[Conditional("DEBUG")]
 		void ReportCurrentUptime()
 		{
-			Log.Info(string.Format("Current internet uptime: {0:1} minute(s)", Uptime.TotalMinutes));
+			if (TaskMaster.VerbosityThreshold > 3)
+			{
+				if (InternetAvailable)
+					Log.Information("Current internet uptime: {UpTime:N1} minute(s)", Uptime.TotalMinutes);
+				else if (InternetAvailable != InternetAvailableLast) // prevent spamming unavailable message
+					Log.Information("Current internet uptime: Unavailable; Internet down.");
+				InternetAvailableLast = InternetAvailable;
+			}
 		}
 
 		void ReportUptime()
 		{
 			var ups = new System.Text.StringBuilder();
 
-			ups.Append("Average uptime: ").Append(string.Format("{0:N1}", (uptimeTotal / uptimeSamples))).Append(" minutes");
+			ups.Append("Average uptime: ");
+			lock (StateLock)
+			{
+				double currentUptime = (DateTime.Now - lastUptimeStart).TotalMinutes;
 
-			if (uptimeSamples > 3)
-				ups.Append(" (").Append(string.Format("{0:N1}", upTime.GetRange(upTime.Count - 3, 3).Sum() / 3)).Append(" minutes for last 3 samples");
+				ups.Append(string.Format("{0:N1}", ((uptimeTotal + currentUptime) / (uptimeSamples+1)))).Append(" minutes");
+
+				if (uptimeSamples > 3)
+					ups.Append(" (").Append(string.Format("{0:N1}", upTime.GetRange(upTime.Count - 3, 3).Sum() / 3)).Append(" minutes for last 3 samples");
+			}
 
 			ups.Append(".");
 
-			Log.Info(ups.ToString());
+			Log.Information(ups.ToString());
 
+			ReportCurrentUptime();
+		}
+
+		public void Sample(object sender, EventArgs e)
+		{
+			RecordSample(InternetAvailable, false);
 			ReportCurrentUptime();
 		}
 
@@ -141,46 +188,51 @@ namespace TaskMaster
 		static int upstateTesting; // = 0;
 		void RecordSample(bool online_state, bool address_changed)
 		{
-			if (online_state != lastOnlineState)
+			lock (StateLock)
 			{
-				lastOnlineState = online_state;
-
-				if (online_state)
+				if (online_state != lastOnlineState)
 				{
-					lastUptimeStart = DateTime.Now;
+					lastOnlineState = online_state;
 
-					if (System.Threading.Interlocked.CompareExchange(ref upstateTesting, 1, 0) == 1)
+					if (online_state)
 					{
-						System.Threading.Tasks.Task.Run(async () =>
+						lastUptimeStart = DateTime.Now;
+
+						if (System.Threading.Interlocked.CompareExchange(ref upstateTesting, 1, 0) == 0)
 						{
-							//CLEANUP: Console.WriteLine("Debug: Queued internet uptime report");
-							await System.Threading.Tasks.Task.Delay(new TimeSpan(0, 5, 0)); // wait 5 minutes
+							System.Threading.Tasks.Task.Run(async () =>
+							{
+								//CLEANUP: Console.WriteLine("Debug: Queued internet uptime report");
+								await System.Threading.Tasks.Task.Delay(new TimeSpan(0, 5, 0)).ConfigureAwait(false); // wait 5 minutes
 
-							ReportCurrentUptime();
-							upstateTesting = 0;
-						});
+								ReportCurrentUptime();
+								upstateTesting = 0;
+							});
+						}
 					}
-				}
-				else // went offline
-				{
-					double newUptime = (DateTime.Now - lastUptimeStart).TotalMinutes;
-					upTime.Add(newUptime);
-					uptimeTotal += newUptime;
-					uptimeSamples += 1;
-					if (uptimeSamples > 20)
+					else // went offline
 					{
-						uptimeTotal -= upTime[0];
-						uptimeSamples -= 1;
-						upTime.RemoveAt(0);
-					}
+						double newUptime = (DateTime.Now - lastUptimeStart).TotalMinutes;
+						upTime.Add(newUptime);
+						uptimeTotal += newUptime;
+						uptimeSamples += 1;
+						if (uptimeSamples > 20)
+						{
+							uptimeTotal -= upTime[0];
+							uptimeSamples -= 1;
+							upTime.RemoveAt(0);
+						}
 
-					ReportUptime();
+						ReportUptime();
+					}
+					return;
 				}
-			}
-			else if (address_changed)
-			{
-				// same state but address change was detected
-				Console.WriteLine("DEBUG: Address changed but internet connectivity unaffected.");
+				else if (address_changed)
+				{
+					// same state but address change was detected
+					Console.WriteLine("DEBUG: Address changed but internet connectivity unaffected.");
+				}
+
 				ReportCurrentUptime();
 			}
 		}
@@ -190,13 +242,12 @@ namespace TaskMaster
 		{
 			// TODO: Figure out how to get Actual start time of internet connectivity.
 
-			if (System.Threading.Interlocked.CompareExchange(ref checking_inet, 1, 0) == 0)
+			if (System.Threading.Interlocked.CompareExchange(ref checking_inet, 1, 0) == 1)
 				return;
 
-			if (TaskMaster.Verbose)
-				Log.Trace("Checking internet connectivity...");
+			Log.Verbose("Checking internet connectivity...");
 
-			await System.Threading.Tasks.Task.Delay(100);
+			await System.Threading.Tasks.Task.Delay(100).ConfigureAwait(false);
 
 			bool oldInetAvailable = InternetAvailable;
 			if (NetworkAvailable)
@@ -207,12 +258,33 @@ namespace TaskMaster
 					InternetAvailable = true;
 
 					// Don't rely on DNS?
-					Log.Info("DEBUG: IPv6 interface: " + (IPv6Interface.OperationalStatus == OperationalStatus.Up ? "Up" : "Down")
-					         + "; IPv4 interface: " + (IPv4Interface.OperationalStatus == OperationalStatus.Up ? "Up" : "Down"));
+					/*
+					Log.Debug("DEBUG: IPv6 interface: " + IPv6Interface.OperationalStatus.ToString()
+					   + "; IPv4 interface: " + IPv4Interface.OperationalStatus.ToString());
+					*/
 				}
-				catch (System.Net.Sockets.SocketException)
+				catch (System.Net.Sockets.SocketException ex)
 				{
-					InternetAvailable = false;
+					switch (ex.SocketErrorCode)
+					{
+						case System.Net.Sockets.SocketError.TimedOut:
+							Log.Warning("Internet availability test timed-out: assuming we're online.");
+							/*
+							Task.Run(async delegate
+							{
+								await Task.Delay(TimeSpan.FromSeconds(5));
+								CheckInet(false);
+							});
+							*/
+							InternetAvailable = true; // timeout can only occur if we actually have internet.. sort of. We have no tri-state tho.
+							return;
+						case System.Net.Sockets.SocketError.NetworkDown:
+						case System.Net.Sockets.SocketError.NetworkUnreachable:
+						case System.Net.Sockets.SocketError.HostUnreachable:
+						default:
+							InternetAvailable = false;
+							break;
+					}
 				}
 			}
 			else
@@ -221,10 +293,10 @@ namespace TaskMaster
 			RecordSample(InternetAvailable, address_changed);
 
 			if (oldInetAvailable != InternetAvailable)
-			{
-				Log.Info("Network status: " + (NetworkAvailable ? "Up" : "Down") + ", Inet status: " + (InternetAvailable ? "Connected" : "Disconnected"));
-			}
-
+				Log.Information("Network status: {NetworkAvailable}, Internet status: {InternetAvailable}", (NetworkAvailable ? "Up" : "Down"), (InternetAvailable ? "Connected" : "Disconnected"));
+			else
+				Log.Verbose("Internet status unchanged");
+			
 			checking_inet = 0;
 
 			InternetStatusChange?.Invoke(this, new InternetStatus { Available = InternetAvailable, Start = lastUptimeStart, Uptime = Uptime });
@@ -237,7 +309,7 @@ namespace TaskMaster
 		IPAddress IPv6Address = IPAddress.IPv6None;
 		NetworkInterface IPv6Interface;
 
-		private void InterfaceInitialization()
+		void InterfaceInitialization()
 		{
 			NetworkInterface[] adapters = NetworkInterface.GetAllNetworkInterfaces();
 			foreach (NetworkInterface n in adapters)
@@ -266,15 +338,25 @@ namespace TaskMaster
 		}
 
 		int enumerating_inet; // = 0;
-		public List<string[]> Interfaces()
+		/// <summary>
+		/// Returns list of interfaces.
+		/// * Device Name
+		/// * Type
+		/// * Status
+		/// * Link Speed
+		/// * IPv4 Address
+		/// * IPv6 Address
+		/// </summary>
+		/// <returns>string[] { Device Name, Type, Status, Link Speed, IPv4 Address, IPv6 Address }</returns>
+		public List<NetDevice> Interfaces()
 		{
 			if (System.Threading.Interlocked.CompareExchange(ref enumerating_inet, 1, 0) == 1)
 				return null; // bail if we were already doing this
 
-			if (TaskMaster.Verbose)
-				Log.Trace("Enumerating network interfaces...");
+			Log.Verbose("Enumerating network interfaces...");
 
-			var ifacelist = new List<string[]>();
+			var ifacelist = new List<NetDevice>();
+			//var ifacelist = new List<string[]>();
 
 			NetworkInterface[] adapters = NetworkInterface.GetAllNetworkInterfaces();
 			foreach (NetworkInterface n in adapters)
@@ -282,7 +364,7 @@ namespace TaskMaster
 				if (n.NetworkInterfaceType == NetworkInterfaceType.Loopback || n.NetworkInterfaceType == NetworkInterfaceType.Tunnel)
 					continue;
 
-				IPAddress _ipv4=IPAddress.None, _ipv6=IPAddress.None;
+				IPAddress _ipv4 = IPAddress.None, _ipv6 = IPAddress.None;
 				foreach (UnicastIPAddressInformation ip in n.GetIPProperties().UnicastAddresses)
 				{
 					// TODO: Maybe figure out better way and early bailout from the foreach
@@ -297,14 +379,16 @@ namespace TaskMaster
 					}
 				}
 
-				ifacelist.Add(new string[] {
-					n.Name,
-					n.NetworkInterfaceType.ToString(),
-					n.OperationalStatus.ToString(),
-					Utility.ByterateString(n.Speed),
-					_ipv4?.ToString() ?? "n/a",
-					_ipv6?.ToString() ?? "n/a"
+				ifacelist.Add(new NetDevice {
+					Name=n.Name,
+					Type=n.NetworkInterfaceType,
+					Status=n.OperationalStatus,
+					Speed=n.Speed,
+					IPv4Address=_ipv4,
+					IPv6Address=_ipv6
 				});
+
+				Log.Verbose("Interface: {InterfaceName}", n.Name);
 			}
 
 			enumerating_inet = 0;
@@ -315,13 +399,13 @@ namespace TaskMaster
 		Queue<DateTime> LastChange = new Queue<DateTime>(3);
 		void NetAddrChanged(object sender, EventArgs e)
 		{
+			var tmpnow = DateTime.Now;
 			IPAddress oldV6Address = IPv6Address;
 			IPAddress oldV4Address = IPv4Address;
 
-			LastChange.Enqueue(DateTime.Now);
-			if (LastChange.Count > 3)
-				LastChange.Dequeue();
-			
+			LastChange.Dequeue();
+			LastChange.Enqueue(tmpnow);
+
 			CheckInet(address_changed: true).Wait();
 
 			if (InternetAvailable)
@@ -353,7 +437,7 @@ namespace TaskMaster
 #endif
 
 				if (!ipv4changed && !ipv6changed && (LastChange.Peek() - DateTime.Now).Minutes < 5)
-					Log.Warn("Unstable internet connectivity detected.");
+					Log.Warning("Unstable internet connectivity detected.");
 			}
 
 			//NetworkChanged(null,null);
@@ -367,7 +451,7 @@ namespace TaskMaster
 			NetworkChange.NetworkAvailabilityChanged += NetworkChanged;
 			NetworkChange.NetworkAddressChanged += NetAddrChanged;
 
-			CheckInet().Wait();
+			//CheckInet().Wait(); // unnecessary?
 		}
 
 		async void NetworkChanged(object sender, EventArgs e)
@@ -378,11 +462,11 @@ namespace TaskMaster
 			// do stuff only if this is different from last time
 			if (oldNetAvailable != NetworkAvailable)
 			{
-				Log.Debug("Network status changed: " + (NetworkAvailable ? "Connected" : "Disconnected"));
+				Log.Verbose("Network status changed: " + (NetworkAvailable ? "Connected" : "Disconnected"));
 
 				NetworkStatusChange?.Invoke(this, new NetworkStatus { Available = NetworkAvailable });
 
-				await System.Threading.Tasks.Task.Delay(200);
+				await System.Threading.Tasks.Task.Delay(200).ConfigureAwait(false);
 
 				await CheckInet();
 			}

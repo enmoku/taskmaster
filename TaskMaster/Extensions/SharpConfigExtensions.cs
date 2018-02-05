@@ -24,10 +24,16 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
+using System;
+using System.Diagnostics;
+
 public static class SharpConfigExtensions
 {
 	public static SharpConfig.Section TryGet(this SharpConfig.Configuration config, string section)
 	{
+		Debug.Assert(config != null);
+		Debug.Assert(!string.IsNullOrEmpty(section));
+
 		if (config.Contains(section))
 			return config[section];
 		return null;
@@ -35,9 +41,18 @@ public static class SharpConfigExtensions
 
 	public static SharpConfig.Setting TryGet(this SharpConfig.Section section, string setting)
 	{
+		Debug.Assert(section != null);
+		Debug.Assert(!string.IsNullOrEmpty(setting));
+
 		if (section.Contains(setting))
 			return section[setting];
 		return null;
+	}
+
+	public static SharpConfig.Setting GetSetDefault<T>(this SharpConfig.Section section, string setting, T fallback)
+	{
+		bool unused;
+		return section.GetSetDefault(setting, fallback, out unused);
 	}
 
 	/// <summary>
@@ -48,12 +63,20 @@ public static class SharpConfigExtensions
 	/// <param name="setting">Setting name.</param>
 	/// <param name="fallback">Fallback default value for the setting.</param>
 	/// <typeparam name="T">Setting type.</typeparam>
-	public static SharpConfig.Setting GetSetDefault<T>(this SharpConfig.Section section, string setting, T fallback)
+	public static SharpConfig.Setting GetSetDefault<T>(this SharpConfig.Section section, string setting, T fallback, out bool defaulted)
 	{
+		Debug.Assert(section != null);
+		Debug.Assert(!string.IsNullOrEmpty(setting));
+
 		SharpConfig.Setting rv;
 		rv = section[setting];
 		if (!section[setting].IsArray && section[setting].GetValue<string>() == string.Empty)
+		{
 			section[setting].SetValue(fallback);
+			defaulted = true;
+		}
+		else
+			defaulted = false;
 		// todo: what do do about arrays?
 		return rv;
 	}

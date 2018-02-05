@@ -23,41 +23,51 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
+using System;
 
 namespace TaskMaster
 {
+	public class Uptime
+	{
+		public int Time { get; set; }
+		public DateTime Stamp { get; set; }
+	}
+
 	public class UptimeTracker
 	{
-		readonly System.Collections.Queue stack;
-		readonly System.Collections.Queue stamp;
+		readonly System.Collections.Queue Stack;
 
 		public int Max { get; set; }
 		public int Min { get; set; }
 
-		UptimeTracker(int capacity=10, int cap=10)
+		UptimeTracker(int cap=10)
 		{
-			Capacity = capacity;
 			Cap = cap;
-			stack = new System.Collections.Queue(capacity);
+			Stack = new System.Collections.Queue(Cap);
 		}
 
-		public void Push(int obj)
+		public void Push(int time)
 		{
-			stack.Enqueue(obj);
+			Count += 1;
+			Total += time;
+			Stack.Enqueue(new Uptime { Time=time, Stamp=System.DateTime.UtcNow });
 		}
 
 		public void Pull()
 		{
+			//??
 		}
 
-		public int Pop()
+		public Uptime Pop()
 		{
-			return (int)stack.Dequeue();
+			Uptime up = (Uptime)Stack.Dequeue();
+			Count -= 1;
+			Total -= up.Time;
+			return up;
 		}
 
-		public int Total { get; set; } = 0;
-		public int Cap { get; set; } = 10;
-		public int Capacity { get; set; } = 10;
-		public int Count { get; set; } = 0;
+		public int Total { get; set; } = 0; // Total value of held items.
+		public int Cap { get; set; } = 10; // Start culling
+		public int Count { get; set; } = 0; // Items held
 	}
 }

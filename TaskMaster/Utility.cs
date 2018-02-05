@@ -23,13 +23,38 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
+
+using System;
+using System.Collections.Generic;
+using System.Diagnostics;
 using System.Net;
 using System.Net.NetworkInformation;
-using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 
 namespace TaskMaster
 {
-	using System;
+	public enum Trinary
+	{
+		False = 0,
+		True = 1,
+		Nonce = -1,
+	}
+
+	public static class TrinaryExtensions
+	{
+		public static bool True(this Trinary tri)
+		{
+			return (tri == Trinary.True);
+		}
+		public static bool False(this Trinary tri)
+		{
+			return (tri == Trinary.False);
+		}
+		public static bool Nonce(this Trinary tri)
+		{
+			return (tri == Trinary.Nonce);
+		}
+	}
 
 	public enum OpStatus
 	{
@@ -64,6 +89,8 @@ namespace TaskMaster
 
 		public static double SimpleTime(double seconds, out Timescale scale)
 		{
+			Debug.Assert(seconds >= 0);
+
 			if (seconds > (120.0 * 60.0))
 			{
 				double hours = seconds / 60.0 / 60.0;
@@ -85,6 +112,8 @@ namespace TaskMaster
 
 		public static string ByterateString(long bps)
 		{
+			Debug.Assert(bps >= 0);
+
 			if (bps >= 1000000000d)
 				return Math.Round(bps * 0.000000001d, 2) + " Gb/s";
 			if (bps >= 1000000d)
@@ -94,40 +123,52 @@ namespace TaskMaster
 			return bps + " b/s";
 		}
 	}
-}
 
-public static class TypeExtensions
-{
-	// Core Type extensions
-	public static int Limit(this int value, int InclusiveMinimum, int InclusiveMaximum)
+	public static class Logging
 	{
-		if (value < InclusiveMinimum) { return InclusiveMinimum; }
-		if (value > InclusiveMaximum) { return InclusiveMaximum; }
-		return value;
-	}
-
-	public static int Min(this int value, int Minimum)
-	{
-		if (value < Minimum) { return Minimum; }
-		return value;
-	}
-
-	public static IPAddress GetAddress(this NetworkInterface iface)
-	{
-		return GetAddresses(iface)[0] ?? IPAddress.None;
-	}
-
-	public static IPAddress[] GetAddresses(this NetworkInterface iface)
-	{
-		if (iface.NetworkInterfaceType == NetworkInterfaceType.Loopback || iface.NetworkInterfaceType == NetworkInterfaceType.Tunnel)
-			return null;
-		
-		var ipa = new List<IPAddress>(2);
-		foreach (UnicastIPAddressInformation ip in iface.GetIPProperties().UnicastAddresses)
+		public static void Log(string text, [CallerFilePath] string file = "", [CallerMemberName] string member = "", [CallerLineNumber] int line = 0)
 		{
-			ipa.Add(ip.Address);
+			Console.WriteLine("{0}_{1}({2}): {3}", System.IO.Path.GetFileName(file), member, line, text);
+		}
+	}
+
+	public static class TypeExtensions
+	{
+		// Core Type extensions
+		public static int Limit(this int value, int InclusiveMinimum, int InclusiveMaximum)
+		{
+			if (value < InclusiveMinimum) { return InclusiveMinimum; }
+			if (value > InclusiveMaximum) { return InclusiveMaximum; }
+			return value;
 		}
 
-		return ipa.ToArray();
+		public static int Min(this int value, int Minimum)
+		{
+			if (value < Minimum) { return Minimum; }
+			return value;
+		}
+
+		public static IPAddress GetAddress(this NetworkInterface iface)
+		{
+			Debug.Assert(iface != null);
+
+			return GetAddresses(iface)[0] ?? IPAddress.None;
+		}
+
+		public static IPAddress[] GetAddresses(this NetworkInterface iface)
+		{
+			Debug.Assert(iface != null);
+
+			if (iface.NetworkInterfaceType == NetworkInterfaceType.Loopback || iface.NetworkInterfaceType == NetworkInterfaceType.Tunnel)
+				return null;
+
+			var ipa = new List<IPAddress>(2);
+			foreach (UnicastIPAddressInformation ip in iface.GetIPProperties().UnicastAddresses)
+			{
+				ipa.Add(ip.Address);
+			}
+
+			return ipa.ToArray();
+		}
 	}
 }

@@ -25,16 +25,43 @@
 // THE SOFTWARE.
 
 using System;
-using System.Diagnostics; // Process
-using System.Runtime.InteropServices; // Marshal
-using System.Runtime.ConstrainedExecution; // attributes
 using System.ComponentModel; // Win32Exception
+using System.Diagnostics; // Process
+using System.Runtime.ConstrainedExecution; // attributes
+using System.Runtime.InteropServices; // Marshal
 using System.Security; // SuppressUnmanagedCodeSecurity
 using System.Security.Permissions; // HostProtection
 using Microsoft.Win32.SafeHandles; // SafeHandleMinusOneIsInvalid
 
 namespace TaskMaster
 {
+	public enum ProcessState
+	{
+		/// <summary>
+		/// Process is already set to what it should be.
+		/// </summary>
+		OK,
+		/// <summary>
+		/// Process was modified.
+		/// </summary>
+		Modified,
+		/// <summary>
+		/// Failed to access process.
+		/// </summary>
+		AccessDenied,
+		/// <summary>
+		/// Nothing has been done.
+		/// </summary>
+		Invalid
+	}
+
+	public static class ProcessStateExtensions
+	{
+		public static bool OK(this ProcessState ps)
+		{
+			return (ps != ProcessState.Invalid);
+		}	}
+
 	public static class ProcessHelpers
 	{
 		/// <summary>
@@ -60,6 +87,8 @@ namespace TaskMaster
 		/// <param name="priority">0 [Idle] to 4 [High]</param>
 		public static ProcessPriorityClass IntToPriority(int priority)
 		{
+			Debug.Assert(priority >= 0 && priority <= 4);
+
 			switch (priority)
 			{
 				case 0: return ProcessPriorityClass.Idle;
@@ -85,11 +114,14 @@ public static class ProcessExtensions
 {
 	public static int ParentProcessId(this Process process)
 	{
+		Debug.Assert(process != null);
 		return ParentProcessId(process.Id);
 	}
 
 	public static int ParentProcessId(int Id)
 	{
+		Debug.Assert(Id > -1);
+
 		var pe32 = new PROCESSENTRY32 { };
 		pe32.dwSize = (uint)Marshal.SizeOf(typeof(PROCESSENTRY32));
 		using (var hSnapshot = CreateToolhelp32Snapshot(SnapshotFlags.Process, (uint)Id))

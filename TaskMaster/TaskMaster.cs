@@ -26,14 +26,14 @@
 
 
 /*
- * TODO: Fix process IO priority
+ * TODO: Add process IO priority modification.
  * TODO: Detect full screen or GPU accelerated apps and adjust their priorities.
- * TODO: Detect if the above apps hang and lower their processing priorities.
+ * TODO: Detect if the above apps hang and lower their processing priorities as result.
  * 
  * MAYBE:
  *  - Monitor [MFT] fragmentation?
  *  - Detect which apps are making noise?
- *  - Detect high disk usage
+ *  - Detect high disk usage.
  *  - Clean %TEMP% with same design goals as the OS builtin disk cleanup utility.
  *  - SMART stats? seems pointless...
  *  - Action logging
@@ -46,22 +46,40 @@
  * Other:
  *  - Multiple windows or tabbed window?
  */
+
+using System;
+using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
+using Serilog;
+using Serilog.Core;
+using Serilog.Events;
+using TaskMaster.SerilogMemorySink;
 
 namespace TaskMaster
 {
-	using System;
-
 	//[Guid("088f7210-51b2-4e06-9bd4-93c27a973874")]//there's no point to this, is there?
 	public class TaskMaster
 	{
 		public static SharpConfig.Configuration cfg;
-		public static string datapath = System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Taskmaster");
-
-		static readonly NLog.Logger Log = NLog.LogManager.GetCurrentClassLogger();
-		static MemLog memlog;
+		public static string datapath = System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Enmoku", "Taskmaster");
 
 		// TODO: Pre-allocate space for the log files.
+
+		static Dictionary<string, SharpConfig.Configuration> Configs = new Dictionary<string, SharpConfig.Configuration>();
+		static Dictionary<SharpConfig.Configuration, bool> ConfigDirty = new Dictionary<SharpConfig.Configuration, bool>();
+		static Dictionary<SharpConfig.Configuration, string> ConfigPaths = new Dictionary<SharpConfig.Configuration, string>();
+
+		public static void saveConfig(SharpConfig.Configuration config)
+		{
+			string filename;
+			if (ConfigPaths.TryGetValue(config, out filename))
+			{
+				saveConfig(filename, config);
+				return;
+			}
+			throw new ArgumentException();
+		}
 
 		public static void saveConfig(string configfile, SharpConfig.Configuration config)
 		{
@@ -76,192 +94,284 @@ namespace TaskMaster
 
 		public static SharpConfig.Configuration loadConfig(string configfile)
 		{
+			SharpConfig.Configuration retcfg;
+			if (Configs.TryGetValue(configfile, out retcfg))
+			{
+				return retcfg;
+			}
+
 			string path = System.IO.Path.Combine(datapath, configfile);
 			//Log.Trace("Opening: "+path);
-			SharpConfig.Configuration retcfg;
 			if (System.IO.File.Exists(path))
 				retcfg = SharpConfig.Configuration.LoadFromFile(path);
-		    else
+			else
 			{
-				Log.Warn("Not found: " + path);
+				Log.Warning("Not found: {Path}", path);
 				retcfg = new SharpConfig.Configuration();
 				System.IO.Directory.CreateDirectory(datapath);
 			}
 
+			Configs.Add(configfile, retcfg);
+			ConfigPaths.Add(retcfg, configfile);
+			Log.Debug("{ConfigFile} added to known configurations files.", configfile);
+
 			return retcfg;
 		}
 
-		public static MicMonitor mon;
-		public static MainWindow tmw;
-		public static ProcessManager pmn;
-		public static TrayAccess tri;
-		public static NetMonitor nmn;
+		public static MicMonitor micmonitor = null;
+		public static MainWindow mainwindow = null;
+		public static ProcessManager processmanager = null;
+		public static TrayAccess trayaccess = null;
+		public static NetMonitor netmonitor = null;
+		public static DiskManager diskmanager = null;
+		public static PowerManager powermanager = null;
+		public static ActiveAppMonitor activeappmonitor = null;
 
 		public static void MainWindowClose(object sender, EventArgs e)
 		{
 			if (LowMemory)
 			{
 				//tmw.FormClosing -= MainWindowClose // unnecessary?
-				tmw.Dispose();
-				tmw = null;
+				mainwindow.Dispose();
+				mainwindow = null;
 			}
 		}
 
 		public static void ExitRequest(object sender, EventArgs e)
 		{
 			//CLEANUP:
-			Console.WriteLine("START:Core.ExitRequest - Exit hang expected");
-			if (tmw != null)
-			{
-				tmw.Dispose();
-				tmw = null;
-			}
+			//if (TaskMaster.VeryVerbose) Console.WriteLine("START:Core.ExitRequest - Exit hang expected");
+			mainwindow?.Close();
+			//mainwindow?.Dispose();
+			//mainwindow = null;
 
 			System.Windows.Forms.Application.Exit();
 			//CLEANUP:
-			Console.WriteLine("END:Core.ExitRequest - Exit hang averted");
+			//if (TaskMaster.VeryVerbose) Console.WriteLine("END:Core.ExitRequest - Exit hang averted");
 		}
 
 		public static void BuildMain()
 		{
-			if (tmw == null)
+			if (mainwindow == null)
 			{
-				tmw = new MainWindow();
-				TrayAccess.onExit += tmw.ExitRequest;
+				mainwindow = new MainWindow();
+				TrayAccess.onExit += mainwindow.ExitRequest;
 
-				tri.RegisterMain(ref tmw);
+				trayaccess.RegisterMain(ref mainwindow);
 
 				if (MicrophoneMonitorEnabled)
-					tmw.setMicMonitor(mon);
+					mainwindow.setMicMonitor(micmonitor);
 
 				if (ProcessMonitorEnabled)
-					tmw.setProcControl(pmn);
+					mainwindow.setProcControl(processmanager);
 
-				tmw.setLog(memlog);
-				tmw.Tray = tri;
+				mainwindow.Tray = trayaccess;
 
-				memlog.OnNewLog += tmw.onNewLog;
+				mainwindow.FillLog();
+				MemoryLog.onNewEvent += mainwindow.onNewLog;
 
-				tmw.FormClosing += MainWindowClose;
+				mainwindow.FormClosing += MainWindowClose;
 
-				tmw.rescanRequest += pmn.ProcessEverythingRequest;
+				if (TaskMaster.ProcessMonitorEnabled)
+				{
+					mainwindow.rescanRequest += processmanager.ProcessEverythingRequest;
+					mainwindow.pagingRequest += processmanager.PageEverythingRequest;
+				}
 
-				tmw.setNet(ref nmn);
+				if (TaskMaster.NetworkMonitorEnabled)
+					mainwindow.setNetMonitor(ref netmonitor);
 
-				/*
-				GameMonitor gmmon = new GameMonitor();
-				pmn.onAdjust += gmmon.SetupEventHookEvent;
-				gmmon.ActiveChanged += tmw.OnActiveWindowChanged;
-				*/
+				if (TaskMaster.ActiveAppMonitorEnabled)
+				{
+					activeappmonitor = new ActiveAppMonitor();
+					//pmn.onAdjust += gmmon.SetupEventHookEvent; //??
+					activeappmonitor.ActiveChanged += mainwindow.OnActiveWindowChanged;
+				}
 			}
 		}
 		static void Setup()
 		{
-			tri = new TrayAccess();
+			trayaccess = new TrayAccess();
 			TrayAccess.onExit += ExitRequest;
 
 			if (MicrophoneMonitorEnabled)
-				mon = new MicMonitor();
-			
+				micmonitor = new MicMonitor();
+
 			if (ProcessMonitorEnabled)
-				pmn = new ProcessManager();
+				processmanager = new ProcessManager();
 
 			if (NetworkMonitorEnabled)
 			{
-				nmn = new NetMonitor();
-				nmn.Tray = tri;
+				netmonitor = new NetMonitor();
+				netmonitor.Tray = trayaccess;
 			}
 
 			BuildMain();
 
-			#if DEBUG
-			tmw.Show();
-			#endif
+#if DEBUG
+			mainwindow.Show();
+#endif
+
+			if (PowerManagerEnabled) powermanager = new PowerManager();
 
 			// Self-optimization
 			if (SelfOptimize)
 			{
 				var self = System.Diagnostics.Process.GetCurrentProcess();
 				self.PriorityClass = System.Diagnostics.ProcessPriorityClass.Idle;
-				//self.ProcessorAffinity = 1; // run this only on the first processor/core; not needed, this app is not time critical
+				// mask self to the last core
+				int selfCPUmask = 1;
+				for (int i = 0; i < Environment.ProcessorCount - 1; i++)
+					selfCPUmask = (selfCPUmask << 1);
+				//Console.WriteLine("Setting own CPU mask to: {0} ({1})", Convert.ToString(selfCPUmask, 2), selfCPUmask);
+				self.ProcessorAffinity = new IntPtr(selfCPUmask);
+				//self.ProcessorAffinity = 1;
 			}
+
+			if (MaintenanceMonitorEnabled)
+				diskmanager = new DiskManager();
 		}
 
-		public static bool Verbose = true;
-		public static bool VeryVerbose; // = false;
 		public static int VerbosityThreshold = 3;
-		public static bool CaseSensitive; // = false;
+		public static bool CaseSensitive = false;
 
-		static bool ProcessMonitorEnabled = true;
-		static bool MicrophoneMonitorEnabled = true;
-		static bool MediaMonitorEnabled = true;
-		static bool _NetworkMonitorEnabled = true;
-		public static bool NetworkMonitorEnabled
-		{
-			get { return _NetworkMonitorEnabled; }
-			private set { _NetworkMonitorEnabled = value; }
-		}
-			
-		static bool _SelfOptimize = true;
-		public static bool SelfOptimize
-		{
-			get { return _SelfOptimize; }
-			private set { _SelfOptimize = value; }
-		}
+		public static bool ProcessMonitorEnabled { get; private set; } = true;
+		public static bool PathMonitorEnabled { get; private set; } = true;
+		public static bool MicrophoneMonitorEnabled { get; private set; } = false;
+		public static bool MediaMonitorEnabled { get; private set; } = true;
+		public static bool NetworkMonitorEnabled { get; private set; } = true;
+		public static bool PagingEnabled { get; private set; } = true;
+		public static bool ActiveAppMonitorEnabled { get; private set; } = true;
+		public static bool PowerManagerEnabled { get; private set; } = true;
+		public static bool MaintenanceMonitorEnabled { get; private set; } = true;
 
-		static bool lowmemory; // = false; // low memory mode; figure out way to auto-enable this when system is low on memory
-		public static bool LowMemory { get { return lowmemory; } private set { lowmemory = value; } }
+		public static bool SelfOptimize { get; private set; } = true;
 
-		static bool wmiqueries = true;
+		public static bool LowMemory { get; private set; } = true; // low memory mode; figure out way to auto-enable this when system is low on memory
+
+		public static int LoopSleep = 0;
+
+		public static int TempRescanDelay = 60 * 60 * 1000;
+		public static int TempRescanThreshold = 1000;
+
 		/// <summary>
 		/// Whether to use WMI queries for investigating failed path checks to determine if an application was launched in watched path.
 		/// </summary>
 		/// <value><c>true</c> if WMI queries are enabled; otherwise, <c>false</c>.</value>
-		public static bool WMIqueries { get { return wmiqueries; } private set { wmiqueries = value; } }
+		public static bool WMIQueries { get; private set; }
+
+		public static void MarkDirtyINI(SharpConfig.Configuration dirtiedcfg)
+		{
+			bool unused;
+			if (ConfigDirty.TryGetValue(dirtiedcfg, out unused))
+				ConfigDirty.Remove(dirtiedcfg);
+			ConfigDirty.Add(dirtiedcfg, true);
+		}
 
 		static string coreconfig = "Core.ini";
 		static void LoadCoreConfig()
 		{
 			cfg = loadConfig(coreconfig);
 
-			cfg["Core"]["Hello"].SetValue("Hi");
-
-			bool coreconfigdirty = false;
+			if (cfg.TryGet("Core")?.TryGet("Hello")?.RawValue != "Hi")
+			{
+				Log.Information("Hello");
+				cfg["Core"]["Hello"].SetValue("Hi");
+				cfg["Core"]["Hello"].PreComment = "Heya";
+				MarkDirtyINI(cfg);
+			}
 
 			SharpConfig.Section compsec = cfg["Components"];
 			SharpConfig.Section optsec = cfg["Options"];
 			SharpConfig.Section perfsec = cfg["Performance"];
 
+			bool modified = false, dirtyconfig = false;
+
 			int oldsettings = optsec?.SettingCount ?? 0 + compsec?.SettingCount ?? 0 + perfsec?.SettingCount ?? 0;
 
-			ProcessMonitorEnabled = compsec.GetSetDefault("Process", true).BoolValue;
-			MicrophoneMonitorEnabled = compsec.GetSetDefault("Microphone", true).BoolValue;
-			MediaMonitorEnabled = compsec.GetSetDefault("Media", true).BoolValue;
-			NetworkMonitorEnabled = compsec.GetSetDefault("Network", true).BoolValue;
+			ProcessMonitorEnabled = compsec.GetSetDefault("Process", true, out modified).BoolValue;
+			compsec["Process"].Comment = "Monitor starting processes based on their name. Configure in Apps.ini";
+			dirtyconfig |= modified;
+			PathMonitorEnabled = compsec.GetSetDefault("Process paths", true, out modified).BoolValue;
+			compsec["Process paths"].Comment = "Monitor starting processes based on their location. Configure in Paths.ini";
+			dirtyconfig |= modified;
+			MicrophoneMonitorEnabled = compsec.GetSetDefault("Microphone", true, out modified).BoolValue;
+			compsec["Microphone"].Comment = "Monitor and force-keep microphone volume.";
+			dirtyconfig |= modified;
+			MediaMonitorEnabled = compsec.GetSetDefault("Media", true, out modified).BoolValue;
+			compsec["Media"].Comment = "Unused";
+			dirtyconfig |= modified;
+			ActiveAppMonitorEnabled = compsec.GetSetDefault("Foreground", true, out modified).BoolValue;
+			compsec["Foreground"].Comment = "Game/Foreground app monitoring and adjustment.";
+			dirtyconfig |= modified;
+			NetworkMonitorEnabled = compsec.GetSetDefault("Network", true, out modified).BoolValue;
+			compsec["Network"].Comment = "Monitor network uptime and current IP addresses.";
+			dirtyconfig |= modified;
+			MaintenanceMonitorEnabled = compsec.GetSetDefault("Power", true, out modified).BoolValue;
+			compsec["Power"].Comment = "Enable power plan management.";
+			dirtyconfig |= modified;
+			PagingEnabled = compsec.GetSetDefault("Paging", true, out modified).BoolValue;
+			compsec["Paging"].Comment = "Enable paging of apps as per their configuration.";
+			dirtyconfig |= modified;
+			MaintenanceMonitorEnabled = compsec.GetSetDefault("Maintenance", false, out modified).BoolValue;
+			compsec["Maintenance"].Comment = "Enable basic maintenance monitoring functionality.";
+			dirtyconfig |= modified;
 
-			Verbose = optsec.GetSetDefault("Verbose", false).BoolValue;
-			VeryVerbose = optsec.GetSetDefault("Very verbose", false).BoolValue;
-			VerbosityThreshold = optsec.GetSetDefault("Verbosity threshold", 3).IntValue;
-			CaseSensitive = optsec.GetSetDefault("Case sensitive", false).BoolValue;
+			var Verbosity = optsec.GetSetDefault("Verbosity", 0, out modified).IntValue;
+			optsec["Verbosity"].Comment = "0 = Information, 1 = Debug, 2 = Verbose/Trace";
+			switch (Verbosity)
+			{
+				default:
+				case 0:
+					MemoryLog.LevelSwitch.MinimumLevel = LogEventLevel.Information;
+					break;
+				case 1:
+					MemoryLog.LevelSwitch.MinimumLevel = LogEventLevel.Debug;
+					break;
+				case 2:
+					MemoryLog.LevelSwitch.MinimumLevel = LogEventLevel.Verbose;
+					break;
+				case 3:
+					MemoryLog.LevelSwitch.MinimumLevel = LogEventLevel.Verbose;
+					VerbosityThreshold = 4;
+					break;
+			};
+			dirtyconfig |= modified;
 
-			SelfOptimize = perfsec.GetSetDefault("Self-optimize", true).BoolValue;
-			LowMemory = perfsec.GetSetDefault("Low memory", false).BoolValue;
-			WMIqueries = perfsec.GetSetDefault("WMI queries", false).BoolValue;
-			perfsec.GetSetDefault("Child processes", false); // unused here
+			CaseSensitive = optsec.GetSetDefault("Case sensitive", false, out modified).BoolValue;
+			dirtyconfig |= modified;
+
+			SelfOptimize = perfsec.GetSetDefault("Self-optimize", true, out modified).BoolValue;
+			dirtyconfig |= modified;
+			LowMemory = perfsec.GetSetDefault("Low memory", false, out modified).BoolValue;
+			perfsec["Low memory"].Comment = "Enabling this causes the GUI to be deleted when it's closed, potentially freeing some memory.";
+			dirtyconfig |= modified;
+			WMIQueries = perfsec.GetSetDefault("WMI queries", false, out modified).BoolValue;
+			perfsec["WMI queries"].Comment = "WMI is considered buggy and slow. Unfortunately necessary for some functionality.";
+			dirtyconfig |= modified;
+			perfsec.GetSetDefault("Child processes", false, out modified); // unused here
+			perfsec["Child processes"].Comment = "Enables controlling process priority based on parent process if nothing else matches. This is slow and unreliable.";
+			dirtyconfig |= modified;
+			TempRescanThreshold = perfsec.GetSetDefault("Temp rescan threshold", 1000, out modified).IntValue;
+			perfsec["Temp rescan threshold"].Comment = "How many changes we wait to temp folder before expediting rescanning it.";
+			dirtyconfig |= modified;
+			TempRescanDelay = perfsec.GetSetDefault("Temp rescan delay", 60, out modified).IntValue * 60 * 1000;
+			perfsec["Temp rescan delay"].Comment = "How many minutes to wait before rescanning temp after crossing the threshold.";
+			dirtyconfig |= modified;
 
 			int newsettings = optsec?.SettingCount ?? 0 + compsec?.SettingCount ?? 0 + perfsec?.SettingCount ?? 0;
 
-			if (coreconfigdirty || (oldsettings!=newsettings)) // really unreliable, but meh
-				saveConfig(coreconfig, cfg);
+			if (dirtyconfig || (oldsettings != newsettings)) // really unreliable, but meh
+				MarkDirtyINI(cfg);
 
 			monitorCleanShutdown();
 
-			Verbose |= VeryVerbose;
+			SharpConfig.Section logsec = cfg["Logging"];
 
-			Log.Info("Verbosity: " + (VeryVerbose ? "Extreme" : (Verbose ? "High" : "Normal")) + ", Threshold: " + VerbosityThreshold);
-			Log.Info("Self-optimize: " + (SelfOptimize ? "Enabled." : "Disabled."));
-			Log.Info("Low memory mode: " + (LowMemory ? "Enabled." : "Disabled."));
-			Log.Info("WMI queries: " + (WMIqueries ? "Enabled." : "Disabled."));
+			Log.Information("Verbosity: {Verbosity}", MemoryLog.LevelSwitch.MinimumLevel);
+			Log.Information("Self-optimize: {SelfOptimize}", (SelfOptimize ? "Enabled." : "Disabled."));
+			Log.Information("Low memory mode: {LowMemory}", (LowMemory ? "Enabled." : "Disabled."));
+			Log.Information("WMI queries: {WMIQueries}", (WMIQueries ? "Enabled." : "Disabled."));
 		}
 
 		static SharpConfig.Configuration corestats;
@@ -270,40 +380,44 @@ namespace TaskMaster
 		{
 			if (corestats == null)
 				corestats = loadConfig(corestatfile);
-			
+
 			bool running = corestats.TryGet("Core")?.TryGet("Running")?.BoolValue ?? false;
 			if (running)
-				Log.Warn("Unclean shutdown.");
-			
+			{
+				Log.Warning("Unclean shutdown.");
+			}
+
 			corestats["Core"]["Running"].BoolValue = true;
-			saveConfig(corestatfile, corestats);
+			saveConfig(corestats);
 		}
 
 		static void CleanShutdown()
 		{
-			if (corestats == null)
-				corestats = loadConfig(corestatfile);
+			if (corestats == null) corestats = loadConfig(corestatfile);
 
 			SharpConfig.Section wmi = corestats["WMI queries"];
 			string timespent = "Time", querycount = "Queries";
-			wmi[timespent].DoubleValue = wmi.GetSetDefault(timespent, 0d).DoubleValue + Statistics.WMIquerytime;
-			wmi[querycount].IntValue = wmi.GetSetDefault(querycount, 0).IntValue + Statistics.WMIqueries;
+			bool modified = false, dirtyconfig = false;
+
+			wmi[timespent].DoubleValue = wmi.GetSetDefault(timespent, 0d, out modified).DoubleValue + Statistics.WMIquerytime;
+			dirtyconfig |= modified;
+			wmi[querycount].IntValue = wmi.GetSetDefault(querycount, 0, out modified).IntValue + Statistics.WMIqueries;
+			dirtyconfig |= modified;
 			SharpConfig.Section ps = corestats["Parent seeking"];
-			ps[timespent].DoubleValue = ps.GetSetDefault(timespent, 0d).DoubleValue + Statistics.Parentseektime;
-			ps[querycount].IntValue = ps.GetSetDefault(querycount, 0).IntValue + Statistics.ParentSeeks;
+			ps[timespent].DoubleValue = ps.GetSetDefault(timespent, 0d, out modified).DoubleValue + Statistics.Parentseektime;
+			dirtyconfig |= modified;
+			ps[querycount].IntValue = ps.GetSetDefault(querycount, 0, out modified).IntValue + Statistics.ParentSeeks;
+			dirtyconfig |= modified;
 
 			corestats["Core"]["Running"].BoolValue = false;
 
-			saveConfig(corestatfile, corestats);
-		}
-
-		static public void CrossInstanceMessageHandler(object sender, EventArgs e)
-		{
-			Log.Info("Cross-instance message! Pid:" + System.Diagnostics.Process.GetCurrentProcess().Id);
+			saveConfig(corestats);
 		}
 
 		static public void Prealloc(string filename, long minkB)
 		{
+			Debug.Assert(minkB >= 0);
+
 			string path = System.IO.Path.Combine(datapath, filename);
 			try
 			{
@@ -327,17 +441,35 @@ namespace TaskMaster
 		[STAThread] // supposedly needed to avoid shit happening with the WinForms GUI
 		static public void Main(string[] args)
 		{
-			if (args.Length == 1 && args[0] == "-delay")
+			if (args.Length == 1 && args[0] == "-bootdelay")
 			{
-				Console.WriteLine("Delaying proper startup for 30 seconds.");
-				System.Threading.Thread.Sleep(30 * 1000);
+				TimeSpan uptime = TimeSpan.Zero;
+				try
+				{
+					using (var uptimecounter = new PerformanceCounter("System", "System Up Time"))
+					{
+						uptimecounter.NextValue();
+						uptime = TimeSpan.FromSeconds(uptimecounter.NextValue());
+					}
+				}
+				catch { }
+
+				if (uptime.TotalSeconds < 30)
+				{
+					Console.WriteLine("Delaying proper startup for 30 seconds.");
+					System.Threading.Thread.Sleep(Convert.ToInt32(System.Math.Max(0, 30 - uptime.TotalSeconds)) * 1000);
+				}
 			}
 
-			memlog = new MemLog();
-			NLog.LogManager.ThrowExceptions = true;
-			NLog.LogManager.Configuration.AddTarget("MemLog", memlog);
-			NLog.LogManager.Configuration.LoggingRules.Add(new NLog.Config.LoggingRule("*", NLog.LogLevel.Debug, memlog));
-			NLog.LogManager.ReconfigExistingLoggers(); // better than reload since we didn't modify the files
+			MemoryLog.LevelSwitch = new LoggingLevelSwitch(LogEventLevel.Information);
+
+			string logpathtemplate = System.IO.Path.Combine(datapath, "Logs", "serilog-{Date}.log");
+			Serilog.Log.Logger = new Serilog.LoggerConfiguration()
+				.MinimumLevel.Verbose()
+				.WriteTo.Console(levelSwitch: new LoggingLevelSwitch(LogEventLevel.Verbose))
+				.WriteTo.RollingFile(logpathtemplate, outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}", levelSwitch: new LoggingLevelSwitch(Serilog.Events.LogEventLevel.Debug), retainedFileCountLimit: 7)
+				.WriteTo.MemorySink(levelSwitch: MemoryLog.LevelSwitch)
+							 .CreateLogger();
 
 			/*
 			// Append as used by the logger fucks this up.
@@ -348,7 +480,7 @@ namespace TaskMaster
 			*/
 
 			#region SINGLETON
-			if (VeryVerbose) Log.Trace("Testing for single instance.");
+			Log.Verbose("Testing for single instance.");
 
 			System.Threading.Mutex singleton = null;
 			{
@@ -359,57 +491,83 @@ namespace TaskMaster
 					// already running
 					// signal original process
 					System.Windows.Forms.MessageBox.Show("Already operational.", System.Windows.Forms.Application.ProductName + "!");
-					Log.Warn(string.Format("Exiting (pid:{0}); already running.", System.Diagnostics.Process.GetCurrentProcess().Id));
+					Log.Warning("Exiting (#{ProcessID}); already running.", System.Diagnostics.Process.GetCurrentProcess().Id);
 					return;
 				}
 			}
 			#endregion
 
-			Log.Info(string.Format("TaskMaster! (#{0}) START!", System.Diagnostics.Process.GetCurrentProcess().Id));
+			Log.Information("TaskMaster! (#{ProcessID}) START!", System.Diagnostics.Process.GetCurrentProcess().Id);
 
 			LoadCoreConfig();
 
 			Setup();
 
-			Log.Info("Startup complete...");
+			// IS THIS OF ANY USE?
+			GC.Collect(GC.MaxGeneration, GCCollectionMode.Forced, true, true);
+			GC.WaitForPendingFinalizers();
 
-			pmn.ProcessEverything();
+			Log.Information("Startup complete...");
 
-			System.Runtime.GCSettings.LargeObjectHeapCompactionMode = System.Runtime.GCLargeObjectHeapCompactionMode.CompactOnce;
-			GC.Collect(5, GCCollectionMode.Forced, true, true);
+			if (TaskMaster.ProcessMonitorEnabled)
+				processmanager.ProcessEverything();
 
-			NLog.LogManager.Flush();
+			//System.Runtime.GCSettings.LargeObjectHeapCompactionMode = System.Runtime.GCLargeObjectHeapCompactionMode.CompactOnce;
+			//GC.Collect(5, GCCollectionMode.Forced, true, true);
+
 			try
 			{
-				System.Windows.Forms.Application.Run();
+				System.Windows.Forms.Application.Run(); // WinForms
+														//System.Windows.Application.Current.Run(); // WPF
 			}
 			catch (Exception ex)
 			{
-				Log.Fatal("Unhandled exception! Dying." + Environment.NewLine + ex);
+				Log.Fatal("Unhandled exception! Dying.{NewLine}{Exception}", ex);
 				throw;
 			}
 			finally
 			{
-				Log.Info("Exiting...");
-				tmw?.Dispose();
-				pmn?.Dispose();
-				mon?.Dispose();
-				tri?.Dispose();
-				nmn?.Dispose();
-				tmw = null; pmn = null; mon = null; tri = null; nmn = null;
-				singleton.ReleaseMutex();
+				Log.Information("Exiting...");
 
-				Log.Info(string.Format("WMI queries: {0:N1}s [{1}]; Parent seeking: {2:N1}s [{3}]",
-				                       Statistics.WMIquerytime, Statistics.WMIqueries,
-				                       Statistics.Parentseektime, Statistics.ParentSeeks));
+				if (mainwindow != null)
+				{
+					mainwindow.rescanRequest -= processmanager.ProcessEverythingRequest;
+					if (TaskMaster.PagingEnabled)
+						mainwindow.pagingRequest -= processmanager.PageEverythingRequest;
+					mainwindow.FormClosing -= MainWindowClose;
+					MemoryLog.onNewEvent -= mainwindow.onNewLog;
+					TrayAccess.onExit -= mainwindow.ExitRequest;
+				}
+
+				TrayAccess.onExit -= ExitRequest;
+
+				mainwindow?.Dispose();
+				processmanager?.Dispose();
+				micmonitor?.Dispose();
+				trayaccess?.Dispose();
+				netmonitor?.Dispose();
+				activeappmonitor?.Dispose();
+				powermanager?.Dispose();
+				mainwindow = null; processmanager = null; micmonitor = null; trayaccess = null; netmonitor = null; activeappmonitor = null; powermanager = null;
+
+				Log.Information("WMI queries: {QueryTime:1}s [{QueryCount}]; Parent seeking: {ParentSeekTime:1}s [{ParentSeekCount}]",
+									   Statistics.WMIquerytime, Statistics.WMIqueries,
+									   Statistics.Parentseektime, Statistics.ParentSeeks);
 			}
 
 			//tmw.Dispose();//already disposed by App.Exit?
+			foreach (var dcfg in ConfigDirty)
+			{
+				if (dcfg.Value) saveConfig(dcfg.Key);
+			}
 
 			CleanShutdown();
 
-			Log.Info(string.Format("TaskMaster! (#{0}) END! [Clean]", System.Diagnostics.Process.GetCurrentProcess().Id));
-			//NLog.LogManager.Flush(); // 
+			singleton.ReleaseMutex();
+
+			Log.Information("TaskMaster! (#{ProcessID}) END! [Clean]", System.Diagnostics.Process.GetCurrentProcess().Id);
+
+			Serilog.Log.CloseAndFlush();
 		}
 	}
 }
