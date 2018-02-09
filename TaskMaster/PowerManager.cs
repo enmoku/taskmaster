@@ -70,19 +70,24 @@ namespace TaskMaster
 			}
 		}
 
+		public event EventHandler onResume;
+
 		void BatteryChargingEvent(object sender, PowerModeChangedEventArgs ev)
 		{
 			switch (ev.Mode)
 			{
 				case Microsoft.Win32.PowerModes.StatusChange:
+					Log.Information("Undefined battery/AC change detected.");
 					break;
 				case Microsoft.Win32.PowerModes.Suspend:
 					// DON'T TOUCH
+					Log.Information("Hibernation/Suspend start detected.");
 					break;
 				case Microsoft.Win32.PowerModes.Resume:
+					Log.Information("Hibernation/Suspend end detected.");
+					onResume?.Invoke(this, null);
 					// Invoke whatever is necessary to restore functionality after suspend breaking shit.
 					break;
-
 			}
 		}
 

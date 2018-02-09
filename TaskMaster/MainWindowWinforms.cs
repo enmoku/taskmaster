@@ -26,6 +26,7 @@
 
 using System.Diagnostics;
 using Serilog.Sinks.File;
+using System.Security.AccessControl;
 
 namespace TaskMaster
 {
@@ -52,13 +53,14 @@ namespace TaskMaster
 
 		void WindowClose(object sender, FormClosingEventArgs e)
 		{
-			saveColumns();
+			saveUIState();
 
 			//Console.WriteLine("WindowClose = " + e.CloseReason);
 			switch (e.CloseReason)
 			{
 				case CloseReason.UserClosing:
 					// X was pressed or similar, we're just hiding to tray.
+					/*
 					if (!TaskMaster.LowMemory)
 					{
 						Log.Verbose("Hiding window, keeping in memory.");
@@ -69,6 +71,7 @@ namespace TaskMaster
 					{
 						Log.Verbose("Closing window, freeing memory.");
 					}
+					*/
 					break;
 				case CloseReason.WindowsShutDown:
 					Log.Information("Exit: Windows shutting down.");
@@ -96,7 +99,7 @@ namespace TaskMaster
 			TopMost = false;
 		}
 
-		static readonly System.Drawing.Size SetSizeDefault = new System.Drawing.Size(720, 800); // width, height
+		static readonly System.Drawing.Size SetSizeDefault = new System.Drawing.Size(760, 640); // width, height
 
 		public void ShowLastLog()
 		{
@@ -138,23 +141,24 @@ namespace TaskMaster
 			Log.Verbose("Process adjust received for '{ProcessName}'.", e.Control.FriendlyName);
 
 			ListViewItem item;
-			lock (appc_lock)
+			lock (appw_lock)
 			{
-				if (appc.TryGetValue(e.Control.Executable, out item))
+				if (appw.TryGetValue(e.Control, out item))
 				{
-					item.SubItems[5].Text = e.Control.Adjusts.ToString();
-					item.SubItems[6].Text = e.Control.LastSeen.ToLocalTime().ToString();
+					item.SubItems[AdjustColumn].Text = e.Control.Adjusts.ToString();
+					//item.SubItems[SeenColumn].Text = e.Control.LastSeen.ToLocalTime().ToString();
 				}
 				else
-					Log.Error(string.Format("{0} not found in app list.", e.Control.Executable));
+					Log.Error("{FriendlyName} not found in app list.", e.Control.FriendlyName);
 			}
 		}
 
 		public void OnActiveWindowChanged(object sender, WindowChangedArgs e)
 		{
-			int maxlength = 70;
-			string cutstring = e.Title.Substring(0, Math.Min(maxlength, e.Title.Length)) + (e.Title.Length > maxlength ? "..." : "");
-			activeLabel.Text = cutstring;
+			//int maxlength = 70;
+			//string cutstring = e.Title.Substring(0, Math.Min(maxlength, e.Title.Length)) + (e.Title.Length > maxlength ? "..." : "");
+			//activeLabel.Text = cutstring;
+			activeLabel.Text = e.Title;
 			activeExec.Text = e.Executable;
 			activeFullscreen.Text = e.Fullscreen.True() ? "Full" : e.Fullscreen.False() ? "Window" : "Unknown";
 			activePID.Text = string.Format("{0}", e.Id);
@@ -169,54 +173,14 @@ namespace TaskMaster
 
 			ProcessManager.onInstanceHandling += ProcessNewInstanceCount;
 
-			//control.onProcAdjust += ProcAdjust;
-			lock (appc_lock)
+			foreach (ProcessController item in control.watchlist)
 			{
-				foreach (ProcessController item in control.images)
-				{
-					var litem = new ListViewItem(new string[] {
-					item.FriendlyName, //.ToString(),
-					item.Executable,
-					item.Priority.ToString(),
-						(item.Affinity.ToInt32() == ProcessManager.allCPUsMask ? "OS" : Convert.ToString(item.Affinity.ToInt32(), 2).PadLeft(ProcessManager.CPUCount, '0'),
-					//item.Boost.ToString(),
-						(item.Children ? item.ChildPriority.ToString() : "n/a"),
-					item.Adjusts.ToString(),
-						(item.LastSeen != DateTime.MinValue ? item.LastSeen.ToLocalTime().ToString() : "Never"),
-						(item.Rescan>0?item.Rescan.ToString():"n/a")
-					});
-					appc.Add(item.Executable, litem);
-				}
+				AddToProcessList(item);
 			}
 
-			lock (appList)
-			{
-				appList.Items.AddRange(appc.Values.ToArray());
-			}
+			ProcessController.onLocate += PathLocatedEvent;
+			ProcessController.onTouch += ProcAdjust;
 
-			lock (appw)
-			{
-				control.ActivePaths().ForEach(
-					(PathControl path) =>
-				{
-					appw.Add(path, new ListViewItem(new string[] {
-						path.FriendlyName,
-						path.Path,
-						path.Adjusts.ToString(),
-						path.Priority.ToString(),
-						(path.Affinity.ToInt32() == ProcessManager.allCPUsMask ? "OS" : Convert.ToString(path.Affinity.ToInt32(), 2).PadLeft(ProcessManager.CPUCount, '0')),
-						(path.PowerPlan != PowerManager.PowerMode.Undefined ? path.PowerPlan.ToString() : "n/a")
-				}));
-				});
-
-				lock (pathList_lock)
-				{
-					pathList.Items.AddRange(appw.Values.ToArray());
-				}
-			}
-
-			PathControl.onLocate += PathLocatedEvent;
-			PathControl.onTouch += PathAdjustEvent;
 			processingCount.Value = ProcessManager.Handling;
 		}
 
@@ -236,39 +200,46 @@ namespace TaskMaster
 			}
 		}
 
-		public void PathAdjustEvent(object sender, PathControlEventArgs e)
+		bool alterColor = false;
+		void AddToProcessList(ProcessController pc)
 		{
-			var pc = sender as PathControl;
-			ListViewItem ni;
-			lock (appw)
+			bool noprio = (pc.Increase == false && pc.Decrease == false);
+			string prio = noprio ? "--- Any --- " : pc.Priority.ToString();
+
+			var litem = new ListViewItem(new string[] {
+					pc.FriendlyName, //.ToString(),
+					pc.Executable,
+					prio,
+						(pc.Affinity.ToInt32() == ProcessManager.allCPUsMask ? "--- Any ---" : Convert.ToString(pc.Affinity.ToInt32(), 2).PadLeft(ProcessManager.CPUCount, '0')),
+						(pc.PowerPlan != PowerManager.PowerMode.Undefined? pc.PowerPlan.ToString() : "--- Any ---"),
+				//(pc.Rescan>0 ? pc.Rescan.ToString() : "n/a"),
+					pc.Adjusts.ToString(),
+						//(pc.LastSeen != DateTime.MinValue ? pc.LastSeen.ToLocalTime().ToString() : "Never"),
+				(string.IsNullOrEmpty(pc.Path) ? "--- Any ---" : pc.Path)
+					});
+
+			if (noprio)
+				litem.SubItems[PrioColumn].ForeColor = System.Drawing.SystemColors.GrayText;
+			if (string.IsNullOrEmpty(pc.Path))
+				litem.SubItems[PathColumn].ForeColor = System.Drawing.SystemColors.GrayText;
+			if (pc.PowerPlan == PowerManager.PowerMode.Undefined)
+				litem.SubItems[PowerColumn].ForeColor = System.Drawing.SystemColors.GrayText;
+
+			lock (appList)
 			{
-				if (appw.TryGetValue(pc, out ni))
-					ni.SubItems[2].Text = pc.Adjusts.ToString();
+				appList.Items.Add(litem);
+				if (alterColor == true)
+					litem.BackColor = System.Drawing.Color.FromArgb(245, 245, 245);
+
+				appw.Add(pc, litem);
+				alterColor = !alterColor;
 			}
 		}
 
 		public void PathLocatedEvent(object sender, PathControlEventArgs e)
 		{
-			var pc = sender as PathControl;
-			Log.Verbose("{PathName} // {Path}", pc.FriendlyName, pc.Path);
-			var ni = new ListViewItem(new string[] {
-				pc.FriendlyName,
-				pc.Path,
-				"0",
-				pc.Priority.ToString(),
-				(pc.Affinity.ToInt32() == ProcessManager.allCPUsMask ? "OS" : Convert.ToString(pc.Affinity.ToInt32(), 2).PadLeft(ProcessManager.CPUCount, '0')),
-				(pc.PowerPlan != PowerManager.PowerMode.Undefined ? pc.PowerPlan.ToString() : "n/a")
-			});
-			try
-			{
-				lock (appw) appw.Add(pc, ni);
-				lock (pathList) pathList.Items.Add(ni);
-			}
-			catch (Exception)
-			{
-				// FIXME: This happens mostly because Application.Run() is triggered after we do ProcessEverything() and the events are processed only after
-				Log.Warning("[Expected] Superfluous path watch update: {PathName}", pc.FriendlyName);
-			}
+			var pc = sender as ProcessController;
+			AddToProcessList(pc);
 		}
 
 		Label micName;
@@ -277,12 +248,10 @@ namespace TaskMaster
 		ListView micList;
 		object appList_lock = new object();
 		ListView appList;
-		object pathList_lock = new object();
-		ListView pathList;
+		//object pathList_lock = new object();
+		//ListView pathList;
 		object appw_lock = new object();
-		Dictionary<PathControl, ListViewItem> appw = new Dictionary<PathControl, ListViewItem>();
-		object appc_lock = new object();
-		Dictionary<string, ListViewItem> appc = new Dictionary<string, ListViewItem>();
+		Dictionary<ProcessController, ListViewItem> appw = new Dictionary<ProcessController, ListViewItem>();
 		Label corCountLabel;
 		object processingCountLock = new object();
 		NumericUpDown processingCount;
@@ -352,12 +321,15 @@ namespace TaskMaster
 			}
 		}
 
+		int IPv4Column = 4;
+		int IPv6Column = 5;
+
 		void CopyIPv4AddressToClipboard(object sender, EventArgs ea)
 		{
 			if (ifaceList.SelectedItems.Count == 1)
 			{
 				var li = ifaceList.SelectedItems[0];
-				string ipv4addr = li.SubItems[4].Text;
+				string ipv4addr = li.SubItems[IPv4Column].Text;
 				Clipboard.SetText(ipv4addr);
 			}
 		}
@@ -367,7 +339,7 @@ namespace TaskMaster
 			if (ifaceList.SelectedItems.Count == 1)
 			{
 				var li = ifaceList.SelectedItems[0];
-				string ipv6addr = string.Format("[{0}]", li.SubItems[5].Text);
+				string ipv6addr = string.Format("[{0}]", li.SubItems[IPv6Column].Text);
 				Clipboard.SetText(ipv6addr);
 			}
 		}
@@ -393,6 +365,18 @@ namespace TaskMaster
 			}
 		}
 
+		TabControl tabLayout = null;
+
+		int NameColumn = 0;
+		int ExeColumn = 1;
+		int PrioColumn = 2;
+		int AffColumn = 3;
+		int PowerColumn = 4;
+		int RescanColumn = 5;
+		int AdjustColumn = 5;
+		int SeenColumn = 7;
+		int PathColumn = 6;
+
 		void BuildUI()
 		{
 			Size = SetSizeDefault;
@@ -403,28 +387,8 @@ namespace TaskMaster
 #if DEBUG
 			Text = Text + " DEBUG";
 #endif
-			Padding = new Padding(12);
+			Padding = new Padding(6);
 			// margin
-
-			/*
-TabControl tabLayout = new TabControl();
-tabLayout.Parent = this;
-tabLayout.Padding = new System.Drawing.Point(3, 3);
-
-TabPage infoTab = new TabPage("Info");
-TabPage appTab = new TabPage("Processes");
-TabPage micTab = new TabPage("Microphone");
-TabPage netTab = new TabPage("Network");
-TabPage logTab = new TabPage("Info log");
-
-tabLayout.Controls.Add(infoTab);
-tabLayout.Controls.Add(appTab);
-tabLayout.Controls.Add(micTab);
-tabLayout.Controls.Add(netTab);
-tabLayout.Controls.Add(logTab);
-
-Controls.Add(tabLayout);
-			*/
 
 			var lrows = new TableLayoutPanel
 			{
@@ -434,6 +398,32 @@ Controls.Add(tabLayout);
 				Dock = DockStyle.Fill
 			};
 
+
+			tabLayout = new TabControl();
+			tabLayout.Parent = lrows;
+			tabLayout.Height = 300;
+			tabLayout.Padding = new System.Drawing.Point(6, 6);
+			tabLayout.Dock = DockStyle.Fill;
+			//tabLayout.Padding = new System.Drawing.Point(3, 3);
+
+			TabPage infoTab = new TabPage("Info");
+			TabPage procTab = new TabPage("Processes");
+			TabPage micTab = new TabPage("Microphone");
+			TabPage netTab = new TabPage("Network");
+
+			tabLayout.Controls.Add(infoTab);
+			tabLayout.Controls.Add(procTab);
+			tabLayout.Controls.Add(micTab);
+			tabLayout.Controls.Add(netTab);
+
+			var infopanel = new TableLayoutPanel
+			{
+				Dock = DockStyle.Top,
+				Width = tabLayout.Width - 12,
+			};
+
+			//Controls.Add(tabLayout);
+
 			#region Main Window Row 0, game monitor / active window monitor
 			var gamepanel = new TableLayoutPanel
 			{
@@ -442,7 +432,7 @@ Controls.Add(tabLayout);
 				ColumnCount = 6,
 				AutoSize = true,
 				//BackColor = System.Drawing.Color.LightYellow,
-				Width = lrows.Width - 3,
+				Width = tabLayout.Width - 3,
 			};
 
 			var activeLabelUX = new Label();
@@ -453,8 +443,9 @@ Controls.Add(tabLayout);
 			activeLabel = new Label();
 			activeLabel.Dock = DockStyle.Top;
 			activeLabel.Text = "no active window found";
-			activeLabel.Width = lrows.Width - 3 - 40 - 3 - 80 - 3 - 100 - 3 - 60 - 3 - 20 - 3;
+			activeLabel.Width = tabLayout.Width - 3 - 40 - 3 - 80 - 3 - 100 - 3 - 60 - 3 - 20 - 3;
 			activeLabel.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
+			activeLabel.AutoEllipsis = true;
 			//activeLabel.BackColor = System.Drawing.Color.MediumAquamarine;
 			activeExec = new Label();
 			activeLabel.Dock = DockStyle.Top;
@@ -480,20 +471,26 @@ Controls.Add(tabLayout);
 			gamepanel.Controls.Add(activeFullscreen);
 			gamepanel.Controls.Add(new Label { Text = "Id:", Width = 20, TextAlign = System.Drawing.ContentAlignment.MiddleLeft });
 			gamepanel.Controls.Add(activePID);
-			lrows.Controls.Add(gamepanel);
+
+			infopanel.Controls.Add(gamepanel);
+			//infoTab.Controls.Add(infopanel);
 			#endregion
 
 			#region Load UI config
 			var uicfg = TaskMaster.loadConfig("UI.ini");
 			var colcfg = uicfg["Columns"];
+			int opentab = uicfg["Tabs"].TryGet("Open")?.IntValue ?? 0;
 
-			int[] appwidthsDefault = new int[] { 100, 90, 72, 40, 62, 54, 120, 40 };
+			int[] appwidthsDefault = new int[] { 120, 140, 82, 60, 76, 60, 140 };
 			var appwidths = colcfg.GetSetDefault("Apps", appwidthsDefault).IntValueArray;
 			if (appwidths.Length != appwidthsDefault.Length) appwidths = appwidthsDefault;
 
+			/*
+			// TODO: CLEANUP
 			int[] pathwidthsDefault = new int[] { 120, 300, 60, 80, 40, 80 };
 			var pathwidths = colcfg.GetSetDefault("Paths", pathwidthsDefault).IntValueArray;
 			if (pathwidths.Length != pathwidthsDefault.Length) pathwidths = pathwidthsDefault;
+			*/
 
 			int[] micwidthsDefault = new int[] { 200, 220 };
 			var micwidths = colcfg.GetSetDefault("Mics", micwidthsDefault).IntValueArray;
@@ -505,17 +502,33 @@ Controls.Add(tabLayout);
 			#endregion
 
 			#region Main Window Row 1, microphone device
+			var micpanel = new TableLayoutPanel
+			{
+				Dock = DockStyle.Fill,
+				RowCount = 3,
+				Width = tabLayout.Width - 12
+			};
+			micpanel.RowStyles.Add(new RowStyle(SizeType.Absolute, 32));
+			micpanel.RowStyles.Add(new RowStyle(SizeType.Absolute, 32));
+
 			var micDevLbl = new Label
 			{
 				Text = "Default communications device:",
-				Dock = DockStyle.Left,
-				AutoSize = true
+				Dock = DockStyle.Top,
+				Width = 180,
+				//Height = 20,
+				//BackColor = System.Drawing.Color.Yellow,
+				TextAlign = System.Drawing.ContentAlignment.MiddleLeft,
+				//AutoSize = true
 			};
 			micName = new Label
 			{
 				Text = "N/A",
-				Dock = DockStyle.Left,
-				AutoSize = true
+				Dock = DockStyle.Top,
+				//BackColor = System.Drawing.Color.GreenYellow,
+				Height = 20,
+				TextAlign = System.Drawing.ContentAlignment.MiddleLeft,
+				//AutoSize = true
 			};
 			var micNameRow = new TableLayoutPanel
 			{
@@ -523,11 +536,10 @@ Controls.Add(tabLayout);
 				RowCount = 1,
 				ColumnCount = 2,
 				//BackColor = System.Drawing.Color.BlanchedAlmond, // DEBUG
-				AutoSize = true
+				//AutoSize = true
 			};
 			micNameRow.Controls.Add(micDevLbl);
 			micNameRow.Controls.Add(micName);
-			lrows.Controls.Add(micNameRow);
 			#endregion
 
 			// uhh???
@@ -538,25 +550,27 @@ Controls.Add(tabLayout);
 				RowCount = 1,
 				// BackColor = System.Drawing.Color.Azure, // DEBUG
 				Dock = DockStyle.Top,
-				AutoSize = true,
 				//miccntrl.Location = new System.Drawing.Point(0, 0);
 			};
 			miccntrl.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
 			miccntrl.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-			lrows.Controls.Add(miccntrl);
 
 			var micVolLabel = new Label
 			{
 				Text = "Mic volume",
-				Dock = DockStyle.Left,
-				TextAlign = System.Drawing.ContentAlignment.MiddleLeft
+				Dock = DockStyle.Top,
+				TextAlign = System.Drawing.ContentAlignment.MiddleLeft,
+				//BackColor = System.Drawing.Color.LightCyan,
+				//AutoSize = true
 			};
 
 			var micVolLabel2 = new Label
 			{
 				Text = "%",
-				Dock = DockStyle.Left,
-				TextAlign = System.Drawing.ContentAlignment.MiddleLeft
+				Dock = DockStyle.Top,
+				TextAlign = System.Drawing.ContentAlignment.MiddleLeft,
+				//BackColor = System.Drawing.Color.Lime,
+				//AutoSize = true
 			};
 
 			micVol = new NumericUpDown
@@ -566,7 +580,7 @@ Controls.Add(tabLayout);
 				Width = 60,
 				ReadOnly = true,
 				Enabled = false,
-				Dock = DockStyle.Left
+				Dock = DockStyle.Top,
 			};
 			micVol.ValueChanged += UserMicVol;
 
@@ -577,17 +591,19 @@ Controls.Add(tabLayout);
 			var corLbll = new Label
 			{
 				Text = "Correction count:",
-				Dock = DockStyle.Fill,
-				AutoSize = true,
-				TextAlign = System.Drawing.ContentAlignment.MiddleLeft
+				Dock = DockStyle.Top,
+				//AutoSize = true,
+				TextAlign = System.Drawing.ContentAlignment.MiddleLeft,
+				//BackColor = System.Drawing.Color.Orange,
 			};
 
 			corCountLabel = new Label
 			{
-				Dock = DockStyle.Left,
+				Dock = DockStyle.Top,
 				Text = "0",
-				AutoSize = true,
-				TextAlign = System.Drawing.ContentAlignment.MiddleLeft
+				TextAlign = System.Drawing.ContentAlignment.MiddleLeft,
+				//BackColor = System.Drawing.Color.Fuchsia,
+				//AutoSize = true,
 			};
 			miccntrl.Controls.Add(corLbll);
 			miccntrl.Controls.Add(corCountLabel);
@@ -597,31 +613,46 @@ Controls.Add(tabLayout);
 			micList = new ListView
 			{
 				Dock = DockStyle.Top,
-				Width = lrows.Width - 3, // FIXME: 3 for the bevel, but how to do this "right"?
-				Height = 60,
+				Width = tabLayout.Width - 12, // FIXME: 3 for the bevel, but how to do this "right"?
+				Height = 120,
 				View = View.Details,
 				FullRowSelect = true
 			};
 			micList.Columns.Add("Name", micwidths[0]);
 			micList.Columns.Add("GUID", micwidths[1]);
 
-			lrows.Controls.Add(micList);
+			micpanel.Controls.Add(micNameRow);
+			micpanel.Controls.Add(miccntrl);
+			micpanel.Controls.Add(micList);
+			micTab.Controls.Add(micpanel);
+
 			// End: Microphone enumeration
 
 			// Main Window row 4-5, internet status
-			var netLabel = new Label { Text = "Network status:", Dock = DockStyle.Left, AutoSize = true };
-			var inetLabel = new Label { Text = "Internet status:", Dock = DockStyle.Left, AutoSize = true };
-			var uptimeLabel = new Label { Text = "Uptime:", Dock = Dock = DockStyle.Left, AutoSize = true };
+			var netlayout = new TableLayoutPanel
+			{
+				// BackColor = System.Drawing.Color.Azure, // DEBUG
+				Dock = DockStyle.Top,
+				AutoSize = true,
+			};
 
-			var netlayout = new TableLayoutPanel { ColumnCount = 6, RowCount = 1, Dock = DockStyle.Top, AutoSize = true };
-			netlayout.Controls.Add(netLabel);
-			netlayout.Controls.Add(netstatuslabel);
-			netlayout.Controls.Add(inetLabel);
-			netlayout.Controls.Add(inetstatuslabel);
-			netlayout.Controls.Add(uptimeLabel);
-			netlayout.Controls.Add(uptimestatuslabel);
+			var netLabel = new Label { Text = "Network status:", Dock = DockStyle.Top, AutoSize = true };
+			var inetLabel = new Label { Text = "Internet status:", Dock = DockStyle.Top, AutoSize = true };
+			var uptimeLabel = new Label { Text = "Uptime:", Dock = Dock = DockStyle.Top, AutoSize = true };
 
-			lrows.Controls.Add(netlayout);
+			var netstatus = new TableLayoutPanel
+			{
+				ColumnCount = 6,
+				RowCount = 1,
+				Dock = DockStyle.Top,
+				//AutoSize = true
+			};
+			netstatus.Controls.Add(netLabel);
+			netstatus.Controls.Add(netstatuslabel);
+			netstatus.Controls.Add(inetLabel);
+			netstatus.Controls.Add(inetstatuslabel);
+			netstatus.Controls.Add(uptimeLabel);
+			netstatus.Controls.Add(uptimestatuslabel);
 
 			GotFocus += UpdateUptime;
 
@@ -648,8 +679,8 @@ Controls.Add(tabLayout);
 			ifaceList = new ListView
 			{
 				Dock = DockStyle.Top,
-				Width = lrows.Width - 3, // FIXME: why does 3 work? can't we do this automatically?
-				Height = 60,
+				Width = tabLayout.Width - 3, // FIXME: why does 3 work? can't we do this automatically?
+				Height = 180,
 				View = View.Details,
 				FullRowSelect = true
 			};
@@ -668,7 +699,15 @@ Controls.Add(tabLayout);
 			ifaceList.Columns.Add("IPv4", ifacewidths[4]);
 			ifaceList.Columns.Add("IPv6", ifacewidths[5]);
 			ifaceList.Scrollable = true;
-			lrows.Controls.Add(ifaceList);
+
+			IPv4Column = 4;
+			IPv6Column = 5;
+
+			netlayout.Controls.Add(netstatus);
+			netlayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 32));
+			netlayout.Controls.Add(ifaceList);
+			netTab.Controls.Add(netlayout);
+
 			// End: Inet status
 
 			// Main Window row 6, settings
@@ -689,17 +728,24 @@ Controls.Add(tabLayout);
 					settingList.Items.Add(new ListViewItem(new string[] { key, config.AppSettings.Settings[key].Value }));
 				}
 			}
-			lrows.Controls.Add(settingList, 0, 6);
 			*/
 			// End: Settings
 
 			// Main Window, Path list
+			var proclayout = new TableLayoutPanel
+			{
+				// BackColor = System.Drawing.Color.Azure, // DEBUG
+				Dock = DockStyle.Fill,
+				Width = tabLayout.Width - 12,
+			};
+
+			/*
 			pathList = new ListView
 			{
 				View = View.Details,
 				Dock = DockStyle.Top,
-				Width = lrows.Width - 3,
-				Height = 80,
+				Width = tabLayout.Width - 60,
+				Height = 120,
 				FullRowSelect = true
 			};
 			pathList.Columns.Add("Name", pathwidths[0]);
@@ -709,6 +755,7 @@ Controls.Add(tabLayout);
 			pathList.Columns.Add("Affinity", pathwidths[4]);
 			pathList.Columns.Add("Power Plan", pathwidths[5]);
 			pathList.Scrollable = true;
+			*/
 
 			/*
 			// TODO: ADD SORTING
@@ -732,7 +779,6 @@ Controls.Add(tabLayout);
 			};
 			*/
 
-			lrows.Controls.Add(pathList);
 			// End: Path list
 
 			// Main Window row 7, app list
@@ -740,39 +786,54 @@ Controls.Add(tabLayout);
 			{
 				View = View.Details,
 				Dock = DockStyle.Top,
-				Width = lrows.Width - 3, // FIXME: why does 3 work? can't we do this automatically?
-				Height = 140, // FIXME: Should use remaining space
+				Width = tabLayout.Width - 52, // FIXME: why does 3 work? can't we do this automatically?
+				Height = 260, // FIXME: Should use remaining space
 				FullRowSelect = true
 			};
+
+			NameColumn = 0;
+			ExeColumn = 1;
+			PrioColumn = 2;
+			AffColumn = 3;
+			PowerColumn = 4;
+			AdjustColumn = 5;
+			PathColumn = 6;
+
 			appList.Columns.Add("Name", appwidths[0]);
 			appList.Columns.Add("Executable", appwidths[1]);
 			appList.Columns.Add("Priority", appwidths[2]);
 			appList.Columns.Add("Affinity", appwidths[3]);
-			//appList.Columns.Add("Boost", 40);
-			appList.Columns.Add("Children", appwidths[4]);
+			appList.Columns.Add("Power Plan", appwidths[4]);
 			appList.Columns.Add("Adjusts", appwidths[5]);
-			appList.Columns.Add("Last seen", appwidths[6]);
-			appList.Columns.Add("Rescan", appwidths[7]);
+			appList.Columns.Add("Path", appwidths[6]);
 			appList.Scrollable = true;
 			appList.Alignment = ListViewAlignment.Left;
 
 			appList.DoubleClick += appEditEvent; // for in-app editing
-			lrows.Controls.Add(appList);
+			appList.Click += UpdateInfoPanel;
+
+			//proclayout.Controls.Add(pathList);
+			proclayout.Controls.Add(appList);
+			procTab.Controls.Add(proclayout);
+
 			// End: App list
 
 			// UI Log
 			loglist = new ListView
 			{
-				Dock = DockStyle.Fill,
+				//Dock = DockStyle.Fill,
 				View = View.Details,
 				FullRowSelect = true,
 				HeaderStyle = ColumnHeaderStyle.None,
 				Scrollable = true,
-				Height = 200
+				Height = 210,
+				Width = tabLayout.Width - 16,
 			};
+
+			loglist_stamp = new List<DateTime>();
+
 			loglist.Columns.Add("Log content");
-			loglist.Columns[0].Width = lrows.Width - 25;
-			lrows.Controls.Add(loglist);
+			loglist.Columns[0].Width = loglist.Width - 32;
 
 			loglistms = new ContextMenuStrip();
 			loglistms.Opened += LogContextMenuOpen;
@@ -780,21 +841,32 @@ Controls.Add(tabLayout);
 			loglistms.Items.Add(logcopy);
 			loglist.ContextMenuStrip = loglistms;
 
-
 			var cfg = TaskMaster.loadConfig("Core.ini");
-			bool tdirty;
-			MaxLogSize = cfg.TryGet("Logging").GetSetDefault("Count", 80, out tdirty).IntValue;
-			if (tdirty) TaskMaster.MarkDirtyINI(cfg);
+			bool ldirty1;
+			MaxLogSize = cfg["Logging"].GetSetDefault("UI max items", 200, out ldirty1).IntValue;
+			if (ldirty1)
+			{
+				cfg["Logging"]["UI max items"].Comment = "Maximum number of items/lines to retain on UI level.";
+				TaskMaster.MarkDirtyINI(cfg);
+			}
 
 			var logpanel = new TableLayoutPanel
 			{
-				Dock = DockStyle.Top,
-				RowCount = 1,
-				ColumnCount = 11,
-				Height = 40,
+				Parent = lrows,
+				//Dock = DockStyle.fi,
+				RowCount = 2,
+				ColumnCount = 1,
+				Width = lrows.Width,
 				AutoSize = true
 			};
 
+			var loglevelpanel = new TableLayoutPanel
+			{
+				Dock = DockStyle.Fill,
+				RowCount = 1,
+				ColumnCount = 2,
+				AutoSize = true
+			};
 
 			var loglabel_level = new Label
 			{
@@ -846,10 +918,11 @@ Controls.Add(tabLayout);
 					break;
 			}
 
-			logpanel.Controls.Add(loglabel_level);
-			logpanel.Controls.Add(logcombo_level);
-
-			lrows.Controls.Add(logpanel);
+			loglevelpanel.Controls.Add(loglabel_level);
+			loglevelpanel.Controls.Add(logcombo_level);
+			logpanel.Controls.Add(loglist);
+			logpanel.Controls.Add(loglevelpanel);
+			//logpanel.Controls.Add(loglist);
 
 			var commandpanel = new TableLayoutPanel
 			{
@@ -871,24 +944,43 @@ Controls.Add(tabLayout);
 				Dock = DockStyle.Right,
 			};
 
-			rescanbutton = new Button { Text = "Rescan", Dock = DockStyle.Right, Margin = new Padding(3 + 3), FlatStyle = FlatStyle.Flat };
+			rescanbutton = new Button
+			{
+				Text = "Rescan",
+				Dock = DockStyle.Top,
+				Margin = new Padding(3 + 3),
+				FlatStyle = FlatStyle.Flat
+			};
 			rescanbutton.Click += async (object sender, EventArgs e) =>
 			{
 				rescanbutton.Enabled = false;
 				rescanRequest?.Invoke(this, new EventArgs());
-				await System.Threading.Tasks.Task.Delay(100).ConfigureAwait(false);
+				await System.Threading.Tasks.Task.Yield();
 				rescanbutton.Enabled = true;
 			};
-			commandpanel.Controls.Add(new Label { Text = "Processing", Dock = DockStyle.Right, TextAlign = System.Drawing.ContentAlignment.MiddleRight, AutoSize = true });
+			commandpanel.Controls.Add(new Label
+			{
+				Text = "Processing",
+				Dock = DockStyle.Right,
+				TextAlign = System.Drawing.ContentAlignment.MiddleRight,
+				AutoSize = true
+			});
 			commandpanel.Controls.Add(processingCount);
 			commandpanel.Controls.Add(rescanbutton);
 			rescanbutton.Enabled = TaskMaster.ProcessMonitorEnabled;
 
-			crunchbutton = new Button { Text = "Page", Dock = DockStyle.Right, FlatStyle = FlatStyle.Flat, Margin = new Padding(3 + 3), Enabled = TaskMaster.PagingEnabled };
+			crunchbutton = new Button
+			{
+				Text = "Page",
+				Dock = DockStyle.Top,
+				FlatStyle = FlatStyle.Flat,
+				Margin = new Padding(3 + 3),
+				Enabled = TaskMaster.PagingEnabled
+			};
 			crunchbutton.Click += async (object sender, EventArgs e) =>
 			{
 				crunchbutton.Enabled = false;
-				await System.Threading.Tasks.Task.Delay(100).ConfigureAwait(true);
+				await System.Threading.Tasks.Task.Yield();
 				pagingRequest?.Invoke(this, new EventArgs());
 				crunchbutton.Enabled = true;
 			};
@@ -903,7 +995,7 @@ Controls.Add(tabLayout);
 				ReadOnly = true,
 				Enabled = false,
 				Margin = new Padding(3 + 3),
-				Dock = DockStyle.Right,
+				Dock = DockStyle.Left,
 			};
 
 			tempObjectSize = new NumericUpDown()
@@ -914,16 +1006,33 @@ Controls.Add(tabLayout);
 				ReadOnly = true,
 				Enabled = false,
 				Margin = new Padding(3 + 3),
-				Dock = DockStyle.Right,
+				Dock = DockStyle.Left,
 			};
 
-			commandpanel.Controls.Add(new Label { Text = "Temp", Dock = DockStyle.Right, TextAlign = System.Drawing.ContentAlignment.MiddleRight, AutoSize = true });
-			commandpanel.Controls.Add(new Label { Text = "Objects", Dock = DockStyle.Right, TextAlign = System.Drawing.ContentAlignment.MiddleRight, AutoSize = true });
-			commandpanel.Controls.Add(tempObjectCount);
-			commandpanel.Controls.Add(new Label { Text = "Size (MB)", Dock = DockStyle.Right, TextAlign = System.Drawing.ContentAlignment.MiddleRight, AutoSize = true });
-			commandpanel.Controls.Add(tempObjectSize);
+			var tempmonitorpanel = new TableLayoutPanel
+			{
+				Dock = DockStyle.Top,
+				RowCount = 1,
+				ColumnCount = 5,
+				Height = 40,
+				AutoSize = true
+			};
+			tempmonitorpanel.Controls.Add(new Label { Text = "Temp", Dock = DockStyle.Left, TextAlign = System.Drawing.ContentAlignment.MiddleRight, AutoSize = true });
+			tempmonitorpanel.Controls.Add(new Label { Text = "Objects", Dock = DockStyle.Left, TextAlign = System.Drawing.ContentAlignment.MiddleRight, AutoSize = true });
+			tempmonitorpanel.Controls.Add(tempObjectCount);
+			tempmonitorpanel.Controls.Add(new Label { Text = "Size (MB)", Dock = DockStyle.Left, TextAlign = System.Drawing.ContentAlignment.MiddleRight, AutoSize = true });
+			tempmonitorpanel.Controls.Add(tempObjectSize);
 
+			//infopanel.Controls.Add(commandpanel);
+			infopanel.Controls.Add(tempmonitorpanel);
+			infoTab.Controls.Add(infopanel);
+
+			lrows.Controls.Add(tabLayout);
 			lrows.Controls.Add(commandpanel);
+			lrows.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+			lrows.RowStyles.Add(new RowStyle(SizeType.Absolute, 40));
+
+			lrows.Controls.Add(logpanel);
 
 			// End: UI Log
 
@@ -946,6 +1055,8 @@ Controls.Add(tabLayout);
 									  //tb.Location = new Point(0, 0); // insert point
 			*/
 
+			tabLayout.SelectedIndex = opentab >= tabLayout.TabCount ? 0 : opentab;
+
 			DiskManager.onTempScan += TempScanStats;
 		}
 
@@ -960,12 +1071,19 @@ Controls.Add(tabLayout);
 			//Log.Verbose("Opening edit window.");
 
 			ListViewItem ri = appList.SelectedItems[0];
-			var t = new AppEditWindow(ri.SubItems[1].Text, ri);
+			var t = new AppEditWindow(ri.SubItems[NameColumn].Text, ri); // 1 = executable
 			t.FormClosed += (ns, evs) =>
 			{
 				appEditLock = 0;
 				//Log.Verbose("Edit window closed.");
 			};
+		}
+
+		void UpdateInfoPanel(object sender, EventArgs e)
+		{
+			ListViewItem ri = appList.SelectedItems[0];
+			Log.Debug("'{RowName}' selected in UI", ri.SubItems[0]);
+			// TODO
 		}
 
 		NumericUpDown tempObjectCount;
@@ -979,17 +1097,18 @@ Controls.Add(tabLayout);
 
 		object loglistLock = new object();
 		ListView loglist;
+		List<DateTime> loglist_stamp;
+
 		public void FillLog()
 		{
 			lock (loglistLock)
 			{
-#if DEBUG
-				Log.Verbose("Filling GUI log.");
-#endif
+				//Log.Verbose("Filling GUI log.");
 				var logcopy = MemoryLog.Copy();
 				foreach (LogEventArgs evmsg in logcopy)
 				{
 					loglist.Items.Add(evmsg.Message);
+					loglist_stamp.Add(DateTime.Now);
 				}
 			}
 
@@ -1052,17 +1171,24 @@ Controls.Add(tabLayout);
 
 		// BUG: DO NOT LOG INSIDE THIS FOR FUCKS SAKE
 		// it creates an infinite log loop
-		int MaxLogSize = 20;
+		int MaxLogSize = 200;
 		public void onNewLog(object sender, LogEventArgs e)
 		{
 			if (LogIncludeLevel.MinimumLevel > e.Level) return;
 
 			lock (loglistLock)
 			{
+				DateTime t = DateTime.Now;
+
 				int excessitems = (loglist.Items.Count - MaxLogSize).Min(0);
 				while (excessitems-- > 0)
+				{
 					loglist.Items.RemoveAt(0);
+					loglist_stamp.RemoveAt(0);
+				}
+
 				loglist.Items.Add(e.Message).EnsureVisible();
+				loglist_stamp.Add(DateTime.Now);
 			}
 		}
 
@@ -1087,9 +1213,11 @@ Controls.Add(tabLayout);
 			Hide();
 			//CenterToScreen();
 
-			ProcessController.onTouch += ProcAdjust;
-
-			this.Shown += (object sender, EventArgs e) => { ShowLastLog(); };
+			this.Shown += (object sender, EventArgs e) =>
+			{
+				loglist.TopItem = loglist.Items[loglist.Items.Count - 1];
+				ShowLastLog();
+			};
 
 			// TODO: WPF
 			/*
@@ -1102,19 +1230,24 @@ Controls.Add(tabLayout);
 			*/
 		}
 
-		void saveColumns()
+		void saveUIState()
 		{
 			if (appList.Columns.Count == 0) return;
 
 			List<int> appWidths = new List<int>(appList.Columns.Count);
 			for (int i = 0; i < appList.Columns.Count; i++)
 				appWidths.Add(appList.Columns[i].Width);
+
+			/*
 			List<int> pathWidths = new List<int>(pathList.Columns.Count);
 			for (int i = 0; i < pathList.Columns.Count; i++)
 				pathWidths.Add(pathList.Columns[i].Width);
+			*/
+
 			List<int> ifaceWidths = new List<int>(ifaceList.Columns.Count);
-			for (int i = 0; i < pathList.Columns.Count; i++)
+			for (int i = 0; i < ifaceList.Columns.Count; i++)
 				ifaceWidths.Add(ifaceList.Columns[i].Width);
+
 			List<int> micWidths = new List<int>(micList.Columns.Count);
 			for (int i = 0; i < micList.Columns.Count; i++)
 				micWidths.Add(micList.Columns[i].Width);
@@ -1122,9 +1255,13 @@ Controls.Add(tabLayout);
 			var cfg = TaskMaster.loadConfig("UI.ini");
 			var cols = cfg["Columns"];
 			cols["Apps"].IntValueArray = appWidths.ToArray();
-			cols["Paths"].IntValueArray = pathWidths.ToArray();
+			//cols["Paths"].IntValueArray = pathWidths.ToArray();
 			cols["Mics"].IntValueArray = micWidths.ToArray();
 			cols["Interfaces"].IntValueArray = ifaceWidths.ToArray();
+
+			var uistate = cfg["Tabs"];
+			uistate["Open"].IntValue = tabLayout.SelectedIndex;
+
 			TaskMaster.MarkDirtyINI(cfg);
 		}
 
@@ -1141,8 +1278,7 @@ Controls.Add(tabLayout);
 
 				DiskManager.onTempScan -= TempScanStats;
 				ProcessController.onTouch -= ProcAdjust;
-				PathControl.onLocate -= PathLocatedEvent;
-				PathControl.onTouch -= PathAdjustEvent;
+				ProcessController.onLocate -= PathLocatedEvent;
 				ProcessManager.onInstanceHandling -= ProcessNewInstanceCount;
 
 				UItimer.Stop();

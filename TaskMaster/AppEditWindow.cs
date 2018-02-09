@@ -37,16 +37,19 @@ namespace TaskMaster
 		readonly ProcessController process;
 		readonly ListViewItem item;
 
-		public AppEditWindow(string executable, ListViewItem ri)
+		public AppEditWindow(string name, ListViewItem ri)
 		{
 			item = ri;
-			string exekey = System.IO.Path.GetFileNameWithoutExtension(executable);
-			process = TaskMaster.processmanager.getController(exekey);
-			if (process == null)
+			process = null;
+			foreach (var tpc in TaskMaster.processmanager.watchlist)
 			{
-				Log.Fatal("'{Executable}' not found", executable);
-				throw new System.ArgumentException("Invalid value.", nameof(executable));
+				if (name == tpc.FriendlyName)
+				{
+					process = tpc;
+					break;
+				}
 			}
+			if (process == null) throw new ArgumentException(string.Format("{0} not found in watchlist.", name));
 
 			WindowState = FormWindowState.Normal;
 			FormBorderStyle = FormBorderStyle.FixedDialog; // no min/max buttons as wanted

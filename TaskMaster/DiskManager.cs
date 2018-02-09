@@ -121,7 +121,7 @@ namespace TaskMaster
 
 		public static async Task ScanTemp()
 		{
-			await Task.Delay(200).ConfigureAwait(true);
+			await Task.Yield();
 			var dst = new DirectoryStats { Files = 0, Dirs = 0, Size = 0 };
 
 			ReScanBurden = 0;

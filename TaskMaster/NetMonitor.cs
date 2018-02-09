@@ -146,14 +146,11 @@ namespace TaskMaster
 		[Conditional("DEBUG")]
 		void ReportCurrentUptime()
 		{
-			if (TaskMaster.VerbosityThreshold > 3)
-			{
-				if (InternetAvailable)
-					Log.Information("Current internet uptime: {UpTime:N1} minute(s)", Uptime.TotalMinutes);
-				else if (InternetAvailable != InternetAvailableLast) // prevent spamming unavailable message
-					Log.Information("Current internet uptime: Unavailable; Internet down.");
-				InternetAvailableLast = InternetAvailable;
-			}
+			if (InternetAvailable)
+				Log.Verbose("Current internet uptime: {UpTime:N1} minute(s)", Uptime.TotalMinutes);
+			else if (InternetAvailable != InternetAvailableLast) // prevent spamming unavailable message
+				Log.Verbose("Current internet uptime: Unavailable; Internet down.");
+			InternetAvailableLast = InternetAvailable;
 		}
 
 		void ReportUptime()
@@ -165,7 +162,7 @@ namespace TaskMaster
 			{
 				double currentUptime = (DateTime.Now - lastUptimeStart).TotalMinutes;
 
-				ups.Append(string.Format("{0:N1}", ((uptimeTotal + currentUptime) / (uptimeSamples+1)))).Append(" minutes");
+				ups.Append(string.Format("{0:N1}", ((uptimeTotal + currentUptime) / (uptimeSamples + 1)))).Append(" minutes");
 
 				if (uptimeSamples > 3)
 					ups.Append(" (").Append(string.Format("{0:N1}", upTime.GetRange(upTime.Count - 3, 3).Sum() / 3)).Append(" minutes for last 3 samples");
@@ -247,7 +244,7 @@ namespace TaskMaster
 
 			Log.Verbose("Checking internet connectivity...");
 
-			await System.Threading.Tasks.Task.Delay(100).ConfigureAwait(false);
+			await System.Threading.Tasks.Task.Yield();
 
 			bool oldInetAvailable = InternetAvailable;
 			if (NetworkAvailable)
@@ -272,7 +269,7 @@ namespace TaskMaster
 							/*
 							Task.Run(async delegate
 							{
-								await Task.Delay(TimeSpan.FromSeconds(5));
+								await Task.Yield();
 								CheckInet(false);
 							});
 							*/
@@ -296,7 +293,7 @@ namespace TaskMaster
 				Log.Information("Network status: {NetworkAvailable}, Internet status: {InternetAvailable}", (NetworkAvailable ? "Up" : "Down"), (InternetAvailable ? "Connected" : "Disconnected"));
 			else
 				Log.Verbose("Internet status unchanged");
-			
+
 			checking_inet = 0;
 
 			InternetStatusChange?.Invoke(this, new InternetStatus { Available = InternetAvailable, Start = lastUptimeStart, Uptime = Uptime });
@@ -338,16 +335,16 @@ namespace TaskMaster
 		}
 
 		int enumerating_inet; // = 0;
-		/// <summary>
-		/// Returns list of interfaces.
-		/// * Device Name
-		/// * Type
-		/// * Status
-		/// * Link Speed
-		/// * IPv4 Address
-		/// * IPv6 Address
-		/// </summary>
-		/// <returns>string[] { Device Name, Type, Status, Link Speed, IPv4 Address, IPv6 Address }</returns>
+							  /// <summary>
+							  /// Returns list of interfaces.
+							  /// * Device Name
+							  /// * Type
+							  /// * Status
+							  /// * Link Speed
+							  /// * IPv4 Address
+							  /// * IPv6 Address
+							  /// </summary>
+							  /// <returns>string[] { Device Name, Type, Status, Link Speed, IPv4 Address, IPv6 Address }</returns>
 		public List<NetDevice> Interfaces()
 		{
 			if (System.Threading.Interlocked.CompareExchange(ref enumerating_inet, 1, 0) == 1)
@@ -379,13 +376,14 @@ namespace TaskMaster
 					}
 				}
 
-				ifacelist.Add(new NetDevice {
-					Name=n.Name,
-					Type=n.NetworkInterfaceType,
-					Status=n.OperationalStatus,
-					Speed=n.Speed,
-					IPv4Address=_ipv4,
-					IPv6Address=_ipv6
+				ifacelist.Add(new NetDevice
+				{
+					Name = n.Name,
+					Type = n.NetworkInterfaceType,
+					Status = n.OperationalStatus,
+					Speed = n.Speed,
+					IPv4Address = _ipv4,
+					IPv6Address = _ipv6
 				});
 
 				Log.Verbose("Interface: {InterfaceName}", n.Name);
@@ -466,7 +464,7 @@ namespace TaskMaster
 
 				NetworkStatusChange?.Invoke(this, new NetworkStatus { Available = NetworkAvailable });
 
-				await System.Threading.Tasks.Task.Delay(200).ConfigureAwait(false);
+				await System.Threading.Tasks.Task.Yield();
 
 				await CheckInet();
 			}

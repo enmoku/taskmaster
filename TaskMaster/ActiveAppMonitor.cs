@@ -119,7 +119,7 @@ namespace TaskMaster
 		{
 			if (eventType == EVENT_SYSTEM_FOREGROUND)
 			{
-				await System.Threading.Tasks.Task.Delay(100).ConfigureAwait(true);
+				await System.Threading.Tasks.Task.Yield();
 
 				const int nChars = 256;
 				IntPtr handle = IntPtr.Zero;

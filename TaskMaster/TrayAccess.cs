@@ -167,16 +167,15 @@ namespace TaskMaster
 										//if (TaskMaster.VeryVerbose) Console.WriteLine("END::Tray.ExitRequest()");
 		}
 
-		void RestoreMain(object sender, EventArgs e)
+		async void RestoreMain(object sender, EventArgs e)
 		{
-#if DEBUG
-			Log.Information("Show Main Window");
-#endif
+			//Log.Verbose("Show Main Window");
+			await System.Threading.Tasks.Task.Yield();
 			TaskMaster.BuildMain();
 			TaskMaster.mainwindow.Show();
 		}
 
-		void RestoreMainRequest(object sender, MouseEventArgs e)
+		void ClickOnTrayIcon(object sender, MouseEventArgs e)
 		{
 			// this should really be system defined activation button in case the buttons are swapped, but C#/OS might handle that for us already?
 			if (e.Button == MouseButtons.Left)
@@ -212,15 +211,15 @@ namespace TaskMaster
 					return;
 			}
 
-			if (TaskMaster.LowMemory)
-			{
-				//CLEANUP: Console.WriteLine("DEBUG:TrayAccess.WindowClosed.SaveMemory");
+			//if (TaskMaster.LowMemory)
+			//{
+			//CLEANUP: Console.WriteLine("DEBUG:TrayAccess.WindowClosed.SaveMemory");
 
-				Tray.MouseClick -= ShowWindow;
-				Tray.MouseDoubleClick -= UnloseWindow;
+			Tray.MouseClick -= ShowWindow;
+			Tray.MouseDoubleClick -= UnloseWindow;
 
-				Tray.MouseClick += RestoreMainRequest;
-			}
+			Tray.MouseClick += ClickOnTrayIcon;
+			//}
 			//CLEANUP: Console.WriteLine("END:TrayAccess.WindowClosed");
 		}
 
@@ -253,7 +252,7 @@ namespace TaskMaster
 						Log.Error("Explorer has not recovered in excessive timeframe, giving up.");
 						return;
 					}
-					await System.Threading.Tasks.Task.Delay(1000 * 60 * 5); // wait 5 minutes
+					await System.Threading.Tasks.Task.Delay(1000 * 60 * 5).ConfigureAwait(false); // wait 5 minutes
 				}
 				n.Stop();
 

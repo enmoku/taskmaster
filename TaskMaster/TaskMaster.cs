@@ -18,7 +18,7 @@
 //
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 // IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// FITNESS FOR A PARTICULAR PURPE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
 // AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
@@ -55,6 +55,8 @@ using Serilog;
 using Serilog.Core;
 using Serilog.Events;
 using TaskMaster.SerilogMemorySink;
+using System.Linq;
+using System.Runtime.CompilerServices;
 
 namespace TaskMaster
 {
@@ -129,12 +131,19 @@ namespace TaskMaster
 
 		public static void MainWindowClose(object sender, EventArgs e)
 		{
-			if (LowMemory)
-			{
-				//tmw.FormClosing -= MainWindowClose // unnecessary?
-				mainwindow.Dispose();
-				mainwindow = null;
-			}
+			//if (LowMemory)
+			//{
+			//tmw.FormCling -= MainWindowCle // unnecessary?
+			mainwindow.Dispose();
+			mainwindow = null;
+			//}
+		}
+
+		public static bool Restart = false;
+		public static void RestartRequest(object sender, EventArgs e)
+		{
+			Restart = true;
+			ExitRequest(null, null);
 		}
 
 		public static void ExitRequest(object sender, EventArgs e)
@@ -172,21 +181,25 @@ namespace TaskMaster
 
 				mainwindow.FormClosing += MainWindowClose;
 
-				if (TaskMaster.ProcessMonitorEnabled)
+				if (ProcessMonitorEnabled)
 				{
 					mainwindow.rescanRequest += processmanager.ProcessEverythingRequest;
-					mainwindow.pagingRequest += processmanager.PageEverythingRequest;
+					if (PagingEnabled)
+						mainwindow.pagingRequest += processmanager.PageEverythingRequest;
 				}
 
-				if (TaskMaster.NetworkMonitorEnabled)
+				if (NetworkMonitorEnabled)
 					mainwindow.setNetMonitor(ref netmonitor);
 
-				if (TaskMaster.ActiveAppMonitorEnabled)
+				if (ActiveAppMonitorEnabled)
 				{
 					activeappmonitor = new ActiveAppMonitor();
 					//pmn.onAdjust += gmmon.SetupEventHookEvent; //??
 					activeappmonitor.ActiveChanged += mainwindow.OnActiveWindowChanged;
 				}
+
+				if (PowerManagerEnabled)
+					powermanager.onResume += RestartRequest;
 			}
 		}
 		static void Setup()
@@ -206,13 +219,12 @@ namespace TaskMaster
 				netmonitor.Tray = trayaccess;
 			}
 
+			if (PowerManagerEnabled) powermanager = new PowerManager();
+
 			BuildMain();
 
-#if DEBUG
-			mainwindow.Show();
-#endif
-
-			if (PowerManagerEnabled) powermanager = new PowerManager();
+			if (ShowOnStart)
+				mainwindow.Show();
 
 			// Self-optimization
 			if (SelfOptimize)
@@ -232,7 +244,6 @@ namespace TaskMaster
 				diskmanager = new DiskManager();
 		}
 
-		public static int VerbosityThreshold = 3;
 		public static bool CaseSensitive = false;
 
 		public static bool ProcessMonitorEnabled { get; private set; } = true;
@@ -245,9 +256,12 @@ namespace TaskMaster
 		public static bool PowerManagerEnabled { get; private set; } = true;
 		public static bool MaintenanceMonitorEnabled { get; private set; } = true;
 
-		public static bool SelfOptimize { get; private set; } = true;
+		public static bool ShowOnStart { get; private set; } = true;
 
-		public static bool LowMemory { get; private set; } = true; // low memory mode; figure out way to auto-enable this when system is low on memory
+		public static bool SelfOptimize { get; private set; } = true;
+		public static int SelfAffinity { get; private set; } = 1;
+
+		//public static bool LowMemory { get; private set; } = true; // low memory mode; figure out way to auto-enable this when system is low on memory
 
 		public static int LoopSleep = 0;
 
@@ -267,6 +281,8 @@ namespace TaskMaster
 				ConfigDirty.Remove(dirtiedcfg);
 			ConfigDirty.Add(dirtiedcfg, true);
 		}
+
+		public static string ConfigVersion = "alpha.1";
 
 		static string coreconfig = "Core.ini";
 		static void LoadCoreConfig()
@@ -289,6 +305,7 @@ namespace TaskMaster
 
 			int oldsettings = optsec?.SettingCount ?? 0 + compsec?.SettingCount ?? 0 + perfsec?.SettingCount ?? 0;
 
+			// [Components]
 			ProcessMonitorEnabled = compsec.GetSetDefault("Process", true, out modified).BoolValue;
 			compsec["Process"].Comment = "Monitor starting processes based on their name. Configure in Apps.ini";
 			dirtyconfig |= modified;
@@ -331,21 +348,20 @@ namespace TaskMaster
 				case 2:
 					MemoryLog.LevelSwitch.MinimumLevel = LogEventLevel.Verbose;
 					break;
-				case 3:
-					MemoryLog.LevelSwitch.MinimumLevel = LogEventLevel.Verbose;
-					VerbosityThreshold = 4;
-					break;
 			};
 			dirtyconfig |= modified;
 
 			CaseSensitive = optsec.GetSetDefault("Case sensitive", false, out modified).BoolValue;
 			dirtyconfig |= modified;
+			ShowOnStart = optsec.GetSetDefault("Show on start", true, out modified).BoolValue;
+			dirtyconfig |= modified;
 
+			// [Performance]
 			SelfOptimize = perfsec.GetSetDefault("Self-optimize", true, out modified).BoolValue;
 			dirtyconfig |= modified;
-			LowMemory = perfsec.GetSetDefault("Low memory", false, out modified).BoolValue;
-			perfsec["Low memory"].Comment = "Enabling this causes the GUI to be deleted when it's closed, potentially freeing some memory.";
+			SelfAffinity = perfsec.GetSetDefault("Self-affinity", 1, out modified).IntValue;
 			dirtyconfig |= modified;
+
 			WMIQueries = perfsec.GetSetDefault("WMI queries", false, out modified).BoolValue;
 			perfsec["WMI queries"].Comment = "WMI is considered buggy and slow. Unfortunately necessary for some functionality.";
 			dirtyconfig |= modified;
@@ -370,7 +386,7 @@ namespace TaskMaster
 
 			Log.Information("Verbosity: {Verbosity}", MemoryLog.LevelSwitch.MinimumLevel);
 			Log.Information("Self-optimize: {SelfOptimize}", (SelfOptimize ? "Enabled." : "Disabled."));
-			Log.Information("Low memory mode: {LowMemory}", (LowMemory ? "Enabled." : "Disabled."));
+			//Log.Information("Low memory mode: {LowMemory}", (LowMemory ? "Enabled." : "Disabled."));
 			Log.Information("WMI queries: {WMIQueries}", (WMIQueries ? "Enabled." : "Disabled."));
 		}
 
@@ -383,9 +399,7 @@ namespace TaskMaster
 
 			bool running = corestats.TryGet("Core")?.TryGet("Running")?.BoolValue ?? false;
 			if (running)
-			{
 				Log.Warning("Unclean shutdown.");
-			}
 
 			corestats["Core"]["Running"].BoolValue = true;
 			saveConfig(corestats);
@@ -436,6 +450,8 @@ namespace TaskMaster
 				Console.WriteLine("Failed to open file: " + filename);
 			}
 		}
+
+		public static bool ComponentConfigurationDone = false;
 
 		// entry point to the application
 		[STAThread] // supposedly needed to avoid shit happening with the WinForms GUI
@@ -488,8 +504,7 @@ namespace TaskMaster
 				singleton = new System.Threading.Mutex(true, "088f7210-51b2-4e06-9bd4-93c27a973874.taskmaster", out mutexgained);
 				if (!mutexgained)
 				{
-					// already running
-					// signal original process
+					// already running, signal original process
 					System.Windows.Forms.MessageBox.Show("Already operational.", System.Windows.Forms.Application.ProductName + "!");
 					Log.Warning("Exiting (#{ProcessID}); already running.", System.Diagnostics.Process.GetCurrentProcess().Id);
 					return;
@@ -498,6 +513,32 @@ namespace TaskMaster
 			#endregion
 
 			Log.Information("TaskMaster! (#{ProcessID}) START!", System.Diagnostics.Process.GetCurrentProcess().Id);
+
+			{
+				var tcfg = loadConfig("Core.ini");
+				string sec = tcfg.TryGet("Core")?.TryGet("Version")?.StringValue ?? null;
+				if (sec == null || sec != ConfigVersion)
+				{
+					try
+					{
+						var iconf = new InitialConfigurationWindow();
+						System.Windows.Forms.Application.Run(iconf);
+						iconf.Dispose();
+						iconf = null;
+					}
+					finally
+					{
+					}
+
+					if (ComponentConfigurationDone == false)
+					{
+						singleton.ReleaseMutex();
+						return;
+					}
+				}
+				tcfg = null;
+				sec = null;
+			}
 
 			LoadCoreConfig();
 
@@ -522,8 +563,8 @@ namespace TaskMaster
 			}
 			catch (Exception ex)
 			{
-				Log.Fatal("Unhandled exception! Dying.{NewLine}{Exception}", ex);
-				throw;
+				Log.Fatal("Unhandled exception! Dying.");
+				Log.Fatal(ex.StackTrace);
 			}
 			finally
 			{
@@ -553,21 +594,28 @@ namespace TaskMaster
 				Log.Information("WMI queries: {QueryTime:1}s [{QueryCount}]; Parent seeking: {ParentSeekTime:1}s [{ParentSeekCount}]",
 									   Statistics.WMIquerytime, Statistics.WMIqueries,
 									   Statistics.Parentseektime, Statistics.ParentSeeks);
+
+				//tmw.Dispose();//already disposed by App.Exit?
+				foreach (var dcfg in ConfigDirty)
+				{
+					if (dcfg.Value) saveConfig(dcfg.Key);
+				}
+
+				CleanShutdown();
+
+				singleton.ReleaseMutex();
+
+				Log.Information("TaskMaster! (#{ProcessID}) END! [Clean]", System.Diagnostics.Process.GetCurrentProcess().Id);
+				Log.CloseAndFlush();
 			}
 
-			//tmw.Dispose();//already disposed by App.Exit?
-			foreach (var dcfg in ConfigDirty)
+			if (Restart) // happens only on power resume (waking from hibernation)
 			{
-				if (dcfg.Value) saveConfig(dcfg.Key);
+				Restart = false; // poinless probably
+				ProcessStartInfo info = Process.GetCurrentProcess().StartInfo;
+				info.FileName = Process.GetCurrentProcess().ProcessName;
+				Process.Start(info);
 			}
-
-			CleanShutdown();
-
-			singleton.ReleaseMutex();
-
-			Log.Information("TaskMaster! (#{ProcessID}) END! [Clean]", System.Diagnostics.Process.GetCurrentProcess().Id);
-
-			Serilog.Log.CloseAndFlush();
 		}
 	}
 }

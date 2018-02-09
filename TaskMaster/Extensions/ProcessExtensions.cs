@@ -30,11 +30,14 @@ namespace TaskMaster
 
 	public static class ProcessExtensions
 	{
+		/// <summary>
+		/// Sets the priority based on limitations. Can throw an error if Process.PriorityClass is inaccessible.
+		/// </summary>
 		public static bool SetLimitedPriority(this Process process, ProcessPriorityClass target, bool canIncrease = false, bool canDecrease = false)
 		{
-			if (canIncrease && ProcessHelpers.PriorityToInt(process.PriorityClass) < ProcessHelpers.PriorityToInt(target))
+			if (canIncrease && process.PriorityClass.ToInt32() < target.ToInt32())
 				process.PriorityClass = target;
-			else if (canDecrease && ProcessHelpers.PriorityToInt(process.PriorityClass) > ProcessHelpers.PriorityToInt(target))
+			else if (canDecrease && process.PriorityClass.ToInt32() > target.ToInt32())
 				process.PriorityClass = target;
 			else
 				return false;

@@ -75,7 +75,7 @@
     <Compile Include="MemoryLog.cs" />
     <Compile Include="MainWindowWinforms.cs" />
     <Compile Include="TrayAccess.cs" />
-    <Compile Include="ProcessControlAbstract.cs" />
+    <Compile Include="ProcessController.cs" />
     <Compile Include="InitFailure.cs" />
     <Compile Include="ProcessHelpers.cs" />
     <Compile Include="Statistics.cs" />
@@ -93,6 +93,7 @@
     <Compile Include="PowerManager.cs" />
     <Compile Include="AppEditWindow.cs" />
     <Compile Include="MainWindowColumnSorter.cs" />
+    <Compile Include="InitialConfigurationWindow.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="README.md">

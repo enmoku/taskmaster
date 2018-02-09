@@ -29,6 +29,12 @@ using System.Diagnostics;
 
 public static class SharpConfigExtensions
 {
+	/// <summary>
+	/// Tries the get named section or returns null.
+	/// </summary>
+	/// <returns>The get.</returns>
+	/// <param name="config">Config.</param>
+	/// <param name="section">Section.</param>
 	public static SharpConfig.Section TryGet(this SharpConfig.Configuration config, string section)
 	{
 		Debug.Assert(config != null);
@@ -39,6 +45,12 @@ public static class SharpConfigExtensions
 		return null;
 	}
 
+	/// <summary>
+	/// Tries the get named setting or returns null.
+	/// </summary>
+	/// <returns>The get.</returns>
+	/// <param name="section">Section.</param>
+	/// <param name="setting">Setting.</param>
 	public static SharpConfig.Setting TryGet(this SharpConfig.Section section, string setting)
 	{
 		Debug.Assert(section != null);
