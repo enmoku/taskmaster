@@ -138,7 +138,7 @@ namespace TaskMaster
 
 		public void ProcAdjust(object sender, ProcessEventArgs e)
 		{
-			Log.Verbose("Process adjust received for '{ProcessName}'.", e.Control.FriendlyName);
+			//Log.Verbose("Process adjust received for '{FriendlyName}'.", e.Control.FriendlyName);
 
 			ListViewItem item;
 			lock (appw_lock)

@@ -24,6 +24,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 using Serilog.Sinks.File;
+using System.Threading;
 
 namespace TaskMaster
 {
@@ -177,7 +178,8 @@ namespace TaskMaster
 		// -----------------------------------------------
 
 		static object waitingExitLock = new object();
-		static List<Process> waitingExit = new List<Process>(1);
+		static List<Process> waitingExit = new List<Process>(3);
+		static HashSet<int> waitingExitPids = new HashSet<int>();
 
 		protected bool setPowerPlan(Process process)
 		{
@@ -185,46 +187,54 @@ namespace TaskMaster
 
 			if (PowerPlan != PowerManager.PowerMode.Undefined)
 			{
+				bool wait = true;
+
 				lock (waitingExitLock)
 				{
 					if (waitingExit.Count == 0)
 						PowerManager.SaveMode();
-					waitingExit.Add(process);
+
+					if (waitingExitPids.Add(process.Id))
+						waitingExit.Add(process);
+					else
+						wait = false;
+
 					Log.Verbose("POWER MODE: {0} processes desiring higher power mode.", waitingExit.Count);
-				}
 
-				string name = process.ProcessName;
-				process.EnableRaisingEvents = true;
-				process.Exited += async (sender, ev) => // ASYNC POWER RESTORE ON EXIT
-				{
-					await Task.Delay(ProcessManager.PowerdownDelay);
-
-					lock (waitingExitLock)
+					if (wait)
 					{
-						waitingExit.Remove(process);
-
-						if (waitingExit.Count == 0)
+						string name = process.ProcessName;
+						process.EnableRaisingEvents = true;
+						process.Exited += async (sender, ev) => // ASYNC POWER RESTORE ON EXIT
 						{
-							Log.Debug("POWER MODE: '{ProcessName}' exited, restoring normal functionality.", name);
-							PowerManager.RestoreMode();
-						}
-						else
-						{
-							Log.Debug("POWER MODE: {0} processes still wanting higher power mode.", waitingExit.Count);
-							List<string> names = new List<string>();
-							foreach (var b in waitingExit)
-								names.Add(b.ProcessName);
-							Log.Debug("POWER MODE WAIT LIST: " + string.Join(", ", names));
-						}
+							await Task.Delay(ProcessManager.PowerdownDelay);
 
+							waitingExit.Remove(process);
+							waitingExitPids.Remove(process.Id);
+
+							if (waitingExit.Count == 0)
+							{
+								Log.Debug("POWER MODE: '{ProcessName}' exited, restoring normal functionality.", name);
+								PowerManager.RestoreMode();
+							}
+							else
+							{
+								Log.Debug("POWER MODE: {0} processes still wanting higher power mode.", waitingExit.Count);
+								List<string> names = new List<string>();
+								foreach (var b in waitingExit)
+									names.Add(b.ProcessName);
+								Log.Debug("POWER MODE WAIT LIST: " + string.Join(", ", names));
+							}
+						};
+
+						if (PowerManager.Current != PowerPlan)
+						{
+							Log.Verbose("Power mode upgrading to: {PowerPlan}", PowerPlan);
+							PowerManager.upgradeMode(PowerPlan);
+						}
 					}
-				};
-
-				if (PowerManager.Current != PowerPlan)
-				{
-					Log.Verbose("Power mode upgrading to: {PowerPlan}", PowerPlan);
-					PowerManager.upgradeMode(PowerPlan);
 				}
+
 			}
 			return false;
 		}
@@ -255,34 +265,25 @@ namespace TaskMaster
 			catch { }
 		}
 
-		public ProcessState Touch(Process process, bool schedule_next = false, bool recheck = false)
+		public ProcessState Touch(ProcessManager.BasicProcessInfo info, bool schedule_next = false, bool recheck = false)
 		{
-			Debug.Assert(process != null);
+			Debug.Assert(info.Process != null, "ProcessController.Touch given null process.");
+			Debug.Assert(info.Id > 4, "ProcessController.Touch given invalid process ID");
+			Debug.Assert(!string.IsNullOrEmpty(info.Name), "ProcessController.Touch given empty process name.");
+
+			if (info.Process == null || info.Id <= 4 || string.IsNullOrEmpty(info.Name))
+			{
+				throw new ArgumentNullException();
+				return ProcessState.Invalid;
+			}
 
 			if (recheck)
 			{
 				try
 				{
-					process.Refresh();
+					info.Process.Refresh();
 				}
-				catch
-				{
-					// NOP
-				}
-			}
-
-			int pid;
-			string execname;
-			try
-			{
-				pid = process.Id;
-				execname = process.ProcessName;
-			}
-			catch
-			{
-				// THIS SHOULD NEVER HAPPEN
-				Log.Fatal("Failed to retrieve basic process information.");
-				return ProcessState.Invalid;
+				catch { /* NOP */ }
 			}
 
 			/*
@@ -295,46 +296,53 @@ namespace TaskMaster
 
 			try
 			{
-				if (process.HasExited)
+				if (info.Process.HasExited)
 				{
-					Log.Verbose("{ProcessName} (#{ProcessID}) has already exited.", execname, pid);
+					Log.Verbose("[{FriendlyName}] {ProcessName} (#{ProcessID}) has already exited.", FriendlyName, info.Name, info.Id);
 					return ProcessState.Invalid;
 				}
 			}
 			catch (Win32Exception ex)
 			{
 				if (ex.NativeErrorCode != 5)
-					Log.Warning("Access error: {ProcessName} (#{ProcessID})", execname, pid);
+					Log.Warning("[{FriendlyName}] '{ProcessName}' (#{ProcessID}) access failure determining if it's still running.", FriendlyName, info.Name, info.Id);
 				return ProcessState.AccessDenied; // we don't care what this error is exactly
 			}
 
 			Log.Verbose("[{FriendlyName}] Touching: {ExecutableName} (#{ProcessID})",
-						FriendlyName, execname, pid);
+						FriendlyName, info.Name, info.Id);
 
 			ProcessState rv = ProcessState.Invalid;
 
-			if (IgnoreList != null && IgnoreList.Contains(execname, StringComparer.InvariantCultureIgnoreCase))
+			if (IgnoreList != null && IgnoreList.Contains(info.Name, StringComparer.InvariantCultureIgnoreCase))
 			{
-				Log.Debug("[{FriendlyName}] '{Exec}' ignored due to user defined rule.", FriendlyName, execname);
+				Log.Debug("[{FriendlyName}] {Exec} (#{ProcessID}) ignored due to user defined rule.", FriendlyName, info.Name, info.Id);
 				return ProcessState.AccessDenied;
 			}
 
-			bool denyChange = ProcessManager.ProtectedProcessName(execname);
+			bool denyChange = ProcessManager.ProtectedProcessName(info.Name);
 			if (denyChange)
-				Log.Debug("[{FriendlyName}] '{ProcessName}' in protected list, limiting tampering.", FriendlyName, execname);
+				Log.Debug("[{FriendlyName}] {ProcessName} (#{ProcessID}) in protected list, limiting tampering.", FriendlyName, info.Name, info.Id);
 
 			bool mAffinity = false, mPriority = false, mPower = false, modified = false;
 			LastSeen = DateTime.Now;
 
-			IntPtr oldAffinity = process.ProcessorAffinity;
-			ProcessPriorityClass oldPriority = process.PriorityClass;
-			lock (process) // unnecessary
+			IntPtr oldAffinity = IntPtr.Zero;
+			ProcessPriorityClass oldPriority = ProcessPriorityClass.RealTime;
+			try
+			{
+				oldAffinity = info.Process.ProcessorAffinity;
+				oldPriority = info.Process.PriorityClass;
+			}
+			catch { }
+
+			lock (info.Process) // unnecessary
 			{
 				if (!denyChange)
 				{
 					try
 					{
-						if (process.SetLimitedPriority(Priority, Increase, Decrease))
+						if (info.Process.SetLimitedPriority(Priority, Increase, Decrease))
 							modified = mPriority = true;
 					}
 					catch
@@ -343,38 +351,55 @@ namespace TaskMaster
 					}
 				}
 
-				if (process.ProcessorAffinity.ToInt32() != Affinity.ToInt32())
+				try
 				{
-					try
+					if (info.Process.ProcessorAffinity.ToInt32() != Affinity.ToInt32())
 					{
-						process.ProcessorAffinity = Affinity;
+						info.Process.ProcessorAffinity = Affinity;
 						modified = mAffinity = true;
-						Log.Verbose("Affinity for '{ExecutableName}' (#{ProcessID}) set: {OldAffinity} → {NewAffinity}.",
-									execname, pid, process.ProcessorAffinity.ToInt32(), Affinity.ToInt32());
+						//Log.Verbose("Affinity for '{ExecutableName}' (#{ProcessID}) set: {OldAffinity} → {NewAffinity}.",
+						//execname, pid, process.ProcessorAffinity.ToInt32(), Affinity.ToInt32());
 					}
-					catch
+					else
 					{
-						Log.Warning("Couldn't modify process ({ExecutableName}, #{ProcessID}) affinity [{OldAffinity} → {NewAffinity}].",
-									execname, pid, process.ProcessorAffinity.ToInt32(), Affinity.ToInt32());
+						//Log.Verbose("Affinity for '{ExecutableName}' (#{ProcessID}) is ALREADY set: {OldAffinity} → {NewAffinity}.",
+						//			execname, pid, process.ProcessorAffinity.ToInt32(), Affinity.ToInt32());
 					}
 				}
-				else
+				catch
 				{
-					Log.Verbose("Affinity for '{ExecutableName}' (#{ProcessID}) is ALREADY set: {OldAffinity} → {NewAffinity}.",
-								execname, pid, process.ProcessorAffinity.ToInt32(), Affinity.ToInt32());
+					Log.Warning("Couldn't access process ({ExecutableName}, #{ProcessID}) affinity.",
+								info.Name, info.Id);
 				}
 
 				PowerManager.PowerMode oldPP = PowerManager.Current;
-				setPowerPlan(process);
+				setPowerPlan(info.Process);
 				mPower = (oldPP != PowerManager.Current);
 			}
 
 			var sbs = new System.Text.StringBuilder();
-			sbs.Append("[").Append(FriendlyName).Append("] ").Append(execname).Append(" (#").Append(pid).Append(")");
+			sbs.Append("[").Append(FriendlyName).Append("] ").Append(info.Name).Append(" (#").Append(info.Id).Append(")");
 			if (modified)
 			{
 				if (mPriority || mAffinity)
 					Adjusts += 1; // don't increment on power changes
+
+				try
+				{
+					info.Process.Refresh();
+					ProcessPriorityClass newPriority = info.Process.PriorityClass;
+					if (info.Process.PriorityClass != Priority)
+					{
+						/*
+string Namespace = @"root\cimv2";
+string className = "Win32_Process";
+Microsoft.Management.Infrastructure.CimInstance diskDrive = new Microsoft.Management.Infrastructure.CimInstance(className, Namespace);
+*/
+					}
+				}
+				catch
+				{
+				}
 
 				LastTouch = DateTime.Now;
 				rv = ProcessState.Modified;
@@ -390,7 +415,7 @@ namespace TaskMaster
 
 				rv = ProcessState.Modified;
 
-				onTouch?.Invoke(this, new ProcessEventArgs { Control = this, Process = process });
+				onTouch?.Invoke(this, new ProcessEventArgs { Control = this, Process = info.Process });
 			}
 			else
 			{
@@ -407,8 +432,11 @@ namespace TaskMaster
 				Task.Run(new Func<Task>(async () =>
 				{
 					await Task.Delay(Math.Max(Recheck, 5) * 1000);
-					Log.Debug("Rechecking '{Process}' (#{PID})", execname, pid);
-					Touch(process, false, true);
+					Log.Debug("Rechecking '{Process}' (#{PID})", info.Name, info.Id);
+					if (!info.Process.HasExited)
+						Touch(info, schedule_next: false, recheck: true);
+					else
+						Log.Debug("'{Process}' (#{PID}) is gone yo.", info.Name, info.Id);
 				}));
 			}
 
@@ -417,9 +445,13 @@ namespace TaskMaster
 		/// <summary>
 		/// Synchronous call to RescanWithSchedule()
 		/// </summary>
-		public void TryScan()
+		public int TryScan()
 		{
-			RescanWithSchedule().Wait();		}
+			RescanWithSchedule().Wait();
+
+			int n2 = Convert.ToInt32((DateTime.Now - LastScan.AddMinutes(Rescan)).TotalMinutes);
+			return n2;
+		}
 
 		DateTime LastScan = DateTime.MinValue;
 
@@ -463,17 +495,30 @@ namespace TaskMaster
 				Log.Verbose("{ProcessFriendlyName} is not running", ExecutableFriendlyName);
 				return;
 			}
-			if (procs.Length == 0) return;
 
 			//LastSeen = LastScan;
 			LastScan = DateTime.Now;
+
+			if (procs.Length == 0) return;
+
 
 			Log.Verbose("Scanning '{ProcessFriendlyName}' (found {ProcessInstances} instance(s))", FriendlyName, procs.Length);
 
 			int tc = 0;
 			foreach (Process process in procs)
 			{
-				if (Touch(process) != ProcessState.Invalid)
+				string name;
+				int pid;
+				try
+				{
+					name = process.ProcessName;
+					pid = process.Id;
+				}
+				catch
+				{
+					continue; // shouldn't happen
+				}
+				if (Touch(new ProcessManager.BasicProcessInfo { Name = name, Id = pid, Process = process, Path = null }) == ProcessState.Modified)
 					tc++;
 			}
 
@@ -524,6 +569,7 @@ namespace TaskMaster
 				Log.Warning("Access failure with '{PathName}'", FriendlyName);
 				Console.Error.WriteLine(ex);
 			}
+
 			return false;
 		}
 

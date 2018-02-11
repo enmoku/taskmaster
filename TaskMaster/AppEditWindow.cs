@@ -29,6 +29,7 @@ using System.Windows.Forms;
 using System.Diagnostics;
 using System.Collections.Specialized;
 using System;
+using System.Collections.Generic;
 
 namespace TaskMaster
 {
@@ -179,6 +180,77 @@ namespace TaskMaster
 			lt.Controls.Add(closeButton);
 
 			// ---
+		}
+	}
+
+	class AffinityWindow : Form
+	{
+		public AffinityWindow()
+		{
+			Text = "Core Affinity";
+
+			int cpumask = 0;
+
+			var layout = new TableLayoutPanel()
+			{
+				ColumnCount = 1
+			};
+
+			var corelayout = new TableLayoutPanel()
+			{
+				ColumnCount = ProcessManager.CPUCount
+			};
+
+			var list = new List<CheckBox>();
+
+			var mask = new TextBox();
+
+			for (int bit = 0; bit < ProcessManager.CPUCount; bit++)
+			{
+				var box = new CheckBox();
+				box.CheckedChanged += (sender, e) =>
+				{
+					if (box.Checked)
+					{
+						cpumask |= (1 << bit);
+					}
+					else
+					{
+						cpumask &= ~(1 << bit);
+					}
+				};
+				list.Add(box);
+				corelayout.Controls.Add(new Label { Text = (bit + 1) + ":" });
+				corelayout.Controls.Add(box);
+			}
+
+			layout.Controls.Add(corelayout);
+			layout.Controls.Add(new Label { Text = "Mask:", TextAlign = System.Drawing.ContentAlignment.MiddleLeft });
+			layout.Controls.Add(mask);
+
+			var buttonpanel = new TableLayoutPanel()
+			{
+				ColumnCount = 2
+			};
+			var clearbutton = new Button();
+			clearbutton.Click += (sender, e) =>
+			{
+				foreach (var bu in list)
+					bu.Checked = false;
+			};
+			var allbutton = new Button();
+			allbutton.Click += (sender, e) =>
+			{
+				foreach (var bu in list)
+					bu.Checked = true;
+			};
+			buttonpanel.Controls.Add(clearbutton);
+			buttonpanel.Controls.Add(allbutton);
+			layout.Controls.Add(buttonpanel);
+
+			var savebutton = new Button();
+
+			layout.Controls.Add(savebutton);
 		}
 	}
 }

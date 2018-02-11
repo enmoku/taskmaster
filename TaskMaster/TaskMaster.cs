@@ -230,14 +230,18 @@ namespace TaskMaster
 			if (SelfOptimize)
 			{
 				var self = System.Diagnostics.Process.GetCurrentProcess();
-				self.PriorityClass = System.Diagnostics.ProcessPriorityClass.Idle;
-				// mask self to the last core
-				int selfCPUmask = 1;
-				for (int i = 0; i < Environment.ProcessorCount - 1; i++)
-					selfCPUmask = (selfCPUmask << 1);
-				//Console.WriteLine("Setting own CPU mask to: {0} ({1})", Convert.ToString(selfCPUmask, 2), selfCPUmask);
-				self.ProcessorAffinity = new IntPtr(selfCPUmask);
-				//self.ProcessorAffinity = 1;
+				self.PriorityClass = System.Diagnostics.ProcessPriorityClass.Idle; // should never throw
+																				   // mask self to the last core
+				if (SelfAffinity < 0)
+				{
+					int selfCPUmask = 1;
+					for (int i = 0; i < Environment.ProcessorCount - 1; i++)
+						selfCPUmask = (selfCPUmask << 1);
+					SelfAffinity = selfCPUmask;
+					//Console.WriteLine("Setting own CPU mask to: {0} ({1})", Convert.ToString(selfCPUmask, 2), selfCPUmask);
+				}
+
+				self.ProcessorAffinity = new IntPtr(SelfAffinity); // this should never throw an exception
 			}
 
 			if (MaintenanceMonitorEnabled)
@@ -259,7 +263,7 @@ namespace TaskMaster
 		public static bool ShowOnStart { get; private set; } = true;
 
 		public static bool SelfOptimize { get; private set; } = true;
-		public static int SelfAffinity { get; private set; } = 1;
+		public static int SelfAffinity { get; private set; } = -1;
 
 		//public static bool LowMemory { get; private set; } = true; // low memory mode; figure out way to auto-enable this when system is low on memory
 
@@ -267,6 +271,8 @@ namespace TaskMaster
 
 		public static int TempRescanDelay = 60 * 60 * 1000;
 		public static int TempRescanThreshold = 1000;
+
+		public static int PathCacheLimit = 200;
 
 		/// <summary>
 		/// Whether to use WMI queries for investigating failed path checks to determine if an application was launched in watched path.
@@ -359,10 +365,11 @@ namespace TaskMaster
 			// [Performance]
 			SelfOptimize = perfsec.GetSetDefault("Self-optimize", true, out modified).BoolValue;
 			dirtyconfig |= modified;
-			SelfAffinity = perfsec.GetSetDefault("Self-affinity", 1, out modified).IntValue;
+			SelfAffinity = perfsec.GetSetDefault("Self-affinity", -1, out modified).IntValue;
+			perfsec["Self-affinity"].Comment = "Core mask as integer. 0 is for default OS control. -1 is for last core. Limiting to single core recommended.";
 			dirtyconfig |= modified;
 
-			WMIQueries = perfsec.GetSetDefault("WMI queries", false, out modified).BoolValue;
+			WMIQueries = perfsec.GetSetDefault("WMI queries", true, out modified).BoolValue;
 			perfsec["WMI queries"].Comment = "WMI is considered buggy and slow. Unfortunately necessary for some functionality.";
 			dirtyconfig |= modified;
 			perfsec.GetSetDefault("Child processes", false, out modified); // unused here
@@ -375,6 +382,10 @@ namespace TaskMaster
 			perfsec["Temp rescan delay"].Comment = "How many minutes to wait before rescanning temp after crossing the threshold.";
 			dirtyconfig |= modified;
 
+			PathCacheLimit = perfsec.GetSetDefault("Path cache", 60, out modified).IntValue;
+			perfsec["Path cache"].Comment = "Path searching is very heavy process; this configures how many processes to remember paths for.";
+			dirtyconfig |= modified;
+
 			int newsettings = optsec?.SettingCount ?? 0 + compsec?.SettingCount ?? 0 + perfsec?.SettingCount ?? 0;
 
 			if (dirtyconfig || (oldsettings != newsettings)) // really unreliable, but meh
@@ -382,12 +393,22 @@ namespace TaskMaster
 
 			monitorCleanShutdown();
 
-			SharpConfig.Section logsec = cfg["Logging"];
+			//SharpConfig.Section logsec = cfg["Logging"];
 
-			Log.Information("Verbosity: {Verbosity}", MemoryLog.LevelSwitch.MinimumLevel);
-			Log.Information("Self-optimize: {SelfOptimize}", (SelfOptimize ? "Enabled." : "Disabled."));
+			Log.Information("Verbosity: {Verbosity}", MemoryLog.LevelSwitch.MinimumLevel.ToString());
+			Log.Information("Self-optimize: {SelfOptimize}", (SelfOptimize ? "Enabled" : "Disabled"));
 			//Log.Information("Low memory mode: {LowMemory}", (LowMemory ? "Enabled." : "Disabled."));
-			Log.Information("WMI queries: {WMIQueries}", (WMIQueries ? "Enabled." : "Disabled."));
+			Log.Information("WMI queries: {WMIQueries}", (WMIQueries ? "Enabled" : "Disabled"));
+
+			Log.Information("Privilege level: {Privilege}", (IsAdministrator() ? "Admin" : "User"));
+		}
+
+		static bool IsAdministrator()
+		{
+			// https://stackoverflow.com/a/10905713
+			System.Security.Principal.WindowsIdentity identity = System.Security.Principal.WindowsIdentity.GetCurrent();
+			System.Security.Principal.WindowsPrincipal principal = new System.Security.Principal.WindowsPrincipal(identity);
+			return principal.IsInRole(System.Security.Principal.WindowsBuiltInRole.Administrator);
 		}
 
 		static SharpConfig.Configuration corestats;
@@ -594,6 +615,8 @@ namespace TaskMaster
 				Log.Information("WMI queries: {QueryTime:1}s [{QueryCount}]; Parent seeking: {ParentSeekTime:1}s [{ParentSeekCount}]",
 									   Statistics.WMIquerytime, Statistics.WMIqueries,
 									   Statistics.Parentseektime, Statistics.ParentSeeks);
+
+				ProcessManager.PathCacheStats();
 
 				//tmw.Dispose();//already disposed by App.Exit?
 				foreach (var dcfg in ConfigDirty)

@@ -143,7 +143,6 @@ namespace TaskMaster
 
 		bool InternetAvailableLast = false;
 
-		[Conditional("DEBUG")]
 		void ReportCurrentUptime()
 		{
 			if (InternetAvailable)
@@ -178,7 +177,6 @@ namespace TaskMaster
 		public void Sample(object sender, EventArgs e)
 		{
 			RecordSample(InternetAvailable, false);
-			ReportCurrentUptime();
 		}
 
 		bool lastOnlineState; // = false;

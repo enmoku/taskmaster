@@ -118,6 +118,16 @@ namespace TaskMaster
 			// there should be easier way for this, right?
 			Corrections = (stats.Contains("Statistics") && stats["Statistics"].Contains("Corrections")) ? stats["Statistics"]["Corrections"].IntValue : 0;
 
+			// DEVICES
+			/*
+			foreach (var adev in CSCore.SoundIn.WaveInDevice.EnumerateDevices())
+			{
+			}
+			*/
+
+			// CSCORE
+			//var devs = CSCore.CoreAudioAPI.MMDeviceEnumerator.EnumerateDevices(CSCore.CoreAudioAPI.DataFlow.Capture, CSCore.CoreAudioAPI.DeviceState.Active);
+
 			// find control interface
 			// FIXME: Deal with multiple recording devices.
 			IntPtr waveInDeviceNumber = IntPtr.Zero; // 0 is default or first?

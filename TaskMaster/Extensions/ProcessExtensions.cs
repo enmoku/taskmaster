@@ -33,6 +33,7 @@ namespace TaskMaster
 		/// <summary>
 		/// Sets the priority based on limitations. Can throw an error if Process.PriorityClass is inaccessible.
 		/// </summary>
+		/// <throw>.PriorityClass</throw>
 		public static bool SetLimitedPriority(this Process process, ProcessPriorityClass target, bool canIncrease = false, bool canDecrease = false)
 		{
 			if (canIncrease && process.PriorityClass.ToInt32() < target.ToInt32())

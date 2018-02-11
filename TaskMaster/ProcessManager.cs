@@ -33,6 +33,10 @@ using System.Diagnostics;
 using System.Linq;
 using Serilog;
 using Serilog.Sinks.File;
+using System.Runtime.InteropServices;
+using System.IO;
+using System.Timers;
+using System.Runtime.Remoting.Messaging;
 
 namespace TaskMaster
 {
@@ -40,6 +44,12 @@ namespace TaskMaster
 	{
 		public int Count { get; set; } = 0;
 		public int Total { get; set; } = 0;
+	}
+
+	public class ProcessNotFoundException : Exception
+	{
+		public string Name { get; set; } = null;
+		public int Id { get; set; } = -1;
 	}
 
 	sealed public class ProcessManager : IDisposable
@@ -204,37 +214,43 @@ namespace TaskMaster
 
 			Process[] procs = Process.GetProcesses();
 
-			Log.Verbose("Scanning {ProcessCount} processes for changes.", procs.Length);
+			Log.Debug("Scanning {ProcessCount} processes for changes.", procs.Length);
 
 			// DEBUG: if (TaskMaster.VeryVerbose) Console.WriteLine(string.Format("Handling: +{0} = {1} --- ProcessEverything", procs.Length, Handling));
-			onInstanceHandling?.Invoke(this, new InstanceEventArgs { Count = procs.Length });
+			onInstanceHandling?.Invoke(this, new InstanceEventArgs { Count = procs.Length - 2 });
 
-			try
+			int i = 0;
+			foreach (Process process in procs)
 			{
-				int i = 0;
-				foreach (Process process in procs)
+				string name = null;
+				int pid = 0;
+				try
 				{
-					Log.Verbose("Checking [{ProcessIterator}/{ProcessCount}] '{ProcessName}'", ++i, procs.Length, process.ProcessName);
-					await CheckProcess(process, schedule_next: false);
+					name = process.ProcessName;
+					pid = process.Id;
 				}
+				catch
+				{
+					continue; // shouldn't happen
+				}
+
+				if (IgnoreProcessID(pid)) continue; // Ignore Idle&System
+
+				Log.Verbose("Checking [{ProcessIterator}/{ProcessCount}] '{ProcessName}' (#{Pid})", ++i, procs.Length - 2, name, pid); // -2 for Idle&System
+
+				await CheckProcess(new BasicProcessInfo { Process = process, Name = name, Id = pid, Path = null }, schedule_next: false);
 			}
-			catch (Exception e)
-			{
-				Console.WriteLine(e.StackTrace);
-				Log.Warning("Uncaught exception while processing everything.");
-				throw;
-			}
-			finally
-			{
-				// DEBUG: if (TaskMaster.VeryVerbose) Console.WriteLine(string.Format("Handling: -{0} = {1} --- ProcessEverything", procs.Length, Handling));
-				onInstanceHandling?.Invoke(this, new InstanceEventArgs { Count = -procs.Length, Total = Handling });
-			}
+
+			// DEBUG: if (TaskMaster.VeryVerbose) Console.WriteLine(string.Format("Handling: -{0} = {1} --- ProcessEverything", procs.Length, Handling));
+			onInstanceHandling?.Invoke(this, new InstanceEventArgs { Count = -(procs.Length - 2), Total = Handling });
 
 			if (TaskMaster.PathMonitorEnabled)
 				UpdatePathWatch();
 
 			Log.Verbose("Done processing everything.");
+			PathCacheStats();
 		}
+
 
 		public static int PowerdownDelay { get; set; } = 7000;
 
@@ -242,7 +258,7 @@ namespace TaskMaster
 		static int RescanDelay = 1000 * 60 * 5; // 5 minutes
 		static bool BatchProcessing; // = false;
 		static int BatchProcessingThreshold = 5;
-		static bool ControlChildren; // = false;
+		static bool ControlChildren = false; // = false;
 		SharpConfig.Configuration stats;
 		public void loadWatchlist()
 		{
@@ -294,7 +310,7 @@ namespace TaskMaster
 			var coreperf = TaskMaster.cfg["Performance"];
 
 			bool dirtyconfig = false, tdirty = false;
-			bool disableChildControl = !coreperf.GetSetDefault("Child processes", false, out tdirty).BoolValue;
+			ControlChildren = coreperf.GetSetDefault("Child processes", false, out tdirty).BoolValue;
 			dirtyconfig |= tdirty;
 			BatchProcessing = coreperf.GetSetDefault("Batch processing", false, out tdirty).BoolValue;
 			coreperf["Batch processing"].Comment = "Process management works in delayed batches instead of immediately.";
@@ -374,10 +390,7 @@ namespace TaskMaster
 
 				dirtyconfig |= tdirty;
 
-				if (disableChildControl)
-					cnt.Children = false;
-				else
-					ControlChildren |= cnt.Children;
+				cnt.Children &= ControlChildren;
 
 				Log.Verbose("{FriendlyName} ({MatchName}), {TargetPriority}, Mask:{Affinity}, Rescan: {RescanDelay} minutes",
 							cnt.FriendlyName, (cnt.Executable == null ? cnt.Path : cnt.Executable), cnt.Priority, cnt.Affinity, cnt.Rescan, cnt.Children, cnt.ChildPriority);
@@ -459,8 +472,6 @@ namespace TaskMaster
 
 			if (dirtyconfig) TaskMaster.MarkDirtyINI(TaskMaster.cfg);
 
-			ControlChildren &= !disableChildControl;
-
 			Log.Information("Child process monitoring: {ChildControl}", (ControlChildren ? "Enabled" : "Disabled"));
 		}
 
@@ -476,7 +487,7 @@ namespace TaskMaster
 		/// </summary>
 		/// <returns>The process path.</returns>
 		/// <param name="processId">Process ID</param>
-		string GetProcessPath(int processId)
+		string GetProcessPathViaWMI(int processId)
 		{
 			if (!TaskMaster.WMIQueries) return null;
 
@@ -484,20 +495,25 @@ namespace TaskMaster
 
 			string path = null;
 			string wmiQueryString = "SELECT ExecutablePath FROM Win32_Process WHERE ProcessId = " + processId;
-			using (var searcher = new System.Management.ManagementObjectSearcher(wmiQueryString))
+			try
 			{
-				using (var results = searcher.Get())
+				using (var searcher = new System.Management.ManagementObjectSearcher(wmiQueryString))
 				{
-					var mo = results.Cast<System.Management.ManagementObject>().FirstOrDefault();
-					if (mo != null)
+					foreach (ManagementObject item in searcher.Get())
 					{
-						path = (string)mo["ExecutablePath"];
-
-						if (string.IsNullOrEmpty(path)) Log.Verbose(string.Format("WMI fetch (#{0}): {1}", processId, path));
-
-						return path;
+						object mpath = item["ExecutablePath"];
+						if (mpath != null)
+						{
+							Log.Verbose(string.Format("WMI fetch (#{0}): {1}", processId, path));
+							n.Stop();
+							Statistics.WMIquerytime += n.Elapsed.TotalSeconds;
+							return mpath.ToString();
+						}
 					}
 				}
+			}
+			catch
+			{
 			}
 
 			n.Stop();
@@ -506,18 +522,57 @@ namespace TaskMaster
 			return path;
 		}
 
-		ProcessState CheckPathWatch(Process process)
-		{
-			Debug.Assert(process != null);
+		object systemlock = new object();
 
-			string name = process.ProcessName;
-			int pid = process.Id;
+		// TODO: ADD CACHE: pid -> process name, path, process
+
+		bool GetPath(ref BasicProcessInfo info)
+		{
+			Debug.Assert(info.Path == null, "GetPath called even though path known.");
 
 			try
 			{
-				if (process.HasExited) // can throw
+				info.Path = info.Process.MainModule?.FileName; // this will cause win32exception of various types, we don't Really care which error it is
+			}
+			catch
+			{
+			}
+
+			if (string.IsNullOrEmpty(info.Path))
+			{
+				info.Path = GetProcessPathViaC(info.Id);
+
+				if (info.Path == null)
 				{
-					Log.Verbose("{ProcessName} (#{ProcessID}) has already exited.", name, pid);
+					info.Path = GetProcessPathViaWMI(info.Id);
+					if (string.IsNullOrEmpty(info.Path))
+						return false;
+				}
+			}
+
+			return true;
+		}
+
+		Timer pathCacheTimer;
+		Dictionary<int, BasicProcessInfo> pathCache = new Dictionary<int, BasicProcessInfo>(TaskMaster.PathCacheLimit + 2);
+		Stack<int> pathCacheStack = new Stack<int>();
+
+		public static void PathCacheStats()
+		{
+			Log.Debug("Path cache state: {Count} items (Hits: {Hits}, Misses: {Misses}, Ratio: {Ratio:N2})",
+					  Statistics.PathCacheCurrent, Statistics.PathCacheHits, Statistics.PathCacheMisses,
+					  Statistics.PathCacheMisses > 0 ? (Statistics.PathCacheHits / Statistics.PathCacheMisses) : 1);
+		}
+
+		ProcessState CheckPathWatch(BasicProcessInfo info)
+		{
+			Debug.Assert(info.Process != null);
+
+			try
+			{
+				if (info.Process.HasExited) // can throw
+				{
+					Log.Verbose("{ProcessName} (#{ProcessID}) has already exited.", info.Name, info.Id);
 					return ProcessState.Invalid;
 				}
 			}
@@ -529,35 +584,63 @@ namespace TaskMaster
 			}
 			catch (Win32Exception ex)
 			{
-				if (ex.NativeErrorCode != 5)
-					Log.Warning("Access error: {ProcessName} (#{ProcessID})", name, pid);
+				if (ex.NativeErrorCode != 5) // what was this?
+					Log.Warning("Access error: {ProcessName} (#{ProcessID})", info.Name, info.Id);
 				return ProcessState.AccessDenied; // we don't care wwhat this error is
 			}
 
-			bool slow = false;
-			string path = null;
-			try
+			bool cacheGet = false;
+			bool cacheSet = false;
+			BasicProcessInfo cacheInfo;
+			if (pathCache.TryGetValue(info.Id, out cacheInfo))
 			{
-				path = process.MainModule?.FileName; // this will cause win32exception of various types, we don't Really care which error it is
-			}
-			catch (NotSupportedException)
-			{
-				Log.Fatal("[Unexpected] Not supported operation: {ProcessName} (#{ProcessID})", name, pid);
-				return ProcessState.AccessDenied;
-			}
-			catch (Win32Exception)
-			{
+				if (info.Name == cacheInfo.Name)
+				{
+					//path = info.Path;
+					Statistics.PathCacheHits++;
+					cacheGet = true;
+					info.Path = cacheInfo.Path;
+				}
+				else
+				{
+					Statistics.PathCacheMisses++;
+					pathCache.Remove(info.Id);
+				}
+				Statistics.PathCacheCurrent = pathCache.Count;
 			}
 
-			if (string.IsNullOrEmpty(path))
+			if (info.Path == null)
 			{
-				slow = true;
-				path = GetProcessPath(pid);
-				if (string.IsNullOrEmpty(path))
-				{
-					Log.Debug("Failed to access path of '{Process}' (#{ProcessID})", name, pid);
+				GetPath(ref info);
+
+				if (info.Path == null)
 					return ProcessState.AccessDenied;
-				}
+			}
+
+			if (pathCacheTimer == null)
+			{
+				pathCacheTimer = new Timer(1000 * 60 * 60); // 60 minutes
+				pathCacheTimer.Elapsed += (sender, e) =>
+				{
+					Log.Debug("Pruning path cache: {Count}", pathCache.Count);
+					while (pathCache.Count > TaskMaster.PathCacheLimit)
+					{
+						pathCache.Remove(pathCacheStack.Pop());
+						// TODO: Remove items with least hits instead of oldest
+					}
+				};
+				pathCacheTimer.Start();
+			}
+
+			if (!cacheGet)
+			{
+				pathCache.Add(info.Id, info);
+				pathCacheStack.Push(info.Id);
+				cacheSet = true;
+
+				Statistics.PathCacheCurrent = pathCache.Count;
+				if (Statistics.PathCacheCurrent > Statistics.PathCachePeak)
+					Statistics.PathCachePeak = Statistics.PathCacheCurrent;
 			}
 
 			// TODO: This needs to be FASTER
@@ -568,12 +651,14 @@ namespace TaskMaster
 					if (pc.Path == null) continue;
 
 					//Log.Debug("with: "+ pc.Path);
-					if (path.StartsWith(pc.Path, StringComparison.InvariantCultureIgnoreCase)) // TODO: make this compatible with OSes that aren't case insensitive?
+					if (info.Path.StartsWith(pc.Path, StringComparison.InvariantCultureIgnoreCase)) // TODO: make this compatible with OSes that aren't case insensitive?
 					{
-						Log.Verbose("[{PathFriendlyName}] matched {Speed}at: {Path}", // TODO: de-ugly
-									pc.FriendlyName, (slow ? "~slowly~ " : ""), path);
+						//if (cacheGet)
+						//	Log.Debug("[{FriendlyName}] {Exec} (#{Pid}) – PATH CACHE GET!! :D", pc.FriendlyName, name, pid);
+						Log.Verbose("[{PathFriendlyName}] matched at: {Path}", // TODO: de-ugly
+									pc.FriendlyName, info.Path);
 
-						return pc.Touch(process);
+						return pc.Touch(info);
 					}
 				}
 			}
@@ -585,6 +670,8 @@ namespace TaskMaster
 		public static string[] IgnoreList { get; private set; } = { "dllhost", "svchost", "taskeng", "consent", "taskhost", "rundll32", "conhost", "dwm", "wininit", "csrss", "winlogon", "services", "explorer" };
 
 		const int LowestInvalidPid = 4;
+
+		[System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
 		bool IgnoreProcessID(int pid)
 		{
 			return (pid <= LowestInvalidPid);
@@ -606,9 +693,12 @@ namespace TaskMaster
 			return ProtectList.Contains(name, StringComparer.InvariantCultureIgnoreCase);
 		}
 
-		void ChildController(BasicProcessInfo childinfo)
+		void ChildController(BasicProcessInfo ci)
 		{
 			//await System.Threading.Tasks.Task.Yield();
+			// TODO: Cache known children so we don't look up the parent? Reliable mostly with very unique/long executable names.
+
+			Debug.Assert(ci.Process != null, "ChildController was given a null process.");
 
 			// TODO: Cache known children so we don't look up the parent? Reliable mostly with very unique/long executable names.
 			Stopwatch n = Stopwatch.StartNew();
@@ -616,12 +706,12 @@ namespace TaskMaster
 			try
 			{
 				// TODO: Deal with intermediary processes (double parent)
-				if (childinfo.Process == null) childinfo.Process = Process.GetProcessById(childinfo.Id);
-				ppid = childinfo.Process.ParentProcessId();
+				if (ci.Process == null) ci.Process = Process.GetProcessById(ci.Id);
+				ppid = ci.Process.ParentProcessId();
 			}
 			catch // PID not found
 			{
-				Log.Warning("Couldn't get parent process for {ChildProcessName} (#{ChildProcessID})", childinfo.Name, childinfo.Id);
+				Log.Warning("Couldn't get parent process for {ChildProcessName} (#{ChildProcessID})", ci.Name, ci.Id);
 				return;
 			}
 
@@ -644,31 +734,38 @@ namespace TaskMaster
 				ProcessController parent = null;
 				if (!denyChange)
 				{
-					if (execontrol.TryGetValue(LowerCase(childinfo.Process.ProcessName), out parent))
+					if (execontrol.TryGetValue(LowerCase(ci.Process.ProcessName), out parent))
 					{
-						if (!parent.ChildPriorityReduction && (ProcessHelpers.PriorityToInt(childinfo.Process.PriorityClass) > ProcessHelpers.PriorityToInt(parent.ChildPriority)))
+						try
 						{
-							Log.Verbose(childinfo.Name + " (#" + childinfo.Id + ") has parent " + parent.FriendlyName + " (#" + parentproc.Id + ") has non-reductable higher than target priority.");
-						}
-						else if (parent.Children
-								 && ProcessHelpers.PriorityToInt(childinfo.Process.PriorityClass) != ProcessHelpers.PriorityToInt(parent.ChildPriority))
-						{
-							ProcessPriorityClass oldprio = childinfo.Process.PriorityClass;
-							try
+							if (!parent.ChildPriorityReduction && (ProcessHelpers.PriorityToInt(ci.Process.PriorityClass) > ProcessHelpers.PriorityToInt(parent.ChildPriority)))
 							{
-								childinfo.Process.SetLimitedPriority(parent.ChildPriority, true, false);
+								Log.Verbose(ci.Name + " (#" + ci.Id + ") has parent " + parent.FriendlyName + " (#" + parentproc.Id + ") has non-reductable higher than target priority.");
 							}
-							catch (Exception e)
+							else if (parent.Children
+									 && ProcessHelpers.PriorityToInt(ci.Process.PriorityClass) != ProcessHelpers.PriorityToInt(parent.ChildPriority))
 							{
-								Console.WriteLine(e.StackTrace);
-								Log.Warning("Uncaught exception; Failed to modify priority for '{ProcessName}'", childinfo.Process.ProcessName);
+								ProcessPriorityClass oldprio = ci.Process.PriorityClass;
+								try
+								{
+									ci.Process.SetLimitedPriority(parent.ChildPriority, true, false);
+								}
+								catch (Exception e)
+								{
+									Console.WriteLine(e.StackTrace);
+									Log.Warning("Uncaught exception; Failed to modify priority for '{ProcessName}'", ci.Process.ProcessName);
+								}
+								Log.Information("{ChildProcessName} (#{ChildProcessID}) child of {ParentFriendlyName} (#{ParentProcessID}) Priority({OldChildPriority} -> {NewChildPriority})",
+												ci.Name, ci.Id, parent.FriendlyName, ppid, oldprio, ci.Process.PriorityClass);
 							}
-							Log.Information("{ChildProcessName} (#{ChildProcessID}) child of {ParentFriendlyName} (#{ParentProcessID}) Priority({OldChildPriority} -> {NewChildPriority})",
-											childinfo.Name, childinfo.Id, parent.FriendlyName, ppid, oldprio, childinfo.Process.PriorityClass);
+							else
+							{
+								Log.Verbose(ci.Name + " (#" + ci.Id + ") has parent " + parent.FriendlyName + " (#" + parentproc.Id + ")");
+							}
 						}
-						else
+						catch
 						{
-							Log.Verbose(childinfo.Name + " (#" + childinfo.Id + ") has parent " + parent.FriendlyName + " (#" + parentproc.Id + ")");
+							Log.Warning("[{FriendlyName}] {Exe} (#{Pid}) access failure.", parent.FriendlyName, ci.Name, ci.Id);
 						}
 					}
 				}
@@ -678,76 +775,25 @@ namespace TaskMaster
 			Statistics.ParentSeeks += 1;
 		}
 
-		async Task CheckProcess(BasicProcessInfo info)
+		async Task CheckProcess(BasicProcessInfo info, bool schedule_next = true)
 		{
-			if (info.Process == null)
-			{
-				if (info.Id > LowestInvalidPid)
-				{
-					try
-					{
-						info.Process = Process.GetProcessById(info.Id);
-					}
-					catch
-					{
-						// Ignore
-						return;
-					}
-				}
-				else if (!string.IsNullOrEmpty(info.Name))
-				{
-					try
-					{
-						Process[] procs = Process.GetProcessesByName(info.Name);
-						if (procs.Length > 0)
-						{
-							info.Process = procs[0];
-						}
-						else
-						{
-							return;
-						}
-					}
-					catch
-					{
-						// NOP
-						return;
-					}
-				}
-				else
-				{
-					Log.Error("Received incomplete process information."); // this should never happen
-				}
-			}
-
-			await CheckProcess(info.Process);
-		}
-
-		async System.Threading.Tasks.Task CheckProcess(Process process, bool schedule_next = true)
-		{
-			Debug.Assert(process != null);
+			Debug.Assert(!string.IsNullOrEmpty(info.Name), "CheckProcess received null process name.");
+			Debug.Assert(info.Process != null, "CheckProcess received null process.");
+			Debug.Assert(!IgnoreProcessID(info.Id), "CheckProcess received invalid process ID: " + info.Id);
 
 			await Task.Yield();
 
-			//if (TaskMaster.VeryVerbose) Log.Debug("Processing: " + process.ProcessName);
-
-			string name;
-			int pid;
-
 			try
 			{
-				name = process.ProcessName;
-				pid = process.Id;
-
-				if (IgnoreProcessID(pid) || IgnoreProcessName(name))
+				if (IgnoreProcessID(info.Id) || IgnoreProcessName(info.Name))
 				{
-					Log.Verbose("Ignoring process: {ProcessName} (#{ProcessID})", name, pid);
+					Log.Verbose("Ignoring process: {ProcessName} (#{ProcessID})", info.Name, info.Id);
 					return;
 				}
 
-				if (string.IsNullOrEmpty(name))
+				if (string.IsNullOrEmpty(info.Name))
 				{
-					Log.Warning("#{AppId} details unaccessible, ignored.", pid);
+					Log.Warning("#{AppId} details unaccessible, ignored.", info.Id);
 					return;
 				}
 			}
@@ -761,107 +807,40 @@ namespace TaskMaster
 
 			// TODO: check proc.processName for presence in images.
 			ProcessController control;
-			if (execontrol.TryGetValue(LowerCase(name), out control))
+			if (execontrol.TryGetValue(LowerCase(info.Name), out control))
 			{
 				//await System.Threading.Tasks.Task.Delay(ProcessModifyDelay).ConfigureAwait(false);
 
-				state = control.Touch(process, schedule_next);
+				state = control.Touch(info, schedule_next);
 				if (state != ProcessState.Invalid)
 				{
 					Log.Verbose("Control group: {ProcessFriendlyName}, process: {ProcessName} (#{ProcessID})",
-									control.FriendlyName, name, pid);
+									control.FriendlyName, info.Name, info.Id);
 				}
 				return; // execontrol had this, we don't care about anything else for this.
 			}
 			else
-				Log.Verbose("{AppName} not in control list.", name);
+				Log.Verbose("{AppName} not in control list.", info.Name);
 
 			if (WatchlistWithPath > 0)
 			{
-				Log.Verbose("Checking paths for '{ProcessName}' (#{ProcessID})", name, pid);
-				state = CheckPathWatch(process);
+				Log.Verbose("Checking paths for '{ProcessName}' (#{ProcessID})", info.Name, info.Id);
+				state = CheckPathWatch(info);
 			}
 
 			if (state != ProcessState.Invalid) return; // we don't care to process more
 
 			if (ControlChildren) // this slows things down a lot it seems
-			{
-				//await System.Threading.Tasks.Task.Yield();
-
-				// TODO: Cache known children so we don't look up the parent? Reliable mostly with very unique/long executable names.
-				Stopwatch n = Stopwatch.StartNew();
-				int ppid = -1;
-				try
-				{
-					// TODO: Deal with intermediary processes (double parent)
-					ppid = process.ParentProcessId();
-				}
-				catch
-				{
-					Log.Warning("Couldn't get parent process for {ProcessName} (#{ProcessID})",
-								name, pid);
-					return;
-				}
-
-				if (!IgnoreProcessID(ppid)) // 0 and 4 are system processes, we don't care about their children
-				{
-					Process parent = null;
-					try
-					{
-						parent = Process.GetProcessById(ppid);
-					}
-					catch
-					{
-						// PId not found and other problems.
-						Log.Verbose("Parent PID(#{ProcessID}) not found", ppid);
-						return;
-					}
-
-					if (IgnoreProcessName(parent.ProcessName))
-					{
-						// nothing, ignoring
-					}
-					else
-					{
-						bool denyChange = ProtectedProcessName(parent.ProcessName);
-
-						ProcessController parentcontrol = null;
-						if (!denyChange && execontrol.TryGetValue(LowerCase(parent.ProcessName), out parentcontrol))
-						{
-
-							if (!parentcontrol.ChildPriorityReduction && (ProcessHelpers.PriorityToInt(process.PriorityClass) > ProcessHelpers.PriorityToInt(parentcontrol.ChildPriority)))
-							{
-								Log.Verbose(name + " (#" + pid + ") has parent " + name + " (#" + pid + ") has non-reductable higher than target priority.");
-							}
-							else if (parentcontrol.Children
-								&& ProcessHelpers.PriorityToInt(process.PriorityClass) != ProcessHelpers.PriorityToInt(parentcontrol.ChildPriority))
-							{
-								ProcessPriorityClass oldprio = process.PriorityClass;
-								process.SetLimitedPriority(parentcontrol.ChildPriority, true, false);
-								// TODO: Is this ever reached?
-								Log.Information("{ProcessName} (#{ProcessID}) child of {ParentFriendlyName} (#{ParentProcessID}) Priority({OldPriority} → {NewPriority})",
-												process.ProcessName, process.Id, parentcontrol.FriendlyName, ppid, oldprio, process.PriorityClass);
-								parentcontrol.Touch(process);
-							}
-						}
-						else
-						{
-							Log.Verbose("{ProcessName} (#{ProcessID}) has parent {ParentName} (#{ParentProcessID})",
-																   name, pid, parent.ProcessName, parent.Id);
-						}
-					}
-				}
-				n.Stop();
-				Statistics.Parentseektime += n.Elapsed.TotalSeconds;
-				Statistics.ParentSeeks += 1;
-			}
+				ChildController(info);
 		}
 
-		struct BasicProcessInfo
+		public struct BasicProcessInfo
 		{
 			public string Name;
+			public string Path;
 			public int Id;
 			public Process Process;
+			public DateTime Start;
 		}
 
 		void Swap<T>(ref T a, ref T b)
@@ -908,7 +887,7 @@ namespace TaskMaster
 				foreach (var info in list)
 				{
 					//Console.WriteLine("Delayed.Processing = {0}, pid:{1}, process:{2}", info.Name, info.Id, (info.Process!=null));
-					await NewInstanceHandler(info);
+					await CheckProcess(info);
 				}
 			}
 			catch (Exception e)
@@ -927,59 +906,9 @@ namespace TaskMaster
 			//list.Clear(); // unnecessary?
 		}
 
-		async Task NewInstanceHandler(BasicProcessInfo info)
-		{
-			Debug.Assert(!string.IsNullOrEmpty(info.Name) || info.Id > -1, "Empty info for NewInstanceHandler (#" + info.Id + ")");
-
-			Stopwatch n = Stopwatch.StartNew();
-			if (string.IsNullOrEmpty(info.Name))
-			{
-				try
-				{
-					// since targetinstance actually has fuckall information, we need to extract it...
-					info.Process = Process.GetProcessById(info.Id); // FIXME: Has abnormally long execution times since 4.7 update.
-					info.Name = info.Process.ProcessName;
-				}
-				catch // PID not found
-				{
-#if DEBUG
-					Log.Verbose("Process exited before we had time to identify it."); // technically an error [Warn], but not that interesting for anyone
-#endif
-					return;
-				}
-				finally
-				{
-					n.Stop();
-					//TODO: Track GetProcessById queries
-					//Statistics.WMIquerytime += n.Elapsed.TotalSeconds;
-					//Statistics.WMIqueries += 1;
-				}
-			}
-
-			Log.Verbose("Caught: {ProcessName} (#{ProcessID})", info.Name, info.Id);
-
-			await CheckProcess(info);
-
-			n.Stop();
-			// TODO: Track new instance handling
-			//Statistics.WMIquerytime += n.Elapsed.TotalSeconds;
-			//Statistics.WMIqueries += 1;
-		}
-
 		public static int Handling { get; set; }
 
 		public static event EventHandler<InstanceEventArgs> onInstanceHandling;
-
-		async void NewInstanceTriage2(object sender, EventArrivedEventArgs ev)
-		{
-			await Task.Yield();
-
-			foreach (PropertyData pd in ev.NewEvent.Properties)
-			{
-				Console.WriteLine("\n============================= =========");
-				Console.WriteLine("{0},{1},{2}", pd.Name, pd.Type, pd.Value);
-			}
-		}
 
 		async void NewInstanceTriage(object sender, System.Management.EventArrivedEventArgs e)
 		{
@@ -988,8 +917,9 @@ namespace TaskMaster
 			Stopwatch n = Stopwatch.StartNew();
 
 			// TODO: Instance groups?
-			int pid = -1;
-			string exename = string.Empty;
+			int pid = 0;
+			string name = string.Empty;
+			string path = string.Empty;
 			System.Management.ManagementBaseObject targetInstance;
 			try
 			{
@@ -997,14 +927,15 @@ namespace TaskMaster
 				pid = Convert.ToInt32(targetInstance.Properties["Handle"].Value);
 				//targetInstance.Properties.Cast<System.Management.PropertyData>().ToList().ForEach(p => Console.WriteLine("{0}={1}", p.Name, p.Value));
 				//ExecutablePath=fullpath
-				exename = System.IO.Path.GetFileNameWithoutExtension((string)(targetInstance.Properties["ExecutablePath"].Value));
-				if (exename == string.Empty) // is this even possible?
-					Log.Fatal("Pathless Pid({0}): {1} – is this even possible?", pid, (string)(targetInstance.Properties["ExecutablePath"].Value));
+				path = (string)(targetInstance.Properties["ExecutablePath"].Value);
+				name = System.IO.Path.GetFileNameWithoutExtension(path);
+				if (name == string.Empty) // is this even possible?
+					Log.Error("Pathless Pid({0}): {1} – is this even possible?", pid, (string)(targetInstance.Properties["ExecutablePath"].Value));
 			}
 			catch (Exception ex)
 			{
 				Log.Warning("{ExceptionSource} :: {ExceptionMessage}", ex.Source, ex.Message);
-				Log.Warning("{Exception}");
+				Log.Warning(ex.StackTrace);
 				Log.Warning("Failed to extract process ID from WMI event.");
 				throw;
 			}
@@ -1015,18 +946,60 @@ namespace TaskMaster
 				Statistics.WMIqueries += 1;
 			}
 
-			if (string.IsNullOrEmpty(exename) && pid == -1)
+			if (string.IsNullOrEmpty(name) && pid <= LowestInvalidPid)
 			{
 				Log.Warning("Failed to acquire neither process name nor process Id");
 				return;
 			}
 
+			onInstanceHandling?.Invoke(this, new InstanceEventArgs { Count = 1 });
+
 			//Handle=pid
 			// FIXME
 			// DEBUG: if (TaskMaster.VeryVerbose) Console.WriteLine(string.Format("Handling: +{0} = {1} --- NewInstanceTriage", 1, Handling));
-			onInstanceHandling?.Invoke(this, new InstanceEventArgs { Count = 1 });
 
-			BasicProcessInfo info = new BasicProcessInfo { Name = exename, Id = pid, Process = null };
+			BasicProcessInfo info;
+			Process process = null;
+			try
+			{
+				process = Process.GetProcessById(pid);
+				if (process == null)
+				{
+					onInstanceHandling?.Invoke(this, new InstanceEventArgs { Count = -1 });
+					//throw new ProcessNotFoundException { Name = name, Id = pid };
+					Log.Verbose("Caught #{Pid} but it vanished.", pid);
+					return;
+				}
+
+				if (string.IsNullOrEmpty(name))
+				{
+					// This happens only when encountering a process with elevated privileges, e.g. admin
+					// TODO: Mark as admin process
+					name = process.ProcessName;
+				}
+			}
+			catch
+			{
+				Log.Warning("Failed to retrieve information for '{Name}' (#{Pid})", name, pid);
+				onInstanceHandling?.Invoke(this, new InstanceEventArgs { Count = -1 });
+				return;
+			}
+
+			Log.Verbose("Caught: {ProcessName} (#{ProcessID}) at: {Path}", name, pid, path);
+
+			DateTime start = DateTime.MinValue;
+			try
+			{
+				start = process.StartTime;
+			}
+			catch { /* NOP */ }
+			finally
+			{
+				if (start == DateTime.MinValue)
+					start = DateTime.Now;
+			}
+
+			info = new BasicProcessInfo { Name = name, Id = pid, Process = process, Path = path, Start = start };
 
 			if (BatchProcessing)
 			{
@@ -1049,19 +1022,18 @@ namespace TaskMaster
 			{
 				try
 				{
-					await NewInstanceHandler(info);
+					await CheckProcess(info);
 				}
 				catch (Exception ex)
 				{
 					Log.Warning("Uncaught exception while handling new instance");
 					Log.Fatal(ex.StackTrace);
 					Console.WriteLine(ex.StackTrace);
+					onInstanceHandling?.Invoke(this, new InstanceEventArgs { Count = -1 });
 					throw;
 				}
 				finally
 				{
-					// DEBUG: if (TaskMaster.VeryVerbose) Console.WriteLine(string.Format("Handling: -{0} = {1} --- NewInstanceTriage", 1, Handling));
-					onInstanceHandling?.Invoke(this, new InstanceEventArgs { Count = -1 });
 				}
 			}
 		}
@@ -1080,13 +1052,18 @@ namespace TaskMaster
 		{
 			Log.Verbose("Rescanning...");
 
+			int nextscan = int.MinValue;
+			int tnext = 0;
 			int rescanrequests = 0;
+
 			foreach (ProcessController pc in execontrol.Values)
 			{
 				if (pc.Rescan > 0)
 				{
-					pc.TryScan();
+					tnext = pc.TryScan();
 					rescanrequests++;
+					if (tnext > nextscan)
+						nextscan = tnext;
 				}
 			}
 
@@ -1096,6 +1073,11 @@ namespace TaskMaster
 			{
 				Log.Verbose("No apps have requests to rescan, stopping rescanning.");
 				rescanTimer.Stop();
+			}
+			else
+			{
+				rescanTimer.Interval = nextscan * (1000 * 60);
+				Log.Debug("Rescan set to occur after {Scan} minutes.", nextscan);
 			}
 		}
 
@@ -1255,5 +1237,42 @@ namespace TaskMaster
 			}
 
 		}
+
+		// https://stackoverflow.com/a/34991822
+		public static string GetProcessPathViaC(int pid)
+		{
+			var processHandle = OpenProcess(0x0400 | 0x0010, false, pid);
+
+			if (processHandle == IntPtr.Zero)
+			{
+				return null;
+			}
+
+			const int lengthSb = 4000;
+
+			var sb = new System.Text.StringBuilder(lengthSb);
+
+			string result = null;
+
+			if (GetModuleFileNameEx(processHandle, IntPtr.Zero, sb, lengthSb) > 0)
+			{
+				//result = Path.GetFileName(sb.ToString());
+				result = sb.ToString();
+			}
+
+			CloseHandle(processHandle);
+
+			return result;
+		}
+
+		[DllImport("kernel32.dll")]
+		public static extern IntPtr OpenProcess(uint processAccess, bool bInheritHandle, int processId);
+
+		[DllImport("psapi.dll")]
+		static extern uint GetModuleFileNameEx(IntPtr hProcess, IntPtr hModule, [Out] System.Text.StringBuilder lpBaseName, [In] [MarshalAs(UnmanagedType.U4)] int nSize);
+
+		[DllImport("kernel32.dll", SetLastError = true)]
+		[return: MarshalAs(UnmanagedType.Bool)]
+		static extern bool CloseHandle(IntPtr hObject);
 	}
 }
