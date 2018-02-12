@@ -952,10 +952,9 @@ namespace TaskMaster
 				Margin = new Padding(3 + 3),
 				FlatStyle = FlatStyle.Flat
 			};
-			rescanbutton.Click += async (object sender, EventArgs e) =>
+			rescanbutton.Click += (object sender, EventArgs e) =>
 						{
 							rescanbutton.Enabled = false;
-							await Task.Yield();
 							rescanRequest?.Invoke(this, new EventArgs());
 							rescanbutton.Enabled = true;
 						};
@@ -978,10 +977,9 @@ namespace TaskMaster
 				Margin = new Padding(3 + 3),
 				Enabled = TaskMaster.PagingEnabled
 			};
-			crunchbutton.Click += async (object sender, EventArgs e) =>
+			crunchbutton.Click += (object sender, EventArgs e) =>
 			{
 				crunchbutton.Enabled = false;
-				await Task.Yield();
 				pagingRequest?.Invoke(this, new EventArgs());
 				crunchbutton.Enabled = true;
 			};
@@ -1214,6 +1212,7 @@ namespace TaskMaster
 		{
 			//InitializeComponent(); // TODO: WPF
 			FormClosing += WindowClose;
+			DoubleBuffered = false;
 
 			//MakeTrayIcon();
 

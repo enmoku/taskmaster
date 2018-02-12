@@ -23,7 +23,7 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
-using Serilog.Sinks.File;
+
 using System.Threading;
 
 namespace TaskMaster
@@ -178,12 +178,12 @@ namespace TaskMaster
 		// -----------------------------------------------
 
 		static object waitingExitLock = new object();
-		static List<Process> waitingExit = new List<Process>(3);
+		static Dictionary<int, ProcessManager.BasicProcessInfo> waitingExit = new Dictionary<int, ProcessManager.BasicProcessInfo>(3);
 		static HashSet<int> waitingExitPids = new HashSet<int>();
 
 		static CancellationTokenSource ctsall = new CancellationTokenSource();
 
-		protected bool setPowerPlan(Process process)
+		protected bool setPowerPlan(ProcessManager.BasicProcessInfo info)
 		{
 			if (!TaskMaster.PowerManagerEnabled) return false;
 
@@ -196,8 +196,8 @@ namespace TaskMaster
 					if (waitingExit.Count == 0)
 						PowerManager.SaveMode();
 
-					if (waitingExitPids.Add(process.Id))
-						waitingExit.Add(process);
+					if (waitingExitPids.Add(info.Id))
+						waitingExit.Add(info.Id, info);
 					else
 						wait = false;
 
@@ -205,27 +205,38 @@ namespace TaskMaster
 
 					if (wait)
 					{
-						string name = process.ProcessName;
-						process.EnableRaisingEvents = true;
-						process.Exited += async (sender, ev) => // ASYNC POWER RESTORE ON EXIT
+						string name = info.Name;
+						info.Process.EnableRaisingEvents = true;
+						info.Process.Exited += async (sender, ev) => // ASYNC POWER RESTORE ON EXIT
 						{
-							await Task.Delay(ProcessManager.PowerdownDelay);
-
-							waitingExit.Remove(process);
-							waitingExitPids.Remove(process.Id);
-
-							if (waitingExit.Count == 0)
+							try
 							{
-								Log.Debug("POWER MODE: '{ProcessName}' exited; restoring normal functionality.", name);
-								PowerManager.RestoreMode();
+								await Task.Delay(ProcessManager.PowerdownDelay);
+
+								waitingExit.Remove(info.Id);
+								waitingExitPids.Remove(info.Id);
+
+								if (waitingExit.Count == 0)
+								{
+									Log.Debug("POWER MODE: '{ProcessName}' exited; restoring normal functionality.", name);
+									PowerManager.RestoreMode();
+								}
+								else
+								{
+									Log.Debug("POWER MODE: {0} processes still wanting higher power mode.", waitingExit.Count);
+									List<string> names = new List<string>();
+									foreach (var b in waitingExit.Values)
+										names.Add(b.Name);
+									Log.Debug("POWER MODE WAIT LIST: " + string.Join(", ", names));
+
+								}
 							}
-							else
+							catch (Exception ex)
 							{
-								Log.Debug("POWER MODE: {0} processes still wanting higher power mode.", waitingExit.Count);
-								List<string> names = new List<string>();
-								foreach (var b in waitingExit)
-									names.Add(b.ProcessName);
-								Log.Debug("POWER MODE WAIT LIST: " + string.Join(", ", names));
+								Log.Fatal("POWER MDOE: {FriendlyName} FATAL FAILURE", FriendlyName);
+								Log.Fatal(ex.Message);
+								Log.Fatal(ex.StackTrace);
+								throw;
 							}
 						};
 
@@ -401,7 +412,7 @@ namespace TaskMaster
 			}
 
 			PowerManager.PowerMode oldPP = PowerManager.Current;
-			setPowerPlan(info.Process);
+			setPowerPlan(info);
 			mPower = (oldPP != PowerManager.Current);
 
 			var sbs = new System.Text.StringBuilder();
@@ -457,7 +468,8 @@ namespace TaskMaster
 			if (modified)
 				onTouch?.Invoke(this, new ProcessEventArgs { Control = this, Process = info.Process });
 
-			if (schedule_next) RescanWithSchedule();
+			if (schedule_next)
+				TryScan();
 
 			if (Recheck > 0 && recheck == false)
 			{
@@ -489,7 +501,21 @@ namespace TaskMaster
 		/// </summary>
 		public int TryScan()
 		{
-			RescanWithSchedule().Wait();
+			Task.Run(new Func<Task>(async () =>
+			{
+				await Task.Yield();
+				try
+				{
+					RescanWithSchedule();
+				}
+				catch (Exception ex)
+				{
+					Log.Warning("Error in scheduled rescan.");
+					Log.Error(ex.Message);
+					Log.Error(ex.StackTrace);
+					throw;
+				}
+			}));
 
 			int n2 = Convert.ToInt32((DateTime.Now - LastScan.AddMinutes(Rescan)).TotalMinutes);
 			return n2;
@@ -502,7 +528,7 @@ namespace TaskMaster
 		/// </summary>
 		int ScheduledScan = 0;
 
-		async Task RescanWithSchedule()
+		void RescanWithSchedule()
 		{
 			double n = (DateTime.Now - LastScan).TotalMinutes;
 			//Log.Trace(string.Format("[{0}] last scan {1:N1} minute(s) ago.", FriendlyName, n));
@@ -513,7 +539,7 @@ namespace TaskMaster
 
 				Log.Verbose("[{FriendlyName}] Rescan initiating.", FriendlyName);
 
-				await Scan();
+				Scan();
 
 				ScheduledScan = 0;
 			}
@@ -521,10 +547,8 @@ namespace TaskMaster
 				Log.Verbose("[{FriendlyName}] Scan too recent, ignoring.", FriendlyName);
 		}
 
-		public async Task Scan()
+		public void Scan()
 		{
-			await Task.Yield();
-
 			if (ExecutableFriendlyName == null) return;
 
 			Process[] procs;
@@ -542,7 +566,6 @@ namespace TaskMaster
 			LastScan = DateTime.Now;
 
 			if (procs.Length == 0) return;
-
 
 			Log.Verbose("[{FriendlyName}] Scanning found {ProcessInstances} instance(s)", FriendlyName, procs.Length);
 
@@ -609,7 +632,9 @@ namespace TaskMaster
 			catch (Exception ex)
 			{
 				Log.Warning("[{FriendlyName}] Access failure while determining path.");
-				Console.Error.WriteLine(ex);
+				Log.Error(ex.Message);
+				Log.Error(ex.StackTrace);
+				throw;
 			}
 
 			return false;

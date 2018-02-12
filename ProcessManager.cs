@@ -201,7 +201,21 @@ namespace TaskMaster
 		public void ProcessEverythingRequest(object sender, EventArgs e)
 		{
 			Log.Verbose("Rescan requested.");
-			ProcessEverything();
+			Task.Run(new Func<Task>(async () =>
+			{
+				await Task.Yield();
+				try
+				{
+					ProcessEverything();
+				}
+				catch (Exception ex)
+				{
+					Log.Warning("Scan everything failure.");
+					Log.Error(ex.Message);
+					Log.Error(ex.StackTrace);
+					throw;
+				}
+			}));
 		}
 
 		System.Timers.Timer rescanTimer = new System.Timers.Timer(1000 * 5 * 60); // 5 minutes
@@ -209,7 +223,7 @@ namespace TaskMaster
 		/// <summary>
 		/// Processes everything. Pointlessly thorough, but there's no nicer way around for now.
 		/// </summary>
-		public async Task ProcessEverything()
+		public void ProcessEverything()
 		{
 			Log.Verbose("Processing everything.");
 
@@ -239,7 +253,7 @@ namespace TaskMaster
 
 				Log.Verbose("Checking [{ProcessIterator}/{ProcessCount}] '{ProcessName}' (#{Pid})", ++i, procs.Length - 2, name, pid); // -2 for Idle&System
 
-				await CheckProcess(new BasicProcessInfo { Process = process, Name = name, Id = pid, Path = null }, schedule_next: false);
+				CheckProcess(new BasicProcessInfo { Process = process, Name = name, Id = pid, Path = null }, schedule_next: false);
 			}
 
 			// DEBUG: if (TaskMaster.VeryVerbose) Console.WriteLine(string.Format("Handling: -{0} = {1} --- ProcessEverything", procs.Length, Handling));
@@ -828,27 +842,25 @@ namespace TaskMaster
 			Statistics.ParentSeeks += 1;
 		}
 
-		async Task CheckProcess(BasicProcessInfo info, bool schedule_next = true)
+		ProcessState CheckProcess(BasicProcessInfo info, bool schedule_next = true)
 		{
 			Debug.Assert(!string.IsNullOrEmpty(info.Name), "CheckProcess received null process name.");
 			Debug.Assert(info.Process != null, "CheckProcess received null process.");
 			Debug.Assert(!IgnoreProcessID(info.Id), "CheckProcess received invalid process ID: " + info.Id);
 
-			await Task.Yield();
+			ProcessState state = ProcessState.Invalid;
 
 			if (IgnoreProcessID(info.Id) || IgnoreProcessName(info.Name))
 			{
 				Log.Verbose("Ignoring process: {ProcessName} (#{ProcessID})", info.Name, info.Id);
-				return;
+				return ProcessState.AccessDenied;
 			}
 
 			if (string.IsNullOrEmpty(info.Name))
 			{
 				Log.Warning("#{AppId} details unaccessible, ignored.", info.Id);
-				return;
+				return ProcessState.AccessDenied;
 			}
-
-			ProcessState state = ProcessState.Invalid;
 
 			// TODO: check proc.processName for presence in images.
 			ProcessController pc;
@@ -862,8 +874,9 @@ namespace TaskMaster
 				catch
 				{
 					Log.Fatal("[{FriendlyName}] '{Exec}' (#{Pid}) MASSIVE FAILURE!!!", pc.FriendlyName, info.Name, info.Id);
+					state = ProcessState.AccessDenied;
 				}
-				return; // execontrol had this, we don't care about anything else for this.
+				return state; // execontrol had this, we don't care about anything else for this.
 
 			}
 			//Log.Verbose("{AppName} not in executable control list.", info.Name);
@@ -874,10 +887,12 @@ namespace TaskMaster
 				state = CheckPathWatch(info);
 			}
 
-			if (state != ProcessState.Invalid) return; // we don't care to process more
+			if (state != ProcessState.Invalid) return state; // we don't care to process more
 
 			if (ControlChildren) // this slows things down a lot it seems
 				ChildController(info);
+
+			return ProcessState.Invalid;
 		}
 
 		public struct BasicProcessInfo
@@ -912,10 +927,25 @@ namespace TaskMaster
 #endif
 				}
 			}
-			NewInstanceBatchProcessing();
+
+			Task.Run(new Func<Task>(async () =>
+			{
+				await Task.Yield();
+				try
+				{
+					NewInstanceBatchProcessing();
+				}
+				catch (Exception ex)
+				{
+					Log.Warning("Error batch processing new instances.");
+					Log.Error(ex.Message);
+					Log.Error(ex.StackTrace);
+					throw;
+				}
+			}));
 		}
 
-		async Task NewInstanceBatchProcessing()
+		void NewInstanceBatchProcessing()
 		{
 			List<BasicProcessInfo> list = new List<BasicProcessInfo>();
 			lock (processListLock)
@@ -933,7 +963,7 @@ namespace TaskMaster
 				foreach (var info in list)
 				{
 					//Console.WriteLine("Delayed.Processing = {0}, pid:{1}, process:{2}", info.Name, info.Id, (info.Process!=null));
-					await CheckProcess(info);
+					var rv = CheckProcess(info);
 				}
 			}
 			catch (Exception e)
@@ -956,10 +986,9 @@ namespace TaskMaster
 
 		public static event EventHandler<InstanceEventArgs> onInstanceHandling;
 
+		// This needs to return faster
 		async void NewInstanceTriage(object sender, System.Management.EventArrivedEventArgs e)
 		{
-			await Task.Yield();
-
 			Stopwatch n = Stopwatch.StartNew();
 
 			// TODO: Instance groups?
@@ -991,6 +1020,8 @@ namespace TaskMaster
 				Statistics.WMIquerytime += n.Elapsed.TotalSeconds;
 				Statistics.WMIqueries += 1;
 			}
+
+			await Task.Yield();
 
 			if (string.IsNullOrEmpty(name) && pid <= LowestInvalidPid)
 			{
@@ -1024,9 +1055,11 @@ namespace TaskMaster
 					name = process.ProcessName;
 				}
 			}
-			catch
+			catch (Exception ex)
 			{
 				Log.Warning("Failed to retrieve information for '{Name}' (#{Pid})", name, pid);
+				Log.Error(ex.Message);
+				Log.Error(ex.StackTrace);
 				onInstanceHandling?.Invoke(this, new InstanceEventArgs { Count = -1 });
 				return;
 			}
@@ -1068,7 +1101,7 @@ namespace TaskMaster
 			{
 				try
 				{
-					await CheckProcess(info);
+					var rv = CheckProcess(info);
 				}
 				catch (Exception ex)
 				{
