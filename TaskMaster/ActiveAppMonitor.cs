@@ -69,7 +69,7 @@ namespace TaskMaster
 
 		public void Dispose()
 		{
-			Log.Verbose("Disposing...");
+			Log.Verbose("Disposing FG monitor...");
 			//UnhookWinEvent(m_hhook); // Automatic
 		}
 

@@ -109,7 +109,7 @@ namespace TaskMaster
 
 					onModeChange?.Invoke(this, new PowerModeEventArgs { OldMode = old, NewMode = Current });
 
-					Log.Debug("Power plan changed to: {PlanName} ({PlanGuid})", Current.ToString(), newPersonality.ToString());
+					Log.Verbose("Power plan changed to: {PlanName} ({PlanGuid})", Current.ToString(), newPersonality.ToString());
 				}
 			}
 
@@ -248,15 +248,17 @@ namespace TaskMaster
 
 			if (disposing)
 			{
-				Log.Verbose("Disposing...");
+				Log.Verbose("Disposing power manager...");
 
 				if (SavedMode != PowerMode.Undefined)
+				{
 					RestoreMode();
+					Log.Information("Power mode restored.");
+				}
 			}
 
 			disposed = true;
 		}
-
 
 		// UserPowerKey is reserved for future functionality and must always be null
 		[DllImport("powrprof.dll", EntryPoint = "PowerSetActiveScheme")]

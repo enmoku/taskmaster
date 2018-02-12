@@ -40,7 +40,7 @@ namespace TaskMaster
 	/// <summary>
 	/// Process controller.
 	/// </summary>
-	public class ProcessController
+	public class ProcessController : IDisposable
 	{
 		public ProcessController(string name, ProcessPriorityClass priority, int affinity, string path = null)
 		{
@@ -58,7 +58,7 @@ namespace TaskMaster
 
 				if (Path != null)
 				{
-					Log.Information("'{ProcessName}' watched in: {Path} [Priority: {Priority}, Mask: {Mask}]",
+					Log.Information("[{FriendlyName}] Watched in: {Path} [Priority: {Priority}, Mask: {Mask}]",
 									FriendlyName, Path, Priority, Affinity.ToInt32());
 				}
 			}
@@ -181,6 +181,8 @@ namespace TaskMaster
 		static List<Process> waitingExit = new List<Process>(3);
 		static HashSet<int> waitingExitPids = new HashSet<int>();
 
+		static CancellationTokenSource ctsall = new CancellationTokenSource();
+
 		protected bool setPowerPlan(Process process)
 		{
 			if (!TaskMaster.PowerManagerEnabled) return false;
@@ -214,7 +216,7 @@ namespace TaskMaster
 
 							if (waitingExit.Count == 0)
 							{
-								Log.Debug("POWER MODE: '{ProcessName}' exited, restoring normal functionality.", name);
+								Log.Debug("POWER MODE: '{ProcessName}' exited; restoring normal functionality.", name);
 								PowerManager.RestoreMode();
 							}
 							else
@@ -254,15 +256,20 @@ namespace TaskMaster
 			REALTIME_PRIORITY_CLASS = 0x00000100
 		}
 
-		void SetBackground(Process process)
+		bool SetBackground(Process process)
 		{
-			SetIOPriority(process, PriorityTypes.PROCESS_MODE_BACKGROUND_BEGIN);
+			return SetIOPriority(process, PriorityTypes.PROCESS_MODE_BACKGROUND_BEGIN);
 		}
 
-		public static void SetIOPriority(Process process, PriorityTypes priority)
+		public static bool SetIOPriority(Process process, PriorityTypes priority)
 		{
-			try { SetPriorityClass(process.Handle, (uint)priority); }
+			try
+			{
+				bool rv = SetPriorityClass(process.Handle, (uint)priority);
+				return rv;
+			}
 			catch { }
+			return false;
 		}
 
 		public ProcessState Touch(ProcessManager.BasicProcessInfo info, bool schedule_next = false, bool recheck = false)
@@ -273,6 +280,7 @@ namespace TaskMaster
 
 			if (info.Process == null || info.Id <= 4 || string.IsNullOrEmpty(info.Name))
 			{
+				Log.Fatal("ProcessController.Touch({Name},#{Pid}) received invalid arguments.", info.Name, info.Id);
 				throw new ArgumentNullException();
 				return ProcessState.Invalid;
 			}
@@ -283,7 +291,10 @@ namespace TaskMaster
 				{
 					info.Process.Refresh();
 				}
-				catch { /* NOP */ }
+				catch
+				{
+					Log.Warning("[{FriendlyName}] {Exec} (#{Pid}) failed to refresh.", FriendlyName, info.Name, info.Id);
+				}
 			}
 
 			/*
@@ -305,7 +316,7 @@ namespace TaskMaster
 			catch (Win32Exception ex)
 			{
 				if (ex.NativeErrorCode != 5)
-					Log.Warning("[{FriendlyName}] '{ProcessName}' (#{ProcessID}) access failure determining if it's still running.", FriendlyName, info.Name, info.Id);
+					Log.Warning("[{FriendlyName}] {ProcessName} (#{ProcessID}) access failure determining if it's still running.", FriendlyName, info.Name, info.Id);
 				return ProcessState.AccessDenied; // we don't care what this error is exactly
 			}
 
@@ -324,7 +335,7 @@ namespace TaskMaster
 			if (denyChange)
 				Log.Debug("[{FriendlyName}] {ProcessName} (#{ProcessID}) in protected list, limiting tampering.", FriendlyName, info.Name, info.Id);
 
-			bool mAffinity = false, mPriority = false, mPower = false, modified = false;
+			bool mAffinity = false, mPriority = false, mPower = false, mBGIO = false, modified = false;
 			LastSeen = DateTime.Now;
 
 			IntPtr oldAffinity = IntPtr.Zero;
@@ -336,65 +347,78 @@ namespace TaskMaster
 			}
 			catch { }
 
-			lock (info.Process) // unnecessary
+			if (!denyChange)
 			{
-				if (!denyChange)
-				{
-					try
-					{
-						if (info.Process.SetLimitedPriority(Priority, Increase, Decrease))
-							modified = mPriority = true;
-					}
-					catch
-					{
-						// NOP
-					}
-				}
-
 				try
 				{
-					if (info.Process.ProcessorAffinity.ToInt32() != Affinity.ToInt32())
-					{
-						info.Process.ProcessorAffinity = Affinity;
-						modified = mAffinity = true;
-						//Log.Verbose("Affinity for '{ExecutableName}' (#{ProcessID}) set: {OldAffinity} → {NewAffinity}.",
-						//execname, pid, process.ProcessorAffinity.ToInt32(), Affinity.ToInt32());
-					}
-					else
-					{
-						//Log.Verbose("Affinity for '{ExecutableName}' (#{ProcessID}) is ALREADY set: {OldAffinity} → {NewAffinity}.",
-						//			execname, pid, process.ProcessorAffinity.ToInt32(), Affinity.ToInt32());
-					}
+					if (info.Process.SetLimitedPriority(Priority, Increase, Decrease))
+						modified = mPriority = true;
 				}
 				catch
 				{
-					Log.Warning("Couldn't access process ({ExecutableName}, #{ProcessID}) affinity.",
-								info.Name, info.Id);
+					Log.Warning("[{FriendlyName}] {Exec} (#{Pid}) failed to set process priority.", FriendlyName, info.Name, info.Id);
+					// NOP
 				}
-
-				PowerManager.PowerMode oldPP = PowerManager.Current;
-				setPowerPlan(info.Process);
-				mPower = (oldPP != PowerManager.Current);
 			}
+			else
+				Log.Verbose("{Exec} (#{Pid}) protected.", info.Name, info.Id);
+
+			try
+			{
+				if (info.Process.ProcessorAffinity.ToInt32() != Affinity.ToInt32())
+				{
+					info.Process.ProcessorAffinity = Affinity;
+					modified = mAffinity = true;
+					//Log.Verbose("Affinity for '{ExecutableName}' (#{ProcessID}) set: {OldAffinity} → {NewAffinity}.",
+					//execname, pid, process.ProcessorAffinity.ToInt32(), Affinity.ToInt32());
+				}
+				else
+				{
+					//Log.Verbose("Affinity for '{ExecutableName}' (#{ProcessID}) is ALREADY set: {OldAffinity} → {NewAffinity}.",
+					//			info.Name, info.Id, info.Process.ProcessorAffinity.ToInt32(), Affinity.ToInt32());
+				}
+			}
+			catch
+			{
+				Log.Warning("[{FriendlyName}] {Exec} (#{Pid}) failed to set process affinity.", FriendlyName, info.Name, info.Id);
+			}
+
+			if (BackgroundIO)
+			{
+				try
+				{
+					//Process.EnterDebugMode(); // doesn't help
+
+					mBGIO = SetBackground(info.Process); // doesn't work, can only be done to current process
+
+					//Process.LeaveDebugMode();
+				}
+				catch
+				{
+				}
+				if (mBGIO == false)
+					Log.Warning("[{FriendlyName}] {Exec} (#{Pid}) Failed to set background I/O mode.", FriendlyName, info.Name, info.Id);
+			}
+
+			PowerManager.PowerMode oldPP = PowerManager.Current;
+			setPowerPlan(info.Process);
+			mPower = (oldPP != PowerManager.Current);
 
 			var sbs = new System.Text.StringBuilder();
 			sbs.Append("[").Append(FriendlyName).Append("] ").Append(info.Name).Append(" (#").Append(info.Id).Append(")");
+
+			if (mPriority || mAffinity)
+				Adjusts += 1; // don't increment on power changes
+
 			if (modified)
 			{
-				if (mPriority || mAffinity)
-					Adjusts += 1; // don't increment on power changes
-
 				try
 				{
 					info.Process.Refresh();
 					ProcessPriorityClass newPriority = info.Process.PriorityClass;
-					if (info.Process.PriorityClass != Priority)
+					if (newPriority != Priority)
 					{
-						/*
-string Namespace = @"root\cimv2";
-string className = "Win32_Process";
-Microsoft.Management.Infrastructure.CimInstance diskDrive = new Microsoft.Management.Infrastructure.CimInstance(className, Namespace);
-*/
+						Log.Warning("[{FriendlyName}] {Exe} (#{Pid}) Post-mortem of modification: FAILURE.", FriendlyName, info.Name, info.Id);
 					}
 				}
 				catch
@@ -402,28 +426,36 @@ Microsoft.Management.Infrastructure.CimInstance diskDrive = new Microsoft.Manage
 				}
 
 				LastTouch = DateTime.Now;
+
 				rv = ProcessState.Modified;
+			}
 
-				if (mPriority)
-					sbs.Append("; Priority: ").Append(oldPriority.ToString()).Append(" → ").Append(Priority.ToString());
-				if (mAffinity)
-					sbs.Append("; Affinity: ").Append(oldAffinity.ToInt32()).Append(" → ").Append(Affinity.ToInt32());
-				if (mPower)
-					sbs.Append(string.Format(" [Power Mode: {0}]", PowerPlan.ToString()));
+			sbs.Append("; Priority: ");
+			if (mPriority)
+				sbs.Append(oldPriority.ToString()).Append(" → ");
+			sbs.Append(Priority.ToString()).Append("; Affinity: ");
+			if (mAffinity)
+				sbs.Append(oldAffinity.ToInt32()).Append(" → ");
+			sbs.Append(Affinity.ToInt32());
+			if (mPower)
+				sbs.Append(string.Format(" [Power Mode: {0}]", PowerPlan.ToString()));
+			if (mBGIO)
+				sbs.Append(" [BgIO!]");
 
+			if (modified)
+			{
 				Log.Information(sbs.ToString());
-
-				rv = ProcessState.Modified;
-
-				onTouch?.Invoke(this, new ProcessEventArgs { Control = this, Process = info.Process });
 			}
 			else
 			{
 				//if (DateTime.Now - LastSeen
-				sbs.Append(" looks OK, not touched.");
+				sbs.Append(" – looks OK, not touched.");
 				Log.Verbose(sbs.ToString());
 				rv = ProcessState.OK;
 			}
+
+			if (modified)
+				onTouch?.Invoke(this, new ProcessEventArgs { Control = this, Process = info.Process });
 
 			if (schedule_next) RescanWithSchedule();
 
@@ -432,11 +464,21 @@ Microsoft.Management.Infrastructure.CimInstance diskDrive = new Microsoft.Manage
 				Task.Run(new Func<Task>(async () =>
 				{
 					await Task.Delay(Math.Max(Recheck, 5) * 1000);
-					Log.Debug("Rechecking '{Process}' (#{PID})", info.Name, info.Id);
-					if (!info.Process.HasExited)
-						Touch(info, schedule_next: false, recheck: true);
-					else
-						Log.Debug("'{Process}' (#{PID}) is gone yo.", info.Name, info.Id);
+					Log.Debug("[{FriendlyName}] {Process} (#{PID}) rechecking", FriendlyName, info.Name, info.Id);
+					try
+					{
+						if (!info.Process.HasExited)
+							Touch(info, schedule_next: false, recheck: true);
+						else
+							Log.Verbose("[{FriendlyName}] {Process} (#{PID}) is gone yo.", FriendlyName, info.Name, info.Id);
+					}
+					catch (Exception ex)
+					{
+						Log.Warning("[{FriendlyName}] {Process} (#{PID}) – something bad happened.", FriendlyName, info.Name, info.Id);
+						Log.Fatal(ex.Message);
+						Log.Fatal(ex.StackTrace);
+						throw;
+					}
 				}));
 			}
 
@@ -458,7 +500,7 @@ Microsoft.Management.Infrastructure.CimInstance diskDrive = new Microsoft.Manage
 		/// <summary>
 		/// Atomic lock for RescanWithSchedule()
 		/// </summary>
-		int ScheduledScan; // = 0;
+		int ScheduledScan = 0;
 
 		async Task RescanWithSchedule()
 		{
@@ -469,14 +511,14 @@ Microsoft.Management.Infrastructure.CimInstance diskDrive = new Microsoft.Manage
 				if (System.Threading.Interlocked.CompareExchange(ref ScheduledScan, 1, 0) == 1)
 					return;
 
-				Log.Debug("'{FriendlyName}' rescan initiating.", FriendlyName);
+				Log.Verbose("[{FriendlyName}] Rescan initiating.", FriendlyName);
 
 				await Scan();
 
 				ScheduledScan = 0;
 			}
 			else
-				Log.Verbose("'{FriendlyName}' scan too recent, ignoring.", FriendlyName);
+				Log.Verbose("[{FriendlyName}] Scan too recent, ignoring.", FriendlyName);
 		}
 
 		public async Task Scan()
@@ -502,7 +544,7 @@ Microsoft.Management.Infrastructure.CimInstance diskDrive = new Microsoft.Manage
 			if (procs.Length == 0) return;
 
 
-			Log.Verbose("Scanning '{ProcessFriendlyName}' (found {ProcessInstances} instance(s))", FriendlyName, procs.Length);
+			Log.Verbose("[{FriendlyName}] Scanning found {ProcessInstances} instance(s)", FriendlyName, procs.Length);
 
 			int tc = 0;
 			foreach (Process process in procs)
@@ -523,7 +565,7 @@ Microsoft.Management.Infrastructure.CimInstance diskDrive = new Microsoft.Manage
 			}
 
 			if (tc > 0)
-				Log.Verbose("Scan for '{ProcessFriendlyName}' modified {ModifiedInstances} out of {ProcessInstances} instance(s)",
+				Log.Verbose("[{ProcessFriendlyName}] Scan modified {ModifiedInstances} out of {ProcessInstances} instance(s)",
 							FriendlyName, tc, procs.Length);
 		}
 
@@ -549,7 +591,7 @@ Microsoft.Management.Infrastructure.CimInstance diskDrive = new Microsoft.Manage
 				return false;
 			}
 
-			Log.Verbose("Watched item '{PathName}' encountered.", FriendlyName);
+			Log.Verbose("[{FriendlyName}] Watched item '{Item}' encountered.", FriendlyName, ExecutableFriendlyName);
 			try
 			{
 				string corepath = System.IO.Path.GetDirectoryName(process.MainModule.FileName);
@@ -557,7 +599,7 @@ Microsoft.Management.Infrastructure.CimInstance diskDrive = new Microsoft.Manage
 				if (System.IO.Directory.Exists(fullpath))
 				{
 					Path = fullpath;
-					Log.Debug(string.Format("'{0}' bound to: {1}", FriendlyName, Path));
+					Log.Debug("[{FriendlyName}] Bound to: {Path}", FriendlyName, Path);
 
 					onLocate?.Invoke(this, new PathControlEventArgs());
 
@@ -566,7 +608,7 @@ Microsoft.Management.Infrastructure.CimInstance diskDrive = new Microsoft.Manage
 			}
 			catch (Exception ex)
 			{
-				Log.Warning("Access failure with '{PathName}'", FriendlyName);
+				Log.Warning("[{FriendlyName}] Access failure while determining path.");
 				Console.Error.WriteLine(ex);
 			}
 
@@ -575,6 +617,35 @@ Microsoft.Management.Infrastructure.CimInstance diskDrive = new Microsoft.Manage
 
 		public static event EventHandler<ProcessEventArgs> onTouch;
 		public static event EventHandler<PathControlEventArgs> onLocate;
+
+		public void Dispose()
+		{
+			Dispose(true);
+			GC.SuppressFinalize(this);
+		}
+
+		bool disposed; // = false;
+		protected virtual void Dispose(bool disposing)
+		{
+			if (disposed) return;
+
+			if (disposing)
+			{
+				Log.Verbose("Disposing process controller [{FriendlyName}]", FriendlyName);
+
+				if (waitingExit != null)
+				{
+					waitingExit.Clear();
+					waitingExit = null;
+				}
+				if (waitingExitPids != null)
+				{
+					waitingExitPids.Clear();
+					waitingExitPids = null;
+				}
+			}
+
+			disposed = true;		}
 	}
 
 	public class PathControlEventArgs : EventArgs

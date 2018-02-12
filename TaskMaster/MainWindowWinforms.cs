@@ -33,6 +33,7 @@ namespace TaskMaster
 	using System;
 	using System.Collections.Generic;
 	using System.Linq;
+	using System.Threading.Tasks;
 	using System.Windows.Forms;
 	using Serilog;
 
@@ -952,12 +953,12 @@ namespace TaskMaster
 				FlatStyle = FlatStyle.Flat
 			};
 			rescanbutton.Click += async (object sender, EventArgs e) =>
-			{
-				rescanbutton.Enabled = false;
-				rescanRequest?.Invoke(this, new EventArgs());
-				await System.Threading.Tasks.Task.Yield();
-				rescanbutton.Enabled = true;
-			};
+						{
+							rescanbutton.Enabled = false;
+							await Task.Yield();
+							rescanRequest?.Invoke(this, new EventArgs());
+							rescanbutton.Enabled = true;
+						};
 			commandpanel.Controls.Add(new Label
 			{
 				Text = "Processing",
@@ -980,7 +981,7 @@ namespace TaskMaster
 			crunchbutton.Click += async (object sender, EventArgs e) =>
 			{
 				crunchbutton.Enabled = false;
-				await System.Threading.Tasks.Task.Yield();
+				await Task.Yield();
 				pagingRequest?.Invoke(this, new EventArgs());
 				crunchbutton.Enabled = true;
 			};
@@ -1082,8 +1083,24 @@ namespace TaskMaster
 		void UpdateInfoPanel(object sender, EventArgs e)
 		{
 			ListViewItem ri = appList.SelectedItems[0];
-			Log.Debug("'{RowName}' selected in UI", ri.SubItems[0]);
-			// TODO
+			string name = ri.SubItems[0].Text;
+			/*
+			//Log.Debug("'{RowName}' selected in UI", ri.SubItems[0]);
+			// TODO: Add info panel for selected item.
+			ProcessController pc = null;
+			foreach (var tpc in TaskMaster.processmanager.watchlist)
+			{
+				if (name == tpc.FriendlyName)
+				{
+					pc = tpc;
+					break;
+				}
+			}
+			if (pc == null) throw new ArgumentException(string.Format("{0} not found in watchlist.", name));
+
+			Log.Information("[{FriendlyName}] Last seen: {Date} {Time}",
+							pc.FriendlyName, pc.LastSeen.ToShortDateString(), pc.LastSeen.ToShortTimeString());
+			*/
 		}
 
 		NumericUpDown tempObjectCount;
@@ -1274,7 +1291,7 @@ namespace TaskMaster
 
 			if (disposing)
 			{
-				Log.Verbose("Disposing...");
+				Log.Verbose("Disposing main window...");
 
 				DiskManager.onTempScan -= TempScanStats;
 				ProcessController.onTouch -= ProcAdjust;

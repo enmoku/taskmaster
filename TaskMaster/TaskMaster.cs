@@ -242,6 +242,15 @@ namespace TaskMaster
 				}
 
 				self.ProcessorAffinity = new IntPtr(SelfAffinity); // this should never throw an exception
+
+				try
+				{
+					ProcessController.SetIOPriority(self, ProcessController.PriorityTypes.PROCESS_MODE_BACKGROUND_BEGIN);
+				}
+				catch
+				{
+					Log.Warning("Failed to set self to background mode.");
+				}
 			}
 
 			if (MaintenanceMonitorEnabled)
@@ -589,6 +598,19 @@ namespace TaskMaster
 			}
 			finally
 			{
+				if (SelfOptimize)
+				{
+					var self = Process.GetCurrentProcess();
+					self.PriorityClass = ProcessPriorityClass.Normal;
+					try
+					{
+						ProcessController.SetIOPriority(self, ProcessController.PriorityTypes.PROCESS_MODE_BACKGROUND_END);
+					}
+					catch
+					{
+					}
+				}
+
 				Log.Information("Exiting...");
 
 				if (mainwindow != null)
@@ -606,10 +628,10 @@ namespace TaskMaster
 				mainwindow?.Dispose();
 				processmanager?.Dispose();
 				micmonitor?.Dispose();
+				powermanager?.Dispose();
 				trayaccess?.Dispose();
 				netmonitor?.Dispose();
 				activeappmonitor?.Dispose();
-				powermanager?.Dispose();
 				mainwindow = null; processmanager = null; micmonitor = null; trayaccess = null; netmonitor = null; activeappmonitor = null; powermanager = null;
 
 				Log.Information("WMI queries: {QueryTime:1}s [{QueryCount}]; Parent seeking: {ParentSeekTime:1}s [{ParentSeekCount}]",

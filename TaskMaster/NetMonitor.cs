@@ -37,7 +37,6 @@ namespace TaskMaster
 	using System.Net.NetworkInformation;
 	using System.Collections.Generic;
 	using System.Linq;
-	using System.Diagnostics;
 	using Serilog;
 
 	public class NetworkStatus : EventArgs
@@ -67,6 +66,8 @@ namespace TaskMaster
 
 		public NetMonitor()
 		{
+			Since = DateTime.Now;
+
 			lastUptimeStart = DateTime.Now;
 
 			var cfg = TaskMaster.loadConfig("Net.ini");
@@ -125,6 +126,7 @@ namespace TaskMaster
 		int uptimeSamples; // = 0;
 		double uptimeTotal; // = 0;
 		List<double> upTime = new List<double>();
+		DateTime Since;
 
 		/// <summary>
 		/// Current uptime in minutes.
@@ -167,7 +169,9 @@ namespace TaskMaster
 					ups.Append(" (").Append(string.Format("{0:N1}", upTime.GetRange(upTime.Count - 3, 3).Sum() / 3)).Append(" minutes for last 3 samples");
 			}
 
-			ups.Append(".");
+			ups.Append(" since: ").Append(Since)
+			   .Append(" (").Append(string.Format("{0:N2}", (DateTime.Now - Since).TotalHours)).Append("h ago)")
+			   .Append(".");
 
 			Log.Information(ups.ToString());
 
@@ -483,6 +487,7 @@ namespace TaskMaster
 
 			if (disposing)
 			{
+				Log.Verbose("Disposing network monitor...");
 				ReportUptime();
 			}
 

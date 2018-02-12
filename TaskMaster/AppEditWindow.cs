@@ -30,6 +30,7 @@ using System.Diagnostics;
 using System.Collections.Specialized;
 using System;
 using System.Collections.Generic;
+using System.Windows.Data;
 
 namespace TaskMaster
 {
@@ -64,22 +65,45 @@ namespace TaskMaster
 
 		void SaveInfo(object sender, System.EventArgs ev)
 		{
-			Log.Warning("SAVING NOT SUPPORTED YET");
+			Log.Warning("CONVENIENT SAVING NOT SUPPORTED YET");
 
-			Console.WriteLine("[{0}]", friendlyName.Text);
-			Console.WriteLine("Image={0}", execName.Text);
-			Console.WriteLine("Priority={0}", priorityClass.SelectedIndex);
-			Console.WriteLine("Affinity={0}", affinityMask.Text);
-			Console.WriteLine("Power Plan={0}", powerPlan.Text);
-			Console.WriteLine("Rescan={0}", rescanFreq.Value);
-			Console.WriteLine("Allow paging={0}", allowPaging.Checked);
-			Console.WriteLine("Foreground only={0}", foregroundOnly.Checked);
+			System.Text.StringBuilder sbs = new System.Text.StringBuilder();
+
+			sbs.Append("[").Append(friendlyName.Text).Append("]").AppendLine();
+			if (execName.Text.Length > 0)
+				sbs.Append("Image = ").Append(execName.Text).AppendLine();
+			if (pathName.Text.Length > 0)
+				sbs.Append("Path = ").Append(pathName.Text).AppendLine();
+			sbs.Append("Priority = ").Append(priorityClass.SelectedIndex).AppendLine();
+			sbs.Append("Increase = ").Append(increasePrio.Checked).AppendLine();
+			sbs.Append("Decrease = ").Append(decreasePrio.Checked).AppendLine();
+			sbs.Append("Affinity = ").Append(affinityMask.Value).AppendLine();
+			if (powerPlan.SelectedIndex != 3)
+				sbs.Append("Power plan = ").Append(powerPlan.Text).AppendLine();
+			if (rescanFreq.Value > 0)
+				sbs.Append("Rescan = ").Append(rescanFreq.Value).AppendLine();
+			sbs.Append("Allow paging = ").Append(allowPaging.Checked).AppendLine();
+			sbs.Append("Foreground only = ").Append(foregroundOnly.Checked).AppendLine();
+
+			try
+			{
+				Clipboard.SetText(sbs.ToString());
+				Log.Information("App configuration saved to clipboard, you can now replace it in watchlist.");
+			}
+			catch
+			{
+				Log.Warning("Failure to copy configuration to clipboard.");
+			}
+			sbs.Clear();
 		}
 
 		TextBox friendlyName = new TextBox();
 		TextBox execName = new TextBox();
+		TextBox pathName = new TextBox();
 		ComboBox priorityClass;
-		TextBox affinityMask = new TextBox();
+		CheckBox increasePrio = new CheckBox();
+		CheckBox decreasePrio = new CheckBox();
+		NumericUpDown affinityMask = new NumericUpDown();
 		NumericUpDown rescanFreq = new NumericUpDown();
 		CheckBox allowPaging = new CheckBox();
 		ComboBox powerPlan = new ComboBox();
@@ -87,13 +111,13 @@ namespace TaskMaster
 
 		void BuildUI()
 		{
-			Size = new System.Drawing.Size(260, 300);
+			//Size = new System.Drawing.Size(340, 480); // width, height
 			AutoSizeMode = AutoSizeMode.GrowOnly;
 			AutoSize = true;
 
 			Text = string.Format("{0} ({1}) – {2}",
 								 process.FriendlyName,
-								 process.Executable,
+								 (process.Executable != null ? process.Executable : process.Path),
 								 System.Windows.Forms.Application.ProductName);
 			Padding = new Padding(12);
 
@@ -104,11 +128,13 @@ namespace TaskMaster
 				Parent = this,
 				ColumnCount = 2,
 				//lrows.RowCount = 10;
-				Dock = DockStyle.Fill
+				Dock = DockStyle.Fill,
+				AutoSize = true,
 			};
 
-			lt.Controls.Add(new Label { Text = "Friendly name" });
+			lt.Controls.Add(new Label { Text = "Friendly name", TextAlign = System.Drawing.ContentAlignment.MiddleLeft });
 			friendlyName.Text = process.FriendlyName;
+			friendlyName.Width = 180;
 			friendlyName.CausesValidation = true;
 			friendlyName.Validating += (sender, e) =>
 			{
@@ -120,12 +146,26 @@ namespace TaskMaster
 			};
 			tooltip.SetToolTip(friendlyName, "Human readable name, for user convenience.");
 			lt.Controls.Add(friendlyName);
-			lt.Controls.Add(new Label { Text = "Executable" });
+			lt.Controls.Add(new Label { Text = "Executable", TextAlign = System.Drawing.ContentAlignment.MiddleLeft });
 			execName.Text = process.Executable;
+			execName.Width = 180;
 			tooltip.SetToolTip(execName, "Executable name, used to recognize these applications.\nFull filename, including extension if any.");
 			lt.Controls.Add(execName);
 
-			lt.Controls.Add(new Label { Text = "Priority class" });
+			// PATH
+			lt.Controls.Add(new Label { Text = "Path", TextAlign = System.Drawing.ContentAlignment.MiddleLeft });
+			pathName.Text = process.Path;
+			pathName.Width = 180;
+			tooltip.SetToolTip(pathName, "Path name; rule will match only paths that include this, subfolders included.\nPartial matching is allowed.");
+			lt.Controls.Add(pathName);
+			// system.windows.forms.folderbrowserdialog
+
+			lt.Controls.Add(new Label { Text = "Priority class", TextAlign = System.Drawing.ContentAlignment.MiddleLeft });
+			var priopanel = new TableLayoutPanel()
+			{
+				ColumnCount = 1,
+				AutoSize = true
+			};
 			priorityClass = new ComboBox
 			{
 				Dock = DockStyle.Left,
@@ -133,124 +173,225 @@ namespace TaskMaster
 				Items = { "Idle", "Below Normal", "Normal", "Above Normal", "High" }, // System.Enum.GetNames(typeof(ProcessPriorityClass)), 
 				SelectedIndex = 2
 			};
+			priorityClass.Width = 180;
 			priorityClass.SelectedIndex = process.Priority.ToInt32();
-			tooltip.SetToolTip(priorityClass, "CPU priority for the application.");
-			lt.Controls.Add(priorityClass);
+			tooltip.SetToolTip(priorityClass, "CPU priority for the application.\nIf both increase and decrease are disabled, this has no effect.");
+			var incdecpanel = new TableLayoutPanel()
+			{
+				ColumnCount = 4,
+				AutoSize = true,
+			};
+			incdecpanel.Controls.Add(new Label() { Text = "Increase:", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true });
+			increasePrio.Checked = process.Increase;
+			increasePrio.AutoSize = true;
+			incdecpanel.Controls.Add(increasePrio);
+			incdecpanel.Controls.Add(new Label() { Text = "Decrease:", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true });
+			decreasePrio.Checked = process.Decrease;
+			decreasePrio.AutoSize = true;
+			incdecpanel.Controls.Add(decreasePrio);
+			priopanel.Controls.Add(priorityClass);
+			priopanel.Controls.Add(incdecpanel);
+			lt.Controls.Add(priopanel);
+			//lt.Controls.Add(priorityClass);
 
-			lt.Controls.Add(new Label { Text = "Affinity" });
-			affinityMask.Text = (process.Affinity.ToInt32() == ProcessManager.allCPUsMask ? "0" : process.Affinity.ToString());
+			lt.Controls.Add(new Label { Text = "Affinity", TextAlign = System.Drawing.ContentAlignment.MiddleLeft });
+			affinityMask.Width = 80;
+			affinityMask.Maximum = ProcessManager.allCPUsMask;
+			affinityMask.Minimum = 0;
+			try
+			{
+				affinityMask.Value = (process.Affinity.ToInt32() == ProcessManager.allCPUsMask ? 0 : process.Affinity.ToInt32());
+			}
+			catch
+			{
+				affinityMask.Value = 0;
+			}
+
 			tooltip.SetToolTip(affinityMask, "CPU core afffinity as integer mask.\nEnter 0 to let OS manage this as normal.\nFull affinity is same as 0, there's no difference.\nExamples:\n14 = all but first core on quadcore.\n254 = all but first core on octocore.");
-			lt.Controls.Add(affinityMask);
 
-			lt.Controls.Add(new Label { Text = "Rescan frequency" });
+			//lt.Controls.Add(affinityMask);
+
+			// ---------------------------------------------------------------------------------------------------------
+
+			var layout = new TableLayoutPanel()
+			{
+				ColumnCount = 1,
+				AutoSize = true,
+			};
+
+			layout.Controls.Add(affinityMask);
+
+			var corelayout = new TableLayoutPanel()
+			{
+				ColumnCount = 8,
+				AutoSize = true,
+			};
+
+			var list = new List<CheckBox>();
+
+			int cpumask = process.Affinity.ToInt32();
+			for (int bit = 0; bit < ProcessManager.CPUCount; bit++)
+			{
+				var box = new CheckBox();
+				int bitoff = bit;
+				box.AutoSize = true;
+				box.Checked = ((cpumask & (1 << bitoff)) != 0);
+				box.CheckedChanged += (sender, e) =>
+								{
+									if (box.Checked)
+									{
+										cpumask |= (1 << bitoff);
+										affinityMask.Value = cpumask;
+									}
+									else
+									{
+										cpumask &= ~(1 << bitoff);
+										affinityMask.Value = cpumask;
+									}
+								};
+				list.Add(box);
+				corelayout.Controls.Add(new Label
+				{
+					Text = (bit + 1) + ":",
+					AutoSize = true,
+					//BackColor = System.Drawing.Color.LightPink,
+					TextAlign = System.Drawing.ContentAlignment.MiddleLeft
+				});
+				corelayout.Controls.Add(box);
+			}
+
+			layout.Controls.Add(corelayout);
+
+			var buttonpanel = new TableLayoutPanel()
+			{
+				ColumnCount = 2,
+				AutoSize = true,
+			};
+			var clearbutton = new Button() { Text = "None" };
+			clearbutton.Click += (sender, e) =>
+						{
+							foreach (var bu in list)
+								bu.Checked = false;
+						};
+			var allbutton = new Button() { Text = "All" };
+			allbutton.Click += (sender, e) =>
+						{
+							foreach (var bu in list)
+								bu.Checked = true;
+						};
+			buttonpanel.Controls.Add(clearbutton);
+			buttonpanel.Controls.Add(allbutton);
+			layout.Controls.Add(buttonpanel);
+
+			affinityMask.ValueChanged += (sender, e) =>
+			{
+				int bitoff = 0;
+				try { cpumask = (int)affinityMask.Value; }
+				catch { cpumask = 0; affinityMask.Value = 0; }
+				foreach (var bu in list)
+				{
+					bu.Checked = ((cpumask & (1 << bitoff)) != 0);
+					bitoff++;
+				}
+			};
+
+			lt.Controls.Add(layout);
+
+			// ---------------------------------------------------------------------------------------------------------
+
+			lt.Controls.Add(new Label { Text = "Rescan frequency", TextAlign = System.Drawing.ContentAlignment.MiddleLeft });
 			rescanFreq.Value = process.Rescan;
+			rescanFreq.Width = 80;
 			tooltip.SetToolTip(rescanFreq, "How often to rescan for this app, in minutes.\nSometimes instances slip by.");
 			lt.Controls.Add(rescanFreq);
 
 			//lt.Controls.Add(new Label { Text="Children"});
 			//lt.Controls.Add(new Label { Text="Child priority"});
 
-			lt.Controls.Add(new Label { Text = "Power plan" });
+			lt.Controls.Add(new Label { Text = "Power plan", TextAlign = System.Drawing.ContentAlignment.MiddleLeft });
 			foreach (var t in PowerManager.PowerModes)
 				powerPlan.Items.Add(t);
 			int ppi = System.Convert.ToInt32(process.PowerPlan);
+			powerPlan.DropDownStyle = ComboBoxStyle.DropDownList;
 			powerPlan.SelectedIndex = System.Math.Max(ppi, 3);
+			powerPlan.Width = 180;
 			tooltip.SetToolTip(powerPlan, "Power Mode to be used when this application is detected.");
 			lt.Controls.Add(powerPlan);
 
-			lt.Controls.Add(new Label { Text = "Foreground only" });
+			lt.Controls.Add(new Label { Text = "Foreground only", TextAlign = System.Drawing.ContentAlignment.MiddleLeft });
 			foregroundOnly.Checked = process.ForegroundOnly;
 			tooltip.SetToolTip(foregroundOnly, "Lower priority and power mode is restored when this app is not in focus.");
 			lt.Controls.Add(foregroundOnly);
 
-			lt.Controls.Add(new Label { Text = "Allow paging" });
+			lt.Controls.Add(new Label { Text = "Allow paging", TextAlign = System.Drawing.ContentAlignment.MiddleLeft });
 			allowPaging.Checked = process.AllowPaging;
 			tooltip.SetToolTip(allowPaging, "Allow this application to be paged when it is requested.");
 			lt.Controls.Add(allowPaging);
 
 			//lt.Controls.Add(new Label { Text=""})
 
-			Button saveButton = new Button(); // SAVE
+			var finalizebuttons = new TableLayoutPanel() { ColumnCount = 2, AutoSize = true };
+			var saveButton = new Button(); // SAVE
 			saveButton.Text = "Save";
 			saveButton.Click += SaveInfo;
-			lt.Controls.Add(saveButton);
-			Button closeButton = new Button(); // CLOSE
+			finalizebuttons.Controls.Add(saveButton);
+			//lt.Controls.Add(saveButton);
+			var closeButton = new Button(); // CLOSE
 			closeButton.Text = "Close";
 			closeButton.Click += (sender, e) => { Close(); };
-			lt.Controls.Add(closeButton);
+			finalizebuttons.Controls.Add(closeButton);
+
+			var validatebutton = new Button();
+			validatebutton.Text = "Validate";
+			validatebutton.Click += ValidateWatchedItem;
+			validatebutton.Margin = new Padding(6);
+
+			lt.Controls.Add(validatebutton);
+
+			lt.Controls.Add(finalizebuttons);
 
 			// ---
 		}
-	}
 
-	class AffinityWindow : Form
-	{
-		public AffinityWindow()
+		void ValidateWatchedItem(object sender, EventArgs ev)
 		{
-			Text = "Core Affinity";
+			bool fnlen = (friendlyName.Text.Length > 0);
+			bool exnam = (execName.Text.Length > 0);
+			bool path = (pathName.Text.Length > 0);
 
-			int cpumask = 0;
-
-			var layout = new TableLayoutPanel()
+			bool exfound = false;
+			if (exnam)
 			{
-				ColumnCount = 1
-			};
+				Process[] procs = Process.GetProcessesByName(execName.Text);
 
-			var corelayout = new TableLayoutPanel()
-			{
-				ColumnCount = ProcessManager.CPUCount
-			};
-
-			var list = new List<CheckBox>();
-
-			var mask = new TextBox();
-
-			for (int bit = 0; bit < ProcessManager.CPUCount; bit++)
-			{
-				var box = new CheckBox();
-				box.CheckedChanged += (sender, e) =>
-				{
-					if (box.Checked)
-					{
-						cpumask |= (1 << bit);
-					}
-					else
-					{
-						cpumask &= ~(1 << bit);
-					}
-				};
-				list.Add(box);
-				corelayout.Controls.Add(new Label { Text = (bit + 1) + ":" });
-				corelayout.Controls.Add(box);
+				if (procs.Length > 0)
+					exfound = true;
 			}
 
-			layout.Controls.Add(corelayout);
-			layout.Controls.Add(new Label { Text = "Mask:", TextAlign = System.Drawing.ContentAlignment.MiddleLeft });
-			layout.Controls.Add(mask);
-
-			var buttonpanel = new TableLayoutPanel()
+			bool pfound = false;
+			if (path)
 			{
-				ColumnCount = 2
-			};
-			var clearbutton = new Button();
-			clearbutton.Click += (sender, e) =>
-			{
-				foreach (var bu in list)
-					bu.Checked = false;
-			};
-			var allbutton = new Button();
-			allbutton.Click += (sender, e) =>
-			{
-				foreach (var bu in list)
-					bu.Checked = true;
-			};
-			buttonpanel.Controls.Add(clearbutton);
-			buttonpanel.Controls.Add(allbutton);
-			layout.Controls.Add(buttonpanel);
+				try
+				{
+					pfound = System.IO.Directory.Exists(pathName.Text);
+				}
+				catch
+				{
+				}
+			}
 
-			var savebutton = new Button();
+			System.Text.StringBuilder sbs = new System.Text.StringBuilder();
+			sbs.Append("Name: ").Append(fnlen ? "OK" : "Fail").AppendLine();
+			if (execName.Text.Length > 0)
+				sbs.Append("Executable: ").Append(exnam ? "OK" : "Fail").Append(" – Found: ").Append(exfound).AppendLine();
+			if (pathName.Text.Length > 0)
+				sbs.Append("Path: ").Append(path ? "OK" : "Fail").Append(" - Found: ").Append(pfound).AppendLine();
+			if ((rescanFreq.Value > 0) && !exnam)
+				sbs.Append("Rescan frequency REQUIRES executable to be defined.").AppendLine();
+			if (increasePrio.Checked && decreasePrio.Checked)
+				sbs.Append("Priority class is to be ignored.").AppendLine();
 
-			layout.Controls.Add(savebutton);
+			MessageBox.Show(sbs.ToString(), "Validation results", MessageBoxButtons.OK, MessageBoxIcon.Information, MessageBoxDefaultButton.Button1, MessageBoxOptions.DefaultDesktopOnly, false);
 		}
 	}
 }

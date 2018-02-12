@@ -167,10 +167,8 @@ namespace TaskMaster
 										//if (TaskMaster.VeryVerbose) Console.WriteLine("END::Tray.ExitRequest()");
 		}
 
-		async void RestoreMain(object sender, EventArgs e)
+		void RestoreMain(object sender, EventArgs e)
 		{
-			//Log.Verbose("Show Main Window");
-			await System.Threading.Tasks.Task.Yield();
 			TaskMaster.BuildMain();
 			TaskMaster.mainwindow.Show();
 		}
@@ -314,6 +312,8 @@ namespace TaskMaster
 
 			if (disposing)
 			{
+				Log.Verbose("Disposing tray...");
+
 				try
 				{
 					PowerManager.onModeChange -= HighlightPowerModeEvent;

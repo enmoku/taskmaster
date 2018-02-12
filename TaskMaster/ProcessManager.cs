@@ -37,6 +37,7 @@ using System.Runtime.InteropServices;
 using System.IO;
 using System.Timers;
 using System.Runtime.Remoting.Messaging;
+using System.Windows.Forms;
 
 namespace TaskMaster
 {
@@ -247,7 +248,7 @@ namespace TaskMaster
 			if (TaskMaster.PathMonitorEnabled)
 				UpdatePathWatch();
 
-			Log.Verbose("Done processing everything.");
+			Log.Information("Scanned {ProcessCount} processes.", procs.Length);
 			PathCacheStats();
 		}
 
@@ -256,13 +257,79 @@ namespace TaskMaster
 
 		static int BatchDelay = 2500;
 		static int RescanDelay = 1000 * 60 * 5; // 5 minutes
+		static int RescanEverythingFrequency = 0; //
 		static bool BatchProcessing; // = false;
 		static int BatchProcessingThreshold = 5;
 		static bool ControlChildren = false; // = false;
 		SharpConfig.Configuration stats;
+
+		static System.Timers.Timer RescanEverythingTimer = null;
+
 		public void loadWatchlist()
 		{
-			Log.Verbose("Loading watchlist");
+			Log.Verbose("Loading general process configuration...");
+
+			var coreperf = TaskMaster.cfg["Performance"];
+
+			bool dirtyconfig = false, tdirty = false;
+			ControlChildren = coreperf.GetSetDefault("Child processes", false, out tdirty).BoolValue;
+			dirtyconfig |= tdirty;
+			BatchProcessing = coreperf.GetSetDefault("Batch processing", false, out tdirty).BoolValue;
+			coreperf["Batch processing"].Comment = "Process management works in delayed batches instead of immediately.";
+			dirtyconfig |= tdirty;
+			Log.Information("Batch processing: {BatchProcessing}", (BatchProcessing ? "Enabled" : "Disabled"));
+			if (BatchProcessing)
+			{
+				BatchDelay = coreperf.GetSetDefault("Batch processing delay", 2500, out tdirty).IntValue;
+				dirtyconfig |= tdirty;
+				Log.Information("Batch processing delay: {BatchProcessingDelay:N1}s", BatchDelay / 1000);
+				BatchProcessingThreshold = coreperf.GetSetDefault("Batch processing threshold", 5, out tdirty).IntValue;
+				dirtyconfig |= tdirty;
+				Log.Information("Batch processing threshold: {BatchProcessingThreshold}", BatchProcessingThreshold);
+			}
+			RescanDelay = coreperf.GetSetDefault("Rescan frequency", 5, out tdirty).IntValue * 1000 * 60;
+			coreperf["Rescan frequency"].Comment = "How often to check for apps that want to be rescanned.";
+			dirtyconfig |= tdirty;
+			Log.Information("Rescan frequency: {RescanDelay:N1}m", RescanDelay / 1000 / 60);
+
+			RescanEverythingFrequency = coreperf.GetSetDefault("Rescan everything frequency", 0, out tdirty).IntValue;
+			if (RescanEverythingFrequency > 0)
+			{
+				if (RescanEverythingFrequency < 5) RescanEverythingFrequency = 5;
+				RescanEverythingFrequency *= 1000 * 60; // to minutes
+			}
+			coreperf["Rescan everything frequency"].Comment = "Frequency (in minutes) at which we rescan everything. 0 disables.";
+			dirtyconfig |= tdirty;
+			if (RescanEverythingFrequency > 0)
+				Log.Information("Rescan everything every {Frequency} minutes.", RescanEverythingFrequency / 1000 / 60);
+
+			var powersec = TaskMaster.cfg["Power"];
+			PowerdownDelay = powersec.GetSetDefault("Powerdown delay", 7, out tdirty).IntValue * 1000;
+			powersec["Powerdown delay"].Comment = "Delay in seconds to restore old power mode after elevated power mode is no longer needed.\n0 disables the delay.";
+			dirtyconfig |= tdirty;
+
+			// --------------------------------------------------------------------------------------------------------
+
+			//TaskMaster.cfg["Applications"]["Ignored"].StringValueArray = IgnoreList;
+			var ignsetting = TaskMaster.cfg["Applications"];
+			string[] newIgnoreList = ignsetting.GetSetDefault("Ignored", IgnoreList, out tdirty)?.StringValueArray;
+			ignsetting.PreComment = "Special hardcoded protection applied to: consent, winlogon, wininit, and csrss.\nThese are vital system services and messing with them can cause severe system malfunctioning.\nMess with the ignore list at your own peril.";
+			if (newIgnoreList != null)
+			{
+				IgnoreList = newIgnoreList;
+				Log.Information("Custom application ignore list loaded.");
+			}
+			else
+				TaskMaster.saveConfig(TaskMaster.cfg);
+			dirtyconfig |= tdirty;
+
+			if (dirtyconfig) TaskMaster.MarkDirtyINI(TaskMaster.cfg);
+
+			Log.Information("Child process monitoring: {ChildControl}", (ControlChildren ? "Enabled" : "Disabled"));
+
+			// --------------------------------------------------------------------------------------------------------
+
+			Log.Verbose("Loading watchlist...");
 			SharpConfig.Configuration appcfg = TaskMaster.loadConfig(watchfile);
 			if (stats == null)
 				stats = TaskMaster.loadConfig(statfile);
@@ -307,36 +374,11 @@ namespace TaskMaster
 				}
 			}
 
-			var coreperf = TaskMaster.cfg["Performance"];
-
-			bool dirtyconfig = false, tdirty = false;
-			ControlChildren = coreperf.GetSetDefault("Child processes", false, out tdirty).BoolValue;
-			dirtyconfig |= tdirty;
-			BatchProcessing = coreperf.GetSetDefault("Batch processing", false, out tdirty).BoolValue;
-			coreperf["Batch processing"].Comment = "Process management works in delayed batches instead of immediately.";
-			dirtyconfig |= tdirty;
-			Log.Information("Batch processing: {BatchProcessing}", (BatchProcessing ? "Enabled" : "Disabled"));
-			if (BatchProcessing)
-			{
-				BatchDelay = coreperf.GetSetDefault("Batch processing delay", 2500, out tdirty).IntValue;
-				dirtyconfig |= tdirty;
-				Log.Information("Batch processing delay: {BatchProcessingDelay:N1}s", BatchDelay / 1000);
-				BatchProcessingThreshold = coreperf.GetSetDefault("Batch processing threshold", 5, out tdirty).IntValue;
-				dirtyconfig |= tdirty;
-				Log.Information("Batch processing threshold: {BatchProcessingThreshold}", BatchProcessingThreshold);
-			}
-			RescanDelay = coreperf.GetSetDefault("Rescan frequency", 5, out tdirty).IntValue * 1000 * 60;
-			coreperf["Rescan frequency"].Comment = "How often to check for apps that want to be rescanned.";
-			dirtyconfig |= tdirty;
-			Log.Information("Rescan frequency: {RescanDelay:N1}m", RescanDelay / 1000 / 60);
-
-			var powersec = TaskMaster.cfg["Power"];
-			PowerdownDelay = powersec.GetSetDefault("Powerdown delay", 7, out tdirty).IntValue * 1000;
-			powersec["Powerdown delay"].Comment = "Delay in seconds to restore old power mode after elevated power mode is no longer needed.";
-			dirtyconfig |= tdirty;
+			// --------------------------------------------------------------------------------------------------------
 
 			int newsettings = coreperf.SettingCount;
 			if (dirtyconfig) TaskMaster.MarkDirtyINI(TaskMaster.cfg);
+
 
 			foreach (SharpConfig.Section section in appcfg)
 			{
@@ -371,7 +413,7 @@ namespace TaskMaster
 					Rescan = (section.TryGet("Rescan")?.IntValue ?? 0),
 					Path = (section.TryGet("Path")?.StringValue ?? null),
 					Subpath = (section.TryGet("Subpath")?.StringValue ?? null),
-					BackgroundIO = (section.TryGet("Background I/O")?.BoolValue ?? false),
+					BackgroundIO = (section.TryGet("Background I/O")?.BoolValue ?? false), // Doesn't work
 					ForegroundOnly = (section.TryGet("Foreground only")?.BoolValue ?? false),
 					Recheck = (section.TryGet("Recheck")?.IntValue ?? 0),
 					PowerPlan = pmode,
@@ -392,8 +434,8 @@ namespace TaskMaster
 
 				cnt.Children &= ControlChildren;
 
-				Log.Verbose("{FriendlyName} ({MatchName}), {TargetPriority}, Mask:{Affinity}, Rescan: {RescanDelay} minutes",
-							cnt.FriendlyName, (cnt.Executable == null ? cnt.Path : cnt.Executable), cnt.Priority, cnt.Affinity, cnt.Rescan, cnt.Children, cnt.ChildPriority);
+				Log.Verbose("[{FriendlyName}] Match: {MatchName}, {TargetPriority}, Mask:{Affinity}, Rescan: {Rescan}m, Recheck: {Recheck}s",
+							cnt.FriendlyName, (cnt.Executable == null ? cnt.Path : cnt.Executable), cnt.Priority, cnt.Affinity, cnt.Rescan, cnt.Recheck);
 
 				//cnt.delay = section.Contains("delay") ? section["delay"].IntValue : 30; // TODO: Add centralized default delay
 				//cnt.delayIncrement = section.Contains("delay increment") ? section["delay increment"].IntValue : 15; // TODO: Add centralized default increment
@@ -438,11 +480,11 @@ namespace TaskMaster
 						{
 							if (pathinit == null) pathinit = new List<ProcessController>();
 							pathinit.Add(cnt);
-							Log.Verbose("'{FriendlyName}' ({Subpath}) waiting to be located.", cnt.FriendlyName, cnt.Subpath);
+							Log.Verbose("[{FriendlyName}] ({Subpath}) waiting to be located.", cnt.FriendlyName, cnt.Subpath);
 						}
 						else
 						{
-							Log.Warning("'{FriendlyName}' malconfigured. Insufficient or wrong information.", cnt.FriendlyName);
+							Log.Warning("[{FriendlyName}] Malconfigured. Insufficient or wrong information.", cnt.FriendlyName);
 						}
 					}
 				}
@@ -451,28 +493,19 @@ namespace TaskMaster
 					lock (watchlist_lock)
 						watchlist.Add(cnt);
 					execontrol.Add(LowerCase(cnt.ExecutableFriendlyName), cnt);
-					Log.Verbose("'{ExecutableName}' added to monitoring.", cnt.FriendlyName);
+					//Log.Verbose("[{ExecutableName}] Added to monitoring.", cnt.FriendlyName);
 				}
+
+				// SANITY CHECKING
+				if (cnt.ExecutableFriendlyName != null)
+					if (IgnoreProcessName(cnt.ExecutableFriendlyName))
+						Log.Error("{Exec} in ignore list.");
+
 			}
 
 			// --------------------------------------------------------------------------------------------------------
-
-			//TaskMaster.cfg["Applications"]["Ignored"].StringValueArray = IgnoreList;
-			var ignsetting = TaskMaster.cfg["Applications"];
-			string[] newIgnoreList = ignsetting.GetSetDefault("Ignored", IgnoreList, out tdirty)?.StringValueArray;
-			ignsetting.PreComment = "Special hardcoded protection applied to: consent, winlogon, wininit, and csrss.\nThese are vital system services and messing with them can cause severe system malfunctioning.\nMess with the ignore list at your own peril.";
-			if (newIgnoreList != null)
-			{
-				IgnoreList = newIgnoreList;
-				Log.Information("Custom application ignore list loaded.");
-			}
-			else
-				TaskMaster.saveConfig(TaskMaster.cfg);
-			dirtyconfig |= tdirty;
-
-			if (dirtyconfig) TaskMaster.MarkDirtyINI(TaskMaster.cfg);
-
-			Log.Information("Child process monitoring: {ChildControl}", (ControlChildren ? "Enabled" : "Disabled"));
+			Log.Information("Name-based watchlist: {Items} items", execontrol.Count);
+			Log.Information("Path-based watchlist: {Items} items", WatchlistWithPath);
 		}
 
 		string LowerCase(string str)
@@ -553,7 +586,7 @@ namespace TaskMaster
 			return true;
 		}
 
-		Timer pathCacheTimer;
+		System.Timers.Timer pathCacheTimer;
 		Dictionary<int, BasicProcessInfo> pathCache = new Dictionary<int, BasicProcessInfo>(TaskMaster.PathCacheLimit + 2);
 		Stack<int> pathCacheStack = new Stack<int>();
 
@@ -596,6 +629,17 @@ namespace TaskMaster
 			{
 				if (info.Name == cacheInfo.Name)
 				{
+					/*
+					try
+					{
+						info.Process.Refresh(); // we're only copying path, not the entire thing.
+					}
+					catch
+					{
+						Log.Warning("Failed to refresh '{Exe}' (#{Pid}).", info.Name, info.Id);
+					}
+					*/
+
 					//path = info.Path;
 					Statistics.PathCacheHits++;
 					cacheGet = true;
@@ -619,10 +663,11 @@ namespace TaskMaster
 
 			if (pathCacheTimer == null)
 			{
-				pathCacheTimer = new Timer(1000 * 60 * 60); // 60 minutes
+				pathCacheTimer = new System.Timers.Timer();
+				pathCacheTimer.Interval = 1000 * 60 * 60;// 60 minutes
 				pathCacheTimer.Elapsed += (sender, e) =>
 				{
-					Log.Debug("Pruning path cache: {Count}", pathCache.Count);
+					Log.Debug("Pruning path cache: {Count} / {Max}", pathCache.Count, TaskMaster.PathCacheLimit);
 					while (pathCache.Count > TaskMaster.PathCacheLimit)
 					{
 						pathCache.Remove(pathCacheStack.Pop());
@@ -658,7 +703,15 @@ namespace TaskMaster
 						Log.Verbose("[{PathFriendlyName}] matched at: {Path}", // TODO: de-ugly
 									pc.FriendlyName, info.Path);
 
-						return pc.Touch(info);
+						try
+						{
+							return pc.Touch(info);
+						}
+						catch
+						{
+							Log.Fatal("[{FriendlyName}] '{Exec}' (#{Pid}) MASSIVE FAILURE!!!", pc.FriendlyName, info.Name, info.Id);
+							return ProcessState.AccessDenied;
+						}
 					}
 				}
 			}
@@ -748,7 +801,7 @@ namespace TaskMaster
 								ProcessPriorityClass oldprio = ci.Process.PriorityClass;
 								try
 								{
-									ci.Process.SetLimitedPriority(parent.ChildPriority, true, false);
+									ci.Process.SetLimitedPriority(parent.ChildPriority, true, true);
 								}
 								catch (Exception e)
 								{
@@ -783,48 +836,41 @@ namespace TaskMaster
 
 			await Task.Yield();
 
-			try
+			if (IgnoreProcessID(info.Id) || IgnoreProcessName(info.Name))
 			{
-				if (IgnoreProcessID(info.Id) || IgnoreProcessName(info.Name))
-				{
-					Log.Verbose("Ignoring process: {ProcessName} (#{ProcessID})", info.Name, info.Id);
-					return;
-				}
-
-				if (string.IsNullOrEmpty(info.Name))
-				{
-					Log.Warning("#{AppId} details unaccessible, ignored.", info.Id);
-					return;
-				}
+				Log.Verbose("Ignoring process: {ProcessName} (#{ProcessID})", info.Name, info.Id);
+				return;
 			}
-			catch
+
+			if (string.IsNullOrEmpty(info.Name))
 			{
-				// NOP
+				Log.Warning("#{AppId} details unaccessible, ignored.", info.Id);
 				return;
 			}
 
 			ProcessState state = ProcessState.Invalid;
 
 			// TODO: check proc.processName for presence in images.
-			ProcessController control;
-			if (execontrol.TryGetValue(LowerCase(info.Name), out control))
+			ProcessController pc;
+			if (execontrol.TryGetValue(LowerCase(info.Name), out pc))
 			{
 				//await System.Threading.Tasks.Task.Delay(ProcessModifyDelay).ConfigureAwait(false);
-
-				state = control.Touch(info, schedule_next);
-				if (state != ProcessState.Invalid)
+				try
 				{
-					Log.Verbose("Control group: {ProcessFriendlyName}, process: {ProcessName} (#{ProcessID})",
-									control.FriendlyName, info.Name, info.Id);
+					state = pc.Touch(info, schedule_next);
+				}
+				catch
+				{
+					Log.Fatal("[{FriendlyName}] '{Exec}' (#{Pid}) MASSIVE FAILURE!!!", pc.FriendlyName, info.Name, info.Id);
 				}
 				return; // execontrol had this, we don't care about anything else for this.
+
 			}
-			else
-				Log.Verbose("{AppName} not in control list.", info.Name);
+			//Log.Verbose("{AppName} not in executable control list.", info.Name);
 
 			if (WatchlistWithPath > 0)
 			{
-				Log.Verbose("Checking paths for '{ProcessName}' (#{ProcessID})", info.Name, info.Id);
+				//Log.Verbose("Checking paths for '{ProcessName}' (#{ProcessID})", info.Name, info.Id);
 				state = CheckPathWatch(info);
 			}
 
@@ -1067,8 +1113,6 @@ namespace TaskMaster
 				}
 			}
 
-			// TODO: Add Path rescanning
-
 			if (rescanrequests == 0)
 			{
 				Log.Verbose("No apps have requests to rescan, stopping rescanning.");
@@ -1107,7 +1151,8 @@ namespace TaskMaster
 				// Transition to permanent event listener?
 				// https://msdn.microsoft.com/en-us/library/windows/desktop/aa393014(v=vs.85).aspx
 
-				var scope = new System.Management.ManagementScope(new System.Management.ManagementPath(@"\\.\root\CIMV2")); // @"\\.\root\CIMV2"
+				var scope = new System.Management.ManagementScope(
+					new System.Management.ManagementPath(@"\\.\root\CIMV2")); // @"\\.\root\CIMV2"
 
 				/*
 				// Causes access denied error?
@@ -1123,7 +1168,8 @@ namespace TaskMaster
 				//var tracequery = new System.Management.EventQuery("SELECT * FROM Win32_ProcessStartTrace");
 
 				//var query = new System.Management.EventQuery("SELECT TargetInstance FROM __InstanceCreationEvent WITHIN 5 WHERE TargetInstance ISA 'Win32_Process'");
-				var query = new System.Management.EventQuery("SELECT * FROM __InstanceCreationEvent WITHIN 1 WHERE TargetInstance ISA 'Win32_Process'");
+				var query = new System.Management.EventQuery(
+					"SELECT * FROM __InstanceCreationEvent WITHIN 1 WHERE TargetInstance ISA 'Win32_Process'");
 				watcher = new System.Management.ManagementEventWatcher(scope, query);
 			}
 			catch (System.Runtime.InteropServices.COMException e)
@@ -1181,6 +1227,14 @@ namespace TaskMaster
 			}
 
 			onInstanceHandling += UpdateHandling;
+
+			if (RescanEverythingFrequency > 0)
+			{
+				RescanEverythingTimer = new System.Timers.Timer();
+				RescanEverythingTimer.Interval = RescanEverythingFrequency;
+				RescanEverythingTimer.Elapsed += ProcessEverythingRequest;
+				RescanEverythingTimer.Start();
+			}
 		}
 
 		bool disposed; // = false;
@@ -1196,12 +1250,35 @@ namespace TaskMaster
 
 			if (disposing)
 			{
+				Log.Verbose("Disposing process manager...");
+
+				if (RescanEverythingTimer != null)
+					RescanEverythingTimer.Stop();
+				//watcher.EventArrived -= NewInstanceTriage;
 				watcher.Stop(); // shouldn't be necessary
 				watcher.Dispose();
+				//watcher = null;
 				rescanTimer.Stop();
 				processListTimer.Stop();
+				pathCacheTimer.Stop();
 
 				saveStats();
+
+				if (execontrol != null)
+				{
+					execontrol.Clear();
+					execontrol = null;
+				}
+				if (processList != null)
+				{
+					processList.Clear();
+					processList = null;
+				}
+				if (watchlist != null)
+				{
+					watchlist.Clear();
+					watchlist = null;
+				}
 			}
 
 			disposed = true;
@@ -1235,7 +1312,6 @@ namespace TaskMaster
 					TaskMaster.MarkDirtyINI(stats);
 				}
 			}
-
 		}
 
 		// https://stackoverflow.com/a/34991822
