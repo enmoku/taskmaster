@@ -183,6 +183,22 @@ namespace TaskMaster
 
 		static CancellationTokenSource ctsall = new CancellationTokenSource();
 
+		public static void CancelPowerControlEvent(object sender, EventArgs ev)
+		{
+			lock (waitingExitLock)
+			{
+				if (waitingExit.Count > 0)
+					Log.Information("Cancelling power mode wait on processes.");
+
+				foreach (var bu in waitingExit)
+				{
+					bu.Value.Process.EnableRaisingEvents = false;
+				}
+				waitingExit.Clear();
+				waitingExitPids.Clear();
+			}
+		}
+
 		protected bool setPowerPlan(ProcessManager.BasicProcessInfo info)
 		{
 			if (!TaskMaster.PowerManagerEnabled) return false;
@@ -201,7 +217,7 @@ namespace TaskMaster
 					else
 						wait = false;
 
-					Log.Verbose("POWER MODE: {0} processes desiring higher power mode.", waitingExit.Count);
+					Log.Verbose("POWER MODE: {0} process(es) desiring higher power mode.", waitingExit.Count);
 
 					if (wait)
 					{
@@ -247,7 +263,6 @@ namespace TaskMaster
 						}
 					}
 				}
-
 			}
 			return false;
 		}
@@ -331,20 +346,22 @@ namespace TaskMaster
 				return ProcessState.AccessDenied; // we don't care what this error is exactly
 			}
 
-			Log.Verbose("[{FriendlyName}] Touching: {ExecutableName} (#{ProcessID})",
-						FriendlyName, info.Name, info.Id);
+			if (TaskMaster.Trace)
+				Log.Verbose("[{FriendlyName}] Touching: {ExecutableName} (#{ProcessID})", FriendlyName, info.Name, info.Id);
 
 			ProcessState rv = ProcessState.Invalid;
 
 			if (IgnoreList != null && IgnoreList.Contains(info.Name, StringComparer.InvariantCultureIgnoreCase))
 			{
-				Log.Debug("[{FriendlyName}] {Exec} (#{ProcessID}) ignored due to user defined rule.", FriendlyName, info.Name, info.Id);
+				if (TaskMaster.ShowInaction)
+					Log.Debug("[{FriendlyName}] {Exec} (#{ProcessID}) ignored due to user defined rule.", FriendlyName, info.Name, info.Id);
 				return ProcessState.AccessDenied;
 			}
 
 			bool denyChange = ProcessManager.ProtectedProcessName(info.Name);
 			if (denyChange)
-				Log.Debug("[{FriendlyName}] {ProcessName} (#{ProcessID}) in protected list, limiting tampering.", FriendlyName, info.Name, info.Id);
+				if (TaskMaster.ShowInaction)
+					Log.Debug("[{FriendlyName}] {ProcessName} (#{ProcessID}) in protected list, limiting tampering.", FriendlyName, info.Name, info.Id);
 
 			bool mAffinity = false, mPriority = false, mPower = false, mBGIO = false, modified = false;
 			LastSeen = DateTime.Now;
@@ -423,17 +440,21 @@ namespace TaskMaster
 
 			if (modified)
 			{
-				try
+				if (mPriority)
 				{
-					info.Process.Refresh();
-					ProcessPriorityClass newPriority = info.Process.PriorityClass;
-					if (newPriority != Priority)
+					try
 					{
-						Log.Warning("[{FriendlyName}] {Exe} (#{Pid}) Post-mortem of modification: FAILURE.", FriendlyName, info.Name, info.Id);
+						info.Process.Refresh();
+						ProcessPriorityClass newPriority = info.Process.PriorityClass;
+						if (newPriority.ToInt32() != Priority.ToInt32())
+						{
+							Log.Warning("[{FriendlyName}] {Exe} (#{Pid}) Post-mortem of modification: FAILURE (Expected: {TgPrio}, Detected: {CurPrio}).",
+										FriendlyName, info.Name, info.Id, Priority.ToString(), newPriority.ToString());
+						}
 					}
-				}
-				catch
-				{
+					catch
+					{
+					}
 				}
 
 				LastTouch = DateTime.Now;
@@ -461,7 +482,10 @@ namespace TaskMaster
 			{
 				//if (DateTime.Now - LastSeen
 				sbs.Append(" – looks OK, not touched.");
-				Log.Verbose(sbs.ToString());
+				if (TaskMaster.ShowInaction)
+					Log.Information(sbs.ToString());
+				else
+					Log.Verbose(sbs.ToString());
 				rv = ProcessState.OK;
 			}
 
@@ -517,8 +541,7 @@ namespace TaskMaster
 				}
 			}));
 
-			int n2 = Convert.ToInt32((DateTime.Now - LastScan.AddMinutes(Rescan)).TotalMinutes);
-			return n2;
+			return Convert.ToInt32((LastScan.AddMinutes(Rescan) - DateTime.Now).TotalMinutes);
 		}
 
 		DateTime LastScan = DateTime.MinValue;
@@ -543,8 +566,8 @@ namespace TaskMaster
 
 				ScheduledScan = 0;
 			}
-			else
-				Log.Verbose("[{FriendlyName}] Scan too recent, ignoring.", FriendlyName);
+			//else
+			//	Log.Verbose("[{FriendlyName}] Scan too recent, ignoring.", FriendlyName); // this is too spammy.
 		}
 
 		public void Scan()

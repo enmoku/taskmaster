@@ -29,6 +29,14 @@ using System.Runtime.CompilerServices;
 using System.Diagnostics;
 namespace TaskMaster
 {
+	static public class IntExtensions
+	{
+		public static int Constrain(this int i, int min, int max)
+		{
+			return (i < min) ? min : ((i > max) ? max : i);
+		}
+	}
+
 	static public class PriorityClassExtensions
 	{
 		public static int ToInt32(this ProcessPriorityClass pc)

@@ -199,7 +199,10 @@ namespace TaskMaster
 				}
 
 				if (PowerManagerEnabled)
+				{
 					powermanager.onResume += RestartRequest;
+					trayaccess.ManualPowerMode += ProcessController.CancelPowerControlEvent;
+				}
 			}
 		}
 		static void Setup()
@@ -211,7 +214,9 @@ namespace TaskMaster
 				micmonitor = new MicMonitor();
 
 			if (ProcessMonitorEnabled)
+			{
 				processmanager = new ProcessManager();
+			}
 
 			if (NetworkMonitorEnabled)
 			{
@@ -253,11 +258,17 @@ namespace TaskMaster
 				}
 			}
 
+			if (ProcessMonitorEnabled && PathCacheLimit > 0)
+				processmanager.PathCacheUpdate += mainwindow.PathCacheUpdate;
+
 			if (MaintenanceMonitorEnabled)
 				diskmanager = new DiskManager();
 		}
 
 		public static bool CaseSensitive = false;
+
+		public static bool Trace = false;
+		public static bool ShowInaction = false;
 
 		public static bool ProcessMonitorEnabled { get; private set; } = true;
 		public static bool PathMonitorEnabled { get; private set; } = true;
@@ -282,6 +293,7 @@ namespace TaskMaster
 		public static int TempRescanThreshold = 1000;
 
 		public static int PathCacheLimit = 200;
+		public static int PathCacheMaxAge = 1800;
 
 		/// <summary>
 		/// Whether to use WMI queries for investigating failed path checks to determine if an application was launched in watched path.
@@ -350,7 +362,7 @@ namespace TaskMaster
 			dirtyconfig |= modified;
 
 			var Verbosity = optsec.GetSetDefault("Verbosity", 0, out modified).IntValue;
-			optsec["Verbosity"].Comment = "0 = Information, 1 = Debug, 2 = Verbose/Trace";
+			optsec["Verbosity"].Comment = "0 = Information, 1 = Debug, 2 = Verbose/Trace, 3 = Excessive";
 			switch (Verbosity)
 			{
 				default:
@@ -363,7 +375,15 @@ namespace TaskMaster
 				case 2:
 					MemoryLog.LevelSwitch.MinimumLevel = LogEventLevel.Verbose;
 					break;
+				case 3:
+					MemoryLog.LevelSwitch.MinimumLevel = LogEventLevel.Verbose;
+					Trace = true;
+					break;
 			};
+			dirtyconfig |= modified;
+
+			ShowInaction = optsec.GetSetDefault("Show inaction", false, out modified).BoolValue;
+			optsec["Show inaction"].Comment = "Shows lack of action take on processes.";
 			dirtyconfig |= modified;
 
 			CaseSensitive = optsec.GetSetDefault("Case sensitive", false, out modified).BoolValue;
@@ -392,8 +412,15 @@ namespace TaskMaster
 			dirtyconfig |= modified;
 
 			PathCacheLimit = perfsec.GetSetDefault("Path cache", 60, out modified).IntValue;
-			perfsec["Path cache"].Comment = "Path searching is very heavy process; this configures how many processes to remember paths for.";
+			perfsec["Path cache"].Comment = "Path searching is very heavy process; this configures how many processes to remember paths for.\nThe cache is allowed to occasionally overflow for half as much.";
 			dirtyconfig |= modified;
+			if (PathCacheLimit < 0) PathCacheLimit = 0;
+			if (PathCacheLimit > 0 && PathCacheLimit < 20) PathCacheLimit = 20;
+
+			PathCacheMaxAge = perfsec.GetSetDefault("Path cache max age", 15, out modified).IntValue;
+			perfsec["Path cache max age"].Comment = "Maximum age, in minutes, of cached objects. Min: 1 (1min), Max: 1440 (1day).\nThese will be removed even if the cache is appropriate size.";
+			if (PathCacheMaxAge < 1) PathCacheMaxAge = 1;
+			if (PathCacheMaxAge > 1440) PathCacheMaxAge = 1440;
 
 			int newsettings = optsec?.SettingCount ?? 0 + compsec?.SettingCount ?? 0 + perfsec?.SettingCount ?? 0;
 
@@ -410,6 +437,8 @@ namespace TaskMaster
 			Log.Information("WMI queries: {WMIQueries}", (WMIQueries ? "Enabled" : "Disabled"));
 
 			Log.Information("Privilege level: {Privilege}", (IsAdministrator() ? "Admin" : "User"));
+
+			Log.Information("Path cache: " + (PathCacheLimit == 0 ? "Disabled" : PathCacheLimit + " items"));
 		}
 
 		static bool IsAdministrator()
@@ -638,7 +667,8 @@ namespace TaskMaster
 									   Statistics.WMIquerytime, Statistics.WMIqueries,
 									   Statistics.Parentseektime, Statistics.ParentSeeks);
 
-				ProcessManager.PathCacheStats();
+				//if (PathCacheLimit > 0)
+				//	ProcessManager.PathCacheStats();
 
 				//tmw.Dispose();//already disposed by App.Exit?
 				foreach (var dcfg in ConfigDirty)

@@ -277,6 +277,21 @@ namespace TaskMaster
 		Label activePID;
 		#endregion
 
+		#region Path Cache
+		Label cacheObjects;
+		Label cacheRatio;
+		#endregion
+
+		public void PathCacheUpdate(object sender, CacheEventArgs ev)
+		{
+			cacheObjects.Text = Statistics.PathCacheCurrent.ToString();
+			double ratio = (Statistics.PathCacheMisses > 0 ? (Statistics.PathCacheHits / Statistics.PathCacheMisses) : 1);
+			if (ratio <= 99.99f)
+				cacheRatio.Text = string.Format("{0:N2}", ratio);
+			else
+				cacheRatio.Text = ">99.99"; // let's just not overflow the UI
+		}
+
 		// BackColor = System.Drawing.Color.LightGoldenrodYellow
 		Label netstatuslabel = new Label { Dock = DockStyle.Top, Text = "Uninitialized", AutoSize = true, BackColor = System.Drawing.Color.Transparent };
 		Label inetstatuslabel = new Label { Dock = DockStyle.Top, Text = "Uninitialized", AutoSize = true, BackColor = System.Drawing.Color.Transparent };
@@ -952,9 +967,10 @@ namespace TaskMaster
 				Margin = new Padding(3 + 3),
 				FlatStyle = FlatStyle.Flat
 			};
-			rescanbutton.Click += (object sender, EventArgs e) =>
+			rescanbutton.Click += async (object sender, EventArgs e) =>
 						{
 							rescanbutton.Enabled = false;
+							await Task.Yield();
 							rescanRequest?.Invoke(this, new EventArgs());
 							rescanbutton.Enabled = true;
 						};
@@ -977,35 +993,47 @@ namespace TaskMaster
 				Margin = new Padding(3 + 3),
 				Enabled = TaskMaster.PagingEnabled
 			};
-			crunchbutton.Click += (object sender, EventArgs e) =>
+			crunchbutton.Click += async (object sender, EventArgs e) =>
 			{
 				crunchbutton.Enabled = false;
+				await Task.Yield();
 				pagingRequest?.Invoke(this, new EventArgs());
 				crunchbutton.Enabled = true;
 			};
 
 			commandpanel.Controls.Add(crunchbutton);
 
-			tempObjectCount = new NumericUpDown()
+			var cachePanel = new TableLayoutPanel()
 			{
-				Minimum = 0,
-				Maximum = uint.MaxValue,
-				Width = 64,
-				ReadOnly = true,
-				Enabled = false,
-				Margin = new Padding(3 + 3),
-				Dock = DockStyle.Left,
+				ColumnCount = 5,
+				AutoSize = true
 			};
 
-			tempObjectSize = new NumericUpDown()
+			cachePanel.Controls.Add(new Label() { Text = "Path cache:", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true });
+			cachePanel.Controls.Add(new Label() { Text = "Objects", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true });
+			cacheObjects = new Label() { AutoSize = true, Width = 40, Text = "n/a", TextAlign = System.Drawing.ContentAlignment.MiddleLeft };
+			cachePanel.Controls.Add(cacheObjects);
+			cachePanel.Controls.Add(new Label() { Text = "Ratio", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true });
+			cacheRatio = new Label() { AutoSize = true, Width = 40, Text = "n/a", TextAlign = System.Drawing.ContentAlignment.MiddleLeft };
+			cachePanel.Controls.Add(cacheRatio);
+
+			infopanel.Controls.Add(cachePanel);
+
+			tempObjectCount = new Label()
 			{
-				Minimum = 0,
-				Maximum = uint.MaxValue,
-				Width = 64,
-				ReadOnly = true,
-				Enabled = false,
-				Margin = new Padding(3 + 3),
-				Dock = DockStyle.Left,
+				Width = 40,
+				//Dock = DockStyle.Left,
+				Text = "n/a",
+				TextAlign = System.Drawing.ContentAlignment.MiddleLeft,
+			};
+
+			tempObjectSize = new Label()
+			{
+				Width = 40,
+				//Margin = new Padding(3 + 3),
+				//Dock = DockStyle.Left,
+				Text = "n/a",
+				TextAlign = System.Drawing.ContentAlignment.MiddleLeft,
 			};
 
 			var tempmonitorpanel = new TableLayoutPanel
@@ -1101,13 +1129,13 @@ namespace TaskMaster
 			*/
 		}
 
-		NumericUpDown tempObjectCount;
-		NumericUpDown tempObjectSize;
+		Label tempObjectCount;
+		Label tempObjectSize;
 
 		public void TempScanStats(object sender, DiskEventArgs ev)
 		{
-			tempObjectSize.Value = ev.Stats.Size / 1000 / 1000;
-			tempObjectCount.Value = ev.Stats.Dirs + ev.Stats.Files;
+			tempObjectSize.Text = (ev.Stats.Size / 1000 / 1000).ToString();
+			tempObjectCount.Text = (ev.Stats.Dirs + ev.Stats.Files).ToString();
 		}
 
 		object loglistLock = new object();
@@ -1212,7 +1240,6 @@ namespace TaskMaster
 		{
 			//InitializeComponent(); // TODO: WPF
 			FormClosing += WindowClose;
-			DoubleBuffered = false;
 
 			//MakeTrayIcon();
 
@@ -1229,7 +1256,7 @@ namespace TaskMaster
 			Hide();
 			//CenterToScreen();
 
-			this.Shown += (object sender, EventArgs e) =>
+			Shown += (object sender, EventArgs e) =>
 			{
 				loglist.TopItem = loglist.Items[loglist.Items.Count - 1];
 				ShowLastLog();

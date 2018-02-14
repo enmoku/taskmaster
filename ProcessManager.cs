@@ -155,10 +155,10 @@ namespace TaskMaster
 
 			Process[] procs = Process.GetProcesses();
 
-			Log.Verbose("Scanning {ProcessCount} processes for paging.", procs.Length);
+			//Log.Verbose("Scanning {ProcessCount} processes for paging.", procs.Length);
 
 			// DEBUG: if (TaskMaster.VeryVerbose) Console.WriteLine(string.Format("Handling: +{0} = {1} --- PageEverythingRequest", procs.Length, Handling));
-			onInstanceHandling?.Invoke(this, new InstanceEventArgs { Count = procs.Length });
+			onInstanceHandling?.Invoke(this, new InstanceEventArgs { Count = procs.Length - 2 });
 
 			try
 			{
@@ -189,7 +189,7 @@ namespace TaskMaster
 			finally
 			{
 				// DEBUG: if (TaskMaster.VeryVerbose) Console.WriteLine(string.Format("Handling: -{0} = {1} --- PageEverythingRequest", procs.Length, Handling));
-				onInstanceHandling?.Invoke(this, new InstanceEventArgs { Count = -procs.Length });
+				onInstanceHandling?.Invoke(this, new InstanceEventArgs { Count = -procs.Length - 2 });
 			}
 
 			Log.Information("Paged total of {PagedMBs:N1} MBs.", saved / 1000000);
@@ -227,9 +227,11 @@ namespace TaskMaster
 		{
 			Log.Verbose("Processing everything.");
 
+			// TODO: Cache Pids of protected system services to skip them faster.
+
 			Process[] procs = Process.GetProcesses();
 
-			Log.Debug("Scanning {ProcessCount} processes for changes.", procs.Length);
+			//Log.Debug("Scanning {ProcessCount} processes for changes.", procs.Length);
 
 			// DEBUG: if (TaskMaster.VeryVerbose) Console.WriteLine(string.Format("Handling: +{0} = {1} --- ProcessEverything", procs.Length, Handling));
 			onInstanceHandling?.Invoke(this, new InstanceEventArgs { Count = procs.Length - 2 });
@@ -251,7 +253,8 @@ namespace TaskMaster
 
 				if (IgnoreProcessID(pid)) continue; // Ignore Idle&System
 
-				Log.Verbose("Checking [{ProcessIterator}/{ProcessCount}] '{ProcessName}' (#{Pid})", ++i, procs.Length - 2, name, pid); // -2 for Idle&System
+				if (TaskMaster.Trace)
+					Log.Verbose("Checking [{ProcessIterator}/{ProcessCount}] '{ProcessName}' (#{Pid})", ++i, procs.Length - 2, name, pid); // -2 for Idle&System
 
 				CheckProcess(new BasicProcessInfo { Process = process, Name = name, Id = pid, Path = null }, schedule_next: false);
 			}
@@ -262,10 +265,11 @@ namespace TaskMaster
 			if (TaskMaster.PathMonitorEnabled)
 				UpdatePathWatch();
 
-			Log.Information("Scanned {ProcessCount} processes.", procs.Length);
-			PathCacheStats();
+			//if (TaskMaster.ShowInaction)
+			//Log.Information("Scanned {ProcessCount} processes.", procs.Length);
+			//if (TaskMaster.PathCacheLimit > 0)
+			//	PathCacheStats();
 		}
-
 
 		public static int PowerdownDelay { get; set; } = 7000;
 
@@ -600,15 +604,14 @@ namespace TaskMaster
 			return true;
 		}
 
-		System.Timers.Timer pathCacheTimer;
-		Dictionary<int, BasicProcessInfo> pathCache = new Dictionary<int, BasicProcessInfo>(TaskMaster.PathCacheLimit + 2);
-		Stack<int> pathCacheStack = new Stack<int>();
+		Cache<int, string, string> pathCache;
+		public event EventHandler<CacheEventArgs> PathCacheUpdate;
 
 		public static void PathCacheStats()
 		{
-			Log.Debug("Path cache state: {Count} items (Hits: {Hits}, Misses: {Misses}, Ratio: {Ratio:N2})",
+			Log.Debug("Path cache state: {Count} items (Hits: {Hits}, Misses: {Misses}, Ratio: {Ratio})",
 					  Statistics.PathCacheCurrent, Statistics.PathCacheHits, Statistics.PathCacheMisses,
-					  Statistics.PathCacheMisses > 0 ? (Statistics.PathCacheHits / Statistics.PathCacheMisses) : 1);
+					  string.Format("{0:N2}", Statistics.PathCacheMisses > 0 ? (Statistics.PathCacheHits / Statistics.PathCacheMisses) : 1));
 		}
 
 		ProcessState CheckPathWatch(BasicProcessInfo info)
@@ -639,32 +642,28 @@ namespace TaskMaster
 			bool cacheGet = false;
 			bool cacheSet = false;
 			BasicProcessInfo cacheInfo;
-			if (pathCache.TryGetValue(info.Id, out cacheInfo))
-			{
-				if (info.Name == cacheInfo.Name)
-				{
-					/*
-					try
-					{
-						info.Process.Refresh(); // we're only copying path, not the entire thing.
-					}
-					catch
-					{
-						Log.Warning("Failed to refresh '{Exe}' (#{Pid}).", info.Name, info.Id);
-					}
-					*/
 
-					//path = info.Path;
-					Statistics.PathCacheHits++;
-					cacheGet = true;
-					info.Path = cacheInfo.Path;
-				}
-				else
+			if (pathCache != null)
+			{
+				string cpath;
+				if (pathCache.Get(info.Id, out cpath, info.Name) != null)
 				{
-					Statistics.PathCacheMisses++;
-					pathCache.Remove(info.Id);
+					if (!string.IsNullOrEmpty(cpath))
+					{
+						Statistics.PathCacheHits++;
+						cacheGet = true;
+						info.Path = cpath;
+						//Log.Debug("PATH CACHE ITEM GET: {Path}", info.Path);
+					}
+					else
+					{
+						//Statistics.PathCacheMisses++; // will be done when adding the entry
+						pathCache.Drop(info.Id);
+						//Log.Debug("PATH CACHE ITEM BEGONE!");
+					}
+
+					Statistics.PathCacheCurrent = pathCache.Count;
 				}
-				Statistics.PathCacheCurrent = pathCache.Count;
 			}
 
 			if (info.Path == null)
@@ -675,31 +674,16 @@ namespace TaskMaster
 					return ProcessState.AccessDenied;
 			}
 
-			if (pathCacheTimer == null)
+			if (pathCache != null && !cacheGet)
 			{
-				pathCacheTimer = new System.Timers.Timer();
-				pathCacheTimer.Interval = 1000 * 60 * 60;// 60 minutes
-				pathCacheTimer.Elapsed += (sender, e) =>
-				{
-					Log.Debug("Pruning path cache: {Count} / {Max}", pathCache.Count, TaskMaster.PathCacheLimit);
-					while (pathCache.Count > TaskMaster.PathCacheLimit)
-					{
-						pathCache.Remove(pathCacheStack.Pop());
-						// TODO: Remove items with least hits instead of oldest
-					}
-				};
-				pathCacheTimer.Start();
-			}
+				pathCache.Add(info.Id, info.Name, info.Path);
+				Statistics.PathCacheMisses++; // adding new entry is as bad a miss
 
-			if (!cacheGet)
-			{
-				pathCache.Add(info.Id, info);
-				pathCacheStack.Push(info.Id);
-				cacheSet = true;
 
 				Statistics.PathCacheCurrent = pathCache.Count;
 				if (Statistics.PathCacheCurrent > Statistics.PathCachePeak)
 					Statistics.PathCachePeak = Statistics.PathCacheCurrent;
+				//Log.Debug("PATH CACHE ADD: {Path}", info.Path);
 			}
 
 			// TODO: This needs to be FASTER
@@ -729,6 +713,8 @@ namespace TaskMaster
 					}
 				}
 			}
+
+			PathCacheUpdate?.Invoke(this, null /* new CacheEventArgs() { Objects = pathCache.Count, Hits = pathCache.Hits, Misses = pathCache.Misses }*/);
 
 			return ProcessState.Invalid;
 		}
@@ -1029,42 +1015,40 @@ namespace TaskMaster
 				return;
 			}
 
-			onInstanceHandling?.Invoke(this, new InstanceEventArgs { Count = 1 });
-
 			//Handle=pid
 			// FIXME
 			// DEBUG: if (TaskMaster.VeryVerbose) Console.WriteLine(string.Format("Handling: +{0} = {1} --- NewInstanceTriage", 1, Handling));
 
-			BasicProcessInfo info;
 			Process process = null;
 			try
 			{
 				process = Process.GetProcessById(pid);
-				if (process == null)
-				{
-					onInstanceHandling?.Invoke(this, new InstanceEventArgs { Count = -1 });
-					//throw new ProcessNotFoundException { Name = name, Id = pid };
-					Log.Verbose("Caught #{Pid} but it vanished.", pid);
-					return;
-				}
+			}
+			catch
+			{
+				Log.Verbose("Caught #{Pid} but it vanished.", pid);
+				return;
+			}
 
-				if (string.IsNullOrEmpty(name))
+			if (string.IsNullOrEmpty(name))
+			{
+				try
 				{
 					// This happens only when encountering a process with elevated privileges, e.g. admin
 					// TODO: Mark as admin process
 					name = process.ProcessName;
 				}
-			}
-			catch (Exception ex)
-			{
-				Log.Warning("Failed to retrieve information for '{Name}' (#{Pid})", name, pid);
-				Log.Error(ex.Message);
-				Log.Error(ex.StackTrace);
-				onInstanceHandling?.Invoke(this, new InstanceEventArgs { Count = -1 });
-				return;
+				catch
+				{
+					Log.Warning("Failed to retrieve name of process #{Pid}", pid);
+					return;
+				}
 			}
 
-			Log.Verbose("Caught: {ProcessName} (#{ProcessID}) at: {Path}", name, pid, path);
+			onInstanceHandling?.Invoke(this, new InstanceEventArgs { Count = 1 });
+
+			if (TaskMaster.Trace)
+				Log.Verbose("Caught: {ProcessName} (#{ProcessID}) at: {Path}", name, pid, path);
 
 			DateTime start = DateTime.MinValue;
 			try
@@ -1078,7 +1062,14 @@ namespace TaskMaster
 					start = DateTime.Now;
 			}
 
-			info = new BasicProcessInfo { Name = name, Id = pid, Process = process, Path = path, Start = start };
+			BasicProcessInfo info = new BasicProcessInfo
+			{
+				Name = name,
+				Id = pid,
+				Process = process,
+				Path = path,
+				Start = start
+			};
 
 			if (BatchProcessing)
 			{
@@ -1108,11 +1099,11 @@ namespace TaskMaster
 					Log.Warning("Uncaught exception while handling new instance");
 					Log.Fatal(ex.StackTrace);
 					Console.WriteLine(ex.StackTrace);
-					onInstanceHandling?.Invoke(this, new InstanceEventArgs { Count = -1 });
 					throw;
 				}
 				finally
 				{
+					onInstanceHandling?.Invoke(this, new InstanceEventArgs { Count = -1 });
 				}
 			}
 		}
@@ -1127,22 +1118,31 @@ namespace TaskMaster
 			}
 		}
 
-		void RescanOnTimer(object sender, EventArgs e)
+		async void RescanOnTimer(object sender, EventArgs e)
 		{
-			Log.Verbose("Rescanning...");
+			//Log.Verbose("Rescanning...");
 
-			int nextscan = int.MinValue;
+			await Task.Yield();
+
+			int nextscan = 1;
 			int tnext = 0;
 			int rescanrequests = 0;
+			string name = null;
 
-			foreach (ProcessController pc in execontrol.Values)
+			var pcs = execontrol.Values;
+			foreach (ProcessController pc in pcs)
 			{
 				if (pc.Rescan > 0)
 				{
 					tnext = pc.TryScan();
 					rescanrequests++;
 					if (tnext > nextscan)
+					{
 						nextscan = tnext;
+						name = pc.FriendlyName;
+						if (name == null)
+							Log.Fatal(pc.ToString());
+					}
 				}
 			}
 
@@ -1153,8 +1153,15 @@ namespace TaskMaster
 			}
 			else
 			{
-				rescanTimer.Interval = nextscan * (1000 * 60);
-				Log.Debug("Rescan set to occur after {Scan} minutes.", nextscan);
+				try
+				{
+					rescanTimer.Interval = nextscan.Constrain(1, 360) * (1000 * 60);
+				}
+				catch
+				{
+					rescanTimer.Interval = 5 * (1000 * 60);
+				}
+				Log.Verbose("Rescan set to occur after {Scan} minutes, next in line: {Name}. Waiting {0}.", nextscan, name);
 			}
 		}
 
@@ -1268,6 +1275,9 @@ namespace TaskMaster
 				RescanEverythingTimer.Elapsed += ProcessEverythingRequest;
 				RescanEverythingTimer.Start();
 			}
+
+			if (TaskMaster.PathCacheLimit > 0)
+				pathCache = new Cache<int, string, string>(TaskMaster.PathCacheMaxAge, TaskMaster.PathCacheLimit, (TaskMaster.PathCacheLimit / 10).Constrain(5, 10));
 		}
 
 		bool disposed; // = false;
@@ -1293,7 +1303,9 @@ namespace TaskMaster
 				//watcher = null;
 				rescanTimer.Stop();
 				processListTimer.Stop();
-				pathCacheTimer.Stop();
+
+				if (pathCache != null)
+					pathCache.Dispose();
 
 				saveStats();
 

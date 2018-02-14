@@ -121,21 +121,28 @@ namespace TaskMaster
 			}
 		}
 
+		public event EventHandler ManualPowerMode;
+
+		void ResetPower(PowerManager.PowerMode mode)
+		{
+			ManualPowerMode?.Invoke(this, null);
+			PowerManager.RestoreMode();
+			PowerManager.setMode(mode);
+			HighlightPowerMode();
+		}
+
 		void SetPowerSaving(object sender, EventArgs e)
 		{
-			PowerManager.setMode(PowerManager.PowerMode.PowerSaver);
-			HighlightPowerMode();
+			ResetPower(PowerManager.PowerMode.PowerSaver);
 		}
 
 		void SetPowerBalanced(object sender, EventArgs e)
 		{
-			PowerManager.setMode(PowerManager.PowerMode.Balanced);
-			HighlightPowerMode();
+			ResetPower(PowerManager.PowerMode.Balanced);
 		}
 		void SetPowerPerformance(object sender, EventArgs e)
 		{
-			PowerManager.setMode(PowerManager.PowerMode.HighPerformance);
-			HighlightPowerMode();
+			ResetPower(PowerManager.PowerMode.HighPerformance);
 		}
 
 		void ShowWindowRequest(object sender, EventArgs e)

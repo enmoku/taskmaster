@@ -157,7 +157,7 @@ namespace TaskMaster
 
 		public static void SaveMode()
 		{
-			if (SavedMode != PowerMode.Undefined) Log.Warning("Saved power mode is being overriden.");
+			if (SavedMode != PowerMode.Undefined) Log.Warning("<Power Mode> Saved mode is being overriden.");
 
 			SavedMode = Current;
 
@@ -176,7 +176,7 @@ namespace TaskMaster
 				{
 					setMode(SavedMode);
 					SavedMode = PowerMode.Undefined;
-					Log.Verbose("Power mode restored to: {PowerMode}", Current.ToString());
+					Log.Verbose("<Power Mode> Restored to: {PowerMode}", Current.ToString());
 				}
 			}
 		}
@@ -197,7 +197,7 @@ namespace TaskMaster
 					else if (plan == HighPerformance) { Current = PowerMode.HighPerformance; }
 					else { Current = PowerMode.Undefined; }
 
-					Log.Information("Power Plan: {Plan} ({Guid})", Current.ToString(), plan.ToString());
+					Log.Information("<Power Mode> Current: {Plan} ({Guid})", Current.ToString(), plan.ToString());
 				}
 			}
 			return Current;
@@ -235,6 +235,7 @@ namespace TaskMaster
 
 			lock (powerLock)
 			{
+				Log.Information("<Power Mode> Setting to: {Mode} ({Guid})", mode.ToString(), plan.ToString());
 				PowerSetActiveScheme((IntPtr)null, ref plan);
 			}
 		}
