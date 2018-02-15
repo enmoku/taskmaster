@@ -203,6 +203,12 @@ namespace TaskMaster
 					powermanager.onResume += RestartRequest;
 					trayaccess.ManualPowerMode += ProcessController.CancelPowerControlEvent;
 				}
+
+				if (ProcessMonitorEnabled && PathCacheLimit > 0)
+				{
+					processmanager.PathCacheUpdate += mainwindow.PathCacheUpdate;
+					mainwindow.PathCacheUpdate(null, null); // populate the window
+				}
 			}
 		}
 		static void Setup()
@@ -257,9 +263,6 @@ namespace TaskMaster
 					Log.Warning("Failed to set self to background mode.");
 				}
 			}
-
-			if (ProcessMonitorEnabled && PathCacheLimit > 0)
-				processmanager.PathCacheUpdate += mainwindow.PathCacheUpdate;
 
 			if (MaintenanceMonitorEnabled)
 				diskmanager = new DiskManager();
@@ -421,6 +424,7 @@ namespace TaskMaster
 			perfsec["Path cache max age"].Comment = "Maximum age, in minutes, of cached objects. Min: 1 (1min), Max: 1440 (1day).\nThese will be removed even if the cache is appropriate size.";
 			if (PathCacheMaxAge < 1) PathCacheMaxAge = 1;
 			if (PathCacheMaxAge > 1440) PathCacheMaxAge = 1440;
+			dirtyconfig |= modified;
 
 			int newsettings = optsec?.SettingCount ?? 0 + compsec?.SettingCount ?? 0 + perfsec?.SettingCount ?? 0;
 

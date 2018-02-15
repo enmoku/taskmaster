@@ -322,8 +322,8 @@ namespace TaskMaster
 				Log.Information("Rescan everything every {Frequency} minutes.", RescanEverythingFrequency / 1000 / 60);
 
 			var powersec = TaskMaster.cfg["Power"];
-			PowerdownDelay = powersec.GetSetDefault("Powerdown delay", 7, out tdirty).IntValue * 1000;
-			powersec["Powerdown delay"].Comment = "Delay in seconds to restore old power mode after elevated power mode is no longer needed.\n0 disables the delay.";
+			PowerdownDelay = powersec.GetSetDefault("Powerdown delay", 0, out tdirty).IntValue * 1000;
+			powersec["Powerdown delay"].Comment = "Delay in seconds to restore old power mode after elevated power mode is no longer needed.\n0 disables the delay.\nMostly useful if you want the powermode to linger, e.g. to compensate for restarting games.";
 			dirtyconfig |= tdirty;
 
 			// --------------------------------------------------------------------------------------------------------
