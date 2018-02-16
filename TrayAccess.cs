@@ -36,9 +36,11 @@ namespace TaskMaster
 		NotifyIcon Tray;
 
 		ContextMenuStrip ms;
-		ToolStripMenuItem swr_menu;
-		ToolStripMenuItem scr_menu;
-		ToolStripMenuItem er_menu;
+		ToolStripMenuItem menu_windowopen;
+		ToolStripMenuItem menu_rescan;
+		ToolStripMenuItem menu_configuration;
+		ToolStripMenuItem menu_runatstart;
+		ToolStripMenuItem menu_exit;
 		ToolStripMenuItem power_highperf;
 		ToolStripMenuItem power_balanced;
 		ToolStripMenuItem power_saving;
@@ -56,18 +58,34 @@ namespace TaskMaster
 			Log.Verbose("Generating tray icon.");
 
 			ms = new ContextMenuStrip();
-			swr_menu = new ToolStripMenuItem("Open", null, ShowWindowRequest);
+			menu_windowopen = new ToolStripMenuItem("Open", null, ShowWindowRequest);
+			menu_rescan = new ToolStripMenuItem("Rescan", null, (o, s) =>
+			{
+				menu_rescan.Enabled = false;
+				RescanRequest?.Invoke(this, null);
+				menu_rescan.Enabled = true;
+			});
+			menu_configuration = new ToolStripMenuItem("Configuration", null, ShowConfigRequest);
+			menu_runatstart = new ToolStripMenuItem("Run at start", null, RunAtStartMenuClick);
+			menu_runatstart.Checked = RunAtStart(false, true);
+
 			if (TaskMaster.PowerManagerEnabled)
 			{
 				power_highperf = new ToolStripMenuItem("Performance", null, SetPowerPerformance);
 				power_balanced = new ToolStripMenuItem("Balanced", null, SetPowerBalanced);
 				power_saving = new ToolStripMenuItem("Power Saving", null, SetPowerSaving);
 			}
-			scr_menu = new ToolStripMenuItem("Configuration", null, ShowConfigRequest);
-			er_menu = new ToolStripMenuItem("Exit", null, ExitRequest);
-			ms.Items.Add(swr_menu);
+			menu_exit = new ToolStripMenuItem("Exit", null, (o, s) =>
+			{
+				menu_exit.Enabled = false;
+				onExit?.Invoke(this, null);
+			});
+			ms.Items.Add(menu_windowopen);
 			ms.Items.Add(new ToolStripSeparator());
-			ms.Items.Add(scr_menu);
+			ms.Items.Add(menu_rescan);
+			ms.Items.Add(new ToolStripSeparator());
+			ms.Items.Add(menu_configuration);
+			ms.Items.Add(menu_runatstart);
 			if (TaskMaster.PowerManagerEnabled)
 			{
 				ms.Items.Add(new ToolStripSeparator());
@@ -81,7 +99,7 @@ namespace TaskMaster
 				PowerManager.onModeChange += HighlightPowerModeEvent;
 			}
 			ms.Items.Add(new ToolStripSeparator());
-			ms.Items.Add(er_menu);
+			ms.Items.Add(menu_exit);
 			Tray.ContextMenuStrip = ms;
 			Log.Verbose("Tray menu ready");
 
@@ -93,6 +111,11 @@ namespace TaskMaster
 
 			Log.Verbose("Tray icon generated.");
 		}
+
+		public event EventHandler RescanRequest;
+		public static event EventHandler onExit;
+		public event EventHandler ManualPowerMode;
+
 
 		void HighlightPowerModeEvent(object sender, PowerModeEventArgs ev)
 		{
@@ -120,8 +143,6 @@ namespace TaskMaster
 					break;
 			}
 		}
-
-		public event EventHandler ManualPowerMode;
 
 		void ResetPower(PowerManager.PowerMode mode)
 		{
@@ -160,18 +181,6 @@ namespace TaskMaster
 
 			TaskMaster.mainwindow?.ShowConfigRequest(sender, e);
 			//CLEANUP: Console.WriteLine("Done opening config folder.");
-		}
-
-		public static event EventHandler onExit;
-
-		void ExitRequest(object sender, EventArgs e)
-		{
-			//CLEANUP:
-			//if (TaskMaster.VeryVerbose) Console.WriteLine("START:Tray.ExitRequest()");
-			er_menu.Enabled = false;
-			onExit?.Invoke(this, null); // call something else to properly manage exit
-										//CLEANUP:
-										//if (TaskMaster.VeryVerbose) Console.WriteLine("END::Tray.ExitRequest()");
 		}
 
 		void RestoreMain(object sender, EventArgs e)
@@ -351,6 +360,51 @@ namespace TaskMaster
 		public void Refresh()
 		{
 			Tray.Visible = true;
+		}
+
+
+		void RunAtStartMenuClick(object sender, EventArgs ev)
+		{
+			menu_runatstart.Checked = RunAtStart(!menu_runatstart.Checked);
+		}
+
+		bool RunAtStart(bool status, bool dryrun = false)
+		{
+			string runatstart_path = @"Software\Microsoft\Windows\CurrentVersion\Run";
+			string runatstart_key = "Enmoku-Taskmaster";
+			string runatstart;
+			string runvalue = Environment.GetCommandLineArgs()[0] + " --bootdelay";
+			try
+			{
+				Microsoft.Win32.RegistryKey key = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(runatstart_path, true);
+				if (key != null)
+				{
+					runatstart = (string)key.GetValue(runatstart_key, string.Empty);
+					if (dryrun) return (runatstart == runvalue);
+					if (status)
+					{
+						if (runatstart == runvalue) return true;
+						key.SetValue(runatstart_key, runvalue);
+						Log.Information("Run at OS startup enabled: " + Environment.GetCommandLineArgs()[0]);
+						return true;
+					}
+					else if (!status)
+					{
+						if (runatstart != runvalue) return false;
+
+						key.DeleteValue(runatstart_key);
+						Log.Information("Run at OS startup disabled.");
+						//return false;
+					}
+				}
+				return false;
+			}
+			catch (Exception ex)
+			{
+				Log.Fatal(ex.Message);
+				Log.Fatal(ex.StackTrace);
+				throw;
+			}
 		}
 	}
 }

@@ -25,6 +25,7 @@
 // THE SOFTWARE.
 
 using System.Threading;
+using System.Runtime.CompilerServices;
 
 namespace TaskMaster
 {
@@ -177,11 +178,30 @@ namespace TaskMaster
 
 		// -----------------------------------------------
 
+		void ProcessEnd(object sender, EventArgs ev)
+		{
+
+		}
+
+		// -----------------------------------------------
+
+		List<ProcessController> Cascades;
+		ProcessController CascadeTrigger;
+
+		// -----------------------------------------------
+
 		static object waitingExitLock = new object();
 		static Dictionary<int, ProcessManager.BasicProcessInfo> waitingExit = new Dictionary<int, ProcessManager.BasicProcessInfo>(3);
 		static HashSet<int> waitingExitPids = new HashSet<int>();
 
 		static CancellationTokenSource ctsall = new CancellationTokenSource();
+
+		public static event EventHandler<ProcessEventArgs> PowermodeExitWaitEvent;
+
+		public static ProcessManager.BasicProcessInfo[] getWaitingExit()
+		{
+			return waitingExit.Values.ToArray();
+		}
 
 		public static void CancelPowerControlEvent(object sender, EventArgs ev)
 		{
@@ -193,6 +213,7 @@ namespace TaskMaster
 				foreach (var bu in waitingExit)
 				{
 					bu.Value.Process.EnableRaisingEvents = false;
+					PowermodeExitWaitEvent?.Invoke(sender, new ProcessEventArgs() { Control = null, Info = bu.Value, State = ProcessEventArgs.ProcessState.Cancel });
 				}
 				waitingExit.Clear();
 				waitingExitPids.Clear();
@@ -213,38 +234,47 @@ namespace TaskMaster
 						PowerManager.SaveMode();
 
 					if (waitingExitPids.Add(info.Id))
+					{
 						waitingExit.Add(info.Id, info);
+						PowermodeExitWaitEvent?.Invoke(this, new ProcessEventArgs() { Control = null, Info = info, State = ProcessEventArgs.ProcessState.Starting });
+					}
 					else
 						wait = false;
 
-					Log.Verbose("POWER MODE: {0} process(es) desiring higher power mode.", waitingExit.Count);
+					//Log.Verbose("POWER MODE: {0} process(es) desiring higher power mode.", waitingExit.Count);
 
 					if (wait)
 					{
 						string name = info.Name;
+						int pid = info.Id;
 						info.Process.EnableRaisingEvents = true;
 						info.Process.Exited += async (sender, ev) => // ASYNC POWER RESTORE ON EXIT
 						{
+							PowermodeExitWaitEvent?.Invoke(this, new ProcessEventArgs() { Control = null, Info = info, State = ProcessEventArgs.ProcessState.Exiting });
+							await Task.Yield();
+
 							try
 							{
-								await Task.Delay(ProcessManager.PowerdownDelay);
+								//await Task.Delay(ProcessManager.PowerdownDelay);
+								await Task.Yield();
 
 								waitingExit.Remove(info.Id);
 								waitingExitPids.Remove(info.Id);
 
 								if (waitingExit.Count == 0)
 								{
-									Log.Debug("POWER MODE: '{ProcessName}' exited; restoring normal functionality.", name);
+									Log.Information("{Process} (#{Pid}) exited; restoring normal power.", name, pid);
+									//Log.Debug("POWER MODE: '{ProcessName}' exited; restoring normal functionality.", name);
 									PowerManager.RestoreMode();
 								}
 								else
 								{
-									Log.Debug("POWER MODE: {0} processes still wanting higher power mode.", waitingExit.Count);
+									Log.Information("{Exec} (#{Pid}) exited; power mode still requested by {Num} proceses.", name, pid, waitingExit.Count);
+									//Log.Debug("POWER MODE: {0} processes still wanting higher power mode.", waitingExit.Count);
 									List<string> names = new List<string>();
 									foreach (var b in waitingExit.Values)
 										names.Add(b.Name);
-									Log.Debug("POWER MODE WAIT LIST: " + string.Join(", ", names));
-
+									//Log.Debug("POWER MODE WAIT LIST: " + string.Join(", ", names));
 								}
 							}
 							catch (Exception ex)
@@ -258,8 +288,9 @@ namespace TaskMaster
 
 						if (PowerManager.Current != PowerPlan)
 						{
+							Log.Information("[{FriendlyName}] Upgrading power mode for '{Exec}' (#{Pid})", FriendlyName, info.Name, info.Id);
 							Log.Verbose("Power mode upgrading to: {PowerPlan}", PowerPlan);
-							PowerManager.upgradeMode(PowerPlan);
+							PowerManager.ForceMode(PowerPlan);
 						}
 					}
 				}
@@ -298,6 +329,7 @@ namespace TaskMaster
 			return false;
 		}
 
+		// TODO: Deal with combo path+exec
 		public ProcessState Touch(ProcessManager.BasicProcessInfo info, bool schedule_next = false, bool recheck = false)
 		{
 			Debug.Assert(info.Process != null, "ProcessController.Touch given null process.");
@@ -490,7 +522,7 @@ namespace TaskMaster
 			}
 
 			if (modified)
-				onTouch?.Invoke(this, new ProcessEventArgs { Control = this, Process = info.Process });
+				onTouch?.Invoke(this, new ProcessEventArgs { Control = this, Info = info });
 
 			if (schedule_next)
 				TryScan();
@@ -696,6 +728,17 @@ namespace TaskMaster
 			disposed = true;		}
 	}
 
+	struct CascadeSettings
+	{
+		public ProcessPriorityClass Priority;
+		public IntPtr Affinity;
+
+		public bool Page;
+
+		public int Rescan;
+		public int Recheck;
+	}
+
 	public class PathControlEventArgs : EventArgs
 	{
 	}
@@ -703,6 +746,14 @@ namespace TaskMaster
 	public class ProcessEventArgs : EventArgs
 	{
 		public ProcessController Control { get; set; }
-		public Process Process { get; set; }
+		public ProcessManager.BasicProcessInfo Info;
+		public enum ProcessState
+		{
+			Starting,
+			Cancel,
+			Exiting,
+			Undefined
+		}
+		public ProcessState State;
 	}
 }

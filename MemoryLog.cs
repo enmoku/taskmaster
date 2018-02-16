@@ -123,7 +123,7 @@ namespace TaskMaster
 				{
 					p_textFormatter.Format(e, p_output);
 					t = p_output.ToString();
-					(p_output as System.IO.StringWriter).GetStringBuilder().Clear();
+					((System.IO.StringWriter)p_output).GetStringBuilder().Clear();
 				}
 				MemoryLog.Emit(this, new LogEventArgs(t, e.Level));
 			}

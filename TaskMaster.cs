@@ -57,6 +57,7 @@ using Serilog.Events;
 using TaskMaster.SerilogMemorySink;
 using System.Linq;
 using System.Runtime.CompilerServices;
+using System.Threading.Tasks;
 
 namespace TaskMaster
 {
@@ -202,6 +203,7 @@ namespace TaskMaster
 				{
 					powermanager.onResume += RestartRequest;
 					trayaccess.ManualPowerMode += ProcessController.CancelPowerControlEvent;
+					ProcessController.PowermodeExitWaitEvent += mainwindow.ExitWaitListHandler;
 				}
 
 				if (ProcessMonitorEnabled && PathCacheLimit > 0)
@@ -209,6 +211,21 @@ namespace TaskMaster
 					processmanager.PathCacheUpdate += mainwindow.PathCacheUpdate;
 					mainwindow.PathCacheUpdate(null, null); // populate the window
 				}
+
+				if (ProcessMonitorEnabled && PowerManagerEnabled)
+				{
+					var items = ProcessController.getWaitingExit();
+					foreach (var bu in items)
+					{
+						mainwindow.ExitWaitListHandler(null, new ProcessEventArgs() { Control = null, State = ProcessEventArgs.ProcessState.Starting, Info = bu });
+					}
+				}
+
+				if (PowerManagerEnabled && ProcessMonitorEnabled)
+					powermanager.onAutoAdjust += mainwindow.CPULoadHandler;
+
+				if (PowerManagerEnabled)
+					trayaccess.RescanRequest += processmanager.ProcessEverythingRequest;
 			}
 		}
 		static void Setup()
@@ -266,6 +283,9 @@ namespace TaskMaster
 
 			if (MaintenanceMonitorEnabled)
 				diskmanager = new DiskManager();
+
+			if (PowerManagerEnabled && ProcessMonitorEnabled)
+				processmanager.onCPUSampling += powermanager.CPULoadEvent;
 		}
 
 		public static bool CaseSensitive = false;
@@ -520,8 +540,19 @@ namespace TaskMaster
 		[STAThread] // supposedly needed to avoid shit happening with the WinForms GUI
 		static public void Main(string[] args)
 		{
-			if (args.Length == 1 && args[0] == "-bootdelay")
+			if (args.Length > 0 && args[0] == "--bootdelay")
 			{
+				int uptimeMin = 30;
+				if (args.Length > 1)
+				{
+					try
+					{
+						int nup = Convert.ToInt32(args[1]);
+						uptimeMin = nup.Constrain(5, 360);
+					}
+					catch { /* NOP */ }
+				}
+
 				TimeSpan uptime = TimeSpan.Zero;
 				try
 				{
@@ -533,10 +564,10 @@ namespace TaskMaster
 				}
 				catch { }
 
-				if (uptime.TotalSeconds < 30)
+				if (uptime.TotalSeconds < uptimeMin)
 				{
-					Console.WriteLine("Delaying proper startup for 30 seconds.");
-					System.Threading.Thread.Sleep(Convert.ToInt32(System.Math.Max(0, 30 - uptime.TotalSeconds)) * 1000);
+					Console.WriteLine("Delaying proper startup for " + uptimeMin + " seconds.");
+					System.Threading.Thread.Sleep(Math.Max(0, uptimeMin - Convert.ToInt32(uptime.TotalSeconds)) * 1000);
 				}
 			}
 
@@ -575,7 +606,8 @@ namespace TaskMaster
 			}
 			#endregion
 
-			Log.Information("TaskMaster! (#{ProcessID}) START!", System.Diagnostics.Process.GetCurrentProcess().Id);
+			Log.Information("TaskMaster! (#{ProcessID}) – Version: {Version} – START!",
+							Process.GetCurrentProcess().Id, System.Reflection.Assembly.GetExecutingAssembly().GetName().Version);
 
 			{
 				var tcfg = loadConfig("Core.ini");
@@ -614,7 +646,13 @@ namespace TaskMaster
 			Log.Information("Startup complete...");
 
 			if (TaskMaster.ProcessMonitorEnabled)
-				processmanager.ProcessEverything();
+			{
+				Task.Run(new Func<Task>(async () =>
+				{
+					await Task.Yield();
+					processmanager.ProcessEverything();
+				}));
+			}
 
 			//System.Runtime.GCSettings.LargeObjectHeapCompactionMode = System.Runtime.GCLargeObjectHeapCompactionMode.CompactOnce;
 			//GC.Collect(5, GCCollectionMode.Forced, true, true);

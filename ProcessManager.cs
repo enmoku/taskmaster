@@ -38,6 +38,7 @@ using System.IO;
 using System.Timers;
 using System.Runtime.Remoting.Messaging;
 using System.Windows.Forms;
+using System.Runtime.CompilerServices;
 
 namespace TaskMaster
 {
@@ -201,21 +202,17 @@ namespace TaskMaster
 		public void ProcessEverythingRequest(object sender, EventArgs e)
 		{
 			Log.Verbose("Rescan requested.");
-			Task.Run(new Func<Task>(async () =>
+			try
 			{
-				await Task.Yield();
-				try
-				{
-					ProcessEverything();
-				}
-				catch (Exception ex)
-				{
-					Log.Warning("Scan everything failure.");
-					Log.Error(ex.Message);
-					Log.Error(ex.StackTrace);
-					throw;
-				}
-			}));
+				ProcessEverything();
+			}
+			catch (Exception ex)
+			{
+				Log.Warning("Scan everything failure.");
+				Log.Error(ex.Message);
+				Log.Error(ex.StackTrace);
+				throw;
+			}
 		}
 
 		System.Timers.Timer rescanTimer = new System.Timers.Timer(1000 * 5 * 60); // 5 minutes
@@ -321,10 +318,12 @@ namespace TaskMaster
 			if (RescanEverythingFrequency > 0)
 				Log.Information("Rescan everything every {Frequency} minutes.", RescanEverythingFrequency / 1000 / 60);
 
+			/*
 			var powersec = TaskMaster.cfg["Power"];
 			PowerdownDelay = powersec.GetSetDefault("Powerdown delay", 0, out tdirty).IntValue * 1000;
 			powersec["Powerdown delay"].Comment = "Delay in seconds to restore old power mode after elevated power mode is no longer needed.\n0 disables the delay.\nMostly useful if you want the powermode to linger, e.g. to compensate for restarting games.";
 			dirtyconfig |= tdirty;
+			*/
 
 			// --------------------------------------------------------------------------------------------------------
 
@@ -516,14 +515,59 @@ namespace TaskMaster
 
 				// SANITY CHECKING
 				if (cnt.ExecutableFriendlyName != null)
+				{
 					if (IgnoreProcessName(cnt.ExecutableFriendlyName))
-						Log.Error("{Exec} in ignore list.");
-
+						Log.Error("{Exec} in ignore list; all changes denied.");
+					else if (ProtectedProcessName(cnt.ExecutableFriendlyName))
+						Log.Warning("{Exec} in protected list; priority changing denied.");
+				}
 			}
 
 			// --------------------------------------------------------------------------------------------------------
 			Log.Information("Name-based watchlist: {Items} items", execontrol.Count);
 			Log.Information("Path-based watchlist: {Items} items", WatchlistWithPath);
+		}
+
+		void loadCascades()
+		{
+			SharpConfig.Configuration appcfg = TaskMaster.loadConfig(cascadefile);
+
+			foreach (var section in appcfg)
+			{
+				try
+				{
+					string name = section.Name;
+					if (!section.Contains("Image"))
+					{
+						Log.Error("Cascade '{Name}' has no image name.", name);
+						continue;
+					}
+					if (!section.Contains("Affinity"))
+					{
+						Log.Error("Cascde '{Name}' has no affinity.", name);
+						continue;
+					}
+					if (!section.Contains("Trigger"))
+					{
+						Log.Error("Cascade '{Name}' has no trigger.", name);
+						continue;
+					}
+
+					string exe = section["Image"].StringValue;
+					int priority = section.TryGet("Priority")?.IntValue ?? 1;
+					int affinity = section.TryGet("Affinity")?.IntValue ?? 0;
+					bool page = section.TryGet("Page")?.BoolValue ?? true;
+
+					var b = new CascadeSettings
+					{
+						Page = page
+					};
+				}
+				catch
+				{
+					// NOP, don't care
+				}
+			}
 		}
 
 		string LowerCase(string str)
@@ -978,20 +1022,23 @@ namespace TaskMaster
 			Stopwatch n = Stopwatch.StartNew();
 
 			// TODO: Instance groups?
-			int pid = 0;
+			int pid = -1;
 			string name = string.Empty;
 			string path = string.Empty;
 			System.Management.ManagementBaseObject targetInstance;
 			try
 			{
 				targetInstance = (System.Management.ManagementBaseObject)e.NewEvent.Properties["TargetInstance"].Value;
-				pid = Convert.ToInt32(targetInstance.Properties["Handle"].Value);
+				pid = Convert.ToInt32((string)targetInstance.Properties["Handle"].Value);
 				//targetInstance.Properties.Cast<System.Management.PropertyData>().ToList().ForEach(p => Console.WriteLine("{0}={1}", p.Name, p.Value));
 				//ExecutablePath=fullpath
 				path = (string)(targetInstance.Properties["ExecutablePath"].Value);
 				name = System.IO.Path.GetFileNameWithoutExtension(path);
-				if (name == string.Empty) // is this even possible?
-					Log.Error("Pathless Pid({0}): {1} – is this even possible?", pid, (string)(targetInstance.Properties["ExecutablePath"].Value));
+				if (string.IsNullOrEmpty(name))
+				{
+					// this happens when we have insufficient permissions.
+					// as such, NOP
+				}
 			}
 			catch (Exception ex)
 			{
@@ -1006,6 +1053,8 @@ namespace TaskMaster
 				Statistics.WMIquerytime += n.Elapsed.TotalSeconds;
 				Statistics.WMIqueries += 1;
 			}
+
+			if (IgnoreProcessID(pid)) return; // We just don't care
 
 			await Task.Yield();
 
@@ -1168,6 +1217,7 @@ namespace TaskMaster
 		System.Management.ManagementEventWatcher watcher;
 
 		const string watchfile = "Watchlist.ini";
+		const string cascadefile = "Watchlist.Cascade.ini";
 		const string statfile = "Watchlist.Statistics.ini";
 		// ctor, constructor
 		public ProcessManager()
@@ -1278,6 +1328,41 @@ namespace TaskMaster
 
 			if (TaskMaster.PathCacheLimit > 0)
 				pathCache = new Cache<int, string, string>(TaskMaster.PathCacheMaxAge, TaskMaster.PathCacheLimit, (TaskMaster.PathCacheLimit / 10).Constrain(5, 10));
+
+			CPUCounter = new PerformanceCounter("Processor", "% Processor Time", "_Total");
+			CPUCounter.NextValue();
+			CPUTimer = new System.Timers.Timer();
+			CPUTimer.Interval = 1000 * 5;
+			CPUTimer.Elapsed += CPUTimerEvent;
+			CPUTimer.Start();
+		}
+
+		PerformanceCounter CPUCounter = null;
+		System.Timers.Timer CPUTimer = null;
+
+		public event EventHandler<ProcessorEventArgs> onCPUSampling;
+		float[] CPUSamples = { 0, 0, 0, 0, 0 };
+		int CPUSampleLoop = 0;
+
+		async void CPUTimerEvent(object sender, EventArgs ev)
+		{
+			await Task.Yield();
+
+			float sample = CPUCounter.NextValue();
+			CPUSamples[CPUSampleLoop++] = sample;
+			if (CPUSampleLoop > 4) CPUSampleLoop = 0;
+			float average = 0;
+			float high = 0;
+			float low = float.MaxValue;
+			for (int i = 0; i < 5; i++)
+			{
+				float cur = CPUSamples[i];
+				average += cur;
+				if (cur < low) low = cur;
+				if (cur > high) high = cur;
+			}
+			average /= 5;
+			onCPUSampling?.Invoke(this, new ProcessorEventArgs() { Current = sample, Average = average, High = high, Low = low });
 		}
 
 		bool disposed; // = false;
@@ -1323,6 +1408,12 @@ namespace TaskMaster
 				{
 					watchlist.Clear();
 					watchlist = null;
+				}
+
+				if (CPUCounter != null)
+				{
+					CPUCounter.Close(); // unnecessary?
+					CPUCounter = null;
 				}
 			}
 
@@ -1395,5 +1486,15 @@ namespace TaskMaster
 		[DllImport("kernel32.dll", SetLastError = true)]
 		[return: MarshalAs(UnmanagedType.Bool)]
 		static extern bool CloseHandle(IntPtr hObject);
+	}
+
+	public class ProcessorEventArgs : EventArgs
+	{
+		public float Current;
+		public float Average;
+		public float Low;
+		public float High;
+
+		public int Action;
 	}
 }

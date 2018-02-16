@@ -27,6 +27,7 @@
 using System.Diagnostics;
 using Serilog.Sinks.File;
 using System.Security.AccessControl;
+using System.Runtime.InteropServices;
 
 namespace TaskMaster
 {
@@ -137,20 +138,20 @@ namespace TaskMaster
 			// TODO: Hook device changes
 		}
 
-		public void ProcAdjust(object sender, ProcessEventArgs e)
+		public void ProcAdjust(object sender, ProcessEventArgs ev)
 		{
 			//Log.Verbose("Process adjust received for '{FriendlyName}'.", e.Control.FriendlyName);
 
 			ListViewItem item;
 			lock (appw_lock)
 			{
-				if (appw.TryGetValue(e.Control, out item))
+				if (appw.TryGetValue(ev.Control, out item))
 				{
-					item.SubItems[AdjustColumn].Text = e.Control.Adjusts.ToString();
+					item.SubItems[AdjustColumn].Text = ev.Control.Adjusts.ToString();
 					//item.SubItems[SeenColumn].Text = e.Control.LastSeen.ToLocalTime().ToString();
 				}
 				else
-					Log.Error("{FriendlyName} not found in app list.", e.Control.FriendlyName);
+					Log.Error("{FriendlyName} not found in app list.", ev.Control.FriendlyName);
 			}
 		}
 
@@ -239,7 +240,7 @@ namespace TaskMaster
 
 		public void PathLocatedEvent(object sender, PathControlEventArgs e)
 		{
-			var pc = sender as ProcessController;
+			var pc = (ProcessController)sender;
 			AddToProcessList(pc);
 		}
 
@@ -256,6 +257,12 @@ namespace TaskMaster
 		Label corCountLabel;
 		object processingCountLock = new object();
 		NumericUpDown processingCount;
+
+		ListView powerbalancerlog;
+		object powerbalancerlog_lock = new object();
+
+		ListView exitwaitlist;
+		Dictionary<int, ListViewItem> exitwaitlistw;
 
 		void UserMicVol(object sender, EventArgs e)
 		{
@@ -293,9 +300,9 @@ namespace TaskMaster
 		}
 
 		// BackColor = System.Drawing.Color.LightGoldenrodYellow
-		Label netstatuslabel = new Label { Dock = DockStyle.Top, Text = "Uninitialized", AutoSize = true, BackColor = System.Drawing.Color.Transparent };
-		Label inetstatuslabel = new Label { Dock = DockStyle.Top, Text = "Uninitialized", AutoSize = true, BackColor = System.Drawing.Color.Transparent };
-		Label uptimestatuslabel = new Label { Dock = DockStyle.Top, Text = "Uninitialized", AutoSize = true, BackColor = System.Drawing.Color.Transparent };
+		Label netstatuslabel;
+		Label inetstatuslabel;
+		Label uptimestatuslabel;
 
 		TrayAccess tray;
 		public TrayAccess Tray { private get { return tray; } set { tray = value; } }
@@ -426,11 +433,13 @@ namespace TaskMaster
 			TabPage procTab = new TabPage("Processes");
 			TabPage micTab = new TabPage("Microphone");
 			TabPage netTab = new TabPage("Network");
+			TabPage bugTab = new TabPage("Debug");
 
 			tabLayout.Controls.Add(infoTab);
 			tabLayout.Controls.Add(procTab);
 			tabLayout.Controls.Add(micTab);
 			tabLayout.Controls.Add(netTab);
+			tabLayout.Controls.Add(bugTab);
 
 			var infopanel = new TableLayoutPanel
 			{
@@ -530,7 +539,7 @@ namespace TaskMaster
 			var micDevLbl = new Label
 			{
 				Text = "Default communications device:",
-				Dock = DockStyle.Top,
+				Dock = DockStyle.Left,
 				Width = 180,
 				//Height = 20,
 				//BackColor = System.Drawing.Color.Yellow,
@@ -540,11 +549,11 @@ namespace TaskMaster
 			micName = new Label
 			{
 				Text = "N/A",
-				Dock = DockStyle.Top,
+				Dock = DockStyle.Left,
 				//BackColor = System.Drawing.Color.GreenYellow,
-				Height = 20,
 				TextAlign = System.Drawing.ContentAlignment.MiddleLeft,
-				//AutoSize = true
+				AutoSize = true,
+				AutoEllipsis = true,
 			};
 			var micNameRow = new TableLayoutPanel
 			{
@@ -629,9 +638,10 @@ namespace TaskMaster
 			micList = new ListView
 			{
 				Dock = DockStyle.Top,
-				Width = tabLayout.Width - 12, // FIXME: 3 for the bevel, but how to do this "right"?
+				//Width = tabLayout.Width - 12, // FIXME: 3 for the bevel, but how to do this "right"?
 				Height = 120,
 				View = View.Details,
+				AutoSize = true,
 				FullRowSelect = true
 			};
 			micList.Columns.Add("Name", micwidths[0]);
@@ -652,9 +662,14 @@ namespace TaskMaster
 				AutoSize = true,
 			};
 
-			var netLabel = new Label { Text = "Network status:", Dock = DockStyle.Top, AutoSize = true };
-			var inetLabel = new Label { Text = "Internet status:", Dock = DockStyle.Top, AutoSize = true };
-			var uptimeLabel = new Label { Text = "Uptime:", Dock = Dock = DockStyle.Top, AutoSize = true };
+			var netLabel = new Label { Text = "Network status:", Dock = DockStyle.Left, AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft };
+			var inetLabel = new Label { Text = "Internet status:", Dock = DockStyle.Left, AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft };
+			var uptimeLabel = new Label { Text = "Uptime:", Dock = DockStyle.Left, AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft };
+
+			netstatuslabel = new Label { Dock = DockStyle.Left, Text = "Uninitialized", AutoSize = true, BackColor = System.Drawing.Color.Transparent, TextAlign = System.Drawing.ContentAlignment.MiddleLeft };
+			inetstatuslabel = new Label { Dock = DockStyle.Left, Text = "Uninitialized", AutoSize = true, BackColor = System.Drawing.Color.Transparent, TextAlign = System.Drawing.ContentAlignment.MiddleLeft };
+			uptimestatuslabel = new Label { Dock = DockStyle.Left, Text = "Uninitialized", AutoSize = true, BackColor = System.Drawing.Color.Transparent, TextAlign = System.Drawing.ContentAlignment.MiddleLeft };
+
 
 			var netstatus = new TableLayoutPanel
 			{
@@ -695,7 +710,8 @@ namespace TaskMaster
 			ifaceList = new ListView
 			{
 				Dock = DockStyle.Top,
-				Width = tabLayout.Width - 3, // FIXME: why does 3 work? can't we do this automatically?
+				AutoSize = true,
+				//Width = tabLayout.Width - 3, // FIXME: why does 3 work? can't we do this automatically?
 				Height = 180,
 				View = View.Details,
 				FullRowSelect = true
@@ -751,8 +767,9 @@ namespace TaskMaster
 			var proclayout = new TableLayoutPanel
 			{
 				// BackColor = System.Drawing.Color.Azure, // DEBUG
-				Dock = DockStyle.Fill,
+				Dock = DockStyle.Top,
 				Width = tabLayout.Width - 12,
+				AutoSize = true,
 			};
 
 			/*
@@ -1061,16 +1078,51 @@ namespace TaskMaster
 
 			lrows.Controls.Add(logpanel);
 
+			// DEBUG TAB
+
+			var buglayout = new TableLayoutPanel()
+			{
+				ColumnCount = 1,
+				AutoSize = true,
+				Dock = DockStyle.Top
+			};
+
+			exitwaitlist = new ListView()
+			{
+				AutoSize = true,
+				Height = 80,
+				Width = tabLayout.Width - 12, // FIXME: 3 for the bevel, but how to do this "right"?
+				FullRowSelect = true,
+				View = View.Details,
+			};
+			exitwaitlistw = new Dictionary<int, ListViewItem>();
+
+			exitwaitlist.Columns.Add("Id", 50);
+			exitwaitlist.Columns.Add("Executable", 280);
+
+			buglayout.Controls.Add(new Label() { Text = "Power mode exit wait list...", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left, Padding = new Padding(6) });
+			buglayout.Controls.Add(exitwaitlist);
+
+			powerbalancerlog = new ListView()
+			{
+				AutoSize = true,
+				Height = 80,
+				Width = tabLayout.Width - 12, // FIXME: 3 for the bevel, but how to do this "right"?
+				FullRowSelect = true,
+				View = View.Details,
+			};
+			powerbalancerlog.Columns.Add("Current", 60);
+			powerbalancerlog.Columns.Add("Average", 60);
+			powerbalancerlog.Columns.Add("High", 60);
+			powerbalancerlog.Columns.Add("Low", 60);
+			powerbalancerlog.Columns.Add("Reactionary Plan", 120);
+
+			buglayout.Controls.Add(new Label() { Text = "Power mode autobalancing tracker...", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left, Padding = new Padding(6) });
+			buglayout.Controls.Add(powerbalancerlog);
+
+			bugTab.Controls.Add(buglayout);
+
 			// End: UI Log
-
-			//layout.Visible = true;
-
-			/*
-			Label micVolLabel = new Label();
-			micVolLabel.Parent = micPanel;
-			micVolLabel.AutoSize = true;
-			//micVolLabel.Location = Location.
-			*/
 
 			/*
 			TrackBar tb = new TrackBar();
@@ -1085,6 +1137,68 @@ namespace TaskMaster
 			tabLayout.SelectedIndex = opentab >= tabLayout.TabCount ? 0 : opentab;
 
 			DiskManager.onTempScan += TempScanStats;
+		}
+
+		object exitwaitlist_lock = new object();
+		public void ExitWaitListHandler(object sender, ProcessEventArgs ev)
+		{
+			lock (exitwaitlist_lock)
+			{
+				if (ev.State == ProcessEventArgs.ProcessState.Starting)
+				{
+					var li = new ListViewItem(new string[] { ev.Info.Id.ToString(), ev.Info.Name });
+					//li.Name = ev.Info.Id.ToString();
+					try
+					{
+						exitwaitlistw.Add(ev.Info.Id, li);
+						exitwaitlist.Items.Add(li);
+					}
+					catch { /* NOP, System.ArgumentException, already in list */ }
+				}
+				else if (ev.State == ProcessEventArgs.ProcessState.Exiting || ev.State == ProcessEventArgs.ProcessState.Cancel)
+				{
+					ListViewItem li = null;
+					if (exitwaitlistw.TryGetValue(ev.Info.Id, out li))
+					{
+						exitwaitlist.Items.Remove(li);
+						exitwaitlistw.Remove(ev.Info.Id);
+					}
+				}
+			}
+		}
+
+		public void CPULoadHandler(object sender, ProcessorEventArgs ev)
+		{
+			int powerreact = ev.Action;
+
+			string reactionary = powerreact == 2 ? "High Performance" : powerreact == 0 ? "Power Saver" : "Balanced";
+
+			var li = new ListViewItem(new string[] {
+				string.Format("{0:N2}%", ev.Current),
+				string.Format("{0:N2}%", ev.Average),
+				string.Format("{0:N2}%", ev.High),
+				string.Format("{0:N2}%", ev.Low),
+				reactionary
+			});
+
+			li.UseItemStyleForSubItems = false;
+
+			if (powerreact == 2)
+				li.SubItems[3].BackColor = System.Drawing.Color.FromArgb(255, 230, 230);
+			else if (powerreact == 0)
+				li.SubItems[2].BackColor = System.Drawing.Color.FromArgb(240, 255, 230);
+			else
+			{
+				li.SubItems[3].BackColor = System.Drawing.Color.FromArgb(255, 250, 230);
+				li.SubItems[2].BackColor = System.Drawing.Color.FromArgb(255, 250, 230);
+			}
+
+			lock (powerbalancerlog_lock)
+			{
+				powerbalancerlog.Items.Add(li);
+				if (powerbalancerlog.Items.Count > 4)
+					powerbalancerlog.Items.RemoveAt(0);
+			}
 		}
 
 		int appEditLock = 0;

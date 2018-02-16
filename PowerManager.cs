@@ -29,6 +29,7 @@ using System.Runtime.InteropServices;
 using System.Windows.Forms;
 using Serilog;
 using Microsoft.Win32;
+using System.ComponentModel;
 
 namespace TaskMaster
 {
@@ -52,7 +53,102 @@ namespace TaskMaster
 			SystemEvents.PowerModeChanged += BatteryChargingEvent;
 			SystemEvents.SessionEnding += TaskMaster.ExitRequest;
 			SystemEvents.SessionSwitch += SessionLockEvent;
+
+			LoadConfig();
 		}
+
+		public event EventHandler<ProcessorEventArgs> onAutoAdjust;
+
+		PowerMode PreviousReaction = PowerMode.Balanced;
+		public void CPULoadEvent(object sender, ProcessorEventArgs ev)
+		{
+			PowerMode Reaction = PowerMode.Balanced;
+
+			float hight = HighThreshold;
+			if (PreviousReaction == PowerMode.HighPerformance) hight = HighThresholdBackoff;
+			float lowt = LowThreshold;
+			if (PreviousReaction == PowerMode.PowerSaver) lowt = LowThresholdBackoff;
+
+			if (ev.Low > hight)
+				Reaction = PowerMode.HighPerformance;
+			else if (ev.High < lowt)
+				Reaction = PowerMode.PowerSaver;
+			else
+				Reaction = PowerMode.Balanced;
+
+			if (Reaction != Current && !ForcedMode)
+				Log.Verbose("<Power Mode> Auto-adjust: {Mode}", Reaction.ToString());
+
+			RequestMode(Reaction);
+
+			PreviousReaction = Reaction;
+
+			ev.Action = (int)Reaction;
+			onAutoAdjust?.Invoke(this, ev);
+		}
+
+		void LoadConfig()
+		{
+			var power = TaskMaster.cfg["Power"];
+			bool modified = false, tdirty = false;
+
+			AutoAdjust = power.GetSetDefault("Auto-adjust", false, out modified).BoolValue;
+			power["Auto-adjust"].Comment = "Automatically adjust power mode based on the criteria here.";
+			tdirty |= modified;
+
+			HighThreshold = power.GetSetDefault("High threshold", 60, out modified).FloatValue;
+			power["High threshold"].Comment = "If low CPU value keeps over this, we swap to high mode.";
+			tdirty |= modified;
+			HighThresholdBackoff = power.GetSetDefault("High threshold backoff", 50, out modified).FloatValue;
+			power["High threshold backoff"].Comment = "Entering high mode requires we go below this to get away from it.\nThis should be at least 5% lower than normal high threshold.";
+			tdirty |= modified;
+
+			string highmode = power.GetSetDefault("High mode", "High Performance", out modified).StringValue;
+			HighMode = GetModeByName(highmode);
+			tdirty |= modified;
+
+			LowThreshold = power.GetSetDefault("Low threshold", 20, out modified).FloatValue;
+			power["Low threshold"].Comment = "If high CPU value keeps under this, we swap to low mode.";
+			tdirty |= modified;
+			LowThresholdBackoff = power.GetSetDefault("Low threshold backoff", 25, out modified).FloatValue;
+			power["Low threshold backoff"].Comment = "Entering low mode requires we go above this to get away from it.\nThis should be at least 5% higher than normal low threhshold.";
+			tdirty |= modified;
+
+			string lowmode = power.GetSetDefault("Low mode", "Power Saver", out modified).StringValue;
+			LowMode = GetModeByName(lowmode);
+			tdirty |= modified;
+
+			string medmode = power.GetSetDefault("Normal mode", "Balanced", out modified).StringValue;
+			power["Normal mode"].Comment = "This is what we keep at when neither high or low match.";
+			NormalMode = GetModeByName(medmode);
+			tdirty |= modified;
+
+			var saver = TaskMaster.cfg["Power / Power Save"];
+			bool sessionlock = power.GetSetDefault("Session lock", true, out modified).BoolValue;
+			tdirty |= modified;
+			bool screenlock = power.GetSetDefault("Monitor sleep", true, out modified).BoolValue;
+			tdirty |= modified;
+			int afktimer = power.GetSetDefault("User idle", 30, out modified).IntValue;
+			tdirty |= modified;
+
+			if (AutoAdjust)
+				Log.Information("Power Manager: Auto-adjust enabled – Low({Low}→{LowB}), High({High}→{HighB})",
+								string.Format("{0:N0}%", LowThreshold), string.Format("{0:N0}%", LowThresholdBackoff),
+								string.Format("{0:N0}%", HighThreshold), string.Format("{0:N0}%", HighThresholdBackoff));
+			else
+				Log.Information("Power Manager: Auto-adjust disabled");
+
+			if (tdirty)
+				TaskMaster.MarkDirtyINI(TaskMaster.cfg);
+		}
+
+		public float HighThreshold { get; private set; } = 60;
+		public float HighThresholdBackoff { get; private set; } = 50;
+		PowerMode HighMode { get; set; }
+		public float LowThreshold { get; private set; } = 25;
+		public float LowThresholdBackoff { get; private set; } = 35;
+		PowerMode LowMode { get; set; }
+		PowerMode NormalMode { get; set; }
 
 		void SessionLockEvent(object sender, SessionSwitchEventArgs ev)
 		{
@@ -157,6 +253,8 @@ namespace TaskMaster
 
 		public static void SaveMode()
 		{
+			if (AutoAdjust) return;
+
 			if (SavedMode != PowerMode.Undefined) Log.Warning("<Power Mode> Saved mode is being overriden.");
 
 			SavedMode = Current;
@@ -170,11 +268,14 @@ namespace TaskMaster
 
 		public static void RestoreMode()
 		{
+			if (AutoAdjust) return;
+
 			lock (powerLock)
 			{
 				if (SavedMode != PowerMode.Undefined)
 				{
 					setMode(SavedMode);
+					ForcedMode = false;
 					SavedMode = PowerMode.Undefined;
 					Log.Verbose("<Power Mode> Restored to: {PowerMode}", Current.ToString());
 				}
@@ -204,19 +305,41 @@ namespace TaskMaster
 		}
 
 		public static object powerLock = new object();
+		public static object powerLockI = new object();
 
-		public static bool upgradeMode(PowerMode mode)
+		public static bool AutoAdjust { get; set; } = false;
+
+		public static bool RequestMode(PowerMode mode)
 		{
-			if ((int)mode > (int)Current && (int)mode < (int)PowerMode.Undefined)
+			lock (powerLock)
 			{
-				setMode(mode);
-				Log.Verbose("Power mode upgraded to: {PowerMode}", Current);
-				return true;
+				if (mode != Current && ForcedMode == false)
+				{
+					setMode(mode, verbose: false);
+				}
+				return false;
 			}
-			return false;
 		}
 
-		public static void setMode(PowerMode mode)
+		static bool ForcedMode = false;
+
+		public static bool ForceMode(PowerMode mode)
+		{
+			lock (powerLock)
+			{
+				if (mode != Current)
+				{
+					setMode(mode);
+					Log.Verbose("Power mode forced to: {PowerMode}", Current);
+					ForcedMode = true;
+					return true;
+				}
+				return false;
+			}
+		}
+
+
+		public static void setMode(PowerMode mode, bool verbose = true)
 		{
 			Guid plan = Guid.Empty;
 			switch (mode)
@@ -233,11 +356,10 @@ namespace TaskMaster
 					break;
 			}
 
-			lock (powerLock)
-			{
+			if (verbose)
 				Log.Information("<Power Mode> Setting to: {Mode} ({Guid})", mode.ToString(), plan.ToString());
+			lock (powerLockI)
 				PowerSetActiveScheme((IntPtr)null, ref plan);
-			}
 		}
 
 		bool disposed; // = false;
@@ -256,6 +378,8 @@ namespace TaskMaster
 					RestoreMode();
 					Log.Information("Power mode restored.");
 				}
+				else if (AutoAdjust)
+					RequestMode(Original);
 			}
 
 			disposed = true;

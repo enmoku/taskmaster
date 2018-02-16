@@ -137,7 +137,7 @@ namespace TaskMaster
 			{
 				if (control.ControlType == NAudio.Mixer.MixerControlType.Volume)
 				{
-					Control = control as NAudio.Mixer.UnsignedMixerControl;
+					Control = (NAudio.Mixer.UnsignedMixerControl)control;
 					break;
 				}
 			}

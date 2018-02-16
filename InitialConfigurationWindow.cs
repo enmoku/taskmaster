@@ -92,6 +92,8 @@ namespace TaskMaster
 			};
 
 			var powmon = new CheckBox();
+			var powauto = new CheckBox();
+
 			tooltip.SetToolTip(powmon, "Manage power mode.\nNot recommended if you already have a power manager, e.g. ASUS EPU.");
 			l.Controls.Add(new Label { Text = "Power manager", AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, Padding = padding });
 			l.Controls.Add(powmon);
@@ -99,6 +101,22 @@ namespace TaskMaster
 			powmon.Checked = true;
 			powmon.Click += (sender, e) =>
 			{
+				if (powmon.Checked == false)
+				{
+					powauto.Checked = false;
+					powauto.Enabled = false;
+				}
+				else
+					powauto.Enabled = true;
+			};
+
+			tooltip.SetToolTip(powauto, "Automatically adjust power mode based on system load.");
+			l.Controls.Add(new Label { Text = "Power auto-adjust", AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, Padding = padding });
+			l.Controls.Add(powauto);
+			powauto.Click += (sender, e) =>
+			{
+				if (powauto.Checked)
+					powmon.Checked = true;
 			};
 
 			var fgmon = new CheckBox();
@@ -160,6 +178,9 @@ namespace TaskMaster
 				compsec["Power"].BoolValue = powmon.Checked;
 				compsec["Paging"].BoolValue = paging.Checked;
 				compsec["Maintenance"].BoolValue = tempmon.Checked;
+
+				var powsec = cfg["Power"];
+				powsec["Auto-adjust"].BoolValue = powauto.Checked;
 
 				var optsec = cfg["Options"];
 				optsec["Show on start"].BoolValue = showonstart.Checked;

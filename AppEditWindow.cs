@@ -146,11 +146,38 @@ namespace TaskMaster
 			};
 			tooltip.SetToolTip(friendlyName, "Human readable name, for user convenience.");
 			lt.Controls.Add(friendlyName);
-			lt.Controls.Add(new Label { Text = "Executable", TextAlign = System.Drawing.ContentAlignment.MiddleLeft });
+			lt.Controls.Add(new Label { Text = "Executable", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, Dock = DockStyle.Left });
+			var execpanel = new TableLayoutPanel() { ColumnCount = 2, AutoSize = true };
 			execName.Text = process.Executable;
-			execName.Width = 180;
+			execName.Width = 134;
 			tooltip.SetToolTip(execName, "Executable name, used to recognize these applications.\nFull filename, including extension if any.");
-			lt.Controls.Add(execName);
+			execpanel.Controls.Add(execName);
+			var findexecbutton = new Button()
+			{
+				Text = "Find",
+				//AutoSize = true,
+				Dock = DockStyle.Left,
+				Width = 36,
+				Height = 20,
+			};
+			findexecbutton.Click += (sender, e) =>
+			{
+				var exselectdialog = new ProcessSelectDialog();
+				try
+				{
+					if (exselectdialog.ShowDialog(this) == DialogResult.OK)
+					{
+						// SANITY CHECK: exselectdialog.Selection;
+						execName.Text = exselectdialog.Selection;
+					}
+				}
+				catch (Exception ex)
+				{
+					Log.Fatal(ex.Message);
+				}
+			};
+			execpanel.Controls.Add(findexecbutton);
+			lt.Controls.Add(execpanel);
 
 			// PATH
 			lt.Controls.Add(new Label { Text = "Path", TextAlign = System.Drawing.ContentAlignment.MiddleLeft });
