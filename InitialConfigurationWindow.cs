@@ -33,9 +33,8 @@ namespace TaskMaster
 	{
 		public InitialConfigurationWindow()
 		{
-			Size = new System.Drawing.Size(220, 360); // width, height
+			//Size = new System.Drawing.Size(220, 360); // width, height
 			Text = "TaskMaster component configuration";
-			AutoSize = false;
 
 			FormBorderStyle = FormBorderStyle.FixedDialog;
 
@@ -43,12 +42,25 @@ namespace TaskMaster
 			FormBorderStyle = FormBorderStyle.FixedDialog; // no min/max buttons as wanted
 			MinimizeBox = false;
 			MaximizeBox = false;
+			AutoSizeMode = AutoSizeMode.GrowAndShrink;
 
-			var l = new TableLayoutPanel()
+			var baselayout = new TableLayoutPanel()
 			{
 				Parent = this,
-				Dock = DockStyle.Fill,
+				ColumnCount = 1,
+				AutoSize = true,
+				//Dock = DockStyle.Fill,
+				//Dock = DockStyle.Top,
+				//BackColor = System.Drawing.Color.Aqua,
+			};
+
+			var layout = new TableLayoutPanel()
+			{
+				Parent = baselayout,
+				Dock = DockStyle.Left,
 				ColumnCount = 2,
+				AutoSize = true,
+				//BackColor = System.Drawing.Color.YellowGreen,
 			};
 
 			var tooltip = new ToolTip();
@@ -56,47 +68,84 @@ namespace TaskMaster
 
 			Padding = padding;
 
-			var micmon = new CheckBox();
+			var micmon = new CheckBox()
+			{
+				AutoSize = true,
+				//BackColor = System.Drawing.Color.Azure,
+				Dock = DockStyle.Left
+			};
 			tooltip.SetToolTip(micmon, "Monitor default communications device.");
-			l.Controls.Add(new Label { Text = "Microphone monitor", AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, Padding = padding });
-			l.Controls.Add(micmon);
+			layout.Controls.Add(new Label { Text = "Microphone monitor", AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, Padding = padding, Dock = DockStyle.Left });
+			layout.Controls.Add(micmon);
 			micmon.Click += (sender, e) =>
 			{
 
 			};
 
-			var netmon = new CheckBox();
+			var netmon = new CheckBox()
+			{
+				AutoSize = true,
+				//BackColor = System.Drawing.Color.Azure,
+				Dock = DockStyle.Left
+			};
 			tooltip.SetToolTip(netmon, "Monitor network interface status.");
-			l.Controls.Add(new Label { Text = "Network monitor", AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, Padding = padding });
-			l.Controls.Add(netmon);
+			layout.Controls.Add(new Label { Text = "Network monitor", AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, Padding = padding, Dock = DockStyle.Left });
+			layout.Controls.Add(netmon);
 			netmon.Checked = true;
 			netmon.Click += (sender, e) =>
 			{
 
 			};
 
-			var procmon = new CheckBox();
+			var procmon = new CheckBox()
+			{
+				AutoSize = true,
+				//BackColor = System.Drawing.Color.Azure,
+				Dock = DockStyle.Left
+			};
 			tooltip.SetToolTip(procmon, "Manage processes based on their name.");
-			l.Controls.Add(new Label { Text = "Process/name manager", AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, Padding = padding });
-			l.Controls.Add(procmon);
+			layout.Controls.Add(new Label { Text = "Process/name manager", AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, Padding = padding, Dock = DockStyle.Left });
+			layout.Controls.Add(procmon);
 			procmon.Enabled = false;
 			procmon.Checked = true;
 
-			var pathmon = new CheckBox();
+			var pathmon = new CheckBox()
+			{
+				AutoSize = true,
+				//BackColor = System.Drawing.Color.Azure,
+				Dock = DockStyle.Left
+			};
 			tooltip.SetToolTip(pathmon, "Manage processes based on their location.\nThese are processed only if by name matching does not catch something.");
-			l.Controls.Add(new Label { Text = "Process/path manager", AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, Padding = padding });
-			l.Controls.Add(pathmon);
+			layout.Controls.Add(new Label { Text = "Process/path manager", AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, Padding = padding, Dock = DockStyle.Left });
+			layout.Controls.Add(pathmon);
 			pathmon.Checked = true;
 			pathmon.Click += (sender, e) =>
 			{
 			};
 
-			var powmon = new CheckBox();
-			var powauto = new CheckBox();
+			var powmon = new CheckBox()
+			{
+				AutoSize = true,
+				//BackColor = System.Drawing.Color.Azure,
+				Dock = DockStyle.Left
+			};
+			var powauto = new CheckBox()
+			{
+				AutoSize = true,
+				//BackColor = System.Drawing.Color.Azure,
+				Dock = DockStyle.Left
+			};
 
 			tooltip.SetToolTip(powmon, "Manage power mode.\nNot recommended if you already have a power manager, e.g. ASUS EPU.");
-			l.Controls.Add(new Label { Text = "Power manager", AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, Padding = padding });
-			l.Controls.Add(powmon);
+			layout.Controls.Add(new Label
+			{
+				Text = "Power manager",
+				AutoSize = true,
+				TextAlign = System.Drawing.ContentAlignment.MiddleLeft,
+				Padding = padding,
+				Dock = DockStyle.Left
+			});
+			layout.Controls.Add(powmon);
 			powmon.Enabled = true;
 			powmon.Checked = true;
 			powmon.Click += (sender, e) =>
@@ -111,52 +160,86 @@ namespace TaskMaster
 			};
 
 			tooltip.SetToolTip(powauto, "Automatically adjust power mode based on system load.");
-			l.Controls.Add(new Label { Text = "Power auto-adjust", AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, Padding = padding });
-			l.Controls.Add(powauto);
+			layout.Controls.Add(new Label { Text = "Power auto-adjust", AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, Padding = padding, Dock = DockStyle.Left });
+			layout.Controls.Add(powauto);
 			powauto.Click += (sender, e) =>
 			{
 				if (powauto.Checked)
 					powmon.Checked = true;
 			};
 
-			var fgmon = new CheckBox();
+			var fgmon = new CheckBox()
+			{
+				AutoSize = true,
+				//BackColor = System.Drawing.Color.Azure,
+				Dock = DockStyle.Left
+			};
 			tooltip.SetToolTip(fgmon, "Allow processes and power mode to be managed based on if a process is in the foreground.");
-			l.Controls.Add(new Label { Text = "Foreground manager", AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, Padding = padding });
-			l.Controls.Add(fgmon);
+			layout.Controls.Add(new Label { Text = "Foreground manager", AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, Padding = padding, Dock = DockStyle.Left });
+			layout.Controls.Add(fgmon);
 			fgmon.Enabled = false;
 			fgmon.Click += (sender, e) =>
 			{
 			};
 
-			var tempmon = new CheckBox();
+			var tempmon = new CheckBox()
+			{
+				AutoSize = true,
+				//BackColor = System.Drawing.Color.Azure,
+				Dock = DockStyle.Left
+			};
 			tooltip.SetToolTip(tempmon, "Monitor temp folder.");
-			l.Controls.Add(new Label { Text = "TEMP monitor", AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, Padding = padding });
-			l.Controls.Add(tempmon);
+			layout.Controls.Add(new Label { Text = "TEMP monitor", AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, Padding = padding, Dock = DockStyle.Left });
+			layout.Controls.Add(tempmon);
 			tempmon.Enabled = false;
 			tempmon.Checked = false;
 
-			var paging = new CheckBox();
+			var paging = new CheckBox()
+			{
+				AutoSize = true,
+				//BackColor = System.Drawing.Color.Azure,
+				Dock = DockStyle.Left
+			};
 			tooltip.SetToolTip(tempmon, "Allow paging RAM to page/swap file.");
-			l.Controls.Add(new Label { Text = "Allow paging", AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, Padding = padding });
-			l.Controls.Add(paging);
+			layout.Controls.Add(new Label { Text = "Allow paging", AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, Padding = padding, Dock = DockStyle.Left });
+			layout.Controls.Add(paging);
 			paging.Checked = false;
 			paging.Click += (sender, e) =>
 			{
 
 			};
 
-			var showonstart = new CheckBox();
+			var showonstart = new CheckBox()
+			{
+				AutoSize = true,
+				//BackColor = System.Drawing.Color.Azure,
+				Dock = DockStyle.Left
+			};
 			tooltip.SetToolTip(showonstart, "Show main window on start.");
-			l.Controls.Add(new Label { Text = "Show on start", AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, Padding = padding });
-			l.Controls.Add(showonstart);
+			layout.Controls.Add(new Label
+			{
+				Text = "Show on start",
+				AutoSize = true,
+				TextAlign = System.Drawing.ContentAlignment.MiddleLeft,
+				Padding = padding,
+				Dock = DockStyle.Left
+			});
+			layout.Controls.Add(showonstart);
 			showonstart.Checked = false;
 			showonstart.Click += (sender, e) =>
 			{
 
 			};
 
-			var savebutton = new Button();
-			savebutton.Text = "Save";
+			var savebutton = new Button()
+			{
+				Text = "Save",
+				//AutoSize = true,
+				Width = 80,
+				Height = 20,
+				//BackColor = System.Drawing.Color.Azure,
+				Dock = DockStyle.Right
+			}; ;
 			//l.Controls.Add(savebutton);
 			savebutton.Click += (sender, e) =>
 			{
@@ -192,8 +275,16 @@ namespace TaskMaster
 
 			//l.Controls.Add(new Label());
 
-			var endbutton = new Button();
-			endbutton.Text = "Cancel";
+			var endbutton = new Button()
+			{
+				Text = "Cancel",
+				//AutoSize = true,
+				Width = 80,
+				Height = 20,
+				//BackColor = System.Drawing.Color.Azure,
+				Dock = DockStyle.Right
+			};
+			;
 			//l.Controls.Add(endbutton);
 			endbutton.Click += (sender, e) =>
 			{
@@ -201,16 +292,23 @@ namespace TaskMaster
 				Close();
 			};
 
-			var buttonpanel = new TableLayoutPanel();
+			var buttonpanel = new TableLayoutPanel()
+			{
+				AutoSize = true,
+				//BackColor = System.Drawing.Color.LimeGreen
+			};
 			buttonpanel.ColumnCount = 2;
 			//buttonpanel.Dock = DockStyle.Fill;
 			//buttonpanel.AutoSize = true;
-			buttonpanel.Width = 160;
+			//buttonpanel.Width = 160;
 
 			buttonpanel.Controls.Add(savebutton);
 			buttonpanel.Controls.Add(endbutton);
 
-			l.Controls.Add(buttonpanel);
+			baselayout.Controls.Add(layout);
+			baselayout.Controls.Add(buttonpanel);
+			Controls.Add(baselayout);
+			AutoSize = true;
 
 			Show();
 		}
