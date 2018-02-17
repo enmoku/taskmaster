@@ -24,6 +24,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 using System.Diagnostics;
+using System.Management;
 
 namespace TaskMaster
 {
@@ -41,6 +42,7 @@ namespace TaskMaster
 		ToolStripMenuItem menu_configuration;
 		ToolStripMenuItem menu_runatstart;
 		ToolStripMenuItem menu_exit;
+		ToolStripMenuItem power_auto;
 		ToolStripMenuItem power_highperf;
 		ToolStripMenuItem power_balanced;
 		ToolStripMenuItem power_saving;
@@ -71,6 +73,9 @@ namespace TaskMaster
 
 			if (TaskMaster.PowerManagerEnabled)
 			{
+				power_auto = new ToolStripMenuItem("Auto", null, TogglePowerAuto);
+				power_auto.Checked = PowerManager.AutoAdjust;
+
 				power_highperf = new ToolStripMenuItem("Performance", null, SetPowerPerformance);
 				power_balanced = new ToolStripMenuItem("Balanced", null, SetPowerBalanced);
 				power_saving = new ToolStripMenuItem("Power Saving", null, SetPowerSaving);
@@ -92,6 +97,7 @@ namespace TaskMaster
 				var plab = new ToolStripLabel("--- Power Plan ---");
 				plab.ForeColor = System.Drawing.SystemColors.GrayText;
 				ms.Items.Add(plab);
+				ms.Items.Add(power_auto);
 				ms.Items.Add(power_highperf);
 				ms.Items.Add(power_balanced);
 				ms.Items.Add(power_saving);
@@ -116,6 +122,10 @@ namespace TaskMaster
 		public static event EventHandler onExit;
 		public event EventHandler ManualPowerMode;
 
+		void TogglePowerAuto(object sender, EventArgs ev)
+		{
+			PowerManager.AutoMode(power_auto.Checked = !power_auto.Checked);
+		}
 
 		void HighlightPowerModeEvent(object sender, PowerModeEventArgs ev)
 		{
@@ -146,6 +156,8 @@ namespace TaskMaster
 
 		void ResetPower(PowerManager.PowerMode mode)
 		{
+			power_auto.Checked = PowerManager.AutoMode(false);
+
 			ManualPowerMode?.Invoke(this, null);
 			PowerManager.RestoreMode();
 			PowerManager.setMode(mode);

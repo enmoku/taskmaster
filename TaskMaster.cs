@@ -230,9 +230,6 @@ namespace TaskMaster
 		}
 		static void Setup()
 		{
-			trayaccess = new TrayAccess();
-			TrayAccess.onExit += ExitRequest;
-
 			if (MicrophoneMonitorEnabled)
 				micmonitor = new MicMonitor();
 
@@ -247,7 +244,11 @@ namespace TaskMaster
 				netmonitor.Tray = trayaccess;
 			}
 
-			if (PowerManagerEnabled) powermanager = new PowerManager();
+			if (PowerManagerEnabled)
+				powermanager = new PowerManager();
+
+			trayaccess = new TrayAccess();
+			TrayAccess.onExit += ExitRequest;
 
 			BuildMain();
 
@@ -374,7 +375,7 @@ namespace TaskMaster
 			NetworkMonitorEnabled = compsec.GetSetDefault("Network", true, out modified).BoolValue;
 			compsec["Network"].Comment = "Monitor network uptime and current IP addresses.";
 			dirtyconfig |= modified;
-			MaintenanceMonitorEnabled = compsec.GetSetDefault("Power", true, out modified).BoolValue;
+			PowerManagerEnabled = compsec.GetSetDefault("Power", true, out modified).BoolValue;
 			compsec["Power"].Comment = "Enable power plan management.";
 			dirtyconfig |= modified;
 			PagingEnabled = compsec.GetSetDefault("Paging", true, out modified).BoolValue;

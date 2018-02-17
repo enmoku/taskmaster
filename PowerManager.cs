@@ -251,6 +251,14 @@ namespace TaskMaster
 
 		public static event EventHandler<PowerModeEventArgs> onModeChange;
 
+		public static bool AutoMode(bool enabled = true)
+		{
+			AutoAdjust = enabled;
+
+			Log.Information("<Power Mode> Auto-adjust: {State}", (AutoAdjust ? "Enabled" : "Disabled"));
+			return AutoAdjust;
+		}
+
 		public static void SaveMode()
 		{
 			if (AutoAdjust) return;
@@ -307,10 +315,12 @@ namespace TaskMaster
 		public static object powerLock = new object();
 		public static object powerLockI = new object();
 
-		public static bool AutoAdjust { get; set; } = false;
+		public static bool AutoAdjust { get; private set; } = false;
 
 		public static bool RequestMode(PowerMode mode)
 		{
+			if (!AutoAdjust) return false;
+
 			lock (powerLock)
 			{
 				if (mode != Current && ForcedMode == false)
