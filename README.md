@@ -26,7 +26,7 @@ a thing that Windows itself does very poor job of informing users of.
 
 ## Command-line
 
-* -bootdelay – adds about 30 seconds delay before TM starts processing things, allowing other programs that probably are higher priority to finish startup.
+* --bootdelay – adds about 30 seconds delay before TM starts processing things, allowing other programs that probably are higher priority to finish startup.
 
 ## Installing, deployment, and usage
 
