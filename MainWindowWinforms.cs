@@ -1169,9 +1169,9 @@ namespace TaskMaster
 
 		public void CPULoadHandler(object sender, ProcessorEventArgs ev)
 		{
-			int powerreact = ev.Action;
+			PowerManager.PowerMode powerreact = ev.Mode;
 
-			string reactionary = powerreact == 2 ? "High Performance" : powerreact == 0 ? "Power Saver" : "Balanced";
+			string reactionary = powerreact == PowerManager.PowerMode.HighPerformance ? "High Performance" : powerreact == PowerManager.PowerMode.PowerSaver ? "Power Saver" : "Balanced";
 
 			var li = new ListViewItem(new string[] {
 				string.Format("{0:N2}%", ev.Current),
@@ -1183,9 +1183,9 @@ namespace TaskMaster
 
 			li.UseItemStyleForSubItems = false;
 
-			if (powerreact == 2)
+			if (powerreact == PowerManager.PowerMode.HighPerformance)
 				li.SubItems[3].BackColor = System.Drawing.Color.FromArgb(255, 230, 230);
-			else if (powerreact == 0)
+			else if (powerreact == PowerManager.PowerMode.PowerSaver)
 				li.SubItems[2].BackColor = System.Drawing.Color.FromArgb(240, 255, 230);
 			else
 			{

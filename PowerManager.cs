@@ -83,7 +83,7 @@ namespace TaskMaster
 
 			PreviousReaction = Reaction;
 
-			ev.Action = (int)Reaction;
+			ev.Mode = Reaction;
 			onAutoAdjust?.Invoke(this, ev);
 		}
 
@@ -96,10 +96,10 @@ namespace TaskMaster
 			power["Auto-adjust"].Comment = "Automatically adjust power mode based on the criteria here.";
 			tdirty |= modified;
 
-			HighThreshold = power.GetSetDefault("High threshold", 60, out modified).FloatValue;
+			HighThreshold = power.GetSetDefault("High threshold", 85, out modified).FloatValue;
 			power["High threshold"].Comment = "If low CPU value keeps over this, we swap to high mode.";
 			tdirty |= modified;
-			HighThresholdBackoff = power.GetSetDefault("High threshold backoff", 50, out modified).FloatValue;
+			HighThresholdBackoff = power.GetSetDefault("High threshold backoff", 70, out modified).FloatValue;
 			power["High threshold backoff"].Comment = "Entering high mode requires we go below this to get away from it.\nThis should be at least 5% lower than normal high threshold.";
 			tdirty |= modified;
 
@@ -107,10 +107,10 @@ namespace TaskMaster
 			HighMode = GetModeByName(highmode);
 			tdirty |= modified;
 
-			LowThreshold = power.GetSetDefault("Low threshold", 20, out modified).FloatValue;
+			LowThreshold = power.GetSetDefault("Low threshold", 25, out modified).FloatValue;
 			power["Low threshold"].Comment = "If high CPU value keeps under this, we swap to low mode.";
 			tdirty |= modified;
-			LowThresholdBackoff = power.GetSetDefault("Low threshold backoff", 25, out modified).FloatValue;
+			LowThresholdBackoff = power.GetSetDefault("Low threshold backoff", 35, out modified).FloatValue;
 			power["Low threshold backoff"].Comment = "Entering low mode requires we go above this to get away from it.\nThis should be at least 5% higher than normal low threhshold.";
 			tdirty |= modified;
 

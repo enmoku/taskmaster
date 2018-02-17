@@ -1495,6 +1495,6 @@ namespace TaskMaster
 		public float Low;
 		public float High;
 
-		public int Action;
+		public PowerManager.PowerMode Mode;
 	}
 }
