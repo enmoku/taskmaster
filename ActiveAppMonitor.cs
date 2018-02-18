@@ -171,7 +171,7 @@ namespace TaskMaster
 					Process proc = Process.GetProcessById(e.Id);
 					e.Executable = proc.ProcessName;
 				}
-				catch { }
+				catch { /* NOP */ }
 				ActiveChanged?.Invoke(this, e);
 			}
 		}

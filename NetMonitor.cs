@@ -24,12 +24,6 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-using System.Reflection;
-using System.Windows.Forms;
-using System.Threading.Tasks;
-using System.Timers;
-using System.Runtime.Remoting.Messaging;
-
 namespace TaskMaster
 {
 	using System;

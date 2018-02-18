@@ -25,8 +25,6 @@
 // THE SOFTWARE.
 
 using System;
-using System.Diagnostics;
-using System.CodeDom;
 
 namespace TaskMaster
 {

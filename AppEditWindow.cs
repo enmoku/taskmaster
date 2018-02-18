@@ -27,10 +27,8 @@
 using Serilog;
 using System.Windows.Forms;
 using System.Diagnostics;
-using System.Collections.Specialized;
 using System;
 using System.Collections.Generic;
-using System.Windows.Data;
 
 namespace TaskMaster
 {
@@ -67,7 +65,7 @@ namespace TaskMaster
 		{
 			Log.Warning("CONVENIENT SAVING NOT SUPPORTED YET");
 
-			System.Text.StringBuilder sbs = new System.Text.StringBuilder();
+			var sbs = new System.Text.StringBuilder();
 
 			sbs.Append("[").Append(friendlyName.Text).Append("]").AppendLine();
 			if (execName.Text.Length > 0)
@@ -117,7 +115,7 @@ namespace TaskMaster
 
 			Text = string.Format("{0} ({1}) – {2}",
 								 process.FriendlyName,
-								 (process.Executable != null ? process.Executable : process.Path),
+								 (process.Executable ?? process.Path),
 								 System.Windows.Forms.Application.ProductName);
 			Padding = new Padding(12);
 
@@ -389,7 +387,7 @@ namespace TaskMaster
 			bool exfound = false;
 			if (exnam)
 			{
-				Process[] procs = Process.GetProcessesByName(execName.Text);
+				var procs = Process.GetProcessesByName(execName.Text);
 
 				if (procs.Length > 0)
 					exfound = true;
@@ -404,10 +402,11 @@ namespace TaskMaster
 				}
 				catch
 				{
+					// NOP, don't caree
 				}
 			}
 
-			System.Text.StringBuilder sbs = new System.Text.StringBuilder();
+			var sbs = new System.Text.StringBuilder();
 			sbs.Append("Name: ").Append(fnlen ? "OK" : "Fail").AppendLine();
 			if (execName.Text.Length > 0)
 				sbs.Append("Executable: ").Append(exnam ? "OK" : "Fail").Append(" – Found: ").Append(exfound).AppendLine();

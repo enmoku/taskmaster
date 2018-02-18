@@ -27,7 +27,6 @@
 using System;
 using System.Threading.Tasks;
 using Serilog;
-using System.Runtime.CompilerServices;
 using System.IO;
 
 namespace TaskMaster

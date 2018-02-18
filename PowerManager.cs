@@ -29,7 +29,6 @@ using System.Runtime.InteropServices;
 using System.Windows.Forms;
 using Serilog;
 using Microsoft.Win32;
-using System.ComponentModel;
 
 namespace TaskMaster
 {

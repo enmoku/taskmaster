@@ -24,7 +24,6 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-using System;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 
@@ -45,7 +44,7 @@ namespace TaskMaster
 			*/
 		}
 
-		public MemoryController(Process prc, MemoryPriority prio=MemoryPriority.Normal)
+		public MemoryController(Process prc, MemoryPriority prio = MemoryPriority.Normal)
 		{
 			process = prc;
 			priority = prio;
@@ -57,7 +56,7 @@ namespace TaskMaster
 		ProcessMemoryPriority,
 		ProcessPowerThrottling,
 	}
-			                                    
+
 	[System.Runtime.InteropServices.StructLayoutAttribute(System.Runtime.InteropServices.LayoutKind.Sequential)]
 	public struct MEMORY_PRIORITY_INFORMATION
 	{
@@ -73,7 +72,7 @@ namespace TaskMaster
 		Normal = 5
 	}
 
-	public class MemoryManager
+	public static class MemoryManager
 	{
 		// [DllImport("kernel32.dll", SetLastError=true]
 		[DllImport("kernel32.dll", EntryPoint = "SetProcessInformation")]

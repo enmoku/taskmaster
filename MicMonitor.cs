@@ -170,7 +170,7 @@ namespace TaskMaster
 			string fname = "MicMon.Devices.ini";
 			string vname = "Volume";
 
-			SharpConfig.Configuration devcfg = TaskMaster.loadConfig(fname);
+			var devcfg = TaskMaster.loadConfig(fname);
 			string guid = (m_dev.ID.Split('}'))[1].Substring(2);
 			string devname = m_dev.DeviceFriendlyName;
 			bool unset = !(devcfg[guid].Contains(vname));
@@ -227,7 +227,7 @@ namespace TaskMaster
 			var mm_enum = new NAudio.CoreAudioApi.MMDeviceEnumerator();
 			if (mm_enum != null)
 			{
-				NAudio.CoreAudioApi.MMDeviceCollection devs = mm_enum.EnumerateAudioEndPoints(NAudio.CoreAudioApi.DataFlow.Capture, NAudio.CoreAudioApi.DeviceState.Active);
+				var devs = mm_enum.EnumerateAudioEndPoints(NAudio.CoreAudioApi.DataFlow.Capture, NAudio.CoreAudioApi.DeviceState.Active);
 				foreach (var dev in devs)
 				{
 					var mdev = new MicDevice { Name = dev.DeviceFriendlyName, GUID = dev.ID.Split('}')[1].Substring(2) };

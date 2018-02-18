@@ -55,10 +55,7 @@ using Serilog;
 using Serilog.Core;
 using Serilog.Events;
 using TaskMaster.SerilogMemorySink;
-using System.Linq;
-using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
-using System.Windows.Documents;
 using System.Windows.Forms;
 
 namespace TaskMaster
@@ -405,7 +402,7 @@ namespace TaskMaster
 					MemoryLog.LevelSwitch.MinimumLevel = LogEventLevel.Verbose;
 					Trace = true;
 					break;
-			};
+			}
 			dirtyconfig |= modified;
 
 			ShowInaction = optsec.GetSetDefault("Show inaction", false, out modified).BoolValue;
@@ -502,8 +499,8 @@ namespace TaskMaster
 		public static bool IsAdministrator()
 		{
 			// https://stackoverflow.com/a/10905713
-			System.Security.Principal.WindowsIdentity identity = System.Security.Principal.WindowsIdentity.GetCurrent();
-			System.Security.Principal.WindowsPrincipal principal = new System.Security.Principal.WindowsPrincipal(identity);
+			var identity = System.Security.Principal.WindowsIdentity.GetCurrent();
+			var principal = new System.Security.Principal.WindowsPrincipal(identity);
 			return principal.IsInRole(System.Security.Principal.WindowsBuiltInRole.Administrator);
 		}
 
@@ -655,8 +652,11 @@ namespace TaskMaster
 						iconf.Dispose();
 						iconf = null;
 					}
-					finally
+					catch (Exception ex)
 					{
+						Log.Fatal(ex.Message);
+						Log.Fatal(ex.StackTrace);
+						throw;
 					}
 
 					if (ComponentConfigurationDone == false)

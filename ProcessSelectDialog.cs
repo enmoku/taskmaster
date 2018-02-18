@@ -68,7 +68,7 @@ namespace TaskMaster
 			};
 
 			var procs = System.Diagnostics.Process.GetProcesses();
-			HashSet<string> procnames = new HashSet<string>();
+			var procnames = new HashSet<string>();
 			foreach (var proc in procs)
 			{
 				try
@@ -78,6 +78,7 @@ namespace TaskMaster
 				}
 				catch
 				{
+					// NOP,don't care
 				}
 			}
 

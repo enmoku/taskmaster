@@ -32,14 +32,7 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.Linq;
 using Serilog;
-using Serilog.Sinks.File;
 using System.Runtime.InteropServices;
-using System.IO;
-using System.Timers;
-using System.Runtime.Remoting.Messaging;
-using System.Windows.Forms;
-using System.Runtime.CompilerServices;
-using System.Windows.Data;
 
 namespace TaskMaster
 {
@@ -95,7 +88,7 @@ namespace TaskMaster
 		/// </summary>
 		/// <returns>Uhh?</returns>
 		/// <param name="hwProc">Process handle.</param>
-		[System.Runtime.InteropServices.DllImport("psapi.dll")]
+		[DllImport("psapi.dll")]
 		static extern int EmptyWorkingSet(IntPtr hwProc);
 
 		/// <summary>
@@ -229,7 +222,7 @@ namespace TaskMaster
 
 			// TODO: Cache Pids of protected system services to skip them faster.
 
-			Process[] procs = Process.GetProcesses();
+			var procs = Process.GetProcesses();
 
 			//Log.Debug("Scanning {ProcessCount} processes for changes.", procs.Length);
 
@@ -460,7 +453,7 @@ namespace TaskMaster
 				cnt.Children &= ControlChildren;
 
 				Log.Verbose("[{FriendlyName}] Match: {MatchName}, {TargetPriority}, Mask:{Affinity}, Rescan: {Rescan}m, Recheck: {Recheck}s",
-							cnt.FriendlyName, (cnt.Executable == null ? cnt.Path : cnt.Executable), cnt.Priority, cnt.Affinity, cnt.Rescan, cnt.Recheck);
+							cnt.FriendlyName, (cnt.Executable ?? cnt.Path), cnt.Priority, cnt.Affinity, cnt.Rescan, cnt.Recheck);
 
 				//cnt.delay = section.Contains("delay") ? section["delay"].IntValue : 30; // TODO: Add centralized default delay
 				//cnt.delayIncrement = section.Contains("delay increment") ? section["delay increment"].IntValue : 15; // TODO: Add centralized default increment
@@ -483,7 +476,7 @@ namespace TaskMaster
 							stamp = ls.GetValue<long>();
 							cnt.LastSeen = stamp.Unixstamp();
 						}
-						catch { }
+						catch { /* NOP */ }
 					}
 				}
 
@@ -617,6 +610,7 @@ namespace TaskMaster
 			}
 			catch
 			{
+				// NOP, don't caree
 			}
 
 			n.Stop();
@@ -639,6 +633,7 @@ namespace TaskMaster
 			}
 			catch
 			{
+				// NOP, don't caree
 			}
 
 			if (string.IsNullOrEmpty(info.Path))

@@ -81,8 +81,7 @@ namespace TaskMaster
 		int MaxAge = 60;
 
 		public Cache(double interval = 10, int maxItems = 100, int minItems = 10,
-					 StoreStrategy store = StoreStrategy.ReplaceNoMatch, EvictStrategy evict = EvictStrategy.LeastRecent,
-					int maxAge = 60, int minAge = 5)
+					 StoreStrategy store = StoreStrategy.ReplaceNoMatch, EvictStrategy evict = EvictStrategy.LeastRecent)
 		{
 			CacheStoreStrategy = store;
 			CacheEvictStrategy = evict;
@@ -229,6 +228,7 @@ namespace TaskMaster
 			}
 			catch
 			{
+				// NOP, don't caree
 			}
 
 			if (Count > MaxCache + Overflow)
@@ -251,7 +251,7 @@ namespace TaskMaster
 		}
 
 		#region IDisposable Support
-		private bool disposed = false; // To detect redundant calls
+		bool disposed = false; // To detect redundant calls
 
 		protected virtual void Dispose(bool disposing)
 		{

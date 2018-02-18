@@ -24,7 +24,6 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-using System;
 using System.Windows.Forms;
 
 namespace TaskMaster
@@ -239,7 +238,7 @@ namespace TaskMaster
 				Height = 20,
 				//BackColor = System.Drawing.Color.Azure,
 				Dock = DockStyle.Right
-			}; ;
+			};
 			//l.Controls.Add(savebutton);
 			savebutton.Click += (sender, e) =>
 			{
@@ -284,7 +283,7 @@ namespace TaskMaster
 				//BackColor = System.Drawing.Color.Azure,
 				Dock = DockStyle.Right
 			};
-			;
+
 			//l.Controls.Add(endbutton);
 			endbutton.Click += (sender, e) =>
 			{

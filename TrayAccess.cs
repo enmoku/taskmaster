@@ -23,15 +23,14 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
+
+using System;
+using System.Windows.Forms;
+using Serilog;
 using System.Diagnostics;
-using System.Management;
 
 namespace TaskMaster
 {
-	using System;
-	using System.Windows.Forms;
-	using Serilog;
-
 	sealed public class TrayAccess : IDisposable
 	{
 		NotifyIcon Tray;
@@ -346,7 +345,7 @@ namespace TaskMaster
 				{
 					PowerManager.onModeChange -= HighlightPowerModeEvent;
 				}
-				catch { }
+				catch { /*NOP, don't care */ }
 
 				if (Tray != null)
 				{

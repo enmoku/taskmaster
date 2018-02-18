@@ -25,7 +25,6 @@
 // THE SOFTWARE.
 
 using System.Threading;
-using System.Runtime.CompilerServices;
 
 namespace TaskMaster
 {
@@ -325,7 +324,7 @@ namespace TaskMaster
 				bool rv = SetPriorityClass(process.Handle, (uint)priority);
 				return rv;
 			}
-			catch { }
+			catch { /* NOP, don't care */ }
 			return false;
 		}
 
@@ -405,7 +404,7 @@ namespace TaskMaster
 				oldAffinity = info.Process.ProcessorAffinity;
 				oldPriority = info.Process.PriorityClass;
 			}
-			catch { }
+			catch { /* NOP, don't care */ }
 
 			if (!denyChange)
 			{
@@ -455,6 +454,7 @@ namespace TaskMaster
 				}
 				catch
 				{
+					// NOP, don't caree
 				}
 				if (mBGIO == false)
 					Log.Warning("[{FriendlyName}] {Exec} (#{Pid}) Failed to set background I/O mode.", FriendlyName, info.Name, info.Id);
@@ -486,6 +486,7 @@ namespace TaskMaster
 					}
 					catch
 					{
+						// NOP, don't caree
 					}
 				}
 
