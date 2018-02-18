@@ -202,6 +202,8 @@ namespace TaskMaster
 
 		public void ProcessEverythingRequest(object sender, EventArgs e)
 		{
+			LastRescan = DateTime.Now;
+
 			Log.Verbose("Rescan requested.");
 			try
 			{
@@ -216,7 +218,7 @@ namespace TaskMaster
 			}
 		}
 
-		System.Timers.Timer rescanTimer = new System.Timers.Timer(1000 * 5 * 60); // 5 minutes
+		System.Timers.Timer rescanTimer;
 
 		/// <summary>
 		/// Processes everything. Pointlessly thorough, but there's no nicer way around for now.
@@ -272,8 +274,9 @@ namespace TaskMaster
 		public static int PowerdownDelay { get; set; } = 7000;
 
 		static int BatchDelay = 2500;
-		static int RescanDelay = 1000 * 60 * 5; // 5 minutes
-		static int RescanEverythingFrequency = 0; //
+		static int RescanDelay = 0; // 5 minutes
+		public static int RescanEverythingFrequency { get; private set; } = 15; // seconds
+		public static DateTime LastRescan { get; private set; } = DateTime.MinValue;
 		static bool BatchProcessing; // = false;
 		static int BatchProcessingThreshold = 5;
 		static bool ControlChildren = false; // = false;
@@ -303,22 +306,26 @@ namespace TaskMaster
 				dirtyconfig |= tdirty;
 				Log.Information("Batch processing threshold: {BatchProcessingThreshold}", BatchProcessingThreshold);
 			}
-			RescanDelay = coreperf.GetSetDefault("Rescan frequency", 5, out tdirty).IntValue * 1000 * 60;
-			coreperf["Rescan frequency"].Comment = "How often to check for apps that want to be rescanned.";
+			RescanDelay = coreperf.GetSetDefault("Rescan frequency", 0, out tdirty).IntValue * 1000 * 60;
+			coreperf["Rescan frequency"].Comment = "How often to check for apps that want to be rescanned. Disabled if rescan everything is enabled. 0 disables.";
 			dirtyconfig |= tdirty;
-			Log.Information("Rescan frequency: {RescanDelay:N1}m", RescanDelay / 1000 / 60);
 
-			RescanEverythingFrequency = coreperf.GetSetDefault("Rescan everything frequency", 0, out tdirty).IntValue;
+			RescanEverythingFrequency = coreperf.GetSetDefault("Rescan everything frequency", 15, out tdirty).IntValue;
 			if (RescanEverythingFrequency > 0)
 			{
 				if (RescanEverythingFrequency < 5) RescanEverythingFrequency = 5;
-				RescanEverythingFrequency *= 1000 * 60; // to minutes
+				RescanEverythingFrequency *= 1000; // to seconds
 			}
-			coreperf["Rescan everything frequency"].Comment = "Frequency (in minutes) at which we rescan everything. 0 disables.";
+			coreperf["Rescan everything frequency"].Comment = "Frequency (in seconds) at which we rescan everything. 0 disables.";
 			dirtyconfig |= tdirty;
-			if (RescanEverythingFrequency > 0)
-				Log.Information("Rescan everything every {Frequency} minutes.", RescanEverythingFrequency / 1000 / 60);
 
+			if (RescanEverythingFrequency > 0)
+			{
+				Log.Information("Rescan everything every {Frequency} seconds.", RescanEverythingFrequency / 1000);
+				RescanDelay = 0;
+			}
+			else
+				Log.Information("Per-app rescan frequency: {RescanDelay:N1}m", RescanDelay / 1000 / 60);
 			/*
 			var powersec = TaskMaster.cfg["Power"];
 			PowerdownDelay = powersec.GetSetDefault("Powerdown delay", 0, out tdirty).IntValue * 1000;
@@ -1213,26 +1220,10 @@ namespace TaskMaster
 			}
 		}
 
-		System.Management.ManagementEventWatcher watcher;
-
-		const string watchfile = "Watchlist.ini";
-		const string cascadefile = "Watchlist.Cascade.ini";
-		const string statfile = "Watchlist.Statistics.ini";
-		// ctor, constructor
-		public ProcessManager()
+		System.Management.ManagementEventWatcher watcher = null;
+		void InitWMIEventWatcher()
 		{
-			Log.Verbose("Starting...");
-
-			Log.Information("Processor count: {ProcessorCount}", CPUCount);
-
-			allCPUsMask = 1;
-			for (int i = 0; i < CPUCount - 1; i++)
-				allCPUsMask = (allCPUsMask << 1) | 1;
-
-			Log.Information("Full CPU mask: {ProcessorBitMask} ({ProcessorMask}) (OS control)",
-							Convert.ToString(allCPUsMask, 2), allCPUsMask);
-
-			loadWatchlist();
+			if (!TaskMaster.WMIPolling) return;
 
 			// FIXME: doesn't seem to work when lots of new processes start at the same time.
 			try
@@ -1258,17 +1249,13 @@ namespace TaskMaster
 
 				//var query = new System.Management.EventQuery("SELECT TargetInstance FROM __InstanceCreationEvent WITHIN 5 WHERE TargetInstance ISA 'Win32_Process'");
 				var query = new System.Management.EventQuery(
-					"SELECT * FROM __InstanceCreationEvent WITHIN 1 WHERE TargetInstance ISA 'Win32_Process'");
+					"SELECT * FROM __InstanceCreationEvent WITHIN 5 WHERE TargetInstance ISA 'Win32_Process'");
 				watcher = new System.Management.ManagementEventWatcher(scope, query);
 			}
-			catch (System.Runtime.InteropServices.COMException e)
+			catch (Exception ex)
 			{
-				Log.Error("Failed to initialize WMI event watcher [COM error]: " + e.Message);
-				throw new InitFailure("WMI event watcher initialization failure");
-			}
-			catch (System.Management.ManagementException e)
-			{
-				Log.Error("Failed to initialize WMI event watcher [Unidentified error]: " + e.Message);
+				Log.Fatal(ex.Message);
+				Log.Fatal(ex.StackTrace);
 				throw new InitFailure("WMI event watcher initialization failure");
 			}
 
@@ -1282,13 +1269,12 @@ namespace TaskMaster
 					processListTimer.Elapsed += ProcessListTimerTick;
 				}
 
-				/*
-				// Only useful for debugging the watcher, but there doesn't seem to be any unwanted stops happening.
 				watcher.Stopped += (object sender, System.Management.StoppedEventArgs e) =>
 				{
-					Log.Warn("New instance watcher stopped.");
+					Log.Fatal("New instance watcher stopped.");
+					// Restart it maybe? This probably happens when WMI service is stopped or restarted.?
 				};
-				*/
+
 				try
 				{
 					watcher.Start();
@@ -1305,14 +1291,39 @@ namespace TaskMaster
 				Log.Error("Failed to initialize new instance watcher.");
 				throw new InitFailure("New instance watcher not initialized");
 			}
+		}
 
-			rescanTimer.Elapsed += RescanOnTimer;
+		const string watchfile = "Watchlist.ini";
+		const string cascadefile = "Watchlist.Cascade.ini";
+		const string statfile = "Watchlist.Statistics.ini";
+		// ctor, constructor
+		public ProcessManager()
+		{
+			Log.Verbose("Starting...");
+
+			Log.Information("Processor count: {ProcessorCount}", CPUCount);
+
+			allCPUsMask = 1;
+			for (int i = 0; i < CPUCount - 1; i++)
+				allCPUsMask = (allCPUsMask << 1) | 1;
+
+			Log.Information("Full CPU mask: {ProcessorBitMask} ({ProcessorMask}) (OS control)",
+							Convert.ToString(allCPUsMask, 2), allCPUsMask);
+
+			loadWatchlist();
+
+			InitWMIEventWatcher();
 
 			if (execontrol.Count > 0)
 			{
 				Log.Verbose("Starting rescan timer.");
-				rescanTimer.Interval = RescanDelay;
-				rescanTimer.Start();
+				if (RescanDelay > 0)
+				{
+					rescanTimer = new System.Timers.Timer(1000 * 5 * 60); // 5 minutes
+					rescanTimer.Elapsed += RescanOnTimer;
+					rescanTimer.Interval = RescanDelay;
+					rescanTimer.Start();
+				}
 			}
 
 			onInstanceHandling += UpdateHandling;
@@ -1380,16 +1391,34 @@ namespace TaskMaster
 				Log.Verbose("Disposing process manager...");
 
 				if (RescanEverythingTimer != null)
+				{
 					RescanEverythingTimer.Stop();
+					RescanEverythingTimer.Dispose();
+					RescanEverythingTimer = null;
+				}
 				//watcher.EventArrived -= NewInstanceTriage;
-				watcher.Stop(); // shouldn't be necessary
-				watcher.Dispose();
-				//watcher = null;
-				rescanTimer.Stop();
-				processListTimer.Stop();
+				if (watcher != null)
+				{
+					watcher.Stop(); // shouldn't be necessary
+					watcher.Dispose();
+					watcher = null;
+				}
+				if (rescanTimer != null)
+				{
+					rescanTimer.Stop();
+					rescanTimer = null;
+				}
+				if (processListTimer != null)
+				{
+					processListTimer.Stop();
+					processListTimer = null;
+				}
 
 				if (pathCache != null)
+				{
 					pathCache.Dispose();
+					pathCache = null;
+				}
 
 				saveStats();
 

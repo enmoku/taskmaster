@@ -323,7 +323,9 @@ namespace TaskMaster
 		/// Whether to use WMI queries for investigating failed path checks to determine if an application was launched in watched path.
 		/// </summary>
 		/// <value><c>true</c> if WMI queries are enabled; otherwise, <c>false</c>.</value>
-		public static bool WMIQueries { get; private set; }
+		public static bool WMIQueries { get; private set; } = false;
+		public static bool WMIPolling { get; private set; } = false;
+		public static int WMIPollRate { get; private set; } = 5;
 
 		public static void MarkDirtyINI(SharpConfig.Configuration dirtiedcfg)
 		{
@@ -428,6 +430,13 @@ namespace TaskMaster
 			WMIQueries = perfsec.GetSetDefault("WMI queries", true, out modified).BoolValue;
 			perfsec["WMI queries"].Comment = "WMI is considered buggy and slow. Unfortunately necessary for some functionality.";
 			dirtyconfig |= modified;
+			WMIPolling = perfsec.GetSetDefault("WMI event watcher", false, out modified).BoolValue;
+			perfsec["WMI event watcher"].Comment = "Use WMI to be notified of new processes starting.\nIf disabled, only rescanning everything will cause processes to be noticed.";
+			dirtyconfig |= modified;
+			WMIPollRate = perfsec.GetSetDefault("WMI poll rate", 5, out modified).IntValue.Constrain(1, 30);
+			perfsec["WMI poll rate"].Comment = "Rate at which WMI process watcher is polled. There's very little point for lower values.";
+			dirtyconfig |= modified;
+
 			perfsec.GetSetDefault("Child processes", false, out modified); // unused here
 			perfsec["Child processes"].Comment = "Enables controlling process priority based on parent process if nothing else matches. This is slow and unreliable.";
 			dirtyconfig |= modified;
@@ -462,6 +471,7 @@ namespace TaskMaster
 			Log.Information("Verbosity: {Verbosity}", MemoryLog.LevelSwitch.MinimumLevel.ToString());
 			Log.Information("Self-optimize: {SelfOptimize}", (SelfOptimize ? "Enabled" : "Disabled"));
 			//Log.Information("Low memory mode: {LowMemory}", (LowMemory ? "Enabled." : "Disabled."));
+			Log.Information("WMI event watcher: {WMIPolling} (Rate: {WMIRate}s)", (WMIPolling ? "Enabled" : "Disabled"), WMIPollRate);
 			Log.Information("WMI queries: {WMIQueries}", (WMIQueries ? "Enabled" : "Disabled"));
 
 
@@ -710,9 +720,18 @@ namespace TaskMaster
 
 					Log.Information("Exiting...");
 
+					TrayAccess.onExit -= ExitRequest;
+					processmanager?.Dispose();
+					powermanager?.Dispose();
+					if (PowerManagerEnabled)
+						processmanager.onCPUSampling -= powermanager.CPULoadEvent;
+
 					if (mainwindow != null)
 					{
 						mainwindow.rescanRequest -= processmanager.ProcessEverythingRequest;
+						if (powermanager != null)
+							powermanager.onAutoAdjust -= mainwindow.CPULoadHandler;
+
 						if (TaskMaster.PagingEnabled)
 							mainwindow.pagingRequest -= processmanager.PageEverythingRequest;
 						mainwindow.FormClosing -= MainWindowClose;
@@ -720,15 +739,11 @@ namespace TaskMaster
 						TrayAccess.onExit -= mainwindow.ExitRequest;
 					}
 
-					TrayAccess.onExit -= ExitRequest;
-
-					mainwindow?.Dispose();
-					processmanager?.Dispose();
 					micmonitor?.Dispose();
-					powermanager?.Dispose();
 					trayaccess?.Dispose();
 					netmonitor?.Dispose();
 					activeappmonitor?.Dispose();
+					mainwindow?.Dispose();
 					mainwindow = null; processmanager = null; micmonitor = null; trayaccess = null; netmonitor = null; activeappmonitor = null; powermanager = null;
 				}
 				catch (Exception ex)
@@ -738,9 +753,7 @@ namespace TaskMaster
 					throw;
 				}
 
-				Log.Information("WMI queries: {QueryTime:1}s [{QueryCount}]; Parent seeking: {ParentSeekTime:1}s [{ParentSeekCount}]",
-									   Statistics.WMIquerytime, Statistics.WMIqueries,
-									   Statistics.Parentseektime, Statistics.ParentSeeks);
+				Log.Information("WMI queries: {QueryTime:1}s [{QueryCount}]", Statistics.WMIquerytime, Statistics.WMIqueries);
 
 				//if (PathCacheLimit > 0)
 				//	ProcessManager.PathCacheStats();

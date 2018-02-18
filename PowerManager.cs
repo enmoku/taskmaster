@@ -141,7 +141,7 @@ namespace TaskMaster
 			{
 				// Backoff reset
 				Reaction = PreviousReaction;
-				BackoffCounter = 0;
+				BackoffCounter = 1;
 			}
 
 			PreviousReaction = Reaction;
@@ -213,15 +213,15 @@ namespace TaskMaster
 				TaskMaster.MarkDirtyINI(TaskMaster.cfg);
 		}
 
-		public int BackoffCounter { get; private set; } = 0;
+		public int BackoffCounter { get; private set; } = 1;
 		public int LowBackoffLevel { get; private set; } = 2;
 		public int HighBackoffLevel { get; private set; } = 2;
 
 		public float HighThreshold { get; private set; } = 75;
-		public float[] HighBackoffThresholds { get; private set; } = { 60, 40, 20 };
+		public float[] HighBackoffThresholds { get; private set; } = { 60, 50, 40 }; // High, Average, Low
 		PowerMode HighMode { get; set; }
-		public float LowThreshold { get; private set; } = 25;
-		public float[] LowBackoffThresholds { get; private set; } = { 50, 40, 25 };
+		public float LowThreshold { get; private set; } = 15;
+		public float[] LowBackoffThresholds { get; private set; } = { 30, 25, 20 }; // High, Average, Low
 		PowerMode LowMode { get; set; }
 		PowerMode NormalMode { get; set; }
 

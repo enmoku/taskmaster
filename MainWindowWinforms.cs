@@ -257,6 +257,7 @@ namespace TaskMaster
 		Label corCountLabel;
 		object processingCountLock = new object();
 		NumericUpDown processingCount;
+		Label processingCountdown;
 
 		ListView powerbalancerlog;
 		object powerbalancerlog_lock = new object();
@@ -310,16 +311,28 @@ namespace TaskMaster
 		ComboBox logcombo_level;
 		public static Serilog.Core.LoggingLevelSwitch LogIncludeLevel;
 
-		readonly Timer UItimer = new Timer { Interval = 5000 };
+		readonly Timer UItimer = new Timer { Interval = 500 };
 
+		static bool UIOpen = true;
 		void StartUIUpdates(object sender, EventArgs e)
 		{
 			if (!UItimer.Enabled) UItimer.Start();
+			UIOpen = true;
 		}
 
 		void StopUIUpdates(object sender, EventArgs e)
 		{
 			if (UItimer.Enabled) UItimer.Stop();
+			UIOpen = false;
+		}
+
+		void UpdateRescanCountdown(object sender, EventArgs ev)
+		{
+			if (TaskMaster.ProcessMonitorEnabled)
+			{
+				var t = (ProcessManager.LastRescan.Unixstamp() + (ProcessManager.RescanEverythingFrequency / 1000)) - DateTime.Now.Unixstamp();
+				processingCountdown.Text = string.Format("{0:N1}s", t);
+			}
 		}
 
 		void UpdateUptime(object sender, EventArgs e)
@@ -703,9 +716,10 @@ namespace TaskMaster
 			};
 
 			if (TaskMaster.NetworkMonitorEnabled)
-			{
 				UItimer.Tick += UpdateUptime;
-			}
+
+			if (ProcessManager.RescanEverythingFrequency > 0)
+				UItimer.Tick += UpdateRescanCountdown;
 
 			ifaceList = new ListView
 			{
@@ -999,6 +1013,9 @@ namespace TaskMaster
 				AutoSize = true
 			});
 			commandpanel.Controls.Add(processingCount);
+			processingCountdown = new Label() { TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Right, Anchor = AnchorStyles.Left };
+			processingCountdown.Text = "00.0s";
+			commandpanel.Controls.Add(processingCountdown);
 			commandpanel.Controls.Add(rescanbutton);
 			rescanbutton.Enabled = TaskMaster.ProcessMonitorEnabled;
 
@@ -1169,6 +1186,8 @@ namespace TaskMaster
 
 		public void CPULoadHandler(object sender, ProcessorEventArgs ev)
 		{
+			if (!UIOpen) return;
+
 			PowerManager.PowerMode powerreact = ev.Mode;
 
 			string reactionary = powerreact == PowerManager.PowerMode.HighPerformance ? "High Performance" : powerreact == PowerManager.PowerMode.PowerSaver ? "Power Saver" : "Balanced";
@@ -1195,9 +1214,9 @@ namespace TaskMaster
 
 			lock (powerbalancerlog_lock)
 			{
-				powerbalancerlog.Items.Add(li);
-				if (powerbalancerlog.Items.Count > 4)
+				if (powerbalancerlog.Items.Count > 3)
 					powerbalancerlog.Items.RemoveAt(0);
+				powerbalancerlog.Items.Add(li);
 			}
 		}
 
