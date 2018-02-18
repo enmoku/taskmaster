@@ -60,26 +60,89 @@ namespace TaskMaster
 		public event EventHandler<ProcessorEventArgs> onAutoAdjust;
 
 		PowerMode PreviousReaction = PowerMode.Balanced;
+
+		static class ThresholdLevel
+		{
+			public const int High = 0;
+			public const int Average = 1;
+			public const int Low = 2;
+		}
+
+		static class Cause
+		{
+			public const int High = 0;
+			public const int Average = 1;
+			public const int Low = 2;
+			public const int Steady = 3;
+
+		}
+
 		public void CPULoadEvent(object sender, ProcessorEventArgs ev)
 		{
-			PowerMode Reaction = PowerMode.Balanced;
+			PowerMode Reaction = PreviousReaction;
 
-			float hight = HighThreshold;
-			if (PreviousReaction == PowerMode.HighPerformance) hight = HighThresholdBackoff;
-			float lowt = LowThreshold;
-			if (PreviousReaction == PowerMode.PowerSaver) lowt = LowThresholdBackoff;
-
-			if (ev.Low > hight)
-				Reaction = PowerMode.HighPerformance;
-			else if (ev.High < lowt)
-				Reaction = PowerMode.PowerSaver;
+			ev.Handled = false;
+			bool backingOff = false;
+			if (PreviousReaction == PowerMode.HighPerformance)
+			{
+				if (ev.High <= HighBackoffThresholds[ThresholdLevel.High]
+					|| ev.Average <= HighBackoffThresholds[ThresholdLevel.Average]
+					|| ev.Low <= HighBackoffThresholds[ThresholdLevel.Average])
+				{
+					ev.Cause = Cause.High;
+					backingOff = true;
+				}
+			}
+			else if (PreviousReaction == PowerMode.PowerSaver)
+			{
+				if (ev.High >= LowBackoffThresholds[ThresholdLevel.High]
+					|| ev.Average >= LowBackoffThresholds[ThresholdLevel.Average]
+					|| ev.Low >= LowBackoffThresholds[ThresholdLevel.Average])
+				{
+					ev.Cause = Cause.Low;
+					backingOff = true;
+				}
+			}
 			else
-				Reaction = PowerMode.Balanced;
+			{
+				ev.Cause = Cause.Average;
+				backingOff = true;
+			}
 
-			if (Reaction != Current && !ForcedMode)
-				Log.Verbose("<Power Mode> Auto-adjust: {Mode}", Reaction.ToString());
+			if (backingOff)
+			{
+				if (PreviousReaction == PowerMode.HighPerformance && BackoffCounter++ < HighBackoffLevel)
+				{
+					// NOP, Backoff counting
+				}
+				else if (PreviousReaction == PowerMode.PowerSaver && BackoffCounter++ < LowBackoffLevel)
+				{
+					// NOP, Backoff counting
+				}
+				else
+				{
+					// Backoff initiating. Happens always when in medium mode.
+					if (ev.Low > HighThreshold)
+						Reaction = PowerMode.HighPerformance;
+					else if (ev.High < LowThreshold)
+						Reaction = PowerMode.PowerSaver;
+					else
+						Reaction = PowerMode.Balanced;
 
-			RequestMode(Reaction);
+					if (Reaction != Current && !ForcedMode && AutoAdjust)
+					{
+						Log.Verbose("<Power Mode> Auto-adjust: {Mode}", Reaction.ToString());
+						RequestMode(Reaction);
+						ev.Handled = true;
+					}
+				}
+			}
+			else
+			{
+				// Backoff reset
+				Reaction = PreviousReaction;
+				BackoffCounter = 0;
+			}
 
 			PreviousReaction = Reaction;
 
@@ -96,11 +159,19 @@ namespace TaskMaster
 			power["Auto-adjust"].Comment = "Automatically adjust power mode based on the criteria here.";
 			tdirty |= modified;
 
-			HighThreshold = power.GetSetDefault("High threshold", 85, out modified).FloatValue;
+			LowBackoffLevel = power.GetSetDefault("Low backoff level", 2, out modified).IntValue.Constrain(0, 5);
+			power["Low backoff level"].Comment = "Required number of consequent backoff reactions that is required before it actually triggers.";
+			tdirty |= modified;
+			HighBackoffLevel = power.GetSetDefault("High backoff level", 3, out modified).IntValue.Constrain(0, 5);
+			power["High backoff level"].Comment = "Required number of consequent backoff reactions that is required before it actually triggers.";
+			tdirty |= modified;
+
+			HighThreshold = power.GetSetDefault("High threshold", 70, out modified).FloatValue;
 			power["High threshold"].Comment = "If low CPU value keeps over this, we swap to high mode.";
 			tdirty |= modified;
-			HighThresholdBackoff = power.GetSetDefault("High threshold backoff", 70, out modified).FloatValue;
-			power["High threshold backoff"].Comment = "Entering high mode requires we go below this to get away from it.\nThis should be at least 5% lower than normal high threshold.";
+			var hbtt = power.GetSetDefault("High backoff thresholds", new float[] { 60, 40, 20 }, out modified).FloatValueArray;
+			if (hbtt != null && hbtt.Length == 3) HighBackoffThresholds = hbtt;
+			power["High backoff thresholds"].Comment = "High, Average and Low CPU usage values, any of which is enough to break away from high power mode.";
 			tdirty |= modified;
 
 			string highmode = power.GetSetDefault("High mode", "High Performance", out modified).StringValue;
@@ -110,8 +181,9 @@ namespace TaskMaster
 			LowThreshold = power.GetSetDefault("Low threshold", 25, out modified).FloatValue;
 			power["Low threshold"].Comment = "If high CPU value keeps under this, we swap to low mode.";
 			tdirty |= modified;
-			LowThresholdBackoff = power.GetSetDefault("Low threshold backoff", 35, out modified).FloatValue;
-			power["Low threshold backoff"].Comment = "Entering low mode requires we go above this to get away from it.\nThis should be at least 5% higher than normal low threhshold.";
+			var lbtt = power.GetSetDefault("Low backoff thresholds", new float[] { 50, 40, 25 }, out modified).FloatValueArray;
+			if (lbtt != null && lbtt.Length == 3) LowBackoffThresholds = lbtt;
+			power["Low backoff thresholds"].Comment = "High, Average and Low CPU uage values, any of which is enough to break away from low mode.";
 			tdirty |= modified;
 
 			string lowmode = power.GetSetDefault("Low mode", "Power Saver", out modified).StringValue;
@@ -123,30 +195,33 @@ namespace TaskMaster
 			NormalMode = GetModeByName(medmode);
 			tdirty |= modified;
 
-			var saver = TaskMaster.cfg["Power / Power Save"];
-			bool sessionlock = power.GetSetDefault("Session lock", true, out modified).BoolValue;
+			var saver = TaskMaster.cfg["Power Save"];
+			saver.Comment = "All these options control when to enforce power save mode regardless of any other options.";
+			bool sessionlock = saver.GetSetDefault("Session lock", true, out modified).BoolValue;
 			tdirty |= modified;
-			bool screenlock = power.GetSetDefault("Monitor sleep", true, out modified).BoolValue;
+			bool screenlock = saver.GetSetDefault("Monitor sleep", true, out modified).BoolValue;
 			tdirty |= modified;
-			int afktimer = power.GetSetDefault("User idle", 30, out modified).IntValue;
+			int afktimer = saver.GetSetDefault("User idle", 30, out modified).IntValue;
+			tdirty |= modified;
+			bool activewake = saver.GetSetDefault("User active", true, out modified).BoolValue;
+
 			tdirty |= modified;
 
-			if (AutoAdjust)
-				Log.Information("Power Manager: Auto-adjust enabled – Low({Low}→{LowB}), High({High}→{HighB})",
-								string.Format("{0:N0}%", LowThreshold), string.Format("{0:N0}%", LowThresholdBackoff),
-								string.Format("{0:N0}%", HighThreshold), string.Format("{0:N0}%", HighThresholdBackoff));
-			else
-				Log.Information("Power Manager: Auto-adjust disabled");
+			Log.Information("Power Manager: Auto-adjust {State}", AutoAdjust ? "Enabled" : "Disabled");
 
 			if (tdirty)
 				TaskMaster.MarkDirtyINI(TaskMaster.cfg);
 		}
 
-		public float HighThreshold { get; private set; } = 60;
-		public float HighThresholdBackoff { get; private set; } = 50;
+		public int BackoffCounter { get; private set; } = 0;
+		public int LowBackoffLevel { get; private set; } = 2;
+		public int HighBackoffLevel { get; private set; } = 2;
+
+		public float HighThreshold { get; private set; } = 75;
+		public float[] HighBackoffThresholds { get; private set; } = { 60, 40, 20 };
 		PowerMode HighMode { get; set; }
 		public float LowThreshold { get; private set; } = 25;
-		public float LowThresholdBackoff { get; private set; } = 35;
+		public float[] LowBackoffThresholds { get; private set; } = { 50, 40, 25 };
 		PowerMode LowMode { get; set; }
 		PowerMode NormalMode { get; set; }
 

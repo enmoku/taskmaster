@@ -39,6 +39,7 @@ using System.Timers;
 using System.Runtime.Remoting.Messaging;
 using System.Windows.Forms;
 using System.Runtime.CompilerServices;
+using System.Windows.Data;
 
 namespace TaskMaster
 {
@@ -763,12 +764,10 @@ namespace TaskMaster
 			return ProcessState.Invalid;
 		}
 
-		public static string[] ProtectList { get; private set; } = { "consent", "winlogon", "wininit", "csrss", "dwm" };
-		public static string[] IgnoreList { get; private set; } = { "dllhost", "svchost", "taskeng", "consent", "taskhost", "rundll32", "conhost", "dwm", "wininit", "csrss", "winlogon", "services", "explorer" };
+		public static string[] ProtectList { get; private set; } = { "consent", "winlogon", "wininit", "csrss", "dwm", "taskmgr" };
+		public static string[] IgnoreList { get; private set; } = { "dllhost", "svchost", "taskeng", "consent", "taskhost", "rundll32", "conhost", "dwm", "wininit", "csrss", "winlogon", "services", "explorer", "taskmgr" };
 
 		const int LowestInvalidPid = 4;
-
-		[System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
 		bool IgnoreProcessID(int pid)
 		{
 			return (pid <= LowestInvalidPid);
@@ -1496,5 +1495,7 @@ namespace TaskMaster
 		public float High;
 
 		public PowerManager.PowerMode Mode;
+		public int Cause;
+		public bool Handled;
 	}
 }

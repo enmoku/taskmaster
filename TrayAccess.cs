@@ -69,7 +69,7 @@ namespace TaskMaster
 			});
 			menu_configuration = new ToolStripMenuItem("Configuration", null, ShowConfigRequest);
 			menu_runatstart = new ToolStripMenuItem("Run at start", null, RunAtStartMenuClick);
-			menu_runatstart.Checked = RunAtStart(false, true);
+			menu_runatstart.Checked = RunAtStartRegRun(false, true);
 
 			if (TaskMaster.PowerManagerEnabled)
 			{
@@ -377,10 +377,39 @@ namespace TaskMaster
 
 		void RunAtStartMenuClick(object sender, EventArgs ev)
 		{
-			menu_runatstart.Checked = RunAtStart(!menu_runatstart.Checked);
+			bool isadmin = TaskMaster.IsAdministrator();
+			if (isadmin)
+			{
+				var rv = MessageBox.Show("Run at start does not support elevated privilege that you have. Is this alright?\n\nIf you absolutely need admin rights, create onlogon schedule in windows task scheduler.",
+										 Application.ProductName + " – Run at Start normal privilege problem.",
+								MessageBoxButtons.YesNo, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button2, MessageBoxOptions.DefaultDesktopOnly, false);
+				if (rv == DialogResult.No) return;
+			}
+
+			menu_runatstart.Checked = RunAtStartRegRun(!menu_runatstart.Checked);
+
+			/*
+
+// This will solve the high privilege problem, but really? Do I want to?
+var runtime = Environment.GetCommandLineArgs()[0];
+			string args = "/Create /tn Enmoku-Taskmaster /tr \"" + runtime + "\" /sc onlogon /it";
+			if (isadmin)
+				args += " /RL HIGHEST";
+
+			var proc = Process.Start("schtasks", args);
+			var n = proc.WaitForExit(120000);
+
+			string argsq = "/query /fo list /TN Taskmaster";
+			var procq = Process.Start("schtasks", argsq);
+			var rvq = procq.WaitForExit(30000);
+
+			string argstoggle = "/change /TN Enmoku-Taskmaster /ENABLE/DISABLE";
+
+			string argsdelete = "/delete /TN Enmoku-Taskmaster";
+			*/
 		}
 
-		bool RunAtStart(bool status, bool dryrun = false)
+		bool RunAtStartRegRun(bool status, bool dryrun = false)
 		{
 			string runatstart_path = @"Software\Microsoft\Windows\CurrentVersion\Run";
 			string runatstart_key = "Enmoku-Taskmaster";

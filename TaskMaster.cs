@@ -58,6 +58,8 @@ using TaskMaster.SerilogMemorySink;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
+using System.Windows.Documents;
+using System.Windows.Forms;
 
 namespace TaskMaster
 {
@@ -272,13 +274,10 @@ namespace TaskMaster
 
 				self.ProcessorAffinity = new IntPtr(SelfAffinity); // this should never throw an exception
 
-				try
+				if (SelfOptimizeBGIO)
 				{
-					ProcessController.SetIOPriority(self, ProcessController.PriorityTypes.PROCESS_MODE_BACKGROUND_BEGIN);
-				}
-				catch
-				{
-					Log.Warning("Failed to set self to background mode.");
+					try { ProcessController.SetIOPriority(self, ProcessController.PriorityTypes.PROCESS_MODE_BACKGROUND_BEGIN); }
+					catch { Log.Warning("Failed to set self to background mode."); }
 				}
 			}
 
@@ -307,6 +306,7 @@ namespace TaskMaster
 		public static bool ShowOnStart { get; private set; } = true;
 
 		public static bool SelfOptimize { get; private set; } = true;
+		public static bool SelfOptimizeBGIO { get; private set; } = false;
 		public static int SelfAffinity { get; private set; } = -1;
 
 		//public static bool LowMemory { get; private set; } = true; // low memory mode; figure out way to auto-enable this when system is low on memory
@@ -421,6 +421,9 @@ namespace TaskMaster
 			SelfAffinity = perfsec.GetSetDefault("Self-affinity", -1, out modified).IntValue;
 			perfsec["Self-affinity"].Comment = "Core mask as integer. 0 is for default OS control. -1 is for last core. Limiting to single core recommended.";
 			dirtyconfig |= modified;
+			SelfOptimizeBGIO = perfsec.GetSetDefault("Background I/O mode", false, out modified).BoolValue;
+			perfsec["Background I/O mode"].Comment = "Sets own priority exceptionally low. Warning: This can make TM's UI quite unresponsive.";
+			dirtyconfig |= modified;
 
 			WMIQueries = perfsec.GetSetDefault("WMI queries", true, out modified).BoolValue;
 			perfsec["WMI queries"].Comment = "WMI is considered buggy and slow. Unfortunately necessary for some functionality.";
@@ -461,12 +464,32 @@ namespace TaskMaster
 			//Log.Information("Low memory mode: {LowMemory}", (LowMemory ? "Enabled." : "Disabled."));
 			Log.Information("WMI queries: {WMIQueries}", (WMIQueries ? "Enabled" : "Disabled"));
 
-			Log.Information("Privilege level: {Privilege}", (IsAdministrator() ? "Admin" : "User"));
+
+			// PROTECT USERS FROM TOO HIGH PERMISSIONS
+			bool isadmin = IsAdministrator();
+			bool adminwarning = ((cfg["Core"].TryGet("Hell")?.StringValue ?? null) != "No");
+			if (isadmin && adminwarning)
+			{
+				var rv = MessageBox.Show("You're starting TM with admin rights, is this right?\n\nYou can cause bad system operation, such as complete system hang, if you configure or configured TM incorrectly.",
+										 Application.ProductName + " – admin access detected!!??", MessageBoxButtons.YesNo, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button2, MessageBoxOptions.DefaultDesktopOnly, false);
+				if (rv == DialogResult.Yes)
+				{
+					cfg["Core"]["Hell"].StringValue = "No";
+					MarkDirtyINI(cfg);
+				}
+				else
+				{
+					Environment.Exit(2);
+				}
+			}
+			// STOP IT
+
+			Log.Information("Privilege level: {Privilege}", isadmin ? "Admin" : "User");
 
 			Log.Information("Path cache: " + (PathCacheLimit == 0 ? "Disabled" : PathCacheLimit + " items"));
 		}
 
-		static bool IsAdministrator()
+		public static bool IsAdministrator()
 		{
 			// https://stackoverflow.com/a/10905713
 			System.Security.Principal.WindowsIdentity identity = System.Security.Principal.WindowsIdentity.GetCurrent();
@@ -670,41 +693,50 @@ namespace TaskMaster
 			}
 			finally
 			{
-				if (SelfOptimize)
+				try
 				{
-					var self = Process.GetCurrentProcess();
-					self.PriorityClass = ProcessPriorityClass.Normal;
-					try
+					if (SelfOptimize)
 					{
-						ProcessController.SetIOPriority(self, ProcessController.PriorityTypes.PROCESS_MODE_BACKGROUND_END);
+						var self = Process.GetCurrentProcess();
+						self.PriorityClass = ProcessPriorityClass.Normal;
+						try
+						{
+							ProcessController.SetIOPriority(self, ProcessController.PriorityTypes.PROCESS_MODE_BACKGROUND_END);
+						}
+						catch
+						{
+						}
 					}
-					catch
+
+					Log.Information("Exiting...");
+
+					if (mainwindow != null)
 					{
+						mainwindow.rescanRequest -= processmanager.ProcessEverythingRequest;
+						if (TaskMaster.PagingEnabled)
+							mainwindow.pagingRequest -= processmanager.PageEverythingRequest;
+						mainwindow.FormClosing -= MainWindowClose;
+						MemoryLog.onNewEvent -= mainwindow.onNewLog;
+						TrayAccess.onExit -= mainwindow.ExitRequest;
 					}
+
+					TrayAccess.onExit -= ExitRequest;
+
+					mainwindow?.Dispose();
+					processmanager?.Dispose();
+					micmonitor?.Dispose();
+					powermanager?.Dispose();
+					trayaccess?.Dispose();
+					netmonitor?.Dispose();
+					activeappmonitor?.Dispose();
+					mainwindow = null; processmanager = null; micmonitor = null; trayaccess = null; netmonitor = null; activeappmonitor = null; powermanager = null;
 				}
-
-				Log.Information("Exiting...");
-
-				if (mainwindow != null)
+				catch (Exception ex)
 				{
-					mainwindow.rescanRequest -= processmanager.ProcessEverythingRequest;
-					if (TaskMaster.PagingEnabled)
-						mainwindow.pagingRequest -= processmanager.PageEverythingRequest;
-					mainwindow.FormClosing -= MainWindowClose;
-					MemoryLog.onNewEvent -= mainwindow.onNewLog;
-					TrayAccess.onExit -= mainwindow.ExitRequest;
+					Console.WriteLine(ex.Message);
+					Console.WriteLine(ex.StackTrace);
+					throw;
 				}
-
-				TrayAccess.onExit -= ExitRequest;
-
-				mainwindow?.Dispose();
-				processmanager?.Dispose();
-				micmonitor?.Dispose();
-				powermanager?.Dispose();
-				trayaccess?.Dispose();
-				netmonitor?.Dispose();
-				activeappmonitor?.Dispose();
-				mainwindow = null; processmanager = null; micmonitor = null; trayaccess = null; netmonitor = null; activeappmonitor = null; powermanager = null;
 
 				Log.Information("WMI queries: {QueryTime:1}s [{QueryCount}]; Parent seeking: {ParentSeekTime:1}s [{ParentSeekCount}]",
 									   Statistics.WMIquerytime, Statistics.WMIqueries,
