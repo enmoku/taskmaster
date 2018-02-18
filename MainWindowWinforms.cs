@@ -51,6 +51,7 @@ namespace TaskMaster
 			//CLEANUP: Console.WriteLine("START:Window.ExitRequest");
 			// nothing
 			//CLEANUP: Console.WriteLine("END:Window.ExitRequest");
+			Close();
 		}
 
 		void WindowClose(object sender, FormClosingEventArgs e)
@@ -331,7 +332,7 @@ namespace TaskMaster
 			if (TaskMaster.ProcessMonitorEnabled)
 			{
 				var t = (ProcessManager.LastRescan.Unixstamp() + (ProcessManager.RescanEverythingFrequency / 1000)) - DateTime.Now.Unixstamp();
-				processingCountdown.Text = string.Format("{0:N1}s", t);
+				processingCountdown.Text = string.Format("{0:N0}s", t);
 			}
 		}
 
@@ -987,8 +988,8 @@ namespace TaskMaster
 				Width = 48,
 				ReadOnly = true,
 				Enabled = false,
-				Margin = new Padding(3 + 3),
-				Dock = DockStyle.Right,
+				Margin = new Padding(9),
+				Dock = DockStyle.Left,
 			};
 
 			rescanbutton = new Button
@@ -1010,10 +1011,11 @@ namespace TaskMaster
 				Text = "Processing",
 				Dock = DockStyle.Right,
 				TextAlign = System.Drawing.ContentAlignment.MiddleRight,
+				Padding = new Padding(6),
 				AutoSize = true
 			});
 			commandpanel.Controls.Add(processingCount);
-			processingCountdown = new Label() { TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Right, Anchor = AnchorStyles.Left };
+			processingCountdown = new Label() { TextAlign = System.Drawing.ContentAlignment.MiddleLeft, Width = 40, AutoSize = false, Dock = DockStyle.Right, Anchor = AnchorStyles.Left };
 			processingCountdown.Text = "00.0s";
 			commandpanel.Controls.Add(processingCountdown);
 			commandpanel.Controls.Add(rescanbutton);

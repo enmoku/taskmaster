@@ -28,12 +28,10 @@ using System.Management;
 using System.Threading.Tasks;
 using System;
 using System.Collections.Generic;
-using System.ComponentModel;
 using System.Diagnostics;
 using System.Linq;
 using Serilog;
 using System.Runtime.InteropServices;
-
 namespace TaskMaster
 {
 	public class InstanceEventArgs : EventArgs
@@ -159,19 +157,32 @@ namespace TaskMaster
 			{
 				foreach (Process process in procs)
 				{
-					Process prc = process;
-					ProcessController control;
-					if (execontrol.TryGetValue(LowerCase(prc.ProcessName), out control))
+					int pid = -1;
+					string name = null;
+					try
 					{
-						if (control.AllowPaging)
-						{
-							long ns = prc.WorkingSet64;
-							EmptyWorkingSet(prc.Handle);
-							prc.Refresh();
-							long mns = (ns - prc.WorkingSet64);
-							saved += mns;
-							Log.Verbose("Paged: {ProcessName} (#{ProcessID}) – {PagedMBs:N1} MBs.", prc.ProcessName, prc.Id, mns / 1000000);
-						}
+						pid = process.Id;
+						name = process.ProcessName;
+						if (IgnoreProcessID(pid)) continue;
+					}
+					catch { continue; }
+
+					ProcessController control;
+					if (execontrol.TryGetValue(LowerCase(name), out control))
+						if (!control.AllowPaging) continue;
+
+					try
+					{
+						long ns = process.WorkingSet64;
+						EmptyWorkingSet(process.Handle);
+						process.Refresh();
+						long mns = (ns - process.WorkingSet64);
+						saved += mns;
+						Log.Verbose("Paged: {ProcessName} (#{ProcessID}) – {PagedMBs:N1} MBs.", name, pid, mns / 1000000);
+					}
+					catch
+					{
+						// NOP
 					}
 				}
 			}
@@ -195,8 +206,6 @@ namespace TaskMaster
 
 		public void ProcessEverythingRequest(object sender, EventArgs e)
 		{
-			LastRescan = DateTime.Now;
-
 			Log.Verbose("Rescan requested.");
 			try
 			{
@@ -216,52 +225,69 @@ namespace TaskMaster
 		/// <summary>
 		/// Processes everything. Pointlessly thorough, but there's no nicer way around for now.
 		/// </summary>
+		int scaninprogress = 0;
 		public void ProcessEverything()
 		{
-			Log.Verbose("Processing everything.");
-
-			// TODO: Cache Pids of protected system services to skip them faster.
-
-			var procs = Process.GetProcesses();
-
-			//Log.Debug("Scanning {ProcessCount} processes for changes.", procs.Length);
-
-			// DEBUG: if (TaskMaster.VeryVerbose) Console.WriteLine(string.Format("Handling: +{0} = {1} --- ProcessEverything", procs.Length, Handling));
-			onInstanceHandling?.Invoke(this, new InstanceEventArgs { Count = procs.Length - 2 });
-
-			int i = 0;
-			foreach (Process process in procs)
+			if (System.Threading.Interlocked.CompareExchange(ref scaninprogress, 1, 0) == 1)
 			{
-				string name = null;
-				int pid = 0;
-				try
-				{
-					name = process.ProcessName;
-					pid = process.Id;
-				}
-				catch
-				{
-					continue; // shouldn't happen
-				}
-
-				if (IgnoreProcessID(pid)) continue; // Ignore Idle&System
-
-				if (TaskMaster.Trace)
-					Log.Verbose("Checking [{ProcessIterator}/{ProcessCount}] '{ProcessName}' (#{Pid})", ++i, procs.Length - 2, name, pid); // -2 for Idle&System
-
-				CheckProcess(new BasicProcessInfo { Process = process, Name = name, Id = pid, Path = null }, schedule_next: false);
+				Log.Warning("Scan request received while old scan was still in progress.");
+				return;
 			}
 
-			// DEBUG: if (TaskMaster.VeryVerbose) Console.WriteLine(string.Format("Handling: -{0} = {1} --- ProcessEverything", procs.Length, Handling));
-			onInstanceHandling?.Invoke(this, new InstanceEventArgs { Count = -(procs.Length - 2), Total = Handling });
+			LastRescan = DateTime.Now;
 
-			if (TaskMaster.PathMonitorEnabled)
-				UpdatePathWatch();
+			try
+			{
+				Log.Verbose("Processing everything.");
 
-			//if (TaskMaster.ShowInaction)
-			//Log.Information("Scanned {ProcessCount} processes.", procs.Length);
-			//if (TaskMaster.PathCacheLimit > 0)
-			//	PathCacheStats();
+				// TODO: Cache Pids of protected system services to skip them faster.
+
+				var procs = Process.GetProcesses();
+
+				//Log.Debug("Scanning {ProcessCount} processes for changes.", procs.Length);
+
+				// DEBUG: if (TaskMaster.VeryVerbose) Console.WriteLine(string.Format("Handling: +{0} = {1} --- ProcessEverything", procs.Length, Handling));
+				onInstanceHandling?.Invoke(this, new InstanceEventArgs { Count = procs.Length - 2 });
+
+				int i = 0;
+				foreach (Process process in procs)
+				{
+					string name = null;
+					int pid = 0;
+					try
+					{
+						name = process.ProcessName;
+						pid = process.Id;
+					}
+					catch
+					{
+						continue; // shouldn't happen
+					}
+
+					if (IgnoreProcessID(pid)) continue; // Ignore Idle&System
+
+					if (TaskMaster.Trace)
+						Log.Verbose("Checking [{ProcessIterator}/{ProcessCount}] '{ProcessName}' (#{Pid})", ++i, procs.Length - 2, name, pid); // -2 for Idle&System
+
+					CheckProcess(new BasicProcessInfo { Process = process, Name = name, Id = pid, Path = null }, schedule_next: false);
+				}
+
+				// DEBUG: if (TaskMaster.VeryVerbose) Console.WriteLine(string.Format("Handling: -{0} = {1} --- ProcessEverything", procs.Length, Handling));
+				onInstanceHandling?.Invoke(this, new InstanceEventArgs { Count = -(procs.Length - 2), Total = Handling });
+
+				if (TaskMaster.PathMonitorEnabled)
+					UpdatePathWatch();
+
+				//if (TaskMaster.ShowInaction)
+				//Log.Information("Scanned {ProcessCount} processes.", procs.Length);
+				//if (TaskMaster.PathCacheLimit > 0)
+				//	PathCacheStats();
+			}
+			catch
+			{
+			}
+
+			scaninprogress = 0;
 		}
 
 		public static int PowerdownDelay { get; set; } = 7000;
@@ -679,7 +705,7 @@ namespace TaskMaster
 				Console.WriteLine(ex.StackTrace);
 				throw;
 			}
-			catch (Win32Exception ex)
+			catch (System.ComponentModel.Win32Exception ex)
 			{
 				if (ex.NativeErrorCode != 5) // what was this?
 					Log.Warning("Access error: {ProcessName} (#{ProcessID})", info.Name, info.Id);
@@ -687,9 +713,6 @@ namespace TaskMaster
 			}
 
 			bool cacheGet = false;
-			bool cacheSet = false;
-			BasicProcessInfo cacheInfo;
-
 			if (pathCache != null)
 			{
 				string cpath;

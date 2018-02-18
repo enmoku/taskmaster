@@ -24,19 +24,17 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-using System.Threading;
+using System;
+using Serilog;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.Runtime.InteropServices;
+using System.ComponentModel;
+using System.Threading.Tasks;
+using System.Linq;
 
 namespace TaskMaster
 {
-	using System;
-	using Serilog;
-	using System.Collections.Generic;
-	using System.Diagnostics;
-	using System.Runtime.InteropServices;
-	using System.ComponentModel;
-	using System.Threading.Tasks;
-	using System.Linq;
-
 	/// <summary>
 	/// Process controller.
 	/// </summary>
@@ -193,8 +191,6 @@ namespace TaskMaster
 		static Dictionary<int, ProcessManager.BasicProcessInfo> waitingExit = new Dictionary<int, ProcessManager.BasicProcessInfo>(3);
 		static HashSet<int> waitingExitPids = new HashSet<int>();
 
-		static CancellationTokenSource ctsall = new CancellationTokenSource();
-
 		public static event EventHandler<ProcessEventArgs> PowermodeExitWaitEvent;
 
 		public static ProcessManager.BasicProcessInfo[] getWaitingExit()
@@ -339,7 +335,7 @@ namespace TaskMaster
 			{
 				Log.Fatal("ProcessController.Touch({Name},#{Pid}) received invalid arguments.", info.Name, info.Id);
 				throw new ArgumentNullException();
-				return ProcessState.Invalid;
+				//return ProcessState.Invalid;
 			}
 
 			if (recheck)

@@ -46,8 +46,19 @@ namespace TaskMaster
 		ToolStripMenuItem power_balanced;
 		ToolStripMenuItem power_saving;
 
+		bool ExitConfirm = true;
+
 		public TrayAccess()
 		{
+			// LOAD CONFIGURATION
+			var qol = TaskMaster.cfg["Quality of Life"];
+			bool modified = false, tdirty = false;
+			ExitConfirm = qol.GetSetDefault("Confirm exit", true, out modified).BoolValue;
+			tdirty |= modified;
+			if (tdirty)
+				TaskMaster.MarkDirtyINI(TaskMaster.cfg);
+
+			// BUILD UI
 			Tray = new NotifyIcon
 			{
 				Text = System.Windows.Forms.Application.ProductName + "!", // Tooltip so people know WTF I am.
@@ -79,10 +90,32 @@ namespace TaskMaster
 				power_balanced = new ToolStripMenuItem("Balanced", null, SetPowerBalanced);
 				power_saving = new ToolStripMenuItem("Power Saving", null, SetPowerSaving);
 			}
+			ToolStripMenuItem menu_restart = null;
+			menu_restart = new ToolStripMenuItem("Restart", null, (o, s) =>
+			{
+				DialogResult rv = DialogResult.Yes;
+				if (ExitConfirm)
+					rv = MessageBox.Show("Are you sure you want to restart Taskmaster?", "Restart " + Application.ProductName + " ???", MessageBoxButtons.YesNo, MessageBoxIcon.Question, MessageBoxDefaultButton.Button1, MessageBoxOptions.DefaultDesktopOnly, false);
+				if (rv == DialogResult.Yes)
+				{
+					menu_restart.Enabled = false;
+					TaskMaster.Restart = true;
+					onExit?.Invoke(this, null);
+				}
+			});
 			menu_exit = new ToolStripMenuItem("Exit", null, (o, s) =>
 			{
-				menu_exit.Enabled = false;
-				onExit?.Invoke(this, null);
+				DialogResult rv = DialogResult.Yes;
+
+				// this causes a crash on occasion if user waits too long before hitting yes... why?
+				if (ExitConfirm)
+					rv = MessageBox.Show("Are you sure you want to exit Taskmaster?", "Exit " + Application.ProductName + " ???", MessageBoxButtons.YesNo, MessageBoxIcon.Question, MessageBoxDefaultButton.Button1, MessageBoxOptions.DefaultDesktopOnly, false);
+
+				if (rv == DialogResult.Yes)
+				{
+					menu_exit.Enabled = false;
+					onExit?.Invoke(this, null);
+				}
 			});
 			ms.Items.Add(menu_windowopen);
 			ms.Items.Add(new ToolStripSeparator());
@@ -104,6 +137,7 @@ namespace TaskMaster
 				PowerManager.onModeChange += HighlightPowerModeEvent;
 			}
 			ms.Items.Add(new ToolStripSeparator());
+			ms.Items.Add(menu_restart);
 			ms.Items.Add(menu_exit);
 			Tray.ContextMenuStrip = ms;
 			Log.Verbose("Tray menu ready");

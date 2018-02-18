@@ -154,7 +154,16 @@ namespace TaskMaster
 			//mainwindow?.Dispose();
 			//mainwindow = null;
 
-			System.Windows.Forms.Application.Exit();
+			try
+			{
+				System.Windows.Forms.Application.Exit();
+			}
+			catch (Exception ex)
+			{
+				Log.Fatal(ex.Message);
+				Log.Fatal(ex.StackTrace);
+				throw;
+			}
 			//CLEANUP:
 			//if (TaskMaster.VeryVerbose) Console.WriteLine("END:Core.ExitRequest - Exit hang averted");
 		}

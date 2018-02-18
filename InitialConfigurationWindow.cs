@@ -73,7 +73,7 @@ namespace TaskMaster
 				//BackColor = System.Drawing.Color.Azure,
 				Dock = DockStyle.Left
 			};
-			tooltip.SetToolTip(micmon, "Monitor default communications device.");
+			tooltip.SetToolTip(micmon, "Monitor default communications device and keep its volume.");
 			layout.Controls.Add(new Label { Text = "Microphone monitor", AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, Padding = padding, Dock = DockStyle.Left });
 			layout.Controls.Add(micmon);
 			micmon.Click += (sender, e) =>
@@ -87,7 +87,7 @@ namespace TaskMaster
 				//BackColor = System.Drawing.Color.Azure,
 				Dock = DockStyle.Left
 			};
-			tooltip.SetToolTip(netmon, "Monitor network interface status.");
+			tooltip.SetToolTip(netmon, "Monitor network interface status and report online status.");
 			layout.Controls.Add(new Label { Text = "Network monitor", AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, Padding = padding, Dock = DockStyle.Left });
 			layout.Controls.Add(netmon);
 			netmon.Checked = true;
@@ -102,7 +102,7 @@ namespace TaskMaster
 				//BackColor = System.Drawing.Color.Azure,
 				Dock = DockStyle.Left
 			};
-			tooltip.SetToolTip(procmon, "Manage processes based on their name.");
+			tooltip.SetToolTip(procmon, "Manage processes based on their name. Default feature of Taskmaster and thus can not be disabled.");
 			layout.Controls.Add(new Label { Text = "Process/name manager", AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, Padding = padding, Dock = DockStyle.Left });
 			layout.Controls.Add(procmon);
 			procmon.Enabled = false;
@@ -114,12 +114,82 @@ namespace TaskMaster
 				//BackColor = System.Drawing.Color.Azure,
 				Dock = DockStyle.Left
 			};
-			tooltip.SetToolTip(pathmon, "Manage processes based on their location.\nThese are processed only if by name matching does not catch something.");
+			tooltip.SetToolTip(pathmon, "Manage processes based on their location.\nThese are processed only if by name matching does not catch something.\nPath-based processing is lenghtier process but should not cause significant resource drain.");
 			layout.Controls.Add(new Label { Text = "Process/path manager", AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, Padding = padding, Dock = DockStyle.Left });
 			layout.Controls.Add(pathmon);
 			pathmon.Checked = true;
 			pathmon.Click += (sender, e) =>
 			{
+			};
+
+			layout.Controls.Add(new Label() { Text = "Process detection", AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, Padding = padding, Dock = DockStyle.Left });
+			var ScanOrWMI = new ComboBox()
+			{
+				DropDownStyle = ComboBoxStyle.DropDownList,
+				Items = { "Scanning", "WMI polling", "Both" },
+				SelectedIndex = 0,
+				Width = 80,
+			};
+			layout.Controls.Add(ScanOrWMI);
+			tooltip.SetToolTip(ScanOrWMI, "Scanning involves getting all procesess and going through the list, which can cause tiny CPU spiking.\nWMI polling sets up system WMI event listener.\nWMI is known to be slow and buggy, though when it performs well, it does it better than scanning in this case.\nSystem WmiPrvSE or similar process may be seen increasing in activity with WMI in use.");
+
+			layout.Controls.Add(new Label() { Text = "Scan frequency", AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, Padding = padding, Dock = DockStyle.Left });
+			var scanfrequency = new NumericUpDown()
+			{
+				Minimum = 0,
+				Maximum = 360,
+				Dock = DockStyle.Left,
+				Value = 15,
+				Width = 60,
+			};
+			var defaultBackColor = scanfrequency.BackColor;
+			scanfrequency.ValueChanged += (sender, e) =>
+			{
+				if (ScanOrWMI.SelectedIndex == 0 && scanfrequency.Value == 0)
+					scanfrequency.Value = 1;
+
+				if (ScanOrWMI.SelectedIndex != 1 && scanfrequency.Value <= 5)
+					scanfrequency.BackColor = System.Drawing.Color.LightPink;
+				else
+					scanfrequency.BackColor = defaultBackColor;
+			};
+			layout.Controls.Add(scanfrequency);
+			tooltip.SetToolTip(scanfrequency, "In seconds. 0 disables. 1-4 are considered invalid values.");
+			layout.Controls.Add(new Label() { Text = "WMI poll rate", AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, Padding = padding, Dock = DockStyle.Left });
+			var wmipolling = new NumericUpDown()
+			{
+				Minimum = 1,
+				Maximum = 5,
+				Value = 5,
+				Dock = DockStyle.Left,
+				Enabled = false,
+				Width = 60,
+			};
+			layout.Controls.Add(wmipolling);
+			tooltip.SetToolTip(wmipolling, "In seconds.");
+			ScanOrWMI.SelectedIndexChanged += (sender, e) =>
+			{
+				if (ScanOrWMI.SelectedIndex == 0) // SCan only
+				{
+					scanfrequency.Enabled = true;
+					scanfrequency.Value = 15;
+					//wmipolling.Value = 5;
+					wmipolling.Enabled = false;
+				}
+				else if (ScanOrWMI.SelectedIndex == 1) // WMI only
+				{
+					scanfrequency.Value = 0;
+					scanfrequency.Enabled = false;
+					wmipolling.Value = 5;
+					wmipolling.Enabled = true;
+				}
+				else
+				{
+					scanfrequency.Enabled = true; // Both
+					scanfrequency.Value = 60 * 5;
+					wmipolling.Enabled = true;
+					wmipolling.Value = 5;
+				}
 			};
 
 			var powmon = new CheckBox()
@@ -173,7 +243,7 @@ namespace TaskMaster
 				//BackColor = System.Drawing.Color.Azure,
 				Dock = DockStyle.Left
 			};
-			tooltip.SetToolTip(fgmon, "Allow processes and power mode to be managed based on if a process is in the foreground.");
+			tooltip.SetToolTip(fgmon, "Allow processes and power mode to be managed based on if a process is in the foreground.\nNOT YET FULLY IMPLEMENTED.");
 			layout.Controls.Add(new Label { Text = "Foreground manager", AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, Padding = padding, Dock = DockStyle.Left });
 			layout.Controls.Add(fgmon);
 			fgmon.Enabled = false;
@@ -187,7 +257,7 @@ namespace TaskMaster
 				//BackColor = System.Drawing.Color.Azure,
 				Dock = DockStyle.Left
 			};
-			tooltip.SetToolTip(tempmon, "Monitor temp folder.");
+			tooltip.SetToolTip(tempmon, "Monitor temp folder.\nNOT YET FULLY IMPLEMENTED.");
 			layout.Controls.Add(new Label { Text = "TEMP monitor", AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, Padding = padding, Dock = DockStyle.Left });
 			layout.Controls.Add(tempmon);
 			tempmon.Enabled = false;
@@ -197,9 +267,10 @@ namespace TaskMaster
 			{
 				AutoSize = true,
 				//BackColor = System.Drawing.Color.Azure,
-				Dock = DockStyle.Left
+				Dock = DockStyle.Left,
+				Enabled = false,
 			};
-			tooltip.SetToolTip(tempmon, "Allow paging RAM to page/swap file.");
+			tooltip.SetToolTip(tempmon, "Allow paging RAM to page/swap file.\nNOT YET FULLY IMPLEMENTED.");
 			layout.Controls.Add(new Label { Text = "Allow paging", AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, Padding = padding, Dock = DockStyle.Left });
 			layout.Controls.Add(paging);
 			paging.Checked = false;
@@ -266,6 +337,14 @@ namespace TaskMaster
 
 				var optsec = cfg["Options"];
 				optsec["Show on start"].BoolValue = showonstart.Checked;
+
+				var perf = cfg["Performance"];
+				int freq = (int)scanfrequency.Value;
+				if (freq < 5 && freq != 0) freq = 5;
+				perf["Rescan everything frequency"].IntValue = (ScanOrWMI.SelectedIndex != 1 ? freq : 0);
+				perf["WMI event watcher"].BoolValue = (ScanOrWMI.SelectedIndex != 0);
+				perf["WMI poll rate"].IntValue = ((int)wmipolling.Value);
+				perf["WMI queries"].BoolValue = (ScanOrWMI.SelectedIndex != 0);
 
 				TaskMaster.saveConfig(cfg);
 
