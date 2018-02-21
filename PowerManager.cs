@@ -343,6 +343,9 @@ namespace TaskMaster
 
 			if (SavedMode != PowerMode.Undefined) Log.Warning("<Power Mode> Saved mode is being overriden.");
 
+			if (TaskMaster.DebugPower)
+				Log.Debug("<Power Mode> Saving current power mode for later restoration: {Mode}", Current.ToString());
+
 			SavedMode = Current;
 
 			if (SavedMode == PowerMode.Undefined)
@@ -354,15 +357,17 @@ namespace TaskMaster
 
 		public static void RestoreMode()
 		{
-			if (AutoAdjust) return;
-
 			lock (powerLock)
 			{
 				if (SavedMode != PowerMode.Undefined)
 				{
-					setMode(SavedMode);
 					ForcedMode = false;
+
+					if (AutoAdjust) return;
+
+					setMode(SavedMode);
 					SavedMode = PowerMode.Undefined;
+
 					if (TaskMaster.DebugPower)
 						Log.Debug("<Power Mode> Restored to: {PowerMode}", Current.ToString());
 				}
@@ -422,7 +427,7 @@ namespace TaskMaster
 				{
 					setMode(mode);
 					if (TaskMaster.DebugPower)
-						Log.Debug("Power mode forced to: {PowerMode}", Current);
+						Log.Debug("<Power Mode> Forced to: {PowerMode}", Current);
 					ForcedMode = true;
 					return true;
 				}

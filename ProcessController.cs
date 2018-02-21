@@ -301,9 +301,9 @@ namespace TaskMaster
 								{
 									Log.Information("{Exec} (#{Pid}) exited; power mode still requested by {Num} proceses.", name, pid, waitingExit.Count);
 									//Log.Debug("POWER MODE: {0} processes still wanting higher power mode.", waitingExit.Count);
-									List<string> names = new List<string>();
-									foreach (var b in waitingExit.Values)
-										names.Add(b.Name);
+									//List<string> names = new List<string>();
+									//foreach (var b in waitingExit.Values)
+									//	names.Add(b.Name);
 									//Log.Debug("POWER MODE WAIT LIST: " + string.Join(", ", names));
 								}
 							}

@@ -434,10 +434,8 @@ namespace TaskMaster
 				Dock = DockStyle.Top,
 			};
 
-			var menu = new MenuStrip()
-			{
-				Dock = DockStyle.Top,
-			};
+			var menu = new MenuStrip() { Dock = DockStyle.Top };
+
 			var menu_action = new ToolStripMenuItem("Actions");
 			menu_action.MouseHover += (sender, e) => { menu_action.ShowDropDown(); };
 			// Sub Items
@@ -469,21 +467,13 @@ namespace TaskMaster
 			var menu_debug = new ToolStripMenuItem("Debug");
 			menu_debug.MouseHover += (sender, e) => { menu_debug.ShowDropDown(); };
 			// Sub Items
-			var menu_debug_inaction = new ToolStripMenuItem("Show inaction");
-			menu_debug_inaction.Checked = TaskMaster.ShowInaction;
-			menu_debug_inaction.CheckOnClick = true;
+			var menu_debug_inaction = new ToolStripMenuItem("Show inaction") { Checked = TaskMaster.ShowInaction, CheckOnClick = true };
 			menu_debug_inaction.Click += (sender, e) => { TaskMaster.ShowInaction = menu_debug_inaction.Checked; };
-			var menu_debug_scanning = new ToolStripMenuItem("Scanning");
-			menu_debug_scanning.Checked = TaskMaster.DebugFullScan;
-			menu_debug_scanning.CheckOnClick = true;
+			var menu_debug_scanning = new ToolStripMenuItem("Scanning") { Checked = TaskMaster.DebugFullScan, CheckOnClick = true };
 			menu_debug_scanning.Click += (sender, e) => { TaskMaster.DebugFullScan = menu_debug_scanning.Checked; };
-			var menu_debug_paths = new ToolStripMenuItem("Paths");
-			menu_debug_paths.Checked = TaskMaster.DebugPaths;
-			menu_debug_paths.CheckOnClick = true;
+			var menu_debug_paths = new ToolStripMenuItem("Paths") { Checked = TaskMaster.DebugPaths, CheckOnClick = true };
 			menu_debug_paths.Click += (sender, e) => { TaskMaster.DebugPaths = menu_debug_paths.Checked; };
-			var menu_debug_power = new ToolStripMenuItem("Power");
-			menu_debug_power.Checked = TaskMaster.DebugPower;
-			menu_debug_power.CheckOnClick = true;
+			var menu_debug_power = new ToolStripMenuItem("Power") { Checked = TaskMaster.DebugPower, CheckOnClick = true };
 			menu_debug_power.Click += (sender, e) => { TaskMaster.DebugPower = menu_debug_power.Checked; };
 			var menu_debug_clear = new ToolStripMenuItem("Clear UI log", null, (sender, e) => { ClearLog(); });
 
@@ -515,17 +505,21 @@ namespace TaskMaster
 			menu.Items.Add(menu_info);
 			Controls.Add(menu);
 
-			tabLayout = new TabControl();
-			tabLayout.Parent = lrows;
-			tabLayout.Height = 300;
-			tabLayout.Padding = new System.Drawing.Point(6, 6);
-			tabLayout.Dock = DockStyle.Fill;
-			//tabLayout.Padding = new System.Drawing.Point(3, 3);
+			tabLayout = new TabControl()
+			{
+				Parent = lrows,
+				Height = 300,
+				Padding = new System.Drawing.Point(6, 6),
+				Dock = DockStyle.Fill,
+				//Padding = new System.Drawing.Point(3, 3),
+			};
 
 			TabPage infoTab = new TabPage("Info");
 			TabPage procTab = new TabPage("Processes");
 			TabPage micTab = new TabPage("Microphone");
+			if (!TaskMaster.MicrophoneMonitorEnabled) micTab.Hide();
 			TabPage netTab = new TabPage("Network");
+			if (!TaskMaster.NetworkMonitorEnabled) netTab.Hide();
 			TabPage bugTab = new TabPage("Debug");
 
 			tabLayout.Controls.Add(infoTab);
@@ -549,39 +543,21 @@ namespace TaskMaster
 				RowCount = 1,
 				ColumnCount = 6,
 				AutoSize = true,
-				//BackColor = System.Drawing.Color.LightYellow,
 				Width = tabLayout.Width - 3,
 			};
 
-			var activeLabelUX = new Label();
-			activeLabelUX.Text = "Active:";
-			activeLabelUX.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
-			activeLabelUX.Width = 40;
-			//activeLabelUX.BackColor = System.Drawing.Color.GreenYellow;
-			activeLabel = new Label();
-			activeLabel.Dock = DockStyle.Top;
-			activeLabel.Text = "no active window found";
-			activeLabel.Width = tabLayout.Width - 3 - 40 - 3 - 80 - 3 - 100 - 3 - 60 - 3 - 20 - 3;
-			activeLabel.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
-			activeLabel.AutoEllipsis = true;
-			//activeLabel.BackColor = System.Drawing.Color.MediumAquamarine;
-			activeExec = new Label();
-			activeLabel.Dock = DockStyle.Top;
-			activeExec.Text = "n/a";
-			activeExec.Width = 100;
-			activeExec.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
-			//activeExec.BackColor = System.Drawing.Color.Aquamarine;
-			activeFullscreen = new Label();
-			activeFullscreen.Dock = DockStyle.Top;
-			activeFullscreen.Text = "n/a";
-			activeFullscreen.Width = 60;
-			activeFullscreen.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
-			//activeFullscreen.BackColor = System.Drawing.Color.DarkOrange;
-			activePID = new Label();
-			activePID.Text = "n/a";
-			activePID.Width = 60;
-			activePID.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
-			//activePID.BackColor = System.Drawing.Color.LightCyan;
+			var activeLabelUX = new Label() { Text = "Active:", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, Width = 40 };
+			activeLabel = new Label()
+			{
+				Dock = DockStyle.Top,
+				Text = "no active window found",
+				Width = tabLayout.Width - 3 - 40 - 3 - 80 - 3 - 100 - 3 - 60 - 3 - 20 - 3, // TODO: Simplify
+				TextAlign = System.Drawing.ContentAlignment.MiddleLeft,
+				AutoEllipsis = true,
+			};
+			activeExec = new Label() { Dock = DockStyle.Top, Text = "n/a", Width = 100, TextAlign = System.Drawing.ContentAlignment.MiddleLeft };
+			activeFullscreen = new Label() { Dock = DockStyle.Top, Text = "n/a", Width = 60, TextAlign = System.Drawing.ContentAlignment.MiddleCenter };
+			activePID = new Label() { Text = "n/a", Width = 60, TextAlign = System.Drawing.ContentAlignment.MiddleCenter };
 			//gamepanel.Padding = new Padding(3);
 			gamepanel.Controls.Add(activeLabelUX);
 			gamepanel.Controls.Add(activeLabel);
@@ -613,12 +589,7 @@ namespace TaskMaster
 			#endregion
 
 			#region Main Window Row 1, microphone device
-			var micpanel = new TableLayoutPanel
-			{
-				Dock = DockStyle.Fill,
-				RowCount = 3,
-				Width = tabLayout.Width - 12
-			};
+			var micpanel = new TableLayoutPanel { Dock = DockStyle.Fill, RowCount = 3, Width = tabLayout.Width - 12 };
 			micpanel.RowStyles.Add(new RowStyle(SizeType.Absolute, 32));
 			micpanel.RowStyles.Add(new RowStyle(SizeType.Absolute, 32));
 
@@ -627,42 +598,22 @@ namespace TaskMaster
 				Text = "Default communications device:",
 				Dock = DockStyle.Left,
 				Width = 180,
-				//Height = 20,
-				//BackColor = System.Drawing.Color.Yellow,
 				TextAlign = System.Drawing.ContentAlignment.MiddleLeft,
-				//AutoSize = true
+				//AutoSize = true // why not?
 			};
-			micName = new Label
-			{
-				Text = "N/A",
-				Dock = DockStyle.Left,
-				//BackColor = System.Drawing.Color.GreenYellow,
-				TextAlign = System.Drawing.ContentAlignment.MiddleLeft,
-				AutoSize = true,
-				AutoEllipsis = true,
-			};
+			micName = new Label { Text = "N/A", Dock = DockStyle.Left, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, AutoEllipsis = true };
 			var micNameRow = new TableLayoutPanel
 			{
 				Dock = DockStyle.Top,
 				RowCount = 1,
 				ColumnCount = 2,
-				//BackColor = System.Drawing.Color.BlanchedAlmond, // DEBUG
-				//AutoSize = true
+				//AutoSize = true // why not?
 			};
 			micNameRow.Controls.Add(micDevLbl);
 			micNameRow.Controls.Add(micName);
 			#endregion
 
-			// uhh???
-			// Main Window Row 2, volume control
-			var miccntrl = new TableLayoutPanel
-			{
-				ColumnCount = 5,
-				RowCount = 1,
-				// BackColor = System.Drawing.Color.Azure, // DEBUG
-				Dock = DockStyle.Top,
-				//miccntrl.Location = new System.Drawing.Point(0, 0);
-			};
+			var miccntrl = new TableLayoutPanel() { ColumnCount = 5, RowCount = 1, Dock = DockStyle.Top };
 			miccntrl.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
 			miccntrl.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 
@@ -671,8 +622,7 @@ namespace TaskMaster
 				Text = "Mic volume",
 				Dock = DockStyle.Top,
 				TextAlign = System.Drawing.ContentAlignment.MiddleLeft,
-				//BackColor = System.Drawing.Color.LightCyan,
-				//AutoSize = true
+				//AutoSize = true // why not?
 			};
 
 			var micVolLabel2 = new Label
@@ -680,19 +630,10 @@ namespace TaskMaster
 				Text = "%",
 				Dock = DockStyle.Top,
 				TextAlign = System.Drawing.ContentAlignment.MiddleLeft,
-				//BackColor = System.Drawing.Color.Lime,
-				//AutoSize = true
+				//AutoSize = true // why not?
 			};
 
-			micVol = new NumericUpDown
-			{
-				Maximum = 100,
-				Minimum = 0,
-				Width = 60,
-				ReadOnly = true,
-				Enabled = false,
-				Dock = DockStyle.Top,
-			};
+			micVol = new NumericUpDown { Maximum = 100, Minimum = 0, Width = 60, ReadOnly = true, Enabled = false, Dock = DockStyle.Top };
 			micVol.ValueChanged += UserMicVol;
 
 			miccntrl.Controls.Add(micVolLabel);
@@ -703,9 +644,8 @@ namespace TaskMaster
 			{
 				Text = "Correction count:",
 				Dock = DockStyle.Top,
-				//AutoSize = true,
+				//AutoSize = true, // why not?
 				TextAlign = System.Drawing.ContentAlignment.MiddleLeft,
-				//BackColor = System.Drawing.Color.Orange,
 			};
 
 			corCountLabel = new Label
@@ -713,8 +653,7 @@ namespace TaskMaster
 				Dock = DockStyle.Top,
 				Text = "0",
 				TextAlign = System.Drawing.ContentAlignment.MiddleLeft,
-				//BackColor = System.Drawing.Color.Fuchsia,
-				//AutoSize = true,
+				//AutoSize = true, // why not?
 			};
 			miccntrl.Controls.Add(corLbll);
 			miccntrl.Controls.Add(corCountLabel);
@@ -741,20 +680,22 @@ namespace TaskMaster
 			// End: Microphone enumeration
 
 			// Main Window row 4-5, internet status
-			var netlayout = new TableLayoutPanel
+			var netlayout = new TableLayoutPanel { Dock = DockStyle.Top, AutoSize = true };
+
+			var netLabel = new Label() { Text = "Network status:", Dock = DockStyle.Left, AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft };
+			var inetLabel = new Label() { Text = "Internet status:", Dock = DockStyle.Left, AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft };
+			var uptimeLabel = new Label() { Text = "Uptime:", Dock = DockStyle.Left, AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft };
+
+			netstatuslabel = new Label() { Dock = DockStyle.Left, Text = "Uninitialized", AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft };
+			inetstatuslabel = new Label() { Dock = DockStyle.Left, Text = "Uninitialized", AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft };
+			uptimestatuslabel = new Label
 			{
-				// BackColor = System.Drawing.Color.Azure, // DEBUG
-				Dock = DockStyle.Top,
+				Dock = DockStyle.Left,
+				Text = "Uninitialized",
 				AutoSize = true,
+				BackColor = System.Drawing.Color.Transparent,
+				TextAlign = System.Drawing.ContentAlignment.MiddleLeft
 			};
-
-			var netLabel = new Label { Text = "Network status:", Dock = DockStyle.Left, AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft };
-			var inetLabel = new Label { Text = "Internet status:", Dock = DockStyle.Left, AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft };
-			var uptimeLabel = new Label { Text = "Uptime:", Dock = DockStyle.Left, AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft };
-
-			netstatuslabel = new Label { Dock = DockStyle.Left, Text = "Uninitialized", AutoSize = true, BackColor = System.Drawing.Color.Transparent, TextAlign = System.Drawing.ContentAlignment.MiddleLeft };
-			inetstatuslabel = new Label { Dock = DockStyle.Left, Text = "Uninitialized", AutoSize = true, BackColor = System.Drawing.Color.Transparent, TextAlign = System.Drawing.ContentAlignment.MiddleLeft };
-			uptimestatuslabel = new Label { Dock = DockStyle.Left, Text = "Uninitialized", AutoSize = true, BackColor = System.Drawing.Color.Transparent, TextAlign = System.Drawing.ContentAlignment.MiddleLeft };
 
 
 			var netstatus = new TableLayoutPanel
@@ -829,7 +770,7 @@ namespace TaskMaster
 			IPv6Column = 5;
 
 			netlayout.Controls.Add(netstatus);
-			netlayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 32));
+			netlayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 32)); // why?
 			netlayout.Controls.Add(ifaceList);
 			netTab.Controls.Add(netlayout);
 
@@ -1077,7 +1018,14 @@ namespace TaskMaster
 				AutoSize = true
 			});
 			commandpanel.Controls.Add(processingCount);
-			processingCountdown = new Label() { TextAlign = System.Drawing.ContentAlignment.MiddleLeft, Width = 40, AutoSize = false, Dock = DockStyle.Right, Anchor = AnchorStyles.Left };
+			processingCountdown = new Label()
+			{
+				TextAlign = System.Drawing.ContentAlignment.MiddleLeft,
+				Width = 40,
+				AutoSize = false,
+				Dock = DockStyle.Right,
+				Anchor = AnchorStyles.Left
+			};
 			processingCountdown.Text = "00.0s";
 			commandpanel.Controls.Add(processingCountdown);
 			commandpanel.Controls.Add(rescanbutton);
@@ -1107,12 +1055,39 @@ namespace TaskMaster
 				AutoSize = true
 			};
 
-			cachePanel.Controls.Add(new Label() { Text = "Path cache:", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true });
-			cachePanel.Controls.Add(new Label() { Text = "Objects", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true });
-			cacheObjects = new Label() { AutoSize = true, Width = 40, Text = "n/a", TextAlign = System.Drawing.ContentAlignment.MiddleLeft };
+			cachePanel.Controls.Add(new Label()
+			{
+				Text = "Path cache:",
+				TextAlign = System.Drawing.ContentAlignment.MiddleLeft,
+				AutoSize = true
+			});
+			cachePanel.Controls.Add(new Label()
+			{
+				Text = "Objects",
+				TextAlign = System.Drawing.ContentAlignment.MiddleLeft,
+				AutoSize = true
+			});
+			cacheObjects = new Label()
+			{
+				AutoSize = true,
+				Width = 40,
+				Text = "n/a",
+				TextAlign = System.Drawing.ContentAlignment.MiddleLeft
+			};
 			cachePanel.Controls.Add(cacheObjects);
-			cachePanel.Controls.Add(new Label() { Text = "Ratio", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true });
-			cacheRatio = new Label() { AutoSize = true, Width = 40, Text = "n/a", TextAlign = System.Drawing.ContentAlignment.MiddleLeft };
+			cachePanel.Controls.Add(new Label()
+			{
+				Text = "Ratio",
+				TextAlign = System.Drawing.ContentAlignment.MiddleLeft,
+				AutoSize = true
+			});
+			cacheRatio = new Label()
+			{
+				AutoSize = true,
+				Width = 40,
+				Text = "n/a",
+				TextAlign = System.Drawing.ContentAlignment.MiddleLeft
+			};
 			cachePanel.Controls.Add(cacheRatio);
 
 			infopanel.Controls.Add(cachePanel);
@@ -1142,10 +1117,28 @@ namespace TaskMaster
 				Height = 40,
 				AutoSize = true
 			};
-			tempmonitorpanel.Controls.Add(new Label { Text = "Temp", Dock = DockStyle.Left, TextAlign = System.Drawing.ContentAlignment.MiddleRight, AutoSize = true });
-			tempmonitorpanel.Controls.Add(new Label { Text = "Objects", Dock = DockStyle.Left, TextAlign = System.Drawing.ContentAlignment.MiddleRight, AutoSize = true });
+			tempmonitorpanel.Controls.Add(new Label
+			{
+				Text = "Temp",
+				Dock = DockStyle.Left,
+				TextAlign = System.Drawing.ContentAlignment.MiddleRight,
+				AutoSize = true
+			});
+			tempmonitorpanel.Controls.Add(new Label
+			{
+				Text = "Objects",
+				Dock = DockStyle.Left,
+				TextAlign = System.Drawing.ContentAlignment.MiddleRight,
+				AutoSize = true
+			});
 			tempmonitorpanel.Controls.Add(tempObjectCount);
-			tempmonitorpanel.Controls.Add(new Label { Text = "Size (MB)", Dock = DockStyle.Left, TextAlign = System.Drawing.ContentAlignment.MiddleRight, AutoSize = true });
+			tempmonitorpanel.Controls.Add(new Label
+			{
+				Text = "Size (MB)",
+				Dock = DockStyle.Left,
+				TextAlign = System.Drawing.ContentAlignment.MiddleRight,
+				AutoSize = true
+			});
 			tempmonitorpanel.Controls.Add(tempObjectSize);
 
 			//infopanel.Controls.Add(commandpanel);
@@ -1181,7 +1174,14 @@ namespace TaskMaster
 			exitwaitlist.Columns.Add("Id", 50);
 			exitwaitlist.Columns.Add("Executable", 280);
 
-			buglayout.Controls.Add(new Label() { Text = "Power mode exit wait list...", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left, Padding = new Padding(6) });
+			buglayout.Controls.Add(new Label()
+			{
+				Text = "Power mode exit wait list...",
+				TextAlign = System.Drawing.ContentAlignment.MiddleLeft,
+				AutoSize = true,
+				Dock = DockStyle.Left,
+				Padding = new Padding(6)
+			});
 			buglayout.Controls.Add(exitwaitlist);
 
 			powerbalancerlog = new ListView()
@@ -1198,7 +1198,14 @@ namespace TaskMaster
 			powerbalancerlog.Columns.Add("Low", 60);
 			powerbalancerlog.Columns.Add("Reactionary Plan", 120);
 
-			buglayout.Controls.Add(new Label() { Text = "Power mode autobalancing tracker...", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left, Padding = new Padding(6) });
+			buglayout.Controls.Add(new Label()
+			{
+				Text = "Power mode autobalancing tracker...",
+				TextAlign = System.Drawing.ContentAlignment.MiddleLeft,
+				AutoSize = true,
+				Dock = DockStyle.Left,
+				Padding = new Padding(6)
+			});
 			buglayout.Controls.Add(powerbalancerlog);
 
 			bugTab.Controls.Add(buglayout);
