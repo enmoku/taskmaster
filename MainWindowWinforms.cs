@@ -48,10 +48,7 @@ namespace TaskMaster
 
 		public void ExitRequest(object sender, EventArgs e)
 		{
-			//CLEANUP: Console.WriteLine("START:Window.ExitRequest");
-			// nothing
-			//CLEANUP: Console.WriteLine("END:Window.ExitRequest");
-			Close();
+			TaskMaster.ConfirmExit(restart: false);
 		}
 
 		void WindowClose(object sender, FormClosingEventArgs e)
@@ -102,8 +99,6 @@ namespace TaskMaster
 			TopMost = false;
 		}
 
-		static readonly System.Drawing.Size SetSizeDefault = new System.Drawing.Size(760, 640); // width, height
-
 		public void ShowLastLog()
 		{
 			if (loglist.Items.Count > 0)
@@ -115,8 +110,8 @@ namespace TaskMaster
 		public void ShowWindowRequest(object sender, EventArgs e)
 		{
 			Show(); // FIXME: Gets triggered when menuitem is clicked
-			AutoSize = true;
-			Size = SetSizeDefault; // shouldn't be done always, but ensures the window is right size iff desktop was resized to something smaller.
+
+			//AutoSize = true;
 		}
 
 		#region Microphone control code
@@ -228,9 +223,9 @@ namespace TaskMaster
 			if (pc.PowerPlan == PowerManager.PowerMode.Undefined)
 				litem.SubItems[PowerColumn].ForeColor = System.Drawing.SystemColors.GrayText;
 
-			lock (appList)
+			lock (watchlistRules)
 			{
-				appList.Items.Add(litem);
+				watchlistRules.Items.Add(litem);
 				if (alterColor == true)
 					litem.BackColor = System.Drawing.Color.FromArgb(245, 245, 245);
 
@@ -250,7 +245,7 @@ namespace TaskMaster
 		object micList_lock = new object();
 		ListView micList;
 		object appList_lock = new object();
-		ListView appList;
+		ListView watchlistRules;
 		//object pathList_lock = new object();
 		//ListView pathList;
 		object appw_lock = new object();
@@ -312,7 +307,8 @@ namespace TaskMaster
 		ComboBox logcombo_level;
 		public static Serilog.Core.LoggingLevelSwitch LogIncludeLevel;
 
-		readonly Timer UItimer = new Timer { Interval = 500 };
+		int UIUpdateFrequency = 500;
+		Timer UItimer;
 
 		static bool UIOpen = true;
 		void StartUIUpdates(object sender, EventArgs e)
@@ -416,25 +412,108 @@ namespace TaskMaster
 
 		void BuildUI()
 		{
-			Size = SetSizeDefault;
-			AutoSizeMode = AutoSizeMode.GrowOnly;
-			AutoSize = true;
+			//Size = new System.Drawing.Size(760, 640); // width, heigh
+			Width = 760;
 
 			Text = string.Format("{0} ({1})", System.Windows.Forms.Application.ProductName, System.Windows.Forms.Application.ProductVersion);
 #if DEBUG
 			Text = Text + " DEBUG";
 #endif
-			Padding = new Padding(6);
+			//Padding = new Padding(6);
 			// margin
+
+			var padding = new Padding(6);
 
 			var lrows = new TableLayoutPanel
 			{
+				AutoSize = true,
 				Parent = this,
 				ColumnCount = 1,
+				Margin = padding,
 				//lrows.RowCount = 10;
-				Dock = DockStyle.Fill
+				Dock = DockStyle.Top,
 			};
 
+			var menu = new MenuStrip()
+			{
+				Dock = DockStyle.Top,
+			};
+			var menu_action = new ToolStripMenuItem("Actions");
+			menu_action.MouseHover += (sender, e) => { menu_action.ShowDropDown(); };
+			// Sub Items
+			var menu_action_rescan = new ToolStripMenuItem("Rescan", null, (o, s) =>
+			{
+				rescanRequest?.Invoke(this, null);
+			});
+			var menu_action_memoryfocus = new ToolStripMenuItem("Free memory for...", null, FreeMemoryRequest);
+			ToolStripMenuItem menu_action_restart = null;
+			menu_action_restart = new ToolStripMenuItem("Restart", null, (s, e) =>
+			{
+				menu_action_restart.Enabled = false;
+				TaskMaster.ConfirmExit(restart: true);
+				menu_action_restart.Enabled = true;
+			});
+			var menu_action_exit = new ToolStripMenuItem("Exit", null, ExitRequest);
+			menu_action.DropDownItems.Add(menu_action_rescan);
+			menu_action.DropDownItems.Add(menu_action_memoryfocus);
+			menu_action.DropDownItems.Add(new ToolStripSeparator());
+			menu_action.DropDownItems.Add(menu_action_restart);
+			menu_action.DropDownItems.Add(menu_action_exit);
+
+			var menu_config = new ToolStripMenuItem("Configuration");
+			menu_config.MouseHover += (sender, e) => { menu_config.ShowDropDown(); };
+			// Sub Items
+			var menu_config_folder = new ToolStripMenuItem("Open directory", null, (s, e) => { Process.Start(TaskMaster.datapath); });
+			menu_config.DropDownItems.Add(menu_config_folder);
+
+			var menu_debug = new ToolStripMenuItem("Debug");
+			menu_debug.MouseHover += (sender, e) => { menu_debug.ShowDropDown(); };
+			// Sub Items
+			var menu_debug_inaction = new ToolStripMenuItem("Show inaction");
+			menu_debug_inaction.Checked = TaskMaster.ShowInaction;
+			menu_debug_inaction.CheckOnClick = true;
+			menu_debug_inaction.Click += (sender, e) => { TaskMaster.ShowInaction = menu_debug_inaction.Checked; };
+			var menu_debug_scanning = new ToolStripMenuItem("Scanning");
+			menu_debug_scanning.Checked = TaskMaster.DebugFullScan;
+			menu_debug_scanning.CheckOnClick = true;
+			menu_debug_scanning.Click += (sender, e) => { TaskMaster.DebugFullScan = menu_debug_scanning.Checked; };
+			var menu_debug_paths = new ToolStripMenuItem("Paths");
+			menu_debug_paths.Checked = TaskMaster.DebugPaths;
+			menu_debug_paths.CheckOnClick = true;
+			menu_debug_paths.Click += (sender, e) => { TaskMaster.DebugPaths = menu_debug_paths.Checked; };
+			var menu_debug_power = new ToolStripMenuItem("Power");
+			menu_debug_power.Checked = TaskMaster.DebugPower;
+			menu_debug_power.CheckOnClick = true;
+			menu_debug_power.Click += (sender, e) => { TaskMaster.DebugPower = menu_debug_power.Checked; };
+			var menu_debug_clear = new ToolStripMenuItem("Clear UI log", null, (sender, e) => { ClearLog(); });
+
+			menu_debug.DropDownItems.Add(menu_debug_inaction);
+			menu_debug.DropDownItems.Add(new ToolStripSeparator());
+			menu_debug.DropDownItems.Add(menu_debug_scanning);
+			menu_debug.DropDownItems.Add(menu_debug_paths);
+			menu_debug.DropDownItems.Add(menu_debug_power);
+			menu_debug.DropDownItems.Add(new ToolStripSeparator());
+			menu_debug.DropDownItems.Add(menu_debug_clear);
+
+			var menu_info = new ToolStripMenuItem("Info");
+			menu_info.MouseHover += (sender, e) => { menu_info.ShowDropDown(); };
+
+			// Sub Items
+			var menu_info_github = new ToolStripMenuItem("Github", null, (sender, e) => { Process.Start(TaskMaster.URL); });
+			var menu_info_about = new ToolStripMenuItem("About", null, (s, e) =>
+			{
+				MessageBox.Show(Application.ProductName + " (" + Application.ProductVersion + ")\n\nCreated by M.A., 2016-2018\n\nFree system maintenance and de-obnoxifying app.\n\nAvailable under MIT license.",
+								"About Taskmaster!", MessageBoxButtons.OK, MessageBoxIcon.Information, MessageBoxDefaultButton.Button1, MessageBoxOptions.DefaultDesktopOnly, false);
+			});
+			menu_info.DropDownItems.Add(menu_info_github);
+			menu_info.DropDownItems.Add(new ToolStripSeparator());
+			menu_info.DropDownItems.Add(menu_info_about);
+
+			menu.Items.Add(menu_action);
+			menu.Items.Add(menu_config);
+			menu.Items.Add(menu_debug);
+			menu.Items.Add(menu_info);
+			Controls.Add(menu);
 
 			tabLayout = new TabControl();
 			tabLayout.Parent = lrows;
@@ -524,18 +603,11 @@ namespace TaskMaster
 			var appwidths = colcfg.GetSetDefault("Apps", appwidthsDefault).IntValueArray;
 			if (appwidths.Length != appwidthsDefault.Length) appwidths = appwidthsDefault;
 
-			/*
-			// TODO: CLEANUP
-			int[] pathwidthsDefault = new int[] { 120, 300, 60, 80, 40, 80 };
-			var pathwidths = colcfg.GetSetDefault("Paths", pathwidthsDefault).IntValueArray;
-			if (pathwidths.Length != pathwidthsDefault.Length) pathwidths = pathwidthsDefault;
-			*/
-
 			int[] micwidthsDefault = new int[] { 200, 220 };
 			var micwidths = colcfg.GetSetDefault("Mics", micwidthsDefault).IntValueArray;
 			if (micwidths.Length != micwidthsDefault.Length) micwidths = micwidthsDefault;
 
-			int[] ifacewidthsDefault = new int[] { 120, 60, 50, 70, 90, 200 };
+			int[] ifacewidthsDefault = new int[] { 120, 60, 50, 70, 90, 200, 60, 60 };
 			var ifacewidths = colcfg.GetSetDefault("Interfaces", ifacewidthsDefault).IntValueArray;
 			if (ifacewidths.Length != ifacewidthsDefault.Length) ifacewidths = ifacewidthsDefault;
 			#endregion
@@ -716,6 +788,7 @@ namespace TaskMaster
 				}
 			};
 
+			UItimer = new Timer { Interval = UIUpdateFrequency };
 			if (TaskMaster.NetworkMonitorEnabled)
 				UItimer.Tick += UpdateUptime;
 
@@ -739,12 +812,17 @@ namespace TaskMaster
 			ifacems.Items.Add(ifaceip6copy);
 			ifaceList.ContextMenuStrip = ifacems;
 
-			ifaceList.Columns.Add("Device", ifacewidths[0]);
-			ifaceList.Columns.Add("Type", ifacewidths[1]);
-			ifaceList.Columns.Add("Status", ifacewidths[2]);
-			ifaceList.Columns.Add("Link speed", ifacewidths[3]);
-			ifaceList.Columns.Add("IPv4", ifacewidths[4]);
-			ifaceList.Columns.Add("IPv6", ifacewidths[5]);
+			ifaceList.Columns.Add("Device", ifacewidths[0]); // 0
+			ifaceList.Columns.Add("Type", ifacewidths[1]); // 1
+			ifaceList.Columns.Add("Status", ifacewidths[2]); // 2
+			ifaceList.Columns.Add("Link speed", ifacewidths[3]); // 3
+			ifaceList.Columns.Add("IPv4", ifacewidths[4]); // 4
+			ifaceList.Columns.Add("IPv6", ifacewidths[5]); // 5
+			ifaceList.Columns.Add("Packet Δ", ifacewidths[6]); // 6
+			ifaceList.Columns.Add("Error Δ", ifacewidths[7]); // 7
+			PacketColumn = 6;
+			ErrorColumn = 7;
+
 			ifaceList.Scrollable = true;
 
 			IPv4Column = 4;
@@ -788,24 +866,6 @@ namespace TaskMaster
 			};
 
 			/*
-			pathList = new ListView
-			{
-				View = View.Details,
-				Dock = DockStyle.Top,
-				Width = tabLayout.Width - 60,
-				Height = 120,
-				FullRowSelect = true
-			};
-			pathList.Columns.Add("Name", pathwidths[0]);
-			pathList.Columns.Add("Path", pathwidths[1]);
-			pathList.Columns.Add("Adjusts", pathwidths[2]);
-			pathList.Columns.Add("Priority", pathwidths[3]);
-			pathList.Columns.Add("Affinity", pathwidths[4]);
-			pathList.Columns.Add("Power Plan", pathwidths[5]);
-			pathList.Scrollable = true;
-			*/
-
-			/*
 			// TODO: ADD SORTING
 
 			int sortColumn = -1;
@@ -827,10 +887,8 @@ namespace TaskMaster
 			};
 			*/
 
-			// End: Path list
-
-			// Main Window row 7, app list
-			appList = new ListView
+			// Rule Listing
+			watchlistRules = new ListView
 			{
 				View = View.Details,
 				Dock = DockStyle.Top,
@@ -847,21 +905,21 @@ namespace TaskMaster
 			AdjustColumn = 5;
 			PathColumn = 6;
 
-			appList.Columns.Add("Name", appwidths[0]);
-			appList.Columns.Add("Executable", appwidths[1]);
-			appList.Columns.Add("Priority", appwidths[2]);
-			appList.Columns.Add("Affinity", appwidths[3]);
-			appList.Columns.Add("Power Plan", appwidths[4]);
-			appList.Columns.Add("Adjusts", appwidths[5]);
-			appList.Columns.Add("Path", appwidths[6]);
-			appList.Scrollable = true;
-			appList.Alignment = ListViewAlignment.Left;
+			watchlistRules.Columns.Add("Name", appwidths[0]);
+			watchlistRules.Columns.Add("Executable", appwidths[1]);
+			watchlistRules.Columns.Add("Priority", appwidths[2]);
+			watchlistRules.Columns.Add("Affinity", appwidths[3]);
+			watchlistRules.Columns.Add("Power Plan", appwidths[4]);
+			watchlistRules.Columns.Add("Adjusts", appwidths[5]);
+			watchlistRules.Columns.Add("Path", appwidths[6]);
+			watchlistRules.Scrollable = true;
+			watchlistRules.Alignment = ListViewAlignment.Left;
 
-			appList.DoubleClick += appEditEvent; // for in-app editing
-			appList.Click += UpdateInfoPanel;
+			watchlistRules.DoubleClick += appEditEvent; // for in-app editing
+			watchlistRules.Click += UpdateInfoPanel;
 
 			//proclayout.Controls.Add(pathList);
-			proclayout.Controls.Add(appList);
+			proclayout.Controls.Add(watchlistRules);
 			procTab.Controls.Add(proclayout);
 
 			// End: App list
@@ -890,18 +948,22 @@ namespace TaskMaster
 			loglist.ContextMenuStrip = loglistms;
 
 			var cfg = TaskMaster.loadConfig("Core.ini");
-			bool ldirty1;
-			MaxLogSize = cfg["Logging"].GetSetDefault("UI max items", 200, out ldirty1).IntValue;
-			if (ldirty1)
+			bool modified, tdirty = false;
+			MaxLogSize = cfg["Logging"].GetSetDefault("UI max items", 200, out modified).IntValue;
+			tdirty |= modified;
+			UIUpdateFrequency = cfg["User Interface"].GetSetDefault("Update frequency", 2000, out modified).IntValue.Constrain(100, 5000);
+			tdirty |= modified;
+			if (tdirty)
 			{
 				cfg["Logging"]["UI max items"].Comment = "Maximum number of items/lines to retain on UI level.";
+				cfg["User Interface"]["Update frequency"].Comment = "In milliseconds. Frequency of controlled UI updates. Affects visual accuracy of timers and such. Valid range: 100 to 5000.";
 				TaskMaster.MarkDirtyINI(cfg);
 			}
 
 			var logpanel = new TableLayoutPanel
 			{
 				Parent = lrows,
-				//Dock = DockStyle.fi,
+				//Dock = DockStyle.Fill,
 				RowCount = 2,
 				ColumnCount = 1,
 				Width = lrows.Width,
@@ -1003,7 +1065,7 @@ namespace TaskMaster
 						{
 							rescanbutton.Enabled = false;
 							await Task.Yield();
-							rescanRequest?.Invoke(this, new EventArgs());
+							rescanRequest?.Invoke(this, null);
 							rescanbutton.Enabled = true;
 						};
 			commandpanel.Controls.Add(new Label
@@ -1156,6 +1218,19 @@ namespace TaskMaster
 			tabLayout.SelectedIndex = opentab >= tabLayout.TabCount ? 0 : opentab;
 
 			DiskManager.onTempScan += TempScanStats;
+
+			AutoSizeMode = AutoSizeMode.GrowOnly;
+			AutoSize = true;
+		}
+
+		void FreeMemoryRequest(object sender, EventArgs ev)
+		{
+			var exsel = new ProcessSelectDialog();
+			if (exsel.ShowDialog(this) == DialogResult.OK)
+			{
+				Log.Information("Freeing memory for: {Exec}", exsel.Selection);
+				TaskMaster.processmanager.FreeMemoryFor(exsel.Selection);
+			}
 		}
 
 		object exitwaitlist_lock = new object();
@@ -1232,7 +1307,7 @@ namespace TaskMaster
 			}
 			//Log.Verbose("Opening edit window.");
 
-			ListViewItem ri = appList.SelectedItems[0];
+			ListViewItem ri = watchlistRules.SelectedItems[0];
 			var t = new AppEditWindow(ri.SubItems[NameColumn].Text, ri); // 1 = executable
 			t.FormClosed += (ns, evs) =>
 			{
@@ -1243,7 +1318,7 @@ namespace TaskMaster
 
 		void UpdateInfoPanel(object sender, EventArgs e)
 		{
-			ListViewItem ri = appList.SelectedItems[0];
+			ListViewItem ri = watchlistRules.SelectedItems[0];
 			string name = ri.SubItems[0].Text;
 			/*
 			//Log.Debug("'{RowName}' selected in UI", ri.SubItems[0]);
@@ -1304,14 +1379,18 @@ namespace TaskMaster
 
 			foreach (NetDevice dev in net.Interfaces())
 			{
-				ifaceList.Items.Add(new ListViewItem(new string[] {
+				var li = new ListViewItem(new string[] {
 					dev.Name,
 					dev.Type.ToString(),
 					dev.Status.ToString(),
 					HumanInterface.ByteRateString(dev.Speed),
 					dev.IPv4Address.ToString() ?? "n/a",
-					dev.IPv6Address.ToString() ?? "n/a"
-				}));
+					dev.IPv6Address.ToString() ?? "n/a",
+						"n/a",
+						"n/a",
+				});
+				li.UseItemStyleForSubItems = false;
+				ifaceList.Items.Add(li);
 			}
 
 			net.InternetStatusChange += InetStatus;
@@ -1321,7 +1400,28 @@ namespace TaskMaster
 			NetStatusLabel(net.NetworkAvailable);
 
 			//Tray?.Tooltip(2000, "Internet " + (net.InternetAvailable ? "available" : "unavailable"), "TaskMaster", net.InternetAvailable ? ToolTipIcon.Info : ToolTipIcon.Warning);
+
+			net.onSampling += NetSampleHandler;
 		}
+
+		void NetSampleHandler(object sender, NetDeviceTraffic ev)
+		{
+			try
+			{
+				ifaceList.Items[ev.Index].SubItems[PacketColumn].Text = string.Format("+{0}", ev.Traffic.Unicast);
+				ifaceList.Items[ev.Index].SubItems[ErrorColumn].Text = string.Format("+{0}", ev.Traffic.Errors);
+				if (ev.Traffic.Errors > 0)
+					ifaceList.Items[ev.Index].SubItems[ErrorColumn].ForeColor = System.Drawing.Color.OrangeRed;
+				else
+					ifaceList.Items[ev.Index].SubItems[ErrorColumn].ForeColor = System.Drawing.SystemColors.ControlText;
+			}
+			catch
+			{
+			}
+		}
+
+		int PacketColumn = 6;
+		int ErrorColumn = 7;
 
 		void InetStatusLabel(bool available)
 		{
@@ -1349,7 +1449,17 @@ namespace TaskMaster
 
 		// BUG: DO NOT LOG INSIDE THIS FOR FUCKS SAKE
 		// it creates an infinite log loop
-		int MaxLogSize = 200;
+		public int MaxLogSize { get { return MemoryLog.Max; } private set { MemoryLog.Max = value; } }
+
+		void ClearLog()
+		{
+			lock (loglistLock)
+			{
+				loglist.Clear();
+				MemoryLog.Clear();
+			}
+		}
+
 		public void onNewLog(object sender, LogEventArgs e)
 		{
 			if (LogIncludeLevel.MinimumLevel > e.Level) return;
@@ -1410,11 +1520,11 @@ namespace TaskMaster
 
 		void saveUIState()
 		{
-			if (appList.Columns.Count == 0) return;
+			if (watchlistRules.Columns.Count == 0) return;
 
-			List<int> appWidths = new List<int>(appList.Columns.Count);
-			for (int i = 0; i < appList.Columns.Count; i++)
-				appWidths.Add(appList.Columns[i].Width);
+			List<int> appWidths = new List<int>(watchlistRules.Columns.Count);
+			for (int i = 0; i < watchlistRules.Columns.Count; i++)
+				appWidths.Add(watchlistRules.Columns[i].Width);
 
 			/*
 			List<int> pathWidths = new List<int>(pathList.Columns.Count);
@@ -1467,6 +1577,7 @@ namespace TaskMaster
 				}
 				if (net != null)
 				{
+					net.onSampling -= NetSampleHandler;
 					net.InternetStatusChange -= InetStatus;
 					net.NetworkStatusChange -= NetStatus;
 					net = null;

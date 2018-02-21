@@ -56,6 +56,14 @@ namespace TaskMaster
 
 		public static LoggingLevelSwitch LevelSwitch;
 
+		public static void Clear()
+		{
+			lock (LogLock)
+			{
+				Logs.Clear();
+			}
+		}
+
 		public static void ExcludeDebug()
 		{
 			LevelSwitch.MinimumLevel = LogEventLevel.Information;

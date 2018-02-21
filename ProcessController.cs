@@ -35,6 +35,13 @@ using System.Linq;
 
 namespace TaskMaster
 {
+	struct ProcessInfo
+	{
+		public ProcessPriorityClass Priority;
+		public IntPtr Affinity;
+		public PowerManager.PowerMode PowerMode;
+	}
+
 	/// <summary>
 	/// Process controller.
 	/// </summary>
@@ -60,6 +67,24 @@ namespace TaskMaster
 									FriendlyName, Path, Priority, Affinity.ToInt32());
 				}
 			}
+		}
+
+		ProcessInfo OriginalState = new ProcessInfo();
+
+		bool Paused = false;
+		ProcessInfo PausedState = new ProcessInfo();
+		public void Pause(ProcessManager.BasicProcessInfo info)
+		{
+			if (Paused) throw new InvalidOperationException(string.Format("{0} already paused", info.Name));
+
+			PausedState.Affinity = Affinity;
+			PausedState.Priority = Priority;
+			PausedState.PowerMode = PowerPlan;
+
+			info.Process.PriorityClass = OriginalState.Priority;
+			info.Process.ProcessorAffinity = OriginalState.Affinity;
+			if (PowerPlan != PowerManager.PowerMode.Undefined)
+				PowerManager.RestoreMode();
 		}
 
 		string p_executable = null;
@@ -215,6 +240,16 @@ namespace TaskMaster
 			}
 		}
 
+		void WaitForExit(ProcessManager.BasicProcessInfo info)
+		{
+
+		}
+
+		void CancelWait(ProcessManager.BasicProcessInfo info)
+		{
+
+		}
+
 		protected bool setPowerPlan(ProcessManager.BasicProcessInfo info)
 		{
 			if (!TaskMaster.PowerManagerEnabled) return false;
@@ -275,7 +310,7 @@ namespace TaskMaster
 							catch (Exception ex)
 							{
 								Log.Fatal("POWER MDOE: {FriendlyName} FATAL FAILURE", FriendlyName);
-								Log.Fatal(ex.Message);
+								Log.Fatal("{Type} : {Message}", ex.GetType().Name, ex.Message);
 								Log.Fatal(ex.StackTrace);
 								throw;
 							}
@@ -513,8 +548,8 @@ namespace TaskMaster
 				sbs.Append(" – looks OK, not touched.");
 				if (TaskMaster.ShowInaction)
 					Log.Information(sbs.ToString());
-				else
-					Log.Verbose(sbs.ToString());
+				//else
+				//	Log.Verbose(sbs.ToString());
 				rv = ProcessState.OK;
 			}
 
@@ -540,7 +575,7 @@ namespace TaskMaster
 					catch (Exception ex)
 					{
 						Log.Warning("[{FriendlyName}] {Process} (#{PID}) – something bad happened.", FriendlyName, info.Name, info.Id);
-						Log.Fatal(ex.Message);
+						Log.Fatal("{Type} : {Message}", ex.GetType().Name, ex.Message);
 						Log.Fatal(ex.StackTrace);
 						throw;
 					}
@@ -564,7 +599,7 @@ namespace TaskMaster
 				catch (Exception ex)
 				{
 					Log.Warning("Error in scheduled rescan.");
-					Log.Error(ex.Message);
+					Log.Error("{Type} : {Message}", ex.GetType().Name, ex.Message);
 					Log.Error(ex.StackTrace);
 					throw;
 				}
@@ -684,7 +719,7 @@ namespace TaskMaster
 			catch (Exception ex)
 			{
 				Log.Warning("[{FriendlyName}] Access failure while determining path.");
-				Log.Error(ex.Message);
+				Log.Error("{Type} : {Message}", ex.GetType().Name, ex.Message);
 				Log.Error(ex.StackTrace);
 				throw;
 			}

@@ -256,7 +256,8 @@ namespace TaskMaster
 
 			if (Math.Abs(newVol - Target) <= SmallVolumeHysterisis)
 			{
-				Log.Verbose("Mic volume change too small ({VolumeChange:N1}%) to act on.", Math.Abs(newVol - Target));
+				if (TaskMaster.ShowInaction)
+					Log.Verbose("Mic volume change too small ({VolumeChange:N1}%) to act on.", Math.Abs(newVol - Target));
 				return;
 			}
 

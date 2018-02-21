@@ -45,19 +45,10 @@ namespace TaskMaster
 		ToolStripMenuItem power_highperf;
 		ToolStripMenuItem power_balanced;
 		ToolStripMenuItem power_saving;
-
-		bool ExitConfirm = true;
+		ToolStripMenuItem power_manual;
 
 		public TrayAccess()
 		{
-			// LOAD CONFIGURATION
-			var qol = TaskMaster.cfg["Quality of Life"];
-			bool modified = false, tdirty = false;
-			ExitConfirm = qol.GetSetDefault("Confirm exit", true, out modified).BoolValue;
-			tdirty |= modified;
-			if (tdirty)
-				TaskMaster.MarkDirtyINI(TaskMaster.cfg);
-
 			// BUILD UI
 			Tray = new NotifyIcon
 			{
@@ -89,33 +80,20 @@ namespace TaskMaster
 				power_highperf = new ToolStripMenuItem("Performance", null, SetPowerPerformance);
 				power_balanced = new ToolStripMenuItem("Balanced", null, SetPowerBalanced);
 				power_saving = new ToolStripMenuItem("Power Saving", null, SetPowerSaving);
+				power_manual = new ToolStripMenuItem("Manual override", null, SetManualPower);
 			}
 			ToolStripMenuItem menu_restart = null;
 			menu_restart = new ToolStripMenuItem("Restart", null, (o, s) =>
 			{
-				DialogResult rv = DialogResult.Yes;
-				if (ExitConfirm)
-					rv = MessageBox.Show("Are you sure you want to restart Taskmaster?", "Restart " + Application.ProductName + " ???", MessageBoxButtons.YesNo, MessageBoxIcon.Question, MessageBoxDefaultButton.Button1, MessageBoxOptions.DefaultDesktopOnly, false);
-				if (rv == DialogResult.Yes)
-				{
-					menu_restart.Enabled = false;
-					TaskMaster.Restart = true;
-					onExit?.Invoke(this, null);
-				}
+				menu_restart.Enabled = false;
+				TaskMaster.ConfirmExit(restart: true);
+				menu_restart.Enabled = true;
 			});
 			menu_exit = new ToolStripMenuItem("Exit", null, (o, s) =>
 			{
-				DialogResult rv = DialogResult.Yes;
-
-				// this causes a crash on occasion if user waits too long before hitting yes... why?
-				if (ExitConfirm)
-					rv = MessageBox.Show("Are you sure you want to exit Taskmaster?", "Exit " + Application.ProductName + " ???", MessageBoxButtons.YesNo, MessageBoxIcon.Question, MessageBoxDefaultButton.Button1, MessageBoxOptions.DefaultDesktopOnly, false);
-
-				if (rv == DialogResult.Yes)
-				{
-					menu_exit.Enabled = false;
-					onExit?.Invoke(this, null);
-				}
+				menu_restart.Enabled = false;
+				TaskMaster.ConfirmExit(restart: false);
+				menu_restart.Enabled = true;
 			});
 			ms.Items.Add(menu_windowopen);
 			ms.Items.Add(new ToolStripSeparator());
@@ -133,6 +111,7 @@ namespace TaskMaster
 				ms.Items.Add(power_highperf);
 				ms.Items.Add(power_balanced);
 				ms.Items.Add(power_saving);
+				ms.Items.Add(power_manual);
 				HighlightPowerMode();
 				PowerManager.onModeChange += HighlightPowerModeEvent;
 			}
@@ -147,6 +126,7 @@ namespace TaskMaster
 
 			Tray.Visible = true;
 
+			// TODO: Toast Notifications
 
 			Log.Verbose("Tray icon generated.");
 		}
@@ -195,6 +175,11 @@ namespace TaskMaster
 			PowerManager.RestoreMode();
 			PowerManager.setMode(mode);
 			HighlightPowerMode();
+		}
+
+		void SetManualPower(object sender, EventArgs e)
+		{
+			PowerManager.Manual = power_manual.Checked;
 		}
 
 		void SetPowerSaving(object sender, EventArgs e)
@@ -475,7 +460,7 @@ var runtime = Environment.GetCommandLineArgs()[0];
 			}
 			catch (Exception ex)
 			{
-				Log.Fatal(ex.Message);
+				Log.Fatal("{Type} : {Message}", ex.GetType().Name, ex.Message);
 				Log.Fatal(ex.StackTrace);
 				throw;
 			}

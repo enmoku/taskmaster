@@ -171,7 +171,7 @@ namespace TaskMaster
 				}
 				catch (Exception ex)
 				{
-					Log.Fatal(ex.Message);
+					Log.Fatal("{Type} : {Message}", ex.GetType().Name, ex.Message);
 				}
 			};
 			execpanel.Controls.Add(findexecbutton);

@@ -63,6 +63,8 @@ namespace TaskMaster
 	//[Guid("088f7210-51b2-4e06-9bd4-93c27a973874")]//there's no point to this, is there?
 	public class TaskMaster
 	{
+		public static string URL { get; } = "https://github.com/enmoku/taskmaster";
+
 		public static SharpConfig.Configuration cfg;
 		public static string datapath = System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Enmoku", "Taskmaster");
 
@@ -115,7 +117,7 @@ namespace TaskMaster
 
 			Configs.Add(configfile, retcfg);
 			ConfigPaths.Add(retcfg, configfile);
-			Log.Debug("{ConfigFile} added to known configurations files.", configfile);
+			Log.Verbose("{ConfigFile} added to known configurations files.", configfile);
 
 			return retcfg;
 		}
@@ -133,26 +135,44 @@ namespace TaskMaster
 		{
 			//if (LowMemory)
 			//{
-			//tmw.FormCling -= MainWindowCle // unnecessary?
-			mainwindow.Dispose();
+			//tmw.FormClosing -= MainWindowClose // unnecessary?
+			mainwindow.Dispose(); ;
 			mainwindow = null;
 			//}
 		}
 
 		public static bool Restart = false;
-		public static void RestartRequest(object sender, EventArgs e)
+		public static void AutomaticRestartRequest(object sender, EventArgs e)
 		{
 			Restart = true;
-			ExitRequest(null, null);
+			UnifiedExit();
+		}
+
+		public static void ConfirmExit(bool restart = false)
+		{
+			DialogResult rv = DialogResult.Yes;
+			if (RequestExitConfirm)
+				rv = MessageBox.Show("Are you sure you want to " + (restart ? "restart" : "exit") + " Taskmaster?",
+									 (restart ? "Restart" : "Exit") + Application.ProductName + " ???",
+									 MessageBoxButtons.YesNo, MessageBoxIcon.Question, MessageBoxDefaultButton.Button1, MessageBoxOptions.DefaultDesktopOnly, false);
+			if (rv != DialogResult.Yes)
+				return;
+
+			Restart = restart;
+
+			UnifiedExit();
 		}
 
 		public static void ExitRequest(object sender, EventArgs e)
 		{
+			UnifiedExit();
 			//CLEANUP:
-			//if (TaskMaster.VeryVerbose) Console.WriteLine("START:Core.ExitRequest - Exit hang expected");
+			//if (TaskMaster.VeryVerbose) Console.WriteLine("END:Core.ExitRequest - Exit hang averted");
+		}
+
+		public static void UnifiedExit()
+		{
 			mainwindow?.Close();
-			//mainwindow?.Dispose();
-			//mainwindow = null;
 
 			try
 			{
@@ -160,12 +180,10 @@ namespace TaskMaster
 			}
 			catch (Exception ex)
 			{
-				Log.Fatal(ex.Message);
+				Log.Fatal("{Type} : {Message}", ex.GetType().Name, ex.Message);
 				Log.Fatal(ex.StackTrace);
 				throw;
 			}
-			//CLEANUP:
-			//if (TaskMaster.VeryVerbose) Console.WriteLine("END:Core.ExitRequest - Exit hang averted");
 		}
 
 		public static void BuildMain()
@@ -188,7 +206,7 @@ namespace TaskMaster
 				mainwindow.FillLog();
 				MemoryLog.onNewEvent += mainwindow.onNewLog;
 
-				mainwindow.FormClosing += MainWindowClose;
+				mainwindow.FormClosed += MainWindowClose;
 
 				if (ProcessMonitorEnabled)
 				{
@@ -198,18 +216,21 @@ namespace TaskMaster
 				}
 
 				if (NetworkMonitorEnabled)
+				{
 					mainwindow.setNetMonitor(ref netmonitor);
+				}
 
 				if (ActiveAppMonitorEnabled)
 				{
 					activeappmonitor = new ActiveAppMonitor();
 					//pmn.onAdjust += gmmon.SetupEventHookEvent; //??
 					activeappmonitor.ActiveChanged += mainwindow.OnActiveWindowChanged;
+					activeappmonitor.ActiveChanged += processmanager.OnForegroundChanged;
 				}
 
 				if (PowerManagerEnabled)
 				{
-					powermanager.onResume += RestartRequest;
+					powermanager.onResume += AutomaticRestartRequest;
 					trayaccess.ManualPowerMode += ProcessController.CancelPowerControlEvent;
 					ProcessController.PowermodeExitWaitEvent += mainwindow.ExitWaitListHandler;
 				}
@@ -238,13 +259,11 @@ namespace TaskMaster
 		}
 		static void Setup()
 		{
+			if (ProcessMonitorEnabled)
+				processmanager = new ProcessManager();
+
 			if (MicrophoneMonitorEnabled)
 				micmonitor = new MicMonitor();
-
-			if (ProcessMonitorEnabled)
-			{
-				processmanager = new ProcessManager();
-			}
 
 			if (NetworkMonitorEnabled)
 			{
@@ -294,6 +313,11 @@ namespace TaskMaster
 				processmanager.onCPUSampling += powermanager.CPULoadEvent;
 		}
 
+		public static bool DebugPaths = false;
+		public static bool DebugFullScan = false;
+		public static bool DebugPower = false;
+		public static bool DebugNetMonitor = false;
+
 		public static bool CaseSensitive = false;
 
 		public static bool Trace = false;
@@ -325,6 +349,11 @@ namespace TaskMaster
 		public static int PathCacheLimit = 200;
 		public static int PathCacheMaxAge = 1800;
 
+		public static bool RestoreOriginal = false;
+		public static int OffFocusPriority = 1;
+		public static int OffFocusAffinity = 0;
+		public static bool OffFocusPowerCancel = true;
+
 		/// <summary>
 		/// Whether to use WMI queries for investigating failed path checks to determine if an application was launched in watched path.
 		/// </summary>
@@ -342,6 +371,8 @@ namespace TaskMaster
 		}
 
 		public static string ConfigVersion = "alpha.1";
+
+		public static bool RequestExitConfirm = true;
 
 		static string coreconfig = "Core.ini";
 		static void LoadCoreConfig()
@@ -393,8 +424,13 @@ namespace TaskMaster
 			compsec["Maintenance"].Comment = "Enable basic maintenance monitoring functionality.";
 			dirtyconfig |= modified;
 
-			var Verbosity = optsec.GetSetDefault("Verbosity", 0, out modified).IntValue;
-			optsec["Verbosity"].Comment = "0 = Information, 1 = Debug, 2 = Verbose/Trace, 3 = Excessive";
+			var qol = cfg["Quality of Life"];
+			RequestExitConfirm = qol.GetSetDefault("Confirm exit", true, out modified).BoolValue;
+			dirtyconfig |= modified;
+
+			var logsec = cfg["Logging"];
+			var Verbosity = logsec.GetSetDefault("Verbosity", 0, out modified).IntValue;
+			logsec["Verbosity"].Comment = "0 = Information, 1 = Debug, 2 = Verbose/Trace, 3 = Excessive";
 			switch (Verbosity)
 			{
 				default:
@@ -472,14 +508,21 @@ namespace TaskMaster
 
 			monitorCleanShutdown();
 
-			//SharpConfig.Section logsec = cfg["Logging"];
-
 			Log.Information("Verbosity: {Verbosity}", MemoryLog.LevelSwitch.MinimumLevel.ToString());
 			Log.Information("Self-optimize: {SelfOptimize}", (SelfOptimize ? "Enabled" : "Disabled"));
 			//Log.Information("Low memory mode: {LowMemory}", (LowMemory ? "Enabled." : "Disabled."));
 			Log.Information("WMI event watcher: {WMIPolling} (Rate: {WMIRate}s)", (WMIPolling ? "Enabled" : "Disabled"), WMIPollRate);
 			Log.Information("WMI queries: {WMIQueries}", (WMIQueries ? "Enabled" : "Disabled"));
 
+			var fgpausesec = cfg["Foreground Focus Lost"];
+			RestoreOriginal = fgpausesec.GetSetDefault("Restore original", false, out modified).BoolValue;
+			dirtyconfig |= modified;
+			OffFocusPriority = fgpausesec.GetSetDefault("Priority", 1, out modified).IntValue;
+			dirtyconfig |= modified;
+			OffFocusAffinity = fgpausesec.GetSetDefault("Affinity", 0, out modified).IntValue;
+			dirtyconfig |= modified;
+			OffFocusPowerCancel = fgpausesec.GetSetDefault("Power mode cancel", true, out modified).BoolValue;
+			dirtyconfig |= modified;
 
 			// PROTECT USERS FROM TOO HIGH PERMISSIONS
 			bool isadmin = IsAdministrator();
@@ -663,7 +706,7 @@ namespace TaskMaster
 					}
 					catch (Exception ex)
 					{
-						Log.Fatal(ex.Message);
+						Log.Fatal("{Type} : {Message}", ex.GetType().Name, ex.Message);
 						Log.Fatal(ex.StackTrace);
 						throw;
 					}
@@ -671,6 +714,7 @@ namespace TaskMaster
 					if (ComponentConfigurationDone == false)
 					{
 						singleton.ReleaseMutex();
+						Log.CloseAndFlush();
 						return;
 					}
 				}
@@ -680,7 +724,18 @@ namespace TaskMaster
 
 			LoadCoreConfig();
 
-			Setup();
+			try
+			{
+				Setup();
+			}
+			catch (Exception ex) // this seems to happen only when Avast cybersecurity is scanning TM
+			{
+				Log.Fatal("Exiting due to initialization failure.");
+				Log.Fatal("{Type} : {Message}", ex.GetType().Name, ex.Message);
+				singleton.ReleaseMutex();
+				Log.CloseAndFlush();
+				return;
+			}
 
 			// IS THIS OF ANY USE?
 			GC.Collect(GC.MaxGeneration, GCCollectionMode.Forced, true, true);
@@ -708,33 +763,53 @@ namespace TaskMaster
 			catch (Exception ex)
 			{
 				Log.Fatal("Unhandled exception! Dying.");
+				Log.Fatal("{Type} : {Message}", ex.GetType().Name, ex.Message);
 				Log.Fatal(ex.StackTrace);
+				// TODO: ACTUALLY DIE
 			}
-			finally
+
+			try
 			{
+				if (SelfOptimize)
+				{
+					var self = Process.GetCurrentProcess();
+					self.PriorityClass = ProcessPriorityClass.Normal;
+					try
+					{
+						ProcessController.SetIOPriority(self, ProcessController.PriorityTypes.PROCESS_MODE_BACKGROUND_END);
+					}
+					catch
+					{
+					}
+				}
+
+				Log.Information("Exiting...");
+
+				TrayAccess.onExit -= ExitRequest;
 				try
 				{
-					if (SelfOptimize)
-					{
-						var self = Process.GetCurrentProcess();
-						self.PriorityClass = ProcessPriorityClass.Normal;
-						try
-						{
-							ProcessController.SetIOPriority(self, ProcessController.PriorityTypes.PROCESS_MODE_BACKGROUND_END);
-						}
-						catch
-						{
-						}
-					}
-
-					Log.Information("Exiting...");
-
-					TrayAccess.onExit -= ExitRequest;
 					processmanager?.Dispose();
+				}
+				catch (Exception ex)
+				{
+					Log.Fatal("{Type} : {Message}", ex.GetType().Name, ex.Message);
+					Log.Fatal(ex.StackTrace);
+				}
+				try
+				{
 					powermanager?.Dispose();
-					if (PowerManagerEnabled)
-						processmanager.onCPUSampling -= powermanager.CPULoadEvent;
+				}
+				catch (Exception ex)
+				{
+					Log.Fatal("{Type} : {Message}", ex.GetType().Name, ex.Message);
+					Log.Fatal(ex.StackTrace);
+				}
 
+				if (PowerManagerEnabled)
+					processmanager.onCPUSampling -= powermanager.CPULoadEvent;
+
+				try
+				{
 					if (mainwindow != null)
 					{
 						mainwindow.rescanRequest -= processmanager.ProcessEverythingRequest;
@@ -743,43 +818,92 @@ namespace TaskMaster
 
 						if (TaskMaster.PagingEnabled)
 							mainwindow.pagingRequest -= processmanager.PageEverythingRequest;
-						mainwindow.FormClosing -= MainWindowClose;
+						mainwindow.FormClosed -= MainWindowClose;
 						MemoryLog.onNewEvent -= mainwindow.onNewLog;
 						TrayAccess.onExit -= mainwindow.ExitRequest;
 					}
-
-					micmonitor?.Dispose();
-					trayaccess?.Dispose();
-					netmonitor?.Dispose();
-					activeappmonitor?.Dispose();
-					mainwindow?.Dispose();
-					mainwindow = null; processmanager = null; micmonitor = null; trayaccess = null; netmonitor = null; activeappmonitor = null; powermanager = null;
 				}
 				catch (Exception ex)
 				{
-					Console.WriteLine(ex.Message);
-					Console.WriteLine(ex.StackTrace);
-					throw;
+					Log.Fatal("{Type} : {Message}", ex.GetType().Name, ex.Message);
+					Log.Fatal(ex.StackTrace);
 				}
 
-				Log.Information("WMI queries: {QueryTime:1}s [{QueryCount}]", Statistics.WMIquerytime, Statistics.WMIqueries);
-
-				//if (PathCacheLimit > 0)
-				//	ProcessManager.PathCacheStats();
-
-				//tmw.Dispose();//already disposed by App.Exit?
-				foreach (var dcfg in ConfigDirty)
+				try
 				{
-					if (dcfg.Value) saveConfig(dcfg.Key);
+					micmonitor?.Dispose();
+				}
+				catch (Exception ex)
+				{
+					Log.Fatal("{Type} : {Message}", ex.GetType().Name, ex.Message);
+					Log.Fatal(ex.StackTrace);
 				}
 
-				CleanShutdown();
+				try
+				{
+					trayaccess?.Dispose();
+				}
+				catch (Exception ex)
+				{
+					Log.Fatal("{Type} : {Message}", ex.GetType().Name, ex.Message);
+					Log.Fatal(ex.StackTrace);
+				}
 
-				singleton.ReleaseMutex();
+				try
+				{
+					netmonitor?.Dispose();
+				}
+				catch (Exception ex)
+				{
+					Log.Fatal("{Type} : {Message}", ex.GetType().Name, ex.Message);
+					Log.Fatal(ex.StackTrace);
+				}
 
-				Log.Information("TaskMaster! (#{ProcessID}) END! [Clean]", System.Diagnostics.Process.GetCurrentProcess().Id);
-				Log.CloseAndFlush();
+				try
+				{
+					activeappmonitor?.Dispose();
+				}
+				catch (Exception ex)
+				{
+					Log.Fatal("{Type} : {Message}", ex.GetType().Name, ex.Message);
+					Log.Fatal(ex.StackTrace);
+				}
+
+				try
+				{
+					mainwindow?.Dispose();
+				}
+				catch (Exception ex)
+				{
+					Log.Fatal("{Type} : {Message}", ex.GetType().Name, ex.Message);
+					Log.Fatal(ex.StackTrace);
+				}
+
+				mainwindow = null; processmanager = null; micmonitor = null; trayaccess = null; netmonitor = null; activeappmonitor = null; powermanager = null;
 			}
+			catch (Exception ex)
+			{
+				Log.Fatal("{Type} : {Message}", ex.GetType().Name, ex.Message);
+				Log.Fatal(ex.StackTrace);
+			}
+
+			Log.Information("WMI queries: {QueryTime:1}s [{QueryCount}]", Statistics.WMIquerytime, Statistics.WMIqueries);
+
+			//if (PathCacheLimit > 0)
+			//	ProcessManager.PathCacheStats();
+
+			//tmw.Dispose();//already disposed by App.Exit?
+			foreach (var dcfg in ConfigDirty)
+			{
+				if (dcfg.Value) saveConfig(dcfg.Key);
+			}
+
+			CleanShutdown();
+
+			singleton.ReleaseMutex();
+
+			Log.Information("TaskMaster! (#{ProcessID}) END! [Clean]", System.Diagnostics.Process.GetCurrentProcess().Id);
+			//Log.CloseAndFlush();
 
 			if (Restart) // happens only on power resume (waking from hibernation)
 			{

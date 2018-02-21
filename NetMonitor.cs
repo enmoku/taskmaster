@@ -23,6 +23,8 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
+using System.Windows;
+using System.Windows.Documents;
 
 namespace TaskMaster
 {
@@ -52,11 +54,36 @@ namespace TaskMaster
 		public event EventHandler<NetworkStatus> NetworkStatusChange;
 
 		string dnstestaddress = "www.google.com";
-		int sampleinterval = 15;
 
 		object StateLock = new object();
 
-		System.Timers.Timer sampleTimer = new System.Timers.Timer();
+		System.Timers.Timer deviceSampleTimer = new System.Timers.Timer();
+		int DeviceTimerInterval = 15 * 60;
+		System.Timers.Timer packletStatTimer = new System.Timers.Timer();
+		int PacketStatTimerInterval = 15;
+		public event EventHandler<NetDeviceTraffic> onSampling;
+
+		void LoadConfig()
+		{
+			var cfg = TaskMaster.loadConfig("Net.ini");
+
+			bool dirty = false;
+			bool dirtyconf = false;
+
+			var monsec = cfg["Monitor"];
+			dnstestaddress = monsec.GetSetDefault("DNS test", "www.google.com", out dirty).StringValue;
+			dirtyconf |= dirty;
+
+			var devsec = cfg["Devices"];
+			DeviceTimerInterval = devsec.GetSetDefault("Check frequency", 15, out dirty).IntValue.Constrain(1, 30) * 60;
+			dirtyconf |= dirty;
+
+			var pktsec = cfg["Traffic"];
+			PacketStatTimerInterval = pktsec.GetSetDefault("Sample rate", 15, out dirty).IntValue.Constrain(1, 60);
+			dirtyconf |= dirty;
+			if (dirtyconf)
+				TaskMaster.saveConfig(cfg);
+		}
 
 		public NetMonitor()
 		{
@@ -64,18 +91,7 @@ namespace TaskMaster
 
 			lastUptimeStart = DateTime.Now;
 
-			var cfg = TaskMaster.loadConfig("Net.ini");
-			SharpConfig.Section monsec = cfg["Monitor"];
-			int oldsettings = monsec?.SettingCount ?? 0;
-			bool dirty = false;
-			bool dirtyconf = false;
-			dnstestaddress = monsec.GetSetDefault("DNS test", "www.google.com", out dirty).StringValue;
-			dirtyconf |= dirty;
-			var smpsec = cfg["Sampler"];
-			sampleinterval = smpsec.GetSetDefault("Interval", 15, out dirty).IntValue;
-			dirtyconf |= dirty;
-			if ((oldsettings != (monsec?.SettingCount ?? 0)) || dirtyconf)
-				TaskMaster.saveConfig(cfg);
+			LoadConfig();
 
 			InterfaceInitialization();
 
@@ -85,9 +101,53 @@ namespace TaskMaster
 			LastChange.Enqueue(DateTime.MinValue);
 			LastChange.Enqueue(DateTime.MinValue);
 
-			sampleTimer.Interval = sampleinterval * 60000;
-			sampleTimer.Elapsed += Sample;
-			sampleTimer.Start();
+			deviceSampleTimer.Interval = DeviceTimerInterval * 60000;
+			deviceSampleTimer.Elapsed += SampleDeviceState;
+			deviceSampleTimer.Start();
+			PreviousInterfaceList = Interfaces();
+			AnalyzePacketBehaviour(this, null); // initialize, not really needed
+			packletStatTimer.Interval = PacketStatTimerInterval * 1000;
+			packletStatTimer.Elapsed += AnalyzePacketBehaviour;
+			packletStatTimer.Start();
+		}
+
+		int packetWarning = 0;
+		List<NetDevice> PreviousInterfaceList;
+		void AnalyzePacketBehaviour(object sender, EventArgs ev)
+		{
+			if (packetWarning > 0)
+				packetWarning--;
+
+			var ifaces = Interfaces();
+			if (ifaces.Count == PreviousInterfaceList.Count) // Crude, but whatever. Prone to false statistics.
+			{
+				for (int index = 0; index < ifaces.Count; index++)
+				{
+					long errors = (ifaces[index].Incoming.Errors - PreviousInterfaceList[index].Incoming.Errors)
+						+ (ifaces[index].Outgoing.Errors - PreviousInterfaceList[index].Outgoing.Errors);
+					long discards = (ifaces[index].Incoming.Discarded - PreviousInterfaceList[index].Incoming.Discarded)
+						+ (ifaces[index].Outgoing.Discarded - PreviousInterfaceList[index].Outgoing.Discarded);
+					long packets = (ifaces[index].Incoming.Unicast - PreviousInterfaceList[index].Incoming.Unicast)
+						+ (ifaces[index].Outgoing.Unicast - PreviousInterfaceList[index].Outgoing.Unicast);
+
+					//Console.WriteLine("{0} : Packets(+{1}), Errors(+{2}), Discarded(+{3})", ifaces[index].Name, packets, errors, discards);
+
+					if (errors > 0)
+					{
+						if (packetWarning == 0 || (packetWarning % PacketStatTimerInterval == 0))
+						{
+							packetWarning = 2;
+							Log.Warning("<Net Monitor> {Device} is suffering from traffic errors! (+{Rate} since last sample)", ifaces[index].Name, errors);
+						}
+						else
+							packetWarning++;
+					}
+					onSampling?.Invoke(this, new NetDeviceTraffic { Index = index, Traffic = new NetTraffic { Unicast = packets, Errors = errors, Discarded = discards } });
+				}
+			}
+			else
+				Console.WriteLine("Interface list changed.");
+			PreviousInterfaceList = ifaces;
 		}
 
 		TrayAccess tray;
@@ -142,10 +202,19 @@ namespace TaskMaster
 		void ReportCurrentUptime()
 		{
 			if (InternetAvailable)
-				Log.Verbose("Current internet uptime: {UpTime:N1} minute(s)", Uptime.TotalMinutes);
-			else if (InternetAvailable != InternetAvailableLast) // prevent spamming unavailable message
-				Log.Verbose("Current internet uptime: Unavailable; Internet down.");
-			InternetAvailableLast = InternetAvailable;
+			{
+				if (InternetAvailable != InternetAvailableLast) // prevent spamming available message
+				{
+					Log.Information("Internet available.");
+					//Log.Verbose("Current internet uptime: {UpTime:N1} minute(s)", Uptime.TotalMinutes);
+				}
+				else
+				{
+					if (InternetAvailable != InternetAvailableLast) // prevent spamming unavailable message
+						Log.Information("Current internet uptime: Unavailable; Internet down.");
+				}
+				InternetAvailableLast = InternetAvailable;
+			}
 		}
 
 		void ReportUptime()
@@ -172,14 +241,14 @@ namespace TaskMaster
 			ReportCurrentUptime();
 		}
 
-		public void Sample(object sender, EventArgs e)
+		public void SampleDeviceState(object sender, EventArgs e)
 		{
-			RecordSample(InternetAvailable, false);
+			RecordDeviceState(InternetAvailable, false);
 		}
 
 		bool lastOnlineState; // = false;
 		static int upstateTesting; // = 0;
-		void RecordSample(bool online_state, bool address_changed)
+		void RecordDeviceState(bool online_state, bool address_changed)
 		{
 			lock (StateLock)
 			{
@@ -283,7 +352,7 @@ namespace TaskMaster
 			else
 				InternetAvailable = false;
 
-			RecordSample(InternetAvailable, address_changed);
+			RecordDeviceState(InternetAvailable, address_changed);
 
 			if (oldInetAvailable != InternetAvailable)
 				Log.Information("Network status: {NetworkAvailable}, Internet status: {InternetAvailable}", (NetworkAvailable ? "Up" : "Down"), (InternetAvailable ? "Connected" : "Disconnected"));
@@ -331,34 +400,40 @@ namespace TaskMaster
 		}
 
 		int enumerating_inet; // = 0;
-							  /// <summary>
-							  /// Returns list of interfaces.
-							  /// * Device Name
-							  /// * Type
-							  /// * Status
-							  /// * Link Speed
-							  /// * IPv4 Address
-							  /// * IPv6 Address
-							  /// </summary>
-							  /// <returns>string[] { Device Name, Type, Status, Link Speed, IPv4 Address, IPv6 Address }</returns>
+
+		/// <summary>
+		/// Returns list of interfaces.
+		/// * Device Name
+		/// * Type
+		/// * Status
+		/// * Link Speed
+		/// * IPv4 Address
+		/// * IPv6 Address
+		/// </summary>
+		/// <returns>string[] { Device Name, Type, Status, Link Speed, IPv4 Address, IPv6 Address }</returns>
 		public List<NetDevice> Interfaces()
 		{
 			if (System.Threading.Interlocked.CompareExchange(ref enumerating_inet, 1, 0) == 1)
 				return null; // bail if we were already doing this
 
-			Log.Verbose("Enumerating network interfaces...");
+			if (TaskMaster.DebugNetMonitor)
+				Log.Verbose("Enumerating network interfaces...");
 
 			var ifacelist = new List<NetDevice>();
 			//var ifacelist = new List<string[]>();
 
+			int index = 0;
 			NetworkInterface[] adapters = NetworkInterface.GetAllNetworkInterfaces();
-			foreach (NetworkInterface n in adapters)
+			foreach (NetworkInterface dev in adapters)
 			{
-				if (n.NetworkInterfaceType == NetworkInterfaceType.Loopback || n.NetworkInterfaceType == NetworkInterfaceType.Tunnel)
+				int ti = index++;
+				if (dev.NetworkInterfaceType == NetworkInterfaceType.Loopback || dev.NetworkInterfaceType == NetworkInterfaceType.Tunnel)
 					continue;
 
+				var stats = dev.GetIPStatistics();
+
 				IPAddress _ipv4 = IPAddress.None, _ipv6 = IPAddress.None;
-				foreach (UnicastIPAddressInformation ip in n.GetIPProperties().UnicastAddresses)
+				foreach (UnicastIPAddressInformation ip in dev.GetIPProperties().UnicastAddresses)
 				{
 					// TODO: Maybe figure out better way and early bailout from the foreach
 					switch (ip.Address.AddressFamily)
@@ -372,17 +447,24 @@ namespace TaskMaster
 					}
 				}
 
-				ifacelist.Add(new NetDevice
+				var devi = new NetDevice
 				{
-					Name = n.Name,
-					Type = n.NetworkInterfaceType,
-					Status = n.OperationalStatus,
-					Speed = n.Speed,
+					Index = ti,
+					Name = dev.Name,
+					Type = dev.NetworkInterfaceType,
+					Status = dev.OperationalStatus,
+					Speed = dev.Speed,
 					IPv4Address = _ipv4,
-					IPv6Address = _ipv6
-				});
+					IPv6Address = _ipv6,
+				};
 
-				Log.Verbose("Interface: {InterfaceName}", n.Name);
+				devi.Incoming.From(stats, true);
+				devi.Outgoing.From(stats, false);
+				//devi.PrintStats();
+				ifacelist.Add(devi);
+
+				if (TaskMaster.DebugNetMonitor)
+					Log.Verbose("Interface: {InterfaceName}", dev.Name);
 			}
 
 			enumerating_inet = 0;

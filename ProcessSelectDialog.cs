@@ -46,7 +46,7 @@ namespace TaskMaster
 
 			Padding = new Padding(6);
 
-			Width = 180;
+			Width = 260;
 			Height = 100;
 
 			Text = "Choose Executable – " + System.Windows.Forms.Application.ProductName;
@@ -64,7 +64,9 @@ namespace TaskMaster
 			{
 				DropDownStyle = ComboBoxStyle.DropDown,
 				AutoCompleteMode = AutoCompleteMode.SuggestAppend,
-				Width = 160,
+				AutoSize = true,
+				Dock = DockStyle.Top,
+				//Width = 160,
 			};
 
 			var procs = System.Diagnostics.Process.GetProcesses();

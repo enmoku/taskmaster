@@ -43,6 +43,8 @@ namespace TaskMaster
 		//static Guid GUID_POWERSCHEME_PERSONALITY = new Guid("245d8541-3943-4422-b025-13A7-84F679B7");
 		static Guid GUID_POWERSCHEME_PERSONALITY = new Guid(0x245D8541, 0x3943, 0x4422, 0xB0, 0x25, 0x13, 0xA7, 0x84, 0xF6, 0x79, 0xB7);
 
+		long AutoAdjustCounter = 0;
+
 		public PowerManager()
 		{
 			RegisterPowerSettingNotification(Handle, ref GUID_POWERSCHEME_PERSONALITY, DEVICE_NOTIFY_WINDOW_HANDLE);
@@ -73,7 +75,6 @@ namespace TaskMaster
 			public const int Average = 1;
 			public const int Low = 2;
 			public const int Steady = 3;
-
 		}
 
 		public void CPULoadEvent(object sender, ProcessorEventArgs ev)
@@ -130,7 +131,8 @@ namespace TaskMaster
 
 					if (Reaction != Current && !ForcedMode && AutoAdjust)
 					{
-						Log.Verbose("<Power Mode> Auto-adjust: {Mode}", Reaction.ToString());
+						if (TaskMaster.DebugPower)
+							Log.Debug("<Power Mode> Auto-adjust: {Mode}", Reaction.ToString());
 						RequestMode(Reaction);
 						ev.Handled = true;
 					}
@@ -286,6 +288,8 @@ namespace TaskMaster
 			base.WndProc(ref m); // is this necessary
 		}
 
+		public static bool Manual { get; set; } = false;
+
 		public static string[] PowerModes { get; } = { "Power Saver", "Balanced", "High Performance", "Undefined" };
 
 		public static PowerMode GetModeByName(string name)
@@ -359,7 +363,8 @@ namespace TaskMaster
 					setMode(SavedMode);
 					ForcedMode = false;
 					SavedMode = PowerMode.Undefined;
-					Log.Verbose("<Power Mode> Restored to: {PowerMode}", Current.ToString());
+					if (TaskMaster.DebugPower)
+						Log.Debug("<Power Mode> Restored to: {PowerMode}", Current.ToString());
 				}
 			}
 		}
@@ -393,7 +398,7 @@ namespace TaskMaster
 
 		public static bool RequestMode(PowerMode mode)
 		{
-			if (!AutoAdjust) return false;
+			if (!AutoAdjust || Manual) return false;
 
 			lock (powerLock)
 			{
@@ -409,19 +414,21 @@ namespace TaskMaster
 
 		public static bool ForceMode(PowerMode mode)
 		{
+			if (Manual) return false;
+
 			lock (powerLock)
 			{
 				if (mode != Current)
 				{
 					setMode(mode);
-					Log.Verbose("Power mode forced to: {PowerMode}", Current);
+					if (TaskMaster.DebugPower)
+						Log.Debug("Power mode forced to: {PowerMode}", Current);
 					ForcedMode = true;
 					return true;
 				}
 				return false;
 			}
 		}
-
 
 		public static void setMode(PowerMode mode, bool verbose = true)
 		{

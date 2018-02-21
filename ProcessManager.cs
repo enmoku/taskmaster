@@ -32,6 +32,7 @@ using System.Diagnostics;
 using System.Linq;
 using Serilog;
 using System.Runtime.InteropServices;
+using System.Runtime.CompilerServices;
 namespace TaskMaster
 {
 	public class InstanceEventArgs : EventArgs
@@ -134,6 +135,54 @@ namespace TaskMaster
 			Log.Verbose("Path location complete.");
 		}
 
+		public async void FreeMemoryFor(string executable)
+		{
+			var procs = Process.GetProcessesByName(executable); // unnecessary maybe?
+			if (procs.Length == 0)
+			{
+				Log.Warning("{Exec} not found.", executable);
+				return;
+			}
+
+			long saved = 0;
+			var allprocs = Process.GetProcesses();
+			foreach (var prc in allprocs)
+			{
+				int pid = -1;
+				string name = null;
+				try
+				{
+					pid = prc.Id;
+					name = prc.ProcessName;
+				}
+				catch
+				{
+					continue;
+				}
+
+				if (IgnoreProcessID(pid) || IgnoreProcessName(name))
+					continue;
+
+				if (name.Equals(executable)) // ignore the one we're freeing stuff for
+					continue;
+
+				//  TODO: Add ignore other processes
+
+				try
+				{
+					long ns = prc.WorkingSet64;
+					EmptyWorkingSet(prc.Handle);
+					prc.Refresh();
+					long mns = (ns - prc.WorkingSet64);
+					saved += mns;
+				}
+				catch
+				{
+					continue;
+				}
+			}
+		}
+
 		public async void PageEverythingRequest(object sender, EventArgs e)
 		{
 			Log.Verbose("Paging requested.");
@@ -206,7 +255,8 @@ namespace TaskMaster
 
 		public void ProcessEverythingRequest(object sender, EventArgs e)
 		{
-			Log.Verbose("Rescan requested.");
+			if (TaskMaster.DebugFullScan)
+				Log.Verbose("Rescan requested.");
 			try
 			{
 				ProcessEverything();
@@ -214,7 +264,7 @@ namespace TaskMaster
 			catch (Exception ex)
 			{
 				Log.Warning("Scan everything failure.");
-				Log.Error(ex.Message);
+				Log.Error("{Type} : {Message}", ex.GetType().Name, ex.Message);
 				Log.Error(ex.StackTrace);
 				throw;
 			}
@@ -238,7 +288,8 @@ namespace TaskMaster
 
 			try
 			{
-				Log.Verbose("Processing everything.");
+				if (TaskMaster.DebugFullScan)
+					Log.Verbose("Processing everything.");
 
 				// TODO: Cache Pids of protected system services to skip them faster.
 
@@ -544,7 +595,7 @@ namespace TaskMaster
 				if (cnt.ExecutableFriendlyName != null)
 				{
 					if (IgnoreProcessName(cnt.ExecutableFriendlyName))
-						Log.Error("{Exec} in ignore list; all changes denied.");
+						Log.Error("{Exec} in ignore list; all changes denied.", cnt.ExecutableFriendlyName);
 					else if (ProtectedProcessName(cnt.ExecutableFriendlyName))
 						Log.Warning("{Exec} in protected list; priority changing denied.");
 				}
@@ -603,6 +654,51 @@ namespace TaskMaster
 			return TaskMaster.CaseSensitive ? str : str.ToLower();
 		}
 
+		object foreground_lock = new object();
+		Dictionary<int, BasicProcessInfo> ForegroundApps = new Dictionary<int, BasicProcessInfo>();
+		HashSet<int> ForegroundPids = new HashSet<int>();
+
+		int PreviousForegroundId = -1;
+		ProcessController PreviousForegroundController = null;
+		BasicProcessInfo PreviousForegroundInfo;
+		public void OnForegroundChanged(object sender, WindowChangedArgs ev)
+		{
+			if (PreviousForegroundId > 4 && PreviousForegroundId != ev.Id) // testing previous to current might be superfluous
+			{
+				PreviousForegroundController.Pause(PreviousForegroundInfo);
+			}
+
+			lock (foreground_lock)
+			{
+				ProcessController prc = null;
+				if (execontrol.TryGetValue(ev.Executable, out prc))
+				{
+					int pid = ev.Id;
+					if (ForegroundPids.Add(ev.Id))
+					{
+						var proc = Process.GetProcessById(ev.Id);
+						ForegroundApps.Add(ev.Id, new BasicProcessInfo { Id = ev.Id, Name = ev.Executable, Path = null, Process = proc });
+						proc.EnableRaisingEvents = true;
+						proc.Exited += (s, e) =>
+						{
+							lock (foreground_lock)
+							{
+								ForegroundApps.Remove(pid);
+								ForegroundPids.Remove(pid);
+							}
+						};
+						Log.Debug("FOREGROUND: ADDED: {Exec} ({Window})", ev.Executable, ev.Title);
+					}
+					else
+					{
+						Log.Debug("FOREGROUND: RE-ACTIVATED");
+					}
+
+
+				}
+			}
+		}
+
 		/// <summary>
 		/// Retrieve file path for the process.
 		/// Slow due to use of WMI.
@@ -659,7 +755,7 @@ namespace TaskMaster
 			}
 			catch
 			{
-				// NOP, don't caree
+				// NOP, don't care 
 			}
 
 			if (string.IsNullOrEmpty(info.Path))
@@ -695,7 +791,8 @@ namespace TaskMaster
 			{
 				if (info.Process.HasExited) // can throw
 				{
-					Log.Verbose("{ProcessName} (#{ProcessID}) has already exited.", info.Name, info.Id);
+					if (TaskMaster.ShowInaction)
+						Log.Verbose("{ProcessName} (#{ProcessID}) has already exited.", info.Name, info.Id);
 					return ProcessState.Invalid;
 				}
 			}
@@ -768,8 +865,8 @@ namespace TaskMaster
 					{
 						//if (cacheGet)
 						//	Log.Debug("[{FriendlyName}] {Exec} (#{Pid}) – PATH CACHE GET!! :D", pc.FriendlyName, name, pid);
-						Log.Verbose("[{PathFriendlyName}] matched at: {Path}", // TODO: de-ugly
-									pc.FriendlyName, info.Path);
+						if (TaskMaster.DebugPaths)
+							Log.Verbose("[{PathFriendlyName}] matched at: {Path}", pc.FriendlyName, info.Path);
 
 						try
 						{
@@ -906,7 +1003,8 @@ namespace TaskMaster
 
 			if (IgnoreProcessID(info.Id) || IgnoreProcessName(info.Name))
 			{
-				Log.Verbose("Ignoring process: {ProcessName} (#{ProcessID})", info.Name, info.Id);
+				if (TaskMaster.ShowInaction)
+					Log.Verbose("Ignoring process: {ProcessName} (#{ProcessID})", info.Name, info.Id);
 				return ProcessState.AccessDenied;
 			}
 
@@ -992,7 +1090,7 @@ namespace TaskMaster
 				catch (Exception ex)
 				{
 					Log.Warning("Error batch processing new instances.");
-					Log.Error(ex.Message);
+					Log.Error("{Type} : {Message}", ex.GetType().Name, ex.Message);
 					Log.Error(ex.StackTrace);
 					throw;
 				}
@@ -1066,7 +1164,7 @@ namespace TaskMaster
 			}
 			catch (Exception ex)
 			{
-				Log.Warning("{ExceptionSource} :: {ExceptionMessage}", ex.Source, ex.Message);
+				Log.Warning("{Type} : {Message}", ex.GetType().Name, ex.Message);
 				Log.Warning(ex.StackTrace);
 				Log.Warning("Failed to extract process ID from WMI event.");
 				throw;
@@ -1268,11 +1366,11 @@ namespace TaskMaster
 				//var query = new System.Management.EventQuery("SELECT TargetInstance FROM __InstanceCreationEvent WITHIN 5 WHERE TargetInstance ISA 'Win32_Process'");
 				var query = new System.Management.EventQuery(
 					"SELECT * FROM __InstanceCreationEvent WITHIN 5 WHERE TargetInstance ISA 'Win32_Process'");
-				watcher = new System.Management.ManagementEventWatcher(scope, query);
+				watcher = new System.Management.ManagementEventWatcher(scope, query); // Avast cybersecurity causes this to throw an exception
 			}
 			catch (Exception ex)
 			{
-				Log.Fatal(ex.Message);
+				Log.Fatal("{Type} : {Message}", ex.GetType().Name, ex.Message);
 				Log.Fatal(ex.StackTrace);
 				throw new InitFailure("WMI event watcher initialization failure");
 			}

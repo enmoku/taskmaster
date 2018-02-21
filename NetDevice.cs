@@ -26,16 +26,76 @@
 
 using System.Net;
 using System.Net.NetworkInformation;
+using System;
 
 namespace TaskMaster
 {
+	public struct NetDeviceTraffic
+	{
+		public int Index { get; set; }
+		public NetTraffic Traffic { get; set; }
+	}
+
+	public struct NetTraffic
+	{
+		/// <summary>
+		/// Unicast packets
+		/// </summary>
+		public long Unicast { get; set; }
+		/// <summary>
+		/// Broadcast and Multicast packets
+		/// </summary>
+		public long NonUnicast { get; set; }
+
+		public long Discarded { get; set; }
+		public long Errors { get; set; }
+
+		/// <summary>
+		/// Unknown packets, only for incoming data.
+		/// </summary>
+		public long Unknown { get; set; }
+
+		public void From(IPInterfaceStatistics stats, bool incoming = true)
+		{
+			if (incoming)
+			{
+				Unicast = stats.UnicastPacketsReceived;
+				NonUnicast = stats.NonUnicastPacketsReceived;
+				Discarded = stats.IncomingPacketsDiscarded;
+				Errors = stats.IncomingPacketsWithErrors;
+				Unknown = stats.IncomingUnknownProtocolPackets;
+			}
+			else
+			{
+				Unicast = stats.UnicastPacketsSent;
+				NonUnicast = stats.NonUnicastPacketsSent;
+				Discarded = stats.OutgoingPacketsDiscarded;
+				Errors = stats.OutgoingPacketsWithErrors;
+			}
+		}
+	}
+
 	public class NetDevice
 	{
+		public int Index { get; set; }
+
 		public string Name { get; set; }
 		public NetworkInterfaceType Type { get; set; }
 		public OperationalStatus Status { get; set; }
 		public long Speed { get; set; }
 		public IPAddress IPv4Address { get; set; }
 		public IPAddress IPv6Address { get; set; }
+
+		// Stats
+		public NetTraffic Outgoing;
+		public NetTraffic Incoming;
+
+		public void PrintStats()
+		{
+			Console.WriteLine(string.Format("Incoming: {0}(+{1}) Err({2}) Dis({3}) Unk({4})",
+											Incoming.Unicast, Incoming.NonUnicast, Incoming.Errors, Incoming.Discarded, Incoming.Unknown));
+			Console.WriteLine(string.Format("Outgoing: {0}(+{1}) Err({2}) Dis({3})",
+											Outgoing.Unicast, Outgoing.NonUnicast, Outgoing.Errors, Outgoing.Discarded));
+		}
 	}
 }
