@@ -29,6 +29,7 @@ using System.Runtime.InteropServices;
 using System.Windows.Forms;
 using Serilog;
 using Microsoft.Win32;
+using System.Diagnostics.Eventing.Reader;
 
 namespace TaskMaster
 {
@@ -129,7 +130,7 @@ namespace TaskMaster
 					else
 						Reaction = PowerMode.Balanced;
 
-					if (Reaction != Current && !ForcedMode && AutoAdjust)
+					if (Reaction != Current && Behaviour == PowerBehaviour.Auto)
 					{
 						if (TaskMaster.DebugPower)
 							Log.Debug("<Power Mode> Auto-adjust: {Mode}", Reaction.ToString());
@@ -156,9 +157,11 @@ namespace TaskMaster
 			var power = TaskMaster.cfg["Power"];
 			bool modified = false, tdirty = false;
 
-			AutoAdjust = power.GetSetDefault("Auto-adjust", false, out modified).BoolValue;
+			bool AutoAdjust = power.GetSetDefault("Auto-adjust", false, out modified).BoolValue;
 			power["Auto-adjust"].Comment = "Automatically adjust power mode based on the criteria here.";
 			tdirty |= modified;
+			if (AutoAdjust)
+				Behaviour = PowerBehaviour.Auto;
 
 			LowBackoffLevel = power.GetSetDefault("Low backoff level", 2, out modified).IntValue.Constrain(0, 5);
 			power["Low backoff level"].Comment = "Required number of consequent backoff reactions that is required before it actually triggers.";
@@ -208,10 +211,16 @@ namespace TaskMaster
 
 			tdirty |= modified;
 
-			Log.Information("Power Manager: Auto-adjust {State}", AutoAdjust ? "Enabled" : "Disabled");
+			LogState();
 
 			if (tdirty)
 				TaskMaster.MarkDirtyINI(TaskMaster.cfg);
+		}
+
+		public static void LogState()
+		{
+			Log.Information("<Power Mode> Behaviour: {State}",
+				(Behaviour == PowerBehaviour.Auto ? "Automatic" : Behaviour == PowerBehaviour.RuleBased ? "Rule-controlled" : "Manual"));
 		}
 
 		public int BackoffCounter { get; private set; } = 1;
@@ -281,14 +290,12 @@ namespace TaskMaster
 
 					onModeChange?.Invoke(this, new PowerModeEventArgs { OldMode = old, NewMode = Current });
 
-					Log.Verbose("Power plan changed to: {PlanName} ({PlanGuid})", Current.ToString(), newPersonality.ToString());
+					Log.Verbose("<Power Mode> Change detected: {PlanName} ({PlanGuid})", Current.ToString(), newPersonality.ToString());
 				}
 			}
 
 			base.WndProc(ref m); // is this necessary
 		}
-
-		public static bool Manual { get; set; } = false;
 
 		public static string[] PowerModes { get; } = { "Power Saver", "Balanced", "High Performance", "Undefined" };
 
@@ -329,17 +336,40 @@ namespace TaskMaster
 
 		public static event EventHandler<PowerModeEventArgs> onModeChange;
 
-		public static bool AutoMode(bool enabled = true)
+		public enum PowerBehaviour
 		{
-			AutoAdjust = enabled;
+			Auto,
+			RuleBased,
+			Manual
+		}
 
-			Log.Information("<Power Mode> Auto-adjust: {State}", (AutoAdjust ? "Enabled" : "Disabled"));
-			return AutoAdjust;
+		public static PowerBehaviour SetBehaviour(PowerBehaviour pb)
+		{
+			if (pb == Behaviour) return Behaviour; // this shouldn't happen
+
+			Behaviour = pb;
+			LogState();
+
+			// Following is pointless. We probably should signal behaviour changes.
+			if (Behaviour == PowerBehaviour.Auto)
+			{
+
+			}
+			else if (Behaviour == PowerBehaviour.RuleBased)
+			{
+
+			}
+			else
+			{
+
+			}
+
+			return Behaviour;
 		}
 
 		public static void SaveMode()
 		{
-			if (AutoAdjust) return;
+			if (Behaviour == PowerBehaviour.Auto) return;
 
 			if (SavedMode != PowerMode.Undefined) Log.Warning("<Power Mode> Saved mode is being overriden.");
 
@@ -350,7 +380,7 @@ namespace TaskMaster
 
 			if (SavedMode == PowerMode.Undefined)
 			{
-				Log.Warning("Failed to get current power plan, defafulting to balanced as restore option.");
+				Log.Warning("<Power Mode> Failed to get current mode, defafulting to balanced as restore option.");
 				SavedMode = PowerMode.Balanced;
 			}
 		}
@@ -363,7 +393,7 @@ namespace TaskMaster
 				{
 					ForcedMode = false;
 
-					if (AutoAdjust) return;
+					if (Behaviour == PowerBehaviour.Auto) return;
 
 					setMode(SavedMode);
 					SavedMode = PowerMode.Undefined;
@@ -399,11 +429,11 @@ namespace TaskMaster
 		public static object powerLock = new object();
 		public static object powerLockI = new object();
 
-		public static bool AutoAdjust { get; private set; } = false;
+		public static PowerBehaviour Behaviour { get; private set; } = PowerBehaviour.Manual;
 
 		public static bool RequestMode(PowerMode mode)
 		{
-			if (!AutoAdjust || Manual) return false;
+			if (Behaviour != PowerBehaviour.Auto) return false;
 
 			lock (powerLock)
 			{
@@ -419,7 +449,7 @@ namespace TaskMaster
 
 		public static bool ForceMode(PowerMode mode)
 		{
-			if (Manual) return false;
+			if (Behaviour == PowerBehaviour.Manual) return false;
 
 			lock (powerLock)
 			{
@@ -474,7 +504,7 @@ namespace TaskMaster
 					RestoreMode();
 					Log.Information("Power mode restored.");
 				}
-				else if (AutoAdjust)
+				else if (Behaviour == PowerBehaviour.Auto)
 					RequestMode(Original);
 			}
 

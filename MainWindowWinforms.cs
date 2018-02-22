@@ -25,9 +25,6 @@
 // THE SOFTWARE.
 
 using System.Diagnostics;
-using Serilog.Sinks.File;
-using System.Security.AccessControl;
-using System.Runtime.InteropServices;
 
 namespace TaskMaster
 {

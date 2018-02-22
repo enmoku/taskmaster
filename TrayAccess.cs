@@ -74,13 +74,15 @@ namespace TaskMaster
 
 			if (TaskMaster.PowerManagerEnabled)
 			{
-				power_auto = new ToolStripMenuItem("Auto", null, TogglePowerAuto);
-				power_auto.Checked = PowerManager.AutoAdjust;
+				power_auto = new ToolStripMenuItem("Auto", null, SetAutoPower);
+				power_auto.Checked = PowerManager.Behaviour == PowerManager.PowerBehaviour.Auto;
+				power_auto.CheckOnClick = true;
 
 				power_highperf = new ToolStripMenuItem("Performance", null, SetPowerPerformance);
 				power_balanced = new ToolStripMenuItem("Balanced", null, SetPowerBalanced);
 				power_saving = new ToolStripMenuItem("Power Saving", null, SetPowerSaving);
 				power_manual = new ToolStripMenuItem("Manual override", null, SetManualPower);
+				power_manual.CheckOnClick = true;
 			}
 			ToolStripMenuItem menu_restart = null;
 			menu_restart = new ToolStripMenuItem("Restart", null, (o, s) =>
@@ -135,9 +137,29 @@ namespace TaskMaster
 		public static event EventHandler onExit;
 		public event EventHandler ManualPowerMode;
 
-		void TogglePowerAuto(object sender, EventArgs ev)
+		void SetAutoPower(object sender, EventArgs ev)
 		{
-			PowerManager.AutoMode(power_auto.Checked = !power_auto.Checked);
+			if (power_auto.Checked)
+			{
+				PowerManager.SetBehaviour(PowerManager.PowerBehaviour.Auto);
+				power_manual.Checked = false;
+			}
+			else
+			{
+				PowerManager.SetBehaviour(PowerManager.PowerBehaviour.RuleBased);
+			}
+		}
+
+		void SetManualPower(object sender, EventArgs e)
+		{
+			if (power_manual.Checked)
+			{
+				PowerManager.SetBehaviour(PowerManager.PowerBehaviour.Manual);
+				power_auto.Checked = false;
+				ManualPowerMode?.Invoke(this, null);
+			}
+			else
+				PowerManager.SetBehaviour(PowerManager.PowerBehaviour.RuleBased);
 		}
 
 		void HighlightPowerModeEvent(object sender, PowerModeEventArgs ev)
@@ -169,17 +191,14 @@ namespace TaskMaster
 
 		void ResetPower(PowerManager.PowerMode mode)
 		{
-			power_auto.Checked = PowerManager.AutoMode(false);
+			PowerManager.SetBehaviour(PowerManager.PowerBehaviour.Manual);
+			power_manual.Checked = (PowerManager.Behaviour == PowerManager.PowerBehaviour.Manual);
+			power_auto.Checked = (PowerManager.Behaviour == PowerManager.PowerBehaviour.Auto);
 
 			ManualPowerMode?.Invoke(this, null);
 			PowerManager.RestoreMode();
 			PowerManager.setMode(mode);
 			HighlightPowerMode();
-		}
-
-		void SetManualPower(object sender, EventArgs e)
-		{
-			PowerManager.Manual = power_manual.Checked;
 		}
 
 		void SetPowerSaving(object sender, EventArgs e)
