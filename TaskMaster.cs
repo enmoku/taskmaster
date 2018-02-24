@@ -341,7 +341,7 @@ namespace TaskMaster
 		/// <value><c>true</c> if WMI queries are enabled; otherwise, <c>false</c>.</value>
 		public static bool WMIQueries { get; private set; } = false;
 		public static bool WMIPolling { get; private set; } = false;
-		public static int WMIPollRate { get; private set; } = 5;
+		public static int WMIPollDelay { get; private set; } = 5;
 
 		public static void MarkDirtyINI(SharpConfig.Configuration dirtiedcfg)
 		{
@@ -459,7 +459,7 @@ namespace TaskMaster
 			WMIPolling = perfsec.GetSetDefault("WMI event watcher", false, out modified).BoolValue;
 			perfsec["WMI event watcher"].Comment = "Use WMI to be notified of new processes starting.\nIf disabled, only rescanning everything will cause processes to be noticed.";
 			dirtyconfig |= modified;
-			WMIPollRate = perfsec.GetSetDefault("WMI poll delay", 5, out modified).IntValue.Constrain(1, 30);
+			WMIPollDelay = perfsec.GetSetDefault("WMI poll delay", 5, out modified).IntValue.Constrain(1, 30);
 			perfsec["WMI poll delay"].Comment = "WMI process watcher delay (in seconds).  Smaller gives better results but can inrease CPU usage. Accepted values: 1 to 30.";
 			dirtyconfig |= modified;
 
@@ -495,7 +495,7 @@ namespace TaskMaster
 			Log.Information("Verbosity: {Verbosity}", MemoryLog.LevelSwitch.MinimumLevel.ToString());
 			Log.Information("Self-optimize: {SelfOptimize}", (SelfOptimize ? "Enabled" : "Disabled"));
 			//Log.Information("Low memory mode: {LowMemory}", (LowMemory ? "Enabled." : "Disabled."));
-			Log.Information("WMI event watcher: {WMIPolling} (Rate: {WMIRate}s)", (WMIPolling ? "Enabled" : "Disabled"), WMIPollRate);
+			Log.Information("WMI event watcher: {WMIPolling} (Rate: {WMIRate}s)", (WMIPolling ? "Enabled" : "Disabled"), WMIPollDelay);
 			Log.Information("WMI queries: {WMIQueries}", (WMIQueries ? "Enabled" : "Disabled"));
 
 			var fgpausesec = cfg["Foreground Focus Lost"];

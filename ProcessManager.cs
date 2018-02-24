@@ -1371,7 +1371,7 @@ namespace TaskMaster
 
 				//var query = new System.Management.EventQuery("SELECT TargetInstance FROM __InstanceCreationEvent WITHIN 5 WHERE TargetInstance ISA 'Win32_Process'");
 				var query = new System.Management.EventQuery(
-					"SELECT * FROM __InstanceCreationEvent WITHIN 5 WHERE TargetInstance ISA 'Win32_Process'");
+					"SELECT * FROM __InstanceCreationEvent WITHIN " + TaskMaster.WMIPollDelay + " WHERE TargetInstance ISA 'Win32_Process'");
 				watcher = new System.Management.ManagementEventWatcher(scope, query); // Avast cybersecurity causes this to throw an exception
 			}
 			catch (Exception ex)
