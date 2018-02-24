@@ -33,6 +33,7 @@ using System.Linq;
 using Serilog;
 using System.Runtime.InteropServices;
 using System.Runtime.CompilerServices;
+using System.Windows.Forms;
 namespace TaskMaster
 {
 	public class InstanceEventArgs : EventArgs
@@ -133,6 +134,13 @@ namespace TaskMaster
 					pathinit = null;
 			}
 			Log.Verbose("Path location complete.");
+		}
+
+		ActiveAppMonitor activeappmonitor = null;
+		public void hookActiveAppMonitor(ref ActiveAppMonitor aamon)
+		{
+			activeappmonitor = aamon;
+			activeappmonitor.ActiveChanged += OnForegroundChanged;
 		}
 
 		public async void FreeMemoryFor(string executable)
@@ -349,7 +357,7 @@ namespace TaskMaster
 		public static DateTime LastRescan { get; private set; } = DateTime.MinValue;
 		static bool BatchProcessing; // = false;
 		static int BatchProcessingThreshold = 5;
-		static bool ControlChildren = false; // = false;
+		//static bool ControlChildren = false; // = false;
 		SharpConfig.Configuration stats;
 
 		static System.Timers.Timer RescanEverythingTimer = null;
@@ -361,8 +369,8 @@ namespace TaskMaster
 			var coreperf = TaskMaster.cfg["Performance"];
 
 			bool dirtyconfig = false, tdirty = false;
-			ControlChildren = coreperf.GetSetDefault("Child processes", false, out tdirty).BoolValue;
-			dirtyconfig |= tdirty;
+			//ControlChildren = coreperf.GetSetDefault("Child processes", false, out tdirty).BoolValue;
+			//dirtyconfig |= tdirty;
 			BatchProcessing = coreperf.GetSetDefault("Batch processing", false, out tdirty).BoolValue;
 			coreperf["Batch processing"].Comment = "Process management works in delayed batches instead of immediately.";
 			dirtyconfig |= tdirty;
@@ -420,7 +428,7 @@ namespace TaskMaster
 
 			if (dirtyconfig) TaskMaster.MarkDirtyINI(TaskMaster.cfg);
 
-			Log.Information("Child process monitoring: {ChildControl}", (ControlChildren ? "Enabled" : "Disabled"));
+			//Log.Information("Child process monitoring: {ChildControl}", (ControlChildren ? "Enabled" : "Disabled"));
 
 			// --------------------------------------------------------------------------------------------------------
 
@@ -508,14 +516,14 @@ namespace TaskMaster
 					Rescan = (section.TryGet("Rescan")?.IntValue ?? 0),
 					Path = (section.TryGet("Path")?.StringValue ?? null),
 					Subpath = (section.TryGet("Subpath")?.StringValue ?? null),
-					BackgroundIO = (section.TryGet("Background I/O")?.BoolValue ?? false), // Doesn't work
+					//BackgroundIO = (section.TryGet("Background I/O")?.BoolValue ?? false), // Doesn't work
 					ForegroundOnly = (section.TryGet("Foreground only")?.BoolValue ?? false),
 					Recheck = (section.TryGet("Recheck")?.IntValue ?? 0),
 					PowerPlan = pmode,
 					IgnoreList = (section.TryGet("Ignore")?.StringValueArray ?? null),
-					Children = (section.TryGet("Children")?.BoolValue ?? false),
-					ChildPriority = ProcessHelpers.IntToPriority(section.TryGet("Child priority")?.IntValue ?? prio),
-					ChildPriorityReduction = section.TryGet("Child priority reduction")?.BoolValue ?? false,
+					//Children = (section.TryGet("Children")?.BoolValue ?? false),
+					//ChildPriority = ProcessHelpers.IntToPriority(section.TryGet("Child priority")?.IntValue ?? prio),
+					//ChildPriorityReduction = section.TryGet("Child priority reduction")?.BoolValue ?? false,
 					AllowPaging = (section.TryGet("Allow paging")?.BoolValue ?? false),
 				};
 
@@ -527,7 +535,7 @@ namespace TaskMaster
 
 				dirtyconfig |= tdirty;
 
-				cnt.Children &= ControlChildren;
+				//cnt.Children &= ControlChildren;
 
 				Log.Verbose("[{FriendlyName}] Match: {MatchName}, {TargetPriority}, Mask:{Affinity}, Rescan: {Rescan}m, Recheck: {Recheck}s",
 							cnt.FriendlyName, (cnt.Executable ?? cnt.Path), cnt.Priority, cnt.Affinity, cnt.Rescan, cnt.Recheck);
@@ -911,6 +919,7 @@ namespace TaskMaster
 			return ProtectList.Contains(name, StringComparer.InvariantCultureIgnoreCase);
 		}
 
+		/*
 		void ChildController(BasicProcessInfo ci)
 		{
 			//await System.Threading.Tasks.Task.Yield();
@@ -992,6 +1001,7 @@ namespace TaskMaster
 			Statistics.Parentseektime += n.Elapsed.TotalSeconds;
 			Statistics.ParentSeeks += 1;
 		}
+		*/
 
 		ProcessState CheckProcess(BasicProcessInfo info, bool schedule_next = true)
 		{
@@ -1013,6 +1023,8 @@ namespace TaskMaster
 				Log.Warning("#{AppId} details unaccessible, ignored.", info.Id);
 				return ProcessState.AccessDenied;
 			}
+
+			if (info.Id == Process.GetCurrentProcess().Id) return ProcessState.OK; // IGNORE SELF
 
 			// TODO: check proc.processName for presence in images.
 			ProcessController pc;
@@ -1041,8 +1053,10 @@ namespace TaskMaster
 
 			if (state != ProcessState.Invalid) return state; // we don't care to process more
 
+			/*
 			if (ControlChildren) // this slows things down a lot it seems
 				ChildController(info);
+			*/
 
 			return ProcessState.Invalid;
 		}
@@ -1056,27 +1070,19 @@ namespace TaskMaster
 			public DateTime Start;
 		}
 
-		void Swap<T>(ref T a, ref T b)
-		{
-			T temp = a;
-			a = b;
-			b = temp;
-		}
-
-		object processListLock = new object();
+		object BatchProcessingLock = new object();
 		int processListLockRestart = 0;
-		List<BasicProcessInfo> processList = new List<BasicProcessInfo>();
-		System.Timers.Timer processListTimer = new System.Timers.Timer(1000 * 5);
-		void ProcessListTimerTick(object sender, EventArgs e)
+		List<BasicProcessInfo> ProcessBatch = new List<BasicProcessInfo>();
+		System.Timers.Timer BatchProcessingTimer = new System.Timers.Timer(1000 * 5);
+		void BatchProcessingTick(object sender, EventArgs e)
 		{
-			lock (processListLock)
+			lock (BatchProcessingLock)
 			{
-				if (processList.Count == 0)
+				if (ProcessBatch.Count == 0)
 				{
-					processListTimer.Stop();
-#if DEBUG
-					Log.Verbose("New instance timer stopped.");
-#endif
+					BatchProcessingTimer.Stop();
+					if (TaskMaster.DebugProcesses)
+						Log.Debug("New instance timer stopped.");
 				}
 			}
 
@@ -1100,11 +1106,11 @@ namespace TaskMaster
 		void NewInstanceBatchProcessing()
 		{
 			List<BasicProcessInfo> list = new List<BasicProcessInfo>();
-			lock (processListLock)
+			lock (BatchProcessingLock)
 			{
-				processListTimer.Stop();
+				BatchProcessingTimer.Stop();
 				processListLockRestart = 0;
-				Swap(ref list, ref processList);
+				Utility.Swap(ref list, ref ProcessBatch);
 			}
 
 			if (list.Count == 0) return;
@@ -1136,7 +1142,7 @@ namespace TaskMaster
 
 		public static int Handling { get; set; }
 
-		public static event EventHandler<InstanceEventArgs> onInstanceHandling;
+		public event EventHandler<InstanceEventArgs> onInstanceHandling;
 
 		// This needs to return faster
 		async void NewInstanceTriage(object sender, System.Management.EventArrivedEventArgs e)
@@ -1244,18 +1250,18 @@ namespace TaskMaster
 
 			if (BatchProcessing)
 			{
-				lock (processListLock)
+				lock (BatchProcessingLock)
 				{
-					processList.Add(info);
+					ProcessBatch.Add(info);
 
 					// Delay process timer a few times.
-					if (processListTimer.Enabled)
+					if (BatchProcessingTimer.Enabled)
 					{
 						processListLockRestart += 1;
 						if (processListLockRestart < BatchProcessingThreshold)
-							processListTimer.Stop();
+							BatchProcessingTimer.Stop();
 					}
-					processListTimer.Start();
+					BatchProcessingTimer.Start();
 					// DEBUG: Log.Debug("New instance timer [re]started.");
 				}
 			}
@@ -1381,8 +1387,8 @@ namespace TaskMaster
 
 				if (BatchProcessing)
 				{
-					processListTimer.Interval += BatchDelay; // 2.5s delay
-					processListTimer.Elapsed += ProcessListTimerTick;
+					BatchProcessingTimer.Interval += BatchDelay; // 2.5s delay
+					BatchProcessingTimer.Elapsed += BatchProcessingTick;
 				}
 
 				watcher.Stopped += (object sender, System.Management.StoppedEventArgs e) =>
@@ -1417,7 +1423,7 @@ namespace TaskMaster
 		{
 			Log.Verbose("Starting...");
 
-			Log.Information("Processor count: {ProcessorCount}", CPUCount);
+			Log.Information("CPU/Core count: {Cores}", CPUCount);
 
 			allCPUsMask = 1;
 			for (int i = 0; i < CPUCount - 1; i++)
@@ -1506,9 +1512,14 @@ namespace TaskMaster
 			{
 				Log.Verbose("Disposing process manager...");
 
+				if (activeappmonitor != null)
+				{
+					activeappmonitor.ActiveChanged -= OnForegroundChanged;
+					activeappmonitor = null;
+				}
 				if (RescanEverythingTimer != null)
 				{
-					RescanEverythingTimer.Stop();
+					RescanEverythingTimer.Stop(); // shouldn't be necessary
 					RescanEverythingTimer.Dispose();
 					RescanEverythingTimer = null;
 				}
@@ -1524,10 +1535,10 @@ namespace TaskMaster
 					rescanTimer.Stop();
 					rescanTimer = null;
 				}
-				if (processListTimer != null)
+				if (BatchProcessingTimer != null)
 				{
-					processListTimer.Stop();
-					processListTimer = null;
+					BatchProcessingTimer.Stop();
+					BatchProcessingTimer = null;
 				}
 
 				if (pathCache != null)
@@ -1543,17 +1554,11 @@ namespace TaskMaster
 					execontrol.Clear();
 					execontrol = null;
 				}
-				if (processList != null)
-				{
-					processList.Clear();
-					processList = null;
-				}
 				if (watchlist != null)
 				{
 					watchlist.Clear();
 					watchlist = null;
 				}
-
 				if (CPUCounter != null)
 				{
 					CPUCounter.Close(); // unnecessary?

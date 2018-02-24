@@ -60,6 +60,9 @@ namespace TaskMaster
 		}
 
 		public event EventHandler<ProcessorEventArgs> onAutoAdjust;
+		public event EventHandler<PowerModeEventArgs> onPlanChange;
+		public event EventHandler<PowerMode> onBehaviourChange;
+		public event EventHandler onBatteryResume;
 
 		PowerMode PreviousReaction = PowerMode.Balanced;
 
@@ -130,7 +133,7 @@ namespace TaskMaster
 					else
 						Reaction = PowerMode.Balanced;
 
-					if (Reaction != Current && Behaviour == PowerBehaviour.Auto)
+					if (Reaction != Current && !ForcedMode)
 					{
 						if (TaskMaster.DebugPower)
 							Log.Debug("<Power Mode> Auto-adjust: {Mode}", Reaction.ToString());
@@ -156,6 +159,10 @@ namespace TaskMaster
 		{
 			var power = TaskMaster.cfg["Power"];
 			bool modified = false, tdirty = false;
+
+			RestoreOriginal = power.GetSetDefault("Restore original", false, out modified).BoolValue;
+			power["Restore original"].Comment = "Restore original power mode instead of the one saved before changing it (only when changing with watchlist rules).";
+			tdirty |= modified;
 
 			bool AutoAdjust = power.GetSetDefault("Auto-adjust", false, out modified).BoolValue;
 			power["Auto-adjust"].Comment = "Automatically adjust power mode based on the criteria here.";
@@ -251,8 +258,6 @@ namespace TaskMaster
 			}
 		}
 
-		public event EventHandler onResume;
-
 		void BatteryChargingEvent(object sender, PowerModeChangedEventArgs ev)
 		{
 			switch (ev.Mode)
@@ -266,7 +271,7 @@ namespace TaskMaster
 					break;
 				case Microsoft.Win32.PowerModes.Resume:
 					Log.Information("Hibernation/Suspend end detected.");
-					onResume?.Invoke(this, null);
+					onBatteryResume?.Invoke(this, null);
 					// Invoke whatever is necessary to restore functionality after suspend breaking shit.
 					break;
 			}
@@ -288,7 +293,7 @@ namespace TaskMaster
 					else if (newPersonality == PowerSaver) { Current = PowerMode.PowerSaver; }
 					else { Current = PowerMode.Undefined; }
 
-					onModeChange?.Invoke(this, new PowerModeEventArgs { OldMode = old, NewMode = Current });
+					onPlanChange?.Invoke(this, new PowerModeEventArgs { OldMode = old, NewMode = Current });
 
 					Log.Verbose("<Power Mode> Change detected: {PlanName} ({PlanGuid})", Current.ToString(), newPersonality.ToString());
 				}
@@ -334,8 +339,6 @@ namespace TaskMaster
 		static Guid Balanced = new Guid("381b4222-f694-41f0-9685-ff5bb260df2e"); // SCHEME_BALANCED
 		static Guid PowerSaver = new Guid("a1841308-3541-4fab-bc81-f71556f20b4a"); // SCHEME_MAX
 
-		public static event EventHandler<PowerModeEventArgs> onModeChange;
-
 		public enum PowerBehaviour
 		{
 			Auto,
@@ -343,7 +346,7 @@ namespace TaskMaster
 			Manual
 		}
 
-		public static PowerBehaviour SetBehaviour(PowerBehaviour pb)
+		public PowerBehaviour SetBehaviour(PowerBehaviour pb)
 		{
 			if (pb == Behaviour) return Behaviour; // this shouldn't happen
 
@@ -359,9 +362,9 @@ namespace TaskMaster
 			{
 
 			}
-			else
+			else // MANUAL
 			{
-
+				ProcessController.CancelPowerControlEvent();
 			}
 
 			return Behaviour;
@@ -376,23 +379,30 @@ namespace TaskMaster
 			if (TaskMaster.DebugPower)
 				Log.Debug("<Power Mode> Saving current power mode for later restoration: {Mode}", Current.ToString());
 
-			SavedMode = Current;
-
-			if (SavedMode == PowerMode.Undefined)
+			lock (powerLock)
 			{
-				Log.Warning("<Power Mode> Failed to get current mode, defafulting to balanced as restore option.");
-				SavedMode = PowerMode.Balanced;
+
+				SavedMode = Current;
+
+				if (SavedMode == PowerMode.Undefined)
+				{
+					Log.Warning("<Power Mode> Failed to get current mode, defafulting to balanced as restore option.");
+					SavedMode = PowerMode.Balanced;
+				}
 			}
 		}
 
+		static bool RestoreOriginal = false;
 		public static void RestoreMode()
 		{
 			lock (powerLock)
 			{
-				if (SavedMode != PowerMode.Undefined)
-				{
-					ForcedMode = false;
+				if (RestoreOriginal)
+					SavedMode = Original;
 
+				ForcedMode = false;
+				if (SavedMode != PowerMode.Undefined && SavedMode != Current)
+				{
 					if (Behaviour == PowerBehaviour.Auto) return;
 
 					setMode(SavedMode);
@@ -429,7 +439,7 @@ namespace TaskMaster
 		public static object powerLock = new object();
 		public static object powerLockI = new object();
 
-		public static PowerBehaviour Behaviour { get; private set; } = PowerBehaviour.Manual;
+		public static PowerBehaviour Behaviour { get; private set; } = PowerBehaviour.RuleBased;
 
 		public static bool RequestMode(PowerMode mode)
 		{
@@ -499,13 +509,14 @@ namespace TaskMaster
 			{
 				Log.Verbose("Disposing power manager...");
 
+				if (RestoreOriginal)
+					SavedMode = Original;
+
 				if (SavedMode != PowerMode.Undefined)
-				{
 					RestoreMode();
-					Log.Information("Power mode restored.");
-				}
-				else if (Behaviour == PowerBehaviour.Auto)
-					RequestMode(Original);
+				else
+					setMode(Original, true);
+				Log.Information("Power mode restored.");
 			}
 
 			disposed = true;

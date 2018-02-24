@@ -57,6 +57,7 @@ using Serilog.Events;
 using TaskMaster.SerilogMemorySink;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using System.Security.Permissions;
 
 namespace TaskMaster
 {
@@ -191,73 +192,42 @@ namespace TaskMaster
 			if (mainwindow == null)
 			{
 				mainwindow = new MainWindow();
-				TrayAccess.onExit += mainwindow.ExitRequest;
+				mainwindow.FormClosed += MainWindowClose;
+
+				if (MaintenanceMonitorEnabled)
+					mainwindow.hookDiskManager(ref diskmanager);
+				if (ProcessMonitorEnabled)
+					mainwindow.hookProcessManager(ref processmanager);
 
 				trayaccess.RegisterMain(ref mainwindow);
 
 				if (MicrophoneMonitorEnabled)
-					mainwindow.setMicMonitor(micmonitor);
-
-				if (ProcessMonitorEnabled)
-					mainwindow.setProcControl(processmanager);
-
-				mainwindow.Tray = trayaccess;
+					mainwindow.hookMicMonitor(micmonitor);
 
 				mainwindow.FillLog();
-				MemoryLog.onNewEvent += mainwindow.onNewLog;
 
-				mainwindow.FormClosed += MainWindowClose;
+				if (NetworkMonitorEnabled)
+					mainwindow.hookNetMonitor(ref netmonitor);
+
+				if (ActiveAppMonitorEnabled)
+					mainwindow.hookActiveAppMonitor(ref activeappmonitor);
+
+				if (PowerManagerEnabled)
+				{
+					powermanager.onBatteryResume += AutomaticRestartRequest;
+
+					mainwindow.hookPowerManager(ref powermanager);
+					trayaccess.hookPowerManager(ref powermanager);
+				}
 
 				if (ProcessMonitorEnabled)
 				{
-					mainwindow.rescanRequest += processmanager.ProcessEverythingRequest;
-					if (PagingEnabled)
-						mainwindow.pagingRequest += processmanager.PageEverythingRequest;
+					trayaccess.hookProcessManager(ref processmanager);
 				}
-
-				if (NetworkMonitorEnabled)
-				{
-					mainwindow.setNetMonitor(ref netmonitor);
-				}
-
-				if (ActiveAppMonitorEnabled)
-				{
-					activeappmonitor = new ActiveAppMonitor();
-					//pmn.onAdjust += gmmon.SetupEventHookEvent; //??
-					activeappmonitor.ActiveChanged += mainwindow.OnActiveWindowChanged;
-					activeappmonitor.ActiveChanged += processmanager.OnForegroundChanged;
-				}
-
-				if (PowerManagerEnabled)
-				{
-					powermanager.onResume += AutomaticRestartRequest;
-					trayaccess.ManualPowerMode += ProcessController.CancelPowerControlEvent;
-					ProcessController.PowermodeExitWaitEvent += mainwindow.ExitWaitListHandler;
-				}
-
-				if (ProcessMonitorEnabled && PathCacheLimit > 0)
-				{
-					processmanager.PathCacheUpdate += mainwindow.PathCacheUpdate;
-					mainwindow.PathCacheUpdate(null, null); // populate the window
-				}
-
-				if (ProcessMonitorEnabled && PowerManagerEnabled)
-				{
-					var items = ProcessController.getWaitingExit();
-					foreach (var bu in items)
-					{
-						mainwindow.ExitWaitListHandler(null, new ProcessEventArgs() { Control = null, State = ProcessEventArgs.ProcessState.Starting, Info = bu });
-					}
-				}
-
-				if (PowerManagerEnabled && ProcessMonitorEnabled)
-					powermanager.onAutoAdjust += mainwindow.CPULoadHandler;
-
-				if (PowerManagerEnabled)
-					trayaccess.RescanRequest += processmanager.ProcessEverythingRequest;
 			}
 		}
-		static void Setup()
+
+		static void Setup()
 		{
 			if (ProcessMonitorEnabled)
 				processmanager = new ProcessManager();
@@ -275,7 +245,6 @@ namespace TaskMaster
 				powermanager = new PowerManager();
 
 			trayaccess = new TrayAccess();
-			TrayAccess.onExit += ExitRequest;
 
 			BuildMain();
 
@@ -286,10 +255,10 @@ namespace TaskMaster
 			if (SelfOptimize)
 			{
 				var self = System.Diagnostics.Process.GetCurrentProcess();
-				self.PriorityClass = System.Diagnostics.ProcessPriorityClass.Idle; // should never throw
-																				   // mask self to the last core
+				self.PriorityClass = SelfPriority; // should never throw
 				if (SelfAffinity < 0)
 				{
+					// mask self to the last core
 					int selfCPUmask = 1;
 					for (int i = 0; i < Environment.ProcessorCount - 1; i++)
 						selfCPUmask = (selfCPUmask << 1);
@@ -309,10 +278,21 @@ namespace TaskMaster
 			if (MaintenanceMonitorEnabled)
 				diskmanager = new DiskManager();
 
+			if (ActiveAppMonitorEnabled)
+			{
+				activeappmonitor = new ActiveAppMonitor();
+
+				if (ProcessMonitorEnabled)
+				{
+					processmanager.hookActiveAppMonitor(ref activeappmonitor);
+				}
+			}
+
 			if (PowerManagerEnabled && ProcessMonitorEnabled)
 				processmanager.onCPUSampling += powermanager.CPULoadEvent;
 		}
 
+		public static bool DebugProcesses = false;
 		public static bool DebugPaths = false;
 		public static bool DebugFullScan = false;
 		public static bool DebugPower = false;
@@ -336,6 +316,7 @@ namespace TaskMaster
 		public static bool ShowOnStart { get; private set; } = true;
 
 		public static bool SelfOptimize { get; private set; } = true;
+		public static ProcessPriorityClass SelfPriority { get; private set; } = ProcessPriorityClass.BelowNormal;
 		public static bool SelfOptimizeBGIO { get; private set; } = false;
 		public static int SelfAffinity { get; private set; } = -1;
 
@@ -462,11 +443,14 @@ namespace TaskMaster
 			// [Performance]
 			SelfOptimize = perfsec.GetSetDefault("Self-optimize", true, out modified).BoolValue;
 			dirtyconfig |= modified;
+			SelfPriority = ProcessHelpers.IntToPriority(perfsec.GetSetDefault("Self-priority", 1, out modified).IntValue.Constrain(0, 2));
+			perfsec["Self-priority"].Comment = "Process priority to set for TM itself. Restricted to 0 (Low) to 2 (Normal).";
+			dirtyconfig |= modified;
 			SelfAffinity = perfsec.GetSetDefault("Self-affinity", -1, out modified).IntValue;
 			perfsec["Self-affinity"].Comment = "Core mask as integer. 0 is for default OS control. -1 is for last core. Limiting to single core recommended.";
 			dirtyconfig |= modified;
 			SelfOptimizeBGIO = perfsec.GetSetDefault("Background I/O mode", false, out modified).BoolValue;
-			perfsec["Background I/O mode"].Comment = "Sets own priority exceptionally low. Warning: This can make TM's UI quite unresponsive.";
+			perfsec["Background I/O mode"].Comment = "Sets own priority exceptionally low. Warning: This can make TM's UI and functionality quite unresponsive.";
 			dirtyconfig |= modified;
 
 			WMIQueries = perfsec.GetSetDefault("WMI queries", true, out modified).BoolValue;
@@ -475,8 +459,8 @@ namespace TaskMaster
 			WMIPolling = perfsec.GetSetDefault("WMI event watcher", false, out modified).BoolValue;
 			perfsec["WMI event watcher"].Comment = "Use WMI to be notified of new processes starting.\nIf disabled, only rescanning everything will cause processes to be noticed.";
 			dirtyconfig |= modified;
-			WMIPollRate = perfsec.GetSetDefault("WMI poll rate", 5, out modified).IntValue.Constrain(1, 30);
-			perfsec["WMI poll rate"].Comment = "Rate at which WMI process watcher is polled. There's very little point for lower values.";
+			WMIPollRate = perfsec.GetSetDefault("WMI poll delay", 5, out modified).IntValue.Constrain(1, 30);
+			perfsec["WMI poll delay"].Comment = "WMI process watcher delay (in seconds).  Smaller gives better results but can inrease CPU usage. Accepted values: 1 to 30.";
 			dirtyconfig |= modified;
 
 			perfsec.GetSetDefault("Child processes", false, out modified); // unused here
@@ -692,17 +676,17 @@ namespace TaskMaster
 			Log.Information("TaskMaster! (#{ProcessID}) – Version: {Version} – START!",
 							Process.GetCurrentProcess().Id, System.Reflection.Assembly.GetExecutingAssembly().GetName().Version);
 
-			{
+			{ // INITIAL CONFIGURATIONN
 				var tcfg = loadConfig("Core.ini");
 				string sec = tcfg.TryGet("Core")?.TryGet("Version")?.StringValue ?? null;
 				if (sec == null || sec != ConfigVersion)
 				{
 					try
 					{
-						var iconf = new InitialConfigurationWindow();
-						System.Windows.Forms.Application.Run(iconf);
-						iconf.Dispose();
-						iconf = null;
+						var initialconfig = new InitialConfigurationWindow();
+						System.Windows.Forms.Application.Run(initialconfig);
+						initialconfig.Dispose();
+						initialconfig = null;
 					}
 					catch (Exception ex)
 					{
@@ -785,7 +769,19 @@ namespace TaskMaster
 
 				Log.Information("Exiting...");
 
-				TrayAccess.onExit -= ExitRequest;
+				if (PowerManagerEnabled)
+					processmanager.onCPUSampling -= powermanager.CPULoadEvent;
+				try
+				{
+					if (mainwindow != null)
+						mainwindow.FormClosed -= MainWindowClose;
+				}
+				catch (Exception ex)
+				{
+					Log.Fatal("{Type} : {Message}", ex.GetType().Name, ex.Message);
+					Log.Fatal(ex.StackTrace);
+				}
+
 				try
 				{
 					processmanager?.Dispose();
@@ -798,30 +794,6 @@ namespace TaskMaster
 				try
 				{
 					powermanager?.Dispose();
-				}
-				catch (Exception ex)
-				{
-					Log.Fatal("{Type} : {Message}", ex.GetType().Name, ex.Message);
-					Log.Fatal(ex.StackTrace);
-				}
-
-				if (PowerManagerEnabled)
-					processmanager.onCPUSampling -= powermanager.CPULoadEvent;
-
-				try
-				{
-					if (mainwindow != null)
-					{
-						mainwindow.rescanRequest -= processmanager.ProcessEverythingRequest;
-						if (powermanager != null)
-							powermanager.onAutoAdjust -= mainwindow.CPULoadHandler;
-
-						if (TaskMaster.PagingEnabled)
-							mainwindow.pagingRequest -= processmanager.PageEverythingRequest;
-						mainwindow.FormClosed -= MainWindowClose;
-						MemoryLog.onNewEvent -= mainwindow.onNewLog;
-						TrayAccess.onExit -= mainwindow.ExitRequest;
-					}
 				}
 				catch (Exception ex)
 				{
@@ -887,7 +859,7 @@ namespace TaskMaster
 				Log.Fatal(ex.StackTrace);
 			}
 
-			Log.Information("WMI queries: {QueryTime:1}s [{QueryCount}]", Statistics.WMIquerytime, Statistics.WMIqueries);
+			Log.Information("WMI queries: {QueryTime}s [{QueryCount}]", string.Format("{0:N2}", Statistics.WMIquerytime), Statistics.WMIqueries);
 
 			//if (PathCacheLimit > 0)
 			//	ProcessManager.PathCacheStats();

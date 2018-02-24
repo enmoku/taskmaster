@@ -47,6 +47,103 @@ namespace TaskMaster
 	/// </summary>
 	public class ProcessController : IDisposable
 	{
+		/// <summary>
+		/// Human-readable friendly name for the process.
+		/// </summary>
+		public string FriendlyName { get; set; } = null;
+
+		string p_Executable = null;
+		/// <summary>
+		/// Executable filename related to this.
+		/// </summary>
+		public string Executable
+		{
+			get
+			{
+				return p_Executable;
+			}
+			set
+			{
+				p_Executable = value;
+				ExecutableFriendlyName = System.IO.Path.GetFileNameWithoutExtension(value);
+			}
+		}
+
+		public string Subpath { get; set; } = null;
+		public string Path { get; set; } = null;
+
+		public string[] IgnoreList { get; set; } = null;
+
+		/*
+		/// <summary>
+		/// Determines if the process I/O is to be set background.
+		/// </summary>
+		/// <value><c>true</c> if background process; otherwise, <c>false</c>.</value>
+		public bool BackgroundIO { get; set; } = false;
+		*/
+
+		/// <summary>
+		/// Determines if the values are only maintained when the app is in foreground.
+		/// </summary>
+		/// <value><c>true</c> if foreground; otherwise, <c>false</c>.</value>
+		public bool ForegroundOnly { get; set; } = false;
+
+		/// <summary>
+		/// Target priority class for the process.
+		/// </summary>
+		public System.Diagnostics.ProcessPriorityClass Priority = System.Diagnostics.ProcessPriorityClass.Normal;
+
+		/// <summary>
+		/// CPU core affinity.
+		/// </summary>
+		public IntPtr Affinity = new IntPtr(ProcessManager.allCPUsMask);
+
+		/// <summary>
+		/// The power plan.
+		/// </summary>
+		public PowerManager.PowerMode PowerPlan = PowerManager.PowerMode.Undefined;
+
+		/// <summary>
+		/// Allow priority decrease.
+		/// </summary>
+		public bool Decrease { get; set; } = true;
+		/// <summary>
+		/// Allow priority increase.
+		/// </summary>
+		public bool Increase { get; set; } = true;
+
+		int p_Recheck = 0;
+		public int Recheck
+		{
+			get
+			{
+				return p_Recheck;
+			}
+			set
+			{
+				p_Recheck = value.Min(0).Constrain(0, 300);
+			}
+		}
+
+		public bool AllowPaging = false;
+
+		int p_Rescan;
+		/// <summary>
+		/// Delay in minutes before we try to use Scan again.
+		/// </summary>
+		public int Rescan
+		{
+			get { return p_Rescan; }
+			set { p_Rescan = value.Constrain(0, 300); }
+		}
+
+		string p_ExecutableFriendlyName = null;
+		/// <summary>
+		/// Frienly executable name as required by various System.Process functions.
+		/// Same as <see cref="T:TaskMaster.ProcessControl.Executable"/> but with the extension missing.
+		/// </summary>
+		public string ExecutableFriendlyName { get; set; } = null;
+
 		public ProcessController(string name, ProcessPriorityClass priority, int affinity, string path = null)
 		{
 			FriendlyName = name;
@@ -87,39 +184,6 @@ namespace TaskMaster
 				PowerManager.RestoreMode();
 		}
 
-		string p_executable = null;
-		/// <summary>
-		/// Executable filename related to this.
-		/// </summary>
-		public string Executable
-		{
-			get
-			{
-				return p_executable;
-			}
-			set
-			{
-				p_executable = value;
-				ExecutableFriendlyName = System.IO.Path.GetFileNameWithoutExtension(value);
-			}
-		}
-
-		/// <summary>
-		/// Frienly executable name as required by various System.Process functions.
-		/// Same as <see cref="T:TaskMaster.ProcessControl.Executable"/> but with the extension missing.
-		/// </summary>
-		public string ExecutableFriendlyName { get; set; } = null;
-
-		/// <summary>
-		/// Human-readable friendly name for the process.
-		/// </summary>
-		public string FriendlyName { get; set; } = null;
-
-		public string Subpath { get; set; } = null;
-		public string Path { get; set; } = null;
-
-		public string[] IgnoreList { get; set; } = null;
-
 		/// <summary>
 		/// How many times we've touched associated processes.
 		/// </summary>
@@ -133,70 +197,11 @@ namespace TaskMaster
 		/// </summary>
 		public DateTime LastTouch { get; set; } = DateTime.MinValue;
 
-		/// <summary>
-		/// Determines if the process I/O is to be set background.
-		/// </summary>
-		/// <value><c>true</c> if background process; otherwise, <c>false</c>.</value>
-		public bool BackgroundIO { get; set; } = false;
-
-		/// <summary>
-		/// Determines if the values are only maintained when the app is in foreground.
-		/// </summary>
-		/// <value><c>true</c> if foreground; otherwise, <c>false</c>.</value>
-		public bool ForegroundOnly { get; set; } = false;
-
-		/// <summary>
-		/// Target priority class for the process.
-		/// </summary>
-		public System.Diagnostics.ProcessPriorityClass Priority = System.Diagnostics.ProcessPriorityClass.Normal;
-
-		/// <summary>
-		/// CPU core affinity.
-		/// </summary>
-		public IntPtr Affinity = new IntPtr(ProcessManager.allCPUsMask);
-
-		/// <summary>
-		/// The power plan.
-		/// </summary>
-		public PowerManager.PowerMode PowerPlan = PowerManager.PowerMode.Undefined;
-
-		/// <summary>
-		/// Allow priority decrease.
-		/// </summary>
-		public bool Decrease { get; set; } = true;
-		/// <summary>
-		/// Allow priority increase.
-		/// </summary>
-		public bool Increase { get; set; } = true;
-
-		int p_recheck = 0;
-		public int Recheck
-		{
-			get
-			{
-				return p_recheck;
-			}
-			set
-			{
-				p_recheck = value >= 0 ? value : 0;
-			}
-		}
-
+		/*
 		public bool Children = false;
 		public ProcessPriorityClass ChildPriority = ProcessPriorityClass.Normal;
 		public bool ChildPriorityReduction = false;
-
-		public bool AllowPaging = false;
-
-		int p_rescan;
-		/// <summary>
-		/// Delay in minutes before we try to use Scan again.
-		/// </summary>
-		public int Rescan
-		{
-			get { return p_rescan; }
-			set { p_rescan = value >= 0 ? value : 0; }
-		}
+		*/
 
 		// -----------------------------------------------
 
@@ -223,7 +228,7 @@ namespace TaskMaster
 			return waitingExit.Values.ToArray();
 		}
 
-		public static void CancelPowerControlEvent(object sender, EventArgs ev)
+		public static void CancelPowerControlEvent()
 		{
 			lock (waitingExitLock)
 			{
@@ -233,7 +238,7 @@ namespace TaskMaster
 				foreach (var bu in waitingExit)
 				{
 					bu.Value.Process.EnableRaisingEvents = false;
-					PowermodeExitWaitEvent?.Invoke(sender, new ProcessEventArgs() { Control = null, Info = bu.Value, State = ProcessEventArgs.ProcessState.Cancel });
+					PowermodeExitWaitEvent?.Invoke(null, new ProcessEventArgs() { Control = null, Info = bu.Value, State = ProcessEventArgs.ProcessState.Cancel });
 				}
 				waitingExit.Clear();
 				waitingExitPids.Clear();
@@ -288,23 +293,19 @@ namespace TaskMaster
 								//await Task.Delay(ProcessManager.PowerdownDelay);
 								await Task.Yield();
 
-								waitingExit.Remove(info.Id);
-								waitingExitPids.Remove(info.Id);
-
-								if (waitingExit.Count == 0)
+								lock (waitingExitLock)
 								{
-									Log.Information("{Process} (#{Pid}) exited; restoring normal power.", name, pid);
-									//Log.Debug("POWER MODE: '{ProcessName}' exited; restoring normal functionality.", name);
-									PowerManager.RestoreMode();
-								}
-								else
-								{
-									Log.Information("{Exec} (#{Pid}) exited; power mode still requested by {Num} proceses.", name, pid, waitingExit.Count);
-									//Log.Debug("POWER MODE: {0} processes still wanting higher power mode.", waitingExit.Count);
-									//List<string> names = new List<string>();
-									//foreach (var b in waitingExit.Values)
-									//	names.Add(b.Name);
-									//Log.Debug("POWER MODE WAIT LIST: " + string.Join(", ", names));
+									waitingExit.Remove(info.Id);
+									waitingExitPids.Remove(info.Id);
+									if (waitingExit.Count == 0)
+									{
+										Log.Information("{Process} (#{Pid}) exited; restoring normal power.", name, pid);
+										PowerManager.RestoreMode();
+									}
+									else
+									{
+										Log.Information("{Exec} (#{Pid}) exited; power mode still requested by {Num} proceses.", name, pid, waitingExit.Count);
+									}
 								}
 							}
 							catch (Exception ex)
@@ -319,7 +320,8 @@ namespace TaskMaster
 						if (PowerManager.Current != PowerPlan)
 						{
 							Log.Information("[{FriendlyName}] Upgrading power mode for '{Exec}' (#{Pid})", FriendlyName, info.Name, info.Id);
-							Log.Verbose("Power mode upgrading to: {PowerPlan}", PowerPlan);
+							if (TaskMaster.DebugPower)
+								Log.Debug("Power mode upgrading to: {PowerPlan}", PowerPlan);
 							PowerManager.ForceMode(PowerPlan);
 						}
 					}
@@ -343,10 +345,13 @@ namespace TaskMaster
 			REALTIME_PRIORITY_CLASS = 0x00000100
 		}
 
+		/*
+		// Windows doesn't allow setting this for other processes
 		bool SetBackground(Process process)
 		{
 			return SetIOPriority(process, PriorityTypes.PROCESS_MODE_BACKGROUND_BEGIN);
 		}
+		*/
 
 		public static bool SetIOPriority(Process process, PriorityTypes priority)
 		{
@@ -473,6 +478,7 @@ namespace TaskMaster
 				Log.Warning("[{FriendlyName}] {Exec} (#{Pid}) failed to set process affinity.", FriendlyName, info.Name, info.Id);
 			}
 
+			/*
 			if (BackgroundIO)
 			{
 				try
@@ -490,6 +496,7 @@ namespace TaskMaster
 				if (mBGIO == false)
 					Log.Warning("[{FriendlyName}] {Exec} (#{Pid}) Failed to set background I/O mode.", FriendlyName, info.Name, info.Id);
 			}
+			*/
 
 			PowerManager.PowerMode oldPP = PowerManager.Current;
 			setPowerPlan(info);

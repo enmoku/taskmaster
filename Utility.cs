@@ -25,10 +25,7 @@
 // THE SOFTWARE.
 
 using System;
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.Net;
-using System.Net.NetworkInformation;
 using System.Runtime.CompilerServices;
 
 namespace TaskMaster
@@ -56,14 +53,6 @@ namespace TaskMaster
 		}
 	}
 
-	public enum OpStatus
-	{
-		Done,
-		Retry,
-		NoRetry,
-		Fail
-	}
-
 	public enum Timescale
 	{
 		Seconds,
@@ -73,6 +62,13 @@ namespace TaskMaster
 
 	public static class Utility
 	{
+		public static void Swap<T>(ref T a, ref T b)
+		{
+			T temp = a;
+			a = b;
+			b = temp;
+		}
+
 		public static string TimescaleString(Timescale t)
 		{
 			switch (t)
@@ -129,46 +125,6 @@ namespace TaskMaster
 		public static void Log(string text, [CallerFilePath] string file = "", [CallerMemberName] string member = "", [CallerLineNumber] int line = 0)
 		{
 			Console.WriteLine("{0}_{1}({2}): {3}", System.IO.Path.GetFileName(file), member, line, text);
-		}
-	}
-
-	public static class TypeExtensions
-	{
-		// Core Type extensions
-		public static int Limit(this int value, int InclusiveMinimum, int InclusiveMaximum)
-		{
-			if (value < InclusiveMinimum) { return InclusiveMinimum; }
-			if (value > InclusiveMaximum) { return InclusiveMaximum; }
-			return value;
-		}
-
-		public static int Min(this int value, int Minimum)
-		{
-			if (value < Minimum) { return Minimum; }
-			return value;
-		}
-
-		public static IPAddress GetAddress(this NetworkInterface iface)
-		{
-			Debug.Assert(iface != null);
-
-			return GetAddresses(iface)[0] ?? IPAddress.None;
-		}
-
-		public static IPAddress[] GetAddresses(this NetworkInterface iface)
-		{
-			Debug.Assert(iface != null);
-
-			if (iface.NetworkInterfaceType == NetworkInterfaceType.Loopback || iface.NetworkInterfaceType == NetworkInterfaceType.Tunnel)
-				return null;
-
-			var ipa = new List<IPAddress>(2);
-			foreach (UnicastIPAddressInformation ip in iface.GetIPProperties().UnicastAddresses)
-			{
-				ipa.Add(ip.Address);
-			}
-
-			return ipa.ToArray();
 		}
 	}
 }

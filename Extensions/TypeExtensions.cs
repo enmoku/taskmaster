@@ -25,14 +25,55 @@
 // THE SOFTWARE.
 
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
+using System.Net;
+using System.Net.NetworkInformation;
+
 namespace TaskMaster
 {
-	static public class IntExtensions
+	static public class CoreTypeExtensions
 	{
-		public static int Constrain(this int i, int min, int max)
+		// Core Type extension
+		/// <summary>
+		/// int.Constrain(minimum, maximum)
+		/// </summary>
+		public static int Constrain(this int value, int InclusiveMinimum, int InclusiveMaximum)
 		{
-			return (i < min) ? min : ((i > max) ? max : i);
+			return value.Min(InclusiveMinimum).Max(InclusiveMaximum);
+		}
+
+		public static int Min(this int value, int Minimum)
+		{
+			return value < Minimum ? Minimum : value;
+		}
+
+		public static int Max(this int value, int Maximum)
+		{
+			return value > Maximum ? Maximum : value;
+		}
+
+		public static IPAddress GetAddress(this NetworkInterface iface)
+		{
+			Debug.Assert(iface != null);
+
+			return GetAddresses(iface)[0] ?? IPAddress.None;
+		}
+
+		public static IPAddress[] GetAddresses(this NetworkInterface iface)
+		{
+			Debug.Assert(iface != null);
+
+			if (iface.NetworkInterfaceType == NetworkInterfaceType.Loopback || iface.NetworkInterfaceType == NetworkInterfaceType.Tunnel)
+				return null;
+
+			var ipa = new List<IPAddress>(2);
+			foreach (UnicastIPAddressInformation ip in iface.GetIPProperties().UnicastAddresses)
+			{
+				ipa.Add(ip.Address);
+			}
+
+			return ipa.ToArray();
 		}
 	}
 

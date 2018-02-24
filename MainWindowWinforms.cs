@@ -25,6 +25,7 @@
 // THE SOFTWARE.
 
 using System.Diagnostics;
+using System.ComponentModel;
 
 namespace TaskMaster
 {
@@ -111,9 +112,16 @@ namespace TaskMaster
 			//AutoSize = true;
 		}
 
+		// HOOKS
+		MicMonitor micmon = null;
+		DiskManager diskmanager = null;
+		ProcessManager processmanager = null;
+		ActiveAppMonitor activeappmonitor = null;
+		PowerManager powermanager = null;
+		NetMonitor netmonitor = null;
+
 		#region Microphone control code
-		MicMonitor micmon;
-		public void setMicMonitor(MicMonitor micmonitor)
+		public void hookMicMonitor(MicMonitor micmonitor)
 		{
 			Debug.Assert(micmonitor != null);
 			micmon = micmonitor;
@@ -121,7 +129,6 @@ namespace TaskMaster
 			Log.Verbose("Hooking microphone monitor.");
 			micName.Text = micmon.DeviceName;
 			corCountLabel.Text = micmon.Corrections.ToString();
-			micmon.VolumeChanged += volumeChangeDetected;
 			micVol.Maximum = Convert.ToDecimal(micmon.Maximum);
 			micVol.Minimum = Convert.ToDecimal(micmon.Minimum);
 			micVol.Value = Convert.ToInt32(micmon.Volume);
@@ -129,6 +136,7 @@ namespace TaskMaster
 			micmon.enumerate().ForEach((dev) => micList.Items.Add(new ListViewItem(new string[] { dev.Name, dev.GUID })));
 
 			// TODO: Hook device changes
+			micmon.VolumeChanged += volumeChangeDetected;
 		}
 
 		public void ProcAdjust(object sender, ProcessEventArgs ev)
@@ -162,21 +170,41 @@ namespace TaskMaster
 		public event EventHandler rescanRequest;
 		public event EventHandler pagingRequest;
 
-		public void setProcControl(ProcessManager control)
+		public void hookDiskManager(ref DiskManager diskman)
+		{
+			diskmanager = diskman;
+			diskmanager.onTempScan += TempScanStats;
+		}
+
+		public void hookProcessManager(ref ProcessManager control)
 		{
 			Debug.Assert(control != null);
+			processmanager = control;
 
-			ProcessManager.onInstanceHandling += ProcessNewInstanceCount;
+			processmanager.onInstanceHandling += ProcessNewInstanceCount;
+			processmanager.PathCacheUpdate += PathCacheUpdate;
+			PathCacheUpdate(null, null);
 
-			foreach (ProcessController item in control.watchlist)
+			foreach (ProcessController item in processmanager.watchlist)
 			{
 				AddToProcessList(item);
 			}
 
+			rescanRequest += processmanager.ProcessEverythingRequest;
+			if (TaskMaster.PagingEnabled)
+				pagingRequest += processmanager.PageEverythingRequest;
+
 			ProcessController.onLocate += PathLocatedEvent;
 			ProcessController.onTouch += ProcAdjust;
+			ProcessController.PowermodeExitWaitEvent += ExitWaitListHandler;
 
 			processingCount.Value = ProcessManager.Handling;
+
+			var items = ProcessController.getWaitingExit();
+			foreach (var bu in items)
+			{
+				ExitWaitListHandler(null, new ProcessEventArgs() { Control = null, State = ProcessEventArgs.ProcessState.Starting, Info = bu });
+			}
 		}
 
 		void ProcessNewInstanceCount(object sender, InstanceEventArgs e)
@@ -298,9 +326,6 @@ namespace TaskMaster
 		Label inetstatuslabel;
 		Label uptimestatuslabel;
 
-		TrayAccess tray;
-		public TrayAccess Tray { private get { return tray; } set { tray = value; } }
-
 		ComboBox logcombo_level;
 		public static Serilog.Core.LoggingLevelSwitch LogIncludeLevel;
 
@@ -331,8 +356,8 @@ namespace TaskMaster
 
 		void UpdateUptime(object sender, EventArgs e)
 		{
-			if (net != null)
-				uptimestatuslabel.Text = HumanInterface.TimeString(net.Uptime);
+			if (netmonitor != null)
+				uptimestatuslabel.Text = HumanInterface.TimeString(netmonitor.Uptime);
 
 			//string.Format("{0:N1} min(s)", net.Uptime.TotalMinutes);
 		}
@@ -342,6 +367,8 @@ namespace TaskMaster
 		Button crunchbutton;
 
 		ContextMenuStrip ifacems;
+		ContextMenuStrip loglistms;
+		ContextMenuStrip watchlistms;
 
 		void InterfaceContextMenuOpen(object sender, EventArgs e)
 		{
@@ -373,8 +400,6 @@ namespace TaskMaster
 				Clipboard.SetText(ipv6addr);
 			}
 		}
-
-		ContextMenuStrip loglistms;
 
 		void LogContextMenuOpen(object sender, EventArgs ea)
 		{
@@ -830,10 +855,27 @@ namespace TaskMaster
 			{
 				View = View.Details,
 				Dock = DockStyle.Top,
+				AutoSize = true,
 				Width = tabLayout.Width - 52, // FIXME: why does 3 work? can't we do this automatically?
 				Height = 260, // FIXME: Should use remaining space
 				FullRowSelect = true
 			};
+
+			// TODO: Add context menu
+			watchlistms = new ContextMenuStrip();
+			watchlistms.Opened += WatchlistContextMenuOpen;
+			var watchlistedit = new ToolStripMenuItem("Edit", null, EditWatchlistRule);
+			var watchlistadd = new ToolStripMenuItem("Create new", null, AddWatchlistRule);
+			var watchlistdel = new ToolStripMenuItem("Remove", null, DeleteWatchlistRule);
+			var watchlistclip = new ToolStripMenuItem("Copy to clipboard", null, CopyRuleToClipboard);
+
+			watchlistms.Items.Add(watchlistedit);
+			watchlistms.Items.Add(watchlistadd);
+			watchlistms.Items.Add(new ToolStripSeparator());
+			watchlistms.Items.Add(watchlistdel);
+			watchlistms.Items.Add(new ToolStripSeparator());
+			watchlistms.Items.Add(watchlistclip);
+			watchlistRules.ContextMenuStrip = watchlistms;
 
 			NameColumn = 0;
 			ExeColumn = 1;
@@ -853,7 +895,7 @@ namespace TaskMaster
 			watchlistRules.Scrollable = true;
 			watchlistRules.Alignment = ListViewAlignment.Left;
 
-			watchlistRules.DoubleClick += appEditEvent; // for in-app editing
+			watchlistRules.DoubleClick += EditWatchlistRule; // for in-app editing
 			watchlistRules.Click += UpdateInfoPanel;
 
 			//proclayout.Controls.Add(pathList);
@@ -1221,8 +1263,6 @@ namespace TaskMaster
 
 			tabLayout.SelectedIndex = opentab >= tabLayout.TabCount ? 0 : opentab;
 
-			DiskManager.onTempScan += TempScanStats;
-
 			AutoSizeMode = AutoSizeMode.GrowOnly;
 			AutoSize = true;
 		}
@@ -1301,23 +1341,103 @@ namespace TaskMaster
 			}
 		}
 
-		int appEditLock = 0;
-		void appEditEvent(object sender, EventArgs ev)
-		{
-			if (System.Threading.Interlocked.CompareExchange(ref appEditLock, 1, 0) == 1)
-			{
-				Log.Warning("Only one item can be edited at a time.");
-				return;
-			}
-			//Log.Verbose("Opening edit window.");
 
-			ListViewItem ri = watchlistRules.SelectedItems[0];
-			var t = new AppEditWindow(ri.SubItems[NameColumn].Text, ri); // 1 = executable
-			t.FormClosed += (ns, evs) =>
+		void WatchlistContextMenuOpen(object sender, EventArgs ea)
+		{
+			foreach (ToolStripItem lsi in watchlistms.Items)
 			{
-				appEditLock = 0;
-				//Log.Verbose("Edit window closed.");
-			};
+				if (lsi.Text.Contains("Create")) continue;
+				lsi.Enabled = (watchlistRules.SelectedItems.Count == 1);
+			}
+		}
+
+		int WatchlistEditLock = 0; // TODO: Transition lock to critical parts instead of outside of them.
+
+		void EditWatchlistRule(object sender, EventArgs ea)
+		{
+			if (watchlistRules.SelectedItems.Count == 1)
+			{
+				if (System.Threading.Interlocked.CompareExchange(ref WatchlistEditLock, 1, 0) == 1)
+				{
+					Log.Warning("Only one item can be edited at a time.");
+					return;
+				}
+
+				ListViewItem li = watchlistRules.SelectedItems[0];
+				var t = new AppEditWindow(li.SubItems[NameColumn].Text, li); // 1 = executable
+				var rv = t.ShowDialog();
+				WatchlistEditLock = 0;
+			}
+		}
+
+		void AddWatchlistRule(object sender, EventArgs ea)
+		{
+			Log.Warning("Adding new watchlist rules in the UI is not supported yet.");
+		}
+
+		void DeleteWatchlistRule(object sender, EventArgs ea)
+		{
+			if (watchlistRules.SelectedItems.Count == 1)
+			{
+				var li = watchlistRules.SelectedItems[0];
+				Log.Warning("[{Rule}] Rule removed", li.SubItems[NameColumn].Text);
+				Log.Warning("Removing watchlist rules in the UI is not actually supported yet.");
+			}
+		}
+
+		void CopyRuleToClipboard(object sender, EventArgs ea)
+		{
+			if (watchlistRules.SelectedItems.Count == 1)
+			{
+				var li = watchlistRules.SelectedItems[0];
+				string name = li.SubItems[NameColumn].Text;
+				ProcessController pc = null;
+				foreach (var tpc in TaskMaster.processmanager.watchlist)
+				{
+					if (name == tpc.FriendlyName)
+					{
+						pc = tpc;
+						break;
+					}
+				}
+
+				if (pc == null)
+				{
+					Log.Error("[{Rule}] Not found. Something's terribly wrong.", name);
+					return;
+				}
+
+				var sbs = new System.Text.StringBuilder();
+
+				sbs.Append("[").Append(pc.FriendlyName).Append("]").AppendLine();
+				if (!string.IsNullOrEmpty(pc.ExecutableFriendlyName))
+					sbs.Append("Image = ").Append(pc.ExecutableFriendlyName).AppendLine();
+				if (!string.IsNullOrEmpty(pc.Path))
+					sbs.Append("Path = ").Append(pc.Path).AppendLine();
+				sbs.Append("Priority = ").Append(pc.Priority.ToInt32()).AppendLine();
+				sbs.Append("Increase = ").Append(pc.Increase).AppendLine();
+				sbs.Append("Decrease = ").Append(pc.Decrease).AppendLine();
+				sbs.Append("Affinity = ").Append(pc.Affinity.ToInt32()).AppendLine();
+				if (pc.PowerPlan != PowerManager.PowerMode.Undefined)
+					sbs.Append("Power plan = ").Append(PowerManager.PowerModes[(int)pc.PowerPlan]).AppendLine();
+				if (pc.Rescan > 0)
+					sbs.Append("Rescan = ").Append(pc.Rescan).AppendLine();
+				if (pc.AllowPaging)
+					sbs.Append("Allow paging = ").Append(pc.AllowPaging).AppendLine();
+				if (pc.ForegroundOnly)
+					sbs.Append("Foreground only = ").Append(pc.ForegroundOnly).AppendLine();
+
+				try
+				{
+					Clipboard.SetText(sbs.ToString());
+					Log.Information("[{Rule}] Configuration saved to clipboard.", name);
+				}
+				catch
+				{
+					Log.Warning("[{Rule}] Failed to copy configuration to clipboard.", name);
+				}
+				sbs.Clear(); // Unnecessary?
+			}
 		}
 
 		void UpdateInfoPanel(object sender, EventArgs e)
@@ -1358,6 +1478,8 @@ namespace TaskMaster
 
 		public void FillLog()
 		{
+			MemoryLog.onNewEvent += onNewLog;
+
 			lock (loglistLock)
 			{
 				//Log.Verbose("Filling GUI log.");
@@ -1372,14 +1494,25 @@ namespace TaskMaster
 			ShowLastLog();
 		}
 
-		NetMonitor net;
-		public void setNetMonitor(ref NetMonitor net)
+		public void hookActiveAppMonitor(ref ActiveAppMonitor aamon)
+		{
+			activeappmonitor = aamon;
+			activeappmonitor.ActiveChanged += OnActiveWindowChanged;
+		}
+
+		public void hookPowerManager(ref PowerManager pman)
+		{
+			powermanager = pman;
+			powermanager.onAutoAdjust += CPULoadHandler;
+		}
+
+		public void hookNetMonitor(ref NetMonitor net)
 		{
 			if (net == null) return; // disabled
 
 			Log.Verbose("Hooking network monitor.");
 
-			this.net = net;
+			this.netmonitor = net;
 
 			foreach (NetDevice dev in net.Interfaces())
 			{
@@ -1397,14 +1530,13 @@ namespace TaskMaster
 				ifaceList.Items.Add(li);
 			}
 
-			net.InternetStatusChange += InetStatus;
-			net.NetworkStatusChange += NetStatus;
-
 			InetStatusLabel(net.InternetAvailable);
 			NetStatusLabel(net.NetworkAvailable);
 
 			//Tray?.Tooltip(2000, "Internet " + (net.InternetAvailable ? "available" : "unavailable"), "TaskMaster", net.InternetAvailable ? ToolTipIcon.Info : ToolTipIcon.Warning);
 
+			net.InternetStatusChange += InetStatus;
+			net.NetworkStatusChange += NetStatus;
 			net.onSampling += NetSampleHandler;
 		}
 
@@ -1567,25 +1699,70 @@ namespace TaskMaster
 			if (disposing)
 			{
 				Log.Verbose("Disposing main window...");
+				MemoryLog.onNewEvent -= onNewLog;
 
-				DiskManager.onTempScan -= TempScanStats;
-				ProcessController.onTouch -= ProcAdjust;
-				ProcessController.onLocate -= PathLocatedEvent;
-				ProcessManager.onInstanceHandling -= ProcessNewInstanceCount;
+				try
+				{
+					activeappmonitor.ActiveChanged -= OnActiveWindowChanged;
+				}
+				catch { }
+
+				try
+				{
+					if (diskmanager != null)
+					{
+						diskmanager.onTempScan -= TempScanStats;
+						diskmanager = null;
+					}
+				}
+				catch { }
+				try
+				{
+					ProcessController.onTouch -= ProcAdjust;
+					ProcessController.onLocate -= PathLocatedEvent;
+					ProcessController.PowermodeExitWaitEvent -= ExitWaitListHandler;
+					rescanRequest -= processmanager.ProcessEverythingRequest;
+					processmanager.onInstanceHandling -= ProcessNewInstanceCount;
+					processmanager.PathCacheUpdate -= PathCacheUpdate;
+					if (TaskMaster.PagingEnabled)
+						pagingRequest -= processmanager.PageEverythingRequest;
+					processmanager = null;
+				}
+				catch { }
+
+				try
+				{
+					if (powermanager != null)
+					{
+						powermanager.onAutoAdjust -= CPULoadHandler;
+						powermanager = null;
+					}
+				}
+				catch { }
+
+				try
+				{
+					if (netmonitor != null)
+					{
+						netmonitor.InternetStatusChange -= InetStatus;
+						netmonitor.NetworkStatusChange -= NetStatus;
+						netmonitor.onSampling -= NetSampleHandler;
+						netmonitor = null;
+					}
+				}
+				catch { }
+
+				try
+				{
+					if (micmon != null)
+					{
+						micmon.VolumeChanged -= volumeChangeDetected;
+						micmon = null;
+					}
+				}
+				catch { }
 
 				UItimer.Stop();
-				if (micmon != null)
-				{
-					micmon.VolumeChanged -= volumeChangeDetected;
-					micmon = null;
-				}
-				if (net != null)
-				{
-					net.onSampling -= NetSampleHandler;
-					net.InternetStatusChange -= InetStatus;
-					net.NetworkStatusChange -= NetStatus;
-					net = null;
-				}
 				UItimer.Dispose();
 			}
 

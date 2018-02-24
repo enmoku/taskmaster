@@ -37,6 +37,13 @@ namespace TaskMaster
 		readonly ProcessController process;
 		readonly ListViewItem item;
 
+		// Adding
+		public AppEditWindow()
+		{
+
+		}
+
+		// Editingg
 		public AppEditWindow(string name, ListViewItem ri)
 		{
 			item = ri;
@@ -57,8 +64,6 @@ namespace TaskMaster
 			MaximizeBox = false;
 
 			BuildUI();
-
-			Show();
 		}
 
 		void SaveInfo(object sender, System.EventArgs ev)

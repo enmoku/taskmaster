@@ -115,7 +115,7 @@ namespace TaskMaster
 				ms.Items.Add(power_saving);
 				ms.Items.Add(power_manual);
 				HighlightPowerMode();
-				PowerManager.onModeChange += HighlightPowerModeEvent;
+				TaskMaster.powermanager.onPlanChange += HighlightPowerModeEvent;
 			}
 			ms.Items.Add(new ToolStripSeparator());
 			ms.Items.Add(menu_restart);
@@ -134,19 +134,31 @@ namespace TaskMaster
 		}
 
 		public event EventHandler RescanRequest;
-		public static event EventHandler onExit;
 		public event EventHandler ManualPowerMode;
+
+		ProcessManager processmanager = null;
+		public void hookProcessManager(ref ProcessManager pman)
+		{
+			processmanager = pman;
+			RescanRequest += processmanager.ProcessEverythingRequest;
+		}
+
+		PowerManager powermanager = null;
+		public void hookPowerManager(ref PowerManager pman)
+		{
+			powermanager = pman;
+		}
 
 		void SetAutoPower(object sender, EventArgs ev)
 		{
 			if (power_auto.Checked)
 			{
-				PowerManager.SetBehaviour(PowerManager.PowerBehaviour.Auto);
+				powermanager.SetBehaviour(PowerManager.PowerBehaviour.Auto);
 				power_manual.Checked = false;
 			}
 			else
 			{
-				PowerManager.SetBehaviour(PowerManager.PowerBehaviour.RuleBased);
+				powermanager.SetBehaviour(PowerManager.PowerBehaviour.RuleBased);
 			}
 		}
 
@@ -154,12 +166,11 @@ namespace TaskMaster
 		{
 			if (power_manual.Checked)
 			{
-				PowerManager.SetBehaviour(PowerManager.PowerBehaviour.Manual);
+				powermanager.SetBehaviour(PowerManager.PowerBehaviour.Manual);
 				power_auto.Checked = false;
-				ManualPowerMode?.Invoke(this, null);
 			}
 			else
-				PowerManager.SetBehaviour(PowerManager.PowerBehaviour.RuleBased);
+				powermanager.SetBehaviour(PowerManager.PowerBehaviour.RuleBased);
 		}
 
 		void HighlightPowerModeEvent(object sender, PowerModeEventArgs ev)
@@ -191,7 +202,7 @@ namespace TaskMaster
 
 		void ResetPower(PowerManager.PowerMode mode)
 		{
-			PowerManager.SetBehaviour(PowerManager.PowerBehaviour.Manual);
+			powermanager.SetBehaviour(PowerManager.PowerBehaviour.Manual);
 			power_manual.Checked = (PowerManager.Behaviour == PowerManager.PowerBehaviour.Manual);
 			power_auto.Checked = (PowerManager.Behaviour == PowerManager.PowerBehaviour.Auto);
 
@@ -379,9 +390,16 @@ namespace TaskMaster
 			{
 				Log.Verbose("Disposing tray...");
 
+
 				try
 				{
-					PowerManager.onModeChange -= HighlightPowerModeEvent;
+					RescanRequest -= processmanager.ProcessEverythingRequest;
+				}
+				catch { }
+
+				try
+				{
+					TaskMaster.powermanager.onPlanChange -= HighlightPowerModeEvent;
 				}
 				catch { /*NOP, don't care */ }
 

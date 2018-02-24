@@ -56,7 +56,7 @@ namespace TaskMaster
 				sysWatcher.Created += ModifyTemp;
 			}
 
-			TempScanTimer = new System.Threading.Timer(async (state) => { await DiskManager.ScanTemp(); }, null, 0, TimerDue);
+			TempScanTimer = new System.Threading.Timer(async (state) => { await ScanTemp(); }, null, 0, TimerDue);
 			Log.Information("Temp folder scanner will be performed once per day.");
 
 			onBurden += ReScanTemp;
@@ -92,7 +92,7 @@ namespace TaskMaster
 			public long Dirs;
 		}
 
-		static void DirectorySize(System.IO.DirectoryInfo dinfo, ref DirectoryStats stats)
+		void DirectorySize(System.IO.DirectoryInfo dinfo, ref DirectoryStats stats)
 		{
 			int i = 1;
 			DiskEventArgs dea = new DiskEventArgs { State = ScanState.Segment, Stats = stats };
@@ -118,7 +118,7 @@ namespace TaskMaster
 			}
 		}
 
-		public static async Task ScanTemp()
+		public async Task ScanTemp()
 		{
 			await Task.Yield();
 			var dst = new DirectoryStats { Files = 0, Dirs = 0, Size = 0 };
@@ -144,7 +144,7 @@ namespace TaskMaster
 			End
 		};
 
-		public static event EventHandler<DiskEventArgs> onTempScan;
+		public event EventHandler<DiskEventArgs> onTempScan;
 	}
 
 	public class DiskEventArgs : EventArgs
