@@ -607,282 +607,295 @@ namespace TaskMaster
 		[STAThread] // supposedly needed to avoid shit happening with the WinForms GUI
 		static public void Main(string[] args)
 		{
-			if (args.Length > 0 && args[0] == "--bootdelay")
+			try
 			{
-				int uptimeMin = 30;
-				if (args.Length > 1)
+				if (args.Length > 0 && args[0] == "--bootdelay")
 				{
+					int uptimeMin = 30;
+					if (args.Length > 1)
+					{
+						try
+						{
+							int nup = Convert.ToInt32(args[1]);
+							uptimeMin = nup.Constrain(5, 360);
+						}
+						catch { /* NOP */ }
+					}
+
+					TimeSpan uptime = TimeSpan.Zero;
 					try
 					{
-						int nup = Convert.ToInt32(args[1]);
-						uptimeMin = nup.Constrain(5, 360);
+						using (var uptimecounter = new PerformanceCounter("System", "System Up Time"))
+						{
+							uptimecounter.NextValue();
+							uptime = TimeSpan.FromSeconds(uptimecounter.NextValue());
+						}
 					}
-					catch { /* NOP */ }
+					catch { }
+
+					if (uptime.TotalSeconds < uptimeMin)
+					{
+						Console.WriteLine("Delaying proper startup for " + uptimeMin + " seconds.");
+						System.Threading.Thread.Sleep(Math.Max(0, uptimeMin - Convert.ToInt32(uptime.TotalSeconds)) * 1000);
+					}
 				}
 
-				TimeSpan uptime = TimeSpan.Zero;
+				MemoryLog.LevelSwitch = new LoggingLevelSwitch(LogEventLevel.Information);
+
+				string logpathtemplate = System.IO.Path.Combine(datapath, "Logs", "serilog-{Date}.log");
+				Serilog.Log.Logger = new Serilog.LoggerConfiguration()
+					.MinimumLevel.Verbose()
+					.WriteTo.Console(levelSwitch: new LoggingLevelSwitch(LogEventLevel.Verbose))
+					.WriteTo.RollingFile(logpathtemplate, outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}", levelSwitch: new LoggingLevelSwitch(Serilog.Events.LogEventLevel.Debug), retainedFileCountLimit: 7)
+					.WriteTo.MemorySink(levelSwitch: MemoryLog.LevelSwitch)
+								 .CreateLogger();
+
+				/*
+				// Append as used by the logger fucks this up.
+				// Unable to mark as sparse file easily.
+				Prealloc("Logs/debug.log", 256);
+				Prealloc("Logs/error.log", 2);
+				Prealloc("Logs/info.log", 32);
+				*/
+
+				#region SINGLETON
+				Log.Verbose("Testing for single instance.");
+
+				System.Threading.Mutex singleton = null;
+				{
+					bool mutexgained = false;
+					singleton = new System.Threading.Mutex(true, "088f7210-51b2-4e06-9bd4-93c27a973874.taskmaster", out mutexgained);
+					if (!mutexgained)
+					{
+						// already running, signal original process
+						System.Windows.Forms.MessageBox.Show("Already operational.", System.Windows.Forms.Application.ProductName + "!");
+						Log.Warning("Exiting (#{ProcessID}); already running.", System.Diagnostics.Process.GetCurrentProcess().Id);
+						return;
+					}
+				}
+				#endregion
+
+				Log.Information("TaskMaster! (#{ProcessID}) – Version: {Version} – START!",
+								Process.GetCurrentProcess().Id, System.Reflection.Assembly.GetExecutingAssembly().GetName().Version);
+
+				{ // INITIAL CONFIGURATIONN
+					var tcfg = loadConfig("Core.ini");
+					string sec = tcfg.TryGet("Core")?.TryGet("Version")?.StringValue ?? null;
+					if (sec == null || sec != ConfigVersion)
+					{
+						try
+						{
+							var initialconfig = new InitialConfigurationWindow();
+							System.Windows.Forms.Application.Run(initialconfig);
+							initialconfig.Dispose();
+							initialconfig = null;
+						}
+						catch (Exception ex)
+						{
+							Log.Fatal("{Type} : {Message}", ex.GetType().Name, ex.Message);
+							Log.Fatal(ex.StackTrace);
+							throw;
+						}
+
+						if (ComponentConfigurationDone == false)
+						{
+							singleton.ReleaseMutex();
+							Log.CloseAndFlush();
+							return;
+						}
+					}
+					tcfg = null;
+					sec = null;
+				}
+
+				LoadCoreConfig();
+
 				try
 				{
-					using (var uptimecounter = new PerformanceCounter("System", "System Up Time"))
-					{
-						uptimecounter.NextValue();
-						uptime = TimeSpan.FromSeconds(uptimecounter.NextValue());
-					}
+					Setup();
 				}
-				catch { }
-
-				if (uptime.TotalSeconds < uptimeMin)
+				catch (Exception ex) // this seems to happen only when Avast cybersecurity is scanning TM
 				{
-					Console.WriteLine("Delaying proper startup for " + uptimeMin + " seconds.");
-					System.Threading.Thread.Sleep(Math.Max(0, uptimeMin - Convert.ToInt32(uptime.TotalSeconds)) * 1000);
-				}
-			}
-
-			MemoryLog.LevelSwitch = new LoggingLevelSwitch(LogEventLevel.Information);
-
-			string logpathtemplate = System.IO.Path.Combine(datapath, "Logs", "serilog-{Date}.log");
-			Serilog.Log.Logger = new Serilog.LoggerConfiguration()
-				.MinimumLevel.Verbose()
-				.WriteTo.Console(levelSwitch: new LoggingLevelSwitch(LogEventLevel.Verbose))
-				.WriteTo.RollingFile(logpathtemplate, outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}", levelSwitch: new LoggingLevelSwitch(Serilog.Events.LogEventLevel.Debug), retainedFileCountLimit: 7)
-				.WriteTo.MemorySink(levelSwitch: MemoryLog.LevelSwitch)
-							 .CreateLogger();
-
-			/*
-			// Append as used by the logger fucks this up.
-			// Unable to mark as sparse file easily.
-			Prealloc("Logs/debug.log", 256);
-			Prealloc("Logs/error.log", 2);
-			Prealloc("Logs/info.log", 32);
-			*/
-
-			#region SINGLETON
-			Log.Verbose("Testing for single instance.");
-
-			System.Threading.Mutex singleton = null;
-			{
-				bool mutexgained = false;
-				singleton = new System.Threading.Mutex(true, "088f7210-51b2-4e06-9bd4-93c27a973874.taskmaster", out mutexgained);
-				if (!mutexgained)
-				{
-					// already running, signal original process
-					System.Windows.Forms.MessageBox.Show("Already operational.", System.Windows.Forms.Application.ProductName + "!");
-					Log.Warning("Exiting (#{ProcessID}); already running.", System.Diagnostics.Process.GetCurrentProcess().Id);
+					Log.Fatal("Exiting due to initialization failure.");
+					Log.Fatal("{Type} : {Message}", ex.GetType().Name, ex.Message);
+					singleton.ReleaseMutex();
+					Log.CloseAndFlush();
 					return;
 				}
-			}
-			#endregion
 
-			Log.Information("TaskMaster! (#{ProcessID}) – Version: {Version} – START!",
-							Process.GetCurrentProcess().Id, System.Reflection.Assembly.GetExecutingAssembly().GetName().Version);
+				// IS THIS OF ANY USE?
+				GC.Collect(GC.MaxGeneration, GCCollectionMode.Forced, true, true);
+				GC.WaitForPendingFinalizers();
 
-			{ // INITIAL CONFIGURATIONN
-				var tcfg = loadConfig("Core.ini");
-				string sec = tcfg.TryGet("Core")?.TryGet("Version")?.StringValue ?? null;
-				if (sec == null || sec != ConfigVersion)
+				Log.Information("Startup complete...");
+
+				if (TaskMaster.ProcessMonitorEnabled)
 				{
+					Task.Run(new Func<Task>(async () =>
+					{
+						await Task.Yield();
+						processmanager.ProcessEverything();
+					}));
+				}
+
+				//System.Runtime.GCSettings.LargeObjectHeapCompactionMode = System.Runtime.GCLargeObjectHeapCompactionMode.CompactOnce;
+				//GC.Collect(5, GCCollectionMode.Forced, true, true);
+
+				try
+				{
+					System.Windows.Forms.Application.Run(); // WinForms
+															//System.Windows.Application.Current.Run(); // WPF
+				}
+				catch (Exception ex)
+				{
+					Log.Fatal("Unhandled exception! Dying.");
+					Log.Fatal("{Type} : {Message}", ex.GetType().Name, ex.Message);
+					Log.Fatal(ex.StackTrace);
+					// TODO: ACTUALLY DIE
+				}
+
+				try
+				{
+					if (SelfOptimize)
+					{
+						var self = Process.GetCurrentProcess();
+						self.PriorityClass = ProcessPriorityClass.Normal;
+						try
+						{
+							ProcessController.SetIOPriority(self, ProcessController.PriorityTypes.PROCESS_MODE_BACKGROUND_END);
+						}
+						catch
+						{
+						}
+					}
+
+					Log.Information("Exiting...");
+
+					if (PowerManagerEnabled)
+						processmanager.onCPUSampling -= powermanager.CPULoadEvent;
 					try
 					{
-						var initialconfig = new InitialConfigurationWindow();
-						System.Windows.Forms.Application.Run(initialconfig);
-						initialconfig.Dispose();
-						initialconfig = null;
+						if (mainwindow != null)
+							mainwindow.FormClosed -= MainWindowClose;
 					}
 					catch (Exception ex)
 					{
 						Log.Fatal("{Type} : {Message}", ex.GetType().Name, ex.Message);
 						Log.Fatal(ex.StackTrace);
-						throw;
 					}
 
-					if (ComponentConfigurationDone == false)
-					{
-						singleton.ReleaseMutex();
-						Log.CloseAndFlush();
-						return;
-					}
-				}
-				tcfg = null;
-				sec = null;
-			}
-
-			LoadCoreConfig();
-
-			try
-			{
-				Setup();
-			}
-			catch (Exception ex) // this seems to happen only when Avast cybersecurity is scanning TM
-			{
-				Log.Fatal("Exiting due to initialization failure.");
-				Log.Fatal("{Type} : {Message}", ex.GetType().Name, ex.Message);
-				singleton.ReleaseMutex();
-				Log.CloseAndFlush();
-				return;
-			}
-
-			// IS THIS OF ANY USE?
-			GC.Collect(GC.MaxGeneration, GCCollectionMode.Forced, true, true);
-			GC.WaitForPendingFinalizers();
-
-			Log.Information("Startup complete...");
-
-			if (TaskMaster.ProcessMonitorEnabled)
-			{
-				Task.Run(new Func<Task>(async () =>
-				{
-					await Task.Yield();
-					processmanager.ProcessEverything();
-				}));
-			}
-
-			//System.Runtime.GCSettings.LargeObjectHeapCompactionMode = System.Runtime.GCLargeObjectHeapCompactionMode.CompactOnce;
-			//GC.Collect(5, GCCollectionMode.Forced, true, true);
-
-			try
-			{
-				System.Windows.Forms.Application.Run(); // WinForms
-														//System.Windows.Application.Current.Run(); // WPF
-			}
-			catch (Exception ex)
-			{
-				Log.Fatal("Unhandled exception! Dying.");
-				Log.Fatal("{Type} : {Message}", ex.GetType().Name, ex.Message);
-				Log.Fatal(ex.StackTrace);
-				// TODO: ACTUALLY DIE
-			}
-
-			try
-			{
-				if (SelfOptimize)
-				{
-					var self = Process.GetCurrentProcess();
-					self.PriorityClass = ProcessPriorityClass.Normal;
 					try
 					{
-						ProcessController.SetIOPriority(self, ProcessController.PriorityTypes.PROCESS_MODE_BACKGROUND_END);
+						processmanager?.Dispose();
 					}
-					catch
+					catch (Exception ex)
 					{
+						Log.Fatal("{Type} : {Message}", ex.GetType().Name, ex.Message);
+						Log.Fatal(ex.StackTrace);
 					}
-				}
+					try
+					{
+						powermanager?.Dispose();
+					}
+					catch (Exception ex)
+					{
+						Log.Fatal("{Type} : {Message}", ex.GetType().Name, ex.Message);
+						Log.Fatal(ex.StackTrace);
+					}
 
-				Log.Information("Exiting...");
+					try
+					{
+						micmonitor?.Dispose();
+					}
+					catch (Exception ex)
+					{
+						Log.Fatal("{Type} : {Message}", ex.GetType().Name, ex.Message);
+						Log.Fatal(ex.StackTrace);
+					}
 
-				if (PowerManagerEnabled)
-					processmanager.onCPUSampling -= powermanager.CPULoadEvent;
-				try
-				{
-					if (mainwindow != null)
-						mainwindow.FormClosed -= MainWindowClose;
+					try
+					{
+						trayaccess?.Dispose();
+					}
+					catch (Exception ex)
+					{
+						Log.Fatal("{Type} : {Message}", ex.GetType().Name, ex.Message);
+						Log.Fatal(ex.StackTrace);
+					}
+
+					try
+					{
+						netmonitor?.Dispose();
+					}
+					catch (Exception ex)
+					{
+						Log.Fatal("{Type} : {Message}", ex.GetType().Name, ex.Message);
+						Log.Fatal(ex.StackTrace);
+					}
+
+					try
+					{
+						activeappmonitor?.Dispose();
+					}
+					catch (Exception ex)
+					{
+						Log.Fatal("{Type} : {Message}", ex.GetType().Name, ex.Message);
+						Log.Fatal(ex.StackTrace);
+					}
+
+					try
+					{
+						mainwindow?.Dispose();
+					}
+					catch (Exception ex)
+					{
+						Log.Fatal("{Type} : {Message}", ex.GetType().Name, ex.Message);
+						Log.Fatal(ex.StackTrace);
+					}
+
+					mainwindow = null; processmanager = null; micmonitor = null; trayaccess = null; netmonitor = null; activeappmonitor = null; powermanager = null;
 				}
 				catch (Exception ex)
 				{
 					Log.Fatal("{Type} : {Message}", ex.GetType().Name, ex.Message);
 					Log.Fatal(ex.StackTrace);
+					throw;
 				}
 
-				try
+				Log.Information("WMI queries: {QueryTime}s [{QueryCount}]", string.Format("{0:N2}", Statistics.WMIquerytime), Statistics.WMIqueries);
+
+				//if (PathCacheLimit > 0)
+				//	ProcessManager.PathCacheStats();
+
+				//tmw.Dispose();//already disposed by App.Exit?
+				foreach (var dcfg in ConfigDirty)
 				{
-					processmanager?.Dispose();
-				}
-				catch (Exception ex)
-				{
-					Log.Fatal("{Type} : {Message}", ex.GetType().Name, ex.Message);
-					Log.Fatal(ex.StackTrace);
-				}
-				try
-				{
-					powermanager?.Dispose();
-				}
-				catch (Exception ex)
-				{
-					Log.Fatal("{Type} : {Message}", ex.GetType().Name, ex.Message);
-					Log.Fatal(ex.StackTrace);
+					if (dcfg.Value) saveConfig(dcfg.Key);
 				}
 
-				try
-				{
-					micmonitor?.Dispose();
-				}
-				catch (Exception ex)
-				{
-					Log.Fatal("{Type} : {Message}", ex.GetType().Name, ex.Message);
-					Log.Fatal(ex.StackTrace);
-				}
+				CleanShutdown();
 
-				try
-				{
-					trayaccess?.Dispose();
-				}
-				catch (Exception ex)
-				{
-					Log.Fatal("{Type} : {Message}", ex.GetType().Name, ex.Message);
-					Log.Fatal(ex.StackTrace);
-				}
+				singleton.ReleaseMutex();
 
-				try
-				{
-					netmonitor?.Dispose();
-				}
-				catch (Exception ex)
-				{
-					Log.Fatal("{Type} : {Message}", ex.GetType().Name, ex.Message);
-					Log.Fatal(ex.StackTrace);
-				}
+				Log.Information("TaskMaster! (#{ProcessID}) END! [Clean]", System.Diagnostics.Process.GetCurrentProcess().Id);
 
-				try
+				if (Restart) // happens only on power resume (waking from hibernation)
 				{
-					activeappmonitor?.Dispose();
+					Restart = false; // poinless probably
+					ProcessStartInfo info = Process.GetCurrentProcess().StartInfo;
+					info.FileName = Process.GetCurrentProcess().ProcessName;
+					Process.Start(info);
 				}
-				catch (Exception ex)
-				{
-					Log.Fatal("{Type} : {Message}", ex.GetType().Name, ex.Message);
-					Log.Fatal(ex.StackTrace);
-				}
-
-				try
-				{
-					mainwindow?.Dispose();
-				}
-				catch (Exception ex)
-				{
-					Log.Fatal("{Type} : {Message}", ex.GetType().Name, ex.Message);
-					Log.Fatal(ex.StackTrace);
-				}
-
-				mainwindow = null; processmanager = null; micmonitor = null; trayaccess = null; netmonitor = null; activeappmonitor = null; powermanager = null;
 			}
 			catch (Exception ex)
 			{
 				Log.Fatal("{Type} : {Message}", ex.GetType().Name, ex.Message);
 				Log.Fatal(ex.StackTrace);
+				throw;
 			}
-
-			Log.Information("WMI queries: {QueryTime}s [{QueryCount}]", string.Format("{0:N2}", Statistics.WMIquerytime), Statistics.WMIqueries);
-
-			//if (PathCacheLimit > 0)
-			//	ProcessManager.PathCacheStats();
-
-			//tmw.Dispose();//already disposed by App.Exit?
-			foreach (var dcfg in ConfigDirty)
+			finally // no catch, because this is only to make sure the log is written
 			{
-				if (dcfg.Value) saveConfig(dcfg.Key);
-			}
-
-			CleanShutdown();
-
-			singleton.ReleaseMutex();
-
-			Log.Information("TaskMaster! (#{ProcessID}) END! [Clean]", System.Diagnostics.Process.GetCurrentProcess().Id);
-			//Log.CloseAndFlush();
-
-			if (Restart) // happens only on power resume (waking from hibernation)
-			{
-				Restart = false; // poinless probably
-				ProcessStartInfo info = Process.GetCurrentProcess().StartInfo;
-				info.FileName = Process.GetCurrentProcess().ProcessName;
-				Process.Start(info);
+				Log.CloseAndFlush();
 			}
 		}
 	}
