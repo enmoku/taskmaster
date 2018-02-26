@@ -187,6 +187,16 @@ namespace TaskMaster
 			}
 		}
 
+		/// <summary>
+		/// Call any supporting functions to re-evaluate current situation.
+		/// </summary>
+		public static async Task Evaluate()
+		{
+			await Task.Yield();
+
+			processmanager.ProcessEverythingRequest(null, null);
+		}
+
 		public static void BuildMain()
 		{
 			if (mainwindow == null)

@@ -30,6 +30,7 @@ using System.Windows.Forms;
 using Serilog;
 using Microsoft.Win32;
 using System.Diagnostics.Eventing.Reader;
+using System.Runtime.InteropServices.WindowsRuntime;
 
 namespace TaskMaster
 {
@@ -49,15 +50,25 @@ namespace TaskMaster
 		public PowerManager()
 		{
 			RegisterPowerSettingNotification(Handle, ref GUID_POWERSCHEME_PERSONALITY, DEVICE_NOTIFY_WINDOW_HANDLE);
-			getPowerMode();
-			Original = Current;
-
-			SystemEvents.PowerModeChanged += BatteryChargingEvent;
-			SystemEvents.SessionEnding += TaskMaster.ExitRequest;
-			SystemEvents.SessionSwitch += SessionLockEvent;
+			Original = getPowerMode();
 
 			LoadConfig();
+
+			//SystemEvents.PowerModeChanged += BatteryChargingEvent; // Without laptop testing this feature is difficult
+			SystemEvents.SessionEnding += TaskMaster.ExitRequest;
+
+			if (SaverOnSessionLock)
+				SystemEvents.SessionSwitch += SessionLockEvent;
 		}
+
+		static int Pause = 0;
+
+		static bool SaverOnMonitorSleep = false;
+		static bool SaverOnSessionLock = false;
+		static bool SaverOnLogOff = false;
+		static bool SaverOnScreensaver = false;
+		static bool UserActiveCancel = true;
+		static int SaverOnUserAFK = 0;
 
 		public event EventHandler<ProcessorEventArgs> onAutoAdjust;
 		public event EventHandler<PowerModeEventArgs> onPlanChange;
@@ -127,17 +138,18 @@ namespace TaskMaster
 				{
 					// Backoff initiating. Happens always when in medium mode.
 					if (ev.Low > HighThreshold)
-						Reaction = PowerMode.HighPerformance;
+						Reaction = HighMode;
 					else if (ev.High < LowThreshold)
-						Reaction = PowerMode.PowerSaver;
+						Reaction = LowMode;
 					else
-						Reaction = PowerMode.Balanced;
+						Reaction = DefaultMode;
 
 					if (Reaction != Current && !ForcedMode)
 					{
 						if (TaskMaster.DebugPower)
 							Log.Debug("<Power Mode> Auto-adjust: {Mode}", Reaction.ToString());
 						RequestMode(Reaction);
+						AutoAdjustCounter++;
 						ev.Handled = true;
 					}
 				}
@@ -159,6 +171,11 @@ namespace TaskMaster
 		{
 			var power = TaskMaster.cfg["Power"];
 			bool modified = false, tdirty = false;
+
+			string defaultmode = power.GetSetDefault("Default plan", "Balanced", out modified).StringValue;
+			power["Default plan"].Comment = "Default power plan to fall back to when we have trouble.";
+			DefaultMode = GetModeByName(defaultmode);
+			tdirty |= modified;
 
 			RestoreOriginal = power.GetSetDefault("Restore original", false, out modified).BoolValue;
 			power["Restore original"].Comment = "Restore original power mode instead of the one saved before changing it (only when changing with watchlist rules).";
@@ -201,20 +218,25 @@ namespace TaskMaster
 			LowMode = GetModeByName(lowmode);
 			tdirty |= modified;
 
-			string medmode = power.GetSetDefault("Normal mode", "Balanced", out modified).StringValue;
-			power["Normal mode"].Comment = "This is what we keep at when neither high or low match.";
-			NormalMode = GetModeByName(medmode);
+			string medmode = power.GetSetDefault("Default mode", "Balanced", out modified).StringValue;
+			power["Default mode"].Comment = "This is what power plan we fall back on when nothing else is considered.";
+			DefaultMode = GetModeByName(medmode);
 			tdirty |= modified;
 
 			var saver = TaskMaster.cfg["Power Save"];
 			saver.Comment = "All these options control when to enforce power save mode regardless of any other options.";
-			bool sessionlock = saver.GetSetDefault("Session lock", true, out modified).BoolValue;
+			SaverOnSessionLock = saver.GetSetDefault("Session lock", true, out modified).BoolValue;
 			tdirty |= modified;
-			bool screenlock = saver.GetSetDefault("Monitor sleep", true, out modified).BoolValue;
+			SaverOnLogOff = saver.GetSetDefault("Log off", true, out modified).BoolValue;
 			tdirty |= modified;
-			int afktimer = saver.GetSetDefault("User idle", 30, out modified).IntValue;
+			SaverOnMonitorSleep = saver.GetSetDefault("Monitor sleep", true, out modified).BoolValue;
 			tdirty |= modified;
-			bool activewake = saver.GetSetDefault("User active", true, out modified).BoolValue;
+			SaverOnScreensaver = saver.GetSetDefault("Screensaver", true, out modified).BoolValue;
+			tdirty |= modified;
+
+			SaverOnUserAFK = saver.GetSetDefault("User idle", 30, out modified).IntValue;
+			tdirty |= modified;
+			UserActiveCancel = saver.GetSetDefault("Cancel on activity", true, out modified).BoolValue;
 
 			tdirty |= modified;
 
@@ -240,17 +262,43 @@ namespace TaskMaster
 		public float LowThreshold { get; private set; } = 15;
 		public float[] LowBackoffThresholds { get; private set; } = { 30, 25, 20 }; // High, Average, Low
 		PowerMode LowMode { get; set; }
-		PowerMode NormalMode { get; set; }
+		PowerMode DefaultMode { get; set; }
 
 		void SessionLockEvent(object sender, SessionSwitchEventArgs ev)
 		{
 			switch (ev.Reason)
 			{
+				case SessionSwitchReason.SessionLogoff:
+				case SessionSwitchReason.SessionLogon:
+					if (!SaverOnLogOff)
+						return;
+					break;
+			}
+
+			switch (ev.Reason)
+			{
+				case SessionSwitchReason.SessionLogoff:
 				case SessionSwitchReason.SessionLock:
 					// SET POWER SAVER
+					if (SaverOnSessionLock)
+					{
+						if (System.Threading.Interlocked.CompareExchange(ref Pause, 1, 0) == 1)
+							return;
+
+						Log.Information("<Power Mode> Session locked, enforcing low power plan.");
+						setMode(PowerMode.PowerSaver, true);
+					}
 					break;
 				case SessionSwitchReason.SessionLogon:
+				case SessionSwitchReason.SessionUnlock:
 					// RESTORE POWER MODE
+					if (SaverOnSessionLock)
+					{
+						Log.Information("<Power Mode> Session unlocked, restoring normal power.");
+						setMode(DefaultMode, true);
+						Pause = 0;
+						TaskMaster.Evaluate().ConfigureAwait(false);
+					}
 					break;
 				default:
 					// HANDS OFF MODE
@@ -264,6 +312,7 @@ namespace TaskMaster
 			{
 				case Microsoft.Win32.PowerModes.StatusChange:
 					Log.Information("Undefined battery/AC change detected.");
+					//System.Windows.Forms.PowerStatus
 					break;
 				case Microsoft.Win32.PowerModes.Suspend:
 					// DON'T TOUCH
@@ -295,7 +344,8 @@ namespace TaskMaster
 
 					onPlanChange?.Invoke(this, new PowerModeEventArgs { OldMode = old, NewMode = Current });
 
-					Log.Verbose("<Power Mode> Change detected: {PlanName} ({PlanGuid})", Current.ToString(), newPersonality.ToString());
+					if (TaskMaster.DebugPower)
+						Log.Debug("<Power Mode> Change detected: {PlanName} ({PlanGuid})", Current.ToString(), newPersonality.ToString());
 				}
 			}
 
@@ -395,6 +445,8 @@ namespace TaskMaster
 		static bool RestoreOriginal = false;
 		public static void RestoreMode()
 		{
+			if (Pause == 0) return; // TODO: What to do in the unlikely event of this being called while paused?
+
 			lock (powerLock)
 			{
 				if (RestoreOriginal)
@@ -444,6 +496,7 @@ namespace TaskMaster
 		public static bool RequestMode(PowerMode mode)
 		{
 			if (Behaviour != PowerBehaviour.Auto) return false;
+			if (Pause == 0) return false;
 
 			lock (powerLock)
 			{
@@ -460,6 +513,7 @@ namespace TaskMaster
 		public static bool ForceMode(PowerMode mode)
 		{
 			if (Behaviour == PowerBehaviour.Manual) return false;
+			if (Pause == 0) return false;
 
 			lock (powerLock)
 			{
@@ -516,7 +570,8 @@ namespace TaskMaster
 					RestoreMode();
 				else
 					setMode(Original, true);
-				Log.Information("Power mode restored.");
+				Log.Information("<Power Mode> Restored.");
+				Log.Information("<Power Mode> Auto-adjusted {Counter} time(s).", AutoAdjustCounter);
 			}
 
 			disposed = true;

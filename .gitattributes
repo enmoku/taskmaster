@@ -1,5 +1,5 @@
 # Auto detect text files and perform LF normalization
-#* text=auto # this seems to cause weirdness in Github client
+* text=auto
 
 # Custom for Visual Studio
 *.cs     diff=csharp
