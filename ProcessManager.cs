@@ -349,7 +349,7 @@ namespace TaskMaster
 			scaninprogress = 0;
 		}
 
-		public static int PowerdownDelay { get; set; } = 7000;
+		public static int PowerdownDelay { get; set; } = 0;
 
 		static int BatchDelay = 2500;
 		static int RescanDelay = 0; // 5 minutes
@@ -368,34 +368,34 @@ namespace TaskMaster
 
 			var coreperf = TaskMaster.cfg["Performance"];
 
-			bool dirtyconfig = false, tdirty = false;
+			bool dirtyconfig = false, modified = false;
 			//ControlChildren = coreperf.GetSetDefault("Child processes", false, out tdirty).BoolValue;
 			//dirtyconfig |= tdirty;
-			BatchProcessing = coreperf.GetSetDefault("Batch processing", false, out tdirty).BoolValue;
+			BatchProcessing = coreperf.GetSetDefault("Batch processing", false, out modified).BoolValue;
 			coreperf["Batch processing"].Comment = "Process management works in delayed batches instead of immediately.";
-			dirtyconfig |= tdirty;
+			dirtyconfig |= modified;
 			Log.Information("Batch processing: {BatchProcessing}", (BatchProcessing ? "Enabled" : "Disabled"));
 			if (BatchProcessing)
 			{
-				BatchDelay = coreperf.GetSetDefault("Batch processing delay", 2500, out tdirty).IntValue;
-				dirtyconfig |= tdirty;
+				BatchDelay = coreperf.GetSetDefault("Batch processing delay", 2500, out modified).IntValue;
+				dirtyconfig |= modified;
 				Log.Information("Batch processing delay: {BatchProcessingDelay:N1}s", BatchDelay / 1000);
-				BatchProcessingThreshold = coreperf.GetSetDefault("Batch processing threshold", 5, out tdirty).IntValue;
-				dirtyconfig |= tdirty;
+				BatchProcessingThreshold = coreperf.GetSetDefault("Batch processing threshold", 5, out modified).IntValue;
+				dirtyconfig |= modified;
 				Log.Information("Batch processing threshold: {BatchProcessingThreshold}", BatchProcessingThreshold);
 			}
-			RescanDelay = coreperf.GetSetDefault("Rescan frequency", 0, out tdirty).IntValue * 1000 * 60;
+			RescanDelay = coreperf.GetSetDefault("Rescan frequency", 0, out modified).IntValue * 1000 * 60;
 			coreperf["Rescan frequency"].Comment = "How often to check for apps that want to be rescanned. Disabled if rescan everything is enabled. 0 disables.";
-			dirtyconfig |= tdirty;
+			dirtyconfig |= modified;
 
-			RescanEverythingFrequency = coreperf.GetSetDefault("Rescan everything frequency", 15, out tdirty).IntValue;
+			RescanEverythingFrequency = coreperf.GetSetDefault("Rescan everything frequency", 15, out modified).IntValue;
 			if (RescanEverythingFrequency > 0)
 			{
 				if (RescanEverythingFrequency < 5) RescanEverythingFrequency = 5;
 				RescanEverythingFrequency *= 1000; // to seconds
 			}
 			coreperf["Rescan everything frequency"].Comment = "Frequency (in seconds) at which we rescan everything. 0 disables.";
-			dirtyconfig |= tdirty;
+			dirtyconfig |= modified;
 
 			if (RescanEverythingFrequency > 0)
 			{
@@ -404,18 +404,20 @@ namespace TaskMaster
 			}
 			else
 				Log.Information("Per-app rescan frequency: {RescanDelay:N1}m", RescanDelay / 1000 / 60);
-			/*
+
 			var powersec = TaskMaster.cfg["Power"];
-			PowerdownDelay = powersec.GetSetDefault("Powerdown delay", 0, out tdirty).IntValue * 1000;
-			powersec["Powerdown delay"].Comment = "Delay in seconds to restore old power mode after elevated power mode is no longer needed.\n0 disables the delay.\nMostly useful if you want the powermode to linger, e.g. to compensate for restarting games.";
-			dirtyconfig |= tdirty;
-			*/
+
+			PowerdownDelay = powersec.GetSetDefault("Watchlist powerdown delay", 0, out modified).IntValue.Constrain(0, 60);
+			powersec["Watchlist powerdown delay"].Comment = "Delay, in seconds (0 to 60, 0 disables), for when to wind down power mode set by watchlist.";
+			dirtyconfig |= modified;
+
+			// --------------------------------------------------------------------------------------------------------
 
 			// --------------------------------------------------------------------------------------------------------
 
 			//TaskMaster.cfg["Applications"]["Ignored"].StringValueArray = IgnoreList;
 			var ignsetting = TaskMaster.cfg["Applications"];
-			string[] newIgnoreList = ignsetting.GetSetDefault("Ignored", IgnoreList, out tdirty)?.StringValueArray;
+			string[] newIgnoreList = ignsetting.GetSetDefault("Ignored", IgnoreList, out modified)?.StringValueArray;
 			ignsetting.PreComment = "Special hardcoded protection applied to: consent, winlogon, wininit, and csrss.\nThese are vital system services and messing with them can cause severe system malfunctioning.\nMess with the ignore list at your own peril.";
 			if (newIgnoreList != null)
 			{
@@ -424,7 +426,7 @@ namespace TaskMaster
 			}
 			else
 				TaskMaster.saveConfig(TaskMaster.cfg);
-			dirtyconfig |= tdirty;
+			dirtyconfig |= modified;
 
 			if (dirtyconfig) TaskMaster.MarkDirtyINI(TaskMaster.cfg);
 
@@ -533,7 +535,7 @@ namespace TaskMaster
 					cnt.Rescan = 0;
 				}
 
-				dirtyconfig |= tdirty;
+				dirtyconfig |= modified;
 
 				//cnt.Children &= ControlChildren;
 
@@ -603,9 +605,15 @@ namespace TaskMaster
 				if (cnt.ExecutableFriendlyName != null)
 				{
 					if (IgnoreProcessName(cnt.ExecutableFriendlyName))
-						Log.Error("{Exec} in ignore list; all changes denied.", cnt.ExecutableFriendlyName);
+					{
+						if (TaskMaster.ShowInaction)
+							Log.Warning("{Exec} in ignore list; all changes denied.", cnt.ExecutableFriendlyName);
+					}
 					else if (ProtectedProcessName(cnt.ExecutableFriendlyName))
-						Log.Warning("{Exec} in protected list; priority changing denied.");
+					{
+						if (TaskMaster.ShowInaction)
+							Log.Warning("{Exec} in protected list; priority changing denied.");
+					}
 				}
 			}
 
@@ -1013,7 +1021,7 @@ namespace TaskMaster
 
 			if (IgnoreProcessID(info.Id) || IgnoreProcessName(info.Name))
 			{
-				if (TaskMaster.ShowInaction)
+				if (TaskMaster.ShowInaction && TaskMaster.DebugProcesses)
 					Log.Verbose("Ignoring process: {ProcessName} (#{ProcessID})", info.Name, info.Id);
 				return ProcessState.AccessDenied;
 			}
@@ -1203,7 +1211,8 @@ namespace TaskMaster
 			}
 			catch
 			{
-				Log.Verbose("Caught #{Pid} but it vanished.", pid);
+				if (TaskMaster.ShowInaction && TaskMaster.DebugProcesses)
+					Log.Verbose("Caught #{Pid} but it vanished.", pid);
 				return;
 			}
 
@@ -1460,41 +1469,6 @@ namespace TaskMaster
 
 			if (TaskMaster.PathCacheLimit > 0)
 				pathCache = new Cache<int, string, string>(TaskMaster.PathCacheMaxAge, TaskMaster.PathCacheLimit, (TaskMaster.PathCacheLimit / 10).Constrain(5, 10));
-
-			CPUCounter = new PerformanceCounter("Processor", "% Processor Time", "_Total");
-			CPUCounter.NextValue();
-			CPUTimer = new System.Timers.Timer();
-			CPUTimer.Interval = 1000 * 5;
-			CPUTimer.Elapsed += CPUTimerEvent;
-			CPUTimer.Start();
-		}
-
-		PerformanceCounter CPUCounter = null;
-		System.Timers.Timer CPUTimer = null;
-
-		public event EventHandler<ProcessorEventArgs> onCPUSampling;
-		float[] CPUSamples = { 0, 0, 0, 0, 0 };
-		int CPUSampleLoop = 0;
-
-		async void CPUTimerEvent(object sender, EventArgs ev)
-		{
-			await Task.Yield();
-
-			float sample = CPUCounter.NextValue();
-			CPUSamples[CPUSampleLoop++] = sample;
-			if (CPUSampleLoop > 4) CPUSampleLoop = 0;
-			float average = 0;
-			float high = 0;
-			float low = float.MaxValue;
-			for (int i = 0; i < 5; i++)
-			{
-				float cur = CPUSamples[i];
-				average += cur;
-				if (cur < low) low = cur;
-				if (cur > high) high = cur;
-			}
-			average /= 5;
-			onCPUSampling?.Invoke(this, new ProcessorEventArgs() { Current = sample, Average = average, High = high, Low = low });
 		}
 
 		bool disposed; // = false;
@@ -1558,11 +1532,6 @@ namespace TaskMaster
 				{
 					watchlist.Clear();
 					watchlist = null;
-				}
-				if (CPUCounter != null)
-				{
-					CPUCounter.Close(); // unnecessary?
-					CPUCounter = null;
 				}
 			}
 
@@ -1645,7 +1614,9 @@ namespace TaskMaster
 		public float High;
 
 		public PowerManager.PowerMode Mode;
-		public int Cause;
+
+		public float Pressure;
+
 		public bool Handled;
 	}
 }

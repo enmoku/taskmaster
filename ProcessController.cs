@@ -290,8 +290,10 @@ namespace TaskMaster
 
 							try
 							{
-								//await Task.Delay(ProcessManager.PowerdownDelay);
-								await Task.Yield();
+								if (ProcessManager.PowerdownDelay > 0)
+									await Task.Delay(ProcessManager.PowerdownDelay * 1000);
+								else
+									await Task.Yield();
 
 								lock (waitingExitLock)
 								{
@@ -420,14 +422,14 @@ namespace TaskMaster
 
 			if (IgnoreList != null && IgnoreList.Contains(info.Name, StringComparer.InvariantCultureIgnoreCase))
 			{
-				if (TaskMaster.ShowInaction)
+				if (TaskMaster.ShowInaction && TaskMaster.DebugProcesses)
 					Log.Debug("[{FriendlyName}] {Exec} (#{ProcessID}) ignored due to user defined rule.", FriendlyName, info.Name, info.Id);
 				return ProcessState.AccessDenied;
 			}
 
 			bool denyChange = ProcessManager.ProtectedProcessName(info.Name);
 			if (denyChange)
-				if (TaskMaster.ShowInaction)
+				if (TaskMaster.ShowInaction && TaskMaster.DebugProcesses)
 					Log.Debug("[{FriendlyName}] {ProcessName} (#{ProcessID}) in protected list, limiting tampering.", FriendlyName, info.Name, info.Id);
 
 			bool mAffinity = false, mPriority = false, mPower = false, mBGIO = false, modified = false;
@@ -553,8 +555,8 @@ namespace TaskMaster
 			{
 				//if (DateTime.Now - LastSeen
 				sbs.Append(" – looks OK, not touched.");
-				if (TaskMaster.ShowInaction)
-					Log.Information(sbs.ToString());
+				if (TaskMaster.ShowInaction && TaskMaster.DebugProcesses)
+					Log.Debug(sbs.ToString());
 				//else
 				//	Log.Verbose(sbs.ToString());
 				rv = ProcessState.OK;

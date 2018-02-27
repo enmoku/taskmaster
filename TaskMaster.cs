@@ -134,12 +134,9 @@ namespace TaskMaster
 
 		public static void MainWindowClose(object sender, EventArgs e)
 		{
-			//if (LowMemory)
-			//{
-			//tmw.FormClosing -= MainWindowClose // unnecessary?
-			mainwindow.Dispose(); ;
+			if (!mainwindow.IsDisposed && !mainwindow.Disposing)
+				mainwindow.Dispose(); // .Close() is guaranteed to dispose this thing?
 			mainwindow = null;
-			//}
 		}
 
 		public static bool Restart = false;
@@ -297,9 +294,6 @@ namespace TaskMaster
 					processmanager.hookActiveAppMonitor(ref activeappmonitor);
 				}
 			}
-
-			if (PowerManagerEnabled && ProcessMonitorEnabled)
-				processmanager.onCPUSampling += powermanager.CPULoadEvent;
 		}
 
 		public static bool DebugProcesses = false;
@@ -748,8 +742,16 @@ namespace TaskMaster
 					}));
 				}
 
-				//System.Runtime.GCSettings.LargeObjectHeapCompactionMode = System.Runtime.GCLargeObjectHeapCompactionMode.CompactOnce;
-				//GC.Collect(5, GCCollectionMode.Forced, true, true);
+				// early save of configs
+				foreach (var dcfg in ConfigDirty)
+					if (dcfg.Value) saveConfig(dcfg.Key);
+				ConfigDirty.Clear();
+
+				if (SelfOptimize)
+				{
+					System.Runtime.GCSettings.LargeObjectHeapCompactionMode = System.Runtime.GCLargeObjectHeapCompactionMode.CompactOnce;
+					GC.Collect(5, GCCollectionMode.Forced, true, true);
+				}
 
 				try
 				{
@@ -781,12 +783,17 @@ namespace TaskMaster
 
 					Log.Information("Exiting...");
 
-					if (PowerManagerEnabled)
-						processmanager.onCPUSampling -= powermanager.CPULoadEvent;
+					// CLEANUP for exit
+
 					try
 					{
 						if (mainwindow != null)
+						{
 							mainwindow.FormClosed -= MainWindowClose;
+							if (!mainwindow.IsDisposed)
+								mainwindow.Dispose();
+							mainwindow = null;
+						}
 					}
 					catch (Exception ex)
 					{
@@ -797,6 +804,7 @@ namespace TaskMaster
 					try
 					{
 						processmanager?.Dispose();
+						processmanager = null;
 					}
 					catch (Exception ex)
 					{
@@ -806,6 +814,7 @@ namespace TaskMaster
 					try
 					{
 						powermanager?.Dispose();
+						powermanager = null;
 					}
 					catch (Exception ex)
 					{
@@ -816,6 +825,7 @@ namespace TaskMaster
 					try
 					{
 						micmonitor?.Dispose();
+						micmonitor = null;
 					}
 					catch (Exception ex)
 					{
@@ -826,6 +836,7 @@ namespace TaskMaster
 					try
 					{
 						trayaccess?.Dispose();
+						trayaccess = null;
 					}
 					catch (Exception ex)
 					{
@@ -836,6 +847,7 @@ namespace TaskMaster
 					try
 					{
 						netmonitor?.Dispose();
+						netmonitor = null;
 					}
 					catch (Exception ex)
 					{
@@ -846,24 +858,13 @@ namespace TaskMaster
 					try
 					{
 						activeappmonitor?.Dispose();
+						activeappmonitor = null;
 					}
 					catch (Exception ex)
 					{
 						Log.Fatal("{Type} : {Message}", ex.GetType().Name, ex.Message);
 						Log.Fatal(ex.StackTrace);
 					}
-
-					try
-					{
-						mainwindow?.Dispose();
-					}
-					catch (Exception ex)
-					{
-						Log.Fatal("{Type} : {Message}", ex.GetType().Name, ex.Message);
-						Log.Fatal(ex.StackTrace);
-					}
-
-					mainwindow = null; processmanager = null; micmonitor = null; trayaccess = null; netmonitor = null; activeappmonitor = null; powermanager = null;
 				}
 				catch (Exception ex)
 				{
@@ -874,14 +875,8 @@ namespace TaskMaster
 
 				Log.Information("WMI queries: {QueryTime}s [{QueryCount}]", string.Format("{0:N2}", Statistics.WMIquerytime), Statistics.WMIqueries);
 
-				//if (PathCacheLimit > 0)
-				//	ProcessManager.PathCacheStats();
-
-				//tmw.Dispose();//already disposed by App.Exit?
 				foreach (var dcfg in ConfigDirty)
-				{
 					if (dcfg.Value) saveConfig(dcfg.Key);
-				}
 
 				CleanShutdown();
 

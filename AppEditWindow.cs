@@ -165,18 +165,20 @@ namespace TaskMaster
 			};
 			findexecbutton.Click += (sender, e) =>
 			{
-				var exselectdialog = new ProcessSelectDialog();
-				try
+				using (var exselectdialog = new ProcessSelectDialog())
 				{
-					if (exselectdialog.ShowDialog(this) == DialogResult.OK)
+					try
 					{
-						// SANITY CHECK: exselectdialog.Selection;
-						execName.Text = exselectdialog.Selection;
+						if (exselectdialog.ShowDialog(this) == DialogResult.OK)
+						{
+							// SANITY CHECK: exselectdialog.Selection;
+							execName.Text = exselectdialog.Selection;
+						}
 					}
-				}
-				catch (Exception ex)
-				{
-					Log.Fatal("{Type} : {Message}", ex.GetType().Name, ex.Message);
+					catch (Exception ex)
+					{
+						Log.Fatal("{Type} : {Message}", ex.GetType().Name, ex.Message);
+					}
 				}
 			};
 			execpanel.Controls.Add(findexecbutton);

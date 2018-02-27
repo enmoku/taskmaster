@@ -205,13 +205,13 @@ namespace TaskMaster
 			{
 				if (InternetAvailable != InternetAvailableLast) // prevent spamming available message
 				{
-					Log.Information("Internet available.");
+					Log.Information("<Network> Internet available.");
 					//Log.Verbose("Current internet uptime: {UpTime:N1} minute(s)", Uptime.TotalMinutes);
 				}
 				else
 				{
 					if (InternetAvailable != InternetAvailableLast) // prevent spamming unavailable message
-						Log.Information("Current internet uptime: Unavailable; Internet down.");
+						Log.Warning("<Network> Internet access unavailable.");
 				}
 				InternetAvailableLast = InternetAvailable;
 			}
@@ -221,7 +221,7 @@ namespace TaskMaster
 		{
 			var ups = new System.Text.StringBuilder();
 
-			ups.Append("Average uptime: ");
+			ups.Append("<Network> Average uptime: ");
 			lock (StateLock)
 			{
 				double currentUptime = (DateTime.Now - lastUptimeStart).TotalMinutes;

@@ -115,7 +115,6 @@ namespace TaskMaster
 				ms.Items.Add(power_saving);
 				ms.Items.Add(power_manual);
 				HighlightPowerMode();
-				TaskMaster.powermanager.onPlanChange += HighlightPowerModeEvent;
 			}
 			ms.Items.Add(new ToolStripSeparator());
 			ms.Items.Add(menu_restart);
@@ -147,6 +146,7 @@ namespace TaskMaster
 		public void hookPowerManager(ref PowerManager pman)
 		{
 			powermanager = pman;
+			powermanager.onPlanChange += HighlightPowerModeEvent;
 		}
 
 		void SetAutoPower(object sender, EventArgs ev)
@@ -399,7 +399,11 @@ namespace TaskMaster
 
 				try
 				{
-					TaskMaster.powermanager.onPlanChange -= HighlightPowerModeEvent;
+					if (powermanager != null)
+					{
+						powermanager.onPlanChange -= HighlightPowerModeEvent;
+						powermanager = null;
+					}
 				}
 				catch { /*NOP, don't care */ }
 

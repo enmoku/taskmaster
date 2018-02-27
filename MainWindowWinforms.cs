@@ -281,6 +281,9 @@ namespace TaskMaster
 		Label processingCountdown;
 
 		ListView powerbalancerlog;
+		Label powerbalancer_behaviour;
+		Label powerbalancer_plan;
+
 		object powerbalancerlog_lock = new object();
 
 		ListView exitwaitlist;
@@ -432,6 +435,12 @@ namespace TaskMaster
 		int SeenColumn = 7;
 		int PathColumn = 6;
 
+		void EnsureDebugLog()
+		{
+			if (logcombo_level.SelectedIndex == 0)
+				logcombo_level.SelectedIndex = 1;
+		}
+
 		void BuildUI()
 		{
 			//Size = new System.Drawing.Size(760, 640); // width, heigh
@@ -492,16 +501,37 @@ namespace TaskMaster
 			var menu_debug_inaction = new ToolStripMenuItem("Show inaction") { Checked = TaskMaster.ShowInaction, CheckOnClick = true };
 			menu_debug_inaction.Click += (sender, e) => { TaskMaster.ShowInaction = menu_debug_inaction.Checked; };
 			var menu_debug_scanning = new ToolStripMenuItem("Scanning") { Checked = TaskMaster.DebugFullScan, CheckOnClick = true };
-			menu_debug_scanning.Click += (sender, e) => { TaskMaster.DebugFullScan = menu_debug_scanning.Checked; };
+			menu_debug_scanning.Click += (sender, e) =>
+			{
+				TaskMaster.DebugFullScan = menu_debug_scanning.Checked;
+				if (TaskMaster.DebugFullScan) EnsureDebugLog();
+			};
+
+			var menu_debug_procs = new ToolStripMenuItem("Processes") { Checked = TaskMaster.DebugProcesses, CheckOnClick = true };
+			menu_debug_procs.Click += (sender, e) =>
+			{
+				TaskMaster.DebugProcesses = menu_debug_procs.Checked;
+				if (TaskMaster.DebugProcesses) EnsureDebugLog();
+			};
+
 			var menu_debug_paths = new ToolStripMenuItem("Paths") { Checked = TaskMaster.DebugPaths, CheckOnClick = true };
-			menu_debug_paths.Click += (sender, e) => { TaskMaster.DebugPaths = menu_debug_paths.Checked; };
+			menu_debug_paths.Click += (sender, e) =>
+			{
+				TaskMaster.DebugPaths = menu_debug_paths.Checked;
+				if (TaskMaster.DebugPaths) EnsureDebugLog();
+			};
 			var menu_debug_power = new ToolStripMenuItem("Power") { Checked = TaskMaster.DebugPower, CheckOnClick = true };
-			menu_debug_power.Click += (sender, e) => { TaskMaster.DebugPower = menu_debug_power.Checked; };
+			menu_debug_power.Click += (sender, e) =>
+			{
+				TaskMaster.DebugPower = menu_debug_power.Checked;
+				if (TaskMaster.DebugPower) EnsureDebugLog();
+			};
 			var menu_debug_clear = new ToolStripMenuItem("Clear UI log", null, (sender, e) => { ClearLog(); });
 
 			menu_debug.DropDownItems.Add(menu_debug_inaction);
 			menu_debug.DropDownItems.Add(new ToolStripSeparator());
 			menu_debug.DropDownItems.Add(menu_debug_scanning);
+			menu_debug.DropDownItems.Add(menu_debug_procs);
 			menu_debug.DropDownItems.Add(menu_debug_paths);
 			menu_debug.DropDownItems.Add(menu_debug_power);
 			menu_debug.DropDownItems.Add(new ToolStripSeparator());
@@ -1236,6 +1266,8 @@ namespace TaskMaster
 			powerbalancerlog.Columns.Add("High", 60);
 			powerbalancerlog.Columns.Add("Low", 60);
 			powerbalancerlog.Columns.Add("Reactionary Plan", 120);
+			powerbalancerlog.Columns.Add("Enacted", 60);
+			powerbalancerlog.Columns.Add("Pressure", 60);
 
 			buglayout.Controls.Add(new Label()
 			{
@@ -1247,6 +1279,22 @@ namespace TaskMaster
 			});
 			buglayout.Controls.Add(powerbalancerlog);
 
+			var powerbalancerstatus = new TableLayoutPanel()
+			{
+				ColumnCount = 4,
+				AutoSize = true,
+				Dock = DockStyle.Top
+			};
+			powerbalancerstatus.Controls.Add(new Label() { Text = "Behaviour:", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true });
+			powerbalancer_behaviour = new Label() { Text = "n/a", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true };
+			powerbalancerstatus.Controls.Add(powerbalancer_behaviour);
+			powerbalancerstatus.Controls.Add(new Label() { Text = "| Plan:", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true });
+			powerbalancer_plan = new Label() { Text = "n/a", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true };
+			powerbalancerstatus.Controls.Add(powerbalancer_plan);
+
+			PowerBehaviourDebugEvent(this, PowerManager.Behaviour);
+
+			buglayout.Controls.Add(powerbalancerstatus);
 			bugTab.Controls.Add(buglayout);
 
 			// End: UI Log
@@ -1269,11 +1317,13 @@ namespace TaskMaster
 
 		void FreeMemoryRequest(object sender, EventArgs ev)
 		{
-			var exsel = new ProcessSelectDialog();
-			if (exsel.ShowDialog(this) == DialogResult.OK)
+			using (var exsel = new ProcessSelectDialog())
 			{
-				Log.Information("Freeing memory for: {Exec}", exsel.Selection);
-				TaskMaster.processmanager.FreeMemoryFor(exsel.Selection);
+				if (exsel.ShowDialog(this) == DialogResult.OK)
+				{
+					Log.Information("Freeing memory for: {Exec}", exsel.Selection);
+					TaskMaster.processmanager.FreeMemoryFor(exsel.Selection);
+				}
 			}
 		}
 
@@ -1311,14 +1361,16 @@ namespace TaskMaster
 
 			PowerManager.PowerMode powerreact = ev.Mode;
 
-			string reactionary = powerreact == PowerManager.PowerMode.HighPerformance ? "High Performance" : powerreact == PowerManager.PowerMode.PowerSaver ? "Power Saver" : "Balanced";
+			string reactionary = PowerManager.GetModeName(ev.Mode);
 
 			var li = new ListViewItem(new string[] {
 				string.Format("{0:N2}%", ev.Current),
 				string.Format("{0:N2}%", ev.Average),
 				string.Format("{0:N2}%", ev.High),
 				string.Format("{0:N2}%", ev.Low),
-				reactionary
+				reactionary,
+				ev.Handled.ToString(),
+				string.Format("{0:N1}%", ev.Pressure*100f)
 			});
 
 			li.UseItemStyleForSubItems = false;
@@ -1335,12 +1387,21 @@ namespace TaskMaster
 
 			lock (powerbalancerlog_lock)
 			{
-				if (powerbalancerlog.Items.Count > 3)
-					powerbalancerlog.Items.RemoveAt(0);
-				powerbalancerlog.Items.Add(li);
+				try
+				{
+					if (powerbalancerlog.Items.Count > 3)
+						powerbalancerlog.Items.RemoveAt(0);
+					powerbalancerlog.Items.Add(li);
+				}
+				catch // this tends to happen close to exit
+				{ }
+			}
+
+			if (ev.Handled)
+			{
+				powerbalancer_plan.Text = reactionary;
 			}
 		}
-
 
 		void WatchlistContextMenuOpen(object sender, EventArgs ea)
 		{
@@ -1364,9 +1425,11 @@ namespace TaskMaster
 				}
 
 				ListViewItem li = watchlistRules.SelectedItems[0];
-				var t = new AppEditWindow(li.SubItems[NameColumn].Text, li); // 1 = executable
-				var rv = t.ShowDialog();
-				WatchlistEditLock = 0;
+				using (var editdialog = new AppEditWindow(li.SubItems[NameColumn].Text, li)) // 1 = executable
+				{
+					var rv = editdialog.ShowDialog();
+					WatchlistEditLock = 0;
+				}
 			}
 		}
 
@@ -1503,7 +1566,21 @@ namespace TaskMaster
 		public void hookPowerManager(ref PowerManager pman)
 		{
 			powermanager = pman;
-			powermanager.onAutoAdjust += CPULoadHandler;
+			powermanager.onAutoAdjustAttempt += CPULoadHandler;
+			powermanager.onBehaviourChange += PowerBehaviourDebugEvent;
+			powermanager.onPlanChange += PowerPlanDebugEvent;
+		}
+
+		public void PowerBehaviourDebugEvent(object sender, PowerManager.PowerBehaviour behaviour)
+		{
+			powerbalancer_behaviour.Text = (behaviour == PowerManager.PowerBehaviour.Auto) ? "Automatic" : ((behaviour == PowerManager.PowerBehaviour.Manual) ? "Manual" : "Rule-based");
+			if (behaviour != PowerManager.PowerBehaviour.Auto)
+				powerbalancerlog.Items.Clear();
+		}
+
+		public void PowerPlanDebugEvent(object sender, PowerModeEventArgs ev)
+		{
+			powerbalancer_plan.Text = PowerManager.GetModeName(ev.NewMode);
 		}
 
 		public void hookNetMonitor(ref NetMonitor net)
@@ -1703,7 +1780,18 @@ namespace TaskMaster
 
 				try
 				{
+					if (powermanager != null)
+					{
+						powermanager.onAutoAdjustAttempt -= CPULoadHandler;
+						powermanager = null;
+					}
+				}
+				catch { }
+
+				try
+				{
 					activeappmonitor.ActiveChanged -= OnActiveWindowChanged;
+					activeappmonitor = null;
 				}
 				catch { }
 
@@ -1727,16 +1815,6 @@ namespace TaskMaster
 					if (TaskMaster.PagingEnabled)
 						pagingRequest -= processmanager.PageEverythingRequest;
 					processmanager = null;
-				}
-				catch { }
-
-				try
-				{
-					if (powermanager != null)
-					{
-						powermanager.onAutoAdjust -= CPULoadHandler;
-						powermanager = null;
-					}
 				}
 				catch { }
 
