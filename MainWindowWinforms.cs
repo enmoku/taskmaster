@@ -116,7 +116,7 @@ namespace TaskMaster
 		MicManager micmon = null;
 		DiskManager diskmanager = null;
 		ProcessManager processmanager = null;
-		ActiveAppMonitor activeappmonitor = null;
+		ActiveAppManager activeappmonitor = null;
 		PowerManager powermanager = null;
 		NetManager netmonitor = null;
 
@@ -1555,7 +1555,7 @@ namespace TaskMaster
 			ShowLastLog();
 		}
 
-		public void hookActiveAppMonitor(ref ActiveAppMonitor aamon)
+		public void hookActiveAppMonitor(ref ActiveAppManager aamon)
 		{
 			activeappmonitor = aamon;
 			activeappmonitor.ActiveChanged += OnActiveWindowChanged;
