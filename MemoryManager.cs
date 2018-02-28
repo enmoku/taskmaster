@@ -24,6 +24,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
+using System;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 
@@ -39,8 +40,8 @@ namespace TaskMaster
 			/*
 			var memInfo = new MEMORY_PRIORITY_INFORMATION { MemoryPriority = Convert.ToUInt32(prio) };
 			uint memSize = Convert.ToUInt32(Marshal.SizeOf(memInfo));
-			System.Runtime.InteropServices.Marshal.AllocHGlobal(memInfo);
-			MemoryManager.SetProcessInformation(prc.Handle, PROCESS_INFORMATION_CLASS.ProcessMemoryPriority, memInfo, memSize);
+			var memInfoP = System.Runtime.InteropServices.Marshal.AllocHGlobal(memInfo);
+			MemoryManager.SetProcessInformation(prc.Handle, PROCESS_INFORMATION_CLASS.ProcessMemoryPriority, memInfoP, memSize);
 			*/
 		}
 
@@ -57,25 +58,26 @@ namespace TaskMaster
 		ProcessPowerThrottling,
 	}
 
-	[System.Runtime.InteropServices.StructLayoutAttribute(System.Runtime.InteropServices.LayoutKind.Sequential)]
+	// BUG: Requires Windows 8
+	[StructLayoutAttribute(LayoutKind.Sequential)]
 	public struct MEMORY_PRIORITY_INFORMATION
 	{
-		public uint MemoryPriority;
+		public ulong MemoryPriority;
 	}
 
 	public enum MemoryPriority
 	{
-		VeryLow = 1,
-		Low = 2,
-		Medium = 3,
-		BelowNormal = 4,
-		Normal = 5
+		VeryLow = 1, // MEMORY_PRIORITY_VERY_LOWW
+		Low = 2, // MEMORY_PRIORITY_LOWW
+		Medium = 3, // MEMORY_PRIORITY_MEDIUMm
+		BelowNormal = 4, // MEMORY_PRIORITY_BELOW_NORMALL
+		Normal = 5 // MEMORY_PRIORITY_NORMALL
 	}
 
 	public static class MemoryManager
 	{
 		// [DllImport("kernel32.dll", SetLastError=true]
 		[DllImport("kernel32.dll", EntryPoint = "SetProcessInformation")]
-		public static extern bool SetProcessInformation(System.IntPtr hProcess, PROCESS_INFORMATION_CLASS ProcessInformationClass, System.IntPtr ProcessInformation, uint ProcessInformationSize);
+		public static extern bool SetProcessInformation(IntPtr hProcess, PROCESS_INFORMATION_CLASS ProcessInformationClass, IntPtr ProcessInformation, uint ProcessInformationSize);
 	}
 }

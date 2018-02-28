@@ -31,6 +31,7 @@ using Serilog;
 using Microsoft.Win32;
 using System.Diagnostics.Eventing.Reader;
 using System.Runtime.InteropServices.WindowsRuntime;
+using System.Diagnostics;
 
 namespace TaskMaster
 {
@@ -50,7 +51,7 @@ namespace TaskMaster
 		public PowerManager()
 		{
 			RegisterPowerSettingNotification(Handle, ref GUID_POWERSCHEME_PERSONALITY, DEVICE_NOTIFY_WINDOW_HANDLE);
-			Original = getPowerMode();
+			OriginalMode = getPowerMode();
 
 			LoadConfig();
 
@@ -73,7 +74,7 @@ namespace TaskMaster
 				CPUTimer.Start();
 		}
 
-		public static int CPUSampleInterval { get; set; } = 5;
+		public int CPUSampleInterval { get; set; } = 5;
 		System.Diagnostics.PerformanceCounter CPUCounter = null;
 		System.Timers.Timer CPUTimer = null;
 
@@ -103,12 +104,12 @@ namespace TaskMaster
 
 		static bool Pause = false;
 
-		static bool SaverOnMonitorSleep = false;
-		static bool SaverOnSessionLock = false;
-		static bool SaverOnLogOff = false;
-		static bool SaverOnScreensaver = false;
-		static bool UserActiveCancel = true;
-		static int SaverOnUserAFK = 0;
+		bool SaverOnMonitorSleep = false;
+		bool SaverOnSessionLock = false;
+		bool SaverOnLogOff = false;
+		bool SaverOnScreensaver = false;
+		bool UserActiveCancel = true;
+		int SaverOnUserAFK = 0;
 
 		public event EventHandler<ProcessorEventArgs> onAutoAdjustAttempt;
 		public event EventHandler<PowerModeEventArgs> onPlanChange;
@@ -226,7 +227,7 @@ namespace TaskMaster
 				}
 			}
 
-			if (ReactionaryPlan != Current && ReadyToChange && !ForcedMode)
+			if (ReactionaryPlan != CurrentMode && ReadyToChange && !ForcedMode)
 			{
 				if (TaskMaster.DebugPower)
 					Log.Debug("<Power Mode> Auto-adjust: {Mode}", Reaction.ToString());
@@ -353,7 +354,7 @@ namespace TaskMaster
 				TaskMaster.MarkDirtyINI(TaskMaster.cfg);
 		}
 
-		public static void LogState()
+		public void LogState()
 		{
 			Log.Information("<Power Mode> Behaviour: {State}",
 				(Behaviour == PowerBehaviour.Auto ? "Automatic" : Behaviour == PowerBehaviour.RuleBased ? "Rule-controlled" : "Manual"));
@@ -391,7 +392,7 @@ namespace TaskMaster
 					// SET POWER SAVER
 					if (SaverOnSessionLock)
 					{
-						if (Current != PowerMode.PowerSaver)
+						if (CurrentMode != PowerMode.PowerSaver)
 						{
 							Pause = true;
 							Log.Information("<Power Mode> Session locked, enforcing low power plan.");
@@ -404,7 +405,7 @@ namespace TaskMaster
 					// RESTORE POWER MODE
 					if (SaverOnSessionLock)
 					{
-						if (Current == PowerMode.PowerSaver && Pause)
+						if (CurrentMode == PowerMode.PowerSaver && Pause)
 						{
 							Log.Information("<Power Mode> Session unlocked, restoring normal power.");
 							setMode(DefaultMode, true);
@@ -449,16 +450,16 @@ namespace TaskMaster
 				{
 					IntPtr pData = (IntPtr)(m.LParam.ToInt32() + Marshal.SizeOf(ps));  // (*1)
 					Guid newPersonality = (Guid)Marshal.PtrToStructure(pData, typeof(Guid));
-					PowerMode old = Current;
-					if (newPersonality == Balanced) { Current = PowerMode.Balanced; }
-					else if (newPersonality == HighPerformance) { Current = PowerMode.HighPerformance; }
-					else if (newPersonality == PowerSaver) { Current = PowerMode.PowerSaver; }
-					else { Current = PowerMode.Undefined; }
+					PowerMode old = CurrentMode;
+					if (newPersonality == Balanced) { CurrentMode = PowerMode.Balanced; }
+					else if (newPersonality == HighPerformance) { CurrentMode = PowerMode.HighPerformance; }
+					else if (newPersonality == PowerSaver) { CurrentMode = PowerMode.PowerSaver; }
+					else { CurrentMode = PowerMode.Undefined; }
 
-					onPlanChange?.Invoke(this, new PowerModeEventArgs { OldMode = old, NewMode = Current });
+					onPlanChange?.Invoke(this, new PowerModeEventArgs { OldMode = old, NewMode = CurrentMode });
 
 					if (TaskMaster.DebugPower)
-						Log.Debug("<Power Mode> Change detected: {PlanName} ({PlanGuid})", Current.ToString(), newPersonality.ToString());
+						Log.Debug("<Power Mode> Change detected: {PlanName} ({PlanGuid})", CurrentMode.ToString(), newPersonality.ToString());
 				}
 			}
 
@@ -499,10 +500,10 @@ namespace TaskMaster
 			Undefined = 3
 		};
 
-		public static PowerMode Original { get; private set; } = PowerMode.Balanced;
-		public static PowerMode Current { get; private set; } = PowerMode.Balanced;
+		public PowerMode OriginalMode { get; private set; } = PowerMode.Balanced;
+		public PowerMode CurrentMode { get; private set; } = PowerMode.Balanced;
 
-		static PowerMode SavedMode = PowerMode.Undefined;
+		PowerMode SavedMode = PowerMode.Undefined;
 
 		static Guid HighPerformance = new Guid("8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c"); // SCHEME_MIN
 		static Guid Balanced = new Guid("381b4222-f694-41f0-9685-ff5bb260df2e"); // SCHEME_BALANCED
@@ -548,19 +549,19 @@ namespace TaskMaster
 			return Behaviour;
 		}
 
-		public static void SaveMode()
+		public void SaveMode()
 		{
 			if (Behaviour == PowerBehaviour.Auto) return;
 
 			if (SavedMode != PowerMode.Undefined) Log.Warning("<Power Mode> Saved mode is being overriden.");
 
 			if (TaskMaster.DebugPower)
-				Log.Debug("<Power Mode> Saving current power mode for later restoration: {Mode}", Current.ToString());
+				Log.Debug("<Power Mode> Saving current power mode for later restoration: {Mode}", CurrentMode.ToString());
 
 			lock (powerLock)
 			{
 
-				SavedMode = Current;
+				SavedMode = CurrentMode;
 
 				if (SavedMode == PowerMode.Undefined)
 				{
@@ -570,18 +571,18 @@ namespace TaskMaster
 			}
 		}
 
-		static bool RestoreOriginal = false;
-		public static void RestoreMode()
+		bool RestoreOriginal = false;
+		public void RestoreMode()
 		{
 			if (Pause) return; // TODO: What to do in the unlikely event of this being called while paused?
 
 			lock (powerLock)
 			{
 				if (RestoreOriginal)
-					SavedMode = Original;
+					SavedMode = OriginalMode;
 
 				ForcedMode = false;
-				if (SavedMode != PowerMode.Undefined && SavedMode != Current)
+				if (SavedMode != PowerMode.Undefined && SavedMode != CurrentMode)
 				{
 					if (Behaviour == PowerBehaviour.Auto) return;
 
@@ -589,12 +590,12 @@ namespace TaskMaster
 					SavedMode = PowerMode.Undefined;
 
 					if (TaskMaster.DebugPower)
-						Log.Debug("<Power Mode> Restored to: {PowerMode}", Current.ToString());
+						Log.Debug("<Power Mode> Restored to: {PowerMode}", CurrentMode.ToString());
 				}
 			}
 		}
 
-		static PowerMode getPowerMode()
+		PowerMode getPowerMode()
 		{
 			Guid plan;
 			IntPtr ptr = Marshal.AllocHGlobal(Marshal.SizeOf(typeof(IntPtr)));
@@ -605,52 +606,52 @@ namespace TaskMaster
 					plan = (Guid)Marshal.PtrToStructure(ptr, typeof(Guid));
 					Marshal.FreeHGlobal(ptr);
 
-					if (plan == Balanced) { Current = PowerMode.Balanced; }
-					else if (plan == PowerSaver) { Current = PowerMode.PowerSaver; }
-					else if (plan == HighPerformance) { Current = PowerMode.HighPerformance; }
-					else { Current = PowerMode.Undefined; }
+					if (plan == Balanced) { CurrentMode = PowerMode.Balanced; }
+					else if (plan == PowerSaver) { CurrentMode = PowerMode.PowerSaver; }
+					else if (plan == HighPerformance) { CurrentMode = PowerMode.HighPerformance; }
+					else { CurrentMode = PowerMode.Undefined; }
 
-					Log.Information("<Power Mode> Current: {Plan} ({Guid})", Current.ToString(), plan.ToString());
+					Log.Information("<Power Mode> Current: {Plan} ({Guid})", CurrentMode.ToString(), plan.ToString());
 				}
 			}
-			return Current;
+			return CurrentMode;
 		}
 
 		public static object powerLock = new object();
 		public static object powerLockI = new object();
 
-		public static PowerBehaviour Behaviour { get; private set; } = PowerBehaviour.RuleBased;
+		public PowerBehaviour Behaviour { get; private set; } = PowerBehaviour.RuleBased;
 
-		public static bool RequestMode(PowerMode mode)
+		public bool RequestMode(PowerMode mode)
 		{
-			if (Behaviour != PowerBehaviour.Auto) return false;
+			Debug.Assert(Behaviour == PowerBehaviour.Auto, "RequestMode is for auto adjusting.");
 			if (Pause) return false;
 
 			lock (powerLock)
 			{
-				if (mode != Current && ForcedMode == false)
+				if (mode != CurrentMode && ForcedMode == false)
 				{
 					setMode(mode, verbose: false);
 					return true;
 				}
-				return false;
 			}
+			return false;
 		}
 
 		static bool ForcedMode = false;
 
-		public static bool ForceMode(PowerMode mode)
+		public bool ForceMode(PowerMode mode)
 		{
 			if (Behaviour == PowerBehaviour.Manual) return false;
 			if (Pause) return false;
 
 			lock (powerLock)
 			{
-				if (mode != Current)
+				if (mode != CurrentMode)
 				{
 					setMode(mode);
 					if (TaskMaster.DebugPower)
-						Log.Debug("<Power Mode> Forced to: {PowerMode}", Current);
+						Log.Debug("<Power Mode> Forced to: {PowerMode}", CurrentMode);
 					ForcedMode = true;
 					return true;
 				}
@@ -706,12 +707,12 @@ namespace TaskMaster
 				}
 
 				if (RestoreOriginal)
-					SavedMode = Original;
+					SavedMode = OriginalMode;
 
 				if (SavedMode != PowerMode.Undefined)
 					RestoreMode();
 				else
-					setMode(Original, true);
+					setMode(OriginalMode, true);
 				Log.Information("<Power Mode> Restored.");
 				Log.Information("<Power Mode> Auto-adjusted {Counter} time(s).", AutoAdjustCounter);
 			}

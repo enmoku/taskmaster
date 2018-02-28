@@ -4,7 +4,7 @@
 // Author:
 //       M.A. (enmoku) <>
 //
-// Copyright (c) 2016 M.A. (enmoku)
+// Copyright (c) 2016-2018 M.A. (enmoku)
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -40,7 +40,7 @@ namespace TaskMaster
 		public int Max { get; set; }
 		public int Min { get; set; }
 
-		UptimeTracker(int cap=10)
+		UptimeTracker(int cap = 10)
 		{
 			Cap = cap;
 			Stack = new System.Collections.Queue(Cap);
@@ -50,7 +50,7 @@ namespace TaskMaster
 		{
 			Count += 1;
 			Total += time;
-			Stack.Enqueue(new Uptime { Time=time, Stamp=System.DateTime.UtcNow });
+			Stack.Enqueue(new Uptime { Time = time, Stamp = System.DateTime.UtcNow });
 		}
 
 		public void Pull()

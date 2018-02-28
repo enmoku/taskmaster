@@ -4,7 +4,7 @@
 // Author:
 //       M.A. (enmoku)
 //
-// Copyright (c) 2016 M.A. (enmoku)
+// Copyright (c) 2016-2018 M.A. (enmoku)
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -123,11 +123,11 @@ namespace TaskMaster
 			return retcfg;
 		}
 
-		public static MicMonitor micmonitor = null;
+		public static MicManager micmonitor = null;
 		public static MainWindow mainwindow = null;
 		public static ProcessManager processmanager = null;
 		public static TrayAccess trayaccess = null;
-		public static NetMonitor netmonitor = null;
+		public static NetManager netmonitor = null;
 		public static DiskManager diskmanager = null;
 		public static PowerManager powermanager = null;
 		public static ActiveAppMonitor activeappmonitor = null;
@@ -236,20 +236,20 @@ namespace TaskMaster
 
 		static void Setup()
 		{
+			if (PowerManagerEnabled)
+				powermanager = new PowerManager();
+
 			if (ProcessMonitorEnabled)
 				processmanager = new ProcessManager();
 
 			if (MicrophoneMonitorEnabled)
-				micmonitor = new MicMonitor();
+				micmonitor = new MicManager();
 
 			if (NetworkMonitorEnabled)
 			{
-				netmonitor = new NetMonitor();
+				netmonitor = new NetManager();
 				netmonitor.Tray = trayaccess;
 			}
-
-			if (PowerManagerEnabled)
-				powermanager = new PowerManager();
 
 			trayaccess = new TrayAccess();
 
@@ -722,6 +722,7 @@ namespace TaskMaster
 				{
 					Log.Fatal("Exiting due to initialization failure.");
 					Log.Fatal("{Type} : {Message}", ex.GetType().Name, ex.Message);
+					Log.Fatal(ex.StackTrace);
 					singleton.ReleaseMutex();
 					Log.CloseAndFlush();
 					return;

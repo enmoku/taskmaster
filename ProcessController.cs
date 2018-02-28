@@ -4,7 +4,7 @@
 // Author:
 //       M.A. (enmoku) <>
 //
-// Copyright (c) 2016 M.A. (enmoku)
+// Copyright (c) 2016-2018 M.A. (enmoku)
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -180,8 +180,9 @@ namespace TaskMaster
 
 			info.Process.PriorityClass = OriginalState.Priority;
 			info.Process.ProcessorAffinity = OriginalState.Affinity;
-			if (PowerPlan != PowerManager.PowerMode.Undefined)
-				PowerManager.RestoreMode();
+			if (TaskMaster.PowerManagerEnabled)
+				if (PowerPlan != PowerManager.PowerMode.Undefined)
+					TaskMaster.powermanager.RestoreMode();
 		}
 
 		/// <summary>
@@ -266,7 +267,7 @@ namespace TaskMaster
 				lock (waitingExitLock)
 				{
 					if (waitingExit.Count == 0)
-						PowerManager.SaveMode();
+						TaskMaster.powermanager.SaveMode();
 
 					if (waitingExitPids.Add(info.Id))
 					{
@@ -302,7 +303,7 @@ namespace TaskMaster
 									if (waitingExit.Count == 0)
 									{
 										Log.Information("{Process} (#{Pid}) exited; restoring normal power.", name, pid);
-										PowerManager.RestoreMode();
+										TaskMaster.powermanager.RestoreMode();
 									}
 									else
 									{
@@ -319,12 +320,12 @@ namespace TaskMaster
 							}
 						};
 
-						if (PowerManager.Current != PowerPlan)
+						if (TaskMaster.powermanager.CurrentMode != PowerPlan)
 						{
 							Log.Information("[{FriendlyName}] Upgrading power mode for '{Exec}' (#{Pid})", FriendlyName, info.Name, info.Id);
 							if (TaskMaster.DebugPower)
 								Log.Debug("Power mode upgrading to: {PowerPlan}", PowerPlan);
-							PowerManager.ForceMode(PowerPlan);
+							TaskMaster.powermanager.ForceMode(PowerPlan);
 						}
 					}
 				}
@@ -500,9 +501,13 @@ namespace TaskMaster
 			}
 			*/
 
-			PowerManager.PowerMode oldPP = PowerManager.Current;
-			setPowerPlan(info);
-			mPower = (oldPP != PowerManager.Current);
+			PowerManager.PowerMode oldPP = PowerManager.PowerMode.Undefined;
+			if (TaskMaster.PowerManagerEnabled)
+			{
+				oldPP = TaskMaster.powermanager.CurrentMode;
+				setPowerPlan(info);
+				mPower = (oldPP != TaskMaster.powermanager.CurrentMode);
+			}
 
 			var sbs = new System.Text.StringBuilder();
 			sbs.Append("[").Append(FriendlyName).Append("] ").Append(info.Name).Append(" (#").Append(info.Id).Append(")");

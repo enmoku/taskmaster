@@ -4,7 +4,7 @@
 // Author:
 //       M.A. (enmoku) <>
 //
-// Copyright (c) 2016 M.A. (enmoku)
+// Copyright (c) 2016-2018 M.A. (enmoku)
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -113,15 +113,15 @@ namespace TaskMaster
 		}
 
 		// HOOKS
-		MicMonitor micmon = null;
+		MicManager micmon = null;
 		DiskManager diskmanager = null;
 		ProcessManager processmanager = null;
 		ActiveAppMonitor activeappmonitor = null;
 		PowerManager powermanager = null;
-		NetMonitor netmonitor = null;
+		NetManager netmonitor = null;
 
 		#region Microphone control code
-		public void hookMicMonitor(MicMonitor micmonitor)
+		public void hookMicMonitor(MicManager micmonitor)
 		{
 			Debug.Assert(micmonitor != null);
 			micmon = micmonitor;
@@ -1292,8 +1292,6 @@ namespace TaskMaster
 			powerbalancer_plan = new Label() { Text = "n/a", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true };
 			powerbalancerstatus.Controls.Add(powerbalancer_plan);
 
-			PowerBehaviourDebugEvent(this, PowerManager.Behaviour);
-
 			buglayout.Controls.Add(powerbalancerstatus);
 			bugTab.Controls.Add(buglayout);
 
@@ -1569,6 +1567,9 @@ namespace TaskMaster
 			powermanager.onAutoAdjustAttempt += CPULoadHandler;
 			powermanager.onBehaviourChange += PowerBehaviourDebugEvent;
 			powermanager.onPlanChange += PowerPlanDebugEvent;
+
+			PowerBehaviourDebugEvent(this, powermanager.Behaviour); // populates powerbalancer_behaviourr
+			PowerPlanDebugEvent(this, new PowerModeEventArgs() { NewMode = powermanager.CurrentMode }); // populates powerbalancer_plan
 		}
 
 		public void PowerBehaviourDebugEvent(object sender, PowerManager.PowerBehaviour behaviour)
@@ -1583,7 +1584,7 @@ namespace TaskMaster
 			powerbalancer_plan.Text = PowerManager.GetModeName(ev.NewMode);
 		}
 
-		public void hookNetMonitor(ref NetMonitor net)
+		public void hookNetMonitor(ref NetManager net)
 		{
 			if (net == null) return; // disabled
 

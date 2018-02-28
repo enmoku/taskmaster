@@ -4,7 +4,7 @@
 // Author:
 //       M.A. (enmoku) <>
 //
-// Copyright (c) 2017 M.A. (enmoku)
+// Copyright (c) 2017-2018 M.A. (enmoku)
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
