@@ -1066,16 +1066,38 @@ namespace TaskMaster
 		{
 			if (!prc.ForegroundOnly) return;
 
-			if (!ForegroundWaitlist.ContainsKey(info.Id))
+			lock (foreground_lock)
 			{
-				ForegroundWaitlist.Add(info.Id, prc);
-				ForegroundApps.Add(info.Id, info);
+				if (!ForegroundWaitlist.ContainsKey(info.Id))
+				{
+					ForegroundWaitlist.Add(info.Id, prc);
+					ForegroundApps.Add(info.Id, info);
+
+					info.Process.Exited += (sender, e) => { ForegroundWatchEnd(info); };
+					info.Process.EnableRaisingEvents = true;
+				}
 			}
 
 			if (TaskMaster.DebugForeground)
 				Log.Debug("[{FriendlyName}] {Exec} (#{Pid}) added to foreground watchlist.", prc.FriendlyName, info.Name, info.Id);
 
 			onActiveHandled?.Invoke(this, new ProcessEventArgs() { Control = prc, Info = info, State = ProcessEventArgs.ProcessState.Found });
+		}
+
+		void ForegroundWatchEnd(BasicProcessInfo info)
+		{
+			try
+			{
+				lock (foreground_lock)
+				{
+					ForegroundApps.Remove(info.Id);
+					ForegroundWaitlist.Remove(info.Id);
+				}
+				onActiveHandled?.Invoke(this, new ProcessEventArgs() { Control = null, Info = info, State = ProcessEventArgs.ProcessState.Exiting });
+			}
+			catch
+			{
+			}
 		}
 
 		ProcessState CheckProcess(BasicProcessInfo info, bool schedule_next = true)
