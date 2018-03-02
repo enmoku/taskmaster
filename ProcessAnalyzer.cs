@@ -45,6 +45,7 @@ namespace TaskMaster
 			ProcessAnalysis pa = new ProcessAnalysis();
 			pa.bla = true;
 
+			// this unfortunately returned only ntdll.dll, wow64.dll, wow64win.dll, and wow64cpu.dll for a game and seems unusuable for what it was desired
 			foreach (ProcessModule module in process.Modules)
 			{
 				string file = null, name = null;

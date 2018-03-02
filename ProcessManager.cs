@@ -36,6 +36,7 @@ using System.Runtime.CompilerServices;
 using System.Windows.Forms;
 using Serilog.Sinks.File;
 using Serilog.Debugging;
+using System.Windows.Controls;
 namespace TaskMaster
 {
 	public class InstanceEventArgs : EventArgs
@@ -1070,34 +1071,53 @@ namespace TaskMaster
 			{
 				if (!ForegroundWaitlist.ContainsKey(info.Id))
 				{
+					try
+					{
+						ForegroundWaitlist.Add(info.Id, prc);
+					}
+					catch { } // shouldn't happen
+					try
+					{
+						ForegroundApps.Add(info.Id, info);
+					}
+					catch { } // shouldn't happen
+
+					info.Process.EnableRaisingEvents = true;
+					info.Process.Exited += (sender, e) => { ForegroundWatchEnd(info); };
+
+					if (TaskMaster.DebugForeground)
+						Log.Debug("[{FriendlyName}] {Exec} (#{Pid}) added to foreground watchlist.", prc.FriendlyName, info.Name, info.Id);
+				}
+				else if (ForegroundApps[info.Id].Name != info.Name)
+				{
+					Log.Debug("Strangeness with foreground watchlist... Hmm...");
+					ForegroundWaitlist.Remove(info.Id);
+					ForegroundApps.Remove(info.Id);
 					ForegroundWaitlist.Add(info.Id, prc);
 					ForegroundApps.Add(info.Id, info);
-
-					info.Process.Exited += (sender, e) => { ForegroundWatchEnd(info); };
-					info.Process.EnableRaisingEvents = true;
 				}
 			}
-
-			if (TaskMaster.DebugForeground)
-				Log.Debug("[{FriendlyName}] {Exec} (#{Pid}) added to foreground watchlist.", prc.FriendlyName, info.Name, info.Id);
 
 			onActiveHandled?.Invoke(this, new ProcessEventArgs() { Control = prc, Info = info, State = ProcessEventArgs.ProcessState.Found });
 		}
 
 		void ForegroundWatchEnd(BasicProcessInfo info)
 		{
-			try
+			lock (foreground_lock)
 			{
-				lock (foreground_lock)
+				try
 				{
 					ForegroundApps.Remove(info.Id);
+				}
+				catch { } // not there
+				try
+				{
 					ForegroundWaitlist.Remove(info.Id);
 				}
-				onActiveHandled?.Invoke(this, new ProcessEventArgs() { Control = null, Info = info, State = ProcessEventArgs.ProcessState.Exiting });
+				catch { } // not there
 			}
-			catch
-			{
-			}
+
+			onActiveHandled?.Invoke(this, new ProcessEventArgs() { Control = null, Info = info, State = ProcessEventArgs.ProcessState.Exiting });
 		}
 
 		ProcessState CheckProcess(BasicProcessInfo info, bool schedule_next = true)
@@ -1553,6 +1573,31 @@ namespace TaskMaster
 
 			if (TaskMaster.PathCacheLimit > 0)
 				pathCache = new Cache<int, string, string>(TaskMaster.PathCacheMaxAge, TaskMaster.PathCacheLimit, (TaskMaster.PathCacheLimit / 10).Constrain(5, 10));
+		}
+
+		public async Task Cleanup()
+		{
+			await Task.Yield();
+
+			lock (foreground_lock)
+			{
+				var items = ForegroundApps.Values;
+				foreach (var info in items)
+				{
+					try
+					{
+						info.Process.Refresh();
+						info.Process.WaitForExit(2000); // arbitrary
+						if (info.Process.HasExited)
+						{
+							ForegroundWatchEnd(info);
+						}
+					}
+					catch
+					{
+					}
+				}
+			}
 		}
 
 		bool disposed; // = false;

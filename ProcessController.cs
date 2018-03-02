@@ -32,6 +32,7 @@ using System.Runtime.InteropServices;
 using System.ComponentModel;
 using System.Threading.Tasks;
 using System.Linq;
+using System.Windows.Controls;
 
 namespace TaskMaster
 {
@@ -273,6 +274,25 @@ namespace TaskMaster
 
 		public static event EventHandler<ProcessEventArgs> PowermodeExitWaitEvent;
 
+		public static async Task Cleanup()
+		{
+			await Task.Yield();
+
+			lock (waitingExitLock)
+			{
+				var items = waitingExit.Values;
+				foreach (var info in items)
+				{
+					info.Process.Refresh();
+					info.Process.WaitForExit(2000); // arbitrary
+					if (info.Process.HasExited)
+					{
+						EndWaitForExit(info);
+					}
+				}
+			}
+		}
+
 		public static BasicProcessInfo[] getWaitingExit()
 		{
 			return waitingExit.Values.ToArray();
@@ -294,14 +314,29 @@ namespace TaskMaster
 			}
 		}
 
-		void WaitForExit(BasicProcessInfo info)
+		public static void EndWaitForExit(BasicProcessInfo info)
 		{
+			lock (waitingExitLock)
+			{
+				try
+				{
+					waitingExit.Remove(info.Id);
+				}
+				catch { }
 
-		}
+				if (waitingExit.Count == 0)
+				{
+					Log.Information("{Process} (#{Pid}) exited; restoring normal power.", info.Name, info.Id);
+					TaskMaster.powermanager.RestoreMode();
+				}
+				else
+				{
+					Log.Information("{Exec} (#{Pid}) exited; power mode still requested by {Num} proceses.", info.Name, info.Id, waitingExit.Count);
+				}
 
-		void CancelWait(BasicProcessInfo info)
-		{
+			}
 
+			PowermodeExitWaitEvent?.Invoke(null, new ProcessEventArgs() { Control = null, Info = info, State = ProcessEventArgs.ProcessState.Exiting });
 		}
 
 		protected bool setPowerPlan(BasicProcessInfo info)
@@ -341,22 +376,8 @@ namespace TaskMaster
 						{
 							if (ProcessManager.PowerdownDelay > 0)
 								await Task.Delay(ProcessManager.PowerdownDelay * 1000);
-							else
-								await Task.Yield();
 
-							lock (waitingExitLock)
-							{
-								waitingExit.Remove(info.Id);
-								if (waitingExit.Count == 0)
-								{
-									Log.Information("{Process} (#{Pid}) exited; restoring normal power.", name, pid);
-									TaskMaster.powermanager.RestoreMode();
-								}
-								else
-								{
-									Log.Information("{Exec} (#{Pid}) exited; power mode still requested by {Num} proceses.", name, pid, waitingExit.Count);
-								}
-							}
+							EndWaitForExit(info);
 						}
 						catch (Exception ex)
 						{

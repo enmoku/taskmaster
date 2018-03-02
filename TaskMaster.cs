@@ -345,6 +345,8 @@ namespace TaskMaster
 		public static int PathCacheLimit = 200;
 		public static int PathCacheMaxAge = 1800;
 
+		public static int CleanupInterval = 15;
+
 		/// <summary>
 		/// Whether to use WMI queries for investigating failed path checks to determine if an application was launched in watched path.
 		/// </summary>
@@ -495,6 +497,12 @@ namespace TaskMaster
 			if (PathCacheMaxAge > 1440) PathCacheMaxAge = 1440;
 			dirtyconfig |= modified;
 
+			// 
+			var maintsec = cfg["Maintenance"];
+			CleanupInterval = maintsec.GetSetDefault("Cleanup interval", 15, out modified).IntValue.Constrain(1, 1440);
+			maintsec["Cleanup interval"].Comment = "In minutes, 1 to 1440. How frequently to perform general sanitation of TM itself.";
+			dirtyconfig |= modified;
+
 			int newsettings = optsec?.SettingCount ?? 0 + compsec?.SettingCount ?? 0 + perfsec?.SettingCount ?? 0;
 
 			if (dirtyconfig || (oldsettings != newsettings)) // really unreliable, but meh
@@ -602,6 +610,20 @@ namespace TaskMaster
 		}
 
 		public static bool ComponentConfigurationDone = false;
+
+		public static async void Cleanup(object sender, EventArgs ev)
+		{
+			Log.Verbose("Running periodic cleanup");
+
+			await Task.Yield();
+
+			if (processmanager != null)
+				processmanager.Cleanup();
+
+			ProcessController.Cleanup();
+		}
+
+		public static System.Timers.Timer CleanupTimer;
 
 		// entry point to the application
 		[STAThread] // supposedly needed to avoid shit happening with the WinForms GUI and other GUI toolkits
@@ -742,6 +764,11 @@ namespace TaskMaster
 				foreach (var dcfg in ConfigDirty)
 					if (dcfg.Value) saveConfig(dcfg.Key);
 				ConfigDirty.Clear();
+
+				CleanupTimer = new System.Timers.Timer();
+				CleanupTimer.Interval = 1000 * 60 * CleanupInterval; // 15 minutes
+				CleanupTimer.Elapsed += TaskMaster.Cleanup;
+				CleanupTimer.Start();
 
 				try
 				{
