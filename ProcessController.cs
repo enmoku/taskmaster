@@ -168,21 +168,71 @@ namespace TaskMaster
 
 		ProcessInfo OriginalState = new ProcessInfo();
 
-		bool Paused = false;
+		HashSet<int> PausedIds = new HashSet<int>();
+
+		public bool BackgroundPowerdown { get; set; } = true;
+		public ProcessPriorityClass BackgroundPriority { get; set; } = ProcessPriorityClass.Normal;
 		ProcessInfo PausedState = new ProcessInfo();
-		public void Pause(ProcessManager.BasicProcessInfo info)
+		/// <summary>
+		/// Pause the specified foreground process.
+		/// </summary>
+		public void Quell(BasicProcessInfo info)
 		{
-			if (Paused) throw new InvalidOperationException(string.Format("{0} already paused", info.Name));
+			if (PausedIds.Contains(info.Id)) return;
+			// throw new InvalidOperationException(string.Format("{0} already paused", info.Name));
 
-			PausedState.Affinity = Affinity;
-			PausedState.Priority = Priority;
-			PausedState.PowerMode = PowerPlan;
+			if (TaskMaster.DebugForeground)
+				Log.Debug("[{Name}] Quelling {Exec} (#{Pid})", FriendlyName, info.Name, info.Id);
 
-			info.Process.PriorityClass = OriginalState.Priority;
-			info.Process.ProcessorAffinity = OriginalState.Affinity;
+			//PausedState.Affinity = Affinity;
+			//PausedState.Priority = Priority;
+			//PausedState.PowerMode = PowerPlan;
+
+			try
+			{
+				info.Process.PriorityClass = BackgroundPriority;
+			}
+			catch
+			{
+			}
+			//info.Process.ProcessorAffinity = OriginalState.Affinity;
+
 			if (TaskMaster.PowerManagerEnabled)
-				if (PowerPlan != PowerManager.PowerMode.Undefined)
+				if (PowerPlan != PowerManager.PowerMode.Undefined && BackgroundPowerdown)
 					TaskMaster.powermanager.RestoreMode();
+
+			if (TaskMaster.DebugForeground)
+				Log.Information("[{FriendlyName}] {Exec} (#{Pid}) priority reduced: {Current}→{Paused}",
+					FriendlyName, info.Name, info.Id, Priority, BackgroundPriority);
+
+			PausedIds.Add(info.Id);
+		}
+
+		public bool isPaused(BasicProcessInfo info)
+		{
+			return PausedIds.Contains(info.Id);
+		}
+
+		public void Resume(BasicProcessInfo info)
+		{
+			if (!PausedIds.Contains(info.Id)) return;
+			//throw new InvalidOperationException(string.Format("{0} not paused", info.Name));
+
+			if (info.Process.PriorityClass.ToInt32() != Priority.ToInt32())
+			{
+				try
+				{
+					info.Process.PriorityClass = Priority;
+					if (TaskMaster.DebugForeground)
+						Log.Debug("[{FriendlyName}] {Exec} (#{Pid}) priority restored: {Paused}→{Restored}",
+										FriendlyName, info.Name, info.Id, BackgroundPriority, Priority);
+				}
+				catch { }
+			}
+			//PausedState.Priority = Priority;
+			//PausedState.PowerMode = PowerPlan;
+
+			PausedIds.Remove(info.Id);
 		}
 
 		/// <summary>
@@ -219,12 +269,11 @@ namespace TaskMaster
 		// -----------------------------------------------
 
 		static object waitingExitLock = new object();
-		static Dictionary<int, ProcessManager.BasicProcessInfo> waitingExit = new Dictionary<int, ProcessManager.BasicProcessInfo>(3);
-		static HashSet<int> waitingExitPids = new HashSet<int>();
+		static Dictionary<int, BasicProcessInfo> waitingExit = new Dictionary<int, BasicProcessInfo>(3);
 
 		public static event EventHandler<ProcessEventArgs> PowermodeExitWaitEvent;
 
-		public static ProcessManager.BasicProcessInfo[] getWaitingExit()
+		public static BasicProcessInfo[] getWaitingExit()
 		{
 			return waitingExit.Values.ToArray();
 		}
@@ -242,21 +291,20 @@ namespace TaskMaster
 					PowermodeExitWaitEvent?.Invoke(null, new ProcessEventArgs() { Control = null, Info = bu.Value, State = ProcessEventArgs.ProcessState.Cancel });
 				}
 				waitingExit.Clear();
-				waitingExitPids.Clear();
 			}
 		}
 
-		void WaitForExit(ProcessManager.BasicProcessInfo info)
+		void WaitForExit(BasicProcessInfo info)
 		{
 
 		}
 
-		void CancelWait(ProcessManager.BasicProcessInfo info)
+		void CancelWait(BasicProcessInfo info)
 		{
 
 		}
 
-		protected bool setPowerPlan(ProcessManager.BasicProcessInfo info)
+		protected bool setPowerPlan(BasicProcessInfo info)
 		{
 			if (!TaskMaster.PowerManagerEnabled) return false;
 
@@ -269,64 +317,63 @@ namespace TaskMaster
 					if (waitingExit.Count == 0)
 						TaskMaster.powermanager.SaveMode();
 
-					if (waitingExitPids.Add(info.Id))
+					if (!waitingExit.ContainsKey(info.Id))
 					{
 						waitingExit.Add(info.Id, info);
 						PowermodeExitWaitEvent?.Invoke(this, new ProcessEventArgs() { Control = null, Info = info, State = ProcessEventArgs.ProcessState.Starting });
 					}
 					else
 						wait = false;
+				}
+				//Log.Verbose("POWER MODE: {0} process(es) desiring higher power mode.", waitingExit.Count);
 
-					//Log.Verbose("POWER MODE: {0} process(es) desiring higher power mode.", waitingExit.Count);
-
-					if (wait)
+				if (wait)
+				{
+					string name = info.Name;
+					int pid = info.Id;
+					info.Process.EnableRaisingEvents = true;
+					info.Process.Exited += async (sender, ev) => // ASYNC POWER RESTORE ON EXIT
 					{
-						string name = info.Name;
-						int pid = info.Id;
-						info.Process.EnableRaisingEvents = true;
-						info.Process.Exited += async (sender, ev) => // ASYNC POWER RESTORE ON EXIT
+						PowermodeExitWaitEvent?.Invoke(this, new ProcessEventArgs() { Control = null, Info = info, State = ProcessEventArgs.ProcessState.Exiting });
+						await Task.Yield();
+
+						try
 						{
-							PowermodeExitWaitEvent?.Invoke(this, new ProcessEventArgs() { Control = null, Info = info, State = ProcessEventArgs.ProcessState.Exiting });
-							await Task.Yield();
+							if (ProcessManager.PowerdownDelay > 0)
+								await Task.Delay(ProcessManager.PowerdownDelay * 1000);
+							else
+								await Task.Yield();
 
-							try
+							lock (waitingExitLock)
 							{
-								if (ProcessManager.PowerdownDelay > 0)
-									await Task.Delay(ProcessManager.PowerdownDelay * 1000);
-								else
-									await Task.Yield();
-
-								lock (waitingExitLock)
+								waitingExit.Remove(info.Id);
+								if (waitingExit.Count == 0)
 								{
-									waitingExit.Remove(info.Id);
-									waitingExitPids.Remove(info.Id);
-									if (waitingExit.Count == 0)
-									{
-										Log.Information("{Process} (#{Pid}) exited; restoring normal power.", name, pid);
-										TaskMaster.powermanager.RestoreMode();
-									}
-									else
-									{
-										Log.Information("{Exec} (#{Pid}) exited; power mode still requested by {Num} proceses.", name, pid, waitingExit.Count);
-									}
+									Log.Information("{Process} (#{Pid}) exited; restoring normal power.", name, pid);
+									TaskMaster.powermanager.RestoreMode();
+								}
+								else
+								{
+									Log.Information("{Exec} (#{Pid}) exited; power mode still requested by {Num} proceses.", name, pid, waitingExit.Count);
 								}
 							}
-							catch (Exception ex)
-							{
-								Log.Fatal("POWER MDOE: {FriendlyName} FATAL FAILURE", FriendlyName);
-								Log.Fatal("{Type} : {Message}", ex.GetType().Name, ex.Message);
-								Log.Fatal(ex.StackTrace);
-								throw;
-							}
-						};
-
-						if (TaskMaster.powermanager.CurrentMode != PowerPlan)
-						{
-							Log.Information("[{FriendlyName}] Upgrading power mode for '{Exec}' (#{Pid})", FriendlyName, info.Name, info.Id);
-							if (TaskMaster.DebugPower)
-								Log.Debug("Power mode upgrading to: {PowerPlan}", PowerPlan);
-							TaskMaster.powermanager.ForceMode(PowerPlan);
 						}
+						catch (Exception ex)
+						{
+							Log.Fatal("POWER MDOE: {FriendlyName} FATAL FAILURE", FriendlyName);
+							Log.Fatal("{Type} : {Message}", ex.GetType().Name, ex.Message);
+							Log.Fatal(ex.StackTrace);
+							throw;
+						}
+					};
+
+					if (TaskMaster.powermanager.CurrentMode != PowerPlan)
+					{
+						Log.Information("[{FriendlyName}] Upgrading power mode for '{Exec}' (#{Pid})", FriendlyName, info.Name, info.Id);
+						if (TaskMaster.DebugPower)
+							Log.Debug("Power mode upgrading to: {PowerPlan}", PowerPlan);
+						TaskMaster.powermanager.ForceMode(PowerPlan);
+						return true;
 					}
 				}
 			}
@@ -368,7 +415,7 @@ namespace TaskMaster
 		}
 
 		// TODO: Deal with combo path+exec
-		public ProcessState Touch(ProcessManager.BasicProcessInfo info, bool schedule_next = false, bool recheck = false)
+		public ProcessState Touch(BasicProcessInfo info, bool schedule_next = false, bool recheck = false, bool foreground = true)
 		{
 			Debug.Assert(info.Process != null, "ProcessController.Touch given null process.");
 			Debug.Assert(info.Id > 4, "ProcessController.Touch given invalid process ID");
@@ -447,15 +494,27 @@ namespace TaskMaster
 
 			if (!denyChange)
 			{
-				try
+				if (!foreground && ForegroundOnly)
 				{
-					if (info.Process.SetLimitedPriority(Priority, Increase, Decrease))
-						modified = mPriority = true;
-				}
-				catch
-				{
-					Log.Warning("[{FriendlyName}] {Exec} (#{Pid}) failed to set process priority.", FriendlyName, info.Name, info.Id);
+					if (TaskMaster.DebugForeground)
+						Log.Debug("{Exec} (#{Pid}) not in foreground, not prioritizing.", info.Name, info.Id);
+
+					if (!PausedIds.Contains(info.Id))
+						PausedIds.Add(info.Id);
 					// NOP
+				}
+				else
+				{
+					try
+					{
+						if (info.Process.SetLimitedPriority(Priority, Increase, Decrease))
+							modified = mPriority = true;
+					}
+					catch
+					{
+						Log.Warning("[{FriendlyName}] {Exec} (#{Pid}) failed to set process priority.", FriendlyName, info.Name, info.Id);
+						// NOP
+					}
 				}
 			}
 			else
@@ -596,7 +655,8 @@ namespace TaskMaster
 				}));
 			}
 
-			return rv;		}
+			return rv;
+		}
 
 		/// <summary>
 		/// Synchronous call to RescanWithSchedule()
@@ -638,7 +698,8 @@ namespace TaskMaster
 				if (System.Threading.Interlocked.CompareExchange(ref ScheduledScan, 1, 0) == 1)
 					return;
 
-				Log.Verbose("[{FriendlyName}] Rescan initiating.", FriendlyName);
+				if (TaskMaster.DebugProcesses)
+					Log.Debug("[{FriendlyName}] Rescan initiating.", FriendlyName);
 
 				Scan();
 
@@ -668,7 +729,8 @@ namespace TaskMaster
 
 			if (procs.Length == 0) return;
 
-			Log.Verbose("[{FriendlyName}] Scanning found {ProcessInstances} instance(s)", FriendlyName, procs.Length);
+			if (TaskMaster.DebugProcesses)
+				Log.Debug("[{FriendlyName}] Scanning found {ProcessInstances} instance(s)", FriendlyName, procs.Length);
 
 			int tc = 0;
 			foreach (Process process in procs)
@@ -684,13 +746,16 @@ namespace TaskMaster
 				{
 					continue; // shouldn't happen
 				}
-				if (Touch(new ProcessManager.BasicProcessInfo { Name = name, Id = pid, Process = process, Path = null }) == ProcessState.Modified)
+				if (Touch(new BasicProcessInfo { Name = name, Id = pid, Process = process, Path = null }) == ProcessState.Modified)
 					tc++;
 			}
 
 			if (tc > 0)
-				Log.Verbose("[{ProcessFriendlyName}] Scan modified {ModifiedInstances} out of {ProcessInstances} instance(s)",
-							FriendlyName, tc, procs.Length);
+			{
+				if (TaskMaster.DebugProcesses)
+					Log.Verbose("[{ProcessFriendlyName}] Scan modified {ModifiedInstances} out of {ProcessInstances} instance(s)",
+								FriendlyName, tc, procs.Length);
+			}
 		}
 
 		public bool Locate()
@@ -764,14 +829,10 @@ namespace TaskMaster
 					waitingExit.Clear();
 					waitingExit = null;
 				}
-				if (waitingExitPids != null)
-				{
-					waitingExitPids.Clear();
-					waitingExitPids = null;
-				}
 			}
 
-			disposed = true;		}
+			disposed = true;
+		}
 	}
 
 	struct CascadeSettings
@@ -792,10 +853,13 @@ namespace TaskMaster
 	public class ProcessEventArgs : EventArgs
 	{
 		public ProcessController Control { get; set; }
-		public ProcessManager.BasicProcessInfo Info;
+		public BasicProcessInfo Info;
 		public enum ProcessState
 		{
 			Starting,
+			Found,
+			Reduced,
+			Restored,
 			Cancel,
 			Exiting,
 			Undefined

@@ -23,6 +23,7 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
+using System.Threading.Tasks;
 
 namespace TaskMaster
 {
@@ -181,6 +182,8 @@ namespace TaskMaster
 			Target = devvol;
 			Log.Information("Communications device: {Device} (volume: {TargetVolume:N1}%)", m_dev.FriendlyName, Target);
 			Volume = Target;
+
+			Log.Information("<Mic Manager> Loaded");
 		}
 
 		bool disposed; // false
@@ -274,7 +277,7 @@ namespace TaskMaster
 
 				if (System.Threading.Interlocked.CompareExchange(ref correcting, 1, 0) == 0)
 				{
-					await System.Threading.Tasks.Task.Delay(AdjustDelay).ConfigureAwait(false); // actual hysterisis, this should be cancellable
+					await System.Threading.Tasks.Task.Delay(AdjustDelay); // actual hysterisis, this should be cancellable
 
 					oldVol = Control.Percent;
 					Log.Information("Correcting microphone volume from {OldVolume:N1} to {NewVolume:N1}", oldVol, Target);

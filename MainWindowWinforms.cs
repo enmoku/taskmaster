@@ -90,11 +90,15 @@ namespace TaskMaster
 		// this restores the main window to a place where it can be easily found if it's lost
 		public void RestoreWindowRequest(object sender, EventArgs e)
 		{
-			CenterToScreen();
-			SetTopLevel(true); // this doesn't Keep it topmost, does it?
-			TopMost = true;
-			// toggle because we don't want to keep it there
-			TopMost = false;
+			try
+			{
+				CenterToScreen();
+				SetTopLevel(true); // this doesn't Keep it topmost, does it?
+				TopMost = true;
+				// toggle because we don't want to keep it there
+				TopMost = false;
+			}
+			catch { }
 		}
 
 		public void ShowLastLog()
@@ -139,32 +143,42 @@ namespace TaskMaster
 			micmon.VolumeChanged += volumeChangeDetected;
 		}
 
-		public void ProcAdjust(object sender, ProcessEventArgs ev)
+		public async void ProcAdjust(object sender, ProcessEventArgs ev)
 		{
 			//Log.Verbose("Process adjust received for '{FriendlyName}'.", e.Control.FriendlyName);
+
+			await Task.Yield();
 
 			ListViewItem item;
 			lock (appw_lock)
 			{
-				if (appw.TryGetValue(ev.Control, out item))
+				try
 				{
-					item.SubItems[AdjustColumn].Text = ev.Control.Adjusts.ToString();
-					//item.SubItems[SeenColumn].Text = e.Control.LastSeen.ToLocalTime().ToString();
+					if (appw.TryGetValue(ev.Control, out item))
+					{
+						item.SubItems[AdjustColumn].Text = ev.Control.Adjusts.ToString();
+						//item.SubItems[SeenColumn].Text = e.Control.LastSeen.ToLocalTime().ToString();
+					}
+					else
+						Log.Error("{FriendlyName} not found in app list.", ev.Control.FriendlyName);
 				}
-				else
-					Log.Error("{FriendlyName} not found in app list.", ev.Control.FriendlyName);
+				catch { }
 			}
 		}
 
-		public void OnActiveWindowChanged(object sender, WindowChangedArgs e)
+		public void OnActiveWindowChanged(object sender, WindowChangedArgs windowchangeev)
 		{
-			//int maxlength = 70;
-			//string cutstring = e.Title.Substring(0, Math.Min(maxlength, e.Title.Length)) + (e.Title.Length > maxlength ? "..." : "");
-			//activeLabel.Text = cutstring;
-			activeLabel.Text = e.Title;
-			activeExec.Text = e.Executable;
-			activeFullscreen.Text = e.Fullscreen.True() ? "Full" : e.Fullscreen.False() ? "Window" : "Unknown";
-			activePID.Text = string.Format("{0}", e.Id);
+			try
+			{
+				//int maxlength = 70;
+				//string cutstring = e.Title.Substring(0, Math.Min(maxlength, e.Title.Length)) + (e.Title.Length > maxlength ? "..." : "");
+				//activeLabel.Text = cutstring;
+				activeLabel.Text = windowchangeev.Title;
+				activeExec.Text = windowchangeev.Executable;
+				activeFullscreen.Text = windowchangeev.Fullscreen.True() ? "Full" : windowchangeev.Fullscreen.False() ? "Window" : "Unknown";
+				activePID.Text = string.Format("{0}", windowchangeev.Id);
+			}
+			catch { }
 		}
 
 		public event EventHandler rescanRequest;
@@ -183,6 +197,7 @@ namespace TaskMaster
 
 			processmanager.onInstanceHandling += ProcessNewInstanceCount;
 			processmanager.PathCacheUpdate += PathCacheUpdate;
+			processmanager.onActiveHandled += FgWaitListHandler;
 			PathCacheUpdate(null, null);
 
 			foreach (ProcessController item in processmanager.watchlist)
@@ -203,7 +218,16 @@ namespace TaskMaster
 			var items = ProcessController.getWaitingExit();
 			foreach (var bu in items)
 			{
-				ExitWaitListHandler(null, new ProcessEventArgs() { Control = null, State = ProcessEventArgs.ProcessState.Starting, Info = bu });
+				ExitWaitListHandler(this, new ProcessEventArgs() { Control = null, State = ProcessEventArgs.ProcessState.Starting, Info = bu });
+			}
+
+			if (TaskMaster.ActiveAppMonitorEnabled)
+			{
+				var items2 = processmanager.getWaitingActive();
+				foreach (var bu in items2)
+				{
+					FgWaitListHandler(this, new ProcessEventArgs() { Control = null, Info = bu, State = ProcessEventArgs.ProcessState.Found });
+				}
 			}
 		}
 
@@ -261,8 +285,12 @@ namespace TaskMaster
 
 		public void PathLocatedEvent(object sender, PathControlEventArgs e)
 		{
-			var pc = (ProcessController)sender;
-			AddToProcessList(pc);
+			try
+			{
+				var pc = (ProcessController)sender;
+				AddToProcessList(pc);
+			}
+			catch { }
 		}
 
 		Label micName;
@@ -283,11 +311,22 @@ namespace TaskMaster
 		ListView powerbalancerlog;
 		Label powerbalancer_behaviour;
 		Label powerbalancer_plan;
+		Label powerbalancer_current;
+		Label powerbalancer_high;
+		Label powerbalancer_average;
+		Label powerbalancer_low;
+		Label powerbalancer_pressure;
+		Label powerbalancer_high_action;
+		Label powerbalancer_average_action;
+		Label powerbalancer_low_action;
 
 		object powerbalancerlog_lock = new object();
 
 		ListView exitwaitlist;
 		Dictionary<int, ListViewItem> exitwaitlistw;
+
+		ListView fgwaitlist;
+		Dictionary<int, ListViewItem> fgwaitlistw;
 
 		void UserMicVol(object sender, EventArgs e)
 		{
@@ -297,8 +336,12 @@ namespace TaskMaster
 
 		void volumeChangeDetected(object sender, VolumeChangedEventArgs e)
 		{
-			micVol.Value = Convert.ToInt32(e.New);
-			corCountLabel.Text = e.Corrections.ToString();
+			try
+			{
+				micVol.Value = Convert.ToInt32(e.New);
+				corCountLabel.Text = e.Corrections.ToString();
+			}
+			catch { }
 		}
 		#endregion // Microphone control code
 
@@ -316,12 +359,16 @@ namespace TaskMaster
 
 		public void PathCacheUpdate(object sender, CacheEventArgs ev)
 		{
-			cacheObjects.Text = Statistics.PathCacheCurrent.ToString();
-			double ratio = (Statistics.PathCacheMisses > 0 ? (Statistics.PathCacheHits / Statistics.PathCacheMisses) : 1);
-			if (ratio <= 99.99f)
-				cacheRatio.Text = string.Format("{0:N2}", ratio);
-			else
-				cacheRatio.Text = ">99.99"; // let's just not overflow the UI
+			try
+			{
+				cacheObjects.Text = Statistics.PathCacheCurrent.ToString();
+				double ratio = (Statistics.PathCacheMisses > 0 ? (Statistics.PathCacheHits / Statistics.PathCacheMisses) : 1);
+				if (ratio <= 99.99f)
+					cacheRatio.Text = string.Format("{0:N2}", ratio);
+				else
+					cacheRatio.Text = ">99.99"; // let's just not overflow the UI
+			}
+			catch { }
 		}
 
 		// BackColor = System.Drawing.Color.LightGoldenrodYellow
@@ -353,16 +400,24 @@ namespace TaskMaster
 			if (TaskMaster.ProcessMonitorEnabled)
 			{
 				var t = (ProcessManager.LastRescan.Unixstamp() + (ProcessManager.RescanEverythingFrequency / 1000)) - DateTime.Now.Unixstamp();
-				processingCountdown.Text = string.Format("{0:N0}s", t);
+				try
+				{
+					processingCountdown.Text = string.Format("{0:N0}s", t);
+				}
+				catch { }
 			}
 		}
 
 		void UpdateUptime(object sender, EventArgs e)
 		{
-			if (netmonitor != null)
-				uptimestatuslabel.Text = HumanInterface.TimeString(netmonitor.Uptime);
+			try
+			{
+				if (netmonitor != null)
+					uptimestatuslabel.Text = HumanInterface.TimeString(netmonitor.Uptime);
 
-			//string.Format("{0:N1} min(s)", net.Uptime.TotalMinutes);
+				//string.Format("{0:N1} min(s)", net.Uptime.TotalMinutes);
+			}
+			catch { }
 		}
 
 		ListView ifaceList;
@@ -375,10 +430,14 @@ namespace TaskMaster
 
 		void InterfaceContextMenuOpen(object sender, EventArgs e)
 		{
-			foreach (ToolStripItem msi in ifacems.Items)
+			try
 			{
-				msi.Enabled = (ifaceList.SelectedItems.Count == 1);
+				foreach (ToolStripItem msi in ifacems.Items)
+				{
+					msi.Enabled = (ifaceList.SelectedItems.Count == 1);
+				}
 			}
+			catch { }
 		}
 
 		int IPv4Column = 4;
@@ -386,41 +445,57 @@ namespace TaskMaster
 
 		void CopyIPv4AddressToClipboard(object sender, EventArgs ea)
 		{
-			if (ifaceList.SelectedItems.Count == 1)
+			try
 			{
-				var li = ifaceList.SelectedItems[0];
-				string ipv4addr = li.SubItems[IPv4Column].Text;
-				Clipboard.SetText(ipv4addr);
+				if (ifaceList.SelectedItems.Count == 1)
+				{
+					var li = ifaceList.SelectedItems[0];
+					string ipv4addr = li.SubItems[IPv4Column].Text;
+					Clipboard.SetText(ipv4addr);
+				}
 			}
+			catch { }
 		}
 
 		void CopyIPv6AddressToClipboard(object sender, EventArgs ea)
 		{
-			if (ifaceList.SelectedItems.Count == 1)
+			try
 			{
-				var li = ifaceList.SelectedItems[0];
-				string ipv6addr = string.Format("[{0}]", li.SubItems[IPv6Column].Text);
-				Clipboard.SetText(ipv6addr);
+				if (ifaceList.SelectedItems.Count == 1)
+				{
+					var li = ifaceList.SelectedItems[0];
+					string ipv6addr = string.Format("[{0}]", li.SubItems[IPv6Column].Text);
+					Clipboard.SetText(ipv6addr);
+				}
 			}
+			catch { }
 		}
 
 		void LogContextMenuOpen(object sender, EventArgs ea)
 		{
-			foreach (ToolStripItem lsi in loglistms.Items)
+			try
 			{
-				lsi.Enabled = (loglist.SelectedItems.Count == 1);
+				foreach (ToolStripItem lsi in loglistms.Items)
+				{
+					lsi.Enabled = (loglist.SelectedItems.Count == 1);
+				}
 			}
+			catch { }
 		}
 
 		void CopyLogToClipboard(object sender, EventArgs ea)
 		{
-			if (loglist.SelectedItems.Count == 1)
+			try
 			{
-				var li = loglist.SelectedItems[0];
-				string rv = li.SubItems[0].Text;
-				if (rv.Length > 0)
-					Clipboard.SetText(rv);
+				if (loglist.SelectedItems.Count == 1)
+				{
+					var li = loglist.SelectedItems[0];
+					string rv = li.SubItems[0].Text;
+					if (rv.Length > 0)
+						Clipboard.SetText(rv);
+				}
 			}
+			catch { }
 		}
 
 		TabControl tabLayout = null;
@@ -475,6 +550,7 @@ namespace TaskMaster
 				rescanRequest?.Invoke(this, null);
 			});
 			var menu_action_memoryfocus = new ToolStripMenuItem("Free memory for...", null, FreeMemoryRequest);
+			menu_action_memoryfocus.Enabled = TaskMaster.PagingEnabled;
 			ToolStripMenuItem menu_action_restart = null;
 			menu_action_restart = new ToolStripMenuItem("Restart", null, (s, e) =>
 			{
@@ -513,6 +589,12 @@ namespace TaskMaster
 				TaskMaster.DebugProcesses = menu_debug_procs.Checked;
 				if (TaskMaster.DebugProcesses) EnsureDebugLog();
 			};
+			var menu_debug_foreground = new ToolStripMenuItem("Foreground") { Checked = TaskMaster.DebugForeground, CheckOnClick = true };
+			menu_debug_foreground.Click += (sender, e) =>
+			{
+				TaskMaster.DebugForeground = menu_debug_foreground.Checked;
+				if (TaskMaster.DebugForeground) EnsureDebugLog();
+			};
 
 			var menu_debug_paths = new ToolStripMenuItem("Paths") { Checked = TaskMaster.DebugPaths, CheckOnClick = true };
 			menu_debug_paths.Click += (sender, e) =>
@@ -528,10 +610,12 @@ namespace TaskMaster
 			};
 			var menu_debug_clear = new ToolStripMenuItem("Clear UI log", null, (sender, e) => { ClearLog(); });
 
+			// TODO: This menu needs to be clearer
 			menu_debug.DropDownItems.Add(menu_debug_inaction);
 			menu_debug.DropDownItems.Add(new ToolStripSeparator());
 			menu_debug.DropDownItems.Add(menu_debug_scanning);
 			menu_debug.DropDownItems.Add(menu_debug_procs);
+			menu_debug.DropDownItems.Add(menu_debug_foreground);
 			menu_debug.DropDownItems.Add(menu_debug_paths);
 			menu_debug.DropDownItems.Add(menu_debug_power);
 			menu_debug.DropDownItems.Add(new ToolStripSeparator());
@@ -572,18 +656,21 @@ namespace TaskMaster
 			if (!TaskMaster.MicrophoneMonitorEnabled) micTab.Hide();
 			TabPage netTab = new TabPage("Network");
 			if (!TaskMaster.NetworkMonitorEnabled) netTab.Hide();
-			TabPage bugTab = new TabPage("Debug");
+			TabPage powerDebugTab = new TabPage("Power Debug");
+			TabPage ProcessDebugTab = new TabPage("Process Debug");
 
 			tabLayout.Controls.Add(infoTab);
 			tabLayout.Controls.Add(procTab);
 			tabLayout.Controls.Add(micTab);
 			tabLayout.Controls.Add(netTab);
-			tabLayout.Controls.Add(bugTab);
+			tabLayout.Controls.Add(powerDebugTab);
+			tabLayout.Controls.Add(ProcessDebugTab);
 
 			var infopanel = new TableLayoutPanel
 			{
 				Dock = DockStyle.Top,
 				Width = tabLayout.Width - 12,
+				AutoSize = true,
 			};
 
 			//Controls.Add(tabLayout);
@@ -1073,10 +1160,14 @@ namespace TaskMaster
 			};
 			rescanbutton.Click += async (object sender, EventArgs e) =>
 						{
-							rescanbutton.Enabled = false;
-							await Task.Yield();
-							rescanRequest?.Invoke(this, null);
-							rescanbutton.Enabled = true;
+							try
+							{
+								rescanbutton.Enabled = false;
+								await Task.Yield();
+								rescanRequest?.Invoke(this, null);
+								rescanbutton.Enabled = true;
+							}
+							catch { }
 						};
 			commandpanel.Controls.Add(new Label
 			{
@@ -1110,10 +1201,14 @@ namespace TaskMaster
 			};
 			crunchbutton.Click += async (object sender, EventArgs e) =>
 			{
-				crunchbutton.Enabled = false;
-				await Task.Yield();
-				pagingRequest?.Invoke(this, new EventArgs());
-				crunchbutton.Enabled = true;
+				try
+				{
+					crunchbutton.Enabled = false;
+					await Task.Yield();
+					pagingRequest?.Invoke(this, new EventArgs());
+					crunchbutton.Enabled = true;
+				}
+				catch { }
 			};
 
 			commandpanel.Controls.Add(crunchbutton);
@@ -1221,14 +1316,23 @@ namespace TaskMaster
 
 			lrows.Controls.Add(logpanel);
 
-			// DEBUG TAB
+			// POWER DEBUG TAB
 
-			var buglayout = new TableLayoutPanel()
+			var powerlayout = new TableLayoutPanel()
 			{
 				ColumnCount = 1,
 				AutoSize = true,
 				Dock = DockStyle.Top
 			};
+
+			powerlayout.Controls.Add(new Label()
+			{
+				Text = "Power mode exit wait list...",
+				TextAlign = System.Drawing.ContentAlignment.MiddleLeft,
+				AutoSize = true,
+				Dock = DockStyle.Left,
+				Padding = new Padding(6)
+			});
 
 			exitwaitlist = new ListView()
 			{
@@ -1243,15 +1347,16 @@ namespace TaskMaster
 			exitwaitlist.Columns.Add("Id", 50);
 			exitwaitlist.Columns.Add("Executable", 280);
 
-			buglayout.Controls.Add(new Label()
+			powerlayout.Controls.Add(exitwaitlist);
+
+			powerlayout.Controls.Add(new Label()
 			{
-				Text = "Power mode exit wait list...",
+				Text = "Power mode autobalancing tracker...",
 				TextAlign = System.Drawing.ContentAlignment.MiddleLeft,
 				AutoSize = true,
 				Dock = DockStyle.Left,
 				Padding = new Padding(6)
 			});
-			buglayout.Controls.Add(exitwaitlist);
 
 			powerbalancerlog = new ListView()
 			{
@@ -1269,15 +1374,40 @@ namespace TaskMaster
 			powerbalancerlog.Columns.Add("Enacted", 60);
 			powerbalancerlog.Columns.Add("Pressure", 60);
 
-			buglayout.Controls.Add(new Label()
+			var pbl = new TableLayoutPanel()
 			{
-				Text = "Power mode autobalancing tracker...",
-				TextAlign = System.Drawing.ContentAlignment.MiddleLeft,
+				ColumnCount = 10,
 				AutoSize = true,
-				Dock = DockStyle.Left,
-				Padding = new Padding(6)
-			});
-			buglayout.Controls.Add(powerbalancerlog);
+				Dock = DockStyle.Top,
+			};
+
+			int cpupw = 48;
+			pbl.Controls.Add(new Label() { Text = "Current:", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true });
+			int cpuph = pbl.Controls[0].Height;
+			pbl.Controls.Add(powerbalancer_current = new Label() { Text = "n/a", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, Width = cpupw, Height = cpuph });
+			pbl.Controls.Add(new Label() { Text = "High:", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true });
+			pbl.Controls.Add(powerbalancer_high = new Label() { Text = "n/a", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, Width = cpupw, Height = cpuph });
+			pbl.Controls.Add(new Label() { Text = "Average:", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true });
+			pbl.Controls.Add(powerbalancer_average = new Label() { Text = "n/a", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, Width = cpupw, Height = cpuph });
+			pbl.Controls.Add(new Label() { Text = "Low:", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true });
+			pbl.Controls.Add(powerbalancer_low = new Label() { Text = "n/a", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, Width = cpupw, Height = cpuph });
+			pbl.Controls.Add(new Label() { Text = "Pressure:", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true });
+			pbl.Controls.Add(powerbalancer_pressure = new Label() { Text = "n/a", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, Width = cpupw, Height = cpuph });
+
+			pbl.Controls.Add(new Label() { Text = "Acted on:", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true }, 0, 1);
+
+			pbl.Controls.Add(new Label() { Text = "High:", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true }, 2, 1);
+			pbl.Controls.Add(powerbalancer_high_action = new Label() { Text = "n/a", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, Width = cpupw, Height = cpuph }, 3, 1);
+			pbl.Controls.Add(new Label() { Text = "Average:", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true }, 4, 1);
+			pbl.Controls.Add(powerbalancer_average_action = new Label() { Text = "n/a", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, Width = cpupw, Height = cpuph }, 5, 1);
+			pbl.Controls.Add(new Label() { Text = "Low:", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true }, 6, 1);
+			pbl.Controls.Add(powerbalancer_low_action = new Label() { Text = "n/a", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, Width = cpupw, Height = cpuph }, 7, 1);
+
+			//buglayout.Controls.Add(pbl);
+			infopanel.Controls.Add(new Label() { Text = "CPU load", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true });
+			infopanel.Controls.Add(pbl);
+
+			powerlayout.Controls.Add(powerbalancerlog);
 
 			var powerbalancerstatus = new TableLayoutPanel()
 			{
@@ -1292,8 +1422,42 @@ namespace TaskMaster
 			powerbalancer_plan = new Label() { Text = "n/a", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true };
 			powerbalancerstatus.Controls.Add(powerbalancer_plan);
 
-			buglayout.Controls.Add(powerbalancerstatus);
-			bugTab.Controls.Add(buglayout);
+			powerlayout.Controls.Add(powerbalancerstatus);
+			powerDebugTab.Controls.Add(powerlayout);
+
+			// -------------------------------------------------------------------------------------------------------
+			var fglayout = new TableLayoutPanel()
+			{
+				ColumnCount = 1,
+				AutoSize = true,
+				Dock = DockStyle.Top
+			};
+
+			fglayout.Controls.Add(new Label()
+			{
+				Text = "Foreground wait list...",
+				TextAlign = System.Drawing.ContentAlignment.MiddleLeft,
+				AutoSize = true,
+				Dock = DockStyle.Left,
+				Padding = new Padding(6)
+			});
+
+			fgwaitlist = new ListView()
+			{
+				AutoSize = true,
+				Height = 80,
+				Width = tabLayout.Width - 12, // FIXME: 3 for the bevel, but how to do this "right"?
+				FullRowSelect = true,
+				View = View.Details,
+			};
+			fgwaitlistw = new Dictionary<int, ListViewItem>();
+
+			fgwaitlist.Columns.Add("Id", 50);
+			fgwaitlist.Columns.Add("Executable", 280);
+			fgwaitlist.Columns.Add("State", 160);
+
+			fglayout.Controls.Add(fgwaitlist);
+			ProcessDebugTab.Controls.Add(fglayout);
 
 			// End: UI Log
 
@@ -1313,20 +1477,24 @@ namespace TaskMaster
 			AutoSize = true;
 		}
 
-		void FreeMemoryRequest(object sender, EventArgs ev)
+		async void FreeMemoryRequest(object sender, EventArgs ev)
 		{
-			using (var exsel = new ProcessSelectDialog())
+			try
 			{
-				if (exsel.ShowDialog(this) == DialogResult.OK)
+				using (var exsel = new ProcessSelectDialog())
 				{
-					Log.Information("Freeing memory for: {Exec}", exsel.Selection);
-					TaskMaster.processmanager.FreeMemoryFor(exsel.Selection);
+					if (exsel.ShowDialog(this) == DialogResult.OK)
+					{
+						Log.Information("Freeing memory for: {Exec}", exsel.Selection);
+						await TaskMaster.processmanager.FreeMemoryFor(exsel.Selection);
+					}
 				}
 			}
+			catch { }
 		}
 
 		object exitwaitlist_lock = new object();
-		public void ExitWaitListHandler(object sender, ProcessEventArgs ev)
+		public async void ExitWaitListHandler(object sender, ProcessEventArgs ev)
 		{
 			lock (exitwaitlist_lock)
 			{
@@ -1346,18 +1514,72 @@ namespace TaskMaster
 					ListViewItem li = null;
 					if (exitwaitlistw.TryGetValue(ev.Info.Id, out li))
 					{
-						exitwaitlist.Items.Remove(li);
-						exitwaitlistw.Remove(ev.Info.Id);
+						try
+						{
+							exitwaitlist.Items.Remove(li);
+							exitwaitlistw.Remove(ev.Info.Id);
+						}
+						catch { }
 					}
 				}
 			}
 		}
 
-		public void CPULoadHandler(object sender, ProcessorEventArgs ev)
+		object fgwaitlist_lock = new object();
+		public async void FgWaitListHandler(object sender, ProcessEventArgs ev)
+		{
+			await Task.Yield();
+
+			lock (fgwaitlist_lock)
+			{
+				ListViewItem li = null;
+				if (fgwaitlistw.TryGetValue(ev.Info.Id, out li))
+				{
+					//Log.Debug("WaitlistHandler: {Name} = {State}", ev.Info.Name, ev.State.ToString());
+					try
+					{
+						switch (ev.State)
+						{
+							case ProcessEventArgs.ProcessState.Exiting:
+								fgwaitlist.Items.Remove(li);
+								fgwaitlistw.Remove(ev.Info.Id);
+								break;
+							case ProcessEventArgs.ProcessState.Found:
+							case ProcessEventArgs.ProcessState.Reduced:
+								li.SubItems[2].Text = "Background";
+								break;
+							case ProcessEventArgs.ProcessState.Restored:
+								li.SubItems[2].Text = "Foreground";
+								break;
+							default:
+								Log.Debug("Received unhandled process state: {State}", ev.State.ToString());
+								break;
+						}
+					}
+					catch (Exception ex)
+					{
+						Log.Fatal("{Type} : {Message}", ex.GetType().Name, ex.Message);
+						Log.Fatal(ex.StackTrace);
+					}
+				}
+				else
+				{
+					li = new ListViewItem(new string[] { ev.Info.Id.ToString(), ev.Info.Name, "Unknown" });
+					try
+					{
+						fgwaitlist.Items.Add(li);
+						fgwaitlistw.Add(ev.Info.Id, li);
+					}
+					catch { }
+				}
+			}
+		}
+
+		public void CPULoadHandler(object sender, ProcessorEventArgs ev) // Event Handler
 		{
 			if (!UIOpen) return;
 
-			PowerManager.PowerMode powerreact = ev.Mode;
+			//await Task.Yield();
 
 			string reactionary = PowerManager.GetModeName(ev.Mode);
 
@@ -1372,10 +1594,9 @@ namespace TaskMaster
 			});
 
 			li.UseItemStyleForSubItems = false;
-
-			if (powerreact == PowerManager.PowerMode.HighPerformance)
+			if (ev.Mode == PowerManager.PowerMode.HighPerformance)
 				li.SubItems[3].BackColor = System.Drawing.Color.FromArgb(255, 230, 230);
-			else if (powerreact == PowerManager.PowerMode.PowerSaver)
+			else if (ev.Mode == PowerManager.PowerMode.PowerSaver)
 				li.SubItems[2].BackColor = System.Drawing.Color.FromArgb(240, 255, 230);
 			else
 			{
@@ -1385,50 +1606,68 @@ namespace TaskMaster
 
 			lock (powerbalancerlog_lock)
 			{
+
 				try
 				{
 					if (powerbalancerlog.Items.Count > 3)
 						powerbalancerlog.Items.RemoveAt(0);
 					powerbalancerlog.Items.Add(li);
-				}
-				catch // this tends to happen close to exit
-				{ }
-			}
 
-			if (ev.Handled)
-			{
-				powerbalancer_plan.Text = reactionary;
+					powerbalancer_current.Text = string.Format("{0:N1}%", ev.Current);
+					powerbalancer_high.Text = string.Format("{0:N1}%", ev.High);
+					powerbalancer_average.Text = string.Format("{0:N1}%", ev.Average);
+					powerbalancer_low.Text = string.Format("{0:N1}%", ev.Low);
+					powerbalancer_pressure.Text = string.Format("{0:N1}%", ev.Pressure);
+
+					if (ev.Handled)
+					{
+						powerbalancer_high_action.Text = powerbalancer_high.Text;
+						powerbalancer_average_action.Text = powerbalancer_average.Text;
+						powerbalancer_low_action.Text = powerbalancer_low.Text;
+						powerbalancer_plan.Text = reactionary;
+					}
+				}
+				catch // this tends to happen if this event is being handled while the window is being closed
+				{ }
 			}
 		}
 
 		void WatchlistContextMenuOpen(object sender, EventArgs ea)
 		{
-			foreach (ToolStripItem lsi in watchlistms.Items)
+			try
 			{
-				if (lsi.Text.Contains("Create")) continue;
-				lsi.Enabled = (watchlistRules.SelectedItems.Count == 1);
+				foreach (ToolStripItem lsi in watchlistms.Items)
+				{
+					if (lsi.Text.Contains("Create")) continue;
+					lsi.Enabled = (watchlistRules.SelectedItems.Count == 1);
+				}
 			}
+			catch { }
 		}
 
 		int WatchlistEditLock = 0; // TODO: Transition lock to critical parts instead of outside of them.
 
 		void EditWatchlistRule(object sender, EventArgs ea)
 		{
-			if (watchlistRules.SelectedItems.Count == 1)
+			try
 			{
-				if (System.Threading.Interlocked.CompareExchange(ref WatchlistEditLock, 1, 0) == 1)
+				if (watchlistRules.SelectedItems.Count == 1)
 				{
-					Log.Warning("Only one item can be edited at a time.");
-					return;
-				}
+					if (System.Threading.Interlocked.CompareExchange(ref WatchlistEditLock, 1, 0) == 1)
+					{
+						Log.Warning("Only one item can be edited at a time.");
+						return;
+					}
 
-				ListViewItem li = watchlistRules.SelectedItems[0];
-				using (var editdialog = new AppEditWindow(li.SubItems[NameColumn].Text, li)) // 1 = executable
-				{
-					var rv = editdialog.ShowDialog();
-					WatchlistEditLock = 0;
+					ListViewItem li = watchlistRules.SelectedItems[0];
+					using (var editdialog = new AppEditWindow(li.SubItems[NameColumn].Text, li)) // 1 = executable
+					{
+						var rv = editdialog.ShowDialog();
+						WatchlistEditLock = 0;
+					}
 				}
 			}
+			catch { }
 		}
 
 		void AddWatchlistRule(object sender, EventArgs ea)
@@ -1438,20 +1677,86 @@ namespace TaskMaster
 
 		void DeleteWatchlistRule(object sender, EventArgs ea)
 		{
-			if (watchlistRules.SelectedItems.Count == 1)
+			try
 			{
-				var li = watchlistRules.SelectedItems[0];
-				Log.Warning("[{Rule}] Rule removed", li.SubItems[NameColumn].Text);
-				Log.Warning("Removing watchlist rules in the UI is not actually supported yet.");
+				if (watchlistRules.SelectedItems.Count == 1)
+				{
+					var li = watchlistRules.SelectedItems[0];
+					Log.Warning("[{Rule}] Rule removed", li.SubItems[NameColumn].Text);
+					Log.Warning("Removing watchlist rules in the UI is not actually supported yet.");
+				}
 			}
+			catch { }
 		}
 
 		void CopyRuleToClipboard(object sender, EventArgs ea)
 		{
-			if (watchlistRules.SelectedItems.Count == 1)
+			try
 			{
-				var li = watchlistRules.SelectedItems[0];
-				string name = li.SubItems[NameColumn].Text;
+				if (watchlistRules.SelectedItems.Count == 1)
+				{
+					var li = watchlistRules.SelectedItems[0];
+					string name = li.SubItems[NameColumn].Text;
+					ProcessController pc = null;
+					foreach (var tpc in TaskMaster.processmanager.watchlist)
+					{
+						if (name == tpc.FriendlyName)
+						{
+							pc = tpc;
+							break;
+						}
+					}
+
+					if (pc == null)
+					{
+						Log.Error("[{Rule}] Not found. Something's terribly wrong.", name);
+						return;
+					}
+
+					var sbs = new System.Text.StringBuilder();
+
+					sbs.Append("[").Append(pc.FriendlyName).Append("]").AppendLine();
+					if (!string.IsNullOrEmpty(pc.ExecutableFriendlyName))
+						sbs.Append("Image = ").Append(pc.ExecutableFriendlyName).AppendLine();
+					if (!string.IsNullOrEmpty(pc.Path))
+						sbs.Append("Path = ").Append(pc.Path).AppendLine();
+					sbs.Append("Priority = ").Append(pc.Priority.ToInt32()).AppendLine();
+					sbs.Append("Increase = ").Append(pc.Increase).AppendLine();
+					sbs.Append("Decrease = ").Append(pc.Decrease).AppendLine();
+					sbs.Append("Affinity = ").Append(pc.Affinity.ToInt32()).AppendLine();
+					if (pc.PowerPlan != PowerManager.PowerMode.Undefined)
+						sbs.Append("Power plan = ").Append(PowerManager.PowerModes[(int)pc.PowerPlan]).AppendLine();
+					if (pc.Rescan > 0)
+						sbs.Append("Rescan = ").Append(pc.Rescan).AppendLine();
+					if (pc.AllowPaging)
+						sbs.Append("Allow paging = ").Append(pc.AllowPaging).AppendLine();
+					if (pc.ForegroundOnly)
+						sbs.Append("Foreground only = ").Append(pc.ForegroundOnly).AppendLine();
+
+					try
+					{
+						Clipboard.SetText(sbs.ToString());
+						Log.Information("[{Rule}] Configuration saved to clipboard.", name);
+					}
+					catch
+					{
+						Log.Warning("[{Rule}] Failed to copy configuration to clipboard.", name);
+					}
+					sbs.Clear(); // Unnecessary?
+				}
+			}
+			catch { }
+		}
+
+		void UpdateInfoPanel(object sender, EventArgs e)
+		{
+			try
+			{
+				ListViewItem ri = watchlistRules.SelectedItems[0];
+				string name = ri.SubItems[0].Text;
+				/*
+				//Log.Debug("'{RowName}' selected in UI", ri.SubItems[0]);
+				// TODO: Add info panel for selected item.
 				ProcessController pc = null;
 				foreach (var tpc in TaskMaster.processmanager.watchlist)
 				{
@@ -1461,67 +1766,13 @@ namespace TaskMaster
 						break;
 					}
 				}
+				if (pc == null) throw new ArgumentException(string.Format("{0} not found in watchlist.", name));
 
-				if (pc == null)
-				{
-					Log.Error("[{Rule}] Not found. Something's terribly wrong.", name);
-					return;
-				}
-
-				var sbs = new System.Text.StringBuilder();
-
-				sbs.Append("[").Append(pc.FriendlyName).Append("]").AppendLine();
-				if (!string.IsNullOrEmpty(pc.ExecutableFriendlyName))
-					sbs.Append("Image = ").Append(pc.ExecutableFriendlyName).AppendLine();
-				if (!string.IsNullOrEmpty(pc.Path))
-					sbs.Append("Path = ").Append(pc.Path).AppendLine();
-				sbs.Append("Priority = ").Append(pc.Priority.ToInt32()).AppendLine();
-				sbs.Append("Increase = ").Append(pc.Increase).AppendLine();
-				sbs.Append("Decrease = ").Append(pc.Decrease).AppendLine();
-				sbs.Append("Affinity = ").Append(pc.Affinity.ToInt32()).AppendLine();
-				if (pc.PowerPlan != PowerManager.PowerMode.Undefined)
-					sbs.Append("Power plan = ").Append(PowerManager.PowerModes[(int)pc.PowerPlan]).AppendLine();
-				if (pc.Rescan > 0)
-					sbs.Append("Rescan = ").Append(pc.Rescan).AppendLine();
-				if (pc.AllowPaging)
-					sbs.Append("Allow paging = ").Append(pc.AllowPaging).AppendLine();
-				if (pc.ForegroundOnly)
-					sbs.Append("Foreground only = ").Append(pc.ForegroundOnly).AppendLine();
-
-				try
-				{
-					Clipboard.SetText(sbs.ToString());
-					Log.Information("[{Rule}] Configuration saved to clipboard.", name);
-				}
-				catch
-				{
-					Log.Warning("[{Rule}] Failed to copy configuration to clipboard.", name);
-				}
-				sbs.Clear(); // Unnecessary?
+				Log.Information("[{FriendlyName}] Last seen: {Date} {Time}",
+								pc.FriendlyName, pc.LastSeen.ToShortDateString(), pc.LastSeen.ToShortTimeString());
+				*/
 			}
-		}
-
-		void UpdateInfoPanel(object sender, EventArgs e)
-		{
-			ListViewItem ri = watchlistRules.SelectedItems[0];
-			string name = ri.SubItems[0].Text;
-			/*
-			//Log.Debug("'{RowName}' selected in UI", ri.SubItems[0]);
-			// TODO: Add info panel for selected item.
-			ProcessController pc = null;
-			foreach (var tpc in TaskMaster.processmanager.watchlist)
-			{
-				if (name == tpc.FriendlyName)
-				{
-					pc = tpc;
-					break;
-				}
-			}
-			if (pc == null) throw new ArgumentException(string.Format("{0} not found in watchlist.", name));
-
-			Log.Information("[{FriendlyName}] Last seen: {Date} {Time}",
-							pc.FriendlyName, pc.LastSeen.ToShortDateString(), pc.LastSeen.ToShortTimeString());
-			*/
+			catch { }
 		}
 
 		Label tempObjectCount;
@@ -1529,8 +1780,12 @@ namespace TaskMaster
 
 		public void TempScanStats(object sender, DiskEventArgs ev)
 		{
-			tempObjectSize.Text = (ev.Stats.Size / 1000 / 1000).ToString();
-			tempObjectCount.Text = (ev.Stats.Dirs + ev.Stats.Files).ToString();
+			try
+			{
+				tempObjectSize.Text = (ev.Stats.Size / 1000 / 1000).ToString();
+				tempObjectCount.Text = (ev.Stats.Dirs + ev.Stats.Files).ToString();
+			}
+			catch { }
 		}
 
 		object loglistLock = new object();
@@ -1557,12 +1812,20 @@ namespace TaskMaster
 
 		public void hookActiveAppMonitor(ref ActiveAppManager aamon)
 		{
+			if (aamon == null) return;
+
+			Log.Verbose("Hooking active app manager.");
+
 			activeappmonitor = aamon;
 			activeappmonitor.ActiveChanged += OnActiveWindowChanged;
 		}
 
 		public void hookPowerManager(ref PowerManager pman)
 		{
+			if (pman == null) return;
+
+			Log.Verbose("Hooking power manager.");
+
 			powermanager = pman;
 			powermanager.onAutoAdjustAttempt += CPULoadHandler;
 			powermanager.onBehaviourChange += PowerBehaviourDebugEvent;
@@ -1574,14 +1837,22 @@ namespace TaskMaster
 
 		public void PowerBehaviourDebugEvent(object sender, PowerManager.PowerBehaviour behaviour)
 		{
-			powerbalancer_behaviour.Text = (behaviour == PowerManager.PowerBehaviour.Auto) ? "Automatic" : ((behaviour == PowerManager.PowerBehaviour.Manual) ? "Manual" : "Rule-based");
-			if (behaviour != PowerManager.PowerBehaviour.Auto)
-				powerbalancerlog.Items.Clear();
+			try
+			{
+				powerbalancer_behaviour.Text = (behaviour == PowerManager.PowerBehaviour.Auto) ? "Automatic" : ((behaviour == PowerManager.PowerBehaviour.Manual) ? "Manual" : "Rule-based");
+				if (behaviour != PowerManager.PowerBehaviour.Auto)
+					powerbalancerlog.Items.Clear();
+			}
+			catch { }
 		}
 
 		public void PowerPlanDebugEvent(object sender, PowerModeEventArgs ev)
 		{
-			powerbalancer_plan.Text = PowerManager.GetModeName(ev.NewMode);
+			try
+			{
+				powerbalancer_plan.Text = PowerManager.GetModeName(ev.NewMode);
+			}
+			catch { }
 		}
 
 		public void hookNetMonitor(ref NetManager net)
@@ -1629,9 +1900,7 @@ namespace TaskMaster
 				else
 					ifaceList.Items[ev.Index].SubItems[ErrorColumn].ForeColor = System.Drawing.SystemColors.ControlText;
 			}
-			catch
-			{
-			}
+			catch { }
 		}
 
 		int PacketColumn = 6;
@@ -1646,7 +1915,11 @@ namespace TaskMaster
 
 		public void InetStatus(object sender, InternetStatus e)
 		{
-			InetStatusLabel(e.Available);
+			try
+			{
+				InetStatusLabel(e.Available);
+			}
+			catch { }
 		}
 
 		void NetStatusLabel(bool available)
@@ -1658,7 +1931,11 @@ namespace TaskMaster
 
 		public void NetStatus(object sender, NetworkStatus e)
 		{
-			NetStatusLabel(e.Available);
+			try
+			{
+				NetStatusLabel(e.Available);
+			}
+			catch { }
 		}
 
 		// BUG: DO NOT LOG INSIDE THIS FOR FUCKS SAKE
@@ -1678,19 +1955,23 @@ namespace TaskMaster
 		{
 			if (LogIncludeLevel.MinimumLevel > e.Level) return;
 
+			DateTime t = DateTime.Now;
+
 			lock (loglistLock)
 			{
-				DateTime t = DateTime.Now;
-
-				int excessitems = (loglist.Items.Count - MaxLogSize).Min(0);
-				while (excessitems-- > 0)
+				try
 				{
-					loglist.Items.RemoveAt(0);
-					loglist_stamp.RemoveAt(0);
-				}
+					int excessitems = (loglist.Items.Count - MaxLogSize).Min(0);
+					while (excessitems-- > 0)
+					{
+						loglist.Items.RemoveAt(0);
+						loglist_stamp.RemoveAt(0);
+					}
 
-				loglist.Items.Add(e.Message).EnsureVisible();
-				loglist_stamp.Add(DateTime.Now);
+					loglist.Items.Add(e.Message).EnsureVisible();
+					loglist_stamp.Add(DateTime.Now);
+				}
+				catch { }
 			}
 		}
 
@@ -1717,8 +1998,12 @@ namespace TaskMaster
 
 			Shown += (object sender, EventArgs e) =>
 			{
-				loglist.TopItem = loglist.Items[loglist.Items.Count - 1];
-				ShowLastLog();
+				try
+				{
+					loglist.TopItem = loglist.Items[loglist.Items.Count - 1];
+					ShowLastLog();
+				}
+				catch { }
 			};
 
 			// TODO: WPF
@@ -1767,7 +2052,7 @@ namespace TaskMaster
 			TaskMaster.MarkDirtyINI(cfg);
 		}
 
-		bool disposed; // = false;
+		bool disposed = false;
 		protected override void Dispose(bool disposing)
 		{
 			if (disposed) return;
@@ -1813,6 +2098,7 @@ namespace TaskMaster
 					rescanRequest -= processmanager.ProcessEverythingRequest;
 					processmanager.onInstanceHandling -= ProcessNewInstanceCount;
 					processmanager.PathCacheUpdate -= PathCacheUpdate;
+					processmanager.onActiveHandled -= FgWaitListHandler;
 					if (TaskMaster.PagingEnabled)
 						pagingRequest -= processmanager.PageEverythingRequest;
 					processmanager = null;
@@ -1843,6 +2129,12 @@ namespace TaskMaster
 
 				UItimer.Stop();
 				UItimer.Dispose();
+				UItimer = null;
+
+				exitwaitlist.Dispose();
+				exitwaitlistw.Clear();
+				fgwaitlist.Dispose();
+				fgwaitlistw.Clear();
 			}
 
 			disposed = true;

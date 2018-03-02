@@ -46,6 +46,10 @@ namespace TaskMaster
 		/// </summary>
 		Modified,
 		/// <summary>
+		/// Process modification was delayed.
+		/// </summary>
+		Delayed,
+		/// <summary>
 		/// Failed to access process.
 		/// </summary>
 		AccessDenied,

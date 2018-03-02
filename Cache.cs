@@ -95,11 +95,13 @@ namespace TaskMaster
 			pruneTimer.Start();
 		}
 
-		void Prune(object sender, EventArgs ev)
+		async void Prune(object sender, EventArgs ev)
 		{
 			if (Items.Count <= MinCache) return; // just don't bother
 
 			if (Items.Count <= MaxCache && CacheEvictStrategy == EvictStrategy.LeastUsed) return;
+
+			await Task.Yield();
 
 			lock (cache_lock)
 			{

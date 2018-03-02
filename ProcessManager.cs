@@ -34,6 +34,8 @@ using Serilog;
 using System.Runtime.InteropServices;
 using System.Runtime.CompilerServices;
 using System.Windows.Forms;
+using Serilog.Sinks.File;
+using Serilog.Debugging;
 namespace TaskMaster
 {
 	public class InstanceEventArgs : EventArgs
@@ -47,6 +49,14 @@ namespace TaskMaster
 		public string Name { get; set; } = null;
 		public int Id { get; set; } = -1;
 	}
+
+	public struct BasicProcessInfo
+	{
+		public string Name;
+		public string Path;
+		public int Id;
+		public Process Process;
+		public DateTime Start;	}
 
 	sealed public class ProcessManager : IDisposable
 	{
@@ -83,13 +93,10 @@ namespace TaskMaster
 
 		int ProcessModifyDelay = 4800;
 
-		/// <summary>
-		/// Empties the working set.
-		/// </summary>
-		/// <returns>Uhh?</returns>
-		/// <param name="hwProc">Process handle.</param>
-		[DllImport("psapi.dll")]
-		static extern int EmptyWorkingSet(IntPtr hwProc);
+		public static bool RestoreOriginal = false;
+		public static int OffFocusPriority = 1;
+		public static int OffFocusAffinity = 0;
+		public static bool OffFocusPowerCancel = true;
 
 		/// <summary>
 		/// Gets the control class instance of the executable if it exists.
@@ -136,14 +143,14 @@ namespace TaskMaster
 			Log.Verbose("Path location complete.");
 		}
 
-		ActiveAppMonitor activeappmonitor = null;
-		public void hookActiveAppMonitor(ref ActiveAppMonitor aamon)
+		ActiveAppManager activeappmonitor = null;
+		public void hookActiveAppManager(ref ActiveAppManager aamon)
 		{
 			activeappmonitor = aamon;
-			activeappmonitor.ActiveChanged += OnForegroundChanged;
+			activeappmonitor.ActiveChanged += ForegroundAppChangedEvent;
 		}
 
-		public async void FreeMemoryFor(string executable)
+		public async Task FreeMemoryFor(string executable)
 		{
 			var procs = Process.GetProcessesByName(executable); // unnecessary maybe?
 			if (procs.Length == 0)
@@ -151,6 +158,8 @@ namespace TaskMaster
 				Log.Warning("{Exec} not found.", executable);
 				return;
 			}
+
+			await Task.Yield();
 
 			long saved = 0;
 			var allprocs = Process.GetProcesses();
@@ -261,13 +270,13 @@ namespace TaskMaster
 			Log.Verbose("Paging complete.");
 		}
 
-		public void ProcessEverythingRequest(object sender, EventArgs e)
+		public async void ProcessEverythingRequest(object sender, EventArgs e)
 		{
 			if (TaskMaster.DebugFullScan)
 				Log.Verbose("Rescan requested.");
 			try
 			{
-				ProcessEverything();
+				await ProcessEverything();
 			}
 			catch (Exception ex)
 			{
@@ -284,13 +293,15 @@ namespace TaskMaster
 		/// Processes everything. Pointlessly thorough, but there's no nicer way around for now.
 		/// </summary>
 		int scaninprogress = 0;
-		public void ProcessEverything()
+		public async Task ProcessEverything()
 		{
 			if (System.Threading.Interlocked.CompareExchange(ref scaninprogress, 1, 0) == 1)
 			{
 				Log.Warning("Scan request received while old scan was still in progress.");
 				return;
 			}
+
+			await Task.Yield();
 
 			LastRescan = DateTime.Now;
 
@@ -413,6 +424,17 @@ namespace TaskMaster
 
 			// --------------------------------------------------------------------------------------------------------
 
+			var fgpausesec = TaskMaster.cfg["Foreground Focus Lost"];
+			//RestoreOriginal = fgpausesec.GetSetDefault("Restore original", false, out modified).BoolValue;
+			//dirtyconfig |= modified;
+			OffFocusPriority = fgpausesec.GetSetDefault("Default priority", 2, out modified).IntValue;
+			fgpausesec["Default priority"].Comment = "Default is normal to avoid excessive loading times while user is alt-tabbed.";
+			dirtyconfig |= modified;
+			//OffFocusAffinity = fgpausesec.GetSetDefault("Affinity", 0, out modified).IntValue;
+			//dirtyconfig |= modified;
+			//OffFocusPowerCancel = fgpausesec.GetSetDefault("Power mode cancel", true, out modified).BoolValue;
+			//dirtyconfig |= modified;
+
 			// --------------------------------------------------------------------------------------------------------
 
 			//TaskMaster.cfg["Applications"]["Ignored"].StringValueArray = IgnoreList;
@@ -522,12 +544,19 @@ namespace TaskMaster
 					ForegroundOnly = (section.TryGet("Foreground only")?.BoolValue ?? false),
 					Recheck = (section.TryGet("Recheck")?.IntValue ?? 0),
 					PowerPlan = pmode,
+					BackgroundPriority = ProcessHelpers.IntToPriority((section.TryGet("Background priority")?.IntValue ?? OffFocusPriority).Constrain(1, 3)),
+					BackgroundPowerdown = (section.TryGet("Background powerdown")?.BoolValue ?? true),
 					IgnoreList = (section.TryGet("Ignore")?.StringValueArray ?? null),
 					//Children = (section.TryGet("Children")?.BoolValue ?? false),
 					//ChildPriority = ProcessHelpers.IntToPriority(section.TryGet("Child priority")?.IntValue ?? prio),
 					//ChildPriorityReduction = section.TryGet("Child priority reduction")?.BoolValue ?? false,
 					AllowPaging = (section.TryGet("Allow paging")?.BoolValue ?? false),
 				};
+				if (cnt.ForegroundOnly && cnt.BackgroundPriority.ToInt32() >= cnt.Priority.ToInt32())
+				{
+					cnt.ForegroundOnly = false;
+					Log.Error("[{Friendly}] Background priority equal or higher than foreground priority, ignoring.", cnt.FriendlyName);
+				}
 
 				if (cnt.Rescan > 0 && cnt.ExecutableFriendlyName == null)
 				{
@@ -672,47 +701,62 @@ namespace TaskMaster
 
 		object foreground_lock = new object();
 		Dictionary<int, BasicProcessInfo> ForegroundApps = new Dictionary<int, BasicProcessInfo>();
-		HashSet<int> ForegroundPids = new HashSet<int>();
 
 		int PreviousForegroundId = -1;
 		ProcessController PreviousForegroundController = null;
 		BasicProcessInfo PreviousForegroundInfo;
-		public void OnForegroundChanged(object sender, WindowChangedArgs ev)
+		Dictionary<int, ProcessController> ForegroundWaitlist = new Dictionary<int, ProcessController>(6);
+
+		public void ForegroundAppChangedEvent(object sender, WindowChangedArgs ev)
 		{
-			if (PreviousForegroundId > 4 && PreviousForegroundId != ev.Id) // testing previous to current might be superfluous
-			{
-				PreviousForegroundController.Pause(PreviousForegroundInfo);
-			}
+			//if (TaskMaster.DebugForeground)
+			//	Log.Debug("Process Manager - Foreground Received: {Title}", ev.Title);
 
-			lock (foreground_lock)
+			try
 			{
-				ProcessController prc = null;
-				if (execontrol.TryGetValue(ev.Executable, out prc))
+				if (PreviousForegroundId != ev.Id) // testing previous to current might be superfluous
 				{
-					int pid = ev.Id;
-					if (ForegroundPids.Add(ev.Id))
+					if (PreviousForegroundController != null)
 					{
-						var proc = Process.GetProcessById(ev.Id);
-						ForegroundApps.Add(ev.Id, new BasicProcessInfo { Id = ev.Id, Name = ev.Executable, Path = null, Process = proc });
-						proc.EnableRaisingEvents = true;
-						proc.Exited += (s, e) =>
-						{
-							lock (foreground_lock)
-							{
-								ForegroundApps.Remove(pid);
-								ForegroundPids.Remove(pid);
-							}
-						};
-						Log.Debug("FOREGROUND: ADDED: {Exec} ({Window})", ev.Executable, ev.Title);
+						//Log.Debug("PUTTING PREVIOUS FOREGROUND APP to BACKGROUND");
+						PreviousForegroundController.Quell(PreviousForegroundInfo);
+						onActiveHandled?.Invoke(this, new ProcessEventArgs() { Control = PreviousForegroundController, Info = PreviousForegroundInfo, State = ProcessEventArgs.ProcessState.Reduced });
 					}
-					else
+				}
+
+				lock (foreground_lock)
+				{
+					ProcessController prc = null;
+					if (ForegroundWaitlist.TryGetValue(ev.Id, out prc))
 					{
-						Log.Debug("FOREGROUND: RE-ACTIVATED");
+						BasicProcessInfo info = ForegroundApps[ev.Id];
+
+						if (TaskMaster.DebugForeground)
+							Log.Debug("[{FriendlyName}] {Exec} (#{Pid}) on foreground!", prc.FriendlyName, info.Name, info.Id);
+
+						prc.Resume(info);
+
+						onActiveHandled?.Invoke(this, new ProcessEventArgs() { Control = prc, Info = info, State = ProcessEventArgs.ProcessState.Restored });
+
+						PreviousForegroundInfo = info;
+						PreviousForegroundController = prc;
+
+						return;
 					}
-
-
+					PreviousForegroundInfo = default(BasicProcessInfo);
+					PreviousForegroundController = null;
 				}
 			}
+			catch (Exception ex)
+			{
+				Log.Fatal("{Type} : {Message}", ex.GetType().Name, ex.Message);
+				Log.Fatal(ex.StackTrace);
+			}
+		}
+
+		public BasicProcessInfo[] getWaitingActive()
+		{
+			return ForegroundApps.Values.ToArray();
 		}
 
 		/// <summary>
@@ -884,15 +928,22 @@ namespace TaskMaster
 						if (TaskMaster.DebugPaths)
 							Log.Verbose("[{PathFriendlyName}] matched at: {Path}", pc.FriendlyName, info.Path);
 
+						ProcessState rv = ProcessState.Invalid;
 						try
 						{
-							return pc.Touch(info);
+							rv = pc.Touch(info, foreground: activeappmonitor?.isForeground(info.Id) ?? true);
 						}
-						catch
+						catch (Exception ex)
 						{
 							Log.Fatal("[{FriendlyName}] '{Exec}' (#{Pid}) MASSIVE FAILURE!!!", pc.FriendlyName, info.Name, info.Id);
-							return ProcessState.AccessDenied;
+							Log.Error("{Type} : {Message}", ex.GetType().Name, ex.Message);
+							Log.Error(ex.StackTrace);
+							rv = ProcessState.AccessDenied;
 						}
+
+						ForegroundWatch(info, pc);
+
+						return rv;
 					}
 				}
 			}
@@ -1011,6 +1062,22 @@ namespace TaskMaster
 		}
 		*/
 
+		void ForegroundWatch(BasicProcessInfo info, ProcessController prc)
+		{
+			if (!prc.ForegroundOnly) return;
+
+			if (!ForegroundWaitlist.ContainsKey(info.Id))
+			{
+				ForegroundWaitlist.Add(info.Id, prc);
+				ForegroundApps.Add(info.Id, info);
+			}
+
+			if (TaskMaster.DebugForeground)
+				Log.Debug("[{FriendlyName}] {Exec} (#{Pid}) added to foreground watchlist.", prc.FriendlyName, info.Name, info.Id);
+
+			onActiveHandled?.Invoke(this, new ProcessEventArgs() { Control = prc, Info = info, State = ProcessEventArgs.ProcessState.Found });
+		}
+
 		ProcessState CheckProcess(BasicProcessInfo info, bool schedule_next = true)
 		{
 			Debug.Assert(!string.IsNullOrEmpty(info.Name), "CheckProcess received null process name.");
@@ -1039,17 +1106,20 @@ namespace TaskMaster
 			if (execontrol.TryGetValue(LowerCase(info.Name), out pc))
 			{
 				//await System.Threading.Tasks.Task.Delay(ProcessModifyDelay).ConfigureAwait(false);
+				ForegroundWatch(info, pc);
+
 				try
 				{
-					state = pc.Touch(info, schedule_next);
+					state = pc.Touch(info, schedule_next, foreground: activeappmonitor?.isForeground(info.Id) ?? true);
 				}
-				catch
+				catch (Exception ex)
 				{
 					Log.Fatal("[{FriendlyName}] '{Exec}' (#{Pid}) MASSIVE FAILURE!!!", pc.FriendlyName, info.Name, info.Id);
+					Log.Error("{Type} : {Message}", ex.GetType().Name, ex.Message);
+					Log.Error(ex.StackTrace);
 					state = ProcessState.AccessDenied;
 				}
 				return state; // execontrol had this, we don't care about anything else for this.
-
 			}
 			//Log.Verbose("{AppName} not in executable control list.", info.Name);
 
@@ -1067,15 +1137,6 @@ namespace TaskMaster
 			*/
 
 			return ProcessState.Invalid;
-		}
-
-		public struct BasicProcessInfo
-		{
-			public string Name;
-			public string Path;
-			public int Id;
-			public Process Process;
-			public DateTime Start;
 		}
 
 		object BatchProcessingLock = new object();
@@ -1151,11 +1212,14 @@ namespace TaskMaster
 		public static int Handling { get; set; }
 
 		public event EventHandler<InstanceEventArgs> onInstanceHandling;
+		public event EventHandler<ProcessEventArgs> onActiveHandled;
 
 		// This needs to return faster
 		async void NewInstanceTriage(object sender, System.Management.EventArrivedEventArgs e)
 		{
-			Stopwatch n = Stopwatch.StartNew();
+			await Task.Yield(); // is there any reason to delay this?
+
+			Stopwatch wmiquerytime = Stopwatch.StartNew();
 
 			// TODO: Instance groups?
 			int pid = -1;
@@ -1180,23 +1244,21 @@ namespace TaskMaster
 			{
 				Log.Warning("{Type} : {Message}", ex.GetType().Name, ex.Message);
 				Log.Warning(ex.StackTrace);
-				Log.Warning("Failed to extract process ID from WMI event.");
+				Log.Warning("<<WMI>> Failed to extract process ID.");
 				throw;
 			}
 			finally
 			{
-				n.Stop();
-				Statistics.WMIquerytime += n.Elapsed.TotalSeconds;
+				wmiquerytime.Stop();
+				Statistics.WMIquerytime += wmiquerytime.Elapsed.TotalSeconds;
 				Statistics.WMIqueries += 1;
 			}
 
 			if (IgnoreProcessID(pid)) return; // We just don't care
 
-			await Task.Yield();
-
 			if (string.IsNullOrEmpty(name) && pid <= LowestInvalidPid)
 			{
-				Log.Warning("Failed to acquire neither process name nor process Id");
+				Log.Warning("<<WMI>> Failed to acquire neither process name nor process Id");
 				return;
 			}
 
@@ -1387,7 +1449,7 @@ namespace TaskMaster
 			{
 				Log.Fatal("{Type} : {Message}", ex.GetType().Name, ex.Message);
 				Log.Fatal(ex.StackTrace);
-				throw new InitFailure("WMI event watcher initialization failure");
+				throw new InitFailure("<<WMI>> Event watcher initialization failure");
 			}
 
 			if (watcher != null)
@@ -1402,18 +1464,18 @@ namespace TaskMaster
 
 				watcher.Stopped += (object sender, System.Management.StoppedEventArgs e) =>
 				{
-					Log.Fatal("New instance watcher stopped.");
+					Log.Debug("<<WMI>> New instance watcher stopped.");
 					// Restart it maybe? This probably happens when WMI service is stopped or restarted.?
 				};
 
 				try
 				{
 					watcher.Start();
-					Log.Debug("New instance watcher initialized.");
+					Log.Debug("<<WMI>> New instance watcher initialized.");
 				}
 				catch
 				{
-					Log.Fatal("New instance watcher failed to initialize.");
+					Log.Fatal("<<WMI>> New instance watcher failed to initialize.");
 					throw new InitFailure("New instance watched failed to initialize");
 				}
 			}
@@ -1486,52 +1548,70 @@ namespace TaskMaster
 			{
 				Log.Verbose("Disposing process manager...");
 
-				if (activeappmonitor != null)
+				try
 				{
-					activeappmonitor.ActiveChanged -= OnForegroundChanged;
-					activeappmonitor = null;
-				}
-				if (RescanEverythingTimer != null)
-				{
-					RescanEverythingTimer.Stop(); // shouldn't be necessary
-					RescanEverythingTimer.Dispose();
-					RescanEverythingTimer = null;
-				}
-				//watcher.EventArrived -= NewInstanceTriage;
-				if (watcher != null)
-				{
-					watcher.Stop(); // shouldn't be necessary
-					watcher.Dispose();
-					watcher = null;
-				}
-				if (rescanTimer != null)
-				{
-					rescanTimer.Stop();
-					rescanTimer = null;
-				}
-				if (BatchProcessingTimer != null)
-				{
-					BatchProcessingTimer.Stop();
-					BatchProcessingTimer = null;
-				}
+					if (activeappmonitor != null)
+					{
+						activeappmonitor.ActiveChanged -= ForegroundAppChangedEvent;
+						activeappmonitor = null;
+					}
+					if (RescanEverythingTimer != null)
+					{
+						RescanEverythingTimer.Stop(); // shouldn't be necessary
+						RescanEverythingTimer.Dispose();
+						RescanEverythingTimer = null;
+					}
+					//watcher.EventArrived -= NewInstanceTriage;
+					if (watcher != null)
+					{
+						watcher.Stop(); // shouldn't be necessary
+						watcher.Dispose();
+						watcher = null;
+					}
+					if (rescanTimer != null)
+					{
+						rescanTimer.Stop();
+						rescanTimer = null;
+					}
+					if (BatchProcessingTimer != null)
+					{
+						BatchProcessingTimer.Stop();
+						BatchProcessingTimer = null;
+					}
 
-				if (pathCache != null)
+					if (pathCache != null)
+					{
+						pathCache.Dispose();
+						pathCache = null;
+					}
+				}
+				catch (Exception ex)
 				{
-					pathCache.Dispose();
-					pathCache = null;
+					Log.Fatal("{Type} : {Message}", ex.GetType().Name, ex.Message);
+					Log.Fatal(ex.StackTrace);
+					throw;
 				}
 
 				saveStats();
 
-				if (execontrol != null)
+				try
 				{
-					execontrol.Clear();
-					execontrol = null;
+					if (execontrol != null)
+					{
+						execontrol.Clear();
+						execontrol = null;
+					}
+					if (watchlist != null)
+					{
+						watchlist.Clear();
+						watchlist = null;
+					}
 				}
-				if (watchlist != null)
+				catch (Exception ex)
 				{
-					watchlist.Clear();
-					watchlist = null;
+					Log.Fatal("{Type} : {Message}", ex.GetType().Name, ex.Message);
+					Log.Fatal(ex.StackTrace);
+					throw;
 				}
 			}
 
@@ -1604,6 +1684,14 @@ namespace TaskMaster
 		[DllImport("kernel32.dll", SetLastError = true)]
 		[return: MarshalAs(UnmanagedType.Bool)]
 		static extern bool CloseHandle(IntPtr hObject);
+
+		/// <summary>
+		/// Empties the working set.
+		/// </summary>
+		/// <returns>Uhh?</returns>
+		/// <param name="hwProc">Process handle.</param>
+		[DllImport("psapi.dll")]
+		static extern int EmptyWorkingSet(IntPtr hwProc);
 	}
 
 	public class ProcessorEventArgs : EventArgs

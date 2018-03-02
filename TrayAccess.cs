@@ -28,6 +28,7 @@ using System;
 using System.Windows.Forms;
 using Serilog;
 using System.Diagnostics;
+using System.Threading.Tasks;
 
 namespace TaskMaster
 {
@@ -241,16 +242,24 @@ namespace TaskMaster
 		void ShowConfigRequest(object sender, EventArgs e)
 		{
 			//CLEANUP: Console.WriteLine("Opening config folder.");
-			System.Diagnostics.Process.Start(TaskMaster.datapath);
+			Process.Start(TaskMaster.datapath);
 
 			TaskMaster.mainwindow?.ShowConfigRequest(sender, e);
 			//CLEANUP: Console.WriteLine("Done opening config folder.");
 		}
 
-		void RestoreMain(object sender, EventArgs e)
+		int buildmainwindow_lock = 0;
+		async Task RestoreMain(object sender, EventArgs e)
 		{
-			TaskMaster.BuildMain();
+			if (System.Threading.Interlocked.CompareExchange(ref buildmainwindow_lock, 1, 0) == 1)
+				return; // already being done
+
+			await Task.Yield();
+
+			TaskMaster.BuildMainWindow();
 			TaskMaster.mainwindow.Show();
+
+			buildmainwindow_lock = 0;
 		}
 
 		void ClickOnTrayIcon(object sender, MouseEventArgs e)
@@ -311,40 +320,39 @@ namespace TaskMaster
 			window.FormClosed += CompactEvent;
 		}
 
-		System.Diagnostics.Process[] Explorer;
-		void ExplorerCrashHandler(object sender, EventArgs e)
+		Process[] Explorer;
+		async void ExplorerCrashHandler(object sender, EventArgs e)
 		{
 			Log.Warning("Explorer crash detected!");
 
-			System.Threading.Tasks.Task.Run(async () =>
-			{
-				Log.Information("Giving explorer some time to recover on its own...");
-				await System.Threading.Tasks.Task.Delay(12000).ConfigureAwait(false); // force async
-				Stopwatch n = new Stopwatch();
-				n.Start();
-				System.Diagnostics.Process[] procs;
-				while ((procs = ExplorerInstances).Length == 0)
-				{
-					if (n.Elapsed.TotalHours >= 24)
-					{
-						Log.Error("Explorer has not recovered in excessive timeframe, giving up.");
-						return;
-					}
-					await System.Threading.Tasks.Task.Delay(1000 * 60 * 5).ConfigureAwait(false); // wait 5 minutes
-				}
-				n.Stop();
+			await Task.Yield();
 
-				if (RegisterExplorerExit(procs))
+			Log.Information("Giving explorer some time to recover on its own...");
+			await Task.Delay(12000); // force async
+			Stopwatch n = new Stopwatch();
+			n.Start();
+			Process[] procs;
+			while ((procs = ExplorerInstances).Length == 0)
+			{
+				if (n.Elapsed.TotalHours >= 24)
 				{
-				}
-				else
-				{
-					Log.Warning("Explorer registration failed.");
+					Log.Error("Explorer has not recovered in excessive timeframe, giving up.");
 					return;
 				}
+				await Task.Delay(1000 * 60 * 5); // wait 5 minutes
+			}
+			n.Stop();
 
-				Tray.Visible = true; // TODO: Is this enough/necessary? Doesn't seem to be. WinForms appears to recover on its own.
-			});
+			if (RegisterExplorerExit(procs))
+			{
+			}
+			else
+			{
+				Log.Warning("Explorer registration failed.");
+				return;
+			}
+
+			Tray.Visible = true; // TODO: Is this enough/necessary? Doesn't seem to be. WinForms appears to recover on its own.
 		}
 
 		System.Diagnostics.Process[] ExplorerInstances

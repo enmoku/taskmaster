@@ -25,6 +25,7 @@
 // THE SOFTWARE.
 using System.Windows;
 using System.Windows.Documents;
+using System.Threading.Tasks;
 
 namespace TaskMaster
 {
@@ -109,12 +110,16 @@ namespace TaskMaster
 			packletStatTimer.Interval = PacketStatTimerInterval * 1000;
 			packletStatTimer.Elapsed += AnalyzePacketBehaviour;
 			packletStatTimer.Start();
+
+			Log.Information("<Net Manager> Loaded.");
 		}
 
 		int packetWarning = 0;
 		List<NetDevice> PreviousInterfaceList;
-		void AnalyzePacketBehaviour(object sender, EventArgs ev)
+		async void AnalyzePacketBehaviour(object sender, EventArgs ev)
 		{
+			await Task.Yield();
+
 			if (packetWarning > 0)
 				packetWarning--;
 
@@ -199,7 +204,7 @@ namespace TaskMaster
 
 		bool InternetAvailableLast = false;
 
-		void ReportCurrentUptime()
+		void ReportCurrentUpstate()
 		{
 			if (InternetAvailable)
 			{
@@ -238,7 +243,7 @@ namespace TaskMaster
 
 			Log.Information(ups.ToString());
 
-			ReportCurrentUptime();
+			ReportCurrentUpstate();
 		}
 
 		public void SampleDeviceState(object sender, EventArgs e)
@@ -250,29 +255,32 @@ namespace TaskMaster
 		static int upstateTesting; // = 0;
 		void RecordDeviceState(bool online_state, bool address_changed)
 		{
-			lock (StateLock)
+			if (online_state != lastOnlineState)
 			{
-				if (online_state != lastOnlineState)
-				{
+				lock (StateLock)
 					lastOnlineState = online_state;
 
-					if (online_state)
-					{
+				if (online_state)
+				{
+					lock (StateLock)
 						lastUptimeStart = DateTime.Now;
 
-						if (System.Threading.Interlocked.CompareExchange(ref upstateTesting, 1, 0) == 0)
+					// this part is kinda pointless
+					if (System.Threading.Interlocked.CompareExchange(ref upstateTesting, 1, 0) == 0)
+					{
+						System.Threading.Tasks.Task.Run(async () =>
 						{
-							System.Threading.Tasks.Task.Run(async () =>
-							{
-								//CLEANUP: Console.WriteLine("Debug: Queued internet uptime report");
-								await System.Threading.Tasks.Task.Delay(new TimeSpan(0, 5, 0)).ConfigureAwait(false); // wait 5 minutes
+							//CLEANUP: Console.WriteLine("Debug: Queued internet uptime report");
+							await System.Threading.Tasks.Task.Delay(new TimeSpan(0, 5, 0)); // wait 5 minutes
 
-								ReportCurrentUptime();
-								upstateTesting = 0;
-							});
-						}
+							ReportCurrentUpstate();
+							upstateTesting = 0;
+						});
 					}
-					else // went offline
+				}
+				else // went offline
+				{
+					lock (StateLock)
 					{
 						double newUptime = (DateTime.Now - lastUptimeStart).TotalMinutes;
 						upTime.Add(newUptime);
@@ -284,18 +292,15 @@ namespace TaskMaster
 							uptimeSamples -= 1;
 							upTime.RemoveAt(0);
 						}
-
-						ReportUptime();
 					}
-					return;
+					ReportUptime();
 				}
-				else if (address_changed)
-				{
-					// same state but address change was detected
-					Console.WriteLine("DEBUG: Address changed but internet connectivity unaffected.");
-				}
-
-				ReportCurrentUptime();
+				return;
+			}
+			else if (address_changed)
+			{
+				// same state but address change was detected
+				Console.WriteLine("DEBUG: Address changed but internet connectivity unaffected.");
 			}
 		}
 
@@ -365,7 +370,7 @@ namespace TaskMaster
 		}
 
 		List<IPAddress> AddressList = new List<IPAddress>(2);
-		List<NetworkInterface> InterfaceList = new List<NetworkInterface>(2);
+		//List<NetworkInterface> PublicInterfaceList = new List<NetworkInterface>(2);
 		IPAddress IPv4Address = IPAddress.None;
 		NetworkInterface IPv4Interface;
 		IPAddress IPv6Address = IPAddress.IPv6None;
@@ -387,12 +392,12 @@ namespace TaskMaster
 						case System.Net.Sockets.AddressFamily.InterNetwork:
 							IPv4Address = ip;
 							IPv4Interface = n;
-							InterfaceList.Add(n);
+							//PublicInterfaceList.Add(n);
 							break;
 						case System.Net.Sockets.AddressFamily.InterNetworkV6:
 							IPv6Address = ip;
 							IPv6Interface = n;
-							InterfaceList.Add(n);
+							//PublicInterfaceList.Add(n);
 							break;
 					}
 				}
@@ -401,6 +406,7 @@ namespace TaskMaster
 
 		int enumerating_inet; // = 0;
 
+		// TODO: This is unnecessarily heavy
 		/// <summary>
 		/// Returns list of interfaces.
 		/// * Device Name
@@ -417,7 +423,7 @@ namespace TaskMaster
 				return null; // bail if we were already doing this
 
 			if (TaskMaster.DebugNetMonitor)
-				Log.Verbose("Enumerating network interfaces...");
+				Log.Debug("Enumerating network interfaces...");
 
 			var ifacelist = new List<NetDevice>();
 			//var ifacelist = new List<string[]>();
@@ -464,7 +470,7 @@ namespace TaskMaster
 				ifacelist.Add(devi);
 
 				if (TaskMaster.DebugNetMonitor)
-					Log.Verbose("Interface: {InterfaceName}", dev.Name);
+					Log.Debug("Interface: {InterfaceName}", dev.Name);
 			}
 
 			enumerating_inet = 0;
@@ -546,6 +552,8 @@ namespace TaskMaster
 
 				await CheckInet();
 			}
+
+			PreviousInterfaceList = Interfaces();
 		}
 
 		public void Dispose()

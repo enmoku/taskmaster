@@ -32,6 +32,7 @@ using Microsoft.Win32;
 using System.Diagnostics.Eventing.Reader;
 using System.Runtime.InteropServices.WindowsRuntime;
 using System.Diagnostics;
+using System.Threading.Tasks;
 
 namespace TaskMaster
 {
@@ -56,7 +57,7 @@ namespace TaskMaster
 			LoadConfig();
 
 			//SystemEvents.PowerModeChanged += BatteryChargingEvent; // Without laptop testing this feature is difficult
-			SystemEvents.SessionEnding += TaskMaster.ExitRequest;
+			SystemEvents.SessionEnding += TaskMaster.SessionEndExitRequest;
 
 			if (SaverOnSessionLock)
 				SystemEvents.SessionSwitch += SessionLockEvent;
@@ -70,39 +71,71 @@ namespace TaskMaster
 			CPUTimer.Interval = 1000 * CPUSampleInterval;
 			CPUTimer.Elapsed += CPUSampler;
 
+			CPUSamples = new float[CPUSampleCount];
+
 			if (Behaviour == PowerBehaviour.Auto || !PauseUnneededSampler)
 				CPUTimer.Start();
 		}
 
 		public int CPUSampleInterval { get; set; } = 5;
+		public int CPUSampleCount { get; set; } = 5;
 		System.Diagnostics.PerformanceCounter CPUCounter = null;
 		System.Timers.Timer CPUTimer = null;
 
 		public event EventHandler<ProcessorEventArgs> onCPUSampling;
-		float[] CPUSamples = { 0, 0, 0, 0, 0 };
+		float[] CPUSamples;
 		int CPUSampleLoop = 0;
 
-		void CPUSampler(object sender, EventArgs ev)
+		float CPUAverage = 0f;
+		float CPULow = float.MaxValue;
+		float CPUHigh = 0f;
+		int CPULowOffset = 0;
+		int CPUHighOffset = 0;
+		async void CPUSampler(object sender, EventArgs ev)
 		{
-			float sample = CPUCounter.NextValue();
-			CPUSamples[CPUSampleLoop++] = sample;
-			if (CPUSampleLoop > 4) CPUSampleLoop = 0;
-			float average = 0;
-			float high = 0;
-			float low = float.MaxValue;
-			for (int i = 0; i < 5; i++)
-			{
-				float cur = CPUSamples[i];
-				average += cur;
-				if (cur < low) low = cur;
-				if (cur > high) high = cur;
-			}
-			average /= 5;
+			await Task.Yield();
 
-			onCPUSampling?.Invoke(this, new ProcessorEventArgs() { Current = sample, Average = average, High = high, Low = low });
+			float sample = CPUCounter.NextValue();
+			CPUAverage -= CPUSamples[CPUSampleLoop];
+			CPUAverage += sample;
+			if (sample < CPULow)
+			{
+				CPULow = sample;
+				CPULowOffset = CPUSampleLoop;
+			}
+			else if (sample > CPUHigh)
+			{
+				CPUHigh = sample;
+				CPUHighOffset = CPUSampleLoop;
+			}
+
+			bool setlowandhigh = (CPULowOffset == CPUSampleLoop || CPUHighOffset == CPUSampleLoop);
+			CPUSamples[CPUSampleLoop++] = sample;
+			if (CPUSampleLoop > (CPUSampleCount - 1)) CPUSampleLoop = 0;
+			if (setlowandhigh)
+			{
+				CPULow = float.MaxValue;
+				CPUHigh = float.MinValue;
+				for (int i = 0; i < CPUSampleCount; i++)
+				{
+					float cur = CPUSamples[i];
+					if (cur < CPULow)
+					{
+						CPULow = cur;
+						CPULowOffset = i;
+					}
+					if (cur > CPUHigh)
+					{
+						CPUHigh = cur;
+						CPUHighOffset = i;
+					}
+				}
+			}
+
+			onCPUSampling?.Invoke(this, new ProcessorEventArgs() { Current = sample, Average = CPUAverage / CPUSampleCount, High = CPUHigh, Low = CPULow });
 		}
 
-		static bool Pause = false;
+		static bool PauseForSessionLock = false;
 
 		bool SaverOnMonitorSleep = false;
 		bool SaverOnSessionLock = false;
@@ -131,22 +164,31 @@ namespace TaskMaster
 			Steady = 2
 		}
 
+		uint AutoAdjustForceBlock = 1 << 1;
+		uint AutoAdjustPauseBlock = 1 << 2;
+		uint AutoAdjustReadyBlock = 1 << 3;
+		uint AutoAdjustAllowed = 0;
+
 		int HighPressure = 0;
 		int LowPressure = 0;
 		PowerReaction PreviousReaction = PowerReaction.Average;
 		// TODO: Simplify this mess
-		public void CPULoadEvent(object sender, ProcessorEventArgs ev)
+		public async void CPULoadEvent(object sender, ProcessorEventArgs ev)
 		{
 			if (Behaviour != PowerBehaviour.Auto) return;
+
+			await Task.Yield();
 
 			PowerReaction Reaction = PowerReaction.Average;
 			PowerMode ReactionaryPlan = DefaultMode;
 
+			AutoAdjustAllowed |= AutoAdjustReadyBlock;
+
 			ev.Pressure = 0;
 			ev.Handled = false;
-			bool ReadyToChange = false;
 			if (PreviousReaction == PowerReaction.High)
 			{
+				// Downgrade to MEDIUM power level
 				//Console.WriteLine("Downgrade to Mid?");
 				if (ev.High <= HighBackoffThresholds[(int)ThresholdLevel.High]
 					|| ev.Average <= HighBackoffThresholds[(int)ThresholdLevel.Average]
@@ -157,7 +199,8 @@ namespace TaskMaster
 
 					BackoffCounter++;
 
-					ReadyToChange |= BackoffCounter >= HighBackoffLevel;
+					if (BackoffCounter >= HighBackoffLevel)
+						AutoAdjustAllowed &= ~AutoAdjustReadyBlock;
 
 					ev.Pressure = ((float)BackoffCounter) / ((float)HighBackoffLevel);
 					//Console.WriteLine("Downgrade to Mid: " + BackoffCounter + " / " + HighBackoffLevel + " = " + ev.Pressure);
@@ -167,6 +210,7 @@ namespace TaskMaster
 			}
 			else if (PreviousReaction == PowerReaction.Low)
 			{
+				// Upgrade to MEDIUM power level
 				//Console.WriteLine("Upgrade to Mid?");
 				if (ev.High >= LowBackoffThresholds[(int)ThresholdLevel.High]
 					|| ev.Average >= LowBackoffThresholds[(int)ThresholdLevel.Average]
@@ -177,7 +221,8 @@ namespace TaskMaster
 
 					BackoffCounter++;
 
-					ReadyToChange |= BackoffCounter >= LowBackoffLevel;
+					if (BackoffCounter >= LowBackoffLevel)
+						AutoAdjustAllowed &= ~AutoAdjustReadyBlock;
 
 					ev.Pressure = ((float)BackoffCounter) / ((float)LowBackoffLevel);
 					//Console.WriteLine("Upgrade to Mid: " + BackoffCounter + " / " + LowBackoffLevel + " = " + ev.Pressure);
@@ -185,30 +230,34 @@ namespace TaskMaster
 				//else
 				//	Console.WriteLine("Thresholds not met");
 			}
-			else
+			else // Currently at medium power
 			{
 				if (ev.Low > HighThreshold) // Low CPU is above threshold for High mode
 				{
+					// Downgrade to LOW power levell
 					Reaction = PowerReaction.High;
 					ReactionaryPlan = HighMode;
 
 					LowPressure = 0; // reset
 					HighPressure++;
 
-					ReadyToChange |= HighPressure >= HighCommitLevel;
+					if (HighPressure >= HighCommitLevel)
+						AutoAdjustAllowed &= ~AutoAdjustReadyBlock;
 
 					ev.Pressure = ((float)HighPressure) / ((float)HighCommitLevel);
 					//Console.WriteLine("Upgrade to Low: " + HighPressure + " / " + HighCommitLevel + " = " + ev.Pressure);
 				}
 				else if (ev.High < LowThreshold) // High CPU is below threshold for Low mode
 				{
+					// Upgrade to HIGH power levele
 					Reaction = PowerReaction.Low;
 					ReactionaryPlan = LowMode;
 
 					HighPressure = 0; // reset
 					LowPressure++;
 
-					ReadyToChange |= LowPressure >= LowCommitLevel;
+					if (LowPressure >= LowCommitLevel)
+						AutoAdjustAllowed &= ~AutoAdjustReadyBlock;
 
 					ev.Pressure = ((float)LowPressure) / ((float)LowCommitLevel);
 					//Console.WriteLine("Downgrade to Low: " + LowPressure + " / " + LowCommitLevel + " = " + ev.Pressure);
@@ -223,11 +272,12 @@ namespace TaskMaster
 					BackoffCounter = HighPressure = LowPressure = 0;
 					ev.Pressure = 0f;
 
-					ReadyToChange = true; // Only time this should cause actual power mode change is when something else changes power mode
+					// Only time this should cause actual power mode change is when something else changes power mode
+					AutoAdjustAllowed &= ~AutoAdjustReadyBlock;
 				}
 			}
 
-			if (ReactionaryPlan != CurrentMode && ReadyToChange && !ForcedMode)
+			if (ReactionaryPlan != CurrentMode && AutoAdjustAllowed == 0)
 			{
 				if (TaskMaster.DebugPower)
 					Log.Debug("<Power Mode> Auto-adjust: {Mode}", Reaction.ToString());
@@ -244,6 +294,21 @@ namespace TaskMaster
 				}
 
 				BackoffCounter = HighPressure = LowPressure = 0;
+			}
+			else
+			{
+				if (AutoAdjustAllowed == 0 && TaskMaster.DebugPower)
+				{
+					if (ForcedMode)
+						Log.Debug("Can't override manual power mode.");
+					else
+					{
+						if (ev.Pressure >= 1f)
+						{
+							Log.Debug("Can't change power mode – Current: {Current}, Reaction: {Reaction}", CurrentMode.ToString(), ReactionaryPlan.ToString());
+						}
+					}
+				}
 			}
 
 			//Console.WriteLine("Cause: " + ev.Cause.ToString() + ", ReadyToChange: " + readyToChange + ", Reaction: " + Reaction.ToString()
@@ -343,8 +408,14 @@ namespace TaskMaster
 			// this really should be elsewhere
 			var hwsec = TaskMaster.cfg["Hardware"];
 			CPUSampleInterval = hwsec.GetSetDefault("CPU sample interval", 5, out modified).IntValue.Constrain(1, 15);
-			hwsec["CPU sample interval"].Comment = "1 to 15, in seconds. Frequency at which CPU usage is sampled. Recommended value: 1 to 5.";
+			hwsec["CPU sample interval"].Comment = "1 to 15, in seconds. Frequency at which CPU usage is sampled. Recommended value: 1 to 5 seconds.";
 			dirtyconfig |= modified;
+			CPUSampleCount = hwsec.GetSetDefault("CPU sample count", 5, out modified).IntValue.Constrain(3, 30);
+			hwsec["CPU sample count"].Comment = "3 to 30. Number of CPU samples to keep. Recommended value is: Count * Interval <= 30 seconds";
+			dirtyconfig |= modified;
+
+			Log.Information("<CPU> CPU sampler: {Interval}s × {Count} = {Period}s observation period",
+							CPUSampleInterval, CPUSampleCount, CPUSampleCount * CPUSampleInterval);
 
 			// --------------------------------------------------------------------------------------------------------
 
@@ -394,8 +465,10 @@ namespace TaskMaster
 					{
 						if (CurrentMode != PowerMode.PowerSaver)
 						{
-							Pause = true;
+							PauseForSessionLock = true;
+							AutoAdjustAllowed |= AutoAdjustPauseBlock;
 							Log.Information("<Power Mode> Session locked, enforcing low power plan.");
+							if (PauseUnneededSampler) CPUTimer.Stop();
 							setMode(PowerMode.PowerSaver, true);
 						}
 					}
@@ -405,12 +478,14 @@ namespace TaskMaster
 					// RESTORE POWER MODE
 					if (SaverOnSessionLock)
 					{
-						if (CurrentMode == PowerMode.PowerSaver && Pause)
+						if (CurrentMode == PowerMode.PowerSaver && PauseForSessionLock)
 						{
 							Log.Information("<Power Mode> Session unlocked, restoring normal power.");
 							setMode(DefaultMode, true);
-							Pause = false;
-							TaskMaster.Evaluate().ConfigureAwait(false);
+							if (PauseUnneededSampler) CPUTimer.Start();
+							PauseForSessionLock = false;
+							AutoAdjustAllowed &= ~AutoAdjustPauseBlock;
+							TaskMaster.Evaluate();
 						}
 					}
 					break;
@@ -527,7 +602,7 @@ namespace TaskMaster
 			{
 				if (PauseUnneededSampler)
 				{
-					CPUSamples = new float[] { 0, 0, 0, 0, 0 }; // reset samples
+					CPUSamples = new float[CPUSampleCount]; // reset samples
 					CPUTimer.Start();
 					Log.Debug("CPU sampler restarted.");
 				}
@@ -552,15 +627,13 @@ namespace TaskMaster
 		public void SaveMode()
 		{
 			if (Behaviour == PowerBehaviour.Auto) return;
-
-			if (SavedMode != PowerMode.Undefined) Log.Warning("<Power Mode> Saved mode is being overriden.");
+			if (SavedMode != PowerMode.Undefined) return;
 
 			if (TaskMaster.DebugPower)
 				Log.Debug("<Power Mode> Saving current power mode for later restoration: {Mode}", CurrentMode.ToString());
 
 			lock (powerLock)
 			{
-
 				SavedMode = CurrentMode;
 
 				if (SavedMode == PowerMode.Undefined)
@@ -574,7 +647,7 @@ namespace TaskMaster
 		bool RestoreOriginal = false;
 		public void RestoreMode()
 		{
-			if (Pause) return; // TODO: What to do in the unlikely event of this being called while paused?
+			if (PauseForSessionLock) return; // TODO: What to do in the unlikely event of this being called while paused?
 
 			lock (powerLock)
 			{
@@ -582,6 +655,7 @@ namespace TaskMaster
 					SavedMode = OriginalMode;
 
 				ForcedMode = false;
+				AutoAdjustAllowed &= ~AutoAdjustForceBlock;
 				if (SavedMode != PowerMode.Undefined && SavedMode != CurrentMode)
 				{
 					if (Behaviour == PowerBehaviour.Auto) return;
@@ -625,7 +699,7 @@ namespace TaskMaster
 		public bool RequestMode(PowerMode mode)
 		{
 			Debug.Assert(Behaviour == PowerBehaviour.Auto, "RequestMode is for auto adjusting.");
-			if (Pause) return false;
+			if (PauseForSessionLock) return false;
 
 			lock (powerLock)
 			{
@@ -640,23 +714,22 @@ namespace TaskMaster
 
 		static bool ForcedMode = false;
 
-		public bool ForceMode(PowerMode mode)
+		public void ForceMode(PowerMode mode)
 		{
-			if (Behaviour == PowerBehaviour.Manual) return false;
-			if (Pause) return false;
+			if (Behaviour == PowerBehaviour.Manual) return;
+			if (PauseForSessionLock) return;
 
 			lock (powerLock)
 			{
 				if (mode != CurrentMode)
-				{
 					setMode(mode);
-					if (TaskMaster.DebugPower)
-						Log.Debug("<Power Mode> Forced to: {PowerMode}", CurrentMode);
-					ForcedMode = true;
-					return true;
-				}
-				return false;
+
+				ForcedMode = true;
+				AutoAdjustAllowed |= AutoAdjustForceBlock;
 			}
+
+			if (TaskMaster.DebugPower)
+				Log.Debug("<Power Mode> Forced to: {PowerMode}", CurrentMode);
 		}
 
 		public static void setMode(PowerMode mode, bool verbose = true)
@@ -678,7 +751,8 @@ namespace TaskMaster
 
 			if (verbose)
 				Log.Information("<Power Mode> Setting to: {Mode} ({Guid})", mode.ToString(), plan.ToString());
-			lock (powerLockI)
+
+			lock (powerLock)
 				PowerSetActiveScheme((IntPtr)null, ref plan);
 		}
 

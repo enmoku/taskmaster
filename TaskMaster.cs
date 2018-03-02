@@ -130,12 +130,12 @@ namespace TaskMaster
 		public static NetManager netmonitor = null;
 		public static DiskManager diskmanager = null;
 		public static PowerManager powermanager = null;
-		public static ActiveAppMonitor activeappmonitor = null;
+		public static ActiveAppManager activeappmonitor = null;
 
 		public static void MainWindowClose(object sender, EventArgs e)
 		{
-			if (!mainwindow.IsDisposed && !mainwindow.Disposing)
-				mainwindow.Dispose(); // .Close() is guaranteed to dispose this thing?
+			// Calling dispose here is WRONG, DON'T DO IT
+			// only if ev.Cancel=true, I mean.
 			mainwindow = null;
 		}
 
@@ -153,6 +153,7 @@ namespace TaskMaster
 				rv = MessageBox.Show("Are you sure you want to " + (restart ? "restart" : "exit") + " Taskmaster?",
 									 (restart ? "Restart" : "Exit") + Application.ProductName + " ???",
 									 MessageBoxButtons.YesNo, MessageBoxIcon.Question, MessageBoxDefaultButton.Button1, MessageBoxOptions.DefaultDesktopOnly, false);
+
 			if (rv != DialogResult.Yes)
 				return;
 
@@ -161,16 +162,32 @@ namespace TaskMaster
 			UnifiedExit();
 		}
 
-		public static void ExitRequest(object sender, EventArgs e)
+		// User logs outt
+		public static void SessionEndExitRequest(object sender, EventArgs e)
 		{
 			UnifiedExit();
 			//CLEANUP:
 			//if (TaskMaster.VeryVerbose) Console.WriteLine("END:Core.ExitRequest - Exit hang averted");
 		}
 
+		delegate void EmptyFunction();
+
 		public static void UnifiedExit()
 		{
-			mainwindow?.Close();
+			try
+			{
+				if (mainwindow != null)
+				{
+					//mainwindow.BeginInvoke(new MethodInvoker(mainwindow.Close));
+					//mainwindow.Close(); // causes crashes relating to .Dispose()
+					//mainwindow = null;
+				}
+			}
+			catch (Exception ex)
+			{
+				Log.Fatal("{Type} : {Message}", ex.GetType().Name, ex.Message);
+				Log.Fatal(ex.StackTrace);
+			}
 
 			try
 			{
@@ -194,42 +211,37 @@ namespace TaskMaster
 			processmanager.ProcessEverythingRequest(null, null);
 		}
 
-		public static void BuildMain()
+		public static void BuildMainWindow()
 		{
 			if (mainwindow == null)
 			{
 				mainwindow = new MainWindow();
 				mainwindow.FormClosed += MainWindowClose;
 
-				if (MaintenanceMonitorEnabled)
+				if (diskmanager != null)
 					mainwindow.hookDiskManager(ref diskmanager);
-				if (ProcessMonitorEnabled)
+				if (processmanager != null)
 					mainwindow.hookProcessManager(ref processmanager);
 
 				trayaccess.RegisterMain(ref mainwindow);
 
-				if (MicrophoneMonitorEnabled)
+				if (micmonitor != null)
 					mainwindow.hookMicMonitor(micmonitor);
 
 				mainwindow.FillLog();
 
-				if (NetworkMonitorEnabled)
+				if (netmonitor != null)
 					mainwindow.hookNetMonitor(ref netmonitor);
 
-				if (ActiveAppMonitorEnabled)
+				if (activeappmonitor != null)
 					mainwindow.hookActiveAppMonitor(ref activeappmonitor);
 
-				if (PowerManagerEnabled)
+				if (powermanager != null)
 				{
 					powermanager.onBatteryResume += AutomaticRestartRequest;
 
 					mainwindow.hookPowerManager(ref powermanager);
 					trayaccess.hookPowerManager(ref powermanager);
-				}
-
-				if (ProcessMonitorEnabled)
-				{
-					trayaccess.hookProcessManager(ref processmanager);
 				}
 			}
 		}
@@ -252,8 +264,19 @@ namespace TaskMaster
 			}
 
 			trayaccess = new TrayAccess();
+			if (processmanager != null)
+				trayaccess.hookProcessManager(ref processmanager);
 
-			BuildMain();
+			if (MaintenanceMonitorEnabled)
+				diskmanager = new DiskManager();
+
+			if (ActiveAppMonitorEnabled && ProcessMonitorEnabled)
+			{
+				activeappmonitor = new ActiveAppManager();
+				processmanager.hookActiveAppManager(ref activeappmonitor);
+			}
+
+			BuildMainWindow();
 
 			if (ShowOnStart)
 				mainwindow.Show();
@@ -281,19 +304,6 @@ namespace TaskMaster
 					catch { Log.Warning("Failed to set self to background mode."); }
 				}
 			}
-
-			if (MaintenanceMonitorEnabled)
-				diskmanager = new DiskManager();
-
-			if (ActiveAppMonitorEnabled)
-			{
-				activeappmonitor = new ActiveAppMonitor();
-
-				if (ProcessMonitorEnabled)
-				{
-					processmanager.hookActiveAppMonitor(ref activeappmonitor);
-				}
-			}
 		}
 
 		public static bool DebugProcesses = false;
@@ -301,6 +311,7 @@ namespace TaskMaster
 		public static bool DebugFullScan = false;
 		public static bool DebugPower = false;
 		public static bool DebugNetMonitor = false;
+		public static bool DebugForeground = false;
 
 		public static bool CaseSensitive = false;
 
@@ -310,7 +321,7 @@ namespace TaskMaster
 		public static bool ProcessMonitorEnabled { get; private set; } = true;
 		public static bool PathMonitorEnabled { get; private set; } = true;
 		public static bool MicrophoneMonitorEnabled { get; private set; } = false;
-		public static bool MediaMonitorEnabled { get; private set; } = true;
+		//public static bool MediaMonitorEnabled { get; private set; } = true;
 		public static bool NetworkMonitorEnabled { get; private set; } = true;
 		public static bool PagingEnabled { get; private set; } = true;
 		public static bool ActiveAppMonitorEnabled { get; private set; } = true;
@@ -333,11 +344,6 @@ namespace TaskMaster
 
 		public static int PathCacheLimit = 200;
 		public static int PathCacheMaxAge = 1800;
-
-		public static bool RestoreOriginal = false;
-		public static int OffFocusPriority = 1;
-		public static int OffFocusAffinity = 0;
-		public static bool OffFocusPowerCancel = true;
 
 		/// <summary>
 		/// Whether to use WMI queries for investigating failed path checks to determine if an application was launched in watched path.
@@ -390,9 +396,9 @@ namespace TaskMaster
 			MicrophoneMonitorEnabled = compsec.GetSetDefault("Microphone", true, out modified).BoolValue;
 			compsec["Microphone"].Comment = "Monitor and force-keep microphone volume.";
 			dirtyconfig |= modified;
-			MediaMonitorEnabled = compsec.GetSetDefault("Media", true, out modified).BoolValue;
-			compsec["Media"].Comment = "Unused";
-			dirtyconfig |= modified;
+			//MediaMonitorEnabled = compsec.GetSetDefault("Media", true, out modified).BoolValue;
+			//compsec["Media"].Comment = "Unused";
+			//dirtyconfig |= modified;
 			ActiveAppMonitorEnabled = compsec.GetSetDefault("Foreground", true, out modified).BoolValue;
 			compsec["Foreground"].Comment = "Game/Foreground app monitoring and adjustment.";
 			dirtyconfig |= modified;
@@ -434,10 +440,10 @@ namespace TaskMaster
 					break;
 			}
 			dirtyconfig |= modified;
-
-			ShowInaction = optsec.GetSetDefault("Show inaction", false, out modified).BoolValue;
-			optsec["Show inaction"].Comment = "Shows lack of action take on processes.";
+			ShowInaction = logsec.GetSetDefault("Show inaction", false, out modified).BoolValue;
+			logsec["Show inaction"].Comment = "Shows lack of action take on processes.";
 			dirtyconfig |= modified;
+
 
 			CaseSensitive = optsec.GetSetDefault("Case sensitive", false, out modified).BoolValue;
 			dirtyconfig |= modified;
@@ -501,16 +507,6 @@ namespace TaskMaster
 			//Log.Information("Low memory mode: {LowMemory}", (LowMemory ? "Enabled." : "Disabled."));
 			Log.Information("WMI event watcher: {WMIPolling} (Rate: {WMIRate}s)", (WMIPolling ? "Enabled" : "Disabled"), WMIPollDelay);
 			Log.Information("WMI queries: {WMIQueries}", (WMIQueries ? "Enabled" : "Disabled"));
-
-			var fgpausesec = cfg["Foreground Focus Lost"];
-			RestoreOriginal = fgpausesec.GetSetDefault("Restore original", false, out modified).BoolValue;
-			dirtyconfig |= modified;
-			OffFocusPriority = fgpausesec.GetSetDefault("Priority", 1, out modified).IntValue;
-			dirtyconfig |= modified;
-			OffFocusAffinity = fgpausesec.GetSetDefault("Affinity", 0, out modified).IntValue;
-			dirtyconfig |= modified;
-			OffFocusPowerCancel = fgpausesec.GetSetDefault("Power mode cancel", true, out modified).BoolValue;
-			dirtyconfig |= modified;
 
 			// PROTECT USERS FROM TOO HIGH PERMISSIONS
 			bool isadmin = IsAdministrator();
@@ -608,7 +604,7 @@ namespace TaskMaster
 		public static bool ComponentConfigurationDone = false;
 
 		// entry point to the application
-		[STAThread] // supposedly needed to avoid shit happening with the WinForms GUI
+		[STAThread] // supposedly needed to avoid shit happening with the WinForms GUI and other GUI toolkits
 		static public void Main(string[] args)
 		{
 			try
@@ -738,8 +734,7 @@ namespace TaskMaster
 				{
 					Task.Run(new Func<Task>(async () =>
 					{
-						await Task.Yield();
-						processmanager.ProcessEverything();
+						await Evaluate();
 					}));
 				}
 
@@ -747,12 +742,6 @@ namespace TaskMaster
 				foreach (var dcfg in ConfigDirty)
 					if (dcfg.Value) saveConfig(dcfg.Key);
 				ConfigDirty.Clear();
-
-				if (SelfOptimize)
-				{
-					System.Runtime.GCSettings.LargeObjectHeapCompactionMode = System.Runtime.GCLargeObjectHeapCompactionMode.CompactOnce;
-					GC.Collect(5, GCCollectionMode.Forced, true, true);
-				}
 
 				try
 				{

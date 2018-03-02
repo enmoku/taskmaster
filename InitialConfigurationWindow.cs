@@ -243,12 +243,12 @@ namespace TaskMaster
 				//BackColor = System.Drawing.Color.Azure,
 				Dock = DockStyle.Left
 			};
-			tooltip.SetToolTip(fgmon, "Allow processes and power mode to be managed based on if a process is in the foreground.\nNOT YET FULLY IMPLEMENTED.");
+			tooltip.SetToolTip(fgmon, "Allow processes and power mode to be managed based on if a process is in the foreground.\nPOWER MODE SWITCHING NOT IMPLEMENTED.");
 			layout.Controls.Add(new Label { Text = "Foreground manager", AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, Padding = padding, Dock = DockStyle.Left });
 			layout.Controls.Add(fgmon);
-			fgmon.Enabled = false;
 			fgmon.Click += (sender, e) =>
 			{
+
 			};
 
 			var tempmon = new CheckBox()

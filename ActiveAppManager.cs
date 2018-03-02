@@ -35,6 +35,7 @@ namespace TaskMaster
 	{
 		public IntPtr hWnd { get; set; }
 		public int Id { get; set; }
+		public Process Process { get; set; }
 		public string Title { get; set; }
 		public Trinary Fullscreen { get; set; }
 		public string Executable { get; set; }
@@ -42,29 +43,50 @@ namespace TaskMaster
 
 	public class ActiveAppManager : IDisposable
 	{
+		public event EventHandler<WindowChangedArgs> ActiveChanged;
+
+		public ActiveAppManager()
+		{
+			//Snatch();
+			//D3DDevice();
+			dele = new WinEventDelegate(WinEventProc);
+			if (!SetupEventHook())
+				throw new Exception("Failed to initialize active app manager.");
+
+			// get current window, just in case it's something we're monitoring
+			var hwnd = GetForegroundWindow();
+			int pid;
+			GetWindowThreadProcessId(hwnd, out pid);
+			ForegroundId = pid;
+
+			Log.Information("Foreground app manager active.");
+		}
+
 		WinEventDelegate dele;
 		IntPtr m_hhook = IntPtr.Zero;
 
-		public void SetupEventHook()
+		public int ForegroundId { get; private set; } = -1;
+
+		public bool isForeground(int ProcessId)
+		{
+			return ProcessId == ForegroundId;
+		}
+
+		public bool SetupEventHook()
 		{
 			m_hhook = SetWinEventHook(EVENT_SYSTEM_FOREGROUND, EVENT_SYSTEM_FOREGROUND, IntPtr.Zero, dele, 0, 0, WINEVENT_OUTOFCONTEXT);
 			// FIXME: Seems to stop functioning really easily? Possibly from other events being caught.
 			if (m_hhook == IntPtr.Zero)
+			{
 				Log.Error("Foreground window event hook not attached.");
+				return false;
+			}
+			return true;
 		}
 
 		public void SetupEventHookEvent(object sender, ProcessEventArgs e)
 		{
 			//SetupEventHook();
-		}
-
-		public ActiveAppManager()
-		{
-			Log.Verbose("Starting...");
-			//Snatch();
-			//D3DDevice();
-			dele = new WinEventDelegate(WinEventProc);
-			SetupEventHook();
 		}
 
 		public void Dispose()
@@ -104,17 +126,6 @@ namespace TaskMaster
 		}
 		*/
 
-		public event EventHandler<WindowChangedArgs> ActiveChanged;
-
-		/*
-		protected virtual void OnActiveChanged(WindowChangedArgs e)
-		{
-			EventHandler<WindowChangedArgs> handler = ActiveChanged;
-			if (handler != null)
-				handler(this, e);
-		}
-		*/
-
 		public async void WinEventProc(IntPtr hWinEventHook, uint eventType, IntPtr hwnd, int idObject, int idChild, uint dwEventThread, uint dwmsEventTime)
 		{
 			if (eventType == EVENT_SYSTEM_FOREGROUND)
@@ -128,7 +139,7 @@ namespace TaskMaster
 
 				//http://www.pinvoke.net/default.aspx/user32.GetWindowPlacement
 
-				if (GetWindowText(hwnd, buff, nChars) > 0) // get title?
+				if (GetWindowText(hwnd, buff, nChars) > 0) // get title? not really useful for most things
 				{
 					//System.Console.WriteLine("Active window: {0}", buff);
 				}
@@ -143,7 +154,6 @@ namespace TaskMaster
 				if (System.Windows.Forms.Screen.FromHandle(hwnd).Bounds == System.Windows.Forms.Control.FromHandle(hwnd).Bounds)
 				{
 					//Console.WriteLine("Full screen.");
-
 				}
 				else
 				{
@@ -159,20 +169,25 @@ namespace TaskMaster
 				System.Console.WriteLine("Format: {0}", mode.Format);
 				*/
 
-				var e = new WindowChangedArgs();
-				e.hWnd = hwnd;
-				e.Title = buff.ToString();
-				e.Fullscreen = Trinary.Nonce;
+				var activewindowev = new WindowChangedArgs();
+				activewindowev.hWnd = hwnd;
+				activewindowev.Title = buff.ToString();
+				activewindowev.Fullscreen = Trinary.Nonce;
 				int pid = 0;
 				GetWindowThreadProcessId(hwnd, out pid);
-				e.Id = pid;
+				ForegroundId = activewindowev.Id = pid;
 				try
 				{
-					Process proc = Process.GetProcessById(e.Id);
-					e.Executable = proc.ProcessName;
+					Process proc = Process.GetProcessById(activewindowev.Id);
+					activewindowev.Process = proc;
+					activewindowev.Executable = proc.ProcessName;
 				}
 				catch { /* NOP */ }
-				ActiveChanged?.Invoke(this, e);
+
+				if (TaskMaster.DebugForeground && TaskMaster.ShowInaction)
+					Log.Debug("Active Window (#{Pid}): {Title}", activewindowev.Id, activewindowev.Title);
+
+				ActiveChanged?.Invoke(this, activewindowev);
 			}
 		}
 
