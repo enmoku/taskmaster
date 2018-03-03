@@ -63,7 +63,7 @@ namespace TaskMaster
 		}
 
 		WinEventDelegate dele;
-		IntPtr m_hhook = IntPtr.Zero;
+		IntPtr windowseventhook = IntPtr.Zero;
 
 		public int ForegroundId { get; private set; } = -1;
 
@@ -74,9 +74,9 @@ namespace TaskMaster
 
 		public bool SetupEventHook()
 		{
-			m_hhook = SetWinEventHook(EVENT_SYSTEM_FOREGROUND, EVENT_SYSTEM_FOREGROUND, IntPtr.Zero, dele, 0, 0, WINEVENT_OUTOFCONTEXT);
+			windowseventhook = SetWinEventHook(EVENT_SYSTEM_FOREGROUND, EVENT_SYSTEM_FOREGROUND, IntPtr.Zero, dele, 0, 0, WINEVENT_OUTOFCONTEXT);
 			// FIXME: Seems to stop functioning really easily? Possibly from other events being caught.
-			if (m_hhook == IntPtr.Zero)
+			if (windowseventhook == IntPtr.Zero)
 			{
 				Log.Error("Foreground window event hook not attached.");
 				return false;
@@ -89,18 +89,25 @@ namespace TaskMaster
 			//SetupEventHook();
 		}
 
+		bool disposed = false;
 		public void Dispose()
 		{
-			Log.Verbose("Disposing FG monitor...");
-			//UnhookWinEvent(m_hhook); // Automatic
+			if (disposed) return;
+
+			if (TaskMaster.Trace)
+				Log.Verbose("Disposing FG monitor...");
+
+			UnhookWinEvent(windowseventhook); // Automatic
+			disposed = true;
 		}
 
 		delegate void WinEventDelegate(IntPtr hWinEventHook, uint eventType, IntPtr hwnd, int idObject, int idChild, uint dwEventThread, uint dwmsEventTime);
 
 		[DllImport("user32.dll")]
 		static extern IntPtr SetWinEventHook(uint eventMin, uint eventMax, IntPtr hmodWinEventProc, WinEventDelegate lpfnWinEventProc, uint idProcess, uint idThread, uint dwFlags);
-		//[DllImport("user32.dll")]
-		//static extern bool UnhookWinEvent(IntPtr hWinEventHook); // automatic
+
+		[DllImport("user32.dll")]
+		static extern bool UnhookWinEvent(IntPtr hWinEventHook); // automatic
 
 		const uint WINEVENT_OUTOFCONTEXT = 0;
 		const uint EVENT_SYSTEM_FOREGROUND = 3;
@@ -194,22 +201,6 @@ namespace TaskMaster
 		public bool D3DDevice()
 		{
 			return false;
-		}
-
-		public void Snatch()
-		{
-			/*
-			Process procs[] = Process.GetProcessesByName("chrome.exe");
-			Process proc;
-			proc.PriorityBoostEnabled = true; // boost focused apps
-			proc.PriorityClass = ProcessPriorityClass.BelowNormal;
-			if (!proc.Responding) // not responding
-			{
-				// kill it?
-			}
-			*/
-			//proc.StartTime//when process was started
-
 		}
 
 		[DllImport("user32.dll", SetLastError = true)]

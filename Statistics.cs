@@ -30,8 +30,12 @@ namespace TaskMaster
 	{
 		public static int ParentSeeks { get; set; } = 0;
 		public static double Parentseektime { get; set; } = 0;
+
 		public static int WMIqueries { get; set; } = 0;
 		public static double WMIquerytime { get; set; } = 0;
+
+		public static int Cleanups { get; set; } = 0;
+		public static double CleanupTime { get; set; } = 0;
 
 		public static double PathCacheCurrent { get; set; } = 0;
 		public static double PathCachePeak { get; set; } = 0;

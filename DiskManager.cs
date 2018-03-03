@@ -114,7 +114,7 @@ namespace TaskMaster
 			}
 			catch
 			{
-				Log.Verbose("Failed to access temp folder: " + dinfo.FullName);
+				Log.Error("Failed to access temp folder: " + dinfo.FullName);
 			}
 		}
 

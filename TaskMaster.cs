@@ -118,7 +118,9 @@ namespace TaskMaster
 
 			Configs.Add(configfile, retcfg);
 			ConfigPaths.Add(retcfg, configfile);
-			Log.Verbose("{ConfigFile} added to known configurations files.", configfile);
+
+			if (TaskMaster.Trace)
+				Log.Verbose("{ConfigFile} added to known configurations files.", configfile);
 
 			return retcfg;
 		}
@@ -248,6 +250,8 @@ namespace TaskMaster
 
 		static void Setup()
 		{
+			Log.Information("<Core> Loading components...");
+
 			if (PowerManagerEnabled)
 				powermanager = new PowerManager();
 
@@ -370,6 +374,8 @@ namespace TaskMaster
 		static string coreconfig = "Core.ini";
 		static void LoadCoreConfig()
 		{
+			Log.Information("<Core> Loading configuration...");
+
 			cfg = loadConfig(coreconfig);
 
 			if (cfg.TryGet("Core")?.TryGet("Hello")?.RawValue != "Hi")
@@ -617,10 +623,19 @@ namespace TaskMaster
 
 			await Task.Yield();
 
-			if (processmanager != null)
-				processmanager.Cleanup();
+			var time = Stopwatch.StartNew();
 
-			ProcessController.Cleanup();
+			if (processmanager != null)
+				await processmanager.Cleanup();
+
+			await ProcessController.Cleanup();
+
+			time.Stop();
+
+			Statistics.Cleanups++;
+			Statistics.CleanupTime += time.Elapsed.TotalSeconds;
+
+			Log.Verbose("Cleanup took: {Time}s", string.Format("{0:N2}", time.Elapsed.TotalSeconds));
 		}
 
 		public static System.Timers.Timer CleanupTimer;
@@ -683,7 +698,8 @@ namespace TaskMaster
 				*/
 
 				#region SINGLETON
-				Log.Verbose("Testing for single instance.");
+				if (TaskMaster.Trace)
+					Log.Verbose("Testing for single instance.");
 
 				{
 					bool mutexgained = false;
@@ -748,18 +764,8 @@ namespace TaskMaster
 				}
 
 				// IS THIS OF ANY USE?
-				GC.Collect(GC.MaxGeneration, GCCollectionMode.Forced, true, true);
-				GC.WaitForPendingFinalizers();
-
-				Log.Information("Startup complete...");
-
-				if (TaskMaster.ProcessMonitorEnabled)
-				{
-					Task.Run(new Func<Task>(async () =>
-					{
-						await Evaluate();
-					}));
-				}
+				//GC.Collect(GC.MaxGeneration, GCCollectionMode.Forced, true, true);
+				//GC.WaitForPendingFinalizers();
 
 				// early save of configs
 				foreach (var dcfg in ConfigDirty)
@@ -770,6 +776,16 @@ namespace TaskMaster
 				CleanupTimer.Interval = 1000 * 60 * CleanupInterval; // 15 minutes
 				CleanupTimer.Elapsed += TaskMaster.Cleanup;
 				CleanupTimer.Start();
+
+				Log.Information("<Core> Initialization complete...");
+
+				if (TaskMaster.ProcessMonitorEnabled)
+				{
+					Task.Run(new Func<Task>(async () =>
+					{
+						await Evaluate();
+					}));
+				}
 
 				try
 				{
@@ -892,6 +908,7 @@ namespace TaskMaster
 				}
 
 				Log.Information("WMI queries: {QueryTime}s [{QueryCount}]", string.Format("{0:N2}", Statistics.WMIquerytime), Statistics.WMIqueries);
+				Log.Information("Cleanups: {CleanupTime}s [{CleanupCount}]", string.Format("{0:N2}", Statistics.CleanupTime), Statistics.Cleanups);
 
 				foreach (var dcfg in ConfigDirty)
 					if (dcfg.Value) saveConfig(dcfg.Key);

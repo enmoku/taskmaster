@@ -130,7 +130,9 @@ namespace TaskMaster
 			Debug.Assert(micmonitor != null);
 			micmon = micmonitor;
 
-			Log.Verbose("Hooking microphone monitor.");
+			if (TaskMaster.Trace)
+				Log.Verbose("Hooking microphone monitor.");
+
 			micName.Text = micmon.DeviceName;
 			corCountLabel.Text = micmon.Corrections.ToString();
 			micVol.Maximum = Convert.ToDecimal(micmon.Maximum);
@@ -1550,6 +1552,7 @@ namespace TaskMaster
 								break;
 							case ProcessEventArgs.ProcessState.Restored:
 								li.SubItems[2].Text = "Foreground";
+								li.EnsureVisible();
 								break;
 							default:
 								Log.Debug("Received unhandled process state: {State}", ev.State.ToString());
@@ -1569,6 +1572,7 @@ namespace TaskMaster
 					{
 						fgwaitlist.Items.Add(li);
 						fgwaitlistw.Add(ev.Info.Id, li);
+						li.EnsureVisible();
 					}
 					catch { }
 				}
@@ -1814,7 +1818,8 @@ namespace TaskMaster
 		{
 			if (aamon == null) return;
 
-			Log.Verbose("Hooking active app manager.");
+			if (TaskMaster.Trace)
+				Log.Verbose("Hooking active app manager.");
 
 			activeappmonitor = aamon;
 			activeappmonitor.ActiveChanged += OnActiveWindowChanged;
@@ -1824,7 +1829,8 @@ namespace TaskMaster
 		{
 			if (pman == null) return;
 
-			Log.Verbose("Hooking power manager.");
+			if (TaskMaster.Trace)
+				Log.Verbose("Hooking power manager.");
 
 			powermanager = pman;
 			powermanager.onAutoAdjustAttempt += CPULoadHandler;
@@ -1859,7 +1865,8 @@ namespace TaskMaster
 		{
 			if (net == null) return; // disabled
 
-			Log.Verbose("Hooking network monitor.");
+			if (TaskMaster.Trace)
+				Log.Verbose("Hooking network monitor.");
 
 			this.netmonitor = net;
 
@@ -2061,7 +2068,9 @@ namespace TaskMaster
 
 			if (disposing)
 			{
-				Log.Verbose("Disposing main window...");
+				if (TaskMaster.Trace)
+					Log.Verbose("Disposing main window...");
+
 				MemoryLog.onNewEvent -= onNewLog;
 
 				try

@@ -59,7 +59,8 @@ namespace TaskMaster
 			Tray.BalloonTipText = Tray.Text;
 			Tray.Disposed += (object sender, EventArgs e) => { Tray = null; };
 
-			Log.Verbose("Generating tray icon.");
+			if (TaskMaster.Trace)
+				Log.Verbose("Generating tray icon.");
 
 			ms = new ContextMenuStrip();
 			menu_windowopen = new ToolStripMenuItem("Open", null, ShowWindowRequest);
@@ -121,7 +122,9 @@ namespace TaskMaster
 			ms.Items.Add(menu_restart);
 			ms.Items.Add(menu_exit);
 			Tray.ContextMenuStrip = ms;
-			Log.Verbose("Tray menu ready");
+
+			if (TaskMaster.Trace)
+				Log.Verbose("Tray menu ready");
 
 			if (!RegisterExplorerExit())
 				throw new InitFailure("Explorer registeriong failed; not running?");
@@ -130,7 +133,8 @@ namespace TaskMaster
 
 			// TODO: Toast Notifications
 
-			Log.Verbose("Tray icon generated.");
+			if (TaskMaster.Trace)
+				Log.Verbose("<Tray> Initialized");
 		}
 
 		public event EventHandler RescanRequest;
@@ -365,7 +369,8 @@ namespace TaskMaster
 
 		bool RegisterExplorerExit(System.Diagnostics.Process[] procs = null)
 		{
-			Log.Verbose("Registering Explorer crash monitor.");
+			if (TaskMaster.Trace)
+				Log.Verbose("Registering Explorer crash monitor.");
 			// this is for dealing with notify icon disappearing on explorer.exe crash/restart
 
 			if (procs == null) procs = ExplorerInstances;
@@ -400,7 +405,8 @@ namespace TaskMaster
 
 			if (disposing)
 			{
-				Log.Verbose("Disposing tray...");
+				if (TaskMaster.Trace)
+					Log.Verbose("Disposing tray...");
 
 
 				try

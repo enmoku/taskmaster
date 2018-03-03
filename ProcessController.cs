@@ -473,7 +473,8 @@ namespace TaskMaster
 			{
 				if (info.Process.HasExited)
 				{
-					Log.Verbose("[{FriendlyName}] {ProcessName} (#{ProcessID}) has already exited.", FriendlyName, info.Name, info.Id);
+					if (TaskMaster.DebugProcesses)
+						Log.Debug("[{FriendlyName}] {ProcessName} (#{ProcessID}) has already exited.", FriendlyName, info.Name, info.Id);
 					return ProcessState.Invalid;
 				}
 			}
@@ -539,7 +540,10 @@ namespace TaskMaster
 				}
 			}
 			else
-				Log.Verbose("{Exec} (#{Pid}) protected.", info.Name, info.Id);
+			{
+				if (TaskMaster.ShowInaction)
+					Log.Verbose("{Exec} (#{Pid}) protected.", info.Name, info.Id);
+			}
 
 			try
 			{
@@ -658,13 +662,19 @@ namespace TaskMaster
 				Task.Run(new Func<Task>(async () =>
 				{
 					await Task.Delay(Math.Max(Recheck, 5) * 1000);
-					Log.Debug("[{FriendlyName}] {Process} (#{PID}) rechecking", FriendlyName, info.Name, info.Id);
+
+					if (TaskMaster.DebugProcesses)
+						Log.Debug("[{FriendlyName}] {Process} (#{PID}) rechecking", FriendlyName, info.Name, info.Id);
+
 					try
 					{
 						if (!info.Process.HasExited)
 							Touch(info, schedule_next: false, recheck: true);
 						else
-							Log.Verbose("[{FriendlyName}] {Process} (#{PID}) is gone yo.", FriendlyName, info.Name, info.Id);
+						{
+							if (TaskMaster.Trace)
+								Log.Verbose("[{FriendlyName}] {Process} (#{PID}) is gone yo.", FriendlyName, info.Name, info.Id);
+						}
 					}
 					catch (Exception ex)
 					{
@@ -741,7 +751,8 @@ namespace TaskMaster
 			}
 			catch // name not found
 			{
-				Log.Verbose("{ProcessFriendlyName} is not running", ExecutableFriendlyName);
+				if (TaskMaster.Trace)
+					Log.Verbose("{ProcessFriendlyName} is not running", ExecutableFriendlyName);
 				return;
 			}
 
@@ -797,11 +808,14 @@ namespace TaskMaster
 			}
 			catch
 			{
-				Log.Verbose("{ProcessFriendlyName} not running", ExecutableFriendlyName);
+				if (TaskMaster.Trace)
+					Log.Verbose("{ProcessFriendlyName} not running", ExecutableFriendlyName);
 				return false;
 			}
 
-			Log.Verbose("[{FriendlyName}] Watched item '{Item}' encountered.", FriendlyName, ExecutableFriendlyName);
+			if (TaskMaster.Trace)
+				Log.Verbose("[{FriendlyName}] Watched item '{Item}' encountered.", FriendlyName, ExecutableFriendlyName);
+
 			try
 			{
 				string corepath = System.IO.Path.GetDirectoryName(process.MainModule.FileName);
@@ -843,7 +857,8 @@ namespace TaskMaster
 
 			if (disposing)
 			{
-				Log.Verbose("Disposing process controller [{FriendlyName}]", FriendlyName);
+				if (TaskMaster.Trace)
+					Log.Verbose("Disposing process controller [{FriendlyName}]", FriendlyName);
 
 				if (waitingExit != null)
 				{

@@ -314,7 +314,8 @@ namespace TaskMaster
 			if (System.Threading.Interlocked.CompareExchange(ref checking_inet, 1, 0) == 1)
 				return;
 
-			Log.Verbose("Checking internet connectivity...");
+			if (TaskMaster.Trace)
+				Log.Verbose("Checking internet connectivity...");
 
 			await Task.Yield();
 
@@ -364,7 +365,10 @@ namespace TaskMaster
 			if (oldInetAvailable != InternetAvailable)
 				Log.Information("Network status: {NetworkAvailable}, Internet status: {InternetAvailable}", (NetworkAvailable ? "Up" : "Down"), (InternetAvailable ? "Connected" : "Disconnected"));
 			else
-				Log.Verbose("Internet status unchanged");
+			{
+				if (TaskMaster.Trace)
+					Log.Verbose("Internet status unchanged");
+			}
 
 			checking_inet = 0;
 
@@ -546,7 +550,7 @@ namespace TaskMaster
 			// do stuff only if this is different from last time
 			if (oldNetAvailable != NetworkAvailable)
 			{
-				Log.Verbose("Network status changed: " + (NetworkAvailable ? "Connected" : "Disconnected"));
+				Log.Information("Network status changed: " + (NetworkAvailable ? "Connected" : "Disconnected"));
 
 				NetworkStatusChange?.Invoke(this, new NetworkStatus { Available = NetworkAvailable });
 
@@ -571,7 +575,8 @@ namespace TaskMaster
 
 			if (disposing)
 			{
-				Log.Verbose("Disposing network monitor...");
+				if (TaskMaster.Trace)
+					Log.Verbose("Disposing network monitor...");
 				ReportUptime();
 			}
 

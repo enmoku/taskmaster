@@ -123,7 +123,9 @@ namespace TaskMaster
 		{
 			if (pathinit == null) return;
 
-			Log.Verbose("Locating watched paths.");
+			if (TaskMaster.Trace)
+				Log.Verbose("Locating watched paths.");
+
 			lock (pathwatchlock)
 			{
 				if (pathinit.Count > 0)
@@ -142,7 +144,9 @@ namespace TaskMaster
 				if (pathinit.Count == 0)
 					pathinit = null;
 			}
-			Log.Verbose("Path location complete.");
+
+			if (TaskMaster.Trace)
+				Log.Verbose("Path location complete.");
 		}
 
 		ActiveAppManager activeappmonitor = null;
@@ -204,7 +208,9 @@ namespace TaskMaster
 
 		public async void PageEverythingRequest(object sender, EventArgs e)
 		{
-			Log.Verbose("Paging requested.");
+			if (TaskMaster.Trace)
+				Log.Verbose("Paging requested.");
+
 			if (!TaskMaster.PagingEnabled) return; // shouldn't happen, but here we have it anyway
 
 			long saved = 0;
@@ -246,7 +252,8 @@ namespace TaskMaster
 						process.Refresh();
 						long mns = (ns - process.WorkingSet64);
 						saved += mns;
-						Log.Verbose("Paged: {ProcessName} (#{ProcessID}) – {PagedMBs:N1} MBs.", name, pid, mns / 1000000);
+						if (TaskMaster.Trace)
+							Log.Verbose("Paged: {ProcessName} (#{ProcessID}) – {PagedMBs:N1} MBs.", name, pid, mns / 1000000);
 					}
 					catch
 					{
@@ -270,13 +277,16 @@ namespace TaskMaster
 			Log.Information("Paged total of {PagedMBs:N1} MBs.", saved / 1000000);
 
 			await Task.Yield();
-			Log.Verbose("Paging complete.");
+
+			if (TaskMaster.Trace)
+				Log.Verbose("Paging complete.");
 		}
 
 		public async void ProcessEverythingRequest(object sender, EventArgs e)
 		{
-			if (TaskMaster.DebugFullScan)
+			if (TaskMaster.Trace)
 				Log.Verbose("Rescan requested.");
+
 			try
 			{
 				await ProcessEverything();
@@ -378,7 +388,7 @@ namespace TaskMaster
 
 		public void loadWatchlist()
 		{
-			Log.Verbose("Loading general process configuration...");
+			Log.Information("<Process Manager> Loading configuration...");
 
 			var coreperf = TaskMaster.cfg["Performance"];
 
@@ -459,7 +469,7 @@ namespace TaskMaster
 
 			// --------------------------------------------------------------------------------------------------------
 
-			Log.Verbose("Loading watchlist...");
+			Log.Information("<Process Manager> Loading watchlist...");
 			SharpConfig.Configuration appcfg = TaskMaster.loadConfig(watchfile);
 			if (stats == null)
 				stats = TaskMaster.loadConfig(statfile);
@@ -572,7 +582,7 @@ namespace TaskMaster
 				//cnt.Children &= ControlChildren;
 
 				Log.Verbose("[{FriendlyName}] Match: {MatchName}, {TargetPriority}, Mask:{Affinity}, Rescan: {Rescan}m, Recheck: {Recheck}s, FgOnly: {Fg}",
-							cnt.FriendlyName, (cnt.Executable ?? cnt.Path), cnt.Priority, cnt.Affinity, cnt.Rescan, cnt.Recheck, cnt.ForegroundOnly);
+						cnt.FriendlyName, (cnt.Executable ?? cnt.Path), cnt.Priority, cnt.Affinity, cnt.Rescan, cnt.Recheck, cnt.ForegroundOnly);
 
 				//cnt.delay = section.Contains("delay") ? section["delay"].IntValue : 30; // TODO: Add centralized default delay
 				//cnt.delayIncrement = section.Contains("delay increment") ? section["delay increment"].IntValue : 15; // TODO: Add centralized default increment
@@ -772,7 +782,9 @@ namespace TaskMaster
 		{
 			if (!TaskMaster.WMIQueries) return null;
 
-			Stopwatch n = Stopwatch.StartNew();
+			var wmitime = Stopwatch.StartNew();
+
+			Statistics.WMIqueries++;
 
 			string path = null;
 			string wmiQueryString = "SELECT ExecutablePath FROM Win32_Process WHERE ProcessId = " + processId;
@@ -786,8 +798,8 @@ namespace TaskMaster
 						if (mpath != null)
 						{
 							Log.Verbose(string.Format("WMI fetch (#{0}): {1}", processId, path));
-							n.Stop();
-							Statistics.WMIquerytime += n.Elapsed.TotalSeconds;
+							wmitime.Stop();
+							Statistics.WMIquerytime += wmitime.Elapsed.TotalSeconds;
 							return mpath.ToString();
 						}
 					}
@@ -798,8 +810,8 @@ namespace TaskMaster
 				// NOP, don't caree
 			}
 
-			n.Stop();
-			Statistics.WMIquerytime += n.Elapsed.TotalSeconds;
+			wmitime.Stop();
+			Statistics.WMIquerytime += wmitime.Elapsed.TotalSeconds;
 
 			return path;
 		}
@@ -1122,7 +1134,7 @@ namespace TaskMaster
 
 			if (IgnoreProcessID(info.Id) || IgnoreProcessName(info.Name))
 			{
-				if (TaskMaster.ShowInaction && TaskMaster.DebugProcesses)
+				if (TaskMaster.Trace)
 					Log.Verbose("Ignoring process: {ProcessName} (#{ProcessID})", info.Name, info.Id);
 				return ProcessState.AccessDenied;
 			}
@@ -1307,7 +1319,7 @@ namespace TaskMaster
 			}
 			catch
 			{
-				if (TaskMaster.ShowInaction && TaskMaster.DebugProcesses)
+				if (TaskMaster.ShowInaction)
 					Log.Verbose("Caught #{Pid} but it vanished.", pid);
 				return;
 			}
@@ -1430,7 +1442,8 @@ namespace TaskMaster
 
 			if (rescanrequests == 0)
 			{
-				Log.Verbose("No apps have requests to rescan, stopping rescanning.");
+				if (TaskMaster.Trace)
+					Log.Verbose("No apps have requests to rescan, stopping rescanning.");
 				rescanTimer.Stop();
 			}
 			else
@@ -1443,6 +1456,7 @@ namespace TaskMaster
 				{
 					rescanTimer.Interval = 5 * (1000 * 60);
 				}
+
 				Log.Verbose("Rescan set to occur after {Scan} minutes, next in line: {Name}. Waiting {0}.", nextscan, name);
 			}
 		}
@@ -1526,8 +1540,6 @@ namespace TaskMaster
 		// ctor, constructor
 		public ProcessManager()
 		{
-			Log.Verbose("Starting...");
-
 			Log.Information("CPU/Core count: {Cores}", CPUCount);
 
 			allCPUsMask = 1;
@@ -1543,7 +1555,9 @@ namespace TaskMaster
 
 			if (execontrol.Count > 0)
 			{
-				Log.Verbose("Starting rescan timer.");
+				if (TaskMaster.Trace)
+					Log.Verbose("Starting rescan timer.");
+
 				if (RescanDelay > 0)
 				{
 					rescanTimer = new System.Timers.Timer(1000 * 5 * 60); // 5 minutes
@@ -1565,6 +1579,8 @@ namespace TaskMaster
 
 			if (TaskMaster.PathCacheLimit > 0)
 				pathCache = new Cache<int, string, string>(TaskMaster.PathCacheMaxAge, TaskMaster.PathCacheLimit, (TaskMaster.PathCacheLimit / 10).Constrain(5, 10));
+
+			Log.Information("<Process Manager> Loaded.");
 		}
 
 		public async Task Cleanup()
@@ -1605,7 +1621,8 @@ namespace TaskMaster
 
 			if (disposing)
 			{
-				Log.Verbose("Disposing process manager...");
+				if (TaskMaster.Trace)
+					Log.Verbose("Disposing process manager...");
 
 				try
 				{
@@ -1680,6 +1697,7 @@ namespace TaskMaster
 		void saveStats()
 		{
 			Log.Verbose("Saving stats...");
+
 			if (stats == null)
 				stats = TaskMaster.loadConfig(statfile);
 

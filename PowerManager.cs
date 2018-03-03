@@ -765,7 +765,8 @@ namespace TaskMaster
 
 			if (disposing)
 			{
-				Log.Verbose("Disposing power manager...");
+				if (TaskMaster.Trace)
+					Log.Verbose("Disposing power manager...");
 
 				if (CPUTimer != null)
 				{
