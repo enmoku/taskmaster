@@ -26,6 +26,7 @@
 using System.Windows;
 using System.Windows.Documents;
 using System.Threading.Tasks;
+using System.ComponentModel;
 
 namespace TaskMaster
 {
@@ -61,7 +62,7 @@ namespace TaskMaster
 		System.Timers.Timer deviceSampleTimer = new System.Timers.Timer();
 		int DeviceTimerInterval = 15 * 60;
 		System.Timers.Timer packletStatTimer = new System.Timers.Timer();
-		int PacketStatTimerInterval = 15;
+		int PacketStatTimerInterval = 15; // seconds
 		public event EventHandler<NetDeviceTraffic> onSampling;
 
 		void LoadConfig()
@@ -105,7 +106,7 @@ namespace TaskMaster
 			deviceSampleTimer.Interval = DeviceTimerInterval * 60000;
 			deviceSampleTimer.Elapsed += SampleDeviceState;
 			deviceSampleTimer.Start();
-			PreviousInterfaceList = Interfaces();
+			CurrentInterfaceList = Interfaces();
 			AnalyzePacketBehaviour(this, null); // initialize, not really needed
 			packletStatTimer.Interval = PacketStatTimerInterval * 1000;
 			packletStatTimer.Elapsed += AnalyzePacketBehaviour;
@@ -115,7 +116,7 @@ namespace TaskMaster
 		}
 
 		int packetWarning = 0;
-		List<NetDevice> PreviousInterfaceList;
+		List<NetDevice> CurrentInterfaceList;
 		async void AnalyzePacketBehaviour(object sender, EventArgs ev)
 		{
 			await Task.Yield();
@@ -124,16 +125,17 @@ namespace TaskMaster
 				packetWarning--;
 
 			var ifaces = Interfaces();
-			if (ifaces.Count == PreviousInterfaceList.Count) // Crude, but whatever. Prone to false statistics.
+			if (ifaces == null) return; // being called too often, shouldn't happen but eh.
+			if (ifaces.Count == CurrentInterfaceList.Count) // Crude, but whatever. Prone to false statistics.
 			{
 				for (int index = 0; index < ifaces.Count; index++)
 				{
-					long errors = (ifaces[index].Incoming.Errors - PreviousInterfaceList[index].Incoming.Errors)
-						+ (ifaces[index].Outgoing.Errors - PreviousInterfaceList[index].Outgoing.Errors);
-					long discards = (ifaces[index].Incoming.Discarded - PreviousInterfaceList[index].Incoming.Discarded)
-						+ (ifaces[index].Outgoing.Discarded - PreviousInterfaceList[index].Outgoing.Discarded);
-					long packets = (ifaces[index].Incoming.Unicast - PreviousInterfaceList[index].Incoming.Unicast)
-						+ (ifaces[index].Outgoing.Unicast - PreviousInterfaceList[index].Outgoing.Unicast);
+					long errors = (ifaces[index].Incoming.Errors - CurrentInterfaceList[index].Incoming.Errors)
+						+ (ifaces[index].Outgoing.Errors - CurrentInterfaceList[index].Outgoing.Errors);
+					long discards = (ifaces[index].Incoming.Discarded - CurrentInterfaceList[index].Incoming.Discarded)
+						+ (ifaces[index].Outgoing.Discarded - CurrentInterfaceList[index].Outgoing.Discarded);
+					long packets = (ifaces[index].Incoming.Unicast - CurrentInterfaceList[index].Incoming.Unicast)
+						+ (ifaces[index].Outgoing.Unicast - CurrentInterfaceList[index].Outgoing.Unicast);
 
 					//Console.WriteLine("{0} : Packets(+{1}), Errors(+{2}), Discarded(+{3})", ifaces[index].Name, packets, errors, discards);
 
@@ -152,7 +154,7 @@ namespace TaskMaster
 			}
 			else
 				Console.WriteLine("Interface list changed.");
-			PreviousInterfaceList = ifaces;
+			CurrentInterfaceList = ifaces;
 		}
 
 		TrayAccess tray;
@@ -305,7 +307,7 @@ namespace TaskMaster
 		}
 
 		int checking_inet; // = 0;
-		async System.Threading.Tasks.Task CheckInet(bool address_changed = false)
+		async Task CheckInet(bool address_changed = false)
 		{
 			// TODO: Figure out how to get Actual start time of internet connectivity.
 
@@ -314,7 +316,7 @@ namespace TaskMaster
 
 			Log.Verbose("Checking internet connectivity...");
 
-			await System.Threading.Tasks.Task.Yield();
+			await Task.Yield();
 
 			bool oldInetAvailable = InternetAvailable;
 			if (NetworkAvailable)
@@ -416,7 +418,7 @@ namespace TaskMaster
 		/// * IPv4 Address
 		/// * IPv6 Address
 		/// </summary>
-		/// <returns>string[] { Device Name, Type, Status, Link Speed, IPv4 Address, IPv6 Address }</returns>
+		/// <returns>string[] { Device Name, Type, Status, Link Speed, IPv4 Address, IPv6 Address } or null</returns>
 		public List<NetDevice> Interfaces()
 		{
 			if (System.Threading.Interlocked.CompareExchange(ref enumerating_inet, 1, 0) == 1)
@@ -548,12 +550,10 @@ namespace TaskMaster
 
 				NetworkStatusChange?.Invoke(this, new NetworkStatus { Available = NetworkAvailable });
 
-				await System.Threading.Tasks.Task.Yield();
-
 				await CheckInet();
 			}
 
-			PreviousInterfaceList = Interfaces();
+			CurrentInterfaceList = Interfaces();
 		}
 
 		public void Dispose()
