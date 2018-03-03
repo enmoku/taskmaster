@@ -269,7 +269,7 @@ namespace TaskMaster
 
 		// -----------------------------------------------
 
-		static object waitingExitLock = new object();
+		static readonly object waitingExitLock = new object();
 		static Dictionary<int, BasicProcessInfo> waitingExit = new Dictionary<int, BasicProcessInfo>(3);
 
 		public static event EventHandler<ProcessEventArgs> PowermodeExitWaitEvent;

@@ -37,6 +37,7 @@ using System.Windows.Forms;
 using Serilog.Sinks.File;
 using Serilog.Debugging;
 using System.Windows.Controls;
+using System.Net;
 namespace TaskMaster
 {
 	public class InstanceEventArgs : EventArgs
@@ -65,7 +66,7 @@ namespace TaskMaster
 		/// Actively watched process images.
 		/// </summary>
 		public List<ProcessController> watchlist = new List<ProcessController>();
-		object watchlist_lock = new object();
+		readonly object watchlist_lock = new object();
 
 		/// <summary>
 		/// Number of watchlist items with path restrictions.
@@ -76,7 +77,7 @@ namespace TaskMaster
 		/// Paths not yet properly initialized.
 		/// </summary>
 		public List<ProcessController> pathinit;
-		object pathwatchlock = new object();
+		readonly object pathwatchlock = new object();
 		/// <summary>
 		/// Executable name to ProcessControl mapping.
 		/// </summary>
@@ -111,7 +112,7 @@ namespace TaskMaster
 				if (ctrl.Executable == executable)
 					return ctrl;
 			}
-			Log.Warning("{ExecutableName} was not found!", executable);
+			Log.Error("{ExecutableName} was not found!", executable);
 			return null;
 		}
 
@@ -156,7 +157,7 @@ namespace TaskMaster
 			var procs = Process.GetProcessesByName(executable); // unnecessary maybe?
 			if (procs.Length == 0)
 			{
-				Log.Warning("{Exec} not found.", executable);
+				Log.Error("{Exec} not found, not freeing memory for it.", executable);
 				return;
 			}
 
@@ -255,8 +256,9 @@ namespace TaskMaster
 			}
 			catch (Exception ex)
 			{
-				Console.WriteLine(ex.StackTrace);
-				Log.Warning("Uncaught exception while paging");
+				Log.Fatal("Uncaught exception while paging");
+				Log.Fatal("{Type} : {Message}", ex.GetType().Name, ex.Message);
+				Log.Fatal(ex.StackTrace);
 				throw;
 			}
 			finally
@@ -569,8 +571,8 @@ namespace TaskMaster
 
 				//cnt.Children &= ControlChildren;
 
-				Log.Verbose("[{FriendlyName}] Match: {MatchName}, {TargetPriority}, Mask:{Affinity}, Rescan: {Rescan}m, Recheck: {Recheck}s",
-							cnt.FriendlyName, (cnt.Executable ?? cnt.Path), cnt.Priority, cnt.Affinity, cnt.Rescan, cnt.Recheck);
+				Log.Verbose("[{FriendlyName}] Match: {MatchName}, {TargetPriority}, Mask:{Affinity}, Rescan: {Rescan}m, Recheck: {Recheck}s, FgOnly: {Fg}",
+							cnt.FriendlyName, (cnt.Executable ?? cnt.Path), cnt.Priority, cnt.Affinity, cnt.Rescan, cnt.Recheck, cnt.ForegroundOnly);
 
 				//cnt.delay = section.Contains("delay") ? section["delay"].IntValue : 30; // TODO: Add centralized default delay
 				//cnt.delayIncrement = section.Contains("delay increment") ? section["delay increment"].IntValue : 15; // TODO: Add centralized default increment
@@ -700,7 +702,7 @@ namespace TaskMaster
 			return TaskMaster.CaseSensitive ? str : str.ToLower();
 		}
 
-		object foreground_lock = new object();
+		readonly object foreground_lock = new object();
 		Dictionary<int, BasicProcessInfo> ForegroundApps = new Dictionary<int, BasicProcessInfo>();
 
 		int PreviousForegroundId = -1;
@@ -802,7 +804,7 @@ namespace TaskMaster
 			return path;
 		}
 
-		object systemlock = new object();
+		readonly object systemlock = new object();
 
 		// TODO: ADD CACHE: pid -> process name, path, process
 
@@ -859,8 +861,9 @@ namespace TaskMaster
 			}
 			catch (InvalidOperationException ex)
 			{
-				Logging.Log("Invalid access to Process");
-				Console.WriteLine(ex.StackTrace);
+				Log.Fatal("Invalid access to Process");
+				Log.Error("{Type} : {Message}", ex.GetType().Name, ex.Message);
+				Log.Error(ex.StackTrace);
 				throw;
 			}
 			catch (System.ComponentModel.Win32Exception ex)
@@ -1071,16 +1074,8 @@ namespace TaskMaster
 			{
 				if (!ForegroundWaitlist.ContainsKey(info.Id))
 				{
-					try
-					{
-						ForegroundWaitlist.Add(info.Id, prc);
-					}
-					catch { } // shouldn't happen
-					try
-					{
-						ForegroundApps.Add(info.Id, info);
-					}
-					catch { } // shouldn't happen
+					ForegroundWaitlist.Add(info.Id, prc);
+					ForegroundApps.Add(info.Id, info);
 
 					info.Process.EnableRaisingEvents = true;
 					info.Process.Exited += (sender, e) => { ForegroundWatchEnd(info); };
@@ -1088,13 +1083,10 @@ namespace TaskMaster
 					if (TaskMaster.DebugForeground)
 						Log.Debug("[{FriendlyName}] {Exec} (#{Pid}) added to foreground watchlist.", prc.FriendlyName, info.Name, info.Id);
 				}
-				else if (ForegroundApps[info.Id].Name != info.Name)
+				else
 				{
-					Log.Debug("Strangeness with foreground watchlist... Hmm...");
-					ForegroundWaitlist.Remove(info.Id);
-					ForegroundApps.Remove(info.Id);
-					ForegroundWaitlist.Add(info.Id, prc);
-					ForegroundApps.Add(info.Id, info);
+					if (TaskMaster.DebugForeground)
+						Log.Debug("[{FriendlyName}] {Exec} (#{Pid}) already in foreground watchlist.", prc.FriendlyName, info.Name, info.Id);
 				}
 			}
 
@@ -1181,7 +1173,7 @@ namespace TaskMaster
 			return ProcessState.Invalid;
 		}
 
-		object BatchProcessingLock = new object();
+		readonly object BatchProcessingLock = new object();
 		int processListLockRestart = 0;
 		List<BasicProcessInfo> ProcessBatch = new List<BasicProcessInfo>();
 		System.Timers.Timer BatchProcessingTimer = new System.Timers.Timer(1000 * 5);
@@ -1235,11 +1227,11 @@ namespace TaskMaster
 					var rv = CheckProcess(info);
 				}
 			}
-			catch (Exception e)
+			catch (Exception ex)
 			{
-				Log.Warning("Uncaught exception while processing new instances");
-				Log.Fatal(e.StackTrace);
-				Console.WriteLine(e.StackTrace);
+				Log.Fatal("Uncaught exception while processing new instances");
+				Log.Fatal("{Type} : {Message}", ex.GetType().Name, ex.Message);
+				Log.Fatal(ex.StackTrace);
 				throw;
 			}
 			finally
@@ -1284,9 +1276,9 @@ namespace TaskMaster
 			}
 			catch (Exception ex)
 			{
-				Log.Warning("{Type} : {Message}", ex.GetType().Name, ex.Message);
-				Log.Warning(ex.StackTrace);
-				Log.Warning("<<WMI>> Failed to extract process ID.");
+				Log.Error("{Type} : {Message}", ex.GetType().Name, ex.Message);
+				Log.Error(ex.StackTrace);
+				Log.Error("<<WMI>> Failed to extract process ID.");
 				throw;
 			}
 			finally
@@ -1300,7 +1292,7 @@ namespace TaskMaster
 
 			if (string.IsNullOrEmpty(name) && pid <= LowestInvalidPid)
 			{
-				Log.Warning("<<WMI>> Failed to acquire neither process name nor process Id");
+				Log.Error("<<WMI>> Failed to acquire neither process name nor process Id");
 				return;
 			}
 
@@ -1330,7 +1322,7 @@ namespace TaskMaster
 				}
 				catch
 				{
-					Log.Warning("Failed to retrieve name of process #{Pid}", pid);
+					Log.Error("Failed to retrieve name of process #{Pid}", pid);
 					return;
 				}
 			}
@@ -1386,9 +1378,9 @@ namespace TaskMaster
 				}
 				catch (Exception ex)
 				{
-					Log.Warning("Uncaught exception while handling new instance");
+					Log.Fatal("Uncaught exception while handling new instance");
+					Log.Fatal("{Type} : {Message}", ex.GetType().Name, ex.Message);
 					Log.Fatal(ex.StackTrace);
-					Console.WriteLine(ex.StackTrace);
 					throw;
 				}
 				finally

@@ -295,16 +295,16 @@ namespace TaskMaster
 
 		Label micName;
 		NumericUpDown micVol;
-		object micList_lock = new object();
+		readonly object micList_lock = new object();
 		ListView micList;
-		object appList_lock = new object();
+		readonly object appList_lock = new object();
 		ListView watchlistRules;
 		//object pathList_lock = new object();
 		//ListView pathList;
-		object appw_lock = new object();
+		readonly object appw_lock = new object();
 		Dictionary<ProcessController, ListViewItem> appw = new Dictionary<ProcessController, ListViewItem>();
 		Label corCountLabel;
-		object processingCountLock = new object();
+		readonly object processingCountLock = new object();
 		NumericUpDown processingCount;
 		Label processingCountdown;
 
@@ -320,7 +320,7 @@ namespace TaskMaster
 		Label powerbalancer_average_action;
 		Label powerbalancer_low_action;
 
-		object powerbalancerlog_lock = new object();
+		readonly object powerbalancerlog_lock = new object();
 
 		ListView exitwaitlist;
 		Dictionary<int, ListViewItem> exitwaitlistw;
@@ -1493,7 +1493,7 @@ namespace TaskMaster
 			catch { }
 		}
 
-		object exitwaitlist_lock = new object();
+		readonly object exitwaitlist_lock = new object();
 		public async void ExitWaitListHandler(object sender, ProcessEventArgs ev)
 		{
 			lock (exitwaitlist_lock)
@@ -1525,7 +1525,7 @@ namespace TaskMaster
 			}
 		}
 
-		object fgwaitlist_lock = new object();
+		readonly object fgwaitlist_lock = new object();
 		public async void FgWaitListHandler(object sender, ProcessEventArgs ev)
 		{
 			await Task.Yield();
@@ -1788,7 +1788,7 @@ namespace TaskMaster
 			catch { }
 		}
 
-		object loglistLock = new object();
+		readonly object loglistLock = new object();
 		ListView loglist;
 		List<DateTime> loglist_stamp;
 

@@ -625,6 +625,8 @@ namespace TaskMaster
 
 		public static System.Timers.Timer CleanupTimer;
 
+		public static System.Threading.Mutex singleton = null;
+
 		// entry point to the application
 		[STAThread] // supposedly needed to avoid shit happening with the WinForms GUI and other GUI toolkits
 		static public void Main(string[] args)
@@ -683,7 +685,6 @@ namespace TaskMaster
 				#region SINGLETON
 				Log.Verbose("Testing for single instance.");
 
-				System.Threading.Mutex singleton = null;
 				{
 					bool mutexgained = false;
 					singleton = new System.Threading.Mutex(true, "088f7210-51b2-4e06-9bd4-93c27a973874.taskmaster", out mutexgained);
@@ -721,7 +722,7 @@ namespace TaskMaster
 
 						if (ComponentConfigurationDone == false)
 						{
-							singleton.ReleaseMutex();
+							//singleton.ReleaseMutex();
 							Log.CloseAndFlush();
 							return;
 						}
@@ -741,7 +742,7 @@ namespace TaskMaster
 					Log.Fatal("Exiting due to initialization failure.");
 					Log.Fatal("{Type} : {Message}", ex.GetType().Name, ex.Message);
 					Log.Fatal(ex.StackTrace);
-					singleton.ReleaseMutex();
+					//singleton.ReleaseMutex();
 					Log.CloseAndFlush();
 					return;
 				}
@@ -901,8 +902,15 @@ namespace TaskMaster
 
 				Log.Information("TaskMaster! (#{ProcessID}) END! [Clean]", System.Diagnostics.Process.GetCurrentProcess().Id);
 
-				if (Restart) // happens only on power resume (waking from hibernation)
+				if (Restart) // happens only on power resume (waking from hibernation) or when manually set
 				{
+					// for some reason .ReleaseMutex() was not enough?
+					singleton.Close();
+					singleton.Dispose();
+					singleton = null;
+
+					Log.CloseAndFlush();
+
 					Restart = false; // poinless probably
 					ProcessStartInfo info = Process.GetCurrentProcess().StartInfo;
 					info.FileName = Process.GetCurrentProcess().ProcessName;
@@ -917,6 +925,8 @@ namespace TaskMaster
 			}
 			finally // no catch, because this is only to make sure the log is written
 			{
+				if (singleton != null)
+					singleton.Close();
 				Log.CloseAndFlush();
 			}
 		}

@@ -56,7 +56,7 @@ namespace TaskMaster
 
 		string dnstestaddress = "www.google.com";
 
-		object StateLock = new object();
+		readonly object StateLock = new object();
 
 		System.Timers.Timer deviceSampleTimer = new System.Timers.Timer();
 		int DeviceTimerInterval = 15 * 60;

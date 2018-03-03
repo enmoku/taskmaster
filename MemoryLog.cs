@@ -51,7 +51,7 @@ namespace TaskMaster
 		public static event EventHandler<LogEventArgs> onNewEvent;
 
 		public static int Max = 50;
-		static object LogLock = new object();
+		static readonly object LogLock = new object();
 		public static System.Collections.Generic.List<LogEventArgs> Logs = new System.Collections.Generic.List<LogEventArgs>(Max);
 
 		public static LoggingLevelSwitch LevelSwitch;
@@ -106,7 +106,7 @@ namespace TaskMaster
 		class MemorySink : Serilog.Core.ILogEventSink
 		{
 			readonly TextWriter p_output;
-			object sinklock = new object();
+			readonly object sinklock = new object();
 			readonly IFormatProvider p_formatProvider;
 			readonly ITextFormatter p_textFormatter;
 			public LoggingLevelSwitch LevelSwitch;

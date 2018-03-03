@@ -69,7 +69,7 @@ namespace TaskMaster
 		public long Hits { get; private set; } = 0;
 		public long Misses { get; private set; } = 0;
 
-		object cache_lock = new object();
+		readonly object cache_lock = new object();
 
 		Timer pruneTimer = new Timer(1000 * 60 * 10);
 

@@ -691,8 +691,8 @@ namespace TaskMaster
 			return CurrentMode;
 		}
 
-		public static object powerLock = new object();
-		public static object powerLockI = new object();
+		static readonly object powerLock = new object();
+		static readonly object powerLockI = new object();
 
 		public PowerBehaviour Behaviour { get; private set; } = PowerBehaviour.RuleBased;
 
