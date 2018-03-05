@@ -32,7 +32,6 @@ using System.Runtime.InteropServices;
 using System.ComponentModel;
 using System.Threading.Tasks;
 using System.Linq;
-using System.Windows.Controls;
 
 namespace TaskMaster
 {

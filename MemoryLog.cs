@@ -24,6 +24,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
+using System;
 using System.IO;
 using Serilog.Configuration;
 using Serilog.Core;
@@ -32,8 +33,6 @@ using Serilog.Formatting;
 
 namespace TaskMaster
 {
-	using System;
-
 	public class LogEventArgs : EventArgs
 	{
 		public readonly string Message;

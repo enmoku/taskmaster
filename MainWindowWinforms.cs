@@ -25,17 +25,15 @@
 // THE SOFTWARE.
 
 using System.Diagnostics;
-using System.ComponentModel;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+using System.Windows.Forms;
+using Serilog;
 
 namespace TaskMaster
 {
-	using System;
-	using System.Collections.Generic;
-	using System.Linq;
-	using System.Threading.Tasks;
-	using System.Windows.Forms;
-	using Serilog;
-
 	// public class MainWindow : System.Windows.Window; // TODO: WPF
 	sealed public class MainWindow : System.Windows.Forms.Form, WindowInterface
 	{

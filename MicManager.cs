@@ -23,14 +23,13 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
-using System.Threading.Tasks;
+
+using System;
+using System.Collections.Generic;
+using Serilog;
 
 namespace TaskMaster
 {
-	using System;
-	using System.Collections.Generic;
-	using Serilog;
-
 	public class VolumeChangedEventArgs : EventArgs
 	{
 		public double Old { get; set; }

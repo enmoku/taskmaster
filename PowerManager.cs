@@ -29,12 +29,9 @@ using System.Runtime.InteropServices;
 using System.Windows.Forms;
 using Serilog;
 using Microsoft.Win32;
-using System.Diagnostics.Eventing.Reader;
-using System.Runtime.InteropServices.WindowsRuntime;
 using System.Diagnostics;
 using System.Threading.Tasks;
 using System.Collections.Generic;
-using NAudio.MediaFoundation;
 
 namespace TaskMaster
 {

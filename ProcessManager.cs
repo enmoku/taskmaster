@@ -32,12 +32,7 @@ using System.Diagnostics;
 using System.Linq;
 using Serilog;
 using System.Runtime.InteropServices;
-using System.Runtime.CompilerServices;
-using System.Windows.Forms;
-using Serilog.Sinks.File;
-using Serilog.Debugging;
-using System.Windows.Controls;
-using System.Net;
+
 namespace TaskMaster
 {
 	public class InstanceEventArgs : EventArgs
