@@ -33,6 +33,8 @@ using System.Diagnostics.Eventing.Reader;
 using System.Runtime.InteropServices.WindowsRuntime;
 using System.Diagnostics;
 using System.Threading.Tasks;
+using System.Collections.Generic;
+using NAudio.MediaFoundation;
 
 namespace TaskMaster
 {
@@ -299,7 +301,7 @@ namespace TaskMaster
 			{
 				if (AutoAdjustAllowed == 0 && TaskMaster.DebugPower)
 				{
-					if (ForcedMode)
+					if (forceModeSources.Count != 0)
 						Log.Debug("Can't override manual power mode.");
 					else
 					{
@@ -645,26 +647,45 @@ namespace TaskMaster
 		}
 
 		bool RestoreOriginal = false;
-		public void RestoreMode()
+		public void RestoreMode(object source)
 		{
 			if (PauseForSessionLock) return; // TODO: What to do in the unlikely event of this being called while paused?
 
 			lock (powerLock)
 			{
+				if (forceModeSources.Contains(source))
+				{
+					forceModeSources.Remove(source);
+					Log.Debug("<Power Mode> Restore functioning as expected.");
+				}
+				else if (source == null)
+				{
+					forceModeSources.Clear();
+					Log.Debug("<Power Mode> Clearing forced list.");
+				}
+				else
+					Log.Error("<Power Mode> Restore mode called for object that never forced the mode.");
+
 				if (RestoreOriginal)
 					SavedMode = OriginalMode;
 
-				ForcedMode = false;
-				AutoAdjustAllowed &= ~AutoAdjustForceBlock;
-				if (SavedMode != PowerMode.Undefined && SavedMode != CurrentMode)
+				if (forceModeSources.Count == 0)
 				{
-					if (Behaviour == PowerBehaviour.Auto) return;
+					AutoAdjustAllowed &= ~AutoAdjustForceBlock;
+					if (SavedMode != PowerMode.Undefined && SavedMode != CurrentMode)
+					{
+						if (Behaviour == PowerBehaviour.Auto) return;
 
-					setMode(SavedMode);
-					SavedMode = PowerMode.Undefined;
+						setMode(SavedMode);
+						SavedMode = PowerMode.Undefined;
 
-					if (TaskMaster.DebugPower)
-						Log.Debug("<Power Mode> Restored to: {PowerMode}", CurrentMode.ToString());
+						if (TaskMaster.DebugPower)
+							Log.Debug("<Power Mode> Restored to: {PowerMode}", CurrentMode.ToString());
+					}
+				}
+				else
+				{
+					Log.Debug("<Power Mode> Forced mode still requested by {sources} sources.", forceModeSources.Count);
 				}
 			}
 		}
@@ -703,7 +724,7 @@ namespace TaskMaster
 
 			lock (powerLock)
 			{
-				if (mode != CurrentMode && ForcedMode == false)
+				if (mode != CurrentMode && forceModeSources.Count == 0)
 				{
 					setMode(mode, verbose: false);
 					return true;
@@ -712,24 +733,43 @@ namespace TaskMaster
 			return false;
 		}
 
-		static bool ForcedMode = false;
+		HashSet<object> forceModeSources = new HashSet<object>();
 
-		public void ForceMode(PowerMode mode)
+		public bool ForceMode(PowerMode mode, object source)
 		{
-			if (Behaviour == PowerBehaviour.Manual) return;
-			if (PauseForSessionLock) return;
+			if (Behaviour == PowerBehaviour.Manual) return false;
+			if (PauseForSessionLock) return false;
+
+			bool rv = false;
 
 			lock (powerLock)
 			{
-				if (mode != CurrentMode)
+				if (forceModeSources.Contains(source))
+				{
+					Log.Error("<Power Mode> Forcing cancelled, source already in list.");
+					return false;
+				}
+
+				forceModeSources.Add(source);
+
+				rv = mode != CurrentMode;
+				if (rv)
 					setMode(mode);
 
-				ForcedMode = true;
 				AutoAdjustAllowed |= AutoAdjustForceBlock;
+
+				forceModeSources.Add(source);
 			}
 
 			if (TaskMaster.DebugPower)
-				Log.Debug("<Power Mode> Forced to: {PowerMode}", CurrentMode);
+			{
+				if (rv)
+					Log.Debug("<Power Mode> Forced to: {PowerMode}", CurrentMode);
+				else
+					Log.Debug("<Power Mode> Force request for mode that is already active. Ignoring.");
+			}
+
+			return rv;
 		}
 
 		public static void setMode(PowerMode mode, bool verbose = true)
@@ -785,7 +825,7 @@ namespace TaskMaster
 					SavedMode = OriginalMode;
 
 				if (SavedMode != PowerMode.Undefined)
-					RestoreMode();
+					RestoreMode(null);
 				else
 					setMode(OriginalMode, true);
 				Log.Information("<Power Mode> Restored.");

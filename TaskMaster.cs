@@ -126,6 +126,7 @@ namespace TaskMaster
 		}
 
 		public static MicManager micmonitor = null;
+		public static object mainwindow_lock = new object();
 		public static MainWindow mainwindow = null;
 		public static ProcessManager processmanager = null;
 		public static TrayAccess trayaccess = null;
@@ -138,7 +139,10 @@ namespace TaskMaster
 		{
 			// Calling dispose here is WRONG, DON'T DO IT
 			// only if ev.Cancel=true, I mean.
-			mainwindow = null;
+			lock (mainwindow_lock)
+			{
+				mainwindow = null;
+			}
 		}
 
 		public static bool Restart = false;
@@ -178,11 +182,14 @@ namespace TaskMaster
 		{
 			try
 			{
-				if (mainwindow != null)
+				lock (mainwindow_lock)
 				{
-					//mainwindow.BeginInvoke(new MethodInvoker(mainwindow.Close));
-					//mainwindow.Close(); // causes crashes relating to .Dispose()
-					//mainwindow = null;
+					if (mainwindow != null)
+					{
+						//mainwindow.BeginInvoke(new MethodInvoker(mainwindow.Close));
+						//mainwindow.Close(); // causes crashes relating to .Dispose()
+						//mainwindow = null;
+					}
 				}
 			}
 			catch (Exception ex)
@@ -213,37 +220,47 @@ namespace TaskMaster
 			processmanager.ProcessEverythingRequest(null, null);
 		}
 
+		public static void ShowMainWindow()
+		{
+			BuildMainWindow();
+			lock (mainwindow_lock)
+				mainwindow.Show();
+		}
+
 		public static void BuildMainWindow()
 		{
-			if (mainwindow == null)
+			lock (mainwindow_lock)
 			{
-				mainwindow = new MainWindow();
-				mainwindow.FormClosed += MainWindowClose;
-
-				if (diskmanager != null)
-					mainwindow.hookDiskManager(ref diskmanager);
-				if (processmanager != null)
-					mainwindow.hookProcessManager(ref processmanager);
-
-				trayaccess.RegisterMain(ref mainwindow);
-
-				if (micmonitor != null)
-					mainwindow.hookMicMonitor(micmonitor);
-
-				mainwindow.FillLog();
-
-				if (netmonitor != null)
-					mainwindow.hookNetMonitor(ref netmonitor);
-
-				if (activeappmonitor != null)
-					mainwindow.hookActiveAppMonitor(ref activeappmonitor);
-
-				if (powermanager != null)
+				if (mainwindow == null)
 				{
-					powermanager.onBatteryResume += AutomaticRestartRequest;
+					mainwindow = new MainWindow();
+					mainwindow.FormClosed += MainWindowClose;
 
-					mainwindow.hookPowerManager(ref powermanager);
-					trayaccess.hookPowerManager(ref powermanager);
+					if (diskmanager != null)
+						mainwindow.hookDiskManager(ref diskmanager);
+					if (processmanager != null)
+						mainwindow.hookProcessManager(ref processmanager);
+
+					trayaccess.RegisterMain(ref mainwindow);
+
+					if (micmonitor != null)
+						mainwindow.hookMicMonitor(micmonitor);
+
+					mainwindow.FillLog();
+
+					if (netmonitor != null)
+						mainwindow.hookNetMonitor(ref netmonitor);
+
+					if (activeappmonitor != null)
+						mainwindow.hookActiveAppMonitor(ref activeappmonitor);
+
+					if (powermanager != null)
+					{
+						powermanager.onBatteryResume += AutomaticRestartRequest;
+
+						mainwindow.hookPowerManager(ref powermanager);
+						trayaccess.hookPowerManager(ref powermanager);
+					}
 				}
 			}
 		}
@@ -280,10 +297,14 @@ namespace TaskMaster
 				processmanager.hookActiveAppManager(ref activeappmonitor);
 			}
 
-			BuildMainWindow();
-
-			if (ShowOnStart)
-				mainwindow.Show();
+			lock (mainwindow_lock)
+			{
+				if (ShowOnStart)
+				{
+					BuildMainWindow();
+					mainwindow.Show();
+				}
+			}
 
 			// Self-optimization
 			if (SelfOptimize)
@@ -621,6 +642,9 @@ namespace TaskMaster
 		{
 			Log.Verbose("Running periodic cleanup");
 
+			// TODO: This starts getting weird if cleanup interval is smaller than total delay of testing all items.
+			// (15*60) / 2 = item limit, and -1 or -2 for safety margin. Unlikely, but should probably be covered anyway.
+
 			await Task.Yield();
 
 			var time = Stopwatch.StartNew();
@@ -635,7 +659,7 @@ namespace TaskMaster
 			Statistics.Cleanups++;
 			Statistics.CleanupTime += time.Elapsed.TotalSeconds;
 
-			Log.Verbose("Cleanup took: {Time}s", string.Format("{0:N2}", time.Elapsed.TotalSeconds));
+			Log.Verbose("Cleanup took: {Time}s [inherent delay of 2s per item tested]", string.Format("{0:N2}", time.Elapsed.TotalSeconds));
 		}
 
 		public static System.Timers.Timer CleanupTimer;
@@ -681,10 +705,12 @@ namespace TaskMaster
 
 				MemoryLog.LevelSwitch = new LoggingLevelSwitch(LogEventLevel.Information);
 
-				string logpathtemplate = System.IO.Path.Combine(datapath, "Logs", "serilog-{Date}.log");
+				string logpathtemplate = System.IO.Path.Combine(datapath, "Logs", "taskmaster-{Date}.log");
 				Serilog.Log.Logger = new Serilog.LoggerConfiguration()
 					.MinimumLevel.Verbose()
+#if DEBUG
 					.WriteTo.Console(levelSwitch: new LoggingLevelSwitch(LogEventLevel.Verbose))
+#endif
 					.WriteTo.RollingFile(logpathtemplate, outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}", levelSwitch: new LoggingLevelSwitch(Serilog.Events.LogEventLevel.Debug), retainedFileCountLimit: 7)
 					.WriteTo.MemorySink(levelSwitch: MemoryLog.LevelSwitch)
 								 .CreateLogger();
@@ -725,6 +751,7 @@ namespace TaskMaster
 						try
 						{
 							var initialconfig = new InitialConfigurationWindow();
+							initialconfig.Show();
 							System.Windows.Forms.Application.Run(initialconfig);
 							initialconfig.Dispose();
 							initialconfig = null;

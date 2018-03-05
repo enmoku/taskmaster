@@ -325,10 +325,10 @@ namespace TaskMaster
 		readonly object powerbalancerlog_lock = new object();
 
 		ListView exitwaitlist;
-		Dictionary<int, ListViewItem> exitwaitlistw;
+		Dictionary<int, ListViewItem> exitwaitlistmap;
 
 		ListView fgwaitlist;
-		Dictionary<int, ListViewItem> fgwaitlistw;
+		Dictionary<int, ListViewItem> fgwaitlistmap;
 
 		void UserMicVol(object sender, EventArgs e)
 		{
@@ -1344,7 +1344,7 @@ namespace TaskMaster
 				FullRowSelect = true,
 				View = View.Details,
 			};
-			exitwaitlistw = new Dictionary<int, ListViewItem>();
+			exitwaitlistmap = new Dictionary<int, ListViewItem>();
 
 			exitwaitlist.Columns.Add("Id", 50);
 			exitwaitlist.Columns.Add("Executable", 280);
@@ -1452,7 +1452,7 @@ namespace TaskMaster
 				FullRowSelect = true,
 				View = View.Details,
 			};
-			fgwaitlistw = new Dictionary<int, ListViewItem>();
+			fgwaitlistmap = new Dictionary<int, ListViewItem>();
 
 			fgwaitlist.Columns.Add("Id", 50);
 			fgwaitlist.Columns.Add("Executable", 280);
@@ -1506,7 +1506,7 @@ namespace TaskMaster
 					//li.Name = ev.Info.Id.ToString();
 					try
 					{
-						exitwaitlistw.Add(ev.Info.Id, li);
+						exitwaitlistmap.Add(ev.Info.Id, li);
 						exitwaitlist.Items.Add(li);
 					}
 					catch { /* NOP, System.ArgumentException, already in list */ }
@@ -1514,12 +1514,12 @@ namespace TaskMaster
 				else if (ev.State == ProcessEventArgs.ProcessState.Exiting || ev.State == ProcessEventArgs.ProcessState.Cancel)
 				{
 					ListViewItem li = null;
-					if (exitwaitlistw.TryGetValue(ev.Info.Id, out li))
+					if (exitwaitlistmap.TryGetValue(ev.Info.Id, out li))
 					{
 						try
 						{
 							exitwaitlist.Items.Remove(li);
-							exitwaitlistw.Remove(ev.Info.Id);
+							exitwaitlistmap.Remove(ev.Info.Id);
 						}
 						catch { }
 					}
@@ -1535,7 +1535,7 @@ namespace TaskMaster
 			lock (fgwaitlist_lock)
 			{
 				ListViewItem li = null;
-				if (fgwaitlistw.TryGetValue(ev.Info.Id, out li))
+				if (fgwaitlistmap.TryGetValue(ev.Info.Id, out li))
 				{
 					//Log.Debug("WaitlistHandler: {Name} = {State}", ev.Info.Name, ev.State.ToString());
 					try
@@ -1544,7 +1544,7 @@ namespace TaskMaster
 						{
 							case ProcessEventArgs.ProcessState.Exiting:
 								fgwaitlist.Items.Remove(li);
-								fgwaitlistw.Remove(ev.Info.Id);
+								fgwaitlistmap.Remove(ev.Info.Id);
 								break;
 							case ProcessEventArgs.ProcessState.Found:
 							case ProcessEventArgs.ProcessState.Reduced:
@@ -1571,7 +1571,7 @@ namespace TaskMaster
 					try
 					{
 						fgwaitlist.Items.Add(li);
-						fgwaitlistw.Add(ev.Info.Id, li);
+						fgwaitlistmap.Add(ev.Info.Id, li);
 						li.EnsureVisible();
 					}
 					catch { }
@@ -2141,9 +2141,9 @@ namespace TaskMaster
 				UItimer = null;
 
 				exitwaitlist.Dispose();
-				exitwaitlistw.Clear();
+				exitwaitlistmap.Clear();
 				fgwaitlist.Dispose();
-				fgwaitlistw.Clear();
+				fgwaitlistmap.Clear();
 			}
 
 			disposed = true;

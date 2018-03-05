@@ -36,13 +36,6 @@ using System.Windows.Controls;
 
 namespace TaskMaster
 {
-	struct ProcessInfo
-	{
-		public ProcessPriorityClass Priority;
-		public IntPtr Affinity;
-		public PowerManager.PowerMode PowerMode;
-	}
-
 	/// <summary>
 	/// Process controller.
 	/// </summary>
@@ -65,8 +58,7 @@ namespace TaskMaster
 			}
 			set
 			{
-				p_Executable = value;
-				ExecutableFriendlyName = System.IO.Path.GetFileNameWithoutExtension(value);
+				ExecutableFriendlyName = System.IO.Path.GetFileNameWithoutExtension(p_Executable = value);
 			}
 		}
 
@@ -138,7 +130,6 @@ namespace TaskMaster
 			set { p_Rescan = value.Constrain(0, 300); }
 		}
 
-		string p_ExecutableFriendlyName = null;
 		/// <summary>
 		/// Frienly executable name as required by various System.Process functions.
 		/// Same as <see cref="T:TaskMaster.ProcessControl.Executable"/> but with the extension missing.
@@ -167,13 +158,10 @@ namespace TaskMaster
 			}
 		}
 
-		ProcessInfo OriginalState = new ProcessInfo();
-
 		HashSet<int> PausedIds = new HashSet<int>();
 
 		public bool BackgroundPowerdown { get; set; } = true;
 		public ProcessPriorityClass BackgroundPriority { get; set; } = ProcessPriorityClass.Normal;
-		ProcessInfo PausedState = new ProcessInfo();
 		/// <summary>
 		/// Pause the specified foreground process.
 		/// </summary>
@@ -200,7 +188,7 @@ namespace TaskMaster
 
 			if (TaskMaster.PowerManagerEnabled)
 				if (PowerPlan != PowerManager.PowerMode.Undefined && BackgroundPowerdown)
-					TaskMaster.powermanager.RestoreMode();
+					TaskMaster.powermanager.RestoreMode(info.Process);
 
 			if (TaskMaster.DebugForeground)
 				Log.Information("[{FriendlyName}] {Exec} (#{Pid}) priority reduced: {Current}→{Paused}",
@@ -327,7 +315,7 @@ namespace TaskMaster
 				if (waitingExit.Count == 0)
 				{
 					Log.Information("{Process} (#{Pid}) exited; restoring normal power.", info.Name, info.Id);
-					TaskMaster.powermanager.RestoreMode();
+					TaskMaster.powermanager.RestoreMode(info.Process);
 				}
 				else
 				{
@@ -388,14 +376,13 @@ namespace TaskMaster
 						}
 					};
 
-					if (TaskMaster.powermanager.CurrentMode != PowerPlan)
-					{
+					bool rv = TaskMaster.powermanager.CurrentMode != PowerPlan;
+					if (rv)
 						Log.Information("[{FriendlyName}] Upgrading power mode for '{Exec}' (#{Pid})", FriendlyName, info.Name, info.Id);
-						if (TaskMaster.DebugPower)
-							Log.Debug("Power mode upgrading to: {PowerPlan}", PowerPlan);
-						TaskMaster.powermanager.ForceMode(PowerPlan);
-						return true;
-					}
+
+					TaskMaster.powermanager.ForceMode(PowerPlan, info.Process);
+
+					return rv;
 				}
 			}
 			return false;

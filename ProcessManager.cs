@@ -1090,7 +1090,11 @@ namespace TaskMaster
 					ForegroundApps.Add(info.Id, info);
 
 					info.Process.EnableRaisingEvents = true;
-					info.Process.Exited += (sender, e) => { ForegroundWatchEnd(info); };
+					info.Process.Exited += (sender, e) =>
+					{
+						Log.Debug("{Exec} exited", info.Name);
+						ForegroundWatchEnd(info);
+					};
 
 					if (TaskMaster.DebugForeground)
 						Log.Debug("[{FriendlyName}] {Exec} (#{Pid}) added to foreground watchlist.", prc.FriendlyName, info.Name, info.Id);

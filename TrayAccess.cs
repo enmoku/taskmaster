@@ -29,6 +29,7 @@ using System.Windows.Forms;
 using Serilog;
 using System.Diagnostics;
 using System.Threading.Tasks;
+using System.Windows;
 
 namespace TaskMaster
 {
@@ -63,7 +64,7 @@ namespace TaskMaster
 				Log.Verbose("Generating tray icon.");
 
 			ms = new ContextMenuStrip();
-			menu_windowopen = new ToolStripMenuItem("Open", null, ShowWindowRequest);
+			menu_windowopen = new ToolStripMenuItem("Open", null, RestoreMainWindow);
 			menu_rescan = new ToolStripMenuItem("Rescan", null, (o, s) =>
 			{
 				menu_rescan.Enabled = false;
@@ -81,9 +82,9 @@ namespace TaskMaster
 				power_auto.CheckOnClick = true;
 				power_auto.Enabled = false;
 
-				power_highperf = new ToolStripMenuItem("Performance", null, SetPowerPerformance);
-				power_balanced = new ToolStripMenuItem("Balanced", null, SetPowerBalanced);
-				power_saving = new ToolStripMenuItem("Power Saving", null, SetPowerSaving);
+				power_highperf = new ToolStripMenuItem("Performance", null, (s, e) => { ResetPower(PowerManager.PowerMode.HighPerformance); });
+				power_balanced = new ToolStripMenuItem("Balanced", null, (s, e) => { ResetPower(PowerManager.PowerMode.Balanced); });
+				power_saving = new ToolStripMenuItem("Power Saving", null, (s, e) => { ResetPower(PowerManager.PowerMode.PowerSaver); });
 				power_manual = new ToolStripMenuItem("Manual override", null, SetManualPower);
 				power_manual.CheckOnClick = true;
 			}
@@ -210,37 +211,19 @@ namespace TaskMaster
 
 		void ResetPower(PowerManager.PowerMode mode)
 		{
-			powermanager.SetBehaviour(PowerManager.PowerBehaviour.Manual);
-			power_manual.Checked = (powermanager.Behaviour == PowerManager.PowerBehaviour.Manual);
-			power_auto.Checked = (powermanager.Behaviour == PowerManager.PowerBehaviour.Auto);
+			try
+			{
+				powermanager.SetBehaviour(PowerManager.PowerBehaviour.Manual);
+				power_manual.Checked = (powermanager.Behaviour == PowerManager.PowerBehaviour.Manual);
+				power_auto.Checked = (powermanager.Behaviour == PowerManager.PowerBehaviour.Auto);
 
-			ManualPowerMode?.Invoke(this, null);
-			powermanager.RestoreMode();
-			PowerManager.setMode(mode);
-			//powermanager.RequestMode(mode);
-			HighlightPowerMode();
-		}
-
-		void SetPowerSaving(object sender, EventArgs e)
-		{
-			ResetPower(PowerManager.PowerMode.PowerSaver);
-		}
-
-		void SetPowerBalanced(object sender, EventArgs e)
-		{
-			ResetPower(PowerManager.PowerMode.Balanced);
-		}
-		void SetPowerPerformance(object sender, EventArgs e)
-		{
-			ResetPower(PowerManager.PowerMode.HighPerformance);
-		}
-
-		void ShowWindowRequest(object sender, EventArgs e)
-		{
-			if (TaskMaster.mainwindow != null)
-				TaskMaster.mainwindow.ShowWindowRequest(sender, null);
-			else
-				RestoreMain(sender, e);
+				ManualPowerMode?.Invoke(this, null);
+				powermanager.RestoreMode(null);
+				PowerManager.setMode(mode);
+				//powermanager.RequestMode(mode);
+				HighlightPowerMode();
+			}
+			catch { }
 		}
 
 		void ShowConfigRequest(object sender, EventArgs e)
@@ -252,25 +235,24 @@ namespace TaskMaster
 			//CLEANUP: Console.WriteLine("Done opening config folder.");
 		}
 
-		int buildmainwindow_lock = 0;
-		async Task RestoreMain(object sender, EventArgs e)
+		int restoremainwindow_lock = 0;
+		async void RestoreMainWindow(object sender, EventArgs e)
 		{
-			if (System.Threading.Interlocked.CompareExchange(ref buildmainwindow_lock, 1, 0) == 1)
+			if (System.Threading.Interlocked.CompareExchange(ref restoremainwindow_lock, 1, 0) == 1)
 				return; // already being done
 
 			await Task.Yield();
 
-			TaskMaster.BuildMainWindow();
-			TaskMaster.mainwindow.Show();
+			TaskMaster.ShowMainWindow();
 
-			buildmainwindow_lock = 0;
+			restoremainwindow_lock = 0;
 		}
 
 		void ClickOnTrayIcon(object sender, MouseEventArgs e)
 		{
 			// this should really be system defined activation button in case the buttons are swapped, but C#/OS might handle that for us already?
 			if (e.Button == MouseButtons.Left)
-				RestoreMain(sender, null);
+				RestoreMainWindow(sender, null);
 		}
 
 		void ShowWindow(object sender, MouseEventArgs e)
@@ -457,9 +439,9 @@ namespace TaskMaster
 			bool isadmin = TaskMaster.IsAdministrator();
 			if (isadmin)
 			{
-				var rv = MessageBox.Show("Run at start does not support elevated privilege that you have. Is this alright?\n\nIf you absolutely need admin rights, create onlogon schedule in windows task scheduler.",
-										 Application.ProductName + " – Run at Start normal privilege problem.",
-								MessageBoxButtons.YesNo, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button2, MessageBoxOptions.DefaultDesktopOnly, false);
+				var rv = System.Windows.Forms.MessageBox.Show("Run at start does not support elevated privilege that you have. Is this alright?\n\nIf you absolutely need admin rights, create onlogon schedule in windows task scheduler.",
+										 System.Windows.Forms.Application.ProductName + " – Run at Start normal privilege problem.",
+								MessageBoxButtons.YesNo, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button2, System.Windows.Forms.MessageBoxOptions.DefaultDesktopOnly, false);
 				if (rv == DialogResult.No) return;
 			}
 

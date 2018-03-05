@@ -387,8 +387,6 @@ namespace TaskMaster
 			baselayout.Controls.Add(buttonpanel);
 			Controls.Add(baselayout);
 			AutoSize = true;
-
-			Show();
 		}
 	}
 }
