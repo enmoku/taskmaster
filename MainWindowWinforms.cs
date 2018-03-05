@@ -35,7 +35,7 @@ using Serilog;
 namespace TaskMaster
 {
 	// public class MainWindow : System.Windows.Window; // TODO: WPF
-	sealed public class MainWindow : System.Windows.Forms.Form, WindowInterface
+	sealed public class MainWindow : Form
 	{
 		public void ShowConfigRequest(object sender, EventArgs e)
 		{
@@ -86,15 +86,21 @@ namespace TaskMaster
 		}
 
 		// this restores the main window to a place where it can be easily found if it's lost
-		public void RestoreWindowRequest(object sender, EventArgs e)
+		/// <summary>
+		/// Restores the main window to the center of the screen.
+		/// </summary>
+		public void UnloseWindowRequest(object sender, EventArgs e)
 		{
+			if (TaskMaster.Trace)
+				Log.Verbose("Making sure main window is not lost.");
+
 			try
 			{
 				CenterToScreen();
 				SetTopLevel(true); // this doesn't Keep it topmost, does it?
-				TopMost = true;
-				// toggle because we don't want to keep it there
-				TopMost = false;
+								   //TopMost = true;
+								   // toggle because we don't want to keep it there
+								   //TopMost = false;
 			}
 			catch { }
 		}
@@ -105,13 +111,6 @@ namespace TaskMaster
 			{
 				loglist.EnsureVisible(loglist.Items.Count - 1);
 			}
-		}
-
-		public void ShowWindowRequest(object sender, EventArgs e)
-		{
-			Show(); // FIXME: Gets triggered when menuitem is clicked
-
-			//AutoSize = true;
 		}
 
 		// HOOKS

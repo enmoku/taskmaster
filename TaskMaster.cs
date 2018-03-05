@@ -224,7 +224,9 @@ namespace TaskMaster
 		{
 			BuildMainWindow();
 			lock (mainwindow_lock)
+			{
 				mainwindow.Show();
+			}
 		}
 
 		public static void BuildMainWindow()
@@ -236,12 +238,13 @@ namespace TaskMaster
 					mainwindow = new MainWindow();
 					mainwindow.FormClosed += MainWindowClose;
 
+					trayaccess.hookMainWindow(ref mainwindow);
+
 					if (diskmanager != null)
 						mainwindow.hookDiskManager(ref diskmanager);
+
 					if (processmanager != null)
 						mainwindow.hookProcessManager(ref processmanager);
-
-					trayaccess.RegisterMain(ref mainwindow);
 
 					if (micmonitor != null)
 						mainwindow.hookMicMonitor(micmonitor);
@@ -255,12 +258,7 @@ namespace TaskMaster
 						mainwindow.hookActiveAppMonitor(ref activeappmonitor);
 
 					if (powermanager != null)
-					{
-						powermanager.onBatteryResume += AutomaticRestartRequest;
-
 						mainwindow.hookPowerManager(ref powermanager);
-						trayaccess.hookPowerManager(ref powermanager);
-					}
 				}
 			}
 		}
@@ -269,8 +267,14 @@ namespace TaskMaster
 		{
 			Log.Information("<Core> Loading components...");
 
+			trayaccess = new TrayAccess();
+
 			if (PowerManagerEnabled)
+			{
 				powermanager = new PowerManager();
+				trayaccess.hookPowerManager(ref powermanager);
+				powermanager.onBatteryResume += AutomaticRestartRequest;
+			}
 
 			if (ProcessMonitorEnabled)
 				processmanager = new ProcessManager();
@@ -284,7 +288,6 @@ namespace TaskMaster
 				netmonitor.Tray = trayaccess;
 			}
 
-			trayaccess = new TrayAccess();
 			if (processmanager != null)
 				trayaccess.hookProcessManager(ref processmanager);
 
@@ -816,6 +819,7 @@ namespace TaskMaster
 
 				try
 				{
+					trayaccess.Enable();
 					System.Windows.Forms.Application.Run(); // WinForms
 															//System.Windows.Application.Current.Run(); // WPF
 				}

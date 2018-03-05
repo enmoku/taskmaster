@@ -130,12 +130,22 @@ namespace TaskMaster
 			if (!RegisterExplorerExit())
 				throw new InitFailure("Explorer registeriong failed; not running?");
 
+			ms.Enabled = false;
+
 			Tray.Visible = true;
+
+			//Tray.Click += RestoreMainWindow;
+			Tray.MouseClick += ShowWindow;
 
 			// TODO: Toast Notifications
 
 			if (TaskMaster.Trace)
 				Log.Verbose("<Tray> Initialized");
+		}
+
+		public void Enable()
+		{
+			ms.Enabled = true;
 		}
 
 		public event EventHandler RescanRequest;
@@ -248,23 +258,21 @@ namespace TaskMaster
 			restoremainwindow_lock = 0;
 		}
 
-		void ClickOnTrayIcon(object sender, MouseEventArgs e)
-		{
-			// this should really be system defined activation button in case the buttons are swapped, but C#/OS might handle that for us already?
-			if (e.Button == MouseButtons.Left)
-				RestoreMainWindow(sender, null);
-		}
-
 		void ShowWindow(object sender, MouseEventArgs e)
 		{
 			if (e.Button == MouseButtons.Left)
-				TaskMaster.mainwindow.ShowWindowRequest(sender, null);
+			{
+				RestoreMainWindow(sender, null);
+			}
 		}
 
 		void UnloseWindow(object sender, MouseEventArgs e)
 		{
 			if (e.Button == MouseButtons.Left)
-				TaskMaster.mainwindow.RestoreWindowRequest(sender, null);
+			{
+				RestoreMainWindow(sender, null);
+				TaskMaster.mainwindow.UnloseWindowRequest(sender, null);
+			}
 		}
 
 		void CompactEvent(object sender, EventArgs e)
@@ -288,19 +296,16 @@ namespace TaskMaster
 			//{
 			//CLEANUP: Console.WriteLine("DEBUG:TrayAccess.WindowClosed.SaveMemory");
 
-			Tray.MouseClick -= ShowWindow;
 			Tray.MouseDoubleClick -= UnloseWindow;
 
-			Tray.MouseClick += ClickOnTrayIcon;
 			//}
 			//CLEANUP: Console.WriteLine("END:TrayAccess.WindowClosed");
 		}
 
-		public void RegisterMain(ref MainWindow window)
+		public void hookMainWindow(ref MainWindow window)
 		{
 			Debug.Assert(window != null);
 
-			Tray.MouseClick += ShowWindow;
 			Tray.MouseDoubleClick += UnloseWindow;
 			window.FormClosing += WindowClosed;
 			window.FormClosed += CompactEvent;

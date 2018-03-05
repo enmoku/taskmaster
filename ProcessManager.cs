@@ -305,7 +305,7 @@ namespace TaskMaster
 		{
 			if (System.Threading.Interlocked.CompareExchange(ref scaninprogress, 1, 0) == 1)
 			{
-				Log.Warning("Scan request received while old scan was still in progress.");
+				Log.Warning("Scan request received while old scan was still in progress. Previous scan started at: {Date}", LastRescan.ToString());
 				return;
 			}
 
@@ -361,11 +361,15 @@ namespace TaskMaster
 				//if (TaskMaster.PathCacheLimit > 0)
 				//	PathCacheStats();
 			}
-			catch
+			catch (Exception ex)
 			{
+				Log.Fatal("{Type} : {Message}", ex.GetType().Name, ex.Message);
+				Log.Fatal(ex.StackTrace);
 			}
-
-			scaninprogress = 0;
+			finally
+			{
+				scaninprogress = 0;
+			}
 		}
 
 		public static int PowerdownDelay { get; set; } = 0;

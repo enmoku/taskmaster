@@ -1,4 +1,4 @@
-﻿//
+//
 // MainWindowInterface.cs
 //
 // Author:
@@ -33,6 +33,6 @@ namespace TaskMaster
 		void Show();
 
 		void ShowWindowRequest(object sender, EventArgs ev);
-		void RestoreWindowRequest(object sender, EventArgs ev);
+		void UnloseWindowRequest(object sender, EventArgs ev);
 	}
 }
