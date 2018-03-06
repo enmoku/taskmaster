@@ -341,12 +341,13 @@ namespace TaskMaster
 			if (AutoAdjust)
 				Behaviour = PowerBehaviour.Auto;
 
+			// should probably be in hardware/cpu section
 			PauseUnneededSampler = autopower.GetSetDefault("Pause unneeded CPU sampler", false, out modified).BoolValue;
 			autopower["Pause unneeded CPU sampler"].Comment = "Pausing the sampler causes re-enabling it to have a delay in proper behaviour much like at TM's startup.";
 			dirtyconfig |= modified;
 
 			// BACKOFF
-			LowBackoffLevel = autopower.GetSetDefault("Low backoff level", 2, out modified).IntValue.Constrain(0, 10);
+			LowBackoffLevel = autopower.GetSetDefault("Low backoff level", 1, out modified).IntValue.Constrain(0, 10);
 			autopower["Low backoff level"].Comment = "1 to 10. Consequent backoff reactions that is required before it actually triggers.";
 			dirtyconfig |= modified;
 			HighBackoffLevel = autopower.GetSetDefault("High backoff level", 3, out modified).IntValue.Constrain(0, 10);
@@ -354,7 +355,7 @@ namespace TaskMaster
 			dirtyconfig |= modified;
 
 			// COMMIT
-			LowCommitLevel = autopower.GetSetDefault("Low commit level", 2, out modified).IntValue.Constrain(1, 10);
+			LowCommitLevel = autopower.GetSetDefault("Low commit level", 7, out modified).IntValue.Constrain(1, 10);
 			autopower["Low commit level"].Comment = "1 to 10. Consequent commit reactions that is required before it actually triggers.";
 			dirtyconfig |= modified;
 			HighCommitLevel = autopower.GetSetDefault("High commit level", 3, out modified).IntValue.Constrain(1, 10);
@@ -370,7 +371,7 @@ namespace TaskMaster
 			autopower["High backoff thresholds"].Comment = "High, Average and Low CPU usage values, any of which is enough to break away from high power mode.";
 			dirtyconfig |= modified;
 
-			LowThreshold = autopower.GetSetDefault("Low threshold", 25, out modified).FloatValue;
+			LowThreshold = autopower.GetSetDefault("Low threshold", 15, out modified).FloatValue;
 			autopower["Low threshold"].Comment = "If high CPU value keeps under this, we swap to low mode.";
 			dirtyconfig |= modified;
 			var lbtt = autopower.GetSetDefault("Low backoff thresholds", new float[] { 50, 35, 25 }, out modified).FloatValueArray;
