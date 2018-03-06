@@ -110,7 +110,7 @@ namespace TaskMaster
 		}
 
 		SharpConfig.Configuration stats;
-		const string statfile = "MicMon.Statistics.ini";
+		const string statfile = "Microphone.Statistics.ini";
 		// ctor, constructor
 		public MicManager()
 		{
@@ -172,7 +172,7 @@ namespace TaskMaster
 			double defaultvol = TaskMaster.cfg["Media"].GetSetDefault(mvol, 100d).DoubleValue;
 			if (save) TaskMaster.saveConfig(TaskMaster.cfg);
 
-			string fname = "MicMon.Devices.ini";
+			string fname = "Microphone.Devices.ini";
 			string vname = "Volume";
 
 			var devcfg = TaskMaster.loadConfig(fname);

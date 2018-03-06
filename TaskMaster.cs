@@ -703,7 +703,8 @@ namespace TaskMaster
 #if DEBUG
 					.WriteTo.Console(levelSwitch: new LoggingLevelSwitch(LogEventLevel.Verbose))
 #endif
-					.WriteTo.RollingFile(logpathtemplate, outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}", levelSwitch: new LoggingLevelSwitch(Serilog.Events.LogEventLevel.Debug), retainedFileCountLimit: 7)
+					.WriteTo.RollingFile(logpathtemplate, outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}",
+										 levelSwitch: new LoggingLevelSwitch(Serilog.Events.LogEventLevel.Debug), retainedFileCountLimit: 3)
 					.WriteTo.MemorySink(levelSwitch: MemoryLog.LevelSwitch)
 								 .CreateLogger();
 
