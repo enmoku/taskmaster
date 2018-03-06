@@ -328,77 +328,75 @@ namespace TaskMaster
 			RestoreOriginal = power.GetSetDefault("Restore original", false, out modified).BoolValue;
 			power["Restore original"].Comment = "Restore original power mode instead of the one saved before changing it (only when changing with watchlist rules).";
 			dirtyconfig |= modified;
-
-			bool AutoAdjust = power.GetSetDefault("Auto-adjust", false, out modified).BoolValue;
-			power["Auto-adjust"].Comment = "Automatically adjust power mode based on the criteria here.";
-			dirtyconfig |= modified;
-			if (AutoAdjust)
-				Behaviour = PowerBehaviour.Auto;
-
-			PauseUnneededSampler = power.GetSetDefault("Pause unneeded CPU sampler", false, out modified).BoolValue;
-			power["Pause unneeded CPU sampler"].Comment = "Pausing the sampler causes re-enabling it to have a delay in proper behaviour much like at TM's startup.";
-			dirtyconfig |= modified;
-
-			// BACKOFF
-			LowBackoffLevel = power.GetSetDefault("Low backoff level", 2, out modified).IntValue.Constrain(0, 10);
-			power["Low backoff level"].Comment = "1 to 10. Consequent backoff reactions that is required before it actually triggers.";
-			dirtyconfig |= modified;
-			HighBackoffLevel = power.GetSetDefault("High backoff level", 3, out modified).IntValue.Constrain(0, 10);
-			power["High backoff level"].Comment = "1 to 10. Consequent backoff reactions that is required before it actually triggers.";
-			dirtyconfig |= modified;
-
-			// COMMIT
-			LowCommitLevel = power.GetSetDefault("Low commit level", 2, out modified).IntValue.Constrain(1, 10);
-			power["Low commit level"].Comment = "1 to 10. Consequent commit reactions that is required before it actually triggers.";
-			dirtyconfig |= modified;
-			HighCommitLevel = power.GetSetDefault("High commit level", 3, out modified).IntValue.Constrain(1, 10);
-			power["High commit level"].Comment = "1 to 10. Consequent commit reactions that is required before it actually triggers.";
-			dirtyconfig |= modified;
-
-			// THRESHOLDS
-			HighThreshold = power.GetSetDefault("High threshold", 70, out modified).FloatValue;
-			power["High threshold"].Comment = "If low CPU value keeps over this, we swap to high mode.";
-			dirtyconfig |= modified;
-			var hbtt = power.GetSetDefault("High backoff thresholds", new float[] { 60, 40, 20 }, out modified).FloatValueArray;
-			if (hbtt != null && hbtt.Length == 3) HighBackoffThresholds = hbtt;
-			power["High backoff thresholds"].Comment = "High, Average and Low CPU usage values, any of which is enough to break away from high power mode.";
-			dirtyconfig |= modified;
-
-			LowThreshold = power.GetSetDefault("Low threshold", 25, out modified).FloatValue;
-			power["Low threshold"].Comment = "If high CPU value keeps under this, we swap to low mode.";
-			dirtyconfig |= modified;
-			var lbtt = power.GetSetDefault("Low backoff thresholds", new float[] { 50, 40, 25 }, out modified).FloatValueArray;
-			if (lbtt != null && lbtt.Length == 3) LowBackoffThresholds = lbtt;
-			power["Low backoff thresholds"].Comment = "High, Average and Low CPU uage values, any of which is enough to break away from low mode.";
-			dirtyconfig |= modified;
-
-			// POWER MODES
 			string defaultmode = power.GetSetDefault("Default mode", "Balanced", out modified).StringValue;
 			power["Default mode"].Comment = "This is what power plan we fall back on when nothing else is considered.";
 			DefaultMode = GetModeByName(defaultmode);
 			dirtyconfig |= modified;
-			string lowmode = power.GetSetDefault("Low mode", "Power Saver", out modified).StringValue;
+
+
+			var autopower = TaskMaster.cfg["Power / Auto"];
+			bool AutoAdjust = autopower.GetSetDefault("Auto-adjust", false, out modified).BoolValue;
+			autopower["Auto-adjust"].Comment = "Automatically adjust power mode based on the criteria here.";
+			dirtyconfig |= modified;
+			if (AutoAdjust)
+				Behaviour = PowerBehaviour.Auto;
+
+			PauseUnneededSampler = autopower.GetSetDefault("Pause unneeded CPU sampler", false, out modified).BoolValue;
+			autopower["Pause unneeded CPU sampler"].Comment = "Pausing the sampler causes re-enabling it to have a delay in proper behaviour much like at TM's startup.";
+			dirtyconfig |= modified;
+
+			// BACKOFF
+			LowBackoffLevel = autopower.GetSetDefault("Low backoff level", 2, out modified).IntValue.Constrain(0, 10);
+			autopower["Low backoff level"].Comment = "1 to 10. Consequent backoff reactions that is required before it actually triggers.";
+			dirtyconfig |= modified;
+			HighBackoffLevel = autopower.GetSetDefault("High backoff level", 3, out modified).IntValue.Constrain(0, 10);
+			autopower["High backoff level"].Comment = "1 to 10. Consequent backoff reactions that is required before it actually triggers.";
+			dirtyconfig |= modified;
+
+			// COMMIT
+			LowCommitLevel = autopower.GetSetDefault("Low commit level", 2, out modified).IntValue.Constrain(1, 10);
+			autopower["Low commit level"].Comment = "1 to 10. Consequent commit reactions that is required before it actually triggers.";
+			dirtyconfig |= modified;
+			HighCommitLevel = autopower.GetSetDefault("High commit level", 3, out modified).IntValue.Constrain(1, 10);
+			autopower["High commit level"].Comment = "1 to 10. Consequent commit reactions that is required before it actually triggers.";
+			dirtyconfig |= modified;
+
+			// THRESHOLDS
+			HighThreshold = autopower.GetSetDefault("High threshold", 70, out modified).FloatValue;
+			autopower["High threshold"].Comment = "If low CPU value keeps over this, we swap to high mode.";
+			dirtyconfig |= modified;
+			var hbtt = autopower.GetSetDefault("High backoff thresholds", new float[] { 60, 40, 15 }, out modified).FloatValueArray;
+			if (hbtt != null && hbtt.Length == 3) HighBackoffThresholds = hbtt;
+			autopower["High backoff thresholds"].Comment = "High, Average and Low CPU usage values, any of which is enough to break away from high power mode.";
+			dirtyconfig |= modified;
+
+			LowThreshold = autopower.GetSetDefault("Low threshold", 25, out modified).FloatValue;
+			autopower["Low threshold"].Comment = "If high CPU value keeps under this, we swap to low mode.";
+			dirtyconfig |= modified;
+			var lbtt = autopower.GetSetDefault("Low backoff thresholds", new float[] { 50, 35, 25 }, out modified).FloatValueArray;
+			if (lbtt != null && lbtt.Length == 3) LowBackoffThresholds = lbtt;
+			autopower["Low backoff thresholds"].Comment = "High, Average and Low CPU uage values, any of which is enough to break away from low mode.";
+			dirtyconfig |= modified;
+
+			// POWER MODES
+			string lowmode = autopower.GetSetDefault("Low mode", "Power Saver", out modified).StringValue;
 			LowMode = GetModeByName(lowmode);
 			dirtyconfig |= modified;
-			string highmode = power.GetSetDefault("High mode", "High Performance", out modified).StringValue;
+			string highmode = autopower.GetSetDefault("High mode", "High Performance", out modified).StringValue;
 			HighMode = GetModeByName(highmode);
 			dirtyconfig |= modified;
 
 			var saver = TaskMaster.cfg["Power Save"];
 			saver.Comment = "All these options control when to enforce power save mode regardless of any other options.";
 			SaverOnSessionLock = saver.GetSetDefault("Session lock", true, out modified).BoolValue;
-			dirtyconfig |= modified;
-			SaverOnLogOff = saver.GetSetDefault("Log off", true, out modified).BoolValue;
+			saver["Session lock"].Comment = "Set power saver mode when the workstation is locked, such as by pressing winkey+L.";
 			dirtyconfig |= modified;
 			SaverOnMonitorSleep = saver.GetSetDefault("Monitor sleep", true, out modified).BoolValue;
-			dirtyconfig |= modified;
-			SaverOnScreensaver = saver.GetSetDefault("Screensaver", true, out modified).BoolValue;
 			dirtyconfig |= modified;
 
 			SaverOnUserAFK = saver.GetSetDefault("User idle", 30, out modified).IntValue;
 			dirtyconfig |= modified;
 			UserActiveCancel = saver.GetSetDefault("Cancel on activity", true, out modified).BoolValue;
-
 			dirtyconfig |= modified;
 
 			// --------------------------------------------------------------------------------------------------------
@@ -406,7 +404,7 @@ namespace TaskMaster
 			// CPU SAMPLING
 			// this really should be elsewhere
 			var hwsec = TaskMaster.cfg["Hardware"];
-			CPUSampleInterval = hwsec.GetSetDefault("CPU sample interval", 5, out modified).IntValue.Constrain(1, 15);
+			CPUSampleInterval = hwsec.GetSetDefault("CPU sample interval", 2, out modified).IntValue.Constrain(1, 15);
 			hwsec["CPU sample interval"].Comment = "1 to 15, in seconds. Frequency at which CPU usage is sampled. Recommended value: 1 to 5 seconds.";
 			dirtyconfig |= modified;
 			CPUSampleCount = hwsec.GetSetDefault("CPU sample count", 5, out modified).IntValue.Constrain(3, 30);
@@ -480,7 +478,8 @@ namespace TaskMaster
 						if (CurrentMode == PowerMode.PowerSaver && PauseForSessionLock)
 						{
 							Log.Information("<Power Mode> Session unlocked, restoring normal power.");
-							setMode(DefaultMode, true);
+							PowerMode restoremode = RestoreOriginal ? OriginalMode : DefaultMode;
+							setMode(restoremode, true);
 							if (PauseUnneededSampler) CPUTimer.Start();
 							PauseForSessionLock = false;
 							AutoAdjustAllowed &= ~AutoAdjustPauseBlock;
