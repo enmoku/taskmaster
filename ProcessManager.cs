@@ -369,8 +369,6 @@ namespace TaskMaster
 			}
 		}
 
-		public static int PowerdownDelay { get; set; } = 0;
-
 		static int BatchDelay = 2500;
 		static int RescanDelay = 0; // 5 minutes
 		public static int RescanEverythingFrequency { get; private set; } = 15; // seconds
@@ -424,12 +422,6 @@ namespace TaskMaster
 			}
 			else
 				Log.Information("Per-app rescan frequency: {RescanDelay:N1}m", RescanDelay / 1000 / 60);
-
-			var powersec = TaskMaster.cfg["Power"];
-
-			PowerdownDelay = powersec.GetSetDefault("Watchlist powerdown delay", 0, out modified).IntValue.Constrain(0, 60);
-			powersec["Watchlist powerdown delay"].Comment = "Delay, in seconds (0 to 60, 0 disables), for when to wind down power mode set by watchlist.";
-			dirtyconfig |= modified;
 
 			// --------------------------------------------------------------------------------------------------------
 

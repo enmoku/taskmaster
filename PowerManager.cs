@@ -319,6 +319,7 @@ namespace TaskMaster
 		}
 
 		bool PauseUnneededSampler = false;
+		public static int PowerdownDelay { get; set; } = 0;
 
 		void LoadConfig()
 		{
@@ -331,6 +332,10 @@ namespace TaskMaster
 			string defaultmode = power.GetSetDefault("Default mode", "Balanced", out modified).StringValue;
 			power["Default mode"].Comment = "This is what power plan we fall back on when nothing else is considered.";
 			DefaultMode = GetModeByName(defaultmode);
+			dirtyconfig |= modified;
+
+			PowerdownDelay = power.GetSetDefault("Watchlist powerdown delay", 0, out modified).IntValue.Constrain(0, 60);
+			power["Watchlist powerdown delay"].Comment = "Delay, in seconds (0 to 60, 0 disables), for when to wind down power mode set by watchlist.";
 			dirtyconfig |= modified;
 
 
@@ -414,6 +419,7 @@ namespace TaskMaster
 
 			Log.Information("<CPU> CPU sampler: {Interval}s × {Count} = {Period}s observation period",
 							CPUSampleInterval, CPUSampleCount, CPUSampleCount * CPUSampleInterval);
+			Log.Information("<Power Manager> Watchlist powerdown delay: {Delay}", (PowerdownDelay == 0 ? "Disabled" : (PowerdownDelay + "s")));
 
 			// --------------------------------------------------------------------------------------------------------
 
@@ -632,7 +638,7 @@ namespace TaskMaster
 			if (TaskMaster.DebugPower)
 				Log.Debug("<Power Mode> Saving current power mode for later restoration: {Mode}", CurrentMode.ToString());
 
-			lock (powerLock)
+			lock (power_lock)
 			{
 				SavedMode = CurrentMode;
 
@@ -645,11 +651,11 @@ namespace TaskMaster
 		}
 
 		bool RestoreOriginal = false;
-		public void RestoreMode(object source)
+		public async Task RestoreMode(object source)
 		{
 			if (PauseForSessionLock) return; // TODO: What to do in the unlikely event of this being called while paused?
 
-			lock (powerLock)
+			lock (power_lock)
 			{
 				if (forceModeSources.Contains(source))
 				{
@@ -668,9 +674,19 @@ namespace TaskMaster
 
 				if (RestoreOriginal)
 					SavedMode = OriginalMode;
+			}
 
+			if (PowerdownDelay > 0)
+				await Task.Delay(PowerdownDelay);
+			else
+				await Task.Yield();
+
+			lock (power_lock)
+			{
 				if (forceModeSources.Count == 0)
 				{
+					// TODO: Restore Powerdown delay functionality here.
+
 					if (TaskMaster.DebugPower)
 						Log.Debug("<Power Mode> Restoring power mode!");
 
@@ -697,7 +713,7 @@ namespace TaskMaster
 		{
 			Guid plan;
 			IntPtr ptr = Marshal.AllocHGlobal(Marshal.SizeOf(typeof(IntPtr)));
-			lock (powerLock)
+			lock (power_lock)
 			{
 				if (PowerGetActiveScheme((IntPtr)null, out ptr) == 0)
 				{
@@ -715,7 +731,7 @@ namespace TaskMaster
 			return CurrentMode;
 		}
 
-		static readonly object powerLock = new object();
+		static readonly object power_lock = new object();
 		static readonly object powerLockI = new object();
 
 		public PowerBehaviour Behaviour { get; private set; } = PowerBehaviour.RuleBased;
@@ -725,7 +741,7 @@ namespace TaskMaster
 			Debug.Assert(Behaviour == PowerBehaviour.Auto, "RequestMode is for auto adjusting.");
 			if (PauseForSessionLock) return false;
 
-			lock (powerLock)
+			lock (power_lock)
 			{
 				if (mode != CurrentMode && forceModeSources.Count == 0)
 				{
@@ -745,7 +761,7 @@ namespace TaskMaster
 
 			bool rv = false;
 
-			lock (powerLock)
+			lock (power_lock)
 			{
 				if (forceModeSources.Contains(source))
 				{
@@ -795,7 +811,7 @@ namespace TaskMaster
 			if (verbose && (CurrentMode != mode))
 				Log.Information("<Power Mode> Setting to: {Mode} ({Guid})", mode.ToString(), plan.ToString());
 
-			lock (powerLock)
+			lock (power_lock)
 				PowerSetActiveScheme((IntPtr)null, ref plan);
 		}
 

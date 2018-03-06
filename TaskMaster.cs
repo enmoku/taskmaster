@@ -531,11 +531,11 @@ namespace TaskMaster
 
 			monitorCleanShutdown();
 
-			Log.Information("Verbosity: {Verbosity}", MemoryLog.LevelSwitch.MinimumLevel.ToString());
-			Log.Information("Self-optimize: {SelfOptimize}", (SelfOptimize ? "Enabled" : "Disabled"));
+			Log.Information("<Core> Verbosity: {Verbosity}", MemoryLog.LevelSwitch.MinimumLevel.ToString());
+			Log.Information("<Core> Self-optimize: {SelfOptimize}", (SelfOptimize ? "Enabled" : "Disabled"));
 			//Log.Information("Low memory mode: {LowMemory}", (LowMemory ? "Enabled." : "Disabled."));
-			Log.Information("WMI event watcher: {WMIPolling} (Rate: {WMIRate}s)", (WMIPolling ? "Enabled" : "Disabled"), WMIPollDelay);
-			Log.Information("WMI queries: {WMIQueries}", (WMIQueries ? "Enabled" : "Disabled"));
+			Log.Information("<<WMI>> Event watcher: {WMIPolling} (Rate: {WMIRate}s)", (WMIPolling ? "Enabled" : "Disabled"), WMIPollDelay);
+			Log.Information("<<WMI>> Queries: {WMIQueries}", (WMIQueries ? "Enabled" : "Disabled"));
 
 			// PROTECT USERS FROM TOO HIGH PERMISSIONS
 			bool isadmin = IsAdministrator();
