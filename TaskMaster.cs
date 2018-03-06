@@ -194,20 +194,10 @@ namespace TaskMaster
 			}
 			catch (Exception ex)
 			{
-				Log.Fatal("{Type} : {Message}", ex.GetType().Name, ex.Message);
-				Log.Fatal(ex.StackTrace);
+				Logging.Stacktrace(ex);
 			}
 
-			try
-			{
-				System.Windows.Forms.Application.Exit();
-			}
-			catch (Exception ex)
-			{
-				Log.Fatal("{Type} : {Message}", ex.GetType().Name, ex.Message);
-				Log.Fatal(ex.StackTrace);
-				throw;
-			}
+			Application.Exit(); // if this throws, it deserves to break everything
 		}
 
 		/// <summary>
@@ -655,14 +645,12 @@ namespace TaskMaster
 			if (processmanager != null)
 				await processmanager.Cleanup();
 
-			await ProcessController.Cleanup();
-
 			time.Stop();
 
 			Statistics.Cleanups++;
 			Statistics.CleanupTime += time.Elapsed.TotalSeconds;
 
-			Log.Verbose("Cleanup took: {Time}s [inherent delay of 2s per item tested]", string.Format("{0:N2}", time.Elapsed.TotalSeconds));
+			Log.Verbose("Cleanup took: {Time}s", string.Format("{0:N2}", time.Elapsed.TotalSeconds));
 		}
 
 		public static System.Timers.Timer CleanupTimer;
@@ -761,8 +749,7 @@ namespace TaskMaster
 						}
 						catch (Exception ex)
 						{
-							Log.Fatal("{Type} : {Message}", ex.GetType().Name, ex.Message);
-							Log.Fatal(ex.StackTrace);
+							Logging.Stacktrace(ex);
 							throw;
 						}
 
@@ -786,8 +773,7 @@ namespace TaskMaster
 				catch (Exception ex) // this seems to happen only when Avast cybersecurity is scanning TM
 				{
 					Log.Fatal("Exiting due to initialization failure.");
-					Log.Fatal("{Type} : {Message}", ex.GetType().Name, ex.Message);
-					Log.Fatal(ex.StackTrace);
+					Logging.Stacktrace(ex);
 					//singleton.ReleaseMutex();
 					Log.CloseAndFlush();
 					return;
@@ -826,8 +812,7 @@ namespace TaskMaster
 				catch (Exception ex)
 				{
 					Log.Fatal("Unhandled exception! Dying.");
-					Log.Fatal("{Type} : {Message}", ex.GetType().Name, ex.Message);
-					Log.Fatal(ex.StackTrace);
+					Logging.Stacktrace(ex);
 					// TODO: ACTUALLY DIE
 				}
 
@@ -862,8 +847,7 @@ namespace TaskMaster
 					}
 					catch (Exception ex)
 					{
-						Log.Fatal("{Type} : {Message}", ex.GetType().Name, ex.Message);
-						Log.Fatal(ex.StackTrace);
+						Logging.Stacktrace(ex);
 					}
 
 					try
@@ -873,8 +857,7 @@ namespace TaskMaster
 					}
 					catch (Exception ex)
 					{
-						Log.Fatal("{Type} : {Message}", ex.GetType().Name, ex.Message);
-						Log.Fatal(ex.StackTrace);
+						Logging.Stacktrace(ex);
 					}
 					try
 					{
@@ -883,8 +866,7 @@ namespace TaskMaster
 					}
 					catch (Exception ex)
 					{
-						Log.Fatal("{Type} : {Message}", ex.GetType().Name, ex.Message);
-						Log.Fatal(ex.StackTrace);
+						Logging.Stacktrace(ex);
 					}
 
 					try
@@ -894,8 +876,7 @@ namespace TaskMaster
 					}
 					catch (Exception ex)
 					{
-						Log.Fatal("{Type} : {Message}", ex.GetType().Name, ex.Message);
-						Log.Fatal(ex.StackTrace);
+						Logging.Stacktrace(ex);
 					}
 
 					try
@@ -905,8 +886,7 @@ namespace TaskMaster
 					}
 					catch (Exception ex)
 					{
-						Log.Fatal("{Type} : {Message}", ex.GetType().Name, ex.Message);
-						Log.Fatal(ex.StackTrace);
+						Logging.Stacktrace(ex);
 					}
 
 					try
@@ -916,8 +896,7 @@ namespace TaskMaster
 					}
 					catch (Exception ex)
 					{
-						Log.Fatal("{Type} : {Message}", ex.GetType().Name, ex.Message);
-						Log.Fatal(ex.StackTrace);
+						Logging.Stacktrace(ex);
 					}
 
 					try
@@ -927,15 +906,13 @@ namespace TaskMaster
 					}
 					catch (Exception ex)
 					{
-						Log.Fatal("{Type} : {Message}", ex.GetType().Name, ex.Message);
-						Log.Fatal(ex.StackTrace);
+						Logging.Stacktrace(ex);
 					}
 				}
 				catch (Exception ex)
 				{
-					Log.Fatal("{Type} : {Message}", ex.GetType().Name, ex.Message);
-					Log.Fatal(ex.StackTrace);
-					throw;
+					Logging.Stacktrace(ex);
+					//throw; // throwing is kinda pointless at this point
 				}
 
 				Log.Information("WMI queries: {QueryTime}s [{QueryCount}]", string.Format("{0:N2}", Statistics.WMIquerytime), Statistics.WMIqueries);
@@ -967,9 +944,8 @@ namespace TaskMaster
 			}
 			catch (Exception ex)
 			{
-				Log.Fatal("{Type} : {Message}", ex.GetType().Name, ex.Message);
-				Log.Fatal(ex.StackTrace);
-				throw;
+				Logging.Stacktrace(ex);
+				//throw; // no point
 			}
 			finally // no catch, because this is only to make sure the log is written
 			{

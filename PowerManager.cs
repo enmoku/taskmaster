@@ -615,7 +615,8 @@ namespace TaskMaster
 			{
 				if (PauseUnneededSampler)
 					CPUTimer.Stop();
-				ProcessController.CancelPowerControlEvent();
+
+				TaskMaster.processmanager.CancelPowerWait(); // need nicer way to do this
 			}
 
 			onBehaviourChange?.Invoke(this, Behaviour);
@@ -653,12 +654,14 @@ namespace TaskMaster
 				if (forceModeSources.Contains(source))
 				{
 					forceModeSources.Remove(source);
-					Log.Debug("<Power Mode> Restore functioning as expected.");
+					if (TaskMaster.DebugPower)
+						Log.Debug("<Power Mode> Force mode source freed, {Count} remain.", forceModeSources.Count);
 				}
 				else if (source == null)
 				{
 					forceModeSources.Clear();
-					Log.Debug("<Power Mode> Clearing forced list.");
+					if (TaskMaster.DebugPower)
+						Log.Debug("<Power Mode> Clearing forced list.");
 				}
 				else
 					Log.Error("<Power Mode> Restore mode called for object that never forced the mode.");
@@ -668,6 +671,9 @@ namespace TaskMaster
 
 				if (forceModeSources.Count == 0)
 				{
+					if (TaskMaster.DebugPower)
+						Log.Debug("<Power Mode> Restoring power mode!");
+
 					AutoAdjustAllowed &= ~AutoAdjustForceBlock;
 					if (SavedMode != PowerMode.Undefined && SavedMode != CurrentMode)
 					{
@@ -682,7 +688,8 @@ namespace TaskMaster
 				}
 				else
 				{
-					Log.Debug("<Power Mode> Forced mode still requested by {sources} sources.", forceModeSources.Count);
+					if (TaskMaster.DebugPower)
+						Log.Debug("<Power Mode> Forced mode still requested by {sources} sources.", forceModeSources.Count);
 				}
 			}
 		}

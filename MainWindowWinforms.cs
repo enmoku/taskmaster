@@ -51,6 +51,8 @@ namespace TaskMaster
 		{
 			saveUIState();
 
+			if (!TaskMaster.Trace) return;
+
 			//Console.WriteLine("WindowClose = " + e.CloseReason);
 			switch (e.CloseReason)
 			{
@@ -70,16 +72,16 @@ namespace TaskMaster
 					*/
 					break;
 				case CloseReason.WindowsShutDown:
-					Log.Information("Exit: Windows shutting down.");
+					Log.Debug("Exit: Windows shutting down.");
 					break;
 				case CloseReason.TaskManagerClosing:
-					Log.Information("Exit: Task manager told us to close.");
+					Log.Debug("Exit: Task manager told us to close.");
 					break;
 				case CloseReason.ApplicationExitCall:
-					Log.Information("Exit: User asked to close.");
+					Log.Debug("Exit: User asked to close.");
 					break;
 				default:
-					Log.Warning("Exit: Unidentified close reason: {CloseReason}", e.CloseReason);
+					Log.Debug("Exit: Unidentified close reason: {CloseReason}", e.CloseReason);
 					break;
 			}
 			//CLEANUP: Console.WriteLine("WindowClose.Handled");
@@ -136,7 +138,8 @@ namespace TaskMaster
 			micVol.Minimum = Convert.ToDecimal(micmon.Minimum);
 			micVol.Value = Convert.ToInt32(micmon.Volume);
 
-			micmon.enumerate().ForEach((dev) => micList.Items.Add(new ListViewItem(new string[] { dev.Name, dev.GUID })));
+			foreach (var dev in micmon.enumerate())
+				micList.Items.Add(new ListViewItem(new string[] { dev.Name, dev.GUID }));
 
 			// TODO: Hook device changes
 			micmon.VolumeChanged += volumeChangeDetected;
@@ -196,13 +199,11 @@ namespace TaskMaster
 
 			processmanager.onInstanceHandling += ProcessNewInstanceCount;
 			processmanager.PathCacheUpdate += PathCacheUpdate;
-			processmanager.onActiveHandled += FgWaitListHandler;
+			processmanager.onActiveHandled += ExitWaitListHandler;
+			processmanager.onWaitForExitEvent += ExitWaitListHandler;
 			PathCacheUpdate(null, null);
 
-			foreach (ProcessController item in processmanager.watchlist)
-			{
-				AddToProcessList(item);
-			}
+			foreach (var prc in processmanager.watchlist) AddToProcessList(prc);
 
 			rescanRequest += processmanager.ProcessEverythingRequest;
 			if (TaskMaster.PagingEnabled)
@@ -210,11 +211,12 @@ namespace TaskMaster
 
 			ProcessController.onLocate += PathLocatedEvent;
 			ProcessController.onTouch += ProcAdjust;
-			ProcessController.PowermodeExitWaitEvent += ExitWaitListHandler;
 
-			processingCount.Value = ProcessManager.Handling;
+			lock (processingCountLock)
+				processingCount.Value = ProcessManager.Handling;
 
-			var items = ProcessController.getWaitingExit();
+			var items = processmanager.getExitWaitList();
+
 			foreach (var bu in items)
 			{
 				ExitWaitListHandler(this, new ProcessEventArgs() { Control = null, State = ProcessEventArgs.ProcessState.Starting, Info = bu });
@@ -225,7 +227,7 @@ namespace TaskMaster
 				var items2 = processmanager.getWaitingActive();
 				foreach (var bu in items2)
 				{
-					FgWaitListHandler(this, new ProcessEventArgs() { Control = null, Info = bu, State = ProcessEventArgs.ProcessState.Found });
+					ExitWaitListHandler(this, new ProcessEventArgs() { Control = null, Info = bu, State = ProcessEventArgs.ProcessState.Found });
 				}
 			}
 		}
@@ -323,9 +325,6 @@ namespace TaskMaster
 
 		ListView exitwaitlist;
 		Dictionary<int, ListViewItem> exitwaitlistmap;
-
-		ListView fgwaitlist;
-		Dictionary<int, ListViewItem> fgwaitlistmap;
 
 		void UserMicVol(object sender, EventArgs e)
 		{
@@ -1028,7 +1027,7 @@ namespace TaskMaster
 				FullRowSelect = true,
 				HeaderStyle = ColumnHeaderStyle.None,
 				Scrollable = true,
-				Height = 210,
+				Height = 180,
 				Width = tabLayout.Width - 16,
 			};
 
@@ -1326,30 +1325,6 @@ namespace TaskMaster
 
 			powerlayout.Controls.Add(new Label()
 			{
-				Text = "Power mode exit wait list...",
-				TextAlign = System.Drawing.ContentAlignment.MiddleLeft,
-				AutoSize = true,
-				Dock = DockStyle.Left,
-				Padding = new Padding(6)
-			});
-
-			exitwaitlist = new ListView()
-			{
-				AutoSize = true,
-				Height = 80,
-				Width = tabLayout.Width - 12, // FIXME: 3 for the bevel, but how to do this "right"?
-				FullRowSelect = true,
-				View = View.Details,
-			};
-			exitwaitlistmap = new Dictionary<int, ListViewItem>();
-
-			exitwaitlist.Columns.Add("Id", 50);
-			exitwaitlist.Columns.Add("Executable", 280);
-
-			powerlayout.Controls.Add(exitwaitlist);
-
-			powerlayout.Controls.Add(new Label()
-			{
 				Text = "Power mode autobalancing tracker...",
 				TextAlign = System.Drawing.ContentAlignment.MiddleLeft,
 				AutoSize = true,
@@ -1425,38 +1400,39 @@ namespace TaskMaster
 			powerDebugTab.Controls.Add(powerlayout);
 
 			// -------------------------------------------------------------------------------------------------------
-			var fglayout = new TableLayoutPanel()
+			var exitlayout = new TableLayoutPanel()
 			{
 				ColumnCount = 1,
 				AutoSize = true,
 				Dock = DockStyle.Top
 			};
 
-			fglayout.Controls.Add(new Label()
+			exitlayout.Controls.Add(new Label()
 			{
-				Text = "Foreground wait list...",
+				Text = "Exit wait list...",
 				TextAlign = System.Drawing.ContentAlignment.MiddleLeft,
 				AutoSize = true,
 				Dock = DockStyle.Left,
 				Padding = new Padding(6)
 			});
 
-			fgwaitlist = new ListView()
+			exitwaitlist = new ListView()
 			{
 				AutoSize = true,
-				Height = 80,
+				Height = 210,
 				Width = tabLayout.Width - 12, // FIXME: 3 for the bevel, but how to do this "right"?
 				FullRowSelect = true,
 				View = View.Details,
 			};
-			fgwaitlistmap = new Dictionary<int, ListViewItem>();
+			exitwaitlistmap = new Dictionary<int, ListViewItem>();
 
-			fgwaitlist.Columns.Add("Id", 50);
-			fgwaitlist.Columns.Add("Executable", 280);
-			fgwaitlist.Columns.Add("State", 160);
+			exitwaitlist.Columns.Add("Id", 50);
+			exitwaitlist.Columns.Add("Executable", 280);
+			exitwaitlist.Columns.Add("State", 160);
+			exitwaitlist.Columns.Add("Power", 80);
 
-			fglayout.Controls.Add(fgwaitlist);
-			ProcessDebugTab.Controls.Add(fglayout);
+			exitlayout.Controls.Add(exitwaitlist);
+			ProcessDebugTab.Controls.Add(exitlayout);
 
 			// End: UI Log
 
@@ -1493,46 +1469,15 @@ namespace TaskMaster
 		}
 
 		readonly object exitwaitlist_lock = new object();
-		public async void ExitWaitListHandler(object sender, ProcessEventArgs ev)
-		{
-			lock (exitwaitlist_lock)
-			{
-				if (ev.State == ProcessEventArgs.ProcessState.Starting)
-				{
-					var li = new ListViewItem(new string[] { ev.Info.Id.ToString(), ev.Info.Name });
-					//li.Name = ev.Info.Id.ToString();
-					try
-					{
-						exitwaitlistmap.Add(ev.Info.Id, li);
-						exitwaitlist.Items.Add(li);
-					}
-					catch { /* NOP, System.ArgumentException, already in list */ }
-				}
-				else if (ev.State == ProcessEventArgs.ProcessState.Exiting || ev.State == ProcessEventArgs.ProcessState.Cancel)
-				{
-					ListViewItem li = null;
-					if (exitwaitlistmap.TryGetValue(ev.Info.Id, out li))
-					{
-						try
-						{
-							exitwaitlist.Items.Remove(li);
-							exitwaitlistmap.Remove(ev.Info.Id);
-						}
-						catch { }
-					}
-				}
-			}
-		}
 
-		readonly object fgwaitlist_lock = new object();
-		public async void FgWaitListHandler(object sender, ProcessEventArgs ev)
+		public async void ExitWaitListHandler(object sender, ProcessEventArgs ev)
 		{
 			await Task.Yield();
 
-			lock (fgwaitlist_lock)
+			lock (exitwaitlist_lock)
 			{
 				ListViewItem li = null;
-				if (fgwaitlistmap.TryGetValue(ev.Info.Id, out li))
+				if (exitwaitlistmap.TryGetValue(ev.Info.Id, out li))
 				{
 					//Log.Debug("WaitlistHandler: {Name} = {State}", ev.Info.Name, ev.State.ToString());
 					try
@@ -1540,15 +1485,17 @@ namespace TaskMaster
 						switch (ev.State)
 						{
 							case ProcessEventArgs.ProcessState.Exiting:
-								fgwaitlist.Items.Remove(li);
-								fgwaitlistmap.Remove(ev.Info.Id);
+								exitwaitlist.Items.Remove(li);
+								exitwaitlistmap.Remove(ev.Info.Id);
 								break;
 							case ProcessEventArgs.ProcessState.Found:
 							case ProcessEventArgs.ProcessState.Reduced:
 								li.SubItems[2].Text = "Background";
 								break;
 							case ProcessEventArgs.ProcessState.Restored:
+								exitwaitlist.Items.RemoveAt(li.Index);
 								li.SubItems[2].Text = "Foreground";
+								exitwaitlist.Items.Insert(0, li);
 								li.EnsureVisible();
 								break;
 							default:
@@ -1558,20 +1505,28 @@ namespace TaskMaster
 					}
 					catch (Exception ex)
 					{
-						Log.Fatal("{Type} : {Message}", ex.GetType().Name, ex.Message);
-						Log.Fatal(ex.StackTrace);
+						Logging.Stacktrace(ex);
 					}
 				}
 				else
 				{
-					li = new ListViewItem(new string[] { ev.Info.Id.ToString(), ev.Info.Name, "Unknown" });
-					try
+					if (ev.State == ProcessEventArgs.ProcessState.Starting)
 					{
-						fgwaitlist.Items.Add(li);
-						fgwaitlistmap.Add(ev.Info.Id, li);
-						li.EnsureVisible();
+						li = new ListViewItem(new string[] {
+							ev.Info.Id.ToString(),
+							ev.Info.Name,
+							"Unknown",
+							(Bit.IsSet(ev.Info.Flags, (int)ProcessFlags.PowerWait) ? "FORCED" : "n/a")
+						});
+
+						try
+						{
+							exitwaitlist.Items.Add(li);
+							exitwaitlistmap.Add(ev.Info.Id, li);
+							li.EnsureVisible();
+						}
+						catch { }
 					}
-					catch { }
 				}
 			}
 		}
@@ -1699,14 +1654,8 @@ namespace TaskMaster
 					var li = watchlistRules.SelectedItems[0];
 					string name = li.SubItems[NameColumn].Text;
 					ProcessController pc = null;
-					foreach (var tpc in TaskMaster.processmanager.watchlist)
-					{
-						if (name == tpc.FriendlyName)
-						{
-							pc = tpc;
-							break;
-						}
-					}
+
+					pc = processmanager.watchlist.Find((prc) => prc.FriendlyName == name);
 
 					if (pc == null)
 					{
@@ -1801,7 +1750,7 @@ namespace TaskMaster
 			{
 				//Log.Verbose("Filling GUI log.");
 				var logcopy = MemoryLog.Copy();
-				foreach (LogEventArgs evmsg in logcopy)
+				foreach (var evmsg in logcopy)
 				{
 					loglist.Items.Add(evmsg.Message);
 					loglist_stamp.Add(DateTime.Now);
@@ -1867,13 +1816,13 @@ namespace TaskMaster
 
 			this.netmonitor = net;
 
-			foreach (NetDevice dev in net.Interfaces())
+			foreach (var dev in net.Interfaces())
 			{
 				var li = new ListViewItem(new string[] {
 					dev.Name,
 					dev.Type.ToString(),
 					dev.Status.ToString(),
-					HumanInterface.ByteRateString(dev.Speed),
+					HumanInterface.ByteString(dev.Speed),
 					dev.IPv4Address.ToString() ?? "n/a",
 					dev.IPv6Address.ToString() ?? "n/a",
 						"n/a",
@@ -2100,11 +2049,11 @@ namespace TaskMaster
 				{
 					ProcessController.onTouch -= ProcAdjust;
 					ProcessController.onLocate -= PathLocatedEvent;
-					ProcessController.PowermodeExitWaitEvent -= ExitWaitListHandler;
+					processmanager.onWaitForExitEvent -= ExitWaitListHandler; //ExitWaitListHandler;
 					rescanRequest -= processmanager.ProcessEverythingRequest;
 					processmanager.onInstanceHandling -= ProcessNewInstanceCount;
 					processmanager.PathCacheUpdate -= PathCacheUpdate;
-					processmanager.onActiveHandled -= FgWaitListHandler;
+					processmanager.onActiveHandled -= ExitWaitListHandler;
 					if (TaskMaster.PagingEnabled)
 						pagingRequest -= processmanager.PageEverythingRequest;
 					processmanager = null;
@@ -2139,8 +2088,6 @@ namespace TaskMaster
 
 				exitwaitlist.Dispose();
 				exitwaitlistmap.Clear();
-				fgwaitlist.Dispose();
-				fgwaitlistmap.Clear();
 			}
 
 			disposed = true;

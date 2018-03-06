@@ -271,7 +271,7 @@ namespace TaskMaster
 			if (e.Button == MouseButtons.Left)
 			{
 				RestoreMainWindow(sender, null);
-				TaskMaster.mainwindow.UnloseWindowRequest(sender, null);
+				TaskMaster.mainwindow.UnloseWindowRequest(sender, null); // null reference crash
 			}
 		}
 
@@ -502,14 +502,12 @@ var runtime = Environment.GetCommandLineArgs()[0];
 						//return false;
 					}
 				}
-				return false;
 			}
 			catch (Exception ex)
 			{
-				Log.Fatal("{Type} : {Message}", ex.GetType().Name, ex.Message);
-				Log.Fatal(ex.StackTrace);
-				throw;
+				Logging.Stacktrace(ex);
 			}
+			return false;
 		}
 	}
 }

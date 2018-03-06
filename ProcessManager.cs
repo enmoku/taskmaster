@@ -32,6 +32,8 @@ using System.Diagnostics;
 using System.Linq;
 using Serilog;
 using System.Runtime.InteropServices;
+using System.Runtime.CompilerServices;
+using System.Windows.Forms;
 
 namespace TaskMaster
 {
@@ -47,13 +49,21 @@ namespace TaskMaster
 		public int Id { get; set; } = -1;
 	}
 
-	public struct BasicProcessInfo
+	public class BasicProcessInfo
 	{
 		public string Name;
 		public string Path;
 		public int Id;
 		public Process Process;
-		public DateTime Start;	}
+
+		public int Flags;
+	}
+
+	enum ProcessFlags
+	{
+		PowerWait = 1 << 6,
+		ActiveWait = 1 << 7
+	}
 
 	sealed public class ProcessManager : IDisposable
 	{
@@ -102,13 +112,10 @@ namespace TaskMaster
 		/// <param name="executable">Executable.</param>
 		public ProcessController getControl(string executable)
 		{
-			foreach (ProcessController ctrl in watchlist)
-			{
-				if (ctrl.Executable == executable)
-					return ctrl;
-			}
-			Log.Error("{ExecutableName} was not found!", executable);
-			return null;
+			ProcessController prc = watchlist.Find((ctrl) => ctrl.Executable == executable);
+			if (prc == null)
+				Log.Error("{ExecutableName} was not found!", executable);
+			return prc;
 		}
 
 		/// <summary>
@@ -125,13 +132,13 @@ namespace TaskMaster
 			{
 				if (pathinit.Count > 0)
 				{
-					foreach (ProcessController pc in pathinit.ToArray())
+					for (int i = pathinit.Count - 1; i != 0; i--)
 					{
-						if (pc.Locate())
+						if (pathinit[i].Locate())
 						{
-							watchlist.Add(pc);
-							pathinit.Remove(pc);
+							watchlist.Add(pathinit[i]);
 							WatchlistWithPath += 1;
+							pathinit.RemoveAt(i);
 						}
 					}
 				}
@@ -213,7 +220,7 @@ namespace TaskMaster
 			EmptyWorkingSet(Process.GetCurrentProcess().Handle);
 			long nws = Process.GetCurrentProcess().WorkingSet64;
 			saved += (ws - nws);
-			Log.Verbose("Self-paged {PagedMBs:N1} MBs.", saved / 1000000);
+			Log.Verbose("Self-paged {PagedMB}.", HumanInterface.ByteString(saved));
 
 			Process[] procs = Process.GetProcesses();
 
@@ -259,9 +266,8 @@ namespace TaskMaster
 			catch (Exception ex)
 			{
 				Log.Fatal("Uncaught exception while paging");
-				Log.Fatal("{Type} : {Message}", ex.GetType().Name, ex.Message);
-				Log.Fatal(ex.StackTrace);
-				throw;
+				Logging.Stacktrace(ex);
+				return;//throw; // event handler, throwing is a nogo 
 			}
 			finally
 			{
@@ -289,9 +295,8 @@ namespace TaskMaster
 			catch (Exception ex)
 			{
 				Log.Warning("Scan everything failure.");
-				Log.Error("{Type} : {Message}", ex.GetType().Name, ex.Message);
-				Log.Error(ex.StackTrace);
-				throw;
+				Logging.Stacktrace(ex);
+				return; //throw; // event handler, no can throw
 			}
 		}
 
@@ -347,7 +352,7 @@ namespace TaskMaster
 					if (TaskMaster.Trace)
 						Log.Verbose("Checking [{ProcessIterator}/{ProcessCount}] '{ProcessName}' (#{Pid})", ++i, procs.Length - 2, name, pid); // -2 for Idle&System
 
-					CheckProcess(new BasicProcessInfo { Process = process, Name = name, Id = pid, Path = null }, schedule_next: false);
+					CheckProcess(new BasicProcessInfo { Process = process, Name = name, Id = pid, Path = null, Flags = 0 }, schedule_next: false);
 				}
 
 				// DEBUG: if (TaskMaster.VeryVerbose) Console.WriteLine(string.Format("Handling: -{0} = {1} --- ProcessEverything", procs.Length, Handling));
@@ -363,8 +368,7 @@ namespace TaskMaster
 			}
 			catch (Exception ex)
 			{
-				Log.Fatal("{Type} : {Message}", ex.GetType().Name, ex.Message);
-				Log.Fatal(ex.StackTrace);
+				Logging.Stacktrace(ex);
 			}
 			finally
 			{
@@ -518,7 +522,6 @@ namespace TaskMaster
 			int newsettings = coreperf.SettingCount;
 			if (dirtyconfig) TaskMaster.MarkDirtyINI(TaskMaster.cfg);
 
-
 			foreach (SharpConfig.Section section in appcfg)
 			{
 				if (!section.Contains("Image") && !section.Contains("Path"))
@@ -663,60 +666,121 @@ namespace TaskMaster
 			Log.Information("Path-based watchlist: {Items} items", WatchlistWithPath);
 		}
 
-		void loadCascades()
-		{
-			SharpConfig.Configuration appcfg = TaskMaster.loadConfig(cascadefile);
-
-			foreach (var section in appcfg)
-			{
-				try
-				{
-					string name = section.Name;
-					if (!section.Contains("Image"))
-					{
-						Log.Error("Cascade '{Name}' has no image name.", name);
-						continue;
-					}
-					if (!section.Contains("Affinity"))
-					{
-						Log.Error("Cascde '{Name}' has no affinity.", name);
-						continue;
-					}
-					if (!section.Contains("Trigger"))
-					{
-						Log.Error("Cascade '{Name}' has no trigger.", name);
-						continue;
-					}
-
-					string exe = section["Image"].StringValue;
-					int priority = section.TryGet("Priority")?.IntValue ?? 1;
-					int affinity = section.TryGet("Affinity")?.IntValue ?? 0;
-					bool page = section.TryGet("Page")?.BoolValue ?? true;
-
-					var b = new CascadeSettings
-					{
-						Page = page
-					};
-				}
-				catch
-				{
-					// NOP, don't care
-				}
-			}
-		}
-
 		string LowerCase(string str)
 		{
 			Debug.Assert(!string.IsNullOrEmpty(str));
 			return TaskMaster.CaseSensitive ? str : str.ToLower();
 		}
 
-		readonly object foreground_lock = new object();
-		Dictionary<int, BasicProcessInfo> ForegroundApps = new Dictionary<int, BasicProcessInfo>();
+		readonly object waitforexit_lock = new object();
+		Dictionary<int, BasicProcessInfo> WaitForExitList = new Dictionary<int, BasicProcessInfo>();
+
+		void WaitForExitTriggered(BasicProcessInfo info)
+		{
+			if (TaskMaster.DebugForeground || TaskMaster.DebugPower)
+				Log.Debug("{Exec} exited", info.Name);
+
+			lock (waitforexit_lock)
+			{
+				try
+				{
+					if (Bit.IsSet(info.Flags, (int)ProcessFlags.ActiveWait))
+					{
+						lock (foreground_lock)
+						{
+							ForegroundWaitlist.Remove(info.Id);
+						}
+					}
+
+					if (Bit.IsSet(info.Flags, (int)ProcessFlags.PowerWait))
+					{
+						TaskMaster.powermanager.RestoreMode(info.Process);
+					}
+
+					WaitForExitList.Remove(info.Id);
+				}
+				catch (Exception ex)
+				{
+					Logging.Stacktrace(ex);
+				}
+			}
+
+			onWaitForExitEvent?.Invoke(this, new ProcessEventArgs() { Control = null, Info = info, State = ProcessEventArgs.ProcessState.Exiting });
+		}
+
+		public void CancelPowerWait()
+		{
+			int cancelled = 0;
+
+			lock (waitforexit_lock)
+			{
+				try
+				{
+					var items = WaitForExitList.Values;
+					foreach (var info in items)
+					{
+						if (Bit.IsSet(info.Flags, (int)ProcessFlags.PowerWait))
+						{
+							if (!Bit.IsSet(info.Flags, (int)ProcessFlags.ActiveWait))
+							{
+								info.Process.EnableRaisingEvents = false;
+								WaitForExitList.Remove(info.Id);
+							}
+							onWaitForExitEvent?.Invoke(null, new ProcessEventArgs() { Control = null, Info = info, State = ProcessEventArgs.ProcessState.Cancel });
+							cancelled++;
+						}
+					}
+				}
+				catch (Exception ex)
+				{
+					Logging.Stacktrace(ex);
+				}
+			}
+
+			if (cancelled > 0)
+				Log.Information("Cancelled power mode wait on {Count} process(es).", cancelled);
+		}
+
+		public bool WaitForExit(BasicProcessInfo info)
+		{
+			bool rv = false;
+			try
+			{
+				lock (waitforexit_lock)
+				{
+					if (!WaitForExitList.ContainsKey(info.Id))
+					{
+						WaitForExitList.Add(info.Id, info);
+						info.Process.EnableRaisingEvents = true;
+						info.Process.Exited += (s, e) => { WaitForExitTriggered(info); };
+						rv = true;
+
+						onWaitForExitEvent?.Invoke(this, new ProcessEventArgs() { Control = null, Info = info, State = ProcessEventArgs.ProcessState.Starting });
+					}
+					else if (!Bit.IsSet(WaitForExitList[info.Id].Flags, info.Flags))
+					{
+						WaitForExitList[info.Id].Flags |= info.Flags;
+						rv = true;
+					}
+				}
+			}
+			catch (Exception ex)
+			{
+				Logging.Stacktrace(ex);
+			}
+			return rv;
+		}
+
+		public BasicProcessInfo[] getExitWaitList()
+		{
+			return WaitForExitList.Values.ToArray();
+		}
 
 		int PreviousForegroundId = -1;
 		ProcessController PreviousForegroundController = null;
 		BasicProcessInfo PreviousForegroundInfo;
+
+		readonly object foreground_lock = new object();
 		Dictionary<int, ProcessController> ForegroundWaitlist = new Dictionary<int, ProcessController>(6);
 
 		public void ForegroundAppChangedEvent(object sender, WindowChangedArgs ev)
@@ -726,22 +790,29 @@ namespace TaskMaster
 
 			try
 			{
-				if (PreviousForegroundId != ev.Id) // testing previous to current might be superfluous
+				if (PreviousForegroundInfo != null)
 				{
-					if (PreviousForegroundController != null)
+					if (PreviousForegroundInfo.Id != ev.Id) // testing previous to current might be superfluous
 					{
-						//Log.Debug("PUTTING PREVIOUS FOREGROUND APP to BACKGROUND");
-						PreviousForegroundController.Quell(PreviousForegroundInfo);
-						onActiveHandled?.Invoke(this, new ProcessEventArgs() { Control = PreviousForegroundController, Info = PreviousForegroundInfo, State = ProcessEventArgs.ProcessState.Reduced });
+						if (PreviousForegroundController != null)
+						{
+							//Log.Debug("PUTTING PREVIOUS FOREGROUND APP to BACKGROUND");
+							PreviousForegroundController.Quell(PreviousForegroundInfo);
+							onActiveHandled?.Invoke(this, new ProcessEventArgs() { Control = PreviousForegroundController, Info = PreviousForegroundInfo, State = ProcessEventArgs.ProcessState.Reduced });
+						}
+					}
+					else
+					{
+						Log.Debug("<Foreground> Changed but the app is still the same. Curious, don't you think?");
 					}
 				}
 
-				lock (foreground_lock)
+				lock (waitforexit_lock)
 				{
 					ProcessController prc = null;
 					if (ForegroundWaitlist.TryGetValue(ev.Id, out prc))
 					{
-						BasicProcessInfo info = ForegroundApps[ev.Id];
+						BasicProcessInfo info = WaitForExitList[ev.Id];
 
 						if (TaskMaster.DebugForeground)
 							Log.Debug("[{FriendlyName}] {Exec} (#{Pid}) on foreground!", prc.FriendlyName, info.Name, info.Id);
@@ -755,20 +826,19 @@ namespace TaskMaster
 
 						return;
 					}
-					PreviousForegroundInfo = default(BasicProcessInfo);
+					PreviousForegroundInfo = null;
 					PreviousForegroundController = null;
 				}
 			}
 			catch (Exception ex)
 			{
-				Log.Fatal("{Type} : {Message}", ex.GetType().Name, ex.Message);
-				Log.Fatal(ex.StackTrace);
+				Logging.Stacktrace(ex);
 			}
 		}
 
 		public BasicProcessInfo[] getWaitingActive()
 		{
-			return ForegroundApps.Values.ToArray();
+			return WaitForExitList.Values.ToArray();
 		}
 
 		/// <summary>
@@ -819,7 +889,7 @@ namespace TaskMaster
 
 		// TODO: ADD CACHE: pid -> process name, path, process
 
-		bool GetPath(ref BasicProcessInfo info)
+		bool GetPath(BasicProcessInfo info)
 		{
 			Debug.Assert(info.Path == null, "GetPath called even though path known.");
 
@@ -872,10 +942,9 @@ namespace TaskMaster
 			}
 			catch (InvalidOperationException ex)
 			{
-				Log.Fatal("Invalid access to Process");
-				Log.Error("{Type} : {Message}", ex.GetType().Name, ex.Message);
-				Log.Error(ex.StackTrace);
-				throw;
+				Log.Fatal("INVALID ACCESS to Process");
+				Logging.Stacktrace(ex);
+				return ProcessState.AccessDenied; //throw; // no point throwing
 			}
 			catch (System.ComponentModel.Win32Exception ex)
 			{
@@ -910,7 +979,7 @@ namespace TaskMaster
 
 			if (info.Path == null)
 			{
-				GetPath(ref info);
+				GetPath(info);
 
 				if (info.Path == null)
 					return ProcessState.AccessDenied;
@@ -951,8 +1020,7 @@ namespace TaskMaster
 						catch (Exception ex)
 						{
 							Log.Fatal("[{FriendlyName}] '{Exec}' (#{Pid}) MASSIVE FAILURE!!!", pc.FriendlyName, info.Name, info.Id);
-							Log.Error("{Type} : {Message}", ex.GetType().Name, ex.Message);
-							Log.Error(ex.StackTrace);
+							Logging.Stacktrace(ex);
 							rv = ProcessState.AccessDenied;
 						}
 
@@ -1081,19 +1149,13 @@ namespace TaskMaster
 		{
 			if (!prc.ForegroundOnly) return;
 
-			lock (foreground_lock)
+			lock (waitforexit_lock)
 			{
 				if (!ForegroundWaitlist.ContainsKey(info.Id))
 				{
 					ForegroundWaitlist.Add(info.Id, prc);
-					ForegroundApps.Add(info.Id, info);
-
-					info.Process.EnableRaisingEvents = true;
-					info.Process.Exited += (sender, e) =>
-					{
-						Log.Debug("{Exec} exited", info.Name);
-						ForegroundWatchEnd(info);
-					};
+					info.Flags |= (int)ProcessFlags.ActiveWait;
+					WaitForExit(info);
 
 					if (TaskMaster.DebugForeground)
 						Log.Debug("[{FriendlyName}] {Exec} (#{Pid}) added to foreground watchlist.", prc.FriendlyName, info.Name, info.Id);
@@ -1106,25 +1168,6 @@ namespace TaskMaster
 			}
 
 			onActiveHandled?.Invoke(this, new ProcessEventArgs() { Control = prc, Info = info, State = ProcessEventArgs.ProcessState.Found });
-		}
-
-		void ForegroundWatchEnd(BasicProcessInfo info)
-		{
-			lock (foreground_lock)
-			{
-				try
-				{
-					ForegroundApps.Remove(info.Id);
-				}
-				catch { } // not there
-				try
-				{
-					ForegroundWaitlist.Remove(info.Id);
-				}
-				catch { } // not there
-			}
-
-			onActiveHandled?.Invoke(this, new ProcessEventArgs() { Control = null, Info = info, State = ProcessEventArgs.ProcessState.Exiting });
 		}
 
 		ProcessState CheckProcess(BasicProcessInfo info, bool schedule_next = true)
@@ -1164,8 +1207,7 @@ namespace TaskMaster
 				catch (Exception ex)
 				{
 					Log.Fatal("[{FriendlyName}] '{Exec}' (#{Pid}) MASSIVE FAILURE!!!", pc.FriendlyName, info.Name, info.Id);
-					Log.Error("{Type} : {Message}", ex.GetType().Name, ex.Message);
-					Log.Error(ex.StackTrace);
+					Logging.Stacktrace(ex);
 					state = ProcessState.AccessDenied;
 				}
 				return state; // execontrol had this, we don't care about anything else for this.
@@ -1214,9 +1256,8 @@ namespace TaskMaster
 				catch (Exception ex)
 				{
 					Log.Warning("Error batch processing new instances.");
-					Log.Error("{Type} : {Message}", ex.GetType().Name, ex.Message);
-					Log.Error(ex.StackTrace);
-					throw;
+					Logging.Stacktrace(ex);
+					return; //throw; // no throwing in async
 				}
 			}));
 		}
@@ -1238,16 +1279,14 @@ namespace TaskMaster
 			{
 				foreach (var info in list)
 				{
-					//Console.WriteLine("Delayed.Processing = {0}, pid:{1}, process:{2}", info.Name, info.Id, (info.Process!=null));
-					var rv = CheckProcess(info);
+					CheckProcess(info);
 				}
 			}
 			catch (Exception ex)
 			{
 				Log.Fatal("Uncaught exception while processing new instances");
-				Log.Fatal("{Type} : {Message}", ex.GetType().Name, ex.Message);
-				Log.Fatal(ex.StackTrace);
-				throw;
+				Logging.Stacktrace(ex);
+				return; // throw; // no point
 			}
 			finally
 			{
@@ -1262,6 +1301,7 @@ namespace TaskMaster
 
 		public event EventHandler<InstanceEventArgs> onInstanceHandling;
 		public event EventHandler<ProcessEventArgs> onActiveHandled;
+		public event EventHandler<ProcessEventArgs> onWaitForExitEvent;
 
 		// This needs to return faster
 		async void NewInstanceTriage(object sender, System.Management.EventArrivedEventArgs e)
@@ -1279,22 +1319,19 @@ namespace TaskMaster
 			{
 				targetInstance = (System.Management.ManagementBaseObject)e.NewEvent.Properties["TargetInstance"].Value;
 				pid = Convert.ToInt32((string)targetInstance.Properties["Handle"].Value);
-				//targetInstance.Properties.Cast<System.Management.PropertyData>().ToList().ForEach(p => Console.WriteLine("{0}={1}", p.Name, p.Value));
-				//ExecutablePath=fullpath
 				path = (string)(targetInstance.Properties["ExecutablePath"].Value);
 				name = System.IO.Path.GetFileNameWithoutExtension(path);
 				if (string.IsNullOrEmpty(name))
 				{
 					// this happens when we have insufficient permissions.
-					// as such, NOP
+					// as such, NOP.. shouldn't bother testing it here even.
 				}
 			}
 			catch (Exception ex)
 			{
-				Log.Error("{Type} : {Message}", ex.GetType().Name, ex.Message);
-				Log.Error(ex.StackTrace);
 				Log.Error("<<WMI>> Failed to extract process ID.");
-				throw;
+				Logging.Stacktrace(ex);
+				return; // would throw but this is eventhandler
 			}
 			finally
 			{
@@ -1365,7 +1402,7 @@ namespace TaskMaster
 				Id = pid,
 				Process = process,
 				Path = path,
-				Start = start
+				Flags = 0
 			};
 
 			if (BatchProcessing)
@@ -1394,9 +1431,8 @@ namespace TaskMaster
 				catch (Exception ex)
 				{
 					Log.Fatal("Uncaught exception while handling new instance");
-					Log.Fatal("{Type} : {Message}", ex.GetType().Name, ex.Message);
-					Log.Fatal(ex.StackTrace);
-					throw;
+					Logging.Stacktrace(ex);
+					return; // would throw but this is event handler
 				}
 				finally
 				{
@@ -1498,8 +1534,7 @@ namespace TaskMaster
 			}
 			catch (Exception ex)
 			{
-				Log.Fatal("{Type} : {Message}", ex.GetType().Name, ex.Message);
-				Log.Fatal(ex.StackTrace);
+				Logging.Stacktrace(ex);
 				throw new InitFailure("<<WMI>> Event watcher initialization failure");
 			}
 
@@ -1538,7 +1573,6 @@ namespace TaskMaster
 		}
 
 		const string watchfile = "Watchlist.ini";
-		const string cascadefile = "Watchlist.Cascade.ini";
 		const string statfile = "Watchlist.Statistics.ini";
 		// ctor, constructor
 		public ProcessManager()
@@ -1590,22 +1624,40 @@ namespace TaskMaster
 		{
 			await Task.Yield();
 
-			lock (foreground_lock)
+			lock (waitforexit_lock)
 			{
-				var items = ForegroundApps.Values;
+				var items = WaitForExitList.Values;
 				foreach (var info in items)
 				{
 					try
 					{
 						info.Process.Refresh();
-						info.Process.WaitForExit(2000); // arbitrary
+						info.Process.WaitForExit(20);
+					}
+					catch { }
+				}
+			}
+
+			await Task.Delay(1000);
+
+			lock (waitforexit_lock)
+			{
+				var items = WaitForExitList.Values;
+				foreach (var info in items)
+				{
+					try
+					{
+						info.Process.Refresh();
+						info.Process.WaitForExit(20);
 						if (info.Process.HasExited)
 						{
-							ForegroundWatchEnd(info);
+							WaitForExitTriggered(info);
 						}
 					}
-					catch
+					catch (Exception ex)
 					{
+						Logging.Stacktrace(ex);
+						WaitForExitTriggered(info); // potentially unwanted behaviour, but it's better this way
 					}
 				}
 			}
@@ -1626,6 +1678,9 @@ namespace TaskMaster
 			{
 				if (TaskMaster.Trace)
 					Log.Verbose("Disposing process manager...");
+
+				CancelPowerWait();
+				WaitForExitList.Clear();
 
 				try
 				{
@@ -1666,9 +1721,8 @@ namespace TaskMaster
 				}
 				catch (Exception ex)
 				{
-					Log.Fatal("{Type} : {Message}", ex.GetType().Name, ex.Message);
-					Log.Fatal(ex.StackTrace);
-					throw;
+					Logging.Stacktrace(ex);
+					//throw; // would throw but this is dispose
 				}
 
 				saveStats();
@@ -1688,9 +1742,8 @@ namespace TaskMaster
 				}
 				catch (Exception ex)
 				{
-					Log.Fatal("{Type} : {Message}", ex.GetType().Name, ex.Message);
-					Log.Fatal(ex.StackTrace);
-					throw;
+					Logging.Stacktrace(ex);
+					//throw; // would throw but this is dispose 
 				}
 			}
 

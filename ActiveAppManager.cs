@@ -90,15 +90,26 @@ namespace TaskMaster
 			//SetupEventHook();
 		}
 
-		bool disposed = false;
 		public void Dispose()
 		{
-			if (disposed) return;
+			Dispose(true);
+			GC.SuppressFinalize(this);
+		}
 
-			if (TaskMaster.Trace)
-				Log.Verbose("Disposing FG monitor...");
+		bool disposed = false;
+		void Dispose(bool disposing)
+		{
+			if (disposed)
+				return;
 
-			UnhookWinEvent(windowseventhook); // Automatic
+			if (disposing)
+			{
+				if (TaskMaster.Trace)
+					Log.Verbose("Disposing FG monitor...");
+
+				UnhookWinEvent(windowseventhook); // Automaticc
+			}
+
 			disposed = true;
 		}
 

@@ -120,11 +120,35 @@ namespace TaskMaster
 		}
 	}
 
+	public static class Bit
+	{
+		public static bool IsSet(int dec, int nth)
+		{
+			return (dec & nth) != 0;
+		}
+
+		public static int Unset(int dec, int nth)
+		{
+			return dec & ~nth;
+		}
+
+		public static int And(int dec1, int dec2)
+		{
+			return dec1 | dec2;
+		}
+	}
+
 	public static class Logging
 	{
 		public static void Log(string text, [CallerFilePath] string file = "", [CallerMemberName] string member = "", [CallerLineNumber] int line = 0)
 		{
 			Console.WriteLine("{0}_{1}({2}): {3}", System.IO.Path.GetFileName(file), member, line, text);
+		}
+
+		public static void Stacktrace(Exception ex)
+		{
+			Serilog.Log.Fatal("{Type} : {Message}", ex.GetType().Name, ex.Message);
+			Serilog.Log.Fatal(ex.StackTrace);
 		}
 	}
 }

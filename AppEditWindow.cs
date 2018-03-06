@@ -47,15 +47,9 @@ namespace TaskMaster
 		public AppEditWindow(string name, ListViewItem ri)
 		{
 			item = ri;
-			process = null;
-			foreach (var tpc in TaskMaster.processmanager.watchlist)
-			{
-				if (name == tpc.FriendlyName)
-				{
-					process = tpc;
-					break;
-				}
-			}
+
+			process = TaskMaster.processmanager.watchlist.Find((tcp) => tcp.FriendlyName == name);
+
 			if (process == null) throw new ArgumentException(string.Format("{0} not found in watchlist.", name));
 
 			WindowState = FormWindowState.Normal;
@@ -302,14 +296,12 @@ namespace TaskMaster
 			var clearbutton = new Button() { Text = "None" };
 			clearbutton.Click += (sender, e) =>
 						{
-							foreach (var bu in list)
-								bu.Checked = false;
+							foreach (var litem in list) litem.Checked = false;
 						};
 			var allbutton = new Button() { Text = "All" };
 			allbutton.Click += (sender, e) =>
 						{
-							foreach (var bu in list)
-								bu.Checked = true;
+							foreach (var litem in list) litem.Checked = true;
 						};
 			buttonpanel.Controls.Add(clearbutton);
 			buttonpanel.Controls.Add(allbutton);
@@ -321,10 +313,7 @@ namespace TaskMaster
 				try { cpumask = (int)affinityMask.Value; }
 				catch { cpumask = 0; affinityMask.Value = 0; }
 				foreach (var bu in list)
-				{
-					bu.Checked = ((cpumask & (1 << bitoff)) != 0);
-					bitoff++;
-				}
+					bu.Checked = ((cpumask & (1 << bitoff++)) != 0);
 			};
 
 			lt.Controls.Add(layout);

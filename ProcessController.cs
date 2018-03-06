@@ -169,7 +169,7 @@ namespace TaskMaster
 			if (PausedIds.Contains(info.Id)) return;
 			// throw new InvalidOperationException(string.Format("{0} already paused", info.Name));
 
-			if (TaskMaster.DebugForeground)
+			if (TaskMaster.DebugForeground && TaskMaster.Trace)
 				Log.Debug("[{Name}] Quelling {Exec} (#{Pid})", FriendlyName, info.Name, info.Id);
 
 			//PausedState.Affinity = Affinity;
@@ -190,7 +190,7 @@ namespace TaskMaster
 					TaskMaster.powermanager.RestoreMode(info.Process);
 
 			if (TaskMaster.DebugForeground)
-				Log.Information("[{FriendlyName}] {Exec} (#{Pid}) priority reduced: {Current}→{Paused}",
+				Log.Information("[{FriendlyName}] {Exec} (#{Pid}) priority reduced: {Current}→{Paused} [Background]",
 					FriendlyName, info.Name, info.Id, Priority, BackgroundPriority);
 
 			PausedIds.Add(info.Id);
@@ -212,7 +212,7 @@ namespace TaskMaster
 				{
 					info.Process.PriorityClass = Priority;
 					if (TaskMaster.DebugForeground)
-						Log.Debug("[{FriendlyName}] {Exec} (#{Pid}) priority restored: {Paused}→{Restored}",
+						Log.Debug("[{FriendlyName}] {Exec} (#{Pid}) priority restored: {Paused}→{Restored} [Foreground]",
 										FriendlyName, info.Name, info.Id, BackgroundPriority, Priority);
 				}
 				catch { }
@@ -251,138 +251,18 @@ namespace TaskMaster
 
 		// -----------------------------------------------
 
-		List<ProcessController> Cascades;
-		ProcessController CascadeTrigger;
-
-		// -----------------------------------------------
-
-		static readonly object waitingExitLock = new object();
-		static Dictionary<int, BasicProcessInfo> waitingExit = new Dictionary<int, BasicProcessInfo>(3);
-
-		public static event EventHandler<ProcessEventArgs> PowermodeExitWaitEvent;
-
-		public static async Task Cleanup()
-		{
-			await Task.Yield();
-
-			lock (waitingExitLock)
-			{
-				var items = waitingExit.Values;
-				foreach (var info in items)
-				{
-					info.Process.Refresh();
-					info.Process.WaitForExit(2000); // arbitrary
-					if (info.Process.HasExited)
-					{
-						EndWaitForExit(info);
-					}
-				}
-			}
-		}
-
-		public static BasicProcessInfo[] getWaitingExit()
-		{
-			return waitingExit.Values.ToArray();
-		}
-
-		public static void CancelPowerControlEvent()
-		{
-			lock (waitingExitLock)
-			{
-				if (waitingExit.Count > 0)
-					Log.Information("Cancelling power mode wait on processes.");
-
-				foreach (var bu in waitingExit)
-				{
-					bu.Value.Process.EnableRaisingEvents = false;
-					PowermodeExitWaitEvent?.Invoke(null, new ProcessEventArgs() { Control = null, Info = bu.Value, State = ProcessEventArgs.ProcessState.Cancel });
-				}
-				waitingExit.Clear();
-			}
-		}
-
-		public static void EndWaitForExit(BasicProcessInfo info)
-		{
-			lock (waitingExitLock)
-			{
-				try
-				{
-					waitingExit.Remove(info.Id);
-				}
-				catch { }
-
-				if (waitingExit.Count == 0)
-				{
-					Log.Information("{Process} (#{Pid}) exited; restoring normal power.", info.Name, info.Id);
-					TaskMaster.powermanager.RestoreMode(info.Process);
-				}
-				else
-				{
-					Log.Information("{Exec} (#{Pid}) exited; power mode still requested by {Num} proceses.", info.Name, info.Id, waitingExit.Count);
-				}
-
-			}
-
-			PowermodeExitWaitEvent?.Invoke(null, new ProcessEventArgs() { Control = null, Info = info, State = ProcessEventArgs.ProcessState.Exiting });
-		}
-
 		protected bool setPowerPlan(BasicProcessInfo info)
 		{
 			if (!TaskMaster.PowerManagerEnabled) return false;
 
 			if (PowerPlan != PowerManager.PowerMode.Undefined)
 			{
-				bool wait = true;
+				TaskMaster.powermanager.SaveMode();
 
-				lock (waitingExitLock)
-				{
-					if (waitingExit.Count == 0)
-						TaskMaster.powermanager.SaveMode();
+				info.Flags |= (int)ProcessFlags.PowerWait;
+				TaskMaster.processmanager.WaitForExit(info); // need nicer way to signal this
 
-					if (!waitingExit.ContainsKey(info.Id))
-					{
-						waitingExit.Add(info.Id, info);
-						PowermodeExitWaitEvent?.Invoke(this, new ProcessEventArgs() { Control = null, Info = info, State = ProcessEventArgs.ProcessState.Starting });
-					}
-					else
-						wait = false;
-				}
-				//Log.Verbose("POWER MODE: {0} process(es) desiring higher power mode.", waitingExit.Count);
-
-				if (wait)
-				{
-					string name = info.Name;
-					int pid = info.Id;
-					info.Process.EnableRaisingEvents = true;
-					info.Process.Exited += async (sender, ev) => // ASYNC POWER RESTORE ON EXIT
-					{
-						PowermodeExitWaitEvent?.Invoke(this, new ProcessEventArgs() { Control = null, Info = info, State = ProcessEventArgs.ProcessState.Exiting });
-						await Task.Yield();
-
-						try
-						{
-							if (ProcessManager.PowerdownDelay > 0)
-								await Task.Delay(ProcessManager.PowerdownDelay * 1000);
-
-							EndWaitForExit(info);
-						}
-						catch (Exception ex)
-						{
-							Log.Fatal("POWER MDOE: {FriendlyName} FATAL FAILURE", FriendlyName);
-							Log.Fatal("{Type} : {Message}", ex.GetType().Name, ex.Message);
-							Log.Fatal(ex.StackTrace);
-							throw;
-						}
-					};
-
-					bool rv = TaskMaster.powermanager.CurrentMode != PowerPlan;
-					if (rv)
-						Log.Information("[{FriendlyName}] Upgrading power mode for '{Exec}' (#{Pid})", FriendlyName, info.Name, info.Id);
-
-					TaskMaster.powermanager.ForceMode(PowerPlan, info.Process);
-
-					return rv;
-				}
+				return TaskMaster.powermanager.ForceMode(PowerPlan, info.Process);
 			}
 			return false;
 		}
@@ -665,9 +545,8 @@ namespace TaskMaster
 					catch (Exception ex)
 					{
 						Log.Warning("[{FriendlyName}] {Process} (#{PID}) – something bad happened.", FriendlyName, info.Name, info.Id);
-						Log.Fatal("{Type} : {Message}", ex.GetType().Name, ex.Message);
-						Log.Fatal(ex.StackTrace);
-						throw;
+						Logging.Stacktrace(ex);
+						return; //throw; // would throw but this is async function
 					}
 				}));
 			}
@@ -690,9 +569,8 @@ namespace TaskMaster
 				catch (Exception ex)
 				{
 					Log.Warning("Error in scheduled rescan.");
-					Log.Error("{Type} : {Message}", ex.GetType().Name, ex.Message);
-					Log.Error(ex.StackTrace);
-					throw;
+					Logging.Stacktrace(ex);
+					return; //throw; // would throw, but this is async function
 				}
 			}));
 
@@ -819,9 +697,8 @@ namespace TaskMaster
 			catch (Exception ex)
 			{
 				Log.Warning("[{FriendlyName}] Access failure while determining path.");
-				Log.Error("{Type} : {Message}", ex.GetType().Name, ex.Message);
-				Log.Error(ex.StackTrace);
-				throw;
+				Logging.Stacktrace(ex);
+				//throw; // no point
 			}
 
 			return false;
@@ -845,27 +722,10 @@ namespace TaskMaster
 			{
 				if (TaskMaster.Trace)
 					Log.Verbose("Disposing process controller [{FriendlyName}]", FriendlyName);
-
-				if (waitingExit != null)
-				{
-					waitingExit.Clear();
-					waitingExit = null;
-				}
 			}
 
 			disposed = true;
 		}
-	}
-
-	struct CascadeSettings
-	{
-		public ProcessPriorityClass Priority;
-		public IntPtr Affinity;
-
-		public bool Page;
-
-		public int Rescan;
-		public int Recheck;
 	}
 
 	public class PathControlEventArgs : EventArgs

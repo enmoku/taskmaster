@@ -387,6 +387,8 @@ namespace TaskMaster
 				if (n.NetworkInterfaceType == NetworkInterfaceType.Loopback || n.NetworkInterfaceType == NetworkInterfaceType.Tunnel)
 					continue;
 
+				// TODO: Implement early exit and smarter looping
+
 				IPAddress[] ipa = n.GetAddresses();
 				foreach (IPAddress ip in ipa)
 				{

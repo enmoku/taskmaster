@@ -27,6 +27,7 @@
 using System;
 using System.Collections.Generic;
 using Serilog;
+using System.Linq;
 
 namespace TaskMaster
 {
@@ -134,6 +135,8 @@ namespace TaskMaster
 			IntPtr waveInDeviceNumber = IntPtr.Zero; // 0 is default or first?
 			var mixerLine = new NAudio.Mixer.MixerLine(waveInDeviceNumber, 0, NAudio.Mixer.MixerFlags.WaveIn);
 
+			Control = (NAudio.Mixer.UnsignedMixerControl)mixerLine.Controls.FirstOrDefault((control) => control.ControlType == NAudio.Mixer.MixerControlType.Volume);
+			/*
 			foreach (var control in mixerLine.Controls)
 			{
 				if (control.ControlType == NAudio.Mixer.MixerControlType.Volume)
@@ -142,6 +145,7 @@ namespace TaskMaster
 					break;
 				}
 			}
+			*/
 
 			if (Control == null)
 			{
@@ -190,7 +194,7 @@ namespace TaskMaster
 		public void Dispose()
 		{
 			Dispose(true);
-			GC.SuppressFinalize(this);
+			//GC.SuppressFinalize(this); // why?
 		}
 
 		protected virtual void Dispose(bool disposing)

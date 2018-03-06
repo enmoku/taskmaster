@@ -76,7 +76,7 @@ namespace TaskMaster
 			return s.ToString();
 		}
 
-		public static string ByteRateString(long bytes)
+		public static string ByteString(long bytes, bool rate = true)
 		{
 			var s = new System.Text.StringBuilder();
 
@@ -104,7 +104,10 @@ namespace TaskMaster
 				s.Append(bytes);
 				s.Append(" ");
 			}
-			s.Append("B/s");
+			s.Append("B");
+
+			if (rate)
+				s.Append("/s");
 
 			return s.ToString();
 		}
