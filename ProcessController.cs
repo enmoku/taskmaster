@@ -187,7 +187,7 @@ namespace TaskMaster
 
 			if (TaskMaster.PowerManagerEnabled)
 				if (PowerPlan != PowerManager.PowerMode.Undefined && BackgroundPowerdown)
-					TaskMaster.powermanager.RestoreMode(info.Process);
+					TaskMaster.powermanager.Restore(info.Process);
 
 			if (TaskMaster.DebugForeground)
 				Log.Information("[{FriendlyName}] {Exec} (#{Pid}) priority reduced: {Current}→{Paused} [Background]",
@@ -262,7 +262,7 @@ namespace TaskMaster
 				info.Flags |= (int)ProcessFlags.PowerWait;
 				TaskMaster.processmanager.WaitForExit(info); // need nicer way to signal this
 
-				return TaskMaster.powermanager.ForceMode(PowerPlan, info.Process);
+				return TaskMaster.powermanager.Force(PowerPlan, info.Process);
 			}
 			return false;
 		}

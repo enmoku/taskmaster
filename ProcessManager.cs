@@ -679,7 +679,7 @@ namespace TaskMaster
 
 					if (Bit.IsSet(info.Flags, (int)ProcessFlags.PowerWait))
 					{
-						TaskMaster.powermanager.RestoreMode(info.Process);
+						TaskMaster.powermanager.Restore(info.Process);
 					}
 
 					WaitForExitList.Remove(info.Id);

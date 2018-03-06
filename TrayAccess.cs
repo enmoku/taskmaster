@@ -225,7 +225,7 @@ namespace TaskMaster
 				power_auto.Checked = (powermanager.Behaviour == PowerManager.PowerBehaviour.Auto);
 
 				ManualPowerMode?.Invoke(this, null);
-				powermanager.RestoreMode(null);
+				powermanager.Restore(null);
 				powermanager.setMode(mode);
 				//powermanager.RequestMode(mode);
 				HighlightPowerMode();
