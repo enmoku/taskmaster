@@ -311,8 +311,7 @@ namespace TaskMaster
 			if (System.Threading.Interlocked.CompareExchange(ref checking_inet, 1, 0) == 1)
 				return;
 
-			if (TaskMaster.Trace)
-				Log.Verbose("Checking internet connectivity...");
+			if (TaskMaster.Trace) Log.Verbose("Checking internet connectivity...");
 
 			await Task.Yield();
 
@@ -363,8 +362,7 @@ namespace TaskMaster
 				Log.Information("Network status: {NetworkAvailable}, Internet status: {InternetAvailable}", (NetworkAvailable ? "Up" : "Down"), (InternetAvailable ? "Connected" : "Disconnected"));
 			else
 			{
-				if (TaskMaster.Trace)
-					Log.Verbose("Internet status unchanged");
+				if (TaskMaster.Trace) Log.Verbose("Internet status unchanged");
 			}
 
 			checking_inet = 0;
@@ -574,8 +572,7 @@ namespace TaskMaster
 
 			if (disposing)
 			{
-				if (TaskMaster.Trace)
-					Log.Verbose("Disposing network monitor...");
+				if (TaskMaster.Trace) Log.Verbose("Disposing network monitor...");
 				ReportUptime();
 			}
 

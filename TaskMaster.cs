@@ -119,8 +119,7 @@ namespace TaskMaster
 			Configs.Add(configfile, retcfg);
 			ConfigPaths.Add(retcfg, configfile);
 
-			if (TaskMaster.Trace)
-				Log.Verbose("{ConfigFile} added to known configurations files.", configfile);
+			if (TaskMaster.Trace) Log.Verbose("{ConfigFile} added to known configurations files.", configfile);
 
 			return retcfg;
 		}
@@ -324,12 +323,15 @@ namespace TaskMaster
 			}
 		}
 
+		public static bool LogPower = false;
+
 		public static bool DebugProcesses = false;
 		public static bool DebugPaths = false;
 		public static bool DebugFullScan = false;
 		public static bool DebugPower = false;
 		public static bool DebugNetMonitor = false;
 		public static bool DebugForeground = false;
+		public static bool DebugMic = false;
 
 		public static bool CaseSensitive = false;
 
@@ -465,7 +467,6 @@ namespace TaskMaster
 			ShowInaction = logsec.GetSetDefault("Show inaction", false, out modified).BoolValue;
 			logsec["Show inaction"].Comment = "Shows lack of action take on processes.";
 			dirtyconfig |= modified;
-
 
 			CaseSensitive = optsec.GetSetDefault("Case sensitive", false, out modified).BoolValue;
 			dirtyconfig |= modified;
@@ -715,8 +716,7 @@ namespace TaskMaster
 				*/
 
 				#region SINGLETON
-				if (TaskMaster.Trace)
-					Log.Verbose("Testing for single instance.");
+				if (TaskMaster.Trace) Log.Verbose("Testing for single instance.");
 
 				{
 					bool mutexgained = false;

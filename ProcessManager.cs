@@ -125,8 +125,7 @@ namespace TaskMaster
 		{
 			if (pathinit == null) return;
 
-			if (TaskMaster.Trace)
-				Log.Verbose("Locating watched paths.");
+			if (TaskMaster.Trace) Log.Verbose("Locating watched paths.");
 
 			lock (pathwatchlock)
 			{
@@ -147,8 +146,7 @@ namespace TaskMaster
 					pathinit = null;
 			}
 
-			if (TaskMaster.Trace)
-				Log.Verbose("Path location complete.");
+			if (TaskMaster.Trace) Log.Verbose("Path location complete.");
 		}
 
 		ActiveAppManager activeappmonitor = null;
@@ -210,8 +208,7 @@ namespace TaskMaster
 
 		public async void PageEverythingRequest(object sender, EventArgs e)
 		{
-			if (TaskMaster.Trace)
-				Log.Verbose("Paging requested.");
+			if (TaskMaster.Trace) Log.Verbose("Paging requested.");
 
 			if (!TaskMaster.PagingEnabled) return; // shouldn't happen, but here we have it anyway
 
@@ -254,8 +251,7 @@ namespace TaskMaster
 						process.Refresh();
 						long mns = (ns - process.WorkingSet64);
 						saved += mns;
-						if (TaskMaster.Trace)
-							Log.Verbose("Paged: {ProcessName} (#{ProcessID}) – {PagedMBs:N1} MBs.", name, pid, mns / 1000000);
+						if (TaskMaster.Trace) Log.Verbose("Paged: {ProcessName} (#{ProcessID}) – {PagedMBs:N1} MBs.", name, pid, mns / 1000000);
 					}
 					catch
 					{
@@ -279,14 +275,12 @@ namespace TaskMaster
 
 			await Task.Yield();
 
-			if (TaskMaster.Trace)
-				Log.Verbose("Paging complete.");
+			if (TaskMaster.Trace) Log.Verbose("Paging complete.");
 		}
 
 		public async void ProcessEverythingRequest(object sender, EventArgs e)
 		{
-			if (TaskMaster.Trace)
-				Log.Verbose("Rescan requested.");
+			if (TaskMaster.Trace) Log.Verbose("Rescan requested.");
 
 			try
 			{
@@ -349,8 +343,7 @@ namespace TaskMaster
 
 					if (IgnoreProcessID(pid)) continue; // Ignore Idle&System
 
-					if (TaskMaster.Trace)
-						Log.Verbose("Checking [{ProcessIterator}/{ProcessCount}] '{ProcessName}' (#{Pid})", ++i, procs.Length - 2, name, pid); // -2 for Idle&System
+					if (TaskMaster.Trace) Log.Verbose("Checking [{Iter}/{Count}] {Proc} (#{Pid})", ++i, procs.Length - 2, name, pid); // -2 for Idle&System
 
 					CheckProcess(new BasicProcessInfo { Process = process, Name = name, Id = pid, Path = null, Flags = 0 }, schedule_next: false);
 				}
@@ -1180,8 +1173,7 @@ namespace TaskMaster
 
 			if (IgnoreProcessID(info.Id) || IgnoreProcessName(info.Name))
 			{
-				if (TaskMaster.Trace)
-					Log.Verbose("Ignoring process: {ProcessName} (#{ProcessID})", info.Name, info.Id);
+				if (TaskMaster.Trace) Log.Verbose("Ignoring process: {ProcessName} (#{ProcessID})", info.Name, info.Id);
 				return ProcessState.AccessDenied;
 			}
 
@@ -1381,8 +1373,7 @@ namespace TaskMaster
 
 			onInstanceHandling?.Invoke(this, new InstanceEventArgs { Count = 1 });
 
-			if (TaskMaster.Trace)
-				Log.Verbose("Caught: {ProcessName} (#{ProcessID}) at: {Path}", name, pid, path);
+			if (TaskMaster.Trace) Log.Verbose("Caught: {ProcessName} (#{ProcessID}) at: {Path}", name, pid, path);
 
 			DateTime start = DateTime.MinValue;
 			try
@@ -1481,8 +1472,7 @@ namespace TaskMaster
 
 			if (rescanrequests == 0)
 			{
-				if (TaskMaster.Trace)
-					Log.Verbose("No apps have requests to rescan, stopping rescanning.");
+				if (TaskMaster.Trace) Log.Verbose("No apps have requests to rescan, stopping rescanning.");
 				rescanTimer.Stop();
 			}
 			else
@@ -1592,8 +1582,7 @@ namespace TaskMaster
 
 			if (execontrol.Count > 0)
 			{
-				if (TaskMaster.Trace)
-					Log.Verbose("Starting rescan timer.");
+				if (TaskMaster.Trace) Log.Verbose("Starting rescan timer.");
 
 				if (RescanDelay > 0)
 				{
@@ -1676,8 +1665,7 @@ namespace TaskMaster
 
 			if (disposing)
 			{
-				if (TaskMaster.Trace)
-					Log.Verbose("Disposing process manager...");
+				if (TaskMaster.Trace) Log.Verbose("Disposing process manager...");
 
 				CancelPowerWait();
 				WaitForExitList.Clear();

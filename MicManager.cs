@@ -93,8 +93,8 @@ namespace TaskMaster
 			{
 				Control.Percent = _volume = value;
 
-				if (TaskMaster.Trace)
-					Log.Verbose("Mic.Volume = {Volume:N1}% (actual: {ActualVolume:N1}%)", value, Control.Percent);
+				if (TaskMaster.DebugMic)
+					Log.Debug("Mic.Volume = {Volume:N1}% (actual: {ActualVolume:N1}%)", value, Control.Percent);
 			}
 		}
 
@@ -204,8 +204,7 @@ namespace TaskMaster
 
 			if (disposing)
 			{
-				if (TaskMaster.Trace)
-					Log.Verbose("Disposing microphone monitor...");
+				if (TaskMaster.Trace) Log.Verbose("Disposing microphone monitor...");
 
 				if (m_dev != null)
 				{
@@ -229,8 +228,7 @@ namespace TaskMaster
 		/// <returns>Enumeration of audio input devices as GUID/FriendlyName string pair.</returns>
 		public List<MicDevice> enumerate()
 		{
-			if (TaskMaster.Trace)
-				Log.Verbose("Enumerating devices...");
+			if (TaskMaster.Trace) Log.Verbose("Enumerating devices...");
 
 			var devices = new List<MicDevice>();
 			var mm_enum = new NAudio.CoreAudioApi.MMDeviceEnumerator();
@@ -241,13 +239,11 @@ namespace TaskMaster
 				{
 					var mdev = new MicDevice { Name = dev.DeviceFriendlyName, GUID = dev.ID.Split('}')[1].Substring(2) };
 					devices.Add(mdev);
-					if (TaskMaster.Trace)
-						Log.Verbose("{Microphone} [GUID: {GUID}]", mdev.Name, mdev.GUID);
+					if (TaskMaster.Trace) Log.Verbose("{Microphone} [GUID: {GUID}]", mdev.Name, mdev.GUID);
 				}
 			}
 
-			if (TaskMaster.Trace)
-				Log.Verbose("{DeviceCount} microphone(s)", devices.Count);
+			if (TaskMaster.Trace) Log.Verbose("{DeviceCount} microphone(s)", devices.Count);
 
 			return devices;
 		}
@@ -272,8 +268,7 @@ namespace TaskMaster
 				return;
 			}
 
-			if (TaskMaster.Trace)
-				Log.Verbose("Mic volume changed from {OldVolume:N1}% to {NewVolume:N1}%", oldVol, newVol);
+			if (TaskMaster.Trace) Log.Verbose("Mic volume changed from {OldVolume:N1}% to {NewVolume:N1}%", oldVol, newVol);
 
 			// This is a light HYSTERISIS limiter in case someone is sliding a volume bar around,
 			// we act on it only once every [AdjustDelay] ms.
@@ -282,8 +277,8 @@ namespace TaskMaster
 			// TODO: Delay this even more if volume is changed ~2 seconds before we try to do so.
 			if (Math.Abs(newVol - Target) >= VolumeHysterisis) // Volume != Target for double
 			{
-				if (TaskMaster.Trace)
-					Log.Verbose("Mic.Volume.Changed = [{OldVolume:N1} -> {NewVolume:N1}], Off.Target: {VolumeOffset:N1}", oldVol, newVol, Math.Abs(newVol - Target));
+				if (TaskMaster.Trace) Log.Verbose("Mic.Volume.Changed = [{OldVolume:N1} -> {NewVolume:N1}], Off.Target: {VolumeOffset:N1}",
+												  oldVol, newVol, Math.Abs(newVol - Target));
 
 				if (System.Threading.Interlocked.CompareExchange(ref correcting, 1, 0) == 0)
 				{
@@ -300,14 +295,12 @@ namespace TaskMaster
 				}
 				else
 				{
-					if (TaskMaster.Trace)
-						Log.Verbose("Mic.Volume.CorrectionAlreadyQueued");
+					if (TaskMaster.Trace) Log.Verbose("Mic.Volume.CorrectionAlreadyQueued");
 				}
 			}
 			else
 			{
-				if (TaskMaster.Trace)
-					Log.Verbose("Mic.Volume.NotCorrected");
+				if (TaskMaster.Trace) Log.Verbose("Mic.Volume.NotCorrected");
 			}
 		}
 	}

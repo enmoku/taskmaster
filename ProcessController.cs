@@ -351,8 +351,7 @@ namespace TaskMaster
 				return ProcessState.AccessDenied; // we don't care what this error is exactly
 			}
 
-			if (TaskMaster.Trace)
-				Log.Verbose("[{FriendlyName}] Touching: {ExecutableName} (#{ProcessID})", FriendlyName, info.Name, info.Id);
+			if (TaskMaster.Trace) Log.Verbose("[{FriendlyName}] Touching: {ExecutableName} (#{ProcessID})", FriendlyName, info.Name, info.Id);
 
 			ProcessState rv = ProcessState.Invalid;
 
@@ -538,8 +537,7 @@ namespace TaskMaster
 							Touch(info, schedule_next: false, recheck: true);
 						else
 						{
-							if (TaskMaster.Trace)
-								Log.Verbose("[{FriendlyName}] {Process} (#{PID}) is gone yo.", FriendlyName, info.Name, info.Id);
+							if (TaskMaster.Trace) Log.Verbose("[{FriendlyName}] {Process} (#{PID}) is gone yo.", FriendlyName, info.Name, info.Id);
 						}
 					}
 					catch (Exception ex)
@@ -615,8 +613,7 @@ namespace TaskMaster
 			}
 			catch // name not found
 			{
-				if (TaskMaster.Trace)
-					Log.Verbose("{ProcessFriendlyName} is not running", ExecutableFriendlyName);
+				if (TaskMaster.Trace) Log.Verbose("{FriendlyName} is not running", ExecutableFriendlyName);
 				return;
 			}
 
@@ -672,13 +669,11 @@ namespace TaskMaster
 			}
 			catch
 			{
-				if (TaskMaster.Trace)
-					Log.Verbose("{ProcessFriendlyName} not running", ExecutableFriendlyName);
+				if (TaskMaster.Trace) Log.Verbose("{FriendlyName} not running", ExecutableFriendlyName);
 				return false;
 			}
 
-			if (TaskMaster.Trace)
-				Log.Verbose("[{FriendlyName}] Watched item '{Item}' encountered.", FriendlyName, ExecutableFriendlyName);
+			if (TaskMaster.Trace) Log.Verbose("[{FriendlyName}] Watched item '{Item}' encountered.", FriendlyName, ExecutableFriendlyName);
 
 			try
 			{
@@ -720,8 +715,7 @@ namespace TaskMaster
 
 			if (disposing)
 			{
-				if (TaskMaster.Trace)
-					Log.Verbose("Disposing process controller [{FriendlyName}]", FriendlyName);
+				if (TaskMaster.Trace) Log.Verbose("Disposing process controller [{FriendlyName}]", FriendlyName);
 			}
 
 			disposed = true;

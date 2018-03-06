@@ -532,12 +532,12 @@ namespace TaskMaster
 
 					onPlanChange?.Invoke(this, new PowerModeEventArgs { OldMode = old, NewMode = CurrentMode });
 
-					if (TaskMaster.DebugPower)
-						Log.Debug("<Power Mode> Change detected: {PlanName} ({PlanGuid})", CurrentMode.ToString(), newPersonality.ToString());
+					if (TaskMaster.LogPower || TaskMaster.DebugPower)
+						Log.Information("<Power Mode/OS> Change detected: {PlanName} ({PlanGuid})", CurrentMode.ToString(), newPersonality.ToString());
 				}
 			}
 
-			base.WndProc(ref m); // is this necessary
+			base.WndProc(ref m); // is this necessary?
 		}
 
 		public static string[] PowerModes { get; } = { "Power Saver", "Balanced", "High Performance", "Undefined" };
@@ -682,8 +682,7 @@ namespace TaskMaster
 						setMode(SavedMode);
 						SavedMode = PowerMode.Undefined;
 
-						if (TaskMaster.DebugPower)
-							Log.Debug("<Power Mode> Restored to: {PowerMode}", CurrentMode.ToString());
+						Log.Information("<Power Mode> Restored to: {PowerMode}", CurrentMode.ToString());
 					}
 				}
 				else
@@ -776,7 +775,7 @@ namespace TaskMaster
 			return rv;
 		}
 
-		public static void setMode(PowerMode mode, bool verbose = true)
+		public void setMode(PowerMode mode, bool verbose = true)
 		{
 			Guid plan = Guid.Empty;
 			switch (mode)
@@ -793,7 +792,7 @@ namespace TaskMaster
 					break;
 			}
 
-			if (verbose)
+			if (verbose && (CurrentMode != mode))
 				Log.Information("<Power Mode> Setting to: {Mode} ({Guid})", mode.ToString(), plan.ToString());
 
 			lock (powerLock)
@@ -809,8 +808,7 @@ namespace TaskMaster
 
 			if (disposing)
 			{
-				if (TaskMaster.Trace)
-					Log.Verbose("Disposing power manager...");
+				if (TaskMaster.Trace) Log.Verbose("Disposing power manager...");
 
 				if (CPUTimer != null)
 				{

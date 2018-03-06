@@ -93,8 +93,7 @@ namespace TaskMaster
 		/// </summary>
 		public void UnloseWindowRequest(object sender, EventArgs e)
 		{
-			if (TaskMaster.Trace)
-				Log.Verbose("Making sure main window is not lost.");
+			if (TaskMaster.Trace) Log.Verbose("Making sure main window is not lost.");
 
 			try
 			{
@@ -129,8 +128,7 @@ namespace TaskMaster
 			Debug.Assert(micmonitor != null);
 			micmon = micmonitor;
 
-			if (TaskMaster.Trace)
-				Log.Verbose("Hooking microphone monitor.");
+			if (TaskMaster.Trace) Log.Verbose("Hooking microphone monitor.");
 
 			micName.Text = micmon.DeviceName;
 			corCountLabel.Text = micmon.Corrections.ToString();
@@ -541,7 +539,7 @@ namespace TaskMaster
 			var menu = new MenuStrip() { Dock = DockStyle.Top };
 
 			var menu_action = new ToolStripMenuItem("Actions");
-			menu_action.MouseHover += (sender, e) => { menu_action.ShowDropDown(); };
+			menu_action.MouseEnter += (sender, e) => { menu_action.ShowDropDown(); };
 			// Sub Items
 			var menu_action_rescan = new ToolStripMenuItem("Rescan", null, (o, s) =>
 			{
@@ -563,14 +561,22 @@ namespace TaskMaster
 			menu_action.DropDownItems.Add(menu_action_restart);
 			menu_action.DropDownItems.Add(menu_action_exit);
 
+			// CONFIG menu item
 			var menu_config = new ToolStripMenuItem("Configuration");
-			menu_config.MouseHover += (sender, e) => { menu_config.ShowDropDown(); };
+			menu_config.MouseEnter += (sender, e) => { menu_config.ShowDropDown(); };
+
 			// Sub Items
+			var menu_config_log = new ToolStripMenuItem("Logging");
+			var menu_config_log_power = new ToolStripMenuItem("Power mode changes", null, (sender, e) => { });
+			menu_config_log.DropDownItems.Add(menu_config_log_power);
+
 			var menu_config_folder = new ToolStripMenuItem("Open directory", null, (s, e) => { Process.Start(TaskMaster.datapath); });
+			//menu_config.DropDownItems.Add(menu_config_log);
 			menu_config.DropDownItems.Add(menu_config_folder);
 
+			// DEBUG menu item
 			var menu_debug = new ToolStripMenuItem("Debug");
-			menu_debug.MouseHover += (sender, e) => { menu_debug.ShowDropDown(); };
+			menu_debug.MouseEnter += (sender, e) => { menu_debug.ShowDropDown(); };
 			// Sub Items
 			var menu_debug_inaction = new ToolStripMenuItem("Show inaction") { Checked = TaskMaster.ShowInaction, CheckOnClick = true };
 			menu_debug_inaction.Click += (sender, e) => { TaskMaster.ShowInaction = menu_debug_inaction.Checked; };
@@ -620,7 +626,7 @@ namespace TaskMaster
 			menu_debug.DropDownItems.Add(menu_debug_clear);
 
 			var menu_info = new ToolStripMenuItem("Info");
-			menu_info.MouseHover += (sender, e) => { menu_info.ShowDropDown(); };
+			menu_info.MouseEnter += (sender, e) => { menu_info.ShowDropDown(); };
 
 			// Sub Items
 			var menu_info_github = new ToolStripMenuItem("Github", null, (sender, e) => { Process.Start(TaskMaster.URL); });
@@ -1764,8 +1770,7 @@ namespace TaskMaster
 		{
 			if (aamon == null) return;
 
-			if (TaskMaster.Trace)
-				Log.Verbose("Hooking active app manager.");
+			if (TaskMaster.Trace) Log.Verbose("Hooking active app manager.");
 
 			activeappmonitor = aamon;
 			activeappmonitor.ActiveChanged += OnActiveWindowChanged;
@@ -1775,8 +1780,7 @@ namespace TaskMaster
 		{
 			if (pman == null) return;
 
-			if (TaskMaster.Trace)
-				Log.Verbose("Hooking power manager.");
+			if (TaskMaster.Trace) Log.Verbose("Hooking power manager.");
 
 			powermanager = pman;
 			powermanager.onAutoAdjustAttempt += CPULoadHandler;
@@ -1811,8 +1815,7 @@ namespace TaskMaster
 		{
 			if (net == null) return; // disabled
 
-			if (TaskMaster.Trace)
-				Log.Verbose("Hooking network monitor.");
+			if (TaskMaster.Trace) Log.Verbose("Hooking network monitor.");
 
 			this.netmonitor = net;
 
@@ -2014,8 +2017,7 @@ namespace TaskMaster
 
 			if (disposing)
 			{
-				if (TaskMaster.Trace)
-					Log.Verbose("Disposing main window...");
+				if (TaskMaster.Trace) Log.Verbose("Disposing main window...");
 
 				MemoryLog.onNewEvent -= onNewLog;
 
