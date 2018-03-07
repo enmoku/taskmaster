@@ -641,17 +641,11 @@ namespace TaskMaster
 
 			if (TaskMaster.AutoOpenMenus)
 			{
-				// potentially crashes?
-				for (int i = 0; i < menu.Items.Count; i++)
-					menu.Items[i].MouseEnter += (s, e) => { ((ToolStripMenuItem)menu.Items[i]).ShowDropDown(); };
-
-				/*
 				// no simpler way?
 				menu_action.MouseEnter += (s, e) => { menu_action.ShowDropDown(); };
 				menu_config.MouseEnter += (s, e) => { menu_config.ShowDropDown(); };
 				menu_debug.MouseEnter += (s, e) => { menu_debug.ShowDropDown(); };
 				menu_info.MouseEnter += (s, e) => { menu_info.ShowDropDown(); };
-				*/
 			}
 
 			Controls.Add(menu);

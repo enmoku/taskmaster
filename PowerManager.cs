@@ -32,6 +32,7 @@ using Microsoft.Win32;
 using System.Diagnostics;
 using System.Threading.Tasks;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace TaskMaster
 {
@@ -643,6 +644,7 @@ namespace TaskMaster
 					CPUTimer.Stop();
 
 				TaskMaster.processmanager.CancelPowerWait(); // need nicer way to do this
+				ForceCleanup();
 			}
 
 			onBehaviourChange?.Invoke(this, Behaviour);
@@ -670,21 +672,22 @@ namespace TaskMaster
 			}
 		}
 
-		public async Task Restore(object source)
+		public async Task Restore(int sourcePid = -1)
 		{
+			Debug.Assert(sourcePid == 0 || sourcePid > 4);
 			if (PauseForSessionLock) return; // TODO: What to do in the unlikely event of this being called while paused?
 
 			lock (power_lock)
 			{
-				if (source == null)
+				if (sourcePid == 0)
 				{
 					forceModeSources.Clear();
 					if (TaskMaster.DebugPower)
 						Log.Debug("<Power Mode> Clearing forced list.");
 				}
-				else if (forceModeSources.Contains(source))
+				else if (forceModeSources.Contains(sourcePid))
 				{
-					forceModeSources.Remove(source);
+					forceModeSources.Remove(sourcePid);
 					if (TaskMaster.DebugPower)
 						Log.Debug("<Power Mode> Force mode source freed, {Count} remain.", forceModeSources.Count);
 				}
@@ -723,7 +726,13 @@ namespace TaskMaster
 				else
 				{
 					if (TaskMaster.DebugPower)
+					{
 						Log.Debug("<Power Mode> Forced mode still requested by {sources} sources.", forceModeSources.Count);
+						if (forceModeSources.Count > 0)
+						{
+							Log.Debug("<Power Mode> Sources: {Sources}", string.Join(", ", forceModeSources.ToArray()));
+						}
+					}
 				}
 			}
 		}
@@ -778,12 +787,12 @@ namespace TaskMaster
 				forceModeSources.Clear();
 			}
 
-			Restore(null);
+			Restore(0);
 		}
 
-		HashSet<object> forceModeSources = new HashSet<object>();
+		HashSet<int> forceModeSources = new HashSet<int>();
 
-		public bool Force(PowerMode mode, object source)
+		public bool Force(PowerMode mode, int sourcePid)
 		{
 			if (Behaviour == PowerBehaviour.Manual) return false;
 			if (PauseForSessionLock) return false;
@@ -792,21 +801,19 @@ namespace TaskMaster
 
 			lock (power_lock)
 			{
-				if (forceModeSources.Contains(source))
+				if (forceModeSources.Contains(sourcePid))
 				{
 					Log.Error("<Power Mode> Forcing cancelled, source already in list.");
 					return false;
 				}
 
-				forceModeSources.Add(source);
+				forceModeSources.Add(sourcePid);
 
 				rv = mode != CurrentMode;
 				if (rv)
 					setMode(mode);
 
 				AutoAdjustAllowed |= AutoAdjustForceBlock;
-
-				forceModeSources.Add(source);
 			}
 
 			if (TaskMaster.DebugPower)

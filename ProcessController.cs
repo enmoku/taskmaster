@@ -187,7 +187,7 @@ namespace TaskMaster
 
 			if (TaskMaster.PowerManagerEnabled)
 				if (PowerPlan != PowerManager.PowerMode.Undefined && BackgroundPowerdown)
-					TaskMaster.powermanager.Restore(info.Process);
+					TaskMaster.powermanager.Restore(info.Id);
 
 			if (TaskMaster.DebugForeground)
 				Log.Information("[{FriendlyName}] {Exec} (#{Pid}) priority reduced: {Current}→{Paused} [Background]",
@@ -251,20 +251,20 @@ namespace TaskMaster
 
 		// -----------------------------------------------
 
-		protected bool setPowerPlan(BasicProcessInfo info)
+		protected bool setPower(BasicProcessInfo info)
 		{
 			if (!TaskMaster.PowerManagerEnabled) return false;
+			if (PowerPlan == PowerManager.PowerMode.Undefined) return false;
+			TaskMaster.powermanager.SaveMode();
 
-			if (PowerPlan != PowerManager.PowerMode.Undefined)
-			{
-				TaskMaster.powermanager.SaveMode();
+			info.Flags |= (int)ProcessFlags.PowerWait;
+			TaskMaster.processmanager.WaitForExit(info); // need nicer way to signal this
+			return TaskMaster.powermanager.Force(PowerPlan, info.Id);
+		}
 
-				info.Flags |= (int)ProcessFlags.PowerWait;
-				TaskMaster.processmanager.WaitForExit(info); // need nicer way to signal this
-
-				return TaskMaster.powermanager.Force(PowerPlan, info.Process);
-			}
-			return false;
+		void undoPower(BasicProcessInfo info)
+		{
+			TaskMaster.powermanager.Restore(info.Id).Wait();
 		}
 
 		[DllImport("kernel32.dll", CharSet = CharSet.Auto, SetLastError = true)]
@@ -454,7 +454,7 @@ namespace TaskMaster
 			if (TaskMaster.PowerManagerEnabled)
 			{
 				oldPP = TaskMaster.powermanager.CurrentMode;
-				setPowerPlan(info);
+				setPower(info);
 				mPower = (oldPP != TaskMaster.powermanager.CurrentMode);
 			}
 

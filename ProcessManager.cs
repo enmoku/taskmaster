@@ -679,7 +679,7 @@ namespace TaskMaster
 
 					if (Bit.IsSet(info.Flags, (int)ProcessFlags.PowerWait))
 					{
-						TaskMaster.powermanager.Restore(info.Process);
+						TaskMaster.powermanager.Restore(info.Id).Wait();
 					}
 
 					WaitForExitList.Remove(info.Id);
@@ -699,6 +699,7 @@ namespace TaskMaster
 
 			lock (waitforexit_lock)
 			{
+				HashSet<int> clearList = new HashSet<int>();
 				try
 				{
 					var items = WaitForExitList.Values;
@@ -709,12 +710,16 @@ namespace TaskMaster
 							if (!Bit.IsSet(info.Flags, (int)ProcessFlags.ActiveWait))
 							{
 								info.Process.EnableRaisingEvents = false;
-								WaitForExitList.Remove(info.Id);
+								clearList.Add(info.Id);
 							}
 							onWaitForExitEvent?.Invoke(null, new ProcessEventArgs() { Control = null, Info = info, State = ProcessEventArgs.ProcessState.Cancel });
 							cancelled++;
+
+							TaskMaster.powermanager.Restore(info.Id);
 						}
 					}
+					foreach (var id in clearList)
+						WaitForExitList.Remove(id);
 				}
 				catch (Exception ex)
 				{
