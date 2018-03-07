@@ -57,7 +57,6 @@ using Serilog.Events;
 using TaskMaster.SerilogMemorySink;
 using System.Threading.Tasks;
 using System.Windows.Forms;
-using System.Security.Permissions;
 
 namespace TaskMaster
 {
@@ -386,6 +385,7 @@ namespace TaskMaster
 		public static string ConfigVersion = "alpha.1";
 
 		public static bool RequestExitConfirm = true;
+		public static bool AutoOpenMenus = true;
 
 		static string coreconfig = "Core.ini";
 		static void LoadCoreConfig()
@@ -441,6 +441,8 @@ namespace TaskMaster
 
 			var qol = cfg["Quality of Life"];
 			RequestExitConfirm = qol.GetSetDefault("Confirm exit", true, out modified).BoolValue;
+			dirtyconfig |= modified;
+			AutoOpenMenus = qol.GetSetDefault("Auto open menus", true, out modified).BoolValue;
 			dirtyconfig |= modified;
 
 			var logsec = cfg["Logging"];

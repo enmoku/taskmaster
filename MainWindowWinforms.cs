@@ -539,7 +539,6 @@ namespace TaskMaster
 			var menu = new MenuStrip() { Dock = DockStyle.Top };
 
 			var menu_action = new ToolStripMenuItem("Actions");
-			menu_action.MouseEnter += (sender, e) => { menu_action.ShowDropDown(); };
 			// Sub Items
 			var menu_action_rescan = new ToolStripMenuItem("Rescan", null, (o, s) =>
 			{
@@ -563,8 +562,6 @@ namespace TaskMaster
 
 			// CONFIG menu item
 			var menu_config = new ToolStripMenuItem("Configuration");
-			menu_config.MouseEnter += (sender, e) => { menu_config.ShowDropDown(); };
-
 			// Sub Items
 			var menu_config_log = new ToolStripMenuItem("Logging");
 			var menu_config_log_power = new ToolStripMenuItem("Power mode changes", null, (sender, e) => { });
@@ -576,7 +573,6 @@ namespace TaskMaster
 
 			// DEBUG menu item
 			var menu_debug = new ToolStripMenuItem("Debug");
-			menu_debug.MouseEnter += (sender, e) => { menu_debug.ShowDropDown(); };
 			// Sub Items
 			var menu_debug_inaction = new ToolStripMenuItem("Show inaction") { Checked = TaskMaster.ShowInaction, CheckOnClick = true };
 			menu_debug_inaction.Click += (sender, e) => { TaskMaster.ShowInaction = menu_debug_inaction.Checked; };
@@ -625,9 +621,8 @@ namespace TaskMaster
 			menu_debug.DropDownItems.Add(new ToolStripSeparator());
 			menu_debug.DropDownItems.Add(menu_debug_clear);
 
+			// INFO menu
 			var menu_info = new ToolStripMenuItem("Info");
-			menu_info.MouseEnter += (sender, e) => { menu_info.ShowDropDown(); };
-
 			// Sub Items
 			var menu_info_github = new ToolStripMenuItem("Github", null, (sender, e) => { Process.Start(TaskMaster.URL); });
 			var menu_info_about = new ToolStripMenuItem("About", null, (s, e) =>
@@ -643,6 +638,22 @@ namespace TaskMaster
 			menu.Items.Add(menu_config);
 			menu.Items.Add(menu_debug);
 			menu.Items.Add(menu_info);
+
+			if (TaskMaster.AutoOpenMenus)
+			{
+				// potentially crashes?
+				for (int i = 0; i < menu.Items.Count; i++)
+					menu.Items[i].MouseEnter += (s, e) => { ((ToolStripMenuItem)menu.Items[i]).ShowDropDown(); };
+
+				/*
+				// no simpler way?
+				menu_action.MouseEnter += (s, e) => { menu_action.ShowDropDown(); };
+				menu_config.MouseEnter += (s, e) => { menu_config.ShowDropDown(); };
+				menu_debug.MouseEnter += (s, e) => { menu_debug.ShowDropDown(); };
+				menu_info.MouseEnter += (s, e) => { menu_info.ShowDropDown(); };
+				*/
+			}
+
 			Controls.Add(menu);
 
 			tabLayout = new TabControl()
