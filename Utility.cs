@@ -30,6 +30,36 @@ using System.Runtime.CompilerServices;
 
 namespace TaskMaster
 {
+	/// <summary>
+	/// Simplified wrappers for System.Threading.Interlocked stuff.
+	/// </summary>
+	public static class Atomic
+	{
+		/// <summary>
+		/// Lock the specified lockvalue.
+		/// Performs simple check and set swap of 0 and 1.
+		/// 0 is unlocked, 1 is locked.
+		/// Simplifies basic use of System.Threading.Interlocked.CompareExchange
+		/// </summary>
+		/// <returns>If lock was successfully acquired.</returns>
+		/// <param name="lockvalue">Variable used as the lock.</param>
+		public static bool Lock(ref int lockvalue)
+		{
+			Debug.Assert(lockvalue == 0 || lockvalue == 1);
+			return (System.Threading.Interlocked.CompareExchange(ref lockvalue, 1, 0) == 0);
+		}
+
+		/// <summary>
+		/// Release the lock.
+		/// </summary>
+		/// <param name="lockvalue">Variable used as the lock.</param>
+		public static void Unlock(ref int lockvalue)
+		{
+			Debug.Assert(lockvalue != 0);
+			lockvalue = 0;
+		}
+	}
+
 	public enum Trinary
 	{
 		False = 0,

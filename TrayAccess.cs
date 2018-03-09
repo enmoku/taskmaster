@@ -29,7 +29,6 @@ using System.Windows.Forms;
 using Serilog;
 using System.Diagnostics;
 using System.Threading.Tasks;
-using System.Windows;
 
 namespace TaskMaster
 {
@@ -245,7 +244,7 @@ namespace TaskMaster
 		int restoremainwindow_lock = 0;
 		async void RestoreMainWindow(object sender, EventArgs e)
 		{
-			if (System.Threading.Interlocked.CompareExchange(ref restoremainwindow_lock, 1, 0) == 1)
+			if (!Atomic.Lock(ref restoremainwindow_lock))
 				return; // already being done
 
 			await Task.Yield();

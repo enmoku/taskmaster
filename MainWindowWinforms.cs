@@ -27,7 +27,6 @@
 using System.Diagnostics;
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using Serilog;
@@ -99,9 +98,9 @@ namespace TaskMaster
 			{
 				CenterToScreen();
 				SetTopLevel(true); // this doesn't Keep it topmost, does it?
-								   //TopMost = true;
-								   // toggle because we don't want to keep it there
-								   //TopMost = false;
+				TopMost = true;
+				// toggle because we don't want to keep it there
+				TopMost = false;
 			}
 			catch { }
 		}
@@ -143,11 +142,9 @@ namespace TaskMaster
 			micmon.VolumeChanged += volumeChangeDetected;
 		}
 
-		public async void ProcAdjust(object sender, ProcessEventArgs ev)
+		public void ProcAdjust(object sender, ProcessEventArgs ev)
 		{
 			//Log.Verbose("Process adjust received for '{FriendlyName}'.", e.Control.FriendlyName);
-
-			await Task.Yield();
 
 			ListViewItem item;
 			lock (appw_lock)
@@ -162,7 +159,10 @@ namespace TaskMaster
 					else
 						Log.Error("{FriendlyName} not found in app list.", ev.Control.FriendlyName);
 				}
-				catch { }
+				catch (Exception ex)
+				{
+					Logging.Stacktrace(ex);
+				}
 			}
 		}
 
@@ -201,7 +201,7 @@ namespace TaskMaster
 			processmanager.onWaitForExitEvent += ExitWaitListHandler;
 			PathCacheUpdate(null, null);
 
-			foreach (var prc in processmanager.watchlist) AddToProcessList(prc);
+			foreach (var prc in processmanager.getWatchlist()) AddToProcessList(prc);
 
 			rescanRequest += processmanager.ProcessEverythingRequest;
 			if (TaskMaster.PagingEnabled)
@@ -222,7 +222,7 @@ namespace TaskMaster
 
 			if (TaskMaster.ActiveAppMonitorEnabled)
 			{
-				var items2 = processmanager.getWaitingActive();
+				var items2 = processmanager.getExitWaitList();
 				foreach (var bu in items2)
 				{
 					ExitWaitListHandler(this, new ProcessEventArgs() { Control = null, Info = bu, State = ProcessEventArgs.ProcessState.Found });
@@ -271,15 +271,15 @@ namespace TaskMaster
 			if (pc.PowerPlan == PowerManager.PowerMode.Undefined)
 				litem.SubItems[PowerColumn].ForeColor = System.Drawing.SystemColors.GrayText;
 
-			lock (watchlistRules)
-			{
+			lock (watchlistrules_lock)
 				watchlistRules.Items.Add(litem);
-				if (alterColor == true)
-					litem.BackColor = System.Drawing.Color.FromArgb(245, 245, 245);
 
+			if (alterColor)
+				litem.BackColor = System.Drawing.Color.FromArgb(245, 245, 245);
+			alterColor = !alterColor;
+
+			lock (appw_lock)
 				appw.Add(pc, litem);
-				alterColor = !alterColor;
-			}
 		}
 
 		public void PathLocatedEvent(object sender, PathControlEventArgs e)
@@ -298,6 +298,7 @@ namespace TaskMaster
 		ListView micList;
 		readonly object appList_lock = new object();
 		ListView watchlistRules;
+		readonly object watchlistrules_lock = new object();
 		//object pathList_lock = new object();
 		//ListView pathList;
 		readonly object appw_lock = new object();
@@ -393,15 +394,12 @@ namespace TaskMaster
 
 		void UpdateRescanCountdown(object sender, EventArgs ev)
 		{
-			if (TaskMaster.ProcessMonitorEnabled)
+			var t = ProcessManager.NextRescan.Unixstamp() - DateTime.Now.Unixstamp();
+			try
 			{
-				var t = (ProcessManager.LastRescan.Unixstamp() + (ProcessManager.RescanEverythingFrequency / 1000)) - DateTime.Now.Unixstamp();
-				try
-				{
-					processingCountdown.Text = string.Format("{0:N0}s", t);
-				}
-				catch { }
+				processingCountdown.Text = string.Format("{0:N0}s", t);
 			}
+			catch { }
 		}
 
 		void UpdateUptime(object sender, EventArgs e)
@@ -563,13 +561,35 @@ namespace TaskMaster
 			// CONFIG menu item
 			var menu_config = new ToolStripMenuItem("Configuration");
 			// Sub Items
+			var menu_config_behaviour = new ToolStripMenuItem("Behaviour");
+			var menu_config_saveonexit = new ToolStripMenuItem("Save on exit");
+			menu_config_saveonexit.Checked = TaskMaster.SaveConfigOnExit;
+			menu_config_saveonexit.CheckOnClick = true;
+			menu_config_saveonexit.Click += (sender, e) =>
+			{
+				TaskMaster.SaveConfigOnExit = !TaskMaster.SaveConfigOnExit;
+			};
+
+			// Sub Sub Items
+			var menu_config_behaviour_autoopen = new ToolStripMenuItem("Auto-open menus");
+			menu_config_behaviour_autoopen.Checked = TaskMaster.AutoOpenMenus;
+			menu_config_behaviour_autoopen.CheckOnClick = true;
+			menu_config_behaviour_autoopen.Click += (sender, e) => { TaskMaster.AutoOpenMenus = !TaskMaster.AutoOpenMenus; };
+
+			menu_config_behaviour.DropDownItems.Add(menu_config_behaviour_autoopen);
+			//
+
 			var menu_config_log = new ToolStripMenuItem("Logging");
 			var menu_config_log_power = new ToolStripMenuItem("Power mode changes", null, (sender, e) => { });
 			menu_config_log.DropDownItems.Add(menu_config_log_power);
 
-			var menu_config_folder = new ToolStripMenuItem("Open directory", null, (s, e) => { Process.Start(TaskMaster.datapath); });
+			var menu_config_folder = new ToolStripMenuItem("Open in file manager", null, (s, e) => { Process.Start(TaskMaster.datapath); });
 			//menu_config.DropDownItems.Add(menu_config_log);
+			menu_config.DropDownItems.Add(menu_config_behaviour);
+			menu_config.DropDownItems.Add(new ToolStripSeparator());
 			menu_config.DropDownItems.Add(menu_config_folder);
+			menu_config.DropDownItems.Add(new ToolStripSeparator());
+			menu_config.DropDownItems.Add(menu_config_saveonexit);
 
 			// DEBUG menu item
 			var menu_debug = new ToolStripMenuItem("Debug");
@@ -639,14 +659,11 @@ namespace TaskMaster
 			menu.Items.Add(menu_debug);
 			menu.Items.Add(menu_info);
 
-			if (TaskMaster.AutoOpenMenus)
-			{
-				// no simpler way?
-				menu_action.MouseEnter += (s, e) => { menu_action.ShowDropDown(); };
-				menu_config.MouseEnter += (s, e) => { menu_config.ShowDropDown(); };
-				menu_debug.MouseEnter += (s, e) => { menu_debug.ShowDropDown(); };
-				menu_info.MouseEnter += (s, e) => { menu_info.ShowDropDown(); };
-			}
+			// no simpler way?
+			menu_action.MouseEnter += (s, e) => { if (TaskMaster.AutoOpenMenus) menu_action.ShowDropDown(); };
+			menu_config.MouseEnter += (s, e) => { if (TaskMaster.AutoOpenMenus) menu_config.ShowDropDown(); };
+			menu_debug.MouseEnter += (s, e) => { if (TaskMaster.AutoOpenMenus) menu_debug.ShowDropDown(); };
+			menu_info.MouseEnter += (s, e) => { if (TaskMaster.AutoOpenMenus) menu_info.ShowDropDown(); };
 
 			Controls.Add(menu);
 
@@ -685,7 +702,7 @@ namespace TaskMaster
 			//Controls.Add(tabLayout);
 
 			#region Main Window Row 0, game monitor / active window monitor
-			var gamepanel = new TableLayoutPanel
+			var activepanel = new TableLayoutPanel
 			{
 				Dock = DockStyle.Top,
 				RowCount = 1,
@@ -706,15 +723,15 @@ namespace TaskMaster
 			activeExec = new Label() { Dock = DockStyle.Top, Text = "n/a", Width = 100, TextAlign = System.Drawing.ContentAlignment.MiddleLeft };
 			activeFullscreen = new Label() { Dock = DockStyle.Top, Text = "n/a", Width = 60, TextAlign = System.Drawing.ContentAlignment.MiddleCenter };
 			activePID = new Label() { Text = "n/a", Width = 60, TextAlign = System.Drawing.ContentAlignment.MiddleCenter };
-			//gamepanel.Padding = new Padding(3);
-			gamepanel.Controls.Add(activeLabelUX);
-			gamepanel.Controls.Add(activeLabel);
-			gamepanel.Controls.Add(activeExec);
-			gamepanel.Controls.Add(activeFullscreen);
-			gamepanel.Controls.Add(new Label { Text = "Id:", Width = 20, TextAlign = System.Drawing.ContentAlignment.MiddleLeft });
-			gamepanel.Controls.Add(activePID);
 
-			infopanel.Controls.Add(gamepanel);
+			activepanel.Controls.Add(activeLabelUX);
+			activepanel.Controls.Add(activeLabel);
+			activepanel.Controls.Add(activeExec);
+			activepanel.Controls.Add(activeFullscreen);
+			activepanel.Controls.Add(new Label { Text = "Id:", Width = 20, TextAlign = System.Drawing.ContentAlignment.MiddleLeft });
+			activepanel.Controls.Add(activePID);
+
+			//infopanel.Controls.Add(activepanel);
 			//infoTab.Controls.Add(infopanel);
 			#endregion
 
@@ -881,7 +898,7 @@ namespace TaskMaster
 			if (TaskMaster.NetworkMonitorEnabled)
 				UItimer.Tick += UpdateUptime;
 
-			if (ProcessManager.RescanEverythingFrequency > 0)
+			if (TaskMaster.ProcessMonitorEnabled && ProcessManager.RescanEverythingFrequency > 0)
 				UItimer.Tick += UpdateRescanCountdown;
 
 			ifaceList = new ListView
@@ -1114,6 +1131,7 @@ namespace TaskMaster
 						break;
 					case 2:
 						LogIncludeLevel.MinimumLevel = Serilog.Events.LogEventLevel.Verbose;
+						Log.Warning("Trace events enabled. UI may become unresponsive due to their volume.");
 						break;
 				}
 				Debug.WriteLine("GUI log level changed: {0} ({1})", LogIncludeLevel.MinimumLevel, logcombo_level.SelectedIndex);
@@ -1418,6 +1436,8 @@ namespace TaskMaster
 				Dock = DockStyle.Top
 			};
 
+			exitlayout.Controls.Add(activepanel);
+
 			exitlayout.Controls.Add(new Label()
 			{
 				Text = "Exit wait list...",
@@ -1430,7 +1450,7 @@ namespace TaskMaster
 			exitwaitlist = new ListView()
 			{
 				AutoSize = true,
-				Height = 210,
+				Height = 180,
 				Width = tabLayout.Width - 12, // FIXME: 3 for the bevel, but how to do this "right"?
 				FullRowSelect = true,
 				View = View.Details,
@@ -1620,7 +1640,7 @@ namespace TaskMaster
 			{
 				if (watchlistRules.SelectedItems.Count == 1)
 				{
-					if (System.Threading.Interlocked.CompareExchange(ref WatchlistEditLock, 1, 0) == 1)
+					if (!Atomic.Lock(ref WatchlistEditLock))
 					{
 						Log.Warning("Only one item can be edited at a time.");
 						return;
@@ -1666,7 +1686,7 @@ namespace TaskMaster
 					string name = li.SubItems[NameColumn].Text;
 					ProcessController pc = null;
 
-					pc = processmanager.watchlist.Find((prc) => prc.FriendlyName == name);
+					pc = processmanager.getWatchedController(name);
 
 					if (pc == null)
 					{
@@ -1760,8 +1780,7 @@ namespace TaskMaster
 			lock (loglistLock)
 			{
 				//Log.Verbose("Filling GUI log.");
-				var logcopy = MemoryLog.Copy();
-				foreach (var evmsg in logcopy)
+				foreach (var evmsg in MemoryLog.ToArray())
 				{
 					loglist.Items.Add(evmsg.Message);
 					loglist_stamp.Add(DateTime.Now);
@@ -1942,6 +1961,8 @@ namespace TaskMaster
 			//InitializeComponent(); // TODO: WPF
 			FormClosing += WindowClose;
 
+			DoubleBuffered = true;
+
 			//MakeTrayIcon();
 
 			BuildUI();
@@ -1951,7 +1972,8 @@ namespace TaskMaster
 
 			// the form itself
 			WindowState = FormWindowState.Normal;
-			FormBorderStyle = FormBorderStyle.FixedDialog; // no min/max buttons as wanted
+			FormBorderStyle = FormBorderStyle.FixedToolWindow;
+			//FormBorderStyle = FormBorderStyle.FixedDialog; // no min/max buttons as wanted
 			MinimizeBox = false;
 			MaximizeBox = false;
 			Hide();

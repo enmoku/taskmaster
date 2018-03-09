@@ -70,6 +70,7 @@ namespace TaskMaster
 		public long Misses { get; private set; } = 0;
 
 		readonly object cache_lock = new object();
+		int cache_alock = 0;
 
 		Timer pruneTimer = new Timer(1000 * 60 * 10);
 
@@ -95,6 +96,9 @@ namespace TaskMaster
 			pruneTimer.Start();
 		}
 
+		/// <summary>
+		/// Prune cache.
+		/// </summary>
 		async void Prune(object sender, EventArgs ev)
 		{
 			if (Items.Count <= MinCache) return; // just don't bother
@@ -105,7 +109,7 @@ namespace TaskMaster
 
 			lock (cache_lock)
 			{
-				var list = Items.Values.ToList();
+				var list = Items.Values.ToList(); // would be nice to cache this list
 
 				list.Sort(delegate (CacheItem<K1, K2, T> x, CacheItem<K1, K2, T> y)
 				{
@@ -181,6 +185,13 @@ namespace TaskMaster
 			}
 		}
 
+		/// <summary>
+		/// Add cache entry.
+		/// </summary>
+		/// <returns>The add.</returns>
+		/// <param name="accesskey">Accesskey.</param>
+		/// <param name="returnkey">Returnkey.</param>
+		/// <param name="item">Item.</param>
 		public bool Add(K1 accesskey, K2 returnkey, T item)
 		{
 			Misses++;
@@ -203,6 +214,13 @@ namespace TaskMaster
 			return true;
 		}
 
+		/// <summary>
+		/// Get cached entry.
+		/// </summary>
+		/// <returns>The get.</returns>
+		/// <param name="key">Key.</param>
+		/// <param name="cacheditem">Cacheditem.</param>
+		/// <param name="returnkeytest">Returnkeytest.</param>
 		public K2 Get(K1 key, out T cacheditem, K2 returnkeytest = null)
 		{
 			try
@@ -233,13 +251,17 @@ namespace TaskMaster
 				// NOP, don't caree
 			}
 
+			// this is bad design
 			if (Count > MaxCache + Overflow)
 			{
+				// TODO: make restart timer or something?
+				/*
 				Task.Run(async () =>
 				{
 					await Task.Yield();
 					Prune(this, null);
 				});
+				*/
 			}
 
 			Misses++;

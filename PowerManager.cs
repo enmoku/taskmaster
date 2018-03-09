@@ -1,4 +1,4 @@
-﻿//
+//
 // PowerManager.cs
 //
 // Author:
@@ -67,20 +67,23 @@ namespace TaskMaster
 
 			onCPUSampling += CPULoadEvent;
 
-			CPUTimer = new System.Timers.Timer();
-			CPUTimer.Interval = 1000 * CPUSampleInterval;
-			CPUTimer.Elapsed += CPUSampler;
-
 			CPUSamples = new float[CPUSampleCount];
 
 			if (Behaviour == PowerBehaviour.Auto || !PauseUnneededSampler)
-				CPUTimer.Start();
+			{
+				InitCPUTimer();
+			}
+		}
+
+		void InitCPUTimer()
+		{
+			CPUTimer = new System.Threading.Timer(CPUSampler, null, 500, CPUSampleInterval * 1000);
 		}
 
 		public int CPUSampleInterval { get; set; } = 5;
 		public int CPUSampleCount { get; set; } = 5;
 		System.Diagnostics.PerformanceCounter CPUCounter = null;
-		System.Timers.Timer CPUTimer = null;
+		System.Threading.Timer CPUTimer = null;
 
 		public event EventHandler<ProcessorEventArgs> onCPUSampling;
 		float[] CPUSamples;
@@ -91,7 +94,7 @@ namespace TaskMaster
 		float CPUHigh = 0f;
 		int CPULowOffset = 0;
 		int CPUHighOffset = 0;
-		async void CPUSampler(object sender, EventArgs ev)
+		async void CPUSampler(object state)
 		{
 			await Task.Yield();
 
@@ -279,8 +282,8 @@ namespace TaskMaster
 
 			if (ReactionaryPlan != CurrentMode && AutoAdjustAllowed == 0)
 			{
-				if (TaskMaster.DebugPower)
-					Log.Debug("<Power Mode> Auto-adjust: {Mode}", Reaction.ToString());
+				if (TaskMaster.DebugPower) Log.Debug("<Power Mode> Auto-adjust: {Mode}", Reaction.ToString());
+
 				if (Request(ReactionaryPlan))
 				{
 					AutoAdjustCounter++;
@@ -289,7 +292,7 @@ namespace TaskMaster
 				}
 				else
 				{
-					if (TaskMaster.DebugPower)
+					if (TaskMaster.DebugPower && TaskMaster.Trace)
 						Log.Warning("<Power Mode> Failed to auto-adjust power.");
 				}
 
@@ -494,7 +497,11 @@ namespace TaskMaster
 							PauseForSessionLock = true;
 							AutoAdjustAllowed |= AutoAdjustPauseBlock;
 							Log.Information("<Power Mode> Session locked, enforcing low power plan.");
-							if (PauseUnneededSampler) CPUTimer.Stop();
+							if (PauseUnneededSampler)
+							{
+								CPUTimer.Dispose();
+								CPUTimer = null;
+							}
 							setMode(PowerMode.PowerSaver, true);
 						}
 					}
@@ -508,7 +515,7 @@ namespace TaskMaster
 						{
 							Log.Information("<Power Mode> Session unlocked, restoring normal power.");
 							setMode(RestoreMode, true);
-							if (PauseUnneededSampler) CPUTimer.Start();
+							if (PauseUnneededSampler) InitCPUTimer();
 							PauseForSessionLock = false;
 							AutoAdjustAllowed &= ~AutoAdjustPauseBlock;
 							TaskMaster.Evaluate();
@@ -629,19 +636,25 @@ namespace TaskMaster
 				if (PauseUnneededSampler)
 				{
 					CPUSamples = new float[CPUSampleCount]; // reset samples
-					CPUTimer.Start();
+					InitCPUTimer();
 					Log.Debug("CPU sampler restarted.");
 				}
 			}
 			else if (Behaviour == PowerBehaviour.RuleBased)
 			{
 				if (PauseUnneededSampler)
-					CPUTimer.Stop();
+				{
+					CPUTimer.Dispose();
+					CPUTimer = null;
+				}
 			}
 			else // MANUAL
 			{
 				if (PauseUnneededSampler)
-					CPUTimer.Stop();
+				{
+					CPUTimer.Dispose();
+					CPUTimer = null;
+				}
 
 				TaskMaster.processmanager.CancelPowerWait(); // need nicer way to do this
 				ForceCleanup();
@@ -677,7 +690,7 @@ namespace TaskMaster
 			Debug.Assert(sourcePid == 0 || sourcePid > 4);
 			if (PauseForSessionLock) return; // TODO: What to do in the unlikely event of this being called while paused?
 
-			lock (power_lock)
+			lock (forceModeSources_lock)
 			{
 				if (sourcePid == 0)
 				{
@@ -700,15 +713,17 @@ namespace TaskMaster
 			else
 				await Task.Yield();
 
-			lock (power_lock)
+			int tSourceCount = forceModeSources.Count;
+
+			if (tSourceCount == 0)
 			{
-				if (forceModeSources.Count == 0)
+				// TODO: Restore Powerdown delay functionality here.
+
+				if (TaskMaster.DebugPower)
+					Log.Debug("<Power Mode> Restoring power mode!");
+
+				lock (power_lock)
 				{
-					// TODO: Restore Powerdown delay functionality here.
-
-					if (TaskMaster.DebugPower)
-						Log.Debug("<Power Mode> Restoring power mode!");
-
 					if (RestoreMode != PowerMode.Undefined)
 						SavedMode = RestoreMode;
 
@@ -723,15 +738,15 @@ namespace TaskMaster
 						//Log.Information("<Power Mode> Restored to: {PowerMode}", CurrentMode.ToString());
 					}
 				}
-				else
+			}
+			else
+			{
+				if (TaskMaster.DebugPower)
 				{
-					if (TaskMaster.DebugPower)
+					Log.Debug("<Power Mode> Forced mode still requested by {sources} sources.", forceModeSources.Count);
+					if (tSourceCount > 0)
 					{
-						Log.Debug("<Power Mode> Forced mode still requested by {sources} sources.", forceModeSources.Count);
-						if (forceModeSources.Count > 0)
-						{
-							Log.Debug("<Power Mode> Sources: {Sources}", string.Join(", ", forceModeSources.ToArray()));
-						}
+						Log.Debug("<Power Mode> Sources: {Sources}", string.Join(", ", forceModeSources.ToArray()));
 					}
 				}
 			}
@@ -740,7 +755,8 @@ namespace TaskMaster
 		PowerMode getPowerMode()
 		{
 			Guid plan;
-			IntPtr ptr = Marshal.AllocHGlobal(Marshal.SizeOf(typeof(IntPtr)));
+			IntPtr ptr = Marshal.AllocHGlobal(Marshal.SizeOf(typeof(IntPtr))); // is this actually necessary?
+
 			lock (power_lock)
 			{
 				if (PowerGetActiveScheme((IntPtr)null, out ptr) == 0)
@@ -756,6 +772,7 @@ namespace TaskMaster
 					Log.Information("<Power Mode> Current: {Plan} ({Guid})", CurrentMode.ToString(), plan.ToString());
 				}
 			}
+
 			return CurrentMode;
 		}
 
@@ -769,28 +786,23 @@ namespace TaskMaster
 			Debug.Assert(Behaviour == PowerBehaviour.Auto, "RequestMode is for auto adjusting.");
 			if (PauseForSessionLock) return false;
 
-			lock (power_lock)
-			{
-				if (mode != CurrentMode && forceModeSources.Count == 0)
-				{
-					setMode(mode, verbose: false);
-					return true;
-				}
-			}
-			return false;
+			if (mode == CurrentMode || forceModeSources.Count > 0)
+				return false;
+
+			setMode(mode, verbose: false);
+			return true;
 		}
 
 		public void ForceCleanup()
 		{
-			lock (power_lock)
-			{
+			lock (forceModeSources_lock)
 				forceModeSources.Clear();
-			}
 
 			Restore(0);
 		}
 
 		HashSet<int> forceModeSources = new HashSet<int>();
+		readonly object forceModeSources_lock = new object();
 
 		public bool Force(PowerMode mode, int sourcePid)
 		{
@@ -799,7 +811,7 @@ namespace TaskMaster
 
 			bool rv = false;
 
-			lock (power_lock)
+			lock (forceModeSources_lock)
 			{
 				if (forceModeSources.Contains(sourcePid))
 				{
@@ -808,13 +820,13 @@ namespace TaskMaster
 				}
 
 				forceModeSources.Add(sourcePid);
-
-				rv = mode != CurrentMode;
-				if (rv)
-					setMode(mode);
-
-				AutoAdjustAllowed |= AutoAdjustForceBlock;
 			}
+
+			rv = mode != CurrentMode;
+			if (rv)
+				setMode(mode);
+
+			AutoAdjustAllowed |= AutoAdjustForceBlock;
 
 			if (TaskMaster.DebugPower)
 			{
@@ -847,11 +859,8 @@ namespace TaskMaster
 			if (verbose && (CurrentMode != mode))
 				Log.Information("<Power Mode> Setting to: {Mode} ({Guid})", mode.ToString(), plan.ToString());
 
-			lock (power_lock)
-			{
-				CurrentMode = mode;
-				PowerSetActiveScheme((IntPtr)null, ref plan);
-			}
+			CurrentMode = mode;
+			PowerSetActiveScheme((IntPtr)null, ref plan);
 		}
 
 		bool disposed; // = false;

@@ -280,7 +280,7 @@ namespace TaskMaster
 				if (TaskMaster.Trace) Log.Verbose("Mic.Volume.Changed = [{OldVolume:N1} -> {NewVolume:N1}], Off.Target: {VolumeOffset:N1}",
 												  oldVol, newVol, Math.Abs(newVol - Target));
 
-				if (System.Threading.Interlocked.CompareExchange(ref correcting, 1, 0) == 0)
+				if (Atomic.Lock(ref correcting))
 				{
 					await System.Threading.Tasks.Task.Delay(AdjustDelay); // actual hysterisis, this should be cancellable
 

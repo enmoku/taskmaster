@@ -35,7 +35,7 @@ namespace TaskMaster
 	public class AppEditWindow : Form
 	{
 		readonly ProcessController process;
-		readonly ListViewItem item;
+		readonly ListViewItem litem;
 
 		// Adding
 		public AppEditWindow()
@@ -46,9 +46,9 @@ namespace TaskMaster
 		// Editingg
 		public AppEditWindow(string name, ListViewItem ri)
 		{
-			item = ri;
+			litem = ri;
 
-			process = TaskMaster.processmanager.watchlist.Find((tcp) => tcp.FriendlyName == name);
+			process = TaskMaster.processmanager.getWatchedController(name);
 
 			if (process == null) throw new ArgumentException(string.Format("{0} not found in watchlist.", name));
 

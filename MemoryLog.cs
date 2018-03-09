@@ -1,4 +1,4 @@
-﻿//
+//
 // MemoryLog.cs
 //
 // Author:
@@ -86,15 +86,16 @@ namespace TaskMaster
 					Logs.RemoveAt(0);
 				Logs.Add(e);
 			}
+
 			onNewEvent?.Invoke(sender, e);
 		}
 
-		public static System.Collections.Generic.List<LogEventArgs> Copy()
+		public static LogEventArgs[] ToArray()
 		{
-			System.Collections.Generic.List<LogEventArgs> logcopy;
+			LogEventArgs[] logcopy = null;
 			lock (LogLock)
 			{
-				logcopy = new System.Collections.Generic.List<LogEventArgs>(Logs);
+				logcopy = Logs.ToArray();
 			}
 			return logcopy;
 		}
@@ -126,12 +127,15 @@ namespace TaskMaster
 			{
 				if (e.Level < LevelSwitch.MinimumLevel) return;
 				string t;
+
 				lock (sinklock)
 				{
 					p_textFormatter.Format(e, p_output);
 					t = p_output.ToString();
-					((System.IO.StringWriter)p_output).GetStringBuilder().Clear();
+
+					((System.IO.StringWriter)p_output).GetStringBuilder().Clear(); // empty, weird results if not done.
 				}
+
 				MemoryLog.Emit(this, new LogEventArgs(t, e.Level));
 			}
 		}

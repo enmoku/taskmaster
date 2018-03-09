@@ -41,6 +41,11 @@ namespace TaskMaster
 	public class ProcessController : IDisposable
 	{
 		/// <summary>
+		/// Public identifier.
+		/// </summary>
+		public int Id { get; set; } = -1;
+
+		/// <summary>
 		/// Human-readable friendly name for the process.
 		/// </summary>
 		public string FriendlyName { get; set; } = null;
@@ -215,7 +220,10 @@ namespace TaskMaster
 						Log.Debug("[{FriendlyName}] {Exec} (#{Pid}) priority restored: {Paused}→{Restored} [Foreground]",
 										FriendlyName, info.Name, info.Id, BackgroundPriority, Priority);
 				}
-				catch { }
+				catch
+				{
+					// should only happen if the process is already gone
+				}
 			}
 			//PausedState.Priority = Priority;
 			//PausedState.PowerMode = PowerPlan;
@@ -557,22 +565,9 @@ namespace TaskMaster
 		/// </summary>
 		public int TryScan()
 		{
-			Task.Run(new Func<Task>(async () =>
-			{
-				await Task.Yield();
-				try
-				{
-					RescanWithSchedule();
-				}
-				catch (Exception ex)
-				{
-					Log.Warning("Error in scheduled rescan.");
-					Logging.Stacktrace(ex);
-					return; //throw; // would throw, but this is async function
-				}
-			}));
+			RescanWithSchedule();
 
-			return Convert.ToInt32((LastScan.AddMinutes(Rescan) - DateTime.Now).TotalMinutes);
+			return Convert.ToInt32((LastScan.AddMinutes(Rescan) - DateTime.Now).TotalMinutes); // this will produce wrong numbers
 		}
 
 		DateTime LastScan = DateTime.MinValue;
@@ -582,24 +577,33 @@ namespace TaskMaster
 		/// </summary>
 		int ScheduledScan = 0;
 
-		void RescanWithSchedule()
+		async Task RescanWithSchedule()
 		{
-			double n = (DateTime.Now - LastScan).TotalMinutes;
-			//Log.Trace(string.Format("[{0}] last scan {1:N1} minute(s) ago.", FriendlyName, n));
-			if (Rescan > 0 && n >= Rescan)
+			await Task.Yield();
+
+			try
 			{
-				if (System.Threading.Interlocked.CompareExchange(ref ScheduledScan, 1, 0) == 1)
-					return;
+				double n = (DateTime.Now - LastScan).TotalMinutes;
+				//Log.Trace(string.Format("[{0}] last scan {1:N1} minute(s) ago.", FriendlyName, n));
+				if (Rescan > 0 && n >= Rescan)
+				{
+					if (!Atomic.Lock(ref ScheduledScan))
+						return;
 
-				if (TaskMaster.DebugProcesses)
-					Log.Debug("[{FriendlyName}] Rescan initiating.", FriendlyName);
+					if (TaskMaster.DebugProcesses)
+						Log.Debug("[{FriendlyName}] Rescan initiating.", FriendlyName);
 
-				Scan();
+					Scan();
 
-				ScheduledScan = 0;
+					ScheduledScan = 0;
+				}
+				//else
+				//	Log.Verbose("[{FriendlyName}] Scan too recent, ignoring.", FriendlyName); // this is too spammy.
 			}
-			//else
-			//	Log.Verbose("[{FriendlyName}] Scan too recent, ignoring.", FriendlyName); // this is too spammy.
+			catch (Exception ex)
+			{
+				Logging.Stacktrace(ex);
+			}
 		}
 
 		public void Scan()

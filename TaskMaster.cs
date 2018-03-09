@@ -1,4 +1,4 @@
-﻿//
+//
 // TaskMaster.cs
 //
 // Author:
@@ -135,8 +135,9 @@ namespace TaskMaster
 
 		public static void MainWindowClose(object sender, EventArgs e)
 		{
-			// Calling dispose here is WRONG, DON'T DO IT
-			// only if ev.Cancel=true, I mean.
+			// Calling dispose here for mainwindow is WRONG, DON'T DO IT
+			// only do it if ev.Cancel=true, I mean.
+
 			lock (mainwindow_lock)
 			{
 				mainwindow = null;
@@ -178,6 +179,7 @@ namespace TaskMaster
 
 		public static void UnifiedExit()
 		{
+			/*
 			try
 			{
 				lock (mainwindow_lock)
@@ -194,6 +196,7 @@ namespace TaskMaster
 			{
 				Logging.Stacktrace(ex);
 			}
+			*/
 
 			Application.Exit(); // if this throws, it deserves to break everything
 		}
@@ -387,6 +390,8 @@ namespace TaskMaster
 		public static bool RequestExitConfirm = true;
 		public static bool AutoOpenMenus = true;
 
+		public static bool SaveConfigOnExit = false;
+
 		static string coreconfig = "Core.ini";
 		static void LoadCoreConfig()
 		{
@@ -442,7 +447,7 @@ namespace TaskMaster
 			var qol = cfg["Quality of Life"];
 			RequestExitConfirm = qol.GetSetDefault("Confirm exit", true, out modified).BoolValue;
 			dirtyconfig |= modified;
-			AutoOpenMenus = qol.GetSetDefault("Auto open menus", true, out modified).BoolValue;
+			AutoOpenMenus = qol.GetSetDefault("Auto-open menus", true, out modified).BoolValue;
 			dirtyconfig |= modified;
 
 			var logsec = cfg["Logging"];
@@ -660,9 +665,24 @@ namespace TaskMaster
 
 		public static System.Threading.Mutex singleton = null;
 
+		public static bool SingletonLock()
+		{
+			if (TaskMaster.Trace) Log.Verbose("Testing for single instance.");
+
+			bool mutexgained = false;
+			singleton = new System.Threading.Mutex(true, "088f7210-51b2-4e06-9bd4-93c27a973874.taskmaster", out mutexgained);
+			if (!mutexgained)
+			{
+				// already running, signal original process
+				System.Windows.Forms.MessageBox.Show("Already operational.", System.Windows.Forms.Application.ProductName + "!");
+				Log.Warning("Exiting (#{ProcessID}); already running.", System.Diagnostics.Process.GetCurrentProcess().Id);
+			}
+			return mutexgained;
+		}
+
 		// entry point to the application
 		[STAThread] // supposedly needed to avoid shit happening with the WinForms GUI and other GUI toolkits
-		static public void Main(string[] args)
+		static public int Main(string[] args)
 		{
 			try
 			{
@@ -718,21 +738,8 @@ namespace TaskMaster
 				Prealloc("Logs/info.log", 32);
 				*/
 
-				#region SINGLETON
-				if (TaskMaster.Trace) Log.Verbose("Testing for single instance.");
-
-				{
-					bool mutexgained = false;
-					singleton = new System.Threading.Mutex(true, "088f7210-51b2-4e06-9bd4-93c27a973874.taskmaster", out mutexgained);
-					if (!mutexgained)
-					{
-						// already running, signal original process
-						System.Windows.Forms.MessageBox.Show("Already operational.", System.Windows.Forms.Application.ProductName + "!");
-						Log.Warning("Exiting (#{ProcessID}); already running.", System.Diagnostics.Process.GetCurrentProcess().Id);
-						return;
-					}
-				}
-				#endregion
+				if (!SingletonLock())
+					return -1;
 
 				Log.Information("TaskMaster! (#{ProcessID}) – Version: {Version} – START!",
 								Process.GetCurrentProcess().Id, System.Reflection.Assembly.GetExecutingAssembly().GetName().Version);
@@ -760,7 +767,7 @@ namespace TaskMaster
 						{
 							//singleton.ReleaseMutex();
 							Log.CloseAndFlush();
-							return;
+							return 4;
 						}
 					}
 					tcfg = null;
@@ -779,7 +786,7 @@ namespace TaskMaster
 					Logging.Stacktrace(ex);
 					//singleton.ReleaseMutex();
 					Log.CloseAndFlush();
-					return;
+					return 1;
 				}
 
 				// IS THIS OF ANY USE?
@@ -835,6 +842,13 @@ namespace TaskMaster
 					}
 
 					Log.Information("Exiting...");
+
+					// TODO: Save Config
+					if (TaskMaster.SaveConfigOnExit)
+					{
+						cfg["Quality of Life"]["Auto-open menus"].BoolValue = AutoOpenMenus;
+						MarkDirtyINI(cfg);
+					}
 
 					// CLEANUP for exit
 
@@ -956,6 +970,8 @@ namespace TaskMaster
 					singleton.Close();
 				Log.CloseAndFlush();
 			}
+
+			return 0;
 		}
 	}
 }

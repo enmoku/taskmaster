@@ -1,4 +1,4 @@
-﻿//
+//
 // NetManager.cs
 //
 // Author:
@@ -54,12 +54,14 @@ namespace TaskMaster
 
 		string dnstestaddress = "www.google.com";
 
-		readonly object StateLock = new object();
+		readonly object uptime_lock = new object();
 
-		System.Timers.Timer deviceSampleTimer = new System.Timers.Timer();
 		int DeviceTimerInterval = 15 * 60;
-		System.Timers.Timer packletStatTimer = new System.Timers.Timer();
-		int PacketStatTimerInterval = 15; // seconds
+		int PacketStatTimerInterval = 15; // second
+
+		System.Threading.Timer deviceSampleTimer;
+		System.Threading.Timer packetStatTimer;
+
 		public event EventHandler<NetDeviceTraffic> onSampling;
 
 		void LoadConfig()
@@ -100,21 +102,17 @@ namespace TaskMaster
 			LastChange.Enqueue(DateTime.MinValue);
 			LastChange.Enqueue(DateTime.MinValue);
 
-			deviceSampleTimer.Interval = DeviceTimerInterval * 60000;
-			deviceSampleTimer.Elapsed += SampleDeviceState;
-			deviceSampleTimer.Start();
+			deviceSampleTimer = new System.Threading.Timer(SampleDeviceState, null, 15000, DeviceTimerInterval * 60000);
 			CurrentInterfaceList = Interfaces();
-			AnalyzePacketBehaviour(this, null); // initialize, not really needed
-			packletStatTimer.Interval = PacketStatTimerInterval * 1000;
-			packletStatTimer.Elapsed += AnalyzePacketBehaviour;
-			packletStatTimer.Start();
+			AnalyzePacketBehaviour(null); // initialize, not really needed
+			packetStatTimer = new System.Threading.Timer(AnalyzePacketBehaviour, null, 500, PacketStatTimerInterval * 1000);
 
 			Log.Information("<Net Manager> Loaded.");
 		}
 
 		int packetWarning = 0;
 		List<NetDevice> CurrentInterfaceList;
-		async void AnalyzePacketBehaviour(object sender, EventArgs ev)
+		async void AnalyzePacketBehaviour(object state)
 		{
 			await Task.Yield();
 
@@ -141,7 +139,7 @@ namespace TaskMaster
 						if (packetWarning == 0 || (packetWarning % PacketStatTimerInterval == 0))
 						{
 							packetWarning = 2;
-							Log.Warning("<Net Monitor> {Device} is suffering from traffic errors! (+{Rate} since last sample)", ifaces[index].Name, errors);
+							Log.Warning("<Network> {Device} is suffering from traffic errors! (+{Rate} since last sample)", ifaces[index].Name, errors);
 						}
 						else
 							packetWarning++;
@@ -150,7 +148,7 @@ namespace TaskMaster
 				}
 			}
 			else
-				Console.WriteLine("Interface list changed.");
+				Console.WriteLine("<Network> Interface list changed.");
 			CurrentInterfaceList = ifaces;
 		}
 
@@ -226,7 +224,7 @@ namespace TaskMaster
 			var ups = new System.Text.StringBuilder();
 
 			ups.Append("<Network> Average uptime: ");
-			lock (StateLock)
+			lock (uptime_lock)
 			{
 				double currentUptime = (DateTime.Now - lastUptimeStart).TotalMinutes;
 
@@ -245,7 +243,7 @@ namespace TaskMaster
 			ReportCurrentUpstate();
 		}
 
-		public void SampleDeviceState(object sender, EventArgs e)
+		public void SampleDeviceState(object state)
 		{
 			RecordDeviceState(InternetAvailable, false);
 		}
@@ -256,16 +254,14 @@ namespace TaskMaster
 		{
 			if (online_state != lastOnlineState)
 			{
-				lock (StateLock)
-					lastOnlineState = online_state;
+				lastOnlineState = online_state;
 
 				if (online_state)
 				{
-					lock (StateLock)
-						lastUptimeStart = DateTime.Now;
+					lastUptimeStart = DateTime.Now;
 
 					// this part is kinda pointless
-					if (System.Threading.Interlocked.CompareExchange(ref upstateTesting, 1, 0) == 0)
+					if (Atomic.Lock(ref upstateTesting))
 					{
 						System.Threading.Tasks.Task.Run(async () =>
 						{
@@ -279,7 +275,7 @@ namespace TaskMaster
 				}
 				else // went offline
 				{
-					lock (StateLock)
+					lock (uptime_lock)
 					{
 						double newUptime = (DateTime.Now - lastUptimeStart).TotalMinutes;
 						upTime.Add(newUptime);
@@ -299,7 +295,7 @@ namespace TaskMaster
 			else if (address_changed)
 			{
 				// same state but address change was detected
-				Console.WriteLine("DEBUG: Address changed but internet connectivity unaffected.");
+				Console.WriteLine("<Network> DEBUG: Address changed but internet connectivity unaffected.");
 			}
 		}
 
@@ -308,10 +304,10 @@ namespace TaskMaster
 		{
 			// TODO: Figure out how to get Actual start time of internet connectivity.
 
-			if (System.Threading.Interlocked.CompareExchange(ref checking_inet, 1, 0) == 1)
+			if (!Atomic.Lock(ref checking_inet))
 				return;
 
-			if (TaskMaster.Trace) Log.Verbose("Checking internet connectivity...");
+			if (TaskMaster.Trace) Log.Verbose("<Network> Checking internet connectivity...");
 
 			await Task.Yield();
 
@@ -334,7 +330,7 @@ namespace TaskMaster
 					switch (ex.SocketErrorCode)
 					{
 						case System.Net.Sockets.SocketError.TimedOut:
-							Log.Warning("Internet availability test timed-out: assuming we're online.");
+							Log.Warning("<Network> Internet availability test timed-out: assuming we're online.");
 							/*
 							Task.Run(async delegate
 							{
@@ -343,6 +339,7 @@ namespace TaskMaster
 							});
 							*/
 							InternetAvailable = true; // timeout can only occur if we actually have internet.. sort of. We have no tri-state tho.
+							Atomic.Unlock(ref checking_inet);
 							return;
 						case System.Net.Sockets.SocketError.NetworkDown:
 						case System.Net.Sockets.SocketError.NetworkUnreachable:
@@ -359,13 +356,13 @@ namespace TaskMaster
 			RecordDeviceState(InternetAvailable, address_changed);
 
 			if (oldInetAvailable != InternetAvailable)
-				Log.Information("Network status: {NetworkAvailable}, Internet status: {InternetAvailable}", (NetworkAvailable ? "Up" : "Down"), (InternetAvailable ? "Connected" : "Disconnected"));
+				Log.Information("<Network> Status: {NetworkAvailable}, Internet: {InternetAvailable}", (NetworkAvailable ? "Up" : "Down"), (InternetAvailable ? "Connected" : "Disconnected"));
 			else
 			{
-				if (TaskMaster.Trace) Log.Verbose("Internet status unchanged");
+				if (TaskMaster.Trace) Log.Verbose("<Network> Connectivity unchanged.");
 			}
 
-			checking_inet = 0;
+			Atomic.Unlock(ref checking_inet);
 
 			InternetStatusChange?.Invoke(this, new InternetStatus { Available = InternetAvailable, Start = lastUptimeStart, Uptime = Uptime });
 		}
@@ -422,11 +419,11 @@ namespace TaskMaster
 		/// <returns>string[] { Device Name, Type, Status, Link Speed, IPv4 Address, IPv6 Address } or null</returns>
 		public List<NetDevice> Interfaces()
 		{
-			if (System.Threading.Interlocked.CompareExchange(ref enumerating_inet, 1, 0) == 1)
+			if (!Atomic.Lock(ref enumerating_inet))
 				return null; // bail if we were already doing this
 
 			if (TaskMaster.DebugNetMonitor)
-				Log.Debug("Enumerating network interfaces...");
+				Log.Debug("<Network> Enumerating network interfaces...");
 
 			var ifacelist = new List<NetDevice>();
 			//var ifacelist = new List<string[]>();
@@ -473,7 +470,7 @@ namespace TaskMaster
 				ifacelist.Add(devi);
 
 				if (TaskMaster.DebugNetMonitor)
-					Log.Debug("Interface: {InterfaceName}", dev.Name);
+					Log.Debug("<Network> Interface: {InterfaceName}", dev.Name);
 			}
 
 			enumerating_inet = 0;
@@ -507,7 +504,9 @@ namespace TaskMaster
 					outstr4.Append("IPv4 address changed: ");
 					outstr4.Append(oldV4Address).Append(" -> ").Append(IPv4Address);
 					Log.Debug(outstr4.ToString());
-					Tray.Tooltip(2000, outstr4.ToString(), "TaskMaster", System.Windows.Forms.ToolTipIcon.Info);
+
+					Tray.Tooltip(2000, outstr4.ToString(), "Taskmaster", System.Windows.Forms.ToolTipIcon.Info);
+					// TODO: Make clicking on the tooltip copy new IP to clipboard?
 				}
 #endif
 				ipv6changed = !oldV6Address.Equals(IPv6Address);
@@ -518,11 +517,17 @@ namespace TaskMaster
 					outstr6.Append("IPv6 address changed: ");
 					outstr6.Append(oldV6Address).Append(" -> ").Append(IPv6Address);
 					Log.Debug(outstr6.ToString());
+
+					Tray.Tooltip(2000, outstr6.ToString(), "Taskmaster", System.Windows.Forms.ToolTipIcon.Info);
 				}
 #endif
 
 				if (!ipv4changed && !ipv6changed && (LastChange.Peek() - DateTime.Now).Minutes < 5)
-					Log.Warning("Unstable internet connectivity detected.");
+				{
+					Log.Warning("<Network> Unstable connectivity detected.");
+
+					Tray.Tooltip(2000, "Unstable internet connection detected!", "Taskmaster", System.Windows.Forms.ToolTipIcon.Warning);
+				}
 			}
 
 			//NetworkChanged(null,null);
@@ -547,7 +552,7 @@ namespace TaskMaster
 			// do stuff only if this is different from last time
 			if (oldNetAvailable != NetworkAvailable)
 			{
-				Log.Information("Network status changed: " + (NetworkAvailable ? "Connected" : "Disconnected"));
+				Log.Information("<Network> Status changed: " + (NetworkAvailable ? "Connected" : "Disconnected"));
 
 				NetworkStatusChange?.Invoke(this, new NetworkStatus { Available = NetworkAvailable });
 

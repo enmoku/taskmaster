@@ -24,13 +24,13 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
+using System;
 using System.Diagnostics;
+using System.Runtime.InteropServices;
+using Serilog;
 
 namespace TaskMaster
 {
-	using System;
-	using System.Runtime.InteropServices;
-	using Serilog;
 
 	public class WindowChangedArgs : EventArgs
 	{
@@ -48,8 +48,6 @@ namespace TaskMaster
 
 		public ActiveAppManager()
 		{
-			//Snatch();
-			//D3DDevice();
 			dele = new WinEventDelegate(WinEventProc);
 			if (!SetupEventHook())
 				throw new Exception("Failed to initialize active app manager.");
@@ -60,8 +58,16 @@ namespace TaskMaster
 			GetWindowThreadProcessId(hwnd, out pid);
 			ForegroundId = pid;
 
-			Log.Information("Foreground app manager active.");
+			var perfsec = TaskMaster.cfg["Performance"];
+			bool modified = false;
+			Hysterisis = perfsec.GetSetDefault("Foreground hysterisis", 1500, out modified).IntValue.Constrain(0, 30000);
+			perfsec["Foreground hysterisis"].Comment = "In milliseconds, from 0 to 30000. Delay before we inspect foreground app, in case user rapidly swaps apps.";
+			if (modified) TaskMaster.MarkDirtyINI(TaskMaster.cfg);
+
+			Log.Information("<Foreground Manager> Loaded.");
 		}
+
+		int Hysterisis = 500;
 
 		WinEventDelegate dele;
 		IntPtr windowseventhook = IntPtr.Zero;
@@ -113,6 +119,117 @@ namespace TaskMaster
 			disposed = true;
 		}
 
+		/*
+		public static string GetActiveWindowTitle()
+		{
+			const int nChars = 256;
+			IntPtr handle = IntPtr.Zero;
+			System.Text.StringBuilder Buff = new System.Text.StringBuilder(nChars);
+			handle = GetForegroundWindow();
+
+			if (GetWindowText(handle, Buff, nChars) > 0)
+				return Buff.ToString();
+			
+			return null;
+		}
+		*/
+
+		int foreground = 0;
+
+		//[UIPermissionAttribute(SecurityAction.Demand)] // fails
+		//[SecurityPermissionAttribute(SecurityAction.Demand, UnmanagedCode = true)]
+		public async void WinEventProc(IntPtr hWinEventHook, uint eventType, IntPtr hwnd, int idObject, int idChild, uint dwEventThread, uint dwmsEventTime)
+		{
+			if (eventType != EVENT_SYSTEM_FOREGROUND) return;
+
+			foreground++;
+
+			//await System.Threading.Tasks.Task.Yield();
+			await System.Threading.Tasks.Task.Delay(Hysterisis);
+
+			int old = -1;
+			if ((old = foreground) > 1) // if we've swapped in this time, we won't bother checking anything about it.
+			{
+				foreground--;
+				//Log.Verbose("<Foreground> {0} apps in foreground, we're late to the party.", old);
+				return;
+			}
+
+			//IntPtr handle = IntPtr.Zero; // hwnd arg already has this
+			//handle = GetForegroundWindow();
+
+			//http://www.pinvoke.net/default.aspx/user32.GetWindowPlacement
+
+			const int nChars = 256;
+			System.Text.StringBuilder buff = null;
+			if (TaskMaster.DebugForeground)
+			{
+				buff = new System.Text.StringBuilder(nChars);
+
+				// Window title, we don't care tbh.
+				if (GetWindowText(hwnd, buff, nChars) > 0) // get title? not really useful for most things
+				{
+					//System.Console.WriteLine("Active window: {0}", buff);
+				}
+			}
+
+			// BUG: ?? why does it return here already sometimes? takes too long?
+			// ----------------------
+			Trinary fullScreen = Trinary.Nonce;
+			try
+			{
+				/*
+				// WORKS, JUST KINDA USELESS FOR NOW
+				// PLAN: Use this for process analysis.
+				System.Windows.Forms.Screen screen = System.Windows.Forms.Screen.FromHandle(hwnd); // passes
+
+				RECT rect = new RECT();
+				GetWindowRect(hwnd, ref rect);
+
+				var r = new System.Drawing.Rectangle(rect.Left, rect.Top, rect.Right - rect.Left, rect.Bottom - rect.Top);
+				bool full = r.Equals(screen.Bounds);
+				fullScreen = full ? Trinary.True : Trinary.False;
+				*/
+			}
+			catch (Exception ex)
+			{
+				Logging.Stacktrace(ex);
+			}
+
+			try
+			{
+				var activewindowev = new WindowChangedArgs();
+				activewindowev.hWnd = hwnd;
+				activewindowev.Title = (buff != null ? buff.ToString() : string.Empty);
+				activewindowev.Fullscreen = fullScreen;
+				int pid = 0;
+				GetWindowThreadProcessId(hwnd, out pid);
+				ForegroundId = activewindowev.Id = pid;
+				try
+				{
+					Process proc = Process.GetProcessById(activewindowev.Id);
+					activewindowev.Process = proc;
+					activewindowev.Executable = proc.ProcessName;
+				}
+				catch { /* NOP */ }
+
+				if (TaskMaster.DebugForeground && TaskMaster.ShowInaction)
+					Log.Debug("Active Window (#{Pid}): {Title}", activewindowev.Id, activewindowev.Title);
+
+				ActiveChanged?.Invoke(this, activewindowev);
+			}
+			catch (Exception ex)
+			{
+				Logging.Stacktrace(ex);
+			}
+
+			foreground--;
+		}
+
+		[DllImport("user32.dll", SetLastError = true)]
+		static extern uint GetWindowThreadProcessId(IntPtr hWnd, out int lpdwProcessId);
+
+
 		delegate void WinEventDelegate(IntPtr hWinEventHook, uint eventType, IntPtr hwnd, int idObject, int idChild, uint dwEventThread, uint dwmsEventTime);
 
 		[DllImport("user32.dll")]
@@ -130,93 +247,17 @@ namespace TaskMaster
 		[DllImport("user32.dll")]
 		static extern int GetWindowText(IntPtr hWnd, System.Text.StringBuilder text, int count);
 
-		/*
-		public static string GetActiveWindowTitle()
+		[StructLayout(LayoutKind.Sequential)]
+		private struct RECT
 		{
-			const int nChars = 256;
-			IntPtr handle = IntPtr.Zero;
-			System.Text.StringBuilder Buff = new System.Text.StringBuilder(nChars);
-			handle = GetForegroundWindow();
-
-			if (GetWindowText(handle, Buff, nChars) > 0)
-				return Buff.ToString();
-			
-			return null;
-		}
-		*/
-
-		public async void WinEventProc(IntPtr hWinEventHook, uint eventType, IntPtr hwnd, int idObject, int idChild, uint dwEventThread, uint dwmsEventTime)
-		{
-			if (eventType == EVENT_SYSTEM_FOREGROUND)
-			{
-				await System.Threading.Tasks.Task.Yield();
-
-				const int nChars = 256;
-				IntPtr handle = IntPtr.Zero;
-				var buff = new System.Text.StringBuilder(nChars);
-				//handle = GetForegroundWindow();
-
-				//http://www.pinvoke.net/default.aspx/user32.GetWindowPlacement
-
-				if (GetWindowText(hwnd, buff, nChars) > 0) // get title? not really useful for most things
-				{
-					//System.Console.WriteLine("Active window: {0}", buff);
-				}
-				else
-				{
-					//System.Console.WriteLine("Couldn't get title of active window.");
-				}
-
-				// ?? why does it return here already sometimes? takes too long?
-
-				/*
-				if (System.Windows.Forms.Screen.FromHandle(hwnd).Bounds == System.Windows.Forms.Control.FromHandle(hwnd).Bounds)
-				{
-					//Console.WriteLine("Full screen.");
-				}
-				else
-				{
-					//Console.WriteLine("Not full screen.");
-				}
-				*/
-
-				//SlimDX.Windows.DisplayMonitor.FromWindow(hwnd);
-				/*
-				Microsoft.DirectX.Direct3D.AdapterInformation inf = new Microsoft.DirectX.Direct3D.AdapterInformation
-				Microsoft.DirectX.Direct3D.DisplayMode mode = inf.CurrentDisplayMode;
-				Microsoft.DirectX.Direct3D.Format form = mode.Format;
-				System.Console.WriteLine("Format: {0}", mode.Format);
-				*/
-
-				var activewindowev = new WindowChangedArgs();
-				activewindowev.hWnd = hwnd;
-				activewindowev.Title = buff.ToString();
-				activewindowev.Fullscreen = Trinary.Nonce;
-				int pid = 0;
-				GetWindowThreadProcessId(hwnd, out pid);
-				ForegroundId = activewindowev.Id = pid;
-				try
-				{
-					Process proc = Process.GetProcessById(activewindowev.Id);
-					activewindowev.Process = proc;
-					activewindowev.Executable = proc.ProcessName;
-				}
-				catch { /* NOP */ }
-
-				if (TaskMaster.DebugForeground && TaskMaster.ShowInaction)
-					Log.Debug("Active Window (#{Pid}): {Title}", activewindowev.Id, activewindowev.Title);
-
-				ActiveChanged?.Invoke(this, activewindowev);
-			}
+			public int Left;
+			public int Top;
+			public int Right;
+			public int Bottom;
 		}
 
-		public bool D3DDevice()
-		{
-			return false;
-		}
-
-		[DllImport("user32.dll", SetLastError = true)]
-		static extern uint GetWindowThreadProcessId(IntPtr hWnd, out int lpdwProcessId);
+		[DllImport("user32.dll")]
+		private static extern bool GetWindowRect(IntPtr hWnd, [In, Out] ref RECT rect);
 	}
 }
 
