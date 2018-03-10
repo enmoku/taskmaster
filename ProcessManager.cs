@@ -32,6 +32,7 @@ using System.Diagnostics;
 using System.Linq;
 using Serilog;
 using System.Runtime.InteropServices;
+using System.Runtime.CompilerServices;
 
 namespace TaskMaster
 {
@@ -167,7 +168,7 @@ namespace TaskMaster
 						{
 							lock (watchlist_lock)
 							{
-								watchlist.Add(pathinit[i]); 
+								watchlist.Add(pathinit[i]);
 							}
 							WatchlistWithPath += 1;
 							pathinit.RemoveAt(i);
@@ -428,6 +429,100 @@ namespace TaskMaster
 
 		static System.Timers.Timer RescanEverythingTimer = null;
 
+		public bool ValidateController(ProcessController prc)
+		{
+			bool rv = true;
+
+			if (prc.ForegroundOnly && prc.BackgroundPriority.ToInt32() >= prc.Priority.ToInt32())
+			{
+				prc.ForegroundOnly = false;
+				Log.Warning("[{Friendly}] Background priority equal or higher than foreground priority, ignoring.", prc.FriendlyName);
+			}
+
+			if (prc.Rescan > 0 && prc.ExecutableFriendlyName == null)
+			{
+				Log.Warning("[{FriendlyName}] Configuration error, can not rescan without image name.");
+				prc.Rescan = 0;
+			}
+
+			if (prc.Executable == null && prc.Path == null)
+			{
+				if (prc.Subpath == null)
+				{
+					Log.Warning("[{FriendlyName}] Executable, Path and Subpath missing; ignoring.");
+					rv = false;
+				}
+			}
+
+			// SANITY CHECKING
+			if (prc.ExecutableFriendlyName != null)
+			{
+				if (IgnoreProcessName(prc.ExecutableFriendlyName))
+				{
+					if (TaskMaster.ShowInaction)
+						Log.Warning("{Exec} in ignore list; all changes denied.", prc.ExecutableFriendlyName);
+
+					// rv = false; // We'll leave the config in.
+				}
+				else if (ProtectedProcessName(prc.ExecutableFriendlyName))
+				{
+					if (TaskMaster.ShowInaction)
+						Log.Warning("{Exec} in protected list; priority changing denied.");
+				}
+			}
+
+			return (prc.Valid = rv);
+		}
+
+		public void SaveController(ProcessController prc)
+		{
+			if (string.IsNullOrEmpty(prc.Executable))
+			{
+				if (prc.Locate())
+				{
+					WatchlistWithPath += 1;
+
+					// TODO: Add "Path" to config
+					//if (stats.Contains(cnt.Path))
+					//	cnt.Adjusts = stats[cnt.Path].TryGet("Adjusts")?.IntValue ?? 0;
+				}
+				else
+				{
+					prc.Enabled = false;
+
+					if (prc.Subpath != null)
+					{
+						if (pathinit == null) pathinit = new List<ProcessController>();
+						pathinit.Add(prc);
+						Log.Verbose("[{FriendlyName}] ({Subpath}) waiting to be located.", prc.FriendlyName, prc.Subpath);
+					}
+					else
+					{
+						Log.Warning("[{FriendlyName}] Malconfigured. Insufficient or wrong information.", prc.FriendlyName);
+					}
+				}
+			}
+			else
+			{
+				lock (execontrol_lock)
+				{
+					execontrol.Add(LowerCase(prc.ExecutableFriendlyName), prc);
+				}
+
+				//Log.Verbose("[{ExecutableName}] Added to monitoring.", cnt.FriendlyName);
+			}
+
+			lock (watchlist_lock)
+			{
+				watchlist.Add(prc);
+			}
+
+			Log.Verbose("[{FriendlyName}] Match: {MatchName}, {TargetPriority}, Mask:{Affinity}, Rescan: {Rescan}m, Recheck: {Recheck}s, FgOnly: {Fg}",
+						prc.FriendlyName, (prc.Executable ?? prc.Path), prc.Priority, prc.Affinity, prc.Rescan, prc.Recheck, prc.ForegroundOnly);
+
+			prc.Enabled = true;
+		}
+
 		public void loadWatchlist()
 		{
 			Log.Information("<Process Manager> Loading configuration...");
@@ -579,7 +674,8 @@ namespace TaskMaster
 					Log.Warning("'{SectionName}' has unrecognized power plan: {PowerPlan}", section.Name, pmodes);
 					pmode = PowerManager.PowerMode.Undefined;
 				}
-				var cnt = new ProcessController(section.Name, ProcessHelpers.IntToPriority(prio), (aff != 0 ? aff : allCPUsMask))
+
+				var prc = new ProcessController(section.Name, ProcessHelpers.IntToPriority(prio), (aff != 0 ? aff : allCPUsMask))
 				{
 					Executable = section.TryGet("Image")?.StringValue ?? null,
 					// friendly name is filled automatically
@@ -600,114 +696,24 @@ namespace TaskMaster
 					//ChildPriorityReduction = section.TryGet("Child priority reduction")?.BoolValue ?? false,
 					AllowPaging = (section.TryGet("Allow paging")?.BoolValue ?? false),
 				};
-				if (cnt.ForegroundOnly && cnt.BackgroundPriority.ToInt32() >= cnt.Priority.ToInt32())
-				{
-					cnt.ForegroundOnly = false;
-					Log.Error("[{Friendly}] Background priority equal or higher than foreground priority, ignoring.", cnt.FriendlyName);
-				}
 
-				if (cnt.Rescan > 0 && cnt.ExecutableFriendlyName == null)
+				if (ValidateController(prc))
 				{
-					Log.Warning("[{FriendlyName}] Configuration error, can not rescan without image name.");
-					cnt.Rescan = 0;
+					prc.LoadStats();
+					SaveController(prc);
 				}
-
-				dirtyconfig |= modified;
 
 				//cnt.Children &= ControlChildren;
 
-				Log.Verbose("[{FriendlyName}] Match: {MatchName}, {TargetPriority}, Mask:{Affinity}, Rescan: {Rescan}m, Recheck: {Recheck}s, FgOnly: {Fg}",
-						cnt.FriendlyName, (cnt.Executable ?? cnt.Path), cnt.Priority, cnt.Affinity, cnt.Rescan, cnt.Recheck, cnt.ForegroundOnly);
-
 				//cnt.delay = section.Contains("delay") ? section["delay"].IntValue : 30; // TODO: Add centralized default delay
 				//cnt.delayIncrement = section.Contains("delay increment") ? section["delay increment"].IntValue : 15; // TODO: Add centralized default increment
-				string statkey = null;
-				if (cnt.Executable != null)
-					statkey = cnt.Executable;
-				else if (cnt.Path != null)
-					statkey = cnt.Path;
-
-				if (statkey != null)
-				{
-					cnt.Adjusts = stats[statkey].TryGet("Adjusts")?.IntValue ?? 0;
-
-					var ls = stats[statkey].TryGet("Last seen");
-					if (null != ls && !ls.IsEmpty)
-					{
-						long stamp = long.MinValue;
-						try
-						{
-							stamp = ls.GetValue<long>();
-							cnt.LastSeen = stamp.Unixstamp();
-						}
-						catch { /* NOP */ }
-					}
-				}
-
-				if (cnt.Path != null || cnt.Subpath != null)
-				{
-					if (cnt.Locate())
-					{
-						lock (watchlist_lock)
-						{
-							watchlist.Add(cnt);
-						}
-
-						WatchlistWithPath += 1;
-
-						// TODO: Add "Path" to config
-						//if (stats.Contains(cnt.Path))
-						//	cnt.Adjusts = stats[cnt.Path].TryGet("Adjusts")?.IntValue ?? 0;
-					}
-					else
-					{
-						if (cnt.Subpath != null)
-						{
-							if (pathinit == null) pathinit = new List<ProcessController>();
-							pathinit.Add(cnt);
-							Log.Verbose("[{FriendlyName}] ({Subpath}) waiting to be located.", cnt.FriendlyName, cnt.Subpath);
-						}
-						else
-						{
-							Log.Warning("[{FriendlyName}] Malconfigured. Insufficient or wrong information.", cnt.FriendlyName);
-						}
-					}
-				}
-				else
-				{
-					lock (watchlist_lock)
-					{
-						watchlist.Add(cnt);
-					}
-
-					lock (execontrol_lock)
-					{
-						execontrol.Add(LowerCase(cnt.ExecutableFriendlyName), cnt);
-					}
-
-					//Log.Verbose("[{ExecutableName}] Added to monitoring.", cnt.FriendlyName);
-				}
-
-				// SANITY CHECKING
-				if (cnt.ExecutableFriendlyName != null)
-				{
-					if (IgnoreProcessName(cnt.ExecutableFriendlyName))
-					{
-						if (TaskMaster.ShowInaction)
-							Log.Warning("{Exec} in ignore list; all changes denied.", cnt.ExecutableFriendlyName);
-					}
-					else if (ProtectedProcessName(cnt.ExecutableFriendlyName))
-					{
-						if (TaskMaster.ShowInaction)
-							Log.Warning("{Exec} in protected list; priority changing denied.");
-					}
-				}
 			}
 
 			// --------------------------------------------------------------------------------------------------------
 
 			Log.Information("Name-based watchlist: {Items} items", execontrol.Count);
 			Log.Information("Path-based watchlist: {Items} items", WatchlistWithPath);
+			Log.Information("Path init list: {Items} items", (pathinit?.Count ?? 0));
 		}
 
 		string LowerCase(string str)
@@ -1029,7 +1035,7 @@ namespace TaskMaster
 				GetPath(info);
 
 				if (info.Path == null)
-					return ProcessState.AccessDenied;
+					return ProcessState.Error;
 			}
 
 			if (pathCache != null && !cacheGet)
@@ -1049,6 +1055,8 @@ namespace TaskMaster
 			{
 				foreach (ProcessController pc in watchlist)
 				{
+					if (!pc.Enabled) continue;
+
 					if (pc.Path == null) continue;
 
 					//Log.Debug("with: "+ pc.Path);
@@ -1068,7 +1076,7 @@ namespace TaskMaster
 						{
 							Log.Fatal("[{FriendlyName}] '{Exec}' (#{Pid}) MASSIVE FAILURE!!!", pc.FriendlyName, info.Name, info.Id);
 							Logging.Stacktrace(ex);
-							rv = ProcessState.AccessDenied;
+							rv = ProcessState.Error;
 						}
 
 						ForegroundWatch(info, pc);
@@ -1220,6 +1228,7 @@ namespace TaskMaster
 			onActiveHandled?.Invoke(this, new ProcessEventArgs() { Control = prc, Info = info, State = ProcessEventArgs.ProcessState.Found });
 		}
 
+		// TODO: This should probably be pushed into ProcessController somehow.
 		ProcessState CheckProcess(BasicProcessInfo info, bool schedule_next = true)
 		{
 			Debug.Assert(!string.IsNullOrEmpty(info.Name), "CheckProcess received null process name.");
@@ -1231,7 +1240,7 @@ namespace TaskMaster
 			if (IgnoreProcessID(info.Id) || IgnoreProcessName(info.Name))
 			{
 				if (TaskMaster.Trace) Log.Verbose("Ignoring process: {ProcessName} (#{ProcessID})", info.Name, info.Id);
-				return ProcessState.AccessDenied;
+				return ProcessState.Ignored;
 			}
 
 			if (string.IsNullOrEmpty(info.Name))
@@ -1254,6 +1263,12 @@ namespace TaskMaster
 
 			if (pc != null)
 			{
+				if (!pc.Enabled)
+				{
+					Log.Debug("[{FriendlyName}] Matched but rule disabled; ignoring.");
+					return ProcessState.Ignored;
+				}
+
 				//await System.Threading.Tasks.Task.Delay(ProcessModifyDelay).ConfigureAwait(false);
 				ForegroundWatch(info, pc);
 
@@ -1265,7 +1280,7 @@ namespace TaskMaster
 				{
 					Log.Fatal("[{FriendlyName}] '{Exec}' (#{Pid}) MASSIVE FAILURE!!!", pc.FriendlyName, info.Name, info.Id);
 					Logging.Stacktrace(ex);
-					state = ProcessState.AccessDenied;
+					state = ProcessState.Error;
 				}
 				return state; // execontrol had this, we don't care about anything else for this.
 			}
@@ -1278,14 +1293,12 @@ namespace TaskMaster
 				state = CheckPathWatch(info);
 			}
 
-			if (state != ProcessState.Invalid) return state; // we don't care to process more
-
 			/*
 			if (ControlChildren) // this slows things down a lot it seems
 				ChildController(info);
 			*/
 
-			return ProcessState.Invalid;
+			return state;
 		}
 
 		readonly object BatchProcessingLock = new object();

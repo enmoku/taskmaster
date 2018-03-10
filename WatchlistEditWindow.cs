@@ -1,5 +1,5 @@
 ﻿//
-// AppEditWindow.cs
+// WatchlistEditWindow.cs
 //
 // Author:
 //       M.A. (enmoku) <>
@@ -32,19 +32,19 @@ using System.Collections.Generic;
 
 namespace TaskMaster
 {
-	public class AppEditWindow : Form
+	public class WatchlistEditWindow : Form
 	{
 		readonly ProcessController process;
 		readonly ListViewItem litem;
 
 		// Adding
-		public AppEditWindow()
+		public WatchlistEditWindow()
 		{
 
 		}
 
 		// Editingg
-		public AppEditWindow(string name, ListViewItem ri)
+		public WatchlistEditWindow(string name, ListViewItem ri)
 		{
 			litem = ri;
 

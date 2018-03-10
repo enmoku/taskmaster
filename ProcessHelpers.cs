@@ -54,6 +54,14 @@ namespace TaskMaster
 		/// </summary>
 		AccessDenied,
 		/// <summary>
+		/// Ignored due to other reasons.
+		/// </summary>
+		Ignored,
+		/// <summary>
+		/// Unspecified error occured.
+		/// </summary>
+		Error,
+		/// <summary>
 		/// Nothing has been done.
 		/// </summary>
 		Invalid

@@ -46,6 +46,16 @@ namespace TaskMaster
 		public int Id { get; set; } = -1;
 
 		/// <summary>
+		/// Whether or not this rule is enabled.
+		/// </summary>
+		public bool Enabled { get; set; } = false;
+
+		/// <summary>
+		/// Whether this rule is valid.
+		/// </summary>
+		public bool Valid { get; set; } = false;
+
+		/// <summary>
 		/// Human-readable friendly name for the process.
 		/// </summary>
 		public string FriendlyName { get; set; } = null;
@@ -144,6 +154,7 @@ namespace TaskMaster
 		{
 			FriendlyName = name;
 			//Executable = executable;
+
 			Priority = priority;
 			if (affinity != ProcessManager.allCPUsMask)
 				Affinity = new IntPtr(affinity);
@@ -160,6 +171,37 @@ namespace TaskMaster
 									FriendlyName, Path, Priority, Affinity.ToInt32());
 				}
 			}
+		}
+
+		public void LoadStats()
+		{
+			string statkey = null;
+			if (Executable != null)
+				statkey = Executable;
+			else if (Path != null)
+				statkey = Path;
+
+			if (statkey != null)
+			{
+				Adjusts = stats[statkey].TryGet("Adjusts")?.IntValue ?? 0;
+
+				var ls = stats[statkey].TryGet("Last seen");
+				if (null != ls && !ls.IsEmpty)
+				{
+					long stamp = long.MinValue;
+					try
+					{
+						stamp = ls.GetValue<long>();
+						LastSeen = stamp.Unixstamp();
+					}
+					catch { /* NOP */ }
+				}
+			}
+		}
+
+		public void SaveStats()
+		{
+
 		}
 
 		HashSet<int> PausedIds = new HashSet<int>();
@@ -356,7 +398,7 @@ namespace TaskMaster
 			{
 				if (ex.NativeErrorCode != 5)
 					Log.Warning("[{FriendlyName}] {ProcessName} (#{ProcessID}) access failure determining if it's still running.", FriendlyName, info.Name, info.Id);
-				return ProcessState.AccessDenied; // we don't care what this error is exactly
+				return ProcessState.Error; // we don't care what this error is exactly
 			}
 
 			if (TaskMaster.Trace) Log.Verbose("[{FriendlyName}] Touching: {ExecutableName} (#{ProcessID})", FriendlyName, info.Name, info.Id);
@@ -367,7 +409,7 @@ namespace TaskMaster
 			{
 				if (TaskMaster.ShowInaction && TaskMaster.DebugProcesses)
 					Log.Debug("[{FriendlyName}] {Exec} (#{ProcessID}) ignored due to user defined rule.", FriendlyName, info.Name, info.Id);
-				return ProcessState.AccessDenied;
+				return ProcessState.Ignored;
 			}
 
 			bool denyChange = ProcessManager.ProtectedProcessName(info.Name);

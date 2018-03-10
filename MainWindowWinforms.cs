@@ -1972,7 +1972,7 @@ namespace TaskMaster
 
 			// the form itself
 			WindowState = FormWindowState.Normal;
-			FormBorderStyle = FormBorderStyle.FixedToolWindow;
+			FormBorderStyle = FormBorderStyle.Sizable;
 			//FormBorderStyle = FormBorderStyle.FixedDialog; // no min/max buttons as wanted
 			MinimizeBox = false;
 			MaximizeBox = false;
