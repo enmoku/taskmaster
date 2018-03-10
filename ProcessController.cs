@@ -173,8 +173,12 @@ namespace TaskMaster
 			}
 		}
 
+		const string statfile = "Watchlist.Statistics.ini";
+
 		public void LoadStats()
 		{
+			var stats = TaskMaster.loadConfig(statfile);
+
 			string statkey = null;
 			if (Executable != null)
 				statkey = Executable;
@@ -201,7 +205,27 @@ namespace TaskMaster
 
 		public void SaveStats()
 		{
+			var stats = TaskMaster.loadConfig(statfile);
 
+			// BROKEN?
+			string key = null;
+			if (Executable != null)
+				key = Executable;
+			else if (Path != null)
+				key = Path;
+			else
+				return;
+
+			if (Adjusts > 0)
+			{
+				stats[key]["Adjusts"].IntValue = Adjusts;
+				TaskMaster.MarkDirtyINI(stats);
+			}
+			if (LastSeen != DateTime.MinValue)
+			{
+				stats[key]["Last seen"].SetValue(LastSeen.Unixstamp());
+				TaskMaster.MarkDirtyINI(stats);
+			}
 		}
 
 		HashSet<int> PausedIds = new HashSet<int>();
@@ -416,6 +440,33 @@ namespace TaskMaster
 			if (denyChange)
 				if (TaskMaster.ShowInaction && TaskMaster.DebugProcesses)
 					Log.Debug("[{FriendlyName}] {ProcessName} (#{ProcessID}) in protected list, limiting tampering.", FriendlyName, info.Name, info.Id);
+
+			// TODO: Validate path.
+			if (Path != null)
+			{
+				if (info.Path == null)
+				{
+					if (ProcessManagerUtility.FindPath(info))
+					{
+						// Yay
+					}
+					else
+						return ProcessState.Error;
+				}
+
+				if (info.Path.StartsWith(Path))
+				{
+					// OK
+					if (TaskMaster.DebugPaths)
+						Log.Verbose("[{PathFriendlyName}] matched at: {Path}", FriendlyName, info.Path);
+				}
+				else
+				{
+					if (TaskMaster.DebugPaths)
+						Log.Verbose("[{PathFriendlyName}] {ExePath} NOT IN {Path} – IGNORING", FriendlyName, info.Path, Path);
+					return ProcessState.Ignored;
+				}
+			}
 
 			bool mAffinity = false, mPriority = false, mPower = false, mBGIO = false, modified = false;
 			LastSeen = DateTime.Now;
@@ -685,6 +736,7 @@ namespace TaskMaster
 				{
 					continue; // shouldn't happen
 				}
+
 				if (Touch(new BasicProcessInfo { Name = name, Id = pid, Process = process, Path = null }) == ProcessState.Modified)
 					tc++;
 			}
@@ -728,7 +780,10 @@ namespace TaskMaster
 				if (System.IO.Directory.Exists(fullpath))
 				{
 					Path = fullpath;
-					Log.Debug("[{FriendlyName}] Bound to: {Path}", FriendlyName, Path);
+
+					Log.Information("[{FriendlyName}] Bound to: {Path}", FriendlyName, Path);
+
+					Enabled = Valid;
 
 					onLocate?.Invoke(this, new PathControlEventArgs());
 

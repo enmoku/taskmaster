@@ -267,7 +267,15 @@ namespace TaskMaster
 			if (e.Button == MouseButtons.Left)
 			{
 				RestoreMainWindow(sender, null);
-				TaskMaster.mainwindow.UnloseWindowRequest(sender, null); // null reference crash
+				try
+				{
+					TaskMaster.mainwindow.UnloseWindowRequest(sender, null); // null reference crash sometimes
+				}
+				catch (Exception ex)
+				{
+					Logging.Stacktrace(ex);
+					throw; // this is bad, but this is good way to force bail when this is misbehaving
+				}
 			}
 		}
 

@@ -401,11 +401,6 @@ namespace TaskMaster
 
 				if (TaskMaster.DebugFullScan)
 					Log.Verbose("Full scan: DONE.");
-
-				//if (TaskMaster.ShowInaction)
-				//Log.Information("Scanned {ProcessCount} processes.", procs.Length);
-				//if (TaskMaster.PathCacheLimit > 0)
-				//	PathCacheStats();
 			}
 			catch (Exception ex)
 			{
@@ -518,9 +513,8 @@ namespace TaskMaster
 			}
 
 			Log.Verbose("[{FriendlyName}] Match: {MatchName}, {TargetPriority}, Mask:{Affinity}, Rescan: {Rescan}m, Recheck: {Recheck}s, FgOnly: {Fg}",
-						prc.FriendlyName, (prc.Executable ?? prc.Path), prc.Priority, prc.Affinity, prc.Rescan, prc.Recheck, prc.ForegroundOnly);
-
-			prc.Enabled = true;
+						prc.FriendlyName, (prc.Executable ?? prc.Path), prc.Priority, prc.Affinity,
+						prc.Rescan, prc.Recheck, prc.ForegroundOnly);
 		}
 
 		public void loadWatchlist()
@@ -602,8 +596,6 @@ namespace TaskMaster
 
 			Log.Information("<Process Manager> Loading watchlist...");
 			SharpConfig.Configuration appcfg = TaskMaster.loadConfig(watchfile);
-			if (stats == null)
-				stats = TaskMaster.loadConfig(statfile);
 
 			if (appcfg.Count() == 0)
 			{
@@ -677,6 +669,7 @@ namespace TaskMaster
 
 				var prc = new ProcessController(section.Name, ProcessHelpers.IntToPriority(prio), (aff != 0 ? aff : allCPUsMask))
 				{
+					Enabled = section.TryGet("Enabled")?.BoolValue ?? true,
 					Executable = section.TryGet("Image")?.StringValue ?? null,
 					// friendly name is filled automatically
 					Increase = (section.TryGet("Increase")?.BoolValue ?? false),
@@ -894,91 +887,11 @@ namespace TaskMaster
 			PreviousForegroundController = null;
 		}
 
-		/// <summary>
-		/// Retrieve file path for the process.
-		/// Slow due to use of WMI.
-		/// </summary>
-		/// <returns>The process path.</returns>
-		/// <param name="processId">Process ID</param>
-		string GetProcessPathViaWMI(int processId)
-		{
-			if (!TaskMaster.WMIQueries) return null;
-
-			var wmitime = Stopwatch.StartNew();
-
-			Statistics.WMIqueries++;
-
-			string path = null;
-			string wmiQueryString = "SELECT ExecutablePath FROM Win32_Process WHERE ProcessId = " + processId;
-			try
-			{
-				using (var searcher = new System.Management.ManagementObjectSearcher(wmiQueryString))
-				{
-					foreach (ManagementObject item in searcher.Get())
-					{
-						object mpath = item["ExecutablePath"];
-						if (mpath != null)
-						{
-							Log.Verbose(string.Format("WMI fetch (#{0}): {1}", processId, path));
-							wmitime.Stop();
-							Statistics.WMIquerytime += wmitime.Elapsed.TotalSeconds;
-							return mpath.ToString();
-						}
-					}
-				}
-			}
-			catch
-			{
-				// NOP, don't caree
-			}
-
-			wmitime.Stop();
-			Statistics.WMIquerytime += wmitime.Elapsed.TotalSeconds;
-
-			return path;
-		}
-
 		readonly object systemlock = new object();
 
 		// TODO: ADD CACHE: pid -> process name, path, process
 
-		bool GetPath(BasicProcessInfo info)
-		{
-			Debug.Assert(info.Path == null, "GetPath called even though path known.");
-
-			try
-			{
-				info.Path = info.Process.MainModule?.FileName; // this will cause win32exception of various types, we don't Really care which error it is
-			}
-			catch
-			{
-				// NOP, don't care 
-			}
-
-			if (string.IsNullOrEmpty(info.Path))
-			{
-				info.Path = GetProcessPathViaC(info.Id);
-
-				if (info.Path == null)
-				{
-					info.Path = GetProcessPathViaWMI(info.Id);
-					if (string.IsNullOrEmpty(info.Path))
-						return false;
-				}
-			}
-
-			return true;
-		}
-
-		Cache<int, string, string> pathCache;
 		public event EventHandler<CacheEventArgs> PathCacheUpdate;
-
-		public static void PathCacheStats()
-		{
-			Log.Debug("Path cache state: {Count} items (Hits: {Hits}, Misses: {Misses}, Ratio: {Ratio})",
-					  Statistics.PathCacheCurrent, Statistics.PathCacheHits, Statistics.PathCacheMisses,
-					  string.Format("{0:N2}", Statistics.PathCacheMisses > 0 ? (Statistics.PathCacheHits / Statistics.PathCacheMisses) : 1));
-		}
 
 		ProcessState CheckPathWatch(BasicProcessInfo info)
 		{
@@ -1006,80 +919,49 @@ namespace TaskMaster
 				return ProcessState.AccessDenied; // we don't care wwhat this error is
 			}
 
-			bool cacheGet = false;
-			if (pathCache != null)
-			{
-				string cpath;
-				if (pathCache.Get(info.Id, out cpath, info.Name) != null)
-				{
-					if (!string.IsNullOrEmpty(cpath))
-					{
-						Statistics.PathCacheHits++;
-						cacheGet = true;
-						info.Path = cpath;
-						//Log.Debug("PATH CACHE ITEM GET: {Path}", info.Path);
-					}
-					else
-					{
-						//Statistics.PathCacheMisses++; // will be done when adding the entry
-						pathCache.Drop(info.Id);
-						//Log.Debug("PATH CACHE ITEM BEGONE!");
-					}
-
-					Statistics.PathCacheCurrent = pathCache.Count;
-				}
-			}
-
-			if (info.Path == null)
-			{
-				GetPath(info);
-
-				if (info.Path == null)
-					return ProcessState.Error;
-			}
-
-			if (pathCache != null && !cacheGet)
-			{
-				pathCache.Add(info.Id, info.Name, info.Path);
-				Statistics.PathCacheMisses++; // adding new entry is as bad a miss
-
-
-				Statistics.PathCacheCurrent = pathCache.Count;
-				if (Statistics.PathCacheCurrent > Statistics.PathCachePeak)
-					Statistics.PathCachePeak = Statistics.PathCacheCurrent;
-				//Log.Debug("PATH CACHE ADD: {Path}", info.Path);
-			}
+			if (!ProcessManagerUtility.FindPath(info))
+				return ProcessState.Error;
 
 			// TODO: This needs to be FASTER
 			lock (watchlist_lock)
 			{
-				foreach (ProcessController pc in watchlist)
+				foreach (ProcessController prc in watchlist)
 				{
-					if (!pc.Enabled) continue;
+					if (!prc.Enabled) continue;
+					if (prc.Path == null) continue;
 
-					if (pc.Path == null) continue;
+					if (!string.IsNullOrEmpty(prc.Executable))
+					{
+						if (prc.Executable == info.Name)
+						{
+							if (TaskMaster.DebugPaths)
+								Log.Debug("[{FriendlyName}] Path+Exe matched.", prc.FriendlyName);
+						}
+						else
+							continue; // CheckPathWatch does not handle combo path+exes
+					}
 
 					//Log.Debug("with: "+ pc.Path);
-					if (info.Path.StartsWith(pc.Path, StringComparison.InvariantCultureIgnoreCase)) // TODO: make this compatible with OSes that aren't case insensitive?
+					if (info.Path.StartsWith(prc.Path, StringComparison.InvariantCultureIgnoreCase)) // TODO: make this compatible with OSes that aren't case insensitive?
 					{
 						//if (cacheGet)
 						//	Log.Debug("[{FriendlyName}] {Exec} (#{Pid}) – PATH CACHE GET!! :D", pc.FriendlyName, name, pid);
 						if (TaskMaster.DebugPaths)
-							Log.Verbose("[{PathFriendlyName}] matched at: {Path}", pc.FriendlyName, info.Path);
+							Log.Verbose("[{PathFriendlyName}] Matched at: {Path}", prc.FriendlyName, info.Path);
 
 						ProcessState rv = ProcessState.Invalid;
 						try
 						{
-							rv = pc.Touch(info, foreground: activeappmonitor?.isForeground(info.Id) ?? true);
+							rv = prc.Touch(info, foreground: activeappmonitor?.isForeground(info.Id) ?? true);
 						}
 						catch (Exception ex)
 						{
-							Log.Fatal("[{FriendlyName}] '{Exec}' (#{Pid}) MASSIVE FAILURE!!!", pc.FriendlyName, info.Name, info.Id);
+							Log.Fatal("[{FriendlyName}] '{Exec}' (#{Pid}) MASSIVE FAILURE!!!", prc.FriendlyName, info.Name, info.Id);
 							Logging.Stacktrace(ex);
 							rv = ProcessState.Error;
 						}
 
-						ForegroundWatch(info, pc);
+						ForegroundWatch(info, prc);
 
 						return rv;
 					}
@@ -1252,33 +1134,33 @@ namespace TaskMaster
 			if (info.Id == Process.GetCurrentProcess().Id) return ProcessState.OK; // IGNORE SELF
 
 			// TODO: check proc.processName for presence in images.
-			ProcessController pc = null;
+			ProcessController prc = null;
 			Debug.Assert(execontrol != null);
 			Debug.Assert(info != null);
 
 			lock (execontrol_lock)
 			{
-				execontrol.TryGetValue(LowerCase(info.Name), out pc);
+				execontrol.TryGetValue(LowerCase(info.Name), out prc);
 			}
 
-			if (pc != null)
+			if (prc != null)
 			{
-				if (!pc.Enabled)
+				if (!prc.Enabled)
 				{
 					Log.Debug("[{FriendlyName}] Matched but rule disabled; ignoring.");
 					return ProcessState.Ignored;
 				}
 
 				//await System.Threading.Tasks.Task.Delay(ProcessModifyDelay).ConfigureAwait(false);
-				ForegroundWatch(info, pc);
+				ForegroundWatch(info, prc);
 
 				try
 				{
-					state = pc.Touch(info, schedule_next, foreground: activeappmonitor?.isForeground(info.Id) ?? true);
+					state = prc.Touch(info, schedule_next, foreground: activeappmonitor?.isForeground(info.Id) ?? true);
 				}
 				catch (Exception ex)
 				{
-					Log.Fatal("[{FriendlyName}] '{Exec}' (#{Pid}) MASSIVE FAILURE!!!", pc.FriendlyName, info.Name, info.Id);
+					Log.Fatal("[{FriendlyName}] '{Exec}' (#{Pid}) MASSIVE FAILURE!!!", prc.FriendlyName, info.Name, info.Id);
 					Logging.Stacktrace(ex);
 					state = ProcessState.Error;
 				}
@@ -1544,18 +1426,18 @@ namespace TaskMaster
 			lock (execontrol_lock)
 			{
 				var pcs = execontrol.Values;
-				foreach (ProcessController pc in pcs)
+				foreach (ProcessController prc in pcs)
 				{
-					if (pc.Rescan == 0) continue;
+					if (prc.Rescan == 0) continue;
 
 					rescanrequests++;
 
-					tnext = pc.TryScan();
+					tnext = prc.TryScan();
 
 					if (tnext > nextscan)
 					{
 						nextscan = tnext;
-						nextscanfor = pc.FriendlyName;
+						nextscanfor = prc.FriendlyName;
 					}
 				}
 			}
@@ -1656,7 +1538,7 @@ namespace TaskMaster
 		}
 
 		const string watchfile = "Watchlist.ini";
-		const string statfile = "Watchlist.Statistics.ini";
+
 		// ctor, constructor
 		public ProcessManager()
 		{
@@ -1694,7 +1576,9 @@ namespace TaskMaster
 			}
 
 			if (TaskMaster.PathCacheLimit > 0)
-				pathCache = new Cache<int, string, string>(TaskMaster.PathCacheMaxAge, TaskMaster.PathCacheLimit, (TaskMaster.PathCacheLimit / 10).Constrain(5, 10));
+			{
+				ProcessManagerUtility.Initialize();
+			}
 
 			Log.Information("<Process Manager> Loaded.");
 		}
@@ -1798,12 +1682,6 @@ namespace TaskMaster
 					{
 						StopBatchProcessingTimer();
 					}
-
-					if (pathCache != null)
-					{
-						pathCache.Dispose();
-						pathCache = null;
-					}
 				}
 				catch (Exception ex)
 				{
@@ -1841,72 +1719,14 @@ namespace TaskMaster
 		{
 			Log.Verbose("Saving stats...");
 
-			if (stats == null)
-				stats = TaskMaster.loadConfig(statfile);
-
 			lock (watchlist_lock)
 			{
-				foreach (ProcessController proc in watchlist)
+				foreach (ProcessController prc in watchlist)
 				{
-					// BROKEN
-					string key = null;
-					if (proc.Executable != null)
-						key = proc.Executable;
-					else if (proc.Path != null)
-						key = proc.Path;
-					else
-						continue;
-
-					if (proc.Adjusts > 0)
-					{
-						stats[key]["Adjusts"].IntValue = proc.Adjusts;
-						TaskMaster.MarkDirtyINI(stats);
-					}
-					if (proc.LastSeen != DateTime.MinValue)
-					{
-						stats[key]["Last seen"].SetValue(proc.LastSeen.Unixstamp());
-						TaskMaster.MarkDirtyINI(stats);
-					}
+					prc.SaveStats();
 				}
 			}
 		}
-
-		// https://stackoverflow.com/a/34991822
-		public static string GetProcessPathViaC(int pid)
-		{
-			var processHandle = OpenProcess(0x0400 | 0x0010, false, pid);
-
-			if (processHandle == IntPtr.Zero)
-			{
-				return null;
-			}
-
-			const int lengthSb = 4000;
-
-			var sb = new System.Text.StringBuilder(lengthSb);
-
-			string result = null;
-
-			if (GetModuleFileNameEx(processHandle, IntPtr.Zero, sb, lengthSb) > 0)
-			{
-				//result = Path.GetFileName(sb.ToString());
-				result = sb.ToString();
-			}
-
-			CloseHandle(processHandle);
-
-			return result;
-		}
-
-		[DllImport("kernel32.dll")]
-		public static extern IntPtr OpenProcess(uint processAccess, bool bInheritHandle, int processId);
-
-		[DllImport("psapi.dll")]
-		static extern uint GetModuleFileNameEx(IntPtr hProcess, IntPtr hModule, [Out] System.Text.StringBuilder lpBaseName, [In] [MarshalAs(UnmanagedType.U4)] int nSize);
-
-		[DllImport("kernel32.dll", SetLastError = true)]
-		[return: MarshalAs(UnmanagedType.Bool)]
-		static extern bool CloseHandle(IntPtr hObject);
 
 		/// <summary>
 		/// Empties the working set.

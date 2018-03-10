@@ -151,7 +151,7 @@ namespace TaskMaster
 			{
 				try
 				{
-					if (appw.TryGetValue(ev.Control, out item))
+					if (WatchlistMap.TryGetValue(ev.Control, out item))
 					{
 						item.SubItems[AdjustColumn].Text = ev.Control.Adjusts.ToString();
 						//item.SubItems[SeenColumn].Text = e.Control.LastSeen.ToLocalTime().ToString();
@@ -201,13 +201,14 @@ namespace TaskMaster
 			processmanager.onWaitForExitEvent += ExitWaitListHandler;
 			PathCacheUpdate(null, null);
 
-			foreach (var prc in processmanager.getWatchlist()) AddToProcessList(prc);
+			foreach (var prc in processmanager.getWatchlist()) AddToWatchlistList(prc);
+			WatchlistColor();
 
 			rescanRequest += processmanager.ProcessEverythingRequest;
 			if (TaskMaster.PagingEnabled)
 				pagingRequest += processmanager.PageEverythingRequest;
 
-			ProcessController.onLocate += PathLocatedEvent;
+			ProcessController.onLocate += WatchlistPathLocatedEvent;
 			ProcessController.onTouch += ProcAdjust;
 
 			lock (processingCountLock)
@@ -246,48 +247,101 @@ namespace TaskMaster
 			}
 		}
 
-		bool alterColor = false;
-		void AddToProcessList(ProcessController pc)
+		System.Drawing.Color GrayText = System.Drawing.Color.FromArgb(130, 130, 130);
+		System.Drawing.Color AlterColor = System.Drawing.Color.FromArgb(245, 245, 245);
+
+		void WatchlistItemColor(ListViewItem li, ProcessController prc)
 		{
-			bool noprio = (pc.Increase == false && pc.Decrease == false);
-			string prio = noprio ? "--- Any --- " : pc.Priority.ToString();
+			bool alter = (li.Index + 1) % 2 == 0; // every even line
+
+			try
+			{
+				bool noprio = (prc.Increase == false && prc.Decrease == false);
+
+				li.UseItemStyleForSubItems = false;
+
+				foreach (ListViewItem.ListViewSubItem si in li.SubItems)
+				{
+					if (prc.Enabled)
+						si.ForeColor = System.Drawing.SystemColors.WindowText;
+					else
+						si.ForeColor = GrayText;
+
+					if (alter)
+						si.BackColor = AlterColor;
+				}
+
+				alter = !alter;
+
+				if (noprio)
+					li.SubItems[PrioColumn].ForeColor = GrayText;
+				if (string.IsNullOrEmpty(prc.Path))
+					li.SubItems[PathColumn].ForeColor = GrayText;
+				if (prc.PowerPlan == PowerManager.PowerMode.Undefined)
+					li.SubItems[PowerColumn].ForeColor = GrayText;
+				if (prc.Affinity.ToInt32() == ProcessManager.allCPUsMask)
+					li.SubItems[AffColumn].ForeColor = GrayText;
+			}
+			catch (Exception ex)
+			{
+				Logging.Stacktrace(ex);
+				throw;
+			}
+		}
+
+		void WatchlistColor()
+		{
+			lock (watchlistrules_lock)
+			{
+				bool alter = false;
+
+				foreach (var item in WatchlistMap)
+				{
+					WatchlistItemColor(item.Value, item.Key);
+					alter = !alter;
+				}
+			}
+		}
+
+		bool alterColor = false;
+		void AddToWatchlistList(ProcessController prc)
+		{
+			bool noprio = (prc.Increase == false && prc.Decrease == false);
+			string prio = noprio ? "--- Any --- " : prc.Priority.ToString();
 
 			var litem = new ListViewItem(new string[] {
-					pc.FriendlyName, //.ToString(),
-					pc.Executable,
+					prc.FriendlyName, //.ToString(),
+					prc.Executable,
 					prio,
-						(pc.Affinity.ToInt32() == ProcessManager.allCPUsMask ? "--- Any ---" : Convert.ToString(pc.Affinity.ToInt32(), 2).PadLeft(ProcessManager.CPUCount, '0')),
-						(pc.PowerPlan != PowerManager.PowerMode.Undefined? pc.PowerPlan.ToString() : "--- Any ---"),
+						(prc.Affinity.ToInt32() == ProcessManager.allCPUsMask ? "--- Any ---" : Convert.ToString(prc.Affinity.ToInt32(), 2).PadLeft(ProcessManager.CPUCount, '0')),
+						(prc.PowerPlan != PowerManager.PowerMode.Undefined? prc.PowerPlan.ToString() : "--- Any ---"),
 				//(pc.Rescan>0 ? pc.Rescan.ToString() : "n/a"),
-					pc.Adjusts.ToString(),
+					prc.Adjusts.ToString(),
 						//(pc.LastSeen != DateTime.MinValue ? pc.LastSeen.ToLocalTime().ToString() : "Never"),
-				(string.IsNullOrEmpty(pc.Path) ? "--- Any ---" : pc.Path)
+				(string.IsNullOrEmpty(prc.Path) ? "--- Any ---" : prc.Path)
 					});
-
-			if (noprio)
-				litem.SubItems[PrioColumn].ForeColor = System.Drawing.SystemColors.GrayText;
-			if (string.IsNullOrEmpty(pc.Path))
-				litem.SubItems[PathColumn].ForeColor = System.Drawing.SystemColors.GrayText;
-			if (pc.PowerPlan == PowerManager.PowerMode.Undefined)
-				litem.SubItems[PowerColumn].ForeColor = System.Drawing.SystemColors.GrayText;
 
 			lock (watchlistrules_lock)
 				watchlistRules.Items.Add(litem);
 
-			if (alterColor)
-				litem.BackColor = System.Drawing.Color.FromArgb(245, 245, 245);
-			alterColor = !alterColor;
 
 			lock (appw_lock)
-				appw.Add(pc, litem);
+				WatchlistMap.Add(prc, litem);
 		}
 
-		public void PathLocatedEvent(object sender, PathControlEventArgs e)
+		public void WatchlistPathLocatedEvent(object sender, PathControlEventArgs e)
 		{
 			try
 			{
 				var pc = (ProcessController)sender;
-				AddToProcessList(pc);
+				if (pc != null)
+				{
+					ListViewItem li = null;
+					if (WatchlistMap.TryGetValue(pc, out li))
+					{
+						WatchlistItemColor(li, pc);
+					}
+				}
 			}
 			catch { }
 		}
@@ -302,7 +356,7 @@ namespace TaskMaster
 		//object pathList_lock = new object();
 		//ListView pathList;
 		readonly object appw_lock = new object();
-		Dictionary<ProcessController, ListViewItem> appw = new Dictionary<ProcessController, ListViewItem>();
+		Dictionary<ProcessController, ListViewItem> WatchlistMap = new Dictionary<ProcessController, ListViewItem>();
 		Label corCountLabel;
 		readonly object processingCountLock = new object();
 		NumericUpDown processingCount;
@@ -323,7 +377,7 @@ namespace TaskMaster
 		readonly object powerbalancerlog_lock = new object();
 
 		ListView exitwaitlist;
-		Dictionary<int, ListViewItem> exitwaitlistmap;
+		Dictionary<int, ListViewItem> ExitWaitlistMap;
 
 		void UserMicVol(object sender, EventArgs e)
 		{
@@ -421,6 +475,7 @@ namespace TaskMaster
 		ContextMenuStrip ifacems;
 		ContextMenuStrip loglistms;
 		ContextMenuStrip watchlistms;
+		ToolStripMenuItem watchlistenable;
 
 		void InterfaceContextMenuOpen(object sender, EventArgs e)
 		{
@@ -512,8 +567,7 @@ namespace TaskMaster
 
 		void BuildUI()
 		{
-			//Size = new System.Drawing.Size(760, 640); // width, heigh
-			Width = 760;
+			MinimumSize = new System.Drawing.Size(750, 620); // width, height
 
 			Text = string.Format("{0} ({1})", System.Windows.Forms.Application.ProductName, System.Windows.Forms.Application.ProductVersion);
 #if DEBUG
@@ -669,7 +723,7 @@ namespace TaskMaster
 
 			tabLayout = new TabControl()
 			{
-				Parent = lrows,
+				//Parent = lrows,
 				Height = 300,
 				Padding = new System.Drawing.Point(6, 6),
 				Dock = DockStyle.Fill,
@@ -737,7 +791,9 @@ namespace TaskMaster
 
 			#region Load UI config
 			var uicfg = TaskMaster.loadConfig("UI.ini");
+			var wincfg = uicfg["Windows"];
 			var colcfg = uicfg["Columns"];
+
 			int opentab = uicfg["Tabs"].TryGet("Open")?.IntValue ?? 0;
 
 			int[] appwidthsDefault = new int[] { 120, 140, 82, 60, 76, 60, 140 };
@@ -751,6 +807,17 @@ namespace TaskMaster
 			int[] ifacewidthsDefault = new int[] { 120, 60, 50, 70, 90, 200, 60, 60 };
 			var ifacewidths = colcfg.GetSetDefault("Interfaces", ifacewidthsDefault).IntValueArray;
 			if (ifacewidths.Length != ifacewidthsDefault.Length) ifacewidths = ifacewidthsDefault;
+
+			int[] winsizedefault = new int[] { 760, 0 };
+			var winsize = wincfg.GetSetDefault("Main", winsizedefault).IntValueArray;
+			if (winsize.Length == 2)
+			{
+				if (winsize[0] > 0)
+					Width = winsize[0];
+				if (winsize[1] > 0)
+					Height = winsize[1];
+			}
+
 			#endregion
 
 			#region Main Window Row 1, microphone device
@@ -1007,11 +1074,14 @@ namespace TaskMaster
 			// TODO: Add context menu
 			watchlistms = new ContextMenuStrip();
 			watchlistms.Opened += WatchlistContextMenuOpen;
+			watchlistenable = new ToolStripMenuItem("Enabled", null, EnableWatchlistRule);
 			var watchlistedit = new ToolStripMenuItem("Edit", null, EditWatchlistRule);
 			var watchlistadd = new ToolStripMenuItem("Create new", null, AddWatchlistRule);
 			var watchlistdel = new ToolStripMenuItem("Remove", null, DeleteWatchlistRule);
 			var watchlistclip = new ToolStripMenuItem("Copy to clipboard", null, CopyRuleToClipboard);
 
+			watchlistms.Items.Add(watchlistenable);
+			watchlistms.Items.Add(new ToolStripSeparator());
 			watchlistms.Items.Add(watchlistedit);
 			watchlistms.Items.Add(watchlistadd);
 			watchlistms.Items.Add(new ToolStripSeparator());
@@ -1050,13 +1120,13 @@ namespace TaskMaster
 			// UI Log
 			loglist = new ListView
 			{
-				//Dock = DockStyle.Fill,
+				Dock = DockStyle.Top,
+				AutoSize = true,
 				View = View.Details,
 				FullRowSelect = true,
 				HeaderStyle = ColumnHeaderStyle.None,
 				Scrollable = true,
-				Height = 180,
-				Width = tabLayout.Width - 16,
+				MinimumSize = new System.Drawing.Size(700, 180),
 			};
 
 			loglist_stamp = new List<DateTime>();
@@ -1085,20 +1155,23 @@ namespace TaskMaster
 
 			var logpanel = new TableLayoutPanel
 			{
-				Parent = lrows,
+				//Parent = lrows,
 				//Dock = DockStyle.Fill,
+				Dock = DockStyle.Top,
+
 				RowCount = 2,
 				ColumnCount = 1,
-				Width = lrows.Width,
-				AutoSize = true
+				//Width = lrows.Width,
+				AutoSize = true,
+				MinimumSize = new System.Drawing.Size(700, 180),
 			};
 
 			var loglevelpanel = new TableLayoutPanel
 			{
-				Dock = DockStyle.Fill,
+				Dock = DockStyle.Top,
 				RowCount = 1,
 				ColumnCount = 2,
-				AutoSize = true
+				AutoSize = true,
 			};
 
 			var loglabel_level = new Label
@@ -1363,9 +1436,11 @@ namespace TaskMaster
 
 			powerbalancerlog = new ListView()
 			{
+				Dock = DockStyle.Top,
 				AutoSize = true,
-				Height = 80,
-				Width = tabLayout.Width - 12, // FIXME: 3 for the bevel, but how to do this "right"?
+				//Height = 80,
+				//Width = tabLayout.Width - 12, // FIXME: 3 for the bevel, but how to do this "right"?
+				MinimumSize = new System.Drawing.Size(700, 80),
 				FullRowSelect = true,
 				View = View.Details,
 			};
@@ -1455,7 +1530,7 @@ namespace TaskMaster
 				FullRowSelect = true,
 				View = View.Details,
 			};
-			exitwaitlistmap = new Dictionary<int, ListViewItem>();
+			ExitWaitlistMap = new Dictionary<int, ListViewItem>();
 
 			exitwaitlist.Columns.Add("Id", 50);
 			exitwaitlist.Columns.Add("Executable", 280);
@@ -1479,7 +1554,6 @@ namespace TaskMaster
 
 			tabLayout.SelectedIndex = opentab >= tabLayout.TabCount ? 0 : opentab;
 
-			AutoSizeMode = AutoSizeMode.GrowOnly;
 			AutoSize = true;
 		}
 
@@ -1508,7 +1582,7 @@ namespace TaskMaster
 			lock (exitwaitlist_lock)
 			{
 				ListViewItem li = null;
-				if (exitwaitlistmap.TryGetValue(ev.Info.Id, out li))
+				if (ExitWaitlistMap.TryGetValue(ev.Info.Id, out li))
 				{
 					//Log.Debug("WaitlistHandler: {Name} = {State}", ev.Info.Name, ev.State.ToString());
 					try
@@ -1517,7 +1591,7 @@ namespace TaskMaster
 						{
 							case ProcessEventArgs.ProcessState.Exiting:
 								exitwaitlist.Items.Remove(li);
-								exitwaitlistmap.Remove(ev.Info.Id);
+								ExitWaitlistMap.Remove(ev.Info.Id);
 								break;
 							case ProcessEventArgs.ProcessState.Found:
 							case ProcessEventArgs.ProcessState.Reduced:
@@ -1553,7 +1627,7 @@ namespace TaskMaster
 						try
 						{
 							exitwaitlist.Items.Add(li);
-							exitwaitlistmap.Add(ev.Info.Id, li);
+							ExitWaitlistMap.Add(ev.Info.Id, li);
 							li.EnsureVisible();
 						}
 						catch { }
@@ -1621,18 +1695,52 @@ namespace TaskMaster
 
 		void WatchlistContextMenuOpen(object sender, EventArgs ea)
 		{
+			bool oneitem = watchlistRules.SelectedItems.Count == 1;
 			try
 			{
 				foreach (ToolStripItem lsi in watchlistms.Items)
 				{
 					if (lsi.Text.Contains("Create")) continue;
-					lsi.Enabled = (watchlistRules.SelectedItems.Count == 1);
+					lsi.Enabled = oneitem;
 				}
 			}
 			catch { }
+
+			if (oneitem)
+			{
+				ListViewItem li = watchlistRules.SelectedItems[0];
+				var prc = TaskMaster.processmanager.getWatchedController(li.SubItems[NameColumn].Text);
+				if (prc != null)
+				{
+					watchlistenable.Enabled = true;
+					watchlistenable.Checked = prc.Enabled;
+				}
+			}
+			else
+				watchlistenable.Enabled = false;
 		}
 
 		int WatchlistEditLock = 0; // TODO: Transition lock to critical parts instead of outside of them.
+
+		void EnableWatchlistRule(object sender, EventArgs ea)
+		{
+			bool oneitem = watchlistRules.SelectedItems.Count == 1;
+			if (oneitem)
+			{
+				ListViewItem li = watchlistRules.SelectedItems[0];
+				var prc = TaskMaster.processmanager.getWatchedController(li.SubItems[NameColumn].Text);
+				if (prc != null)
+				{
+					watchlistenable.Enabled = true;
+					watchlistenable.Checked = prc.Enabled = !watchlistenable.Checked;
+					// TODO: Signal toggling, in case cleanup is necessary.
+
+					WatchlistItemColor(li, prc);
+				}
+			}
+			else
+				watchlistenable.Enabled = false;
+		}
 
 		void EditWatchlistRule(object sender, EventArgs ea)
 		{
@@ -1647,7 +1755,7 @@ namespace TaskMaster
 					}
 
 					ListViewItem li = watchlistRules.SelectedItems[0];
-					using (var editdialog = new AppEditWindow(li.SubItems[NameColumn].Text, li)) // 1 = executable
+					using (var editdialog = new WatchlistEditWindow(li.SubItems[NameColumn].Text, li)) // 1 = executable
 					{
 						var rv = editdialog.ShowDialog();
 						WatchlistEditLock = 0;
@@ -1684,11 +1792,11 @@ namespace TaskMaster
 				{
 					var li = watchlistRules.SelectedItems[0];
 					string name = li.SubItems[NameColumn].Text;
-					ProcessController pc = null;
+					ProcessController prc = null;
 
-					pc = processmanager.getWatchedController(name);
+					prc = processmanager.getWatchedController(name);
 
-					if (pc == null)
+					if (prc == null)
 					{
 						Log.Error("[{Rule}] Not found. Something's terribly wrong.", name);
 						return;
@@ -1696,23 +1804,23 @@ namespace TaskMaster
 
 					var sbs = new System.Text.StringBuilder();
 
-					sbs.Append("[").Append(pc.FriendlyName).Append("]").AppendLine();
-					if (!string.IsNullOrEmpty(pc.ExecutableFriendlyName))
-						sbs.Append("Image = ").Append(pc.ExecutableFriendlyName).AppendLine();
-					if (!string.IsNullOrEmpty(pc.Path))
-						sbs.Append("Path = ").Append(pc.Path).AppendLine();
-					sbs.Append("Priority = ").Append(pc.Priority.ToInt32()).AppendLine();
-					sbs.Append("Increase = ").Append(pc.Increase).AppendLine();
-					sbs.Append("Decrease = ").Append(pc.Decrease).AppendLine();
-					sbs.Append("Affinity = ").Append(pc.Affinity.ToInt32()).AppendLine();
-					if (pc.PowerPlan != PowerManager.PowerMode.Undefined)
-						sbs.Append("Power plan = ").Append(PowerManager.PowerModes[(int)pc.PowerPlan]).AppendLine();
-					if (pc.Rescan > 0)
-						sbs.Append("Rescan = ").Append(pc.Rescan).AppendLine();
-					if (pc.AllowPaging)
-						sbs.Append("Allow paging = ").Append(pc.AllowPaging).AppendLine();
-					if (pc.ForegroundOnly)
-						sbs.Append("Foreground only = ").Append(pc.ForegroundOnly).AppendLine();
+					sbs.Append("[").Append(prc.FriendlyName).Append("]").AppendLine();
+					if (!string.IsNullOrEmpty(prc.ExecutableFriendlyName))
+						sbs.Append("Image = ").Append(prc.ExecutableFriendlyName).AppendLine();
+					if (!string.IsNullOrEmpty(prc.Path))
+						sbs.Append("Path = ").Append(prc.Path).AppendLine();
+					sbs.Append("Priority = ").Append(prc.Priority.ToInt32()).AppendLine();
+					sbs.Append("Increase = ").Append(prc.Increase).AppendLine();
+					sbs.Append("Decrease = ").Append(prc.Decrease).AppendLine();
+					sbs.Append("Affinity = ").Append(prc.Affinity.ToInt32()).AppendLine();
+					if (prc.PowerPlan != PowerManager.PowerMode.Undefined)
+						sbs.Append("Power plan = ").Append(PowerManager.PowerModes[(int)prc.PowerPlan]).AppendLine();
+					if (prc.Rescan > 0)
+						sbs.Append("Rescan = ").Append(prc.Rescan).AppendLine();
+					if (prc.AllowPaging)
+						sbs.Append("Allow paging = ").Append(prc.AllowPaging).AppendLine();
+					if (prc.ForegroundOnly)
+						sbs.Append("Foreground only = ").Append(prc.ForegroundOnly).AppendLine();
 
 					try
 					{
@@ -2032,6 +2140,9 @@ namespace TaskMaster
 			var uistate = cfg["Tabs"];
 			uistate["Open"].IntValue = tabLayout.SelectedIndex;
 
+			var windows = cfg["Windows"];
+			windows["Main"].IntValueArray = new int[] { Width, Height };
+
 			TaskMaster.MarkDirtyINI(cfg);
 		}
 
@@ -2077,7 +2188,7 @@ namespace TaskMaster
 				try
 				{
 					ProcessController.onTouch -= ProcAdjust;
-					ProcessController.onLocate -= PathLocatedEvent;
+					ProcessController.onLocate -= WatchlistPathLocatedEvent;
 					processmanager.onWaitForExitEvent -= ExitWaitListHandler; //ExitWaitListHandler;
 					rescanRequest -= processmanager.ProcessEverythingRequest;
 					processmanager.onInstanceHandling -= ProcessNewInstanceCount;
@@ -2116,7 +2227,7 @@ namespace TaskMaster
 				UItimer = null;
 
 				exitwaitlist.Dispose();
-				exitwaitlistmap.Clear();
+				ExitWaitlistMap.Clear();
 			}
 
 			disposed = true;

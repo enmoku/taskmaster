@@ -27,7 +27,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace Taskmaster
+namespace TaskMaster
 {
 	/// <summary>
 	/// Monitors for variety of problems and reports on them.
