@@ -59,7 +59,7 @@ namespace TaskMaster
 			//SystemEvents.PowerModeChanged += BatteryChargingEvent; // Without laptop testing this feature is difficult
 			SystemEvents.SessionEnding += TaskMaster.SessionEndExitRequest;
 
-			if (SaverOnSessionLock)
+			if (SessionLockMode != PowerMode.Custom)
 				SystemEvents.SessionSwitch += SessionLockEvent;
 
 			CPUCounter = new System.Diagnostics.PerformanceCounter("Processor", "% Processor Time", "_Total");
@@ -96,7 +96,10 @@ namespace TaskMaster
 		int CPUHighOffset = 0;
 		async void CPUSampler(object state)
 		{
-			await Task.Yield();
+			using (var m = SelfAwareness.Mind("CPUSampler hung", DateTime.Now.AddSeconds(5)))
+			{
+				await Task.Yield();
+			}
 
 			float sample = CPUCounter.NextValue();
 			CPUAverage -= CPUSamples[CPUSampleLoop];
@@ -138,10 +141,13 @@ namespace TaskMaster
 			onCPUSampling?.Invoke(this, new ProcessorEventArgs() { Current = sample, Average = CPUAverage / CPUSampleCount, High = CPUHigh, Low = CPULow });
 		}
 
+		/// <summary>
+		/// Pause power manager.
+		/// </summary>
 		static bool PauseForSessionLock = false;
 
 		bool SaverOnMonitorSleep = false;
-		bool SaverOnSessionLock = false;
+		PowerMode SessionLockMode = PowerMode.PowerSaver;
 		bool SaverOnLogOff = false;
 		bool SaverOnScreensaver = false;
 		bool UserActiveCancel = true;
@@ -180,7 +186,10 @@ namespace TaskMaster
 		{
 			if (Behaviour != PowerBehaviour.Auto) return;
 
-			await Task.Yield();
+			using (var m = SelfAwareness.Mind("CPULoadEvent hung", DateTime.Now.AddSeconds(5)))
+			{
+				await Task.Yield();
+			}
 
 			PowerReaction Reaction = PowerReaction.Average;
 			PowerMode ReactionaryPlan = DefaultMode;
@@ -308,7 +317,8 @@ namespace TaskMaster
 					{
 						if (ev.Pressure >= 1f)
 						{
-							Log.Debug("Can't change power mode – Current: {Current}, Reaction: {Reaction}", CurrentMode.ToString(), ReactionaryPlan.ToString());
+							Log.Debug("Can't change power mode – Current: {Current}, Reaction: {Reaction}, Previous: {Prev}",
+									  CurrentMode.ToString(), ReactionaryPlan.ToString(), PreviousReaction.ToString());
 						}
 					}
 				}
@@ -409,25 +419,27 @@ namespace TaskMaster
 			dirtyconfig |= modified;
 
 			// POWER MODES
-			string lowmode = autopower.GetSetDefault("Low mode", "Power Saver", out modified).StringValue;
+			string lowmode = power.GetSetDefault("Low mode", "Power Saver", out modified).StringValue;
 			LowMode = GetModeByName(lowmode);
 			dirtyconfig |= modified;
-			string highmode = autopower.GetSetDefault("High mode", "High Performance", out modified).StringValue;
+			string highmode = power.GetSetDefault("High mode", "High Performance", out modified).StringValue;
 			HighMode = GetModeByName(highmode);
 			dirtyconfig |= modified;
 
-			var saver = TaskMaster.cfg["Power Save"];
+			var saver = TaskMaster.cfg["AFK Power"];
 			saver.Comment = "All these options control when to enforce power save mode regardless of any other options.";
-			SaverOnSessionLock = saver.GetSetDefault("Session lock", true, out modified).BoolValue;
-			saver["Session lock"].Comment = "Set power saver mode when the workstation is locked, such as by pressing winkey+L.";
+			string sessionlockmodename = saver.GetSetDefault("Session lock", "Power Saver", out modified).StringValue;
+			saver["Session lock"].Comment = "Power mode to set when session is locked, such as by pressing winkey+L. Unrecognizable values disable this.";
 			dirtyconfig |= modified;
-			SaverOnMonitorSleep = saver.GetSetDefault("Monitor sleep", true, out modified).BoolValue;
-			dirtyconfig |= modified;
+			SessionLockMode = GetModeByName(sessionlockmodename);
 
-			SaverOnUserAFK = saver.GetSetDefault("User idle", 30, out modified).IntValue;
-			dirtyconfig |= modified;
-			UserActiveCancel = saver.GetSetDefault("Cancel on activity", true, out modified).BoolValue;
-			dirtyconfig |= modified;
+			//SaverOnMonitorSleep = saver.GetSetDefault("Monitor sleep", true, out modified).BoolValue;
+			//dirtyconfig |= modified;
+
+			//SaverOnUserAFK = saver.GetSetDefault("User idle", 30, out modified).IntValue;
+			//dirtyconfig |= modified;
+			//UserActiveCancel = saver.GetSetDefault("Cancel on activity", true, out modified).BoolValue;
+			//dirtyconfig |= modified;
 
 			// --------------------------------------------------------------------------------------------------------
 
@@ -457,6 +469,8 @@ namespace TaskMaster
 		{
 			Log.Information("<Power Mode> Behaviour: {State}",
 				(Behaviour == PowerBehaviour.Auto ? "Automatic" : Behaviour == PowerBehaviour.RuleBased ? "Rule-controlled" : "Manual"));
+
+			Log.Information("<Power Mode> Session lock: {Mode}", (SessionLockMode == PowerMode.Custom ? "Ignored" : SessionLockMode.ToString()));
 		}
 
 		int BackoffCounter { get; set; } = 0;
@@ -490,18 +504,21 @@ namespace TaskMaster
 				case SessionSwitchReason.SessionLogoff:
 				case SessionSwitchReason.SessionLock:
 					// SET POWER SAVER
-					if (SaverOnSessionLock)
+					if (SessionLockMode != PowerMode.Custom)
 					{
-						if (CurrentMode != PowerMode.PowerSaver)
+						PauseForSessionLock = true;
+						AutoAdjustAllowed |= AutoAdjustPauseBlock;
+
+						Log.Information("<Power Mode> Session locked, enforcing power plan: {Plan}", SessionLockMode);
+
+						if (PauseUnneededSampler)
 						{
-							PauseForSessionLock = true;
-							AutoAdjustAllowed |= AutoAdjustPauseBlock;
-							Log.Information("<Power Mode> Session locked, enforcing low power plan.");
-							if (PauseUnneededSampler)
-							{
-								CPUTimer.Dispose();
-								CPUTimer = null;
-							}
+							CPUTimer.Dispose();
+							CPUTimer = null;
+						}
+
+						if (CurrentMode != SessionLockMode)
+						{
 							setMode(PowerMode.PowerSaver, true);
 						}
 					}
@@ -509,17 +526,20 @@ namespace TaskMaster
 				case SessionSwitchReason.SessionLogon:
 				case SessionSwitchReason.SessionUnlock:
 					// RESTORE POWER MODE
-					if (SaverOnSessionLock)
+					if (SessionLockMode != PowerMode.Custom)
 					{
-						if (CurrentMode == PowerMode.PowerSaver && PauseForSessionLock)
+						PauseForSessionLock = false;
+						AutoAdjustAllowed &= ~AutoAdjustPauseBlock;
+
+						Log.Information("<Power Mode> Session unlocked, restoring normal power.");
+
+						if (CurrentMode == SessionLockMode)
 						{
-							Log.Information("<Power Mode> Session unlocked, restoring normal power.");
 							setMode(RestoreMode, true);
-							if (PauseUnneededSampler) InitCPUTimer();
-							PauseForSessionLock = false;
-							AutoAdjustAllowed &= ~AutoAdjustPauseBlock;
-							TaskMaster.Evaluate();
 						}
+
+						if (PauseUnneededSampler) InitCPUTimer();
+						TaskMaster.Evaluate();
 					}
 					break;
 				default:
@@ -633,6 +653,10 @@ namespace TaskMaster
 
 			if (Behaviour == PowerBehaviour.Auto)
 			{
+				BackoffCounter = 0;
+				LowPressure = 0;
+				HighPressure = 0;
+
 				if (PauseUnneededSampler)
 				{
 					CPUSamples = new float[CPUSampleCount]; // reset samples
@@ -685,6 +709,21 @@ namespace TaskMaster
 			}
 		}
 
+		public void Release()
+		{
+			lock (forceModeSources_lock)
+			{
+				forceModeSources.Clear();
+			}
+		}
+
+		/// <summary>
+		/// Restores normal power mode and frees the associated source pid from holding it.
+		/// </summary>
+		/// <remarks>
+		/// 
+		/// </remarks>
+		/// <returns>Task.</returns>
 		public async Task Restore(int sourcePid = -1)
 		{
 			Debug.Assert(sourcePid == 0 || sourcePid > 4);
@@ -696,7 +735,7 @@ namespace TaskMaster
 				{
 					forceModeSources.Clear();
 					if (TaskMaster.DebugPower)
-						Log.Debug("<Power Mode> Clearing forced list.");
+						Log.Debug("<Power Mode> Cleared forced list.");
 				}
 				else if (forceModeSources.Contains(sourcePid))
 				{
@@ -705,13 +744,19 @@ namespace TaskMaster
 						Log.Debug("<Power Mode> Force mode source freed, {Count} remain.", forceModeSources.Count);
 				}
 				else
-					Log.Error("<Power Mode> Restore mode called for object that never forced the mode.");
+				{
+					if (TaskMaster.DebugPower)
+						Log.Debug("<Power Mode> Restore mode called for object that has no forcing registered. Or waitlist was expunged.");
+				}
 			}
 
-			if (PowerdownDelay > 0)
-				await Task.Delay(PowerdownDelay * 1000);
-			else
-				await Task.Yield();
+			using (var m = SelfAwareness.Mind("Power restore hung", DateTime.Now.AddSeconds((PowerdownDelay / 1000) + 5)))
+			{
+				if (PowerdownDelay > 0)
+					await Task.Delay(PowerdownDelay * 1000);
+				else
+					await Task.Yield(); // hangs?
+			}
 
 			int tSourceCount = forceModeSources.Count;
 
@@ -798,7 +843,7 @@ namespace TaskMaster
 			lock (forceModeSources_lock)
 				forceModeSources.Clear();
 
-			Restore(0);
+			Restore(0); // FIXME: Without ConfigurAawait(false) .Yield deadlocks, why?
 		}
 
 		HashSet<int> forceModeSources = new HashSet<int>();

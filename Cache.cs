@@ -105,7 +105,10 @@ namespace TaskMaster
 
 			if (Items.Count <= MaxCache && CacheEvictStrategy == EvictStrategy.LeastUsed) return;
 
-			await Task.Yield();
+			using (var m = SelfAwareness.Mind("Cache prune hung", DateTime.Now.AddSeconds(5)))
+			{
+				await Task.Yield();
+			}
 
 			lock (cache_lock)
 			{

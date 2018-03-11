@@ -199,7 +199,10 @@ namespace TaskMaster
 				return;
 			}
 
-			await Task.Yield();
+			using (var m = SelfAwareness.Mind("FreeMemoryFor hung", DateTime.Now.AddSeconds(5)))
+			{
+				await Task.Yield();
+			}
 
 			long saved = 0;
 			var allprocs = Process.GetProcesses();
@@ -310,7 +313,10 @@ namespace TaskMaster
 
 			Log.Information("Paged total of {PagedMBs:N1} MBs.", saved / 1000000);
 
-			await Task.Yield();
+			using (var m = SelfAwareness.Mind("PageEverythingRequest hung", DateTime.Now.AddSeconds(5)))
+			{
+				await Task.Yield();
+			}
 
 			if (TaskMaster.Trace) Log.Verbose("Paging complete.");
 		}
@@ -321,7 +327,10 @@ namespace TaskMaster
 
 			try
 			{
-				await ProcessEverything();
+				using (var m = SelfAwareness.Mind("Rescan everything hung", DateTime.Now.AddSeconds(30)))
+				{
+					await ProcessEverything();
+				}
 			}
 			catch (Exception ex)
 			{
@@ -345,7 +354,10 @@ namespace TaskMaster
 				return;
 			}
 
-			await Task.Yield();
+			using (var m = SelfAwareness.Mind("ProcessEverything hung", DateTime.Now.AddSeconds(5)))
+			{
+				await Task.Yield();
+			}
 
 			LastRescan = DateTime.Now;
 			NextRescan = DateTime.Now.AddSeconds(ProcessManager.RescanEverythingFrequency / 1000);
@@ -387,14 +399,8 @@ namespace TaskMaster
 					CheckProcess(new BasicProcessInfo { Process = process, Name = name, Id = pid, Path = null, Flags = 0 }, schedule_next: false);
 				}
 
-				if (TaskMaster.DebugFullScan)
-					Log.Verbose("Full scan: Notifying of work done.");
-
 				// DEBUG: if (TaskMaster.VeryVerbose) Console.WriteLine(string.Format("Handling: -{0} = {1} --- ProcessEverything", procs.Length, Handling));
 				onInstanceHandling?.Invoke(this, new InstanceEventArgs { Count = -(procs.Length - 2), Total = Handling });
-
-				if (TaskMaster.DebugFullScan)
-					Log.Verbose("Full scan: updating path watch.");
 
 				if (TaskMaster.PathMonitorEnabled)
 					UpdatePathWatch();
@@ -747,6 +753,14 @@ namespace TaskMaster
 			}
 
 			onWaitForExitEvent?.Invoke(this, new ProcessEventArgs() { Control = null, Info = info, State = state });
+		}
+
+		public void PowerBehaviourEvent(object sender, PowerManager.PowerBehaviour behaviour)
+		{
+			if (behaviour == PowerManager.PowerBehaviour.Manual)
+			{
+				CancelPowerWait();
+			}
 		}
 
 		public void CancelPowerWait()
@@ -1211,7 +1225,10 @@ namespace TaskMaster
 				}
 			}
 
-			await Task.Yield();
+			using (var m = SelfAwareness.Mind("BatchProcessingTick hung", DateTime.Now.AddSeconds(5)))
+			{
+				await Task.Yield();
+			}
 
 			try
 			{
@@ -1268,7 +1285,10 @@ namespace TaskMaster
 		// This needs to return faster
 		async void NewInstanceTriage(object sender, System.Management.EventArrivedEventArgs e)
 		{
-			await Task.Yield(); // is there any reason to delay this?
+			using (var m = SelfAwareness.Mind("NewInstanceTriage hung", DateTime.Now.AddSeconds(5)))
+			{
+				await Task.Yield(); // is there any reason to delay this?
+			}
 
 			Stopwatch wmiquerytime = Stopwatch.StartNew();
 
@@ -1416,7 +1436,10 @@ namespace TaskMaster
 		{
 			//Log.Verbose("Rescanning...");
 
-			await Task.Yield();
+			using (var m = SelfAwareness.Mind("RescanOnTimer hung", DateTime.Now.AddSeconds(5)))
+			{
+				await Task.Yield();
+			}
 
 			int nextscan = 1;
 			int tnext = 0;
@@ -1591,7 +1614,11 @@ namespace TaskMaster
 		/// </remarks>
 		public async Task Cleanup()
 		{
-			await Task.Yield();
+			using (var m = SelfAwareness.Mind("PM.Cleanup hung", DateTime.Now.AddSeconds(5)))
+			{
+				await Task.Yield();
+			}
+
 			Stack<BasicProcessInfo> triggerList;
 			lock (waitforexit_lock)
 			{

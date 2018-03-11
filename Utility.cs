@@ -175,6 +175,12 @@ namespace TaskMaster
 			Console.WriteLine("{0}_{1}({2}): {3}", System.IO.Path.GetFileName(file), member, line, text);
 		}
 
+		public static void Warn(string text, [CallerFilePath] string file = "", [CallerMemberName] string member = "", [CallerLineNumber] int line = 0)
+		{
+			Serilog.Log.Warning("{File}_{Member}({Line}): {Text}",
+								System.IO.Path.GetFileName(file), member, line, text);
+		}
+
 		public static void Stacktrace(Exception ex)
 		{
 			Serilog.Log.Fatal("{Type} : {Message}", ex.GetType().Name, ex.Message);

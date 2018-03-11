@@ -454,11 +454,11 @@ namespace TaskMaster
 						return ProcessState.Error;
 				}
 
-				if (info.Path.StartsWith(Path))
+				if (info.Path.StartsWith(Path)) // FIXME: this is done twice
 				{
 					// OK
 					if (TaskMaster.DebugPaths)
-						Log.Verbose("[{PathFriendlyName}] matched at: {Path}", FriendlyName, info.Path);
+						Log.Verbose("[{PathFriendlyName}] Matched at: {Path}", FriendlyName, info.Path);
 				}
 				else
 				{
@@ -627,7 +627,10 @@ namespace TaskMaster
 			{
 				Task.Run(new Func<Task>(async () =>
 				{
-					await Task.Delay(Math.Max(Recheck, 5) * 1000);
+					using (var m = SelfAwareness.Mind("Touch recheck hung", DateTime.Now.AddSeconds((Math.Max(Recheck, 5)) + 5)))
+					{
+						await Task.Delay(Math.Max(Recheck, 5) * 1000);
+					}
 
 					if (TaskMaster.DebugProcesses)
 						Log.Debug("[{FriendlyName}] {Process} (#{PID}) rechecking", FriendlyName, info.Name, info.Id);
@@ -670,9 +673,12 @@ namespace TaskMaster
 		/// </summary>
 		int ScheduledScan = 0;
 
-		async Task RescanWithSchedule()
+		async void RescanWithSchedule()
 		{
-			await Task.Yield();
+			using (var m = SelfAwareness.Mind("RescanWithSchedule hung", DateTime.Now.AddSeconds(5)))
+			{
+				await Task.Yield();
+			}
 
 			try
 			{

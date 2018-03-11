@@ -28,6 +28,7 @@ using System;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using Serilog;
+using Microsoft.Win32.SafeHandles;
 
 namespace TaskMaster
 {
@@ -145,7 +146,10 @@ namespace TaskMaster
 			foreground++;
 
 			//await System.Threading.Tasks.Task.Yield();
-			await System.Threading.Tasks.Task.Delay(Hysterisis);
+			using (var m = SelfAwareness.Mind("Hystersis Delay hung", DateTime.Now.AddSeconds((Hysterisis / 1000) + 5)))
+			{
+				await System.Threading.Tasks.Task.Delay(Hysterisis); // minded
+			}
 
 			int old = -1;
 			if ((old = foreground) > 1) // if we've swapped in this time, we won't bother checking anything about it.

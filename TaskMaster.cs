@@ -206,7 +206,10 @@ namespace TaskMaster
 		/// </summary>
 		public static async Task Evaluate()
 		{
-			await Task.Yield();
+			using (var m = SelfAwareness.Mind("Evaluate hung", DateTime.Now.AddSeconds(5)))
+			{
+				await Task.Yield();
+			}
 
 			processmanager.ProcessEverythingRequest(null, null);
 		}
@@ -254,9 +257,13 @@ namespace TaskMaster
 			}
 		}
 
+		static SelfAwareness selfaware;
+
 		static void Setup()
 		{
 			Log.Information("<Core> Loading components...");
+
+			selfaware = new SelfAwareness();
 
 			trayaccess = new TrayAccess();
 
@@ -268,7 +275,13 @@ namespace TaskMaster
 			}
 
 			if (ProcessMonitorEnabled)
+			{
 				processmanager = new ProcessManager();
+				if (PowerManagerEnabled)
+				{
+					powermanager.onBehaviourChange += processmanager.PowerBehaviourEvent;
+				}
+			}
 
 			if (MicrophoneMonitorEnabled)
 				micmonitor = new MicManager();
@@ -646,12 +659,15 @@ namespace TaskMaster
 			// TODO: This starts getting weird if cleanup interval is smaller than total delay of testing all items.
 			// (15*60) / 2 = item limit, and -1 or -2 for safety margin. Unlikely, but should probably be covered anyway.
 
-			await Task.Yield();
+			using (var m = SelfAwareness.Mind("TM.Cleanup hung", DateTime.Now.AddSeconds(5)))
+			{
+				await Task.Yield();
+			}
 
 			var time = Stopwatch.StartNew();
 
 			if (processmanager != null)
-				await processmanager.Cleanup();
+				processmanager.Cleanup();
 
 			time.Stop();
 

@@ -282,7 +282,10 @@ namespace TaskMaster
 
 				if (Atomic.Lock(ref correcting))
 				{
-					await System.Threading.Tasks.Task.Delay(AdjustDelay); // actual hysterisis, this should be cancellable
+					using (var m = SelfAwareness.Mind("Hystersis Delay hung", DateTime.Now.AddSeconds((AdjustDelay / 1000) + 5)))
+					{
+						await System.Threading.Tasks.Task.Delay(AdjustDelay); // actual hysterisis, this should be cancellable
+					}
 
 					oldVol = Control.Percent;
 					Log.Information("Correcting microphone volume from {OldVolume:N1} to {NewVolume:N1}", oldVol, Target);

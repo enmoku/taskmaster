@@ -591,6 +591,7 @@ namespace TaskMaster
 			var menu = new MenuStrip() { Dock = DockStyle.Top };
 
 			var menu_action = new ToolStripMenuItem("Actions");
+			menu_action.DropDown.AutoClose = true;
 			// Sub Items
 			var menu_action_rescan = new ToolStripMenuItem("Rescan", null, (o, s) =>
 			{
@@ -614,6 +615,7 @@ namespace TaskMaster
 
 			// CONFIG menu item
 			var menu_config = new ToolStripMenuItem("Configuration");
+			menu_config.DropDown.AutoClose = true;
 			// Sub Items
 			var menu_config_behaviour = new ToolStripMenuItem("Behaviour");
 			var menu_config_saveonexit = new ToolStripMenuItem("Save on exit");
@@ -647,6 +649,7 @@ namespace TaskMaster
 
 			// DEBUG menu item
 			var menu_debug = new ToolStripMenuItem("Debug");
+			menu_debug.DropDown.AutoClose = true;
 			// Sub Items
 			var menu_debug_inaction = new ToolStripMenuItem("Show inaction") { Checked = TaskMaster.ShowInaction, CheckOnClick = true };
 			menu_debug_inaction.Click += (sender, e) => { TaskMaster.ShowInaction = menu_debug_inaction.Checked; };
@@ -697,6 +700,7 @@ namespace TaskMaster
 
 			// INFO menu
 			var menu_info = new ToolStripMenuItem("Info");
+			menu_info.DropDown.AutoClose = true;
 			// Sub Items
 			var menu_info_github = new ToolStripMenuItem("Github", null, (sender, e) => { Process.Start(TaskMaster.URL); });
 			var menu_info_about = new ToolStripMenuItem("About", null, (s, e) =>
@@ -714,6 +718,7 @@ namespace TaskMaster
 			menu.Items.Add(menu_info);
 
 			// no simpler way?
+
 			menu_action.MouseEnter += (s, e) => { if (TaskMaster.AutoOpenMenus) menu_action.ShowDropDown(); };
 			menu_config.MouseEnter += (s, e) => { if (TaskMaster.AutoOpenMenus) menu_config.ShowDropDown(); };
 			menu_debug.MouseEnter += (s, e) => { if (TaskMaster.AutoOpenMenus) menu_debug.ShowDropDown(); };
@@ -731,7 +736,7 @@ namespace TaskMaster
 			};
 
 			TabPage infoTab = new TabPage("Info");
-			TabPage procTab = new TabPage("Processes");
+			TabPage watchTab = new TabPage("Watchlist");
 			TabPage micTab = new TabPage("Microphone");
 			if (!TaskMaster.MicrophoneMonitorEnabled) micTab.Hide();
 			TabPage netTab = new TabPage("Network");
@@ -740,7 +745,7 @@ namespace TaskMaster
 			TabPage ProcessDebugTab = new TabPage("Process Debug");
 
 			tabLayout.Controls.Add(infoTab);
-			tabLayout.Controls.Add(procTab);
+			tabLayout.Controls.Add(watchTab);
 			tabLayout.Controls.Add(micTab);
 			tabLayout.Controls.Add(netTab);
 			tabLayout.Controls.Add(powerDebugTab);
@@ -1113,7 +1118,7 @@ namespace TaskMaster
 
 			//proclayout.Controls.Add(pathList);
 			proclayout.Controls.Add(watchlistRules);
-			procTab.Controls.Add(proclayout);
+			watchTab.Controls.Add(proclayout);
 
 			// End: App list
 
@@ -1263,7 +1268,10 @@ namespace TaskMaster
 							try
 							{
 								rescanbutton.Enabled = false;
-								await Task.Yield();
+								using (var m = SelfAwareness.Mind("Rescan button hung", DateTime.Now.AddSeconds(5)))
+								{
+									await Task.Yield();
+								}
 								rescanRequest?.Invoke(this, null);
 								rescanbutton.Enabled = true;
 							}
@@ -1304,7 +1312,10 @@ namespace TaskMaster
 				try
 				{
 					crunchbutton.Enabled = false;
-					await Task.Yield();
+					using (var m = SelfAwareness.Mind("Page button hung", DateTime.Now.AddSeconds(5)))
+					{
+						await Task.Yield();
+					}
 					pagingRequest?.Invoke(this, new EventArgs());
 					crunchbutton.Enabled = true;
 				}
@@ -1577,7 +1588,10 @@ namespace TaskMaster
 
 		public async void ExitWaitListHandler(object sender, ProcessEventArgs ev)
 		{
-			await Task.Yield();
+			using (var m = SelfAwareness.Mind("Exit waitlist handler hung", DateTime.Now.AddSeconds(5)))
+			{
+				await Task.Yield();
+			}
 
 			lock (exitwaitlist_lock)
 			{
@@ -2081,9 +2095,12 @@ namespace TaskMaster
 			// the form itself
 			WindowState = FormWindowState.Normal;
 			FormBorderStyle = FormBorderStyle.Sizable;
+			ShowInTaskbar = true;
+
 			//FormBorderStyle = FormBorderStyle.FixedDialog; // no min/max buttons as wanted
 			MinimizeBox = false;
 			MaximizeBox = false;
+
 			Hide();
 			//CenterToScreen();
 

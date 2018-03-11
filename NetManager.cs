@@ -104,17 +104,20 @@ namespace TaskMaster
 
 			deviceSampleTimer = new System.Threading.Timer(SampleDeviceState, null, 15000, DeviceTimerInterval * 60000);
 			CurrentInterfaceList = Interfaces();
-			AnalyzePacketBehaviour(null); // initialize, not really needed
-			packetStatTimer = new System.Threading.Timer(AnalyzePacketBehaviour, null, 500, PacketStatTimerInterval * 1000);
+			AnalyzeTrafficBehaviour(null); // initialize, not really needed
+			packetStatTimer = new System.Threading.Timer(AnalyzeTrafficBehaviour, null, 500, PacketStatTimerInterval * 1000);
 
 			Log.Information("<Net Manager> Loaded.");
 		}
 
 		int packetWarning = 0;
 		List<NetDevice> CurrentInterfaceList;
-		async void AnalyzePacketBehaviour(object state)
+		async void AnalyzeTrafficBehaviour(object state)
 		{
-			await Task.Yield();
+			using (var m = SelfAwareness.Mind("Traffic analyzer hung", DateTime.Now.AddSeconds(5)))
+			{
+				await Task.Yield();
+			}
 
 			if (packetWarning > 0)
 				packetWarning--;
@@ -266,7 +269,10 @@ namespace TaskMaster
 						System.Threading.Tasks.Task.Run(async () =>
 						{
 							//CLEANUP: Console.WriteLine("Debug: Queued internet uptime report");
-							await System.Threading.Tasks.Task.Delay(new TimeSpan(0, 5, 0)); // wait 5 minutes
+							using (var m = SelfAwareness.Mind("Internet uptime hung", DateTime.Now.AddSeconds((5 * 60) + 5)))
+							{
+								await System.Threading.Tasks.Task.Delay(new TimeSpan(0, 5, 0)); // wait 5 minutes
+							}
 
 							ReportCurrentUpstate();
 							upstateTesting = 0;
@@ -309,7 +315,10 @@ namespace TaskMaster
 
 			if (TaskMaster.Trace) Log.Verbose("<Network> Checking internet connectivity...");
 
-			await Task.Yield();
+			using (var m = SelfAwareness.Mind("Internet checking hung", DateTime.Now.AddSeconds(5)))
+			{
+				await Task.Yield();
+			}
 
 			bool oldInetAvailable = InternetAvailable;
 			if (NetworkAvailable)

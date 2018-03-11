@@ -220,11 +220,13 @@ namespace TaskMaster
 			try
 			{
 				powermanager.SetBehaviour(PowerManager.PowerBehaviour.Manual);
+
 				power_manual.Checked = (powermanager.Behaviour == PowerManager.PowerBehaviour.Manual);
 				power_auto.Checked = (powermanager.Behaviour == PowerManager.PowerBehaviour.Auto);
 
 				ManualPowerMode?.Invoke(this, null);
-				powermanager.Restore(0);
+
+				//powermanager.Restore(0).Wait(); // already called by setBehaviour as necessary
 				powermanager.setMode(mode);
 				//powermanager.RequestMode(mode);
 				HighlightPowerMode();
@@ -247,7 +249,10 @@ namespace TaskMaster
 			if (!Atomic.Lock(ref restoremainwindow_lock))
 				return; // already being done
 
-			await Task.Yield();
+			using (var m = SelfAwareness.Mind("RestoreMainWindow hung", DateTime.Now.AddSeconds(5)))
+			{
+				await Task.Yield();
+			}
 
 			TaskMaster.ShowMainWindow();
 
@@ -320,10 +325,13 @@ namespace TaskMaster
 		{
 			Log.Warning("Explorer crash detected!");
 
-			await Task.Yield();
-
 			Log.Information("Giving explorer some time to recover on its own...");
-			await Task.Delay(12000); // force async
+
+			using (var m = SelfAwareness.Mind("Explorer crash handler hung", DateTime.Now.AddSeconds(17)))
+			{
+				await Task.Delay(12000); // force async
+			}
+
 			Stopwatch n = new Stopwatch();
 			n.Start();
 			Process[] procs;
@@ -334,7 +342,11 @@ namespace TaskMaster
 					Log.Error("Explorer has not recovered in excessive timeframe, giving up.");
 					return;
 				}
-				await Task.Delay(1000 * 60 * 5); // wait 5 minutes
+
+				using (var m = SelfAwareness.Mind("Explorer crash handler hung", DateTime.Now.AddSeconds((60 * 5) + 5)))
+				{
+					await Task.Delay(1000 * 60 * 5); // wait 5 minutes
+				}
 			}
 			n.Stop();
 
