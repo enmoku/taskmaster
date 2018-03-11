@@ -12,14 +12,15 @@ this was added due to Skype having a habit of randomly adjusting the volume desp
 * Network monitoring is also possible, though it mostly provides current IPv4 and IPv6 addresses and attempts to detect when internet connectivity is disrupted,
 a thing that Windows itself does very poor job of informing users of.
 * Ability to page applications and monitor temp folders is also included, but these features are infantile and thus unusable.
+* Foreground app detection, to allow some watchlist rules to be applied only when an app is at foreground.
+Allowing apps that normally have higher priority to be pushed into the background when not needed.
+* Automatic power mode adjustment based on system load.
 
 ## Planned features
 
-* Make foreground only option actually do what it's meant to.
 * At run-time configuration.
 * Game detection – unlikely to occur as I have found no clues how to accomplish this.
 * Automatic load-balancing between cores.
-* Automatic power mode adjustment based on system load.
 * Improve recognition of system state and when things like disk cleanup are advisable, actual cleanup will be delegated to calling `cleanmgr`.
 * Improved underlying code.
 * Move to better UI system such as WPF, though WPF/XAML seem to be simply not doable without Visual Studio which rules that option out.
