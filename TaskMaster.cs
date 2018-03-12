@@ -206,24 +206,19 @@ namespace TaskMaster
 		/// </summary>
 		public static async Task Evaluate()
 		{
-			using (var m = SelfAwareness.Mind("Evaluate hung", DateTime.Now.AddSeconds(5)))
-			{
-				await Task.Yield();
-			}
-
 			processmanager.ProcessEverythingRequest(null, null);
 		}
 
 		public static void ShowMainWindow()
 		{
-			BuildMainWindow();
-			lock (mainwindow_lock)
+			using (var m = SelfAwareness.Mind("Hang check", DateTime.Now.AddSeconds(30)))
 			{
-				mainwindow.Show();
+				BuildMainWindow().ConfigureAwait(true);
+				mainwindow?.Show();
 			}
 		}
 
-		public static void BuildMainWindow()
+		public static async Task BuildMainWindow()
 		{
 			lock (mainwindow_lock)
 			{
@@ -304,13 +299,10 @@ namespace TaskMaster
 				processmanager.hookActiveAppManager(ref activeappmonitor);
 			}
 
-			lock (mainwindow_lock)
+			if (ShowOnStart)
 			{
-				if (ShowOnStart)
-				{
-					BuildMainWindow();
-					mainwindow.Show();
-				}
+				BuildMainWindow();
+				mainwindow?.Show();
 			}
 
 			// Self-optimization
@@ -659,15 +651,15 @@ namespace TaskMaster
 			// TODO: This starts getting weird if cleanup interval is smaller than total delay of testing all items.
 			// (15*60) / 2 = item limit, and -1 or -2 for safety margin. Unlikely, but should probably be covered anyway.
 
-			using (var m = SelfAwareness.Mind("TM.Cleanup hung", DateTime.Now.AddSeconds(5)))
-			{
-				await Task.Yield();
-			}
-
 			var time = Stopwatch.StartNew();
 
 			if (processmanager != null)
-				processmanager.Cleanup();
+			{
+				using (var m = SelfAwareness.Mind("TM.Cleanup hung", DateTime.Now.AddSeconds(30)))
+				{
+					await processmanager.Cleanup().ConfigureAwait(false);
+				}
+			}
 
 			time.Stop();
 
@@ -823,10 +815,7 @@ namespace TaskMaster
 
 				if (TaskMaster.ProcessMonitorEnabled)
 				{
-					Task.Run(new Func<Task>(async () =>
-					{
-						await Evaluate();
-					}));
+					Evaluate().ConfigureAwait(false);
 				}
 
 				try

@@ -92,23 +92,28 @@ namespace TaskMaster
 			Overflow = (MaxCache / 2).Constrain(2, 50);
 
 			pruneTimer.Interval = interval * 1000 * 60;
-			pruneTimer.Elapsed += Prune;
+			pruneTimer.Elapsed += async (sender, e) =>
+			{
+				try
+				{
+					await Prune().ConfigureAwait(false);
+				}
+				catch (Exception ex)
+				{
+					Logging.Stacktrace(ex);
+				}
+			};
 			pruneTimer.Start();
 		}
 
 		/// <summary>
 		/// Prune cache.
 		/// </summary>
-		async void Prune(object sender, EventArgs ev)
+		async Task Prune()
 		{
 			if (Items.Count <= MinCache) return; // just don't bother
 
 			if (Items.Count <= MaxCache && CacheEvictStrategy == EvictStrategy.LeastUsed) return;
-
-			using (var m = SelfAwareness.Mind("Cache prune hung", DateTime.Now.AddSeconds(5)))
-			{
-				await Task.Yield();
-			}
 
 			lock (cache_lock)
 			{
@@ -259,12 +264,8 @@ namespace TaskMaster
 			{
 				// TODO: make restart timer or something?
 				/*
-				Task.Run(async () =>
-				{
-					await Task.Yield();
-					Prune(this, null);
-				});
-				*/
+				 * Prune();
+				 */
 			}
 
 			Misses++;

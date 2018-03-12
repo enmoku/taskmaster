@@ -56,7 +56,7 @@ namespace TaskMaster
 				sysWatcher.Created += ModifyTemp;
 			}
 
-			TempScanTimer = new System.Threading.Timer(async (state) => { await ScanTemp(); }, null, 0, TimerDue);
+			TempScanTimer = new System.Threading.Timer(async (state) => { await ScanTemp().ConfigureAwait(false); }, null, 0, TimerDue);
 			Log.Information("Temp folder scanner will be performed once per day.");
 
 			onBurden += ReScanTemp;
@@ -120,25 +120,23 @@ namespace TaskMaster
 
 		public async Task ScanTemp()
 		{
-			using (var m = SelfAwareness.Mind("Scan temp hung", DateTime.Now.AddSeconds(5)))
+			using (var m = SelfAwareness.Mind("Scan temp hung", DateTime.Now.AddSeconds(120)))
 			{
-				await Task.Yield();
+				var dst = new DirectoryStats { Files = 0, Dirs = 0, Size = 0 };
+
+				ReScanBurden = 0;
+
+				Log.Information("Temp folders scanning initiated...");
+				onTempScan?.Invoke(null, new DiskEventArgs { State = ScanState.Start, Stats = dst });
+				DirectorySize(new System.IO.DirectoryInfo(systemTemp), ref dst);
+				if (systemTemp != userTemp)
+				{
+					onTempScan?.Invoke(null, new DiskEventArgs { State = ScanState.Segment, Stats = dst });
+					DirectorySize(new System.IO.DirectoryInfo(userTemp), ref dst);
+				}
+				onTempScan?.Invoke(null, new DiskEventArgs { State = ScanState.End, Stats = dst });
+				Log.Information("Temp contents: {Files} files, {Dirs} dirs, {Size} MBs", dst.Files, dst.Dirs, string.Format("{0:N2}", dst.Size / 1000f / 1000f));
 			}
-
-			var dst = new DirectoryStats { Files = 0, Dirs = 0, Size = 0 };
-
-			ReScanBurden = 0;
-
-			Log.Information("Temp folders scanning initiated...");
-			onTempScan?.Invoke(null, new DiskEventArgs { State = ScanState.Start, Stats = dst });
-			DirectorySize(new System.IO.DirectoryInfo(systemTemp), ref dst);
-			if (systemTemp != userTemp)
-			{
-				onTempScan?.Invoke(null, new DiskEventArgs { State = ScanState.Segment, Stats = dst });
-				DirectorySize(new System.IO.DirectoryInfo(userTemp), ref dst);
-			}
-			onTempScan?.Invoke(null, new DiskEventArgs { State = ScanState.End, Stats = dst });
-			Log.Information("Temp contents: {Files} files, {Dirs} dirs, {Size} MBs", dst.Files, dst.Dirs, string.Format("{0:N2}", dst.Size / 1000f / 1000f));
 		}
 
 		public enum ScanState

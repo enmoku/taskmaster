@@ -29,6 +29,7 @@ using System.Collections.Generic;
 using Serilog;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
+using System.Collections.Concurrent;
 
 namespace TaskMaster
 {
@@ -40,7 +41,7 @@ namespace TaskMaster
 		static readonly object AwarenessMap_lock = new object();
 		static Dictionary<int, Awareness> AwarenessMap;
 
-		static Queue<int> FreeKeys = new Queue<int>();
+		static ConcurrentQueue<int> FreeKeys = new ConcurrentQueue<int>();
 		static int NextKey = 1;
 		static readonly object FreeKeys_lock = new object();
 
@@ -54,6 +55,18 @@ namespace TaskMaster
 			AwarenessTicker = new System.Threading.Timer(Assess, null, 5 * 1000, 15 * 1000);
 		}
 
+		/// <summary>
+		/// Create a minder that will be raised if it still exists past due time. Unmind to no longer track it.
+		/// Best used by wrapping this around using block around minded object.
+		/// </summary>
+		/// <returns>The mind.</returns>
+		/// <param name="message">Message to post when things go wrong.</param>
+		/// <param name="due">Due date/time.</param>
+		/// <param name="callback">Callback.</param>
+		/// <param name="callbackObject">Object given to the callback.</param>
+		/// <param name="method">Autofilled by CallerMemberName.</param>
+		/// <param name="file">Autofilled by CallerFilePath.</param>
+		/// <param name="line">Autofilled by CallerLineNumber.</param>
 		public static Awareness Mind(string message, DateTime due, Action<object> callback = null, object callbackObject = null,
 							   [CallerMemberName] string method = "", [CallerFilePath] string file = "", [CallerLineNumber] int line = 0)
 		{
@@ -74,9 +87,15 @@ namespace TaskMaster
 		{
 			lock (AwarenessMap_lock)
 			{
-				Debug.Assert(AwarenessMap.ContainsKey(awn.Key) == false, string.Format("Id:{0} (Count:{1}) :: {2}", awn.Key, AwarenessMap.Count, awn.Method));
+				if (AwarenessMap.ContainsKey(awn.Key))
+				{
+					Log.Fatal("Id:{0} (Count:{1}) :: {2}", awn.Key, AwarenessMap.Count, awn.Method);
+					return;
+				}
 
 				AwarenessMap.Add(awn.Key, awn);
+
+				//Log.Debug("<<Self-Awareness>> Added [{Key}] {Method}", awn.Key, awn.Method);
 			}
 		}
 
@@ -84,7 +103,12 @@ namespace TaskMaster
 		{
 			lock (AwarenessMap_lock)
 			{
-				AwarenessMap.Remove(key);
+				Awareness awn;
+				if (AwarenessMap.TryGetValue(key, out awn))
+				{
+					//Log.Debug("<<Self-Awareness>> Removing [{Key}] {Method}", awn.Key, awn.Method);
+					AwarenessMap.Remove(key);
+				}
 			}
 		}
 
@@ -93,10 +117,15 @@ namespace TaskMaster
 			int rv = 0;
 			lock (FreeKeys_lock)
 			{
-				if (FreeKeys.Count > 0)
-					rv = FreeKeys.Dequeue();
+				if (FreeKeys.Count > 0 && FreeKeys.TryDequeue(out rv))
+				{
+					//Log.Debug("<<Self-Awareness>> GetKey: FreeKeys.Dequeue() = {rv}", rv);
+				}
 				else
+				{
 					rv = NextKey++;
+					//Log.Debug("<<Self-Awareness>> GetKey: NextKey++ = {rv}", rv);
+				}
 			}
 			return rv;
 		}
@@ -129,9 +158,14 @@ namespace TaskMaster
 									  awn.Value.File);
 							Log.Fatal("<<Self-Awareness>> Due:{Due} – Now:{Now} – Late: {Late}s", awn.Value.Due, now, (now - awn.Value.Due).TotalSeconds);
 
-							awn.Value.Callback?.Invoke(awn.Value.UserObject);
+							if (awn.Value.Callback != null)
+								awn.Value.Callback.Invoke(awn.Value.UserObject);
 
 							clearList.Push(awn.Key);
+						}
+						else
+						{
+							//Log.Debug("<<Self-Awareness>> Checked [{Key}] {Method} – due in: {Sec}", awn.Key, awn.Value.Method, (now - awn.Value.Due).TotalSeconds);
 						}
 					}
 				}
@@ -165,6 +199,7 @@ namespace TaskMaster
 							   [CallerMemberName] string method = "", [CallerFilePath] string file = "", [CallerLineNumber] int line = 0)
 		{
 			Key = SelfAwareness.GetKey();
+
 			Start = DateTime.Now;
 			Message = message;
 			Due = due;
@@ -184,18 +219,19 @@ namespace TaskMaster
 		bool disposed; // = false;
 		protected virtual void Dispose(bool disposing)
 		{
-			if (disposed) return;
+			if (disposed)
+			{
+				//Log.Debug("<<Self-Awareness>> Redispose [{Key}] {Method}", Key, Method);
+				return;
+			}
 
 			//base.Dispose(disposing);
 
 			if (disposing)
 			{
-				if (Key > 0)
-				{
-					SelfAwareness.Unmind(Key);
-					SelfAwareness.FreeKey(Key);
-				}
-				Key = -1;
+				//Log.Debug("<<Self-Awareness>> Dispose [{Key}] {Method} [Time: {N}s]", Key, Method, string.Format("{0:N2}", (DateTime.Now - Start).TotalSeconds));
+				SelfAwareness.Unmind(Key);
+				SelfAwareness.FreeKey(Key);
 			}
 
 			disposed = true;

@@ -31,6 +31,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Serilog;
 using System.Threading.Tasks;
+using System.Diagnostics;
 
 namespace TaskMaster
 {
@@ -102,28 +103,46 @@ namespace TaskMaster
 			LastChange.Enqueue(DateTime.MinValue);
 			LastChange.Enqueue(DateTime.MinValue);
 
-			deviceSampleTimer = new System.Threading.Timer(SampleDeviceState, null, 15000, DeviceTimerInterval * 60000);
 			CurrentInterfaceList = Interfaces();
-			AnalyzeTrafficBehaviour(null); // initialize, not really needed
-			packetStatTimer = new System.Threading.Timer(AnalyzeTrafficBehaviour, null, 500, PacketStatTimerInterval * 1000);
+			//Log.Debug("{IFACELIST} – count: {c}", CurrentInterfaceList, CurrentInterfaceList.Count);
+
+			deviceSampleTimer = new System.Threading.Timer(SampleDeviceState, null, 15000, DeviceTimerInterval * 60000);
+
+			AnalyzeTrafficBehaviourTick(null); // initialize, not really needed
+			packetStatTimer = new System.Threading.Timer(AnalyzeTrafficBehaviourTick, null, 500, PacketStatTimerInterval * 1000);
 
 			Log.Information("<Net Manager> Loaded.");
 		}
 
 		int packetWarning = 0;
 		List<NetDevice> CurrentInterfaceList;
-		async void AnalyzeTrafficBehaviour(object state)
+
+		async void AnalyzeTrafficBehaviourTick(object state)
 		{
-			using (var m = SelfAwareness.Mind("Traffic analyzer hung", DateTime.Now.AddSeconds(5)))
+			using (var m = SelfAwareness.Mind("Traffic analyzer hung", DateTime.Now.AddSeconds(15)))
 			{
-				await Task.Yield();
+				await AnalyzeTrafficBehaviour();
 			}
+		}
+
+		async Task AnalyzeTrafficBehaviour()
+		{
+			Debug.Assert(CurrentInterfaceList != null);
 
 			if (packetWarning > 0)
 				packetWarning--;
 
 			var ifaces = Interfaces();
+
 			if (ifaces == null) return; // being called too often, shouldn't happen but eh.
+			if (CurrentInterfaceList == null)
+			{
+				Log.Error("<Network> Current Interface List is unassigned!!!");
+				// this shouldn't happen
+				CurrentInterfaceList = ifaces;
+				return;
+			}
+
 			if (ifaces.Count == CurrentInterfaceList.Count) // Crude, but whatever. Prone to false statistics.
 			{
 				for (int index = 0; index < ifaces.Count; index++)
@@ -248,12 +267,12 @@ namespace TaskMaster
 
 		public void SampleDeviceState(object state)
 		{
-			RecordDeviceState(InternetAvailable, false);
+			RecordDeviceState(InternetAvailable, false).ConfigureAwait(false);
 		}
 
 		bool lastOnlineState; // = false;
 		static int upstateTesting; // = 0;
-		void RecordDeviceState(bool online_state, bool address_changed)
+		async Task RecordDeviceState(bool online_state, bool address_changed)
 		{
 			if (online_state != lastOnlineState)
 			{
@@ -266,17 +285,14 @@ namespace TaskMaster
 					// this part is kinda pointless
 					if (Atomic.Lock(ref upstateTesting))
 					{
-						System.Threading.Tasks.Task.Run(async () =>
+						//CLEANUP: Console.WriteLine("Debug: Queued internet uptime report");
+						using (var m = SelfAwareness.Mind("Internet uptime hung", DateTime.Now.AddSeconds((5 * 60) + 5)))
 						{
-							//CLEANUP: Console.WriteLine("Debug: Queued internet uptime report");
-							using (var m = SelfAwareness.Mind("Internet uptime hung", DateTime.Now.AddSeconds((5 * 60) + 5)))
-							{
-								await System.Threading.Tasks.Task.Delay(new TimeSpan(0, 5, 0)); // wait 5 minutes
-							}
+							await System.Threading.Tasks.Task.Delay(new TimeSpan(0, 5, 0)); // wait 5 minutes
+						}
 
-							ReportCurrentUpstate();
-							upstateTesting = 0;
-						});
+						ReportCurrentUpstate();
+						upstateTesting = 0;
 					}
 				}
 				else // went offline
@@ -315,11 +331,6 @@ namespace TaskMaster
 
 			if (TaskMaster.Trace) Log.Verbose("<Network> Checking internet connectivity...");
 
-			using (var m = SelfAwareness.Mind("Internet checking hung", DateTime.Now.AddSeconds(5)))
-			{
-				await Task.Yield();
-			}
-
 			bool oldInetAvailable = InternetAvailable;
 			if (NetworkAvailable)
 			{
@@ -340,13 +351,7 @@ namespace TaskMaster
 					{
 						case System.Net.Sockets.SocketError.TimedOut:
 							Log.Warning("<Network> Internet availability test timed-out: assuming we're online.");
-							/*
-							Task.Run(async delegate
-							{
-								await Task.Yield();
-								CheckInet(false);
-							});
-							*/
+							//await CheckInet(false).ConfigureAwait(false);
 							InternetAvailable = true; // timeout can only occur if we actually have internet.. sort of. We have no tri-state tho.
 							Atomic.Unlock(ref checking_inet);
 							return;
@@ -362,7 +367,7 @@ namespace TaskMaster
 			else
 				InternetAvailable = false;
 
-			RecordDeviceState(InternetAvailable, address_changed);
+			await RecordDeviceState(InternetAvailable, address_changed).ConfigureAwait(false);
 
 			if (oldInetAvailable != InternetAvailable)
 				Log.Information("<Network> Status: {NetworkAvailable}, Internet: {InternetAvailable}", (NetworkAvailable ? "Up" : "Down"), (InternetAvailable ? "Connected" : "Disconnected"));
@@ -488,7 +493,7 @@ namespace TaskMaster
 		}
 
 		Queue<DateTime> LastChange = new Queue<DateTime>(3);
-		void NetAddrChanged(object sender, EventArgs e)
+		async void NetAddrChanged(object sender, EventArgs e)
 		{
 			var tmpnow = DateTime.Now;
 			IPAddress oldV6Address = IPv6Address;
@@ -497,7 +502,7 @@ namespace TaskMaster
 			LastChange.Dequeue();
 			LastChange.Enqueue(tmpnow);
 
-			CheckInet(address_changed: true).Wait();
+			await CheckInet(address_changed: true).ConfigureAwait(false);
 
 			if (InternetAvailable)
 			{
@@ -565,7 +570,7 @@ namespace TaskMaster
 
 				NetworkStatusChange?.Invoke(this, new NetworkStatus { Available = NetworkAvailable });
 
-				await CheckInet();
+				await CheckInet().ConfigureAwait(false);
 			}
 
 			CurrentInterfaceList = Interfaces();

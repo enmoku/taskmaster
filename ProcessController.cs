@@ -625,35 +625,37 @@ namespace TaskMaster
 
 			if (Recheck > 0 && recheck == false)
 			{
-				Task.Run(new Func<Task>(async () =>
-				{
-					using (var m = SelfAwareness.Mind("Touch recheck hung", DateTime.Now.AddSeconds((Math.Max(Recheck, 5)) + 5)))
-					{
-						await Task.Delay(Math.Max(Recheck, 5) * 1000);
-					}
-
-					if (TaskMaster.DebugProcesses)
-						Log.Debug("[{FriendlyName}] {Process} (#{PID}) rechecking", FriendlyName, info.Name, info.Id);
-
-					try
-					{
-						if (!info.Process.HasExited)
-							Touch(info, schedule_next: false, recheck: true);
-						else
-						{
-							if (TaskMaster.Trace) Log.Verbose("[{FriendlyName}] {Process} (#{PID}) is gone yo.", FriendlyName, info.Name, info.Id);
-						}
-					}
-					catch (Exception ex)
-					{
-						Log.Warning("[{FriendlyName}] {Process} (#{PID}) – something bad happened.", FriendlyName, info.Name, info.Id);
-						Logging.Stacktrace(ex);
-						return; //throw; // would throw but this is async function
-					}
-				}));
+				TouchReapply(info).ConfigureAwait(false);
 			}
 
 			return rv;
+		}
+
+		async Task TouchReapply(BasicProcessInfo info)
+		{
+			using (var m = SelfAwareness.Mind("Touch recheck hung", DateTime.Now.AddSeconds((Math.Max(Recheck, 5)) + 5)))
+			{
+				await Task.Delay(Math.Max(Recheck, 5) * 1000);
+			}
+
+			if (TaskMaster.DebugProcesses)
+				Log.Debug("[{FriendlyName}] {Process} (#{PID}) rechecking", FriendlyName, info.Name, info.Id);
+
+			try
+			{
+				if (!info.Process.HasExited)
+					Touch(info, schedule_next: false, recheck: true);
+				else
+				{
+					if (TaskMaster.Trace) Log.Verbose("[{FriendlyName}] {Process} (#{PID}) is gone yo.", FriendlyName, info.Name, info.Id);
+				}
+			}
+			catch (Exception ex)
+			{
+				Log.Warning("[{FriendlyName}] {Process} (#{PID}) – something bad happened.", FriendlyName, info.Name, info.Id);
+				Logging.Stacktrace(ex);
+				return; //throw; // would throw but this is async function
+			}
 		}
 
 		/// <summary>
@@ -673,13 +675,8 @@ namespace TaskMaster
 		/// </summary>
 		int ScheduledScan = 0;
 
-		async void RescanWithSchedule()
+		async Task RescanWithSchedule()
 		{
-			using (var m = SelfAwareness.Mind("RescanWithSchedule hung", DateTime.Now.AddSeconds(5)))
-			{
-				await Task.Yield();
-			}
-
 			try
 			{
 				double n = (DateTime.Now - LastScan).TotalMinutes;
@@ -692,7 +689,10 @@ namespace TaskMaster
 					if (TaskMaster.DebugProcesses)
 						Log.Debug("[{FriendlyName}] Rescan initiating.", FriendlyName);
 
-					Scan();
+					using (var m = SelfAwareness.Mind("RescanWithSchedule hung", DateTime.Now.AddSeconds(15)))
+					{
+						await Scan().ConfigureAwait(false);
+					}
 
 					ScheduledScan = 0;
 				}
@@ -705,7 +705,7 @@ namespace TaskMaster
 			}
 		}
 
-		public void Scan()
+		public async Task Scan()
 		{
 			if (ExecutableFriendlyName == null) return;
 

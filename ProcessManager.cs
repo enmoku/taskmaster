@@ -192,6 +192,8 @@ namespace TaskMaster
 
 		public async Task FreeMemoryFor(string executable)
 		{
+			Log.Information("Freeing memory for: {Exec}", executable);
+
 			var procs = Process.GetProcessesByName(executable); // unnecessary maybe?
 			if (procs.Length == 0)
 			{
@@ -199,46 +201,44 @@ namespace TaskMaster
 				return;
 			}
 
-			using (var m = SelfAwareness.Mind("FreeMemoryFor hung", DateTime.Now.AddSeconds(5)))
+			using (var m = SelfAwareness.Mind("FreeMemoryFor hung", DateTime.Now.AddSeconds(30)))
 			{
-				await Task.Yield();
-			}
-
-			long saved = 0;
-			var allprocs = Process.GetProcesses();
-			foreach (var prc in allprocs)
-			{
-				int pid = -1;
-				string name = null;
-				try
+				long saved = 0;
+				var allprocs = Process.GetProcesses();
+				foreach (var prc in allprocs)
 				{
-					pid = prc.Id;
-					name = prc.ProcessName;
-				}
-				catch
-				{
-					continue;
-				}
+					int pid = -1;
+					string name = null;
+					try
+					{
+						pid = prc.Id;
+						name = prc.ProcessName;
+					}
+					catch
+					{
+						continue;
+					}
 
-				if (IgnoreProcessID(pid) || IgnoreProcessName(name))
-					continue;
+					if (IgnoreProcessID(pid) || IgnoreProcessName(name))
+						continue;
 
-				if (name.Equals(executable)) // ignore the one we're freeing stuff for
-					continue;
+					if (name.Equals(executable)) // ignore the one we're freeing stuff for
+						continue;
 
-				//  TODO: Add ignore other processes
+					//  TODO: Add ignore other processes
 
-				try
-				{
-					long ns = prc.WorkingSet64;
-					EmptyWorkingSet(prc.Handle);
-					prc.Refresh();
-					long mns = (ns - prc.WorkingSet64);
-					saved += mns;
-				}
-				catch
-				{
-					continue;
+					try
+					{
+						long ns = prc.WorkingSet64;
+						EmptyWorkingSet(prc.Handle);
+						prc.Refresh();
+						long mns = (ns - prc.WorkingSet64);
+						saved += mns;
+					}
+					catch
+					{
+						continue;
+					}
 				}
 			}
 		}
@@ -263,60 +263,58 @@ namespace TaskMaster
 			// DEBUG: if (TaskMaster.VeryVerbose) Console.WriteLine(string.Format("Handling: +{0} = {1} --- PageEverythingRequest", procs.Length, Handling));
 			onInstanceHandling?.Invoke(this, new InstanceEventArgs { Count = procs.Length - 2 });
 
-			try
+			using (var m = SelfAwareness.Mind("PageEverythingRequest hung", DateTime.Now.AddSeconds(5)))
 			{
-				foreach (Process process in procs)
+				try
 				{
-					int pid = -1;
-					string name = null;
-					try
+					foreach (Process process in procs)
 					{
-						pid = process.Id;
-						name = process.ProcessName;
-						if (IgnoreProcessID(pid)) continue;
-					}
-					catch { continue; }
+						int pid = -1;
+						string name = null;
+						try
+						{
+							pid = process.Id;
+							name = process.ProcessName;
+							if (IgnoreProcessID(pid)) continue;
+						}
+						catch { continue; }
 
-					ProcessController control;
-					lock (execontrol_lock)
-					{
-						if (execontrol.TryGetValue(LowerCase(name), out control))
-							if (!control.AllowPaging) continue;
-					}
+						ProcessController control;
+						lock (execontrol_lock)
+						{
+							if (execontrol.TryGetValue(LowerCase(name), out control))
+								if (!control.AllowPaging) continue;
+						}
 
-					try
-					{
-						long ns = process.WorkingSet64;
-						EmptyWorkingSet(process.Handle);
-						process.Refresh();
-						long mns = (ns - process.WorkingSet64);
-						saved += mns;
-						if (TaskMaster.Trace) Log.Verbose("Paged: {ProcessName} (#{ProcessID}) – {PagedMBs:N1} MBs.", name, pid, mns / 1000000);
-					}
-					catch
-					{
-						// NOP
+						try
+						{
+							long ns = process.WorkingSet64;
+							EmptyWorkingSet(process.Handle);
+							process.Refresh();
+							long mns = (ns - process.WorkingSet64);
+							saved += mns;
+							if (TaskMaster.Trace) Log.Verbose("Paged: {ProcessName} (#{ProcessID}) – {PagedMBs:N1} MBs.", name, pid, mns / 1000000);
+						}
+						catch
+						{
+							// NOP
+						}
 					}
 				}
-			}
-			catch (Exception ex)
-			{
-				Log.Fatal("Uncaught exception while paging");
-				Logging.Stacktrace(ex);
-				return;//throw; // event handler, throwing is a nogo 
-			}
-			finally
-			{
-				// DEBUG: if (TaskMaster.VeryVerbose) Console.WriteLine(string.Format("Handling: -{0} = {1} --- PageEverythingRequest", procs.Length, Handling));
-				onInstanceHandling?.Invoke(this, new InstanceEventArgs { Count = -procs.Length - 2 });
+				catch (Exception ex)
+				{
+					Log.Fatal("Uncaught exception while paging");
+					Logging.Stacktrace(ex);
+					return;//throw; // event handler, throwing is a nogo 
+				}
+				finally
+				{
+					// DEBUG: if (TaskMaster.VeryVerbose) Console.WriteLine(string.Format("Handling: -{0} = {1} --- PageEverythingRequest", procs.Length, Handling));
+					onInstanceHandling?.Invoke(this, new InstanceEventArgs { Count = -procs.Length - 2 });
+				}
 			}
 
 			Log.Information("Paged total of {PagedMBs:N1} MBs.", saved / 1000000);
-
-			using (var m = SelfAwareness.Mind("PageEverythingRequest hung", DateTime.Now.AddSeconds(5)))
-			{
-				await Task.Yield();
-			}
 
 			if (TaskMaster.Trace) Log.Verbose("Paging complete.");
 		}
@@ -329,7 +327,7 @@ namespace TaskMaster
 			{
 				using (var m = SelfAwareness.Mind("Rescan everything hung", DateTime.Now.AddSeconds(30)))
 				{
-					await ProcessEverything();
+					await ProcessEverything().ConfigureAwait(false);
 				}
 			}
 			catch (Exception ex)
@@ -354,67 +352,65 @@ namespace TaskMaster
 				return;
 			}
 
-			using (var m = SelfAwareness.Mind("ProcessEverything hung", DateTime.Now.AddSeconds(5)))
-			{
-				await Task.Yield();
-			}
-
 			LastRescan = DateTime.Now;
 			NextRescan = DateTime.Now.AddSeconds(ProcessManager.RescanEverythingFrequency / 1000);
 
-			try
+			using (var m = SelfAwareness.Mind("ProcessEverything hung", DateTime.Now.AddSeconds(5)))
 			{
-				if (TaskMaster.DebugFullScan)
-					Log.Verbose("Processing everything.");
-
-				// TODO: Cache Pids of protected system services to skip them faster.
-
-				var procs = Process.GetProcesses();
-
-				//Log.Debug("Scanning {ProcessCount} processes for changes.", procs.Length);
-
-				// DEBUG: if (TaskMaster.VeryVerbose) Console.WriteLine(string.Format("Handling: +{0} = {1} --- ProcessEverything", procs.Length, Handling));
-				onInstanceHandling?.Invoke(this, new InstanceEventArgs { Count = procs.Length - 2 });
-
-				int i = 0;
-				foreach (Process process in procs)
+				try
 				{
-					string name = null;
-					int pid = 0;
-					try
+					if (TaskMaster.DebugFullScan)
+						Log.Verbose("Processing everything.");
+
+					// TODO: Cache Pids of protected system services to skip them faster.
+
+					var procs = Process.GetProcesses();
+
+					//Log.Debug("Scanning {ProcessCount} processes for changes.", procs.Length);
+
+					// DEBUG: if (TaskMaster.VeryVerbose) Console.WriteLine(string.Format("Handling: +{0} = {1} --- ProcessEverything", procs.Length, Handling));
+					onInstanceHandling?.Invoke(this, new InstanceEventArgs { Count = procs.Length - 2 });
+
+					int i = 0;
+					foreach (Process process in procs)
 					{
-						name = process.ProcessName;
-						pid = process.Id;
-					}
-					catch
-					{
-						continue; // shouldn't happen
+						string name = null;
+						int pid = 0;
+						try
+						{
+							name = process.ProcessName;
+							pid = process.Id;
+						}
+						catch
+						{
+							continue; // shouldn't happen
+						}
+
+						if (IgnoreProcessID(pid)) continue; // Ignore Idle&System
+
+						if (TaskMaster.DebugFullScan)
+							Log.Verbose("Checking [{Iter}/{Count}] {Proc} (#{Pid})", ++i, procs.Length - 2, name, pid); // -2 for Idle&System
+
+						CheckProcess(new BasicProcessInfo { Process = process, Name = name, Id = pid, Path = null, Flags = 0 }, schedule_next: false);
 					}
 
-					if (IgnoreProcessID(pid)) continue; // Ignore Idle&System
+					// DEBUG: if (TaskMaster.VeryVerbose) Console.WriteLine(string.Format("Handling: -{0} = {1} --- ProcessEverything", procs.Length, Handling));
+					onInstanceHandling?.Invoke(this, new InstanceEventArgs { Count = -(procs.Length - 2), Total = Handling });
+
+					if (TaskMaster.PathMonitorEnabled)
+						UpdatePathWatch();
 
 					if (TaskMaster.DebugFullScan)
-						Log.Verbose("Checking [{Iter}/{Count}] {Proc} (#{Pid})", ++i, procs.Length - 2, name, pid); // -2 for Idle&System
-
-					CheckProcess(new BasicProcessInfo { Process = process, Name = name, Id = pid, Path = null, Flags = 0 }, schedule_next: false);
+						Log.Verbose("Full scan: DONE.");
 				}
-
-				// DEBUG: if (TaskMaster.VeryVerbose) Console.WriteLine(string.Format("Handling: -{0} = {1} --- ProcessEverything", procs.Length, Handling));
-				onInstanceHandling?.Invoke(this, new InstanceEventArgs { Count = -(procs.Length - 2), Total = Handling });
-
-				if (TaskMaster.PathMonitorEnabled)
-					UpdatePathWatch();
-
-				if (TaskMaster.DebugFullScan)
-					Log.Verbose("Full scan: DONE.");
-			}
-			catch (Exception ex)
-			{
-				Logging.Stacktrace(ex);
-			}
-			finally
-			{
-				scaninprogress = 0;
+				catch (Exception ex)
+				{
+					Logging.Stacktrace(ex);
+				}
+				finally
+				{
+					scaninprogress = 0;
+				}
 			}
 		}
 
@@ -939,6 +935,7 @@ namespace TaskMaster
 			// TODO: This needs to be FASTER
 			lock (watchlist_lock)
 			{
+				Debug.Assert(watchlist != null);
 				foreach (ProcessController prc in watchlist)
 				{
 					if (!prc.Enabled) continue;
@@ -1225,55 +1222,50 @@ namespace TaskMaster
 				}
 			}
 
-			using (var m = SelfAwareness.Mind("BatchProcessingTick hung", DateTime.Now.AddSeconds(5)))
-			{
-				await Task.Yield();
-			}
+			NewInstanceBatchProcessing().ConfigureAwait(false);
+		}
 
+		async Task NewInstanceBatchProcessing()
+		{
 			try
 			{
-				NewInstanceBatchProcessing();
+				List<BasicProcessInfo> list = new List<BasicProcessInfo>();
+				lock (BatchProcessingLock)
+				{
+					StopBatchProcessingTimer();
+					processListLockRestart = 0;
+					Utility.Swap(ref list, ref ProcessBatch);
+				}
+
+				if (list.Count == 0) return;
+
+				//Console.WriteLine("Processing {0} delayed processes.", list.Count);
+				try
+				{
+					foreach (var info in list)
+					{
+						CheckProcess(info);
+					}
+				}
+				catch (Exception ex)
+				{
+					Log.Fatal("Uncaught exception while processing new instances");
+					Logging.Stacktrace(ex);
+					return; // throw; // no point
+				}
+				finally
+				{
+					// DEBUG: if (TaskMaster.VeryVerbose) Console.WriteLine(string.Format("Handling: -{0} = {1} --- NewInstanceBatchProcessing", list.Count, Handling));
+					onInstanceHandling?.Invoke(this, new InstanceEventArgs { Count = -list.Count });
+				}
+
+				//list.Clear(); // unnecessary?
 			}
 			catch (Exception ex)
 			{
 				Log.Fatal("<Process Manager> Error batch processing new instances.");
 				Logging.Stacktrace(ex);
 			}
-		}
-
-		void NewInstanceBatchProcessing()
-		{
-			List<BasicProcessInfo> list = new List<BasicProcessInfo>();
-			lock (BatchProcessingLock)
-			{
-				StopBatchProcessingTimer();
-				processListLockRestart = 0;
-				Utility.Swap(ref list, ref ProcessBatch);
-			}
-
-			if (list.Count == 0) return;
-
-			//Console.WriteLine("Processing {0} delayed processes.", list.Count);
-			try
-			{
-				foreach (var info in list)
-				{
-					CheckProcess(info);
-				}
-			}
-			catch (Exception ex)
-			{
-				Log.Fatal("Uncaught exception while processing new instances");
-				Logging.Stacktrace(ex);
-				return; // throw; // no point
-			}
-			finally
-			{
-				// DEBUG: if (TaskMaster.VeryVerbose) Console.WriteLine(string.Format("Handling: -{0} = {1} --- NewInstanceBatchProcessing", list.Count, Handling));
-				onInstanceHandling?.Invoke(this, new InstanceEventArgs { Count = -list.Count });
-			}
-
-			//list.Clear(); // unnecessary?
 		}
 
 		public static int Handling { get; set; }
@@ -1285,11 +1277,6 @@ namespace TaskMaster
 		// This needs to return faster
 		async void NewInstanceTriage(object sender, System.Management.EventArrivedEventArgs e)
 		{
-			using (var m = SelfAwareness.Mind("NewInstanceTriage hung", DateTime.Now.AddSeconds(5)))
-			{
-				await Task.Yield(); // is there any reason to delay this?
-			}
-
 			Stopwatch wmiquerytime = Stopwatch.StartNew();
 
 			// TODO: Instance groups?
@@ -1330,45 +1317,52 @@ namespace TaskMaster
 				return;
 			}
 
-			//Handle=pid
-			// FIXME
-			// DEBUG: if (TaskMaster.VeryVerbose) Console.WriteLine(string.Format("Handling: +{0} = {1} --- NewInstanceTriage", 1, Handling));
+			NewInstanceTriagePhaseTwo(new BasicProcessInfo()
+			{
+				Process = null,
+				Name = name,
+				Path = path,
+				Id = pid,
+				Flags = 0,
+			}).ConfigureAwait(false);
+		}
 
-			Process process = null;
+		async Task NewInstanceTriagePhaseTwo(BasicProcessInfo info)
+		{
 			try
 			{
-				process = Process.GetProcessById(pid);
+				info.Process = Process.GetProcessById(info.Id);
 			}
 			catch
 			{
 				if (TaskMaster.ShowInaction)
-					Log.Verbose("Caught #{Pid} but it vanished.", pid);
+					Log.Verbose("Caught #{Pid} but it vanished.", info.Id);
 				return;
 			}
 
-			if (string.IsNullOrEmpty(name))
+			if (string.IsNullOrEmpty(info.Name))
 			{
 				try
 				{
 					// This happens only when encountering a process with elevated privileges, e.g. admin
 					// TODO: Mark as admin process
-					name = process.ProcessName;
+					info.Name = info.Process.ProcessName;
 				}
 				catch
 				{
-					Log.Error("Failed to retrieve name of process #{Pid}", pid);
+					Log.Error("Failed to retrieve name of process #{Pid}", info.Id);
 					return;
 				}
 			}
 
-			onInstanceHandling?.Invoke(this, new InstanceEventArgs { Count = 1 });
+			onInstanceHandling?.Invoke(this, new InstanceEventArgs { Count = 1 }); // FIXME: Kinda late
 
-			if (TaskMaster.Trace) Log.Verbose("Caught: {ProcessName} (#{ProcessID}) at: {Path}", name, pid, path);
+			if (TaskMaster.Trace) Log.Verbose("Caught: {ProcessName} (#{ProcessID}) at: {Path}", info.Name, info.Id, info.Path);
 
 			DateTime start = DateTime.MinValue;
 			try
 			{
-				start = process.StartTime;
+				start = info.Process.StartTime;
 			}
 			catch { /* NOP */ }
 			finally
@@ -1376,15 +1370,6 @@ namespace TaskMaster
 				if (start == DateTime.MinValue)
 					start = DateTime.Now;
 			}
-
-			BasicProcessInfo info = new BasicProcessInfo
-			{
-				Name = name,
-				Id = pid,
-				Process = process,
-				Path = path,
-				Flags = 0
-			};
 
 			if (BatchProcessing)
 			{
@@ -1432,60 +1417,67 @@ namespace TaskMaster
 			}
 		}
 
-		async void RescanOnTimer(object state)
+		async void RescanOnTimerTick(object state)
 		{
-			//Log.Verbose("Rescanning...");
+			RescanOnTimer().ConfigureAwait(false);
+		}
 
-			using (var m = SelfAwareness.Mind("RescanOnTimer hung", DateTime.Now.AddSeconds(5)))
+		async Task RescanOnTimer()
+		{
+			try
 			{
-				await Task.Yield();
-			}
+				//Log.Verbose("Rescanning...");
 
-			int nextscan = 1;
-			int tnext = 0;
-			int rescanrequests = 0;
-			string nextscanfor = null;
+				int nextscan = 1;
+				int tnext = 0;
+				int rescanrequests = 0;
+				string nextscanfor = null;
 
-			lock (execontrol_lock)
-			{
-				var pcs = execontrol.Values;
-				foreach (ProcessController prc in pcs)
+				lock (execontrol_lock)
 				{
-					if (prc.Rescan == 0) continue;
-
-					rescanrequests++;
-
-					tnext = prc.TryScan();
-
-					if (tnext > nextscan)
+					var pcs = execontrol.Values;
+					foreach (ProcessController prc in pcs)
 					{
-						nextscan = tnext;
-						nextscanfor = prc.FriendlyName;
+						if (prc.Rescan == 0) continue;
+
+						rescanrequests++;
+
+						tnext = prc.TryScan();
+
+						if (tnext > nextscan)
+						{
+							nextscan = tnext;
+							nextscanfor = prc.FriendlyName;
+						}
 					}
 				}
-			}
 
-			if (rescanrequests == 0)
-			{
-				if (TaskMaster.Trace) Log.Verbose("No apps have requests to rescan, stopping rescanning.");
-				rescanTimer.Dispose();
-				rescanTimer = null;
-			}
-			else
-			{
-				try
+				if (rescanrequests == 0)
 				{
-					rescanTimer.Change(500, nextscan.Constrain(1, 360) * (1000 * 60));
-					//rescanTimer.Interval = nextscan.Constrain(1, 360) * (1000 * 60);
+					if (TaskMaster.Trace) Log.Verbose("No apps have requests to rescan, stopping rescanning.");
+					rescanTimer.Dispose();
+					rescanTimer = null;
 				}
-				catch
+				else
 				{
-					Log.Error("Failed to set rescan timer based on scheduled next scan.");
-					rescanTimer.Change(500, 5 * (1000 * 60));
-					//rescanTimer.Interval = 5 * (1000 * 60);
-				}
+					try
+					{
+						rescanTimer.Change(500, nextscan.Constrain(1, 360) * (1000 * 60));
+						//rescanTimer.Interval = nextscan.Constrain(1, 360) * (1000 * 60);
+					}
+					catch
+					{
+						Log.Error("Failed to set rescan timer based on scheduled next scan.");
+						rescanTimer.Change(500, 5 * (1000 * 60));
+						//rescanTimer.Interval = 5 * (1000 * 60);
+					}
 
-				Log.Verbose("Rescan set to occur after {Scan} minutes, next in line: {Name}. Waiting {0}.", nextscan, nextscanfor);
+					Log.Verbose("Rescan set to occur after {Scan} minutes, next in line: {Name}. Waiting {0}.", nextscan, nextscanfor);
+				}
+			}
+			catch (Exception ex)
+			{
+				Logging.Stacktrace(ex);
 			}
 		}
 
@@ -1584,7 +1576,7 @@ namespace TaskMaster
 
 				if (RescanDelay > 0)
 				{
-					rescanTimer = new System.Threading.Timer(RescanOnTimer, null, 500, RescanDelay); // 5 minutes
+					rescanTimer = new System.Threading.Timer(RescanOnTimerTick, null, 500, RescanDelay); // 5 minutes
 				}
 			}
 
@@ -1614,11 +1606,6 @@ namespace TaskMaster
 		/// </remarks>
 		public async Task Cleanup()
 		{
-			using (var m = SelfAwareness.Mind("PM.Cleanup hung", DateTime.Now.AddSeconds(5)))
-			{
-				await Task.Yield();
-			}
-
 			Stack<BasicProcessInfo> triggerList;
 			lock (waitforexit_lock)
 			{

@@ -249,17 +249,18 @@ namespace TaskMaster
 			if (!Atomic.Lock(ref restoremainwindow_lock))
 				return; // already being done
 
-			using (var m = SelfAwareness.Mind("RestoreMainWindow hung", DateTime.Now.AddSeconds(5)))
+			using (var m = SelfAwareness.Mind("RestoreMainWindow hung", DateTime.Now.AddSeconds(10)))
 			{
-				await Task.Yield();
+				TaskMaster.ShowMainWindow();
 			}
 
-			TaskMaster.ShowMainWindow();
+			if (TaskMaster.Trace)
+				Log.Verbose("RestoreMainWindow done!");
 
 			restoremainwindow_lock = 0;
 		}
 
-		void ShowWindow(object sender, MouseEventArgs e)
+		async void ShowWindow(object sender, MouseEventArgs e)
 		{
 			if (e.Button == MouseButtons.Left)
 			{
@@ -267,14 +268,14 @@ namespace TaskMaster
 			}
 		}
 
-		void UnloseWindow(object sender, MouseEventArgs e)
+		async void UnloseWindow(object sender, MouseEventArgs e)
 		{
 			if (e.Button == MouseButtons.Left)
 			{
 				RestoreMainWindow(sender, null);
 				try
 				{
-					TaskMaster.mainwindow.UnloseWindowRequest(sender, null); // null reference crash sometimes
+					TaskMaster.mainwindow?.UnloseWindowRequest(sender, null); // null reference crash sometimes
 				}
 				catch (Exception ex)
 				{

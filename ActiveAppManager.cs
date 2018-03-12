@@ -145,7 +145,6 @@ namespace TaskMaster
 
 			foreground++;
 
-			//await System.Threading.Tasks.Task.Yield();
 			using (var m = SelfAwareness.Mind("Hystersis Delay hung", DateTime.Now.AddSeconds((Hysterisis / 1000) + 5)))
 			{
 				await System.Threading.Tasks.Task.Delay(Hysterisis); // minded

@@ -1264,20 +1264,21 @@ namespace TaskMaster
 				Margin = new Padding(3 + 3),
 				FlatStyle = FlatStyle.Flat
 			};
-			rescanbutton.Click += async (object sender, EventArgs e) =>
-						{
-							try
-							{
-								rescanbutton.Enabled = false;
-								using (var m = SelfAwareness.Mind("Rescan button hung", DateTime.Now.AddSeconds(5)))
-								{
-									await Task.Yield();
-								}
-								rescanRequest?.Invoke(this, null);
-								rescanbutton.Enabled = true;
-							}
-							catch { }
-						};
+			rescanbutton.Click += (object sender, EventArgs e) =>
+			{
+				try
+				{
+					rescanbutton.Enabled = false;
+
+					using (var m = SelfAwareness.Mind("Rescan button hung", DateTime.Now.AddSeconds(25)))
+					{
+						rescanRequest?.Invoke(this, null);
+					}
+
+					rescanbutton.Enabled = true;
+				}
+				catch { }
+			};
 			commandpanel.Controls.Add(new Label
 			{
 				Text = "Processing",
@@ -1308,16 +1309,15 @@ namespace TaskMaster
 				Margin = new Padding(3 + 3),
 				Enabled = TaskMaster.PagingEnabled
 			};
-			crunchbutton.Click += async (object sender, EventArgs e) =>
+			crunchbutton.Click += (object sender, EventArgs e) =>
 			{
 				try
 				{
 					crunchbutton.Enabled = false;
 					using (var m = SelfAwareness.Mind("Page button hung", DateTime.Now.AddSeconds(5)))
 					{
-						await Task.Yield();
+						pagingRequest?.Invoke(this, new EventArgs());
 					}
-					pagingRequest?.Invoke(this, new EventArgs());
 					crunchbutton.Enabled = true;
 				}
 				catch { }
@@ -1577,8 +1577,7 @@ namespace TaskMaster
 				{
 					if (exsel.ShowDialog(this) == DialogResult.OK)
 					{
-						Log.Information("Freeing memory for: {Exec}", exsel.Selection);
-						await TaskMaster.processmanager.FreeMemoryFor(exsel.Selection);
+						TaskMaster.processmanager.FreeMemoryFor(exsel.Selection).ConfigureAwait(false);
 					}
 				}
 			}
@@ -1589,10 +1588,7 @@ namespace TaskMaster
 
 		public async void ExitWaitListHandler(object sender, ProcessEventArgs ev)
 		{
-			using (var m = SelfAwareness.Mind("Exit waitlist handler hung", DateTime.Now.AddSeconds(5)))
-			{
-				await Task.Yield();
-			}
+			// TODO: Proper async?
 
 			lock (exitwaitlist_lock)
 			{
@@ -1651,11 +1647,11 @@ namespace TaskMaster
 			}
 		}
 
-		public void CPULoadHandler(object sender, ProcessorEventArgs ev) // Event Handler
+		public async void CPULoadHandler(object sender, ProcessorEventArgs ev) // Event Handler
 		{
 			if (!UIOpen) return;
 
-			//await Task.Yield();
+			// TODO: Asyncify
 
 			string reactionary = PowerManager.GetModeName(ev.Mode);
 
@@ -2124,6 +2120,9 @@ namespace TaskMaster
 			jumplist.JumpItems.Add(jpath);
 			jumplist.Apply();
 			*/
+
+			if (TaskMaster.Trace)
+				Log.Verbose("MainWindow constructed");
 		}
 
 		void saveUIState()

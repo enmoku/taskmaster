@@ -94,46 +94,46 @@ namespace TaskMaster
 		float CPUHigh = 0f;
 		int CPULowOffset = 0;
 		int CPUHighOffset = 0;
+
 		async void CPUSampler(object state)
 		{
-			using (var m = SelfAwareness.Mind("CPUSampler hung", DateTime.Now.AddSeconds(5)))
+			float sample = float.NaN;
+			using (var m = SelfAwareness.Mind("CPUSampler hung", DateTime.Now.AddSeconds(15)))
 			{
-				await Task.Yield();
-			}
-
-			float sample = CPUCounter.NextValue();
-			CPUAverage -= CPUSamples[CPUSampleLoop];
-			CPUAverage += sample;
-			if (sample < CPULow)
-			{
-				CPULow = sample;
-				CPULowOffset = CPUSampleLoop;
-			}
-			else if (sample > CPUHigh)
-			{
-				CPUHigh = sample;
-				CPUHighOffset = CPUSampleLoop;
-			}
-
-			bool setlowandhigh = (CPULowOffset == CPUSampleLoop || CPUHighOffset == CPUSampleLoop);
-			CPUSamples[CPUSampleLoop++] = sample;
-			if (CPUSampleLoop > (CPUSampleCount - 1)) CPUSampleLoop = 0;
-			if (setlowandhigh)
-			{
-				CPULow = float.MaxValue;
-				CPUHigh = float.MinValue;
-				for (int i = 0; i < CPUSampleCount; i++)
+				sample = CPUCounter.NextValue(); // slowest part
+				CPUAverage -= CPUSamples[CPUSampleLoop];
+				CPUAverage += sample;
+				if (sample < CPULow)
 				{
-					float cur = CPUSamples[i];
-					if (cur < CPULow)
+					CPULow = sample;
+					CPULowOffset = CPUSampleLoop;
+				}
+				else if (sample > CPUHigh)
+				{
+					CPUHigh = sample;
+					CPUHighOffset = CPUSampleLoop;
+				}
+
+				bool setlowandhigh = (CPULowOffset == CPUSampleLoop || CPUHighOffset == CPUSampleLoop);
+				CPUSamples[CPUSampleLoop++] = sample;
+				if (CPUSampleLoop > (CPUSampleCount - 1)) CPUSampleLoop = 0;
+				if (setlowandhigh)
+				{
+					CPULow = float.MaxValue;
+					CPUHigh = float.MinValue;
+					for (int i = 0; i < CPUSampleCount; i++)
 					{
-						CPULow = cur;
-						CPULowOffset = i;
-					}
-					if (cur > CPUHigh)
-					{
-						CPUHigh = cur;
-						CPUHighOffset = i;
+						float cur = CPUSamples[i];
+						if (cur < CPULow)
+						{
+							CPULow = cur;
+							CPULowOffset = i;
+						}
+						if (cur > CPUHigh)
+						{
+							CPUHigh = cur;
+							CPUHighOffset = i;
+						}
 					}
 				}
 			}
@@ -187,10 +187,7 @@ namespace TaskMaster
 		{
 			if (Behaviour != PowerBehaviour.Auto) return;
 
-			using (var m = SelfAwareness.Mind("CPULoadEvent hung", DateTime.Now.AddSeconds(5)))
-			{
-				await Task.Yield();
-			}
+			// TODO: Asyncify. Mostly math so probably unnecessary.
 
 			PowerReaction Reaction = PowerReaction.Average;
 			PowerMode ReactionaryPlan = DefaultMode;
@@ -216,10 +213,11 @@ namespace TaskMaster
 						AutoAdjustBlocks &= ~AutoAdjustReadyBlock;
 
 					ev.Pressure = ((float)BackoffCounter) / ((float)HighBackoffLevel);
-					//Console.WriteLine("Downgrade to Mid: " + BackoffCounter + " / " + HighBackoffLevel + " = " + ev.Pressure);
+					//Console.WriteLine("Downgrade to Mid: " + BackoffCounter + " / " + HighBackoffLevel + " = " + ev.Pressure
+					//				  + " : Blocks:" + Convert.ToString(AutoAdjustBlocks, 2).PadLeft(4, '0'));
 				}
 				//else
-				//	Console.WriteLine("Thresholds not met");
+				//	Console.WriteLine("High backoff thresholds not met");
 			}
 			else if (PreviousReaction == PowerReaction.Low)
 			{
@@ -238,14 +236,15 @@ namespace TaskMaster
 						AutoAdjustBlocks &= ~AutoAdjustReadyBlock;
 
 					ev.Pressure = ((float)BackoffCounter) / ((float)LowBackoffLevel);
-					//Console.WriteLine("Upgrade to Mid: " + BackoffCounter + " / " + LowBackoffLevel + " = " + ev.Pressure);
+					//Console.WriteLine("Upgrade to Mid: " + BackoffCounter + " / " + LowBackoffLevel + " = " + ev.Pressure
+					//				  + " : Blocks:" + Convert.ToString(AutoAdjustBlocks, 2).PadLeft(4, '0'));
 				}
 				//else
-				//	Console.WriteLine("Thresholds not met");
+				//	Console.WriteLine("Low backoff thresholds not met");
 			}
 			else // Currently at medium power
 			{
-				if (ev.Low > HighThreshold) // Low CPU is above threshold for High mode
+				if (ev.Low > HighThreshold && HighMode != DefaultMode) // Low CPU is above threshold for High mode
 				{
 					// Downgrade to LOW power levell
 					Reaction = PowerReaction.High;
@@ -258,9 +257,11 @@ namespace TaskMaster
 						AutoAdjustBlocks &= ~AutoAdjustReadyBlock;
 
 					ev.Pressure = ((float)HighPressure) / ((float)HighCommitLevel);
-					//Console.WriteLine("Upgrade to Low: " + HighPressure + " / " + HighCommitLevel + " = " + ev.Pressure);
+
+					//Console.WriteLine("Upgrade to High: " + HighPressure + " / " + HighCommitLevel + " = " + ev.Pressure
+					//				  + " : Blocks:" + Convert.ToString(AutoAdjustBlocks, 2).PadLeft(4, '0'));
 				}
-				else if (ev.High < LowThreshold) // High CPU is below threshold for Low mode
+				else if (ev.High < LowThreshold && LowMode != DefaultMode) // High CPU is below threshold for Low mode
 				{
 					// Upgrade to HIGH power levele
 					Reaction = PowerReaction.Low;
@@ -273,7 +274,9 @@ namespace TaskMaster
 						AutoAdjustBlocks &= ~AutoAdjustReadyBlock;
 
 					ev.Pressure = ((float)LowPressure) / ((float)LowCommitLevel);
-					//Console.WriteLine("Downgrade to Low: " + LowPressure + " / " + LowCommitLevel + " = " + ev.Pressure);
+
+					//Console.WriteLine("Downgrade to Low: " + LowPressure + " / " + LowCommitLevel + " = " + ev.Pressure
+					//				  + " : Blocks:" + Convert.ToString(AutoAdjustBlocks, 2).PadLeft(4, '0'));
 				}
 				else
 				{
@@ -310,17 +313,17 @@ namespace TaskMaster
 			}
 			else
 			{
-				if (TaskMaster.DebugPower)
+				if (forceModeSources.Count != 0)
 				{
-					if (forceModeSources.Count != 0)
+					if (TaskMaster.DebugPower)
 						Log.Debug("<Power Mode> Can't override manual power mode.");
-					else
+				}
+				else
+				{
+					if (ev.Pressure >= 1f)
 					{
-						if (ev.Pressure >= 1f)
-						{
-							Log.Debug("<Power Mode> Can't change power mode – Current: {Current}, Reaction: {Reaction}, Previous: {Prev}",
-									  CurrentMode.ToString(), ReactionaryPlan.ToString(), PreviousReaction.ToString());
-						}
+						Log.Debug("<Power Mode> Can't change power mode – Current: {Current}, Reaction: {Reaction}, Previous: {Prev}",
+								  CurrentMode.ToString(), ReactionaryPlan.ToString(), PreviousReaction.ToString());
 					}
 				}
 
@@ -505,7 +508,7 @@ namespace TaskMaster
 		PowerMode DefaultMode { get; set; } = PowerMode.Balanced;
 		PowerMode RestoreMode { get; set; } = PowerMode.Balanced;
 
-		void SessionLockEvent(object sender, SessionSwitchEventArgs ev)
+		async void SessionLockEvent(object sender, SessionSwitchEventArgs ev)
 		{
 			switch (ev.Reason)
 			{
@@ -556,7 +559,7 @@ namespace TaskMaster
 						}
 
 						if (PauseUnneededSampler) InitCPUTimer();
-						TaskMaster.Evaluate();
+						TaskMaster.Evaluate().ConfigureAwait(false);
 					}
 					break;
 				default:
@@ -738,7 +741,6 @@ namespace TaskMaster
 		/// <remarks>
 		/// 
 		/// </remarks>
-		/// <returns>Task.</returns>
 		public async Task Restore(int sourcePid = -1)
 		{
 			Debug.Assert(sourcePid == 0 || sourcePid > 4);
@@ -765,12 +767,12 @@ namespace TaskMaster
 				}
 			}
 
-			using (var m = SelfAwareness.Mind("Power restore hung", DateTime.Now.AddSeconds((PowerdownDelay / 1000) + 5)))
+			if (PowerdownDelay > 0)
 			{
-				if (PowerdownDelay > 0)
+				using (var m = SelfAwareness.Mind("Power restore hung", DateTime.Now.AddSeconds((PowerdownDelay / 1000) + 5)))
+				{
 					await Task.Delay(PowerdownDelay * 1000);
-				else
-					await Task.Yield(); // hangs?
+				}
 			}
 
 			int tSourceCount = forceModeSources.Count;
