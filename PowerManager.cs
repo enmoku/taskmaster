@@ -173,14 +173,15 @@ namespace TaskMaster
 			Steady = 2
 		}
 
-		uint AutoAdjustForceBlock = 1 << 1;
-		uint AutoAdjustPauseBlock = 1 << 2;
-		uint AutoAdjustReadyBlock = 1 << 3;
-		uint AutoAdjustAllowed = 0;
+		readonly uint AutoAdjustForceBlock = 1 << 1;
+		readonly uint AutoAdjustPauseBlock = 1 << 2;
+		readonly uint AutoAdjustReadyBlock = 1 << 3;
+		uint AutoAdjustBlocks = 0;
 
 		int HighPressure = 0;
 		int LowPressure = 0;
 		PowerReaction PreviousReaction = PowerReaction.Average;
+
 		// TODO: Simplify this mess
 		public async void CPULoadEvent(object sender, ProcessorEventArgs ev)
 		{
@@ -194,7 +195,7 @@ namespace TaskMaster
 			PowerReaction Reaction = PowerReaction.Average;
 			PowerMode ReactionaryPlan = DefaultMode;
 
-			AutoAdjustAllowed |= AutoAdjustReadyBlock;
+			AutoAdjustBlocks |= AutoAdjustReadyBlock;
 
 			ev.Pressure = 0;
 			ev.Handled = false;
@@ -212,7 +213,7 @@ namespace TaskMaster
 					BackoffCounter++;
 
 					if (BackoffCounter >= HighBackoffLevel)
-						AutoAdjustAllowed &= ~AutoAdjustReadyBlock;
+						AutoAdjustBlocks &= ~AutoAdjustReadyBlock;
 
 					ev.Pressure = ((float)BackoffCounter) / ((float)HighBackoffLevel);
 					//Console.WriteLine("Downgrade to Mid: " + BackoffCounter + " / " + HighBackoffLevel + " = " + ev.Pressure);
@@ -234,7 +235,7 @@ namespace TaskMaster
 					BackoffCounter++;
 
 					if (BackoffCounter >= LowBackoffLevel)
-						AutoAdjustAllowed &= ~AutoAdjustReadyBlock;
+						AutoAdjustBlocks &= ~AutoAdjustReadyBlock;
 
 					ev.Pressure = ((float)BackoffCounter) / ((float)LowBackoffLevel);
 					//Console.WriteLine("Upgrade to Mid: " + BackoffCounter + " / " + LowBackoffLevel + " = " + ev.Pressure);
@@ -254,7 +255,7 @@ namespace TaskMaster
 					HighPressure++;
 
 					if (HighPressure >= HighCommitLevel)
-						AutoAdjustAllowed &= ~AutoAdjustReadyBlock;
+						AutoAdjustBlocks &= ~AutoAdjustReadyBlock;
 
 					ev.Pressure = ((float)HighPressure) / ((float)HighCommitLevel);
 					//Console.WriteLine("Upgrade to Low: " + HighPressure + " / " + HighCommitLevel + " = " + ev.Pressure);
@@ -269,7 +270,7 @@ namespace TaskMaster
 					LowPressure++;
 
 					if (LowPressure >= LowCommitLevel)
-						AutoAdjustAllowed &= ~AutoAdjustReadyBlock;
+						AutoAdjustBlocks &= ~AutoAdjustReadyBlock;
 
 					ev.Pressure = ((float)LowPressure) / ((float)LowCommitLevel);
 					//Console.WriteLine("Downgrade to Low: " + LowPressure + " / " + LowCommitLevel + " = " + ev.Pressure);
@@ -281,15 +282,14 @@ namespace TaskMaster
 					Reaction = PowerReaction.Average;
 					ReactionaryPlan = DefaultMode;
 
-					BackoffCounter = HighPressure = LowPressure = 0;
-					ev.Pressure = 0f;
+					ResetAutoadjust();
 
 					// Only time this should cause actual power mode change is when something else changes power mode
-					AutoAdjustAllowed &= ~AutoAdjustReadyBlock;
+					AutoAdjustBlocks &= ~AutoAdjustReadyBlock;
 				}
 			}
 
-			if (ReactionaryPlan != CurrentMode && AutoAdjustAllowed == 0)
+			if (ReactionaryPlan != CurrentMode && AutoAdjustBlocks == 0)
 			{
 				if (TaskMaster.DebugPower) Log.Debug("<Power Mode> Auto-adjust: {Mode}", Reaction.ToString());
 
@@ -297,29 +297,41 @@ namespace TaskMaster
 				{
 					AutoAdjustCounter++;
 					ev.Handled = true;
-					PreviousReaction = Reaction;
 				}
 				else
 				{
 					if (TaskMaster.DebugPower && TaskMaster.Trace)
 						Log.Warning("<Power Mode> Failed to auto-adjust power.");
+					// should reset
 				}
 
-				BackoffCounter = HighPressure = LowPressure = 0;
+				ResetAutoadjust();
+				PreviousReaction = Reaction;
 			}
 			else
 			{
-				if (AutoAdjustAllowed == 0 && TaskMaster.DebugPower)
+				if (TaskMaster.DebugPower)
 				{
 					if (forceModeSources.Count != 0)
-						Log.Debug("Can't override manual power mode.");
+						Log.Debug("<Power Mode> Can't override manual power mode.");
 					else
 					{
 						if (ev.Pressure >= 1f)
 						{
-							Log.Debug("Can't change power mode – Current: {Current}, Reaction: {Reaction}, Previous: {Prev}",
+							Log.Debug("<Power Mode> Can't change power mode – Current: {Current}, Reaction: {Reaction}, Previous: {Prev}",
 									  CurrentMode.ToString(), ReactionaryPlan.ToString(), PreviousReaction.ToString());
 						}
+					}
+				}
+
+				if (AutoAdjustBlocks == 0)
+				{
+					if (ReactionaryPlan == CurrentMode && ev.Pressure > 1.0)
+					{
+						// reset
+						Log.Error("<Power Mode> Something went wrong. Resetting auto-adjust.");
+						ResetAutoadjust();
+						ev.Pressure = 0f;
 					}
 				}
 			}
@@ -328,8 +340,13 @@ namespace TaskMaster
 			//				  + ", Enacted: __" + ev.Handled.ToString() + "__, Pause: " + Pause + ", Mode: " + Behaviour.ToString());
 
 			ev.Mode = ReactionaryPlan;
-			//ev.Pressure = BackoffCounter;
 			onAutoAdjustAttempt?.Invoke(this, ev);
+		}
+
+		void ResetAutoadjust()
+		{
+			BackoffCounter = HighPressure = LowPressure = 0;
+			PreviousReaction = PowerReaction.Average;
 		}
 
 		bool PauseUnneededSampler = false;
@@ -507,7 +524,7 @@ namespace TaskMaster
 					if (SessionLockMode != PowerMode.Custom)
 					{
 						PauseForSessionLock = true;
-						AutoAdjustAllowed |= AutoAdjustPauseBlock;
+						AutoAdjustBlocks |= AutoAdjustPauseBlock;
 
 						Log.Information("<Power Mode> Session locked, enforcing power plan: {Plan}", SessionLockMode);
 
@@ -529,7 +546,7 @@ namespace TaskMaster
 					if (SessionLockMode != PowerMode.Custom)
 					{
 						PauseForSessionLock = false;
-						AutoAdjustAllowed &= ~AutoAdjustPauseBlock;
+						AutoAdjustBlocks &= ~AutoAdjustPauseBlock;
 
 						Log.Information("<Power Mode> Session unlocked, restoring normal power.");
 
@@ -653,9 +670,7 @@ namespace TaskMaster
 
 			if (Behaviour == PowerBehaviour.Auto)
 			{
-				BackoffCounter = 0;
-				LowPressure = 0;
-				HighPressure = 0;
+				ResetAutoadjust();
 
 				if (PauseUnneededSampler)
 				{
@@ -772,7 +787,7 @@ namespace TaskMaster
 					if (RestoreMode != PowerMode.Undefined)
 						SavedMode = RestoreMode;
 
-					AutoAdjustAllowed &= ~AutoAdjustForceBlock;
+					AutoAdjustBlocks &= ~AutoAdjustForceBlock;
 					if (SavedMode != PowerMode.Undefined && SavedMode != CurrentMode)
 					{
 						if (Behaviour == PowerBehaviour.Auto) return;
@@ -871,7 +886,7 @@ namespace TaskMaster
 			if (rv)
 				setMode(mode);
 
-			AutoAdjustAllowed |= AutoAdjustForceBlock;
+			AutoAdjustBlocks |= AutoAdjustForceBlock;
 
 			if (TaskMaster.DebugPower)
 			{

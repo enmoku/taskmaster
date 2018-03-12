@@ -1129,15 +1129,16 @@ namespace TaskMaster
 				AutoSize = true,
 				View = View.Details,
 				FullRowSelect = true,
-				HeaderStyle = ColumnHeaderStyle.None,
+				HeaderStyle = ColumnHeaderStyle.Nonclickable,
 				Scrollable = true,
 				MinimumSize = new System.Drawing.Size(700, 180),
 			};
 
 			loglist_stamp = new List<DateTime>();
 
-			loglist.Columns.Add("Log content");
-			loglist.Columns[0].Width = loglist.Width - 32;
+			loglist.Columns.Add("Log Events");
+			loglist.Columns[0].Width = -2; // -2 is apparently some kind of max size magic number
+			loglist.Resize += (sender, e) => { loglist.Columns[0].Width = -2; };
 
 			loglistms = new ContextMenuStrip();
 			loglistms.Opened += LogContextMenuOpen;
