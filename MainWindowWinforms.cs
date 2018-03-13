@@ -94,15 +94,16 @@ namespace TaskMaster
 		{
 			if (TaskMaster.Trace) Log.Verbose("Making sure main window is not lost.");
 
-			try
-			{
-				CenterToScreen();
-				SetTopLevel(true); // this doesn't Keep it topmost, does it?
-				TopMost = true;
-				// toggle because we don't want to keep it there
-				TopMost = false;
-			}
-			catch { }
+			CenterToScreen();
+			Reveal();
+		}
+
+		public void Reveal()
+		{
+			BringToFront(); // does nothing without show(), unreliable even with it
+			TopMost = true;
+			TopMost = false;
+			Show();
 		}
 
 		public void ShowLastLog()
@@ -1270,7 +1271,7 @@ namespace TaskMaster
 				{
 					rescanbutton.Enabled = false;
 
-					using (var m = SelfAwareness.Mind("Rescan button hung", DateTime.Now.AddSeconds(25)))
+					using (var m = SelfAwareness.Mind(DateTime.Now.AddSeconds(25), "Rescan Button"))
 					{
 						rescanRequest?.Invoke(this, null);
 					}
@@ -1314,7 +1315,7 @@ namespace TaskMaster
 				try
 				{
 					crunchbutton.Enabled = false;
-					using (var m = SelfAwareness.Mind("Page button hung", DateTime.Now.AddSeconds(5)))
+					using (var m = SelfAwareness.Mind(DateTime.Now.AddSeconds(5), "Page Button"))
 					{
 						pagingRequest?.Invoke(this, new EventArgs());
 					}

@@ -282,7 +282,7 @@ namespace TaskMaster
 
 				if (Atomic.Lock(ref correcting))
 				{
-					using (var m = SelfAwareness.Mind("Hystersis Delay hung", DateTime.Now.AddSeconds((AdjustDelay / 1000) + 5)))
+					using (var m = SelfAwareness.Mind(DateTime.Now.AddSeconds((AdjustDelay / 1000) + 5), "Hystersis Delay"))
 					{
 						await System.Threading.Tasks.Task.Delay(AdjustDelay); // actual hysterisis, this should be cancellable
 					}

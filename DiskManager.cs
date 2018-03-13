@@ -120,7 +120,7 @@ namespace TaskMaster
 
 		public async Task ScanTemp()
 		{
-			using (var m = SelfAwareness.Mind("Scan temp hung", DateTime.Now.AddSeconds(120)))
+			using (var m = SelfAwareness.Mind(DateTime.Now.AddSeconds(120)))
 			{
 				var dst = new DirectoryStats { Files = 0, Dirs = 0, Size = 0 };
 

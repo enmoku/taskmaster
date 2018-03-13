@@ -98,7 +98,7 @@ namespace TaskMaster
 		async void CPUSampler(object state)
 		{
 			float sample = float.NaN;
-			using (var m = SelfAwareness.Mind("CPUSampler hung", DateTime.Now.AddSeconds(15)))
+			using (var m = SelfAwareness.Mind(DateTime.Now.AddSeconds(15)))
 			{
 				sample = CPUCounter.NextValue(); // slowest part
 				CPUAverage -= CPUSamples[CPUSampleLoop];
@@ -769,7 +769,7 @@ namespace TaskMaster
 
 			if (PowerdownDelay > 0)
 			{
-				using (var m = SelfAwareness.Mind("Power restore hung", DateTime.Now.AddSeconds((PowerdownDelay / 1000) + 5)))
+				using (var m = SelfAwareness.Mind(DateTime.Now.AddSeconds((PowerdownDelay / 1000) + 5)))
 				{
 					await Task.Delay(PowerdownDelay * 1000);
 				}

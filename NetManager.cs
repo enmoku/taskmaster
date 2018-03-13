@@ -119,7 +119,7 @@ namespace TaskMaster
 
 		async void AnalyzeTrafficBehaviourTick(object state)
 		{
-			using (var m = SelfAwareness.Mind("Traffic analyzer hung", DateTime.Now.AddSeconds(15)))
+			using (var m = SelfAwareness.Mind(DateTime.Now.AddSeconds(15)))
 			{
 				await AnalyzeTrafficBehaviour();
 			}
@@ -286,7 +286,7 @@ namespace TaskMaster
 					if (Atomic.Lock(ref upstateTesting))
 					{
 						//CLEANUP: Console.WriteLine("Debug: Queued internet uptime report");
-						using (var m = SelfAwareness.Mind("Internet uptime hung", DateTime.Now.AddSeconds((5 * 60) + 5)))
+						using (var m = SelfAwareness.Mind(DateTime.Now.AddSeconds((5 * 60) + 5)))
 						{
 							await System.Threading.Tasks.Task.Delay(new TimeSpan(0, 5, 0)); // wait 5 minutes
 						}

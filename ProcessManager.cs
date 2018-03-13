@@ -201,7 +201,7 @@ namespace TaskMaster
 				return;
 			}
 
-			using (var m = SelfAwareness.Mind("FreeMemoryFor hung", DateTime.Now.AddSeconds(30)))
+			using (var m = SelfAwareness.Mind(DateTime.Now.AddSeconds(30)))
 			{
 				long saved = 0;
 				var allprocs = Process.GetProcesses();
@@ -263,7 +263,7 @@ namespace TaskMaster
 			// DEBUG: if (TaskMaster.VeryVerbose) Console.WriteLine(string.Format("Handling: +{0} = {1} --- PageEverythingRequest", procs.Length, Handling));
 			onInstanceHandling?.Invoke(this, new InstanceEventArgs { Count = procs.Length - 2 });
 
-			using (var m = SelfAwareness.Mind("PageEverythingRequest hung", DateTime.Now.AddSeconds(5)))
+			using (var m = SelfAwareness.Mind(DateTime.Now.AddSeconds(5)))
 			{
 				try
 				{
@@ -325,7 +325,7 @@ namespace TaskMaster
 
 			try
 			{
-				using (var m = SelfAwareness.Mind("Rescan everything hung", DateTime.Now.AddSeconds(30)))
+				using (var m = SelfAwareness.Mind(DateTime.Now.AddSeconds(30)))
 				{
 					await ProcessEverything().ConfigureAwait(false);
 				}
@@ -355,7 +355,7 @@ namespace TaskMaster
 			LastRescan = DateTime.Now;
 			NextRescan = DateTime.Now.AddSeconds(ProcessManager.RescanEverythingFrequency / 1000);
 
-			using (var m = SelfAwareness.Mind("ProcessEverything hung", DateTime.Now.AddSeconds(5)))
+			using (var m = SelfAwareness.Mind(DateTime.Now.AddSeconds(5)))
 			{
 				try
 				{

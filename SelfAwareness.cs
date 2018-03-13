@@ -67,11 +67,10 @@ namespace TaskMaster
 		/// <param name="method">Autofilled by CallerMemberName.</param>
 		/// <param name="file">Autofilled by CallerFilePath.</param>
 		/// <param name="line">Autofilled by CallerLineNumber.</param>
-		public static Awareness Mind(string message, DateTime due, Action<object> callback = null, object callbackObject = null,
+		public static Awareness Mind(DateTime due, string message = null, Action<object> callback = null, object callbackObject = null,
 							   [CallerMemberName] string method = "", [CallerFilePath] string file = "", [CallerLineNumber] int line = 0)
 		{
-			var awn = new Awareness(message, due, callback, callbackObject, method, file, line);
-			awn.Start = DateTime.Now;
+			var awn = new Awareness(due, message, callback, callbackObject, method, file, line);
 
 			AddAwareness(awn);
 
@@ -148,18 +147,26 @@ namespace TaskMaster
 			{
 				if (AwarenessMap.Count > 0)
 				{
-					foreach (var awn in AwarenessMap)
+					foreach (var awnPair in AwarenessMap)
 					{
-						if (awn.Value.Due <= now)
+						Awareness awn = awnPair.Value;
+						if (awn.Due <= now)
 						{
-							Log.Fatal("<<Self-Awareness>> {Method}:{Line} :: {Message} ({File})",
-									  awn.Value.Method, awn.Value.Line,
-									  awn.Value.Message,
-									  awn.Value.File);
-							Log.Fatal("<<Self-Awareness>> Due:{Due} – Now:{Now} – Late: {Late}s", awn.Value.Due, now, (now - awn.Value.Due).TotalSeconds);
+							if (awn.Message != null)
+							{
+								Log.Fatal("<<Self-Awareness>> {Method} hung [{Line}] – {Message} – ({File})",
+										  awn.Method, awn.Line, awn.Message, awn.File);
+							}
+							else
+							{
+								Log.Fatal("<<Self-Awareness>> {Method} hung [{Line}] ({File})",
+										  awn.Method, awn.Line, awn.File);
+							}
+							Log.Fatal("<<Self-Awareness>> Due:{Due} – Now:{Now} – Late: {Late}s",
+									  awn.Due, now, (now - awn.Due).TotalSeconds);
 
-							if (awn.Value.Callback != null)
-								awn.Value.Callback.Invoke(awn.Value.UserObject);
+							if (awn.Callback != null)
+								awn.Callback.Invoke(awn.UserObject);
 
 							clearList.Push(awn.Key);
 						}
@@ -167,6 +174,7 @@ namespace TaskMaster
 						{
 							//Log.Debug("<<Self-Awareness>> Checked [{Key}] {Method} – due in: {Sec}", awn.Key, awn.Value.Method, (now - awn.Value.Due).TotalSeconds);
 						}
+						awn = null;
 					}
 				}
 			}
@@ -192,10 +200,12 @@ namespace TaskMaster
 		public string Method;
 		public int Line;
 
+		public bool LogEnd = false;
+
 		public Action<object> Callback;
 		public object UserObject;
 
-		public Awareness(string message, DateTime due, Action<object> callback = null, object callbackObject = null,
+		public Awareness(DateTime due, string message = null, Action<object> callback = null, object callbackObject = null,
 							   [CallerMemberName] string method = "", [CallerFilePath] string file = "", [CallerLineNumber] int line = 0)
 		{
 			Key = SelfAwareness.GetKey();

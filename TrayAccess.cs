@@ -249,7 +249,7 @@ namespace TaskMaster
 			if (!Atomic.Lock(ref restoremainwindow_lock))
 				return; // already being done
 
-			using (var m = SelfAwareness.Mind("RestoreMainWindow hung", DateTime.Now.AddSeconds(10)))
+			using (var m = SelfAwareness.Mind(DateTime.Now.AddSeconds(10)))
 			{
 				TaskMaster.ShowMainWindow();
 			}
@@ -317,6 +317,7 @@ namespace TaskMaster
 			Debug.Assert(window != null);
 
 			Tray.MouseDoubleClick += UnloseWindow;
+
 			window.FormClosing += WindowClosed;
 			window.FormClosed += CompactEvent;
 		}
@@ -328,7 +329,7 @@ namespace TaskMaster
 
 			Log.Information("Giving explorer some time to recover on its own...");
 
-			using (var m = SelfAwareness.Mind("Explorer crash handler hung", DateTime.Now.AddSeconds(17)))
+			using (var m = SelfAwareness.Mind(DateTime.Now.AddSeconds(17)))
 			{
 				await Task.Delay(12000); // force async
 			}
@@ -344,7 +345,7 @@ namespace TaskMaster
 					return;
 				}
 
-				using (var m = SelfAwareness.Mind("Explorer crash handler hung", DateTime.Now.AddSeconds((60 * 5) + 5)))
+				using (var m = SelfAwareness.Mind(DateTime.Now.AddSeconds((60 * 5) + 5)))
 				{
 					await Task.Delay(1000 * 60 * 5); // wait 5 minutes
 				}

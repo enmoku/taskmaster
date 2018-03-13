@@ -211,10 +211,18 @@ namespace TaskMaster
 
 		public static void ShowMainWindow()
 		{
-			using (var m = SelfAwareness.Mind("Hang check", DateTime.Now.AddSeconds(30)))
+			if (mainwindow?.Visible ?? false)
 			{
-				BuildMainWindow().ConfigureAwait(true);
-				mainwindow?.Show();
+				//Log.Debug("Bringing to front");
+				mainwindow?.Reveal();
+			}
+			else
+			{
+				using (var m = SelfAwareness.Mind(DateTime.Now.AddSeconds(30)))
+				{
+					BuildMainWindow().ConfigureAwait(true);
+					mainwindow?.Reveal();
+				}
 			}
 		}
 
@@ -302,7 +310,7 @@ namespace TaskMaster
 			if (ShowOnStart)
 			{
 				BuildMainWindow();
-				mainwindow?.Show();
+				mainwindow?.Reveal();
 			}
 
 			// Self-optimization
@@ -646,27 +654,28 @@ namespace TaskMaster
 
 		public static async void Cleanup(object sender, EventArgs ev)
 		{
-			Log.Verbose("Running periodic cleanup");
+			if (TaskMaster.Trace)
+				Log.Verbose("Running periodic cleanup");
 
 			// TODO: This starts getting weird if cleanup interval is smaller than total delay of testing all items.
 			// (15*60) / 2 = item limit, and -1 or -2 for safety margin. Unlikely, but should probably be covered anyway.
 
 			var time = Stopwatch.StartNew();
 
-			if (processmanager != null)
+			using (var m = SelfAwareness.Mind(DateTime.Now.AddSeconds(30)))
 			{
-				using (var m = SelfAwareness.Mind("TM.Cleanup hung", DateTime.Now.AddSeconds(30)))
+				if (processmanager != null)
 				{
 					await processmanager.Cleanup().ConfigureAwait(false);
 				}
 			}
-
 			time.Stop();
 
 			Statistics.Cleanups++;
 			Statistics.CleanupTime += time.Elapsed.TotalSeconds;
 
-			Log.Verbose("Cleanup took: {Time}s", string.Format("{0:N2}", time.Elapsed.TotalSeconds));
+			if (TaskMaster.Trace)
+				Log.Verbose("Cleanup took: {Time}s", string.Format("{0:N2}", time.Elapsed.TotalSeconds));
 		}
 
 		public static System.Timers.Timer CleanupTimer;

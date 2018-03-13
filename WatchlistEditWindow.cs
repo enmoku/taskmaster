@@ -34,7 +34,7 @@ namespace TaskMaster
 {
 	public class WatchlistEditWindow : Form
 	{
-		readonly ProcessController process;
+		readonly ProcessController prc;
 		readonly ListViewItem litem;
 
 		// Adding
@@ -48,9 +48,9 @@ namespace TaskMaster
 		{
 			litem = ri;
 
-			process = TaskMaster.processmanager.getWatchedController(name);
+			prc = TaskMaster.processmanager.getWatchedController(name);
 
-			if (process == null) throw new ArgumentException(string.Format("{0} not found in watchlist.", name));
+			if (prc == null) throw new ArgumentException(string.Format("{0} not found in watchlist.", name));
 
 			WindowState = FormWindowState.Normal;
 			FormBorderStyle = FormBorderStyle.FixedDialog; // no min/max buttons as wanted
@@ -63,6 +63,9 @@ namespace TaskMaster
 		void SaveInfo(object sender, System.EventArgs ev)
 		{
 			Log.Warning("CONVENIENT SAVING NOT SUPPORTED YET");
+
+			bool enOrig = prc.Enabled;
+			prc.Enabled = false;
 
 			var sbs = new System.Text.StringBuilder();
 
@@ -113,8 +116,8 @@ namespace TaskMaster
 			AutoSize = true;
 
 			Text = string.Format("{0} ({1}) – {2}",
-								 process.FriendlyName,
-								 (process.Executable ?? process.Path),
+								 prc.FriendlyName,
+								 (prc.Executable ?? prc.Path),
 								 System.Windows.Forms.Application.ProductName);
 			Padding = new Padding(12);
 
@@ -130,7 +133,7 @@ namespace TaskMaster
 			};
 
 			lt.Controls.Add(new Label { Text = "Friendly name", TextAlign = System.Drawing.ContentAlignment.MiddleLeft });
-			friendlyName.Text = process.FriendlyName;
+			friendlyName.Text = prc.FriendlyName;
 			friendlyName.Width = 180;
 			friendlyName.CausesValidation = true;
 			friendlyName.Validating += (sender, e) =>
@@ -145,7 +148,7 @@ namespace TaskMaster
 			lt.Controls.Add(friendlyName);
 			lt.Controls.Add(new Label { Text = "Executable", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, Dock = DockStyle.Left });
 			var execpanel = new TableLayoutPanel() { ColumnCount = 2, AutoSize = true };
-			execName.Text = process.Executable;
+			execName.Text = prc.Executable;
 			execName.Width = 134;
 			tooltip.SetToolTip(execName, "Executable name, used to recognize these applications.\nFull filename, including extension if any.");
 			execpanel.Controls.Add(execName);
@@ -180,7 +183,7 @@ namespace TaskMaster
 
 			// PATH
 			lt.Controls.Add(new Label { Text = "Path", TextAlign = System.Drawing.ContentAlignment.MiddleLeft });
-			pathName.Text = process.Path;
+			pathName.Text = prc.Path;
 			pathName.Width = 180;
 			tooltip.SetToolTip(pathName, "Path name; rule will match only paths that include this, subfolders included.\nPartial matching is allowed.");
 			lt.Controls.Add(pathName);
@@ -200,7 +203,7 @@ namespace TaskMaster
 				SelectedIndex = 2
 			};
 			priorityClass.Width = 180;
-			priorityClass.SelectedIndex = process.Priority.ToInt32();
+			priorityClass.SelectedIndex = prc.Priority.ToInt32();
 			tooltip.SetToolTip(priorityClass, "CPU priority for the application.\nIf both increase and decrease are disabled, this has no effect.");
 			var incdecpanel = new TableLayoutPanel()
 			{
@@ -208,11 +211,11 @@ namespace TaskMaster
 				AutoSize = true,
 			};
 			incdecpanel.Controls.Add(new Label() { Text = "Increase:", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true });
-			increasePrio.Checked = process.Increase;
+			increasePrio.Checked = prc.Increase;
 			increasePrio.AutoSize = true;
 			incdecpanel.Controls.Add(increasePrio);
 			incdecpanel.Controls.Add(new Label() { Text = "Decrease:", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true });
-			decreasePrio.Checked = process.Decrease;
+			decreasePrio.Checked = prc.Decrease;
 			decreasePrio.AutoSize = true;
 			incdecpanel.Controls.Add(decreasePrio);
 			priopanel.Controls.Add(priorityClass);
@@ -226,7 +229,7 @@ namespace TaskMaster
 			affinityMask.Minimum = 0;
 			try
 			{
-				affinityMask.Value = (process.Affinity.ToInt32() == ProcessManager.allCPUsMask ? 0 : process.Affinity.ToInt32());
+				affinityMask.Value = (prc.Affinity.ToInt32() == ProcessManager.allCPUsMask ? 0 : prc.Affinity.ToInt32());
 			}
 			catch
 			{
@@ -255,7 +258,7 @@ namespace TaskMaster
 
 			var list = new List<CheckBox>();
 
-			int cpumask = process.Affinity.ToInt32();
+			int cpumask = prc.Affinity.ToInt32();
 			for (int bit = 0; bit < ProcessManager.CPUCount; bit++)
 			{
 				var box = new CheckBox();
@@ -321,7 +324,7 @@ namespace TaskMaster
 			// ---------------------------------------------------------------------------------------------------------
 
 			lt.Controls.Add(new Label { Text = "Rescan frequency", TextAlign = System.Drawing.ContentAlignment.MiddleLeft });
-			rescanFreq.Value = process.Rescan;
+			rescanFreq.Value = prc.Rescan;
 			rescanFreq.Width = 80;
 			tooltip.SetToolTip(rescanFreq, "How often to rescan for this app, in minutes.\nSometimes instances slip by.");
 			lt.Controls.Add(rescanFreq);
@@ -332,7 +335,7 @@ namespace TaskMaster
 			lt.Controls.Add(new Label { Text = "Power plan", TextAlign = System.Drawing.ContentAlignment.MiddleLeft });
 			foreach (var t in PowerManager.PowerModes)
 				powerPlan.Items.Add(t);
-			int ppi = System.Convert.ToInt32(process.PowerPlan);
+			int ppi = System.Convert.ToInt32(prc.PowerPlan);
 			powerPlan.DropDownStyle = ComboBoxStyle.DropDownList;
 			powerPlan.SelectedIndex = System.Math.Max(ppi, 3);
 			powerPlan.Width = 180;
@@ -340,12 +343,12 @@ namespace TaskMaster
 			lt.Controls.Add(powerPlan);
 
 			lt.Controls.Add(new Label { Text = "Foreground only", TextAlign = System.Drawing.ContentAlignment.MiddleLeft });
-			foregroundOnly.Checked = process.ForegroundOnly;
+			foregroundOnly.Checked = prc.ForegroundOnly;
 			tooltip.SetToolTip(foregroundOnly, "Lower priority and power mode is restored when this app is not in focus.");
 			lt.Controls.Add(foregroundOnly);
 
 			lt.Controls.Add(new Label { Text = "Allow paging", TextAlign = System.Drawing.ContentAlignment.MiddleLeft });
-			allowPaging.Checked = process.AllowPaging;
+			allowPaging.Checked = prc.AllowPaging;
 			tooltip.SetToolTip(allowPaging, "Allow this application to be paged when it is requested.");
 			lt.Controls.Add(allowPaging);
 

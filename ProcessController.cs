@@ -633,7 +633,7 @@ namespace TaskMaster
 
 		async Task TouchReapply(BasicProcessInfo info)
 		{
-			using (var m = SelfAwareness.Mind("Touch recheck hung", DateTime.Now.AddSeconds((Math.Max(Recheck, 5)) + 5)))
+			using (var m = SelfAwareness.Mind(DateTime.Now.AddSeconds((Math.Max(Recheck, 5)) + 5)))
 			{
 				await Task.Delay(Math.Max(Recheck, 5) * 1000);
 			}
@@ -689,7 +689,7 @@ namespace TaskMaster
 					if (TaskMaster.DebugProcesses)
 						Log.Debug("[{FriendlyName}] Rescan initiating.", FriendlyName);
 
-					using (var m = SelfAwareness.Mind("RescanWithSchedule hung", DateTime.Now.AddSeconds(15)))
+					using (var m = SelfAwareness.Mind(DateTime.Now.AddSeconds(15)))
 					{
 						await Scan().ConfigureAwait(false);
 					}
