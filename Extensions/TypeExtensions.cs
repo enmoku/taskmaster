@@ -40,17 +40,17 @@ namespace TaskMaster
 		/// </summary>
 		public static int Constrain(this int value, int InclusiveMinimum, int InclusiveMaximum)
 		{
-			return value.Min(InclusiveMinimum).Max(InclusiveMaximum);
+			return Math.Min(Math.Max(value, InclusiveMinimum), InclusiveMaximum);
 		}
 
-		public static int Min(this int value, int Minimum)
+		public static float Constrain(this float value, float InclusiveMinimum, float InclusiveMaximum)
 		{
-			return value < Minimum ? Minimum : value;
+			return Math.Min(Math.Max(value, InclusiveMinimum), InclusiveMaximum);
 		}
 
-		public static int Max(this int value, int Maximum)
+		public static decimal Constrain(this decimal value, decimal InclusiveMinimum, decimal InclusiveMaximum)
 		{
-			return value > Maximum ? Maximum : value;
+			return Math.Min(Math.Max(value, InclusiveMinimum), InclusiveMaximum);
 		}
 
 		public static IPAddress GetAddress(this NetworkInterface iface)

@@ -30,6 +30,7 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using Serilog;
+using System.Runtime.InteropServices;
 
 namespace TaskMaster
 {
@@ -39,6 +40,38 @@ namespace TaskMaster
 		public void ShowConfigRequest(object sender, EventArgs e)
 		{
 			// TODO: Introduce configuration window
+		}
+
+		public async void PowerConfigRequest(object sender, EventArgs e)
+		{
+			ShowPowerConfig().ConfigureAwait(true); // true for UI thread
+		}
+
+		async Task ShowPowerConfig()
+		{
+			PowerConfigWindow pcw = null;
+			try
+			{
+				pcw = new PowerConfigWindow(ref powermanager);
+			}
+			catch (Exception ex)
+			{
+				Logging.Stacktrace(ex);
+				return;
+			}
+
+			var res = pcw.ShowDialog();
+			if (pcw.DialogResult == DialogResult.OK)
+			{
+				powermanager.AutoAdjust = pcw.newAutoAdjust;
+				Log.Information("<<UI>> Power auto-adjust config changed.");
+				// TODO: Call reset on power manager?
+			}
+			else
+			{
+				Log.Debug("<<UI>> Power auto-adjust config cancelled.");
+			}
+			pcw.Dispose();
 		}
 
 		public void ExitRequest(object sender, EventArgs e)
@@ -278,7 +311,7 @@ namespace TaskMaster
 					li.SubItems[PrioColumn].ForeColor = GrayText;
 				if (string.IsNullOrEmpty(prc.Path))
 					li.SubItems[PathColumn].ForeColor = GrayText;
-				if (prc.PowerPlan == PowerManager.PowerMode.Undefined)
+				if (prc.PowerPlan == PowerInfo.PowerMode.Undefined)
 					li.SubItems[PowerColumn].ForeColor = GrayText;
 				if (prc.Affinity.ToInt32() == ProcessManager.allCPUsMask)
 					li.SubItems[AffColumn].ForeColor = GrayText;
@@ -315,7 +348,7 @@ namespace TaskMaster
 					prc.Executable,
 					prio,
 						(prc.Affinity.ToInt32() == ProcessManager.allCPUsMask ? "--- Any ---" : Convert.ToString(prc.Affinity.ToInt32(), 2).PadLeft(ProcessManager.CPUCount, '0')),
-						(prc.PowerPlan != PowerManager.PowerMode.Undefined? prc.PowerPlan.ToString() : "--- Any ---"),
+						(prc.PowerPlan != PowerInfo.PowerMode.Undefined? prc.PowerPlan.ToString() : "--- Any ---"),
 				//(pc.Rescan>0 ? pc.Rescan.ToString() : "n/a"),
 					prc.Adjusts.ToString(),
 						//(pc.LastSeen != DateTime.MinValue ? pc.LastSeen.ToLocalTime().ToString() : "Never"),
@@ -619,6 +652,7 @@ namespace TaskMaster
 			menu_config.DropDown.AutoClose = true;
 			// Sub Items
 			var menu_config_behaviour = new ToolStripMenuItem("Behaviour");
+			var menu_config_power = new ToolStripMenuItem("Power");
 			var menu_config_saveonexit = new ToolStripMenuItem("Save on exit");
 			menu_config_saveonexit.Checked = TaskMaster.SaveConfigOnExit;
 			menu_config_saveonexit.CheckOnClick = true;
@@ -634,6 +668,11 @@ namespace TaskMaster
 			menu_config_behaviour_autoopen.Click += (sender, e) => { TaskMaster.AutoOpenMenus = !TaskMaster.AutoOpenMenus; };
 
 			menu_config_behaviour.DropDownItems.Add(menu_config_behaviour_autoopen);
+
+			var menu_config_power_autoadjust = new ToolStripMenuItem("Auto-adjust tuning");
+			menu_config_power_autoadjust.Click += PowerConfigRequest;
+			menu_config_power.DropDownItems.Add(menu_config_power_autoadjust);
+
 			//
 
 			var menu_config_log = new ToolStripMenuItem("Logging");
@@ -643,6 +682,8 @@ namespace TaskMaster
 			var menu_config_folder = new ToolStripMenuItem("Open in file manager", null, (s, e) => { Process.Start(TaskMaster.datapath); });
 			//menu_config.DropDownItems.Add(menu_config_log);
 			menu_config.DropDownItems.Add(menu_config_behaviour);
+			menu_config.DropDownItems.Add(new ToolStripSeparator());
+			menu_config.DropDownItems.Add(menu_config_power);
 			menu_config.DropDownItems.Add(new ToolStripSeparator());
 			menu_config.DropDownItems.Add(menu_config_folder);
 			menu_config.DropDownItems.Add(new ToolStripSeparator());
@@ -1667,9 +1708,9 @@ namespace TaskMaster
 			});
 
 			li.UseItemStyleForSubItems = false;
-			if (ev.Mode == PowerManager.PowerMode.HighPerformance)
+			if (ev.Mode == PowerInfo.PowerMode.HighPerformance)
 				li.SubItems[3].BackColor = System.Drawing.Color.FromArgb(255, 230, 230);
-			else if (ev.Mode == PowerManager.PowerMode.PowerSaver)
+			else if (ev.Mode == PowerInfo.PowerMode.PowerSaver)
 				li.SubItems[2].BackColor = System.Drawing.Color.FromArgb(240, 255, 230);
 			else
 			{
@@ -1825,7 +1866,7 @@ namespace TaskMaster
 					sbs.Append("Increase = ").Append(prc.Increase).AppendLine();
 					sbs.Append("Decrease = ").Append(prc.Decrease).AppendLine();
 					sbs.Append("Affinity = ").Append(prc.Affinity.ToInt32()).AppendLine();
-					if (prc.PowerPlan != PowerManager.PowerMode.Undefined)
+					if (prc.PowerPlan != PowerInfo.PowerMode.Undefined)
 						sbs.Append("Power plan = ").Append(PowerManager.PowerModes[(int)prc.PowerPlan]).AppendLine();
 					if (prc.Rescan > 0)
 						sbs.Append("Rescan = ").Append(prc.Rescan).AppendLine();
@@ -2061,7 +2102,7 @@ namespace TaskMaster
 			{
 				try
 				{
-					int excessitems = (loglist.Items.Count - MaxLogSize).Min(0);
+					int excessitems = Math.Min(0, (loglist.Items.Count - MaxLogSize));
 					while (excessitems-- > 0)
 					{
 						loglist.Items.RemoveAt(0);

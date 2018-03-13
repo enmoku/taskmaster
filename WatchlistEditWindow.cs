@@ -324,6 +324,8 @@ namespace TaskMaster
 			// ---------------------------------------------------------------------------------------------------------
 
 			lt.Controls.Add(new Label { Text = "Rescan frequency", TextAlign = System.Drawing.ContentAlignment.MiddleLeft });
+			rescanFreq.Minimum = 0;
+			rescanFreq.Maximum = 60 * 24;
 			rescanFreq.Value = prc.Rescan;
 			rescanFreq.Width = 80;
 			tooltip.SetToolTip(rescanFreq, "How often to rescan for this app, in minutes.\nSometimes instances slip by.");

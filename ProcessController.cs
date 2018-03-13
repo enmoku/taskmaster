@@ -108,7 +108,7 @@ namespace TaskMaster
 		/// <summary>
 		/// The power plan.
 		/// </summary>
-		public PowerManager.PowerMode PowerPlan = PowerManager.PowerMode.Undefined;
+		public PowerInfo.PowerMode PowerPlan = PowerInfo.PowerMode.Undefined;
 
 		/// <summary>
 		/// Allow priority decrease.
@@ -128,7 +128,7 @@ namespace TaskMaster
 			}
 			set
 			{
-				p_Recheck = value.Min(0).Constrain(0, 300);
+				p_Recheck = value.Constrain(0, 300);
 			}
 		}
 
@@ -257,7 +257,7 @@ namespace TaskMaster
 			//info.Process.ProcessorAffinity = OriginalState.Affinity;
 
 			if (TaskMaster.PowerManagerEnabled)
-				if (PowerPlan != PowerManager.PowerMode.Undefined && BackgroundPowerdown)
+				if (PowerPlan != PowerInfo.PowerMode.Undefined && BackgroundPowerdown)
 					TaskMaster.powermanager.Restore(info.Id);
 
 			if (TaskMaster.DebugForeground)
@@ -328,7 +328,7 @@ namespace TaskMaster
 		protected bool setPower(BasicProcessInfo info)
 		{
 			if (!TaskMaster.PowerManagerEnabled) return false;
-			if (PowerPlan == PowerManager.PowerMode.Undefined) return false;
+			if (PowerPlan == PowerInfo.PowerMode.Undefined) return false;
 			TaskMaster.powermanager.SaveMode();
 
 			info.Flags |= (int)ProcessFlags.PowerWait;
@@ -551,7 +551,7 @@ namespace TaskMaster
 			}
 			*/
 
-			PowerManager.PowerMode oldPP = PowerManager.PowerMode.Undefined;
+			PowerInfo.PowerMode oldPP = PowerInfo.PowerMode.Undefined;
 			if (TaskMaster.PowerManagerEnabled)
 			{
 				oldPP = TaskMaster.powermanager.CurrentMode;

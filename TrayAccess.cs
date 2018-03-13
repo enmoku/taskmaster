@@ -80,9 +80,9 @@ namespace TaskMaster
 				power_auto.CheckOnClick = true;
 				power_auto.Enabled = false;
 
-				power_highperf = new ToolStripMenuItem("Performance", null, (s, e) => { ResetPower(PowerManager.PowerMode.HighPerformance); });
-				power_balanced = new ToolStripMenuItem("Balanced", null, (s, e) => { ResetPower(PowerManager.PowerMode.Balanced); });
-				power_saving = new ToolStripMenuItem("Power Saving", null, (s, e) => { ResetPower(PowerManager.PowerMode.PowerSaver); });
+				power_highperf = new ToolStripMenuItem("Performance", null, (s, e) => { ResetPower(PowerInfo.PowerMode.HighPerformance); });
+				power_balanced = new ToolStripMenuItem("Balanced", null, (s, e) => { ResetPower(PowerInfo.PowerMode.Balanced); });
+				power_saving = new ToolStripMenuItem("Power Saving", null, (s, e) => { ResetPower(PowerInfo.PowerMode.PowerSaver); });
 				power_manual = new ToolStripMenuItem("Manual override", null, SetManualPower);
 				power_manual.CheckOnClick = true;
 			}
@@ -197,17 +197,17 @@ namespace TaskMaster
 		{
 			switch (powermanager.CurrentMode)
 			{
-				case PowerManager.PowerMode.Balanced:
+				case PowerInfo.PowerMode.Balanced:
 					power_saving.Checked = false;
 					power_balanced.Checked = true;
 					power_highperf.Checked = false;
 					break;
-				case PowerManager.PowerMode.HighPerformance:
+				case PowerInfo.PowerMode.HighPerformance:
 					power_saving.Checked = false;
 					power_balanced.Checked = false;
 					power_highperf.Checked = true;
 					break;
-				case PowerManager.PowerMode.PowerSaver:
+				case PowerInfo.PowerMode.PowerSaver:
 					power_saving.Checked = true;
 					power_balanced.Checked = false;
 					power_highperf.Checked = false;
@@ -215,7 +215,7 @@ namespace TaskMaster
 			}
 		}
 
-		void ResetPower(PowerManager.PowerMode mode)
+		void ResetPower(PowerInfo.PowerMode mode)
 		{
 			try
 			{

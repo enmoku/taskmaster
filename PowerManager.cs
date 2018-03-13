@@ -34,12 +34,14 @@ using System.Threading.Tasks;
 using System.Collections.Generic;
 using System.Linq;
 
+using TaskMaster.PowerInfo;
+
 namespace TaskMaster
 {
 	public class PowerModeEventArgs : EventArgs
 	{
-		public PowerManager.PowerMode OldMode { get; set; }
-		public PowerManager.PowerMode NewMode { get; set; }
+		public PowerMode OldMode { get; set; }
+		public PowerMode NewMode { get; set; }
 	}
 
 	public class PowerManager : Form // form is required for receiving messages, no other reason
@@ -53,6 +55,27 @@ namespace TaskMaster
 		{
 			RegisterPowerSettingNotification(Handle, ref GUID_POWERSCHEME_PERSONALITY, DEVICE_NOTIFY_WINDOW_HANDLE);
 			OriginalMode = getPowerMode();
+
+			AutoAdjust.High.Mode = PowerMode.HighPerformance;
+			AutoAdjust.High.Commit.Level = 3;
+			AutoAdjust.High.Commit.Threshold = 70;
+
+			AutoAdjust.High.Backoff.Level = 3;
+			AutoAdjust.High.Backoff.Low = 15;
+			AutoAdjust.High.Backoff.Avg = 50;
+			AutoAdjust.High.Backoff.High = 60;
+
+			AutoAdjust.Low.Mode = PowerMode.PowerSaver;
+			AutoAdjust.Low.Commit.Level = 7;
+			AutoAdjust.Low.Commit.Threshold = 15;
+
+			AutoAdjust.Low.Backoff.Level = 2;
+			AutoAdjust.Low.Backoff.Low = 25;
+			AutoAdjust.Low.Backoff.Avg = 35;
+			AutoAdjust.Low.Backoff.High = 40;
+			AutoAdjust.Low.Backoff.Level = 1;
+
+			AutoAdjust.DefaultMode = PowerMode.Balanced;
 
 			LoadConfig();
 
@@ -190,7 +213,7 @@ namespace TaskMaster
 			// TODO: Asyncify. Mostly math so probably unnecessary.
 
 			PowerReaction Reaction = PowerReaction.Average;
-			PowerMode ReactionaryPlan = DefaultMode;
+			PowerMode ReactionaryPlan = AutoAdjust.DefaultMode;
 
 			AutoAdjustBlocks |= AutoAdjustReadyBlock;
 
@@ -200,19 +223,19 @@ namespace TaskMaster
 			{
 				// Downgrade to MEDIUM power level
 				//Console.WriteLine("Downgrade to Mid?");
-				if (ev.High <= HighBackoffThresholds[(int)ThresholdLevel.High]
-					|| ev.Average <= HighBackoffThresholds[(int)ThresholdLevel.Average]
-					|| ev.Low <= HighBackoffThresholds[(int)ThresholdLevel.Average])
+				if (ev.High <= AutoAdjust.High.Backoff.High
+					|| ev.Average <= AutoAdjust.High.Backoff.Avg
+					|| ev.Low <= AutoAdjust.High.Backoff.Low)
 				{
 					Reaction = PowerReaction.Average;
-					ReactionaryPlan = DefaultMode;
+					ReactionaryPlan = AutoAdjust.DefaultMode;
 
 					BackoffCounter++;
 
-					if (BackoffCounter >= HighBackoffLevel)
+					if (BackoffCounter >= AutoAdjust.High.Backoff.Level)
 						AutoAdjustBlocks &= ~AutoAdjustReadyBlock;
 
-					ev.Pressure = ((float)BackoffCounter) / ((float)HighBackoffLevel);
+					ev.Pressure = ((float)BackoffCounter) / ((float)AutoAdjust.High.Backoff.Level);
 					//Console.WriteLine("Downgrade to Mid: " + BackoffCounter + " / " + HighBackoffLevel + " = " + ev.Pressure
 					//				  + " : Blocks:" + Convert.ToString(AutoAdjustBlocks, 2).PadLeft(4, '0'));
 				}
@@ -223,19 +246,19 @@ namespace TaskMaster
 			{
 				// Upgrade to MEDIUM power level
 				//Console.WriteLine("Upgrade to Mid?");
-				if (ev.High >= LowBackoffThresholds[(int)ThresholdLevel.High]
-					|| ev.Average >= LowBackoffThresholds[(int)ThresholdLevel.Average]
-					|| ev.Low >= LowBackoffThresholds[(int)ThresholdLevel.Average])
+				if (ev.High >= AutoAdjust.Low.Backoff.High
+					|| ev.Average >= AutoAdjust.Low.Backoff.Avg
+					|| ev.Low >= AutoAdjust.Low.Backoff.Low)
 				{
 					Reaction = PowerReaction.Average;
-					ReactionaryPlan = DefaultMode;
+					ReactionaryPlan = AutoAdjust.DefaultMode;
 
 					BackoffCounter++;
 
-					if (BackoffCounter >= LowBackoffLevel)
+					if (BackoffCounter >= AutoAdjust.Low.Backoff.Level)
 						AutoAdjustBlocks &= ~AutoAdjustReadyBlock;
 
-					ev.Pressure = ((float)BackoffCounter) / ((float)LowBackoffLevel);
+					ev.Pressure = ((float)BackoffCounter) / ((float)AutoAdjust.Low.Backoff.Level);
 					//Console.WriteLine("Upgrade to Mid: " + BackoffCounter + " / " + LowBackoffLevel + " = " + ev.Pressure
 					//				  + " : Blocks:" + Convert.ToString(AutoAdjustBlocks, 2).PadLeft(4, '0'));
 				}
@@ -244,36 +267,36 @@ namespace TaskMaster
 			}
 			else // Currently at medium power
 			{
-				if (ev.Low > HighThreshold && HighMode != DefaultMode) // Low CPU is above threshold for High mode
+				if (ev.Low > AutoAdjust.High.Commit.Threshold && AutoAdjust.High.Mode != AutoAdjust.DefaultMode) // Low CPU is above threshold for High mode
 				{
 					// Downgrade to LOW power levell
 					Reaction = PowerReaction.High;
-					ReactionaryPlan = HighMode;
+					ReactionaryPlan = AutoAdjust.High.Mode;
 
 					LowPressure = 0; // reset
 					HighPressure++;
 
-					if (HighPressure >= HighCommitLevel)
+					if (HighPressure >= AutoAdjust.High.Commit.Level)
 						AutoAdjustBlocks &= ~AutoAdjustReadyBlock;
 
-					ev.Pressure = ((float)HighPressure) / ((float)HighCommitLevel);
+					ev.Pressure = ((float)HighPressure) / ((float)AutoAdjust.High.Commit.Level);
 
 					//Console.WriteLine("Upgrade to High: " + HighPressure + " / " + HighCommitLevel + " = " + ev.Pressure
 					//				  + " : Blocks:" + Convert.ToString(AutoAdjustBlocks, 2).PadLeft(4, '0'));
 				}
-				else if (ev.High < LowThreshold && LowMode != DefaultMode) // High CPU is below threshold for Low mode
+				else if (ev.High < AutoAdjust.Low.Commit.Threshold && AutoAdjust.Low.Mode != AutoAdjust.DefaultMode) // High CPU is below threshold for Low mode
 				{
 					// Upgrade to HIGH power levele
 					Reaction = PowerReaction.Low;
-					ReactionaryPlan = LowMode;
+					ReactionaryPlan = AutoAdjust.Low.Mode;
 
 					HighPressure = 0; // reset
 					LowPressure++;
 
-					if (LowPressure >= LowCommitLevel)
+					if (LowPressure >= AutoAdjust.Low.Commit.Level)
 						AutoAdjustBlocks &= ~AutoAdjustReadyBlock;
 
-					ev.Pressure = ((float)LowPressure) / ((float)LowCommitLevel);
+					ev.Pressure = ((float)LowPressure) / ((float)AutoAdjust.Low.Commit.Level);
 
 					//Console.WriteLine("Downgrade to Low: " + LowPressure + " / " + LowCommitLevel + " = " + ev.Pressure
 					//				  + " : Blocks:" + Convert.ToString(AutoAdjustBlocks, 2).PadLeft(4, '0'));
@@ -283,7 +306,7 @@ namespace TaskMaster
 					//Console.WriteLine("NOP");
 
 					Reaction = PowerReaction.Average;
-					ReactionaryPlan = DefaultMode;
+					ReactionaryPlan = AutoAdjust.DefaultMode;
 
 					ResetAutoadjust();
 
@@ -362,7 +385,7 @@ namespace TaskMaster
 
 			string defaultmode = power.GetSetDefault("Default mode", "Balanced", out modified).StringValue;
 			power["Default mode"].Comment = "This is what power plan we fall back on when nothing else is considered.";
-			DefaultMode = GetModeByName(defaultmode);
+			AutoAdjust.DefaultMode = GetModeByName(defaultmode);
 			dirtyconfig |= modified;
 
 			string restoremode = power.GetSetDefault("Restore mode", "Default", out modified).StringValue;
@@ -372,14 +395,14 @@ namespace TaskMaster
 			if (restoremodel.Equals("original"))
 				RestoreMode = PowerMode.Undefined;
 			else if (restoremodel.Equals("default"))
-				RestoreMode = DefaultMode;
+				RestoreMode = AutoAdjust.DefaultMode;
 			else if (restoremodel.Equals("saved"))
 				RestoreMode = PowerMode.Undefined;
 			else
 			{
 				RestoreMode = GetModeByName(restoremode);
 				if (RestoreMode == PowerMode.Custom)
-					RestoreMode = DefaultMode;
+					RestoreMode = AutoAdjust.DefaultMode;
 			}
 
 			PowerdownDelay = power.GetSetDefault("Watchlist powerdown delay", 0, out modified).IntValue.Constrain(0, 60);
@@ -387,10 +410,10 @@ namespace TaskMaster
 			dirtyconfig |= modified;
 
 			var autopower = TaskMaster.cfg["Power / Auto"];
-			bool AutoAdjust = autopower.GetSetDefault("Auto-adjust", false, out modified).BoolValue;
+			bool bAutoAdjust = autopower.GetSetDefault("Auto-adjust", false, out modified).BoolValue;
 			autopower["Auto-adjust"].Comment = "Automatically adjust power mode based on the criteria here.";
 			dirtyconfig |= modified;
-			if (AutoAdjust)
+			if (bAutoAdjust)
 			{
 				Behaviour = PowerBehaviour.Auto;
 				if (PowerdownDelay > 0)
@@ -406,44 +429,54 @@ namespace TaskMaster
 			dirtyconfig |= modified;
 
 			// BACKOFF
-			LowBackoffLevel = autopower.GetSetDefault("Low backoff level", 1, out modified).IntValue.Constrain(0, 10);
+			AutoAdjust.Low.Backoff.Level = autopower.GetSetDefault("Low backoff level", 1, out modified).IntValue.Constrain(0, 10);
 			autopower["Low backoff level"].Comment = "1 to 10. Consequent backoff reactions that is required before it actually triggers.";
 			dirtyconfig |= modified;
-			HighBackoffLevel = autopower.GetSetDefault("High backoff level", 3, out modified).IntValue.Constrain(0, 10);
+			AutoAdjust.High.Backoff.Level = autopower.GetSetDefault("High backoff level", 3, out modified).IntValue.Constrain(0, 10);
 			autopower["High backoff level"].Comment = "1 to 10. Consequent backoff reactions that is required before it actually triggers.";
 			dirtyconfig |= modified;
 
 			// COMMIT
-			LowCommitLevel = autopower.GetSetDefault("Low commit level", 7, out modified).IntValue.Constrain(1, 10);
+			AutoAdjust.Low.Commit.Level = autopower.GetSetDefault("Low commit level", 7, out modified).IntValue.Constrain(1, 10);
 			autopower["Low commit level"].Comment = "1 to 10. Consequent commit reactions that is required before it actually triggers.";
 			dirtyconfig |= modified;
-			HighCommitLevel = autopower.GetSetDefault("High commit level", 3, out modified).IntValue.Constrain(1, 10);
+			AutoAdjust.High.Commit.Level = autopower.GetSetDefault("High commit level", 3, out modified).IntValue.Constrain(1, 10);
 			autopower["High commit level"].Comment = "1 to 10. Consequent commit reactions that is required before it actually triggers.";
 			dirtyconfig |= modified;
 
 			// THRESHOLDS
-			HighThreshold = autopower.GetSetDefault("High threshold", 70, out modified).FloatValue;
+			AutoAdjust.High.Commit.Threshold = autopower.GetSetDefault("High threshold", 70, out modified).FloatValue;
 			autopower["High threshold"].Comment = "If low CPU value keeps over this, we swap to high mode.";
 			dirtyconfig |= modified;
-			var hbtt = autopower.GetSetDefault("High backoff thresholds", new float[] { 60, 40, 15 }, out modified).FloatValueArray;
-			if (hbtt != null && hbtt.Length == 3) HighBackoffThresholds = hbtt;
+			var hbtt = autopower.GetSetDefault("High backoff thresholds", new float[] { AutoAdjust.High.Backoff.High, AutoAdjust.High.Backoff.Avg, AutoAdjust.High.Backoff.Low }, out modified).FloatValueArray;
+			if (hbtt != null && hbtt.Length == 3)
+			{
+				AutoAdjust.High.Backoff.Low = hbtt[2];
+				AutoAdjust.High.Backoff.Avg = hbtt[1];
+				AutoAdjust.High.Backoff.High = hbtt[0];
+			}
 			autopower["High backoff thresholds"].Comment = "High, Average and Low CPU usage values, any of which is enough to break away from high power mode.";
 			dirtyconfig |= modified;
 
-			LowThreshold = autopower.GetSetDefault("Low threshold", 15, out modified).FloatValue;
+			AutoAdjust.Low.Commit.Threshold = autopower.GetSetDefault("Low threshold", 15, out modified).FloatValue;
 			autopower["Low threshold"].Comment = "If high CPU value keeps under this, we swap to low mode.";
 			dirtyconfig |= modified;
-			var lbtt = autopower.GetSetDefault("Low backoff thresholds", new float[] { 50, 35, 25 }, out modified).FloatValueArray;
-			if (lbtt != null && lbtt.Length == 3) LowBackoffThresholds = lbtt;
+			var lbtt = autopower.GetSetDefault("Low backoff thresholds", new float[] { AutoAdjust.Low.Backoff.High, AutoAdjust.Low.Backoff.Avg, AutoAdjust.Low.Backoff.Low }, out modified).FloatValueArray;
+			if (lbtt != null && lbtt.Length == 3)
+			{
+				AutoAdjust.Low.Backoff.Low = lbtt[2];
+				AutoAdjust.Low.Backoff.Avg = lbtt[1];
+				AutoAdjust.Low.Backoff.High = lbtt[0];
+			}
 			autopower["Low backoff thresholds"].Comment = "High, Average and Low CPU uage values, any of which is enough to break away from low mode.";
 			dirtyconfig |= modified;
 
 			// POWER MODES
 			string lowmode = power.GetSetDefault("Low mode", "Power Saver", out modified).StringValue;
-			LowMode = GetModeByName(lowmode);
+			AutoAdjust.Low.Mode = GetModeByName(lowmode);
 			dirtyconfig |= modified;
 			string highmode = power.GetSetDefault("High mode", "High Performance", out modified).StringValue;
-			HighMode = GetModeByName(highmode);
+			AutoAdjust.High.Mode = GetModeByName(highmode);
 			dirtyconfig |= modified;
 
 			var saver = TaskMaster.cfg["AFK Power"];
@@ -493,19 +526,10 @@ namespace TaskMaster
 			Log.Information("<Power Mode> Session lock: {Mode}", (SessionLockMode == PowerMode.Custom ? "Ignored" : SessionLockMode.ToString()));
 		}
 
-		int BackoffCounter { get; set; } = 0;
-		int LowBackoffLevel { get; set; } = 2;
-		int LowCommitLevel { get; set; } = 2;
-		int HighBackoffLevel { get; set; } = 2;
-		int HighCommitLevel { get; set; } = 3;
+		public AutoAdjustSettings AutoAdjust { get; set; } = new AutoAdjustSettings();
 
-		float HighThreshold { get; set; } = 75;
-		float[] HighBackoffThresholds { get; set; } = { 60, 50, 40 }; // High, Average, Low
-		PowerMode HighMode { get; set; }
-		float LowThreshold { get; set; } = 15;
-		float[] LowBackoffThresholds { get; set; } = { 30, 25, 20 }; // High, Average, Low
-		PowerMode LowMode { get; set; }
-		PowerMode DefaultMode { get; set; } = PowerMode.Balanced;
+		int BackoffCounter { get; set; } = 0;
+
 		PowerMode RestoreMode { get; set; } = PowerMode.Balanced;
 
 		async void SessionLockEvent(object sender, SessionSwitchEventArgs ev)
@@ -638,15 +662,6 @@ namespace TaskMaster
 					return PowerMode.Custom;
 			}
 		}
-
-		public enum PowerMode
-		{
-			PowerSaver = 0,
-			Balanced = 1,
-			HighPerformance = 2,
-			Custom = 9,
-			Undefined = 3
-		};
 
 		public PowerMode OriginalMode { get; private set; } = PowerMode.Balanced;
 		public PowerMode CurrentMode { get; private set; } = PowerMode.Balanced;
@@ -994,5 +1009,6 @@ namespace TaskMaster
 			SMTO_NOTIMEOUTIFNOTHUNG = 0x8,
 			SMTO_ERRORONEXIT = 0x2
 		}
+
 	}
 }

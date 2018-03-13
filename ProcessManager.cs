@@ -662,11 +662,11 @@ namespace TaskMaster
 				int aff = section.TryGet("Affinity")?.IntValue ?? allCPUsMask;
 				int prio = section.TryGet("Priority")?.IntValue ?? 2;
 				string pmodes = section.TryGet("Power mode")?.StringValue ?? null;
-				PowerManager.PowerMode pmode = PowerManager.GetModeByName(pmodes);
-				if (pmode == PowerManager.PowerMode.Custom)
+				PowerInfo.PowerMode pmode = PowerManager.GetModeByName(pmodes);
+				if (pmode == PowerInfo.PowerMode.Custom)
 				{
 					Log.Warning("'{SectionName}' has unrecognized power plan: {PowerPlan}", section.Name, pmodes);
-					pmode = PowerManager.PowerMode.Undefined;
+					pmode = PowerInfo.PowerMode.Undefined;
 				}
 
 				var prc = new ProcessController(section.Name, ProcessHelpers.IntToPriority(prio), (aff != 0 ? aff : allCPUsMask))
@@ -1758,7 +1758,7 @@ namespace TaskMaster
 		public float Low;
 		public float High;
 
-		public PowerManager.PowerMode Mode;
+		public PowerInfo.PowerMode Mode;
 
 		public float Pressure;
 
