@@ -38,9 +38,9 @@ namespace TaskMaster
 		public readonly string Message;
 		public readonly LogEventLevel Level;
 
-		public LogEventArgs(string logmessage, LogEventLevel level)
+		public LogEventArgs(string message, LogEventLevel level)
 		{
-			Message = logmessage;
+			Message = message;
 			Level = level;
 		}
 	}
@@ -126,17 +126,17 @@ namespace TaskMaster
 			public void Emit(LogEvent e)
 			{
 				if (e.Level < LevelSwitch.MinimumLevel) return;
-				string t;
+				string formattedtext;
 
 				lock (sinklock)
 				{
 					p_textFormatter.Format(e, p_output);
-					t = p_output.ToString();
+					formattedtext = p_output.ToString();
 
 					((System.IO.StringWriter)p_output).GetStringBuilder().Clear(); // empty, weird results if not done.
 				}
 
-				MemoryLog.Emit(this, new LogEventArgs(t, e.Level));
+				MemoryLog.Emit(this, new LogEventArgs(formattedtext, e.Level));
 			}
 		}
 

@@ -27,7 +27,8 @@
 using System;
 using System.Windows.Forms;
 using TaskMaster.PowerInfo;
-using Serilog.Sinks.SystemConsole.Themes;
+using Serilog;
+using System.Threading.Tasks;
 
 namespace TaskMaster
 {
@@ -36,11 +37,11 @@ namespace TaskMaster
 		public AutoAdjustSettings oldAutoAdjust;
 		public AutoAdjustSettings newAutoAdjust;
 
-		public PowerConfigWindow(ref PowerManager pman)
+		public PowerConfigWindow()
 		{
 			Text = "Power auto-adjust configuration";
 
-			AutoAdjustSettings AutoAdjust = oldAutoAdjust = pman.AutoAdjust;
+			AutoAdjustSettings AutoAdjust = oldAutoAdjust = TaskMaster.powermanager.AutoAdjust;
 
 			FormBorderStyle = FormBorderStyle.FixedDialog;
 
@@ -196,6 +197,48 @@ namespace TaskMaster
 
 			//Height = layout.Height;
 			//Width = layout.Width;
+		}
+
+		static PowerConfigWindow pcw = null;
+		static int PowerConfigVisible = 0;
+		public static async Task ShowPowerConfig()
+		{
+			if (Atomic.Lock(ref PowerConfigVisible))
+			{
+				try
+				{
+					pcw = new PowerConfigWindow();
+				}
+				catch (Exception ex)
+				{
+					Logging.Stacktrace(ex);
+					return;
+				}
+
+				var res = pcw.ShowDialog();
+				if (pcw.DialogResult == DialogResult.OK)
+				{
+					TaskMaster.powermanager.AutoAdjust = pcw.newAutoAdjust;
+					Log.Information("<<UI>> Power auto-adjust config changed.");
+					// TODO: Call reset on power manager?
+				}
+				else
+				{
+					Log.Debug("<<UI>> Power auto-adjust config cancelled.");
+				}
+
+				pcw.Dispose();
+				pcw = null;
+
+				Atomic.Unlock(ref PowerConfigVisible);
+			}
+			else
+			{
+				pcw.BringToFront();
+				pcw.Show();
+				pcw.TopMost = true;
+				pcw.TopMost = false;
+			}
 		}
 	}
 }

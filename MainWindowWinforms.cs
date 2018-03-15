@@ -31,6 +31,8 @@ using System.Threading.Tasks;
 using System.Windows.Forms;
 using Serilog;
 using System.Runtime.InteropServices;
+using System.Collections;
+using System.Linq;
 
 namespace TaskMaster
 {
@@ -44,34 +46,7 @@ namespace TaskMaster
 
 		public async void PowerConfigRequest(object sender, EventArgs e)
 		{
-			ShowPowerConfig().ConfigureAwait(true); // true for UI thread
-		}
-
-		async Task ShowPowerConfig()
-		{
-			PowerConfigWindow pcw = null;
-			try
-			{
-				pcw = new PowerConfigWindow(ref powermanager);
-			}
-			catch (Exception ex)
-			{
-				Logging.Stacktrace(ex);
-				return;
-			}
-
-			var res = pcw.ShowDialog();
-			if (pcw.DialogResult == DialogResult.OK)
-			{
-				powermanager.AutoAdjust = pcw.newAutoAdjust;
-				Log.Information("<<UI>> Power auto-adjust config changed.");
-				// TODO: Call reset on power manager?
-			}
-			else
-			{
-				Log.Debug("<<UI>> Power auto-adjust config cancelled.");
-			}
-			pcw.Dispose();
+			PowerConfigWindow.ShowPowerConfig().ConfigureAwait(true); // true for UI thread
 		}
 
 		public void ExitRequest(object sender, EventArgs e)
@@ -338,12 +313,14 @@ namespace TaskMaster
 		}
 
 		bool alterColor = false;
+		int num = 1;
 		void AddToWatchlistList(ProcessController prc)
 		{
 			bool noprio = (prc.Increase == false && prc.Decrease == false);
 			string prio = noprio ? "--- Any --- " : prc.Priority.ToString();
 
 			var litem = new ListViewItem(new string[] {
+				(num++).ToString(),
 					prc.FriendlyName, //.ToString(),
 					prc.Executable,
 					prio,
@@ -356,7 +333,9 @@ namespace TaskMaster
 					});
 
 			lock (watchlistrules_lock)
-				watchlistRules.Items.Add(litem);
+			{
+				watchlistRules.Items.Add(litem); // add calls sort()???
+			}
 
 
 			lock (appw_lock)
@@ -399,14 +378,6 @@ namespace TaskMaster
 		ListView powerbalancerlog;
 		Label powerbalancer_behaviour;
 		Label powerbalancer_plan;
-		Label powerbalancer_current;
-		Label powerbalancer_high;
-		Label powerbalancer_average;
-		Label powerbalancer_low;
-		Label powerbalancer_pressure;
-		Label powerbalancer_high_action;
-		Label powerbalancer_average_action;
-		Label powerbalancer_low_action;
 
 		readonly object powerbalancerlog_lock = new object();
 
@@ -583,15 +554,16 @@ namespace TaskMaster
 
 		TabControl tabLayout = null;
 
-		int NameColumn = 0;
-		int ExeColumn = 1;
-		int PrioColumn = 2;
-		int AffColumn = 3;
-		int PowerColumn = 4;
-		int RescanColumn = 5;
-		int AdjustColumn = 5;
-		int SeenColumn = 7;
-		int PathColumn = 6;
+		int OrderColumn = 0;
+		int NameColumn = 1;
+		int ExeColumn = 2;
+		int PrioColumn = 3;
+		int AffColumn = 4;
+		int PowerColumn = 5;
+		int RescanColumn = 6;
+		int AdjustColumn = 7;
+		int SeenColumn = 8;
+		int PathColumn = 9;
 
 		void EnsureDebugLog()
 		{
@@ -809,7 +781,7 @@ namespace TaskMaster
 				RowCount = 1,
 				ColumnCount = 6,
 				AutoSize = true,
-				Width = tabLayout.Width - 3,
+				//Width = tabLayout.Width - 3,
 			};
 
 			var activeLabelUX = new Label() { Text = "Active:", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, Width = 40 };
@@ -817,7 +789,7 @@ namespace TaskMaster
 			{
 				Dock = DockStyle.Top,
 				Text = "no active window found",
-				Width = tabLayout.Width - 3 - 40 - 3 - 80 - 3 - 100 - 3 - 60 - 3 - 20 - 3, // TODO: Simplify
+				AutoSize = true,
 				TextAlign = System.Drawing.ContentAlignment.MiddleLeft,
 				AutoEllipsis = true,
 			};
@@ -843,7 +815,7 @@ namespace TaskMaster
 
 			int opentab = uicfg["Tabs"].TryGet("Open")?.IntValue ?? 0;
 
-			int[] appwidthsDefault = new int[] { 120, 140, 82, 60, 76, 60, 140 };
+			int[] appwidthsDefault = new int[] { 20, 120, 140, 82, 60, 76, 46, 140 };
 			var appwidths = colcfg.GetSetDefault("Apps", appwidthsDefault).IntValueArray;
 			if (appwidths.Length != appwidthsDefault.Length) appwidths = appwidthsDefault;
 
@@ -1118,6 +1090,26 @@ namespace TaskMaster
 				FullRowSelect = true
 			};
 
+			var numberColumns = new int[] { 0, AdjustColumn };
+			var watchlistSorter = new WatchlistSorter(numberColumns);
+			watchlistRules.ListViewItemSorter = watchlistSorter; // what's the point of this?
+			watchlistRules.ColumnClick += (sender, e) =>
+			{
+				if (watchlistSorter.Column == e.Column)
+				{
+					// flip order
+					watchlistSorter.Order = watchlistSorter.Order == SortOrder.Ascending ? SortOrder.Descending : SortOrder.Ascending;
+				}
+				else
+				{
+					watchlistSorter.Order = SortOrder.Ascending;
+					watchlistSorter.Column = e.Column;
+				}
+
+				// deadlock if locked while adding
+				watchlistRules.Sort();
+			};
+
 			// TODO: Add context menu
 			watchlistms = new ContextMenuStrip();
 			watchlistms.Opened += WatchlistContextMenuOpen;
@@ -1137,21 +1129,23 @@ namespace TaskMaster
 			watchlistms.Items.Add(watchlistclip);
 			watchlistRules.ContextMenuStrip = watchlistms;
 
-			NameColumn = 0;
-			ExeColumn = 1;
-			PrioColumn = 2;
-			AffColumn = 3;
-			PowerColumn = 4;
-			AdjustColumn = 5;
-			PathColumn = 6;
+			OrderColumn = 0;
+			NameColumn = 1;
+			ExeColumn = 2;
+			PrioColumn = 3;
+			AffColumn = 4;
+			PowerColumn = 5;
+			AdjustColumn = 6;
+			PathColumn = 7;
 
-			watchlistRules.Columns.Add("Name", appwidths[0]);
-			watchlistRules.Columns.Add("Executable", appwidths[1]);
-			watchlistRules.Columns.Add("Priority", appwidths[2]);
-			watchlistRules.Columns.Add("Affinity", appwidths[3]);
-			watchlistRules.Columns.Add("Power Plan", appwidths[4]);
-			watchlistRules.Columns.Add("Adjusts", appwidths[5]);
-			watchlistRules.Columns.Add("Path", appwidths[6]);
+			watchlistRules.Columns.Add("#", appwidths[0]);
+			watchlistRules.Columns.Add("Name", appwidths[1]);
+			watchlistRules.Columns.Add("Executable", appwidths[2]);
+			watchlistRules.Columns.Add("Priority", appwidths[3]);
+			watchlistRules.Columns.Add("Affinity", appwidths[4]);
+			watchlistRules.Columns.Add("Power Plan", appwidths[5]);
+			watchlistRules.Columns.Add("Adjusts", appwidths[6]);
+			watchlistRules.Columns.Add("Path", appwidths[7]);
 			watchlistRules.Scrollable = true;
 			watchlistRules.Alignment = ListViewAlignment.Left;
 
@@ -1176,10 +1170,7 @@ namespace TaskMaster
 				MinimumSize = new System.Drawing.Size(700, 180),
 			};
 
-			loglist_stamp = new List<DateTime>();
-
-			loglist.Columns.Add("Log Events");
-			loglist.Columns[0].Width = -2; // -2 is apparently some kind of max size magic number
+			loglist.Columns.Add("Event Log", -2, HorizontalAlignment.Left); // 2
 			loglist.Resize += (sender, e) => { loglist.Columns[0].Width = -2; };
 
 			loglistms = new ContextMenuStrip();
@@ -1506,39 +1497,6 @@ namespace TaskMaster
 			powerbalancerlog.Columns.Add("Enacted", 60);
 			powerbalancerlog.Columns.Add("Pressure", 60);
 
-			var pbl = new TableLayoutPanel()
-			{
-				ColumnCount = 10,
-				AutoSize = true,
-				Dock = DockStyle.Top,
-			};
-
-			int cpupw = 48;
-			pbl.Controls.Add(new Label() { Text = "Current:", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true });
-			int cpuph = pbl.Controls[0].Height;
-			pbl.Controls.Add(powerbalancer_current = new Label() { Text = "n/a", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, Width = cpupw, Height = cpuph });
-			pbl.Controls.Add(new Label() { Text = "High:", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true });
-			pbl.Controls.Add(powerbalancer_high = new Label() { Text = "n/a", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, Width = cpupw, Height = cpuph });
-			pbl.Controls.Add(new Label() { Text = "Average:", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true });
-			pbl.Controls.Add(powerbalancer_average = new Label() { Text = "n/a", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, Width = cpupw, Height = cpuph });
-			pbl.Controls.Add(new Label() { Text = "Low:", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true });
-			pbl.Controls.Add(powerbalancer_low = new Label() { Text = "n/a", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, Width = cpupw, Height = cpuph });
-			pbl.Controls.Add(new Label() { Text = "Pressure:", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true });
-			pbl.Controls.Add(powerbalancer_pressure = new Label() { Text = "n/a", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, Width = cpupw, Height = cpuph });
-
-			pbl.Controls.Add(new Label() { Text = "Acted on:", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true }, 0, 1);
-
-			pbl.Controls.Add(new Label() { Text = "High:", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true }, 2, 1);
-			pbl.Controls.Add(powerbalancer_high_action = new Label() { Text = "n/a", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, Width = cpupw, Height = cpuph }, 3, 1);
-			pbl.Controls.Add(new Label() { Text = "Average:", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true }, 4, 1);
-			pbl.Controls.Add(powerbalancer_average_action = new Label() { Text = "n/a", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, Width = cpupw, Height = cpuph }, 5, 1);
-			pbl.Controls.Add(new Label() { Text = "Low:", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true }, 6, 1);
-			pbl.Controls.Add(powerbalancer_low_action = new Label() { Text = "n/a", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, Width = cpupw, Height = cpuph }, 7, 1);
-
-			//buglayout.Controls.Add(pbl);
-			infopanel.Controls.Add(new Label() { Text = "CPU load", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true });
-			infopanel.Controls.Add(pbl);
-
 			powerlayout.Controls.Add(powerbalancerlog);
 
 			var powerbalancerstatus = new TableLayoutPanel()
@@ -1726,20 +1684,6 @@ namespace TaskMaster
 					if (powerbalancerlog.Items.Count > 3)
 						powerbalancerlog.Items.RemoveAt(0);
 					powerbalancerlog.Items.Add(li);
-
-					powerbalancer_current.Text = string.Format("{0:N1}%", ev.Current);
-					powerbalancer_high.Text = string.Format("{0:N1}%", ev.High);
-					powerbalancer_average.Text = string.Format("{0:N1}%", ev.Average);
-					powerbalancer_low.Text = string.Format("{0:N1}%", ev.Low);
-					powerbalancer_pressure.Text = string.Format("{0:N1}%", ev.Pressure);
-
-					if (ev.Handled)
-					{
-						powerbalancer_high_action.Text = powerbalancer_high.Text;
-						powerbalancer_average_action.Text = powerbalancer_average.Text;
-						powerbalancer_low_action.Text = powerbalancer_low.Text;
-						powerbalancer_plan.Text = reactionary;
-					}
 				}
 				catch // this tends to happen if this event is being handled while the window is being closed
 				{ }
@@ -1932,7 +1876,6 @@ namespace TaskMaster
 
 		readonly object loglistLock = new object();
 		ListView loglist;
-		List<DateTime> loglist_stamp;
 
 		public void FillLog()
 		{
@@ -1944,7 +1887,6 @@ namespace TaskMaster
 				foreach (var evmsg in MemoryLog.ToArray())
 				{
 					loglist.Items.Add(evmsg.Message);
-					loglist_stamp.Add(DateTime.Now);
 				}
 			}
 
@@ -2092,9 +2034,9 @@ namespace TaskMaster
 			}
 		}
 
-		public void onNewLog(object sender, LogEventArgs e)
+		public void onNewLog(object sender, LogEventArgs evmsg)
 		{
-			if (LogIncludeLevel.MinimumLevel > e.Level) return;
+			if (LogIncludeLevel.MinimumLevel > evmsg.Level) return;
 
 			DateTime t = DateTime.Now;
 
@@ -2106,11 +2048,9 @@ namespace TaskMaster
 					while (excessitems-- > 0)
 					{
 						loglist.Items.RemoveAt(0);
-						loglist_stamp.RemoveAt(0);
 					}
 
-					loglist.Items.Add(e.Message).EnsureVisible();
-					loglist_stamp.Add(DateTime.Now);
+					loglist.Items.Add(evmsg.Message).EnsureVisible();
 				}
 				catch { }
 			}
@@ -2290,6 +2230,39 @@ namespace TaskMaster
 			}
 
 			disposed = true;
+		}
+	}
+
+	public class WatchlistSorter : IComparer
+	{
+		public int Column { get; set; } = 0;
+		public SortOrder Order { get; set; } = SortOrder.Ascending;
+		public bool Number { get; set; } = false;
+
+		readonly CaseInsensitiveComparer Comparer = new CaseInsensitiveComparer();
+
+		readonly int[] NumberColumns = new int[] { };
+
+		public WatchlistSorter(int[] numberColumns = null)
+		{
+			if (numberColumns != null)
+				NumberColumns = numberColumns;
+		}
+
+		public int Compare(object x, object y)
+		{
+			ListViewItem lix = (ListViewItem)x;
+			ListViewItem liy = (ListViewItem)y;
+			int result = 0;
+
+			Number = NumberColumns.Contains(Column);
+
+			if (!Number)
+				result = Comparer.Compare(lix.SubItems[Column].Text, liy.SubItems[Column].Text);
+			else
+				result = Comparer.Compare(Convert.ToInt64(lix.SubItems[Column].Text), Convert.ToInt64(liy.SubItems[Column].Text));
+
+			return Order == SortOrder.Ascending ? result : -result;
 		}
 	}
 }

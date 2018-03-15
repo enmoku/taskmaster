@@ -29,6 +29,7 @@ using System.Windows.Forms;
 using Serilog;
 using System.Diagnostics;
 using System.Threading.Tasks;
+using System.Management;
 
 namespace TaskMaster
 {
@@ -69,7 +70,13 @@ namespace TaskMaster
 				RescanRequest?.Invoke(this, null);
 				menu_rescan.Enabled = true;
 			});
-			menu_configuration = new ToolStripMenuItem("Configuration", null, ShowConfigRequest);
+			menu_configuration = new ToolStripMenuItem("Configuration");
+			var menu_configuration_autopower = new ToolStripMenuItem("Power auto-adjust", null, ShowPowerConfig);
+			var menu_configuration_folder = new ToolStripMenuItem("Open in file manager", null, ShowConfigRequest);
+			menu_configuration.DropDownItems.Add(menu_configuration_autopower);
+			menu_configuration.DropDownItems.Add(new ToolStripSeparator());
+			menu_configuration.DropDownItems.Add(menu_configuration_folder);
+
 			menu_runatstart = new ToolStripMenuItem("Run at start", null, RunAtStartMenuClick);
 			menu_runatstart.Checked = RunAtStartRegRun(false, true);
 
@@ -128,8 +135,6 @@ namespace TaskMaster
 				throw new InitFailure("Explorer registeriong failed; not running?");
 
 			ms.Enabled = false;
-
-			Tray.Visible = true;
 
 			//Tray.Click += RestoreMainWindow;
 			Tray.MouseClick += ShowWindow;
@@ -243,15 +248,24 @@ namespace TaskMaster
 			//CLEANUP: Console.WriteLine("Done opening config folder.");
 		}
 
+		async void ShowPowerConfig(object sender, EventArgs e)
+		{
+			PowerConfigWindow.ShowPowerConfig().ConfigureAwait(true);
+		}
+
 		int restoremainwindow_lock = 0;
+		bool showafter = false;
 		async void RestoreMainWindow(object sender, EventArgs e)
 		{
 			if (!Atomic.Lock(ref restoremainwindow_lock))
+			{
+				showafter = true;
 				return; // already being done
+			}
 
 			using (var m = SelfAwareness.Mind(DateTime.Now.AddSeconds(10)))
 			{
-				TaskMaster.ShowMainWindow();
+				TaskMaster.ShowMainWindow().ConfigureAwait(true);
 			}
 
 			if (TaskMaster.Trace)
@@ -262,6 +276,9 @@ namespace TaskMaster
 
 		async void ShowWindow(object sender, MouseEventArgs e)
 		{
+			if (TaskMaster.Trace)
+				Console.WriteLine("Tray Click");
+
 			if (e.Button == MouseButtons.Left)
 			{
 				RestoreMainWindow(sender, null);
@@ -361,7 +378,7 @@ namespace TaskMaster
 				return;
 			}
 
-			Tray.Visible = true; // TODO: Is this enough/necessary? Doesn't seem to be. WinForms appears to recover on its own.
+			Refresh();// TODO: Is this enough/necessary? Doesn't seem to be. WinForms appears to recover on its own.
 		}
 
 		System.Diagnostics.Process[] ExplorerInstances
@@ -453,7 +470,6 @@ namespace TaskMaster
 		{
 			Tray.Visible = true;
 		}
-
 
 		void RunAtStartMenuClick(object sender, EventArgs ev)
 		{

@@ -209,7 +209,7 @@ namespace TaskMaster
 			processmanager.ProcessEverythingRequest(null, null);
 		}
 
-		public static void ShowMainWindow()
+		public static async Task ShowMainWindow()
 		{
 			if (mainwindow?.Visible ?? false)
 			{
@@ -220,7 +220,7 @@ namespace TaskMaster
 			{
 				using (var m = SelfAwareness.Mind(DateTime.Now.AddSeconds(30)))
 				{
-					BuildMainWindow().ConfigureAwait(true);
+					await BuildMainWindow().ConfigureAwait(true);
 					mainwindow?.Reveal();
 				}
 			}
@@ -232,30 +232,61 @@ namespace TaskMaster
 			{
 				if (mainwindow == null)
 				{
+					if (TaskMaster.Trace)
+						Console.WriteLine("Building MainWindow");
 					mainwindow = new MainWindow();
 					mainwindow.FormClosed += MainWindowClose;
 
+					if (TaskMaster.Trace)
+						Console.WriteLine("... hooking to TRAY");
 					trayaccess.hookMainWindow(ref mainwindow);
 
 					if (diskmanager != null)
+					{
+						if (TaskMaster.Trace)
+							Console.WriteLine("... hooking NVM manager");
 						mainwindow.hookDiskManager(ref diskmanager);
+					}
 
 					if (processmanager != null)
+					{
+						if (TaskMaster.Trace)
+							Console.WriteLine("... hooking PROC manager");
 						mainwindow.hookProcessManager(ref processmanager);
+					}
 
 					if (micmonitor != null)
+					{
+						if (TaskMaster.Trace)
+							Console.WriteLine("... hooking MIC monitor");
 						mainwindow.hookMicMonitor(micmonitor);
+					}
 
 					mainwindow.FillLog();
 
 					if (netmonitor != null)
+					{
+						if (TaskMaster.Trace)
+							Console.WriteLine("... hooking NET monitor");
 						mainwindow.hookNetMonitor(ref netmonitor);
+					}
 
 					if (activeappmonitor != null)
+					{
+						if (TaskMaster.Trace)
+							Console.WriteLine("... hooking APP manager");
 						mainwindow.hookActiveAppMonitor(ref activeappmonitor);
+					}
 
 					if (powermanager != null)
+					{
+						if (TaskMaster.Trace)
+							Console.WriteLine("... hooking POW manager");
 						mainwindow.hookPowerManager(ref powermanager);
+					}
+
+					if (TaskMaster.Trace)
+						Console.WriteLine("MainWindow built");
 				}
 			}
 		}
@@ -336,6 +367,10 @@ namespace TaskMaster
 					catch { Log.Warning("Failed to set self to background mode."); }
 				}
 			}
+
+			if (TaskMaster.Trace)
+				Console.WriteLine("Displaying Tray Icon");
+			trayaccess.Refresh();
 		}
 
 		public static bool LogPower = false;
