@@ -132,6 +132,7 @@ namespace TaskMaster
 		public static DiskManager diskmanager = null;
 		public static PowerManager powermanager = null;
 		public static ActiveAppManager activeappmonitor = null;
+		public static HealthMonitor healthmonitor = null;
 
 		public static void MainWindowClose(object sender, EventArgs e)
 		{
@@ -206,7 +207,7 @@ namespace TaskMaster
 		/// </summary>
 		public static async Task Evaluate()
 		{
-			processmanager.ProcessEverythingRequest(null, null);
+			processmanager.ScanEverythingRequest(null, null);
 		}
 
 		public static async Task ShowMainWindow()
@@ -371,6 +372,13 @@ namespace TaskMaster
 			if (TaskMaster.Trace)
 				Console.WriteLine("Displaying Tray Icon");
 			trayaccess.Refresh();
+
+			if (HealthMonitorEnabled)
+			{
+				healthmonitor = new HealthMonitor();
+				if (ProcessMonitorEnabled)
+					healthmonitor.hookProcessManager(ref processmanager);
+			}
 		}
 
 		public static bool LogPower = false;
@@ -397,6 +405,7 @@ namespace TaskMaster
 		public static bool ActiveAppMonitorEnabled { get; private set; } = true;
 		public static bool PowerManagerEnabled { get; private set; } = true;
 		public static bool MaintenanceMonitorEnabled { get; private set; } = true;
+		public static bool HealthMonitorEnabled { get; private set; } = true;
 
 		public static bool ShowOnStart { get; private set; } = true;
 
@@ -490,6 +499,10 @@ namespace TaskMaster
 			dirtyconfig |= modified;
 			MaintenanceMonitorEnabled = compsec.GetSetDefault("Maintenance", false, out modified).BoolValue;
 			compsec["Maintenance"].Comment = "Enable basic maintenance monitoring functionality.";
+			dirtyconfig |= modified;
+
+			HealthMonitorEnabled = compsec.GetSetDefault("Health", true, out modified).BoolValue;
+			compsec["Health"].Comment = "General system health monitoring suite.";
 			dirtyconfig |= modified;
 
 			var qol = cfg["Quality of Life"];
@@ -969,6 +982,16 @@ namespace TaskMaster
 					{
 						activeappmonitor?.Dispose();
 						activeappmonitor = null;
+					}
+					catch (Exception ex)
+					{
+						Logging.Stacktrace(ex);
+					}
+
+					try
+					{
+						healthmonitor?.Dispose();
+						healthmonitor = null;
 					}
 					catch (Exception ex)
 					{

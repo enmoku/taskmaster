@@ -76,27 +76,27 @@ namespace TaskMaster
 			return s.ToString();
 		}
 
-		public static string ByteString(long bytes, bool rate = true)
+		public static string ByteString(long bytes)
 		{
 			var s = new System.Text.StringBuilder();
 
-			const long giga = 1000000000;
-			const long mega = 1000000;
-			const long kilo = 1000;
+			const double giga = 1000000000;
+			const double mega = 1000000;
+			const double kilo = 1000;
 
-			if (bytes > (giga / 10))
+			if (Math.Abs(bytes) > (giga * 0.5f))
 			{
-				s.Append(string.Format("{0:N3}", bytes / giga));
+				s.Append(string.Format("{0:N3}", (double)bytes / giga));
 				s.Append(" G");
 			}
-			else if (bytes > (mega / 10))
+			else if (Math.Abs(bytes) > (mega * 0.5f))
 			{
-				s.Append(string.Format("{0:N2}", bytes / mega));
+				s.Append(string.Format("{0:N2}", (double)bytes / mega));
 				s.Append(" M");
 			}
-			else if (bytes > (kilo / 10))
+			else if (Math.Abs(bytes) > (kilo * 0.5f))
 			{
-				s.Append(string.Format("{0:N1}", bytes / kilo));
+				s.Append(string.Format("{0:N1}", (double)bytes / kilo));
 				s.Append(" k");
 			}
 			else
@@ -105,9 +105,6 @@ namespace TaskMaster
 				s.Append(" ");
 			}
 			s.Append("B");
-
-			if (rate)
-				s.Append("/s");
 
 			return s.ToString();
 		}

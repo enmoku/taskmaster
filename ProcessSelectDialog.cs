@@ -69,7 +69,7 @@ namespace TaskMaster
 				//Width = 160,
 			};
 
-			var procs = System.Diagnostics.Process.GetProcesses();
+			var procs = System.Diagnostics.Process.GetProcesses(); // TODO: Hook to ProcessManager.ScanEverything somehow
 			var procnames = new HashSet<string>();
 			foreach (var proc in procs)
 			{

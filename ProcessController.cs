@@ -480,6 +480,8 @@ namespace TaskMaster
 			}
 			catch { /* NOP, don't care */ }
 
+			ProcessPriorityClass newPriority = oldPriority;
+
 			if (!denyChange)
 			{
 				if (!foreground && ForegroundOnly)
@@ -496,7 +498,10 @@ namespace TaskMaster
 					try
 					{
 						if (info.Process.SetLimitedPriority(Priority, Increase, Decrease))
+						{
 							modified = mPriority = true;
+							newPriority = Priority;
+						}
 					}
 					catch
 					{
@@ -572,17 +577,14 @@ namespace TaskMaster
 					try
 					{
 						info.Process.Refresh();
-						ProcessPriorityClass newPriority = info.Process.PriorityClass;
+						newPriority = info.Process.PriorityClass;
 						if (newPriority.ToInt32() != Priority.ToInt32())
 						{
 							Log.Warning("[{FriendlyName}] {Exe} (#{Pid}) Post-mortem of modification: FAILURE (Expected: {TgPrio}, Detected: {CurPrio}).",
 										FriendlyName, info.Name, info.Id, Priority.ToString(), newPriority.ToString());
 						}
 					}
-					catch
-					{
-						// NOP, don't caree
-					}
+					catch { }// NOP, don't caree
 				}
 
 				LastTouch = DateTime.Now;
@@ -593,7 +595,10 @@ namespace TaskMaster
 			sbs.Append("; Priority: ");
 			if (mPriority)
 				sbs.Append(oldPriority.ToString()).Append(" → ");
-			sbs.Append(Priority.ToString()).Append("; Affinity: ");
+			sbs.Append(newPriority.ToString());
+			if (denyChange)
+				sbs.Append(" [Protected]");
+			sbs.Append("; Affinity: ");
 			if (mAffinity)
 				sbs.Append(oldAffinity.ToInt32()).Append(" → ");
 			sbs.Append(Affinity.ToInt32());

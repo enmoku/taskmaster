@@ -67,34 +67,24 @@ namespace TaskMaster
 			bool enOrig = prc.Enabled;
 			prc.Enabled = false;
 
-			var sbs = new System.Text.StringBuilder();
+			// TODO: VALIDATE FOR GRIMMY'S SAKE!
+			// TODO: Foreground/Powermode need to be informed of any relevant changes.
 
-			sbs.Append("[").Append(friendlyName.Text).Append("]").AppendLine();
-			if (execName.Text.Length > 0)
-				sbs.Append("Image = ").Append(execName.Text).AppendLine();
-			if (pathName.Text.Length > 0)
-				sbs.Append("Path = ").Append(pathName.Text).AppendLine();
-			sbs.Append("Priority = ").Append(priorityClass.SelectedIndex).AppendLine();
-			sbs.Append("Increase = ").Append(increasePrio.Checked).AppendLine();
-			sbs.Append("Decrease = ").Append(decreasePrio.Checked).AppendLine();
-			sbs.Append("Affinity = ").Append(affinityMask.Value).AppendLine();
-			if (powerPlan.SelectedIndex != 3)
-				sbs.Append("Power plan = ").Append(powerPlan.Text).AppendLine();
-			if (rescanFreq.Value > 0)
-				sbs.Append("Rescan = ").Append(rescanFreq.Value).AppendLine();
-			sbs.Append("Allow paging = ").Append(allowPaging.Checked).AppendLine();
-			sbs.Append("Foreground only = ").Append(foregroundOnly.Checked).AppendLine();
+			//var sbs = new System.Text.StringBuilder();
 
-			try
-			{
-				Clipboard.SetText(sbs.ToString());
-				Log.Information("App configuration saved to clipboard, you can now replace it in watchlist.");
-			}
-			catch
-			{
-				Log.Warning("Failure to copy configuration to clipboard.");
-			}
-			sbs.Clear();
+			prc.FriendlyName = friendlyName.Text.Trim();
+			prc.Executable = execName.Text.Length > 0 ? execName.Text.Trim() : null;
+			prc.Path = pathName.Text.Length > 0 ? pathName.Text.Trim() : null;
+			prc.Priority = ProcessHelpers.IntToPriority(priorityClass.SelectedIndex); // is this right?
+			prc.Increase = increasePrio.Checked;
+			prc.Decrease = decreasePrio.Checked;
+			prc.Affinity = new IntPtr(Convert.ToInt32(affinityMask.Value));
+			prc.PowerPlan = PowerManager.GetModeByName(powerPlan.Text); // verify
+			prc.Rescan = Convert.ToInt32(rescanFreq.Value);
+			prc.AllowPaging = allowPaging.Checked;
+			prc.ForegroundOnly = foregroundOnly.Checked;
+
+			prc.Enabled = enOrig;
 		}
 
 		TextBox friendlyName = new TextBox();
@@ -126,7 +116,7 @@ namespace TaskMaster
 			var lt = new TableLayoutPanel
 			{
 				Parent = this,
-				ColumnCount = 2,
+				ColumnCount = 3,
 				//lrows.RowCount = 10;
 				Dock = DockStyle.Fill,
 				AutoSize = true,
@@ -146,19 +136,21 @@ namespace TaskMaster
 			};
 			tooltip.SetToolTip(friendlyName, "Human readable name, for user convenience.");
 			lt.Controls.Add(friendlyName);
+
+			lt.Controls.Add(new Label()); // empty
+
+			// EXECUTABLE
 			lt.Controls.Add(new Label { Text = "Executable", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, Dock = DockStyle.Left });
-			var execpanel = new TableLayoutPanel() { ColumnCount = 2, AutoSize = true };
 			execName.Text = prc.Executable;
-			execName.Width = 134;
+			execName.Width = 180;
 			tooltip.SetToolTip(execName, "Executable name, used to recognize these applications.\nFull filename, including extension if any.");
-			execpanel.Controls.Add(execName);
 			var findexecbutton = new Button()
 			{
-				Text = "Find",
-				//AutoSize = true,
-				Dock = DockStyle.Left,
-				Width = 36,
-				Height = 20,
+				Text = "Running",
+				AutoSize = true,
+				//Dock = DockStyle.Left,
+				//Width = 46,
+				//Height = 20,
 			};
 			findexecbutton.Click += (sender, e) =>
 			{
@@ -178,17 +170,46 @@ namespace TaskMaster
 					}
 				}
 			};
-			execpanel.Controls.Add(findexecbutton);
-			lt.Controls.Add(execpanel);
+			lt.Controls.Add(execName);
+			lt.Controls.Add(findexecbutton);
 
 			// PATH
 			lt.Controls.Add(new Label { Text = "Path", TextAlign = System.Drawing.ContentAlignment.MiddleLeft });
 			pathName.Text = prc.Path;
 			pathName.Width = 180;
 			tooltip.SetToolTip(pathName, "Path name; rule will match only paths that include this, subfolders included.\nPartial matching is allowed.");
+			var findpathbutton = new Button()
+			{
+				Text = "Locate",
+				AutoSize = true,
+				//Dock = DockStyle.Left,
+				//Width = 46,
+				//Height = 20,
+			};
+			findpathbutton.Click += (sender, e) =>
+			{
+				try
+				{
+					using (var folderdialog = new FolderBrowserDialog())
+					{
+						folderdialog.ShowNewFolderButton = false;
+						folderdialog.RootFolder = Environment.SpecialFolder.MyComputer;
+						var result = folderdialog.ShowDialog();
+						if (result == DialogResult.OK && !string.IsNullOrEmpty(folderdialog.SelectedPath))
+						{
+							pathName.Text = folderdialog.SelectedPath;
+						}
+					}
+				}
+				catch (Exception ex)
+				{
+					Logging.Stacktrace(ex);
+				}
+			};
 			lt.Controls.Add(pathName);
-			// system.windows.forms.folderbrowserdialog
+			lt.Controls.Add(findpathbutton);
 
+			// PRIORITY
 			lt.Controls.Add(new Label { Text = "Priority class", TextAlign = System.Drawing.ContentAlignment.MiddleLeft });
 			var priopanel = new TableLayoutPanel()
 			{
@@ -221,8 +242,11 @@ namespace TaskMaster
 			priopanel.Controls.Add(priorityClass);
 			priopanel.Controls.Add(incdecpanel);
 			lt.Controls.Add(priopanel);
+			lt.Controls.Add(new Label()); // empty
+
 			//lt.Controls.Add(priorityClass);
 
+			// AFFINITY
 			lt.Controls.Add(new Label { Text = "Affinity", TextAlign = System.Drawing.ContentAlignment.MiddleLeft });
 			affinityMask.Width = 80;
 			affinityMask.Maximum = ProcessManager.allCPUsMask;
@@ -242,13 +266,13 @@ namespace TaskMaster
 
 			// ---------------------------------------------------------------------------------------------------------
 
-			var layout = new TableLayoutPanel()
+			var afflayout = new TableLayoutPanel()
 			{
 				ColumnCount = 1,
 				AutoSize = true,
 			};
 
-			layout.Controls.Add(affinityMask);
+			afflayout.Controls.Add(affinityMask);
 
 			var corelayout = new TableLayoutPanel()
 			{
@@ -289,11 +313,11 @@ namespace TaskMaster
 				corelayout.Controls.Add(box);
 			}
 
-			layout.Controls.Add(corelayout);
+			afflayout.Controls.Add(corelayout);
 
 			var buttonpanel = new TableLayoutPanel()
 			{
-				ColumnCount = 2,
+				ColumnCount = 1,
 				AutoSize = true,
 			};
 			var clearbutton = new Button() { Text = "None" };
@@ -306,9 +330,8 @@ namespace TaskMaster
 						{
 							foreach (var litem in list) litem.Checked = true;
 						};
-			buttonpanel.Controls.Add(clearbutton);
 			buttonpanel.Controls.Add(allbutton);
-			layout.Controls.Add(buttonpanel);
+			buttonpanel.Controls.Add(clearbutton);
 
 			affinityMask.ValueChanged += (sender, e) =>
 			{
@@ -319,10 +342,12 @@ namespace TaskMaster
 					bu.Checked = ((cpumask & (1 << bitoff++)) != 0);
 			};
 
-			lt.Controls.Add(layout);
+			lt.Controls.Add(afflayout);
+			lt.Controls.Add(buttonpanel);
 
 			// ---------------------------------------------------------------------------------------------------------
 
+			// RESCAN
 			lt.Controls.Add(new Label { Text = "Rescan frequency", TextAlign = System.Drawing.ContentAlignment.MiddleLeft });
 			rescanFreq.Minimum = 0;
 			rescanFreq.Maximum = 60 * 24;
@@ -330,29 +355,38 @@ namespace TaskMaster
 			rescanFreq.Width = 80;
 			tooltip.SetToolTip(rescanFreq, "How often to rescan for this app, in minutes.\nSometimes instances slip by.");
 			lt.Controls.Add(rescanFreq);
+			lt.Controls.Add(new Label()); // empty
 
 			//lt.Controls.Add(new Label { Text="Children"});
 			//lt.Controls.Add(new Label { Text="Child priority"});
 
+			// POWER
 			lt.Controls.Add(new Label { Text = "Power plan", TextAlign = System.Drawing.ContentAlignment.MiddleLeft });
-			foreach (var t in PowerManager.PowerModes)
+			foreach (string t in PowerManager.PowerModes)
 				powerPlan.Items.Add(t);
 			int ppi = System.Convert.ToInt32(prc.PowerPlan);
 			powerPlan.DropDownStyle = ComboBoxStyle.DropDownList;
 			powerPlan.SelectedIndex = System.Math.Max(ppi, 3);
 			powerPlan.Width = 180;
-			tooltip.SetToolTip(powerPlan, "Power Mode to be used when this application is detected.");
+			tooltip.SetToolTip(powerPlan, "Power Mode to be used when this application is detected. Leaving this undefined disables it.");
 			lt.Controls.Add(powerPlan);
+			lt.Controls.Add(new Label()); // empty
 
+			// FOREGROUND
 			lt.Controls.Add(new Label { Text = "Foreground only", TextAlign = System.Drawing.ContentAlignment.MiddleLeft });
 			foregroundOnly.Checked = prc.ForegroundOnly;
 			tooltip.SetToolTip(foregroundOnly, "Lower priority and power mode is restored when this app is not in focus.");
 			lt.Controls.Add(foregroundOnly);
+			lt.Controls.Add(new Label()); // empty
 
+			// TODO: Add modifying background priority
+
+			// PAGING
 			lt.Controls.Add(new Label { Text = "Allow paging", TextAlign = System.Drawing.ContentAlignment.MiddleLeft });
 			allowPaging.Checked = prc.AllowPaging;
 			tooltip.SetToolTip(allowPaging, "Allow this application to be paged when it is requested.");
 			lt.Controls.Add(allowPaging);
+			lt.Controls.Add(new Label()); // empty
 
 			//lt.Controls.Add(new Label { Text=""})
 

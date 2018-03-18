@@ -30,6 +30,7 @@ using Serilog;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Collections.Concurrent;
+using System.Diagnostics.Contracts;
 
 namespace TaskMaster
 {
@@ -39,7 +40,8 @@ namespace TaskMaster
 	public class SelfAwareness
 	{
 		static readonly object AwarenessMap_lock = new object();
-		static Dictionary<int, Awareness> AwarenessMap;
+		static ConcurrentDictionary<int, Awareness> AwarenessMap;
+		static Dictionary<int, Awareness> HungAwarenessMap;
 
 		static ConcurrentQueue<int> FreeKeys = new ConcurrentQueue<int>();
 		static int NextKey = 1;
@@ -49,7 +51,7 @@ namespace TaskMaster
 
 		public SelfAwareness()
 		{
-			AwarenessMap = new Dictionary<int, Awareness>();
+			AwarenessMap = new ConcurrentDictionary<int, Awareness>();
 
 			NextDue = DateTime.Now.AddSeconds(5);
 			AwarenessTicker = new System.Threading.Timer(Assess, null, 5 * 1000, 15 * 1000);
@@ -92,7 +94,7 @@ namespace TaskMaster
 					return;
 				}
 
-				AwarenessMap.Add(awn.Key, awn);
+				AwarenessMap.TryAdd(awn.Key, awn);
 
 				//Log.Debug("<<Self-Awareness>> Added [{Key}] {Method}", awn.Key, awn.Method);
 			}
@@ -103,10 +105,9 @@ namespace TaskMaster
 			lock (AwarenessMap_lock)
 			{
 				Awareness awn;
-				if (AwarenessMap.TryGetValue(key, out awn))
+				if (AwarenessMap.TryRemove(key, out awn))
 				{
 					//Log.Debug("<<Self-Awareness>> Removing [{Key}] {Method}", awn.Key, awn.Method);
-					AwarenessMap.Remove(key);
 				}
 			}
 		}
@@ -152,23 +153,32 @@ namespace TaskMaster
 						Awareness awn = awnPair.Value;
 						if (awn.Due <= now)
 						{
-							if (awn.Message != null)
-							{
-								Log.Fatal("<<Self-Awareness>> {Method} hung [{Line}] – {Message} – ({File})",
-										  awn.Method, awn.Line, awn.Message, awn.File);
-							}
-							else
-							{
-								Log.Fatal("<<Self-Awareness>> {Method} hung [{Line}] ({File})",
-										  awn.Method, awn.Line, awn.File);
-							}
-							Log.Fatal("<<Self-Awareness>> Due:{Due} – Now:{Now} – Late: {Late}s",
-									  awn.Due, now, (now - awn.Due).TotalSeconds);
+							awn.Tick++;
 
-							if (awn.Callback != null)
-								awn.Callback.Invoke(awn.UserObject);
+							if (awn.Tick == 1)
+							{
+								awn.Overdue = true;
+								awn.Due = awn.Due.AddSeconds(5);
 
-							clearList.Push(awn.Key);
+								if (awn.Message != null)
+								{
+									Log.Fatal("<<Self-Awareness>> {Method} hung [{Line}] – {Message} – ({File})",
+											  awn.Method, awn.Line, awn.Message, awn.File);
+								}
+								else
+								{
+									Log.Fatal("<<Self-Awareness>> {Method} hung [{Line}] ({File})",
+											  awn.Method, awn.Line, awn.File);
+								}
+
+								if (awn.Callback != null)
+									awn.Callback.Invoke(awn.UserObject);
+							}
+							Log.Fatal("<<Self-Awareness>> Tick: {Tick} – Due:{Due} – Now:{Now} – Late: {Late}s",
+									  awn.Tick, awn.Due, now, (now - awn.Due).TotalSeconds);
+
+							if (awn.Tick >= 3)
+								clearList.Push(awn.Key);
 						}
 						else
 						{
@@ -182,7 +192,11 @@ namespace TaskMaster
 			while (clearList.Count > 0)
 			{
 				int key = clearList.Pop();
-				RemoveAwareness(key);
+				Awareness awn = null;
+				if (AwarenessMap.TryGetValue(key, out awn))
+				{
+					RemoveAwareness(key);
+				}
 			}
 		}
 	}
@@ -190,6 +204,10 @@ namespace TaskMaster
 	public class Awareness : IDisposable
 	{
 		public int Key;
+
+		public int Tick = 0;
+
+		public bool Overdue = false;
 
 		public DateTime Start;
 		public DateTime Due;
@@ -231,7 +249,7 @@ namespace TaskMaster
 		{
 			if (disposed)
 			{
-				//Log.Debug("<<Self-Awareness>> Redispose [{Key}] {Method}", Key, Method);
+				Log.Debug("<<Self-Awareness>> Redispose: {Method} [{Line}]", Key, Method, Line);
 				return;
 			}
 
@@ -239,6 +257,9 @@ namespace TaskMaster
 
 			if (disposing)
 			{
+				if (Overdue && Tick <= 3)
+					Log.Fatal("<<Self-Awareness>> {Method} recovered", Method, Line);
+
 				//Log.Debug("<<Self-Awareness>> Dispose [{Key}] {Method} [Time: {N}s]", Key, Method, string.Format("{0:N2}", (DateTime.Now - Start).TotalSeconds));
 				SelfAwareness.Unmind(Key);
 				SelfAwareness.FreeKey(Key);

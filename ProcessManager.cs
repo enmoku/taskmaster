@@ -190,149 +190,82 @@ namespace TaskMaster
 			activeappmonitor.ActiveChanged += ForegroundAppChangedEvent;
 		}
 
-		public async Task FreeMemoryFor(string executable)
+		string freememoryignore = null;
+		async void FreeMemoryTick(object sender, BasicProcessInfo info)
 		{
-			Log.Information("Freeing memory for: {Exec}", executable);
-
-			var procs = Process.GetProcessesByName(executable); // unnecessary maybe?
-			if (procs.Length == 0)
-			{
-				Log.Error("{Exec} not found, not freeing memory for it.", executable);
+			if (!string.IsNullOrEmpty(freememoryignore) && info.Name.Equals(freememoryignore))
 				return;
-			}
 
-			using (var m = SelfAwareness.Mind(DateTime.Now.AddSeconds(30)))
+			try
 			{
-				long saved = 0;
-				var allprocs = Process.GetProcesses();
-				foreach (var prc in allprocs)
-				{
-					int pid = -1;
-					string name = null;
-					try
-					{
-						pid = prc.Id;
-						name = prc.ProcessName;
-					}
-					catch
-					{
-						continue;
-					}
-
-					if (IgnoreProcessID(pid) || IgnoreProcessName(name))
-						continue;
-
-					if (name.Equals(executable)) // ignore the one we're freeing stuff for
-						continue;
-
-					//  TODO: Add ignore other processes
-
-					try
-					{
-						long ns = prc.WorkingSet64;
-						EmptyWorkingSet(prc.Handle);
-						prc.Refresh();
-						long mns = (ns - prc.WorkingSet64);
-						saved += mns;
-					}
-					catch
-					{
-						continue;
-					}
-				}
+				EmptyWorkingSet(info.Process.Handle);
 			}
+			catch (Exception ex)
+			{
+				// Logging.Stacktrace(ex);
+			}
+		}
+
+		HashSet<int> ignorePids = new HashSet<int>();
+		public void Ignore(int processId)
+		{
+			ignorePids.Add(processId);
+		}
+
+		public void Unignore(int processId)
+		{
+			ignorePids.Remove(processId);
+		}
+
+		public async Task FreeMemory(string executable = null)
+		{
+			if (!TaskMaster.PagingEnabled) return;
+
+
+			if (!string.IsNullOrEmpty(executable))
+			{
+				var procs = Process.GetProcessesByName(executable); // unnecessary maybe?
+				if (procs.Length == 0)
+				{
+					Log.Error("{Exec} not found, not freeing memory for it.", executable);
+					return;
+				}
+
+				Log.Information("Freeing memory for: {Exec}", executable);
+			}
+
+			freememoryignore = executable;
+
+			ScanEverythingEvent += FreeMemoryTick;
+			ScanEverything(); // TODO: Call for this to happen otherwise
+			ScanEverythingEvent -= FreeMemoryTick;
 		}
 
 		public async void PageEverythingRequest(object sender, EventArgs e)
 		{
 			if (TaskMaster.Trace) Log.Verbose("Paging requested.");
 
-			if (!TaskMaster.PagingEnabled) return; // shouldn't happen, but here we have it anyway
-
-			long saved = 0;
-			var ws = Process.GetCurrentProcess().WorkingSet64;
-			EmptyWorkingSet(Process.GetCurrentProcess().Handle);
-			long nws = Process.GetCurrentProcess().WorkingSet64;
-			saved += (ws - nws);
-			Log.Verbose("Self-paged {PagedMB}.", HumanInterface.ByteString(saved));
-
-			Process[] procs = Process.GetProcesses();
-
-			//Log.Verbose("Scanning {ProcessCount} processes for paging.", procs.Length);
-
-			// DEBUG: if (TaskMaster.VeryVerbose) Console.WriteLine(string.Format("Handling: +{0} = {1} --- PageEverythingRequest", procs.Length, Handling));
-			onInstanceHandling?.Invoke(this, new InstanceEventArgs { Count = procs.Length - 2 });
-
-			using (var m = SelfAwareness.Mind(DateTime.Now.AddSeconds(5)))
-			{
-				try
-				{
-					foreach (Process process in procs)
-					{
-						int pid = -1;
-						string name = null;
-						try
-						{
-							pid = process.Id;
-							name = process.ProcessName;
-							if (IgnoreProcessID(pid)) continue;
-						}
-						catch { continue; }
-
-						ProcessController control;
-						lock (execontrol_lock)
-						{
-							if (execontrol.TryGetValue(LowerCase(name), out control))
-								if (!control.AllowPaging) continue;
-						}
-
-						try
-						{
-							long ns = process.WorkingSet64;
-							EmptyWorkingSet(process.Handle);
-							process.Refresh();
-							long mns = (ns - process.WorkingSet64);
-							saved += mns;
-							if (TaskMaster.Trace) Log.Verbose("Paged: {ProcessName} (#{ProcessID}) – {PagedMBs:N1} MBs.", name, pid, mns / 1000000);
-						}
-						catch
-						{
-							// NOP
-						}
-					}
-				}
-				catch (Exception ex)
-				{
-					Log.Fatal("Uncaught exception while paging");
-					Logging.Stacktrace(ex);
-					return;//throw; // event handler, throwing is a nogo 
-				}
-				finally
-				{
-					// DEBUG: if (TaskMaster.VeryVerbose) Console.WriteLine(string.Format("Handling: -{0} = {1} --- PageEverythingRequest", procs.Length, Handling));
-					onInstanceHandling?.Invoke(this, new InstanceEventArgs { Count = -procs.Length - 2 });
-				}
-			}
-
-			Log.Information("Paged total of {PagedMBs:N1} MBs.", saved / 1000000);
+			FreeMemory(null);
 
 			if (TaskMaster.Trace) Log.Verbose("Paging complete.");
 		}
 
-		public async void ProcessEverythingRequest(object sender, EventArgs e)
+		public async void ScanEverythingRequest(object sender, EventArgs e)
 		{
 			if (TaskMaster.Trace) Log.Verbose("Rescan requested.");
+
+			LastRescan = DateTime.Now;
+			NextRescan = DateTime.Now.AddSeconds(RescanEverythingFrequency / 1000);
 
 			try
 			{
 				using (var m = SelfAwareness.Mind(DateTime.Now.AddSeconds(30)))
 				{
-					await ProcessEverything().ConfigureAwait(false);
+					ScanEverything();
 				}
 			}
 			catch (Exception ex)
 			{
-				Log.Warning("Scan everything failure.");
 				Logging.Stacktrace(ex);
 				return; //throw; // event handler, no can throw
 			}
@@ -340,11 +273,12 @@ namespace TaskMaster
 
 		System.Threading.Timer rescanTimer;
 
-		/// <summary>
-		/// Processes everything. Pointlessly thorough, but there's no nicer way around for now.
-		/// </summary>
+		public event EventHandler<BasicProcessInfo> ScanEverythingEvent;
+		public event EventHandler ScanEverythingStartEvent;
+		public event EventHandler ScanEverythingEndEvent;
+
 		int scaninprogress = 0;
-		public async Task ProcessEverything()
+		public async void ScanEverything()
 		{
 			if (!Atomic.Lock(ref scaninprogress))
 			{
@@ -352,66 +286,71 @@ namespace TaskMaster
 				return;
 			}
 
-			LastRescan = DateTime.Now;
-			NextRescan = DateTime.Now.AddSeconds(ProcessManager.RescanEverythingFrequency / 1000);
+			if (TaskMaster.DebugFullScan)
+				Log.Verbose("Processing everything.");
 
-			using (var m = SelfAwareness.Mind(DateTime.Now.AddSeconds(5)))
+			ScanEverythingStartEvent?.Invoke(this, null);
+
+			int count = 0;
+			try
 			{
-				try
+				var procs = Process.GetProcesses();
+				count = procs.Length - 2; // -2 for Idle&System
+
+				onInstanceHandling?.Invoke(this, new InstanceEventArgs { Count = count });
+
+				using (var m = SelfAwareness.Mind(DateTime.Now.AddSeconds(5)))
 				{
-					if (TaskMaster.DebugFullScan)
-						Log.Verbose("Processing everything.");
-
-					// TODO: Cache Pids of protected system services to skip them faster.
-
-					var procs = Process.GetProcesses();
-
-					//Log.Debug("Scanning {ProcessCount} processes for changes.", procs.Length);
-
-					// DEBUG: if (TaskMaster.VeryVerbose) Console.WriteLine(string.Format("Handling: +{0} = {1} --- ProcessEverything", procs.Length, Handling));
-					onInstanceHandling?.Invoke(this, new InstanceEventArgs { Count = procs.Length - 2 });
-
 					int i = 0;
-					foreach (Process process in procs)
+					foreach (var process in procs)
 					{
-						string name = null;
-						int pid = 0;
+						++i;
 						try
 						{
-							name = process.ProcessName;
-							pid = process.Id;
+							string name = process.ProcessName;
+							int pid = process.Id;
+
+							if (IgnoreProcessID(pid) || IgnoreProcessName(name))
+								continue;
+
+							if (TaskMaster.DebugFullScan)
+								Log.Verbose("Checking [{Iter}/{Count}] {Proc} (#{Pid})", i, count, name, pid);
+
+							ScanEverythingEvent?.Invoke(this, new BasicProcessInfo() { Process = process, Id = pid, Name = name, Flags = 0, Path = null });
 						}
-						catch
+						catch (Exception ex)
 						{
-							continue; // shouldn't happen
+							Logging.Stacktrace(ex);
 						}
-
-						if (IgnoreProcessID(pid)) continue; // Ignore Idle&System
-
-						if (TaskMaster.DebugFullScan)
-							Log.Verbose("Checking [{Iter}/{Count}] {Proc} (#{Pid})", ++i, procs.Length - 2, name, pid); // -2 for Idle&System
-
-						CheckProcess(new BasicProcessInfo { Process = process, Name = name, Id = pid, Path = null, Flags = 0 }, schedule_next: false);
 					}
-
-					// DEBUG: if (TaskMaster.VeryVerbose) Console.WriteLine(string.Format("Handling: -{0} = {1} --- ProcessEverything", procs.Length, Handling));
-					onInstanceHandling?.Invoke(this, new InstanceEventArgs { Count = -(procs.Length - 2), Total = Handling });
-
-					if (TaskMaster.PathMonitorEnabled)
-						UpdatePathWatch();
-
-					if (TaskMaster.DebugFullScan)
-						Log.Verbose("Full scan: DONE.");
-				}
-				catch (Exception ex)
-				{
-					Logging.Stacktrace(ex);
-				}
-				finally
-				{
-					scaninprogress = 0;
 				}
 			}
+			catch (Exception ex)
+			{
+				Logging.Stacktrace(ex);
+			}
+			finally
+			{
+				Atomic.Unlock(ref scaninprogress);
+			}
+
+			onInstanceHandling?.Invoke(this, new InstanceEventArgs { Count = -(count), Total = Handling });
+
+			if (TaskMaster.DebugFullScan)
+				Log.Verbose("Full scan: DONE.");
+
+			ScanEverythingEndEvent?.Invoke(this, null);
+		}
+
+		public async void ProcessTriage(object sender, BasicProcessInfo info)
+		{
+			info.Flags = 0;
+			CheckProcess(info, schedule_next: false);
+		}
+
+		void EndScanUpdatePathWatch(object sender, EventArgs ev)
+		{
+			UpdatePathWatch();
 		}
 
 		static int BatchDelay = 2500;
@@ -863,7 +802,8 @@ namespace TaskMaster
 				}
 				else
 				{
-					Log.Debug("<Foreground> Changed but the app is still the same. Curious, don't you think?");
+					if (TaskMaster.ShowInaction && TaskMaster.DebugForeground)
+						Log.Debug("<Foreground> Changed but the app is still the same. Curious, don't you think?");
 				}
 			}
 
@@ -990,15 +930,12 @@ namespace TaskMaster
 		const int LowestInvalidPid = 4;
 		bool IgnoreProcessID(int pid)
 		{
-			return (pid <= LowestInvalidPid);
+			return (pid <= LowestInvalidPid || ignorePids.Contains(pid));
 		}
 
 		public static bool IgnoreProcessName(string name)
 		{
-			if (TaskMaster.CaseSensitive)
-				return IgnoreList.Contains(name);
-
-			return IgnoreList.Contains(name, StringComparer.InvariantCultureIgnoreCase);
+			return IgnoreList.Contains(name, TaskMaster.CaseSensitive ? StringComparer.InvariantCulture : StringComparer.InvariantCultureIgnoreCase);
 		}
 
 		public static bool ProtectedProcessName(string name)
@@ -1581,12 +1518,15 @@ namespace TaskMaster
 			}
 
 			onInstanceHandling += UpdateHandling;
+			ScanEverythingEvent += ProcessTriage;
+			if (TaskMaster.PathMonitorEnabled)
+				ScanEverythingEndEvent += EndScanUpdatePathWatch;
 
 			if (RescanEverythingFrequency > 0)
 			{
 				RescanEverythingTimer = new System.Timers.Timer();
 				RescanEverythingTimer.Interval = RescanEverythingFrequency;
-				RescanEverythingTimer.Elapsed += ProcessEverythingRequest;
+				RescanEverythingTimer.Elapsed += ScanEverythingRequest;
 				RescanEverythingTimer.Start();
 			}
 
@@ -1748,7 +1688,7 @@ namespace TaskMaster
 		/// <returns>Uhh?</returns>
 		/// <param name="hwProc">Process handle.</param>
 		[DllImport("psapi.dll")]
-		static extern int EmptyWorkingSet(IntPtr hwProc);
+		public static extern int EmptyWorkingSet(IntPtr hwProc);
 	}
 
 	public class ProcessorEventArgs : EventArgs

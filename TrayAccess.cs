@@ -156,7 +156,7 @@ namespace TaskMaster
 		public void hookProcessManager(ref ProcessManager pman)
 		{
 			processmanager = pman;
-			RescanRequest += processmanager.ProcessEverythingRequest;
+			RescanRequest += processmanager.ScanEverythingRequest;
 		}
 
 		PowerManager powermanager = null;
@@ -431,7 +431,7 @@ namespace TaskMaster
 
 				try
 				{
-					RescanRequest -= processmanager.ProcessEverythingRequest;
+					RescanRequest -= processmanager.ScanEverythingRequest;
 				}
 				catch { }
 

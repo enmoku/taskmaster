@@ -263,6 +263,7 @@ namespace TaskMaster
 			tempmon.Enabled = false;
 			tempmon.Checked = false;
 
+			// PAGING
 			var paging = new CheckBox()
 			{
 				AutoSize = true,
@@ -279,6 +280,7 @@ namespace TaskMaster
 
 			};
 
+			// SHOW ON START
 			var showonstart = new CheckBox()
 			{
 				AutoSize = true,
@@ -301,6 +303,24 @@ namespace TaskMaster
 
 			};
 
+			var autodoc = new CheckBox()
+			{
+				AutoSize = true,
+				//BackColor = System.Drawing.Color.Azure,
+				Dock = DockStyle.Left,
+				Checked = true,
+			};
+			layout.Controls.Add(new Label()
+			{
+				Text = "Health monitor",
+				AutoSize = true,
+				TextAlign = System.Drawing.ContentAlignment.MiddleLeft,
+				Padding = padding,
+				Dock = DockStyle.Left
+			});
+			layout.Controls.Add(autodoc);
+
+			// BUTTONS
 			var savebutton = new Button()
 			{
 				Text = "Save",
@@ -331,6 +351,7 @@ namespace TaskMaster
 				compsec["Power"].BoolValue = powmon.Checked;
 				compsec["Paging"].BoolValue = paging.Checked;
 				compsec["Maintenance"].BoolValue = tempmon.Checked;
+				compsec["Health"].BoolValue = autodoc.Checked;
 
 				var powsec = cfg["Power"];
 				powsec["Auto-adjust"].BoolValue = powauto.Checked;

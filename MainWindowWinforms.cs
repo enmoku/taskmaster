@@ -213,7 +213,7 @@ namespace TaskMaster
 			foreach (var prc in processmanager.getWatchlist()) AddToWatchlistList(prc);
 			WatchlistColor();
 
-			rescanRequest += processmanager.ProcessEverythingRequest;
+			rescanRequest += processmanager.ScanEverythingRequest;
 			if (TaskMaster.PagingEnabled)
 				pagingRequest += processmanager.PageEverythingRequest;
 
@@ -1577,7 +1577,7 @@ namespace TaskMaster
 				{
 					if (exsel.ShowDialog(this) == DialogResult.OK)
 					{
-						TaskMaster.processmanager.FreeMemoryFor(exsel.Selection).ConfigureAwait(false);
+						TaskMaster.processmanager.FreeMemory(exsel.Selection).ConfigureAwait(false);
 					}
 				}
 			}
@@ -2189,7 +2189,7 @@ namespace TaskMaster
 					ProcessController.onTouch -= ProcAdjust;
 					ProcessController.onLocate -= WatchlistPathLocatedEvent;
 					processmanager.onWaitForExitEvent -= ExitWaitListHandler; //ExitWaitListHandler;
-					rescanRequest -= processmanager.ProcessEverythingRequest;
+					rescanRequest -= processmanager.ScanEverythingRequest;
 					processmanager.onInstanceHandling -= ProcessNewInstanceCount;
 					processmanager.PathCacheUpdate -= PathCacheUpdate;
 					processmanager.onActiveHandled -= ExitWaitListHandler;

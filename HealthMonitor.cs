@@ -1,5 +1,5 @@
 ﻿//
-// ProblemMonitor.cs
+// HealthMonitor.cs
 //
 // Author:
 //       M.A. (enmoku) <>
@@ -26,17 +26,21 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.Threading.Tasks;
+using Serilog;
+using Serilog.Debugging;
 
 namespace TaskMaster
 {
 	/// <summary>
 	/// Monitors for variety of problems and reports on them.
 	/// </summary>
-	public class ProblemMonitor
+	public class HealthMonitor : IDisposable // Auto-Doc
 	{
 		Dictionary<int, Problem> activeProblems = new Dictionary<int, Problem>();
 
-		public ProblemMonitor()
+		public HealthMonitor()
 		{
 			// TODO: Add different problems to monitor for
 
@@ -94,6 +98,156 @@ namespace TaskMaster
 			// Use? : Warn about intense background tasks.
 			// Opt? : 
 			// --------------------------------------------------------------------------------------------------------
+
+			LoadConfig();
+
+			if (MemLevel > 0)
+			{
+				memfree = new PerformanceCounterWrapper("Memory", "Available MBytes", null);
+				commitbytes = new PerformanceCounterWrapper("Memory", "Committed Bytes", null);
+				commitlimit = new PerformanceCounterWrapper("Memory", "Commit Limit", null);
+				commitpercentile = new PerformanceCounterWrapper("Memory", "% Committed Bytes in Use", null);
+			}
+
+			healthTimer = new System.Threading.Timer(TimerCheck, null, 5000, Frequency * 60 * 1000);
+
+			Log.Information("<Auto-Doc> Loaded");
+		}
+
+		ProcessManager processmanager = null;
+		public void hookProcessManager(ref ProcessManager pman)
+		{
+			processmanager = pman;
+		}
+
+		System.Threading.Timer healthTimer = null;
+
+		int MemLevel = 1000;
+		bool MemIgnoreFocus = true;
+		string[] IgnoreList = { };
+		int MemCooldown = 60;
+		DateTime MemFreeLast = DateTime.MinValue;
+
+		int Frequency = 5 * 60;
+
+		SharpConfig.Configuration cfg = null;
+		void LoadConfig()
+		{
+			cfg = TaskMaster.loadConfig("Health.ini");
+			bool modified = false, configdirty = false;
+
+			var gensec = cfg["General"];
+			Frequency = gensec.GetSetDefault("Frequency", 5, out modified).IntValue.Constrain(1, 60 * 24);
+			gensec["Frequency"].Comment = "How often we check for anything. In minutes.";
+			configdirty |= modified;
+
+			var freememsec = cfg["Free Memory"];
+			freememsec.Comment = "Attempt to free memory when available memory goes below a threshold.";
+
+			MemLevel = freememsec.GetSetDefault("Threshold", 1000, out modified).IntValue;
+			//MemLevel = MemLevel > 0 ? MemLevel.Constrain(1, 2000) : 0;
+			freememsec["Threshold"].Comment = "When memory goes down to this level, we act.";
+			configdirty |= modified;
+			if (MemLevel > 0)
+			{
+				MemIgnoreFocus = freememsec.GetSetDefault("Ignore foreground", true, out modified).BoolValue;
+				freememsec["Ignore foreground"].Comment = "Foreground app is not touched, regardless of anything.";
+				configdirty |= modified;
+
+				IgnoreList = freememsec.GetSetDefault("Ignore list", new string[] { }, out modified).StringValueArray;
+				freememsec["Ignore list"].Comment = "List of apps that we don't touch regardless of anything.";
+				configdirty |= modified;
+
+				MemCooldown = freememsec.GetSetDefault("Cooldown", 60, out modified).IntValue.Constrain(1, 180);
+				freememsec["Cooldown"].Comment = "Don't do this again for this many minutes.";
+
+				Log.Information("<Auto-Doc> Memory auto-paging level: {Level} MB", MemLevel);
+			}
+
+			if (configdirty) TaskMaster.MarkDirtyINI(cfg);
+		}
+
+		PerformanceCounterWrapper memfree = null;
+		PerformanceCounterWrapper commitbytes = null;
+		PerformanceCounterWrapper commitlimit = null;
+		PerformanceCounterWrapper commitpercentile = null;
+
+		async void TimerCheck(object state)
+		{
+			Check();
+		}
+
+		async void Check()
+		{
+			if (memfree != null)
+			{
+				float memfreemb = memfree.Value; // MB
+				float commitb = commitbytes.Value;
+				float commitlimitb = commitlimit.Value;
+				float commitp = commitpercentile.Value;
+
+				//Console.WriteLine("Memory free: " + string.Format("{0:N1}", memfreet) + " / " + MemLevel);
+				if (memfreemb <= MemLevel)
+				{
+					DateTime now = DateTime.Now;
+					var cooldown = (now - MemFreeLast).TotalMinutes; // passed time since MemFreeLast
+					MemFreeLast = now;
+
+					//Console.WriteLine(string.Format("Cooldown: {0:N2} minutes [{1}]", cooldown, MemCooldown));
+
+					if (cooldown >= MemCooldown)
+					{
+						// The following should just call something in ProcessManager
+
+						int ignorepid = -1;
+						if (MemIgnoreFocus)
+						{
+							ignorepid = TaskMaster.activeappmonitor.ForegroundId;
+							processmanager.Ignore(ignorepid);
+						}
+
+						Log.Information("<<Auto-Doc>> Free memory low [{Memory}], attempting to free memory.", HumanInterface.ByteString((long)memfreemb * 1000000));
+
+						await processmanager.FreeMemory(null);
+
+						if (MemIgnoreFocus)
+							processmanager.Unignore(ignorepid);
+
+						float commitp2 = commitpercentile.Value;
+						float commitb2 = commitbytes.Value;
+						float actualbytes = commitb * (commitp / 100);
+						float actualbytes2 = commitb2 * (commitp2 / 100);
+
+						Log.Information("<<Auto-Doc>> Commit: {Commit} / {Limit} ({Improvement} change seen)",
+										HumanInterface.ByteString((long)commitb2), HumanInterface.ByteString((long)commitlimitb),
+										HumanInterface.ByteString((long)(actualbytes - actualbytes2)));
+					}
+				}
+			}
+		}
+
+		bool disposed; // = false;
+		public void Dispose()
+		{
+			Dispose(true);
+			GC.SuppressFinalize(this);
+		}
+
+		void Dispose(bool disposing)
+		{
+			if (disposed) return;
+
+			if (disposing)
+			{
+				if (TaskMaster.Trace) Log.Verbose("Disposing health monitor...");
+
+				PerformanceCounterWrapper.Sensors.Clear();
+
+				healthTimer.Dispose();
+				healthTimer = null;
+			}
+
+			disposed = true;
 		}
 	}
 
@@ -105,7 +259,7 @@ namespace TaskMaster
 		Dismissed
 	}
 
-	struct Problem
+	class Problem
 	{
 		int Id;
 		string Description;
@@ -122,5 +276,24 @@ namespace TaskMaster
 
 		// State
 		ProblemState State;
+	}
+
+	interface AutoDoc
+	{
+		int Hooks();
+
+	}
+
+	class MemoryAutoDoc : AutoDoc
+	{
+		public int Hooks()
+		{
+			return 0;
+		}
+
+		public MemoryAutoDoc()
+		{
+
+		}
 	}
 }

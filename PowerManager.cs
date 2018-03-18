@@ -35,6 +35,7 @@ using System.Collections.Generic;
 using System.Linq;
 
 using TaskMaster.PowerInfo;
+using NAudio.MediaFoundation;
 
 namespace TaskMaster
 {
@@ -341,16 +342,7 @@ namespace TaskMaster
 					if (TaskMaster.DebugPower)
 						Log.Debug("<Power Mode> Can't override manual power mode.");
 				}
-				else
-				{
-					if (ev.Pressure >= 1f)
-					{
-						Log.Debug("<Power Mode> Can't change power mode – Current: {Current}, Reaction: {Reaction}, Previous: {Prev}",
-								  CurrentMode.ToString(), ReactionaryPlan.ToString(), PreviousReaction.ToString());
-					}
-				}
-
-				if (AutoAdjustBlocks == 0)
+				else if (AutoAdjustBlocks == 0)
 				{
 					if (ReactionaryPlan == CurrentMode && ev.Pressure > 1.0)
 					{
@@ -892,7 +884,8 @@ namespace TaskMaster
 			{
 				if (forceModeSources.Contains(sourcePid))
 				{
-					Log.Error("<Power Mode> Forcing cancelled, source already in list.");
+					if (TaskMaster.ShowInaction)
+						Log.Debug("<Power Mode> Forcing cancelled, source already in list.");
 					return false;
 				}
 
