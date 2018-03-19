@@ -145,10 +145,7 @@ namespace TaskMaster
 
 			foreground++;
 
-			using (var m = SelfAwareness.Mind(DateTime.Now.AddSeconds((Hysterisis / 1000) + 5), "Hysterisis Delay"))
-			{
-				await System.Threading.Tasks.Task.Delay(Hysterisis); // minded
-			}
+			await System.Threading.Tasks.Task.Delay(Hysterisis); // minded
 
 			int old = -1;
 			if ((old = foreground) > 1) // if we've swapped in this time, we won't bother checking anything about it.

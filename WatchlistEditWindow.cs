@@ -40,12 +40,14 @@ namespace TaskMaster
 		// Adding
 		public WatchlistEditWindow()
 		{
-
+			DialogResult = DialogResult.Abort;
 		}
 
 		// Editingg
 		public WatchlistEditWindow(string name, ListViewItem ri)
 		{
+			DialogResult = DialogResult.Abort;
+
 			litem = ri;
 
 			prc = TaskMaster.processmanager.getWatchedController(name);
@@ -85,6 +87,12 @@ namespace TaskMaster
 			prc.ForegroundOnly = foregroundOnly.Checked;
 
 			prc.Enabled = enOrig;
+
+			prc.Modified = true;
+
+			DialogResult = DialogResult.OK;
+
+			Close();
 		}
 
 		TextBox friendlyName = new TextBox();
@@ -396,13 +404,18 @@ namespace TaskMaster
 			saveButton.Click += SaveInfo;
 			finalizebuttons.Controls.Add(saveButton);
 			//lt.Controls.Add(saveButton);
-			var closeButton = new Button(); // CLOSE
-			closeButton.Text = "Close";
-			closeButton.Click += (sender, e) => { Close(); };
-			finalizebuttons.Controls.Add(closeButton);
+			var cancelButton = new Button(); // CLOSE
+			cancelButton.Text = "Cancel";
+			cancelButton.Click += (sender, e) => {
+				DialogResult = DialogResult.Cancel;
+				Close();
+			};
+			finalizebuttons.Controls.Add(cancelButton);
 
-			var validatebutton = new Button();
-			validatebutton.Text = "Validate";
+			var validatebutton = new Button()
+			{
+				Text = "Validate"
+			};
 			validatebutton.Click += ValidateWatchedItem;
 			validatebutton.Margin = new Padding(6);
 

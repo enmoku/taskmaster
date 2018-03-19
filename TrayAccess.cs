@@ -265,7 +265,7 @@ namespace TaskMaster
 
 			using (var m = SelfAwareness.Mind(DateTime.Now.AddSeconds(10)))
 			{
-				TaskMaster.ShowMainWindow().ConfigureAwait(true);
+				await TaskMaster.ShowMainWindow().ConfigureAwait(true);
 			}
 
 			if (TaskMaster.Trace)
@@ -346,10 +346,7 @@ namespace TaskMaster
 
 			Log.Information("Giving explorer some time to recover on its own...");
 
-			using (var m = SelfAwareness.Mind(DateTime.Now.AddSeconds(17)))
-			{
-				await Task.Delay(12000); // force async
-			}
+			await Task.Delay(12000); // force async, 12 seconds
 
 			Stopwatch n = new Stopwatch();
 			n.Start();
@@ -362,10 +359,7 @@ namespace TaskMaster
 					return;
 				}
 
-				using (var m = SelfAwareness.Mind(DateTime.Now.AddSeconds((60 * 5) + 5)))
-				{
-					await Task.Delay(1000 * 60 * 5); // wait 5 minutes
-				}
+				await Task.Delay(1000 * 60 * 5); // wait 5 minutes
 			}
 			n.Stop();
 

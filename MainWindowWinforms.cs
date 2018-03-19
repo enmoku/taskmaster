@@ -1303,10 +1303,7 @@ namespace TaskMaster
 				{
 					rescanbutton.Enabled = false;
 
-					using (var m = SelfAwareness.Mind(DateTime.Now.AddSeconds(25), "Rescan Button"))
-					{
-						rescanRequest?.Invoke(this, null);
-					}
+					rescanRequest?.Invoke(this, null);
 
 					rescanbutton.Enabled = true;
 				}
@@ -1347,10 +1344,9 @@ namespace TaskMaster
 				try
 				{
 					crunchbutton.Enabled = false;
-					using (var m = SelfAwareness.Mind(DateTime.Now.AddSeconds(5), "Page Button"))
-					{
-						pagingRequest?.Invoke(this, new EventArgs());
-					}
+
+					pagingRequest?.Invoke(this, new EventArgs());
+
 					crunchbutton.Enabled = true;
 				}
 				catch { }
@@ -1756,6 +1752,11 @@ namespace TaskMaster
 					{
 						var rv = editdialog.ShowDialog();
 						WatchlistEditLock = 0;
+
+						if (rv == DialogResult.OK)
+						{
+							// TODO: Signal .ini save
+						}
 					}
 				}
 			}

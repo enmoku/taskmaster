@@ -72,7 +72,8 @@ namespace TaskMaster
 		public static bool OK(this ProcessState ps)
 		{
 			return (ps != ProcessState.Invalid);
-		}	}
+		}
+	}
 
 	public static class ProcessHelpers
 	{

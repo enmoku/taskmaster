@@ -1671,7 +1671,8 @@ namespace TaskMaster
 
 		void saveStats()
 		{
-			Log.Verbose("Saving stats...");
+			if (TaskMaster.Trace)
+				Log.Verbose("Saving stats...");
 
 			lock (watchlist_lock)
 			{

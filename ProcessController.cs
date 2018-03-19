@@ -51,6 +51,11 @@ namespace TaskMaster
 		public bool Enabled { get; set; } = false;
 
 		/// <summary>
+		/// Has this been modified since start.
+		/// </summary>
+		public bool Modified { get; set; } = false;
+
+		/// <summary>
 		/// Whether this rule is valid.
 		/// </summary>
 		public bool Valid { get; set; } = false;
@@ -171,6 +176,75 @@ namespace TaskMaster
 									FriendlyName, Path, Priority, Affinity.ToInt32());
 				}
 			}
+		}
+
+		const string watchlistfile = "Watchlist.ini";
+
+		public void SaveConfig()
+		{
+			var cfg = TaskMaster.loadConfig(watchlistfile);
+
+			var app = cfg[FriendlyName];
+
+			if (!string.IsNullOrEmpty(Executable))
+				app["Image"].StringValue = Executable;
+			else
+				app.Remove("Image");
+			if (!string.IsNullOrEmpty(Path))
+				app["Path"].StringValue = Path;
+			else
+				app.Remove("Path");
+			app["Increase"].BoolValue = Increase;
+			app["Decrease"].BoolValue = Decrease;
+			app["Priority"].IntValue = ProcessHelpers.PriorityToInt(Priority);
+			app["Affinity"].IntValue = Affinity.ToInt32();
+			if (PowerPlan != PowerInfo.PowerMode.Undefined)
+				app["Power mode"].StringValue = PowerManager.GetModeName(PowerPlan);
+			else
+				app.Remove("Power mode");
+
+			if (ForegroundOnly)
+			{
+				app["Foreground only"].BoolValue = ForegroundOnly;
+				if (BackgroundPriority != ProcessPriorityClass.RealTime)
+					app["Background priority"].IntValue = ProcessHelpers.PriorityToInt(BackgroundPriority);
+				else
+					app.Remove("Background priority");
+				if (BackgroundPowerdown)
+					app["Background powerdown"].BoolValue = BackgroundPowerdown;
+				else
+					app.Remove("Background powerdown");
+			}
+			else
+			{
+				app.Remove("Foreground only");
+				app.Remove("Background priority");
+				app.Remove("Background powerdown");
+			}
+
+			if (AllowPaging)
+				app["Allow paging"].BoolValue = AllowPaging;
+			else
+				app.Remove("Allow paging");
+			if (Rescan > 0)
+				app["Rescan"].IntValue = Rescan;
+			else
+				app.Remove("Rescan");
+			if (Recheck > 0)
+				app["Recheck"].IntValue = Recheck;
+			else
+				app.Remove("Recheck");
+			if (!Enabled)
+				app["Enabled"].BoolValue = Enabled;
+			else
+				app.Remove("Enabled");
+
+			if (IgnoreList.Length > 0)
+				app["Ignore"].StringValueArray = IgnoreList;
+			else
+				app.Remove("Ignore");
+
+			TaskMaster.MarkDirtyINI(cfg);
 		}
 
 		const string statfile = "Watchlist.Statistics.ini";
@@ -638,10 +712,7 @@ namespace TaskMaster
 
 		async Task TouchReapply(BasicProcessInfo info)
 		{
-			using (var m = SelfAwareness.Mind(DateTime.Now.AddSeconds((Math.Max(Recheck, 5)) + 5)))
-			{
-				await Task.Delay(Math.Max(Recheck, 5) * 1000);
-			}
+			await Task.Delay(Math.Max(Recheck, 5) * 1000);
 
 			if (TaskMaster.DebugProcesses)
 				Log.Debug("[{FriendlyName}] {Process} (#{PID}) rechecking", FriendlyName, info.Name, info.Id);

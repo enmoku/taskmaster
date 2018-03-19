@@ -25,17 +25,15 @@
 // THE SOFTWARE.
 
 using System;
-using System.Runtime.InteropServices;
-using System.Windows.Forms;
-using Serilog;
-using Microsoft.Win32;
-using System.Diagnostics;
-using System.Threading.Tasks;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
-
+using System.Runtime.InteropServices;
+using System.Threading.Tasks;
+using System.Windows.Forms;
+using Microsoft.Win32;
+using Serilog;
 using TaskMaster.PowerInfo;
-using NAudio.MediaFoundation;
 
 namespace TaskMaster
 {
@@ -119,11 +117,16 @@ namespace TaskMaster
 		int CPULowOffset = 0;
 		int CPUHighOffset = 0;
 
+        int cpusampler_lock = 0;
 		async void CPUSampler(object state)
 		{
-			float sample = float.NaN;
-			using (var m = SelfAwareness.Mind(DateTime.Now.AddSeconds(15)))
+			if (!Atomic.Lock(ref cpusampler_lock))
+				return;
+
+			try
 			{
+				float sample = float.NaN;
+
 				sample = CPUCounter.NextValue(); // slowest part
 				CPUAverage -= CPUSamples[CPUSampleLoop];
 				CPUAverage += sample;
@@ -160,9 +163,17 @@ namespace TaskMaster
 						}
 					}
 				}
-			}
 
-			onCPUSampling?.Invoke(this, new ProcessorEventArgs() { Current = sample, Average = CPUAverage / CPUSampleCount, High = CPUHigh, Low = CPULow });
+				onCPUSampling?.Invoke(this, new ProcessorEventArgs() { Current = sample, Average = CPUAverage / CPUSampleCount, High = CPUHigh, Low = CPULow });
+			}
+			catch (Exception ex)
+			{
+				Logging.Stacktrace(ex);
+			}
+			finally
+			{
+				Atomic.Unlock(ref cpusampler_lock);
+			}
 		}
 
 		/// <summary>
@@ -776,10 +787,7 @@ namespace TaskMaster
 
 			if (PowerdownDelay > 0)
 			{
-				using (var m = SelfAwareness.Mind(DateTime.Now.AddSeconds((PowerdownDelay / 1000) + 5)))
-				{
-					await Task.Delay(PowerdownDelay * 1000);
-				}
+				await Task.Delay(PowerdownDelay * 1000);
 			}
 
 			int tSourceCount = forceModeSources.Count;

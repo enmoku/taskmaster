@@ -119,63 +119,75 @@ namespace TaskMaster
 
 		async void AnalyzeTrafficBehaviourTick(object state)
 		{
-			using (var m = SelfAwareness.Mind(DateTime.Now.AddSeconds(15)))
-			{
-				await AnalyzeTrafficBehaviour();
-			}
+			await AnalyzeTrafficBehaviour();
 		}
 
+		int analyzetrafficbehaviour_lock = 0;
 		async Task AnalyzeTrafficBehaviour()
 		{
 			Debug.Assert(CurrentInterfaceList != null);
 
-			if (packetWarning > 0)
-				packetWarning--;
-
-			var ifaces = Interfaces();
-
-			if (ifaces == null) return; // being called too often, shouldn't happen but eh.
-			if (CurrentInterfaceList == null)
-			{
-				Log.Error("<Network> Current Interface List is unassigned!!!");
-				// this shouldn't happen
-				CurrentInterfaceList = ifaces;
+			if (!Atomic.Lock(ref analyzetrafficbehaviour_lock))
 				return;
-			}
 
-			if (ifaces.Count == CurrentInterfaceList.Count) // Crude, but whatever. Prone to false statistics.
+			try
 			{
-				for (int index = 0; index < ifaces.Count; index++)
+
+				if (packetWarning > 0)
+					packetWarning--;
+
+				var ifaces = Interfaces();
+
+				if (ifaces == null) return; // being called too often, shouldn't happen but eh.
+				if (CurrentInterfaceList == null)
 				{
-					long errors = (ifaces[index].Incoming.Errors - CurrentInterfaceList[index].Incoming.Errors)
-						+ (ifaces[index].Outgoing.Errors - CurrentInterfaceList[index].Outgoing.Errors);
-					long discards = (ifaces[index].Incoming.Discarded - CurrentInterfaceList[index].Incoming.Discarded)
-						+ (ifaces[index].Outgoing.Discarded - CurrentInterfaceList[index].Outgoing.Discarded);
-					long packets = (ifaces[index].Incoming.Unicast - CurrentInterfaceList[index].Incoming.Unicast)
-						+ (ifaces[index].Outgoing.Unicast - CurrentInterfaceList[index].Outgoing.Unicast);
-
-					//Console.WriteLine("{0} : Packets(+{1}), Errors(+{2}), Discarded(+{3})", ifaces[index].Name, packets, errors, discards);
-
-					if (errors > 0)
-					{
-						if (packetWarning == 0 || (packetWarning % PacketStatTimerInterval == 0))
-						{
-							packetWarning = 2;
-							Log.Warning("<Network> {Device} is suffering from traffic errors! (+{Rate} since last sample)", ifaces[index].Name, errors);
-						}
-						else
-							packetWarning++;
-					}
-					onSampling?.Invoke(this, new NetDeviceTraffic { Index = index, Traffic = new NetTraffic { Unicast = packets, Errors = errors, Discarded = discards } });
+					Log.Error("<Network> Current Interface List is unassigned!!!");
+					// this shouldn't happen
+					CurrentInterfaceList = ifaces;
+					return;
 				}
+
+				if (ifaces.Count == CurrentInterfaceList.Count) // Crude, but whatever. Prone to false statistics.
+				{
+					for (int index = 0; index < ifaces.Count; index++)
+					{
+						long errors = (ifaces[index].Incoming.Errors - CurrentInterfaceList[index].Incoming.Errors)
+							+ (ifaces[index].Outgoing.Errors - CurrentInterfaceList[index].Outgoing.Errors);
+						long discards = (ifaces[index].Incoming.Discarded - CurrentInterfaceList[index].Incoming.Discarded)
+							+ (ifaces[index].Outgoing.Discarded - CurrentInterfaceList[index].Outgoing.Discarded);
+						long packets = (ifaces[index].Incoming.Unicast - CurrentInterfaceList[index].Incoming.Unicast)
+							+ (ifaces[index].Outgoing.Unicast - CurrentInterfaceList[index].Outgoing.Unicast);
+
+						//Console.WriteLine("{0} : Packets(+{1}), Errors(+{2}), Discarded(+{3})", ifaces[index].Name, packets, errors, discards);
+
+						if (errors > 0)
+						{
+							if (packetWarning == 0 || (packetWarning % PacketStatTimerInterval == 0))
+							{
+								packetWarning = 2;
+								Log.Warning("<Network> {Device} is suffering from traffic errors! (+{Rate} since last sample)", ifaces[index].Name, errors);
+							}
+							else
+								packetWarning++;
+						}
+						onSampling?.Invoke(this, new NetDeviceTraffic { Index = index, Traffic = new NetTraffic { Unicast = packets, Errors = errors, Discarded = discards } });
+					}
+				}
+				else
+					Console.WriteLine("<Network> Interface list changed.");
+				CurrentInterfaceList = ifaces;
 			}
-			else
-				Console.WriteLine("<Network> Interface list changed.");
-			CurrentInterfaceList = ifaces;
+			catch (Exception ex)
+			{
+				Logging.Stacktrace(ex);
+			}
+			finally
+			{
+				Atomic.Unlock(ref analyzetrafficbehaviour_lock);
+			}
 		}
 
-		TrayAccess tray;
-		public TrayAccess Tray { private get { return tray; } set { tray = value; } }
+		public TrayAccess Tray { get; set; } // bad design
 
 		bool _netAvailable = false, _inetAvailable = false;
 		public bool NetworkAvailable
@@ -286,10 +298,7 @@ namespace TaskMaster
 					if (Atomic.Lock(ref upstateTesting))
 					{
 						//CLEANUP: Console.WriteLine("Debug: Queued internet uptime report");
-						using (var m = SelfAwareness.Mind(DateTime.Now.AddSeconds((5 * 60) + 5)))
-						{
-							await System.Threading.Tasks.Task.Delay(new TimeSpan(0, 5, 0)); // wait 5 minutes
-						}
+						await Task.Delay(new TimeSpan(0, 5, 0)); // wait 5 minutes
 
 						ReportCurrentUpstate();
 						upstateTesting = 0;
