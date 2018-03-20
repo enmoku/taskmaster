@@ -253,7 +253,7 @@ namespace TaskMaster
 			if (TaskMaster.Trace) Log.Verbose("Rescan requested.");
 
 			LastRescan = DateTime.Now;
-			NextRescan = DateTime.Now.AddSeconds(RescanEverythingFrequency / 1000);
+			NextRescan = DateTime.Now.AddSeconds(RescanEverythingFrequency);
 
 			try
 			{
@@ -1535,7 +1535,7 @@ namespace TaskMaster
 
 				if (RescanDelay > 0)
 				{
-					rescanTimer = new System.Threading.Timer(RescanOnTimerTick, null, 500, RescanDelay * 1000); // 5 minutes
+					rescanTimer = new System.Threading.Timer(RescanOnTimerTick, null, 500, RescanDelay * 1000);
 				}
 			}
 
