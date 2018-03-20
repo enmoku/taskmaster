@@ -241,10 +241,19 @@ namespace TaskMaster
 			{
 				if (TaskMaster.Trace) Log.Verbose("Disposing health monitor...");
 
-				PerformanceCounterWrapper.Sensors.Clear();
-
-				healthTimer.Dispose();
+				healthTimer?.Dispose();
 				healthTimer = null;
+
+				commitbytes?.Dispose();
+				commitbytes = null;
+				commitlimit?.Dispose();
+				commitlimit = null;
+				commitpercentile?.Dispose();
+				commitpercentile = null;
+				memfree?.Dispose();
+				memfree = null;
+
+				PerformanceCounterWrapper.Sensors.Clear();
 			}
 
 			disposed = true;

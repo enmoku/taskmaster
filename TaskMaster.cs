@@ -364,7 +364,7 @@ namespace TaskMaster
 
 				if (SelfOptimizeBGIO)
 				{
-					try { ProcessController.SetIOPriority(self, ProcessController.PriorityTypes.PROCESS_MODE_BACKGROUND_BEGIN); }
+					try { ProcessController.SetIOPriority(self, NativeMethods.PriorityTypes.PROCESS_MODE_BACKGROUND_BEGIN); }
 					catch { Log.Warning("Failed to set self to background mode."); }
 				}
 			}
@@ -816,7 +816,7 @@ namespace TaskMaster
 					{
 						try
 						{
-							var initialconfig = new InitialConfigurationWindow();
+							var initialconfig = new ComponentConfigurationWindow();
 							initialconfig.Show();
 							System.Windows.Forms.Application.Run(initialconfig);
 							initialconfig.Dispose();
@@ -896,7 +896,7 @@ namespace TaskMaster
 						self.PriorityClass = ProcessPriorityClass.Normal;
 						try
 						{
-							ProcessController.SetIOPriority(self, ProcessController.PriorityTypes.PROCESS_MODE_BACKGROUND_END);
+							ProcessController.SetIOPriority(self, NativeMethods.PriorityTypes.PROCESS_MODE_BACKGROUND_END);
 						}
 						catch
 						{

@@ -51,11 +51,6 @@ namespace TaskMaster
 		public bool Enabled { get; set; } = false;
 
 		/// <summary>
-		/// Has this been modified since start.
-		/// </summary>
-		public bool Modified { get; set; } = false;
-
-		/// <summary>
 		/// Whether this rule is valid.
 		/// </summary>
 		public bool Valid { get; set; } = false;
@@ -180,9 +175,20 @@ namespace TaskMaster
 
 		const string watchlistfile = "Watchlist.ini";
 
-		public void SaveConfig()
+		public void DeleteConfig(SharpConfig.Configuration cfg = null)
 		{
-			var cfg = TaskMaster.loadConfig(watchlistfile);
+			if (cfg == null)
+				cfg = TaskMaster.loadConfig(watchlistfile);
+
+			cfg.Remove(FriendlyName); // remove the section, should remove items in the section
+
+			TaskMaster.MarkDirtyINI(cfg);
+		}
+
+		public void SaveConfig(SharpConfig.Configuration cfg=null)
+		{
+			if (cfg == null)
+				cfg = TaskMaster.loadConfig(watchlistfile);
 
 			var app = cfg[FriendlyName];
 
@@ -198,6 +204,7 @@ namespace TaskMaster
 			app["Decrease"].BoolValue = Decrease;
 			app["Priority"].IntValue = ProcessHelpers.PriorityToInt(Priority);
 			app["Affinity"].IntValue = Affinity.ToInt32();
+			string pmode = PowerManager.GetModeName(PowerPlan);
 			if (PowerPlan != PowerInfo.PowerMode.Undefined)
 				app["Power mode"].StringValue = PowerManager.GetModeName(PowerPlan);
 			else
@@ -239,7 +246,7 @@ namespace TaskMaster
 			else
 				app.Remove("Enabled");
 
-			if (IgnoreList.Length > 0)
+			if (IgnoreList != null && IgnoreList.Length > 0)
 				app["Ignore"].StringValueArray = IgnoreList;
 			else
 				app.Remove("Ignore");
@@ -415,21 +422,6 @@ namespace TaskMaster
 			TaskMaster.powermanager.Restore(info.Id).Wait();
 		}
 
-		[DllImport("kernel32.dll", CharSet = CharSet.Auto, SetLastError = true)]
-		public static extern bool SetPriorityClass(IntPtr handle, uint priorityClass);
-
-		public enum PriorityTypes
-		{
-			ABOVE_NORMAL_PRIORITY_CLASS = 0x00008000,
-			BELOW_NORMAL_PRIORITY_CLASS = 0x00004000,
-			HIGH_PRIORITY_CLASS = 0x00000080,
-			IDLE_PRIORITY_CLASS = 0x00000040,
-			NORMAL_PRIORITY_CLASS = 0x00000020,
-			PROCESS_MODE_BACKGROUND_BEGIN = 0x00100000,
-			PROCESS_MODE_BACKGROUND_END = 0x00200000,
-			REALTIME_PRIORITY_CLASS = 0x00000100
-		}
-
 		/*
 		// Windows doesn't allow setting this for other processes
 		bool SetBackground(Process process)
@@ -438,11 +430,11 @@ namespace TaskMaster
 		}
 		*/
 
-		public static bool SetIOPriority(Process process, PriorityTypes priority)
+		public static bool SetIOPriority(Process process, NativeMethods.PriorityTypes priority)
 		{
 			try
 			{
-				bool rv = SetPriorityClass(process.Handle, (uint)priority);
+				bool rv = NativeMethods.SetPriorityClass(process.Handle, (uint)priority);
 				return rv;
 			}
 			catch { /* NOP, don't care */ }

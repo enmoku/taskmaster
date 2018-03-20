@@ -140,7 +140,7 @@ public static class ProcessExtensions
 		using (var hSnapshot = CreateToolhelp32Snapshot(SnapshotFlags.Process, (uint)Id))
 		{
 			if (hSnapshot.IsInvalid)
-				throw new Win32Exception();
+				return -1;
 
 			if (!Process32First(hSnapshot, ref pe32))
 			{

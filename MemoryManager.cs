@@ -77,7 +77,7 @@ namespace TaskMaster
 	public static class MemoryManager
 	{
 		// [DllImport("kernel32.dll", SetLastError=true]
-		[DllImport("kernel32.dll", EntryPoint = "SetProcessInformation")]
-		public static extern bool SetProcessInformation(IntPtr hProcess, PROCESS_INFORMATION_CLASS ProcessInformationClass, IntPtr ProcessInformation, uint ProcessInformationSize);
+		//[DllImport("kernel32.dll", EntryPoint = "SetProcessInformation")]
+		//static extern bool SetProcessInformation(IntPtr hProcess, PROCESS_INFORMATION_CLASS ProcessInformationClass, IntPtr ProcessInformation, uint ProcessInformationSize);
 	}
 }

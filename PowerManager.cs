@@ -52,7 +52,8 @@ namespace TaskMaster
 
 		public PowerManager()
 		{
-			RegisterPowerSettingNotification(Handle, ref GUID_POWERSCHEME_PERSONALITY, DEVICE_NOTIFY_WINDOW_HANDLE);
+			NativeMethods.RegisterPowerSettingNotification(
+				Handle, ref GUID_POWERSCHEME_PERSONALITY, NativeMethods.DEVICE_NOTIFY_WINDOW_HANDLE);
 			OriginalMode = getPowerMode();
 
 			AutoAdjust.High.Mode = PowerMode.HighPerformance;
@@ -617,9 +618,9 @@ namespace TaskMaster
 
 		protected override void WndProc(ref Message m)
 		{
-			if (m.Msg == WM_POWERBROADCAST && m.WParam.ToInt32() == PBT_POWERSETTINGCHANGE)
+			if (m.Msg == NativeMethods.WM_POWERBROADCAST && m.WParam.ToInt32() == NativeMethods.PBT_POWERSETTINGCHANGE)
 			{
-				POWERBROADCAST_SETTING ps = (POWERBROADCAST_SETTING)Marshal.PtrToStructure(m.LParam, typeof(POWERBROADCAST_SETTING));
+				NativeMethods.POWERBROADCAST_SETTING ps = (NativeMethods.POWERBROADCAST_SETTING)Marshal.PtrToStructure(m.LParam, typeof(NativeMethods.POWERBROADCAST_SETTING));
 
 				if (ps.PowerSetting == GUID_POWERSCHEME_PERSONALITY && ps.DataLength == Marshal.SizeOf(typeof(Guid)))
 				{
@@ -836,7 +837,7 @@ namespace TaskMaster
 
 			lock (power_lock)
 			{
-				if (PowerGetActiveScheme((IntPtr)null, out ptr) == 0)
+				if (NativeMethods.PowerGetActiveScheme((IntPtr)null, out ptr) == 0)
 				{
 					plan = (Guid)Marshal.PtrToStructure(ptr, typeof(Guid));
 					Marshal.FreeHGlobal(ptr);
@@ -938,7 +939,7 @@ namespace TaskMaster
 				Log.Information("<Power Mode> Setting to: {Mode} ({Guid})", mode.ToString(), plan.ToString());
 
 			CurrentMode = mode;
-			PowerSetActiveScheme((IntPtr)null, ref plan);
+			NativeMethods.PowerSetActiveScheme((IntPtr)null, ref plan);
 		}
 
 		bool disposed; // = false;
@@ -975,41 +976,5 @@ namespace TaskMaster
 
 			disposed = true;
 		}
-
-		// UserPowerKey is reserved for future functionality and must always be null
-		[DllImport("powrprof.dll", EntryPoint = "PowerSetActiveScheme")]
-		static extern uint PowerSetActiveScheme(IntPtr UserPowerKey, ref Guid PowerPlanGuid);
-
-		[DllImport("powrprof.dll", EntryPoint = "PowerGetActiveScheme")]
-		static extern uint PowerGetActiveScheme(IntPtr UserPowerKey, out IntPtr PowerPlanGuid);
-
-		const int DEVICE_NOTIFY_WINDOW_HANDLE = 0x00000000;
-		[DllImport("user32.dll", SetLastError = true, EntryPoint = "RegisterPowerSettingNotification", CallingConvention = CallingConvention.StdCall)]
-		static extern IntPtr RegisterPowerSettingNotification(IntPtr hRecipient, ref Guid PowerSettingGuid, Int32 Flags);
-
-		[StructLayout(LayoutKind.Sequential, Pack = 4)]
-		internal struct POWERBROADCAST_SETTING
-		{
-			public Guid PowerSetting;
-			public uint DataLength;
-			//public byte Data;
-		}
-
-		const int WM_SYSCOMMAND = 0x0112;
-		const int WM_POWERBROADCAST = 0x218;
-		const int SC_MONITORPOWER = 0xF170;
-		const int PBT_POWERSETTINGCHANGE = 0x8013;
-		const int HWND_BROADCAST = 0xFFFF;
-
-		[Flags]
-		enum SendMessageTimeoutFlags : uint
-		{
-			SMTO_NORMAL = 0x0,
-			SMTO_BLOCK = 0x1,
-			SMTO_ABORTIFHUNG = 0x2,
-			SMTO_NOTIMEOUTIFNOTHUNG = 0x8,
-			SMTO_ERRORONEXIT = 0x2
-		}
-
 	}
 }

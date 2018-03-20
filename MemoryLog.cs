@@ -26,6 +26,7 @@
 
 using System;
 using System.IO;
+using Serilog;
 using Serilog.Configuration;
 using Serilog.Core;
 using Serilog.Events;
@@ -103,7 +104,7 @@ namespace TaskMaster
 
 	namespace SerilogMemorySink
 	{
-		class MemorySink : Serilog.Core.ILogEventSink
+		class MemorySink : Serilog.Core.ILogEventSink, IDisposable
 		{
 			readonly TextWriter p_output;
 			readonly object sinklock = new object();
@@ -137,6 +138,29 @@ namespace TaskMaster
 				}
 
 				MemoryLog.Emit(this, new LogEventArgs(formattedtext, e.Level));
+			}
+
+			public void Dispose()
+			{
+				Dispose(true);
+				GC.SuppressFinalize(this);
+			}
+
+			bool disposed = false;
+			void Dispose(bool disposing)
+			{
+				if (disposed)
+					return;
+
+				if (disposing)
+				{
+					if (TaskMaster.Trace)
+						Log.Verbose("Disposing memory sink...");
+
+					p_output?.Dispose();
+				}
+
+				disposed = true;
 			}
 		}
 

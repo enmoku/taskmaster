@@ -1,5 +1,5 @@
 ﻿//
-// InitialConfigurationWindow.cs
+// ComponentConfigurationWindow.cs
 //
 // Author:
 //       M.A. (enmoku) <>
@@ -28,12 +28,15 @@ using System.Windows.Forms;
 
 namespace TaskMaster
 {
-	public class InitialConfigurationWindow : Form
+	public class ComponentConfigurationWindow : Form
 	{
-		public InitialConfigurationWindow()
+		public ComponentConfigurationWindow(bool initial=true)
 		{
 			//Size = new System.Drawing.Size(220, 360); // width, height
-			Text = "TaskMaster component configuration";
+
+			Text = "Component configuration";
+
+			DialogResult = DialogResult.Abort;
 
 			FormBorderStyle = FormBorderStyle.FixedDialog;
 
@@ -73,6 +76,7 @@ namespace TaskMaster
 				//BackColor = System.Drawing.Color.Azure,
 				Dock = DockStyle.Left
 			};
+			micmon.Checked = initial ? false : TaskMaster.MicrophoneMonitorEnabled;
 			tooltip.SetToolTip(micmon, "Monitor default communications device and keep its volume.");
 			layout.Controls.Add(new Label { Text = "Microphone monitor", AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, Padding = padding, Dock = DockStyle.Left });
 			layout.Controls.Add(micmon);
@@ -90,7 +94,7 @@ namespace TaskMaster
 			tooltip.SetToolTip(netmon, "Monitor network interface status and report online status.");
 			layout.Controls.Add(new Label { Text = "Network monitor", AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, Padding = padding, Dock = DockStyle.Left });
 			layout.Controls.Add(netmon);
-			netmon.Checked = true;
+			netmon.Checked = initial ? true : TaskMaster.NetworkMonitorEnabled;
 			netmon.Click += (sender, e) =>
 			{
 
@@ -106,7 +110,7 @@ namespace TaskMaster
 			layout.Controls.Add(new Label { Text = "Process/name manager", AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, Padding = padding, Dock = DockStyle.Left });
 			layout.Controls.Add(procmon);
 			procmon.Enabled = false;
-			procmon.Checked = true;
+			procmon.Checked = initial? true : TaskMaster.ProcessMonitorEnabled;
 
 			var pathmon = new CheckBox()
 			{
@@ -117,7 +121,7 @@ namespace TaskMaster
 			tooltip.SetToolTip(pathmon, "Manage processes based on their location.\nThese are processed only if by name matching does not catch something.\nPath-based processing is lenghtier process but should not cause significant resource drain.");
 			layout.Controls.Add(new Label { Text = "Process/path manager", AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, Padding = padding, Dock = DockStyle.Left });
 			layout.Controls.Add(pathmon);
-			pathmon.Checked = true;
+			pathmon.Checked = initial ? true : TaskMaster.PathMonitorEnabled;
 			pathmon.Click += (sender, e) =>
 			{
 			};
@@ -139,7 +143,7 @@ namespace TaskMaster
 				Minimum = 0,
 				Maximum = 360,
 				Dock = DockStyle.Left,
-				Value = 15,
+				Value = initial ? 15 : ProcessManager.RescanEverythingFrequency,
 				Width = 60,
 			};
 			var defaultBackColor = scanfrequency.BackColor;
@@ -160,7 +164,7 @@ namespace TaskMaster
 			{
 				Minimum = 1,
 				Maximum = 5,
-				Value = 5,
+				Value = initial ? 5 : TaskMaster.WMIPollDelay,
 				Dock = DockStyle.Left,
 				Enabled = false,
 				Width = 60,
@@ -191,6 +195,9 @@ namespace TaskMaster
 					wmipolling.Value = 5;
 				}
 			};
+			bool wmi = TaskMaster.WMIPolling;
+			bool scan = ProcessManager.RescanEverythingFrequency > 0;
+			ScanOrWMI.SelectedIndex = initial ? 0 : ((wmi && scan) ? 2 : (wmi ? 1 : 0));
 
 			var powmon = new CheckBox()
 			{
@@ -216,7 +223,8 @@ namespace TaskMaster
 			});
 			layout.Controls.Add(powmon);
 			powmon.Enabled = true;
-			powmon.Checked = true;
+			powmon.Checked = initial ? true : TaskMaster.PowerManagerEnabled;
+			powauto.Checked = initial ? true : (TaskMaster.powermanager?.Behaviour == PowerManager.PowerBehaviour.Auto);
 			powmon.Click += (sender, e) =>
 			{
 				if (powmon.Checked == false)
@@ -243,6 +251,7 @@ namespace TaskMaster
 				//BackColor = System.Drawing.Color.Azure,
 				Dock = DockStyle.Left
 			};
+			fgmon.Checked = initial ? true : TaskMaster.ActiveAppMonitorEnabled;
 			tooltip.SetToolTip(fgmon, "Allow processes and power mode to be managed based on if a process is in the foreground.\nPOWER MODE SWITCHING NOT IMPLEMENTED.");
 			layout.Controls.Add(new Label { Text = "Foreground manager", AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, Padding = padding, Dock = DockStyle.Left });
 			layout.Controls.Add(fgmon);
@@ -261,7 +270,7 @@ namespace TaskMaster
 			layout.Controls.Add(new Label { Text = "TEMP monitor", AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, Padding = padding, Dock = DockStyle.Left });
 			layout.Controls.Add(tempmon);
 			tempmon.Enabled = false;
-			tempmon.Checked = false;
+			tempmon.Checked = initial ? false : TaskMaster.MaintenanceMonitorEnabled;
 
 			// PAGING
 			var paging = new CheckBox()
@@ -274,7 +283,7 @@ namespace TaskMaster
 			tooltip.SetToolTip(tempmon, "Allow paging RAM to page/swap file.\nNOT YET FULLY IMPLEMENTED.");
 			layout.Controls.Add(new Label { Text = "Allow paging", AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, Padding = padding, Dock = DockStyle.Left });
 			layout.Controls.Add(paging);
-			paging.Checked = false;
+			paging.Checked = initial ? false : TaskMaster.PagingEnabled;
 			paging.Click += (sender, e) =>
 			{
 
@@ -297,7 +306,7 @@ namespace TaskMaster
 				Dock = DockStyle.Left
 			});
 			layout.Controls.Add(showonstart);
-			showonstart.Checked = false;
+			showonstart.Checked = initial ? false : TaskMaster.ShowOnStart;
 			showonstart.Click += (sender, e) =>
 			{
 
@@ -308,7 +317,7 @@ namespace TaskMaster
 				AutoSize = true,
 				//BackColor = System.Drawing.Color.Azure,
 				Dock = DockStyle.Left,
-				Checked = true,
+				Checked = initial ? true : TaskMaster.HealthMonitorEnabled,
 			};
 			layout.Controls.Add(new Label()
 			{
@@ -318,6 +327,7 @@ namespace TaskMaster
 				Padding = padding,
 				Dock = DockStyle.Left
 			});
+			tooltip.SetToolTip(autodoc, "Variety of other health & problem monitoring.\nCurrently includes low memory detection and attempting to page apps to free some of it.");
 			layout.Controls.Add(autodoc);
 
 			// BUTTONS
@@ -369,6 +379,8 @@ namespace TaskMaster
 
 				TaskMaster.saveConfig(cfg);
 
+				DialogResult = DialogResult.OK;
+
 				Close();
 			};
 
@@ -408,6 +420,13 @@ namespace TaskMaster
 			baselayout.Controls.Add(buttonpanel);
 			Controls.Add(baselayout);
 			AutoSize = true;
+
+			// Cross-componenty checkbox functionality
+			procmon.CheckedChanged += (o, e) =>
+			{
+				// fgmon requires process monitor
+				fgmon.Enabled = procmon.Checked;
+			};
 		}
 	}
 }

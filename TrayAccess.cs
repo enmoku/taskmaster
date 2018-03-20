@@ -254,12 +254,10 @@ namespace TaskMaster
 		}
 
 		int restoremainwindow_lock = 0;
-		bool showafter = false;
 		async void RestoreMainWindow(object sender, EventArgs e)
 		{
 			if (!Atomic.Lock(ref restoremainwindow_lock))
 			{
-				showafter = true;
 				return; // already being done
 			}
 

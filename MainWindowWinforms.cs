@@ -24,15 +24,13 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-using System.Diagnostics;
 using System;
+using System.Diagnostics;
 using System.Collections.Generic;
-using System.Threading.Tasks;
 using System.Windows.Forms;
-using Serilog;
-using System.Runtime.InteropServices;
 using System.Collections;
 using System.Linq;
+using Serilog;
 
 namespace TaskMaster
 {
@@ -149,6 +147,31 @@ namespace TaskMaster
 
 			// TODO: Hook device changes
 			micmon.VolumeChanged += volumeChangeDetected;
+		}
+
+		public void UpdateWatchlist(ProcessController prc)
+		{
+			ListViewItem item = null;
+			if (WatchlistMap.TryGetValue(prc, out item))
+			{
+				// 0 = ID
+				// 1 = Friendly Name
+				// 2 = Executable
+				// 3 = Priority
+				// 4 = Affinity
+				// 5 = Power
+				// 6 = Adjusts
+				// 7 = Path
+
+				item.SubItems[NameColumn].Text = prc.FriendlyName;
+				item.SubItems[ExeColumn].Text = prc.Executable;
+				bool noprio = (prc.Increase == false && prc.Decrease == false);
+				item.SubItems[PrioColumn].Text = (noprio ? "--- Any --- " : prc.Priority.ToString());
+				item.SubItems[AffColumn].Text = (prc.Affinity.ToInt32() == ProcessManager.allCPUsMask ? "--- Any ---" : Convert.ToString(prc.Affinity.ToInt32(), 2).PadLeft(ProcessManager.CPUCount, '0'));
+				item.SubItems[PowerColumn].Text = (prc.PowerPlan != PowerInfo.PowerMode.Undefined ? prc.PowerPlan.ToString() : "--- Any ---");
+				// skip adjusts
+				item.SubItems[PathColumn].Text = (string.IsNullOrEmpty(prc.Path) ? "--- Any ---" : prc.Path);
+			}
 		}
 
 		public void ProcAdjust(object sender, ProcessEventArgs ev)
@@ -317,13 +340,12 @@ namespace TaskMaster
 		void AddToWatchlistList(ProcessController prc)
 		{
 			bool noprio = (prc.Increase == false && prc.Decrease == false);
-			string prio = noprio ? "--- Any --- " : prc.Priority.ToString();
 
 			var litem = new ListViewItem(new string[] {
 				(num++).ToString(),
 					prc.FriendlyName, //.ToString(),
 					prc.Executable,
-					prio,
+					(noprio ? "--- Any --- " : prc.Priority.ToString()),
 						(prc.Affinity.ToInt32() == ProcessManager.allCPUsMask ? "--- Any ---" : Convert.ToString(prc.Affinity.ToInt32(), 2).PadLeft(ProcessManager.CPUCount, '0')),
 						(prc.PowerPlan != PowerInfo.PowerMode.Undefined? prc.PowerPlan.ToString() : "--- Any ---"),
 				//(pc.Rescan>0 ? pc.Rescan.ToString() : "n/a"),
@@ -336,7 +358,6 @@ namespace TaskMaster
 			{
 				watchlistRules.Items.Add(litem); // add calls sort()???
 			}
-
 
 			lock (appw_lock)
 				WatchlistMap.Add(prc, litem);
@@ -651,11 +672,32 @@ namespace TaskMaster
 			var menu_config_log_power = new ToolStripMenuItem("Power mode changes", null, (sender, e) => { });
 			menu_config_log.DropDownItems.Add(menu_config_log_power);
 
+			var menu_config_components = new ToolStripMenuItem("Components", null, (sender,e) => {
+				try
+				{
+					using (var comps = new ComponentConfigurationWindow(initial:false))
+					{
+						comps.ShowDialog();
+						if (comps.DialogResult == DialogResult.OK)
+						{
+							MessageBox.Show("TM needs to be restarted for changes to take effect.", "Restart needed", MessageBoxButtons.OK, MessageBoxIcon.Information, MessageBoxDefaultButton.Button1);
+						}
+					}
+				}
+				catch (Exception ex)
+				{
+					Logging.Stacktrace(ex);
+					throw;
+				}
+			});
+
 			var menu_config_folder = new ToolStripMenuItem("Open in file manager", null, (s, e) => { Process.Start(TaskMaster.datapath); });
 			//menu_config.DropDownItems.Add(menu_config_log);
 			menu_config.DropDownItems.Add(menu_config_behaviour);
 			menu_config.DropDownItems.Add(new ToolStripSeparator());
 			menu_config.DropDownItems.Add(menu_config_power);
+			menu_config.DropDownItems.Add(new ToolStripSeparator());
+			menu_config.DropDownItems.Add(menu_config_components);
 			menu_config.DropDownItems.Add(new ToolStripSeparator());
 			menu_config.DropDownItems.Add(menu_config_folder);
 			menu_config.DropDownItems.Add(new ToolStripSeparator());
@@ -1713,8 +1755,6 @@ namespace TaskMaster
 				watchlistenable.Enabled = false;
 		}
 
-		int WatchlistEditLock = 0; // TODO: Transition lock to critical parts instead of outside of them.
-
 		void EnableWatchlistRule(object sender, EventArgs ea)
 		{
 			bool oneitem = watchlistRules.SelectedItems.Count == 1;
@@ -1727,6 +1767,8 @@ namespace TaskMaster
 					watchlistenable.Enabled = true;
 					watchlistenable.Checked = prc.Enabled = !watchlistenable.Checked;
 					// TODO: Signal toggling, in case cleanup is necessary.
+
+					prc.SaveConfig();
 
 					WatchlistItemColor(li, prc);
 				}
@@ -1741,31 +1783,49 @@ namespace TaskMaster
 			{
 				if (watchlistRules.SelectedItems.Count == 1)
 				{
+					/*
 					if (!Atomic.Lock(ref WatchlistEditLock))
 					{
 						Log.Warning("Only one item can be edited at a time.");
 						return;
 					}
+					*/
 
 					ListViewItem li = watchlistRules.SelectedItems[0];
-					using (var editdialog = new WatchlistEditWindow(li.SubItems[NameColumn].Text, li)) // 1 = executable
+					string name = li.SubItems[NameColumn].Text;
+					var prc = TaskMaster.processmanager.getWatchedController(name);
+
+					using (var editdialog = new WatchlistEditWindow(prc)) // 1 = executable
 					{
 						var rv = editdialog.ShowDialog();
-						WatchlistEditLock = 0;
+						//WatchlistEditLock = 0;
 
 						if (rv == DialogResult.OK)
 						{
-							// TODO: Signal .ini save
+							UpdateWatchlist(prc);
+							// TODO: Signal UI update
 						}
 					}
 				}
 			}
-			catch { }
+			catch (Exception ex)
+			{
+				Logging.Stacktrace(ex);
+			}
 		}
 
 		void AddWatchlistRule(object sender, EventArgs ea)
 		{
 			Log.Warning("Adding new watchlist rules in the UI is not supported yet.");
+			var ew = new WatchlistEditWindow();
+			var rv = ew.ShowDialog();
+			if (rv == DialogResult.OK)
+			{
+				var prc = ew.Controller;
+				processmanager.addController(prc);
+				AddToWatchlistList(prc);
+				WatchlistColor();
+			}
 		}
 
 		void DeleteWatchlistRule(object sender, EventArgs ea)
@@ -1775,8 +1835,24 @@ namespace TaskMaster
 				if (watchlistRules.SelectedItems.Count == 1)
 				{
 					var li = watchlistRules.SelectedItems[0];
-					Log.Warning("[{Rule}] Rule removed", li.SubItems[NameColumn].Text);
-					Log.Warning("Removing watchlist rules in the UI is not actually supported yet.");
+					// TODO: ADD CONFIRMATION
+					var prc = TaskMaster.processmanager.getWatchedController(li.SubItems[NameColumn].Text);
+					if (prc != null)
+					{
+						var rv = MessageBox.Show(string.Format("Really remove '{0}'", prc.FriendlyName), "Remove watchlist item", MessageBoxButtons.YesNo, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button2);
+						if (rv == DialogResult.Yes)
+						{
+							processmanager.removeController(prc);
+
+							prc.DeleteConfig();
+							Log.Information("[{Rule}] Rule removed", prc.FriendlyName);
+							lock (watchlistrules_lock)
+							{
+								WatchlistMap.Remove(prc);
+								watchlistRules.Items.Remove(li);
+							}
+						}
+					}
 				}
 			}
 			catch { }

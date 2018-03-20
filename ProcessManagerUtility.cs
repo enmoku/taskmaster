@@ -130,7 +130,11 @@ namespace TaskMaster
 		// https://stackoverflow.com/a/34991822
 		public static string GetProcessPathViaC(int pid)
 		{
-			var processHandle = OpenProcess(0x0400 | 0x0010, false, pid);
+			const int PROCESS_QUERY_INFORMATION = 0x0400;
+			const int PROCESS_VM_READ = 0x0010;
+			// 0x0400 = PROCESS_QUERY_INFORMATION
+			// 0x0010 = PROCESS_VM_READ // is this really needed?
+			var processHandle = NativeMethods.OpenProcess(PROCESS_QUERY_INFORMATION, false, pid);
 
 			if (processHandle == IntPtr.Zero)
 			{
@@ -143,13 +147,13 @@ namespace TaskMaster
 
 			string result = null;
 
-			if (GetModuleFileNameEx(processHandle, IntPtr.Zero, sb, lengthSb) > 0)
+			if (NativeMethods.GetModuleFileNameEx(processHandle, IntPtr.Zero, sb, lengthSb) > 0)
 			{
 				//result = Path.GetFileName(sb.ToString());
 				result = sb.ToString();
 			}
 
-			CloseHandle(processHandle);
+			NativeMethods.CloseHandle(processHandle);
 
 			return result;
 		}
@@ -197,15 +201,5 @@ namespace TaskMaster
 
 			return path;
 		}
-
-		[DllImport("kernel32.dll")]
-		public static extern IntPtr OpenProcess(uint processAccess, bool bInheritHandle, int processId);
-
-		[DllImport("psapi.dll")]
-		static extern uint GetModuleFileNameEx(IntPtr hProcess, IntPtr hModule, [Out] System.Text.StringBuilder lpBaseName, [In] [MarshalAs(UnmanagedType.U4)] int nSize);
-
-		[DllImport("kernel32.dll", SetLastError = true)]
-		[return: MarshalAs(UnmanagedType.Bool)]
-		static extern bool CloseHandle(IntPtr hObject);
 	}
 }

@@ -49,14 +49,14 @@ namespace TaskMaster
 
 		public ActiveAppManager()
 		{
-			dele = new WinEventDelegate(WinEventProc);
+			dele = new NativeMethods.WinEventDelegate(WinEventProc);
 			if (!SetupEventHook())
 				throw new Exception("Failed to initialize active app manager.");
 
 			// get current window, just in case it's something we're monitoring
-			var hwnd = GetForegroundWindow();
+			var hwnd = NativeMethods.GetForegroundWindow();
 			int pid;
-			GetWindowThreadProcessId(hwnd, out pid);
+			NativeMethods.GetWindowThreadProcessId(hwnd, out pid);
 			ForegroundId = pid;
 
 			var perfsec = TaskMaster.cfg["Performance"];
@@ -70,7 +70,7 @@ namespace TaskMaster
 
 		int Hysterisis = 500;
 
-		WinEventDelegate dele;
+		NativeMethods.WinEventDelegate dele;
 		IntPtr windowseventhook = IntPtr.Zero;
 
 		public int ForegroundId { get; private set; } = -1;
@@ -82,7 +82,9 @@ namespace TaskMaster
 
 		public bool SetupEventHook()
 		{
-			windowseventhook = SetWinEventHook(EVENT_SYSTEM_FOREGROUND, EVENT_SYSTEM_FOREGROUND, IntPtr.Zero, dele, 0, 0, WINEVENT_OUTOFCONTEXT);
+			windowseventhook = NativeMethods.SetWinEventHook(
+				NativeMethods.EVENT_SYSTEM_FOREGROUND, NativeMethods.EVENT_SYSTEM_FOREGROUND,
+				IntPtr.Zero, dele, 0, 0, NativeMethods.WINEVENT_OUTOFCONTEXT);
 			// FIXME: Seems to stop functioning really easily? Possibly from other events being caught.
 			if (windowseventhook == IntPtr.Zero)
 			{
@@ -95,6 +97,11 @@ namespace TaskMaster
 		public void SetupEventHookEvent(object sender, ProcessEventArgs e)
 		{
 			//SetupEventHook();
+		}
+
+		~ActiveAppManager()
+		{
+			Dispose(false);
 		}
 
 		public void Dispose()
@@ -114,7 +121,7 @@ namespace TaskMaster
 				if (TaskMaster.Trace)
 					Log.Verbose("Disposing FG monitor...");
 
-				UnhookWinEvent(windowseventhook); // Automaticc
+				NativeMethods.UnhookWinEvent(windowseventhook); // Automaticc
 			}
 
 			disposed = true;
@@ -141,7 +148,7 @@ namespace TaskMaster
 		//[SecurityPermissionAttribute(SecurityAction.Demand, UnmanagedCode = true)]
 		public async void WinEventProc(IntPtr hWinEventHook, uint eventType, IntPtr hwnd, int idObject, int idChild, uint dwEventThread, uint dwmsEventTime)
 		{
-			if (eventType != EVENT_SYSTEM_FOREGROUND) return;
+			if (eventType != NativeMethods.EVENT_SYSTEM_FOREGROUND) return;
 
 			foreground++;
 
@@ -167,7 +174,7 @@ namespace TaskMaster
 				buff = new System.Text.StringBuilder(nChars);
 
 				// Window title, we don't care tbh.
-				if (GetWindowText(hwnd, buff, nChars) > 0) // get title? not really useful for most things
+				if (NativeMethods.GetWindowText(hwnd, buff, nChars) > 0) // get title? not really useful for most things
 				{
 					//System.Console.WriteLine("Active window: {0}", buff);
 				}
@@ -203,7 +210,7 @@ namespace TaskMaster
 				activewindowev.Title = (buff != null ? buff.ToString() : string.Empty);
 				activewindowev.Fullscreen = fullScreen;
 				int pid = 0;
-				GetWindowThreadProcessId(hwnd, out pid);
+				NativeMethods.GetWindowThreadProcessId(hwnd, out pid);
 				ForegroundId = activewindowev.Id = pid;
 				try
 				{
@@ -225,39 +232,6 @@ namespace TaskMaster
 
 			foreground--;
 		}
-
-		[DllImport("user32.dll", SetLastError = true)]
-		static extern uint GetWindowThreadProcessId(IntPtr hWnd, out int lpdwProcessId);
-
-
-		delegate void WinEventDelegate(IntPtr hWinEventHook, uint eventType, IntPtr hwnd, int idObject, int idChild, uint dwEventThread, uint dwmsEventTime);
-
-		[DllImport("user32.dll")]
-		static extern IntPtr SetWinEventHook(uint eventMin, uint eventMax, IntPtr hmodWinEventProc, WinEventDelegate lpfnWinEventProc, uint idProcess, uint idThread, uint dwFlags);
-
-		[DllImport("user32.dll")]
-		static extern bool UnhookWinEvent(IntPtr hWinEventHook); // automatic
-
-		const uint WINEVENT_OUTOFCONTEXT = 0;
-		const uint EVENT_SYSTEM_FOREGROUND = 3;
-
-		[DllImport("user32.dll")]
-		static extern IntPtr GetForegroundWindow();
-
-		[DllImport("user32.dll")]
-		static extern int GetWindowText(IntPtr hWnd, System.Text.StringBuilder text, int count);
-
-		[StructLayout(LayoutKind.Sequential)]
-		private struct RECT
-		{
-			public int Left;
-			public int Top;
-			public int Right;
-			public int Bottom;
-		}
-
-		[DllImport("user32.dll")]
-		private static extern bool GetWindowRect(IntPtr hWnd, [In, Out] ref RECT rect);
 	}
 }
 

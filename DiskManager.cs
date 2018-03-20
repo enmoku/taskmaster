@@ -31,7 +31,7 @@ using System.IO;
 
 namespace TaskMaster
 {
-	public class DiskManager
+	public class DiskManager : IDisposable
 	{
 		static readonly string systemTemp = System.IO.Path.Combine(System.Environment.GetFolderPath(Environment.SpecialFolder.Windows), "Temp");
 		static string userTemp { get { return System.IO.Path.GetTempPath(); } }
@@ -147,6 +147,30 @@ namespace TaskMaster
 		};
 
 		public event EventHandler<DiskEventArgs> onTempScan;
+
+		public void Dispose()
+		{
+			Dispose(true);
+			GC.SuppressFinalize(this);
+		}
+
+		bool disposed = false;
+		void Dispose(bool disposing)
+		{
+			if (disposed)
+				return;
+
+			if (disposing)
+			{
+				if (TaskMaster.Trace)
+					Log.Verbose("Disposing disk manager...");
+
+				sysWatcher?.Dispose();
+				userWatcher?.Dispose();
+			}
+
+			disposed = true;
+		}
 	}
 
 	public class DiskEventArgs : EventArgs

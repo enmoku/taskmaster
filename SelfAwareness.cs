@@ -41,7 +41,6 @@ namespace TaskMaster
 	{
 		static readonly object AwarenessMap_lock = new object();
 		static ConcurrentDictionary<int, Awareness> AwarenessMap;
-		static Dictionary<int, Awareness> HungAwarenessMap;
 
 		static ConcurrentQueue<int> FreeKeys = new ConcurrentQueue<int>();
 		static int NextKey = 1;

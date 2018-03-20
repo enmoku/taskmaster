@@ -24,7 +24,6 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-using System.Management;
 using System.Threading.Tasks;
 using System;
 using System.Collections.Generic;
@@ -32,7 +31,6 @@ using System.Diagnostics;
 using System.Linq;
 using Serilog;
 using System.Runtime.InteropServices;
-using System.Runtime.CompilerServices;
 
 namespace TaskMaster
 {
@@ -198,11 +196,11 @@ namespace TaskMaster
 
 			try
 			{
-				EmptyWorkingSet(info.Process.Handle);
+				NativeMethods.EmptyWorkingSet(info.Process.Handle);
 			}
 			catch (Exception ex)
 			{
-				// Logging.Stacktrace(ex);
+				Logging.Stacktrace(ex);
 			}
 		}
 
@@ -344,8 +342,14 @@ namespace TaskMaster
 
 		public async void ProcessTriage(object sender, BasicProcessInfo info)
 		{
-			info.Flags = 0;
-			CheckProcess(info, schedule_next: false);
+			try
+			{
+				CheckProcess(info, schedule_next: false);
+			}
+			catch (Exception ex)
+			{
+				Logging.Stacktrace(ex);
+			}
 		}
 
 		void EndScanUpdatePathWatch(object sender, EventArgs ev)
@@ -361,7 +365,6 @@ namespace TaskMaster
 		static bool BatchProcessing; // = false;
 		static int BatchProcessingThreshold = 5;
 		//static bool ControlChildren = false; // = false;
-		SharpConfig.Configuration stats;
 
 		static System.Timers.Timer RescanEverythingTimer = null;
 
@@ -480,7 +483,7 @@ namespace TaskMaster
 				dirtyconfig |= modified;
 				Log.Information("Batch processing threshold: {BatchProcessingThreshold}", BatchProcessingThreshold);
 			}
-			RescanDelay = coreperf.GetSetDefault("Rescan frequency", 0, out modified).IntValue.Constrain(0, 60 * 6) * 1000 * 60;
+			RescanDelay = coreperf.GetSetDefault("Rescan frequency", 0, out modified).IntValue.Constrain(0, 60 * 6) * 60;
 			coreperf["Rescan frequency"].Comment = "In minutes. How often to check for apps that want to be rescanned. Disabled if rescan everything is enabled. 0 disables.";
 			dirtyconfig |= modified;
 
@@ -488,18 +491,18 @@ namespace TaskMaster
 			if (RescanEverythingFrequency > 0)
 			{
 				if (RescanEverythingFrequency < 5) RescanEverythingFrequency = 5;
-				RescanEverythingFrequency *= 1000; // to seconds
+				//RescanEverythingFrequency *= 1000; // to seconds
 			}
 			coreperf["Rescan everything frequency"].Comment = "Frequency (in seconds) at which we rescan everything. 0 disables.";
 			dirtyconfig |= modified;
 
 			if (RescanEverythingFrequency > 0)
 			{
-				Log.Information("Rescan everything every {Frequency} seconds.", RescanEverythingFrequency / 1000);
+				Log.Information("Rescan everything every {Frequency} seconds.", RescanEverythingFrequency);
 				RescanDelay = 0;
 			}
 			else
-				Log.Information("Per-app rescan frequency: {RescanDelay:N1}m", RescanDelay / 1000 / 60);
+				Log.Information("Per-app rescan frequency: {RescanDelay:N1}m", RescanDelay / 60);
 
 			// --------------------------------------------------------------------------------------------------------
 
@@ -631,11 +634,7 @@ namespace TaskMaster
 					AllowPaging = (section.TryGet("Allow paging")?.BoolValue ?? false),
 				};
 
-				if (ValidateController(prc))
-				{
-					prc.LoadStats();
-					SaveController(prc);
-				}
+				addController(prc);
 
 				//cnt.Children &= ControlChildren;
 
@@ -648,6 +647,23 @@ namespace TaskMaster
 			Log.Information("Name-based watchlist: {Items} items", execontrol.Count);
 			Log.Information("Path-based watchlist: {Items} items", WatchlistWithPath);
 			Log.Information("Path init list: {Items} items", (pathinit?.Count ?? 0));
+		}
+
+		public void addController(ProcessController prc)
+		{
+			if (ValidateController(prc))
+			{
+				prc.LoadStats();
+				SaveController(prc);
+			}
+		}
+
+		public void removeController(ProcessController prc)
+		{
+			lock (watchlist_lock)
+			{
+				watchlist.Remove(prc);
+			}
 		}
 
 		string LowerCase(string str)
@@ -761,7 +777,7 @@ namespace TaskMaster
 					}
 				}
 			}
-			catch (InvalidOperationException ex)
+			catch (InvalidOperationException)
 			{
 				// already exited
 			}
@@ -777,7 +793,6 @@ namespace TaskMaster
 			return WaitForExitList.Values.ToArray(); // copy is good here
 		}
 
-		int PreviousForegroundId = -1;
 		ProcessController PreviousForegroundController = null;
 		BasicProcessInfo PreviousForegroundInfo;
 
@@ -1181,7 +1196,14 @@ namespace TaskMaster
 				{
 					foreach (var info in list)
 					{
-						CheckProcess(info);
+						try
+						{
+							CheckProcess(info);
+						}
+						catch (Exception ex)
+						{
+							Logging.Stacktrace(ex);
+						}
 					}
 				}
 				catch (Exception ex)
@@ -1513,7 +1535,7 @@ namespace TaskMaster
 
 				if (RescanDelay > 0)
 				{
-					rescanTimer = new System.Threading.Timer(RescanOnTimerTick, null, 500, RescanDelay); // 5 minutes
+					rescanTimer = new System.Threading.Timer(RescanOnTimerTick, null, 500, RescanDelay * 1000); // 5 minutes
 				}
 			}
 
@@ -1525,7 +1547,7 @@ namespace TaskMaster
 			if (RescanEverythingFrequency > 0)
 			{
 				RescanEverythingTimer = new System.Timers.Timer();
-				RescanEverythingTimer.Interval = RescanEverythingFrequency;
+				RescanEverythingTimer.Interval = RescanEverythingFrequency * 1000;
 				RescanEverythingTimer.Elapsed += ScanEverythingRequest;
 				RescanEverythingTimer.Start();
 			}
@@ -1682,14 +1704,6 @@ namespace TaskMaster
 				}
 			}
 		}
-
-		/// <summary>
-		/// Empties the working set.
-		/// </summary>
-		/// <returns>Uhh?</returns>
-		/// <param name="hwProc">Process handle.</param>
-		[DllImport("psapi.dll")]
-		public static extern int EmptyWorkingSet(IntPtr hwProc);
 	}
 
 	public class ProcessorEventArgs : EventArgs

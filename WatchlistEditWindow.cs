@@ -34,25 +34,39 @@ namespace TaskMaster
 {
 	public class WatchlistEditWindow : Form
 	{
-		readonly ProcessController prc;
-		readonly ListViewItem litem;
+		public ProcessController Controller;
+
+		bool newPrc = false;
 
 		// Adding
 		public WatchlistEditWindow()
 		{
 			DialogResult = DialogResult.Abort;
+
+			Controller = new ProcessController("Unnamed", ProcessPriorityClass.Normal, 0)
+			{
+				Enabled = true,
+				Valid=true,
+			};
+
+			newPrc = true;
+
+			WindowState = FormWindowState.Normal;
+			FormBorderStyle = FormBorderStyle.FixedDialog; // no min/max buttons as wanted
+			MinimizeBox = false;
+			MaximizeBox = false;
+
+			BuildUI();
 		}
 
 		// Editingg
-		public WatchlistEditWindow(string name, ListViewItem ri)
+		public WatchlistEditWindow(ProcessController controller)
 		{
 			DialogResult = DialogResult.Abort;
 
-			litem = ri;
+			Controller = controller;
 
-			prc = TaskMaster.processmanager.getWatchedController(name);
-
-			if (prc == null) throw new ArgumentException(string.Format("{0} not found in watchlist.", name));
+			if (Controller == null) throw new ArgumentException(string.Format("{0} not found in watchlist.", Controller.FriendlyName));
 
 			WindowState = FormWindowState.Normal;
 			FormBorderStyle = FormBorderStyle.FixedDialog; // no min/max buttons as wanted
@@ -64,31 +78,76 @@ namespace TaskMaster
 
 		void SaveInfo(object sender, System.EventArgs ev)
 		{
-			Log.Warning("CONVENIENT SAVING NOT SUPPORTED YET");
-
-			bool enOrig = prc.Enabled;
-			prc.Enabled = false;
+			bool enOrig = Controller.Enabled;
+			Controller.Enabled = false;
 
 			// TODO: VALIDATE FOR GRIMMY'S SAKE!
 			// TODO: Foreground/Powermode need to be informed of any relevant changes.
 
-			//var sbs = new System.Text.StringBuilder();
+			// -----------------------------------------------
+			// VALIDATE
 
-			prc.FriendlyName = friendlyName.Text.Trim();
-			prc.Executable = execName.Text.Length > 0 ? execName.Text.Trim() : null;
-			prc.Path = pathName.Text.Length > 0 ? pathName.Text.Trim() : null;
-			prc.Priority = ProcessHelpers.IntToPriority(priorityClass.SelectedIndex); // is this right?
-			prc.Increase = increasePrio.Checked;
-			prc.Decrease = decreasePrio.Checked;
-			prc.Affinity = new IntPtr(Convert.ToInt32(affinityMask.Value));
-			prc.PowerPlan = PowerManager.GetModeByName(powerPlan.Text); // verify
-			prc.Rescan = Convert.ToInt32(rescanFreq.Value);
-			prc.AllowPaging = allowPaging.Checked;
-			prc.ForegroundOnly = foregroundOnly.Checked;
+			bool fnlen = (friendlyName.Text.Length > 0);
+			bool exnam = (execName.Text.Length > 0);
+			bool path = (pathName.Text.Length > 0);
 
-			prc.Enabled = enOrig;
+			if (!path && !exnam)
+			{
+				Controller.Valid = false;
+				MessageBox.Show("No path nor executable defined.", "Configuration error", MessageBoxButtons.OK, MessageBoxIcon.Error, MessageBoxDefaultButton.Button1);
+			}
 
-			prc.Modified = true;
+			if ((rescanFreq.Value > 0) && !exnam)
+			{
+				Controller.Valid = false;
+				MessageBox.Show("Rescan requires executable to be defined.", "Configuration error", MessageBoxButtons.OK, MessageBoxIcon.Error, MessageBoxDefaultButton.Button1);
+			}
+
+			var dprc = TaskMaster.processmanager.getWatchedController(friendlyName.Text);
+			if (dprc != null)
+			{
+				Controller.Valid = false;
+				MessageBox.Show("Friendly Name conflict.", "Configuration error", MessageBoxButtons.OK, MessageBoxIcon.Error, MessageBoxDefaultButton.Button1);
+			}
+
+			if (!Controller.Valid)
+			{
+				Log.Warning("[{FriendlyName}] Can't save, configuration invalid.", friendlyName.Text);
+				return;
+			}
+
+			// -----------------------------------------------
+
+			if (!newPrc)
+				Controller.DeleteConfig();
+			
+			Controller.FriendlyName = friendlyName.Text.Trim();
+			Controller.Executable = execName.Text.Length > 0 ? execName.Text.Trim() : null;
+			Controller.Path = pathName.Text.Length > 0 ? pathName.Text.Trim() : null;
+			Controller.Priority = ProcessHelpers.IntToPriority(priorityClass.SelectedIndex); // is this right?
+			Controller.Increase = increasePrio.Checked;
+			Controller.Decrease = decreasePrio.Checked;
+			Controller.Affinity = new IntPtr(Convert.ToInt32(affinityMask.Value));
+			Controller.PowerPlan = PowerManager.GetModeByName(powerPlan.Text);
+			if (Controller.PowerPlan == PowerInfo.PowerMode.Custom) Controller.PowerPlan = PowerInfo.PowerMode.Undefined;
+			Controller.Rescan = Convert.ToInt32(rescanFreq.Value);
+			Controller.AllowPaging = allowPaging.Checked;
+			Controller.ForegroundOnly = foregroundOnly.Checked;
+
+			if (ignorelist.Items.Count > 0)
+			{
+				List<string> ignlist = new List<string>();
+				foreach (ListViewItem item in ignorelist.Items)
+				{
+					ignlist.Add(item.Text);
+				}
+				Controller.IgnoreList = ignlist.ToArray();
+			}
+			else
+				Controller.IgnoreList = null;
+
+			Controller.Enabled = enOrig;
+			Controller.SaveConfig();
 
 			DialogResult = DialogResult.OK;
 
@@ -106,6 +165,7 @@ namespace TaskMaster
 		CheckBox allowPaging = new CheckBox();
 		ComboBox powerPlan = new ComboBox();
 		CheckBox foregroundOnly = new CheckBox();
+		ListView ignorelist = new ListView();
 
 		void BuildUI()
 		{
@@ -114,8 +174,8 @@ namespace TaskMaster
 			AutoSize = true;
 
 			Text = string.Format("{0} ({1}) – {2}",
-								 prc.FriendlyName,
-								 (prc.Executable ?? prc.Path),
+								 Controller.FriendlyName,
+								 (Controller.Executable ?? Controller.Path),
 								 System.Windows.Forms.Application.ProductName);
 			Padding = new Padding(12);
 
@@ -131,7 +191,7 @@ namespace TaskMaster
 			};
 
 			lt.Controls.Add(new Label { Text = "Friendly name", TextAlign = System.Drawing.ContentAlignment.MiddleLeft });
-			friendlyName.Text = prc.FriendlyName;
+			friendlyName.Text = Controller.FriendlyName;
 			friendlyName.Width = 180;
 			friendlyName.CausesValidation = true;
 			friendlyName.Validating += (sender, e) =>
@@ -149,7 +209,7 @@ namespace TaskMaster
 
 			// EXECUTABLE
 			lt.Controls.Add(new Label { Text = "Executable", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, Dock = DockStyle.Left });
-			execName.Text = prc.Executable;
+			execName.Text = Controller.Executable;
 			execName.Width = 180;
 			tooltip.SetToolTip(execName, "Executable name, used to recognize these applications.\nFull filename, including extension if any.");
 			var findexecbutton = new Button()
@@ -183,7 +243,7 @@ namespace TaskMaster
 
 			// PATH
 			lt.Controls.Add(new Label { Text = "Path", TextAlign = System.Drawing.ContentAlignment.MiddleLeft });
-			pathName.Text = prc.Path;
+			pathName.Text = Controller.Path;
 			pathName.Width = 180;
 			tooltip.SetToolTip(pathName, "Path name; rule will match only paths that include this, subfolders included.\nPartial matching is allowed.");
 			var findpathbutton = new Button()
@@ -217,6 +277,50 @@ namespace TaskMaster
 			lt.Controls.Add(pathName);
 			lt.Controls.Add(findpathbutton);
 
+			// IGNORE
+
+			ignorelist.View = View.Details;
+			ignorelist.HeaderStyle = ColumnHeaderStyle.None;
+			ignorelist.Width = 180;
+			ignorelist.Columns.Add("Executable", -2);
+
+			if (Controller.IgnoreList != null)
+			{
+				foreach (string item in Controller.IgnoreList)
+				{
+					ignorelist.Items.Add(item);
+				}
+			}
+
+			var ignorelistmenu = new ContextMenuStrip();
+			ignorelist.ContextMenuStrip = ignorelistmenu;
+			ignorelistmenu.Items.Add(new ToolStripMenuItem("Add", null, (s,ev) =>
+			{
+				try
+				{
+					using (var rs = new TextInputBox("Filename:", "Ignore executable"))
+					{
+						rs.ShowDialog();
+						if (rs.DialogResult == DialogResult.OK)
+						{
+							ignorelist.Items.Add(rs.Value);
+						}
+					}
+				}
+				catch (Exception ex)
+				{
+					Logging.Stacktrace(ex);
+				}
+			}));
+			ignorelistmenu.Items.Add(new ToolStripMenuItem("Remove", null, (s, ev) => {
+				if (ignorelist.SelectedItems.Count == 1)
+					ignorelist.Items.Remove(ignorelist.SelectedItems[0]);
+			}));
+
+			lt.Controls.Add(new Label() { Text = "Ignore", TextAlign = System.Drawing.ContentAlignment.MiddleLeft });
+			lt.Controls.Add(ignorelist);
+			lt.Controls.Add(new Label()); // empty
+
 			// PRIORITY
 			lt.Controls.Add(new Label { Text = "Priority class", TextAlign = System.Drawing.ContentAlignment.MiddleLeft });
 			var priopanel = new TableLayoutPanel()
@@ -232,7 +336,7 @@ namespace TaskMaster
 				SelectedIndex = 2
 			};
 			priorityClass.Width = 180;
-			priorityClass.SelectedIndex = prc.Priority.ToInt32();
+			priorityClass.SelectedIndex = Controller.Priority.ToInt32();
 			tooltip.SetToolTip(priorityClass, "CPU priority for the application.\nIf both increase and decrease are disabled, this has no effect.");
 			var incdecpanel = new TableLayoutPanel()
 			{
@@ -240,11 +344,11 @@ namespace TaskMaster
 				AutoSize = true,
 			};
 			incdecpanel.Controls.Add(new Label() { Text = "Increase:", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true });
-			increasePrio.Checked = prc.Increase;
+			increasePrio.Checked = Controller.Increase;
 			increasePrio.AutoSize = true;
 			incdecpanel.Controls.Add(increasePrio);
 			incdecpanel.Controls.Add(new Label() { Text = "Decrease:", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true });
-			decreasePrio.Checked = prc.Decrease;
+			decreasePrio.Checked = Controller.Decrease;
 			decreasePrio.AutoSize = true;
 			incdecpanel.Controls.Add(decreasePrio);
 			priopanel.Controls.Add(priorityClass);
@@ -261,7 +365,7 @@ namespace TaskMaster
 			affinityMask.Minimum = 0;
 			try
 			{
-				affinityMask.Value = (prc.Affinity.ToInt32() == ProcessManager.allCPUsMask ? 0 : prc.Affinity.ToInt32());
+				affinityMask.Value = (Controller.Affinity.ToInt32() == ProcessManager.allCPUsMask ? 0 : Controller.Affinity.ToInt32());
 			}
 			catch
 			{
@@ -290,7 +394,7 @@ namespace TaskMaster
 
 			var list = new List<CheckBox>();
 
-			int cpumask = prc.Affinity.ToInt32();
+			int cpumask = Controller.Affinity.ToInt32();
 			for (int bit = 0; bit < ProcessManager.CPUCount; bit++)
 			{
 				var box = new CheckBox();
@@ -330,14 +434,14 @@ namespace TaskMaster
 			};
 			var clearbutton = new Button() { Text = "None" };
 			clearbutton.Click += (sender, e) =>
-						{
-							foreach (var litem in list) litem.Checked = false;
-						};
+			{
+				foreach (var litem in list) litem.Checked = false;
+			};
 			var allbutton = new Button() { Text = "All" };
 			allbutton.Click += (sender, e) =>
-						{
-							foreach (var litem in list) litem.Checked = true;
-						};
+			{
+				foreach (var litem in list) litem.Checked = true;
+			};
 			buttonpanel.Controls.Add(allbutton);
 			buttonpanel.Controls.Add(clearbutton);
 
@@ -359,7 +463,7 @@ namespace TaskMaster
 			lt.Controls.Add(new Label { Text = "Rescan frequency", TextAlign = System.Drawing.ContentAlignment.MiddleLeft });
 			rescanFreq.Minimum = 0;
 			rescanFreq.Maximum = 60 * 24;
-			rescanFreq.Value = prc.Rescan;
+			rescanFreq.Value = Controller.Rescan;
 			rescanFreq.Width = 80;
 			tooltip.SetToolTip(rescanFreq, "How often to rescan for this app, in minutes.\nSometimes instances slip by.");
 			lt.Controls.Add(rescanFreq);
@@ -372,7 +476,7 @@ namespace TaskMaster
 			lt.Controls.Add(new Label { Text = "Power plan", TextAlign = System.Drawing.ContentAlignment.MiddleLeft });
 			foreach (string t in PowerManager.PowerModes)
 				powerPlan.Items.Add(t);
-			int ppi = System.Convert.ToInt32(prc.PowerPlan);
+			int ppi = System.Convert.ToInt32(Controller.PowerPlan);
 			powerPlan.DropDownStyle = ComboBoxStyle.DropDownList;
 			powerPlan.SelectedIndex = System.Math.Max(ppi, 3);
 			powerPlan.Width = 180;
@@ -382,7 +486,7 @@ namespace TaskMaster
 
 			// FOREGROUND
 			lt.Controls.Add(new Label { Text = "Foreground only", TextAlign = System.Drawing.ContentAlignment.MiddleLeft });
-			foregroundOnly.Checked = prc.ForegroundOnly;
+			foregroundOnly.Checked = Controller.ForegroundOnly;
 			tooltip.SetToolTip(foregroundOnly, "Lower priority and power mode is restored when this app is not in focus.");
 			lt.Controls.Add(foregroundOnly);
 			lt.Controls.Add(new Label()); // empty
@@ -391,7 +495,7 @@ namespace TaskMaster
 
 			// PAGING
 			lt.Controls.Add(new Label { Text = "Allow paging", TextAlign = System.Drawing.ContentAlignment.MiddleLeft });
-			allowPaging.Checked = prc.AllowPaging;
+			allowPaging.Checked = Controller.AllowPaging;
 			tooltip.SetToolTip(allowPaging, "Allow this application to be paged when it is requested.");
 			lt.Controls.Add(allowPaging);
 			lt.Controls.Add(new Label()); // empty
@@ -456,14 +560,31 @@ namespace TaskMaster
 
 			var sbs = new System.Text.StringBuilder();
 			sbs.Append("Name: ").Append(fnlen ? "OK" : "Fail").AppendLine();
+
+			bool samesection = Controller.FriendlyName.Equals(friendlyName.Text);
+			if (!samesection)
+			{
+				var dprc = TaskMaster.processmanager.getWatchedController(friendlyName.Text);
+				if (dprc != null)
+				{
+					sbs.Append("Friendly name conflict!");
+				}
+			}
+
 			if (execName.Text.Length > 0)
 				sbs.Append("Executable: ").Append(exnam ? "OK" : "Fail").Append(" – Found: ").Append(exfound).AppendLine();
 			if (pathName.Text.Length > 0)
 				sbs.Append("Path: ").Append(path ? "OK" : "Fail").Append(" - Found: ").Append(pfound).AppendLine();
+
+			if (!exnam && !path)
+				sbs.Append("Both path and executable are missing!").AppendLine();
+
 			if ((rescanFreq.Value > 0) && !exnam)
 				sbs.Append("Rescan frequency REQUIRES executable to be defined.").AppendLine();
 			if (increasePrio.Checked && decreasePrio.Checked)
 				sbs.Append("Priority class is to be ignored.").AppendLine();
+			if (ignorelist.Items.Count > 0 && execName.Text.Length > 0)
+				sbs.Append("Ignore list is meaningless with executable defined.").AppendLine();
 
 			MessageBox.Show(sbs.ToString(), "Validation results", MessageBoxButtons.OK, MessageBoxIcon.Information, MessageBoxDefaultButton.Button1, MessageBoxOptions.DefaultDesktopOnly, false);
 		}

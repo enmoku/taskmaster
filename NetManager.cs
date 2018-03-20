@@ -602,6 +602,11 @@ namespace TaskMaster
 			{
 				if (TaskMaster.Trace) Log.Verbose("Disposing network monitor...");
 				ReportUptime();
+
+				deviceSampleTimer?.Dispose();
+				deviceSampleTimer = null;
+				packetStatTimer?.Dispose();
+				packetStatTimer = null;
 			}
 
 			disposed = true;
