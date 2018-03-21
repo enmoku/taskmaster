@@ -104,7 +104,7 @@ namespace TaskMaster
 			}
 
 			var dprc = TaskMaster.processmanager.getWatchedController(friendlyName.Text);
-			if (dprc != null)
+			if (dprc != null && dprc != Controller)
 			{
 				Controller.Valid = false;
 				MessageBox.Show("Friendly Name conflict.", "Configuration error", MessageBoxButtons.OK, MessageBoxIcon.Error, MessageBoxDefaultButton.Button1);
@@ -127,7 +127,7 @@ namespace TaskMaster
 			Controller.Priority = ProcessHelpers.IntToPriority(priorityClass.SelectedIndex); // is this right?
 			Controller.Increase = increasePrio.Checked;
 			Controller.Decrease = decreasePrio.Checked;
-			Controller.Affinity = new IntPtr(Convert.ToInt32(affinityMask.Value));
+			Controller.Affinity = new IntPtr(cpumask == 0 ? ProcessManager.allCPUsMask : cpumask);
 			Controller.PowerPlan = PowerManager.GetModeByName(powerPlan.Text);
 			if (Controller.PowerPlan == PowerInfo.PowerMode.Custom) Controller.PowerPlan = PowerInfo.PowerMode.Undefined;
 			Controller.Rescan = Convert.ToInt32(rescanFreq.Value);
@@ -166,6 +166,7 @@ namespace TaskMaster
 		ComboBox powerPlan = new ComboBox();
 		CheckBox foregroundOnly = new CheckBox();
 		ListView ignorelist = new ListView();
+		int cpumask = 0;
 
 		void BuildUI()
 		{
@@ -394,7 +395,7 @@ namespace TaskMaster
 
 			var list = new List<CheckBox>();
 
-			int cpumask = Controller.Affinity.ToInt32();
+			cpumask = Controller.Affinity.ToInt32();
 			for (int bit = 0; bit < ProcessManager.CPUCount; bit++)
 			{
 				var box = new CheckBox();
@@ -478,7 +479,7 @@ namespace TaskMaster
 				powerPlan.Items.Add(t);
 			int ppi = System.Convert.ToInt32(Controller.PowerPlan);
 			powerPlan.DropDownStyle = ComboBoxStyle.DropDownList;
-			powerPlan.SelectedIndex = System.Math.Max(ppi, 3);
+			powerPlan.SelectedIndex = System.Math.Min(ppi, 3);
 			powerPlan.Width = 180;
 			tooltip.SetToolTip(powerPlan, "Power Mode to be used when this application is detected. Leaving this undefined disables it.");
 			lt.Controls.Add(powerPlan);

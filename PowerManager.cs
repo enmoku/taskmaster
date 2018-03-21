@@ -177,11 +177,6 @@ namespace TaskMaster
 			}
 		}
 
-		/// <summary>
-		/// Pause power manager.
-		/// </summary>
-		static bool PauseForSessionLock = false;
-
 		bool SaverOnMonitorSleep = false;
 		PowerMode SessionLockMode = PowerMode.PowerSaver;
 		bool SaverOnLogOff = false;
@@ -209,10 +204,8 @@ namespace TaskMaster
 			Steady = 2
 		}
 
-		readonly uint AutoAdjustForceBlock = 1 << 1;
-		readonly uint AutoAdjustPauseBlock = 1 << 2;
-		readonly uint AutoAdjustReadyBlock = 1 << 3;
-		uint AutoAdjustBlocks = 0;
+		bool Paused = false;
+		bool Forced = false;
 
 		int HighPressure = 0;
 		int LowPressure = 0;
@@ -228,7 +221,7 @@ namespace TaskMaster
 			PowerReaction Reaction = PowerReaction.Average;
 			PowerMode ReactionaryPlan = AutoAdjust.DefaultMode;
 
-			AutoAdjustBlocks |= AutoAdjustReadyBlock;
+			bool Ready = false;
 
 			ev.Pressure = 0;
 			ev.Handled = false;
@@ -246,7 +239,7 @@ namespace TaskMaster
 					BackoffCounter++;
 
 					if (BackoffCounter >= AutoAdjust.High.Backoff.Level)
-						AutoAdjustBlocks &= ~AutoAdjustReadyBlock;
+						Ready = true;
 
 					ev.Pressure = ((float)BackoffCounter) / ((float)AutoAdjust.High.Backoff.Level);
 					//Console.WriteLine("Downgrade to Mid: " + BackoffCounter + " / " + HighBackoffLevel + " = " + ev.Pressure
@@ -269,7 +262,7 @@ namespace TaskMaster
 					BackoffCounter++;
 
 					if (BackoffCounter >= AutoAdjust.Low.Backoff.Level)
-						AutoAdjustBlocks &= ~AutoAdjustReadyBlock;
+						Ready = true;
 
 					ev.Pressure = ((float)BackoffCounter) / ((float)AutoAdjust.Low.Backoff.Level);
 					//Console.WriteLine("Upgrade to Mid: " + BackoffCounter + " / " + LowBackoffLevel + " = " + ev.Pressure
@@ -290,7 +283,7 @@ namespace TaskMaster
 					HighPressure++;
 
 					if (HighPressure >= AutoAdjust.High.Commit.Level)
-						AutoAdjustBlocks &= ~AutoAdjustReadyBlock;
+						Ready = true;
 
 					ev.Pressure = ((float)HighPressure) / ((float)AutoAdjust.High.Commit.Level);
 
@@ -307,7 +300,7 @@ namespace TaskMaster
 					LowPressure++;
 
 					if (LowPressure >= AutoAdjust.Low.Commit.Level)
-						AutoAdjustBlocks &= ~AutoAdjustReadyBlock;
+						Ready = true;
 
 					ev.Pressure = ((float)LowPressure) / ((float)AutoAdjust.Low.Commit.Level);
 
@@ -324,11 +317,13 @@ namespace TaskMaster
 					ResetAutoadjust();
 
 					// Only time this should cause actual power mode change is when something else changes power mode
-					AutoAdjustBlocks &= ~AutoAdjustReadyBlock;
+					Ready = true;
 				}
 			}
 
-			if (ReactionaryPlan != CurrentMode && AutoAdjustBlocks == 0)
+			bool ReadyToAdjust = (Ready && !Forced && !Paused);
+
+			if (ReadyToAdjust && ReactionaryPlan != CurrentMode)
 			{
 				if (TaskMaster.DebugPower) Log.Debug("<Power Mode> Auto-adjust: {Mode}", Reaction.ToString());
 
@@ -354,7 +349,7 @@ namespace TaskMaster
 					if (TaskMaster.DebugPower)
 						Log.Debug("<Power Mode> Can't override manual power mode.");
 				}
-				else if (AutoAdjustBlocks == 0)
+				else if (ReadyToAdjust)
 				{
 					if (ReactionaryPlan == CurrentMode && ev.Pressure > 1.0)
 					{
@@ -554,8 +549,7 @@ namespace TaskMaster
 					// SET POWER SAVER
 					if (SessionLockMode != PowerMode.Custom)
 					{
-						PauseForSessionLock = true;
-						AutoAdjustBlocks |= AutoAdjustPauseBlock;
+						Paused = true;
 
 						Log.Information("<Power Mode> Session locked, enforcing power plan: {Plan}", SessionLockMode);
 
@@ -576,8 +570,7 @@ namespace TaskMaster
 					// RESTORE POWER MODE
 					if (SessionLockMode != PowerMode.Custom)
 					{
-						PauseForSessionLock = false;
-						AutoAdjustBlocks &= ~AutoAdjustPauseBlock;
+						Paused = false;
 
 						Log.Information("<Power Mode> Session unlocked, restoring normal power.");
 
@@ -672,9 +665,9 @@ namespace TaskMaster
 
 		PowerMode SavedMode = PowerMode.Undefined;
 
-		static Guid HighPerformance = new Guid("8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c"); // SCHEME_MIN
-		static Guid Balanced = new Guid("381b4222-f694-41f0-9685-ff5bb260df2e"); // SCHEME_BALANCED
-		static Guid PowerSaver = new Guid("a1841308-3541-4fab-bc81-f71556f20b4a"); // SCHEME_MAX
+		static readonly Guid HighPerformance = new Guid("8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c"); // SCHEME_MIN
+		static readonly Guid Balanced = new Guid("381b4222-f694-41f0-9685-ff5bb260df2e"); // SCHEME_BALANCED
+		static readonly Guid PowerSaver = new Guid("a1841308-3541-4fab-bc81-f71556f20b4a"); // SCHEME_MAX
 
 		public enum PowerBehaviour
 		{
@@ -763,7 +756,7 @@ namespace TaskMaster
 		public async Task Restore(int sourcePid = -1)
 		{
 			Debug.Assert(sourcePid == 0 || sourcePid > 4);
-			if (PauseForSessionLock) return; // TODO: What to do in the unlikely event of this being called while paused?
+			if (Paused) return; // TODO: What to do in the unlikely event of this being called while paused?
 
 			lock (forceModeSources_lock)
 			{
@@ -805,7 +798,6 @@ namespace TaskMaster
 					if (RestoreMode != PowerMode.Undefined)
 						SavedMode = RestoreMode;
 
-					AutoAdjustBlocks &= ~AutoAdjustForceBlock;
 					if (SavedMode != PowerMode.Undefined && SavedMode != CurrentMode)
 					{
 						if (Behaviour == PowerBehaviour.Auto) return;
@@ -816,6 +808,8 @@ namespace TaskMaster
 						//Log.Information("<Power Mode> Restored to: {PowerMode}", CurrentMode.ToString());
 					}
 				}
+
+				Forced = false;
 			}
 			else
 			{
@@ -841,10 +835,9 @@ namespace TaskMaster
 				{
 					plan = (Guid)Marshal.PtrToStructure(ptr, typeof(Guid));
 					Marshal.FreeHGlobal(ptr);
-
-					if (plan == Balanced) { CurrentMode = PowerMode.Balanced; }
-					else if (plan == PowerSaver) { CurrentMode = PowerMode.PowerSaver; }
-					else if (plan == HighPerformance) { CurrentMode = PowerMode.HighPerformance; }
+					if (plan.Equals(Balanced)) { CurrentMode = PowerMode.Balanced; }
+					else if (plan.Equals(PowerSaver)) { CurrentMode = PowerMode.PowerSaver; }
+					else if (plan.Equals(HighPerformance)) { CurrentMode = PowerMode.HighPerformance; }
 					else { CurrentMode = PowerMode.Undefined; }
 
 					Log.Information("<Power Mode> Current: {Plan} ({Guid})", CurrentMode.ToString(), plan.ToString());
@@ -862,7 +855,7 @@ namespace TaskMaster
 		public bool Request(PowerMode mode)
 		{
 			Debug.Assert(Behaviour == PowerBehaviour.Auto, "RequestMode is for auto adjusting.");
-			if (PauseForSessionLock) return false;
+			if (Paused) return false;
 
 			if (mode == CurrentMode || forceModeSources.Count > 0)
 				return false;
@@ -885,7 +878,7 @@ namespace TaskMaster
 		public bool Force(PowerMode mode, int sourcePid)
 		{
 			if (Behaviour == PowerBehaviour.Manual) return false;
-			if (PauseForSessionLock) return false;
+			if (Paused) return false;
 
 			bool rv = false;
 
@@ -899,13 +892,14 @@ namespace TaskMaster
 				}
 
 				forceModeSources.Add(sourcePid);
+
 			}
+
+			Forced = true;
 
 			rv = mode != CurrentMode;
 			if (rv)
 				setMode(mode);
-
-			AutoAdjustBlocks |= AutoAdjustForceBlock;
 
 			if (TaskMaster.DebugPower)
 			{

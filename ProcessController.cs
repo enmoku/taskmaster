@@ -28,7 +28,6 @@ using System;
 using Serilog;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Runtime.InteropServices;
 using System.ComponentModel;
 using System.Threading.Tasks;
 using System.Linq;
@@ -203,7 +202,14 @@ namespace TaskMaster
 			app["Increase"].BoolValue = Increase;
 			app["Decrease"].BoolValue = Decrease;
 			app["Priority"].IntValue = ProcessHelpers.PriorityToInt(Priority);
-			app["Affinity"].IntValue = Affinity.ToInt32();
+
+			int affinity = Affinity.ToInt32();
+			if (affinity == ProcessManager.allCPUsMask) affinity = 0;
+			if (affinity > 0)
+				app["Affinity"].IntValue = Affinity.ToInt32();
+			else
+				app.Remove("Affinity"); // windows defaults to all cores, pointless to set it
+
 			string pmode = PowerManager.GetModeName(PowerPlan);
 			if (PowerPlan != PowerInfo.PowerMode.Undefined)
 				app["Power mode"].StringValue = PowerManager.GetModeName(PowerPlan);

@@ -29,7 +29,6 @@ using System.Windows.Forms;
 using Serilog;
 using System.Diagnostics;
 using System.Threading.Tasks;
-using System.Management;
 
 namespace TaskMaster
 {
@@ -78,7 +77,7 @@ namespace TaskMaster
 			menu_configuration.DropDownItems.Add(menu_configuration_folder);
 
 			menu_runatstart = new ToolStripMenuItem("Run at start", null, RunAtStartMenuClick);
-			menu_runatstart.Checked = RunAtStartRegRun(false, true);
+			menu_runatstart.Checked = RunAtStartRegRun(enabled:false, dryrun:true);
 
 			if (TaskMaster.PowerManagerEnabled)
 			{
@@ -250,6 +249,7 @@ namespace TaskMaster
 
 		async void ShowPowerConfig(object sender, EventArgs e)
 		{
+
 			PowerConfigWindow.ShowPowerConfig().ConfigureAwait(true);
 		}
 
@@ -261,15 +261,25 @@ namespace TaskMaster
 				return; // already being done
 			}
 
-			using (var m = SelfAwareness.Mind(DateTime.Now.AddSeconds(10)))
+			try
 			{
-				await TaskMaster.ShowMainWindow().ConfigureAwait(true);
+				using (var m = SelfAwareness.Mind(DateTime.Now.AddSeconds(10)))
+				{
+					await TaskMaster.ShowMainWindow().ConfigureAwait(false);
+				}
+
+				if (TaskMaster.Trace)
+					Log.Verbose("RestoreMainWindow done!");
 			}
-
-			if (TaskMaster.Trace)
-				Log.Verbose("RestoreMainWindow done!");
-
-			restoremainwindow_lock = 0;
+			catch (Exception ex)
+			{
+				Logging.Stacktrace(ex);
+				throw;
+			}
+			finally
+			{
+				restoremainwindow_lock = 0;
+			}
 		}
 
 		async void ShowWindow(object sender, MouseEventArgs e)
@@ -497,7 +507,7 @@ var runtime = Environment.GetCommandLineArgs()[0];
 			*/
 		}
 
-		bool RunAtStartRegRun(bool status, bool dryrun = false)
+		bool RunAtStartRegRun(bool enabled, bool dryrun = false)
 		{
 			string runatstart_path = @"Software\Microsoft\Windows\CurrentVersion\Run";
 			string runatstart_key = "Enmoku-Taskmaster";
@@ -509,15 +519,17 @@ var runtime = Environment.GetCommandLineArgs()[0];
 				if (key != null)
 				{
 					runatstart = (string)key.GetValue(runatstart_key, string.Empty);
-					if (dryrun) return (runatstart == runvalue);
-					if (status)
+
+					if (dryrun) return (runatstart.Equals(runvalue));
+					if (enabled)
 					{
+
 						if (runatstart == runvalue) return true;
 						key.SetValue(runatstart_key, runvalue);
 						Log.Information("Run at OS startup enabled: " + Environment.GetCommandLineArgs()[0]);
 						return true;
 					}
-					else if (!status)
+					else if (!enabled)
 					{
 						if (runatstart != runvalue) return false;
 
@@ -526,6 +538,8 @@ var runtime = Environment.GetCommandLineArgs()[0];
 						//return false;
 					}
 				}
+				else
+					Log.Debug("Registry run at startup key not found.");
 			}
 			catch (Exception ex)
 			{

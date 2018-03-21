@@ -27,8 +27,7 @@
 
 /*
  * TODO: Add process IO priority modification.
- * TODO: Detect full screen or GPU accelerated apps and adjust their priorities.
- * TODO: Detect if the above apps hang and lower their processing priorities as result.
+ * TODO: Detect if the apps hang and lower their processing priorities as result.
  * 
  * MAYBE:
  *  - Monitor [MFT] fragmentation?
@@ -36,15 +35,10 @@
  *  - Detect high disk usage.
  *  - Clean %TEMP% with same design goals as the OS builtin disk cleanup utility.
  *  - SMART stats? seems pointless...
- *  - Action logging
+ *  - Action logging. UPDATE: Whatever did this mean?
  * 
  * CONFIGURATION:
- * TODO: Ini file? Yaml?
  * TODO: Config in app directory
- * TODO: Config in %APPDATA% or %LOCALAPPDATA%
- * 
- * Other:
- *  - Multiple windows or tabbed window?
  */
 
 using System;
@@ -212,22 +206,22 @@ namespace TaskMaster
 
 		public static async Task ShowMainWindow()
 		{
-			if (mainwindow?.Visible ?? false)
-			{
-				//Log.Debug("Bringing to front");
-				mainwindow?.Reveal();
-			}
-			else
+			try
 			{
 				using (var m = SelfAwareness.Mind(DateTime.Now.AddSeconds(30)))
 				{
-					await BuildMainWindow().ConfigureAwait(true);
+					//Log.Debug("Bringing to front");
+					BuildMainWindow();
 					mainwindow?.Reveal();
 				}
 			}
+			catch (Exception ex)
+			{
+				Logging.Stacktrace(ex);
+			}
 		}
 
-		public static async Task BuildMainWindow()
+		public static void BuildMainWindow()
 		{
 			lock (mainwindow_lock)
 			{
@@ -237,54 +231,63 @@ namespace TaskMaster
 						Console.WriteLine("Building MainWindow");
 					mainwindow = new MainWindow();
 					mainwindow.FormClosed += MainWindowClose;
+					mainwindow.Shown += (o, e) =>
+					{
+						try
+						{
+							if (diskmanager != null)
+							{
+								if (TaskMaster.Trace)
+									Console.WriteLine("... hooking NVM manager");
+								mainwindow.hookDiskManager(ref diskmanager);
+							}
+
+							if (processmanager != null)
+							{
+								if (TaskMaster.Trace)
+									Console.WriteLine("... hooking PROC manager");
+								mainwindow.hookProcessManager(ref processmanager);
+							}
+
+							if (micmonitor != null)
+							{
+								if (TaskMaster.Trace)
+									Console.WriteLine("... hooking MIC monitor");
+								mainwindow.hookMicMonitor(micmonitor);
+							}
+
+							mainwindow.FillLog();
+
+							if (netmonitor != null)
+							{
+								if (TaskMaster.Trace)
+									Console.WriteLine("... hooking NET monitor");
+								mainwindow.hookNetMonitor(ref netmonitor);
+							}
+
+							if (activeappmonitor != null)
+							{
+								if (TaskMaster.Trace)
+									Console.WriteLine("... hooking APP manager");
+								mainwindow.hookActiveAppMonitor(ref activeappmonitor);
+							}
+
+							if (powermanager != null)
+							{
+								if (TaskMaster.Trace)
+									Console.WriteLine("... hooking POW manager");
+								mainwindow.hookPowerManager(ref powermanager);
+							}
+						}
+						catch (Exception ex)
+						{
+							Logging.Stacktrace(ex);
+						}
+					};
 
 					if (TaskMaster.Trace)
 						Console.WriteLine("... hooking to TRAY");
 					trayaccess.hookMainWindow(ref mainwindow);
-
-					if (diskmanager != null)
-					{
-						if (TaskMaster.Trace)
-							Console.WriteLine("... hooking NVM manager");
-						mainwindow.hookDiskManager(ref diskmanager);
-					}
-
-					if (processmanager != null)
-					{
-						if (TaskMaster.Trace)
-							Console.WriteLine("... hooking PROC manager");
-						mainwindow.hookProcessManager(ref processmanager);
-					}
-
-					if (micmonitor != null)
-					{
-						if (TaskMaster.Trace)
-							Console.WriteLine("... hooking MIC monitor");
-						mainwindow.hookMicMonitor(micmonitor);
-					}
-
-					mainwindow.FillLog();
-
-					if (netmonitor != null)
-					{
-						if (TaskMaster.Trace)
-							Console.WriteLine("... hooking NET monitor");
-						mainwindow.hookNetMonitor(ref netmonitor);
-					}
-
-					if (activeappmonitor != null)
-					{
-						if (TaskMaster.Trace)
-							Console.WriteLine("... hooking APP manager");
-						mainwindow.hookActiveAppMonitor(ref activeappmonitor);
-					}
-
-					if (powermanager != null)
-					{
-						if (TaskMaster.Trace)
-							Console.WriteLine("... hooking POW manager");
-						mainwindow.hookPowerManager(ref powermanager);
-					}
 
 					if (TaskMaster.Trace)
 						Console.WriteLine("MainWindow built");

@@ -107,6 +107,8 @@ namespace TaskMaster
 				commitbytes = new PerformanceCounterWrapper("Memory", "Committed Bytes", null);
 				commitlimit = new PerformanceCounterWrapper("Memory", "Commit Limit", null);
 				commitpercentile = new PerformanceCounterWrapper("Memory", "% Committed Bytes in Use", null);
+
+				Log.Information("<Auto-Doc> Memory auto-paging level: {Level} MB", MemLevel);
 			}
 
 			healthTimer = new System.Threading.Timer(TimerCheck, null, 5000, Frequency * 60 * 1000);
@@ -160,8 +162,6 @@ namespace TaskMaster
 
 				MemCooldown = freememsec.GetSetDefault("Cooldown", 60, out modified).IntValue.Constrain(1, 180);
 				freememsec["Cooldown"].Comment = "Don't do this again for this many minutes.";
-
-				Log.Information("<Auto-Doc> Memory auto-paging level: {Level} MB", MemLevel);
 			}
 
 			if (configdirty) TaskMaster.MarkDirtyINI(cfg);
@@ -174,17 +174,24 @@ namespace TaskMaster
 
 		async void TimerCheck(object state)
 		{
-			Check();
+			try
+			{
+				Check();
+			}
+			catch (Exception ex)
+			{
+				Logging.Stacktrace(ex);
+			}
 		}
 
 		async void Check()
 		{
-			if (memfree != null)
+			if (MemLevel > 0)
 			{
-				float memfreemb = memfree.Value; // MB
-				float commitb = commitbytes.Value;
-				float commitlimitb = commitlimit.Value;
-				float commitp = commitpercentile.Value;
+				float memfreemb = memfree?.Value ?? 0; // MB
+				float commitb = commitbytes?.Value ?? 0;
+				float commitlimitb = commitlimit?.Value??0;
+				float commitp = commitpercentile?.Value??0;
 
 				//Console.WriteLine("Memory free: " + string.Format("{0:N1}", memfreet) + " / " + MemLevel);
 				if (memfreemb <= MemLevel)
@@ -213,8 +220,8 @@ namespace TaskMaster
 						if (MemIgnoreFocus)
 							processmanager.Unignore(ignorepid);
 
-						float commitp2 = commitpercentile.Value;
-						float commitb2 = commitbytes.Value;
+						float commitp2 = commitpercentile?.Value??0;
+						float commitb2 = commitbytes?.Value??0;
 						float actualbytes = commitb * (commitp / 100);
 						float actualbytes2 = commitb2 * (commitp2 / 100);
 
