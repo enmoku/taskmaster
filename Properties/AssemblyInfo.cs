@@ -1,18 +1,16 @@
 using System.Runtime.InteropServices;
-using System;
 using System.Reflection;
-using System.Runtime.CompilerServices;
 
 // Information about this assembly is defined by the following attributes. 
 // Change them to the values specific to your project.
 using System.Resources;
 
-[assembly: AssemblyTitle("TaskMaster!")]
+[assembly: AssemblyTitle("Taskmaster!")]
 [assembly: AssemblyDescription("Maintenance and sanitation of unruly minions.")]
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("")]
-[assembly: AssemblyProduct("TaskMaster!")]
-[assembly: AssemblyCopyright("M.A. (enmoku), 2016-2018")]
+[assembly: AssemblyProduct("Taskmaster!")]
+[assembly: AssemblyCopyright("M.A., 2016-2018")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 

@@ -2,9 +2,9 @@
 // TrayAccess.cs
 //
 // Author:
-//       M.A. (enmoku) <>
+//       M.A. (https://github.com/mkahvi)
 //
-// Copyright (c) 2016-2018 M.A. (enmoku)
+// Copyright (c) 2016-2018 M.A.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -30,7 +30,7 @@ using Serilog;
 using System.Diagnostics;
 using System.Threading.Tasks;
 
-namespace TaskMaster
+namespace Taskmaster
 {
 	sealed public class TrayAccess : IDisposable
 	{
@@ -59,7 +59,7 @@ namespace TaskMaster
 			Tray.BalloonTipText = Tray.Text;
 			Tray.Disposed += (object sender, EventArgs e) => { Tray = null; };
 
-			if (TaskMaster.Trace) Log.Verbose("Generating tray icon.");
+			if (Taskmaster.Trace) Log.Verbose("Generating tray icon.");
 
 			ms = new ContextMenuStrip();
 			menu_windowopen = new ToolStripMenuItem("Open", null, RestoreMainWindow);
@@ -79,7 +79,7 @@ namespace TaskMaster
 			menu_runatstart = new ToolStripMenuItem("Run at start", null, RunAtStartMenuClick);
 			menu_runatstart.Checked = RunAtStartRegRun(enabled:false, dryrun:true);
 
-			if (TaskMaster.PowerManagerEnabled)
+			if (Taskmaster.PowerManagerEnabled)
 			{
 				power_auto = new ToolStripMenuItem("Auto", null, SetAutoPower);
 				power_auto.Checked = false;
@@ -96,13 +96,13 @@ namespace TaskMaster
 			menu_restart = new ToolStripMenuItem("Restart", null, (o, s) =>
 			{
 				menu_restart.Enabled = false;
-				TaskMaster.ConfirmExit(restart: true);
+				Taskmaster.ConfirmExit(restart: true);
 				menu_restart.Enabled = true;
 			});
 			menu_exit = new ToolStripMenuItem("Exit", null, (o, s) =>
 			{
 				menu_restart.Enabled = false;
-				TaskMaster.ConfirmExit(restart: false);
+				Taskmaster.ConfirmExit(restart: false);
 				menu_restart.Enabled = true;
 			});
 			ms.Items.Add(menu_windowopen);
@@ -111,7 +111,7 @@ namespace TaskMaster
 			ms.Items.Add(new ToolStripSeparator());
 			ms.Items.Add(menu_configuration);
 			ms.Items.Add(menu_runatstart);
-			if (TaskMaster.PowerManagerEnabled)
+			if (Taskmaster.PowerManagerEnabled)
 			{
 				ms.Items.Add(new ToolStripSeparator());
 				var plab = new ToolStripLabel("--- Power Plan ---");
@@ -128,7 +128,7 @@ namespace TaskMaster
 			ms.Items.Add(menu_exit);
 			Tray.ContextMenuStrip = ms;
 
-			if (TaskMaster.Trace) Log.Verbose("Tray menu ready");
+			if (Taskmaster.Trace) Log.Verbose("Tray menu ready");
 
 			if (!RegisterExplorerExit())
 				throw new InitFailure("Explorer registeriong failed; not running?");
@@ -140,7 +140,7 @@ namespace TaskMaster
 
 			// TODO: Toast Notifications
 
-			if (TaskMaster.Trace) Log.Verbose("<Tray> Initialized");
+			if (Taskmaster.Trace) Log.Verbose("<Tray> Initialized");
 		}
 
 		public void Enable()
@@ -241,9 +241,9 @@ namespace TaskMaster
 		void ShowConfigRequest(object sender, EventArgs e)
 		{
 			//CLEANUP: Console.WriteLine("Opening config folder.");
-			Process.Start(TaskMaster.datapath);
+			Process.Start(Taskmaster.datapath);
 
-			TaskMaster.mainwindow?.ShowConfigRequest(sender, e);
+			Taskmaster.mainwindow?.ShowConfigRequest(sender, e);
 			//CLEANUP: Console.WriteLine("Done opening config folder.");
 		}
 
@@ -265,10 +265,10 @@ namespace TaskMaster
 			{
 				using (var m = SelfAwareness.Mind(DateTime.Now.AddSeconds(10)))
 				{
-					await TaskMaster.ShowMainWindow().ConfigureAwait(false);
+					await Taskmaster.ShowMainWindow().ConfigureAwait(false);
 				}
 
-				if (TaskMaster.Trace)
+				if (Taskmaster.Trace)
 					Log.Verbose("RestoreMainWindow done!");
 			}
 			catch (Exception ex)
@@ -284,7 +284,7 @@ namespace TaskMaster
 
 		async void ShowWindow(object sender, MouseEventArgs e)
 		{
-			if (TaskMaster.Trace)
+			if (Taskmaster.Trace)
 				Console.WriteLine("Tray Click");
 
 			if (e.Button == MouseButtons.Left)
@@ -300,7 +300,7 @@ namespace TaskMaster
 				RestoreMainWindow(sender, null);
 				try
 				{
-					TaskMaster.mainwindow?.UnloseWindowRequest(sender, null); // null reference crash sometimes
+					Taskmaster.mainwindow?.UnloseWindowRequest(sender, null); // null reference crash sometimes
 				}
 				catch (Exception ex)
 				{
@@ -327,7 +327,7 @@ namespace TaskMaster
 					return;
 			}
 
-			//if (TaskMaster.LowMemory)
+			//if (Taskmaster.LowMemory)
 			//{
 			//CLEANUP: Console.WriteLine("DEBUG:TrayAccess.WindowClosed.SaveMemory");
 
@@ -393,7 +393,7 @@ namespace TaskMaster
 
 		bool RegisterExplorerExit(System.Diagnostics.Process[] procs = null)
 		{
-			if (TaskMaster.Trace) Log.Verbose("Registering Explorer crash monitor.");
+			if (Taskmaster.Trace) Log.Verbose("Registering Explorer crash monitor.");
 			// this is for dealing with notify icon disappearing on explorer.exe crash/restart
 
 			if (procs == null) procs = ExplorerInstances;
@@ -428,7 +428,7 @@ namespace TaskMaster
 
 			if (disposing)
 			{
-				if (TaskMaster.Trace) Log.Verbose("Disposing tray...");
+				if (Taskmaster.Trace) Log.Verbose("Disposing tray...");
 
 
 				try
@@ -454,12 +454,21 @@ namespace TaskMaster
 					Tray = null;
 				}
 
+				menu_configuration?.Dispose();
+				menu_exit?.Dispose();
+				menu_rescan?.Dispose();
+				menu_runatstart?.Dispose();
+				menu_windowopen?.Dispose();
+				ms?.Dispose();
+				power_auto?.Dispose();
+				power_balanced?.Dispose();
+				power_highperf?.Dispose();
+				power_manual?.Dispose();
+				power_saving?.Dispose();
 				// Free any other managed objects here.
 				//
 			}
 
-			// Free any unmanaged objects here.
-			//
 			disposed = true;
 		}
 
@@ -475,7 +484,7 @@ namespace TaskMaster
 
 		void RunAtStartMenuClick(object sender, EventArgs ev)
 		{
-			bool isadmin = TaskMaster.IsAdministrator();
+			bool isadmin = Taskmaster.IsAdministrator();
 			if (isadmin)
 			{
 				var rv = System.Windows.Forms.MessageBox.Show("Run at start does not support elevated privilege that you have. Is this alright?\n\nIf you absolutely need admin rights, create onlogon schedule in windows task scheduler.",
@@ -490,7 +499,7 @@ namespace TaskMaster
 
 // This will solve the high privilege problem, but really? Do I want to?
 var runtime = Environment.GetCommandLineArgs()[0];
-			string args = "/Create /tn Enmoku-Taskmaster /tr \"" + runtime + "\" /sc onlogon /it";
+			string args = "/Create /tn MKAh-Taskmaster /tr \"" + runtime + "\" /sc onlogon /it";
 			if (isadmin)
 				args += " /RL HIGHEST";
 
@@ -501,16 +510,16 @@ var runtime = Environment.GetCommandLineArgs()[0];
 			var procq = Process.Start("schtasks", argsq);
 			var rvq = procq.WaitForExit(30000);
 
-			string argstoggle = "/change /TN Enmoku-Taskmaster /ENABLE/DISABLE";
+			string argstoggle = "/change /TN MKAh-Taskmaster /ENABLE/DISABLE";
 
-			string argsdelete = "/delete /TN Enmoku-Taskmaster";
+			string argsdelete = "/delete /TN MKAh-Taskmaster";
 			*/
 		}
 
 		bool RunAtStartRegRun(bool enabled, bool dryrun = false)
 		{
 			string runatstart_path = @"Software\Microsoft\Windows\CurrentVersion\Run";
-			string runatstart_key = "Enmoku-Taskmaster";
+			string runatstart_key = "MKAh-Taskmaster";
 			string runatstart;
 			string runvalue = Environment.GetCommandLineArgs()[0] + " --bootdelay";
 			try

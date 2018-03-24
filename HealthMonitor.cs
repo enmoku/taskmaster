@@ -2,9 +2,9 @@
 // HealthMonitor.cs
 //
 // Author:
-//       M.A. (enmoku) <>
+//       M.A. (https://github.com/mkahvi)
 //
-// Copyright (c) 2018 M.A. (enmoku)
+// Copyright (c) 2018 M.A.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -26,12 +26,9 @@
 
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
-using System.Threading.Tasks;
 using Serilog;
-using Serilog.Debugging;
 
-namespace TaskMaster
+namespace Taskmaster
 {
 	/// <summary>
 	/// Monitors for variety of problems and reports on them.
@@ -135,7 +132,7 @@ namespace TaskMaster
 		SharpConfig.Configuration cfg = null;
 		void LoadConfig()
 		{
-			cfg = TaskMaster.loadConfig("Health.ini");
+			cfg = Taskmaster.loadConfig("Health.ini");
 			bool modified = false, configdirty = false;
 
 			var gensec = cfg["General"];
@@ -164,7 +161,7 @@ namespace TaskMaster
 				freememsec["Cooldown"].Comment = "Don't do this again for this many minutes.";
 			}
 
-			if (configdirty) TaskMaster.MarkDirtyINI(cfg);
+			if (configdirty) Taskmaster.MarkDirtyINI(cfg);
 		}
 
 		PerformanceCounterWrapper memfree = null;
@@ -209,7 +206,7 @@ namespace TaskMaster
 						int ignorepid = -1;
 						if (MemIgnoreFocus)
 						{
-							ignorepid = TaskMaster.activeappmonitor.ForegroundId;
+							ignorepid = Taskmaster.activeappmonitor.ForegroundId;
 							processmanager.Ignore(ignorepid);
 						}
 
@@ -246,7 +243,7 @@ namespace TaskMaster
 
 			if (disposing)
 			{
-				if (TaskMaster.Trace) Log.Verbose("Disposing health monitor...");
+				if (Taskmaster.Trace) Log.Verbose("Disposing health monitor...");
 
 				healthTimer?.Dispose();
 				healthTimer = null;

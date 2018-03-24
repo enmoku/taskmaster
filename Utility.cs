@@ -2,9 +2,9 @@
 // Utility.cs
 //
 // Author:
-//       M.A. (enmoku) <>
+//       M.A. (https://github.com/mkahvi)
 //
-// Copyright (c) 2016-2018 M.A. (enmoku)
+// Copyright (c) 2016-2018 M.A.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -28,7 +28,7 @@ using System;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 
-namespace TaskMaster
+namespace Taskmaster
 {
 	/// <summary>
 	/// Simplified wrappers for System.Threading.Interlocked stuff.
@@ -152,19 +152,55 @@ namespace TaskMaster
 
 	public static class Bit
 	{
+		public static int Set(int dec, int nth)
+		{
+			return Or(dec, (1 << nth));
+		}
+
 		public static bool IsSet(int dec, int nth)
 		{
-			return (dec & nth) != 0;
+			return And(dec, (1 << nth)) != 0;
 		}
 
 		public static int Unset(int dec, int nth)
 		{
-			return dec & ~nth;
+			return And(dec, ~nth);
+		}
+
+		public static int Or(int dec1, int dec2)
+		{
+			return dec1 | dec2;
 		}
 
 		public static int And(int dec1, int dec2)
 		{
-			return dec1 | dec2;
+			return dec1 & dec2;
+		}
+
+		public static int Count(int i)
+		{
+			i = i - ((i >> 1) & 0x55555555);
+			i = (i & 0x33333333) + ((i >> 2) & 0x33333333);
+			return (((i + (i >> 4)) & 0x0F0F0F0F) * 0x01010101) >> 24;
+		}
+
+		public static int Fill(int num, int mask, int maxbits)
+		{
+			int bits = Count(num);
+
+			for (int i = 0; i < 32; i++)
+			{
+				if (IsSet(mask, i))
+				{
+					if (!IsSet(num, i))
+					{
+						num = Set(num, i);
+						bits++;
+					}
+				}
+			}
+
+			return num;
 		}
 	}
 
@@ -181,9 +217,10 @@ namespace TaskMaster
 								System.IO.Path.GetFileName(file), member, line, text);
 		}
 
-		public static void Stacktrace(Exception ex)
+		public static void Stacktrace(Exception ex, [CallerMemberName] string method="")
 		{
 			Serilog.Log.Fatal("{Type} : {Message}", ex.GetType().Name, ex.Message);
+			Serilog.Log.Fatal("Reported at {Method}", method);
 			Serilog.Log.Fatal(ex.StackTrace);
 		}
 	}

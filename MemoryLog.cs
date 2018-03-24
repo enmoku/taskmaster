@@ -2,9 +2,9 @@
 // MemoryLog.cs
 //
 // Author:
-//       M.A. (enmoku) <>
+//       M.A. (https://github.com/mkahvi)
 //
-// Copyright (c) 2016-2018 M.A. (enmoku)
+// Copyright (c) 2016-2018 M.A.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -32,7 +32,7 @@ using Serilog.Core;
 using Serilog.Events;
 using Serilog.Formatting;
 
-namespace TaskMaster
+namespace Taskmaster
 {
 	public class LogEventArgs : EventArgs
 	{
@@ -154,7 +154,7 @@ namespace TaskMaster
 
 				if (disposing)
 				{
-					if (TaskMaster.Trace)
+					if (Taskmaster.Trace)
 						Log.Verbose("Disposing memory sink...");
 
 					p_output?.Dispose();

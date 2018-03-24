@@ -2,9 +2,9 @@
 // ActiveAppManager.cs
 //
 // Author:
-//       M.A. (enmoku) <>
+//       M.A. (https://github.com/mkahvi)
 //
-// Copyright (c) 2016-2018 M.A. (enmoku)
+// Copyright (c) 2016-2018 M.A.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -30,7 +30,7 @@ using System.Runtime.InteropServices;
 using Serilog;
 using Microsoft.Win32.SafeHandles;
 
-namespace TaskMaster
+namespace Taskmaster
 {
 
 	public class WindowChangedArgs : EventArgs
@@ -59,11 +59,11 @@ namespace TaskMaster
 			NativeMethods.GetWindowThreadProcessId(hwnd, out pid);
 			ForegroundId = pid;
 
-			var perfsec = TaskMaster.cfg["Performance"];
+			var perfsec = Taskmaster.cfg["Performance"];
 			bool modified = false;
 			Hysterisis = perfsec.GetSetDefault("Foreground hysterisis", 1500, out modified).IntValue.Constrain(0, 30000);
 			perfsec["Foreground hysterisis"].Comment = "In milliseconds, from 0 to 30000. Delay before we inspect foreground app, in case user rapidly swaps apps.";
-			if (modified) TaskMaster.MarkDirtyINI(TaskMaster.cfg);
+			if (modified) Taskmaster.MarkDirtyINI(Taskmaster.cfg);
 
 			Log.Information("<Foreground Manager> Loaded.");
 		}
@@ -118,7 +118,7 @@ namespace TaskMaster
 
 			if (disposing)
 			{
-				if (TaskMaster.Trace)
+				if (Taskmaster.Trace)
 					Log.Verbose("Disposing FG monitor...");
 
 				NativeMethods.UnhookWinEvent(windowseventhook); // Automaticc
@@ -169,7 +169,7 @@ namespace TaskMaster
 
 			const int nChars = 256;
 			System.Text.StringBuilder buff = null;
-			if (TaskMaster.DebugForeground)
+			if (Taskmaster.DebugForeground)
 			{
 				buff = new System.Text.StringBuilder(nChars);
 
@@ -220,7 +220,7 @@ namespace TaskMaster
 				}
 				catch { /* NOP */ }
 
-				if (TaskMaster.DebugForeground && TaskMaster.ShowInaction)
+				if (Taskmaster.DebugForeground && Taskmaster.ShowInaction)
 					Log.Debug("Active Window (#{Pid}): {Title}", activewindowev.Id, activewindowev.Title);
 
 				ActiveChanged?.Invoke(this, activewindowev);

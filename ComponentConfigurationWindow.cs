@@ -2,9 +2,9 @@
 // ComponentConfigurationWindow.cs
 //
 // Author:
-//       M.A. (enmoku) <>
+//       M.A. (https://github.com/mkahvi)
 //
-// Copyright (c) 2018 M.A. (enmoku)
+// Copyright (c) 2018 M.A.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -26,7 +26,7 @@
 
 using System.Windows.Forms;
 
-namespace TaskMaster
+namespace Taskmaster
 {
 	public class ComponentConfigurationWindow : Form
 	{
@@ -76,7 +76,7 @@ namespace TaskMaster
 				//BackColor = System.Drawing.Color.Azure,
 				Dock = DockStyle.Left
 			};
-			micmon.Checked = initial ? false : TaskMaster.MicrophoneMonitorEnabled;
+			micmon.Checked = initial ? false : Taskmaster.MicrophoneMonitorEnabled;
 			tooltip.SetToolTip(micmon, "Monitor default communications device and keep its volume.");
 			layout.Controls.Add(new Label { Text = "Microphone monitor", AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, Padding = padding, Dock = DockStyle.Left });
 			layout.Controls.Add(micmon);
@@ -94,7 +94,7 @@ namespace TaskMaster
 			tooltip.SetToolTip(netmon, "Monitor network interface status and report online status.");
 			layout.Controls.Add(new Label { Text = "Network monitor", AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, Padding = padding, Dock = DockStyle.Left });
 			layout.Controls.Add(netmon);
-			netmon.Checked = initial ? true : TaskMaster.NetworkMonitorEnabled;
+			netmon.Checked = initial ? true : Taskmaster.NetworkMonitorEnabled;
 			netmon.Click += (sender, e) =>
 			{
 
@@ -110,7 +110,7 @@ namespace TaskMaster
 			layout.Controls.Add(new Label { Text = "Process/name manager", AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, Padding = padding, Dock = DockStyle.Left });
 			layout.Controls.Add(procmon);
 			procmon.Enabled = false;
-			procmon.Checked = initial? true : TaskMaster.ProcessMonitorEnabled;
+			procmon.Checked = initial? true : Taskmaster.ProcessMonitorEnabled;
 
 			var pathmon = new CheckBox()
 			{
@@ -121,7 +121,7 @@ namespace TaskMaster
 			tooltip.SetToolTip(pathmon, "Manage processes based on their location.\nThese are processed only if by name matching does not catch something.\nPath-based processing is lenghtier process but should not cause significant resource drain.");
 			layout.Controls.Add(new Label { Text = "Process/path manager", AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, Padding = padding, Dock = DockStyle.Left });
 			layout.Controls.Add(pathmon);
-			pathmon.Checked = initial ? true : TaskMaster.PathMonitorEnabled;
+			pathmon.Checked = initial ? true : Taskmaster.PathMonitorEnabled;
 			pathmon.Click += (sender, e) =>
 			{
 			};
@@ -164,7 +164,7 @@ namespace TaskMaster
 			{
 				Minimum = 1,
 				Maximum = 5,
-				Value = initial ? 5 : TaskMaster.WMIPollDelay,
+				Value = initial ? 5 : Taskmaster.WMIPollDelay,
 				Dock = DockStyle.Left,
 				Enabled = false,
 				Width = 60,
@@ -195,7 +195,7 @@ namespace TaskMaster
 					wmipolling.Value = 5;
 				}
 			};
-			bool wmi = TaskMaster.WMIPolling;
+			bool wmi = Taskmaster.WMIPolling;
 			bool scan = ProcessManager.RescanEverythingFrequency > 0;
 			ScanOrWMI.SelectedIndex = initial ? 0 : ((wmi && scan) ? 2 : (wmi ? 1 : 0));
 
@@ -212,7 +212,7 @@ namespace TaskMaster
 				Dock = DockStyle.Left
 			};
 
-			tooltip.SetToolTip(powmon, "Manage power mode.\nNot recommended if you already have a power manager, e.g. ASUS EPU.");
+			tooltip.SetToolTip(powmon, "Manage power mode.\nNot recommended if you already have a power manager.");
 			layout.Controls.Add(new Label
 			{
 				Text = "Power manager",
@@ -223,8 +223,8 @@ namespace TaskMaster
 			});
 			layout.Controls.Add(powmon);
 			powmon.Enabled = true;
-			powmon.Checked = initial ? true : TaskMaster.PowerManagerEnabled;
-			powauto.Checked = initial ? true : (TaskMaster.powermanager?.Behaviour == PowerManager.PowerBehaviour.Auto);
+			powmon.Checked = initial ? true : Taskmaster.PowerManagerEnabled;
+			powauto.Checked = initial ? true : (Taskmaster.powermanager?.Behaviour == PowerManager.PowerBehaviour.Auto);
 			powmon.Click += (sender, e) =>
 			{
 				if (powmon.Checked == false)
@@ -251,7 +251,7 @@ namespace TaskMaster
 				//BackColor = System.Drawing.Color.Azure,
 				Dock = DockStyle.Left
 			};
-			fgmon.Checked = initial ? true : TaskMaster.ActiveAppMonitorEnabled;
+			fgmon.Checked = initial ? true : Taskmaster.ActiveAppMonitorEnabled;
 			tooltip.SetToolTip(fgmon, "Allow processes and power mode to be managed based on if a process is in the foreground.\nPOWER MODE SWITCHING NOT IMPLEMENTED.");
 			layout.Controls.Add(new Label { Text = "Foreground manager", AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, Padding = padding, Dock = DockStyle.Left });
 			layout.Controls.Add(fgmon);
@@ -270,7 +270,7 @@ namespace TaskMaster
 			layout.Controls.Add(new Label { Text = "TEMP monitor", AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, Padding = padding, Dock = DockStyle.Left });
 			layout.Controls.Add(tempmon);
 			tempmon.Enabled = false;
-			tempmon.Checked = initial ? false : TaskMaster.MaintenanceMonitorEnabled;
+			tempmon.Checked = initial ? false : Taskmaster.MaintenanceMonitorEnabled;
 
 			// PAGING
 			var paging = new CheckBox()
@@ -283,7 +283,7 @@ namespace TaskMaster
 			tooltip.SetToolTip(tempmon, "Allow paging RAM to page/swap file.\nNOT YET FULLY IMPLEMENTED.");
 			layout.Controls.Add(new Label { Text = "Allow paging", AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, Padding = padding, Dock = DockStyle.Left });
 			layout.Controls.Add(paging);
-			paging.Checked = initial ? false : TaskMaster.PagingEnabled;
+			paging.Checked = initial ? false : Taskmaster.PagingEnabled;
 			paging.Click += (sender, e) =>
 			{
 
@@ -306,7 +306,7 @@ namespace TaskMaster
 				Dock = DockStyle.Left
 			});
 			layout.Controls.Add(showonstart);
-			showonstart.Checked = initial ? false : TaskMaster.ShowOnStart;
+			showonstart.Checked = initial ? false : Taskmaster.ShowOnStart;
 			showonstart.Click += (sender, e) =>
 			{
 
@@ -317,7 +317,7 @@ namespace TaskMaster
 				AutoSize = true,
 				//BackColor = System.Drawing.Color.Azure,
 				Dock = DockStyle.Left,
-				Checked = initial ? true : TaskMaster.HealthMonitorEnabled,
+				Checked = initial ? true : Taskmaster.HealthMonitorEnabled,
 			};
 			layout.Controls.Add(new Label()
 			{
@@ -343,12 +343,12 @@ namespace TaskMaster
 			//l.Controls.Add(savebutton);
 			savebutton.Click += (sender, e) =>
 			{
-				TaskMaster.ComponentConfigurationDone = true;
+				Taskmaster.ComponentConfigurationDone = true;
 
-				var cfg = TaskMaster.loadConfig("Core.ini");
+				var cfg = Taskmaster.loadConfig("Core.ini");
 				var mainsec = cfg["Core"];
 				var opt = mainsec["Version"];
-				opt.StringValue = TaskMaster.ConfigVersion;
+				opt.StringValue = Taskmaster.ConfigVersion;
 				opt.Comment = "Magical";
 
 				var compsec = cfg["Components"];
@@ -377,7 +377,7 @@ namespace TaskMaster
 				perf["WMI poll delay"].IntValue = ((int)wmipolling.Value);
 				perf["WMI queries"].BoolValue = (ScanOrWMI.SelectedIndex != 0);
 
-				TaskMaster.saveConfig(cfg);
+				Taskmaster.saveConfig(cfg);
 
 				DialogResult = DialogResult.OK;
 
@@ -399,7 +399,7 @@ namespace TaskMaster
 			//l.Controls.Add(endbutton);
 			endbutton.Click += (sender, e) =>
 			{
-				TaskMaster.ComponentConfigurationDone = false;
+				Taskmaster.ComponentConfigurationDone = false;
 				Close();
 			};
 

@@ -2,9 +2,9 @@
 // TextInputBox.cs
 //
 // Author:
-//       M.A. (enmoku) <>
+//       M.A. (https://github.com/mkahvi)
 //
-// Copyright (c) 2018 M.A. (enmoku)
+// Copyright (c) 2018 M.A.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -24,14 +24,9 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows.Forms;
 
-namespace TaskMaster
+namespace Taskmaster
 {
 	public class TextInputBox : Form
 	{
@@ -43,6 +38,14 @@ namespace TaskMaster
 			AutoSize = true;
 
 			DialogResult = DialogResult.Abort;
+
+			MinimizeBox = false;
+			MaximizeBox = false;
+
+			AutoSizeMode = AutoSizeMode.GrowAndShrink;
+
+			TopMost = true;
+			BringToFront();
 
 			var layout = new TableLayoutPanel()
 			{
@@ -92,6 +95,8 @@ namespace TaskMaster
 			buttons.Controls.Add(cancelbutton);
 
 			layout.Controls.Add(buttons);
+
+			textbox.Width = layout.Width;
 
 			Controls.Add(layout);
 		}

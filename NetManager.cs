@@ -2,9 +2,9 @@
 // NetManager.cs
 //
 // Author:
-//       M.A. (enmoku) <>
+//       M.A. (https://github.com/mkahvi)
 //
-// Copyright (c) 2016-2018 M.A. (enmoku)
+// Copyright (c) 2016-2018 M.A.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -33,7 +33,7 @@ using Serilog;
 using System.Threading.Tasks;
 using System.Diagnostics;
 
-namespace TaskMaster
+namespace Taskmaster
 {
 	public class NetworkStatus : EventArgs
 	{
@@ -67,7 +67,7 @@ namespace TaskMaster
 
 		void LoadConfig()
 		{
-			var cfg = TaskMaster.loadConfig("Net.ini");
+			var cfg = Taskmaster.loadConfig("Net.ini");
 
 			bool dirty = false;
 			bool dirtyconf = false;
@@ -84,7 +84,7 @@ namespace TaskMaster
 			PacketStatTimerInterval = pktsec.GetSetDefault("Sample rate", 15, out dirty).IntValue.Constrain(1, 60);
 			dirtyconf |= dirty;
 			if (dirtyconf)
-				TaskMaster.saveConfig(cfg);
+				Taskmaster.saveConfig(cfg);
 		}
 
 		public NetManager()
@@ -226,7 +226,7 @@ namespace TaskMaster
 		{
 			get
 			{
-				if (TaskMaster.NetworkMonitorEnabled && InternetAvailable)
+				if (Taskmaster.NetworkMonitorEnabled && InternetAvailable)
 					return (DateTime.Now - lastUptimeStart);
 
 				return TimeSpan.Zero;
@@ -338,7 +338,7 @@ namespace TaskMaster
 			if (!Atomic.Lock(ref checking_inet))
 				return;
 
-			if (TaskMaster.Trace) Log.Verbose("<Network> Checking internet connectivity...");
+			if (Taskmaster.Trace) Log.Verbose("<Network> Checking internet connectivity...");
 
 			bool oldInetAvailable = InternetAvailable;
 			if (NetworkAvailable)
@@ -382,7 +382,7 @@ namespace TaskMaster
 				Log.Information("<Network> Status: {NetworkAvailable}, Internet: {InternetAvailable}", (NetworkAvailable ? "Up" : "Down"), (InternetAvailable ? "Connected" : "Disconnected"));
 			else
 			{
-				if (TaskMaster.Trace) Log.Verbose("<Network> Connectivity unchanged.");
+				if (Taskmaster.Trace) Log.Verbose("<Network> Connectivity unchanged.");
 			}
 
 			Atomic.Unlock(ref checking_inet);
@@ -445,7 +445,7 @@ namespace TaskMaster
 			if (!Atomic.Lock(ref enumerating_inet))
 				return null; // bail if we were already doing this
 
-			if (TaskMaster.DebugNetMonitor)
+			if (Taskmaster.DebugNetMonitor)
 				Log.Debug("<Network> Enumerating network interfaces...");
 
 			var ifacelist = new List<NetDevice>();
@@ -492,7 +492,7 @@ namespace TaskMaster
 				//devi.PrintStats();
 				ifacelist.Add(devi);
 
-				if (TaskMaster.DebugNetMonitor)
+				if (Taskmaster.DebugNetMonitor)
 					Log.Debug("<Network> Interface: {InterfaceName}", dev.Name);
 			}
 
@@ -600,7 +600,7 @@ namespace TaskMaster
 
 			if (disposing)
 			{
-				if (TaskMaster.Trace) Log.Verbose("Disposing network monitor...");
+				if (Taskmaster.Trace) Log.Verbose("Disposing network monitor...");
 				ReportUptime();
 
 				deviceSampleTimer?.Dispose();

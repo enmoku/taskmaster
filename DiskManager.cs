@@ -2,9 +2,9 @@
 // DiskManager.cs
 //
 // Author:
-//       M.A. (enmoku) <>
+//       M.A. (https://github.com/mkahvi)
 //
-// Copyright (c) 2018 M.A. (enmoku)
+// Copyright (c) 2018 M.A.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -29,7 +29,7 @@ using System.Threading.Tasks;
 using Serilog;
 using System.IO;
 
-namespace TaskMaster
+namespace Taskmaster
 {
 	public class DiskManager : IDisposable
 	{
@@ -80,7 +80,7 @@ namespace TaskMaster
 
 		void ReScanTemp(object sender, EventArgs ev)
 		{
-			TempScanTimer.Change(TaskMaster.TempRescanDelay, TimerDue);
+			TempScanTimer.Change(Taskmaster.TempRescanDelay, TimerDue);
 		}
 
 		event EventHandler onBurden;
@@ -162,7 +162,7 @@ namespace TaskMaster
 
 			if (disposing)
 			{
-				if (TaskMaster.Trace)
+				if (Taskmaster.Trace)
 					Log.Verbose("Disposing disk manager...");
 
 				sysWatcher?.Dispose();

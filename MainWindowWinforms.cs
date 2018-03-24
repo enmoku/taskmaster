@@ -2,9 +2,9 @@
 // MainWindow.cs
 //
 // Author:
-//       M.A. (enmoku) <>
+//       M.A. (https://github.com/mkahvi)
 //
-// Copyright (c) 2016-2018 M.A. (enmoku)
+// Copyright (c) 2016-2018 M.A.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -33,7 +33,7 @@ using System.Linq;
 using Serilog;
 using System.Threading.Tasks;
 
-namespace TaskMaster
+namespace Taskmaster
 {
 	// public class MainWindow : System.Windows.Window; // TODO: WPF
 	sealed public class MainWindow : Form
@@ -50,14 +50,14 @@ namespace TaskMaster
 
 		public void ExitRequest(object sender, EventArgs e)
 		{
-			TaskMaster.ConfirmExit(restart: false);
+			Taskmaster.ConfirmExit(restart: false);
 		}
 
 		void WindowClose(object sender, FormClosingEventArgs e)
 		{
 			saveUIState();
 
-			if (!TaskMaster.Trace) return;
+			if (!Taskmaster.Trace) return;
 
 			//Console.WriteLine("WindowClose = " + e.CloseReason);
 			switch (e.CloseReason)
@@ -65,7 +65,7 @@ namespace TaskMaster
 				case CloseReason.UserClosing:
 					// X was pressed or similar, we're just hiding to tray.
 					/*
-					if (!TaskMaster.LowMemory)
+					if (!Taskmaster.LowMemory)
 					{
 						Log.Verbose("Hiding window, keeping in memory.");
 						e.Cancel = true;
@@ -99,15 +99,22 @@ namespace TaskMaster
 		/// </summary>
 		public void UnloseWindowRequest(object sender, EventArgs e)
 		{
-			if (TaskMaster.Trace) Log.Verbose("Making sure main window is not lost.");
+			if (Taskmaster.Trace) Log.Verbose("Making sure main window is not lost.");
 
-			if (Handle == null) return; // should never happen
+			if (!IsHandleCreated) return; // should never happen
 
-			BeginInvoke(new Action(() =>
+			try
 			{
-				CenterToScreen();
-				Reveal();
-			}));
+				BeginInvoke(new Action(() =>
+				{
+					CenterToScreen();
+					Reveal();
+				}));
+			}
+			catch (Exception ex)
+			{
+				Logging.Stacktrace(ex);
+			}
 		}
 
 		public void Reveal()
@@ -141,7 +148,7 @@ namespace TaskMaster
 			Debug.Assert(micmonitor != null);
 			micmon = micmonitor;
 
-			if (TaskMaster.Trace) Log.Verbose("Hooking microphone monitor.");
+			if (Taskmaster.Trace) Log.Verbose("Hooking microphone monitor.");
 
 			micName.Text = micmon.DeviceName;
 			corCountLabel.Text = micmon.Corrections.ToString();
@@ -185,12 +192,13 @@ namespace TaskMaster
 		public void ProcAdjust(object sender, ProcessEventArgs ev)
 		{
 			//Log.Verbose("Process adjust received for '{FriendlyName}'.", e.Control.FriendlyName);
+			if (!IsHandleCreated) return;
 
-			watchlistRules.BeginInvoke(new Action(() =>
+			try
 			{
-				lock (appw_lock)
+				BeginInvoke(new Action(() =>
 				{
-					try
+					lock (appw_lock)
 					{
 						if (WatchlistMap.TryGetValue(ev.Control, out ListViewItem item))
 						{
@@ -200,19 +208,16 @@ namespace TaskMaster
 						else
 							Log.Error("{FriendlyName} not found in app list.", ev.Control.FriendlyName);
 					}
-					catch (Exception ex)
-					{
-						Logging.Stacktrace(ex);
-					}
-				}
-			}));
+				}));
+			}
+			catch { } // ignore
 		}
 
 		public void OnActiveWindowChanged(object sender, WindowChangedArgs windowchangeev)
 		{
-			if (Handle == null) return;
+			if (!IsHandleCreated) return;
 
-			activeLabel.BeginInvoke(new Action(() =>
+			BeginInvoke(new Action(() =>
 			{
 				try
 				{
@@ -252,7 +257,7 @@ namespace TaskMaster
 			WatchlistColor();
 
 			rescanRequest += processmanager.ScanEverythingRequest;
-			if (TaskMaster.PagingEnabled)
+			if (Taskmaster.PagingEnabled)
 				pagingRequest += processmanager.PageEverythingRequest;
 
 			ProcessController.onLocate += WatchlistPathLocatedEvent;
@@ -268,7 +273,7 @@ namespace TaskMaster
 				ExitWaitListHandler(this, new ProcessEventArgs() { Control = null, State = ProcessEventArgs.ProcessState.Starting, Info = bu });
 			}
 
-			if (TaskMaster.ActiveAppMonitorEnabled)
+			if (Taskmaster.ActiveAppMonitorEnabled)
 			{
 				var items2 = processmanager.getExitWaitList();
 				foreach (var bu in items2)
@@ -280,7 +285,9 @@ namespace TaskMaster
 
 		void ProcessNewInstanceCount(object sender, InstanceEventArgs e)
 		{
-			processingCount.BeginInvoke(new Action(() =>
+			if (!IsHandleCreated) return;
+
+			BeginInvoke(new Action(() =>
 			{
 				lock (processingCountLock)
 				{
@@ -290,7 +297,8 @@ namespace TaskMaster
 					}
 					catch
 					{
-						Log.Error("Processing counter over/underflow");
+						if (Taskmaster.Trace)
+							Log.Error("Processing counter over/underflow");
 						processingCount.Value = ProcessManager.Handling;
 					}
 				}
@@ -343,17 +351,13 @@ namespace TaskMaster
 		{
 			lock (watchlistrules_lock)
 			{
-				bool alter = false;
-
 				foreach (var item in WatchlistMap)
 				{
 					WatchlistItemColor(item.Value, item.Key);
-					alter = !alter;
 				}
 			}
 		}
 
-		bool alterColor = false;
 		int num = 1;
 		void AddToWatchlistList(ProcessController prc)
 		{
@@ -383,7 +387,9 @@ namespace TaskMaster
 
 		public void WatchlistPathLocatedEvent(object sender, PathControlEventArgs e)
 		{
-			watchlistRules.BeginInvoke(new Action(() =>
+			if (!IsHandleCreated) return;
+
+			BeginInvoke(new Action(() =>
 			{
 				try
 				{
@@ -396,7 +402,10 @@ namespace TaskMaster
 						}
 					}
 				}
-				catch { }
+				catch (Exception ex)
+				{
+					Logging.Stacktrace(ex);
+				}
 			}));
 		}
 
@@ -433,7 +442,9 @@ namespace TaskMaster
 
 		void volumeChangeDetected(object sender, VolumeChangedEventArgs e)
 		{
-			micVol.BeginInvoke(new Action(() =>
+			if (!IsHandleCreated) return;
+
+			BeginInvoke(new Action(() =>
 			{
 				try
 				{
@@ -459,7 +470,9 @@ namespace TaskMaster
 
 		public void PathCacheUpdate(object sender, CacheEventArgs ev)
 		{
-			cacheObjects.BeginInvoke(new Action(() =>
+			if (!IsHandleCreated) return;
+
+			BeginInvoke(new Action(() =>
 			{
 				try
 				{
@@ -500,7 +513,9 @@ namespace TaskMaster
 
 		void UpdateRescanCountdown(object sender, EventArgs ev)
 		{
-			processingCountdown.BeginInvoke(new Action(() =>
+			if (!IsHandleCreated) return;
+
+			BeginInvoke(new Action(() =>
 			{
 				var t = ProcessManager.NextRescan.Unixstamp() - DateTime.Now.Unixstamp();
 				try
@@ -513,7 +528,9 @@ namespace TaskMaster
 
 		void UpdateUptime(object sender, EventArgs e)
 		{
-			uptimestatuslabel.BeginInvoke(new Action(() =>
+			if (!IsHandleCreated) return;
+
+			BeginInvoke(new Action(() =>
 			{
 				try
 				{
@@ -657,19 +674,28 @@ namespace TaskMaster
 				rescanRequest?.Invoke(this, null);
 			});
 			var menu_action_memoryfocus = new ToolStripMenuItem("Free memory for...", null, FreeMemoryRequest);
-			menu_action_memoryfocus.Enabled = TaskMaster.PagingEnabled;
+			menu_action_memoryfocus.Enabled = Taskmaster.PagingEnabled;
 			ToolStripMenuItem menu_action_restart = null;
 			menu_action_restart = new ToolStripMenuItem("Restart", null, (s, e) =>
 			{
 				menu_action_restart.Enabled = false;
-				TaskMaster.ConfirmExit(restart: true);
+				Taskmaster.ConfirmExit(restart: true);
 				menu_action_restart.Enabled = true;
 			});
+			ToolStripMenuItem menu_action_restartadmin = null;
+			menu_action_restartadmin = new ToolStripMenuItem("Restart as admin", null, (s, e) =>
+			{
+				menu_action_restartadmin.Enabled = false;
+				Taskmaster.ConfirmExit(restart: true, admin:true);
+				menu_action_restartadmin.Enabled = true;
+			});
+
 			var menu_action_exit = new ToolStripMenuItem("Exit", null, ExitRequest);
 			menu_action.DropDownItems.Add(menu_action_rescan);
 			menu_action.DropDownItems.Add(menu_action_memoryfocus);
 			menu_action.DropDownItems.Add(new ToolStripSeparator());
 			menu_action.DropDownItems.Add(menu_action_restart);
+			menu_action.DropDownItems.Add(menu_action_restartadmin);
 			menu_action.DropDownItems.Add(menu_action_exit);
 
 			// CONFIG menu item
@@ -679,18 +705,18 @@ namespace TaskMaster
 			var menu_config_behaviour = new ToolStripMenuItem("Behaviour");
 			var menu_config_power = new ToolStripMenuItem("Power");
 			var menu_config_saveonexit = new ToolStripMenuItem("Save on exit");
-			menu_config_saveonexit.Checked = TaskMaster.SaveConfigOnExit;
+			menu_config_saveonexit.Checked = Taskmaster.SaveConfigOnExit;
 			menu_config_saveonexit.CheckOnClick = true;
 			menu_config_saveonexit.Click += (sender, e) =>
 			{
-				TaskMaster.SaveConfigOnExit = !TaskMaster.SaveConfigOnExit;
+				Taskmaster.SaveConfigOnExit = !Taskmaster.SaveConfigOnExit;
 			};
 
 			// Sub Sub Items
 			var menu_config_behaviour_autoopen = new ToolStripMenuItem("Auto-open menus");
-			menu_config_behaviour_autoopen.Checked = TaskMaster.AutoOpenMenus;
+			menu_config_behaviour_autoopen.Checked = Taskmaster.AutoOpenMenus;
 			menu_config_behaviour_autoopen.CheckOnClick = true;
-			menu_config_behaviour_autoopen.Click += (sender, e) => { TaskMaster.AutoOpenMenus = !TaskMaster.AutoOpenMenus; };
+			menu_config_behaviour_autoopen.Click += (sender, e) => { Taskmaster.AutoOpenMenus = !Taskmaster.AutoOpenMenus; };
 
 			menu_config_behaviour.DropDownItems.Add(menu_config_behaviour_autoopen);
 
@@ -723,7 +749,7 @@ namespace TaskMaster
 				}
 			});
 
-			var menu_config_folder = new ToolStripMenuItem("Open in file manager", null, (s, e) => { Process.Start(TaskMaster.datapath); });
+			var menu_config_folder = new ToolStripMenuItem("Open in file manager", null, (s, e) => { Process.Start(Taskmaster.datapath); });
 			//menu_config.DropDownItems.Add(menu_config_log);
 			menu_config.DropDownItems.Add(menu_config_behaviour);
 			menu_config.DropDownItems.Add(new ToolStripSeparator());
@@ -739,39 +765,39 @@ namespace TaskMaster
 			var menu_debug = new ToolStripMenuItem("Debug");
 			menu_debug.DropDown.AutoClose = true;
 			// Sub Items
-			var menu_debug_inaction = new ToolStripMenuItem("Show inaction") { Checked = TaskMaster.ShowInaction, CheckOnClick = true };
-			menu_debug_inaction.Click += (sender, e) => { TaskMaster.ShowInaction = menu_debug_inaction.Checked; };
-			var menu_debug_scanning = new ToolStripMenuItem("Scanning") { Checked = TaskMaster.DebugFullScan, CheckOnClick = true };
+			var menu_debug_inaction = new ToolStripMenuItem("Show inaction") { Checked = Taskmaster.ShowInaction, CheckOnClick = true };
+			menu_debug_inaction.Click += (sender, e) => { Taskmaster.ShowInaction = menu_debug_inaction.Checked; };
+			var menu_debug_scanning = new ToolStripMenuItem("Scanning") { Checked = Taskmaster.DebugFullScan, CheckOnClick = true };
 			menu_debug_scanning.Click += (sender, e) =>
 			{
-				TaskMaster.DebugFullScan = menu_debug_scanning.Checked;
-				if (TaskMaster.DebugFullScan) EnsureDebugLog();
+				Taskmaster.DebugFullScan = menu_debug_scanning.Checked;
+				if (Taskmaster.DebugFullScan) EnsureDebugLog();
 			};
 
-			var menu_debug_procs = new ToolStripMenuItem("Processes") { Checked = TaskMaster.DebugProcesses, CheckOnClick = true };
+			var menu_debug_procs = new ToolStripMenuItem("Processes") { Checked = Taskmaster.DebugProcesses, CheckOnClick = true };
 			menu_debug_procs.Click += (sender, e) =>
 			{
-				TaskMaster.DebugProcesses = menu_debug_procs.Checked;
-				if (TaskMaster.DebugProcesses) EnsureDebugLog();
+				Taskmaster.DebugProcesses = menu_debug_procs.Checked;
+				if (Taskmaster.DebugProcesses) EnsureDebugLog();
 			};
-			var menu_debug_foreground = new ToolStripMenuItem("Foreground") { Checked = TaskMaster.DebugForeground, CheckOnClick = true };
+			var menu_debug_foreground = new ToolStripMenuItem("Foreground") { Checked = Taskmaster.DebugForeground, CheckOnClick = true };
 			menu_debug_foreground.Click += (sender, e) =>
 			{
-				TaskMaster.DebugForeground = menu_debug_foreground.Checked;
-				if (TaskMaster.DebugForeground) EnsureDebugLog();
+				Taskmaster.DebugForeground = menu_debug_foreground.Checked;
+				if (Taskmaster.DebugForeground) EnsureDebugLog();
 			};
 
-			var menu_debug_paths = new ToolStripMenuItem("Paths") { Checked = TaskMaster.DebugPaths, CheckOnClick = true };
+			var menu_debug_paths = new ToolStripMenuItem("Paths") { Checked = Taskmaster.DebugPaths, CheckOnClick = true };
 			menu_debug_paths.Click += (sender, e) =>
 			{
-				TaskMaster.DebugPaths = menu_debug_paths.Checked;
-				if (TaskMaster.DebugPaths) EnsureDebugLog();
+				Taskmaster.DebugPaths = menu_debug_paths.Checked;
+				if (Taskmaster.DebugPaths) EnsureDebugLog();
 			};
-			var menu_debug_power = new ToolStripMenuItem("Power") { Checked = TaskMaster.DebugPower, CheckOnClick = true };
+			var menu_debug_power = new ToolStripMenuItem("Power") { Checked = Taskmaster.DebugPower, CheckOnClick = true };
 			menu_debug_power.Click += (sender, e) =>
 			{
-				TaskMaster.DebugPower = menu_debug_power.Checked;
-				if (TaskMaster.DebugPower) EnsureDebugLog();
+				Taskmaster.DebugPower = menu_debug_power.Checked;
+				if (Taskmaster.DebugPower) EnsureDebugLog();
 			};
 			var menu_debug_clear = new ToolStripMenuItem("Clear UI log", null, (sender, e) => { ClearLog(); });
 
@@ -790,7 +816,7 @@ namespace TaskMaster
 			var menu_info = new ToolStripMenuItem("Info");
 			menu_info.DropDown.AutoClose = true;
 			// Sub Items
-			var menu_info_github = new ToolStripMenuItem("Github", null, (sender, e) => { Process.Start(TaskMaster.URL); });
+			var menu_info_github = new ToolStripMenuItem("Github", null, (sender, e) => { Process.Start(Taskmaster.URL); });
 			var menu_info_about = new ToolStripMenuItem("About", null, (s, e) =>
 			{
 				MessageBox.Show(Application.ProductName + " (" + Application.ProductVersion + ")\n\nCreated by M.A., 2016-2018\n\nFree system maintenance and de-obnoxifying app.\n\nAvailable under MIT license.",
@@ -807,10 +833,10 @@ namespace TaskMaster
 
 			// no simpler way?
 
-			menu_action.MouseEnter += (s, e) => { if (TaskMaster.AutoOpenMenus) menu_action.ShowDropDown(); };
-			menu_config.MouseEnter += (s, e) => { if (TaskMaster.AutoOpenMenus) menu_config.ShowDropDown(); };
-			menu_debug.MouseEnter += (s, e) => { if (TaskMaster.AutoOpenMenus) menu_debug.ShowDropDown(); };
-			menu_info.MouseEnter += (s, e) => { if (TaskMaster.AutoOpenMenus) menu_info.ShowDropDown(); };
+			menu_action.MouseEnter += (s, e) => { if (Taskmaster.AutoOpenMenus) menu_action.ShowDropDown(); };
+			menu_config.MouseEnter += (s, e) => { if (Taskmaster.AutoOpenMenus) menu_config.ShowDropDown(); };
+			menu_debug.MouseEnter += (s, e) => { if (Taskmaster.AutoOpenMenus) menu_debug.ShowDropDown(); };
+			menu_info.MouseEnter += (s, e) => { if (Taskmaster.AutoOpenMenus) menu_info.ShowDropDown(); };
 
 			Controls.Add(menu);
 
@@ -826,9 +852,9 @@ namespace TaskMaster
 			TabPage infoTab = new TabPage("Info");
 			TabPage watchTab = new TabPage("Watchlist");
 			TabPage micTab = new TabPage("Microphone");
-			if (!TaskMaster.MicrophoneMonitorEnabled) micTab.Hide();
+			if (!Taskmaster.MicrophoneMonitorEnabled) micTab.Hide();
 			TabPage netTab = new TabPage("Network");
-			if (!TaskMaster.NetworkMonitorEnabled) netTab.Hide();
+			if (!Taskmaster.NetworkMonitorEnabled) netTab.Hide();
 			TabPage powerDebugTab = new TabPage("Power Debug");
 			TabPage ProcessDebugTab = new TabPage("Process Debug");
 
@@ -883,7 +909,7 @@ namespace TaskMaster
 			#endregion
 
 			#region Load UI config
-			var uicfg = TaskMaster.loadConfig("UI.ini");
+			var uicfg = Taskmaster.loadConfig("UI.ini");
 			var wincfg = uicfg["Windows"];
 			var colcfg = uicfg["Columns"];
 
@@ -1055,10 +1081,10 @@ namespace TaskMaster
 			};
 
 			UItimer = new Timer { Interval = UIUpdateFrequency };
-			if (TaskMaster.NetworkMonitorEnabled)
+			if (Taskmaster.NetworkMonitorEnabled)
 				UItimer.Tick += UpdateUptime;
 
-			if (TaskMaster.ProcessMonitorEnabled && ProcessManager.RescanEverythingFrequency > 0)
+			if (Taskmaster.ProcessMonitorEnabled && ProcessManager.RescanEverythingFrequency > 0)
 				UItimer.Tick += UpdateRescanCountdown;
 
 			ifaceList = new ListView
@@ -1253,7 +1279,7 @@ namespace TaskMaster
 			loglistms.Items.Add(logcopy);
 			loglist.ContextMenuStrip = loglistms;
 
-			var cfg = TaskMaster.loadConfig("Core.ini");
+			var cfg = Taskmaster.loadConfig("Core.ini");
 			bool modified, tdirty = false;
 			MaxLogSize = cfg["Logging"].GetSetDefault("UI max items", 200, out modified).IntValue;
 			tdirty |= modified;
@@ -1263,7 +1289,7 @@ namespace TaskMaster
 			{
 				cfg["Logging"]["UI max items"].Comment = "Maximum number of items/lines to retain on UI level.";
 				cfg["User Interface"]["Update frequency"].Comment = "In milliseconds. Frequency of controlled UI updates. Affects visual accuracy of timers and such. Valid range: 100 to 5000.";
-				TaskMaster.MarkDirtyINI(cfg);
+				Taskmaster.MarkDirtyINI(cfg);
 			}
 
 			var logpanel = new TableLayoutPanel
@@ -1320,7 +1346,7 @@ namespace TaskMaster
 						Log.Warning("Trace events enabled. UI may become unresponsive due to their volume.");
 						break;
 				}
-				Debug.WriteLine("GUI log level changed: {0} ({1})", LogIncludeLevel.MinimumLevel, logcombo_level.SelectedIndex);
+				//Debug.WriteLine("GUI log level changed: {0} ({1})", LogIncludeLevel.MinimumLevel, logcombo_level.SelectedIndex);
 			};
 
 			LogIncludeLevel = MemoryLog.LevelSwitch; // HACK
@@ -1403,7 +1429,7 @@ namespace TaskMaster
 			processingCountdown.Text = "00.0s";
 			commandpanel.Controls.Add(processingCountdown);
 			commandpanel.Controls.Add(rescanbutton);
-			rescanbutton.Enabled = TaskMaster.ProcessMonitorEnabled;
+			rescanbutton.Enabled = Taskmaster.ProcessMonitorEnabled;
 
 			crunchbutton = new Button
 			{
@@ -1411,7 +1437,7 @@ namespace TaskMaster
 				Dock = DockStyle.Top,
 				FlatStyle = FlatStyle.Flat,
 				Margin = new Padding(3 + 3),
-				Enabled = TaskMaster.PagingEnabled
+				Enabled = Taskmaster.PagingEnabled
 			};
 			crunchbutton.Click += (object sender, EventArgs e) =>
 			{
@@ -1647,7 +1673,7 @@ namespace TaskMaster
 				{
 					if (exsel.ShowDialog(this) == DialogResult.OK)
 					{
-						TaskMaster.processmanager.FreeMemory(exsel.Selection).ConfigureAwait(false);
+						Taskmaster.processmanager.FreeMemory(exsel.Selection).ConfigureAwait(false);
 					}
 				}
 			}
@@ -1660,34 +1686,40 @@ namespace TaskMaster
 		{
 			// TODO: Proper async?
 
+			if (!IsHandleCreated) return;
+
+			await Task.Delay(0).ConfigureAwait(true);
+
 			lock (exitwaitlist_lock)
 			{
-				ListViewItem li = null;
-				if (ExitWaitlistMap.TryGetValue(ev.Info.Id, out li))
+				if (ExitWaitlistMap.TryGetValue(ev.Info.Id, out ListViewItem li))
 				{
 					//Log.Debug("WaitlistHandler: {Name} = {State}", ev.Info.Name, ev.State.ToString());
 					try
 					{
-						switch (ev.State)
+						BeginInvoke(new Action(() =>
 						{
-							case ProcessEventArgs.ProcessState.Exiting:
-								exitwaitlist.Items.Remove(li);
-								ExitWaitlistMap.Remove(ev.Info.Id);
-								break;
-							case ProcessEventArgs.ProcessState.Found:
-							case ProcessEventArgs.ProcessState.Reduced:
-								li.SubItems[2].Text = "Background";
-								break;
-							case ProcessEventArgs.ProcessState.Restored:
-								exitwaitlist.Items.RemoveAt(li.Index);
-								li.SubItems[2].Text = "Foreground";
-								exitwaitlist.Items.Insert(0, li);
-								li.EnsureVisible();
-								break;
-							default:
-								Log.Debug("Received unhandled process state: {State}", ev.State.ToString());
-								break;
-						}
+							switch (ev.State)
+							{
+								case ProcessEventArgs.ProcessState.Exiting:
+									exitwaitlist.Items.Remove(li);
+									ExitWaitlistMap.Remove(ev.Info.Id);
+									break;
+								case ProcessEventArgs.ProcessState.Found:
+								case ProcessEventArgs.ProcessState.Reduced:
+									li.SubItems[2].Text = "Background";
+									break;
+								case ProcessEventArgs.ProcessState.Restored:
+									exitwaitlist.Items.RemoveAt(li.Index);
+									li.SubItems[2].Text = "Foreground";
+									exitwaitlist.Items.Insert(0, li);
+									li.EnsureVisible();
+									break;
+								default:
+									Log.Debug("Received unhandled process state: {State}", ev.State.ToString());
+									break;
+							}
+						}));
 					}
 					catch (Exception ex)
 					{
@@ -1705,16 +1737,23 @@ namespace TaskMaster
 							(Bit.IsSet(ev.Info.Flags, (int)ProcessFlags.PowerWait) ? "FORCED" : "n/a")
 						});
 
-						exitwaitlist.BeginInvoke(new Action(() =>
+						if (IsHandleCreated)
 						{
 							try
 							{
-								exitwaitlist.Items.Add(li);
-								ExitWaitlistMap.Add(ev.Info.Id, li);
-								li.EnsureVisible();
+								BeginInvoke(new Action(() =>
+								{
+									try
+									{
+										exitwaitlist.Items.Add(li);
+										ExitWaitlistMap.Add(ev.Info.Id, li);
+										li.EnsureVisible();
+									}
+									catch { }
+								}));
 							}
-							catch { }
-						}));
+							catch { } // ignore
+						}
 					}
 				}
 			}
@@ -1754,23 +1793,20 @@ namespace TaskMaster
 					li.SubItems[2].BackColor = System.Drawing.Color.FromArgb(255, 250, 230);
 				}
 
-				powerbalancerlog.BeginInvoke(new Action(() =>
+				try
 				{
-					lock (powerbalancerlog_lock)
+					BeginInvoke(new Action(() =>
 					{
-						try
+						lock (powerbalancerlog_lock)
 						{
-								// this tends to throw if this event is being handled while the window is being closed
-								if (powerbalancerlog.Items.Count > 3)
+							// this tends to throw if this event is being handled while the window is being closed
+							if (powerbalancerlog.Items.Count > 3)
 								powerbalancerlog.Items.RemoveAt(0);
 							powerbalancerlog.Items.Add(li);
 						}
-						catch (Exception ex)
-						{
-							Logging.Stacktrace(ex);
-						}
-					}
-				}));
+					}));
+				}
+				catch { } // ignore
 			}
 			catch (Exception ex)
 			{
@@ -1794,7 +1830,7 @@ namespace TaskMaster
 			if (oneitem)
 			{
 				ListViewItem li = watchlistRules.SelectedItems[0];
-				var prc = TaskMaster.processmanager.getWatchedController(li.SubItems[NameColumn].Text);
+				var prc = Taskmaster.processmanager.getWatchedController(li.SubItems[NameColumn].Text);
 				if (prc != null)
 				{
 					watchlistenable.Enabled = true;
@@ -1811,7 +1847,7 @@ namespace TaskMaster
 			if (oneitem)
 			{
 				ListViewItem li = watchlistRules.SelectedItems[0];
-				var prc = TaskMaster.processmanager.getWatchedController(li.SubItems[NameColumn].Text);
+				var prc = Taskmaster.processmanager.getWatchedController(li.SubItems[NameColumn].Text);
 				if (prc != null)
 				{
 					watchlistenable.Enabled = true;
@@ -1843,7 +1879,7 @@ namespace TaskMaster
 
 					ListViewItem li = watchlistRules.SelectedItems[0];
 					string name = li.SubItems[NameColumn].Text;
-					var prc = TaskMaster.processmanager.getWatchedController(name);
+					var prc = Taskmaster.processmanager.getWatchedController(name);
 
 					using (var editdialog = new WatchlistEditWindow(prc)) // 1 = executable
 					{
@@ -1866,7 +1902,6 @@ namespace TaskMaster
 
 		void AddWatchlistRule(object sender, EventArgs ea)
 		{
-			Log.Warning("Adding new watchlist rules in the UI is not supported yet.");
 			var ew = new WatchlistEditWindow();
 			var rv = ew.ShowDialog();
 			if (rv == DialogResult.OK)
@@ -1886,7 +1921,7 @@ namespace TaskMaster
 				{
 					var li = watchlistRules.SelectedItems[0];
 					// TODO: ADD CONFIRMATION
-					var prc = TaskMaster.processmanager.getWatchedController(li.SubItems[NameColumn].Text);
+					var prc = Taskmaster.processmanager.getWatchedController(li.SubItems[NameColumn].Text);
 					if (prc != null)
 					{
 						var rv = MessageBox.Show(string.Format("Really remove '{0}'", prc.FriendlyName), "Remove watchlist item", MessageBoxButtons.YesNo, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button2);
@@ -1971,7 +2006,7 @@ namespace TaskMaster
 				//Log.Debug("'{RowName}' selected in UI", ri.SubItems[0]);
 				// TODO: Add info panel for selected item.
 				ProcessController pc = null;
-				foreach (var tpc in TaskMaster.processmanager.watchlist)
+				foreach (var tpc in Taskmaster.processmanager.watchlist)
 				{
 					if (name == tpc.FriendlyName)
 					{
@@ -2024,7 +2059,7 @@ namespace TaskMaster
 		{
 			if (aamon == null) return;
 
-			if (TaskMaster.Trace) Log.Verbose("Hooking active app manager.");
+			if (Taskmaster.Trace) Log.Verbose("Hooking active app manager.");
 
 			activeappmonitor = aamon;
 			activeappmonitor.ActiveChanged += OnActiveWindowChanged;
@@ -2034,7 +2069,7 @@ namespace TaskMaster
 		{
 			if (pman == null) return;
 
-			if (TaskMaster.Trace) Log.Verbose("Hooking power manager.");
+			if (Taskmaster.Trace) Log.Verbose("Hooking power manager.");
 
 			powermanager = pman;
 			powermanager.onAutoAdjustAttempt += CPULoadHandler;
@@ -2047,35 +2082,39 @@ namespace TaskMaster
 
 		public void PowerBehaviourDebugEvent(object sender, PowerManager.PowerBehaviour behaviour)
 		{
-			powerbalancer_behaviour.BeginInvoke(new Action(() =>
+			if (!IsHandleCreated) return;
+
+			try
 			{
-				try
+				BeginInvoke(new Action(() =>
 				{
 					powerbalancer_behaviour.Text = (behaviour == PowerManager.PowerBehaviour.Auto) ? "Automatic" : ((behaviour == PowerManager.PowerBehaviour.Manual) ? "Manual" : "Rule-based");
 					if (behaviour != PowerManager.PowerBehaviour.Auto)
 						powerbalancerlog.Items.Clear();
-				}
-				catch { }
-			}));
+				}));
+			}
+			catch { } // ignore
 		}
 
 		public void PowerPlanDebugEvent(object sender, PowerModeEventArgs ev)
 		{
-			powerbalancer_plan.BeginInvoke(new Action(() =>
+			if (!IsHandleCreated) return;
+
+			try
 			{
-				try
+				BeginInvoke(new Action(() =>
 				{
 					powerbalancer_plan.Text = PowerManager.GetModeName(ev.NewMode);
-				}
-				catch { }
-			}));
+				}));
+			}
+			catch { }
 		}
 
 		public void hookNetMonitor(ref NetManager net)
 		{
 			if (net == null) return; // disabled
 
-			if (TaskMaster.Trace) Log.Verbose("Hooking network monitor.");
+			if (Taskmaster.Trace) Log.Verbose("Hooking network monitor.");
 
 			this.netmonitor = net;
 
@@ -2098,7 +2137,7 @@ namespace TaskMaster
 			InetStatusLabel(net.InternetAvailable);
 			NetStatusLabel(net.NetworkAvailable);
 
-			//Tray?.Tooltip(2000, "Internet " + (net.InternetAvailable ? "available" : "unavailable"), "TaskMaster", net.InternetAvailable ? ToolTipIcon.Info : ToolTipIcon.Warning);
+			//Tray?.Tooltip(2000, "Internet " + (net.InternetAvailable ? "available" : "unavailable"), "Taskmaster", net.InternetAvailable ? ToolTipIcon.Info : ToolTipIcon.Warning);
 
 			net.InternetStatusChange += InetStatus;
 			net.NetworkStatusChange += NetStatus;
@@ -2107,9 +2146,11 @@ namespace TaskMaster
 
 		void NetSampleHandler(object sender, NetDeviceTraffic ev)
 		{
-			ifaceList.BeginInvoke(new Action(() =>
+			if (!IsHandleCreated) return;
+
+			try
 			{
-				try
+				BeginInvoke(new Action(() =>
 				{
 					ifaceList.Items[ev.Index].SubItems[PacketColumn].Text = string.Format("+{0}", ev.Traffic.Unicast);
 					ifaceList.Items[ev.Index].SubItems[ErrorColumn].Text = string.Format("+{0}", ev.Traffic.Errors);
@@ -2117,9 +2158,9 @@ namespace TaskMaster
 						ifaceList.Items[ev.Index].SubItems[ErrorColumn].ForeColor = System.Drawing.Color.OrangeRed;
 					else
 						ifaceList.Items[ev.Index].SubItems[ErrorColumn].ForeColor = System.Drawing.SystemColors.ControlText;
-				}
-				catch { }
-			}));
+				}));
+			}
+			catch { }
 		}
 
 		int PacketColumn = 6;
@@ -2127,19 +2168,18 @@ namespace TaskMaster
 
 		void InetStatusLabel(bool available)
 		{
-			inetstatuslabel.BeginInvoke(new Action(() =>
+			if (!IsHandleCreated) return;
+
+			try
 			{
-				try
+				BeginInvoke(new Action(() =>
 				{
 					inetstatuslabel.Text = available ? "Connected" : "Disconnected";
 					//inetstatuslabel.BackColor = available ? System.Drawing.Color.LightGoldenrodYellow : System.Drawing.Color.Red;
 					inetstatuslabel.BackColor = available ? System.Drawing.Color.Transparent : System.Drawing.Color.Red;
-				}
-				catch (Exception ex)
-				{
-					Logging.Stacktrace(ex);
-				}
-			}));
+				}));
+			}
+			catch { } // ignore
 		}
 
 		public void InetStatus(object sender, InternetStatus e)
@@ -2149,20 +2189,18 @@ namespace TaskMaster
 
 		void NetStatusLabel(bool available)
 		{
-			netstatuslabel.BeginInvoke(new Action(() =>
-			{
-				try
-				{
+			if (!IsHandleCreated) return;
 
+			try
+			{
+				BeginInvoke(new Action(() =>
+				{
 					netstatuslabel.Text = available ? "Up" : "Down";
 					//netstatuslabel.BackColor = available ? System.Drawing.Color.LightGoldenrodYellow : System.Drawing.Color.Red;
 					netstatuslabel.BackColor = available ? System.Drawing.Color.Transparent : System.Drawing.Color.Red;
-				}
-				catch (Exception ex)
-				{
-					Logging.Stacktrace(ex);
-				}
-			}));
+				}));
+			}
+			catch { }//ignore
 		}
 
 		public void NetStatus(object sender, NetworkStatus e)
@@ -2185,17 +2223,18 @@ namespace TaskMaster
 
 		public void onNewLog(object sender, LogEventArgs evmsg)
 		{
+			if (!IsHandleCreated) return;
 			if (LogIncludeLevel.MinimumLevel > evmsg.Level) return;
 
 			DateTime t = DateTime.Now;
 
-			loglist.BeginInvoke(new Action(() =>
+			try
 			{
-				lock (loglistLock)
+				BeginInvoke(new Action(() =>
 				{
-					int excessitems = Math.Min(0, (loglist.Items.Count - MaxLogSize));
-					try
+					lock (loglistLock)
 					{
+						int excessitems = Math.Min(0, (loglist.Items.Count - MaxLogSize));
 						while (excessitems-- > 0)
 						{
 							loglist.Items.RemoveAt(0);
@@ -2203,12 +2242,9 @@ namespace TaskMaster
 
 						loglist.Items.Add(evmsg.Message).EnsureVisible();
 					}
-					catch (Exception ex)
-					{
-						Logging.Stacktrace(ex);
-					}
-				}
-			}));
+				}));
+			}
+			catch { } // ignore
 		}
 
 		// constructor
@@ -2240,18 +2276,16 @@ namespace TaskMaster
 
 			Shown += (object sender, EventArgs e) =>
 			{
-				loglist.BeginInvoke(new Action(() =>
+				try
 				{
-					try
+					BeginInvoke(new Action(() =>
 					{
 						loglist.TopItem = loglist.Items[loglist.Items.Count - 1];
 						ShowLastLog();
-					}
-					catch (Exception ex)
-					{
-						Logging.Stacktrace(ex);
-					}
-				}));
+					}));
+				}
+				catch { } // ignore
+
 			};
 
 			// TODO: WPF
@@ -2259,12 +2293,12 @@ namespace TaskMaster
 			System.Windows.Shell.JumpList jumplist = System.Windows.Shell.JumpList.GetJumpList(System.Windows.Application.Current);
 			//System.Windows.Shell.JumpTask task = new System.Windows.Shell.JumpTask();
 			System.Windows.Shell.JumpPath jpath = new System.Windows.Shell.JumpPath();
-			jpath.Path = TaskMaster.cfgpath;
+			jpath.Path = Taskmaster.cfgpath;
 			jumplist.JumpItems.Add(jpath);
 			jumplist.Apply();
 			*/
 
-			if (TaskMaster.Trace)
+			if (Taskmaster.Trace)
 				Log.Verbose("MainWindow constructed");
 		}
 
@@ -2290,7 +2324,7 @@ namespace TaskMaster
 			for (int i = 0; i < micList.Columns.Count; i++)
 				micWidths.Add(micList.Columns[i].Width);
 
-			var cfg = TaskMaster.loadConfig("UI.ini");
+			var cfg = Taskmaster.loadConfig("UI.ini");
 			var cols = cfg["Columns"];
 			cols["Apps"].IntValueArray = appWidths.ToArray();
 			//cols["Paths"].IntValueArray = pathWidths.ToArray();
@@ -2303,7 +2337,7 @@ namespace TaskMaster
 			var windows = cfg["Windows"];
 			windows["Main"].IntValueArray = new int[] { Width, Height };
 
-			TaskMaster.MarkDirtyINI(cfg);
+			Taskmaster.MarkDirtyINI(cfg);
 		}
 
 		bool disposed = false;
@@ -2315,7 +2349,7 @@ namespace TaskMaster
 
 			if (disposing)
 			{
-				if (TaskMaster.Trace) Log.Verbose("Disposing main window...");
+				if (Taskmaster.Trace) Log.Verbose("Disposing main window...");
 
 				MemoryLog.onNewEvent -= onNewLog;
 
@@ -2354,7 +2388,7 @@ namespace TaskMaster
 					processmanager.onInstanceHandling -= ProcessNewInstanceCount;
 					processmanager.PathCacheUpdate -= PathCacheUpdate;
 					processmanager.onActiveHandled -= ExitWaitListHandler;
-					if (TaskMaster.PagingEnabled)
+					if (Taskmaster.PagingEnabled)
 						pagingRequest -= processmanager.PageEverythingRequest;
 					processmanager = null;
 				}

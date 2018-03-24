@@ -2,9 +2,9 @@
 // WatchlistEditWindow.cs
 //
 // Author:
-//       M.A. (enmoku) <>
+//       M.A. (https://github.com/mkahvi)
 //
-// Copyright (c) 2018 M.A. (enmoku)
+// Copyright (c) 2018 M.A.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -30,7 +30,7 @@ using System.Diagnostics;
 using System;
 using System.Collections.Generic;
 
-namespace TaskMaster
+namespace Taskmaster
 {
 	public class WatchlistEditWindow : Form
 	{
@@ -103,7 +103,7 @@ namespace TaskMaster
 				MessageBox.Show("Rescan requires executable to be defined.", "Configuration error", MessageBoxButtons.OK, MessageBoxIcon.Error, MessageBoxDefaultButton.Button1);
 			}
 
-			var dprc = TaskMaster.processmanager.getWatchedController(friendlyName.Text);
+			var dprc = Taskmaster.processmanager.getWatchedController(friendlyName.Text);
 			if (dprc != null && dprc != Controller)
 			{
 				Controller.Valid = false;
@@ -565,7 +565,7 @@ namespace TaskMaster
 			bool samesection = Controller.FriendlyName.Equals(friendlyName.Text);
 			if (!samesection)
 			{
-				var dprc = TaskMaster.processmanager.getWatchedController(friendlyName.Text);
+				var dprc = Taskmaster.processmanager.getWatchedController(friendlyName.Text);
 				if (dprc != null)
 				{
 					sbs.Append("Friendly name conflict!");

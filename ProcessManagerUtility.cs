@@ -2,9 +2,9 @@
 // ProcessManagerUtility.cs
 //
 // Author:
-//       M.A. (enmoku) <>
+//       M.A. (https://github.com/mkahvi)
 //
-// Copyright (c) 2018 M.A. (enmoku)
+// Copyright (c) 2018 M.A.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -26,10 +26,9 @@
 
 using System;
 using System.Diagnostics;
-using System.Runtime.InteropServices;
 using Serilog;
 
-namespace TaskMaster
+namespace Taskmaster
 {
 	public static class ProcessManagerUtility
 	{
@@ -37,7 +36,7 @@ namespace TaskMaster
 
 		public static void Initialize()
 		{
-			pathCache = new Cache<int, string, string>(TaskMaster.PathCacheMaxAge, TaskMaster.PathCacheLimit, (TaskMaster.PathCacheLimit / 10).Constrain(5, 10));
+			pathCache = new Cache<int, string, string>(Taskmaster.PathCacheMaxAge, Taskmaster.PathCacheLimit, (Taskmaster.PathCacheLimit / 10).Constrain(5, 10));
 		}
 
 		public static void PathCacheStats()
@@ -47,7 +46,7 @@ namespace TaskMaster
 					  string.Format("{0:N2}", Statistics.PathCacheMisses > 0 ? (Statistics.PathCacheHits / Statistics.PathCacheMisses) : 1));
 		}
 
-		public static bool FindPath(BasicProcessInfo info)
+		public static bool FindPath(ProcessEx info)
 		{
 			bool cacheGet = false;
 
@@ -99,7 +98,7 @@ namespace TaskMaster
 			return true;
 		}
 
-		static bool GetPath(BasicProcessInfo info)
+		static bool GetPath(ProcessEx info)
 		{
 			System.Diagnostics.Debug.Assert(info.Path == null, "GetPath called even though path known.");
 
@@ -166,7 +165,7 @@ namespace TaskMaster
 		/// <param name="processId">Process ID</param>
 		static string GetProcessPathViaWMI(int processId)
 		{
-			if (!TaskMaster.WMIQueries) return null;
+			if (!Taskmaster.WMIQueries) return null;
 
 			var wmitime = Stopwatch.StartNew();
 

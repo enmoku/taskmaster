@@ -2,9 +2,9 @@
 // SelfAwareness.cs
 //
 // Author:
-//       M.A. (enmoku) <>
+//       M.A. (https://github.com/mkahvi)
 //
-// Copyright (c) 2018 M.A. (enmoku)
+// Copyright (c) 2018 M.A.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -27,17 +27,15 @@
 using System;
 using System.Collections.Generic;
 using Serilog;
-using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Collections.Concurrent;
-using System.Diagnostics.Contracts;
 
-namespace TaskMaster
+namespace Taskmaster
 {
 	/// <summary>
 	/// Module for monitoring the app itself.
 	/// </summary>
-	public class SelfAwareness
+	public class SelfAwareness : IDisposable
 	{
 		static readonly object AwarenessMap_lock = new object();
 		static ConcurrentDictionary<int, Awareness> AwarenessMap;
@@ -103,8 +101,7 @@ namespace TaskMaster
 		{
 			lock (AwarenessMap_lock)
 			{
-				Awareness awn;
-				if (AwarenessMap.TryRemove(key, out awn))
+				if (AwarenessMap.TryRemove(key, out Awareness awn))
 				{
 					//Log.Debug("<<Self-Awareness>> Removing [{Key}] {Method}", awn.Key, awn.Method);
 				}
@@ -191,12 +188,35 @@ namespace TaskMaster
 			while (clearList.Count > 0)
 			{
 				int key = clearList.Pop();
-				Awareness awn = null;
-				if (AwarenessMap.TryGetValue(key, out awn))
+				if (AwarenessMap.TryGetValue(key, out Awareness awn))
 				{
 					RemoveAwareness(key);
 				}
 			}
+		}
+
+		public void Dispose()
+		{
+			Dispose(true);
+			GC.SuppressFinalize(this);
+		}
+
+		bool disposed = false;
+		void Dispose(bool disposing)
+		{
+			if (disposed)
+				return;
+
+			if (disposing)
+			{
+				if (Taskmaster.Trace)
+					Log.Verbose("Disposing self-awareness...");
+
+				AwarenessTicker?.Dispose();
+				AwarenessTicker = null;
+			}
+
+			disposed = true;
 		}
 	}
 

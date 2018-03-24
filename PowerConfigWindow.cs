@@ -2,9 +2,9 @@
 // PowerConfigWindow.cs
 //
 // Author:
-//       M.A. (enmoku) <>
+//       M.A. (https://github.com/mkahvi)
 //
-// Copyright (c) 2018 M.A. (enmoku)
+// Copyright (c) 2018 M.A.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -26,11 +26,11 @@
 
 using System;
 using System.Windows.Forms;
-using TaskMaster.PowerInfo;
+using Taskmaster.PowerInfo;
 using Serilog;
 using System.Threading.Tasks;
 
-namespace TaskMaster
+namespace Taskmaster
 {
 	public class PowerConfigWindow : Form
 	{
@@ -41,7 +41,7 @@ namespace TaskMaster
 		{
 			Text = "Power auto-adjust configuration";
 
-			AutoAdjustSettings AutoAdjust = oldAutoAdjust = TaskMaster.powermanager.AutoAdjust;
+			AutoAdjustSettings AutoAdjust = oldAutoAdjust = Taskmaster.powermanager.AutoAdjust;
 
 			FormBorderStyle = FormBorderStyle.FixedDialog;
 
@@ -218,7 +218,7 @@ namespace TaskMaster
 				var res = pcw.ShowDialog();
 				if (pcw.DialogResult == DialogResult.OK)
 				{
-					TaskMaster.powermanager.AutoAdjust = pcw.newAutoAdjust;
+					Taskmaster.powermanager.AutoAdjust = pcw.newAutoAdjust;
 					Log.Information("<<UI>> Power auto-adjust config changed.");
 					// TODO: Call reset on power manager?
 				}

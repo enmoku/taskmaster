@@ -2,9 +2,9 @@
 // Cache.cs
 //
 // Author:
-//       M.A. (enmoku) <>
+//       M.A. (https://github.com/mkahvi)
 //
-// Copyright (c) 2018 M.A. (enmoku)
+// Copyright (c) 2018 M.A.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -31,7 +31,7 @@ using System.Timers;
 using System.Linq;
 using Serilog;
 
-namespace TaskMaster
+namespace Taskmaster
 {
 	// TODO: Turn K2 into a delegate
 
@@ -70,7 +70,6 @@ namespace TaskMaster
 		public long Misses { get; private set; } = 0;
 
 		readonly object cache_lock = new object();
-		int cache_alock = 0;
 
 		Timer pruneTimer = new Timer(1000 * 60 * 10);
 

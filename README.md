@@ -11,7 +11,7 @@ This was added originally due to browsers behaving like dorks but has found its 
 this was added due to Skype having a habit of randomly adjusting the volume despite having been told not to.
 * Network monitoring is also possible, though it mostly provides current IPv4 and IPv6 addresses and attempts to detect when internet connectivity is disrupted,
 a thing that Windows itself does very poor job of informing users of.
-* Ability to page applications and monitor temp folders is also included, but these features are infantile and thus unusable.
+* Ability to page applications and monitor temp folders is also included, but these features are infantile and thus mostly unusable.
 * Foreground app detection, to allow some watchlist rules to be applied only when an app is at foreground.
 Allowing apps that normally have higher priority to be pushed into the background when not needed.
 * Automatic power mode adjustment based on system load.
@@ -28,6 +28,7 @@ Allowing apps that normally have higher priority to be pushed into the backgroun
 ## Command-line
 
 * --bootdelay – adds about 30 seconds delay before TM starts processing things, allowing other programs that probably are higher priority to finish startup.
+* --admin – requests privilege elevation if it's not already acquired.
 
 ## Installing, deployment, and usage
 
@@ -36,7 +37,7 @@ TM is intended to be fire-and-forget style, so once it's configured nicely, it s
 
 User configuration can be found in:
 ```
-%APPDATA%\Enmoku\Taskmaster
+%APPDATA%\MKAh\Taskmaster
 ```
 
 User configuration currently can not be changed during run-time.
@@ -50,3 +51,7 @@ User configuration currently can not be changed during run-time.
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## Support
+
+You can support the development and/or the developer by donating at [Itch.io](https://mkah.itch.io/taskmaster).

@@ -2,9 +2,9 @@
 // NetDevice.cs
 //
 // Author:
-//       M.A. (enmoku) <>
+//       M.A. (https://github.com/mkahvi)
 //
-// Copyright (c) 2017-2018 M.A. (enmoku)
+// Copyright (c) 2017-2018 M.A.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -28,7 +28,7 @@ using System.Net;
 using System.Net.NetworkInformation;
 using System;
 
-namespace TaskMaster
+namespace Taskmaster
 {
 	public struct NetDeviceTraffic
 	{

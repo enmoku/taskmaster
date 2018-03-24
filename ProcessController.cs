@@ -2,9 +2,9 @@
 // ProcessController.cs
 //
 // Author:
-//       M.A. (enmoku) <>
+//       M.A. (https://github.com/mkahvi)
 //
-// Copyright (c) 2016-2018 M.A. (enmoku)
+// Copyright (c) 2016-2018 M.A.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -32,7 +32,7 @@ using System.ComponentModel;
 using System.Threading.Tasks;
 using System.Linq;
 
-namespace TaskMaster
+namespace Taskmaster
 {
 	/// <summary>
 	/// Process controller.
@@ -105,6 +105,11 @@ namespace TaskMaster
 		public IntPtr Affinity = new IntPtr(ProcessManager.allCPUsMask);
 
 		/// <summary>
+		/// Affinity describes allowed cores more than actual affinity.
+		/// </summary>
+		public bool AllowedCores = false;
+
+		/// <summary>
 		/// The power plan.
 		/// </summary>
 		public PowerInfo.PowerMode PowerPlan = PowerInfo.PowerMode.Undefined;
@@ -145,7 +150,7 @@ namespace TaskMaster
 
 		/// <summary>
 		/// Frienly executable name as required by various System.Process functions.
-		/// Same as <see cref="T:TaskMaster.ProcessControl.Executable"/> but with the extension missing.
+		/// Same as <see cref="T:Taskmaster.ProcessControl.Executable"/> but with the extension missing.
 		/// </summary>
 		public string ExecutableFriendlyName { get; set; } = null;
 
@@ -177,17 +182,17 @@ namespace TaskMaster
 		public void DeleteConfig(SharpConfig.Configuration cfg = null)
 		{
 			if (cfg == null)
-				cfg = TaskMaster.loadConfig(watchlistfile);
+				cfg = Taskmaster.loadConfig(watchlistfile);
 
 			cfg.Remove(FriendlyName); // remove the section, should remove items in the section
 
-			TaskMaster.MarkDirtyINI(cfg);
+			Taskmaster.MarkDirtyINI(cfg);
 		}
 
 		public void SaveConfig(SharpConfig.Configuration cfg=null)
 		{
 			if (cfg == null)
-				cfg = TaskMaster.loadConfig(watchlistfile);
+				cfg = Taskmaster.loadConfig(watchlistfile);
 
 			var app = cfg[FriendlyName];
 
@@ -257,14 +262,14 @@ namespace TaskMaster
 			else
 				app.Remove("Ignore");
 
-			TaskMaster.MarkDirtyINI(cfg);
+			Taskmaster.MarkDirtyINI(cfg);
 		}
 
 		const string statfile = "Watchlist.Statistics.ini";
 
 		public void LoadStats()
 		{
-			var stats = TaskMaster.loadConfig(statfile);
+			var stats = Taskmaster.loadConfig(statfile);
 
 			string statkey = null;
 			if (Executable != null)
@@ -292,7 +297,7 @@ namespace TaskMaster
 
 		public void SaveStats()
 		{
-			var stats = TaskMaster.loadConfig(statfile);
+			var stats = Taskmaster.loadConfig(statfile);
 
 			// BROKEN?
 			string key = null;
@@ -306,12 +311,12 @@ namespace TaskMaster
 			if (Adjusts > 0)
 			{
 				stats[key]["Adjusts"].IntValue = Adjusts;
-				TaskMaster.MarkDirtyINI(stats);
+				Taskmaster.MarkDirtyINI(stats);
 			}
 			if (LastSeen != DateTime.MinValue)
 			{
 				stats[key]["Last seen"].SetValue(LastSeen.Unixstamp());
-				TaskMaster.MarkDirtyINI(stats);
+				Taskmaster.MarkDirtyINI(stats);
 			}
 		}
 
@@ -322,12 +327,12 @@ namespace TaskMaster
 		/// <summary>
 		/// Pause the specified foreground process.
 		/// </summary>
-		public void Quell(BasicProcessInfo info)
+		public void Quell(ProcessEx info)
 		{
 			if (PausedIds.Contains(info.Id)) return;
 			// throw new InvalidOperationException(string.Format("{0} already paused", info.Name));
 
-			if (TaskMaster.DebugForeground && TaskMaster.Trace)
+			if (Taskmaster.DebugForeground && Taskmaster.Trace)
 				Log.Debug("[{Name}] Quelling {Exec} (#{Pid})", FriendlyName, info.Name, info.Id);
 
 			//PausedState.Affinity = Affinity;
@@ -343,23 +348,23 @@ namespace TaskMaster
 			}
 			//info.Process.ProcessorAffinity = OriginalState.Affinity;
 
-			if (TaskMaster.PowerManagerEnabled)
+			if (Taskmaster.PowerManagerEnabled)
 				if (PowerPlan != PowerInfo.PowerMode.Undefined && BackgroundPowerdown)
-					TaskMaster.powermanager.Restore(info.Id);
+					Taskmaster.powermanager.Restore(info.Id);
 
-			if (TaskMaster.DebugForeground)
+			if (Taskmaster.DebugForeground)
 				Log.Information("[{FriendlyName}] {Exec} (#{Pid}) priority reduced: {Current}→{Paused} [Background]",
 					FriendlyName, info.Name, info.Id, Priority, BackgroundPriority);
 
 			PausedIds.Add(info.Id);
 		}
 
-		public bool isPaused(BasicProcessInfo info)
+		public bool isPaused(ProcessEx info)
 		{
 			return PausedIds.Contains(info.Id);
 		}
 
-		public void Resume(BasicProcessInfo info)
+		public void Resume(ProcessEx info)
 		{
 			if (!PausedIds.Contains(info.Id)) return;
 			//throw new InvalidOperationException(string.Format("{0} not paused", info.Name));
@@ -369,7 +374,7 @@ namespace TaskMaster
 				try
 				{
 					info.Process.PriorityClass = Priority;
-					if (TaskMaster.DebugForeground)
+					if (Taskmaster.DebugForeground)
 						Log.Debug("[{FriendlyName}] {Exec} (#{Pid}) priority restored: {Paused}→{Restored} [Foreground]",
 										FriendlyName, info.Name, info.Id, BackgroundPriority, Priority);
 				}
@@ -412,20 +417,20 @@ namespace TaskMaster
 
 		// -----------------------------------------------
 
-		protected bool setPower(BasicProcessInfo info)
+		protected bool setPower(ProcessEx info)
 		{
-			if (!TaskMaster.PowerManagerEnabled) return false;
+			if (!Taskmaster.PowerManagerEnabled) return false;
 			if (PowerPlan == PowerInfo.PowerMode.Undefined) return false;
-			TaskMaster.powermanager.SaveMode();
+			Taskmaster.powermanager.SaveMode();
 
 			info.Flags |= (int)ProcessFlags.PowerWait;
-			TaskMaster.processmanager.WaitForExit(info); // need nicer way to signal this
-			return TaskMaster.powermanager.Force(PowerPlan, info.Id);
+			Taskmaster.processmanager.WaitForExit(info); // need nicer way to signal this
+			return Taskmaster.powermanager.Force(PowerPlan, info.Id);
 		}
 
-		void undoPower(BasicProcessInfo info)
+		void undoPower(ProcessEx info)
 		{
-			TaskMaster.powermanager.Restore(info.Id).Wait();
+			Taskmaster.powermanager.Restore(info.Id).Wait();
 		}
 
 		/*
@@ -448,7 +453,7 @@ namespace TaskMaster
 		}
 
 		// TODO: Deal with combo path+exec
-		public ProcessState Touch(BasicProcessInfo info, bool schedule_next = false, bool recheck = false, bool foreground = true)
+		public ProcessState Touch(ProcessEx info, bool schedule_next = false, bool recheck = false, bool foreground = true)
 		{
 			Debug.Assert(info.Process != null, "ProcessController.Touch given null process.");
 			Debug.Assert(info.Id > 4, "ProcessController.Touch given invalid process ID");
@@ -485,7 +490,7 @@ namespace TaskMaster
 			{
 				if (info.Process.HasExited)
 				{
-					if (TaskMaster.DebugProcesses)
+					if (Taskmaster.DebugProcesses)
 						Log.Debug("[{FriendlyName}] {ProcessName} (#{ProcessID}) has already exited.", FriendlyName, info.Name, info.Id);
 					return ProcessState.Invalid;
 				}
@@ -497,20 +502,20 @@ namespace TaskMaster
 				return ProcessState.Error; // we don't care what this error is exactly
 			}
 
-			if (TaskMaster.Trace) Log.Verbose("[{FriendlyName}] Touching: {ExecutableName} (#{ProcessID})", FriendlyName, info.Name, info.Id);
+			if (Taskmaster.Trace) Log.Verbose("[{FriendlyName}] Touching: {ExecutableName} (#{ProcessID})", FriendlyName, info.Name, info.Id);
 
 			ProcessState rv = ProcessState.Invalid;
 
 			if (IgnoreList != null && IgnoreList.Contains(info.Name, StringComparer.InvariantCultureIgnoreCase))
 			{
-				if (TaskMaster.ShowInaction && TaskMaster.DebugProcesses)
+				if (Taskmaster.ShowInaction && Taskmaster.DebugProcesses)
 					Log.Debug("[{FriendlyName}] {Exec} (#{ProcessID}) ignored due to user defined rule.", FriendlyName, info.Name, info.Id);
 				return ProcessState.Ignored;
 			}
 
 			bool denyChange = ProcessManager.ProtectedProcessName(info.Name);
 			if (denyChange)
-				if (TaskMaster.ShowInaction && TaskMaster.DebugProcesses)
+				if (Taskmaster.ShowInaction && Taskmaster.DebugProcesses)
 					Log.Debug("[{FriendlyName}] {ProcessName} (#{ProcessID}) in protected list, limiting tampering.", FriendlyName, info.Name, info.Id);
 
 			// TODO: Validate path.
@@ -526,15 +531,15 @@ namespace TaskMaster
 						return ProcessState.Error;
 				}
 
-				if (info.Path.StartsWith(Path)) // FIXME: this is done twice
+				if (info.Path.StartsWith(Path, Taskmaster.CaseSensitive ? StringComparison.InvariantCulture : StringComparison.InvariantCultureIgnoreCase)) // FIXME: this is done twice
 				{
 					// OK
-					if (TaskMaster.DebugPaths)
+					if (Taskmaster.DebugPaths)
 						Log.Verbose("[{PathFriendlyName}] Matched at: {Path}", FriendlyName, info.Path);
 				}
 				else
 				{
-					if (TaskMaster.DebugPaths)
+					if (Taskmaster.DebugPaths)
 						Log.Verbose("[{PathFriendlyName}] {ExePath} NOT IN {Path} – IGNORING", FriendlyName, info.Path, Path);
 					return ProcessState.Ignored;
 				}
@@ -558,7 +563,7 @@ namespace TaskMaster
 			{
 				if (!foreground && ForegroundOnly)
 				{
-					if (TaskMaster.DebugForeground)
+					if (Taskmaster.DebugForeground)
 						Log.Debug("{Exec} (#{Pid}) not in foreground, not prioritizing.", info.Name, info.Id);
 
 					if (!PausedIds.Contains(info.Id))
@@ -577,6 +582,7 @@ namespace TaskMaster
 					}
 					catch
 					{
+						if (Taskmaster.ShowInaction)
 						Log.Warning("[{FriendlyName}] {Exec} (#{Pid}) failed to set process priority.", FriendlyName, info.Name, info.Id);
 						// NOP
 					}
@@ -584,15 +590,37 @@ namespace TaskMaster
 			}
 			else
 			{
-				if (TaskMaster.ShowInaction)
+				if (Taskmaster.ShowInaction)
 					Log.Verbose("{Exec} (#{Pid}) protected.", info.Name, info.Id);
 			}
 
 			try
 			{
-				if (info.Process.ProcessorAffinity.ToInt32() != Affinity.ToInt32())
+				int oldAffinityMask = info.Process.ProcessorAffinity.ToInt32();
+				int newAffinityMask = Affinity.ToInt32();
+				if (oldAffinityMask != newAffinityMask)
 				{
-					info.Process.ProcessorAffinity = Affinity;
+					IntPtr taff = Affinity;
+					if (AllowedCores || !Increase)
+					{
+						int minaff = Bit.Or(newAffinityMask, oldAffinityMask);
+						int mincount = Bit.Count(minaff);
+						int bitsold = Bit.Count(oldAffinityMask);
+						int bitsnew = Bit.Count(newAffinityMask);
+						int minaff1 = minaff;
+						minaff = Bit.Fill(minaff, bitsnew, Math.Min(bitsold,bitsnew));
+						if (minaff1 != minaff)
+						{
+							Console.WriteLine(Convert.ToString(minaff1, 2).PadLeft(ProcessManager.CPUCount));
+							Console.WriteLine(Convert.ToString(minaff, 2).PadLeft(ProcessManager.CPUCount));
+						}
+						// shuffle cores from old to new
+						taff = new IntPtr(minaff);
+					}
+					//int bitsnew = Bit.Count(newAffinityMask);
+					//TODO: Somehow shift bits old to new if there's free spots
+					
+					info.Process.ProcessorAffinity = taff;
 					modified = mAffinity = true;
 					//Log.Verbose("Affinity for '{ExecutableName}' (#{ProcessID}) set: {OldAffinity} → {NewAffinity}.",
 					//execname, pid, process.ProcessorAffinity.ToInt32(), Affinity.ToInt32());
@@ -605,7 +633,8 @@ namespace TaskMaster
 			}
 			catch
 			{
-				Log.Warning("[{FriendlyName}] {Exec} (#{Pid}) failed to set process affinity.", FriendlyName, info.Name, info.Id);
+				if (Taskmaster.ShowInaction)
+					Log.Warning("[{FriendlyName}] {Exec} (#{Pid}) failed to set process affinity.", FriendlyName, info.Name, info.Id);
 			}
 
 			/*
@@ -629,11 +658,11 @@ namespace TaskMaster
 			*/
 
 			PowerInfo.PowerMode oldPP = PowerInfo.PowerMode.Undefined;
-			if (TaskMaster.PowerManagerEnabled)
+			if (Taskmaster.PowerManagerEnabled)
 			{
-				oldPP = TaskMaster.powermanager.CurrentMode;
+				oldPP = Taskmaster.powermanager.CurrentMode;
 				setPower(info);
-				mPower = (oldPP != TaskMaster.powermanager.CurrentMode);
+				mPower = (oldPP != Taskmaster.powermanager.CurrentMode);
 			}
 
 			var sbs = new System.Text.StringBuilder();
@@ -687,7 +716,7 @@ namespace TaskMaster
 			{
 				//if (DateTime.Now - LastSeen
 				sbs.Append(" – looks OK, not touched.");
-				if (TaskMaster.ShowInaction && TaskMaster.DebugProcesses)
+				if (Taskmaster.ShowInaction && Taskmaster.DebugProcesses)
 					Log.Debug(sbs.ToString());
 				//else
 				//	Log.Verbose(sbs.ToString());
@@ -708,11 +737,11 @@ namespace TaskMaster
 			return rv;
 		}
 
-		async Task TouchReapply(BasicProcessInfo info)
+		async Task TouchReapply(ProcessEx info)
 		{
 			await Task.Delay(Math.Max(Recheck, 5) * 1000);
 
-			if (TaskMaster.DebugProcesses)
+			if (Taskmaster.DebugProcesses)
 				Log.Debug("[{FriendlyName}] {Process} (#{PID}) rechecking", FriendlyName, info.Name, info.Id);
 
 			try
@@ -721,7 +750,7 @@ namespace TaskMaster
 					Touch(info, schedule_next: false, recheck: true);
 				else
 				{
-					if (TaskMaster.Trace) Log.Verbose("[{FriendlyName}] {Process} (#{PID}) is gone yo.", FriendlyName, info.Name, info.Id);
+					if (Taskmaster.Trace) Log.Verbose("[{FriendlyName}] {Process} (#{PID}) is gone yo.", FriendlyName, info.Name, info.Id);
 				}
 			}
 			catch (Exception ex)
@@ -760,7 +789,7 @@ namespace TaskMaster
 					if (!Atomic.Lock(ref ScheduledScan))
 						return;
 
-					if (TaskMaster.DebugProcesses)
+					if (Taskmaster.DebugProcesses)
 						Log.Debug("[{FriendlyName}] Rescan initiating.", FriendlyName);
 
 					using (var m = SelfAwareness.Mind(DateTime.Now.AddSeconds(15)))
@@ -790,7 +819,7 @@ namespace TaskMaster
 			}
 			catch // name not found
 			{
-				if (TaskMaster.Trace) Log.Verbose("{FriendlyName} is not running", ExecutableFriendlyName);
+				if (Taskmaster.Trace) Log.Verbose("{FriendlyName} is not running", ExecutableFriendlyName);
 				return;
 			}
 
@@ -799,7 +828,7 @@ namespace TaskMaster
 
 			if (procs.Length == 0) return;
 
-			if (TaskMaster.DebugProcesses)
+			if (Taskmaster.DebugProcesses)
 				Log.Debug("[{FriendlyName}] Scanning found {ProcessInstances} instance(s)", FriendlyName, procs.Length);
 
 			int tc = 0;
@@ -817,13 +846,13 @@ namespace TaskMaster
 					continue; // shouldn't happen
 				}
 
-				if (Touch(new BasicProcessInfo { Name = name, Id = pid, Process = process, Path = null }) == ProcessState.Modified)
+				if (Touch(new ProcessEx { Name = name, Id = pid, Process = process, Path = null }) == ProcessState.Modified)
 					tc++;
 			}
 
 			if (tc > 0)
 			{
-				if (TaskMaster.DebugProcesses)
+				if (Taskmaster.DebugProcesses)
 					Log.Verbose("[{ProcessFriendlyName}] Scan modified {ModifiedInstances} out of {ProcessInstances} instance(s)",
 								FriendlyName, tc, procs.Length);
 			}
@@ -847,11 +876,11 @@ namespace TaskMaster
 			}
 			catch
 			{
-				if (TaskMaster.Trace) Log.Verbose("{FriendlyName} not running", ExecutableFriendlyName);
+				if (Taskmaster.Trace) Log.Verbose("{FriendlyName} not running", ExecutableFriendlyName);
 				return false;
 			}
 
-			if (TaskMaster.Trace) Log.Verbose("[{FriendlyName}] Watched item '{Item}' encountered.", FriendlyName, ExecutableFriendlyName);
+			if (Taskmaster.Trace) Log.Verbose("[{FriendlyName}] Watched item '{Item}' encountered.", FriendlyName, ExecutableFriendlyName);
 
 			try
 			{
@@ -896,7 +925,7 @@ namespace TaskMaster
 
 			if (disposing)
 			{
-				if (TaskMaster.Trace) Log.Verbose("Disposing process controller [{FriendlyName}]", FriendlyName);
+				if (Taskmaster.Trace) Log.Verbose("Disposing process controller [{FriendlyName}]", FriendlyName);
 			}
 
 			disposed = true;
@@ -910,7 +939,7 @@ namespace TaskMaster
 	public class ProcessEventArgs : EventArgs
 	{
 		public ProcessController Control { get; set; }
-		public BasicProcessInfo Info;
+		public ProcessEx Info;
 		public enum ProcessState
 		{
 			Starting,
