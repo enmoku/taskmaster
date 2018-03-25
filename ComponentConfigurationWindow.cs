@@ -46,6 +46,9 @@ namespace Taskmaster
 			MaximizeBox = false;
 			AutoSizeMode = AutoSizeMode.GrowAndShrink;
 
+			if (initial)
+				StartPosition = FormStartPosition.CenterScreen;
+
 			var baselayout = new TableLayoutPanel()
 			{
 				Parent = this,
@@ -345,7 +348,7 @@ namespace Taskmaster
 			{
 				Taskmaster.ComponentConfigurationDone = true;
 
-				var cfg = Taskmaster.loadConfig("Core.ini");
+				var cfg = Taskmaster.LoadConfig("Core.ini");
 				var mainsec = cfg["Core"];
 				var opt = mainsec["Version"];
 				opt.StringValue = Taskmaster.ConfigVersion;
@@ -377,7 +380,7 @@ namespace Taskmaster
 				perf["WMI poll delay"].IntValue = ((int)wmipolling.Value);
 				perf["WMI queries"].BoolValue = (ScanOrWMI.SelectedIndex != 0);
 
-				Taskmaster.saveConfig(cfg);
+				Taskmaster.SaveConfig(cfg);
 
 				DialogResult = DialogResult.OK;
 

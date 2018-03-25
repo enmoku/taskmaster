@@ -53,7 +53,7 @@ using System.Windows.Forms;
 
 namespace Taskmaster
 {
-	//[Guid("088f7210-51b2-4e06-9bd4-93c27a973874")]//there's no point to this, is there?
+	[System.Runtime.InteropServices.Guid("088f7210-51b2-4e06-9bd4-93c27a973874")]//there's no point to this, is there?
 	public class Taskmaster
 	{
 		public static string URL { get; } = "https://github.com/mkahvi/taskmaster";
@@ -67,18 +67,17 @@ namespace Taskmaster
 		static Dictionary<SharpConfig.Configuration, bool> ConfigDirty = new Dictionary<SharpConfig.Configuration, bool>();
 		static Dictionary<SharpConfig.Configuration, string> ConfigPaths = new Dictionary<SharpConfig.Configuration, string>();
 
-		public static void saveConfig(SharpConfig.Configuration config)
+		public static void SaveConfig(SharpConfig.Configuration config)
 		{
-			string filename;
-			if (ConfigPaths.TryGetValue(config, out filename))
+			if (ConfigPaths.TryGetValue(config, out string filename))
 			{
-				saveConfig(filename, config);
+				SaveConfig(filename, config);
 				return;
 			}
 			throw new ArgumentException();
 		}
 
-		public static void saveConfig(string configfile, SharpConfig.Configuration config)
+		public static void SaveConfig(string configfile, SharpConfig.Configuration config)
 		{
 			//Console.WriteLine("Saving: " + configfile);
 			System.IO.Directory.CreateDirectory(datapath);
@@ -89,7 +88,7 @@ namespace Taskmaster
 			// TODO: Pre-allocate some space for the config file?
 		}
 
-		public static void unloadConfig(string configfile)
+		public static void UnloadConfig(string configfile)
 		{
 			if (Configs.TryGetValue(configfile, out var retcfg))
 			{
@@ -97,7 +96,7 @@ namespace Taskmaster
 			}
 		}
 
-		public static SharpConfig.Configuration loadConfig(string configfile)
+		public static SharpConfig.Configuration LoadConfig(string configfile)
 		{
 			SharpConfig.Configuration retcfg;
 			if (Configs.TryGetValue(configfile, out retcfg))
@@ -213,11 +212,14 @@ namespace Taskmaster
 		/// </summary>
 		public static async Task Evaluate()
 		{
+			await Task.Delay(0);
 			processmanager.ScanEverythingRequest(null, null);
 		}
 
 		public static async Task ShowMainWindow()
 		{
+			await Task.Delay(0);
+
 			try
 			{
 				using (var m = SelfAwareness.Mind(DateTime.Now.AddSeconds(30)))
@@ -312,7 +314,7 @@ namespace Taskmaster
 		static void Setup()
 		{
 			{ // INITIAL CONFIGURATIONN
-				var tcfg = loadConfig("Core.ini");
+				var tcfg = LoadConfig("Core.ini");
 				string sec = tcfg.TryGet("Core")?.TryGet("Version")?.StringValue ?? null;
 				if (sec == null || sec != ConfigVersion)
 				{
@@ -320,8 +322,7 @@ namespace Taskmaster
 					{
 						using (var initialconfig = new ComponentConfigurationWindow())
 						{
-							initialconfig.Show();
-							Application.Run(initialconfig);
+							initialconfig.ShowDialog();
 						}
 					}
 					catch (Exception ex)
@@ -478,8 +479,7 @@ namespace Taskmaster
 
 		public static void MarkDirtyINI(SharpConfig.Configuration dirtiedcfg)
 		{
-			bool unused;
-			if (ConfigDirty.TryGetValue(dirtiedcfg, out unused))
+			if (ConfigDirty.TryGetValue(dirtiedcfg, out bool unused))
 				ConfigDirty.Remove(dirtiedcfg);
 			ConfigDirty.Add(dirtiedcfg, true);
 		}
@@ -496,7 +496,7 @@ namespace Taskmaster
 		{
 			Log.Information("<Core> Loading configuration...");
 
-			cfg = loadConfig(coreconfig);
+			cfg = LoadConfig(coreconfig);
 
 			if (cfg.TryGet("Core")?.TryGet("Hello")?.RawValue != "Hi")
 			{
@@ -511,6 +511,8 @@ namespace Taskmaster
 			SharpConfig.Section perfsec = cfg["Performance"];
 
 			bool modified = false, dirtyconfig = false;
+			cfg["Core"].GetSetDefault("License", "Refused", out modified).StringValue = "Accepted";
+			dirtyconfig |= modified;
 
 			int oldsettings = optsec?.SettingCount ?? 0 + compsec?.SettingCount ?? 0 + perfsec?.SettingCount ?? 0;
 
@@ -691,19 +693,19 @@ namespace Taskmaster
 		static void monitorCleanShutdown()
 		{
 			if (corestats == null)
-				corestats = loadConfig(corestatfile);
+				corestats = LoadConfig(corestatfile);
 
 			bool running = corestats.TryGet("Core")?.TryGet("Running")?.BoolValue ?? false;
 			if (running)
 				Log.Warning("Unclean shutdown.");
 
 			corestats["Core"]["Running"].BoolValue = true;
-			saveConfig(corestats);
+			SaveConfig(corestats);
 		}
 
 		static void CleanShutdown()
 		{
-			if (corestats == null) corestats = loadConfig(corestatfile);
+			if (corestats == null) corestats = LoadConfig(corestatfile);
 
 			SharpConfig.Section wmi = corestats["WMI queries"];
 			string timespent = "Time", querycount = "Queries";
@@ -721,7 +723,7 @@ namespace Taskmaster
 
 			corestats["Core"]["Running"].BoolValue = false;
 
-			saveConfig(corestats);
+			SaveConfig(corestats);
 		}
 
 		static public void Prealloc(string filename, long minkB)
@@ -978,10 +980,39 @@ namespace Taskmaster
 			}
 		}
 
+		static void LicenseBoiler()
+		{
+			var cfg = LoadConfig(coreconfig);
+
+			if (cfg.TryGet("Core")?.TryGet("License")?.RawValue.Equals("Accepted") ?? false)
+			{
+				return;
+			}
+
+			using (var license = new LicenseDialog())
+			{
+				license.ShowDialog();
+				if (license.DialogResult != DialogResult.Yes)
+				{
+					Environment.Exit(-1);
+				}
+			}
+		}
+
 		// entry point to the application
 		[STAThread] // supposedly needed to avoid shit happening with the WinForms GUI and other GUI toolkits
 		static public int Main(string[] args)
 		{
+			try
+			{
+				LicenseBoiler();
+			}
+			catch (Exception ex)
+			{
+				Console.WriteLine(ex.GetType().Name + " : " + ex.Message);
+				Console.WriteLine(ex.StackTrace);
+			}
+
 			// INIT LOGGER
 			MemoryLog.LevelSwitch = new LoggingLevelSwitch(LogEventLevel.Information);
 
@@ -1006,7 +1037,6 @@ namespace Taskmaster
 
 			Log.Information("Taskmaster! (#{ProcessID}) {Admin}– Version: {Version} – START!",
 							Process.GetCurrentProcess().Id, (IsAdministrator() ? "[ADMIN] " : ""), System.Reflection.Assembly.GetExecutingAssembly().GetName().Version);
-
 
 			/*
 			// Append as used by the logger fucks this up.
@@ -1036,15 +1066,21 @@ namespace Taskmaster
 
 			// early save of configs
 			foreach (var dcfg in ConfigDirty)
-				if (dcfg.Value) saveConfig(dcfg.Key);
+				if (dcfg.Value) SaveConfig(dcfg.Key);
 			ConfigDirty.Clear();
 
-			CleanupTimer = new System.Timers.Timer();
-			CleanupTimer.Interval = 1000 * 60 * CleanupInterval; // 15 minutes
+			CleanupTimer = new System.Timers.Timer
+			{
+				Interval = 1000 * 60 * CleanupInterval // 15 minutes
+			};
 			CleanupTimer.Elapsed += Taskmaster.Cleanup;
 			CleanupTimer.Start();
 
 			Log.Information("<Core> Initialization complete...");
+
+			Console.WriteLine("Embedded Resources");
+			foreach (var name in System.Reflection.Assembly.GetExecutingAssembly().GetManifestResourceNames())
+				Console.WriteLine(" - " + name);
 
 			try
 			{
@@ -1100,7 +1136,7 @@ namespace Taskmaster
 			Log.Information("Cleanups: {CleanupTime}s [{CleanupCount}]", string.Format("{0:N2}", Statistics.CleanupTime), Statistics.Cleanups);
 
 			foreach (var dcfg in ConfigDirty)
-				if (dcfg.Value) saveConfig(dcfg.Key);
+				if (dcfg.Value) SaveConfig(dcfg.Key);
 
 			CleanShutdown();
 

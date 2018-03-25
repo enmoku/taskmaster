@@ -26,6 +26,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using Serilog;
 
 namespace Taskmaster
@@ -132,7 +133,7 @@ namespace Taskmaster
 		SharpConfig.Configuration cfg = null;
 		void LoadConfig()
 		{
-			cfg = Taskmaster.loadConfig("Health.ini");
+			cfg = Taskmaster.LoadConfig("Health.ini");
 			bool modified = false, configdirty = false;
 
 			var gensec = cfg["General"];
@@ -169,20 +170,28 @@ namespace Taskmaster
 		PerformanceCounterWrapper commitlimit = null;
 		PerformanceCounterWrapper commitpercentile = null;
 
+		int HealthCheck_lock = 0;
 		async void TimerCheck(object state)
 		{
+			// skip if already running...
+			// happens sometimes when the timer keeps running but not the code here
+			if (!Atomic.Lock(ref HealthCheck_lock)) return;
+
 			try
 			{
-				Check();
+				await Check();
 			}
-			catch (Exception ex)
+			catch (Exception ex) { Logging.Stacktrace(ex); }
+			finally
 			{
-				Logging.Stacktrace(ex);
+				Atomic.Unlock(ref HealthCheck_lock);
 			}
 		}
 
-		async void Check()
+		async Task Check()
 		{
+			await Task.Delay(0);
+
 			if (MemLevel > 0)
 			{
 				float memfreemb = memfree?.Value ?? 0; // MB

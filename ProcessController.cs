@@ -182,7 +182,7 @@ namespace Taskmaster
 		public void DeleteConfig(SharpConfig.Configuration cfg = null)
 		{
 			if (cfg == null)
-				cfg = Taskmaster.loadConfig(watchlistfile);
+				cfg = Taskmaster.LoadConfig(watchlistfile);
 
 			cfg.Remove(FriendlyName); // remove the section, should remove items in the section
 
@@ -192,7 +192,7 @@ namespace Taskmaster
 		public void SaveConfig(SharpConfig.Configuration cfg=null)
 		{
 			if (cfg == null)
-				cfg = Taskmaster.loadConfig(watchlistfile);
+				cfg = Taskmaster.LoadConfig(watchlistfile);
 
 			var app = cfg[FriendlyName];
 
@@ -269,7 +269,7 @@ namespace Taskmaster
 
 		public void LoadStats()
 		{
-			var stats = Taskmaster.loadConfig(statfile);
+			var stats = Taskmaster.LoadConfig(statfile);
 
 			string statkey = null;
 			if (Executable != null)
@@ -297,7 +297,7 @@ namespace Taskmaster
 
 		public void SaveStats()
 		{
-			var stats = Taskmaster.loadConfig(statfile);
+			var stats = Taskmaster.LoadConfig(statfile);
 
 			// BROKEN?
 			string key = null;

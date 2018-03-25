@@ -531,7 +531,7 @@ namespace Taskmaster
 				Log.Information("Custom application ignore list loaded.");
 			}
 			else
-				Taskmaster.saveConfig(Taskmaster.cfg);
+				Taskmaster.SaveConfig(Taskmaster.cfg);
 			dirtyconfig |= modified;
 
 			if (dirtyconfig) Taskmaster.MarkDirtyINI(Taskmaster.cfg);
@@ -541,16 +541,13 @@ namespace Taskmaster
 			// --------------------------------------------------------------------------------------------------------
 
 			Log.Information("<Process Manager> Loading watchlist...");
-			SharpConfig.Configuration appcfg = Taskmaster.loadConfig(watchfile);
+			SharpConfig.Configuration appcfg = Taskmaster.LoadConfig(watchfile);
 
 			if (appcfg.Count() == 0)
 			{
-				Taskmaster.unloadConfig(watchfile);
+				Taskmaster.UnloadConfig(watchfile);
 
 				// DEFAULT CONFIGURATION
-				foreach (var name in System.Reflection.Assembly.GetExecutingAssembly().GetManifestResourceNames())
-					Console.WriteLine("Resource: " + name);
-
 				using (var rs = System.Reflection.Assembly.GetExecutingAssembly().GetManifestResourceStream("Taskmaster.Resources.Watchlist.ini"))
 				{
 					string path = System.IO.Path.Combine(Taskmaster.datapath, watchfile);
@@ -560,7 +557,7 @@ namespace Taskmaster
 					}
 				}
 
-				appcfg = Taskmaster.loadConfig(watchfile);
+				appcfg = Taskmaster.LoadConfig(watchfile);
 			}
 
 			// --------------------------------------------------------------------------------------------------------

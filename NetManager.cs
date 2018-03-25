@@ -67,7 +67,7 @@ namespace Taskmaster
 
 		void LoadConfig()
 		{
-			var cfg = Taskmaster.loadConfig("Net.ini");
+			var cfg = Taskmaster.LoadConfig("Net.ini");
 
 			bool dirty = false;
 			bool dirtyconf = false;
@@ -84,7 +84,7 @@ namespace Taskmaster
 			PacketStatTimerInterval = pktsec.GetSetDefault("Sample rate", 15, out dirty).IntValue.Constrain(1, 60);
 			dirtyconf |= dirty;
 			if (dirtyconf)
-				Taskmaster.saveConfig(cfg);
+				Taskmaster.SaveConfig(cfg);
 		}
 
 		public NetManager()
@@ -129,6 +129,8 @@ namespace Taskmaster
 
 			if (!Atomic.Lock(ref analyzetrafficbehaviour_lock))
 				return;
+
+			await Task.Delay(0);
 
 			try
 			{
@@ -335,8 +337,7 @@ namespace Taskmaster
 		{
 			// TODO: Figure out how to get Actual start time of internet connectivity.
 
-			if (!Atomic.Lock(ref checking_inet))
-				return;
+			if (!Atomic.Lock(ref checking_inet)) return;
 
 			if (Taskmaster.Trace) Log.Verbose("<Network> Checking internet connectivity...");
 
@@ -442,8 +443,7 @@ namespace Taskmaster
 		/// <returns>string[] { Device Name, Type, Status, Link Speed, IPv4 Address, IPv6 Address } or null</returns>
 		public List<NetDevice> Interfaces()
 		{
-			if (!Atomic.Lock(ref enumerating_inet))
-				return null; // bail if we were already doing this
+			if (!Atomic.Lock(ref enumerating_inet)) return null; // bail if we were already doing this
 
 			if (Taskmaster.DebugNetMonitor)
 				Log.Debug("<Network> Enumerating network interfaces...");

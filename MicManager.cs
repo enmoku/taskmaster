@@ -116,7 +116,7 @@ namespace Taskmaster
 		{
 			//Target = Maximum; // superfluous; CLEANUP
 
-			stats = Taskmaster.loadConfig(statfile);
+			stats = Taskmaster.LoadConfig(statfile);
 			// there should be easier way for this, right?
 			Corrections = (stats.Contains("Statistics") && stats["Statistics"].Contains("Corrections")) ? stats["Statistics"]["Corrections"].IntValue : 0;
 
@@ -170,18 +170,18 @@ namespace Taskmaster
 			var mvol = "Microphone volume";
 			bool save = false || !Taskmaster.cfg["Media"].Contains(mvol);
 			double defaultvol = Taskmaster.cfg["Media"].GetSetDefault(mvol, 100d).DoubleValue;
-			if (save) Taskmaster.saveConfig(Taskmaster.cfg);
+			if (save) Taskmaster.SaveConfig(Taskmaster.cfg);
 
 			string fname = "Microphone.Devices.ini";
 			string vname = "Volume";
 
-			var devcfg = Taskmaster.loadConfig(fname);
+			var devcfg = Taskmaster.LoadConfig(fname);
 			string guid = (m_dev.ID.Split('}'))[1].Substring(2);
 			string devname = m_dev.DeviceFriendlyName;
 			bool unset = !(devcfg[guid].Contains(vname));
 			double devvol = devcfg[guid].GetSetDefault(vname, defaultvol).DoubleValue;
 			devcfg[guid]["Name"].StringValue = devname;
-			if (unset) Taskmaster.saveConfig(devcfg);
+			if (unset) Taskmaster.SaveConfig(devcfg);
 
 			Target = devvol;
 			Log.Information("Communications device: {Device} (volume: {TargetVolume:N1}%)", m_dev.FriendlyName, Target);
@@ -215,7 +215,7 @@ namespace Taskmaster
 				if (micstatsdirty)
 				{
 					stats["Statistics"]["Corrections"].IntValue = Corrections;
-					Taskmaster.saveConfig(stats);
+					Taskmaster.SaveConfig(stats);
 				}
 			}
 
