@@ -346,16 +346,17 @@ namespace Taskmaster
 			Log.Information("<Core> Loading components...");
 
 			// Parallel loading, cuts down startup time some.
+			// This is really bad if something fails
 			Task[] init =
 			{
 				Task.Run(() => { selfaware = new SelfAwareness(); }),
 				Task.Run(() => { trayaccess = new TrayAccess(); }),
 				PowerManagerEnabled ? (Task.Run(() => { powermanager = new PowerManager(); })) : Task.CompletedTask,
 				ProcessMonitorEnabled ? (Task.Run(() => { processmanager = new ProcessManager(); })) : Task.CompletedTask,
+				(ActiveAppMonitorEnabled && ProcessMonitorEnabled) ? (Task.Run(()=> {activeappmonitor = new ActiveAppManager(eventhook:false); })) : Task.CompletedTask,
 				MicrophoneMonitorEnabled ? (Task.Run(() => { micmonitor = new MicManager(); })) : Task.CompletedTask,
 				NetworkMonitorEnabled ? (Task.Run(() => { netmonitor = new NetManager(); })) : Task.CompletedTask,
 				MaintenanceMonitorEnabled ? (Task.Run(() => { diskmanager = new DiskManager(); })) : Task.CompletedTask,
-				((ActiveAppMonitorEnabled && ProcessMonitorEnabled)) ? (Task.Run(() => { activeappmonitor = new ActiveAppManager(); })) : Task.CompletedTask,
 				HealthMonitorEnabled ? (Task.Run(() => { healthmonitor = new HealthMonitor(); })) : Task.CompletedTask,
 			};
 
@@ -363,6 +364,8 @@ namespace Taskmaster
 			Task.WaitAll(init);
 
 			// HOOKING
+			// Probably should transition to weak events
+
 			Log.Information("<Core> Components loaded, hooking.");
 
 			if (PowerManagerEnabled)
@@ -381,7 +384,10 @@ namespace Taskmaster
 				trayaccess.hookProcessManager(ref processmanager);
 
 			if (ActiveAppMonitorEnabled && ProcessMonitorEnabled)
+			{
 				processmanager.hookActiveAppManager(ref activeappmonitor);
+				activeappmonitor.SetupEventHook();
+			}
 
 			if (HealthMonitorEnabled && ProcessMonitorEnabled)
 				healthmonitor.hookProcessManager(ref processmanager);

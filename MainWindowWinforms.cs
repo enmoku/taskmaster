@@ -862,12 +862,25 @@ namespace Taskmaster
 			menu_info.DropDown.AutoClose = true;
 			// Sub Items
 			var menu_info_github = new ToolStripMenuItem("Github", null, (sender, e) => { Process.Start(Taskmaster.URL); });
+			var menu_info_license = new ToolStripMenuItem("License", null, (s, e) =>
+			{
+				try
+				{
+					using (var n = new LicenseDialog(initial: false))
+					{
+						n.ShowDialog();
+					}
+				}
+				catch (Exception ex) { Logging.Stacktrace(ex); }
+			});
 			var menu_info_about = new ToolStripMenuItem("About", null, (s, e) =>
 			{
 				MessageBox.Show(Application.ProductName + " (" + Application.ProductVersion + ")\n\nCreated by M.A., 2016-2018\n\nFree system maintenance and de-obnoxifying app.\n\nAvailable under MIT license.",
 								"About Taskmaster!", MessageBoxButtons.OK, MessageBoxIcon.Information, MessageBoxDefaultButton.Button1, MessageBoxOptions.DefaultDesktopOnly, false);
 			});
 			menu_info.DropDownItems.Add(menu_info_github);
+			menu_info.DropDownItems.Add(new ToolStripSeparator());
+			menu_info.DropDownItems.Add(menu_info_license);
 			menu_info.DropDownItems.Add(new ToolStripSeparator());
 			menu_info.DropDownItems.Add(menu_info_about);
 

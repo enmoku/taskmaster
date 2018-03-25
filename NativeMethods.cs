@@ -45,7 +45,9 @@ namespace Taskmaster
 		[return: MarshalAs(UnmanagedType.Bool)]
 		public static extern bool UnhookWinEvent(IntPtr hWinEventHook); // automatic
 
-		public const uint WINEVENT_OUTOFCONTEXT = 0;
+		public const uint WINEVENT_OUTOFCONTEXT = 0x0000; // async
+		public const uint WINEVENT_SKIPOWNPROCESS = 0x0002; // skip self
+
 		public const uint EVENT_SYSTEM_FOREGROUND = 3;
 
 		[DllImport("user32.dll")]

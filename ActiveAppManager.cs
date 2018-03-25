@@ -26,6 +26,7 @@
 
 using System;
 using System.Diagnostics;
+using System.Security.Permissions;
 using Serilog;
 
 namespace Taskmaster
@@ -44,21 +45,24 @@ namespace Taskmaster
 	{
 		public event EventHandler<WindowChangedArgs> ActiveChanged;
 
-		public ActiveAppManager()
+		public ActiveAppManager(bool eventhook = true)
 		{
-			dele = new NativeMethods.WinEventDelegate(WinEventProc);
-			if (!SetupEventHook())
-				throw new Exception("Failed to initialize active app manager.");
+			ForegroundEventDelegate = new NativeMethods.WinEventDelegate(WinEventProc);
+
+			if (eventhook)
+			{
+				if (!SetupEventHook())
+					throw new Exception("Failed to initialize active app manager.");
+			}
 
 			// get current window, just in case it's something we're monitoring
 			var hwnd = NativeMethods.GetForegroundWindow();
-			int pid;
-			NativeMethods.GetWindowThreadProcessId(hwnd, out pid);
-			ForegroundId = pid;
+			NativeMethods.GetWindowThreadProcessId(hwnd, out int pid);
+			Foreground = pid;
+			// Console.WriteLine("--- Foreground Process Identifier: " + Foreground);
 
 			var perfsec = Taskmaster.cfg["Performance"];
-			var modified = false;
-			Hysterisis = perfsec.GetSetDefault("Foreground hysterisis", 1500, out modified).IntValue.Constrain(0, 30000);
+			Hysterisis = perfsec.GetSetDefault("Foreground hysterisis", 1500, out bool modified).IntValue.Constrain(0, 30000);
 			perfsec["Foreground hysterisis"].Comment = "In milliseconds, from 0 to 30000. Delay before we inspect foreground app, in case user rapidly swaps apps.";
 			if (modified) Taskmaster.MarkDirtyINI(Taskmaster.cfg);
 
@@ -67,25 +71,29 @@ namespace Taskmaster
 
 		int Hysterisis = 500;
 
-		NativeMethods.WinEventDelegate dele;
+		NativeMethods.WinEventDelegate ForegroundEventDelegate;
 		IntPtr windowseventhook = IntPtr.Zero;
 
-		public int ForegroundId { get; private set; } = -1;
+		public int Foreground { get; private set; } = -1;
 
-		public bool isForeground(int ProcessId) => ProcessId == ForegroundId;
-
+		/// <summary>
+		/// Calls SetWinEventHook, which delivers messages to the _thread_ that called it.
+		/// As such fails if it's set up in transitory thread.
+		/// </summary>
 		public bool SetupEventHook()
 		{
+			uint flags = NativeMethods.WINEVENT_OUTOFCONTEXT; // NativeMethods.WINEVENT_SKIPOWNPROCESS 
 			windowseventhook = NativeMethods.SetWinEventHook(
 				NativeMethods.EVENT_SYSTEM_FOREGROUND, NativeMethods.EVENT_SYSTEM_FOREGROUND,
-				IntPtr.Zero, dele, 0, 0, NativeMethods.WINEVENT_OUTOFCONTEXT);
+				IntPtr.Zero, ForegroundEventDelegate, 0, 0, flags);
 			// FIXME: Seems to stop functioning really easily? Possibly from other events being caught.
 			if (windowseventhook == IntPtr.Zero)
 			{
-				Log.Error("Foreground window event hook not attached.");
+				Log.Error("<Foreground> Window event hook failed to initialize.");
 				return false;
 			}
 
+			Log.Information("<Foreground> Event hook initialized.");
 			return true;
 		}
 
@@ -136,76 +144,76 @@ namespace Taskmaster
 		}
 		*/
 
-		int foreground = 0;
-
-		// [UIPermissionAttribute(SecurityAction.Demand)] // fails
-		// [SecurityPermissionAttribute(SecurityAction.Demand, UnmanagedCode = true)]
-		public async void WinEventProc(IntPtr hWinEventHook, uint eventType, IntPtr hwnd, int idObject, int idChild, uint dwEventThread, uint dwmsEventTime)
+		string GetWindowTitle(IntPtr hwnd)
 		{
-			if (eventType != NativeMethods.EVENT_SYSTEM_FOREGROUND) return;
+			const int nChars = 256; // Why this limit?
+			var buff = new System.Text.StringBuilder(nChars);
 
-			foreground++;
+			// Window title, we don't care tbh.
+			if (NativeMethods.GetWindowText(hwnd, buff, nChars) > 0) // get title? not really useful for most things
+			{
+				// System.Console.WriteLine("Active window: {0}", buff);
+				return buff.ToString();
+			}
+
+			return string.Empty;
+		}
+
+		bool Fullscreen(IntPtr hwnd)
+		{
+			NativeMethods.RECT rect = new NativeMethods.RECT();
+
+			System.Windows.Forms.Screen screen = System.Windows.Forms.Screen.FromHandle(hwnd); // passes
+
+			NativeMethods.GetWindowRect(hwnd, ref rect);
+			var r = new System.Drawing.Rectangle(rect.Left, rect.Top, rect.Right - rect.Left, rect.Bottom - rect.Top);
+
+			bool full = r.Equals(screen.Bounds);
+
+			return full;
+		}
+
+		int foreground_counter = 0;
+		object foregroundswap_lock = new object();
+
+		/// <summary>
+		/// SetWinEventHook sends messages to this. Don't call it on your own.
+		/// </summary>
+		// [UIPermissionAttribute(SecurityAction.Demand)] // fails
+		//[SecurityPermissionAttribute(SecurityAction.Demand, UnmanagedCode = true)]
+		async void WinEventProc(IntPtr hWinEventHook, uint eventType, IntPtr hwnd, int idObject, int idChild, uint dwEventThread, uint dwmsEventTime)
+		{
+			if (eventType != NativeMethods.EVENT_SYSTEM_FOREGROUND) return; // does this ever trigger?
+
+			foreground_counter++;
 
 			await System.Threading.Tasks.Task.Delay(Hysterisis); // minded
 
-			var old = -1;
-			if ((old = foreground) > 1) // if we've swapped in this time, we won't bother checking anything about it.
+			lock (foregroundswap_lock)
 			{
-				foreground--;
-				// Log.Verbose("<Foreground> {0} apps in foreground, we're late to the party.", old);
-				return;
+				if (foreground_counter > 1) // if we've swapped in this time, we won't bother checking anything about it.
+				{
+					foreground_counter--;
+					// Log.Verbose("<Foreground> {0} apps in foreground, we're late to the party.", old);
+					return;
+				}
 			}
 
 			// IntPtr handle = IntPtr.Zero; // hwnd arg already has this
 			// handle = GetForegroundWindow();
 
-			// http://www.pinvoke.net/default.aspx/user32.GetWindowPlacement
-
-			const int nChars = 256;
-			System.Text.StringBuilder buff = null;
-			if (Taskmaster.DebugForeground)
+			try
 			{
-				buff = new System.Text.StringBuilder(nChars);
-
-				// Window title, we don't care tbh.
-				if (NativeMethods.GetWindowText(hwnd, buff, nChars) > 0) // get title? not really useful for most things
+				var activewindowev = new WindowChangedArgs()
 				{
-					// System.Console.WriteLine("Active window: {0}", buff);
-				}
-			}
+					hWnd = hwnd,
+					Title = string.Empty,
+					Fullscreen = Trinary.Nonce,
+				};
 
-			// BUG: ?? why does it return here already sometimes? takes too long?
-			// ----------------------
-			var fullScreen = Trinary.Nonce;
-			try
-			{
-				/*
-				// WORKS, JUST KINDA USELESS FOR NOW
-				// PLAN: Use this for process analysis.
-				System.Windows.Forms.Screen screen = System.Windows.Forms.Screen.FromHandle(hwnd); // passes
-
-				RECT rect = new RECT();
-				GetWindowRect(hwnd, ref rect);
-
-				var r = new System.Drawing.Rectangle(rect.Left, rect.Top, rect.Right - rect.Left, rect.Bottom - rect.Top);
-				bool full = r.Equals(screen.Bounds);
-				fullScreen = full ? Trinary.True : Trinary.False;
-				*/
-			}
-			catch (Exception ex)
-			{
-				Logging.Stacktrace(ex);
-			}
-
-			try
-			{
-				var activewindowev = new WindowChangedArgs();
-				activewindowev.hWnd = hwnd;
-				activewindowev.Title = (buff != null ? buff.ToString() : string.Empty);
-				activewindowev.Fullscreen = fullScreen;
-				var pid = 0;
-				NativeMethods.GetWindowThreadProcessId(hwnd, out pid);
-				ForegroundId = activewindowev.Id = pid;
+				NativeMethods.GetWindowThreadProcessId(hwnd, out int pid);
+				Foreground = activewindowev.Id = pid;
+				// Console.WriteLine("--- Foreground Process Identifier: " + Foreground);
 				try
 				{
 					var proc = Process.GetProcessById(activewindowev.Id);
@@ -223,8 +231,13 @@ namespace Taskmaster
 			{
 				Logging.Stacktrace(ex);
 			}
-
-			foreground--;
+			finally
+			{
+				lock (foregroundswap_lock)
+				{
+					foreground_counter--;
+				}
+			}
 		}
 	}
 }

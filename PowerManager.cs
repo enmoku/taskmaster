@@ -941,11 +941,6 @@ namespace Taskmaster
 		{
 			if (disposed) return;
 
-			Invoke(new Action(() =>
-			{
-				base.Dispose(disposing);
-			}));
-
 			if (disposing)
 			{
 				if (Taskmaster.Trace) Log.Verbose("Disposing power manager...");

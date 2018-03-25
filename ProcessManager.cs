@@ -929,7 +929,9 @@ namespace Taskmaster
 						var rv = ProcessState.Invalid;
 						try
 						{
-							rv = prc.Touch(info, foreground: activeappmonitor?.isForeground(info.Id) ?? true);
+							bool isfg = (activeappmonitor != null) ? (activeappmonitor.Foreground.Equals(info.Id)) : false;
+							//Console.WriteLine("--- Foreground : " + activeappmonitor.Foreground + " matches " + info.Id + "?");
+							rv = prc.Touch(info, foreground: isfg);
 						}
 						catch (Exception ex)
 						{
@@ -1126,7 +1128,8 @@ namespace Taskmaster
 
 				try
 				{
-					state = prc.Touch(info, schedule_next, foreground: activeappmonitor?.isForeground(info.Id) ?? true);
+					bool isfg = (activeappmonitor != null) ? activeappmonitor.Foreground.Equals(info.Id) : true;
+					state = prc.Touch(info, schedule_next, foreground: isfg);
 				}
 				catch (Exception ex)
 				{

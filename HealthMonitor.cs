@@ -212,7 +212,7 @@ namespace Taskmaster
 						var ignorepid = -1;
 						if (MemIgnoreFocus)
 						{
-							ignorepid = Taskmaster.activeappmonitor.ForegroundId;
+							ignorepid = Taskmaster.activeappmonitor.Foreground;
 							processmanager.Ignore(ignorepid);
 						}
 

@@ -86,17 +86,22 @@ namespace Taskmaster
 				Anchor = AnchorStyles.Left,
 			};
 
-			buttonlayout.Controls.Add(buttonAccept);
-			buttonlayout.Controls.Add(buttonRefuse);
+			if (!initial) buttonAccept.Text = "OK";
 
-			layout.Controls.Add(new Label()
+			buttonlayout.Controls.Add(buttonAccept);
+
+			if (initial) buttonlayout.Controls.Add(buttonRefuse);
+
+			var required = new Label()
 			{
 				Text = "You must accept the following license to use this application.",
 				AutoSize = true,
 				TextAlign = System.Drawing.ContentAlignment.MiddleLeft,
 				Margin = new Padding(6),
 				Font = new System.Drawing.Font(System.Drawing.FontFamily.GenericSansSerif, DefaultFont.Size * 1.2f),
-			});
+			};
+
+			if (initial) layout.Controls.Add(required);
 			layout.Controls.Add(licensebox);
 			layout.Controls.Add(buttonlayout);
 
