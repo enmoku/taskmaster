@@ -25,10 +25,10 @@
 // THE SOFTWARE.
 
 using System;
-using System.Windows.Forms;
-using Taskmaster.PowerInfo;
-using Serilog;
 using System.Threading.Tasks;
+using System.Windows.Forms;
+using Serilog;
+using Taskmaster.PowerInfo;
 
 namespace Taskmaster
 {
@@ -41,7 +41,7 @@ namespace Taskmaster
 		{
 			Text = "Power auto-adjust configuration";
 
-			AutoAdjustSettings AutoAdjust = oldAutoAdjust = Taskmaster.powermanager.AutoAdjust;
+			var AutoAdjust = oldAutoAdjust = Taskmaster.powermanager.AutoAdjust;
 
 			FormBorderStyle = FormBorderStyle.FixedDialog;
 
@@ -109,7 +109,6 @@ namespace Taskmaster
 			var highbackofflevel = new NumericUpDown() { Maximum = 95, Minimum = 5, Value = 50 };
 			highbackofflevel.Value = Convert.ToDecimal(AutoAdjust.High.Backoff.Level).Constrain(5, 95);
 			layout.Controls.Add(highbackofflevel);
-
 
 			var lowmode = new ComboBox()
 			{
@@ -195,8 +194,8 @@ namespace Taskmaster
 			AutoSize = true;
 			AutoSizeMode = AutoSizeMode.GrowAndShrink;
 
-			//Height = layout.Height;
-			//Width = layout.Width;
+			// Height = layout.Height;
+			// Width = layout.Width;
 		}
 
 		static PowerConfigWindow pcw = null;

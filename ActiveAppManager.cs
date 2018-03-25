@@ -26,13 +26,10 @@
 
 using System;
 using System.Diagnostics;
-using System.Runtime.InteropServices;
 using Serilog;
-using Microsoft.Win32.SafeHandles;
 
 namespace Taskmaster
 {
-
 	public class WindowChangedArgs : EventArgs
 	{
 		public IntPtr hWnd { get; set; }
@@ -60,7 +57,7 @@ namespace Taskmaster
 			ForegroundId = pid;
 
 			var perfsec = Taskmaster.cfg["Performance"];
-			bool modified = false;
+			var modified = false;
 			Hysterisis = perfsec.GetSetDefault("Foreground hysterisis", 1500, out modified).IntValue.Constrain(0, 30000);
 			perfsec["Foreground hysterisis"].Comment = "In milliseconds, from 0 to 30000. Delay before we inspect foreground app, in case user rapidly swaps apps.";
 			if (modified) Taskmaster.MarkDirtyINI(Taskmaster.cfg);
@@ -75,10 +72,7 @@ namespace Taskmaster
 
 		public int ForegroundId { get; private set; } = -1;
 
-		public bool isForeground(int ProcessId)
-		{
-			return ProcessId == ForegroundId;
-		}
+		public bool isForeground(int ProcessId) => ProcessId == ForegroundId;
 
 		public bool SetupEventHook()
 		{
@@ -91,12 +85,13 @@ namespace Taskmaster
 				Log.Error("Foreground window event hook not attached.");
 				return false;
 			}
+
 			return true;
 		}
 
 		public void SetupEventHookEvent(object sender, ProcessEventArgs e)
 		{
-			//SetupEventHook();
+			// SetupEventHook();
 		}
 
 		~ActiveAppManager()
@@ -113,8 +108,7 @@ namespace Taskmaster
 		bool disposed = false;
 		void Dispose(bool disposing)
 		{
-			if (disposed)
-				return;
+			if (disposed) return;
 
 			if (disposing)
 			{
@@ -144,8 +138,8 @@ namespace Taskmaster
 
 		int foreground = 0;
 
-		//[UIPermissionAttribute(SecurityAction.Demand)] // fails
-		//[SecurityPermissionAttribute(SecurityAction.Demand, UnmanagedCode = true)]
+		// [UIPermissionAttribute(SecurityAction.Demand)] // fails
+		// [SecurityPermissionAttribute(SecurityAction.Demand, UnmanagedCode = true)]
 		public async void WinEventProc(IntPtr hWinEventHook, uint eventType, IntPtr hwnd, int idObject, int idChild, uint dwEventThread, uint dwmsEventTime)
 		{
 			if (eventType != NativeMethods.EVENT_SYSTEM_FOREGROUND) return;
@@ -154,18 +148,18 @@ namespace Taskmaster
 
 			await System.Threading.Tasks.Task.Delay(Hysterisis); // minded
 
-			int old = -1;
+			var old = -1;
 			if ((old = foreground) > 1) // if we've swapped in this time, we won't bother checking anything about it.
 			{
 				foreground--;
-				//Log.Verbose("<Foreground> {0} apps in foreground, we're late to the party.", old);
+				// Log.Verbose("<Foreground> {0} apps in foreground, we're late to the party.", old);
 				return;
 			}
 
-			//IntPtr handle = IntPtr.Zero; // hwnd arg already has this
-			//handle = GetForegroundWindow();
+			// IntPtr handle = IntPtr.Zero; // hwnd arg already has this
+			// handle = GetForegroundWindow();
 
-			//http://www.pinvoke.net/default.aspx/user32.GetWindowPlacement
+			// http://www.pinvoke.net/default.aspx/user32.GetWindowPlacement
 
 			const int nChars = 256;
 			System.Text.StringBuilder buff = null;
@@ -176,13 +170,13 @@ namespace Taskmaster
 				// Window title, we don't care tbh.
 				if (NativeMethods.GetWindowText(hwnd, buff, nChars) > 0) // get title? not really useful for most things
 				{
-					//System.Console.WriteLine("Active window: {0}", buff);
+					// System.Console.WriteLine("Active window: {0}", buff);
 				}
 			}
 
 			// BUG: ?? why does it return here already sometimes? takes too long?
 			// ----------------------
-			Trinary fullScreen = Trinary.Nonce;
+			var fullScreen = Trinary.Nonce;
 			try
 			{
 				/*
@@ -209,12 +203,12 @@ namespace Taskmaster
 				activewindowev.hWnd = hwnd;
 				activewindowev.Title = (buff != null ? buff.ToString() : string.Empty);
 				activewindowev.Fullscreen = fullScreen;
-				int pid = 0;
+				var pid = 0;
 				NativeMethods.GetWindowThreadProcessId(hwnd, out pid);
 				ForegroundId = activewindowev.Id = pid;
 				try
 				{
-					Process proc = Process.GetProcessById(activewindowev.Id);
+					var proc = Process.GetProcessById(activewindowev.Id);
 					activewindowev.Process = proc;
 					activewindowev.Executable = proc.ProcessName;
 				}
@@ -234,4 +228,3 @@ namespace Taskmaster
 		}
 	}
 }
-

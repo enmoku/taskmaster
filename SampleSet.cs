@@ -56,12 +56,12 @@ namespace Taskmaster
 
 		public void Pull()
 		{
-			//??
+			// ??
 		}
 
 		public Uptime Pop()
 		{
-			Uptime up = (Uptime)Stack.Dequeue();
+			var up = (Uptime)Stack.Dequeue();
 			Count -= 1;
 			Total -= up.Time;
 			return up;

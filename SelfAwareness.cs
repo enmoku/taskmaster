@@ -25,10 +25,10 @@
 // THE SOFTWARE.
 
 using System;
-using System.Collections.Generic;
-using Serilog;
-using System.Runtime.CompilerServices;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
+using System.Runtime.CompilerServices;
+using Serilog;
 
 namespace Taskmaster
 {
@@ -76,10 +76,7 @@ namespace Taskmaster
 			return awn;
 		}
 
-		public static void Unmind(int key)
-		{
-			RemoveAwareness(key);
-		}
+		public static void Unmind(int key) => RemoveAwareness(key);
 
 		static void AddAwareness(Awareness awn)
 		{
@@ -93,7 +90,7 @@ namespace Taskmaster
 
 				AwarenessMap.TryAdd(awn.Key, awn);
 
-				//Log.Debug("<<Self-Awareness>> Added [{Key}] {Method}", awn.Key, awn.Method);
+				// Log.Debug("<<Self-Awareness>> Added [{Key}] {Method}", awn.Key, awn.Method);
 			}
 		}
 
@@ -103,41 +100,41 @@ namespace Taskmaster
 			{
 				if (AwarenessMap.TryRemove(key, out Awareness awn))
 				{
-					//Log.Debug("<<Self-Awareness>> Removing [{Key}] {Method}", awn.Key, awn.Method);
+					// Log.Debug("<<Self-Awareness>> Removing [{Key}] {Method}", awn.Key, awn.Method);
 				}
 			}
 		}
 
 		static internal int GetKey()
 		{
-			int rv = 0;
+			var rv = 0;
 			lock (FreeKeys_lock)
 			{
 				if (FreeKeys.Count > 0 && FreeKeys.TryDequeue(out rv))
 				{
-					//Log.Debug("<<Self-Awareness>> GetKey: FreeKeys.Dequeue() = {rv}", rv);
+					// Log.Debug("<<Self-Awareness>> GetKey: FreeKeys.Dequeue() = {rv}", rv);
 				}
 				else
 				{
 					rv = NextKey++;
-					//Log.Debug("<<Self-Awareness>> GetKey: NextKey++ = {rv}", rv);
+					// Log.Debug("<<Self-Awareness>> GetKey: NextKey++ = {rv}", rv);
 				}
 			}
+
 			return rv;
 		}
 
 		static internal void FreeKey(int key)
 		{
 			lock (FreeKeys_lock)
-			{
 				FreeKeys.Enqueue(key);
-			}
+
 		}
 
 		DateTime NextDue = DateTime.MinValue;
 		void Assess(object state)
 		{
-			DateTime now = DateTime.Now;
+			var now = DateTime.Now;
 			Stack<int> clearList = new Stack<int>();
 
 			lock (AwarenessMap_lock)
@@ -146,7 +143,7 @@ namespace Taskmaster
 				{
 					foreach (var awnPair in AwarenessMap)
 					{
-						Awareness awn = awnPair.Value;
+						var awn = awnPair.Value;
 						if (awn.Due <= now)
 						{
 							awn.Tick++;
@@ -170,16 +167,17 @@ namespace Taskmaster
 								if (awn.Callback != null)
 									awn.Callback.Invoke(awn.UserObject);
 							}
+
 							Log.Fatal("<<Self-Awareness>> Tick: {Tick} – Due:{Due} – Now:{Now} – Late: {Late}s",
 									  awn.Tick, awn.Due, now, (now - awn.Due).TotalSeconds);
 
-							if (awn.Tick >= 3)
-								clearList.Push(awn.Key);
+							if (awn.Tick >= 3) clearList.Push(awn.Key);
 						}
 						else
 						{
-							//Log.Debug("<<Self-Awareness>> Checked [{Key}] {Method} – due in: {Sec}", awn.Key, awn.Value.Method, (now - awn.Value.Due).TotalSeconds);
+							// Log.Debug("<<Self-Awareness>> Checked [{Key}] {Method} – due in: {Sec}", awn.Key, awn.Value.Method, (now - awn.Value.Due).TotalSeconds);
 						}
+
 						awn = null;
 					}
 				}
@@ -187,7 +185,7 @@ namespace Taskmaster
 
 			while (clearList.Count > 0)
 			{
-				int key = clearList.Pop();
+				var key = clearList.Pop();
 				if (AwarenessMap.TryGetValue(key, out Awareness awn))
 				{
 					RemoveAwareness(key);
@@ -204,8 +202,7 @@ namespace Taskmaster
 		bool disposed = false;
 		void Dispose(bool disposing)
 		{
-			if (disposed)
-				return;
+			if (disposed) return;
 
 			if (disposing)
 			{
@@ -272,14 +269,14 @@ namespace Taskmaster
 				return;
 			}
 
-			//base.Dispose(disposing);
+			// base.Dispose(disposing);
 
 			if (disposing)
 			{
 				if (Overdue && Tick <= 3)
 					Log.Fatal("<<Self-Awareness>> {Method} recovered", Method, Line);
 
-				//Log.Debug("<<Self-Awareness>> Dispose [{Key}] {Method} [Time: {N}s]", Key, Method, string.Format("{0:N2}", (DateTime.Now - Start).TotalSeconds));
+				// Log.Debug("<<Self-Awareness>> Dispose [{Key}] {Method} [Time: {N}s]", Key, Method, string.Format("{0:N2}", (DateTime.Now - Start).TotalSeconds));
 				SelfAwareness.Unmind(Key);
 				SelfAwareness.FreeKey(Key);
 			}

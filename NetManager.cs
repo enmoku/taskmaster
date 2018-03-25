@@ -25,13 +25,13 @@
 // THE SOFTWARE.
 
 using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.Linq;
 using System.Net;
 using System.Net.NetworkInformation;
-using System.Collections.Generic;
-using System.Linq;
-using Serilog;
 using System.Threading.Tasks;
-using System.Diagnostics;
+using Serilog;
 
 namespace Taskmaster
 {
@@ -69,8 +69,8 @@ namespace Taskmaster
 		{
 			var cfg = Taskmaster.LoadConfig("Net.ini");
 
-			bool dirty = false;
-			bool dirtyconf = false;
+			var dirty = false;
+			var dirtyconf = false;
 
 			var monsec = cfg["Monitor"];
 			dnstestaddress = monsec.GetSetDefault("DNS test", "www.google.com", out dirty).StringValue;
@@ -83,8 +83,7 @@ namespace Taskmaster
 			var pktsec = cfg["Traffic"];
 			PacketStatTimerInterval = pktsec.GetSetDefault("Sample rate", 15, out dirty).IntValue.Constrain(1, 60);
 			dirtyconf |= dirty;
-			if (dirtyconf)
-				Taskmaster.SaveConfig(cfg);
+			if (dirtyconf) Taskmaster.SaveConfig(cfg);
 		}
 
 		public NetManager()
@@ -104,7 +103,7 @@ namespace Taskmaster
 			LastChange.Enqueue(DateTime.MinValue);
 
 			CurrentInterfaceList = Interfaces();
-			//Log.Debug("{IFACELIST} – count: {c}", CurrentInterfaceList, CurrentInterfaceList.Count);
+			// Log.Debug("{IFACELIST} – count: {c}", CurrentInterfaceList, CurrentInterfaceList.Count);
 
 			deviceSampleTimer = new System.Threading.Timer(SampleDeviceState, null, 15000, DeviceTimerInterval * 60000);
 
@@ -117,26 +116,20 @@ namespace Taskmaster
 		int packetWarning = 0;
 		List<NetDevice> CurrentInterfaceList;
 
-		async void AnalyzeTrafficBehaviourTick(object state)
-		{
-			await AnalyzeTrafficBehaviour();
-		}
+		async void AnalyzeTrafficBehaviourTick(object state) => await AnalyzeTrafficBehaviour();
 
 		int analyzetrafficbehaviour_lock = 0;
 		async Task AnalyzeTrafficBehaviour()
 		{
 			Debug.Assert(CurrentInterfaceList != null);
 
-			if (!Atomic.Lock(ref analyzetrafficbehaviour_lock))
-				return;
+			if (!Atomic.Lock(ref analyzetrafficbehaviour_lock)) return;
 
 			await Task.Delay(0);
 
 			try
 			{
-
-				if (packetWarning > 0)
-					packetWarning--;
+				if (packetWarning > 0) packetWarning--;
 
 				var ifaces = Interfaces();
 
@@ -153,14 +146,14 @@ namespace Taskmaster
 				{
 					for (int index = 0; index < ifaces.Count; index++)
 					{
-						long errors = (ifaces[index].Incoming.Errors - CurrentInterfaceList[index].Incoming.Errors)
+						var errors = (ifaces[index].Incoming.Errors - CurrentInterfaceList[index].Incoming.Errors)
 							+ (ifaces[index].Outgoing.Errors - CurrentInterfaceList[index].Outgoing.Errors);
-						long discards = (ifaces[index].Incoming.Discarded - CurrentInterfaceList[index].Incoming.Discarded)
+						var discards = (ifaces[index].Incoming.Discarded - CurrentInterfaceList[index].Incoming.Discarded)
 							+ (ifaces[index].Outgoing.Discarded - CurrentInterfaceList[index].Outgoing.Discarded);
-						long packets = (ifaces[index].Incoming.Unicast - CurrentInterfaceList[index].Incoming.Unicast)
+						var packets = (ifaces[index].Incoming.Unicast - CurrentInterfaceList[index].Incoming.Unicast)
 							+ (ifaces[index].Outgoing.Unicast - CurrentInterfaceList[index].Outgoing.Unicast);
 
-						//Console.WriteLine("{0} : Packets(+{1}), Errors(+{2}), Discarded(+{3})", ifaces[index].Name, packets, errors, discards);
+						// Console.WriteLine("{0} : Packets(+{1}), Errors(+{2}), Discarded(+{3})", ifaces[index].Name, packets, errors, discards);
 
 						if (errors > 0)
 						{
@@ -172,6 +165,7 @@ namespace Taskmaster
 							else
 								packetWarning++;
 						}
+
 						onSampling?.Invoke(this, new NetDeviceTraffic { Index = index, Traffic = new NetTraffic { Unicast = packets, Errors = errors, Discarded = discards } });
 					}
 				}
@@ -191,29 +185,8 @@ namespace Taskmaster
 
 		public TrayAccess Tray { get; set; } // bad design
 
-		bool _netAvailable = false, _inetAvailable = false;
-		public bool NetworkAvailable
-		{
-			get
-			{
-				return _netAvailable;
-			}
-			private set
-			{
-				_netAvailable = value;
-			}
-		}
-		public bool InternetAvailable
-		{
-			get
-			{
-				return _inetAvailable;
-			}
-			private set
-			{
-				_inetAvailable = value;
-			}
-		}
+		public bool NetworkAvailable { get; private set; }
+		public bool InternetAvailable { get; private set; }
 
 		int uptimeSamples; // = 0;
 		double uptimeTotal; // = 0;
@@ -244,13 +217,14 @@ namespace Taskmaster
 				if (InternetAvailable != InternetAvailableLast) // prevent spamming available message
 				{
 					Log.Information("<Network> Internet available.");
-					//Log.Verbose("Current internet uptime: {UpTime:N1} minute(s)", Uptime.TotalMinutes);
+					// Log.Verbose("Current internet uptime: {UpTime:N1} minute(s)", Uptime.TotalMinutes);
 				}
 				else
 				{
 					if (InternetAvailable != InternetAvailableLast) // prevent spamming unavailable message
 						Log.Warning("<Network> Internet access unavailable.");
 				}
+
 				InternetAvailableLast = InternetAvailable;
 			}
 		}
@@ -262,7 +236,7 @@ namespace Taskmaster
 			ups.Append("<Network> Average uptime: ");
 			lock (uptime_lock)
 			{
-				double currentUptime = (DateTime.Now - lastUptimeStart).TotalMinutes;
+				var currentUptime = (DateTime.Now - lastUptimeStart).TotalMinutes;
 
 				ups.Append(string.Format("{0:N1}", ((uptimeTotal + currentUptime) / (uptimeSamples + 1)))).Append(" minutes");
 
@@ -299,7 +273,7 @@ namespace Taskmaster
 					// this part is kinda pointless
 					if (Atomic.Lock(ref upstateTesting))
 					{
-						//CLEANUP: Console.WriteLine("Debug: Queued internet uptime report");
+						// CLEANUP: Console.WriteLine("Debug: Queued internet uptime report");
 						await Task.Delay(new TimeSpan(0, 5, 0)); // wait 5 minutes
 
 						ReportCurrentUpstate();
@@ -310,7 +284,7 @@ namespace Taskmaster
 				{
 					lock (uptime_lock)
 					{
-						double newUptime = (DateTime.Now - lastUptimeStart).TotalMinutes;
+						var newUptime = (DateTime.Now - lastUptimeStart).TotalMinutes;
 						upTime.Add(newUptime);
 						uptimeTotal += newUptime;
 						uptimeSamples += 1;
@@ -321,8 +295,10 @@ namespace Taskmaster
 							upTime.RemoveAt(0);
 						}
 					}
+
 					ReportUptime();
 				}
+
 				return;
 			}
 			else if (address_changed)
@@ -341,7 +317,7 @@ namespace Taskmaster
 
 			if (Taskmaster.Trace) Log.Verbose("<Network> Checking internet connectivity...");
 
-			bool oldInetAvailable = InternetAvailable;
+			var oldInetAvailable = InternetAvailable;
 			if (NetworkAvailable)
 			{
 				try
@@ -361,7 +337,7 @@ namespace Taskmaster
 					{
 						case System.Net.Sockets.SocketError.TimedOut:
 							Log.Warning("<Network> Internet availability test timed-out: assuming we're online.");
-							//await CheckInet(false).ConfigureAwait(false);
+							// await CheckInet(false).ConfigureAwait(false);
 							InternetAvailable = true; // timeout can only occur if we actually have internet.. sort of. We have no tri-state tho.
 							Atomic.Unlock(ref checking_inet);
 							return;
@@ -392,7 +368,7 @@ namespace Taskmaster
 		}
 
 		List<IPAddress> AddressList = new List<IPAddress>(2);
-		//List<NetworkInterface> PublicInterfaceList = new List<NetworkInterface>(2);
+		// List<NetworkInterface> PublicInterfaceList = new List<NetworkInterface>(2);
 		IPAddress IPv4Address = IPAddress.None;
 		NetworkInterface IPv4Interface;
 		IPAddress IPv6Address = IPAddress.IPv6None;
@@ -416,12 +392,12 @@ namespace Taskmaster
 						case System.Net.Sockets.AddressFamily.InterNetwork:
 							IPv4Address = ip;
 							IPv4Interface = n;
-							//PublicInterfaceList.Add(n);
+							// PublicInterfaceList.Add(n);
 							break;
 						case System.Net.Sockets.AddressFamily.InterNetworkV6:
 							IPv6Address = ip;
 							IPv6Interface = n;
-							//PublicInterfaceList.Add(n);
+							// PublicInterfaceList.Add(n);
 							break;
 					}
 				}
@@ -449,13 +425,13 @@ namespace Taskmaster
 				Log.Debug("<Network> Enumerating network interfaces...");
 
 			var ifacelist = new List<NetDevice>();
-			//var ifacelist = new List<string[]>();
+			// var ifacelist = new List<string[]>();
 
-			int index = 0;
+			var index = 0;
 			NetworkInterface[] adapters = NetworkInterface.GetAllNetworkInterfaces();
 			foreach (NetworkInterface dev in adapters)
 			{
-				int ti = index++;
+				var ti = index++;
 				if (dev.NetworkInterfaceType == NetworkInterfaceType.Loopback || dev.NetworkInterfaceType == NetworkInterfaceType.Tunnel)
 					continue;
 
@@ -489,7 +465,7 @@ namespace Taskmaster
 
 				devi.Incoming.From(stats, true);
 				devi.Outgoing.From(stats, false);
-				//devi.PrintStats();
+				// devi.PrintStats();
 				ifacelist.Add(devi);
 
 				if (Taskmaster.DebugNetMonitor)
@@ -505,8 +481,8 @@ namespace Taskmaster
 		async void NetAddrChanged(object sender, EventArgs e)
 		{
 			var tmpnow = DateTime.Now;
-			IPAddress oldV6Address = IPv6Address;
-			IPAddress oldV4Address = IPv4Address;
+			var oldV6Address = IPv6Address;
+			var oldV4Address = IPv4Address;
 
 			LastChange.Dequeue();
 			LastChange.Enqueue(tmpnow);
@@ -515,8 +491,8 @@ namespace Taskmaster
 
 			if (InternetAvailable)
 			{
-				//CLEANUP: Console.WriteLine("DEBUG: AddrChange: " + oldV4Address + " -> " + IPv4Address);
-				//CLEANUP: Console.WriteLine("DEBUG: AddrChange: " + oldV6Address + " -> " + IPv6Address);
+				// CLEANUP: Console.WriteLine("DEBUG: AddrChange: " + oldV4Address + " -> " + IPv4Address);
+				// CLEANUP: Console.WriteLine("DEBUG: AddrChange: " + oldV6Address + " -> " + IPv6Address);
 
 				bool ipv4changed = false, ipv6changed = false;
 				ipv4changed = !oldV4Address.Equals(IPv4Address);
@@ -531,6 +507,7 @@ namespace Taskmaster
 					Tray.Tooltip(2000, outstr4.ToString(), "Taskmaster", System.Windows.Forms.ToolTipIcon.Info);
 					// TODO: Make clicking on the tooltip copy new IP to clipboard?
 				}
+
 #endif
 				ipv6changed = !oldV6Address.Equals(IPv6Address);
 #if DEBUG
@@ -543,6 +520,7 @@ namespace Taskmaster
 
 					Tray.Tooltip(2000, outstr6.ToString(), "Taskmaster", System.Windows.Forms.ToolTipIcon.Info);
 				}
+
 #endif
 
 				if (!ipv4changed && !ipv6changed && (LastChange.Peek() - DateTime.Now).Minutes < 5)
@@ -553,7 +531,7 @@ namespace Taskmaster
 				}
 			}
 
-			//NetworkChanged(null,null);
+			// NetworkChanged(null,null);
 		}
 
 		void NetworkSetup()
@@ -564,12 +542,12 @@ namespace Taskmaster
 			NetworkChange.NetworkAvailabilityChanged += NetworkChanged;
 			NetworkChange.NetworkAddressChanged += NetAddrChanged;
 
-			//CheckInet().Wait(); // unnecessary?
+			// CheckInet().Wait(); // unnecessary?
 		}
 
 		async void NetworkChanged(object sender, EventArgs e)
 		{
-			bool oldNetAvailable = NetworkAvailable;
+			var oldNetAvailable = NetworkAvailable;
 			NetworkAvailable = NetworkInterface.GetIsNetworkAvailable();
 
 			// do stuff only if this is different from last time
@@ -596,7 +574,7 @@ namespace Taskmaster
 		{
 			if (disposed) return;
 
-			//base.Dispose(disposing);
+			// base.Dispose(disposing);
 
 			if (disposing)
 			{

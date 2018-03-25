@@ -24,11 +24,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using Microsoft.Win32;
 
 namespace Taskmaster
@@ -52,7 +48,7 @@ namespace Taskmaster
 				{
 					if (path.Contains("/steamapps/common/") || path.Contains(SteamIdentifier.Replace("/", @"\")))
 					{
-						int off = path.IndexOf("steamapps") + SteamIdentifier.Length;
+						var off = path.IndexOf("steamapps") + SteamIdentifier.Length;
 						paths.Add(path.Substring(0, off));
 					}
 				}

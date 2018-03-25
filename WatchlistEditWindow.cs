@@ -24,11 +24,11 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-using Serilog;
-using System.Windows.Forms;
-using System.Diagnostics;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.Windows.Forms;
+using Serilog;
 
 namespace Taskmaster
 {
@@ -46,7 +46,7 @@ namespace Taskmaster
 			Controller = new ProcessController("Unnamed", ProcessPriorityClass.Normal, 0)
 			{
 				Enabled = true,
-				Valid=true,
+				Valid = true,
 			};
 
 			newPrc = true;
@@ -78,7 +78,7 @@ namespace Taskmaster
 
 		void SaveInfo(object sender, System.EventArgs ev)
 		{
-			bool enOrig = Controller.Enabled;
+			var enOrig = Controller.Enabled;
 			Controller.Enabled = false;
 
 			// TODO: VALIDATE FOR GRIMMY'S SAKE!
@@ -87,9 +87,9 @@ namespace Taskmaster
 			// -----------------------------------------------
 			// VALIDATE
 
-			bool fnlen = (friendlyName.Text.Length > 0);
-			bool exnam = (execName.Text.Length > 0);
-			bool path = (pathName.Text.Length > 0);
+			var fnlen = (friendlyName.Text.Length > 0);
+			var exnam = (execName.Text.Length > 0);
+			var path = (pathName.Text.Length > 0);
 
 			if (!path && !exnam)
 			{
@@ -120,7 +120,7 @@ namespace Taskmaster
 
 			if (!newPrc)
 				Controller.DeleteConfig();
-			
+
 			Controller.FriendlyName = friendlyName.Text.Trim();
 			Controller.Executable = execName.Text.Length > 0 ? execName.Text.Trim() : null;
 			Controller.Path = pathName.Text.Length > 0 ? pathName.Text.Trim() : null;
@@ -138,9 +138,9 @@ namespace Taskmaster
 			{
 				List<string> ignlist = new List<string>();
 				foreach (ListViewItem item in ignorelist.Items)
-				{
 					ignlist.Add(item.Text);
-				}
+
+
 				Controller.IgnoreList = ignlist.ToArray();
 			}
 			else
@@ -170,7 +170,7 @@ namespace Taskmaster
 
 		void BuildUI()
 		{
-			//Size = new System.Drawing.Size(340, 480); // width, height
+			// Size = new System.Drawing.Size(340, 480); // width, height
 			AutoSizeMode = AutoSizeMode.GrowOnly;
 			AutoSize = true;
 
@@ -288,14 +288,13 @@ namespace Taskmaster
 			if (Controller.IgnoreList != null)
 			{
 				foreach (string item in Controller.IgnoreList)
-				{
 					ignorelist.Items.Add(item);
-				}
+
 			}
 
 			var ignorelistmenu = new ContextMenuStrip();
 			ignorelist.ContextMenuStrip = ignorelistmenu;
-			ignorelistmenu.Items.Add(new ToolStripMenuItem("Add", null, (s,ev) =>
+			ignorelistmenu.Items.Add(new ToolStripMenuItem("Add", null, (s, ev) =>
 			{
 				try
 				{
@@ -313,7 +312,8 @@ namespace Taskmaster
 					Logging.Stacktrace(ex);
 				}
 			}));
-			ignorelistmenu.Items.Add(new ToolStripMenuItem("Remove", null, (s, ev) => {
+			ignorelistmenu.Items.Add(new ToolStripMenuItem("Remove", null, (s, ev) =>
+			{
 				if (ignorelist.SelectedItems.Count == 1)
 					ignorelist.Items.Remove(ignorelist.SelectedItems[0]);
 			}));
@@ -357,7 +357,7 @@ namespace Taskmaster
 			lt.Controls.Add(priopanel);
 			lt.Controls.Add(new Label()); // empty
 
-			//lt.Controls.Add(priorityClass);
+			// lt.Controls.Add(priorityClass);
 
 			// AFFINITY
 			lt.Controls.Add(new Label { Text = "Affinity", TextAlign = System.Drawing.ContentAlignment.MiddleLeft });
@@ -375,7 +375,7 @@ namespace Taskmaster
 
 			tooltip.SetToolTip(affinityMask, "CPU core afffinity as integer mask.\nEnter 0 to let OS manage this as normal.\nFull affinity is same as 0, there's no difference.\nExamples:\n14 = all but first core on quadcore.\n254 = all but first core on octocore.");
 
-			//lt.Controls.Add(affinityMask);
+			// lt.Controls.Add(affinityMask);
 
 			// ---------------------------------------------------------------------------------------------------------
 
@@ -399,7 +399,7 @@ namespace Taskmaster
 			for (int bit = 0; bit < ProcessManager.CPUCount; bit++)
 			{
 				var box = new CheckBox();
-				int bitoff = bit;
+				var bitoff = bit;
 				box.AutoSize = true;
 				box.Checked = ((cpumask & (1 << bitoff)) != 0);
 				box.CheckedChanged += (sender, e) =>
@@ -448,7 +448,7 @@ namespace Taskmaster
 
 			affinityMask.ValueChanged += (sender, e) =>
 			{
-				int bitoff = 0;
+				var bitoff = 0;
 				try { cpumask = (int)affinityMask.Value; }
 				catch { cpumask = 0; affinityMask.Value = 0; }
 				foreach (var bu in list)
@@ -470,14 +470,14 @@ namespace Taskmaster
 			lt.Controls.Add(rescanFreq);
 			lt.Controls.Add(new Label()); // empty
 
-			//lt.Controls.Add(new Label { Text="Children"});
-			//lt.Controls.Add(new Label { Text="Child priority"});
+			// lt.Controls.Add(new Label { Text="Children"});
+			// lt.Controls.Add(new Label { Text="Child priority"});
 
 			// POWER
 			lt.Controls.Add(new Label { Text = "Power plan", TextAlign = System.Drawing.ContentAlignment.MiddleLeft });
 			foreach (string t in PowerManager.PowerModes)
 				powerPlan.Items.Add(t);
-			int ppi = System.Convert.ToInt32(Controller.PowerPlan);
+			var ppi = System.Convert.ToInt32(Controller.PowerPlan);
 			powerPlan.DropDownStyle = ComboBoxStyle.DropDownList;
 			powerPlan.SelectedIndex = System.Math.Min(ppi, 3);
 			powerPlan.Width = 180;
@@ -501,17 +501,18 @@ namespace Taskmaster
 			lt.Controls.Add(allowPaging);
 			lt.Controls.Add(new Label()); // empty
 
-			//lt.Controls.Add(new Label { Text=""})
+			// lt.Controls.Add(new Label { Text=""})
 
 			var finalizebuttons = new TableLayoutPanel() { ColumnCount = 2, AutoSize = true };
 			var saveButton = new Button(); // SAVE
 			saveButton.Text = "Save";
 			saveButton.Click += SaveInfo;
 			finalizebuttons.Controls.Add(saveButton);
-			//lt.Controls.Add(saveButton);
+			// lt.Controls.Add(saveButton);
 			var cancelButton = new Button(); // CLOSE
 			cancelButton.Text = "Cancel";
-			cancelButton.Click += (sender, e) => {
+			cancelButton.Click += (sender, e) =>
+			{
 				DialogResult = DialogResult.Cancel;
 				Close();
 			};
@@ -533,20 +534,19 @@ namespace Taskmaster
 
 		void ValidateWatchedItem(object sender, EventArgs ev)
 		{
-			bool fnlen = (friendlyName.Text.Length > 0);
-			bool exnam = (execName.Text.Length > 0);
-			bool path = (pathName.Text.Length > 0);
+			var fnlen = (friendlyName.Text.Length > 0);
+			var exnam = (execName.Text.Length > 0);
+			var path = (pathName.Text.Length > 0);
 
-			bool exfound = false;
+			var exfound = false;
 			if (exnam)
 			{
 				var procs = Process.GetProcessesByName(execName.Text);
 
-				if (procs.Length > 0)
-					exfound = true;
+				if (procs.Length > 0) exfound = true;
 			}
 
-			bool pfound = false;
+			var pfound = false;
 			if (path)
 			{
 				try
@@ -562,7 +562,7 @@ namespace Taskmaster
 			var sbs = new System.Text.StringBuilder();
 			sbs.Append("Name: ").Append(fnlen ? "OK" : "Fail").AppendLine();
 
-			bool samesection = Controller.FriendlyName.Equals(friendlyName.Text);
+			var samesection = Controller.FriendlyName.Equals(friendlyName.Text);
 			if (!samesection)
 			{
 				var dprc = Taskmaster.processmanager.getWatchedController(friendlyName.Text);

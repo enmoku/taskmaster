@@ -69,18 +69,11 @@ namespace Taskmaster
 
 	public static class TrinaryExtensions
 	{
-		public static bool True(this Trinary tri)
-		{
-			return (tri == Trinary.True);
-		}
-		public static bool False(this Trinary tri)
-		{
-			return (tri == Trinary.False);
-		}
-		public static bool Nonce(this Trinary tri)
-		{
-			return (tri == Trinary.Nonce);
-		}
+		public static bool True(this Trinary tri) => (tri == Trinary.True);
+
+		public static bool False(this Trinary tri) => (tri == Trinary.False);
+
+		public static bool Nonce(this Trinary tri) => (tri == Trinary.Nonce);
 	}
 
 	public enum Timescale
@@ -94,7 +87,7 @@ namespace Taskmaster
 	{
 		public static void Swap<T>(ref T a, ref T b)
 		{
-			T temp = a;
+			var temp = a;
 			a = b;
 			b = temp;
 		}
@@ -110,6 +103,7 @@ namespace Taskmaster
 				case Timescale.Hours:
 					return "hour(s)";
 			}
+
 			return null;
 		}
 
@@ -119,13 +113,13 @@ namespace Taskmaster
 
 			if (seconds > (120.0 * 60.0))
 			{
-				double hours = seconds / 60.0 / 60.0;
+				var hours = seconds / 60.0 / 60.0;
 				scale = Timescale.Hours;
 				return hours;
 			}
 			else if (seconds > 120.0)
 			{
-				double minutes = seconds / 60.0;
+				var minutes = seconds / 60.0;
 				scale = Timescale.Minutes;
 				return minutes;
 			}
@@ -152,30 +146,15 @@ namespace Taskmaster
 
 	public static class Bit
 	{
-		public static int Set(int dec, int nth)
-		{
-			return Or(dec, (1 << nth));
-		}
+		public static int Set(int dec, int nth) => Or(dec, (1 << nth));
 
-		public static bool IsSet(int dec, int nth)
-		{
-			return And(dec, (1 << nth)) != 0;
-		}
+		public static bool IsSet(int dec, int nth) => And(dec, (1 << nth)) != 0;
 
-		public static int Unset(int dec, int nth)
-		{
-			return And(dec, ~nth);
-		}
+		public static int Unset(int dec, int nth) => And(dec, ~nth);
 
-		public static int Or(int dec1, int dec2)
-		{
-			return dec1 | dec2;
-		}
+		public static int Or(int dec1, int dec2) => dec1 | dec2;
 
-		public static int And(int dec1, int dec2)
-		{
-			return dec1 & dec2;
-		}
+		public static int And(int dec1, int dec2) => dec1 & dec2;
 
 		public static int Count(int i)
 		{
@@ -186,7 +165,7 @@ namespace Taskmaster
 
 		public static int Fill(int num, int mask, int maxbits)
 		{
-			int bits = Count(num);
+			var bits = Count(num);
 
 			for (int i = 0; i < 32; i++)
 			{
@@ -217,7 +196,7 @@ namespace Taskmaster
 								System.IO.Path.GetFileName(file), member, line, text);
 		}
 
-		public static void Stacktrace(Exception ex, [CallerMemberName] string method="")
+		public static void Stacktrace(Exception ex, [CallerMemberName] string method = "")
 		{
 			Serilog.Log.Fatal("{Type} : {Message}", ex.GetType().Name, ex.Message);
 			Serilog.Log.Fatal("Reported at {Method}", method);

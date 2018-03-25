@@ -26,8 +26,8 @@
 
 using System;
 using System.Collections.Generic;
-using Serilog;
 using System.Linq;
+using Serilog;
 
 namespace Taskmaster
 {
@@ -54,8 +54,7 @@ namespace Taskmaster
 				// Bounding
 				if (Maximum < value)
 					value = Maximum;
-				else if (Minimum > value)
-					value = Minimum;
+				else if (Minimum > value) value = Minimum;
 
 				_target = value;
 
@@ -98,23 +97,16 @@ namespace Taskmaster
 			}
 		}
 
-
 		NAudio.CoreAudioApi.MMDevice m_dev;
 
-		public string DeviceName
-		{
-			get
-			{
-				return m_dev.DeviceFriendlyName;
-			}
-		}
+		public string DeviceName => m_dev.DeviceFriendlyName;
 
 		SharpConfig.Configuration stats;
 		const string statfile = "Microphone.Statistics.ini";
 		// ctor, constructor
 		public MicManager()
 		{
-			//Target = Maximum; // superfluous; CLEANUP
+			// Target = Maximum; // superfluous; CLEANUP
 
 			stats = Taskmaster.LoadConfig(statfile);
 			// there should be easier way for this, right?
@@ -128,11 +120,11 @@ namespace Taskmaster
 			*/
 
 			// CSCORE
-			//var devs = CSCore.CoreAudioAPI.MMDeviceEnumerator.EnumerateDevices(CSCore.CoreAudioAPI.DataFlow.Capture, CSCore.CoreAudioAPI.DeviceState.Active);
+			// var devs = CSCore.CoreAudioAPI.MMDeviceEnumerator.EnumerateDevices(CSCore.CoreAudioAPI.DataFlow.Capture, CSCore.CoreAudioAPI.DeviceState.Active);
 
 			// find control interface
 			// FIXME: Deal with multiple recording devices.
-			IntPtr waveInDeviceNumber = IntPtr.Zero; // 0 is default or first?
+			var waveInDeviceNumber = IntPtr.Zero; // 0 is default or first?
 			var mixerLine = new NAudio.Mixer.MixerLine(waveInDeviceNumber, 0, NAudio.Mixer.MixerFlags.WaveIn);
 
 			Control = (NAudio.Mixer.UnsignedMixerControl)mixerLine.Controls.FirstOrDefault((control) => control.ControlType == NAudio.Mixer.MixerControlType.Volume);
@@ -168,18 +160,18 @@ namespace Taskmaster
 			}
 
 			var mvol = "Microphone volume";
-			bool save = false || !Taskmaster.cfg["Media"].Contains(mvol);
-			double defaultvol = Taskmaster.cfg["Media"].GetSetDefault(mvol, 100d).DoubleValue;
+			var save = false || !Taskmaster.cfg["Media"].Contains(mvol);
+			var defaultvol = Taskmaster.cfg["Media"].GetSetDefault(mvol, 100d).DoubleValue;
 			if (save) Taskmaster.SaveConfig(Taskmaster.cfg);
 
-			string fname = "Microphone.Devices.ini";
-			string vname = "Volume";
+			var fname = "Microphone.Devices.ini";
+			var vname = "Volume";
 
 			var devcfg = Taskmaster.LoadConfig(fname);
-			string guid = (m_dev.ID.Split('}'))[1].Substring(2);
-			string devname = m_dev.DeviceFriendlyName;
-			bool unset = !(devcfg[guid].Contains(vname));
-			double devvol = devcfg[guid].GetSetDefault(vname, defaultvol).DoubleValue;
+			var guid = (m_dev.ID.Split('}'))[1].Substring(2);
+			var devname = m_dev.DeviceFriendlyName;
+			var unset = !(devcfg[guid].Contains(vname));
+			var devvol = devcfg[guid].GetSetDefault(vname, defaultvol).DoubleValue;
 			devcfg[guid]["Name"].StringValue = devname;
 			if (unset) Taskmaster.SaveConfig(devcfg);
 
@@ -194,13 +186,12 @@ namespace Taskmaster
 		public void Dispose()
 		{
 			Dispose(true);
-			//GC.SuppressFinalize(this); // why?
+			// GC.SuppressFinalize(this); // why?
 		}
 
 		protected virtual void Dispose(bool disposing)
 		{
-			if (disposed)
-				return;
+			if (disposed) return;
 
 			if (disposing)
 			{
@@ -258,7 +249,7 @@ namespace Taskmaster
 		static int correcting; // = 0;
 		async void VolumeChangedHandler(NAudio.CoreAudioApi.AudioVolumeNotificationData data)
 		{
-			double oldVol = Volume;
+			var oldVol = Volume;
 			double newVol = data.MasterVolume * 100;
 
 			if (Math.Abs(newVol - Target) <= SmallVolumeHysterisis)
@@ -305,4 +296,3 @@ namespace Taskmaster
 		}
 	}
 }
-

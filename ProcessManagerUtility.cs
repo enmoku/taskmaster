@@ -48,7 +48,7 @@ namespace Taskmaster
 
 		public static bool FindPath(ProcessEx info)
 		{
-			bool cacheGet = false;
+			var cacheGet = false;
 
 			// Try to get the path from cache
 			if (pathCache != null)
@@ -61,13 +61,13 @@ namespace Taskmaster
 						Statistics.PathCacheHits++;
 						cacheGet = true;
 						info.Path = cpath;
-						//Log.Debug("PATH CACHE ITEM GET: {Path}", info.Path);
+						// Log.Debug("PATH CACHE ITEM GET: {Path}", info.Path);
 					}
 					else
 					{
-						//Statistics.PathCacheMisses++; // will be done when adding the entry
+						// Statistics.PathCacheMisses++; // will be done when adding the entry
 						pathCache.Drop(info.Id);
-						//Log.Debug("PATH CACHE ITEM BEGONE!");
+						// Log.Debug("PATH CACHE ITEM BEGONE!");
 					}
 
 					Statistics.PathCacheCurrent = pathCache.Count;
@@ -79,8 +79,7 @@ namespace Taskmaster
 			{
 				GetPath(info);
 
-				if (info.Path == null)
-					return false;
+				if (info.Path == null) return false;
 			}
 
 			if (pathCache != null && !cacheGet)
@@ -88,11 +87,10 @@ namespace Taskmaster
 				pathCache.Add(info.Id, info.Name, info.Path);
 				Statistics.PathCacheMisses++; // adding new entry is as bad a miss
 
-
 				Statistics.PathCacheCurrent = pathCache.Count;
 				if (Statistics.PathCacheCurrent > Statistics.PathCachePeak)
 					Statistics.PathCachePeak = Statistics.PathCacheCurrent;
-				//Log.Debug("PATH CACHE ADD: {Path}", info.Path);
+				// Log.Debug("PATH CACHE ADD: {Path}", info.Path);
 			}
 
 			return true;
@@ -118,8 +116,7 @@ namespace Taskmaster
 				if (info.Path == null)
 				{
 					info.Path = GetProcessPathViaWMI(info.Id);
-					if (string.IsNullOrEmpty(info.Path))
-						return false;
+					if (string.IsNullOrEmpty(info.Path)) return false;
 				}
 			}
 
@@ -135,10 +132,7 @@ namespace Taskmaster
 			// 0x0010 = PROCESS_VM_READ // is this really needed?
 			var processHandle = NativeMethods.OpenProcess(PROCESS_QUERY_INFORMATION, false, pid);
 
-			if (processHandle == IntPtr.Zero)
-			{
-				return null;
-			}
+			if (processHandle == IntPtr.Zero) return null;
 
 			const int lengthSb = 4000;
 
@@ -148,7 +142,7 @@ namespace Taskmaster
 
 			if (NativeMethods.GetModuleFileNameEx(processHandle, IntPtr.Zero, sb, lengthSb) > 0)
 			{
-				//result = Path.GetFileName(sb.ToString());
+				// result = Path.GetFileName(sb.ToString());
 				result = sb.ToString();
 			}
 
@@ -172,14 +166,14 @@ namespace Taskmaster
 			Statistics.WMIqueries++;
 
 			string path = null;
-			string wmiQueryString = "SELECT ExecutablePath FROM Win32_Process WHERE ProcessId = " + processId;
+			var wmiQueryString = "SELECT ExecutablePath FROM Win32_Process WHERE ProcessId = " + processId;
 			try
 			{
 				using (var searcher = new System.Management.ManagementObjectSearcher(wmiQueryString))
 				{
 					foreach (System.Management.ManagementObject item in searcher.Get())
 					{
-						object mpath = item["ExecutablePath"];
+						var mpath = item["ExecutablePath"];
 						if (mpath != null)
 						{
 							Log.Verbose(string.Format("WMI fetch (#{0}): {1}", processId, path));

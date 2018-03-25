@@ -51,10 +51,7 @@ namespace Taskmaster
 				ReadOnly = p_ScrapFirst,
 			};
 
-			if (p_ScrapFirst)
-			{
-				var scrap = Value;
-			}
+			if (p_ScrapFirst) { var scrap = Value; }
 
 			Sensors.Add(Counter);
 		}
@@ -87,6 +84,7 @@ namespace Taskmaster
 					Counter.Dispose();
 					Counter = null;
 				}
+
 				disposed = true;
 			}
 		}
@@ -104,18 +102,13 @@ namespace Taskmaster
 					Sensors.Remove(Counter);
 					Counter.Dispose();
 					// TODO: Driver/Adapter vanished and other problems, try to re-acquire it.
-					//Console.WriteLine("DEBUG :: PFC(" + _pfc.CategoryName + "//" + _pfc.CounterName + "//" + _pfc.InstanceName + ") vanished.");
+					// Console.WriteLine("DEBUG :: PFC(" + _pfc.CategoryName + "//" + _pfc.CounterName + "//" + _pfc.InstanceName + ") vanished.");
 				}
+
 				return float.NaN;
 			}
 		}
 
-		public CounterSample Sample
-		{
-			get
-			{
-				return Counter.NextSample();
-			}
-		}
+		public CounterSample Sample => Counter.NextSample();
 	}
 }

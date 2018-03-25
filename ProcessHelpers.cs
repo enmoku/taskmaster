@@ -69,10 +69,7 @@ namespace Taskmaster
 
 	public static class ProcessStateExtensions
 	{
-		public static bool OK(this ProcessState ps)
-		{
-			return (ps != ProcessState.Invalid);
-		}
+		public static bool OK(this ProcessState ps) => (ps != ProcessState.Invalid);
 	}
 
 	public static class ProcessHelpers
@@ -139,14 +136,12 @@ public static class ProcessExtensions
 		pe32.dwSize = (uint)Marshal.SizeOf(typeof(PROCESSENTRY32));
 		using (var hSnapshot = CreateToolhelp32Snapshot(SnapshotFlags.Process, (uint)Id))
 		{
-			if (hSnapshot.IsInvalid)
-				return -1;
+			if (hSnapshot.IsInvalid) return -1;
 
 			if (!Process32First(hSnapshot, ref pe32))
 			{
-				int errno = Marshal.GetLastWin32Error();
-				if (errno == ERROR_NO_MORE_FILES)
-					return -1;
+				var errno = Marshal.GetLastWin32Error();
+				if (errno == ERROR_NO_MORE_FILES) return -1;
 				throw new Win32Exception(errno);
 			}
 
@@ -157,14 +152,17 @@ public static class ProcessExtensions
 			}
 			while (Process32Next(hSnapshot, ref pe32));
 		}
+
 		return -1;
 	}
 
 	const int ERROR_NO_MORE_FILES = 0x12;
 	[DllImport("kernel32.dll", SetLastError = true)]
 	static extern SafeSnapshotHandle CreateToolhelp32Snapshot(SnapshotFlags flags, uint id);
+
 	[DllImport("kernel32.dll", SetLastError = true)]
 	static extern bool Process32First(SafeSnapshotHandle hSnapshot, ref PROCESSENTRY32 lppe);
+
 	[DllImport("kernel32.dll", SetLastError = true)]
 	static extern bool Process32Next(SafeSnapshotHandle hSnapshot, ref PROCESSENTRY32 lppe);
 
@@ -210,10 +208,7 @@ public static class ProcessExtensions
 			SetHandle(handle);
 		}
 
-		protected override bool ReleaseHandle()
-		{
-			return CloseHandle(handle);
-		}
+		protected override bool ReleaseHandle() => CloseHandle(handle);
 
 		[ReliabilityContract(Consistency.WillNotCorruptState, Cer.Success), DllImport("kernel32.dll", CharSet = CharSet.Auto, SetLastError = true, ExactSpelling = true)]
 		static extern bool CloseHandle(IntPtr handle);

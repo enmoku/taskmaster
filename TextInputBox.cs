@@ -32,7 +32,7 @@ namespace Taskmaster
 	{
 		public string Value { get; private set; } = null;
 
-		public TextInputBox(string message, string title, string input=null)
+		public TextInputBox(string message, string title, string input = null)
 		{
 			Text = title;
 			AutoSize = true;
@@ -57,8 +57,7 @@ namespace Taskmaster
 			{
 			};
 
-			if (input != null)
-				textbox.Text = input;
+			if (input != null) textbox.Text = input;
 
 			layout.Controls.Add(new Label() { Text = message, TextAlign = System.Drawing.ContentAlignment.MiddleLeft });
 			layout.Controls.Add(textbox);
@@ -66,7 +65,7 @@ namespace Taskmaster
 			var buttons = new TableLayoutPanel()
 			{
 				ColumnCount = 2,
-				AutoSize=true,
+				AutoSize = true,
 			};
 
 			var okbutton = new Button()
@@ -74,7 +73,8 @@ namespace Taskmaster
 				Text = "OK",
 			};
 
-			okbutton.Click += (s, ev) => {
+			okbutton.Click += (s, ev) =>
+			{
 				DialogResult = DialogResult.OK;
 				Value = textbox.Text;
 				Close();
@@ -85,7 +85,8 @@ namespace Taskmaster
 				Text = "Cancel",
 			};
 
-			cancelbutton.Click += (s, ev) => {
+			cancelbutton.Click += (s, ev) =>
+			{
 				DialogResult = DialogResult.Cancel;
 				Value = null;
 				Close();

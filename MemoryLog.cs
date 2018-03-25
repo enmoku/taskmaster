@@ -59,32 +59,21 @@ namespace Taskmaster
 		public static void Clear()
 		{
 			lock (LogLock)
-			{
 				Logs.Clear();
-			}
+
 		}
 
-		public static void ExcludeDebug()
-		{
-			LevelSwitch.MinimumLevel = LogEventLevel.Information;
-		}
+		public static void ExcludeDebug() => LevelSwitch.MinimumLevel = LogEventLevel.Information;
 
-		public static void ExcludeTrace()
-		{
-			LevelSwitch.MinimumLevel = LogEventLevel.Debug;
-		}
+		public static void ExcludeTrace() => LevelSwitch.MinimumLevel = LogEventLevel.Debug;
 
-		public static void IncludeTrace()
-		{
-			LevelSwitch.MinimumLevel = LogEventLevel.Verbose;
-		}
+		public static void IncludeTrace() => LevelSwitch.MinimumLevel = LogEventLevel.Verbose;
 
 		public static void Emit(object sender, LogEventArgs e)
 		{
 			lock (LogLock)
 			{
-				if (Logs.Count > Max)
-					Logs.RemoveAt(0);
+				if (Logs.Count > Max) Logs.RemoveAt(0);
 				Logs.Add(e);
 			}
 
@@ -95,9 +84,9 @@ namespace Taskmaster
 		{
 			LogEventArgs[] logcopy = null;
 			lock (LogLock)
-			{
 				logcopy = Logs.ToArray();
-			}
+
+
 			return logcopy;
 		}
 	}
@@ -149,8 +138,7 @@ namespace Taskmaster
 			bool disposed = false;
 			void Dispose(bool disposing)
 			{
-				if (disposed)
-					return;
+				if (disposed) return;
 
 				if (disposing)
 				{
@@ -178,4 +166,3 @@ namespace Taskmaster
 		}
 	}
 }
-

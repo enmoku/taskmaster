@@ -30,9 +30,9 @@ namespace Taskmaster
 {
 	public class ComponentConfigurationWindow : Form
 	{
-		public ComponentConfigurationWindow(bool initial=true)
+		public ComponentConfigurationWindow(bool initial = true)
 		{
-			//Size = new System.Drawing.Size(220, 360); // width, height
+			// Size = new System.Drawing.Size(220, 360); // width, height
 
 			Text = "Component configuration";
 
@@ -85,7 +85,6 @@ namespace Taskmaster
 			layout.Controls.Add(micmon);
 			micmon.Click += (sender, e) =>
 			{
-
 			};
 
 			var netmon = new CheckBox()
@@ -100,7 +99,6 @@ namespace Taskmaster
 			netmon.Checked = initial ? true : Taskmaster.NetworkMonitorEnabled;
 			netmon.Click += (sender, e) =>
 			{
-
 			};
 
 			var procmon = new CheckBox()
@@ -113,7 +111,7 @@ namespace Taskmaster
 			layout.Controls.Add(new Label { Text = "Process/name manager", AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, Padding = padding, Dock = DockStyle.Left });
 			layout.Controls.Add(procmon);
 			procmon.Enabled = false;
-			procmon.Checked = initial? true : Taskmaster.ProcessMonitorEnabled;
+			procmon.Checked = initial ? true : Taskmaster.ProcessMonitorEnabled;
 
 			var pathmon = new CheckBox()
 			{
@@ -180,7 +178,7 @@ namespace Taskmaster
 				{
 					scanfrequency.Enabled = true;
 					scanfrequency.Value = 15;
-					//wmipolling.Value = 5;
+					// wmipolling.Value = 5;
 					wmipolling.Enabled = false;
 				}
 				else if (ScanOrWMI.SelectedIndex == 1) // WMI only
@@ -198,8 +196,8 @@ namespace Taskmaster
 					wmipolling.Value = 5;
 				}
 			};
-			bool wmi = Taskmaster.WMIPolling;
-			bool scan = ProcessManager.RescanEverythingFrequency > 0;
+			var wmi = Taskmaster.WMIPolling;
+			var scan = ProcessManager.RescanEverythingFrequency > 0;
 			ScanOrWMI.SelectedIndex = initial ? 0 : ((wmi && scan) ? 2 : (wmi ? 1 : 0));
 
 			var powmon = new CheckBox()
@@ -244,8 +242,7 @@ namespace Taskmaster
 			layout.Controls.Add(powauto);
 			powauto.Click += (sender, e) =>
 			{
-				if (powauto.Checked)
-					powmon.Checked = true;
+				if (powauto.Checked) powmon.Checked = true;
 			};
 
 			var fgmon = new CheckBox()
@@ -260,7 +257,6 @@ namespace Taskmaster
 			layout.Controls.Add(fgmon);
 			fgmon.Click += (sender, e) =>
 			{
-
 			};
 
 			var tempmon = new CheckBox()
@@ -289,7 +285,6 @@ namespace Taskmaster
 			paging.Checked = initial ? false : Taskmaster.PagingEnabled;
 			paging.Click += (sender, e) =>
 			{
-
 			};
 
 			// SHOW ON START
@@ -312,7 +307,6 @@ namespace Taskmaster
 			showonstart.Checked = initial ? false : Taskmaster.ShowOnStart;
 			showonstart.Click += (sender, e) =>
 			{
-
 			};
 
 			var autodoc = new CheckBox()
@@ -343,7 +337,7 @@ namespace Taskmaster
 				//BackColor = System.Drawing.Color.Azure,
 				Dock = DockStyle.Right
 			};
-			//l.Controls.Add(savebutton);
+			// l.Controls.Add(savebutton);
 			savebutton.Click += (sender, e) =>
 			{
 				Taskmaster.ComponentConfigurationDone = true;
@@ -358,7 +352,7 @@ namespace Taskmaster
 				compsec["Process"].BoolValue = procmon.Checked;
 				compsec["Process paths"].BoolValue = pathmon.Checked;
 				compsec["Microphone"].BoolValue = micmon.Checked;
-				//compsec["Media"].BoolValue = mediamon.Checked;
+				// compsec["Media"].BoolValue = mediamon.Checked;
 				compsec["Foreground"].BoolValue = fgmon.Checked;
 				compsec["Network"].BoolValue = netmon.Checked;
 				compsec["Power"].BoolValue = powmon.Checked;
@@ -373,7 +367,7 @@ namespace Taskmaster
 				optsec["Show on start"].BoolValue = showonstart.Checked;
 
 				var perf = cfg["Performance"];
-				int freq = (int)scanfrequency.Value;
+				var freq = (int)scanfrequency.Value;
 				if (freq < 5 && freq != 0) freq = 5;
 				perf["Rescan everything frequency"].IntValue = (ScanOrWMI.SelectedIndex != 1 ? freq : 0);
 				perf["WMI event watcher"].BoolValue = (ScanOrWMI.SelectedIndex != 0);
@@ -387,7 +381,7 @@ namespace Taskmaster
 				Close();
 			};
 
-			//l.Controls.Add(new Label());
+			// l.Controls.Add(new Label());
 
 			var endbutton = new Button()
 			{
@@ -399,7 +393,7 @@ namespace Taskmaster
 				Dock = DockStyle.Right
 			};
 
-			//l.Controls.Add(endbutton);
+			// l.Controls.Add(endbutton);
 			endbutton.Click += (sender, e) =>
 			{
 				Taskmaster.ComponentConfigurationDone = false;
@@ -412,9 +406,9 @@ namespace Taskmaster
 				//BackColor = System.Drawing.Color.LimeGreen
 			};
 			buttonpanel.ColumnCount = 2;
-			//buttonpanel.Dock = DockStyle.Fill;
-			//buttonpanel.AutoSize = true;
-			//buttonpanel.Width = 160;
+			// buttonpanel.Dock = DockStyle.Fill;
+			// buttonpanel.AutoSize = true;
+			// buttonpanel.Width = 160;
 
 			buttonpanel.Controls.Add(savebutton);
 			buttonpanel.Controls.Add(endbutton);

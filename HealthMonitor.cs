@@ -115,10 +115,7 @@ namespace Taskmaster
 		}
 
 		ProcessManager processmanager = null;
-		public void hookProcessManager(ref ProcessManager pman)
-		{
-			processmanager = pman;
-		}
+		public void hookProcessManager(ref ProcessManager pman) => processmanager = pman;
 
 		System.Threading.Timer healthTimer = null;
 
@@ -145,7 +142,7 @@ namespace Taskmaster
 			freememsec.Comment = "Attempt to free memory when available memory goes below a threshold.";
 
 			MemLevel = freememsec.GetSetDefault("Threshold", 1000, out modified).IntValue;
-			//MemLevel = MemLevel > 0 ? MemLevel.Constrain(1, 2000) : 0;
+			// MemLevel = MemLevel > 0 ? MemLevel.Constrain(1, 2000) : 0;
 			freememsec["Threshold"].Comment = "When memory goes down to this level, we act.";
 			configdirty |= modified;
 			if (MemLevel > 0)
@@ -194,25 +191,25 @@ namespace Taskmaster
 
 			if (MemLevel > 0)
 			{
-				float memfreemb = memfree?.Value ?? 0; // MB
-				float commitb = commitbytes?.Value ?? 0;
-				float commitlimitb = commitlimit?.Value??0;
-				float commitp = commitpercentile?.Value??0;
+				var memfreemb = memfree?.Value ?? 0; // MB
+				var commitb = commitbytes?.Value ?? 0;
+				var commitlimitb = commitlimit?.Value ?? 0;
+				var commitp = commitpercentile?.Value ?? 0;
 
-				//Console.WriteLine("Memory free: " + string.Format("{0:N1}", memfreet) + " / " + MemLevel);
+				// Console.WriteLine("Memory free: " + string.Format("{0:N1}", memfreet) + " / " + MemLevel);
 				if (memfreemb <= MemLevel)
 				{
-					DateTime now = DateTime.Now;
+					var now = DateTime.Now;
 					var cooldown = (now - MemFreeLast).TotalMinutes; // passed time since MemFreeLast
 					MemFreeLast = now;
 
-					//Console.WriteLine(string.Format("Cooldown: {0:N2} minutes [{1}]", cooldown, MemCooldown));
+					// Console.WriteLine(string.Format("Cooldown: {0:N2} minutes [{1}]", cooldown, MemCooldown));
 
 					if (cooldown >= MemCooldown)
 					{
 						// The following should just call something in ProcessManager
 
-						int ignorepid = -1;
+						var ignorepid = -1;
 						if (MemIgnoreFocus)
 						{
 							ignorepid = Taskmaster.activeappmonitor.ForegroundId;
@@ -226,10 +223,10 @@ namespace Taskmaster
 						if (MemIgnoreFocus)
 							processmanager.Unignore(ignorepid);
 
-						float commitp2 = commitpercentile?.Value??0;
-						float commitb2 = commitbytes?.Value??0;
-						float actualbytes = commitb * (commitp / 100);
-						float actualbytes2 = commitb2 * (commitp2 / 100);
+						var commitp2 = commitpercentile?.Value ?? 0;
+						var commitb2 = commitbytes?.Value ?? 0;
+						var actualbytes = commitb * (commitp / 100);
+						var actualbytes2 = commitb2 * (commitp2 / 100);
 
 						Log.Information("<<Auto-Doc>> Commit: {Commit} / {Limit} ({Improvement} change seen)",
 										HumanInterface.ByteString((long)commitb2), HumanInterface.ByteString((long)commitlimitb),
@@ -308,14 +305,10 @@ namespace Taskmaster
 
 	class MemoryAutoDoc : AutoDoc
 	{
-		public int Hooks()
-		{
-			return 0;
-		}
+		public int Hooks() => 0;
 
 		public MemoryAutoDoc()
 		{
-
 		}
 	}
 }

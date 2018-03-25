@@ -44,12 +44,12 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Threading.Tasks;
+using System.Windows.Forms;
 using Serilog;
 using Serilog.Core;
 using Serilog.Events;
 using Taskmaster.SerilogMemorySink;
-using System.Threading.Tasks;
-using System.Windows.Forms;
 
 namespace Taskmaster
 {
@@ -74,14 +74,15 @@ namespace Taskmaster
 				SaveConfig(filename, config);
 				return;
 			}
+
 			throw new ArgumentException();
 		}
 
 		public static void SaveConfig(string configfile, SharpConfig.Configuration config)
 		{
-			//Console.WriteLine("Saving: " + configfile);
+			// Console.WriteLine("Saving: " + configfile);
 			System.IO.Directory.CreateDirectory(datapath);
-			string targetfile = System.IO.Path.Combine(datapath, configfile);
+			var targetfile = System.IO.Path.Combine(datapath, configfile);
 			if (System.IO.File.Exists(targetfile))
 				System.IO.File.Copy(targetfile, targetfile + ".bak", true); // backup
 			config.SaveToFile(targetfile);
@@ -104,8 +105,8 @@ namespace Taskmaster
 				return retcfg;
 			}
 
-			string path = System.IO.Path.Combine(datapath, configfile);
-			//Log.Trace("Opening: "+path);
+			var path = System.IO.Path.Combine(datapath, configfile);
+			// Log.Trace("Opening: "+path);
 			if (System.IO.File.Exists(path))
 				retcfg = SharpConfig.Configuration.LoadFromFile(path);
 			else
@@ -140,9 +141,8 @@ namespace Taskmaster
 			// only do it if ev.Cancel=true, I mean.
 
 			lock (mainwindow_lock)
-			{
 				mainwindow = null;
-			}
+
 		}
 
 		public static bool Restart = false;
@@ -156,16 +156,15 @@ namespace Taskmaster
 			UnifiedExit();
 		}
 
-		public static void ConfirmExit(bool restart = false, bool admin=false)
+		public static void ConfirmExit(bool restart = false, bool admin = false)
 		{
-			DialogResult rv = DialogResult.Yes;
+			var rv = DialogResult.Yes;
 			if (RequestExitConfirm)
 				rv = MessageBox.Show("Are you sure you want to " + (restart ? "restart" : "exit") + " Taskmaster?",
 									 (restart ? "Restart" : "Exit") + Application.ProductName + " ???",
 									 MessageBoxButtons.YesNo, MessageBoxIcon.Question, MessageBoxDefaultButton.Button1, MessageBoxOptions.DefaultDesktopOnly, false);
 
-			if (rv != DialogResult.Yes)
-				return;
+			if (rv != DialogResult.Yes) return;
 
 			Restart = restart;
 			RestartElevated = admin;
@@ -177,8 +176,8 @@ namespace Taskmaster
 		public static void SessionEndExitRequest(object sender, EventArgs e)
 		{
 			UnifiedExit();
-			//CLEANUP:
-			//if (Taskmaster.VeryVerbose) Console.WriteLine("END:Core.ExitRequest - Exit hang averted");
+			// CLEANUP:
+			// if (Taskmaster.VeryVerbose) Console.WriteLine("END:Core.ExitRequest - Exit hang averted");
 		}
 
 		delegate void EmptyFunction();
@@ -224,7 +223,7 @@ namespace Taskmaster
 			{
 				using (var m = SelfAwareness.Mind(DateTime.Now.AddSeconds(30)))
 				{
-					//Log.Debug("Bringing to front");
+					// Log.Debug("Bringing to front");
 					BuildMainWindow();
 					mainwindow?.Reveal();
 				}
@@ -315,15 +314,14 @@ namespace Taskmaster
 		{
 			{ // INITIAL CONFIGURATIONN
 				var tcfg = LoadConfig("Core.ini");
-				string sec = tcfg.TryGet("Core")?.TryGet("Version")?.StringValue ?? null;
+				var sec = tcfg.TryGet("Core")?.TryGet("Version")?.StringValue ?? null;
 				if (sec == null || sec != ConfigVersion)
 				{
 					try
 					{
 						using (var initialconfig = new ComponentConfigurationWindow())
-						{
 							initialconfig.ShowDialog();
-						}
+
 					}
 					catch (Exception ex)
 					{
@@ -333,11 +331,12 @@ namespace Taskmaster
 
 					if (ComponentConfigurationDone == false)
 					{
-						//singleton.ReleaseMutex();
+						// singleton.ReleaseMutex();
 						Log.CloseAndFlush();
 						throw new InitFailure("Component configuration cancelled");
 					}
 				}
+
 				tcfg = null;
 				sec = null;
 			}
@@ -384,7 +383,7 @@ namespace Taskmaster
 			if (ActiveAppMonitorEnabled && ProcessMonitorEnabled)
 				processmanager.hookActiveAppManager(ref activeappmonitor);
 
-				if (HealthMonitorEnabled && ProcessMonitorEnabled)
+			if (HealthMonitorEnabled && ProcessMonitorEnabled)
 				healthmonitor.hookProcessManager(ref processmanager);
 
 			// UI
@@ -403,11 +402,11 @@ namespace Taskmaster
 				if (SelfAffinity < 0)
 				{
 					// mask self to the last core
-					int selfCPUmask = 1;
+					var selfCPUmask = 1;
 					for (int i = 0; i < Environment.ProcessorCount - 1; i++)
 						selfCPUmask = (selfCPUmask << 1);
 					SelfAffinity = selfCPUmask;
-					//Console.WriteLine("Setting own CPU mask to: {0} ({1})", Convert.ToString(selfCPUmask, 2), selfCPUmask);
+					// Console.WriteLine("Setting own CPU mask to: {0} ({1})", Convert.ToString(selfCPUmask, 2), selfCPUmask);
 				}
 
 				self.ProcessorAffinity = new IntPtr(SelfAffinity); // this should never throw an exception
@@ -442,7 +441,7 @@ namespace Taskmaster
 		public static bool ProcessMonitorEnabled { get; private set; } = true;
 		public static bool PathMonitorEnabled { get; private set; } = true;
 		public static bool MicrophoneMonitorEnabled { get; private set; } = false;
-		//public static bool MediaMonitorEnabled { get; private set; } = true;
+		// public static bool MediaMonitorEnabled { get; private set; } = true;
 		public static bool NetworkMonitorEnabled { get; private set; } = true;
 		public static bool PagingEnabled { get; private set; } = true;
 		public static bool ActiveAppMonitorEnabled { get; private set; } = true;
@@ -457,7 +456,7 @@ namespace Taskmaster
 		public static bool SelfOptimizeBGIO { get; private set; } = false;
 		public static int SelfAffinity { get; private set; } = -1;
 
-		//public static bool LowMemory { get; private set; } = true; // low memory mode; figure out way to auto-enable this when system is low on memory
+		// public static bool LowMemory { get; private set; } = true; // low memory mode; figure out way to auto-enable this when system is low on memory
 
 		public static int LoopSleep = 0;
 
@@ -506,15 +505,15 @@ namespace Taskmaster
 				MarkDirtyINI(cfg);
 			}
 
-			SharpConfig.Section compsec = cfg["Components"];
-			SharpConfig.Section optsec = cfg["Options"];
-			SharpConfig.Section perfsec = cfg["Performance"];
+			var compsec = cfg["Components"];
+			var optsec = cfg["Options"];
+			var perfsec = cfg["Performance"];
 
 			bool modified = false, dirtyconfig = false;
 			cfg["Core"].GetSetDefault("License", "Refused", out modified).StringValue = "Accepted";
 			dirtyconfig |= modified;
 
-			int oldsettings = optsec?.SettingCount ?? 0 + compsec?.SettingCount ?? 0 + perfsec?.SettingCount ?? 0;
+			var oldsettings = optsec?.SettingCount ?? 0 + compsec?.SettingCount ?? 0 + perfsec?.SettingCount ?? 0;
 
 			// [Components]
 			ProcessMonitorEnabled = compsec.GetSetDefault("Process", true, out modified).BoolValue;
@@ -526,9 +525,9 @@ namespace Taskmaster
 			MicrophoneMonitorEnabled = compsec.GetSetDefault("Microphone", true, out modified).BoolValue;
 			compsec["Microphone"].Comment = "Monitor and force-keep microphone volume.";
 			dirtyconfig |= modified;
-			//MediaMonitorEnabled = compsec.GetSetDefault("Media", true, out modified).BoolValue;
-			//compsec["Media"].Comment = "Unused";
-			//dirtyconfig |= modified;
+			// MediaMonitorEnabled = compsec.GetSetDefault("Media", true, out modified).BoolValue;
+			// compsec["Media"].Comment = "Unused";
+			// dirtyconfig |= modified;
 			ActiveAppMonitorEnabled = compsec.GetSetDefault("Foreground", true, out modified).BoolValue;
 			compsec["Foreground"].Comment = "Game/Foreground app monitoring and adjustment.";
 			dirtyconfig |= modified;
@@ -575,6 +574,7 @@ namespace Taskmaster
 					Trace = true;
 					break;
 			}
+
 			dirtyconfig |= modified;
 			ShowInaction = logsec.GetSetDefault("Show inaction", false, out modified).BoolValue;
 			logsec["Show inaction"].Comment = "Shows lack of action take on processes.";
@@ -636,7 +636,7 @@ namespace Taskmaster
 			maintsec["Cleanup interval"].Comment = "In minutes, 1 to 1440. How frequently to perform general sanitation of TM itself.";
 			dirtyconfig |= modified;
 
-			int newsettings = optsec?.SettingCount ?? 0 + compsec?.SettingCount ?? 0 + perfsec?.SettingCount ?? 0;
+			var newsettings = optsec?.SettingCount ?? 0 + compsec?.SettingCount ?? 0 + perfsec?.SettingCount ?? 0;
 
 			if (dirtyconfig || (oldsettings != newsettings)) // really unreliable, but meh
 				MarkDirtyINI(cfg);
@@ -645,13 +645,13 @@ namespace Taskmaster
 
 			Log.Information("<Core> Verbosity: {Verbosity}", MemoryLog.LevelSwitch.MinimumLevel.ToString());
 			Log.Information("<Core> Self-optimize: {SelfOptimize}", (SelfOptimize ? "Enabled" : "Disabled"));
-			//Log.Information("Low memory mode: {LowMemory}", (LowMemory ? "Enabled." : "Disabled."));
+			// Log.Information("Low memory mode: {LowMemory}", (LowMemory ? "Enabled." : "Disabled."));
 			Log.Information("<<WMI>> Event watcher: {WMIPolling} (Rate: {WMIRate}s)", (WMIPolling ? "Enabled" : "Disabled"), WMIPollDelay);
 			Log.Information("<<WMI>> Queries: {WMIQueries}", (WMIQueries ? "Enabled" : "Disabled"));
 
 			// PROTECT USERS FROM TOO HIGH PERMISSIONS
-			bool isadmin = IsAdministrator();
-			bool adminwarning = ((cfg["Core"].TryGet("Hell")?.StringValue ?? null) != "No");
+			var isadmin = IsAdministrator();
+			var adminwarning = ((cfg["Core"].TryGet("Hell")?.StringValue ?? null) != "No");
 			if (isadmin && adminwarning)
 			{
 				var rv = MessageBox.Show("You're starting TM with admin rights, is this right?\n\nYou can cause bad system operation, such as complete system hang, if you configure or configured TM incorrectly.",
@@ -672,7 +672,7 @@ namespace Taskmaster
 
 			Log.Information("Path cache: " + (PathCacheLimit == 0 ? "Disabled" : PathCacheLimit + " items"));
 		}
-		
+
 		static int isAdmin = -1;
 		public static bool IsAdministrator()
 		{
@@ -681,7 +681,7 @@ namespace Taskmaster
 			// https://stackoverflow.com/a/10905713
 			var identity = System.Security.Principal.WindowsIdentity.GetCurrent();
 			var principal = new System.Security.Principal.WindowsPrincipal(identity);
-			bool rv = principal.IsInRole(System.Security.Principal.WindowsBuiltInRole.Administrator);
+			var rv = principal.IsInRole(System.Security.Principal.WindowsBuiltInRole.Administrator);
 
 			isAdmin = rv ? 1 : 0;
 
@@ -695,9 +695,8 @@ namespace Taskmaster
 			if (corestats == null)
 				corestats = LoadConfig(corestatfile);
 
-			bool running = corestats.TryGet("Core")?.TryGet("Running")?.BoolValue ?? false;
-			if (running)
-				Log.Warning("Unclean shutdown.");
+			var running = corestats.TryGet("Core")?.TryGet("Running")?.BoolValue ?? false;
+			if (running) Log.Warning("Unclean shutdown.");
 
 			corestats["Core"]["Running"].BoolValue = true;
 			SaveConfig(corestats);
@@ -707,7 +706,7 @@ namespace Taskmaster
 		{
 			if (corestats == null) corestats = LoadConfig(corestatfile);
 
-			SharpConfig.Section wmi = corestats["WMI queries"];
+			var wmi = corestats["WMI queries"];
 			string timespent = "Time", querycount = "Queries";
 			bool modified = false, dirtyconfig = false;
 
@@ -715,7 +714,7 @@ namespace Taskmaster
 			dirtyconfig |= modified;
 			wmi[querycount].IntValue = wmi.GetSetDefault(querycount, 0, out modified).IntValue + Statistics.WMIqueries;
 			dirtyconfig |= modified;
-			SharpConfig.Section ps = corestats["Parent seeking"];
+			var ps = corestats["Parent seeking"];
 			ps[timespent].DoubleValue = ps.GetSetDefault(timespent, 0d, out modified).DoubleValue + Statistics.Parentseektime;
 			dirtyconfig |= modified;
 			ps[querycount].IntValue = ps.GetSetDefault(querycount, 0, out modified).IntValue + Statistics.ParentSeeks;
@@ -730,17 +729,18 @@ namespace Taskmaster
 		{
 			Debug.Assert(minkB >= 0);
 
-			string path = System.IO.Path.Combine(datapath, filename);
+			var path = System.IO.Path.Combine(datapath, filename);
 			try
 			{
-				FileStream fs = System.IO.File.Open(path, FileMode.Open, FileAccess.ReadWrite, FileShare.ReadWrite);
-				long oldsize = fs.Length;
+				var fs = System.IO.File.Open(path, FileMode.Open, FileAccess.ReadWrite, FileShare.ReadWrite);
+				var oldsize = fs.Length;
 				if (fs.Length < (1024 * minkB))
 				{
 					// TODO: Make sparse. Unfortunately requires P/Invoke.
 					fs.SetLength(1024 * minkB);
 					Console.WriteLine("Pre-allocated file: " + filename + " (" + oldsize / 1024 + "kB -> " + minkB + "kB)");
 				}
+
 				fs.Close();
 			}
 			catch (System.IO.FileNotFoundException)
@@ -764,10 +764,10 @@ namespace Taskmaster
 			if (processmanager != null)
 			{
 				using (var m = SelfAwareness.Mind(DateTime.Now.AddSeconds(30)))
-				{
 					await processmanager.Cleanup().ConfigureAwait(false);
-				}
+
 			}
+
 			time.Stop();
 
 			Statistics.Cleanups++;
@@ -785,7 +785,7 @@ namespace Taskmaster
 		{
 			if (Taskmaster.Trace) Log.Verbose("Testing for single instance.");
 
-			bool mutexgained = false;
+			var mutexgained = false;
 			singleton = new System.Threading.Mutex(true, "088f7210-51b2-4e06-9bd4-93c27a973874.taskmaster", out mutexgained);
 			if (!mutexgained)
 			{
@@ -793,6 +793,7 @@ namespace Taskmaster
 				System.Windows.Forms.MessageBox.Show("Already operational.", System.Windows.Forms.Application.ProductName + "!");
 				Log.Warning("Exiting (#{ProcessID}); already running.", System.Diagnostics.Process.GetCurrentProcess().Id);
 			}
+
 			return mutexgained;
 		}
 
@@ -802,8 +803,7 @@ namespace Taskmaster
 			{
 				if (mainwindow != null)
 				{
-					if (!mainwindow.IsDisposed)
-						mainwindow.Dispose();
+					if (!mainwindow.IsDisposed) mainwindow.Dispose();
 					mainwindow = null;
 				}
 			}
@@ -821,6 +821,7 @@ namespace Taskmaster
 			{
 				Logging.Stacktrace(ex);
 			}
+
 			try
 			{
 				powermanager?.Dispose();
@@ -884,7 +885,7 @@ namespace Taskmaster
 
 		static void ParseArguments(string[] args)
 		{
-			int StartDelay = 0;
+			var StartDelay = 0;
 
 			for (int i = 0; i < args.Length; i++)
 			{
@@ -902,18 +903,19 @@ namespace Taskmaster
 								StartDelay = 30;
 							}
 						}
-						int uptimeMin = 30;
+
+						var uptimeMin = 30;
 						if (args.Length > 1)
 						{
 							try
 							{
-								int nup = Convert.ToInt32(args[1]);
+								var nup = Convert.ToInt32(args[1]);
 								uptimeMin = nup.Constrain(5, 360);
 							}
 							catch { /* NOP */ }
 						}
 
-						TimeSpan uptime = TimeSpan.Zero;
+						var uptime = TimeSpan.Zero;
 						try
 						{
 							using (var uptimecounter = new PerformanceCounter("System", "System Up Time"))
@@ -929,6 +931,7 @@ namespace Taskmaster
 							Console.WriteLine("Delaying proper startup for " + uptimeMin + " seconds.");
 							System.Threading.Thread.Sleep(Math.Max(0, uptimeMin - Convert.ToInt32(uptime.TotalSeconds)) * 1000);
 						}
+
 						break;
 					case "--restart":
 						if (args.Length > i && !args[i].StartsWith("--"))
@@ -939,6 +942,7 @@ namespace Taskmaster
 							}
 							catch { }
 						}
+
 						break;
 					case "--admin":
 						if (args.Length > i && !args[i].StartsWith("--"))
@@ -957,7 +961,7 @@ namespace Taskmaster
 								Log.Information("Restarting with elevated privileges.");
 								try
 								{
-									ProcessStartInfo info = Process.GetCurrentProcess().StartInfo;
+									var info = Process.GetCurrentProcess().StartInfo;
 									info.FileName = Process.GetCurrentProcess().ProcessName;
 									info.Arguments = string.Format("--admin {0}", ++AdminCounter);
 									info.Verb = "runas"; // elevate privileges
@@ -973,6 +977,7 @@ namespace Taskmaster
 						{
 							MessageBox.Show("", "Failure to elevate privileges, resuming as normal.", MessageBoxButtons.OK, MessageBoxIcon.Error, MessageBoxDefaultButton.Button1);
 						}
+
 						break;
 					default:
 						break;
@@ -984,10 +989,7 @@ namespace Taskmaster
 		{
 			var cfg = LoadConfig(coreconfig);
 
-			if (cfg.TryGet("Core")?.TryGet("License")?.RawValue.Equals("Accepted") ?? false)
-			{
-				return;
-			}
+			if (cfg.TryGet("Core")?.TryGet("License")?.RawValue.Equals("Accepted") ?? false) return;
 
 			using (var license = new LicenseDialog())
 			{
@@ -1016,7 +1018,7 @@ namespace Taskmaster
 			// INIT LOGGER
 			MemoryLog.LevelSwitch = new LoggingLevelSwitch(LogEventLevel.Information);
 
-			string logpathtemplate = System.IO.Path.Combine(datapath, "Logs", "taskmaster-{Date}.log");
+			var logpathtemplate = System.IO.Path.Combine(datapath, "Logs", "taskmaster-{Date}.log");
 			Serilog.Log.Logger = new Serilog.LoggerConfiguration()
 				.MinimumLevel.Verbose()
 #if DEBUG
@@ -1061,8 +1063,8 @@ namespace Taskmaster
 			}
 
 			// IS THIS OF ANY USE?
-			//GC.Collect(GC.MaxGeneration, GCCollectionMode.Forced, true, true);
-			//GC.WaitForPendingFinalizers();
+			// GC.Collect(GC.MaxGeneration, GCCollectionMode.Forced, true, true);
+			// GC.WaitForPendingFinalizers();
 
 			// early save of configs
 			foreach (var dcfg in ConfigDirty)
@@ -1091,7 +1093,7 @@ namespace Taskmaster
 
 				trayaccess.Enable();
 				System.Windows.Forms.Application.Run(); // WinForms
-														//System.Windows.Application.Current.Run(); // WPF
+														// System.Windows.Application.Current.Run(); // WPF
 			}
 			catch (Exception ex)
 			{
@@ -1151,7 +1153,7 @@ namespace Taskmaster
 				Log.CloseAndFlush();
 
 				Restart = false; // poinless probably
-				ProcessStartInfo info = Process.GetCurrentProcess().StartInfo;
+				var info = Process.GetCurrentProcess().StartInfo;
 				info.FileName = Process.GetCurrentProcess().ProcessName;
 				List<string> nargs = new List<string>
 				{
@@ -1162,6 +1164,7 @@ namespace Taskmaster
 					nargs.Add(string.Format("--admin {0}", ++AdminCounter));
 					info.Verb = "runas"; // elevate privileges
 				}
+
 				info.Arguments = string.Join(" ", nargs);
 				var proc = Process.Start(info);
 			}

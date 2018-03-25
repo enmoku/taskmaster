@@ -42,7 +42,7 @@ namespace Taskmaster
 
 		public static ProcessAnalysis Analyze(System.Diagnostics.Process process)
 		{
-			ProcessAnalysis pa = new ProcessAnalysis();
+			var pa = new ProcessAnalysis();
 			pa.bla = true;
 
 			// this unfortunately returned only ntdll.dll, wow64.dll, wow64win.dll, and wow64cpu.dll for a game and seems unusuable for what it was desired

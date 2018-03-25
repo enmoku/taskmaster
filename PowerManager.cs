@@ -45,7 +45,7 @@ namespace Taskmaster
 
 	public class PowerManager : Form // form is required for receiving messages, no other reason
 	{
-		//static Guid GUID_POWERSCHEME_PERSONALITY = new Guid("245d8541-3943-4422-b025-13A7-84F679B7");
+		// static Guid GUID_POWERSCHEME_PERSONALITY = new Guid("245d8541-3943-4422-b025-13A7-84F679B7");
 		static Guid GUID_POWERSCHEME_PERSONALITY = new Guid(0x245D8541, 0x3943, 0x4422, 0xB0, 0x25, 0x13, 0xA7, 0x84, 0xF6, 0x79, 0xB7);
 
 		long AutoAdjustCounter = 0;
@@ -79,7 +79,7 @@ namespace Taskmaster
 
 			LoadConfig();
 
-			//SystemEvents.PowerModeChanged += BatteryChargingEvent; // Without laptop testing this feature is difficult
+			// SystemEvents.PowerModeChanged += BatteryChargingEvent; // Without laptop testing this feature is difficult
 			SystemEvents.SessionEnding += Taskmaster.SessionEndExitRequest;
 
 			if (SessionLockMode != PowerMode.Custom)
@@ -118,15 +118,14 @@ namespace Taskmaster
 		int CPULowOffset = 0;
 		int CPUHighOffset = 0;
 
-        int cpusampler_lock = 0;
+		int cpusampler_lock = 0;
 		async void CPUSampler(object state)
 		{
-			if (!Atomic.Lock(ref cpusampler_lock))
-				return;
+			if (!Atomic.Lock(ref cpusampler_lock)) return;
 
 			try
 			{
-				float sample = float.NaN;
+				var sample = float.NaN;
 
 				sample = CPUCounter.NextValue(); // slowest part
 				CPUAverage -= CPUSamples[CPUSampleLoop];
@@ -142,7 +141,7 @@ namespace Taskmaster
 					CPUHighOffset = CPUSampleLoop;
 				}
 
-				bool setlowandhigh = (CPULowOffset == CPUSampleLoop || CPUHighOffset == CPUSampleLoop);
+				var setlowandhigh = (CPULowOffset == CPUSampleLoop || CPUHighOffset == CPUSampleLoop);
 				CPUSamples[CPUSampleLoop++] = sample;
 				if (CPUSampleLoop > (CPUSampleCount - 1)) CPUSampleLoop = 0;
 				if (setlowandhigh)
@@ -151,12 +150,13 @@ namespace Taskmaster
 					CPUHigh = float.MinValue;
 					for (int i = 0; i < CPUSampleCount; i++)
 					{
-						float cur = CPUSamples[i];
+						var cur = CPUSamples[i];
 						if (cur < CPULow)
 						{
 							CPULow = cur;
 							CPULowOffset = i;
 						}
+
 						if (cur > CPUHigh)
 						{
 							CPUHigh = cur;
@@ -218,17 +218,17 @@ namespace Taskmaster
 
 			// TODO: Asyncify. Mostly math so probably unnecessary.
 
-			PowerReaction Reaction = PowerReaction.Average;
-			PowerMode ReactionaryPlan = AutoAdjust.DefaultMode;
+			var Reaction = PowerReaction.Average;
+			var ReactionaryPlan = AutoAdjust.DefaultMode;
 
-			bool Ready = false;
+			var Ready = false;
 
 			ev.Pressure = 0;
 			ev.Handled = false;
 			if (PreviousReaction == PowerReaction.High)
 			{
 				// Downgrade to MEDIUM power level
-				//Console.WriteLine("Downgrade to Mid?");
+				// Console.WriteLine("Downgrade to Mid?");
 				if (ev.High <= AutoAdjust.High.Backoff.High
 					|| ev.Average <= AutoAdjust.High.Backoff.Avg
 					|| ev.Low <= AutoAdjust.High.Backoff.Low)
@@ -242,16 +242,16 @@ namespace Taskmaster
 						Ready = true;
 
 					ev.Pressure = ((float)BackoffCounter) / ((float)AutoAdjust.High.Backoff.Level);
-					//Console.WriteLine("Downgrade to Mid: " + BackoffCounter + " / " + HighBackoffLevel + " = " + ev.Pressure
-					//				  + " : Blocks:" + Convert.ToString(AutoAdjustBlocks, 2).PadLeft(4, '0'));
+					// Console.WriteLine("Downgrade to Mid: " + BackoffCounter + " / " + HighBackoffLevel + " = " + ev.Pressure
+					// 				  + " : Blocks:" + Convert.ToString(AutoAdjustBlocks, 2).PadLeft(4, '0'));
 				}
-				//else
-				//	Console.WriteLine("High backoff thresholds not met");
+				// else
+				// 	Console.WriteLine("High backoff thresholds not met");
 			}
 			else if (PreviousReaction == PowerReaction.Low)
 			{
 				// Upgrade to MEDIUM power level
-				//Console.WriteLine("Upgrade to Mid?");
+				// Console.WriteLine("Upgrade to Mid?");
 				if (ev.High >= AutoAdjust.Low.Backoff.High
 					|| ev.Average >= AutoAdjust.Low.Backoff.Avg
 					|| ev.Low >= AutoAdjust.Low.Backoff.Low)
@@ -265,11 +265,11 @@ namespace Taskmaster
 						Ready = true;
 
 					ev.Pressure = ((float)BackoffCounter) / ((float)AutoAdjust.Low.Backoff.Level);
-					//Console.WriteLine("Upgrade to Mid: " + BackoffCounter + " / " + LowBackoffLevel + " = " + ev.Pressure
-					//				  + " : Blocks:" + Convert.ToString(AutoAdjustBlocks, 2).PadLeft(4, '0'));
+					// Console.WriteLine("Upgrade to Mid: " + BackoffCounter + " / " + LowBackoffLevel + " = " + ev.Pressure
+					// 				  + " : Blocks:" + Convert.ToString(AutoAdjustBlocks, 2).PadLeft(4, '0'));
 				}
-				//else
-				//	Console.WriteLine("Low backoff thresholds not met");
+				// else
+				// 	Console.WriteLine("Low backoff thresholds not met");
 			}
 			else // Currently at medium power
 			{
@@ -287,8 +287,8 @@ namespace Taskmaster
 
 					ev.Pressure = ((float)HighPressure) / ((float)AutoAdjust.High.Commit.Level);
 
-					//Console.WriteLine("Upgrade to High: " + HighPressure + " / " + HighCommitLevel + " = " + ev.Pressure
-					//				  + " : Blocks:" + Convert.ToString(AutoAdjustBlocks, 2).PadLeft(4, '0'));
+					// Console.WriteLine("Upgrade to High: " + HighPressure + " / " + HighCommitLevel + " = " + ev.Pressure
+					// 				  + " : Blocks:" + Convert.ToString(AutoAdjustBlocks, 2).PadLeft(4, '0'));
 				}
 				else if (ev.High < AutoAdjust.Low.Commit.Threshold && AutoAdjust.Low.Mode != AutoAdjust.DefaultMode) // High CPU is below threshold for Low mode
 				{
@@ -304,12 +304,12 @@ namespace Taskmaster
 
 					ev.Pressure = ((float)LowPressure) / ((float)AutoAdjust.Low.Commit.Level);
 
-					//Console.WriteLine("Downgrade to Low: " + LowPressure + " / " + LowCommitLevel + " = " + ev.Pressure
-					//				  + " : Blocks:" + Convert.ToString(AutoAdjustBlocks, 2).PadLeft(4, '0'));
+					// Console.WriteLine("Downgrade to Low: " + LowPressure + " / " + LowCommitLevel + " = " + ev.Pressure
+					// 				  + " : Blocks:" + Convert.ToString(AutoAdjustBlocks, 2).PadLeft(4, '0'));
 				}
 				else
 				{
-					//Console.WriteLine("NOP");
+					// Console.WriteLine("NOP");
 
 					Reaction = PowerReaction.Average;
 					ReactionaryPlan = AutoAdjust.DefaultMode;
@@ -321,7 +321,7 @@ namespace Taskmaster
 				}
 			}
 
-			bool ReadyToAdjust = (Ready && !Forced && !Paused);
+			var ReadyToAdjust = (Ready && !Forced && !Paused);
 
 			if (ReadyToAdjust && ReactionaryPlan != CurrentMode)
 			{
@@ -361,8 +361,8 @@ namespace Taskmaster
 				}
 			}
 
-			//Console.WriteLine("Cause: " + ev.Cause.ToString() + ", ReadyToChange: " + readyToChange + ", Reaction: " + Reaction.ToString()
-			//				  + ", Enacted: __" + ev.Handled.ToString() + "__, Pause: " + Pause + ", Mode: " + Behaviour.ToString());
+			// Console.WriteLine("Cause: " + ev.Cause.ToString() + ", ReadyToChange: " + readyToChange + ", Reaction: " + Reaction.ToString()
+			// 				  + ", Enacted: __" + ev.Handled.ToString() + "__, Pause: " + Pause + ", Mode: " + Behaviour.ToString());
 
 			ev.Mode = ReactionaryPlan;
 			onAutoAdjustAttempt?.Invoke(this, ev);
@@ -382,15 +382,15 @@ namespace Taskmaster
 			var power = Taskmaster.cfg["Power"];
 			bool modified = false, dirtyconfig = false;
 
-			string defaultmode = power.GetSetDefault("Default mode", "Balanced", out modified).StringValue;
+			var defaultmode = power.GetSetDefault("Default mode", "Balanced", out modified).StringValue;
 			power["Default mode"].Comment = "This is what power plan we fall back on when nothing else is considered.";
 			AutoAdjust.DefaultMode = GetModeByName(defaultmode);
 			dirtyconfig |= modified;
 
-			string restoremode = power.GetSetDefault("Restore mode", "Default", out modified).StringValue;
+			var restoremode = power.GetSetDefault("Restore mode", "Default", out modified).StringValue;
 			power["Restore mode"].Comment = "Default, Original, Saved, or specific power mode.";
 			dirtyconfig |= modified;
-			string restoremodel = restoremode.ToLower();
+			var restoremodel = restoremode.ToLower();
 			if (restoremodel.Equals("original"))
 				RestoreMode = PowerMode.Undefined;
 			else if (restoremodel.Equals("default"))
@@ -409,7 +409,7 @@ namespace Taskmaster
 			dirtyconfig |= modified;
 
 			var autopower = Taskmaster.cfg["Power / Auto"];
-			bool bAutoAdjust = autopower.GetSetDefault("Auto-adjust", false, out modified).BoolValue;
+			var bAutoAdjust = autopower.GetSetDefault("Auto-adjust", false, out modified).BoolValue;
 			autopower["Auto-adjust"].Comment = "Automatically adjust power mode based on the criteria here.";
 			dirtyconfig |= modified;
 			if (bAutoAdjust)
@@ -454,6 +454,7 @@ namespace Taskmaster
 				AutoAdjust.High.Backoff.Avg = hbtt[1];
 				AutoAdjust.High.Backoff.High = hbtt[0];
 			}
+
 			autopower["High backoff thresholds"].Comment = "High, Average and Low CPU usage values, any of which is enough to break away from high power mode.";
 			dirtyconfig |= modified;
 
@@ -467,31 +468,32 @@ namespace Taskmaster
 				AutoAdjust.Low.Backoff.Avg = lbtt[1];
 				AutoAdjust.Low.Backoff.High = lbtt[0];
 			}
+
 			autopower["Low backoff thresholds"].Comment = "High, Average and Low CPU uage values, any of which is enough to break away from low mode.";
 			dirtyconfig |= modified;
 
 			// POWER MODES
-			string lowmode = power.GetSetDefault("Low mode", "Power Saver", out modified).StringValue;
+			var lowmode = power.GetSetDefault("Low mode", "Power Saver", out modified).StringValue;
 			AutoAdjust.Low.Mode = GetModeByName(lowmode);
 			dirtyconfig |= modified;
-			string highmode = power.GetSetDefault("High mode", "High Performance", out modified).StringValue;
+			var highmode = power.GetSetDefault("High mode", "High Performance", out modified).StringValue;
 			AutoAdjust.High.Mode = GetModeByName(highmode);
 			dirtyconfig |= modified;
 
 			var saver = Taskmaster.cfg["AFK Power"];
 			saver.Comment = "All these options control when to enforce power save mode regardless of any other options.";
-			string sessionlockmodename = saver.GetSetDefault("Session lock", "Power Saver", out modified).StringValue;
+			var sessionlockmodename = saver.GetSetDefault("Session lock", "Power Saver", out modified).StringValue;
 			saver["Session lock"].Comment = "Power mode to set when session is locked, such as by pressing winkey+L. Unrecognizable values disable this.";
 			dirtyconfig |= modified;
 			SessionLockMode = GetModeByName(sessionlockmodename);
 
-			//SaverOnMonitorSleep = saver.GetSetDefault("Monitor sleep", true, out modified).BoolValue;
-			//dirtyconfig |= modified;
+			// SaverOnMonitorSleep = saver.GetSetDefault("Monitor sleep", true, out modified).BoolValue;
+			// dirtyconfig |= modified;
 
-			//SaverOnUserAFK = saver.GetSetDefault("User idle", 30, out modified).IntValue;
-			//dirtyconfig |= modified;
-			//UserActiveCancel = saver.GetSetDefault("Cancel on activity", true, out modified).BoolValue;
-			//dirtyconfig |= modified;
+			// SaverOnUserAFK = saver.GetSetDefault("User idle", 30, out modified).IntValue;
+			// dirtyconfig |= modified;
+			// UserActiveCancel = saver.GetSetDefault("Cancel on activity", true, out modified).BoolValue;
+			// dirtyconfig |= modified;
 
 			// --------------------------------------------------------------------------------------------------------
 
@@ -515,7 +517,6 @@ namespace Taskmaster
 
 			Log.Information("<Power Mode> Session lock: {Mode}", (SessionLockMode == PowerMode.Custom ? "Ignored" : SessionLockMode.ToString()));
 
-
 			if (dirtyconfig)
 				Taskmaster.MarkDirtyINI(Taskmaster.cfg);
 		}
@@ -538,8 +539,7 @@ namespace Taskmaster
 			{
 				case SessionSwitchReason.SessionLogoff:
 				case SessionSwitchReason.SessionLogon:
-					if (!SaverOnLogOff)
-						return;
+					if (!SaverOnLogOff) return;
 					break;
 			}
 
@@ -565,6 +565,7 @@ namespace Taskmaster
 							setMode(PowerMode.PowerSaver, true);
 						}
 					}
+
 					break;
 				case SessionSwitchReason.SessionLogon:
 				case SessionSwitchReason.SessionUnlock:
@@ -572,7 +573,7 @@ namespace Taskmaster
 					if (SessionLockMode != PowerMode.Custom)
 					{
 						Log.Information("<Power Mode> Session unlocked, restoring normal power.");
-						
+
 						if (CurrentMode == SessionLockMode)
 						{
 							setMode(RestoreMode, true);
@@ -583,6 +584,7 @@ namespace Taskmaster
 						if (PauseUnneededSampler) InitCPUTimer();
 						Taskmaster.Evaluate().ConfigureAwait(false);
 					}
+
 					break;
 				default:
 					// HANDS OFF MODE
@@ -596,7 +598,7 @@ namespace Taskmaster
 			{
 				case Microsoft.Win32.PowerModes.StatusChange:
 					Log.Information("Undefined battery/AC change detected.");
-					//System.Windows.Forms.PowerStatus
+					// System.Windows.Forms.PowerStatus
 					break;
 				case Microsoft.Win32.PowerModes.Suspend:
 					// DON'T TOUCH
@@ -614,13 +616,13 @@ namespace Taskmaster
 		{
 			if (m.Msg == NativeMethods.WM_POWERBROADCAST && m.WParam.ToInt32() == NativeMethods.PBT_POWERSETTINGCHANGE)
 			{
-				NativeMethods.POWERBROADCAST_SETTING ps = (NativeMethods.POWERBROADCAST_SETTING)Marshal.PtrToStructure(m.LParam, typeof(NativeMethods.POWERBROADCAST_SETTING));
+				var ps = (NativeMethods.POWERBROADCAST_SETTING)Marshal.PtrToStructure(m.LParam, typeof(NativeMethods.POWERBROADCAST_SETTING));
 
 				if (ps.PowerSetting == GUID_POWERSCHEME_PERSONALITY && ps.DataLength == Marshal.SizeOf(typeof(Guid)))
 				{
-					IntPtr pData = (IntPtr)(m.LParam.ToInt32() + Marshal.SizeOf(ps));  // (*1)
-					Guid newPersonality = (Guid)Marshal.PtrToStructure(pData, typeof(Guid));
-					PowerMode old = CurrentMode;
+					var pData = (IntPtr)(m.LParam.ToInt32() + Marshal.SizeOf(ps));  // (*1)
+					var newPersonality = (Guid)Marshal.PtrToStructure(pData, typeof(Guid));
+					var old = CurrentMode;
 					if (newPersonality == Balanced) { CurrentMode = PowerMode.Balanced; }
 					else if (newPersonality == HighPerformance) { CurrentMode = PowerMode.HighPerformance; }
 					else if (newPersonality == PowerSaver) { CurrentMode = PowerMode.PowerSaver; }
@@ -743,9 +745,8 @@ namespace Taskmaster
 		public void Release()
 		{
 			lock (forceModeSources_lock)
-			{
 				forceModeSources.Clear();
-			}
+
 		}
 
 		/// <summary>
@@ -785,7 +786,7 @@ namespace Taskmaster
 				await Task.Delay(PowerdownDelay * 1000);
 			}
 
-			int tSourceCount = forceModeSources.Count;
+			var tSourceCount = forceModeSources.Count;
 
 			if (tSourceCount == 0)
 			{
@@ -806,7 +807,7 @@ namespace Taskmaster
 						setMode(SavedMode, verbose: true);
 						SavedMode = PowerMode.Undefined;
 
-						//Log.Information("<Power Mode> Restored to: {PowerMode}", CurrentMode.ToString());
+						// Log.Information("<Power Mode> Restored to: {PowerMode}", CurrentMode.ToString());
 					}
 				}
 
@@ -828,7 +829,7 @@ namespace Taskmaster
 		PowerMode getPowerMode()
 		{
 			Guid plan;
-			IntPtr ptr = Marshal.AllocHGlobal(Marshal.SizeOf(typeof(IntPtr))); // is this actually necessary?
+			var ptr = Marshal.AllocHGlobal(Marshal.SizeOf(typeof(IntPtr))); // is this actually necessary?
 
 			lock (power_lock)
 			{
@@ -881,7 +882,7 @@ namespace Taskmaster
 			if (Behaviour == PowerBehaviour.Manual) return false;
 			if (Paused) return false;
 
-			bool rv = false;
+			var rv = false;
 
 			lock (forceModeSources_lock)
 			{
@@ -893,14 +894,12 @@ namespace Taskmaster
 				}
 
 				forceModeSources.Add(sourcePid);
-
 			}
 
 			Forced = true;
 
 			rv = mode != CurrentMode;
-			if (rv)
-				setMode(mode);
+			if (rv) setMode(mode);
 
 			if (Taskmaster.DebugPower)
 			{
@@ -915,7 +914,7 @@ namespace Taskmaster
 
 		public void setMode(PowerMode mode, bool verbose = true)
 		{
-			Guid plan = Guid.Empty;
+			var plan = Guid.Empty;
 			switch (mode)
 			{
 				default:
@@ -964,7 +963,7 @@ namespace Taskmaster
 					CPUCounter = null;
 				}
 
-				PowerMode finalmode = (RestoreMode == PowerMode.Undefined ? SavedMode : RestoreMode);
+				var finalmode = (RestoreMode == PowerMode.Undefined ? SavedMode : RestoreMode);
 
 				setMode(finalmode, true);
 

@@ -25,10 +25,10 @@
 // THE SOFTWARE.
 
 using System;
-using System.Windows.Forms;
-using Serilog;
 using System.Diagnostics;
 using System.Threading.Tasks;
+using System.Windows.Forms;
+using Serilog;
 
 namespace Taskmaster
 {
@@ -77,7 +77,7 @@ namespace Taskmaster
 			menu_configuration.DropDownItems.Add(menu_configuration_folder);
 
 			menu_runatstart = new ToolStripMenuItem("Run at start", null, RunAtStartMenuClick);
-			menu_runatstart.Checked = RunAtStartRegRun(enabled:false, dryrun:true);
+			menu_runatstart.Checked = RunAtStartRegRun(enabled: false, dryrun: true);
 
 			if (Taskmaster.PowerManagerEnabled)
 			{
@@ -92,6 +92,7 @@ namespace Taskmaster
 				power_manual = new ToolStripMenuItem("Manual override", null, SetManualPower);
 				power_manual.CheckOnClick = true;
 			}
+
 			ToolStripMenuItem menu_restart = null;
 			menu_restart = new ToolStripMenuItem("Restart", null, (o, s) =>
 			{
@@ -123,6 +124,7 @@ namespace Taskmaster
 				ms.Items.Add(power_saving);
 				ms.Items.Add(power_manual);
 			}
+
 			ms.Items.Add(new ToolStripSeparator());
 			ms.Items.Add(menu_restart);
 			ms.Items.Add(menu_exit);
@@ -135,7 +137,7 @@ namespace Taskmaster
 
 			ms.Enabled = false;
 
-			//Tray.Click += RestoreMainWindow;
+			// Tray.Click += RestoreMainWindow;
 			Tray.MouseClick += ShowWindow;
 
 			// TODO: Toast Notifications
@@ -143,10 +145,7 @@ namespace Taskmaster
 			if (Taskmaster.Trace) Log.Verbose("<Tray> Initialized");
 		}
 
-		public void Enable()
-		{
-			ms.Enabled = true;
-		}
+		public void Enable() => ms.Enabled = true;
 
 		public event EventHandler RescanRequest;
 		public event EventHandler ManualPowerMode;
@@ -192,10 +191,7 @@ namespace Taskmaster
 				powermanager.SetBehaviour(PowerManager.PowerBehaviour.RuleBased);
 		}
 
-		void HighlightPowerModeEvent(object sender, PowerModeEventArgs ev)
-		{
-			HighlightPowerMode();
-		}
+		void HighlightPowerModeEvent(object sender, PowerModeEventArgs ev) => HighlightPowerMode();
 
 		void HighlightPowerMode()
 		{
@@ -230,9 +226,9 @@ namespace Taskmaster
 
 				ManualPowerMode?.Invoke(this, null);
 
-				//powermanager.Restore(0).Wait(); // already called by setBehaviour as necessary
+				// powermanager.Restore(0).Wait(); // already called by setBehaviour as necessary
 				powermanager.setMode(mode);
-				//powermanager.RequestMode(mode);
+				// powermanager.RequestMode(mode);
 				HighlightPowerMode();
 			}
 			catch { }
@@ -240,16 +236,15 @@ namespace Taskmaster
 
 		void ShowConfigRequest(object sender, EventArgs e)
 		{
-			//CLEANUP: Console.WriteLine("Opening config folder.");
+			// CLEANUP: Console.WriteLine("Opening config folder.");
 			Process.Start(Taskmaster.datapath);
 
 			Taskmaster.mainwindow?.ShowConfigRequest(sender, e);
-			//CLEANUP: Console.WriteLine("Done opening config folder.");
+			// CLEANUP: Console.WriteLine("Done opening config folder.");
 		}
 
 		async void ShowPowerConfig(object sender, EventArgs e)
 		{
-
 			PowerConfigWindow.ShowPowerConfig().ConfigureAwait(true);
 		}
 
@@ -264,9 +259,8 @@ namespace Taskmaster
 			try
 			{
 				using (var m = SelfAwareness.Mind(DateTime.Now.AddSeconds(10)))
-				{
 					await Taskmaster.ShowMainWindow().ConfigureAwait(false);
-				}
+
 
 				if (Taskmaster.Trace)
 					Log.Verbose("RestoreMainWindow done!");
@@ -318,23 +312,23 @@ namespace Taskmaster
 
 		void WindowClosed(object sender, FormClosingEventArgs e)
 		{
-			//CLEANUP: Console.WriteLine("START:TrayAccess.WindowClosed");
+			// CLEANUP: Console.WriteLine("START:TrayAccess.WindowClosed");
 
 			switch (e.CloseReason)
 			{
 				case CloseReason.ApplicationExitCall:
-					//CLEANUP: Console.WriteLine("BAIL:TrayAccess.WindowClosed");
+					// CLEANUP: Console.WriteLine("BAIL:TrayAccess.WindowClosed");
 					return;
 			}
 
-			//if (Taskmaster.LowMemory)
-			//{
-			//CLEANUP: Console.WriteLine("DEBUG:TrayAccess.WindowClosed.SaveMemory");
+			// if (Taskmaster.LowMemory)
+			// {
+			// CLEANUP: Console.WriteLine("DEBUG:TrayAccess.WindowClosed.SaveMemory");
 
 			Tray.MouseDoubleClick -= UnloseWindow;
 
-			//}
-			//CLEANUP: Console.WriteLine("END:TrayAccess.WindowClosed");
+			// }
+			// CLEANUP: Console.WriteLine("END:TrayAccess.WindowClosed");
 		}
 
 		public void hookMainWindow(ref MainWindow window)
@@ -356,7 +350,7 @@ namespace Taskmaster
 
 			await Task.Delay(12000); // force async, 12 seconds
 
-			Stopwatch n = new Stopwatch();
+			var n = new Stopwatch();
 			n.Start();
 			Process[] procs;
 			while ((procs = ExplorerInstances).Length == 0)
@@ -369,6 +363,7 @@ namespace Taskmaster
 
 				await Task.Delay(1000 * 60 * 5); // wait 5 minutes
 			}
+
 			n.Stop();
 
 			if (RegisterExplorerExit(procs))
@@ -407,6 +402,7 @@ namespace Taskmaster
 					proc.EnableRaisingEvents = true;
 					Log.Information("Explorer (#{ExplorerProcessID}) registered.", proc.Id);
 				}
+
 				return true;
 			}
 
@@ -423,13 +419,11 @@ namespace Taskmaster
 
 		void Dispose(bool disposing)
 		{
-			if (disposed)
-				return;
+			if (disposed) return;
 
 			if (disposing)
 			{
 				if (Taskmaster.Trace) Log.Verbose("Disposing tray...");
-
 
 				try
 				{
@@ -477,14 +471,11 @@ namespace Taskmaster
 			Tray.ShowBalloonTip(timeout, title, message, icon);
 		}
 
-		public void Refresh()
-		{
-			Tray.Visible = true;
-		}
+		public void Refresh() => Tray.Visible = true;
 
 		void RunAtStartMenuClick(object sender, EventArgs ev)
 		{
-			bool isadmin = Taskmaster.IsAdministrator();
+			var isadmin = Taskmaster.IsAdministrator();
 			if (isadmin)
 			{
 				var rv = System.Windows.Forms.MessageBox.Show("Run at start does not support elevated privilege that you have. Is this alright?\n\nIf you absolutely need admin rights, create onlogon schedule in windows task scheduler.",
@@ -518,13 +509,13 @@ var runtime = Environment.GetCommandLineArgs()[0];
 
 		bool RunAtStartRegRun(bool enabled, bool dryrun = false)
 		{
-			string runatstart_path = @"Software\Microsoft\Windows\CurrentVersion\Run";
-			string runatstart_key = "MKAh-Taskmaster";
+			var runatstart_path = @"Software\Microsoft\Windows\CurrentVersion\Run";
+			var runatstart_key = "MKAh-Taskmaster";
 			string runatstart;
-			string runvalue = Environment.GetCommandLineArgs()[0] + " --bootdelay";
+			var runvalue = Environment.GetCommandLineArgs()[0] + " --bootdelay";
 			try
 			{
-				Microsoft.Win32.RegistryKey key = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(runatstart_path, true);
+				var key = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(runatstart_path, true);
 				if (key != null)
 				{
 					runatstart = (string)key.GetValue(runatstart_key, string.Empty);
@@ -532,7 +523,6 @@ var runtime = Environment.GetCommandLineArgs()[0];
 					if (dryrun) return (runatstart.Equals(runvalue));
 					if (enabled)
 					{
-
 						if (runatstart == runvalue) return true;
 						key.SetValue(runatstart_key, runvalue);
 						Log.Information("Run at OS startup enabled: " + Environment.GetCommandLineArgs()[0]);
@@ -544,7 +534,7 @@ var runtime = Environment.GetCommandLineArgs()[0];
 
 						key.DeleteValue(runatstart_key);
 						Log.Information("Run at OS startup disabled.");
-						//return false;
+						// return false;
 					}
 				}
 				else
@@ -554,6 +544,7 @@ var runtime = Environment.GetCommandLineArgs()[0];
 			{
 				Logging.Stacktrace(ex);
 			}
+
 			return false;
 		}
 	}

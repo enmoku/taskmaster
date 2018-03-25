@@ -25,20 +25,73 @@
 // THE SOFTWARE.
 
 using System;
-using System.Diagnostics;
-using System.Collections.Generic;
-using System.Windows.Forms;
 using System.Collections;
+using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
-using Serilog;
 using System.Threading.Tasks;
+using System.Windows.Forms;
+using Serilog;
 
 namespace Taskmaster
 {
 	// public class MainWindow : System.Windows.Window; // TODO: WPF
-	//[ThreadAffine] // would be nice, but huge dependency pile
+	// [ThreadAffine] // would be nice, but huge dependency pile
 	sealed public class MainWindow : Form
 	{
+		// constructor
+		public MainWindow()
+		{
+			// InitializeComponent(); // TODO: WPF
+			FormClosing += WindowClose;
+
+			DoubleBuffered = true;
+
+			// MakeTrayIcon();
+
+			BuildUI();
+
+			// TODO: Detect mic device changes
+			// TODO: Delay fixing by 5 seconds to prevent fix diarrhea
+
+			// the form itself
+			WindowState = FormWindowState.Normal;
+			FormBorderStyle = FormBorderStyle.Sizable;
+			ShowInTaskbar = true;
+
+			// FormBorderStyle = FormBorderStyle.FixedDialog; // no min/max buttons as wanted
+			MinimizeBox = false;
+			MaximizeBox = false;
+
+			Hide();
+			// CenterToScreen();
+
+			Shown += (object sender, EventArgs e) =>
+			{
+				try
+				{
+					BeginInvoke(new Action(() =>
+					{
+						loglist.TopItem = loglist.Items[loglist.Items.Count - 1];
+						ShowLastLog();
+					}));
+				}
+				catch { } // ignore
+			};
+
+			// TODO: WPF
+			/*
+			System.Windows.Shell.JumpList jumplist = System.Windows.Shell.JumpList.GetJumpList(System.Windows.Application.Current);
+			//System.Windows.Shell.JumpTask task = new System.Windows.Shell.JumpTask();
+			System.Windows.Shell.JumpPath jpath = new System.Windows.Shell.JumpPath();
+			jpath.Path = Taskmaster.cfgpath;
+			jumplist.JumpItems.Add(jpath);
+			jumplist.Apply();
+			*/
+
+			if (Taskmaster.Trace)
+				Log.Verbose("MainWindow constructed");
+		}
 		public void ShowConfigRequest(object sender, EventArgs e)
 		{
 			// TODO: Introduce configuration window
@@ -70,7 +123,7 @@ namespace Taskmaster
 
 				if (!Taskmaster.Trace) return;
 
-				//Console.WriteLine("WindowClose = " + e.CloseReason);
+				// Console.WriteLine("WindowClose = " + e.CloseReason);
 				switch (e.CloseReason)
 				{
 					case CloseReason.UserClosing:
@@ -101,7 +154,7 @@ namespace Taskmaster
 						Log.Debug("Exit: Unidentified close reason: {CloseReason}", e.CloseReason);
 						break;
 				}
-				//CLEANUP: Console.WriteLine("WindowClose.Handled");
+				// CLEANUP: Console.WriteLine("WindowClose.Handled");
 			}
 			catch (Exception ex) { Logging.Stacktrace(ex); }
 		}
@@ -125,7 +178,7 @@ namespace Taskmaster
 			catch (Exception ex) { Logging.Stacktrace(ex); }
 		}
 
-public void Reveal()
+		public void Reveal()
 		{
 			Show();
 			BringToFront(); // does nothing without show(), unreliable even with it
@@ -187,20 +240,21 @@ public void Reveal()
 
 				litem.SubItems[NameColumn].Text = prc.FriendlyName;
 				litem.SubItems[ExeColumn].Text = prc.Executable;
-				bool noprio = (prc.Increase == false && prc.Decrease == false);
+				var noprio = (prc.Increase == false && prc.Decrease == false);
 				litem.SubItems[PrioColumn].Text = (noprio ? "--- Any --- " : prc.Priority.ToString());
 				litem.SubItems[AffColumn].Text = (prc.Affinity.ToInt32() == ProcessManager.allCPUsMask ? "--- Any ---" : Convert.ToString(prc.Affinity.ToInt32(), 2).PadLeft(ProcessManager.CPUCount, '0'));
 				litem.SubItems[PowerColumn].Text = (prc.PowerPlan != PowerInfo.PowerMode.Undefined ? prc.PowerPlan.ToString() : "--- Any ---");
 				// skip adjusts
 				litem.SubItems[PathColumn].Text = (string.IsNullOrEmpty(prc.Path) ? "--- Any ---" : prc.Path);
 			}
+
 			WatchlistItemColor(litem, prc);
 		}
 
 		[Aspects.UIThreadAspect]
 		public void ProcAdjust(object sender, ProcessEventArgs ev)
 		{
-			//Log.Verbose("Process adjust received for '{FriendlyName}'.", e.Control.FriendlyName);
+			// Log.Verbose("Process adjust received for '{FriendlyName}'.", e.Control.FriendlyName);
 			if (!IsHandleCreated) return;
 
 			lock (appw_lock)
@@ -210,7 +264,7 @@ public void Reveal()
 					if (WatchlistMap.TryGetValue(ev.Control, out ListViewItem item))
 					{
 						item.SubItems[AdjustColumn].Text = ev.Control.Adjusts.ToString();
-						//item.SubItems[SeenColumn].Text = e.Control.LastSeen.ToLocalTime().ToString();
+						// item.SubItems[SeenColumn].Text = e.Control.LastSeen.ToLocalTime().ToString();
 					}
 					else
 						Log.Error("{FriendlyName} not found in app list.", ev.Control.FriendlyName);
@@ -226,9 +280,9 @@ public void Reveal()
 
 			try
 			{
-				//int maxlength = 70;
-				//string cutstring = e.Title.Substring(0, Math.Min(maxlength, e.Title.Length)) + (e.Title.Length > maxlength ? "..." : "");
-				//activeLabel.Text = cutstring;
+				// int maxlength = 70;
+				// string cutstring = e.Title.Substring(0, Math.Min(maxlength, e.Title.Length)) + (e.Title.Length > maxlength ? "..." : "");
+				// activeLabel.Text = cutstring;
 				activeLabel.Text = windowchangeev.Title;
 				activeExec.Text = windowchangeev.Executable;
 				activeFullscreen.Text = windowchangeev.Fullscreen.True() ? "Full" : windowchangeev.Fullscreen.False() ? "Window" : "Unknown";
@@ -237,7 +291,7 @@ public void Reveal()
 			catch (Exception ex) { Logging.Stacktrace(ex); }
 		}
 
-public event EventHandler rescanRequest;
+		public event EventHandler rescanRequest;
 		public event EventHandler pagingRequest;
 
 		public void hookDiskManager(ref DiskManager diskman)
@@ -312,11 +366,11 @@ public event EventHandler rescanRequest;
 
 		void WatchlistItemColor(ListViewItem li, ProcessController prc)
 		{
-			bool alter = (li.Index + 1) % 2 == 0; // every even line
+			var alter = (li.Index + 1) % 2 == 0; // every even line
 
 			try
 			{
-				bool noprio = (prc.Increase == false && prc.Decrease == false);
+				var noprio = (prc.Increase == false && prc.Decrease == false);
 
 				li.UseItemStyleForSubItems = false;
 
@@ -327,8 +381,7 @@ public event EventHandler rescanRequest;
 					else
 						si.ForeColor = GrayText;
 
-					if (alter)
-						si.BackColor = AlterColor;
+					if (alter) si.BackColor = AlterColor;
 				}
 
 				alter = !alter;
@@ -354,16 +407,15 @@ public event EventHandler rescanRequest;
 			lock (watchlistrules_lock)
 			{
 				foreach (var item in WatchlistMap)
-				{
 					WatchlistItemColor(item.Value, item.Key);
-				}
+
 			}
 		}
 
 		int num = 1;
 		void AddToWatchlistList(ProcessController prc)
 		{
-			bool noprio = (prc.Increase == false && prc.Decrease == false);
+			var noprio = (prc.Increase == false && prc.Decrease == false);
 
 			var litem = new ListViewItem(new string[] {
 				(num++).ToString(),
@@ -379,9 +431,9 @@ public event EventHandler rescanRequest;
 					});
 
 			lock (watchlistrules_lock)
-			{
-				watchlistRules.Items.Add(litem); // add calls sort()???
-			}
+				watchlistRules.Items.Add(litem);
+			// add calls sort()???
+
 
 			lock (appw_lock)
 				WatchlistMap.Add(prc, litem);
@@ -406,15 +458,15 @@ public event EventHandler rescanRequest;
 			catch (Exception ex) { Logging.Stacktrace(ex); }
 		}
 
-Label micName;
+		Label micName;
 		NumericUpDown micVol;
 		readonly object micList_lock = new object();
 		ListView micList;
 		readonly object appList_lock = new object();
 		ListView watchlistRules;
 		readonly object watchlistrules_lock = new object();
-		//object pathList_lock = new object();
-		//ListView pathList;
+		// object pathList_lock = new object();
+		// ListView pathList;
 		readonly object appw_lock = new object();
 		Dictionary<ProcessController, ListViewItem> WatchlistMap = new Dictionary<ProcessController, ListViewItem>();
 		Label corCountLabel;
@@ -434,7 +486,7 @@ Label micName;
 		void UserMicVol(object sender, EventArgs e)
 		{
 			// TODO: Handle volume changes. Not really needed. Give presets?
-			//micMonitor.setVolume(micVol.Value);
+			// micMonitor.setVolume(micVol.Value);
 		}
 
 		[Aspects.UIThreadAspect]
@@ -449,6 +501,7 @@ Label micName;
 			}
 			catch (Exception ex) { Logging.Stacktrace(ex); }
 		}
+
 		#endregion // Microphone control code
 
 		#region Foreground Monitor
@@ -471,7 +524,7 @@ Label micName;
 			try
 			{
 				cacheObjects.Text = Statistics.PathCacheCurrent.ToString();
-				double ratio = (Statistics.PathCacheMisses > 0 ? (Statistics.PathCacheHits / Statistics.PathCacheMisses) : 1);
+				var ratio = (Statistics.PathCacheMisses > 0 ? (Statistics.PathCacheHits / Statistics.PathCacheMisses) : 1);
 				if (ratio <= 99.99f)
 					cacheRatio.Text = string.Format("{0:N2}", ratio);
 				else
@@ -530,7 +583,7 @@ Label micName;
 				}
 				catch { } // discard
 			}
-			//string.Format("{0:N1} min(s)", net.Uptime.TotalMinutes);
+			// string.Format("{0:N1} min(s)", net.Uptime.TotalMinutes);
 		}
 
 		ListView ifaceList;
@@ -547,9 +600,8 @@ Label micName;
 			try
 			{
 				foreach (ToolStripItem msi in ifacems.Items)
-				{
 					msi.Enabled = (ifaceList.SelectedItems.Count == 1);
-				}
+
 			}
 			catch { } // discard
 		}
@@ -561,10 +613,11 @@ Label micName;
 		{
 			if (ifaceList.SelectedItems.Count == 1)
 			{
-				try {
-				var li = ifaceList.SelectedItems[0];
-				string ipv4addr = li.SubItems[IPv4Column].Text;
-				Clipboard.SetText(ipv4addr);
+				try
+				{
+					var li = ifaceList.SelectedItems[0];
+					var ipv4addr = li.SubItems[IPv4Column].Text;
+					Clipboard.SetText(ipv4addr);
 				}
 				catch (Exception ex) { Logging.Stacktrace(ex); }
 			}
@@ -574,10 +627,11 @@ Label micName;
 		{
 			if (ifaceList.SelectedItems.Count == 1)
 			{
-				try {
-				var li = ifaceList.SelectedItems[0];
-				string ipv6addr = string.Format("[{0}]", li.SubItems[IPv6Column].Text);
-				Clipboard.SetText(ipv6addr);
+				try
+				{
+					var li = ifaceList.SelectedItems[0];
+					var ipv6addr = string.Format("[{0}]", li.SubItems[IPv6Column].Text);
+					Clipboard.SetText(ipv6addr);
 				}
 				catch (Exception ex) { Logging.Stacktrace(ex); }
 			}
@@ -588,9 +642,8 @@ Label micName;
 			try
 			{
 				foreach (ToolStripItem lsi in loglistms.Items)
-				{
 					lsi.Enabled = (loglist.SelectedItems.Count == 1);
-				}
+
 			}
 			catch { } // discard
 		}
@@ -599,11 +652,11 @@ Label micName;
 		{
 			if (loglist.SelectedItems.Count == 1)
 			{
-				try {
-				var li = loglist.SelectedItems[0];
-				string rv = li.SubItems[0].Text;
-				if (rv.Length > 0)
-					Clipboard.SetText(rv);
+				try
+				{
+					var li = loglist.SelectedItems[0];
+					var rv = li.SubItems[0].Text;
+					if (rv.Length > 0) Clipboard.SetText(rv);
 				}
 				catch (Exception ex) { Logging.Stacktrace(ex); }
 			}
@@ -636,7 +689,7 @@ Label micName;
 #if DEBUG
 			Text = Text + " DEBUG";
 #endif
-			//Padding = new Padding(6);
+			// Padding = new Padding(6);
 			// margin
 
 			var padding = new Padding(6);
@@ -673,7 +726,7 @@ Label micName;
 			menu_action_restartadmin = new ToolStripMenuItem("Restart as admin", null, (s, e) =>
 			{
 				menu_action_restartadmin.Enabled = false;
-				Taskmaster.ConfirmExit(restart: true, admin:true);
+				Taskmaster.ConfirmExit(restart: true, admin: true);
 				menu_action_restartadmin.Enabled = true;
 			});
 
@@ -721,10 +774,11 @@ Label micName;
 			var menu_config_log_power = new ToolStripMenuItem("Power mode changes", null, (sender, e) => { });
 			menu_config_log.DropDownItems.Add(menu_config_log_power);
 
-			var menu_config_components = new ToolStripMenuItem("Components", null, (sender,e) => {
+			var menu_config_components = new ToolStripMenuItem("Components", null, (sender, e) =>
+			{
 				try
 				{
-					using (var comps = new ComponentConfigurationWindow(initial:false))
+					using (var comps = new ComponentConfigurationWindow(initial: false))
 					{
 						comps.ShowDialog();
 						if (comps.DialogResult == DialogResult.OK)
@@ -741,7 +795,7 @@ Label micName;
 			});
 
 			var menu_config_folder = new ToolStripMenuItem("Open in file manager", null, (s, e) => { Process.Start(Taskmaster.datapath); });
-			//menu_config.DropDownItems.Add(menu_config_log);
+			// menu_config.DropDownItems.Add(menu_config_log);
 			menu_config.DropDownItems.Add(menu_config_behaviour);
 			menu_config.DropDownItems.Add(new ToolStripSeparator());
 			menu_config.DropDownItems.Add(menu_config_power);
@@ -840,14 +894,14 @@ Label micName;
 				//Padding = new System.Drawing.Point(3, 3),
 			};
 
-			TabPage infoTab = new TabPage("Info");
-			TabPage watchTab = new TabPage("Watchlist");
-			TabPage micTab = new TabPage("Microphone");
+			var infoTab = new TabPage("Info");
+			var watchTab = new TabPage("Watchlist");
+			var micTab = new TabPage("Microphone");
 			if (!Taskmaster.MicrophoneMonitorEnabled) micTab.Hide();
-			TabPage netTab = new TabPage("Network");
+			var netTab = new TabPage("Network");
 			if (!Taskmaster.NetworkMonitorEnabled) netTab.Hide();
-			TabPage powerDebugTab = new TabPage("Power Debug");
-			TabPage ProcessDebugTab = new TabPage("Process Debug");
+			var powerDebugTab = new TabPage("Power Debug");
+			var ProcessDebugTab = new TabPage("Process Debug");
 
 			tabLayout.Controls.Add(infoTab);
 			tabLayout.Controls.Add(watchTab);
@@ -863,7 +917,7 @@ Label micName;
 				AutoSize = true,
 			};
 
-			//Controls.Add(tabLayout);
+			// Controls.Add(tabLayout);
 
 			#region Main Window Row 0, game monitor / active window monitor
 			var activepanel = new TableLayoutPanel
@@ -895,8 +949,8 @@ Label micName;
 			activepanel.Controls.Add(new Label { Text = "Id:", Width = 20, TextAlign = System.Drawing.ContentAlignment.MiddleLeft });
 			activepanel.Controls.Add(activePID);
 
-			//infopanel.Controls.Add(activepanel);
-			//infoTab.Controls.Add(infopanel);
+			// infopanel.Controls.Add(activepanel);
+			// infoTab.Controls.Add(infopanel);
 			#endregion
 
 			#region Load UI config
@@ -904,7 +958,7 @@ Label micName;
 			var wincfg = uicfg["Windows"];
 			var colcfg = uicfg["Columns"];
 
-			int opentab = uicfg["Tabs"].TryGet("Open")?.IntValue ?? 0;
+			var opentab = uicfg["Tabs"].TryGet("Open")?.IntValue ?? 0;
 
 			int[] appwidthsDefault = new int[] { 20, 120, 140, 82, 60, 76, 46, 140 };
 			var appwidths = colcfg.GetSetDefault("Apps", appwidthsDefault).IntValueArray;
@@ -922,10 +976,8 @@ Label micName;
 			var winsize = wincfg.GetSetDefault("Main", winsizedefault).IntValueArray;
 			if (winsize.Length == 2)
 			{
-				if (winsize[0] > 0)
-					Width = winsize[0];
-				if (winsize[1] > 0)
-					Height = winsize[1];
+				if (winsize[0] > 0) Width = winsize[0];
+				if (winsize[1] > 0) Height = winsize[1];
 			}
 
 			#endregion
@@ -1038,7 +1090,6 @@ Label micName;
 				BackColor = System.Drawing.Color.Transparent,
 				TextAlign = System.Drawing.ContentAlignment.MiddleLeft
 			};
-
 
 			var netstatus = new TableLayoutPanel
 			{
@@ -1243,7 +1294,7 @@ Label micName;
 			watchlistRules.DoubleClick += EditWatchlistRule; // for in-app editing
 			watchlistRules.Click += UpdateInfoPanel;
 
-			//proclayout.Controls.Add(pathList);
+			// proclayout.Controls.Add(pathList);
 			proclayout.Controls.Add(watchlistRules);
 			watchTab.Controls.Add(proclayout);
 
@@ -1337,7 +1388,7 @@ Label micName;
 						Log.Warning("Trace events enabled. UI may become unresponsive due to their volume.");
 						break;
 				}
-				//Debug.WriteLine("GUI log level changed: {0} ({1})", LogIncludeLevel.MinimumLevel, logcombo_level.SelectedIndex);
+				// Debug.WriteLine("GUI log level changed: {0} ({1})", LogIncludeLevel.MinimumLevel, logcombo_level.SelectedIndex);
 			};
 
 			LogIncludeLevel = MemoryLog.LevelSwitch; // HACK
@@ -1359,7 +1410,7 @@ Label micName;
 			loglevelpanel.Controls.Add(logcombo_level);
 			logpanel.Controls.Add(loglist);
 			logpanel.Controls.Add(loglevelpanel);
-			//logpanel.Controls.Add(loglist);
+			// logpanel.Controls.Add(loglist);
 
 			var commandpanel = new TableLayoutPanel
 			{
@@ -1537,7 +1588,7 @@ Label micName;
 			});
 			tempmonitorpanel.Controls.Add(tempObjectSize);
 
-			//infopanel.Controls.Add(commandpanel);
+			// infopanel.Controls.Add(commandpanel);
 			infopanel.Controls.Add(tempmonitorpanel);
 			infoTab.Controls.Add(infopanel);
 
@@ -1689,7 +1740,7 @@ Label micName;
 				{
 					if (ExitWaitlistMap.TryGetValue(ev.Info.Id, out ListViewItem li))
 					{
-						//Log.Debug("WaitlistHandler: {Name} = {State}", ev.Info.Name, ev.State.ToString());
+						// Log.Debug("WaitlistHandler: {Name} = {State}", ev.Info.Name, ev.State.ToString());
 						switch (ev.State)
 						{
 							case ProcessEventArgs.ProcessState.Exiting:
@@ -1745,7 +1796,7 @@ Label micName;
 			try
 			{
 				// TODO: Asyncify
-				string reactionary = PowerManager.GetModeName(ev.Mode);
+				var reactionary = PowerManager.GetModeName(ev.Mode);
 
 				var li = new ListViewItem(new string[] {
 				string.Format("{0:N2}%", ev.Current),
@@ -1785,7 +1836,7 @@ Label micName;
 		{
 			try
 			{
-				bool oneitem = watchlistRules.SelectedItems.Count == 1;
+				var oneitem = watchlistRules.SelectedItems.Count == 1;
 				foreach (ToolStripItem lsi in watchlistms.Items)
 				{
 					if (lsi.Text.Contains("Create")) continue;
@@ -1794,7 +1845,7 @@ Label micName;
 
 				if (oneitem)
 				{
-					ListViewItem li = watchlistRules.SelectedItems[0];
+					var li = watchlistRules.SelectedItems[0];
 					var prc = Taskmaster.processmanager.getWatchedController(li.SubItems[NameColumn].Text);
 					if (prc != null)
 					{
@@ -1812,10 +1863,10 @@ Label micName;
 		{
 			try
 			{
-				bool oneitem = watchlistRules.SelectedItems.Count == 1;
+				var oneitem = watchlistRules.SelectedItems.Count == 1;
 				if (oneitem)
 				{
-					ListViewItem li = watchlistRules.SelectedItems[0];
+					var li = watchlistRules.SelectedItems[0];
 					var prc = Taskmaster.processmanager.getWatchedController(li.SubItems[NameColumn].Text);
 					if (prc != null)
 					{
@@ -1848,14 +1899,14 @@ Label micName;
 					}
 					*/
 
-					ListViewItem li = watchlistRules.SelectedItems[0];
-					string name = li.SubItems[NameColumn].Text;
+					var li = watchlistRules.SelectedItems[0];
+					var name = li.SubItems[NameColumn].Text;
 					var prc = Taskmaster.processmanager.getWatchedController(name);
 
 					using (var editdialog = new WatchlistEditWindow(prc)) // 1 = executable
 					{
 						var rv = editdialog.ShowDialog();
-						//WatchlistEditLock = 0;
+						// WatchlistEditLock = 0;
 
 						if (rv == DialogResult.OK)
 						{
@@ -1922,7 +1973,7 @@ Label micName;
 				try
 				{
 					var li = watchlistRules.SelectedItems[0];
-					string name = li.SubItems[NameColumn].Text;
+					var name = li.SubItems[NameColumn].Text;
 					ProcessController prc = null;
 
 					prc = processmanager.getWatchedController(name);
@@ -1962,6 +2013,7 @@ Label micName;
 					{
 						Log.Warning("[{Rule}] Failed to copy configuration to clipboard.", name);
 					}
+
 					sbs.Clear(); // Unnecessary?
 				}
 				catch (Exception ex) { Logging.Stacktrace(ex); }
@@ -1970,9 +2022,10 @@ Label micName;
 
 		void UpdateInfoPanel(object sender, EventArgs e)
 		{
-			try {
-			ListViewItem ri = watchlistRules.SelectedItems[0];
-			string name = ri.SubItems[0].Text;
+			try
+			{
+				var ri = watchlistRules.SelectedItems[0];
+				var name = ri.SubItems[0].Text;
 				/*
 				//Log.Debug("'{RowName}' selected in UI", ri.SubItems[0]);
 				// TODO: Add info panel for selected item.
@@ -2017,11 +2070,10 @@ Label micName;
 
 			lock (loglistLock)
 			{
-				//Log.Verbose("Filling GUI log.");
+				// Log.Verbose("Filling GUI log.");
 				foreach (var evmsg in MemoryLog.ToArray())
-				{
 					loglist.Items.Add(evmsg.Message);
-				}
+
 			}
 
 			ShowLastLog();
@@ -2057,10 +2109,11 @@ Label micName;
 		{
 			if (!IsHandleCreated) return;
 
-			try {
-			powerbalancer_behaviour.Text = (behaviour == PowerManager.PowerBehaviour.Auto) ? "Automatic" : ((behaviour == PowerManager.PowerBehaviour.Manual) ? "Manual" : "Rule-based");
-			if (behaviour != PowerManager.PowerBehaviour.Auto)
-				powerbalancerlog.Items.Clear();
+			try
+			{
+				powerbalancer_behaviour.Text = (behaviour == PowerManager.PowerBehaviour.Auto) ? "Automatic" : ((behaviour == PowerManager.PowerBehaviour.Manual) ? "Manual" : "Rule-based");
+				if (behaviour != PowerManager.PowerBehaviour.Auto)
+					powerbalancerlog.Items.Clear();
 			}
 			catch { } // discard
 		}
@@ -2083,7 +2136,7 @@ Label micName;
 
 			if (Taskmaster.Trace) Log.Verbose("Hooking network monitor.");
 
-			this.netmonitor = net;
+			netmonitor = net;
 
 			foreach (var dev in net.Interfaces())
 			{
@@ -2106,7 +2159,7 @@ Label micName;
 			InetStatusLabel(net.InternetAvailable);
 			NetStatusLabel(net.NetworkAvailable);
 
-			//Tray?.Tooltip(2000, "Internet " + (net.InternetAvailable ? "available" : "unavailable"), "Taskmaster", net.InternetAvailable ? ToolTipIcon.Info : ToolTipIcon.Warning);
+			// Tray?.Tooltip(2000, "Internet " + (net.InternetAvailable ? "available" : "unavailable"), "Taskmaster", net.InternetAvailable ? ToolTipIcon.Info : ToolTipIcon.Warning);
 
 			net.InternetStatusChange += InetStatus;
 			net.NetworkStatusChange += NetStatus;
@@ -2141,7 +2194,7 @@ Label micName;
 			try
 			{
 				inetstatuslabel.Text = available ? "Connected" : "Disconnected";
-				//inetstatuslabel.BackColor = available ? System.Drawing.Color.LightGoldenrodYellow : System.Drawing.Color.Red;
+				// inetstatuslabel.BackColor = available ? System.Drawing.Color.LightGoldenrodYellow : System.Drawing.Color.Red;
 				inetstatuslabel.BackColor = available ? System.Drawing.Color.Transparent : System.Drawing.Color.Red;
 			}
 			catch { } // discard
@@ -2149,9 +2202,11 @@ Label micName;
 
 		public void InetStatus(object sender, InternetStatus e)
 		{
-			try {
-			InetStatusLabel(e.Available);
-			} catch (Exception ex) { Logging.Stacktrace(ex); }
+			try
+			{
+				InetStatusLabel(e.Available);
+			}
+			catch (Exception ex) { Logging.Stacktrace(ex); }
 		}
 
 		[Aspects.UIThreadAspect]
@@ -2159,11 +2214,13 @@ Label micName;
 		{
 			if (!IsHandleCreated) return;
 
-			try {
+			try
+			{
 				netstatuslabel.Text = available ? "Up" : "Down";
-				//netstatuslabel.BackColor = available ? System.Drawing.Color.LightGoldenrodYellow : System.Drawing.Color.Red;
+				// netstatuslabel.BackColor = available ? System.Drawing.Color.LightGoldenrodYellow : System.Drawing.Color.Red;
 				netstatuslabel.BackColor = available ? System.Drawing.Color.Transparent : System.Drawing.Color.Red;
-			} catch (Exception ex) { Logging.Stacktrace(ex); }
+			}
+			catch (Exception ex) { Logging.Stacktrace(ex); }
 		}
 
 		public void NetStatus(object sender, NetworkStatus e)
@@ -2175,9 +2232,9 @@ Label micName;
 			catch (Exception ex) { Logging.Stacktrace(ex); }
 		}
 
-// BUG: DO NOT LOG INSIDE THIS FOR FUCKS SAKE
-// it creates an infinite log loop
-public int MaxLogSize { get { return MemoryLog.Max; } private set { MemoryLog.Max = value; } }
+		// BUG: DO NOT LOG INSIDE THIS FOR FUCKS SAKE
+		// it creates an infinite log loop
+		public int MaxLogSize { get { return MemoryLog.Max; } private set { MemoryLog.Max = value; } }
 
 		void ClearLog()
 		{
@@ -2194,76 +2251,21 @@ public int MaxLogSize { get { return MemoryLog.Max; } private set { MemoryLog.Ma
 			if (!IsHandleCreated) return;
 			if (LogIncludeLevel.MinimumLevel > evmsg.Level) return;
 
-			DateTime t = DateTime.Now;
+			var t = DateTime.Now;
 
 			lock (loglistLock)
 			{
 				try
 				{
-					int excessitems = Math.Min(0, (loglist.Items.Count - MaxLogSize));
+					var excessitems = Math.Min(0, (loglist.Items.Count - MaxLogSize));
 					while (excessitems-- > 0)
-					{
 						loglist.Items.RemoveAt(0);
-					}
+
 
 					loglist.Items.Add(evmsg.Message).EnsureVisible();
 				}
 				catch (Exception ex) { Logging.Stacktrace(ex); }
 			}
-		}
-
-		// constructor
-		public MainWindow()
-		{
-			//InitializeComponent(); // TODO: WPF
-			FormClosing += WindowClose;
-
-			DoubleBuffered = true;
-
-			//MakeTrayIcon();
-
-			BuildUI();
-
-			// TODO: Detect mic device changes
-			// TODO: Delay fixing by 5 seconds to prevent fix diarrhea
-
-			// the form itself
-			WindowState = FormWindowState.Normal;
-			FormBorderStyle = FormBorderStyle.Sizable;
-			ShowInTaskbar = true;
-
-			//FormBorderStyle = FormBorderStyle.FixedDialog; // no min/max buttons as wanted
-			MinimizeBox = false;
-			MaximizeBox = false;
-
-			Hide();
-			//CenterToScreen();
-
-			Shown += (object sender, EventArgs e) =>
-			{
-				try
-				{
-					BeginInvoke(new Action(() =>
-					{
-						loglist.TopItem = loglist.Items[loglist.Items.Count - 1];
-						ShowLastLog();
-					}));
-				}
-				catch { } // ignore
-			};
-
-			// TODO: WPF
-			/*
-			System.Windows.Shell.JumpList jumplist = System.Windows.Shell.JumpList.GetJumpList(System.Windows.Application.Current);
-			//System.Windows.Shell.JumpTask task = new System.Windows.Shell.JumpTask();
-			System.Windows.Shell.JumpPath jpath = new System.Windows.Shell.JumpPath();
-			jpath.Path = Taskmaster.cfgpath;
-			jumplist.JumpItems.Add(jpath);
-			jumplist.Apply();
-			*/
-
-			if (Taskmaster.Trace)
-				Log.Verbose("MainWindow constructed");
 		}
 
 		void saveUIState()
@@ -2291,7 +2293,7 @@ public int MaxLogSize { get { return MemoryLog.Max; } private set { MemoryLog.Ma
 			var cfg = Taskmaster.LoadConfig("UI.ini");
 			var cols = cfg["Columns"];
 			cols["Apps"].IntValueArray = appWidths.ToArray();
-			//cols["Paths"].IntValueArray = pathWidths.ToArray();
+			// cols["Paths"].IntValueArray = pathWidths.ToArray();
 			cols["Mics"].IntValueArray = micWidths.ToArray();
 			cols["Interfaces"].IntValueArray = ifaceWidths.ToArray();
 
@@ -2410,9 +2412,9 @@ public int MaxLogSize { get { return MemoryLog.Max; } private set { MemoryLog.Ma
 
 		public int Compare(object x, object y)
 		{
-			ListViewItem lix = (ListViewItem)x;
-			ListViewItem liy = (ListViewItem)y;
-			int result = 0;
+			var lix = (ListViewItem)x;
+			var liy = (ListViewItem)y;
+			var result = 0;
 
 			Number = NumberColumns.Contains(Column);
 
@@ -2425,4 +2427,3 @@ public int MaxLogSize { get { return MemoryLog.Max; } private set { MemoryLog.Ma
 		}
 	}
 }
-

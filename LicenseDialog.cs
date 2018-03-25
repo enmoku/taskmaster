@@ -24,18 +24,14 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-using System;
-using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows.Forms;
 
 namespace Taskmaster
 {
 	class LicenseDialog : Form
 	{
-		public LicenseDialog(bool initial=true)
+		public LicenseDialog(bool initial = true)
 		{
 			Text = "Taskmaster License";
 			AutoSize = true;
@@ -52,16 +48,16 @@ namespace Taskmaster
 			};
 			var buttonlayout = new TableLayoutPanel()
 			{
-				ColumnCount=2,
+				ColumnCount = 2,
 				AutoSize = true,
 			};
 
-			TextBox licensebox = new TextBox()
+			var licensebox = new TextBox()
 			{
 				ReadOnly = true,
-				Text="NO WARRANTY",
-				Multiline=true,
-				Font = new System.Drawing.Font(System.Drawing.FontFamily.GenericMonospace, DefaultFont.Size*1.2f),
+				Text = "NO WARRANTY",
+				Multiline = true,
+				Font = new System.Drawing.Font(System.Drawing.FontFamily.GenericMonospace, DefaultFont.Size * 1.2f),
 			};
 
 			using (var rs = System.Reflection.Assembly.GetExecutingAssembly().GetManifestResourceStream("Taskmaster.LICENSE"))
@@ -69,7 +65,7 @@ namespace Taskmaster
 				var rs2 = new System.IO.StreamReader(rs);
 				var r = rs2.ReadToEndAsync();
 				r.Wait();
-				string license = r.Result.Replace("\t", "    ").TrimEnd('\n',' ');
+				var license = r.Result.Replace("\t", "    ").TrimEnd('\n', ' ');
 				licensebox.Text = license;
 			}
 
@@ -86,7 +82,7 @@ namespace Taskmaster
 
 			var buttonRefuse = new Button()
 			{
-				Text="Refuse",
+				Text = "Refuse",
 				Anchor = AnchorStyles.Left,
 			};
 
@@ -104,12 +100,14 @@ namespace Taskmaster
 			layout.Controls.Add(licensebox);
 			layout.Controls.Add(buttonlayout);
 
-			buttonAccept.Click += (s, e) => {
+			buttonAccept.Click += (s, e) =>
+			{
 				DialogResult = DialogResult.Yes;
 				Close();
 			};
 
-			buttonRefuse.Click += (s, e) => {
+			buttonRefuse.Click += (s, e) =>
+			{
 				DialogResult = DialogResult.No;
 				Close();
 			};

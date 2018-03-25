@@ -69,9 +69,8 @@ namespace Taskmaster
 
 			var ipa = new List<IPAddress>(2);
 			foreach (UnicastIPAddressInformation ip in iface.GetIPProperties().UnicastAddresses)
-			{
 				ipa.Add(ip.Address);
-			}
+
 
 			return ipa.ToArray();
 		}
@@ -107,9 +106,6 @@ namespace Taskmaster
 			return Convert.ToInt64(dt.ToUniversalTime().Subtract(UnixEpoch).TotalSeconds);
 		}
 
-		public static DateTime Unixstamp(this long stamp)
-		{
-			return (UnixEpoch + TimeSpan.FromSeconds(stamp));
-		}
+		public static DateTime Unixstamp(this long stamp) => (UnixEpoch + TimeSpan.FromSeconds(stamp));
 	}
 }

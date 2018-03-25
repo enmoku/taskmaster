@@ -26,9 +26,9 @@
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using System.Timers;
-using System.Linq;
 using Serilog;
 
 namespace Taskmaster
@@ -65,7 +65,7 @@ namespace Taskmaster
 
 		readonly Dictionary<K1, CacheItem<K1, K2, T>> Items = new Dictionary<K1, CacheItem<K1, K2, T>>();
 
-		public long Count { get { return Items.Count; } }
+		public long Count => Items.Count;
 		public long Hits { get; private set; } = 0;
 		public long Misses { get; private set; } = 0;
 
@@ -122,43 +122,38 @@ namespace Taskmaster
 				{
 					if (CacheEvictStrategy == EvictStrategy.LeastRecent)
 					{
-						if (x.Access < y.Access)
-							return -1;
-						if (x.Access > y.Access)
-							return 1;
+						if (x.Access < y.Access) return -1;
+						if (x.Access > y.Access) return 1;
 						// Both have equal at this point
 						if (x.Desirability < y.Desirability)
 							return -1;
-						if (x.Desirability > y.Desirability)
-							return 1;
+						if (x.Desirability > y.Desirability) return 1;
 					}
 					else
 					{
-						if (x.Desirability < y.Desirability)
-							return -1;
-						if (x.Desirability > y.Desirability)
-							return 1;
+						if (x.Desirability < y.Desirability) return -1;
+						if (x.Desirability > y.Desirability) return 1;
 						// Both have equal at this point
 						if (x.Access < y.Access)
 							return -1;
-						if (x.Access > y.Access)
-							return 1;
+						if (x.Access > y.Access) return 1;
 					}
+
 					return 0;
 				});
 
-				//Log.Debug("CACHE STATE: FIRST({First}) LAST({LAST})", list.First().Access, list.Last().Access);
-				//Log.Debug("CACHE ITEMS BEFORE PRUNE: {Items}", Items.Count);
+				// Log.Debug("CACHE STATE: FIRST({First}) LAST({LAST})", list.First().Access, list.Last().Access);
+				// Log.Debug("CACHE ITEMS BEFORE PRUNE: {Items}", Items.Count);
 				while (Items.Count > MaxCache)
 				{
 					var bu = list.ElementAt(0);
-					K1 key = bu.AccessKey;
-					//Log.Debug("--- REMOVING: Key:{Key}, Last Access: {Date}, Desirability: {Value}",
-					//		  key, bu.Access, bu.Desirability);
+					var key = bu.AccessKey;
+					// Log.Debug("--- REMOVING: Key:{Key}, Last Access: {Date}, Desirability: {Value}",
+					// 		  key, bu.Access, bu.Desirability);
 					Items.Remove(key);
 					list.RemoveAt(0);
 				}
-				//Log.Debug("CACHE ITEMS AFTER PRUNE: {Items}", Items.Count);
+				// Log.Debug("CACHE ITEMS AFTER PRUNE: {Items}", Items.Count);
 
 				var now = DateTime.Now;
 				while (list.Count > 0)
@@ -272,10 +267,7 @@ namespace Taskmaster
 			return null;
 		}
 
-		public void Drop(K1 key)
-		{
-			Items.Remove(key);
-		}
+		public void Drop(K1 key) => Items.Remove(key);
 
 		#region IDisposable Support
 		bool disposed = false; // To detect redundant calls

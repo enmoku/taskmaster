@@ -32,46 +32,38 @@ namespace Taskmaster
 	{
 		public static string TimeString(TimeSpan time)
 		{
-			if (time.TotalMilliseconds <= 0)
-				return "n/a";
+			if (time.TotalMilliseconds <= 0) return "n/a";
 
 			var s = new System.Text.StringBuilder();
 
-			bool days = false;
+			var days = false;
 			if (time.Days > 0)
 			{
 				s.Append(time.Days);
-				if (time.Days == 1)
-					s.Append(" day");
-				else
-					s.Append(" days");
+				if (time.Days == 1) s.Append(" day");
+				else s.Append(" days");
 				days = true;
 			}
 
-			bool hours = false;
+			var hours = false;
 			if (time.Hours > 0)
 			{
-				if (days)
-					s.Append(", ");
+				if (days) s.Append(", ");
 				s.Append(time.Hours);
-				if (time.Hours == 1)
-					s.Append(" hour");
-				else
-					s.Append(" hours");
+				if (time.Hours == 1) s.Append(" hour");
+				else s.Append(" hours");
 				hours = true;
 			}
 
-			//if (time.Minutes > 0)
-			//{
+			// if (time.Minutes > 0)
+			// {
 			if (hours || days)
 				s.Append(", ");
-			double min = time.Minutes + (time.Seconds / 60.0);
+			var min = time.Minutes + (time.Seconds / 60.0);
 			s.Append(string.Format("{0:N1}", min));
-			if (min > 1 || min < 1)
-				s.Append(" minutes");
-			else
-				s.Append(" minute");
-			//}
+			if (min > 1 || min < 1) s.Append(" minutes");
+			else s.Append(" minute");
+			// }
 
 			return s.ToString();
 		}
@@ -104,6 +96,7 @@ namespace Taskmaster
 				s.Append(bytes);
 				s.Append(" ");
 			}
+
 			s.Append("B");
 
 			return s.ToString();

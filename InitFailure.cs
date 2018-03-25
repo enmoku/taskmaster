@@ -37,9 +37,6 @@ namespace Taskmaster
 			Failure = description;
 		}
 
-		public override string ToString()
-		{
-			return string.Format("[InitFailure] {0}", Failure);
-		}
+		public override string ToString() => string.Format("[InitFailure] {0}", Failure);
 	}
 }

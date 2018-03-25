@@ -25,16 +25,16 @@
 // THE SOFTWARE.
 
 using System;
+using System.IO;
 using System.Threading.Tasks;
 using Serilog;
-using System.IO;
 
 namespace Taskmaster
 {
 	public class DiskManager : IDisposable
 	{
 		static readonly string systemTemp = System.IO.Path.Combine(System.Environment.GetFolderPath(Environment.SpecialFolder.Windows), "Temp");
-		static string userTemp { get { return System.IO.Path.GetTempPath(); } }
+		static string userTemp => System.IO.Path.GetTempPath();
 
 		readonly System.IO.FileSystemWatcher userWatcher;
 		readonly System.IO.FileSystemWatcher sysWatcher;
@@ -71,6 +71,7 @@ namespace Taskmaster
 			{
 				Log.Information("Significant amount of changes have occurred to temp folders");
 			}
+
 			if (ReScanBurden % 1000 == 0)
 			{
 				Log.Warning("Number of changes to temp folders exceeding tolerance.");
@@ -94,8 +95,8 @@ namespace Taskmaster
 
 		void DirectorySize(System.IO.DirectoryInfo dinfo, ref DirectoryStats stats)
 		{
-			int i = 1;
-			DiskEventArgs dea = new DiskEventArgs { State = ScanState.Segment, Stats = stats };
+			var i = 1;
+			var dea = new DiskEventArgs { State = ScanState.Segment, Stats = stats };
 			try
 			{
 				foreach (System.IO.FileInfo fi in dinfo.GetFiles())
@@ -104,6 +105,7 @@ namespace Taskmaster
 					stats.Files += 1;
 					if (i++ % 100 == 0) onTempScan?.Invoke(null, dea);
 				}
+
 				foreach (System.IO.DirectoryInfo di in dinfo.GetDirectories())
 				{
 					DirectorySize(di, ref stats);
@@ -136,6 +138,7 @@ namespace Taskmaster
 					onTempScan?.Invoke(null, new DiskEventArgs { State = ScanState.Segment, Stats = dst });
 					DirectorySize(new System.IO.DirectoryInfo(userTemp), ref dst);
 				}
+
 				onTempScan?.Invoke(null, new DiskEventArgs { State = ScanState.End, Stats = dst });
 				Log.Information("Temp contents: {Files} files, {Dirs} dirs, {Size} MBs", dst.Files, dst.Dirs, string.Format("{0:N2}", dst.Size / 1000f / 1000f));
 			}
@@ -159,8 +162,7 @@ namespace Taskmaster
 		bool disposed = false;
 		void Dispose(bool disposing)
 		{
-			if (disposed)
-				return;
+			if (disposed) return;
 
 			if (disposing)
 			{

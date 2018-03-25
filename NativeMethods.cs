@@ -57,6 +57,7 @@ namespace Taskmaster
 		[StructLayout(LayoutKind.Sequential)]
 		public struct RECT
 		{
+
 			public int Left;
 			public int Top;
 			public int Right;
@@ -88,14 +89,15 @@ namespace Taskmaster
 
 		public const int DEVICE_NOTIFY_WINDOW_HANDLE = 0x00000000;
 		[DllImport("user32.dll", SetLastError = true, EntryPoint = "RegisterPowerSettingNotification", CallingConvention = CallingConvention.StdCall)]
-		public static extern IntPtr RegisterPowerSettingNotification(IntPtr hRecipient, ref Guid PowerSettingGuid, Int32 Flags);
+		public static extern IntPtr RegisterPowerSettingNotification(IntPtr hRecipient, ref Guid PowerSettingGuid, int Flags);
 
 		[StructLayout(LayoutKind.Sequential, Pack = 4)]
 		public struct POWERBROADCAST_SETTING
 		{
+
 			public Guid PowerSetting;
 			public uint DataLength;
-			//public byte Data;
+			// public byte Data;
 		}
 
 		public const int WM_SYSCOMMAND = 0x0112;

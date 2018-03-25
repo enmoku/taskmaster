@@ -58,7 +58,7 @@ namespace Taskmaster
 	}
 
 	// BUG: Requires Windows 8
-	[StructLayoutAttribute(LayoutKind.Sequential)]
+	[StructLayout(LayoutKind.Sequential)]
 	public struct MEMORY_PRIORITY_INFORMATION
 	{
 		public ulong MemoryPriority;
@@ -76,7 +76,7 @@ namespace Taskmaster
 	public static class MemoryManager
 	{
 		// [DllImport("kernel32.dll", SetLastError=true]
-		//[DllImport("kernel32.dll", EntryPoint = "SetProcessInformation")]
-		//static extern bool SetProcessInformation(IntPtr hProcess, PROCESS_INFORMATION_CLASS ProcessInformationClass, IntPtr ProcessInformation, uint ProcessInformationSize);
+		// [DllImport("kernel32.dll", EntryPoint = "SetProcessInformation")]
+		// static extern bool SetProcessInformation(IntPtr hProcess, PROCESS_INFORMATION_CLASS ProcessInformationClass, IntPtr ProcessInformation, uint ProcessInformationSize);
 	}
 }

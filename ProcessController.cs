@@ -25,12 +25,12 @@
 // THE SOFTWARE.
 
 using System;
-using Serilog;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.ComponentModel;
-using System.Threading.Tasks;
+using System.Diagnostics;
 using System.Linq;
+using System.Threading.Tasks;
+using Serilog;
 
 namespace Taskmaster
 {
@@ -157,7 +157,7 @@ namespace Taskmaster
 		public ProcessController(string name, ProcessPriorityClass priority, int affinity, string path = null)
 		{
 			FriendlyName = name;
-			//Executable = executable;
+			// Executable = executable;
 
 			Priority = priority;
 			if (affinity != ProcessManager.allCPUsMask)
@@ -189,7 +189,7 @@ namespace Taskmaster
 			Taskmaster.MarkDirtyINI(cfg);
 		}
 
-		public void SaveConfig(SharpConfig.Configuration cfg=null)
+		public void SaveConfig(SharpConfig.Configuration cfg = null)
 		{
 			if (cfg == null)
 				cfg = Taskmaster.LoadConfig(watchlistfile);
@@ -208,14 +208,14 @@ namespace Taskmaster
 			app["Decrease"].BoolValue = Decrease;
 			app["Priority"].IntValue = ProcessHelpers.PriorityToInt(Priority);
 
-			int affinity = Affinity.ToInt32();
+			var affinity = Affinity.ToInt32();
 			if (affinity == ProcessManager.allCPUsMask) affinity = 0;
 			if (affinity > 0)
 				app["Affinity"].IntValue = Affinity.ToInt32();
 			else
 				app.Remove("Affinity"); // windows defaults to all cores, pointless to set it
 
-			string pmode = PowerManager.GetModeName(PowerPlan);
+			var pmode = PowerManager.GetModeName(PowerPlan);
 			if (PowerPlan != PowerInfo.PowerMode.Undefined)
 				app["Power mode"].StringValue = PowerManager.GetModeName(PowerPlan);
 			else
@@ -244,18 +244,14 @@ namespace Taskmaster
 				app["Allow paging"].BoolValue = AllowPaging;
 			else
 				app.Remove("Allow paging");
-			if (Rescan > 0)
-				app["Rescan"].IntValue = Rescan;
-			else
-				app.Remove("Rescan");
+			if (Rescan > 0) app["Rescan"].IntValue = Rescan;
+			else app.Remove("Rescan");
 			if (Recheck > 0)
 				app["Recheck"].IntValue = Recheck;
 			else
 				app.Remove("Recheck");
-			if (!Enabled)
-				app["Enabled"].BoolValue = Enabled;
-			else
-				app.Remove("Enabled");
+			if (!Enabled) app["Enabled"].BoolValue = Enabled;
+			else app.Remove("Enabled");
 
 			if (IgnoreList != null && IgnoreList.Length > 0)
 				app["Ignore"].StringValueArray = IgnoreList;
@@ -272,10 +268,8 @@ namespace Taskmaster
 			var stats = Taskmaster.LoadConfig(statfile);
 
 			string statkey = null;
-			if (Executable != null)
-				statkey = Executable;
-			else if (Path != null)
-				statkey = Path;
+			if (Executable != null) statkey = Executable;
+			else if (Path != null) statkey = Path;
 
 			if (statkey != null)
 			{
@@ -284,7 +278,7 @@ namespace Taskmaster
 				var ls = stats[statkey].TryGet("Last seen");
 				if (null != ls && !ls.IsEmpty)
 				{
-					long stamp = long.MinValue;
+					var stamp = long.MinValue;
 					try
 					{
 						stamp = ls.GetValue<long>();
@@ -301,18 +295,16 @@ namespace Taskmaster
 
 			// BROKEN?
 			string key = null;
-			if (Executable != null)
-				key = Executable;
-			else if (Path != null)
-				key = Path;
-			else
-				return;
+			if (Executable != null) key = Executable;
+			else if (Path != null) key = Path;
+			else return;
 
 			if (Adjusts > 0)
 			{
 				stats[key]["Adjusts"].IntValue = Adjusts;
 				Taskmaster.MarkDirtyINI(stats);
 			}
+
 			if (LastSeen != DateTime.MinValue)
 			{
 				stats[key]["Last seen"].SetValue(LastSeen.Unixstamp());
@@ -335,9 +327,9 @@ namespace Taskmaster
 			if (Taskmaster.DebugForeground && Taskmaster.Trace)
 				Log.Debug("[{Name}] Quelling {Exec} (#{Pid})", FriendlyName, info.Name, info.Id);
 
-			//PausedState.Affinity = Affinity;
-			//PausedState.Priority = Priority;
-			//PausedState.PowerMode = PowerPlan;
+			// PausedState.Affinity = Affinity;
+			// PausedState.Priority = Priority;
+			// PausedState.PowerMode = PowerPlan;
 
 			try
 			{
@@ -346,7 +338,7 @@ namespace Taskmaster
 			catch
 			{
 			}
-			//info.Process.ProcessorAffinity = OriginalState.Affinity;
+			// info.Process.ProcessorAffinity = OriginalState.Affinity;
 
 			if (Taskmaster.PowerManagerEnabled)
 				if (PowerPlan != PowerInfo.PowerMode.Undefined && BackgroundPowerdown)
@@ -359,15 +351,12 @@ namespace Taskmaster
 			PausedIds.Add(info.Id);
 		}
 
-		public bool isPaused(ProcessEx info)
-		{
-			return PausedIds.Contains(info.Id);
-		}
+		public bool isPaused(ProcessEx info) => PausedIds.Contains(info.Id);
 
 		public void Resume(ProcessEx info)
 		{
 			if (!PausedIds.Contains(info.Id)) return;
-			//throw new InvalidOperationException(string.Format("{0} not paused", info.Name));
+			// throw new InvalidOperationException(string.Format("{0} not paused", info.Name));
 
 			if (info.Process.PriorityClass.ToInt32() != Priority.ToInt32())
 			{
@@ -383,8 +372,8 @@ namespace Taskmaster
 					// should only happen if the process is already gone
 				}
 			}
-			//PausedState.Priority = Priority;
-			//PausedState.PowerMode = PowerPlan;
+			// PausedState.Priority = Priority;
+			// PausedState.PowerMode = PowerPlan;
 
 			PausedIds.Remove(info.Id);
 		}
@@ -412,7 +401,6 @@ namespace Taskmaster
 
 		void ProcessEnd(object sender, EventArgs ev)
 		{
-
 		}
 
 		// -----------------------------------------------
@@ -428,10 +416,7 @@ namespace Taskmaster
 			return Taskmaster.powermanager.Force(PowerPlan, info.Id);
 		}
 
-		void undoPower(ProcessEx info)
-		{
-			Taskmaster.powermanager.Restore(info.Id).Wait();
-		}
+		void undoPower(ProcessEx info) => Taskmaster.powermanager.Restore(info.Id).Wait();
 
 		/*
 		// Windows doesn't allow setting this for other processes
@@ -445,7 +430,7 @@ namespace Taskmaster
 		{
 			try
 			{
-				bool rv = NativeMethods.SetPriorityClass(process.Handle, (uint)priority);
+				var rv = NativeMethods.SetPriorityClass(process.Handle, (uint)priority);
 				return rv;
 			}
 			catch { /* NOP, don't care */ }
@@ -463,7 +448,7 @@ namespace Taskmaster
 			{
 				Log.Fatal("ProcessController.Touch({Name},#{Pid}) received invalid arguments.", info.Name, info.Id);
 				throw new ArgumentNullException();
-				//return ProcessState.Invalid;
+				// return ProcessState.Invalid;
 			}
 
 			if (recheck)
@@ -504,7 +489,7 @@ namespace Taskmaster
 
 			if (Taskmaster.Trace) Log.Verbose("[{FriendlyName}] Touching: {ExecutableName} (#{ProcessID})", FriendlyName, info.Name, info.Id);
 
-			ProcessState rv = ProcessState.Invalid;
+			var rv = ProcessState.Invalid;
 
 			if (IgnoreList != null && IgnoreList.Contains(info.Name, StringComparer.InvariantCultureIgnoreCase))
 			{
@@ -513,7 +498,7 @@ namespace Taskmaster
 				return ProcessState.Ignored;
 			}
 
-			bool denyChange = ProcessManager.ProtectedProcessName(info.Name);
+			var denyChange = ProcessManager.ProtectedProcessName(info.Name);
 			if (denyChange)
 				if (Taskmaster.ShowInaction && Taskmaster.DebugProcesses)
 					Log.Debug("[{FriendlyName}] {ProcessName} (#{ProcessID}) in protected list, limiting tampering.", FriendlyName, info.Name, info.Id);
@@ -548,8 +533,8 @@ namespace Taskmaster
 			bool mAffinity = false, mPriority = false, mPower = false, mBGIO = false, modified = false;
 			LastSeen = DateTime.Now;
 
-			IntPtr oldAffinity = IntPtr.Zero;
-			ProcessPriorityClass oldPriority = ProcessPriorityClass.RealTime;
+			var oldAffinity = IntPtr.Zero;
+			var oldPriority = ProcessPriorityClass.RealTime;
 			try
 			{
 				oldAffinity = info.Process.ProcessorAffinity;
@@ -557,7 +542,7 @@ namespace Taskmaster
 			}
 			catch { /* NOP, don't care */ }
 
-			ProcessPriorityClass newPriority = oldPriority;
+			var newPriority = oldPriority;
 
 			if (!denyChange)
 			{
@@ -583,7 +568,7 @@ namespace Taskmaster
 					catch
 					{
 						if (Taskmaster.ShowInaction)
-						Log.Warning("[{FriendlyName}] {Exec} (#{Pid}) failed to set process priority.", FriendlyName, info.Name, info.Id);
+							Log.Warning("[{FriendlyName}] {Exec} (#{Pid}) failed to set process priority.", FriendlyName, info.Name, info.Id);
 						// NOP
 					}
 				}
@@ -596,39 +581,40 @@ namespace Taskmaster
 
 			try
 			{
-				int oldAffinityMask = info.Process.ProcessorAffinity.ToInt32();
-				int newAffinityMask = Affinity.ToInt32();
+				var oldAffinityMask = info.Process.ProcessorAffinity.ToInt32();
+				var newAffinityMask = Affinity.ToInt32();
 				if (oldAffinityMask != newAffinityMask)
 				{
-					IntPtr taff = Affinity;
+					var taff = Affinity;
 					if (AllowedCores || !Increase)
 					{
-						int minaff = Bit.Or(newAffinityMask, oldAffinityMask);
-						int mincount = Bit.Count(minaff);
-						int bitsold = Bit.Count(oldAffinityMask);
-						int bitsnew = Bit.Count(newAffinityMask);
-						int minaff1 = minaff;
-						minaff = Bit.Fill(minaff, bitsnew, Math.Min(bitsold,bitsnew));
+						var minaff = Bit.Or(newAffinityMask, oldAffinityMask);
+						var mincount = Bit.Count(minaff);
+						var bitsold = Bit.Count(oldAffinityMask);
+						var bitsnew = Bit.Count(newAffinityMask);
+						var minaff1 = minaff;
+						minaff = Bit.Fill(minaff, bitsnew, Math.Min(bitsold, bitsnew));
 						if (minaff1 != minaff)
 						{
 							Console.WriteLine(Convert.ToString(minaff1, 2).PadLeft(ProcessManager.CPUCount));
 							Console.WriteLine(Convert.ToString(minaff, 2).PadLeft(ProcessManager.CPUCount));
 						}
+
 						// shuffle cores from old to new
 						taff = new IntPtr(minaff);
 					}
-					//int bitsnew = Bit.Count(newAffinityMask);
-					//TODO: Somehow shift bits old to new if there's free spots
-					
+					// int bitsnew = Bit.Count(newAffinityMask);
+					// TODO: Somehow shift bits old to new if there's free spots
+
 					info.Process.ProcessorAffinity = taff;
 					modified = mAffinity = true;
-					//Log.Verbose("Affinity for '{ExecutableName}' (#{ProcessID}) set: {OldAffinity} → {NewAffinity}.",
-					//execname, pid, process.ProcessorAffinity.ToInt32(), Affinity.ToInt32());
+					// Log.Verbose("Affinity for '{ExecutableName}' (#{ProcessID}) set: {OldAffinity} → {NewAffinity}.",
+					// execname, pid, process.ProcessorAffinity.ToInt32(), Affinity.ToInt32());
 				}
 				else
 				{
-					//Log.Verbose("Affinity for '{ExecutableName}' (#{ProcessID}) is ALREADY set: {OldAffinity} → {NewAffinity}.",
-					//			info.Name, info.Id, info.Process.ProcessorAffinity.ToInt32(), Affinity.ToInt32());
+					// Log.Verbose("Affinity for '{ExecutableName}' (#{ProcessID}) is ALREADY set: {OldAffinity} → {NewAffinity}.",
+					// 			info.Name, info.Id, info.Process.ProcessorAffinity.ToInt32(), Affinity.ToInt32());
 				}
 			}
 			catch
@@ -657,7 +643,7 @@ namespace Taskmaster
 			}
 			*/
 
-			PowerInfo.PowerMode oldPP = PowerInfo.PowerMode.Undefined;
+			var oldPP = PowerInfo.PowerMode.Undefined;
 			if (Taskmaster.PowerManagerEnabled)
 			{
 				oldPP = Taskmaster.powermanager.CurrentMode;
@@ -697,16 +683,14 @@ namespace Taskmaster
 			if (mPriority)
 				sbs.Append(oldPriority.ToString()).Append(" → ");
 			sbs.Append(newPriority.ToString());
-			if (denyChange)
-				sbs.Append(" [Protected]");
+			if (denyChange) sbs.Append(" [Protected]");
 			sbs.Append("; Affinity: ");
 			if (mAffinity)
 				sbs.Append(oldAffinity.ToInt32()).Append(" → ");
 			sbs.Append(Affinity.ToInt32());
 			if (mPower)
 				sbs.Append(string.Format(" [Power Mode: {0}]", PowerPlan.ToString()));
-			if (mBGIO)
-				sbs.Append(" [BgIO!]");
+			if (mBGIO) sbs.Append(" [BgIO!]");
 
 			if (modified)
 			{
@@ -714,20 +698,19 @@ namespace Taskmaster
 			}
 			else
 			{
-				//if (DateTime.Now - LastSeen
+				// if (DateTime.Now - LastSeen
 				sbs.Append(" – looks OK, not touched.");
 				if (Taskmaster.ShowInaction && Taskmaster.DebugProcesses)
 					Log.Debug(sbs.ToString());
-				//else
-				//	Log.Verbose(sbs.ToString());
+				// else
+				// 	Log.Verbose(sbs.ToString());
 				rv = ProcessState.OK;
 			}
 
 			if (modified)
 				onTouch?.Invoke(this, new ProcessEventArgs { Control = this, Info = info });
 
-			if (schedule_next)
-				TryScan();
+			if (schedule_next) TryScan();
 
 			if (Recheck > 0 && recheck == false)
 			{
@@ -782,25 +765,23 @@ namespace Taskmaster
 		{
 			try
 			{
-				double n = (DateTime.Now - LastScan).TotalMinutes;
-				//Log.Trace(string.Format("[{0}] last scan {1:N1} minute(s) ago.", FriendlyName, n));
+				var n = (DateTime.Now - LastScan).TotalMinutes;
+				// Log.Trace(string.Format("[{0}] last scan {1:N1} minute(s) ago.", FriendlyName, n));
 				if (Rescan > 0 && n >= Rescan)
 				{
-					if (!Atomic.Lock(ref ScheduledScan))
-						return;
+					if (!Atomic.Lock(ref ScheduledScan)) return;
 
 					if (Taskmaster.DebugProcesses)
 						Log.Debug("[{FriendlyName}] Rescan initiating.", FriendlyName);
 
 					using (var m = SelfAwareness.Mind(DateTime.Now.AddSeconds(15)))
-					{
 						await Scan().ConfigureAwait(false);
-					}
+
 
 					ScheduledScan = 0;
 				}
-				//else
-				//	Log.Verbose("[{FriendlyName}] Scan too recent, ignoring.", FriendlyName); // this is too spammy.
+				// else
+				// 	Log.Verbose("[{FriendlyName}] Scan too recent, ignoring.", FriendlyName); // this is too spammy.
 			}
 			catch (Exception ex)
 			{
@@ -823,7 +804,7 @@ namespace Taskmaster
 				return;
 			}
 
-			//LastSeen = LastScan;
+			// LastSeen = LastScan;
 			LastScan = DateTime.Now;
 
 			if (procs.Length == 0) return;
@@ -831,7 +812,7 @@ namespace Taskmaster
 			if (Taskmaster.DebugProcesses)
 				Log.Debug("[{FriendlyName}] Scanning found {ProcessInstances} instance(s)", FriendlyName, procs.Length);
 
-			int tc = 0;
+			var tc = 0;
 			foreach (Process process in procs)
 			{
 				string name;
@@ -862,8 +843,7 @@ namespace Taskmaster
 		{
 			if (Path != null)
 			{
-				if (System.IO.Directory.Exists(Path))
-					return true;
+				if (System.IO.Directory.Exists(Path)) return true;
 				return false;
 			}
 
@@ -884,8 +864,8 @@ namespace Taskmaster
 
 			try
 			{
-				string corepath = System.IO.Path.GetDirectoryName(process.MainModule.FileName);
-				string fullpath = System.IO.Path.Combine(corepath, Subpath);
+				var corepath = System.IO.Path.GetDirectoryName(process.MainModule.FileName);
+				var fullpath = System.IO.Path.Combine(corepath, Subpath);
 				if (System.IO.Directory.Exists(fullpath))
 				{
 					Path = fullpath;
@@ -903,7 +883,7 @@ namespace Taskmaster
 			{
 				Log.Warning("[{FriendlyName}] Access failure while determining path.");
 				Logging.Stacktrace(ex);
-				//throw; // no point
+				// throw; // no point
 			}
 
 			return false;

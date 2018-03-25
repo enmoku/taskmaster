@@ -24,11 +24,11 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-using System.Threading.Tasks;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Threading.Tasks;
 using Serilog;
 
 namespace Taskmaster
@@ -69,12 +69,58 @@ namespace Taskmaster
 		List<ProcessController> watchlist = new List<ProcessController>();
 		readonly object watchlist_lock = new object();
 
+		// ctor, constructor
+		public ProcessManager()
+		{
+			Log.Information("CPU/Core count: {Cores}", CPUCount);
+
+			allCPUsMask = 1;
+			for (int i = 0; i < CPUCount - 1; i++)
+				allCPUsMask = (allCPUsMask << 1) | 1;
+
+			Log.Information("Full CPU mask: {ProcessorBitMask} ({ProcessorMask}) (OS control)",
+							Convert.ToString(allCPUsMask, 2), allCPUsMask);
+
+			loadWatchlist();
+
+			InitWMIEventWatcher();
+
+			if (execontrol.Count > 0)
+			{
+				if (Taskmaster.Trace) Log.Verbose("Starting rescan timer.");
+
+				if (RescanDelay > 0)
+				{
+					rescanTimer = new System.Threading.Timer(RescanOnTimerTick, null, 500, RescanDelay * 1000);
+				}
+			}
+
+			onInstanceHandling += UpdateHandling;
+			ProcessDetectedEvent += ProcessTriage;
+			if (Taskmaster.PathMonitorEnabled)
+				ScanEverythingEndEvent += EndScanUpdatePathWatch;
+
+			if (RescanEverythingFrequency > 0)
+			{
+				RescanEverythingTimer = new System.Timers.Timer();
+				RescanEverythingTimer.Interval = RescanEverythingFrequency * 1000;
+				RescanEverythingTimer.Elapsed += ScanEverythingRequest;
+				RescanEverythingTimer.Start();
+			}
+
+			if (Taskmaster.PathCacheLimit > 0)
+			{
+				ProcessManagerUtility.Initialize();
+			}
+
+			Log.Information("<Process Manager> Loaded.");
+		}
+
 		public ProcessController[] getWatchlist()
 		{
 			lock (watchlist_lock)
-			{
 				return watchlist.ToArray();
-			}
+
 		}
 
 		// TODO: Need an ID mapping
@@ -88,6 +134,7 @@ namespace Taskmaster
 						return item;
 				}
 			}
+
 			return null;
 		}
 
@@ -111,9 +158,9 @@ namespace Taskmaster
 		{
 			ProcessController rv = null;
 			lock (execontrol_lock)
-			{
 				execontrol.TryGetValue(LowerCase(executable), out rv);
-			}
+
+
 			return rv;
 		}
 
@@ -164,17 +211,16 @@ namespace Taskmaster
 						if (pathinit[i].Locate())
 						{
 							lock (watchlist_lock)
-							{
 								watchlist.Add(pathinit[i]);
-							}
+
+
 							WatchlistWithPath += 1;
 							pathinit.RemoveAt(i);
 						}
 					}
 				}
 
-				if (pathinit.Count == 0)
-					pathinit = null;
+				if (pathinit.Count == 0) pathinit = null;
 			}
 
 			if (Taskmaster.Trace) Log.Verbose("Path location complete.");
@@ -190,8 +236,7 @@ namespace Taskmaster
 		string freememoryignore = null;
 		async void FreeMemoryTick(object sender, ProcessEx info)
 		{
-			if (!string.IsNullOrEmpty(freememoryignore) && info.Name.Equals(freememoryignore))
-				return;
+			if (!string.IsNullOrEmpty(freememoryignore) && info.Name.Equals(freememoryignore)) return;
 
 			try
 			{
@@ -204,20 +249,13 @@ namespace Taskmaster
 		}
 
 		HashSet<int> ignorePids = new HashSet<int>();
-		public void Ignore(int processId)
-		{
-			ignorePids.Add(processId);
-		}
+		public void Ignore(int processId) => ignorePids.Add(processId);
 
-		public void Unignore(int processId)
-		{
-			ignorePids.Remove(processId);
-		}
+		public void Unignore(int processId) => ignorePids.Remove(processId);
 
 		public async Task FreeMemory(string executable = null)
 		{
 			if (!Taskmaster.PagingEnabled) return;
-
 
 			if (!string.IsNullOrEmpty(executable))
 			{
@@ -257,9 +295,8 @@ namespace Taskmaster
 			try
 			{
 				using (var m = SelfAwareness.Mind(DateTime.Now.AddSeconds(30)))
-				{
 					ScanEverything();
-				}
+
 			}
 			catch (Exception ex)
 			{
@@ -291,7 +328,7 @@ namespace Taskmaster
 
 			ScanEverythingStartEvent?.Invoke(this, null);
 
-			int count = 0;
+			var count = 0;
 			try
 			{
 				var procs = Process.GetProcesses();
@@ -301,14 +338,14 @@ namespace Taskmaster
 
 				using (var m = SelfAwareness.Mind(DateTime.Now.AddSeconds(5)))
 				{
-					int i = 0;
+					var i = 0;
 					foreach (var process in procs)
 					{
 						++i;
 						try
 						{
-							string name = process.ProcessName;
-							int pid = process.Id;
+							var name = process.ProcessName;
+							var pid = process.Id;
 
 							if (IgnoreProcessID(pid) || IgnoreProcessName(name))
 								continue;
@@ -354,10 +391,7 @@ namespace Taskmaster
 			}
 		}
 
-		void EndScanUpdatePathWatch(object sender, EventArgs ev)
-		{
-			UpdatePathWatch();
-		}
+		void EndScanUpdatePathWatch(object sender, EventArgs ev) => UpdatePathWatch();
 
 		static int BatchDelay = 2500;
 		static int RescanDelay = 0; // 5 minutes
@@ -366,13 +400,13 @@ namespace Taskmaster
 		public static DateTime NextRescan { get; set; } = DateTime.MinValue;
 		static bool BatchProcessing; // = false;
 		static int BatchProcessingThreshold = 5;
-		//static bool ControlChildren = false; // = false;
+		// static bool ControlChildren = false; // = false;
 
 		static System.Timers.Timer RescanEverythingTimer = null;
 
 		public bool ValidateController(ProcessController prc)
 		{
-			bool rv = true;
+			var rv = true;
 
 			if (prc.ForegroundOnly && prc.BackgroundPriority.ToInt32() >= prc.Priority.ToInt32())
 			{
@@ -424,8 +458,8 @@ namespace Taskmaster
 					WatchlistWithPath += 1;
 
 					// TODO: Add "Path" to config
-					//if (stats.Contains(cnt.Path))
-					//	cnt.Adjusts = stats[cnt.Path].TryGet("Adjusts")?.IntValue ?? 0;
+					// if (stats.Contains(cnt.Path))
+					// 	cnt.Adjusts = stats[cnt.Path].TryGet("Adjusts")?.IntValue ?? 0;
 				}
 				else
 				{
@@ -446,17 +480,15 @@ namespace Taskmaster
 			else
 			{
 				lock (execontrol_lock)
-				{
 					execontrol.Add(LowerCase(prc.ExecutableFriendlyName), prc);
-				}
 
-				//Log.Verbose("[{ExecutableName}] Added to monitoring.", cnt.FriendlyName);
+
+				// Log.Verbose("[{ExecutableName}] Added to monitoring.", cnt.FriendlyName);
 			}
 
 			lock (watchlist_lock)
-			{
 				watchlist.Add(prc);
-			}
+
 
 			Log.Verbose("[{FriendlyName}] Match: {MatchName}, {TargetPriority}, Mask:{Affinity}, Rescan: {Rescan}m, Recheck: {Recheck}s, FgOnly: {Fg}",
 						prc.FriendlyName, (prc.Executable ?? prc.Path), prc.Priority, prc.Affinity,
@@ -470,8 +502,8 @@ namespace Taskmaster
 			var coreperf = Taskmaster.cfg["Performance"];
 
 			bool dirtyconfig = false, modified = false;
-			//ControlChildren = coreperf.GetSetDefault("Child processes", false, out tdirty).BoolValue;
-			//dirtyconfig |= tdirty;
+			// ControlChildren = coreperf.GetSetDefault("Child processes", false, out tdirty).BoolValue;
+			// dirtyconfig |= tdirty;
 			BatchProcessing = coreperf.GetSetDefault("Batch processing", false, out modified).BoolValue;
 			coreperf["Batch processing"].Comment = "Process management works in delayed batches instead of immediately.";
 			dirtyconfig |= modified;
@@ -485,6 +517,7 @@ namespace Taskmaster
 				dirtyconfig |= modified;
 				Log.Information("Batch processing threshold: {BatchProcessingThreshold}", BatchProcessingThreshold);
 			}
+
 			RescanDelay = coreperf.GetSetDefault("Rescan frequency", 0, out modified).IntValue.Constrain(0, 60 * 6) * 60;
 			coreperf["Rescan frequency"].Comment = "In minutes. How often to check for apps that want to be rescanned. Disabled if rescan everything is enabled. 0 disables.";
 			dirtyconfig |= modified;
@@ -493,8 +526,9 @@ namespace Taskmaster
 			if (RescanEverythingFrequency > 0)
 			{
 				if (RescanEverythingFrequency < 5) RescanEverythingFrequency = 5;
-				//RescanEverythingFrequency *= 1000; // to seconds
+				// RescanEverythingFrequency *= 1000; // to seconds
 			}
+
 			coreperf["Rescan everything frequency"].Comment = "Frequency (in seconds) at which we rescan everything. 0 disables.";
 			dirtyconfig |= modified;
 
@@ -509,19 +543,19 @@ namespace Taskmaster
 			// --------------------------------------------------------------------------------------------------------
 
 			var fgpausesec = Taskmaster.cfg["Foreground Focus Lost"];
-			//RestoreOriginal = fgpausesec.GetSetDefault("Restore original", false, out modified).BoolValue;
-			//dirtyconfig |= modified;
+			// RestoreOriginal = fgpausesec.GetSetDefault("Restore original", false, out modified).BoolValue;
+			// dirtyconfig |= modified;
 			OffFocusPriority = fgpausesec.GetSetDefault("Default priority", 2, out modified).IntValue.Constrain(0, 4);
 			fgpausesec["Default priority"].Comment = "Default is normal to avoid excessive loading times while user is alt-tabbed.";
 			dirtyconfig |= modified;
-			//OffFocusAffinity = fgpausesec.GetSetDefault("Affinity", 0, out modified).IntValue;
-			//dirtyconfig |= modified;
-			//OffFocusPowerCancel = fgpausesec.GetSetDefault("Power mode cancel", true, out modified).BoolValue;
-			//dirtyconfig |= modified;
+			// OffFocusAffinity = fgpausesec.GetSetDefault("Affinity", 0, out modified).IntValue;
+			// dirtyconfig |= modified;
+			// OffFocusPowerCancel = fgpausesec.GetSetDefault("Power mode cancel", true, out modified).BoolValue;
+			// dirtyconfig |= modified;
 
 			// --------------------------------------------------------------------------------------------------------
 
-			//Taskmaster.cfg["Applications"]["Ignored"].StringValueArray = IgnoreList;
+			// Taskmaster.cfg["Applications"]["Ignored"].StringValueArray = IgnoreList;
 			var ignsetting = Taskmaster.cfg["Applications"];
 			string[] newIgnoreList = ignsetting.GetSetDefault("Ignored", IgnoreList, out modified)?.StringValueArray;
 			ignsetting.PreComment = "Special hardcoded protection applied to: consent, winlogon, wininit, and csrss.\nThese are vital system services and messing with them can cause severe system malfunctioning.\nMess with the ignore list at your own peril.";
@@ -536,12 +570,12 @@ namespace Taskmaster
 
 			if (dirtyconfig) Taskmaster.MarkDirtyINI(Taskmaster.cfg);
 
-			//Log.Information("Child process monitoring: {ChildControl}", (ControlChildren ? "Enabled" : "Disabled"));
+			// Log.Information("Child process monitoring: {ChildControl}", (ControlChildren ? "Enabled" : "Disabled"));
 
 			// --------------------------------------------------------------------------------------------------------
 
 			Log.Information("<Process Manager> Loading watchlist...");
-			SharpConfig.Configuration appcfg = Taskmaster.LoadConfig(watchfile);
+			var appcfg = Taskmaster.LoadConfig(watchfile);
 
 			if (appcfg.Count() == 0)
 			{
@@ -550,11 +584,10 @@ namespace Taskmaster
 				// DEFAULT CONFIGURATION
 				using (var rs = System.Reflection.Assembly.GetExecutingAssembly().GetManifestResourceStream("Taskmaster.Resources.Watchlist.ini"))
 				{
-					string path = System.IO.Path.Combine(Taskmaster.datapath, watchfile);
+					var path = System.IO.Path.Combine(Taskmaster.datapath, watchfile);
 					using (var file = new System.IO.FileStream(path, System.IO.FileMode.Create, System.IO.FileAccess.Write))
-					{
 						rs.CopyTo(file);
-					}
+
 				}
 
 				appcfg = Taskmaster.LoadConfig(watchfile);
@@ -562,7 +595,7 @@ namespace Taskmaster
 
 			// --------------------------------------------------------------------------------------------------------
 
-			int newsettings = coreperf.SettingCount;
+			var newsettings = coreperf.SettingCount;
 			if (dirtyconfig) Taskmaster.MarkDirtyINI(Taskmaster.cfg);
 
 			foreach (SharpConfig.Section section in appcfg)
@@ -573,6 +606,7 @@ namespace Taskmaster
 					Log.Warning("'{SectionName}' has no image nor path.", section.Name);
 					continue;
 				}
+
 				if (!section.Contains("Priority") && !section.Contains("Affinity"))
 				{
 					// TODO: Deal with incorrect configuration lacking image
@@ -580,10 +614,10 @@ namespace Taskmaster
 					continue;
 				}
 
-				int aff = section.TryGet("Affinity")?.IntValue ?? allCPUsMask;
-				int prio = section.TryGet("Priority")?.IntValue ?? 2;
-				string pmodes = section.TryGet("Power mode")?.StringValue ?? null;
-				PowerInfo.PowerMode pmode = PowerManager.GetModeByName(pmodes);
+				var aff = section.TryGet("Affinity")?.IntValue ?? allCPUsMask;
+				var prio = section.TryGet("Priority")?.IntValue ?? 2;
+				var pmodes = section.TryGet("Power mode")?.StringValue ?? null;
+				var pmode = PowerManager.GetModeByName(pmodes);
 				if (pmode == PowerInfo.PowerMode.Custom)
 				{
 					Log.Warning("'{SectionName}' has unrecognized power plan: {PowerPlan}", section.Name, pmodes);
@@ -616,10 +650,10 @@ namespace Taskmaster
 
 				addController(prc);
 
-				//cnt.Children &= ControlChildren;
+				// cnt.Children &= ControlChildren;
 
-				//cnt.delay = section.Contains("delay") ? section["delay"].IntValue : 30; // TODO: Add centralized default delay
-				//cnt.delayIncrement = section.Contains("delay increment") ? section["delay increment"].IntValue : 15; // TODO: Add centralized default increment
+				// cnt.delay = section.Contains("delay") ? section["delay"].IntValue : 30; // TODO: Add centralized default delay
+				// cnt.delayIncrement = section.Contains("delay increment") ? section["delay increment"].IntValue : 15; // TODO: Add centralized default increment
 			}
 
 			// --------------------------------------------------------------------------------------------------------
@@ -641,9 +675,8 @@ namespace Taskmaster
 		public void removeController(ProcessController prc)
 		{
 			lock (watchlist_lock)
-			{
 				watchlist.Remove(prc);
-			}
+
 		}
 
 		string LowerCase(string str)
@@ -665,18 +698,16 @@ namespace Taskmaster
 				if (Bit.IsSet(info.Flags, (int)ProcessFlags.ActiveWait))
 				{
 					lock (foreground_lock)
-					{
 						ForegroundWaitlist.Remove(info.Id);
-					}
+
 				}
 
 				if (Bit.IsSet(info.Flags, (int)ProcessFlags.PowerWait))
 					Taskmaster.powermanager.Restore(info.Id).Wait();
 
 				lock (waitforexit_lock)
-				{
 					WaitForExitList.Remove(info.Id);
-				}
+
 			}
 			catch (Exception ex)
 			{
@@ -696,7 +727,7 @@ namespace Taskmaster
 
 		public void CancelPowerWait()
 		{
-			int cancelled = 0;
+			var cancelled = 0;
 
 			Stack<ProcessEx> clearList = null;
 			lock (waitforexit_lock)
@@ -736,7 +767,7 @@ namespace Taskmaster
 
 		public bool WaitForExit(ProcessEx info)
 		{
-			bool rv = false;
+			var rv = false;
 			try
 			{
 				lock (waitforexit_lock)
@@ -765,6 +796,7 @@ namespace Taskmaster
 			{
 				Logging.Stacktrace(ex);
 			}
+
 			return rv;
 		}
 
@@ -781,8 +813,8 @@ namespace Taskmaster
 
 		public void ForegroundAppChangedEvent(object sender, WindowChangedArgs ev)
 		{
-			//if (Taskmaster.DebugForeground)
-			//	Log.Debug("Process Manager - Foreground Received: {Title}", ev.Title);
+			// if (Taskmaster.DebugForeground)
+			// 	Log.Debug("Process Manager - Foreground Received: {Title}", ev.Title);
 
 			if (PreviousForegroundInfo != null)
 			{
@@ -790,7 +822,7 @@ namespace Taskmaster
 				{
 					if (PreviousForegroundController != null)
 					{
-						//Log.Debug("PUTTING PREVIOUS FOREGROUND APP to BACKGROUND");
+						// Log.Debug("PUTTING PREVIOUS FOREGROUND APP to BACKGROUND");
 						PreviousForegroundController.Quell(PreviousForegroundInfo);
 						onActiveHandled?.Invoke(this, new ProcessEventArgs() { Control = PreviousForegroundController, Info = PreviousForegroundInfo, State = ProcessEventArgs.ProcessState.Reduced });
 					}
@@ -804,9 +836,8 @@ namespace Taskmaster
 
 			ProcessController prc = null;
 			lock (foreground_lock)
-			{
 				ForegroundWaitlist.TryGetValue(ev.Id, out prc);
-			}
+
 
 			if (prc != null)
 			{
@@ -887,15 +918,15 @@ namespace Taskmaster
 							continue; // CheckPathWatch does not handle combo path+exes
 					}
 
-					//Log.Debug("with: "+ pc.Path);
+					// Log.Debug("with: "+ pc.Path);
 					if (info.Path.StartsWith(prc.Path, StringComparison.InvariantCultureIgnoreCase)) // TODO: make this compatible with OSes that aren't case insensitive?
 					{
-						//if (cacheGet)
-						//	Log.Debug("[{FriendlyName}] {Exec} (#{Pid}) – PATH CACHE GET!! :D", pc.FriendlyName, name, pid);
+						// if (cacheGet)
+						// 	Log.Debug("[{FriendlyName}] {Exec} (#{Pid}) – PATH CACHE GET!! :D", pc.FriendlyName, name, pid);
 						if (Taskmaster.DebugPaths)
 							Log.Verbose("[{PathFriendlyName}] Matched at: {Path}", prc.FriendlyName, info.Path);
 
-						ProcessState rv = ProcessState.Invalid;
+						var rv = ProcessState.Invalid;
 						try
 						{
 							rv = prc.Touch(info, foreground: activeappmonitor?.isForeground(info.Id) ?? true);
@@ -923,10 +954,7 @@ namespace Taskmaster
 		public static string[] IgnoreList { get; private set; } = { "dllhost", "svchost", "taskeng", "consent", "taskhost", "rundll32", "conhost", "dwm", "wininit", "csrss", "winlogon", "services", "explorer", "taskmgr", "audiodg" };
 
 		const int LowestInvalidPid = 4;
-		bool IgnoreProcessID(int pid)
-		{
-			return (pid <= LowestInvalidPid || ignorePids.Contains(pid));
-		}
+		bool IgnoreProcessID(int pid) => (pid <= LowestInvalidPid || ignorePids.Contains(pid));
 
 		public static bool IgnoreProcessName(string name)
 		{
@@ -1029,7 +1057,7 @@ namespace Taskmaster
 		{
 			if (!prc.ForegroundOnly) return;
 
-			bool keyexists = true;
+			var keyexists = true;
 			lock (foreground_lock)
 			{
 				if ((keyexists = ForegroundWaitlist.ContainsKey(info.Id)) == false)
@@ -1060,7 +1088,7 @@ namespace Taskmaster
 			Debug.Assert(info.Process != null, "CheckProcess received null process.");
 			Debug.Assert(!IgnoreProcessID(info.Id), "CheckProcess received invalid process ID: " + info.Id);
 
-			ProcessState state = ProcessState.Invalid;
+			var state = ProcessState.Invalid;
 
 			if (IgnoreProcessID(info.Id) || IgnoreProcessName(info.Name))
 			{
@@ -1082,9 +1110,8 @@ namespace Taskmaster
 			Debug.Assert(info != null);
 
 			lock (execontrol_lock)
-			{
 				execontrol.TryGetValue(LowerCase(info.Name), out prc);
-			}
+
 
 			if (prc != null)
 			{
@@ -1094,7 +1121,7 @@ namespace Taskmaster
 					return ProcessState.Ignored;
 				}
 
-				//await System.Threading.Tasks.Task.Delay(ProcessModifyDelay).ConfigureAwait(false);
+				// await System.Threading.Tasks.Task.Delay(ProcessModifyDelay).ConfigureAwait(false);
 				ForegroundWatch(info, prc);
 
 				try
@@ -1107,14 +1134,15 @@ namespace Taskmaster
 					Logging.Stacktrace(ex);
 					state = ProcessState.Error;
 				}
+
 				return state; // execontrol had this, we don't care about anything else for this.
 			}
 
-			//Log.Verbose("{AppName} not in executable control list.", info.Name);
+			// Log.Verbose("{AppName} not in executable control list.", info.Name);
 
 			if (WatchlistWithPath > 0)
 			{
-				//Log.Verbose("Checking paths for '{ProcessName}' (#{ProcessID})", info.Name, info.Id);
+				// Log.Verbose("Checking paths for '{ProcessName}' (#{ProcessID})", info.Name, info.Id);
 				state = CheckPathWatch(info);
 			}
 
@@ -1171,9 +1199,8 @@ namespace Taskmaster
 			}
 
 			foreach (var info in list)
-			{
 				ProcessDetectedEvent?.Invoke(this, info);
-			}
+
 
 			SignalProcessHandled(-(list.Count));
 		}
@@ -1194,12 +1221,12 @@ namespace Taskmaster
 		{
 			SignalProcessHandled(1);
 
-			Stopwatch wmiquerytime = Stopwatch.StartNew();
+			var wmiquerytime = Stopwatch.StartNew();
 
 			// TODO: Instance groups?
-			int pid = -1;
-			string name = string.Empty;
-			string path = string.Empty;
+			var pid = -1;
+			var name = string.Empty;
+			var path = string.Empty;
 			System.Management.ManagementBaseObject targetInstance;
 			try
 			{
@@ -1279,7 +1306,7 @@ namespace Taskmaster
 
 			if (Taskmaster.Trace) Log.Verbose("Caught: {ProcessName} (#{ProcessID}) at: {Path}", info.Name, info.Id, info.Path);
 
-			DateTime start = DateTime.MinValue;
+			var start = DateTime.MinValue;
 			try
 			{
 				start = info.Process.StartTime;
@@ -1326,10 +1353,7 @@ namespace Taskmaster
 			}
 		}
 
-		async void RescanOnTimerTick(object state)
-		{
-			await RescanOnTimer().ConfigureAwait(false);
-		}
+		async void RescanOnTimerTick(object state) => await RescanOnTimer().ConfigureAwait(false);
 
 		async Task RescanOnTimer()
 		{
@@ -1337,11 +1361,11 @@ namespace Taskmaster
 
 			try
 			{
-				//Log.Verbose("Rescanning...");
+				// Log.Verbose("Rescanning...");
 
-				int nextscan = 1;
-				int tnext = 0;
-				int rescanrequests = 0;
+				var nextscan = 1;
+				var tnext = 0;
+				var rescanrequests = 0;
 				string nextscanfor = null;
 
 				lock (execontrol_lock)
@@ -1374,13 +1398,13 @@ namespace Taskmaster
 					try
 					{
 						rescanTimer.Change(500, nextscan.Constrain(1, 360) * (1000 * 60));
-						//rescanTimer.Interval = nextscan.Constrain(1, 360) * (1000 * 60);
+						// rescanTimer.Interval = nextscan.Constrain(1, 360) * (1000 * 60);
 					}
 					catch
 					{
 						Log.Error("Failed to set rescan timer based on scheduled next scan.");
 						rescanTimer.Change(500, 5 * (1000 * 60));
-						//rescanTimer.Interval = 5 * (1000 * 60);
+						// rescanTimer.Interval = 5 * (1000 * 60);
 					}
 
 					Log.Verbose("Rescan set to occur after {Scan} minutes, next in line: {Name}. Waiting {0}.", nextscan, nextscanfor);
@@ -1417,9 +1441,9 @@ namespace Taskmaster
 				*/
 
 				// Test if listening for Win32_ProcessStartTrace is any better?
-				//var tracequery = new System.Management.EventQuery("SELECT * FROM Win32_ProcessStartTrace");
+				// var tracequery = new System.Management.EventQuery("SELECT * FROM Win32_ProcessStartTrace");
 
-				//var query = new System.Management.EventQuery("SELECT TargetInstance FROM __InstanceCreationEvent WITHIN 5 WHERE TargetInstance ISA 'Win32_Process'");
+				// var query = new System.Management.EventQuery("SELECT TargetInstance FROM __InstanceCreationEvent WITHIN 5 WHERE TargetInstance ISA 'Win32_Process'");
 				var query = new System.Management.EventQuery(
 					"SELECT * FROM __InstanceCreationEvent WITHIN " + Taskmaster.WMIPollDelay + " WHERE TargetInstance ISA 'Win32_Process'");
 				watcher = new System.Management.ManagementEventWatcher(scope, query); // Avast cybersecurity causes this to throw an exception
@@ -1434,10 +1458,7 @@ namespace Taskmaster
 			{
 				watcher.EventArrived += NewInstanceTriage;
 
-				if (BatchProcessing)
-				{
-					StartBatchProcessingTimer();
-				}
+				if (BatchProcessing) StartBatchProcessingTimer();
 
 				watcher.Stopped += (object sender, System.Management.StoppedEventArgs e) =>
 				{
@@ -1464,53 +1485,6 @@ namespace Taskmaster
 		}
 
 		const string watchfile = "Watchlist.ini";
-
-		// ctor, constructor
-		public ProcessManager()
-		{
-			Log.Information("CPU/Core count: {Cores}", CPUCount);
-
-			allCPUsMask = 1;
-			for (int i = 0; i < CPUCount - 1; i++)
-				allCPUsMask = (allCPUsMask << 1) | 1;
-
-			Log.Information("Full CPU mask: {ProcessorBitMask} ({ProcessorMask}) (OS control)",
-							Convert.ToString(allCPUsMask, 2), allCPUsMask);
-
-			loadWatchlist();
-
-			InitWMIEventWatcher();
-
-			if (execontrol.Count > 0)
-			{
-				if (Taskmaster.Trace) Log.Verbose("Starting rescan timer.");
-
-				if (RescanDelay > 0)
-				{
-					rescanTimer = new System.Threading.Timer(RescanOnTimerTick, null, 500, RescanDelay * 1000);
-				}
-			}
-
-			onInstanceHandling += UpdateHandling;
-			ProcessDetectedEvent += ProcessTriage;
-			if (Taskmaster.PathMonitorEnabled)
-				ScanEverythingEndEvent += EndScanUpdatePathWatch;
-
-			if (RescanEverythingFrequency > 0)
-			{
-				RescanEverythingTimer = new System.Timers.Timer();
-				RescanEverythingTimer.Interval = RescanEverythingFrequency * 1000;
-				RescanEverythingTimer.Elapsed += ScanEverythingRequest;
-				RescanEverythingTimer.Start();
-			}
-
-			if (Taskmaster.PathCacheLimit > 0)
-			{
-				ProcessManagerUtility.Initialize();
-			}
-
-			Log.Information("<Process Manager> Loaded.");
-		}
 
 		/// <summary>
 		/// Cleanup.
@@ -1588,24 +1562,28 @@ namespace Taskmaster
 						activeappmonitor.ActiveChanged -= ForegroundAppChangedEvent;
 						activeappmonitor = null;
 					}
+
 					if (RescanEverythingTimer != null)
 					{
 						RescanEverythingTimer.Stop(); // shouldn't be necessary
 						RescanEverythingTimer.Dispose();
 						RescanEverythingTimer = null;
 					}
-					//watcher.EventArrived -= NewInstanceTriage;
+
+					// watcher.EventArrived -= NewInstanceTriage;
 					if (watcher != null)
 					{
 						watcher.Stop(); // shouldn't be necessary
 						watcher.Dispose();
 						watcher = null;
 					}
+
 					if (rescanTimer != null)
 					{
 						rescanTimer.Dispose();
 						rescanTimer = null;
 					}
+
 					if (BatchProcessingTimer != null)
 					{
 						StopBatchProcessingTimer();
@@ -1614,7 +1592,7 @@ namespace Taskmaster
 				catch (Exception ex)
 				{
 					Logging.Stacktrace(ex);
-					//throw; // would throw but this is dispose
+					// throw; // would throw but this is dispose
 				}
 
 				saveStats();
@@ -1636,7 +1614,7 @@ namespace Taskmaster
 				catch (Exception ex)
 				{
 					Logging.Stacktrace(ex);
-					//throw; // would throw but this is dispose 
+					// throw; // would throw but this is dispose
 				}
 			}
 
@@ -1651,9 +1629,8 @@ namespace Taskmaster
 			lock (watchlist_lock)
 			{
 				foreach (ProcessController prc in watchlist)
-				{
 					prc.SaveStats();
-				}
+
 			}
 		}
 	}
