@@ -31,14 +31,14 @@ using Serilog;
 
 namespace Taskmaster
 {
-	public class VolumeChangedEventArgs : EventArgs
+	sealed public class VolumeChangedEventArgs : EventArgs
 	{
 		public double Old { get; set; }
 		public double New { get; set; }
 		public int Corrections { get; set; }
 	}
 
-	public class MicManager
+	sealed public class MicManager
 	{
 		public event EventHandler<VolumeChangedEventArgs> VolumeChanged;
 
@@ -186,10 +186,10 @@ namespace Taskmaster
 		public void Dispose()
 		{
 			Dispose(true);
-			// GC.SuppressFinalize(this); // why?
+			GC.SuppressFinalize(this); // why?
 		}
 
-		protected virtual void Dispose(bool disposing)
+		void Dispose(bool disposing)
 		{
 			if (disposed) return;
 

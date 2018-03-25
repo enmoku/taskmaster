@@ -28,7 +28,7 @@ using System.Windows.Forms;
 
 namespace Taskmaster
 {
-	public class ComponentConfigurationWindow : Form
+	sealed public class ComponentConfigurationWindow : Form
 	{
 		public ComponentConfigurationWindow(bool initial = true)
 		{

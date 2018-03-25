@@ -44,7 +44,7 @@ namespace Taskmaster
 		public long Desirability;
 	}
 
-	public class Cache<K1, K2, T> : IDisposable where T : class where K2 : class
+	sealed public class Cache<K1, K2, T> : IDisposable where T : class where K2 : class
 	{
 		public enum EvictStrategy
 		{
@@ -272,7 +272,7 @@ namespace Taskmaster
 		#region IDisposable Support
 		bool disposed = false; // To detect redundant calls
 
-		protected virtual void Dispose(bool disposing)
+		void Dispose(bool disposing)
 		{
 			if (!disposed)
 			{
@@ -295,7 +295,7 @@ namespace Taskmaster
 		#endregion
 	}
 
-	public class CacheEventArgs : EventArgs
+	sealed public class CacheEventArgs : EventArgs
 	{
 		public long Objects;
 		public long Hits;

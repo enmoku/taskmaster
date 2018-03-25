@@ -42,11 +42,11 @@ namespace Taskmaster
 		public TimeSpan Uptime;
 	}
 
-	public class InternetStatus : NetworkStatus
+	sealed public class InternetStatus : NetworkStatus
 	{
 	}
 
-	public class NetManager : IDisposable
+	sealed public class NetManager : IDisposable
 	{
 		DateTime lastUptimeStart;
 
@@ -570,7 +570,7 @@ namespace Taskmaster
 		}
 
 		bool disposed; // = false;
-		protected virtual void Dispose(bool disposing)
+		void Dispose(bool disposing)
 		{
 			if (disposed) return;
 

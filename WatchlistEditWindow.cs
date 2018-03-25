@@ -32,7 +32,7 @@ using Serilog;
 
 namespace Taskmaster
 {
-	public class WatchlistEditWindow : Form
+	sealed public class WatchlistEditWindow : Form
 	{
 		public ProcessController Controller;
 

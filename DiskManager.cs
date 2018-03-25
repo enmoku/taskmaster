@@ -31,7 +31,7 @@ using Serilog;
 
 namespace Taskmaster
 {
-	public class DiskManager : IDisposable
+	sealed public class DiskManager : IDisposable
 	{
 		static readonly string systemTemp = System.IO.Path.Combine(System.Environment.GetFolderPath(Environment.SpecialFolder.Windows), "Temp");
 		static string userTemp => System.IO.Path.GetTempPath();
@@ -177,7 +177,7 @@ namespace Taskmaster
 		}
 	}
 
-	public class DiskEventArgs : EventArgs
+	sealed public class DiskEventArgs : EventArgs
 	{
 		public DiskManager.ScanState State { get; set; }
 		public DiskManager.DirectoryStats Stats { get; set; }

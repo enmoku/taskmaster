@@ -32,7 +32,7 @@ using Taskmaster.PowerInfo;
 
 namespace Taskmaster
 {
-	public class PowerConfigWindow : Form
+	sealed public class PowerConfigWindow : Form
 	{
 		public AutoAdjustSettings oldAutoAdjust;
 		public AutoAdjustSettings newAutoAdjust;

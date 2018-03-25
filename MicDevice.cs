@@ -26,7 +26,7 @@
 
 namespace Taskmaster
 {
-	public class MicDevice
+	sealed public class MicDevice
 	{
 		public string Name { get; set; }
 		public string GUID { get; set; }

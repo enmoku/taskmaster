@@ -28,7 +28,7 @@ using System.Windows.Forms;
 
 namespace Taskmaster
 {
-	public class TextInputBox : Form
+	sealed public class TextInputBox : Form
 	{
 		public string Value { get; private set; } = null;
 

@@ -75,7 +75,7 @@ namespace Taskmaster
 		}
 	}
 
-	public class NetDevice
+	sealed public class NetDevice
 	{
 		public int Index { get; set; }
 

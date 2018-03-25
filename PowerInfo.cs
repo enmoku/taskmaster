@@ -37,7 +37,7 @@ namespace Taskmaster
 			Undefined = 3
 		};
 
-		public class AutoAdjustSettings
+		sealed public class AutoAdjustSettings
 		{
 			public PowerLevels Low = new PowerLevels();
 			public PowerLevels High = new PowerLevels();
@@ -45,14 +45,14 @@ namespace Taskmaster
 			public PowerMode DefaultMode = PowerMode.Balanced;
 		}
 
-		public class PowerLevels
+		sealed public class PowerLevels
 		{
 			public BackoffThresholds Backoff = new BackoffThresholds();
 			public CommitThreshold Commit = new CommitThreshold();
 			public PowerMode Mode = PowerMode.Balanced;
 		}
 
-		public class BackoffThresholds
+		sealed public class BackoffThresholds
 		{
 			public int Level;
 
@@ -61,7 +61,7 @@ namespace Taskmaster
 			public float High;
 		}
 
-		public class CommitThreshold
+		sealed public class CommitThreshold
 		{
 			public int Level;
 			public float Threshold;

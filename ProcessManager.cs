@@ -33,19 +33,19 @@ using Serilog;
 
 namespace Taskmaster
 {
-	public class InstanceEventArgs : EventArgs
+	sealed public class InstanceEventArgs : EventArgs
 	{
 		public int Count { get; set; } = 0;
 		public int Total { get; set; } = 0;
 	}
 
-	public class ProcessNotFoundException : Exception
+	sealed public class ProcessNotFoundException : Exception
 	{
 		public string Name { get; set; } = null;
 		public int Id { get; set; } = -1;
 	}
 
-	public class ProcessEx
+	sealed public class ProcessEx
 	{
 		public string Name;
 		public string Path;
@@ -1635,7 +1635,7 @@ namespace Taskmaster
 		}
 	}
 
-	public class ProcessorEventArgs : EventArgs
+	sealed public class ProcessorEventArgs : EventArgs
 	{
 		public float Current;
 		public float Average;

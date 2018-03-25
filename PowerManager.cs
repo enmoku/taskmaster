@@ -37,13 +37,13 @@ using Taskmaster.PowerInfo;
 
 namespace Taskmaster
 {
-	public class PowerModeEventArgs : EventArgs
+	sealed public class PowerModeEventArgs : EventArgs
 	{
 		public PowerMode OldMode { get; set; }
 		public PowerMode NewMode { get; set; }
 	}
 
-	public class PowerManager : Form // form is required for receiving messages, no other reason
+	sealed public class PowerManager : Form // form is required for receiving messages, no other reason
 	{
 		// static Guid GUID_POWERSCHEME_PERSONALITY = new Guid("245d8541-3943-4422-b025-13A7-84F679B7");
 		static Guid GUID_POWERSCHEME_PERSONALITY = new Guid(0x245D8541, 0x3943, 0x4422, 0xB0, 0x25, 0x13, 0xA7, 0x84, 0xF6, 0x79, 0xB7);

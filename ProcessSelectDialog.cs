@@ -31,7 +31,7 @@ using System.Windows.Forms;
 
 namespace Taskmaster
 {
-	public class ProcessSelectDialog : Form
+	sealed public class ProcessSelectDialog : Form
 	{
 		public string Selection { get; private set; } = null;
 

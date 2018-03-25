@@ -31,7 +31,7 @@ using PostSharp.Serialization;
 namespace Taskmaster.Aspects
 {
 	[PSerializable]
-	public class LoggingAspect : OnMethodBoundaryAspect
+	sealed public class LoggingAspect : OnMethodBoundaryAspect
 	{
 		public override void OnEntry(MethodExecutionArgs args)
 		{

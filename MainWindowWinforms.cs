@@ -2394,7 +2394,7 @@ namespace Taskmaster
 		}
 	}
 
-	public class WatchlistSorter : IComparer
+	sealed public class WatchlistSorter : IComparer
 	{
 		public int Column { get; set; } = 0;
 		public SortOrder Order { get; set; } = SortOrder.Ascending;

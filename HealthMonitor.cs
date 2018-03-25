@@ -34,7 +34,7 @@ namespace Taskmaster
 	/// <summary>
 	/// Monitors for variety of problems and reports on them.
 	/// </summary>
-	public class HealthMonitor : IDisposable // Auto-Doc
+	sealed public class HealthMonitor : IDisposable // Auto-Doc
 	{
 		Dictionary<int, Problem> activeProblems = new Dictionary<int, Problem>();
 
@@ -278,7 +278,7 @@ namespace Taskmaster
 		Dismissed
 	}
 
-	class Problem
+	sealed class Problem
 	{
 		int Id;
 		string Description;
@@ -303,7 +303,7 @@ namespace Taskmaster
 
 	}
 
-	class MemoryAutoDoc : AutoDoc
+	sealed class MemoryAutoDoc : AutoDoc
 	{
 		public int Hooks() => 0;
 

@@ -28,13 +28,13 @@ using System;
 
 namespace Taskmaster
 {
-	public class Uptime
+	sealed public class Uptime
 	{
 		public int Time { get; set; }
 		public DateTime Stamp { get; set; }
 	}
 
-	public class UptimeTracker
+	sealed public class UptimeTracker
 	{
 		readonly System.Collections.Queue Stack;
 

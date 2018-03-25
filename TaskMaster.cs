@@ -54,7 +54,7 @@ using Taskmaster.SerilogMemorySink;
 namespace Taskmaster
 {
 	[System.Runtime.InteropServices.Guid("088f7210-51b2-4e06-9bd4-93c27a973874")]//there's no point to this, is there?
-	public class Taskmaster
+	public static class Taskmaster
 	{
 		public static string URL { get; } = "https://github.com/mkahvi/taskmaster";
 

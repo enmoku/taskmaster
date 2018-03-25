@@ -35,7 +35,7 @@ namespace Taskmaster
 	/// <summary>
 	/// Module for monitoring the app itself.
 	/// </summary>
-	public class SelfAwareness : IDisposable
+	sealed public class SelfAwareness : IDisposable
 	{
 		static readonly object AwarenessMap_lock = new object();
 		static ConcurrentDictionary<int, Awareness> AwarenessMap;
@@ -217,7 +217,7 @@ namespace Taskmaster
 		}
 	}
 
-	public class Awareness : IDisposable
+	sealed public class Awareness : IDisposable
 	{
 		public int Key;
 
@@ -261,7 +261,7 @@ namespace Taskmaster
 		}
 
 		bool disposed; // = false;
-		protected virtual void Dispose(bool disposing)
+		void Dispose(bool disposing)
 		{
 			if (disposed)
 			{

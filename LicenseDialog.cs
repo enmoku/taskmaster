@@ -29,7 +29,7 @@ using System.Windows.Forms;
 
 namespace Taskmaster
 {
-	class LicenseDialog : Form
+	sealed class LicenseDialog : Form
 	{
 		public LicenseDialog(bool initial = true)
 		{

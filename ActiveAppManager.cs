@@ -30,7 +30,7 @@ using Serilog;
 
 namespace Taskmaster
 {
-	public class WindowChangedArgs : EventArgs
+	sealed public class WindowChangedArgs : EventArgs
 	{
 		public IntPtr hWnd { get; set; }
 		public int Id { get; set; }
@@ -40,7 +40,7 @@ namespace Taskmaster
 		public string Executable { get; set; }
 	}
 
-	public class ActiveAppManager : IDisposable
+	sealed public class ActiveAppManager : IDisposable
 	{
 		public event EventHandler<WindowChangedArgs> ActiveChanged;
 

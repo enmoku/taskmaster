@@ -30,7 +30,7 @@ using System.Diagnostics;
 
 namespace Taskmaster
 {
-	public class PerformanceCounterWrapper : IDisposable
+	sealed public class PerformanceCounterWrapper : IDisposable
 	{
 		public static List<PerformanceCounter> Sensors = new List<PerformanceCounter>(3);
 
@@ -73,7 +73,7 @@ namespace Taskmaster
 			GC.SuppressFinalize(this);
 		}
 
-		protected virtual void Dispose(bool disposing)
+		void Dispose(bool disposing)
 		{
 			if (disposed) return;
 			if (disposing)

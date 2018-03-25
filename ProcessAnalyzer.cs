@@ -29,12 +29,12 @@ using System.Diagnostics;
 
 namespace Taskmaster
 {
-	public class ProcessAnalysis
+	sealed public class ProcessAnalysis
 	{
 		public bool bla;
 	}
 
-	public class ProcessAnalyzer
+	sealed public class ProcessAnalyzer
 	{
 		public ProcessAnalyzer()
 		{

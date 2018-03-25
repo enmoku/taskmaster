@@ -29,7 +29,7 @@ using System.Runtime.InteropServices;
 
 namespace Taskmaster
 {
-	class MemoryController
+	sealed class MemoryController
 	{
 		readonly Process process;
 		readonly MemoryPriority priority;

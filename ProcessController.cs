@@ -37,7 +37,7 @@ namespace Taskmaster
 	/// <summary>
 	/// Process controller.
 	/// </summary>
-	public class ProcessController : IDisposable
+	sealed public class ProcessController : IDisposable
 	{
 		/// <summary>
 		/// Public identifier.
@@ -899,7 +899,7 @@ namespace Taskmaster
 		}
 
 		bool disposed; // = false;
-		protected virtual void Dispose(bool disposing)
+		void Dispose(bool disposing)
 		{
 			if (disposed) return;
 
@@ -912,11 +912,11 @@ namespace Taskmaster
 		}
 	}
 
-	public class PathControlEventArgs : EventArgs
+	sealed public class PathControlEventArgs : EventArgs
 	{
 	}
 
-	public class ProcessEventArgs : EventArgs
+	sealed public class ProcessEventArgs : EventArgs
 	{
 		public ProcessController Control { get; set; }
 		public ProcessEx Info;
