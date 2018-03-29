@@ -211,13 +211,25 @@ namespace Taskmaster
 		/// </summary>
 		public static async Task Evaluate()
 		{
-			await Task.Delay(0);
-			processmanager.ScanEverythingRequest(null, null);
+			// await EvaluateDispatch().ConfigureAwait(false);
+			Task.Factory.StartNew(EvaluateDispatch, TaskCreationOptions.RunContinuationsAsynchronously);
 		}
 
-		public static async Task ShowMainWindow()
+		static async Task EvaluateDispatch()
 		{
-			await Task.Delay(0);
+			try
+			{
+				processmanager?.ScanEverythingRequest(null, null);
+			}
+			catch (Exception ex)
+			{
+				Logging.Stacktrace(ex);
+			}
+		}
+
+		public static async void ShowMainWindow()
+		{
+			//await Task.Delay(0);
 
 			try
 			{
@@ -389,8 +401,10 @@ namespace Taskmaster
 				activeappmonitor.SetupEventHook();
 			}
 
-			if (HealthMonitorEnabled && ProcessMonitorEnabled)
-				healthmonitor.hookProcessManager(ref processmanager);
+			if (PowerManagerEnabled)
+			{
+				powermanager.SetupEventHook();
+			}
 
 			// UI
 
@@ -405,6 +419,9 @@ namespace Taskmaster
 			{
 				var self = Process.GetCurrentProcess();
 				self.PriorityClass = SelfPriority; // should never throw
+				System.Threading.Thread currentThread = System.Threading.Thread.CurrentThread;
+				currentThread.Priority = self.PriorityClass.ToThreadPriority(); // is this useful?
+
 				if (SelfAffinity < 0)
 				{
 					// mask self to the last core
@@ -428,8 +445,6 @@ namespace Taskmaster
 				Console.WriteLine("Displaying Tray Icon");
 			trayaccess.Refresh();
 		}
-
-		public static bool LogPower = false;
 
 		public static bool DebugProcesses = false;
 		public static bool DebugPaths = false;
@@ -674,9 +689,9 @@ namespace Taskmaster
 			}
 			// STOP IT
 
-			Log.Information("Privilege level: {Privilege}", isadmin ? "Admin" : "User");
+			Log.Information("<Core> Privilege level: {Privilege}", isadmin ? "Admin" : "User");
 
-			Log.Information("Path cache: " + (PathCacheLimit == 0 ? "Disabled" : PathCacheLimit + " items"));
+			Log.Information("<Core> Path cache: " + (PathCacheLimit == 0 ? "Disabled" : PathCacheLimit + " items"));
 		}
 
 		static int isAdmin = -1;
@@ -1005,6 +1020,18 @@ namespace Taskmaster
 					Environment.Exit(-1);
 				}
 			}
+		}
+
+		// From StarOverflow: https://stackoverflow.com/q/22579206
+		[Conditional("DEBUG")]
+		public static void ThreadIdentity(string message = "")
+		{
+			var thread = System.Threading.Thread.CurrentThread;
+			string name = thread.IsThreadPoolThread
+				? "Thread pool" : thread.Name;
+			if (string.IsNullOrEmpty(name))
+				name = "#" + thread.ManagedThreadId;
+			Console.WriteLine("Continuation on: " + name + " --- " + message);
 		}
 
 		// entry point to the application

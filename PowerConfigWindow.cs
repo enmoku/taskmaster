@@ -202,6 +202,8 @@ namespace Taskmaster
 		static int PowerConfigVisible = 0;
 		public static async Task ShowPowerConfig()
 		{
+			//await Task.Delay(0);
+
 			if (Atomic.Lock(ref PowerConfigVisible))
 			{
 				try

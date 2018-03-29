@@ -36,7 +36,7 @@ namespace Taskmaster
 	/// </summary>
 	sealed public class HealthMonitor : IDisposable // Auto-Doc
 	{
-		Dictionary<int, Problem> activeProblems = new Dictionary<int, Problem>();
+		//Dictionary<int, Problem> activeProblems = new Dictionary<int, Problem>();
 
 		public HealthMonitor()
 		{
@@ -114,9 +114,6 @@ namespace Taskmaster
 			Log.Information("<Auto-Doc> Loaded");
 		}
 
-		ProcessManager processmanager = null;
-		public void hookProcessManager(ref ProcessManager pman) => processmanager = pman;
-
 		System.Threading.Timer healthTimer = null;
 
 		int MemLevel = 1000;
@@ -189,6 +186,8 @@ namespace Taskmaster
 		{
 			await Task.Delay(0);
 
+			// Console.WriteLine("<<Auto-Doc>> Checking...");
+
 			if (MemLevel > 0)
 			{
 				var memfreemb = memfree?.Value ?? 0; // MB
@@ -199,6 +198,8 @@ namespace Taskmaster
 				// Console.WriteLine("Memory free: " + string.Format("{0:N1}", memfreet) + " / " + MemLevel);
 				if (memfreemb <= MemLevel)
 				{
+					// Console.WriteLine("<<Auto-Doc>> Memlevel below threshold.");
+
 					var now = DateTime.Now;
 					var cooldown = (now - MemFreeLast).TotalMinutes; // passed time since MemFreeLast
 					MemFreeLast = now;
@@ -210,28 +211,41 @@ namespace Taskmaster
 						// The following should just call something in ProcessManager
 
 						var ignorepid = -1;
-						if (MemIgnoreFocus)
+						try
 						{
-							ignorepid = Taskmaster.activeappmonitor.Foreground;
-							processmanager.Ignore(ignorepid);
+							if (MemIgnoreFocus)
+							{
+								ignorepid = Taskmaster.activeappmonitor.Foreground;
+								Taskmaster.processmanager.Ignore(ignorepid);
+							}
+
+							Log.Information("<<Auto-Doc>> Free memory low [{Memory}], attempting to improve situation.", HumanInterface.ByteString((long)memfreemb * 1000000));
+
+							await Taskmaster.processmanager.FreeMemory(null);
+						}
+						finally
+						{
+							if (MemIgnoreFocus)
+								Taskmaster.processmanager.Unignore(ignorepid);
 						}
 
-						Log.Information("<<Auto-Doc>> Free memory low [{Memory}], attempting to free memory.", HumanInterface.ByteString((long)memfreemb * 1000000));
+						// sampled too soon, OS has had no significant time to swap out data
 
-						await processmanager.FreeMemory(null);
-
-						if (MemIgnoreFocus)
-							processmanager.Unignore(ignorepid);
-
+						var memfreemb2 = memfree?.Value ?? 0; // MB
 						var commitp2 = commitpercentile?.Value ?? 0;
 						var commitb2 = commitbytes?.Value ?? 0;
 						var actualbytes = commitb * (commitp / 100);
 						var actualbytes2 = commitb2 * (commitp2 / 100);
 
-						Log.Information("<<Auto-Doc>> Commit: {Commit} / {Limit} ({Improvement} change seen)",
-										HumanInterface.ByteString((long)commitb2), HumanInterface.ByteString((long)commitlimitb),
-										HumanInterface.ByteString((long)(actualbytes - actualbytes2)));
+						Log.Information("<<Auto-Doc>> Free memory: {Memory} ({Change} change observed)",
+							HumanInterface.ByteString((long)(memfreemb2 * 1000)),
+							//HumanInterface.ByteString((long)commitb2), HumanInterface.ByteString((long)commitlimitb),
+							HumanInterface.ByteString((long)(actualbytes - actualbytes2)));
 					}
+				}
+				else if (memfreemb * 1.5 <= MemLevel)
+				{
+					Console.WriteLine("DEBUG: Free memory fairly low: " + HumanInterface.ByteString((long)(memfreemb * 1000)));
 				}
 			}
 		}
@@ -270,6 +284,7 @@ namespace Taskmaster
 		}
 	}
 
+	/*
 	enum ProblemState
 	{
 		New,
@@ -311,4 +326,5 @@ namespace Taskmaster
 		{
 		}
 	}
+	*/
 }

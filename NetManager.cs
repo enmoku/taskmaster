@@ -110,16 +110,16 @@ namespace Taskmaster
 			AnalyzeTrafficBehaviourTick(null); // initialize, not really needed
 			packetStatTimer = new System.Threading.Timer(AnalyzeTrafficBehaviourTick, null, 500, PacketStatTimerInterval * 1000);
 
-			Log.Information("<Net Manager> Loaded.");
+			Log.Information("<Network> Component loaded.");
 		}
 
 		int packetWarning = 0;
 		List<NetDevice> CurrentInterfaceList;
 
-		async void AnalyzeTrafficBehaviourTick(object state) => await AnalyzeTrafficBehaviour();
+		async void AnalyzeTrafficBehaviourTick(object state) => AnalyzeTrafficBehaviour();
 
 		int analyzetrafficbehaviour_lock = 0;
-		async Task AnalyzeTrafficBehaviour()
+		async void AnalyzeTrafficBehaviour()
 		{
 			Debug.Assert(CurrentInterfaceList != null);
 
@@ -253,9 +253,9 @@ namespace Taskmaster
 			ReportCurrentUpstate();
 		}
 
-		public void SampleDeviceState(object state)
+		public async void SampleDeviceState(object state)
 		{
-			RecordDeviceState(InternetAvailable, false).ConfigureAwait(false);
+			await RecordDeviceState(InternetAvailable, false);
 		}
 
 		bool lastOnlineState; // = false;
@@ -353,7 +353,7 @@ namespace Taskmaster
 			else
 				InternetAvailable = false;
 
-			await RecordDeviceState(InternetAvailable, address_changed).ConfigureAwait(false);
+			RecordDeviceState(InternetAvailable, address_changed);
 
 			if (oldInetAvailable != InternetAvailable)
 				Log.Information("<Network> Status: {NetworkAvailable}, Internet: {InternetAvailable}", (NetworkAvailable ? "Up" : "Down"), (InternetAvailable ? "Connected" : "Disconnected"));

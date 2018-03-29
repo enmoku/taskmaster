@@ -128,6 +128,7 @@ namespace Taskmaster
 			Controller.Increase = increasePrio.Checked;
 			Controller.Decrease = decreasePrio.Checked;
 			Controller.Affinity = new IntPtr(cpumask == 0 ? ProcessManager.allCPUsMask : cpumask);
+			Controller.ModifyDelay = (int)(modifyDelay.Value * 1000);
 			Controller.PowerPlan = PowerManager.GetModeByName(powerPlan.Text);
 			if (Controller.PowerPlan == PowerInfo.PowerMode.Custom) Controller.PowerPlan = PowerInfo.PowerMode.Undefined;
 			Controller.Rescan = Convert.ToInt32(rescanFreq.Value);
@@ -162,9 +163,11 @@ namespace Taskmaster
 		CheckBox decreasePrio = new CheckBox();
 		NumericUpDown affinityMask = new NumericUpDown();
 		NumericUpDown rescanFreq = new NumericUpDown();
+		NumericUpDown modifyDelay = new NumericUpDown();
 		CheckBox allowPaging = new CheckBox();
 		ComboBox powerPlan = new ComboBox();
 		CheckBox foregroundOnly = new CheckBox();
+		CheckBox bacgroundPowerdown = new CheckBox();
 		ListView ignorelist = new ListView();
 		int cpumask = 0;
 
@@ -473,6 +476,18 @@ namespace Taskmaster
 			// lt.Controls.Add(new Label { Text="Children"});
 			// lt.Controls.Add(new Label { Text="Child priority"});
 
+			// MODIFY DELAY
+
+			lt.Controls.Add(new Label() { Text = "Modify delay", TextAlign = System.Drawing.ContentAlignment.MiddleLeft });
+			modifyDelay.Minimum = 0;
+			modifyDelay.Maximum = 180;
+			modifyDelay.DecimalPlaces = 1;
+			modifyDelay.Value = ((decimal)Controller.ModifyDelay) / 1000;
+			modifyDelay.Width = 80;
+			tooltip.SetToolTip(modifyDelay, "Delay before the process is actually attempted modification.\nEither to keep original priority for a short while, or to counter early self-adjustment.\nThis is also applied to foreground only limited modifications.");
+			lt.Controls.Add(modifyDelay);
+			lt.Controls.Add(new Label()); // empty
+
 			// POWER
 			lt.Controls.Add(new Label { Text = "Power plan", TextAlign = System.Drawing.ContentAlignment.MiddleLeft });
 			foreach (string t in PowerManager.PowerModes)
@@ -486,10 +501,17 @@ namespace Taskmaster
 			lt.Controls.Add(new Label()); // empty
 
 			// FOREGROUND
-			lt.Controls.Add(new Label { Text = "Foreground only", TextAlign = System.Drawing.ContentAlignment.MiddleLeft });
+			lt.Controls.Add(new Label { Text = "Foreground only", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true });
 			foregroundOnly.Checked = Controller.ForegroundOnly;
 			tooltip.SetToolTip(foregroundOnly, "Lower priority and power mode is restored when this app is not in focus.");
 			lt.Controls.Add(foregroundOnly);
+			lt.Controls.Add(new Label()); // empty
+
+			// POWERDOWN in background
+			lt.Controls.Add(new Label() { Text = "Background powerdown", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true });
+			bacgroundPowerdown.Checked = Controller.BackgroundPowerdown;
+			tooltip.SetToolTip(bacgroundPowerdown, "Power down any power mode when the app goes off focus.");
+			lt.Controls.Add(bacgroundPowerdown);
 			lt.Controls.Add(new Label()); // empty
 
 			// TODO: Add modifying background priority

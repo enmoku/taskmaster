@@ -306,7 +306,6 @@ namespace Taskmaster
 			processmanager = control;
 
 			processmanager.onInstanceHandling += ProcessNewInstanceCount;
-			processmanager.PathCacheUpdate += PathCacheUpdate;
 			processmanager.onActiveHandled += ExitWaitListHandler;
 			processmanager.onWaitForExitEvent += ExitWaitListHandler;
 			PathCacheUpdate(null, null);
@@ -477,6 +476,7 @@ namespace Taskmaster
 		ListView powerbalancerlog;
 		Label powerbalancer_behaviour;
 		Label powerbalancer_plan;
+		Label powerbalancer_forcedcount;
 
 		readonly object powerbalancerlog_lock = new object();
 
@@ -516,10 +516,17 @@ namespace Taskmaster
 		Label cacheRatio;
 		#endregion
 
+		int PathCacheUpdateSkips = 3;
+
 		[Aspects.UIThreadAspect]
-		public void PathCacheUpdate(object sender, CacheEventArgs ev)
+		public void PathCacheUpdate(object sender, EventArgs ev)
 		{
 			if (!IsHandleCreated) return;
+
+			if (PathCacheUpdateSkips++ == 4)
+				PathCacheUpdateSkips = 0;
+			else
+				return;
 
 			try
 			{
@@ -1142,6 +1149,9 @@ namespace Taskmaster
 			if (Taskmaster.ProcessMonitorEnabled && ProcessManager.RescanEverythingFrequency > 0)
 				UItimer.Tick += UpdateRescanCountdown;
 
+			if (Taskmaster.PathCacheLimit > 0)
+				UItimer.Tick += PathCacheUpdate;
+
 			ifaceList = new ListView
 			{
 				Dock = DockStyle.Top,
@@ -1652,7 +1662,7 @@ namespace Taskmaster
 
 			var powerbalancerstatus = new TableLayoutPanel()
 			{
-				ColumnCount = 4,
+				ColumnCount = 6,
 				AutoSize = true,
 				Dock = DockStyle.Top
 			};
@@ -1662,6 +1672,9 @@ namespace Taskmaster
 			powerbalancerstatus.Controls.Add(new Label() { Text = "| Plan:", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true });
 			powerbalancer_plan = new Label() { Text = "n/a", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true };
 			powerbalancerstatus.Controls.Add(powerbalancer_plan);
+			powerbalancerstatus.Controls.Add(new Label() { Text = "Forced by:", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true });
+			powerbalancer_forcedcount = new Label() { Text = "n/a", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true };
+			powerbalancerstatus.Controls.Add(powerbalancer_forcedcount);
 
 			powerlayout.Controls.Add(powerbalancerstatus);
 			powerDebugTab.Controls.Add(powerlayout);
@@ -1728,8 +1741,7 @@ namespace Taskmaster
 				{
 					if (exsel.ShowDialog(this) == DialogResult.OK)
 					{
-						await Taskmaster.processmanager.FreeMemory(exsel.Selection)
-							.ConfigureAwait(false);
+						await Taskmaster.processmanager.FreeMemory(exsel.Selection);
 					}
 				}
 			}
@@ -1780,11 +1792,11 @@ namespace Taskmaster
 						if (ev.State == ProcessEventArgs.ProcessState.Starting)
 						{
 							li = new ListViewItem(new string[] {
-							ev.Info.Id.ToString(),
-							ev.Info.Name,
-							"Unknown",
-							(Bit.IsSet(ev.Info.Flags, (int)ProcessFlags.PowerWait) ? "FORCED" : "n/a")
-						});
+								ev.Info.Id.ToString(),
+								ev.Info.Name,
+								"Unknown",
+								(ev.Info.ActiveWait ? "FORCED" : "n/a")
+							});
 
 							if (IsHandleCreated)
 							{
@@ -1840,6 +1852,8 @@ namespace Taskmaster
 					if (powerbalancerlog.Items.Count > 3)
 						powerbalancerlog.Items.RemoveAt(0);
 					powerbalancerlog.Items.Add(li);
+
+					powerbalancer_forcedcount.Text = powermanager.ForceCount.ToString();
 				}
 			}
 			catch (Exception ex) { Logging.Stacktrace(ex); }
@@ -2365,7 +2379,6 @@ namespace Taskmaster
 					processmanager.onWaitForExitEvent -= ExitWaitListHandler; //ExitWaitListHandler;
 					rescanRequest -= processmanager.ScanEverythingRequest;
 					processmanager.onInstanceHandling -= ProcessNewInstanceCount;
-					processmanager.PathCacheUpdate -= PathCacheUpdate;
 					processmanager.onActiveHandled -= ExitWaitListHandler;
 					if (Taskmaster.PagingEnabled)
 						pagingRequest -= processmanager.PageEverythingRequest;

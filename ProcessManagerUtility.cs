@@ -53,8 +53,7 @@ namespace Taskmaster
 			// Try to get the path from cache
 			if (pathCache != null)
 			{
-				string cpath;
-				if (pathCache.Get(info.Id, out cpath, info.Name) != null)
+				if (pathCache.Get(info.Id, out string cpath, info.Name) != null)
 				{
 					if (!string.IsNullOrEmpty(cpath))
 					{
@@ -127,9 +126,8 @@ namespace Taskmaster
 		public static string GetProcessPathViaC(int pid)
 		{
 			const int PROCESS_QUERY_INFORMATION = 0x0400;
-			const int PROCESS_VM_READ = 0x0010;
-			// 0x0400 = PROCESS_QUERY_INFORMATION
-			// 0x0010 = PROCESS_VM_READ // is this really needed?
+			// const int PROCESS_VM_READ = 0x0010; // is this really needed?
+
 			var processHandle = NativeMethods.OpenProcess(PROCESS_QUERY_INFORMATION, false, pid);
 
 			if (processHandle == IntPtr.Zero) return null;

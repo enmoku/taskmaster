@@ -52,8 +52,6 @@ namespace Taskmaster
 
 		public PowerManager()
 		{
-			NativeMethods.RegisterPowerSettingNotification(
-				Handle, ref GUID_POWERSCHEME_PERSONALITY, NativeMethods.DEVICE_NOTIFY_WINDOW_HANDLE);
 			OriginalMode = getPowerMode();
 
 			AutoAdjust.High.Mode = PowerMode.HighPerformance;
@@ -98,6 +96,12 @@ namespace Taskmaster
 			}
 		}
 
+		public void SetupEventHook()
+		{
+			NativeMethods.RegisterPowerSettingNotification(
+				Handle, ref GUID_POWERSCHEME_PERSONALITY, NativeMethods.DEVICE_NOTIFY_WINDOW_HANDLE);
+		}
+
 		void InitCPUTimer()
 		{
 			CPUTimer = new System.Threading.Timer(CPUSampler, null, 500, CPUSampleInterval * 1000);
@@ -122,6 +126,8 @@ namespace Taskmaster
 		async void CPUSampler(object state)
 		{
 			if (!Atomic.Lock(ref cpusampler_lock)) return;
+
+			//await Task.Delay(0);
 
 			try
 			{
@@ -215,6 +221,8 @@ namespace Taskmaster
 		public async void CPULoadEvent(object sender, ProcessorEventArgs ev)
 		{
 			if (Behaviour != PowerBehaviour.Auto) return;
+
+			await Task.Delay(0);
 
 			// TODO: Asyncify. Mostly math so probably unnecessary.
 
@@ -325,7 +333,7 @@ namespace Taskmaster
 
 			if (ReadyToAdjust && ReactionaryPlan != CurrentMode)
 			{
-				if (Taskmaster.DebugPower) Log.Debug("<Power Mode> Auto-adjust: {Mode}", Reaction.ToString());
+				if (Taskmaster.DebugPower) Log.Debug("<Power> Auto-adjust: {Mode}", Reaction.ToString());
 
 				if (Request(ReactionaryPlan))
 				{
@@ -335,7 +343,7 @@ namespace Taskmaster
 				else
 				{
 					if (Taskmaster.DebugPower && Taskmaster.Trace)
-						Log.Warning("<Power Mode> Failed to auto-adjust power.");
+						Log.Warning("<Power> Failed to auto-adjust power.");
 					// should reset
 				}
 
@@ -347,14 +355,14 @@ namespace Taskmaster
 				if (forceModeSources.Count != 0)
 				{
 					if (Taskmaster.DebugPower && Taskmaster.ShowInaction)
-						Log.Debug("<Power Mode> Can't override forced power mode.");
+						Log.Debug("<Power> Can't override forced power mode.");
 				}
 				else if (ReadyToAdjust)
 				{
 					if (ReactionaryPlan == CurrentMode && ev.Pressure > 1.0)
 					{
 						// reset
-						Log.Error("<Power Mode> Something went wrong. Resetting auto-adjust.");
+						Log.Error("<Power> Something went wrong. Resetting auto-adjust.");
 						ResetAutoadjust();
 						ev.Pressure = 0f;
 					}
@@ -390,15 +398,25 @@ namespace Taskmaster
 			var restoremode = power.GetSetDefault("Restore mode", "Default", out modified).StringValue;
 			power["Restore mode"].Comment = "Default, Original, Saved, or specific power mode.";
 			dirtyconfig |= modified;
-			var restoremodel = restoremode.ToLower();
+			var restoremodel = restoremode.ToLowerInvariant();
 			if (restoremodel.Equals("original"))
-				RestoreMode = PowerMode.Undefined;
+			{
+				RestoreModeMethod = ModeMethod.Original;
+				RestoreMode = OriginalMode;
+			}
 			else if (restoremodel.Equals("default"))
+			{
+				RestoreModeMethod = ModeMethod.Default;
 				RestoreMode = AutoAdjust.DefaultMode;
+			}
 			else if (restoremodel.Equals("saved"))
+			{
+				RestoreModeMethod = ModeMethod.Saved;
 				RestoreMode = PowerMode.Undefined;
+			}
 			else
 			{
+				RestoreModeMethod = ModeMethod.Custom;
 				RestoreMode = GetModeByName(restoremode);
 				if (RestoreMode == PowerMode.Custom)
 					RestoreMode = AutoAdjust.DefaultMode;
@@ -418,7 +436,7 @@ namespace Taskmaster
 				if (PowerdownDelay > 0)
 				{
 					PowerdownDelay = 0;
-					Log.Warning("<Power Manager> Powerdown delay is not compatible with auto-adjust, powerdown delay disabled.");
+					Log.Warning("<Power> Powerdown delay is not compatible with auto-adjust, powerdown delay disabled.");
 				}
 			}
 
@@ -509,13 +527,14 @@ namespace Taskmaster
 
 			Log.Information("<CPU> CPU sampler: {Interval}s × {Count} = {Period}s observation period",
 							CPUSampleInterval, CPUSampleCount, CPUSampleCount * CPUSampleInterval);
-			Log.Information("<Power Manager> Watchlist powerdown delay: {Delay}", (PowerdownDelay == 0 ? "Disabled" : (PowerdownDelay + "s")));
+			Log.Information("<Power> Watchlist powerdown delay: {Delay}", (PowerdownDelay == 0 ? "Disabled" : (PowerdownDelay + "s")));
 
 			// --------------------------------------------------------------------------------------------------------
 
 			LogBehaviourState();
 
-			Log.Information("<Power Mode> Session lock: {Mode}", (SessionLockMode == PowerMode.Custom ? "Ignored" : SessionLockMode.ToString()));
+			Log.Information("<Power> Session lock: {Mode}", (SessionLockMode == PowerMode.Custom ? "Ignored" : SessionLockMode.ToString()));
+			Log.Information("<Power> Restore mode: {Method} [{Mode}]", RestoreModeMethod.ToString(), RestoreMode.ToString());
 
 			if (dirtyconfig)
 				Taskmaster.MarkDirtyINI(Taskmaster.cfg);
@@ -523,7 +542,7 @@ namespace Taskmaster
 
 		public void LogBehaviourState()
 		{
-			Log.Information("<Power Mode> Behaviour: {State}",
+			Log.Information("<Power> Behaviour: {State}",
 				(Behaviour == PowerBehaviour.Auto ? "Automatic" : Behaviour == PowerBehaviour.RuleBased ? "Rule-controlled" : "Manual"));
 		}
 
@@ -531,6 +550,15 @@ namespace Taskmaster
 
 		int BackoffCounter { get; set; } = 0;
 
+		enum ModeMethod
+		{
+			Original,
+			Saved,
+			Default,
+			Custom
+		};
+
+		ModeMethod RestoreModeMethod = ModeMethod.Saved;
 		PowerMode RestoreMode { get; set; } = PowerMode.Balanced;
 
 		async void SessionLockEvent(object sender, SessionSwitchEventArgs ev)
@@ -552,7 +580,7 @@ namespace Taskmaster
 					{
 						Paused = true;
 
-						Log.Information("<Power Mode> Session locked, enforcing power plan: {Plan}", SessionLockMode);
+						Log.Information("<Power> Session locked, enforcing power plan: {Plan}", SessionLockMode);
 
 						if (PauseUnneededSampler)
 						{
@@ -572,7 +600,7 @@ namespace Taskmaster
 					// RESTORE POWER MODE
 					if (SessionLockMode != PowerMode.Custom)
 					{
-						Log.Information("<Power Mode> Session unlocked, restoring normal power.");
+						Log.Information("<Power> Session unlocked, restoring normal power.");
 
 						if (CurrentMode == SessionLockMode)
 						{
@@ -630,8 +658,8 @@ namespace Taskmaster
 
 					onPlanChange?.Invoke(this, new PowerModeEventArgs { OldMode = old, NewMode = CurrentMode });
 
-					if (Taskmaster.LogPower || Taskmaster.DebugPower)
-						Log.Information("<Power Mode/OS> Change detected: {PlanName} ({PlanGuid})", CurrentMode.ToString(), newPersonality.ToString());
+					if (Taskmaster.DebugPower)
+						Log.Information("<Power/OS> Change detected: {PlanName} ({PlanGuid})", CurrentMode.ToString(), newPersonality.ToString());
 				}
 			}
 
@@ -728,7 +756,7 @@ namespace Taskmaster
 			if (SavedMode != PowerMode.Undefined) return;
 
 			if (Taskmaster.DebugPower)
-				Log.Debug("<Power Mode> Saving current power mode for later restoration: {Mode}", CurrentMode.ToString());
+				Log.Debug("<Power> Saving current power mode for later restoration: {Mode}", CurrentMode.ToString());
 
 			lock (power_lock)
 			{
@@ -736,7 +764,7 @@ namespace Taskmaster
 
 				if (SavedMode == PowerMode.Undefined)
 				{
-					Log.Warning("<Power Mode> Failed to get current mode, defafulting to balanced as restore option.");
+					Log.Warning("<Power> Failed to get current mode, defafulting to balanced as restore option.");
 					SavedMode = PowerMode.Balanced;
 				}
 			}
@@ -757,6 +785,9 @@ namespace Taskmaster
 		/// </remarks>
 		public async Task Restore(int sourcePid = -1)
 		{
+			if (Taskmaster.DebugPower)
+				Log.Debug("<Power> Restore({Source})", sourcePid);
+
 			Debug.Assert(sourcePid == 0 || sourcePid > 4);
 			if (Paused) return; // TODO: What to do in the unlikely event of this being called while paused?
 
@@ -766,18 +797,18 @@ namespace Taskmaster
 				{
 					forceModeSources.Clear();
 					if (Taskmaster.DebugPower)
-						Log.Debug("<Power Mode> Cleared forced list.");
+						Log.Debug("<Power> Cleared forced list.");
 				}
 				else if (forceModeSources.Contains(sourcePid))
 				{
 					forceModeSources.Remove(sourcePid);
-					if (Taskmaster.DebugPower)
-						Log.Debug("<Power Mode> Force mode source freed, {Count} remain.", forceModeSources.Count);
+					if (Taskmaster.DebugPower && Taskmaster.Trace)
+						Log.Debug("<Power> Force mode source freed, {Count} remain.", forceModeSources.Count);
 				}
 				else
 				{
 					if (Taskmaster.DebugPower)
-						Log.Debug("<Power Mode> Restore mode called for object that has no forcing registered. Or waitlist was expunged.");
+						Log.Debug("<Power> Restore mode called for object [{Source}] that has no forcing registered. Or waitlist was expunged.", sourcePid);
 				}
 			}
 
@@ -786,41 +817,45 @@ namespace Taskmaster
 				await Task.Delay(PowerdownDelay * 1000);
 			}
 
-			var tSourceCount = forceModeSources.Count;
-
-			if (tSourceCount == 0)
+			lock (forceModeSources_lock)
 			{
-				// TODO: Restore Powerdown delay functionality here.
-
-				if (Taskmaster.DebugPower)
-					Log.Debug("<Power Mode> Restoring power mode!");
-
-				lock (power_lock)
+				if (forceModeSources.Count == 0)
 				{
-					if (RestoreMode != PowerMode.Undefined)
-						SavedMode = RestoreMode;
+					// TODO: Restore Powerdown delay functionality here.
 
-					if (SavedMode != PowerMode.Undefined && SavedMode != CurrentMode)
+					if (Taskmaster.DebugPower)
+						Log.Debug("<Power> Restoring power mode!");
+
+					lock (power_lock)
 					{
-						// if (Behaviour == PowerBehaviour.Auto) return; // this is very optimistic
+						if (RestoreModeMethod != ModeMethod.Saved)
+							SavedMode = RestoreMode;
 
-						setMode(SavedMode, verbose: true);
-						SavedMode = PowerMode.Undefined;
+						if (Taskmaster.DebugPower)
+							Log.Debug("Restoring mode: {Mode} [{Method}]", SavedMode.ToString(), RestoreModeMethod.ToString());
 
-						// Log.Information("<Power Mode> Restored to: {PowerMode}", CurrentMode.ToString());
+						if (SavedMode != CurrentMode && SavedMode != PowerMode.Undefined)
+						{
+							// if (Behaviour == PowerBehaviour.Auto) return; // this is very optimistic
+
+							setMode(SavedMode, verbose: true);
+							SavedMode = PowerMode.Undefined;
+
+							// Log.Information("<Power> Restored to: {PowerMode}", CurrentMode.ToString());
+						}
 					}
-				}
 
-				Forced = false;
-			}
-			else
-			{
-				if (Taskmaster.DebugPower)
+					Forced = false;
+				}
+				else
 				{
-					Log.Debug("<Power Mode> Forced mode still requested by {sources} sources.", forceModeSources.Count);
-					if (tSourceCount > 0)
+					if (Taskmaster.DebugPower)
 					{
-						Log.Debug("<Power Mode> Sources: {Sources}", string.Join(", ", forceModeSources.ToArray()));
+						Log.Debug("<Power> Forced mode still requested by {sources} sources.", forceModeSources.Count);
+						if (forceModeSources.Count > 0)
+						{
+							Log.Debug("<Power> Sources: {Sources}", string.Join(", ", forceModeSources.ToArray()));
+						}
 					}
 				}
 			}
@@ -842,7 +877,7 @@ namespace Taskmaster
 					else if (plan.Equals(HighPerformance)) { CurrentMode = PowerMode.HighPerformance; }
 					else { CurrentMode = PowerMode.Undefined; }
 
-					Log.Information("<Power Mode> Current: {Plan} ({Guid})", CurrentMode.ToString(), plan.ToString());
+					Log.Information("<Power> Current: {Plan} ({Guid})", CurrentMode.ToString(), plan.ToString());
 				}
 			}
 
@@ -866,13 +901,15 @@ namespace Taskmaster
 			return true;
 		}
 
-		public void ForceCleanup()
+		public async void ForceCleanup()
 		{
 			lock (forceModeSources_lock)
 				forceModeSources.Clear();
 
-			Restore(0).Wait(); // FIXME: Without ConfigurAawait(false) .Yield deadlocks, why?
+			await Restore(0);
 		}
+
+		public int ForceCount => forceModeSources.Count;
 
 		HashSet<int> forceModeSources = new HashSet<int>();
 		readonly object forceModeSources_lock = new object();
@@ -889,7 +926,7 @@ namespace Taskmaster
 				if (forceModeSources.Contains(sourcePid))
 				{
 					if (Taskmaster.ShowInaction)
-						Log.Debug("<Power Mode> Forcing cancelled, source already in list.");
+						Log.Debug("<Power> Forcing cancelled, source already in list.");
 					return false;
 				}
 
@@ -899,14 +936,18 @@ namespace Taskmaster
 			Forced = true;
 
 			rv = mode != CurrentMode;
-			if (rv) setMode(mode);
+			if (rv)
+			{
+				SavedMode = RestoreModeMethod == ModeMethod.Saved ? CurrentMode : RestoreMode;
+				setMode(mode);
+			}
 
 			if (Taskmaster.DebugPower)
 			{
 				if (rv)
-					Log.Debug("<Power Mode> Forced to: {PowerMode}", CurrentMode);
+					Log.Debug("<Power> Forced to: {PowerMode}", CurrentMode);
 				else
-					Log.Debug("<Power Mode> Force request for mode that is already active. Ignoring.");
+					Log.Debug("<Power> Force request for mode that is already active. Ignoring.");
 			}
 
 			return rv;
@@ -930,7 +971,7 @@ namespace Taskmaster
 			}
 
 			if (verbose && (CurrentMode != mode))
-				Log.Information("<Power Mode> Setting to: {Mode} ({Guid})", mode.ToString(), plan.ToString());
+				Log.Information("<Power> Setting to: {Mode} ({Guid})", mode.ToString(), plan.ToString());
 
 			CurrentMode = mode;
 			NativeMethods.PowerSetActiveScheme((IntPtr)null, ref plan);
@@ -953,17 +994,17 @@ namespace Taskmaster
 
 				if (CPUCounter != null)
 				{
-					CPUCounter.Close(); // unnecessary?
 					CPUCounter.Dispose();
 					CPUCounter = null;
 				}
 
-				var finalmode = (RestoreMode == PowerMode.Undefined ? SavedMode : RestoreMode);
-
-				setMode(finalmode, true);
-
-				Log.Information("<Power Mode> Restored.");
-				Log.Information("<Power Mode> Auto-adjusted {Counter} time(s).", AutoAdjustCounter);
+				var finalmode = RestoreModeMethod == ModeMethod.Saved ? SavedMode : RestoreMode;
+				if (finalmode != CurrentMode)
+				{
+					setMode(finalmode, true);
+					Log.Information("<Power> Restored.");
+				}
+				Log.Information("<Power> Auto-adjusted {Counter} time(s).", AutoAdjustCounter);
 			}
 
 			disposed = true;

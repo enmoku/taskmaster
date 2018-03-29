@@ -77,7 +77,9 @@ namespace Taskmaster
 			menu_configuration.DropDownItems.Add(menu_configuration_folder);
 
 			menu_runatstart = new ToolStripMenuItem("Run at start", null, RunAtStartMenuClick);
-			menu_runatstart.Checked = RunAtStartRegRun(enabled: false, dryrun: true);
+			bool runatstart = RunAtStartRegRun(enabled: false, dryrun: true);
+			menu_runatstart.Checked = runatstart;
+			Log.Information("<Core> Run-at-start: {Enabled}", (runatstart ? "Enabled" : "Disabled"));
 
 			if (Taskmaster.PowerManagerEnabled)
 			{
@@ -133,7 +135,7 @@ namespace Taskmaster
 			if (Taskmaster.Trace) Log.Verbose("Tray menu ready");
 
 			if (!RegisterExplorerExit())
-				throw new InitFailure("Explorer registeriong failed; not running?");
+				throw new InitFailure("<Tray> Explorer registeriong failed; not running?");
 
 			ms.Enabled = false;
 
@@ -245,7 +247,7 @@ namespace Taskmaster
 
 		async void ShowPowerConfig(object sender, EventArgs e)
 		{
-			PowerConfigWindow.ShowPowerConfig().ConfigureAwait(true);
+			await PowerConfigWindow.ShowPowerConfig().ConfigureAwait(true);
 		}
 
 		int restoremainwindow_lock = 0;
@@ -259,8 +261,7 @@ namespace Taskmaster
 			try
 			{
 				using (var m = SelfAwareness.Mind(DateTime.Now.AddSeconds(10)))
-					await Taskmaster.ShowMainWindow().ConfigureAwait(false);
-
+					Taskmaster.ShowMainWindow();
 
 				if (Taskmaster.Trace)
 					Log.Verbose("RestoreMainWindow done!");
@@ -276,7 +277,7 @@ namespace Taskmaster
 			}
 		}
 
-		async void ShowWindow(object sender, MouseEventArgs e)
+		void ShowWindow(object sender, MouseEventArgs e)
 		{
 			if (Taskmaster.Trace)
 				Console.WriteLine("Tray Click");
@@ -344,9 +345,9 @@ namespace Taskmaster
 		Process[] Explorer;
 		async void ExplorerCrashHandler(object sender, EventArgs e)
 		{
-			Log.Warning("Explorer crash detected!");
+			Log.Warning("<Tray> Explorer crash detected!");
 
-			Log.Information("Giving explorer some time to recover on its own...");
+			Log.Information("<Tray> Giving explorer some time to recover on its own...");
 
 			await Task.Delay(12000); // force async, 12 seconds
 
@@ -357,7 +358,7 @@ namespace Taskmaster
 			{
 				if (n.Elapsed.TotalHours >= 24)
 				{
-					Log.Error("Explorer has not recovered in excessive timeframe, giving up.");
+					Log.Error("<Tray> Explorer has not recovered in excessive timeframe, giving up.");
 					return;
 				}
 
@@ -371,7 +372,7 @@ namespace Taskmaster
 			}
 			else
 			{
-				Log.Warning("Explorer registration failed.");
+				Log.Warning("<Tray> Explorer registration failed.");
 				return;
 			}
 
@@ -388,7 +389,7 @@ namespace Taskmaster
 
 		bool RegisterExplorerExit(System.Diagnostics.Process[] procs = null)
 		{
-			if (Taskmaster.Trace) Log.Verbose("Registering Explorer crash monitor.");
+			if (Taskmaster.Trace) Log.Verbose("<Tray> Registering Explorer crash monitor.");
 			// this is for dealing with notify icon disappearing on explorer.exe crash/restart
 
 			if (procs == null) procs = ExplorerInstances;
@@ -400,13 +401,13 @@ namespace Taskmaster
 				{
 					proc.Exited += ExplorerCrashHandler;
 					proc.EnableRaisingEvents = true;
-					Log.Information("Explorer (#{ExplorerProcessID}) registered.", proc.Id);
+					Log.Information("<Tray> Explorer (#{ExplorerProcessID}) registered.", proc.Id);
 				}
 
 				return true;
 			}
 
-			Log.Warning("Explorer not found.");
+			Log.Warning("<Tray> Explorer not found.");
 			return false;
 		}
 
@@ -520,17 +521,25 @@ var runtime = Environment.GetCommandLineArgs()[0];
 				{
 					runatstart = (string)key.GetValue(runatstart_key, string.Empty);
 
-					if (dryrun) return (runatstart.Equals(runvalue));
+					if (dryrun)
+					{
+						bool rv = (runatstart.ToLowerInvariant().Equals(runvalue.ToLowerInvariant()));
+						return rv;
+					}
+
 					if (enabled)
 					{
-						if (runatstart == runvalue) return true;
+						if (runatstart.ToLowerInvariant().Equals(runvalue.ToLowerInvariant()))
+							return true;
+
 						key.SetValue(runatstart_key, runvalue);
 						Log.Information("Run at OS startup enabled: " + Environment.GetCommandLineArgs()[0]);
 						return true;
 					}
 					else if (!enabled)
 					{
-						if (runatstart != runvalue) return false;
+						//if (!runatstart.ToLowerInvariant().Equals(runvalue.ToLowerInvariant()))
+						//	return false;
 
 						key.DeleteValue(runatstart_key);
 						Log.Information("Run at OS startup disabled.");

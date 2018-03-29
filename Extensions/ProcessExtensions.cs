@@ -25,6 +25,7 @@
 // THE SOFTWARE.
 
 using System.Diagnostics;
+using System.Threading;
 
 namespace Taskmaster
 {
@@ -43,6 +44,23 @@ namespace Taskmaster
 			else
 				return false;
 			return true;
+		}
+
+		public static ThreadPriority ToThreadPriority(this ProcessPriorityClass priority)
+		{
+			switch (priority)
+			{
+				case ProcessPriorityClass.AboveNormal:
+					return ThreadPriority.AboveNormal;
+				case ProcessPriorityClass.BelowNormal:
+					return ThreadPriority.BelowNormal;
+				case ProcessPriorityClass.High:
+					return ThreadPriority.Highest;
+				case ProcessPriorityClass.Idle:
+					return ThreadPriority.Lowest;
+				default:
+					return ThreadPriority.Normal;
+			}
 		}
 	}
 }

@@ -25,6 +25,7 @@
 // THE SOFTWARE.
 
 using System;
+using System.Threading.Tasks;
 using PostSharp.Aspects;
 using PostSharp.Serialization;
 

@@ -58,7 +58,7 @@ namespace Taskmaster
 
 				_target = value;
 
-				Log.Information("Microphone target volume set to: {Volume:N1}%", value);
+				Log.Information("<Microphone> Target volume set to: {Volume:N1}%", value);
 			}
 		}
 
@@ -93,7 +93,7 @@ namespace Taskmaster
 				Control.Percent = _volume = value;
 
 				if (Taskmaster.DebugMic)
-					Log.Debug("Mic.Volume = {Volume:N1}% (actual: {ActualVolume:N1}%)", value, Control.Percent);
+					Log.Debug("<Microphone> DEBUG Volume = {Volume:N1}% (actual: {ActualVolume:N1}%)", value, Control.Percent);
 			}
 		}
 
@@ -141,7 +141,7 @@ namespace Taskmaster
 
 			if (Control == null)
 			{
-				Log.Error("No volume control acquired!");
+				Log.Error("<Microphone> No volume control acquired!");
 				throw new InitFailure("Mic monitor control not acquired.");
 			}
 
@@ -155,7 +155,7 @@ namespace Taskmaster
 
 			if (m_dev == null)
 			{
-				Log.Error("No communications device found!");
+				Log.Error("<Microphone> No communications device found!");
 				throw new InitFailure("No communications device found");
 			}
 
@@ -176,10 +176,10 @@ namespace Taskmaster
 			if (unset) Taskmaster.SaveConfig(devcfg);
 
 			Target = devvol;
-			Log.Information("Communications device: {Device} (volume: {TargetVolume:N1}%)", m_dev.FriendlyName, Target);
+			Log.Information("<Microphone> Default device: {Device} (volume: {TargetVolume:N1}%)", m_dev.FriendlyName, Target);
 			Volume = Target;
 
-			Log.Information("<Mic Manager> Loaded");
+			Log.Information("<Microphone> Component loaded");
 		}
 
 		bool disposed; // false
@@ -219,7 +219,7 @@ namespace Taskmaster
 		/// <returns>Enumeration of audio input devices as GUID/FriendlyName string pair.</returns>
 		public List<MicDevice> enumerate()
 		{
-			if (Taskmaster.Trace) Log.Verbose("Enumerating devices...");
+			if (Taskmaster.Trace) Log.Verbose("<Microphone> Enumerating devices...");
 
 			var devices = new List<MicDevice>();
 			var mm_enum = new NAudio.CoreAudioApi.MMDeviceEnumerator();
@@ -230,11 +230,11 @@ namespace Taskmaster
 				{
 					var mdev = new MicDevice { Name = dev.DeviceFriendlyName, GUID = dev.ID.Split('}')[1].Substring(2) };
 					devices.Add(mdev);
-					if (Taskmaster.Trace) Log.Verbose("{Microphone} [GUID: {GUID}]", mdev.Name, mdev.GUID);
+					if (Taskmaster.Trace) Log.Verbose("<Microphone> Device: {Microphone} [GUID: {GUID}]", mdev.Name, mdev.GUID);
 				}
 			}
 
-			if (Taskmaster.Trace) Log.Verbose("{DeviceCount} microphone(s)", devices.Count);
+			if (Taskmaster.Trace) Log.Verbose("<Microphone> {DeviceCount} microphone(s)", devices.Count);
 
 			return devices;
 		}
@@ -255,11 +255,11 @@ namespace Taskmaster
 			if (Math.Abs(newVol - Target) <= SmallVolumeHysterisis)
 			{
 				if (Taskmaster.ShowInaction)
-					Log.Verbose("Mic volume change too small ({VolumeChange:N1}%) to act on.", Math.Abs(newVol - Target));
+					Log.Verbose("<Microphone> Volume change too small ({VolumeChange:N1}%) to act on.", Math.Abs(newVol - Target));
 				return;
 			}
 
-			if (Taskmaster.Trace) Log.Verbose("Mic volume changed from {OldVolume:N1}% to {NewVolume:N1}%", oldVol, newVol);
+			if (Taskmaster.Trace) Log.Verbose("<Microphone> Volume changed from {OldVolume:N1}% to {NewVolume:N1}%", oldVol, newVol);
 
 			// This is a light HYSTERISIS limiter in case someone is sliding a volume bar around,
 			// we act on it only once every [AdjustDelay] ms.
@@ -268,7 +268,7 @@ namespace Taskmaster
 			// TODO: Delay this even more if volume is changed ~2 seconds before we try to do so.
 			if (Math.Abs(newVol - Target) >= VolumeHysterisis) // Volume != Target for double
 			{
-				if (Taskmaster.Trace) Log.Verbose("Mic.Volume.Changed = [{OldVolume:N1} -> {NewVolume:N1}], Off.Target: {VolumeOffset:N1}",
+				if (Taskmaster.Trace) Log.Verbose("<Microphone> DEBUG: Volume changed = [{OldVolume:N1} -> {NewVolume:N1}], Off.Target: {VolumeOffset:N1}",
 												  oldVol, newVol, Math.Abs(newVol - Target));
 
 				if (Atomic.Lock(ref correcting))
@@ -276,7 +276,7 @@ namespace Taskmaster
 					await System.Threading.Tasks.Task.Delay(AdjustDelay); // actual hysterisis, this should be cancellable
 
 					oldVol = Control.Percent;
-					Log.Information("Correcting microphone volume from {OldVolume:N1} to {NewVolume:N1}", oldVol, Target);
+					Log.Information("<Microphone> Correcting volume from {OldVolume:N1} to {NewVolume:N1}", oldVol, Target);
 					Volume = Target;
 					Corrections += 1;
 					micstatsdirty = true;
@@ -286,12 +286,12 @@ namespace Taskmaster
 				}
 				else
 				{
-					if (Taskmaster.Trace) Log.Verbose("Mic.Volume.CorrectionAlreadyQueued");
+					if (Taskmaster.Trace) Log.Verbose("<Microphone> DEBUG CorrectionAlreadyQueued");
 				}
 			}
 			else
 			{
-				if (Taskmaster.Trace) Log.Verbose("Mic.Volume.NotCorrected");
+				if (Taskmaster.Trace) Log.Verbose("<Microphone> DEBUG NotCorrected");
 			}
 		}
 	}

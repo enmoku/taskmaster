@@ -138,6 +138,11 @@ namespace Taskmaster
 
 		public bool AllowPaging = false;
 
+		/// <summary>
+		/// Delay in milliseconds before we attempt to alter the process.
+		/// </summary>
+		public int ModifyDelay { get; set; } = 0;
+
 		int p_Rescan;
 		/// <summary>
 		/// Delay in minutes before we try to use Scan again.
@@ -319,7 +324,7 @@ namespace Taskmaster
 		/// <summary>
 		/// Pause the specified foreground process.
 		/// </summary>
-		public void Quell(ProcessEx info)
+		public void Pause(ProcessEx info)
 		{
 			if (PausedIds.Contains(info.Id)) return;
 			// throw new InvalidOperationException(string.Format("{0} already paused", info.Name));
@@ -341,8 +346,16 @@ namespace Taskmaster
 			// info.Process.ProcessorAffinity = OriginalState.Affinity;
 
 			if (Taskmaster.PowerManagerEnabled)
+			{
 				if (PowerPlan != PowerInfo.PowerMode.Undefined && BackgroundPowerdown)
-					Taskmaster.powermanager.Restore(info.Id);
+				{
+					if (Taskmaster.DebugPower)
+						Log.Debug("<Process> [{Name}] {Exec} (#{Pid}) background power down",
+							FriendlyName, info.Name, info.Id);
+
+					UndoPower(info);
+				}
+			}
 
 			if (Taskmaster.DebugForeground)
 				Log.Information("[{FriendlyName}] {Exec} (#{Pid}) priority reduced: {Current}→{Paused} [Background]",
@@ -375,6 +388,18 @@ namespace Taskmaster
 			// PausedState.Priority = Priority;
 			// PausedState.PowerMode = PowerPlan;
 
+			if (Taskmaster.PowerManagerEnabled)
+			{
+				if (PowerPlan != PowerInfo.PowerMode.Undefined && BackgroundPowerdown)
+				{
+					if (Taskmaster.DebugPower)
+						Log.Debug("<Process> [{Name}] {Exec} (#{Pid}) foreground power on",
+							FriendlyName, info.Name, info.Id);
+
+					SetPower(info);
+				}
+			}
+
 			PausedIds.Remove(info.Id);
 		}
 
@@ -405,18 +430,18 @@ namespace Taskmaster
 
 		// -----------------------------------------------
 
-		protected bool setPower(ProcessEx info)
+		bool SetPower(ProcessEx info)
 		{
 			if (!Taskmaster.PowerManagerEnabled) return false;
 			if (PowerPlan == PowerInfo.PowerMode.Undefined) return false;
 			Taskmaster.powermanager.SaveMode();
 
-			info.Flags |= (int)ProcessFlags.PowerWait;
 			Taskmaster.processmanager.WaitForExit(info); // need nicer way to signal this
+
 			return Taskmaster.powermanager.Force(PowerPlan, info.Id);
 		}
 
-		void undoPower(ProcessEx info) => Taskmaster.powermanager.Restore(info.Id).Wait();
+		void UndoPower(ProcessEx info) => Taskmaster.powermanager.Restore(info.Id);
 
 		/*
 		// Windows doesn't allow setting this for other processes
@@ -438,11 +463,16 @@ namespace Taskmaster
 		}
 
 		// TODO: Deal with combo path+exec
-		public ProcessState Touch(ProcessEx info, bool schedule_next = false, bool recheck = false, bool foreground = true)
+		public async void Touch(ProcessEx info, bool schedule_next = false, bool recheck = false)
 		{
 			Debug.Assert(info.Process != null, "ProcessController.Touch given null process.");
 			Debug.Assert(info.Id > 4, "ProcessController.Touch given invalid process ID");
 			Debug.Assert(!string.IsNullOrEmpty(info.Name), "ProcessController.Touch given empty process name.");
+
+			bool foreground = Taskmaster.activeappmonitor?.Foreground.Equals(info.Id) ?? true;
+
+			info.PowerWait = (PowerPlan != PowerInfo.PowerMode.Undefined);
+			info.ActiveWait = ForegroundOnly;
 
 			if (info.Process == null || info.Id <= 4 || string.IsNullOrEmpty(info.Name))
 			{
@@ -451,7 +481,10 @@ namespace Taskmaster
 				// return ProcessState.Invalid;
 			}
 
-			if (recheck)
+			if (!recheck || ModifyDelay > 0)
+				await Task.Delay(recheck ? 0 : ModifyDelay).ConfigureAwait(false);
+
+			if (recheck || ModifyDelay > 0)
 			{
 				try
 				{
@@ -477,14 +510,14 @@ namespace Taskmaster
 				{
 					if (Taskmaster.DebugProcesses)
 						Log.Debug("[{FriendlyName}] {ProcessName} (#{ProcessID}) has already exited.", FriendlyName, info.Name, info.Id);
-					return ProcessState.Invalid;
+					return; // return ProcessState.Invalid;
 				}
 			}
 			catch (Win32Exception ex)
 			{
 				if (ex.NativeErrorCode != 5)
 					Log.Warning("[{FriendlyName}] {ProcessName} (#{ProcessID}) access failure determining if it's still running.", FriendlyName, info.Name, info.Id);
-				return ProcessState.Error; // we don't care what this error is exactly
+				return; // return ProcessState.Error; // we don't care what this error is exactly
 			}
 
 			if (Taskmaster.Trace) Log.Verbose("[{FriendlyName}] Touching: {ExecutableName} (#{ProcessID})", FriendlyName, info.Name, info.Id);
@@ -495,7 +528,7 @@ namespace Taskmaster
 			{
 				if (Taskmaster.ShowInaction && Taskmaster.DebugProcesses)
 					Log.Debug("[{FriendlyName}] {Exec} (#{ProcessID}) ignored due to user defined rule.", FriendlyName, info.Name, info.Id);
-				return ProcessState.Ignored;
+				return; // return ProcessState.Ignored;
 			}
 
 			var denyChange = ProcessManager.ProtectedProcessName(info.Name);
@@ -513,24 +546,26 @@ namespace Taskmaster
 						// Yay
 					}
 					else
-						return ProcessState.Error;
+						return; // return ProcessState.Error;
 				}
 
-				if (info.Path.StartsWith(Path, Taskmaster.CaseSensitive ? StringComparison.InvariantCulture : StringComparison.InvariantCultureIgnoreCase)) // FIXME: this is done twice
+				if (info.Match || info.Path.StartsWith(Path, Taskmaster.CaseSensitive ? StringComparison.InvariantCulture : StringComparison.InvariantCultureIgnoreCase)) // FIXME: this is done twice
 				{
 					// OK
-					if (Taskmaster.DebugPaths)
-						Log.Verbose("[{PathFriendlyName}] Matched at: {Path}", FriendlyName, info.Path);
+					if (Taskmaster.DebugPaths && !info.Match)
+						Log.Verbose("[{PathFriendlyName}] (Touch) Matched at: {Path}", FriendlyName, info.Path);
+
+					info.Match = true;
 				}
 				else
 				{
 					if (Taskmaster.DebugPaths)
 						Log.Verbose("[{PathFriendlyName}] {ExePath} NOT IN {Path} – IGNORING", FriendlyName, info.Path, Path);
-					return ProcessState.Ignored;
+					return; // return ProcessState.Ignored;
 				}
 			}
 
-			bool mAffinity = false, mPriority = false, mPower = false, mBGIO = false, modified = false;
+			bool mAffinity = false, mPriority = false, mPower = false, modified = false;
 			LastSeen = DateTime.Now;
 
 			var oldAffinity = IntPtr.Zero;
@@ -630,7 +665,7 @@ namespace Taskmaster
 				{
 					//Process.EnterDebugMode(); // doesn't help
 
-					mBGIO = SetBackground(info.Process); // doesn't work, can only be done to current process
+					//mBGIO = SetBackground(info.Process); // doesn't work, can only be done to current process
 
 					//Process.LeaveDebugMode();
 				}
@@ -643,12 +678,23 @@ namespace Taskmaster
 			}
 			*/
 
-			var oldPP = PowerInfo.PowerMode.Undefined;
-			if (Taskmaster.PowerManagerEnabled)
+			//var oldPP = PowerInfo.PowerMode.Undefined;
+			if (Taskmaster.PowerManagerEnabled && PowerPlan != PowerInfo.PowerMode.Undefined)
 			{
-				oldPP = Taskmaster.powermanager.CurrentMode;
-				setPower(info);
-				mPower = (oldPP != Taskmaster.powermanager.CurrentMode);
+				if (!foreground && BackgroundPowerdown)
+				{
+					if (Taskmaster.DebugForeground)
+						Log.Debug("{Exec} (#{Pid}) not in foreground, not powering up.", info.Name, info.Id);
+
+					if (!PausedIds.Contains(info.Id))
+						PausedIds.Add(info.Id);
+				}
+				else
+				{
+					//oldPP = Taskmaster.powermanager.CurrentMode;
+					mPower = SetPower(info);
+					//mPower = (oldPP != Taskmaster.powermanager.CurrentMode);
+				}
 			}
 
 			var sbs = new System.Text.StringBuilder();
@@ -677,6 +723,7 @@ namespace Taskmaster
 				LastTouch = DateTime.Now;
 
 				rv = ProcessState.Modified;
+				ScanModifyCount++;
 			}
 
 			sbs.Append("; Priority: ");
@@ -690,7 +737,6 @@ namespace Taskmaster
 			sbs.Append(Affinity.ToInt32());
 			if (mPower)
 				sbs.Append(string.Format(" [Power Mode: {0}]", PowerPlan.ToString()));
-			if (mBGIO) sbs.Append(" [BgIO!]");
 
 			if (modified)
 			{
@@ -717,12 +763,12 @@ namespace Taskmaster
 				TouchReapply(info).ConfigureAwait(false);
 			}
 
-			return rv;
+			return; // return rv;
 		}
 
 		async Task TouchReapply(ProcessEx info)
 		{
-			await Task.Delay(Math.Max(Recheck, 5) * 1000);
+			await Task.Delay(Math.Max(Recheck, 5) * 1000).ConfigureAwait(false);
 
 			if (Taskmaster.DebugProcesses)
 				Log.Debug("[{FriendlyName}] {Process} (#{PID}) rechecking", FriendlyName, info.Name, info.Id);
@@ -730,7 +776,9 @@ namespace Taskmaster
 			try
 			{
 				if (!info.Process.HasExited)
+				{
 					Touch(info, schedule_next: false, recheck: true);
+				}
 				else
 				{
 					if (Taskmaster.Trace) Log.Verbose("[{FriendlyName}] {Process} (#{PID}) is gone yo.", FriendlyName, info.Name, info.Id);
@@ -789,9 +837,12 @@ namespace Taskmaster
 			}
 		}
 
+		int ScanModifyCount = 0;
 		public async Task Scan()
 		{
 			if (ExecutableFriendlyName == null) return;
+
+			//await Task.Delay(0);
 
 			Process[] procs;
 			try
@@ -812,7 +863,7 @@ namespace Taskmaster
 			if (Taskmaster.DebugProcesses)
 				Log.Debug("[{FriendlyName}] Scanning found {ProcessInstances} instance(s)", FriendlyName, procs.Length);
 
-			var tc = 0;
+			ScanModifyCount = 0;
 			foreach (Process process in procs)
 			{
 				string name;
@@ -827,15 +878,14 @@ namespace Taskmaster
 					continue; // shouldn't happen
 				}
 
-				if (Touch(new ProcessEx { Name = name, Id = pid, Process = process, Path = null }) == ProcessState.Modified)
-					tc++;
+				Touch(new ProcessEx { Name = name, Id = pid, Process = process, Path = null });
 			}
 
-			if (tc > 0)
+			if (ScanModifyCount > 0)
 			{
 				if (Taskmaster.DebugProcesses)
 					Log.Verbose("[{ProcessFriendlyName}] Scan modified {ModifiedInstances} out of {ProcessInstances} instance(s)",
-								FriendlyName, tc, procs.Length);
+								FriendlyName, ScanModifyCount, procs.Length);
 			}
 		}
 
