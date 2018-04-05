@@ -145,6 +145,7 @@ namespace Taskmaster
 
 		}
 
+		static bool RunOnce = false;
 		public static bool Restart = false;
 		public static bool RestartElevated = false;
 		static int RestartCounter = 0;
@@ -322,47 +323,66 @@ namespace Taskmaster
 
 		static SelfAwareness selfaware;
 
-		static void Setup()
+		static void PreSetup()
 		{
-			{ // INITIAL CONFIGURATIONN
-				var tcfg = LoadConfig("Core.ini");
-				var sec = tcfg.TryGet("Core")?.TryGet("Version")?.StringValue ?? null;
-				if (sec == null || sec != ConfigVersion)
+			// INITIAL CONFIGURATIONN
+			var tcfg = LoadConfig("Core.ini");
+			var sec = tcfg.TryGet("Core")?.TryGet("Version")?.StringValue ?? null;
+			if (sec == null || sec != ConfigVersion)
+			{
+				try
 				{
-					try
-					{
-						using (var initialconfig = new ComponentConfigurationWindow())
-							initialconfig.ShowDialog();
+					using (var initialconfig = new ComponentConfigurationWindow())
+						initialconfig.ShowDialog();
 
-					}
-					catch (Exception ex)
-					{
-						Logging.Stacktrace(ex);
-						throw;
-					}
-
-					if (ComponentConfigurationDone == false)
-					{
-						// singleton.ReleaseMutex();
-						Log.CloseAndFlush();
-						throw new InitFailure("Component configuration cancelled");
-					}
+				}
+				catch (Exception ex)
+				{
+					Logging.Stacktrace(ex);
+					throw;
 				}
 
-				tcfg = null;
-				sec = null;
+				if (ComponentConfigurationDone == false)
+				{
+					// singleton.ReleaseMutex();
+					Log.CloseAndFlush();
+					throw new InitFailure("Component configuration cancelled");
+				}
 			}
 
-			LoadCoreConfig();
+			tcfg = null;
+			sec = null;
+		}
 
+		static void SetupComponents()
+		{
 			Log.Information("<Core> Loading components...");
+
+			bool tray = true;
+			bool aware = true;
+
+			if (RunOnce)
+			{
+				tray = false;
+				aware = false;
+				PowerManagerEnabled = false;
+				MicrophoneMonitorEnabled = false;
+				MaintenanceMonitorEnabled = false;
+				HealthMonitorEnabled = false;
+				NetworkMonitorEnabled = false;
+				ActiveAppMonitorEnabled = false;
+
+				WMIPolling = false;
+				
+				SelfOptimize = false;
+			}
 
 			// Parallel loading, cuts down startup time some.
 			// This is really bad if something fails
 			Task[] init =
 			{
-				Task.Run(() => { selfaware = new SelfAwareness(); }),
-				Task.Run(() => { trayaccess = new TrayAccess(); }),
+				aware ? Task.Run(() => { selfaware = new SelfAwareness(); }) : Task.CompletedTask,
+				tray ? Task.Run(() => { trayaccess = new TrayAccess(); }) : Task.CompletedTask,
 				PowerManagerEnabled ? (Task.Run(() => { powermanager = new PowerManager(); })) : Task.CompletedTask,
 				ProcessMonitorEnabled ? (Task.Run(() => { processmanager = new ProcessManager(); })) : Task.CompletedTask,
 				(ActiveAppMonitorEnabled && ProcessMonitorEnabled) ? (Task.Run(()=> {activeappmonitor = new ActiveAppManager(eventhook:false); })) : Task.CompletedTask,
@@ -393,7 +413,7 @@ namespace Taskmaster
 				netmonitor.Tray = trayaccess;
 
 			if (processmanager != null)
-				trayaccess.hookProcessManager(ref processmanager);
+				trayaccess?.hookProcessManager(ref processmanager);
 
 			if (ActiveAppMonitorEnabled && ProcessMonitorEnabled)
 			{
@@ -408,7 +428,7 @@ namespace Taskmaster
 
 			// UI
 
-			if (ShowOnStart)
+			if (ShowOnStart && !RunOnce)
 			{
 				BuildMainWindow();
 				mainwindow?.Reveal();
@@ -443,7 +463,7 @@ namespace Taskmaster
 
 			if (Taskmaster.Trace)
 				Console.WriteLine("Displaying Tray Icon");
-			trayaccess.Refresh();
+			trayaccess?.Refresh();
 		}
 
 		public static bool DebugProcesses = false;
@@ -508,8 +528,6 @@ namespace Taskmaster
 
 		public static bool RequestExitConfirm = true;
 		public static bool AutoOpenMenus = true;
-
-		public static bool SaveConfigOnExit = false;
 
 		static string coreconfig = "Core.ini";
 		static void LoadCoreConfig()
@@ -1000,6 +1018,9 @@ namespace Taskmaster
 						}
 
 						break;
+					case "--once":
+						RunOnce = true;
+						break;
 					default:
 						break;
 				}
@@ -1038,15 +1059,7 @@ namespace Taskmaster
 		[STAThread] // supposedly needed to avoid shit happening with the WinForms GUI and other GUI toolkits
 		static public int Main(string[] args)
 		{
-			try
-			{
-				LicenseBoiler();
-			}
-			catch (Exception ex)
-			{
-				Console.WriteLine(ex.GetType().Name + " : " + ex.Message);
-				Console.WriteLine(ex.StackTrace);
-			}
+			LicenseBoiler();
 
 			// INIT LOGGER
 			MemoryLog.LevelSwitch = new LoggingLevelSwitch(LogEventLevel.Information);
@@ -1071,7 +1084,8 @@ namespace Taskmaster
 				return -1;
 
 			Log.Information("Taskmaster! (#{ProcessID}) {Admin}– Version: {Version} – START!",
-							Process.GetCurrentProcess().Id, (IsAdministrator() ? "[ADMIN] " : ""), System.Reflection.Assembly.GetExecutingAssembly().GetName().Version);
+							Process.GetCurrentProcess().Id, (IsAdministrator() ? "[ADMIN] " : ""),
+							System.Reflection.Assembly.GetExecutingAssembly().GetName().Version);
 
 			/*
 			// Append as used by the logger fucks this up.
@@ -1083,7 +1097,9 @@ namespace Taskmaster
 
 			try
 			{
-				Setup();
+				PreSetup();
+				LoadCoreConfig();
+				SetupComponents();
 			}
 			catch (Exception ex) // this seems to happen only when Avast cybersecurity is scanning TM
 			{
@@ -1121,12 +1137,25 @@ namespace Taskmaster
 			{
 				if (Taskmaster.ProcessMonitorEnabled)
 				{
-					Evaluate().ConfigureAwait(false);
+					if (RunOnce)
+					{
+						using (var re = new System.Threading.ManualResetEvent(false))
+						{
+							processmanager.ScanEverythingEndEvent += (o, e) => { re.Set(); };
+							Evaluate().ConfigureAwait(false);
+							re.WaitOne();
+						}
+					}
+					else
+						Evaluate().ConfigureAwait(false);
 				}
 
-				trayaccess.Enable();
-				System.Windows.Forms.Application.Run(); // WinForms
-														// System.Windows.Application.Current.Run(); // WPF
+				if (!RunOnce)
+				{
+					trayaccess.Enable();
+					System.Windows.Forms.Application.Run(); // WinForms
+															// System.Windows.Application.Current.Run(); // WPF
+				}
 			}
 			catch (Exception ex)
 			{
@@ -1140,7 +1169,7 @@ namespace Taskmaster
 					mainwindow.FormClosed -= MainWindowClose;
 			}
 
-			if (SelfOptimize) // return decent processing speed to quickly exit
+			if (SelfOptimize && !RunOnce) // return decent processing speed to quickly exit
 			{
 				var self = Process.GetCurrentProcess();
 				self.PriorityClass = ProcessPriorityClass.AboveNormal;
@@ -1156,12 +1185,9 @@ namespace Taskmaster
 
 			Log.Information("Exiting...");
 
-			// TODO: Save Config, do this better
-			if (Taskmaster.SaveConfigOnExit)
-			{
-				cfg["Quality of Life"]["Auto-open menus"].BoolValue = AutoOpenMenus;
-				MarkDirtyINI(cfg);
-			}
+			// TODO: Save Config, do this better. Maybe data bindings.
+			bool dirty = cfg["Quality of Life"]["Auto-open menus"].Set(AutoOpenMenus);
+			if (dirty ) MarkDirtyINI(cfg);
 
 			// CLEANUP for exit
 

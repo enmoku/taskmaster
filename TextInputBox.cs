@@ -39,6 +39,8 @@ namespace Taskmaster
 
 			DialogResult = DialogResult.Abort;
 
+			StartPosition = FormStartPosition.CenterParent;
+
 			MinimizeBox = false;
 			MaximizeBox = false;
 

@@ -44,6 +44,8 @@ namespace Taskmaster
 			MinimizeBox = false;
 			MaximizeBox = false;
 
+			StartPosition = FormStartPosition.CenterParent;
+
 			Padding = new Padding(6);
 
 			Width = 260;
@@ -128,10 +130,7 @@ namespace Taskmaster
 		void SaveSelection(object sender, EventArgs ev)
 		{
 			Selection = selection.Text;
-			if (!string.IsNullOrEmpty(Selection))
-			{
-				DialogResult = DialogResult.OK;
-			}
+			DialogResult = DialogResult.OK;
 
 			Close();
 		}

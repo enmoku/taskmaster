@@ -99,15 +99,14 @@ namespace Taskmaster
 				}
 			}
 
-			onInstanceHandling += UpdateHandling;
 			ProcessDetectedEvent += ProcessTriage;
+
 			if (Taskmaster.PathMonitorEnabled)
 				ScanEverythingEndEvent += EndScanUpdatePathWatch;
 
 			if (RescanEverythingFrequency > 0)
 			{
-				RescanEverythingTimer = new System.Timers.Timer();
-				RescanEverythingTimer.Interval = RescanEverythingFrequency * 1000;
+				RescanEverythingTimer = new System.Timers.Timer(RescanEverythingFrequency * 1000);
 				RescanEverythingTimer.Elapsed += ScanEverythingRequest;
 				RescanEverythingTimer.Start();
 			}
@@ -232,16 +231,11 @@ namespace Taskmaster
 		{
 			if (!string.IsNullOrEmpty(freememoryignore) && info.Name.Equals(freememoryignore)) return;
 
-			//await Task.Delay(0).ConfigureAwait(false);
-
 			try
 			{
 				NativeMethods.EmptyWorkingSet(info.Process.Handle);
 			}
-			catch (Exception ex)
-			{
-				Logging.Stacktrace(ex);
-			}
+			catch { } // ignore
 		}
 
 		HashSet<int> ignorePids = new HashSet<int>();
@@ -253,7 +247,11 @@ namespace Taskmaster
 		{
 			if (!Taskmaster.PagingEnabled) return;
 
-			if (!string.IsNullOrEmpty(executable))
+			if (string.IsNullOrEmpty(executable))
+			{
+				Log.Information("<Process> Paging applications to free memory...");
+			}
+			else
 			{
 				var procs = Process.GetProcessesByName(executable); // unnecessary maybe?
 				if (procs.Length == 0)
@@ -262,7 +260,7 @@ namespace Taskmaster
 					return;
 				}
 
-				Log.Information("Freeing memory for: {Exec}", executable);
+				Log.Information("<Process> Paging applications to free memory for: {Exec}", executable);
 			}
 
 			//await Task.Delay(0).ConfigureAwait(false);
@@ -275,22 +273,18 @@ namespace Taskmaster
 
 		async Task FreeMemoryInternal()
 		{
+			var b1 = Taskmaster.healthmonitor.FreeMemory();
+
 			ProcessDetectedEvent += FreeMemoryTick;
 
 			await ScanEverything(); // TODO: Call for this to happen otherwise
 
 			ProcessDetectedEvent -= FreeMemoryTick;
-		}
 
-		public async void PageEverythingRequest(object sender, EventArgs e)
-		{
-			if (Taskmaster.Trace) Log.Verbose("Paging requested.");
+			var b2 = Taskmaster.healthmonitor.FreeMemory(); // TODO: Wait a little longer to allow OS to Actually page stuff
 
-			//await Task.Delay(0).ConfigureAwait(false);
-
-			FreeMemory(null);
-
-			if (Taskmaster.Trace) Log.Verbose("Paging complete/dispatched.");
+			Log.Information("<Process> Paging complete, observed memory change: {Memory}",
+				HumanInterface.ByteString((long)(b2 - b1) * 1000000, true));
 		}
 
 		public async void ScanEverythingRequest(object sender, EventArgs e)
@@ -331,7 +325,7 @@ namespace Taskmaster
 			//await Task.Delay(0).ConfigureAwait(false);
 
 			if (Taskmaster.DebugFullScan)
-				Log.Verbose("Processing everything.");
+				Log.Debug("<Process/DEBUG> Full Scan: Start");
 
 			ScanEverythingStartEvent?.Invoke(this, null);
 
@@ -345,7 +339,7 @@ namespace Taskmaster
 					var procs = Process.GetProcesses();
 					count = procs.Length - 2; // -2 for Idle&System
 
-					SignalProcessHandled(count);
+					SignalProcessHandled(count); // scan start
 
 					var i = 0;
 					foreach (var process in procs)
@@ -360,7 +354,7 @@ namespace Taskmaster
 								continue;
 
 							if (Taskmaster.DebugFullScan)
-								Log.Verbose("Checking [{Iter}/{Count}] {Proc} (#{Pid})",
+								Log.Verbose("<Process/DEBUG> Checking [{Iter}/{Count}] {Proc} (#{Pid})",
 									i, count, name, pid);
 
 							ProcessDetectedEvent?.Invoke(this, new ProcessEx() { Process = process, Id = pid, Name = name, Path = null });
@@ -381,10 +375,10 @@ namespace Taskmaster
 				}
 			}
 
-			SignalProcessHandled(-count);
+			SignalProcessHandled(-count); // scan done
 
 			if (Taskmaster.DebugFullScan)
-				Log.Verbose("Full scan: DONE.");
+				Log.Debug("<Process/DEBUG> Full Scan: Complete");
 
 			//Taskmaster.ThreadIdentity("ScanEverything.End");
 
@@ -719,7 +713,7 @@ namespace Taskmaster
 		async void WaitForExitTriggered(ProcessEx info, ProcessEventArgs.ProcessState state = ProcessEventArgs.ProcessState.Exiting)
 		{
 			if (Taskmaster.DebugForeground || Taskmaster.DebugPower)
-				Log.Debug("{Exec} exited [Power: {Power}, Active: {Active}]", info.Name, info.PowerWait, info.ActiveWait);
+				Log.Debug("<Process/DEBUG> {Exec} exited [Power: {Power}, Active: {Active}]", info.Name, info.PowerWait, info.ActiveWait);
 
 			try
 			{
@@ -837,7 +831,7 @@ namespace Taskmaster
 		public void ForegroundAppChangedEvent(object sender, WindowChangedArgs ev)
 		{
 			if (Taskmaster.DebugForeground)
-				Log.Debug("<Process> Foreground Received: #{Id}", ev.Id);
+				Log.Debug("<Process/DEBUG> Foreground Received: #{Id}", ev.Id);
 
 			if (PreviousForegroundInfo != null)
 			{
@@ -847,13 +841,13 @@ namespace Taskmaster
 					{
 						//Log.Debug("PUTTING PREVIOUS FOREGROUND APP to BACKGROUND");
 						PreviousForegroundController.Pause(PreviousForegroundInfo);
-						onActiveHandled?.Invoke(this, new ProcessEventArgs() { Control = PreviousForegroundController, Info = PreviousForegroundInfo, State = ProcessEventArgs.ProcessState.Reduced });
+						onProcessHandled?.Invoke(this, new ProcessEventArgs() { Control = PreviousForegroundController, Info = PreviousForegroundInfo, State = ProcessEventArgs.ProcessState.Reduced });
 					}
 				}
 				else
 				{
 					if (Taskmaster.ShowInaction && Taskmaster.DebugForeground)
-						Log.Debug("<Foreground> Changed but the app is still the same. Curious, don't you think?");
+						Log.Debug("<Foreground/DEBUG> Changed but the app is still the same. Curious, don't you think?");
 				}
 			}
 
@@ -868,11 +862,11 @@ namespace Taskmaster
 				if (info != null)
 				{
 					if (Taskmaster.DebugForeground)
-						Log.Debug("[{FriendlyName}] {Exec} (#{Pid}) on foreground!", prc.FriendlyName, info.Name, info.Id);
+						Log.Debug("<Process/DEBUG> [{FriendlyName}] {Exec} (#{Pid}) on foreground!", prc.FriendlyName, info.Name, info.Id);
 
 					prc.Resume(info);
 
-					onActiveHandled?.Invoke(this, new ProcessEventArgs() { Control = prc, Info = info, State = ProcessEventArgs.ProcessState.Restored });
+					onProcessHandled?.Invoke(this, new ProcessEventArgs() { Control = prc, Info = info, State = ProcessEventArgs.ProcessState.Restored });
 
 					PreviousForegroundInfo = info;
 					PreviousForegroundController = prc;
@@ -882,7 +876,7 @@ namespace Taskmaster
 			}
 
 			if (Taskmaster.DebugForeground && Taskmaster.Trace)
-				Log.Debug("<Process> NULLING PREVIOUS FOREGRDOUND");
+				Log.Debug("<Process/DEBUG> NULLING PREVIOUS FOREGRDOUND");
 
 			PreviousForegroundInfo = null;
 			PreviousForegroundController = null;
@@ -938,7 +932,7 @@ namespace Taskmaster
 						if (prc.Executable.Equals(info.Name, Taskmaster.CaseSensitive ? StringComparison.InvariantCulture : StringComparison.InvariantCultureIgnoreCase))
 						{
 							if (Taskmaster.DebugPaths)
-								Log.Debug("[{FriendlyName}] Path+Exe matched.", prc.FriendlyName);
+								Log.Debug("<Process/DEBUG> [{FriendlyName}] Path+Exe matched.", prc.FriendlyName);
 						}
 						else
 							continue; // CheckPathWatch does not handle combo path+exes
@@ -950,7 +944,7 @@ namespace Taskmaster
 						// if (cacheGet)
 						// 	Log.Debug("[{FriendlyName}] {Exec} (#{Pid}) – PATH CACHE GET!! :D", pc.FriendlyName, name, pid);
 						if (Taskmaster.DebugPaths)
-							Log.Verbose("[{PathFriendlyName}] (CheckPathWatch) Matched at: {Path}", prc.FriendlyName, info.Path);
+							Log.Verbose("<Process/DEBUG> [{PathFriendlyName}] (CheckPathWatch) Matched at: {Path}", prc.FriendlyName, info.Path);
 
 						matchedprc = prc;
 						break;
@@ -1101,17 +1095,17 @@ namespace Taskmaster
 			if (keyexists)
 			{
 				if (Taskmaster.DebugForeground)
-					Log.Debug("[{FriendlyName}] {Exec} (#{Pid}) already in foreground watchlist.", prc.FriendlyName, info.Name, info.Id);
+					Log.Debug("<Process/DEBUG> [{FriendlyName}] {Exec} (#{Pid}) already in foreground watchlist.", prc.FriendlyName, info.Name, info.Id);
 			}
 			else
 			{
 				WaitForExit(info);
 
 				if (Taskmaster.DebugForeground)
-					Log.Debug("[{FriendlyName}] {Exec} (#{Pid}) added to foreground watchlist.", prc.FriendlyName, info.Name, info.Id);
+					Log.Debug("<Process/DEBUG> [{FriendlyName}] {Exec} (#{Pid}) added to foreground watchlist.", prc.FriendlyName, info.Name, info.Id);
 			}
 
-			onActiveHandled?.Invoke(this, new ProcessEventArgs() { Control = prc, Info = info, State = ProcessEventArgs.ProcessState.Found });
+			onProcessHandled?.Invoke(this, new ProcessEventArgs() { Control = prc, Info = info, State = ProcessEventArgs.ProcessState.Found });
 		}
 
 		// TODO: This should probably be pushed into ProcessController somehow.
@@ -1212,7 +1206,7 @@ namespace Taskmaster
 				{
 					StopBatchProcessingTimer();
 					if (Taskmaster.DebugProcesses)
-						Log.Debug("New instance timer stopped.");
+						Log.Debug("<Process/DEBUG> New instance timer stopped.");
 				}
 			}
 
@@ -1239,68 +1233,85 @@ namespace Taskmaster
 			foreach (var info in list)
 				ProcessDetectedEvent?.Invoke(this, info);
 
-			SignalProcessHandled(-(list.Count));
+			SignalProcessHandled(-(list.Count)); // batch done
 		}
 
 		public static int Handling { get; private set; }
 
 		void SignalProcessHandled(int adjust)
 		{
-			onInstanceHandling?.Invoke(this, new InstanceEventArgs { Count = adjust });
+			Handling += adjust;
+			try
+			{
+				onInstanceHandling?.Invoke(this, new InstanceEventArgs { Count = adjust, Total = Handling });
+			}
+			catch (Exception ex)
+			{
+				Logging.Stacktrace(ex);
+			}
 		}
 
 		public event EventHandler<InstanceEventArgs> onInstanceHandling;
-		public event EventHandler<ProcessEventArgs> onActiveHandled;
+		public event EventHandler<ProcessEventArgs> onProcessHandled;
 		public event EventHandler<ProcessEventArgs> onWaitForExitEvent;
 
 		// This needs to return faster
 		async void NewInstanceTriage(object sender, System.Management.EventArrivedEventArgs e)
 		{
-			SignalProcessHandled(1);
+			SignalProcessHandled(1); // wmi new instance
 
-			var wmiquerytime = Stopwatch.StartNew();
+			try
+			{
+				var wmiquerytime = Stopwatch.StartNew();
 
 			// TODO: Instance groups?
 			var pid = -1;
 			var name = string.Empty;
 			var path = string.Empty;
 			System.Management.ManagementBaseObject targetInstance;
-			try
-			{
-				targetInstance = (System.Management.ManagementBaseObject)e.NewEvent.Properties["TargetInstance"].Value;
-				pid = Convert.ToInt32((string)targetInstance.Properties["Handle"].Value);
-				path = (string)(targetInstance.Properties["ExecutablePath"].Value);
-				name = System.IO.Path.GetFileNameWithoutExtension(path);
+
+				try
+				{
+					targetInstance = (System.Management.ManagementBaseObject)e.NewEvent.Properties["TargetInstance"].Value;
+					pid = Convert.ToInt32((string)targetInstance.Properties["Handle"].Value);
+					path = (string)(targetInstance.Properties["ExecutablePath"].Value);
+					name = System.IO.Path.GetFileNameWithoutExtension(path);
+					/*
+					if (string.IsNullOrEmpty(name))
+					{
+						// this happens when we have insufficient permissions.
+						// as such, NOP.. shouldn't bother testing it here even.
+					}
+					*/
+				}
+				catch (Exception ex)
+				{
+					Log.Error("<<WMI>> Failed to extract process ID.");
+					Logging.Stacktrace(ex);
+					return; // would throw but this is eventhandler
+				}
+				finally
+				{
+					wmiquerytime.Stop();
+					Statistics.WMIquerytime += wmiquerytime.Elapsed.TotalSeconds;
+					Statistics.WMIqueries += 1;
+				}
+
+				if (IgnoreProcessID(pid)) return; // We just don't care
+
 				if (string.IsNullOrEmpty(name))
 				{
-					// this happens when we have insufficient permissions.
-					// as such, NOP.. shouldn't bother testing it here even.
+					if (Taskmaster.DebugProcesses) Log.Error("<<WMI>> Failed to acquire neither process name nor process Id");
+					return;
 				}
-			}
-			catch (Exception ex)
-			{
-				Log.Error("<<WMI>> Failed to extract process ID.");
-				Logging.Stacktrace(ex);
-				SignalProcessHandled(-1);
-				return; // would throw but this is eventhandler
+				var info = new ProcessEx() { Process = null, Name = name, Path = path, Id = pid };
+
+				NewInstanceTriagePhaseTwo(info).ConfigureAwait(false);
 			}
 			finally
 			{
-				wmiquerytime.Stop();
-				Statistics.WMIquerytime += wmiquerytime.Elapsed.TotalSeconds;
-				Statistics.WMIqueries += 1;
+				SignalProcessHandled(-1); // done with it
 			}
-
-			if (IgnoreProcessID(pid)) return; // We just don't care
-
-			if (string.IsNullOrEmpty(name) && pid <= LowestInvalidPid)
-			{
-				Log.Error("<<WMI>> Failed to acquire neither process name nor process Id");
-				return;
-			}
-			var info = new ProcessEx() { Process = null, Name = name, Path = path, Id = pid };
-
-			NewInstanceTriagePhaseTwo(info).ConfigureAwait(false);
 		}
 
 		async Task NewInstanceTriagePhaseTwo(ProcessEx info)
@@ -1331,10 +1342,6 @@ namespace Taskmaster
 					Log.Error("Failed to retrieve name of process #{Pid}", info.Id);
 					return;
 				}
-				finally
-				{
-					SignalProcessHandled(-1);
-				}
 			}
 
 			if (Taskmaster.Trace) Log.Verbose("Caught: {ProcessName} (#{ProcessID}) at: {Path}", info.Name, info.Id, info.Path);
@@ -1355,34 +1362,36 @@ namespace Taskmaster
 			{
 				lock (BatchProcessingLock)
 				{
-					ProcessBatch.Add(info);
-
-					// Delay process timer a few times.
-					if (BatchProcessingTimer != null)
+					try
 					{
-						processListLockRestart += 1;
-						if (processListLockRestart < BatchProcessingThreshold)
-							BatchProcessingTimer.Change(BatchDelay, BatchDelay);
+						ProcessBatch.Add(info);
+
+						// Delay process timer a few times.
+						if (BatchProcessingTimer != null)
+						{
+							processListLockRestart += 1;
+							if (processListLockRestart < BatchProcessingThreshold)
+								BatchProcessingTimer.Change(BatchDelay, BatchDelay);
+						}
+						else
+							StartBatchProcessingTimer();
 					}
-					else
-						StartBatchProcessingTimer();
+					catch (Exception ex)
+					{
+						Logging.Stacktrace(ex);
+					}
 				}
 			}
 			else
 			{
-				ProcessDetectedEvent?.Invoke(this, info);
-				SignalProcessHandled(-1);
-			}
-		}
-
-		void UpdateHandling(object sender, InstanceEventArgs ev)
-		{
-			Handling += ev.Count;
-			if (Handling < 0)
-			{
-				if (Taskmaster.Trace)
-					Log.Fatal("Handling counter underflow");
-				Handling = 0;
+				try
+				{
+					ProcessDetectedEvent?.Invoke(this, info);
+				}
+				catch (Exception ex)
+				{
+					Logging.Stacktrace(ex);
+				}
 			}
 		}
 

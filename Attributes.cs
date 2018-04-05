@@ -1,10 +1,10 @@
 ﻿//
-// Statistics.cs
+// Attributes.cs
 //
 // Author:
 //       M.A. (https://github.com/mkahvi)
 //
-// Copyright (c) 2016-2018 M.A.
+// Copyright (c) 2018 M.A.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -24,24 +24,21 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
 namespace Taskmaster
 {
-	public static class Statistics
+	class SettingNameAttribute : Attribute
 	{
-		public static int ParentSeeks { get; set; } = 0;
-		public static double Parentseektime { get; set; } = 0;
+		public string Name { get; private set; } = string.Empty;
 
-		public static int WMIqueries { get; set; } = 0;
-		public static double WMIquerytime { get; set; } = 0;
-
-		public static int Cleanups { get; set; } = 0;
-		public static double CleanupTime { get; set; } = 0;
-
-		public static double PathCacheCurrent { get; set; } = 0;
-		public static double PathCachePeak { get; set; } = 0;
-		public static double PathCacheHits { get; set; } = 0;
-		public static double PathCacheMisses { get; set; } = 0;
-
-		public static int FatalErrors { get; set; } = 0;
+		public SettingNameAttribute(string name)
+		{
+			Name = name;
+		}
 	}
 }

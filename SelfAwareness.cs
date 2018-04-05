@@ -38,18 +38,17 @@ namespace Taskmaster
 	sealed public class SelfAwareness : IDisposable
 	{
 		static readonly object AwarenessMap_lock = new object();
-		static ConcurrentDictionary<int, Awareness> AwarenessMap;
+		readonly static ConcurrentDictionary<int, Awareness> AwarenessMap = new ConcurrentDictionary<int, Awareness>();
 
 		static ConcurrentQueue<int> FreeKeys = new ConcurrentQueue<int>();
 		static int NextKey = 1;
+		DateTime NextDue = DateTime.MinValue;
 		static readonly object FreeKeys_lock = new object();
 
 		System.Threading.Timer AwarenessTicker;
 
 		public SelfAwareness()
 		{
-			AwarenessMap = new ConcurrentDictionary<int, Awareness>();
-
 			NextDue = DateTime.Now.AddSeconds(5);
 			AwarenessTicker = new System.Threading.Timer(Assess, null, 5 * 1000, 15 * 1000);
 		}
@@ -131,7 +130,6 @@ namespace Taskmaster
 
 		}
 
-		DateTime NextDue = DateTime.MinValue;
 		void Assess(object state)
 		{
 			var now = DateTime.Now;
@@ -144,9 +142,13 @@ namespace Taskmaster
 					foreach (var awnPair in AwarenessMap)
 					{
 						var awn = awnPair.Value;
+
 						if (awn.Due <= now)
 						{
 							awn.Tick++;
+
+							Log.Fatal("<<Self-Awareness>> Tick: {Tick} – Due:{Due} – Now:{Now} – Late: {Late}s",
+									  awn.Tick, awn.Due, now, (now - awn.Due).TotalSeconds);
 
 							if (awn.Tick == 1)
 							{
@@ -155,21 +157,18 @@ namespace Taskmaster
 
 								if (awn.Message != null)
 								{
-									Log.Fatal("<<Self-Awareness>> {Method} hung [{Line}] – {Message} – ({File})",
-											  awn.Method, awn.Line, awn.Message, awn.File);
+									Log.Fatal("<<Self-Awareness>> {Method} hung [{Line}] – {Message}",
+											  awn.Method, awn.Line, awn.Message);
 								}
 								else
 								{
-									Log.Fatal("<<Self-Awareness>> {Method} hung [{Line}] ({File})",
-											  awn.Method, awn.Line, awn.File);
+									Log.Fatal("<<Self-Awareness>> {Method} hung [{Line}]",
+											  awn.Method, awn.Line);
 								}
 
 								if (awn.Callback != null)
 									awn.Callback.Invoke(awn.UserObject);
 							}
-
-							Log.Fatal("<<Self-Awareness>> Tick: {Tick} – Due:{Due} – Now:{Now} – Late: {Late}s",
-									  awn.Tick, awn.Due, now, (now - awn.Due).TotalSeconds);
 
 							if (awn.Tick >= 3) clearList.Push(awn.Key);
 						}

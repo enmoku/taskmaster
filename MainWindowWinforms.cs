@@ -45,9 +45,9 @@ namespace Taskmaster
 			// InitializeComponent(); // TODO: WPF
 			FormClosing += WindowClose;
 
-			DoubleBuffered = true;
+			//DoubleBuffered = true;
 
-			// MakeTrayIcon();
+			Icon = System.Drawing.Icon.ExtractAssociatedIcon(System.Reflection.Assembly.GetExecutingAssembly().Location);
 
 			BuildUI();
 
@@ -63,7 +63,9 @@ namespace Taskmaster
 			MinimizeBox = false;
 			MaximizeBox = false;
 
-			Hide();
+			if (!Taskmaster.ShowOnStart)
+				Hide();
+
 			// CenterToScreen();
 
 			Shown += (object sender, EventArgs e) =>
@@ -72,8 +74,11 @@ namespace Taskmaster
 				{
 					BeginInvoke(new Action(() =>
 					{
-						loglist.TopItem = loglist.Items[loglist.Items.Count - 1];
-						ShowLastLog();
+						if (loglist.Items.Count > 0) // needed in case of bugs or clearlog
+						{
+							loglist.TopItem = loglist.Items[loglist.Items.Count - 1];
+							ShowLastLog();
+						}
 					}));
 				}
 				catch { } // ignore
@@ -292,7 +297,6 @@ namespace Taskmaster
 		}
 
 		public event EventHandler rescanRequest;
-		public event EventHandler pagingRequest;
 
 		public void hookDiskManager(ref DiskManager diskman)
 		{
@@ -306,7 +310,7 @@ namespace Taskmaster
 			processmanager = control;
 
 			processmanager.onInstanceHandling += ProcessNewInstanceCount;
-			processmanager.onActiveHandled += ExitWaitListHandler;
+			processmanager.onProcessHandled += ExitWaitListHandler;
 			processmanager.onWaitForExitEvent += ExitWaitListHandler;
 			PathCacheUpdate(null, null);
 
@@ -314,14 +318,13 @@ namespace Taskmaster
 			WatchlistColor();
 
 			rescanRequest += processmanager.ScanEverythingRequest;
-			if (Taskmaster.PagingEnabled)
-				pagingRequest += processmanager.PageEverythingRequest;
 
 			ProcessController.onLocate += WatchlistPathLocatedEvent;
 			ProcessController.onTouch += ProcAdjust;
 
-			lock (processingCountLock)
-				processingCount.Value = ProcessManager.Handling;
+			BeginInvoke(new Action(() => {
+				processingcount.Text = ProcessManager.Handling.ToString();
+			}));
 
 			var items = processmanager.getExitWaitList();
 
@@ -345,19 +348,7 @@ namespace Taskmaster
 		{
 			if (!IsHandleCreated) return;
 
-			lock (processingCountLock)
-			{
-				try
-				{
-					processingCount.Value += e.Count;
-				}
-				catch
-				{
-					if (Taskmaster.Trace)
-						Log.Error("Processing counter over/underflow");
-					processingCount.Value = ProcessManager.Handling;
-				}
-			}
+			processingcount.Text = ProcessManager.Handling.ToString();
 		}
 
 		System.Drawing.Color GrayText = System.Drawing.Color.FromArgb(130, 130, 130);
@@ -469,9 +460,6 @@ namespace Taskmaster
 		readonly object appw_lock = new object();
 		Dictionary<ProcessController, ListViewItem> WatchlistMap = new Dictionary<ProcessController, ListViewItem>();
 		Label corCountLabel;
-		readonly object processingCountLock = new object();
-		NumericUpDown processingCount;
-		Label processingCountdown;
 
 		ListView powerbalancerlog;
 		Label powerbalancer_behaviour;
@@ -545,7 +533,6 @@ namespace Taskmaster
 		Label inetstatuslabel;
 		Label uptimestatuslabel;
 
-		ComboBox logcombo_level;
 		public static Serilog.Core.LoggingLevelSwitch LogIncludeLevel;
 
 		int UIUpdateFrequency = 500;
@@ -572,9 +559,9 @@ namespace Taskmaster
 			try
 			{
 				var t = ProcessManager.NextRescan.Unixstamp() - DateTime.Now.Unixstamp();
-				processingCountdown.Text = string.Format("{0:N0}s", t);
+				processingtimer.Text = string.Format("{0:N0}s", t);
 			}
-			catch (Exception ex) { Logging.Stacktrace(ex); }
+			catch { } // discard
 		}
 
 		[Aspects.UIThreadAspect]
@@ -594,8 +581,6 @@ namespace Taskmaster
 		}
 
 		ListView ifaceList;
-		Button rescanbutton;
-		Button crunchbutton;
 
 		ContextMenuStrip ifacems;
 		ContextMenuStrip loglistms;
@@ -682,16 +667,48 @@ namespace Taskmaster
 		int SeenColumn = 8;
 		int PathColumn = 9;
 
-		void EnsureDebugLog()
+		TabPage micTab = null;
+		TabPage netTab = null;
+		TabPage powerDebugTab = null;
+		TabPage ProcessDebugTab = null;
+
+		EventHandler ResizeLogList;
+
+		ToolStripMenuItem menu_debug_loglevel_info = null;
+		ToolStripMenuItem menu_debug_loglevel_debug = null;
+		ToolStripMenuItem menu_debug_loglevel_trace = null;
+
+		void EnsureVerbosityLevel()
 		{
-			if (logcombo_level.SelectedIndex == 0)
-				logcombo_level.SelectedIndex = 1;
+			if (LogIncludeLevel.MinimumLevel == Serilog.Events.LogEventLevel.Information)
+				LogIncludeLevel.MinimumLevel = Serilog.Events.LogEventLevel.Debug;
+			UpdateLogLevelSelection();
+		}
+
+		void UpdateLogLevelSelection()
+		{
+			var level = LogIncludeLevel.MinimumLevel;
+
+			menu_debug_loglevel_info.Checked = (level == Serilog.Events.LogEventLevel.Information);
+			menu_debug_loglevel_debug.Checked = (level == Serilog.Events.LogEventLevel.Debug);
+			menu_debug_loglevel_trace.Checked = (level == Serilog.Events.LogEventLevel.Verbose);
+			switch (level)
+			{
+				default:
+				case Serilog.Events.LogEventLevel.Information:
+					verbositylevel.Text = "Info";
+					break;
+				case Serilog.Events.LogEventLevel.Debug:
+					verbositylevel.Text = "Debug";
+					break;
+				case Serilog.Events.LogEventLevel.Verbose:
+					verbositylevel.Text = "Trace";
+					break;
+			}
 		}
 
 		void BuildUI()
 		{
-			MinimumSize = new System.Drawing.Size(750, 620); // width, height
-
 			Text = string.Format("{0} ({1})", System.Windows.Forms.Application.ProductName, System.Windows.Forms.Application.ProductVersion);
 #if DEBUG
 			Text = Text + " DEBUG";
@@ -701,27 +718,36 @@ namespace Taskmaster
 
 			var padding = new Padding(6);
 
-			var lrows = new TableLayoutPanel
+			BuildStatusbar();
+
+			SetStyle(ControlStyles.AllPaintingInWmPaint, true); // reduce flicker
+			SetStyle(ControlStyles.OptimizedDoubleBuffer, true); // reduce flicker
+			SetStyle(ControlStyles.CacheText, true); // performance
+
+			var layout = new TableLayoutPanel
 			{
 				AutoSize = true,
 				Parent = this,
 				ColumnCount = 1,
 				Margin = padding,
-				//lrows.RowCount = 10;
-				Dock = DockStyle.Top,
+				Dock = DockStyle.Fill,
 			};
 
-			var menu = new MenuStrip() { Dock = DockStyle.Top };
-
+			var menu = new MenuStrip() { Dock = DockStyle.Top, Parent = this };
 			var menu_action = new ToolStripMenuItem("Actions");
 			menu_action.DropDown.AutoClose = true;
 			// Sub Items
 			var menu_action_rescan = new ToolStripMenuItem("Rescan", null, (o, s) =>
 			{
 				rescanRequest?.Invoke(this, null);
-			});
-			var menu_action_memoryfocus = new ToolStripMenuItem("Free memory for...", null, FreeMemoryRequest);
-			menu_action_memoryfocus.Enabled = Taskmaster.PagingEnabled;
+			})
+			{
+				Enabled = Taskmaster.ProcessMonitorEnabled,
+			};
+			var menu_action_memoryfocus = new ToolStripMenuItem("Free memory for...", null, FreeMemoryRequest)
+			{
+				Enabled = Taskmaster.PagingEnabled,
+			};
 			ToolStripMenuItem menu_action_restart = null;
 			menu_action_restart = new ToolStripMenuItem("Restart", null, (s, e) =>
 			{
@@ -751,15 +777,6 @@ namespace Taskmaster
 			// Sub Items
 			var menu_config_behaviour = new ToolStripMenuItem("Behaviour");
 			var menu_config_power = new ToolStripMenuItem("Power");
-			var menu_config_saveonexit = new ToolStripMenuItem("Save on exit")
-			{
-				Checked = Taskmaster.SaveConfigOnExit,
-				CheckOnClick = true
-			};
-			menu_config_saveonexit.Click += (sender, e) =>
-			{
-				Taskmaster.SaveConfigOnExit = !Taskmaster.SaveConfigOnExit;
-			};
 
 			// Sub Sub Items
 			var menu_config_behaviour_autoopen = new ToolStripMenuItem("Auto-open menus")
@@ -797,7 +814,7 @@ namespace Taskmaster
 				catch (Exception ex)
 				{
 					Logging.Stacktrace(ex);
-					throw;
+					//throw; // bad idea
 				}
 			});
 
@@ -810,50 +827,119 @@ namespace Taskmaster
 			menu_config.DropDownItems.Add(menu_config_components);
 			menu_config.DropDownItems.Add(new ToolStripSeparator());
 			menu_config.DropDownItems.Add(menu_config_folder);
-			menu_config.DropDownItems.Add(new ToolStripSeparator());
-			menu_config.DropDownItems.Add(menu_config_saveonexit);
 
 			// DEBUG menu item
 			var menu_debug = new ToolStripMenuItem("Debug");
 			menu_debug.DropDown.AutoClose = true;
 			// Sub Items
+			var menu_debug_loglevel = new ToolStripMenuItem("UI log level");
+
+			LogIncludeLevel = MemoryLog.LevelSwitch; // HACK
+
+			menu_debug_loglevel_info = new ToolStripMenuItem("Info", null,
+			(s, e) =>
+			{
+				LogIncludeLevel.MinimumLevel = Serilog.Events.LogEventLevel.Information;
+				UpdateLogLevelSelection();
+			})
+			{
+				CheckOnClick = true,
+				Checked = (LogIncludeLevel.MinimumLevel == Serilog.Events.LogEventLevel.Information),
+			};
+			menu_debug_loglevel_debug = new ToolStripMenuItem("Debug", null,
+			(s, e) =>
+			{
+				LogIncludeLevel.MinimumLevel = Serilog.Events.LogEventLevel.Debug;
+				UpdateLogLevelSelection();
+			})
+			{
+				CheckOnClick = true,
+				Checked = (LogIncludeLevel.MinimumLevel == Serilog.Events.LogEventLevel.Debug),
+			};
+			menu_debug_loglevel_trace = new ToolStripMenuItem("Trace", null,
+			(s, e) =>
+			{
+				LogIncludeLevel.MinimumLevel = Serilog.Events.LogEventLevel.Verbose;
+				UpdateLogLevelSelection();
+				Log.Warning("Trace events enabled. UI may become unresponsive due to their volume.");
+			})
+			{
+				CheckOnClick = true,
+				Checked = (LogIncludeLevel.MinimumLevel == Serilog.Events.LogEventLevel.Verbose),
+			};
+			menu_debug_loglevel.DropDownItems.Add(menu_debug_loglevel_info);
+			menu_debug_loglevel.DropDownItems.Add(menu_debug_loglevel_debug);
+			menu_debug_loglevel.DropDownItems.Add(menu_debug_loglevel_trace);
+
+			UpdateLogLevelSelection();
+
 			var menu_debug_inaction = new ToolStripMenuItem("Show inaction") { Checked = Taskmaster.ShowInaction, CheckOnClick = true };
 			menu_debug_inaction.Click += (sender, e) => { Taskmaster.ShowInaction = menu_debug_inaction.Checked; };
 			var menu_debug_scanning = new ToolStripMenuItem("Scanning") { Checked = Taskmaster.DebugFullScan, CheckOnClick = true };
 			menu_debug_scanning.Click += (sender, e) =>
 			{
 				Taskmaster.DebugFullScan = menu_debug_scanning.Checked;
-				if (Taskmaster.DebugFullScan) EnsureDebugLog();
+				if (Taskmaster.DebugFullScan) EnsureVerbosityLevel();
 			};
 
-			var menu_debug_procs = new ToolStripMenuItem("Processes") { Checked = Taskmaster.DebugProcesses, CheckOnClick = true };
+			var menu_debug_procs = new ToolStripMenuItem("Processes")
+			{
+				Checked = Taskmaster.DebugProcesses,
+				CheckOnClick = true
+			};
 			menu_debug_procs.Click += (sender, e) =>
 			{
 				Taskmaster.DebugProcesses = menu_debug_procs.Checked;
-				if (Taskmaster.DebugProcesses) EnsureDebugLog();
+				if (Taskmaster.DebugProcesses) EnsureVerbosityLevel();
 			};
 			var menu_debug_foreground = new ToolStripMenuItem("Foreground") { Checked = Taskmaster.DebugForeground, CheckOnClick = true };
 			menu_debug_foreground.Click += (sender, e) =>
 			{
 				Taskmaster.DebugForeground = menu_debug_foreground.Checked;
-				if (Taskmaster.DebugForeground) EnsureDebugLog();
+				if (Taskmaster.DebugForeground)
+				{
+					activeappmonitor.ActiveChanged += OnActiveWindowChanged;
+					tabLayout.Controls.Add(ProcessDebugTab);
+					EnsureVerbosityLevel();
+				}
+				else
+				{
+					activeappmonitor.ActiveChanged -= OnActiveWindowChanged;
+					bool refocus = tabLayout.SelectedTab.Equals(ProcessDebugTab);
+					tabLayout.Controls.Remove(ProcessDebugTab);
+					if (refocus) tabLayout.SelectedIndex = 1; // watchlist
+				}
 			};
 
 			var menu_debug_paths = new ToolStripMenuItem("Paths") { Checked = Taskmaster.DebugPaths, CheckOnClick = true };
 			menu_debug_paths.Click += (sender, e) =>
 			{
 				Taskmaster.DebugPaths = menu_debug_paths.Checked;
-				if (Taskmaster.DebugPaths) EnsureDebugLog();
+				if (Taskmaster.DebugPaths) EnsureVerbosityLevel();
 			};
 			var menu_debug_power = new ToolStripMenuItem("Power") { Checked = Taskmaster.DebugPower, CheckOnClick = true };
 			menu_debug_power.Click += (sender, e) =>
 			{
 				Taskmaster.DebugPower = menu_debug_power.Checked;
-				if (Taskmaster.DebugPower) EnsureDebugLog();
+				if (Taskmaster.DebugPower)
+				{
+					powermanager.onAutoAdjustAttempt += CPULoadHandler;
+					tabLayout.Controls.Add(powerDebugTab);
+					EnsureVerbosityLevel();
+				}
+				else
+				{
+					powermanager.onAutoAdjustAttempt -= CPULoadHandler;
+					bool refocus = tabLayout.SelectedTab.Equals(powerDebugTab);
+					tabLayout.Controls.Remove(powerDebugTab);
+					if (refocus) tabLayout.SelectedIndex = 1; // watchlist
+				}
 			};
 			var menu_debug_clear = new ToolStripMenuItem("Clear UI log", null, (sender, e) => { ClearLog(); });
 
 			// TODO: This menu needs to be clearer
+			menu_debug.DropDownItems.Add(menu_debug_loglevel);
+			menu_debug.DropDownItems.Add(new ToolStripSeparator());
 			menu_debug.DropDownItems.Add(menu_debug_inaction);
 			menu_debug.DropDownItems.Add(new ToolStripSeparator());
 			menu_debug.DropDownItems.Add(menu_debug_scanning);
@@ -897,52 +983,70 @@ namespace Taskmaster
 			menu.Items.Add(menu_info);
 
 			// no simpler way?
-
-			menu_action.MouseEnter += (s, e) => { if (Taskmaster.AutoOpenMenus) menu_action.ShowDropDown(); };
-			menu_config.MouseEnter += (s, e) => { if (Taskmaster.AutoOpenMenus) menu_config.ShowDropDown(); };
-			menu_debug.MouseEnter += (s, e) => { if (Taskmaster.AutoOpenMenus) menu_debug.ShowDropDown(); };
-			menu_info.MouseEnter += (s, e) => { if (Taskmaster.AutoOpenMenus) menu_info.ShowDropDown(); };
-
-			Controls.Add(menu);
+			
+			menu_action.MouseEnter += (s, e) => {
+				if (Form.ActiveForm != this) return;
+				if (Taskmaster.AutoOpenMenus) menu_action.ShowDropDown();
+			};
+			menu_config.MouseEnter += (s, e) => {
+				if (Form.ActiveForm != this) return;
+				if (Taskmaster.AutoOpenMenus) menu_config.ShowDropDown();
+			};
+			menu_debug.MouseEnter += (s, e) => {
+				if (Form.ActiveForm != this) return;
+				if (Taskmaster.AutoOpenMenus) menu_debug.ShowDropDown();
+			};
+			menu_info.MouseEnter += (s, e) => {
+				if (Form.ActiveForm != this) return;
+				if (Taskmaster.AutoOpenMenus) menu_info.ShowDropDown();
+			};
 
 			tabLayout = new TabControl()
 			{
-				//Parent = lrows,
-				Height = 300,
+				//Parent = layout,
+				//Height = 300,
 				Padding = new System.Drawing.Point(6, 6),
 				Dock = DockStyle.Fill,
 				//Padding = new System.Drawing.Point(3, 3),
+				MinimumSize = new System.Drawing.Size(-2, 360),
+				SizeMode = TabSizeMode.Normal,
+			};
+
+			layout.Resize += (o, e) =>
+			{
+				//tabLayout.Size = layout.RowStyles[0].SizeType = SizeType.AutoSize;
 			};
 
 			var infoTab = new TabPage("Info");
-			var watchTab = new TabPage("Watchlist");
-			var micTab = new TabPage("Microphone");
-			if (!Taskmaster.MicrophoneMonitorEnabled) micTab.Hide();
-			var netTab = new TabPage("Network");
-			if (!Taskmaster.NetworkMonitorEnabled) netTab.Hide();
-			var powerDebugTab = new TabPage("Power Debug");
-			var ProcessDebugTab = new TabPage("Process Debug");
-
 			tabLayout.Controls.Add(infoTab);
+
+			var watchTab = new TabPage("Watchlist");
 			tabLayout.Controls.Add(watchTab);
-			tabLayout.Controls.Add(micTab);
-			tabLayout.Controls.Add(netTab);
-			tabLayout.Controls.Add(powerDebugTab);
-			tabLayout.Controls.Add(ProcessDebugTab);
+
+			micTab = new TabPage("Microphone");
+			if (Taskmaster.MicrophoneMonitorEnabled)
+				tabLayout.Controls.Add(micTab);
+			netTab = new TabPage("Network");
+			if (Taskmaster.NetworkMonitorEnabled)
+				tabLayout.Controls.Add(netTab);
+			powerDebugTab = new TabPage("Power Debug");
+			if (Taskmaster.DebugPower)
+				tabLayout.Controls.Add(powerDebugTab);
+			ProcessDebugTab = new TabPage("Process Debug");
+			if (Taskmaster.DebugProcesses)
+				tabLayout.Controls.Add(ProcessDebugTab);
 
 			var infopanel = new TableLayoutPanel
 			{
-				Dock = DockStyle.Top,
-				Width = tabLayout.Width - 12,
+				Dock = DockStyle.Fill,
+				//Width = tabLayout.Width - 12,
 				AutoSize = true,
 			};
-
-			// Controls.Add(tabLayout);
 
 			#region Main Window Row 0, game monitor / active window monitor
 			var activepanel = new TableLayoutPanel
 			{
-				Dock = DockStyle.Top,
+				Dock = DockStyle.Fill,
 				RowCount = 1,
 				ColumnCount = 6,
 				AutoSize = true,
@@ -992,18 +1096,29 @@ namespace Taskmaster
 			var ifacewidths = colcfg.GetSetDefault("Interfaces", ifacewidthsDefault).IntValueArray;
 			if (ifacewidths.Length != ifacewidthsDefault.Length) ifacewidths = ifacewidthsDefault;
 
-			int[] winsizedefault = new int[] { 760, 0 };
-			var winsize = wincfg.GetSetDefault("Main", winsizedefault).IntValueArray;
-			if (winsize.Length == 2)
+			var winpos = wincfg["Main"].IntValueArray;
+
+			StartPosition = FormStartPosition.CenterScreen;
+			if (winpos != null && winpos.Length == 4)
 			{
-				if (winsize[0] > 0) Width = winsize[0];
-				if (winsize[1] > 0) Height = winsize[1];
+				var rectangle = new System.Drawing.Rectangle(winpos[0], winpos[1], winpos[2], winpos[3]);
+				if (Screen.AllScreens.Any(ø => ø.Bounds.IntersectsWith(Bounds))) // https://stackoverflow.com/q/495380
+				{
+					StartPosition = FormStartPosition.Manual;
+					Location = new System.Drawing.Point(rectangle.Left, rectangle.Top);
+					Bounds = rectangle;
+				}
 			}
 
 			#endregion
 
 			#region Main Window Row 1, microphone device
-			var micpanel = new TableLayoutPanel { Dock = DockStyle.Fill, RowCount = 3, Width = tabLayout.Width - 12 };
+			var micpanel = new TableLayoutPanel
+			{
+				Dock = DockStyle.Fill,
+				RowCount = 3,
+				//Width = tabLayout.Width - 12
+			};
 			micpanel.RowStyles.Add(new RowStyle(SizeType.Absolute, 32));
 			micpanel.RowStyles.Add(new RowStyle(SizeType.Absolute, 32));
 
@@ -1018,7 +1133,7 @@ namespace Taskmaster
 			micName = new Label { Text = "N/A", Dock = DockStyle.Left, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, AutoEllipsis = true };
 			var micNameRow = new TableLayoutPanel
 			{
-				Dock = DockStyle.Top,
+				Dock = DockStyle.Fill,
 				RowCount = 1,
 				ColumnCount = 2,
 				//AutoSize = true // why not?
@@ -1027,7 +1142,13 @@ namespace Taskmaster
 			micNameRow.Controls.Add(micName);
 			#endregion
 
-			var miccntrl = new TableLayoutPanel() { ColumnCount = 5, RowCount = 1, Dock = DockStyle.Top };
+			var miccntrl = new TableLayoutPanel()
+			{
+				ColumnCount = 5,
+				RowCount = 1,
+				Dock = DockStyle.Fill,
+				AutoSize = true,
+			};
 			miccntrl.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
 			miccntrl.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 
@@ -1094,7 +1215,11 @@ namespace Taskmaster
 			// End: Microphone enumeration
 
 			// Main Window row 4-5, internet status
-			var netlayout = new TableLayoutPanel { Dock = DockStyle.Top, AutoSize = true };
+			var netlayout = new TableLayoutPanel
+			{
+				Dock = DockStyle.Fill,
+				AutoSize = true,
+			};
 
 			var netLabel = new Label() { Text = "Network status:", Dock = DockStyle.Left, AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft };
 			var inetLabel = new Label() { Text = "Internet status:", Dock = DockStyle.Left, AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft };
@@ -1115,8 +1240,8 @@ namespace Taskmaster
 			{
 				ColumnCount = 6,
 				RowCount = 1,
-				Dock = DockStyle.Top,
-				//AutoSize = true
+				Dock = DockStyle.Fill,
+				AutoSize = true
 			};
 			netstatus.Controls.Add(netLabel);
 			netstatus.Controls.Add(netstatuslabel);
@@ -1217,8 +1342,8 @@ namespace Taskmaster
 			var proclayout = new TableLayoutPanel
 			{
 				// BackColor = System.Drawing.Color.Azure, // DEBUG
-				Dock = DockStyle.Top,
-				Width = tabLayout.Width - 12,
+				Dock = DockStyle.Fill,
+				//Width = tabLayout.Width - 12,
 				AutoSize = true,
 			};
 
@@ -1248,11 +1373,12 @@ namespace Taskmaster
 			watchlistRules = new ListView
 			{
 				View = View.Details,
-				Dock = DockStyle.Top,
+				Dock = DockStyle.Fill,
 				AutoSize = true,
-				Width = tabLayout.Width - 52, // FIXME: why does 3 work? can't we do this automatically?
-				Height = 260, // FIXME: Should use remaining space
-				FullRowSelect = true
+				//Width = tabLayout.Width - 52,
+				//Height = 260, // FIXME: Should use remaining space
+				FullRowSelect = true,
+				MinimumSize = new System.Drawing.Size(-2, -2),
 			};
 
 			var numberColumns = new int[] { 0, AdjustColumn };
@@ -1326,17 +1452,24 @@ namespace Taskmaster
 			// UI Log
 			loglist = new ListView
 			{
-				Dock = DockStyle.Top,
+				Dock = DockStyle.Fill,
 				AutoSize = true,
 				View = View.Details,
 				FullRowSelect = true,
 				HeaderStyle = ColumnHeaderStyle.Nonclickable,
 				Scrollable = true,
-				MinimumSize = new System.Drawing.Size(700, 180),
+				MinimumSize = new System.Drawing.Size(700, 240),
+				//MinimumSize = new System.Drawing.Size(-2, -2), // doesn't work
+				Anchor = AnchorStyles.Top,
 			};
 
+			// -1 = contents, -2 = heading
 			loglist.Columns.Add("Event Log", -2, HorizontalAlignment.Left); // 2
-			loglist.Resize += (sender, e) => { loglist.Columns[0].Width = -2; };
+			ResizeLogList = delegate {
+				loglist.Columns[0].Width = -2;
+				//loglist.Height = -2;
+			};
+			ResizeEnd += ResizeLogList;
 
 			loglistms = new ContextMenuStrip();
 			loglistms.Opened += LogContextMenuOpen;
@@ -1357,172 +1490,11 @@ namespace Taskmaster
 				Taskmaster.MarkDirtyINI(cfg);
 			}
 
-			var logpanel = new TableLayoutPanel
-			{
-				//Parent = lrows,
-				//Dock = DockStyle.Fill,
-				Dock = DockStyle.Top,
-
-				RowCount = 2,
-				ColumnCount = 1,
-				//Width = lrows.Width,
-				AutoSize = true,
-				MinimumSize = new System.Drawing.Size(700, 180),
-			};
-
-			var loglevelpanel = new TableLayoutPanel
-			{
-				Dock = DockStyle.Top,
-				RowCount = 1,
-				ColumnCount = 2,
-				AutoSize = true,
-			};
-
-			var loglabel_level = new Label
-			{
-				Text = "Verbosity",
-				Dock = DockStyle.Left,
-				TextAlign = System.Drawing.ContentAlignment.MiddleLeft,
-				Width = 60
-			};
-
-			logcombo_level = new ComboBox
-			{
-				Dock = DockStyle.Left,
-				DropDownStyle = ComboBoxStyle.DropDownList,
-				Items = { "Information", "Debug", "Trace" },
-				Width = 80,
-				SelectedIndex = 0
-			};
-
-			logcombo_level.SelectedIndexChanged += (sender, e) =>
-			{
-				switch (logcombo_level.SelectedIndex)
-				{
-					default:
-					case 0:
-						LogIncludeLevel.MinimumLevel = Serilog.Events.LogEventLevel.Information;
-						break;
-					case 1:
-						LogIncludeLevel.MinimumLevel = Serilog.Events.LogEventLevel.Debug;
-						break;
-					case 2:
-						LogIncludeLevel.MinimumLevel = Serilog.Events.LogEventLevel.Verbose;
-						Log.Warning("Trace events enabled. UI may become unresponsive due to their volume.");
-						break;
-				}
-				// Debug.WriteLine("GUI log level changed: {0} ({1})", LogIncludeLevel.MinimumLevel, logcombo_level.SelectedIndex);
-			};
-
-			LogIncludeLevel = MemoryLog.LevelSwitch; // HACK
-			switch (LogIncludeLevel.MinimumLevel)
-			{
-				default:
-				case Serilog.Events.LogEventLevel.Information:
-					logcombo_level.SelectedIndex = 0;
-					break;
-				case Serilog.Events.LogEventLevel.Debug:
-					logcombo_level.SelectedIndex = 1;
-					break;
-				case Serilog.Events.LogEventLevel.Verbose:
-					logcombo_level.SelectedIndex = 2;
-					break;
-			}
-
-			loglevelpanel.Controls.Add(loglabel_level);
-			loglevelpanel.Controls.Add(logcombo_level);
-			logpanel.Controls.Add(loglist);
-			logpanel.Controls.Add(loglevelpanel);
-			// logpanel.Controls.Add(loglist);
-
-			var commandpanel = new TableLayoutPanel
-			{
-				Dock = DockStyle.Top,
-				RowCount = 1,
-				ColumnCount = 12,
-				Height = 40,
-				AutoSize = true
-			};
-
-			processingCount = new NumericUpDown()
-			{
-				Minimum = 0,
-				Maximum = ushort.MaxValue,
-				Width = 48,
-				ReadOnly = true,
-				Enabled = false,
-				Margin = new Padding(9),
-				Dock = DockStyle.Left,
-			};
-
-			rescanbutton = new Button
-			{
-				Text = "Rescan",
-				Dock = DockStyle.Top,
-				Margin = new Padding(3 + 3),
-				FlatStyle = FlatStyle.Flat
-			};
-			rescanbutton.Click += (object sender, EventArgs e) =>
-			{
-				try
-				{
-					rescanbutton.Enabled = false;
-
-					rescanRequest?.Invoke(this, null);
-
-					rescanbutton.Enabled = true;
-				}
-				catch { }
-			};
-			commandpanel.Controls.Add(new Label
-			{
-				Text = "Processing",
-				Dock = DockStyle.Right,
-				TextAlign = System.Drawing.ContentAlignment.MiddleRight,
-				Padding = new Padding(6),
-				AutoSize = true
-			});
-			commandpanel.Controls.Add(processingCount);
-			processingCountdown = new Label()
-			{
-				TextAlign = System.Drawing.ContentAlignment.MiddleLeft,
-				Width = 40,
-				AutoSize = false,
-				Dock = DockStyle.Right,
-				Anchor = AnchorStyles.Left
-			};
-			processingCountdown.Text = "00.0s";
-			commandpanel.Controls.Add(processingCountdown);
-			commandpanel.Controls.Add(rescanbutton);
-			rescanbutton.Enabled = Taskmaster.ProcessMonitorEnabled;
-
-			crunchbutton = new Button
-			{
-				Text = "Page",
-				Dock = DockStyle.Top,
-				FlatStyle = FlatStyle.Flat,
-				Margin = new Padding(3 + 3),
-				Enabled = Taskmaster.PagingEnabled
-			};
-			crunchbutton.Click += (object sender, EventArgs e) =>
-			{
-				try
-				{
-					crunchbutton.Enabled = false;
-
-					pagingRequest?.Invoke(this, new EventArgs());
-
-					crunchbutton.Enabled = true;
-				}
-				catch { }
-			};
-
-			commandpanel.Controls.Add(crunchbutton);
-
 			var cachePanel = new TableLayoutPanel()
 			{
 				ColumnCount = 5,
-				AutoSize = true
+				AutoSize = true,
+				Dock = DockStyle.Fill,
 			};
 
 			cachePanel.Controls.Add(new Label()
@@ -1611,16 +1583,17 @@ namespace Taskmaster
 			});
 			tempmonitorpanel.Controls.Add(tempObjectSize);
 
-			// infopanel.Controls.Add(commandpanel);
 			infopanel.Controls.Add(tempmonitorpanel);
 			infoTab.Controls.Add(infopanel);
 
-			lrows.Controls.Add(tabLayout);
-			lrows.Controls.Add(commandpanel);
-			lrows.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-			lrows.RowStyles.Add(new RowStyle(SizeType.Absolute, 40));
+			layout.Controls.Add(tabLayout);
+			layout.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+			layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 
-			lrows.Controls.Add(logpanel);
+			//logpanel.Controls.Add(loglist);
+			layout.Controls.Add(loglist);
+			layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+			//lrows.RowStyles[lrows.GetRow(loglist)].SizeType = SizeType.AutoSize;
 
 			// POWER DEBUG TAB
 
@@ -1701,10 +1674,11 @@ namespace Taskmaster
 			exitwaitlist = new ListView()
 			{
 				AutoSize = true,
-				Height = 180,
-				Width = tabLayout.Width - 12, // FIXME: 3 for the bevel, but how to do this "right"?
+				//Height = 180,
+				//Width = tabLayout.Width - 12, // FIXME: 3 for the bevel, but how to do this "right"?
 				FullRowSelect = true,
 				View = View.Details,
+				MinimumSize = new System.Drawing.Size(-2, 200),
 			};
 			ExitWaitlistMap = new Dictionary<int, ListViewItem>();
 
@@ -1730,7 +1704,39 @@ namespace Taskmaster
 
 			tabLayout.SelectedIndex = opentab >= tabLayout.TabCount ? 0 : opentab;
 
+			//Controls.Add(menu);
+			//Controls.Add(layout);
+			//Controls.Add(statusbar);
+
+			//MinimumSize = new System.Drawing.Size(700, 600); // width, height
+			MinimumSize = new System.Drawing.Size(700, 690);
 			AutoSize = true;
+		}
+
+		StatusStrip statusbar;
+		ToolStripMenuItem processingcount;
+		ToolStripMenuItem processingtimer;
+		ToolStripMenuItem verbositylevel;
+
+		void BuildStatusbar()
+		{
+			statusbar = new StatusStrip()
+			{
+				Parent=this,
+			};
+
+			statusbar.Items.Add("Processing");
+			statusbar.Items.Add("Items:");
+			processingcount = new ToolStripMenuItem("[   n/a   ]") { AutoSize=false };
+			statusbar.Items.Add(processingcount);
+			statusbar.Items.Add("Next scan in:");
+			processingtimer = new ToolStripMenuItem("[   n/a   ]") { AutoSize = false };
+			statusbar.Items.Add(processingtimer);
+			var spacer = new ToolStripLabel() { Alignment = ToolStripItemAlignment.Right, Width=-2 };
+			statusbar.Items.Add(spacer);
+			statusbar.Items.Add(new ToolStripLabel("Verbosity:"));
+			verbositylevel = new ToolStripMenuItem("n/a");
+			statusbar.Items.Add(verbositylevel);
 		}
 
 		async void FreeMemoryRequest(object sender, EventArgs ev)
@@ -1741,7 +1747,7 @@ namespace Taskmaster
 				{
 					if (exsel.ShowDialog(this) == DialogResult.OK)
 					{
-						await Taskmaster.processmanager.FreeMemory(exsel.Selection);
+						await Taskmaster.processmanager?.FreeMemory(exsel.Selection);
 					}
 				}
 			}
@@ -2104,6 +2110,8 @@ namespace Taskmaster
 			}
 
 			ShowLastLog();
+
+			ResizeLogList(this, null);
 		}
 
 		public void hookActiveAppMonitor(ref ActiveAppManager aamon)
@@ -2113,7 +2121,9 @@ namespace Taskmaster
 			if (Taskmaster.Trace) Log.Verbose("Hooking active app manager.");
 
 			activeappmonitor = aamon;
-			activeappmonitor.ActiveChanged += OnActiveWindowChanged;
+
+			if (Taskmaster.DebugForeground)
+				activeappmonitor.ActiveChanged += OnActiveWindowChanged;
 		}
 
 		public void hookPowerManager(ref PowerManager pman)
@@ -2123,7 +2133,8 @@ namespace Taskmaster
 			if (Taskmaster.Trace) Log.Verbose("Hooking power manager.");
 
 			powermanager = pman;
-			powermanager.onAutoAdjustAttempt += CPULoadHandler;
+			if (Taskmaster.DebugPower)
+				powermanager.onAutoAdjustAttempt += CPULoadHandler;
 			powermanager.onBehaviourChange += PowerBehaviourDebugEvent;
 			powermanager.onPlanChange += PowerPlanDebugEvent;
 
@@ -2328,7 +2339,7 @@ namespace Taskmaster
 			uistate["Open"].IntValue = tabLayout.SelectedIndex;
 
 			var windows = cfg["Windows"];
-			windows["Main"].IntValueArray = new int[] { Width, Height };
+			windows["Main"].IntValueArray = new int[] { Bounds.Left, Bounds.Top, Bounds.Width, Bounds.Height };
 
 			Taskmaster.MarkDirtyINI(cfg);
 		}
@@ -2379,9 +2390,7 @@ namespace Taskmaster
 					processmanager.onWaitForExitEvent -= ExitWaitListHandler; //ExitWaitListHandler;
 					rescanRequest -= processmanager.ScanEverythingRequest;
 					processmanager.onInstanceHandling -= ProcessNewInstanceCount;
-					processmanager.onActiveHandled -= ExitWaitListHandler;
-					if (Taskmaster.PagingEnabled)
-						pagingRequest -= processmanager.PageEverythingRequest;
+					processmanager.onProcessHandled -= ExitWaitListHandler;
 					processmanager = null;
 				}
 				catch { }

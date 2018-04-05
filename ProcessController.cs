@@ -532,9 +532,8 @@ namespace Taskmaster
 			}
 
 			var denyChange = ProcessManager.ProtectedProcessName(info.Name);
-			if (denyChange)
-				if (Taskmaster.ShowInaction && Taskmaster.DebugProcesses)
-					Log.Debug("[{FriendlyName}] {ProcessName} (#{ProcessID}) in protected list, limiting tampering.", FriendlyName, info.Name, info.Id);
+			if (denyChange && Taskmaster.ShowInaction && Taskmaster.DebugProcesses)
+				Log.Debug("[{FriendlyName}] {ProcessName} (#{ProcessID}) in protected list, limiting tampering.", FriendlyName, info.Name, info.Id);
 
 			// TODO: Validate path.
 			if (Path != null)
@@ -620,6 +619,7 @@ namespace Taskmaster
 				var newAffinityMask = Affinity.ToInt32();
 				if (oldAffinityMask != newAffinityMask)
 				{
+					/*
 					var taff = Affinity;
 					if (AllowedCores || !Increase)
 					{
@@ -631,17 +631,25 @@ namespace Taskmaster
 						minaff = Bit.Fill(minaff, bitsnew, Math.Min(bitsold, bitsnew));
 						if (minaff1 != minaff)
 						{
+							Console.WriteLine("--- Affinity | Core Shift ---");
 							Console.WriteLine(Convert.ToString(minaff1, 2).PadLeft(ProcessManager.CPUCount));
+							Console.WriteLine(Convert.ToString(minaff, 2).PadLeft(ProcessManager.CPUCount));
+						}
+						else
+						{
+							Console.WriteLine("--- Affinity | Meh ---");
+							Console.WriteLine(Convert.ToString(Affinity.ToInt32(), 2).PadLeft(ProcessManager.CPUCount));
 							Console.WriteLine(Convert.ToString(minaff, 2).PadLeft(ProcessManager.CPUCount));
 						}
 
 						// shuffle cores from old to new
 						taff = new IntPtr(minaff);
 					}
+					*/
 					// int bitsnew = Bit.Count(newAffinityMask);
 					// TODO: Somehow shift bits old to new if there's free spots
 
-					info.Process.ProcessorAffinity = taff;
+					info.Process.ProcessorAffinity = Affinity;
 					modified = mAffinity = true;
 					// Log.Verbose("Affinity for '{ExecutableName}' (#{ProcessID}) set: {OldAffinity} → {NewAffinity}.",
 					// execname, pid, process.ProcessorAffinity.ToInt32(), Affinity.ToInt32());
@@ -740,7 +748,8 @@ namespace Taskmaster
 
 			if (modified)
 			{
-				Log.Information(sbs.ToString());
+				if (Taskmaster.DebugProcesses)
+					Log.Information(sbs.ToString());
 			}
 			else
 			{

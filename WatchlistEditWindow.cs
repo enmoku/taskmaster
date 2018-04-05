@@ -66,6 +66,8 @@ namespace Taskmaster
 
 			Controller = controller;
 
+			StartPosition = FormStartPosition.CenterParent;
+
 			if (Controller == null) throw new ArgumentException(string.Format("{0} not found in watchlist.", Controller.FriendlyName));
 
 			WindowState = FormWindowState.Normal;

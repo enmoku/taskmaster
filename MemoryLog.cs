@@ -115,15 +115,27 @@ namespace Taskmaster
 
 			public void Emit(LogEvent e)
 			{
-				if (e.Level < LevelSwitch.MinimumLevel) return;
-				string formattedtext;
+				if (e.Level == LogEventLevel.Fatal) Statistics.FatalErrors++;
+
+				if ((int)e.Level < (int)LevelSwitch.MinimumLevel) return;
+
+				string formattedtext = string.Empty;
 
 				lock (sinklock)
 				{
-					p_textFormatter.Format(e, p_output);
-					formattedtext = p_output.ToString();
-
-					((System.IO.StringWriter)p_output).GetStringBuilder().Clear(); // empty, weird results if not done.
+					try
+					{
+						p_textFormatter.Format(e, p_output);
+						formattedtext = p_output.ToString();
+					}
+					catch
+					{
+						return; // ignore, kinda
+					}
+					finally
+					{
+						((System.IO.StringWriter)p_output).GetStringBuilder().Clear(); // empty, weird results if not done.
+					}
 				}
 
 				MemoryLog.Emit(this, new LogEventArgs(formattedtext, e.Level));

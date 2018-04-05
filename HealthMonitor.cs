@@ -31,12 +31,25 @@ using Serilog;
 
 namespace Taskmaster
 {
+	[Serializable]
+	sealed internal class HealthMonitorSettings
+	{
+		public int Frequency { get; set; } = 5 * 60;
+		public int MemLevel { get; set; } = 1000;
+		public bool MemIgnoreFocus { get; set; } = true;
+		public string[] IgnoreList { get; set; } = { };
+		public int MemCooldown { get; set; } = 60;
+		public int FatalErrorThreshold { get; set; } = 10;
+		public int FatalLogSizeThreshold { get; set; } = 5;
+	}
+
 	/// <summary>
 	/// Monitors for variety of problems and reports on them.
 	/// </summary>
 	sealed public class HealthMonitor : IDisposable // Auto-Doc
 	{
 		//Dictionary<int, Problem> activeProblems = new Dictionary<int, Problem>();
+		HealthMonitorSettings Settings = new HealthMonitorSettings();
 
 		public HealthMonitor()
 		{
@@ -99,30 +112,24 @@ namespace Taskmaster
 
 			LoadConfig();
 
-			if (MemLevel > 0)
+			if (Settings.MemLevel > 0)
 			{
 				memfree = new PerformanceCounterWrapper("Memory", "Available MBytes", null);
 				commitbytes = new PerformanceCounterWrapper("Memory", "Committed Bytes", null);
 				commitlimit = new PerformanceCounterWrapper("Memory", "Commit Limit", null);
 				commitpercentile = new PerformanceCounterWrapper("Memory", "% Committed Bytes in Use", null);
 
-				Log.Information("<Auto-Doc> Memory auto-paging level: {Level} MB", MemLevel);
+				Log.Information("<Auto-Doc> Memory auto-paging level: {Level} MB", Settings.MemLevel);
 			}
 
-			healthTimer = new System.Threading.Timer(TimerCheck, null, 5000, Frequency * 60 * 1000);
+			healthTimer = new System.Threading.Timer(TimerCheck, null, 5000, Settings.Frequency * 60 * 1000);
 
 			Log.Information("<Auto-Doc> Loaded");
 		}
 
 		System.Threading.Timer healthTimer = null;
 
-		int MemLevel = 1000;
-		bool MemIgnoreFocus = true;
-		string[] IgnoreList = { };
-		int MemCooldown = 60;
 		DateTime MemFreeLast = DateTime.MinValue;
-
-		int Frequency = 5 * 60;
 
 		SharpConfig.Configuration cfg = null;
 		void LoadConfig()
@@ -131,30 +138,40 @@ namespace Taskmaster
 			bool modified = false, configdirty = false;
 
 			var gensec = cfg["General"];
-			Frequency = gensec.GetSetDefault("Frequency", 5, out modified).IntValue.Constrain(1, 60 * 24);
+			Settings.Frequency = gensec.GetSetDefault("Frequency", 5, out modified).IntValue.Constrain(1, 60 * 24);
 			gensec["Frequency"].Comment = "How often we check for anything. In minutes.";
 			configdirty |= modified;
 
 			var freememsec = cfg["Free Memory"];
 			freememsec.Comment = "Attempt to free memory when available memory goes below a threshold.";
 
-			MemLevel = freememsec.GetSetDefault("Threshold", 1000, out modified).IntValue;
+			Settings.MemLevel = freememsec.GetSetDefault("Threshold", 1000, out modified).IntValue;
 			// MemLevel = MemLevel > 0 ? MemLevel.Constrain(1, 2000) : 0;
 			freememsec["Threshold"].Comment = "When memory goes down to this level, we act.";
 			configdirty |= modified;
-			if (MemLevel > 0)
+			if (Settings.MemLevel > 0)
 			{
-				MemIgnoreFocus = freememsec.GetSetDefault("Ignore foreground", true, out modified).BoolValue;
+				Settings.MemIgnoreFocus = freememsec.GetSetDefault("Ignore foreground", true, out modified).BoolValue;
 				freememsec["Ignore foreground"].Comment = "Foreground app is not touched, regardless of anything.";
 				configdirty |= modified;
 
-				IgnoreList = freememsec.GetSetDefault("Ignore list", new string[] { }, out modified).StringValueArray;
+				Settings.IgnoreList = freememsec.GetSetDefault("Ignore list", new string[] { }, out modified).StringValueArray;
 				freememsec["Ignore list"].Comment = "List of apps that we don't touch regardless of anything.";
 				configdirty |= modified;
 
-				MemCooldown = freememsec.GetSetDefault("Cooldown", 60, out modified).IntValue.Constrain(1, 180);
+				Settings.MemCooldown = freememsec.GetSetDefault("Cooldown", 60, out modified).IntValue.Constrain(1, 180);
 				freememsec["Cooldown"].Comment = "Don't do this again for this many minutes.";
 			}
+
+			// SELF-MONITORING
+			var selfsec = cfg["Self"];
+			Settings.FatalErrorThreshold = selfsec.GetSetDefault("Fatal error threshold", 10, out modified).IntValue.Constrain(1, 30);
+			selfsec["Fatal error threshold"].Comment = "Auto-exit once number of fatal errors reaches this. 10 is very generous default.";
+			configdirty |= modified;
+
+			Settings.FatalLogSizeThreshold = selfsec.GetSetDefault("Fatal log size threshold", 10, out modified).IntValue.Constrain(1, 500);
+			selfsec["Fatal log size threshold"].Comment = "Auto-exit if total log file size exceeds this. In megabytes.";
+			configdirty |= modified;
 
 			if (configdirty) Taskmaster.MarkDirtyINI(cfg);
 		}
@@ -173,7 +190,9 @@ namespace Taskmaster
 
 			try
 			{
-				await Check();
+				await CheckErrors();
+				await CheckLogs();
+				await CheckMemory();
 			}
 			catch (Exception ex) { Logging.Stacktrace(ex); }
 			finally
@@ -182,13 +201,64 @@ namespace Taskmaster
 			}
 		}
 
-		async Task Check()
+		DateTime FreeMemory_last = DateTime.MinValue;
+		float FreeMemory_cached = 0f;
+		/// <summary>
+		/// Free memory, in megabytes.
+		/// </summary>
+		public float FreeMemory()
+		{
+			// this might be pointless
+			var now = DateTime.Now;
+			if ((now - FreeMemory_last).TotalSeconds > 2)
+			{
+				FreeMemory_last = now;
+				return FreeMemory_cached = memfree.Value;
+			}
+
+			return FreeMemory_cached;
+		}
+
+		async Task CheckErrors()
+		{
+			await Task.Delay(0);
+
+			// TODO: Maybe make this errors within timeframe instead of total...?
+			if (Statistics.FatalErrors >= Settings.FatalErrorThreshold)
+			{
+				Log.Fatal("<Auto-Doc> Fatal error count too high, exiting.");
+				Taskmaster.UnifiedExit();
+			}
+		}
+
+		string logpath = System.IO.Path.Combine(Taskmaster.datapath, "Logs");
+		async Task CheckLogs()
+		{
+			await Task.Delay(0);
+
+			long size = 0;
+
+			var files = System.IO.Directory.GetFiles(logpath, "*", System.IO.SearchOption.AllDirectories);
+			foreach (var filename in files)
+			{
+				var fi = new System.IO.FileInfo(System.IO.Path.Combine(logpath, filename));
+				size += fi.Length;
+			}
+
+			if (size >= Settings.FatalLogSizeThreshold * 1000000)
+			{
+				Log.Fatal("<Auto-Doc> Log files exceeding allowed size, exiting.");
+				Taskmaster.UnifiedExit();
+			}
+		}
+
+		async Task CheckMemory()
 		{
 			await Task.Delay(0);
 
 			// Console.WriteLine("<<Auto-Doc>> Checking...");
 
-			if (MemLevel > 0)
+			if (Settings.MemLevel > 0)
 			{
 				var memfreemb = memfree?.Value ?? 0; // MB
 				var commitb = commitbytes?.Value ?? 0;
@@ -196,7 +266,7 @@ namespace Taskmaster
 				var commitp = commitpercentile?.Value ?? 0;
 
 				// Console.WriteLine("Memory free: " + string.Format("{0:N1}", memfreet) + " / " + MemLevel);
-				if (memfreemb <= MemLevel)
+				if (memfreemb <= Settings.MemLevel)
 				{
 					// Console.WriteLine("<<Auto-Doc>> Memlevel below threshold.");
 
@@ -206,14 +276,14 @@ namespace Taskmaster
 
 					// Console.WriteLine(string.Format("Cooldown: {0:N2} minutes [{1}]", cooldown, MemCooldown));
 
-					if (cooldown >= MemCooldown)
+					if (cooldown >= Settings.MemCooldown)
 					{
 						// The following should just call something in ProcessManager
 
 						var ignorepid = -1;
 						try
 						{
-							if (MemIgnoreFocus)
+							if (Settings.MemIgnoreFocus)
 							{
 								ignorepid = Taskmaster.activeappmonitor.Foreground;
 								Taskmaster.processmanager.Ignore(ignorepid);
@@ -221,11 +291,11 @@ namespace Taskmaster
 
 							Log.Information("<<Auto-Doc>> Free memory low [{Memory}], attempting to improve situation.", HumanInterface.ByteString((long)memfreemb * 1000000));
 
-							await Taskmaster.processmanager.FreeMemory(null);
+							await Taskmaster.processmanager?.FreeMemory(null);
 						}
 						finally
 						{
-							if (MemIgnoreFocus)
+							if (Settings.MemIgnoreFocus)
 								Taskmaster.processmanager.Unignore(ignorepid);
 						}
 
@@ -240,10 +310,10 @@ namespace Taskmaster
 						Log.Information("<<Auto-Doc>> Free memory: {Memory} ({Change} change observed)",
 							HumanInterface.ByteString((long)(memfreemb2 * 1000)),
 							//HumanInterface.ByteString((long)commitb2), HumanInterface.ByteString((long)commitlimitb),
-							HumanInterface.ByteString((long)(actualbytes - actualbytes2)));
+							HumanInterface.ByteString((long)(actualbytes - actualbytes2), true));
 					}
 				}
-				else if (memfreemb * 1.5 <= MemLevel)
+				else if (memfreemb * 1.5 <= Settings.MemLevel)
 				{
 					Console.WriteLine("DEBUG: Free memory fairly low: " + HumanInterface.ByteString((long)(memfreemb * 1000)));
 				}

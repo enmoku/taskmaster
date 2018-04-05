@@ -68,13 +68,16 @@ namespace Taskmaster
 			return s.ToString();
 		}
 
-		public static string ByteString(long bytes)
+		public static string ByteString(long bytes, bool positivesign=false)
 		{
 			var s = new System.Text.StringBuilder();
 
 			const double giga = 1000000000;
 			const double mega = 1000000;
 			const double kilo = 1000;
+
+			if (positivesign && bytes > 0)
+				s.Append("+");
 
 			if (Math.Abs(bytes) > (giga * 0.5f))
 			{

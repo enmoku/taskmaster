@@ -24,6 +24,8 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
+using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 
 public static class SharpConfigExtensions
@@ -62,12 +64,29 @@ public static class SharpConfigExtensions
 
 	public static SharpConfig.Setting GetSetDefault<T>(this SharpConfig.Section section, string setting, T fallback)
 	{
-		bool unused;
-		return section.GetSetDefault(setting, fallback, out unused);
+		return section.GetSetDefault(setting, fallback, out bool unused);
+	}
+
+	/// <summary>
+	/// 
+	/// </summary>
+	/// <returns>true if changed, false otherwise.</returns>
+	public static bool Set<T>(this SharpConfig.Setting setting, T value)
+	{
+		if (!setting.IsArray && string.IsNullOrEmpty(setting.GetValue<string>()))
+		{
+			if (!setting.GetValue<T>().Equals(value))
+			{
+				setting.SetValue(value);
+				return true;
+			}
+		}
+		return false;
 	}
 
 	/// <summary>
 	/// Get setting from section while setting a default value if it has none.
+	/// Can not deal with arrays
 	/// </summary>
 	/// <returns>The setting.</returns>
 	/// <param name="section">Section.</param>
@@ -81,7 +100,7 @@ public static class SharpConfigExtensions
 
 		SharpConfig.Setting rv;
 		rv = section[setting];
-		if (!section[setting].IsArray && section[setting].GetValue<string>() == string.Empty)
+		if (!rv.IsArray && string.IsNullOrEmpty(rv.GetValue<string>()))
 		{
 			section[setting].SetValue(fallback);
 			defaulted = true;

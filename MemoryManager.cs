@@ -24,11 +24,15 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
+using System;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 
 namespace Taskmaster
 {
+	// BUG: Requires Windows 8 or later
+
+	/*
 	sealed class MemoryController
 	{
 		readonly Process process;
@@ -36,12 +40,11 @@ namespace Taskmaster
 
 		public static void EnforceProcess(Process prc, MemoryPriority prio = MemoryPriority.Normal)
 		{
-			/*
 			var memInfo = new MEMORY_PRIORITY_INFORMATION { MemoryPriority = Convert.ToUInt32(prio) };
 			uint memSize = Convert.ToUInt32(Marshal.SizeOf(memInfo));
-			var memInfoP = System.Runtime.InteropServices.Marshal.AllocHGlobal(memInfo);
+			IntPtr memInfoP = new IntPtr();
+			Marshal.StructureToPtr(memInfo, memInfoP, true);
 			MemoryManager.SetProcessInformation(prc.Handle, PROCESS_INFORMATION_CLASS.ProcessMemoryPriority, memInfoP, memSize);
-			*/
 		}
 
 		public MemoryController(Process prc, MemoryPriority prio = MemoryPriority.Normal)
@@ -57,7 +60,6 @@ namespace Taskmaster
 		ProcessPowerThrottling,
 	}
 
-	// BUG: Requires Windows 8
 	[StructLayout(LayoutKind.Sequential)]
 	public struct MEMORY_PRIORITY_INFORMATION
 	{
@@ -75,8 +77,8 @@ namespace Taskmaster
 
 	public static class MemoryManager
 	{
-		// [DllImport("kernel32.dll", SetLastError=true]
-		// [DllImport("kernel32.dll", EntryPoint = "SetProcessInformation")]
-		// static extern bool SetProcessInformation(IntPtr hProcess, PROCESS_INFORMATION_CLASS ProcessInformationClass, IntPtr ProcessInformation, uint ProcessInformationSize);
+		[DllImport("kernel32.dll", EntryPoint = "SetProcessInformation", SetLastError = true)]
+		public static extern bool SetProcessInformation(IntPtr hProcess, PROCESS_INFORMATION_CLASS ProcessInformationClass, IntPtr ProcessInformation, uint ProcessInformationSize);
 	}
+	*/
 }

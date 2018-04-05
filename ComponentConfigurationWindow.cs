@@ -48,6 +48,8 @@ namespace Taskmaster
 
 			if (initial)
 				StartPosition = FormStartPosition.CenterScreen;
+			else
+				StartPosition = FormStartPosition.CenterParent;
 
 			var baselayout = new TableLayoutPanel()
 			{

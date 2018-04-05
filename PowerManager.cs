@@ -359,10 +359,15 @@ namespace Taskmaster
 				}
 				else if (ReadyToAdjust)
 				{
+					// Should probably reset on >=1.0 pressure regardless of anything.
+
 					if (ReactionaryPlan == CurrentMode && ev.Pressure > 1.0)
 					{
-						// reset
-						Log.Error("<Power> Something went wrong. Resetting auto-adjust.");
+						// This usually happens when auto-adjust is paused and pressure keeps building.
+						// Harmless and kind of expected.
+						if (Taskmaster.DebugPower) Log.Debug("<Power> Something went wrong. Resetting auto-adjust.");
+						
+						// Reset
 						ResetAutoadjust();
 						ev.Pressure = 0f;
 					}
