@@ -68,41 +68,40 @@ namespace Taskmaster
 			return s.ToString();
 		}
 
+		static float SizeThreshold = 1.2f;
+		static readonly double Giga = 1000000000;
+		static readonly double Mega = 1000000;
+		static readonly double Kilo = 1000;
+		static string[] ByteLetter = {"B","kB","MB","GB"};
+
 		public static string ByteString(long bytes, bool positivesign=false)
 		{
-			var s = new System.Text.StringBuilder();
+			double div = 1;
+			int letter = 0;
 
-			const double giga = 1000000000;
-			const double mega = 1000000;
-			const double kilo = 1000;
-
-			if (positivesign && bytes > 0)
-				s.Append("+");
-
-			if (Math.Abs(bytes) > (giga * 0.5f))
+			if (Math.Abs(bytes) > (Giga * SizeThreshold))
 			{
-				s.Append(string.Format("{0:N3}", (double)bytes / giga));
-				s.Append(" G");
+				div = Giga;
+				letter = 3;
 			}
-			else if (Math.Abs(bytes) > (mega * 0.5f))
+			else if (Math.Abs(bytes) > (Mega * SizeThreshold))
 			{
-				s.Append(string.Format("{0:N2}", (double)bytes / mega));
-				s.Append(" M");
+				div = Mega;
+				letter = 2;
 			}
-			else if (Math.Abs(bytes) > (kilo * 0.5f))
+			else if (Math.Abs(bytes) > (Kilo * SizeThreshold))
 			{
-				s.Append(string.Format("{0:N1}", (double)bytes / kilo));
-				s.Append(" k");
+				div = Kilo;
+				letter = 1;
 			}
 			else
 			{
-				s.Append(bytes);
-				s.Append(" ");
+				div = 1;
+				letter = 0;
 			}
 
-			s.Append("B");
-
-			return s.ToString();
+			return string.Format("{1}{0:N3} {2}",
+				(double)bytes / Giga, ((positivesign && bytes > 0) ? "+" : ""), ByteLetter[letter]);
 		}
 	}
 }

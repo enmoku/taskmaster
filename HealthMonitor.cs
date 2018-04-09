@@ -34,12 +34,39 @@ namespace Taskmaster
 	[Serializable]
 	sealed internal class HealthMonitorSettings
 	{
+		/// <summary>
+		/// Scanning frequency.
+		/// </summary>
 		public int Frequency { get; set; } = 5 * 60;
+
+		/// <summary>
+		/// Free megabytes.
+		/// </summary>
 		public int MemLevel { get; set; } = 1000;
+
+		/// <summary>
+		/// Ignore foreground application.
+		/// </summary>
 		public bool MemIgnoreFocus { get; set; } = true;
+
+		/// <summary>
+		/// Ignore applications.
+		/// </summary>
 		public string[] IgnoreList { get; set; } = { };
+
+		/// <summary>
+		/// Cooldown in minutes before we attempt to do anything about low memory again.
+		/// </summary>
 		public int MemCooldown { get; set; } = 60;
+
+		/// <summary>
+		/// Fatal errors until we force exit.
+		/// </summary>
 		public int FatalErrorThreshold { get; set; } = 10;
+
+		/// <summary>
+		/// Log file total size at which we force exit.
+		/// </summary>
 		public int FatalLogSizeThreshold { get; set; } = 5;
 	}
 
@@ -291,7 +318,7 @@ namespace Taskmaster
 
 							Log.Information("<<Auto-Doc>> Free memory low [{Memory}], attempting to improve situation.", HumanInterface.ByteString((long)memfreemb * 1000000));
 
-							await Taskmaster.processmanager?.FreeMemory(null);
+							await Taskmaster.processmanager?.FreeMemory(null, quiet:true);
 						}
 						finally
 						{
@@ -310,12 +337,14 @@ namespace Taskmaster
 						Log.Information("<<Auto-Doc>> Free memory: {Memory} ({Change} change observed)",
 							HumanInterface.ByteString((long)(memfreemb2 * 1000)),
 							//HumanInterface.ByteString((long)commitb2), HumanInterface.ByteString((long)commitlimitb),
-							HumanInterface.ByteString((long)(actualbytes - actualbytes2), true));
+							HumanInterface.ByteString((long)(actualbytes2 - actualbytes), true));
 					}
 				}
-				else if (memfreemb * 1.5 <= Settings.MemLevel)
+				else if (memfreemb * 1.5f <= Settings.MemLevel)
 				{
-					Console.WriteLine("DEBUG: Free memory fairly low: " + HumanInterface.ByteString((long)(memfreemb * 1000)));
+					if (Taskmaster.DebugMemory)
+						Log.Debug("<Memory> Free memory fairly low: {Memory}",
+							HumanInterface.ByteString((long)(memfreemb * 1000000)));
 				}
 			}
 		}

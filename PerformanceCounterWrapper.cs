@@ -48,7 +48,7 @@ namespace Taskmaster
 				CategoryName = p_CategoryName,
 				CounterName = p_CounterName,
 				InstanceName = p_InstanceName,
-				ReadOnly = p_ScrapFirst,
+				ReadOnly = true,
 			};
 
 			if (p_ScrapFirst) { var scrap = Value; }
@@ -82,6 +82,11 @@ namespace Taskmaster
 				{
 					Counter.Close(); // probably superfluous
 					Counter.Dispose();
+					try
+					{
+						Sensors.Remove(Counter);
+					}
+					catch { }
 					Counter = null;
 				}
 

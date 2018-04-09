@@ -18,7 +18,7 @@ using System.Resources;
 // The form "{Major}.{Minor}.*" will automatically update the build and revision,
 // and "{Major}.{Minor}.{Build}.*" will update just the revision.
 
-[assembly: AssemblyVersion("0.8.*")] // FIXME: Get this somehow from the solution settings?
+[assembly: AssemblyVersion("0.9.*")] // FIXME: Get this somehow from the solution settings?
 [assembly: ComVisible(false)]
 [assembly: NeutralResourcesLanguage("en")]
 

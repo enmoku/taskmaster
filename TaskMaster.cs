@@ -56,7 +56,8 @@ namespace Taskmaster
 	[System.Runtime.InteropServices.Guid("088f7210-51b2-4e06-9bd4-93c27a973874")]//there's no point to this, is there?
 	public static class Taskmaster
 	{
-		public static string URL { get; } = "https://github.com/mkahvi/taskmaster";
+		public static string GitURL { get; } = "https://github.com/mkahvi/taskmaster";
+		public static string ItchURL { get; } = "https://mkah.itch.io/taskmaster";
 
 		public static SharpConfig.Configuration cfg;
 		public static string datapath = System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "MKAh", "Taskmaster");
@@ -398,7 +399,7 @@ namespace Taskmaster
 			// HOOKING
 			// Probably should transition to weak events
 
-			Log.Information("<Core> Components loaded, hooking.");
+			Log.Information("<Core> Components loaded; Hooking event handlers.");
 
 			if (PowerManagerEnabled)
 			{
@@ -469,9 +470,21 @@ namespace Taskmaster
 		public static bool DebugProcesses = false;
 		public static bool DebugPaths = false;
 		public static bool DebugFullScan = false;
-		public static bool DebugPower = false;
-		public static bool DebugNetMonitor = false;
+
 		public static bool DebugForeground = false;
+
+		public static bool DebugPower = false;
+		public static bool DebugAutoPower = false;
+		public static bool DebugPowerRules = false;
+
+		public static bool DebugSessions = true;
+
+		public static bool DebugWMI = false;
+
+		public static bool DebugMemory = false;
+		public static bool DebugPaging = true;
+
+		public static bool DebugNetMonitor = false;
 		public static bool DebugMic = false;
 
 		public static bool CaseSensitive = false;
@@ -1137,17 +1150,23 @@ namespace Taskmaster
 			{
 				if (Taskmaster.ProcessMonitorEnabled)
 				{
+					System.Threading.ManualResetEvent re = null;
+					EventHandler end = delegate { re?.Set(); };
+
 					if (RunOnce)
 					{
-						using (var re = new System.Threading.ManualResetEvent(false))
-						{
-							processmanager.ScanEverythingEndEvent += (o, e) => { re.Set(); };
-							Evaluate().ConfigureAwait(false);
-							re.WaitOne();
-						}
+						re = new System.Threading.ManualResetEvent(false);
+						processmanager.ScanEverythingEndEvent += end;
 					}
-					else
-						Evaluate().ConfigureAwait(false);
+
+					Task.Factory.StartNew(Evaluate, TaskCreationOptions.LongRunning);
+
+					if (re != null)
+					{
+						re.WaitOne();
+						processmanager.ScanEverythingEndEvent -= end;
+						re.Dispose();
+					}
 				}
 
 				if (!RunOnce)

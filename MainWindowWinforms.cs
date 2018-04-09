@@ -954,16 +954,11 @@ namespace Taskmaster
 			var menu_info = new ToolStripMenuItem("Info");
 			menu_info.DropDown.AutoClose = true;
 			// Sub Items
-			var menu_info_github = new ToolStripMenuItem("Github", null, (sender, e) => { Process.Start(Taskmaster.URL); });
+			var menu_info_github = new ToolStripMenuItem("Github", null, (sender, e) => { Process.Start(Taskmaster.GitURL); });
+			var menu_info_itchio = new ToolStripMenuItem("Itch.io", null, (sender, e) => { Process.Start(Taskmaster.ItchURL); });
 			var menu_info_license = new ToolStripMenuItem("License", null, (s, e) =>
 			{
-				try
-				{
-					using (var n = new LicenseDialog(initial: false))
-					{
-						n.ShowDialog();
-					}
-				}
+				try { using (var n = new LicenseDialog(initial: false)) { n.ShowDialog(); } }
 				catch (Exception ex) { Logging.Stacktrace(ex); }
 			});
 			var menu_info_about = new ToolStripMenuItem("About", null, (s, e) =>
@@ -972,6 +967,7 @@ namespace Taskmaster
 								"About Taskmaster!", MessageBoxButtons.OK, MessageBoxIcon.Information, MessageBoxDefaultButton.Button1, MessageBoxOptions.DefaultDesktopOnly, false);
 			});
 			menu_info.DropDownItems.Add(menu_info_github);
+			menu_info.DropDownItems.Add(menu_info_itchio);
 			menu_info.DropDownItems.Add(new ToolStripSeparator());
 			menu_info.DropDownItems.Add(menu_info_license);
 			menu_info.DropDownItems.Add(new ToolStripSeparator());

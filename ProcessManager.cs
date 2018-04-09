@@ -76,13 +76,13 @@ namespace Taskmaster
 		// ctor, constructor
 		public ProcessManager()
 		{
-			Log.Information("<CPU> Count: {Cores}", CPUCount);
+			Log.Information("<CPU> Count: {Cores} cores", CPUCount);
 
 			allCPUsMask = 1;
 			for (int i = 0; i < CPUCount - 1; i++)
 				allCPUsMask = (allCPUsMask << 1) | 1;
 
-			Log.Information("<CPU> Full CPU mask: {ProcessorBitMask} ({ProcessorMask}) (OS control)",
+			Log.Information("<CPU> Full CPU mask: {ProcessorBitMask} ({ProcessorMask} = OS control)",
 							Convert.ToString(allCPUsMask, 2), allCPUsMask);
 
 			loadWatchlist();
@@ -243,13 +243,14 @@ namespace Taskmaster
 
 		public void Unignore(int processId) => ignorePids.Remove(processId);
 
-		public async Task FreeMemory(string executable = null)
+		public async Task FreeMemory(string executable = null, bool quiet=false)
 		{
 			if (!Taskmaster.PagingEnabled) return;
 
 			if (string.IsNullOrEmpty(executable))
 			{
-				Log.Information("<Process> Paging applications to free memory...");
+				if (Taskmaster.DebugPaging && !quiet)
+					Log.Debug("<Process> Paging applications to free memory...");
 			}
 			else
 			{
@@ -260,7 +261,8 @@ namespace Taskmaster
 					return;
 				}
 
-				Log.Information("<Process> Paging applications to free memory for: {Exec}", executable);
+				if (Taskmaster.DebugPaging && !quiet)
+					Log.Debug("<Process> Paging applications to free memory for: {Exec}", executable);
 			}
 
 			//await Task.Delay(0).ConfigureAwait(false);
@@ -283,8 +285,11 @@ namespace Taskmaster
 
 			var b2 = Taskmaster.healthmonitor.FreeMemory(); // TODO: Wait a little longer to allow OS to Actually page stuff
 
-			Log.Information("<Process> Paging complete, observed memory change: {Memory}",
-				HumanInterface.ByteString((long)(b2 - b1) * 1000000, true));
+			if (Taskmaster.DebugPaging)
+			{
+				Log.Debug("<Memory> Paging complete, observed memory change: {Memory}",
+					HumanInterface.ByteString((long)(b2 - b1) * 1000000, true));
+			}
 		}
 
 		public async void ScanEverythingRequest(object sender, EventArgs e)
@@ -1507,14 +1512,16 @@ namespace Taskmaster
 
 				watcher.Stopped += (object sender, System.Management.StoppedEventArgs e) =>
 				{
-					Log.Debug("<<WMI>> New instance watcher stopped.");
+					if (Taskmaster.DebugWMI)
+						Log.Debug("<<WMI>> New instance watcher stopped.");
 					// Restart it maybe? This probably happens when WMI service is stopped or restarted.?
 				};
 
 				try
 				{
 					watcher.Start();
-					Log.Debug("<<WMI>> New instance watcher initialized.");
+					if (Taskmaster.DebugWMI)
+						Log.Debug("<<WMI>> New instance watcher initialized.");
 				}
 				catch
 				{

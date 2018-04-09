@@ -83,8 +83,7 @@ namespace Taskmaster
 			if (SessionLockMode != PowerMode.Custom)
 				SystemEvents.SessionSwitch += SessionLockEvent;
 
-			CPUCounter = new System.Diagnostics.PerformanceCounter("Processor", "% Processor Time", "_Total");
-			CPUCounter.NextValue();
+			CPUCounter = new PerformanceCounterWrapper("Processor", "% Processor Time", "_Total");
 
 			onCPUSampling += CPULoadEvent;
 
@@ -109,7 +108,7 @@ namespace Taskmaster
 
 		public int CPUSampleInterval { get; set; } = 5;
 		public int CPUSampleCount { get; set; } = 5;
-		System.Diagnostics.PerformanceCounter CPUCounter = null;
+		PerformanceCounterWrapper CPUCounter = null;
 		System.Threading.Timer CPUTimer = null;
 
 		public event EventHandler<ProcessorEventArgs> onCPUSampling;
@@ -133,7 +132,7 @@ namespace Taskmaster
 			{
 				var sample = float.NaN;
 
-				sample = CPUCounter.NextValue(); // slowest part
+				sample = CPUCounter.Value; // slowest part
 				CPUAverage -= CPUSamples[CPUSampleLoop];
 				CPUAverage += sample;
 				if (sample < CPULow)
@@ -585,7 +584,8 @@ namespace Taskmaster
 					{
 						Paused = true;
 
-						Log.Information("<Power> Session locked, enforcing power plan: {Plan}", SessionLockMode);
+						if (Taskmaster.DebugSessions)
+							Log.Debug("<Power> Session locked, enforcing power plan: {Plan}", SessionLockMode);
 
 						if (PauseUnneededSampler)
 						{
@@ -605,7 +605,8 @@ namespace Taskmaster
 					// RESTORE POWER MODE
 					if (SessionLockMode != PowerMode.Custom)
 					{
-						Log.Information("<Power> Session unlocked, restoring normal power.");
+						if (Taskmaster.DebugSessions)
+							Log.Debug("<Power> Session unlocked, restoring normal power.");
 
 						if (CurrentMode == SessionLockMode)
 						{
@@ -615,7 +616,8 @@ namespace Taskmaster
 						Paused = false;
 
 						if (PauseUnneededSampler) InitCPUTimer();
-						Taskmaster.Evaluate().ConfigureAwait(false);
+
+						Task.Factory.StartNew(Taskmaster.Evaluate, TaskCreationOptions.LongRunning);
 					}
 
 					break;
