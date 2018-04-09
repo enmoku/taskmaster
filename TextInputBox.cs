@@ -28,21 +28,17 @@ using System.Windows.Forms;
 
 namespace Taskmaster
 {
-	sealed public class TextInputBox : Form
+	sealed public class TextInputBox : UI.UniForm
 	{
 		public string Value { get; private set; } = null;
 
 		public TextInputBox(string message, string title, string input = null)
 		{
 			Text = title;
-			AutoSize = true;
 
 			DialogResult = DialogResult.Abort;
 
 			StartPosition = FormStartPosition.CenterParent;
-
-			MinimizeBox = false;
-			MaximizeBox = false;
 
 			AutoSizeMode = AutoSizeMode.GrowAndShrink;
 

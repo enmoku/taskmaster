@@ -37,17 +37,13 @@ namespace Taskmaster
 {
 	// public class MainWindow : System.Windows.Window; // TODO: WPF
 	// [ThreadAffine] // would be nice, but huge dependency pile
-	sealed public class MainWindow : Form
+	sealed public class MainWindow : UI.UniForm
 	{
 		// constructor
 		public MainWindow()
 		{
 			// InitializeComponent(); // TODO: WPF
 			FormClosing += WindowClose;
-
-			//DoubleBuffered = true;
-
-			Icon = System.Drawing.Icon.ExtractAssociatedIcon(System.Reflection.Assembly.GetExecutingAssembly().Location);
 
 			BuildUI();
 
@@ -60,8 +56,6 @@ namespace Taskmaster
 			ShowInTaskbar = true;
 
 			// FormBorderStyle = FormBorderStyle.FixedDialog; // no min/max buttons as wanted
-			MinimizeBox = false;
-			MaximizeBox = false;
 
 			if (!Taskmaster.ShowOnStart)
 				Hide();
@@ -716,20 +710,14 @@ namespace Taskmaster
 			// Padding = new Padding(6);
 			// margin
 
-			var padding = new Padding(6);
-
 			BuildStatusbar();
-
-			SetStyle(ControlStyles.AllPaintingInWmPaint, true); // reduce flicker
-			SetStyle(ControlStyles.OptimizedDoubleBuffer, true); // reduce flicker
-			SetStyle(ControlStyles.CacheText, true); // performance
 
 			var layout = new TableLayoutPanel
 			{
 				AutoSize = true,
 				Parent = this,
 				ColumnCount = 1,
-				Margin = padding,
+				//Margin = CustomPadding,
 				Dock = DockStyle.Fill,
 			};
 
@@ -762,6 +750,7 @@ namespace Taskmaster
 				Taskmaster.ConfirmExit(restart: true, admin: true);
 				menu_action_restartadmin.Enabled = true;
 			});
+			menu_action_restartadmin.Enabled = !Taskmaster.IsAdministrator();
 
 			var menu_action_exit = new ToolStripMenuItem("Exit", null, ExitRequest);
 			menu_action.DropDownItems.Add(menu_action_rescan);
@@ -1094,7 +1083,6 @@ namespace Taskmaster
 
 			var winpos = wincfg["Main"].IntValueArray;
 
-			StartPosition = FormStartPosition.CenterScreen;
 			if (winpos != null && winpos.Length == 4)
 			{
 				var rectangle = new System.Drawing.Rectangle(winpos[0], winpos[1], winpos[2], winpos[3]);
@@ -1706,7 +1694,6 @@ namespace Taskmaster
 
 			//MinimumSize = new System.Drawing.Size(700, 600); // width, height
 			MinimumSize = new System.Drawing.Size(700, 690);
-			AutoSize = true;
 		}
 
 		StatusStrip statusbar;
@@ -1757,7 +1744,7 @@ namespace Taskmaster
 		{
 			// TODO: Proper async?
 
-			if (!IsHandleCreated) return;
+			if (!IsHandleCreated || activeappmonitor == null) return;
 
 			await Task.Delay(0).ConfigureAwait(true);
 
@@ -1765,8 +1752,12 @@ namespace Taskmaster
 			{
 				try
 				{
+					bool fg = (ev.Info.Id == activeappmonitor.Foreground);
+
 					if (ExitWaitlistMap.TryGetValue(ev.Info.Id, out ListViewItem li))
 					{
+						li.SubItems[2].Text = fg ? "Foreground" : "Background";
+
 						// Log.Debug("WaitlistHandler: {Name} = {State}", ev.Info.Name, ev.State.ToString());
 						switch (ev.State)
 						{
@@ -1776,16 +1767,17 @@ namespace Taskmaster
 								break;
 							case ProcessEventArgs.ProcessState.Found:
 							case ProcessEventArgs.ProcessState.Reduced:
-								li.SubItems[2].Text = "Background";
 								break;
+							//case ProcessEventArgs.ProcessState.Starting: // this should never get here
 							case ProcessEventArgs.ProcessState.Restored:
+								// move item to top
 								exitwaitlist.Items.RemoveAt(li.Index);
-								li.SubItems[2].Text = "Foreground";
 								exitwaitlist.Items.Insert(0, li);
 								li.EnsureVisible();
 								break;
 							default:
-								Log.Debug("Received unhandled process state: {State}", ev.State.ToString());
+								Log.Debug("Received unhandled process (#{Id}) state: {State}",
+									ev.Info.Id, ev.State.ToString());
 								break;
 						}
 					}
@@ -1796,16 +1788,18 @@ namespace Taskmaster
 							li = new ListViewItem(new string[] {
 								ev.Info.Id.ToString(),
 								ev.Info.Name,
-								"Unknown",
+								(fg ? "Foreground" : "Background"),
 								(ev.Info.ActiveWait ? "FORCED" : "n/a")
 							});
 
-							if (IsHandleCreated)
+							ExitWaitlistMap.Add(ev.Info.Id, li);
+
+							BeginInvoke(new Action(() =>
 							{
+								if (!IsHandleCreated) return;
 								exitwaitlist.Items.Add(li);
-								ExitWaitlistMap.Add(ev.Info.Id, li);
 								li.EnsureVisible();
-							}
+							}));
 						}
 					}
 				}

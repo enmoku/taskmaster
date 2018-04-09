@@ -1,5 +1,5 @@
 ﻿//
-// WatchlistRuleGeneratorWindow.cs
+// UniForm.cs
 //
 // Author:
 //       M.A. (https://github.com/mkahvi)
@@ -31,10 +31,45 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 
-namespace Taskmaster
+namespace Taskmaster.UI
 {
-	class WatchlistRuleGeneratorWindow : UI.UniForm
+	public partial class UniForm : Form
 	{
+		readonly protected Padding CustomPadding = new Padding(6);
 
+		public UniForm()
+		{
+			//DoubleBuffered = true;
+
+			SetStyle(ControlStyles.AllPaintingInWmPaint, true); // reduce flicker
+			SetStyle(ControlStyles.OptimizedDoubleBuffer, true); // reduce flicker
+			SetStyle(ControlStyles.CacheText, true); // performance
+
+			Icon = System.Drawing.Icon.ExtractAssociatedIcon(System.Reflection.Assembly.GetExecutingAssembly().Location);
+
+			MinimizeBox = false;
+			MaximizeBox = false;
+
+			StartPosition = FormStartPosition.CenterScreen;
+
+			//Padding = CustomPadding;
+
+			AutoSize = true;
+		}
+
+		bool disposed = false;
+		protected override void Dispose(bool disposing)
+		{
+			if (disposed) return;
+
+			base.Dispose(disposing);
+
+			if (disposing)
+			{
+				Icon.Dispose();
+
+				disposed = true;
+			}
+		}
 	}
 }

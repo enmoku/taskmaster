@@ -31,7 +31,7 @@ using System.Windows.Forms;
 
 namespace Taskmaster
 {
-	sealed public class ProcessSelectDialog : Form
+	sealed public class ProcessSelectDialog : UI.UniForm
 	{
 		public string Selection { get; private set; } = null;
 
@@ -41,19 +41,13 @@ namespace Taskmaster
 		{
 			WindowState = FormWindowState.Normal;
 			FormBorderStyle = FormBorderStyle.FixedDialog; // no min/max buttons as wanted
-			MinimizeBox = false;
-			MaximizeBox = false;
 
 			StartPosition = FormStartPosition.CenterParent;
-
-			Padding = new Padding(6);
 
 			Width = 260;
 			Height = 100;
 
 			Text = "Choose Executable – " + System.Windows.Forms.Application.ProductName;
-
-			AutoSize = true;
 
 			var rowlayout = new TableLayoutPanel()
 			{

@@ -28,7 +28,7 @@ using System.Windows.Forms;
 
 namespace Taskmaster
 {
-	sealed public class ComponentConfigurationWindow : Form
+	sealed public class ComponentConfigurationWindow : UI.UniForm
 	{
 		public ComponentConfigurationWindow(bool initial = true)
 		{
@@ -42,8 +42,6 @@ namespace Taskmaster
 
 			WindowState = FormWindowState.Normal;
 			FormBorderStyle = FormBorderStyle.FixedDialog; // no min/max buttons as wanted
-			MinimizeBox = false;
-			MaximizeBox = false;
 			AutoSizeMode = AutoSizeMode.GrowAndShrink;
 
 			if (initial)
@@ -71,9 +69,6 @@ namespace Taskmaster
 			};
 
 			var tooltip = new ToolTip();
-			var padding = new Padding(6);
-
-			Padding = padding;
 
 			var micmon = new CheckBox()
 			{
@@ -83,7 +78,7 @@ namespace Taskmaster
 			};
 			micmon.Checked = initial ? false : Taskmaster.MicrophoneMonitorEnabled;
 			tooltip.SetToolTip(micmon, "Monitor default communications device and keep its volume.");
-			layout.Controls.Add(new Label { Text = "Microphone monitor", AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, Padding = padding, Dock = DockStyle.Left });
+			layout.Controls.Add(new Label { Text = "Microphone monitor", AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, Padding = CustomPadding, Dock = DockStyle.Left });
 			layout.Controls.Add(micmon);
 			micmon.Click += (sender, e) =>
 			{
@@ -96,7 +91,7 @@ namespace Taskmaster
 				Dock = DockStyle.Left
 			};
 			tooltip.SetToolTip(netmon, "Monitor network interface status and report online status.");
-			layout.Controls.Add(new Label { Text = "Network monitor", AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, Padding = padding, Dock = DockStyle.Left });
+			layout.Controls.Add(new Label { Text = "Network monitor", AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, Padding = CustomPadding, Dock = DockStyle.Left });
 			layout.Controls.Add(netmon);
 			netmon.Checked = initial ? true : Taskmaster.NetworkMonitorEnabled;
 			netmon.Click += (sender, e) =>
@@ -110,7 +105,7 @@ namespace Taskmaster
 				Dock = DockStyle.Left
 			};
 			tooltip.SetToolTip(procmon, "Manage processes based on their name. Default feature of Taskmaster and thus can not be disabled.");
-			layout.Controls.Add(new Label { Text = "Process/name manager", AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, Padding = padding, Dock = DockStyle.Left });
+			layout.Controls.Add(new Label { Text = "Process/name manager", AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, Padding = CustomPadding, Dock = DockStyle.Left });
 			layout.Controls.Add(procmon);
 			procmon.Enabled = false;
 			procmon.Checked = initial ? true : Taskmaster.ProcessMonitorEnabled;
@@ -122,14 +117,14 @@ namespace Taskmaster
 				Dock = DockStyle.Left
 			};
 			tooltip.SetToolTip(pathmon, "Manage processes based on their location.\nThese are processed only if by name matching does not catch something.\nPath-based processing is lenghtier process but should not cause significant resource drain.");
-			layout.Controls.Add(new Label { Text = "Process/path manager", AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, Padding = padding, Dock = DockStyle.Left });
+			layout.Controls.Add(new Label { Text = "Process/path manager", AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, Padding = CustomPadding, Dock = DockStyle.Left });
 			layout.Controls.Add(pathmon);
 			pathmon.Checked = initial ? true : Taskmaster.PathMonitorEnabled;
 			pathmon.Click += (sender, e) =>
 			{
 			};
 
-			layout.Controls.Add(new Label() { Text = "Process detection", AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, Padding = padding, Dock = DockStyle.Left });
+			layout.Controls.Add(new Label() { Text = "Process detection", AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, Padding = CustomPadding, Dock = DockStyle.Left });
 			var ScanOrWMI = new ComboBox()
 			{
 				DropDownStyle = ComboBoxStyle.DropDownList,
@@ -140,7 +135,7 @@ namespace Taskmaster
 			layout.Controls.Add(ScanOrWMI);
 			tooltip.SetToolTip(ScanOrWMI, "Scanning involves getting all procesess and going through the list, which can cause tiny CPU spiking.\nWMI polling sets up system WMI event listener.\nWMI is known to be slow and buggy, though when it performs well, it does it better than scanning in this case.\nSystem WmiPrvSE or similar process may be seen increasing in activity with WMI in use.");
 
-			layout.Controls.Add(new Label() { Text = "Scan frequency", AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, Padding = padding, Dock = DockStyle.Left });
+			layout.Controls.Add(new Label() { Text = "Scan frequency", AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, Padding = CustomPadding, Dock = DockStyle.Left });
 			var scanfrequency = new NumericUpDown()
 			{
 				Minimum = 0,
@@ -162,7 +157,7 @@ namespace Taskmaster
 			};
 			layout.Controls.Add(scanfrequency);
 			tooltip.SetToolTip(scanfrequency, "In seconds. 0 disables. 1-4 are considered invalid values.");
-			layout.Controls.Add(new Label() { Text = "WMI poll rate", AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, Padding = padding, Dock = DockStyle.Left });
+			layout.Controls.Add(new Label() { Text = "WMI poll rate", AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, Padding = CustomPadding, Dock = DockStyle.Left });
 			var wmipolling = new NumericUpDown()
 			{
 				Minimum = 1,
@@ -221,7 +216,7 @@ namespace Taskmaster
 				Text = "Power manager",
 				AutoSize = true,
 				TextAlign = System.Drawing.ContentAlignment.MiddleLeft,
-				Padding = padding,
+				Padding = CustomPadding,
 				Dock = DockStyle.Left
 			});
 			layout.Controls.Add(powmon);
@@ -240,7 +235,7 @@ namespace Taskmaster
 			};
 
 			tooltip.SetToolTip(powauto, "Automatically adjust power mode based on system load.");
-			layout.Controls.Add(new Label { Text = "Power auto-adjust", AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, Padding = padding, Dock = DockStyle.Left });
+			layout.Controls.Add(new Label { Text = "Power auto-adjust", AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, Padding = CustomPadding, Dock = DockStyle.Left });
 			layout.Controls.Add(powauto);
 			powauto.Click += (sender, e) =>
 			{
@@ -255,7 +250,7 @@ namespace Taskmaster
 			};
 			fgmon.Checked = initial ? true : Taskmaster.ActiveAppMonitorEnabled;
 			tooltip.SetToolTip(fgmon, "Allow processes and power mode to be managed based on if a process is in the foreground.\nPOWER MODE SWITCHING NOT IMPLEMENTED.");
-			layout.Controls.Add(new Label { Text = "Foreground manager", AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, Padding = padding, Dock = DockStyle.Left });
+			layout.Controls.Add(new Label { Text = "Foreground manager", AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, Padding = CustomPadding, Dock = DockStyle.Left });
 			layout.Controls.Add(fgmon);
 			fgmon.Click += (sender, e) =>
 			{
@@ -268,7 +263,7 @@ namespace Taskmaster
 				Dock = DockStyle.Left
 			};
 			tooltip.SetToolTip(tempmon, "Monitor temp folder.\nNOT YET FULLY IMPLEMENTED.");
-			layout.Controls.Add(new Label { Text = "TEMP monitor", AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, Padding = padding, Dock = DockStyle.Left });
+			layout.Controls.Add(new Label { Text = "TEMP monitor", AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, Padding = CustomPadding, Dock = DockStyle.Left });
 			layout.Controls.Add(tempmon);
 			tempmon.Enabled = false;
 			tempmon.Checked = initial ? false : Taskmaster.MaintenanceMonitorEnabled;
@@ -282,7 +277,7 @@ namespace Taskmaster
 				Enabled = false,
 			};
 			tooltip.SetToolTip(tempmon, "Allow paging RAM to page/swap file.\nNOT YET FULLY IMPLEMENTED.");
-			layout.Controls.Add(new Label { Text = "Allow paging", AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, Padding = padding, Dock = DockStyle.Left });
+			layout.Controls.Add(new Label { Text = "Allow paging", AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, Padding = CustomPadding, Dock = DockStyle.Left });
 			layout.Controls.Add(paging);
 			paging.Checked = initial ? false : Taskmaster.PagingEnabled;
 			paging.Click += (sender, e) =>
@@ -302,7 +297,7 @@ namespace Taskmaster
 				Text = "Show on start",
 				AutoSize = true,
 				TextAlign = System.Drawing.ContentAlignment.MiddleLeft,
-				Padding = padding,
+				Padding = CustomPadding,
 				Dock = DockStyle.Left
 			});
 			layout.Controls.Add(showonstart);
@@ -323,7 +318,7 @@ namespace Taskmaster
 				Text = "Health monitor",
 				AutoSize = true,
 				TextAlign = System.Drawing.ContentAlignment.MiddleLeft,
-				Padding = padding,
+				Padding = CustomPadding,
 				Dock = DockStyle.Left
 			});
 			tooltip.SetToolTip(autodoc, "Variety of other health & problem monitoring.\nCurrently includes low memory detection and attempting to page apps to free some of it.");
@@ -418,7 +413,6 @@ namespace Taskmaster
 			baselayout.Controls.Add(layout);
 			baselayout.Controls.Add(buttonpanel);
 			Controls.Add(baselayout);
-			AutoSize = true;
 
 			// Cross-componenty checkbox functionality
 			procmon.CheckedChanged += (o, e) =>

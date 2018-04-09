@@ -29,12 +29,11 @@ using System.Windows.Forms;
 
 namespace Taskmaster
 {
-	sealed class LicenseDialog : Form
+	sealed class LicenseDialog : UI.UniForm
 	{
 		public LicenseDialog(bool initial = true)
 		{
 			Text = "Taskmaster License";
-			AutoSize = true;
 			AutoSizeMode = AutoSizeMode.GrowAndShrink;
 			FormBorderStyle = FormBorderStyle.FixedDialog;
 			if (initial)
@@ -97,7 +96,7 @@ namespace Taskmaster
 				Text = "You must accept the following license to use this application.",
 				AutoSize = true,
 				TextAlign = System.Drawing.ContentAlignment.MiddleLeft,
-				Margin = new Padding(6),
+				Margin = CustomPadding,
 				Font = new System.Drawing.Font(System.Drawing.FontFamily.GenericSansSerif, DefaultFont.Size * 1.2f),
 			};
 

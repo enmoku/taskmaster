@@ -32,7 +32,7 @@ using Serilog;
 
 namespace Taskmaster
 {
-	sealed public class WatchlistEditWindow : Form
+	sealed public class WatchlistEditWindow : UI.UniForm
 	{
 		public ProcessController Controller;
 
@@ -53,8 +53,6 @@ namespace Taskmaster
 
 			WindowState = FormWindowState.Normal;
 			FormBorderStyle = FormBorderStyle.FixedDialog; // no min/max buttons as wanted
-			MinimizeBox = false;
-			MaximizeBox = false;
 
 			BuildUI();
 		}
@@ -547,7 +545,7 @@ namespace Taskmaster
 				Text = "Validate"
 			};
 			validatebutton.Click += ValidateWatchedItem;
-			validatebutton.Margin = new Padding(6);
+			validatebutton.Margin = CustomPadding;
 
 			lt.Controls.Add(validatebutton);
 

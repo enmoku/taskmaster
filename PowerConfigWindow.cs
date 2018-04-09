@@ -32,7 +32,7 @@ using Taskmaster.PowerInfo;
 
 namespace Taskmaster
 {
-	sealed public class PowerConfigWindow : Form
+	sealed public class PowerConfigWindow : UI.UniForm
 	{
 		public AutoAdjustSettings oldAutoAdjust;
 		public AutoAdjustSettings newAutoAdjust;
@@ -47,8 +47,6 @@ namespace Taskmaster
 
 			WindowState = FormWindowState.Normal;
 			FormBorderStyle = FormBorderStyle.FixedDialog; // no min/max buttons as wanted
-			MinimizeBox = false;
-			MaximizeBox = false;
 			AutoSizeMode = AutoSizeMode.GrowAndShrink;
 
 			var layout = new TableLayoutPanel()
@@ -191,7 +189,6 @@ namespace Taskmaster
 
 			Controls.Add(layout);
 
-			AutoSize = true;
 			AutoSizeMode = AutoSizeMode.GrowAndShrink;
 
 			// Height = layout.Height;
