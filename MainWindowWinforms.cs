@@ -710,18 +710,39 @@ namespace Taskmaster
 			// Padding = new Padding(6);
 			// margin
 
-			BuildStatusbar();
+			// CORE LAYOUT ITEMS
 
-			var layout = new TableLayoutPanel
+			tabLayout = new TabControl()
 			{
-				AutoSize = true,
 				Parent = this,
-				ColumnCount = 1,
-				//Margin = CustomPadding,
-				Dock = DockStyle.Fill,
+				//Height = 300,
+				Padding = new System.Drawing.Point(6, 6),
+				Dock = DockStyle.Top,
+				//Padding = new System.Drawing.Point(3, 3),
+				MinimumSize = new System.Drawing.Size(-2, 360),
+				SizeMode = TabSizeMode.Normal,
+			};
+
+			loglist = new ListView
+			{
+				Parent = this,
+				Dock = DockStyle.Bottom,
+				AutoSize = true,
+				View = View.Details,
+				FullRowSelect = true,
+				HeaderStyle = ColumnHeaderStyle.Nonclickable,
+				Scrollable = true,
+				MinimumSize = new System.Drawing.Size(700, 240),
+				//MinimumSize = new System.Drawing.Size(-2, -2), // doesn't work
+				//Anchor = AnchorStyles.Top,
 			};
 
 			var menu = new MenuStrip() { Dock = DockStyle.Top, Parent = this };
+
+			BuildStatusbar();
+
+			// LAYOUT ITEM CONFIGURATION
+
 			var menu_action = new ToolStripMenuItem("Actions");
 			menu_action.DropDown.AutoClose = true;
 			// Sub Items
@@ -984,22 +1005,6 @@ namespace Taskmaster
 			menu_info.MouseEnter += (s, e) => {
 				if (Form.ActiveForm != this) return;
 				if (Taskmaster.AutoOpenMenus) menu_info.ShowDropDown();
-			};
-
-			tabLayout = new TabControl()
-			{
-				//Parent = layout,
-				//Height = 300,
-				Padding = new System.Drawing.Point(6, 6),
-				Dock = DockStyle.Fill,
-				//Padding = new System.Drawing.Point(3, 3),
-				MinimumSize = new System.Drawing.Size(-2, 360),
-				SizeMode = TabSizeMode.Normal,
-			};
-
-			layout.Resize += (o, e) =>
-			{
-				//tabLayout.Size = layout.RowStyles[0].SizeType = SizeType.AutoSize;
 			};
 
 			var infoTab = new TabPage("Info");
@@ -1434,26 +1439,16 @@ namespace Taskmaster
 			// End: App list
 
 			// UI Log
-			loglist = new ListView
-			{
-				Dock = DockStyle.Fill,
-				AutoSize = true,
-				View = View.Details,
-				FullRowSelect = true,
-				HeaderStyle = ColumnHeaderStyle.Nonclickable,
-				Scrollable = true,
-				MinimumSize = new System.Drawing.Size(700, 240),
-				//MinimumSize = new System.Drawing.Size(-2, -2), // doesn't work
-				Anchor = AnchorStyles.Top,
-			};
-
 			// -1 = contents, -2 = heading
 			loglist.Columns.Add("Event Log", -2, HorizontalAlignment.Left); // 2
 			ResizeLogList = delegate {
 				loglist.Columns[0].Width = -2;
 				//loglist.Height = -2;
+				//loglist.Width = -2;
+				loglist.Height = ClientSize.Height - (tabLayout.Height + statusbar.Height + menu.Height);
 			};
 			ResizeEnd += ResizeLogList;
+			Resize += ResizeLogList;
 
 			loglistms = new ContextMenuStrip();
 			loglistms.Opened += LogContextMenuOpen;
@@ -1570,15 +1565,6 @@ namespace Taskmaster
 			infopanel.Controls.Add(tempmonitorpanel);
 			infoTab.Controls.Add(infopanel);
 
-			layout.Controls.Add(tabLayout);
-			layout.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
-			layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-
-			//logpanel.Controls.Add(loglist);
-			layout.Controls.Add(loglist);
-			layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-			//lrows.RowStyles[lrows.GetRow(loglist)].SizeType = SizeType.AutoSize;
-
 			// POWER DEBUG TAB
 
 			var powerlayout = new TableLayoutPanel()
@@ -1692,6 +1678,9 @@ namespace Taskmaster
 			//Controls.Add(layout);
 			//Controls.Add(statusbar);
 
+			AutoSizeMode = AutoSizeMode.GrowAndShrink;
+			AutoSize = false;
+			
 			//MinimumSize = new System.Drawing.Size(700, 600); // width, height
 			MinimumSize = new System.Drawing.Size(700, 690);
 		}
@@ -1705,7 +1694,8 @@ namespace Taskmaster
 		{
 			statusbar = new StatusStrip()
 			{
-				Parent=this,
+				Parent = this,
+				Dock = DockStyle.Bottom,
 			};
 
 			statusbar.Items.Add("Processing");
