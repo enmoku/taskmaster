@@ -477,7 +477,7 @@ namespace Taskmaster
 		public static bool DebugAutoPower = false;
 		public static bool DebugPowerRules = false;
 
-		public static bool DebugSessions = true;
+		public static bool DebugSessions = false;
 
 		public static bool DebugWMI = false;
 

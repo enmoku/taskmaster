@@ -977,8 +977,8 @@ namespace Taskmaster
 					break;
 			}
 
-			if (verbose && (CurrentMode != mode))
-				Log.Information("<Power> Setting to: {Mode} ({Guid})", mode.ToString(), plan.ToString());
+			if (verbose && (CurrentMode != mode) && Taskmaster.DebugPower)
+				Log.Debug("<Power> Setting to: {Mode} ({Guid})", mode.ToString(), plan.ToString());
 
 			CurrentMode = mode;
 			NativeMethods.PowerSetActiveScheme((IntPtr)null, ref plan);
