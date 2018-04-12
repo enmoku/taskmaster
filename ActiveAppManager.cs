@@ -66,7 +66,7 @@ namespace Taskmaster
 			perfsec["Foreground hysterisis"].Comment = "In milliseconds, from 0 to 30000. Delay before we inspect foreground app, in case user rapidly swaps apps.";
 			if (modified) Taskmaster.MarkDirtyINI(Taskmaster.cfg);
 
-			Log.Information("<Foreground Manager> Loaded.");
+			Log.Information("<Foreground Manager> Component loaded.");
 		}
 
 		int Hysterisis = 500;

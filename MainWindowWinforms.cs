@@ -1680,9 +1680,11 @@ namespace Taskmaster
 
 			AutoSizeMode = AutoSizeMode.GrowAndShrink;
 			AutoSize = false;
+			MaximizeBox = true;
+			MinimizeBox = true;
 			
 			//MinimumSize = new System.Drawing.Size(700, 600); // width, height
-			MinimumSize = new System.Drawing.Size(700, 690);
+			MinimumSize = new System.Drawing.Size(720, 690);
 		}
 
 		StatusStrip statusbar;

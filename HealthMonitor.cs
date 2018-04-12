@@ -151,7 +151,7 @@ namespace Taskmaster
 
 			healthTimer = new System.Threading.Timer(TimerCheck, null, 5000, Settings.Frequency * 60 * 1000);
 
-			Log.Information("<Auto-Doc> Loaded");
+			Log.Information("<Auto-Doc> Component loaded");
 		}
 
 		System.Threading.Timer healthTimer = null;
@@ -246,6 +246,11 @@ namespace Taskmaster
 			return FreeMemory_cached;
 		}
 
+		public void InvalidateFreeMemory()
+		{
+			FreeMemory_last = DateTime.MinValue;
+		}
+
 		async Task CheckErrors()
 		{
 			await Task.Delay(0);
@@ -307,6 +312,9 @@ namespace Taskmaster
 					{
 						// The following should just call something in ProcessManager
 
+						Log.Information("<<Auto-Doc>> Free memory low [{Memory}], attempting to improve situation.",
+							HumanInterface.ByteString((long)(memfreemb * 1000000)));
+
 						var ignorepid = -1;
 						try
 						{
@@ -315,8 +323,6 @@ namespace Taskmaster
 								ignorepid = Taskmaster.activeappmonitor.Foreground;
 								Taskmaster.processmanager.Ignore(ignorepid);
 							}
-
-							Log.Information("<<Auto-Doc>> Free memory low [{Memory}], attempting to improve situation.", HumanInterface.ByteString((long)memfreemb * 1000000));
 
 							await Taskmaster.processmanager?.FreeMemory(null, quiet:true);
 						}
@@ -327,17 +333,17 @@ namespace Taskmaster
 						}
 
 						// sampled too soon, OS has had no significant time to swap out data
-
-						var memfreemb2 = memfree?.Value ?? 0; // MB
-						var commitp2 = commitpercentile?.Value ?? 0;
-						var commitb2 = commitbytes?.Value ?? 0;
+						
+						var memfreemb2 = memfree.Value; // MB
+						var commitp2 = commitpercentile.Value;
+						var commitb2 = commitbytes.Value;
 						var actualbytes = commitb * (commitp / 100);
 						var actualbytes2 = commitb2 * (commitp2 / 100);
 
 						Log.Information("<<Auto-Doc>> Free memory: {Memory} ({Change} change observed)",
-							HumanInterface.ByteString((long)(memfreemb2 * 1000)),
+							HumanInterface.ByteString((long)(memfreemb2 * 1000000)),
 							//HumanInterface.ByteString((long)commitb2), HumanInterface.ByteString((long)commitlimitb),
-							HumanInterface.ByteString((long)(actualbytes2 - actualbytes), true));
+							HumanInterface.ByteString((long)(actualbytes2 - actualbytes), positivesign:true));
 					}
 				}
 				else if (memfreemb * 1.5f <= Settings.MemLevel)

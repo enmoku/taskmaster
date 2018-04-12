@@ -179,7 +179,7 @@ namespace Taskmaster
 			Log.Information("<Microphone> Default device: {Device} (volume: {TargetVolume:N1}%)", m_dev.FriendlyName, Target);
 			Volume = Target;
 
-			Log.Information("<Microphone> Component loaded");
+			Log.Information("<Microphone> Component loaded.");
 		}
 
 		bool disposed; // false

@@ -23,12 +23,13 @@ Allowing apps that normally have higher priority to be pushed into the backgroun
 * Automatic load-balancing between cores.
 * Improve recognition of system state and when things like disk cleanup are advisable, actual cleanup will be delegated to calling `cleanmgr`.
 * Improved underlying code.
-* Move to better UI system such as WPF, though WPF/XAML seem to be simply not doable without Visual Studio which rules that option out.
+* Move to better UI system such as WPF.
 
 ## Command-line
 
 * --bootdelay – adds about 30 seconds delay before TM starts processing things, allowing other programs that probably are higher priority to finish startup.
 * --admin – requests privilege elevation if it's not already acquired.
+* --once - scans for processes and applies watchlist rules before exiting.
 
 ## Installing, deployment, and usage
 

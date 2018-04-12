@@ -283,6 +283,8 @@ namespace Taskmaster
 
 			ProcessDetectedEvent -= FreeMemoryTick;
 
+			Taskmaster.healthmonitor.InvalidateFreeMemory(); // just in case
+
 			var b2 = Taskmaster.healthmonitor.FreeMemory(); // TODO: Wait a little longer to allow OS to Actually page stuff
 
 			if (Taskmaster.DebugPaging)
@@ -1306,9 +1308,11 @@ namespace Taskmaster
 
 				if (string.IsNullOrEmpty(name))
 				{
-					if (Taskmaster.DebugProcesses) Log.Error("<<WMI>> Failed to acquire neither process name nor process Id");
+					// likely process exited too fast
+					if (Taskmaster.DebugProcesses && Taskmaster.ShowInaction) Log.Debug("<<WMI>> Failed to acquire neither process name nor process Id");
 					return;
 				}
+
 				var info = new ProcessEx() { Process = null, Name = name, Path = path, Id = pid };
 
 				NewInstanceTriagePhaseTwo(info).ConfigureAwait(false);

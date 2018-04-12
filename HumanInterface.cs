@@ -101,7 +101,7 @@ namespace Taskmaster
 			}
 
 			return string.Format("{1}{0:N3} {2}",
-				(double)bytes / Giga, ((positivesign && bytes > 0) ? "+" : ""), ByteLetter[letter]);
+				(double)bytes / div, ((positivesign && bytes > 0) ? "+" : ""), ByteLetter[letter]);
 		}
 	}
 }
