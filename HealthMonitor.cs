@@ -343,7 +343,7 @@ namespace Taskmaster
 						Log.Information("<<Auto-Doc>> Free memory: {Memory} ({Change} change observed)",
 							HumanInterface.ByteString((long)(memfreemb2 * 1000000)),
 							//HumanInterface.ByteString((long)commitb2), HumanInterface.ByteString((long)commitlimitb),
-							HumanInterface.ByteString((long)(actualbytes2 - actualbytes), positivesign:true));
+							HumanInterface.ByteString((long)((memfreemb2 - memfreemb) * 1000000), positivesign:true));
 					}
 				}
 				else if (memfreemb * 1.5f <= Settings.MemLevel)

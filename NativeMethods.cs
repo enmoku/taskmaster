@@ -146,5 +146,17 @@ namespace Taskmaster
 			PROCESS_MODE_BACKGROUND_END = 0x00200000,
 			REALTIME_PRIORITY_CLASS = 0x00000100
 		}
+
+		[DllImport("Kernel32.dll", SetLastError = true, CharSet = CharSet.Auto)]
+		public static extern bool DeviceIoControl(
+			Microsoft.Win32.SafeHandles.SafeFileHandle hDevice,
+			int dwIoControlCode,
+			IntPtr InBuffer,
+			int nInBufferSize,
+			IntPtr OutBuffer,
+			int nOutBufferSize,
+			ref int pBytesReturned,
+			[In] ref System.Threading.NativeOverlapped lpOverlapped
+		);
 	}
 }

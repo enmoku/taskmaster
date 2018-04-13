@@ -358,7 +358,7 @@ namespace Taskmaster
 			}
 
 			if (Taskmaster.DebugForeground)
-				Log.Information("[{FriendlyName}] {Exec} (#{Pid}) priority reduced: {Current}→{Paused} [Background]",
+				Log.Debug("[{FriendlyName}] {Exec} (#{Pid}) priority reduced: {Current}→{Paused} [Background]",
 					FriendlyName, info.Name, info.Id, Priority, BackgroundPriority);
 
 			PausedIds.Add(info.Id);

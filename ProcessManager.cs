@@ -290,7 +290,7 @@ namespace Taskmaster
 			if (Taskmaster.DebugPaging)
 			{
 				Log.Debug("<Memory> Paging complete, observed memory change: {Memory}",
-					HumanInterface.ByteString((long)(b2 - b1) * 1000000, true));
+					HumanInterface.ByteString((long)((b2 - b1) * 1000000), true));
 			}
 		}
 
@@ -332,7 +332,7 @@ namespace Taskmaster
 			//await Task.Delay(0).ConfigureAwait(false);
 
 			if (Taskmaster.DebugFullScan)
-				Log.Debug("<Process/DEBUG> Full Scan: Start");
+				Log.Debug("<Process> Full Scan: Start");
 
 			ScanEverythingStartEvent?.Invoke(this, null);
 
@@ -361,7 +361,7 @@ namespace Taskmaster
 								continue;
 
 							if (Taskmaster.DebugFullScan)
-								Log.Verbose("<Process/DEBUG> Checking [{Iter}/{Count}] {Proc} (#{Pid})",
+								Log.Verbose("<Process> Checking [{Iter}/{Count}] {Proc} (#{Pid})",
 									i, count, name, pid);
 
 							ProcessDetectedEvent?.Invoke(this, new ProcessEx() { Process = process, Id = pid, Name = name, Path = null });
@@ -385,7 +385,7 @@ namespace Taskmaster
 			SignalProcessHandled(-count); // scan done
 
 			if (Taskmaster.DebugFullScan)
-				Log.Debug("<Process/DEBUG> Full Scan: Complete");
+				Log.Debug("<Process> Full Scan: Complete");
 
 			//Taskmaster.ThreadIdentity("ScanEverything.End");
 
@@ -720,7 +720,7 @@ namespace Taskmaster
 		async void WaitForExitTriggered(ProcessEx info, ProcessEventArgs.ProcessState state = ProcessEventArgs.ProcessState.Exiting)
 		{
 			if (Taskmaster.DebugForeground || Taskmaster.DebugPower)
-				Log.Debug("<Process/DEBUG> {Exec} exited [Power: {Power}, Active: {Active}]", info.Name, info.PowerWait, info.ActiveWait);
+				Log.Debug("<Process> {Exec} exited [Power: {Power}, Active: {Active}]", info.Name, info.PowerWait, info.ActiveWait);
 
 			try
 			{
@@ -838,7 +838,7 @@ namespace Taskmaster
 		public void ForegroundAppChangedEvent(object sender, WindowChangedArgs ev)
 		{
 			if (Taskmaster.DebugForeground)
-				Log.Debug("<Process/DEBUG> Foreground Received: #{Id}", ev.Id);
+				Log.Debug("<Process> Foreground Received: #{Id}", ev.Id);
 
 			if (PreviousForegroundInfo != null)
 			{
@@ -854,7 +854,7 @@ namespace Taskmaster
 				else
 				{
 					if (Taskmaster.ShowInaction && Taskmaster.DebugForeground)
-						Log.Debug("<Foreground/DEBUG> Changed but the app is still the same. Curious, don't you think?");
+						Log.Debug("<Foreground> Changed but the app is still the same. Curious, don't you think?");
 				}
 			}
 
@@ -869,7 +869,7 @@ namespace Taskmaster
 				if (info != null)
 				{
 					if (Taskmaster.DebugForeground)
-						Log.Debug("<Process/DEBUG> [{FriendlyName}] {Exec} (#{Pid}) on foreground!", prc.FriendlyName, info.Name, info.Id);
+						Log.Debug("<Process> [{FriendlyName}] {Exec} (#{Pid}) on foreground!", prc.FriendlyName, info.Name, info.Id);
 
 					prc.Resume(info);
 
@@ -883,7 +883,7 @@ namespace Taskmaster
 			}
 
 			if (Taskmaster.DebugForeground && Taskmaster.Trace)
-				Log.Debug("<Process/DEBUG> NULLING PREVIOUS FOREGRDOUND");
+				Log.Debug("<Process> NULLING PREVIOUS FOREGRDOUND");
 
 			PreviousForegroundInfo = null;
 			PreviousForegroundController = null;
@@ -939,7 +939,7 @@ namespace Taskmaster
 						if (prc.Executable.Equals(info.Name, Taskmaster.CaseSensitive ? StringComparison.InvariantCulture : StringComparison.InvariantCultureIgnoreCase))
 						{
 							if (Taskmaster.DebugPaths)
-								Log.Debug("<Process/DEBUG> [{FriendlyName}] Path+Exe matched.", prc.FriendlyName);
+								Log.Debug("<Process> [{FriendlyName}] Path+Exe matched.", prc.FriendlyName);
 						}
 						else
 							continue; // CheckPathWatch does not handle combo path+exes
@@ -951,7 +951,7 @@ namespace Taskmaster
 						// if (cacheGet)
 						// 	Log.Debug("[{FriendlyName}] {Exec} (#{Pid}) – PATH CACHE GET!! :D", pc.FriendlyName, name, pid);
 						if (Taskmaster.DebugPaths)
-							Log.Verbose("<Process/DEBUG> [{PathFriendlyName}] (CheckPathWatch) Matched at: {Path}", prc.FriendlyName, info.Path);
+							Log.Verbose("<Process> [{PathFriendlyName}] (CheckPathWatch) Matched at: {Path}", prc.FriendlyName, info.Path);
 
 						matchedprc = prc;
 						break;
@@ -1102,14 +1102,14 @@ namespace Taskmaster
 			if (keyexists)
 			{
 				if (Taskmaster.DebugForeground)
-					Log.Debug("<Process/DEBUG> [{FriendlyName}] {Exec} (#{Pid}) already in foreground watchlist.", prc.FriendlyName, info.Name, info.Id);
+					Log.Debug("<Process> [{FriendlyName}] {Exec} (#{Pid}) already in foreground watchlist.", prc.FriendlyName, info.Name, info.Id);
 			}
 			else
 			{
 				WaitForExit(info);
 
 				if (Taskmaster.DebugForeground)
-					Log.Debug("<Process/DEBUG> [{FriendlyName}] {Exec} (#{Pid}) added to foreground watchlist.", prc.FriendlyName, info.Name, info.Id);
+					Log.Debug("<Process> [{FriendlyName}] {Exec} (#{Pid}) added to foreground watchlist.", prc.FriendlyName, info.Name, info.Id);
 			}
 
 			onProcessHandled?.Invoke(this, new ProcessEventArgs() { Control = prc, Info = info, State = ProcessEventArgs.ProcessState.Found });
@@ -1213,7 +1213,7 @@ namespace Taskmaster
 				{
 					StopBatchProcessingTimer();
 					if (Taskmaster.DebugProcesses)
-						Log.Debug("<Process/DEBUG> New instance timer stopped.");
+						Log.Debug("<Process> New instance timer stopped.");
 				}
 			}
 

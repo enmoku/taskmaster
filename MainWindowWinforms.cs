@@ -52,7 +52,18 @@ namespace Taskmaster
 
 			// the form itself
 			WindowState = FormWindowState.Normal;
+
 			FormBorderStyle = FormBorderStyle.Sizable;
+			SizeGripStyle = SizeGripStyle.Auto;
+
+			AutoSizeMode = AutoSizeMode.GrowAndShrink;
+			AutoSize = false;
+
+			MaximizeBox = true;
+			MinimizeBox = true;
+
+			MinimumSize = new System.Drawing.Size(720, 560);
+
 			ShowInTaskbar = true;
 
 			// FormBorderStyle = FormBorderStyle.FixedDialog; // no min/max buttons as wanted
@@ -1063,6 +1074,13 @@ namespace Taskmaster
 			activepanel.Controls.Add(new Label { Text = "Id:", Width = 20, TextAlign = System.Drawing.ContentAlignment.MiddleLeft });
 			activepanel.Controls.Add(activePID);
 
+			activepanel.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+			activepanel.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+			activepanel.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+			activepanel.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+			activepanel.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+			activepanel.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+
 			// infopanel.Controls.Add(activepanel);
 			// infoTab.Controls.Add(infopanel);
 			#endregion
@@ -1619,6 +1637,13 @@ namespace Taskmaster
 			powerbalancer_forcedcount = new Label() { Text = "n/a", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true };
 			powerbalancerstatus.Controls.Add(powerbalancer_forcedcount);
 
+			powerbalancerstatus.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+			powerbalancerstatus.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+			powerbalancerstatus.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+			powerbalancerstatus.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+			powerbalancerstatus.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+			powerbalancerstatus.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+
 			powerlayout.Controls.Add(powerbalancerstatus);
 			powerDebugTab.Controls.Add(powerlayout);
 
@@ -1627,7 +1652,7 @@ namespace Taskmaster
 			{
 				ColumnCount = 1,
 				AutoSize = true,
-				Dock = DockStyle.Top
+				Dock = DockStyle.Fill,
 			};
 
 			exitlayout.Controls.Add(activepanel);
@@ -1649,6 +1674,7 @@ namespace Taskmaster
 				FullRowSelect = true,
 				View = View.Details,
 				MinimumSize = new System.Drawing.Size(-2, 200),
+				Dock = DockStyle.Fill,
 			};
 			ExitWaitlistMap = new Dictionary<int, ListViewItem>();
 
@@ -1677,14 +1703,6 @@ namespace Taskmaster
 			//Controls.Add(menu);
 			//Controls.Add(layout);
 			//Controls.Add(statusbar);
-
-			AutoSizeMode = AutoSizeMode.GrowAndShrink;
-			AutoSize = false;
-			MaximizeBox = true;
-			MinimizeBox = true;
-			
-			//MinimumSize = new System.Drawing.Size(700, 600); // width, height
-			MinimumSize = new System.Drawing.Size(720, 690);
 		}
 
 		StatusStrip statusbar;

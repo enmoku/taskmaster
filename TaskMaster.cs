@@ -777,27 +777,76 @@ namespace Taskmaster
 			SaveConfig(corestats);
 		}
 
-		static public void Prealloc(string filename, long minkB)
+		/// <summary>
+		/// Pre-allocates a file.
+		/// Not recommended for files that are written with append mode due to them simply adding to the end of the size set by this.
+		/// </summary>
+		/// <param name="fullpath">Full path to the file.</param>
+		/// <param name="allockb">Size in kB to allocate.</param>
+		/// <param name="kib">kiB * 1024; kB * 1000</param>
+		/// <param name="writeonebyte">Writes one byte at the new end.</param>
+		static public void Prealloc(string fullpath, long allockb=64, bool kib=true, bool writeonebyte=false)
 		{
-			Debug.Assert(minkB >= 0);
+			Debug.Assert(allockb >= 0);
+			Debug.Assert(string.IsNullOrEmpty(fullpath));
 
-			var path = System.IO.Path.Combine(datapath, filename);
+			long boundary = kib ? 1024 : 1000;
+
+			System.IO.FileStream fs = null;
 			try
 			{
-				var fs = System.IO.File.Open(path, FileMode.Open, FileAccess.ReadWrite, FileShare.ReadWrite);
+				fs = System.IO.File.Open(fullpath, FileMode.Open, FileAccess.ReadWrite, FileShare.ReadWrite);
 				var oldsize = fs.Length;
-				if (fs.Length < (1024 * minkB))
+
+				if (fs.Length < (boundary * allockb))
 				{
 					// TODO: Make sparse. Unfortunately requires P/Invoke.
-					fs.SetLength(1024 * minkB);
-					Console.WriteLine("Pre-allocated file: " + filename + " (" + oldsize / 1024 + "kB -> " + minkB + "kB)");
+					fs.SetLength(boundary * allockb); // 1024 was dumb for HDDs but makes sense for SSDs again.
+					if (writeonebyte)
+					{
+						fs.Seek((boundary * allockb) - 1, SeekOrigin.Begin);
+						byte[] nullarray = { 0 };
+						fs.Write(nullarray, 0, 1);
+					}
+					Console.WriteLine("Pre-allocated file: " + fullpath + " (" + (oldsize / boundary) + "kB -> " + allockb + "kB)");
 				}
-
-				fs.Close();
 			}
 			catch (System.IO.FileNotFoundException)
 			{
-				Console.WriteLine("Failed to open file: " + filename);
+				Console.WriteLine("Failed to open file: " + fullpath);
+			}
+			finally
+			{
+				fs?.Close();
+			}
+		}
+
+		const int FSCTL_SET_SPARSE = 0x000900c4;
+
+		static public void SparsePrealloc(string fullpath, long allockb = 64, bool ssd = true)
+		{
+			int brv = 0;
+			System.Threading.NativeOverlapped ol = new System.Threading.NativeOverlapped();
+
+			FileStream fs = null;
+			try
+			{
+				fs = File.Open(fullpath, FileMode.Open, FileAccess.Write);
+
+				bool rv = NativeMethods.DeviceIoControl(
+					fs.SafeFileHandle, FSCTL_SET_SPARSE,
+					IntPtr.Zero, 0, IntPtr.Zero, 0, ref brv, ref ol);
+				// if (result == false) return false;
+
+				if (rv)
+				{
+					fs.SetLength(allockb * 1024);
+				}
+			}
+			catch { } // ignore, no access probably
+			finally
+			{
+				fs?.Close();
 			}
 		}
 
@@ -1068,6 +1117,33 @@ namespace Taskmaster
 			Console.WriteLine("Continuation on: " + name + " --- " + message);
 		}
 
+		static void PreallocLastLog()
+		{
+			string logpath = System.IO.Path.Combine(Taskmaster.datapath, "Logs");
+
+			DateTime lastDate = DateTime.MinValue;
+			FileInfo lastFile = null;
+			string lastPath = null;
+
+			var files = System.IO.Directory.GetFiles(logpath, "*", System.IO.SearchOption.AllDirectories);
+			foreach (var filename in files)
+			{
+				var path = System.IO.Path.Combine(logpath, filename);
+				var fi = new System.IO.FileInfo(path);
+				if (fi.LastWriteTime > lastDate)
+				{
+					lastDate = fi.LastWriteTime;
+					lastFile = fi;
+					lastPath = path;
+				}
+			}
+
+			if (lastFile != null)
+			{
+				SparsePrealloc(lastPath);
+			}
+		}
+
 		// entry point to the application
 		[STAThread] // supposedly needed to avoid shit happening with the WinForms GUI and other GUI toolkits
 		static public int Main(string[] args)
@@ -1100,13 +1176,7 @@ namespace Taskmaster
 							Process.GetCurrentProcess().Id, (IsAdministrator() ? "[ADMIN] " : ""),
 							System.Reflection.Assembly.GetExecutingAssembly().GetName().Version);
 
-			/*
-			// Append as used by the logger fucks this up.
-			// Unable to mark as sparse file easily.
-			Prealloc("Logs/debug.log", 256);
-			Prealloc("Logs/error.log", 2);
-			Prealloc("Logs/info.log", 32);
-			*/
+			//PreallocLastLog();
 
 			try
 			{

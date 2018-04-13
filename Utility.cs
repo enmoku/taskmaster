@@ -129,19 +129,6 @@ namespace Taskmaster
 				return seconds;
 			}
 		}
-
-		public static string ByterateString(long bps)
-		{
-			Debug.Assert(bps >= 0);
-
-			if (bps >= 1000000000d)
-				return Math.Round(bps * 0.000000001d, 2) + " Gb/s";
-			if (bps >= 1000000d)
-				return Math.Round(bps * 0.000001d, 2) + " Mb/s";
-			if (bps >= 1000d)
-				return Math.Round(bps * 0.001d, 2) + " kb/s";
-			return bps + " b/s";
-		}
 	}
 
 	public static class Bit

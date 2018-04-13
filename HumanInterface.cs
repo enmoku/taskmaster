@@ -74,6 +74,8 @@ namespace Taskmaster
 		static readonly double Kilo = 1000;
 		static string[] ByteLetter = {"B","kB","MB","GB"};
 
+		static System.Globalization.NumberFormatInfo numberformat = new System.Globalization.NumberFormatInfo() { NumberDecimalDigits = 3 };
+
 		public static string ByteString(long bytes, bool positivesign=false)
 		{
 			double div = 1;
@@ -100,8 +102,17 @@ namespace Taskmaster
 				letter = 0;
 			}
 
-			return string.Format("{1}{0:N3} {2}",
-				(double)bytes / div, ((positivesign && bytes > 0) ? "+" : ""), ByteLetter[letter]);
+			double num = bytes / div;
+
+			lock (numberformat)
+			{
+				numberformat.NumberDecimalDigits = (num < 10) ? 3 : ((num > 100) ? 1 : 2);
+
+				return string.Format(
+					numberformat,
+					"{1}{0:N} {2}",
+					num, ((positivesign && bytes > 0) ? "+" : ""), ByteLetter[letter]);
+			}
 		}
 	}
 }
