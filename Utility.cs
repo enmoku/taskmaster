@@ -183,11 +183,28 @@ namespace Taskmaster
 								System.IO.Path.GetFileName(file), member, line, text);
 		}
 
-		public static void Stacktrace(Exception ex, [CallerMemberName] string method = "")
+		public static void Stacktrace(Exception ex, [CallerMemberName] string method = "", bool oob=false)
 		{
-			Serilog.Log.Fatal("{Type} : {Message}", ex.GetType().Name, ex.Message);
-			Serilog.Log.Fatal("Reported at {Method}", method);
-			Serilog.Log.Fatal(ex.StackTrace);
+			if (!oob)
+			{
+				Serilog.Log.Fatal("{Type} : {Message}", ex.GetType().Name, ex.Message);
+				Serilog.Log.Fatal("Reported at {Method}", method);
+				Serilog.Log.Fatal(ex.StackTrace);
+			}
+			else
+			{
+				using (var log = new System.Diagnostics.EventLog("Application")
+				{
+					Source = "Application"
+				})
+				{
+					log.WriteEntry(
+						Environment.CommandLine+"\n\n"+
+						string.Format("{0} : {1}\n\n", ex.GetType().Name, ex.Message) +
+						string.Format("Reported at {0}\n\n", method) + 
+						ex.StackTrace, EventLogEntryType.Error);
+				}
+			}
 		}
 	}
 }
