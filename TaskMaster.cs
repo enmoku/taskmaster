@@ -1242,6 +1242,17 @@ namespace Taskmaster
 				if (!RunOnce)
 				{
 					trayaccess.Enable();
+
+					using (var log = new System.Diagnostics.EventLog("Application")
+					{
+						Source = "Application"
+					})
+					{
+						log.WriteEntry(
+							Environment.CommandLine + "\n\n" +
+							"Started\n", EventLogEntryType.Information);
+					}
+
 					System.Windows.Forms.Application.Run(); // WinForms
 															// System.Windows.Application.Current.Run(); // WPF
 				}
@@ -1314,7 +1325,14 @@ namespace Taskmaster
 				}
 
 				info.Arguments = string.Join(" ", nargs);
-				var proc = Process.Start(info);
+				try
+				{
+					var proc = Process.Start(info);
+				}
+				catch (Exception ex)
+				{
+					Logging.Stacktrace(ex, oob:true);
+				}
 			}
 
 			return 0;
