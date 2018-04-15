@@ -1,0 +1,41 @@
+﻿Comprehensive changes can be found in Git change history:
+	https://github.com/mkahvi/taskmaster/commits/master
+
+### 2018-04-15
+	Added: Extra debug relating to restarting TM.
+	Added: Change log started. Older entries are based on scarce notes.
+	Fixed: Event log being resized to very small size would hide it behind the above tab element.
+### 2018-04-13
+	Fixed: Some foreground process debug output.
+### 2018-04-12
+	Fixed: Unspecified log output fixes.
+### 2018-04-11
+	Fixed: Main window resizing now works properly. Most noticeable with the event log.
+### 2018-04-10
+	Changed: Reduced non-debug output.
+
+## 2018-04-09 First Itch.io release; Version 0.9
+	Added: Itch.io link.
+	Changed: Moving some output to debug.
+
+### 2018-04-05
+	Changed: Unspecified log output corrected.
+### 2018-04-03
+	Fixed: Processing count drift.
+### 2018-04-01
+	Fixed: Affinity not being set under certain conditions.
+### 2018-04-01
+	Added: Auto-exit function if fatal errors or log size exceed certain threshold.
+### 2018-03-31
+	Added: New --once option to process watchlist once and exit.
+	Added: Save main window position.
+	Changed: Buttons in main window were removed. Functionality still available in menus.
+### 2018-03-30
+	Fixed: Dialog positions sanitized, they should be more consistent now.
+	Changed: Log verbosity option moved to debug menu.
+### 2018-03-29
+	Changed: Tabs for components are now hidden as are process and power debug tabs when said things are disabled.
+	Fixed: Power mode was not reflected in UI.
+	Added: `Background powerdown` option added to Watchlist.ini to disable power mode forcing when not in foreground.
+### 2018-03-29
+	Fixed: Power mode restroration is now more reliable.
