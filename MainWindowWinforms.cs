@@ -62,7 +62,13 @@ namespace Taskmaster
 			MaximizeBox = true;
 			MinimizeBox = true;
 
-			MinimumSize = new System.Drawing.Size(720, 560);
+			MinimumHeight += tabLayout.MinimumSize.Height;
+			MinimumHeight += loglist.MinimumSize.Height;
+			MinimumHeight += menu.Height;
+			MinimumHeight += statusbar.Height;
+			MinimumHeight += 40; // why is this required?
+
+			MinimumSize = new System.Drawing.Size(720, MinimumHeight);
 
 			ShowInTaskbar = true;
 
@@ -712,6 +718,9 @@ namespace Taskmaster
 			}
 		}
 
+		int MinimumHeight = 0;
+		int MinimumWidth = 0;
+
 		void BuildUI()
 		{
 			Text = string.Format("{0} ({1})", System.Windows.Forms.Application.ProductName, System.Windows.Forms.Application.ProductVersion);
@@ -743,12 +752,12 @@ namespace Taskmaster
 				FullRowSelect = true,
 				HeaderStyle = ColumnHeaderStyle.Nonclickable,
 				Scrollable = true,
-				MinimumSize = new System.Drawing.Size(700, 240),
+				MinimumSize = new System.Drawing.Size(-2, 140),
 				//MinimumSize = new System.Drawing.Size(-2, -2), // doesn't work
 				//Anchor = AnchorStyles.Top,
 			};
 
-			var menu = new MenuStrip() { Dock = DockStyle.Top, Parent = this };
+			menu = new MenuStrip() { Dock = DockStyle.Top, Parent = this };
 
 			BuildStatusbar();
 
@@ -781,8 +790,10 @@ namespace Taskmaster
 				menu_action_restartadmin.Enabled = false;
 				Taskmaster.ConfirmExit(restart: true, admin: true);
 				menu_action_restartadmin.Enabled = true;
-			});
-			menu_action_restartadmin.Enabled = !Taskmaster.IsAdministrator();
+			})
+			{
+				Enabled = !Taskmaster.IsAdministrator()
+			};
 
 			var menu_action_exit = new ToolStripMenuItem("Exit", null, ExitRequest);
 			menu_action.DropDownItems.Add(menu_action_rescan);
@@ -1607,7 +1618,7 @@ namespace Taskmaster
 				AutoSize = true,
 				//Height = 80,
 				//Width = tabLayout.Width - 12, // FIXME: 3 for the bevel, but how to do this "right"?
-				MinimumSize = new System.Drawing.Size(700, 80),
+				MinimumSize = new System.Drawing.Size(-2, 80),
 				FullRowSelect = true,
 				View = View.Details,
 			};
@@ -2095,7 +2106,8 @@ namespace Taskmaster
 		}
 
 		readonly object loglistLock = new object();
-		ListView loglist;
+		ListView loglist = null;
+		MenuStrip menu = null;
 
 		public void FillLog()
 		{
