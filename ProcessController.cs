@@ -709,7 +709,10 @@ namespace Taskmaster
 			sbs.Append("[").Append(FriendlyName).Append("] ").Append(info.Name).Append(" (#").Append(info.Id).Append(")");
 
 			if (mPriority || mAffinity)
+			{
+				Statistics.TouchCount++;
 				Adjusts += 1; // don't increment on power changes
+			}
 
 			if (modified)
 			{
@@ -763,13 +766,15 @@ namespace Taskmaster
 			}
 
 			if (modified)
+			{
 				onTouch?.Invoke(this, new ProcessEventArgs { Control = this, Info = info });
+			}
 
 			if (schedule_next) TryScan();
 
 			if (Recheck > 0 && recheck == false)
 			{
-				TouchReapply(info).ConfigureAwait(false);
+				Task.Factory.StartNew(() => TouchReapply(info), TaskCreationOptions.PreferFairness);
 			}
 
 			return; // return rv;

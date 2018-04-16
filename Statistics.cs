@@ -42,6 +42,8 @@ namespace Taskmaster
 		public static double PathCacheHits { get; set; } = 0;
 		public static double PathCacheMisses { get; set; } = 0;
 
+		public static long TouchCount { get; set; } = 0;
+
 		public static int FatalErrors { get; set; } = 0;
 	}
 }
