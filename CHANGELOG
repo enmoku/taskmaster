@@ -3,6 +3,8 @@
 
 ### 2018-04-16
 	Added: Core.ini option `Immediate configuration saving`, which instead of marking configs for saving on exit, immediately saves them. Disabled by default.
+	Changed: Status bar now includes touch count since launch and uses proper labels instead of whatever garbage it was before.
+	Fixed: Resizing from window borders now works for main window.
 ### 2018-04-15
 	Added: Extra debug relating to restarting TM.
 	Added: Change log started. Older entries are based on scarce notes.
