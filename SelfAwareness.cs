@@ -147,8 +147,7 @@ namespace Taskmaster
 						{
 							awn.Tick++;
 
-							Log.Fatal("<<Self-Awareness>> Tick: {Tick} – Due:{Due} – Now:{Now} – Late: {Late}s",
-									  awn.Tick, awn.Due, now, (now - awn.Due).TotalSeconds);
+							TimeSpan late = (now - awn.Due);
 
 							if (awn.Tick == 1)
 							{
@@ -157,13 +156,13 @@ namespace Taskmaster
 
 								if (awn.Message != null)
 								{
-									Log.Fatal("<<Self-Awareness>> {Method} hung [{Line}] – {Message}",
-											  awn.Method, awn.Line, awn.Message);
+									Log.Fatal("<<Self-Awareness>> {Method} hung [Late: {Seconds}s, Tick: {Tick}] – {Message}",
+											  awn.Method, string.Format("{0:N1}", late.TotalSeconds), awn.Tick, awn.Message);
 								}
 								else
 								{
-									Log.Fatal("<<Self-Awareness>> {Method} hung [{Line}]",
-											  awn.Method, awn.Line);
+									Log.Fatal("<<Self-Awareness>> {Method} hung [Late: {Seconds}s, Tick: {Tick}]",
+											  awn.Method, string.Format("{0:N1}", late.TotalSeconds), awn.Tick);
 								}
 
 								if (awn.Callback != null)
@@ -264,7 +263,9 @@ namespace Taskmaster
 		{
 			if (disposed)
 			{
-				Log.Debug("<<Self-Awareness>> Redispose: {Method} [{Line}]", Key, Method, Line);
+				TimeSpan late = (Start - DateTime.Now);
+				Log.Debug("<<Self-Awareness>> Redispose: {Method} [After: {Seconds}s]",
+					Key, Method, string.Format("{0:N1}", late.TotalSeconds));
 				return;
 			}
 
@@ -273,7 +274,11 @@ namespace Taskmaster
 			if (disposing)
 			{
 				if (Overdue && Tick <= 3)
-					Log.Fatal("<<Self-Awareness>> {Method} recovered", Method, Line);
+				{
+					TimeSpan late = (Start - DateTime.Now);
+					Log.Fatal("<<Self-Awareness>> {Method} recovered [After: {Seconds}s]",
+						Method, string.Format("{0:N1}", late.TotalSeconds));
+				}
 
 				// Log.Debug("<<Self-Awareness>> Dispose [{Key}] {Method} [Time: {N}s]", Key, Method, string.Format("{0:N2}", (DateTime.Now - Start).TotalSeconds));
 				SelfAwareness.Unmind(Key);
