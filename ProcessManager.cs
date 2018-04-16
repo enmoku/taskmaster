@@ -1219,7 +1219,7 @@ namespace Taskmaster
 
 			//await Task.Delay(0).ConfigureAwait(false);
 
-			Task.Factory.StartNew(NewInstanceBatchProcessing, TaskCreationOptions.LongRunning);
+			Task.Factory.StartNew(NewInstanceBatchProcessing, TaskCreationOptions.PreferFairness);
 		}
 
 		async Task NewInstanceBatchProcessing()
