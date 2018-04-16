@@ -56,7 +56,7 @@ namespace Taskmaster
 			FormBorderStyle = FormBorderStyle.Sizable;
 			SizeGripStyle = SizeGripStyle.Auto;
 
-			AutoSizeMode = AutoSizeMode.GrowAndShrink;
+			AutoSizeMode = AutoSizeMode.GrowOnly;
 			AutoSize = false;
 
 			MaximizeBox = true;
@@ -113,6 +113,7 @@ namespace Taskmaster
 			// TODO: Introduce configuration window
 		}
 
+		[Aspects.UIThreadAspect]
 		public async void PowerConfigRequest(object sender, EventArgs e)
 		{
 			try
@@ -268,10 +269,12 @@ namespace Taskmaster
 		}
 
 		[Aspects.UIThreadAspect]
-		public void ProcAdjust(object sender, ProcessEventArgs ev)
+		public void ProcessTouchEvent(object sender, ProcessEventArgs ev)
 		{
 			// Log.Verbose("Process adjust received for '{FriendlyName}'.", e.Control.FriendlyName);
 			if (!IsHandleCreated) return;
+
+			adjustcounter.Text = Statistics.TouchCount.ToString();
 
 			lock (appw_lock)
 			{
@@ -331,7 +334,7 @@ namespace Taskmaster
 			rescanRequest += processmanager.ScanEverythingRequest;
 
 			ProcessController.onLocate += WatchlistPathLocatedEvent;
-			ProcessController.onTouch += ProcAdjust;
+			ProcessController.onTouch += ProcessTouchEvent;
 
 			BeginInvoke(new Action(() => {
 				processingcount.Text = ProcessManager.Handling.ToString();
@@ -1475,6 +1478,7 @@ namespace Taskmaster
 				//loglist.Height = -2;
 				//loglist.Width = -2;
 				loglist.Height = ClientSize.Height - (tabLayout.Height + statusbar.Height + menu.Height);
+				ShowLastLog();
 			};
 			ResizeEnd += ResizeLogList;
 			Resize += ResizeLogList;
@@ -1717,9 +1721,10 @@ namespace Taskmaster
 		}
 
 		StatusStrip statusbar;
-		ToolStripMenuItem processingcount;
-		ToolStripMenuItem processingtimer;
-		ToolStripMenuItem verbositylevel;
+		ToolStripStatusLabel processingcount;
+		ToolStripStatusLabel processingtimer;
+		ToolStripStatusLabel verbositylevel;
+		ToolStripStatusLabel adjustcounter;
 
 		void BuildStatusbar()
 		{
@@ -1731,16 +1736,20 @@ namespace Taskmaster
 
 			statusbar.Items.Add("Processing");
 			statusbar.Items.Add("Items:");
-			processingcount = new ToolStripMenuItem("[   n/a   ]") { AutoSize=false };
+			processingcount = new ToolStripStatusLabel("[   n/a   ]") { AutoSize=false };
 			statusbar.Items.Add(processingcount);
 			statusbar.Items.Add("Next scan in:");
-			processingtimer = new ToolStripMenuItem("[   n/a   ]") { AutoSize = false };
+			processingtimer = new ToolStripStatusLabel("[   n/a   ]") { AutoSize = false };
 			statusbar.Items.Add(processingtimer);
-			var spacer = new ToolStripLabel() { Alignment = ToolStripItemAlignment.Right, Width=-2 };
+			var spacer = new ToolStripStatusLabel() { Alignment = ToolStripItemAlignment.Right, Width=-2, Spring=true };
 			statusbar.Items.Add(spacer);
-			statusbar.Items.Add(new ToolStripLabel("Verbosity:"));
-			verbositylevel = new ToolStripMenuItem("n/a");
+			statusbar.Items.Add(new ToolStripStatusLabel("Verbosity:"));
+			verbositylevel = new ToolStripStatusLabel("n/a");
 			statusbar.Items.Add(verbositylevel);
+
+			statusbar.Items.Add(new ToolStripStatusLabel("Adjusted:") { Alignment = ToolStripItemAlignment.Right});
+			adjustcounter = new ToolStripStatusLabel(Statistics.TouchCount.ToString()) { Alignment = ToolStripItemAlignment.Right };
+			statusbar.Items.Add(adjustcounter);
 		}
 
 		async void FreeMemoryRequest(object sender, EventArgs ev)
@@ -2397,7 +2406,7 @@ namespace Taskmaster
 				catch { }
 				try
 				{
-					ProcessController.onTouch -= ProcAdjust;
+					ProcessController.onTouch -= ProcessTouchEvent;
 					ProcessController.onLocate -= WatchlistPathLocatedEvent;
 					processmanager.onWaitForExitEvent -= ExitWaitListHandler; //ExitWaitListHandler;
 					rescanRequest -= processmanager.ScanEverythingRequest;
