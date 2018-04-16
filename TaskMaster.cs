@@ -79,14 +79,30 @@ namespace Taskmaster
 			throw new ArgumentException();
 		}
 
+		// TODO: Add error handling.
 		public static void SaveConfig(string configfile, SharpConfig.Configuration config)
 		{
-			// Console.WriteLine("Saving: " + configfile);
-			System.IO.Directory.CreateDirectory(datapath);
-			var targetfile = System.IO.Path.Combine(datapath, configfile);
-			if (System.IO.File.Exists(targetfile))
-				System.IO.File.Copy(targetfile, targetfile + ".bak", true); // backup
-			config.SaveToFile(targetfile);
+			try
+			{
+				System.IO.Directory.CreateDirectory(datapath);
+			}
+			catch
+			{
+				Log.Warning("Failed to create directory: {Path}", datapath);
+				return;
+			}
+
+			string targetfile = System.IO.Path.Combine(datapath, configfile);
+			try
+			{
+				// backup, copy in case following write fails
+				System.IO.File.Copy(targetfile, targetfile + ".bak", overwrite: true);
+				config.SaveToFile(targetfile);
+			}
+			catch
+			{
+				Log.Warning("Failed to write: {Target}", targetfile);
+			}
 			// TODO: Pre-allocate some space for the config file?
 		}
 
@@ -534,13 +550,22 @@ namespace Taskmaster
 		{
 			if (ConfigDirty.TryGetValue(dirtiedcfg, out bool unused))
 				ConfigDirty.Remove(dirtiedcfg);
-			ConfigDirty.Add(dirtiedcfg, true);
+
+			if (ImmediateSave)
+			{
+				SaveConfig(dirtiedcfg);
+			}
+			else
+			{
+				ConfigDirty.Add(dirtiedcfg, true);
+			}
 		}
 
 		public static string ConfigVersion = "alpha.1";
 
 		public static bool RequestExitConfirm = true;
 		public static bool AutoOpenMenus = true;
+		public static bool ImmediateSave = true;
 
 		static string coreconfig = "Core.ini";
 		static void LoadCoreConfig()
@@ -686,6 +711,10 @@ namespace Taskmaster
 			var maintsec = cfg["Maintenance"];
 			CleanupInterval = maintsec.GetSetDefault("Cleanup interval", 15, out modified).IntValue.Constrain(1, 1440);
 			maintsec["Cleanup interval"].Comment = "In minutes, 1 to 1440. How frequently to perform general sanitation of TM itself.";
+			dirtyconfig |= modified;
+
+			ImmediateSave = perfsec.GetSetDefault("Immediate configuration saving", false, out modified).BoolValue;
+			perfsec["Immediate configuration saving"].Comment = "Immediately save configuration files instead of at exit.";
 			dirtyconfig |= modified;
 
 			var newsettings = optsec?.SettingCount ?? 0 + compsec?.SettingCount ?? 0 + perfsec?.SettingCount ?? 0;
