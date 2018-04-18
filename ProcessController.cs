@@ -790,15 +790,9 @@ namespace Taskmaster
 					int oldWidth = r.Width;
 					int oldHeight = r.Height;
 					if (r.Width < NewSize[0])
-					{
 						r.Width = NewSize[0];
-						Log.Debug("Set width");
-					}
 					if (r.Height < NewSize[1])
-					{
 						r.Height = NewSize[1];
-						Log.Debug("Set height");
-					}
 
 					Log.Debug("Resizing {Name} (#{Pid}) from {OldWidth}×{OldHeight} to {NewWidth}×{NewHeight}",
 						info.Name, info.Id, oldWidth, oldHeight, r.Width, r.Height);
