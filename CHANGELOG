@@ -1,6 +1,11 @@
 ﻿Comprehensive changes can be found in Git change history:
 	https://github.com/mkahvi/taskmaster/commits/master
 
+### 2018-04-18
+	Added: Health monitor now warns of low diskspace. Defaults to 150 MB.
+	Added: Experimental feature to resize detected apps. Usable as `Resize={Width,Height}` in Watchlist.ini.
+### 2018-04-17
+	Added: Option to disable showing TM in taskbar. Found in Configuration > Behaviour in main window menubar.
 ### 2018-04-16
 	Added: Core.ini option `Immediate configuration saving`, which instead of marking configs for saving on exit, immediately saves them. Disabled by default.
 	Changed: Status bar now includes touch count since launch and uses proper labels instead of whatever garbage it was before.
