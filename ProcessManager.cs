@@ -670,10 +670,19 @@ namespace Taskmaster
 				};
 
 				int[] resize = section.TryGet("Resize")?.IntValueArray ?? null; // width,height
-				if (resize != null && resize.Length == 2)
+				if (resize != null && resize.Length == 4)
 				{
-					prc.Resize = true;
-					prc.NewSize = resize;
+					prc.RememberSize = section.TryGet("Remember size")?.BoolValue ?? false;
+					prc.RememberPos = section.TryGet("Remember position")?.BoolValue ?? false;
+
+					if ((!prc.RememberSize && resize[2] == 0 && resize[3] == 0)
+						&& (!prc.RememberPos && resize[0] == 0 && resize[1] == 0))
+					{
+						prc.Resize = null;
+						Log.Warning("[{Name}] Resize malconfigured, ignoring.", prc.FriendlyName);
+					}
+					else
+						prc.Resize = resize;
 				}
 
 				addController(prc);
@@ -707,8 +716,8 @@ namespace Taskmaster
 			{
 				lock (execontrol_lock)
 				{
-					if (string.IsNullOrEmpty(prc.Executable))
-						execontrol.Remove(prc.Executable);
+					if (!string.IsNullOrEmpty(prc.Executable))
+						execontrol.Remove(LowerCase(prc.ExecutableFriendlyName));
 				}
 
 				watchlist.Remove(prc);
@@ -1149,7 +1158,7 @@ namespace Taskmaster
 			ProcessController prc = null;
 			Debug.Assert(execontrol != null);
 			Debug.Assert(info != null);
-
+			
 			lock (execontrol_lock)
 				execontrol.TryGetValue(LowerCase(info.Name), out prc);
 

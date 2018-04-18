@@ -3,7 +3,9 @@
 
 ### 2018-04-18
 	Added: Health monitor now warns of low diskspace. Defaults to 150 MB.
-	Added: Experimental feature to resize detected apps. Usable as `Resize={Width,Height}` in Watchlist.ini.
+	Added: Experimental feature to resize detected apps. Usable as `Resize={Top,Left,Width,Height}` in Watchlist.ini.
+	Added: `Remember size=true/false` and `Remember position=true/false` in Watchlist.ini to control the `Resize` option.
+	Fixed: Removing a rule did not do proper cleanup, causing rule with similar options to not work correctly without restart.
 ### 2018-04-17
 	Added: Option to disable showing TM in taskbar. Found in Configuration > Behaviour in main window menubar.
 ### 2018-04-16

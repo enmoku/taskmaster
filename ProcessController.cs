@@ -194,12 +194,13 @@ namespace Taskmaster
 			Taskmaster.MarkDirtyINI(cfg);
 		}
 
-		public void SaveConfig(SharpConfig.Configuration cfg = null)
+		public void SaveConfig(SharpConfig.Configuration cfg = null, SharpConfig.Section app=null)
 		{
 			if (cfg == null)
 				cfg = Taskmaster.LoadConfig(watchlistfile);
 
-			var app = cfg[FriendlyName];
+			if (app == null)
+				app = cfg[FriendlyName];
 
 			if (!string.IsNullOrEmpty(Executable))
 				app["Image"].StringValue = Executable;
@@ -765,6 +766,8 @@ namespace Taskmaster
 				rv = ProcessState.OK;
 			}
 
+			TryResize(info);
+
 			if (modified)
 			{
 				onTouch?.Invoke(this, new ProcessEventArgs { Control = this, Info = info });
@@ -777,41 +780,130 @@ namespace Taskmaster
 				Task.Factory.StartNew(() => TouchReapply(info), TaskCreationOptions.PreferFairness);
 			}
 
-			if (Resize)
-			{
-
-				NativeMethods.RECT rect = new NativeMethods.RECT();
-				try
-				{
-					IntPtr hwnd = info.Process.MainWindowHandle;
-					NativeMethods.GetWindowRect(hwnd, ref rect);
-
-					var r = new System.Drawing.Rectangle(rect.Left, rect.Top, rect.Right - rect.Left, rect.Bottom - rect.Top);
-					int oldWidth = r.Width;
-					int oldHeight = r.Height;
-					if (r.Width < NewSize[0])
-						r.Width = NewSize[0];
-					if (r.Height < NewSize[1])
-						r.Height = NewSize[1];
-
-					Log.Debug("Resizing {Name} (#{Pid}) from {OldWidth}×{OldHeight} to {NewWidth}×{NewHeight}",
-						info.Name, info.Id, oldWidth, oldHeight, r.Width, r.Height);
-
-					// TODO: Add option to monitor the app and save the new size so relaunching the app keeps the size.
-
-					NativeMethods.MoveWindow(hwnd, r.Left, r.Top, r.Width, r.Height, true);
-				}
-				catch (Exception ex)
-				{
-					Logging.Stacktrace(ex);
-				}
-			}
-
 			return; // return rv;
 		}
 
-		public bool Resize = false;
-		public int[] NewSize = { 600, 600 };
+		NativeMethods.RECT rect = new NativeMethods.RECT();
+
+		void TryResize(ProcessEx info)
+		{
+			if (Resize == null) return;
+
+			try
+			{
+				lock (ResizeWaitList_lock)
+				{
+					if (ResizeWaitList.Contains(info.Id)) return;
+
+					IntPtr hwnd = info.Process.MainWindowHandle;
+					NativeMethods.GetWindowRect(hwnd, ref rect);
+
+					var ro = new System.Drawing.Rectangle(
+						rect.Left, rect.Top, rect.Right - rect.Left, rect.Bottom - rect.Top);
+
+					var rn = new System.Drawing.Rectangle(
+						Resize[0] != 0 ? Resize[0] : ro.Left,
+						Resize[1] != 0 ? Resize[1] : ro.Top,
+						Resize[2] != 0 ? Resize[2] : ro.Width,
+						Resize[3] != 0 ? Resize[3] : ro.Height
+						);
+
+					if (!rn.Equals(ro))
+					{
+						Log.Debug("Resizing {Name} (#{Pid}) from {OldWidth}×{OldHeight} to {NewWidth}×{NewHeight}",
+							info.Name, info.Id, ro.Width, ro.Height, rn.Width, rn.Height);
+
+						// TODO: Add option to monitor the app and save the new size so relaunching the app keeps the size.
+
+						NativeMethods.MoveWindow(hwnd, rn.Left, rn.Top, rn.Width, rn.Height, true);
+					}
+
+					if (!RememberSize && !RememberPos) return;
+
+					ResizeWaitList.Add(info.Id);
+
+					System.Threading.ManualResetEvent re = new System.Threading.ManualResetEvent(false);
+					Task.Factory.StartNew(() =>
+					{
+						try
+						{
+							while (!re.WaitOne(1000 * 60))
+							{
+								NativeMethods.GetWindowRect(hwnd, ref rect);
+								rn = new System.Drawing.Rectangle(
+									RememberPos ? rect.Left : Resize[0], RememberPos ? rect.Top : Resize[1],
+									RememberSize ? rect.Right - rect.Left : Resize[2], RememberSize ? rect.Bottom - rect.Top : Resize[3]
+									);
+
+								Resize = new int[] { rn.Left, rn.Top, rn.Width, rn.Height };
+							}
+						}
+						catch (Exception ex)
+						{
+							Logging.Stacktrace(ex);
+						}
+					}, TaskCreationOptions.LongRunning);
+
+					info.Process.EnableRaisingEvents = true;
+					info.Process.Exited += (s, ev) =>
+					{
+						try
+						{
+							re.Set();
+							re.Reset();
+
+							lock (ResizeWaitList_lock)
+							{
+								ResizeWaitList.Remove(info.Id);
+							}
+
+							Log.Debug("Saving {Name} (#{Pid}) from {OldWidth}×{OldHeight} to {NewWidth}×{NewHeight}",
+								info.Name, info.Id, ro.Width, ro.Height, Resize[0], Resize[1]);
+
+							if (ro.Width != Resize[2] || ro.Height != Resize[3]
+								|| ro.Left != Resize[0] || ro.Top != Resize[1])
+							{
+								var cfg = Taskmaster.LoadConfig(watchlistfile);
+								var app = cfg[FriendlyName];
+								int[] resizecopy = new int[] { 0, 0, 0, 0 };
+								Resize.CopyTo(resizecopy, 0);
+								if (!RememberPos)
+								{
+									resizecopy[0] = 0;
+									resizecopy[1] = 0;
+								}
+								if (!RememberSize)
+								{
+									resizecopy[2] = 0;
+									resizecopy[3] = 0;
+								}
+								app["Resize"].IntValueArray = resizecopy;
+								SaveConfig(cfg, app);
+							}
+						}
+						catch (Exception ex)
+						{
+							Logging.Stacktrace(ex);
+						}
+					};
+				}
+			}
+			catch (Exception ex)
+			{
+				Logging.Stacktrace(ex);
+
+				lock (ResizeWaitList_lock)
+				{
+					ResizeWaitList.Remove(info.Id);
+				}
+			}
+		}
+
+		public bool RememberSize = false;
+		public bool RememberPos = false;
+		public int[] Resize = null;
+		List<int> ResizeWaitList = new List<int>();
+		object ResizeWaitList_lock = new object();
 
 		async Task TouchReapply(ProcessEx info)
 		{
