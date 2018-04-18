@@ -669,6 +669,13 @@ namespace Taskmaster
 					AllowPaging = (section.TryGet("Allow paging")?.BoolValue ?? false),
 				};
 
+				int[] resize = section.TryGet("Resize")?.IntValueArray ?? null; // width,height
+				if (resize != null && resize.Length == 2)
+				{
+					prc.Resize = true;
+					prc.NewSize = resize;
+				}
+
 				addController(prc);
 
 				// cnt.Children &= ControlChildren;

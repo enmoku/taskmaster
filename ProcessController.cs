@@ -777,8 +777,45 @@ namespace Taskmaster
 				Task.Factory.StartNew(() => TouchReapply(info), TaskCreationOptions.PreferFairness);
 			}
 
+			if (Resize)
+			{
+
+				NativeMethods.RECT rect = new NativeMethods.RECT();
+				try
+				{
+					IntPtr hwnd = info.Process.MainWindowHandle;
+					NativeMethods.GetWindowRect(hwnd, ref rect);
+
+					var r = new System.Drawing.Rectangle(rect.Left, rect.Top, rect.Right - rect.Left, rect.Bottom - rect.Top);
+					int oldWidth = r.Width;
+					int oldHeight = r.Height;
+					if (r.Width < NewSize[0])
+					{
+						r.Width = NewSize[0];
+						Log.Debug("Set width");
+					}
+					if (r.Height < NewSize[1])
+					{
+						r.Height = NewSize[1];
+						Log.Debug("Set height");
+					}
+
+					Log.Debug("Resizing {Name} (#{Pid}) from {OldWidth}×{OldHeight} to {NewWidth}×{NewHeight}",
+						info.Name, info.Id, oldWidth, oldHeight, r.Width, r.Height);
+
+					NativeMethods.MoveWindow(hwnd, r.Left, r.Top, r.Width, r.Height, true);
+				}
+				catch (Exception ex)
+				{
+					Logging.Stacktrace(ex);
+				}
+			}
+
 			return; // return rv;
 		}
+
+		public bool Resize = false;
+		public int[] NewSize = { 600, 600 };
 
 		async Task TouchReapply(ProcessEx info)
 		{
