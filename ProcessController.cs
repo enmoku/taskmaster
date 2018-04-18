@@ -797,6 +797,8 @@ namespace Taskmaster
 					Log.Debug("Resizing {Name} (#{Pid}) from {OldWidth}×{OldHeight} to {NewWidth}×{NewHeight}",
 						info.Name, info.Id, oldWidth, oldHeight, r.Width, r.Height);
 
+					// TODO: Add option to monitor the app and save the new size so relaunching the app keeps the size.
+
 					NativeMethods.MoveWindow(hwnd, r.Left, r.Top, r.Width, r.Height, true);
 				}
 				catch (Exception ex)
