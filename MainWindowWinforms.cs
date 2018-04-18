@@ -70,7 +70,7 @@ namespace Taskmaster
 
 			MinimumSize = new System.Drawing.Size(720, MinimumHeight);
 
-			ShowInTaskbar = true;
+			ShowInTaskbar = Taskmaster.ShowInTaskbar;
 
 			// FormBorderStyle = FormBorderStyle.FixedDialog; // no min/max buttons as wanted
 
@@ -817,11 +817,34 @@ namespace Taskmaster
 			var menu_config_behaviour_autoopen = new ToolStripMenuItem("Auto-open menus")
 			{
 				Checked = Taskmaster.AutoOpenMenus,
-				CheckOnClick = true
+				CheckOnClick = true,
 			};
-			menu_config_behaviour_autoopen.Click += (sender, e) => { Taskmaster.AutoOpenMenus = !Taskmaster.AutoOpenMenus; };
+			menu_config_behaviour_autoopen.Click += (sender, e) =>
+			{
+				Taskmaster.AutoOpenMenus = !Taskmaster.AutoOpenMenus;
+
+				Taskmaster.cfg["Quality of Life"]["Auto-open menus"].BoolValue = Taskmaster.AutoOpenMenus;
+
+				Taskmaster.MarkDirtyINI(Taskmaster.cfg);
+			};
+
+			var menu_config_behaviour_taskbar = new ToolStripMenuItem("Show in taskbar")
+			{
+				Checked = Taskmaster.ShowInTaskbar,
+				CheckOnClick = true,
+			};
+			menu_config_behaviour_taskbar.Click += (sender, e) =>
+			{
+				Taskmaster.ShowInTaskbar = !Taskmaster.ShowInTaskbar;
+				ShowInTaskbar = Taskmaster.ShowInTaskbar;
+
+				Taskmaster.cfg["Quality of Life"]["Show in taskbar"].BoolValue = Taskmaster.ShowInTaskbar;
+
+				Taskmaster.MarkDirtyINI(Taskmaster.cfg);
+			};
 
 			menu_config_behaviour.DropDownItems.Add(menu_config_behaviour_autoopen);
+			menu_config_behaviour.DropDownItems.Add(menu_config_behaviour_taskbar);
 
 			var menu_config_power_autoadjust = new ToolStripMenuItem("Auto-adjust tuning");
 			menu_config_power_autoadjust.Click += PowerConfigRequest;

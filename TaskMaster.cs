@@ -565,6 +565,7 @@ namespace Taskmaster
 
 		public static bool RequestExitConfirm = true;
 		public static bool AutoOpenMenus = true;
+		public static bool ShowInTaskbar = false;
 		public static bool ImmediateSave = true;
 
 		static string coreconfig = "Core.ini";
@@ -629,6 +630,8 @@ namespace Taskmaster
 			RequestExitConfirm = qol.GetSetDefault("Confirm exit", true, out modified).BoolValue;
 			dirtyconfig |= modified;
 			AutoOpenMenus = qol.GetSetDefault("Auto-open menus", true, out modified).BoolValue;
+			dirtyconfig |= modified;
+			ShowInTaskbar = qol.GetSetDefault("Show in taskbar", true, out modified).BoolValue;
 			dirtyconfig |= modified;
 
 			var logsec = cfg["Logging"];
@@ -1316,7 +1319,7 @@ namespace Taskmaster
 
 			// TODO: Save Config, do this better. Maybe data bindings.
 			bool dirty = cfg["Quality of Life"]["Auto-open menus"].Set(AutoOpenMenus);
-			if (dirty ) MarkDirtyINI(cfg);
+			if (dirty) MarkDirtyINI(cfg);
 
 			// CLEANUP for exit
 
