@@ -68,6 +68,11 @@ namespace Taskmaster
 		/// Log file total size at which we force exit.
 		/// </summary>
 		public int FatalLogSizeThreshold { get; set; } = 5;
+
+		/// <summary>
+		/// Low drive space threshold in megabytes.
+		/// </summary>
+		public long LowDriveSpaceThreshold { get; set; } = 150;
 	}
 
 	/// <summary>
@@ -200,6 +205,12 @@ namespace Taskmaster
 			selfsec["Fatal log size threshold"].Comment = "Auto-exit if total log file size exceeds this. In megabytes.";
 			configdirty |= modified;
 
+			// NVM
+			var nvmsec = cfg["Non-Volatile Memory"];
+			Settings.LowDriveSpaceThreshold = nvmsec.GetSetDefault("Low space threshold", 150, out modified).IntValue.Constrain(0, 4000);
+			nvmsec["Low space threshold"].Comment = "Warn about free space going below this. In megabytes.";
+			configdirty |= modified;
+
 			if (configdirty) Taskmaster.MarkDirtyINI(cfg);
 		}
 
@@ -220,6 +231,7 @@ namespace Taskmaster
 				await CheckErrors();
 				await CheckLogs();
 				await CheckMemory();
+				await CheckNVM();
 			}
 			catch (Exception ex) { Logging.Stacktrace(ex); }
 			finally
@@ -282,6 +294,51 @@ namespace Taskmaster
 				Log.Fatal("<Auto-Doc> Log files exceeding allowed size, exiting.");
 				Taskmaster.UnifiedExit();
 			}
+		}
+
+		// TODO: Empty this list once a day or so to prevent unnecessary growth from removable drives.
+		List<string> warnedDrives = new List<string>();
+
+		async Task CheckNVM()
+		{
+			await Task.Delay(0);
+
+			foreach (var drive in System.IO.DriveInfo.GetDrives())
+			{
+				if (drive.IsReady)
+				{
+					if (drive.AvailableFreeSpace < Settings.LowDriveSpaceThreshold*1000000)
+					{
+						if (warnedDrives.Contains(drive.Name)) continue;
+
+						var sqrbi = new NativeMethods.SHQUERYRBINFO
+						{
+							cbSize = System.Runtime.InteropServices.Marshal.SizeOf(typeof(NativeMethods.SHQUERYRBINFO))
+						};
+
+						Console.WriteLine(drive.Name);
+						uint hresult = NativeMethods.SHQueryRecycleBin(drive.Name, ref sqrbi);
+						int error = System.Runtime.InteropServices.Marshal.GetLastWin32Error();
+						Console.WriteLine(hresult.ToString("X") + " --- error: " + error);
+						Console.WriteLine(sqrbi.i64NumItems);
+						Console.WriteLine(sqrbi.i64Size);
+						long rbsize = sqrbi.i64Size;
+
+						Log.Warning("<Auto-Doc> Low free space on {Drive} ({Space}); recycle bin has: {Recycle}",
+							drive.Name, HumanInterface.ByteString(drive.AvailableFreeSpace), HumanInterface.ByteString(rbsize));
+
+						warnedDrives.Add(drive.Name);
+					}
+					else
+					{
+						warnedDrives.Remove(drive.Name);
+					}
+				}
+			}
+
+			// Empty Recycle Bin
+			//uint flags = NativeMethods.SHERB_NOCONFIRMATION | NativeMethods.SHERB_NOPROGRESSUI | NativeMethods.SHERB_NOSOUND;
+			//NativeMethods.SHEmptyRecycleBin(IntPtr.Zero, path, flags);
 		}
 
 		async Task CheckMemory()

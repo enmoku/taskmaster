@@ -158,5 +158,32 @@ namespace Taskmaster
 			ref int pBytesReturned,
 			[In] ref System.Threading.NativeOverlapped lpOverlapped
 		);
+
+		//     No dialog box confirming the deletion of the objects will be displayed.
+		public const int SHERB_NOCONFIRMATION = 0x00000001;
+		//     No dialog box indicating the progress will be displayed. 
+		public const int SHERB_NOPROGRESSUI = 0x00000002;
+		//     No sound will be played when the operation is complete. 
+		public const int SHERB_NOSOUND = 0x00000004;
+
+		/// <summary>
+		/// Empty recycle bin.
+		/// </summary>
+		[DllImport("shell32.dll")]
+		public static extern int SHEmptyRecycleBin(IntPtr hWnd, string pszRootPath, uint dwFlags);
+
+		[StructLayout(LayoutKind.Sequential)] // , Pack = 4 causes shqueryrecyclebin to error with invalid args
+		public struct SHQUERYRBINFO
+		{
+			public int cbSize;
+			public long i64Size;
+			public long i64NumItems;
+		}
+
+		[DllImport("shell32.dll", CharSet=CharSet.Unicode, SetLastError =true)]
+		public static extern uint SHQueryRecycleBin(string pszRootPath, ref SHQUERYRBINFO pSHQueryRBInfo);
+
+		[DllImport("user32.dll", SetLastError = true)]
+		public static extern bool MoveWindow(IntPtr hWnd, int X, int Y, int nWidth, int nHeight, bool bRepaint);
 	}
 }
