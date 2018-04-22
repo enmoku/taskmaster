@@ -39,6 +39,8 @@ namespace Taskmaster.UI
 
 		public UniForm()
 		{
+			var handle = this.Handle; // unused; forces handle creation
+
 			//DoubleBuffered = true;
 
 			SetStyle(ControlStyles.AllPaintingInWmPaint, true); // reduce flicker
