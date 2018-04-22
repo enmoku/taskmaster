@@ -105,6 +105,8 @@ namespace Taskmaster
 			jumplist.Apply();
 			*/
 
+			FillLog();
+
 			if (Taskmaster.Trace)
 				Log.Verbose("MainWindow constructed");
 		}
@@ -184,8 +186,6 @@ namespace Taskmaster
 		public void UnloseWindowRequest(object sender, EventArgs e)
 		{
 			if (Taskmaster.Trace) Log.Verbose("Making sure main window is not lost.");
-
-			if (!IsHandleCreated) return; // should never happen
 
 			try
 			{
@@ -272,8 +272,6 @@ namespace Taskmaster
 		public void ProcessTouchEvent(object sender, ProcessEventArgs ev)
 		{
 			// Log.Verbose("Process adjust received for '{FriendlyName}'.", e.Control.FriendlyName);
-			if (!IsHandleCreated) return;
-
 			adjustcounter.Text = Statistics.TouchCount.ToString();
 
 			lock (appw_lock)
@@ -295,8 +293,6 @@ namespace Taskmaster
 		[Aspects.UIThreadAspect]
 		public void OnActiveWindowChanged(object sender, WindowChangedArgs windowchangeev)
 		{
-			if (!IsHandleCreated) return;
-
 			try
 			{
 				// int maxlength = 70;
@@ -321,6 +317,7 @@ namespace Taskmaster
 		public void hookProcessManager(ref ProcessManager control)
 		{
 			Debug.Assert(control != null);
+
 			processmanager = control;
 
 			processmanager.onInstanceHandling += ProcessNewInstanceCount;
@@ -360,8 +357,6 @@ namespace Taskmaster
 		[Aspects.UIThreadAspect]
 		void ProcessNewInstanceCount(object sender, InstanceEventArgs e)
 		{
-			if (!IsHandleCreated) return;
-
 			processingcount.Text = ProcessManager.Handling.ToString();
 		}
 
@@ -446,8 +441,6 @@ namespace Taskmaster
 		[Aspects.UIThreadAspect]
 		public void WatchlistPathLocatedEvent(object sender, PathControlEventArgs e)
 		{
-			if (!IsHandleCreated) return;
-
 			try
 			{
 				var pc = (ProcessController)sender;
@@ -494,8 +487,6 @@ namespace Taskmaster
 		[Aspects.UIThreadAspect]
 		void volumeChangeDetected(object sender, VolumeChangedEventArgs e)
 		{
-			if (!IsHandleCreated) return;
-
 			try
 			{
 				micVol.Value = Convert.ToInt32(e.New);
@@ -523,8 +514,6 @@ namespace Taskmaster
 		[Aspects.UIThreadAspect]
 		public void PathCacheUpdate(object sender, EventArgs ev)
 		{
-			if (!IsHandleCreated) return;
-
 			if (PathCacheUpdateSkips++ == 4)
 				PathCacheUpdateSkips = 0;
 			else
@@ -568,8 +557,6 @@ namespace Taskmaster
 		[Aspects.UIThreadAspect]
 		void UpdateRescanCountdown(object sender, EventArgs ev)
 		{
-			if (!IsHandleCreated) return;
-
 			try
 			{
 				var t = ProcessManager.NextRescan.Unixstamp() - DateTime.Now.Unixstamp();
@@ -581,8 +568,6 @@ namespace Taskmaster
 		[Aspects.UIThreadAspect]
 		void UpdateUptime(object sender, EventArgs e)
 		{
-			if (!IsHandleCreated) return;
-
 			if (netmonitor != null)
 			{
 				try
@@ -1797,7 +1782,7 @@ namespace Taskmaster
 		{
 			// TODO: Proper async?
 
-			if (!IsHandleCreated || activeappmonitor == null) return;
+			if (activeappmonitor == null) return;
 
 			await Task.Delay(0).ConfigureAwait(true);
 
@@ -1849,7 +1834,6 @@ namespace Taskmaster
 
 							BeginInvoke(new Action(() =>
 							{
-								if (!IsHandleCreated) return;
 								exitwaitlist.Items.Add(li);
 								li.EnsureVisible();
 							}));
@@ -2189,8 +2173,6 @@ namespace Taskmaster
 		[Aspects.UIThreadAspect]
 		public void PowerBehaviourDebugEvent(object sender, PowerManager.PowerBehaviour behaviour)
 		{
-			if (!IsHandleCreated) return;
-
 			try
 			{
 				powerbalancer_behaviour.Text = (behaviour == PowerManager.PowerBehaviour.Auto) ? "Automatic" : ((behaviour == PowerManager.PowerBehaviour.Manual) ? "Manual" : "Rule-based");
@@ -2203,8 +2185,6 @@ namespace Taskmaster
 		[Aspects.UIThreadAspect]
 		public void PowerPlanDebugEvent(object sender, PowerModeEventArgs ev)
 		{
-			if (!IsHandleCreated) return;
-
 			try
 			{
 				powerbalancer_plan.Text = PowerManager.GetModeName(ev.NewMode);
@@ -2251,8 +2231,6 @@ namespace Taskmaster
 		[Aspects.UIThreadAspect]
 		void NetSampleHandler(object sender, NetDeviceTraffic ev)
 		{
-			if (!IsHandleCreated) return;
-
 			try
 			{
 				ifaceList.Items[ev.Index].SubItems[PacketColumn].Text = string.Format("+{0}", ev.Traffic.Unicast);
@@ -2271,8 +2249,6 @@ namespace Taskmaster
 		[Aspects.UIThreadAspect]
 		void InetStatusLabel(bool available)
 		{
-			if (!IsHandleCreated) return;
-
 			try
 			{
 				inetstatuslabel.Text = available ? "Connected" : "Disconnected";
@@ -2294,8 +2270,6 @@ namespace Taskmaster
 		[Aspects.UIThreadAspect]
 		void NetStatusLabel(bool available)
 		{
-			if (!IsHandleCreated) return;
-
 			try
 			{
 				netstatuslabel.Text = available ? "Up" : "Down";
@@ -2330,7 +2304,6 @@ namespace Taskmaster
 		[Aspects.UIThreadAspect]
 		public void onNewLog(object sender, LogEventArgs evmsg)
 		{
-			if (!IsHandleCreated) return;
 			if (LogIncludeLevel.MinimumLevel > evmsg.Level) return;
 
 			var t = DateTime.Now;

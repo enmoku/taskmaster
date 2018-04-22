@@ -274,59 +274,54 @@ namespace Taskmaster
 						Console.WriteLine("Building MainWindow");
 					mainwindow = new MainWindow();
 					mainwindow.FormClosed += MainWindowClose;
-					mainwindow.Shown += (o, e) =>
+					try
 					{
-						try
+						if (diskmanager != null)
 						{
-							if (diskmanager != null)
-							{
-								if (Taskmaster.Trace)
-									Console.WriteLine("... hooking NVM manager");
-								mainwindow.hookDiskManager(ref diskmanager);
-							}
-
-							if (processmanager != null)
-							{
-								if (Taskmaster.Trace)
-									Console.WriteLine("... hooking PROC manager");
-								mainwindow.hookProcessManager(ref processmanager);
-							}
-
-							if (micmonitor != null)
-							{
-								if (Taskmaster.Trace)
-									Console.WriteLine("... hooking MIC monitor");
-								mainwindow.hookMicMonitor(micmonitor);
-							}
-
-							mainwindow.FillLog();
-
-							if (netmonitor != null)
-							{
-								if (Taskmaster.Trace)
-									Console.WriteLine("... hooking NET monitor");
-								mainwindow.hookNetMonitor(ref netmonitor);
-							}
-
-							if (activeappmonitor != null)
-							{
-								if (Taskmaster.Trace)
-									Console.WriteLine("... hooking APP manager");
-								mainwindow.hookActiveAppMonitor(ref activeappmonitor);
-							}
-
-							if (powermanager != null)
-							{
-								if (Taskmaster.Trace)
-									Console.WriteLine("... hooking POW manager");
-								mainwindow.hookPowerManager(ref powermanager);
-							}
+							if (Taskmaster.Trace)
+								Console.WriteLine("... hooking NVM manager");
+							mainwindow.hookDiskManager(ref diskmanager);
 						}
-						catch (Exception ex)
+
+						if (processmanager != null)
 						{
-							Logging.Stacktrace(ex);
+							if (Taskmaster.Trace)
+								Console.WriteLine("... hooking PROC manager");
+							mainwindow.hookProcessManager(ref processmanager);
 						}
-					};
+
+						if (micmonitor != null)
+						{
+							if (Taskmaster.Trace)
+								Console.WriteLine("... hooking MIC monitor");
+							mainwindow.hookMicMonitor(micmonitor);
+						}
+
+						if (netmonitor != null)
+						{
+							if (Taskmaster.Trace)
+								Console.WriteLine("... hooking NET monitor");
+							mainwindow.hookNetMonitor(ref netmonitor);
+						}
+
+						if (activeappmonitor != null)
+						{
+							if (Taskmaster.Trace)
+								Console.WriteLine("... hooking APP manager");
+							mainwindow.hookActiveAppMonitor(ref activeappmonitor);
+						}
+
+						if (powermanager != null)
+						{
+							if (Taskmaster.Trace)
+								Console.WriteLine("... hooking POW manager");
+							mainwindow.hookPowerManager(ref powermanager);
+						}
+					}
+					catch (Exception ex)
+					{
+						Logging.Stacktrace(ex);
+					}
 
 					if (Taskmaster.Trace)
 						Console.WriteLine("... hooking to TRAY");
