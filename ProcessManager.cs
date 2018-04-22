@@ -854,7 +854,7 @@ namespace Taskmaster
 		public void ForegroundAppChangedEvent(object sender, WindowChangedArgs ev)
 		{
 			if (Taskmaster.DebugForeground)
-				Log.Debug("<Process> Foreground Received: #{Id}", ev.Id);
+				Log.Verbose("<Process> Foreground Received: #{Id}", ev.Id);
 
 			if (PreviousForegroundInfo != null)
 			{
