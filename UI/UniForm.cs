@@ -43,6 +43,7 @@ namespace Taskmaster.UI
 
 			//DoubleBuffered = true;
 
+			SetStyle(ControlStyles.UserPaint, true);
 			SetStyle(ControlStyles.AllPaintingInWmPaint, true); // reduce flicker
 			SetStyle(ControlStyles.OptimizedDoubleBuffer, true); // reduce flicker
 			SetStyle(ControlStyles.CacheText, true); // performance
