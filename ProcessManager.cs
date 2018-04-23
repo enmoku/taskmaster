@@ -596,10 +596,12 @@ namespace Taskmaster
 
 			Log.Information("<Process> Loading watchlist...");
 			var appcfg = Taskmaster.LoadConfig(watchfile);
-
-			if (appcfg.Count() == 0)
+			
+			if (appcfg.SectionCount == 0)
 			{
 				Taskmaster.UnloadConfig(watchfile);
+
+				Log.Warning("<Process> Watchlist empty; copying example list.");
 
 				// DEFAULT CONFIGURATION
 				using (var rs = System.Reflection.Assembly.GetExecutingAssembly().GetManifestResourceStream("Taskmaster.Resources.Watchlist.ini"))
@@ -607,7 +609,6 @@ namespace Taskmaster
 					var path = System.IO.Path.Combine(Taskmaster.datapath, watchfile);
 					using (var file = new System.IO.FileStream(path, System.IO.FileMode.Create, System.IO.FileAccess.Write))
 						rs.CopyTo(file);
-
 				}
 
 				appcfg = Taskmaster.LoadConfig(watchfile);
