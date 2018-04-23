@@ -947,7 +947,10 @@ namespace Taskmaster
 				}
 				else
 				{
-					activeappmonitor.ActiveChanged -= OnActiveWindowChanged;
+					if (activeappmonitor != null)
+					{
+						activeappmonitor.ActiveChanged -= OnActiveWindowChanged;
+					}
 					bool refocus = tabLayout.SelectedTab.Equals(ProcessDebugTab);
 					tabLayout.Controls.Remove(ProcessDebugTab);
 					if (refocus) tabLayout.SelectedIndex = 1; // watchlist
@@ -1790,7 +1793,7 @@ namespace Taskmaster
 			{
 				try
 				{
-					bool fg = (ev.Info.Id == activeappmonitor.Foreground);
+					bool fg = (ev.Info.Id == (activeappmonitor?.Foreground ?? ev.Info.Id));
 
 					if (ExitWaitlistMap.TryGetValue(ev.Info.Id, out ListViewItem li))
 					{

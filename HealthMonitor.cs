@@ -377,7 +377,7 @@ namespace Taskmaster
 						{
 							if (Settings.MemIgnoreFocus)
 							{
-								ignorepid = Taskmaster.activeappmonitor.Foreground;
+								ignorepid = Taskmaster.activeappmonitor?.Foreground ?? -1;
 								Taskmaster.processmanager.Ignore(ignorepid);
 							}
 
