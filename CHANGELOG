@@ -3,7 +3,6 @@
 
 ### 2018-04-23
 	Fixed: Error at HealthMonitor.cs:380 when foreground monitor was disabled.
-### 2018-04-22
 	Changed: How empty watchlist is detected.
 ### 2018-04-22
 	Fixed: Retarded WinForms bug.
