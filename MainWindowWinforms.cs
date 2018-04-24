@@ -632,11 +632,10 @@ namespace Taskmaster
 		{
 			try
 			{
-				var sbs = new System.Text.StringBuilder();
+				var sbs = new System.Text.StringBuilder(256);
+
 				foreach (ListViewItem item in loglist.SelectedItems)
-				{
-					sbs.AppendLine(item.SubItems[0].Text);
-				}
+					sbs.Append(item.SubItems[0].Text);
 
 				if (sbs.Length > 0)
 				{
