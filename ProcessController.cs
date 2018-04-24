@@ -75,7 +75,6 @@ namespace Taskmaster
 			}
 		}
 
-		public string Subpath { get; set; } = null;
 		public string Path { get; set; } = null;
 
 		public string[] IgnoreList { get; set; } = null;
@@ -1035,46 +1034,6 @@ namespace Taskmaster
 				if (System.IO.Directory.Exists(Path)) return true;
 				return false;
 			}
-
-			if (Subpath == null) return false;
-
-			Process process;
-			try
-			{
-				process = Process.GetProcessesByName(ExecutableFriendlyName)[0]; // not great thing, but should be good enough.
-			}
-			catch
-			{
-				if (Taskmaster.Trace) Log.Verbose("{FriendlyName} not running", ExecutableFriendlyName);
-				return false;
-			}
-
-			if (Taskmaster.Trace) Log.Verbose("[{FriendlyName}] Watched item '{Item}' encountered.", FriendlyName, ExecutableFriendlyName);
-
-			try
-			{
-				var corepath = System.IO.Path.GetDirectoryName(process.MainModule.FileName);
-				var fullpath = System.IO.Path.Combine(corepath, Subpath);
-				if (System.IO.Directory.Exists(fullpath))
-				{
-					Path = fullpath;
-
-					Log.Information("[{FriendlyName}] Bound to: {Path}", FriendlyName, Path);
-
-					Enabled = Valid;
-
-					onLocate?.Invoke(this, new PathControlEventArgs());
-
-					return true;
-				}
-			}
-			catch (Exception ex)
-			{
-				Log.Warning("[{FriendlyName}] Access failure while determining path.");
-				Logging.Stacktrace(ex);
-				// throw; // no point
-			}
-
 			return false;
 		}
 

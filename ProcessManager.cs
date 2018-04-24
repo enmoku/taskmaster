@@ -101,9 +101,6 @@ namespace Taskmaster
 
 			ProcessDetectedEvent += ProcessTriage;
 
-			if (Taskmaster.PathMonitorEnabled)
-				ScanEverythingEndEvent += EndScanUpdatePathWatch;
-
 			if (RescanEverythingFrequency > 0)
 			{
 				RescanEverythingTimer = new System.Timers.Timer(RescanEverythingFrequency * 1000);
@@ -151,11 +148,6 @@ namespace Taskmaster
 		int WatchlistWithHybrid = 0;
 
 		/// <summary>
-		/// Paths not yet properly initialized.
-		/// </summary>
-		public List<ProcessController> pathinit;
-		readonly object pathwatchlock = new object();
-		/// <summary>
 		/// Executable name to ProcessControl mapping.
 		/// </summary>
 		Dictionary<string, ProcessController> execontrol = new Dictionary<string, ProcessController>();
@@ -180,44 +172,6 @@ namespace Taskmaster
 		public static int OffFocusPriority = 1;
 		public static int OffFocusAffinity = 0;
 		public static bool OffFocusPowerCancel = true;
-
-		/// <summary>
-		/// Updates the path watch, trying to locate any watched directories.
-		/// </summary>
-		void UpdatePathWatch()
-		{
-			if (pathinit == null) return;
-
-			if (Taskmaster.Trace) Log.Verbose("Locating watched paths.");
-
-			var list = new List<ProcessController>();
-
-			lock (pathwatchlock)
-			{
-				if (pathinit.Count > 0)
-				{
-					for (int i = pathinit.Count - 1; i != 0; i--)
-					{
-						ProcessController prc = pathinit[i];
-						if (prc != null && prc.Locate())
-						{
-							list.Add(prc);
-							pathinit.RemoveAt(i);
-						}
-					}
-				}
-
-				if (pathinit.Count == 0) pathinit = null;
-			}
-
-			lock (watchlist_lock)
-			{
-				watchlist.AddRange(list);
-				WatchlistWithPath += list.Count;
-			}
-
-			if (Taskmaster.Trace) Log.Verbose("Path location complete.");
-		}
 
 		ActiveAppManager activeappmonitor = null;
 		public void hookActiveAppManager(ref ActiveAppManager aamon)
@@ -408,8 +362,6 @@ namespace Taskmaster
 			}
 		}
 
-		void EndScanUpdatePathWatch(object sender, EventArgs ev) => UpdatePathWatch();
-
 		static int BatchDelay = 2500;
 		static int RescanDelay = 0; // 5 minutes
 		public static int RescanEverythingFrequency { get; private set; } = 15; // seconds
@@ -439,11 +391,8 @@ namespace Taskmaster
 
 			if (prc.Executable == null && prc.Path == null)
 			{
-				if (prc.Subpath == null)
-				{
-					Log.Warning("[{FriendlyName}] Executable, Path and Subpath missing; ignoring.");
-					rv = false;
-				}
+				Log.Warning("[{FriendlyName}] Executable and Path missing; ignoring.");
+				rv = false;
 			}
 
 			// SANITY CHECKING
@@ -470,29 +419,7 @@ namespace Taskmaster
 		{
 			if (string.IsNullOrEmpty(prc.Executable))
 			{
-				if (prc.Locate())
-				{
-					WatchlistWithPath += 1;
-
-					// TODO: Add "Path" to config
-					// if (stats.Contains(cnt.Path))
-					// 	cnt.Adjusts = stats[cnt.Path].TryGet("Adjusts")?.IntValue ?? 0;
-				}
-				else
-				{
-					prc.Enabled = false;
-
-					if (prc.Subpath != null)
-					{
-						if (pathinit == null) pathinit = new List<ProcessController>();
-						pathinit.Add(prc);
-						Log.Verbose("[{FriendlyName}] ({Subpath}) waiting to be located.", prc.FriendlyName, prc.Subpath);
-					}
-					else
-					{
-						Log.Warning("[{FriendlyName}] Malconfigured. Path not found.", prc.FriendlyName);
-					}
-				}
+				WatchlistWithPath += 1;
 			}
 			else
 			{
@@ -507,7 +434,6 @@ namespace Taskmaster
 
 			lock (watchlist_lock)
 				watchlist.Add(prc);
-
 
 			Log.Verbose("[{FriendlyName}] Match: {MatchName}, {TargetPriority}, Mask:{Affinity}, Rescan: {Rescan}m, Recheck: {Recheck}s, FgOnly: {Fg}",
 						prc.FriendlyName, (prc.Executable ?? prc.Path), prc.Priority, prc.Affinity,
@@ -656,7 +582,6 @@ namespace Taskmaster
 					Rescan = (section.TryGet("Rescan")?.IntValue ?? 0),
 					Path = (section.TryGet("Path")?.StringValue ?? null),
 					ModifyDelay = (section.TryGet("Modify delay")?.IntValue ?? 0),
-					Subpath = (section.TryGet("Subpath")?.StringValue ?? null),
 					//BackgroundIO = (section.TryGet("Background I/O")?.BoolValue ?? false), // Doesn't work
 					ForegroundOnly = (section.TryGet("Foreground only")?.BoolValue ?? false),
 					Recheck = (section.TryGet("Recheck")?.IntValue ?? 0),
@@ -699,7 +624,6 @@ namespace Taskmaster
 			Log.Information("<Process> Name-based watchlist: {Items} items", execontrol.Count - WatchlistWithHybrid);
 			Log.Information("<Process> Path-based watchlist: {Items} items", WatchlistWithPath);
 			Log.Information("<Process> Hybrid watchlist: {Items} items", WatchlistWithHybrid);
-			Log.Information("<Process> Path init list: {Items} items{Huzzah}", (pathinit?.Count ?? 0), (pathinit==null?" HUZZAH":string.Empty));
 		}
 
 		public void addController(ProcessController prc)
