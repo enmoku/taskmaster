@@ -93,6 +93,12 @@ namespace Taskmaster
 			{
 				InitCPUTimer();
 			}
+
+			lock (forceModeSources_lock)
+			{
+				if (Behaviour == PowerBehaviour.RuleBased && !Forced)
+					Restore();
+			}
 		}
 
 		public void SetupEventHook()
@@ -397,6 +403,11 @@ namespace Taskmaster
 			var defaultmode = power.GetSetDefault("Default mode", "Balanced", out modified).StringValue;
 			power["Default mode"].Comment = "This is what power plan we fall back on when nothing else is considered.";
 			AutoAdjust.DefaultMode = GetModeByName(defaultmode);
+			if (AutoAdjust.DefaultMode == PowerMode.Custom)
+			{
+				Log.Warning("<Power> Default mode malconfigured, defaulting to balanced.");
+				AutoAdjust.DefaultMode = PowerMode.Balanced;
+			}
 			dirtyconfig |= modified;
 
 			var restoremode = power.GetSetDefault("Restore mode", "Default", out modified).StringValue;
@@ -685,13 +696,13 @@ namespace Taskmaster
 		{
 			if (string.IsNullOrEmpty(name)) return PowerMode.Undefined;
 
-			switch (name)
+			switch (name.ToLower())
 			{
-				case "Power Saver":
+				case "power saver":
 					return PowerMode.PowerSaver;
-				case "Balanced":
+				case "balanced":
 					return PowerMode.Balanced;
-				case "High Performance":
+				case "high performance":
 					return PowerMode.HighPerformance;
 				default:
 					return PowerMode.Custom;
@@ -777,20 +788,20 @@ namespace Taskmaster
 			}
 		}
 
-		public void Release()
+		public void ReleaseAll()
 		{
 			lock (forceModeSources_lock)
 				forceModeSources.Clear();
-
 		}
 
 		/// <summary>
 		/// Restores normal power mode and frees the associated source pid from holding it.
 		/// </summary>
+		/// <param name="sourcePid">0 releases all locks.</param>
 		/// <remarks>
 		/// 
 		/// </remarks>
-		public async Task Restore(int sourcePid = -1)
+		public async Task Release(int sourcePid = -1)
 		{
 			if (Taskmaster.DebugPower)
 				Log.Debug("<Power> Restore({Source})", sourcePid);
@@ -833,24 +844,7 @@ namespace Taskmaster
 					if (Taskmaster.DebugPower)
 						Log.Debug("<Power> Restoring power mode!");
 
-					lock (power_lock)
-					{
-						if (RestoreModeMethod != ModeMethod.Saved)
-							SavedMode = RestoreMode;
-
-						if (Taskmaster.DebugPower)
-							Log.Debug("Restoring mode: {Mode} [{Method}]", SavedMode.ToString(), RestoreModeMethod.ToString());
-
-						if (SavedMode != CurrentMode && SavedMode != PowerMode.Undefined)
-						{
-							// if (Behaviour == PowerBehaviour.Auto) return; // this is very optimistic
-
-							setMode(SavedMode, verbose: true);
-							SavedMode = PowerMode.Undefined;
-
-							// Log.Information("<Power> Restored to: {PowerMode}", CurrentMode.ToString());
-						}
-					}
+					Restore();
 
 					Forced = false;
 				}
@@ -864,6 +858,28 @@ namespace Taskmaster
 							Log.Debug("<Power> Sources: {Sources}", string.Join(", ", forceModeSources.ToArray()));
 						}
 					}
+				}
+			}
+		}
+
+		public void Restore()
+		{
+			lock (power_lock)
+			{
+				if (RestoreModeMethod != ModeMethod.Saved)
+					SavedMode = RestoreMode;
+
+				if (Taskmaster.DebugPower)
+					Log.Debug("Restoring mode: {Mode} [{Method}]", SavedMode.ToString(), RestoreModeMethod.ToString());
+
+				if (SavedMode != CurrentMode && SavedMode != PowerMode.Undefined)
+				{
+					// if (Behaviour == PowerBehaviour.Auto) return; // this is very optimistic
+
+					setMode(SavedMode, verbose: true);
+					SavedMode = PowerMode.Undefined;
+
+					// Log.Information("<Power> Restored to: {PowerMode}", CurrentMode.ToString());
 				}
 			}
 		}
@@ -913,7 +929,7 @@ namespace Taskmaster
 			lock (forceModeSources_lock)
 				forceModeSources.Clear();
 
-			await Restore(0);
+			await Release(0);
 		}
 
 		public int ForceCount => forceModeSources.Count;

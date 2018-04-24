@@ -748,7 +748,7 @@ namespace Taskmaster
 				}
 
 				if (info.PowerWait)
-					Taskmaster.powermanager.Restore(info.Id);
+					Taskmaster.powermanager.Release(info.Id);
 
 				lock (waitforexit_lock)
 					WaitForExitList.Remove(info.Id);
