@@ -1270,18 +1270,9 @@ namespace Taskmaster
 				{
 					trayaccess.Enable();
 
-					using (var log = new System.Diagnostics.EventLog("Application")
-					{
-						Source = "Application"
-					})
-					{
-						log.WriteEntry(
-							Environment.CommandLine + "\n\n" +
-							"Started\n", EventLogEntryType.Information);
-					}
-
 					System.Windows.Forms.Application.Run(); // WinForms
-															// System.Windows.Application.Current.Run(); // WPF
+
+					// System.Windows.Application.Current.Run(); // WPF
 				}
 			}
 			catch (Exception ex)
