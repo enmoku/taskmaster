@@ -1327,29 +1327,37 @@ namespace Taskmaster
 			if (Restart) // happens only on power resume (waking from hibernation) or when manually set
 			{
 				Log.Information("Restarting...");
-				Log.CloseAndFlush();
-
-				Restart = false; // poinless probably
-				var info = Process.GetCurrentProcess().StartInfo;
-				info.FileName = Process.GetCurrentProcess().ProcessName;
-				List<string> nargs = new List<string>
-				{
-					string.Format("--restart {0}", ++RestartCounter)  // has no real effect
-				};
-				if (RestartElevated)
-				{
-					nargs.Add(string.Format("--admin {0}", ++AdminCounter));
-					info.Verb = "runas"; // elevate privileges
-				}
-
-				info.Arguments = string.Join(" ", nargs);
 				try
 				{
+					if (!System.IO.File.Exists(Application.ExecutablePath))
+						Log.Fatal("Executable missing: {Path}", Application.ExecutablePath);
+
+					Log.CloseAndFlush();
+
+					Restart = false; // pointless probably
+
+					var info = Process.GetCurrentProcess().StartInfo;
+					//info.FileName = Process.GetCurrentProcess().ProcessName;
+					info.WorkingDirectory = System.IO.Path.GetDirectoryName(Application.ExecutablePath);
+					info.FileName = System.IO.Path.GetFileName(Application.ExecutablePath);
+
+					List<string> nargs = new List<string>
+					{
+						string.Format("--restart {0}", ++RestartCounter)  // has no real effect
+					};
+					if (RestartElevated)
+					{
+						nargs.Add(string.Format("--admin {0}", ++AdminCounter));
+						info.Verb = "runas"; // elevate privileges
+					}
+
+					info.Arguments = string.Join(" ", nargs);
+
 					var proc = Process.Start(info);
 				}
 				catch (Exception ex)
 				{
-					Logging.Stacktrace(ex, oob:true);
+					Logging.Stacktrace(ex, oob: true);
 				}
 			}
 
