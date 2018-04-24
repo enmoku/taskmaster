@@ -2,10 +2,9 @@
 	https://github.com/mkahvi/taskmaster/commits/master
 
 ### 2018-04-24
+	Fixed: Default power mode is not applied on start-up if auto-adjust is disabled.
 	Removed: Experimental path location feature. Limited usability, documentation, and lack of desire to maintain it made it unwanted.
 	Changed: You can now copy multiple lines from the log at the same time to clipboard.
-### 2018-04-23
-	Fixed: Default power mode is not applied on start-up if auto-adjust is disabled.
 ### 2018-04-23
 	Fixed: Error at HealthMonitor.cs:380 when foreground monitor was disabled.
 	Changed: How empty watchlist is detected.
