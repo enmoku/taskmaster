@@ -628,17 +628,6 @@ namespace Taskmaster
 			}
 		}
 
-		void LogContextMenuOpen(object sender, EventArgs ea)
-		{
-			try
-			{
-				foreach (ToolStripItem lsi in loglistms.Items)
-					lsi.Enabled = (loglist.SelectedItems.Count == 1);
-
-			}
-			catch { } // discard
-		}
-
 		void CopyLogToClipboard(object sender, EventArgs ea)
 		{
 			try
@@ -1499,7 +1488,6 @@ namespace Taskmaster
 			Resize += ResizeLogList;
 
 			loglistms = new ContextMenuStrip();
-			loglistms.Opened += LogContextMenuOpen;
 			var logcopy = new ToolStripMenuItem("Copy to clipboard", null, CopyLogToClipboard);
 			loglistms.Items.Add(logcopy);
 			loglist.ContextMenuStrip = loglistms;
