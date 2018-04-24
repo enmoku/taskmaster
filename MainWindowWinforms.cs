@@ -641,16 +641,20 @@ namespace Taskmaster
 
 		void CopyLogToClipboard(object sender, EventArgs ea)
 		{
-			if (loglist.SelectedItems.Count == 1)
+			try
 			{
-				try
+				var sbs = new System.Text.StringBuilder();
+				foreach (ListViewItem item in loglist.SelectedItems)
 				{
-					var li = loglist.SelectedItems[0];
-					var rv = li.SubItems[0].Text;
-					if (rv.Length > 0) Clipboard.SetText(rv);
+					sbs.AppendLine(item.SubItems[0].Text);
 				}
-				catch (Exception ex) { Logging.Stacktrace(ex); }
+
+				if (sbs.Length > 0)
+				{
+					Clipboard.SetText(sbs.ToString());
+				}
 			}
+			catch (Exception ex) { Logging.Stacktrace(ex); }
 		}
 
 		TabControl tabLayout = null;
