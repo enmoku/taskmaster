@@ -275,7 +275,7 @@ namespace Taskmaster
 			{
 				if (Overdue && Tick <= 3)
 				{
-					TimeSpan late = (Start - DateTime.Now);
+					TimeSpan late = (DateTime.Now - Start);
 					Log.Fatal("<<Self-Awareness>> {Method} recovered [After: {Seconds}s]",
 						Method, string.Format("{0:N1}", late.TotalSeconds));
 				}
