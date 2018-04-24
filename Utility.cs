@@ -183,7 +183,7 @@ namespace Taskmaster
 								System.IO.Path.GetFileName(file), member, line, text);
 		}
 
-		public static void Stacktrace(Exception ex, [CallerMemberName] string method = "", bool oob=false)
+		public static void Stacktrace(Exception ex, bool oob = false, [CallerMemberName] string method = "")
 		{
 			if (!oob)
 			{
@@ -195,7 +195,7 @@ namespace Taskmaster
 			{
 				using (var log = new System.Diagnostics.EventLog("Application")
 				{
-					Source = "Application"
+					Source = "Application",
 				})
 				{
 					log.WriteEntry(
