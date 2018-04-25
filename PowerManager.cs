@@ -760,7 +760,8 @@ namespace Taskmaster
 				}
 
 				Taskmaster.processmanager.CancelPowerWait(); // need nicer way to do this
-				ForceCleanup();
+
+				Release(0).Wait();
 			}
 
 			onBehaviourChange?.Invoke(this, Behaviour);
@@ -786,12 +787,6 @@ namespace Taskmaster
 					SavedMode = PowerMode.Balanced;
 				}
 			}
-		}
-
-		public void ReleaseAll()
-		{
-			lock (forceModeSources_lock)
-				forceModeSources.Clear();
 		}
 
 		/// <summary>
@@ -922,14 +917,6 @@ namespace Taskmaster
 
 			setMode(mode, verbose: false);
 			return true;
-		}
-
-		public async void ForceCleanup()
-		{
-			lock (forceModeSources_lock)
-				forceModeSources.Clear();
-
-			await Release(0);
 		}
 
 		public int ForceCount => forceModeSources.Count;
