@@ -661,7 +661,10 @@ namespace Taskmaster
 		async void WaitForExitTriggered(ProcessEx info, ProcessEventArgs.ProcessState state = ProcessEventArgs.ProcessState.Exiting)
 		{
 			if (Taskmaster.DebugForeground || Taskmaster.DebugPower)
-				Log.Debug("<Process> {Exec} exited [Power: {Power}, Active: {Active}]", info.Name, info.PowerWait, info.ActiveWait);
+			{
+				Log.Debug("<Process> {Exec} (#{Pid}) exited [Power: {Power}, Active: {Active}]",
+					info.Name, info.Id, info.PowerWait, info.ActiveWait);
+			}
 
 			try
 			{
