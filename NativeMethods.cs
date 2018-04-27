@@ -90,16 +90,16 @@ namespace Taskmaster
 		public static extern uint PowerGetActiveScheme(IntPtr UserPowerKey, out IntPtr PowerPlanGuid);
 
 		public const int DEVICE_NOTIFY_WINDOW_HANDLE = 0x00000000;
+
 		[DllImport("user32.dll", SetLastError = true, EntryPoint = "RegisterPowerSettingNotification", CallingConvention = CallingConvention.StdCall)]
 		public static extern IntPtr RegisterPowerSettingNotification(IntPtr hRecipient, ref Guid PowerSettingGuid, int Flags);
 
 		[StructLayout(LayoutKind.Sequential, Pack = 4)]
 		public struct POWERBROADCAST_SETTING
 		{
-
 			public Guid PowerSetting;
 			public uint DataLength;
-			// public byte Data;
+			public byte Data;
 		}
 
 		public const int WM_SYSCOMMAND = 0x0112;
@@ -115,8 +115,13 @@ namespace Taskmaster
 			SMTO_BLOCK = 0x1,
 			SMTO_ABORTIFHUNG = 0x2,
 			SMTO_NOTIMEOUTIFNOTHUNG = 0x8,
-			SMTO_ERRORONEXIT = 0x2
+			SMTO_ERRORONEXIT = 0x20
 		}
+
+		[DllImport("user32.dll", SetLastError = true, CharSet = CharSet.Auto)]
+		public static extern IntPtr SendMessageTimeout(
+			IntPtr hWnd, uint Msg, int wParam, int lParam,
+			SendMessageTimeoutFlags flags, uint timeout, out IntPtr result);
 
 		// for ProcessMAnagerUtility.cs
 
@@ -185,5 +190,19 @@ namespace Taskmaster
 
 		[DllImport("user32.dll", SetLastError = true)]
 		public static extern bool MoveWindow(IntPtr hWnd, int X, int Y, int nWidth, int nHeight, bool bRepaint);
+
+		[DllImport("user32.dll")]
+		public static extern bool GetLastInputInfo(ref LASTINPUTINFO plii);
+
+		[StructLayout(LayoutKind.Sequential)]
+		public struct LASTINPUTINFO
+		{
+			public static readonly int SizeOf = Marshal.SizeOf(typeof(LASTINPUTINFO));
+
+			[MarshalAs(UnmanagedType.U4)]
+			public UInt32 cbSize;
+			[MarshalAs(UnmanagedType.U4)]
+			public UInt32 dwTime;
+		}
 	}
 }
