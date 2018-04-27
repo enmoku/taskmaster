@@ -487,14 +487,14 @@ namespace Taskmaster
 		public static bool DebugPower { get; set; } = false;
 		public static bool DebugAutoPower { get; set; } = false;
 		public static bool DebugPowerRules { get; set; } = false;
-		public static bool DebugMonitor { get; set; } = true;
+		public static bool DebugMonitor { get; set; } = false;
 
-		public static bool DebugSessions { get; set; } = true;
+		public static bool DebugSession { get; set; } = false;
 
 		public static bool DebugWMI { get; set; } = false;
 
 		public static bool DebugMemory { get; set; } = false;
-		public static bool DebugPaging { get; set; } = true;
+		public static bool DebugPaging { get; set; } = false;
 
 		public static bool DebugNet { get; set; } = false;
 		public static bool DebugMic { get; set; } = false;
@@ -762,7 +762,7 @@ namespace Taskmaster
 			//DebugPowerRules = dbgsec.TryGet("Paths")?.BoolValue ?? false;
 			DebugMonitor = dbgsec.TryGet("Monitor")?.BoolValue ?? false;
 
-			DebugSessions = dbgsec.TryGet("Sessions")?.BoolValue ?? false;
+			DebugSession = dbgsec.TryGet("Session")?.BoolValue ?? false;
 
 			DebugWMI = dbgsec.TryGet("WMI")?.BoolValue ?? false;
 
