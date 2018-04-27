@@ -108,10 +108,6 @@ namespace Taskmaster
 			LoadConfig();
 
 			// SystemEvents.PowerModeChanged += BatteryChargingEvent; // Without laptop testing this feature is difficult
-			SystemEvents.SessionEnding += Taskmaster.SessionEndExitRequest;
-
-			if (SessionLockMode != PowerMode.Custom)
-				SystemEvents.SessionSwitch += SessionLockEvent;
 
 			CPUCounter = new PerformanceCounterWrapper("Processor", "% Processor Time", "_Total");
 
@@ -220,6 +216,9 @@ namespace Taskmaster
 				Handle, ref GUID_POWERSCHEME_PERSONALITY, NativeMethods.DEVICE_NOTIFY_WINDOW_HANDLE);
 			NativeMethods.RegisterPowerSettingNotification(
 				Handle, ref GUID_CONSOLE_DISPLAY_STATE, NativeMethods.DEVICE_NOTIFY_WINDOW_HANDLE);
+
+			SystemEvents.SessionEnding += Taskmaster.SessionEndExitRequest;
+			SystemEvents.SessionSwitch += SessionLockEvent;
 		}
 
 		void InitCPUTimer()
@@ -310,7 +309,7 @@ namespace Taskmaster
 		/// <summary>
 		/// Session lock power mode
 		/// </summary>
-		PowerMode SessionLockMode = PowerMode.PowerSaver;
+		PowerMode SessionLockPowerMode = PowerMode.PowerSaver;
 		/// <summary>
 		/// Power saver on log off
 		/// </summary>
@@ -660,7 +659,7 @@ namespace Taskmaster
 			var sessionlockmodename = saver.GetSetDefault("Session lock", "Power Saver", out modified).StringValue;
 			saver["Session lock"].Comment = "Power mode to set when session is locked, such as by pressing winkey+L. Unrecognizable values disable this.";
 			dirtyconfig |= modified;
-			SessionLockMode = GetModeByName(sessionlockmodename);
+			SessionLockPowerMode = GetModeByName(sessionlockmodename);
 
 			// SaverOnMonitorSleep = saver.GetSetDefault("Monitor sleep", true, out modified).BoolValue;
 			// dirtyconfig |= modified;
@@ -698,7 +697,7 @@ namespace Taskmaster
 
 			LogBehaviourState();
 
-			Log.Information("<Power> Session lock: {Mode}", (SessionLockMode == PowerMode.Custom ? "Ignored" : SessionLockMode.ToString()));
+			Log.Information("<Power> Session lock: {Mode}", (SessionLockPowerMode == PowerMode.Custom ? "Ignored" : SessionLockPowerMode.ToString()));
 			Log.Information("<Power> Restore mode: {Method} [{Mode}]", RestoreModeMethod.ToString(), RestoreMode.ToString());
 
 			Log.Information("<Session> User AFK timeout: {Timeout}", SessionLockPowerOffIdleTimeout == 0 ? "Disabled" : string.Format("{0}s", SessionLockPowerOffIdleTimeout));
@@ -729,7 +728,7 @@ namespace Taskmaster
 		ModeMethod RestoreModeMethod = ModeMethod.Saved;
 		PowerMode RestoreMode { get; set; } = PowerMode.Balanced;
 
-		async void SessionLockEvent(object sender, SessionSwitchEventArgs ev)
+		void SessionLockEvent(object sender, SessionSwitchEventArgs ev)
 		{
 			switch (ev.Reason)
 			{
@@ -775,6 +774,8 @@ namespace Taskmaster
 				}
 			}
 
+			if (SessionLockPowerMode == PowerMode.Custom) return;
+
 			try
 			{
 				switch (ev.Reason)
@@ -785,12 +786,12 @@ namespace Taskmaster
 					case SessionSwitchReason.SessionLock:
 						setpowersaver:
 						// SET POWER SAVER
-						if (SessionLockMode != PowerMode.Custom)
+						if (SessionLockPowerMode != PowerMode.Custom)
 						{
 							Paused = true;
 
 							if (Taskmaster.DebugSession)
-								Log.Debug("<Power> Session locked, enforcing power plan: {Plan}", SessionLockMode);
+								Log.Debug("<Power> Session locked, enforcing power plan: {Plan}", SessionLockPowerMode);
 
 							if (PauseUnneededSampler)
 							{
@@ -798,7 +799,7 @@ namespace Taskmaster
 								CPUTimer = null;
 							}
 
-							if (CurrentMode != SessionLockMode)
+							if (CurrentMode != SessionLockPowerMode)
 								setMode(PowerMode.PowerSaver, true);
 						}
 
@@ -806,12 +807,12 @@ namespace Taskmaster
 					case SessionSwitchReason.SessionLogon:
 					case SessionSwitchReason.SessionUnlock:
 						// RESTORE POWER MODE
-						if (SessionLockMode != PowerMode.Custom)
+						if (SessionLockPowerMode != PowerMode.Custom)
 						{
 							if (Taskmaster.DebugSession)
 								Log.Debug("<Power> Session unlocked, restoring normal power.");
 
-							if (CurrentMode == SessionLockMode)
+							if (CurrentMode == SessionLockPowerMode)
 							{
 								setMode(RestoreMode, true);
 							}
@@ -861,7 +862,7 @@ namespace Taskmaster
 
 				if (ps.PowerSetting == GUID_POWERSCHEME_PERSONALITY && ps.DataLength == Marshal.SizeOf(typeof(Guid)))
 				{
-					var pData = (IntPtr)(m.LParam.ToInt32() + Marshal.SizeOf(ps));  // (*1)
+					var pData = (IntPtr)(m.LParam.ToInt32() + Marshal.SizeOf(ps) - 4); // -4 is to align to the ps.Data
 					var newPersonality = (Guid)Marshal.PtrToStructure(pData, typeof(Guid));
 					var old = CurrentMode;
 					if (newPersonality == Balanced) { CurrentMode = PowerMode.Balanced; }
@@ -1216,6 +1217,12 @@ namespace Taskmaster
 				{
 					CPUCounter.Dispose();
 					CPUCounter = null;
+				}
+
+				if (MonitorSleepTimer != null)
+				{
+					MonitorSleepTimer.Dispose();
+					MonitorSleepTimer = null;
 				}
 
 				var finalmode = RestoreModeMethod == ModeMethod.Saved ? SavedMode : RestoreMode;
