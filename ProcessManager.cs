@@ -461,7 +461,7 @@ namespace Taskmaster
 				Log.Information("Batch processing delay: {BatchProcessingDelay:N1}s", BatchDelay / 1000);
 				BatchProcessingThreshold = coreperf.GetSetDefault("Batch processing threshold", 5, out modified).IntValue.Constrain(1, 30);
 				dirtyconfig |= modified;
-				Log.Information("Batch processing threshold: {BatchProcessingThreshold}", BatchProcessingThreshold);
+				Log.Information("<Process> Batch processing threshold: {BatchProcessingThreshold}", BatchProcessingThreshold);
 			}
 
 			RescanDelay = coreperf.GetSetDefault("Rescan frequency", 0, out modified).IntValue.Constrain(0, 60 * 6) * 60;
