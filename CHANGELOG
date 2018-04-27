@@ -1,6 +1,8 @@
 ﻿Comprehensive changes can be found in Git change history:
 	https://github.com/mkahvi/taskmaster/commits/master
 
+### 2018-04-25
+	Added: [Debug] section in Core.ini with secret options to enable various debug functions at launch.
 ### 2018-04-24
 	Fixed: Default power mode is not applied on start-up if auto-adjust is disabled.
 	Removed: Experimental path location feature. Limited usability, documentation, and lack of desire to maintain it made it unwanted.

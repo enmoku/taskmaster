@@ -478,25 +478,26 @@ namespace Taskmaster
 			trayaccess?.Refresh();
 		}
 
-		public static bool DebugProcesses = false;
-		public static bool DebugPaths = false;
-		public static bool DebugFullScan = false;
+		public static bool DebugProcesses { get; set; } = false;
+		public static bool DebugPaths { get; set; } = false;
+		public static bool DebugFullScan { get; set; } = false;
 
-		public static bool DebugForeground = false;
+		public static bool DebugForeground { get; set; } = false;
 
-		public static bool DebugPower = false;
-		public static bool DebugAutoPower = false;
-		public static bool DebugPowerRules = false;
+		public static bool DebugPower { get; set; } = false;
+		public static bool DebugAutoPower { get; set; } = false;
+		public static bool DebugPowerRules { get; set; } = false;
+		public static bool DebugMonitor { get; set; } = true;
 
-		public static bool DebugSessions = false;
+		public static bool DebugSessions { get; set; } = true;
 
-		public static bool DebugWMI = false;
+		public static bool DebugWMI { get; set; } = false;
 
-		public static bool DebugMemory = false;
-		public static bool DebugPaging = true;
+		public static bool DebugMemory { get; set; } = false;
+		public static bool DebugPaging { get; set; } = true;
 
-		public static bool DebugNetMonitor = false;
-		public static bool DebugMic = false;
+		public static bool DebugNet { get; set; } = false;
+		public static bool DebugMic { get; set; } = false;
 
 		public static bool CaseSensitive = false;
 
@@ -746,6 +747,34 @@ namespace Taskmaster
 				}
 			}
 			// STOP IT
+
+			// DEBUG
+
+			var dbgsec = cfg["Debug"];
+			DebugProcesses = dbgsec.TryGet("Processes")?.BoolValue ?? false;
+			DebugPaths = dbgsec.TryGet("Paths")?.BoolValue ?? false;
+			DebugFullScan = dbgsec.TryGet("Full scan")?.BoolValue ?? false;
+
+			DebugForeground = dbgsec.TryGet("Foreground")?.BoolValue ?? false;
+
+			DebugPower = dbgsec.TryGet("Power")?.BoolValue ?? false;
+			DebugAutoPower = dbgsec.TryGet("Auto-adjust")?.BoolValue ?? false;
+			//DebugPowerRules = dbgsec.TryGet("Paths")?.BoolValue ?? false;
+			DebugMonitor = dbgsec.TryGet("Monitor")?.BoolValue ?? false;
+
+			DebugSessions = dbgsec.TryGet("Sessions")?.BoolValue ?? false;
+
+			DebugWMI = dbgsec.TryGet("WMI")?.BoolValue ?? false;
+
+			DebugMemory = dbgsec.TryGet("Memory")?.BoolValue ?? false;
+			DebugPaging = dbgsec.TryGet("Paging")?.BoolValue ?? true;
+
+			DebugNet = dbgsec.TryGet("Network")?.BoolValue ?? false;
+			DebugMic = dbgsec.TryGet("Microphone")?.BoolValue ?? false;
+
+			Trace = dbgsec.TryGet("Trace")?.BoolValue ?? false;
+
+			// END DEBUG
 
 			Log.Information("<Core> Privilege level: {Privilege}", isadmin ? "Admin" : "User");
 

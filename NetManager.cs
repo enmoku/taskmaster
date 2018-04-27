@@ -421,7 +421,7 @@ namespace Taskmaster
 		{
 			if (!Atomic.Lock(ref enumerating_inet)) return null; // bail if we were already doing this
 
-			if (Taskmaster.DebugNetMonitor)
+			if (Taskmaster.DebugNet)
 				Log.Debug("<Network> Enumerating network interfaces...");
 
 			var ifacelist = new List<NetDevice>();
@@ -468,7 +468,7 @@ namespace Taskmaster
 				// devi.PrintStats();
 				ifacelist.Add(devi);
 
-				if (Taskmaster.DebugNetMonitor)
+				if (Taskmaster.DebugNet)
 					Log.Debug("<Network> Interface: {InterfaceName}", dev.Name);
 			}
 
