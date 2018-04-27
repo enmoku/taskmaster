@@ -43,10 +43,40 @@ namespace Taskmaster
 		public PowerMode NewMode { get; set; }
 	}
 
+	public enum MonitorPowerMode
+	{
+		On = -1,
+		Off = 2,
+		Standby = 1,
+		Invalid = 0
+	}
+
+	public class MonitorPowerEventArgs : EventArgs
+	{
+		public MonitorPowerMode Mode;
+		public MonitorPowerEventArgs(MonitorPowerMode mode) { Mode = mode; }
+	}
+
+	public class SessionLockEventArgs : EventArgs
+	{
+		public bool Locked = false;
+		public SessionLockEventArgs(bool locked = false) { Locked = locked; }
+	}
+
 	sealed public class PowerManager : Form // form is required for receiving messages, no other reason
 	{
 		// static Guid GUID_POWERSCHEME_PERSONALITY = new Guid("245d8541-3943-4422-b025-13A7-84F679B7");
+		/// <summary>
+		/// Power mode notifications
+		/// </summary>
 		static Guid GUID_POWERSCHEME_PERSONALITY = new Guid(0x245D8541, 0x3943, 0x4422, 0xB0, 0x25, 0x13, 0xA7, 0x84, 0xF6, 0x79, 0xB7);
+		/// <summary>
+		/// Monitor state notifications
+		/// </summary>
+		static Guid GUID_CONSOLE_DISPLAY_STATE = new Guid(0x6fe69556, 0x704a, 0x47a0, 0x8f, 0x24, 0xc2, 0x8d, 0x93, 0x6f, 0xda, 0x47);
+
+		public event EventHandler<SessionLockEventArgs> SessionLock;
+		public event EventHandler<MonitorPowerEventArgs> MonitorPower;
 
 		long AutoAdjustCounter = 0;
 
@@ -99,12 +129,97 @@ namespace Taskmaster
 				if (Behaviour == PowerBehaviour.RuleBased && !Forced)
 					Restore();
 			}
+
+			MonitorPower += MonitorPowerEvent;
+
+			if (SessionLockPowerOffIdleTimeout != 0)
+			{
+				int timeout = SessionLockPowerOffIdleTimeout * 1000;
+				MonitorSleepTimer = new System.Timers.Timer(timeout)
+				{
+					Enabled = false,
+					AutoReset = false
+				};
+				MonitorSleepTimer.Elapsed += MonitorSleepTimerTick;
+			}
+		}
+
+		void MonitorPowerEvent(object sender, MonitorPowerEventArgs ev)
+		{
+			var OldPowerState = CurrentMonitorState;
+			CurrentMonitorState = ev.Mode;
+			if (Taskmaster.DebugMonitor)
+				Log.Debug("<Monitor> Power state: {State}", CurrentMonitorState);
+
+			if (CurrentMonitorState == MonitorPowerMode.On && SessionLocked)
+			{
+				MonitorSleepTimer?.Start();
+			}
+			else if (CurrentMonitorState == MonitorPowerMode.Off)
+			{
+				MonitorSleepTimer?.Stop();
+			}
+		}
+
+		System.Timers.Timer MonitorSleepTimer;
+
+		void MonitorSleepTimerTick(object sender, EventArgs ev)
+		{
+			if (CurrentMonitorState == MonitorPowerMode.Off) return;
+			if (!SessionLocked) return;
+
+			var lastactive = UserLastActive();
+			var idletime = UserIdleFor(lastactive);
+			
+			if (idletime >= Convert.ToDouble(SessionLockPowerOffIdleTimeout))
+			{
+				if (Taskmaster.DebugMonitor)
+					Log.Debug("<Monitor> User idle and session locked, powering off...");
+				SetMonitorMode(MonitorPowerMode.Off);
+			}
+			else
+			{
+				if (Taskmaster.DebugMonitor)
+					Log.Debug("<Power/Monitor> User active too recently ({Seconds}s ago), waiting...", string.Format("{0:N1}", idletime));
+
+				MonitorSleepTimer?.Start();
+			}
+		}
+
+		bool SessionLocked = false;
+		MonitorPowerMode CurrentMonitorState = MonitorPowerMode.Invalid;
+
+		uint UserLastActive()
+		{
+			var info = new NativeMethods.LASTINPUTINFO();
+			info.cbSize = (uint)Marshal.SizeOf(info);
+			info.dwTime = 0;
+			bool rv = NativeMethods.GetLastInputInfo(ref info);
+			if (rv) return info.dwTime;
+
+			// TODO: Throw
+
+			return uint.MinValue;
+		}
+
+		/// <summary>
+		/// Should be called in same thread as UserLastActive. Odd behaviour expected if the code runs on different core.
+		/// </summary>
+		/// <param name="lastActive">Last active time, as returned by UserLastActive</param>
+		/// <returns>Seconds for how long user has been idle</returns>
+		double UserIdleFor(uint lastActive)
+		{
+			double eticks = Convert.ToDouble(Environment.TickCount);
+			double uticks = Convert.ToDouble(lastActive);
+			return (eticks - uticks) / 1000f;
 		}
 
 		public void SetupEventHook()
 		{
 			NativeMethods.RegisterPowerSettingNotification(
 				Handle, ref GUID_POWERSCHEME_PERSONALITY, NativeMethods.DEVICE_NOTIFY_WINDOW_HANDLE);
+			NativeMethods.RegisterPowerSettingNotification(
+				Handle, ref GUID_CONSOLE_DISPLAY_STATE, NativeMethods.DEVICE_NOTIFY_WINDOW_HANDLE);
 		}
 
 		void InitCPUTimer()
@@ -188,12 +303,39 @@ namespace Taskmaster
 			}
 		}
 
+		/// <summary>
+		/// Power saver on monitor sleep
+		/// </summary>
 		bool SaverOnMonitorSleep = false;
+		/// <summary>
+		/// Session lock power mode
+		/// </summary>
 		PowerMode SessionLockMode = PowerMode.PowerSaver;
+		/// <summary>
+		/// Power saver on log off
+		/// </summary>
 		bool SaverOnLogOff = false;
+		/// <summary>
+		/// Power saver on screen saver
+		/// </summary>
 		bool SaverOnScreensaver = false;
+		/// <summary>
+		/// Cancel any power modes on user activity.
+		/// </summary>
 		bool UserActiveCancel = true;
+		/// <summary>
+		/// Power saver after user idle for # minutes.
+		/// </summary>
 		int SaverOnUserAFK = 0;
+
+		/// <summary>
+		/// User must be inactive for this many seconds.
+		/// </summary>
+		int SessionLockPowerOffIdleTimeout = 300;
+		/// <summary>
+		/// Power off monitor directly on lock off.
+		/// </summary>
+		bool SessionLockPowerOff = true;
 
 		public event EventHandler<ProcessorEventArgs> onAutoAdjustAttempt;
 		public event EventHandler<PowerModeEventArgs> onPlanChange;
@@ -528,6 +670,14 @@ namespace Taskmaster
 			// UserActiveCancel = saver.GetSetDefault("Cancel on activity", true, out modified).BoolValue;
 			// dirtyconfig |= modified;
 
+			SessionLockPowerOffIdleTimeout = saver.GetSetDefault("Monitor power off idle timeout", 300, out modified).IntValue.Constrain(15, 600);
+			saver["Monitor power off idle timeout"].Comment = "User needs to be this many seconds idle before we power down monitors when session is locked. 0 disables.";
+			dirtyconfig |= modified;
+
+			SessionLockPowerOff = saver.GetSetDefault("Monitor power off on lock", true, out modified).BoolValue;
+			saver["Monitor power off on lock"].Comment = "Power off monitor instantly on session lock.";
+			dirtyconfig |= modified;
+
 			// --------------------------------------------------------------------------------------------------------
 
 			// CPU SAMPLING
@@ -550,6 +700,9 @@ namespace Taskmaster
 
 			Log.Information("<Power> Session lock: {Mode}", (SessionLockMode == PowerMode.Custom ? "Ignored" : SessionLockMode.ToString()));
 			Log.Information("<Power> Restore mode: {Method} [{Mode}]", RestoreModeMethod.ToString(), RestoreMode.ToString());
+
+			Log.Information("<Session> User AFK timeout: {Timeout}", SessionLockPowerOffIdleTimeout == 0 ? "Disabled" : string.Format("{0}s", SessionLockPowerOffIdleTimeout));
+			Log.Information("<Session> Immediate power off on lock: {Toggle}", SessionLockPowerOff ? "Enabled" : "Disabled");
 
 			if (dirtyconfig)
 				Taskmaster.MarkDirtyINI(Taskmaster.cfg);
@@ -580,61 +733,102 @@ namespace Taskmaster
 		{
 			switch (ev.Reason)
 			{
-				case SessionSwitchReason.SessionLogoff:
-				case SessionSwitchReason.SessionLogon:
-					if (!SaverOnLogOff) return;
+				case SessionSwitchReason.SessionLock:
+					SessionLocked = true;
+					break;
+				case SessionSwitchReason.SessionUnlock:
+					SessionLocked = false;
 					break;
 			}
 
-			switch (ev.Reason)
+			if (Taskmaster.DebugSession)
+				Log.Debug("<Session> State: {State}", SessionLocked ? "Locked" : "Unlocked");
+
+			if (SessionLocked)
 			{
-				case SessionSwitchReason.SessionLogoff:
-				case SessionSwitchReason.SessionLock:
-					// SET POWER SAVER
-					if (SessionLockMode != PowerMode.Custom)
-					{
-						Paused = true;
+				if (SessionLockPowerOff && CurrentMonitorState != MonitorPowerMode.Off)
+				{
+					if (Taskmaster.DebugSession || Taskmaster.DebugMonitor)
+						Log.Debug("<Session> Instant monitor power off enabled, powering down.");
 
-						if (Taskmaster.DebugSessions)
-							Log.Debug("<Power> Session locked, enforcing power plan: {Plan}", SessionLockMode);
+					SetMonitorMode(MonitorPowerMode.Off);
+				}
+				else
+				{
+					if (Taskmaster.DebugSession || Taskmaster.DebugMonitor)
+						Log.Debug("<Session> Instant monitor power off disabled, waiting for user idle.");
 
-						if (PauseUnneededSampler)
+					MonitorSleepTimer?.Start();
+				}
+			}
+			else
+			{
+				MonitorSleepTimer?.Stop();
+
+				// should be unnecessary, but...
+				if (CurrentMonitorState != MonitorPowerMode.On)
+				{
+					if (Taskmaster.DebugMonitor || Taskmaster.DebugSession)
+						Log.Debug("<Session> Session unlocked, monitor still not on... Odd, isn't it?");
+
+					SetMonitorMode(MonitorPowerMode.On);
+				}
+			}
+
+			try
+			{
+				switch (ev.Reason)
+				{
+					case SessionSwitchReason.SessionLogoff:
+						if (!SaverOnLogOff) return;
+						goto setpowersaver;
+					case SessionSwitchReason.SessionLock:
+						setpowersaver:
+						// SET POWER SAVER
+						if (SessionLockMode != PowerMode.Custom)
 						{
-							CPUTimer.Dispose();
-							CPUTimer = null;
+							Paused = true;
+
+							if (Taskmaster.DebugSession)
+								Log.Debug("<Power> Session locked, enforcing power plan: {Plan}", SessionLockMode);
+
+							if (PauseUnneededSampler)
+							{
+								CPUTimer.Dispose();
+								CPUTimer = null;
+							}
+
+							if (CurrentMode != SessionLockMode)
+								setMode(PowerMode.PowerSaver, true);
 						}
 
-						if (CurrentMode != SessionLockMode)
+						break;
+					case SessionSwitchReason.SessionLogon:
+					case SessionSwitchReason.SessionUnlock:
+						// RESTORE POWER MODE
+						if (SessionLockMode != PowerMode.Custom)
 						{
-							setMode(PowerMode.PowerSaver, true);
+							if (Taskmaster.DebugSession)
+								Log.Debug("<Power> Session unlocked, restoring normal power.");
+
+							if (CurrentMode == SessionLockMode)
+							{
+								setMode(RestoreMode, true);
+							}
+
+							Paused = false;
+
+							if (PauseUnneededSampler) InitCPUTimer();
 						}
-					}
-
-					break;
-				case SessionSwitchReason.SessionLogon:
-				case SessionSwitchReason.SessionUnlock:
-					// RESTORE POWER MODE
-					if (SessionLockMode != PowerMode.Custom)
-					{
-						if (Taskmaster.DebugSessions)
-							Log.Debug("<Power> Session unlocked, restoring normal power.");
-
-						if (CurrentMode == SessionLockMode)
-						{
-							setMode(RestoreMode, true);
-						}
-
-						Paused = false;
-
-						if (PauseUnneededSampler) InitCPUTimer();
-
-						Task.Factory.StartNew(Taskmaster.Evaluate, TaskCreationOptions.LongRunning);
-					}
-
-					break;
-				default:
-					// HANDS OFF MODE
-					break;
+						break;
+					default:
+						// HANDS OFF MODE
+						break;
+				}
+			}
+			catch (Exception ex)
+			{
+				Logging.Stacktrace(ex);
 			}
 		}
 
@@ -660,7 +854,8 @@ namespace Taskmaster
 
 		protected override void WndProc(ref Message m)
 		{
-			if (m.Msg == NativeMethods.WM_POWERBROADCAST && m.WParam.ToInt32() == NativeMethods.PBT_POWERSETTINGCHANGE)
+			if (m.Msg == NativeMethods.WM_POWERBROADCAST &&
+				m.WParam.ToInt32() == NativeMethods.PBT_POWERSETTINGCHANGE)
 			{
 				var ps = (NativeMethods.POWERBROADCAST_SETTING)Marshal.PtrToStructure(m.LParam, typeof(NativeMethods.POWERBROADCAST_SETTING));
 
@@ -678,6 +873,21 @@ namespace Taskmaster
 
 					if (Taskmaster.DebugPower)
 						Log.Information("<Power/OS> Change detected: {PlanName} ({PlanGuid})", CurrentMode.ToString(), newPersonality.ToString());
+				}
+				else if (ps.PowerSetting == GUID_CONSOLE_DISPLAY_STATE)
+				{
+					switch (ps.Data)
+					{
+						case 0x0: // power off
+							MonitorPower?.Invoke(this, new MonitorPowerEventArgs(MonitorPowerMode.Off));
+							break;
+						case 0x1: // power on
+							MonitorPower?.Invoke(this, new MonitorPowerEventArgs(MonitorPowerMode.On));
+							break;
+						case 0x2: // standby
+							MonitorPower?.Invoke(this, new MonitorPowerEventArgs(MonitorPowerMode.Standby));
+							break;
+					}
 				}
 			}
 
@@ -918,7 +1128,7 @@ namespace Taskmaster
 			setMode(mode, verbose: false);
 			return true;
 		}
-
+		
 		public int ForceCount => forceModeSources.Count;
 
 		HashSet<int> forceModeSources = new HashSet<int>();
@@ -1018,6 +1228,22 @@ namespace Taskmaster
 			}
 
 			disposed = true;
+		}
+
+		public const int WM_SYSCOMMAND = 0x0112;
+		public const int WM_POWERBROADCAST = 0x218;
+		public const int SC_MONITORPOWER = 0xF170;
+		public const int PBT_POWERSETTINGCHANGE = 0x8013;
+		public const int HWND_BROADCAST = 0xFFFF;
+
+		void SetMonitorMode(MonitorPowerMode powermode)
+		{
+			int NewPowerMode = (int)powermode; // -1 = Powering On, 1 = Low Power (low backlight, etc.), 2 = Power Off
+			IntPtr Handle = new IntPtr(HWND_BROADCAST);
+			IntPtr result = new IntPtr(-1); // unused, but necessary
+			uint timeout = 200; // ms per window, we don't really care if they process them
+			var flags = NativeMethods.SendMessageTimeoutFlags.SMTO_ABORTIFHUNG;
+			NativeMethods.SendMessageTimeout(Handle, WM_SYSCOMMAND, SC_MONITORPOWER, NewPowerMode, flags, timeout, out result);
 		}
 	}
 }
