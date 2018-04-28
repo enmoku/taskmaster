@@ -159,7 +159,6 @@ namespace Taskmaster
 
 			lock (mainwindow_lock)
 				mainwindow = null;
-
 		}
 
 		static bool RunOnce = false;
@@ -264,6 +263,9 @@ namespace Taskmaster
 			}
 		}
 
+		/// <summary>
+		/// Constructs and hooks the main window
+		/// </summary>
 		public static void BuildMainWindow()
 		{
 			lock (mainwindow_lock)
@@ -478,6 +480,9 @@ namespace Taskmaster
 			trayaccess?.Refresh();
 		}
 
+		public static bool ShowProcessAdjusts { get; set; } = true;
+		public static bool ShowSessionActions { get; set; } = true;
+
 		public static bool DebugProcesses { get; set; } = false;
 		public static bool DebugPaths { get; set; } = false;
 		public static bool DebugFullScan { get; set; } = false;
@@ -656,6 +661,15 @@ namespace Taskmaster
 			logsec["Show inaction"].Comment = "Shows lack of action take on processes.";
 			dirtyconfig |= modified;
 
+			ShowProcessAdjusts = logsec.GetSetDefault("Show process adjusts", true, out modified).BoolValue;
+			logsec["Show process adjusts"].Comment = "Show blurbs about adjusted processes.";
+			dirtyconfig |= modified;
+
+			ShowSessionActions = logsec.GetSetDefault("Show session actions", true, out modified).BoolValue;
+			logsec["Show session actions"].Comment = "Show blurbs about actions taken relating to sessions.";
+			dirtyconfig |= modified;
+
+
 			CaseSensitive = optsec.GetSetDefault("Case sensitive", false, out modified).BoolValue;
 			dirtyconfig |= modified;
 			ShowOnStart = optsec.GetSetDefault("Show on start", true, out modified).BoolValue;
@@ -749,7 +763,6 @@ namespace Taskmaster
 			// STOP IT
 
 			// DEBUG
-
 			var dbgsec = cfg["Debug"];
 			DebugProcesses = dbgsec.TryGet("Processes")?.BoolValue ?? false;
 			DebugPaths = dbgsec.TryGet("Paths")?.BoolValue ?? false;
@@ -934,7 +947,7 @@ namespace Taskmaster
 				Log.Verbose("Cleanup took: {Time}s", string.Format("{0:N2}", time.Elapsed.TotalSeconds));
 		}
 
-		public static System.Timers.Timer CleanupTimer;
+		public static System.Timers.Timer CleanupTimer = null;
 
 		public static System.Threading.Mutex singleton = null;
 
@@ -1259,10 +1272,7 @@ namespace Taskmaster
 				if (dcfg.Value) SaveConfig(dcfg.Key);
 			ConfigDirty.Clear();
 
-			CleanupTimer = new System.Timers.Timer
-			{
-				Interval = 1000 * 60 * CleanupInterval // 15 minutes
-			};
+			CleanupTimer = new System.Timers.Timer(1000 * 60 * CleanupInterval);
 			CleanupTimer.Elapsed += Taskmaster.Cleanup;
 			CleanupTimer.Start();
 

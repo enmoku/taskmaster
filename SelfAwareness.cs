@@ -45,12 +45,13 @@ namespace Taskmaster
 		DateTime NextDue = DateTime.MinValue;
 		static readonly object FreeKeys_lock = new object();
 
-		System.Threading.Timer AwarenessTicker;
+		readonly System.Timers.Timer AwarenessTicker;
 
 		public SelfAwareness()
 		{
 			NextDue = DateTime.Now.AddSeconds(5);
-			AwarenessTicker = new System.Threading.Timer(Assess, null, 5 * 1000, 15 * 1000);
+			AwarenessTicker = new System.Timers.Timer(15 * 1000);
+			AwarenessTicker.Elapsed += Assess;
 		}
 
 		/// <summary>
@@ -130,7 +131,7 @@ namespace Taskmaster
 
 		}
 
-		void Assess(object state)
+		void Assess(object sender, EventArgs ev)
 		{
 			var now = DateTime.Now;
 			Stack<int> clearList = new Stack<int>();
@@ -208,7 +209,6 @@ namespace Taskmaster
 					Log.Verbose("Disposing self-awareness...");
 
 				AwarenessTicker?.Dispose();
-				AwarenessTicker = null;
 			}
 
 			disposed = true;

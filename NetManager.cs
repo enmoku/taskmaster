@@ -105,7 +105,7 @@ namespace Taskmaster
 			CurrentInterfaceList = Interfaces();
 			// Log.Debug("{IFACELIST} – count: {c}", CurrentInterfaceList, CurrentInterfaceList.Count);
 
-			deviceSampleTimer = new System.Threading.Timer(SampleDeviceState, null, 15000, DeviceTimerInterval * 60000);
+			deviceSampleTimer = new System.Threading.Timer(async (s) => { await RecordDeviceState(InternetAvailable, false); }, null, 15000, DeviceTimerInterval * 60000);
 
 			AnalyzeTrafficBehaviourTick(null); // initialize, not really needed
 			packetStatTimer = new System.Threading.Timer(AnalyzeTrafficBehaviourTick, null, 500, PacketStatTimerInterval * 1000);

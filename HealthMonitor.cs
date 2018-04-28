@@ -154,12 +154,13 @@ namespace Taskmaster
 				Log.Information("<Auto-Doc> Memory auto-paging level: {Level} MB", Settings.MemLevel);
 			}
 
-			healthTimer = new System.Threading.Timer(TimerCheck, null, 5000, Settings.Frequency * 60 * 1000);
+			healthTimer = new System.Timers.Timer(Settings.Frequency * 60 * 1000);
+			healthTimer.Elapsed += TimerCheck;
 
 			Log.Information("<Auto-Doc> Component loaded");
 		}
 
-		System.Threading.Timer healthTimer = null;
+		readonly System.Timers.Timer healthTimer = null;
 
 		DateTime MemFreeLast = DateTime.MinValue;
 
@@ -220,7 +221,8 @@ namespace Taskmaster
 		PerformanceCounterWrapper commitpercentile = null;
 
 		int HealthCheck_lock = 0;
-		async void TimerCheck(object state)
+		//async void TimerCheck(object state)
+		async void TimerCheck(object sender, EventArgs ev)
 		{
 			// skip if already running...
 			// happens sometimes when the timer keeps running but not the code here
@@ -428,7 +430,6 @@ namespace Taskmaster
 				if (Taskmaster.Trace) Log.Verbose("Disposing health monitor...");
 
 				healthTimer?.Dispose();
-				healthTimer = null;
 
 				commitbytes?.Dispose();
 				commitbytes = null;

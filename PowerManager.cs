@@ -115,9 +115,12 @@ namespace Taskmaster
 
 			CPUSamples = new float[CPUSampleCount];
 
+			CPUTimer = new System.Timers.Timer(CPUSampleInterval * 1000);
+			CPUTimer.Elapsed += CPUSampler;
+
 			if (Behaviour == PowerBehaviour.Auto || !PauseUnneededSampler)
 			{
-				InitCPUTimer();
+				CPUTimer.Start();
 			}
 
 			lock (forceModeSources_lock)
@@ -157,7 +160,7 @@ namespace Taskmaster
 			}
 		}
 
-		System.Timers.Timer MonitorSleepTimer;
+		readonly System.Timers.Timer MonitorSleepTimer;
 
 		void MonitorSleepTimerTick(object sender, EventArgs ev)
 		{
@@ -169,14 +172,14 @@ namespace Taskmaster
 			
 			if (idletime >= Convert.ToDouble(SessionLockPowerOffIdleTimeout))
 			{
-				if (Taskmaster.DebugMonitor)
-					Log.Debug("<Monitor> User idle and session locked, powering off...");
+				if (Taskmaster.ShowSessionActions || Taskmaster.DebugMonitor)
+					Log.Information("<Session:Lock> User idle; Monitor power down...");
 				SetMonitorMode(MonitorPowerMode.Off);
 			}
 			else
 			{
-				if (Taskmaster.DebugMonitor)
-					Log.Debug("<Power/Monitor> User active too recently ({Seconds}s ago), waiting...", string.Format("{0:N1}", idletime));
+				if (Taskmaster.ShowSessionActions || Taskmaster.DebugMonitor)
+					Log.Information("<Session:Lock> User active too recently ({Seconds}s ago), delaying monitor power down...", string.Format("{0:N1}", idletime));
 
 				MonitorSleepTimer?.Start();
 			}
@@ -221,15 +224,10 @@ namespace Taskmaster
 			SystemEvents.SessionSwitch += SessionLockEvent;
 		}
 
-		void InitCPUTimer()
-		{
-			CPUTimer = new System.Threading.Timer(CPUSampler, null, 500, CPUSampleInterval * 1000);
-		}
-
 		public int CPUSampleInterval { get; set; } = 5;
 		public int CPUSampleCount { get; set; } = 5;
 		PerformanceCounterWrapper CPUCounter = null;
-		System.Threading.Timer CPUTimer = null;
+		readonly System.Timers.Timer CPUTimer = null;
 
 		public event EventHandler<ProcessorEventArgs> onCPUSampling;
 		float[] CPUSamples;
@@ -242,7 +240,7 @@ namespace Taskmaster
 		int CPUHighOffset = 0;
 
 		int cpusampler_lock = 0;
-		async void CPUSampler(object state)
+		async void CPUSampler(object sender, EventArgs ev)
 		{
 			if (!Atomic.Lock(ref cpusampler_lock)) return;
 
@@ -747,15 +745,15 @@ namespace Taskmaster
 			{
 				if (SessionLockPowerOff && CurrentMonitorState != MonitorPowerMode.Off)
 				{
-					if (Taskmaster.DebugSession || Taskmaster.DebugMonitor)
-						Log.Debug("<Session> Instant monitor power off enabled, powering down.");
+					if (Taskmaster.ShowSessionActions || Taskmaster.DebugSession || Taskmaster.DebugMonitor)
+						Log.Information("<Session:Lock> Instant monitor power off.");
 
 					SetMonitorMode(MonitorPowerMode.Off);
 				}
 				else
 				{
-					if (Taskmaster.DebugSession || Taskmaster.DebugMonitor)
-						Log.Debug("<Session> Instant monitor power off disabled, waiting for user idle.");
+					if (Taskmaster.ShowSessionActions || Taskmaster.DebugSession || Taskmaster.DebugMonitor)
+						Log.Information("<Session:Lock> Instant monitor power off disabled, waiting for user idle.");
 
 					MonitorSleepTimer?.Start();
 				}
@@ -768,7 +766,7 @@ namespace Taskmaster
 				if (CurrentMonitorState != MonitorPowerMode.On)
 				{
 					if (Taskmaster.DebugMonitor || Taskmaster.DebugSession)
-						Log.Debug("<Session> Session unlocked, monitor still not on... Odd, isn't it?");
+						Log.Debug("<Session:Unlock> Monitor still not on... Odd, isn't it?");
 
 					SetMonitorMode(MonitorPowerMode.On);
 				}
@@ -791,13 +789,9 @@ namespace Taskmaster
 							Paused = true;
 
 							if (Taskmaster.DebugSession)
-								Log.Debug("<Power> Session locked, enforcing power plan: {Plan}", SessionLockPowerMode);
+								Log.Debug("<Session:Lock> Enforcing power plan: {Plan}", SessionLockPowerMode);
 
-							if (PauseUnneededSampler)
-							{
-								CPUTimer.Dispose();
-								CPUTimer = null;
-							}
+							if (PauseUnneededSampler) CPUTimer.Stop();
 
 							if (CurrentMode != SessionLockPowerMode)
 								setMode(PowerMode.PowerSaver, true);
@@ -810,7 +804,7 @@ namespace Taskmaster
 						if (SessionLockPowerMode != PowerMode.Custom)
 						{
 							if (Taskmaster.DebugSession)
-								Log.Debug("<Power> Session unlocked, restoring normal power.");
+								Log.Debug("<Session:Unlock> Restoring normal power.");
 
 							if (CurrentMode == SessionLockPowerMode)
 							{
@@ -819,7 +813,7 @@ namespace Taskmaster
 
 							Paused = false;
 
-							if (PauseUnneededSampler) InitCPUTimer();
+							if (PauseUnneededSampler) CPUTimer.Start();
 						}
 						break;
 					default:
@@ -950,25 +944,17 @@ namespace Taskmaster
 				if (PauseUnneededSampler)
 				{
 					CPUSamples = new float[CPUSampleCount]; // reset samples
-					InitCPUTimer();
+					CPUTimer.Start();
 					Log.Debug("CPU sampler restarted.");
 				}
 			}
 			else if (Behaviour == PowerBehaviour.RuleBased)
 			{
-				if (PauseUnneededSampler)
-				{
-					CPUTimer.Dispose();
-					CPUTimer = null;
-				}
+				if (PauseUnneededSampler) CPUTimer.Stop();
 			}
 			else // MANUAL
 			{
-				if (PauseUnneededSampler)
-				{
-					CPUTimer.Dispose();
-					CPUTimer = null;
-				}
+				if (PauseUnneededSampler) CPUTimer.Stop();
 
 				Taskmaster.processmanager.CancelPowerWait(); // need nicer way to do this
 
@@ -1207,23 +1193,9 @@ namespace Taskmaster
 			{
 				if (Taskmaster.Trace) Log.Verbose("Disposing power manager...");
 
-				if (CPUTimer != null)
-				{
-					CPUTimer.Dispose();
-					CPUTimer = null;
-				}
-
-				if (CPUCounter != null)
-				{
-					CPUCounter.Dispose();
-					CPUCounter = null;
-				}
-
-				if (MonitorSleepTimer != null)
-				{
-					MonitorSleepTimer.Dispose();
-					MonitorSleepTimer = null;
-				}
+				CPUTimer?.Dispose();
+				CPUCounter?.Dispose();
+				MonitorSleepTimer?.Dispose();
 
 				var finalmode = RestoreModeMethod == ModeMethod.Saved ? SavedMode : RestoreMode;
 				if (finalmode != CurrentMode)

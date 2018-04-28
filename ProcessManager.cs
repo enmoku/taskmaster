@@ -113,6 +113,9 @@ namespace Taskmaster
 				ProcessManagerUtility.Initialize();
 			}
 
+			BatchProcessingTimer = new System.Timers.Timer(1000 * 5);
+			BatchProcessingTimer.Elapsed += BatchProcessingTick;
+
 			Log.Information("<Process> Component Loaded.");
 		}
 
@@ -371,7 +374,7 @@ namespace Taskmaster
 		static int BatchProcessingThreshold = 5;
 		// static bool ControlChildren = false; // = false;
 
-		static System.Timers.Timer RescanEverythingTimer = null;
+		readonly System.Timers.Timer RescanEverythingTimer = null;
 
 		public bool ValidateController(ProcessController prc)
 		{
@@ -1133,31 +1136,23 @@ namespace Taskmaster
 			return; // ProcessState.Invalid; // return state;
 		}
 
-		readonly object BatchProcessingLock = new object();
+		readonly object batchprocessing_lock = new object();
 		int processListLockRestart = 0;
 		List<ProcessEx> ProcessBatch = new List<ProcessEx>();
-		System.Threading.Timer BatchProcessingTimer;
+		readonly System.Timers.Timer BatchProcessingTimer = null;
 
-		void StartBatchProcessingTimer()
+		async void BatchProcessingTick(object sender, EventArgs ev)
 		{
-			BatchProcessingTimer = new System.Threading.Timer(BatchProcessingTick, null, 500, 1000 * 5);
-		}
-
-		void StopBatchProcessingTimer()
-		{
-			BatchProcessingTimer.Dispose();
-			BatchProcessingTimer = null;
-		}
-
-		async void BatchProcessingTick(object state)
-		{
-			lock (BatchProcessingLock)
+			lock (batchprocessing_lock)
 			{
 				if (ProcessBatch.Count == 0)
 				{
-					StopBatchProcessingTimer();
+					BatchProcessingTimer.Stop();
+
 					if (Taskmaster.DebugProcesses)
 						Log.Debug("<Process> New instance timer stopped.");
+
+					return;
 				}
 			}
 
@@ -1168,15 +1163,16 @@ namespace Taskmaster
 
 		async Task NewInstanceBatchProcessing()
 		{
-			if (ProcessBatch.Count == 0) return;
-
 			//await Task.Delay(0).ConfigureAwait(false);
 
 			List<ProcessEx> list = new List<ProcessEx>();
 
-			lock (BatchProcessingLock)
+			lock (batchprocessing_lock)
 			{
-				StopBatchProcessingTimer();
+				if (ProcessBatch.Count == 0) return;
+
+				BatchProcessingTimer.Stop();
+
 				processListLockRestart = 0;
 				Utility.Swap(ref list, ref ProcessBatch);
 			}
@@ -1313,21 +1309,17 @@ namespace Taskmaster
 
 			if (BatchProcessing)
 			{
-				lock (BatchProcessingLock)
+				lock (batchprocessing_lock)
 				{
 					try
 					{
 						ProcessBatch.Add(info);
 
 						// Delay process timer a few times.
-						if (BatchProcessingTimer != null)
-						{
-							processListLockRestart += 1;
-							if (processListLockRestart < BatchProcessingThreshold)
-								BatchProcessingTimer.Change(BatchDelay, BatchDelay);
-						}
-						else
-							StartBatchProcessingTimer();
+						if (BatchProcessingTimer.Enabled &&
+							(++processListLockRestart < BatchProcessingThreshold))
+							BatchProcessingTimer.Stop();
+						BatchProcessingTimer.Start();
 					}
 					catch (Exception ex)
 					{
@@ -1388,7 +1380,7 @@ namespace Taskmaster
 				if (rescanrequests == 0)
 				{
 					if (Taskmaster.Trace) Log.Verbose("No apps have requests to rescan, stopping rescanning.");
-					rescanTimer.Dispose();
+					rescanTimer?.Dispose();
 					rescanTimer = null;
 				}
 				else
@@ -1398,11 +1390,13 @@ namespace Taskmaster
 						rescanTimer.Change(500, nextscan.Constrain(1, 360) * (1000 * 60));
 						// rescanTimer.Interval = nextscan.Constrain(1, 360) * (1000 * 60);
 					}
-					catch
+					catch (Exception ex)
 					{
 						Log.Error("Failed to set rescan timer based on scheduled next scan.");
 						rescanTimer.Change(500, 5 * (1000 * 60));
 						// rescanTimer.Interval = 5 * (1000 * 60);
+
+						Logging.Stacktrace(ex);
 					}
 
 					Log.Verbose("Rescan set to occur after {Scan} minutes, next in line: {Name}. Waiting {0}.", nextscan, nextscanfor);
@@ -1456,7 +1450,7 @@ namespace Taskmaster
 			{
 				watcher.EventArrived += NewInstanceTriage;
 
-				if (BatchProcessing) StartBatchProcessingTimer();
+				if (BatchProcessing) BatchProcessingTimer.Start();
 
 				watcher.Stopped += (object sender, System.Management.StoppedEventArgs e) =>
 				{
@@ -1559,37 +1553,18 @@ namespace Taskmaster
 
 				try
 				{
+					//watcher.EventArrived -= NewInstanceTriage;
+					watcher?.Dispose();
+
 					if (activeappmonitor != null)
 					{
 						activeappmonitor.ActiveChanged -= ForegroundAppChangedEvent;
 						activeappmonitor = null;
 					}
 
-					if (RescanEverythingTimer != null)
-					{
-						RescanEverythingTimer.Stop(); // shouldn't be necessary
-						RescanEverythingTimer.Dispose();
-						RescanEverythingTimer = null;
-					}
-
-					// watcher.EventArrived -= NewInstanceTriage;
-					if (watcher != null)
-					{
-						watcher.Stop(); // shouldn't be necessary
-						watcher.Dispose();
-						watcher = null;
-					}
-
-					if (rescanTimer != null)
-					{
-						rescanTimer.Dispose();
-						rescanTimer = null;
-					}
-
-					if (BatchProcessingTimer != null)
-					{
-						StopBatchProcessingTimer();
-					}
+					RescanEverythingTimer?.Dispose();
+					rescanTimer?.Dispose();
+					BatchProcessingTimer?.Dispose();
 				}
 				catch (Exception ex)
 				{

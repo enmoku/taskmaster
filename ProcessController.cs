@@ -751,7 +751,7 @@ namespace Taskmaster
 
 			if (modified)
 			{
-				if (Taskmaster.DebugProcesses)
+				if (Taskmaster.DebugProcesses || Taskmaster.ShowProcessAdjusts)
 					Log.Information(sbs.ToString());
 			}
 			else

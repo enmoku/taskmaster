@@ -788,6 +788,7 @@ namespace Taskmaster
 			menu_config.DropDown.AutoClose = true;
 			// Sub Items
 			var menu_config_behaviour = new ToolStripMenuItem("Behaviour");
+			var menu_config_logging = new ToolStripMenuItem("Logging");
 			var menu_config_power = new ToolStripMenuItem("Power");
 
 			// Sub Sub Items
@@ -798,7 +799,7 @@ namespace Taskmaster
 			};
 			menu_config_behaviour_autoopen.Click += (sender, e) =>
 			{
-				Taskmaster.AutoOpenMenus = !Taskmaster.AutoOpenMenus;
+				Taskmaster.AutoOpenMenus = menu_config_behaviour_autoopen.Checked;
 
 				Taskmaster.cfg["Quality of Life"]["Auto-open menus"].BoolValue = Taskmaster.AutoOpenMenus;
 
@@ -812,16 +813,37 @@ namespace Taskmaster
 			};
 			menu_config_behaviour_taskbar.Click += (sender, e) =>
 			{
-				Taskmaster.ShowInTaskbar = !Taskmaster.ShowInTaskbar;
-				ShowInTaskbar = Taskmaster.ShowInTaskbar;
-
+				Taskmaster.ShowInTaskbar = ShowInTaskbar = menu_config_behaviour_taskbar.Checked;
 				Taskmaster.cfg["Quality of Life"]["Show in taskbar"].BoolValue = Taskmaster.ShowInTaskbar;
-
 				Taskmaster.MarkDirtyINI(Taskmaster.cfg);
 			};
 
 			menu_config_behaviour.DropDownItems.Add(menu_config_behaviour_autoopen);
 			menu_config_behaviour.DropDownItems.Add(menu_config_behaviour_taskbar);
+
+			var menu_config_logging_adjusts = new ToolStripMenuItem("Process adjusts")
+			{
+				Checked = Taskmaster.ShowProcessAdjusts,
+				CheckOnClick = true,
+			};
+			menu_config_logging_adjusts.Click += (s, e) => {
+				Taskmaster.ShowProcessAdjusts = menu_config_logging_adjusts.Checked;
+				Taskmaster.cfg["Logging"]["Show process adjusts"].BoolValue = Taskmaster.ShowProcessAdjusts;
+				Taskmaster.MarkDirtyINI(Taskmaster.cfg);
+			};
+
+			var menu_config_logging_session = new ToolStripMenuItem("Session actions")
+			{
+				Checked = Taskmaster.ShowSessionActions,
+				CheckOnClick = true,
+			};
+			menu_config_logging_session.Click += (s, e) => {
+				Taskmaster.ShowSessionActions = menu_config_logging_session.Checked;
+				Taskmaster.cfg["Logging"]["Show session actions"].BoolValue = Taskmaster.ShowSessionActions;
+				Taskmaster.MarkDirtyINI(Taskmaster.cfg);
+			};
+			menu_config_logging.DropDownItems.Add(menu_config_logging_adjusts);
+			menu_config_logging.DropDownItems.Add(menu_config_logging_session);
 
 			var menu_config_power_autoadjust = new ToolStripMenuItem("Auto-adjust tuning");
 			menu_config_power_autoadjust.Click += PowerConfigRequest;
@@ -856,6 +878,7 @@ namespace Taskmaster
 			var menu_config_folder = new ToolStripMenuItem("Open in file manager", null, (s, e) => { Process.Start(Taskmaster.datapath); });
 			// menu_config.DropDownItems.Add(menu_config_log);
 			menu_config.DropDownItems.Add(menu_config_behaviour);
+			menu_config.DropDownItems.Add(menu_config_logging);
 			menu_config.DropDownItems.Add(new ToolStripSeparator());
 			menu_config.DropDownItems.Add(menu_config_power);
 			menu_config.DropDownItems.Add(new ToolStripSeparator());
@@ -973,6 +996,20 @@ namespace Taskmaster
 					if (refocus) tabLayout.SelectedIndex = 1; // watchlist
 				}
 			};
+
+			var menu_debug_session = new ToolStripMenuItem("Session") { Checked = Taskmaster.DebugSession, CheckOnClick = true };
+			menu_debug_session.Click += (s, e) =>
+			{
+				Taskmaster.DebugSession = menu_debug_session.Checked;
+				if (Taskmaster.DebugSession) EnsureVerbosityLevel();
+			};
+			var menu_debug_monitor = new ToolStripMenuItem("Monitor") { Checked = Taskmaster.DebugMonitor, CheckOnClick = true };
+			menu_debug_monitor.Click += (s, e) =>
+			{
+				Taskmaster.DebugMonitor = menu_debug_monitor.Checked;
+				if (Taskmaster.DebugMonitor) EnsureVerbosityLevel();
+			};
+
 			var menu_debug_clear = new ToolStripMenuItem("Clear UI log", null, (sender, e) => { ClearLog(); });
 
 			// TODO: This menu needs to be clearer
@@ -985,6 +1022,8 @@ namespace Taskmaster
 			menu_debug.DropDownItems.Add(menu_debug_foreground);
 			menu_debug.DropDownItems.Add(menu_debug_paths);
 			menu_debug.DropDownItems.Add(menu_debug_power);
+			menu_debug.DropDownItems.Add(menu_debug_session);
+			menu_debug.DropDownItems.Add(menu_debug_monitor);
 			menu_debug.DropDownItems.Add(new ToolStripSeparator());
 			menu_debug.DropDownItems.Add(menu_debug_clear);
 

@@ -39,8 +39,8 @@ namespace Taskmaster
 		readonly System.IO.FileSystemWatcher userWatcher;
 		readonly System.IO.FileSystemWatcher sysWatcher;
 
-		static System.Threading.Timer TempScanTimer;
-		static int TimerDue = 1000 * 60 * 60 * 24;
+		readonly System.Timers.Timer TempScanTimer;
+		int TimerDue = 1000 * 60 * 60 * 24;
 
 		public DiskManager()
 		{
@@ -56,10 +56,16 @@ namespace Taskmaster
 				sysWatcher.Created += ModifyTemp;
 			}
 
-			TempScanTimer = new System.Threading.Timer(async (state) => { await ScanTemp().ConfigureAwait(false); }, null, 0, TimerDue);
-			Log.Information("Temp folder scanner will be performed once per day.");
+			TempScanTimer = new System.Timers.Timer(TimerDue);
+			ScanTemp();
+			TempScanTimer.Elapsed += async (s, e) => { await ScanTemp().ConfigureAwait(false); };
+			TempScanTimer.Start();
+
+			Log.Information("<Maintenance> Temp folder scanner will be performed once per day.");
 
 			onBurden += ReScanTemp;
+
+			Log.Information("<Maintenance> Component loaded.");
 		}
 
 		static long ReScanBurden = 0;
@@ -69,19 +75,21 @@ namespace Taskmaster
 			ReScanBurden++;
 			if (ReScanBurden % 100 == 0)
 			{
-				Log.Information("Significant amount of changes have occurred to temp folders");
+				Log.Information("<Maintenance> Significant amount of changes have occurred to temp folders");
 			}
 
 			if (ReScanBurden % 1000 == 0)
 			{
-				Log.Warning("Number of changes to temp folders exceeding tolerance.");
+				Log.Warning("<Maintenance> Number of changes to temp folders exceeding tolerance.");
 				onBurden?.Invoke(this, null);
 			}
 		}
 
 		void ReScanTemp(object sender, EventArgs ev)
 		{
-			TempScanTimer.Change(Taskmaster.TempRescanDelay, TimerDue);
+			TempScanTimer.Stop();
+			ScanTemp(); // TODO: Add limiter to how frequently this is done
+			TempScanTimer.Start();
 		}
 
 		event EventHandler onBurden;
