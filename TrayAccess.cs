@@ -144,6 +144,12 @@ namespace Taskmaster
 
 			// TODO: Toast Notifications
 
+			if (Tray.Icon == null)
+			{
+				Log.Fatal("<Tray> Icon missing, setting system default.");
+				Tray.Icon = System.Drawing.SystemIcons.Application;
+			}
+
 			if (Taskmaster.Trace) Log.Verbose("<Tray> Initialized");
 		}
 
