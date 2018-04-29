@@ -531,7 +531,9 @@ namespace Taskmaster
 				return; // return ProcessState.Ignored;
 			}
 
-			var denyChange = ProcessManager.ProtectedProcessName(info.Name);
+			bool denyChange = ProcessManager.ProtectedProcessName(info.Name);
+			// TODO: IgnoreSystem32Path
+
 			if (denyChange && Taskmaster.ShowInaction && Taskmaster.DebugProcesses)
 				Log.Debug("[{FriendlyName}] {ProcessName} (#{ProcessID}) in protected list, limiting tampering.", FriendlyName, info.Name, info.Id);
 

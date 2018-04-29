@@ -517,6 +517,10 @@ namespace Taskmaster
 				Taskmaster.SaveConfig(Taskmaster.cfg);
 			dirtyconfig |= modified;
 
+			IgnoreSystem32Path = ignsetting.GetSetDefault("Ignore System32", true, out modified).BoolValue;
+			ignsetting["Ignore System32"].Comment = "Ignore programs in %SYSTEMROOT%/System32 folder.";
+			dirtyconfig |= modified;
+
 			if (dirtyconfig) Taskmaster.MarkDirtyINI(Taskmaster.cfg);
 
 			// Log.Information("Child process monitoring: {ChildControl}", (ControlChildren ? "Enabled" : "Disabled"));
@@ -871,6 +875,9 @@ namespace Taskmaster
 			if (!ProcessManagerUtility.FindPath(info))
 				return; // return ProcessState.Error;
 
+			if (IgnoreSystem32Path && info.Path.Contains(Environment.GetFolderPath(Environment.SpecialFolder.System)))
+				return;
+
 			ProcessController matchedprc = null;
 			// TODO: This needs to be FASTER
 			lock (watchlist_lock)
@@ -929,8 +936,35 @@ namespace Taskmaster
 			return; // return ProcessState.Invalid;
 		}
 
-		public static string[] ProtectList { get; private set; } = { "consent", "winlogon", "wininit", "csrss", "dwm", "taskmgr" };
-		public static string[] IgnoreList { get; private set; } = { "dllhost", "svchost", "taskeng", "consent", "taskhost", "rundll32", "conhost", "dwm", "wininit", "csrss", "winlogon", "services", "explorer", "taskmgr", "audiodg" };
+		public static string[] ProtectList { get; private set; } = {
+			"consent", // UAC, user account control prompt
+			"winlogon", // core system
+			"wininit", // core system
+			"csrss", // client server runtime, subsystems
+			"dwm", // desktop window manager
+			"taskmgr", // task manager
+			"LogonUI", // session lock
+			"services", // service control manager
+		};
+		public static string[] IgnoreList { get; private set; } = {
+			"svchost", // service host
+			"taskeng", // task scheduler
+			"consent", // UAC, user account control prompt
+			"taskhost", // task scheduler process host
+			"rundll32", // 
+			"dllhost", //
+			//"conhost", // console host, hosts command prompts (cmd.exe)
+			"dwm", // desktop window manager
+			"wininit", // core system
+			"csrss", // client server runtime, subsystems
+			"winlogon", // core system
+			"services", // service control manager
+			"explorer", // file manager
+			"taskmgr", // task manager
+			"audiodg" // audio device isolation
+		};
+
+		bool IgnoreSystem32Path = true;
 
 		const int LowestInvalidPid = 4;
 		bool IgnoreProcessID(int pid) => (pid <= LowestInvalidPid || ignorePids.Contains(pid));
@@ -942,11 +976,12 @@ namespace Taskmaster
 
 		public static bool ProtectedProcessName(string name)
 		{
-			if (Taskmaster.CaseSensitive)
-				return ProtectList.Contains(name);
-
-			return ProtectList.Contains(name, StringComparer.InvariantCultureIgnoreCase);
+			return ProtectList.Contains(
+				name,
+				Taskmaster.CaseSensitive ? StringComparer.InvariantCulture : StringComparer.InvariantCultureIgnoreCase
+				);
 		}
+		// %SYSTEMROOT%
 
 		/*
 		void ChildController(ProcessEx ci)
