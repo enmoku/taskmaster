@@ -160,8 +160,7 @@ namespace Taskmaster
 		{
 			ProcessController rv = null;
 			lock (execontrol_lock)
-				execontrol.TryGetValue(LowerCase(executable), out rv);
-
+				execontrol.TryGetValue(executable.ToLowerInvariant(), out rv);
 
 			return rv;
 		}
@@ -186,7 +185,9 @@ namespace Taskmaster
 		string freememoryignore = null;
 		async void FreeMemoryTick(object sender, ProcessEx info)
 		{
-			if (!string.IsNullOrEmpty(freememoryignore) && info.Name.Equals(freememoryignore)) return;
+			if (!string.IsNullOrEmpty(freememoryignore) &&
+				info.Name.Equals(freememoryignore, StringComparison.InvariantCultureIgnoreCase))
+				return;
 
 			try
 			{
@@ -427,7 +428,7 @@ namespace Taskmaster
 			else
 			{
 				lock (execontrol_lock)
-					execontrol.Add(LowerCase(prc.ExecutableFriendlyName), prc);
+					execontrol.Add(prc.ExecutableFriendlyName.ToLowerInvariant(), prc);
 
 				if (!string.IsNullOrEmpty(prc.Path))
 					WatchlistWithHybrid += 1;
@@ -648,18 +649,12 @@ namespace Taskmaster
 			{
 				lock (execontrol_lock)
 				{
-					if (!string.IsNullOrEmpty(prc.Executable))
-						execontrol.Remove(LowerCase(prc.ExecutableFriendlyName));
+					if (!string.IsNullOrEmpty(prc.ExecutableFriendlyName))
+						execontrol.Remove(prc.ExecutableFriendlyName.ToLowerInvariant());
 				}
 
 				watchlist.Remove(prc);
 			}
-		}
-
-		string LowerCase(string str)
-		{
-			Debug.Assert(!string.IsNullOrEmpty(str));
-			return Taskmaster.CaseSensitive ? str : str.ToLower();
 		}
 
 		readonly object waitforexit_lock = new object();
@@ -890,7 +885,7 @@ namespace Taskmaster
 
 					if (!string.IsNullOrEmpty(prc.Executable))
 					{
-						if (prc.Executable.Equals(info.Name, Taskmaster.CaseSensitive ? StringComparison.InvariantCulture : StringComparison.InvariantCultureIgnoreCase))
+						if (prc.Executable.Equals(info.Name, StringComparison.InvariantCultureIgnoreCase))
 						{
 							if (Taskmaster.DebugPaths)
 								Log.Debug("<Process> [{FriendlyName}] Path+Exe matched.", prc.FriendlyName);
@@ -971,15 +966,12 @@ namespace Taskmaster
 
 		public static bool IgnoreProcessName(string name)
 		{
-			return IgnoreList.Contains(name, Taskmaster.CaseSensitive ? StringComparer.InvariantCulture : StringComparer.InvariantCultureIgnoreCase);
+			return IgnoreList.Contains(name, StringComparer.InvariantCultureIgnoreCase);
 		}
 
 		public static bool ProtectedProcessName(string name)
 		{
-			return ProtectList.Contains(
-				name,
-				Taskmaster.CaseSensitive ? StringComparer.InvariantCulture : StringComparer.InvariantCultureIgnoreCase
-				);
+			return ProtectList.Contains(name, StringComparer.InvariantCultureIgnoreCase);
 		}
 		// %SYSTEMROOT%
 
@@ -1025,7 +1017,7 @@ namespace Taskmaster
 				ProcessController parent = null;
 				if (!denyChange)
 				{
-					if (execontrol.TryGetValue(LowerCase(ci.Process.ProcessName), out parent))
+					if (execontrol.TryGetValue(ci.Process.ProcessName.ToLower()), out parent))
 					{
 						try
 						{
@@ -1118,7 +1110,7 @@ namespace Taskmaster
 				return; // ProcessState.AccessDenied;
 			}
 
-			if (info.Id.Equals(Process.GetCurrentProcess().Id)) return; // ProcessState.OK; // IGNORE SELF
+			if (info.Id == Process.GetCurrentProcess().Id) return; // ProcessState.OK; // IGNORE SELF
 
 			// TODO: check proc.processName for presence in images.
 			ProcessController prc = null;
@@ -1126,7 +1118,7 @@ namespace Taskmaster
 			Debug.Assert(info != null);
 			
 			lock (execontrol_lock)
-				execontrol.TryGetValue(LowerCase(info.Name), out prc);
+				execontrol.TryGetValue(info.Name.ToLowerInvariant(), out prc);
 
 			if (prc != null)
 			{

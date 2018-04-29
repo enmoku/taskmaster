@@ -5,6 +5,7 @@
 	Fixed: Clear UI log caused the log to not have anything after.
 	Changed: Added a bit more logic to ensure tray becomes visible. May not actually help.
 	Added: Option to ignore apps in %SYSTEMROOT%/System32. Enabled by default. Partial implementation.
+	Removed: Support for case sensitive matching. Case will now always be ignored.
 ### 2018-04-28
 	Added: Power down monitors when session is locked. Core.ini has two settings for this, one to control user idle timer and second for instant power down.
 	Changed: Process adjusts are logged by default again.

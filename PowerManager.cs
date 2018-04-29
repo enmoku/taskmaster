@@ -901,7 +901,7 @@ namespace Taskmaster
 		{
 			if (string.IsNullOrEmpty(name)) return PowerMode.Undefined;
 
-			switch (name.ToLower())
+			switch (name.ToLowerInvariant())
 			{
 				case "power saver":
 					return PowerMode.PowerSaver;

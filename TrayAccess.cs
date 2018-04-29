@@ -562,13 +562,13 @@ var runtime = Environment.GetCommandLineArgs()[0];
 
 					if (dryrun)
 					{
-						bool rv = (runatstart.ToLowerInvariant().Equals(runvalue.ToLowerInvariant()));
+						bool rv = (runatstart.Equals(runvalue, StringComparison.InvariantCultureIgnoreCase));
 						return rv;
 					}
 
 					if (enabled)
 					{
-						if (runatstart.ToLowerInvariant().Equals(runvalue.ToLowerInvariant()))
+						if (runatstart.Equals(runvalue, StringComparison.InvariantCultureIgnoreCase))
 							return true;
 
 						key.SetValue(runatstart_key, runvalue);

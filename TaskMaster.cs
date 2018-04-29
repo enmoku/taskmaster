@@ -506,8 +506,6 @@ namespace Taskmaster
 		public static bool DebugNet { get; set; } = false;
 		public static bool DebugMic { get; set; } = false;
 
-		public static bool CaseSensitive = false;
-
 		public static bool Trace = false;
 		public static bool ShowInaction = false;
 
@@ -671,9 +669,6 @@ namespace Taskmaster
 			logsec["Show session actions"].Comment = "Show blurbs about actions taken relating to sessions.";
 			dirtyconfig |= modified;
 
-
-			CaseSensitive = optsec.GetSetDefault("Case sensitive", false, out modified).BoolValue;
-			dirtyconfig |= modified;
 			ShowOnStart = optsec.GetSetDefault("Show on start", true, out modified).BoolValue;
 			dirtyconfig |= modified;
 

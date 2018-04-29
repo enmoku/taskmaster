@@ -550,7 +550,7 @@ namespace Taskmaster
 						return; // return ProcessState.Error;
 				}
 
-				if (info.Match || info.Path.StartsWith(Path, Taskmaster.CaseSensitive ? StringComparison.InvariantCulture : StringComparison.InvariantCultureIgnoreCase)) // FIXME: this is done twice
+				if (info.Match || info.Path.StartsWith(Path, StringComparison.InvariantCultureIgnoreCase)) // FIXME: this is done twice
 				{
 					// OK
 					if (Taskmaster.DebugPaths && !info.Match)
