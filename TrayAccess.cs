@@ -164,6 +164,7 @@ namespace Taskmaster
 		{
 			powermanager = pman;
 			powermanager.onPlanChange += HighlightPowerModeEvent;
+
 			power_auto.Checked = powermanager.Behaviour == PowerManager.PowerBehaviour.Auto;
 			power_auto.Enabled = true;
 			HighlightPowerMode();
@@ -367,16 +368,13 @@ namespace Taskmaster
 
 			n.Stop();
 
-			if (RegisterExplorerExit(procs))
-			{
-			}
-			else
+			if (!RegisterExplorerExit(procs))
 			{
 				Log.Warning("<Tray> Explorer registration failed.");
 				return;
 			}
 
-			Refresh();// TODO: Is this enough/necessary? Doesn't seem to be. WinForms appears to recover on its own.
+			EnsureVisible();
 		}
 
 		System.Diagnostics.Process[] ExplorerInstances
@@ -473,6 +471,41 @@ namespace Taskmaster
 		}
 
 		public void Refresh() => Tray.Visible = true;
+
+		int ensuringvisibility = 0;
+		public async void EnsureVisible()
+		{
+			if (!Atomic.Lock(ref ensuringvisibility)) return;
+
+			try
+			{
+				Enable();
+
+				int attempts = 0;
+				while (!Tray.Visible)
+				{
+					Log.Debug("<Tray> Not visible, fixing...");
+
+					Refresh();
+
+					await Task.Delay(15 * 1000).ConfigureAwait(true);
+
+					if (++attempts >= 5)
+					{
+						Log.Fatal("<Tray> Failure to become visible after 5 attempts. Exiting to avoid ghost status.");
+						Taskmaster.UnifiedExit();
+					}
+				}
+			}
+			catch (Exception ex)
+			{
+				Logging.Stacktrace(ex);
+			}
+			finally
+			{
+				Atomic.Unlock(ref ensuringvisibility);
+			}
+		}
 
 		void RunAtStartMenuClick(object sender, EventArgs ev)
 		{

@@ -1,8 +1,14 @@
 ﻿Comprehensive changes can be found in Git change history:
 	https://github.com/mkahvi/taskmaster/commits/master
 
+### 2018-04-29
+	Fixed: Clear UI log caused the log to not have anything after.
+	Changed: Added a bit more logic to ensure tray becomes visible. May not actually help.
 ### 2018-04-28
 	Added: Power down monitors when session is locked. Core.ini has two settings for this, one to control user idle timer and second for instant power down.
+	Changed: Process adjusts are logged by default again.
+	Added: Session lock actions are logged by default.
+	Added: Configuration for the above added to Configuration>Logging and added two more debug options.
 ### 2018-04-25
 	Added: [Debug] section in Core.ini with secret options to enable various debug functions at launch.
 ### 2018-04-24

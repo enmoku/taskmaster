@@ -396,7 +396,6 @@ namespace Taskmaster
 			Task[] init =
 			{
 				aware ? Task.Run(() => { selfaware = new SelfAwareness(); }) : Task.CompletedTask,
-				tray ? Task.Run(() => { trayaccess = new TrayAccess(); }) : Task.CompletedTask,
 				PowerManagerEnabled ? (Task.Run(() => { powermanager = new PowerManager(); })) : Task.CompletedTask,
 				ProcessMonitorEnabled ? (Task.Run(() => { processmanager = new ProcessManager(); })) : Task.CompletedTask,
 				(ActiveAppMonitorEnabled && ProcessMonitorEnabled) ? (Task.Run(()=> {activeappmonitor = new ActiveAppManager(eventhook:false); })) : Task.CompletedTask,
@@ -405,6 +404,9 @@ namespace Taskmaster
 				MaintenanceMonitorEnabled ? (Task.Run(() => { diskmanager = new DiskManager(); })) : Task.CompletedTask,
 				HealthMonitorEnabled ? (Task.Run(() => { healthmonitor = new HealthMonitor(); })) : Task.CompletedTask,
 			};
+
+			// WinForms makes the following components not load nicely if not done here.
+			if (tray) trayaccess = new TrayAccess();
 
 			Log.Information("<Core> Waiting for component loading.");
 			Task.WaitAll(init);
@@ -1307,7 +1309,7 @@ namespace Taskmaster
 
 				if (!RunOnce)
 				{
-					trayaccess.Enable();
+					trayaccess.EnsureVisible();
 
 					System.Windows.Forms.Application.Run(); // WinForms
 
