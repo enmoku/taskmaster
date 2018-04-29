@@ -2329,7 +2329,8 @@ namespace Taskmaster
 		{
 			lock (loglistLock)
 			{
-				loglist.Clear();
+				//loglist.Clear();
+				loglist.Items.Clear();
 				MemoryLog.Clear();
 			}
 		}
