@@ -1327,7 +1327,7 @@ namespace Taskmaster
 			{
 				start = info.Process.StartTime;
 			}
-			catch { /* NOP */ }
+			catch { } // NOP, we don't care 
 			finally
 			{
 				if (start == DateTime.MinValue)
@@ -1447,7 +1447,8 @@ namespace Taskmaster
 				// https://msdn.microsoft.com/en-us/library/windows/desktop/aa393014(v=vs.85).aspx
 
 				var scope = new System.Management.ManagementScope(
-					new System.Management.ManagementPath(@"\\.\root\CIMV2")); // @"\\.\root\CIMV2"
+					new System.Management.ManagementPath(@"\\.\root\CIMV2")
+				);
 
 				/*
 				// Causes access denied error?

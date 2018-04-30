@@ -113,31 +113,15 @@ namespace Taskmaster
 			Corrections = (stats.Contains("Statistics") && stats["Statistics"].Contains("Corrections")) ? stats["Statistics"]["Corrections"].IntValue : 0;
 
 			// DEVICES
-			/*
-			foreach (var adev in CSCore.SoundIn.WaveInDevice.EnumerateDevices())
-			{
-			}
-			*/
-
-			// CSCORE
-			// var devs = CSCore.CoreAudioAPI.MMDeviceEnumerator.EnumerateDevices(CSCore.CoreAudioAPI.DataFlow.Capture, CSCore.CoreAudioAPI.DeviceState.Active);
 
 			// find control interface
 			// FIXME: Deal with multiple recording devices.
 			var waveInDeviceNumber = IntPtr.Zero; // 0 is default or first?
 			var mixerLine = new NAudio.Mixer.MixerLine(waveInDeviceNumber, 0, NAudio.Mixer.MixerFlags.WaveIn);
 
-			Control = (NAudio.Mixer.UnsignedMixerControl)mixerLine.Controls.FirstOrDefault((control) => control.ControlType == NAudio.Mixer.MixerControlType.Volume);
-			/*
-			foreach (var control in mixerLine.Controls)
-			{
-				if (control.ControlType == NAudio.Mixer.MixerControlType.Volume)
-				{
-					Control = (NAudio.Mixer.UnsignedMixerControl)control;
-					break;
-				}
-			}
-			*/
+			Control = (NAudio.Mixer.UnsignedMixerControl)mixerLine.Controls.FirstOrDefault(
+				(control) => control.ControlType == NAudio.Mixer.MixerControlType.Volume
+			);
 
 			if (Control == null)
 			{

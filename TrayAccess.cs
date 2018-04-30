@@ -444,7 +444,7 @@ namespace Taskmaster
 						powermanager = null;
 					}
 				}
-				catch { /*NOP, don't care */ }
+				catch { } // NOP, don't care
 
 				if (Tray != null)
 				{
@@ -527,9 +527,8 @@ namespace Taskmaster
 			menu_runatstart.Checked = RunAtStartRegRun(!menu_runatstart.Checked);
 
 			/*
-
-// This will solve the high privilege problem, but really? Do I want to?
-var runtime = Environment.GetCommandLineArgs()[0];
+			// This will solve the high privilege problem, but really? Do I want to?
+			var runtime = Environment.GetCommandLineArgs()[0];
 			string args = "/Create /tn MKAh-Taskmaster /tr \"" + runtime + "\" /sc onlogon /it";
 			if (isadmin)
 				args += " /RL HIGHEST";

@@ -24,22 +24,6 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-/*
- * TODO: Add process IO priority modification.
- * TODO: Detect if the apps hang and lower their processing priorities as result.
- * 
- * MAYBE:
- *  - Monitor [MFT] fragmentation?
- *  - Detect which apps are making noise?
- *  - Detect high disk usage.
- *  - Clean %TEMP% with same design goals as the OS builtin disk cleanup utility.
- *  - SMART stats? seems pointless...
- *  - Action logging. UPDATE: Whatever did this mean?
- * 
- * CONFIGURATION:
- * TODO: Config in app directory
- */
-
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -201,25 +185,6 @@ namespace Taskmaster
 
 		public static void UnifiedExit()
 		{
-			/*
-			try
-			{
-				lock (mainwindow_lock)
-				{
-					if (mainwindow != null)
-					{
-						//mainwindow.BeginInvoke(new MethodInvoker(mainwindow.Close));
-						//mainwindow.Close(); // causes crashes relating to .Dispose()
-						//mainwindow = null;
-					}
-				}
-			}
-			catch (Exception ex)
-			{
-				Logging.Stacktrace(ex);
-			}
-			*/
-
 			Application.Exit(); // if this throws, it deserves to break everything
 		}
 
@@ -1079,7 +1044,7 @@ namespace Taskmaster
 								var nup = Convert.ToInt32(args[1]);
 								uptimeMin = nup.Constrain(5, 360);
 							}
-							catch { /* NOP */ }
+							catch { } // NOP
 						}
 
 						var uptime = TimeSpan.Zero;

@@ -518,9 +518,6 @@ namespace Taskmaster
 				}
 			}
 
-			// Console.WriteLine("Cause: " + ev.Cause.ToString() + ", ReadyToChange: " + readyToChange + ", Reaction: " + Reaction.ToString()
-			// 				  + ", Enacted: __" + ev.Handled.ToString() + "__, Pause: " + Pause + ", Mode: " + Behaviour.ToString());
-
 			ev.Mode = ReactionaryPlan;
 			onAutoAdjustAttempt?.Invoke(this, ev);
 		}
@@ -552,28 +549,29 @@ namespace Taskmaster
 			var restoremode = power.GetSetDefault("Restore mode", "Default", out modified).StringValue;
 			power["Restore mode"].Comment = "Default, Original, Saved, or specific power mode.";
 			dirtyconfig |= modified;
-			var restoremodel = restoremode.ToLowerInvariant();
-			if (restoremodel.Equals("original"))
+			switch (restoremode.ToLowerInvariant())
 			{
-				RestoreModeMethod = ModeMethod.Original;
-				RestoreMode = OriginalMode;
-			}
-			else if (restoremodel.Equals("default"))
-			{
-				RestoreModeMethod = ModeMethod.Default;
-				RestoreMode = AutoAdjust.DefaultMode;
-			}
-			else if (restoremodel.Equals("saved"))
-			{
-				RestoreModeMethod = ModeMethod.Saved;
-				RestoreMode = PowerMode.Undefined;
-			}
-			else
-			{
-				RestoreModeMethod = ModeMethod.Custom;
-				RestoreMode = GetModeByName(restoremode);
-				if (RestoreMode == PowerMode.Custom)
+				case "original":
+					RestoreModeMethod = ModeMethod.Original;
+					RestoreMode = OriginalMode;
+					break;
+				case "default":
+					RestoreModeMethod = ModeMethod.Default;
 					RestoreMode = AutoAdjust.DefaultMode;
+					break;
+				case "saved":
+					RestoreModeMethod = ModeMethod.Saved;
+					RestoreMode = PowerMode.Undefined;
+					break;
+				default:
+					RestoreModeMethod = ModeMethod.Custom;
+					RestoreMode = GetModeByName(restoremode);
+					if (RestoreMode == PowerMode.Custom)
+					{
+						// TODO: Complain about bad config
+						RestoreMode = AutoAdjust.DefaultMode;
+					}
+					break;
 			}
 
 			PowerdownDelay = power.GetSetDefault("Watchlist powerdown delay", 0, out modified).IntValue.Constrain(0, 60);

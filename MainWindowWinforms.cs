@@ -146,19 +146,7 @@ namespace Taskmaster
 				switch (e.CloseReason)
 				{
 					case CloseReason.UserClosing:
-						// X was pressed or similar, we're just hiding to tray.
-						/*
-						if (!Taskmaster.LowMemory)
-						{
-							Log.Verbose("Hiding window, keeping in memory.");
-							e.Cancel = true;
-							Hide();
-						}
-						else
-						{
-							Log.Verbose("Closing window, freeing memory.");
-						}
-						*/
+						// X was pressed or similar
 						break;
 					case CloseReason.WindowsShutDown:
 						Log.Debug("Exit: Windows shutting down.");
@@ -1377,28 +1365,8 @@ namespace Taskmaster
 			netlayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 32)); // why?
 			netlayout.Controls.Add(ifaceList);
 			netTab.Controls.Add(netlayout);
-
 			// End: Inet status
 
-			// Main Window row 6, settings
-			/*
-			ListView settingList = new ListView();
-			settingList.Dock = DockStyle.Top;
-			settingList.Width = lrows.Width - 3; // FIXME: why does 3 work? can't we do this automatically?
-			settingList.View = View.Details;
-			settingList.FullRowSelect = true;
-			settingList.Columns.Add("Key", 80);
-			settingList.Columns.Add("Value", 220);
-			settingList.Scrollable = true;
-			Configuration config = ConfigurationManager.OpenExeConfiguration(ConfigurationUserLevel.None);
-			if (config.AppSettings.Settings.Count > 0)
-			{
-				foreach (var key in config.AppSettings.Settings.AllKeys)
-				{
-					settingList.Items.Add(new ListViewItem(new string[] { key, config.AppSettings.Settings[key].Value }));
-				}
-			}
-			*/
 			// End: Settings
 
 			// Main Window, Path list
@@ -1409,28 +1377,6 @@ namespace Taskmaster
 				//Width = tabLayout.Width - 12,
 				AutoSize = true,
 			};
-
-			/*
-			// TODO: ADD SORTING
-
-			int sortColumn = -1;
-			SortOrder sortOrder = SortOrder.Ascending;
-
-			pathList.ListViewItemSorter
-			pathList.Sorting = SortOrder.Ascending;
-
-			pathList.ColumnClick += (object sender, ColumnClickEventArgs e) =>
-			{
-				if (e.Column == sortColumn)
-				{
-					sortOrder = sortOrder == SortOrder.Ascending ? SortOrder.Descending : SortOrder.Ascending;
-				}
-
-				sortColumn = e.Column;
-
-				pathList.Sort();
-			};
-			*/
 
 			// Rule Listing
 			watchlistRules = new ListView
@@ -1744,21 +1690,7 @@ namespace Taskmaster
 
 			// End: UI Log
 
-			/*
-			TrackBar tb = new TrackBar();
-			tb.Parent = micPanel;
-			tb.TickStyle = TickStyle.Both;
-			//tb.Size = new Size(150, 25);
-			//tb.Height 
-			tb.Dock = DockStyle.Fill; // fills parent
-									  //tb.Location = new Point(0, 0); // insert point
-			*/
-
 			tabLayout.SelectedIndex = opentab >= tabLayout.TabCount ? 0 : opentab;
-
-			//Controls.Add(menu);
-			//Controls.Add(layout);
-			//Controls.Add(statusbar);
 		}
 
 		StatusStrip statusbar;
@@ -1984,14 +1916,6 @@ namespace Taskmaster
 			{
 				try
 				{
-					/*
-					if (!Atomic.Lock(ref WatchlistEditLock))
-					{
-						Log.Warning("Only one item can be edited at a time.");
-						return;
-					}
-					*/
-
 					var li = watchlistRules.SelectedItems[0];
 					var name = li.SubItems[NameColumn].Text;
 					var prc = Taskmaster.processmanager.getWatchedController(name);
@@ -2119,23 +2043,6 @@ namespace Taskmaster
 			{
 				var ri = watchlistRules.SelectedItems[0];
 				var name = ri.SubItems[0].Text;
-				/*
-				//Log.Debug("'{RowName}' selected in UI", ri.SubItems[0]);
-				// TODO: Add info panel for selected item.
-				ProcessController pc = null;
-				foreach (var tpc in Taskmaster.processmanager.watchlist)
-				{
-					if (name == tpc.FriendlyName)
-					{
-						pc = tpc;
-						break;
-					}
-				}
-				if (pc == null) throw new ArgumentException(string.Format("{0} not found in watchlist.", name));
-
-				Log.Information("[{FriendlyName}] Last seen: {Date} {Time}",
-								pc.FriendlyName, pc.LastSeen.ToShortDateString(), pc.LastSeen.ToShortTimeString());
-				*/
 			}
 			catch (Exception ex) { Logging.Stacktrace(ex); }
 		}
@@ -2364,12 +2271,6 @@ namespace Taskmaster
 			List<int> appWidths = new List<int>(watchlistRules.Columns.Count);
 			for (int i = 0; i < watchlistRules.Columns.Count; i++)
 				appWidths.Add(watchlistRules.Columns[i].Width);
-
-			/*
-			List<int> pathWidths = new List<int>(pathList.Columns.Count);
-			for (int i = 0; i < pathList.Columns.Count; i++)
-				pathWidths.Add(pathList.Columns[i].Width);
-			*/
 
 			List<int> ifaceWidths = new List<int>(ifaceList.Columns.Count);
 			for (int i = 0; i < ifaceList.Columns.Count; i++)

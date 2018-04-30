@@ -289,7 +289,7 @@ namespace Taskmaster
 						stamp = ls.GetValue<long>();
 						LastSeen = stamp.Unixstamp();
 					}
-					catch { /* NOP */ }
+					catch { } // NOP
 				}
 			}
 		}
@@ -458,7 +458,7 @@ namespace Taskmaster
 				var rv = NativeMethods.SetPriorityClass(process.Handle, (uint)priority);
 				return rv;
 			}
-			catch { /* NOP, don't care */ }
+			catch { } // NOP, don't care
 			return false;
 		}
 
@@ -495,14 +495,6 @@ namespace Taskmaster
 					Log.Warning("[{FriendlyName}] {Exec} (#{Pid}) failed to refresh.", FriendlyName, info.Name, info.Id);
 				}
 			}
-
-			/*
-			ProcessPriorityClass oldPriority = process.PriorityClass;
-
-			bool rv = process.SetLimitedPriority(Priority, Increase, Decrease);
-			LastSeen = DateTime.Now;
-			Adjusts += 1;
-			*/
 
 			try
 			{
@@ -576,7 +568,7 @@ namespace Taskmaster
 				oldAffinity = info.Process.ProcessorAffinity;
 				oldPriority = info.Process.PriorityClass;
 			}
-			catch { /* NOP, don't care */ }
+			catch { } // NOP, don't care
 
 			var newPriority = oldPriority;
 

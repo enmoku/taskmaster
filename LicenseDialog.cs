@@ -120,24 +120,5 @@ namespace Taskmaster
 
 			Controls.Add(layout);
 		}
-
-		/*
-		bool disposed = false;
-		protected override void Dispose(bool disposing)
-		{
-			if (disposed)
-				return;
-
-			if (disposing)
-			{
-				if (Taskmaster.Trace)
-					Console.WriteLine("Disposing license dialog...");
-
-
-			}
-
-			disposed = true;
-		}
-		*/
 	}
 }

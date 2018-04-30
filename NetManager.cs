@@ -324,12 +324,7 @@ namespace Taskmaster
 				{
 					Dns.GetHostEntry(dnstestaddress); // FIXME: There should be some other method than DNS testing
 					InternetAvailable = true;
-
-					// Don't rely on DNS?
-					/*
-					Log.Debug("DEBUG: IPv6 interface: " + IPv6Interface.OperationalStatus.ToString()
-					   + "; IPv4 interface: " + IPv4Interface.OperationalStatus.ToString());
-					*/
+					// TODO: Don't rely on DNS?
 				}
 				catch (System.Net.Sockets.SocketException ex)
 				{
