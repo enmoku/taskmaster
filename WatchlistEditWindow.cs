@@ -563,8 +563,8 @@ namespace Taskmaster
 			var exfound = false;
 			if (exnam)
 			{
-				var procs = Process.GetProcessesByName(execName.Text);
-
+				var friendlyexe = System.IO.Path.GetFileNameWithoutExtension(execName.Text);
+				var procs = Process.GetProcessesByName(friendlyexe);
 				if (procs.Length > 0) exfound = true;
 			}
 

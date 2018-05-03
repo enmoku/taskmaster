@@ -794,6 +794,7 @@ namespace Taskmaster
 					{
 						//Log.Debug("PUTTING PREVIOUS FOREGROUND APP to BACKGROUND");
 						PreviousForegroundController.Pause(PreviousForegroundInfo);
+
 						onProcessHandled?.Invoke(this, new ProcessEventArgs() { Control = PreviousForegroundController, Info = PreviousForegroundInfo, State = ProcessEventArgs.ProcessState.Reduced });
 					}
 				}

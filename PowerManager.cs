@@ -994,61 +994,68 @@ namespace Taskmaster
 		public async Task Release(int sourcePid = -1)
 		{
 			if (Taskmaster.DebugPower)
-				Log.Debug("<Power> Restore({Source})", sourcePid);
+				Log.Debug("<Power> Restore(#{Source})", sourcePid);
 
 			Debug.Assert(sourcePid == 0 || sourcePid > 4);
 			if (Paused) return; // TODO: What to do in the unlikely event of this being called while paused?
 
-			lock (forceModeSources_lock)
+			try
 			{
-				if (sourcePid == 0)
+				lock (forceModeSources_lock)
 				{
-					forceModeSources.Clear();
-					if (Taskmaster.DebugPower)
-						Log.Debug("<Power> Cleared forced list.");
-				}
-				else if (forceModeSources.Contains(sourcePid))
-				{
-					forceModeSources.Remove(sourcePid);
-					if (Taskmaster.DebugPower && Taskmaster.Trace)
-						Log.Debug("<Power> Force mode source freed, {Count} remain.", forceModeSources.Count);
-				}
-				else
-				{
-					if (Taskmaster.DebugPower)
-						Log.Debug("<Power> Restore mode called for object [{Source}] that has no forcing registered. Or waitlist was expunged.", sourcePid);
-				}
-			}
-
-			if (PowerdownDelay > 0)
-			{
-				await Task.Delay(PowerdownDelay * 1000);
-			}
-
-			lock (forceModeSources_lock)
-			{
-				if (forceModeSources.Count == 0)
-				{
-					// TODO: Restore Powerdown delay functionality here.
-
-					if (Taskmaster.DebugPower)
-						Log.Debug("<Power> Restoring power mode!");
-
-					Restore();
-
-					Forced = false;
-				}
-				else
-				{
-					if (Taskmaster.DebugPower)
+					if (sourcePid == 0)
 					{
-						Log.Debug("<Power> Forced mode still requested by {sources} sources.", forceModeSources.Count);
-						if (forceModeSources.Count > 0)
+						forceModeSources.Clear();
+						if (Taskmaster.DebugPower)
+							Log.Debug("<Power> Cleared forced list.");
+					}
+					else if (forceModeSources.Contains(sourcePid))
+					{
+						forceModeSources.Remove(sourcePid);
+						if (Taskmaster.DebugPower && Taskmaster.Trace)
+							Log.Debug("<Power> Force mode source freed, {Count} remain.", forceModeSources.Count);
+					}
+					else
+					{
+						if (Taskmaster.DebugPower)
+							Log.Debug("<Power> Restore mode called for object [{Source}] that has no forcing registered. Or waitlist was expunged.", sourcePid);
+					}
+				}
+
+				if (PowerdownDelay > 0)
+				{
+					await Task.Delay(PowerdownDelay * 1000);
+				}
+
+				lock (forceModeSources_lock)
+				{
+					if (forceModeSources.Count == 0)
+					{
+						// TODO: Restore Powerdown delay functionality here.
+
+						if (Taskmaster.DebugPower)
+							Log.Debug("<Power> Restoring power mode!");
+
+						Restore();
+
+						Forced = false;
+					}
+					else
+					{
+						if (Taskmaster.DebugPower)
 						{
-							Log.Debug("<Power> Sources: {Sources}", string.Join(", ", forceModeSources.ToArray()));
+							Log.Debug("<Power> Forced mode still requested by {sources} sources.", forceModeSources.Count);
+							if (forceModeSources.Count > 0)
+							{
+								Log.Debug("<Power> Sources: {Sources}", string.Join(", ", forceModeSources.ToArray()));
+							}
 						}
 					}
 				}
+			}
+			catch (Exception ex)
+			{
+				Logging.Stacktrace(ex);
 			}
 		}
 
@@ -1145,14 +1152,12 @@ namespace Taskmaster
 			{
 				SavedMode = RestoreModeMethod == ModeMethod.Saved ? CurrentMode : RestoreMode;
 				setMode(mode);
-			}
 
-			if (Taskmaster.DebugPower)
+				if (Taskmaster.DebugPower) Log.Debug("<Power> Forced to: {PowerMode}", CurrentMode);
+			}
+			else
 			{
-				if (rv)
-					Log.Debug("<Power> Forced to: {PowerMode}", CurrentMode);
-				else
-					Log.Debug("<Power> Force request for mode that is already active. Ignoring.");
+				if (Taskmaster.DebugPower) Log.Debug("<Power> Force power mode for mode that is already active. Ignoring.");
 			}
 
 			return rv;

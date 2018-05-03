@@ -441,7 +441,7 @@ namespace Taskmaster
 			return Taskmaster.powermanager.Force(PowerPlan, info.Id);
 		}
 
-		void UndoPower(ProcessEx info) => Taskmaster.powermanager.Release(info.Id);
+		void UndoPower(ProcessEx info) => Taskmaster.powermanager?.Release(info.Id);
 
 		/*
 		// Windows doesn't allow setting this for other processes
