@@ -43,7 +43,7 @@ namespace Taskmaster
 		{
 			DialogResult = DialogResult.Abort;
 
-			Controller = new ProcessController("Unnamed", ProcessPriorityClass.Normal, 0)
+			Controller = new ProcessController("Unnamed")
 			{
 				Enabled = true,
 				Valid = true,
@@ -118,16 +118,30 @@ namespace Taskmaster
 
 			// -----------------------------------------------
 
+			// TODO: Warn about conflicting section name
+
 			if (!newPrc)
 				Controller.DeleteConfig();
 
 			Controller.FriendlyName = friendlyName.Text.Trim();
 			Controller.Executable = execName.Text.Length > 0 ? execName.Text.Trim() : null;
 			Controller.Path = pathName.Text.Length > 0 ? pathName.Text.Trim() : null;
-			Controller.Priority = ProcessHelpers.IntToPriority(priorityClass.SelectedIndex); // is this right?
-			Controller.Increase = increasePrio.Checked;
-			Controller.Decrease = decreasePrio.Checked;
-			Controller.Affinity = new IntPtr(cpumask == 0 ? ProcessManager.allCPUsMask : cpumask);
+			if (priorityClass.SelectedIndex == 5)
+			{
+				Controller.Priority = null;
+				Controller.Increase = false;
+				Controller.Decrease = false;
+			}
+			else
+			{
+				Controller.Priority = ProcessHelpers.IntToPriority(priorityClass.SelectedIndex); // is this right?
+				Controller.Increase = increasePrio.Checked;
+				Controller.Decrease = decreasePrio.Checked;
+			}
+			if (cpumask == 0)
+				Controller.Affinity = null;
+			else
+				Controller.Affinity = new IntPtr(cpumask);
 			Controller.ModifyDelay = (int)(modifyDelay.Value * 1000);
 			Controller.PowerPlan = PowerManager.GetModeByName(powerPlan.Text);
 			if (Controller.PowerPlan == PowerInfo.PowerMode.Custom) Controller.PowerPlan = PowerInfo.PowerMode.Undefined;
@@ -336,11 +350,11 @@ namespace Taskmaster
 			{
 				Dock = DockStyle.Left,
 				DropDownStyle = ComboBoxStyle.DropDownList,
-				Items = { "Idle", "Below Normal", "Normal", "Above Normal", "High" }, // System.Enum.GetNames(typeof(ProcessPriorityClass)), 
+				Items = { "Idle", "Below Normal", "Normal", "Above Normal", "High", "Ignored" }, // System.Enum.GetNames(typeof(ProcessPriorityClass)), 
 				SelectedIndex = 2
 			};
 			priorityClass.Width = 180;
-			priorityClass.SelectedIndex = Controller.Priority.ToInt32();
+			priorityClass.SelectedIndex = Controller.Priority?.ToInt32() ?? 5;
 			tooltip.SetToolTip(priorityClass, "CPU priority for the application.\nIf both increase and decrease are disabled, this has no effect.");
 			var incdecpanel = new TableLayoutPanel()
 			{
@@ -360,6 +374,19 @@ namespace Taskmaster
 			lt.Controls.Add(priopanel);
 			lt.Controls.Add(new Label()); // empty
 
+			priorityClass.SelectedIndexChanged += (s, e) => {
+				if (priorityClass.SelectedIndex == 5)
+				{
+					increasePrio.Enabled = false;
+					decreasePrio.Enabled = false;
+				}
+				else
+				{
+					increasePrio.Enabled = true;
+					decreasePrio.Enabled = true;
+				}
+			};
+
 			// lt.Controls.Add(priorityClass);
 
 			// AFFINITY
@@ -367,14 +394,7 @@ namespace Taskmaster
 			affinityMask.Width = 80;
 			affinityMask.Maximum = ProcessManager.allCPUsMask;
 			affinityMask.Minimum = 0;
-			try
-			{
-				affinityMask.Value = (Controller.Affinity.ToInt32() == ProcessManager.allCPUsMask ? 0 : Controller.Affinity.ToInt32());
-			}
-			catch
-			{
-				affinityMask.Value = 0;
-			}
+			affinityMask.Value = (Controller.Affinity?.ToInt32() ?? 0);
 
 			tooltip.SetToolTip(affinityMask, "CPU core afffinity as integer mask.\nEnter 0 to let OS manage this as normal.\nFull affinity is same as 0, there's no difference.\nExamples:\n14 = all but first core on quadcore.\n254 = all but first core on octocore.");
 
@@ -398,7 +418,7 @@ namespace Taskmaster
 
 			var list = new List<CheckBox>();
 
-			cpumask = Controller.Affinity.ToInt32();
+			cpumask = Controller.Affinity?.ToInt32() ?? 0;
 			for (int bit = 0; bit < ProcessManager.CPUCount; bit++)
 			{
 				var box = new CheckBox();
@@ -406,18 +426,18 @@ namespace Taskmaster
 				box.AutoSize = true;
 				box.Checked = ((cpumask & (1 << bitoff)) != 0);
 				box.CheckedChanged += (sender, e) =>
-								{
-									if (box.Checked)
-									{
-										cpumask |= (1 << bitoff);
-										affinityMask.Value = cpumask;
-									}
-									else
-									{
-										cpumask &= ~(1 << bitoff);
-										affinityMask.Value = cpumask;
-									}
-								};
+				{
+					if (box.Checked)
+					{
+						cpumask |= (1 << bitoff);
+						affinityMask.Value = cpumask;
+					}
+					else
+					{
+						cpumask &= ~(1 << bitoff);
+						affinityMask.Value = cpumask;
+					}
+				};
 				list.Add(box);
 				corelayout.Controls.Add(new Label
 				{
@@ -526,13 +546,11 @@ namespace Taskmaster
 			// lt.Controls.Add(new Label { Text=""})
 
 			var finalizebuttons = new TableLayoutPanel() { ColumnCount = 2, AutoSize = true };
-			var saveButton = new Button(); // SAVE
-			saveButton.Text = "Save";
+			var saveButton = new Button() { Text = "Save" }; // SAVE
 			saveButton.Click += SaveInfo;
 			finalizebuttons.Controls.Add(saveButton);
 			// lt.Controls.Add(saveButton);
-			var cancelButton = new Button(); // CLOSE
-			cancelButton.Text = "Cancel";
+			var cancelButton = new Button() { Text = "Cancel" }; // CLOSE
 			cancelButton.Click += (sender, e) =>
 			{
 				DialogResult = DialogResult.Cancel;
@@ -540,10 +558,7 @@ namespace Taskmaster
 			};
 			finalizebuttons.Controls.Add(cancelButton);
 
-			var validatebutton = new Button()
-			{
-				Text = "Validate"
-			};
+			var validatebutton = new Button() { Text = "Validate" };
 			validatebutton.Click += ValidateWatchedItem;
 			validatebutton.Margin = CustomPadding;
 
@@ -604,12 +619,14 @@ namespace Taskmaster
 
 			if ((rescanFreq.Value > 0) && !exnam)
 				sbs.Append("Rescan frequency REQUIRES executable to be defined.").AppendLine();
-			if (increasePrio.Checked && decreasePrio.Checked)
+			if (priorityClass.SelectedIndex == 5)
 				sbs.Append("Priority class is to be ignored.").AppendLine();
+			if (cpumask == 0)
+				sbs.Append("Affinity is to be ignored.").AppendLine();
 			if (ignorelist.Items.Count > 0 && execName.Text.Length > 0)
 				sbs.Append("Ignore list is meaningless with executable defined.").AppendLine();
 
-			MessageBox.Show(sbs.ToString(), "Validation results", MessageBoxButtons.OK, MessageBoxIcon.Information, MessageBoxDefaultButton.Button1, MessageBoxOptions.DefaultDesktopOnly, false);
+			MessageBox.Show(sbs.ToString(), "Validation results", MessageBoxButtons.OK, MessageBoxIcon.Information, MessageBoxDefaultButton.Button1);
 		}
 	}
 }

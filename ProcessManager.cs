@@ -381,7 +381,7 @@ namespace Taskmaster
 		{
 			var rv = true;
 
-			if (prc.ForegroundOnly && prc.BackgroundPriority.ToInt32() >= prc.Priority.ToInt32())
+			if (prc.Priority.HasValue && prc.ForegroundOnly && prc.BackgroundPriority.ToInt32() >= prc.Priority.Value.ToInt32())
 			{
 				prc.ForegroundOnly = false;
 				Log.Warning("[{Friendly}] Background priority equal or higher than foreground priority, ignoring.", prc.FriendlyName);
@@ -562,15 +562,17 @@ namespace Taskmaster
 					continue;
 				}
 
-				if (!section.Contains("Priority") && !section.Contains("Affinity"))
+				if (!section.Contains("Priority") && !section.Contains("Affinity") && !section.Contains("Power mode"))
 				{
 					// TODO: Deal with incorrect configuration lacking image
-					Log.Warning("'{SectionName}' has no priority nor affinity.", section.Name);
+					Log.Warning("[{SectionName}] No priority, affinity, nor power plan. Ignoring.", section.Name);
 					continue;
 				}
 
-				var aff = section.TryGet("Affinity")?.IntValue ?? allCPUsMask;
-				var prio = section.TryGet("Priority")?.IntValue ?? 2;
+				var aff = section.TryGet("Affinity")?.IntValue ?? 0;
+				var prio = section.TryGet("Priority")?.IntValue ?? -1;
+				ProcessPriorityClass? prioR = null;
+				if (prio >= 0) prioR = ProcessHelpers.IntToPriority(prio);
 				var pmodes = section.TryGet("Power mode")?.StringValue ?? null;
 				var pmode = PowerManager.GetModeByName(pmodes);
 				if (pmode == PowerInfo.PowerMode.Custom)
@@ -579,7 +581,7 @@ namespace Taskmaster
 					pmode = PowerInfo.PowerMode.Undefined;
 				}
 
-				var prc = new ProcessController(section.Name, ProcessHelpers.IntToPriority(prio), (aff != 0 ? aff : allCPUsMask))
+				var prc = new ProcessController(section.Name, prioR, (aff != 0 ? aff : allCPUsMask))
 				{
 					Enabled = section.TryGet("Enabled")?.BoolValue ?? true,
 					Executable = section.TryGet("Image")?.StringValue ?? null,
@@ -603,6 +605,18 @@ namespace Taskmaster
 					AllowPaging = (section.TryGet("Allow paging")?.BoolValue ?? false),
 				};
 
+				if (!prc.Priority.HasValue)
+				{
+					prc.Increase = false;
+					prc.Decrease = false;
+				}
+
+				if (string.IsNullOrEmpty(prc.Executable) && prc.Rescan > 0)
+				{
+					prc.Rescan = 0;
+					Log.Warning("[{Name}] Rescan defined with no executable name.", prc.FriendlyName);
+				}
+
 				int[] resize = section.TryGet("Resize")?.IntValueArray ?? null; // width,height
 				if (resize != null && resize.Length == 4)
 				{
@@ -613,7 +627,7 @@ namespace Taskmaster
 						&& (!prc.RememberPos && resize[0] == 0 && resize[1] == 0))
 					{
 						prc.Resize = null;
-						Log.Warning("[{Name}] Resize malconfigured, ignoring.", prc.FriendlyName);
+						Log.Warning("[{Name}] Resize malconfigured, ignoring it.", prc.FriendlyName);
 					}
 					else
 						prc.Resize = resize;

@@ -245,9 +245,11 @@ namespace Taskmaster
 
 				litem.SubItems[NameColumn].Text = prc.FriendlyName;
 				litem.SubItems[ExeColumn].Text = prc.Executable;
-				var noprio = (prc.Increase == false && prc.Decrease == false);
-				litem.SubItems[PrioColumn].Text = (noprio ? "--- Any --- " : prc.Priority.ToString());
-				litem.SubItems[AffColumn].Text = (prc.Affinity.ToInt32() == ProcessManager.allCPUsMask ? "--- Any ---" : Convert.ToString(prc.Affinity.ToInt32(), 2).PadLeft(ProcessManager.CPUCount, '0'));
+				litem.SubItems[PrioColumn].Text = prc.Priority?.ToString() ?? "--- Any --- ";
+				string aff = "--- Any ---";
+				if (prc.Affinity.HasValue && prc.Affinity.Value.ToInt32() != ProcessManager.allCPUsMask)
+					aff = Convert.ToString(prc.Affinity.Value.ToInt32(), 2).PadLeft(ProcessManager.CPUCount, '0');
+				litem.SubItems[AffColumn].Text = aff;
 				litem.SubItems[PowerColumn].Text = (prc.PowerPlan != PowerInfo.PowerMode.Undefined ? prc.PowerPlan.ToString() : "--- Any ---");
 				// skip adjusts
 				litem.SubItems[PathColumn].Text = (string.IsNullOrEmpty(prc.Path) ? "--- Any ---" : prc.Path);
@@ -318,8 +320,8 @@ namespace Taskmaster
 
 			rescanRequest += processmanager.ScanEverythingRequest;
 
-			ProcessController.onLocate += WatchlistPathLocatedEvent;
-			ProcessController.onTouch += ProcessTouchEvent;
+			ProcessController.Located += WatchlistPathLocatedEvent;
+			ProcessController.Touched += ProcessTouchEvent;
 
 			BeginInvoke(new Action(() => {
 				processingcount.Text = ProcessManager.Handling.ToString();
@@ -379,7 +381,7 @@ namespace Taskmaster
 					li.SubItems[PathColumn].ForeColor = GrayText;
 				if (prc.PowerPlan == PowerInfo.PowerMode.Undefined)
 					li.SubItems[PowerColumn].ForeColor = GrayText;
-				if (prc.Affinity.ToInt32() == ProcessManager.allCPUsMask)
+				if (!prc.Affinity.HasValue)
 					li.SubItems[AffColumn].ForeColor = GrayText;
 			}
 			catch (Exception ex)
@@ -402,25 +404,26 @@ namespace Taskmaster
 		int num = 1;
 		void AddToWatchlistList(ProcessController prc)
 		{
-			var noprio = (prc.Increase == false && prc.Decrease == false);
+			string aff = "--- Any ---";
+			if (prc.Affinity.HasValue && prc.Affinity.Value.ToInt32() != ProcessManager.allCPUsMask)
+				aff = Convert.ToString(prc.Affinity.Value.ToInt32(), 2).PadLeft(ProcessManager.CPUCount, '0');
 
 			var litem = new ListViewItem(new string[] {
 				(num++).ToString(),
-					prc.FriendlyName, //.ToString(),
-					prc.Executable,
-					(noprio ? "--- Any --- " : prc.Priority.ToString()),
-						(prc.Affinity.ToInt32() == ProcessManager.allCPUsMask ? "--- Any ---" : Convert.ToString(prc.Affinity.ToInt32(), 2).PadLeft(ProcessManager.CPUCount, '0')),
-						(prc.PowerPlan != PowerInfo.PowerMode.Undefined? prc.PowerPlan.ToString() : "--- Any ---"),
+				prc.FriendlyName, //.ToString(),
+				prc.Executable,
+				(prc.Priority?.ToString() ?? "--- Any --- "),
+				aff,
+				(prc.PowerPlan != PowerInfo.PowerMode.Undefined ? prc.PowerPlan.ToString() : "--- Any ---"),
 				//(pc.Rescan>0 ? pc.Rescan.ToString() : "n/a"),
-					prc.Adjusts.ToString(),
-						//(pc.LastSeen != DateTime.MinValue ? pc.LastSeen.ToLocalTime().ToString() : "Never"),
+				prc.Adjusts.ToString(),
+				//(pc.LastSeen != DateTime.MinValue ? pc.LastSeen.ToLocalTime().ToString() : "Never"),
 				(string.IsNullOrEmpty(prc.Path) ? "--- Any ---" : prc.Path)
-					});
+			});
 
 			lock (watchlistrules_lock)
 				watchlistRules.Items.Add(litem);
 			// add calls sort()???
-
 
 			lock (appw_lock)
 				WatchlistMap.Add(prc, litem);
@@ -2008,10 +2011,14 @@ namespace Taskmaster
 						sbs.Append("Image = ").Append(prc.ExecutableFriendlyName).AppendLine();
 					if (!string.IsNullOrEmpty(prc.Path))
 						sbs.Append("Path = ").Append(prc.Path).AppendLine();
-					sbs.Append("Priority = ").Append(prc.Priority.ToInt32()).AppendLine();
-					sbs.Append("Increase = ").Append(prc.Increase).AppendLine();
-					sbs.Append("Decrease = ").Append(prc.Decrease).AppendLine();
-					sbs.Append("Affinity = ").Append(prc.Affinity.ToInt32()).AppendLine();
+					if (prc.Priority.HasValue)
+					{
+						sbs.Append("Priority = ").Append(prc.Priority.Value.ToInt32()).AppendLine();
+						sbs.Append("Increase = ").Append(prc.Increase).AppendLine();
+						sbs.Append("Decrease = ").Append(prc.Decrease).AppendLine();
+					}
+					if (prc.Affinity.HasValue)
+						sbs.Append("Affinity = ").Append(prc.Affinity.Value.ToInt32()).AppendLine();
 					if (prc.PowerPlan != PowerInfo.PowerMode.Undefined)
 						sbs.Append("Power plan = ").Append(PowerManager.PowerModes[(int)prc.PowerPlan]).AppendLine();
 					if (prc.Rescan > 0)
@@ -2020,6 +2027,8 @@ namespace Taskmaster
 						sbs.Append("Allow paging = ").Append(prc.AllowPaging).AppendLine();
 					if (prc.ForegroundOnly)
 						sbs.Append("Foreground only = ").Append(prc.ForegroundOnly).AppendLine();
+
+					// TODO: Add Resize and Modify Delay
 
 					try
 					{
@@ -2337,8 +2346,8 @@ namespace Taskmaster
 				catch { }
 				try
 				{
-					ProcessController.onTouch -= ProcessTouchEvent;
-					ProcessController.onLocate -= WatchlistPathLocatedEvent;
+					ProcessController.Touched -= ProcessTouchEvent;
+					ProcessController.Located -= WatchlistPathLocatedEvent;
 					processmanager.onWaitForExitEvent -= ExitWaitListHandler; //ExitWaitListHandler;
 					rescanRequest -= processmanager.ScanEverythingRequest;
 					processmanager.onInstanceHandling -= ProcessNewInstanceCount;
