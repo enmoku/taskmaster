@@ -95,6 +95,7 @@ namespace Taskmaster
 			if (Configs.TryGetValue(configfile, out var retcfg))
 			{
 				Configs.Remove(configfile);
+				ConfigPaths.Remove(retcfg);
 			}
 		}
 
@@ -135,6 +136,8 @@ namespace Taskmaster
 		public static PowerManager powermanager = null;
 		public static ActiveAppManager activeappmonitor = null;
 		public static HealthMonitor healthmonitor = null;
+
+		public static object watchlist_lock = new object();
 
 		public static void MainWindowClose(object sender, EventArgs e)
 		{
@@ -494,8 +497,6 @@ namespace Taskmaster
 
 		// public static bool LowMemory { get; private set; } = true; // low memory mode; figure out way to auto-enable this when system is low on memory
 
-		public static int LoopSleep = 0;
-
 		public static int TempRescanDelay = 60 * 60 * 1000;
 		public static int TempRescanThreshold = 1000;
 
@@ -514,20 +515,21 @@ namespace Taskmaster
 
 		public static void MarkDirtyINI(SharpConfig.Configuration dirtiedcfg)
 		{
-			if (ConfigDirty.TryGetValue(dirtiedcfg, out bool unused))
-				ConfigDirty.Remove(dirtiedcfg);
-
 			if (ImmediateSave)
 			{
 				SaveConfig(dirtiedcfg);
 			}
 			else
 			{
-				ConfigDirty.Add(dirtiedcfg, true);
+				try
+				{
+					ConfigDirty.Add(dirtiedcfg, true);
+				}
+				catch { } // NOP, already in
 			}
 		}
 
-		public static string ConfigVersion = "alpha.1";
+		public static string ConfigVersion = "alpha.2";
 
 		public static bool RequestExitConfirm = true;
 		public static bool AutoOpenMenus = true;
@@ -1175,10 +1177,25 @@ namespace Taskmaster
 			}
 		}
 
+		static void UpgradeAppSettings()
+		{
+			/*
+			if (Properties.Settings.Default.UpgradeNeeded)
+			{
+				Properties.Settings.Default.Upgrade();
+				Properties.Settings.Default.UpgradeNeeded = false;
+				Properties.Settings.Default.Save();
+				//Properties.Settings.Default.Reload(); // part of .Upgrade()
+			}
+			*/
+		}
+
 		// entry point to the application
 		[STAThread] // supposedly needed to avoid shit happening with the WinForms GUI and other GUI toolkits
 		static public int Main(string[] args)
 		{
+			UpgradeAppSettings();
+
 			LicenseBoiler();
 
 			// INIT LOGGER
@@ -1233,6 +1250,8 @@ namespace Taskmaster
 			foreach (var dcfg in ConfigDirty)
 				if (dcfg.Value) SaveConfig(dcfg.Key);
 			ConfigDirty.Clear();
+
+			// Properties.Settings.Default.Save();
 
 			CleanupTimer = new System.Timers.Timer(1000 * 60 * CleanupInterval);
 			CleanupTimer.Elapsed += Taskmaster.Cleanup;
@@ -1317,6 +1336,7 @@ namespace Taskmaster
 
 			foreach (var dcfg in ConfigDirty)
 				if (dcfg.Value) SaveConfig(dcfg.Key);
+			ConfigDirty.Clear();
 
 			CleanShutdown();
 

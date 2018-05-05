@@ -4,6 +4,8 @@
 ### 2018-05-04
 	Fixed: Validation does not find executables correctly.
 	Changed: Some behind the scenes things to help catch an elusive problem with per-app power management.
+	Fixed: Resize settings not changed when the rule was edited in UI.
+	Changed: Allow watchlist rules with no affinity nor priority.
 ### 2018-04-30
 	Changed: Code cleanup.
 ### 2018-04-29
