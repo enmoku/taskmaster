@@ -399,7 +399,9 @@ namespace Taskmaster
 			}
 		}
 
-		int enumerating_inet; // = 0;
+		object interfaces_lock = new object();
+
+		List<NetDevice> ifacelist = new List<NetDevice>();
 
 		// TODO: This is unnecessarily heavy
 		/// <summary>
@@ -414,61 +416,63 @@ namespace Taskmaster
 		/// <returns>string[] { Device Name, Type, Status, Link Speed, IPv4 Address, IPv6 Address } or null</returns>
 		public List<NetDevice> Interfaces()
 		{
-			if (!Atomic.Lock(ref enumerating_inet)) return null; // bail if we were already doing this
-
-			if (Taskmaster.DebugNet)
-				Log.Debug("<Network> Enumerating network interfaces...");
-
-			var ifacelist = new List<NetDevice>();
-			// var ifacelist = new List<string[]>();
-
-			var index = 0;
-			NetworkInterface[] adapters = NetworkInterface.GetAllNetworkInterfaces();
-			foreach (NetworkInterface dev in adapters)
+			lock (interfaces_lock)
 			{
-				var ti = index++;
-				if (dev.NetworkInterfaceType == NetworkInterfaceType.Loopback || dev.NetworkInterfaceType == NetworkInterfaceType.Tunnel)
-					continue;
-
-				var stats = dev.GetIPStatistics();
-
-				IPAddress _ipv4 = IPAddress.None, _ipv6 = IPAddress.None;
-				foreach (UnicastIPAddressInformation ip in dev.GetIPProperties().UnicastAddresses)
-				{
-					// TODO: Maybe figure out better way and early bailout from the foreach
-					switch (ip.Address.AddressFamily)
-					{
-						case System.Net.Sockets.AddressFamily.InterNetwork:
-							_ipv4 = ip.Address;
-							break;
-						case System.Net.Sockets.AddressFamily.InterNetworkV6:
-							_ipv6 = ip.Address;
-							break;
-					}
-				}
-
-				var devi = new NetDevice
-				{
-					Index = ti,
-					Name = dev.Name,
-					Type = dev.NetworkInterfaceType,
-					Status = dev.OperationalStatus,
-					Speed = dev.Speed,
-					IPv4Address = _ipv4,
-					IPv6Address = _ipv6,
-				};
-
-				devi.Incoming.From(stats, true);
-				devi.Outgoing.From(stats, false);
-				// devi.PrintStats();
-				ifacelist.Add(devi);
+				if (ifacelist.Count > 0) return ifacelist;
 
 				if (Taskmaster.DebugNet)
-					Log.Debug("<Network> Interface: {InterfaceName}", dev.Name);
+					Log.Debug("<Network> Enumerating network interfaces...");
+
+				var ifacelistt = new List<NetDevice>();
+				// var ifacelist = new List<string[]>();
+
+				var index = 0;
+				NetworkInterface[] adapters = NetworkInterface.GetAllNetworkInterfaces();
+				foreach (NetworkInterface dev in adapters)
+				{
+					var ti = index++;
+					if (dev.NetworkInterfaceType == NetworkInterfaceType.Loopback || dev.NetworkInterfaceType == NetworkInterfaceType.Tunnel)
+						continue;
+
+					var stats = dev.GetIPStatistics();
+
+					IPAddress _ipv4 = IPAddress.None, _ipv6 = IPAddress.None;
+					foreach (UnicastIPAddressInformation ip in dev.GetIPProperties().UnicastAddresses)
+					{
+						// TODO: Maybe figure out better way and early bailout from the foreach
+						switch (ip.Address.AddressFamily)
+						{
+							case System.Net.Sockets.AddressFamily.InterNetwork:
+								_ipv4 = ip.Address;
+								break;
+							case System.Net.Sockets.AddressFamily.InterNetworkV6:
+								_ipv6 = ip.Address;
+								break;
+						}
+					}
+
+					var devi = new NetDevice
+					{
+						Index = ti,
+						Name = dev.Name,
+						Type = dev.NetworkInterfaceType,
+						Status = dev.OperationalStatus,
+						Speed = dev.Speed,
+						IPv4Address = _ipv4,
+						IPv6Address = _ipv6,
+					};
+
+					devi.Incoming.From(stats, true);
+					devi.Outgoing.From(stats, false);
+					// devi.PrintStats();
+					ifacelistt.Add(devi);
+
+					if (Taskmaster.DebugNet)
+						Log.Debug("<Network> Interface: {InterfaceName}", dev.Name);
+				}
+
+				ifacelist = ifacelistt;
 			}
-
-			enumerating_inet = 0;
-
 			return ifacelist;
 		}
 

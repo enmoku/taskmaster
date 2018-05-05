@@ -3,6 +3,7 @@
 
 ### 2018-05-05
 	Changed: Allow watchlist rules with no affinity nor priority.
+	Fixed: Empty network device list if it was last active tab.
 ### 2018-05-04
 	Fixed: Validation does not find executables correctly.
 	Changed: Some behind the scenes things to help catch an elusive problem with per-app power management.

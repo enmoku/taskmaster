@@ -2148,7 +2148,7 @@ namespace Taskmaster
 
 			netmonitor = net;
 
-			foreach (var dev in net.Interfaces())
+			foreach (var dev in netmonitor.Interfaces())
 			{
 				var li = new ListViewItem(new string[] {
 					dev.Name,
