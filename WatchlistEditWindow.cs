@@ -138,7 +138,7 @@ namespace Taskmaster
 				Controller.Increase = increasePrio.Checked;
 				Controller.Decrease = decreasePrio.Checked;
 			}
-			if (cpumask == 0)
+			if (cpumask == -1)
 				Controller.Affinity = null;
 			else
 				Controller.Affinity = new IntPtr(cpumask);
@@ -393,10 +393,10 @@ namespace Taskmaster
 			lt.Controls.Add(new Label { Text = "Affinity", TextAlign = System.Drawing.ContentAlignment.MiddleLeft });
 			affinityMask.Width = 80;
 			affinityMask.Maximum = ProcessManager.allCPUsMask;
-			affinityMask.Minimum = 0;
+			affinityMask.Minimum = -1;
 			affinityMask.Value = (Controller.Affinity?.ToInt32() ?? 0);
 
-			tooltip.SetToolTip(affinityMask, "CPU core afffinity as integer mask.\nEnter 0 to let OS manage this as normal.\nFull affinity is same as 0, there's no difference.\nExamples:\n14 = all but first core on quadcore.\n254 = all but first core on octocore.");
+			tooltip.SetToolTip(affinityMask, "CPU core afffinity as integer mask.\nEnter 0 to let OS manage this as normal.\nFull affinity is same as 0, there's no difference.\nExamples:\n14 = all but first core on quadcore.\n254 = all but first core on octocore.\n-1 = Ignored");
 
 			// lt.Controls.Add(affinityMask);
 
@@ -418,13 +418,13 @@ namespace Taskmaster
 
 			var list = new List<CheckBox>();
 
-			cpumask = Controller.Affinity?.ToInt32() ?? 0;
+			cpumask = Controller.Affinity?.ToInt32() ?? -1;
 			for (int bit = 0; bit < ProcessManager.CPUCount; bit++)
 			{
 				var box = new CheckBox();
 				var bitoff = bit;
 				box.AutoSize = true;
-				box.Checked = ((cpumask & (1 << bitoff)) != 0);
+				box.Checked = ((Math.Max(0,cpumask) & (1 << bitoff)) != 0);
 				box.CheckedChanged += (sender, e) =>
 				{
 					if (box.Checked)
@@ -475,7 +475,7 @@ namespace Taskmaster
 				try { cpumask = (int)affinityMask.Value; }
 				catch { cpumask = 0; affinityMask.Value = 0; }
 				foreach (var bu in list)
-					bu.Checked = ((cpumask & (1 << bitoff++)) != 0);
+					bu.Checked = ((Math.Max(0,cpumask) & (1 << bitoff++)) != 0);
 			};
 
 			lt.Controls.Add(afflayout);
@@ -621,7 +621,7 @@ namespace Taskmaster
 				sbs.Append("Rescan frequency REQUIRES executable to be defined.").AppendLine();
 			if (priorityClass.SelectedIndex == 5)
 				sbs.Append("Priority class is to be ignored.").AppendLine();
-			if (cpumask == 0)
+			if (cpumask == -1)
 				sbs.Append("Affinity is to be ignored.").AppendLine();
 			if (ignorelist.Items.Count > 0 && execName.Text.Length > 0)
 				sbs.Append("Ignore list is meaningless with executable defined.").AppendLine();

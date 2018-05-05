@@ -246,9 +246,14 @@ namespace Taskmaster
 				litem.SubItems[NameColumn].Text = prc.FriendlyName;
 				litem.SubItems[ExeColumn].Text = prc.Executable;
 				litem.SubItems[PrioColumn].Text = prc.Priority?.ToString() ?? "--- Any --- ";
-				string aff = "--- Any ---";
-				if (prc.Affinity.HasValue && prc.Affinity.Value.ToInt32() != ProcessManager.allCPUsMask)
-					aff = Convert.ToString(prc.Affinity.Value.ToInt32(), 2).PadLeft(ProcessManager.CPUCount, '0');
+				string aff = "- Ignored -";
+				if (prc.Affinity.HasValue)
+				{
+					if (prc.Affinity.Value.ToInt32() == ProcessManager.allCPUsMask)
+						aff = "- Full/OS -";
+					else
+						aff = Convert.ToString(prc.Affinity.Value.ToInt32(), 2).PadLeft(ProcessManager.CPUCount, '0');
+				}
 				litem.SubItems[AffColumn].Text = aff;
 				litem.SubItems[PowerColumn].Text = (prc.PowerPlan != PowerInfo.PowerMode.Undefined ? prc.PowerPlan.ToString() : "--- Any ---");
 				// skip adjusts

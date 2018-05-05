@@ -158,14 +158,13 @@ namespace Taskmaster
 		/// </summary>
 		public string ExecutableFriendlyName { get; set; } = null;
 
-		public ProcessController(string name, ProcessPriorityClass? priority = null, int affinity = 0, string path = null)
+		public ProcessController(string name, ProcessPriorityClass? priority = null, int affinity = -1, string path = null)
 		{
 			FriendlyName = name;
 			// Executable = executable;
 
 			Priority = priority;
-			if (affinity != ProcessManager.allCPUsMask && affinity != 0)
-				Affinity = new IntPtr(affinity);
+			if (affinity >= 0) Affinity = new IntPtr(affinity);
 
 			if (!string.IsNullOrEmpty(path))
 			{
@@ -231,10 +230,10 @@ namespace Taskmaster
 				{
 					var affinity = Affinity.Value.ToInt32();
 					if (affinity == ProcessManager.allCPUsMask) affinity = 0;
-					if (affinity > 0)
+					if (affinity >= 0)
 						app["Affinity"].IntValue = Affinity.Value.ToInt32();
 					else
-						app.Remove("Affinity"); // windows defaults to all cores [0], pointless to set it
+						app.Remove("Affinity"); // ignore affinity
 				}
 				else
 					app.Remove("Affinity");

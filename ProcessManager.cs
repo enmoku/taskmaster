@@ -569,7 +569,7 @@ namespace Taskmaster
 					continue;
 				}
 
-				var aff = section.TryGet("Affinity")?.IntValue ?? 0;
+				var aff = section.TryGet("Affinity")?.IntValue ?? -1;
 				var prio = section.TryGet("Priority")?.IntValue ?? -1;
 				ProcessPriorityClass? prioR = null;
 				if (prio >= 0) prioR = ProcessHelpers.IntToPriority(prio);
@@ -581,7 +581,7 @@ namespace Taskmaster
 					pmode = PowerInfo.PowerMode.Undefined;
 				}
 
-				var prc = new ProcessController(section.Name, prioR, (aff != 0 ? aff : allCPUsMask))
+				var prc = new ProcessController(section.Name, prioR, (aff == 0 ? allCPUsMask : aff))
 				{
 					Enabled = section.TryGet("Enabled")?.BoolValue ?? true,
 					Executable = section.TryGet("Image")?.StringValue ?? null,
