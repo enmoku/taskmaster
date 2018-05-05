@@ -41,9 +41,10 @@ namespace Taskmaster.UI
 		{
 			var handle = this.Handle; // unused; forces handle creation
 
+			AllowTransparency = false;
 			DoubleBuffered = true;
 
-			SetStyle(ControlStyles.CacheText, true); // performance
+			//SetStyle(ControlStyles.CacheText, true); // performance
 
 			Icon = System.Drawing.Icon.ExtractAssociatedIcon(System.Reflection.Assembly.GetExecutingAssembly().Location);
 

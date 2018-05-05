@@ -1286,7 +1286,6 @@ namespace Taskmaster
 				Dock = DockStyle.Left,
 				Text = "Uninitialized",
 				AutoSize = true,
-				BackColor = System.Drawing.Color.Transparent,
 				TextAlign = System.Drawing.ContentAlignment.MiddleLeft
 			};
 
@@ -2195,6 +2194,8 @@ namespace Taskmaster
 		int PacketColumn = 6;
 		int ErrorColumn = 7;
 
+		System.Drawing.Color inetBgColor = System.Drawing.Color.Red;
+
 		[Aspects.UIThreadAspect]
 		void InetStatusLabel(bool available)
 		{
@@ -2202,7 +2203,7 @@ namespace Taskmaster
 			{
 				inetstatuslabel.Text = available ? "Connected" : "Disconnected";
 				// inetstatuslabel.BackColor = available ? System.Drawing.Color.LightGoldenrodYellow : System.Drawing.Color.Red;
-				inetstatuslabel.BackColor = available ? System.Drawing.Color.Transparent : System.Drawing.Color.Red;
+				inetstatuslabel.BackColor = available ? System.Drawing.SystemColors.Menu : System.Drawing.Color.Red;
 			}
 			catch { } // discard
 		}
@@ -2223,7 +2224,7 @@ namespace Taskmaster
 			{
 				netstatuslabel.Text = available ? "Up" : "Down";
 				// netstatuslabel.BackColor = available ? System.Drawing.Color.LightGoldenrodYellow : System.Drawing.Color.Red;
-				netstatuslabel.BackColor = available ? System.Drawing.Color.Transparent : System.Drawing.Color.Red;
+				netstatuslabel.BackColor = available ? System.Drawing.SystemColors.Menu : System.Drawing.Color.Red;
 			}
 			catch (Exception ex) { Logging.Stacktrace(ex); }
 		}
