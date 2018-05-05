@@ -2155,10 +2155,10 @@ namespace Taskmaster
 					dev.Type.ToString(),
 					dev.Status.ToString(),
 					HumanInterface.ByteString(dev.Speed),
-					dev.IPv4Address.ToString() ?? "n/a",
-					dev.IPv6Address.ToString() ?? "n/a",
-						"n/a",
-						"n/a",
+					dev.IPv4Address?.ToString() ?? "n/a",
+					dev.IPv6Address?.ToString() ?? "n/a",
+					"n/a", // traffic delta
+					"n/a", // error delta
 				})
 				{
 					UseItemStyleForSubItems = false

@@ -79,12 +79,12 @@ namespace Taskmaster
 	{
 		public int Index { get; set; }
 
-		public string Name { get; set; }
-		public NetworkInterfaceType Type { get; set; }
-		public OperationalStatus Status { get; set; }
-		public long Speed { get; set; }
-		public IPAddress IPv4Address { get; set; }
-		public IPAddress IPv6Address { get; set; }
+		public string Name { get; set; } = string.Empty;
+		public NetworkInterfaceType Type { get; set; } = NetworkInterfaceType.Unknown;
+		public OperationalStatus Status { get; set; } = OperationalStatus.NotPresent;
+		public long Speed { get; set; } = 0;
+		public IPAddress IPv4Address { get; set; } = null;
+		public IPAddress IPv6Address { get; set; } = null;
 
 		// Stats
 		public NetTraffic Outgoing;
