@@ -25,6 +25,7 @@
 // THE SOFTWARE.
 
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Threading.Tasks;
 using System.Windows.Forms;
@@ -350,13 +351,20 @@ namespace Taskmaster
 		}
 
 		Process[] Explorer;
-		async void ExplorerCrashHandler(object sender, EventArgs e)
+		async void ExplorerCrashHandler(int processId)
 		{
-			Log.Warning("<Tray> Explorer crash detected!");
+			Log.Warning("<Tray> Explorer (#{Pid}) crash detected!", processId);
 
 			Log.Information("<Tray> Giving explorer some time to recover on its own...");
 
 			await Task.Delay(12000); // force async, 12 seconds
+
+			lock (explorer_lock)
+			{
+				KnownExplorerInstances.Remove(processId);
+
+				if (KnownExplorerInstances.Count > 0) return; // probably never triggers
+			}
 
 			var n = new Stopwatch();
 			n.Start();
@@ -383,6 +391,8 @@ namespace Taskmaster
 			EnsureVisible();
 		}
 
+		object explorer_lock = new object();
+		HashSet<int> KnownExplorerInstances = new HashSet<int>();
 		System.Diagnostics.Process[] ExplorerInstances
 		{
 			get
@@ -396,16 +406,18 @@ namespace Taskmaster
 			if (Taskmaster.Trace) Log.Verbose("<Tray> Registering Explorer crash monitor.");
 			// this is for dealing with notify icon disappearing on explorer.exe crash/restart
 
-			if (procs == null) procs = ExplorerInstances;
+				if (procs == null) procs = ExplorerInstances;
 
 			if (procs.Length > 0)
 			{
 				Explorer = procs;
 				foreach (var proc in procs)
 				{
-					proc.Exited += ExplorerCrashHandler;
+					int id = proc.Id;
+					lock (explorer_lock) KnownExplorerInstances.Add(id);
+					proc.Exited += (s, e) => { ExplorerCrashHandler(id); };
 					proc.EnableRaisingEvents = true;
-					Log.Information("<Tray> Explorer (#{ExplorerProcessID}) registered.", proc.Id);
+					Log.Information("<Tray> Explorer (#{ExplorerProcessID}) registered.", id);
 				}
 
 				return true;
