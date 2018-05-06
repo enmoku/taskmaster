@@ -1,6 +1,9 @@
 ﻿Comprehensive changes can be found in Git change history:
 	https://github.com/mkahvi/taskmaster/commits/master
 
+### 2018-05-06
+	Fixed: Weirdness with full CPU mask affinity. -1 is now special value for ignore in UI instead of 0.
+	Changed: Explorer crash handling. It's more informative which process crashed and should handle multiple explorer processes better.
 ### 2018-05-05
 	Changed: Allow watchlist rules with no affinity nor priority.
 	Fixed: Empty network device list if it was last active tab.
