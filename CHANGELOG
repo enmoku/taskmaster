@@ -4,6 +4,7 @@
 ### 2018-05-07
 	Fixed: Apparently Task.Wait() hangs indefinitely under some obscure circumstances. Caused manual power mode to deadlock?
 	Fixed: All CPUs mask was messed up.
+	Changed: Power auto-adjust default configuration changed a tiny bit.
 ### 2018-05-06
 	Fixed: Weirdness with full CPU mask affinity. -1 is now special value for ignore in UI instead of 0.
 	Changed: Explorer crash handling. It's more informative which process crashed and should handle multiple explorer processes better.

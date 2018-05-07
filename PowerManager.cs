@@ -90,7 +90,7 @@ namespace Taskmaster
 
 			AutoAdjust.High.Backoff.Level = 3;
 			AutoAdjust.High.Backoff.Low = 15;
-			AutoAdjust.High.Backoff.Avg = 50;
+			AutoAdjust.High.Backoff.Avg = 40;
 			AutoAdjust.High.Backoff.High = 60;
 
 			AutoAdjust.Low.Mode = PowerMode.PowerSaver;
@@ -100,8 +100,8 @@ namespace Taskmaster
 			AutoAdjust.Low.Backoff.Level = 2;
 			AutoAdjust.Low.Backoff.Low = 25;
 			AutoAdjust.Low.Backoff.Avg = 35;
-			AutoAdjust.Low.Backoff.High = 40;
-			AutoAdjust.Low.Backoff.Level = 1;
+			AutoAdjust.Low.Backoff.High = 50;
+			AutoAdjust.Low.Backoff.Level = 5;
 
 			AutoAdjust.DefaultMode = PowerMode.Balanced;
 
