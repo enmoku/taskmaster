@@ -328,19 +328,32 @@ namespace Taskmaster
 				}
 				catch (System.Net.Sockets.SocketException ex)
 				{
+					InternetAvailable = false;
 					switch (ex.SocketErrorCode)
 					{
+						case System.Net.Sockets.SocketError.AccessDenied:
+						case System.Net.Sockets.SocketError.SystemNotReady:
+							break;
+						case System.Net.Sockets.SocketError.TryAgain:
 						case System.Net.Sockets.SocketError.TimedOut:
-							Log.Warning("<Network> Internet availability test timed-out: assuming we're online.");
-							// await CheckInet(false).ConfigureAwait(false);
-							InternetAvailable = true; // timeout can only occur if we actually have internet.. sort of. We have no tri-state tho.
+						default:
+							Log.Information("<Network> Internet availability test inconclusive, assuming connected.");
+							InternetAvailable = true;
 							Atomic.Unlock(ref checking_inet);
 							return;
-						case System.Net.Sockets.SocketError.NetworkDown:
-						case System.Net.Sockets.SocketError.NetworkUnreachable:
+						case System.Net.Sockets.SocketError.SocketError:
+						case System.Net.Sockets.SocketError.Interrupted:
+						case System.Net.Sockets.SocketError.Fault:
+							Log.Warning("<Network> Internet check interrupted. Potential hardware/driver issues.");
+							break;
 						case System.Net.Sockets.SocketError.HostUnreachable:
-						default:
-							InternetAvailable = false;
+						case System.Net.Sockets.SocketError.HostNotFound:
+						case System.Net.Sockets.SocketError.HostDown:
+							Log.Warning("<Network> DNS test failed, test host unreachable. Test host may be down.");
+							break;
+						case System.Net.Sockets.SocketError.NetworkDown:
+						case System.Net.Sockets.SocketError.NetworkReset:
+						case System.Net.Sockets.SocketError.NetworkUnreachable:
 							break;
 					}
 				}
@@ -351,7 +364,16 @@ namespace Taskmaster
 			RecordDeviceState(InternetAvailable, address_changed);
 
 			if (oldInetAvailable != InternetAvailable)
-				Log.Information("<Network> Status: {NetworkAvailable}, Internet: {InternetAvailable}", (NetworkAvailable ? "Up" : "Down"), (InternetAvailable ? "Connected" : "Disconnected"));
+			{
+				string status = "All OK";
+				if (NetworkAvailable && !InternetAvailable) status = "ISP/route problems";
+				else if (!NetworkAvailable) status = "Cable unplugged or router/modem down";
+
+				Log.Information("<Network> Status: {NetworkAvailable}, Internet: {InternetAvailable} – {Status}",
+					(NetworkAvailable ? "Up" : "Down"),
+					(InternetAvailable ? "Connected" : "Disconnected"),
+					status);
+			}
 			else
 			{
 				if (Taskmaster.Trace) Log.Verbose("<Network> Connectivity unchanged.");
@@ -495,7 +517,7 @@ namespace Taskmaster
 
 				bool ipv4changed = false, ipv6changed = false;
 				ipv4changed = !oldV4Address.Equals(IPv4Address);
-#if DEBUG
+
 				if (ipv4changed)
 				{
 					var outstr4 = new System.Text.StringBuilder();
@@ -507,9 +529,8 @@ namespace Taskmaster
 					// TODO: Make clicking on the tooltip copy new IP to clipboard?
 				}
 
-#endif
 				ipv6changed = !oldV6Address.Equals(IPv6Address);
-#if DEBUG
+
 				if (ipv6changed)
 				{
 					var outstr6 = new System.Text.StringBuilder();
@@ -519,8 +540,6 @@ namespace Taskmaster
 
 					Tray.Tooltip(2000, outstr6.ToString(), "Taskmaster", System.Windows.Forms.ToolTipIcon.Info);
 				}
-
-#endif
 
 				if (!ipv4changed && !ipv6changed && (LastChange.Peek() - DateTime.Now).Minutes < 5)
 				{
