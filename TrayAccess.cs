@@ -92,8 +92,7 @@ namespace Taskmaster
 				power_highperf = new ToolStripMenuItem("Performance", null, (s, e) => { ResetPower(PowerInfo.PowerMode.HighPerformance); });
 				power_balanced = new ToolStripMenuItem("Balanced", null, (s, e) => { ResetPower(PowerInfo.PowerMode.Balanced); });
 				power_saving = new ToolStripMenuItem("Power Saving", null, (s, e) => { ResetPower(PowerInfo.PowerMode.PowerSaver); });
-				power_manual = new ToolStripMenuItem("Manual override", null, SetManualPower);
-				power_manual.CheckOnClick = true;
+				power_manual = new ToolStripMenuItem("Manual override", null, SetManualPower) { CheckOnClick = true };
 			}
 
 			ToolStripMenuItem menu_restart = null;
@@ -157,7 +156,6 @@ namespace Taskmaster
 		public void Enable() => ms.Enabled = true;
 
 		public event EventHandler RescanRequest;
-		public event EventHandler ManualPowerMode;
 
 		ProcessManager processmanager = null;
 		public void hookProcessManager(ref ProcessManager pman)
@@ -229,19 +227,30 @@ namespace Taskmaster
 		{
 			try
 			{
+				if (Taskmaster.DebugPower)
+					Log.Debug("<Power> Setting behaviour to manual.");
+
 				powermanager.SetBehaviour(PowerManager.PowerBehaviour.Manual);
 
-				power_manual.Checked = (powermanager.Behaviour == PowerManager.PowerBehaviour.Manual);
-				power_auto.Checked = (powermanager.Behaviour == PowerManager.PowerBehaviour.Auto);
+				power_manual.Checked = true;
+				power_auto.Checked = false;
 
-				ManualPowerMode?.Invoke(this, null);
+				if (Taskmaster.DebugPower)
+					Log.Debug("<Power> Setting manual mode: {Mode}", mode.ToString());
 
 				// powermanager.Restore(0).Wait(); // already called by setBehaviour as necessary
-				powermanager.setMode(mode);
+				powermanager?.SetMode(mode);
+
+				if (Taskmaster.DebugPower)
+					Log.Debug("<Power> Updating UI.");
+
 				// powermanager.RequestMode(mode);
 				HighlightPowerMode();
 			}
-			catch { }
+			catch (Exception ex)
+			{
+				Logging.Stacktrace(ex);
+			}
 		}
 
 		void ShowConfigRequest(object sender, EventArgs e)

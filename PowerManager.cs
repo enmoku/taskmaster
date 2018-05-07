@@ -123,11 +123,8 @@ namespace Taskmaster
 				CPUTimer.Start();
 			}
 
-			lock (forceModeSources_lock)
-			{
-				if (Behaviour == PowerBehaviour.RuleBased && !Forced)
-					Restore();
-			}
+			if (Behaviour == PowerBehaviour.RuleBased && !Forced)
+				Restore();
 
 			MonitorPower += MonitorPowerEvent;
 
@@ -479,7 +476,7 @@ namespace Taskmaster
 			{
 				if (Taskmaster.DebugPower) Log.Debug("<Power> Auto-adjust: {Mode}", Reaction.ToString());
 
-				if (Request(ReactionaryPlan))
+				if (AutoAdjustSetMode(ReactionaryPlan))
 				{
 					AutoAdjustCounter++;
 					ev.Handled = true;
@@ -792,7 +789,7 @@ namespace Taskmaster
 							if (PauseUnneededSampler) CPUTimer.Stop();
 
 							if (CurrentMode != SessionLockPowerMode)
-								setMode(PowerMode.PowerSaver, true);
+								InternalSetMode(PowerMode.PowerSaver, true);
 						}
 
 						break;
@@ -806,7 +803,7 @@ namespace Taskmaster
 
 							if (CurrentMode == SessionLockPowerMode)
 							{
-								setMode(RestoreMode, true);
+								InternalSetMode(RestoreMode, true);
 							}
 
 							Paused = false;
@@ -956,7 +953,7 @@ namespace Taskmaster
 
 				Taskmaster.processmanager.CancelPowerWait(); // need nicer way to do this
 
-				Release(0).Wait();
+				Release(0).ConfigureAwait(false);
 			}
 
 			onBehaviourChange?.Invoke(this, Behaviour);
@@ -994,7 +991,12 @@ namespace Taskmaster
 		public async Task Release(int sourcePid = -1)
 		{
 			if (Taskmaster.DebugPower)
-				Log.Debug("<Power> Restore(#{Source})", sourcePid);
+			{
+				if (sourcePid == 0)
+					Log.Debug("<Power> Release – clearing all locks");
+				else
+					Log.Debug("<Power> Release(#{Source})", sourcePid);
+			}
 
 			Debug.Assert(sourcePid == 0 || sourcePid > 4);
 			if (Paused) return; // TODO: What to do in the unlikely event of this being called while paused?
@@ -1024,6 +1026,8 @@ namespace Taskmaster
 
 				if (PowerdownDelay > 0)
 				{
+					if (Taskmaster.DebugPower)
+						Log.Debug("<Power> Powerdown delay: {Delay}s", PowerdownDelay);
 					await Task.Delay(PowerdownDelay * 1000);
 				}
 
@@ -1032,9 +1036,6 @@ namespace Taskmaster
 					if (forceModeSources.Count == 0)
 					{
 						// TODO: Restore Powerdown delay functionality here.
-
-						if (Taskmaster.DebugPower)
-							Log.Debug("<Power> Restoring power mode!");
 
 						Restore();
 
@@ -1057,10 +1058,18 @@ namespace Taskmaster
 			{
 				Logging.Stacktrace(ex);
 			}
+
+			if (Taskmaster.DebugPower)
+				Log.Debug("<Power> Released ({Val}).", sourcePid == 0 ? "All" : sourcePid.ToString());
+
+			return;
 		}
 
 		public void Restore()
 		{
+			if (Taskmaster.DebugPower)
+				Log.Debug("<Power> Restoring power mode!");
+
 			lock (power_lock)
 			{
 				if (RestoreModeMethod != ModeMethod.Saved)
@@ -1073,7 +1082,7 @@ namespace Taskmaster
 				{
 					// if (Behaviour == PowerBehaviour.Auto) return; // this is very optimistic
 
-					setMode(SavedMode, verbose: true);
+					InternalSetMode(SavedMode, verbose: true);
 					SavedMode = PowerMode.Undefined;
 
 					// Log.Information("<Power> Restored to: {PowerMode}", CurrentMode.ToString());
@@ -1109,15 +1118,16 @@ namespace Taskmaster
 
 		public PowerBehaviour Behaviour { get; private set; } = PowerBehaviour.RuleBased;
 
-		public bool Request(PowerMode mode)
+		bool AutoAdjustSetMode(PowerMode mode)
 		{
-			Debug.Assert(Behaviour == PowerBehaviour.Auto, "RequestMode is for auto adjusting.");
+			Debug.Assert(Behaviour == PowerBehaviour.Auto, "This is for auto adjusting only.");
+
 			if (Paused) return false;
 
 			if (mode == CurrentMode || forceModeSources.Count > 0)
 				return false;
 
-			setMode(mode, verbose: false);
+			InternalSetMode(mode, verbose: false);
 			return true;
 		}
 		
@@ -1151,7 +1161,7 @@ namespace Taskmaster
 			if (rv)
 			{
 				SavedMode = RestoreModeMethod == ModeMethod.Saved ? CurrentMode : RestoreMode;
-				setMode(mode);
+				InternalSetMode(mode);
 
 				if (Taskmaster.DebugPower) Log.Debug("<Power> Forced to: {PowerMode}", CurrentMode);
 			}
@@ -1163,7 +1173,15 @@ namespace Taskmaster
 			return rv;
 		}
 
-		public void setMode(PowerMode mode, bool verbose = true)
+		public void SetMode(PowerMode mode, bool verbose = true)
+		{
+			lock (power_lock)
+			{
+				InternalSetMode(mode, verbose);
+			}
+		}
+
+		void InternalSetMode(PowerMode mode, bool verbose = true)
 		{
 			var plan = Guid.Empty;
 			switch (mode)
@@ -1180,7 +1198,7 @@ namespace Taskmaster
 					break;
 			}
 
-			if (verbose && (CurrentMode != mode) && Taskmaster.DebugPower)
+			if ((verbose && (CurrentMode != mode)) || Taskmaster.DebugPower)
 				Log.Debug("<Power> Setting to: {Mode} ({Guid})", mode.ToString(), plan.ToString());
 
 			CurrentMode = mode;
@@ -1203,7 +1221,7 @@ namespace Taskmaster
 				var finalmode = RestoreModeMethod == ModeMethod.Saved ? SavedMode : RestoreMode;
 				if (finalmode != CurrentMode)
 				{
-					setMode(finalmode, true);
+					InternalSetMode(finalmode, true);
 					Log.Information("<Power> Restored.");
 				}
 				Log.Information("<Power> Auto-adjusted {Counter} time(s).", AutoAdjustCounter);
