@@ -62,9 +62,8 @@ namespace Taskmaster
 			using (var rs = System.Reflection.Assembly.GetExecutingAssembly().GetManifestResourceStream("Taskmaster.LICENSE"))
 			{
 				var rs2 = new System.IO.StreamReader(rs);
-				var r = rs2.ReadToEndAsync();
-				r.Wait();
-				var license = r.Result.Replace("\t", "    ").TrimEnd('\n', ' ');
+				var license = rs2.ReadToEnd().Replace("\t", "    ").TrimEnd('\n', ' ');
+				//var license = r.Result.Replace("\t", "    ").TrimEnd('\n', ' ');
 				licensebox.Text = license;
 			}
 
