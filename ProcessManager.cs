@@ -78,9 +78,11 @@ namespace Taskmaster
 		{
 			Log.Information("<CPU> Count: {Cores} cores", CPUCount);
 
-			allCPUsMask = 1;
-			for (int i = 0; i < CPUCount - 1; i++)
-				allCPUsMask = (allCPUsMask << 1) | 1;
+			allCPUsMask = Convert.ToInt32(Math.Pow(2, CPUCount) - 1 + double.Epsilon);
+
+			//allCPUsMask = 1;
+			//for (int i = 0; i < CPUCount - 1; i++)
+			//	allCPUsMask = (allCPUsMask << 1) | 1;
 
 			Log.Information("<CPU> Full CPU mask: {ProcessorBitMask} ({ProcessorMask} = OS control)",
 							Convert.ToString(allCPUsMask, 2), allCPUsMask);
@@ -570,6 +572,12 @@ namespace Taskmaster
 				}
 
 				var aff = section.TryGet("Affinity")?.IntValue ?? -1;
+				if (aff > allCPUsMask)
+				{
+					Log.Warning("[{Name}] Affinity({Affinity}) is malconfigured. Ignoring.", section.Name, aff);
+					aff = -1;
+					// TODO: Null bits after what's possible
+				}
 				var prio = section.TryGet("Priority")?.IntValue ?? -1;
 				ProcessPriorityClass? prioR = null;
 				if (prio >= 0) prioR = ProcessHelpers.IntToPriority(prio);
