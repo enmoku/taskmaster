@@ -2153,7 +2153,7 @@ namespace Taskmaster
 
 			netmonitor = net;
 
-			foreach (var dev in netmonitor.Interfaces())
+			foreach (var dev in netmonitor.GetInterfaces())
 			{
 				var li = new ListViewItem(new string[] {
 					dev.Name,
@@ -2171,14 +2171,17 @@ namespace Taskmaster
 				ifaceList.Items.Add(li);
 			}
 
-			InetStatusLabel(net.InternetAvailable);
-			NetStatusLabel(net.NetworkAvailable);
+			lock (netstatus_lock)
+			{
+				netmonitor.InternetStatusChange += InetStatus;
+				netmonitor.NetworkStatusChange += NetStatus;
+				InetStatusLabel(netmonitor.InternetAvailable);
+				NetStatusLabel(netmonitor.NetworkAvailable);
+			}
 
 			// Tray?.Tooltip(2000, "Internet " + (net.InternetAvailable ? "available" : "unavailable"), "Taskmaster", net.InternetAvailable ? ToolTipIcon.Info : ToolTipIcon.Warning);
 
-			net.InternetStatusChange += InetStatus;
-			net.NetworkStatusChange += NetStatus;
-			net.onSampling += NetSampleHandler;
+			netmonitor.onSampling += NetSampleHandler;
 		}
 
 		[Aspects.UIThreadAspect]
@@ -2201,6 +2204,8 @@ namespace Taskmaster
 
 		System.Drawing.Color inetBgColor = System.Drawing.Color.Red;
 
+		object netstatus_lock = new object();
+
 		[Aspects.UIThreadAspect]
 		void InetStatusLabel(bool available)
 		{
@@ -2210,16 +2215,12 @@ namespace Taskmaster
 				// inetstatuslabel.BackColor = available ? System.Drawing.Color.LightGoldenrodYellow : System.Drawing.Color.Red;
 				inetstatuslabel.BackColor = available ? System.Drawing.SystemColors.Menu : System.Drawing.Color.Red;
 			}
-			catch { } // discard
+			catch (Exception ex) { Logging.Stacktrace(ex); }
 		}
 
 		public void InetStatus(object sender, InternetStatus e)
 		{
-			try
-			{
-				InetStatusLabel(e.Available);
-			}
-			catch (Exception ex) { Logging.Stacktrace(ex); }
+			lock (netstatus_lock) InetStatusLabel(e.Available);
 		}
 
 		[Aspects.UIThreadAspect]
@@ -2236,11 +2237,7 @@ namespace Taskmaster
 
 		public void NetStatus(object sender, NetworkStatus e)
 		{
-			try
-			{
-				NetStatusLabel(e.Available);
-			}
-			catch (Exception ex) { Logging.Stacktrace(ex); }
+			lock (netstatus_lock) NetStatusLabel(e.Available);
 		}
 
 		// BUG: DO NOT LOG INSIDE THIS FOR FUCKS SAKE

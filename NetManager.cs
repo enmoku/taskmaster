@@ -96,13 +96,12 @@ namespace Taskmaster
 
 			InterfaceInitialization();
 
-			NetworkSetup();
-
 			LastChange.Enqueue(DateTime.MinValue);
 			LastChange.Enqueue(DateTime.MinValue);
 			LastChange.Enqueue(DateTime.MinValue);
 
-			CurrentInterfaceList = Interfaces();
+			UpdateInterfaces();
+
 			// Log.Debug("{IFACELIST} – count: {c}", CurrentInterfaceList, CurrentInterfaceList.Count);
 
 			deviceSampleTimer = new System.Threading.Timer(async (s) => { await RecordDeviceState(InternetAvailable, false); }, null, 15000, DeviceTimerInterval * 60000);
@@ -114,7 +113,8 @@ namespace Taskmaster
 		}
 
 		int packetWarning = 0;
-		List<NetDevice> CurrentInterfaceList;
+		List<NetDevice> PreviousInterfaceList = new List<NetDevice>();
+		List<NetDevice> CurrentInterfaceList = new List<NetDevice>();
 
 		async void AnalyzeTrafficBehaviourTick(object state) => AnalyzeTrafficBehaviour();
 
@@ -131,47 +131,36 @@ namespace Taskmaster
 			{
 				if (packetWarning > 0) packetWarning--;
 
-				var ifaces = Interfaces();
+				var oldifaces = CurrentInterfaceList;
+				UpdateInterfaces();
+				var ifaces = CurrentInterfaceList;
 
-				if (ifaces == null) return; // being called too often, shouldn't happen but eh.
-				if (CurrentInterfaceList == null)
-				{
-					Log.Error("<Network> Current Interface List is unassigned!!!");
-					// this shouldn't happen
-					CurrentInterfaceList = ifaces;
-					return;
-				}
+				if (ifaces == null) return; // no interfaces, just quit
 
-				if (ifaces.Count == CurrentInterfaceList.Count) // Crude, but whatever. Prone to false statistics.
+				for (int index = 0; index < ifaces.Count; index++)
 				{
-					for (int index = 0; index < ifaces.Count; index++)
+					var errors = (ifaces[index].Incoming.Errors - oldifaces[index].Incoming.Errors)
+						+ (ifaces[index].Outgoing.Errors - oldifaces[index].Outgoing.Errors);
+					var discards = (ifaces[index].Incoming.Discarded - oldifaces[index].Incoming.Discarded)
+						+ (ifaces[index].Outgoing.Discarded - oldifaces[index].Outgoing.Discarded);
+					var packets = (ifaces[index].Incoming.Unicast - oldifaces[index].Incoming.Unicast)
+						+ (ifaces[index].Outgoing.Unicast - oldifaces[index].Outgoing.Unicast);
+
+					// Console.WriteLine("{0} : Packets(+{1}), Errors(+{2}), Discarded(+{3})", ifaces[index].Name, packets, errors, discards);
+
+					if (errors > 0)
 					{
-						var errors = (ifaces[index].Incoming.Errors - CurrentInterfaceList[index].Incoming.Errors)
-							+ (ifaces[index].Outgoing.Errors - CurrentInterfaceList[index].Outgoing.Errors);
-						var discards = (ifaces[index].Incoming.Discarded - CurrentInterfaceList[index].Incoming.Discarded)
-							+ (ifaces[index].Outgoing.Discarded - CurrentInterfaceList[index].Outgoing.Discarded);
-						var packets = (ifaces[index].Incoming.Unicast - CurrentInterfaceList[index].Incoming.Unicast)
-							+ (ifaces[index].Outgoing.Unicast - CurrentInterfaceList[index].Outgoing.Unicast);
-
-						// Console.WriteLine("{0} : Packets(+{1}), Errors(+{2}), Discarded(+{3})", ifaces[index].Name, packets, errors, discards);
-
-						if (errors > 0)
+						if (packetWarning == 0 || (packetWarning % PacketStatTimerInterval == 0))
 						{
-							if (packetWarning == 0 || (packetWarning % PacketStatTimerInterval == 0))
-							{
-								packetWarning = 2;
-								Log.Warning("<Network> {Device} is suffering from traffic errors! (+{Rate} since last sample)", ifaces[index].Name, errors);
-							}
-							else
-								packetWarning++;
+							packetWarning = 2;
+							Log.Warning("<Network> {Device} is suffering from traffic errors! (+{Rate} since last sample)", ifaces[index].Name, errors);
 						}
-
-						onSampling?.Invoke(this, new NetDeviceTraffic { Index = index, Traffic = new NetTraffic { Unicast = packets, Errors = errors, Discarded = discards } });
+						else
+							packetWarning++;
 					}
+
+					onSampling?.Invoke(this, new NetDeviceTraffic { Index = index, Traffic = new NetTraffic { Unicast = packets, Errors = errors, Discarded = discards } });
 				}
-				else
-					Console.WriteLine("<Network> Interface list changed.");
-				CurrentInterfaceList = ifaces;
 			}
 			catch (Exception ex)
 			{
@@ -422,8 +411,7 @@ namespace Taskmaster
 		}
 
 		object interfaces_lock = new object();
-
-		List<NetDevice> ifacelist = new List<NetDevice>();
+		int updateinterface_lock = 0;
 
 		// TODO: This is unnecessarily heavy
 		/// <summary>
@@ -436,14 +424,14 @@ namespace Taskmaster
 		/// * IPv6 Address
 		/// </summary>
 		/// <returns>string[] { Device Name, Type, Status, Link Speed, IPv4 Address, IPv6 Address } or null</returns>
-		public List<NetDevice> Interfaces()
+		public void UpdateInterfaces()
 		{
-			lock (interfaces_lock)
-			{
-				if (ifacelist.Count > 0) return ifacelist;
+			if (!Atomic.Lock(ref updateinterface_lock)) return;
 
-				if (Taskmaster.DebugNet)
-					Log.Debug("<Network> Enumerating network interfaces...");
+			try
+			{
+				// TODO: Rate limit
+				if (Taskmaster.DebugNet) Log.Debug("<Network> Enumerating network interfaces...");
 
 				var ifacelistt = new List<NetDevice>();
 				// var ifacelist = new List<string[]>();
@@ -493,10 +481,15 @@ namespace Taskmaster
 						Log.Debug("<Network> Interface: {InterfaceName}", dev.Name);
 				}
 
-				ifacelist = ifacelistt;
+				lock (interfaces_lock) CurrentInterfaceList = ifacelistt;
 			}
-			return ifacelist;
+			finally
+			{
+				Atomic.Unlock(ref updateinterface_lock);
+			}
 		}
+
+		public List<NetDevice> GetInterfaces() => CurrentInterfaceList;
 
 		Queue<DateTime> LastChange = new Queue<DateTime>(3);
 		async void NetAddrChanged(object sender, EventArgs e)
@@ -552,7 +545,7 @@ namespace Taskmaster
 			// NetworkChanged(null,null);
 		}
 
-		void NetworkSetup()
+		public void SetupEventHooks()
 		{
 			NetworkChanged(null, null);
 			NetworkAvailable = NetworkInterface.GetIsNetworkAvailable();
@@ -578,7 +571,7 @@ namespace Taskmaster
 				await CheckInet().ConfigureAwait(false);
 			}
 
-			CurrentInterfaceList = Interfaces();
+			UpdateInterfaces();
 		}
 
 		public void Dispose()

@@ -394,7 +394,10 @@ namespace Taskmaster
 				powermanager.onBehaviourChange += processmanager.PowerBehaviourEvent;
 
 			if (NetworkMonitorEnabled)
+			{
+				netmonitor.SetupEventHooks();
 				netmonitor.Tray = trayaccess;
+			}
 
 			if (processmanager != null)
 				trayaccess?.hookProcessManager(ref processmanager);
