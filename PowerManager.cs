@@ -533,7 +533,7 @@ namespace Taskmaster
 			var power = Taskmaster.cfg["Power"];
 			bool modified = false, dirtyconfig = false;
 
-			var defaultmode = power.GetSetDefault("Default mode", "Balanced", out modified).StringValue;
+			var defaultmode = power.GetSetDefault("Default mode", GetModeName(PowerMode.Balanced), out modified).StringValue;
 			power["Default mode"].Comment = "This is what power plan we fall back on when nothing else is considered.";
 			AutoAdjust.DefaultMode = GetModeByName(defaultmode);
 			if (AutoAdjust.DefaultMode == PowerMode.Custom)
@@ -640,16 +640,16 @@ namespace Taskmaster
 			dirtyconfig |= modified;
 
 			// POWER MODES
-			var lowmode = power.GetSetDefault("Low mode", "Power Saver", out modified).StringValue;
+			var lowmode = power.GetSetDefault("Low mode", GetModeName(PowerMode.PowerSaver), out modified).StringValue;
 			AutoAdjust.Low.Mode = GetModeByName(lowmode);
 			dirtyconfig |= modified;
-			var highmode = power.GetSetDefault("High mode", "High Performance", out modified).StringValue;
+			var highmode = power.GetSetDefault("High mode", GetModeName(PowerMode.HighPerformance), out modified).StringValue;
 			AutoAdjust.High.Mode = GetModeByName(highmode);
 			dirtyconfig |= modified;
 
 			var saver = Taskmaster.cfg["AFK Power"];
 			saver.Comment = "All these options control when to enforce power save mode regardless of any other options.";
-			var sessionlockmodename = saver.GetSetDefault("Session lock", "Power Saver", out modified).StringValue;
+			var sessionlockmodename = saver.GetSetDefault("Session lock", GetModeName(PowerMode.PowerSaver), out modified).StringValue;
 			saver["Session lock"].Comment = "Power mode to set when session is locked, such as by pressing winkey+L. Unrecognizable values disable this.";
 			dirtyconfig |= modified;
 			SessionLockPowerMode = GetModeByName(sessionlockmodename);
@@ -738,19 +738,27 @@ namespace Taskmaster
 
 			if (SessionLocked)
 			{
-				if (SessionLockPowerOff && CurrentMonitorState != MonitorPowerMode.Off)
+				if (CurrentMonitorState != MonitorPowerMode.Off)
 				{
-					if (Taskmaster.ShowSessionActions || Taskmaster.DebugSession || Taskmaster.DebugMonitor)
-						Log.Information("<Session:Lock> Instant monitor power off.");
+					if (SessionLockPowerOff)
+					{
+						if (Taskmaster.ShowSessionActions || Taskmaster.DebugSession || Taskmaster.DebugMonitor)
+							Log.Information("<Session:Lock> Instant monitor power off.");
 
-					SetMonitorMode(MonitorPowerMode.Off);
+						SetMonitorMode(MonitorPowerMode.Off);
+					}
+					else
+					{
+						if (Taskmaster.ShowSessionActions || Taskmaster.DebugSession || Taskmaster.DebugMonitor)
+							Log.Information("<Session:Lock> Instant monitor power off disabled, waiting for user idle.");
+
+						MonitorSleepTimer?.Start();
+					}
 				}
 				else
 				{
 					if (Taskmaster.ShowSessionActions || Taskmaster.DebugSession || Taskmaster.DebugMonitor)
-						Log.Information("<Session:Lock> Instant monitor power off disabled, waiting for user idle.");
-
-					MonitorSleepTimer?.Start();
+						Log.Information("<Session:Lock> Monitor already off, leaving it be.");
 				}
 			}
 			else
@@ -784,7 +792,7 @@ namespace Taskmaster
 							Paused = true;
 
 							if (Taskmaster.DebugSession)
-								Log.Debug("<Session:Lock> Enforcing power plan: {Plan}", SessionLockPowerMode);
+								Log.Debug("<Session:Lock> Enforcing power plan: {Plan}", SessionLockPowerMode.ToString());
 
 							if (PauseUnneededSampler) CPUTimer.Stop();
 
@@ -798,7 +806,7 @@ namespace Taskmaster
 						// RESTORE POWER MODE
 						if (SessionLockPowerMode != PowerMode.Custom)
 						{
-							if (Taskmaster.DebugSession)
+							if (Taskmaster.DebugSession || Taskmaster.ShowSessionActions || Taskmaster.DebugPower)
 								Log.Debug("<Session:Unlock> Restoring normal power.");
 
 							if (CurrentMode == SessionLockPowerMode)
@@ -884,11 +892,11 @@ namespace Taskmaster
 			base.WndProc(ref m); // is this necessary?
 		}
 
-		public static string[] PowerModes { get; } = { "Power Saver", "Balanced", "High Performance", "Undefined" };
+		public static readonly string[] PowerModes = { "Power Saver", "Balanced", "High Performance", "Undefined" };
 
 		public static string GetModeName(PowerMode mode)
 		{
-			if (mode == PowerMode.Custom) return null;
+			if ((int)mode > 3) return string.Empty;
 			return PowerModes[(int)mode];
 		}
 
@@ -1161,7 +1169,7 @@ namespace Taskmaster
 			if (rv)
 			{
 				SavedMode = RestoreModeMethod == ModeMethod.Saved ? CurrentMode : RestoreMode;
-				InternalSetMode(mode);
+				InternalSetMode(mode, verbose:true);
 
 				if (Taskmaster.DebugPower) Log.Debug("<Power> Forced to: {PowerMode}", CurrentMode);
 			}
@@ -1199,7 +1207,7 @@ namespace Taskmaster
 			}
 
 			if ((verbose && (CurrentMode != mode)) || Taskmaster.DebugPower)
-				Log.Debug("<Power> Setting to: {Mode} ({Guid})", mode.ToString(), plan.ToString());
+				Log.Information("<Power> Setting to: {Mode} ({Guid})", mode.ToString(), plan.ToString());
 
 			CurrentMode = mode;
 			NativeMethods.PowerSetActiveScheme((IntPtr)null, ref plan);

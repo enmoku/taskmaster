@@ -89,9 +89,9 @@ namespace Taskmaster
 				power_auto.CheckOnClick = true;
 				power_auto.Enabled = false;
 
-				power_highperf = new ToolStripMenuItem("Performance", null, (s, e) => { ResetPower(PowerInfo.PowerMode.HighPerformance); });
-				power_balanced = new ToolStripMenuItem("Balanced", null, (s, e) => { ResetPower(PowerInfo.PowerMode.Balanced); });
-				power_saving = new ToolStripMenuItem("Power Saving", null, (s, e) => { ResetPower(PowerInfo.PowerMode.PowerSaver); });
+				power_highperf = new ToolStripMenuItem(PowerManager.GetModeName(PowerInfo.PowerMode.HighPerformance), null, (s, e) => { ResetPower(PowerInfo.PowerMode.HighPerformance); });
+				power_balanced = new ToolStripMenuItem(PowerManager.GetModeName(PowerInfo.PowerMode.Balanced), null, (s, e) => { ResetPower(PowerInfo.PowerMode.Balanced); });
+				power_saving = new ToolStripMenuItem(PowerManager.GetModeName(PowerInfo.PowerMode.PowerSaver), null, (s, e) => { ResetPower(PowerInfo.PowerMode.PowerSaver); });
 				power_manual = new ToolStripMenuItem("Manual override", null, SetManualPower) { CheckOnClick = true };
 			}
 

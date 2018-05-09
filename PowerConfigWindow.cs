@@ -63,7 +63,11 @@ namespace Taskmaster
 				AutoSize = true,
 				Dock = DockStyle.Fill,
 			};
-			defaultmode.Items.AddRange(new string[] { "High Performance", "Balanced", "Power Saver" });
+
+			string[] powermodes = new string[] {
+				PowerManager.GetModeName(PowerMode.HighPerformance), PowerManager.GetModeName(PowerMode.Balanced), PowerManager.GetModeName(PowerMode.PowerSaver)
+			};
+			defaultmode.Items.AddRange(powermodes);
 			defaultmode.SelectedIndex = AutoAdjust.DefaultMode == PowerMode.Balanced ? 1 : AutoAdjust.DefaultMode == PowerMode.PowerSaver ? 2 : 0;
 
 			layout.Controls.Add(new Label() { Text = "Default mode", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true });
@@ -76,7 +80,7 @@ namespace Taskmaster
 				AutoCompleteMode = AutoCompleteMode.SuggestAppend,
 				AutoSize = true,
 			};
-			highmode.Items.AddRange(new string[] { "High Performance", "Balanced", "Power Saver" });
+			highmode.Items.AddRange(powermodes);
 			highmode.SelectedIndex = AutoAdjust.High.Mode == PowerMode.Balanced ? 1 : AutoAdjust.High.Mode == PowerMode.PowerSaver ? 2 : 0;
 
 			layout.Controls.Add(new Label() { Text = "High mode", TextAlign = System.Drawing.ContentAlignment.MiddleLeft });
@@ -115,7 +119,7 @@ namespace Taskmaster
 				AutoCompleteMode = AutoCompleteMode.SuggestAppend,
 				AutoSize = true,
 			};
-			lowmode.Items.AddRange(new string[] { "High Performance", "Balanced", "Power Saver" });
+			lowmode.Items.AddRange(powermodes);
 			lowmode.SelectedIndex = AutoAdjust.Low.Mode == PowerMode.Balanced ? 1 : AutoAdjust.Low.Mode == PowerMode.PowerSaver ? 2 : 0;
 
 			layout.Controls.Add(new Label() { Text = "Low mode", TextAlign = System.Drawing.ContentAlignment.MiddleLeft });
