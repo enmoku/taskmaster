@@ -84,6 +84,8 @@ namespace Taskmaster
 			PacketStatTimerInterval = pktsec.GetSetDefault("Sample rate", 15, out dirty).IntValue.Constrain(1, 60);
 			dirtyconf |= dirty;
 			if (dirtyconf) Taskmaster.SaveConfig(cfg);
+
+			Log.Information("<Network> Traffic sample frequency: {Interval}s", PacketStatTimerInterval);
 		}
 
 		public NetManager()
