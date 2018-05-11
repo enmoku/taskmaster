@@ -807,7 +807,7 @@ namespace Taskmaster
 						if (SessionLockPowerMode != PowerMode.Custom)
 						{
 							if (Taskmaster.DebugSession || Taskmaster.ShowSessionActions || Taskmaster.DebugPower)
-								Log.Debug("<Session:Unlock> Restoring normal power.");
+								Log.Information("<Session:Unlock> Restoring normal power.");
 
 							if (CurrentMode == SessionLockPowerMode)
 							{
