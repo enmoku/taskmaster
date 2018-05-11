@@ -144,7 +144,7 @@ namespace Taskmaster
 
 			LoadConfig();
 
-			if (Settings.MemLevel > 0)
+			if (Settings.MemLevel > 0 && Taskmaster.PagingEnabled)
 			{
 				memfree = new PerformanceCounterWrapper("Memory", "Available MBytes", null);
 				commitbytes = new PerformanceCounterWrapper("Memory", "Committed Bytes", null);
@@ -364,7 +364,7 @@ namespace Taskmaster
 						var cooldown = (now - MemFreeLast).TotalMinutes; // passed time since MemFreeLast
 						MemFreeLast = now;
 
-						if (cooldown >= Settings.MemCooldown)
+						if (cooldown >= Settings.MemCooldown && Taskmaster.PagingEnabled)
 						{
 							// The following should just call something in ProcessManager
 
