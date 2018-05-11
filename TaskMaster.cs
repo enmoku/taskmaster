@@ -762,6 +762,8 @@ namespace Taskmaster
 			Log.Information("<Core> Privilege level: {Privilege}", isadmin ? "Admin" : "User");
 
 			Log.Information("<Core> Path cache: " + (PathCacheLimit == 0 ? "Disabled" : PathCacheLimit + " items"));
+
+			Log.Information("<Core> Paging: " + (PagingEnabled ? "Enabled" : "Disabled"));
 		}
 
 		static int isAdmin = -1;
