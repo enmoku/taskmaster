@@ -38,11 +38,13 @@ namespace Taskmaster
 	{
 		public readonly string Message;
 		public readonly LogEventLevel Level;
+		public readonly LogEvent Internal;
 
-		public LogEventArgs(string message, LogEventLevel level)
+		public LogEventArgs(string message, LogEventLevel level, LogEvent ev)
 		{
 			Message = message;
 			Level = level;
+			Internal = ev;
 		}
 	}
 
@@ -138,7 +140,7 @@ namespace Taskmaster
 					}
 				}
 
-				MemoryLog.Emit(this, new LogEventArgs(formattedtext, e.Level));
+				MemoryLog.Emit(this, new LogEventArgs(formattedtext, e.Level, e));
 			}
 
 			public void Dispose()

@@ -2265,12 +2265,14 @@ namespace Taskmaster
 			{
 				try
 				{
-					var excessitems = Math.Min(0, (loglist.Items.Count - MaxLogSize));
+					var excessitems = Math.Max(0, (loglist.Items.Count - MaxLogSize));
 					while (excessitems-- > 0)
 						loglist.Items.RemoveAt(0);
 
-
-					loglist.Items.Add(evmsg.Message).EnsureVisible();
+					var li = loglist.Items.Add(evmsg.Message);
+					if ((int)evmsg.Level >= (int)Serilog.Events.LogEventLevel.Error)
+						li.ForeColor = System.Drawing.Color.Red;
+					li.EnsureVisible();
 				}
 				catch (Exception ex) { Logging.Stacktrace(ex); }
 			}
