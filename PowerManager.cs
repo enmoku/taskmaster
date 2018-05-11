@@ -229,60 +229,30 @@ namespace Taskmaster
 		public event EventHandler<ProcessorEventArgs> onCPUSampling;
 		float[] CPUSamples;
 		int CPUSampleLoop = 0;
-
 		float CPUAverage = 0f;
-		float CPULow = float.MaxValue;
-		float CPUHigh = 0f;
-		int CPULowOffset = 0;
-		int CPUHighOffset = 0;
 
 		int cpusampler_lock = 0;
-		async void CPUSampler(object sender, EventArgs ev)
+		void CPUSampler(object sender, EventArgs ev)
 		{
-			if (!Atomic.Lock(ref cpusampler_lock)) return;
-
-			//await Task.Delay(0);
+			if (!Atomic.Lock(ref cpusampler_lock)) return; // uhhh... probably should ping warning if this return is triggered
 
 			try
 			{
-				var sample = float.NaN;
-
-				sample = CPUCounter.Value; // slowest part
+				float sample = CPUCounter.Value; // slowest part
 				CPUAverage -= CPUSamples[CPUSampleLoop];
 				CPUAverage += sample;
-				if (sample < CPULow)
-				{
-					CPULow = sample;
-					CPULowOffset = CPUSampleLoop;
-				}
-				else if (sample > CPUHigh)
-				{
-					CPUHigh = sample;
-					CPUHighOffset = CPUSampleLoop;
-				}
 
-				var setlowandhigh = (CPULowOffset == CPUSampleLoop || CPUHighOffset == CPUSampleLoop);
-				CPUSamples[CPUSampleLoop++] = sample;
-				if (CPUSampleLoop > (CPUSampleCount - 1)) CPUSampleLoop = 0;
-				if (setlowandhigh)
-				{
-					CPULow = float.MaxValue;
-					CPUHigh = float.MinValue;
-					for (int i = 0; i < CPUSampleCount; i++)
-					{
-						var cur = CPUSamples[i];
-						if (cur < CPULow)
-						{
-							CPULow = cur;
-							CPULowOffset = i;
-						}
+				CPUSamples[CPUSampleLoop] = sample;
+				CPUSampleLoop = (CPUSampleLoop + 1) % CPUSampleCount; // loop offset
 
-						if (cur > CPUHigh)
-						{
-							CPUHigh = cur;
-							CPUHighOffset = i;
-						}
-					}
+				float CPULow = float.MaxValue;
+				float CPUHigh = float.MinValue;
+
+				for (int i = 0; i < CPUSampleCount; i++)
+				{
+					var cur = CPUSamples[i];
+					if (cur < CPULow) CPULow = cur;
+					else if (cur > CPUHigh) CPUHigh = cur;
 				}
 
 				onCPUSampling?.Invoke(this, new ProcessorEventArgs() { Current = sample, Average = CPUAverage / CPUSampleCount, High = CPUHigh, Low = CPULow });
@@ -799,7 +769,6 @@ namespace Taskmaster
 							if (CurrentMode != SessionLockPowerMode)
 								InternalSetMode(PowerMode.PowerSaver, true);
 						}
-
 						break;
 					case SessionSwitchReason.SessionLogon:
 					case SessionSwitchReason.SessionUnlock:
