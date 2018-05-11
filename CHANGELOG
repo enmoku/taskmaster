@@ -1,8 +1,12 @@
 ﻿Comprehensive changes can be found in Git change history:
 	https://github.com/mkahvi/taskmaster/commits/master
 
+### 2018-05-11
+	Changed: CPU sampling is simplified. May run better or worse.
+	Changed: Debugging for health monitor low memory functionality.
 ### 2018-05-09
 	Fixed: Network tab packet&error deltas were not functioning.
+	Changed: Attempt to color errors in UI log.
 ### 2018-05-07
 	Fixed: Apparently Task.Wait() hangs indefinitely under some obscure circumstances. Caused manual power mode to deadlock?
 	Fixed: All CPUs mask was messed up.
