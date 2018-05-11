@@ -191,6 +191,9 @@ namespace Taskmaster
 				info.Name.Equals(freememoryignore, StringComparison.InvariantCultureIgnoreCase))
 				return;
 
+			if (Taskmaster.DebugMemory)
+				Log.Debug("<Process> Paging: {Process} (#{Id})", info.Name, info.Id);
+
 			try
 			{
 				NativeMethods.EmptyWorkingSet(info.Process.Handle);
@@ -237,20 +240,31 @@ namespace Taskmaster
 		{
 			var b1 = Taskmaster.healthmonitor.FreeMemory();
 
-			ProcessDetectedEvent += FreeMemoryTick;
-
-			await ScanEverything(); // TODO: Call for this to happen otherwise
-
-			ProcessDetectedEvent -= FreeMemoryTick;
-
-			Taskmaster.healthmonitor.InvalidateFreeMemory(); // just in case
-
-			var b2 = Taskmaster.healthmonitor.FreeMemory(); // TODO: Wait a little longer to allow OS to Actually page stuff
-
-			if (Taskmaster.DebugPaging)
+			try
 			{
-				Log.Debug("<Memory> Paging complete, observed memory change: {Memory}",
-					HumanInterface.ByteString((long)((b2 - b1) * 1000000), true));
+				ProcessDetectedEvent += FreeMemoryTick;
+
+				await ScanEverything(); // TODO: Call for this to happen otherwise
+
+				ProcessDetectedEvent -= FreeMemoryTick;
+
+				Taskmaster.healthmonitor.InvalidateFreeMemory(); // just in case
+
+				var b2 = Taskmaster.healthmonitor.FreeMemory(); // TODO: Wait a little longer to allow OS to Actually page stuff
+
+				if (Taskmaster.DebugPaging)
+				{
+					Log.Debug("<Memory> Paging complete, observed memory change: {Memory}",
+						HumanInterface.ByteString((long)((b2 - b1) * 1000000), true));
+				}
+			}
+			catch (Exception ex)
+			{
+				Logging.Stacktrace(ex);
+			}
+			finally
+			{
+				ProcessDetectedEvent -= FreeMemoryTick;
 			}
 		}
 
