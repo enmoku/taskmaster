@@ -1130,73 +1130,79 @@ namespace Taskmaster
 		async void CheckProcess(ProcessEx info, bool schedule_next = true)
 		{
 			Debug.Assert(!string.IsNullOrEmpty(info.Name), "CheckProcess received null process name.");
+			Debug.Assert(info != null);
 			Debug.Assert(info.Process != null, "CheckProcess received null process.");
 			Debug.Assert(!IgnoreProcessID(info.Id), "CheckProcess received invalid process ID: " + info.Id);
+			//Debug.Assert(execontrol != null); // triggers only if this function is running when the app is closing
 
 			//await Task.Delay(0).ConfigureAwait(false);
 
-			if (IgnoreProcessID(info.Id) || IgnoreProcessName(info.Name))
+			try
 			{
-				if (Taskmaster.Trace) Log.Verbose("Ignoring process: {ProcessName} (#{ProcessID})", info.Name, info.Id);
-				return; // ProcessState.Ignored;
-			}
-
-			if (string.IsNullOrEmpty(info.Name))
-			{
-				Log.Warning("#{AppId} details unaccessible, ignored.", info.Id);
-				return; // ProcessState.AccessDenied;
-			}
-
-			if (info.Id == Process.GetCurrentProcess().Id) return; // ProcessState.OK; // IGNORE SELF
-
-			// TODO: check proc.processName for presence in images.
-			ProcessController prc = null;
-			Debug.Assert(execontrol != null);
-			Debug.Assert(info != null);
-			
-			lock (execontrol_lock)
-				execontrol.TryGetValue(info.Name.ToLowerInvariant(), out prc);
-
-			if (prc != null)
-			{
-				if (!prc.Enabled)
+				if (IgnoreProcessID(info.Id) || IgnoreProcessName(info.Name))
 				{
-					Log.Debug("[{FriendlyName}] Matched but rule disabled; ignoring.");
+					if (Taskmaster.Trace) Log.Verbose("Ignoring process: {ProcessName} (#{ProcessID})", info.Name, info.Id);
 					return; // ProcessState.Ignored;
 				}
 
-				// await System.Threading.Tasks.Task.Delay(ProcessModifyDelay).ConfigureAwait(false);
-
-				try
+				if (string.IsNullOrEmpty(info.Name))
 				{
-					prc.Touch(info, schedule_next);
-					info.Handled = true;
-				}
-				catch (Exception ex)
-				{
-					Log.Fatal("[{FriendlyName}] '{Exec}' (#{Pid}) MASSIVE FAILURE!!!", prc.FriendlyName, info.Name, info.Id);
-					Logging.Stacktrace(ex);
-					return; // ProcessState.Error;
+					Log.Warning("#{AppId} details unaccessible, ignored.", info.Id);
+					return; // ProcessState.AccessDenied;
 				}
 
-				ForegroundWatch(info, prc);
-				return;
+				if (info.Id == Process.GetCurrentProcess().Id) return; // ProcessState.OK; // IGNORE SELF
+
+				// TODO: check proc.processName for presence in images.
+				ProcessController prc = null;
+
+				lock (execontrol_lock)
+					execontrol.TryGetValue(info.Name.ToLowerInvariant(), out prc);
+
+				if (prc != null)
+				{
+					if (!prc.Enabled)
+					{
+						Log.Debug("[{FriendlyName}] Matched but rule disabled; ignoring.");
+						return; // ProcessState.Ignored;
+					}
+
+					// await System.Threading.Tasks.Task.Delay(ProcessModifyDelay).ConfigureAwait(false);
+
+					try
+					{
+						prc.Touch(info, schedule_next);
+						info.Handled = true;
+					}
+					catch (Exception ex)
+					{
+						Log.Fatal("[{FriendlyName}] '{Exec}' (#{Pid}) MASSIVE FAILURE!!!", prc.FriendlyName, info.Name, info.Id);
+						Logging.Stacktrace(ex);
+						return; // ProcessState.Error;
+					}
+
+					ForegroundWatch(info, prc);
+					return;
+				}
+
+				// Log.Verbose("{AppName} not in executable control list.", info.Name);
+
+				if (WatchlistWithPath > 0 && !info.Handled)
+				{
+					// Log.Verbose("Checking paths for '{ProcessName}' (#{ProcessID})", info.Name, info.Id);
+					CheckPathWatch(info);
+					return;
+				}
+
+				/*
+				if (ControlChildren) // this slows things down a lot it seems
+					ChildController(info);
+				*/
 			}
-
-			// Log.Verbose("{AppName} not in executable control list.", info.Name);
-
-			if (WatchlistWithPath > 0 && !info.Handled)
+			catch (Exception ex)
 			{
-				// Log.Verbose("Checking paths for '{ProcessName}' (#{ProcessID})", info.Name, info.Id);
-				CheckPathWatch(info);
-				return;
+				Logging.Stacktrace(ex);
 			}
-
-			/*
-			if (ControlChildren) // this slows things down a lot it seems
-				ChildController(info);
-			*/
-
 			return; // ProcessState.Invalid; // return state;
 		}
 
