@@ -255,7 +255,13 @@ namespace Taskmaster
 					else if (cur > CPUHigh) CPUHigh = cur;
 				}
 
-				onCPUSampling?.Invoke(this, new ProcessorEventArgs() { Current = sample, Average = CPUAverage / CPUSampleCount, High = CPUHigh, Low = CPULow });
+				onCPUSampling?.Invoke(this, new ProcessorEventArgs()
+				{
+					Current = sample,
+					Average = CPUAverage / CPUSampleCount,
+					High = CPUHigh,
+					Low = CPULow
+				});
 			}
 			catch (Exception ex)
 			{

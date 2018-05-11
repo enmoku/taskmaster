@@ -349,68 +349,70 @@ namespace Taskmaster
 
 			// Console.WriteLine("<<Auto-Doc>> Checking...");
 
-			if (Settings.MemLevel > 0)
+			try
 			{
-				var memfreemb = memfree?.Value ?? 0; // MB
-				var commitb = commitbytes?.Value ?? 0;
-				var commitlimitb = commitlimit?.Value ?? 0;
-				var commitp = commitpercentile?.Value ?? 0;
-
-				// Console.WriteLine("Memory free: " + string.Format("{0:N1}", memfreet) + " / " + MemLevel);
-				if (memfreemb <= Settings.MemLevel)
+				if (Settings.MemLevel > 0)
 				{
-					// Console.WriteLine("<<Auto-Doc>> Memlevel below threshold.");
+					var memfreemb = memfree?.Value ?? 0; // MB
+					var commitb = commitbytes?.Value ?? 0;
+					var commitlimitb = commitlimit?.Value ?? 0;
+					var commitp = commitpercentile?.Value ?? 0;
 
-					var now = DateTime.Now;
-					var cooldown = (now - MemFreeLast).TotalMinutes; // passed time since MemFreeLast
-					MemFreeLast = now;
-
-					// Console.WriteLine(string.Format("Cooldown: {0:N2} minutes [{1}]", cooldown, MemCooldown));
-
-					if (cooldown >= Settings.MemCooldown)
+					if (memfreemb <= Settings.MemLevel)
 					{
-						// The following should just call something in ProcessManager
+						var now = DateTime.Now;
+						var cooldown = (now - MemFreeLast).TotalMinutes; // passed time since MemFreeLast
+						MemFreeLast = now;
 
-						Log.Information("<<Auto-Doc>> Free memory low [{Memory}], attempting to improve situation.",
-							HumanInterface.ByteString((long)(memfreemb * 1000000)));
-
-						var ignorepid = -1;
-						try
+						if (cooldown >= Settings.MemCooldown)
 						{
-							if (Settings.MemIgnoreFocus)
+							// The following should just call something in ProcessManager
+
+							Log.Information("<<Auto-Doc>> Free memory low [{Memory}], attempting to improve situation.",
+								HumanInterface.ByteString((long)(memfreemb * 1000000)));
+
+							var ignorepid = -1;
+							try
 							{
-								ignorepid = Taskmaster.activeappmonitor?.Foreground ?? -1;
-								Taskmaster.processmanager.Ignore(ignorepid);
+								if (Settings.MemIgnoreFocus)
+								{
+									ignorepid = Taskmaster.activeappmonitor?.Foreground ?? -1;
+									Taskmaster.processmanager.Ignore(ignorepid);
+								}
+
+								await Taskmaster.processmanager?.FreeMemory(null, quiet: true);
+							}
+							finally
+							{
+								if (Settings.MemIgnoreFocus)
+									Taskmaster.processmanager.Unignore(ignorepid);
 							}
 
-							await Taskmaster.processmanager?.FreeMemory(null, quiet:true);
-						}
-						finally
-						{
-							if (Settings.MemIgnoreFocus)
-								Taskmaster.processmanager.Unignore(ignorepid);
-						}
+							// sampled too soon, OS has had no significant time to swap out data
 
-						// sampled too soon, OS has had no significant time to swap out data
-						
-						var memfreemb2 = memfree.Value; // MB
-						var commitp2 = commitpercentile.Value;
-						var commitb2 = commitbytes.Value;
-						var actualbytes = commitb * (commitp / 100);
-						var actualbytes2 = commitb2 * (commitp2 / 100);
+							var memfreemb2 = memfree.Value; // MB
+							var commitp2 = commitpercentile.Value;
+							var commitb2 = commitbytes.Value;
+							var actualbytes = commitb * (commitp / 100);
+							var actualbytes2 = commitb2 * (commitp2 / 100);
 
-						Log.Information("<<Auto-Doc>> Free memory: {Memory} ({Change} change observed)",
-							HumanInterface.ByteString((long)(memfreemb2 * 1000000)),
-							//HumanInterface.ByteString((long)commitb2), HumanInterface.ByteString((long)commitlimitb),
-							HumanInterface.ByteString((long)((memfreemb2 - memfreemb) * 1000000), positivesign:true));
+							Log.Information("<<Auto-Doc>> Free memory: {Memory} ({Change} change observed)",
+								HumanInterface.ByteString((long)(memfreemb2 * 1000000)),
+								//HumanInterface.ByteString((long)commitb2), HumanInterface.ByteString((long)commitlimitb),
+								HumanInterface.ByteString((long)((memfreemb2 - memfreemb) * 1000000), positivesign: true));
+						}
+					}
+					else if (memfreemb * 1.5f <= Settings.MemLevel)
+					{
+						if (Taskmaster.DebugMemory)
+							Log.Debug("<Memory> Free memory fairly low: {Memory}",
+								HumanInterface.ByteString((long)(memfreemb * 1000000)));
 					}
 				}
-				else if (memfreemb * 1.5f <= Settings.MemLevel)
-				{
-					if (Taskmaster.DebugMemory)
-						Log.Debug("<Memory> Free memory fairly low: {Memory}",
-							HumanInterface.ByteString((long)(memfreemb * 1000000)));
-				}
+			}
+			catch (Exception ex)
+			{
+				Logging.Stacktrace(ex);
 			}
 		}
 
