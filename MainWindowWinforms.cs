@@ -1388,6 +1388,7 @@ namespace Taskmaster
 			// Rule Listing
 			watchlistRules = new ListView
 			{
+				Parent = this,
 				View = View.Details,
 				Dock = DockStyle.Fill,
 				AutoSize = true,
@@ -1396,7 +1397,7 @@ namespace Taskmaster
 				FullRowSelect = true,
 				MinimumSize = new System.Drawing.Size(-2, -2),
 			};
-
+			
 			var numberColumns = new int[] { 0, AdjustColumn };
 			var watchlistSorter = new WatchlistSorter(numberColumns);
 			watchlistRules.ListViewItemSorter = watchlistSorter; // what's the point of this?
@@ -1612,6 +1613,7 @@ namespace Taskmaster
 
 			powerbalancerlog = new ListView()
 			{
+				Parent = this,
 				Dock = DockStyle.Top,
 				AutoSize = true,
 				//Height = 80,
@@ -1677,6 +1679,7 @@ namespace Taskmaster
 
 			exitwaitlist = new ListView()
 			{
+				Parent = this,
 				AutoSize = true,
 				//Height = 180,
 				//Width = tabLayout.Width - 12, // FIXME: 3 for the bevel, but how to do this "right"?
