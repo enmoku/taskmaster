@@ -362,18 +362,22 @@ namespace Taskmaster
 		Process[] Explorer;
 		async void ExplorerCrashHandler(int processId)
 		{
+			lock (explorer_lock)
+			{
+				KnownExplorerInstances.Remove(processId);
+
+				if (KnownExplorerInstances.Count > 0)
+				{
+					if (Taskmaster.Trace) Log.Verbose("<Tray> Explorer (#{Id}) exited but is not the last known explorer instance.", processId);
+					return;
+				}
+			}
+
 			Log.Warning("<Tray> Explorer (#{Pid}) crash detected!", processId);
 
 			Log.Information("<Tray> Giving explorer some time to recover on its own...");
 
 			await Task.Delay(12000); // force async, 12 seconds
-
-			lock (explorer_lock)
-			{
-				KnownExplorerInstances.Remove(processId);
-
-				if (KnownExplorerInstances.Count > 0) return; // probably never triggers
-			}
 
 			var n = new Stopwatch();
 			n.Start();
@@ -402,20 +406,20 @@ namespace Taskmaster
 
 		object explorer_lock = new object();
 		HashSet<int> KnownExplorerInstances = new HashSet<int>();
-		System.Diagnostics.Process[] ExplorerInstances
+		Process[] ExplorerInstances
 		{
 			get
 			{
-				return System.Diagnostics.Process.GetProcessesByName(System.IO.Path.GetFileNameWithoutExtension("explorer.exe"));
+				return Process.GetProcessesByName("explorer");
 			}
 		}
 
-		bool RegisterExplorerExit(System.Diagnostics.Process[] procs = null)
+		bool RegisterExplorerExit(Process[] procs = null)
 		{
 			if (Taskmaster.Trace) Log.Verbose("<Tray> Registering Explorer crash monitor.");
 			// this is for dealing with notify icon disappearing on explorer.exe crash/restart
 
-				if (procs == null) procs = ExplorerInstances;
+			if (procs == null || procs.Length == 0) procs = ExplorerInstances;
 
 			if (procs.Length > 0)
 			{
@@ -423,9 +427,28 @@ namespace Taskmaster
 				foreach (var proc in procs)
 				{
 					int id = proc.Id;
-					lock (explorer_lock) KnownExplorerInstances.Add(id);
-					proc.Exited += (s, e) => { ExplorerCrashHandler(id); };
-					proc.EnableRaisingEvents = true;
+					var info = new ProcessEx() { Id = proc.Id, Name = "explorer", Process = proc, Path = string.Empty };
+					if (ProcessManagerUtility.FindPath(info))
+					{
+						if (!info.Path.StartsWith(Environment.GetFolderPath(Environment.SpecialFolder.Windows), StringComparison.InvariantCultureIgnoreCase))
+						{
+							if (Taskmaster.Trace) Log.Verbose("<Tray> Explorer (#{Pid}) not in system root.", info.Id);
+							continue;
+						}
+					}
+
+					bool added = false;
+					lock (explorer_lock)
+					{
+						added = KnownExplorerInstances.Add(id);
+					}
+
+					if (added)
+					{
+						proc.Exited += (s, e) => { ExplorerCrashHandler(id); };
+						proc.EnableRaisingEvents = true;
+					}
+
 					Log.Information("<Tray> Explorer (#{ExplorerProcessID}) registered.", id);
 				}
 
