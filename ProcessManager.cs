@@ -403,13 +403,13 @@ namespace Taskmaster
 				Log.Warning("[{Friendly}] Background priority equal or higher than foreground priority, ignoring.", prc.FriendlyName);
 			}
 
-			if (prc.Rescan > 0 && prc.ExecutableFriendlyName == null)
+			if (prc.Rescan > 0 && string.IsNullOrEmpty(prc.ExecutableFriendlyName))
 			{
 				Log.Warning("[{FriendlyName}] Configuration error, can not rescan without image name.");
 				prc.Rescan = 0;
 			}
 
-			if (prc.Executable == null && prc.Path == null)
+			if (string.IsNullOrEmpty(prc.Executable) && string.IsNullOrEmpty(prc.Path))
 			{
 				Log.Warning("[{FriendlyName}] Executable and Path missing; ignoring.");
 				rv = false;
@@ -918,7 +918,7 @@ namespace Taskmaster
 				foreach (ProcessController prc in watchlist)
 				{
 					if (!prc.Enabled) continue;
-					if (prc.Path == null) continue;
+					if (string.IsNullOrEmpty(prc.Path)) continue;
 
 					if (!string.IsNullOrEmpty(prc.Executable))
 					{
@@ -1602,6 +1602,33 @@ namespace Taskmaster
 				while (triggerList.Count > 0)
 					WaitForExitTriggered(triggerList.Pop()); // causes removal so can't be done in above loop
 			}
+		}
+
+		public ProcessEx GetInfo(int ProcessID)
+		{
+			var info = new ProcessEx()
+			{
+				Id = ProcessID,
+				Name = string.Empty,
+				Path = string.Empty,
+				Process = null,
+			};
+
+			try
+			{
+				info.Process = Process.GetProcessById(ProcessID);
+			}
+			catch
+			{
+				return info;
+			}
+
+			if (ProcessManagerUtility.FindPath(info))
+			{
+				// path found
+			}
+
+			return info;
 		}
 
 		bool disposed; // = false;

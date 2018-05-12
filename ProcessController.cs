@@ -567,7 +567,7 @@ namespace Taskmaster
 			// TODO: Validate path.
 			if (Path != null)
 			{
-				if (info.Path == null)
+				if (string.IsNullOrEmpty(info.Path))
 				{
 					if (ProcessManagerUtility.FindPath(info))
 					{
@@ -1024,7 +1024,7 @@ namespace Taskmaster
 		int ScanModifyCount = 0;
 		public async Task Scan()
 		{
-			if (ExecutableFriendlyName == null) return;
+			if (string.IsNullOrEmpty(ExecutableFriendlyName)) return;
 
 			//await Task.Delay(0);
 

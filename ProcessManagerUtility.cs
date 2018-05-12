@@ -74,11 +74,11 @@ namespace Taskmaster
 			}
 
 			// Try harder
-			if (info.Path == null)
+			if (string.IsNullOrEmpty(info.Path))
 			{
 				GetPath(info);
 
-				if (info.Path == null) return false;
+				if (string.IsNullOrEmpty(info.Path)) return false;
 			}
 
 			if (pathCache != null && !cacheGet)
@@ -97,7 +97,7 @@ namespace Taskmaster
 
 		static bool GetPath(ProcessEx info)
 		{
-			System.Diagnostics.Debug.Assert(info.Path == null, "GetPath called even though path known.");
+			System.Diagnostics.Debug.Assert(string.IsNullOrEmpty(info.Path), "GetPath called even though path known.");
 
 			try
 			{
@@ -112,7 +112,7 @@ namespace Taskmaster
 			{
 				info.Path = GetProcessPathViaC(info.Id);
 
-				if (info.Path == null)
+				if (string.IsNullOrEmpty(info.Path))
 				{
 					info.Path = GetProcessPathViaWMI(info.Id);
 					if (string.IsNullOrEmpty(info.Path)) return false;
