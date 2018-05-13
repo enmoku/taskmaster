@@ -609,6 +609,7 @@ namespace Taskmaster
 				oldPriority = info.Process.PriorityClass;
 			}
 			catch { } // NOP, don't care
+			IntPtr newAffinity = Affinity.GetValueOrDefault();
 
 			var newPriority = oldPriority;
 
@@ -689,7 +690,24 @@ namespace Taskmaster
 						// int bitsnew = Bit.Count(newAffinityMask);
 						// TODO: Somehow shift bits old to new if there's free spots
 
-						info.Process.ProcessorAffinity = Affinity.Value;
+						// Don't increase the number of cores
+						int excesscores = Bit.Count(newAffinityMask) - Bit.Count(oldAffinityMask);
+						if (excesscores > 0)
+						{
+							for (int i = 0; i < ProcessManager.CPUCount; i++)
+							{
+								if (Bit.IsSet(newAffinityMask, i))
+								{
+									newAffinityMask = Bit.Unset(newAffinityMask, i);
+									if (--excesscores <= 0) break;
+								}
+							}
+
+							newAffinity = new IntPtr(newAffinityMask);
+						}
+
+						info.Process.ProcessorAffinity = newAffinity;
+
 						modified = mAffinity = true;
 						// Log.Verbose("Affinity for '{ExecutableName}' (#{ProcessID}) set: {OldAffinity} → {NewAffinity}.",
 						// execname, pid, process.ProcessorAffinity.ToInt32(), Affinity.ToInt32());
@@ -795,7 +813,7 @@ namespace Taskmaster
 				sbs.Append("; Affinity: ");
 				if (mAffinity)
 					sbs.Append(oldAffinity.ToInt32()).Append(" → ");
-				sbs.Append(Affinity.Value.ToInt32());
+				sbs.Append(newAffinity);
 			}
 			if (mPower)
 				sbs.Append(string.Format(" [Power Mode: {0}]", PowerPlan.ToString()));

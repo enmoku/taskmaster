@@ -4,6 +4,7 @@
 ### 2018-05-13
 	Changed: Remember window sizes and positions works a little differently.
 	Added: More debug output
+	Changed: Affinity setting no longer increases the number of allowed cores. This may later become configurable to allow increasing them.
 ### 2018-05-12
 	Changed: Explorer crash handling. Should be less convinced about explorer crashes when no such thing happened.
 ### 2018-05-11
