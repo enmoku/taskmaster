@@ -416,7 +416,7 @@ namespace Taskmaster
 			}
 
 			// SANITY CHECKING
-			if (prc.ExecutableFriendlyName != null)
+			if (!string.IsNullOrEmpty(prc.ExecutableFriendlyName))
 			{
 				if (IgnoreProcessName(prc.ExecutableFriendlyName))
 				{
@@ -652,7 +652,10 @@ namespace Taskmaster
 						Log.Warning("[{Name}] Resize malconfigured, ignoring it.", prc.FriendlyName);
 					}
 					else
-						prc.Resize = resize;
+					{
+						prc.Resize = new System.Drawing.Rectangle(resize[0], resize[1], resize[2], resize[3]);
+						//prc.Resize = resize;
+					}
 				}
 
 				addController(prc);
@@ -1682,6 +1685,16 @@ namespace Taskmaster
 
 					lock (watchlist_lock)
 					{
+						var wcfg = Taskmaster.LoadConfig(watchfile);
+
+						foreach (var prc in watchlist)
+						{
+							if (prc.NeedsSaving)
+							{
+								prc.SaveConfig(wcfg);
+							}
+						}
+
 						watchlist?.Clear();
 						watchlist = null;
 					}
@@ -1704,8 +1717,11 @@ namespace Taskmaster
 			lock (watchlist_lock)
 			{
 				foreach (ProcessController prc in watchlist)
+				{
+					if (prc.NeedsSaving)
+						prc.SaveConfig();
 					prc.SaveStats();
-
+				}
 			}
 		}
 	}

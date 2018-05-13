@@ -154,7 +154,7 @@ namespace Taskmaster
 				Log.Information("<Auto-Doc> Memory auto-paging level: {Level} MB", Settings.MemLevel);
 			}
 
-			healthTimer = new System.Timers.Timer(Settings.Frequency * 60 * 1000);
+			healthTimer = new System.Timers.Timer(Settings.Frequency * 60_000);
 			healthTimer.Elapsed += TimerCheck;
 
 			Log.Information("<Auto-Doc> Component loaded");
@@ -291,7 +291,7 @@ namespace Taskmaster
 				size += fi.Length;
 			}
 
-			if (size >= Settings.FatalLogSizeThreshold * 1000000)
+			if (size >= Settings.FatalLogSizeThreshold * 1_000_000)
 			{
 				Log.Fatal("<Auto-Doc> Log files exceeding allowed size, exiting.");
 				Taskmaster.UnifiedExit();
@@ -309,7 +309,9 @@ namespace Taskmaster
 			{
 				if (drive.IsReady)
 				{
-					if (drive.AvailableFreeSpace < Settings.LowDriveSpaceThreshold*1000000)
+					Log.Debug("<Auto-Doc> {Drive} free space: ", drive.Name, HumanInterface.ByteString(drive.AvailableFreeSpace));
+
+					if (drive.AvailableFreeSpace < Settings.LowDriveSpaceThreshold * 1_000_000)
 					{
 						if (warnedDrives.Contains(drive.Name)) continue;
 
@@ -369,7 +371,7 @@ namespace Taskmaster
 							// The following should just call something in ProcessManager
 
 							Log.Information("<<Auto-Doc>> Free memory low [{Memory}], attempting to improve situation.",
-								HumanInterface.ByteString((long)(memfreemb * 1000000)));
+								HumanInterface.ByteString((long)(memfreemb * 1_000_000)));
 
 							var ignorepid = -1;
 							try
@@ -397,16 +399,16 @@ namespace Taskmaster
 							var actualbytes2 = commitb2 * (commitp2 / 100);
 
 							Log.Information("<<Auto-Doc>> Free memory: {Memory} ({Change} change observed)",
-								HumanInterface.ByteString((long)(memfreemb2 * 1000000)),
+								HumanInterface.ByteString((long)(memfreemb2 * 1_000_000)),
 								//HumanInterface.ByteString((long)commitb2), HumanInterface.ByteString((long)commitlimitb),
-								HumanInterface.ByteString((long)((memfreemb2 - memfreemb) * 1000000), positivesign: true));
+								HumanInterface.ByteString((long)((memfreemb2 - memfreemb) * 1_000_000), positivesign: true));
 						}
 					}
 					else if (memfreemb * 1.5f <= Settings.MemLevel)
 					{
 						if (Taskmaster.DebugMemory)
 							Log.Debug("<Memory> Free memory fairly low: {Memory}",
-								HumanInterface.ByteString((long)(memfreemb * 1000000)));
+								HumanInterface.ByteString((long)(memfreemb * 1_000_000)));
 					}
 				}
 			}

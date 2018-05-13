@@ -457,6 +457,7 @@ namespace Taskmaster
 		public static bool ShowSessionActions { get; set; } = true;
 
 		public static bool DebugProcesses { get; set; } = false;
+
 		public static bool DebugPaths { get; set; } = false;
 		public static bool DebugFullScan { get; set; } = false;
 
@@ -468,6 +469,7 @@ namespace Taskmaster
 		public static bool DebugMonitor { get; set; } = false;
 
 		public static bool DebugSession { get; set; } = false;
+		public static bool DebugResize { get; set; } = false;
 
 		public static bool DebugWMI { get; set; } = false;
 
@@ -500,7 +502,7 @@ namespace Taskmaster
 
 		// public static bool LowMemory { get; private set; } = true; // low memory mode; figure out way to auto-enable this when system is low on memory
 
-		public static int TempRescanDelay = 60 * 60 * 1000;
+		public static int TempRescanDelay = 60 * 60_000; // 60 minutes
 		public static int TempRescanThreshold = 1000;
 
 		public static int PathCacheLimit = 200;
@@ -674,7 +676,7 @@ namespace Taskmaster
 			TempRescanThreshold = perfsec.GetSetDefault("Temp rescan threshold", 1000, out modified).IntValue;
 			perfsec["Temp rescan threshold"].Comment = "How many changes we wait to temp folder before expediting rescanning it.";
 			dirtyconfig |= modified;
-			TempRescanDelay = perfsec.GetSetDefault("Temp rescan delay", 60, out modified).IntValue * 60 * 1000;
+			TempRescanDelay = perfsec.GetSetDefault("Temp rescan delay", 60, out modified).IntValue * 60_000;
 			perfsec["Temp rescan delay"].Comment = "How many minutes to wait before rescanning temp after crossing the threshold.";
 			dirtyconfig |= modified;
 
@@ -746,6 +748,7 @@ namespace Taskmaster
 			DebugMonitor = dbgsec.TryGet("Monitor")?.BoolValue ?? false;
 
 			DebugSession = dbgsec.TryGet("Session")?.BoolValue ?? false;
+			DebugResize = dbgsec.TryGet("Resize")?.BoolValue ?? false;
 
 			DebugWMI = dbgsec.TryGet("WMI")?.BoolValue ?? false;
 
@@ -1253,6 +1256,8 @@ namespace Taskmaster
 			// IS THIS OF ANY USE?
 			// GC.Collect(GC.MaxGeneration, GCCollectionMode.Forced, true, true);
 			// GC.WaitForPendingFinalizers();
+			const long fakemempressure = 200_000_000;
+			GC.AddMemoryPressure(fakemempressure); // Workstation GC boundary is 256 MB, we want it to be closer to 60-80 MB
 
 			// early save of configs
 			foreach (var dcfg in ConfigDirty)
@@ -1261,15 +1266,18 @@ namespace Taskmaster
 
 			// Properties.Settings.Default.Save();
 
-			CleanupTimer = new System.Timers.Timer(1000 * 60 * CleanupInterval);
+			CleanupTimer = new System.Timers.Timer(60_000 * CleanupInterval);
 			CleanupTimer.Elapsed += Taskmaster.Cleanup;
 			CleanupTimer.Start();
 
+			if (RestartCounter > 0) Log.Information("<Core> Restarted {Count} time(s)", RestartCounter);
 			Log.Information("<Core> Initialization complete...");
 
+			/*
 			Console.WriteLine("Embedded Resources");
 			foreach (var name in System.Reflection.Assembly.GetExecutingAssembly().GetManifestResourceNames())
 				Console.WriteLine(" - " + name);
+			*/
 
 			try
 			{
@@ -1349,6 +1357,8 @@ namespace Taskmaster
 			CleanShutdown();
 
 			Log.Information("Taskmaster! (#{ProcessID}) END! [Clean]", System.Diagnostics.Process.GetCurrentProcess().Id);
+
+			GC.RemoveMemoryPressure(fakemempressure); // probably unnecesary
 
 			singleton.Close();
 			singleton = null;

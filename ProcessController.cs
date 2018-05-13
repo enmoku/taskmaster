@@ -172,7 +172,7 @@ namespace Taskmaster
 				if (!System.IO.Directory.Exists(Path))
 					Log.Warning("{FriendlyName} configured path {Path} does not exist!", FriendlyName, path);
 
-				if (Path != null)
+				if (!string.IsNullOrEmpty(Path))
 				{
 					Log.Information("[{FriendlyName}] Watched in: {Path} [Priority: {Priority}, Mask: {Mask}]",
 									FriendlyName,
@@ -194,111 +194,116 @@ namespace Taskmaster
 			Taskmaster.MarkDirtyINI(cfg);
 		}
 
-		public void SaveConfig(SharpConfig.Configuration cfg = null, SharpConfig.Section app=null)
+		public void SaveConfig(SharpConfig.Configuration cfg = null, SharpConfig.Section app = null)
 		{
-			lock (Taskmaster.watchlist_lock)
+			if (cfg == null)
+				cfg = Taskmaster.LoadConfig(watchlistfile);
+
+			if (app == null)
+				app = cfg[FriendlyName];
+
+			if (!string.IsNullOrEmpty(Executable))
+				app["Image"].StringValue = Executable;
+			else
+				app.Remove("Image");
+			if (!string.IsNullOrEmpty(Path))
+				app["Path"].StringValue = Path;
+			else
+				app.Remove("Path");
+
+			if (Priority.HasValue)
 			{
-				if (cfg == null)
-					cfg = Taskmaster.LoadConfig(watchlistfile);
-
-				if (app == null)
-					app = cfg[FriendlyName];
-
-				if (!string.IsNullOrEmpty(Executable))
-					app["Image"].StringValue = Executable;
-				else
-					app.Remove("Image");
-				if (!string.IsNullOrEmpty(Path))
-					app["Path"].StringValue = Path;
-				else
-					app.Remove("Path");
-
-				if (Priority.HasValue)
-				{
-					app["Increase"].BoolValue = Increase;
-					app["Decrease"].BoolValue = Decrease;
-					app["Priority"].IntValue = ProcessHelpers.PriorityToInt(Priority.Value);
-				}
-				else
-				{
-					app.Remove("Priority");
-					app.Remove("Increase");
-					app.Remove("Priority");
-				}
-
-				if (Affinity.HasValue)
-				{
-					var affinity = Affinity.Value.ToInt32();
-					if (affinity == ProcessManager.allCPUsMask) affinity = 0;
-					if (affinity >= 0)
-						app["Affinity"].IntValue = Affinity.Value.ToInt32();
-					else
-						app.Remove("Affinity"); // ignore affinity
-				}
-				else
-					app.Remove("Affinity");
-
-				var pmode = PowerManager.GetModeName(PowerPlan);
-				if (PowerPlan != PowerInfo.PowerMode.Undefined)
-					app["Power mode"].StringValue = PowerManager.GetModeName(PowerPlan);
-				else
-					app.Remove("Power mode");
-
-				if (ForegroundOnly)
-				{
-					app["Foreground only"].BoolValue = ForegroundOnly;
-					if (BackgroundPriority != ProcessPriorityClass.RealTime)
-						app["Background priority"].IntValue = ProcessHelpers.PriorityToInt(BackgroundPriority);
-					else
-						app.Remove("Background priority");
-					if (BackgroundPowerdown)
-						app["Background powerdown"].BoolValue = BackgroundPowerdown;
-					else
-						app.Remove("Background powerdown");
-				}
-				else
-				{
-					app.Remove("Foreground only");
-					app.Remove("Background priority");
-					app.Remove("Background powerdown");
-				}
-
-				if (AllowPaging)
-					app["Allow paging"].BoolValue = AllowPaging;
-				else
-					app.Remove("Allow paging");
-
-				if (!string.IsNullOrEmpty(Executable))
-				{
-					if (Rescan > 0) app["Rescan"].IntValue = Rescan;
-					else app.Remove("Rescan");
-					if (Recheck > 0) app["Recheck"].IntValue = Recheck;
-					else app.Remove("Recheck");
-				}
-
-				if (!Enabled) app["Enabled"].BoolValue = Enabled;
-				else app.Remove("Enabled");
-
-				if (IgnoreList != null && IgnoreList.Length > 0)
-					app["Ignore"].StringValueArray = IgnoreList;
-				else
-					app.Remove("Ignore");
-
-				if (ModifyDelay > 0)
-					app["Modify delay"].IntValue = ModifyDelay;
-
-				if (Resize != null)
-				{
-					if (RememberSize)
-						app["Remember size"].BoolValue = RememberSize;
-					if (RememberPos)
-						app["Remember position"].BoolValue = RememberPos;
-
-					app["Resize"].IntValueArray = Resize;
-				}
-
-				Taskmaster.MarkDirtyINI(cfg);
+				app["Increase"].BoolValue = Increase;
+				app["Decrease"].BoolValue = Decrease;
+				app["Priority"].IntValue = ProcessHelpers.PriorityToInt(Priority.Value);
 			}
+			else
+			{
+				app.Remove("Priority");
+				app.Remove("Increase");
+				app.Remove("Priority");
+			}
+
+			if (Affinity.HasValue)
+			{
+				var affinity = Affinity.Value.ToInt32();
+				if (affinity == ProcessManager.allCPUsMask) affinity = 0;
+				if (affinity >= 0)
+					app["Affinity"].IntValue = Affinity.Value.ToInt32();
+				else
+					app.Remove("Affinity"); // ignore affinity
+			}
+			else
+				app.Remove("Affinity");
+
+			var pmode = PowerManager.GetModeName(PowerPlan);
+			if (PowerPlan != PowerInfo.PowerMode.Undefined)
+				app["Power mode"].StringValue = PowerManager.GetModeName(PowerPlan);
+			else
+				app.Remove("Power mode");
+
+			if (ForegroundOnly)
+			{
+				app["Foreground only"].BoolValue = ForegroundOnly;
+				if (BackgroundPriority != ProcessPriorityClass.RealTime)
+					app["Background priority"].IntValue = ProcessHelpers.PriorityToInt(BackgroundPriority);
+				else
+					app.Remove("Background priority");
+				if (BackgroundPowerdown)
+					app["Background powerdown"].BoolValue = BackgroundPowerdown;
+				else
+					app.Remove("Background powerdown");
+			}
+			else
+			{
+				app.Remove("Foreground only");
+				app.Remove("Background priority");
+				app.Remove("Background powerdown");
+			}
+
+			if (AllowPaging)
+				app["Allow paging"].BoolValue = AllowPaging;
+			else
+				app.Remove("Allow paging");
+
+			if (!string.IsNullOrEmpty(Executable))
+			{
+				if (Rescan > 0) app["Rescan"].IntValue = Rescan;
+				else app.Remove("Rescan");
+				if (Recheck > 0) app["Recheck"].IntValue = Recheck;
+				else app.Remove("Recheck");
+			}
+
+			if (!Enabled) app["Enabled"].BoolValue = Enabled;
+			else app.Remove("Enabled");
+
+			if (IgnoreList != null && IgnoreList.Length > 0)
+				app["Ignore"].StringValueArray = IgnoreList;
+			else
+				app.Remove("Ignore");
+
+			if (ModifyDelay > 0)
+				app["Modify delay"].IntValue = ModifyDelay;
+
+			if (Resize.HasValue)
+			{
+				if (RememberSize)
+					app["Remember size"].BoolValue = RememberSize;
+				if (RememberPos)
+					app["Remember position"].BoolValue = RememberPos;
+
+				app["Resize"].IntValueArray = new int[] {
+						RememberPos ? Resize.Value.Left : 0,
+						RememberPos ? Resize.Value.Top : 0,
+						RememberSize ? Resize.Value.Width : 0,
+						RememberSize ? Resize.Value.Height : 0
+					};
+				//app["Resize"].IntValueArray = Resize;
+			}
+
+			NeedsSaving = false;
+
+			Taskmaster.MarkDirtyINI(cfg);
 		}
 
 		const string statfile = "Watchlist.Statistics.ini";
@@ -308,10 +313,10 @@ namespace Taskmaster
 			var stats = Taskmaster.LoadConfig(statfile);
 
 			string statkey = null;
-			if (Executable != null) statkey = Executable;
-			else if (Path != null) statkey = Path;
+			if (!string.IsNullOrEmpty(Executable)) statkey = Executable;
+			else if (!string.IsNullOrEmpty(Path)) statkey = Path;
 
-			if (statkey != null)
+			if (!string.IsNullOrEmpty(statkey))
 			{
 				Adjusts = stats[statkey].TryGet("Adjusts")?.IntValue ?? 0;
 
@@ -335,8 +340,8 @@ namespace Taskmaster
 
 			// BROKEN?
 			string key = null;
-			if (Executable != null) key = Executable;
-			else if (Path != null) key = Path;
+			if (!string.IsNullOrEmpty(Executable)) key = Executable;
+			else if (!string.IsNullOrEmpty(Path)) key = Path;
 			else return;
 
 			if (Adjusts > 0)
@@ -565,7 +570,7 @@ namespace Taskmaster
 				Log.Debug("[{FriendlyName}] {ProcessName} (#{ProcessID}) in protected list, limiting tampering.", FriendlyName, info.Name, info.Id);
 
 			// TODO: Validate path.
-			if (Path != null)
+			if (!string.IsNullOrEmpty(Path))
 			{
 				if (string.IsNullOrEmpty(info.Path))
 				{
@@ -832,7 +837,9 @@ namespace Taskmaster
 
 		void TryResize(ProcessEx info)
 		{
-			if (Resize == null) return;
+			if (!Resize.HasValue) return;
+
+			Log.Debug("Attempting resize on {Name} (#{Pid})", info.Name, info.Id);
 
 			try
 			{
@@ -841,52 +848,77 @@ namespace Taskmaster
 					if (ResizeWaitList.Contains(info.Id)) return;
 
 					IntPtr hwnd = info.Process.MainWindowHandle;
-					NativeMethods.GetWindowRect(hwnd, ref rect);
+					if (!NativeMethods.GetWindowRect(hwnd, ref rect))
+					{
+						Log.Debug("Failed to retrieve current size of {Name} (#{Pid})", info.Name, info.Id);
+					}
 
-					var ro = new System.Drawing.Rectangle(
-						rect.Left, rect.Top, rect.Right - rect.Left, rect.Bottom - rect.Top);
+					var oldsize = new System.Drawing.Rectangle(rect.Left, rect.Top, rect.Right - rect.Left, rect.Bottom - rect.Top);
 
-					var rn = new System.Drawing.Rectangle(
-						Resize[0] != 0 ? Resize[0] : ro.Left,
-						Resize[1] != 0 ? Resize[1] : ro.Top,
-						Resize[2] != 0 ? Resize[2] : ro.Width,
-						Resize[3] != 0 ? Resize[3] : ro.Height
+					var newsize = new System.Drawing.Rectangle(
+						Resize.Value.Left != 0 ? Resize.Value.Left : oldsize.Left,
+						Resize.Value.Top != 0 ? Resize.Value.Top : oldsize.Top,
+						Resize.Value.Width != 0 ? Resize.Value.Width : oldsize.Width,
+						Resize.Value.Height != 0 ? Resize.Value.Height : oldsize.Height
 						);
 
-					if (!rn.Equals(ro))
+					if (!newsize.Equals(oldsize))
 					{
-						Log.Debug("Resizing {Name} (#{Pid}) from {OldWidth}×{OldHeight} to {NewWidth}×{NewHeight}",
-							info.Name, info.Id, ro.Width, ro.Height, rn.Width, rn.Height);
+						if (Taskmaster.DebugResize)
+							Log.Debug("Resizing {Name} (#{Pid}) from {OldWidth}×{OldHeight} to {NewWidth}×{NewHeight}",
+								info.Name, info.Id, oldsize.Width, oldsize.Height, newsize.Width, newsize.Height);
 
 						// TODO: Add option to monitor the app and save the new size so relaunching the app keeps the size.
 
-						NativeMethods.MoveWindow(hwnd, rn.Left, rn.Top, rn.Width, rn.Height, true);
+						NativeMethods.MoveWindow(hwnd, newsize.Left, newsize.Top, newsize.Width, newsize.Height, true);
+
+						if (RememberSize || RememberSize)
+						{
+							lock (Taskmaster.watchlist_lock)
+							{
+								Resize = newsize;
+								NeedsSaving = true;
+							}
+						}
 					}
 
-					if (!RememberSize && !RememberPos) return;
+					if (!RememberSize && !RememberPos)
+					{
+						Log.Debug("Remembering size or pos not enabled for {Name} (#{Pid})", info.Name, info.Id);
+						return;
+					}
 
 					ResizeWaitList.Add(info.Id);
 
 					System.Threading.ManualResetEvent re = new System.Threading.ManualResetEvent(false);
 					Task.Factory.StartNew(() =>
 					{
+						if (Taskmaster.DebugResize) Log.Debug("<Resize> Starting monitoring {Exe} (#{Pid})", info.Name, info.Id);
 						try
 						{
-							while (!re.WaitOne(1000 * 60))
+							while (!re.WaitOne(60_000))
 							{
+								if (Taskmaster.DebugResize) Log.Debug("<Resize> Recording size and position for {Exe} (#{Pid})", info.Name, info.Id);
+
 								NativeMethods.GetWindowRect(hwnd, ref rect);
-								rn = new System.Drawing.Rectangle(
-									RememberPos ? rect.Left : Resize[0], RememberPos ? rect.Top : Resize[1],
-									RememberSize ? rect.Right - rect.Left : Resize[2], RememberSize ? rect.Bottom - rect.Top : Resize[3]
+
+								newsize = new System.Drawing.Rectangle(
+									RememberPos ? rect.Left : Resize.Value.Left, RememberPos ? rect.Top : Resize.Value.Top,
+									RememberSize ? rect.Right - rect.Left : Resize.Value.Left, RememberSize ? rect.Bottom - rect.Top : Resize.Value.Top
 									);
 
-								Resize = new int[] { rn.Left, rn.Top, rn.Width, rn.Height };
+								lock (Taskmaster.watchlist_lock)
+								{
+									Resize = newsize;
+									NeedsSaving = true;
+								}
 							}
 						}
 						catch (Exception ex)
 						{
 							Logging.Stacktrace(ex);
 						}
+						if (Taskmaster.DebugResize) Log.Debug("<Resize> Stopping monitoring {Exe} (#{Pid})", info.Name, info.Id);
 					}, TaskCreationOptions.LongRunning);
 
 					info.Process.EnableRaisingEvents = true;
@@ -902,33 +934,26 @@ namespace Taskmaster
 								ResizeWaitList.Remove(info.Id);
 							}
 
-							Log.Debug("Saving {Name} (#{Pid}) from {OldWidth}×{OldHeight} to {NewWidth}×{NewHeight}",
-								info.Name, info.Id, ro.Width, ro.Height, Resize[0], Resize[1]);
-
-							if (ro.Width != Resize[2] || ro.Height != Resize[3]
-								|| ro.Left != Resize[0] || ro.Top != Resize[1])
+							if ((RememberSize && (oldsize.Width != Resize.Value.Width || oldsize.Height != Resize.Value.Height)) ||
+								(RememberPos && (oldsize.Left != Resize.Value.Left || oldsize.Top != Resize.Value.Top)))
 							{
+								if (Taskmaster.DebugResize)
+									Log.Debug("Saving {Name} (#{Pid}) size to {NewWidth}×{NewHeight}",
+										info.Name, info.Id, Resize.Value.Width, Resize.Value.Height);
+
 								var cfg = Taskmaster.LoadConfig(watchlistfile);
 								var app = cfg[FriendlyName];
-								int[] resizecopy = new int[] { 0, 0, 0, 0 };
-								Resize.CopyTo(resizecopy, 0);
-								if (!RememberPos)
-								{
-									resizecopy[0] = 0;
-									resizecopy[1] = 0;
-								}
-								if (!RememberSize)
-								{
-									resizecopy[2] = 0;
-									resizecopy[3] = 0;
-								}
-								app["Resize"].IntValueArray = resizecopy;
+
 								SaveConfig(cfg, app);
 							}
 						}
 						catch (Exception ex)
 						{
 							Logging.Stacktrace(ex);
+						}
+						finally
+						{
+							ResizeWaitList.Remove(info.Id);
 						}
 					};
 				}
@@ -944,9 +969,12 @@ namespace Taskmaster
 			}
 		}
 
+		public bool NeedsSaving = false;
+
 		public bool RememberSize = false;
 		public bool RememberPos = false;
-		public int[] Resize = null;
+		//public int[] Resize = null;
+		public System.Drawing.Rectangle? Resize = null;
 		List<int> ResizeWaitList = new List<int>();
 		object ResizeWaitList_lock = new object();
 
@@ -1075,7 +1103,7 @@ namespace Taskmaster
 
 		public bool Locate()
 		{
-			if (Path != null)
+			if (!string.IsNullOrEmpty(Path))
 			{
 				if (System.IO.Directory.Exists(Path)) return true;
 				return false;
@@ -1100,6 +1128,11 @@ namespace Taskmaster
 			if (disposing)
 			{
 				if (Taskmaster.Trace) Log.Verbose("Disposing process controller [{FriendlyName}]", FriendlyName);
+
+				if (NeedsSaving)
+				{
+					SaveConfig();
+				}
 			}
 
 			disposed = true;

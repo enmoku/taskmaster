@@ -339,7 +339,7 @@ namespace Taskmaster
 		{
 			if (Behaviour != PowerBehaviour.Auto) return;
 
-			await Task.Delay(0);
+			await Task.Delay(0).ConfigureAwait(false);
 
 			// TODO: Asyncify. Mostly math so probably unnecessary.
 
@@ -1011,7 +1011,8 @@ namespace Taskmaster
 				{
 					if (Taskmaster.DebugPower)
 						Log.Debug("<Power> Powerdown delay: {Delay}s", PowerdownDelay);
-					await Task.Delay(PowerdownDelay * 1000);
+
+					await Task.Delay(PowerdownDelay * 1000).ConfigureAwait(false);
 				}
 
 				lock (forceModeSources_lock)
