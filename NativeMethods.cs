@@ -33,7 +33,7 @@ namespace Taskmaster
 	{
 		// for ActiveAppManager.cs
 
-		[DllImport("user32.dll", SetLastError = true)]
+		[DllImport("user32.dll")] // SetLastError=true
 		public static extern uint GetWindowThreadProcessId(IntPtr hWnd, out int lpdwProcessId);
 
 		public delegate void WinEventDelegate(IntPtr hWinEventHook, uint eventType, IntPtr hwnd, int idObject, int idChild, uint dwEventThread, uint dwmsEventTime);
@@ -91,7 +91,8 @@ namespace Taskmaster
 
 		public const int DEVICE_NOTIFY_WINDOW_HANDLE = 0x00000000;
 
-		[DllImport("user32.dll", SetLastError = true, EntryPoint = "RegisterPowerSettingNotification", CallingConvention = CallingConvention.StdCall)]
+		// SetLastError
+		[DllImport("user32.dll", EntryPoint = "RegisterPowerSettingNotification", CallingConvention = CallingConvention.StdCall)]
 		public static extern IntPtr RegisterPowerSettingNotification(IntPtr hRecipient, ref Guid PowerSettingGuid, int Flags);
 
 		[StructLayout(LayoutKind.Sequential, Pack = 4)]
@@ -118,7 +119,7 @@ namespace Taskmaster
 			SMTO_ERRORONEXIT = 0x20
 		}
 
-		[DllImport("user32.dll", SetLastError = true, CharSet = CharSet.Auto)]
+		[DllImport("user32.dll", CharSet = CharSet.Auto)] // SetLastError
 		public static extern IntPtr SendMessageTimeout(
 			IntPtr hWnd, uint Msg, int wParam, int lParam,
 			SendMessageTimeoutFlags flags, uint timeout, out IntPtr result);
@@ -131,13 +132,13 @@ namespace Taskmaster
 		[DllImport("psapi.dll", CharSet = CharSet.Unicode, ThrowOnUnmappableChar = true)]
 		public static extern uint GetModuleFileNameEx(IntPtr hProcess, IntPtr hModule, [Out] System.Text.StringBuilder lpBaseName, [In] [MarshalAs(UnmanagedType.U4)] int nSize);
 
-		[DllImport("kernel32.dll", SetLastError = true)]
+		[DllImport("kernel32.dll")] // SetLastError = true
 		[return: MarshalAs(UnmanagedType.Bool)]
 		public static extern bool CloseHandle(IntPtr hObject);
 
 		// for ProcessController.cs
 
-		[DllImport("kernel32.dll", CharSet = CharSet.Auto, SetLastError = true)]
+		[DllImport("kernel32.dll", CharSet = CharSet.Auto)] // SetLastError = true
 		public static extern bool SetPriorityClass(IntPtr handle, uint priorityClass);
 
 		public enum PriorityTypes
@@ -152,7 +153,7 @@ namespace Taskmaster
 			REALTIME_PRIORITY_CLASS = 0x00000100
 		}
 
-		[DllImport("Kernel32.dll", SetLastError = true, CharSet = CharSet.Auto)]
+		[DllImport("Kernel32.dll", CharSet = CharSet.Auto)] // SetLastError = true
 		public static extern bool DeviceIoControl(
 			Microsoft.Win32.SafeHandles.SafeFileHandle hDevice,
 			int dwIoControlCode,
@@ -185,10 +186,10 @@ namespace Taskmaster
 			public long i64NumItems;
 		}
 
-		[DllImport("shell32.dll", CharSet=CharSet.Unicode, SetLastError =true)]
+		[DllImport("shell32.dll", CharSet=CharSet.Unicode)] // SetLastError = true
 		public static extern uint SHQueryRecycleBin(string pszRootPath, ref SHQUERYRBINFO pSHQueryRBInfo);
 
-		[DllImport("user32.dll", SetLastError = true)]
+		[DllImport("user32.dll")] // SetLastError = true
 		public static extern bool MoveWindow(IntPtr hWnd, int X, int Y, int nWidth, int nHeight, bool bRepaint);
 
 		[DllImport("user32.dll")]
