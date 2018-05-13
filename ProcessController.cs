@@ -839,7 +839,7 @@ namespace Taskmaster
 		{
 			if (!Resize.HasValue) return;
 
-			Log.Debug("Attempting resize on {Name} (#{Pid})", info.Name, info.Id);
+			if (Taskmaster.DebugResize) Log.Debug("Attempting resize on {Name} (#{Pid})", info.Name, info.Id);
 
 			try
 			{
@@ -850,7 +850,7 @@ namespace Taskmaster
 					IntPtr hwnd = info.Process.MainWindowHandle;
 					if (!NativeMethods.GetWindowRect(hwnd, ref rect))
 					{
-						Log.Debug("Failed to retrieve current size of {Name} (#{Pid})", info.Name, info.Id);
+						if (Taskmaster.DebugResize) Log.Debug("Failed to retrieve current size of {Name} (#{Pid})", info.Name, info.Id);
 					}
 
 					var oldsize = new System.Drawing.Rectangle(rect.Left, rect.Top, rect.Right - rect.Left, rect.Bottom - rect.Top);
@@ -884,7 +884,7 @@ namespace Taskmaster
 
 					if (!RememberSize && !RememberPos)
 					{
-						Log.Debug("Remembering size or pos not enabled for {Name} (#{Pid})", info.Name, info.Id);
+						if (Taskmaster.DebugResize) Log.Debug("Remembering size or pos not enabled for {Name} (#{Pid})", info.Name, info.Id);
 						return;
 					}
 
