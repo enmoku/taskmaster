@@ -1,6 +1,11 @@
 ﻿Comprehensive changes can be found in Git change history:
 	https://github.com/mkahvi/taskmaster/commits/master
 
+### 2018-05-13
+	Changed: Remember window sizes and positions works a little differently.
+	Added: More debug output
+### 2018-05-12
+	Changed: Explorer crash handling. Should be less convinced about explorer crashes when no such thing happened.
 ### 2018-05-11
 	Changed: CPU sampling is simplified. May run better or worse.
 	Changed: Debugging for health monitor low memory functionality.
