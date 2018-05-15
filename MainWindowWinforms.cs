@@ -81,18 +81,17 @@ namespace Taskmaster
 
 			Shown += (object sender, EventArgs e) =>
 			{
-				try
+				BeginInvoke(new Action(() =>
 				{
-					BeginInvoke(new Action(() =>
+					lock (loglistLock)
 					{
 						if (loglist.Items.Count > 0) // needed in case of bugs or clearlog
 						{
 							loglist.TopItem = loglist.Items[loglist.Items.Count - 1];
 							ShowLastLog();
 						}
-					}));
-				}
-				catch { } // ignore
+					}
+				}));
 			};
 
 			// TODO: WPF
@@ -115,14 +114,16 @@ namespace Taskmaster
 			// TODO: Introduce configuration window
 		}
 
-		[Aspects.UIThreadAspect]
 		public async void PowerConfigRequest(object sender, EventArgs e)
 		{
-			try
+			BeginInvoke(new Action(async () =>
 			{
-				await PowerConfigWindow.ShowPowerConfig().ConfigureAwait(true); // true for UI thread
-			}
-			catch (Exception ex) { Logging.Stacktrace(ex); }
+				try
+				{
+					await PowerConfigWindow.ShowPowerConfig().ConfigureAwait(true); // true for UI thread
+				}
+				catch (Exception ex) { Logging.Stacktrace(ex); }
+			}));
 		}
 
 		public void ExitRequest(object sender, EventArgs e)
@@ -170,17 +171,19 @@ namespace Taskmaster
 		/// <summary>
 		/// Restores the main window to the center of the screen.
 		/// </summary>
-		[Aspects.UIThreadAspect]
 		public void UnloseWindowRequest(object sender, EventArgs e)
 		{
 			if (Taskmaster.Trace) Log.Verbose("Making sure main window is not lost.");
 
-			try
+			BeginInvoke(new Action(async () =>
 			{
-				CenterToScreen();
-				Reveal();
-			}
-			catch (Exception ex) { Logging.Stacktrace(ex); }
+				try
+				{
+					CenterToScreen();
+					Reveal();
+				}
+				catch (Exception ex) { Logging.Stacktrace(ex); }
+			}));
 		}
 
 		public void Reveal()
@@ -263,32 +266,33 @@ namespace Taskmaster
 			WatchlistItemColor(litem, prc);
 		}
 
-		[Aspects.UIThreadAspect]
 		public void ProcessTouchEvent(object sender, ProcessEventArgs ev)
 		{
 			// Log.Verbose("Process adjust received for '{FriendlyName}'.", e.Control.FriendlyName);
-			adjustcounter.Text = Statistics.TouchCount.ToString();
-
-			lock (appw_lock)
+			BeginInvoke(new Action(async () =>
 			{
-				try
+				adjustcounter.Text = Statistics.TouchCount.ToString();
+
+				lock (appw_lock)
 				{
-					if (WatchlistMap.TryGetValue(ev.Control, out ListViewItem item))
+					try
 					{
-						item.SubItems[AdjustColumn].Text = ev.Control.Adjusts.ToString();
-						// item.SubItems[SeenColumn].Text = e.Control.LastSeen.ToLocalTime().ToString();
+						if (WatchlistMap.TryGetValue(ev.Control, out ListViewItem item))
+						{
+							item.SubItems[AdjustColumn].Text = ev.Control.Adjusts.ToString();
+							// item.SubItems[SeenColumn].Text = e.Control.LastSeen.ToLocalTime().ToString();
+						}
+						else
+							Log.Error("{FriendlyName} not found in app list.", ev.Control.FriendlyName);
 					}
-					else
-						Log.Error("{FriendlyName} not found in app list.", ev.Control.FriendlyName);
+					catch (Exception ex) { Logging.Stacktrace(ex); }
 				}
-				catch (Exception ex) { Logging.Stacktrace(ex); }
-			}
+			}));
 		}
 
-		[Aspects.UIThreadAspect]
 		public void OnActiveWindowChanged(object sender, WindowChangedArgs windowchangeev)
 		{
-			try
+			BeginInvoke(new Action(async () =>
 			{
 				// int maxlength = 70;
 				// string cutstring = e.Title.Substring(0, Math.Min(maxlength, e.Title.Length)) + (e.Title.Length > maxlength ? "..." : "");
@@ -297,8 +301,7 @@ namespace Taskmaster
 				activeExec.Text = windowchangeev.Executable;
 				activeFullscreen.Text = windowchangeev.Fullscreen.True() ? "Full" : windowchangeev.Fullscreen.False() ? "Window" : "Unknown";
 				activePID.Text = string.Format("{0}", windowchangeev.Id);
-			}
-			catch (Exception ex) { Logging.Stacktrace(ex); }
+			}));
 		}
 
 		public event EventHandler rescanRequest;
@@ -328,7 +331,8 @@ namespace Taskmaster
 			ProcessController.Located += WatchlistPathLocatedEvent;
 			ProcessController.Touched += ProcessTouchEvent;
 
-			BeginInvoke(new Action(() => {
+			BeginInvoke(new Action(() =>
+			{
 				processingcount.Text = ProcessManager.Handling.ToString();
 			}));
 
@@ -349,10 +353,12 @@ namespace Taskmaster
 			}
 		}
 
-		[Aspects.UIThreadAspect]
 		void ProcessNewInstanceCount(object sender, InstanceEventArgs e)
 		{
-			processingcount.Text = ProcessManager.Handling.ToString();
+			BeginInvoke(new Action(async () =>
+			{
+				processingcount.Text = ProcessManager.Handling.ToString();
+			}));
 		}
 
 		System.Drawing.Color GrayText = System.Drawing.Color.FromArgb(130, 130, 130);
@@ -434,21 +440,23 @@ namespace Taskmaster
 				WatchlistMap.Add(prc, litem);
 		}
 
-		[Aspects.UIThreadAspect]
 		public void WatchlistPathLocatedEvent(object sender, PathControlEventArgs e)
 		{
-			try
+			BeginInvoke(new Action(async () =>
 			{
-				var pc = (ProcessController)sender;
-				if (pc != null)
+				try
 				{
-					if (WatchlistMap.TryGetValue(pc, out ListViewItem li))
+					var pc = (ProcessController)sender;
+					if (pc != null)
 					{
-						WatchlistItemColor(li, pc);
+						if (WatchlistMap.TryGetValue(pc, out ListViewItem li))
+						{
+							WatchlistItemColor(li, pc);
+						}
 					}
 				}
-			}
-			catch (Exception ex) { Logging.Stacktrace(ex); }
+				catch (Exception ex) { Logging.Stacktrace(ex); }
+			}));
 		}
 
 		Label micName;
@@ -480,15 +488,13 @@ namespace Taskmaster
 			// micMonitor.setVolume(micVol.Value);
 		}
 
-		[Aspects.UIThreadAspect]
 		void volumeChangeDetected(object sender, VolumeChangedEventArgs e)
 		{
-			try
+			BeginInvoke(new Action(async () =>
 			{
 				micVol.Value = Convert.ToInt32(e.New);
 				corCountLabel.Text = e.Corrections.ToString();
-			}
-			catch (Exception ex) { Logging.Stacktrace(ex); }
+			}));
 		}
 
 		#endregion // Microphone control code
@@ -507,7 +513,6 @@ namespace Taskmaster
 
 		int PathCacheUpdateSkips = 3;
 
-		[Aspects.UIThreadAspect]
 		public void PathCacheUpdate(object sender, EventArgs ev)
 		{
 			if (PathCacheUpdateSkips++ == 4)
@@ -515,16 +520,19 @@ namespace Taskmaster
 			else
 				return;
 
-			try
+			BeginInvoke(new Action(async () =>
 			{
-				cacheObjects.Text = Statistics.PathCacheCurrent.ToString();
-				var ratio = (Statistics.PathCacheMisses > 0 ? (Statistics.PathCacheHits / Statistics.PathCacheMisses) : 1);
-				if (ratio <= 99.99f)
-					cacheRatio.Text = string.Format("{0:N2}", ratio);
-				else
-					cacheRatio.Text = ">99.99"; // let's just not overflow the UI
-			}
-			catch (Exception ex) { Logging.Stacktrace(ex); }
+				try
+				{
+					cacheObjects.Text = Statistics.PathCacheCurrent.ToString();
+					var ratio = (Statistics.PathCacheMisses > 0 ? (Statistics.PathCacheHits / Statistics.PathCacheMisses) : 1);
+					if (ratio <= 99.99f)
+						cacheRatio.Text = string.Format("{0:N2}", ratio);
+					else
+						cacheRatio.Text = ">99.99"; // let's just not overflow the UI
+				}
+				catch (Exception ex) { Logging.Stacktrace(ex); }
+			}));
 		}
 
 		// BackColor = System.Drawing.Color.LightGoldenrodYellow
@@ -550,27 +558,23 @@ namespace Taskmaster
 			UIOpen = false;
 		}
 
-		[Aspects.UIThreadAspect]
 		void UpdateRescanCountdown(object sender, EventArgs ev)
 		{
-			try
+			BeginInvoke(new Action(async () =>
 			{
 				var t = ProcessManager.NextRescan.Unixstamp() - DateTime.Now.Unixstamp();
 				processingtimer.Text = string.Format("{0:N0}s", t);
-			}
-			catch { } // discard
+			}));
 		}
 
-		[Aspects.UIThreadAspect]
 		void UpdateUptime(object sender, EventArgs e)
 		{
 			if (netmonitor != null)
 			{
-				try
+				BeginInvoke(new Action(async () =>
 				{
 					uptimestatuslabel.Text = HumanInterface.TimeString(netmonitor.Uptime);
-				}
-				catch { } // discard
+				}));
 			}
 			// string.Format("{0:N1} min(s)", net.Uptime.TotalMinutes);
 		}
@@ -1752,7 +1756,6 @@ namespace Taskmaster
 
 		readonly object exitwaitlist_lock = new object();
 
-		[Aspects.UIThreadAspect]
 		public async void ExitWaitListHandler(object sender, ProcessEventArgs ev)
 		{
 			// TODO: Proper async?
@@ -1761,110 +1764,112 @@ namespace Taskmaster
 
 			await Task.Delay(0).ConfigureAwait(true);
 
-			lock (exitwaitlist_lock)
+			BeginInvoke(new Action(async () =>
 			{
-				try
+				lock (exitwaitlist_lock)
 				{
-					bool fg = (ev.Info.Id == (activeappmonitor?.Foreground ?? ev.Info.Id));
-
-					if (ExitWaitlistMap.TryGetValue(ev.Info.Id, out ListViewItem li))
+					try
 					{
-						li.SubItems[2].Text = fg ? "Foreground" : "Background";
+						bool fg = (ev.Info.Id == (activeappmonitor?.Foreground ?? ev.Info.Id));
 
-						// Log.Debug("WaitlistHandler: {Name} = {State}", ev.Info.Name, ev.State.ToString());
-						switch (ev.State)
+						if (ExitWaitlistMap.TryGetValue(ev.Info.Id, out ListViewItem li))
 						{
-							case ProcessEventArgs.ProcessState.Exiting:
-								exitwaitlist.Items.Remove(li);
-								ExitWaitlistMap.Remove(ev.Info.Id);
-								break;
-							case ProcessEventArgs.ProcessState.Found:
-							case ProcessEventArgs.ProcessState.Reduced:
-								break;
-							//case ProcessEventArgs.ProcessState.Starting: // this should never get here
-							case ProcessEventArgs.ProcessState.Restored:
-								// move item to top
-								exitwaitlist.Items.RemoveAt(li.Index);
-								exitwaitlist.Items.Insert(0, li);
-								li.EnsureVisible();
-								break;
-							default:
-								Log.Debug("Received unhandled process (#{Id}) state: {State}",
-									ev.Info.Id, ev.State.ToString());
-								break;
+							li.SubItems[2].Text = fg ? "Foreground" : "Background";
+
+							// Log.Debug("WaitlistHandler: {Name} = {State}", ev.Info.Name, ev.State.ToString());
+							switch (ev.State)
+							{
+								case ProcessEventArgs.ProcessState.Exiting:
+									exitwaitlist.Items.Remove(li);
+									ExitWaitlistMap.Remove(ev.Info.Id);
+									break;
+								case ProcessEventArgs.ProcessState.Found:
+								case ProcessEventArgs.ProcessState.Reduced:
+									break;
+								//case ProcessEventArgs.ProcessState.Starting: // this should never get here
+								case ProcessEventArgs.ProcessState.Restored:
+									// move item to top
+									exitwaitlist.Items.RemoveAt(li.Index);
+									exitwaitlist.Items.Insert(0, li);
+									li.EnsureVisible();
+									break;
+								default:
+									Log.Debug("Received unhandled process (#{Id}) state: {State}",
+										ev.Info.Id, ev.State.ToString());
+									break;
+							}
 						}
-					}
-					else
-					{
-						if (ev.State == ProcessEventArgs.ProcessState.Starting)
+						else
 						{
-							li = new ListViewItem(new string[] {
+							if (ev.State == ProcessEventArgs.ProcessState.Starting)
+							{
+								li = new ListViewItem(new string[] {
 								ev.Info.Id.ToString(),
 								ev.Info.Name,
 								(fg ? "Foreground" : "Background"),
 								(ev.Info.ActiveWait ? "FORCED" : "n/a")
 							});
 
-							ExitWaitlistMap.Add(ev.Info.Id, li);
+								ExitWaitlistMap.Add(ev.Info.Id, li);
 
-							BeginInvoke(new Action(() =>
-							{
 								exitwaitlist.Items.Add(li);
 								li.EnsureVisible();
-							}));
+							}
 						}
 					}
+					catch (Exception ex) { Logging.Stacktrace(ex); }
 				}
-				catch (Exception ex) { Logging.Stacktrace(ex); }
-			}
+			}));
 		}
 
-		[Aspects.UIThreadAspect]
 		public async void CPULoadHandler(object sender, ProcessorEventArgs ev) // Event Handler
 		{
 			if (!UIOpen) return;
 
 			await Task.Delay(0).ConfigureAwait(true);
 
-			try
+			BeginInvoke(new Action(async () =>
 			{
-				// TODO: Asyncify
-				var reactionary = PowerManager.GetModeName(ev.Mode);
-
-				var li = new ListViewItem(new string[] {
-				string.Format("{0:N2}%", ev.Current),
-				string.Format("{0:N2}%", ev.Average),
-				string.Format("{0:N2}%", ev.High),
-				string.Format("{0:N2}%", ev.Low),
-				reactionary,
-				ev.Handled.ToString(),
-				string.Format("{0:N1}%", ev.Pressure*100f)
-				})
+				try
 				{
-					UseItemStyleForSubItems = false
-				};
+					// TODO: Asyncify
+					var reactionary = PowerManager.GetModeName(ev.Mode);
 
-				if (ev.Mode == PowerInfo.PowerMode.HighPerformance)
-					li.SubItems[3].BackColor = System.Drawing.Color.FromArgb(255, 230, 230);
-				else if (ev.Mode == PowerInfo.PowerMode.PowerSaver)
-					li.SubItems[2].BackColor = System.Drawing.Color.FromArgb(240, 255, 230);
-				else
-				{
-					li.SubItems[3].BackColor = System.Drawing.Color.FromArgb(255, 250, 230);
-					li.SubItems[2].BackColor = System.Drawing.Color.FromArgb(255, 250, 230);
+					var li = new ListViewItem(new string[] {
+						string.Format("{0:N2}%", ev.Current),
+						string.Format("{0:N2}%", ev.Average),
+						string.Format("{0:N2}%", ev.High),
+						string.Format("{0:N2}%", ev.Low),
+						reactionary,
+						ev.Handled.ToString(),
+						string.Format("{0:N1}%", ev.Pressure*100f)
+					})
+					{
+						UseItemStyleForSubItems = false
+					};
+
+					if (ev.Mode == PowerInfo.PowerMode.HighPerformance)
+						li.SubItems[3].BackColor = System.Drawing.Color.FromArgb(255, 230, 230);
+					else if (ev.Mode == PowerInfo.PowerMode.PowerSaver)
+						li.SubItems[2].BackColor = System.Drawing.Color.FromArgb(240, 255, 230);
+					else
+					{
+						li.SubItems[3].BackColor = System.Drawing.Color.FromArgb(255, 250, 230);
+						li.SubItems[2].BackColor = System.Drawing.Color.FromArgb(255, 250, 230);
+					}
+
+					lock (powerbalancerlog_lock)
+					{
+						// this tends to throw if this event is being handled while the window is being closed
+						if (powerbalancerlog.Items.Count > 3)
+							powerbalancerlog.Items.RemoveAt(0);
+						powerbalancerlog.Items.Add(li);
+
+						powerbalancer_forcedcount.Text = powermanager.ForceCount.ToString();
+					}
 				}
-
-				lock (powerbalancerlog_lock)
-				{
-					// this tends to throw if this event is being handled while the window is being closed
-					if (powerbalancerlog.Items.Count > 3)
-						powerbalancerlog.Items.RemoveAt(0);
-					powerbalancerlog.Items.Add(li);
-
-					powerbalancer_forcedcount.Text = powermanager.ForceCount.ToString();
-				}
-			}
-			catch (Exception ex) { Logging.Stacktrace(ex); }
+				catch (Exception ex) { Logging.Stacktrace(ex); }
+			}));
 		}
 
 		void WatchlistContextMenuOpen(object sender, EventArgs ea)
@@ -2066,15 +2071,13 @@ namespace Taskmaster
 		Label tempObjectCount;
 		Label tempObjectSize;
 
-		[Aspects.UIThreadAspect]
 		public void TempScanStats(object sender, DiskEventArgs ev)
 		{
-			try
+			BeginInvoke(new Action(async () =>
 			{
-				tempObjectSize.Text = (ev.Stats.Size / 1000 / 1000).ToString();
+				tempObjectSize.Text = (ev.Stats.Size / 1_000_000).ToString();
 				tempObjectCount.Text = (ev.Stats.Dirs + ev.Stats.Files).ToString();
-			}
-			catch { } // discard
+			}));
 		}
 
 		readonly object loglistLock = new object();
@@ -2126,26 +2129,22 @@ namespace Taskmaster
 			PowerPlanDebugEvent(this, new PowerModeEventArgs() { NewMode = powermanager.CurrentMode }); // populates powerbalancer_plan
 		}
 
-		[Aspects.UIThreadAspect]
 		public void PowerBehaviourDebugEvent(object sender, PowerManager.PowerBehaviour behaviour)
 		{
-			try
+			BeginInvoke(new Action(async () =>
 			{
 				powerbalancer_behaviour.Text = (behaviour == PowerManager.PowerBehaviour.Auto) ? "Automatic" : ((behaviour == PowerManager.PowerBehaviour.Manual) ? "Manual" : "Rule-based");
 				if (behaviour != PowerManager.PowerBehaviour.Auto)
 					powerbalancerlog.Items.Clear();
-			}
-			catch { } // discard
+			}));
 		}
 
-		[Aspects.UIThreadAspect]
 		public void PowerPlanDebugEvent(object sender, PowerModeEventArgs ev)
 		{
-			try
+			BeginInvoke(new Action(async () =>
 			{
 				powerbalancer_plan.Text = PowerManager.GetModeName(ev.NewMode);
-			}
-			catch { } // discard
+			}));
 		}
 
 		public void hookNetMonitor(ref NetManager net)
@@ -2187,10 +2186,9 @@ namespace Taskmaster
 			netmonitor.onSampling += NetSampleHandler;
 		}
 
-		[Aspects.UIThreadAspect]
 		void NetSampleHandler(object sender, NetDeviceTraffic ev)
 		{
-			try
+			BeginInvoke(new Action(async () =>
 			{
 				ifaceList.Items[ev.Index].SubItems[PacketColumn].Text = string.Format("+{0}", ev.Traffic.Unicast);
 				ifaceList.Items[ev.Index].SubItems[ErrorColumn].Text = string.Format("+{0}", ev.Traffic.Errors);
@@ -2198,8 +2196,7 @@ namespace Taskmaster
 					ifaceList.Items[ev.Index].SubItems[ErrorColumn].ForeColor = System.Drawing.Color.OrangeRed;
 				else
 					ifaceList.Items[ev.Index].SubItems[ErrorColumn].ForeColor = System.Drawing.SystemColors.ControlText;
-			}
-			catch { } // discard
+			}));
 		}
 
 		int PacketColumn = 6;
@@ -2209,16 +2206,14 @@ namespace Taskmaster
 
 		object netstatus_lock = new object();
 
-		[Aspects.UIThreadAspect]
 		void InetStatusLabel(bool available)
 		{
-			try
+			BeginInvoke(new Action(async () =>
 			{
 				inetstatuslabel.Text = available ? "Connected" : "Disconnected";
 				// inetstatuslabel.BackColor = available ? System.Drawing.Color.LightGoldenrodYellow : System.Drawing.Color.Red;
 				inetstatuslabel.BackColor = available ? System.Drawing.SystemColors.Menu : System.Drawing.Color.Red;
-			}
-			catch (Exception ex) { Logging.Stacktrace(ex); }
+			}));
 		}
 
 		public void InetStatus(object sender, InternetStatus e)
@@ -2226,16 +2221,14 @@ namespace Taskmaster
 			lock (netstatus_lock) InetStatusLabel(e.Available);
 		}
 
-		[Aspects.UIThreadAspect]
 		void NetStatusLabel(bool available)
 		{
-			try
+			BeginInvoke(new Action(async () =>
 			{
 				netstatuslabel.Text = available ? "Up" : "Down";
 				// netstatuslabel.BackColor = available ? System.Drawing.Color.LightGoldenrodYellow : System.Drawing.Color.Red;
 				netstatuslabel.BackColor = available ? System.Drawing.SystemColors.Menu : System.Drawing.Color.Red;
-			}
-			catch (Exception ex) { Logging.Stacktrace(ex); }
+			}));
 		}
 
 		public void NetStatus(object sender, NetworkStatus e)
@@ -2257,16 +2250,15 @@ namespace Taskmaster
 			}
 		}
 
-		[Aspects.UIThreadAspect]
 		public void onNewLog(object sender, LogEventArgs evmsg)
 		{
 			if (LogIncludeLevel.MinimumLevel > evmsg.Level) return;
 
 			var t = DateTime.Now;
 
-			lock (loglistLock)
+			BeginInvoke(new Action(async () =>
 			{
-				try
+				lock (loglistLock)
 				{
 					var excessitems = Math.Max(0, (loglist.Items.Count - MaxLogSize));
 					while (excessitems-- > 0)
@@ -2277,8 +2269,7 @@ namespace Taskmaster
 						li.ForeColor = System.Drawing.Color.Red;
 					li.EnsureVisible();
 				}
-				catch (Exception ex) { Logging.Stacktrace(ex); }
-			}
+			}));
 		}
 
 		void saveUIState()
