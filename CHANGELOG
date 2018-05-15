@@ -1,6 +1,9 @@
 ﻿Comprehensive changes can be found in Git change history:
 	https://github.com/mkahvi/taskmaster/commits/master
 
+### 2018-05-15
+	Fixed: Crash in watchlist rule editor if the affinity checkboxes were used.
+	Changed: Internal restructuring, removed PostSharp usage due to its interfererence with build process. Should have no effect for end users.
 ### 2018-05-13
 	Changed: Remember window sizes and positions works a little differently.
 	Added: More debug output
