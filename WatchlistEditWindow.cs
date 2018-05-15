@@ -427,6 +427,8 @@ namespace Taskmaster
 				box.Checked = ((Math.Max(0,cpumask) & (1 << bitoff)) != 0);
 				box.CheckedChanged += (sender, e) =>
 				{
+					if (cpumask < 0) cpumask = 0;
+
 					if (box.Checked)
 					{
 						cpumask |= (1 << bitoff);
