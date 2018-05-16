@@ -66,6 +66,14 @@ namespace Taskmaster
 			perfsec["Foreground hysterisis"].Comment = "In milliseconds, from 0 to 30000. Delay before we inspect foreground app, in case user rapidly swaps apps.";
 			if (modified) Taskmaster.MarkDirtyINI(Taskmaster.cfg);
 
+			// TODO: Add timer to check foreground app hanging
+			// TODO: Hang check should only take action if user fails to swap apps (e.g. ctrl-alt-esc for taskmanager)
+			// TODO: Hang check should potentially do the following:
+			//		Minimize app, Reduce priority, Reduce cores, Kill it
+
+			hungTimer.Elapsed += HangDetector;
+			hungTimer.Start();
+
 			Log.Information("<Foreground Manager> Component loaded.");
 		}
 
@@ -75,6 +83,8 @@ namespace Taskmaster
 		IntPtr windowseventhook = IntPtr.Zero;
 
 		public int Foreground { get; private set; } = -1;
+
+		DateTime LastSwap = DateTime.MinValue;
 
 		/// <summary>
 		/// Calls SetWinEventHook, which delivers messages to the _thread_ that called it.
@@ -95,6 +105,40 @@ namespace Taskmaster
 
 			Log.Information("<Foreground> Event hook initialized.");
 			return true;
+		}
+
+		System.Timers.Timer hungTimer = new System.Timers.Timer(60_000);
+		DateTime HangTime = DateTime.MaxValue;
+
+		void HangDetector(object sender, EventArgs ev)
+		{
+			try
+			{
+				DateTime now = DateTime.Now;
+				TimeSpan since = (now - LastSwap);
+				if (since.Seconds > 5)
+				{
+					Process fg = Process.GetProcessById(Foreground);
+					if (fg != null && !fg.Responding)
+					{
+						if (HangTime != DateTime.MaxValue)
+							Log.Warning("<Foreground> {Name} (#Pid) is not responding!", fg.ProcessName, fg.Id);
+						else
+							HangTime = now;
+					}
+					else
+						HangTime = DateTime.MaxValue;
+				}
+			}
+			catch (ArgumentException)
+			{
+				// NOP, already exited
+				HangTime = DateTime.MaxValue;
+			}
+			catch (Exception ex)
+			{
+				Logging.Stacktrace(ex);
+			}
 		}
 
 		public void SetupEventHookEvent(object sender, ProcessEventArgs e)
@@ -123,7 +167,9 @@ namespace Taskmaster
 				if (Taskmaster.Trace)
 					Log.Verbose("Disposing FG monitor...");
 
-				NativeMethods.UnhookWinEvent(windowseventhook); // Automaticc
+				hungTimer?.Dispose();
+
+				NativeMethods.UnhookWinEvent(windowseventhook); // Automatic
 			}
 
 			disposed = true;
@@ -225,6 +271,7 @@ namespace Taskmaster
 				if (Taskmaster.DebugForeground && Taskmaster.ShowInaction)
 					Log.Debug("Active Window (#{Pid}): {Title}", activewindowev.Id, activewindowev.Title);
 
+				LastSwap = DateTime.Now;
 				ActiveChanged?.Invoke(this, activewindowev);
 			}
 			catch (Exception ex)
