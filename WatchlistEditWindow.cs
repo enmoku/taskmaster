@@ -129,14 +129,18 @@ namespace Taskmaster
 			if (priorityClass.SelectedIndex == 5)
 			{
 				Controller.Priority = null;
-				Controller.Increase = false;
-				Controller.Decrease = false;
+				Controller.PriorityStrategy = ProcessPriorityStrategy.None;
 			}
 			else
 			{
 				Controller.Priority = ProcessHelpers.IntToPriority(priorityClass.SelectedIndex); // is this right?
-				Controller.Increase = increasePrio.Checked;
-				Controller.Decrease = decreasePrio.Checked;
+				Controller.PriorityStrategy = ProcessPriorityStrategy.None;
+				if (increasePrio.Checked && decreasePrio.Checked)
+					Controller.PriorityStrategy = ProcessPriorityStrategy.Force;
+				else if (increasePrio.Checked && !decreasePrio.Checked)
+					Controller.PriorityStrategy = ProcessPriorityStrategy.Increase;
+				else if (decreasePrio.Checked && !increasePrio.Checked)
+					Controller.PriorityStrategy = ProcessPriorityStrategy.Decrease;
 			}
 			if (cpumask == -1)
 				Controller.Affinity = null;
@@ -362,11 +366,11 @@ namespace Taskmaster
 				AutoSize = true,
 			};
 			incdecpanel.Controls.Add(new Label() { Text = "Increase:", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true });
-			increasePrio.Checked = Controller.Increase;
+			increasePrio.Checked = Controller.PriorityStrategy == ProcessPriorityStrategy.Increase || Controller.PriorityStrategy == ProcessPriorityStrategy.Force;
 			increasePrio.AutoSize = true;
 			incdecpanel.Controls.Add(increasePrio);
 			incdecpanel.Controls.Add(new Label() { Text = "Decrease:", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true });
-			decreasePrio.Checked = Controller.Decrease;
+			decreasePrio.Checked = Controller.PriorityStrategy == ProcessPriorityStrategy.Decrease || Controller.PriorityStrategy == ProcessPriorityStrategy.Force;
 			decreasePrio.AutoSize = true;
 			incdecpanel.Controls.Add(decreasePrio);
 			priopanel.Controls.Add(priorityClass);

@@ -571,6 +571,8 @@ namespace Taskmaster
 
 			foreach (SharpConfig.Section section in appcfg)
 			{
+				bool upgrade = false;
+
 				if (!section.Contains("Image") && !section.Contains("Path"))
 				{
 					// TODO: Deal with incorrect configuration lacking image
@@ -603,14 +605,49 @@ namespace Taskmaster
 					pmode = PowerInfo.PowerMode.Undefined;
 				}
 
+				ProcessPriorityStrategy priostrat = ProcessPriorityStrategy.None;
+				if (prioR != null)
+				{
+					var priorityStrat = section.TryGet("Priority strategy")?.IntValue.Constrain(0,3) ?? -1;
+
+					if (priorityStrat > 0)
+						priostrat = (ProcessPriorityStrategy)priorityStrat;
+					else if (priorityStrat == -1)
+					{
+						// DEPRECATETD
+						var increase = (section.TryGet("Increase")?.BoolValue ?? false);
+						var decrease = (section.TryGet("Decrease")?.BoolValue ?? true);
+						if (increase && decrease)
+							priostrat = ProcessPriorityStrategy.Force;
+						else if (increase)
+							priostrat = ProcessPriorityStrategy.Increase;
+						else if (decrease)
+							priostrat = ProcessPriorityStrategy.Decrease;
+
+						section.Remove("Increase");
+						section.Remove("Decrease");
+						upgrade = true;
+					}
+					else // 0
+					{
+						prioR = null;
+					}
+				}
+
+				ProcessAffinityStrategy affStrat = ProcessAffinityStrategy.None;
+				if (aff > 0)
+				{
+					int affinityStrat = section.TryGet("Affinity strategy")?.IntValue.Constrain(0,3) ?? 2;
+					affStrat = (ProcessAffinityStrategy)affinityStrat;
+				}
+
 				var prc = new ProcessController(section.Name, prioR, (aff == 0 ? allCPUsMask : aff))
 				{
 					Enabled = section.TryGet("Enabled")?.BoolValue ?? true,
 					Executable = section.TryGet("Image")?.StringValue ?? null,
 					// friendly name is filled automatically
-					Increase = (section.TryGet("Increase")?.BoolValue ?? false),
-					Decrease = (section.TryGet("Decrease")?.BoolValue ?? true),
-					AllowedCores = (section.TryGet("Allowed cores")?.BoolValue ?? false),
+					PriorityStrategy = priostrat,
+					AffinityStrategy = affStrat,
 					Rescan = (section.TryGet("Rescan")?.IntValue ?? 0),
 					Path = (section.TryGet("Path")?.StringValue ?? null),
 					ModifyDelay = (section.TryGet("Modify delay")?.IntValue ?? 0),
@@ -621,17 +658,15 @@ namespace Taskmaster
 					BackgroundPriority = ProcessHelpers.IntToPriority((section.TryGet("Background priority")?.IntValue ?? OffFocusPriority).Constrain(1, 3)),
 					BackgroundPowerdown = (section.TryGet("Background powerdown")?.BoolValue ?? false),
 					IgnoreList = (section.TryGet("Ignore")?.StringValueArray ?? null),
-					//Children = (section.TryGet("Children")?.BoolValue ?? false),
-					//ChildPriority = ProcessHelpers.IntToPriority(section.TryGet("Child priority")?.IntValue ?? prio),
-					//ChildPriorityReduction = section.TryGet("Child priority reduction")?.BoolValue ?? false,
 					AllowPaging = (section.TryGet("Allow paging")?.BoolValue ?? false),
 				};
 
-				if (!prc.Priority.HasValue)
-				{
-					prc.Increase = false;
-					prc.Decrease = false;
-				}
+				// TODO: Blurp about following configuration errors
+				if (!prc.Affinity.HasValue) prc.AffinityStrategy = ProcessAffinityStrategy.None;
+				else if (prc.AffinityStrategy == ProcessAffinityStrategy.None) prc.Affinity = null;
+
+				if (!prc.Priority.HasValue) prc.PriorityStrategy = ProcessPriorityStrategy.None;
+				else if (prc.PriorityStrategy == ProcessPriorityStrategy.None) prc.Priority = null;
 
 				if (string.IsNullOrEmpty(prc.Executable) && prc.Rescan > 0)
 				{
@@ -656,6 +691,11 @@ namespace Taskmaster
 						prc.Resize = new System.Drawing.Rectangle(resize[0], resize[1], resize[2], resize[3]);
 						//prc.Resize = resize;
 					}
+				}
+
+				if (upgrade)
+				{
+					prc.SaveConfig(appcfg, section);
 				}
 
 				addController(prc);

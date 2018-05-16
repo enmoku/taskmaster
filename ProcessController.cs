@@ -98,29 +98,20 @@ namespace Taskmaster
 		/// </summary>
 		public System.Diagnostics.ProcessPriorityClass? Priority = null;
 
+		public ProcessPriorityStrategy PriorityStrategy = ProcessPriorityStrategy.None;
+
 		/// <summary>
 		/// CPU core affinity.
 		/// </summary>
 		public IntPtr? Affinity = null;
 
-		/// <summary>
-		/// Affinity describes allowed cores more than actual affinity.
-		/// </summary>
-		public bool AllowedCores = false;
+		public ProcessAffinityStrategy AffinityStrategy = ProcessAffinityStrategy.None;
+		int ScatterOffset = 0;
 
 		/// <summary>
 		/// The power plan.
 		/// </summary>
 		public PowerInfo.PowerMode PowerPlan = PowerInfo.PowerMode.Undefined;
-
-		/// <summary>
-		/// Allow priority decrease.
-		/// </summary>
-		public bool Decrease { get; set; } = true;
-		/// <summary>
-		/// Allow priority increase.
-		/// </summary>
-		public bool Increase { get; set; } = true;
 
 		int p_Recheck = 0;
 		public int Recheck
@@ -164,7 +155,11 @@ namespace Taskmaster
 			// Executable = executable;
 
 			Priority = priority;
-			if (affinity >= 0) Affinity = new IntPtr(affinity);
+			if (affinity >= 0)
+			{
+				Affinity = new IntPtr(affinity);
+				AffinityStrategy = ProcessAffinityStrategy.Allowed;
+			}
 
 			if (!string.IsNullOrEmpty(path))
 			{
@@ -211,17 +206,18 @@ namespace Taskmaster
 			else
 				app.Remove("Path");
 
+			app.Remove("Increase"); // DEPRECATED
+			app.Remove("Priority"); // DEPRECATED
+
 			if (Priority.HasValue)
 			{
-				app["Increase"].BoolValue = Increase;
-				app["Decrease"].BoolValue = Decrease;
 				app["Priority"].IntValue = ProcessHelpers.PriorityToInt(Priority.Value);
+				app["Priority strategy"].IntValue = (int)PriorityStrategy;
 			}
 			else
 			{
 				app.Remove("Priority");
-				app.Remove("Increase");
-				app.Remove("Priority");
+				app.Remove("Priority strategy");
 			}
 
 			if (Affinity.HasValue)
@@ -229,9 +225,15 @@ namespace Taskmaster
 				var affinity = Affinity.Value.ToInt32();
 				if (affinity == ProcessManager.allCPUsMask) affinity = 0;
 				if (affinity >= 0)
+				{
 					app["Affinity"].IntValue = Affinity.Value.ToInt32();
+					app["Affinity strategy"].IntValue = (int)AffinityStrategy;
+				}
 				else
+				{
 					app.Remove("Affinity"); // ignore affinity
+					app.Remove("Affinity strategy");
+				}
 			}
 			else
 				app.Remove("Affinity");
@@ -628,7 +630,7 @@ namespace Taskmaster
 				{
 					try
 					{
-						if (info.Process.SetLimitedPriority(Priority.Value, Increase, Decrease))
+						if (info.Process.SetLimitedPriority(Priority.Value, PriorityStrategy))
 						{
 							modified = mPriority = true;
 							newPriority = Priority.Value;
@@ -691,19 +693,34 @@ namespace Taskmaster
 						// TODO: Somehow shift bits old to new if there's free spots
 
 						// Don't increase the number of cores
-						int excesscores = Bit.Count(newAffinityMask) - Bit.Count(oldAffinityMask);
-						if (excesscores > 0)
+						if (AffinityStrategy == ProcessAffinityStrategy.Allowed)
 						{
-							for (int i = 0; i < ProcessManager.CPUCount; i++)
+							int excesscores = Bit.Count(newAffinityMask) - Bit.Count(oldAffinityMask);
+							if (excesscores > 0)
 							{
-								if (Bit.IsSet(newAffinityMask, i))
+								for (int i = 0; i < ProcessManager.CPUCount; i++)
 								{
-									newAffinityMask = Bit.Unset(newAffinityMask, i);
-									if (--excesscores <= 0) break;
+									if (Bit.IsSet(newAffinityMask, i))
+									{
+										newAffinityMask = Bit.Unset(newAffinityMask, i);
+										if (--excesscores <= 0) break;
+									}
+								}
+
+								newAffinity = new IntPtr(newAffinityMask);
+							}
+						}
+						else if (AffinityStrategy == ProcessAffinityStrategy.Scatter)
+						{
+							/*
+							for (; ScatterOffset < ProcessManager.CPUCount; ScatterOffset++)
+							{
+								if (Bit.IsSet(newAffinityMask, ScatterOffset))
+								{
+
 								}
 							}
-
-							newAffinity = new IntPtr(newAffinityMask);
+							*/
 						}
 
 						info.Process.ProcessorAffinity = newAffinity;

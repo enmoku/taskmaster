@@ -67,6 +67,34 @@ namespace Taskmaster
 		Invalid
 	}
 
+	public enum ProcessAffinityStrategy
+	{
+		None = 0,
+		/// <summary>
+		/// Set affinity as is, ignoring everything.
+		/// </summary>
+		Force = 1,
+		/// <summary>
+		/// Move and constrain cores to allowed cores but don't increase if setting has more than original
+		/// </summary>
+		Allowed = 2,
+		/// <summary>
+		/// Assign to semi-random cores
+		/// </summary>
+		Scatter = 3,
+	}
+
+	public enum ProcessPriorityStrategy
+	{
+		None = 0,
+		Increase = 1,
+		Decrease = 2,
+		/// <summary>
+		/// Bi-directional
+		/// </summary>
+		Force = 3,
+	}
+
 	public static class ProcessStateExtensions
 	{
 		public static bool OK(this ProcessState ps) => (ps != ProcessState.Invalid);

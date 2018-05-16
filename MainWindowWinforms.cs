@@ -370,8 +370,6 @@ namespace Taskmaster
 
 			try
 			{
-				var noprio = (prc.Increase == false && prc.Decrease == false);
-
 				li.UseItemStyleForSubItems = false;
 
 				foreach (ListViewItem.ListViewSubItem si in li.SubItems)
@@ -386,7 +384,7 @@ namespace Taskmaster
 
 				alter = !alter;
 
-				if (noprio)
+				if (prc.PriorityStrategy == ProcessPriorityStrategy.None)
 					li.SubItems[PrioColumn].ForeColor = GrayText;
 				if (string.IsNullOrEmpty(prc.Path))
 					li.SubItems[PathColumn].ForeColor = GrayText;
@@ -2026,8 +2024,20 @@ namespace Taskmaster
 					if (prc.Priority.HasValue)
 					{
 						sbs.Append("Priority = ").Append(prc.Priority.Value.ToInt32()).AppendLine();
-						sbs.Append("Increase = ").Append(prc.Increase).AppendLine();
-						sbs.Append("Decrease = ").Append(prc.Decrease).AppendLine();
+						sbs.Append("Priority strategy = ");
+						switch (prc.PriorityStrategy)
+						{
+							case ProcessPriorityStrategy.Force:
+								sbs.Append(3);
+								break;
+							case ProcessPriorityStrategy.Increase:
+								sbs.Append(1);
+								break;
+							case ProcessPriorityStrategy.Decrease:
+								sbs.Append(2);
+								break;
+						}
+						sbs.AppendLine();
 					}
 					if (prc.Affinity.HasValue)
 						sbs.Append("Affinity = ").Append(prc.Affinity.Value.ToInt32()).AppendLine();
