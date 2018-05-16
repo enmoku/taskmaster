@@ -1,6 +1,10 @@
 ﻿Comprehensive changes can be found in Git change history:
 	https://github.com/mkahvi/taskmaster/commits/master
 
+### 2018-05-16
+	Changed: `Increase` and `Decrease` options in `Watchlist.ini` are now `Priority strategy` with values from 0 to 3.
+		0 = Ignore/Unset, 1 = Increase only, 2 = Decrease only, 3 = Force/bidirectional
+		Upgrading to new settings should happen automatically for now.
 ### 2018-05-15
 	Fixed: Crash in watchlist rule editor if the affinity checkboxes were used.
 	Changed: Internal restructuring, removed PostSharp usage due to its interfererence with build process. Should have no effect for end users.
@@ -24,9 +28,11 @@
 ### 2018-05-06
 	Fixed: Weirdness with full CPU mask affinity. -1 is now special value for ignore in UI instead of 0.
 	Changed: Explorer crash handling. It's more informative which process crashed and should handle multiple explorer processes better.
-### 2018-05-05
+
+### 2018-05-05 Version 0.10
 	Changed: Allow watchlist rules with no affinity nor priority.
 	Fixed: Empty network device list if it was last active tab.
+
 ### 2018-05-04
 	Fixed: Validation does not find executables correctly.
 	Changed: Some behind the scenes things to help catch an elusive problem with per-app power management.
