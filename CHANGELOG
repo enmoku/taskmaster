@@ -5,6 +5,12 @@
 	Changed: `Increase` and `Decrease` options in `Watchlist.ini` are now `Priority strategy` with values from 0 to 3.
 		0 = Ignore/Unset, 1 = Increase only, 2 = Decrease only, 3 = Force/bidirectional
 		Upgrading to new settings should happen automatically for now.
+	Added: Foreground app hang detector.
+	Changed: Resize&reposition uses `Resize strategy` option instead of `Remember size` and `Remember position`.
+		0 = None, 1 = Size, 2 = Position, 3 = Both
+		Upgrading to new settings should happen automatically for now.
+	Fixed: Resize & reposition settings should no longer reset to 0 under certain circumstances.
+	Fixed: Uncaught error in app hang detector.
 ### 2018-05-15
 	Fixed: Crash in watchlist rule editor if the affinity checkboxes were used.
 	Changed: Internal restructuring, removed PostSharp usage due to its interfererence with build process. Should have no effect for end users.
