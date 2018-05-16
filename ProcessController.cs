@@ -107,6 +107,7 @@ namespace Taskmaster
 
 		public ProcessAffinityStrategy AffinityStrategy = ProcessAffinityStrategy.None;
 		int ScatterOffset = 0;
+		int ScatterChunk = 1; // should default to Cores/4 or Range/2 at max, 1 at minimum.
 
 		/// <summary>
 		/// The power plan.
@@ -158,7 +159,7 @@ namespace Taskmaster
 			if (affinity >= 0)
 			{
 				Affinity = new IntPtr(affinity);
-				AffinityStrategy = ProcessAffinityStrategy.Allowed;
+				AffinityStrategy = ProcessAffinityStrategy.AllowedRange;
 			}
 
 			if (!string.IsNullOrEmpty(path))
@@ -207,7 +208,7 @@ namespace Taskmaster
 				app.Remove("Path");
 
 			app.Remove("Increase"); // DEPRECATED
-			app.Remove("Priority"); // DEPRECATED
+			app.Remove("Decrease"); // DEPRECATED
 
 			if (Priority.HasValue)
 			{
@@ -286,22 +287,38 @@ namespace Taskmaster
 
 			if (ModifyDelay > 0)
 				app["Modify delay"].IntValue = ModifyDelay;
+			else
+				app.Remove("Modify delay");
 
 			if (Resize.HasValue)
 			{
-				if (RememberSize)
-					app["Remember size"].BoolValue = RememberSize;
-				if (RememberPos)
-					app["Remember position"].BoolValue = RememberPos;
+				int[] res = app.TryGet("Resize")?.IntValueArray ?? null;
+				if (res == null || res.Length != 4) res = new int[] { 0, 0, 0, 0 };
 
-				app["Resize"].IntValueArray = new int[] {
-						RememberPos ? Resize.Value.Left : 0,
-						RememberPos ? Resize.Value.Top : 0,
-						RememberSize ? Resize.Value.Width : 0,
-						RememberSize ? Resize.Value.Height : 0
-					};
-				//app["Resize"].IntValueArray = Resize;
+				if (Bit.IsSet((int)ResizeStrategy, (int)WindowResizeStrategy.Position))
+				{
+					res[0] = Resize.Value.Left;
+					res[1] = Resize.Value.Top;
+				}
+
+				if (Bit.IsSet((int)ResizeStrategy, (int)WindowResizeStrategy.Size))
+				{
+					res[2] = Resize.Value.Width;
+					res[3] = Resize.Value.Height;
+				}
+
+				app["Resize"].IntValueArray = res;
+
+				app["Resize strategy"].IntValue = (int)ResizeStrategy;
 			}
+			else
+			{
+				app.Remove("Resize strategy");
+				app.Remove("Resize");
+			}
+
+			app.Remove("Remember size");
+			app.Remove("Remember position");
 
 			NeedsSaving = false;
 
@@ -434,7 +451,7 @@ namespace Taskmaster
 			{
 				if (PowerPlan != PowerInfo.PowerMode.Undefined && BackgroundPowerdown)
 				{
-					if (Taskmaster.DebugPower)
+					if (Taskmaster.DebugPower || Taskmaster.DebugForeground)
 						Log.Debug("<Process> [{Name}] {Exec} (#{Pid}) foreground power on",
 							FriendlyName, info.Name, info.Id);
 
@@ -693,7 +710,7 @@ namespace Taskmaster
 						// TODO: Somehow shift bits old to new if there's free spots
 
 						// Don't increase the number of cores
-						if (AffinityStrategy == ProcessAffinityStrategy.Allowed)
+						if (AffinityStrategy == ProcessAffinityStrategy.AllowedRange)
 						{
 							int excesscores = Bit.Count(newAffinityMask) - Bit.Count(oldAffinityMask);
 							if (excesscores > 0)
@@ -888,26 +905,26 @@ namespace Taskmaster
 						if (Taskmaster.DebugResize) Log.Debug("Failed to retrieve current size of {Name} (#{Pid})", info.Name, info.Id);
 					}
 
-					var oldsize = new System.Drawing.Rectangle(rect.Left, rect.Top, rect.Right - rect.Left, rect.Bottom - rect.Top);
+					var oldrect = new System.Drawing.Rectangle(rect.Left, rect.Top, rect.Right - rect.Left, rect.Bottom - rect.Top);
 
 					var newsize = new System.Drawing.Rectangle(
-						Resize.Value.Left != 0 ? Resize.Value.Left : oldsize.Left,
-						Resize.Value.Top != 0 ? Resize.Value.Top : oldsize.Top,
-						Resize.Value.Width != 0 ? Resize.Value.Width : oldsize.Width,
-						Resize.Value.Height != 0 ? Resize.Value.Height : oldsize.Height
+						Resize.Value.Left != 0 ? Resize.Value.Left : oldrect.Left,
+						Resize.Value.Top != 0 ? Resize.Value.Top : oldrect.Top,
+						Resize.Value.Width != 0 ? Resize.Value.Width : oldrect.Width,
+						Resize.Value.Height != 0 ? Resize.Value.Height : oldrect.Height
 						);
 
-					if (!newsize.Equals(oldsize))
+					if (!newsize.Equals(oldrect))
 					{
 						if (Taskmaster.DebugResize)
 							Log.Debug("Resizing {Name} (#{Pid}) from {OldWidth}×{OldHeight} to {NewWidth}×{NewHeight}",
-								info.Name, info.Id, oldsize.Width, oldsize.Height, newsize.Width, newsize.Height);
+								info.Name, info.Id, oldrect.Width, oldrect.Height, newsize.Width, newsize.Height);
 
 						// TODO: Add option to monitor the app and save the new size so relaunching the app keeps the size.
 
 						NativeMethods.MoveWindow(hwnd, newsize.Left, newsize.Top, newsize.Width, newsize.Height, true);
 
-						if (RememberSize || RememberSize)
+						if (ResizeStrategy != WindowResizeStrategy.None)
 						{
 							lock (Taskmaster.watchlist_lock)
 							{
@@ -917,7 +934,7 @@ namespace Taskmaster
 						}
 					}
 
-					if (!RememberSize && !RememberPos)
+					if (ResizeStrategy == WindowResizeStrategy.None)
 					{
 						if (Taskmaster.DebugResize) Log.Debug("Remembering size or pos not enabled for {Name} (#{Pid})", info.Name, info.Id);
 						return;
@@ -937,9 +954,11 @@ namespace Taskmaster
 
 								NativeMethods.GetWindowRect(hwnd, ref rect);
 
+								bool rpos = Bit.IsSet(((int)ResizeStrategy), (int)WindowResizeStrategy.Position);
+								bool rsiz = Bit.IsSet(((int)ResizeStrategy), (int)WindowResizeStrategy.Size);
 								newsize = new System.Drawing.Rectangle(
-									RememberPos ? rect.Left : Resize.Value.Left, RememberPos ? rect.Top : Resize.Value.Top,
-									RememberSize ? rect.Right - rect.Left : Resize.Value.Left, RememberSize ? rect.Bottom - rect.Top : Resize.Value.Top
+									rpos ? rect.Left : Resize.Value.Left, rpos ? rect.Top : Resize.Value.Top,
+									rsiz ? rect.Right - rect.Left : Resize.Value.Left, rsiz ? rect.Bottom - rect.Top : Resize.Value.Top
 									);
 
 								lock (Taskmaster.watchlist_lock)
@@ -969,8 +988,10 @@ namespace Taskmaster
 								ResizeWaitList.Remove(info.Id);
 							}
 
-							if ((RememberSize && (oldsize.Width != Resize.Value.Width || oldsize.Height != Resize.Value.Height)) ||
-								(RememberPos && (oldsize.Left != Resize.Value.Left || oldsize.Top != Resize.Value.Top)))
+							if ((Bit.IsSet(((int)ResizeStrategy), (int)WindowResizeStrategy.Size)
+								&& (oldrect.Width != Resize.Value.Width || oldrect.Height != Resize.Value.Height))
+								|| (Bit.IsSet(((int)ResizeStrategy), (int)WindowResizeStrategy.Position)
+								&& (oldrect.Left != Resize.Value.Left || oldrect.Top != Resize.Value.Top)))
 							{
 								if (Taskmaster.DebugResize)
 									Log.Debug("Saving {Name} (#{Pid}) size to {NewWidth}×{NewHeight}",
@@ -1005,6 +1026,8 @@ namespace Taskmaster
 		}
 
 		public bool NeedsSaving = false;
+
+		public WindowResizeStrategy ResizeStrategy = WindowResizeStrategy.None;
 
 		public bool RememberSize = false;
 		public bool RememberPos = false;
@@ -1164,10 +1187,7 @@ namespace Taskmaster
 			{
 				if (Taskmaster.Trace) Log.Verbose("Disposing process controller [{FriendlyName}]", FriendlyName);
 
-				if (NeedsSaving)
-				{
-					SaveConfig();
-				}
+				if (NeedsSaving) SaveConfig();
 			}
 
 			disposed = true;

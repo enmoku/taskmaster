@@ -677,20 +677,18 @@ namespace Taskmaster
 				int[] resize = section.TryGet("Resize")?.IntValueArray ?? null; // width,height
 				if (resize != null && resize.Length == 4)
 				{
-					prc.RememberSize = section.TryGet("Remember size")?.BoolValue ?? false;
-					prc.RememberPos = section.TryGet("Remember position")?.BoolValue ?? false;
+					int resstrat = section.TryGet("Resize strategy")?.IntValue.Constrain(0,3) ?? -1;
+					if (resstrat < 0)
+					{
+						resstrat = 0;
+						// DEPRECATED
+						resstrat += (section.TryGet("Remember size")?.BoolValue ?? false) ? 1 : 0;
+						resstrat += (section.TryGet("Remember position")?.BoolValue ?? false) ? 2 : 0;
+					}
 
-					if ((!prc.RememberSize && resize[2] == 0 && resize[3] == 0)
-						&& (!prc.RememberPos && resize[0] == 0 && resize[1] == 0))
-					{
-						prc.Resize = null;
-						Log.Warning("[{Name}] Resize malconfigured, ignoring it.", prc.FriendlyName);
-					}
-					else
-					{
-						prc.Resize = new System.Drawing.Rectangle(resize[0], resize[1], resize[2], resize[3]);
-						//prc.Resize = resize;
-					}
+					prc.ResizeStrategy = (WindowResizeStrategy)resstrat;
+
+					prc.Resize = new System.Drawing.Rectangle(resize[0], resize[1], resize[2], resize[3]);
 				}
 
 				if (upgrade)

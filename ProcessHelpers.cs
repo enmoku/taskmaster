@@ -77,11 +77,19 @@ namespace Taskmaster
 		/// <summary>
 		/// Move and constrain cores to allowed cores but don't increase if setting has more than original
 		/// </summary>
-		Allowed = 2,
+		AllowedRange = 2,
 		/// <summary>
-		/// Assign to semi-random cores
+		/// Assign to cores 1 by 1 linearly.
 		/// </summary>
 		Scatter = 3,
+		/// <summary>
+		/// Set foreground process to dedicated core and scatter the rest.
+		/// </summary>
+		BackgroundScatter = 4,
+		/// <summary>
+		/// Use all but one of the defined cores for foreground and push all others to 1 remaining.
+		/// </summary>
+		BackgroundSideline = 5,
 	}
 
 	public enum ProcessPriorityStrategy
@@ -93,6 +101,14 @@ namespace Taskmaster
 		/// Bi-directional
 		/// </summary>
 		Force = 3,
+	}
+
+	public enum WindowResizeStrategy
+	{
+		None = 0,
+		Size = 1,
+		Position = 2,
+		Both = 3
 	}
 
 	public static class ProcessStateExtensions
