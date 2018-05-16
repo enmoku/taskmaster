@@ -55,12 +55,9 @@ namespace Taskmaster
 		public static void SaveConfig(SharpConfig.Configuration config)
 		{
 			if (ConfigPaths.TryGetValue(config, out string filename))
-			{
 				SaveConfig(filename, config);
-				return;
-			}
-
-			throw new ArgumentException();
+			else
+				throw new ArgumentException();
 		}
 
 		// TODO: Add error handling.
@@ -378,6 +375,14 @@ namespace Taskmaster
 
 			Log.Information("<Core> Waiting for component loading.");
 			Task.WaitAll(init);
+			foreach (Task t in init)
+			{
+				if (t.Exception != null)
+				{
+					Logging.Stacktrace(t.Exception);
+					throw t.Exception;
+				}
+			}
 
 			// HOOKING
 			// Probably should transition to weak events
