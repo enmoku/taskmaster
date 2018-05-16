@@ -520,18 +520,14 @@ namespace Taskmaster
 
 		public static void MarkDirtyINI(SharpConfig.Configuration dirtiedcfg)
 		{
-			if (ImmediateSave)
+			try
 			{
-				SaveConfig(dirtiedcfg);
-			}
-			else
-			{
-				try
-				{
+				if (ImmediateSave)
+					SaveConfig(dirtiedcfg);
+				else
 					ConfigDirty.Add(dirtiedcfg, true);
-				}
-				catch { } // NOP, already in
 			}
+			catch { } // NOP, already in
 		}
 
 		public static string ConfigVersion = "alpha.2";
