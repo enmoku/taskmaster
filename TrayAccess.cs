@@ -41,7 +41,8 @@ namespace Taskmaster
 		ToolStripMenuItem menu_windowopen;
 		ToolStripMenuItem menu_rescan;
 		ToolStripMenuItem menu_configuration;
-		ToolStripMenuItem menu_runatstart;
+		ToolStripMenuItem menu_runatstart_reg;
+		ToolStripMenuItem menu_runatstart_sch;
 		ToolStripMenuItem menu_exit;
 		ToolStripMenuItem power_auto;
 		ToolStripMenuItem power_highperf;
@@ -77,10 +78,15 @@ namespace Taskmaster
 			menu_configuration.DropDownItems.Add(new ToolStripSeparator());
 			menu_configuration.DropDownItems.Add(menu_configuration_folder);
 
-			menu_runatstart = new ToolStripMenuItem("Run at start", null, RunAtStartMenuClick);
-			bool runatstart = RunAtStartRegRun(enabled: false, dryrun: true);
-			menu_runatstart.Checked = runatstart;
-			Log.Information("<Core> Run-at-start: {Enabled}", (runatstart ? "Enabled" : "Disabled"));
+			menu_runatstart_reg = new ToolStripMenuItem("Run at start (RegRun)", null, RunAtStartMenuClick_Reg);
+			menu_runatstart_sch = new ToolStripMenuItem("Schedule at login (Admin)", null, RunAtStartMenuClick_Sch);
+
+			bool runatstartreg = RunAtStartRegRun(enabled: false, dryrun: true);
+			bool runatstartsch = RunAtStartScheduler(enabled: false, dryrun: true);
+			menu_runatstart_reg.Checked = runatstartreg;
+			menu_runatstart_sch.Checked = runatstartsch;
+			Log.Information("<Core> Run-at-start – Registry: {Enabled}, Scheduler: {Found}",
+				(runatstartreg ? "Enabled" : "Disabled"), (runatstartsch ? "Found" : "Missing"));
 
 			if (Taskmaster.PowerManagerEnabled)
 			{
@@ -113,7 +119,8 @@ namespace Taskmaster
 			ms.Items.Add(menu_rescan);
 			ms.Items.Add(new ToolStripSeparator());
 			ms.Items.Add(menu_configuration);
-			ms.Items.Add(menu_runatstart);
+			ms.Items.Add(menu_runatstart_reg);
+			ms.Items.Add(menu_runatstart_sch);
 			if (Taskmaster.PowerManagerEnabled)
 			{
 				ms.Items.Add(new ToolStripSeparator());
@@ -500,7 +507,7 @@ namespace Taskmaster
 				menu_configuration?.Dispose();
 				menu_exit?.Dispose();
 				menu_rescan?.Dispose();
-				menu_runatstart?.Dispose();
+				menu_runatstart_reg?.Dispose();
 				menu_windowopen?.Dispose();
 				ms?.Dispose();
 				power_auto?.Dispose();
@@ -557,37 +564,132 @@ namespace Taskmaster
 			}
 		}
 
-		void RunAtStartMenuClick(object sender, EventArgs ev)
+		void RunAtStartMenuClick_Reg(object sender, EventArgs ev)
 		{
-			var isadmin = Taskmaster.IsAdministrator();
-			if (isadmin)
+			try
 			{
-				var rv = System.Windows.Forms.MessageBox.Show("Run at start does not support elevated privilege that you have. Is this alright?\n\nIf you absolutely need admin rights, create onlogon schedule in windows task scheduler.",
-										 System.Windows.Forms.Application.ProductName + " – Run at Start normal privilege problem.",
-								MessageBoxButtons.YesNo, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button2, System.Windows.Forms.MessageBoxOptions.DefaultDesktopOnly, false);
-				if (rv == DialogResult.No) return;
+				if (!menu_runatstart_reg.Checked)
+				{
+					var isadmin = Taskmaster.IsAdministrator();
+					if (isadmin)
+					{
+						var rv = System.Windows.Forms.MessageBox.Show("Run at start does not support elevated privilege that you have. Is this alright?\n\nIf you absolutely need admin rights, create on logon scheduled task.",
+												 System.Windows.Forms.Application.ProductName + " – Run at Start normal privilege problem.",
+										MessageBoxButtons.YesNo, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button2, System.Windows.Forms.MessageBoxOptions.DefaultDesktopOnly, false);
+						if (rv == DialogResult.No) return;
+					}
+				}
+
+				menu_runatstart_reg.Checked = RunAtStartRegRun(!menu_runatstart_reg.Checked);
+			}
+			catch (Exception ex)
+			{
+				Logging.Stacktrace(ex);
+			}
+		}
+
+		void RunAtStartMenuClick_Sch(object sender, EventArgs ev)
+		{
+			try
+			{
+				var isadmin = Taskmaster.IsAdministrator();
+
+				if (!isadmin)
+				{
+					var rv = MessageBox.Show("Scheduler can not be modified without admin rights.",
+												 System.Windows.Forms.Application.ProductName + " – run with scheduler at login",
+										MessageBoxButtons.OK, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button1, System.Windows.Forms.MessageBoxOptions.DefaultDesktopOnly, false);
+					return;
+				}
+
+				if (!menu_runatstart_sch.Checked)
+				{
+					if (isadmin)
+					{
+						var rv = System.Windows.Forms.MessageBox.Show("This will add on-login scheduler to run TM as admin, is this right?",
+												 System.Windows.Forms.Application.ProductName + " – run at login with scheduler",
+										MessageBoxButtons.YesNo, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button2, System.Windows.Forms.MessageBoxOptions.DefaultDesktopOnly, false);
+						if (rv == DialogResult.No) return;
+					}
+				}
+
+				menu_runatstart_sch.Checked = RunAtStartScheduler(!menu_runatstart_sch.Checked);
+
+				if (menu_runatstart_sch.Checked && menu_runatstart_reg.Checked)
+				{
+					// don't have both enabled
+					RunAtStartMenuClick_Reg(this, null);
+				}
+			}
+			catch (Exception ex)
+			{
+				Logging.Stacktrace(ex);
+			}
+		}
+
+		bool RunAtStartScheduler(bool enabled, bool dryrun = false)
+		{
+			bool found = false;
+			bool created = false;
+			bool deleted = false;
+			bool toggled = false;
+
+			const string schexe = "schtasks";
+
+			string argsq = "/query /fo list /TN MKAh-Taskmaster";
+			ProcessStartInfo info = new ProcessStartInfo(schexe)
+			{
+				WindowStyle = ProcessWindowStyle.Hidden
+			};
+			info.Arguments = argsq;
+
+			var procfind = Process.Start(info);
+			var rvq = procfind.WaitForExit(30000);
+			if (rvq && procfind.ExitCode == 0) found = true;
+
+			if (procfind.ExitCode == 0) Log.Debug("<Tray> Scheduled task found.");
+			else Log.Debug("<Tray> Scheduled task NOT found.");
+
+			if (dryrun) return found; // this is bad, but fits the following logic
+
+			if (found && enabled)
+			{
+				string argstoggle = "/change /TN MKAh-Taskmaster /" + (enabled ? "ENABLE" : "DISABLE");
+				info.Arguments = argstoggle;
+				var proctoggle = Process.Start(info);
+				toggled = proctoggle.WaitForExit(3000); // this will succeed as long as the task is there
+				if (toggled && proctoggle.ExitCode == 0) Log.Debug("<Tray> Scheduled task found and enabled");
+				else Log.Debug("<Tray> Scheduled task NOT toggled.");
+				return true;
 			}
 
-			menu_runatstart.Checked = RunAtStartRegRun(!menu_runatstart.Checked);
+			if (enabled)
+			{
+				// This will solve the high privilege problem, but really? Do I want to?
+				var runtime = Environment.GetCommandLineArgs()[0];
+				string argscreate = "/Create /tn MKAh-Taskmaster /tr \"\\\"" + runtime + "\\\" --scheduler --bootdelay\" /sc onlogon /delay 0:30 /it /RL HIGHEST";
+				info.Arguments = argscreate;
+				var procnew = Process.Start(info);
+				created = procnew.WaitForExit(3000);
 
-			/*
-			// This will solve the high privilege problem, but really? Do I want to?
-			var runtime = Environment.GetCommandLineArgs()[0];
-			string args = "/Create /tn MKAh-Taskmaster /tr \"" + runtime + "\" /sc onlogon /it";
-			if (isadmin)
-				args += " /RL HIGHEST";
+				if (created && procnew.ExitCode == 0) Log.Debug("<Tray> Scheduled task created.");
+				else Log.Debug("<Tray> Scheduled task NOT created.");
+			}
+			else
+			{
+				string argsdelete = "/Delete /TN MKAh-Taskmaster /F";
+				info.Arguments = argsdelete;
 
-			var proc = Process.Start("schtasks", args);
-			var n = proc.WaitForExit(120000);
+				var procdel = Process.Start(info);
+				deleted = procdel.WaitForExit(3000);
 
-			string argsq = "/query /fo list /TN Taskmaster";
-			var procq = Process.Start("schtasks", argsq);
-			var rvq = procq.WaitForExit(30000);
+				if (deleted && procdel.ExitCode == 0) Log.Debug("<Tray> Scheduled task deleted.");
+				else Log.Debug("<Tray> Scheduled task NOT deleted.");
+			}
 
-			string argstoggle = "/change /TN MKAh-Taskmaster /ENABLE/DISABLE";
+			//if (toggled) Log.Debug("<Tray> Scheduled task toggled.");
 
-			string argsdelete = "/delete /TN MKAh-Taskmaster";
-			*/
+			return enabled;
 		}
 
 		bool RunAtStartRegRun(bool enabled, bool dryrun = false)
