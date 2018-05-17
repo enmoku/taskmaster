@@ -81,6 +81,7 @@ namespace Taskmaster
 
 			Shown += (object sender, EventArgs e) =>
 			{
+				if (!IsHandleCreated) return;
 				BeginInvoke(new Action(() =>
 				{
 					lock (loglistLock)
@@ -116,6 +117,7 @@ namespace Taskmaster
 
 		public async void PowerConfigRequest(object sender, EventArgs e)
 		{
+			if (!IsHandleCreated) return;
 			BeginInvoke(new Action(async () =>
 			{
 				try
@@ -175,6 +177,7 @@ namespace Taskmaster
 		{
 			if (Taskmaster.Trace) Log.Verbose("Making sure main window is not lost.");
 
+			if (!IsHandleCreated) return;
 			BeginInvoke(new Action(async () =>
 			{
 				try
@@ -269,6 +272,7 @@ namespace Taskmaster
 		public void ProcessTouchEvent(object sender, ProcessEventArgs ev)
 		{
 			// Log.Verbose("Process adjust received for '{FriendlyName}'.", e.Control.FriendlyName);
+			if (!IsHandleCreated) return;
 			BeginInvoke(new Action(async () =>
 			{
 				adjustcounter.Text = Statistics.TouchCount.ToString();
@@ -292,6 +296,7 @@ namespace Taskmaster
 
 		public void OnActiveWindowChanged(object sender, WindowChangedArgs windowchangeev)
 		{
+			if (!IsHandleCreated) return;
 			BeginInvoke(new Action(async () =>
 			{
 				// int maxlength = 70;
@@ -331,10 +336,13 @@ namespace Taskmaster
 			ProcessController.Located += WatchlistPathLocatedEvent;
 			ProcessController.Touched += ProcessTouchEvent;
 
-			BeginInvoke(new Action(() =>
+			if (IsHandleCreated)
 			{
-				processingcount.Text = ProcessManager.Handling.ToString();
-			}));
+				BeginInvoke(new Action(() =>
+				{
+					processingcount.Text = ProcessManager.Handling.ToString();
+				}));
+			}
 
 			var items = processmanager.getExitWaitList();
 
@@ -355,6 +363,7 @@ namespace Taskmaster
 
 		void ProcessNewInstanceCount(object sender, InstanceEventArgs e)
 		{
+			if (!IsHandleCreated) return;
 			BeginInvoke(new Action(async () =>
 			{
 				processingcount.Text = ProcessManager.Handling.ToString();
@@ -440,6 +449,7 @@ namespace Taskmaster
 
 		public void WatchlistPathLocatedEvent(object sender, PathControlEventArgs e)
 		{
+			if (!IsHandleCreated) return;
 			BeginInvoke(new Action(async () =>
 			{
 				try
@@ -488,6 +498,7 @@ namespace Taskmaster
 
 		void volumeChangeDetected(object sender, VolumeChangedEventArgs e)
 		{
+			if (!IsHandleCreated) return;
 			BeginInvoke(new Action(async () =>
 			{
 				micVol.Value = Convert.ToInt32(e.New);
@@ -513,6 +524,8 @@ namespace Taskmaster
 
 		public void PathCacheUpdate(object sender, EventArgs ev)
 		{
+			if (!IsHandleCreated) return;
+
 			if (PathCacheUpdateSkips++ == 4)
 				PathCacheUpdateSkips = 0;
 			else
@@ -558,6 +571,7 @@ namespace Taskmaster
 
 		void UpdateRescanCountdown(object sender, EventArgs ev)
 		{
+			if (!IsHandleCreated) return;
 			BeginInvoke(new Action(async () =>
 			{
 				var t = ProcessManager.NextRescan.Unixstamp() - DateTime.Now.Unixstamp();
@@ -569,6 +583,7 @@ namespace Taskmaster
 		{
 			if (netmonitor != null)
 			{
+				if (!IsHandleCreated) return;
 				BeginInvoke(new Action(async () =>
 				{
 					uptimestatuslabel.Text = HumanInterface.TimeString(netmonitor.Uptime);
@@ -1754,16 +1769,18 @@ namespace Taskmaster
 
 		readonly object exitwaitlist_lock = new object();
 
-		public async void ExitWaitListHandler(object sender, ProcessEventArgs ev)
+		public void ExitWaitListHandler(object sender, ProcessEventArgs ev)
 		{
 			// TODO: Proper async?
 
 			if (activeappmonitor == null) return;
 
-			await Task.Delay(0).ConfigureAwait(true);
+			if (!IsHandleCreated) return;
 
 			BeginInvoke(new Action(async () =>
 			{
+				await Task.Delay(0).ConfigureAwait(true);
+
 				lock (exitwaitlist_lock)
 				{
 					try
@@ -1820,14 +1837,16 @@ namespace Taskmaster
 			}));
 		}
 
-		public async void CPULoadHandler(object sender, ProcessorEventArgs ev) // Event Handler
+		public void CPULoadHandler(object sender, ProcessorEventArgs ev) // Event Handler
 		{
 			if (!UIOpen) return;
 
-			await Task.Delay(0).ConfigureAwait(true);
+			if (!IsHandleCreated) return;
 
 			BeginInvoke(new Action(async () =>
 			{
+				await Task.Delay(0).ConfigureAwait(true);
+
 				try
 				{
 					// TODO: Asyncify
@@ -2083,6 +2102,7 @@ namespace Taskmaster
 
 		public void TempScanStats(object sender, DiskEventArgs ev)
 		{
+			if (!IsHandleCreated) return;
 			BeginInvoke(new Action(async () =>
 			{
 				tempObjectSize.Text = (ev.Stats.Size / 1_000_000).ToString();
@@ -2141,6 +2161,7 @@ namespace Taskmaster
 
 		public void PowerBehaviourDebugEvent(object sender, PowerManager.PowerBehaviour behaviour)
 		{
+			if (!IsHandleCreated) return;
 			BeginInvoke(new Action(async () =>
 			{
 				powerbalancer_behaviour.Text = (behaviour == PowerManager.PowerBehaviour.Auto) ? "Automatic" : ((behaviour == PowerManager.PowerBehaviour.Manual) ? "Manual" : "Rule-based");
@@ -2151,6 +2172,7 @@ namespace Taskmaster
 
 		public void PowerPlanDebugEvent(object sender, PowerModeEventArgs ev)
 		{
+			if (!IsHandleCreated) return;
 			BeginInvoke(new Action(async () =>
 			{
 				powerbalancer_plan.Text = PowerManager.GetModeName(ev.NewMode);
@@ -2198,6 +2220,7 @@ namespace Taskmaster
 
 		void NetSampleHandler(object sender, NetDeviceTraffic ev)
 		{
+			if (!IsHandleCreated) return;
 			BeginInvoke(new Action(async () =>
 			{
 				ifaceList.Items[ev.Index].SubItems[PacketColumn].Text = string.Format("+{0}", ev.Traffic.Unicast);
@@ -2218,6 +2241,7 @@ namespace Taskmaster
 
 		void InetStatusLabel(bool available)
 		{
+			if (!IsHandleCreated) return;
 			BeginInvoke(new Action(async () =>
 			{
 				inetstatuslabel.Text = available ? "Connected" : "Disconnected";
@@ -2233,6 +2257,7 @@ namespace Taskmaster
 
 		void NetStatusLabel(bool available)
 		{
+			if (!IsHandleCreated) return;
 			BeginInvoke(new Action(async () =>
 			{
 				netstatuslabel.Text = available ? "Up" : "Down";
@@ -2266,6 +2291,7 @@ namespace Taskmaster
 
 			var t = DateTime.Now;
 
+			if (!IsHandleCreated) return;
 			BeginInvoke(new Action(async () =>
 			{
 				lock (loglistLock)
@@ -2332,6 +2358,8 @@ namespace Taskmaster
 					if (powermanager != null)
 					{
 						powermanager.onAutoAdjustAttempt -= CPULoadHandler;
+						powermanager.onBehaviourChange -= PowerBehaviourDebugEvent;
+						powermanager.onPlanChange -= PowerPlanDebugEvent;
 						powermanager = null;
 					}
 				}

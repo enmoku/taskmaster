@@ -3,6 +3,7 @@
 
 ### 2018-05-17
 	Added: Option to run with task scheduler on login instead of using the age old regrun method. Allows starting up automatically as admin.
+	Fixed: Hopefully fixed some crashes related to WinForms? Maybe? Please?
 ### 2018-05-16
 	Changed: `Increase` and `Decrease` options in `Watchlist.ini` are now `Priority strategy` with values from 0 to 3.
 		0 = Ignore/Unset, 1 = Increase only, 2 = Decrease only, 3 = Force/bidirectional
