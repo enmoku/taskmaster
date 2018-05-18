@@ -142,10 +142,16 @@ namespace Taskmaster
 				else if (decreasePrio.Checked && !increasePrio.Checked)
 					Controller.PriorityStrategy = ProcessPriorityStrategy.Decrease;
 			}
-			if (cpumask == -1)
-				Controller.Affinity = null;
-			else
-				Controller.Affinity = new IntPtr(cpumask);
+			if (affstrategy.SelectedIndex != 0)
+			{
+				if (cpumask == -1)
+					Controller.Affinity = null;
+				else
+				{
+					Controller.Affinity = new IntPtr(cpumask);
+					Controller.AffinityStrategy = affstrategy.SelectedIndex == 1 ? ProcessAffinityStrategy.Limit : ProcessAffinityStrategy.Force;
+				}
+			}
 			Controller.ModifyDelay = (int)(modifyDelay.Value * 1000);
 			Controller.PowerPlan = PowerManager.GetModeByName(powerPlan.Text);
 			if (Controller.PowerPlan == PowerInfo.PowerMode.Custom) Controller.PowerPlan = PowerInfo.PowerMode.Undefined;
@@ -179,7 +185,10 @@ namespace Taskmaster
 		ComboBox priorityClass;
 		CheckBox increasePrio = new CheckBox();
 		CheckBox decreasePrio = new CheckBox();
+		ComboBox affstrategy = new ComboBox();
 		NumericUpDown affinityMask = new NumericUpDown();
+		Button allbutton = new Button();
+		Button clearbutton = new Button();
 		NumericUpDown rescanFreq = new NumericUpDown();
 		NumericUpDown modifyDelay = new NumericUpDown();
 		CheckBox allowPaging = new CheckBox();
@@ -394,7 +403,25 @@ namespace Taskmaster
 			// lt.Controls.Add(priorityClass);
 
 			// AFFINITY
+			var corelist = new List<CheckBox>();
+
 			lt.Controls.Add(new Label { Text = "Affinity", TextAlign = System.Drawing.ContentAlignment.MiddleLeft });
+			affstrategy.Items.AddRange(new string[] { "Ignored", "Limit (Default)", "Force" });
+			tooltip.SetToolTip(affstrategy, "Limit constrains cores to the defined range but does not increase used cores beyond what the app is already using.\nForce sets the affinity mask to the defined regardless of anything.");
+			affstrategy.SelectedIndexChanged += (s, e) =>
+			{
+				bool enabled = affstrategy.SelectedIndex != 0;
+				affinityMask.Enabled = enabled;
+				foreach (var box in corelist)
+					box.Enabled = enabled;
+				allbutton.Enabled = enabled;
+				clearbutton.Enabled = enabled;
+			};
+
+			lt.Controls.Add(affstrategy);
+			lt.Controls.Add(new Label()); // empty, right
+
+			lt.Controls.Add(new Label() { Text = "Affinity mask\n& cores", TextAlign = System.Drawing.ContentAlignment.MiddleLeft }); // left
 			affinityMask.Width = 80;
 			affinityMask.Maximum = ProcessManager.allCPUsMask;
 			affinityMask.Minimum = -1;
@@ -420,8 +447,6 @@ namespace Taskmaster
 				AutoSize = true,
 			};
 
-			var list = new List<CheckBox>();
-
 			cpumask = Controller.Affinity?.ToInt32() ?? -1;
 			for (int bit = 0; bit < ProcessManager.CPUCount; bit++)
 			{
@@ -444,7 +469,7 @@ namespace Taskmaster
 						affinityMask.Value = cpumask;
 					}
 				};
-				list.Add(box);
+				corelist.Add(box);
 				corelayout.Controls.Add(new Label
 				{
 					Text = (bit + 1) + ":",
@@ -462,15 +487,15 @@ namespace Taskmaster
 				ColumnCount = 1,
 				AutoSize = true,
 			};
-			var clearbutton = new Button() { Text = "None" };
+			clearbutton.Text = "None";
 			clearbutton.Click += (sender, e) =>
 			{
-				foreach (var litem in list) litem.Checked = false;
+				foreach (var litem in corelist) litem.Checked = false;
 			};
-			var allbutton = new Button() { Text = "All" };
+			allbutton.Text = "All";
 			allbutton.Click += (sender, e) =>
 			{
-				foreach (var litem in list) litem.Checked = true;
+				foreach (var litem in corelist) litem.Checked = true;
 			};
 			buttonpanel.Controls.Add(allbutton);
 			buttonpanel.Controls.Add(clearbutton);
@@ -480,9 +505,23 @@ namespace Taskmaster
 				var bitoff = 0;
 				try { cpumask = (int)affinityMask.Value; }
 				catch { cpumask = 0; affinityMask.Value = 0; }
-				foreach (var bu in list)
+				foreach (var bu in corelist)
 					bu.Checked = ((Math.Max(0,cpumask) & (1 << bitoff++)) != 0);
 			};
+
+			switch (Controller.AffinityStrategy)
+			{
+				case ProcessAffinityStrategy.Force:
+					affstrategy.SelectedIndex = 2;
+					break;
+				default:
+				case ProcessAffinityStrategy.Limit:
+					affstrategy.SelectedIndex = 1;
+					break;
+				case ProcessAffinityStrategy.None:
+					affstrategy.SelectedIndex = 0;
+					break;
+			}
 
 			lt.Controls.Add(afflayout);
 			lt.Controls.Add(buttonpanel);
@@ -545,7 +584,7 @@ namespace Taskmaster
 			// PAGING
 			lt.Controls.Add(new Label { Text = "Allow paging", TextAlign = System.Drawing.ContentAlignment.MiddleLeft });
 			allowPaging.Checked = Controller.AllowPaging;
-			tooltip.SetToolTip(allowPaging, "Allow this application to be paged when it is requested.");
+			tooltip.SetToolTip(allowPaging, "Allow this application to be paged when it is requested.\nNOT FULLY IMPLEMENTED.");
 			lt.Controls.Add(allowPaging);
 			lt.Controls.Add(new Label()); // empty
 
@@ -589,12 +628,29 @@ namespace Taskmaster
 				if (procs.Length > 0) exfound = true;
 			}
 
-			var pfound = false;
+			string pfound = "No";
 			if (path)
 			{
 				try
 				{
-					pfound = System.IO.Directory.Exists(pathName.Text);
+					if (System.IO.Directory.Exists(pathName.Text))
+					{
+						pfound = "Exact";
+					}
+					else
+					{
+						string search = System.IO.Path.GetFileName(pathName.Text);
+						var di = System.IO.Directory.GetParent(pathName.Text);
+						if (di != null && !string.IsNullOrEmpty(search))
+						{
+							var dirs = System.IO.Directory.EnumerateDirectories(di.FullName, search+"*", System.IO.SearchOption.TopDirectoryOnly);
+							foreach (var dir in dirs)
+							{
+								pfound = "Partial Match";
+								break;
+							}
+						}
+					}
 				}
 				catch
 				{
@@ -627,7 +683,7 @@ namespace Taskmaster
 				sbs.Append("Rescan frequency REQUIRES executable to be defined.").AppendLine();
 			if (priorityClass.SelectedIndex == 5)
 				sbs.Append("Priority class is to be ignored.").AppendLine();
-			if (cpumask == -1)
+			if (cpumask == -1 || affstrategy.SelectedIndex == 0)
 				sbs.Append("Affinity is to be ignored.").AppendLine();
 			if (ignorelist.Items.Count > 0 && execName.Text.Length > 0)
 				sbs.Append("Ignore list is meaningless with executable defined.").AppendLine();

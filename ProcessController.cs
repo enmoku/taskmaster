@@ -159,7 +159,7 @@ namespace Taskmaster
 			if (affinity >= 0)
 			{
 				Affinity = new IntPtr(affinity);
-				AffinityStrategy = ProcessAffinityStrategy.AllowedRange;
+				AffinityStrategy = ProcessAffinityStrategy.Limit;
 			}
 
 			if (!string.IsNullOrEmpty(path))
@@ -221,23 +221,19 @@ namespace Taskmaster
 				app.Remove("Priority strategy");
 			}
 
-			if (Affinity.HasValue)
+			if (Affinity.HasValue && Affinity.Value.ToInt32() >= 0)
 			{
 				var affinity = Affinity.Value.ToInt32();
-				if (affinity == ProcessManager.allCPUsMask) affinity = 0;
-				if (affinity >= 0)
-				{
-					app["Affinity"].IntValue = Affinity.Value.ToInt32();
-					app["Affinity strategy"].IntValue = (int)AffinityStrategy;
-				}
-				else
-				{
-					app.Remove("Affinity"); // ignore affinity
-					app.Remove("Affinity strategy");
-				}
+				//if (affinity == ProcessManager.allCPUsMask) affinity = 0; // convert back
+
+				app["Affinity"].IntValue = affinity;
+				app["Affinity strategy"].IntValue = (int)AffinityStrategy;
 			}
 			else
+			{
 				app.Remove("Affinity");
+				app.Remove("Affinity strategy");
+			}
 
 			var pmode = PowerManager.GetModeName(PowerPlan);
 			if (PowerPlan != PowerInfo.PowerMode.Undefined)
@@ -710,7 +706,7 @@ namespace Taskmaster
 						// TODO: Somehow shift bits old to new if there's free spots
 
 						// Don't increase the number of cores
-						if (AffinityStrategy == ProcessAffinityStrategy.AllowedRange)
+						if (AffinityStrategy == ProcessAffinityStrategy.Limit)
 						{
 							int excesscores = Bit.Count(newAffinityMask) - Bit.Count(oldAffinityMask);
 							if (excesscores > 0)

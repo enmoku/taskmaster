@@ -77,7 +77,7 @@ namespace Taskmaster
 		/// <summary>
 		/// Move and constrain cores to allowed cores but don't increase if setting has more than original
 		/// </summary>
-		AllowedRange = 2,
+		Limit = 2,
 		/// <summary>
 		/// Assign to cores 1 by 1 linearly.
 		/// </summary>
