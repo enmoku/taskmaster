@@ -338,7 +338,7 @@ namespace Taskmaster
 			{
 				Taskmaster.ComponentConfigurationDone = true;
 
-				var cfg = Taskmaster.LoadConfig("Core.ini");
+				var cfg = Taskmaster.Config.LoadConfig("Core.ini");
 				var mainsec = cfg["Core"];
 				var opt = mainsec["Version"];
 				opt.StringValue = Taskmaster.ConfigVersion;
@@ -370,7 +370,7 @@ namespace Taskmaster
 				perf["WMI poll delay"].IntValue = ((int)wmipolling.Value);
 				perf["WMI queries"].BoolValue = (ScanOrWMI.SelectedIndex != 0);
 
-				Taskmaster.SaveConfig(cfg);
+				Taskmaster.Config.SaveConfig(cfg);
 
 				DialogResult = DialogResult.OK;
 

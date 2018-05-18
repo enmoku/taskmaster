@@ -64,7 +64,7 @@ namespace Taskmaster
 			var perfsec = Taskmaster.cfg["Performance"];
 			Hysterisis = perfsec.GetSetDefault("Foreground hysterisis", 1500, out bool modified).IntValue.Constrain(0, 30000);
 			perfsec["Foreground hysterisis"].Comment = "In milliseconds, from 0 to 30000. Delay before we inspect foreground app, in case user rapidly swaps apps.";
-			if (modified) Taskmaster.MarkDirtyINI(Taskmaster.cfg);
+			if (modified) Taskmaster.Config.MarkDirtyINI(Taskmaster.cfg);
 
 			// TODO: Add timer to check foreground app hanging
 			// TODO: Hang check should only take action if user fails to swap apps (e.g. ctrl-alt-esc for taskmanager)

@@ -154,8 +154,14 @@ namespace Taskmaster
 				Log.Information("<Auto-Doc> Memory auto-paging level: {Level} MB", Settings.MemLevel);
 			}
 
+			if (Settings.LowDriveSpaceThreshold > 0)
+			{
+				Log.Information("<Auto-Doc> Disk space warning level: {Level} MB", Settings.LowDriveSpaceThreshold);
+			}
+
 			healthTimer = new System.Timers.Timer(Settings.Frequency * 60_000);
 			healthTimer.Elapsed += TimerCheck;
+			healthTimer.Start();
 
 			Log.Information("<Auto-Doc> Component loaded");
 		}
@@ -167,7 +173,7 @@ namespace Taskmaster
 		SharpConfig.Configuration cfg = null;
 		void LoadConfig()
 		{
-			cfg = Taskmaster.LoadConfig("Health.ini");
+			cfg = Taskmaster.Config.LoadConfig("Health.ini");
 			bool modified = false, configdirty = false;
 
 			var gensec = cfg["General"];
@@ -208,11 +214,11 @@ namespace Taskmaster
 
 			// NVM
 			var nvmsec = cfg["Non-Volatile Memory"];
-			Settings.LowDriveSpaceThreshold = nvmsec.GetSetDefault("Low space threshold", 150, out modified).IntValue.Constrain(0, 4000);
-			nvmsec["Low space threshold"].Comment = "Warn about free space going below this. In megabytes.";
+			Settings.LowDriveSpaceThreshold = nvmsec.GetSetDefault("Low space threshold", 150, out modified).IntValue.Constrain(0, 60000);
+			nvmsec["Low space threshold"].Comment = "Warn about free space going below this. In megabytes. From 0 to 60000.";
 			configdirty |= modified;
 
-			if (configdirty) Taskmaster.MarkDirtyINI(cfg);
+			if (configdirty) Taskmaster.Config.MarkDirtyINI(cfg);
 		}
 
 		PerformanceCounterWrapper memfree = null;
@@ -228,17 +234,20 @@ namespace Taskmaster
 			// happens sometimes when the timer keeps running but not the code here
 			if (!Atomic.Lock(ref HealthCheck_lock)) return;
 
-			try
+			using (SelfAwareness.Mind(DateTime.Now.AddSeconds(15)))
 			{
-				await CheckErrors();
-				await CheckLogs();
-				await CheckMemory();
-				await CheckNVM();
-			}
-			catch (Exception ex) { Logging.Stacktrace(ex); }
-			finally
-			{
-				Atomic.Unlock(ref HealthCheck_lock);
+				try
+				{
+					await CheckErrors();
+					await CheckLogs();
+					await CheckMemory();
+					await CheckNVM();
+				}
+				catch (Exception ex) { Logging.Stacktrace(ex); }
+				finally
+				{
+					Atomic.Unlock(ref HealthCheck_lock);
+				}
 			}
 		}
 
@@ -309,9 +318,9 @@ namespace Taskmaster
 			{
 				if (drive.IsReady)
 				{
-					Log.Debug("<Auto-Doc> {Drive} free space: ", drive.Name, HumanInterface.ByteString(drive.AvailableFreeSpace));
+					//Log.Debug("<Auto-Doc> {Drive} free space: {Space}", drive.Name, HumanInterface.ByteString(drive.AvailableFreeSpace));
 
-					if (drive.AvailableFreeSpace < Settings.LowDriveSpaceThreshold * 1_000_000)
+					if ((drive.AvailableFreeSpace / 1_000_000) < Settings.LowDriveSpaceThreshold)
 					{
 						if (warnedDrives.Contains(drive.Name)) continue;
 
@@ -382,7 +391,7 @@ namespace Taskmaster
 									Taskmaster.processmanager.Ignore(ignorepid);
 								}
 
-								await Taskmaster.processmanager?.FreeMemory(null, quiet: true);
+								Taskmaster.processmanager?.FreeMemory(null, quiet: true);
 							}
 							finally
 							{

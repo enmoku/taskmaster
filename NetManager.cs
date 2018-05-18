@@ -67,7 +67,7 @@ namespace Taskmaster
 
 		void LoadConfig()
 		{
-			var cfg = Taskmaster.LoadConfig("Net.ini");
+			var cfg = Taskmaster.Config.LoadConfig("Net.ini");
 
 			var dirty = false;
 			var dirtyconf = false;
@@ -83,7 +83,7 @@ namespace Taskmaster
 			var pktsec = cfg["Traffic"];
 			PacketStatTimerInterval = pktsec.GetSetDefault("Sample rate", 15, out dirty).IntValue.Constrain(1, 60);
 			dirtyconf |= dirty;
-			if (dirtyconf) Taskmaster.SaveConfig(cfg);
+			if (dirtyconf) Taskmaster.Config.SaveConfig(cfg);
 
 			Log.Information("<Network> Traffic sample frequency: {Interval}s", PacketStatTimerInterval);
 		}

@@ -816,7 +816,7 @@ namespace Taskmaster
 
 				Taskmaster.cfg["Quality of Life"]["Auto-open menus"].BoolValue = Taskmaster.AutoOpenMenus;
 
-				Taskmaster.MarkDirtyINI(Taskmaster.cfg);
+				Taskmaster.Config.MarkDirtyINI(Taskmaster.cfg);
 			};
 
 			var menu_config_behaviour_taskbar = new ToolStripMenuItem("Show in taskbar")
@@ -828,7 +828,7 @@ namespace Taskmaster
 			{
 				Taskmaster.ShowInTaskbar = ShowInTaskbar = menu_config_behaviour_taskbar.Checked;
 				Taskmaster.cfg["Quality of Life"]["Show in taskbar"].BoolValue = Taskmaster.ShowInTaskbar;
-				Taskmaster.MarkDirtyINI(Taskmaster.cfg);
+				Taskmaster.Config.MarkDirtyINI(Taskmaster.cfg);
 			};
 
 			menu_config_behaviour.DropDownItems.Add(menu_config_behaviour_autoopen);
@@ -842,7 +842,7 @@ namespace Taskmaster
 			menu_config_logging_adjusts.Click += (s, e) => {
 				Taskmaster.ShowProcessAdjusts = menu_config_logging_adjusts.Checked;
 				Taskmaster.cfg["Logging"]["Show process adjusts"].BoolValue = Taskmaster.ShowProcessAdjusts;
-				Taskmaster.MarkDirtyINI(Taskmaster.cfg);
+				Taskmaster.Config.MarkDirtyINI(Taskmaster.cfg);
 			};
 
 			var menu_config_logging_session = new ToolStripMenuItem("Session actions")
@@ -853,7 +853,7 @@ namespace Taskmaster
 			menu_config_logging_session.Click += (s, e) => {
 				Taskmaster.ShowSessionActions = menu_config_logging_session.Checked;
 				Taskmaster.cfg["Logging"]["Show session actions"].BoolValue = Taskmaster.ShowSessionActions;
-				Taskmaster.MarkDirtyINI(Taskmaster.cfg);
+				Taskmaster.Config.MarkDirtyINI(Taskmaster.cfg);
 			};
 			menu_config_logging.DropDownItems.Add(menu_config_logging_adjusts);
 			menu_config_logging.DropDownItems.Add(menu_config_logging_session);
@@ -1155,7 +1155,7 @@ namespace Taskmaster
 			#endregion
 
 			#region Load UI config
-			var uicfg = Taskmaster.LoadConfig("UI.ini");
+			var uicfg = Taskmaster.Config.LoadConfig("UI.ini");
 			var wincfg = uicfg["Windows"];
 			var colcfg = uicfg["Columns"];
 
@@ -1501,7 +1501,7 @@ namespace Taskmaster
 			loglistms.Items.Add(logcopy);
 			loglist.ContextMenuStrip = loglistms;
 
-			var cfg = Taskmaster.LoadConfig("Core.ini");
+			var cfg = Taskmaster.Config.LoadConfig("Core.ini");
 			bool modified, tdirty = false;
 			MaxLogSize = cfg["Logging"].GetSetDefault("UI max items", 200, out modified).IntValue;
 			tdirty |= modified;
@@ -1511,7 +1511,7 @@ namespace Taskmaster
 			{
 				cfg["Logging"]["UI max items"].Comment = "Maximum number of items/lines to retain on UI level.";
 				cfg["User Interface"]["Update frequency"].Comment = "In milliseconds. Frequency of controlled UI updates. Affects visual accuracy of timers and such. Valid range: 100 to 5000.";
-				Taskmaster.MarkDirtyINI(cfg);
+				Taskmaster.Config.MarkDirtyINI(cfg);
 			}
 
 			var cachePanel = new TableLayoutPanel()
@@ -2324,7 +2324,7 @@ namespace Taskmaster
 			for (int i = 0; i < micList.Columns.Count; i++)
 				micWidths.Add(micList.Columns[i].Width);
 
-			var cfg = Taskmaster.LoadConfig("UI.ini");
+			var cfg = Taskmaster.Config.LoadConfig("UI.ini");
 			var cols = cfg["Columns"];
 			cols["Apps"].IntValueArray = appWidths.ToArray();
 			// cols["Paths"].IntValueArray = pathWidths.ToArray();
@@ -2337,7 +2337,7 @@ namespace Taskmaster
 			var windows = cfg["Windows"];
 			windows["Main"].IntValueArray = new int[] { Bounds.Left, Bounds.Top, Bounds.Width, Bounds.Height };
 
-			Taskmaster.MarkDirtyINI(cfg);
+			Taskmaster.Config.MarkDirtyINI(cfg);
 		}
 
 		bool disposed = false;

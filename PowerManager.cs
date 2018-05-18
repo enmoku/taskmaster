@@ -673,7 +673,7 @@ namespace Taskmaster
 			Log.Information("<Session> Immediate power off on lock: {Toggle}", SessionLockPowerOff ? "Enabled" : "Disabled");
 
 			if (dirtyconfig)
-				Taskmaster.MarkDirtyINI(Taskmaster.cfg);
+				Taskmaster.Config.MarkDirtyINI(Taskmaster.cfg);
 		}
 
 		public void LogBehaviourState()

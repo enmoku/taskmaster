@@ -44,87 +44,18 @@ namespace Taskmaster
 		public static string ItchURL { get; } = "https://mkah.itch.io/taskmaster";
 
 		public static SharpConfig.Configuration cfg;
-		public static string datapath = System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "MKAh", "Taskmaster");
+		public static string datapath = System.IO.Path.Combine(
+			Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "MKAh", "Taskmaster");
 
 		// TODO: Pre-allocate space for the log files.
 
-		static Dictionary<string, SharpConfig.Configuration> Configs = new Dictionary<string, SharpConfig.Configuration>();
+		public static ConfigManager Config = null;
+		public static ComponentContainer Components = null;
+
 		static Dictionary<SharpConfig.Configuration, bool> ConfigDirty = new Dictionary<SharpConfig.Configuration, bool>();
 		static Dictionary<SharpConfig.Configuration, string> ConfigPaths = new Dictionary<SharpConfig.Configuration, string>();
 
-		public static void SaveConfig(SharpConfig.Configuration config)
-		{
-			if (ConfigPaths.TryGetValue(config, out string filename))
-				SaveConfig(filename, config);
-			else
-				throw new ArgumentException();
-		}
-
-		// TODO: Add error handling.
-		public static void SaveConfig(string configfile, SharpConfig.Configuration config)
-		{
-			try
-			{
-				System.IO.Directory.CreateDirectory(datapath);
-			}
-			catch
-			{
-				Log.Warning("Failed to create directory: {Path}", datapath);
-				return;
-			}
-
-			string targetfile = System.IO.Path.Combine(datapath, configfile);
-			try
-			{
-				// backup, copy in case following write fails
-				System.IO.File.Copy(targetfile, targetfile + ".bak", overwrite: true);
-				config.SaveToFile(targetfile);
-			}
-			catch
-			{
-				Log.Warning("Failed to write: {Target}", targetfile);
-			}
-			// TODO: Pre-allocate some space for the config file?
-		}
-
-		public static void UnloadConfig(string configfile)
-		{
-			if (Configs.TryGetValue(configfile, out var retcfg))
-			{
-				Configs.Remove(configfile);
-				ConfigPaths.Remove(retcfg);
-			}
-		}
-
-		public static SharpConfig.Configuration LoadConfig(string configfile)
-		{
-			SharpConfig.Configuration retcfg;
-			if (Configs.TryGetValue(configfile, out retcfg))
-			{
-				return retcfg;
-			}
-
-			var path = System.IO.Path.Combine(datapath, configfile);
-			// Log.Trace("Opening: "+path);
-			if (System.IO.File.Exists(path))
-				retcfg = SharpConfig.Configuration.LoadFromFile(path);
-			else
-			{
-				Log.Warning("Not found: {Path}", path);
-				retcfg = new SharpConfig.Configuration();
-				System.IO.Directory.CreateDirectory(datapath);
-			}
-
-			Configs.Add(configfile, retcfg);
-			ConfigPaths.Add(retcfg, configfile);
-
-			if (Taskmaster.Trace) Log.Verbose("{ConfigFile} added to known configurations files.", configfile);
-
-			return retcfg;
-		}
-
 		public static MicManager micmonitor = null;
-		public static object mainwindow_lock = new object();
 		public static MainWindow mainwindow = null;
 		public static ProcessManager processmanager = null;
 		public static TrayAccess trayaccess = null;
@@ -133,17 +64,9 @@ namespace Taskmaster
 		public static PowerManager powermanager = null;
 		public static ActiveAppManager activeappmonitor = null;
 		public static HealthMonitor healthmonitor = null;
+		static SelfAwareness selfaware = null;
 
 		public static object watchlist_lock = new object();
-
-		public static void MainWindowClose(object sender, EventArgs e)
-		{
-			// Calling dispose here for mainwindow is WRONG, DON'T DO IT
-			// only do it if ev.Cancel=true, I mean.
-
-			lock (mainwindow_lock)
-				mainwindow = null;
-		}
 
 		static bool RunOnce = false;
 		public static bool Restart = false;
@@ -191,13 +114,7 @@ namespace Taskmaster
 		/// <summary>
 		/// Call any supporting functions to re-evaluate current situation.
 		/// </summary>
-		public static async Task Evaluate()
-		{
-			// await EvaluateDispatch().ConfigureAwait(false);
-			Task.Factory.StartNew(EvaluateDispatch, TaskCreationOptions.RunContinuationsAsynchronously);
-		}
-
-		static async Task EvaluateDispatch()
+		public static void Evaluate()
 		{
 			try
 			{
@@ -228,84 +145,73 @@ namespace Taskmaster
 			}
 		}
 
+		public static object mainwindow_creation_lock = new object();
 		/// <summary>
 		/// Constructs and hooks the main window
 		/// </summary>
 		public static void BuildMainWindow()
 		{
-			lock (mainwindow_lock)
+			lock (mainwindow_creation_lock)
 			{
-				if (mainwindow == null)
+				if (mainwindow != null) return;
+				if (Taskmaster.Trace) Console.WriteLine("Building MainWindow");
+
+				mainwindow = new MainWindow();
+				mainwindow.FormClosed += (s, e) => { mainwindow = null; };
+				try
 				{
-					if (Taskmaster.Trace)
-						Console.WriteLine("Building MainWindow");
-					mainwindow = new MainWindow();
-					mainwindow.FormClosed += MainWindowClose;
-					try
+					if (diskmanager != null)
 					{
-						if (diskmanager != null)
-						{
-							if (Taskmaster.Trace)
-								Console.WriteLine("... hooking NVM manager");
-							mainwindow.hookDiskManager(ref diskmanager);
-						}
-
-						if (processmanager != null)
-						{
-							if (Taskmaster.Trace)
-								Console.WriteLine("... hooking PROC manager");
-							mainwindow.hookProcessManager(ref processmanager);
-						}
-
-						if (micmonitor != null)
-						{
-							if (Taskmaster.Trace)
-								Console.WriteLine("... hooking MIC monitor");
-							mainwindow.hookMicMonitor(micmonitor);
-						}
-
-						if (netmonitor != null)
-						{
-							if (Taskmaster.Trace)
-								Console.WriteLine("... hooking NET monitor");
-							mainwindow.hookNetMonitor(ref netmonitor);
-						}
-
-						if (activeappmonitor != null)
-						{
-							if (Taskmaster.Trace)
-								Console.WriteLine("... hooking APP manager");
-							mainwindow.hookActiveAppMonitor(ref activeappmonitor);
-						}
-
-						if (powermanager != null)
-						{
-							if (Taskmaster.Trace)
-								Console.WriteLine("... hooking POW manager");
-							mainwindow.hookPowerManager(ref powermanager);
-						}
-					}
-					catch (Exception ex)
-					{
-						Logging.Stacktrace(ex);
+						if (Taskmaster.Trace) Console.WriteLine("... hooking NVM manager");
+						mainwindow.hookDiskManager(ref diskmanager);
 					}
 
-					if (Taskmaster.Trace)
-						Console.WriteLine("... hooking to TRAY");
-					trayaccess.hookMainWindow(ref mainwindow);
+					if (processmanager != null)
+					{
+						if (Taskmaster.Trace) Console.WriteLine("... hooking PROC manager");
+						mainwindow.hookProcessManager(ref processmanager);
+					}
 
-					if (Taskmaster.Trace)
-						Console.WriteLine("MainWindow built");
+					if (micmonitor != null)
+					{
+						if (Taskmaster.Trace) Console.WriteLine("... hooking MIC monitor");
+						mainwindow.hookMicMonitor(micmonitor);
+					}
+
+					if (netmonitor != null)
+					{
+						if (Taskmaster.Trace) Console.WriteLine("... hooking NET monitor");
+						mainwindow.hookNetMonitor(ref netmonitor);
+					}
+
+					if (activeappmonitor != null)
+					{
+						if (Taskmaster.Trace) Console.WriteLine("... hooking APP manager");
+						mainwindow.hookActiveAppMonitor(ref activeappmonitor);
+					}
+
+					if (powermanager != null)
+					{
+						if (Taskmaster.Trace) Console.WriteLine("... hooking POW manager");
+						mainwindow.hookPowerManager(ref powermanager);
+					}
 				}
+				catch (Exception ex)
+				{
+					Logging.Stacktrace(ex);
+				}
+
+				if (Taskmaster.Trace) Console.WriteLine("... hooking to TRAY");
+				trayaccess.hookMainWindow(ref mainwindow);
+
+				if (Taskmaster.Trace) Console.WriteLine("MainWindow built");
 			}
 		}
-
-		static SelfAwareness selfaware;
 
 		static void PreSetup()
 		{
 			// INITIAL CONFIGURATIONN
-			var tcfg = LoadConfig("Core.ini");
+			var tcfg = Config.LoadConfig("Core.ini");
 			var sec = tcfg.TryGet("Core")?.TryGet("Version")?.StringValue ?? null;
 			if (sec == null || sec != ConfigVersion)
 			{
@@ -355,6 +261,8 @@ namespace Taskmaster
 				
 				SelfOptimize = false;
 			}
+
+			Components = new ComponentContainer();
 
 			// Parallel loading, cuts down startup time some.
 			// This is really bad if something fails
@@ -523,18 +431,6 @@ namespace Taskmaster
 		public static bool WMIPolling { get; private set; } = false;
 		public static int WMIPollDelay { get; private set; } = 5;
 
-		public static void MarkDirtyINI(SharpConfig.Configuration dirtiedcfg)
-		{
-			try
-			{
-				if (ImmediateSave)
-					SaveConfig(dirtiedcfg);
-				else
-					ConfigDirty.Add(dirtiedcfg, true);
-			}
-			catch { } // NOP, already in
-		}
-
 		public static string ConfigVersion = "alpha.2";
 
 		public static bool RequestExitConfirm = true;
@@ -547,14 +443,14 @@ namespace Taskmaster
 		{
 			Log.Information("<Core> Loading configuration...");
 
-			cfg = LoadConfig(coreconfig);
+			cfg = Config.LoadConfig(coreconfig);
 
 			if (cfg.TryGet("Core")?.TryGet("Hello")?.RawValue != "Hi")
 			{
 				Log.Information("Hello");
 				cfg["Core"]["Hello"].SetValue("Hi");
 				cfg["Core"]["Hello"].PreComment = "Heya";
-				MarkDirtyINI(cfg);
+				Config.MarkDirtyINI(cfg);
 			}
 
 			var compsec = cfg["Components"];
@@ -706,7 +602,7 @@ namespace Taskmaster
 			var newsettings = optsec?.SettingCount ?? 0 + compsec?.SettingCount ?? 0 + perfsec?.SettingCount ?? 0;
 
 			if (dirtyconfig || (oldsettings != newsettings)) // really unreliable, but meh
-				MarkDirtyINI(cfg);
+				Config.MarkDirtyINI(cfg);
 
 			monitorCleanShutdown();
 
@@ -726,7 +622,7 @@ namespace Taskmaster
 				if (rv == DialogResult.Yes)
 				{
 					cfg["Core"]["Hell"].StringValue = "No";
-					MarkDirtyINI(cfg);
+					Config.MarkDirtyINI(cfg);
 				}
 				else
 				{
@@ -790,18 +686,18 @@ namespace Taskmaster
 		static void monitorCleanShutdown()
 		{
 			if (corestats == null)
-				corestats = LoadConfig(corestatfile);
+				corestats = Config.LoadConfig(corestatfile);
 
 			var running = corestats.TryGet("Core")?.TryGet("Running")?.BoolValue ?? false;
 			if (running) Log.Warning("Unclean shutdown.");
 
 			corestats["Core"]["Running"].BoolValue = true;
-			SaveConfig(corestats);
+			Config.SaveConfig(corestats);
 		}
 
 		static void CleanShutdown()
 		{
-			if (corestats == null) corestats = LoadConfig(corestatfile);
+			if (corestats == null) corestats = Config.LoadConfig(corestatfile);
 
 			var wmi = corestats["WMI queries"];
 			string timespent = "Time", querycount = "Queries";
@@ -819,7 +715,7 @@ namespace Taskmaster
 
 			corestats["Core"]["Running"].BoolValue = false;
 
-			SaveConfig(corestats);
+			Config.SaveConfig(corestats);
 		}
 
 		/// <summary>
@@ -1027,6 +923,16 @@ namespace Taskmaster
 			{
 				Logging.Stacktrace(ex);
 			}
+
+			try
+			{
+				selfaware?.Dispose();
+				selfaware = null;
+			}
+			catch (Exception ex)
+			{
+				Logging.Stacktrace(ex);
+			}
 		}
 
 		static void ParseArguments(string[] args)
@@ -1136,7 +1042,7 @@ namespace Taskmaster
 
 		static void LicenseBoiler()
 		{
-			var cfg = LoadConfig(coreconfig);
+			var cfg = Config.LoadConfig(coreconfig);
 
 			if (cfg.TryGet("Core")?.TryGet("License")?.RawValue.Equals("Accepted") ?? false) return;
 
@@ -1208,6 +1114,8 @@ namespace Taskmaster
 		{
 			UpgradeAppSettings();
 
+			Config = new ConfigManager(datapath);
+
 			LicenseBoiler();
 
 			// INIT LOGGER
@@ -1262,7 +1170,7 @@ namespace Taskmaster
 
 			// early save of configs
 			foreach (var dcfg in ConfigDirty)
-				if (dcfg.Value) SaveConfig(dcfg.Key);
+				if (dcfg.Value) Config.SaveConfig(dcfg.Key);
 			ConfigDirty.Clear();
 
 			// Properties.Settings.Default.Save();
@@ -1293,7 +1201,7 @@ namespace Taskmaster
 						processmanager.ScanEverythingEndEvent += end;
 					}
 
-					Task.Factory.StartNew(Evaluate, TaskCreationOptions.LongRunning);
+					Evaluate();
 
 					if (re != null)
 					{
@@ -1318,11 +1226,6 @@ namespace Taskmaster
 				Logging.Stacktrace(ex);
 				// TODO: ACTUALLY DIE
 			}
-			finally
-			{
-				if (mainwindow != null)
-					mainwindow.FormClosed -= MainWindowClose;
-			}
 
 			if (SelfOptimize && !RunOnce) // return decent processing speed to quickly exit
 			{
@@ -1342,7 +1245,7 @@ namespace Taskmaster
 
 			// TODO: Save Config, do this better. Maybe data bindings.
 			bool dirty = cfg["Quality of Life"]["Auto-open menus"].Set(AutoOpenMenus);
-			if (dirty) MarkDirtyINI(cfg);
+			if (dirty) Config.MarkDirtyINI(cfg);
 
 			// CLEANUP for exit
 
@@ -1352,7 +1255,7 @@ namespace Taskmaster
 			Log.Information("Cleanups: {CleanupTime}s [{CleanupCount}]", string.Format("{0:N2}", Statistics.CleanupTime), Statistics.Cleanups);
 
 			foreach (var dcfg in ConfigDirty)
-				if (dcfg.Value) SaveConfig(dcfg.Key);
+				if (dcfg.Value) Config.SaveConfig(dcfg.Key);
 			ConfigDirty.Clear();
 
 			CleanShutdown();

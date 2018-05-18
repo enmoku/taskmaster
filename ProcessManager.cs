@@ -184,6 +184,20 @@ namespace Taskmaster
 			activeappmonitor.ActiveChanged += ForegroundAppChangedEvent;
 		}
 
+		void RegisterFreeMemoryTick()
+		{
+			ScanEverythingEndEvent -= UnregisterFreeMemoryTick; // avoid multiple registrations
+			ScanEverythingEndEvent += UnregisterFreeMemoryTick;
+
+			ProcessDetectedEvent -= FreeMemoryTick; // avoid multiple registrations
+			ProcessDetectedEvent += FreeMemoryTick;
+		}
+
+		void UnregisterFreeMemoryTick(object sender, EventArgs ev)
+		{
+			ProcessDetectedEvent -= FreeMemoryTick;
+		}
+
 		string freememoryignore = null;
 		async void FreeMemoryTick(object sender, ProcessEx info)
 		{
@@ -232,21 +246,20 @@ namespace Taskmaster
 
 			freememoryignore = executable;
 
-			//await FreeMemoryInternal().ConfigureAwait(false);
-			Task.Factory.StartNew(FreeMemoryInternal, TaskCreationOptions.LongRunning);
+			await Task.Factory.StartNew(FreeMemoryInternal, TaskCreationOptions.LongRunning);
 		}
 
 		async Task FreeMemoryInternal()
 		{
 			var b1 = Taskmaster.healthmonitor.FreeMemory();
 
+			// TODO: Somehow make sure FreeMemoryTick is not called on followup scans in case they're run too close together
+
 			try
 			{
-				ProcessDetectedEvent += FreeMemoryTick;
+				RegisterFreeMemoryTick();
 
 				await ScanEverything(); // TODO: Call for this to happen otherwise
-
-				ProcessDetectedEvent -= FreeMemoryTick;
 
 				Taskmaster.healthmonitor.InvalidateFreeMemory(); // just in case
 
@@ -264,7 +277,7 @@ namespace Taskmaster
 			}
 			finally
 			{
-				ProcessDetectedEvent -= FreeMemoryTick;
+				UnregisterFreeMemoryTick(null,null);
 			}
 		}
 
@@ -531,25 +544,25 @@ namespace Taskmaster
 				Log.Information("<Process> Custom application ignore list loaded.");
 			}
 			else
-				Taskmaster.SaveConfig(Taskmaster.cfg);
+				Taskmaster.Config.SaveConfig(Taskmaster.cfg);
 			dirtyconfig |= modified;
 
 			IgnoreSystem32Path = ignsetting.GetSetDefault("Ignore System32", true, out modified).BoolValue;
 			ignsetting["Ignore System32"].Comment = "Ignore programs in %SYSTEMROOT%/System32 folder.";
 			dirtyconfig |= modified;
 
-			if (dirtyconfig) Taskmaster.MarkDirtyINI(Taskmaster.cfg);
+			if (dirtyconfig) Taskmaster.Config.MarkDirtyINI(Taskmaster.cfg);
 
 			// Log.Information("Child process monitoring: {ChildControl}", (ControlChildren ? "Enabled" : "Disabled"));
 
 			// --------------------------------------------------------------------------------------------------------
 
 			Log.Information("<Process> Loading watchlist...");
-			var appcfg = Taskmaster.LoadConfig(watchfile);
+			var appcfg = Taskmaster.Config.LoadConfig(watchfile);
 			
 			if (appcfg.SectionCount == 0)
 			{
-				Taskmaster.UnloadConfig(watchfile);
+				Taskmaster.Config?.UnloadConfig(watchfile);
 
 				Log.Warning("<Process> Watchlist empty; copying example list.");
 
@@ -561,13 +574,13 @@ namespace Taskmaster
 						rs.CopyTo(file);
 				}
 
-				appcfg = Taskmaster.LoadConfig(watchfile);
+				appcfg = Taskmaster.Config.LoadConfig(watchfile);
 			}
 
 			// --------------------------------------------------------------------------------------------------------
 
 			var newsettings = coreperf.SettingCount;
-			if (dirtyconfig) Taskmaster.MarkDirtyINI(Taskmaster.cfg);
+			if (dirtyconfig) Taskmaster.Config.MarkDirtyINI(Taskmaster.cfg);
 
 			foreach (SharpConfig.Section section in appcfg)
 			{
@@ -1723,7 +1736,7 @@ namespace Taskmaster
 
 					lock (watchlist_lock)
 					{
-						var wcfg = Taskmaster.LoadConfig(watchfile);
+						var wcfg = Taskmaster.Config.LoadConfig(watchfile);
 
 						foreach (var prc in watchlist)
 						{

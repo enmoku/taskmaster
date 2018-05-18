@@ -184,16 +184,16 @@ namespace Taskmaster
 		public void DeleteConfig(SharpConfig.Configuration cfg = null)
 		{
 			if (cfg == null)
-				cfg = Taskmaster.LoadConfig(watchlistfile);
+				cfg = Taskmaster.Config.LoadConfig(watchlistfile);
 
 			cfg.Remove(FriendlyName); // remove the section, should remove items in the section
-			Taskmaster.MarkDirtyINI(cfg);
+			Taskmaster.Config.MarkDirtyINI(cfg);
 		}
 
 		public void SaveConfig(SharpConfig.Configuration cfg = null, SharpConfig.Section app = null)
 		{
 			if (cfg == null)
-				cfg = Taskmaster.LoadConfig(watchlistfile);
+				cfg = Taskmaster.Config.LoadConfig(watchlistfile);
 
 			if (app == null)
 				app = cfg[FriendlyName];
@@ -322,14 +322,14 @@ namespace Taskmaster
 
 			NeedsSaving = false;
 
-			Taskmaster.MarkDirtyINI(cfg);
+			Taskmaster.Config.MarkDirtyINI(cfg);
 		}
 
 		const string statfile = "Watchlist.Statistics.ini";
 
 		public void LoadStats()
 		{
-			var stats = Taskmaster.LoadConfig(statfile);
+			var stats = Taskmaster.Config.LoadConfig(statfile);
 
 			string statkey = null;
 			if (!string.IsNullOrEmpty(Executable)) statkey = Executable;
@@ -355,7 +355,7 @@ namespace Taskmaster
 
 		public void SaveStats()
 		{
-			var stats = Taskmaster.LoadConfig(statfile);
+			var stats = Taskmaster.Config.LoadConfig(statfile);
 
 			// BROKEN?
 			string key = null;
@@ -366,13 +366,13 @@ namespace Taskmaster
 			if (Adjusts > 0)
 			{
 				stats[key]["Adjusts"].IntValue = Adjusts;
-				Taskmaster.MarkDirtyINI(stats);
+				Taskmaster.Config.MarkDirtyINI(stats);
 			}
 
 			if (LastSeen != DateTime.MinValue)
 			{
 				stats[key]["Last seen"].SetValue(LastSeen.Unixstamp());
-				Taskmaster.MarkDirtyINI(stats);
+				Taskmaster.Config.MarkDirtyINI(stats);
 			}
 		}
 
@@ -997,7 +997,7 @@ namespace Taskmaster
 									Log.Debug("Saving {Name} (#{Pid}) size to {NewWidth}×{NewHeight}",
 										info.Name, info.Id, Resize.Value.Width, Resize.Value.Height);
 
-								var cfg = Taskmaster.LoadConfig(watchlistfile);
+								var cfg = Taskmaster.Config.LoadConfig(watchlistfile);
 								var app = cfg[FriendlyName];
 
 								SaveConfig(cfg, app);
