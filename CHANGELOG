@@ -1,6 +1,10 @@
 ﻿Comprehensive changes can be found in Git change history:
 	https://github.com/mkahvi/taskmaster/commits/master
 
+### 2018-05-18
+	Changed: Refactored a lot of internal code, should have no impact for end-users.
+	Fixed: Health monitor was not functional, now it is.
+	Fixed: Paging had potential for leaking paging to where it wasn't supposed to happen. Still can, but it's lessened.
 ### 2018-05-17
 	Added: Option to run with task scheduler on login instead of using the age old regrun method. Allows starting up automatically as admin.
 	Fixed: Hopefully fixed some crashes related to WinForms? Maybe? Please?
