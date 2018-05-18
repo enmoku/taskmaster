@@ -184,7 +184,7 @@ namespace Taskmaster
 		public void DeleteConfig(SharpConfig.Configuration cfg = null)
 		{
 			if (cfg == null)
-				cfg = Taskmaster.Config.LoadConfig(watchlistfile);
+				cfg = Taskmaster.Config.Load(watchlistfile);
 
 			cfg.Remove(FriendlyName); // remove the section, should remove items in the section
 			Taskmaster.Config.MarkDirtyINI(cfg);
@@ -193,7 +193,7 @@ namespace Taskmaster
 		public void SaveConfig(SharpConfig.Configuration cfg = null, SharpConfig.Section app = null)
 		{
 			if (cfg == null)
-				cfg = Taskmaster.Config.LoadConfig(watchlistfile);
+				cfg = Taskmaster.Config.Load(watchlistfile);
 
 			if (app == null)
 				app = cfg[FriendlyName];
@@ -329,7 +329,7 @@ namespace Taskmaster
 
 		public void LoadStats()
 		{
-			var stats = Taskmaster.Config.LoadConfig(statfile);
+			var stats = Taskmaster.Config.Load(statfile);
 
 			string statkey = null;
 			if (!string.IsNullOrEmpty(Executable)) statkey = Executable;
@@ -355,7 +355,7 @@ namespace Taskmaster
 
 		public void SaveStats()
 		{
-			var stats = Taskmaster.Config.LoadConfig(statfile);
+			var stats = Taskmaster.Config.Load(statfile);
 
 			// BROKEN?
 			string key = null;
@@ -997,7 +997,7 @@ namespace Taskmaster
 									Log.Debug("Saving {Name} (#{Pid}) size to {NewWidth}×{NewHeight}",
 										info.Name, info.Id, Resize.Value.Width, Resize.Value.Height);
 
-								var cfg = Taskmaster.Config.LoadConfig(watchlistfile);
+								var cfg = Taskmaster.Config.Load(watchlistfile);
 								var app = cfg[FriendlyName];
 
 								SaveConfig(cfg, app);

@@ -52,9 +52,6 @@ namespace Taskmaster
 		public static ConfigManager Config = null;
 		public static ComponentContainer Components = null;
 
-		static Dictionary<SharpConfig.Configuration, bool> ConfigDirty = new Dictionary<SharpConfig.Configuration, bool>();
-		static Dictionary<SharpConfig.Configuration, string> ConfigPaths = new Dictionary<SharpConfig.Configuration, string>();
-
 		public static MicManager micmonitor = null;
 		public static MainWindow mainwindow = null;
 		public static ProcessManager processmanager = null;
@@ -211,7 +208,7 @@ namespace Taskmaster
 		static void PreSetup()
 		{
 			// INITIAL CONFIGURATIONN
-			var tcfg = Config.LoadConfig("Core.ini");
+			var tcfg = Config.Load("Core.ini");
 			var sec = tcfg.TryGet("Core")?.TryGet("Version")?.StringValue ?? null;
 			if (sec == null || sec != ConfigVersion)
 			{
@@ -443,7 +440,7 @@ namespace Taskmaster
 		{
 			Log.Information("<Core> Loading configuration...");
 
-			cfg = Config.LoadConfig(coreconfig);
+			cfg = Config.Load(coreconfig);
 
 			if (cfg.TryGet("Core")?.TryGet("Hello")?.RawValue != "Hi")
 			{
@@ -686,18 +683,18 @@ namespace Taskmaster
 		static void monitorCleanShutdown()
 		{
 			if (corestats == null)
-				corestats = Config.LoadConfig(corestatfile);
+				corestats = Config.Load(corestatfile);
 
 			var running = corestats.TryGet("Core")?.TryGet("Running")?.BoolValue ?? false;
 			if (running) Log.Warning("Unclean shutdown.");
 
 			corestats["Core"]["Running"].BoolValue = true;
-			Config.SaveConfig(corestats);
+			Config.Save(corestats);
 		}
 
 		static void CleanShutdown()
 		{
-			if (corestats == null) corestats = Config.LoadConfig(corestatfile);
+			if (corestats == null) corestats = Config.Load(corestatfile);
 
 			var wmi = corestats["WMI queries"];
 			string timespent = "Time", querycount = "Queries";
@@ -715,7 +712,7 @@ namespace Taskmaster
 
 			corestats["Core"]["Running"].BoolValue = false;
 
-			Config.SaveConfig(corestats);
+			Config.Save(corestats);
 		}
 
 		/// <summary>
@@ -1042,7 +1039,7 @@ namespace Taskmaster
 
 		static void LicenseBoiler()
 		{
-			var cfg = Config.LoadConfig(coreconfig);
+			var cfg = Config.Load(coreconfig);
 
 			if (cfg.TryGet("Core")?.TryGet("License")?.RawValue.Equals("Accepted") ?? false) return;
 
@@ -1168,10 +1165,7 @@ namespace Taskmaster
 			const long fakemempressure = 200_000_000;
 			GC.AddMemoryPressure(fakemempressure); // Workstation GC boundary is 256 MB, we want it to be closer to 60-80 MB
 
-			// early save of configs
-			foreach (var dcfg in ConfigDirty)
-				if (dcfg.Value) Config.SaveConfig(dcfg.Key);
-			ConfigDirty.Clear();
+			Config?.Save(); // early save of configs
 
 			// Properties.Settings.Default.Save();
 
@@ -1254,9 +1248,8 @@ namespace Taskmaster
 			Log.Information("WMI queries: {QueryTime}s [{QueryCount}]", string.Format("{0:N2}", Statistics.WMIquerytime), Statistics.WMIqueries);
 			Log.Information("Cleanups: {CleanupTime}s [{CleanupCount}]", string.Format("{0:N2}", Statistics.CleanupTime), Statistics.Cleanups);
 
-			foreach (var dcfg in ConfigDirty)
-				if (dcfg.Value) Config.SaveConfig(dcfg.Key);
-			ConfigDirty.Clear();
+			Config?.Save();
+			Config?.Dispose();
 
 			CleanShutdown();
 

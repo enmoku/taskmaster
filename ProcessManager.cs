@@ -76,7 +76,7 @@ namespace Taskmaster
 		// ctor, constructor
 		public ProcessManager()
 		{
-			Log.Information("<CPU> Count: {Cores} cores", CPUCount);
+			Log.Information("<CPU> Logical cores: {Cores}", CPUCount);
 
 			allCPUsMask = Convert.ToInt32(Math.Pow(2, CPUCount) - 1 + double.Epsilon);
 
@@ -544,7 +544,7 @@ namespace Taskmaster
 				Log.Information("<Process> Custom application ignore list loaded.");
 			}
 			else
-				Taskmaster.Config.SaveConfig(Taskmaster.cfg);
+				Taskmaster.Config.Save(Taskmaster.cfg);
 			dirtyconfig |= modified;
 
 			IgnoreSystem32Path = ignsetting.GetSetDefault("Ignore System32", true, out modified).BoolValue;
@@ -558,11 +558,11 @@ namespace Taskmaster
 			// --------------------------------------------------------------------------------------------------------
 
 			Log.Information("<Process> Loading watchlist...");
-			var appcfg = Taskmaster.Config.LoadConfig(watchfile);
+			var appcfg = Taskmaster.Config.Load(watchfile);
 			
 			if (appcfg.SectionCount == 0)
 			{
-				Taskmaster.Config?.UnloadConfig(watchfile);
+				Taskmaster.Config?.Unload(watchfile);
 
 				Log.Warning("<Process> Watchlist empty; copying example list.");
 
@@ -574,7 +574,7 @@ namespace Taskmaster
 						rs.CopyTo(file);
 				}
 
-				appcfg = Taskmaster.Config.LoadConfig(watchfile);
+				appcfg = Taskmaster.Config.Load(watchfile);
 			}
 
 			// --------------------------------------------------------------------------------------------------------
@@ -1736,7 +1736,7 @@ namespace Taskmaster
 
 					lock (watchlist_lock)
 					{
-						var wcfg = Taskmaster.Config.LoadConfig(watchfile);
+						var wcfg = Taskmaster.Config.Load(watchfile);
 
 						foreach (var prc in watchlist)
 						{

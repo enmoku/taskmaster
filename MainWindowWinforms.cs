@@ -1155,7 +1155,7 @@ namespace Taskmaster
 			#endregion
 
 			#region Load UI config
-			var uicfg = Taskmaster.Config.LoadConfig("UI.ini");
+			var uicfg = Taskmaster.Config.Load("UI.ini");
 			var wincfg = uicfg["Windows"];
 			var colcfg = uicfg["Columns"];
 
@@ -1501,7 +1501,7 @@ namespace Taskmaster
 			loglistms.Items.Add(logcopy);
 			loglist.ContextMenuStrip = loglistms;
 
-			var cfg = Taskmaster.Config.LoadConfig("Core.ini");
+			var cfg = Taskmaster.Config.Load("Core.ini");
 			bool modified, tdirty = false;
 			MaxLogSize = cfg["Logging"].GetSetDefault("UI max items", 200, out modified).IntValue;
 			tdirty |= modified;
@@ -2324,7 +2324,7 @@ namespace Taskmaster
 			for (int i = 0; i < micList.Columns.Count; i++)
 				micWidths.Add(micList.Columns[i].Width);
 
-			var cfg = Taskmaster.Config.LoadConfig("UI.ini");
+			var cfg = Taskmaster.Config.Load("UI.ini");
 			var cols = cfg["Columns"];
 			cols["Apps"].IntValueArray = appWidths.ToArray();
 			// cols["Paths"].IntValueArray = pathWidths.ToArray();

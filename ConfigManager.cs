@@ -33,7 +33,7 @@ using Serilog;
 
 namespace Taskmaster
 {
-	public class ConfigManager
+	public class ConfigManager : IDisposable
 	{
 		public ConfigManager(string path)
 		{
@@ -42,20 +42,22 @@ namespace Taskmaster
 
 		readonly string datapath = string.Empty;
 
-		readonly Dictionary<string, SharpConfig.Configuration> Configs = new Dictionary<string, SharpConfig.Configuration>();
-		readonly Dictionary<SharpConfig.Configuration, bool> ConfigDirty = new Dictionary<SharpConfig.Configuration, bool>();
-		readonly Dictionary<SharpConfig.Configuration, string> ConfigPaths = new Dictionary<SharpConfig.Configuration, string>();
+		readonly object config_lock = new object();
 
-		public void SaveConfig(SharpConfig.Configuration config)
+		readonly Dictionary<string, SharpConfig.Configuration> Configs = new Dictionary<string, SharpConfig.Configuration>();
+		readonly HashSet<SharpConfig.Configuration> Dirty = new HashSet<SharpConfig.Configuration>();
+		readonly Dictionary<SharpConfig.Configuration, string> Paths = new Dictionary<SharpConfig.Configuration, string>();
+
+		public void Save(SharpConfig.Configuration config)
 		{
-			if (ConfigPaths.TryGetValue(config, out string filename))
-				SaveConfig(filename, config);
+			if (Paths.TryGetValue(config, out string filename))
+				Save(filename, config);
 			else
 				throw new ArgumentException();
 		}
 
 		// TODO: Add error handling.
-		public void SaveConfig(string configfile, SharpConfig.Configuration config)
+		public void Save(string configfile, SharpConfig.Configuration config)
 		{
 			try
 			{
@@ -81,22 +83,19 @@ namespace Taskmaster
 			// TODO: Pre-allocate some space for the config file?
 		}
 
-		public void UnloadConfig(string configfile)
+		public void Unload(string configfile)
 		{
 			if (Configs.TryGetValue(configfile, out var retcfg))
 			{
 				Configs.Remove(configfile);
-				ConfigPaths.Remove(retcfg);
+				Paths.Remove(retcfg);
 			}
 		}
 
-		public SharpConfig.Configuration LoadConfig(string configfile)
+		public SharpConfig.Configuration Load(string configfile)
 		{
-			SharpConfig.Configuration retcfg;
-			if (Configs.TryGetValue(configfile, out retcfg))
-			{
-				return retcfg;
-			}
+			SharpConfig.Configuration retcfg = null;
+			if (Configs.TryGetValue(configfile, out retcfg)) return retcfg;
 
 			var path = System.IO.Path.Combine(datapath, configfile);
 			// Log.Trace("Opening: "+path);
@@ -110,7 +109,7 @@ namespace Taskmaster
 			}
 
 			Configs.Add(configfile, retcfg);
-			ConfigPaths.Add(retcfg, configfile);
+			Paths.Add(retcfg, configfile);
 
 			if (Taskmaster.Trace) Log.Verbose("{ConfigFile} added to known configurations files.", configfile);
 
@@ -119,16 +118,48 @@ namespace Taskmaster
 
 		public void MarkDirtyINI(SharpConfig.Configuration dirtiedcfg)
 		{
-			try
+			lock (config_lock)
 			{
-				if (Taskmaster.ImmediateSave)
-					SaveConfig(dirtiedcfg);
-				else
-					ConfigDirty.Add(dirtiedcfg, true);
+				try
+				{
+					if (Taskmaster.ImmediateSave)
+						Save(dirtiedcfg);
+					else
+						Dirty.Add(dirtiedcfg);
+				}
+				catch { } // NOP, already in
 			}
-			catch { } // NOP, already in
 		}
 
+		public void Save()
+		{
+			lock (config_lock)
+			{
+				foreach (var config in Dirty)
+					Save(config);
+				Dirty.Clear();
+			}
+		}
 
+		bool disposed; // = false;
+		public void Dispose()
+		{
+			Dispose(true);
+			GC.SuppressFinalize(this);
+		}
+
+		void Dispose(bool disposing)
+		{
+			if (disposed) return;
+
+			if (disposing)
+			{
+				if (Taskmaster.Trace) Log.Verbose("Disposing config manager...");
+
+				Save();
+			}
+
+			disposed = true;
+		}
 	}
 }

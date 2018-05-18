@@ -173,7 +173,7 @@ namespace Taskmaster
 		SharpConfig.Configuration cfg = null;
 		void LoadConfig()
 		{
-			cfg = Taskmaster.Config.LoadConfig("Health.ini");
+			cfg = Taskmaster.Config.Load("Health.ini");
 			bool modified = false, configdirty = false;
 
 			var gensec = cfg["General"];
