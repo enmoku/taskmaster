@@ -604,8 +604,10 @@ namespace Taskmaster
 				if (aff > allCPUsMask)
 				{
 					Log.Warning("[{Name}] Affinity({Affinity}) is malconfigured. Ignoring.", section.Name, aff);
-					aff = -1;
-					// TODO: Null bits after what's possible
+					//aff = Bit.And(aff, allCPUsMask); // at worst case results in 1 core used
+					// TODO: Count bits, make 2^# assumption about intended cores but scale it to current core count.
+					//		Shift bits to allowed range. Assume at least one core must be assigned, and in case of holes at least one core must be unassigned.
+					aff = -1; // ignore
 				}
 				var prio = section.TryGet("Priority")?.IntValue ?? -1;
 				ProcessPriorityClass? prioR = null;
