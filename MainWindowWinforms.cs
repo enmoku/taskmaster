@@ -2036,34 +2036,28 @@ namespace Taskmaster
 					var sbs = new System.Text.StringBuilder();
 
 					sbs.Append("[").Append(prc.FriendlyName).Append("]").AppendLine();
-					if (!string.IsNullOrEmpty(prc.ExecutableFriendlyName))
-						sbs.Append("Image = ").Append(prc.ExecutableFriendlyName).AppendLine();
+					if (!string.IsNullOrEmpty(prc.Executable))
+						sbs.Append("Image = ").Append(prc.Executable).AppendLine();
 					if (!string.IsNullOrEmpty(prc.Path))
 						sbs.Append("Path = ").Append(prc.Path).AppendLine();
+					if (prc.IgnoreList != null)
+						sbs.Append("Ignore = { ").Append(string.Join(", ", prc.IgnoreList)).Append(" }").AppendLine();
 					if (prc.Priority.HasValue)
 					{
 						sbs.Append("Priority = ").Append(prc.Priority.Value.ToInt32()).AppendLine();
-						sbs.Append("Priority strategy = ");
-						switch (prc.PriorityStrategy)
-						{
-							case ProcessPriorityStrategy.Force:
-								sbs.Append(3);
-								break;
-							case ProcessPriorityStrategy.Increase:
-								sbs.Append(1);
-								break;
-							case ProcessPriorityStrategy.Decrease:
-								sbs.Append(2);
-								break;
-						}
-						sbs.AppendLine();
+						sbs.Append("Priority strategy = ").Append((int)prc.PriorityStrategy).AppendLine();
 					}
 					if (prc.Affinity.HasValue)
+					{
 						sbs.Append("Affinity = ").Append(prc.Affinity.Value.ToInt32()).AppendLine();
+						sbs.Append("Affinity strategy = ").Append((int)prc.AffinityStrategy).AppendLine();
+					}
 					if (prc.PowerPlan != PowerInfo.PowerMode.Undefined)
 						sbs.Append("Power plan = ").Append(PowerManager.PowerModes[(int)prc.PowerPlan]).AppendLine();
 					if (prc.Rescan > 0)
 						sbs.Append("Rescan = ").Append(prc.Rescan).AppendLine();
+					if (prc.Recheck > 0)
+						sbs.Append("Recheck = ").Append(prc.Recheck).AppendLine();
 					if (prc.AllowPaging)
 						sbs.Append("Allow paging = ").Append(prc.AllowPaging).AppendLine();
 					if (prc.ForegroundOnly)
