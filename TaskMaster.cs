@@ -86,7 +86,7 @@ namespace Taskmaster
 									 MessageBoxButtons.YesNo, MessageBoxIcon.Question, MessageBoxDefaultButton.Button1, MessageBoxOptions.DefaultDesktopOnly, false);
 
 			if (rv != DialogResult.Yes) return;
-
+			
 			Restart = restart;
 			RestartElevated = admin;
 
@@ -1118,74 +1118,81 @@ namespace Taskmaster
 
 			Config = new ConfigManager(datapath);
 
-			LicenseBoiler();
+			const long fakemempressure = 200_000_000;
 
-			// INIT LOGGER
-			MemoryLog.LevelSwitch = new LoggingLevelSwitch(LogEventLevel.Information);
+			{ // internal scope
 
-			var logpathtemplate = System.IO.Path.Combine(datapath, "Logs", "taskmaster-{Date}.log");
-			Serilog.Log.Logger = new Serilog.LoggerConfiguration()
-				.MinimumLevel.Verbose()
+				LicenseBoiler();
+
+				// INIT LOGGER
+				MemoryLog.LevelSwitch = new LoggingLevelSwitch(LogEventLevel.Information);
+
+				var logpathtemplate = System.IO.Path.Combine(datapath, "Logs", "taskmaster-{Date}.log");
+				Serilog.Log.Logger = new Serilog.LoggerConfiguration()
+					.MinimumLevel.Verbose()
 #if DEBUG
 				.WriteTo.Console(levelSwitch: new LoggingLevelSwitch(LogEventLevel.Verbose))
 #endif
 				.WriteTo.RollingFile(logpathtemplate, outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}",
-									 levelSwitch: new LoggingLevelSwitch(Serilog.Events.LogEventLevel.Debug), retainedFileCountLimit: 3)
-				.WriteTo.MemorySink(levelSwitch: MemoryLog.LevelSwitch)
-							 .CreateLogger();
+										 levelSwitch: new LoggingLevelSwitch(Serilog.Events.LogEventLevel.Debug), retainedFileCountLimit: 3)
+					.WriteTo.MemorySink(levelSwitch: MemoryLog.LevelSwitch)
+								 .CreateLogger();
 
-			// COMMAND-LINE ARGUMENTS
-			ParseArguments(args);
+				// COMMAND-LINE ARGUMENTS
+				ParseArguments(args);
 
-			// STARTUP
+				// STARTUP
 
-			if (!SingletonLock())
-				return -1;
+				if (!SingletonLock())
+					return -1;
 
-			Log.Information("Taskmaster! (#{ProcessID}) {Admin}– Version: {Version} – START!",
-							Process.GetCurrentProcess().Id, (IsAdministrator() ? "[ADMIN] " : ""),
-							System.Reflection.Assembly.GetExecutingAssembly().GetName().Version);
+				var builddate = Convert.ToDateTime(Properties.Resources.BuildDate);
 
-			//PreallocLastLog();
+				Log.Information("Taskmaster! (#{ProcessID}) {Admin}– Version: {Version} [{Date} {Time}] – START!",
+								Process.GetCurrentProcess().Id, (IsAdministrator() ? "[ADMIN] " : ""),
+								System.Reflection.Assembly.GetExecutingAssembly().GetName().Version,
+								builddate.ToShortDateString(), builddate.ToShortTimeString());
 
-			try
-			{
-				PreSetup();
-				LoadCoreConfig();
-				SetupComponents();
+				//PreallocLastLog();
+
+				try
+				{
+					PreSetup();
+					LoadCoreConfig();
+					SetupComponents();
+				}
+				catch (Exception ex) // this seems to happen only when Avast cybersecurity is scanning TM
+				{
+					Log.Fatal("Exiting due to initialization failure.");
+					Logging.Stacktrace(ex);
+					Log.CloseAndFlush();
+					singleton.Dispose();
+					singleton = null;
+					return 1;
+				}
+
+				// IS THIS OF ANY USE?
+				// GC.Collect(GC.MaxGeneration, GCCollectionMode.Forced, true, true);
+				// GC.WaitForPendingFinalizers();
+				GC.AddMemoryPressure(fakemempressure); // Workstation GC boundary is 256 MB, we want it to be closer to 60-80 MB
+
+				Config?.Save(); // early save of configs
+
+				// Properties.Settings.Default.Save();
+
+				CleanupTimer = new System.Timers.Timer(60_000 * CleanupInterval);
+				CleanupTimer.Elapsed += Taskmaster.Cleanup;
+				CleanupTimer.Start();
+
+				if (RestartCounter > 0) Log.Information("<Core> Restarted {Count} time(s)", RestartCounter);
+				Log.Information("<Core> Initialization complete...");
+
+				/*
+				Console.WriteLine("Embedded Resources");
+				foreach (var name in System.Reflection.Assembly.GetExecutingAssembly().GetManifestResourceNames())
+					Console.WriteLine(" - " + name);
+				*/
 			}
-			catch (Exception ex) // this seems to happen only when Avast cybersecurity is scanning TM
-			{
-				Log.Fatal("Exiting due to initialization failure.");
-				Logging.Stacktrace(ex);
-				Log.CloseAndFlush();
-				singleton.Dispose();
-				singleton = null;
-				return 1;
-			}
-
-			// IS THIS OF ANY USE?
-			// GC.Collect(GC.MaxGeneration, GCCollectionMode.Forced, true, true);
-			// GC.WaitForPendingFinalizers();
-			const long fakemempressure = 200_000_000;
-			GC.AddMemoryPressure(fakemempressure); // Workstation GC boundary is 256 MB, we want it to be closer to 60-80 MB
-
-			Config?.Save(); // early save of configs
-
-			// Properties.Settings.Default.Save();
-
-			CleanupTimer = new System.Timers.Timer(60_000 * CleanupInterval);
-			CleanupTimer.Elapsed += Taskmaster.Cleanup;
-			CleanupTimer.Start();
-
-			if (RestartCounter > 0) Log.Information("<Core> Restarted {Count} time(s)", RestartCounter);
-			Log.Information("<Core> Initialization complete...");
-
-			/*
-			Console.WriteLine("Embedded Resources");
-			foreach (var name in System.Reflection.Assembly.GetExecutingAssembly().GetManifestResourceNames())
-				Console.WriteLine(" - " + name);
-			*/
 
 			try
 			{

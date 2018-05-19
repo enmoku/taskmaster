@@ -59,13 +59,7 @@ namespace Taskmaster
 				Font = new System.Drawing.Font(System.Drawing.FontFamily.GenericMonospace, DefaultFont.Size * 1.2f),
 			};
 
-			using (var rs = System.Reflection.Assembly.GetExecutingAssembly().GetManifestResourceStream("Taskmaster.LICENSE"))
-			{
-				var rs2 = new System.IO.StreamReader(rs);
-				var license = rs2.ReadToEnd().Replace("\t", "    ").TrimEnd('\n', ' ');
-				//var license = r.Result.Replace("\t", "    ").TrimEnd('\n', ' ');
-				licensebox.Text = license;
-			}
+			licensebox.Text = Properties.Resources.LICENSE.Replace("\t\t", "\t").TrimEnd('\n', ' ');
 
 			licensebox.Height = (licensebox.Lines.Count() * 16);
 			licensebox.Width = 640;
