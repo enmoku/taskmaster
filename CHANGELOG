@@ -1,6 +1,12 @@
 ﻿Comprehensive changes can be found in Git change history:
 	https://github.com/mkahvi/taskmaster/commits/master
 
+### 2018-05-19
+	Fixed: Watchlist rule edit window allowed entering garbage in affinity strategy.
+	Changed: Saving a watchlist rule does not delete the old.
+	Changed: Watchlist rules are no longer re-ordered when modified, as long as the friendly name remains unchanged. This is limitation of SharpConfig.
+	Changed: Process affinity and priority adjusts now include a short text about failure to modify them.
+	Added: `Persistent watchlist statistics` option in [Performance] section. Disabling it causes Watchlist.Statistics.ini no longer accessed.
 ### 2018-05-18
 	Changed: Refactored a lot of internal code, should have no impact for end-users.
 	Fixed: Health monitor was not functional, now it is.

@@ -91,6 +91,12 @@ namespace Taskmaster
 			var exnam = (execName.Text.Length > 0);
 			var path = (pathName.Text.Length > 0);
 
+			if (!fnlen || friendlyName.Text.Contains("]") || friendlyName.Text.Contains("["))
+			{
+				Controller.Valid = false;
+				MessageBox.Show("Friendly name is missing or includes illegal characters (such as square brackets).", "Malconfigured friendly name", MessageBoxButtons.OK, MessageBoxIcon.Error, MessageBoxDefaultButton.Button1);
+			}
+
 			if (!path && !exnam)
 			{
 				Controller.Valid = false;
@@ -119,11 +125,11 @@ namespace Taskmaster
 			// -----------------------------------------------
 
 			// TODO: Warn about conflicting section name
+			string newfriendlyname = friendlyName.Text.Trim();
+			if (!newPrc && !newfriendlyname.Equals(Controller.FriendlyName))
+				Controller.DeleteConfig(); // SharpConfig doesn't seem to support renaming sections, so we delete the old one instead
 
-			if (!newPrc)
-				Controller.DeleteConfig();
-
-			Controller.FriendlyName = friendlyName.Text.Trim();
+			Controller.FriendlyName = newfriendlyname;
 			Controller.Executable = execName.Text.Length > 0 ? execName.Text.Trim() : null;
 			Controller.Path = pathName.Text.Length > 0 ? pathName.Text.Trim() : null;
 			if (priorityClass.SelectedIndex == 5)
@@ -165,7 +171,6 @@ namespace Taskmaster
 				foreach (ListViewItem item in ignorelist.Items)
 					ignlist.Add(item.Text);
 
-
 				Controller.IgnoreList = ignlist.ToArray();
 			}
 			else
@@ -182,7 +187,7 @@ namespace Taskmaster
 		TextBox friendlyName = new TextBox();
 		TextBox execName = new TextBox();
 		TextBox pathName = new TextBox();
-		ComboBox priorityClass;
+		ComboBox priorityClass = null;
 		CheckBox increasePrio = new CheckBox();
 		CheckBox decreasePrio = new CheckBox();
 		ComboBox affstrategy = new ComboBox();
@@ -406,6 +411,7 @@ namespace Taskmaster
 			var corelist = new List<CheckBox>();
 
 			lt.Controls.Add(new Label { Text = "Affinity", TextAlign = System.Drawing.ContentAlignment.MiddleLeft });
+			affstrategy.DropDownStyle = ComboBoxStyle.DropDownList;
 			affstrategy.Items.AddRange(new string[] { "Ignored", "Limit (Default)", "Force" });
 			tooltip.SetToolTip(affstrategy, "Limit constrains cores to the defined range but does not increase used cores beyond what the app is already using.\nForce sets the affinity mask to the defined regardless of anything.");
 			affstrategy.SelectedIndexChanged += (s, e) =>

@@ -194,7 +194,7 @@ namespace Taskmaster
 		{
 			if (cfg == null)
 				cfg = Taskmaster.Config.Load(watchlistfile);
-
+			
 			if (app == null)
 				app = cfg[FriendlyName];
 
@@ -319,6 +319,11 @@ namespace Taskmaster
 			NeedsSaving = false;
 
 			Taskmaster.Config.MarkDirtyINI(cfg);
+
+			if (Taskmaster.ImmediateSave)
+				Log.Information("[{Name}] Modified and saved.", FriendlyName);
+			else
+				Log.Information("[{Name}] Modified and marked for saving.", FriendlyName);
 		}
 
 		const string statfile = "Watchlist.Statistics.ini";
@@ -613,7 +618,7 @@ namespace Taskmaster
 				}
 			}
 
-			bool mAffinity = false, mPriority = false, mPower = false, modified = false;
+			bool mAffinity = false, mPriority = false, mPower = false, modified = false, fAffinity = false, fPriority = false;
 			LastSeen = DateTime.Now;
 
 			var oldAffinity = IntPtr.Zero;
@@ -651,6 +656,7 @@ namespace Taskmaster
 					}
 					catch
 					{
+						fPriority = true;
 						if (Taskmaster.ShowInaction)
 							Log.Warning("[{FriendlyName}] {Exec} (#{Pid}) failed to set process priority.", FriendlyName, info.Name, info.Id);
 						// NOP
@@ -725,6 +731,7 @@ namespace Taskmaster
 						}
 						else if (AffinityStrategy == ProcessAffinityStrategy.Scatter)
 						{
+							// NOT IMPLEMENTED
 							/*
 							for (; ScatterOffset < ProcessManager.CPUCount; ScatterOffset++)
 							{
@@ -736,9 +743,12 @@ namespace Taskmaster
 							*/
 						}
 
-						info.Process.ProcessorAffinity = newAffinity;
+						if (oldAffinityMask != newAffinityMask)
+						{
+							info.Process.ProcessorAffinity = newAffinity;
 
-						modified = mAffinity = true;
+							modified = mAffinity = true;
+						}
 						// Log.Verbose("Affinity for '{ExecutableName}' (#{ProcessID}) set: {OldAffinity} → {NewAffinity}.",
 						// execname, pid, process.ProcessorAffinity.ToInt32(), Affinity.ToInt32());
 					}
@@ -750,6 +760,7 @@ namespace Taskmaster
 				}
 				catch
 				{
+					fAffinity = true;
 					if (Taskmaster.ShowInaction)
 						Log.Warning("[{FriendlyName}] {Exec} (#{Pid}) failed to set process affinity.", FriendlyName, info.Name, info.Id);
 				}
@@ -837,6 +848,7 @@ namespace Taskmaster
 					sbs.Append(oldPriority.ToString()).Append(" → ");
 				sbs.Append(newPriority.ToString());
 				if (denyChange) sbs.Append(" [Protected]");
+				if (fPriority) sbs.Append(" [Failed]");
 			}
 			if (Affinity.HasValue)
 			{
@@ -844,6 +856,10 @@ namespace Taskmaster
 				if (mAffinity)
 					sbs.Append(oldAffinity.ToInt32()).Append(" → ");
 				sbs.Append(newAffinity);
+
+				if (fAffinity) sbs.Append(" [Failed]");
+
+				if (Taskmaster.DebugProcesses) sbs.Append(string.Format(" [{0}]", AffinityStrategy.ToString()));
 			}
 			if (mPower)
 				sbs.Append(string.Format(" [Power Mode: {0}]", PowerPlan.ToString()));
@@ -856,9 +872,11 @@ namespace Taskmaster
 			else
 			{
 				// if (DateTime.Now - LastSeen
-				sbs.Append(" – looks OK, not touched.");
 				if (Taskmaster.ShowInaction && Taskmaster.DebugProcesses)
+				{
+					sbs.Append(" – looks OK, not touched.");
 					Log.Debug(sbs.ToString());
+				}
 				// else
 				// 	Log.Verbose(sbs.ToString());
 				rv = ProcessState.OK;

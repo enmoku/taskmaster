@@ -730,7 +730,7 @@ namespace Taskmaster
 		{
 			if (ValidateController(prc))
 			{
-				prc.LoadStats();
+				if (Taskmaster.PersistentWatchlistStats) prc.LoadStats();
 				SaveController(prc);
 			}
 		}
@@ -1726,7 +1726,10 @@ namespace Taskmaster
 					// throw; // would throw but this is dispose
 				}
 
-				saveStats();
+				foreach (ProcessController prc in watchlist)
+					if (prc.NeedsSaving) prc.SaveConfig();
+
+				SaveStats();
 
 				try
 				{
@@ -1762,19 +1765,16 @@ namespace Taskmaster
 			disposed = true;
 		}
 
-		void saveStats()
+		void SaveStats()
 		{
-			if (Taskmaster.Trace)
-				Log.Verbose("Saving stats...");
+			if (!Taskmaster.PersistentWatchlistStats) return;
+
+			if (Taskmaster.Trace) Log.Verbose("Saving stats...");
 
 			lock (watchlist_lock)
 			{
 				foreach (ProcessController prc in watchlist)
-				{
-					if (prc.NeedsSaving)
-						prc.SaveConfig();
 					prc.SaveStats();
-				}
 			}
 		}
 	}

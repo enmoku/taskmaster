@@ -410,6 +410,8 @@ namespace Taskmaster
 		public static bool SelfOptimizeBGIO { get; private set; } = false;
 		public static int SelfAffinity { get; private set; } = -1;
 
+		public static bool PersistentWatchlistStats { get; private set; }  = false;
+
 		// public static bool LowMemory { get; private set; } = true; // low memory mode; figure out way to auto-enable this when system is low on memory
 
 		public static int TempRescanDelay = 60 * 60_000; // 60 minutes
@@ -547,8 +549,11 @@ namespace Taskmaster
 			SelfAffinity = perfsec.GetSetDefault("Self-affinity", -1, out modified).IntValue;
 			perfsec["Self-affinity"].Comment = "Core mask as integer. 0 is for default OS control. -1 is for last core. Limiting to single core recommended.";
 			dirtyconfig |= modified;
+			if (SelfAffinity > Convert.ToInt32(Math.Pow(2, Environment.ProcessorCount) - 1 + double.Epsilon)) SelfAffinity = -1;
 
-			if (SelfAffinity > Convert.ToInt32(Math.Pow(2, Environment.ProcessorCount) -1 + double.Epsilon)) SelfAffinity = -1;
+			PersistentWatchlistStats = perfsec.GetSetDefault("Persistent watchlist statistics", true, out modified).BoolValue;
+			dirtyconfig |= modified;
+
 
 			SelfOptimizeBGIO = perfsec.GetSetDefault("Background I/O mode", false, out modified).BoolValue;
 			perfsec["Background I/O mode"].Comment = "Sets own priority exceptionally low. Warning: This can make TM's UI and functionality quite unresponsive.";
