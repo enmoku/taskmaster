@@ -214,6 +214,6 @@ pip-log.txt
 
 #Mr Developer
 .mr.developer.cfg
-*.csproj
 TaskMaster.sln
 TaskMaster.userprefs
+Resources/BuildDate.txt
