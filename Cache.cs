@@ -155,31 +155,34 @@ namespace Taskmaster
 				}
 				// Log.Debug("CACHE ITEMS AFTER PRUNE: {Items}", Items.Count);
 
+				double bi = double.NaN;
+
+				var deleteItem = new Action<K1>(
+					(K1 key) =>
+					{
+						if (Taskmaster.Trace) Log.Verbose("Removing {time} min old item.", string.Format("{0:N1}", bi));
+						Items.Remove(key);
+						list.RemoveAt(0);
+					}
+				);
+
 				var now = DateTime.Now;
 				while (list.Count > 0)
 				{
 					var bu = list.ElementAt(0);
+					bi = now.TimeSince(bu.Access).TotalMinutes;
+
 					if (CacheEvictStrategy == EvictStrategy.LeastRecent)
 					{
-						var bi = now.TimeSince(bu.Access).TotalMinutes;
 						if (bi > MaxAge)
-						{
-							Log.Debug("Removing {time}min old item.", bi);
-							Items.Remove(bu.AccessKey);
-							list.RemoveAt(0);
-						}
+							deleteItem(bu.AccessKey);
 						else
 							break;
 					}
 					else // .LeastUsed, TM is never going to reach this.
 					{
-						var bi = now.TimeSince(bu.Access).TotalMinutes;
 						if (bi > MinAge)
-						{
-							Log.Debug("Removing {time}min old item.", bi);
-							Items.Remove(bu.AccessKey);
-							list.RemoveAt(0);
-						}
+							deleteItem(bu.AccessKey);
 						else
 							break;
 					}
