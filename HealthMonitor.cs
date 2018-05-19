@@ -147,9 +147,6 @@ namespace Taskmaster
 			if (Settings.MemLevel > 0 && Taskmaster.PagingEnabled)
 			{
 				memfree = new PerformanceCounterWrapper("Memory", "Available MBytes", null);
-				commitbytes = new PerformanceCounterWrapper("Memory", "Committed Bytes", null);
-				commitlimit = new PerformanceCounterWrapper("Memory", "Commit Limit", null);
-				commitpercentile = new PerformanceCounterWrapper("Memory", "% Committed Bytes in Use", null);
 
 				Log.Information("<Auto-Doc> Memory auto-paging level: {Level} MB", Settings.MemLevel);
 			}
@@ -222,9 +219,6 @@ namespace Taskmaster
 		}
 
 		PerformanceCounterWrapper memfree = null;
-		PerformanceCounterWrapper commitbytes = null;
-		PerformanceCounterWrapper commitlimit = null;
-		PerformanceCounterWrapper commitpercentile = null;
 
 		int HealthCheck_lock = 0;
 		//async void TimerCheck(object state)
@@ -260,7 +254,7 @@ namespace Taskmaster
 		{
 			// this might be pointless
 			var now = DateTime.Now;
-			if ((now - FreeMemory_last).TotalSeconds > 2)
+			if (now.TimeSince(FreeMemory_last).TotalSeconds > 2)
 			{
 				FreeMemory_last = now;
 				return FreeMemory_cached = memfree.Value;
@@ -365,14 +359,14 @@ namespace Taskmaster
 				if (Settings.MemLevel > 0)
 				{
 					var memfreemb = memfree?.Value ?? 0; // MB
-					var commitb = commitbytes?.Value ?? 0;
-					var commitlimitb = commitlimit?.Value ?? 0;
-					var commitp = commitpercentile?.Value ?? 0;
+					//var commitb = commitbytes?.Value ?? 0;
+					//var commitlimitb = commitlimit?.Value ?? 0;
+					//var commitp = commitpercentile?.Value ?? 0;
 
 					if (memfreemb <= Settings.MemLevel)
 					{
 						var now = DateTime.Now;
-						var cooldown = (now - MemFreeLast).TotalMinutes; // passed time since MemFreeLast
+						var cooldown = now.TimeSince(MemFreeLast).TotalMinutes;
 						MemFreeLast = now;
 
 						if (cooldown >= Settings.MemCooldown && Taskmaster.PagingEnabled)
@@ -401,16 +395,15 @@ namespace Taskmaster
 
 							// sampled too soon, OS has had no significant time to swap out data
 
+							// FreeMemory returns before the process is complete, so the following is done too soon.
+							/*
 							var memfreemb2 = memfree.Value; // MB
-							var commitp2 = commitpercentile.Value;
-							var commitb2 = commitbytes.Value;
-							var actualbytes = commitb * (commitp / 100);
-							var actualbytes2 = commitb2 * (commitp2 / 100);
 
 							Log.Information("<<Auto-Doc>> Free memory: {Memory} ({Change} change observed)",
 								HumanInterface.ByteString((long)(memfreemb2 * 1_000_000)),
 								//HumanInterface.ByteString((long)commitb2), HumanInterface.ByteString((long)commitlimitb),
 								HumanInterface.ByteString((long)((memfreemb2 - memfreemb) * 1_000_000), positivesign: true));
+							*/
 						}
 					}
 					else if (memfreemb * 1.5f <= Settings.MemLevel)
@@ -444,12 +437,12 @@ namespace Taskmaster
 
 				healthTimer?.Dispose();
 
-				commitbytes?.Dispose();
-				commitbytes = null;
-				commitlimit?.Dispose();
-				commitlimit = null;
-				commitpercentile?.Dispose();
-				commitpercentile = null;
+				//commitbytes?.Dispose();
+				//commitbytes = null;
+				//commitlimit?.Dispose();
+				//commitlimit = null;
+				//commitpercentile?.Dispose();
+				//commitpercentile = null;
 				memfree?.Dispose();
 				memfree = null;
 

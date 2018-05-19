@@ -106,7 +106,8 @@ namespace Taskmaster
 
 			lock (numberformat)
 			{
-				numberformat.NumberDecimalDigits = (num < 10) ? 3 : ((num > 100) ? 1 : 2);
+				// Don't show decimals for bytes, do whatever for the rest.
+				numberformat.NumberDecimalDigits = div == 1 ? 0 : ((num < 10) ? 3 : ((num > 100) ? 1 : 2));
 
 				return string.Format(
 					numberformat,

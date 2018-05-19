@@ -161,7 +161,7 @@ namespace Taskmaster
 					var bu = list.ElementAt(0);
 					if (CacheEvictStrategy == EvictStrategy.LeastRecent)
 					{
-						var bi = (bu.Access - now).TotalMinutes;
+						var bi = now.TimeSince(bu.Access).TotalMinutes;
 						if (bi > MaxAge)
 						{
 							Log.Debug("Removing {time}min old item.", bi);
@@ -173,7 +173,7 @@ namespace Taskmaster
 					}
 					else // .LeastUsed, TM is never going to reach this.
 					{
-						var bi = (bu.Access - now).TotalMinutes;
+						var bi = now.TimeSince(bu.Access).TotalMinutes;
 						if (bi > MinAge)
 						{
 							Log.Debug("Removing {time}min old item.", bi);

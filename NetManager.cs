@@ -227,7 +227,7 @@ namespace Taskmaster
 			ups.Append("<Network> Average uptime: ");
 			lock (uptime_lock)
 			{
-				var currentUptime = (DateTime.Now - lastUptimeStart).TotalMinutes;
+				var currentUptime = DateTime.Now.TimeSince(lastUptimeStart).TotalMinutes;
 
 				ups.Append(string.Format("{0:N1}", ((uptimeTotal + currentUptime) / (uptimeSamples + 1)))).Append(" minutes");
 

@@ -99,13 +99,15 @@ namespace Taskmaster
 
 	static public class DateExtensions
 	{
-		static DateTime UnixEpoch = new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+		static readonly DateTime UnixEpoch = new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc);
 
-		public static long Unixstamp(this DateTime dt)
-		{
-			return Convert.ToInt64(dt.ToUniversalTime().Subtract(UnixEpoch).TotalSeconds);
-		}
+		public static long Unixstamp(this DateTime dt) => Convert.ToInt64(dt.ToUniversalTime().Subtract(UnixEpoch).TotalSeconds);
 
-		public static DateTime Unixstamp(this long stamp) => (UnixEpoch + TimeSpan.FromSeconds(stamp));
+		public static DateTime Unixstamp(this long unixstamp) => (UnixEpoch + TimeSpan.FromSeconds(unixstamp));
+
+		/// <summary>
+		/// Time since, because (now - since) just confuses me.
+		/// </summary>
+		public static TimeSpan TimeSince(this DateTime now, DateTime since) => (now - since);
 	}
 }
