@@ -9,6 +9,7 @@
 	Added: `Persistent watchlist statistics` option in [Performance] section. Disabling it causes Watchlist.Statistics.ini no longer accessed.
 	Changed: Some timestamp calculation changes, should have no end-user visible effects.
 	Changed: Copy to clipboard for watchlist rules now includes ignore list, affinity strategy, recheck time, and correct executable name.
+	Fixed: Cache eviction was apparently non-functional until a recent change. This change also revealed old debugging messages. These messages no longer show up under normal operation.
 ### 2018-05-18
 	Changed: Refactored a lot of internal code, should have no impact for end-users.
 	Fixed: Health monitor was not functional, now it is.
