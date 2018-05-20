@@ -205,41 +205,45 @@ namespace Taskmaster
 		{
 			//await Task.Delay(0);
 
-			if (Atomic.Lock(ref PowerConfigVisible))
+			try
 			{
-				try
+				if (Atomic.Lock(ref PowerConfigVisible))
 				{
-					pcw = new PowerConfigWindow();
-				}
-				catch (Exception ex)
-				{
-					Logging.Stacktrace(ex);
-					return;
-				}
+					try
+					{
+						using (pcw = new PowerConfigWindow())
+						{
 
-				var res = pcw.ShowDialog();
-				if (pcw.DialogResult == DialogResult.OK)
-				{
-					Taskmaster.powermanager.AutoAdjust = pcw.newAutoAdjust;
-					Log.Information("<<UI>> Power auto-adjust config changed.");
-					// TODO: Call reset on power manager?
+							var res = pcw.ShowDialog();
+							if (pcw.DialogResult == DialogResult.OK)
+							{
+								Taskmaster.powermanager.AutoAdjust = pcw.newAutoAdjust;
+								Log.Information("<<UI>> Power auto-adjust config changed.");
+								// TODO: Call reset on power manager?
+							}
+							else
+							{
+								if (Taskmaster.Trace) Log.Verbose("<<UI>> Power auto-adjust config cancelled.");
+							}
+						}
+						pcw = null;
+					}
+					finally
+					{
+						Atomic.Unlock(ref PowerConfigVisible);
+					}
 				}
 				else
 				{
-					Log.Debug("<<UI>> Power auto-adjust config cancelled.");
+					pcw.BringToFront();
+					pcw.Show();
+					pcw.TopMost = true;
+					pcw.TopMost = false;
 				}
-
-				pcw.Dispose();
-				pcw = null;
-
-				Atomic.Unlock(ref PowerConfigVisible);
 			}
-			else
+			catch (Exception ex)
 			{
-				pcw.BringToFront();
-				pcw.Show();
-				pcw.TopMost = true;
-				pcw.TopMost = false;
+				Logging.Stacktrace(ex);
 			}
 		}
 	}

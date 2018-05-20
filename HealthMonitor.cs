@@ -232,10 +232,10 @@ namespace Taskmaster
 			{
 				try
 				{
-					await CheckErrors();
-					await CheckLogs();
-					await CheckMemory();
-					await CheckNVM();
+					await CheckErrors().ConfigureAwait(false);
+					await CheckLogs().ConfigureAwait(false);
+					await CheckMemory().ConfigureAwait(false);
+					await CheckNVM().ConfigureAwait(false);
 				}
 				catch (Exception ex) { Logging.Stacktrace(ex); }
 				finally
@@ -270,7 +270,7 @@ namespace Taskmaster
 
 		async Task CheckErrors()
 		{
-			await Task.Delay(0);
+			await Task.Delay(0).ConfigureAwait(false);
 
 			// TODO: Maybe make this errors within timeframe instead of total...?
 			if (Statistics.FatalErrors >= Settings.FatalErrorThreshold)
@@ -283,7 +283,7 @@ namespace Taskmaster
 		string logpath = System.IO.Path.Combine(Taskmaster.datapath, "Logs");
 		async Task CheckLogs()
 		{
-			await Task.Delay(0);
+			await Task.Delay(0).ConfigureAwait(false);
 
 			long size = 0;
 
@@ -306,7 +306,7 @@ namespace Taskmaster
 
 		async Task CheckNVM()
 		{
-			await Task.Delay(0);
+			await Task.Delay(0).ConfigureAwait(false);
 
 			foreach (var drive in System.IO.DriveInfo.GetDrives())
 			{
@@ -350,7 +350,7 @@ namespace Taskmaster
 
 		async Task CheckMemory()
 		{
-			await Task.Delay(0);
+			await Task.Delay(0).ConfigureAwait(false);
 
 			// Console.WriteLine("<<Auto-Doc>> Checking...");
 
@@ -358,32 +358,34 @@ namespace Taskmaster
 			{
 				if (Settings.MemLevel > 0)
 				{
-					var memfreemb = memfree?.Value ?? 0; // MB
-					//var commitb = commitbytes?.Value ?? 0;
-					//var commitlimitb = commitlimit?.Value ?? 0;
-					//var commitp = commitpercentile?.Value ?? 0;
+					var memfreemb = FreeMemory();
+
+					var now = DateTime.Now;
 
 					if (memfreemb <= Settings.MemLevel)
 					{
-						var now = DateTime.Now;
 						var cooldown = now.TimeSince(MemFreeLast).TotalMinutes;
 						MemFreeLast = now;
 
 						if (cooldown >= Settings.MemCooldown && Taskmaster.PagingEnabled)
 						{
 							// The following should just call something in ProcessManager
-
-							Log.Information("<<Auto-Doc>> Free memory low [{Memory}], attempting to improve situation.",
-								HumanInterface.ByteString((long)(memfreemb * 1_000_000)));
-
 							var ignorepid = -1;
 							try
 							{
 								if (Settings.MemIgnoreFocus)
 								{
-									ignorepid = Taskmaster.activeappmonitor?.Foreground ?? -1;
-									Taskmaster.processmanager.Ignore(ignorepid);
+									if (Taskmaster.activeappmonitor != null)
+									{
+										ignorepid = Taskmaster.activeappmonitor.Foreground;
+										Log.Verbose("<Auto-Doc> Protecting foreground app (#{Id})", ignorepid);
+										Taskmaster.processmanager.Ignore(ignorepid);
+									}
 								}
+
+								Log.Information("<<Auto-Doc>> Free memory low [{Memory}], attempting to improve situation.{FgState}",
+									HumanInterface.ByteString((long)(memfreemb * 1_000_000)),
+									Settings.MemIgnoreFocus ? string.Format(" Ignoring foreground (#{0}).", ignorepid) : string.Empty);
 
 								Taskmaster.processmanager?.FreeMemory(null, quiet: true);
 							}
@@ -406,11 +408,20 @@ namespace Taskmaster
 							*/
 						}
 					}
-					else if (memfreemb * 1.5f <= Settings.MemLevel)
+					else if ((memfreemb * MemoryWarningThreshold) <= Settings.MemLevel)
 					{
-						if (Taskmaster.DebugMemory)
-							Log.Debug("<Memory> Free memory fairly low: {Memory}",
+						if (!WarnedAboutLowMemory && now.TimeSince(LastMemoryWarning).TotalSeconds > MemoryWarningCooldown)
+						{
+							WarnedAboutLowMemory = true;
+							LastMemoryWarning = now;
+
+							Log.Warning("<Memory> Free memory fairly low: {Memory}",
 								HumanInterface.ByteString((long)(memfreemb * 1_000_000)));
+						}
+					}
+					else
+					{
+						WarnedAboutLowMemory = false;
 					}
 				}
 			}
@@ -419,6 +430,11 @@ namespace Taskmaster
 				Logging.Stacktrace(ex);
 			}
 		}
+
+		float MemoryWarningThreshold = 1.5f;
+		bool WarnedAboutLowMemory = false;
+		DateTime LastMemoryWarning = DateTime.MinValue;
+		long MemoryWarningCooldown = 30;
 
 		bool disposed; // = false;
 		public void Dispose()

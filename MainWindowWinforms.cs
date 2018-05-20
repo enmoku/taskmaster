@@ -115,7 +115,7 @@ namespace Taskmaster
 			// TODO: Introduce configuration window
 		}
 
-		public async void PowerConfigRequest(object sender, EventArgs e)
+		public void PowerConfigRequest(object sender, EventArgs e)
 		{
 			if (!IsHandleCreated) return;
 			BeginInvoke(new Action(async () =>
@@ -178,7 +178,7 @@ namespace Taskmaster
 			if (Taskmaster.Trace) Log.Verbose("Making sure main window is not lost.");
 
 			if (!IsHandleCreated) return;
-			BeginInvoke(new Action(async () =>
+			BeginInvoke(new Action(() =>
 			{
 				try
 				{
@@ -232,7 +232,7 @@ namespace Taskmaster
 				micList.Items.Add(new ListViewItem(new string[] { dev.Name, dev.GUID }));
 
 			// TODO: Hook device changes
-			micmon.VolumeChanged += volumeChangeDetected;
+			micmon.VolumeChanged += VolumeChangeDetected;
 		}
 
 		public void UpdateWatchlist(ProcessController prc)
@@ -273,7 +273,7 @@ namespace Taskmaster
 		{
 			// Log.Verbose("Process adjust received for '{FriendlyName}'.", e.Control.FriendlyName);
 			if (!IsHandleCreated) return;
-			BeginInvoke(new Action(async () =>
+			BeginInvoke(new Action(() =>
 			{
 				adjustcounter.Text = Statistics.TouchCount.ToString();
 
@@ -297,7 +297,7 @@ namespace Taskmaster
 		public void OnActiveWindowChanged(object sender, WindowChangedArgs windowchangeev)
 		{
 			if (!IsHandleCreated) return;
-			BeginInvoke(new Action(async () =>
+			BeginInvoke(new Action(() =>
 			{
 				// int maxlength = 70;
 				// string cutstring = e.Title.Substring(0, Math.Min(maxlength, e.Title.Length)) + (e.Title.Length > maxlength ? "..." : "");
@@ -364,7 +364,7 @@ namespace Taskmaster
 		void ProcessNewInstanceCount(object sender, InstanceEventArgs e)
 		{
 			if (!IsHandleCreated) return;
-			BeginInvoke(new Action(async () =>
+			BeginInvoke(new Action(() =>
 			{
 				processingcount.Text = ProcessManager.Handling.ToString();
 			}));
@@ -450,7 +450,7 @@ namespace Taskmaster
 		public void WatchlistPathLocatedEvent(object sender, PathControlEventArgs e)
 		{
 			if (!IsHandleCreated) return;
-			BeginInvoke(new Action(async () =>
+			BeginInvoke(new Action(() =>
 			{
 				try
 				{
@@ -496,10 +496,10 @@ namespace Taskmaster
 			// micMonitor.setVolume(micVol.Value);
 		}
 
-		void volumeChangeDetected(object sender, VolumeChangedEventArgs e)
+		void VolumeChangeDetected(object sender, VolumeChangedEventArgs e)
 		{
 			if (!IsHandleCreated) return;
-			BeginInvoke(new Action(async () =>
+			BeginInvoke(new Action(() =>
 			{
 				micVol.Value = Convert.ToInt32(e.New);
 				corCountLabel.Text = e.Corrections.ToString();
@@ -531,7 +531,7 @@ namespace Taskmaster
 			else
 				return;
 
-			BeginInvoke(new Action(async () =>
+			BeginInvoke(new Action(() =>
 			{
 				try
 				{
@@ -572,10 +572,9 @@ namespace Taskmaster
 		void UpdateRescanCountdown(object sender, EventArgs ev)
 		{
 			if (!IsHandleCreated) return;
-			BeginInvoke(new Action(async () =>
+			BeginInvoke(new Action(() =>
 			{
-				var t = ProcessManager.NextRescan.Unixstamp() - DateTime.Now.Unixstamp();
-				processingtimer.Text = string.Format("{0:N0}s", t);
+				processingtimer.Text = string.Format("{0:N0}s", DateTime.Now.TimeTo(ProcessManager.NextRescan).TotalSeconds);
 			}));
 		}
 
@@ -584,7 +583,7 @@ namespace Taskmaster
 			if (netmonitor != null)
 			{
 				if (!IsHandleCreated) return;
-				BeginInvoke(new Action(async () =>
+				BeginInvoke(new Action(() =>
 				{
 					uptimestatuslabel.Text = HumanInterface.TimeString(netmonitor.Uptime);
 				}));
@@ -2097,7 +2096,7 @@ namespace Taskmaster
 		public void TempScanStats(object sender, DiskEventArgs ev)
 		{
 			if (!IsHandleCreated) return;
-			BeginInvoke(new Action(async () =>
+			BeginInvoke(new Action(() =>
 			{
 				tempObjectSize.Text = (ev.Stats.Size / 1_000_000).ToString();
 				tempObjectCount.Text = (ev.Stats.Dirs + ev.Stats.Files).ToString();
@@ -2110,7 +2109,7 @@ namespace Taskmaster
 
 		public void FillLog()
 		{
-			MemoryLog.onNewEvent += onNewLog;
+			MemoryLog.onNewEvent += NewLogReceived;
 
 			lock (loglistLock)
 			{
@@ -2156,7 +2155,7 @@ namespace Taskmaster
 		public void PowerBehaviourDebugEvent(object sender, PowerManager.PowerBehaviour behaviour)
 		{
 			if (!IsHandleCreated) return;
-			BeginInvoke(new Action(async () =>
+			BeginInvoke(new Action(() =>
 			{
 				powerbalancer_behaviour.Text = (behaviour == PowerManager.PowerBehaviour.Auto) ? "Automatic" : ((behaviour == PowerManager.PowerBehaviour.Manual) ? "Manual" : "Rule-based");
 				if (behaviour != PowerManager.PowerBehaviour.Auto)
@@ -2167,7 +2166,7 @@ namespace Taskmaster
 		public void PowerPlanDebugEvent(object sender, PowerModeEventArgs ev)
 		{
 			if (!IsHandleCreated) return;
-			BeginInvoke(new Action(async () =>
+			BeginInvoke(new Action(() =>
 			{
 				powerbalancer_plan.Text = PowerManager.GetModeName(ev.NewMode);
 			}));
@@ -2215,14 +2214,21 @@ namespace Taskmaster
 		void NetSampleHandler(object sender, NetDeviceTraffic ev)
 		{
 			if (!IsHandleCreated) return;
-			BeginInvoke(new Action(async () =>
+			BeginInvoke(new Action(() =>
 			{
-				ifaceList.Items[ev.Index].SubItems[PacketColumn].Text = string.Format("+{0}", ev.Traffic.Unicast);
-				ifaceList.Items[ev.Index].SubItems[ErrorColumn].Text = string.Format("+{0}", ev.Traffic.Errors);
-				if (ev.Traffic.Errors > 0)
-					ifaceList.Items[ev.Index].SubItems[ErrorColumn].ForeColor = System.Drawing.Color.OrangeRed;
-				else
-					ifaceList.Items[ev.Index].SubItems[ErrorColumn].ForeColor = System.Drawing.SystemColors.ControlText;
+				try
+				{
+					ifaceList.Items[ev.Index].SubItems[PacketColumn].Text = string.Format("+{0}", ev.Traffic.Unicast);
+					ifaceList.Items[ev.Index].SubItems[ErrorColumn].Text = string.Format("+{0}", ev.Traffic.Errors);
+					if (ev.Traffic.Errors > 0)
+						ifaceList.Items[ev.Index].SubItems[ErrorColumn].ForeColor = System.Drawing.Color.OrangeRed;
+					else
+						ifaceList.Items[ev.Index].SubItems[ErrorColumn].ForeColor = System.Drawing.SystemColors.ControlText;
+				}
+				catch (Exception ex)
+				{
+					Logging.Stacktrace(ex);
+				}
 			}));
 		}
 
@@ -2236,7 +2242,7 @@ namespace Taskmaster
 		void InetStatusLabel(bool available)
 		{
 			if (!IsHandleCreated) return;
-			BeginInvoke(new Action(async () =>
+			BeginInvoke(new Action(() =>
 			{
 				inetstatuslabel.Text = available ? "Connected" : "Disconnected";
 				// inetstatuslabel.BackColor = available ? System.Drawing.Color.LightGoldenrodYellow : System.Drawing.Color.Red;
@@ -2252,7 +2258,7 @@ namespace Taskmaster
 		void NetStatusLabel(bool available)
 		{
 			if (!IsHandleCreated) return;
-			BeginInvoke(new Action(async () =>
+			BeginInvoke(new Action(() =>
 			{
 				netstatuslabel.Text = available ? "Up" : "Down";
 				// netstatuslabel.BackColor = available ? System.Drawing.Color.LightGoldenrodYellow : System.Drawing.Color.Red;
@@ -2279,7 +2285,7 @@ namespace Taskmaster
 			}
 		}
 
-		public void onNewLog(object sender, LogEventArgs evmsg)
+		public void NewLogReceived(object sender, LogEventArgs evmsg)
 		{
 			if (LogIncludeLevel.MinimumLevel > evmsg.Level) return;
 
@@ -2288,6 +2294,7 @@ namespace Taskmaster
 			if (!IsHandleCreated) return;
 			BeginInvoke(new Action(async () =>
 			{
+				await Task.Delay(0).ConfigureAwait(true);
 				lock (loglistLock)
 				{
 					var excessitems = Math.Max(0, (loglist.Items.Count - MaxLogSize));
@@ -2345,7 +2352,7 @@ namespace Taskmaster
 			{
 				if (Taskmaster.Trace) Log.Verbose("Disposing main window...");
 
-				MemoryLog.onNewEvent -= onNewLog;
+				MemoryLog.onNewEvent -= NewLogReceived;
 
 				try
 				{
@@ -2403,7 +2410,7 @@ namespace Taskmaster
 				{
 					if (micmon != null)
 					{
-						micmon.VolumeChanged -= volumeChangeDetected;
+						micmon.VolumeChanged -= VolumeChangeDetected;
 						micmon = null;
 					}
 				}

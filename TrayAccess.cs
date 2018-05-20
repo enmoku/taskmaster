@@ -33,7 +33,7 @@ using Serilog;
 
 namespace Taskmaster
 {
-	sealed public class TrayAccess : IDisposable
+	sealed public class TrayAccess : Form //, IDisposable
 	{
 		NotifyIcon Tray;
 
@@ -160,6 +160,75 @@ namespace Taskmaster
 			if (Taskmaster.Trace) Log.Verbose("<Tray> Initialized");
 		}
 
+		bool registered = false;
+		public void RegisterGlobalHotkeys()
+		{
+			if (registered) return;
+
+			try
+			{
+				int hotkeyId = 0;
+				int modifiers = (int)NativeMethods.KeyModifier.Control | (int)NativeMethods.KeyModifier.Shift | (int)NativeMethods.KeyModifier.Alt;
+
+				NativeMethods.RegisterHotKey(Handle, hotkeyId, modifiers, Keys.M.GetHashCode());
+
+				Log.Information("<Tray> Registered global hotkey: ctrl-alt-shift-m = free memory [for foreground]");
+
+				registered = true;
+			}
+			catch (Exception ex)
+			{
+				Logging.Stacktrace(ex);
+			}
+		}
+
+		void UnregisterGlobalHotkeys()
+		{
+			NativeMethods.UnregisterHotKey(Handle, 0);
+		}
+
+		int hotkeyinprogress = 0;
+
+		protected override void WndProc(ref Message m)
+		{
+			if (m.Msg == NativeMethods.WM_HOTKEY)
+			{
+				//Keys key = (Keys)(((int)m.LParam >> 16) & 0xFFFF);
+				//NativeMethods.KeyModifier modifier = (NativeMethods.KeyModifier)((int)m.LParam & 0xFFFF);
+				int id = m.WParam.ToInt32(); // registered hotkey id
+
+				if (Atomic.Lock(ref hotkeyinprogress))
+				{
+					//Taskmaster.ThreadIdentity("Hotkey.Detected");
+
+					if (Taskmaster.Trace) Log.Verbose("<Tray> Hotkey ctrl-alt-shift-m detected!!!");
+					Task.Run(new Action(async () =>
+						{
+							//Taskmaster.ThreadIdentity("Hotkey.Start");
+
+							try
+							{
+								int ignorepid = Taskmaster.activeappmonitor?.Foreground ?? -1;
+								Log.Information("<Tray> Hotkey detected, freeing memory while ignoring foreground{Ign} if possible.",
+									ignorepid > 4 ? string.Format(" (#{0})", ignorepid) : string.Empty);
+								await processmanager.FreeMemory(ignorepid).ConfigureAwait(false);
+							}
+							catch (Exception ex)
+							{
+								Logging.Stacktrace(ex);
+							}
+							finally
+							{
+								Atomic.Unlock(ref hotkeyinprogress);
+								//Taskmaster.ThreadIdentity("Hotkey.End");
+							}
+						}));
+				}
+			}
+
+			base.WndProc(ref m);
+		}
+
 		public void Enable() => ms.Enabled = true;
 
 		public event EventHandler RescanRequest;
@@ -275,12 +344,9 @@ namespace Taskmaster
 		}
 
 		int restoremainwindow_lock = 0;
-		async void RestoreMainWindow(object sender, EventArgs e)
+		void RestoreMainWindow(object sender, EventArgs e)
 		{
-			if (!Atomic.Lock(ref restoremainwindow_lock))
-			{
-				return; // already being done
-			}
+			if (!Atomic.Lock(ref restoremainwindow_lock)) return; // already being done
 
 			try
 			{
@@ -384,7 +450,7 @@ namespace Taskmaster
 
 			Log.Information("<Tray> Giving explorer some time to recover on its own...");
 
-			await Task.Delay(12000); // force async, 12 seconds
+			await Task.Delay(12000).ConfigureAwait(false); // force async, 12 seconds
 
 			var n = new Stopwatch();
 			n.Start();
@@ -397,7 +463,7 @@ namespace Taskmaster
 					return;
 				}
 
-				await Task.Delay(1000 * 60 * 5); // wait 5 minutes
+				await Task.Delay(1000 * 60 * 5).ConfigureAwait(false); // wait 5 minutes
 			}
 
 			n.Stop();
@@ -466,20 +532,16 @@ namespace Taskmaster
 			return false;
 		}
 
-		bool disposed; // = false;
-		public void Dispose()
-		{
-			Dispose(true);
-			GC.SuppressFinalize(this);
-		}
-
-		void Dispose(bool disposing)
+		bool disposed = false;
+		protected override void Dispose(bool disposing)
 		{
 			if (disposed) return;
 
 			if (disposing)
 			{
 				if (Taskmaster.Trace) Log.Verbose("Disposing tray...");
+
+				UnregisterGlobalHotkeys();
 
 				try
 				{
@@ -527,7 +589,7 @@ namespace Taskmaster
 			Tray.ShowBalloonTip(timeout, title, message, icon);
 		}
 
-		public void Refresh() => Tray.Visible = true;
+		public void RefreshVisibility() => Tray.Visible = true;
 
 		int ensuringvisibility = 0;
 		public async void EnsureVisible()
@@ -543,7 +605,7 @@ namespace Taskmaster
 				{
 					Log.Debug("<Tray> Not visible, fixing...");
 
-					Refresh();
+					RefreshVisibility();
 
 					await Task.Delay(15 * 1000).ConfigureAwait(true);
 

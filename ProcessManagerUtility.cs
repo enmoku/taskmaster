@@ -103,8 +103,9 @@ namespace Taskmaster
 			{
 				info.Path = info.Process.MainModule?.FileName; // this will cause win32exception of various types, we don't Really care which error it is
 			}
-			catch
+			catch (Exception ex)
 			{
+				Logging.Stacktrace(ex);
 				// NOP, don't care 
 			}
 
@@ -182,8 +183,9 @@ namespace Taskmaster
 					}
 				}
 			}
-			catch
+			catch (Exception ex)
 			{
+				Logging.Stacktrace(ex);
 				// NOP, don't caree
 			}
 

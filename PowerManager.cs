@@ -1220,14 +1220,15 @@ namespace Taskmaster
 		public const int PBT_POWERSETTINGCHANGE = 0x8013;
 		public const int HWND_BROADCAST = 0xFFFF;
 
+		readonly IntPtr MonitorPowerP = new IntPtr(SC_MONITORPOWER);
 		void SetMonitorMode(MonitorPowerMode powermode)
 		{
-			int NewPowerMode = (int)powermode; // -1 = Powering On, 1 = Low Power (low backlight, etc.), 2 = Power Off
+			IntPtr NewPowerMode = new IntPtr((int)powermode); // -1 = Powering On, 1 = Low Power (low backlight, etc.), 2 = Power Off
 			IntPtr Handle = new IntPtr(HWND_BROADCAST);
 			IntPtr result = new IntPtr(-1); // unused, but necessary
 			uint timeout = 200; // ms per window, we don't really care if they process them
 			var flags = NativeMethods.SendMessageTimeoutFlags.SMTO_ABORTIFHUNG;
-			NativeMethods.SendMessageTimeout(Handle, WM_SYSCOMMAND, SC_MONITORPOWER, NewPowerMode, flags, timeout, out result);
+			NativeMethods.SendMessageTimeout(Handle, WM_SYSCOMMAND, MonitorPowerP, NewPowerMode, flags, timeout, out result);
 		}
 	}
 }

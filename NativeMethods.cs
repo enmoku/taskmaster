@@ -103,6 +103,7 @@ namespace Taskmaster
 			public byte Data;
 		}
 
+		public const int WM_HOTKEY = 0x0312;
 		public const int WM_SYSCOMMAND = 0x0112;
 		public const int WM_POWERBROADCAST = 0x218;
 		public const int SC_MONITORPOWER = 0xF170;
@@ -121,7 +122,7 @@ namespace Taskmaster
 
 		[DllImport("user32.dll", CharSet = CharSet.Auto)] // SetLastError
 		public static extern IntPtr SendMessageTimeout(
-			IntPtr hWnd, uint Msg, int wParam, int lParam,
+			IntPtr hWnd, uint Msg, IntPtr wParam, IntPtr lParam,
 			SendMessageTimeoutFlags flags, uint timeout, out IntPtr result);
 
 		// for ProcessMAnagerUtility.cs
@@ -175,7 +176,7 @@ namespace Taskmaster
 		/// <summary>
 		/// Empty recycle bin.
 		/// </summary>
-		[DllImport("shell32.dll")]
+		[DllImport("shell32.dll", CharSet = CharSet.Unicode, BestFitMapping = false, ThrowOnUnmappableChar = true)]
 		public static extern int SHEmptyRecycleBin(IntPtr hWnd, string pszRootPath, uint dwFlags);
 
 		[StructLayout(LayoutKind.Sequential)] // , Pack = 4 causes shqueryrecyclebin to error with invalid args
@@ -186,7 +187,7 @@ namespace Taskmaster
 			public long i64NumItems;
 		}
 
-		[DllImport("shell32.dll", CharSet=CharSet.Unicode)] // SetLastError = true
+		[DllImport("shell32.dll", CharSet = CharSet.Unicode)] // SetLastError = true
 		public static extern uint SHQueryRecycleBin(string pszRootPath, ref SHQUERYRBINFO pSHQueryRBInfo);
 
 		[DllImport("user32.dll")] // SetLastError = true
@@ -204,6 +205,20 @@ namespace Taskmaster
 			public UInt32 cbSize;
 			[MarshalAs(UnmanagedType.U4)]
 			public UInt32 dwTime;
+		}
+
+		[System.Runtime.InteropServices.DllImport("user32.dll")]
+		public static extern bool RegisterHotKey(IntPtr hWnd, int id, int fsModifiers, int vk);
+		[System.Runtime.InteropServices.DllImport("user32.dll")]
+		public static extern bool UnregisterHotKey(IntPtr hWnd, int id);
+
+		public enum KeyModifier
+		{
+			None = 0,
+			Alt = 1,
+			Control = 2,
+			Shift = 4,
+			WinKey = 8
 		}
 	}
 }

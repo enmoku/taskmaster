@@ -39,6 +39,7 @@ namespace Taskmaster
 		public int Total { get; set; } = 0;
 	}
 
+	[Serializable]
 	sealed public class ProcessNotFoundException : Exception
 	{
 		public string Name { get; set; } = null;
@@ -199,14 +200,14 @@ namespace Taskmaster
 		}
 
 		string freememoryignore = null;
-		async void FreeMemoryTick(object sender, ProcessEx info)
+		void FreeMemoryTick(object sender, ProcessEx info)
 		{
-			if (!string.IsNullOrEmpty(freememoryignore) &&
-				info.Name.Equals(freememoryignore, StringComparison.InvariantCultureIgnoreCase))
+			if (IgnoreProcessID(info.Id) ||
+				(!string.IsNullOrEmpty(freememoryignore) &&
+				info.Name.Equals(freememoryignore, StringComparison.InvariantCultureIgnoreCase)))
 				return;
 
-			if (Taskmaster.DebugMemory)
-				Log.Debug("<Process> Paging: {Process} (#{Id})", info.Name, info.Id);
+			if (Taskmaster.DebugMemory) Log.Debug("<Process> Paging: {Process} (#{Id})", info.Name, info.Id);
 
 			try
 			{
@@ -245,8 +246,15 @@ namespace Taskmaster
 			//await Task.Delay(0).ConfigureAwait(false);
 
 			freememoryignore = executable;
+			await FreeMemoryInternal().ConfigureAwait(false);
+			freememoryignore = string.Empty;
+		}
 
-			await Task.Factory.StartNew(FreeMemoryInternal, TaskCreationOptions.LongRunning);
+		public async Task FreeMemory(int pid = -1)
+		{
+			if (pid > 4) Ignore(pid);
+			await FreeMemoryInternal().ConfigureAwait(false);
+			if (pid > 4) Unignore(pid);
 		}
 
 		async Task FreeMemoryInternal()
@@ -259,7 +267,7 @@ namespace Taskmaster
 			{
 				RegisterFreeMemoryTick();
 
-				await ScanEverything(); // TODO: Call for this to happen otherwise
+				await ScanEverything().ConfigureAwait(false); // TODO: Call for this to happen otherwise
 
 				Taskmaster.healthmonitor.InvalidateFreeMemory(); // just in case
 
@@ -267,7 +275,7 @@ namespace Taskmaster
 
 				if (Taskmaster.DebugPaging)
 				{
-					Log.Debug("<Memory> Paging complete, observed memory change: {Memory}",
+					Log.Information("<Memory> Paging complete, observed memory change: {Memory}",
 						HumanInterface.ByteString((long)((b2 - b1) * 1000000), true));
 				}
 			}
@@ -281,7 +289,7 @@ namespace Taskmaster
 			}
 		}
 
-		public async void ScanEverythingRequest(object sender, EventArgs e)
+		public void ScanEverythingRequest(object sender, EventArgs e)
 		{
 			if (Taskmaster.Trace) Log.Verbose("Rescan requested.");
 
@@ -291,11 +299,15 @@ namespace Taskmaster
 
 			// this stays on UI thread for some reason
 
-			LastRescan = DateTime.Now;
-			NextRescan = DateTime.Now.AddSeconds(RescanEverythingFrequency);
-
 			//await ScanEverything().ConfigureAwait(false);
-			Task.Factory.StartNew(ScanEverything, TaskCreationOptions.LongRunning);
+			Task.Run(ScanEverything);
+		}
+
+		public void ScheduleNextScan()
+		{
+			var now = DateTime.Now;
+			LastRescan = now;
+			NextRescan = now.AddSeconds(RescanEverythingFrequency);
 		}
 
 		System.Threading.Timer rescanTimer;
@@ -307,92 +319,85 @@ namespace Taskmaster
 		public event EventHandler ScanEverythingStartEvent;
 		public event EventHandler ScanEverythingEndEvent;
 
-		int scaninprogress = 0;
+		object scaninprogress_lock = new object();
+
 		public async Task ScanEverything()
 		{
-			if (!Atomic.Lock(ref scaninprogress))
-			{
-				Log.Error("Scan request received while old scan was still in progress. Previous scan started at: {Date}", LastRescan.ToString());
-				return;
-			}
+			ScheduleNextScan();
+
+			await Task.Delay(0).ConfigureAwait(false);
+
+			//Taskmaster.ThreadIdentity("ScanEverything.Start");
 
 			//await Task.Delay(0).ConfigureAwait(false);
 
-			if (Taskmaster.DebugFullScan)
-				Log.Debug("<Process> Full Scan: Start");
-
-			ScanEverythingStartEvent?.Invoke(this, null);
-
-			//Taskmaster.ThreadIdentity("ScanEverything.Begin");
-
-			int count = 0;
-			using (var m = SelfAwareness.Mind(DateTime.Now.AddSeconds(5)))
+			lock (scaninprogress_lock)
 			{
-				try
+				if (Taskmaster.DebugFullScan) Log.Debug("<Process> Full Scan: Start");
+
+				ScanEverythingStartEvent?.Invoke(this, null);
+
+				//Taskmaster.ThreadIdentity("ScanEverything.Begin");
+
+				int count = 0;
+				using (var m = SelfAwareness.Mind(DateTime.Now.AddSeconds(5)))
 				{
-					var procs = Process.GetProcesses();
-					count = procs.Length - 2; // -2 for Idle&System
-
-					SignalProcessHandled(count); // scan start
-
-					var i = 0;
-					foreach (var process in procs)
+					try
 					{
-						++i;
-						try
+						var procs = Process.GetProcesses();
+						count = procs.Length - 2; // -2 for Idle&System
+
+						SignalProcessHandled(count); // scan start
+
+						var i = 0;
+						foreach (var process in procs)
 						{
-							var name = process.ProcessName;
-							var pid = process.Id;
+							++i;
+							try
+							{
+								var name = process.ProcessName;
+								var pid = process.Id;
 
-							if (IgnoreProcessID(pid) || IgnoreProcessName(name))
-								continue;
+								if (IgnoreProcessID(pid) || IgnoreProcessName(name))
+									continue;
 
-							if (Taskmaster.DebugFullScan)
-								Log.Verbose("<Process> Checking [{Iter}/{Count}] {Proc} (#{Pid})",
-									i, count, name, pid);
+								if (Taskmaster.DebugFullScan)
+									Log.Verbose("<Process> Checking [{Iter}/{Count}] {Proc} (#{Pid})",
+										i, count, name, pid);
 
-							ProcessDetectedEvent?.Invoke(this, new ProcessEx() { Process = process, Id = pid, Name = name, Path = null });
-						}
-						catch (Exception ex)
-						{
-							Logging.Stacktrace(ex);
+								ProcessDetectedEvent?.Invoke(this, new ProcessEx() { Process = process, Id = pid, Name = name, Path = null });
+							}
+							catch (Exception ex)
+							{
+								Logging.Stacktrace(ex);
+							}
 						}
 					}
+					catch (Exception ex)
+					{
+						Logging.Stacktrace(ex);
+					}
 				}
-				catch (Exception ex)
-				{
-					Logging.Stacktrace(ex);
-				}
-				finally
-				{
-					Atomic.Unlock(ref scaninprogress);
-				}
+
+				SignalProcessHandled(-count); // scan done
+
+				if (Taskmaster.DebugFullScan) Log.Debug("<Process> Full Scan: Complete");
+
+				//Taskmaster.ThreadIdentity("ScanEverything.End");
+
+				ScanEverythingEndEvent?.Invoke(this, null);
 			}
 
-			SignalProcessHandled(-count); // scan done
-
-			if (Taskmaster.DebugFullScan)
-				Log.Debug("<Process> Full Scan: Complete");
-
 			//Taskmaster.ThreadIdentity("ScanEverything.End");
-
-			ScanEverythingEndEvent?.Invoke(this, null);
 		}
 
-		public async void ProcessTriage(object sender, ProcessEx info)
+		public void ProcessTriage(object sender, ProcessEx info)
 		{
 			//await Task.Delay(0).ConfigureAwait(false);
 
 			//Taskmaster.ThreadIdentity("ProcessTriage");
 
-			try
-			{
-				CheckProcess(info, schedule_next: false);
-			}
-			catch (Exception ex)
-			{
-				Logging.Stacktrace(ex);
-			}
+			CheckProcess(info, schedule_next: false);
 		}
 
 		static int BatchDelay = 2500;
@@ -756,7 +761,7 @@ namespace Taskmaster
 		readonly object waitforexit_lock = new object();
 		Dictionary<int, ProcessEx> WaitForExitList = new Dictionary<int, ProcessEx>();
 
-		async void WaitForExitTriggered(ProcessEx info, ProcessEventArgs.ProcessState state = ProcessEventArgs.ProcessState.Exiting)
+		void WaitForExitTriggered(ProcessEx info, ProcessEventArgs.ProcessState state = ProcessEventArgs.ProcessState.Exiting)
 		{
 			if (Taskmaster.DebugForeground || Taskmaster.DebugPower)
 			{
@@ -940,7 +945,7 @@ namespace Taskmaster
 		{
 			Debug.Assert(info.Process != null);
 
-			//await Task.Delay(0).ConfigureAwait(false);
+			await Task.Delay(0).ConfigureAwait(false);
 
 			try
 			{
@@ -1195,7 +1200,7 @@ namespace Taskmaster
 			Debug.Assert(!IgnoreProcessID(info.Id), "CheckProcess received invalid process ID: " + info.Id);
 			//Debug.Assert(execontrol != null); // triggers only if this function is running when the app is closing
 
-			//await Task.Delay(0).ConfigureAwait(false);
+			await Task.Delay(0).ConfigureAwait(false);
 
 			try
 			{
@@ -1271,7 +1276,7 @@ namespace Taskmaster
 		List<ProcessEx> ProcessBatch = new List<ProcessEx>();
 		readonly System.Timers.Timer BatchProcessingTimer = null;
 
-		async void BatchProcessingTick(object sender, EventArgs ev)
+		void BatchProcessingTick(object sender, EventArgs ev)
 		{
 			lock (batchprocessing_lock)
 			{
@@ -1286,12 +1291,10 @@ namespace Taskmaster
 				}
 			}
 
-			//await Task.Delay(0).ConfigureAwait(false);
-
-			Task.Factory.StartNew(NewInstanceBatchProcessing, TaskCreationOptions.PreferFairness);
+			Task.Run(new Action(() => { NewInstanceBatchProcessing(); }));
 		}
 
-		async Task NewInstanceBatchProcessing()
+		void NewInstanceBatchProcessing()
 		{
 			//await Task.Delay(0).ConfigureAwait(false);
 
@@ -1385,7 +1388,7 @@ namespace Taskmaster
 
 				var info = new ProcessEx() { Process = null, Name = name, Path = path, Id = pid };
 
-				NewInstanceTriagePhaseTwo(info).ConfigureAwait(false);
+				NewInstanceTriagePhaseTwo(info);
 			}
 			finally
 			{
@@ -1425,17 +1428,7 @@ namespace Taskmaster
 
 			if (Taskmaster.Trace) Log.Verbose("Caught: {ProcessName} (#{ProcessID}) at: {Path}", info.Name, info.Id, info.Path);
 
-			var start = DateTime.MinValue;
-			try
-			{
-				start = info.Process.StartTime;
-			}
-			catch { } // NOP, we don't care 
-			finally
-			{
-				if (start == DateTime.MinValue)
-					start = DateTime.Now;
-			}
+			// info.Process.StartTime; // Only present if we started it
 
 			if (BatchProcessing)
 			{
@@ -1470,14 +1463,14 @@ namespace Taskmaster
 			}
 		}
 
-		async void RescanOnTimerTick(object state)
+		void RescanOnTimerTick(object state)
 		{
-			Task.Factory.StartNew(RescanOnTimer, TaskCreationOptions.LongRunning);
+			Task.Run(RescanOnTimer);
 		}
 
 		async Task RescanOnTimer()
 		{
-			//await Task.Delay(0).ConfigureAwait(false); // async
+			await Task.Delay(0).ConfigureAwait(false); // async
 
 			try
 			{

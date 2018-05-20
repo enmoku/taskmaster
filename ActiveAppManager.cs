@@ -266,7 +266,7 @@ namespace Taskmaster
 					activewindowev.Process = proc;
 					activewindowev.Executable = proc.ProcessName;
 				}
-				catch { } // NOP
+				catch (Exception ex) { Logging.Stacktrace(ex); } // NOP
 
 				if (Taskmaster.DebugForeground && Taskmaster.ShowInaction)
 					Log.Debug("Active Window (#{Pid}): {Title}", activewindowev.Id, activewindowev.Title);

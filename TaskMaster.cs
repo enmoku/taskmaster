@@ -123,7 +123,7 @@ namespace Taskmaster
 			}
 		}
 
-		public static async void ShowMainWindow()
+		public static void ShowMainWindow()
 		{
 			//await Task.Delay(0);
 
@@ -323,6 +323,11 @@ namespace Taskmaster
 				powermanager.SetupEventHook();
 			}
 
+			if (GlobalHotkeys)
+			{
+				trayaccess.RegisterGlobalHotkeys();
+			}
+
 			// UI
 
 			if (ShowOnStart && !RunOnce)
@@ -360,7 +365,7 @@ namespace Taskmaster
 
 			if (Taskmaster.Trace)
 				Console.WriteLine("Displaying Tray Icon");
-			trayaccess?.Refresh();
+			trayaccess?.RefreshVisibility();
 		}
 
 		public static bool ShowProcessAdjusts { get; set; } = true;
@@ -435,6 +440,7 @@ namespace Taskmaster
 		public static bool RequestExitConfirm = true;
 		public static bool AutoOpenMenus = true;
 		public static bool ShowInTaskbar = false;
+		public static bool GlobalHotkeys = false;
 		public static bool ImmediateSave = true;
 
 		static string coreconfig = "Core.ini";
@@ -501,6 +507,8 @@ namespace Taskmaster
 			AutoOpenMenus = qol.GetSetDefault("Auto-open menus", true, out modified).BoolValue;
 			dirtyconfig |= modified;
 			ShowInTaskbar = qol.GetSetDefault("Show in taskbar", true, out modified).BoolValue;
+			dirtyconfig |= modified;
+			GlobalHotkeys = qol.GetSetDefault("Register global hotkeys", false, out modified).BoolValue;
 			dirtyconfig |= modified;
 
 			var logsec = cfg["Logging"];
@@ -1058,6 +1066,7 @@ namespace Taskmaster
 			}
 		}
 
+		// Useful for figuring out multi-threading related problems
 		// From StarOverflow: https://stackoverflow.com/q/22579206
 		[Conditional("DEBUG")]
 		public static void ThreadIdentity(string message = "")

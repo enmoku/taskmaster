@@ -109,5 +109,7 @@ namespace Taskmaster
 		/// Time since, because (now - since) just confuses me.
 		/// </summary>
 		public static TimeSpan TimeSince(this DateTime now, DateTime since) => (now - since);
+
+		public static TimeSpan TimeTo(this DateTime now, DateTime to) => (to - now);
 	}
 }

@@ -518,7 +518,7 @@ namespace Taskmaster
 				var rv = NativeMethods.SetPriorityClass(process.Handle, (uint)priority);
 				return rv;
 			}
-			catch { } // NOP, don't care
+			catch (Exception ex) { Logging.Stacktrace(ex); } // NOP, don't care
 			return false;
 		}
 
@@ -628,7 +628,7 @@ namespace Taskmaster
 				oldAffinity = info.Process.ProcessorAffinity;
 				oldPriority = info.Process.PriorityClass;
 			}
-			catch { } // NOP, don't care
+			catch (Exception ex) { Logging.Stacktrace(ex); } // NOP, don't care
 			IntPtr newAffinity = Affinity.GetValueOrDefault();
 
 			var newPriority = oldPriority;
@@ -642,6 +642,7 @@ namespace Taskmaster
 
 					if (!PausedIds.Contains(info.Id))
 						PausedIds.Add(info.Id);
+
 					// NOP
 				}
 				else if (Priority.HasValue)
@@ -832,7 +833,7 @@ namespace Taskmaster
 										FriendlyName, info.Name, info.Id, Priority.ToString(), newPriority.ToString());
 						}
 					}
-					catch { }// NOP, don't caree
+					catch (Exception ex) { Logging.Stacktrace(ex); }// NOP, don't caree
 				}
 
 				LastTouch = DateTime.Now;
@@ -893,7 +894,7 @@ namespace Taskmaster
 
 			if (Recheck > 0 && recheck == false)
 			{
-				Task.Factory.StartNew(() => TouchReapply(info), TaskCreationOptions.PreferFairness);
+				Task.Run(new Action(() => { TouchReapply(info); }));
 			}
 
 			return; // return rv;
@@ -957,7 +958,7 @@ namespace Taskmaster
 					ResizeWaitList.Add(info.Id);
 
 					System.Threading.ManualResetEvent re = new System.Threading.ManualResetEvent(false);
-					Task.Factory.StartNew(() =>
+					Task.Run(new Action(() =>
 					{
 						if (Taskmaster.DebugResize) Log.Debug("<Resize> Starting monitoring {Exe} (#{Pid})", info.Name, info.Id);
 						try
@@ -987,7 +988,7 @@ namespace Taskmaster
 							Logging.Stacktrace(ex);
 						}
 						if (Taskmaster.DebugResize) Log.Debug("<Resize> Stopping monitoring {Exe} (#{Pid})", info.Name, info.Id);
-					}, TaskCreationOptions.LongRunning);
+					}));
 
 					info.Process.EnableRaisingEvents = true;
 					info.Process.Exited += (s, ev) =>
