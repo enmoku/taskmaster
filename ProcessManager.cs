@@ -126,7 +126,6 @@ namespace Taskmaster
 		{
 			lock (watchlist_lock)
 				return watchlist.ToArray();
-
 		}
 
 		// TODO: Need an ID mapping
@@ -194,10 +193,7 @@ namespace Taskmaster
 			ProcessDetectedEvent += FreeMemoryTick;
 		}
 
-		void UnregisterFreeMemoryTick(object sender, EventArgs ev)
-		{
-			ProcessDetectedEvent -= FreeMemoryTick;
-		}
+		void UnregisterFreeMemoryTick(object sender, EventArgs ev) => ProcessDetectedEvent -= FreeMemoryTick;
 
 		string freememoryignore = null;
 		void FreeMemoryTick(object sender, ProcessEx info)
@@ -331,73 +327,71 @@ namespace Taskmaster
 
 			//await Task.Delay(0).ConfigureAwait(false);
 
-			lock (scaninprogress_lock)
+			try
 			{
-				if (Taskmaster.DebugFullScan) Log.Debug("<Process> Full Scan: Start");
-
-				ScanEverythingStartEvent?.Invoke(this, null);
-
-				//Taskmaster.ThreadIdentity("ScanEverything.Begin");
-
-				int count = 0;
-				using (var m = SelfAwareness.Mind(DateTime.Now.AddSeconds(5)))
+				lock (scaninprogress_lock)
 				{
-					try
+					if (Taskmaster.DebugFullScan) Log.Debug("<Process> Full Scan: Start");
+
+					ScanEverythingStartEvent?.Invoke(this, null);
+
+					//Taskmaster.ThreadIdentity("ScanEverything.Begin");
+
+					int count = 0;
+					using (var m = SelfAwareness.Mind(DateTime.Now.AddSeconds(5)))
 					{
-						var procs = Process.GetProcesses();
-						count = procs.Length - 2; // -2 for Idle&System
-
-						SignalProcessHandled(count); // scan start
-
-						var i = 0;
-						foreach (var process in procs)
+						try
 						{
-							++i;
-							try
+							var procs = Process.GetProcesses();
+							count = procs.Length - 2; // -2 for Idle&System
+
+							SignalProcessHandled(count); // scan start
+
+							var i = 0;
+							foreach (var process in procs)
 							{
-								var name = process.ProcessName;
-								var pid = process.Id;
+								++i;
+								try
+								{
+									var name = process.ProcessName;
+									var pid = process.Id;
 
-								if (IgnoreProcessID(pid) || IgnoreProcessName(name))
-									continue;
+									if (IgnoreProcessID(pid) || IgnoreProcessName(name))
+										continue;
 
-								if (Taskmaster.DebugFullScan)
-									Log.Verbose("<Process> Checking [{Iter}/{Count}] {Proc} (#{Pid})",
-										i, count, name, pid);
+									if (Taskmaster.DebugFullScan)
+										Log.Verbose("<Process> Checking [{Iter}/{Count}] {Proc} (#{Pid})",
+											i, count, name, pid);
 
-								ProcessDetectedEvent?.Invoke(this, new ProcessEx() { Process = process, Id = pid, Name = name, Path = null });
-							}
-							catch (Exception ex)
-							{
-								Logging.Stacktrace(ex);
+									ProcessDetectedEvent?.Invoke(this, new ProcessEx() { Process = process, Id = pid, Name = name, Path = null });
+								}
+								catch (Exception ex)
+								{
+									Logging.Stacktrace(ex);
+								}
 							}
 						}
+						catch (Exception ex)
+						{
+							Logging.Stacktrace(ex);
+						}
 					}
-					catch (Exception ex)
-					{
-						Logging.Stacktrace(ex);
-					}
+
+					SignalProcessHandled(-count); // scan done
+
+					if (Taskmaster.DebugFullScan) Log.Debug("<Process> Full Scan: Complete");
+
+					//Taskmaster.ThreadIdentity("ScanEverything.End");
+
+					ScanEverythingEndEvent?.Invoke(this, null);
 				}
 
-				SignalProcessHandled(-count); // scan done
-
-				if (Taskmaster.DebugFullScan) Log.Debug("<Process> Full Scan: Complete");
-
 				//Taskmaster.ThreadIdentity("ScanEverything.End");
-
-				ScanEverythingEndEvent?.Invoke(this, null);
 			}
-
-			//Taskmaster.ThreadIdentity("ScanEverything.End");
-		}
-
-		public void ProcessTriage(object sender, ProcessEx info)
-		{
-			//await Task.Delay(0).ConfigureAwait(false);
-
-			//Taskmaster.ThreadIdentity("ProcessTriage");
-
-			CheckProcess(info, schedule_next: false);
+			catch (Exception ex)
+			{
+				Logging.Stacktrace(ex);
+			}
 		}
 
 		static int BatchDelay = 2500;
@@ -720,7 +714,7 @@ namespace Taskmaster
 					prc.SaveConfig(appcfg, section);
 				}
 
-				addController(prc);
+				AddController(prc);
 
 				// cnt.Children &= ControlChildren;
 
@@ -735,7 +729,7 @@ namespace Taskmaster
 			Log.Information("<Process> Hybrid watchlist: {Items} items", WatchlistWithHybrid);
 		}
 
-		public void addController(ProcessController prc)
+		public void AddController(ProcessController prc)
 		{
 			if (ValidateController(prc))
 			{
@@ -794,9 +788,7 @@ namespace Taskmaster
 		public void PowerBehaviourEvent(object sender, PowerManager.PowerBehaviour behaviour)
 		{
 			if (behaviour == PowerManager.PowerBehaviour.Manual)
-			{
 				CancelPowerWait();
-			}
 		}
 
 		public void CancelPowerWait()
@@ -843,38 +835,36 @@ namespace Taskmaster
 		public bool WaitForExit(ProcessEx info)
 		{
 			var rv = false;
-			try
+			lock (waitforexit_lock)
 			{
-				lock (waitforexit_lock)
+				if (!WaitForExitList.ContainsKey(info.Id))
 				{
-					if (!WaitForExitList.ContainsKey(info.Id))
-					{
-						WaitForExitList.Add(info.Id, info);
+					WaitForExitList.Add(info.Id, info);
 
+					try
+					{
 						info.Process.EnableRaisingEvents = true;
 						info.Process.Exited += (s, e) => { WaitForExitTriggered(info); };
 						rv = true;
 
 						onWaitForExitEvent?.Invoke(this, new ProcessEventArgs() { Control = null, Info = info, State = ProcessEventArgs.ProcessState.Starting });
 					}
+					catch (InvalidOperationException)
+					{
+						// already exited
+					}
+					catch (Exception ex)
+					{
+						Logging.Stacktrace(ex);
+					}
+
 				}
-			}
-			catch (InvalidOperationException)
-			{
-				// already exited
-			}
-			catch (Exception ex)
-			{
-				Logging.Stacktrace(ex);
 			}
 
 			return rv;
 		}
 
-		public ProcessEx[] getExitWaitList()
-		{
-			return WaitForExitList.Values.ToArray(); // copy is good here
-		}
+		public ProcessEx[] getExitWaitList() => WaitForExitList.Values.ToArray(); // copy is good here
 
 		ProcessController PreviousForegroundController = null;
 		ProcessEx PreviousForegroundInfo;
@@ -1066,15 +1056,9 @@ namespace Taskmaster
 		const int LowestInvalidPid = 4;
 		bool IgnoreProcessID(int pid) => (pid <= LowestInvalidPid || ignorePids.Contains(pid));
 
-		public static bool IgnoreProcessName(string name)
-		{
-			return IgnoreList.Contains(name, StringComparer.InvariantCultureIgnoreCase);
-		}
+		public static bool IgnoreProcessName(string name) => IgnoreList.Contains(name, StringComparer.InvariantCultureIgnoreCase);
 
-		public static bool ProtectedProcessName(string name)
-		{
-			return ProtectList.Contains(name, StringComparer.InvariantCultureIgnoreCase);
-		}
+		public static bool ProtectedProcessName(string name) => ProtectList.Contains(name, StringComparer.InvariantCultureIgnoreCase);
 		// %SYSTEMROOT%
 
 		/*
@@ -1192,7 +1176,7 @@ namespace Taskmaster
 		}
 
 		// TODO: This should probably be pushed into ProcessController somehow.
-		async void CheckProcess(ProcessEx info, bool schedule_next = true)
+		async void ProcessTriage(object sender, ProcessEx info)
 		{
 			Debug.Assert(!string.IsNullOrEmpty(info.Name), "CheckProcess received null process name.");
 			Debug.Assert(info != null);
@@ -1236,7 +1220,7 @@ namespace Taskmaster
 
 					try
 					{
-						prc.Touch(info, schedule_next);
+						prc.Touch(info, schedule_next:false);
 						info.Handled = true;
 					}
 					catch (Exception ex)
@@ -1300,20 +1284,30 @@ namespace Taskmaster
 
 			List<ProcessEx> list = new List<ProcessEx>();
 
-			lock (batchprocessing_lock)
+			try
 			{
-				if (ProcessBatch.Count == 0) return;
+				lock (batchprocessing_lock)
+				{
+					if (ProcessBatch.Count == 0) return;
 
-				BatchProcessingTimer.Stop();
+					BatchProcessingTimer.Stop();
 
-				processListLockRestart = 0;
-				Utility.Swap(ref list, ref ProcessBatch);
+					processListLockRestart = 0;
+					Utility.Swap(ref list, ref ProcessBatch);
+				}
+
+				foreach (var info in list)
+					ProcessDetectedEvent?.Invoke(this, info);
+
 			}
-
-			foreach (var info in list)
-				ProcessDetectedEvent?.Invoke(this, info);
-
-			SignalProcessHandled(-(list.Count)); // batch done
+			catch (Exception ex)
+			{
+				Logging.Stacktrace(ex);
+			}
+			finally
+			{
+				SignalProcessHandled(-(list.Count)); // batch done
+			}
 		}
 
 		public static int Handling { get; private set; }
@@ -1463,10 +1457,7 @@ namespace Taskmaster
 			}
 		}
 
-		void RescanOnTimerTick(object state)
-		{
-			Task.Run(RescanOnTimer);
-		}
+		void RescanOnTimerTick(object state) => Task.Run(RescanOnTimer);
 
 		async Task RescanOnTimer()
 		{
@@ -1604,6 +1595,8 @@ namespace Taskmaster
 
 		const string watchfile = "Watchlist.ini";
 
+
+		int cleanup_lock = 0;
 		/// <summary>
 		/// Cleanup.
 		/// </summary>
@@ -1612,48 +1605,59 @@ namespace Taskmaster
 		/// </remarks>
 		public async Task Cleanup()
 		{
-			//await Task.Delay(0).ConfigureAwait(false);
+			if (!Atomic.Lock(ref cleanup_lock)) return;
 
-			Stack<ProcessEx> triggerList;
-			lock (waitforexit_lock)
+			await Task.Delay(0).ConfigureAwait(false);
+
+			try
 			{
-				var items = WaitForExitList.Values;
-				foreach (var info in items)
+				Stack<ProcessEx> triggerList;
+				lock (waitforexit_lock)
 				{
-					try
+					var items = WaitForExitList.Values;
+					foreach (var info in items)
 					{
-						info.Process.Refresh();
-						info.Process.WaitForExit(20);
-					}
-					catch { }
-				}
-
-				System.Threading.Thread.Sleep(1000); // Meh
-
-				triggerList = new Stack<ProcessEx>();
-				foreach (var info in items)
-				{
-					try
-					{
-						info.Process.Refresh();
-						info.Process.WaitForExit(20);
-						if (info.Process.HasExited)
+						try
 						{
-							triggerList.Push(info);
+							info.Process.Refresh();
+							info.Process.WaitForExit(20);
+						}
+						catch { } // ignore
+					}
+
+					System.Threading.Thread.Sleep(1000); // Meh
+
+					triggerList = new Stack<ProcessEx>();
+					foreach (var info in items)
+					{
+						try
+						{
+							info.Process.Refresh();
+							info.Process.WaitForExit(20);
+							if (info.Process.HasExited)
+								triggerList.Push(info);
+						}
+						catch
+						{
+							//Logging.Stacktrace(ex);
+							triggerList.Push(info);// potentially unwanted behaviour, but it's better this way
 						}
 					}
-					catch (Exception ex)
-					{
-						Logging.Stacktrace(ex);
-						triggerList.Push(info);// potentially unwanted behaviour, but it's better this way
-					}
+				}
+
+				if (triggerList != null)
+				{
+					while (triggerList.Count > 0)
+						WaitForExitTriggered(triggerList.Pop()); // causes removal so can't be done in above loop
 				}
 			}
-
-			if (triggerList != null)
+			catch (Exception ex)
 			{
-				while (triggerList.Count > 0)
-					WaitForExitTriggered(triggerList.Pop()); // causes removal so can't be done in above loop
+				Logging.Stacktrace(ex);
+			}
+			finally
+			{
+				Atomic.Unlock(ref cleanup_lock);
 			}
 		}
 

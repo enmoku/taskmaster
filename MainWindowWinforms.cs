@@ -876,7 +876,14 @@ namespace Taskmaster
 						comps.ShowDialog();
 						if (comps.DialogResult == DialogResult.OK)
 						{
-							MessageBox.Show("TM needs to be restarted for changes to take effect.", "Restart needed", MessageBoxButtons.OK, MessageBoxIcon.Information, MessageBoxDefaultButton.Button1);
+							var rv = MessageBox.Show("TM needs to be restarted for changes to take effect.\n\nCancel to do so manually later.",
+								"Restart needed", MessageBoxButtons.OKCancel, MessageBoxIcon.Information, MessageBoxDefaultButton.Button1);
+
+							if (rv == DialogResult.OK)
+							{
+								Taskmaster.Restart = true;
+								Taskmaster.UnifiedExit();
+							}
 						}
 					}
 				}
@@ -1976,7 +1983,7 @@ namespace Taskmaster
 				if (rv == DialogResult.OK)
 				{
 					var prc = ew.Controller;
-					processmanager.addController(prc);
+					processmanager.AddController(prc);
 					AddToWatchlistList(prc);
 					WatchlistColor();
 				}

@@ -452,7 +452,6 @@ namespace Taskmaster
 
 			if (cfg.TryGet("Core")?.TryGet("Hello")?.RawValue != "Hi")
 			{
-				Log.Information("Hello");
 				cfg["Core"]["Hello"].SetValue("Hi");
 				cfg["Core"]["Hello"].PreComment = "Heya";
 				Config.MarkDirtyINI(cfg);
@@ -805,28 +804,32 @@ namespace Taskmaster
 
 		public static async void Cleanup(object sender, EventArgs ev)
 		{
-			if (Taskmaster.Trace)
-				Log.Verbose("Running periodic cleanup");
+			if (Taskmaster.Trace) Log.Verbose("Running periodic cleanup");
 
-			// TODO: This starts getting weird if cleanup interval is smaller than total delay of testing all items.
-			// (15*60) / 2 = item limit, and -1 or -2 for safety margin. Unlikely, but should probably be covered anyway.
-
-			var time = Stopwatch.StartNew();
-
-			if (processmanager != null)
+			try
 			{
-				using (var m = SelfAwareness.Mind(DateTime.Now.AddSeconds(30)))
-					await processmanager.Cleanup().ConfigureAwait(false);
+				// TODO: This starts getting weird if cleanup interval is smaller than total delay of testing all items.
+				// (15*60) / 2 = item limit, and -1 or -2 for safety margin. Unlikely, but should probably be covered anyway.
 
+				var time = Stopwatch.StartNew();
+
+				if (processmanager != null)
+				{
+					using (var m = SelfAwareness.Mind(DateTime.Now.AddSeconds(30)))
+						await processmanager.Cleanup().ConfigureAwait(false);
+				}
+
+				time.Stop();
+
+				Statistics.Cleanups++;
+				Statistics.CleanupTime += time.Elapsed.TotalSeconds;
+
+				if (Taskmaster.Trace) Log.Verbose("Cleanup took: {Time}s", string.Format("{0:N2}", time.Elapsed.TotalSeconds));
 			}
-
-			time.Stop();
-
-			Statistics.Cleanups++;
-			Statistics.CleanupTime += time.Elapsed.TotalSeconds;
-
-			if (Taskmaster.Trace)
-				Log.Verbose("Cleanup took: {Time}s", string.Format("{0:N2}", time.Elapsed.TotalSeconds));
+			catch (Exception ex)
+			{
+				Logging.Stacktrace(ex);
+			}
 		}
 
 		public static System.Timers.Timer CleanupTimer = null;
@@ -1123,13 +1126,13 @@ namespace Taskmaster
 		[STAThread] // supposedly needed to avoid shit happening with the WinForms GUI and other GUI toolkits
 		static public int Main(string[] args)
 		{
-			UpgradeAppSettings();
-
-			Config = new ConfigManager(datapath);
-
 			const long fakemempressure = 200_000_000;
 
-			{ // internal scope
+			try
+			{
+				UpgradeAppSettings();
+
+				Config = new ConfigManager(datapath);
 
 				LicenseBoiler();
 
@@ -1155,31 +1158,46 @@ namespace Taskmaster
 				if (!SingletonLock())
 					return -1;
 
+				/*
 				var builddate = Convert.ToDateTime(Properties.Resources.BuildDate);
 
 				Log.Information("Taskmaster! (#{ProcessID}) {Admin}– Version: {Version} [{Date} {Time}] – START!",
 								Process.GetCurrentProcess().Id, (IsAdministrator() ? "[ADMIN] " : ""),
 								System.Reflection.Assembly.GetExecutingAssembly().GetName().Version,
 								builddate.ToShortDateString(), builddate.ToShortTimeString());
+				*/
 
-				//PreallocLastLog();
+				Log.Information("Taskmaster! (#{ProcessID}) {Admin}– Version: {Version} – START!",
+					Process.GetCurrentProcess().Id, (IsAdministrator() ? "[ADMIN] " : ""),
+					System.Reflection.Assembly.GetExecutingAssembly().GetName().Version);
 
-				try
-				{
-					PreSetup();
-					LoadCoreConfig();
-					SetupComponents();
-				}
-				catch (Exception ex) // this seems to happen only when Avast cybersecurity is scanning TM
-				{
-					Log.Fatal("Exiting due to initialization failure.");
-					Logging.Stacktrace(ex);
-					Log.CloseAndFlush();
-					singleton.Dispose();
-					singleton = null;
-					return 1;
-				}
+			}
+			catch (Exception ex)
+			{
+				Logging.Stacktrace(ex);
+				throw;
+			}
 
+			//PreallocLastLog();
+
+			try
+			{
+				PreSetup();
+				LoadCoreConfig();
+				SetupComponents();
+			}
+			catch (Exception ex) // this seems to happen only when Avast cybersecurity is scanning TM
+			{
+				Log.Fatal("Exiting due to initialization failure.");
+				Logging.Stacktrace(ex);
+				Log.CloseAndFlush();
+				singleton.Dispose();
+				singleton = null;
+				return 1;
+			}
+
+			try
+			{
 				// IS THIS OF ANY USE?
 				// GC.Collect(GC.MaxGeneration, GCCollectionMode.Forced, true, true);
 				// GC.WaitForPendingFinalizers();
@@ -1201,6 +1219,11 @@ namespace Taskmaster
 				foreach (var name in System.Reflection.Assembly.GetExecutingAssembly().GetManifestResourceNames())
 					Console.WriteLine(" - " + name);
 				*/
+			}
+			catch (Exception ex)
+			{
+				Logging.Stacktrace(ex);
+				throw;
 			}
 
 			try

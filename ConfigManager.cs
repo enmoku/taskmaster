@@ -70,10 +70,16 @@ namespace Taskmaster
 			}
 
 			string targetfile = System.IO.Path.Combine(datapath, configfile);
+
 			try
 			{
 				// backup, copy in case following write fails
 				System.IO.File.Copy(targetfile, targetfile + ".bak", overwrite: true);
+			}
+			catch (System.IO.FileNotFoundException) { } // NOP
+
+			try
+			{
 				config.SaveToFile(targetfile);
 			}
 			catch
