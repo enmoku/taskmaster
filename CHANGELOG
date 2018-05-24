@@ -1,6 +1,9 @@
 ﻿Comprehensive changes can be found in Git change history:
 	https://github.com/mkahvi/taskmaster/commits/master
 
+### 2018-05-23
+	Added: Extra path cache/finding statistics on exit.
+	Fixed: A fatal error related to failure to extract path from process module.
 ### 2018-05-21
 	Changed: Dialog from component config now allows instant restarting of TM if so desired.
 	Fixed: Problems with new unconfigured TM setups.

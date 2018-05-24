@@ -45,5 +45,10 @@ namespace Taskmaster
 		public static long TouchCount { get; set; } = 0;
 
 		public static int FatalErrors { get; set; } = 0;
+
+		public static long PathFindAttempts { get; set; } = 0;
+		public static long PathFindViaModule { get; set; } = 0;
+		public static long PathFindViaC { get; set; } = 0;
+		public static long PathFindViaWMI { get; set; } = 0;
 	}
 }

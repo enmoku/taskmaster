@@ -74,21 +74,16 @@ namespace Taskmaster
 			}
 
 			// Try harder
-			if (string.IsNullOrEmpty(info.Path))
-			{
-				GetPath(info);
+			if (string.IsNullOrEmpty(info.Path) && !GetPath(info)) return false;
 
-				if (string.IsNullOrEmpty(info.Path)) return false;
-			}
-
+			// Add to path cache
 			if (pathCache != null && !cacheGet)
 			{
 				pathCache.Add(info.Id, info.Name, info.Path);
 				Statistics.PathCacheMisses++; // adding new entry is as bad a miss
 
 				Statistics.PathCacheCurrent = pathCache.Count;
-				if (Statistics.PathCacheCurrent > Statistics.PathCachePeak)
-					Statistics.PathCachePeak = Statistics.PathCacheCurrent;
+				if (Statistics.PathCacheCurrent > Statistics.PathCachePeak) Statistics.PathCachePeak = Statistics.PathCacheCurrent;
 				// Log.Debug("PATH CACHE ADD: {Path}", info.Path);
 			}
 
@@ -99,9 +94,16 @@ namespace Taskmaster
 		{
 			System.Diagnostics.Debug.Assert(string.IsNullOrEmpty(info.Path), "GetPath called even though path known.");
 
+			Statistics.PathFindAttempts++;
+
 			try
 			{
 				info.Path = info.Process.MainModule?.FileName; // this will cause win32exception of various types, we don't Really care which error it is
+				Statistics.PathFindViaModule++;
+			}
+			catch (System.ComponentModel.Win32Exception)
+			{
+				// Access denied problems of varying sorts
 			}
 			catch (Exception ex)
 			{
@@ -117,7 +119,11 @@ namespace Taskmaster
 				{
 					info.Path = GetProcessPathViaWMI(info.Id);
 					if (string.IsNullOrEmpty(info.Path)) return false;
+					Statistics.PathFindViaWMI++;
 				}
+				else
+					Statistics.PathFindViaC++;
+
 			}
 
 			return true;

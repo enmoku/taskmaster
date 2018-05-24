@@ -1291,6 +1291,10 @@ namespace Taskmaster
 
 			Log.Information("WMI queries: {QueryTime}s [{QueryCount}]", string.Format("{0:N2}", Statistics.WMIquerytime), Statistics.WMIqueries);
 			Log.Information("Cleanups: {CleanupTime}s [{CleanupCount}]", string.Format("{0:N2}", Statistics.CleanupTime), Statistics.Cleanups);
+			Log.Information("Path cache: {Hits} hits, {Misses} misses",
+				Statistics.PathCacheHits, Statistics.PathCacheMisses);
+			Log.Information("Path finding: {Total} total attempts; {Mod} via module info, {Ccall} via C call, {WMI} via WMI",
+				Statistics.PathFindAttempts, Statistics.PathFindViaModule, Statistics.PathFindViaC, Statistics.PathFindViaWMI);
 
 			Config?.Save();
 			Config?.Dispose();
