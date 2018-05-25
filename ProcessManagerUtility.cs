@@ -98,8 +98,12 @@ namespace Taskmaster
 
 			try
 			{
-				info.Path = info.Process.MainModule?.FileName; // this will cause win32exception of various types, we don't Really care which error it is
+				info.Path = info.Process.MainModule?.FileName ?? null; // this will cause win32exception of various types, we don't Really care which error it is
 				Statistics.PathFindViaModule++;
+			}
+			catch (NullReferenceException) // why tho?
+			{
+				info.Path = string.Empty;
 			}
 			catch (System.ComponentModel.Win32Exception)
 			{
@@ -199,6 +203,45 @@ namespace Taskmaster
 			Statistics.WMIquerytime += wmitime.Elapsed.TotalSeconds;
 
 			return path;
+		}
+
+		public static int ApplyAffinityStrategy(int source, int target, ProcessAffinityStrategy strategy)
+		{
+			int newAffinityMask = target;
+			// Don't increase the number of cores
+			if (strategy == ProcessAffinityStrategy.Limit)
+			{
+				int excesscores = Bit.Count(target) - Bit.Count(source);
+				if (excesscores > 0)
+				{
+					Console.WriteLine("Mask: " + Convert.ToString(newAffinityMask, 2));
+					for (int i = 0; i < ProcessManager.CPUCount; i++)
+					{
+						if (Bit.IsSet(newAffinityMask, i))
+						{
+							newAffinityMask = Bit.Unset(newAffinityMask, i);
+							Console.WriteLine("Mask: " + Convert.ToString(newAffinityMask, 2));
+							if (--excesscores <= 0) break;
+						}
+					}
+					Console.WriteLine("Mask: " + Convert.ToString(newAffinityMask, 2));
+				}
+			}
+			else if (strategy == ProcessAffinityStrategy.Scatter)
+			{
+				// NOT IMPLEMENTED
+				/*
+				for (; ScatterOffset < ProcessManager.CPUCount; ScatterOffset++)
+				{
+					if (Bit.IsSet(newAffinityMask, ScatterOffset))
+					{
+
+					}
+				}
+				*/
+			}
+
+			return newAffinityMask;
 		}
 	}
 }

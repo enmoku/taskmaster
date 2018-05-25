@@ -75,7 +75,7 @@ namespace Taskmaster
 			}
 		}
 
-		public string Path { get; set; } = null;
+		public string Path { get; set; } = string.Empty;
 
 		public string[] IgnoreList { get; set; } = null;
 
@@ -150,7 +150,7 @@ namespace Taskmaster
 		/// </summary>
 		public string ExecutableFriendlyName { get; set; } = null;
 
-		public ProcessController(string name, ProcessPriorityClass? priority = null, int affinity = -1, string path = null)
+		public ProcessController(string name, ProcessPriorityClass? priority = null, int affinity = -1)
 		{
 			FriendlyName = name;
 			// Executable = executable;
@@ -160,22 +160,6 @@ namespace Taskmaster
 			{
 				Affinity = new IntPtr(affinity);
 				AffinityStrategy = ProcessAffinityStrategy.Limit;
-			}
-
-			if (!string.IsNullOrEmpty(path))
-			{
-				Path = path;
-				if (!System.IO.Directory.Exists(Path))
-					Log.Warning("{FriendlyName} configured path {Path} does not exist!", FriendlyName, path);
-
-				if (!string.IsNullOrEmpty(Path))
-				{
-					Log.Information("[{FriendlyName}] Watched in: {Path} [Priority: {Priority}, Mask: {Mask}]",
-									FriendlyName,
-									Path,
-									(Priority.HasValue ? Priority.Value.ToString() : "Any"),
-									(Affinity.HasValue ? Affinity.Value.ToInt32().ToString() : "Any"));
-				}
 			}
 		}
 
@@ -712,36 +696,11 @@ namespace Taskmaster
 						// int bitsnew = Bit.Count(newAffinityMask);
 						// TODO: Somehow shift bits old to new if there's free spots
 
-						// Don't increase the number of cores
-						if (AffinityStrategy == ProcessAffinityStrategy.Limit)
+						int modifiedAffinity = ProcessManagerUtility.ApplyAffinityStrategy(oldAffinityMask, newAffinityMask, AffinityStrategy);
+						if (modifiedAffinity != newAffinityMask)
 						{
-							int excesscores = Bit.Count(newAffinityMask) - Bit.Count(oldAffinityMask);
-							if (excesscores > 0)
-							{
-								for (int i = 0; i < ProcessManager.CPUCount; i++)
-								{
-									if (Bit.IsSet(newAffinityMask, i))
-									{
-										newAffinityMask = Bit.Unset(newAffinityMask, i);
-										if (--excesscores <= 0) break;
-									}
-								}
-
-								newAffinity = new IntPtr(newAffinityMask);
-							}
-						}
-						else if (AffinityStrategy == ProcessAffinityStrategy.Scatter)
-						{
-							// NOT IMPLEMENTED
-							/*
-							for (; ScatterOffset < ProcessManager.CPUCount; ScatterOffset++)
-							{
-								if (Bit.IsSet(newAffinityMask, ScatterOffset))
-								{
-
-								}
-							}
-							*/
+							newAffinityMask = modifiedAffinity;
+							newAffinity = new IntPtr(newAffinityMask);
 						}
 
 						if (oldAffinityMask != newAffinityMask)
