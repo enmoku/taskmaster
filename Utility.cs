@@ -133,11 +133,11 @@ namespace Taskmaster
 
 	public static class Bit
 	{
-		public static int Set(int dec, int nth) => Or(dec, (1 << nth));
+		public static int Set(int dec, int index) => Or(dec, (1 << index));
 
-		public static bool IsSet(int dec, int nth) => And(dec, (1 << nth)) != 0;
+		public static bool IsSet(int dec, int index) => And(dec, (1 << index)) != 0;
 
-		public static int Unset(int dec, int nth) => And(dec, ~nth);
+		public static int Unset(int dec, int index) => And(dec, ~(1 << index));
 
 		public static int Or(int dec1, int dec2) => dec1 | dec2;
 
