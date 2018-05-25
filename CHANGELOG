@@ -1,6 +1,9 @@
 ﻿Comprehensive changes can be found in Git change history:
 	https://github.com/mkahvi/taskmaster/commits/master
 
+### 2018-05-25
+	Fixed: NullReferenceException at line 101
+	Fixed: Default affinity strategy (limit) did not actually limit due to faults in bit flopping logics.
 ### 2018-05-23
 	Added: Extra path cache/finding statistics on exit.
 	Fixed: A fatal error related to failure to extract path from process module.
