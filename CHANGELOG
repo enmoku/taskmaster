@@ -1,6 +1,8 @@
 ﻿Comprehensive changes can be found in Git change history:
 	https://github.com/mkahvi/taskmaster/commits/master
 
+### 2018-05-26
+	Changed: Less spammy logging when internet connection is disrupted.
 ### 2018-05-25
 	Fixed: NullReferenceException at line 101
 	Fixed: Default affinity strategy (limit) did not actually limit due to faults in bit flopping logics.

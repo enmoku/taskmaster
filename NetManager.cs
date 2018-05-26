@@ -98,10 +98,6 @@ namespace Taskmaster
 
 			InterfaceInitialization();
 
-			LastChange.Enqueue(DateTime.MinValue);
-			LastChange.Enqueue(DateTime.MinValue);
-			LastChange.Enqueue(DateTime.MinValue);
-
 			UpdateInterfaces();
 
 			// Log.Debug("{IFACELIST} – count: {c}", CurrentInterfaceList, CurrentInterfaceList.Count);
@@ -299,6 +295,8 @@ namespace Taskmaster
 			}
 		}
 
+		bool Notified = false;
+
 		int checking_inet; // = 0;
 		async Task CheckInet(bool address_changed = false)
 		{
@@ -315,6 +313,7 @@ namespace Taskmaster
 				{
 					Dns.GetHostEntry(dnstestaddress); // FIXME: There should be some other method than DNS testing
 					InternetAvailable = true;
+					Notified = false;
 					// TODO: Don't rely on DNS?
 				}
 				catch (System.Net.Sockets.SocketException ex)
@@ -335,12 +334,20 @@ namespace Taskmaster
 						case System.Net.Sockets.SocketError.SocketError:
 						case System.Net.Sockets.SocketError.Interrupted:
 						case System.Net.Sockets.SocketError.Fault:
-							Log.Warning("<Network> Internet check interrupted. Potential hardware/driver issues.");
+							if (!Notified)
+							{
+								Log.Warning("<Network> Internet check interrupted. Potential hardware/driver issues.");
+								Notified = true;
+							}
 							break;
 						case System.Net.Sockets.SocketError.HostUnreachable:
 						case System.Net.Sockets.SocketError.HostNotFound:
 						case System.Net.Sockets.SocketError.HostDown:
-							Log.Warning("<Network> DNS test failed, test host unreachable. Test host may be down.");
+							if (!Notified)
+							{
+								Log.Warning("<Network> DNS test failed, test host unreachable. Test host may be down.");
+								Notified = true;
+							}
 							break;
 						case System.Net.Sockets.SocketError.NetworkDown:
 						case System.Net.Sockets.SocketError.NetworkReset:
@@ -384,6 +391,7 @@ namespace Taskmaster
 
 		void InterfaceInitialization()
 		{
+			bool ipv4 = false, ipv6 = false;
 			NetworkInterface[] adapters = NetworkInterface.GetAllNetworkInterfaces();
 			foreach (NetworkInterface n in adapters)
 			{
@@ -400,15 +408,19 @@ namespace Taskmaster
 						case System.Net.Sockets.AddressFamily.InterNetwork:
 							IPv4Address = ip;
 							IPv4Interface = n;
+							ipv4 = true;
 							// PublicInterfaceList.Add(n);
 							break;
 						case System.Net.Sockets.AddressFamily.InterNetworkV6:
 							IPv6Address = ip;
 							IPv6Interface = n;
+							ipv6 = true;
 							// PublicInterfaceList.Add(n);
 							break;
 					}
 				}
+
+				if (ipv4 && ipv6) break;
 			}
 		}
 
@@ -493,35 +505,41 @@ namespace Taskmaster
 
 		public List<NetDevice> GetInterfaces() => CurrentInterfaceList;
 
-		Queue<DateTime> LastChange = new Queue<DateTime>(3);
 		async void NetAddrChanged(object sender, EventArgs e)
 		{
 			var tmpnow = DateTime.Now;
-			var oldV6Address = IPv6Address;
-			var oldV4Address = IPv4Address;
 
-			LastChange.Dequeue();
-			LastChange.Enqueue(tmpnow);
-
+			bool AvailabilityChanged = InternetAvailable;
 			await CheckInet(address_changed: true).ConfigureAwait(false);
+			AvailabilityChanged = AvailabilityChanged != InternetAvailable;
 
 			if (InternetAvailable)
 			{
 				// CLEANUP: Console.WriteLine("DEBUG: AddrChange: " + oldV4Address + " -> " + IPv4Address);
 				// CLEANUP: Console.WriteLine("DEBUG: AddrChange: " + oldV6Address + " -> " + IPv6Address);
 
+				IPAddress oldV6Address = IPv6Address;
+				IPAddress oldV4Address = IPv4Address;
+
+				InterfaceInitialization(); // Update IPv4Address & IPv6Address
+
 				bool ipv4changed = false, ipv6changed = false;
 				ipv4changed = !oldV4Address.Equals(IPv4Address);
+
+				var sbs = new System.Text.StringBuilder();
+
+				if (AvailabilityChanged)
+				{
+					Log.Information("<Network> Internet connection restored.");
+					sbs.Append("Internet connection restored!").AppendLine();
+				}
 
 				if (ipv4changed)
 				{
 					var outstr4 = new System.Text.StringBuilder();
-					outstr4.Append("IPv4 address changed: ");
-					outstr4.Append(oldV4Address).Append(" -> ").Append(IPv4Address);
+					outstr4.Append("IPv4 address changed: ").Append(oldV4Address).Append(" -> ").Append(IPv4Address);
 					Log.Debug(outstr4.ToString());
-
-					Tray.Tooltip(2000, outstr4.ToString(), "Taskmaster", System.Windows.Forms.ToolTipIcon.Info);
-					// TODO: Make clicking on the tooltip copy new IP to clipboard?
+					sbs.Append(outstr4).AppendLine();
 				}
 
 				ipv6changed = !oldV6Address.Equals(IPv6Address);
@@ -529,18 +547,27 @@ namespace Taskmaster
 				if (ipv6changed)
 				{
 					var outstr6 = new System.Text.StringBuilder();
-					outstr6.Append("IPv6 address changed: ");
-					outstr6.Append(oldV6Address).Append(" -> ").Append(IPv6Address);
+					outstr6.Append("IPv6 address changed: ").Append(oldV6Address).Append(" -> ").Append(IPv6Address);
 					Log.Debug(outstr6.ToString());
-
-					Tray.Tooltip(2000, outstr6.ToString(), "Taskmaster", System.Windows.Forms.ToolTipIcon.Info);
+					sbs.Append(outstr6).AppendLine();
 				}
 
-				if (!ipv4changed && !ipv6changed && (LastChange.Peek() - DateTime.Now).Minutes < 5)
+				if (sbs.Length > 0)
+				{
+					Tray.Tooltip(4000, sbs.ToString(), "Taskmaster",
+						System.Windows.Forms.ToolTipIcon.Warning);
+
+					// TODO: Make clicking on the tooltip copy new IP to clipboard?
+				}
+			}
+			else
+			{
+				if (AvailabilityChanged)
 				{
 					Log.Warning("<Network> Unstable connectivity detected.");
 
-					Tray.Tooltip(2000, "Unstable internet connection detected!", "Taskmaster", System.Windows.Forms.ToolTipIcon.Warning);
+					Tray.Tooltip(2000, "Unstable internet connection detected!", "Taskmaster",
+						System.Windows.Forms.ToolTipIcon.Warning);
 				}
 			}
 
