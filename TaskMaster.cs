@@ -226,7 +226,6 @@ namespace Taskmaster
 
 				if (ComponentConfigurationDone == false)
 				{
-					// singleton.ReleaseMutex();
 					Log.CloseAndFlush();
 					throw new InitFailure("Component configuration cancelled");
 				}
@@ -832,120 +831,32 @@ namespace Taskmaster
 			}
 		}
 
-		public static System.Timers.Timer CleanupTimer = null;
+		static System.Timers.Timer CleanupTimer = null;
 
-		public static System.Threading.Mutex singleton = null;
+		static System.Threading.Mutex singleton = null;
 
-		public static bool SingletonLock()
+		static bool SingletonLock()
 		{
 			if (Taskmaster.Trace) Log.Verbose("Testing for single instance.");
 
-			var mutexgained = false;
+			// Singleton
+			bool mutexgained = false;
 			singleton = new System.Threading.Mutex(true, "088f7210-51b2-4e06-9bd4-93c27a973874.taskmaster", out mutexgained);
-			if (!mutexgained)
-			{
-				// already running, signal original process
-				System.Windows.Forms.MessageBox.Show("Already operational.", System.Windows.Forms.Application.ProductName + "!");
-				Log.Warning("Exiting (#{ProcessID}); already running.", System.Diagnostics.Process.GetCurrentProcess().Id);
-			}
 
 			return mutexgained;
 		}
 
 		static void Cleanup()
 		{
-			try
-			{
-				if (mainwindow != null)
-				{
-					if (!mainwindow.IsDisposed) mainwindow.Dispose();
-					mainwindow = null;
-				}
-			}
-			catch (Exception ex)
-			{
-				Logging.Stacktrace(ex);
-			}
-
-			try
-			{
-				processmanager?.Dispose();
-				processmanager = null;
-			}
-			catch (Exception ex)
-			{
-				Logging.Stacktrace(ex);
-			}
-
-			try
-			{
-				powermanager?.Dispose();
-				powermanager = null;
-			}
-			catch (Exception ex)
-			{
-				Logging.Stacktrace(ex);
-			}
-
-			try
-			{
-				micmonitor?.Dispose();
-				micmonitor = null;
-			}
-			catch (Exception ex)
-			{
-				Logging.Stacktrace(ex);
-			}
-
-			try
-			{
-				trayaccess?.Dispose();
-				trayaccess = null;
-			}
-			catch (Exception ex)
-			{
-				Logging.Stacktrace(ex);
-			}
-
-			try
-			{
-				netmonitor?.Dispose();
-				netmonitor = null;
-			}
-			catch (Exception ex)
-			{
-				Logging.Stacktrace(ex);
-			}
-
-			try
-			{
-				activeappmonitor?.Dispose();
-				activeappmonitor = null;
-			}
-			catch (Exception ex)
-			{
-				Logging.Stacktrace(ex);
-			}
-
-			try
-			{
-				healthmonitor?.Dispose();
-				healthmonitor = null;
-			}
-			catch (Exception ex)
-			{
-				Logging.Stacktrace(ex);
-			}
-
-			try
-			{
-				selfaware?.Dispose();
-				selfaware = null;
-			}
-			catch (Exception ex)
-			{
-				Logging.Stacktrace(ex);
-			}
+			Utility.Dispose(ref mainwindow);
+			Utility.Dispose(ref processmanager);
+			Utility.Dispose(ref powermanager);
+			Utility.Dispose(ref micmonitor);
+			Utility.Dispose(ref trayaccess);
+			Utility.Dispose(ref netmonitor);
+			Utility.Dispose(ref activeappmonitor);
+			Utility.Dispose(ref healthmonitor);
+			Utility.Dispose(ref selfaware);
 		}
 
 		static void ParseArguments(string[] args)
@@ -1122,6 +1033,8 @@ namespace Taskmaster
 			*/
 		}
 
+		static System.Threading.CancellationTokenSource cts = new System.Threading.CancellationTokenSource();
+
 		// entry point to the application
 		[STAThread] // supposedly needed to avoid shit happening with the WinForms GUI and other GUI toolkits
 		static public int Main(string[] args)
@@ -1130,219 +1043,242 @@ namespace Taskmaster
 
 			try
 			{
-				UpgradeAppSettings();
+				try
+				{
+					UpgradeAppSettings();
 
-				Config = new ConfigManager(datapath);
+					Config = new ConfigManager(datapath);
 
-				LicenseBoiler();
+					LicenseBoiler();
 
-				// INIT LOGGER
-				MemoryLog.LevelSwitch = new LoggingLevelSwitch(LogEventLevel.Information);
+					// INIT LOGGER
+					MemoryLog.LevelSwitch = new LoggingLevelSwitch(LogEventLevel.Information);
 
-				var logpathtemplate = System.IO.Path.Combine(datapath, "Logs", "taskmaster-{Date}.log");
-				Serilog.Log.Logger = new Serilog.LoggerConfiguration()
-					.MinimumLevel.Verbose()
+					var logpathtemplate = System.IO.Path.Combine(datapath, "Logs", "taskmaster-{Date}.log");
+					Serilog.Log.Logger = new Serilog.LoggerConfiguration()
+						.MinimumLevel.Verbose()
 #if DEBUG
 				.WriteTo.Console(levelSwitch: new LoggingLevelSwitch(LogEventLevel.Verbose))
 #endif
 				.WriteTo.RollingFile(logpathtemplate, outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}",
-										 levelSwitch: new LoggingLevelSwitch(Serilog.Events.LogEventLevel.Debug), retainedFileCountLimit: 3)
-					.WriteTo.MemorySink(levelSwitch: MemoryLog.LevelSwitch)
-								 .CreateLogger();
+											 levelSwitch: new LoggingLevelSwitch(Serilog.Events.LogEventLevel.Debug), retainedFileCountLimit: 3)
+						.WriteTo.MemorySink(levelSwitch: MemoryLog.LevelSwitch)
+									 .CreateLogger();
 
-				// COMMAND-LINE ARGUMENTS
-				ParseArguments(args);
+					// COMMAND-LINE ARGUMENTS
+					ParseArguments(args);
 
-				// STARTUP
+					// STARTUP
 
-				if (!SingletonLock())
-					return -1;
-
-				/*
-				var builddate = Convert.ToDateTime(Properties.Resources.BuildDate);
-
-				Log.Information("Taskmaster! (#{ProcessID}) {Admin}– Version: {Version} [{Date} {Time}] – START!",
-								Process.GetCurrentProcess().Id, (IsAdministrator() ? "[ADMIN] " : ""),
-								System.Reflection.Assembly.GetExecutingAssembly().GetName().Version,
-								builddate.ToShortDateString(), builddate.ToShortTimeString());
-				*/
-
-				Log.Information("Taskmaster! (#{ProcessID}) {Admin}– Version: {Version} – START!",
-					Process.GetCurrentProcess().Id, (IsAdministrator() ? "[ADMIN] " : ""),
-					System.Reflection.Assembly.GetExecutingAssembly().GetName().Version);
-
-			}
-			catch (Exception ex)
-			{
-				Logging.Stacktrace(ex);
-				throw;
-			}
-
-			//PreallocLastLog();
-
-			try
-			{
-				PreSetup();
-				LoadCoreConfig();
-				SetupComponents();
-			}
-			catch (Exception ex) // this seems to happen only when Avast cybersecurity is scanning TM
-			{
-				Log.Fatal("Exiting due to initialization failure.");
-				Logging.Stacktrace(ex);
-				Log.CloseAndFlush();
-				singleton.Dispose();
-				singleton = null;
-				return 1;
-			}
-
-			try
-			{
-				// IS THIS OF ANY USE?
-				// GC.Collect(GC.MaxGeneration, GCCollectionMode.Forced, true, true);
-				// GC.WaitForPendingFinalizers();
-				GC.AddMemoryPressure(fakemempressure); // Workstation GC boundary is 256 MB, we want it to be closer to 60-80 MB
-
-				Config?.Save(); // early save of configs
-
-				// Properties.Settings.Default.Save();
-
-				CleanupTimer = new System.Timers.Timer(60_000 * CleanupInterval);
-				CleanupTimer.Elapsed += Taskmaster.Cleanup;
-				CleanupTimer.Start();
-
-				if (RestartCounter > 0) Log.Information("<Core> Restarted {Count} time(s)", RestartCounter);
-				Log.Information("<Core> Initialization complete...");
-
-				/*
-				Console.WriteLine("Embedded Resources");
-				foreach (var name in System.Reflection.Assembly.GetExecutingAssembly().GetManifestResourceNames())
-					Console.WriteLine(" - " + name);
-				*/
-			}
-			catch (Exception ex)
-			{
-				Logging.Stacktrace(ex);
-				throw;
-			}
-
-			try
-			{
-				if (Taskmaster.ProcessMonitorEnabled)
-				{
-					System.Threading.ManualResetEvent re = null;
-					EventHandler end = delegate { re?.Set(); };
-
-					if (RunOnce)
+					if (!SingletonLock())
 					{
-						re = new System.Threading.ManualResetEvent(false);
-						processmanager.ScanEverythingEndEvent += end;
+						// already running, signal original process
+						var rv = MessageBox.Show(
+							"Already operational.\n\nAbort to kill running instance and exit this.\nRetry to try to recover running instance.\nIgnore to exit this.",
+							System.Windows.Forms.Application.ProductName + "!",
+							MessageBoxButtons.AbortRetryIgnore, MessageBoxIcon.Exclamation, MessageBoxDefaultButton.Button2);
+						return -1;
 					}
 
-					Evaluate();
+					/*
+					var builddate = Convert.ToDateTime(Properties.Resources.BuildDate);
 
-					if (re != null)
-					{
-						re.WaitOne();
-						processmanager.ScanEverythingEndEvent -= end;
-						re.Dispose();
-					}
-				}
+					Log.Information("Taskmaster! (#{ProcessID}) {Admin}– Version: {Version} [{Date} {Time}] – START!",
+									Process.GetCurrentProcess().Id, (IsAdministrator() ? "[ADMIN] " : ""),
+									System.Reflection.Assembly.GetExecutingAssembly().GetName().Version,
+									builddate.ToShortDateString(), builddate.ToShortTimeString());
+					*/
 
-				if (!RunOnce)
-				{
-					trayaccess.EnsureVisible();
+					Log.Information("Taskmaster! (#{ProcessID}) {Admin}– Version: {Version} – START!",
+						Process.GetCurrentProcess().Id, (IsAdministrator() ? "[ADMIN] " : ""),
+						System.Reflection.Assembly.GetExecutingAssembly().GetName().Version);
 
-					System.Windows.Forms.Application.Run(); // WinForms
-
-					// System.Windows.Application.Current.Run(); // WPF
-				}
-			}
-			catch (Exception ex)
-			{
-				Log.Fatal("Unhandled exception! Dying.");
-				Logging.Stacktrace(ex);
-				// TODO: ACTUALLY DIE
-			}
-
-			if (SelfOptimize && !RunOnce) // return decent processing speed to quickly exit
-			{
-				var self = Process.GetCurrentProcess();
-				self.PriorityClass = ProcessPriorityClass.AboveNormal;
-				if (Taskmaster.SelfOptimizeBGIO)
-				{
-					try
-					{
-						ProcessController.SetIOPriority(self, NativeMethods.PriorityTypes.PROCESS_MODE_BACKGROUND_END);
-					}
-					catch { }
-				}
-			}
-
-			Log.Information("Exiting...");
-
-			// TODO: Save Config, do this better. Maybe data bindings.
-			bool dirty = cfg["Quality of Life"]["Auto-open menus"].Set(AutoOpenMenus);
-			if (dirty) Config.MarkDirtyINI(cfg);
-
-			// CLEANUP for exit
-
-			Cleanup();
-
-			Log.Information("WMI queries: {QueryTime}s [{QueryCount}]", string.Format("{0:N2}", Statistics.WMIquerytime), Statistics.WMIqueries);
-			Log.Information("Cleanups: {CleanupTime}s [{CleanupCount}]", string.Format("{0:N2}", Statistics.CleanupTime), Statistics.Cleanups);
-			Log.Information("Path cache: {Hits} hits, {Misses} misses",
-				Statistics.PathCacheHits, Statistics.PathCacheMisses);
-			Log.Information("Path finding: {Total} total attempts; {Mod} via module info, {Ccall} via C call, {WMI} via WMI",
-				Statistics.PathFindAttempts, Statistics.PathFindViaModule, Statistics.PathFindViaC, Statistics.PathFindViaWMI);
-
-			Config?.Save();
-			Config?.Dispose();
-
-			CleanShutdown();
-
-			Log.Information("Taskmaster! (#{ProcessID}) END! [Clean]", System.Diagnostics.Process.GetCurrentProcess().Id);
-
-			GC.RemoveMemoryPressure(fakemempressure); // probably unnecesary
-
-			singleton.Close();
-			singleton = null;
-
-			if (Restart) // happens only on power resume (waking from hibernation) or when manually set
-			{
-				Log.Information("Restarting...");
-				try
-				{
-					if (!System.IO.File.Exists(Application.ExecutablePath))
-						Log.Fatal("Executable missing: {Path}", Application.ExecutablePath);
-
-					Log.CloseAndFlush();
-
-					Restart = false; // pointless probably
-
-					var info = Process.GetCurrentProcess().StartInfo;
-					//info.FileName = Process.GetCurrentProcess().ProcessName;
-					info.WorkingDirectory = System.IO.Path.GetDirectoryName(Application.ExecutablePath);
-					info.FileName = System.IO.Path.GetFileName(Application.ExecutablePath);
-
-					List<string> nargs = new List<string>
-					{
-						string.Format("--restart {0}", ++RestartCounter)  // has no real effect
-					};
-					if (RestartElevated)
-					{
-						nargs.Add(string.Format("--admin {0}", ++AdminCounter));
-						info.Verb = "runas"; // elevate privileges
-					}
-
-					info.Arguments = string.Join(" ", nargs);
-
-					var proc = Process.Start(info);
 				}
 				catch (Exception ex)
 				{
-					Logging.Stacktrace(ex, oob: true);
+					Logging.Stacktrace(ex);
+					throw;
 				}
+
+				//PreallocLastLog();
+
+				try
+				{
+					PreSetup();
+					LoadCoreConfig();
+					SetupComponents();
+				}
+				catch (Exception ex) // this seems to happen only when Avast cybersecurity is scanning TM
+				{
+					Log.Fatal("Exiting due to initialization failure.");
+					Logging.Stacktrace(ex);
+					Log.CloseAndFlush();
+					cts?.Cancel();
+					Utility.Dispose(ref cts);
+					Utility.Dispose(ref singleton);
+					return 1;
+				}
+
+				try
+				{
+					// IS THIS OF ANY USE?
+					// GC.Collect(GC.MaxGeneration, GCCollectionMode.Forced, true, true);
+					// GC.WaitForPendingFinalizers();
+					GC.AddMemoryPressure(fakemempressure); // Workstation GC boundary is 256 MB, we want it to be closer to 60-80 MB
+
+					Config?.Save(); // early save of configs
+
+					// Properties.Settings.Default.Save();
+
+					CleanupTimer = new System.Timers.Timer(60_000 * CleanupInterval);
+					CleanupTimer.Elapsed += Taskmaster.Cleanup;
+					CleanupTimer.Start();
+
+					if (RestartCounter > 0) Log.Information("<Core> Restarted {Count} time(s)", RestartCounter);
+					Log.Information("<Core> Initialization complete...");
+
+					/*
+					Console.WriteLine("Embedded Resources");
+					foreach (var name in System.Reflection.Assembly.GetExecutingAssembly().GetManifestResourceNames())
+						Console.WriteLine(" - " + name);
+					*/
+				}
+				catch (Exception ex)
+				{
+					Logging.Stacktrace(ex);
+					throw;
+				}
+
+				try
+				{
+					if (Taskmaster.ProcessMonitorEnabled)
+					{
+						System.Threading.ManualResetEvent re = null;
+						EventHandler end = delegate { re?.Set(); };
+
+						if (RunOnce)
+						{
+							re = new System.Threading.ManualResetEvent(false);
+							processmanager.ScanEverythingEndEvent += end;
+						}
+
+						Evaluate();
+
+						if (re != null)
+						{
+							re.WaitOne();
+							processmanager.ScanEverythingEndEvent -= end;
+							Utility.Dispose(ref re);
+						}
+					}
+
+					if (!RunOnce)
+					{
+						trayaccess.EnsureVisible();
+
+						System.Windows.Forms.Application.Run(); // WinForms
+
+						// System.Windows.Application.Current.Run(); // WPF
+					}
+				}
+				catch (Exception ex)
+				{
+					Log.Fatal("Unhandled exception! Dying.");
+					Logging.Stacktrace(ex);
+					// TODO: ACTUALLY DIE
+				}
+
+				if (SelfOptimize && !RunOnce) // return decent processing speed to quickly exit
+				{
+					var self = Process.GetCurrentProcess();
+					self.PriorityClass = ProcessPriorityClass.AboveNormal;
+					if (Taskmaster.SelfOptimizeBGIO)
+					{
+						try
+						{
+							ProcessController.SetIOPriority(self, NativeMethods.PriorityTypes.PROCESS_MODE_BACKGROUND_END);
+						}
+						catch { }
+					}
+				}
+
+				Log.Information("Exiting...");
+
+				// TODO: Save Config, do this better. Maybe data bindings.
+				bool dirty = cfg["Quality of Life"]["Auto-open menus"].Set(AutoOpenMenus);
+				if (dirty) Config.MarkDirtyINI(cfg);
+
+				// CLEANUP for exit
+
+				Cleanup();
+
+				Log.Information("WMI queries: {QueryTime}s [{QueryCount}]", string.Format("{0:N2}", Statistics.WMIquerytime), Statistics.WMIqueries);
+				Log.Information("Cleanups: {CleanupTime}s [{CleanupCount}]", string.Format("{0:N2}", Statistics.CleanupTime), Statistics.Cleanups);
+				Log.Information("Path cache: {Hits} hits, {Misses} misses",
+					Statistics.PathCacheHits, Statistics.PathCacheMisses);
+				Log.Information("Path finding: {Total} total attempts; {Mod} via module info, {Ccall} via C call, {WMI} via WMI",
+					Statistics.PathFindAttempts, Statistics.PathFindViaModule, Statistics.PathFindViaC, Statistics.PathFindViaWMI);
+
+				Config?.Save();
+
+				CleanShutdown();
+
+				Utility.Dispose(ref Config);
+
+				Log.Information("Taskmaster! (#{ProcessID}) END! [Clean]", System.Diagnostics.Process.GetCurrentProcess().Id);
+
+				GC.RemoveMemoryPressure(fakemempressure); // probably unnecesary
+
+				cts?.Cancel();
+				Utility.Dispose(ref cts);
+				Utility.Dispose(ref singleton);
+
+				if (Restart) // happens only on power resume (waking from hibernation) or when manually set
+				{
+					Log.Information("Restarting...");
+					try
+					{
+						if (!System.IO.File.Exists(Application.ExecutablePath))
+							Log.Fatal("Executable missing: {Path}", Application.ExecutablePath);
+
+						Log.CloseAndFlush();
+
+						Restart = false; // pointless probably
+
+						var info = Process.GetCurrentProcess().StartInfo;
+						//info.FileName = Process.GetCurrentProcess().ProcessName;
+						info.WorkingDirectory = System.IO.Path.GetDirectoryName(Application.ExecutablePath);
+						info.FileName = System.IO.Path.GetFileName(Application.ExecutablePath);
+
+						List<string> nargs = new List<string>
+					{
+						string.Format("--restart {0}", ++RestartCounter)  // has no real effect
+					};
+						if (RestartElevated)
+						{
+							nargs.Add(string.Format("--admin {0}", ++AdminCounter));
+							info.Verb = "runas"; // elevate privileges
+						}
+
+						info.Arguments = string.Join(" ", nargs);
+
+						var proc = Process.Start(info);
+					}
+					catch (Exception ex)
+					{
+						Logging.Stacktrace(ex, oob: true);
+					}
+				}
+			}
+			catch (Exception ex)
+			{
+				Logging.Stacktrace(ex, oob: true);
+			}
+			finally
+			{
+				cts?.Cancel();
+				Utility.Dispose(ref cts);
+				Utility.Dispose(ref singleton);
 			}
 
 			return 0;

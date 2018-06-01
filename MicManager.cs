@@ -38,7 +38,7 @@ namespace Taskmaster
 		public int Corrections { get; set; }
 	}
 
-	sealed public class MicManager
+	sealed public class MicManager : IDisposable
 	{
 		public event EventHandler<VolumeChangedEventArgs> VolumeChanged;
 

@@ -281,9 +281,7 @@ namespace Taskmaster
 			{
 				if (disposing)
 				{
-					pruneTimer.Stop();
-					pruneTimer.Dispose();
-					pruneTimer = null;
+					Utility.Dispose(ref pruneTimer);
 				}
 
 				disposed = true;

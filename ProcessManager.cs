@@ -1494,8 +1494,7 @@ namespace Taskmaster
 				if (rescanrequests == 0)
 				{
 					if (Taskmaster.Trace) Log.Verbose("No apps have requests to rescan, stopping rescanning.");
-					rescanTimer?.Dispose();
-					rescanTimer = null;
+					Utility.Dispose(ref rescanTimer);
 				}
 				else
 				{
@@ -1709,7 +1708,7 @@ namespace Taskmaster
 				try
 				{
 					//watcher.EventArrived -= NewInstanceTriage;
-					watcher?.Dispose();
+					Utility.Dispose(ref watcher);
 
 					if (activeappmonitor != null)
 					{
@@ -1717,8 +1716,9 @@ namespace Taskmaster
 						activeappmonitor = null;
 					}
 
+
+					Utility.Dispose(ref rescanTimer);
 					RescanEverythingTimer?.Dispose();
-					rescanTimer?.Dispose();
 					BatchProcessingTimer?.Dispose();
 				}
 				catch (Exception ex)

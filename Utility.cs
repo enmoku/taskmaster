@@ -92,6 +92,19 @@ namespace Taskmaster
 			b = temp;
 		}
 
+		public static void Dispose<T>(ref T obj) where T:IDisposable
+		{
+			try
+			{
+				obj?.Dispose();
+				obj = default(T);
+			}
+			catch (Exception ex)
+			{
+				Logging.Stacktrace(ex);
+			}
+		}
+
 		public static string TimescaleString(Timescale t)
 		{
 			switch (t)
@@ -199,9 +212,9 @@ namespace Taskmaster
 				})
 				{
 					log.WriteEntry(
-						Environment.CommandLine+"\n\n"+
+						Environment.CommandLine + "\n\n" +
 						string.Format("{0} : {1}\n\n", ex.GetType().Name, ex.Message) +
-						string.Format("Reported at {0}\n\n", method) + 
+						string.Format("Reported at {0}\n\n", method) +
 						ex.StackTrace, EventLogEntryType.Error);
 				}
 			}

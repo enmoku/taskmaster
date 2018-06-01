@@ -2423,11 +2423,8 @@ namespace Taskmaster
 				}
 				catch { }
 
-				UItimer.Stop();
-				UItimer.Dispose();
-				UItimer = null;
-
-				exitwaitlist.Dispose();
+				Utility.Dispose(ref UItimer);
+				Utility.Dispose(ref exitwaitlist);
 				ExitWaitlistMap.Clear();
 			}
 

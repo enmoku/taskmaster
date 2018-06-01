@@ -562,21 +562,20 @@ namespace Taskmaster
 				if (Tray != null)
 				{
 					Tray.Visible = false;
-					Tray.Dispose();
-					Tray = null;
+					Utility.Dispose(ref Tray);
 				}
 
-				menu_configuration?.Dispose();
-				menu_exit?.Dispose();
-				menu_rescan?.Dispose();
-				menu_runatstart_reg?.Dispose();
-				menu_windowopen?.Dispose();
-				ms?.Dispose();
-				power_auto?.Dispose();
-				power_balanced?.Dispose();
-				power_highperf?.Dispose();
-				power_manual?.Dispose();
-				power_saving?.Dispose();
+				Utility.Dispose(ref menu_configuration);
+				Utility.Dispose(ref menu_exit);
+				Utility.Dispose(ref menu_rescan);
+				Utility.Dispose(ref menu_runatstart_reg);
+				Utility.Dispose(ref menu_windowopen);
+				Utility.Dispose(ref ms);
+				Utility.Dispose(ref power_auto);
+				Utility.Dispose(ref power_balanced);
+				Utility.Dispose(ref power_highperf);
+				Utility.Dispose(ref power_manual);
+				Utility.Dispose(ref power_saving);
 				// Free any other managed objects here.
 				//
 			}
@@ -589,7 +588,11 @@ namespace Taskmaster
 			Tray.ShowBalloonTip(timeout, title, message, icon);
 		}
 
-		public void RefreshVisibility() => Tray.Visible = true;
+		public void RefreshVisibility()
+		{
+			Tray.Visible = false;
+			Tray.Visible = true;
+		}
 
 		int ensuringvisibility = 0;
 		public async void EnsureVisible()
