@@ -126,17 +126,17 @@ namespace Taskmaster
 			if (Behaviour == PowerBehaviour.RuleBased && !Forced)
 				Restore();
 
-			MonitorPower += MonitorPowerEvent;
-
 			if (SessionLockPowerOffIdleTimeout != 0)
 			{
-				int timeout = SessionLockPowerOffIdleTimeout * 1000;
-				MonitorSleepTimer = new System.Timers.Timer(timeout)
+				MonitorSleepTimer = new System.Timers.Timer(SessionLockPowerOffIdleTimeout * 1000)
 				{
 					Enabled = false,
 					AutoReset = false
 				};
+
 				MonitorSleepTimer.Elapsed += MonitorSleepTimerTick;
+
+				MonitorPower += MonitorPowerEvent;
 			}
 		}
 
@@ -144,8 +144,8 @@ namespace Taskmaster
 		{
 			var OldPowerState = CurrentMonitorState;
 			CurrentMonitorState = ev.Mode;
-			if (Taskmaster.DebugMonitor)
-				Log.Debug("<Monitor> Power state: {State}", CurrentMonitorState);
+
+			if (Taskmaster.DebugMonitor) Log.Debug("<Monitor> Power state: {State}", CurrentMonitorState);
 
 			if (CurrentMonitorState == MonitorPowerMode.On && SessionLocked)
 			{
@@ -157,7 +157,7 @@ namespace Taskmaster
 			}
 		}
 
-		readonly System.Timers.Timer MonitorSleepTimer;
+		System.Timers.Timer MonitorSleepTimer;
 
 		void MonitorSleepTimerTick(object sender, EventArgs ev)
 		{
@@ -178,7 +178,7 @@ namespace Taskmaster
 				if (Taskmaster.ShowSessionActions || Taskmaster.DebugMonitor)
 					Log.Information("<Session:Lock> User active too recently ({Seconds}s ago), delaying monitor power down...", string.Format("{0:N1}", idletime));
 
-				MonitorSleepTimer?.Start();
+				MonitorSleepTimer?.Start(); // TODO: Make this happen sooner if user was not active recently
 			}
 		}
 
@@ -1201,7 +1201,8 @@ namespace Taskmaster
 				CPUTimer?.Dispose();
 				Utility.Dispose(ref CPUCounter);
 
-				MonitorSleepTimer?.Dispose();
+				MonitorPower -= MonitorPowerEvent;
+				Utility.Dispose(ref MonitorSleepTimer);
 
 				var finalmode = RestoreModeMethod == ModeMethod.Saved ? SavedMode : RestoreMode;
 				if (finalmode != CurrentMode)
