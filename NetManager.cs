@@ -37,13 +37,14 @@ namespace Taskmaster
 {
 	public class NetworkStatus : EventArgs
 	{
-		public bool Available;
-		public DateTime Start;
-		public TimeSpan Uptime;
+		public bool Available = false;
+		public DateTime Start = DateTime.MinValue;
+		public TimeSpan Uptime = TimeSpan.MinValue;
 	}
 
 	sealed public class InternetStatus : NetworkStatus
 	{
+		public bool IPChanged = false;
 	}
 
 	sealed public class NetManager : IDisposable
@@ -51,6 +52,7 @@ namespace Taskmaster
 		DateTime lastUptimeStart;
 
 		public event EventHandler<InternetStatus> InternetStatusChange;
+		public event EventHandler IPChanged;
 		public event EventHandler<NetworkStatus> NetworkStatusChange;
 
 		string dnstestaddress = "www.google.com";
@@ -298,11 +300,11 @@ namespace Taskmaster
 		bool Notified = false;
 
 		int checking_inet; // = 0;
-		async Task CheckInet(bool address_changed = false)
+		bool CheckInet(bool address_changed = false)
 		{
 			// TODO: Figure out how to get Actual start time of internet connectivity.
 
-			if (!Atomic.Lock(ref checking_inet)) return;
+			if (!Atomic.Lock(ref checking_inet)) return InternetAvailable;
 
 			if (Taskmaster.Trace) Log.Verbose("<Network> Checking internet connectivity...");
 
@@ -330,7 +332,7 @@ namespace Taskmaster
 							Log.Information("<Network> Internet availability test inconclusive, assuming connected.");
 							InternetAvailable = true;
 							Atomic.Unlock(ref checking_inet);
-							return;
+							return InternetAvailable;
 						case System.Net.Sockets.SocketError.SocketError:
 						case System.Net.Sockets.SocketError.Interrupted:
 						case System.Net.Sockets.SocketError.Fault:
@@ -380,6 +382,8 @@ namespace Taskmaster
 			Atomic.Unlock(ref checking_inet);
 
 			InternetStatusChange?.Invoke(this, new InternetStatus { Available = InternetAvailable, Start = lastUptimeStart, Uptime = Uptime });
+
+			return InternetAvailable;
 		}
 
 		List<IPAddress> AddressList = new List<IPAddress>(2);
@@ -427,17 +431,6 @@ namespace Taskmaster
 		object interfaces_lock = new object();
 		int updateinterface_lock = 0;
 
-		// TODO: This is unnecessarily heavy
-		/// <summary>
-		/// Returns list of interfaces.
-		/// * Device Name
-		/// * Type
-		/// * Status
-		/// * Link Speed
-		/// * IPv4 Address
-		/// * IPv6 Address
-		/// </summary>
-		/// <returns>string[] { Device Name, Type, Status, Link Speed, IPv4 Address, IPv6 Address } or null</returns>
 		public void UpdateInterfaces()
 		{
 			if (!Atomic.Lock(ref updateinterface_lock)) return;
@@ -510,7 +503,7 @@ namespace Taskmaster
 			var tmpnow = DateTime.Now;
 
 			bool AvailabilityChanged = InternetAvailable;
-			await CheckInet(address_changed: true).ConfigureAwait(false);
+			CheckInet(address_changed: true);
 			AvailabilityChanged = AvailabilityChanged != InternetAvailable;
 
 			if (InternetAvailable)
@@ -559,6 +552,12 @@ namespace Taskmaster
 
 					// TODO: Make clicking on the tooltip copy new IP to clipboard?
 				}
+
+				if (ipv6changed || ipv6changed)
+				{
+					IPChanged?.Invoke(this, null);
+				}
+					
 			}
 			else
 			{
@@ -571,7 +570,7 @@ namespace Taskmaster
 				}
 			}
 
-			// NetworkChanged(null,null);
+			//NetworkChanged(null,null);
 		}
 
 		public void SetupEventHooks()
@@ -585,22 +584,66 @@ namespace Taskmaster
 			// CheckInet().Wait(); // unnecessary?
 		}
 
-		async void NetworkChanged(object sender, EventArgs e)
+		int delayednetworkavailable_lock = 0;
+		async void DelayedNetworkConnectedUpdate(bool oldAvailability, bool delayed=true)
 		{
-			var oldNetAvailable = NetworkAvailable;
-			NetworkAvailable = NetworkInterface.GetIsNetworkAvailable();
+			// delay output, but output immediately if internet becomes available...
 
-			// do stuff only if this is different from last time
-			if (oldNetAvailable != NetworkAvailable)
+			if (!Atomic.Lock(ref delayednetworkavailable_lock)) return;
+
+			bool available = oldAvailability;
+
+			if (available)
 			{
-				Log.Information("<Network> Status changed: " + (NetworkAvailable ? "Connected" : "Disconnected"));
-
-				NetworkStatusChange?.Invoke(this, new NetworkStatus { Available = NetworkAvailable });
-
-				await CheckInet().ConfigureAwait(false);
+				CheckInet();
+				if (InternetAvailable)
+				{
+					UpdateInterfaces();
+					return;
+				}
 			}
 
+			if (delayed)
+			{
+				const int delay = 15;
+				int sleep = Convert.ToInt32(DateTime.Now.TimeTo(lastnetworkchange.AddSeconds(delay)).TotalSeconds * 1000);
+
+				await Task.Delay(sleep.Constrain(1000, 15000));
+
+				if (DateTime.Now.TimeSince(lastnetworkchange).TotalSeconds < delay)
+				{
+					DelayedNetworkConnectedUpdate(NetworkAvailable);
+					return;
+				}
+			}
+
+			available = NetworkAvailable;
+
+			Log.Information("<Network> Status changed: " + (available ? "Connected" : "Disconnected"));
+
+			if (available)
+				CheckInet();
+
+			Atomic.Unlock(ref delayednetworkavailable_lock);
+
 			UpdateInterfaces();
+		}
+
+		DateTime lastnetworkchange = DateTime.MinValue;
+		void NetworkChanged(object sender, EventArgs e)
+		{
+			var oldNetAvailable = NetworkAvailable;
+			bool available = NetworkAvailable = NetworkInterface.GetIsNetworkAvailable();
+
+			lastnetworkchange = DateTime.Now;
+
+			// do stuff only if this is different from last time
+			if (oldNetAvailable != available)
+			{
+				DelayedNetworkConnectedUpdate(available);
+
+				NetworkStatusChange?.Invoke(this, new NetworkStatus { Available = available });
+			}
 		}
 
 		public void Dispose()

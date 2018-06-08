@@ -2179,6 +2179,40 @@ namespace Taskmaster
 			}));
 		}
 
+		public void UpdateNetwork(object sender, EventArgs ev)
+		{
+			BeginInvoke(new Action(() =>
+			{
+				lock (netstatus_lock)
+				{
+					ifaceList.Items.Clear();
+
+					foreach (var dev in netmonitor.GetInterfaces())
+					{
+						var li = new ListViewItem(new string[] {
+							dev.Name,
+							dev.Type.ToString(),
+							dev.Status.ToString(),
+							HumanInterface.ByteString(dev.Speed),
+							dev.IPv4Address?.ToString() ?? "n/a",
+							dev.IPv6Address?.ToString() ?? "n/a",
+							"n/a", // traffic delta
+							"n/a", // error delta
+						})
+						{
+							UseItemStyleForSubItems = false
+						};
+						ifaceList.Items.Add(li);
+					}
+				}
+			}));
+
+			InetStatusLabel(netmonitor.InternetAvailable);
+			NetStatusLabel(netmonitor.NetworkAvailable);
+
+			// Tray?.Tooltip(2000, "Internet " + (net.InternetAvailable ? "available" : "unavailable"), "Taskmaster", net.InternetAvailable ? ToolTipIcon.Info : ToolTipIcon.Warning);
+		}
+
 		public void hookNetMonitor(ref NetManager net)
 		{
 			if (net == null) return; // disabled
@@ -2187,34 +2221,11 @@ namespace Taskmaster
 
 			netmonitor = net;
 
-			foreach (var dev in netmonitor.GetInterfaces())
-			{
-				var li = new ListViewItem(new string[] {
-					dev.Name,
-					dev.Type.ToString(),
-					dev.Status.ToString(),
-					HumanInterface.ByteString(dev.Speed),
-					dev.IPv4Address?.ToString() ?? "n/a",
-					dev.IPv6Address?.ToString() ?? "n/a",
-					"n/a", // traffic delta
-					"n/a", // error delta
-				})
-				{
-					UseItemStyleForSubItems = false
-				};
-				ifaceList.Items.Add(li);
-			}
+			UpdateNetwork(this, null);
 
-			lock (netstatus_lock)
-			{
-				netmonitor.InternetStatusChange += InetStatus;
-				netmonitor.NetworkStatusChange += NetStatus;
-				InetStatusLabel(netmonitor.InternetAvailable);
-				NetStatusLabel(netmonitor.NetworkAvailable);
-			}
-
-			// Tray?.Tooltip(2000, "Internet " + (net.InternetAvailable ? "available" : "unavailable"), "Taskmaster", net.InternetAvailable ? ToolTipIcon.Info : ToolTipIcon.Warning);
-
+			netmonitor.InternetStatusChange += InetStatus;
+			netmonitor.IPChanged += UpdateNetwork;
+			netmonitor.NetworkStatusChange += NetStatus;
 			netmonitor.onSampling += NetSampleHandler;
 		}
 
@@ -2223,18 +2234,21 @@ namespace Taskmaster
 			if (!IsHandleCreated) return;
 			BeginInvoke(new Action(() =>
 			{
-				try
+				lock (netstatus_lock)
 				{
-					ifaceList.Items[ev.Index].SubItems[PacketColumn].Text = string.Format("+{0}", ev.Traffic.Unicast);
-					ifaceList.Items[ev.Index].SubItems[ErrorColumn].Text = string.Format("+{0}", ev.Traffic.Errors);
-					if (ev.Traffic.Errors > 0)
-						ifaceList.Items[ev.Index].SubItems[ErrorColumn].ForeColor = System.Drawing.Color.OrangeRed;
-					else
-						ifaceList.Items[ev.Index].SubItems[ErrorColumn].ForeColor = System.Drawing.SystemColors.ControlText;
-				}
-				catch (Exception ex)
-				{
-					Logging.Stacktrace(ex);
+					try
+					{
+						ifaceList.Items[ev.Index].SubItems[PacketColumn].Text = string.Format("+{0}", ev.Traffic.Unicast);
+						ifaceList.Items[ev.Index].SubItems[ErrorColumn].Text = string.Format("+{0}", ev.Traffic.Errors);
+						if (ev.Traffic.Errors > 0)
+							ifaceList.Items[ev.Index].SubItems[ErrorColumn].ForeColor = System.Drawing.Color.OrangeRed;
+						else
+							ifaceList.Items[ev.Index].SubItems[ErrorColumn].ForeColor = System.Drawing.SystemColors.ControlText;
+					}
+					catch (Exception ex)
+					{
+						Logging.Stacktrace(ex);
+					}
 				}
 			}));
 		}
@@ -2260,6 +2274,11 @@ namespace Taskmaster
 		public void InetStatus(object sender, InternetStatus e)
 		{
 			lock (netstatus_lock) InetStatusLabel(e.Available);
+		}
+
+		public void IPChange(object sender, EventArgs e)
+		{
+
 		}
 
 		void NetStatusLabel(bool available)
@@ -2407,6 +2426,7 @@ namespace Taskmaster
 					{
 						netmonitor.InternetStatusChange -= InetStatus;
 						netmonitor.NetworkStatusChange -= NetStatus;
+						netmonitor.IPChanged -= UpdateNetwork;
 						netmonitor.onSampling -= NetSampleHandler;
 						netmonitor = null;
 					}
