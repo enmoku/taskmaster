@@ -80,6 +80,9 @@
   <ItemGroup>
     <None Include=".gitattributes" />
     <None Include=".gitignore" />
+    <AdditionalFiles Include=".itch.toml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </AdditionalFiles>
     <None Include="app.config">
       <SubType>Designer</SubType>
     </None>
@@ -156,7 +159,9 @@
     <Compile Include="SampleSet.cs" />
     <Compile Include="Statistics.cs" />
     <Compile Include="TaskMaster.cs" />
-    <Compile Include="TrayAccess.cs" />
+    <Compile Include="TrayAccess.cs">
+      <SubType>Form</SubType>
+    </Compile>
     <Compile Include="Utility.cs" />
     <Compile Include="Extensions\ProcessExtensions.cs" />
     <Compile Include="Extensions\SharpConfigExtensions.cs" />

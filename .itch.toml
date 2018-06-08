@@ -1,0 +1,11 @@
+[[actions]]
+name = "Run"
+path = "Taskmaster.exe"
+
+[[actions]]
+name = "Run as admin"
+path = "Taskmaster.exe"
+args = ["--admin"]
+
+#[[prereqs]]
+#name = "net-4.7" # not implemented by itch.io/butler
