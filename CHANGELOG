@@ -1,6 +1,11 @@
 ﻿Comprehensive changes can be found in Git change history:
 	https://github.com/mkahvi/taskmaster/commits/master
 
+### 2018-06-08
+	Fixed: Rare(?) crash if session lock monitor power down is enabled.
+### 2018-06-03
+	Fixed: Network tab does not update address when IP changes while the UI is open.
+	Fixed: Network connected/disconnected log messages should no longer spam. This delays the messages for up to 15 seconds.
 ### 2018-06-01
 	Fixed: Minor inconsequential crash during exit.
 ### 2018-05-26
