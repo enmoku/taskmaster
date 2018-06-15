@@ -58,6 +58,8 @@ namespace Taskmaster
 
 		public bool PowerWait = false;
 		public bool ActiveWait = false;
+
+		public ProcessState State = ProcessState.Invalid;
 	}
 
 	enum ProcessFlags
@@ -1398,10 +1400,16 @@ namespace Taskmaster
 			{
 				info.Process = Process.GetProcessById(info.Id);
 			}
-			catch
+			catch (ArgumentException)
 			{
+				info.State = ProcessState.Exited;
 				if (Taskmaster.ShowInaction)
 					Log.Verbose("Caught #{Pid} but it vanished.", info.Id);
+				return;
+			}
+			catch (Exception ex)
+			{
+				Logging.Stacktrace(ex);
 				return;
 			}
 
@@ -1668,11 +1676,17 @@ namespace Taskmaster
 				Name = string.Empty,
 				Path = string.Empty,
 				Process = null,
+				State = ProcessState.Invalid,
 			};
 
 			try
 			{
 				info.Process = Process.GetProcessById(ProcessID);
+			}
+			catch (ArgumentException)
+			{
+				info.State = ProcessState.Exited;
+				return info;
 			}
 			catch
 			{
