@@ -4,6 +4,7 @@
 ### 2018-06-15
 	Fixed: Network status changes were not being informed as they should've been.
 	Changed: Removed some pointless network device list updates and only marked the need for refreshing.
+	Changed: Made some code paths exit early if they detect process they're dealing with having exited.
 ### 2018-06-08
 	Fixed: Rare(?) crash if session lock monitor power down is enabled.
 ### 2018-06-03
