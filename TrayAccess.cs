@@ -340,7 +340,8 @@ namespace Taskmaster
 
 		async void ShowPowerConfig(object sender, EventArgs e)
 		{
-			await PowerConfigWindow.ShowPowerConfig().ConfigureAwait(true);
+			await Task.Delay(0).ConfigureAwait(true);
+			PowerConfigWindow.ShowPowerConfig();
 		}
 
 		int restoremainwindow_lock = 0;
