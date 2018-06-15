@@ -201,7 +201,7 @@ namespace Taskmaster
 
 		static PowerConfigWindow pcw = null;
 		static int PowerConfigVisible = 0;
-		public static async Task ShowPowerConfig()
+		public static void ShowPowerConfig()
 		{
 			//await Task.Delay(0);
 
@@ -245,6 +245,8 @@ namespace Taskmaster
 			{
 				Logging.Stacktrace(ex);
 			}
+
+			return;
 		}
 	}
 }

@@ -122,7 +122,7 @@ namespace Taskmaster
 			{
 				try
 				{
-					await PowerConfigWindow.ShowPowerConfig().ConfigureAwait(true); // true for UI thread
+					PowerConfigWindow.ShowPowerConfig();
 				}
 				catch (Exception ex) { Logging.Stacktrace(ex); }
 			}));
@@ -659,16 +659,14 @@ namespace Taskmaster
 
 		TabControl tabLayout = null;
 
-		int OrderColumn = 0;
+		//int OrderColumn = 0;
 		int NameColumn = 1;
 		int ExeColumn = 2;
 		int PrioColumn = 3;
 		int AffColumn = 4;
 		int PowerColumn = 5;
-		int RescanColumn = 6;
-		int AdjustColumn = 7;
-		int SeenColumn = 8;
-		int PathColumn = 9;
+		int AdjustColumn = 6;
+		int PathColumn = 7;
 
 		TabPage micTab = null;
 		TabPage netTab = null;
@@ -711,7 +709,7 @@ namespace Taskmaster
 		}
 
 		int MinimumHeight = 0;
-		int MinimumWidth = 0;
+		//int MinimumWidth = 0;
 
 		void BuildUI()
 		{
@@ -1459,15 +1457,6 @@ namespace Taskmaster
 			watchlistms.Items.Add(new ToolStripSeparator());
 			watchlistms.Items.Add(watchlistclip);
 			watchlistRules.ContextMenuStrip = watchlistms;
-
-			OrderColumn = 0;
-			NameColumn = 1;
-			ExeColumn = 2;
-			PrioColumn = 3;
-			AffColumn = 4;
-			PowerColumn = 5;
-			AdjustColumn = 6;
-			PathColumn = 7;
 
 			watchlistRules.Columns.Add("#", appwidths[0]);
 			watchlistRules.Columns.Add("Name", appwidths[1]);
