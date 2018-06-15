@@ -132,7 +132,7 @@ namespace Taskmaster
 				if (packetWarning > 0) packetWarning--;
 
 				var oldifaces = CurrentInterfaceList;
-				UpdateInterfaces();
+				UpdateInterfaces(); // is this necessary?
 				var ifaces = CurrentInterfaceList;
 
 				if (ifaces == null) return; // no interfaces, just quit
@@ -308,78 +308,82 @@ namespace Taskmaster
 
 			if (Taskmaster.Trace) Log.Verbose("<Network> Checking internet connectivity...");
 
-			var oldInetAvailable = InternetAvailable;
-			if (NetworkAvailable)
+			try
 			{
-				try
+				var oldInetAvailable = InternetAvailable;
+				if (NetworkAvailable)
 				{
-					Dns.GetHostEntry(dnstestaddress); // FIXME: There should be some other method than DNS testing
-					InternetAvailable = true;
-					Notified = false;
-					// TODO: Don't rely on DNS?
-				}
-				catch (System.Net.Sockets.SocketException ex)
-				{
-					InternetAvailable = false;
-					switch (ex.SocketErrorCode)
+					try
 					{
-						case System.Net.Sockets.SocketError.AccessDenied:
-						case System.Net.Sockets.SocketError.SystemNotReady:
-							break;
-						case System.Net.Sockets.SocketError.TryAgain:
-						case System.Net.Sockets.SocketError.TimedOut:
-						default:
-							Log.Information("<Network> Internet availability test inconclusive, assuming connected.");
-							InternetAvailable = true;
-							Atomic.Unlock(ref checking_inet);
-							return InternetAvailable;
-						case System.Net.Sockets.SocketError.SocketError:
-						case System.Net.Sockets.SocketError.Interrupted:
-						case System.Net.Sockets.SocketError.Fault:
-							if (!Notified)
-							{
-								Log.Warning("<Network> Internet check interrupted. Potential hardware/driver issues.");
-								Notified = true;
-							}
-							break;
-						case System.Net.Sockets.SocketError.HostUnreachable:
-						case System.Net.Sockets.SocketError.HostNotFound:
-						case System.Net.Sockets.SocketError.HostDown:
-							if (!Notified)
-							{
-								Log.Warning("<Network> DNS test failed, test host unreachable. Test host may be down.");
-								Notified = true;
-							}
-							break;
-						case System.Net.Sockets.SocketError.NetworkDown:
-						case System.Net.Sockets.SocketError.NetworkReset:
-						case System.Net.Sockets.SocketError.NetworkUnreachable:
-							break;
+						Dns.GetHostEntry(dnstestaddress); // FIXME: There should be some other method than DNS testing
+						InternetAvailable = true;
+						Notified = false;
+						// TODO: Don't rely on DNS?
+					}
+					catch (System.Net.Sockets.SocketException ex)
+					{
+						InternetAvailable = false;
+						switch (ex.SocketErrorCode)
+						{
+							case System.Net.Sockets.SocketError.AccessDenied:
+							case System.Net.Sockets.SocketError.SystemNotReady:
+								break;
+							case System.Net.Sockets.SocketError.TryAgain:
+							case System.Net.Sockets.SocketError.TimedOut:
+							default:
+								Log.Information("<Network> Internet availability test inconclusive, assuming connected.");
+								InternetAvailable = true;
+								return InternetAvailable;
+							case System.Net.Sockets.SocketError.SocketError:
+							case System.Net.Sockets.SocketError.Interrupted:
+							case System.Net.Sockets.SocketError.Fault:
+								if (!Notified)
+								{
+									Log.Warning("<Network> Internet check interrupted. Potential hardware/driver issues.");
+									Notified = true;
+								}
+								break;
+							case System.Net.Sockets.SocketError.HostUnreachable:
+							case System.Net.Sockets.SocketError.HostNotFound:
+							case System.Net.Sockets.SocketError.HostDown:
+								if (!Notified)
+								{
+									Log.Warning("<Network> DNS test failed, test host unreachable. Test host may be down.");
+									Notified = true;
+								}
+								break;
+							case System.Net.Sockets.SocketError.NetworkDown:
+							case System.Net.Sockets.SocketError.NetworkReset:
+							case System.Net.Sockets.SocketError.NetworkUnreachable:
+								break;
+						}
 					}
 				}
+				else
+					InternetAvailable = false;
+
+				RecordDeviceState(InternetAvailable, address_changed);
+
+				if (oldInetAvailable != InternetAvailable)
+				{
+					string status = "All OK";
+					if (NetworkAvailable && !InternetAvailable) status = "ISP/route problems";
+					else if (!NetworkAvailable) status = "Cable unplugged or router/modem down";
+
+					Log.Information("<Network> Status: {NetworkAvailable}, Internet: {InternetAvailable} – {Status}",
+						(NetworkAvailable ? "Up" : "Down"),
+						(InternetAvailable ? "Connected" : "Disconnected"),
+						status);
+				}
+				else
+				{
+					if (Taskmaster.Trace) Log.Verbose("<Network> Connectivity unchanged.");
+				}
 			}
-			else
-				InternetAvailable = false;
-
-			RecordDeviceState(InternetAvailable, address_changed);
-
-			if (oldInetAvailable != InternetAvailable)
+			finally
 			{
-				string status = "All OK";
-				if (NetworkAvailable && !InternetAvailable) status = "ISP/route problems";
-				else if (!NetworkAvailable) status = "Cable unplugged or router/modem down";
-
-				Log.Information("<Network> Status: {NetworkAvailable}, Internet: {InternetAvailable} – {Status}",
-					(NetworkAvailable ? "Up" : "Down"),
-					(InternetAvailable ? "Connected" : "Disconnected"),
-					status);
+				Atomic.Unlock(ref checking_inet);
 			}
-			else
-			{
-				if (Taskmaster.Trace) Log.Verbose("<Network> Connectivity unchanged.");
-			}
-
-			Atomic.Unlock(ref checking_inet);
 
 			InternetStatusChange?.Invoke(this, new InternetStatus { Available = InternetAvailable, Start = lastUptimeStart, Uptime = Uptime });
 
@@ -438,7 +442,7 @@ namespace Taskmaster
 			try
 			{
 				// TODO: Rate limit
-				if (Taskmaster.DebugNet) Log.Debug("<Network> Enumerating network interfaces...");
+				if (Taskmaster.DebugNet) Log.Verbose("<Network> Enumerating network interfaces...");
 
 				var ifacelistt = new List<NetDevice>();
 				// var ifacelist = new List<string[]>();
@@ -484,8 +488,7 @@ namespace Taskmaster
 					// devi.PrintStats();
 					ifacelistt.Add(devi);
 
-					if (Taskmaster.DebugNet)
-						Log.Debug("<Network> Interface: {InterfaceName}", dev.Name);
+					if (Taskmaster.DebugNet) Log.Verbose("<Network> Interface: {InterfaceName}", dev.Name);
 				}
 
 				lock (interfaces_lock) CurrentInterfaceList = ifacelistt;
@@ -557,7 +560,6 @@ namespace Taskmaster
 				{
 					IPChanged?.Invoke(this, null);
 				}
-					
 			}
 			else
 			{
@@ -584,6 +586,7 @@ namespace Taskmaster
 			// CheckInet().Wait(); // unnecessary?
 		}
 
+		bool netAntiFlicker = false;
 		int delayednetworkavailable_lock = 0;
 		async void DelayedNetworkConnectedUpdate(bool oldAvailability, bool delayed=true)
 		{
@@ -591,40 +594,50 @@ namespace Taskmaster
 
 			if (!Atomic.Lock(ref delayednetworkavailable_lock)) return;
 
-			bool available = oldAvailability;
-
-			if (available)
+			try
 			{
-				CheckInet();
-				if (InternetAvailable)
-				{
-					UpdateInterfaces();
-					return;
-				}
-			}
+				bool available = oldAvailability;
 
-			if (delayed)
+				if (available)
+				{
+					CheckInet();
+					if (InternetAvailable)
+					{
+						UpdateInterfaces();
+						return;
+					}
+				}
+
+				if (netAntiFlicker && delayed)
+				{
+					const int delay = 15;
+					int sleep = Convert.ToInt32(DateTime.Now.TimeTo(lastnetworkchange.AddSeconds(delay)).TotalSeconds * 1000) + 250;
+
+					await Task.Delay(sleep.Constrain(1000, 16000));
+
+					if (DateTime.Now.TimeSince(lastnetworkchange).TotalSeconds < delay)
+					{
+						if (Taskmaster.DebugNet) Log.Verbose("<Net> Delaying network status testing again: {Delay}<{Wait} is too soon",
+							string.Format("{0:N0}s", DateTime.Now.TimeSince(lastnetworkchange).TotalSeconds), delay);
+						DelayedNetworkConnectedUpdate(NetworkAvailable);
+						return;
+					}
+					else
+						netAntiFlicker = false;
+				}
+
+				available = NetworkAvailable;
+
+				Log.Information("<Network> Status changed: " + (available ? "Connected" : "Disconnected"));
+				netAntiFlicker = true;
+
+				if (available)
+					CheckInet();
+			}
+			finally
 			{
-				const int delay = 15;
-				int sleep = Convert.ToInt32(DateTime.Now.TimeTo(lastnetworkchange.AddSeconds(delay)).TotalSeconds * 1000);
-
-				await Task.Delay(sleep.Constrain(1000, 15000));
-
-				if (DateTime.Now.TimeSince(lastnetworkchange).TotalSeconds < delay)
-				{
-					DelayedNetworkConnectedUpdate(NetworkAvailable);
-					return;
-				}
+				Atomic.Unlock(ref delayednetworkavailable_lock);
 			}
-
-			available = NetworkAvailable;
-
-			Log.Information("<Network> Status changed: " + (available ? "Connected" : "Disconnected"));
-
-			if (available)
-				CheckInet();
-
-			Atomic.Unlock(ref delayednetworkavailable_lock);
 
 			UpdateInterfaces();
 		}
@@ -640,9 +653,15 @@ namespace Taskmaster
 			// do stuff only if this is different from last time
 			if (oldNetAvailable != available)
 			{
+				if (Taskmaster.DebugNet) Log.Verbose("<Net> Delaying network status testing");
+
 				DelayedNetworkConnectedUpdate(available);
 
 				NetworkStatusChange?.Invoke(this, new NetworkStatus { Available = available });
+			}
+			else
+			{
+				if (Taskmaster.DebugNet) Log.Debug("<Net> Network changed but still as available as before.");
 			}
 		}
 
