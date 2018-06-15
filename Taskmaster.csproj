@@ -111,6 +111,7 @@
     <Compile Include="LicenseDialog.cs">
       <SubType>Form</SubType>
     </Compile>
+    <Compile Include="LinearMeter.cs" />
     <Compile Include="NativeMethods.cs" />
     <Compile Include="Properties\Resources.Designer.cs">
       <AutoGen>True</AutoGen>
