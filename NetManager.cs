@@ -84,6 +84,7 @@ namespace Taskmaster
 
 			var pktsec = cfg["Traffic"];
 			PacketStatTimerInterval = pktsec.GetSetDefault("Sample rate", 15, out dirty).IntValue.Constrain(1, 60);
+			PacketWarning.Peak = PacketStatTimerInterval;
 			dirtyconf |= dirty;
 			if (dirtyconf) Taskmaster.Config.Save(cfg);
 
@@ -100,7 +101,7 @@ namespace Taskmaster
 
 			InterfaceInitialization();
 
-			UpdateInterfaces();
+			UpdateInterfaces(); // initialize
 
 			// Log.Debug("{IFACELIST} – count: {c}", CurrentInterfaceList, CurrentInterfaceList.Count);
 
@@ -112,9 +113,9 @@ namespace Taskmaster
 			Log.Information("<Network> Component loaded.");
 		}
 
-		int packetWarning = 0;
-		List<NetDevice> PreviousInterfaceList = new List<NetDevice>();
-		List<NetDevice> CurrentInterfaceList = new List<NetDevice>();
+		LinearMeter PacketWarning = new LinearMeter(15);
+
+		volatile List<NetDevice> CurrentInterfaceList = new List<NetDevice>(0);
 
 		async void AnalyzeTrafficBehaviourTick(object state) => AnalyzeTrafficBehaviour();
 
@@ -129,10 +130,10 @@ namespace Taskmaster
 
 			try
 			{
-				if (packetWarning > 0) packetWarning--;
+				PacketWarning.Leak();
 
 				var oldifaces = CurrentInterfaceList;
-				UpdateInterfaces(); // is this necessary?
+				UpdateInterfaces(); // force refresh
 				var ifaces = CurrentInterfaceList;
 
 				if (ifaces == null) return; // no interfaces, just quit
@@ -150,13 +151,13 @@ namespace Taskmaster
 
 					if (errors > 0)
 					{
-						if (packetWarning == 0 || (packetWarning % PacketStatTimerInterval == 0))
+						if (PacketWarning.IsEmptyOrBrimming)
 						{
-							packetWarning = 2;
+							PacketWarning.Level = 1; // pump once or reset to 1, whichever
 							Log.Warning("<Network> {Device} is suffering from traffic errors! (+{Rate} since last sample)", ifaces[index].Name, errors);
 						}
 						else
-							packetWarning++;
+							PacketWarning.Pump();
 					}
 
 					onSampling?.Invoke(this, new NetDeviceTraffic { Index = index, Traffic = new NetTraffic { Unicast = packets, Errors = errors, Discarded = discards } });
@@ -434,10 +435,13 @@ namespace Taskmaster
 
 		object interfaces_lock = new object();
 		int updateinterface_lock = 0;
+		bool needUpdate = true;
 
 		public void UpdateInterfaces()
 		{
 			if (!Atomic.Lock(ref updateinterface_lock)) return;
+
+			needUpdate = false;
 
 			try
 			{
@@ -499,13 +503,23 @@ namespace Taskmaster
 			}
 		}
 
-		public List<NetDevice> GetInterfaces() => CurrentInterfaceList;
+		public List<NetDevice> GetInterfaces()
+		{
+			lock (interfaces_lock)
+			{
+				if (needUpdate) UpdateInterfaces();
+				return CurrentInterfaceList;
+			}
+		}
 
 		async void NetAddrChanged(object sender, EventArgs e)
 		{
 			var tmpnow = DateTime.Now;
 
 			bool AvailabilityChanged = InternetAvailable;
+
+			await Task.Delay(0).ConfigureAwait(false); // asyncify
+
 			CheckInet(address_changed: true);
 			AvailabilityChanged = AvailabilityChanged != InternetAvailable;
 
@@ -588,22 +602,22 @@ namespace Taskmaster
 
 		bool netAntiFlicker = false;
 		int delayednetworkavailable_lock = 0;
-		async void DelayedNetworkConnectedUpdate(bool oldAvailability, bool delayed=true)
+		async void DelayedNetworkConnectedUpdate(bool available, bool delayed=true)
 		{
 			// delay output, but output immediately if internet becomes available...
 
 			if (!Atomic.Lock(ref delayednetworkavailable_lock)) return;
 
+			await Task.Delay(0).ConfigureAwait(false); // asyncify
+
 			try
 			{
-				bool available = oldAvailability;
-
 				if (available)
 				{
 					CheckInet();
 					if (InternetAvailable)
 					{
-						UpdateInterfaces();
+						needUpdate = true;
 						return;
 					}
 				}
@@ -626,20 +640,16 @@ namespace Taskmaster
 						netAntiFlicker = false;
 				}
 
-				available = NetworkAvailable;
-
 				Log.Information("<Network> Status changed: " + (available ? "Connected" : "Disconnected"));
 				netAntiFlicker = true;
 
-				if (available)
-					CheckInet();
+				if (NetworkAvailable)
+					needUpdate = true;
 			}
 			finally
 			{
 				Atomic.Unlock(ref delayednetworkavailable_lock);
 			}
-
-			UpdateInterfaces();
 		}
 
 		DateTime lastnetworkchange = DateTime.MinValue;
