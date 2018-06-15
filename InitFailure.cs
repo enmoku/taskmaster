@@ -28,6 +28,7 @@ using System;
 
 namespace Taskmaster
 {
+	[Serializable]
 	sealed public class InitFailure : Exception
 	{
 		readonly string Failure;
