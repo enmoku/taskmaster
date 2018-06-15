@@ -64,7 +64,11 @@ namespace Taskmaster
 		/// <summary>
 		/// Nothing has been done.
 		/// </summary>
-		Invalid
+		Invalid,
+		/// <summary>
+		/// No longer running
+		/// </summary>
+		Exited
 	}
 
 	public enum ProcessAffinityStrategy
