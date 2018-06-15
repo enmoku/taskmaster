@@ -266,6 +266,11 @@ namespace Taskmaster
 					activewindowev.Process = proc;
 					activewindowev.Executable = proc.ProcessName;
 				}
+				catch (ArgumentException)
+				{
+					// Process already gone
+					return;
+				}
 				catch (Exception ex) { Logging.Stacktrace(ex); } // NOP
 
 				if (Taskmaster.DebugForeground && Taskmaster.ShowInaction)
