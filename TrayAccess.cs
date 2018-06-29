@@ -693,6 +693,9 @@ namespace Taskmaster
 			}
 		}
 
+		/// <summary>
+		/// This can run for a long time
+		/// </summary>
 		bool RunAtStartScheduler(bool enabled, bool dryrun = false)
 		{
 			bool found = false;
@@ -710,10 +713,28 @@ namespace Taskmaster
 			info.Arguments = argsq;
 
 			var procfind = Process.Start(info);
-			var rvq = procfind.WaitForExit(30000);
-			if (rvq && procfind.ExitCode == 0) found = true;
+			bool rvq = false;
+			bool warned = false;
+			for (int i = 0; i < 3; i++)
+			{
+				rvq = procfind.WaitForExit(30_000);
 
-			if (procfind.ExitCode == 0) Log.Debug("<Tray> Scheduled task found.");
+				if (!procfind.HasExited)
+				{
+					if (!warned)
+					{
+						Log.Debug("<Tray> Task Scheduler is taking long time to respond.");
+						warned = true;
+					}
+				}
+				else
+					break;
+			}
+
+			if (rvq && procfind.ExitCode == 0) found = true;
+			else if (!procfind.HasExited) procfind.Kill();
+
+			if (found) Log.Debug("<Tray> Scheduled task found.");
 			else Log.Debug("<Tray> Scheduled task NOT found.");
 
 			if (dryrun) return found; // this is bad, but fits the following logic
@@ -726,6 +747,8 @@ namespace Taskmaster
 				toggled = proctoggle.WaitForExit(3000); // this will succeed as long as the task is there
 				if (toggled && proctoggle.ExitCode == 0) Log.Debug("<Tray> Scheduled task found and enabled");
 				else Log.Debug("<Tray> Scheduled task NOT toggled.");
+				if (!proctoggle.HasExited) proctoggle.Kill();
+
 				return true;
 			}
 
@@ -740,6 +763,8 @@ namespace Taskmaster
 
 				if (created && procnew.ExitCode == 0) Log.Debug("<Tray> Scheduled task created.");
 				else Log.Debug("<Tray> Scheduled task NOT created.");
+
+				if (!procnew.HasExited) procnew.Kill();
 			}
 			else
 			{
@@ -751,6 +776,8 @@ namespace Taskmaster
 
 				if (deleted && procdel.ExitCode == 0) Log.Debug("<Tray> Scheduled task deleted.");
 				else Log.Debug("<Tray> Scheduled task NOT deleted.");
+
+				if (!procdel.HasExited) procdel.Kill();
 			}
 
 			//if (toggled) Log.Debug("<Tray> Scheduled task toggled.");

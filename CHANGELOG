@@ -1,6 +1,10 @@
 ﻿Comprehensive changes can be found in Git change history:
 	https://github.com/mkahvi/taskmaster/commits/master
 
+### 2018-06-28
+	Fixed: Rare crash if OS task scheduler is not responding. Now wait longer, kill any lingering started processes, and be smarter.
+### 2018-06-22
+	Fixed: Monitor sleep during session lock does not work sometimes.
 ### 2018-06-15
 	Fixed: Network status changes were not being informed as they should've been.
 	Changed: Removed some pointless network device list updates and only marked the need for refreshing.

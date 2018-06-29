@@ -122,7 +122,7 @@ namespace Taskmaster
 
 		[DllImport("user32.dll", CharSet = CharSet.Auto)] // SetLastError
 		public static extern IntPtr SendMessageTimeout(
-			IntPtr hWnd, uint Msg, IntPtr wParam, IntPtr lParam,
+			IntPtr hWnd, int Msg, int wParam, int lParam,
 			SendMessageTimeoutFlags flags, uint timeout, out IntPtr result);
 
 		// for ProcessMAnagerUtility.cs

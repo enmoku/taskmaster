@@ -159,6 +159,7 @@ namespace Taskmaster
 
 		System.Timers.Timer MonitorSleepTimer;
 
+		int SleepTickCount = 0;
 		void MonitorSleepTimerTick(object sender, EventArgs ev)
 		{
 			if (CurrentMonitorState == MonitorPowerMode.Off) return;
@@ -169,16 +170,28 @@ namespace Taskmaster
 			
 			if (idletime >= Convert.ToDouble(SessionLockPowerOffIdleTimeout))
 			{
+				SleepTickCount++;
+
 				if (Taskmaster.ShowSessionActions || Taskmaster.DebugMonitor)
-					Log.Information("<Session:Lock> User idle; Monitor power down...");
+					Log.Information("<Session:Lock> User idle; Monitor power down, attempt {Num}...", SleepTickCount);
+
 				SetMonitorMode(MonitorPowerMode.Off);
 			}
 			else
 			{
+				SleepTickCount = 0; // reset
+
 				if (Taskmaster.ShowSessionActions || Taskmaster.DebugMonitor)
 					Log.Information("<Session:Lock> User active too recently ({Seconds}s ago), delaying monitor power down...", string.Format("{0:N1}", idletime));
 
 				MonitorSleepTimer?.Start(); // TODO: Make this happen sooner if user was not active recently
+			}
+
+			if (SleepTickCount >= 5)
+			{
+				// it would be better if this wasn't needed, but we don't want to spam our failure in the logs too much
+				Log.Warning("<Session:Lock> Repeated failure to put monitor to sleep, giving up.");
+				MonitorSleepTimer?.Stop();
 			}
 		}
 
@@ -741,6 +754,8 @@ namespace Taskmaster
 			{
 				MonitorSleepTimer?.Stop();
 
+				SleepTickCount = 0;
+
 				// should be unnecessary, but...
 				if (CurrentMonitorState != MonitorPowerMode.On)
 				{
@@ -1222,15 +1237,20 @@ namespace Taskmaster
 		public const int PBT_POWERSETTINGCHANGE = 0x8013;
 		public const int HWND_BROADCAST = 0xFFFF;
 
-		readonly IntPtr MonitorPowerP = new IntPtr(SC_MONITORPOWER);
 		void SetMonitorMode(MonitorPowerMode powermode)
 		{
-			IntPtr NewPowerMode = new IntPtr((int)powermode); // -1 = Powering On, 1 = Low Power (low backlight, etc.), 2 = Power Off
-			IntPtr Handle = new IntPtr(HWND_BROADCAST);
+			Debug.Assert(powermode != MonitorPowerMode.Invalid);
+
+			int NewPowerMode = (int)powermode; // -1 = Powering On, 1 = Low Power (low backlight, etc.), 2 = Power Off
+
+			//IntPtr Broadcast = new IntPtr(HWND_BROADCAST);
+			IntPtr TopMost = new IntPtr(-1);
+
 			IntPtr result = new IntPtr(-1); // unused, but necessary
 			uint timeout = 200; // ms per window, we don't really care if they process them
 			var flags = NativeMethods.SendMessageTimeoutFlags.SMTO_ABORTIFHUNG;
-			NativeMethods.SendMessageTimeout(Handle, WM_SYSCOMMAND, MonitorPowerP, NewPowerMode, flags, timeout, out result);
+
+			NativeMethods.SendMessageTimeout(TopMost, WM_SYSCOMMAND, SC_MONITORPOWER, NewPowerMode, flags, timeout, out result);
 		}
 	}
 }
