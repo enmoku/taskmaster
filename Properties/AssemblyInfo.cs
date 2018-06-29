@@ -21,6 +21,7 @@ using System.Resources;
 [assembly: AssemblyVersion("0.11.*")] // FIXME: Get this somehow from the solution settings?
 [assembly: ComVisible(false)]
 [assembly: NeutralResourcesLanguage("en")]
+[assembly: Guid("088f7210-51b2-4e06-9bd4-93c27a973874")] // this is pointless, yes?
 
 // The following attributes are used to specify the signing key for the assembly, 
 // if desired. See the Mono documentation for more information about signing.
