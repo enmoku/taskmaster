@@ -1,6 +1,9 @@
 ﻿Comprehensive changes can be found in Git change history:
 	https://github.com/mkahvi/taskmaster/commits/master
 
+### 2018-06-29 Version 0.11
+	Added: Option to minimize, reduce priority&affinity, and to kill hung foreground apps, based on time spent hung.
+
 ### 2018-06-28
 	Fixed: Rare crash if OS task scheduler is not responding. Now wait longer, kill any lingering started processes, and be smarter.
 ### 2018-06-22

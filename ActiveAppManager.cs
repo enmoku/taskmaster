@@ -61,10 +61,54 @@ namespace Taskmaster
 			Foreground = pid;
 			// Console.WriteLine("--- Foreground Process Identifier: " + Foreground);
 
+			bool dirty = false, modified = false;
 			var perfsec = Taskmaster.cfg["Performance"];
-			Hysterisis = perfsec.GetSetDefault("Foreground hysterisis", 1500, out bool modified).IntValue.Constrain(0, 30000);
+			Hysterisis = perfsec.GetSetDefault("Foreground hysterisis", 1500, out modified).IntValue.Constrain(0, 30000);
 			perfsec["Foreground hysterisis"].Comment = "In milliseconds, from 0 to 30000. Delay before we inspect foreground app, in case user rapidly swaps apps.";
-			if (modified) Taskmaster.Config.MarkDirtyINI(Taskmaster.cfg);
+			dirty |= modified;
+
+			var emsec = Taskmaster.cfg["Emergency"];
+			HangKillTick = emsec.GetSetDefault("Kill hung", 180 * 5, out modified).IntValue.Constrain(0, 60 * 60 * 4);
+			emsec["Hung kill time"].Comment = "Kill the application after this many seconds. 0 disables. Minimum actual kill time is minimize/reduce time + 60.";
+			dirty |= modified;
+
+			HangMinimizeTick = emsec.GetSetDefault("Hung minimize time", 180, out modified).IntValue.Constrain(0, 60 * 60 * 2);
+			emsec["Hung minimize time"].Comment = "Try to minimize hung app after this many seconds.";
+			dirty |= modified;
+
+			HangReduceTick = emsec.GetSetDefault("Hung reduce time", 300, out modified).IntValue.Constrain(0, 60 * 60 * 2);
+			emsec["Hung reduce time"].Comment = "Reduce affinity and priority of hung app after this many seconds.";
+			dirty |= modified;
+
+			int killtickmin = (Math.Max(HangReduceTick, HangMinimizeTick)) + 60;
+			if (HangKillTick > 0 && HangKillTick < killtickmin)
+				HangKillTick = killtickmin;
+
+			if (HangKillTick > 0 || HangReduceTick > 0 || HangMinimizeTick > 0)
+			{
+				var sbs = new System.Text.StringBuilder();
+				sbs.Append("<Foreground> Hang action timers: ");
+
+				if (HangMinimizeTick > 0)
+				{
+					sbs.Append("Minimize: ").Append(HangMinimizeTick).Append("s");
+					if (HangReduceTick > 0 || HangKillTick > 0) sbs.Append(", ");
+				}
+				if (HangReduceTick > 0)
+				{
+					sbs.Append("Reduce: ").Append(HangReduceTick).Append("s");
+					if (HangKillTick > 0) sbs.Append(", ");
+				}
+				if (HangKillTick > 0)
+					sbs.Append("Kill: ").Append(HangKillTick).Append("s");
+
+				Log.Information(sbs.ToString());
+
+				sbs.Clear();
+				sbs = null;
+			}
+
+			if (dirty) Taskmaster.Config.MarkDirtyINI(Taskmaster.cfg);
 
 			// TODO: Add timer to check foreground app hanging
 			// TODO: Hang check should only take action if user fails to swap apps (e.g. ctrl-alt-esc for taskmanager)
@@ -74,12 +118,12 @@ namespace Taskmaster
 			hungTimer.Elapsed += HangDetector;
 			hungTimer.Start();
 
-			Log.Information("<Foreground Manager> Component loaded.");
+			Log.Information("<Foreground> Component loaded.");
 		}
 
 		int Hysterisis = 500;
 
-		NativeMethods.WinEventDelegate ForegroundEventDelegate;
+		readonly NativeMethods.WinEventDelegate ForegroundEventDelegate;
 		IntPtr windowseventhook = IntPtr.Zero;
 
 		public int Foreground { get; private set; } = -1;
@@ -110,33 +154,139 @@ namespace Taskmaster
 		System.Timers.Timer hungTimer = new System.Timers.Timer(60_000);
 		DateTime HangTime = DateTime.MaxValue;
 
+		int PreviousFG = 0;
+		int HangTick = 0;
+		int HangMinimizeTick = 180;
+		int HangReduceTick = 240;
+		int HangKillTick = 300;
+		Process fg = null;
+
+		bool Minimized = false;
+		bool Reduced = false;
+		int IgnoreHung = -1;
+
 		void HangDetector(object sender, EventArgs ev)
 		{
+			int pid = Foreground;
+
 			try
 			{
 				DateTime now = DateTime.Now;
-				TimeSpan since = (now - LastSwap);
-				if (since.Seconds > 5)
+				TimeSpan since = now.TimeSince(LastSwap); // since app was last changed
+				if (since.TotalSeconds > 5)
 				{
-					Process fg = Process.GetProcessById(Foreground);
+					if (PreviousFG != pid)
+						fg = Process.GetProcessById(pid);
+
 					if (fg != null && !fg.Responding)
 					{
-						if (HangTime != DateTime.MaxValue)
+						if (HangTick == 1)
+						{
 							Log.Warning("<Foreground> {Name} (#Pid) is not responding!", fg.ProcessName, fg.Id);
+						}
+						else if (HangTick > 1)
+						{
+							double hung = now.TimeSince(HangTime).TotalSeconds;
+
+							var sbs = new System.Text.StringBuilder();
+							sbs.Append("<Foreground> Hung {Name}' (#{Pid}) – ");
+							bool acted = false;
+							if (HangMinimizeTick > 0 && hung > HangMinimizeTick && !Minimized)
+							{
+								bool rv = NativeMethods.ShowWindow(fg.Handle, 11); // 6 = minimize, 11 = force minimize
+								if (rv)
+								{
+									sbs.Append("Minimized");
+									Minimized = true;
+								}
+								else
+									sbs.Append("Minimize failed");
+								acted = true;
+							}
+							if (HangReduceTick > 0 && hung > HangReduceTick && !Reduced)
+							{
+								bool aff = false, prio = false;
+								try
+								{
+									fg.ProcessorAffinity = new IntPtr(1);
+									if (acted) sbs.Append(", ");
+									sbs.Append("Affinity reduced");
+									aff = true;
+								}
+								catch
+								{
+									if (acted) sbs.Append(", ");
+									sbs.Append("Affinity reduction failed");
+								}
+								acted = true;
+								try
+								{
+									fg.PriorityClass = ProcessPriorityClass.Idle;
+									sbs.Append(", Priority reduced");
+									prio = true;
+								}
+								catch
+								{
+									sbs.Append(", Priority reduction failed");
+								}
+								
+								if (aff && prio) Reduced = true;
+							}
+							if (HangKillTick > 0 && hung > HangKillTick)
+							{
+								try
+								{
+									fg.Kill();
+									if (acted) sbs.Append(", ");
+									sbs.Append("Terminated");
+								}
+								catch
+								{
+									if (acted) sbs.Append(", ");
+									sbs.Append("Termination failed");
+								}
+								acted = true;
+							}
+
+							if (acted) Log.Warning(sbs.ToString());
+
+							sbs.Clear();
+							sbs = null;
+						}
 						else
+						{
 							HangTime = now;
+							Reduced = false;
+							Minimized = false;
+
+							Taskmaster.processmanager.Unignore(IgnoreHung);
+							IgnoreHung = pid;
+							Taskmaster.processmanager.Ignore(IgnoreHung);
+						}
+
+						HangTick++;
 					}
 					else
+					{
+						HangTick = 0;
 						HangTime = DateTime.MaxValue;
+
+						Taskmaster.processmanager.Unignore(IgnoreHung);
+					}
 				}
 			}
 			catch (ArgumentException)
 			{
 				// NOP, already exited
+				Taskmaster.processmanager.Unignore(IgnoreHung);
+
+				HangTick = 0;
 				HangTime = DateTime.MaxValue;
 			}
 			catch (Exception ex)
 			{
+				Taskmaster.processmanager.Unignore(IgnoreHung);
+
 				Logging.Stacktrace(ex);
 			}
 		}
@@ -258,7 +408,10 @@ namespace Taskmaster
 				};
 
 				NativeMethods.GetWindowThreadProcessId(hwnd, out int pid);
+
 				Foreground = activewindowev.Id = pid;
+				HangTick = 0;
+
 				// Console.WriteLine("--- Foreground Process Identifier: " + Foreground);
 				try
 				{

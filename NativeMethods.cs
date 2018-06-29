@@ -220,5 +220,11 @@ namespace Taskmaster
 			Shift = 4,
 			WinKey = 8
 		}
+
+		[DllImport("user32.dll")]
+		public static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
+
+		public const int SW_FORCEMINIMIZE = 11;
+		public const int SW_MINIMIZE = 6;
 	}
 }

@@ -513,6 +513,15 @@ namespace Taskmaster
 			Debug.Assert(info.Id > 4, "ProcessController.Touch given invalid process ID");
 			Debug.Assert(!string.IsNullOrEmpty(info.Name), "ProcessController.Touch given empty process name.");
 
+			/*
+			try
+			{
+				if (!info.Process.Responding)
+					return; // ignore non-responding apps
+			}
+			catch { }
+			*/
+
 			bool foreground = Taskmaster.activeappmonitor?.Foreground.Equals(info.Id) ?? true;
 
 			info.PowerWait = (PowerPlan != PowerInfo.PowerMode.Undefined);
