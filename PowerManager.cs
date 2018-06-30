@@ -192,6 +192,7 @@ namespace Taskmaster
 				// it would be better if this wasn't needed, but we don't want to spam our failure in the logs too much
 				Log.Warning("<Session:Lock> Repeated failure to put monitor to sleep, giving up.");
 				MonitorSleepTimer?.Stop();
+				SleepTickCount = 0;
 			}
 		}
 
@@ -753,7 +754,6 @@ namespace Taskmaster
 			else
 			{
 				MonitorSleepTimer?.Stop();
-
 				SleepTickCount = 0;
 
 				// should be unnecessary, but...
