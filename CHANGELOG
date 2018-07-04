@@ -1,6 +1,10 @@
 ﻿Comprehensive changes can be found in Git change history:
 	https://github.com/mkahvi/taskmaster/commits/master
 
+### 2018-07-03
+	Fixed: Unhandled process exit is now handled.
+### 2018-07-02
+	Changed: Some debug output for monitor power states.
 ### 2018-06-30
 	Fixed: Monitor sleep during lock is not giving up.
 

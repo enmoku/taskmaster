@@ -502,7 +502,12 @@ namespace Taskmaster
 				var rv = NativeMethods.SetPriorityClass(process.Handle, (uint)priority);
 				return rv;
 			}
-			catch (Exception ex) { Logging.Stacktrace(ex); } // NOP, don't care
+			catch (InvalidOperationException)
+			{
+				// Already exited
+				return false;
+			}
+			catch (Exception ex) { Logging.Stacktrace(ex); }
 			return false;
 		}
 
@@ -621,7 +626,13 @@ namespace Taskmaster
 				oldAffinity = info.Process.ProcessorAffinity;
 				oldPriority = info.Process.PriorityClass;
 			}
-			catch (Exception ex) { Logging.Stacktrace(ex); } // NOP, don't care
+			catch (InvalidOperationException)
+			{
+				// Already exited
+				info.State = ProcessState.Exited;
+				return;
+			}
+			catch (Exception ex) { Logging.Stacktrace(ex); }
 			IntPtr newAffinity = Affinity.GetValueOrDefault();
 
 			var newPriority = oldPriority;
@@ -801,7 +812,13 @@ namespace Taskmaster
 										FriendlyName, info.Name, info.Id, Priority.ToString(), newPriority.ToString());
 						}
 					}
-					catch (Exception ex) { Logging.Stacktrace(ex); }// NOP, don't caree
+					catch (InvalidOperationException)
+					{
+						// Already exited
+						info.State = ProcessState.Exited;
+						return;
+					}
+					catch (Exception ex) { Logging.Stacktrace(ex); }
 				}
 
 				LastTouch = DateTime.Now;

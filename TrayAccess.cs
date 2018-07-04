@@ -544,21 +544,13 @@ namespace Taskmaster
 
 				UnregisterGlobalHotkeys();
 
-				try
-				{
-					RescanRequest -= processmanager.ScanEverythingRequest;
-				}
-				catch { }
+				RescanRequest -= processmanager.ScanEverythingRequest;
 
-				try
+				if (powermanager != null)
 				{
-					if (powermanager != null)
-					{
-						powermanager.onPlanChange -= HighlightPowerModeEvent;
-						powermanager = null;
-					}
+					powermanager.onPlanChange -= HighlightPowerModeEvent;
+					powermanager = null;
 				}
-				catch { } // NOP, don't care
 
 				if (Tray != null)
 				{

@@ -74,6 +74,11 @@ namespace Taskmaster
 					if (proc.Id <= 4) continue;
 					procnames.Add(proc.ProcessName);
 				}
+				catch (InvalidOperationException)
+				{
+					// Already exited
+					continue;
+				}
 				catch (Exception ex)
 				{
 					Logging.Stacktrace(ex); // throws only if proc.processname fails

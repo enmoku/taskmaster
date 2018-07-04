@@ -145,7 +145,11 @@ namespace Taskmaster
 			var OldPowerState = CurrentMonitorState;
 			CurrentMonitorState = ev.Mode;
 
-			if (Taskmaster.DebugMonitor) Log.Debug("<Monitor> Power state: {State}", CurrentMonitorState);
+			var lastactive = UserLastActive();
+			var idle = UserIdleFor(lastactive);
+
+			if (Taskmaster.DebugMonitor) Log.Debug("<Monitor> Power state: {State} (last user activity {Sec}s ago)",
+				CurrentMonitorState.ToString(), Convert.ToInt32(idle));
 
 			if (CurrentMonitorState == MonitorPowerMode.On && SessionLocked)
 			{
@@ -199,6 +203,10 @@ namespace Taskmaster
 		bool SessionLocked = false;
 		MonitorPowerMode CurrentMonitorState = MonitorPowerMode.Invalid;
 
+		/// <summary>
+		/// Pass this to UserIdleFor(uint).
+		/// </summary>
+		/// <returns>Ticks since boot.</returns>
 		uint UserLastActive()
 		{
 			var info = new NativeMethods.LASTINPUTINFO();
@@ -778,35 +786,41 @@ namespace Taskmaster
 					case SessionSwitchReason.SessionLock:
 						setpowersaver:
 						// SET POWER SAVER
-						if (SessionLockPowerMode != PowerMode.Custom)
+						lock (power_lock)
 						{
-							Paused = true;
+							if (SessionLockPowerMode != PowerMode.Custom)
+							{
+								if (Taskmaster.DebugSession)
+									Log.Debug("<Session:Lock> Enforcing power plan: {Plan}", SessionLockPowerMode.ToString());
 
-							if (Taskmaster.DebugSession)
-								Log.Debug("<Session:Lock> Enforcing power plan: {Plan}", SessionLockPowerMode.ToString());
+								Paused = true;
 
-							if (PauseUnneededSampler) CPUTimer.Stop();
+								if (PauseUnneededSampler) CPUTimer.Stop();
 
-							if (CurrentMode != SessionLockPowerMode)
-								InternalSetMode(PowerMode.PowerSaver, true);
+								if (CurrentMode != SessionLockPowerMode)
+									InternalSetMode(PowerMode.PowerSaver, true);
+							}
 						}
 						break;
 					case SessionSwitchReason.SessionLogon:
 					case SessionSwitchReason.SessionUnlock:
 						// RESTORE POWER MODE
-						if (SessionLockPowerMode != PowerMode.Custom)
+						lock (power_lock)
 						{
-							if (Taskmaster.DebugSession || Taskmaster.ShowSessionActions || Taskmaster.DebugPower)
-								Log.Information("<Session:Unlock> Restoring normal power.");
-
-							if (CurrentMode == SessionLockPowerMode)
+							if (SessionLockPowerMode != PowerMode.Custom)
 							{
-								InternalSetMode(RestoreMode, true);
+								if (Taskmaster.DebugSession || Taskmaster.ShowSessionActions || Taskmaster.DebugPower)
+									Log.Information("<Session:Unlock> Restoring normal power.");
+
+								if (CurrentMode == SessionLockPowerMode)
+								{
+									InternalSetMode(RestoreMode, true);
+								}
+
+								Paused = false;
+
+								if (PauseUnneededSampler) CPUTimer.Start();
 							}
-
-							Paused = false;
-
-							if (PauseUnneededSampler) CPUTimer.Start();
 						}
 						break;
 					default:
@@ -1121,12 +1135,15 @@ namespace Taskmaster
 		{
 			Debug.Assert(Behaviour == PowerBehaviour.Auto, "This is for auto adjusting only.");
 
-			if (Paused) return false;
+			lock (power_lock)
+			{
+				if (Paused) return false;
 
-			if (mode == CurrentMode || forceModeSources.Count > 0)
-				return false;
+				if (mode == CurrentMode || forceModeSources.Count > 0)
+					return false;
 
-			InternalSetMode(mode, verbose: false);
+				InternalSetMode(mode, verbose: false);
+			}
 			return true;
 		}
 		
@@ -1156,17 +1173,20 @@ namespace Taskmaster
 
 			Forced = true;
 
-			rv = mode != CurrentMode;
-			if (rv)
+			lock (power_lock)
 			{
-				SavedMode = RestoreModeMethod == ModeMethod.Saved ? CurrentMode : RestoreMode;
-				InternalSetMode(mode, verbose:true);
+				rv = mode != CurrentMode;
+				if (rv)
+				{
+					SavedMode = RestoreModeMethod == ModeMethod.Saved ? CurrentMode : RestoreMode;
+					InternalSetMode(mode, verbose: true);
 
-				if (Taskmaster.DebugPower) Log.Debug("<Power> Forced to: {PowerMode}", CurrentMode);
-			}
-			else
-			{
-				if (Taskmaster.DebugPower) Log.Debug("<Power> Force power mode for mode that is already active. Ignoring.");
+					if (Taskmaster.DebugPower) Log.Debug("<Power> Forced to: {PowerMode}", CurrentMode);
+				}
+				else
+				{
+					if (Taskmaster.DebugPower) Log.Debug("<Power> Force power mode for mode that is already active. Ignoring.");
+				}
 			}
 
 			return rv;

@@ -101,7 +101,7 @@ namespace Taskmaster
 				info.Path = info.Process.MainModule?.FileName ?? null; // this will cause win32exception of various types, we don't Really care which error it is
 				Statistics.PathFindViaModule++;
 			}
-			catch (NullReferenceException) // why tho?
+			catch (NullReferenceException) // Main Module is sometimes inaccessible or the filename missing, usually access problems of some sort
 			{
 				info.Path = string.Empty;
 			}
