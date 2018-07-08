@@ -46,6 +46,34 @@ namespace Taskmaster
 					  string.Format("{0:N2}", Statistics.PathCacheMisses > 0 ? (Statistics.PathCacheHits / Statistics.PathCacheMisses) : 1));
 		}
 
+		public static ProcessEx GetInfo(int ProcessID, Process process = null, string name = null, string path = null, bool getPath = false)
+		{
+			try
+			{
+				if (process == null) process = Process.GetProcessById(ProcessID);
+
+				var info = new ProcessEx()
+				{
+					Id = ProcessID,
+					Process = process,
+					Name = string.IsNullOrEmpty(name) ?  process.ProcessName : name,
+					State = ProcessState.OK,
+					Path = path,
+				};
+
+				if (getPath && string.IsNullOrEmpty(path)) FindPath(info);
+
+				return info;
+			}
+			catch (ArgumentException) { } // already exited
+			catch (Exception ex)
+			{
+				Logging.Stacktrace(ex);
+			}
+
+			return null;
+		}
+
 		public static bool FindPath(ProcessEx info)
 		{
 			var cacheGet = false;
@@ -74,7 +102,7 @@ namespace Taskmaster
 			}
 
 			// Try harder
-			if (string.IsNullOrEmpty(info.Path) && !GetPath(info)) return false;
+			if (string.IsNullOrEmpty(info.Path) && !FindPathExtended(info)) return false;
 
 			// Add to path cache
 			if (pathCache != null && !cacheGet)
@@ -90,9 +118,12 @@ namespace Taskmaster
 			return true;
 		}
 
-		static bool GetPath(ProcessEx info)
+		/// <summary>
+		/// Use FindPath() instead. This is called by it.
+		/// </summary>
+		private static bool FindPathExtended(ProcessEx info)
 		{
-			System.Diagnostics.Debug.Assert(string.IsNullOrEmpty(info.Path), "GetPath called even though path known.");
+			System.Diagnostics.Debug.Assert(string.IsNullOrEmpty(info.Path), "FindPathExtended called even though path known.");
 
 			Statistics.PathFindAttempts++;
 
@@ -127,7 +158,6 @@ namespace Taskmaster
 				}
 				else
 					Statistics.PathFindViaC++;
-
 			}
 
 			return true;
