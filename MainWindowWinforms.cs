@@ -1027,6 +1027,13 @@ namespace Taskmaster
 				if (Taskmaster.DebugMonitor) EnsureVerbosityLevel();
 			};
 
+			var menu_debug_audio = new ToolStripMenuItem("Audio") { Checked = Taskmaster.DebugAudio, CheckOnClick = true };
+			menu_debug_audio.Click += (s, e) =>
+			{
+				Taskmaster.DebugAudio = menu_debug_audio.Checked;
+				if (Taskmaster.DebugAudio) EnsureVerbosityLevel();
+			};
+
 			var menu_debug_clear = new ToolStripMenuItem("Clear UI log", null, (sender, e) => { ClearLog(); });
 
 			// TODO: This menu needs to be clearer
@@ -1041,6 +1048,7 @@ namespace Taskmaster
 			menu_debug.DropDownItems.Add(menu_debug_power);
 			menu_debug.DropDownItems.Add(menu_debug_session);
 			menu_debug.DropDownItems.Add(menu_debug_monitor);
+			menu_debug.DropDownItems.Add(menu_debug_audio);
 			menu_debug.DropDownItems.Add(new ToolStripSeparator());
 			menu_debug.DropDownItems.Add(menu_debug_clear);
 

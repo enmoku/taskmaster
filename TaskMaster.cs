@@ -60,6 +60,7 @@ namespace Taskmaster
 		public static PowerManager powermanager = null;
 		public static ActiveAppManager activeappmonitor = null;
 		public static HealthMonitor healthmonitor = null;
+		public static AudioManager audiomanager = null;
 		static SelfAwareness selfaware = null;
 
 		public static object watchlist_lock = new object();
@@ -251,13 +252,14 @@ namespace Taskmaster
 				HealthMonitorEnabled = false;
 				NetworkMonitorEnabled = false;
 				ActiveAppMonitorEnabled = false;
+				AudioManagerEnabled = false;
 
 				WMIPolling = false;
 				
 				SelfOptimize = false;
 			}
 
-			Components = new ComponentContainer();
+			//Components = new ComponentContainer();
 
 			// Parallel loading, cuts down startup time some.
 			// This is really bad if something fails
@@ -267,11 +269,14 @@ namespace Taskmaster
 				PowerManagerEnabled ? (Task.Run(() => { powermanager = new PowerManager(); })) : Task.CompletedTask,
 				ProcessMonitorEnabled ? (Task.Run(() => { processmanager = new ProcessManager(); })) : Task.CompletedTask,
 				(ActiveAppMonitorEnabled && ProcessMonitorEnabled) ? (Task.Run(()=> {activeappmonitor = new ActiveAppManager(eventhook:false); })) : Task.CompletedTask,
-				MicrophoneMonitorEnabled ? (Task.Run(() => { micmonitor = new MicManager(); })) : Task.CompletedTask,
 				NetworkMonitorEnabled ? (Task.Run(() => { netmonitor = new NetManager(); })) : Task.CompletedTask,
 				MaintenanceMonitorEnabled ? (Task.Run(() => { diskmanager = new DiskManager(); })) : Task.CompletedTask,
 				HealthMonitorEnabled ? (Task.Run(() => { healthmonitor = new HealthMonitor(); })) : Task.CompletedTask,
 			};
+
+			// MMDEV requires main thread
+			if (MicrophoneMonitorEnabled) micmonitor = new MicManager();
+			if (AudioManagerEnabled) audiomanager = new AudioManager(); // EXPERIMENTAL
 
 			// WinForms makes the following components not load nicely if not done here.
 			if (tray) trayaccess = new TrayAccess();
@@ -374,6 +379,8 @@ namespace Taskmaster
 		public static bool DebugPaths { get; set; } = false;
 		public static bool DebugFullScan { get; set; } = false;
 
+		public static bool DebugAudio { get; set; } = false;
+
 		public static bool DebugForeground { get; set; } = false;
 
 		public static bool DebugPower { get; set; } = false;
@@ -405,6 +412,7 @@ namespace Taskmaster
 		public static bool PowerManagerEnabled { get; private set; } = true;
 		public static bool MaintenanceMonitorEnabled { get; private set; } = true;
 		public static bool HealthMonitorEnabled { get; private set; } = true;
+		public static bool AudioManagerEnabled { get; private set; } = true;
 
 		public static bool ShowOnStart { get; private set; } = true;
 
@@ -471,6 +479,9 @@ namespace Taskmaster
 			dirtyconfig |= modified;
 			PathMonitorEnabled = compsec.GetSetDefault("Process paths", true, out modified).BoolValue;
 			compsec["Process paths"].Comment = "Monitor starting processes based on their location. Configure in Paths.ini";
+			dirtyconfig |= modified;
+			AudioManagerEnabled = compsec.GetSetDefault("Audio", true, out modified).BoolValue;
+			compsec["Audio"].Comment = "Monitor audio sessions and set their volume as per user configuration.";
 			dirtyconfig |= modified;
 			MicrophoneMonitorEnabled = compsec.GetSetDefault("Microphone", true, out modified).BoolValue;
 			compsec["Microphone"].Comment = "Monitor and force-keep microphone volume.";
@@ -643,6 +654,7 @@ namespace Taskmaster
 			DebugProcesses = dbgsec.TryGet("Processes")?.BoolValue ?? false;
 			DebugPaths = dbgsec.TryGet("Paths")?.BoolValue ?? false;
 			DebugFullScan = dbgsec.TryGet("Full scan")?.BoolValue ?? false;
+			DebugAudio = dbgsec.TryGet("Audio")?.BoolValue ?? false;
 
 			DebugForeground = dbgsec.TryGet("Foreground")?.BoolValue ?? false;
 
@@ -977,6 +989,12 @@ namespace Taskmaster
 					Environment.Exit(-1);
 				}
 			}
+		}
+
+		public static bool IsMainThread()
+		{
+			return (System.Threading.Thread.CurrentThread.IsThreadPoolThread == false &&
+					System.Threading.Thread.CurrentThread.ManagedThreadId == 1);
 		}
 
 		// Useful for figuring out multi-threading related problems

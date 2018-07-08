@@ -500,9 +500,11 @@ namespace Taskmaster
 				Explorer = procs;
 				foreach (var proc in procs)
 				{
-					int id = proc.Id;
-					var info = new ProcessEx() { Id = proc.Id, Name = "explorer", Process = proc, Path = string.Empty };
-					if (ProcessManagerUtility.FindPath(info))
+					var info = ProcessManagerUtility.GetInfo(proc.Id, process: proc, name:"explorer", getPath: true);
+
+					if (info == null) continue; // things failed, move on
+
+					if (!string.IsNullOrEmpty(info.Path))
 					{
 						if (!info.Path.StartsWith(Environment.GetFolderPath(Environment.SpecialFolder.Windows), StringComparison.InvariantCultureIgnoreCase))
 						{
@@ -514,16 +516,16 @@ namespace Taskmaster
 					bool added = false;
 					lock (explorer_lock)
 					{
-						added = KnownExplorerInstances.Add(id);
+						added = KnownExplorerInstances.Add(info.Id);
 					}
 
 					if (added)
 					{
-						proc.Exited += (s, e) => { ExplorerCrashHandler(id); };
+						proc.Exited += (s, e) => { ExplorerCrashHandler(info.Id); };
 						proc.EnableRaisingEvents = true;
 					}
 
-					Log.Information("<Tray> Explorer (#{ExplorerProcessID}) registered.", id);
+					Log.Information("<Tray> Explorer (#{ExplorerProcessID}) registered.", info.Id);
 				}
 
 				return true;

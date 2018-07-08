@@ -54,7 +54,7 @@ namespace Taskmaster
 		public Process Process=null;
 
 		public bool Handled=false;
-		public bool Match=false;
+		public bool PathMatched=false;
 
 		public bool PowerWait = false;
 		public bool ActiveWait = false;
@@ -661,6 +661,9 @@ namespace Taskmaster
 					affStrat = (ProcessAffinityStrategy)affinityStrat;
 				}
 
+				float volume = section.TryGet("Volume")?.FloatValue.Constrain(0.0f, 1.0f) ?? 0.5f;
+				AudioVolumeStrategy volumestrategy = (AudioVolumeStrategy)(section.TryGet("Volume strategy")?.IntValue.Constrain(0, 3) ?? 0);
+
 				var prc = new ProcessController(section.Name, prioR, (aff == 0 ? allCPUsMask : aff))
 				{
 					Enabled = section.TryGet("Enabled")?.BoolValue ?? true,
@@ -681,6 +684,9 @@ namespace Taskmaster
 					AllowPaging = (section.TryGet("Allow paging")?.BoolValue ?? false),
 				};
 
+				prc.Volume = volume;
+				prc.VolumeStrategy = volumestrategy;
+
 				// TODO: Blurp about following configuration errors
 				if (!prc.Affinity.HasValue) prc.AffinityStrategy = ProcessAffinityStrategy.None;
 				else if (prc.AffinityStrategy == ProcessAffinityStrategy.None) prc.Affinity = null;
@@ -698,13 +704,7 @@ namespace Taskmaster
 				if (resize != null && resize.Length == 4)
 				{
 					int resstrat = section.TryGet("Resize strategy")?.IntValue.Constrain(0,3) ?? -1;
-					if (resstrat < 0)
-					{
-						resstrat = 0;
-						// DEPRECATED
-						resstrat += (section.TryGet("Remember size")?.BoolValue ?? false) ? 1 : 0;
-						resstrat += (section.TryGet("Remember position")?.BoolValue ?? false) ? 2 : 0;
-					}
+					if (resstrat < 0) resstrat = 0;
 
 					prc.ResizeStrategy = (WindowResizeStrategy)resstrat;
 
@@ -933,11 +933,9 @@ namespace Taskmaster
 
 		// TODO: ADD CACHE: pid -> process name, path, process
 
-		async void CheckPathWatch(ProcessEx info)
+		public ProcessController getWatchedPath(ProcessEx info)
 		{
-			Debug.Assert(info.Process != null);
-
-			await Task.Delay(0).ConfigureAwait(false);
+			ProcessController matchedprc = null;
 
 			try
 			{
@@ -945,29 +943,28 @@ namespace Taskmaster
 				{
 					if (Taskmaster.ShowInaction)
 						Log.Verbose("{ProcessName} (#{ProcessID}) has already exited.", info.Name, info.Id);
-					return; // return ProcessState.Invalid;
+					return null; // return ProcessState.Invalid;
 				}
 			}
 			catch (InvalidOperationException ex)
 			{
 				Log.Fatal("INVALID ACCESS to Process");
 				Logging.Stacktrace(ex);
-				return; // return ProcessState.AccessDenied; //throw; // no point throwing
+				return null; // return ProcessState.AccessDenied; //throw; // no point throwing
 			}
 			catch (System.ComponentModel.Win32Exception ex)
 			{
 				if (ex.NativeErrorCode != 5) // what was this?
 					Log.Warning("Access error: {ProcessName} (#{ProcessID})", info.Name, info.Id);
-				return; // return ProcessState.AccessDenied; // we don't care wwhat this error is
+				return null; // return ProcessState.AccessDenied; // we don't care wwhat this error is
 			}
 
-			if (!ProcessManagerUtility.FindPath(info))
-				return; // return ProcessState.Error;
+			if (string.IsNullOrEmpty(info.Path) && !ProcessManagerUtility.FindPath(info))
+				return null; // return ProcessState.Error;
 
 			if (IgnoreSystem32Path && info.Path.Contains(Environment.GetFolderPath(Environment.SpecialFolder.System)))
-				return;
+				return null;
 
-			ProcessController matchedprc = null;
 			// TODO: This needs to be FASTER
 			lock (watchlist_lock)
 			{
@@ -1001,6 +998,19 @@ namespace Taskmaster
 					}
 				}
 			}
+
+			return matchedprc;
+		}
+
+		async void CheckPathWatch(ProcessEx info)
+		{
+			Debug.Assert(info.Process != null);
+
+			await Task.Delay(0).ConfigureAwait(false);
+
+			ProcessController matchedprc = null;
+
+			matchedprc = getWatchedPath(info);
 
 			if (matchedprc != null)
 			{
@@ -1382,9 +1392,11 @@ namespace Taskmaster
 					return;
 				}
 
-				var info = new ProcessEx() { Process = null, Name = name, Path = path, Id = pid };
-
-				NewInstanceTriagePhaseTwo(info);
+				var info = ProcessManagerUtility.GetInfo(pid, path:path, getPath:true);
+				if (info != null)
+				{
+					NewInstanceTriagePhaseTwo(info);
+				}
 			}
 			finally
 			{
@@ -1666,39 +1678,6 @@ namespace Taskmaster
 			{
 				Atomic.Unlock(ref cleanup_lock);
 			}
-		}
-
-		public ProcessEx GetInfo(int ProcessID)
-		{
-			var info = new ProcessEx()
-			{
-				Id = ProcessID,
-				Name = string.Empty,
-				Path = string.Empty,
-				Process = null,
-				State = ProcessState.Invalid,
-			};
-
-			try
-			{
-				info.Process = Process.GetProcessById(ProcessID);
-			}
-			catch (ArgumentException)
-			{
-				info.State = ProcessState.Exited;
-				return info;
-			}
-			catch
-			{
-				return info;
-			}
-
-			if (ProcessManagerUtility.FindPath(info))
-			{
-				// path found
-			}
-
-			return info;
 		}
 
 		bool disposed; // = false;

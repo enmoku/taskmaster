@@ -77,6 +77,9 @@ namespace Taskmaster
 
 		public string Path { get; set; } = string.Empty;
 
+		public float Volume { get; set; } = 0.5f;
+		public AudioVolumeStrategy VolumeStrategy { get; set; } = AudioVolumeStrategy.Ignore;
+
 		public string[] IgnoreList { get; set; } = null;
 
 		/*
@@ -297,8 +300,16 @@ namespace Taskmaster
 				app.Remove("Resize");
 			}
 
-			app.Remove("Remember size");
-			app.Remove("Remember position");
+			if (VolumeStrategy != AudioVolumeStrategy.Ignore)
+			{
+				app["Volume"].FloatValue = Volume;
+				app["Volume strategy"].IntValue = (int)VolumeStrategy;
+			}
+			else
+			{
+				app.Remove("Volume");
+				app.Remove("Volume strategy");
+			}
 
 			NeedsSaving = false;
 
@@ -600,13 +611,13 @@ namespace Taskmaster
 						return; // return ProcessState.Error;
 				}
 
-				if (info.Match || info.Path.StartsWith(Path, StringComparison.InvariantCultureIgnoreCase)) // FIXME: this is done twice
+				if (info.PathMatched || info.Path.StartsWith(Path, StringComparison.InvariantCultureIgnoreCase)) // FIXME: this is done twice
 				{
 					// OK
-					if (Taskmaster.DebugPaths && !info.Match)
+					if (Taskmaster.DebugPaths && !info.PathMatched)
 						Log.Verbose("[{PathFriendlyName}] (Touch) Matched at: {Path}", FriendlyName, info.Path);
 
-					info.Match = true;
+					info.PathMatched = true;
 				}
 				else
 				{
@@ -1145,10 +1156,12 @@ namespace Taskmaster
 				}
 				catch
 				{
-					continue; // shouldn't happen
+					continue; // shouldn't happen, but if it does, we don't care
 				}
 
-				Touch(new ProcessEx { Name = name, Id = pid, Process = process, Path = null });
+				var info = ProcessManagerUtility.GetInfo(pid, process, name, null, getPath: !string.IsNullOrEmpty(Path));
+
+				Touch(info);
 			}
 
 			if (ScanModifyCount > 0)

@@ -103,9 +103,12 @@ namespace Taskmaster
 
 		SharpConfig.Configuration stats;
 		const string statfile = "Microphone.Statistics.ini";
+		
 		// ctor, constructor
 		public MicManager()
 		{
+			System.Diagnostics.Debug.Assert(Taskmaster.IsMainThread(), "Requires main thread");
+
 			// Target = Maximum; // superfluous; CLEANUP
 
 			stats = Taskmaster.Config.Load(statfile);

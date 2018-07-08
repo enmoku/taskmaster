@@ -1,6 +1,12 @@
 ﻿Comprehensive changes can be found in Git change history:
 	https://github.com/mkahvi/taskmaster/commits/master
 
+### 2018-07-08
+	Added: Audio session management. `Watchlist.ini´ now has secret options `Volume´ and `Volume strategy´.
+		Volume is floating point number from 0 to 1.
+		Volume strategy ranges from 0 to 3. Meanings as follows: 0 = Ignore (default), 1 = Decrease, 2 = Increase, 3 = Either.
+	Fixed: NullReferenceException that was introduced on same day update.
+
 ### 2018-07-03
 	Fixed: Unhandled process exit is now handled.
 ### 2018-07-02
