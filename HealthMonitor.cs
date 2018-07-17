@@ -370,12 +370,12 @@ namespace Taskmaster
 						if (cooldown >= Settings.MemCooldown && Taskmaster.PagingEnabled)
 						{
 							// The following should just call something in ProcessManager
-							var ignorepid = -1;
+							int ignorepid = -1;
 							try
 							{
-								if (Settings.MemIgnoreFocus)
+								if (Settings.MemIgnoreFocus && Taskmaster.activeappmonitor != null)
 								{
-									if (Taskmaster.activeappmonitor != null)
+									if (User.IdleFor(User.LastActive()) <= (60 * 60 * 3))
 									{
 										ignorepid = Taskmaster.activeappmonitor.Foreground;
 										Log.Verbose("<Auto-Doc> Protecting foreground app (#{Id})", ignorepid);
@@ -383,15 +383,15 @@ namespace Taskmaster
 									}
 								}
 
-								Log.Information("<<Auto-Doc>> Free memory low [{Memory}], attempting to improve situation.{FgState}",
+								Log.Warning("<<Auto-Doc>> Free memory low [{Memory}], attempting to improve situation.{FgState}",
 									HumanInterface.ByteString((long)(memfreemb * 1_000_000)),
-									Settings.MemIgnoreFocus ? string.Format(" Ignoring foreground (#{0}).", ignorepid) : string.Empty);
+									(ignorepid > 4) ? string.Format(" Ignoring foreground (#{0}).", ignorepid) : string.Empty);
 
 								Taskmaster.processmanager?.FreeMemory(null, quiet: true);
 							}
 							finally
 							{
-								if (Settings.MemIgnoreFocus)
+								if (ignorepid > 4)
 									Taskmaster.processmanager.Unignore(ignorepid);
 							}
 
