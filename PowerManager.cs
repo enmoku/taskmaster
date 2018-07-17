@@ -145,11 +145,12 @@ namespace Taskmaster
 			var OldPowerState = CurrentMonitorState;
 			CurrentMonitorState = ev.Mode;
 
-			var lastactive = UserLastActive();
-			var idle = UserIdleFor(lastactive);
-
-			if (Taskmaster.DebugMonitor) Log.Debug("<Monitor> Power state: {State} (last user activity {Sec}s ago)",
-				CurrentMonitorState.ToString(), Convert.ToInt32(idle));
+			if (Taskmaster.DebugMonitor)
+			{
+				var idle = User.IdleFor(User.LastActive());
+				Log.Debug("<Monitor> Power state: {State} (last user activity {Sec}s ago)",
+					CurrentMonitorState.ToString(), Convert.ToInt32(idle));
+			}
 
 			if (CurrentMonitorState == MonitorPowerMode.On && SessionLocked)
 			{
@@ -169,10 +170,7 @@ namespace Taskmaster
 			if (CurrentMonitorState == MonitorPowerMode.Off) return;
 			if (!SessionLocked) return;
 
-			var lastactive = UserLastActive();
-			var idletime = UserIdleFor(lastactive);
-			
-			if (idletime >= Convert.ToDouble(SessionLockPowerOffIdleTimeout))
+			if (User.IdleFor(User.LastActive()) >= Convert.ToDouble(SessionLockPowerOffIdleTimeout))
 			{
 				SleepTickCount++;
 
@@ -202,35 +200,6 @@ namespace Taskmaster
 
 		bool SessionLocked = false;
 		MonitorPowerMode CurrentMonitorState = MonitorPowerMode.Invalid;
-
-		/// <summary>
-		/// Pass this to UserIdleFor(uint).
-		/// </summary>
-		/// <returns>Ticks since boot.</returns>
-		uint UserLastActive()
-		{
-			var info = new NativeMethods.LASTINPUTINFO();
-			info.cbSize = (uint)Marshal.SizeOf(info);
-			info.dwTime = 0;
-			bool rv = NativeMethods.GetLastInputInfo(ref info);
-			if (rv) return info.dwTime;
-
-			// TODO: Throw
-
-			return uint.MinValue;
-		}
-
-		/// <summary>
-		/// Should be called in same thread as UserLastActive. Odd behaviour expected if the code runs on different core.
-		/// </summary>
-		/// <param name="lastActive">Last active time, as returned by UserLastActive</param>
-		/// <returns>Seconds for how long user has been idle</returns>
-		double UserIdleFor(uint lastActive)
-		{
-			double eticks = Convert.ToDouble(Environment.TickCount);
-			double uticks = Convert.ToDouble(lastActive);
-			return (eticks - uticks) / 1000f;
-		}
 
 		public void SetupEventHook()
 		{

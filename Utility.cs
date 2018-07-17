@@ -92,7 +92,7 @@ namespace Taskmaster
 			b = temp;
 		}
 
-		public static void Dispose<T>(ref T obj) where T:IDisposable
+		public static void Dispose<T>(ref T obj) where T : IDisposable
 		{
 			try
 			{
@@ -218,6 +218,38 @@ namespace Taskmaster
 						ex.StackTrace, EventLogEntryType.Error);
 				}
 			}
+		}
+	}
+
+	public static class User
+	{
+		/// <summary>
+		/// Pass this to IdleFor(uint).
+		/// </summary>
+		/// <returns>Ticks since boot.</returns>
+		public static uint LastActive()
+		{
+			var info = new NativeMethods.LASTINPUTINFO();
+			info.cbSize = (uint)System.Runtime.InteropServices.Marshal.SizeOf(info);
+			info.dwTime = 0;
+			bool rv = NativeMethods.GetLastInputInfo(ref info);
+			if (rv) return info.dwTime;
+
+			// TODO: Throw
+
+			return uint.MinValue;
+		}
+
+		/// <summary>
+		/// Should be called in same thread as LastActive. Odd behaviour expected if the code runs on different core.
+		/// </summary>
+		/// <param name="lastActive">Last active time, as returned by LastActive</param>
+		/// <returns>Seconds for how long user has been idle</returns>
+		public static double IdleFor(uint lastActive)
+		{
+			double eticks = Convert.ToDouble(Environment.TickCount);
+			double uticks = Convert.ToDouble(lastActive);
+			return (eticks - uticks) / 1000f;
 		}
 	}
 }
