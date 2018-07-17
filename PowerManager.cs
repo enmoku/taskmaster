@@ -170,7 +170,9 @@ namespace Taskmaster
 			if (CurrentMonitorState == MonitorPowerMode.Off) return;
 			if (!SessionLocked) return;
 
-			if (User.IdleFor(User.LastActive()) >= Convert.ToDouble(SessionLockPowerOffIdleTimeout))
+			double idletime = User.IdleFor(User.LastActive());
+
+			if (idletime >= Convert.ToDouble(SessionLockPowerOffIdleTimeout))
 			{
 				SleepTickCount++;
 
@@ -184,7 +186,8 @@ namespace Taskmaster
 				SleepTickCount = 0; // reset
 
 				if (Taskmaster.ShowSessionActions || Taskmaster.DebugMonitor)
-					Log.Information("<Session:Lock> User active too recently ({Seconds}s ago), delaying monitor power down...", string.Format("{0:N1}", idletime));
+					Log.Information("<Session:Lock> User active too recently ({Seconds}s ago), delaying monitor power down...",
+						string.Format("{0:N1}", idletime));
 
 				MonitorSleepTimer?.Start(); // TODO: Make this happen sooner if user was not active recently
 			}
