@@ -56,7 +56,7 @@ namespace Taskmaster
 				{
 					Id = ProcessID,
 					Process = process,
-					Name = string.IsNullOrEmpty(name) ?  process.ProcessName : name,
+					Name = string.IsNullOrEmpty(name) ? process.ProcessName : name,
 					State = ProcessState.OK,
 					Path = path,
 				};
@@ -65,6 +65,7 @@ namespace Taskmaster
 
 				return info;
 			}
+			catch (InvalidOperationException) { } // already exited
 			catch (ArgumentException) { } // already exited
 			catch (Exception ex)
 			{
