@@ -84,7 +84,6 @@ namespace Taskmaster
 
 				float volume = session.SimpleAudioVolume.Volume;
 
-
 				var info = ProcessManagerUtility.GetInfo(pid, getPath:true);
 				if (info != null)
 				{

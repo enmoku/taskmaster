@@ -173,122 +173,116 @@ namespace Taskmaster
 			{
 				DateTime now = DateTime.Now;
 				TimeSpan since = now.TimeSince(LastSwap); // since app was last changed
-				if (since.TotalSeconds > 5)
+				if (since.TotalSeconds < 5) return;
+
+				if (PreviousFG != pid)
+					fg = Process.GetProcessById(pid);
+
+				if (fg != null && !fg.Responding)
 				{
-					if (PreviousFG != pid)
-						fg = Process.GetProcessById(pid);
-
-					if (fg != null && !fg.Responding)
+					if (HangTick == 1)
 					{
-						if (HangTick == 1)
-						{
-							Log.Warning("<Foreground> {Name} (#Pid) is not responding!", fg.ProcessName, fg.Id);
-						}
-						else if (HangTick > 1)
-						{
-							double hung = now.TimeSince(HangTime).TotalSeconds;
+						Log.Warning("<Foreground> {Name} (#Pid) is not responding!", fg.ProcessName, fg.Id);
+					}
+					else if (HangTick > 1)
+					{
+						double hung = now.TimeSince(HangTime).TotalSeconds;
 
-							var sbs = new System.Text.StringBuilder();
-							sbs.Append("<Foreground> Hung {Name}' (#{Pid}) – ");
-							bool acted = false;
-							if (HangMinimizeTick > 0 && hung > HangMinimizeTick && !Minimized)
+						var sbs = new System.Text.StringBuilder();
+						sbs.Append("<Foreground> Hung {Name}' (#{Pid}) – ");
+						bool acted = false;
+						if (HangMinimizeTick > 0 && hung > HangMinimizeTick && !Minimized)
+						{
+							bool rv = NativeMethods.ShowWindow(fg.Handle, 11); // 6 = minimize, 11 = force minimize
+							if (rv)
 							{
-								bool rv = NativeMethods.ShowWindow(fg.Handle, 11); // 6 = minimize, 11 = force minimize
-								if (rv)
-								{
-									sbs.Append("Minimized");
-									Minimized = true;
-								}
-								else
-									sbs.Append("Minimize failed");
-								acted = true;
+								sbs.Append("Minimized");
+								Minimized = true;
 							}
-							if (HangReduceTick > 0 && hung > HangReduceTick && !Reduced)
+							else
+								sbs.Append("Minimize failed");
+							acted = true;
+						}
+						if (HangReduceTick > 0 && hung > HangReduceTick && !Reduced)
+						{
+							bool aff = false, prio = false;
+							try
 							{
-								bool aff = false, prio = false;
-								try
-								{
-									fg.ProcessorAffinity = new IntPtr(1);
-									if (acted) sbs.Append(", ");
-									sbs.Append("Affinity reduced");
-									aff = true;
-								}
-								catch
-								{
-									if (acted) sbs.Append(", ");
-									sbs.Append("Affinity reduction failed");
-								}
-								acted = true;
-								try
-								{
-									fg.PriorityClass = ProcessPriorityClass.Idle;
-									sbs.Append(", Priority reduced");
-									prio = true;
-								}
-								catch
-								{
-									sbs.Append(", Priority reduction failed");
-								}
-								
-								if (aff && prio) Reduced = true;
+								fg.ProcessorAffinity = new IntPtr(1);
+								if (acted) sbs.Append(", ");
+								sbs.Append("Affinity reduced");
+								aff = true;
 							}
-							if (HangKillTick > 0 && hung > HangKillTick)
+							catch
 							{
-								try
-								{
-									fg.Kill();
-									if (acted) sbs.Append(", ");
-									sbs.Append("Terminated");
-								}
-								catch
-								{
-									if (acted) sbs.Append(", ");
-									sbs.Append("Termination failed");
-								}
-								acted = true;
+								if (acted) sbs.Append(", ");
+								sbs.Append("Affinity reduction failed");
+							}
+							acted = true;
+							try
+							{
+								fg.PriorityClass = ProcessPriorityClass.Idle;
+								sbs.Append(", Priority reduced");
+								prio = true;
+							}
+							catch
+							{
+								sbs.Append(", Priority reduction failed");
 							}
 
-							if (acted) Log.Warning(sbs.ToString());
-
-							sbs.Clear();
-							sbs = null;
+							if (aff && prio) Reduced = true;
 						}
-						else
+						if (HangKillTick > 0 && hung > HangKillTick)
 						{
-							HangTime = now;
-							Reduced = false;
-							Minimized = false;
-
-							Taskmaster.processmanager.Unignore(IgnoreHung);
-							IgnoreHung = pid;
-							Taskmaster.processmanager.Ignore(IgnoreHung);
+							try
+							{
+								fg.Kill();
+								if (acted) sbs.Append(", ");
+								sbs.Append("Terminated");
+							}
+							catch
+							{
+								if (acted) sbs.Append(", ");
+								sbs.Append("Termination failed");
+							}
+							acted = true;
 						}
 
-						HangTick++;
+						if (acted) Log.Warning(sbs.ToString());
+
+						sbs.Clear();
+						sbs = null;
 					}
 					else
 					{
-						HangTick = 0;
-						HangTime = DateTime.MaxValue;
+						HangTime = now;
+						Reduced = false;
+						Minimized = false;
 
 						Taskmaster.processmanager.Unignore(IgnoreHung);
+						IgnoreHung = pid;
+						Taskmaster.processmanager.Ignore(IgnoreHung);
 					}
+
+					HangTick++;
+
+					return;
 				}
 			}
-			catch (ArgumentException)
-			{
-				// NOP, already exited
-				Taskmaster.processmanager.Unignore(IgnoreHung);
-
-				HangTick = 0;
-				HangTime = DateTime.MaxValue;
-			}
+			catch (InvalidOperationException) { } // NOP, already exited
+			catch (ArgumentException) { } // NOP, already exited
 			catch (Exception ex)
 			{
 				Taskmaster.processmanager.Unignore(IgnoreHung);
 
 				Logging.Stacktrace(ex);
+				return;
 			}
+
+			Taskmaster.processmanager.Unignore(IgnoreHung);
+
+			HangTick = 0;
+			HangTime = DateTime.MaxValue;
 		}
 
 		public void SetupEventHookEvent(object sender, ProcessEventArgs e)

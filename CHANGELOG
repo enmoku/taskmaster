@@ -1,6 +1,9 @@
 ﻿Comprehensive changes can be found in Git change history:
 	https://github.com/mkahvi/taskmaster/commits/master
 
+### 2018-07-20
+	Fixed: An error retrieving process information when the process has already exited in foreground hang detector.
+		Checked for other potential similar instances.
 ### 2018-07-17
 	Fixed: An error retrieving process information when the process has already exited.
 ### 2018-07-08

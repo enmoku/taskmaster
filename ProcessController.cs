@@ -513,12 +513,10 @@ namespace Taskmaster
 				var rv = NativeMethods.SetPriorityClass(process.Handle, (uint)priority);
 				return rv;
 			}
-			catch (InvalidOperationException)
-			{
-				// Already exited
-				return false;
-			}
+			catch (InvalidOperationException) { } // Already exited
+			catch (ArgumentException) { } // already exited?
 			catch (Exception ex) { Logging.Stacktrace(ex); }
+
 			return false;
 		}
 
@@ -643,7 +641,14 @@ namespace Taskmaster
 				info.State = ProcessState.Exited;
 				return;
 			}
+			catch (ArgumentException)
+			{
+				// Already exited
+				info.State = ProcessState.Exited;
+				return;
+			}
 			catch (Exception ex) { Logging.Stacktrace(ex); }
+
 			IntPtr newAffinity = Affinity.GetValueOrDefault();
 
 			var newPriority = oldPriority;
@@ -824,6 +829,12 @@ namespace Taskmaster
 						}
 					}
 					catch (InvalidOperationException)
+					{
+						// Already exited
+						info.State = ProcessState.Exited;
+						return;
+					}
+					catch (ArgumentException)
 					{
 						// Already exited
 						info.State = ProcessState.Exited;
