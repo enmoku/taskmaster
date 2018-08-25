@@ -263,11 +263,17 @@ namespace Taskmaster
 					// this part is kinda pointless
 					if (Atomic.Lock(ref upstateTesting))
 					{
-						// CLEANUP: Console.WriteLine("Debug: Queued internet uptime report");
-						await Task.Delay(new TimeSpan(0, 5, 0)); // wait 5 minutes
+						try
+						{
+							// CLEANUP: Console.WriteLine("Debug: Queued internet uptime report");
+							await Task.Delay(new TimeSpan(0, 5, 0)); // wait 5 minutes
 
-						ReportCurrentUpstate();
-						upstateTesting = 0;
+							ReportCurrentUpstate();
+						}
+						finally
+						{
+							Atomic.Unlock(ref upstateTesting);
+						}
 					}
 				}
 				else // went offline

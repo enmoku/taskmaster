@@ -203,26 +203,26 @@ namespace Taskmaster
 
 					if (Taskmaster.Trace) Log.Verbose("<Tray> Hotkey ctrl-alt-shift-m detected!!!");
 					Task.Run(new Action(async () =>
-						{
-							//Taskmaster.ThreadIdentity("Hotkey.Start");
+					{
+						//Taskmaster.ThreadIdentity("Hotkey.Start");
 
-							try
-							{
-								int ignorepid = Taskmaster.activeappmonitor?.Foreground ?? -1;
-								Log.Information("<Tray> Hotkey detected, freeing memory while ignoring foreground{Ign} if possible.",
-									ignorepid > 4 ? string.Format(" (#{0})", ignorepid) : string.Empty);
-								await processmanager.FreeMemory(ignorepid).ConfigureAwait(false);
-							}
-							catch (Exception ex)
-							{
-								Logging.Stacktrace(ex);
-							}
-							finally
-							{
-								Atomic.Unlock(ref hotkeyinprogress);
-								//Taskmaster.ThreadIdentity("Hotkey.End");
-							}
-						}));
+						try
+						{
+							int ignorepid = Taskmaster.activeappmonitor?.Foreground ?? -1;
+							Log.Information("<Tray> Hotkey detected, freeing memory while ignoring foreground{Ign} if possible.",
+								ignorepid > 4 ? string.Format(" (#{0})", ignorepid) : string.Empty);
+							await processmanager.FreeMemory(ignorepid).ConfigureAwait(false);
+						}
+						catch (Exception ex)
+						{
+							Logging.Stacktrace(ex);
+						}
+						finally
+						{
+							Atomic.Unlock(ref hotkeyinprogress);
+							//Taskmaster.ThreadIdentity("Hotkey.End");
+						}
+					}));
 				}
 			}
 

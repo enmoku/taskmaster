@@ -43,6 +43,7 @@ namespace Taskmaster
 		/// </summary>
 		/// <returns>If lock was successfully acquired.</returns>
 		/// <param name="lockvalue">Variable used as the lock.</param>
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static bool Lock(ref int lockvalue)
 		{
 			Debug.Assert(lockvalue == 0 || lockvalue == 1);
@@ -53,6 +54,7 @@ namespace Taskmaster
 		/// Release the lock.
 		/// </summary>
 		/// <param name="lockvalue">Variable used as the lock.</param>
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static void Unlock(ref int lockvalue)
 		{
 			Debug.Assert(lockvalue != 0);
@@ -69,10 +71,13 @@ namespace Taskmaster
 
 	public static class TrinaryExtensions
 	{
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static bool True(this Trinary tri) => (tri == Trinary.True);
 
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static bool False(this Trinary tri) => (tri == Trinary.False);
 
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static bool Nonce(this Trinary tri) => (tri == Trinary.Nonce);
 	}
 
@@ -117,43 +122,49 @@ namespace Taskmaster
 					return "hour(s)";
 			}
 
-			return null;
+			return string.Empty;
 		}
 
 		public static double SimpleTime(double seconds, out Timescale scale)
 		{
 			Debug.Assert(seconds >= 0);
 
-			if (seconds > (120.0 * 60.0))
+			double time = seconds;
+
+			if (time > 7200.0)
 			{
-				var hours = seconds / 60.0 / 60.0;
+				time /= 3600.0;
 				scale = Timescale.Hours;
-				return hours;
 			}
-			else if (seconds > 120.0)
+			else if (time > 120.0)
 			{
-				var minutes = seconds / 60.0;
+				time /= 60.0;
 				scale = Timescale.Minutes;
-				return minutes;
 			}
 			else
 			{
 				scale = Timescale.Seconds;
-				return seconds;
 			}
+
+			return time;
 		}
 	}
 
 	public static class Bit
 	{
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static int Set(int dec, int index) => Or(dec, (1 << index));
 
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static bool IsSet(int dec, int index) => And(dec, (1 << index)) != 0;
 
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static int Unset(int dec, int index) => And(dec, ~(1 << index));
 
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static int Or(int dec1, int dec2) => dec1 | dec2;
 
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static int And(int dec1, int dec2) => dec1 & dec2;
 
 		public static int Count(int i)
@@ -200,6 +211,7 @@ namespace Taskmaster
 		{
 			if (!oob)
 			{
+				// FIXME: should be just one
 				Serilog.Log.Fatal("{Type} : {Message}", ex.GetType().Name, ex.Message);
 				Serilog.Log.Fatal("Reported at {Method}", method);
 				Serilog.Log.Fatal(ex.StackTrace);

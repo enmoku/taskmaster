@@ -95,7 +95,7 @@ namespace Taskmaster
 			{
 				try
 				{
-					await Prune().ConfigureAwait(false);
+					Prune();
 				}
 				catch (Exception ex)
 				{
@@ -105,88 +105,99 @@ namespace Taskmaster
 			pruneTimer.Start();
 		}
 
+		int prune_in_progress = 0;
+
 		/// <summary>
 		/// Prune cache.
 		/// </summary>
-		async Task Prune()
+		void Prune()
 		{
-			if (Items.Count <= MinCache) return; // just don't bother
+			if (!Atomic.Lock(ref prune_in_progress)) return; // only one instance.
 
-			if (Items.Count <= MaxCache && CacheEvictStrategy == EvictStrategy.LeastUsed) return;
-
-			lock (cache_lock)
+			try
 			{
-				var list = Items.Values.ToList(); // would be nice to cache this list
+				if (Items.Count <= MinCache) return; // just don't bother
 
-				list.Sort(delegate (CacheItem<K1, K2, T> x, CacheItem<K1, K2, T> y)
+				if (Items.Count <= MaxCache && CacheEvictStrategy == EvictStrategy.LeastUsed) return;
+
+				lock (cache_lock)
 				{
-					if (CacheEvictStrategy == EvictStrategy.LeastRecent)
+					var list = Items.Values.ToList(); // would be nice to cache this list
+
+					list.Sort(delegate (CacheItem<K1, K2, T> x, CacheItem<K1, K2, T> y)
 					{
-						if (x.Access < y.Access) return -1;
-						if (x.Access > y.Access) return 1;
+						if (CacheEvictStrategy == EvictStrategy.LeastRecent)
+						{
+							if (x.Access < y.Access) return -1;
+							if (x.Access > y.Access) return 1;
 						// Both have equal at this point
 						if (x.Desirability < y.Desirability)
-							return -1;
-						if (x.Desirability > y.Desirability) return 1;
-					}
-					else
-					{
-						if (x.Desirability < y.Desirability) return -1;
-						if (x.Desirability > y.Desirability) return 1;
+								return -1;
+							if (x.Desirability > y.Desirability) return 1;
+						}
+						else
+						{
+							if (x.Desirability < y.Desirability) return -1;
+							if (x.Desirability > y.Desirability) return 1;
 						// Both have equal at this point
 						if (x.Access < y.Access)
-							return -1;
-						if (x.Access > y.Access) return 1;
-					}
+								return -1;
+							if (x.Access > y.Access) return 1;
+						}
 
-					return 0;
-				});
+						return 0;
+					});
 
-				// Log.Debug("CACHE STATE: FIRST({First}) LAST({LAST})", list.First().Access, list.Last().Access);
-				// Log.Debug("CACHE ITEMS BEFORE PRUNE: {Items}", Items.Count);
-				while (Items.Count > MaxCache)
-				{
-					var bu = list.ElementAt(0);
-					var key = bu.AccessKey;
-					// Log.Debug("--- REMOVING: Key:{Key}, Last Access: {Date}, Desirability: {Value}",
-					// 		  key, bu.Access, bu.Desirability);
-					Items.Remove(key);
-					list.RemoveAt(0);
-				}
-				// Log.Debug("CACHE ITEMS AFTER PRUNE: {Items}", Items.Count);
-
-				double bi = double.NaN;
-
-				var deleteItem = new Action<K1>(
-					(K1 key) =>
+					// Log.Debug("CACHE STATE: FIRST({First}) LAST({LAST})", list.First().Access, list.Last().Access);
+					// Log.Debug("CACHE ITEMS BEFORE PRUNE: {Items}", Items.Count);
+					while (Items.Count > MaxCache)
 					{
-						if (Taskmaster.Trace) Log.Verbose("Removing {time} min old item.", string.Format("{0:N1}", bi));
+						var bu = list.ElementAt(0);
+						var key = bu.AccessKey;
+						// Log.Debug("--- REMOVING: Key:{Key}, Last Access: {Date}, Desirability: {Value}",
+						// 		  key, bu.Access, bu.Desirability);
 						Items.Remove(key);
 						list.RemoveAt(0);
 					}
-				);
+					// Log.Debug("CACHE ITEMS AFTER PRUNE: {Items}", Items.Count);
 
-				var now = DateTime.Now;
-				while (list.Count > 0)
-				{
-					var bu = list.ElementAt(0);
-					bi = now.TimeSince(bu.Access).TotalMinutes;
+					double bi = double.NaN;
 
-					if (CacheEvictStrategy == EvictStrategy.LeastRecent)
+					var deleteItem = new Action<K1>(
+						(K1 key) =>
+						{
+							if (Taskmaster.Trace) Log.Verbose("Removing {time} min old item.", string.Format("{0:N1}", bi));
+							Items.Remove(key);
+							list.RemoveAt(0);
+						}
+					);
+
+					var now = DateTime.Now;
+					while (list.Count > 0)
 					{
-						if (bi > MaxAge)
-							deleteItem(bu.AccessKey);
-						else
-							break;
-					}
-					else // .LeastUsed, TM is never going to reach this.
-					{
-						if (bi > MinAge)
-							deleteItem(bu.AccessKey);
-						else
-							break;
+						var bu = list.ElementAt(0);
+						bi = now.TimeSince(bu.Access).TotalMinutes;
+
+						if (CacheEvictStrategy == EvictStrategy.LeastRecent)
+						{
+							if (bi > MaxAge)
+								deleteItem(bu.AccessKey);
+							else
+								break;
+						}
+						else // .LeastUsed, TM is never going to reach this.
+						{
+							if (bi > MinAge)
+								deleteItem(bu.AccessKey);
+							else
+								break;
+						}
 					}
 				}
+			}
+			finally
+			{
+				Atomic.Unlock(ref prune_in_progress);
 			}
 		}
 
