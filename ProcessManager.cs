@@ -94,14 +94,10 @@ namespace Taskmaster
 
 			InitWMIEventWatcher();
 
-			if (execontrol.Count > 0)
+			if (execontrol.Count > 0 && RescanDelay > 0)
 			{
 				if (Taskmaster.Trace) Log.Verbose("Starting rescan timer.");
-
-				if (RescanDelay > 0)
-				{
-					rescanTimer = new System.Threading.Timer(RescanOnTimerTick, null, 500, RescanDelay * 1000);
-				}
+				rescanTimer = new System.Threading.Timer(RescanOnTimerTick, null, 500, RescanDelay * 1000);
 			}
 
 			ProcessDetectedEvent += ProcessTriage;
@@ -211,7 +207,7 @@ namespace Taskmaster
 			{
 				NativeMethods.EmptyWorkingSet(info.Process.Handle);
 			}
-			catch { } // ignore
+			catch { } // ignore, any exceptions that might happen are simply irrelevant for us
 		}
 
 		HashSet<int> ignorePids = new HashSet<int>();
@@ -358,7 +354,7 @@ namespace Taskmaster
 									var name = process.ProcessName;
 									var pid = process.Id;
 
-									if (IgnoreProcessID(pid) || IgnoreProcessName(name))
+									if (IgnoreProcessID(pid) || IgnoreProcessName(name) || pid == Process.GetCurrentProcess().Id)
 										continue;
 
 									if (Taskmaster.DebugFullScan)
@@ -1212,8 +1208,6 @@ namespace Taskmaster
 					return; // ProcessState.AccessDenied;
 				}
 
-				if (info.Id == Process.GetCurrentProcess().Id) return; // ProcessState.OK; // IGNORE SELF
-
 				// TODO: check proc.processName for presence in images.
 				ProcessController prc = null;
 
@@ -1392,11 +1386,8 @@ namespace Taskmaster
 					return;
 				}
 
-				var info = ProcessManagerUtility.GetInfo(pid, path:path, getPath:true);
-				if (info != null)
-				{
-					NewInstanceTriagePhaseTwo(info);
-				}
+				ProcessEx info = ProcessManagerUtility.GetInfo(pid, path:path, getPath:true);
+				if (info != null) NewInstanceTriagePhaseTwo(info);
 			}
 			finally
 			{
@@ -1624,7 +1615,7 @@ namespace Taskmaster
 		/// </remarks>
 		public async Task Cleanup()
 		{
-			if (!Atomic.Lock(ref cleanup_lock)) return;
+			if (!Atomic.Lock(ref cleanup_lock)) return; // cleanup already in progress
 
 			await Task.Delay(0).ConfigureAwait(false);
 
@@ -1694,6 +1685,8 @@ namespace Taskmaster
 			if (disposing)
 			{
 				if (Taskmaster.Trace) Log.Verbose("Disposing process manager...");
+
+				ProcessDetectedEvent -= ProcessTriage;
 
 				CancelPowerWait();
 				WaitForExitList.Clear();

@@ -39,6 +39,7 @@ namespace Taskmaster
 			pathCache = new Cache<int, string, string>(Taskmaster.PathCacheMaxAge, Taskmaster.PathCacheLimit, (Taskmaster.PathCacheLimit / 10).Constrain(5, 10));
 		}
 
+		[Conditional("DEBUG")]
 		public static void PathCacheStats()
 		{
 			Log.Debug("Path cache state: {Count} items (Hits: {Hits}, Misses: {Misses}, Ratio: {Ratio})",
