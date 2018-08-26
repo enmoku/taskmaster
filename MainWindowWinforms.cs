@@ -1181,7 +1181,7 @@ namespace Taskmaster
 			var micwidths = colcfg.GetSetDefault("Mics", micwidthsDefault).IntValueArray;
 			if (micwidths.Length != micwidthsDefault.Length) micwidths = micwidthsDefault;
 
-			int[] ifacewidthsDefault = new int[] { 120, 60, 50, 70, 90, 200, 60, 60 };
+			int[] ifacewidthsDefault = new int[] { 110, 60, 50, 70, 90, 192, 60, 60, 40 };
 			var ifacewidths = colcfg.GetSetDefault("Interfaces", ifacewidthsDefault).IntValueArray;
 			if (ifacewidths.Length != ifacewidthsDefault.Length) ifacewidths = ifacewidthsDefault;
 
@@ -1389,8 +1389,10 @@ namespace Taskmaster
 			ifaceList.Columns.Add("IPv6", ifacewidths[5]); // 5
 			ifaceList.Columns.Add("Packet Δ", ifacewidths[6]); // 6
 			ifaceList.Columns.Add("Error Δ", ifacewidths[7]); // 7
-			PacketColumn = 6;
-			ErrorColumn = 7;
+			ifaceList.Columns.Add("Errors", ifacewidths[8]); // 8
+			PacketDeltaColumn = 6;
+			ErrorDeltaColumn = 7;
+			ErrorTotalColumn = 8;
 
 			ifaceList.Scrollable = true;
 
@@ -2195,6 +2197,7 @@ namespace Taskmaster
 							dev.IPv6Address?.ToString() ?? "n/a",
 							"n/a", // traffic delta
 							"n/a", // error delta
+							"n/a", // total errors
 						})
 						{
 							UseItemStyleForSubItems = false
@@ -2235,12 +2238,14 @@ namespace Taskmaster
 				{
 					try
 					{
-						ifaceList.Items[ev.Index].SubItems[PacketColumn].Text = string.Format("+{0}", ev.Traffic.Unicast);
-						ifaceList.Items[ev.Index].SubItems[ErrorColumn].Text = string.Format("+{0}", ev.Traffic.Errors);
-						if (ev.Traffic.Errors > 0)
-							ifaceList.Items[ev.Index].SubItems[ErrorColumn].ForeColor = System.Drawing.Color.OrangeRed;
+						ifaceList.Items[ev.Index].SubItems[PacketDeltaColumn].Text = string.Format("+{0}", ev.Delta.Unicast);
+						ifaceList.Items[ev.Index].SubItems[ErrorDeltaColumn].Text = string.Format("+{0}", ev.Delta.Errors);
+						if (ev.Delta.Errors > 0)
+							ifaceList.Items[ev.Index].SubItems[ErrorDeltaColumn].ForeColor = System.Drawing.Color.OrangeRed;
 						else
-							ifaceList.Items[ev.Index].SubItems[ErrorColumn].ForeColor = System.Drawing.SystemColors.ControlText;
+							ifaceList.Items[ev.Index].SubItems[ErrorDeltaColumn].ForeColor = System.Drawing.SystemColors.ControlText;
+
+						ifaceList.Items[ev.Index].SubItems[ErrorTotalColumn].Text = ev.Total.Errors.ToString();
 					}
 					catch (Exception ex)
 					{
@@ -2250,8 +2255,9 @@ namespace Taskmaster
 			}));
 		}
 
-		int PacketColumn = 6;
-		int ErrorColumn = 7;
+		int PacketDeltaColumn = 6;
+		int ErrorDeltaColumn = 7;
+		int ErrorTotalColumn = 8;
 
 		System.Drawing.Color inetBgColor = System.Drawing.Color.Red;
 
