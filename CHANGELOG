@@ -1,6 +1,10 @@
-﻿Comprehensive changes can be found in Git change history:
+﻿# Changelog
+Comprehensive changes can be found in Git change history:
 	https://github.com/mkahvi/taskmaster/commits/master
 
+## [0.11...]
+### 2018-08-26
+	Added: Total network device errors shown after deltas.
 ### 2018-07-20
 	Fixed: An error retrieving process information when the process has already exited in foreground hang detector.
 		Checked for other potential similar instances.
@@ -22,6 +26,7 @@
 ### 2018-06-29 Version 0.11
 	Added: Option to minimize, reduce priority&affinity, and to kill hung foreground apps, based on time spent hung.
 
+## [0.10...]
 ### 2018-06-28
 	Fixed: Rare crash if OS task scheduler is not responding. Now wait longer, kill any lingering started processes, and be smarter.
 ### 2018-06-22
@@ -107,6 +112,7 @@
 	Changed: Allow watchlist rules with no affinity nor priority.
 	Fixed: Empty network device list if it was last active tab.
 
+## [0.9...]
 ### 2018-05-04
 	Fixed: Validation does not find executables correctly.
 	Changed: Some behind the scenes things to help catch an elusive problem with per-app power management.
@@ -162,6 +168,7 @@
 	Added: Itch.io link.
 	Changed: Moving some output to debug.
 
+## [0.8...]
 ### 2018-04-05
 	Changed: Unspecified log output corrected.
 ### 2018-04-03
