@@ -33,7 +33,8 @@ namespace Taskmaster
 	public struct NetDeviceTraffic
 	{
 		public int Index { get; set; }
-		public NetTraffic Traffic { get; set; }
+		public NetTraffic Delta { get; set; }
+		public NetTraffic Total { get; set; }
 	}
 
 	public struct NetTraffic
@@ -47,7 +48,7 @@ namespace Taskmaster
 		/// </summary>
 		public long NonUnicast { get; set; }
 
-		public long Discarded { get; set; }
+		public long Discards { get; set; }
 		public long Errors { get; set; }
 
 		/// <summary>
@@ -61,7 +62,7 @@ namespace Taskmaster
 			{
 				Unicast = stats.UnicastPacketsReceived;
 				NonUnicast = stats.NonUnicastPacketsReceived;
-				Discarded = stats.IncomingPacketsDiscarded;
+				Discards = stats.IncomingPacketsDiscarded;
 				Errors = stats.IncomingPacketsWithErrors;
 				Unknown = stats.IncomingUnknownProtocolPackets;
 			}
@@ -69,7 +70,7 @@ namespace Taskmaster
 			{
 				Unicast = stats.UnicastPacketsSent;
 				NonUnicast = stats.NonUnicastPacketsSent;
-				Discarded = stats.OutgoingPacketsDiscarded;
+				Discards = stats.OutgoingPacketsDiscarded;
 				Errors = stats.OutgoingPacketsWithErrors;
 			}
 		}
@@ -93,9 +94,9 @@ namespace Taskmaster
 		public void PrintStats()
 		{
 			Console.WriteLine(string.Format("Incoming: {0}(+{1}) Err({2}) Dis({3}) Unk({4})",
-											Incoming.Unicast, Incoming.NonUnicast, Incoming.Errors, Incoming.Discarded, Incoming.Unknown));
+											Incoming.Unicast, Incoming.NonUnicast, Incoming.Errors, Incoming.Discards, Incoming.Unknown));
 			Console.WriteLine(string.Format("Outgoing: {0}(+{1}) Err({2}) Dis({3})",
-											Outgoing.Unicast, Outgoing.NonUnicast, Outgoing.Errors, Outgoing.Discarded));
+											Outgoing.Unicast, Outgoing.NonUnicast, Outgoing.Errors, Outgoing.Discards));
 		}
 	}
 }

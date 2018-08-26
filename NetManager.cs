@@ -138,14 +138,21 @@ namespace Taskmaster
 
 				if (ifaces == null) return; // no interfaces, just quit
 
+				NetTraffic outgoing, incoming, oldoutgoing, oldincoming;
+
 				for (int index = 0; index < ifaces.Count; index++)
 				{
-					var errors = (ifaces[index].Incoming.Errors - oldifaces[index].Incoming.Errors)
-						+ (ifaces[index].Outgoing.Errors - oldifaces[index].Outgoing.Errors);
-					var discards = (ifaces[index].Incoming.Discarded - oldifaces[index].Incoming.Discarded)
-						+ (ifaces[index].Outgoing.Discarded - oldifaces[index].Outgoing.Discarded);
-					var packets = (ifaces[index].Incoming.Unicast - oldifaces[index].Incoming.Unicast)
-						+ (ifaces[index].Outgoing.Unicast - oldifaces[index].Outgoing.Unicast);
+					outgoing = ifaces[index].Outgoing;
+					incoming = ifaces[index].Incoming;
+					oldoutgoing = oldifaces[index].Outgoing;
+					oldincoming = oldifaces[index].Incoming;
+
+					long totalerrors = outgoing.Errors + incoming.Errors;
+					long totaldiscards = outgoing.Errors + incoming.Errors;
+					long totalunicast = outgoing.Errors + incoming.Errors;
+					long errors = (incoming.Errors - oldincoming.Errors) + (outgoing.Errors - oldoutgoing.Errors);
+					long discards = (incoming.Discards - oldincoming.Discards) + (outgoing.Discards - oldoutgoing.Discards);
+					long packets = (incoming.Unicast - oldincoming.Unicast) + (outgoing.Unicast - oldoutgoing.Unicast);
 
 					// Console.WriteLine("{0} : Packets(+{1}), Errors(+{2}), Discarded(+{3})", ifaces[index].Name, packets, errors, discards);
 
@@ -160,7 +167,14 @@ namespace Taskmaster
 							PacketWarning.Pump();
 					}
 
-					onSampling?.Invoke(this, new NetDeviceTraffic { Index = index, Traffic = new NetTraffic { Unicast = packets, Errors = errors, Discarded = discards } });
+					onSampling?.Invoke(this,
+						new NetDeviceTraffic
+						{
+							Index = index,
+							Delta = new NetTraffic { Unicast = packets, Errors = errors, Discards = discards },
+							Total = new NetTraffic { Unicast = totalunicast, Errors = totalerrors, Discards = totaldiscards },
+						}
+					);
 				}
 			}
 			catch (Exception ex)
