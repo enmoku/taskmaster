@@ -33,9 +33,14 @@ using System.Threading.Tasks;
 
 namespace Taskmaster
 {
+	/// <summary>
+	/// Must be created on persistent thread, such as the main thread.
+	/// </summary>
 	public class AudioManager
 	{
 		readonly System.Threading.Thread Context = null;
+
+		NAudio.CoreAudioApi.MMDevice mmdev_media = null;
 
 		//public event EventHandler<ProcessEx> OnNewSession;
 
@@ -52,12 +57,9 @@ namespace Taskmaster
 				throw new InitFailure("Failed to capture default audio output device.");
 			}
 
-			Serilog.Log.Debug("<Audio> Device name: {Device}", mmdev_media.DeviceFriendlyName);
+			Serilog.Log.Information("<Audio> Defalt device: {Device}", mmdev_media.DeviceFriendlyName);
 
-			if (mmdev_media != null)
-			{
-				mmdev_media.AudioSessionManager.OnSessionCreated += OnSessionCreated;
-			}
+			mmdev_media.AudioSessionManager.OnSessionCreated += OnSessionCreated;
 
 			/*
 			var cfg = Taskmaster.Config.Load(configfile);
@@ -68,8 +70,6 @@ namespace Taskmaster
 			}
 			*/
 		}
-
-		NAudio.CoreAudioApi.MMDevice mmdev_media = null;
 
 		private void OnSessionCreated(object sender, NAudio.CoreAudioApi.Interfaces.IAudioSessionControl asession)
 		{
