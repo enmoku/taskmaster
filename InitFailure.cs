@@ -31,13 +31,8 @@ namespace Taskmaster
 	[Serializable]
 	sealed public class InitFailure : Exception
 	{
-		readonly string Failure;
-
-		public InitFailure(string description)
+		public InitFailure(string description, Exception innerException=null) : base(description, innerException)
 		{
-			Failure = description;
 		}
-
-		public override string ToString() => string.Format("[InitFailure] {0}", Failure);
 	}
 }
