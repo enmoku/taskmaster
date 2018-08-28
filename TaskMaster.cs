@@ -275,7 +275,14 @@ namespace Taskmaster
 			};
 
 			// MMDEV requires main thread
-			if (MicrophoneMonitorEnabled) micmonitor = new MicManager();
+			try
+			{
+				if (MicrophoneMonitorEnabled) micmonitor = new MicManager();
+			}
+			catch (InitFailure ex)
+			{
+				micmonitor = null;
+			}
 			if (AudioManagerEnabled) audiomanager = new AudioManager(); // EXPERIMENTAL
 
 			// WinForms makes the following components not load nicely if not done here.

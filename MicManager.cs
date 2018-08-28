@@ -120,7 +120,17 @@ namespace Taskmaster
 			// find control interface
 			// FIXME: Deal with multiple recording devices.
 			var waveInDeviceNumber = IntPtr.Zero; // 0 is default or first?
-			var mixerLine = new NAudio.Mixer.MixerLine(waveInDeviceNumber, 0, NAudio.Mixer.MixerFlags.WaveIn);
+
+			NAudio.Mixer.MixerLine mixerLine = null;
+			try
+			{
+				mixerLine = new NAudio.Mixer.MixerLine(waveInDeviceNumber, 0, NAudio.Mixer.MixerFlags.WaveIn);
+			}
+			catch (NAudio.MmException ex)
+			{
+				Log.Fatal("<Microphone> Default device not found.");
+				throw new InitFailure("Failed to get default microphone device.", ex);
+			}
 
 			Control = (NAudio.Mixer.UnsignedMixerControl)mixerLine.Controls.FirstOrDefault(
 				(control) => control.ControlType == NAudio.Mixer.MixerControlType.Volume
