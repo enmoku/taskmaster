@@ -39,6 +39,8 @@ namespace Taskmaster
 	/// </summary>
 	sealed public class ProcessController : IDisposable
 	{
+		public event EventHandler<ProcessEventArgs> Modified;
+
 		/// <summary>
 		/// Public identifier.
 		/// </summary>
@@ -894,7 +896,7 @@ namespace Taskmaster
 
 			if (modified)
 			{
-				Touched?.Invoke(this, new ProcessEventArgs { Control = this, Info = info });
+				Modified?.Invoke(this, new ProcessEventArgs { Control = this, Info = info });
 			}
 
 			if (schedule_next) TryScan();
@@ -1192,9 +1194,6 @@ namespace Taskmaster
 			}
 			return false;
 		}
-
-		public static event EventHandler<ProcessEventArgs> Touched;
-		public static event EventHandler<PathControlEventArgs> Located;
 
 		public void Dispose()
 		{

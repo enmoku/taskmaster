@@ -333,8 +333,7 @@ namespace Taskmaster
 
 			rescanRequest += processmanager.ScanEverythingRequest;
 
-			ProcessController.Located += WatchlistPathLocatedEvent;
-			ProcessController.Touched += ProcessTouchEvent;
+			processmanager.ProcessModified += ProcessTouchEvent;
 
 			if (IsHandleCreated)
 			{
@@ -2004,7 +2003,7 @@ namespace Taskmaster
 						var rv = MessageBox.Show(string.Format("Really remove '{0}'", prc.FriendlyName), "Remove watchlist item", MessageBoxButtons.YesNo, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button2);
 						if (rv == DialogResult.Yes)
 						{
-							processmanager.removeController(prc);
+							processmanager.RemoveController(prc);
 
 							prc.DeleteConfig();
 							Log.Information("[{Rule}] Rule removed", prc.FriendlyName);
@@ -2413,8 +2412,7 @@ namespace Taskmaster
 				catch { }
 				try
 				{
-					ProcessController.Touched -= ProcessTouchEvent;
-					ProcessController.Located -= WatchlistPathLocatedEvent;
+					processmanager.ProcessModified -= ProcessTouchEvent;
 					processmanager.onWaitForExitEvent -= ExitWaitListHandler; //ExitWaitListHandler;
 					rescanRequest -= processmanager.ScanEverythingRequest;
 					processmanager.onInstanceHandling -= ProcessNewInstanceCount;

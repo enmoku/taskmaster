@@ -313,6 +313,8 @@ namespace Taskmaster
 		public event EventHandler ScanEverythingStartEvent;
 		public event EventHandler ScanEverythingEndEvent;
 
+		public event EventHandler<ProcessEventArgs> ProcessModified;
+
 		object scaninprogress_lock = new object();
 
 		public async Task ScanEverything()
@@ -733,10 +735,16 @@ namespace Taskmaster
 			{
 				if (Taskmaster.PersistentWatchlistStats) prc.LoadStats();
 				SaveController(prc);
+				prc.Modified += ProcessModifiedProxy;
 			}
 		}
 
-		public void removeController(ProcessController prc)
+		void ProcessModifiedProxy(object sender, ProcessEventArgs ev)
+		{
+			ProcessModified?.Invoke(sender, ev);
+		}
+
+		public void RemoveController(ProcessController prc)
 		{
 			lock (watchlist_lock)
 			{
@@ -747,6 +755,7 @@ namespace Taskmaster
 				}
 
 				watchlist.Remove(prc);
+				prc.Modified -= ProcessModifiedProxy;
 			}
 		}
 
