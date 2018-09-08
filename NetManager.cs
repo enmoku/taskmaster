@@ -568,7 +568,7 @@ namespace Taskmaster
 				{
 					var outstr4 = new System.Text.StringBuilder();
 					outstr4.Append("IPv4 address changed: ").Append(oldV4Address).Append(" -> ").Append(IPv4Address);
-					Log.Debug(outstr4.ToString());
+					Log.Information(outstr4.ToString());
 					sbs.Append(outstr4).AppendLine();
 				}
 
@@ -578,7 +578,7 @@ namespace Taskmaster
 				{
 					var outstr6 = new System.Text.StringBuilder();
 					outstr6.Append("IPv6 address changed: ").Append(oldV6Address).Append(" -> ").Append(IPv6Address);
-					Log.Debug(outstr6.ToString());
+					Log.Information(outstr6.ToString());
 					sbs.Append(outstr6).AppendLine();
 				}
 
