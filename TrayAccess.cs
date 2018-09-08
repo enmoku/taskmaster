@@ -157,7 +157,19 @@ namespace Taskmaster
 				Tray.Icon = System.Drawing.SystemIcons.Application;
 			}
 
+			Microsoft.Win32.SystemEvents.SessionEnding += SessionEndingEvent; // depends on messagepump
+
 			if (Taskmaster.Trace) Log.Verbose("<Tray> Initialized");
+		}
+
+		public void SessionEndingEvent(object sender, EventArgs ev)
+		{
+			// queue exit
+			Log.Information("<Session:Ending> Exiting...");
+			BeginInvoke(new Action(() => {
+				Microsoft.Win32.SystemEvents.SessionEnding -= SessionEndingEvent;
+				Taskmaster.UnifiedExit();
+			}));
 		}
 
 		bool registered = false;
@@ -539,6 +551,12 @@ namespace Taskmaster
 		protected override void Dispose(bool disposing)
 		{
 			if (disposed) return;
+
+			try
+			{
+				Microsoft.Win32.SystemEvents.SessionEnding -= SessionEndingEvent; // leaks if not disposed
+			}
+			catch { }
 
 			if (disposing)
 			{
