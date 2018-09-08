@@ -3,8 +3,12 @@ Comprehensive changes can be found in Git change history:
 	https://github.com/mkahvi/taskmaster/commits/master
 
 ## [0.11...]
+### 2018-09-08
+	Fixed: Potential permanent resource leakage related to static event handlers.
+	Changed: IP changes are now in Info logging level instead of Debug.
 ### 2018-08-28
 	Fixed: If no default microphone is set up, microphone manager won't crash the entire app.
+	Added: Detect session end for clean shutdown.
 ### 2018-08-26
 	Added: Total network device errors shown after deltas.
 ### 2018-07-20
