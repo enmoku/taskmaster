@@ -211,7 +211,6 @@ namespace Taskmaster
 			NativeMethods.RegisterPowerSettingNotification(
 				Handle, ref GUID_CONSOLE_DISPLAY_STATE, NativeMethods.DEVICE_NOTIFY_WINDOW_HANDLE);
 
-			SystemEvents.SessionEnding += Taskmaster.SessionEndExitRequest;
 			SystemEvents.SessionSwitch += SessionLockEvent;
 		}
 
@@ -1200,6 +1199,12 @@ namespace Taskmaster
 		protected override void Dispose(bool disposing)
 		{
 			if (disposed) return;
+
+			try
+			{
+				SystemEvents.SessionSwitch -= SessionLockEvent; // leaks if not disposed
+			}
+			catch { }
 
 			if (disposing)
 			{
