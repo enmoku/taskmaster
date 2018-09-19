@@ -48,6 +48,7 @@ namespace Taskmaster
 		readonly HashSet<SharpConfig.Configuration> Dirty = new HashSet<SharpConfig.Configuration>();
 		readonly Dictionary<SharpConfig.Configuration, string> Paths = new Dictionary<SharpConfig.Configuration, string>();
 
+		/// <exception cref="ArgumentException">When config parameter refers to something that never was loaded.</exception>
 		public void Save(SharpConfig.Configuration config)
 		{
 			if (Paths.TryGetValue(config, out string filename))

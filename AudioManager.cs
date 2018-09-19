@@ -46,6 +46,7 @@ namespace Taskmaster
 
 		const string configfile = "Audio.ini";
 
+		/// <exception cref="InitFailure">If audio device can not be found.</exception>
 		public AudioManager()
 		{
 			Context = System.Threading.Thread.CurrentThread;

@@ -238,7 +238,7 @@ namespace Taskmaster
 				}
 			}
 
-			base.WndProc(ref m);
+			base.WndProc(ref m); // is this necessary?
 		}
 
 		public void Enable() => ms.Enabled = true;
@@ -350,10 +350,17 @@ namespace Taskmaster
 			// CLEANUP: Console.WriteLine("Done opening config folder.");
 		}
 
-		async void ShowPowerConfig(object sender, EventArgs e)
+		void ShowPowerConfig(object sender, EventArgs e)
 		{
-			await Task.Delay(0).ConfigureAwait(true);
-			PowerConfigWindow.ShowPowerConfig();
+			if (!IsHandleCreated) return;
+			BeginInvoke(new Action(async () =>
+			{
+				try
+				{
+					PowerConfigWindow.ShowPowerConfig();
+				}
+				catch (Exception ex) { Logging.Stacktrace(ex); }
+			}));
 		}
 
 		int restoremainwindow_lock = 0;
@@ -376,7 +383,7 @@ namespace Taskmaster
 			}
 			finally
 			{
-				restoremainwindow_lock = 0;
+				Atomic.Unlock(ref restoremainwindow_lock);
 			}
 		}
 

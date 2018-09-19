@@ -167,15 +167,17 @@ namespace Taskmaster
 /// <summary>
 /// Credit goes to Mark Hurd at http://stackoverflow.com/a/16756808/6761963
 /// </summary>
-
+/// 
 public static class ProcessExtensions
 {
+	/// <exception cref="Win32Exception">If system snapshot does not return anything.</exception>
 	public static int ParentProcessId(this Process process)
 	{
 		Debug.Assert(process != null);
 		return ParentProcessId(process.Id);
 	}
 
+	/// <exception cref="Win32Exception">If system snapshot does not return anything.</exception>
 	public static int ParentProcessId(int Id)
 	{
 		Debug.Assert(Id > -1);
@@ -208,9 +210,15 @@ public static class ProcessExtensions
 	[DllImport("kernel32.dll", SetLastError = true)]
 	static extern SafeSnapshotHandle CreateToolhelp32Snapshot(SnapshotFlags flags, uint id);
 
+	/// <summary>
+	/// Retrieves information about the first process encountered in a system snapshot.
+	/// </summary>
 	[DllImport("kernel32.dll", SetLastError = true)]
 	static extern bool Process32First(SafeSnapshotHandle hSnapshot, ref PROCESSENTRY32 lppe);
 
+	/// <summary>
+	/// Retrieves information about the next process recorded in a system snapshot.
+	/// </summary>
 	[DllImport("kernel32.dll", SetLastError = true)]
 	static extern bool Process32Next(SafeSnapshotHandle hSnapshot, ref PROCESSENTRY32 lppe);
 

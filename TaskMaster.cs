@@ -71,7 +71,7 @@ namespace Taskmaster
 		static int RestartCounter = 0;
 		static int AdminCounter = 0;
 
-		public static void AutomaticRestartRequest(object sender, EventArgs e)
+		public static void RestartRequest(object sender, EventArgs e)
 		{
 			Restart = true;
 			UnifiedExit();
@@ -105,7 +105,8 @@ namespace Taskmaster
 
 		public static void UnifiedExit()
 		{
-			Application.Exit(); // if this throws, it deserves to break everything
+			if (System.Windows.Forms.Application.MessageLoop)
+				Application.Exit();
 		}
 
 		/// <summary>
@@ -307,7 +308,7 @@ namespace Taskmaster
 			if (PowerManagerEnabled)
 			{
 				trayaccess.hookPowerManager(ref powermanager);
-				powermanager.onBatteryResume += AutomaticRestartRequest;
+				powermanager.onBatteryResume += RestartRequest;
 			}
 
 			if (ProcessMonitorEnabled && PowerManagerEnabled)
@@ -651,6 +652,7 @@ namespace Taskmaster
 				}
 				else
 				{
+					Application.Exit();
 					Environment.Exit(2);
 				}
 			}
@@ -782,6 +784,10 @@ namespace Taskmaster
 			{
 				Console.WriteLine("Failed to open file: " + fullpath);
 			}
+			catch (Exception ex)
+			{
+				Logging.Stacktrace(ex);
+			}
 			finally
 			{
 				fs?.Close();
@@ -805,15 +811,12 @@ namespace Taskmaster
 					IntPtr.Zero, 0, IntPtr.Zero, 0, ref brv, ref ol);
 				// if (result == false) return false;
 
-				if (rv)
-				{
-					fs.SetLength(allockb * 1024);
-				}
+				if (rv) fs.SetLength(allockb * 1024);
 			}
 			catch { } // ignore, no access probably
 			finally
 			{
-				fs?.Close();
+				fs?.Dispose();
 			}
 		}
 
@@ -959,10 +962,14 @@ namespace Taskmaster
 									info.FileName = Process.GetCurrentProcess().ProcessName;
 									info.Arguments = string.Format("--admin {0}", ++AdminCounter);
 									info.Verb = "runas"; // elevate privileges
+									Log.CloseAndFlush();
 									var proc = Process.Start(info);
 								}
+								catch { } // without finally block might not execute
 								finally
 								{
+									if (System.Windows.Forms.Application.MessageLoop)
+										Application.Exit();
 									Environment.Exit(0);
 								}
 							}
@@ -993,6 +1000,8 @@ namespace Taskmaster
 				license.ShowDialog();
 				if (license.DialogResult != DialogResult.Yes)
 				{
+					if (System.Windows.Forms.Application.MessageLoop)
+						Application.Exit();
 					Environment.Exit(-1);
 				}
 			}

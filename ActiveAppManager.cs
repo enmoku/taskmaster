@@ -45,6 +45,7 @@ namespace Taskmaster
 	{
 		public event EventHandler<WindowChangedArgs> ActiveChanged;
 
+		/// <exception cref="InitFailure">Event hook creation failed.</exception>
 		public ActiveAppManager(bool eventhook = true)
 		{
 			ForegroundEventDelegate = new NativeMethods.WinEventDelegate(WinEventProc);
@@ -52,7 +53,7 @@ namespace Taskmaster
 			if (eventhook)
 			{
 				if (!SetupEventHook())
-					throw new Exception("Failed to initialize active app manager.");
+					throw new InitFailure("Failed to initialize active app manager.");
 			}
 
 			// get current window, just in case it's something we're monitoring

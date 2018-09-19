@@ -543,13 +543,6 @@ namespace Taskmaster
 			info.PowerWait = (PowerPlan != PowerInfo.PowerMode.Undefined);
 			info.ActiveWait = ForegroundOnly;
 
-			if (info.Process == null || info.Id <= 4 || string.IsNullOrEmpty(info.Name))
-			{
-				Log.Fatal("ProcessController.Touch({Name},#{Pid}) received invalid arguments.", info.Name, info.Id);
-				throw new ArgumentNullException();
-				// return ProcessState.Invalid;
-			}
-
 			if (!recheck || ModifyDelay > 0)
 				await Task.Delay(recheck ? 0 : ModifyDelay).ConfigureAwait(false);
 
@@ -1112,16 +1105,22 @@ namespace Taskmaster
 				// Log.Trace(string.Format("[{0}] last scan {1:N1} minute(s) ago.", FriendlyName, n));
 				if (Rescan > 0 && n >= Rescan)
 				{
-					if (!Atomic.Lock(ref ScheduledScan)) return;
+					if (Atomic.Lock(ref ScheduledScan))
+					{
+						try
+						{
+							if (Taskmaster.DebugProcesses)
+								Log.Debug("[{FriendlyName}] Rescan initiating.", FriendlyName);
 
-					if (Taskmaster.DebugProcesses)
-						Log.Debug("[{FriendlyName}] Rescan initiating.", FriendlyName);
-
-					using (var m = SelfAwareness.Mind(DateTime.Now.AddSeconds(15)))
-						await Scan().ConfigureAwait(false);
-
-
-					ScheduledScan = 0;
+							using (var m = SelfAwareness.Mind(DateTime.Now.AddSeconds(15)))
+								await Scan().ConfigureAwait(false);
+						}
+						catch { throw; } // for finally block
+						finally
+						{
+							Atomic.Unlock(ref ScheduledScan);
+						}
+					}
 				}
 				// else
 				// 	Log.Verbose("[{FriendlyName}] Scan too recent, ignoring.", FriendlyName); // this is too spammy.

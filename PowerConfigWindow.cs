@@ -201,52 +201,48 @@ namespace Taskmaster
 
 		static PowerConfigWindow pcw = null;
 		static int PowerConfigVisible = 0;
+		static object PowerConfig_lock = new object();
+
 		public static void ShowPowerConfig()
 		{
 			//await Task.Delay(0);
-
-			try
+			if (pcw != null)
 			{
-				if (Atomic.Lock(ref PowerConfigVisible))
+				try
 				{
-					try
+					pcw?.BringToFront();
+					return;
+				}
+				catch { } // don't care, if the above fails, the window doesn't exist and we can follow through after
+			}
+
+			lock (PowerConfig_lock)
+			{
+				try
+				{
+					using (pcw = new PowerConfigWindow())
 					{
-						using (pcw = new PowerConfigWindow())
+
+						var res = pcw.ShowDialog();
+						if (pcw.DialogResult == DialogResult.OK)
 						{
-
-							var res = pcw.ShowDialog();
-							if (pcw.DialogResult == DialogResult.OK)
-							{
-								Taskmaster.powermanager.AutoAdjust = pcw.newAutoAdjust;
-								Log.Information("<<UI>> Power auto-adjust config changed.");
-								// TODO: Call reset on power manager?
-							}
-							else
-							{
-								if (Taskmaster.Trace) Log.Verbose("<<UI>> Power auto-adjust config cancelled.");
-							}
+							Taskmaster.powermanager.AutoAdjust = pcw.newAutoAdjust;
+							Log.Information("<<UI>> Power auto-adjust config changed.");
+							// TODO: Call reset on power manager?
 						}
-						pcw = null;
-					}
-					finally
-					{
-						Atomic.Unlock(ref PowerConfigVisible);
+						else
+						{
+							if (Taskmaster.Trace) Log.Verbose("<<UI>> Power auto-adjust config cancelled.");
+						}
 					}
 				}
-				else
+				catch { } // finally might not be executed otherwise
+				finally
 				{
-					pcw.BringToFront();
-					pcw.Show();
-					pcw.TopMost = true;
-					pcw.TopMost = false;
+					pcw?.Dispose();
+					pcw = null;
 				}
 			}
-			catch (Exception ex)
-			{
-				Logging.Stacktrace(ex);
-			}
-
-			return;
 		}
 	}
 }

@@ -105,6 +105,7 @@ namespace Taskmaster
 		const string statfile = "Microphone.Statistics.ini";
 		
 		// ctor, constructor
+		/// <exception cref="InitFailure">When initialization fails in a way that can not be continued from.</exception>
 		public MicManager()
 		{
 			System.Diagnostics.Debug.Assert(Taskmaster.IsMainThread(), "Requires main thread");
@@ -270,16 +271,23 @@ namespace Taskmaster
 
 				if (Atomic.Lock(ref correcting))
 				{
-					await System.Threading.Tasks.Task.Delay(AdjustDelay); // actual hysterisis, this should be cancellable
+					try
+					{
+						await System.Threading.Tasks.Task.Delay(AdjustDelay); // actual hysterisis, this should be cancellable
 
-					oldVol = Control.Percent;
-					Log.Information("<Microphone> Correcting volume from {OldVolume:N1} to {NewVolume:N1}", oldVol, Target);
-					Volume = Target;
-					Corrections += 1;
-					micstatsdirty = true;
-					correcting = 0;
+						oldVol = Control.Percent;
+						Log.Information("<Microphone> Correcting volume from {OldVolume:N1} to {NewVolume:N1}", oldVol, Target);
+						Volume = Target;
+						Corrections += 1;
+						micstatsdirty = true;
 
-					VolumeChanged?.Invoke(this, new VolumeChangedEventArgs { Old = oldVol, New = Target, Corrections = Corrections });
+						VolumeChanged?.Invoke(this, new VolumeChangedEventArgs { Old = oldVol, New = Target, Corrections = Corrections });
+					}
+					catch { throw;  } // required for finally to be guaranteed
+					finally
+					{
+						Atomic.Unlock(ref correcting);
+					}
 				}
 				else
 				{
