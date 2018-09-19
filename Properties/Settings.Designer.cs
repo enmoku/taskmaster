@@ -12,7 +12,7 @@ namespace Taskmaster.Properties {
     
     
     [global::System.Runtime.CompilerServices.CompilerGeneratedAttribute()]
-    [global::System.CodeDom.Compiler.GeneratedCodeAttribute("Microsoft.VisualStudio.Editors.SettingsDesigner.SettingsSingleFileGenerator", "15.6.0.0")]
+    [global::System.CodeDom.Compiler.GeneratedCodeAttribute("Microsoft.VisualStudio.Editors.SettingsDesigner.SettingsSingleFileGenerator", "15.7.0.0")]
     internal sealed partial class Settings : global::System.Configuration.ApplicationSettingsBase {
         
         private static Settings defaultInstance = ((Settings)(global::System.Configuration.ApplicationSettingsBase.Synchronized(new Settings())));
@@ -20,162 +20,6 @@ namespace Taskmaster.Properties {
         public static Settings Default {
             get {
                 return defaultInstance;
-            }
-        }
-        
-        [global::System.Configuration.UserScopedSettingAttribute()]
-        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("False")]
-        public bool ImmediateSave {
-            get {
-                return ((bool)(this["ImmediateSave"]));
-            }
-            set {
-                this["ImmediateSave"] = value;
-            }
-        }
-        
-        [global::System.Configuration.UserScopedSettingAttribute()]
-        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("False")]
-        public bool ShowInTaskbar {
-            get {
-                return ((bool)(this["ShowInTaskbar"]));
-            }
-            set {
-                this["ShowInTaskbar"] = value;
-            }
-        }
-        
-        [global::System.Configuration.UserScopedSettingAttribute()]
-        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("False")]
-        public bool AutoOpenMenus {
-            get {
-                return ((bool)(this["AutoOpenMenus"]));
-            }
-            set {
-                this["AutoOpenMenus"] = value;
-            }
-        }
-        
-        [global::System.Configuration.UserScopedSettingAttribute()]
-        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("True")]
-        public bool ExitConfirm {
-            get {
-                return ((bool)(this["ExitConfirm"]));
-            }
-            set {
-                this["ExitConfirm"] = value;
-            }
-        }
-        
-        [global::System.Configuration.UserScopedSettingAttribute()]
-        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("False")]
-        public bool WMIQueries {
-            get {
-                return ((bool)(this["WMIQueries"]));
-            }
-            set {
-                this["WMIQueries"] = value;
-            }
-        }
-        
-        [global::System.Configuration.UserScopedSettingAttribute()]
-        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("True")]
-        public bool WMIPolling {
-            get {
-                return ((bool)(this["WMIPolling"]));
-            }
-            set {
-                this["WMIPolling"] = value;
-            }
-        }
-        
-        [global::System.Configuration.UserScopedSettingAttribute()]
-        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("5")]
-        public int WMIPollingInterval {
-            get {
-                return ((int)(this["WMIPollingInterval"]));
-            }
-            set {
-                this["WMIPollingInterval"] = value;
-            }
-        }
-        
-        [global::System.Configuration.UserScopedSettingAttribute()]
-        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("200")]
-        public int PathCacheLimit {
-            get {
-                return ((int)(this["PathCacheLimit"]));
-            }
-            set {
-                this["PathCacheLimit"] = value;
-            }
-        }
-        
-        [global::System.Configuration.UserScopedSettingAttribute()]
-        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("-1")]
-        public int SelfAffinity {
-            get {
-                return ((int)(this["SelfAffinity"]));
-            }
-            set {
-                this["SelfAffinity"] = value;
-            }
-        }
-        
-        [global::System.Configuration.UserScopedSettingAttribute()]
-        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("True")]
-        public bool SelfOptimize {
-            get {
-                return ((bool)(this["SelfOptimize"]));
-            }
-            set {
-                this["SelfOptimize"] = value;
-            }
-        }
-        
-        [global::System.Configuration.UserScopedSettingAttribute()]
-        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("False")]
-        public bool ShowOnStart {
-            get {
-                return ((bool)(this["ShowOnStart"]));
-            }
-            set {
-                this["ShowOnStart"] = value;
-            }
-        }
-        
-        [global::System.Configuration.UserScopedSettingAttribute()]
-        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("True")]
-        public bool ShowProcessAdjusts {
-            get {
-                return ((bool)(this["ShowProcessAdjusts"]));
-            }
-            set {
-                this["ShowProcessAdjusts"] = value;
-            }
-        }
-        
-        [global::System.Configuration.UserScopedSettingAttribute()]
-        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("True")]
-        public bool ShowSessionActions {
-            get {
-                return ((bool)(this["ShowSessionActions"]));
-            }
-            set {
-                this["ShowSessionActions"] = value;
             }
         }
         
@@ -193,25 +37,25 @@ namespace Taskmaster.Properties {
         
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("False")]
-        public bool LicenseAccepted {
+        [global::System.Configuration.DefaultSettingValueAttribute("1")]
+        public int AffinityStyle {
             get {
-                return ((bool)(this["LicenseAccepted"]));
+                return ((int)(this["AffinityStyle"]));
             }
             set {
-                this["LicenseAccepted"] = value;
+                this["AffinityStyle"] = value;
             }
         }
         
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("True")]
-        public bool Dirty {
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        public bool DeleteOldSettings {
             get {
-                return ((bool)(this["Dirty"]));
+                return ((bool)(this["DeleteOldSettings"]));
             }
             set {
-                this["Dirty"] = value;
+                this["DeleteOldSettings"] = value;
             }
         }
     }
