@@ -165,39 +165,50 @@ namespace Taskmaster
 		System.Timers.Timer MonitorSleepTimer;
 
 		int SleepTickCount = 0;
+		int monitorsleeptimer_lock = 0;
 		void MonitorSleepTimerTick(object sender, EventArgs ev)
 		{
-			if (CurrentMonitorState == MonitorPowerMode.Off) return;
-			if (!SessionLocked) return;
+			if (!Atomic.Lock(ref monitorsleeptimer_lock)) return;
 
-			double idletime = User.IdleFor(User.LastActive());
-
-			if (idletime >= Convert.ToDouble(SessionLockPowerOffIdleTimeout))
+			try
 			{
-				SleepTickCount++;
+				if (CurrentMonitorState == MonitorPowerMode.Off) return;
+				if (!SessionLocked) return;
 
-				if (Taskmaster.ShowSessionActions || Taskmaster.DebugMonitor)
-					Log.Information("<Session:Lock> User idle; Monitor power down, attempt {Num}...", SleepTickCount);
+				double idletime = User.IdleFor(User.LastActive());
 
-				SetMonitorMode(MonitorPowerMode.Off);
+				if (idletime >= Convert.ToDouble(SessionLockPowerOffIdleTimeout))
+				{
+					SleepTickCount++;
+
+					if (Taskmaster.ShowSessionActions || Taskmaster.DebugMonitor)
+						Log.Information("<Session:Lock> User idle; Monitor power down, attempt {Num}...", SleepTickCount);
+
+					SetMonitorMode(MonitorPowerMode.Off);
+				}
+				else
+				{
+					SleepTickCount = 0; // reset
+
+					if (Taskmaster.ShowSessionActions || Taskmaster.DebugMonitor)
+						Log.Information("<Session:Lock> User active too recently ({Seconds}s ago), delaying monitor power down...",
+							string.Format("{0:N1}", idletime));
+
+					MonitorSleepTimer?.Start(); // TODO: Make this happen sooner if user was not active recently
+				}
+
+				if (SleepTickCount >= 5)
+				{
+					// it would be better if this wasn't needed, but we don't want to spam our failure in the logs too much
+					Log.Warning("<Session:Lock> Repeated failure to put monitor to sleep, giving up.");
+					MonitorSleepTimer?.Stop();
+					SleepTickCount = 0;
+				}
 			}
-			else
+			catch { throw; } // for finally block
+			finally
 			{
-				SleepTickCount = 0; // reset
-
-				if (Taskmaster.ShowSessionActions || Taskmaster.DebugMonitor)
-					Log.Information("<Session:Lock> User active too recently ({Seconds}s ago), delaying monitor power down...",
-						string.Format("{0:N1}", idletime));
-
-				MonitorSleepTimer?.Start(); // TODO: Make this happen sooner if user was not active recently
-			}
-
-			if (SleepTickCount >= 5)
-			{
-				// it would be better if this wasn't needed, but we don't want to spam our failure in the logs too much
-				Log.Warning("<Session:Lock> Repeated failure to put monitor to sleep, giving up.");
-				MonitorSleepTimer?.Stop();
-				SleepTickCount = 0;
+				Atomic.Unlock(ref monitorsleeptimer_lock);
 			}
 		}
 

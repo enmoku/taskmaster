@@ -822,12 +822,15 @@ namespace Taskmaster
 
 		public static bool ComponentConfigurationDone = false;
 
+		static int cleanup_lock = 0;
 		public static async void Cleanup(object sender, EventArgs ev)
 		{
-			if (Taskmaster.Trace) Log.Verbose("Running periodic cleanup");
+			if (!Atomic.Lock(ref cleanup_lock)) return;
 
 			try
 			{
+				if (Taskmaster.Trace) Log.Verbose("Running periodic cleanup");
+
 				// TODO: This starts getting weird if cleanup interval is smaller than total delay of testing all items.
 				// (15*60) / 2 = item limit, and -1 or -2 for safety margin. Unlikely, but should probably be covered anyway.
 
@@ -849,6 +852,10 @@ namespace Taskmaster
 			catch (Exception ex)
 			{
 				Logging.Stacktrace(ex);
+			}
+			finally
+			{
+				Atomic.Unlock(ref cleanup_lock);
 			}
 		}
 

@@ -131,64 +131,75 @@ namespace Taskmaster
 
 		}
 
+		int assess_lock = 0;
 		void Assess(object sender, EventArgs ev)
 		{
-			var now = DateTime.Now;
-			Stack<int> clearList = new Stack<int>();
+			if (!Atomic.Lock(ref assess_lock)) return;
 
-			lock (AwarenessMap_lock)
+			try
 			{
-				if (AwarenessMap.Count > 0)
+				var now = DateTime.Now;
+				Stack<int> clearList = new Stack<int>();
+
+				lock (AwarenessMap_lock)
 				{
-					foreach (var awnPair in AwarenessMap)
+					if (AwarenessMap.Count > 0)
 					{
-						var awn = awnPair.Value;
-
-						if (awn.Due <= now)
+						foreach (var awnPair in AwarenessMap)
 						{
-							awn.Tick++;
+							var awn = awnPair.Value;
 
-							TimeSpan late = (now - awn.Due);
-
-							if (awn.Tick == 1)
+							if (awn.Due <= now)
 							{
-								awn.Overdue = true;
-								awn.Due = awn.Due.AddSeconds(5);
+								awn.Tick++;
 
-								if (awn.Message != null)
+								TimeSpan late = (now - awn.Due);
+
+								if (awn.Tick == 1)
 								{
-									Log.Fatal("<<Self-Awareness>> {Method} hung [Late: {Seconds}s, Tick: {Tick}] – {Message}",
-											  awn.Method, string.Format("{0:N1}", late.TotalSeconds), awn.Tick, awn.Message);
-								}
-								else
-								{
-									Log.Fatal("<<Self-Awareness>> {Method} hung [Late: {Seconds}s, Tick: {Tick}]",
-											  awn.Method, string.Format("{0:N1}", late.TotalSeconds), awn.Tick);
+									awn.Overdue = true;
+									awn.Due = awn.Due.AddSeconds(5);
+
+									if (awn.Message != null)
+									{
+										Log.Fatal("<<Self-Awareness>> {Method} hung [Late: {Seconds}s, Tick: {Tick}] – {Message}",
+												  awn.Method, string.Format("{0:N1}", late.TotalSeconds), awn.Tick, awn.Message);
+									}
+									else
+									{
+										Log.Fatal("<<Self-Awareness>> {Method} hung [Late: {Seconds}s, Tick: {Tick}]",
+												  awn.Method, string.Format("{0:N1}", late.TotalSeconds), awn.Tick);
+									}
+
+									if (awn.Callback != null)
+										awn.Callback.Invoke(awn.UserObject);
 								}
 
-								if (awn.Callback != null)
-									awn.Callback.Invoke(awn.UserObject);
+								if (awn.Tick >= 3) clearList.Push(awn.Key);
+							}
+							else
+							{
+								// Log.Debug("<<Self-Awareness>> Checked [{Key}] {Method} – due in: {Sec}", awn.Key, awn.Value.Method, (now - awn.Value.Due).TotalSeconds);
 							}
 
-							if (awn.Tick >= 3) clearList.Push(awn.Key);
+							awn = null;
 						}
-						else
-						{
-							// Log.Debug("<<Self-Awareness>> Checked [{Key}] {Method} – due in: {Sec}", awn.Key, awn.Value.Method, (now - awn.Value.Due).TotalSeconds);
-						}
+					}
+				}
 
-						awn = null;
+				while (clearList.Count > 0)
+				{
+					var key = clearList.Pop();
+					if (AwarenessMap.TryGetValue(key, out Awareness awn))
+					{
+						RemoveAwareness(key);
 					}
 				}
 			}
-
-			while (clearList.Count > 0)
+			catch { throw; } // for finally
+			finally
 			{
-				var key = clearList.Pop();
-				if (AwarenessMap.TryGetValue(key, out Awareness awn))
-				{
-					RemoveAwareness(key);
-				}
+				Atomic.Unlock(ref assess_lock);
 			}
 		}
 

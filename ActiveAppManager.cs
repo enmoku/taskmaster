@@ -166,12 +166,16 @@ namespace Taskmaster
 		bool Reduced = false;
 		int IgnoreHung = -1;
 
+		int hangdetector_lock = 0;
+
 		void HangDetector(object sender, EventArgs ev)
 		{
-			int pid = Foreground;
+			if (!Atomic.Lock(ref hangdetector_lock)) return;
 
 			try
 			{
+				int pid = Foreground;
+
 				DateTime now = DateTime.Now;
 				TimeSpan since = now.TimeSince(LastSwap); // since app was last changed
 				if (since.TotalSeconds < 5) return;
@@ -279,9 +283,12 @@ namespace Taskmaster
 				Logging.Stacktrace(ex);
 				return;
 			}
+			finally
+			{
+				Atomic.Unlock(ref hangdetector_lock);
+			}
 
 			Taskmaster.processmanager.Unignore(IgnoreHung);
-
 			HangTick = 0;
 			HangTime = DateTime.MaxValue;
 		}

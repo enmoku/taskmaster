@@ -211,13 +211,9 @@ namespace Taskmaster
 
 				if (Atomic.Lock(ref hotkeyinprogress))
 				{
-					//Taskmaster.ThreadIdentity("Hotkey.Detected");
-
 					if (Taskmaster.Trace) Log.Verbose("<Tray> Hotkey ctrl-alt-shift-m detected!!!");
 					Task.Run(new Action(async () =>
 					{
-						//Taskmaster.ThreadIdentity("Hotkey.Start");
-
 						try
 						{
 							int ignorepid = Taskmaster.activeappmonitor?.Foreground ?? -1;
@@ -232,7 +228,6 @@ namespace Taskmaster
 						finally
 						{
 							Atomic.Unlock(ref hotkeyinprogress);
-							//Taskmaster.ThreadIdentity("Hotkey.End");
 						}
 					}));
 				}

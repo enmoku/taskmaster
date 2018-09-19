@@ -581,7 +581,7 @@ namespace Taskmaster
 			if (!IsHandleCreated) return;
 			BeginInvoke(new Action(() =>
 			{
-				processingtimer.Text = string.Format("{0:N0}s", DateTime.Now.TimeTo(ProcessManager.NextRescan).TotalSeconds);
+				processingtimer.Text = string.Format("{0:N0}s", DateTime.Now.TimeTo(ProcessManager.NextScan).TotalSeconds);
 			}));
 		}
 

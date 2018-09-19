@@ -228,20 +228,24 @@ namespace Taskmaster
 			// happens sometimes when the timer keeps running but not the code here
 			if (!Atomic.Lock(ref HealthCheck_lock)) return;
 
-			using (SelfAwareness.Mind(DateTime.Now.AddSeconds(15)))
+			try
 			{
-				try
+				using (SelfAwareness.Mind(DateTime.Now.AddSeconds(15)))
 				{
-					await CheckErrors().ConfigureAwait(false);
-					await CheckLogs().ConfigureAwait(false);
-					await CheckMemory().ConfigureAwait(false);
-					await CheckNVM().ConfigureAwait(false);
+					try
+					{
+						await CheckErrors().ConfigureAwait(false);
+						await CheckLogs().ConfigureAwait(false);
+						await CheckMemory().ConfigureAwait(false);
+						await CheckNVM().ConfigureAwait(false);
+					}
+					catch (Exception ex) { Logging.Stacktrace(ex); }
 				}
-				catch (Exception ex) { Logging.Stacktrace(ex); }
-				finally
-				{
-					Atomic.Unlock(ref HealthCheck_lock);
-				}
+			}
+			catch { throw;  }
+			finally
+			{
+				Atomic.Unlock(ref HealthCheck_lock);
 			}
 		}
 

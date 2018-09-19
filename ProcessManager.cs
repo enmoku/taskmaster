@@ -287,21 +287,9 @@ namespace Taskmaster
 		{
 			if (Taskmaster.Trace) Log.Verbose("Rescan requested.");
 
-			//Taskmaster.ThreadIdentity("ScanEverythingRequest");
-
-			//await Task.Delay(0);
-
 			// this stays on UI thread for some reason
 
-			//await ScanEverything().ConfigureAwait(false);
 			Task.Run(ScanEverything);
-		}
-
-		public void ScheduleNextScan()
-		{
-			var now = DateTime.Now;
-			LastRescan = now;
-			NextRescan = now.AddSeconds(RescanEverythingFrequency);
 		}
 
 		System.Threading.Timer rescanTimer;
@@ -315,90 +303,85 @@ namespace Taskmaster
 
 		public event EventHandler<ProcessEventArgs> ProcessModified;
 
-		object scaninprogress_lock = new object();
+		int scan_lock = 0;
 
 		public async Task ScanEverything()
 		{
-			ScheduleNextScan();
+			var now = DateTime.Now;
+			LastScan = now;
+			NextScan = now.AddSeconds(RescanEverythingFrequency);
 
-			await Task.Delay(0).ConfigureAwait(false);
-
-			//Taskmaster.ThreadIdentity("ScanEverything.Start");
-
-			//await Task.Delay(0).ConfigureAwait(false);
+			if (!Atomic.Lock(ref scan_lock)) return;
 
 			try
 			{
-				lock (scaninprogress_lock)
+				await Task.Delay(0).ConfigureAwait(false);
+
+				if (Taskmaster.DebugFullScan) Log.Debug("<Process> Full Scan: Start");
+
+				ScanEverythingStartEvent?.Invoke(this, null);
+
+				int count = 0;
+				using (var m = SelfAwareness.Mind(DateTime.Now.AddSeconds(5)))
 				{
-					if (Taskmaster.DebugFullScan) Log.Debug("<Process> Full Scan: Start");
-
-					ScanEverythingStartEvent?.Invoke(this, null);
-
-					//Taskmaster.ThreadIdentity("ScanEverything.Begin");
-
-					int count = 0;
-					using (var m = SelfAwareness.Mind(DateTime.Now.AddSeconds(5)))
+					try
 					{
-						try
+						var procs = Process.GetProcesses();
+						count = procs.Length - 2; // -2 for Idle&System
+
+						SignalProcessHandled(count); // scan start
+
+						var i = 0;
+						foreach (var process in procs)
 						{
-							var procs = Process.GetProcesses();
-							count = procs.Length - 2; // -2 for Idle&System
-
-							SignalProcessHandled(count); // scan start
-
-							var i = 0;
-							foreach (var process in procs)
+							++i;
+							try
 							{
-								++i;
-								try
-								{
-									var name = process.ProcessName;
-									var pid = process.Id;
+								var name = process.ProcessName;
+								var pid = process.Id;
 
-									if (IgnoreProcessID(pid) || IgnoreProcessName(name) || pid == Process.GetCurrentProcess().Id)
-										continue;
+								if (IgnoreProcessID(pid) || IgnoreProcessName(name) || pid == Process.GetCurrentProcess().Id)
+									continue;
 
-									if (Taskmaster.DebugFullScan)
-										Log.Verbose("<Process> Checking [{Iter}/{Count}] {Proc} (#{Pid})",
-											i, count, name, pid);
+								if (Taskmaster.DebugFullScan)
+									Log.Verbose("<Process> Checking [{Iter}/{Count}] {Proc} (#{Pid})",
+										i, count, name, pid);
 
-									ProcessDetectedEvent?.Invoke(this, new ProcessEx() { Process = process, Id = pid, Name = name, Path = null });
-								}
-								catch (Exception ex)
-								{
-									Logging.Stacktrace(ex);
-								}
+								ProcessDetectedEvent?.Invoke(this, new ProcessEx() { Process = process, Id = pid, Name = name, Path = null });
+							}
+							catch (Exception ex)
+							{
+								Logging.Stacktrace(ex);
 							}
 						}
-						catch (Exception ex)
-						{
-							Logging.Stacktrace(ex);
-						}
 					}
-
-					SignalProcessHandled(-count); // scan done
-
-					if (Taskmaster.DebugFullScan) Log.Debug("<Process> Full Scan: Complete");
-
-					//Taskmaster.ThreadIdentity("ScanEverything.End");
-
-					ScanEverythingEndEvent?.Invoke(this, null);
+					catch (Exception ex)
+					{
+						Logging.Stacktrace(ex);
+					}
 				}
 
-				//Taskmaster.ThreadIdentity("ScanEverything.End");
+				SignalProcessHandled(-count); // scan done
+
+				if (Taskmaster.DebugFullScan) Log.Debug("<Process> Full Scan: Complete");
+
+				ScanEverythingEndEvent?.Invoke(this, null);
 			}
 			catch (Exception ex)
 			{
 				Logging.Stacktrace(ex);
+			}
+			finally
+			{
+				Atomic.Unlock(ref scan_lock);
 			}
 		}
 
 		static int BatchDelay = 2500;
 		static int RescanDelay = 0; // 5 minutes
 		public static int RescanEverythingFrequency { get; private set; } = 15; // seconds
-		public static DateTime LastRescan { get; private set; } = DateTime.MinValue;
-		public static DateTime NextRescan { get; set; } = DateTime.MinValue;
+		public static DateTime LastScan { get; private set; } = DateTime.MinValue;
+		public static DateTime NextScan { get; set; } = DateTime.MinValue;
 		static bool BatchProcessing; // = false;
 		static int BatchProcessingThreshold = 5;
 		// static bool ControlChildren = false; // = false;
@@ -1479,8 +1462,12 @@ namespace Taskmaster
 
 		void RescanOnTimerTick(object state) => Task.Run(RescanOnTimer);
 
+		int rescan_lock = 0;
+
 		async Task RescanOnTimer()
 		{
+			if (!Atomic.Lock(ref rescan_lock)) return;
+
 			await Task.Delay(0).ConfigureAwait(false); // async
 
 			try
@@ -1538,6 +1525,10 @@ namespace Taskmaster
 			catch (Exception ex)
 			{
 				Logging.Stacktrace(ex);
+			}
+			finally
+			{
+				Atomic.Unlock(ref rescan_lock);
 			}
 		}
 

@@ -262,8 +262,9 @@ namespace Taskmaster
 			await RecordDeviceState(InternetAvailable, false);
 		}
 
-		bool lastOnlineState; // = false;
-		static int upstateTesting; // = 0;
+		bool lastOnlineState = false;
+		int upstateTesting = 0;
+
 		async Task RecordDeviceState(bool online_state, bool address_changed)
 		{
 			if (online_state != lastOnlineState)
