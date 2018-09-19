@@ -862,6 +862,7 @@ namespace Taskmaster
 			}
 			if (Affinity.HasValue)
 			{
+				// TODO: respect display configuration for 
 				sbs.Append("; Affinity: ");
 				if (mAffinity)
 					sbs.Append(oldAffinity.ToInt32()).Append(" → ");

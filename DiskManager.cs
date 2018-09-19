@@ -40,7 +40,7 @@ namespace Taskmaster
 		readonly System.IO.FileSystemWatcher sysWatcher;
 
 		readonly System.Timers.Timer TempScanTimer;
-		int TimerDue = 1000 * 60 * 60 * 24;
+		int TimerDue = 1000 * 60 * 60 * 24; // 24 hours
 
 		public DiskManager()
 		{

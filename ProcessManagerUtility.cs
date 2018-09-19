@@ -246,17 +246,17 @@ namespace Taskmaster
 				int excesscores = Bit.Count(target) - Bit.Count(source);
 				if (excesscores > 0)
 				{
-					Console.WriteLine("Mask: " + Convert.ToString(newAffinityMask, 2));
+					//Console.WriteLine("Mask: " + Convert.ToString(newAffinityMask, 2));
 					for (int i = 0; i < ProcessManager.CPUCount; i++)
 					{
 						if (Bit.IsSet(newAffinityMask, i))
 						{
 							newAffinityMask = Bit.Unset(newAffinityMask, i);
-							Console.WriteLine("Mask: " + Convert.ToString(newAffinityMask, 2));
+							//Console.WriteLine("Mask: " + Convert.ToString(newAffinityMask, 2));
 							if (--excesscores <= 0) break;
 						}
 					}
-					Console.WriteLine("Mask: " + Convert.ToString(newAffinityMask, 2));
+					//Console.WriteLine("Mask: " + Convert.ToString(newAffinityMask, 2));
 				}
 			}
 			else if (strategy == ProcessAffinityStrategy.Scatter)
