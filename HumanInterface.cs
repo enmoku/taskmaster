@@ -30,6 +30,14 @@ namespace Taskmaster
 {
 	public static class HumanInterface
 	{
+		public static string BitMask(long num, int padding)
+		{
+			var tmp = Convert.ToString(num, 2).PadLeft(padding, '0');
+			var arr = tmp.ToCharArray();
+			Array.Reverse(arr);
+			return new string(arr);
+		}
+
 		public static string TimeString(TimeSpan time)
 		{
 			if (time.TotalMilliseconds <= 0) return "n/a";

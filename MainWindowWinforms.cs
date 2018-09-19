@@ -251,23 +251,26 @@ namespace Taskmaster
 
 				litem.SubItems[NameColumn].Text = prc.FriendlyName;
 				litem.SubItems[ExeColumn].Text = prc.Executable;
-				litem.SubItems[PrioColumn].Text = prc.Priority?.ToString() ?? "--- Any --- ";
-				string aff = "- Ignored -";
+				litem.SubItems[PrioColumn].Text = prc.Priority?.ToString() ?? AnyIgnoredValue;
+				string aff = "Ignored";
 				if (prc.Affinity.HasValue)
 				{
 					if (prc.Affinity.Value.ToInt32() == ProcessManager.allCPUsMask)
-						aff = "- Full/OS -";
+						aff = "Full/OS";
+					else if (Properties.Settings.Default.AffinityStyle == 0)
+						aff = HumanInterface.BitMask(prc.Affinity.Value.ToInt32(), ProcessManager.CPUCount);
 					else
-						aff = Convert.ToString(prc.Affinity.Value.ToInt32(), 2).PadLeft(ProcessManager.CPUCount, '0');
+						aff = prc.Affinity.Value.ToInt32().ToString();
 				}
 				litem.SubItems[AffColumn].Text = aff;
-				litem.SubItems[PowerColumn].Text = (prc.PowerPlan != PowerInfo.PowerMode.Undefined ? prc.PowerPlan.ToString() : "--- Any ---");
-				// skip adjusts
-				litem.SubItems[PathColumn].Text = (string.IsNullOrEmpty(prc.Path) ? "--- Any ---" : prc.Path);
+				litem.SubItems[PowerColumn].Text = (prc.PowerPlan != PowerInfo.PowerMode.Undefined ? prc.PowerPlan.ToString() : AnyIgnoredValue);
+				litem.SubItems[PathColumn].Text = (string.IsNullOrEmpty(prc.Path) ? AnyIgnoredValue : prc.Path);
 			}
 
 			WatchlistItemColor(litem, prc);
 		}
+
+		readonly string AnyIgnoredValue = string.Empty; // Any/Ignored
 
 		public void ProcessTouchEvent(object sender, ProcessEventArgs ev)
 		{
@@ -421,21 +424,26 @@ namespace Taskmaster
 		int num = 1;
 		void AddToWatchlistList(ProcessController prc)
 		{
-			string aff = "--- Any ---";
+			string aff = AnyIgnoredValue;
 			if (prc.Affinity.HasValue && prc.Affinity.Value.ToInt32() != ProcessManager.allCPUsMask)
-				aff = Convert.ToString(prc.Affinity.Value.ToInt32(), 2).PadLeft(ProcessManager.CPUCount, '0');
+			{
+				if (Properties.Settings.Default.AffinityStyle == 0)
+					aff = HumanInterface.BitMask(prc.Affinity.Value.ToInt32(), ProcessManager.CPUCount);
+				else
+					aff = prc.Affinity.Value.ToInt32().ToString();
+			}
 
 			var litem = new ListViewItem(new string[] {
 				(num++).ToString(),
 				prc.FriendlyName, //.ToString(),
 				prc.Executable,
-				(prc.Priority?.ToString() ?? "--- Any --- "),
+				(prc.Priority?.ToString() ?? AnyIgnoredValue),
 				aff,
-				(prc.PowerPlan != PowerInfo.PowerMode.Undefined ? prc.PowerPlan.ToString() : "--- Any ---"),
+				(prc.PowerPlan != PowerInfo.PowerMode.Undefined ? prc.PowerPlan.ToString() : AnyIgnoredValue),
 				//(pc.Rescan>0 ? pc.Rescan.ToString() : "n/a"),
 				prc.Adjusts.ToString(),
 				//(pc.LastSeen != DateTime.MinValue ? pc.LastSeen.ToLocalTime().ToString() : "Never"),
-				(string.IsNullOrEmpty(prc.Path) ? "--- Any ---" : prc.Path)
+				(string.IsNullOrEmpty(prc.Path) ? AnyIgnoredValue : prc.Path)
 			});
 
 			lock (watchlistrules_lock)
@@ -798,6 +806,7 @@ namespace Taskmaster
 			// Sub Items
 			var menu_config_behaviour = new ToolStripMenuItem("Behaviour");
 			var menu_config_logging = new ToolStripMenuItem("Logging");
+			var menu_config_bitmaskstyle = new ToolStripMenuItem("Bitmask style");
 			var menu_config_power = new ToolStripMenuItem("Power");
 
 			// Sub Sub Items
@@ -854,6 +863,32 @@ namespace Taskmaster
 			menu_config_logging.DropDownItems.Add(menu_config_logging_adjusts);
 			menu_config_logging.DropDownItems.Add(menu_config_logging_session);
 
+			var menu_config_bitmaskstyle_bitmask = new ToolStripMenuItem("Bitmask")
+			{
+				Checked = Properties.Settings.Default.AffinityStyle == 0,
+			};
+			var menu_config_bitmaskstyle_decimal = new ToolStripMenuItem("Decimal")
+			{
+				Checked = Properties.Settings.Default.AffinityStyle == 1,
+			};
+			menu_config_bitmaskstyle_bitmask.Click += (s, e) => {
+				Properties.Settings.Default.AffinityStyle = 0;
+				menu_config_bitmaskstyle_bitmask.Checked = true;
+				menu_config_bitmaskstyle_decimal.Checked = false;
+				// TODO: re-render watchlistRules
+			};
+			menu_config_bitmaskstyle_decimal.Click += (s, e) => {
+				Properties.Settings.Default.AffinityStyle = 1;
+				menu_config_bitmaskstyle_bitmask.Checked = false;
+				menu_config_bitmaskstyle_decimal.Checked = true;
+				// TODO: re-render watchlistRules
+			};
+			//var menu_config_bitmaskstyle_both = new ToolStripMenuItem("Decimal [Bitmask]");
+
+			menu_config_bitmaskstyle.DropDownItems.Add(menu_config_bitmaskstyle_bitmask);
+			menu_config_bitmaskstyle.DropDownItems.Add(menu_config_bitmaskstyle_decimal);
+			//menu_config_bitmaskstyle.DropDownItems.Add(menu_config_bitmaskstyle_both);
+
 			var menu_config_power_autoadjust = new ToolStripMenuItem("Auto-adjust tuning");
 			menu_config_power_autoadjust.Click += PowerConfigRequest;
 			menu_config_power.DropDownItems.Add(menu_config_power_autoadjust);
@@ -895,6 +930,7 @@ namespace Taskmaster
 			// menu_config.DropDownItems.Add(menu_config_log);
 			menu_config.DropDownItems.Add(menu_config_behaviour);
 			menu_config.DropDownItems.Add(menu_config_logging);
+			menu_config.DropDownItems.Add(menu_config_bitmaskstyle);
 			menu_config.DropDownItems.Add(new ToolStripSeparator());
 			menu_config.DropDownItems.Add(menu_config_power);
 			menu_config.DropDownItems.Add(new ToolStripSeparator());

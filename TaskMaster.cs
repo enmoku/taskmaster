@@ -1046,15 +1046,49 @@ namespace Taskmaster
 
 		static void UpgradeAppSettings()
 		{
-			/*
 			if (Properties.Settings.Default.UpgradeNeeded)
 			{
 				Properties.Settings.Default.Upgrade();
 				Properties.Settings.Default.UpgradeNeeded = false;
 				Properties.Settings.Default.Save();
-				//Properties.Settings.Default.Reload(); // part of .Upgrade()
+				Properties.Settings.Default.Reload(); // part of .Upgrade()
+
+				if (Properties.Settings.Default.DeleteOldSettings)
+				{
+					string path = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Taskmaster");
+					// We're putting a _lot_ of faith into the above function here
+					Console.WriteLine("Deleting old configurations");
+					if (Directory.Exists(path))
+					{
+						foreach (var dir in Directory.EnumerateDirectories(path))
+						{
+							if (Path.GetFileName(dir).StartsWith("Taskmaster"))
+							{
+								var dirs = Directory.GetFiles(dir);
+
+								System.Array.Sort(dirs); // getfiles does not guarantee order; this is not so great
+
+								int left = dirs.Length;
+								
+								foreach (var sdir in dirs)
+								{
+									if (left <= 5) break; // preserve at least 5
+
+									if (sdir.EndsWith(System.Reflection.Assembly.GetExecutingAssembly().GetName().Version.ToString()))
+										continue;
+
+									try
+									{
+										Directory.Delete(sdir, true);
+										left--;
+									}
+									catch { } // failed to delete for some reason, we don't care
+								}
+							}
+						}
+					}
+				}
 			}
-			*/
 		}
 
 		static System.Threading.CancellationTokenSource cts = new System.Threading.CancellationTokenSource();
@@ -1152,7 +1186,7 @@ namespace Taskmaster
 
 					Config?.Save(); // early save of configs
 
-					// Properties.Settings.Default.Save();
+					Properties.Settings.Default.Save();
 
 					CleanupTimer = new System.Timers.Timer(60_000 * CleanupInterval);
 					CleanupTimer.Elapsed += Taskmaster.Cleanup;
@@ -1244,6 +1278,8 @@ namespace Taskmaster
 					Statistics.PathFindAttempts, Statistics.PathFindViaModule, Statistics.PathFindViaC, Statistics.PathFindViaWMI);
 
 				Config?.Save();
+
+				Properties.Settings.Default.Save();
 
 				CleanShutdown();
 
