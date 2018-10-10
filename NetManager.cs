@@ -105,7 +105,7 @@ namespace Taskmaster
 
 			// Log.Debug("{IFACELIST} – count: {c}", CurrentInterfaceList, CurrentInterfaceList.Count);
 
-			deviceSampleTimer = new System.Threading.Timer((s) => { RecordDeviceState(InternetAvailable, false); }, null, 15000, DeviceTimerInterval * 60000);
+			deviceSampleTimer = new System.Threading.Timer(async (s) => { await RecordDeviceState(InternetAvailable, false); }, null, 15000, DeviceTimerInterval * 60000);
 
 			AnalyzeTrafficBehaviourTick(null); // initialize, not really needed
 			packetStatTimer = new System.Threading.Timer(AnalyzeTrafficBehaviourTick, null, 500, PacketStatTimerInterval * 1000);
@@ -117,16 +117,14 @@ namespace Taskmaster
 
 		volatile List<NetDevice> CurrentInterfaceList = new List<NetDevice>(0);
 
-		async void AnalyzeTrafficBehaviourTick(object state) => AnalyzeTrafficBehaviour();
+		void AnalyzeTrafficBehaviourTick(object state) => AnalyzeTrafficBehaviour();
 
 		int analyzetrafficbehaviour_lock = 0;
-		async void AnalyzeTrafficBehaviour()
+		void AnalyzeTrafficBehaviour()
 		{
 			Debug.Assert(CurrentInterfaceList != null);
 
 			if (!Atomic.Lock(ref analyzetrafficbehaviour_lock)) return;
-
-			await Task.Delay(0);
 
 			try
 			{
@@ -264,58 +262,73 @@ namespace Taskmaster
 
 		bool lastOnlineState = false;
 		int upstateTesting = 0;
+		int RecordingDeviceState = 0;
 
 		async Task RecordDeviceState(bool online_state, bool address_changed)
 		{
-			if (online_state != lastOnlineState)
+			if (!Atomic.Lock(ref RecordingDeviceState)) return;
+
+			try
 			{
-				lastOnlineState = online_state;
-
-				if (online_state)
+				if (online_state != lastOnlineState)
 				{
-					lastUptimeStart = DateTime.Now;
+					lastOnlineState = online_state;
 
-					// this part is kinda pointless
-					if (Atomic.Lock(ref upstateTesting))
+					if (online_state)
 					{
-						try
-						{
-							// CLEANUP: Console.WriteLine("Debug: Queued internet uptime report");
-							await Task.Delay(new TimeSpan(0, 5, 0)); // wait 5 minutes
+						lastUptimeStart = DateTime.Now;
 
-							ReportCurrentUpstate();
-						}
-						finally
+						// this part is kinda pointless
+						if (Atomic.Lock(ref upstateTesting))
 						{
-							Atomic.Unlock(ref upstateTesting);
+							try
+							{
+								// CLEANUP: Console.WriteLine("Debug: Queued internet uptime report");
+								await Task.Delay(new TimeSpan(0, 5, 0)); // wait 5 minutes
+
+								ReportCurrentUpstate();
+							}
+							finally
+							{
+								Atomic.Unlock(ref upstateTesting);
+							}
 						}
 					}
-				}
-				else // went offline
-				{
-					lock (uptime_lock)
+					else // went offline
 					{
-						var newUptime = (DateTime.Now - lastUptimeStart).TotalMinutes;
-						upTime.Add(newUptime);
-						uptimeTotal += newUptime;
-						uptimeSamples += 1;
-						if (uptimeSamples > 20)
+						lock (uptime_lock)
 						{
-							uptimeTotal -= upTime[0];
-							uptimeSamples -= 1;
-							upTime.RemoveAt(0);
+							var newUptime = (DateTime.Now - lastUptimeStart).TotalMinutes;
+							upTime.Add(newUptime);
+							uptimeTotal += newUptime;
+							uptimeSamples += 1;
+							if (uptimeSamples > 20)
+							{
+								uptimeTotal -= upTime[0];
+								uptimeSamples -= 1;
+								upTime.RemoveAt(0);
+							}
 						}
+
+						ReportUptime();
 					}
 
-					ReportUptime();
+					return;
 				}
-
-				return;
+				else if (address_changed)
+				{
+					// same state but address change was detected
+					Console.WriteLine("<Network> DEBUG: Address changed but internet connectivity unaffected.");
+				}
 			}
-			else if (address_changed)
+			catch (Exception ex)
 			{
-				// same state but address change was detected
-				Console.WriteLine("<Network> DEBUG: Address changed but internet connectivity unaffected.");
+				Logging.Stacktrace(ex);
+				throw;
+			}
+			finally
+			{
+				Atomic.Unlock(ref RecordingDeviceState);
 			}
 		}
 
