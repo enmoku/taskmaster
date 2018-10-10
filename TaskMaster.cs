@@ -217,7 +217,6 @@ namespace Taskmaster
 				{
 					using (var initialconfig = new ComponentConfigurationWindow())
 						initialconfig.ShowDialog();
-
 				}
 				catch (Exception ex)
 				{
@@ -259,8 +258,6 @@ namespace Taskmaster
 				
 				SelfOptimize = false;
 			}
-
-			//Components = new ComponentContainer();
 
 			// Parallel loading, cuts down startup time some.
 			// This is really bad if something fails
@@ -1188,11 +1185,7 @@ namespace Taskmaster
 				{
 					Log.Fatal("Exiting due to initialization failure.");
 					Logging.Stacktrace(ex);
-					Log.CloseAndFlush();
-					cts?.Cancel();
-					Utility.Dispose(ref cts);
-					Utility.Dispose(ref singleton);
-					return 1;
+					throw new RunstateException("Initialization failure", Runstate.QuickExit, ex);
 				}
 
 				try
@@ -1307,12 +1300,12 @@ namespace Taskmaster
 
 				GC.RemoveMemoryPressure(fakemempressure); // probably unnecesary
 
-				cts?.Cancel();
-				Utility.Dispose(ref cts);
-				Utility.Dispose(ref singleton);
-
 				if (Restart) // happens only on power resume (waking from hibernation) or when manually set
 				{
+					cts?.Cancel();
+					Utility.Dispose(ref cts);
+					Utility.Dispose(ref singleton);
+
 					Log.Information("Restarting...");
 					try
 					{
@@ -1348,6 +1341,17 @@ namespace Taskmaster
 					}
 				}
 			}
+			catch (RunstateException ex)
+			{
+				switch (ex.State)
+				{
+					case Runstate.Normal:
+					case Runstate.Exit:
+					case Runstate.QuickExit:
+					case Runstate.Restart:
+						break;
+				}
+			}
 			catch (Exception ex)
 			{
 				Logging.Stacktrace(ex, oob: true);
@@ -1355,9 +1359,10 @@ namespace Taskmaster
 			finally
 			{
 				Utility.Dispose(ref Components);
-				cts?.Cancel();
+				cts?.Cancel(); // unnecessary
 				Utility.Dispose(ref cts);
 				Utility.Dispose(ref singleton);
+				Log.CloseAndFlush();
 			}
 
 			return 0;
