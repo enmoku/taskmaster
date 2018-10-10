@@ -327,12 +327,12 @@ namespace Taskmaster
 							cbSize = System.Runtime.InteropServices.Marshal.SizeOf(typeof(NativeMethods.SHQUERYRBINFO))
 						};
 
-						Console.WriteLine(drive.Name);
+						//Console.WriteLine(drive.Name);
 						uint hresult = NativeMethods.SHQueryRecycleBin(drive.Name, ref sqrbi);
 						int error = System.Runtime.InteropServices.Marshal.GetLastWin32Error();
-						Console.WriteLine(hresult.ToString("X") + " --- error: " + error);
-						Console.WriteLine(sqrbi.i64NumItems);
-						Console.WriteLine(sqrbi.i64Size);
+						//Console.WriteLine(hresult.ToString("X") + " --- error: " + error);
+						//Console.WriteLine(sqrbi.i64NumItems);
+						//Console.WriteLine(sqrbi.i64Size);
 						long rbsize = sqrbi.i64Size;
 
 						Log.Warning("<Auto-Doc> Low free space on {Drive} ({Space}); recycle bin has: {Recycle}",
