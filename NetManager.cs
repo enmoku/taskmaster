@@ -119,12 +119,12 @@ namespace Taskmaster
 
 		void AnalyzeTrafficBehaviourTick(object state) => AnalyzeTrafficBehaviour();
 
-		int analyzetrafficbehaviour_lock = 0;
+		int TrafficAnalysisLimiter = 0;
 		void AnalyzeTrafficBehaviour()
 		{
 			Debug.Assert(CurrentInterfaceList != null);
 
-			if (!Atomic.Lock(ref analyzetrafficbehaviour_lock)) return;
+			if (!Atomic.Lock(ref TrafficAnalysisLimiter)) return;
 
 			try
 			{
@@ -181,7 +181,7 @@ namespace Taskmaster
 			}
 			finally
 			{
-				Atomic.Unlock(ref analyzetrafficbehaviour_lock);
+				Atomic.Unlock(ref TrafficAnalysisLimiter);
 			}
 		}
 
@@ -261,12 +261,11 @@ namespace Taskmaster
 		}
 
 		bool lastOnlineState = false;
-		int upstateTesting = 0;
-		int RecordingDeviceState = 0;
+		int DeviceStateRecordLimiter = 0;
 
 		async Task RecordDeviceState(bool online_state, bool address_changed)
 		{
-			if (!Atomic.Lock(ref RecordingDeviceState)) return;
+			if (!Atomic.Lock(ref DeviceStateRecordLimiter)) return;
 
 			try
 			{
@@ -278,21 +277,10 @@ namespace Taskmaster
 					{
 						lastUptimeStart = DateTime.Now;
 
-						// this part is kinda pointless
-						if (Atomic.Lock(ref upstateTesting))
-						{
-							try
-							{
-								// CLEANUP: Console.WriteLine("Debug: Queued internet uptime report");
-								await Task.Delay(new TimeSpan(0, 5, 0)); // wait 5 minutes
+						// CLEANUP: Console.WriteLine("Debug: Queued internet uptime report");
+						await Task.Delay(new TimeSpan(0, 5, 0)); // wait 5 minutes
 
-								ReportCurrentUpstate();
-							}
-							finally
-							{
-								Atomic.Unlock(ref upstateTesting);
-							}
-						}
+						ReportCurrentUpstate();
 					}
 					else // went offline
 					{
@@ -328,18 +316,18 @@ namespace Taskmaster
 			}
 			finally
 			{
-				Atomic.Unlock(ref RecordingDeviceState);
+				Atomic.Unlock(ref DeviceStateRecordLimiter);
 			}
 		}
 
 		bool Notified = false;
 
-		int checking_inet; // = 0;
+		int InetCheckLimiter; // = 0;
 		bool CheckInet(bool address_changed = false)
 		{
 			// TODO: Figure out how to get Actual start time of internet connectivity.
 
-			if (!Atomic.Lock(ref checking_inet)) return InternetAvailable;
+			if (!Atomic.Lock(ref InetCheckLimiter)) return InternetAvailable;
 
 			if (Taskmaster.Trace) Log.Verbose("<Network> Checking internet connectivity...");
 
@@ -417,7 +405,7 @@ namespace Taskmaster
 			}
 			finally
 			{
-				Atomic.Unlock(ref checking_inet);
+				Atomic.Unlock(ref InetCheckLimiter);
 			}
 
 			InternetStatusChange?.Invoke(this, new InternetStatus { Available = InternetAvailable, Start = lastUptimeStart, Uptime = Uptime });
@@ -468,12 +456,12 @@ namespace Taskmaster
 		}
 
 		object interfaces_lock = new object();
-		int updateinterface_lock = 0;
+		int InterfaceUpdateLimiter = 0;
 		bool needUpdate = true;
 
 		public void UpdateInterfaces()
 		{
-			if (!Atomic.Lock(ref updateinterface_lock)) return;
+			if (!Atomic.Lock(ref InterfaceUpdateLimiter)) return;
 
 			needUpdate = false;
 
@@ -533,7 +521,7 @@ namespace Taskmaster
 			}
 			finally
 			{
-				Atomic.Unlock(ref updateinterface_lock);
+				Atomic.Unlock(ref InterfaceUpdateLimiter);
 			}
 		}
 
@@ -635,12 +623,12 @@ namespace Taskmaster
 		}
 
 		bool netAntiFlicker = false;
-		int delayednetworkavailable_lock = 0;
+		int DelayedNetworkUpdateLimiter = 0;
 		async void DelayedNetworkConnectedUpdate(bool available, bool delayed=true)
 		{
 			// delay output, but output immediately if internet becomes available...
 
-			if (!Atomic.Lock(ref delayednetworkavailable_lock)) return;
+			if (!Atomic.Lock(ref DelayedNetworkUpdateLimiter)) return;
 
 			await Task.Delay(0).ConfigureAwait(false); // asyncify
 
@@ -683,7 +671,7 @@ namespace Taskmaster
 			catch { throw; } // for finally block
 			finally
 			{
-				Atomic.Unlock(ref delayednetworkavailable_lock);
+				Atomic.Unlock(ref DelayedNetworkUpdateLimiter);
 			}
 		}
 
