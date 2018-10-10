@@ -135,6 +135,7 @@
       <DesignTimeSharedInput>True</DesignTimeSharedInput>
       <DependentUpon>Settings.settings</DependentUpon>
     </Compile>
+    <Compile Include="SelfMaintenance.cs" />
     <Compile Include="Settings.cs" />
     <Compile Include="TextInputBox.cs">
       <SubType>Form</SubType>

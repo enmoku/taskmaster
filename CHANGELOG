@@ -3,6 +3,9 @@ Comprehensive changes can be found in Git change history:
 	https://github.com/mkahvi/taskmaster/commits/master
 
 ## [0.11...]
+### 2018-10-10
+	Fixed: Errors that output stacktraces cause only 1 fatal error instead of 3.
+	Added: Self-maintenance to run garbage collector once a day at midnight.
 ### 2018-09-19
 	Fixed: Some internal locking. Should behave better in corner cases.
 	Fixed: Exit behaviour. Should be more consistent.

@@ -49,7 +49,7 @@ namespace Taskmaster
 		// TODO: Pre-allocate space for the log files.
 
 		public static ConfigManager Config = null;
-		public static ComponentContainer Components = null;
+		public static ComponentContainer Components = new ComponentContainer();
 
 		public static MicManager micmonitor = null;
 		public static MainWindow mainwindow = null;
@@ -280,7 +280,7 @@ namespace Taskmaster
 			{
 				if (MicrophoneMonitorEnabled) micmonitor = new MicManager();
 			}
-			catch (InitFailure ex)
+			catch (InitFailure)
 			{
 				micmonitor = null;
 			}
@@ -372,6 +372,8 @@ namespace Taskmaster
 					try { ProcessController.SetIOPriority(self, NativeMethods.PriorityTypes.PROCESS_MODE_BACKGROUND_BEGIN); }
 					catch { Log.Warning("Failed to set self to background mode."); }
 				}
+
+				Components.selfmaintenance = new SelfMaintenance();
 			}
 
 			if (Taskmaster.Trace)
@@ -1107,7 +1109,7 @@ namespace Taskmaster
 			}
 		}
 
-		static System.Threading.CancellationTokenSource cts = new System.Threading.CancellationTokenSource();
+		static System.Threading.CancellationTokenSource cts = new System.Threading.CancellationTokenSource(); // unused
 
 		// entry point to the application
 		[STAThread] // supposedly needed to avoid shit happening with the WinForms GUI and other GUI toolkits
@@ -1352,6 +1354,7 @@ namespace Taskmaster
 			}
 			finally
 			{
+				Utility.Dispose(ref Components);
 				cts?.Cancel();
 				Utility.Dispose(ref cts);
 				Utility.Dispose(ref singleton);
