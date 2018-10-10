@@ -211,10 +211,8 @@ namespace Taskmaster
 		{
 			if (!oob)
 			{
-				// FIXME: should be just one
-				Serilog.Log.Fatal("{Type} : {Message}", ex.GetType().Name, ex.Message);
-				Serilog.Log.Fatal("Reported at {Method}", method);
-				Serilog.Log.Fatal(ex.StackTrace);
+				Serilog.Log.Fatal("{Type} : {Message}{NewLine}Reported at {Method}{NewLine}{Trace}",
+					ex.GetType().Name, ex.Message, method, ex.StackTrace);
 			}
 			else
 			{
