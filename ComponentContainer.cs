@@ -32,9 +32,8 @@ using System.Threading.Tasks;
 
 namespace Taskmaster
 {
-	public class ComponentContainer
+	public class ComponentContainer : IDisposable
 	{
-
 		public MicManager micmonitor = null;
 		public MainWindow mainwindow = null;
 		public ProcessManager processmanager = null;
@@ -44,10 +43,43 @@ namespace Taskmaster
 		public PowerManager powermanager = null;
 		public ActiveAppManager activeappmonitor = null;
 		public HealthMonitor healthmonitor = null;
+		public SelfMaintenance selfmaintenance = null;
 
 		public ComponentContainer()
 		{
 
 		}
+
+		#region IDisposable Support
+		private bool disposed = false;
+
+		protected virtual void Dispose(bool disposing)
+		{
+			if (!disposed)
+			{
+				if (disposing)
+				{
+					//
+					micmonitor?.Dispose();
+					mainwindow?.Dispose();
+					processmanager?.Dispose();
+					trayaccess?.Dispose();
+					netmonitor?.Dispose();
+					diskmanager?.Dispose();
+					powermanager?.Dispose();
+					activeappmonitor?.Dispose();
+					healthmonitor?.Dispose();
+					selfmaintenance?.Dispose();
+				}
+
+				disposed = true;
+			}
+		}
+
+		public void Dispose()
+		{
+			Dispose(true);
+		}
+		#endregion
 	}
 }
