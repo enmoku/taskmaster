@@ -748,8 +748,7 @@ namespace Taskmaster
 			if (rvq && procfind.ExitCode == 0) found = true;
 			else if (!procfind.HasExited) procfind.Kill();
 
-			if (found) Log.Debug("<Tray> Scheduled task found.");
-			else Log.Debug("<Tray> Scheduled task NOT found.");
+			Log.Information("<Tray> Scheduled task {Found}found.", (found ? "" : "NOT "));
 
 			if (dryrun) return found; // this is bad, but fits the following logic
 
