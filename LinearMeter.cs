@@ -38,11 +38,20 @@ namespace Taskmaster
 		public long Peak { get; set; } = long.MaxValue;
 		public long Level { get; set; } = 0;
 
+		/// <summary>
+		/// Returns true if the meter has peaked but has not zeroed since.
+		/// </summary>
+		public bool Peaked { get; private set; } = false;
+
 		public LinearMeter(long peak, long initial=0)
 		{
 			Peak = peak;
 			Level = initial;
 		}
+
+		public bool IsPeaked => Level == Peak;
+		public bool IsEmpty => Level == 0;
+		public bool IsEmptyOrPeaked => (IsEmpty || IsPeaked);
 
 		// pumps the internal value, returns if 
 		/// <summary>
@@ -54,8 +63,12 @@ namespace Taskmaster
 			if (Level < Peak)
 			{
 				Level += amount;
-				if (Level > Peak)
+
+				if (Level >= Peak)
+				{
 					Level = Peak;
+					Peaked = true;
+				}
 
 				return true;
 			}
@@ -63,43 +76,20 @@ namespace Taskmaster
 			return false;
 		}
 
-		public bool IsBrimming
-		{
-			get
-			{
-				return (Level == Peak);
-			}
-		}
-
-		public bool IsEmpty
-		{
-			get
-			{
-				return (Level == 0);
-			}
-		}
-
-		public bool IsEmptyOrBrimming
-		{
-			get
-			{
-				return (IsEmpty || IsBrimming);
-			}
-		}
-
 		public void Leak(long amount=1)
 		{
-			if (Level > 0)
+			Level -= amount;
+			if (Level <= 0)
 			{
-				Level -= amount;
-				if (Level < 0)
-					Level = 0;
+				Level = 0;
+				Peaked = false;
 			}
 		}
 
 		public void Empty()
 		{
 			Level = 0;
+			Peaked = false;
 		}
 	}
 }

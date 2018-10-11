@@ -61,6 +61,7 @@ namespace Taskmaster
 
 		int DeviceTimerInterval = 15 * 60;
 		int PacketStatTimerInterval = 15; // second
+		int ErrorReportLimit = 5;
 
 		System.Threading.Timer deviceSampleTimer;
 		System.Threading.Timer packetStatTimer;
@@ -86,7 +87,12 @@ namespace Taskmaster
 			PacketStatTimerInterval = pktsec.GetSetDefault("Sample rate", 15, out dirty).IntValue.Constrain(1, 60);
 			PacketWarning.Peak = PacketStatTimerInterval;
 			dirtyconf |= dirty;
-			if (dirtyconf) Taskmaster.Config.Save(cfg);
+
+			ErrorReportLimit = pktsec.GetSetDefault("Error report limit", 5, out dirty).IntValue.Constrain(1, 60);
+			ErrorReports.Peak = ErrorReportLimit;
+			dirtyconf |= dirty;
+
+			if (dirtyconf) Taskmaster.Config.MarkDirtyINI(cfg);
 
 			Log.Information("<Network> Traffic sample frequency: {Interval}s", PacketStatTimerInterval);
 		}
@@ -114,12 +120,15 @@ namespace Taskmaster
 		}
 
 		LinearMeter PacketWarning = new LinearMeter(15);
+		LinearMeter ErrorReports = new LinearMeter(5);
 
 		volatile List<NetDevice> CurrentInterfaceList = new List<NetDevice>(0);
 
 		void AnalyzeTrafficBehaviourTick(object state) => AnalyzeTrafficBehaviour();
 
 		int TrafficAnalysisLimiter = 0;
+		NetTraffic outgoing, incoming, oldoutgoing, oldincoming;
+
 		void AnalyzeTrafficBehaviour()
 		{
 			Debug.Assert(CurrentInterfaceList != null);
@@ -135,8 +144,6 @@ namespace Taskmaster
 				var ifaces = CurrentInterfaceList;
 
 				if (ifaces == null) return; // no interfaces, just quit
-
-				NetTraffic outgoing, incoming, oldoutgoing, oldincoming;
 
 				for (int index = 0; index < ifaces.Count; index++)
 				{
@@ -154,16 +161,16 @@ namespace Taskmaster
 
 					// Console.WriteLine("{0} : Packets(+{1}), Errors(+{2}), Discarded(+{3})", ifaces[index].Name, packets, errors, discards);
 
-					if (errors > 0)
+					if (errors > 0 // only if errors
+						&& Taskmaster.ShowNetworkErrors // user wants to see this
+						&& !ErrorReports.Peaked // we're not waiting for report counter to go down
+						&& ErrorReports.Pump()) // error reporting not full
 					{
-						if (PacketWarning.IsEmptyOrBrimming)
-						{
-							PacketWarning.Level = 1; // pump once or reset to 1, whichever
-							Log.Warning("<Network> {Device} is suffering from traffic errors! (+{Rate} since last sample)", ifaces[index].Name, errors);
-						}
-						else
-							PacketWarning.Pump();
+						Log.Warning("<Network> {Device} is suffering from traffic errors! (+{Rate} since last sample)",
+							ifaces[index].Name, errors);
 					}
+					else
+						ErrorReports.Leak();
 
 					onSampling?.Invoke(this,
 						new NetDeviceTraffic

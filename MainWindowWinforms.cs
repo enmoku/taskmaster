@@ -855,6 +855,17 @@ namespace Taskmaster
 				Checked = Taskmaster.ShowSessionActions,
 				CheckOnClick = true,
 			};
+			var menu_config_logging_neterrors = new ToolStripMenuItem("Network errors")
+			{
+				Checked = Taskmaster.ShowNetworkErrors,
+				CheckOnClick = true,
+			};
+			menu_config_logging_neterrors.Click += (s, e) =>
+			{
+				Taskmaster.ShowNetworkErrors = menu_config_logging_neterrors.Checked;
+				Taskmaster.cfg["Logging"]["Show network errors"].BoolValue = Taskmaster.ShowNetworkErrors;
+				Taskmaster.Config.MarkDirtyINI(Taskmaster.cfg);
+			};
 			menu_config_logging_session.Click += (s, e) => {
 				Taskmaster.ShowSessionActions = menu_config_logging_session.Checked;
 				Taskmaster.cfg["Logging"]["Show session actions"].BoolValue = Taskmaster.ShowSessionActions;
@@ -862,6 +873,7 @@ namespace Taskmaster
 			};
 			menu_config_logging.DropDownItems.Add(menu_config_logging_adjusts);
 			menu_config_logging.DropDownItems.Add(menu_config_logging_session);
+			menu_config_logging.DropDownItems.Add(menu_config_logging_neterrors);
 
 			var menu_config_bitmaskstyle_bitmask = new ToolStripMenuItem("Bitmask")
 			{

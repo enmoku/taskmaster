@@ -380,6 +380,7 @@ namespace Taskmaster
 
 		public static bool ShowProcessAdjusts { get; set; } = true;
 		public static bool ShowSessionActions { get; set; } = true;
+		public static bool ShowNetworkErrors { get; set; } = true;
 
 		public static bool DebugProcesses { get; set; } = false;
 
@@ -554,6 +555,10 @@ namespace Taskmaster
 
 			ShowProcessAdjusts = logsec.GetSetDefault("Show process adjusts", true, out modified).BoolValue;
 			logsec["Show process adjusts"].Comment = "Show blurbs about adjusted processes.";
+			dirtyconfig |= modified;
+
+			ShowNetworkErrors = logsec.GetSetDefault("Show network errors", true, out modified).BoolValue;
+			logsec["Show network errors"].Comment = "Show network errors on each sampling.";
 			dirtyconfig |= modified;
 
 			ShowSessionActions = logsec.GetSetDefault("Show session actions", true, out modified).BoolValue;
