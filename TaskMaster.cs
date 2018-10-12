@@ -41,7 +41,7 @@ namespace Taskmaster
 		public static string GitURL { get; } = "https://github.com/mkahvi/taskmaster";
 		public static string ItchURL { get; } = "https://mkah.itch.io/taskmaster";
 
-		public static SharpConfig.Configuration cfg;
+		//public static SharpConfig.Configuration cfg;
 		public static string datapath = System.IO.Path.Combine(
 			Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "MKAh", "Taskmaster");
 
@@ -453,6 +453,7 @@ namespace Taskmaster
 		public static bool RequestExitConfirm = true;
 		public static bool AutoOpenMenus = true;
 		public static bool ShowInTaskbar = false;
+		public static int AffinityStyle = 0;
 		public static bool GlobalHotkeys = false;
 		public static bool ImmediateSave = true;
 
@@ -461,7 +462,7 @@ namespace Taskmaster
 		{
 			Log.Information("<Core> Loading configuration...");
 
-			cfg = Config.Load(coreconfig);
+			var cfg = Config.Load(coreconfig);
 
 			if (cfg.TryGet("Core")?.TryGet("Hello")?.RawValue != "Hi")
 			{
@@ -524,6 +525,8 @@ namespace Taskmaster
 			ShowInTaskbar = qol.GetSetDefault("Show in taskbar", true, out modified).BoolValue;
 			dirtyconfig |= modified;
 			GlobalHotkeys = qol.GetSetDefault("Register global hotkeys", false, out modified).BoolValue;
+			dirtyconfig |= modified;
+			AffinityStyle = qol.GetSetDefault("Core affinity style", 0, out modified).IntValue.Constrain(0, 1);
 			dirtyconfig |= modified;
 
 			var logsec = cfg["Logging"];
@@ -1063,53 +1066,6 @@ namespace Taskmaster
 			}
 		}
 
-		static void UpgradeAppSettings()
-		{
-			if (Properties.Settings.Default.UpgradeNeeded)
-			{
-				Properties.Settings.Default.Upgrade();
-				Properties.Settings.Default.UpgradeNeeded = false;
-				Properties.Settings.Default.Save();
-				Properties.Settings.Default.Reload(); // part of .Upgrade()
-
-				if (Properties.Settings.Default.DeleteOldSettings)
-				{
-					string path = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Taskmaster");
-					// We're putting a _lot_ of faith into the above function here
-					Console.WriteLine("Deleting old configurations");
-					if (Directory.Exists(path))
-					{
-						foreach (var dir in Directory.EnumerateDirectories(path))
-						{
-							if (Path.GetFileName(dir).StartsWith("Taskmaster"))
-							{
-								var dirs = Directory.GetFiles(dir);
-
-								System.Array.Sort(dirs); // getfiles does not guarantee order; this is not so great
-
-								int left = dirs.Length;
-								
-								foreach (var sdir in dirs)
-								{
-									if (left <= 5) break; // preserve at least 5
-
-									if (sdir.EndsWith(System.Reflection.Assembly.GetExecutingAssembly().GetName().Version.ToString()))
-										continue;
-
-									try
-									{
-										Directory.Delete(sdir, true);
-										left--;
-									}
-									catch { } // failed to delete for some reason, we don't care
-								}
-							}
-						}
-					}
-				}
-			}
-		}
-
 		static System.Threading.CancellationTokenSource cts = new System.Threading.CancellationTokenSource(); // unused
 
 		// entry point to the application
@@ -1122,8 +1078,6 @@ namespace Taskmaster
 			{
 				try
 				{
-					UpgradeAppSettings();
-
 					Config = new ConfigManager(datapath);
 
 					LicenseBoiler();
@@ -1201,8 +1155,6 @@ namespace Taskmaster
 
 					Config?.Save(); // early save of configs
 
-					Properties.Settings.Default.Save();
-
 					CleanupTimer = new System.Timers.Timer(60_000 * CleanupInterval);
 					CleanupTimer.Elapsed += Taskmaster.Cleanup;
 					CleanupTimer.Start();
@@ -1277,10 +1229,6 @@ namespace Taskmaster
 
 				Log.Information("Exiting...");
 
-				// TODO: Save Config, do this better. Maybe data bindings.
-				bool dirty = cfg["Quality of Life"]["Auto-open menus"].Set(AutoOpenMenus);
-				if (dirty) Config.MarkDirtyINI(cfg);
-
 				// CLEANUP for exit
 
 				Cleanup();
@@ -1293,8 +1241,6 @@ namespace Taskmaster
 					Statistics.PathFindAttempts, Statistics.PathFindViaModule, Statistics.PathFindViaC, Statistics.PathFindViaWMI);
 
 				Config?.Save();
-
-				Properties.Settings.Default.Save();
 
 				CleanShutdown();
 

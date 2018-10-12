@@ -257,7 +257,7 @@ namespace Taskmaster
 				{
 					if (prc.Affinity.Value.ToInt32() == ProcessManager.allCPUsMask)
 						aff = "Full/OS";
-					else if (Properties.Settings.Default.AffinityStyle == 0)
+					else if (Taskmaster.AffinityStyle == 0)
 						aff = HumanInterface.BitMask(prc.Affinity.Value.ToInt32(), ProcessManager.CPUCount);
 					else
 						aff = prc.Affinity.Value.ToInt32().ToString();
@@ -427,7 +427,7 @@ namespace Taskmaster
 			string aff = AnyIgnoredValue;
 			if (prc.Affinity.HasValue && prc.Affinity.Value.ToInt32() != ProcessManager.allCPUsMask)
 			{
-				if (Properties.Settings.Default.AffinityStyle == 0)
+				if (Taskmaster.AffinityStyle == 0)
 					aff = HumanInterface.BitMask(prc.Affinity.Value.ToInt32(), ProcessManager.CPUCount);
 				else
 					aff = prc.Affinity.Value.ToInt32().ToString();
@@ -885,23 +885,31 @@ namespace Taskmaster
 
 			var menu_config_bitmaskstyle_bitmask = new ToolStripMenuItem("Bitmask")
 			{
-				Checked = Properties.Settings.Default.AffinityStyle == 0,
+				Checked = Taskmaster.AffinityStyle == 0,
 			};
 			var menu_config_bitmaskstyle_decimal = new ToolStripMenuItem("Decimal")
 			{
-				Checked = Properties.Settings.Default.AffinityStyle == 1,
+				Checked = Taskmaster.AffinityStyle == 1,
 			};
 			menu_config_bitmaskstyle_bitmask.Click += (s, e) => {
-				Properties.Settings.Default.AffinityStyle = 0;
+				Taskmaster.AffinityStyle = 0;
 				menu_config_bitmaskstyle_bitmask.Checked = true;
 				menu_config_bitmaskstyle_decimal.Checked = false;
 				// TODO: re-render watchlistRules
+
+				var corecfg = Taskmaster.Config.Load("Core.ini");
+				corecfg["Quality of Life"]["Core affinity style"].IntValue = 0;
+				Taskmaster.Config.MarkDirtyINI(corecfg);
 			};
 			menu_config_bitmaskstyle_decimal.Click += (s, e) => {
-				Properties.Settings.Default.AffinityStyle = 1;
+				Taskmaster.AffinityStyle = 1;
 				menu_config_bitmaskstyle_bitmask.Checked = false;
 				menu_config_bitmaskstyle_decimal.Checked = true;
 				// TODO: re-render watchlistRules
+
+				var corecfg = Taskmaster.Config.Load("Core.ini");
+				corecfg["Quality of Life"]["Core affinity style"].IntValue = 1;
+				Taskmaster.Config.MarkDirtyINI(corecfg);
 			};
 			//var menu_config_bitmaskstyle_both = new ToolStripMenuItem("Decimal [Bitmask]");
 
