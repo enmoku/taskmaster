@@ -40,27 +40,48 @@ namespace Taskmaster
 		}
 
 		readonly object config_lock = new object();
-		readonly HashSet<ConfigWrapper> Dirty = new HashSet<ConfigWrapper>();
+		readonly HashSet<ConfigWrapper> Loaded = new HashSet<ConfigWrapper>();
 
 		public ConfigWrapper Load(string filename)
 		{
 			lock (config_lock)
 			{
-				foreach (var oldcfg in Dirty)
+				foreach (var oldcfg in Loaded)
 				{
 					if (oldcfg.File.Equals(filename))
 						return oldcfg;
 				}
+				SharpConfig.Configuration scfg = null;
 
-				var config = new ConfigWrapper(null, filename, datapath);
-				Dirty.Add(config);
+				var fullpath = System.IO.Path.Combine(datapath, filename);
+				if (System.IO.File.Exists(fullpath))
+					scfg = SharpConfig.Configuration.LoadFromFile(fullpath);
+				else
+				{
+					Log.Warning("Not found: {Path}", fullpath);
+					scfg = new SharpConfig.Configuration();
+					System.IO.Directory.CreateDirectory(datapath);
+				}
+
+				var config = new ConfigWrapper(scfg, filename);
+				Loaded.Add(config);
+
+				config.onUnload += (cfg, ea) => { Loaded.Remove((ConfigWrapper)cfg); };
+				config.onSave += (cfg, ea) => { Save((ConfigWrapper)cfg); };
+
 				return config;
 			}
 		}
 
+		void Save(ConfigWrapper cfg)
+		{
+			var fullpath = System.IO.Path.Combine(datapath, cfg.File);
+			cfg.Config.SaveToFile(fullpath);
+		}
+
 		public void Unload(ConfigWrapper config)
 		{
-			Dirty.Remove(config);
+			Loaded.Remove(config);
 			config.Dispose();
 		}
 
@@ -68,10 +89,10 @@ namespace Taskmaster
 		{
 			lock (config_lock)
 			{
-				foreach (var config in Dirty)
+				foreach (var config in Loaded)
 					config.Save();
 
-				Dirty.Clear();
+				Loaded.Clear();
 			}
 		}
 
@@ -104,77 +125,42 @@ namespace Taskmaster
 
 		public bool Dirty { get; private set; } = false;
 
-		public ConfigWrapper(SharpConfig.Configuration config, string filename, string datapath)
+		public event EventHandler onUnload;
+		public event EventHandler onSave;
+
+		public ConfigWrapper(SharpConfig.Configuration config, string filename)
 		{
 			Config = config;
 			File = filename;
-			Path = datapath;
-
-			Load();
 		}
 
 		public void MarkDirty()
 		{
+			System.Diagnostics.Debug.Assert(Config != null);
+
 			Dirty = true;
 			if (Taskmaster.ImmediateSave) Save();
 		}
 
-		void Load()
-		{
-			var fullpath = System.IO.Path.Combine(Path, File);
-
-			// Log.Trace("Opening: "+path);
-			if (System.IO.File.Exists(fullpath))
-				Config = SharpConfig.Configuration.LoadFromFile(fullpath);
-			else
-			{
-				Log.Warning("Not found: {Path}", fullpath);
-				Config = new SharpConfig.Configuration();
-				System.IO.Directory.CreateDirectory(Path);
-			}
-
-			if (Taskmaster.Trace) Log.Verbose("{ConfigFile} added to known configurations files.", File);
-		}
-
 		public void Save()
 		{
+			System.Diagnostics.Debug.Assert(Config != null);
+
 			if (!Dirty) return;
 
-			try
-			{
-				System.IO.Directory.CreateDirectory(Path);
-			}
-			catch
-			{
-				Log.Warning("Failed to create directory: {Path}", Path);
-				return;
-			}
-
-			string targetfile = System.IO.Path.Combine(Path, File);
-
-			try
-			{
-				// backup, copy in case following write fails
-				System.IO.File.Copy(targetfile, targetfile + ".bak", overwrite: true);
-			}
-			catch (System.IO.FileNotFoundException) { } // NOP
-
-			try
-			{
-				Config.SaveToFile(targetfile);
-			}
-			catch
-			{
-				Log.Warning("Failed to write: {Target}", targetfile);
-			}
-			// TODO: Pre-allocate some space for the config file?
+			onSave?.Invoke(this, null);
 
 			Dirty = false;
 		}
 
 		public void Unload()
 		{
+			System.Diagnostics.Debug.Assert(Config != null);
+
 			if (Dirty) Save();
+
+			onUnload?.Invoke(this, null);
+
 			Config = null;
 		}
 
