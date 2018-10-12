@@ -91,7 +91,7 @@ namespace Taskmaster
 			Overflow = (MaxCache / 2).Constrain(2, 50);
 
 			pruneTimer.Interval = interval * 1000 * 60;
-			pruneTimer.Elapsed += async (sender, e) =>
+			pruneTimer.Elapsed += async (s, e) =>
 			{
 				try
 				{
