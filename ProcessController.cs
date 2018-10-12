@@ -657,13 +657,13 @@ namespace Taskmaster
 			catch (InvalidOperationException)
 			{
 				// Already exited
-				info.State = ProcessState.Exited;
+				info.State = ProcessModification.Exited;
 				return;
 			}
 			catch (ArgumentException)
 			{
 				// Already exited
-				info.State = ProcessState.Exited;
+				info.State = ProcessModification.Exited;
 				return;
 			}
 			catch (Exception ex) { Logging.Stacktrace(ex); }
@@ -848,13 +848,13 @@ namespace Taskmaster
 					catch (InvalidOperationException)
 					{
 						// Already exited
-						info.State = ProcessState.Exited;
+						info.State = ProcessModification.Exited;
 						return;
 					}
 					catch (ArgumentException)
 					{
 						// Already exited
-						info.State = ProcessState.Exited;
+						info.State = ProcessModification.Exited;
 						return;
 					}
 					catch (Exception ex) { Logging.Stacktrace(ex); }
@@ -1242,18 +1242,8 @@ namespace Taskmaster
 
 	sealed public class ProcessEventArgs : EventArgs
 	{
-		public ProcessController Control { get; set; }
-		public ProcessEx Info;
-		public enum ProcessState
-		{
-			Starting,
-			Found,
-			Reduced,
-			Restored,
-			Cancel,
-			Exiting,
-			Undefined
-		}
-		public ProcessState State;
+		public ProcessController Control { get; set; } = null;
+		public ProcessEx Info = null;
+		public ProcessRunningState State = ProcessRunningState.Undefined;
 	}
 }

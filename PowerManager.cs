@@ -313,7 +313,7 @@ namespace Taskmaster
 
 		public event EventHandler<ProcessorEventArgs> onAutoAdjustAttempt;
 		public event EventHandler<PowerModeEventArgs> onPlanChange;
-		public event EventHandler<PowerBehaviour> onBehaviourChange;
+		public event EventHandler<PowerBehaviourEventArgs> onBehaviourChange;
 		public event EventHandler onBatteryResume;
 
 		enum ThresholdLevel
@@ -917,7 +917,13 @@ namespace Taskmaster
 		{
 			Auto,
 			RuleBased,
-			Manual
+			Manual,
+			Undefined
+		}
+
+		sealed public class PowerBehaviourEventArgs : EventArgs
+		{
+			public PowerBehaviour Behaviour = PowerBehaviour.Undefined;
 		}
 
 		public PowerBehaviour SetBehaviour(PowerBehaviour pb)
@@ -951,7 +957,7 @@ namespace Taskmaster
 				Release(0).ConfigureAwait(false);
 			}
 
-			onBehaviourChange?.Invoke(this, Behaviour);
+			onBehaviourChange?.Invoke(this, new PowerBehaviourEventArgs { Behaviour = Behaviour });
 
 			return Behaviour;
 		}

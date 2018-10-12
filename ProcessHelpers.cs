@@ -35,7 +35,7 @@ using Microsoft.Win32.SafeHandles; // SafeHandleMinusOneIsInvalid
 
 namespace Taskmaster
 {
-	public enum ProcessState
+	public enum ProcessModification
 	{
 		/// <summary>
 		/// Process is already set to what it should be.
@@ -69,6 +69,17 @@ namespace Taskmaster
 		/// No longer running
 		/// </summary>
 		Exited
+	}
+
+	public enum ProcessRunningState
+	{
+		Starting,
+		Found,
+		Reduced,
+		Restored,
+		Cancel,
+		Exiting,
+		Undefined
 	}
 
 	public enum ProcessAffinityStrategy
@@ -117,7 +128,7 @@ namespace Taskmaster
 
 	public static class ProcessStateExtensions
 	{
-		public static bool OK(this ProcessState ps) => (ps != ProcessState.Invalid);
+		public static bool OK(this ProcessModification ps) => (ps != ProcessModification.Invalid);
 	}
 
 	public static class ProcessHelpers

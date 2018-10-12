@@ -350,7 +350,7 @@ namespace Taskmaster
 
 			foreach (var bu in items)
 			{
-				ExitWaitListHandler(this, new ProcessEventArgs() { Control = null, State = ProcessEventArgs.ProcessState.Starting, Info = bu });
+				ExitWaitListHandler(this, new ProcessEventArgs() { Control = null, State = ProcessRunningState.Starting, Info = bu });
 			}
 
 			if (Taskmaster.ActiveAppMonitorEnabled)
@@ -358,7 +358,7 @@ namespace Taskmaster
 				var items2 = processmanager.getExitWaitList();
 				foreach (var bu in items2)
 				{
-					ExitWaitListHandler(this, new ProcessEventArgs() { Control = null, Info = bu, State = ProcessEventArgs.ProcessState.Found });
+					ExitWaitListHandler(this, new ProcessEventArgs() { Control = null, Info = bu, State = ProcessRunningState.Found });
 				}
 			}
 		}
@@ -1862,15 +1862,15 @@ namespace Taskmaster
 							// Log.Debug("WaitlistHandler: {Name} = {State}", ev.Info.Name, ev.State.ToString());
 							switch (ev.State)
 							{
-								case ProcessEventArgs.ProcessState.Exiting:
+								case ProcessRunningState.Exiting:
 									exitwaitlist.Items.Remove(li);
 									ExitWaitlistMap.Remove(ev.Info.Id);
 									break;
-								case ProcessEventArgs.ProcessState.Found:
-								case ProcessEventArgs.ProcessState.Reduced:
+								case ProcessRunningState.Found:
+								case ProcessRunningState.Reduced:
 									break;
 								//case ProcessEventArgs.ProcessState.Starting: // this should never get here
-								case ProcessEventArgs.ProcessState.Restored:
+								case ProcessRunningState.Restored:
 									// move item to top
 									exitwaitlist.Items.RemoveAt(li.Index);
 									exitwaitlist.Items.Insert(0, li);
@@ -1884,7 +1884,7 @@ namespace Taskmaster
 						}
 						else
 						{
-							if (ev.State == ProcessEventArgs.ProcessState.Starting)
+							if (ev.State == ProcessRunningState.Starting)
 							{
 								li = new ListViewItem(new string[] {
 								ev.Info.Id.ToString(),
@@ -2216,17 +2216,17 @@ namespace Taskmaster
 			powermanager.onBehaviourChange += PowerBehaviourDebugEvent;
 			powermanager.onPlanChange += PowerPlanDebugEvent;
 
-			PowerBehaviourDebugEvent(this, powermanager.Behaviour); // populates powerbalancer_behaviourr
+			PowerBehaviourDebugEvent(this, new PowerManager.PowerBehaviourEventArgs { Behaviour = powermanager.Behaviour }); // populates powerbalancer_behaviourr
 			PowerPlanDebugEvent(this, new PowerModeEventArgs() { NewMode = powermanager.CurrentMode }); // populates powerbalancer_plan
 		}
 
-		public void PowerBehaviourDebugEvent(object sender, PowerManager.PowerBehaviour behaviour)
+		public void PowerBehaviourDebugEvent(object sender, PowerManager.PowerBehaviourEventArgs ea)
 		{
 			if (!IsHandleCreated) return;
 			BeginInvoke(new Action(() =>
 			{
-				powerbalancer_behaviour.Text = (behaviour == PowerManager.PowerBehaviour.Auto) ? "Automatic" : ((behaviour == PowerManager.PowerBehaviour.Manual) ? "Manual" : "Rule-based");
-				if (behaviour != PowerManager.PowerBehaviour.Auto)
+				powerbalancer_behaviour.Text = (ea.Behaviour == PowerManager.PowerBehaviour.Auto) ? "Automatic" : ((ea.Behaviour == PowerManager.PowerBehaviour.Manual) ? "Manual" : "Rule-based");
+				if (ea.Behaviour != PowerManager.PowerBehaviour.Auto)
 					powerbalancerlog.Items.Clear();
 			}));
 		}
@@ -2291,7 +2291,7 @@ namespace Taskmaster
 			netmonitor.onSampling += NetSampleHandler;
 		}
 
-		void NetSampleHandler(object sender, NetDeviceTraffic ev)
+		void NetSampleHandler(object sender, NetDeviceTrafficEventArgs ea)
 		{
 			if (!IsHandleCreated) return;
 			BeginInvoke(new Action(() =>
@@ -2300,14 +2300,14 @@ namespace Taskmaster
 				{
 					try
 					{
-						ifaceList.Items[ev.Index].SubItems[PacketDeltaColumn].Text = string.Format("+{0}", ev.Delta.Unicast);
-						ifaceList.Items[ev.Index].SubItems[ErrorDeltaColumn].Text = string.Format("+{0}", ev.Delta.Errors);
-						if (ev.Delta.Errors > 0)
-							ifaceList.Items[ev.Index].SubItems[ErrorDeltaColumn].ForeColor = System.Drawing.Color.OrangeRed;
+						ifaceList.Items[ea.Traffic.Index].SubItems[PacketDeltaColumn].Text = string.Format("+{0}", ea.Traffic.Delta.Unicast);
+						ifaceList.Items[ea.Traffic.Index].SubItems[ErrorDeltaColumn].Text = string.Format("+{0}", ea.Traffic.Delta.Errors);
+						if (ea.Traffic.Delta.Errors > 0)
+							ifaceList.Items[ea.Traffic.Index].SubItems[ErrorDeltaColumn].ForeColor = System.Drawing.Color.OrangeRed;
 						else
-							ifaceList.Items[ev.Index].SubItems[ErrorDeltaColumn].ForeColor = System.Drawing.SystemColors.ControlText;
+							ifaceList.Items[ea.Traffic.Index].SubItems[ErrorDeltaColumn].ForeColor = System.Drawing.SystemColors.ControlText;
 
-						ifaceList.Items[ev.Index].SubItems[ErrorTotalColumn].Text = ev.Total.Errors.ToString();
+						ifaceList.Items[ea.Traffic.Index].SubItems[ErrorTotalColumn].Text = ea.Traffic.Total.Errors.ToString();
 					}
 					catch (Exception ex)
 					{

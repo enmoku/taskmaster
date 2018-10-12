@@ -66,7 +66,7 @@ namespace Taskmaster
 		System.Threading.Timer deviceSampleTimer;
 		System.Threading.Timer packetStatTimer;
 
-		public event EventHandler<NetDeviceTraffic> onSampling;
+		public event EventHandler<NetDeviceTrafficEventArgs> onSampling;
 
 		void LoadConfig()
 		{
@@ -172,14 +172,16 @@ namespace Taskmaster
 					else
 						ErrorReports.Leak();
 
-					onSampling?.Invoke(this,
+					onSampling?.Invoke(this, new NetDeviceTrafficEventArgs
+					{
+						Traffic =
 						new NetDeviceTraffic
 						{
 							Index = index,
 							Delta = new NetTraffic { Unicast = packets, Errors = errors, Discards = discards },
 							Total = new NetTraffic { Unicast = totalunicast, Errors = totalerrors, Discards = totaldiscards },
 						}
-					);
+					});
 				}
 			}
 			catch (Exception ex)

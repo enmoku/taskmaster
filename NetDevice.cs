@@ -37,6 +37,11 @@ namespace Taskmaster
 		public NetTraffic Total { get; set; }
 	}
 
+	public sealed class NetDeviceTrafficEventArgs : EventArgs
+	{
+		public NetDeviceTraffic Traffic;
+	}
+
 	public struct NetTraffic
 	{
 		/// <summary>

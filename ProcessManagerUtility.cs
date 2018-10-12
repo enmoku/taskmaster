@@ -58,7 +58,7 @@ namespace Taskmaster
 					Id = ProcessID,
 					Process = process,
 					Name = string.IsNullOrEmpty(name) ? process.ProcessName : name,
-					State = ProcessState.OK,
+					State = ProcessModification.OK,
 					Path = path,
 				};
 
