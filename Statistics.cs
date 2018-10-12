@@ -34,8 +34,8 @@ namespace Taskmaster
 		public static int WMIqueries { get; set; } = 0;
 		public static double WMIquerytime { get; set; } = 0;
 
-		public static int Cleanups { get; set; } = 0;
-		public static double CleanupTime { get; set; } = 0;
+		public static int MaintenanceCount { get; set; } = 0;
+		public static double MaintenanceTime { get; set; } = 0;
 
 		public static double PathCacheCurrent { get; set; } = 0;
 		public static double PathCachePeak { get; set; } = 0;

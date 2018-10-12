@@ -112,7 +112,6 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="ActiveAppManager.cs" />
-    <Compile Include="Attributes.cs" />
     <Compile Include="AudioManager.cs" />
     <Compile Include="ComponentContainer.cs" />
     <Compile Include="ConfigManager.cs" />

@@ -51,7 +51,7 @@ namespace Taskmaster
 		public static ComponentContainer Components = new ComponentContainer();
 
 		public static MicManager micmonitor = null;
-		public static MainWindow mainwindow = null;
+		//public static MainWindow mainwindow = null;
 		public static ProcessManager processmanager = null;
 		public static TrayAccess trayaccess = null;
 		public static NetManager netmonitor = null;
@@ -133,7 +133,7 @@ namespace Taskmaster
 				{
 					// Log.Debug("Bringing to front");
 					BuildMainWindow();
-					mainwindow?.Reveal();
+					Components.mainwindow?.Reveal();
 				}
 			}
 			catch (Exception ex)
@@ -150,47 +150,48 @@ namespace Taskmaster
 		{
 			lock (mainwindow_creation_lock)
 			{
-				if (mainwindow != null) return;
+				if (Components.mainwindow != null) return;
 				if (Taskmaster.Trace) Console.WriteLine("Building MainWindow");
 
-				mainwindow = new MainWindow();
-				mainwindow.FormClosed += (s, e) => { mainwindow = null; };
+				Components.mainwindow = new MainWindow();
+				Components.mainwindow.FormClosed += (s, e) => { Components.mainwindow = null; };
+
 				try
 				{
 					if (diskmanager != null)
 					{
 						if (Taskmaster.Trace) Console.WriteLine("... hooking NVM manager");
-						mainwindow.hookDiskManager(ref diskmanager);
+						Components.mainwindow.hookDiskManager(diskmanager);
 					}
 
 					if (processmanager != null)
 					{
 						if (Taskmaster.Trace) Console.WriteLine("... hooking PROC manager");
-						mainwindow.hookProcessManager(ref processmanager);
+						Components.mainwindow.hookProcessManager(processmanager);
 					}
 
 					if (micmonitor != null)
 					{
 						if (Taskmaster.Trace) Console.WriteLine("... hooking MIC monitor");
-						mainwindow.hookMicMonitor(micmonitor);
+						Components.mainwindow.hookMicMonitor(micmonitor);
 					}
 
 					if (netmonitor != null)
 					{
 						if (Taskmaster.Trace) Console.WriteLine("... hooking NET monitor");
-						mainwindow.hookNetMonitor(ref netmonitor);
+						Components.mainwindow.hookNetMonitor(netmonitor);
 					}
 
 					if (activeappmonitor != null)
 					{
 						if (Taskmaster.Trace) Console.WriteLine("... hooking APP manager");
-						mainwindow.hookActiveAppMonitor(ref activeappmonitor);
+						Components.mainwindow.hookActiveAppMonitor(activeappmonitor);
 					}
 
 					if (powermanager != null)
 					{
 						if (Taskmaster.Trace) Console.WriteLine("... hooking POW manager");
-						mainwindow.hookPowerManager(ref powermanager);
+						Components.mainwindow.hookPowerManager(powermanager);
 					}
 				}
 				catch (Exception ex)
@@ -199,7 +200,7 @@ namespace Taskmaster
 				}
 
 				if (Taskmaster.Trace) Console.WriteLine("... hooking to TRAY");
-				trayaccess.hookMainWindow(ref mainwindow);
+				trayaccess.hookMainWindow(Components.mainwindow);
 
 				if (Taskmaster.Trace) Console.WriteLine("MainWindow built");
 			}
@@ -340,7 +341,7 @@ namespace Taskmaster
 			if (ShowOnStart && !RunOnce)
 			{
 				BuildMainWindow();
-				mainwindow?.Reveal();
+				Components.mainwindow?.Reveal();
 			}
 
 			// Self-optimization
@@ -715,12 +716,10 @@ namespace Taskmaster
 			return rv;
 		}
 
-		static SharpConfig.Configuration corestats;
 		static string corestatfile = "Core.Statistics.ini";
 		static void monitorCleanShutdown()
 		{
-			if (corestats == null)
-				corestats = Config.Load(corestatfile);
+			var corestats = Config.Load(corestatfile);
 
 			var running = corestats.TryGet("Core")?.TryGet("Running")?.BoolValue ?? false;
 			if (running) Log.Warning("Unclean shutdown.");
@@ -731,7 +730,7 @@ namespace Taskmaster
 
 		static void CleanShutdown()
 		{
-			if (corestats == null) corestats = Config.Load(corestatfile);
+			var corestats = Config.Load(corestatfile);
 
 			var wmi = corestats["WMI queries"];
 			string timespent = "Time", querycount = "Queries";
@@ -828,45 +827,6 @@ namespace Taskmaster
 
 		public static bool ComponentConfigurationDone = false;
 
-		static int cleanup_lock = 0;
-		public static async void Cleanup(object sender, EventArgs ev)
-		{
-			if (!Atomic.Lock(ref cleanup_lock)) return;
-
-			try
-			{
-				if (Taskmaster.Trace) Log.Verbose("Running periodic cleanup");
-
-				// TODO: This starts getting weird if cleanup interval is smaller than total delay of testing all items.
-				// (15*60) / 2 = item limit, and -1 or -2 for safety margin. Unlikely, but should probably be covered anyway.
-
-				var time = Stopwatch.StartNew();
-
-				if (processmanager != null)
-				{
-					using (var m = SelfAwareness.Mind(DateTime.Now.AddSeconds(30)))
-						await processmanager.Cleanup().ConfigureAwait(false);
-				}
-
-				time.Stop();
-
-				Statistics.Cleanups++;
-				Statistics.CleanupTime += time.Elapsed.TotalSeconds;
-
-				if (Taskmaster.Trace) Log.Verbose("Cleanup took: {Time}s", string.Format("{0:N2}", time.Elapsed.TotalSeconds));
-			}
-			catch (Exception ex)
-			{
-				Logging.Stacktrace(ex);
-			}
-			finally
-			{
-				Atomic.Unlock(ref cleanup_lock);
-			}
-		}
-
-		static System.Timers.Timer CleanupTimer = null;
-
 		static System.Threading.Mutex singleton = null;
 
 		static bool SingletonLock()
@@ -882,7 +842,8 @@ namespace Taskmaster
 
 		static void Cleanup()
 		{
-			Utility.Dispose(ref mainwindow);
+			Utility.Dispose(ref Components);
+			//Utility.Dispose(ref mainwindow);
 			Utility.Dispose(ref processmanager);
 			Utility.Dispose(ref powermanager);
 			Utility.Dispose(ref micmonitor);
@@ -1153,11 +1114,7 @@ namespace Taskmaster
 					// GC.WaitForPendingFinalizers();
 					GC.AddMemoryPressure(fakemempressure); // Workstation GC boundary is 256 MB, we want it to be closer to 60-80 MB
 
-					Config?.Save(); // early save of configs
-
-					CleanupTimer = new System.Timers.Timer(60_000 * CleanupInterval);
-					CleanupTimer.Elapsed += Taskmaster.Cleanup;
-					CleanupTimer.Start();
+					Config.Save(); // early save of configs
 
 					if (RestartCounter > 0) Log.Information("<Core> Restarted {Count} time(s)", RestartCounter);
 					Log.Information("<Core> Initialization complete...");
@@ -1234,13 +1191,11 @@ namespace Taskmaster
 				Cleanup();
 
 				Log.Information("WMI queries: {QueryTime}s [{QueryCount}]", string.Format("{0:N2}", Statistics.WMIquerytime), Statistics.WMIqueries);
-				Log.Information("Cleanups: {CleanupTime}s [{CleanupCount}]", string.Format("{0:N2}", Statistics.CleanupTime), Statistics.Cleanups);
+				Log.Information("Self-maintenance: {CleanupTime}s [{CleanupCount}]", string.Format("{0:N2}", Statistics.MaintenanceTime), Statistics.MaintenanceCount);
 				Log.Information("Path cache: {Hits} hits, {Misses} misses",
 					Statistics.PathCacheHits, Statistics.PathCacheMisses);
 				Log.Information("Path finding: {Total} total attempts; {Mod} via module info, {Ccall} via C call, {WMI} via WMI",
 					Statistics.PathFindAttempts, Statistics.PathFindViaModule, Statistics.PathFindViaC, Statistics.PathFindViaWMI);
-
-				Config?.Save();
 
 				CleanShutdown();
 
@@ -1254,6 +1209,7 @@ namespace Taskmaster
 				{
 					cts?.Cancel();
 					Utility.Dispose(ref cts);
+					Utility.Dispose(ref Config);
 					Utility.Dispose(ref singleton);
 
 					Log.Information("Restarting...");
@@ -1301,16 +1257,19 @@ namespace Taskmaster
 					case Runstate.Restart:
 						break;
 				}
+				Cleanup();
 			}
 			catch (Exception ex)
 			{
 				Logging.Stacktrace(ex, oob: true);
+				Cleanup();
 			}
 			finally
 			{
 				Utility.Dispose(ref Components);
 				cts?.Cancel(); // unnecessary
 				Utility.Dispose(ref cts);
+				Utility.Dispose(ref Config);
 				Utility.Dispose(ref singleton);
 				Log.CloseAndFlush();
 			}

@@ -25,10 +25,6 @@
 // THE SOFTWARE.
 
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using Serilog;
 
 namespace Taskmaster
@@ -69,6 +65,8 @@ namespace Taskmaster
 
 			try
 			{
+				var time = System.Diagnostics.Stopwatch.StartNew();
+
 				long oldmem = GC.GetTotalMemory(false);
 				System.Runtime.GCSettings.LargeObjectHeapCompactionMode = System.Runtime.GCLargeObjectHeapCompactionMode.CompactOnce;
 				GC.Collect(2, GCCollectionMode.Forced, true, true);
@@ -76,7 +74,25 @@ namespace Taskmaster
 
 				Log.Debug("<Self-Maintenance> Done, saved {kBytes} kB.", (oldmem-newmem)/1000);
 
+				if (Taskmaster.Trace) Log.Verbose("Running periodic cleanup");
+
+				// TODO: This starts getting weird if cleanup interval is smaller than total delay of testing all items.
+				// (15*60) / 2 = item limit, and -1 or -2 for safety margin. Unlikely, but should probably be covered anyway.
+
+				if (Taskmaster.Components.processmanager != null)
+				{
+					using (var m = SelfAwareness.Mind(DateTime.Now.AddSeconds(30)))
+						Taskmaster.processmanager.Cleanup();
+				}
+
 				Taskmaster.Config.Save();
+
+				time.Stop();
+
+				Statistics.MaintenanceCount++;
+				Statistics.MaintenanceTime += time.Elapsed.TotalSeconds;
+
+				if (Taskmaster.Trace) Log.Verbose("Maintenance took: {Time}s", string.Format("{0:N2}", time.Elapsed.TotalSeconds));
 			}
 			catch (Exception ex)
 			{

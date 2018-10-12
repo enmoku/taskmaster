@@ -341,7 +341,7 @@ namespace Taskmaster
 			// CLEANUP: Console.WriteLine("Opening config folder.");
 			Process.Start(Taskmaster.datapath);
 
-			Taskmaster.mainwindow?.ShowConfigRequest(sender, e);
+			mainwindow?.ShowConfigRequest(sender, e);
 			// CLEANUP: Console.WriteLine("Done opening config folder.");
 		}
 
@@ -400,7 +400,7 @@ namespace Taskmaster
 				RestoreMainWindow(sender, null);
 				try
 				{
-					Taskmaster.mainwindow?.UnloseWindowRequest(sender, null); // null reference crash sometimes
+					mainwindow?.UnloseWindowRequest(sender, null); // null reference crash sometimes
 				}
 				catch (Exception ex)
 				{
@@ -412,8 +412,9 @@ namespace Taskmaster
 
 		void CompactEvent(object sender, EventArgs e)
 		{
+			// TODO: Move this call to self-maintenance
 			System.Runtime.GCSettings.LargeObjectHeapCompactionMode = System.Runtime.GCLargeObjectHeapCompactionMode.CompactOnce;
-			GC.Collect(5, GCCollectionMode.Forced, true, true);
+			GC.Collect(2, GCCollectionMode.Forced, true, true);
 		}
 
 		void WindowClosed(object sender, FormClosingEventArgs e)
@@ -433,13 +434,18 @@ namespace Taskmaster
 
 			Tray.MouseDoubleClick -= UnloseWindow;
 
+			mainwindow = null;
+
 			// }
 			// CLEANUP: Console.WriteLine("END:TrayAccess.WindowClosed");
 		}
 
-		public void hookMainWindow(ref MainWindow window)
+		MainWindow mainwindow = null;
+		public void hookMainWindow(MainWindow window)
 		{
 			Debug.Assert(window != null);
+
+			mainwindow = window;
 
 			Tray.MouseDoubleClick += UnloseWindow;
 
