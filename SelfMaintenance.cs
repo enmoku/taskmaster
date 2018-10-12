@@ -68,8 +68,11 @@ namespace Taskmaster
 				var time = System.Diagnostics.Stopwatch.StartNew();
 
 				long oldmem = GC.GetTotalMemory(false);
+
 				System.Runtime.GCSettings.LargeObjectHeapCompactionMode = System.Runtime.GCLargeObjectHeapCompactionMode.CompactOnce;
-				GC.Collect(2, GCCollectionMode.Forced, true, true);
+				GC.Collect(GC.MaxGeneration, GCCollectionMode.Forced, true, true);
+				GC.WaitForPendingFinalizers();
+
 				long newmem = GC.GetTotalMemory(true);
 
 				Log.Debug("<Self-Maintenance> Done, saved {kBytes} kB.", (oldmem-newmem)/1000);

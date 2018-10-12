@@ -209,7 +209,7 @@ namespace Taskmaster
 		static void PreSetup()
 		{
 			// INITIAL CONFIGURATIONN
-			var tcfg = Config.Load("Core.ini");
+			var tcfg = Config.Load(Taskmaster.coreconfig);
 			var sec = tcfg.Config.TryGet("Core")?.TryGet("Version")?.StringValue ?? null;
 			if (sec == null || sec != ConfigVersion)
 			{
@@ -458,7 +458,7 @@ namespace Taskmaster
 		public static bool GlobalHotkeys = false;
 		public static bool ImmediateSave = true;
 
-		static string coreconfig = "Core.ini";
+		public static string coreconfig = "Core.ini";
 		static void LoadCoreConfig()
 		{
 			Log.Information("<Core> Loading configuration...");
@@ -1033,8 +1033,6 @@ namespace Taskmaster
 		[STAThread] // supposedly needed to avoid shit happening with the WinForms GUI and other GUI toolkits
 		static public int Main(string[] args)
 		{
-			const long fakemempressure = 200_000_000;
-
 			try
 			{
 				try
@@ -1109,11 +1107,6 @@ namespace Taskmaster
 
 				try
 				{
-					// IS THIS OF ANY USE?
-					// GC.Collect(GC.MaxGeneration, GCCollectionMode.Forced, true, true);
-					// GC.WaitForPendingFinalizers();
-					GC.AddMemoryPressure(fakemempressure); // Workstation GC boundary is 256 MB, we want it to be closer to 60-80 MB
-
 					Config.Flush(); // early save of configs
 
 					if (RestartCounter > 0) Log.Information("<Core> Restarted {Count} time(s)", RestartCounter);
@@ -1202,8 +1195,6 @@ namespace Taskmaster
 				Utility.Dispose(ref Config);
 
 				Log.Information("Taskmaster! (#{ProcessID}) END! [Clean]", System.Diagnostics.Process.GetCurrentProcess().Id);
-
-				GC.RemoveMemoryPressure(fakemempressure); // probably unnecesary
 
 				if (Restart) // happens only on power resume (waking from hibernation) or when manually set
 				{

@@ -3,6 +3,8 @@ Comprehensive changes can be found in Git change history:
 	https://github.com/mkahvi/taskmaster/commits/master
 
 ## [0.11...]
+### 2018-10-13
+	Added: Network interfaces now have copy full information option in context menu, which includes IPv4&IPv6 address and some traffic data.
 ### 2018-10-12
 	Fixed: Altered foreground monitoring to no longer leak tiny amount of memory whenever an app that has foreground rules enabled
 		closes down while in the foreground (most cases of normally exiting said apps).

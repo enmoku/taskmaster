@@ -647,6 +647,15 @@ namespace Taskmaster
 			}
 		}
 
+		void CopyIfaceToClipboard(object sender, EventArgs ea)
+		{
+			if (ifaceList.SelectedItems.Count == 1)
+			{
+				string data = netmonitor.GetDeviceData(ifaceList.SelectedItems[0].SubItems[0].Text);
+				Clipboard.SetText(data);
+			}
+		}
+
 		void CopyLogToClipboard(object sender, EventArgs ea)
 		{
 			try
@@ -819,7 +828,7 @@ namespace Taskmaster
 			{
 				Taskmaster.AutoOpenMenus = menu_config_behaviour_autoopen.Checked;
 
-				var corecfg = Taskmaster.Config.Load("Core.ini");
+				var corecfg = Taskmaster.Config.Load(Taskmaster.coreconfig);
 				corecfg.Config["Quality of Life"]["Auto-open menus"].BoolValue = Taskmaster.AutoOpenMenus;
 				corecfg.MarkDirty();
 			};
@@ -833,7 +842,7 @@ namespace Taskmaster
 			{
 				Taskmaster.ShowInTaskbar = ShowInTaskbar = menu_config_behaviour_taskbar.Checked;
 
-				var corecfg = Taskmaster.Config.Load("Core.ini");
+				var corecfg = Taskmaster.Config.Load(Taskmaster.coreconfig);
 				corecfg.Config["Quality of Life"]["Show in taskbar"].BoolValue = Taskmaster.ShowInTaskbar;
 				corecfg.MarkDirty();
 			};
@@ -849,7 +858,7 @@ namespace Taskmaster
 			menu_config_logging_adjusts.Click += (s, e) => {
 				Taskmaster.ShowProcessAdjusts = menu_config_logging_adjusts.Checked;
 
-				var corecfg = Taskmaster.Config.Load("Core.ini");
+				var corecfg = Taskmaster.Config.Load(Taskmaster.coreconfig);
 				corecfg.Config["Logging"]["Show process adjusts"].BoolValue = Taskmaster.ShowProcessAdjusts;
 				corecfg.MarkDirty();
 			};
@@ -868,14 +877,14 @@ namespace Taskmaster
 			{
 				Taskmaster.ShowNetworkErrors = menu_config_logging_neterrors.Checked;
 
-				var corecfg = Taskmaster.Config.Load("Core.ini");
+				var corecfg = Taskmaster.Config.Load(Taskmaster.coreconfig);
 				corecfg.Config["Logging"]["Show network errors"].BoolValue = Taskmaster.ShowNetworkErrors;
 				corecfg.MarkDirty();
 			};
 			menu_config_logging_session.Click += (s, e) => {
 				Taskmaster.ShowSessionActions = menu_config_logging_session.Checked;
 
-				var corecfg = Taskmaster.Config.Load("Core.ini");
+				var corecfg = Taskmaster.Config.Load(Taskmaster.coreconfig);
 				corecfg.Config["Logging"]["Show session actions"].BoolValue = Taskmaster.ShowSessionActions;
 				corecfg.MarkDirty();
 			};
@@ -897,7 +906,7 @@ namespace Taskmaster
 				menu_config_bitmaskstyle_decimal.Checked = false;
 				// TODO: re-render watchlistRules
 
-				var corecfg = Taskmaster.Config.Load("Core.ini");
+				var corecfg = Taskmaster.Config.Load(Taskmaster.coreconfig);
 				corecfg.Config["Quality of Life"]["Core affinity style"].IntValue = 0;
 				corecfg.MarkDirty();
 			};
@@ -907,7 +916,7 @@ namespace Taskmaster
 				menu_config_bitmaskstyle_decimal.Checked = true;
 				// TODO: re-render watchlistRules
 
-				var corecfg = Taskmaster.Config.Load("Core.ini");
+				var corecfg = Taskmaster.Config.Load(Taskmaster.coreconfig);
 				corecfg.Config["Quality of Life"]["Core affinity style"].IntValue = 1;
 				corecfg.MarkDirty();
 			};
@@ -1230,7 +1239,7 @@ namespace Taskmaster
 			#endregion
 
 			#region Load UI config
-			var uicfg = Taskmaster.Config.Load("UI.ini");
+			var uicfg = Taskmaster.Config.Load(uiconfig);
 			var wincfg = uicfg.Config["Windows"];
 			var colcfg = uicfg.Config["Columns"];
 
@@ -1440,8 +1449,10 @@ namespace Taskmaster
 			ifacems.Opened += InterfaceContextMenuOpen;
 			var ifaceip4copy = new ToolStripMenuItem("Copy IPv4 address", null, CopyIPv4AddressToClipboard);
 			var ifaceip6copy = new ToolStripMenuItem("Copy IPv6 address", null, CopyIPv6AddressToClipboard);
+			var ifacecopy = new ToolStripMenuItem("Copy full information", null, CopyIfaceToClipboard);
 			ifacems.Items.Add(ifaceip4copy);
 			ifacems.Items.Add(ifaceip6copy);
+			ifacems.Items.Add(ifacecopy);
 			ifaceList.ContextMenuStrip = ifacems;
 
 			ifaceList.Columns.Add("Device", ifacewidths[0]); // 0
@@ -1569,7 +1580,7 @@ namespace Taskmaster
 			loglistms.Items.Add(logcopy);
 			loglist.ContextMenuStrip = loglistms;
 
-			var cfg = Taskmaster.Config.Load("Core.ini");
+			var cfg = Taskmaster.Config.Load(Taskmaster.coreconfig);
 			bool modified, tdirty = false;
 			MaxLogSize = cfg.Config["Logging"].GetSetDefault("UI max items", 200, out modified).IntValue;
 			tdirty |= modified;
@@ -2400,6 +2411,8 @@ namespace Taskmaster
 			}));
 		}
 
+		const string uiconfig = "UI.ini";
+
 		void saveUIState()
 		{
 			if (watchlistRules.Columns.Count == 0) return;
@@ -2416,7 +2429,7 @@ namespace Taskmaster
 			for (int i = 0; i < micList.Columns.Count; i++)
 				micWidths.Add(micList.Columns[i].Width);
 
-			var cfg = Taskmaster.Config.Load("UI.ini");
+			var cfg = Taskmaster.Config.Load(uiconfig);
 			var cols = cfg.Config["Columns"];
 			cols["Apps"].IntValueArray = appWidths.ToArray();
 			// cols["Paths"].IntValueArray = pathWidths.ToArray();

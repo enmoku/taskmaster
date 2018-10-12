@@ -414,7 +414,8 @@ namespace Taskmaster
 		{
 			// TODO: Move this call to self-maintenance
 			System.Runtime.GCSettings.LargeObjectHeapCompactionMode = System.Runtime.GCLargeObjectHeapCompactionMode.CompactOnce;
-			GC.Collect(2, GCCollectionMode.Forced, true, true);
+			GC.Collect(GC.MaxGeneration, GCCollectionMode.Forced, true, true);
+			GC.WaitForPendingFinalizers();
 		}
 
 		void WindowClosed(object sender, FormClosingEventArgs e)

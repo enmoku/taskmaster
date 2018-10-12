@@ -119,6 +119,24 @@ namespace Taskmaster
 			Log.Information("<Network> Component loaded.");
 		}
 
+		public string GetDeviceData(string devicename)
+		{
+			foreach (var device in CurrentInterfaceList)
+			{
+				if (device.Name.Equals(devicename))
+				{
+					string rv = string.Format("{0} – {1} [{2}] – {3} MB in, {4} MB out, {5} errors",
+						devicename, device.IPv4Address.ToString(), IPv6Address.ToString(),
+						device.Incoming.Bytes/1_000_000, device.Outgoing.Bytes/1_000_000,
+						device.Outgoing.Errors+device.Incoming.Errors
+						);
+					return rv;
+				}
+			}
+
+			return null;
+		}
+
 		LinearMeter PacketWarning = new LinearMeter(15);
 		LinearMeter ErrorReports = new LinearMeter(5);
 
@@ -179,7 +197,7 @@ namespace Taskmaster
 						{
 							Index = index,
 							Delta = new NetTraffic { Unicast = packets, Errors = errors, Discards = discards },
-							Total = new NetTraffic { Unicast = totalunicast, Errors = totalerrors, Discards = totaldiscards },
+							Total = new NetTraffic { Unicast = totalunicast, Errors = totalerrors, Discards = totaldiscards, Bytes = incoming.Bytes + outgoing.Bytes },
 						}
 					});
 				}

@@ -338,7 +338,7 @@ namespace Taskmaster
 			{
 				Taskmaster.ComponentConfigurationDone = true;
 
-				var cfg = Taskmaster.Config.Load("Core.ini");
+				var cfg = Taskmaster.Config.Load(Taskmaster.coreconfig);
 				var mainsec = cfg.Config["Core"];
 				var opt = mainsec["Version"];
 				opt.StringValue = Taskmaster.ConfigVersion;

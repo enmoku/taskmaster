@@ -510,7 +510,7 @@ namespace Taskmaster
 
 		void LoadConfig()
 		{
-			var corecfg = Taskmaster.Config.Load("Core.ini");
+			var corecfg = Taskmaster.Config.Load(Taskmaster.coreconfig);
 
 			var power = corecfg.Config["Power"];
 			bool modified = false, dirtyconfig = false;

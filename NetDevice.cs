@@ -56,6 +56,8 @@ namespace Taskmaster
 		public long Discards { get; set; }
 		public long Errors { get; set; }
 
+		public long Bytes { get; set; }
+
 		/// <summary>
 		/// Unknown packets, only for incoming data.
 		/// </summary>
@@ -70,6 +72,7 @@ namespace Taskmaster
 				Discards = stats.IncomingPacketsDiscarded;
 				Errors = stats.IncomingPacketsWithErrors;
 				Unknown = stats.IncomingUnknownProtocolPackets;
+				Bytes = stats.BytesReceived;
 			}
 			else
 			{
@@ -77,6 +80,7 @@ namespace Taskmaster
 				NonUnicast = stats.NonUnicastPacketsSent;
 				Discards = stats.OutgoingPacketsDiscarded;
 				Errors = stats.OutgoingPacketsWithErrors;
+				Bytes = stats.BytesSent;
 			}
 		}
 	}

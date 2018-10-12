@@ -61,7 +61,7 @@ namespace Taskmaster
 			Foreground = pid;
 			// Console.WriteLine("--- Foreground Process Identifier: " + Foreground);
 
-			var corecfg = Taskmaster.Config.Load("Core.ini");
+			var corecfg = Taskmaster.Config.Load(Taskmaster.coreconfig);
 
 			bool dirty = false, modified = false;
 			var perfsec = corecfg.Config["Performance"];

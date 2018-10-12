@@ -75,14 +75,20 @@ namespace Taskmaster
 
 		void Save(ConfigWrapper cfg)
 		{
-			var fullpath = System.IO.Path.Combine(datapath, cfg.File);
-			cfg.Config.SaveToFile(fullpath);
+			lock (config_lock)
+			{
+				var fullpath = System.IO.Path.Combine(datapath, cfg.File);
+				cfg.Config.SaveToFile(fullpath);
+			}
 		}
 
 		public void Unload(ConfigWrapper config)
 		{
-			Loaded.Remove(config);
-			config.Dispose();
+			lock (config_lock)
+			{
+				Loaded.Remove(config);
+				config.Dispose();
+			}
 		}
 
 		public void Flush()

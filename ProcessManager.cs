@@ -487,7 +487,7 @@ namespace Taskmaster
 			if (Taskmaster.DebugProcesses)
 				Log.Information("<Process> Loading configuration...");
 
-			var corecfg = Taskmaster.Config.Load("Core.ini");
+			var corecfg = Taskmaster.Config.Load(Taskmaster.coreconfig);
 
 			var coreperf = corecfg.Config["Performance"];
 
