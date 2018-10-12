@@ -378,6 +378,7 @@ namespace Taskmaster
 
 		public bool BackgroundPowerdown { get; set; } = true;
 		public ProcessPriorityClass BackgroundPriority { get; set; } = ProcessPriorityClass.Normal;
+
 		/// <summary>
 		/// Pause the specified foreground process.
 		/// </summary>
@@ -418,7 +419,7 @@ namespace Taskmaster
 				Log.Debug("[{FriendlyName}] {Exec} (#{Pid}) priority reduced: {Current}→{Paused} [Background]",
 					FriendlyName, info.Name, info.Id, Priority, BackgroundPriority);
 
-			PausedIds.Add(info.Id);
+			ForegroundMonitor(info);
 		}
 
 		public bool isPaused(ProcessEx info) => PausedIds.Contains(info.Id);
@@ -426,6 +427,7 @@ namespace Taskmaster
 		public void Resume(ProcessEx info)
 		{
 			if (!PausedIds.Contains(info.Id)) return;
+
 			// throw new InvalidOperationException(string.Format("{0} not paused", info.Name));
 
 			if (Priority.HasValue && info.Process.PriorityClass.ToInt32() != Priority.Value.ToInt32())
@@ -508,6 +510,10 @@ namespace Taskmaster
 		}
 		*/
 
+		/// <summary>
+		/// Set disk I/O priority. Works only for setting own process priority.
+		/// Would require invasive injecting to other process to affect them.
+		/// </summary>
 		public static bool SetIOPriority(Process process, NativeMethods.PriorityTypes priority)
 		{
 			try
@@ -520,6 +526,26 @@ namespace Taskmaster
 			catch (Exception ex) { Logging.Stacktrace(ex); }
 
 			return false;
+		}
+
+		HashSet<int> ForegroundWatch = null;
+
+		void ForegroundMonitor(ProcessEx info)
+		{
+			if (ForegroundWatch == null) ForegroundWatch = new HashSet<int>();
+
+			if (!ForegroundWatch.Contains(info.Id))
+			{
+				ForegroundWatch.Add(info.Id);
+
+				PausedIds.Add(info.Id);
+
+				info.Process.Exited += (o, s) =>
+				{
+					ForegroundWatch.Remove(info.Id);
+					PausedIds.Remove(info.Id);
+				};
+			}
 		}
 
 		// TODO: Deal with combo path+exec
@@ -645,18 +671,17 @@ namespace Taskmaster
 			catch (Exception ex) { Logging.Stacktrace(ex); }
 
 			IntPtr newAffinity = Affinity.GetValueOrDefault();
-
+			
 			var newPriority = oldPriority;
 
 			if (!denyChange)
 			{
 				if (!foreground && ForegroundOnly)
 				{
-					if (Taskmaster.DebugForeground)
+					if (Taskmaster.DebugForeground || Taskmaster.ShowInaction)
 						Log.Debug("{Exec} (#{Pid}) not in foreground, not prioritizing.", info.Name, info.Id);
 
-					if (!PausedIds.Contains(info.Id))
-						PausedIds.Add(info.Id);
+					ForegroundMonitor(info);
 
 					// NOP
 				}
@@ -789,8 +814,7 @@ namespace Taskmaster
 					if (Taskmaster.DebugForeground)
 						Log.Debug("{Exec} (#{Pid}) not in foreground, not powering up.", info.Name, info.Id);
 
-					if (!PausedIds.Contains(info.Id))
-						PausedIds.Add(info.Id);
+					ForegroundMonitor(info);
 				}
 				else
 				{
