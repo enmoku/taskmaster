@@ -75,6 +75,8 @@ namespace Taskmaster
 				long newmem = GC.GetTotalMemory(true);
 
 				Log.Debug("<Self-Maintenance> Done, saved {kBytes} kB.", (oldmem-newmem)/1000);
+
+				Taskmaster.Config.Save();
 			}
 			catch (Exception ex)
 			{
@@ -107,6 +109,7 @@ namespace Taskmaster
 		public void Dispose()
 		{
 			Dispose(true);
+			GC.SuppressFinalize(this);
 		}
 		#endregion
 
