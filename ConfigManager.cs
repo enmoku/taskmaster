@@ -138,8 +138,12 @@ namespace Taskmaster
 			}
 		}
 
+		public bool NeedSave => Dirty.Count > 0;
+
 		public void Save()
 		{
+			if (!NeedSave) return;
+
 			lock (config_lock)
 			{
 				foreach (var config in Dirty)
