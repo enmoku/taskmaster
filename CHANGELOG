@@ -8,6 +8,8 @@ Comprehensive changes can be found in Git change history:
 		closes down while in the foreground (most cases of normally exiting said apps).
 	Changed: Memory log (used for displaying logs in the UI) is no longer static. This should not have any visible changes to users.
 	Removed: Properties.Settings, it just didn't provide anything useful.
+	Changed: How settings are saved.
+		This may be buggy, such as not all settings being saved, this is mostly caused by uncertainty on how SharpConfig works.
 ### 2018-10-11
 	Added: Option to mute network error logging (Configuration > Logging > Show network errors).
 		This can get really spammy on certain networks without this option.
