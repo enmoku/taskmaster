@@ -111,7 +111,7 @@ namespace Taskmaster
 
 			// Log.Debug("{IFACELIST} – count: {c}", CurrentInterfaceList, CurrentInterfaceList.Count);
 
-			deviceSampleTimer = new System.Threading.Timer(async (s) => { await RecordDeviceState(InternetAvailable, false); }, null, 15000, DeviceTimerInterval * 60000);
+			deviceSampleTimer = new System.Threading.Timer(x => {RecordDeviceState(InternetAvailable, false); }, null, 15000, DeviceTimerInterval * 60000);
 
 			AnalyzeTrafficBehaviourTick(null); // initialize, not really needed
 			packetStatTimer = new System.Threading.Timer(AnalyzeTrafficBehaviourTick, null, 500, PacketStatTimerInterval * 1000);
@@ -264,13 +264,13 @@ namespace Taskmaster
 
 		public async void SampleDeviceState(object state)
 		{
-			await RecordDeviceState(InternetAvailable, false);
+			RecordDeviceState(InternetAvailable, false);
 		}
 
 		bool lastOnlineState = false;
 		int DeviceStateRecordLimiter = 0;
 
-		async Task RecordDeviceState(bool online_state, bool address_changed)
+		void RecordDeviceState(bool online_state, bool address_changed)
 		{
 			if (!Atomic.Lock(ref DeviceStateRecordLimiter)) return;
 
@@ -284,10 +284,7 @@ namespace Taskmaster
 					{
 						lastUptimeStart = DateTime.Now;
 
-						// CLEANUP: Console.WriteLine("Debug: Queued internet uptime report");
-						await Task.Delay(new TimeSpan(0, 5, 0)); // wait 5 minutes
-
-						ReportCurrentUpstate();
+						Task.Delay(new TimeSpan(0, 5, 0)).ContinueWith(x => ReportCurrentUpstate());
 					}
 					else // went offline
 					{
