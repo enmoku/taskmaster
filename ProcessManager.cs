@@ -460,7 +460,9 @@ namespace Taskmaster
 			if (Taskmaster.DebugProcesses)
 				Log.Information("<Process> Loading configuration...");
 
-			var coreperf = Taskmaster.cfg["Performance"];
+			var corecfg = Taskmaster.Config.Load("Core.ini");
+
+			var coreperf = corecfg["Performance"];
 
 			bool dirtyconfig = false, modified = false;
 			// ControlChildren = coreperf.GetSetDefault("Child processes", false, out tdirty).BoolValue;
@@ -503,7 +505,7 @@ namespace Taskmaster
 
 			// --------------------------------------------------------------------------------------------------------
 
-			var fgpausesec = Taskmaster.cfg["Foreground Focus Lost"];
+			var fgpausesec = corecfg["Foreground Focus Lost"];
 			// RestoreOriginal = fgpausesec.GetSetDefault("Restore original", false, out modified).BoolValue;
 			// dirtyconfig |= modified;
 			OffFocusPriority = fgpausesec.GetSetDefault("Default priority", 2, out modified).IntValue.Constrain(0, 4);
@@ -517,23 +519,19 @@ namespace Taskmaster
 			// --------------------------------------------------------------------------------------------------------
 
 			// Taskmaster.cfg["Applications"]["Ignored"].StringValueArray = IgnoreList;
-			var ignsetting = Taskmaster.cfg["Applications"];
+			var ignsetting = corecfg["Applications"];
 			string[] newIgnoreList = ignsetting.GetSetDefault("Ignored", IgnoreList, out modified)?.StringValueArray;
 			ignsetting.PreComment = "Special hardcoded protection applied to: consent, winlogon, wininit, and csrss.\nThese are vital system services and messing with them can cause severe system malfunctioning.\nMess with the ignore list at your own peril.";
 			if (newIgnoreList != null)
 			{
 				IgnoreList = newIgnoreList;
 				Log.Information("<Process> Custom application ignore list loaded.");
+				dirtyconfig |= modified;
 			}
-			else
-				Taskmaster.Config.Save(Taskmaster.cfg);
-			dirtyconfig |= modified;
 
 			IgnoreSystem32Path = ignsetting.GetSetDefault("Ignore System32", true, out modified).BoolValue;
 			ignsetting["Ignore System32"].Comment = "Ignore programs in %SYSTEMROOT%/System32 folder.";
 			dirtyconfig |= modified;
-
-			if (dirtyconfig) Taskmaster.Config.MarkDirtyINI(Taskmaster.cfg);
 
 			// Log.Information("Child process monitoring: {ChildControl}", (ControlChildren ? "Enabled" : "Disabled"));
 
@@ -566,7 +564,7 @@ namespace Taskmaster
 			// --------------------------------------------------------------------------------------------------------
 
 			var newsettings = coreperf.SettingCount;
-			if (dirtyconfig) Taskmaster.Config.MarkDirtyINI(Taskmaster.cfg);
+			if (dirtyconfig) Taskmaster.Config.MarkDirtyINI(corecfg);
 
 			foreach (SharpConfig.Section section in appcfg)
 			{
@@ -825,6 +823,7 @@ namespace Taskmaster
 		public bool WaitForExit(ProcessEx info)
 		{
 			var rv = false;
+
 			lock (waitforexit_lock)
 			{
 				if (!WaitForExitList.ContainsKey(info.Id))

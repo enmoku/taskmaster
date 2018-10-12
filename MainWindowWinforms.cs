@@ -819,9 +819,9 @@ namespace Taskmaster
 			{
 				Taskmaster.AutoOpenMenus = menu_config_behaviour_autoopen.Checked;
 
-				Taskmaster.cfg["Quality of Life"]["Auto-open menus"].BoolValue = Taskmaster.AutoOpenMenus;
-
-				Taskmaster.Config.MarkDirtyINI(Taskmaster.cfg);
+				var corecfg = Taskmaster.Config.Load("Core.ini");
+				corecfg["Quality of Life"]["Auto-open menus"].BoolValue = Taskmaster.AutoOpenMenus;
+				Taskmaster.Config.MarkDirtyINI(corecfg);
 			};
 
 			var menu_config_behaviour_taskbar = new ToolStripMenuItem("Show in taskbar")
@@ -832,8 +832,10 @@ namespace Taskmaster
 			menu_config_behaviour_taskbar.Click += (sender, e) =>
 			{
 				Taskmaster.ShowInTaskbar = ShowInTaskbar = menu_config_behaviour_taskbar.Checked;
-				Taskmaster.cfg["Quality of Life"]["Show in taskbar"].BoolValue = Taskmaster.ShowInTaskbar;
-				Taskmaster.Config.MarkDirtyINI(Taskmaster.cfg);
+
+				var corecfg = Taskmaster.Config.Load("Core.ini");
+				corecfg["Quality of Life"]["Show in taskbar"].BoolValue = Taskmaster.ShowInTaskbar;
+				Taskmaster.Config.MarkDirtyINI(corecfg);
 			};
 
 			menu_config_behaviour.DropDownItems.Add(menu_config_behaviour_autoopen);
@@ -846,8 +848,10 @@ namespace Taskmaster
 			};
 			menu_config_logging_adjusts.Click += (s, e) => {
 				Taskmaster.ShowProcessAdjusts = menu_config_logging_adjusts.Checked;
-				Taskmaster.cfg["Logging"]["Show process adjusts"].BoolValue = Taskmaster.ShowProcessAdjusts;
-				Taskmaster.Config.MarkDirtyINI(Taskmaster.cfg);
+
+				var corecfg = Taskmaster.Config.Load("Core.ini");
+				corecfg["Logging"]["Show process adjusts"].BoolValue = Taskmaster.ShowProcessAdjusts;
+				Taskmaster.Config.MarkDirtyINI(corecfg);
 			};
 
 			var menu_config_logging_session = new ToolStripMenuItem("Session actions")
@@ -863,13 +867,17 @@ namespace Taskmaster
 			menu_config_logging_neterrors.Click += (s, e) =>
 			{
 				Taskmaster.ShowNetworkErrors = menu_config_logging_neterrors.Checked;
-				Taskmaster.cfg["Logging"]["Show network errors"].BoolValue = Taskmaster.ShowNetworkErrors;
-				Taskmaster.Config.MarkDirtyINI(Taskmaster.cfg);
+
+				var corecfg = Taskmaster.Config.Load("Core.ini");
+				corecfg["Logging"]["Show network errors"].BoolValue = Taskmaster.ShowNetworkErrors;
+				Taskmaster.Config.MarkDirtyINI(corecfg);
 			};
 			menu_config_logging_session.Click += (s, e) => {
 				Taskmaster.ShowSessionActions = menu_config_logging_session.Checked;
-				Taskmaster.cfg["Logging"]["Show session actions"].BoolValue = Taskmaster.ShowSessionActions;
-				Taskmaster.Config.MarkDirtyINI(Taskmaster.cfg);
+
+				var corecfg = Taskmaster.Config.Load("Core.ini");
+				corecfg["Logging"]["Show session actions"].BoolValue = Taskmaster.ShowSessionActions;
+				Taskmaster.Config.MarkDirtyINI(corecfg);
 			};
 			menu_config_logging.DropDownItems.Add(menu_config_logging_adjusts);
 			menu_config_logging.DropDownItems.Add(menu_config_logging_session);
@@ -956,7 +964,7 @@ namespace Taskmaster
 			// Sub Items
 			var menu_debug_loglevel = new ToolStripMenuItem("UI log level");
 
-			LogIncludeLevel = MemoryLog.LevelSwitch; // HACK
+			LogIncludeLevel = MemoryLog.MemorySink.LevelSwitch; // HACK
 
 			menu_debug_loglevel_info = new ToolStripMenuItem("Info", null,
 			(s, e) =>
@@ -2162,14 +2170,13 @@ namespace Taskmaster
 
 		public void FillLog()
 		{
-			MemoryLog.onNewEvent += NewLogReceived;
+			MemoryLog.MemorySink.onNewEvent += NewLogReceived;
 
 			lock (loglistLock)
 			{
 				// Log.Verbose("Filling GUI log.");
-				foreach (var evmsg in MemoryLog.ToArray())
+				foreach (var evmsg in MemoryLog.MemorySink.ToArray())
 					loglist.Items.Add(evmsg.Message);
-
 			}
 
 			ShowLastLog();
@@ -2349,7 +2356,7 @@ namespace Taskmaster
 
 		// BUG: DO NOT LOG INSIDE THIS FOR FUCKS SAKE
 		// it creates an infinite log loop
-		public int MaxLogSize { get { return MemoryLog.Max; } private set { MemoryLog.Max = value; } }
+		public int MaxLogSize { get { return MemoryLog.MemorySink.Max; } private set { MemoryLog.MemorySink.Max = value; } }
 
 		void ClearLog()
 		{
@@ -2357,7 +2364,7 @@ namespace Taskmaster
 			{
 				//loglist.Clear();
 				loglist.Items.Clear();
-				MemoryLog.Clear();
+				MemoryLog.MemorySink.Clear();
 			}
 		}
 
@@ -2428,7 +2435,8 @@ namespace Taskmaster
 			{
 				if (Taskmaster.Trace) Log.Verbose("Disposing main window...");
 
-				MemoryLog.onNewEvent -= NewLogReceived;
+				if (MemoryLog.MemorySink != null)
+					MemoryLog.MemorySink.onNewEvent -= NewLogReceived; // unnecessary?
 
 				try
 				{

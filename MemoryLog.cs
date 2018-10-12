@@ -50,28 +50,76 @@ namespace Taskmaster
 
 	static class MemoryLog
 	{
-		public static event EventHandler<LogEventArgs> onNewEvent;
+		public static MemorySink MemorySink = null;
+	}
 
-		public static int Max = 50;
-		static readonly object LogLock = new object();
-		public static System.Collections.Generic.List<LogEventArgs> Logs = new System.Collections.Generic.List<LogEventArgs>(Max);
+	sealed class MemorySink : Serilog.Core.ILogEventSink, IDisposable
+	{
+		public event EventHandler<LogEventArgs> onNewEvent;
 
-		public static LoggingLevelSwitch LevelSwitch;
+		readonly TextWriter p_output;
+		readonly object sinklock = new object();
+		readonly IFormatProvider p_formatProvider;
+		readonly ITextFormatter p_textFormatter;
+		public LoggingLevelSwitch LevelSwitch;
+		const string p_DefaultOutputTemplate = "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}";
 
-		public static void Clear()
+		public MemorySink(IFormatProvider formatProvider, string outputTemplate = p_DefaultOutputTemplate, LoggingLevelSwitch levelSwitch = null)
 		{
-			lock (LogLock)
-				Logs.Clear();
+			Logs = new System.Collections.Generic.List<LogEventArgs>(Max);
 
+			p_formatProvider = formatProvider;
+			p_textFormatter = new Serilog.Formatting.Display.MessageTemplateTextFormatter(
+				outputTemplate ?? p_DefaultOutputTemplate,
+				p_formatProvider
+			);
+			p_output = new System.IO.StringWriter();
+			LevelSwitch = levelSwitch;
+
+			MemoryLog.MemorySink = this;
 		}
 
-		public static void ExcludeDebug() => LevelSwitch.MinimumLevel = LogEventLevel.Information;
+		public int Max = 50;
+		static readonly object LogLock = new object();
+		public System.Collections.Generic.List<LogEventArgs> Logs = null;
 
-		public static void ExcludeTrace() => LevelSwitch.MinimumLevel = LogEventLevel.Debug;
+		//public LoggingLevelSwitch LevelSwitch;
 
-		public static void IncludeTrace() => LevelSwitch.MinimumLevel = LogEventLevel.Verbose;
+		public void Clear() { lock (LogLock) { Logs.Clear(); } }
 
-		public static void Emit(object sender, LogEventArgs e)
+		public void ExcludeDebug() => LevelSwitch.MinimumLevel = LogEventLevel.Information;
+		public void ExcludeTrace() => LevelSwitch.MinimumLevel = LogEventLevel.Debug;
+		public void IncludeTrace() => LevelSwitch.MinimumLevel = LogEventLevel.Verbose;
+
+		public void Emit(LogEvent e)
+		{
+			if (e.Level == LogEventLevel.Fatal) Statistics.FatalErrors++;
+
+			if ((int)e.Level < (int)LevelSwitch.MinimumLevel) return;
+
+			string formattedtext = string.Empty;
+
+			lock (sinklock)
+			{
+				try
+				{
+					p_textFormatter.Format(e, p_output);
+					formattedtext = p_output.ToString();
+				}
+				catch
+				{
+					return; // ignore, kinda
+				}
+				finally
+				{
+					((System.IO.StringWriter)p_output).GetStringBuilder().Clear(); // empty, weird results if not done.
+				}
+			}
+
+			Emit(this, new LogEventArgs(formattedtext, e.Level, e));
+		}
+
+		void Emit(object sender, LogEventArgs e)
 		{
 			lock (LogLock)
 			{
@@ -82,101 +130,54 @@ namespace Taskmaster
 			onNewEvent?.Invoke(sender, e);
 		}
 
-		public static LogEventArgs[] ToArray()
+		public LogEventArgs[] ToArray()
 		{
 			LogEventArgs[] logcopy = null;
 			lock (LogLock)
 				logcopy = Logs.ToArray();
 
-
 			return logcopy;
+		}
+
+		~MemorySink()
+		{
+			MemoryLog.MemorySink = null;
+		}
+
+		public void Dispose()
+		{
+			Dispose(true);
+		}
+
+		bool disposed = false;
+		void Dispose(bool disposing)
+		{
+			if (disposed) return;
+
+			if (disposing)
+			{
+				if (Taskmaster.Trace)
+					Log.Verbose("Disposing memory sink...");
+
+				MemoryLog.MemorySink = null;
+
+				p_output?.Dispose();
+			}
+
+			disposed = true;
 		}
 	}
 
-	namespace SerilogMemorySink
+	public static class MemorySinkExtensions
 	{
-		sealed class MemorySink : Serilog.Core.ILogEventSink, IDisposable
+		public static Serilog.LoggerConfiguration MemorySink(
+			this LoggerSinkConfiguration logConf,
+			IFormatProvider formatProvider = null,
+			string outputTemplate = null,
+			LoggingLevelSwitch levelSwitch = null
+		)
 		{
-			readonly TextWriter p_output;
-			readonly object sinklock = new object();
-			readonly IFormatProvider p_formatProvider;
-			readonly ITextFormatter p_textFormatter;
-			public LoggingLevelSwitch LevelSwitch;
-			const string p_DefaultOutputTemplate = "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}";
-
-			public MemorySink(IFormatProvider formatProvider, string outputTemplate = p_DefaultOutputTemplate, LoggingLevelSwitch levelSwitch = null)
-			{
-				p_formatProvider = formatProvider;
-				p_textFormatter = new Serilog.Formatting.Display.MessageTemplateTextFormatter(
-					outputTemplate ?? p_DefaultOutputTemplate,
-					p_formatProvider
-				);
-				p_output = new System.IO.StringWriter();
-				LevelSwitch = levelSwitch;
-			}
-
-			public void Emit(LogEvent e)
-			{
-				if (e.Level == LogEventLevel.Fatal) Statistics.FatalErrors++;
-
-				if ((int)e.Level < (int)LevelSwitch.MinimumLevel) return;
-
-				string formattedtext = string.Empty;
-
-				lock (sinklock)
-				{
-					try
-					{
-						p_textFormatter.Format(e, p_output);
-						formattedtext = p_output.ToString();
-					}
-					catch
-					{
-						return; // ignore, kinda
-					}
-					finally
-					{
-						((System.IO.StringWriter)p_output).GetStringBuilder().Clear(); // empty, weird results if not done.
-					}
-				}
-
-				MemoryLog.Emit(this, new LogEventArgs(formattedtext, e.Level, e));
-			}
-
-			public void Dispose()
-			{
-				Dispose(true);
-				GC.SuppressFinalize(this);
-			}
-
-			bool disposed = false;
-			void Dispose(bool disposing)
-			{
-				if (disposed) return;
-
-				if (disposing)
-				{
-					if (Taskmaster.Trace)
-						Log.Verbose("Disposing memory sink...");
-
-					p_output?.Dispose();
-				}
-
-				disposed = true;
-			}
-		}
-
-		public static class MemorySinkExtensions
-		{
-			public static Serilog.LoggerConfiguration MemorySink(
-				this LoggerSinkConfiguration logConf,
-				IFormatProvider formatProvider = null,
-				string outputTemplate = null,
-				LoggingLevelSwitch levelSwitch = null
-			)
-			{
-				return logConf.Sink(new MemorySink(formatProvider, outputTemplate, levelSwitch));
-			}
+			return logConf.Sink(new MemorySink(formatProvider, outputTemplate, levelSwitch));
 		}
 	}
 }

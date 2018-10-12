@@ -33,7 +33,6 @@ using System.Windows.Forms;
 using Serilog;
 using Serilog.Core;
 using Serilog.Events;
-using Taskmaster.SerilogMemorySink;
 
 namespace Taskmaster
 {
@@ -534,16 +533,16 @@ namespace Taskmaster
 			{
 				default:
 				case 0:
-					MemoryLog.LevelSwitch.MinimumLevel = LogEventLevel.Information;
+					MemoryLog.MemorySink.LevelSwitch.MinimumLevel = LogEventLevel.Information;
 					break;
 				case 1:
-					MemoryLog.LevelSwitch.MinimumLevel = LogEventLevel.Debug;
+					MemoryLog.MemorySink.LevelSwitch.MinimumLevel = LogEventLevel.Debug;
 					break;
 				case 2:
-					MemoryLog.LevelSwitch.MinimumLevel = LogEventLevel.Verbose;
+					MemoryLog.MemorySink.LevelSwitch.MinimumLevel = LogEventLevel.Verbose;
 					break;
 				case 3:
-					MemoryLog.LevelSwitch.MinimumLevel = LogEventLevel.Verbose;
+					MemoryLog.MemorySink.LevelSwitch.MinimumLevel = LogEventLevel.Verbose;
 					Trace = true;
 					break;
 			}
@@ -636,7 +635,7 @@ namespace Taskmaster
 
 			monitorCleanShutdown();
 
-			Log.Information("<Core> Verbosity: {Verbosity}", MemoryLog.LevelSwitch.MinimumLevel.ToString());
+			Log.Information("<Core> Verbosity: {Verbosity}", MemoryLog.MemorySink.LevelSwitch.MinimumLevel.ToString());
 			Log.Information("<Core> Self-optimize: {SelfOptimize}", (SelfOptimize ? "Enabled" : "Disabled"));
 			// Log.Information("Low memory mode: {LowMemory}", (LowMemory ? "Enabled." : "Disabled."));
 			Log.Information("<<WMI>> Event watcher: {WMIPolling} (Rate: {WMIRate}s)", (WMIPolling ? "Enabled" : "Disabled"), WMIPollDelay);
@@ -1130,7 +1129,7 @@ namespace Taskmaster
 					LicenseBoiler();
 
 					// INIT LOGGER
-					MemoryLog.LevelSwitch = new LoggingLevelSwitch(LogEventLevel.Information);
+					var logswitch = new LoggingLevelSwitch(LogEventLevel.Information);
 
 					var logpathtemplate = System.IO.Path.Combine(datapath, "Logs", "taskmaster-{Date}.log");
 					Serilog.Log.Logger = new Serilog.LoggerConfiguration()
@@ -1140,7 +1139,7 @@ namespace Taskmaster
 #endif
 				.WriteTo.RollingFile(logpathtemplate, outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}",
 											 levelSwitch: new LoggingLevelSwitch(Serilog.Events.LogEventLevel.Debug), retainedFileCountLimit: 3)
-						.WriteTo.MemorySink(levelSwitch: MemoryLog.LevelSwitch)
+						.WriteTo.MemorySink(levelSwitch: logswitch)
 									 .CreateLogger();
 
 					// COMMAND-LINE ARGUMENTS

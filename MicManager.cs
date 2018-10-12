@@ -158,9 +158,12 @@ namespace Taskmaster
 			}
 
 			var mvol = "Microphone volume";
-			var save = false || !Taskmaster.cfg["Media"].Contains(mvol);
-			var defaultvol = Taskmaster.cfg["Media"].GetSetDefault(mvol, 100d).DoubleValue;
-			if (save) Taskmaster.Config.Save(Taskmaster.cfg);
+
+			var corecfg = Taskmaster.Config.Load("Core.ini");
+
+			var save = false || !corecfg["Media"].Contains(mvol);
+			var defaultvol = corecfg["Media"].GetSetDefault(mvol, 100d).DoubleValue;
+			if (save) Taskmaster.Config.Save(corecfg);
 
 			var fname = "Microphone.Devices.ini";
 			var vname = "Volume";
