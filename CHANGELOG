@@ -3,6 +3,10 @@ Comprehensive changes can be found in Git change history:
 	https://github.com/mkahvi/taskmaster/commits/master
 
 ## [0.11...]
+### 2018-10-12
+	Fixed: Altered foreground monitoring to no longer leak tiny amount of memory whenever an app that has foreground rules enabled
+		closes down while in the foreground (most cases of normally exiting said apps).
+	Changed: Memory log (used for displaying logs in the UI) is no longer static. This should not have any visible changes to users.
 ### 2018-10-11
 	Added: Option to mute network error logging (Configuration > Logging > Show network errors).
 		This can get really spammy on certain networks without this option.
