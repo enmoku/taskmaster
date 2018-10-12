@@ -36,6 +36,7 @@ namespace Taskmaster
 		Restart
 	}
 
+	[Serializable]
 	public class RunstateException : Exception
 	{
 		public Runstate State { get; private set; }

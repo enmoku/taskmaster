@@ -190,6 +190,7 @@ namespace Taskmaster
 
 				sysWatcher?.Dispose();
 				userWatcher?.Dispose();
+				TempScanTimer?.Dispose();
 			}
 
 			disposed = true;

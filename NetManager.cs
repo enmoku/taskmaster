@@ -719,8 +719,8 @@ namespace Taskmaster
 				if (Taskmaster.Trace) Log.Verbose("Disposing network monitor...");
 				ReportUptime();
 
-				Utility.Dispose(ref deviceSampleTimer);
-				Utility.Dispose(ref packetStatTimer);
+				deviceSampleTimer?.Dispose();
+				packetStatTimer?.Dispose();
 			}
 
 			disposed = true;

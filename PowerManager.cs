@@ -1223,10 +1223,10 @@ namespace Taskmaster
 				if (Taskmaster.Trace) Log.Verbose("Disposing power manager...");
 
 				CPUTimer?.Dispose();
-				Utility.Dispose(ref CPUCounter);
+				CPUCounter?.Dispose();
 
 				MonitorPower -= MonitorPowerEvent;
-				Utility.Dispose(ref MonitorSleepTimer);
+				MonitorSleepTimer?.Dispose();
 
 				var finalmode = RestoreModeMethod == ModeMethod.Saved ? SavedMode : RestoreMode;
 				if (finalmode != CurrentMode)

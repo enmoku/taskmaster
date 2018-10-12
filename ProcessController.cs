@@ -602,8 +602,6 @@ namespace Taskmaster
 
 			if (Taskmaster.Trace) Log.Verbose("[{FriendlyName}] Touching: {ExecutableName} (#{ProcessID})", FriendlyName, info.Name, info.Id);
 
-			var rv = ProcessState.Invalid;
-
 			if (IgnoreList != null && IgnoreList.Contains(info.Name, StringComparer.InvariantCultureIgnoreCase))
 			{
 				if (Taskmaster.ShowInaction && Taskmaster.DebugProcesses)
@@ -864,7 +862,6 @@ namespace Taskmaster
 
 				LastTouch = DateTime.Now;
 
-				rv = ProcessState.Modified;
 				ScanModifyCount++;
 			}
 
@@ -907,7 +904,6 @@ namespace Taskmaster
 				}
 				// else
 				// 	Log.Verbose(sbs.ToString());
-				rv = ProcessState.OK;
 			}
 
 			TryResize(info);

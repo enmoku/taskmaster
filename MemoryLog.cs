@@ -139,15 +139,9 @@ namespace Taskmaster
 			return logcopy;
 		}
 
-		~MemorySink()
-		{
-			MemoryLog.MemorySink = null;
-		}
-
 		public void Dispose()
 		{
 			Dispose(true);
-			GC.SuppressFinalize(this);
 		}
 
 		bool disposed = false;
@@ -160,10 +154,10 @@ namespace Taskmaster
 				if (Taskmaster.Trace)
 					Log.Verbose("Disposing memory sink...");
 
-				MemoryLog.MemorySink = null;
-
 				p_output?.Dispose();
 			}
+
+			MemoryLog.MemorySink = null;
 
 			disposed = true;
 		}

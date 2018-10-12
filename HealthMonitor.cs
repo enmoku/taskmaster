@@ -461,7 +461,7 @@ namespace Taskmaster
 				//commitlimit = null;
 				//commitpercentile?.Dispose();
 				//commitpercentile = null;
-				Utility.Dispose(ref memfree);
+				memfree?.Dispose();
 
 				PerformanceCounterWrapper.Sensors.Clear();
 			}
