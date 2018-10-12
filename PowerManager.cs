@@ -512,7 +512,7 @@ namespace Taskmaster
 		{
 			var corecfg = Taskmaster.Config.Load("Core.ini");
 
-			var power = corecfg["Power"];
+			var power = corecfg.Config["Power"];
 			bool modified = false, dirtyconfig = false;
 
 			var defaultmode = power.GetSetDefault("Default mode", GetModeName(PowerMode.Balanced), out modified).StringValue;
@@ -557,7 +557,7 @@ namespace Taskmaster
 			power["Watchlist powerdown delay"].Comment = "Delay, in seconds (0 to 60, 0 disables), for when to wind down power mode set by watchlist.";
 			dirtyconfig |= modified;
 
-			var autopower = corecfg["Power / Auto"];
+			var autopower = corecfg.Config["Power / Auto"];
 			var bAutoAdjust = autopower.GetSetDefault("Auto-adjust", false, out modified).BoolValue;
 			autopower["Auto-adjust"].Comment = "Automatically adjust power mode based on the criteria here.";
 			dirtyconfig |= modified;
@@ -629,7 +629,7 @@ namespace Taskmaster
 			AutoAdjust.High.Mode = GetModeByName(highmode);
 			dirtyconfig |= modified;
 
-			var saver = corecfg["AFK Power"];
+			var saver = corecfg.Config["AFK Power"];
 			saver.Comment = "All these options control when to enforce power save mode regardless of any other options.";
 			var sessionlockmodename = saver.GetSetDefault("Session lock", GetModeName(PowerMode.PowerSaver), out modified).StringValue;
 			saver["Session lock"].Comment = "Power mode to set when session is locked, such as by pressing winkey+L. Unrecognizable values disable this.";
@@ -656,7 +656,7 @@ namespace Taskmaster
 
 			// CPU SAMPLING
 			// this really should be elsewhere
-			var hwsec = corecfg["Hardware"];
+			var hwsec = corecfg.Config["Hardware"];
 			CPUSampleInterval = hwsec.GetSetDefault("CPU sample interval", 2, out modified).IntValue.Constrain(1, 15);
 			hwsec["CPU sample interval"].Comment = "1 to 15, in seconds. Frequency at which CPU usage is sampled. Recommended value: 1 to 5 seconds.";
 			dirtyconfig |= modified;
@@ -678,7 +678,7 @@ namespace Taskmaster
 			Log.Information("<Session> User AFK timeout: {Timeout}", SessionLockPowerOffIdleTimeout == 0 ? "Disabled" : string.Format("{0}s", SessionLockPowerOffIdleTimeout));
 			Log.Information("<Session> Immediate power off on lock: {Toggle}", SessionLockPowerOff ? "Enabled" : "Disabled");
 
-			if (dirtyconfig) Taskmaster.Config.MarkDirtyINI(corecfg);
+			if (dirtyconfig) corecfg.MarkDirty();
 		}
 
 		public void LogBehaviourState()

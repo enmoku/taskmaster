@@ -339,12 +339,12 @@ namespace Taskmaster
 				Taskmaster.ComponentConfigurationDone = true;
 
 				var cfg = Taskmaster.Config.Load("Core.ini");
-				var mainsec = cfg["Core"];
+				var mainsec = cfg.Config["Core"];
 				var opt = mainsec["Version"];
 				opt.StringValue = Taskmaster.ConfigVersion;
 				opt.Comment = "Magical";
 
-				var compsec = cfg["Components"];
+				var compsec = cfg.Config["Components"];
 				compsec["Process"].BoolValue = procmon.Checked;
 				compsec["Process paths"].BoolValue = pathmon.Checked;
 				compsec["Microphone"].BoolValue = micmon.Checked;
@@ -356,13 +356,13 @@ namespace Taskmaster
 				compsec["Maintenance"].BoolValue = tempmon.Checked;
 				compsec["Health"].BoolValue = autodoc.Checked;
 
-				var powsec = cfg["Power"];
+				var powsec = cfg.Config["Power"];
 				powsec["Auto-adjust"].BoolValue = powauto.Checked;
 
-				var optsec = cfg["Options"];
+				var optsec = cfg.Config["Options"];
 				optsec["Show on start"].BoolValue = showonstart.Checked;
 
-				var perf = cfg["Performance"];
+				var perf = cfg.Config["Performance"];
 				var freq = (int)scanfrequency.Value;
 				if (freq < 5 && freq != 0) freq = 5;
 				perf["Rescan everything frequency"].IntValue = (ScanOrWMI.SelectedIndex != 1 ? freq : 0);
@@ -370,7 +370,7 @@ namespace Taskmaster
 				perf["WMI poll delay"].IntValue = ((int)wmipolling.Value);
 				perf["WMI queries"].BoolValue = (ScanOrWMI.SelectedIndex != 0);
 
-				Taskmaster.Config.Save(cfg);
+				cfg.Save();
 
 				DialogResult = DialogResult.OK;
 

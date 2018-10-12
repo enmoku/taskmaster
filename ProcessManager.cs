@@ -462,7 +462,7 @@ namespace Taskmaster
 
 			var corecfg = Taskmaster.Config.Load("Core.ini");
 
-			var coreperf = corecfg["Performance"];
+			var coreperf = corecfg.Config["Performance"];
 
 			bool dirtyconfig = false, modified = false;
 			// ControlChildren = coreperf.GetSetDefault("Child processes", false, out tdirty).BoolValue;
@@ -505,7 +505,7 @@ namespace Taskmaster
 
 			// --------------------------------------------------------------------------------------------------------
 
-			var fgpausesec = corecfg["Foreground Focus Lost"];
+			var fgpausesec = corecfg.Config["Foreground Focus Lost"];
 			// RestoreOriginal = fgpausesec.GetSetDefault("Restore original", false, out modified).BoolValue;
 			// dirtyconfig |= modified;
 			OffFocusPriority = fgpausesec.GetSetDefault("Default priority", 2, out modified).IntValue.Constrain(0, 4);
@@ -519,7 +519,7 @@ namespace Taskmaster
 			// --------------------------------------------------------------------------------------------------------
 
 			// Taskmaster.cfg["Applications"]["Ignored"].StringValueArray = IgnoreList;
-			var ignsetting = corecfg["Applications"];
+			var ignsetting = corecfg.Config["Applications"];
 			string[] newIgnoreList = ignsetting.GetSetDefault("Ignored", IgnoreList, out modified)?.StringValueArray;
 			ignsetting.PreComment = "Special hardcoded protection applied to: consent, winlogon, wininit, and csrss.\nThese are vital system services and messing with them can cause severe system malfunctioning.\nMess with the ignore list at your own peril.";
 			if (newIgnoreList != null)
@@ -540,9 +540,9 @@ namespace Taskmaster
 			Log.Information("<Process> Loading watchlist...");
 			var appcfg = Taskmaster.Config.Load(watchfile);
 
-			if (appcfg.SectionCount == 0)
+			if (appcfg.Config.SectionCount == 0)
 			{
-				Taskmaster.Config?.Unload(watchfile);
+				Taskmaster.Config.Unload(appcfg);
 
 				Log.Warning("<Process> Watchlist empty; copying example list.");
 
@@ -564,9 +564,9 @@ namespace Taskmaster
 			// --------------------------------------------------------------------------------------------------------
 
 			var newsettings = coreperf.SettingCount;
-			if (dirtyconfig) Taskmaster.Config.MarkDirtyINI(corecfg);
+			if (dirtyconfig) corecfg.MarkDirty();
 
-			foreach (SharpConfig.Section section in appcfg)
+			foreach (SharpConfig.Section section in appcfg.Config)
 			{
 				bool upgrade = false;
 
@@ -1674,7 +1674,6 @@ namespace Taskmaster
 		public void Dispose()
 		{
 			Dispose(true);
-			GC.SuppressFinalize(this);
 		}
 
 		void Dispose(bool disposing)

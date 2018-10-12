@@ -85,7 +85,7 @@ namespace Taskmaster
 						Taskmaster.processmanager.Cleanup();
 				}
 
-				Taskmaster.Config.Save();
+				Taskmaster.Config.Flush();
 
 				time.Stop();
 
@@ -125,7 +125,6 @@ namespace Taskmaster
 		public void Dispose()
 		{
 			Dispose(true);
-			GC.SuppressFinalize(this);
 		}
 		#endregion
 

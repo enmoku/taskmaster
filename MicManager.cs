@@ -101,7 +101,6 @@ namespace Taskmaster
 
 		public string DeviceName => m_dev.DeviceFriendlyName;
 
-		SharpConfig.Configuration stats;
 		const string statfile = "Microphone.Statistics.ini";
 		
 		// ctor, constructor
@@ -112,9 +111,9 @@ namespace Taskmaster
 
 			// Target = Maximum; // superfluous; CLEANUP
 
-			stats = Taskmaster.Config.Load(statfile);
+			var stats = Taskmaster.Config.Load(statfile);
 			// there should be easier way for this, right?
-			Corrections = (stats.Contains("Statistics") && stats["Statistics"].Contains("Corrections")) ? stats["Statistics"]["Corrections"].IntValue : 0;
+			Corrections = (stats.Config.Contains("Statistics") && stats.Config["Statistics"].Contains("Corrections")) ? stats.Config["Statistics"]["Corrections"].IntValue : 0;
 
 			// DEVICES
 
@@ -161,9 +160,9 @@ namespace Taskmaster
 
 			var corecfg = Taskmaster.Config.Load("Core.ini");
 
-			var save = false || !corecfg["Media"].Contains(mvol);
-			var defaultvol = corecfg["Media"].GetSetDefault(mvol, 100d).DoubleValue;
-			if (save) Taskmaster.Config.Save(corecfg);
+			var save = false || !corecfg.Config["Media"].Contains(mvol);
+			var defaultvol = corecfg.Config["Media"].GetSetDefault(mvol, 100d).DoubleValue;
+			if (save) corecfg.MarkDirty();
 
 			var fname = "Microphone.Devices.ini";
 			var vname = "Volume";
@@ -171,10 +170,10 @@ namespace Taskmaster
 			var devcfg = Taskmaster.Config.Load(fname);
 			var guid = (m_dev.ID.Split('}'))[1].Substring(2);
 			var devname = m_dev.DeviceFriendlyName;
-			var unset = !(devcfg[guid].Contains(vname));
-			var devvol = devcfg[guid].GetSetDefault(vname, defaultvol).DoubleValue;
-			devcfg[guid]["Name"].StringValue = devname;
-			if (unset) Taskmaster.Config.Save(devcfg);
+			var unset = !(devcfg.Config[guid].Contains(vname));
+			var devvol = devcfg.Config[guid].GetSetDefault(vname, defaultvol).DoubleValue;
+			devcfg.Config[guid]["Name"].StringValue = devname;
+			if (unset) devcfg.Save();
 
 			Target = devvol;
 			Log.Information("<Microphone> Default device: {Device} (volume: {TargetVolume:N1}%)", m_dev.FriendlyName, Target);
@@ -187,7 +186,6 @@ namespace Taskmaster
 		public void Dispose()
 		{
 			Dispose(true);
-			GC.SuppressFinalize(this); // why?
 		}
 
 		void Dispose(bool disposing)
@@ -206,8 +204,9 @@ namespace Taskmaster
 
 				if (micstatsdirty)
 				{
-					stats["Statistics"]["Corrections"].IntValue = Corrections;
-					Taskmaster.Config.Save(stats);
+					var stats = Taskmaster.Config.Load(statfile);
+					stats.Config["Statistics"]["Corrections"].IntValue = Corrections;
+					stats.Save();
 				}
 			}
 

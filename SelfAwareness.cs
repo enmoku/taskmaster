@@ -206,7 +206,6 @@ namespace Taskmaster
 		public void Dispose()
 		{
 			Dispose(true);
-			GC.SuppressFinalize(this);
 		}
 
 		bool disposed = false;
@@ -266,7 +265,6 @@ namespace Taskmaster
 		public void Dispose()
 		{
 			Dispose(true);
-			GC.SuppressFinalize(this);
 		}
 
 		bool disposed; // = false;

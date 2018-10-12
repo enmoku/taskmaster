@@ -32,131 +32,46 @@ namespace Taskmaster
 {
 	public class ConfigManager : IDisposable
 	{
+		readonly string datapath = string.Empty;
+
 		public ConfigManager(string path)
 		{
 			datapath = path;
 		}
 
-		readonly string datapath = string.Empty;
-
 		readonly object config_lock = new object();
+		readonly HashSet<ConfigWrapper> Dirty = new HashSet<ConfigWrapper>();
 
-		readonly Dictionary<string, SharpConfig.Configuration> Configs = new Dictionary<string, SharpConfig.Configuration>();
-		readonly HashSet<SharpConfig.Configuration> Dirty = new HashSet<SharpConfig.Configuration>();
-		readonly Dictionary<SharpConfig.Configuration, string> Paths = new Dictionary<SharpConfig.Configuration, string>();
-
-		/// <exception cref="ArgumentException">When config parameter refers to something that never was loaded.</exception>
-		public void Save(SharpConfig.Configuration config)
-		{
-			if (Paths.TryGetValue(config, out string filename))
-				Save(filename, config);
-			else
-				throw new ArgumentException();
-		}
-
-		// TODO: Add error handling.
-		public void Save(string configfile, SharpConfig.Configuration config)
-		{
-			try
-			{
-				System.IO.Directory.CreateDirectory(datapath);
-			}
-			catch
-			{
-				Log.Warning("Failed to create directory: {Path}", datapath);
-				return;
-			}
-
-			string targetfile = System.IO.Path.Combine(datapath, configfile);
-
-			try
-			{
-				// backup, copy in case following write fails
-				System.IO.File.Copy(targetfile, targetfile + ".bak", overwrite: true);
-			}
-			catch (System.IO.FileNotFoundException) { } // NOP
-
-			try
-			{
-				config.SaveToFile(targetfile);
-			}
-			catch
-			{
-				Log.Warning("Failed to write: {Target}", targetfile);
-			}
-			// TODO: Pre-allocate some space for the config file?
-		}
-
-		public void Unload(string configfile)
-		{
-			if (Configs.TryGetValue(configfile, out var retcfg))
-			{
-				Configs.Remove(configfile);
-				Paths.Remove(retcfg);
-			}
-		}
-
-		public SharpConfig.Configuration Load(string configfile)
-		{
-			SharpConfig.Configuration retcfg = null;
-			if (Configs.TryGetValue(configfile, out retcfg)) return retcfg;
-
-			var path = System.IO.Path.Combine(datapath, configfile);
-			// Log.Trace("Opening: "+path);
-			if (System.IO.File.Exists(path))
-				retcfg = SharpConfig.Configuration.LoadFromFile(path);
-			else
-			{
-				Log.Warning("Not found: {Path}", path);
-				retcfg = new SharpConfig.Configuration();
-				System.IO.Directory.CreateDirectory(datapath);
-			}
-
-			Configs.Add(configfile, retcfg);
-			Paths.Add(retcfg, configfile);
-
-			if (Taskmaster.Trace) Log.Verbose("{ConfigFile} added to known configurations files.", configfile);
-
-			return retcfg;
-		}
-
-		public void MarkDirtyINI(SharpConfig.Configuration dirtiedcfg)
+		public ConfigWrapper Load(string filename)
 		{
 			lock (config_lock)
 			{
-				try
+				foreach (var oldcfg in Dirty)
 				{
-					if (Taskmaster.ImmediateSave)
-						Save(dirtiedcfg);
-					else
-						Dirty.Add(dirtiedcfg);
+					if (oldcfg.File.Equals(filename))
+						return oldcfg;
 				}
-				catch { } // NOP, already in
+
+				var config = new ConfigWrapper(null, filename, datapath);
+				Dirty.Add(config);
+				return config;
 			}
 		}
 
-		public bool NeedSave => Dirty.Count > 0;
-
-		public void Save()
+		public void Unload(ConfigWrapper config)
 		{
-			lock (config_lock)
-			{
-				if (!NeedSave) return;
-
-				foreach (var config in Dirty)
-					Save(config);
-
-				Dirty.Clear();
-			}
+			Dirty.Remove(config);
+			config.Dispose();
 		}
 
 		public void Flush()
 		{
 			lock (config_lock)
 			{
-				Save();
-				Paths.Clear();
-				Configs.Clear();
+				foreach (var config in Dirty)
+					config.Save();
+
+				Dirty.Clear();
 			}
 		}
 
@@ -164,7 +79,6 @@ namespace Taskmaster
 		public void Dispose()
 		{
 			Dispose(true);
-			GC.SuppressFinalize(this);
 		}
 
 		void Dispose(bool disposing)
@@ -180,5 +94,111 @@ namespace Taskmaster
 
 			disposed = true;
 		}
+	}
+
+	public class ConfigWrapper : IDisposable
+	{
+		public SharpConfig.Configuration Config { get; private set; } = null;
+		public string File { get; private set; } = null;
+		string Path { get; set; } = null;
+
+		public bool Dirty { get; private set; } = false;
+
+		public ConfigWrapper(SharpConfig.Configuration config, string filename, string datapath)
+		{
+			Config = config;
+			File = filename;
+			Path = datapath;
+
+			Load();
+		}
+
+		public void MarkDirty()
+		{
+			Dirty = true;
+			if (Taskmaster.ImmediateSave) Save();
+		}
+
+		void Load()
+		{
+			var fullpath = System.IO.Path.Combine(Path, File);
+
+			// Log.Trace("Opening: "+path);
+			if (System.IO.File.Exists(fullpath))
+				Config = SharpConfig.Configuration.LoadFromFile(fullpath);
+			else
+			{
+				Log.Warning("Not found: {Path}", fullpath);
+				Config = new SharpConfig.Configuration();
+				System.IO.Directory.CreateDirectory(Path);
+			}
+
+			if (Taskmaster.Trace) Log.Verbose("{ConfigFile} added to known configurations files.", File);
+		}
+
+		public void Save()
+		{
+			if (!Dirty) return;
+
+			try
+			{
+				System.IO.Directory.CreateDirectory(Path);
+			}
+			catch
+			{
+				Log.Warning("Failed to create directory: {Path}", Path);
+				return;
+			}
+
+			string targetfile = System.IO.Path.Combine(Path, File);
+
+			try
+			{
+				// backup, copy in case following write fails
+				System.IO.File.Copy(targetfile, targetfile + ".bak", overwrite: true);
+			}
+			catch (System.IO.FileNotFoundException) { } // NOP
+
+			try
+			{
+				Config.SaveToFile(targetfile);
+			}
+			catch
+			{
+				Log.Warning("Failed to write: {Target}", targetfile);
+			}
+			// TODO: Pre-allocate some space for the config file?
+
+			Dirty = false;
+		}
+
+		public void Unload()
+		{
+			if (Dirty) Save();
+			Config = null;
+		}
+
+		#region IDisposable Support
+		private bool disposed = false;
+
+		protected virtual void Dispose(bool disposing)
+		{
+			if (!disposed)
+			{
+				if (disposing)
+				{
+					if (Dirty) Save();
+					Unload();
+				}
+
+				disposed = true;
+			}
+		}
+
+		public void Dispose()
+		{
+			Dispose(true);
+		}
+		#endregion
 	}
 }

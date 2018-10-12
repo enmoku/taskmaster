@@ -210,7 +210,7 @@ namespace Taskmaster
 		{
 			// INITIAL CONFIGURATIONN
 			var tcfg = Config.Load("Core.ini");
-			var sec = tcfg.TryGet("Core")?.TryGet("Version")?.StringValue ?? null;
+			var sec = tcfg.Config.TryGet("Core")?.TryGet("Version")?.StringValue ?? null;
 			if (sec == null || sec != ConfigVersion)
 			{
 				try
@@ -463,13 +463,14 @@ namespace Taskmaster
 		{
 			Log.Information("<Core> Loading configuration...");
 
-			var cfg = Config.Load(coreconfig);
+			var corecfg = Config.Load(coreconfig);
+			var cfg = corecfg.Config;
 
 			if (cfg.TryGet("Core")?.TryGet("Hello")?.RawValue != "Hi")
 			{
 				cfg["Core"]["Hello"].SetValue("Hi");
 				cfg["Core"]["Hello"].PreComment = "Heya";
-				Config.MarkDirtyINI(cfg);
+				corecfg.MarkDirty();
 			}
 
 			var compsec = cfg["Components"];
@@ -635,7 +636,7 @@ namespace Taskmaster
 			var newsettings = optsec?.SettingCount ?? 0 + compsec?.SettingCount ?? 0 + perfsec?.SettingCount ?? 0;
 
 			if (dirtyconfig || (oldsettings != newsettings)) // really unreliable, but meh
-				Config.MarkDirtyINI(cfg);
+				corecfg.MarkDirty();
 
 			monitorCleanShutdown();
 
@@ -655,7 +656,7 @@ namespace Taskmaster
 				if (rv == DialogResult.Yes)
 				{
 					cfg["Core"]["Hell"].StringValue = "No";
-					Config.MarkDirtyINI(cfg);
+					corecfg.MarkDirty();
 				}
 				else
 				{
@@ -721,18 +722,18 @@ namespace Taskmaster
 		{
 			var corestats = Config.Load(corestatfile);
 
-			var running = corestats.TryGet("Core")?.TryGet("Running")?.BoolValue ?? false;
+			var running = corestats.Config.TryGet("Core")?.TryGet("Running")?.BoolValue ?? false;
 			if (running) Log.Warning("Unclean shutdown.");
 
-			corestats["Core"]["Running"].BoolValue = true;
-			Config.Save(corestats);
+			corestats.Config["Core"]["Running"].BoolValue = true;
+			corestats.Save();
 		}
 
 		static void CleanShutdown()
 		{
 			var corestats = Config.Load(corestatfile);
 
-			var wmi = corestats["WMI queries"];
+			var wmi = corestats.Config["WMI queries"];
 			string timespent = "Time", querycount = "Queries";
 			bool modified = false, dirtyconfig = false;
 
@@ -740,15 +741,14 @@ namespace Taskmaster
 			dirtyconfig |= modified;
 			wmi[querycount].IntValue = wmi.GetSetDefault(querycount, 0, out modified).IntValue + Statistics.WMIqueries;
 			dirtyconfig |= modified;
-			var ps = corestats["Parent seeking"];
+			var ps = corestats.Config["Parent seeking"];
 			ps[timespent].DoubleValue = ps.GetSetDefault(timespent, 0d, out modified).DoubleValue + Statistics.Parentseektime;
 			dirtyconfig |= modified;
 			ps[querycount].IntValue = ps.GetSetDefault(querycount, 0, out modified).IntValue + Statistics.ParentSeeks;
 			dirtyconfig |= modified;
 
-			corestats["Core"]["Running"].BoolValue = false;
-
-			Config.Save(corestats);
+			corestats.Config["Core"]["Running"].BoolValue = false;
+			corestats.Save();
 		}
 
 		/// <summary>
@@ -967,7 +967,7 @@ namespace Taskmaster
 		{
 			var cfg = Config.Load(coreconfig);
 
-			if (cfg.TryGet("Core")?.TryGet("License")?.RawValue.Equals("Accepted") ?? false) return;
+			if (cfg.Config.TryGet("Core")?.TryGet("License")?.RawValue.Equals("Accepted") ?? false) return;
 
 			using (var license = new LicenseDialog())
 			{
@@ -1114,7 +1114,7 @@ namespace Taskmaster
 					// GC.WaitForPendingFinalizers();
 					GC.AddMemoryPressure(fakemempressure); // Workstation GC boundary is 256 MB, we want it to be closer to 60-80 MB
 
-					Config.Save(); // early save of configs
+					Config.Flush(); // early save of configs
 
 					if (RestartCounter > 0) Log.Information("<Core> Restarted {Count} time(s)", RestartCounter);
 					Log.Information("<Core> Initialization complete...");

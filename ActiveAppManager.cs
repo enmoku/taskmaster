@@ -64,12 +64,12 @@ namespace Taskmaster
 			var corecfg = Taskmaster.Config.Load("Core.ini");
 
 			bool dirty = false, modified = false;
-			var perfsec = corecfg["Performance"];
+			var perfsec = corecfg.Config["Performance"];
 			Hysterisis = perfsec.GetSetDefault("Foreground hysterisis", 1500, out modified).IntValue.Constrain(0, 30000);
 			perfsec["Foreground hysterisis"].Comment = "In milliseconds, from 0 to 30000. Delay before we inspect foreground app, in case user rapidly swaps apps.";
 			dirty |= modified;
 
-			var emsec = corecfg["Emergency"];
+			var emsec = corecfg.Config["Emergency"];
 			HangKillTick = emsec.GetSetDefault("Kill hung", 180 * 5, out modified).IntValue.Constrain(0, 60 * 60 * 4);
 			emsec["Hung kill time"].Comment = "Kill the application after this many seconds. 0 disables. Minimum actual kill time is minimize/reduce time + 60.";
 			dirty |= modified;
@@ -110,7 +110,7 @@ namespace Taskmaster
 				sbs = null;
 			}
 
-			if (dirty) Taskmaster.Config.MarkDirtyINI(corecfg);
+			if (dirty) corecfg.MarkDirty();
 
 			// TODO: Add timer to check foreground app hanging
 			// TODO: Hang check should only take action if user fails to swap apps (e.g. ctrl-alt-esc for taskmanager)

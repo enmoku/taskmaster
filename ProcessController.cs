@@ -170,22 +170,22 @@ namespace Taskmaster
 
 		const string watchlistfile = "Watchlist.ini";
 
-		public void DeleteConfig(SharpConfig.Configuration cfg = null)
+		public void DeleteConfig(ConfigWrapper cfg = null)
 		{
 			if (cfg == null)
 				cfg = Taskmaster.Config.Load(watchlistfile);
 
-			cfg.Remove(FriendlyName); // remove the section, should remove items in the section
-			Taskmaster.Config.MarkDirtyINI(cfg);
+			cfg.Config.Remove(FriendlyName); // remove the section, should remove items in the section
+			cfg.MarkDirty();
 		}
 
-		public void SaveConfig(SharpConfig.Configuration cfg = null, SharpConfig.Section app = null)
+		public void SaveConfig(ConfigWrapper cfg = null, SharpConfig.Section app = null)
 		{
 			if (cfg == null)
 				cfg = Taskmaster.Config.Load(watchlistfile);
 			
 			if (app == null)
-				app = cfg[FriendlyName];
+				app = cfg.Config[FriendlyName];
 
 			if (!string.IsNullOrEmpty(Executable))
 				app["Image"].StringValue = Executable;
@@ -315,7 +315,7 @@ namespace Taskmaster
 
 			NeedsSaving = false;
 
-			Taskmaster.Config.MarkDirtyINI(cfg);
+			cfg.MarkDirty();
 
 			if (Taskmaster.ImmediateSave)
 				Log.Information("[{Name}] Modified and saved.", FriendlyName);
@@ -335,9 +335,9 @@ namespace Taskmaster
 
 			if (!string.IsNullOrEmpty(statkey))
 			{
-				Adjusts = stats[statkey].TryGet("Adjusts")?.IntValue ?? 0;
+				Adjusts = stats.Config[statkey].TryGet("Adjusts")?.IntValue ?? 0;
 
-				var ls = stats[statkey].TryGet("Last seen");
+				var ls = stats.Config[statkey].TryGet("Last seen");
 				if (null != ls && !ls.IsEmpty)
 				{
 					var stamp = long.MinValue;
@@ -363,14 +363,14 @@ namespace Taskmaster
 
 			if (Adjusts > 0)
 			{
-				stats[key]["Adjusts"].IntValue = Adjusts;
-				Taskmaster.Config.MarkDirtyINI(stats);
+				stats.Config[key]["Adjusts"].IntValue = Adjusts;
+				stats.MarkDirty();
 			}
 
 			if (LastSeen != DateTime.MinValue)
 			{
-				stats[key]["Last seen"].SetValue(LastSeen.Unixstamp());
-				Taskmaster.Config.MarkDirtyINI(stats);
+				stats.Config[key]["Last seen"].SetValue(LastSeen.Unixstamp());
+				stats.MarkDirty();
 			}
 		}
 
@@ -1040,7 +1040,7 @@ namespace Taskmaster
 										info.Name, info.Id, Resize.Value.Width, Resize.Value.Height);
 
 								var cfg = Taskmaster.Config.Load(watchlistfile);
-								var app = cfg[FriendlyName];
+								var app = cfg.Config[FriendlyName];
 
 								SaveConfig(cfg, app);
 							}
@@ -1222,7 +1222,6 @@ namespace Taskmaster
 		public void Dispose()
 		{
 			Dispose(true);
-			GC.SuppressFinalize(this);
 		}
 
 		bool disposed; // = false;

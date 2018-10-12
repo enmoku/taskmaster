@@ -820,8 +820,8 @@ namespace Taskmaster
 				Taskmaster.AutoOpenMenus = menu_config_behaviour_autoopen.Checked;
 
 				var corecfg = Taskmaster.Config.Load("Core.ini");
-				corecfg["Quality of Life"]["Auto-open menus"].BoolValue = Taskmaster.AutoOpenMenus;
-				Taskmaster.Config.MarkDirtyINI(corecfg);
+				corecfg.Config["Quality of Life"]["Auto-open menus"].BoolValue = Taskmaster.AutoOpenMenus;
+				corecfg.MarkDirty();
 			};
 
 			var menu_config_behaviour_taskbar = new ToolStripMenuItem("Show in taskbar")
@@ -834,8 +834,8 @@ namespace Taskmaster
 				Taskmaster.ShowInTaskbar = ShowInTaskbar = menu_config_behaviour_taskbar.Checked;
 
 				var corecfg = Taskmaster.Config.Load("Core.ini");
-				corecfg["Quality of Life"]["Show in taskbar"].BoolValue = Taskmaster.ShowInTaskbar;
-				Taskmaster.Config.MarkDirtyINI(corecfg);
+				corecfg.Config["Quality of Life"]["Show in taskbar"].BoolValue = Taskmaster.ShowInTaskbar;
+				corecfg.MarkDirty();
 			};
 
 			menu_config_behaviour.DropDownItems.Add(menu_config_behaviour_autoopen);
@@ -850,8 +850,8 @@ namespace Taskmaster
 				Taskmaster.ShowProcessAdjusts = menu_config_logging_adjusts.Checked;
 
 				var corecfg = Taskmaster.Config.Load("Core.ini");
-				corecfg["Logging"]["Show process adjusts"].BoolValue = Taskmaster.ShowProcessAdjusts;
-				Taskmaster.Config.MarkDirtyINI(corecfg);
+				corecfg.Config["Logging"]["Show process adjusts"].BoolValue = Taskmaster.ShowProcessAdjusts;
+				corecfg.MarkDirty();
 			};
 
 			var menu_config_logging_session = new ToolStripMenuItem("Session actions")
@@ -869,15 +869,15 @@ namespace Taskmaster
 				Taskmaster.ShowNetworkErrors = menu_config_logging_neterrors.Checked;
 
 				var corecfg = Taskmaster.Config.Load("Core.ini");
-				corecfg["Logging"]["Show network errors"].BoolValue = Taskmaster.ShowNetworkErrors;
-				Taskmaster.Config.MarkDirtyINI(corecfg);
+				corecfg.Config["Logging"]["Show network errors"].BoolValue = Taskmaster.ShowNetworkErrors;
+				corecfg.MarkDirty();
 			};
 			menu_config_logging_session.Click += (s, e) => {
 				Taskmaster.ShowSessionActions = menu_config_logging_session.Checked;
 
 				var corecfg = Taskmaster.Config.Load("Core.ini");
-				corecfg["Logging"]["Show session actions"].BoolValue = Taskmaster.ShowSessionActions;
-				Taskmaster.Config.MarkDirtyINI(corecfg);
+				corecfg.Config["Logging"]["Show session actions"].BoolValue = Taskmaster.ShowSessionActions;
+				corecfg.MarkDirty();
 			};
 			menu_config_logging.DropDownItems.Add(menu_config_logging_adjusts);
 			menu_config_logging.DropDownItems.Add(menu_config_logging_session);
@@ -898,8 +898,8 @@ namespace Taskmaster
 				// TODO: re-render watchlistRules
 
 				var corecfg = Taskmaster.Config.Load("Core.ini");
-				corecfg["Quality of Life"]["Core affinity style"].IntValue = 0;
-				Taskmaster.Config.MarkDirtyINI(corecfg);
+				corecfg.Config["Quality of Life"]["Core affinity style"].IntValue = 0;
+				corecfg.MarkDirty();
 			};
 			menu_config_bitmaskstyle_decimal.Click += (s, e) => {
 				Taskmaster.AffinityStyle = 1;
@@ -908,8 +908,8 @@ namespace Taskmaster
 				// TODO: re-render watchlistRules
 
 				var corecfg = Taskmaster.Config.Load("Core.ini");
-				corecfg["Quality of Life"]["Core affinity style"].IntValue = 1;
-				Taskmaster.Config.MarkDirtyINI(corecfg);
+				corecfg.Config["Quality of Life"]["Core affinity style"].IntValue = 1;
+				corecfg.MarkDirty();
 			};
 			//var menu_config_bitmaskstyle_both = new ToolStripMenuItem("Decimal [Bitmask]");
 
@@ -1231,10 +1231,10 @@ namespace Taskmaster
 
 			#region Load UI config
 			var uicfg = Taskmaster.Config.Load("UI.ini");
-			var wincfg = uicfg["Windows"];
-			var colcfg = uicfg["Columns"];
+			var wincfg = uicfg.Config["Windows"];
+			var colcfg = uicfg.Config["Columns"];
 
-			var opentab = uicfg["Tabs"].TryGet("Open")?.IntValue ?? 0;
+			var opentab = uicfg.Config["Tabs"].TryGet("Open")?.IntValue ?? 0;
 
 			int[] appwidthsDefault = new int[] { 20, 120, 140, 82, 60, 76, 46, 140 };
 			var appwidths = colcfg.GetSetDefault("Apps", appwidthsDefault).IntValueArray;
@@ -1571,15 +1571,15 @@ namespace Taskmaster
 
 			var cfg = Taskmaster.Config.Load("Core.ini");
 			bool modified, tdirty = false;
-			MaxLogSize = cfg["Logging"].GetSetDefault("UI max items", 200, out modified).IntValue;
+			MaxLogSize = cfg.Config["Logging"].GetSetDefault("UI max items", 200, out modified).IntValue;
 			tdirty |= modified;
-			UIUpdateFrequency = cfg["User Interface"].GetSetDefault("Update frequency", 2000, out modified).IntValue.Constrain(100, 5000);
+			UIUpdateFrequency = cfg.Config["User Interface"].GetSetDefault("Update frequency", 2000, out modified).IntValue.Constrain(100, 5000);
 			tdirty |= modified;
 			if (tdirty)
 			{
-				cfg["Logging"]["UI max items"].Comment = "Maximum number of items/lines to retain on UI level.";
-				cfg["User Interface"]["Update frequency"].Comment = "In milliseconds. Frequency of controlled UI updates. Affects visual accuracy of timers and such. Valid range: 100 to 5000.";
-				Taskmaster.Config.MarkDirtyINI(cfg);
+				cfg.Config["Logging"]["UI max items"].Comment = "Maximum number of items/lines to retain on UI level.";
+				cfg.Config["User Interface"]["Update frequency"].Comment = "In milliseconds. Frequency of controlled UI updates. Affects visual accuracy of timers and such. Valid range: 100 to 5000.";
+				cfg.MarkDirty();
 			}
 
 			var cachePanel = new TableLayoutPanel()
@@ -2417,19 +2417,19 @@ namespace Taskmaster
 				micWidths.Add(micList.Columns[i].Width);
 
 			var cfg = Taskmaster.Config.Load("UI.ini");
-			var cols = cfg["Columns"];
+			var cols = cfg.Config["Columns"];
 			cols["Apps"].IntValueArray = appWidths.ToArray();
 			// cols["Paths"].IntValueArray = pathWidths.ToArray();
 			cols["Mics"].IntValueArray = micWidths.ToArray();
 			cols["Interfaces"].IntValueArray = ifaceWidths.ToArray();
 
-			var uistate = cfg["Tabs"];
+			var uistate = cfg.Config["Tabs"];
 			uistate["Open"].IntValue = tabLayout.SelectedIndex;
 
-			var windows = cfg["Windows"];
+			var windows = cfg.Config["Windows"];
 			windows["Main"].IntValueArray = new int[] { Bounds.Left, Bounds.Top, Bounds.Width, Bounds.Height };
 
-			Taskmaster.Config.MarkDirtyINI(cfg);
+			cfg.MarkDirty();
 		}
 
 		bool disposed = false;

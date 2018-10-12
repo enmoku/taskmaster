@@ -167,18 +167,17 @@ namespace Taskmaster
 
 		DateTime MemFreeLast = DateTime.MinValue;
 
-		SharpConfig.Configuration cfg = null;
 		void LoadConfig()
 		{
-			cfg = Taskmaster.Config.Load("Health.ini");
+			var cfg = Taskmaster.Config.Load("Health.ini");
 			bool modified = false, configdirty = false;
 
-			var gensec = cfg["General"];
+			var gensec = cfg.Config["General"];
 			Settings.Frequency = gensec.GetSetDefault("Frequency", 5, out modified).IntValue.Constrain(1, 60 * 24);
 			gensec["Frequency"].Comment = "How often we check for anything. In minutes.";
 			configdirty |= modified;
 
-			var freememsec = cfg["Free Memory"];
+			var freememsec = cfg.Config["Free Memory"];
 			freememsec.Comment = "Attempt to free memory when available memory goes below a threshold.";
 
 			Settings.MemLevel = freememsec.GetSetDefault("Threshold", 1000, out modified).IntValue;
@@ -200,7 +199,7 @@ namespace Taskmaster
 			}
 
 			// SELF-MONITORING
-			var selfsec = cfg["Self"];
+			var selfsec = cfg.Config["Self"];
 			Settings.FatalErrorThreshold = selfsec.GetSetDefault("Fatal error threshold", 10, out modified).IntValue.Constrain(1, 30);
 			selfsec["Fatal error threshold"].Comment = "Auto-exit once number of fatal errors reaches this. 10 is very generous default.";
 			configdirty |= modified;
@@ -210,12 +209,12 @@ namespace Taskmaster
 			configdirty |= modified;
 
 			// NVM
-			var nvmsec = cfg["Non-Volatile Memory"];
+			var nvmsec = cfg.Config["Non-Volatile Memory"];
 			Settings.LowDriveSpaceThreshold = nvmsec.GetSetDefault("Low space threshold", 150, out modified).IntValue.Constrain(0, 60000);
 			nvmsec["Low space threshold"].Comment = "Warn about free space going below this. In megabytes. From 0 to 60000.";
 			configdirty |= modified;
 
-			if (configdirty) Taskmaster.Config.MarkDirtyINI(cfg);
+			if (configdirty) cfg.MarkDirty();
 		}
 
 		PerformanceCounterWrapper memfree = null;
@@ -444,7 +443,6 @@ namespace Taskmaster
 		public void Dispose()
 		{
 			Dispose(true);
-			GC.SuppressFinalize(this);
 		}
 
 		void Dispose(bool disposing)

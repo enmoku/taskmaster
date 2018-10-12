@@ -75,15 +75,15 @@ namespace Taskmaster
 			var dirty = false;
 			var dirtyconf = false;
 
-			var monsec = cfg["Monitor"];
+			var monsec = cfg.Config["Monitor"];
 			dnstestaddress = monsec.GetSetDefault("DNS test", "www.google.com", out dirty).StringValue;
 			dirtyconf |= dirty;
 
-			var devsec = cfg["Devices"];
+			var devsec = cfg.Config["Devices"];
 			DeviceTimerInterval = devsec.GetSetDefault("Check frequency", 15, out dirty).IntValue.Constrain(1, 30) * 60;
 			dirtyconf |= dirty;
 
-			var pktsec = cfg["Traffic"];
+			var pktsec = cfg.Config["Traffic"];
 			PacketStatTimerInterval = pktsec.GetSetDefault("Sample rate", 15, out dirty).IntValue.Constrain(1, 60);
 			PacketWarning.Peak = PacketStatTimerInterval;
 			dirtyconf |= dirty;
@@ -92,7 +92,7 @@ namespace Taskmaster
 			ErrorReports.Peak = ErrorReportLimit;
 			dirtyconf |= dirty;
 
-			if (dirtyconf) Taskmaster.Config.MarkDirtyINI(cfg);
+			if (dirtyconf) cfg.MarkDirty();
 
 			Log.Information("<Network> Traffic sample frequency: {Interval}s", PacketStatTimerInterval);
 		}
@@ -705,7 +705,6 @@ namespace Taskmaster
 		public void Dispose()
 		{
 			Dispose(true);
-			GC.SuppressFinalize(this);
 		}
 
 		bool disposed; // = false;
