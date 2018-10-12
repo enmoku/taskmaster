@@ -26,9 +26,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using Serilog;
 
 namespace Taskmaster
@@ -142,13 +139,24 @@ namespace Taskmaster
 
 		public void Save()
 		{
-			if (!NeedSave) return;
-
 			lock (config_lock)
 			{
+				if (!NeedSave) return;
+
 				foreach (var config in Dirty)
 					Save(config);
+
 				Dirty.Clear();
+			}
+		}
+
+		public void Flush()
+		{
+			lock (config_lock)
+			{
+				Save();
+				Paths.Clear();
+				Configs.Clear();
 			}
 		}
 
@@ -167,7 +175,7 @@ namespace Taskmaster
 			{
 				if (Taskmaster.Trace) Log.Verbose("Disposing config manager...");
 
-				Save();
+				Flush();
 			}
 
 			disposed = true;

@@ -1612,11 +1612,11 @@ namespace Taskmaster
 		/// <remarks>
 		/// Locks: waitforexit_lock
 		/// </remarks>
-		public async Task Cleanup()
+		public void Cleanup()
 		{
 			if (!Atomic.Lock(ref cleanup_lock)) return; // cleanup already in progress
 
-			await Task.Delay(0).ConfigureAwait(false);
+			// TODO: Verify that this is actually useful?
 
 			try
 			{

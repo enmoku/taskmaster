@@ -314,13 +314,13 @@ namespace Taskmaster
 
 		public event EventHandler rescanRequest;
 
-		public void hookDiskManager(ref DiskManager diskman)
+		public void hookDiskManager(DiskManager diskman)
 		{
 			diskmanager = diskman;
 			diskmanager.onTempScan += TempScanStats;
 		}
 
-		public void hookProcessManager(ref ProcessManager control)
+		public void hookProcessManager(ProcessManager control)
 		{
 			Debug.Assert(control != null);
 
@@ -2192,7 +2192,7 @@ namespace Taskmaster
 			ResizeLogList(this, null);
 		}
 
-		public void hookActiveAppMonitor(ref ActiveAppManager aamon)
+		public void hookActiveAppMonitor(ActiveAppManager aamon)
 		{
 			if (aamon == null) return;
 
@@ -2204,7 +2204,7 @@ namespace Taskmaster
 				activeappmonitor.ActiveChanged += OnActiveWindowChanged;
 		}
 
-		public void hookPowerManager(ref PowerManager pman)
+		public void hookPowerManager(PowerManager pman)
 		{
 			if (pman == null) return;
 
@@ -2275,7 +2275,7 @@ namespace Taskmaster
 			// Tray?.Tooltip(2000, "Internet " + (net.InternetAvailable ? "available" : "unavailable"), "Taskmaster", net.InternetAvailable ? ToolTipIcon.Info : ToolTipIcon.Warning);
 		}
 
-		public void hookNetMonitor(ref NetManager net)
+		public void hookNetMonitor(NetManager net)
 		{
 			if (net == null) return; // disabled
 
