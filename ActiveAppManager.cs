@@ -188,7 +188,7 @@ namespace Taskmaster
 				{
 					if (HangTick == 1)
 					{
-						Log.Warning("<Foreground> {Name} (#Pid) is not responding!", fg.ProcessName, fg.Id);
+						Log.Warning("<Foreground> {Name} (#{Pid}) is not responding!", fg.ProcessName, fg.Id);
 					}
 					else if (HangTick > 1)
 					{
