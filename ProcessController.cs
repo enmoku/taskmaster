@@ -384,7 +384,9 @@ namespace Taskmaster
 		/// </summary>
 		public void Pause(ProcessEx info)
 		{
-			if (PausedIds.Contains(info.Id)) return;
+			Debug.Assert(ForegroundOnly == true);
+
+			if (PausedIds.Contains(info.Id)) return; // already paused
 			// throw new InvalidOperationException(string.Format("{0} already paused", info.Name));
 
 			if (Taskmaster.DebugForeground && Taskmaster.Trace)
@@ -426,7 +428,9 @@ namespace Taskmaster
 
 		public void Resume(ProcessEx info)
 		{
-			if (!PausedIds.Contains(info.Id)) return;
+			Debug.Assert(ForegroundOnly == true);
+
+			if (!PausedIds.Contains(info.Id)) return; // can't resume unpaused item
 
 			// throw new InvalidOperationException(string.Format("{0} not paused", info.Name));
 
@@ -554,6 +558,8 @@ namespace Taskmaster
 			Debug.Assert(info.Process != null, "ProcessController.Touch given null process.");
 			Debug.Assert(info.Id > 4, "ProcessController.Touch given invalid process ID");
 			Debug.Assert(!string.IsNullOrEmpty(info.Name), "ProcessController.Touch given empty process name.");
+
+			if (PausedIds.Contains(info.Id)) return; // don't touch paused item
 
 			/*
 			try
@@ -892,7 +898,11 @@ namespace Taskmaster
 			if (modified)
 			{
 				if (Taskmaster.DebugProcesses || Taskmaster.ShowProcessAdjusts)
-					Log.Information(sbs.ToString());
+				{
+					if (ForegroundOnly && !Taskmaster.ShowForegroundTransitions) { } // do nothing
+					else
+						Log.Information(sbs.ToString());
+				}
 			}
 			else
 			{

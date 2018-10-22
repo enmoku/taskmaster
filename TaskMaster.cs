@@ -379,6 +379,7 @@ namespace Taskmaster
 		}
 
 		public static bool ShowProcessAdjusts { get; set; } = true;
+		public static bool ShowForegroundTransitions { get; set; } = false;
 		public static bool ShowSessionActions { get; set; } = true;
 		public static bool ShowNetworkErrors { get; set; } = true;
 

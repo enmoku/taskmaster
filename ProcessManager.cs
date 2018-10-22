@@ -925,7 +925,7 @@ namespace Taskmaster
 					if (Taskmaster.DebugForeground)
 						Log.Debug("<Process> [{FriendlyName}] {Exec} (#{Pid}) on foreground!", prc.FriendlyName, info.Name, info.Id);
 
-					prc.Resume(info);
+					if (prc.ForegroundOnly) prc.Resume(info);
 
 					onProcessHandled?.Invoke(this, new ProcessEventArgs() { Control = prc, Info = info, State = ProcessRunningState.Restored });
 
