@@ -235,41 +235,6 @@ namespace Taskmaster
 			micmon.VolumeChanged += VolumeChangeDetected;
 		}
 
-		public void UpdateWatchlist(ProcessController prc)
-		{
-			ListViewItem litem = null;
-			if (WatchlistMap.TryGetValue(prc, out litem))
-			{
-				// 0 = ID
-				// 1 = Friendly Name
-				// 2 = Executable
-				// 3 = Priority
-				// 4 = Affinity
-				// 5 = Power
-				// 6 = Adjusts
-				// 7 = Path
-
-				litem.SubItems[NameColumn].Text = prc.FriendlyName;
-				litem.SubItems[ExeColumn].Text = prc.Executable;
-				litem.SubItems[PrioColumn].Text = prc.Priority?.ToString() ?? AnyIgnoredValue;
-				string aff = "Ignored";
-				if (prc.Affinity.HasValue)
-				{
-					if (prc.Affinity.Value.ToInt32() == ProcessManager.allCPUsMask)
-						aff = "Full/OS";
-					else if (Taskmaster.AffinityStyle == 0)
-						aff = HumanInterface.BitMask(prc.Affinity.Value.ToInt32(), ProcessManager.CPUCount);
-					else
-						aff = prc.Affinity.Value.ToInt32().ToString();
-				}
-				litem.SubItems[AffColumn].Text = aff;
-				litem.SubItems[PowerColumn].Text = (prc.PowerPlan != PowerInfo.PowerMode.Undefined ? prc.PowerPlan.ToString() : AnyIgnoredValue);
-				litem.SubItems[PathColumn].Text = (string.IsNullOrEmpty(prc.Path) ? AnyIgnoredValue : prc.Path);
-			}
-
-			WatchlistItemColor(litem, prc);
-		}
-
 		readonly string AnyIgnoredValue = string.Empty; // Any/Ignored
 
 		public void ProcessTouchEvent(object sender, ProcessEventArgs ev)
@@ -433,25 +398,60 @@ namespace Taskmaster
 					aff = prc.Affinity.Value.ToInt32().ToString();
 			}
 
-			var litem = new ListViewItem(new string[] {
-				(num++).ToString(),
-				prc.FriendlyName, //.ToString(),
-				prc.Executable,
-				(prc.Priority?.ToString() ?? AnyIgnoredValue),
-				aff,
-				(prc.PowerPlan != PowerInfo.PowerMode.Undefined ? prc.PowerPlan.ToString() : AnyIgnoredValue),
-				//(pc.Rescan>0 ? pc.Rescan.ToString() : "n/a"),
-				prc.Adjusts.ToString(),
-				//(pc.LastSeen != DateTime.MinValue ? pc.LastSeen.ToLocalTime().ToString() : "Never"),
-				(string.IsNullOrEmpty(prc.Path) ? AnyIgnoredValue : prc.Path)
-			});
+			var litem = new ListViewItem(new string[] { (num++).ToString(), prc.FriendlyName, prc.Executable, string.Empty, aff, string.Empty, prc.Adjusts.ToString(), string.Empty});
 
 			lock (watchlistrules_lock)
+			{
 				watchlistRules.Items.Add(litem);
+				FormatWatchlist(litem, prc);
+				WatchlistItemColor(litem, prc);
+			}
 			// add calls sort()???
 
 			lock (appw_lock)
 				WatchlistMap.Add(prc, litem);
+		}
+
+		void FormatWatchlist(ListViewItem litem, ProcessController prc)
+		{
+			// 0 = ID
+			// 1 = Friendly Name
+			// 2 = Executable
+			// 3 = Priority
+			// 4 = Affinity
+			// 5 = Power
+			// 6 = Adjusts
+			// 7 = Path
+
+			litem.SubItems[NameColumn].Text = prc.FriendlyName;
+			litem.SubItems[ExeColumn].Text = prc.Executable;
+			litem.SubItems[PrioColumn].Text = prc.Priority?.ToString() ?? AnyIgnoredValue;
+			string aff = AnyIgnoredValue;
+			if (prc.Affinity.HasValue)
+			{
+				if (prc.Affinity.Value.ToInt32() == ProcessManager.allCPUsMask)
+					aff = "Full/OS";
+				else if (Taskmaster.AffinityStyle == 0)
+					aff = HumanInterface.BitMask(prc.Affinity.Value.ToInt32(), ProcessManager.CPUCount);
+				else
+					aff = prc.Affinity.Value.ToInt32().ToString();
+			}
+			litem.SubItems[AffColumn].Text = aff;
+			litem.SubItems[PowerColumn].Text = (prc.PowerPlan != PowerInfo.PowerMode.Undefined ? prc.PowerPlan.ToString() : AnyIgnoredValue);
+			litem.SubItems[PathColumn].Text = (string.IsNullOrEmpty(prc.Path) ? AnyIgnoredValue : prc.Path);
+		}
+
+		public void UpdateWatchlist(ProcessController prc)
+		{
+			ListViewItem litem = null;
+			if (WatchlistMap.TryGetValue(prc, out litem))
+			{
+				lock (watchlistrules_lock)
+				{
+					FormatWatchlist(litem, prc);
+					WatchlistItemColor(litem, prc);
+				}
+			}
 		}
 
 		public void WatchlistPathLocatedEvent(object sender, PathControlEventArgs e)
@@ -464,9 +464,10 @@ namespace Taskmaster
 					var pc = (ProcessController)sender;
 					if (pc != null)
 					{
-						if (WatchlistMap.TryGetValue(pc, out ListViewItem li))
+						lock (watchlistrules_lock)
 						{
-							WatchlistItemColor(li, pc);
+							if (WatchlistMap.TryGetValue(pc, out ListViewItem li))
+								WatchlistItemColor(li, pc);
 						}
 					}
 				}
@@ -2012,7 +2013,7 @@ namespace Taskmaster
 
 						prc.SaveConfig();
 
-						WatchlistItemColor(li, prc);
+						lock (watchlistrules_lock) WatchlistItemColor(li, prc);
 					}
 				}
 				else
