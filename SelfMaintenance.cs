@@ -36,7 +36,7 @@ namespace Taskmaster
 			try
 			{
 				var now = DateTime.Now;
-				var next = new DateTime(now.Year, now.Month, now.Day + 1, 0, 0, 15);
+				var next = now.AddDays(1);
 				var nextmidnight = Convert.ToInt64(now.TimeTo(next).TotalMilliseconds);
 
 				Log.Information("<Self-Maintenance> Next maintenance: {Date} {Time} [in {Ms} ms]",
