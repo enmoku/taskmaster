@@ -181,6 +181,8 @@ namespace Taskmaster
 
 		public void SaveConfig(ConfigWrapper cfg = null, SharpConfig.Section app = null)
 		{
+			// TODO: Check if anything actually was changed?
+
 			if (cfg == null)
 				cfg = Taskmaster.Config.Load(watchlistfile);
 			
@@ -317,10 +319,7 @@ namespace Taskmaster
 
 			cfg.MarkDirty();
 
-			if (Taskmaster.ImmediateSave)
-				Log.Information("[{Name}] Modified and saved.", FriendlyName);
-			else
-				Log.Information("[{Name}] Modified and marked for saving.", FriendlyName);
+			Log.Information("[{Name}] Modified.", FriendlyName);
 		}
 
 		const string statfile = "Watchlist.Statistics.ini";

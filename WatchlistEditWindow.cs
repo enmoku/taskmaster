@@ -148,6 +148,7 @@ namespace Taskmaster
 				else if (decreasePrio.Checked && !increasePrio.Checked)
 					Controller.PriorityStrategy = ProcessPriorityStrategy.Decrease;
 			}
+
 			if (affstrategy.SelectedIndex != 0)
 			{
 				if (cpumask == -1)
@@ -158,6 +159,13 @@ namespace Taskmaster
 					Controller.AffinityStrategy = affstrategy.SelectedIndex == 1 ? ProcessAffinityStrategy.Limit : ProcessAffinityStrategy.Force;
 				}
 			}
+			else
+			{
+				// strategy = ignore
+				Controller.Affinity = null;
+				Controller.AffinityStrategy = ProcessAffinityStrategy.None;
+			}
+
 			Controller.ModifyDelay = (int)(modifyDelay.Value * 1000);
 			Controller.PowerPlan = PowerManager.GetModeByName(powerPlan.Text);
 			if (Controller.PowerPlan == PowerInfo.PowerMode.Custom) Controller.PowerPlan = PowerInfo.PowerMode.Undefined;
