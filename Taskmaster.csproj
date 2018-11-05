@@ -173,7 +173,6 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="HealthMonitor.cs" />
     <Compile Include="ProcessManagerUtility.cs" />
-    <Compile Include="SelfAwareness.cs" />
     <Compile Include="PowerConfigWindow.cs">
       <SubType>Form</SubType>
     </Compile>
