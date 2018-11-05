@@ -689,7 +689,9 @@ namespace Taskmaster
 
 		ToolStripMenuItem menu_debug_loglevel_info = null;
 		ToolStripMenuItem menu_debug_loglevel_debug = null;
+		#if DEBUG
 		ToolStripMenuItem menu_debug_loglevel_trace = null;
+		#endif
 
 		void EnsureVerbosityLevel()
 		{
@@ -704,7 +706,9 @@ namespace Taskmaster
 
 			menu_debug_loglevel_info.Checked = (level == Serilog.Events.LogEventLevel.Information);
 			menu_debug_loglevel_debug.Checked = (level == Serilog.Events.LogEventLevel.Debug);
+			#if DEBUG
 			menu_debug_loglevel_trace.Checked = (level == Serilog.Events.LogEventLevel.Verbose);
+			#endif
 			switch (level)
 			{
 				default:
@@ -714,9 +718,11 @@ namespace Taskmaster
 				case Serilog.Events.LogEventLevel.Debug:
 					verbositylevel.Text = "Debug";
 					break;
+				#if DEBUG
 				case Serilog.Events.LogEventLevel.Verbose:
 					verbositylevel.Text = "Trace";
 					break;
+				#endif
 			}
 		}
 
@@ -999,6 +1005,7 @@ namespace Taskmaster
 				CheckOnClick = true,
 				Checked = (LogIncludeLevel.MinimumLevel == Serilog.Events.LogEventLevel.Debug),
 			};
+			#if DEBUG
 			menu_debug_loglevel_trace = new ToolStripMenuItem("Trace", null,
 			(s, e) =>
 			{
@@ -1010,9 +1017,12 @@ namespace Taskmaster
 				CheckOnClick = true,
 				Checked = (LogIncludeLevel.MinimumLevel == Serilog.Events.LogEventLevel.Verbose),
 			};
+			#endif
 			menu_debug_loglevel.DropDownItems.Add(menu_debug_loglevel_info);
 			menu_debug_loglevel.DropDownItems.Add(menu_debug_loglevel_debug);
+			#if DEBUG
 			menu_debug_loglevel.DropDownItems.Add(menu_debug_loglevel_trace);
+			#endif
 
 			UpdateLogLevelSelection();
 
@@ -1193,7 +1203,7 @@ namespace Taskmaster
 				AutoSize = true,
 			};
 
-			#region Main Window Row 0, game monitor / active window monitor
+#region Main Window Row 0, game monitor / active window monitor
 			var activepanel = new TableLayoutPanel
 			{
 				Dock = DockStyle.Fill,
@@ -1232,9 +1242,9 @@ namespace Taskmaster
 
 			// infopanel.Controls.Add(activepanel);
 			// infoTab.Controls.Add(infopanel);
-			#endregion
+#endregion
 
-			#region Load UI config
+#region Load UI config
 			var uicfg = Taskmaster.Config.Load(uiconfig);
 			var wincfg = uicfg.Config["Windows"];
 			var colcfg = uicfg.Config["Columns"];
@@ -1266,9 +1276,9 @@ namespace Taskmaster
 				}
 			}
 
-			#endregion
+#endregion
 
-			#region Main Window Row 1, microphone device
+#region Main Window Row 1, microphone device
 			var micpanel = new TableLayoutPanel
 			{
 				Dock = DockStyle.Fill,
@@ -1296,7 +1306,7 @@ namespace Taskmaster
 			};
 			micNameRow.Controls.Add(micDevLbl);
 			micNameRow.Controls.Add(micName);
-			#endregion
+#endregion
 
 			var miccntrl = new TableLayoutPanel()
 			{

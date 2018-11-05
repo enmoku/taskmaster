@@ -529,7 +529,7 @@ namespace Taskmaster
 
 			var logsec = cfg["Logging"];
 			var Verbosity = logsec.GetSetDefault("Verbosity", 0, out modified).IntValue;
-			logsec["Verbosity"].Comment = "0 = Information, 1 = Debug, 2 = Verbose/Trace, 3 = Excessive";
+			logsec["Verbosity"].Comment = "0 = Information, 1 = Debug, 2 = Verbose/Trace, 3 = Excessive; 2 and higher are available on debug builds only";
 			switch (Verbosity)
 			{
 				default:
@@ -539,6 +539,7 @@ namespace Taskmaster
 				case 1:
 					MemoryLog.MemorySink.LevelSwitch.MinimumLevel = LogEventLevel.Debug;
 					break;
+				#if DEBUG
 				case 2:
 					MemoryLog.MemorySink.LevelSwitch.MinimumLevel = LogEventLevel.Verbose;
 					break;
@@ -546,6 +547,7 @@ namespace Taskmaster
 					MemoryLog.MemorySink.LevelSwitch.MinimumLevel = LogEventLevel.Verbose;
 					Trace = true;
 					break;
+				#endif
 			}
 
 			dirtyconfig |= modified;
@@ -687,7 +689,9 @@ namespace Taskmaster
 			DebugNet = dbgsec.TryGet("Network")?.BoolValue ?? false;
 			DebugMic = dbgsec.TryGet("Microphone")?.BoolValue ?? false;
 
+			#if DEBUG
 			Trace = dbgsec.TryGet("Trace")?.BoolValue ?? false;
+			#endif
 
 			// END DEBUG
 
@@ -1042,14 +1046,16 @@ namespace Taskmaster
 
 					var logpathtemplate = System.IO.Path.Combine(datapath, "Logs", "taskmaster-{Date}.log");
 					Serilog.Log.Logger = new Serilog.LoggerConfiguration()
-						.MinimumLevel.Verbose()
 #if DEBUG
-				.WriteTo.Console(levelSwitch: new LoggingLevelSwitch(LogEventLevel.Verbose))
+						.MinimumLevel.Verbose()
+						.WriteTo.Console(levelSwitch: new LoggingLevelSwitch(LogEventLevel.Verbose))
+#else
+						.MinimumLevel.Debug()
 #endif
-				.WriteTo.RollingFile(logpathtemplate, outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}",
-											 levelSwitch: new LoggingLevelSwitch(Serilog.Events.LogEventLevel.Debug), retainedFileCountLimit: 3)
+						.WriteTo.RollingFile(logpathtemplate, outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}",
+							levelSwitch: new LoggingLevelSwitch(Serilog.Events.LogEventLevel.Debug), retainedFileCountLimit: 3)
 						.WriteTo.MemorySink(levelSwitch: logswitch)
-									 .CreateLogger();
+						.CreateLogger();
 
 					// COMMAND-LINE ARGUMENTS
 					ParseArguments(args);
