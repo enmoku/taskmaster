@@ -6,6 +6,7 @@ Comprehensive changes can be found in Git change history:
 ### 2018-11-05
 	Changed: Internal sanity checking reduced. We trust code that has not caused problems more.
 	Changed: Trace output is no longer provided on non-debug builds.
+	Changed: Console output disabled for non-debug versions.
 	Internal: Removed several unused internal references (WindowsBase, System.Xaml, PresentationCore, PresentationFramework).
 ### 2018-10-31
 	Fixed: Crash on last day of a month
