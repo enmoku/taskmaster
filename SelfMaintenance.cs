@@ -84,8 +84,7 @@ namespace Taskmaster
 
 				if (Taskmaster.Components.processmanager != null)
 				{
-					using (var m = SelfAwareness.Mind(DateTime.Now.AddSeconds(30)))
-						Taskmaster.processmanager.Cleanup();
+					Taskmaster.processmanager.Cleanup();
 				}
 
 				Taskmaster.Config.Flush();

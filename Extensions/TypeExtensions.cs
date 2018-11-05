@@ -48,6 +48,11 @@ namespace Taskmaster
 			return Math.Min(Math.Max(value, InclusiveMinimum), InclusiveMaximum);
 		}
 
+		public static double Constrain(this double value, double InclusiveMinimum, double InclusiveMaximum)
+		{
+			return Math.Min(Math.Max(value, InclusiveMinimum), InclusiveMaximum);
+		}
+
 		public static decimal Constrain(this decimal value, decimal InclusiveMinimum, decimal InclusiveMaximum)
 		{
 			return Math.Min(Math.Max(value, InclusiveMinimum), InclusiveMaximum);

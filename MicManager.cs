@@ -51,14 +51,7 @@ namespace Taskmaster
 			}
 			set
 			{
-				// Bounding
-				if (Maximum < value)
-					value = Maximum;
-				else if (Minimum > value) value = Minimum;
-
-				_target = value;
-
-				Log.Information("<Microphone> Target volume set to: {Volume:N1}%", value);
+				_target = value.Constrain(Minimum, Maximum);
 			}
 		}
 
@@ -174,8 +167,8 @@ namespace Taskmaster
 			var devvol = devcfg.Config[guid].GetSetDefault(vname, defaultvol).DoubleValue;
 			devcfg.Config[guid]["Name"].StringValue = devname;
 			if (unset) devcfg.Save();
-
-			Target = devvol;
+			
+			Target = devvol.Constrain(0, 100);
 			Log.Information("<Microphone> Default device: {Device} (volume: {TargetVolume:N1}%)", m_dev.FriendlyName, Target);
 			Volume = Target;
 

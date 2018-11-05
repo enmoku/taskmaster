@@ -230,7 +230,7 @@ namespace Taskmaster
 			{
 				NativeMethods.EmptyWorkingSet(ea.Info.Process.Handle);
 			}
-			catch { } // ignore, any exceptions that might happen are simply irrelevant for us
+			catch { } // process.Handle may throw which we don't care about
 		}
 
 		HashSet<int> ignorePids = new HashSet<int>();
@@ -336,72 +336,59 @@ namespace Taskmaster
 
 			if (!Atomic.Lock(ref scan_lock)) return;
 
-			try
+			if (Taskmaster.DebugFullScan) Log.Debug("<Process> Full Scan: Start");
+
+			await Task.Delay(0).ConfigureAwait(false); // asyncify
+
+			ScanEverythingStartEvent?.Invoke(this, null);
+
+			var procs = Process.GetProcesses();
+			int count = procs.Length - 2; // -2 for Idle&System
+			Debug.Assert(count > 0);
+			SignalProcessHandled(count); // scan start
+
+			ProcessEventArgs pea;
+
+			var i = 0;
+			foreach (var process in procs)
 			{
-				await Task.Delay(0).ConfigureAwait(false);
+				++i;
+				pea = null;
 
-				if (Taskmaster.DebugFullScan) Log.Debug("<Process> Full Scan: Start");
+				string name;
+				int pid;
 
-				ScanEverythingStartEvent?.Invoke(this, null);
-
-				int count = 0;
-				using (var m = SelfAwareness.Mind(DateTime.Now.AddSeconds(5)))
+				try
 				{
-					try
-					{
-						var procs = Process.GetProcesses();
-						count = procs.Length - 2; // -2 for Idle&System
-
-						SignalProcessHandled(count); // scan start
-
-						var i = 0;
-						foreach (var process in procs)
-						{
-							++i;
-							try
-							{
-								var name = process.ProcessName;
-								var pid = process.Id;
-
-								if (IgnoreProcessID(pid) || IgnoreProcessName(name) || pid == Process.GetCurrentProcess().Id)
-									continue;
-
-								if (Taskmaster.DebugFullScan)
-									Log.Verbose("<Process> Checking [{Iter}/{Count}] {Proc} (#{Pid})",
-										i, count, name, pid);
-
-								ProcessDetectedEvent?.Invoke(this,
-									new ProcessEventArgs
-									{
-										Info = new ProcessEx() { Process = process, Id = pid, Name = name, Path = null }
-									});
-							}
-							catch (Exception ex)
-							{
-								Logging.Stacktrace(ex);
-							}
-						}
-					}
-					catch (Exception ex)
-					{
-						Logging.Stacktrace(ex);
-					}
+					name = process.ProcessName;
+					pid = process.Id;
 				}
+				catch { continue; } // process inaccessible (InvalidOperationException or NotSupportedException)
 
-				SignalProcessHandled(-count); // scan done
+				if (IgnoreProcessID(pid) || IgnoreProcessName(name) || pid == Process.GetCurrentProcess().Id)
+					continue;
 
-				if (Taskmaster.DebugFullScan) Log.Debug("<Process> Full Scan: Complete");
+				pea = new ProcessEventArgs
+				{
+					Info = new ProcessEx() { Process = process, Id = pid, Name = name, Path = null },
+					Control = null,
+					State = ProcessRunningState.Found,
+				};
 
-				ScanEverythingEndEvent?.Invoke(this, null);
+				if (Taskmaster.DebugFullScan)
+					Log.Verbose("<Process> Checking [{Iter}/{Count}] {Proc} (#{Pid})",
+						i, count, name, pid);
+
+				ProcessDetectedEvent?.Invoke(this, pea);
 			}
-			catch (Exception ex)
-			{
-				Logging.Stacktrace(ex);
-			}
-			finally
-			{
-				Atomic.Unlock(ref scan_lock);
-			}
+
+			if (Taskmaster.DebugFullScan) Log.Debug("<Process> Full Scan: Complete");
+
+			SignalProcessHandled(-count); // scan done
+
+			ScanEverythingEndEvent?.Invoke(this, null);
+
+			Atomic.Unlock(ref scan_lock);
 		}
 
 		static int BatchDelay = 2500;
@@ -778,24 +765,19 @@ namespace Taskmaster
 					info.Name, info.Id, info.PowerWait, info.ActiveWait);
 			}
 
-			try
-			{
-				if (info.ActiveWait)
-				{
-					lock (foreground_lock)
-						ForegroundWaitlist.Remove(info.Id);
-				}
+			Debug.Assert(info.Id != null);
 
-				if (info.PowerWait)
-					Taskmaster.powermanager.Release(info.Id);
-
-				lock (waitforexit_lock)
-					WaitForExitList.Remove(info.Id);
-			}
-			catch (Exception ex)
+			if (info.ActiveWait)
 			{
-				Logging.Stacktrace(ex);
+				lock (foreground_lock)
+					ForegroundWaitlist.Remove(info.Id);
 			}
+
+			if (info.PowerWait)
+				Taskmaster.powermanager.Release(info.Id);
+
+			lock (waitforexit_lock)
+				WaitForExitList.Remove(info.Id);
 
 			onWaitForExitEvent?.Invoke(this, new ProcessEventArgs() { Control = null, Info = info, State = state });
 		}
@@ -847,37 +829,35 @@ namespace Taskmaster
 				Log.Information("Cancelled power mode wait on {Count} process(es).", cancelled);
 		}
 
-		public bool WaitForExit(ProcessEx info)
+		public void WaitForExit(ProcessEx info)
 		{
-			var rv = false;
+			bool exithooked = false;
 
 			lock (waitforexit_lock)
 			{
-				if (!WaitForExitList.ContainsKey(info.Id))
+				if (WaitForExitList.ContainsKey(info.Id)) return;
+
+				WaitForExitList.Add(info.Id, info);
+
+				try
 				{
-					WaitForExitList.Add(info.Id, info);
-
-					try
-					{
-						info.Process.EnableRaisingEvents = true;
-						info.Process.Exited += (s, e) => { WaitForExitTriggered(info); };
-						rv = true;
-
-						onWaitForExitEvent?.Invoke(this, new ProcessEventArgs() { Control = null, Info = info, State = ProcessRunningState.Starting });
-					}
-					catch (InvalidOperationException)
-					{
-						// already exited
-					}
-					catch (Exception ex)
-					{
-						Logging.Stacktrace(ex);
-					}
-
+					info.Process.EnableRaisingEvents = true;
+					info.Process.Exited += (s, e) => { WaitForExitTriggered(info); };
+					exithooked = true;
+				}
+				catch (InvalidOperationException) // already exited
+				{
+					WaitForExitList.Remove(info.Id);
+				}
+				catch (Exception ex) // unknown error
+				{
+					Logging.Stacktrace(ex);
+					WaitForExitList.Remove(info.Id);
 				}
 			}
 
-			return rv;
+			if (exithooked)
+				onWaitForExitEvent?.Invoke(this, new ProcessEventArgs() { Control = null, Info = info, State = ProcessRunningState.Starting });
 		}
 
 		public ProcessEx[] getExitWaitList() => WaitForExitList.Values.ToArray(); // copy is good here
@@ -1028,25 +1008,12 @@ namespace Taskmaster
 
 			if (matchedprc != null)
 			{
-				try
-				{
-					//Console.WriteLine("--- Foreground : " + activeappmonitor.Foreground + " matches " + info.Id + "?");
-					//await Task.Delay(0).ConfigureAwait(false);
-					matchedprc.Touch(info);
-					info.Handled = true;
-				}
-				catch (Exception ex)
-				{
-					Log.Fatal("[{FriendlyName}] '{Exec}' (#{Pid}) MASSIVE FAILURE!!!", matchedprc.FriendlyName, info.Name, info.Id);
-					Logging.Stacktrace(ex);
-					return; // return ProcessState.Error;
-				}
+				matchedprc.Touch(info);
+				info.Handled = true;
 
 				//Console.WriteLine("ForegroundWatch(" + info.Id + ") called at CheckPathWatch");
 				ForegroundWatch(info, matchedprc); // already called?
 			}
-
-			return; // return ProcessState.Invalid;
 		}
 
 		public static string[] ProtectList { get; private set; } = {
@@ -1212,71 +1179,63 @@ namespace Taskmaster
 
 			await Task.Delay(0).ConfigureAwait(false);
 
-			try
+			if (IgnoreProcessID(ea.Info.Id) || IgnoreProcessName(ea.Info.Name))
 			{
-				if (IgnoreProcessID(ea.Info.Id) || IgnoreProcessName(ea.Info.Name))
+				if (Taskmaster.Trace) Log.Verbose("Ignoring process: {ProcessName} (#{ProcessID})", ea.Info.Name, ea.Info.Id);
+				return; // ProcessState.Ignored;
+			}
+
+			if (string.IsNullOrEmpty(ea.Info.Name))
+			{
+				Log.Warning("#{AppId} details unaccessible, ignored.", ea.Info.Id);
+				return; // ProcessState.AccessDenied;
+			}
+
+			// TODO: check proc.processName for presence in images.
+			ProcessController prc = null;
+
+			lock (execontrol_lock)
+				execontrol.TryGetValue(ea.Info.Name.ToLowerInvariant(), out prc);
+
+			if (prc != null)
+			{
+				if (!prc.Enabled)
 				{
-					if (Taskmaster.Trace) Log.Verbose("Ignoring process: {ProcessName} (#{ProcessID})", ea.Info.Name, ea.Info.Id);
+					Log.Debug("[{FriendlyName}] Matched but rule disabled; ignoring.");
 					return; // ProcessState.Ignored;
 				}
 
-				if (string.IsNullOrEmpty(ea.Info.Name))
+				// await System.Threading.Tasks.Task.Delay(ProcessModifyDelay).ConfigureAwait(false);
+
+				try
 				{
-					Log.Warning("#{AppId} details unaccessible, ignored.", ea.Info.Id);
-					return; // ProcessState.AccessDenied;
+					prc.Touch(ea.Info, schedule_next: false);
+					ea.Info.Handled = true;
+				}
+				catch (Exception ex)
+				{
+					Log.Fatal("[{FriendlyName}] '{Exec}' (#{Pid}) MASSIVE FAILURE!!!", prc.FriendlyName, ea.Info.Name, ea.Info.Id);
+					Logging.Stacktrace(ex);
+					return; // ProcessState.Error;
 				}
 
-				// TODO: check proc.processName for presence in images.
-				ProcessController prc = null;
-
-				lock (execontrol_lock)
-					execontrol.TryGetValue(ea.Info.Name.ToLowerInvariant(), out prc);
-
-				if (prc != null)
-				{
-					if (!prc.Enabled)
-					{
-						Log.Debug("[{FriendlyName}] Matched but rule disabled; ignoring.");
-						return; // ProcessState.Ignored;
-					}
-
-					// await System.Threading.Tasks.Task.Delay(ProcessModifyDelay).ConfigureAwait(false);
-
-					try
-					{
-						prc.Touch(ea.Info, schedule_next:false);
-						ea.Info.Handled = true;
-					}
-					catch (Exception ex)
-					{
-						Log.Fatal("[{FriendlyName}] '{Exec}' (#{Pid}) MASSIVE FAILURE!!!", prc.FriendlyName, ea.Info.Name, ea.Info.Id);
-						Logging.Stacktrace(ex);
-						return; // ProcessState.Error;
-					}
-
-					ForegroundWatch(ea.Info, prc);
-					return;
-				}
-
-				// Log.Verbose("{AppName} not in executable control list.", info.Name);
-
-				if (WatchlistWithPath > 0 && !ea.Info.Handled)
-				{
-					// Log.Verbose("Checking paths for '{ProcessName}' (#{ProcessID})", info.Name, info.Id);
-					CheckPathWatch(ea.Info);
-					return;
-				}
-
-				/*
-				if (ControlChildren) // this slows things down a lot it seems
-					ChildController(info);
-				*/
+				ForegroundWatch(ea.Info, prc);
+				return;
 			}
-			catch (Exception ex)
+
+			// Log.Verbose("{AppName} not in executable control list.", info.Name);
+
+			if (WatchlistWithPath > 0 && !ea.Info.Handled)
 			{
-				Logging.Stacktrace(ex);
+				// Log.Verbose("Checking paths for '{ProcessName}' (#{ProcessID})", info.Name, info.Id);
+				CheckPathWatch(ea.Info);
+				return;
 			}
-			return; // ProcessState.Invalid; // return state;
+
+			/*
+			if (ControlChildren) // this slows things down a lot it seems
+				ChildController(info);
+			*/
 		}
 
 		readonly object batchprocessing_lock = new object();
@@ -1308,30 +1267,20 @@ namespace Taskmaster
 
 			List<ProcessEx> list = new List<ProcessEx>();
 
-			try
+			lock (batchprocessing_lock)
 			{
-				lock (batchprocessing_lock)
-				{
-					if (ProcessBatch.Count == 0) return;
+				if (ProcessBatch.Count == 0) return;
 
-					BatchProcessingTimer.Stop();
+				BatchProcessingTimer.Stop();
 
-					processListLockRestart = 0;
-					Utility.Swap(ref list, ref ProcessBatch);
-				}
-
-				foreach (var info in list)
-					ProcessDetectedEvent?.Invoke(this, new ProcessEventArgs { Info = info });
-
+				processListLockRestart = 0;
+				Utility.Swap(ref list, ref ProcessBatch);
 			}
-			catch (Exception ex)
-			{
-				Logging.Stacktrace(ex);
-			}
-			finally
-			{
-				SignalProcessHandled(-(list.Count)); // batch done
-			}
+
+			foreach (var info in list)
+				ProcessDetectedEvent?.Invoke(this, new ProcessEventArgs { Info = info });
+
+			SignalProcessHandled(-(list.Count)); // batch done
 		}
 
 		public static int Handling { get; private set; }
@@ -1339,14 +1288,7 @@ namespace Taskmaster
 		void SignalProcessHandled(int adjust)
 		{
 			Handling += adjust;
-			try
-			{
-				onInstanceHandling?.Invoke(this, new InstanceEventArgs { Count = adjust, Total = Handling });
-			}
-			catch (Exception ex)
-			{
-				Logging.Stacktrace(ex);
-			}
+			onInstanceHandling?.Invoke(this, new InstanceEventArgs { Count = adjust, Total = Handling });
 		}
 
 		public event EventHandler<InstanceEventArgs> onInstanceHandling;
@@ -1358,9 +1300,7 @@ namespace Taskmaster
 		{
 			SignalProcessHandled(1); // wmi new instance
 
-			try
-			{
-				var wmiquerytime = Stopwatch.StartNew();
+			var wmiquerytime = Stopwatch.StartNew();
 
 			// TODO: Instance groups?
 			var pid = -1;
@@ -1368,49 +1308,36 @@ namespace Taskmaster
 			var path = string.Empty;
 			System.Management.ManagementBaseObject targetInstance;
 
-				try
-				{
-					targetInstance = (System.Management.ManagementBaseObject)e.NewEvent.Properties["TargetInstance"].Value;
-					pid = Convert.ToInt32((string)targetInstance.Properties["Handle"].Value);
-					path = (string)(targetInstance.Properties["ExecutablePath"].Value);
-					name = System.IO.Path.GetFileNameWithoutExtension(path);
-					/*
-					if (string.IsNullOrEmpty(name))
-					{
-						// this happens when we have insufficient permissions.
-						// as such, NOP.. shouldn't bother testing it here even.
-					}
-					*/
-				}
-				catch (Exception ex)
-				{
-					Log.Error("<<WMI>> Failed to extract process ID.");
-					Logging.Stacktrace(ex);
-					return; // would throw but this is eventhandler
-				}
-				finally
-				{
-					wmiquerytime.Stop();
-					Statistics.WMIquerytime += wmiquerytime.Elapsed.TotalSeconds;
-					Statistics.WMIqueries += 1;
-				}
-
-				if (IgnoreProcessID(pid)) return; // We just don't care
-
-				if (string.IsNullOrEmpty(name))
-				{
-					// likely process exited too fast
-					if (Taskmaster.DebugProcesses && Taskmaster.ShowInaction) Log.Debug("<<WMI>> Failed to acquire neither process name nor process Id");
-					return;
-				}
-
-				ProcessEx info = ProcessManagerUtility.GetInfo(pid, path:path, getPath:true);
-				if (info != null) NewInstanceTriagePhaseTwo(info);
+			try
+			{
+				targetInstance = (System.Management.ManagementBaseObject)e.NewEvent.Properties["TargetInstance"].Value;
+				pid = Convert.ToInt32((string)targetInstance.Properties["Handle"].Value);
+				path = (string)(targetInstance.Properties["ExecutablePath"].Value);
 			}
+			catch { }
 			finally
 			{
-				SignalProcessHandled(-1); // done with it
+				wmiquerytime.Stop();
+				Statistics.WMIPollTime += wmiquerytime.Elapsed.TotalSeconds;
+				Statistics.WMIPolling += 1;
 			}
+
+			if (IgnoreProcessID(pid)) return; // We just don't care
+
+			if (!string.IsNullOrEmpty(path))
+				name = System.IO.Path.GetFileNameWithoutExtension(path);
+
+			if (string.IsNullOrEmpty(name))
+			{
+				// likely process exited too fast
+				if (Taskmaster.DebugProcesses && Taskmaster.ShowInaction) Log.Debug("<<WMI>> Failed to acquire neither process name nor process Id");
+				return;
+			}
+
+			ProcessEx info = ProcessManagerUtility.GetInfo(pid, path: path, getPath: true);
+			if (info != null) NewInstanceTriagePhaseTwo(info);
+
+			SignalProcessHandled(-1); // done with it
 		}
 
 		async Task NewInstanceTriagePhaseTwo(ProcessEx info)
@@ -1475,14 +1402,7 @@ namespace Taskmaster
 			}
 			else
 			{
-				try
-				{
-					ProcessDetectedEvent?.Invoke(this, new ProcessEventArgs { Info = info });
-				}
-				catch (Exception ex)
-				{
-					Logging.Stacktrace(ex);
-				}
+				ProcessDetectedEvent?.Invoke(this, new ProcessEventArgs { Info = info });
 			}
 		}
 
@@ -1534,13 +1454,11 @@ namespace Taskmaster
 					try
 					{
 						rescanTimer.Change(500, nextscan.Constrain(1, 360) * (1000 * 60));
-						// rescanTimer.Interval = nextscan.Constrain(1, 360) * (1000 * 60);
 					}
 					catch (Exception ex)
 					{
 						Log.Error("Failed to set rescan timer based on scheduled next scan.");
 						rescanTimer.Change(500, 5 * (1000 * 60));
-						// rescanTimer.Interval = 5 * (1000 * 60);
 
 						Logging.Stacktrace(ex);
 					}

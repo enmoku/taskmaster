@@ -517,6 +517,7 @@ namespace Taskmaster
 		/// Set disk I/O priority. Works only for setting own process priority.
 		/// Would require invasive injecting to other process to affect them.
 		/// </summary>
+		/// <exception>None</exception>
 		public static bool SetIOPriority(Process process, NativeMethods.PriorityTypes priority)
 		{
 			try
@@ -603,6 +604,11 @@ namespace Taskmaster
 				if (ex.NativeErrorCode != 5)
 					Log.Warning("[{FriendlyName}] {ProcessName} (#{ProcessID}) access failure determining if it's still running.", FriendlyName, info.Name, info.Id);
 				return; // return ProcessState.Error; // we don't care what this error is exactly
+			}
+			catch (Exception ex) // invalidoperation or notsupported
+			{
+				Logging.Stacktrace(ex);
+				return;
 			}
 
 			if (Taskmaster.Trace) Log.Verbose("[{FriendlyName}] Touching: {ExecutableName} (#{ProcessID})", FriendlyName, info.Name, info.Id);
@@ -924,6 +930,7 @@ namespace Taskmaster
 
 			if (schedule_next) TryScan();
 
+			// schedule re-application of the rule
 			if (Recheck > 0 && recheck == false)
 			{
 				Task.Run(new Action(() => { TouchReapply(info); }));
@@ -1114,7 +1121,7 @@ namespace Taskmaster
 		/// </summary>
 		public int TryScan()
 		{
-			RescanWithSchedule();
+			Task.WaitAll(RescanWithSchedule());
 
 			return Convert.ToInt32((LastScan.AddMinutes(Rescan) - DateTime.Now).TotalMinutes); // this will produce wrong numbers
 		}
@@ -1126,6 +1133,7 @@ namespace Taskmaster
 		/// </summary>
 		int ScheduledScan = 0;
 
+		/// <exception>None</exception>
 		async Task RescanWithSchedule()
 		{
 			try
@@ -1195,15 +1203,15 @@ namespace Taskmaster
 				{
 					name = process.ProcessName;
 					pid = process.Id;
+
+					var info = ProcessManagerUtility.GetInfo(pid, process, name, null, getPath: !string.IsNullOrEmpty(Path));
+
+					Touch(info);
 				}
-				catch
+				catch // access failure or similar, we don't care
 				{
 					continue; // shouldn't happen, but if it does, we don't care
 				}
-
-				var info = ProcessManagerUtility.GetInfo(pid, process, name, null, getPath: !string.IsNullOrEmpty(Path));
-
-				Touch(info);
 			}
 
 			if (ScanModifyCount > 0)

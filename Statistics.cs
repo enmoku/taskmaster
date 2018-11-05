@@ -34,6 +34,9 @@ namespace Taskmaster
 		public static int WMIqueries { get; set; } = 0;
 		public static double WMIquerytime { get; set; } = 0;
 
+		public static int WMIPolling { get; set; } = 0;
+		public static double WMIPollTime { get; set; } = 0;
+
 		public static int MaintenanceCount { get; set; } = 0;
 		public static double MaintenanceTime { get; set; } = 0;
 

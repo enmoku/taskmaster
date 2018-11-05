@@ -457,21 +457,16 @@ namespace Taskmaster
 		public void WatchlistPathLocatedEvent(object sender, PathControlEventArgs e)
 		{
 			if (!IsHandleCreated) return;
+			Debug.Assert(sender != null);
+
 			BeginInvoke(new Action(() =>
 			{
-				try
+				var pc = (ProcessController)sender;
+				lock (watchlistrules_lock)
 				{
-					var pc = (ProcessController)sender;
-					if (pc != null)
-					{
-						lock (watchlistrules_lock)
-						{
-							if (WatchlistMap.TryGetValue(pc, out ListViewItem li))
-								WatchlistItemColor(li, pc);
-						}
-					}
+					if (WatchlistMap.TryGetValue(pc, out ListViewItem li))
+						WatchlistItemColor(li, pc);
 				}
-				catch (Exception ex) { Logging.Stacktrace(ex); }
 			}));
 		}
 
@@ -509,7 +504,7 @@ namespace Taskmaster
 			if (!IsHandleCreated) return;
 			BeginInvoke(new Action(() =>
 			{
-				micVol.Value = Convert.ToInt32(e.New);
+				micVol.Value = Convert.ToInt32(e.New); // this could throw ArgumentOutOfRangeException, but we trust the source
 				corCountLabel.Text = e.Corrections.ToString();
 			}));
 		}

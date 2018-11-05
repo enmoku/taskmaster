@@ -138,26 +138,23 @@ namespace Taskmaster
 			{
 				await Task.Delay(0);
 
-				using (var m = SelfAwareness.Mind(DateTime.Now.AddSeconds(120)))
+				var dst = new DirectoryStats { Files = 0, Dirs = 0, Size = 0 };
+
+				ReScanBurden = 0;
+
+				Log.Information("Temp folders scanning initiated...");
+				onTempScan?.Invoke(null, new DiskEventArgs { State = ScanState.Start, Stats = dst });
+				DirectorySize(new System.IO.DirectoryInfo(systemTemp), ref dst);
+				if (systemTemp != userTemp)
 				{
-					var dst = new DirectoryStats { Files = 0, Dirs = 0, Size = 0 };
-
-					ReScanBurden = 0;
-
-					Log.Information("Temp folders scanning initiated...");
-					onTempScan?.Invoke(null, new DiskEventArgs { State = ScanState.Start, Stats = dst });
-					DirectorySize(new System.IO.DirectoryInfo(systemTemp), ref dst);
-					if (systemTemp != userTemp)
-					{
-						onTempScan?.Invoke(null, new DiskEventArgs { State = ScanState.Segment, Stats = dst });
-						DirectorySize(new System.IO.DirectoryInfo(userTemp), ref dst);
-					}
-
-					onTempScan?.Invoke(null, new DiskEventArgs { State = ScanState.End, Stats = dst });
-					Log.Information("Temp contents: {Files} files, {Dirs} dirs, {Size} MBs", dst.Files, dst.Dirs, string.Format("{0:N2}", dst.Size / 1000f / 1000f));
+					onTempScan?.Invoke(null, new DiskEventArgs { State = ScanState.Segment, Stats = dst });
+					DirectorySize(new System.IO.DirectoryInfo(userTemp), ref dst);
 				}
+
+				onTempScan?.Invoke(null, new DiskEventArgs { State = ScanState.End, Stats = dst });
+				Log.Information("Temp contents: {Files} files, {Dirs} dirs, {Size} MBs", dst.Files, dst.Dirs, string.Format("{0:N2}", dst.Size / 1000f / 1000f));
 			}
-			catch { throw;  } // for finally block
+			catch { throw; } // for finally block
 			finally
 			{
 				Atomic.Unlock(ref scantemp_lock);
