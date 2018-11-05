@@ -229,19 +229,16 @@ namespace Taskmaster
 
 			try
 			{
-				using (SelfAwareness.Mind(DateTime.Now.AddSeconds(15)))
+				try
 				{
-					try
-					{
-						await CheckErrors().ConfigureAwait(false);
-						await CheckLogs().ConfigureAwait(false);
-						await CheckMemory().ConfigureAwait(false);
-						await CheckNVM().ConfigureAwait(false);
-					}
-					catch (Exception ex) { Logging.Stacktrace(ex); }
+					await CheckErrors().ConfigureAwait(false);
+					await CheckLogs().ConfigureAwait(false);
+					await CheckMemory().ConfigureAwait(false);
+					await CheckNVM().ConfigureAwait(false);
 				}
+				catch (Exception ex) { Logging.Stacktrace(ex); }
 			}
-			catch { throw;  }
+			catch { throw; }
 			finally
 			{
 				Atomic.Unlock(ref HealthCheck_lock);

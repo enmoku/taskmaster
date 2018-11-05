@@ -60,7 +60,6 @@ namespace Taskmaster
 		public static ActiveAppManager activeappmonitor = null;
 		public static HealthMonitor healthmonitor = null;
 		public static AudioManager audiomanager = null;
-		static SelfAwareness selfaware = null;
 
 		public static object watchlist_lock = new object();
 
@@ -129,12 +128,9 @@ namespace Taskmaster
 
 			try
 			{
-				using (var m = SelfAwareness.Mind(DateTime.Now.AddSeconds(30)))
-				{
-					// Log.Debug("Bringing to front");
-					BuildMainWindow();
-					Components.mainwindow?.Reveal();
-				}
+				// Log.Debug("Bringing to front");
+				BuildMainWindow();
+				Components.mainwindow?.Reveal();
 			}
 			catch (Exception ex)
 			{
@@ -263,7 +259,6 @@ namespace Taskmaster
 			// This is really bad if something fails
 			Task[] init =
 			{
-				aware ? Task.Run(() => { selfaware = new SelfAwareness(); }) : Task.CompletedTask,
 				PowerManagerEnabled ? (Task.Run(() => { powermanager = new PowerManager(); })) : Task.CompletedTask,
 				ProcessMonitorEnabled ? (Task.Run(() => { processmanager = new ProcessManager(); })) : Task.CompletedTask,
 				(ActiveAppMonitorEnabled && ProcessMonitorEnabled) ? (Task.Run(()=> {activeappmonitor = new ActiveAppManager(eventhook:false); })) : Task.CompletedTask,
@@ -852,7 +847,6 @@ namespace Taskmaster
 			Utility.Dispose(ref netmonitor);
 			Utility.Dispose(ref activeappmonitor);
 			Utility.Dispose(ref healthmonitor);
-			Utility.Dispose(ref selfaware);
 		}
 
 		static void ParseArguments(string[] args)
@@ -894,6 +888,7 @@ namespace Taskmaster
 							{
 								uptimecounter.NextValue();
 								uptime = TimeSpan.FromSeconds(uptimecounter.NextValue());
+								uptimecounter.Close();
 							}
 						}
 						catch { }

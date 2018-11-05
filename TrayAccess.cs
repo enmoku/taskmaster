@@ -365,8 +365,7 @@ namespace Taskmaster
 
 			try
 			{
-				using (var m = SelfAwareness.Mind(DateTime.Now.AddSeconds(10)))
-					Taskmaster.ShowMainWindow();
+				Taskmaster.ShowMainWindow();
 
 				if (Taskmaster.Trace)
 					Log.Verbose("RestoreMainWindow done!");
