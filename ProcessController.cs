@@ -1149,8 +1149,7 @@ namespace Taskmaster
 							if (Taskmaster.DebugProcesses)
 								Log.Debug("[{FriendlyName}] Rescan initiating.", FriendlyName);
 
-							using (var m = SelfAwareness.Mind(DateTime.Now.AddSeconds(15)))
-								await Scan().ConfigureAwait(false);
+							await Scan().ConfigureAwait(false);
 						}
 						catch { throw; } // for finally block
 						finally
