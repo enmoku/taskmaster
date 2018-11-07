@@ -55,13 +55,15 @@ namespace Taskmaster
 		public event EventHandler IPChanged;
 		public event EventHandler<NetworkStatus> NetworkStatusChange;
 
-		string dnstestaddress = "www.google.com";
+		string dnstestaddress = "google.com"; // should be fine, www is omitted to avoid deeper DNS queries
 
 		readonly object uptime_lock = new object();
 
 		int DeviceTimerInterval = 15 * 60;
 		int PacketStatTimerInterval = 15; // second
 		int ErrorReportLimit = 5;
+
+		bool LogAverageUptime = false;
 
 		System.Threading.Timer deviceSampleTimer;
 		System.Threading.Timer packetStatTimer;
@@ -230,10 +232,21 @@ namespace Taskmaster
 		{
 			get
 			{
-				if (Taskmaster.NetworkMonitorEnabled && InternetAvailable)
+				if (InternetAvailable)
 					return (DateTime.Now - lastUptimeStart);
 
 				return TimeSpan.Zero;
+			}
+		}
+
+		/// <summary>
+		/// Returns uptime in minutes or positive infinite if no average is known
+		/// </summary>
+		public double UptimeAverage()
+		{
+			lock (uptime_lock)
+			{
+				return (uptimeSamples > 0) ? (upTime.GetRange(0, uptimeSamples).Sum() / uptimeSamples) : double.PositiveInfinity;
 			}
 		}
 
@@ -269,8 +282,11 @@ namespace Taskmaster
 
 				ups.Append(string.Format("{0:N1}", ((uptimeTotal + currentUptime) / (uptimeSamples + 1)))).Append(" minutes");
 
-				if (uptimeSamples > 3)
-					ups.Append(" (").Append(string.Format("{0:N1}", upTime.GetRange(upTime.Count - 3, 3).Sum() / 3)).Append(" minutes for last 3 samples");
+				if (LogAverageUptime)
+				{
+					if (uptimeSamples > 3)
+						ups.Append(" (").Append(string.Format("{0:N1}", upTime.GetRange(upTime.Count - 3, 3).Sum() / 3)).Append(" minutes for last 3 samples");
+				}
 			}
 
 			ups.Append(" since: ").Append(Since)

@@ -553,6 +553,7 @@ namespace Taskmaster
 		Label netstatuslabel;
 		Label inetstatuslabel;
 		Label uptimestatuslabel;
+		Label uptimeAvgLabel;
 
 		public static Serilog.Core.LoggingLevelSwitch LogIncludeLevel;
 
@@ -589,6 +590,11 @@ namespace Taskmaster
 				BeginInvoke(new Action(() =>
 				{
 					uptimestatuslabel.Text = HumanInterface.TimeString(netmonitor.Uptime);
+					var avg = netmonitor.UptimeAverage();
+					if (double.IsInfinity(avg))
+						uptimeAvgLabel.Text = "Infinite";
+					else
+						uptimeAvgLabel.Text = HumanInterface.TimeString(TimeSpan.FromMinutes(avg));
 				}));
 			}
 			// string.Format("{0:N1} min(s)", net.Uptime.TotalMinutes);
@@ -1387,12 +1393,9 @@ namespace Taskmaster
 				AutoSize = true,
 			};
 
-			var netLabel = new Label() { Text = "Network status:", Dock = DockStyle.Left, AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft };
-			var inetLabel = new Label() { Text = "Internet status:", Dock = DockStyle.Left, AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft };
-			var uptimeLabel = new Label() { Text = "Uptime:", Dock = DockStyle.Left, AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft };
-
 			netstatuslabel = new Label() { Dock = DockStyle.Left, Text = "Uninitialized", AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft };
 			inetstatuslabel = new Label() { Dock = DockStyle.Left, Text = "Uninitialized", AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft };
+			//uptimeAvgLabel = new Label() { Dock = DockStyle.Left, Text = "Uninitialized", AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft };
 			uptimestatuslabel = new Label
 			{
 				Dock = DockStyle.Left,
@@ -1408,12 +1411,17 @@ namespace Taskmaster
 				Dock = DockStyle.Fill,
 				AutoSize = true
 			};
-			netstatus.Controls.Add(netLabel);
+			netstatus.Controls.Add(new Label() { Text = "Network status:", Dock = DockStyle.Left, AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft });
 			netstatus.Controls.Add(netstatuslabel);
-			netstatus.Controls.Add(inetLabel);
+			netstatus.Controls.Add(new Label() { Text = "Internet status:", Dock = DockStyle.Left, AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft });
 			netstatus.Controls.Add(inetstatuslabel);
-			netstatus.Controls.Add(uptimeLabel);
+			netstatus.Controls.Add(new Label() { Text = "Uptime:", Dock = DockStyle.Left, AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft });
 			netstatus.Controls.Add(uptimestatuslabel);
+
+			netstatus.Controls.Add(
+				new Label { Text = "Average:", Dock = DockStyle.Left, AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft },
+				4, 1);
+			netstatus.Controls.Add(uptimeAvgLabel, 5, 1);
 
 			GotFocus += UpdateUptime;
 
@@ -1480,8 +1488,9 @@ namespace Taskmaster
 			IPv6Column = 5;
 
 			netlayout.Controls.Add(netstatus);
-			netlayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 32)); // why?
+			netlayout.RowStyles.Add(new RowStyle(SizeType.AutoSize, 32)); // why?
 			netlayout.Controls.Add(ifaceList);
+
 			netTab.Controls.Add(netlayout);
 			// End: Inet status
 
