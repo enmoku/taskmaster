@@ -1036,6 +1036,15 @@ namespace Taskmaster
 		[STAThread] // supposedly needed to avoid shit happening with the WinForms GUI and other GUI toolkits
 		static public int Main(string[] args)
 		{
+			// Multi-core JIT
+			// https://docs.microsoft.com/en-us/dotnet/api/system.runtime.profileoptimization
+			{
+				var cachepath = System.IO.Path.Combine(datapath, "Cache");
+				if (!System.IO.Directory.Exists(cachepath)) System.IO.Directory.CreateDirectory(cachepath);
+				System.Runtime.ProfileOptimization.SetProfileRoot(cachepath);
+				System.Runtime.ProfileOptimization.StartProfile("jit.profile");
+			}
+
 			try
 			{
 				try
