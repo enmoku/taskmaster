@@ -33,6 +33,7 @@ namespace Taskmaster
 		Normal,
 		Exit,
 		QuickExit,
+		CriticalFailure,
 		Restart
 	}
 

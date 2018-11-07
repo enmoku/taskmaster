@@ -282,14 +282,17 @@ namespace Taskmaster
 			if (tray) trayaccess = new TrayAccess();
 
 			Log.Information("<Core> Waiting for component loading.");
-			Task.WaitAll(init);
-			foreach (Task t in init)
+			try
 			{
-				if (t.Exception != null)
-				{
-					Logging.Stacktrace(t.Exception);
-					throw t.Exception;
-				}
+				Task.WaitAll(init);
+			}
+			catch (AggregateException ex)
+			{
+				foreach (var iex in ex.InnerExceptions)
+					Logging.Stacktrace(iex);
+
+				System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(ex.InnerException).Throw();
+				throw; // because compiler is dumb and doesn't understand the above
 			}
 
 			// HOOKING
@@ -1103,8 +1106,8 @@ namespace Taskmaster
 				catch (Exception ex) // this seems to happen only when Avast cybersecurity is scanning TM
 				{
 					Log.Fatal("Exiting due to initialization failure.");
-					Logging.Stacktrace(ex);
-					throw new RunstateException("Initialization failure", Runstate.QuickExit, ex);
+					Logging.Stacktrace(ex); // this doesn't work for some reason?
+					throw new RunstateException("Initialization failure", Runstate.CriticalFailure, ex);
 				}
 
 				try
@@ -1209,7 +1212,7 @@ namespace Taskmaster
 					try
 					{
 						if (!System.IO.File.Exists(Application.ExecutablePath))
-							Log.Fatal("Executable missing: {Path}", Application.ExecutablePath);
+							Log.Fatal("Executable missing: {Path}", Application.ExecutablePath); // this should be "impossible"
 
 						Log.CloseAndFlush();
 
@@ -1242,20 +1245,29 @@ namespace Taskmaster
 			}
 			catch (RunstateException ex)
 			{
+				int rv = 0;
+
+				Cleanup();
+
 				switch (ex.State)
 				{
+					case Runstate.CriticalFailure:
+						Logging.Stacktrace(ex.InnerException);
+						System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(ex.InnerException ?? ex).Throw();
+						throw;
 					case Runstate.Normal:
 					case Runstate.Exit:
 					case Runstate.QuickExit:
 					case Runstate.Restart:
 						break;
 				}
-				Cleanup();
 			}
 			catch (Exception ex)
 			{
 				Logging.Stacktrace(ex, oob: true);
 				Cleanup();
+
+				return 1;
 			}
 			finally
 			{
