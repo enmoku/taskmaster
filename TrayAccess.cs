@@ -324,9 +324,6 @@ namespace Taskmaster
 				// powermanager.Restore(0).Wait(); // already called by setBehaviour as necessary
 				powermanager?.SetMode(mode);
 
-				if (Taskmaster.DebugPower)
-					Log.Debug("<Power> Updating UI.");
-
 				// powermanager.RequestMode(mode);
 				HighlightPowerMode();
 			}
