@@ -655,7 +655,7 @@ namespace Taskmaster
 				}
 
 				float volume = section.TryGet("Volume")?.FloatValue.Constrain(0.0f, 1.0f) ?? 0.5f;
-				AudioVolumeStrategy volumestrategy = (AudioVolumeStrategy)(section.TryGet("Volume strategy")?.IntValue.Constrain(0, 3) ?? 0);
+				AudioVolumeStrategy volumestrategy = (AudioVolumeStrategy)(section.TryGet("Volume strategy")?.IntValue.Constrain(0, 5) ?? 0);
 
 				var prc = new ProcessController(section.Name, prioR, (aff == 0 ? allCPUsMask : aff))
 				{

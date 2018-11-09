@@ -101,14 +101,28 @@ namespace Taskmaster
 								volAdjusted = true;
 								break;
 							case AudioVolumeStrategy.Decrease:
-								if (session.SimpleAudioVolume.Volume > prc.Volume)
+								if (oldvolume > prc.Volume)
 								{
 									session.SimpleAudioVolume.Volume = prc.Volume;
 									volAdjusted = true;
 								}
 								break;
 							case AudioVolumeStrategy.Increase:
-								if (session.SimpleAudioVolume.Volume < prc.Volume)
+								if (oldvolume < prc.Volume)
+								{
+									session.SimpleAudioVolume.Volume = prc.Volume;
+									volAdjusted = true;
+								}
+								break;
+							case AudioVolumeStrategy.DecreaseFromFull:
+								if (oldvolume > prc.Volume && oldvolume >= 0.99f)
+								{
+									session.SimpleAudioVolume.Volume = prc.Volume;
+									volAdjusted = true;
+								}
+								break;
+							case AudioVolumeStrategy.IncreaseFromMute:
+								if (oldvolume < prc.Volume && oldvolume <= 0.01f)
 								{
 									session.SimpleAudioVolume.Volume = prc.Volume;
 									volAdjusted = true;
@@ -239,5 +253,7 @@ namespace Taskmaster
 		Decrease = 1,
 		Increase = 2,
 		Force = 3,
+		DecreaseFromFull=4,
+		IncreaseFromMute=5
 	}
 }
