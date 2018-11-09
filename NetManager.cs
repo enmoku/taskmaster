@@ -429,14 +429,22 @@ namespace Taskmaster
 
 				if (oldInetAvailable != InternetAvailable)
 				{
-					string status = "All OK";
-					if (NetworkAvailable && !InternetAvailable) status = "ISP/route problems";
-					else if (!NetworkAvailable) status = "Cable unplugged or router/modem down";
+					var sbs = new System.Text.StringBuilder();
 
-					Log.Information("<Network> Status: {NetworkAvailable}, Internet: {InternetAvailable} – {Status}",
-						(NetworkAvailable ? "Up" : "Down"),
-						(InternetAvailable ? "Connected" : "Disconnected"),
-						status);
+					sbs.Append("<Network> Status: ")
+						.Append(NetworkAvailable ? "Up" : "Down")
+						.Append(", Internet: ")
+						.Append(InternetAvailable ? "Connected" : "Disconnected")
+						.Append(" - ");
+
+					if (NetworkAvailable && !InternetAvailable) sbs.Append("ISP/route problems");
+					else if (!NetworkAvailable) sbs.Append("Cable unplugged or router/modem down");
+					else sbs.Append("All OK");
+
+					if (!NetworkAvailable || !InternetAvailable) Log.Warning(sbs.ToString());
+					else Log.Information(sbs.ToString());
+
+					sbs.Clear();
 				}
 				else
 				{
@@ -641,7 +649,7 @@ namespace Taskmaster
 			{
 				if (AvailabilityChanged)
 				{
-					Log.Warning("<Network> Unstable connectivity detected.");
+					//Log.Warning("<Network> Unstable connectivity detected.");
 
 					Tray.Tooltip(2000, "Unstable internet connection detected!", "Taskmaster",
 						System.Windows.Forms.ToolTipIcon.Warning);
