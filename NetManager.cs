@@ -372,6 +372,9 @@ namespace Taskmaster
 			try
 			{
 				var oldInetAvailable = InternetAvailable;
+				bool timeout = false;
+				bool dnsfail = false;
+				bool interrupt = false;
 				if (NetworkAvailable)
 				{
 					try
@@ -392,26 +395,19 @@ namespace Taskmaster
 							case System.Net.Sockets.SocketError.TryAgain:
 							case System.Net.Sockets.SocketError.TimedOut:
 							default:
-								Log.Information("<Network> Internet availability test inconclusive, assuming connected.");
+								timeout = true;
 								InternetAvailable = true;
 								return InternetAvailable;
 							case System.Net.Sockets.SocketError.SocketError:
 							case System.Net.Sockets.SocketError.Interrupted:
 							case System.Net.Sockets.SocketError.Fault:
-								if (!Notified)
-								{
-									Log.Warning("<Network> Internet check interrupted. Potential hardware/driver issues.");
-									Notified = true;
-								}
+								interrupt = true;
 								break;
 							case System.Net.Sockets.SocketError.HostUnreachable:
+								break;
 							case System.Net.Sockets.SocketError.HostNotFound:
 							case System.Net.Sockets.SocketError.HostDown:
-								if (!Notified)
-								{
-									Log.Warning("<Network> DNS test failed, test host unreachable. Test host may be down.");
-									Notified = true;
-								}
+								dnsfail = true;
 								break;
 							case System.Net.Sockets.SocketError.NetworkDown:
 							case System.Net.Sockets.SocketError.NetworkReset:
@@ -444,6 +440,23 @@ namespace Taskmaster
 				}
 				else
 				{
+					if (timeout)
+						Log.Information("<Network> Internet availability test inconclusive, assuming connected.");
+
+					if (!Notified)
+					{
+						if (interrupt)
+						{
+							Log.Warning("<Network> Internet check interrupted. Potential hardware/driver issues.");
+							Notified = true;
+						}
+						if (dnsfail)
+						{
+							Log.Warning("<Network> DNS test failed, test host unreachable. Test host may be down.");
+							Notified = true;
+						}
+					}
+
 					if (Taskmaster.Trace) Log.Verbose("<Network> Connectivity unchanged.");
 				}
 			}
