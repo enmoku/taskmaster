@@ -937,7 +937,7 @@ namespace Taskmaster
 								{
 									var info = Process.GetCurrentProcess().StartInfo;
 									info.FileName = Process.GetCurrentProcess().ProcessName;
-									info.Arguments = string.Format("--admin {0}", ++AdminCounter);
+									info.Arguments = "--admin "+ ++AdminCounter;
 									info.Verb = "runas"; // elevate privileges
 									Log.CloseAndFlush();
 									var proc = Process.Start(info);
@@ -1197,18 +1197,17 @@ namespace Taskmaster
 
 				Cleanup();
 
-				Log.Information("WMI queries: {QueryTime}s [{QueryCount}]", string.Format("{0:N2}", Statistics.WMIquerytime), Statistics.WMIqueries);
-				Log.Information("Self-maintenance: {CleanupTime}s [{CleanupCount}]", string.Format("{0:N2}", Statistics.MaintenanceTime), Statistics.MaintenanceCount);
-				Log.Information("Path cache: {Hits} hits, {Misses} misses",
-					Statistics.PathCacheHits, Statistics.PathCacheMisses);
-				Log.Information("Path finding: {Total} total attempts; {Mod} via module info, {Ccall} via C call, {WMI} via WMI",
-					Statistics.PathFindAttempts, Statistics.PathFindViaModule, Statistics.PathFindViaC, Statistics.PathFindViaWMI);
+				Log.Information("WMI queries: " + $"{Statistics.WMIquerytime:N2}s [" + Statistics.WMIqueries + "]");
+				Log.Information("Self-maintenance: " + $"{Statistics.MaintenanceTime:N2}s [" + Statistics.MaintenanceCount + "]");
+				Log.Information("Path cache: " + Statistics.PathCacheHits + " hits, " + Statistics.PathCacheMisses + " misses");
+				Log.Information("Path finding: " + Statistics.PathFindAttempts + " total attempts; " + Statistics.PathFindViaModule +
+					" via module info, " + Statistics.PathFindViaC + " via C call, " + Statistics.PathFindViaWMI + " via WMI");
 
 				CleanShutdown();
 
 				Utility.Dispose(ref Config);
 
-				Log.Information("Taskmaster! (#{ProcessID}) END! [Clean]", System.Diagnostics.Process.GetCurrentProcess().Id);
+				Log.Information("Taskmaster! (#" + Process.GetCurrentProcess().Id + ") END! [Clean]");
 
 				if (Restart) // happens only on power resume (waking from hibernation) or when manually set
 				{
@@ -1232,13 +1231,10 @@ namespace Taskmaster
 						info.WorkingDirectory = System.IO.Path.GetDirectoryName(Application.ExecutablePath);
 						info.FileName = System.IO.Path.GetFileName(Application.ExecutablePath);
 
-						List<string> nargs = new List<string>
-					{
-						string.Format("--restart {0}", ++RestartCounter)  // has no real effect
-					};
+						List<string> nargs = new List<string> { "--restart " + ++RestartCounter };  // has no real effect
 						if (RestartElevated)
 						{
-							nargs.Add(string.Format("--admin {0}", ++AdminCounter));
+							nargs.Add("--admin " + ++AdminCounter);
 							info.Verb = "runas"; // elevate privileges
 						}
 

@@ -105,9 +105,6 @@ namespace Taskmaster
 					sbs.Append("Kill: ").Append(HangKillTick).Append("s");
 
 				Log.Information(sbs.ToString());
-
-				sbs.Clear();
-				sbs = null;
 			}
 
 			if (dirty) corecfg.MarkDirty();
@@ -255,9 +252,6 @@ namespace Taskmaster
 						}
 
 						if (acted) Log.Warning(sbs.ToString());
-
-						sbs.Clear();
-						sbs = null;
 					}
 					else
 					{

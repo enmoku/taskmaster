@@ -273,7 +273,7 @@ namespace Taskmaster
 				activeLabel.Text = windowchangeev.Title;
 				activeExec.Text = windowchangeev.Executable;
 				activeFullscreen.Text = windowchangeev.Fullscreen.True() ? "Full" : windowchangeev.Fullscreen.False() ? "Window" : "Unknown";
-				activePID.Text = string.Format("{0}", windowchangeev.Id);
+				activePID.Text = windowchangeev.Id.ToString();
 			}));
 		}
 
@@ -541,7 +541,7 @@ namespace Taskmaster
 					cacheObjects.Text = Statistics.PathCacheCurrent.ToString();
 					var ratio = (Statistics.PathCacheMisses > 0 ? (Statistics.PathCacheHits / Statistics.PathCacheMisses) : 1);
 					if (ratio <= 99.99f)
-						cacheRatio.Text = string.Format("{0:N2}", ratio);
+						cacheRatio.Text = $"{ratio:N2}";
 					else
 						cacheRatio.Text = ">99.99"; // let's just not overflow the UI
 				}
@@ -578,7 +578,7 @@ namespace Taskmaster
 			if (!IsHandleCreated) return;
 			BeginInvoke(new Action(() =>
 			{
-				processingtimer.Text = string.Format("{0:N0}s", DateTime.Now.TimeTo(ProcessManager.NextScan).TotalSeconds);
+				processingtimer.Text = $"{DateTime.Now.TimeTo(ProcessManager.NextScan).TotalSeconds:N0}s";
 			}));
 		}
 
@@ -597,7 +597,6 @@ namespace Taskmaster
 						uptimeAvgLabel.Text = HumanInterface.TimeString(TimeSpan.FromMinutes(avg));
 				}));
 			}
-			// string.Format("{0:N1} min(s)", net.Uptime.TotalMinutes);
 		}
 
 		ListView ifaceList;
@@ -642,7 +641,7 @@ namespace Taskmaster
 				try
 				{
 					var li = ifaceList.SelectedItems[0];
-					var ipv6addr = string.Format("[{0}]", li.SubItems[IPv6Column].Text);
+					var ipv6addr = "[" + li.SubItems[IPv6Column].Text + "]";
 					Clipboard.SetText(ipv6addr);
 				}
 				catch (Exception ex) { Logging.Stacktrace(ex); }
@@ -737,10 +736,12 @@ namespace Taskmaster
 
 		void BuildUI()
 		{
-			Text = string.Format("{0} ({1})", System.Windows.Forms.Application.ProductName, System.Windows.Forms.Application.ProductVersion);
-#if DEBUG
-			Text = Text + " DEBUG";
-#endif
+			Text = Application.ProductName + " (" + Application.ProductVersion + ")"
+				#if DEBUG
+				+ " DEBUG"
+				#endif
+				;
+
 			// Padding = new Padding(6);
 			// margin
 
@@ -1011,7 +1012,7 @@ namespace Taskmaster
 				CheckOnClick = true,
 				Checked = (LogIncludeLevel.MinimumLevel == Serilog.Events.LogEventLevel.Debug),
 			};
-			#if DEBUG
+#if DEBUG
 			menu_debug_loglevel_trace = new ToolStripMenuItem("Trace", null,
 			(s, e) =>
 			{
@@ -1023,12 +1024,12 @@ namespace Taskmaster
 				CheckOnClick = true,
 				Checked = (LogIncludeLevel.MinimumLevel == Serilog.Events.LogEventLevel.Verbose),
 			};
-			#endif
+#endif
 			menu_debug_loglevel.DropDownItems.Add(menu_debug_loglevel_info);
 			menu_debug_loglevel.DropDownItems.Add(menu_debug_loglevel_debug);
-			#if DEBUG
+#if DEBUG
 			menu_debug_loglevel.DropDownItems.Add(menu_debug_loglevel_trace);
-			#endif
+#endif
 
 			UpdateLogLevelSelection();
 
@@ -1947,13 +1948,13 @@ namespace Taskmaster
 					var reactionary = PowerManager.GetModeName(ev.Mode);
 
 					var li = new ListViewItem(new string[] {
-						string.Format("{0:N2}%", ev.Current),
-						string.Format("{0:N2}%", ev.Average),
-						string.Format("{0:N2}%", ev.High),
-						string.Format("{0:N2}%", ev.Low),
+						$"{ev.Current:N2}%",
+						$"{ev.Average:N2}%",
+						$"{ev.High:N2}%",
+						$"{ev.Low:N2}%",
 						reactionary,
 						ev.Handled.ToString(),
-						string.Format("{0:N1}%", ev.Pressure*100f)
+						$"{ev.Pressure*100f:N1}%"
 					})
 					{
 						UseItemStyleForSubItems = false
@@ -2090,7 +2091,7 @@ namespace Taskmaster
 					var prc = Taskmaster.processmanager.getWatchedController(li.SubItems[NameColumn].Text);
 					if (prc != null)
 					{
-						var rv = MessageBox.Show(string.Format("Really remove '{0}'", prc.FriendlyName), "Remove watchlist item", MessageBoxButtons.YesNo, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button2);
+						var rv = MessageBox.Show("Really remove '"+prc.FriendlyName+"'", "Remove watchlist item", MessageBoxButtons.YesNo, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button2);
 						if (rv == DialogResult.Yes)
 						{
 							processmanager.RemoveController(prc);
@@ -2168,8 +2169,6 @@ namespace Taskmaster
 					{
 						Log.Warning("[{Rule}] Failed to copy configuration to clipboard.", name);
 					}
-
-					sbs.Clear(); // Unnecessary?
 				}
 				catch (Exception ex) { Logging.Stacktrace(ex); }
 			}
@@ -2326,8 +2325,8 @@ namespace Taskmaster
 				{
 					try
 					{
-						ifaceList.Items[ea.Traffic.Index].SubItems[PacketDeltaColumn].Text = string.Format("+{0}", ea.Traffic.Delta.Unicast);
-						ifaceList.Items[ea.Traffic.Index].SubItems[ErrorDeltaColumn].Text = string.Format("+{0}", ea.Traffic.Delta.Errors);
+						ifaceList.Items[ea.Traffic.Index].SubItems[PacketDeltaColumn].Text = "+"+ea.Traffic.Delta.Unicast;
+						ifaceList.Items[ea.Traffic.Index].SubItems[ErrorDeltaColumn].Text = "+"+ea.Traffic.Delta.Errors;
 						if (ea.Traffic.Delta.Errors > 0)
 							ifaceList.Items[ea.Traffic.Index].SubItems[ErrorDeltaColumn].ForeColor = System.Drawing.Color.OrangeRed;
 						else

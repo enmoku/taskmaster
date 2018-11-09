@@ -63,15 +63,12 @@ namespace Taskmaster
 				hours = true;
 			}
 
-			// if (time.Minutes > 0)
-			// {
 			if (hours || days)
 				s.Append(", ");
 			var min = time.Minutes + (time.Seconds / 60.0);
-			s.Append(string.Format("{0:N1}", min));
-			if (min > 1 || min < 1) s.Append(" minutes");
-			else s.Append(" minute");
-			// }
+			s.Append($"{min:N1}")
+				.Append(" minute");
+			if (min > 1 || min < 1) s.Append("s");
 
 			return s.ToString();
 		}
@@ -112,7 +109,7 @@ namespace Taskmaster
 
 			double num = bytes / div;
 
-			lock (numberformat)
+			lock (numberformat) // lock vs new.. hmm
 			{
 				// Don't show decimals for bytes, do whatever for the rest.
 				numberformat.NumberDecimalDigits = div == 1 ? 0 : ((num < 10) ? 3 : ((num > 100) ? 1 : 2));

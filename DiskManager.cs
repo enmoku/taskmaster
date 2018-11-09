@@ -152,7 +152,7 @@ namespace Taskmaster
 				}
 
 				onTempScan?.Invoke(null, new DiskEventArgs { State = ScanState.End, Stats = dst });
-				Log.Information("Temp contents: {Files} files, {Dirs} dirs, {Size} MBs", dst.Files, dst.Dirs, string.Format("{0:N2}", dst.Size / 1000f / 1000f));
+				Log.Information("Temp contents: " + dst.Files + " files, " + dst.Dirs + " dirs, " + $"{(dst.Size / 1_000_000f):N2} MBs");
 			}
 			catch { throw; } // for finally block
 			finally

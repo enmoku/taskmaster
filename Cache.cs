@@ -166,7 +166,7 @@ namespace Taskmaster
 					var deleteItem = new Action<K1>(
 						(K1 key) =>
 						{
-							if (Taskmaster.Trace) Log.Verbose("Removing {time} min old item.", string.Format("{0:N1}", bi));
+							if (Taskmaster.Trace) Log.Verbose($"Removing {bi:N1} min old item.");
 							Items.Remove(key);
 							list.RemoveAt(0);
 						}

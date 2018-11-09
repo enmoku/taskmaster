@@ -148,6 +148,18 @@ namespace Taskmaster
 
 			return time;
 		}
+
+		public static void LogAndDiscardException(Action action)
+		{
+			try
+			{
+				action();
+			}
+			catch (Exception ex)
+			{
+				Logging.Stacktrace(ex);
+			}
+		}
 	}
 
 	public static class Bit
@@ -222,10 +234,14 @@ namespace Taskmaster
 				})
 				{
 					log.WriteEntry(
-						Environment.CommandLine + "\n\n" +
-						string.Format("{0} : {1}\n\n", ex.GetType().Name, ex.Message) +
-						string.Format("Reported at {0}\n\n", method) +
-						ex.StackTrace, EventLogEntryType.Error);
+						Environment.CommandLine +
+						Environment.NewLine + Environment.NewLine +
+						ex.GetType().Name + " : " + ex.Message +
+						Environment.NewLine + Environment.NewLine +
+						"Reported at " + method +
+						Environment.NewLine + Environment.NewLine +
+						ex.StackTrace,
+						EventLogEntryType.Error);
 				}
 			}
 		}

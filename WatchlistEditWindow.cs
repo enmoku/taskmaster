@@ -66,7 +66,7 @@ namespace Taskmaster
 
 			StartPosition = FormStartPosition.CenterParent;
 
-			if (Controller == null) throw new ArgumentException(string.Format("{0} not found in watchlist.", Controller.FriendlyName));
+			if (Controller == null) throw new ArgumentException(Controller.FriendlyName + " not found in watchlist.");
 
 			WindowState = FormWindowState.Normal;
 			FormBorderStyle = FormBorderStyle.FixedDialog; // no min/max buttons as wanted
@@ -217,10 +217,8 @@ namespace Taskmaster
 			AutoSizeMode = AutoSizeMode.GrowOnly;
 			AutoSize = true;
 
-			Text = string.Format("{0} ({1}) – {2}",
-								 Controller.FriendlyName,
-								 (Controller.Executable ?? Controller.Path),
-								 System.Windows.Forms.Application.ProductName);
+			Text = Controller.FriendlyName + " ("+ (Controller.Executable ?? Controller.Path) + ") – " + Application.ProductName;
+
 			Padding = new Padding(12);
 
 			var tooltip = new ToolTip();

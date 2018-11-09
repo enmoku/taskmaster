@@ -191,8 +191,7 @@ namespace Taskmaster
 					SleepTickCount = 0; // reset
 
 					if (Taskmaster.ShowSessionActions || Taskmaster.DebugMonitor)
-						Log.Information("<Session:Lock> User active too recently ({Seconds}s ago), delaying monitor power down...",
-							string.Format("{0:N1}", idletime));
+						Log.Information("<Session:Lock> User active too recently (" + $"{idletime:N1}s" + " ago), delaying monitor power down...");
 
 					MonitorSleepTimer?.Start(); // TODO: Make this happen sooner if user was not active recently
 				}
@@ -664,19 +663,19 @@ namespace Taskmaster
 			hwsec["CPU sample count"].Comment = "3 to 30. Number of CPU samples to keep. Recommended value is: Count * Interval <= 30 seconds";
 			dirtyconfig |= modified;
 
-			Log.Information("<CPU> CPU sampler: {Interval}s × {Count} = {Period}s observation period",
-							CPUSampleInterval, CPUSampleCount, CPUSampleCount * CPUSampleInterval);
-			Log.Information("<Power> Watchlist powerdown delay: {Delay}", (PowerdownDelay == 0 ? "Disabled" : (PowerdownDelay + "s")));
+			Log.Information("<CPU> CPU sampler: " + CPUSampleInterval + "s × " + CPUSampleCount +
+				" = " + (CPUSampleCount * CPUSampleInterval) + "s observation period");
+			Log.Information("<Power> Watchlist powerdown delay: " + (PowerdownDelay == 0 ? "Disabled" : (PowerdownDelay + "s")));
 
 			// --------------------------------------------------------------------------------------------------------
 
 			LogBehaviourState();
 
-			Log.Information("<Power> Session lock: {Mode}", (SessionLockPowerMode == PowerMode.Custom ? "Ignored" : SessionLockPowerMode.ToString()));
-			Log.Information("<Power> Restore mode: {Method} [{Mode}]", RestoreModeMethod.ToString(), RestoreMode.ToString());
+			Log.Information("<Power> Session lock: " + (SessionLockPowerMode == PowerMode.Custom ? "Ignored" : SessionLockPowerMode.ToString()));
+			Log.Information("<Power> Restore mode: " + RestoreModeMethod.ToString() + " [" + RestoreMode.ToString() + "]");
 
-			Log.Information("<Session> User AFK timeout: {Timeout}", SessionLockPowerOffIdleTimeout == 0 ? "Disabled" : string.Format("{0}s", SessionLockPowerOffIdleTimeout));
-			Log.Information("<Session> Immediate power off on lock: {Toggle}", SessionLockPowerOff ? "Enabled" : "Disabled");
+			Log.Information("<Session> User AFK timeout: " + (SessionLockPowerOffIdleTimeout == 0 ? "Disabled" : $"{SessionLockPowerOffIdleTimeout}s"));
+			Log.Information("<Session> Immediate power off on lock: " + (SessionLockPowerOff ? "Enabled" : "Disabled"));
 
 			if (dirtyconfig) corecfg.MarkDirty();
 		}

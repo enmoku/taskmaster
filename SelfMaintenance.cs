@@ -94,7 +94,7 @@ namespace Taskmaster
 				Statistics.MaintenanceCount++;
 				Statistics.MaintenanceTime += time.Elapsed.TotalSeconds;
 
-				if (Taskmaster.Trace) Log.Verbose("Maintenance took: {Time}s", string.Format("{0:N2}", time.Elapsed.TotalSeconds));
+				if (Taskmaster.Trace) Log.Verbose("Maintenance took: " + $"{time.Elapsed.TotalSeconds:N2}s");
 			}
 			catch (Exception ex)
 			{

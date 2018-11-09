@@ -42,9 +42,9 @@ namespace Taskmaster
 		[Conditional("DEBUG")]
 		public static void PathCacheStats()
 		{
-			Log.Debug("Path cache state: {Count} items (Hits: {Hits}, Misses: {Misses}, Ratio: {Ratio})",
-					  Statistics.PathCacheCurrent, Statistics.PathCacheHits, Statistics.PathCacheMisses,
-					  string.Format("{0:N2}", Statistics.PathCacheMisses > 0 ? (Statistics.PathCacheHits / Statistics.PathCacheMisses) : 1));
+			Log.Debug("Path cache state: " + Statistics.PathCacheCurrent + " items (Hits: " + Statistics.PathCacheHits +
+				", Misses: " + Statistics.PathCacheMisses +
+				", Ratio: " + $"{(Statistics.PathCacheMisses > 0 ? (Statistics.PathCacheHits / Statistics.PathCacheMisses) : 1):N2})");
 		}
 
 		public static ProcessEx GetInfo(int ProcessID, Process process = null, string name = null, string path = null, bool getPath = false)
@@ -217,7 +217,7 @@ namespace Taskmaster
 						var mpath = item["ExecutablePath"];
 						if (mpath != null)
 						{
-							Log.Verbose(string.Format("WMI fetch (#{0}): {1}", processId, path));
+							Log.Verbose("WMI fetch (#" + processId + "): " + path);
 							wmitime.Stop();
 							Statistics.WMIquerytime += wmitime.Elapsed.TotalSeconds;
 							return mpath.ToString();

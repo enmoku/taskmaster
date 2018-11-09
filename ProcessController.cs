@@ -386,10 +386,9 @@ namespace Taskmaster
 			Debug.Assert(ForegroundOnly == true);
 
 			if (PausedIds.Contains(info.Id)) return; // already paused
-			// throw new InvalidOperationException(string.Format("{0} already paused", info.Name));
 
 			if (Taskmaster.DebugForeground && Taskmaster.Trace)
-				Log.Debug("[{Name}] Quelling {Exec} (#{Pid})", FriendlyName, info.Name, info.Id);
+				Log.Debug("[" + FriendlyName + "] Quelling " + info.Name + " (#" + info.Id + ")");
 
 			// PausedState.Affinity = Affinity;
 			// PausedState.Priority = Priority;
@@ -431,16 +430,14 @@ namespace Taskmaster
 
 			if (!PausedIds.Contains(info.Id)) return; // can't resume unpaused item
 
-			// throw new InvalidOperationException(string.Format("{0} not paused", info.Name));
-
 			if (Priority.HasValue && info.Process.PriorityClass.ToInt32() != Priority.Value.ToInt32())
 			{
 				try
 				{
 					info.Process.PriorityClass = Priority.Value;
 					if (Taskmaster.DebugForeground)
-						Log.Debug("[{FriendlyName}] {Exec} (#{Pid}) priority restored: {Paused}→{Restored} [Foreground]",
-										FriendlyName, info.Name, info.Id, BackgroundPriority, Priority);
+						Log.Debug("[" + FriendlyName + "] " + info.Name + " (#" + info.Id + ") priority restored: " +
+							BackgroundPriority.ToString() + "→" + Priority.ToString() + " [Foreground]");
 				}
 				catch
 				{
@@ -895,10 +892,10 @@ namespace Taskmaster
 
 				if (fAffinity) sbs.Append(" [Failed]");
 
-				if (Taskmaster.DebugProcesses) sbs.Append(string.Format(" [{0}]", AffinityStrategy.ToString()));
+				if (Taskmaster.DebugProcesses) sbs.Append(" [").Append(AffinityStrategy.ToString()).Append("]");
 			}
-			if (mPower)
-				sbs.Append(string.Format(" [Power Mode: {0}]", PowerPlan.ToString()));
+
+			if (mPower) sbs.Append(" [Power Mode: ").Append(PowerPlan.ToString()).Append("]");
 
 			if (modified)
 			{
@@ -1139,7 +1136,6 @@ namespace Taskmaster
 			try
 			{
 				var n = (DateTime.Now - LastScan).TotalMinutes;
-				// Log.Trace(string.Format("[{0}] last scan {1:N1} minute(s) ago.", FriendlyName, n));
 				if (Rescan > 0 && n >= Rescan)
 				{
 					if (Atomic.Lock(ref ScheduledScan))

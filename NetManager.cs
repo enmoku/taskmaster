@@ -127,12 +127,9 @@ namespace Taskmaster
 			{
 				if (device.Name.Equals(devicename))
 				{
-					string rv = string.Format("{0} – {1} [{2}] – {3} MB in, {4} MB out, {5} errors",
-						devicename, device.IPv4Address.ToString(), IPv6Address.ToString(),
-						device.Incoming.Bytes/1_000_000, device.Outgoing.Bytes/1_000_000,
-						device.Outgoing.Errors+device.Incoming.Errors
-						);
-					return rv;
+					return devicename + " – " + device.IPv4Address.ToString() + " [" + IPv6Address.ToString() + "]" +
+						" – " + (device.Incoming.Bytes / 1_000_000) + " MB in, " + (device.Outgoing.Bytes / 1_000_000) + " MB out, " +
+						(device.Outgoing.Errors + device.Incoming.Errors) + " errors";
 				}
 			}
 
@@ -273,27 +270,28 @@ namespace Taskmaster
 
 		void ReportUptime()
 		{
-			var ups = new System.Text.StringBuilder();
+			var sbs = new System.Text.StringBuilder();
 
-			ups.Append("<Network> Average uptime: ");
+			sbs.Append("<Network> Average uptime: ");
 			lock (uptime_lock)
 			{
 				var currentUptime = DateTime.Now.TimeSince(lastUptimeStart).TotalMinutes;
 
-				ups.Append(string.Format("{0:N1}", ((uptimeTotal + currentUptime) / (uptimeSamples + 1)))).Append(" minutes");
+				sbs.Append($"{(uptimeTotal + currentUptime) / (uptimeSamples + 1):N1}").Append(" minutes");
 
 				if (LogAverageUptime)
 				{
 					if (uptimeSamples > 3)
-						ups.Append(" (").Append(string.Format("{0:N1}", upTime.GetRange(upTime.Count - 3, 3).Sum() / 3)).Append(" minutes for last 3 samples");
+						sbs.Append(" (").Append($"{(upTime.GetRange(upTime.Count - 3, 3).Sum() / 3):N1}")
+							.Append(" minutes for last 3 samples");
 				}
 			}
 
-			ups.Append(" since: ").Append(Since)
-			   .Append(" (").Append(string.Format("{0:N2}", (DateTime.Now - Since).TotalHours)).Append("h ago)")
+			sbs.Append(" since: ").Append(Since)
+			   .Append(" (").Append($"{(DateTime.Now - Since).TotalHours:N2}").Append("h ago)")
 			   .Append(".");
 
-			Log.Information(ups.ToString());
+			Log.Information(sbs.ToString());
 
 			ReportCurrentUpstate();
 		}
@@ -443,8 +441,6 @@ namespace Taskmaster
 
 					if (!NetworkAvailable || !InternetAvailable) Log.Warning(sbs.ToString());
 					else Log.Information(sbs.ToString());
-
-					sbs.Clear();
 				}
 				else
 				{
@@ -595,9 +591,6 @@ namespace Taskmaster
 
 			if (InternetAvailable)
 			{
-				// CLEANUP: Console.WriteLine("DEBUG: AddrChange: " + oldV4Address + " -> " + IPv4Address);
-				// CLEANUP: Console.WriteLine("DEBUG: AddrChange: " + oldV6Address + " -> " + IPv6Address);
-
 				IPAddress oldV6Address = IPv6Address;
 				IPAddress oldV4Address = IPv4Address;
 
@@ -699,10 +692,11 @@ namespace Taskmaster
 
 					await Task.Delay(sleep.Constrain(1000, 16000));
 
-					if (DateTime.Now.TimeSince(lastnetworkchange).TotalSeconds < delay)
+					var lastchange = DateTime.Now.TimeSince(lastnetworkchange);
+					if (lastchange.TotalSeconds < delay)
 					{
-						if (Taskmaster.DebugNet) Log.Verbose("<Net> Delaying network status testing again: {Delay}<{Wait} is too soon",
-							string.Format("{0:N0}s", DateTime.Now.TimeSince(lastnetworkchange).TotalSeconds), delay);
+						if (Taskmaster.DebugNet) Log.Verbose("<Net> Delaying network status testing again: " +
+							$"{lastchange.TotalSeconds:N0}s < {delay}s" + " is too soon");
 						DelayedNetworkConnectedUpdate(NetworkAvailable);
 						return;
 					}

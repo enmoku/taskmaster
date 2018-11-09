@@ -102,10 +102,10 @@ namespace Taskmaster
 
 		public void PrintStats()
 		{
-			Console.WriteLine(string.Format("Incoming: {0}(+{1}) Err({2}) Dis({3}) Unk({4})",
-											Incoming.Unicast, Incoming.NonUnicast, Incoming.Errors, Incoming.Discards, Incoming.Unknown));
-			Console.WriteLine(string.Format("Outgoing: {0}(+{1}) Err({2}) Dis({3})",
-											Outgoing.Unicast, Outgoing.NonUnicast, Outgoing.Errors, Outgoing.Discards));
+			Console.WriteLine("Incoming: " + Incoming.Unicast + "(+" + Incoming.NonUnicast + ") " +
+				"Err(" + Incoming.Errors + ") Dis(" + Incoming.Discards + ") Unk(" + Incoming.Unknown + ")");
+			Console.WriteLine("Outgoing: " + Outgoing.Unicast + "(+" + Outgoing.NonUnicast + ") " +
+				"Err(" + Outgoing.Errors + ") Dis(" + Outgoing.Discards + ")");
 		}
 	}
 }

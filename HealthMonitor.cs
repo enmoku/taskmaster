@@ -383,9 +383,14 @@ namespace Taskmaster
 									}
 								}
 
-								Log.Warning("<<Auto-Doc>> Free memory low [{Memory}], attempting to improve situation.{FgState}",
-									HumanInterface.ByteString((long)(memfreemb * 1_000_000)),
-									(ignorepid > 4) ? string.Format(" Ignoring foreground (#{0}).", ignorepid) : string.Empty);
+								var sbs = new System.Text.StringBuilder();
+								sbs.Append("<<Auto-Doc>> Free memory low [")
+									.Append(HumanInterface.ByteString((long)(memfreemb * 1_000_000)))
+									.Append("], attempting to improve situation.");
+								if (ignorepid > 4)
+									sbs.Append(" Ignoring foreground (#").Append(ignorepid).Append(").");
+
+								Log.Warning(sbs.ToString());
 
 								Taskmaster.processmanager?.FreeMemory(null, quiet: true);
 							}
