@@ -258,6 +258,7 @@ namespace Taskmaster
 					}
 
 					System.IO.File.WriteAllLines(logfile, logcontents, System.Text.Encoding.Unicode);
+					Console.WriteLine("Crash log written to " + logfile);
 				}
 				catch
 				{
