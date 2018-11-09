@@ -172,7 +172,8 @@ namespace Taskmaster
 			Controller.Rescan = Convert.ToInt32(rescanFreq.Value);
 			Controller.AllowPaging = allowPaging.Checked;
 			Controller.ForegroundOnly = foregroundOnly.Checked;
-
+			Controller.BackgroundPowerdown = Controller.ForegroundOnly && bacgroundPowerdown.Checked;
+			
 			if (ignorelist.Items.Count > 0)
 			{
 				List<string> ignlist = new List<string>();
