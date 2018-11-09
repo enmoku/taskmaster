@@ -49,21 +49,15 @@ namespace Taskmaster
 
 	sealed public class NetManager : IDisposable
 	{
-		DateTime lastUptimeStart;
-
 		public event EventHandler<InternetStatus> InternetStatusChange;
 		public event EventHandler IPChanged;
 		public event EventHandler<NetworkStatus> NetworkStatusChange;
 
 		string dnstestaddress = "google.com"; // should be fine, www is omitted to avoid deeper DNS queries
 
-		readonly object uptime_lock = new object();
-
 		int DeviceTimerInterval = 15 * 60;
 		int PacketStatTimerInterval = 15; // second
 		int ErrorReportLimit = 5;
-
-		bool LogAverageUptime = false;
 
 		System.Threading.Timer deviceSampleTimer;
 		System.Threading.Timer packetStatTimer;
@@ -101,9 +95,9 @@ namespace Taskmaster
 
 		public NetManager()
 		{
-			Since = DateTime.Now;
+			UptimeRecordStart = DateTime.Now;
 
-			lastUptimeStart = DateTime.Now;
+			LastUptimeStart = DateTime.Now;
 
 			LoadConfig();
 
@@ -211,15 +205,16 @@ namespace Taskmaster
 			}
 		}
 
-		public TrayAccess Tray { get; set; } // bad design
+		public TrayAccess Tray { get; set; } = null; // bad design
 
-		public bool NetworkAvailable { get; private set; }
-		public bool InternetAvailable { get; private set; }
+		public bool NetworkAvailable { get; private set; } = false;
+		public bool InternetAvailable { get; private set; } = false;
 
-		int uptimeSamples; // = 0;
-		double uptimeTotal; // = 0;
-		List<double> upTime = new List<double>();
-		DateTime Since;
+		readonly int MaxSamples = 20;
+		List<double> UptimeSamples = new List<double>(20);
+		DateTime UptimeRecordStart; // since we started recording anything
+		DateTime LastUptimeStart; // since we last knew internet to be initialized
+		readonly object uptime_lock = new object();
 
 		/// <summary>
 		/// Current uptime in minutes.
@@ -230,7 +225,7 @@ namespace Taskmaster
 			get
 			{
 				if (InternetAvailable)
-					return (DateTime.Now - lastUptimeStart);
+					return (DateTime.Now - LastUptimeStart);
 
 				return TimeSpan.Zero;
 			}
@@ -243,7 +238,7 @@ namespace Taskmaster
 		{
 			lock (uptime_lock)
 			{
-				return (uptimeSamples > 0) ? (upTime.GetRange(0, uptimeSamples).Sum() / uptimeSamples) : double.PositiveInfinity;
+				return UptimeSamples.Count > 0 ? UptimeSamples.Average() : double.PositiveInfinity;
 			}
 		}
 
@@ -275,25 +270,20 @@ namespace Taskmaster
 			sbs.Append("<Network> Average uptime: ");
 			lock (uptime_lock)
 			{
-				var currentUptime = DateTime.Now.TimeSince(lastUptimeStart).TotalMinutes;
+				var currentUptime = DateTime.Now.TimeSince(LastUptimeStart).TotalMinutes;
 
-				sbs.Append($"{(uptimeTotal + currentUptime) / (uptimeSamples + 1):N1}").Append(" minutes");
+				int cnt = UptimeSamples.Count;
+				sbs.Append($"{(UptimeSamples.Sum() + currentUptime) / (cnt + 1):N1}").Append(" minutes");
 
-				if (LogAverageUptime)
-				{
-					if (uptimeSamples > 3)
-						sbs.Append(" (").Append($"{(upTime.GetRange(upTime.Count - 3, 3).Sum() / 3):N1}")
-							.Append(" minutes for last 3 samples");
-				}
+				if (cnt >= 3)
+					sbs.Append(" (").Append($"{(UptimeSamples.GetRange(cnt-3, 3).Sum() / 3f):N1}").Append(" minutes for last 3 samples");
 			}
 
-			sbs.Append(" since: ").Append(Since)
-			   .Append(" (").Append($"{(DateTime.Now - Since).TotalHours:N2}").Append("h ago)")
+			sbs.Append(" since: ").Append(UptimeRecordStart)
+			   .Append(" (").Append($"{(DateTime.Now - UptimeRecordStart).TotalHours:N2}").Append("h ago)")
 			   .Append(".");
 
 			Log.Information(sbs.ToString());
-
-			ReportCurrentUpstate();
 		}
 
 		public async void SampleDeviceState(object state)
@@ -316,7 +306,7 @@ namespace Taskmaster
 
 					if (online_state)
 					{
-						lastUptimeStart = DateTime.Now;
+						LastUptimeStart = DateTime.Now;
 
 						Task.Delay(new TimeSpan(0, 5, 0)).ContinueWith(x => ReportCurrentUpstate());
 					}
@@ -324,19 +314,14 @@ namespace Taskmaster
 					{
 						lock (uptime_lock)
 						{
-							var newUptime = (DateTime.Now - lastUptimeStart).TotalMinutes;
-							upTime.Add(newUptime);
-							uptimeTotal += newUptime;
-							uptimeSamples += 1;
-							if (uptimeSamples > 20)
-							{
-								uptimeTotal -= upTime[0];
-								uptimeSamples -= 1;
-								upTime.RemoveAt(0);
-							}
+							var newUptime = (DateTime.Now - LastUptimeStart).TotalMinutes;
+							UptimeSamples.Add(newUptime);
+
+							if (UptimeSamples.Count > MaxSamples)
+								UptimeSamples.RemoveAt(0);
 						}
 
-						ReportUptime();
+						//ReportUptime();
 					}
 
 					return;
@@ -443,18 +428,14 @@ namespace Taskmaster
 					if (timeout)
 						Log.Information("<Network> Internet availability test inconclusive, assuming connected.");
 
-					if (!Notified)
+					if (!Notified && NetworkAvailable)
 					{
 						if (interrupt)
-						{
 							Log.Warning("<Network> Internet check interrupted. Potential hardware/driver issues.");
-							Notified = true;
-						}
 						if (dnsfail)
-						{
 							Log.Warning("<Network> DNS test failed, test host unreachable. Test host may be down.");
-							Notified = true;
-						}
+
+						Notified = dnsfail || interrupt;
 					}
 
 					if (Taskmaster.Trace) Log.Verbose("<Network> Connectivity unchanged.");
@@ -465,7 +446,7 @@ namespace Taskmaster
 				Atomic.Unlock(ref InetCheckLimiter);
 			}
 
-			InternetStatusChange?.Invoke(this, new InternetStatus { Available = InternetAvailable, Start = lastUptimeStart, Uptime = Uptime });
+			InternetStatusChange?.Invoke(this, new InternetStatus { Available = InternetAvailable, Start = LastUptimeStart, Uptime = Uptime });
 
 			return InternetAvailable;
 		}
@@ -768,6 +749,7 @@ namespace Taskmaster
 			if (disposing)
 			{
 				if (Taskmaster.Trace) Log.Verbose("Disposing network monitor...");
+				ReportCurrentUpstate();
 				ReportUptime();
 
 				deviceSampleTimer?.Dispose();
