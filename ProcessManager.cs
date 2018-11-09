@@ -765,7 +765,7 @@ namespace Taskmaster
 					info.Name, info.Id, info.PowerWait, info.ActiveWait);
 			}
 
-			Debug.Assert(info.Id != null);
+			Debug.Assert(info.Id > 4);
 
 			if (info.ActiveWait)
 			{
@@ -903,7 +903,7 @@ namespace Taskmaster
 				if (info != null)
 				{
 					if (Taskmaster.DebugForeground)
-						Log.Debug("<Process> [{FriendlyName}] {Exec} (#{Pid}) on foreground!", prc.FriendlyName, info.Name, info.Id);
+						Log.Debug("[{FriendlyName}] {Exec} (#{Pid}) on foreground!", prc.FriendlyName, info.Name, info.Id);
 
 					if (prc.ForegroundOnly) prc.Resume(info);
 
@@ -1155,14 +1155,14 @@ namespace Taskmaster
 			if (keyexists)
 			{
 				if (Taskmaster.DebugForeground)
-					Log.Debug("<Process> [{FriendlyName}] {Exec} (#{Pid}) already in foreground watchlist.", prc.FriendlyName, info.Name, info.Id);
+					Log.Debug("[{FriendlyName}] {Exec} (#{Pid}) already in foreground watchlist.", prc.FriendlyName, info.Name, info.Id);
 			}
 			else
 			{
 				WaitForExit(info);
 
 				if (Taskmaster.DebugForeground)
-					Log.Debug("<Process> [{FriendlyName}] {Exec} (#{Pid}) added to foreground watchlist.", prc.FriendlyName, info.Name, info.Id);
+					Log.Debug("[{FriendlyName}] {Exec} (#{Pid}) added to foreground watchlist.", prc.FriendlyName, info.Name, info.Id);
 			}
 
 			onProcessHandled?.Invoke(this, new ProcessEventArgs() { Control = prc, Info = info, State = ProcessRunningState.Found });

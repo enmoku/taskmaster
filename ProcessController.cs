@@ -235,10 +235,12 @@ namespace Taskmaster
 			if (ForegroundOnly)
 			{
 				app["Foreground only"].BoolValue = ForegroundOnly;
+
 				if (BackgroundPriority != ProcessPriorityClass.RealTime)
 					app["Background priority"].IntValue = ProcessHelpers.PriorityToInt(BackgroundPriority);
 				else
 					app.Remove("Background priority");
+
 				if (BackgroundPowerdown)
 					app["Background powerdown"].BoolValue = BackgroundPowerdown;
 				else
@@ -385,7 +387,13 @@ namespace Taskmaster
 		{
 			Debug.Assert(ForegroundOnly == true);
 
-			if (PausedIds.Contains(info.Id)) return; // already paused
+			if (PausedIds.Contains(info.Id))
+			{
+				Log.Debug(info.Name + " already paused");
+				return; // already paused
+			}
+
+			PausedIds.Add(info.Id);
 
 			if (Taskmaster.DebugForeground && Taskmaster.Trace)
 				Log.Debug("[" + FriendlyName + "] Quelling " + info.Name + " (#" + info.Id + ")");
@@ -408,7 +416,7 @@ namespace Taskmaster
 				if (PowerPlan != PowerInfo.PowerMode.Undefined && BackgroundPowerdown)
 				{
 					if (Taskmaster.DebugPower)
-						Log.Debug("<Process> [{Name}] {Exec} (#{Pid}) background power down",
+						Log.Debug("[{FriendlyName}] {Exec} (#{Pid}) background power down",
 							FriendlyName, info.Name, info.Id);
 
 					UndoPower(info);
@@ -417,7 +425,7 @@ namespace Taskmaster
 
 			if (Taskmaster.DebugForeground)
 				Log.Debug("[{FriendlyName}] {Exec} (#{Pid}) priority reduced: {Current}→{Paused} [Background]",
-					FriendlyName, info.Name, info.Id, Priority, BackgroundPriority);
+					FriendlyName, info.Name, info.Id, Priority.ToString(), BackgroundPriority.ToString());
 
 			ForegroundMonitor(info);
 		}
@@ -428,7 +436,11 @@ namespace Taskmaster
 		{
 			Debug.Assert(ForegroundOnly == true);
 
-			if (!PausedIds.Contains(info.Id)) return; // can't resume unpaused item
+			if (!PausedIds.Contains(info.Id))
+			{
+				Log.Debug(info.Name + " not paused; not resuming.");
+				return; // can't resume unpaused item
+			}
 
 			if (Priority.HasValue && info.Process.PriorityClass.ToInt32() != Priority.Value.ToInt32())
 			{
@@ -439,8 +451,9 @@ namespace Taskmaster
 						Log.Debug("[" + FriendlyName + "] " + info.Name + " (#" + info.Id + ") priority restored: " +
 							BackgroundPriority.ToString() + "→" + Priority.ToString() + " [Foreground]");
 				}
-				catch
+				catch (Exception ex)
 				{
+					Logging.Stacktrace(ex);
 					// should only happen if the process is already gone
 				}
 			}
@@ -491,11 +504,11 @@ namespace Taskmaster
 
 		bool SetPower(ProcessEx info)
 		{
-			if (!Taskmaster.PowerManagerEnabled) return false;
-			if (PowerPlan == PowerInfo.PowerMode.Undefined) return false;
-			Taskmaster.powermanager.SaveMode();
+			Debug.Assert(Taskmaster.PowerManagerEnabled);
+			Debug.Assert(PowerPlan != PowerInfo.PowerMode.Undefined);
 
-			Taskmaster.processmanager.WaitForExit(info); // need nicer way to signal this
+			info.PowerWait = true;
+			Taskmaster.processmanager.WaitForExit(info); // TODO: need nicer way to signal this
 
 			return Taskmaster.powermanager.Force(PowerPlan, info.Id);
 		}
@@ -538,8 +551,6 @@ namespace Taskmaster
 			if (!ForegroundWatch.Contains(info.Id))
 			{
 				ForegroundWatch.Add(info.Id);
-
-				PausedIds.Add(info.Id);
 
 				info.Process.Exited += (o, s) =>
 				{
@@ -680,33 +691,37 @@ namespace Taskmaster
 			
 			var newPriority = oldPriority;
 
+			if (ForegroundOnly) ForegroundMonitor(info);
+
 			if (!denyChange)
 			{
-				if (!foreground && ForegroundOnly)
+				if (Priority.HasValue)
 				{
-					if (Taskmaster.DebugForeground || Taskmaster.ShowInaction)
-						Log.Debug("{Exec} (#{Pid}) not in foreground, not prioritizing.", info.Name, info.Id);
-
-					ForegroundMonitor(info);
-
-					// NOP
-				}
-				else if (Priority.HasValue)
-				{
-					try
+					if (!foreground && ForegroundOnly)
 					{
-						if (info.Process.SetLimitedPriority(Priority.Value, PriorityStrategy))
-						{
-							modified = mPriority = true;
-							newPriority = Priority.Value;
-						}
+						if (Taskmaster.DebugForeground || Taskmaster.ShowInaction)
+							Log.Debug("[{FriendlyName}] {Exec} (#{Pid}) not in foreground, not prioritizing.",
+								FriendlyName, info.Name, info.Id);
+
+						Pause(info);
 					}
-					catch
+					else
 					{
-						fPriority = true;
-						if (Taskmaster.ShowInaction)
-							Log.Warning("[{FriendlyName}] {Exec} (#{Pid}) failed to set process priority.", FriendlyName, info.Name, info.Id);
-						// NOP
+						try
+						{
+							if (info.Process.SetLimitedPriority(Priority.Value, PriorityStrategy))
+							{
+								modified = mPriority = true;
+								newPriority = Priority.Value;
+							}
+						}
+						catch
+						{
+							fPriority = true;
+							if (Taskmaster.ShowInaction)
+								Log.Warning("[{FriendlyName}] {Exec} (#{Pid}) failed to set process priority.", FriendlyName, info.Name, info.Id);
+							// NOP
+						}
 					}
 				}
 				else

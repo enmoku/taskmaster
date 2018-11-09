@@ -472,7 +472,7 @@ namespace Taskmaster
 			}
 			else
 			{
-				if (forceModeSources.Count != 0)
+				if (Forced)
 				{
 					if (Taskmaster.DebugPower && Taskmaster.ShowInaction)
 						Log.Debug("<Power> Can't override forced power mode.");
@@ -953,7 +953,7 @@ namespace Taskmaster
 
 				Taskmaster.processmanager.CancelPowerWait(); // need nicer way to do this
 
-				Release(0).ConfigureAwait(false);
+				Release(0);
 			}
 
 			onBehaviourChange?.Invoke(this, new PowerBehaviourEventArgs { Behaviour = Behaviour });
@@ -966,16 +966,19 @@ namespace Taskmaster
 			if (Behaviour == PowerBehaviour.Auto) return;
 			if (SavedMode != PowerMode.Undefined) return;
 
-			if (Taskmaster.DebugPower)
-				Log.Debug("<Power> Saving current power mode for later restoration: {Mode}", CurrentMode.ToString());
-
 			lock (power_lock)
 			{
+				if (SavedMode != PowerMode.Undefined) return;
+
+				if (Taskmaster.DebugPower)
+					Log.Debug("<Power> Saving current power mode for later restoration: {Mode}", CurrentMode.ToString());
+
 				SavedMode = CurrentMode;
 
 				if (SavedMode == PowerMode.Undefined)
 				{
 					Log.Warning("<Power> Failed to get current mode, defafulting to balanced as restore option.");
+					// TODO: Use normal power restoration
 					SavedMode = PowerMode.Balanced;
 				}
 			}
@@ -988,14 +991,14 @@ namespace Taskmaster
 		/// <remarks>
 		/// 
 		/// </remarks>
-		public async Task Release(int sourcePid = -1)
+		public void Release(int sourcePid)
 		{
 			if (Taskmaster.DebugPower)
 			{
 				if (sourcePid == 0)
 					Log.Debug("<Power> Release – clearing all locks");
 				else
-					Log.Debug("<Power> Release(#{Source})", sourcePid);
+					Log.Debug("<Power> Release #" + sourcePid);
 			}
 
 			Debug.Assert(sourcePid == 0 || sourcePid > 4);
@@ -1022,32 +1025,52 @@ namespace Taskmaster
 						if (Taskmaster.DebugPower)
 							Log.Debug("<Power> Restore mode called for object [{Source}] that has no forcing registered. Or waitlist was expunged.", sourcePid);
 					}
-				}
 
-				if (PowerdownDelay > 0)
-				{
+					if (forceModeSources.Count == 0) Forced = false;
+
 					if (Taskmaster.DebugPower)
-						Log.Debug("<Power> Powerdown delay: {Delay}s", PowerdownDelay);
-
-					await Task.Delay(PowerdownDelay * 1000).ConfigureAwait(false);
+						Log.Debug("<Power> Released " + (sourcePid == 0 ? "All" : $"#{sourcePid}"));
 				}
 
+				Task.Run(async () =>
+				{
+					if (PowerdownDelay > 0)
+					{
+						if (Taskmaster.DebugPower)
+							Log.Debug("<Power> Powerdown delay: {Delay}s", PowerdownDelay);
+
+						await Task.Delay(PowerdownDelay * 1000).ConfigureAwait(false);
+					}
+
+					ReleaseFinal();
+				});
+			}
+			catch (Exception ex)
+			{
+				Logging.Stacktrace(ex);
+			}
+		}
+
+		void ReleaseFinal()
+		{
+			try
+			{
 				lock (forceModeSources_lock)
 				{
 					if (forceModeSources.Count == 0)
 					{
 						// TODO: Restore Powerdown delay functionality here.
 
-						Restore();
+						if (Taskmaster.DebugPower) Log.Debug("<Power> No power locks left, restoring power to normal.");
 
-						Forced = false;
+						Restore();
 					}
 					else
 					{
 						if (Taskmaster.DebugPower)
 						{
 							Log.Debug("<Power> Forced mode still requested by {sources} sources.", forceModeSources.Count);
-							if (forceModeSources.Count > 0)
+							if (Forced)
 							{
 								Log.Debug("<Power> Sources: {Sources}", string.Join(", ", forceModeSources.ToArray()));
 							}
@@ -1059,25 +1082,22 @@ namespace Taskmaster
 			{
 				Logging.Stacktrace(ex);
 			}
-
-			if (Taskmaster.DebugPower)
-				Log.Debug("<Power> Released ({Val}).", sourcePid == 0 ? "All" : sourcePid.ToString());
-
-			return;
 		}
 
 		public void Restore()
 		{
-			if (Taskmaster.DebugPower)
-				Log.Debug("<Power> Restoring power mode!");
+			if (Behaviour == PowerBehaviour.Manual)
+			{
+				if (Taskmaster.DebugPower) Log.Debug("<Power> Power restoration cancelled due to manual control.");
+				return;
+			}
+
+			if (Taskmaster.DebugPower) Log.Debug("<Power> Restoring power mode!");
 
 			lock (power_lock)
 			{
 				if (RestoreModeMethod != ModeMethod.Saved)
 					SavedMode = RestoreMode;
-
-				if (Taskmaster.DebugPower)
-					Log.Debug("Restoring mode: {Mode} [{Method}]", SavedMode.ToString(), RestoreModeMethod.ToString());
 
 				if (SavedMode != CurrentMode && SavedMode != PowerMode.Undefined)
 				{
@@ -1127,7 +1147,7 @@ namespace Taskmaster
 			{
 				if (Paused) return false;
 
-				if (mode == CurrentMode || forceModeSources.Count > 0)
+				if (mode == CurrentMode || Forced)
 					return false;
 
 				InternalSetMode(mode, verbose: false);
@@ -1147,6 +1167,8 @@ namespace Taskmaster
 
 			var rv = false;
 
+			SaveMode();
+
 			lock (forceModeSources_lock)
 			{
 				if (forceModeSources.Contains(sourcePid))
@@ -1155,6 +1177,8 @@ namespace Taskmaster
 						Log.Debug("<Power> Forcing cancelled, source already in list.");
 					return false;
 				}
+
+				if (Taskmaster.DebugPower) Log.Debug("<Power> Lock #" + sourcePid);
 
 				forceModeSources.Add(sourcePid);
 			}
@@ -1169,7 +1193,7 @@ namespace Taskmaster
 					SavedMode = RestoreModeMethod == ModeMethod.Saved ? CurrentMode : RestoreMode;
 					InternalSetMode(mode, verbose: true);
 
-					if (Taskmaster.DebugPower) Log.Debug("<Power> Forced to: {PowerMode}", CurrentMode);
+					if (Taskmaster.DebugPower) Log.Debug("<Power> Forced to: " + CurrentMode.ToString());
 				}
 				else
 				{
