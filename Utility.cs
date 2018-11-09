@@ -228,20 +228,40 @@ namespace Taskmaster
 			}
 			else
 			{
-				using (var log = new System.Diagnostics.EventLog("Application")
+				try
 				{
-					Source = "Application",
-				})
+					string logpath = System.IO.Path.Combine(Taskmaster.datapath, "Logs");
+					if (!System.IO.Directory.Exists(logpath)) System.IO.Directory.CreateDirectory(logpath);
+					var logfile = System.IO.Path.Combine(logpath, "crash.log");
+
+					var now = DateTime.Now;
+					var logcontents = new System.Collections.Generic.List<string>
+					{
+						"Date:         " + now.ToLongDateString(),
+						"Time:         " + now.ToLongTimeString(),
+						"",
+						"Command line: " + Environment.CommandLine,
+						"",
+						"Exception:    " + ex.GetType().Name,
+						"Message:      " + ex.Message,
+						"Site:         " + method,
+						"",
+						"----- Stacktrace -----",
+						ex.StackTrace
+					};
+
+					if (ex.InnerException != null)
+					{
+						logcontents.Add("");
+						logcontents.Add("------ Stacktrace -----");
+						logcontents.Add(ex.InnerException.StackTrace);
+					}
+
+					System.IO.File.WriteAllLines(logfile, logcontents, System.Text.Encoding.Unicode);
+				}
+				catch
 				{
-					log.WriteEntry(
-						Environment.CommandLine +
-						Environment.NewLine + Environment.NewLine +
-						ex.GetType().Name + " : " + ex.Message +
-						Environment.NewLine + Environment.NewLine +
-						"Reported at " + method +
-						Environment.NewLine + Environment.NewLine +
-						ex.StackTrace,
-						EventLogEntryType.Error);
+					throw; // nothing to be done, we're already crashing and burning by this point
 				}
 			}
 		}
