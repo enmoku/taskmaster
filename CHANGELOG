@@ -7,6 +7,7 @@ Comprehensive changes can be found in Git change history:
 	Added: Audio Volume Strategy 4 and 5. 4 is Decrease from Full, 5 is Increase from Mute. Volume is untouched otherwise.
 	Changed: Internet failure should be less spammy.
 	Changed: Average uptime calculation.
+	Changed: Crashing before logging system is online will cause custom crash.log to be written in logs folder instead of using EventLog.
 	Internal: String handling changed.
 ### 2018-11-07
 	Fixed: Exception handling in startup.
