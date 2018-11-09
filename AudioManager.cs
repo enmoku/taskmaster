@@ -118,21 +118,21 @@ namespace Taskmaster
 
 						if (volAdjusted)
 						{
-							Serilog.Log.Information($"<Audio> {info.Name} (#{info.Id}) " +
-								"volume changed from {(oldvolume * 100):N1}% to {(prc.Volume * 100):N1}%");
+							Serilog.Log.Information("<Audio> " + info.Name + " (#" + info.Id + ") " +
+								"volume changed from " + $"{(oldvolume * 100):N1}%" + " to " + $"{(prc.Volume * 100):N1}%");
 						}
 						else
 						{
 							if (Taskmaster.ShowInaction && Taskmaster.DebugAudio)
-								Serilog.Log.Debug($"<Audio> {info.Name} (#{pid}) Volume: {(volume * 100):N1}% " +
-									"– Already correct (Plan: {prc.VolumeStrategy.ToString()})");
+								Serilog.Log.Debug("<Audio> " + info.Name + " (#" + pid + ") Volume: " + $"{(volume * 100):N1}%" +
+									" – Already correct (Plan: " + prc.VolumeStrategy.ToString() + ")");
 						}
 					}
 					else
 					{
 						if (Taskmaster.ShowInaction && Taskmaster.DebugAudio)
-							Serilog.Log.Debug($"<Audio> {info.Name} (#{pid}) Volume: {(volume * 100):N1}% "+
-								"– not watched: {info.Path}");
+							Serilog.Log.Debug("<Audio> " + info.Name + " (#" + pid + ") Volume: " + $"{(volume * 100):N1}%" +
+								" – not watched: " + info.Path);
 					}
 				}
 				else
