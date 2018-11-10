@@ -155,6 +155,8 @@ namespace Taskmaster
 			{
 				DialogResult = DialogResult.OK;
 
+				// TODO: Sanity check the settings
+
 				newAutoAdjust = new AutoAdjustSettings();
 
 				newAutoAdjust.DefaultMode = PowerManager.GetModeByName(defaultmode.Text);
@@ -177,6 +179,8 @@ namespace Taskmaster
 				newAutoAdjust.Low.Backoff.Low = Convert.ToSingle(lowbackofflow.Value);
 				newAutoAdjust.Low.Backoff.Avg = Convert.ToSingle(lowbackoffavg.Value);
 				newAutoAdjust.Low.Backoff.High = Convert.ToSingle(lowbackoffhigh.Value);
+
+				// passing the new config is done elsewhere
 
 				Close();
 			};
@@ -222,11 +226,10 @@ namespace Taskmaster
 				{
 					using (pcw = new PowerConfigWindow())
 					{
-
 						var res = pcw.ShowDialog();
 						if (pcw.DialogResult == DialogResult.OK)
 						{
-							Taskmaster.powermanager.AutoAdjust = pcw.newAutoAdjust;
+							Taskmaster.powermanager.SetAutoAdjust(pcw.newAutoAdjust);
 							Log.Information("<<UI>> Power auto-adjust config changed.");
 							// TODO: Call reset on power manager?
 						}

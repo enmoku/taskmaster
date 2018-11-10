@@ -78,8 +78,6 @@ namespace Taskmaster
 		public event EventHandler<SessionLockEventArgs> SessionLock;
 		public event EventHandler<MonitorPowerEventArgs> MonitorPower;
 
-		long AutoAdjustCounter = 0;
-
 		public PowerManager()
 		{
 			OriginalMode = getPowerMode();
@@ -333,6 +331,22 @@ namespace Taskmaster
 		bool Paused = false;
 		bool Forced = false;
 
+		long AutoAdjustCounter = 0;
+
+		public AutoAdjustSettings AutoAdjust { get; private set; } = new AutoAdjustSettings();
+		readonly object autoadjust_lock = new object();
+
+		public async Task SetAutoAdjust(AutoAdjustSettings settings)
+		{
+			await Task.Delay(0).ConfigureAwait(false);
+
+			lock (autoadjust_lock)
+			{
+				AutoAdjust = settings;
+				saveneeded = true;
+			}
+		}
+
 		int HighPressure = 0;
 		int LowPressure = 0;
 		PowerReaction PreviousReaction = PowerReaction.Average;
@@ -353,148 +367,154 @@ namespace Taskmaster
 
 			ev.Pressure = 0;
 			ev.Handled = false;
-			if (PreviousReaction == PowerReaction.High)
+
+			lock (autoadjust_lock)
 			{
-				// Downgrade to MEDIUM power level
-				// Console.WriteLine("Downgrade to Mid?");
-				if (ev.High <= AutoAdjust.High.Backoff.High
-					|| ev.Average <= AutoAdjust.High.Backoff.Avg
-					|| ev.Low <= AutoAdjust.High.Backoff.Low)
+
+				if (PreviousReaction == PowerReaction.High)
 				{
-					Reaction = PowerReaction.Average;
-					ReactionaryPlan = AutoAdjust.DefaultMode;
+					// Downgrade to MEDIUM power level
+					// Console.WriteLine("Downgrade to Mid?");
+					if (ev.High <= AutoAdjust.High.Backoff.High
+						|| ev.Average <= AutoAdjust.High.Backoff.Avg
+						|| ev.Low <= AutoAdjust.High.Backoff.Low)
+					{
+						Reaction = PowerReaction.Average;
+						ReactionaryPlan = AutoAdjust.DefaultMode;
 
-					BackoffCounter++;
+						BackoffCounter++;
 
-					if (BackoffCounter >= AutoAdjust.High.Backoff.Level)
-						Ready = true;
+						if (BackoffCounter >= AutoAdjust.High.Backoff.Level)
+							Ready = true;
 
-					ev.Pressure = ((float)BackoffCounter) / ((float)AutoAdjust.High.Backoff.Level);
-					// Console.WriteLine("Downgrade to Mid: " + BackoffCounter + " / " + HighBackoffLevel + " = " + ev.Pressure
-					// 				  + " : Blocks:" + Convert.ToString(AutoAdjustBlocks, 2).PadLeft(4, '0'));
+						ev.Pressure = ((float)BackoffCounter) / ((float)AutoAdjust.High.Backoff.Level);
+						// Console.WriteLine("Downgrade to Mid: " + BackoffCounter + " / " + HighBackoffLevel + " = " + ev.Pressure
+						// 				  + " : Blocks:" + Convert.ToString(AutoAdjustBlocks, 2).PadLeft(4, '0'));
+					}
+					// else
+					// 	Console.WriteLine("High backoff thresholds not met");
 				}
-				// else
-				// 	Console.WriteLine("High backoff thresholds not met");
-			}
-			else if (PreviousReaction == PowerReaction.Low)
-			{
-				// Upgrade to MEDIUM power level
-				// Console.WriteLine("Upgrade to Mid?");
-				if (ev.High >= AutoAdjust.Low.Backoff.High
-					|| ev.Average >= AutoAdjust.Low.Backoff.Avg
-					|| ev.Low >= AutoAdjust.Low.Backoff.Low)
+				else if (PreviousReaction == PowerReaction.Low)
 				{
-					Reaction = PowerReaction.Average;
-					ReactionaryPlan = AutoAdjust.DefaultMode;
+					// Upgrade to MEDIUM power level
+					// Console.WriteLine("Upgrade to Mid?");
+					if (ev.High >= AutoAdjust.Low.Backoff.High
+						|| ev.Average >= AutoAdjust.Low.Backoff.Avg
+						|| ev.Low >= AutoAdjust.Low.Backoff.Low)
+					{
+						Reaction = PowerReaction.Average;
+						ReactionaryPlan = AutoAdjust.DefaultMode;
 
-					BackoffCounter++;
+						BackoffCounter++;
 
-					if (BackoffCounter >= AutoAdjust.Low.Backoff.Level)
-						Ready = true;
+						if (BackoffCounter >= AutoAdjust.Low.Backoff.Level)
+							Ready = true;
 
-					ev.Pressure = ((float)BackoffCounter) / ((float)AutoAdjust.Low.Backoff.Level);
-					// Console.WriteLine("Upgrade to Mid: " + BackoffCounter + " / " + LowBackoffLevel + " = " + ev.Pressure
-					// 				  + " : Blocks:" + Convert.ToString(AutoAdjustBlocks, 2).PadLeft(4, '0'));
+						ev.Pressure = ((float)BackoffCounter) / ((float)AutoAdjust.Low.Backoff.Level);
+						// Console.WriteLine("Upgrade to Mid: " + BackoffCounter + " / " + LowBackoffLevel + " = " + ev.Pressure
+						// 				  + " : Blocks:" + Convert.ToString(AutoAdjustBlocks, 2).PadLeft(4, '0'));
+					}
+					// else
+					// 	Console.WriteLine("Low backoff thresholds not met");
 				}
-				// else
-				// 	Console.WriteLine("Low backoff thresholds not met");
-			}
-			else // Currently at medium power
-			{
-				if (ev.Low > AutoAdjust.High.Commit.Threshold && AutoAdjust.High.Mode != AutoAdjust.DefaultMode) // Low CPU is above threshold for High mode
+				else // Currently at medium power
 				{
-					// Downgrade to LOW power levell
-					Reaction = PowerReaction.High;
-					ReactionaryPlan = AutoAdjust.High.Mode;
+					if (ev.Low > AutoAdjust.High.Commit.Threshold && AutoAdjust.High.Mode != AutoAdjust.DefaultMode) // Low CPU is above threshold for High mode
+					{
+						// Downgrade to LOW power levell
+						Reaction = PowerReaction.High;
+						ReactionaryPlan = AutoAdjust.High.Mode;
 
-					LowPressure = 0; // reset
-					HighPressure++;
+						LowPressure = 0; // reset
+						HighPressure++;
 
-					if (HighPressure >= AutoAdjust.High.Commit.Level)
+						if (HighPressure >= AutoAdjust.High.Commit.Level)
+							Ready = true;
+
+						ev.Pressure = ((float)HighPressure) / ((float)AutoAdjust.High.Commit.Level);
+
+						// Console.WriteLine("Upgrade to High: " + HighPressure + " / " + HighCommitLevel + " = " + ev.Pressure
+						// 				  + " : Blocks:" + Convert.ToString(AutoAdjustBlocks, 2).PadLeft(4, '0'));
+					}
+					else if (ev.High < AutoAdjust.Low.Commit.Threshold && AutoAdjust.Low.Mode != AutoAdjust.DefaultMode) // High CPU is below threshold for Low mode
+					{
+						// Upgrade to HIGH power levele
+						Reaction = PowerReaction.Low;
+						ReactionaryPlan = AutoAdjust.Low.Mode;
+
+						HighPressure = 0; // reset
+						LowPressure++;
+
+						if (LowPressure >= AutoAdjust.Low.Commit.Level)
+							Ready = true;
+
+						ev.Pressure = ((float)LowPressure) / ((float)AutoAdjust.Low.Commit.Level);
+
+						// Console.WriteLine("Downgrade to Low: " + LowPressure + " / " + LowCommitLevel + " = " + ev.Pressure
+						// 				  + " : Blocks:" + Convert.ToString(AutoAdjustBlocks, 2).PadLeft(4, '0'));
+					}
+					else
+					{
+						// Console.WriteLine("NOP");
+
+						Reaction = PowerReaction.Average;
+						ReactionaryPlan = AutoAdjust.DefaultMode;
+
+						ResetAutoadjust();
+
+						// Only time this should cause actual power mode change is when something else changes power mode
 						Ready = true;
-
-					ev.Pressure = ((float)HighPressure) / ((float)AutoAdjust.High.Commit.Level);
-
-					// Console.WriteLine("Upgrade to High: " + HighPressure + " / " + HighCommitLevel + " = " + ev.Pressure
-					// 				  + " : Blocks:" + Convert.ToString(AutoAdjustBlocks, 2).PadLeft(4, '0'));
+					}
 				}
-				else if (ev.High < AutoAdjust.Low.Commit.Threshold && AutoAdjust.Low.Mode != AutoAdjust.DefaultMode) // High CPU is below threshold for Low mode
+
+				var ReadyToAdjust = (Ready && !Forced && !Paused);
+
+				if (ReadyToAdjust && ReactionaryPlan != CurrentMode)
 				{
-					// Upgrade to HIGH power levele
-					Reaction = PowerReaction.Low;
-					ReactionaryPlan = AutoAdjust.Low.Mode;
+					if (Taskmaster.DebugPower) Log.Debug("<Power> Auto-adjust: {Mode}", Reaction.ToString());
 
-					HighPressure = 0; // reset
-					LowPressure++;
-
-					if (LowPressure >= AutoAdjust.Low.Commit.Level)
-						Ready = true;
-
-					ev.Pressure = ((float)LowPressure) / ((float)AutoAdjust.Low.Commit.Level);
-
-					// Console.WriteLine("Downgrade to Low: " + LowPressure + " / " + LowCommitLevel + " = " + ev.Pressure
-					// 				  + " : Blocks:" + Convert.ToString(AutoAdjustBlocks, 2).PadLeft(4, '0'));
-				}
-				else
-				{
-					// Console.WriteLine("NOP");
-
-					Reaction = PowerReaction.Average;
-					ReactionaryPlan = AutoAdjust.DefaultMode;
+					if (AutoAdjustSetMode(ReactionaryPlan))
+					{
+						AutoAdjustCounter++;
+						ev.Handled = true;
+					}
+					else
+					{
+						if (Taskmaster.DebugPower && Taskmaster.Trace)
+							Log.Warning("<Power> Failed to auto-adjust power.");
+						// should reset
+					}
 
 					ResetAutoadjust();
-
-					// Only time this should cause actual power mode change is when something else changes power mode
-					Ready = true;
-				}
-			}
-
-			var ReadyToAdjust = (Ready && !Forced && !Paused);
-
-			if (ReadyToAdjust && ReactionaryPlan != CurrentMode)
-			{
-				if (Taskmaster.DebugPower) Log.Debug("<Power> Auto-adjust: {Mode}", Reaction.ToString());
-
-				if (AutoAdjustSetMode(ReactionaryPlan))
-				{
-					AutoAdjustCounter++;
-					ev.Handled = true;
+					PreviousReaction = Reaction;
 				}
 				else
 				{
-					if (Taskmaster.DebugPower && Taskmaster.Trace)
-						Log.Warning("<Power> Failed to auto-adjust power.");
-					// should reset
-				}
-
-				ResetAutoadjust();
-				PreviousReaction = Reaction;
-			}
-			else
-			{
-				if (Forced)
-				{
-					if (Taskmaster.DebugPower && Taskmaster.ShowInaction)
-						Log.Debug("<Power> Can't override forced power mode.");
-				}
-				else if (ReadyToAdjust)
-				{
-					// Should probably reset on >=1.0 pressure regardless of anything.
-
-					if (ReactionaryPlan == CurrentMode && ev.Pressure > 1.0)
+					if (Forced)
 					{
-						// This usually happens when auto-adjust is paused and pressure keeps building.
-						// Harmless and kind of expected.
-						if (Taskmaster.DebugPower) Log.Debug("<Power> Something went wrong. Resetting auto-adjust.");
-						
-						// Reset
-						ResetAutoadjust();
-						ev.Pressure = 0f;
+						if (Taskmaster.DebugPower && Taskmaster.ShowInaction)
+							Log.Debug("<Power> Can't override forced power mode.");
+					}
+					else if (ReadyToAdjust)
+					{
+						// Should probably reset on >=1.0 pressure regardless of anything.
+
+						if (ReactionaryPlan == CurrentMode && ev.Pressure > 1.0)
+						{
+							// This usually happens when auto-adjust is paused and pressure keeps building.
+							// Harmless and kind of expected.
+							if (Taskmaster.DebugPower) Log.Debug("<Power> Something went wrong. Resetting auto-adjust.");
+
+							// Reset
+							ResetAutoadjust();
+							ev.Pressure = 0f;
+						}
 					}
 				}
 			}
 
 			ev.Mode = ReactionaryPlan;
+
 			onAutoAdjustAttempt?.Invoke(this, ev);
 		}
 
@@ -680,13 +700,65 @@ namespace Taskmaster
 			if (dirtyconfig) corecfg.MarkDirty();
 		}
 
+		bool saveneeded = false;
+		void SaveConfig()
+		{
+			if (!saveneeded) return;
+
+			var corecfg = Taskmaster.Config.Load(Taskmaster.coreconfig);
+			corecfg.MarkDirty();
+
+			var power = corecfg.Config["Power"];
+			power["Default mode"].StringValue = AutoAdjust.DefaultMode.ToString();
+			power["Restore mode"].StringValue = RestoreModeMethod.ToString();
+			if (PowerdownDelay > 0)
+				power["Watchlist powerdown delay"].IntValue = PowerdownDelay;
+			else
+				power.Remove("Watchlist powerdown delay");
+
+			var autopower = corecfg.Config["Power / Auto"];
+
+			autopower["Auto-adjust"].BoolValue = (Behaviour == PowerBehaviour.Auto);
+			autopower["Pause unneeded CPU sampler"].BoolValue = PauseUnneededSampler;
+
+			// BACKOFF
+			autopower["Low backoff level"].IntValue = AutoAdjust.Low.Backoff.Level;
+			autopower["High backoff level"].IntValue = AutoAdjust.High.Backoff.Level;
+
+			// COMMIT
+			autopower["Low commit level"].IntValue = AutoAdjust.Low.Commit.Level;
+			autopower["High commit level"].IntValue = AutoAdjust.High.Commit.Level;
+
+			// THRESHOLDS
+			autopower["High threshold"].FloatValue = AutoAdjust.High.Commit.Threshold;
+			autopower["High backoff thresholds"].FloatValueArray = new float[] { AutoAdjust.High.Backoff.High, AutoAdjust.High.Backoff.Avg, AutoAdjust.High.Backoff.Low };
+
+			autopower["Low threshold"].FloatValue = AutoAdjust.Low.Commit.Threshold;
+			autopower["Low backoff thresholds"].FloatValueArray = new float[] { AutoAdjust.Low.Backoff.High, AutoAdjust.Low.Backoff.Avg, AutoAdjust.Low.Backoff.Low };
+
+			// POWER MODES
+			power["Low mode"].StringValue = AutoAdjust.Low.Mode.ToString();
+			power["High mode"].StringValue = AutoAdjust.High.Mode.ToString();
+
+			var saver = corecfg.Config["AFK Power"];
+			saver["Session lock"].StringValue = SessionLockPowerMode.ToString();
+
+			saver["Monitor power off idle timeout"].IntValue = SessionLockPowerOffIdleTimeout;
+			saver["Monitor power off on lock"].BoolValue = SessionLockPowerOff;
+
+			// --------------------------------------------------------------------------------------------------------
+
+			// CPU SAMPLING
+			var hwsec = corecfg.Config["Hardware"];
+			hwsec["CPU sample interval"].IntValue = CPUSampleInterval;
+			hwsec["CPU sample count"].IntValue = CPUSampleCount;
+		}
+
 		public void LogBehaviourState()
 		{
 			Log.Information("<Power> Behaviour: {State}",
 				(Behaviour == PowerBehaviour.Auto ? "Automatic" : Behaviour == PowerBehaviour.RuleBased ? "Rule-controlled" : "Manual"));
 		}
-
-		public AutoAdjustSettings AutoAdjust { get; set; } = new AutoAdjustSettings();
 
 		int BackoffCounter { get; set; } = 0;
 
@@ -927,36 +999,45 @@ namespace Taskmaster
 
 		public PowerBehaviour SetBehaviour(PowerBehaviour pb)
 		{
+			Debug.Assert(pb == Behaviour);
 			if (pb == Behaviour) return Behaviour; // this shouldn't happen
 
-			Behaviour = pb;
-			LogBehaviourState();
-
-			if (Behaviour == PowerBehaviour.Auto)
+			Task.Run(async () =>
 			{
-				ResetAutoadjust();
+				await Task.Delay(0).ConfigureAwait(false);
 
-				if (PauseUnneededSampler)
+				lock (autoadjust_lock)
 				{
-					CPUSamples = new float[CPUSampleCount]; // reset samples
-					CPUTimer.Start();
-					Log.Debug("CPU sampler restarted.");
+					Behaviour = pb;
+					LogBehaviourState();
+
+					if (Behaviour == PowerBehaviour.Auto)
+					{
+						ResetAutoadjust();
+
+						if (PauseUnneededSampler)
+						{
+							CPUSamples = new float[CPUSampleCount]; // reset samples
+							CPUTimer.Start();
+							Log.Debug("CPU sampler restarted.");
+						}
+					}
+					else if (Behaviour == PowerBehaviour.RuleBased)
+					{
+						if (PauseUnneededSampler) CPUTimer.Stop();
+					}
+					else // MANUAL
+					{
+						if (PauseUnneededSampler) CPUTimer.Stop();
+
+						Taskmaster.processmanager.CancelPowerWait(); // need nicer way to do this
+
+						Release(0);
+					}
 				}
-			}
-			else if (Behaviour == PowerBehaviour.RuleBased)
-			{
-				if (PauseUnneededSampler) CPUTimer.Stop();
-			}
-			else // MANUAL
-			{
-				if (PauseUnneededSampler) CPUTimer.Stop();
 
-				Taskmaster.processmanager.CancelPowerWait(); // need nicer way to do this
-
-				Release(0);
-			}
-
-			onBehaviourChange?.Invoke(this, new PowerBehaviourEventArgs { Behaviour = Behaviour });
+				onBehaviourChange?.Invoke(this, new PowerBehaviourEventArgs { Behaviour = Behaviour });
+			});
 
 			return Behaviour;
 		}
@@ -1264,6 +1345,8 @@ namespace Taskmaster
 					Log.Information("<Power> Restored.");
 				}
 				Log.Information("<Power> Auto-adjusted {Counter} time(s).", AutoAdjustCounter);
+
+				SaveConfig();
 			}
 
 			disposed = true;
