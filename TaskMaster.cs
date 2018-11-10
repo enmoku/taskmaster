@@ -1244,20 +1244,18 @@ namespace Taskmaster
 					}
 					catch (Exception ex)
 					{
-						Logging.Stacktrace(ex, oob: true);
+						Logging.Stacktrace(ex, crashsafe: true);
 					}
 				}
 			}
 			catch (RunstateException ex)
 			{
-				int rv = 0;
-
 				Cleanup();
 
 				switch (ex.State)
 				{
 					case Runstate.CriticalFailure:
-						Logging.Stacktrace(ex.InnerException);
+						Logging.Stacktrace(ex.InnerException ?? ex, crashsafe:true);
 						System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(ex.InnerException ?? ex).Throw();
 						throw;
 					case Runstate.Normal:
@@ -1269,7 +1267,7 @@ namespace Taskmaster
 			}
 			catch (Exception ex)
 			{
-				Logging.Stacktrace(ex, oob: true);
+				Logging.Stacktrace(ex, crashsafe: true);
 				Cleanup();
 
 				return 1;

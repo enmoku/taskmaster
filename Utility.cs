@@ -219,9 +219,9 @@ namespace Taskmaster
 								System.IO.Path.GetFileName(file), member, line, text);
 		}
 
-		public static void Stacktrace(Exception ex, bool oob = false, [CallerMemberName] string method = "")
+		public static void Stacktrace(Exception ex, bool crashsafe = false, [CallerMemberName] string method = "")
 		{
-			if (!oob)
+			if (!crashsafe)
 			{
 				Serilog.Log.Fatal("{Type} : {Message}{NewLine}Reported at {Method}{NewLine}{Trace}",
 					ex.GetType().Name, ex.Message, method, ex.StackTrace);
