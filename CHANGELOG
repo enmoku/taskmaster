@@ -3,6 +3,10 @@ Comprehensive changes can be found in Git change history:
 	https://github.com/mkahvi/taskmaster/commits/master
 
 ## [0.11...]
+### 2018-11-11
+	Fixed: Power auto-adjust settings were saved incorrectly.
+	Changed: Power mode name strings are now more forgiving and varied.
+	Changed: Info tab disabled until better use can be figured out for it.
 ### 2018-11-10
 	Fixed: Power auto-adjust tuning was not saved if modified in the UI.
 ### 2018-11-09
