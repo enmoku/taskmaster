@@ -113,8 +113,11 @@ namespace Taskmaster
 			// TODO: Hang check should potentially do the following:
 			//		Minimize app, Reduce priority, Reduce cores, Kill it
 
-			hungTimer.Elapsed += HangDetector;
-			hungTimer.Start();
+			if (HangKillTick > 0 || HangMinimizeTick > 0 || HangReduceTick > 0)
+			{
+				hungTimer.Elapsed += HangDetector;
+				hungTimer.Start();
+			}
 
 			Log.Information("<Foreground> Component loaded.");
 		}
@@ -182,16 +185,31 @@ namespace Taskmaster
 
 				if (fg != null && !fg.Responding)
 				{
+					string name = string.Empty;
+					try
+					{
+						name = fg.ProcessName;
+					}
+					catch
+					{
+						// probably gone?
+					}
+
 					if (HangTick == 1)
 					{
-						Log.Warning("<Foreground> {Name} (#{Pid}) is not responding!", fg.ProcessName, fg.Id);
+						Log.Warning("<Foreground> {Name} (#{Pid}) is not responding!", name, pid);
 					}
 					else if (HangTick > 1)
 					{
 						double hung = now.TimeSince(HangTime).TotalSeconds;
 
 						var sbs = new System.Text.StringBuilder();
-						sbs.Append("<Foreground> Hung {Name}' (#{Pid}) – ");
+						sbs.Append("<Foreground> Hung ");
+						if (!string.IsNullOrEmpty(name))
+							sbs.Append(name).Append(" (#").Append(pid).Append(")");
+						else
+							sbs.Append("#").Append(pid);
+						sbs.Append(" – ");
 						bool acted = false;
 						if (HangMinimizeTick > 0 && hung > HangMinimizeTick && !Minimized)
 						{
