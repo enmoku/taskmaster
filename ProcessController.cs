@@ -395,12 +395,7 @@ namespace Taskmaster
 		public void Pause(ProcessEx info)
 		{
 			Debug.Assert(ForegroundOnly == true);
-
-			if (PausedIds.Contains(info.Id))
-			{
-				Log.Debug(info.Name + " already paused");
-				return; // already paused
-			}
+			Debug.Assert(!isPaused(info));
 
 			PausedIds.Add(info.Id);
 
@@ -439,49 +434,55 @@ namespace Taskmaster
 			ForegroundMonitor(info);
 		}
 
-		public bool isPaused(ProcessEx info) => PausedIds.Contains(info.Id);
+		bool isPaused(ProcessEx info) => PausedIds.Contains(info.Id);
+
+		object foreground_lock = new object();
 
 		public void Resume(ProcessEx info)
 		{
 			Debug.Assert(ForegroundOnly == true);
 
-			if (!PausedIds.Contains(info.Id))
+			lock (foreground_lock)
 			{
-				Log.Debug(info.Name + " not paused; not resuming.");
-				return; // can't resume unpaused item
-			}
-
-			if (Priority.HasValue && info.Process.PriorityClass.ToInt32() != Priority.Value.ToInt32())
-			{
-				try
+				if (!isPaused(info))
 				{
-					info.Process.PriorityClass = Priority.Value;
 					if (Taskmaster.DebugForeground)
-						Log.Debug("[" + FriendlyName + "] " + info.Name + " (#" + info.Id + ") priority restored: " +
-							BackgroundPriority.ToString() + "→" + Priority.ToString() + " [Foreground]");
+						Log.Debug("<Foreground> " + FormatPathName(info) + " (#" + info.Id + ") not paused; not resuming.");
+					return; // can't resume unpaused item
 				}
-				catch (Exception ex)
+
+				if (Priority.HasValue && info.Process.PriorityClass.ToInt32() != Priority.Value.ToInt32())
 				{
-					Logging.Stacktrace(ex);
-					// should only happen if the process is already gone
+					try
+					{
+						info.Process.PriorityClass = Priority.Value;
+						if (Taskmaster.DebugForeground)
+							Log.Debug("[" + FriendlyName + "] " + info.Name + " (#" + info.Id + ") priority restored: " +
+								BackgroundPriority.ToString() + "→" + Priority.ToString() + " [Foreground]");
+					}
+					catch (Exception ex)
+					{
+						Logging.Stacktrace(ex);
+						// should only happen if the process is already gone
+					}
 				}
-			}
-			// PausedState.Priority = Priority;
-			// PausedState.PowerMode = PowerPlan;
+				// PausedState.Priority = Priority;
+				// PausedState.PowerMode = PowerPlan;
 
-			if (Taskmaster.PowerManagerEnabled)
-			{
-				if (PowerPlan != PowerInfo.PowerMode.Undefined && BackgroundPowerdown)
+				if (Taskmaster.PowerManagerEnabled)
 				{
-					if (Taskmaster.DebugPower || Taskmaster.DebugForeground)
-						Log.Debug("<Process> [{Name}] {Exec} (#{Pid}) foreground power on",
-							FriendlyName, info.Name, info.Id);
+					if (PowerPlan != PowerInfo.PowerMode.Undefined && BackgroundPowerdown)
+					{
+						if (Taskmaster.DebugPower || Taskmaster.DebugForeground)
+							Log.Debug("<Process> [{Name}] {Exec} (#{Pid}) foreground power on",
+								FriendlyName, info.Name, info.Id);
 
-					SetPower(info);
+						SetPower(info);
+					}
 				}
-			}
 
-			PausedIds.Remove(info.Id);
+				PausedIds.Remove(info.Id);
+			}
 		}
 
 		/// <summary>
@@ -551,7 +552,7 @@ namespace Taskmaster
 			return false;
 		}
 
-		HashSet<int> ForegroundWatch = null;
+		HashSet<int> ForegroundWatch = new HashSet<int>();
 
 		string FormatPathName(ProcessEx info)
 		{
@@ -576,16 +577,19 @@ namespace Taskmaster
 
 		void ForegroundMonitor(ProcessEx info)
 		{
-			if (ForegroundWatch == null) ForegroundWatch = new HashSet<int>();
-
-			if (!ForegroundWatch.Contains(info.Id))
+			lock (foreground_lock)
 			{
+				if (ForegroundWatch.Contains(info.Id)) return;
+
 				ForegroundWatch.Add(info.Id);
 
 				info.Process.Exited += (o, s) =>
 				{
-					ForegroundWatch.Remove(info.Id);
-					PausedIds.Remove(info.Id);
+					lock (foreground_lock)
+					{
+						ForegroundWatch.Remove(info.Id);
+						PausedIds.Remove(info.Id);
+					}
 				};
 
 				var sbs = new System.Text.StringBuilder();
@@ -607,7 +611,12 @@ namespace Taskmaster
 			Debug.Assert(info.Id > 4, "ProcessController.Touch given invalid process ID");
 			Debug.Assert(!string.IsNullOrEmpty(info.Name), "ProcessController.Touch given empty process name.");
 
-			if (PausedIds.Contains(info.Id)) return; // don't touch paused item
+			if (isPaused(info))
+			{
+				if (Taskmaster.DebugForeground)
+					Log.Debug("<Foreground> " + FormatPathName(info) + " (#" + info.Id + ") in background, ignoring.");
+				return; // don't touch paused item
+			}
 
 			/*
 			try

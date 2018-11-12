@@ -8,6 +8,8 @@ Comprehensive changes can be found in Git change history:
 		Valid values are: 0=File (default), 1=File+Folder, 3=Full Path
 		2 will be for "smart" visibility which is not yet implemented
 	Added: Show inaction option now shows inaction relating to 'Ignore System32' option in Core.ini
+	Changed: "# not paused; not resuming" message pushed to foreground debug.
+	Changed: Better foreground debugging in general.
 ### 2018-11-11
 	Fixed: Power auto-adjust settings were saved incorrectly.
 	Changed: Power mode name strings are now more forgiving and varied.
