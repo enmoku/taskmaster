@@ -34,7 +34,8 @@ namespace Taskmaster
 		/// <summary>
 		/// Sets the priority based on limitations. Can throw an error if Process.PriorityClass is inaccessible.
 		/// </summary>
-		/// <throw>.PriorityClass</throw>
+		/// <exception cref="System.ComponentModel.Win32Exception">Access denied</exception>
+		/// <exception cref="System.InvalidOperationException">Process exited</exception>
 		public static bool SetLimitedPriority(this Process process, ProcessPriorityClass target, ProcessPriorityStrategy strategy = ProcessPriorityStrategy.Decrease)
 		{
 			switch (strategy)
