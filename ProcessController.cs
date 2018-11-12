@@ -605,7 +605,7 @@ namespace Taskmaster
 				var sbs = new System.Text.StringBuilder();
 				sbs.Append("[").Append(FriendlyName).Append("] ")
 					.Append(FormatPathName(info))
-					.Append(" (#").Append(info.Id).Append(") ");
+					.Append(" (#").Append(info.Id).Append(")");
 				if (Priority.HasValue) sbs.Append("; Priority:").Append(Priority.Value.ToString());
 				if (Affinity.HasValue) sbs.Append("; Affinity:").Append(Affinity.Value.ToInt32());
 				if (PowerPlan != PowerInfo.PowerMode.Undefined) sbs.Append("; Power:").Append(PowerPlan.GetShortName());
