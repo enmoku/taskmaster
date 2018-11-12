@@ -116,6 +116,7 @@
     </Compile>
     <Compile Include="LinearMeter.cs" />
     <Compile Include="NativeMethods.cs" />
+    <Compile Include="PowerPresets.cs" />
     <Compile Include="Properties\Resources.Designer.cs">
       <AutoGen>True</AutoGen>
       <DesignTime>True</DesignTime>
