@@ -113,11 +113,8 @@ namespace Taskmaster
 			// TODO: Hang check should potentially do the following:
 			//		Minimize app, Reduce priority, Reduce cores, Kill it
 
-			if (HangKillTick > 0 || HangMinimizeTick > 0 || HangReduceTick > 0)
-			{
-				hungTimer.Elapsed += HangDetector;
-				hungTimer.Start();
-			}
+			hungTimer.Elapsed += HangDetector;
+			hungTimer.Start();
 
 			Log.Information("<Foreground> Component loaded.");
 		}
