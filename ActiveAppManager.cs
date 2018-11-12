@@ -59,7 +59,6 @@ namespace Taskmaster
 			var hwnd = NativeMethods.GetForegroundWindow();
 			NativeMethods.GetWindowThreadProcessId(hwnd, out int pid);
 			Foreground = pid;
-			// Console.WriteLine("--- Foreground Process Identifier: " + Foreground);
 
 			var corecfg = Taskmaster.Config.Load(Taskmaster.coreconfig);
 
@@ -409,7 +408,6 @@ namespace Taskmaster
 				Foreground = activewindowev.Id = pid;
 				HangTick = 0;
 
-				// Console.WriteLine("--- Foreground Process Identifier: " + Foreground);
 				try
 				{
 					var proc = Process.GetProcessById(activewindowev.Id);

@@ -276,4 +276,12 @@ namespace Taskmaster
 			return newAffinityMask;
 		}
 	}
+
+	public enum PathVisibilityOptions
+	{
+		File = 0,
+		Folder = 2,
+		Smart = 1,
+		Full = 3
+	}
 }

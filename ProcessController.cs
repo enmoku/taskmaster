@@ -134,6 +134,10 @@ namespace Taskmaster
 
 		public bool AllowPaging = false;
 
+		public PathVisibilityOptions PathVisibility;
+
+		string PathMask = string.Empty;
+
 		/// <summary>
 		/// Delay in milliseconds before we attempt to alter the process.
 		/// </summary>
@@ -257,6 +261,11 @@ namespace Taskmaster
 				app["Allow paging"].BoolValue = AllowPaging;
 			else
 				app.Remove("Allow paging");
+
+			if (PathVisibility != PathVisibilityOptions.File)
+				app["Path visibility"].IntValue = (int)PathVisibility;
+			else
+				app.Remove("Path visibility");
 
 			if (!string.IsNullOrEmpty(Executable))
 			{
@@ -544,6 +553,27 @@ namespace Taskmaster
 
 		HashSet<int> ForegroundWatch = null;
 
+		string FormatPathName(ProcessEx info)
+		{
+			if (!string.IsNullOrEmpty(info.Path))
+			{
+				switch (PathVisibility)
+				{
+					default:
+					case PathVisibilityOptions.File:
+						return System.IO.Path.GetFileName(info.Path);
+					case PathVisibilityOptions.Folder:
+						var parts = info.Path.Split(System.IO.Path.DirectorySeparatorChar, System.IO.Path.AltDirectorySeparatorChar);
+						var partpath = parts[parts.Length - 2] + System.IO.Path.DirectorySeparatorChar + parts[parts.Length - 1];
+						return partpath;
+					case PathVisibilityOptions.Full:
+						return info.Path;
+				}
+			}
+			else
+				return info.Name; // NAME
+		}
+
 		void ForegroundMonitor(ProcessEx info)
 		{
 			if (ForegroundWatch == null) ForegroundWatch = new HashSet<int>();
@@ -557,6 +587,16 @@ namespace Taskmaster
 					ForegroundWatch.Remove(info.Id);
 					PausedIds.Remove(info.Id);
 				};
+
+				var sbs = new System.Text.StringBuilder();
+				sbs.Append("[").Append(FriendlyName).Append("] ")
+					.Append(FormatPathName(info))
+					.Append(" (#").Append(info.Id).Append(") ");
+				if (Priority.HasValue) sbs.Append("; Priority:").Append(Priority.Value.ToString());
+				if (Affinity.HasValue) sbs.Append("; Affinity:").Append(Affinity.Value.ToInt32());
+				if (PowerPlan != PowerInfo.PowerMode.Undefined) sbs.Append("; Power:").Append(PowerPlan.GetShortName());
+				sbs.Append(" – Foreground Only");
+				Log.Information(sbs.ToString());
 			}
 		}
 
@@ -628,10 +668,10 @@ namespace Taskmaster
 				return; // return ProcessState.Ignored;
 			}
 
-			bool denyChange = ProcessManager.ProtectedProcessName(info.Name);
+			bool protectedfile = ProcessManager.ProtectedProcessName(info.Name);
 			// TODO: IgnoreSystem32Path
 
-			if (denyChange && Taskmaster.ShowInaction && Taskmaster.DebugProcesses)
+			if (protectedfile && Taskmaster.ShowInaction && Taskmaster.DebugProcesses)
 				Log.Debug("[{FriendlyName}] {ProcessName} (#{ProcessID}) in protected list, limiting tampering.", FriendlyName, info.Name, info.Id);
 
 			// TODO: Validate path.
@@ -693,7 +733,7 @@ namespace Taskmaster
 
 			if (ForegroundOnly) ForegroundMonitor(info);
 
-			if (!denyChange)
+			if (!protectedfile)
 			{
 				if (Priority.HasValue)
 				{
@@ -846,7 +886,10 @@ namespace Taskmaster
 			}
 
 			var sbs = new System.Text.StringBuilder();
-			sbs.Append("[").Append(FriendlyName).Append("] ").Append(info.Name).Append(" (#").Append(info.Id).Append(")");
+
+			sbs.Append("[").Append(FriendlyName).Append("] ")
+				.Append(FormatPathName(info))
+				.Append(" (#").Append(info.Id).Append(")"); // PID
 
 			if (mPriority || mAffinity)
 			{
@@ -894,7 +937,7 @@ namespace Taskmaster
 				if (mPriority)
 					sbs.Append(oldPriority.ToString()).Append(" → ");
 				sbs.Append(newPriority.ToString());
-				if (denyChange) sbs.Append(" [Protected]");
+				if (protectedfile) sbs.Append(" [Protected]");
 				if (fPriority) sbs.Append(" [Failed]");
 			}
 			if (Affinity.HasValue)
@@ -1213,14 +1256,17 @@ namespace Taskmaster
 				{
 					name = process.ProcessName;
 					pid = process.Id;
-
+				}
+				catch { continue; } // access failure or similar, we don't care
+				try
+				{
 					var info = ProcessManagerUtility.GetInfo(pid, process, name, null, getPath: !string.IsNullOrEmpty(Path));
-
 					Touch(info);
 				}
-				catch // access failure or similar, we don't care
+				catch (Exception ex)
 				{
-					continue; // shouldn't happen, but if it does, we don't care
+					Logging.Stacktrace(ex);
+					continue;
 				}
 			}
 

@@ -374,7 +374,6 @@ namespace Taskmaster
 				if (PreviousReaction == PowerReaction.High)
 				{
 					// Downgrade to MEDIUM power level
-					// Console.WriteLine("Downgrade to Mid?");
 					if (ev.High <= AutoAdjust.High.Backoff.High
 						|| ev.Average <= AutoAdjust.High.Backoff.Avg
 						|| ev.Low <= AutoAdjust.High.Backoff.Low)
@@ -388,16 +387,11 @@ namespace Taskmaster
 							Ready = true;
 
 						ev.Pressure = ((float)BackoffCounter) / ((float)AutoAdjust.High.Backoff.Level);
-						// Console.WriteLine("Downgrade to Mid: " + BackoffCounter + " / " + HighBackoffLevel + " = " + ev.Pressure
-						// 				  + " : Blocks:" + Convert.ToString(AutoAdjustBlocks, 2).PadLeft(4, '0'));
 					}
-					// else
-					// 	Console.WriteLine("High backoff thresholds not met");
 				}
 				else if (PreviousReaction == PowerReaction.Low)
 				{
 					// Upgrade to MEDIUM power level
-					// Console.WriteLine("Upgrade to Mid?");
 					if (ev.High >= AutoAdjust.Low.Backoff.High
 						|| ev.Average >= AutoAdjust.Low.Backoff.Avg
 						|| ev.Low >= AutoAdjust.Low.Backoff.Low)
@@ -411,11 +405,7 @@ namespace Taskmaster
 							Ready = true;
 
 						ev.Pressure = ((float)BackoffCounter) / ((float)AutoAdjust.Low.Backoff.Level);
-						// Console.WriteLine("Upgrade to Mid: " + BackoffCounter + " / " + LowBackoffLevel + " = " + ev.Pressure
-						// 				  + " : Blocks:" + Convert.ToString(AutoAdjustBlocks, 2).PadLeft(4, '0'));
 					}
-					// else
-					// 	Console.WriteLine("Low backoff thresholds not met");
 				}
 				else // Currently at medium power
 				{
@@ -432,9 +422,6 @@ namespace Taskmaster
 							Ready = true;
 
 						ev.Pressure = ((float)HighPressure) / ((float)AutoAdjust.High.Commit.Level);
-
-						// Console.WriteLine("Upgrade to High: " + HighPressure + " / " + HighCommitLevel + " = " + ev.Pressure
-						// 				  + " : Blocks:" + Convert.ToString(AutoAdjustBlocks, 2).PadLeft(4, '0'));
 					}
 					else if (ev.High < AutoAdjust.Low.Commit.Threshold && AutoAdjust.Low.Mode != AutoAdjust.DefaultMode) // High CPU is below threshold for Low mode
 					{
@@ -449,9 +436,6 @@ namespace Taskmaster
 							Ready = true;
 
 						ev.Pressure = ((float)LowPressure) / ((float)AutoAdjust.Low.Commit.Level);
-
-						// Console.WriteLine("Downgrade to Low: " + LowPressure + " / " + LowCommitLevel + " = " + ev.Pressure
-						// 				  + " : Blocks:" + Convert.ToString(AutoAdjustBlocks, 2).PadLeft(4, '0'));
 					}
 					else
 					{
@@ -1387,6 +1371,24 @@ namespace Taskmaster
 			var flags = NativeMethods.SendMessageTimeoutFlags.SMTO_ABORTIFHUNG;
 
 			NativeMethods.SendMessageTimeout(TopMost, WM_SYSCOMMAND, SC_MONITORPOWER, NewPowerMode, flags, timeout, out result);
+		}
+	}
+
+	public static class PowerExtensions
+	{
+		public static string GetShortName(this PowerMode mode)
+		{
+			switch (mode)
+			{
+				case PowerMode.HighPerformance:
+					return "High";
+				case PowerMode.PowerSaver:
+					return "Low";
+				case PowerMode.Balanced:
+					return "Medium";
+				default:
+					return "Unknown";
+			}
 		}
 	}
 }

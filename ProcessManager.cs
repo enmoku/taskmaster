@@ -957,7 +957,11 @@ namespace Taskmaster
 				return null; // return ProcessState.Error;
 
 			if (IgnoreSystem32Path && info.Path.Contains(Environment.GetFolderPath(Environment.SpecialFolder.System)))
+			{
+				if (Taskmaster.ShowInaction && Taskmaster.DebugProcesses)
+					Log.Debug("<Process> {Exe} (#{Pid}) in System32, ignoring", info.Name, info.Id);
 				return null;
+			}
 
 			// TODO: This needs to be FASTER
 			lock (watchlist_lock)
@@ -1008,10 +1012,17 @@ namespace Taskmaster
 
 			if (matchedprc != null)
 			{
-				matchedprc.Touch(info);
+				try
+				{
+					matchedprc.Touch(info);
+				}
+				catch (Exception ex)
+				{
+					Logging.Stacktrace(ex);
+				}
+
 				info.Handled = true;
 
-				//Console.WriteLine("ForegroundWatch(" + info.Id + ") called at CheckPathWatch");
 				ForegroundWatch(info, matchedprc); // already called?
 			}
 		}
