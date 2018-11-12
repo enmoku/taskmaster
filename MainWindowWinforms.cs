@@ -1184,8 +1184,11 @@ namespace Taskmaster
 				if (Taskmaster.AutoOpenMenus) menu_info.ShowDropDown();
 			};
 
+			/*
+			// TODO: INFO TAB needs more work
 			var infoTab = new TabPage("Info");
 			tabLayout.Controls.Add(infoTab);
+			*/
 
 			var watchTab = new TabPage("Watchlist");
 			tabLayout.Controls.Add(watchTab);
@@ -1448,8 +1451,11 @@ namespace Taskmaster
 			if (Taskmaster.ProcessMonitorEnabled && ProcessManager.RescanEverythingFrequency > 0)
 				UItimer.Tick += UpdateRescanCountdown;
 
+			/*
+			// TODO: INFO TAB needs more work
 			if (Taskmaster.PathCacheLimit > 0)
 				UItimer.Tick += PathCacheUpdate;
+			*/
 
 			ifaceList = new ListView
 			{
@@ -1609,6 +1615,8 @@ namespace Taskmaster
 				cfg.MarkDirty();
 			}
 
+			/*
+			// TODO: INFO TAB needs more work
 			var cachePanel = new TableLayoutPanel()
 			{
 				ColumnCount = 5,
@@ -1704,6 +1712,7 @@ namespace Taskmaster
 
 			infopanel.Controls.Add(tempmonitorpanel);
 			infoTab.Controls.Add(infopanel);
+			*/
 
 			// POWER DEBUG TAB
 
@@ -2148,7 +2157,7 @@ namespace Taskmaster
 						sbs.Append("Affinity strategy = ").Append((int)prc.AffinityStrategy).AppendLine();
 					}
 					if (prc.PowerPlan != PowerInfo.PowerMode.Undefined)
-						sbs.Append("Power plan = ").Append(PowerManager.PowerModes[(int)prc.PowerPlan]).AppendLine();
+						sbs.Append("Power plan = ").Append(PowerManager.GetModeName(prc.PowerPlan)).AppendLine();
 					if (prc.Rescan > 0)
 						sbs.Append("Rescan = ").Append(prc.Rescan).AppendLine();
 					if (prc.Recheck > 0)

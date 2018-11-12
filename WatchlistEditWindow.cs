@@ -568,8 +568,13 @@ namespace Taskmaster
 
 			// POWER
 			lt.Controls.Add(new Label { Text = "Power plan", TextAlign = System.Drawing.ContentAlignment.MiddleLeft });
-			foreach (string t in PowerManager.PowerModes)
-				powerPlan.Items.Add(t);
+			powerPlan.Items.AddRange(new string[] {
+				PowerManager.GetModeName(PowerInfo.PowerMode.HighPerformance),
+				PowerManager.GetModeName(PowerInfo.PowerMode.Balanced),
+				PowerManager.GetModeName(PowerInfo.PowerMode.PowerSaver),
+				PowerManager.GetModeName(PowerInfo.PowerMode.Undefined)
+			});
+
 			var ppi = System.Convert.ToInt32(Controller.PowerPlan);
 			powerPlan.DropDownStyle = ComboBoxStyle.DropDownList;
 			powerPlan.SelectedIndex = System.Math.Min(ppi, 3);

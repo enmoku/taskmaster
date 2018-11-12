@@ -737,11 +737,11 @@ namespace Taskmaster
 			autopower["Low backoff thresholds"].FloatValueArray = new float[] { AutoAdjust.Low.Backoff.High, AutoAdjust.Low.Backoff.Avg, AutoAdjust.Low.Backoff.Low };
 
 			// POWER MODES
-			power["Low mode"].StringValue = AutoAdjust.Low.Mode.ToString();
-			power["High mode"].StringValue = AutoAdjust.High.Mode.ToString();
+			power["Low mode"].StringValue = GetModeName(AutoAdjust.Low.Mode);
+			power["High mode"].StringValue = GetModeName(AutoAdjust.High.Mode);
 
 			var saver = corecfg.Config["AFK Power"];
-			saver["Session lock"].StringValue = SessionLockPowerMode.ToString();
+			saver["Session lock"].StringValue = GetModeName(SessionLockPowerMode);
 
 			saver["Monitor power off idle timeout"].IntValue = SessionLockPowerOffIdleTimeout;
 			saver["Monitor power off on lock"].BoolValue = SessionLockPowerOff;
@@ -950,12 +950,21 @@ namespace Taskmaster
 			base.WndProc(ref m); // is this necessary?
 		}
 
-		public static readonly string[] PowerModes = { "Power Saver", "Balanced", "High Performance", "Undefined" };
-
 		public static string GetModeName(PowerMode mode)
 		{
-			if ((int)mode > 3) return string.Empty;
-			return PowerModes[(int)mode];
+			switch (mode)
+			{
+				case PowerMode.Balanced:
+					return "Balanced";
+				case PowerMode.HighPerformance:
+					return "High Performance";
+				case PowerMode.PowerSaver:
+					return "Power Saver";
+				case PowerMode.Custom:
+					return "Custom";
+				default:
+					return "Undefined";
+			}
 		}
 
 		public static PowerMode GetModeByName(string name)
@@ -964,10 +973,16 @@ namespace Taskmaster
 
 			switch (name.ToLowerInvariant())
 			{
+				case "low":
+				case "powersaver":
 				case "power saver":
 					return PowerMode.PowerSaver;
+				case "average":
+				case "medium":
 				case "balanced":
 					return PowerMode.Balanced;
+				case "high":
+				case "highperformance":
 				case "high performance":
 					return PowerMode.HighPerformance;
 				default:
