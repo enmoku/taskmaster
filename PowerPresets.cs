@@ -24,47 +24,49 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using Taskmaster.PowerInfo;
+
 namespace Taskmaster
 {
-	namespace PowerInfo
+	static class PowerAutoadjustPresets
 	{
-		public enum PowerMode
+		public static AutoAdjustSettings Default()
 		{
-			PowerSaver = 0,
-			Balanced = 1,
-			HighPerformance = 2,
-			Custom = 9,
-			Undefined = 3
-		};
-
-		sealed public class AutoAdjustSettings
-		{
-			public PowerLevels Low;
-			public PowerLevels High;
-
-			public PowerMode DefaultMode = PowerMode.Balanced;
-		}
-
-		public struct PowerLevels
-		{
-			public BackoffThresholds Backoff;
-			public CommitThreshold Commit;
-			public PowerMode Mode;
-		}
-
-		public struct BackoffThresholds
-		{
-			public int Level;
-
-			public float Low;
-			public float Avg;
-			public float High;
-		}
-
-		public struct CommitThreshold
-		{
-			public int Level;
-			public float Threshold;
+			return new AutoAdjustSettings()
+			{
+				DefaultMode = PowerMode.Balanced,
+				High = {
+					Mode = PowerMode.HighPerformance,
+					Backoff = {
+						High = 60,
+						Avg = 40,
+						Low = 15,
+						Level = 3,
+					},
+					Commit = {
+						Level = 3,
+						Threshold = 70
+					}
+				},
+				Low = {
+					Mode = PowerMode.PowerSaver,
+					Backoff = {
+						High = 50,
+						Avg = 35,
+						Low = 25,
+						Level = 5,
+					},
+					Commit = {
+						Level = 7,
+						Threshold = 15
+					}
+				}
+			};
 		}
 	}
 }

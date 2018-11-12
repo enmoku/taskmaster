@@ -82,26 +82,7 @@ namespace Taskmaster
 		{
 			OriginalMode = getPowerMode();
 
-			AutoAdjust.High.Mode = PowerMode.HighPerformance;
-			AutoAdjust.High.Commit.Level = 3;
-			AutoAdjust.High.Commit.Threshold = 70;
-
-			AutoAdjust.High.Backoff.Level = 3;
-			AutoAdjust.High.Backoff.Low = 15;
-			AutoAdjust.High.Backoff.Avg = 40;
-			AutoAdjust.High.Backoff.High = 60;
-
-			AutoAdjust.Low.Mode = PowerMode.PowerSaver;
-			AutoAdjust.Low.Commit.Level = 7;
-			AutoAdjust.Low.Commit.Threshold = 15;
-
-			AutoAdjust.Low.Backoff.Level = 2;
-			AutoAdjust.Low.Backoff.Low = 25;
-			AutoAdjust.Low.Backoff.Avg = 35;
-			AutoAdjust.Low.Backoff.High = 50;
-			AutoAdjust.Low.Backoff.Level = 5;
-
-			AutoAdjust.DefaultMode = PowerMode.Balanced;
+			AutoAdjust = PowerAutoadjustPresets.Default();
 
 			LoadConfig();
 

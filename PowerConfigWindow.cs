@@ -34,8 +34,8 @@ namespace Taskmaster
 {
 	sealed public class PowerConfigWindow : UI.UniForm
 	{
-		public AutoAdjustSettings oldAutoAdjust;
-		public AutoAdjustSettings newAutoAdjust;
+		public AutoAdjustSettings oldAutoAdjust = null;
+		public AutoAdjustSettings newAutoAdjust = null;
 
 		public PowerConfigWindow()
 		{
@@ -157,28 +157,42 @@ namespace Taskmaster
 
 				// TODO: Sanity check the settings
 
-				newAutoAdjust = new AutoAdjustSettings();
-
-				newAutoAdjust.DefaultMode = PowerManager.GetModeByName(defaultmode.Text);
-
-				newAutoAdjust.Low.Mode = PowerManager.GetModeByName(lowmode.Text);
-				newAutoAdjust.High.Mode = PowerManager.GetModeByName(highmode.Text);
-
-				newAutoAdjust.High.Commit.Level = Convert.ToInt32(highcommitlevel.Value);
-				newAutoAdjust.High.Commit.Threshold = Convert.ToSingle(highcommitthreshold.Value);
-
-				newAutoAdjust.High.Backoff.Level = Convert.ToInt32(highbackofflevel.Value);
-				newAutoAdjust.High.Backoff.Low = Convert.ToSingle(highbackofflow.Value);
-				newAutoAdjust.High.Backoff.Avg = Convert.ToSingle(highbackoffavg.Value);
-				newAutoAdjust.High.Backoff.High = Convert.ToSingle(highbackoffhigh.Value);
-
-				newAutoAdjust.Low.Commit.Level = Convert.ToInt32(lowcommitlevel.Value);
-				newAutoAdjust.Low.Commit.Threshold = Convert.ToSingle(lowcommitthreshold.Value);
-
-				newAutoAdjust.Low.Backoff.Level = Convert.ToInt32(lowbackofflevel.Value);
-				newAutoAdjust.Low.Backoff.Low = Convert.ToSingle(lowbackofflow.Value);
-				newAutoAdjust.Low.Backoff.Avg = Convert.ToSingle(lowbackoffavg.Value);
-				newAutoAdjust.Low.Backoff.High = Convert.ToSingle(lowbackoffhigh.Value);
+				newAutoAdjust = new AutoAdjustSettings
+				{
+					DefaultMode = PowerManager.GetModeByName(defaultmode.Text),
+					Low =
+					{
+						Mode = PowerManager.GetModeByName(lowmode.Text),
+						Commit =
+						{
+							Level = Convert.ToInt32(lowcommitlevel.Value),
+							Threshold = Convert.ToSingle(lowcommitthreshold.Value),
+						},
+						Backoff =
+						{
+							High=Convert.ToSingle(lowbackoffhigh.Value),
+							Avg = Convert.ToSingle(lowbackoffavg.Value),
+							Low = Convert.ToSingle(lowbackofflow.Value),
+							Level = Convert.ToInt32(lowbackofflevel.Value),
+						}
+					},
+					High =
+					{
+						Mode = PowerManager.GetModeByName(highmode.Text),
+						Commit =
+						{
+							Level =Convert.ToInt32(highcommitlevel.Value),
+							Threshold = Convert.ToSingle(highcommitthreshold.Value),
+						},
+						Backoff =
+						{
+							High = Convert.ToSingle(highbackoffhigh.Value),
+							Avg = Convert.ToSingle(highbackoffavg.Value),
+							Low = Convert.ToSingle(highbackofflow.Value),
+							Level = Convert.ToInt32(highbackofflevel.Value),
+						}
+					}
+				};
 
 				// passing the new config is done elsewhere
 
