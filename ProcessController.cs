@@ -450,22 +450,32 @@ namespace Taskmaster
 						Log.Debug("<Foreground> " + FormatPathName(info) + " (#" + info.Id + ") not paused; not resuming.");
 					return; // can't resume unpaused item
 				}
-
-				if (Priority.HasValue && info.Process.PriorityClass.ToInt32() != Priority.Value.ToInt32())
+				try
 				{
-					try
+					if (Priority.HasValue && info.Process.PriorityClass.ToInt32() != Priority.Value.ToInt32())
 					{
 						info.Process.PriorityClass = Priority.Value;
 						if (Taskmaster.DebugForeground)
 							Log.Debug("[" + FriendlyName + "] " + info.Name + " (#" + info.Id + ") priority restored: " +
 								BackgroundPriority.ToString() + "→" + Priority.ToString() + " [Foreground]");
 					}
-					catch (Exception ex)
-					{
-						Logging.Stacktrace(ex);
-						// should only happen if the process is already gone
-					}
 				}
+				catch (InvalidOperationException) // ID not available, probably exited
+				{
+					PausedIds.Remove(info.Id);
+					return;
+				}
+				catch (Win32Exception) // access error
+				{
+					PausedIds.Remove(info.Id);
+					return;
+				}
+				catch (Exception ex)
+				{
+					Logging.Stacktrace(ex);
+					return;
+				}
+
 				// PausedState.Priority = Priority;
 				// PausedState.PowerMode = PowerPlan;
 
@@ -618,15 +628,6 @@ namespace Taskmaster
 				return; // don't touch paused item
 			}
 
-			/*
-			try
-			{
-				if (!info.Process.Responding)
-					return; // ignore non-responding apps
-			}
-			catch { }
-			*/
-
 			bool foreground = Taskmaster.activeappmonitor?.Foreground.Equals(info.Id) ?? true;
 
 			info.PowerWait = (PowerPlan != PowerInfo.PowerMode.Undefined);
@@ -636,35 +637,46 @@ namespace Taskmaster
 				await Task.Delay(recheck ? 0 : ModifyDelay).ConfigureAwait(false);
 
 			if (recheck || ModifyDelay > 0)
-			{
-				try
-				{
-					info.Process.Refresh();
-				}
-				catch
-				{
-					Log.Warning("[{FriendlyName}] {Exec} (#{Pid}) failed to refresh.", FriendlyName, info.Name, info.Id);
-				}
-			}
+				info.Process.Refresh();
+
+			bool responding = true;
+			var oldPriority = ProcessPriorityClass.RealTime;
+			var oldAffinity = IntPtr.Zero;
+			int oldAffinityMask = 0;
+			var oldPower = PowerInfo.PowerMode.Undefined;
+
+			// EXTRACT INFORMATION
 
 			try
 			{
+				responding = info.Process.Responding;
+
 				if (info.Process.HasExited)
 				{
 					if (Taskmaster.DebugProcesses)
 						Log.Debug("[{FriendlyName}] {ProcessName} (#{ProcessID}) has already exited.", FriendlyName, info.Name, info.Id);
 					return; // return ProcessState.Invalid;
 				}
+
+				oldAffinity = info.Process.ProcessorAffinity;
+				oldPriority = info.Process.PriorityClass;
+				oldAffinityMask = oldAffinity.ToInt32();
 			}
-			catch (Win32Exception ex)
+			catch (InvalidOperationException) // Already exited
 			{
-				if (ex.NativeErrorCode != 5)
-					Log.Warning("[{FriendlyName}] {ProcessName} (#{ProcessID}) access failure determining if it's still running.", FriendlyName, info.Name, info.Id);
-				return; // return ProcessState.Error; // we don't care what this error is exactly
+				info.State = ProcessModification.Exited;
+				return;
 			}
-			catch (Exception ex) // invalidoperation or notsupported
+			catch (Win32Exception) // denied
+			{
+				// failure to retrieve exit code, this probably means we don't have sufficient rights. assume it is gone.
+				info.State = ProcessModification.AccessDenied;
+				return;
+			}
+			catch (Exception ex) // invalidoperation or notsupported, neither should happen
 			{
 				Logging.Stacktrace(ex);
+				info.State = ProcessModification.Invalid;
 				return;
 			}
 
@@ -686,15 +698,8 @@ namespace Taskmaster
 			// TODO: Validate path.
 			if (!string.IsNullOrEmpty(Path))
 			{
-				if (string.IsNullOrEmpty(info.Path))
-				{
-					if (ProcessManagerUtility.FindPath(info))
-					{
-						// Yay
-					}
-					else
-						return; // return ProcessState.Error;
-				}
+				if (string.IsNullOrEmpty(info.Path) && !ProcessManagerUtility.FindPath(info))
+					return; // return ProcessState.Error;
 
 				if (info.PathMatched || info.Path.StartsWith(Path, StringComparison.InvariantCultureIgnoreCase)) // FIXME: this is done twice
 				{
@@ -712,35 +717,21 @@ namespace Taskmaster
 				}
 			}
 
+			var newPriority = ProcessPriorityClass.RealTime;
+			var newAffinity = IntPtr.Zero;
+			var newPower = PowerInfo.PowerMode.Undefined;
+
 			bool mAffinity = false, mPriority = false, mPower = false, modified = false, fAffinity = false, fPriority = false;
 			LastSeen = DateTime.Now;
 
-			var oldAffinity = IntPtr.Zero;
-			var oldPriority = ProcessPriorityClass.RealTime;
-			try
-			{
-				oldAffinity = info.Process.ProcessorAffinity;
-				oldPriority = info.Process.PriorityClass;
-			}
-			catch (InvalidOperationException)
-			{
-				// Already exited
-				info.State = ProcessModification.Exited;
-				return;
-			}
-			catch (ArgumentException)
-			{
-				// Already exited
-				info.State = ProcessModification.Exited;
-				return;
-			}
-			catch (Exception ex) { Logging.Stacktrace(ex); }
-
-			IntPtr newAffinity = Affinity.GetValueOrDefault();
-			
-			var newPriority = oldPriority;
+			newAffinity = Affinity.GetValueOrDefault();
+			newPriority = Priority.GetValueOrDefault();
 
 			if (ForegroundOnly) ForegroundMonitor(info);
+
+			bool doModifyPriority = false;
+			bool doModifyAffinity = false;
+			bool doModifyPower = false;
 
 			if (!protectedfile)
 			{
@@ -755,105 +746,85 @@ namespace Taskmaster
 						Pause(info);
 					}
 					else
-					{
-						try
-						{
-							if (info.Process.SetLimitedPriority(Priority.Value, PriorityStrategy))
-							{
-								modified = mPriority = true;
-								newPriority = Priority.Value;
-							}
-						}
-						catch
-						{
-							fPriority = true;
-							if (Taskmaster.ShowInaction)
-								Log.Warning("[{FriendlyName}] {Exec} (#{Pid}) failed to set process priority.", FriendlyName, info.Name, info.Id);
-							// NOP
-						}
-					}
-				}
-				else
-				{
-					// no priority changing
+						doModifyPriority = true;
 				}
 			}
 			else
 			{
-				if (Taskmaster.ShowInaction)
-					Log.Verbose("{Exec} (#{Pid}) protected.", info.Name, info.Id);
+				if (Taskmaster.ShowInaction && Taskmaster.DebugProcesses)
+					Log.Verbose("[{FriendlyName}] {Exec} (#{Pid}) protected.", FriendlyName, info.Name, info.Id);
 			}
 
 			if (Affinity.HasValue)
 			{
-				try
+				var newAffinityMask = Affinity.Value.ToInt32();
+				if (oldAffinityMask != newAffinityMask)
 				{
-					var oldAffinityMask = info.Process.ProcessorAffinity.ToInt32();
-					var newAffinityMask = Affinity.Value.ToInt32();
+					/*
+					var taff = Affinity;
+					if (AllowedCores || !Increase)
+					{
+						var minaff = Bit.Or(newAffinityMask, oldAffinityMask);
+						var mincount = Bit.Count(minaff);
+						var bitsold = Bit.Count(oldAffinityMask);
+						var bitsnew = Bit.Count(newAffinityMask);
+						var minaff1 = minaff;
+						minaff = Bit.Fill(minaff, bitsnew, Math.Min(bitsold, bitsnew));
+						if (minaff1 != minaff)
+						{
+							Console.WriteLine("--- Affinity | Core Shift ---");
+							Console.WriteLine(Convert.ToString(minaff1, 2).PadLeft(ProcessManager.CPUCount));
+							Console.WriteLine(Convert.ToString(minaff, 2).PadLeft(ProcessManager.CPUCount));
+						}
+						else
+						{
+							Console.WriteLine("--- Affinity | Meh ---");
+							Console.WriteLine(Convert.ToString(Affinity.ToInt32(), 2).PadLeft(ProcessManager.CPUCount));
+							Console.WriteLine(Convert.ToString(minaff, 2).PadLeft(ProcessManager.CPUCount));
+						}
+
+						// shuffle cores from old to new
+						taff = new IntPtr(minaff);
+					}
+					*/
+					// int bitsnew = Bit.Count(newAffinityMask);
+					// TODO: Somehow shift bits old to new if there's free spots
+
+					int modifiedAffinity = ProcessManagerUtility.ApplyAffinityStrategy(oldAffinityMask, newAffinityMask, AffinityStrategy);
+					if (modifiedAffinity != newAffinityMask)
+					{
+						newAffinityMask = modifiedAffinity;
+						newAffinity = new IntPtr(newAffinityMask);
+					}
+
 					if (oldAffinityMask != newAffinityMask)
-					{
-						/*
-						var taff = Affinity;
-						if (AllowedCores || !Increase)
-						{
-							var minaff = Bit.Or(newAffinityMask, oldAffinityMask);
-							var mincount = Bit.Count(minaff);
-							var bitsold = Bit.Count(oldAffinityMask);
-							var bitsnew = Bit.Count(newAffinityMask);
-							var minaff1 = minaff;
-							minaff = Bit.Fill(minaff, bitsnew, Math.Min(bitsold, bitsnew));
-							if (minaff1 != minaff)
-							{
-								Console.WriteLine("--- Affinity | Core Shift ---");
-								Console.WriteLine(Convert.ToString(minaff1, 2).PadLeft(ProcessManager.CPUCount));
-								Console.WriteLine(Convert.ToString(minaff, 2).PadLeft(ProcessManager.CPUCount));
-							}
-							else
-							{
-								Console.WriteLine("--- Affinity | Meh ---");
-								Console.WriteLine(Convert.ToString(Affinity.ToInt32(), 2).PadLeft(ProcessManager.CPUCount));
-								Console.WriteLine(Convert.ToString(minaff, 2).PadLeft(ProcessManager.CPUCount));
-							}
-
-							// shuffle cores from old to new
-							taff = new IntPtr(minaff);
-						}
-						*/
-						// int bitsnew = Bit.Count(newAffinityMask);
-						// TODO: Somehow shift bits old to new if there's free spots
-
-						int modifiedAffinity = ProcessManagerUtility.ApplyAffinityStrategy(oldAffinityMask, newAffinityMask, AffinityStrategy);
-						if (modifiedAffinity != newAffinityMask)
-						{
-							newAffinityMask = modifiedAffinity;
-							newAffinity = new IntPtr(newAffinityMask);
-						}
-
-						if (oldAffinityMask != newAffinityMask)
-						{
-							info.Process.ProcessorAffinity = newAffinity;
-
-							modified = mAffinity = true;
-						}
-						// Log.Verbose("Affinity for '{ExecutableName}' (#{ProcessID}) set: {OldAffinity} → {NewAffinity}.",
-						// execname, pid, process.ProcessorAffinity.ToInt32(), Affinity.ToInt32());
-					}
-					else
-					{
-						// Log.Verbose("Affinity for '{ExecutableName}' (#{ProcessID}) is ALREADY set: {OldAffinity} → {NewAffinity}.",
-						// 			info.Name, info.Id, info.Process.ProcessorAffinity.ToInt32(), Affinity.ToInt32());
-					}
-				}
-				catch
-				{
-					fAffinity = true;
-					if (Taskmaster.ShowInaction)
-						Log.Warning("[{FriendlyName}] {Exec} (#{Pid}) failed to set process affinity.", FriendlyName, info.Name, info.Id);
+						doModifyAffinity = true;
 				}
 			}
-			else
+
+			// APPLY CHANGES HERE
+
+			if (doModifyPriority)
 			{
-				// no affinity changing
+				try
+				{
+					if (info.Process.SetLimitedPriority(Priority.Value, PriorityStrategy))
+					{
+						modified = mPriority = true;
+						newPriority = Priority.Value;
+					}
+				}
+				catch { fPriority = true; } // ignore errors, this is all we care of them
+			}
+
+			if (doModifyAffinity)
+			{
+				try
+				{
+					info.Process.ProcessorAffinity = newAffinity;
+					modified = mAffinity = true;
+				}
+				catch { fAffinity = true; } // ignore errors, this is all we care of them
 			}
 
 			/*
@@ -861,11 +832,7 @@ namespace Taskmaster
 			{
 				try
 				{
-					//Process.EnterDebugMode(); // doesn't help
-
 					//mBGIO = SetBackground(info.Process); // doesn't work, can only be done to current process
-
-					//Process.LeaveDebugMode();
 				}
 				catch
 				{
@@ -888,11 +855,13 @@ namespace Taskmaster
 				}
 				else
 				{
-					//oldPP = Taskmaster.powermanager.CurrentMode;
+					//oldPower = Taskmaster.powermanager.CurrentMode;
 					mPower = SetPower(info);
 					//mPower = (oldPP != Taskmaster.powermanager.CurrentMode);
 				}
 			}
+
+			// OUTPUT LOGS
 
 			var sbs = new System.Text.StringBuilder();
 
@@ -900,14 +869,16 @@ namespace Taskmaster
 				.Append(FormatPathName(info))
 				.Append(" (#").Append(info.Id).Append(")"); // PID
 
-			if (mPriority || mAffinity)
-			{
-				Statistics.TouchCount++;
-				Adjusts += 1; // don't increment on power changes
-			}
-
 			if (modified)
 			{
+				if (mPriority || mAffinity)
+				{
+					Statistics.TouchCount++;
+					Adjusts += 1; // don't increment on power changes
+				}
+
+				/*
+				// Check if the change took effect?
 				if (mPriority)
 				{
 					try
@@ -926,14 +897,18 @@ namespace Taskmaster
 						info.State = ProcessModification.Exited;
 						return;
 					}
-					catch (ArgumentException)
+					catch (Win32Exception)
 					{
-						// Already exited
-						info.State = ProcessModification.Exited;
+						info.State = ProcessModification.AccessDenied;
 						return;
 					}
-					catch (Exception ex) { Logging.Stacktrace(ex); }
+					catch (Exception ex)
+					{
+						Logging.Stacktrace(ex);
+						return;
+					}
 				}
+				*/
 
 				LastTouch = DateTime.Now;
 
@@ -947,7 +922,12 @@ namespace Taskmaster
 					sbs.Append(oldPriority.ToString()).Append(" → ");
 				sbs.Append(newPriority.ToString());
 				if (protectedfile) sbs.Append(" [Protected]");
-				if (fPriority) sbs.Append(" [Failed]");
+				if (fPriority)
+				{
+					sbs.Append(" [Failed]");
+					if (Taskmaster.ShowInaction)
+						Log.Warning("[{FriendlyName}] {Exec} (#{Pid}) failed to set process priority.", FriendlyName, info.Name, info.Id);
+				}
 			}
 			if (Affinity.HasValue)
 			{
@@ -957,7 +937,12 @@ namespace Taskmaster
 					sbs.Append(oldAffinity.ToInt32()).Append(" → ");
 				sbs.Append(newAffinity);
 
-				if (fAffinity) sbs.Append(" [Failed]");
+				if (fAffinity)
+				{
+					sbs.Append(" [Failed]");
+					if (Taskmaster.ShowInaction)
+						Log.Warning("[{FriendlyName}] {Exec} (#{Pid}) failed to set process affinity.", FriendlyName, info.Name, info.Id);
+				}
 
 				if (Taskmaster.DebugProcesses) sbs.Append(" [").Append(AffinityStrategy.ToString()).Append("]");
 			}
