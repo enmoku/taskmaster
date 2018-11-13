@@ -245,6 +245,11 @@ namespace Taskmaster
 				else
 					app.Remove("Background priority");
 
+				if (BackgroundAffinity.HasValue)
+					app["Background affinity"].IntValue = BackgroundAffinity.Value.ToInt32();
+				else
+					app.Remove("Background affinity");
+
 				if (BackgroundPowerdown)
 					app["Background powerdown"].BoolValue = BackgroundPowerdown;
 				else
@@ -387,7 +392,8 @@ namespace Taskmaster
 		HashSet<int> PausedIds = new HashSet<int>();
 
 		public bool BackgroundPowerdown { get; set; } = true;
-		public ProcessPriorityClass BackgroundPriority { get; set; } = ProcessPriorityClass.Normal;
+		public ProcessPriorityClass BackgroundPriority { get; set; } = ProcessPriorityClass.RealTime;
+		public IntPtr? BackgroundAffinity { get; set; } = IntPtr.Zero;
 
 		/// <summary>
 		/// Pause the specified foreground process.
@@ -408,7 +414,10 @@ namespace Taskmaster
 
 			try
 			{
-				info.Process.PriorityClass = BackgroundPriority;
+				if (BackgroundPriority != ProcessPriorityClass.RealTime)
+					info.Process.PriorityClass = BackgroundPriority;
+				if (BackgroundAffinity.HasValue)
+					info.Process.ProcessorAffinity = BackgroundAffinity.Value;
 			}
 			catch
 			{
@@ -428,8 +437,19 @@ namespace Taskmaster
 			}
 
 			if (Taskmaster.DebugForeground)
-				Log.Debug("[{FriendlyName}] {Exec} (#{Pid}) priority reduced: {Current}→{Paused} [Background]",
-					FriendlyName, info.Name, info.Id, Priority.ToString(), BackgroundPriority.ToString());
+			{
+				var sbs = new System.Text.StringBuilder();
+				sbs.Append("[").Append(FriendlyName).Append("] ").Append(FormatPathName(info))
+					.Append(" (#").Append(info.Id).Append(")");
+				if (BackgroundPriority != ProcessPriorityClass.RealTime)
+					sbs.Append("; priority: ").Append(Priority.ToString()).Append("→").Append(BackgroundPriority.ToString());
+				if (BackgroundAffinity.HasValue)
+					sbs.Append("; affinity: ").Append(Affinity.Value.ToInt32()).Append("→").Append(BackgroundAffinity.Value.ToInt32());
+				sbs.Append(" [Background]");
+
+				Log.Debug(sbs.ToString());
+				sbs.Clear();
+			}
 
 			ForegroundMonitor(info);
 		}
@@ -453,12 +473,10 @@ namespace Taskmaster
 				try
 				{
 					if (Priority.HasValue && info.Process.PriorityClass.ToInt32() != Priority.Value.ToInt32())
-					{
 						info.Process.PriorityClass = Priority.Value;
-						if (Taskmaster.DebugForeground)
-							Log.Debug("[" + FriendlyName + "] " + info.Name + " (#" + info.Id + ") priority restored: " +
-								BackgroundPriority.ToString() + "→" + Priority.ToString() + " [Foreground]");
-					}
+
+					if (Affinity.HasValue)
+						info.Process.ProcessorAffinity = Affinity.Value;
 				}
 				catch (InvalidOperationException) // ID not available, probably exited
 				{
@@ -474,6 +492,12 @@ namespace Taskmaster
 				{
 					Logging.Stacktrace(ex);
 					return;
+				}
+
+				if (Taskmaster.DebugForeground)
+				{
+					Log.Debug("[" + FriendlyName + "] " + info.Name + " (#" + info.Id + ") priority restored: " +
+						BackgroundPriority.ToString() + "→" + Priority.ToString() + " [Foreground]");
 				}
 
 				// PausedState.Priority = Priority;
@@ -1306,6 +1330,8 @@ namespace Taskmaster
 			if (disposing)
 			{
 				if (Taskmaster.Trace) Log.Verbose("Disposing process controller [{FriendlyName}]", FriendlyName);
+
+				Modified = null; // clear events
 
 				if (NeedsSaving) SaveConfig();
 			}
