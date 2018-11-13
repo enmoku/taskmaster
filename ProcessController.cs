@@ -412,12 +412,30 @@ namespace Taskmaster
 			// PausedState.Priority = Priority;
 			// PausedState.PowerMode = PowerPlan;
 
+			bool mAffinity = false, mPriority = false;
+			ProcessPriorityClass oldPriority = ProcessPriorityClass.RealTime;
+			IntPtr oldAffinity = IntPtr.Zero;
+
 			try
 			{
 				if (BackgroundPriority != ProcessPriorityClass.RealTime)
-					info.Process.PriorityClass = BackgroundPriority;
+				{
+					oldPriority = info.Process.PriorityClass;
+					if (oldPriority != BackgroundPriority)
+					{
+						info.Process.PriorityClass = BackgroundPriority;
+						mPriority = true;
+					}
+				}
 				if (BackgroundAffinity.HasValue)
-					info.Process.ProcessorAffinity = BackgroundAffinity.Value;
+				{
+					oldAffinity = info.Process.ProcessorAffinity;
+					if (oldAffinity.ToInt32() != BackgroundAffinity.Value.ToInt32())
+					{
+						info.Process.ProcessorAffinity = BackgroundAffinity.Value;
+						mAffinity = true;
+					}
+				}
 			}
 			catch
 			{
@@ -441,10 +459,12 @@ namespace Taskmaster
 				var sbs = new System.Text.StringBuilder();
 				sbs.Append("[").Append(FriendlyName).Append("] ").Append(FormatPathName(info))
 					.Append(" (#").Append(info.Id).Append(")");
-				if (BackgroundPriority != ProcessPriorityClass.RealTime)
-					sbs.Append("; priority: ").Append(Priority.ToString()).Append("→").Append(BackgroundPriority.ToString());
-				if (BackgroundAffinity.HasValue)
-					sbs.Append("; affinity: ").Append(Affinity.Value.ToInt32()).Append("→").Append(BackgroundAffinity.Value.ToInt32());
+				if (mPriority)
+					sbs.Append("; Priority: ").Append(oldPriority.ToString()).Append("→").Append(BackgroundPriority.ToString());
+				if (mAffinity)
+					sbs.Append("; Affinity: ").Append(oldAffinity.ToInt32()).Append("→").Append(BackgroundAffinity.Value.ToInt32());
+				if (!mAffinity && !mPriority)
+					sbs.Append("; Already at target values");
 				sbs.Append(" [Background]");
 
 				Log.Debug(sbs.ToString());
@@ -462,6 +482,10 @@ namespace Taskmaster
 		{
 			Debug.Assert(ForegroundOnly == true);
 
+			bool mAffinity = false, mPriority = false;
+			ProcessPriorityClass oldPriority = ProcessPriorityClass.RealTime;
+			IntPtr oldAffinity = IntPtr.Zero;
+
 			lock (foreground_lock)
 			{
 				if (!isPaused(info))
@@ -473,10 +497,16 @@ namespace Taskmaster
 				try
 				{
 					if (Priority.HasValue && info.Process.PriorityClass.ToInt32() != Priority.Value.ToInt32())
+					{
 						info.Process.PriorityClass = Priority.Value;
+						mPriority = true;
+					}
 
 					if (Affinity.HasValue)
+					{
 						info.Process.ProcessorAffinity = Affinity.Value;
+						mAffinity = true;
+					}
 				}
 				catch (InvalidOperationException) // ID not available, probably exited
 				{
@@ -496,8 +526,19 @@ namespace Taskmaster
 
 				if (Taskmaster.DebugForeground)
 				{
-					Log.Debug("[" + FriendlyName + "] " + info.Name + " (#" + info.Id + ") priority restored: " +
-						BackgroundPriority.ToString() + "→" + Priority.ToString() + " [Foreground]");
+					var sbs = new System.Text.StringBuilder();
+					sbs.Append("[").Append(FriendlyName).Append("] ").Append(FormatPathName(info))
+						.Append(" (#").Append(info.Id).Append(")");
+					if (mPriority)
+						sbs.Append("; Priority: ").Append(oldPriority.ToString()).Append("→").Append(Priority.ToString());
+					if (mAffinity)
+						sbs.Append("; Affinity: ").Append(oldAffinity.ToInt32()).Append("→").Append(Affinity.Value.ToInt32());
+					if (!mAffinity && !mPriority)
+						sbs.Append("; Already at target values");
+					sbs.Append(" [Foreground]");
+
+					Log.Debug(sbs.ToString());
+					sbs.Clear();
 				}
 
 				// PausedState.Priority = Priority;
