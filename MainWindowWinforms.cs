@@ -215,7 +215,7 @@ namespace Taskmaster
 		NetManager netmonitor = null;
 
 		#region Microphone control code
-		public void hookMicMonitor(MicManager micmonitor)
+		public void Hook(MicManager micmonitor)
 		{
 			Debug.Assert(micmonitor != null);
 			micmon = micmonitor;
@@ -233,6 +233,7 @@ namespace Taskmaster
 
 			// TODO: Hook device changes
 			micmon.VolumeChanged += VolumeChangeDetected;
+			FormClosing += (s,e) => { micmon.VolumeChanged -= VolumeChangeDetected; };
 		}
 
 		readonly string AnyIgnoredValue = string.Empty; // Any/Ignored
@@ -279,13 +280,13 @@ namespace Taskmaster
 
 		public event EventHandler rescanRequest;
 
-		public void hookDiskManager(DiskManager diskman)
+		public void Hook(DiskManager diskman)
 		{
 			diskmanager = diskman;
 			diskmanager.onTempScan += TempScanStats;
 		}
 
-		public void hookProcessManager(ProcessManager control)
+		public void Hook(ProcessManager control)
 		{
 			Debug.Assert(control != null);
 
@@ -390,7 +391,7 @@ namespace Taskmaster
 		void AddToWatchlistList(ProcessController prc)
 		{
 			string aff = AnyIgnoredValue;
-			if (prc.Affinity.HasValue && prc.Affinity.Value.ToInt32() != ProcessManager.allCPUsMask)
+			if (prc.Affinity.HasValue && prc.Affinity.Value.ToInt32() != ProcessManager.AllCPUsMask)
 			{
 				if (Taskmaster.AffinityStyle == 0)
 					aff = HumanInterface.BitMask(prc.Affinity.Value.ToInt32(), ProcessManager.CPUCount);
@@ -429,7 +430,7 @@ namespace Taskmaster
 			string aff = AnyIgnoredValue;
 			if (prc.Affinity.HasValue)
 			{
-				if (prc.Affinity.Value.ToInt32() == ProcessManager.allCPUsMask)
+				if (prc.Affinity.Value.ToInt32() == ProcessManager.AllCPUsMask)
 					aff = "Full/OS";
 				else if (Taskmaster.AffinityStyle == 0)
 					aff = HumanInterface.BitMask(prc.Affinity.Value.ToInt32(), ProcessManager.CPUCount);
@@ -2226,7 +2227,7 @@ namespace Taskmaster
 			ResizeLogList(this, null);
 		}
 
-		public void hookActiveAppMonitor(ActiveAppManager aamon)
+		public void Hook(ActiveAppManager aamon)
 		{
 			if (aamon == null) return;
 
@@ -2238,7 +2239,7 @@ namespace Taskmaster
 				activeappmonitor.ActiveChanged += OnActiveWindowChanged;
 		}
 
-		public void hookPowerManager(PowerManager pman)
+		public void Hook(PowerManager pman)
 		{
 			if (pman == null) return;
 
@@ -2309,7 +2310,7 @@ namespace Taskmaster
 			// Tray?.Tooltip(2000, "Internet " + (net.InternetAvailable ? "available" : "unavailable"), "Taskmaster", net.InternetAvailable ? ToolTipIcon.Info : ToolTipIcon.Warning);
 		}
 
-		public void hookNetMonitor(NetManager net)
+		public void Hook(NetManager net)
 		{
 			if (net == null) return; // disabled
 
@@ -2482,6 +2483,8 @@ namespace Taskmaster
 				if (MemoryLog.MemorySink != null)
 					MemoryLog.MemorySink.onNewEvent -= NewLogReceived; // unnecessary?
 
+				rescanRequest = null;
+
 				try
 				{
 					if (powermanager != null)
@@ -2512,12 +2515,14 @@ namespace Taskmaster
 				catch { }
 				try
 				{
-					processmanager.ProcessModified -= ProcessTouchEvent;
-					processmanager.onWaitForExitEvent -= ExitWaitListHandler; //ExitWaitListHandler;
-					rescanRequest -= processmanager.ScanEverythingRequest;
-					processmanager.onInstanceHandling -= ProcessNewInstanceCount;
-					processmanager.onProcessHandled -= ExitWaitListHandler;
-					processmanager = null;
+					if (processmanager != null)
+					{
+						processmanager.ProcessModified -= ProcessTouchEvent;
+						processmanager.onWaitForExitEvent -= ExitWaitListHandler; //ExitWaitListHandler;
+						processmanager.onInstanceHandling -= ProcessNewInstanceCount;
+						processmanager.onProcessHandled -= ExitWaitListHandler;
+						processmanager = null;
+					}
 				}
 				catch { }
 
@@ -2544,8 +2549,8 @@ namespace Taskmaster
 				}
 				catch { }
 
-				Utility.Dispose(ref UItimer);
-				Utility.Dispose(ref exitwaitlist);
+				UItimer?.Dispose();
+				exitwaitlist?.Dispose();
 				ExitWaitlistMap.Clear();
 			}
 

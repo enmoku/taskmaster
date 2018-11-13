@@ -33,7 +33,7 @@ using Serilog;
 
 namespace Taskmaster
 {
-	sealed public class TrayAccess : Form //, IDisposable
+	sealed public class TrayAccess : UI.UniForm //, IDisposable
 	{
 		NotifyIcon Tray;
 
@@ -60,7 +60,7 @@ namespace Taskmaster
 			};
 			Tray.BalloonTipText = Tray.Text;
 			Tray.Disposed += (object sender, EventArgs e) => { Tray = null; };
-
+			
 			if (Taskmaster.Trace) Log.Verbose("Generating tray icon.");
 
 			ms = new ContextMenuStrip();
@@ -124,8 +124,10 @@ namespace Taskmaster
 			if (Taskmaster.PowerManagerEnabled)
 			{
 				ms.Items.Add(new ToolStripSeparator());
-				var plab = new ToolStripLabel("--- Power Plan ---");
-				plab.ForeColor = System.Drawing.SystemColors.GrayText;
+				var plab = new ToolStripLabel("--- Power Plan ---")
+				{
+					ForeColor = System.Drawing.SystemColors.GrayText
+				};
 				ms.Items.Add(plab);
 				ms.Items.Add(power_auto);
 				ms.Items.Add(power_highperf);
@@ -241,14 +243,14 @@ namespace Taskmaster
 		public event EventHandler RescanRequest;
 
 		ProcessManager processmanager = null;
-		public void hookProcessManager(ref ProcessManager pman)
+		public void Hook(ProcessManager pman)
 		{
 			processmanager = pman;
 			RescanRequest += processmanager.ScanEverythingRequest;
 		}
 
 		PowerManager powermanager = null;
-		public void hookPowerManager(ref PowerManager pman)
+		public void Hook(PowerManager pman)
 		{
 			powermanager = pman;
 			powermanager.onPlanChange += HighlightPowerModeEvent;
@@ -438,7 +440,7 @@ namespace Taskmaster
 		}
 
 		MainWindow mainwindow = null;
-		public void hookMainWindow(MainWindow window)
+		public void Hook(MainWindow window)
 		{
 			Debug.Assert(window != null);
 
@@ -570,6 +572,7 @@ namespace Taskmaster
 				UnregisterGlobalHotkeys();
 
 				RescanRequest -= processmanager.ScanEverythingRequest;
+				RescanRequest = null;
 
 				if (powermanager != null)
 				{

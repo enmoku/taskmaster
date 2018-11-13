@@ -1318,6 +1318,14 @@ namespace Taskmaster
 				MonitorPower -= MonitorPowerEvent;
 				MonitorSleepTimer?.Dispose();
 
+				onCPUSampling = null;
+				SessionLock = null;
+				MonitorPower = null;
+				onAutoAdjustAttempt = null;
+				onPlanChange = null;
+				onBehaviourChange = null;
+				onBatteryResume = null;
+
 				var finalmode = RestoreModeMethod == ModeMethod.Saved ? SavedMode : RestoreMode;
 				if (finalmode != CurrentMode)
 				{

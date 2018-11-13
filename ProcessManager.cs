@@ -107,14 +107,14 @@ namespace Taskmaster
 		{
 			Log.Information("<CPU> Logical cores: {Cores}", CPUCount);
 
-			allCPUsMask = Convert.ToInt32(Math.Pow(2, CPUCount) - 1 + double.Epsilon);
+			AllCPUsMask = Convert.ToInt32(Math.Pow(2, CPUCount) - 1 + double.Epsilon);
 
 			//allCPUsMask = 1;
 			//for (int i = 0; i < CPUCount - 1; i++)
 			//	allCPUsMask = (allCPUsMask << 1) | 1;
 
 			Log.Information("<CPU> Full CPU mask: {ProcessorBitMask} ({ProcessorMask} = OS control)",
-							Convert.ToString(allCPUsMask, 2), allCPUsMask);
+							Convert.ToString(AllCPUsMask, 2), AllCPUsMask);
 
 			loadWatchlist();
 
@@ -191,18 +191,16 @@ namespace Taskmaster
 			return rv;
 		}
 
-		public static int allCPUsMask = 1;
 		public static int CPUCount = Environment.ProcessorCount;
+		public static int AllCPUsMask = Convert.ToInt32(Math.Pow(2, CPUCount) - 1 + double.Epsilon);
 
 		//int ProcessModifyDelay = 4800;
 
-		public static bool RestoreOriginal = false;
-		public static int OffFocusPriority = 1;
-		public static int OffFocusAffinity = 0;
-		public static bool OffFocusPowerCancel = true;
+		public int DefaultBackgroundPriority = 1;
+		public int DefaultBackgroundAffinity = 0;
 
 		ActiveAppManager activeappmonitor = null;
-		public void hookActiveAppManager(ref ActiveAppManager aamon)
+		public void Hook(ActiveAppManager aamon)
 		{
 			activeappmonitor = aamon;
 			activeappmonitor.ActiveChanged += ForegroundAppChangedEvent;
@@ -328,6 +326,10 @@ namespace Taskmaster
 		public event EventHandler ScanEverythingEndEvent;
 
 		public event EventHandler<ProcessEventArgs> ProcessModified;
+
+		public event EventHandler<InstanceEventArgs> onInstanceHandling;
+		public event EventHandler<ProcessEventArgs> onProcessHandled;
+		public event EventHandler<ProcessEventArgs> onWaitForExitEvent;
 
 		int scan_lock = 0;
 
@@ -525,13 +527,16 @@ namespace Taskmaster
 			var fgpausesec = corecfg.Config["Foreground Focus Lost"];
 			// RestoreOriginal = fgpausesec.GetSetDefault("Restore original", false, out modified).BoolValue;
 			// dirtyconfig |= modified;
-			OffFocusPriority = fgpausesec.GetSetDefault("Default priority", 2, out modified).IntValue.Constrain(0, 4);
+			DefaultBackgroundPriority = fgpausesec.GetSetDefault("Default priority", 2, out modified).IntValue.Constrain(0, 4);
 			fgpausesec["Default priority"].Comment = "Default is normal to avoid excessive loading times while user is alt-tabbed.";
 			dirtyconfig |= modified;
 			// OffFocusAffinity = fgpausesec.GetSetDefault("Affinity", 0, out modified).IntValue;
 			// dirtyconfig |= modified;
 			// OffFocusPowerCancel = fgpausesec.GetSetDefault("Power mode cancel", true, out modified).BoolValue;
 			// dirtyconfig |= modified;
+
+			DefaultBackgroundAffinity = fgpausesec.GetSetDefault("Default affinity", 14, out modified).IntValue.Constrain(0, 254);
+			dirtyconfig |= modified;
 
 			// --------------------------------------------------------------------------------------------------------
 
@@ -602,7 +607,7 @@ namespace Taskmaster
 				}
 
 				var aff = section.TryGet("Affinity")?.IntValue ?? -1;
-				if (aff > allCPUsMask)
+				if (aff > AllCPUsMask)
 				{
 					Log.Warning("[{Name}] Affinity({Affinity}) is malconfigured. Ignoring.", section.Name, aff);
 					//aff = Bit.And(aff, allCPUsMask); // at worst case results in 1 core used
@@ -660,7 +665,12 @@ namespace Taskmaster
 				float volume = section.TryGet("Volume")?.FloatValue.Constrain(0.0f, 1.0f) ?? 0.5f;
 				AudioVolumeStrategy volumestrategy = (AudioVolumeStrategy)(section.TryGet("Volume strategy")?.IntValue.Constrain(0, 5) ?? 0);
 
-				var prc = new ProcessController(section.Name, prioR, (aff == 0 ? allCPUsMask : aff))
+				int baffn = section.TryGet("Background affinity")?.IntValue ?? 0;
+				IntPtr? baff = null;
+				if (baffn != 0)
+					baff = new IntPtr(baffn);
+
+				var prc = new ProcessController(section.Name, prioR, (aff == 0 ? AllCPUsMask : aff))
 				{
 					Enabled = section.TryGet("Enabled")?.BoolValue ?? true,
 					Executable = section.TryGet("Image")?.StringValue ?? null,
@@ -674,7 +684,8 @@ namespace Taskmaster
 					ForegroundOnly = (section.TryGet("Foreground only")?.BoolValue ?? false),
 					Recheck = (section.TryGet("Recheck")?.IntValue ?? 0),
 					PowerPlan = pmode,
-					BackgroundPriority = ProcessHelpers.IntToPriority((section.TryGet("Background priority")?.IntValue ?? OffFocusPriority).Constrain(1, 3)),
+					BackgroundPriority = ProcessHelpers.IntToPriority((section.TryGet("Background priority")?.IntValue ?? DefaultBackgroundPriority).Constrain(1, 3)),
+					BackgroundAffinity = (baffn != 0 ? new IntPtr(baffn) : null),
 					BackgroundPowerdown = (section.TryGet("Background powerdown")?.BoolValue ?? false),
 					IgnoreList = (section.TryGet("Ignore")?.StringValueArray ?? null),
 					AllowPaging = (section.TryGet("Allow paging")?.BoolValue ?? false),
@@ -1303,10 +1314,6 @@ namespace Taskmaster
 			onInstanceHandling?.Invoke(this, new InstanceEventArgs { Count = adjust, Total = Handling });
 		}
 
-		public event EventHandler<InstanceEventArgs> onInstanceHandling;
-		public event EventHandler<ProcessEventArgs> onProcessHandled;
-		public event EventHandler<ProcessEventArgs> onWaitForExitEvent;
-
 		// This needs to return faster
 		async void NewInstanceTriage(object sender, System.Management.EventArrivedEventArgs e)
 		{
@@ -1642,6 +1649,14 @@ namespace Taskmaster
 				if (Taskmaster.Trace) Log.Verbose("Disposing process manager...");
 
 				ProcessDetectedEvent -= ProcessTriage;
+
+				ProcessDetectedEvent = null;
+				ScanEverythingStartEvent = null;
+				ScanEverythingEndEvent = null;
+				ProcessModified = null;
+				onInstanceHandling = null;
+				onProcessHandled = null;
+				onWaitForExitEvent = null;
 
 				CancelPowerWait();
 				WaitForExitList.Clear();

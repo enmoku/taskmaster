@@ -67,7 +67,8 @@ namespace Taskmaster.UI
 
 			if (disposing)
 			{
-				Icon.Dispose();
+				Icon?.Dispose();
+				Icon = null;
 
 				disposed = true;
 			}

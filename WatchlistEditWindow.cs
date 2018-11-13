@@ -436,7 +436,7 @@ namespace Taskmaster
 
 			lt.Controls.Add(new Label() { Text = "Affinity mask\n& cores", TextAlign = System.Drawing.ContentAlignment.MiddleLeft }); // left
 			affinityMask.Width = 80;
-			affinityMask.Maximum = ProcessManager.allCPUsMask;
+			affinityMask.Maximum = ProcessManager.AllCPUsMask;
 			affinityMask.Minimum = -1;
 			affinityMask.Value = (Controller.Affinity?.ToInt32() ?? 0);
 

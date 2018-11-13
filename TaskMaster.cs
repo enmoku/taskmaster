@@ -144,37 +144,37 @@ namespace Taskmaster
 					if (Components.diskmanager != null)
 					{
 						if (Taskmaster.Trace) Console.WriteLine("... hooking NVM manager");
-						Components.mainwindow.hookDiskManager(Components.diskmanager);
+						Components.mainwindow.Hook(Components.diskmanager);
 					}
 
 					if (Components.processmanager != null)
 					{
 						if (Taskmaster.Trace) Console.WriteLine("... hooking PROC manager");
-						Components.mainwindow.hookProcessManager(Components.processmanager);
+						Components.mainwindow.Hook(Components.processmanager);
 					}
 
 					if (Components.micmonitor != null)
 					{
 						if (Taskmaster.Trace) Console.WriteLine("... hooking MIC monitor");
-						Components.mainwindow.hookMicMonitor(Components.micmonitor);
+						Components.mainwindow.Hook(Components.micmonitor);
 					}
 
 					if (Components.netmonitor != null)
 					{
 						if (Taskmaster.Trace) Console.WriteLine("... hooking NET monitor");
-						Components.mainwindow.hookNetMonitor(Components.netmonitor);
+						Components.mainwindow.Hook(Components.netmonitor);
 					}
 
 					if (Components.activeappmonitor != null)
 					{
 						if (Taskmaster.Trace) Console.WriteLine("... hooking APP manager");
-						Components.mainwindow.hookActiveAppMonitor(Components.activeappmonitor);
+						Components.mainwindow.Hook(Components.activeappmonitor);
 					}
 
 					if (Components.powermanager != null)
 					{
 						if (Taskmaster.Trace) Console.WriteLine("... hooking POW manager");
-						Components.mainwindow.hookPowerManager(Components.powermanager);
+						Components.mainwindow.Hook(Components.powermanager);
 					}
 				}
 				catch (Exception ex)
@@ -183,7 +183,7 @@ namespace Taskmaster
 				}
 
 				if (Taskmaster.Trace) Console.WriteLine("... hooking to TRAY");
-				Components.trayaccess.hookMainWindow(Components.mainwindow);
+				Components.trayaccess.Hook(Components.mainwindow);
 
 				if (Taskmaster.Trace) Console.WriteLine("MainWindow built");
 			}
@@ -290,7 +290,7 @@ namespace Taskmaster
 
 			if (PowerManagerEnabled)
 			{
-				Components.trayaccess.hookPowerManager(ref Components.powermanager);
+				Components.trayaccess.Hook(Components.powermanager);
 				Components.powermanager.onBatteryResume += RestartRequest;
 			}
 
@@ -304,11 +304,11 @@ namespace Taskmaster
 			}
 
 			if (Components.processmanager != null)
-				Components.trayaccess?.hookProcessManager(ref Components.processmanager);
+				Components.trayaccess?.Hook(Components.processmanager);
 
 			if (ActiveAppMonitorEnabled && ProcessMonitorEnabled)
 			{
-				Components.processmanager.hookActiveAppManager(ref Components.activeappmonitor);
+				Components.processmanager.Hook(Components.activeappmonitor);
 				Components.activeappmonitor.SetupEventHook();
 			}
 
@@ -818,24 +818,6 @@ namespace Taskmaster
 
 		public static bool ComponentConfigurationDone = false;
 
-		static System.Threading.Mutex singleton = null;
-
-		static bool SingletonLock()
-		{
-			if (Taskmaster.Trace) Log.Verbose("Testing for single instance.");
-
-			// Singleton
-			bool mutexgained = false;
-			singleton = new System.Threading.Mutex(true, "088f7210-51b2-4e06-9bd4-93c27a973874.taskmaster", out mutexgained);
-
-			return mutexgained;
-		}
-
-		static void Cleanup()
-		{
-			Utility.Dispose(ref Components);
-		}
-
 		static void ParseArguments(string[] args)
 		{
 			var StartDelay = 0;
@@ -1010,12 +992,12 @@ namespace Taskmaster
 			}
 		}
 
-		static System.Threading.CancellationTokenSource cts = new System.Threading.CancellationTokenSource(); // unused
-
 		// entry point to the application
 		[STAThread] // supposedly needed to avoid shit happening with the WinForms GUI and other GUI toolkits
 		static public int Main(string[] args)
 		{
+			System.Threading.Mutex singleton = null;
+
 			// Multi-core JIT
 			// https://docs.microsoft.com/en-us/dotnet/api/system.runtime.profileoptimization
 			{
@@ -1054,7 +1036,12 @@ namespace Taskmaster
 
 					// STARTUP
 
-					if (!SingletonLock())
+					if (Taskmaster.Trace) Log.Verbose("Testing for single instance.");
+
+					// Singleton
+					bool mutexgained = false;
+					singleton = new System.Threading.Mutex(true, "088f7210-51b2-4e06-9bd4-93c27a973874.taskmaster", out mutexgained);
+					if (!mutexgained)
 					{
 						// already running, signal original process
 						var rv = MessageBox.Show(
@@ -1175,7 +1162,7 @@ namespace Taskmaster
 
 				// CLEANUP for exit
 
-				Cleanup();
+				Components?.Dispose();
 
 				Log.Information("WMI queries: " + $"{Statistics.WMIquerytime:N2}s [" + Statistics.WMIqueries + "]");
 				Log.Information("Self-maintenance: " + $"{Statistics.MaintenanceTime:N2}s [" + Statistics.MaintenanceCount + "]");
@@ -1191,9 +1178,7 @@ namespace Taskmaster
 
 				if (Restart) // happens only on power resume (waking from hibernation) or when manually set
 				{
-					cts?.Cancel();
-					Utility.Dispose(ref cts);
-					Utility.Dispose(ref Config);
+					Utility.Dispose(ref Components);
 					Utility.Dispose(ref singleton);
 
 					Log.Information("Restarting...");
@@ -1201,8 +1186,6 @@ namespace Taskmaster
 					{
 						if (!System.IO.File.Exists(Application.ExecutablePath))
 							Log.Fatal("Executable missing: {Path}", Application.ExecutablePath); // this should be "impossible"
-
-						Log.CloseAndFlush();
 
 						Restart = false; // pointless probably
 
@@ -1220,6 +1203,8 @@ namespace Taskmaster
 
 						info.Arguments = string.Join(" ", nargs);
 
+						Log.CloseAndFlush();
+
 						var proc = Process.Start(info);
 					}
 					catch (Exception ex)
@@ -1230,7 +1215,7 @@ namespace Taskmaster
 			}
 			catch (RunstateException ex)
 			{
-				Cleanup();
+				Components?.Dispose();
 
 				switch (ex.State)
 				{
@@ -1248,17 +1233,16 @@ namespace Taskmaster
 			catch (Exception ex)
 			{
 				Logging.Stacktrace(ex, crashsafe: true);
-				Cleanup();
+				Components?.Dispose();
 
 				return 1;
 			}
 			finally
 			{
-				Utility.Dispose(ref Components);
-				cts?.Cancel(); // unnecessary
-				Utility.Dispose(ref cts);
-				Utility.Dispose(ref Config);
-				Utility.Dispose(ref singleton);
+				Components?.Dispose();
+				Config?.Dispose();
+				singleton?.Dispose();
+
 				Log.CloseAndFlush();
 			}
 
