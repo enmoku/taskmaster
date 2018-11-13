@@ -665,9 +665,9 @@ namespace Taskmaster
 				float volume = section.TryGet("Volume")?.FloatValue.Constrain(0.0f, 1.0f) ?? 0.5f;
 				AudioVolumeStrategy volumestrategy = (AudioVolumeStrategy)(section.TryGet("Volume strategy")?.IntValue.Constrain(0, 5) ?? 0);
 
-				int baffn = section.TryGet("Background affinity")?.IntValue ?? 0;
+				int baffn = section.TryGet("Background affinity")?.IntValue ?? -1;
 				IntPtr? baff = null;
-				if (baffn != 0)
+				if (baffn >= 0)
 					baff = new IntPtr(baffn);
 
 				var prc = new ProcessController(section.Name, prioR, (aff == 0 ? AllCPUsMask : aff))
@@ -685,7 +685,7 @@ namespace Taskmaster
 					Recheck = (section.TryGet("Recheck")?.IntValue ?? 0),
 					PowerPlan = pmode,
 					BackgroundPriority = ProcessHelpers.IntToPriority((section.TryGet("Background priority")?.IntValue ?? DefaultBackgroundPriority).Constrain(1, 3)),
-					BackgroundAffinity = (baffn != 0 ? new IntPtr(baffn) : null),
+					BackgroundAffinity = baff,
 					BackgroundPowerdown = (section.TryGet("Background powerdown")?.BoolValue ?? false),
 					IgnoreList = (section.TryGet("Ignore")?.StringValueArray ?? null),
 					AllowPaging = (section.TryGet("Allow paging")?.BoolValue ?? false),
