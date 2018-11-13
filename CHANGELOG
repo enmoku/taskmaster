@@ -3,6 +3,10 @@ Comprehensive changes can be found in Git change history:
 	https://github.com/mkahvi/taskmaster/commits/master
 
 ## [0.11...]
+### 2018-11-13
+	Added: 'Background affinity' added to complement 'Background priority' for foreground only option.
+	Changed: Background priority application and restoration, it is now smarter about it.
+	Internal: Massive refactoring, things may have broken.
 ### 2018-11-12
 	Added: 'Path visibility' option to Watchlist. Currently only configurable directly through the .ini.
 		Valid values are: 0=File (default), 1=File+Folder, 3=Full Path
