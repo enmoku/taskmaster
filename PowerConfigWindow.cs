@@ -37,11 +37,11 @@ namespace Taskmaster
 		public AutoAdjustSettings oldAutoAdjust = null;
 		public AutoAdjustSettings newAutoAdjust = null;
 
-		public PowerConfigWindow()
+		public PowerConfigWindow(ComponentContainer components)
 		{
 			Text = "Power auto-adjust configuration";
 
-			var AutoAdjust = oldAutoAdjust = Taskmaster.powermanager.AutoAdjust;
+			var AutoAdjust = oldAutoAdjust = components.powermanager.AutoAdjust;
 
 			FormBorderStyle = FormBorderStyle.FixedDialog;
 
@@ -238,12 +238,12 @@ namespace Taskmaster
 			{
 				try
 				{
-					using (pcw = new PowerConfigWindow())
+					using (pcw = new PowerConfigWindow(Taskmaster.Components))
 					{
 						var res = pcw.ShowDialog();
 						if (pcw.DialogResult == DialogResult.OK)
 						{
-							Taskmaster.powermanager.SetAutoAdjust(pcw.newAutoAdjust);
+							Taskmaster.Components.powermanager.SetAutoAdjust(pcw.newAutoAdjust);
 							Log.Information("<<UI>> Power auto-adjust config changed.");
 							// TODO: Call reset on power manager?
 						}

@@ -273,9 +273,9 @@ namespace Taskmaster
 						Reduced = false;
 						Minimized = false;
 
-						Taskmaster.processmanager.Unignore(IgnoreHung);
+						Taskmaster.Components.processmanager.Unignore(IgnoreHung);
 						IgnoreHung = pid;
-						Taskmaster.processmanager.Ignore(IgnoreHung);
+						Taskmaster.Components.processmanager.Ignore(IgnoreHung);
 					}
 
 					HangTick++;
@@ -287,7 +287,7 @@ namespace Taskmaster
 			catch (ArgumentException) { } // NOP, already exited
 			catch (Exception ex)
 			{
-				Taskmaster.processmanager.Unignore(IgnoreHung);
+				Taskmaster.Components.processmanager.Unignore(IgnoreHung);
 
 				Logging.Stacktrace(ex);
 				return;
@@ -297,7 +297,7 @@ namespace Taskmaster
 				Atomic.Unlock(ref hangdetector_lock);
 			}
 
-			Taskmaster.processmanager.Unignore(IgnoreHung);
+			Taskmaster.Components.processmanager.Unignore(IgnoreHung);
 			HangTick = 0;
 			HangTime = DateTime.MaxValue;
 		}

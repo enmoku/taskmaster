@@ -50,19 +50,6 @@ namespace Taskmaster
 		public static ConfigManager Config = null;
 		public static ComponentContainer Components = new ComponentContainer();
 
-		public static MicManager micmonitor = null;
-		//public static MainWindow mainwindow = null;
-		public static ProcessManager processmanager = null;
-		public static TrayAccess trayaccess = null;
-		public static NetManager netmonitor = null;
-		public static DiskManager diskmanager = null;
-		public static PowerManager powermanager = null;
-		public static ActiveAppManager activeappmonitor = null;
-		public static HealthMonitor healthmonitor = null;
-		public static AudioManager audiomanager = null;
-
-		public static object watchlist_lock = new object();
-
 		static bool RunOnce = false;
 		public static bool Restart = false;
 		public static bool RestartElevated = false;
@@ -114,7 +101,7 @@ namespace Taskmaster
 		{
 			try
 			{
-				processmanager?.ScanEverythingRequest(null, null);
+				Components.processmanager?.ScanEverythingRequest(null, null);
 			}
 			catch (Exception ex)
 			{
@@ -154,40 +141,40 @@ namespace Taskmaster
 
 				try
 				{
-					if (diskmanager != null)
+					if (Components.diskmanager != null)
 					{
 						if (Taskmaster.Trace) Console.WriteLine("... hooking NVM manager");
-						Components.mainwindow.hookDiskManager(diskmanager);
+						Components.mainwindow.hookDiskManager(Components.diskmanager);
 					}
 
-					if (processmanager != null)
+					if (Components.processmanager != null)
 					{
 						if (Taskmaster.Trace) Console.WriteLine("... hooking PROC manager");
-						Components.mainwindow.hookProcessManager(processmanager);
+						Components.mainwindow.hookProcessManager(Components.processmanager);
 					}
 
-					if (micmonitor != null)
+					if (Components.micmonitor != null)
 					{
 						if (Taskmaster.Trace) Console.WriteLine("... hooking MIC monitor");
-						Components.mainwindow.hookMicMonitor(micmonitor);
+						Components.mainwindow.hookMicMonitor(Components.micmonitor);
 					}
 
-					if (netmonitor != null)
+					if (Components.netmonitor != null)
 					{
 						if (Taskmaster.Trace) Console.WriteLine("... hooking NET monitor");
-						Components.mainwindow.hookNetMonitor(netmonitor);
+						Components.mainwindow.hookNetMonitor(Components.netmonitor);
 					}
 
-					if (activeappmonitor != null)
+					if (Components.activeappmonitor != null)
 					{
 						if (Taskmaster.Trace) Console.WriteLine("... hooking APP manager");
-						Components.mainwindow.hookActiveAppMonitor(activeappmonitor);
+						Components.mainwindow.hookActiveAppMonitor(Components.activeappmonitor);
 					}
 
-					if (powermanager != null)
+					if (Components.powermanager != null)
 					{
 						if (Taskmaster.Trace) Console.WriteLine("... hooking POW manager");
-						Components.mainwindow.hookPowerManager(powermanager);
+						Components.mainwindow.hookPowerManager(Components.powermanager);
 					}
 				}
 				catch (Exception ex)
@@ -196,7 +183,7 @@ namespace Taskmaster
 				}
 
 				if (Taskmaster.Trace) Console.WriteLine("... hooking to TRAY");
-				trayaccess.hookMainWindow(Components.mainwindow);
+				Components.trayaccess.hookMainWindow(Components.mainwindow);
 
 				if (Taskmaster.Trace) Console.WriteLine("MainWindow built");
 			}
@@ -259,27 +246,28 @@ namespace Taskmaster
 			// This is really bad if something fails
 			Task[] init =
 			{
-				PowerManagerEnabled ? (Task.Run(() => { powermanager = new PowerManager(); })) : Task.CompletedTask,
-				ProcessMonitorEnabled ? (Task.Run(() => { processmanager = new ProcessManager(); })) : Task.CompletedTask,
-				(ActiveAppMonitorEnabled && ProcessMonitorEnabled) ? (Task.Run(()=> {activeappmonitor = new ActiveAppManager(eventhook:false); })) : Task.CompletedTask,
-				NetworkMonitorEnabled ? (Task.Run(() => { netmonitor = new NetManager(); })) : Task.CompletedTask,
-				MaintenanceMonitorEnabled ? (Task.Run(() => { diskmanager = new DiskManager(); })) : Task.CompletedTask,
-				HealthMonitorEnabled ? (Task.Run(() => { healthmonitor = new HealthMonitor(); })) : Task.CompletedTask,
+				PowerManagerEnabled ? (Task.Run(() => { Components.powermanager = new PowerManager(); })) : Task.CompletedTask,
+				ProcessMonitorEnabled ? (Task.Run(() => { Components.processmanager = new ProcessManager(); })) : Task.CompletedTask,
+				(ActiveAppMonitorEnabled && ProcessMonitorEnabled) ? (Task.Run(()=> {Components.activeappmonitor = new ActiveAppManager(eventhook:false); })) : Task.CompletedTask,
+				NetworkMonitorEnabled ? (Task.Run(() => { Components.netmonitor = new NetManager(); })) : Task.CompletedTask,
+				MaintenanceMonitorEnabled ? (Task.Run(() => { Components.diskmanager = new DiskManager(); })) : Task.CompletedTask,
+				HealthMonitorEnabled ? (Task.Run(() => { Components.healthmonitor = new HealthMonitor(); })) : Task.CompletedTask,
 			};
 
 			// MMDEV requires main thread
 			try
 			{
-				if (MicrophoneMonitorEnabled) micmonitor = new MicManager();
+				if (MicrophoneMonitorEnabled) Components.micmonitor = new MicManager();
 			}
 			catch (InitFailure)
 			{
-				micmonitor = null;
+				Components.micmonitor = null;
 			}
-			if (AudioManagerEnabled) audiomanager = new AudioManager(); // EXPERIMENTAL
+
+			if (AudioManagerEnabled) Components.audiomanager = new AudioManager(); // EXPERIMENTAL
 
 			// WinForms makes the following components not load nicely if not done here.
-			if (tray) trayaccess = new TrayAccess();
+			if (tray) Components.trayaccess = new TrayAccess();
 
 			Log.Information("<Core> Waiting for component loading.");
 			try
@@ -302,36 +290,36 @@ namespace Taskmaster
 
 			if (PowerManagerEnabled)
 			{
-				trayaccess.hookPowerManager(ref powermanager);
-				powermanager.onBatteryResume += RestartRequest;
+				Components.trayaccess.hookPowerManager(ref Components.powermanager);
+				Components.powermanager.onBatteryResume += RestartRequest;
 			}
 
 			if (ProcessMonitorEnabled && PowerManagerEnabled)
-				powermanager.onBehaviourChange += processmanager.PowerBehaviourEvent;
+				Components.powermanager.onBehaviourChange += Components.processmanager.PowerBehaviourEvent;
 
 			if (NetworkMonitorEnabled)
 			{
-				netmonitor.SetupEventHooks();
-				netmonitor.Tray = trayaccess;
+				Components.netmonitor.SetupEventHooks();
+				Components.netmonitor.Tray = Components.trayaccess;
 			}
 
-			if (processmanager != null)
-				trayaccess?.hookProcessManager(ref processmanager);
+			if (Components.processmanager != null)
+				Components.trayaccess?.hookProcessManager(ref Components.processmanager);
 
 			if (ActiveAppMonitorEnabled && ProcessMonitorEnabled)
 			{
-				processmanager.hookActiveAppManager(ref activeappmonitor);
-				activeappmonitor.SetupEventHook();
+				Components.processmanager.hookActiveAppManager(ref Components.activeappmonitor);
+				Components.activeappmonitor.SetupEventHook();
 			}
 
 			if (PowerManagerEnabled)
 			{
-				powermanager.SetupEventHook();
+				Components.powermanager.SetupEventHook();
 			}
 
 			if (GlobalHotkeys)
 			{
-				trayaccess.RegisterGlobalHotkeys();
+				Components.trayaccess.RegisterGlobalHotkeys();
 			}
 
 			// UI
@@ -373,7 +361,7 @@ namespace Taskmaster
 
 			if (Taskmaster.Trace)
 				Console.WriteLine("Displaying Tray Icon");
-			trayaccess?.RefreshVisibility();
+			Components.trayaccess?.RefreshVisibility();
 		}
 
 		public static bool ShowProcessAdjusts { get; set; } = true;
@@ -846,14 +834,6 @@ namespace Taskmaster
 		static void Cleanup()
 		{
 			Utility.Dispose(ref Components);
-			//Utility.Dispose(ref mainwindow);
-			Utility.Dispose(ref processmanager);
-			Utility.Dispose(ref powermanager);
-			Utility.Dispose(ref micmonitor);
-			Utility.Dispose(ref trayaccess);
-			Utility.Dispose(ref netmonitor);
-			Utility.Dispose(ref activeappmonitor);
-			Utility.Dispose(ref healthmonitor);
 		}
 
 		static void ParseArguments(string[] args)
@@ -1142,28 +1122,28 @@ namespace Taskmaster
 				{
 					if (Taskmaster.ProcessMonitorEnabled)
 					{
-						System.Threading.ManualResetEvent re = null;
-						EventHandler end = delegate { re?.Set(); };
+						System.Threading.ManualResetEvent endsignal = null;
+						EventHandler end = delegate { endsignal?.Set(); };
 
 						if (RunOnce)
 						{
-							re = new System.Threading.ManualResetEvent(false);
-							processmanager.ScanEverythingEndEvent += end;
+							endsignal = new System.Threading.ManualResetEvent(false);
+							Components.processmanager.ScanEverythingEndEvent += end;
 						}
 
 						Evaluate();
 
-						if (re != null)
+						if (endsignal != null)
 						{
-							re.WaitOne();
-							processmanager.ScanEverythingEndEvent -= end;
-							Utility.Dispose(ref re);
+							endsignal.WaitOne(); // wait for evaluate to end (re to be signaled)
+							Components.processmanager.ScanEverythingEndEvent -= end;
+							Utility.Dispose(ref endsignal);
 						}
 					}
 
 					if (!RunOnce)
 					{
-						trayaccess.EnsureVisible();
+						Components.trayaccess.EnsureVisible();
 
 						System.Windows.Forms.Application.Run(); // WinForms
 

@@ -216,7 +216,7 @@ namespace Taskmaster
 					{
 						try
 						{
-							int ignorepid = Taskmaster.activeappmonitor?.Foreground ?? -1;
+							int ignorepid = Taskmaster.Components.activeappmonitor?.Foreground ?? -1;
 							Log.Information("<Tray> Hotkey detected, freeing memory while ignoring foreground{Ign} if possible.",
 								ignorepid > 4 ? (" (#" + ignorepid + ")") : string.Empty);
 							await processmanager.FreeMemory(ignorepid).ConfigureAwait(false);

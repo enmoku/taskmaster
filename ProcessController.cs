@@ -528,12 +528,12 @@ namespace Taskmaster
 			Debug.Assert(PowerPlan != PowerInfo.PowerMode.Undefined);
 
 			info.PowerWait = true;
-			Taskmaster.processmanager.WaitForExit(info); // TODO: need nicer way to signal this
+			Taskmaster.Components.processmanager.WaitForExit(info); // TODO: need nicer way to signal this
 
-			return Taskmaster.powermanager.Force(PowerPlan, info.Id);
+			return Taskmaster.Components.powermanager.Force(PowerPlan, info.Id);
 		}
 
-		void UndoPower(ProcessEx info) => Taskmaster.powermanager?.Release(info.Id);
+		void UndoPower(ProcessEx info) => Taskmaster.Components.powermanager?.Release(info.Id);
 
 		/*
 		// Windows doesn't allow setting this for other processes
@@ -614,30 +614,43 @@ namespace Taskmaster
 			}
 		}
 
-		// TODO: Deal with combo path+exec
-		public async void Touch(ProcessEx info, bool schedule_next = false, bool recheck = false)
+		public async Task Modify(ProcessEx info)
+		{
+			Touch(info);
+			if (Recheck > 0) TouchReapply(info);
+		}
+
+		// TODO: Simplify this
+		public async void Touch(ProcessEx info, bool refresh = false)
 		{
 			Debug.Assert(info.Process != null, "ProcessController.Touch given null process.");
 			Debug.Assert(info.Id > 4, "ProcessController.Touch given invalid process ID");
 			Debug.Assert(!string.IsNullOrEmpty(info.Name), "ProcessController.Touch given empty process name.");
 
-			if (isPaused(info))
-			{
-				if (Taskmaster.DebugForeground)
-					Log.Debug("<Foreground> " + FormatPathName(info) + " (#" + info.Id + ") in background, ignoring.");
-				return; // don't touch paused item
-			}
+			bool foreground = true;
 
-			bool foreground = Taskmaster.activeappmonitor?.Foreground.Equals(info.Id) ?? true;
+			if (ForegroundOnly)
+			{
+				if (isPaused(info))
+				{
+					if (Taskmaster.Trace && Taskmaster.DebugForeground)
+						Log.Debug("<Foreground> " + FormatPathName(info) + " (#" + info.Id + ") in background, ignoring.");
+					return; // don't touch paused item
+				}
+
+				foreground = Taskmaster.Components.activeappmonitor?.Foreground.Equals(info.Id) ?? true;
+			}
 
 			info.PowerWait = (PowerPlan != PowerInfo.PowerMode.Undefined);
 			info.ActiveWait = ForegroundOnly;
 
-			if (!recheck || ModifyDelay > 0)
-				await Task.Delay(recheck ? 0 : ModifyDelay).ConfigureAwait(false);
+			await Task.Delay(refresh ? 0 : ModifyDelay).ConfigureAwait(false);
 
-			if (recheck || ModifyDelay > 0)
+			if (info.NeedsRefresh || ModifyDelay > 0)
+			{
 				info.Process.Refresh();
+				info.NeedsRefresh = false;
+			}
 
 			bool responding = true;
 			var oldPriority = ProcessPriorityClass.RealTime;
@@ -966,26 +979,22 @@ namespace Taskmaster
 					sbs.Append(" – looks OK, not touched.");
 					Log.Debug(sbs.ToString());
 				}
-				// else
-				// 	Log.Verbose(sbs.ToString());
 			}
 
 			TryResize(info);
 
-			if (modified)
+			info.Handled = true;
+			info.Modified = DateTime.Now;
+
+			if (modified) Modified?.Invoke(this, new ProcessEventArgs { Control = this, Info = info });
+
+			sbs.Clear();
+
+			if (Recheck > 0)
 			{
-				Modified?.Invoke(this, new ProcessEventArgs { Control = this, Info = info });
+				info.NeedsRefresh = true;
+				TouchReapply(info);
 			}
-
-			if (schedule_next) TryScan();
-
-			// schedule re-application of the rule
-			if (Recheck > 0 && recheck == false)
-			{
-				Task.Run(new Action(() => { TouchReapply(info); }));
-			}
-
-			return; // return rv;
 		}
 
 		NativeMethods.RECT rect = new NativeMethods.RECT();
@@ -1029,11 +1038,8 @@ namespace Taskmaster
 
 						if (ResizeStrategy != WindowResizeStrategy.None)
 						{
-							lock (Taskmaster.watchlist_lock)
-							{
-								Resize = newsize;
-								NeedsSaving = true;
-							}
+							Resize = newsize;
+							NeedsSaving = true;
 						}
 					}
 
@@ -1064,11 +1070,8 @@ namespace Taskmaster
 									rsiz ? rect.Right - rect.Left : Resize.Value.Left, rsiz ? rect.Bottom - rect.Top : Resize.Value.Top
 									);
 
-								lock (Taskmaster.watchlist_lock)
-								{
-									Resize = newsize;
-									NeedsSaving = true;
-								}
+								Resize = newsize;
+								NeedsSaving = true;
 							}
 						}
 						catch (Exception ex)
@@ -1148,14 +1151,22 @@ namespace Taskmaster
 
 			try
 			{
-				if (!info.Process.HasExited)
+				if (info.Process.HasExited)
 				{
-					Touch(info, schedule_next: false, recheck: true);
+					if (Taskmaster.Trace) Log.Verbose("[{FriendlyName}] {Process} (#{PID}) is gone yo.",
+						FriendlyName, info.Name, info.Id);
+					return;
 				}
-				else
-				{
-					if (Taskmaster.Trace) Log.Verbose("[{FriendlyName}] {Process} (#{PID}) is gone yo.", FriendlyName, info.Name, info.Id);
-				}
+
+				Touch(info, refresh: true);
+			}
+			catch (Win32Exception) // access denied
+			{
+				return;
+			}
+			catch (InvalidOperationException) // exited
+			{
+				return;
 			}
 			catch (Exception ex)
 			{
@@ -1170,7 +1181,7 @@ namespace Taskmaster
 		/// </summary>
 		public int TryScan()
 		{
-			Task.WaitAll(RescanWithSchedule());
+			RescanWithSchedule();
 
 			return Convert.ToInt32((LastScan.AddMinutes(Rescan) - DateTime.Now).TotalMinutes); // this will produce wrong numbers
 		}
@@ -1255,7 +1266,7 @@ namespace Taskmaster
 				try
 				{
 					var info = ProcessManagerUtility.GetInfo(pid, process, name, null, getPath: !string.IsNullOrEmpty(Path));
-					Touch(info);
+					Modify(info);
 				}
 				catch (Exception ex)
 				{

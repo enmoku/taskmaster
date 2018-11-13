@@ -109,7 +109,7 @@ namespace Taskmaster
 				MessageBox.Show("Rescan requires executable to be defined.", "Configuration error", MessageBoxButtons.OK, MessageBoxIcon.Error, MessageBoxDefaultButton.Button1);
 			}
 
-			var dprc = Taskmaster.processmanager.getWatchedController(friendlyName.Text);
+			var dprc = Taskmaster.Components.processmanager.getWatchedController(friendlyName.Text);
 			if (dprc != null && dprc != Controller)
 			{
 				Controller.Valid = false;
@@ -682,7 +682,7 @@ namespace Taskmaster
 			var samesection = Controller.FriendlyName.Equals(friendlyName.Text);
 			if (!samesection)
 			{
-				var dprc = Taskmaster.processmanager.getWatchedController(friendlyName.Text);
+				var dprc = Taskmaster.Components.processmanager.getWatchedController(friendlyName.Text);
 				if (dprc != null)
 				{
 					sbs.Append("Friendly name conflict!");

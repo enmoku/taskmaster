@@ -1864,7 +1864,7 @@ namespace Taskmaster
 				{
 					if (exsel.ShowDialog(this) == DialogResult.OK)
 					{
-						await Taskmaster.processmanager?.FreeMemory(exsel.Selection);
+						await Taskmaster.Components.processmanager?.FreeMemory(exsel.Selection);
 					}
 				}
 			}
@@ -2007,7 +2007,7 @@ namespace Taskmaster
 				if (oneitem)
 				{
 					var li = watchlistRules.SelectedItems[0];
-					var prc = Taskmaster.processmanager.getWatchedController(li.SubItems[NameColumn].Text);
+					var prc = Taskmaster.Components.processmanager.getWatchedController(li.SubItems[NameColumn].Text);
 					if (prc != null)
 					{
 						watchlistenable.Enabled = true;
@@ -2028,7 +2028,7 @@ namespace Taskmaster
 				if (oneitem)
 				{
 					var li = watchlistRules.SelectedItems[0];
-					var prc = Taskmaster.processmanager.getWatchedController(li.SubItems[NameColumn].Text);
+					var prc = Taskmaster.Components.processmanager.getWatchedController(li.SubItems[NameColumn].Text);
 					if (prc != null)
 					{
 						watchlistenable.Enabled = true;
@@ -2054,7 +2054,7 @@ namespace Taskmaster
 				{
 					var li = watchlistRules.SelectedItems[0];
 					var name = li.SubItems[NameColumn].Text;
-					var prc = Taskmaster.processmanager.getWatchedController(name);
+					var prc = Taskmaster.Components.processmanager.getWatchedController(name);
 
 					using (var editdialog = new WatchlistEditWindow(prc)) // 1 = executable
 					{
@@ -2097,7 +2097,7 @@ namespace Taskmaster
 				{
 					var li = watchlistRules.SelectedItems[0];
 					// TODO: ADD CONFIRMATION
-					var prc = Taskmaster.processmanager.getWatchedController(li.SubItems[NameColumn].Text);
+					var prc = Taskmaster.Components.processmanager.getWatchedController(li.SubItems[NameColumn].Text);
 					if (prc != null)
 					{
 						var rv = MessageBox.Show("Really remove '"+prc.FriendlyName+"'", "Remove watchlist item", MessageBoxButtons.YesNo, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button2);

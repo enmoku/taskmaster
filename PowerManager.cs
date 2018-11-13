@@ -1010,7 +1010,7 @@ namespace Taskmaster
 					{
 						if (PauseUnneededSampler) CPUTimer.Stop();
 
-						Taskmaster.processmanager.CancelPowerWait(); // need nicer way to do this
+						Taskmaster.Components.processmanager.CancelPowerWait(); // need nicer way to do this
 
 						Release(0);
 					}

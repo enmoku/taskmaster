@@ -373,13 +373,13 @@ namespace Taskmaster
 							int ignorepid = -1;
 							try
 							{
-								if (Settings.MemIgnoreFocus && Taskmaster.activeappmonitor != null)
+								if (Settings.MemIgnoreFocus && Taskmaster.Components.activeappmonitor != null)
 								{
 									if (User.IdleFor(User.LastActive()) <= (60 * 60 * 3))
 									{
-										ignorepid = Taskmaster.activeappmonitor.Foreground;
+										ignorepid = Taskmaster.Components.activeappmonitor.Foreground;
 										Log.Verbose("<Auto-Doc> Protecting foreground app (#{Id})", ignorepid);
-										Taskmaster.processmanager.Ignore(ignorepid);
+										Taskmaster.Components.processmanager.Ignore(ignorepid);
 									}
 								}
 
@@ -392,12 +392,12 @@ namespace Taskmaster
 
 								Log.Warning(sbs.ToString());
 
-								Taskmaster.processmanager?.FreeMemory(null, quiet: true);
+								Taskmaster.Components.processmanager?.FreeMemory(null, quiet: true);
 							}
 							finally
 							{
 								if (ignorepid > 4)
-									Taskmaster.processmanager.Unignore(ignorepid);
+									Taskmaster.Components.processmanager.Unignore(ignorepid);
 							}
 
 							// sampled too soon, OS has had no significant time to swap out data

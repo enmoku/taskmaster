@@ -32,7 +32,7 @@ namespace Taskmaster
 	/// <summary>
 	/// Must be created on persistent thread, such as the main thread.
 	/// </summary>
-	public class AudioManager
+	public class AudioManager : IDisposable
 	{
 		readonly System.Threading.Thread Context = null;
 
@@ -42,6 +42,9 @@ namespace Taskmaster
 
 		const string configfile = "Audio.ini";
 
+		/// <summary>
+		/// Not thread safe
+		/// </summary>
 		/// <exception cref="InitFailure">If audio device can not be found.</exception>
 		public AudioManager()
 		{
@@ -85,8 +88,8 @@ namespace Taskmaster
 				if (info != null)
 				{
 					//OnNewSession?.Invoke(this, info);
-					var prc = Taskmaster.processmanager.getController(info.Name);
-					if (prc == null && !string.IsNullOrEmpty(info.Path)) prc = Taskmaster.processmanager.getWatchedPath(info);
+					var prc = Taskmaster.Components.processmanager.getController(info.Name);
+					if (prc == null && !string.IsNullOrEmpty(info.Path)) prc = Taskmaster.Components.processmanager.getWatchedPath(info);
 					if (prc != null)
 					{
 						bool volAdjusted = false;
@@ -159,6 +162,28 @@ namespace Taskmaster
 				Logging.Stacktrace(ex);
 			}
 		}
+
+		#region IDisposable Support
+		private bool disposed = false;
+
+		protected virtual void Dispose(bool disposing)
+		{
+			if (!disposed)
+			{
+				if (disposing)
+				{
+					mmdev_media?.Dispose();
+				}
+
+				disposed = true;
+			}
+		}
+
+		public void Dispose()
+		{
+			Dispose(true);
+		}
+		#endregion
 	}
 
 	class AudioSession : NAudio.CoreAudioApi.Interfaces.IAudioSessionEventsHandler

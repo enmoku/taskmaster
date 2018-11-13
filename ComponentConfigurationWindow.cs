@@ -222,7 +222,7 @@ namespace Taskmaster
 			layout.Controls.Add(powmon);
 			powmon.Enabled = true;
 			powmon.Checked = initial ? true : Taskmaster.PowerManagerEnabled;
-			powauto.Checked = initial ? true : (Taskmaster.powermanager?.Behaviour == PowerManager.PowerBehaviour.Auto);
+			powauto.Checked = initial ? true : (Taskmaster.Components.powermanager?.Behaviour == PowerManager.PowerBehaviour.Auto);
 			powmon.Click += (sender, e) =>
 			{
 				if (powmon.Checked == false)

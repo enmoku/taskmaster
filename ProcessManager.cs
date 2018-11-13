@@ -51,7 +51,9 @@ namespace Taskmaster
 		public string Name=string.Empty;
 		public string Path=string.Empty;
 		public int Id=-1;
+
 		public Process Process=null;
+		public bool NeedsRefresh = false;
 
 		public bool Handled=false;
 		public bool PathMatched=false;
@@ -59,6 +61,7 @@ namespace Taskmaster
 		public bool PowerWait = false;
 		public bool ActiveWait = false;
 
+		public DateTime Modified = DateTime.MinValue;
 		public ProcessModification State = ProcessModification.Invalid;
 
 		#region IDisposable Support
@@ -276,7 +279,7 @@ namespace Taskmaster
 
 		async Task FreeMemoryInternal()
 		{
-			var b1 = Taskmaster.healthmonitor.FreeMemory();
+			var b1 = Taskmaster.Components.healthmonitor.FreeMemory();
 
 			// TODO: Somehow make sure FreeMemoryTick is not called on followup scans in case they're run too close together
 
@@ -286,9 +289,9 @@ namespace Taskmaster
 
 				await ScanEverything().ConfigureAwait(false); // TODO: Call for this to happen otherwise
 
-				Taskmaster.healthmonitor.InvalidateFreeMemory(); // just in case
+				Taskmaster.Components.healthmonitor.InvalidateFreeMemory(); // just in case
 
-				var b2 = Taskmaster.healthmonitor.FreeMemory(); // TODO: Wait a little longer to allow OS to Actually page stuff
+				var b2 = Taskmaster.Components.healthmonitor.FreeMemory(); // TODO: Wait a little longer to allow OS to Actually page stuff
 
 				if (Taskmaster.DebugPaging)
 				{
@@ -774,7 +777,7 @@ namespace Taskmaster
 			}
 
 			if (info.PowerWait)
-				Taskmaster.powermanager.Release(info.Id);
+				Taskmaster.Components.powermanager.Release(info.Id);
 
 			lock (waitforexit_lock)
 				WaitForExitList.Remove(info.Id);
@@ -902,7 +905,7 @@ namespace Taskmaster
 				WaitForExitList.TryGetValue(ev.Id, out info);
 				if (info != null)
 				{
-					if (Taskmaster.DebugForeground)
+					if (Taskmaster.Trace && Taskmaster.DebugForeground)
 						Log.Debug("[{FriendlyName}] {Exec} (#{Pid}) on foreground!", prc.FriendlyName, info.Name, info.Id);
 
 					if (prc.ForegroundOnly) prc.Resume(info);
@@ -1019,9 +1022,11 @@ namespace Taskmaster
 				catch (Exception ex)
 				{
 					Logging.Stacktrace(ex);
+					return;
 				}
 
 				info.Handled = true;
+				info.Modified = DateTime.Now;
 
 				ForegroundWatch(info, matchedprc); // already called?
 			}
@@ -1163,17 +1168,14 @@ namespace Taskmaster
 					ForegroundWaitlist.Add(info.Id, prc);
 			}
 
-			if (keyexists)
-			{
-				if (Taskmaster.DebugForeground)
-					Log.Debug("[{FriendlyName}] {Exec} (#{Pid}) already in foreground watchlist.", prc.FriendlyName, info.Name, info.Id);
-			}
-			else
-			{
-				WaitForExit(info);
+			if (!keyexists) WaitForExit(info);
 
-				if (Taskmaster.DebugForeground)
+			if (Taskmaster.Trace && Taskmaster.DebugForeground)
+			{
+				if (!keyexists)
 					Log.Debug("[{FriendlyName}] {Exec} (#{Pid}) added to foreground watchlist.", prc.FriendlyName, info.Name, info.Id);
+				else
+					Log.Debug("[{FriendlyName}] {Exec} (#{Pid}) already in foreground watchlist.", prc.FriendlyName, info.Name, info.Id);
 			}
 
 			onProcessHandled?.Invoke(this, new ProcessEventArgs() { Control = prc, Info = info, State = ProcessRunningState.Found });
@@ -1220,8 +1222,7 @@ namespace Taskmaster
 
 				try
 				{
-					prc.Touch(ea.Info, schedule_next: false);
-					ea.Info.Handled = true;
+					prc.Modify(ea.Info);
 				}
 				catch (Exception ex)
 				{

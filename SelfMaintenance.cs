@@ -84,7 +84,7 @@ namespace Taskmaster
 
 				if (Taskmaster.Components.processmanager != null)
 				{
-					Taskmaster.processmanager.Cleanup();
+					Taskmaster.Components.processmanager.Cleanup();
 				}
 
 				Taskmaster.Config.Flush();
