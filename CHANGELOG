@@ -3,6 +3,8 @@ Comprehensive changes can be found in Git change history:
 	https://github.com/mkahvi/taskmaster/commits/master
 
 ## [0.11...]
+### 2018-11-15
+	Internal: Removed as much as possible of Serilog's formatted string usage. This should fix large number of output related bugs.
 ### 2018-11-13
 	Added: 'Background affinity' added to complement 'Background priority' for foreground only option.
 	Changed: Background priority application and restoration, it is now smarter about it.
