@@ -210,21 +210,19 @@ namespace Taskmaster
 	{
 		public static void Log(string text, [CallerFilePath] string file = "", [CallerMemberName] string member = "", [CallerLineNumber] int line = 0)
 		{
-			Console.WriteLine("{0}_{1}({2}): {3}", System.IO.Path.GetFileName(file), member, line, text);
+			Console.WriteLine($"{System.IO.Path.GetFileName(file)}_{member}({line}): {text}");
 		}
 
 		public static void Warn(string text, [CallerFilePath] string file = "", [CallerMemberName] string member = "", [CallerLineNumber] int line = 0)
 		{
-			Serilog.Log.Warning("{File}_{Member}({Line}): {Text}",
-								System.IO.Path.GetFileName(file), member, line, text);
+			Serilog.Log.Warning($"{System.IO.Path.GetFileName(file)}_{member}({line}): {text}");
 		}
 
 		public static void Stacktrace(Exception ex, bool crashsafe = false, [CallerMemberName] string method = "")
 		{
 			if (!crashsafe)
 			{
-				Serilog.Log.Fatal("{Type} : {Message}{NewLine}Reported at {Method}{NewLine}{Trace}",
-					ex.GetType().Name, ex.Message, method, ex.StackTrace);
+				Serilog.Log.Fatal($"{ex.GetType().Name} : {ex.Message}{Environment.NewLine}Reported at {method}{Environment.NewLine}{ex.StackTrace}");
 			}
 			else
 			{

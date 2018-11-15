@@ -629,11 +629,11 @@ namespace Taskmaster
 
 			monitorCleanShutdown();
 
-			Log.Information("<Core> Verbosity: {Verbosity}", MemoryLog.MemorySink.LevelSwitch.MinimumLevel.ToString());
-			Log.Information("<Core> Self-optimize: {SelfOptimize}", (SelfOptimize ? "Enabled" : "Disabled"));
+			Log.Information("<Core> Verbosity: "+ MemoryLog.MemorySink.LevelSwitch.MinimumLevel.ToString());
+			Log.Information("<Core> Self-optimize: "+ (SelfOptimize ? "Enabled" : "Disabled"));
 			// Log.Information("Low memory mode: {LowMemory}", (LowMemory ? "Enabled." : "Disabled."));
-			Log.Information("<<WMI>> Event watcher: {WMIPolling} (Rate: {WMIRate}s)", (WMIPolling ? "Enabled" : "Disabled"), WMIPollDelay);
-			Log.Information("<<WMI>> Queries: {WMIQueries}", (WMIQueries ? "Enabled" : "Disabled"));
+			Log.Information("<<WMI>> Event watcher: " + (WMIPolling ? "Enabled" : "Disabled") + " (Rate: " + WMIPollDelay + "s)");
+			Log.Information("<<WMI>> Queries: " + (WMIQueries ? "Enabled" : "Disabled"));
 
 			// PROTECT USERS FROM TOO HIGH PERMISSIONS
 			var isadmin = IsAdministrator();
@@ -680,13 +680,13 @@ namespace Taskmaster
 			DebugNet = dbgsec.TryGet("Network")?.BoolValue ?? false;
 			DebugMic = dbgsec.TryGet("Microphone")?.BoolValue ?? false;
 
-			#if DEBUG
+#if DEBUG
 			Trace = dbgsec.TryGet("Trace")?.BoolValue ?? false;
-			#endif
+#endif
 
 			// END DEBUG
 
-			Log.Information("<Core> Privilege level: {Privilege}", isadmin ? "Admin" : "User");
+			Log.Information("<Core> Privilege level: " + (isadmin ? "Admin" : "User"));
 
 			Log.Information("<Core> Path cache: " + (PathCacheLimit == 0 ? "Disabled" : PathCacheLimit + " items"));
 
@@ -1060,10 +1060,10 @@ namespace Taskmaster
 									builddate.ToShortDateString(), builddate.ToShortTimeString());
 					*/
 
-					Log.Information("Taskmaster! (#{ProcessID}) {Admin}– Version: {Version} – START!",
-						Process.GetCurrentProcess().Id, (IsAdministrator() ? "[ADMIN] " : ""),
-						System.Reflection.Assembly.GetExecutingAssembly().GetName().Version);
-
+					Log.Information("Taskmaster! (#" + Process.GetCurrentProcess().Id + ") " +
+						(IsAdministrator() ? "[ADMIN] " : "") +
+						"– Version: " + System.Reflection.Assembly.GetExecutingAssembly().GetName().Version +
+						" – START!");
 				}
 				catch (Exception ex)
 				{
@@ -1090,7 +1090,7 @@ namespace Taskmaster
 				{
 					Config.Flush(); // early save of configs
 
-					if (RestartCounter > 0) Log.Information("<Core> Restarted {Count} time(s)", RestartCounter);
+					if (RestartCounter > 0) Log.Information("<Core> Restarted " + RestartCounter + " time(s)");
 					Log.Information("<Core> Initialization complete...");
 
 					/*
@@ -1185,7 +1185,7 @@ namespace Taskmaster
 					try
 					{
 						if (!System.IO.File.Exists(Application.ExecutablePath))
-							Log.Fatal("Executable missing: {Path}", Application.ExecutablePath); // this should be "impossible"
+							Log.Fatal("Executable missing: " + Application.ExecutablePath); // this should be "impossible"
 
 						Restart = false; // pointless probably
 

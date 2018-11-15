@@ -552,7 +552,7 @@ namespace Taskmaster
 					// devi.PrintStats();
 					ifacelistt.Add(devi);
 
-					if (Taskmaster.DebugNet) Log.Verbose("<Network> Interface: {InterfaceName}", dev.Name);
+					if (Taskmaster.DebugNet) Log.Verbose("<Network> Interface: " + dev.Name);
 				}
 
 				lock (interfaces_lock) CurrentInterfaceList = ifacelistt;

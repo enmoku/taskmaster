@@ -86,7 +86,7 @@ namespace Taskmaster
 				Control.Percent = _volume = value;
 
 				if (Taskmaster.DebugMic)
-					Log.Debug("<Microphone> DEBUG Volume = {Volume:N1}% (actual: {ActualVolume:N1}%)", value, Control.Percent);
+					Log.Debug("<Microphone> DEBUG Volume = " + $"{value:N1}%" + " (actual: " + $"{Control.Percent:N1}%)");
 			}
 		}
 
@@ -169,7 +169,7 @@ namespace Taskmaster
 			if (unset) devcfg.Save();
 			
 			Target = devvol.Constrain(0, 100);
-			Log.Information("<Microphone> Default device: {Device} (volume: {TargetVolume:N1}%)", m_dev.FriendlyName, Target);
+			Log.Information("<Microphone> Default device: " + m_dev.FriendlyName + " (volume: " + $"{Target:N1}%)");
 			Volume = Target;
 
 			Log.Information("<Microphone> Component loaded.");
@@ -223,11 +223,11 @@ namespace Taskmaster
 				{
 					var mdev = new MicDevice { Name = dev.DeviceFriendlyName, GUID = dev.ID.Split('}')[1].Substring(2) };
 					devices.Add(mdev);
-					if (Taskmaster.Trace) Log.Verbose("<Microphone> Device: {Microphone} [GUID: {GUID}]", mdev.Name, mdev.GUID);
+					if (Taskmaster.Trace) Log.Verbose("<Microphone> Device: " + mdev.Name + " [GUID: " + mdev.GUID + "]");
 				}
 			}
 
-			if (Taskmaster.Trace) Log.Verbose("<Microphone> {DeviceCount} microphone(s)", devices.Count);
+			if (Taskmaster.Trace) Log.Verbose("<Microphone> " + devices.Count + " microphone(s)");
 
 			return devices;
 		}
@@ -248,11 +248,11 @@ namespace Taskmaster
 			if (Math.Abs(newVol - Target) <= SmallVolumeHysterisis)
 			{
 				if (Taskmaster.ShowInaction)
-					Log.Verbose("<Microphone> Volume change too small ({VolumeChange:N1}%) to act on.", Math.Abs(newVol - Target));
+					Log.Verbose("<Microphone> Volume change too small (" + $"{Math.Abs(newVol - Target):N1}%" + ") to act on.");
 				return;
 			}
 
-			if (Taskmaster.Trace) Log.Verbose("<Microphone> Volume changed from {OldVolume:N1}% to {NewVolume:N1}%", oldVol, newVol);
+			if (Taskmaster.Trace) Log.Verbose("<Microphone> Volume changed from " + $"{oldVol:N1}%" + " to " + $"{newVol:N1}%");
 
 			// This is a light HYSTERISIS limiter in case someone is sliding a volume bar around,
 			// we act on it only once every [AdjustDelay] ms.
@@ -261,8 +261,8 @@ namespace Taskmaster
 			// TODO: Delay this even more if volume is changed ~2 seconds before we try to do so.
 			if (Math.Abs(newVol - Target) >= VolumeHysterisis) // Volume != Target for double
 			{
-				if (Taskmaster.Trace) Log.Verbose("<Microphone> DEBUG: Volume changed = [{OldVolume:N1} -> {NewVolume:N1}], Off.Target: {VolumeOffset:N1}",
-												  oldVol, newVol, Math.Abs(newVol - Target));
+				if (Taskmaster.Trace) Log.Verbose("<Microphone> DEBUG: Volume changed = [" +
+					$"{oldVol:N1}" + " -> " + $"{newVol:N1}" + "], Off.Target: " + $"{Math.Abs(newVol - Target):N1}");
 
 				if (Atomic.Lock(ref correcting))
 				{
@@ -271,7 +271,8 @@ namespace Taskmaster
 						await System.Threading.Tasks.Task.Delay(AdjustDelay); // actual hysterisis, this should be cancellable
 
 						oldVol = Control.Percent;
-						Log.Information("<Microphone> Correcting volume from {OldVolume:N1} to {NewVolume:N1}", oldVol, Target);
+						Log.Information("<Microphone> Correcting volume from " +
+							$"{oldVol:N1}" + " to " + $"{Target:N1}");
 						Volume = Target;
 						Corrections += 1;
 						micstatsdirty = true;

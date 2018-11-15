@@ -105,7 +105,7 @@ namespace Taskmaster
 		// ctor, constructor
 		public ProcessManager()
 		{
-			Log.Information("<CPU> Logical cores: {Cores}", CPUCount);
+			Log.Information("<CPU> Logical cores: " + CPUCount);
 
 			AllCPUsMask = Convert.ToInt32(Math.Pow(2, CPUCount) - 1 + double.Epsilon);
 
@@ -113,8 +113,7 @@ namespace Taskmaster
 			//for (int i = 0; i < CPUCount - 1; i++)
 			//	allCPUsMask = (allCPUsMask << 1) | 1;
 
-			Log.Information("<CPU> Full CPU mask: {ProcessorBitMask} ({ProcessorMask} = OS control)",
-							Convert.ToString(AllCPUsMask, 2), AllCPUsMask);
+			Log.Information("<CPU> Full CPU mask: " + Convert.ToString(AllCPUsMask, 2) + " (" + AllCPUsMask + " = OS control)");
 
 			loadWatchlist();
 
@@ -225,7 +224,7 @@ namespace Taskmaster
 				ea.Info.Name.Equals(freememoryignore, StringComparison.InvariantCultureIgnoreCase)))
 				return;
 
-			if (Taskmaster.DebugMemory) Log.Debug("<Process> Paging: {Process} (#{Id})", ea.Info.Name, ea.Info.Id);
+			if (Taskmaster.DebugMemory) Log.Debug("<Process> Paging: " + ea.Info.Name + " (#" + ea.Info.Id + ")");
 
 			try
 			{
@@ -253,12 +252,12 @@ namespace Taskmaster
 				var procs = Process.GetProcessesByName(executable); // unnecessary maybe?
 				if (procs.Length == 0)
 				{
-					Log.Error("{Exec} not found, not freeing memory for it.", executable);
+					Log.Error(executable + " not found, not freeing memory for it.");
 					return;
 				}
 
 				if (Taskmaster.DebugPaging && !quiet)
-					Log.Debug("<Process> Paging applications to free memory for: {Exec}", executable);
+					Log.Debug("<Process> Paging applications to free memory for: " + executable);
 			}
 
 			//await Task.Delay(0).ConfigureAwait(false);
@@ -293,7 +292,7 @@ namespace Taskmaster
 
 				if (Taskmaster.DebugPaging)
 				{
-					Log.Information("<Memory> Paging complete, observed memory change: {Memory}",
+					Log.Information("<Memory> Paging complete, observed memory change: " +
 						HumanInterface.ByteString((long)((b2 - b1) * 1000000), true));
 				}
 			}
@@ -381,8 +380,7 @@ namespace Taskmaster
 				};
 
 				if (Taskmaster.DebugFullScan)
-					Log.Verbose("<Process> Checking [{Iter}/{Count}] {Proc} (#{Pid})",
-						i, count, name, pid);
+					Log.Verbose("<Process> Checking [" + i + "/" + count + "] " + name + " (#" + pid + ")");
 
 				ProcessDetectedEvent?.Invoke(this, pea);
 			}
@@ -414,18 +412,18 @@ namespace Taskmaster
 			if (prc.Priority.HasValue && prc.ForegroundOnly && prc.BackgroundPriority.ToInt32() >= prc.Priority.Value.ToInt32())
 			{
 				prc.ForegroundOnly = false;
-				Log.Warning("[{Friendly}] Background priority equal or higher than foreground priority, ignoring.", prc.FriendlyName);
+				Log.Warning("[" + prc.FriendlyName + "] Background priority equal or higher than foreground priority, ignoring.");
 			}
 
 			if (prc.Rescan > 0 && string.IsNullOrEmpty(prc.ExecutableFriendlyName))
 			{
-				Log.Warning("[{FriendlyName}] Configuration error, can not rescan without image name.");
+				Log.Warning("[" + prc.FriendlyName + "] Configuration error, can not rescan without image name.");
 				prc.Rescan = 0;
 			}
 
 			if (string.IsNullOrEmpty(prc.Executable) && string.IsNullOrEmpty(prc.Path))
 			{
-				Log.Warning("[{FriendlyName}] Executable and Path missing; ignoring.");
+				Log.Warning("[" + prc.FriendlyName + "] Executable and Path missing; ignoring.");
 				rv = false;
 			}
 
@@ -435,14 +433,14 @@ namespace Taskmaster
 				if (IgnoreProcessName(prc.ExecutableFriendlyName))
 				{
 					if (Taskmaster.ShowInaction)
-						Log.Warning("{Exec} in ignore list; all changes denied.", prc.ExecutableFriendlyName);
+						Log.Warning(prc.Executable ?? prc.ExecutableFriendlyName + " in ignore list; all changes denied.");
 
 					// rv = false; // We'll leave the config in.
 				}
 				else if (ProtectedProcessName(prc.ExecutableFriendlyName))
 				{
 					if (Taskmaster.ShowInaction)
-						Log.Warning("{Exec} in protected list; priority changing denied.");
+						Log.Warning(prc.Executable ?? prc.ExecutableFriendlyName + " in protected list; priority changing denied.");
 				}
 			}
 
@@ -469,9 +467,9 @@ namespace Taskmaster
 			lock (watchlist_lock)
 				watchlist.Add(prc);
 
-			Log.Verbose("[{FriendlyName}] Match: {MatchName}, {TargetPriority}, Mask:{Affinity}, Rescan: {Rescan}m, Recheck: {Recheck}s, FgOnly: {Fg}",
-						prc.FriendlyName, (prc.Executable ?? prc.Path), prc.Priority, prc.Affinity,
-						prc.Rescan, prc.Recheck, prc.ForegroundOnly);
+			Log.Verbose("[" + prc.FriendlyName + "] Match: " + (prc.Executable ?? prc.Path) + ", " +
+				prc.Priority.ToString() + ", Mask:" + prc.Affinity.ToString() +
+				", Rescan: " + prc.Rescan + "m, Recheck: " + prc.Recheck + "s, FgOnly: " + prc.ForegroundOnly.ToString());
 		}
 
 		public void loadWatchlist()
@@ -489,15 +487,15 @@ namespace Taskmaster
 			BatchProcessing = coreperf.GetSetDefault("Batch processing", false, out modified).BoolValue;
 			coreperf["Batch processing"].Comment = "Process management works in delayed batches instead of immediately.";
 			dirtyconfig |= modified;
-			Log.Information("Batch processing: {BatchProcessing}", (BatchProcessing ? "Enabled" : "Disabled"));
+			Log.Information("Batch processing: " + (BatchProcessing ? "Enabled" : "Disabled"));
 			if (BatchProcessing)
 			{
 				BatchDelay = coreperf.GetSetDefault("Batch processing delay", 2500, out modified).IntValue.Constrain(500, 15000);
 				dirtyconfig |= modified;
-				Log.Information("Batch processing delay: {BatchProcessingDelay:N1}s", BatchDelay / 1000);
+				Log.Information("Batch processing delay: " + $"{BatchDelay / 1000:N1}s");
 				BatchProcessingThreshold = coreperf.GetSetDefault("Batch processing threshold", 5, out modified).IntValue.Constrain(1, 30);
 				dirtyconfig |= modified;
-				Log.Information("<Process> Batch processing threshold: {BatchProcessingThreshold}", BatchProcessingThreshold);
+				Log.Information("<Process> Batch processing threshold: " + BatchProcessingThreshold);
 			}
 
 			RescanDelay = coreperf.GetSetDefault("Rescan frequency", 0, out modified).IntValue.Constrain(0, 60 * 6) * 60;
@@ -516,11 +514,11 @@ namespace Taskmaster
 
 			if (RescanEverythingFrequency > 0)
 			{
-				Log.Information("<Process> Rescan everything every {Frequency} seconds.", RescanEverythingFrequency);
+				Log.Information("<Process> Rescan everything every " + RescanEverythingFrequency + " seconds.");
 				RescanDelay = 0;
 			}
 			else
-				Log.Information("<Process> Per-app rescan frequency: {RescanDelay:N1}m", RescanDelay / 60);
+				Log.Information("<Process> Per-app rescan frequency: " + $"{RescanDelay / 60:N1}m");
 
 			// --------------------------------------------------------------------------------------------------------
 
@@ -595,21 +593,21 @@ namespace Taskmaster
 				if (!section.Contains("Image") && !section.Contains("Path"))
 				{
 					// TODO: Deal with incorrect configuration lacking image
-					Log.Warning("'{SectionName}' has no image nor path.", section.Name);
+					Log.Warning("'" + section.Name + "' has no image nor path.");
 					continue;
 				}
 
 				if (!section.Contains("Priority") && !section.Contains("Affinity") && !section.Contains("Power mode"))
 				{
 					// TODO: Deal with incorrect configuration lacking image
-					Log.Warning("[{SectionName}] No priority, affinity, nor power plan. Ignoring.", section.Name);
+					Log.Warning("[" + section.Name + "] No priority, affinity, nor power plan. Ignoring.");
 					continue;
 				}
 
 				var aff = section.TryGet("Affinity")?.IntValue ?? -1;
 				if (aff > AllCPUsMask)
 				{
-					Log.Warning("[{Name}] Affinity({Affinity}) is malconfigured. Ignoring.", section.Name, aff);
+					Log.Warning("[" + section.Name + "] Affinity(" + aff + ") is malconfigured. Ignoring.");
 					//aff = Bit.And(aff, allCPUsMask); // at worst case results in 1 core used
 					// TODO: Count bits, make 2^# assumption about intended cores but scale it to current core count.
 					//		Shift bits to allowed range. Assume at least one core must be assigned, and in case of holes at least one core must be unassigned.
@@ -622,7 +620,7 @@ namespace Taskmaster
 				var pmode = PowerManager.GetModeByName(pmodes);
 				if (pmode == PowerInfo.PowerMode.Custom)
 				{
-					Log.Warning("'{SectionName}' has unrecognized power plan: {PowerPlan}", section.Name, pmodes);
+					Log.Warning("'" + section.Name + "' has unrecognized power plan: " + pmodes);
 					pmode = PowerInfo.PowerMode.Undefined;
 				}
 
@@ -704,7 +702,7 @@ namespace Taskmaster
 				if (string.IsNullOrEmpty(prc.Executable) && prc.Rescan > 0)
 				{
 					prc.Rescan = 0;
-					Log.Warning("[{Name}] Rescan defined with no executable name.", prc.FriendlyName);
+					Log.Warning("[" + prc.FriendlyName + "] Rescan defined with no executable name.");
 				}
 
 				int[] resize = section.TryGet("Resize")?.IntValueArray ?? null; // width,height
@@ -733,9 +731,9 @@ namespace Taskmaster
 
 			// --------------------------------------------------------------------------------------------------------
 
-			Log.Information("<Process> Name-based watchlist: {Items} items", execontrol.Count - WatchlistWithHybrid);
-			Log.Information("<Process> Path-based watchlist: {Items} items", WatchlistWithPath);
-			Log.Information("<Process> Hybrid watchlist: {Items} items", WatchlistWithHybrid);
+			Log.Information("<Process> Name-based watchlist: " + (execontrol.Count - WatchlistWithHybrid) + " items");
+			Log.Information("<Process> Path-based watchlist: " + WatchlistWithPath + " items");
+			Log.Information("<Process> Hybrid watchlist: " + WatchlistWithHybrid + " items");
 		}
 
 		public void AddController(ProcessController prc)
@@ -775,8 +773,7 @@ namespace Taskmaster
 		{
 			if (Taskmaster.DebugForeground || Taskmaster.DebugPower)
 			{
-				Log.Debug("<Process> {Exec} (#{Pid}) exited [Power: {Power}, Active: {Active}]",
-					info.Name, info.Id, info.PowerWait, info.ActiveWait);
+				Log.Debug("<Process> " + info.Name + " (#" + info.Id + ") exited [Power: " + info.PowerWait + ", Active: " + info.ActiveWait + "]");
 			}
 
 			Debug.Assert(info.Id > 4);
@@ -840,7 +837,7 @@ namespace Taskmaster
 			}
 
 			if (cancelled > 0)
-				Log.Information("Cancelled power mode wait on {Count} process(es).", cancelled);
+				Log.Information("Cancelled power mode wait on "+cancelled+" process(es).");
 		}
 
 		public void WaitForExit(ProcessEx info)
@@ -885,7 +882,7 @@ namespace Taskmaster
 		public void ForegroundAppChangedEvent(object sender, WindowChangedArgs ev)
 		{
 			if (Taskmaster.DebugForeground)
-				Log.Verbose("<Process> Foreground Received: #{Id}", ev.Id);
+				Log.Verbose("<Process> Foreground Received: #" + ev.Id);
 
 			if (PreviousForegroundInfo != null)
 			{
@@ -917,7 +914,7 @@ namespace Taskmaster
 				if (info != null)
 				{
 					if (Taskmaster.Trace && Taskmaster.DebugForeground)
-						Log.Debug("[{FriendlyName}] {Exec} (#{Pid}) on foreground!", prc.FriendlyName, info.Name, info.Id);
+						Log.Debug("[" + prc.FriendlyName + "] " + info.Name + " (#" + info.Id + ") on foreground!");
 
 					if (prc.ForegroundOnly) prc.Resume(info);
 
@@ -950,7 +947,7 @@ namespace Taskmaster
 				if (info.Process.HasExited) // can throw
 				{
 					if (Taskmaster.ShowInaction)
-						Log.Verbose("{ProcessName} (#{ProcessID}) has already exited.", info.Name, info.Id);
+						Log.Verbose(info.Name + " (#"+info.Id+") has already exited.");
 					return null; // return ProcessState.Invalid;
 				}
 			}
@@ -963,7 +960,7 @@ namespace Taskmaster
 			catch (System.ComponentModel.Win32Exception ex)
 			{
 				if (ex.NativeErrorCode != 5) // what was this?
-					Log.Warning("Access error: {ProcessName} (#{ProcessID})", info.Name, info.Id);
+					Log.Warning("Access error: " + info.Name + " (#" + info.Id + ")");
 				return null; // return ProcessState.AccessDenied; // we don't care wwhat this error is
 			}
 
@@ -973,7 +970,7 @@ namespace Taskmaster
 			if (IgnoreSystem32Path && info.Path.Contains(Environment.GetFolderPath(Environment.SpecialFolder.System)))
 			{
 				if (Taskmaster.ShowInaction && Taskmaster.DebugProcesses)
-					Log.Debug("<Process> {Exe} (#{Pid}) in System32, ignoring", info.Name, info.Id);
+					Log.Debug("<Process> " + info.Name + " (#" + info.Id + ") in System32, ignoring");
 				return null;
 			}
 
@@ -991,7 +988,7 @@ namespace Taskmaster
 						if (prc.Executable.Equals(info.Name, StringComparison.InvariantCultureIgnoreCase))
 						{
 							if (Taskmaster.DebugPaths)
-								Log.Debug("<Process> [{FriendlyName}] Path+Exe matched.", prc.FriendlyName);
+								Log.Debug("<Process> [" + prc.FriendlyName + "] Path+Exe matched.");
 						}
 						else
 							continue; // CheckPathWatch does not handle combo path+exes
@@ -1003,7 +1000,7 @@ namespace Taskmaster
 						// if (cacheGet)
 						// 	Log.Debug("[{FriendlyName}] {Exec} (#{Pid}) – PATH CACHE GET!! :D", pc.FriendlyName, name, pid);
 						if (Taskmaster.DebugPaths)
-							Log.Verbose("<Process> [{PathFriendlyName}] (CheckPathWatch) Matched at: {Path}", prc.FriendlyName, info.Path);
+							Log.Verbose("[" + prc.FriendlyName + "] (CheckPathWatch) Matched at: " + info.Path);
 
 						matchedprc = prc;
 						break;
@@ -1184,9 +1181,9 @@ namespace Taskmaster
 			if (Taskmaster.Trace && Taskmaster.DebugForeground)
 			{
 				if (!keyexists)
-					Log.Debug("[{FriendlyName}] {Exec} (#{Pid}) added to foreground watchlist.", prc.FriendlyName, info.Name, info.Id);
+					Log.Debug("[" + prc.FriendlyName + "] " + info.Name + " (#" + info.Id + ") added to foreground watchlist.");
 				else
-					Log.Debug("[{FriendlyName}] {Exec} (#{Pid}) already in foreground watchlist.", prc.FriendlyName, info.Name, info.Id);
+					Log.Debug("[" + prc.FriendlyName + "] " + info.Name + " (#" + info.Id + ") already in foreground watchlist.");
 			}
 
 			onProcessHandled?.Invoke(this, new ProcessEventArgs() { Control = prc, Info = info, State = ProcessRunningState.Found });
@@ -1205,13 +1202,13 @@ namespace Taskmaster
 
 			if (IgnoreProcessID(ea.Info.Id) || IgnoreProcessName(ea.Info.Name))
 			{
-				if (Taskmaster.Trace) Log.Verbose("Ignoring process: {ProcessName} (#{ProcessID})", ea.Info.Name, ea.Info.Id);
+				if (Taskmaster.Trace) Log.Verbose("Ignoring process: " + ea.Info.Name + " (#" + ea.Info.Id + ")");
 				return; // ProcessState.Ignored;
 			}
 
 			if (string.IsNullOrEmpty(ea.Info.Name))
 			{
-				Log.Warning("#{AppId} details unaccessible, ignored.", ea.Info.Id);
+				Log.Warning("#" + ea.Info.Id + " details unaccessible, ignored.");
 				return; // ProcessState.AccessDenied;
 			}
 
@@ -1225,8 +1222,10 @@ namespace Taskmaster
 			{
 				if (!prc.Enabled)
 				{
-					Log.Debug("[{FriendlyName}] Matched but rule disabled; ignoring.");
-					return; // ProcessState.Ignored;
+					if (Taskmaster.DebugProcesses)
+						Log.Debug("["+ prc.FriendlyName+"] Matched, but rule disabled; ignoring.");
+					ea.Info.State = ProcessModification.Ignored;
+					return;
 				}
 
 				// await System.Threading.Tasks.Task.Delay(ProcessModifyDelay).ConfigureAwait(false);
@@ -1237,7 +1236,7 @@ namespace Taskmaster
 				}
 				catch (Exception ex)
 				{
-					Log.Fatal("[{FriendlyName}] '{Exec}' (#{Pid}) MASSIVE FAILURE!!!", prc.FriendlyName, ea.Info.Name, ea.Info.Id);
+					Log.Fatal("[" + prc.FriendlyName + "] " + ea.Info.Name + " (#" + ea.Info.Id + ") MASSIVE FAILURE!!!");
 					Logging.Stacktrace(ex);
 					return; // ProcessState.Error;
 				}
@@ -1371,7 +1370,7 @@ namespace Taskmaster
 			{
 				info.State = ProcessModification.Exited;
 				if (Taskmaster.ShowInaction)
-					Log.Verbose("Caught #{Pid} but it vanished.", info.Id);
+					Log.Verbose("Caught #" + info.Id + " but it vanished.");
 				return;
 			}
 			catch (Exception ex)
@@ -1390,12 +1389,12 @@ namespace Taskmaster
 				}
 				catch
 				{
-					Log.Error("Failed to retrieve name of process #{Pid}", info.Id);
+					Log.Error("Failed to retrieve name of process #" + info.Id);
 					return;
 				}
 			}
 
-			if (Taskmaster.Trace) Log.Verbose("Caught: {ProcessName} (#{ProcessID}) at: {Path}", info.Name, info.Id, info.Path);
+			if (Taskmaster.Trace) Log.Verbose("Caught: " + info.Name + " (#" + info.Id + ") at: " + info.Path);
 
 			// info.Process.StartTime; // Only present if we started it
 
@@ -1482,7 +1481,7 @@ namespace Taskmaster
 						Logging.Stacktrace(ex);
 					}
 
-					Log.Verbose("Rescan set to occur after {Scan} minutes, next in line: {Name}. Waiting {0}.", nextscan, nextscanfor);
+					Log.Verbose("Rescan set to occur after " + nextscan + " minutes; Next in line: " + nextscanfor);
 				}
 			}
 			catch (Exception ex)

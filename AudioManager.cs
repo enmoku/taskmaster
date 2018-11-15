@@ -57,7 +57,7 @@ namespace Taskmaster
 				throw new InitFailure("Failed to capture default audio output device.");
 			}
 
-			Serilog.Log.Information("<Audio> Defalt device: {Device}", mmdev_media.DeviceFriendlyName);
+			Serilog.Log.Information("<Audio> Defalt device: " + mmdev_media.DeviceFriendlyName);
 
 			mmdev_media.AudioSessionManager.OnSessionCreated += OnSessionCreated;
 
@@ -202,7 +202,7 @@ namespace Taskmaster
 
 		public void OnDisplayNameChanged(string displayName)
 		{
-			Serilog.Log.Debug("<Audio> Display name changed: {Name}", displayName);
+			Serilog.Log.Debug("<Audio> Display name changed: " + displayName);
 		}
 
 		public void OnGroupingParamChanged(ref Guid groupingId)
@@ -212,7 +212,7 @@ namespace Taskmaster
 
 		public void OnIconPathChanged(string iconPath)
 		{
-			Serilog.Log.Debug("<Audio> Icon path changed: {Name}", iconPath);
+			Serilog.Log.Debug("<Audio> Icon path changed: " + iconPath);
 		}
 
 		public void OnSessionDisconnected(NAudio.CoreAudioApi.Interfaces.AudioSessionDisconnectReason disconnectReason)
@@ -223,8 +223,7 @@ namespace Taskmaster
 			string name = session.DisplayName;
 
 			// Don't care really
-			Serilog.Log.Debug("<Audio> {Name} (#{ID}) Disconnected: {Disconnected}",
-				name, pid, disconnectReason.ToString());
+			Serilog.Log.Debug("<Audio> " + name + " (#" + pid + ") Disconnected: " + disconnectReason.ToString());
 
 			switch (disconnectReason)
 			{
@@ -251,8 +250,7 @@ namespace Taskmaster
 			string instance = session.GetSessionInstanceIdentifier;
 			string name = session.DisplayName;
 
-			Serilog.Log.Debug("<Audio> {Name} (#{ID}) State changed: {State}",
-				name, pid, state.ToString());
+			Serilog.Log.Debug("<Audio> " + name + " (#" + pid + ") State changed: " + state.ToString());
 
 			switch (state)
 			{
@@ -268,7 +266,7 @@ namespace Taskmaster
 
 		public void OnVolumeChanged(float volume, bool isMuted)
 		{
-			Serilog.Log.Debug("<Audio> Volume: {Vol}, Muted: {Muted}", volume, isMuted);
+			Serilog.Log.Debug("<Audio> Volume: " + $"{volume:N2}" + ", Muted: " + (isMuted ? "True" : "False"));
 		}
 	}
 

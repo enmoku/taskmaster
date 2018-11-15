@@ -161,7 +161,7 @@ namespace Taskmaster
 						Log.Debug("Exit: User asked to close.");
 						break;
 					default:
-						Log.Debug("Exit: Unidentified close reason: {CloseReason}", e.CloseReason);
+						Log.Debug("Exit: Unidentified close reason: " + e.CloseReason.ToString());
 						break;
 				}
 				// CLEANUP: Console.WriteLine("WindowClose.Handled");
@@ -256,7 +256,7 @@ namespace Taskmaster
 							// item.SubItems[SeenColumn].Text = e.Control.LastSeen.ToLocalTime().ToString();
 						}
 						else
-							Log.Error("{FriendlyName} not found in app list.", ev.Control.FriendlyName);
+							Log.Error(ev.Control.FriendlyName + " not found in UI watchlist list.");
 					}
 					catch (Exception ex) { Logging.Stacktrace(ex); }
 				}
@@ -1914,8 +1914,7 @@ namespace Taskmaster
 									li.EnsureVisible();
 									break;
 								default:
-									Log.Debug("Received unhandled process (#{Id}) state: {State}",
-										ev.Info.Id, ev.State.ToString());
+									Log.Debug("Received unhandled process (#" + ev.Info.Id + ") state: " + ev.State.ToString());
 									break;
 							}
 						}
@@ -2107,7 +2106,7 @@ namespace Taskmaster
 							processmanager.RemoveController(prc);
 
 							prc.DeleteConfig();
-							Log.Information("[{Rule}] Rule removed", prc.FriendlyName);
+							Log.Information("[" + prc.FriendlyName + "] Rule removed");
 							lock (watchlistrules_lock)
 							{
 								WatchlistMap.Remove(prc);
@@ -2134,7 +2133,7 @@ namespace Taskmaster
 
 					if (prc == null)
 					{
-						Log.Error("[{Rule}] Not found. Something's terribly wrong.", name);
+						Log.Error("[" + name + "] Not found. Something's terribly wrong.");
 						return;
 					}
 
@@ -2173,11 +2172,11 @@ namespace Taskmaster
 					try
 					{
 						Clipboard.SetText(sbs.ToString());
-						Log.Information("[{Rule}] Configuration saved to clipboard.", name);
+						Log.Information("[" + name + "] Configuration saved to clipboard.");
 					}
 					catch
 					{
-						Log.Warning("[{Rule}] Failed to copy configuration to clipboard.", name);
+						Log.Warning("[" + name + "] Failed to copy configuration to clipboard.");
 					}
 				}
 				catch (Exception ex) { Logging.Stacktrace(ex); }

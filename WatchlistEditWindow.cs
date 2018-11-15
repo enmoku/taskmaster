@@ -118,7 +118,7 @@ namespace Taskmaster
 
 			if (!Controller.Valid)
 			{
-				Log.Warning("[{FriendlyName}] Can't save, configuration invalid.", friendlyName.Text);
+				Log.Warning("[" + friendlyName.Text + "] Can't save, configuration invalid.");
 				return;
 			}
 
@@ -277,7 +277,7 @@ namespace Taskmaster
 					}
 					catch (Exception ex)
 					{
-						Log.Fatal("{Type} : {Message}", ex.GetType().Name, ex.Message);
+						Log.Fatal(ex.GetType().Name + " : " + ex.Message);
 					}
 				}
 			};

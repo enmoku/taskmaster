@@ -335,7 +335,7 @@ namespace Taskmaster
 
 			cfg.MarkDirty();
 
-			Log.Information("[{Name}] Modified.", FriendlyName);
+			Log.Information("[" + FriendlyName + "] Modified.");
 		}
 
 		const string statfile = "Watchlist.Statistics.ini";
@@ -447,8 +447,7 @@ namespace Taskmaster
 				if (PowerPlan != PowerInfo.PowerMode.Undefined && BackgroundPowerdown)
 				{
 					if (Taskmaster.DebugPower)
-						Log.Debug("[{FriendlyName}] {Exec} (#{Pid}) background power down",
-							FriendlyName, info.Name, info.Id);
+						Log.Debug("[" + FriendlyName + "] " + info.Name + " (#" + info.Id + ") background power down");
 
 					UndoPower(info);
 				}
@@ -549,8 +548,7 @@ namespace Taskmaster
 					if (PowerPlan != PowerInfo.PowerMode.Undefined && BackgroundPowerdown)
 					{
 						if (Taskmaster.DebugPower || Taskmaster.DebugForeground)
-							Log.Debug("<Process> [{Name}] {Exec} (#{Pid}) foreground power on",
-								FriendlyName, info.Name, info.Id);
+							Log.Debug("[" + FriendlyName + "] " + info.Name + " (#" + info.Id + ") foreground power on");
 
 						SetPower(info);
 					}
@@ -732,7 +730,7 @@ namespace Taskmaster
 				if (info.Process.HasExited)
 				{
 					if (Taskmaster.DebugProcesses)
-						Log.Debug("[{FriendlyName}] {ProcessName} (#{ProcessID}) has already exited.", FriendlyName, info.Name, info.Id);
+						Log.Debug("[" + FriendlyName + "] " + info.Name + " (#" + info.Id + ") has already exited.");
 					return; // return ProcessState.Invalid;
 				}
 
@@ -758,12 +756,12 @@ namespace Taskmaster
 				return;
 			}
 
-			if (Taskmaster.Trace) Log.Verbose("[{FriendlyName}] Touching: {ExecutableName} (#{ProcessID})", FriendlyName, info.Name, info.Id);
+			if (Taskmaster.Trace) Log.Verbose("[" + FriendlyName + "] Touching: " + info.Name + " (#" + info.Id + ")");
 
 			if (IgnoreList != null && IgnoreList.Contains(info.Name, StringComparer.InvariantCultureIgnoreCase))
 			{
 				if (Taskmaster.ShowInaction && Taskmaster.DebugProcesses)
-					Log.Debug("[{FriendlyName}] {Exec} (#{ProcessID}) ignored due to user defined rule.", FriendlyName, info.Name, info.Id);
+					Log.Debug("[" + FriendlyName + "] " + info.Name + " (#" + info.Id + ") ignored due to user defined rule.");
 				return; // return ProcessState.Ignored;
 			}
 
@@ -771,7 +769,7 @@ namespace Taskmaster
 			// TODO: IgnoreSystem32Path
 
 			if (protectedfile && Taskmaster.ShowInaction && Taskmaster.DebugProcesses)
-				Log.Debug("[{FriendlyName}] {ProcessName} (#{ProcessID}) in protected list, limiting tampering.", FriendlyName, info.Name, info.Id);
+				Log.Debug("[" + FriendlyName + "] " + info.Name + " (#" + info.Id + ") in protected list, limiting tampering.");
 
 			// TODO: Validate path.
 			if (!string.IsNullOrEmpty(Path))
@@ -783,14 +781,14 @@ namespace Taskmaster
 				{
 					// OK
 					if (Taskmaster.DebugPaths && !info.PathMatched)
-						Log.Verbose("[{PathFriendlyName}] (Touch) Matched at: {Path}", FriendlyName, info.Path);
+						Log.Verbose("[" + FriendlyName + "] (Touch) Matched at: " + info.Path);
 
 					info.PathMatched = true;
 				}
 				else
 				{
 					if (Taskmaster.DebugPaths)
-						Log.Verbose("[{PathFriendlyName}] {ExePath} NOT IN {Path} – IGNORING", FriendlyName, info.Path, Path);
+						Log.Verbose("[" + FriendlyName + "] " + info.Path + " NOT IN " + Path + " – IGNORING");
 					return; // return ProcessState.Ignored;
 				}
 			}
@@ -818,8 +816,7 @@ namespace Taskmaster
 					if (!foreground && ForegroundOnly)
 					{
 						if (Taskmaster.DebugForeground || Taskmaster.ShowInaction)
-							Log.Debug("[{FriendlyName}] {Exec} (#{Pid}) not in foreground, not prioritizing.",
-								FriendlyName, info.Name, info.Id);
+							Log.Debug("[" + FriendlyName + "] " + info.Name + " (#" + info.Id + ") not in foreground, not prioritizing.");
 
 						Pause(info);
 					}
@@ -830,7 +827,7 @@ namespace Taskmaster
 			else
 			{
 				if (Taskmaster.ShowInaction && Taskmaster.DebugProcesses)
-					Log.Verbose("[{FriendlyName}] {Exec} (#{Pid}) protected.", FriendlyName, info.Name, info.Id);
+					Log.Verbose("[" + FriendlyName + "] " + info.Name + " (#" + info.Id + ") protected.");
 			}
 
 			if (Affinity.HasValue)
@@ -927,7 +924,7 @@ namespace Taskmaster
 				if (!foreground && BackgroundPowerdown)
 				{
 					if (Taskmaster.DebugForeground)
-						Log.Debug("{Exec} (#{Pid}) not in foreground, not powering up.", info.Name, info.Id);
+						Log.Debug(info.Name + " (#" + info.Id + ") not in foreground, not powering up.");
 
 					ForegroundMonitor(info);
 				}
@@ -1004,7 +1001,7 @@ namespace Taskmaster
 				{
 					sbs.Append(" [Failed]");
 					if (Taskmaster.ShowInaction)
-						Log.Warning("[{FriendlyName}] {Exec} (#{Pid}) failed to set process priority.", FriendlyName, info.Name, info.Id);
+						Log.Warning("[" + FriendlyName + "] " + info.Name + " (#" + info.Id + ") failed to set process priority.");
 				}
 			}
 			if (Affinity.HasValue)
@@ -1019,7 +1016,7 @@ namespace Taskmaster
 				{
 					sbs.Append(" [Failed]");
 					if (Taskmaster.ShowInaction)
-						Log.Warning("[{FriendlyName}] {Exec} (#{Pid}) failed to set process affinity.", FriendlyName, info.Name, info.Id);
+						Log.Warning("[" + FriendlyName + "] " + info.Name + " (#" + info.Id + ") failed to set process affinity.");
 				}
 
 				if (Taskmaster.DebugProcesses) sbs.Append(" [").Append(AffinityStrategy.ToString()).Append("]");
@@ -1068,7 +1065,7 @@ namespace Taskmaster
 		{
 			if (!Resize.HasValue) return;
 
-			if (Taskmaster.DebugResize) Log.Debug("Attempting resize on {Name} (#{Pid})", info.Name, info.Id);
+			if (Taskmaster.DebugResize) Log.Debug("Attempting resize on " + info.Name + " (#" + info.Id + ")");
 
 			try
 			{
@@ -1079,7 +1076,7 @@ namespace Taskmaster
 					IntPtr hwnd = info.Process.MainWindowHandle;
 					if (!NativeMethods.GetWindowRect(hwnd, ref rect))
 					{
-						if (Taskmaster.DebugResize) Log.Debug("Failed to retrieve current size of {Name} (#{Pid})", info.Name, info.Id);
+						if (Taskmaster.DebugResize) Log.Debug("Failed to retrieve current size of " + info.Name + " (#" + info.Id + ")");
 					}
 
 					var oldrect = new System.Drawing.Rectangle(rect.Left, rect.Top, rect.Right - rect.Left, rect.Bottom - rect.Top);
@@ -1094,8 +1091,9 @@ namespace Taskmaster
 					if (!newsize.Equals(oldrect))
 					{
 						if (Taskmaster.DebugResize)
-							Log.Debug("Resizing {Name} (#{Pid}) from {OldWidth}×{OldHeight} to {NewWidth}×{NewHeight}",
-								info.Name, info.Id, oldrect.Width, oldrect.Height, newsize.Width, newsize.Height);
+							Log.Debug("Resizing " + info.Name + " (#" + info.Id + ") from " +
+								oldrect.Width + "×" + oldrect.Height + " to " +
+								newsize.Width + "×" + newsize.Height);
 
 						// TODO: Add option to monitor the app and save the new size so relaunching the app keeps the size.
 
@@ -1110,7 +1108,7 @@ namespace Taskmaster
 
 					if (ResizeStrategy == WindowResizeStrategy.None)
 					{
-						if (Taskmaster.DebugResize) Log.Debug("Remembering size or pos not enabled for {Name} (#{Pid})", info.Name, info.Id);
+						if (Taskmaster.DebugResize) Log.Debug("Remembering size or pos not enabled for " + info.Name + " (#" + info.Id + ")");
 						return;
 					}
 
@@ -1119,12 +1117,12 @@ namespace Taskmaster
 					System.Threading.ManualResetEvent re = new System.Threading.ManualResetEvent(false);
 					Task.Run(new Action(() =>
 					{
-						if (Taskmaster.DebugResize) Log.Debug("<Resize> Starting monitoring {Exe} (#{Pid})", info.Name, info.Id);
+						if (Taskmaster.DebugResize) Log.Debug("<Resize> Starting monitoring " + info.Name + " (#" + info.Id + ")");
 						try
 						{
 							while (!re.WaitOne(60_000))
 							{
-								if (Taskmaster.DebugResize) Log.Debug("<Resize> Recording size and position for {Exe} (#{Pid})", info.Name, info.Id);
+								if (Taskmaster.DebugResize) Log.Debug("<Resize> Recording size and position for " + info.Name + " (#" + info.Id + ")");
 
 								NativeMethods.GetWindowRect(hwnd, ref rect);
 
@@ -1143,7 +1141,7 @@ namespace Taskmaster
 						{
 							Logging.Stacktrace(ex);
 						}
-						if (Taskmaster.DebugResize) Log.Debug("<Resize> Stopping monitoring {Exe} (#{Pid})", info.Name, info.Id);
+						if (Taskmaster.DebugResize) Log.Debug("<Resize> Stopping monitoring " + info.Name + " (#" + info.Id + ")");
 					}));
 
 					info.Process.EnableRaisingEvents = true;
@@ -1165,8 +1163,8 @@ namespace Taskmaster
 								&& (oldrect.Left != Resize.Value.Left || oldrect.Top != Resize.Value.Top)))
 							{
 								if (Taskmaster.DebugResize)
-									Log.Debug("Saving {Name} (#{Pid}) size to {NewWidth}×{NewHeight}",
-										info.Name, info.Id, Resize.Value.Width, Resize.Value.Height);
+									Log.Debug("Saving " + info.Name + " (#" + info.Id + ") size to " +
+										Resize.Value.Width + "×" + Resize.Value.Height);
 
 								var cfg = Taskmaster.Config.Load(watchlistfile);
 								var app = cfg.Config[FriendlyName];
@@ -1212,14 +1210,13 @@ namespace Taskmaster
 			await Task.Delay(Math.Max(Recheck, 5) * 1000).ConfigureAwait(false);
 
 			if (Taskmaster.DebugProcesses)
-				Log.Debug("[{FriendlyName}] {Process} (#{PID}) rechecking", FriendlyName, info.Name, info.Id);
+				Log.Debug("[" + FriendlyName + "] " + info.Name + " (#" + info.Id + ") rechecking");
 
 			try
 			{
 				if (info.Process.HasExited)
 				{
-					if (Taskmaster.Trace) Log.Verbose("[{FriendlyName}] {Process} (#{PID}) is gone yo.",
-						FriendlyName, info.Name, info.Id);
+					if (Taskmaster.Trace) Log.Verbose("[" + FriendlyName + "] " + info.Name + " (#" + info.Id + ") is gone yo.");
 					return;
 				}
 
@@ -1235,7 +1232,7 @@ namespace Taskmaster
 			}
 			catch (Exception ex)
 			{
-				Log.Warning("[{FriendlyName}] {Process} (#{PID}) – something bad happened.", FriendlyName, info.Name, info.Id);
+				Log.Warning("[" + FriendlyName + "] " + info.Name + " (#" + info.Id + ") – something bad happened.");
 				Logging.Stacktrace(ex);
 				return; //throw; // would throw but this is async function
 			}
@@ -1271,7 +1268,7 @@ namespace Taskmaster
 						try
 						{
 							if (Taskmaster.DebugProcesses)
-								Log.Debug("[{FriendlyName}] Rescan initiating.", FriendlyName);
+								Log.Debug("[" + FriendlyName + "] Rescan initiating.");
 
 							await Scan().ConfigureAwait(false);
 						}
@@ -1305,7 +1302,7 @@ namespace Taskmaster
 			}
 			catch // name not found
 			{
-				if (Taskmaster.Trace) Log.Verbose("{FriendlyName} is not running", ExecutableFriendlyName);
+				if (Taskmaster.Trace) Log.Verbose(Executable ?? ExecutableFriendlyName + " is not running");
 				return;
 			}
 
@@ -1315,7 +1312,7 @@ namespace Taskmaster
 			if (procs.Length == 0) return;
 
 			if (Taskmaster.DebugProcesses)
-				Log.Debug("[{FriendlyName}] Scanning found {ProcessInstances} instance(s)", FriendlyName, procs.Length);
+				Log.Debug("[" + FriendlyName + "] Scanning found " + procs.Length + " instance(s)");
 
 			ScanModifyCount = 0;
 			foreach (Process process in procs)
@@ -1343,8 +1340,7 @@ namespace Taskmaster
 			if (ScanModifyCount > 0)
 			{
 				if (Taskmaster.DebugProcesses)
-					Log.Verbose("[{ProcessFriendlyName}] Scan modified {ModifiedInstances} out of {ProcessInstances} instance(s)",
-								FriendlyName, ScanModifyCount, procs.Length);
+					Log.Verbose("[" + FriendlyName + "] Scan modified " + ScanModifyCount + " out of " + procs.Length + " instance(s)");
 			}
 		}
 
@@ -1370,7 +1366,7 @@ namespace Taskmaster
 
 			if (disposing)
 			{
-				if (Taskmaster.Trace) Log.Verbose("Disposing process controller [{FriendlyName}]", FriendlyName);
+				if (Taskmaster.Trace) Log.Verbose("Disposing process controller [" + FriendlyName + "]");
 
 				Modified = null; // clear events
 
