@@ -741,10 +741,7 @@ namespace Taskmaster
 					prc.Resize = new System.Drawing.Rectangle(resize[0], resize[1], resize[2], resize[3]);
 				}
 
-				if (upgrade)
-				{
-					prc.SaveConfig(appcfg, section);
-				}
+				if (upgrade) prc.SaveConfig(appcfg, section);
 
 				AddController(prc);
 
@@ -1708,9 +1705,6 @@ namespace Taskmaster
 					// throw; // would throw but this is dispose
 				}
 
-				foreach (ProcessController prc in watchlist)
-					if (prc.NeedsSaving) prc.SaveConfig();
-
 				SaveStats();
 
 				try
@@ -1726,12 +1720,7 @@ namespace Taskmaster
 						var wcfg = Taskmaster.Config.Load(watchfile);
 
 						foreach (var prc in watchlist)
-						{
-							if (prc.NeedsSaving)
-							{
-								prc.SaveConfig(wcfg);
-							}
-						}
+							if (prc.NeedsSaving) prc.SaveConfig(wcfg);
 
 						watchlist?.Clear();
 						watchlist = null;
