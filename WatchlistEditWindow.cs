@@ -739,7 +739,7 @@ namespace Taskmaster
 				Maximum = 100.0M,
 				Minimum = 0.0M,
 				Width = 80,
-				Value = Convert.ToDecimal(Controller.Volume) * 100.0M,
+				Value = Convert.ToDecimal(Controller.Volume * 100.0),
 			};
 			tooltip.SetToolTip(volume, "Percentage of device maximum volume.");
 			lt.Controls.Add(volume);
