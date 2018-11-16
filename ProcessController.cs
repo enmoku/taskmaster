@@ -683,6 +683,11 @@ namespace Taskmaster
 			if (Recheck > 0) TouchReapply(info);
 		}
 
+		public bool MatchPath(string path)
+		{
+			return path.StartsWith(Path, StringComparison.InvariantCultureIgnoreCase);
+		}
+
 		// TODO: Simplify this
 		public async void Touch(ProcessEx info, bool refresh = false)
 		{
@@ -777,7 +782,7 @@ namespace Taskmaster
 				if (string.IsNullOrEmpty(info.Path) && !ProcessManagerUtility.FindPath(info))
 					return; // return ProcessState.Error;
 
-				if (info.PathMatched || info.Path.StartsWith(Path, StringComparison.InvariantCultureIgnoreCase)) // FIXME: this is done twice
+				if (info.PathMatched || MatchPath(info.Path)) // FIXME: this is done twice
 				{
 					// OK
 					if (Taskmaster.DebugPaths && !info.PathMatched)

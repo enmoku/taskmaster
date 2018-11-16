@@ -48,14 +48,36 @@ namespace Taskmaster
 
 	sealed public class ProcessEx : IDisposable
 	{
+		/// <summary>
+		/// Process filename without extension
+		/// Cached from Process.ProcessFilename
+		/// </summary>
 		public string Name=string.Empty;
+		/// <summary>
+		/// Process fullpath, including filename with extension
+		/// </summary>
 		public string Path=string.Empty;
+		/// <summary>
+		/// Process Id.
+		/// </summary>
 		public int Id=-1;
 
+		/// <summary>
+		/// Process reference.
+		/// </summary>
 		public Process Process=null;
+		/// <summary>
+		/// .Process.Refresh() should be called for this if the Process needs to be accessed.
+		/// </summary>
 		public bool NeedsRefresh = false;
 
+		/// <summary>
+		/// Has this Process been handled already?
+		/// </summary>
 		public bool Handled=false;
+		/// <summary>
+		/// Path was matched with a rule.
+		/// </summary>
 		public bool PathMatched=false;
 
 		public bool PowerWait = false;
@@ -995,13 +1017,14 @@ namespace Taskmaster
 					}
 
 					// Log.Debug("with: "+ pc.Path);
-					if (info.Path.StartsWith(prc.Path, StringComparison.InvariantCultureIgnoreCase)) // TODO: make this compatible with OSes that aren't case insensitive?
+					if (prc.MatchPath(info.Path)) // TODO: make this compatible with OSes that aren't case insensitive?
 					{
 						// if (cacheGet)
 						// 	Log.Debug("[{FriendlyName}] {Exec} (#{Pid}) – PATH CACHE GET!! :D", pc.FriendlyName, name, pid);
 						if (Taskmaster.DebugPaths)
 							Log.Verbose("[" + prc.FriendlyName + "] (CheckPathWatch) Matched at: " + info.Path);
 
+						info.PathMatched = true;
 						matchedprc = prc;
 						break;
 					}
