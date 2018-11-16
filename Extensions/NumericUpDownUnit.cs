@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -12,6 +13,8 @@ namespace Taskmaster.Extensions
 	/// </summary>
 	class NumericUpDownEx : NumericUpDown
 	{
+		NumberFormatInfo FormatInfo = new NumberFormatInfo();
+
 		public NumericUpDownEx() : base()
 		{
 			// nothing here
@@ -21,8 +24,13 @@ namespace Taskmaster.Extensions
 
 		protected override void UpdateEditText()
 		{
-			if (!string.IsNullOrEmpty(Unit)) Text = $"{Value} {Unit}";
-			else base.UpdateEditText();
+			if (!string.IsNullOrEmpty(Unit))
+			{
+				FormatInfo.NumberDecimalDigits = DecimalPlaces;
+				Text = string.Format(FormatInfo, "{0:F}", Value) + " " + Unit;
+			}
+			else
+				base.UpdateEditText();
 		}
 	}
 }
