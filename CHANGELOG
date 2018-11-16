@@ -6,6 +6,9 @@ Comprehensive changes can be found in Git change history:
 ### 2018-11-16
 	Fixed: Wrong power mode selected in watchlist edit window.
 	Changed: Power mode changes don't show for watchlist modifications to avoid spammyness from background powerdown setting.
+	Added: Background affinity and priority control to watchlist edit window. Formerly only available via direct .ini editing.
+	Added: Audio control to watchlist edit window. Formerly ony available via direct .ini editing.
+	Changed: Watchlist edit window is now a little more logically sorted.
 ### 2018-11-15
 	Internal: Removed as much as possible of Serilog's formatted string usage. This should fix large number of output related bugs.
 ### 2018-11-13
