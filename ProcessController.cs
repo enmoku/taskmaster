@@ -93,6 +93,7 @@ namespace Taskmaster
 		/// Determines if the values are only maintained when the app is in foreground.
 		/// </summary>
 		/// <value><c>true</c> if foreground; otherwise, <c>false</c>.</value>
+		// TODO: Clean up when this is disabled.
 		public bool ForegroundOnly { get; set; } = false;
 
 		/// <summary>
