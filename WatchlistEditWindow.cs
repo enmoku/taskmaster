@@ -745,6 +745,17 @@ namespace Taskmaster
 			lt.Controls.Add(volume);
 			lt.Controls.Add(new Label());
 
+			if (!Taskmaster.AudioManagerEnabled)
+			{
+				volume.Enabled = false;
+				volumeMethod.Enabled = false;
+			}
+
+			if (!Taskmaster.PowerManagerEnabled)
+			{
+				powerPlan.Enabled = false;
+			}
+
 			// BUTTONS
 
 			var finalizebuttons = new TableLayoutPanel() { ColumnCount = 2, AutoSize = true };
