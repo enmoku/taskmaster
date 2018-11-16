@@ -574,8 +574,8 @@ namespace Taskmaster
 				PowerManager.GetModeName(PowerInfo.PowerMode.PowerSaver),
 				PowerManager.GetModeName(PowerInfo.PowerMode.Undefined)
 			});
-
-			var ppi = System.Convert.ToInt32(Controller.PowerPlan);
+			int ppi = (int)Controller.PowerPlan;
+			if (ppi <= 2) ppi = 2 - ppi;
 			powerPlan.DropDownStyle = ComboBoxStyle.DropDownList;
 			powerPlan.SelectedIndex = System.Math.Min(ppi, 3);
 			powerPlan.Width = 180;
