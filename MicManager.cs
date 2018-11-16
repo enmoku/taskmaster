@@ -166,7 +166,11 @@ namespace Taskmaster
 			var unset = !(devcfg.Config[guid].Contains(vname));
 			var devvol = devcfg.Config[guid].GetSetDefault(vname, defaultvol).DoubleValue;
 			devcfg.Config[guid]["Name"].StringValue = devname;
-			if (unset) devcfg.Save();
+			if (unset)
+			{
+				devcfg.MarkDirty();
+				devcfg.Save(force: true);
+			}
 			
 			Target = devvol.Constrain(0, 100);
 			Log.Information("<Microphone> Default device: " + m_dev.FriendlyName + " (volume: " + $"{Target:N1}%)");
@@ -199,7 +203,7 @@ namespace Taskmaster
 				{
 					var stats = Taskmaster.Config.Load(statfile);
 					stats.Config["Statistics"]["Corrections"].IntValue = Corrections;
-					stats.Save();
+					stats.Save(force:true);
 				}
 			}
 

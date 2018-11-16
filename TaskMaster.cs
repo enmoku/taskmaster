@@ -717,7 +717,7 @@ namespace Taskmaster
 			if (running) Log.Warning("Unclean shutdown.");
 
 			corestats.Config["Core"]["Running"].BoolValue = true;
-			corestats.Save();
+			corestats.Save(force:true);
 		}
 
 		static void CleanShutdown()
@@ -739,7 +739,7 @@ namespace Taskmaster
 			dirtyconfig |= modified;
 
 			corestats.Config["Core"]["Running"].BoolValue = false;
-			corestats.Save();
+			corestats.Save(force:true);
 		}
 
 		/// <summary>

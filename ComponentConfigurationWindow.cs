@@ -372,9 +372,7 @@ namespace Taskmaster
 				perf["WMI poll delay"].IntValue = ((int)wmipolling.Value);
 				perf["WMI queries"].BoolValue = (ScanOrWMI.SelectedIndex != 0);
 
-				cfg.MarkDirty();
-
-				cfg.Save();
+				cfg.Save(force:true);
 
 				DialogResult = DialogResult.OK;
 

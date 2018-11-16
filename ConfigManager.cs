@@ -145,12 +145,14 @@ namespace Taskmaster
 			System.Diagnostics.Debug.Assert(Config != null);
 
 			Dirty = true;
-			if (Taskmaster.ImmediateSave) Save();
+			if (Taskmaster.ImmediateSave) Save(force:true);
 		}
 
-		public void Save()
+		public void Save(bool force=false)
 		{
 			System.Diagnostics.Debug.Assert(Config != null);
+
+			if (force) Dirty = true;
 
 			if (!Dirty) return;
 
