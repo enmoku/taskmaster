@@ -301,12 +301,17 @@ namespace Taskmaster
 			}
 		}
 
-		// TODO: Empty this list once a day or so to prevent unnecessary growth from removable drives.
 		List<string> warnedDrives = new List<string>();
+
+		DateTime LastDriveWarning = DateTime.MinValue;
 
 		async Task CheckNVM()
 		{
 			await Task.Delay(0).ConfigureAwait(false);
+
+			var now = DateTime.Now;
+			if (now.TimeSince(LastDriveWarning).TotalHours >= 24)
+				warnedDrives.Clear();
 
 			foreach (var drive in System.IO.DriveInfo.GetDrives())
 			{
@@ -335,6 +340,7 @@ namespace Taskmaster
 							drive.Name, HumanInterface.ByteString(drive.AvailableFreeSpace), HumanInterface.ByteString(rbsize));
 
 						warnedDrives.Add(drive.Name);
+						LastDriveWarning = now;
 					}
 					else
 					{

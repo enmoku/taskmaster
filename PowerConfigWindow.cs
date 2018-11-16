@@ -245,7 +245,6 @@ namespace Taskmaster
 						{
 							Taskmaster.Components.powermanager.SetAutoAdjust(pcw.newAutoAdjust);
 							Log.Information("<<UI>> Power auto-adjust config changed.");
-							// TODO: Call reset on power manager?
 						}
 						else
 						{

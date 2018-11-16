@@ -505,7 +505,6 @@ namespace Taskmaster
 
 			try
 			{
-				// TODO: Rate limit
 				if (Taskmaster.DebugNet) Log.Verbose("<Network> Enumerating network interfaces...");
 
 				var ifacelistt = new List<NetDevice>();
@@ -521,19 +520,23 @@ namespace Taskmaster
 
 					var stats = dev.GetIPStatistics();
 
+					bool found4 = false, found6 = false;
 					IPAddress _ipv4 = IPAddress.None, _ipv6 = IPAddress.None;
 					foreach (UnicastIPAddressInformation ip in dev.GetIPProperties().UnicastAddresses)
 					{
-						// TODO: Maybe figure out better way and early bailout from the foreach
 						switch (ip.Address.AddressFamily)
 						{
 							case System.Net.Sockets.AddressFamily.InterNetwork:
 								_ipv4 = ip.Address;
+								found4 = true;
 								break;
 							case System.Net.Sockets.AddressFamily.InterNetworkV6:
 								_ipv6 = ip.Address;
+								found6 = true;
 								break;
 						}
+
+						if (found4 && found6) break; // kinda bad, but meh
 					}
 
 					var devi = new NetDevice
@@ -624,7 +627,8 @@ namespace Taskmaster
 					Tray.Tooltip(4000, sbs.ToString(), "Taskmaster",
 						System.Windows.Forms.ToolTipIcon.Warning);
 
-					// TODO: Make clicking on the tooltip copy new IP to clipboard?
+					// bad since if it's not clicked, we react to other tooltip clicks, too
+					//Tray.TrayTooltipClicked += (s, e) => { /* something */ };
 				}
 
 				if (ipv6changed || ipv6changed)

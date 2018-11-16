@@ -118,7 +118,7 @@ namespace Taskmaster
 		public void PowerConfigRequest(object sender, EventArgs e)
 		{
 			if (!IsHandleCreated) return;
-			BeginInvoke(new Action(async () =>
+			BeginInvoke(new Action(() =>
 			{
 				try
 				{
@@ -1547,7 +1547,6 @@ namespace Taskmaster
 				watchlistRules.Sort();
 			};
 
-			// TODO: Add context menu
 			watchlistms = new ContextMenuStrip();
 			watchlistms.Opened += WatchlistContextMenuOpen;
 			watchlistenable = new ToolStripMenuItem("Enabled", null, EnableWatchlistRule);
@@ -1877,16 +1876,12 @@ namespace Taskmaster
 
 		public void ExitWaitListHandler(object sender, ProcessEventArgs ev)
 		{
-			// TODO: Proper async?
-
 			if (activeappmonitor == null) return;
 
 			if (!IsHandleCreated) return;
 
-			BeginInvoke(new Action(async () =>
+			BeginInvoke(new Action(() =>
 			{
-				await Task.Delay(0).ConfigureAwait(true);
-
 				lock (exitwaitlist_lock)
 				{
 					try
@@ -1948,13 +1943,10 @@ namespace Taskmaster
 
 			if (!IsHandleCreated) return;
 
-			BeginInvoke(new Action(async () =>
+			BeginInvoke(new Action(() =>
 			{
-				await Task.Delay(0).ConfigureAwait(true);
-
 				try
 				{
-					// TODO: Asyncify
 					var reactionary = PowerManager.GetModeName(ev.Mode);
 
 					var li = new ListViewItem(new string[] {
@@ -2034,7 +2026,6 @@ namespace Taskmaster
 					{
 						watchlistenable.Enabled = true;
 						watchlistenable.Checked = prc.Enabled = !watchlistenable.Checked;
-						// TODO: Signal toggling, in case cleanup is necessary.
 
 						Log.Information("[" + prc.FriendlyName + "] Enabled: " + (prc.Enabled ? "True" : "False"));
 
@@ -2067,7 +2058,6 @@ namespace Taskmaster
 						if (rv == DialogResult.OK)
 						{
 							UpdateWatchlist(prc);
-							// TODO: Signal UI update
 						}
 					}
 				}
@@ -2099,7 +2089,7 @@ namespace Taskmaster
 				try
 				{
 					var li = watchlistRules.SelectedItems[0];
-					// TODO: ADD CONFIRMATION
+
 					var prc = Taskmaster.Components.processmanager.getWatchedController(li.SubItems[NameColumn].Text);
 					if (prc != null)
 					{
@@ -2420,9 +2410,8 @@ namespace Taskmaster
 			var t = DateTime.Now;
 
 			if (!IsHandleCreated) return;
-			BeginInvoke(new Action(async () =>
+			BeginInvoke(new Action(() =>
 			{
-				await Task.Delay(0).ConfigureAwait(true);
 				lock (loglistLock)
 				{
 					var excessitems = Math.Max(0, (loglist.Items.Count - MaxLogSize));

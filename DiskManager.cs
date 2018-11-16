@@ -57,7 +57,7 @@ namespace Taskmaster
 			}
 
 			TempScanTimer = new System.Timers.Timer(TimerDue);
-			ScanTemp();
+			Task.Run(async () => { await ScanTemp(); });
 			TempScanTimer.Elapsed += async (s, e) => { await ScanTemp().ConfigureAwait(false); };
 			TempScanTimer.Start();
 
@@ -85,10 +85,15 @@ namespace Taskmaster
 			}
 		}
 
+		DateTime LastTempScan = DateTime.MinValue;
 		void ReScanTemp(object sender, EventArgs ev)
 		{
+			var now = DateTime.Now;
+			if (now.TimeSince(LastTempScan).TotalMinutes <= 15) return; // too soon
+			LastTempScan = now;
+
 			TempScanTimer.Stop();
-			ScanTemp(); // TODO: Add limiter to how frequently this is done
+			ScanTemp();
 			TempScanTimer.Start();
 		}
 

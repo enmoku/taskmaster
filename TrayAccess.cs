@@ -347,7 +347,7 @@ namespace Taskmaster
 		void ShowPowerConfig(object sender, EventArgs e)
 		{
 			if (!IsHandleCreated) return;
-			BeginInvoke(new Action(async () =>
+			BeginInvoke(new Action(() =>
 			{
 				try
 				{
@@ -604,9 +604,12 @@ namespace Taskmaster
 			disposed = true;
 		}
 
+		public event EventHandler TrayTooltipClicked;
+
 		public void Tooltip(int timeout, string message, string title, ToolTipIcon icon)
 		{
 			Tray.ShowBalloonTip(timeout, title, message, icon);
+			Tray.BalloonTipClicked += TrayTooltipClicked; // does this actually work for proxying?
 		}
 
 		public void RefreshVisibility()

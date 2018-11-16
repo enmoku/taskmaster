@@ -108,11 +108,6 @@ namespace Taskmaster
 
 			if (dirty) corecfg.MarkDirty();
 
-			// TODO: Add timer to check foreground app hanging
-			// TODO: Hang check should only take action if user fails to swap apps (e.g. ctrl-alt-esc for taskmanager)
-			// TODO: Hang check should potentially do the following:
-			//		Minimize app, Reduce priority, Reduce cores, Kill it
-
 			hungTimer.Elapsed += HangDetector;
 			hungTimer.Start();
 
@@ -165,6 +160,11 @@ namespace Taskmaster
 
 		int hangdetector_lock = 0;
 
+		/// <summary>
+		/// Timer callback to occasionally detect if the foreground app is hung.
+		/// </summary>
+		// TODO: Hang check should only take action if user fails to swap apps (e.g. ctrl-alt-esc for taskmanager)
+		// TODO: Hang check should potentially do the following: Minimize app, Reduce priority, Reduce cores, Kill it
 		void HangDetector(object sender, EventArgs ev)
 		{
 			if (!Atomic.Lock(ref hangdetector_lock)) return;

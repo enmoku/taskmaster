@@ -325,6 +325,8 @@ namespace Taskmaster
 				AutoAdjust = settings;
 				saveneeded = true;
 			}
+
+			// TODO: Call reset on power manager?
 		}
 
 		int HighPressure = 0;

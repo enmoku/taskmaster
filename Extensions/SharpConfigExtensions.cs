@@ -107,7 +107,7 @@ public static class SharpConfigExtensions
 		}
 		else
 			defaulted = false;
-		// todo: what do do about arrays?
+		// TODO: what do do about arrays?
 
 		return rv;
 	}
