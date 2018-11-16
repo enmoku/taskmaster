@@ -46,7 +46,6 @@ namespace Taskmaster
 			Controller = new ProcessController("Unnamed")
 			{
 				Enabled = true,
-				Valid = true,
 			};
 
 			newPrc = true;
@@ -80,7 +79,7 @@ namespace Taskmaster
 		{
 			var enOrig = Controller.Enabled;
 			Controller.Enabled = false;
-
+			
 			// TODO: VALIDATE FOR GRIMMY'S SAKE!
 			// TODO: Foreground/Powermode need to be informed of any relevant changes.
 
@@ -206,6 +205,8 @@ namespace Taskmaster
 
 			Controller.Enabled = enOrig;
 			Controller.SaveConfig();
+
+			Log.Information("[" + Controller.FriendlyName + "] " + (newPrc ? "Created" : "Modified"));
 
 			DialogResult = DialogResult.OK;
 

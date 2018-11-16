@@ -2036,6 +2036,8 @@ namespace Taskmaster
 						watchlistenable.Checked = prc.Enabled = !watchlistenable.Checked;
 						// TODO: Signal toggling, in case cleanup is necessary.
 
+						Log.Information("[" + prc.FriendlyName + "] Enabled: " + (prc.Enabled ? "True" : "False"));
+
 						prc.SaveConfig();
 
 						lock (watchlistrules_lock) WatchlistItemColor(li, prc);

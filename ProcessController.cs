@@ -42,7 +42,11 @@ namespace Taskmaster
 		// EVENTS
 		public event EventHandler<ProcessEventArgs> Modified;
 
-		// OTHER STUFF
+		// Core information
+		/// <summary>
+		/// 
+		/// </summary>
+		public ProcessType Type = ProcessType.Generic;
 
 		/// <summary>
 		/// Whether or not this rule is enabled.
@@ -324,11 +328,9 @@ namespace Taskmaster
 				app.Remove("Volume strategy");
 			}
 
+			// pass to config manager
 			NeedsSaving = false;
-
 			cfg.MarkDirty();
-
-			Log.Information("[" + FriendlyName + "] Modified.");
 		}
 
 		const string statfile = "Watchlist.Statistics.ini";
