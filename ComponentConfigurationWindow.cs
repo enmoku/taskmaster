@@ -136,8 +136,9 @@ namespace Taskmaster
 			tooltip.SetToolTip(ScanOrWMI, "Scanning involves getting all procesess and going through the list, which can cause tiny CPU spiking.\nWMI polling sets up system WMI event listener.\nWMI is known to be slow and buggy, though when it performs well, it does it better than scanning in this case.\nSystem WmiPrvSE or similar process may be seen increasing in activity with WMI in use.");
 
 			layout.Controls.Add(new Label() { Text = "Scan frequency", AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, Padding = CustomPadding, Dock = DockStyle.Left });
-			var scanfrequency = new NumericUpDown()
+			var scanfrequency = new Extensions.NumericUpDownEx()
 			{
+				Unit = "s",
 				Minimum = 0,
 				Maximum = 360,
 				Dock = DockStyle.Left,
@@ -158,10 +159,11 @@ namespace Taskmaster
 			layout.Controls.Add(scanfrequency);
 			tooltip.SetToolTip(scanfrequency, "In seconds. 0 disables. 1-4 are considered invalid values.");
 			layout.Controls.Add(new Label() { Text = "WMI poll rate", AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, Padding = CustomPadding, Dock = DockStyle.Left });
-			var wmipolling = new NumericUpDown()
+			var wmipolling = new Extensions.NumericUpDownEx()
 			{
 				Minimum = 1,
 				Maximum = 5,
+				Unit = "s",
 				Value = initial ? 5 : Taskmaster.WMIPollDelay,
 				Dock = DockStyle.Left,
 				Enabled = false,

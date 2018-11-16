@@ -87,7 +87,7 @@ namespace Taskmaster
 			layout.Controls.Add(highmode);
 
 			layout.Controls.Add(new Label() { Text = "Commit CPU% threshold", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true });
-			var highcommitthreshold = new NumericUpDown() { Maximum = 95, Minimum = 5, Value = 50 };
+			var highcommitthreshold = new Extensions.NumericUpDownEx() { Unit = "%", Maximum = 95, Minimum = 5, Value = 50 };
 			highcommitthreshold.Value = Convert.ToDecimal(AutoAdjust.High.Commit.Threshold).Constrain(5, 95);
 			layout.Controls.Add(highcommitthreshold);
 			layout.Controls.Add(new Label() { Text = "Commit level", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true });
@@ -95,15 +95,15 @@ namespace Taskmaster
 			highcommitlevel.Value = AutoAdjust.High.Commit.Level.Constrain(0, 15);
 			layout.Controls.Add(highcommitlevel);
 			layout.Controls.Add(new Label() { Text = "Backoff high CPU%", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true });
-			var highbackoffhigh = new NumericUpDown() { Maximum = 95, Minimum = 5, Value = 50 };
+			var highbackoffhigh = new Extensions.NumericUpDownEx() { Unit = "%", Maximum = 95, Minimum = 5, Value = 50 };
 			highbackoffhigh.Value = Convert.ToDecimal(AutoAdjust.High.Backoff.High).Constrain(5, 95);
 			layout.Controls.Add(highbackoffhigh);
 			layout.Controls.Add(new Label() { Text = "Backoff average CPU%", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true });
-			var highbackoffavg = new NumericUpDown() { Maximum = 95, Minimum = 5, Value = 50 };
+			var highbackoffavg = new Extensions.NumericUpDownEx() { Unit = "%", Maximum = 95, Minimum = 5, Value = 50 };
 			highbackoffavg.Value = Convert.ToDecimal(AutoAdjust.High.Backoff.Avg).Constrain(5, 95);
 			layout.Controls.Add(highbackoffavg);
 			layout.Controls.Add(new Label() { Text = "Backoff low CPU%", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true });
-			var highbackofflow = new NumericUpDown() { Maximum = 95, Minimum = 5, Value = 50 };
+			var highbackofflow = new Extensions.NumericUpDownEx() { Unit = "%", Maximum = 95, Minimum = 5, Value = 50 };
 			highbackofflow.Value = Convert.ToDecimal(AutoAdjust.High.Backoff.Low).Constrain(5, 95);
 			layout.Controls.Add(highbackofflow);
 
@@ -126,7 +126,7 @@ namespace Taskmaster
 			layout.Controls.Add(lowmode);
 
 			layout.Controls.Add(new Label() { Text = "Commit CPU% threshold", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true });
-			var lowcommitthreshold = new NumericUpDown() { Maximum = 95, Minimum = 5, Value = 50 };
+			var lowcommitthreshold = new Extensions.NumericUpDownEx() { Unit = "%", Maximum = 95, Minimum = 5, Value = 50 };
 			lowcommitthreshold.Value = Convert.ToDecimal(AutoAdjust.Low.Commit.Threshold).Constrain(5, 95);
 			layout.Controls.Add(lowcommitthreshold);
 			layout.Controls.Add(new Label() { Text = "Commit level", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true });
@@ -134,15 +134,15 @@ namespace Taskmaster
 			lowcommitlevel.Value = AutoAdjust.Low.Commit.Level.Constrain(0, 15);
 			layout.Controls.Add(lowcommitlevel);
 			layout.Controls.Add(new Label() { Text = "Backoff high CPU%", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true });
-			var lowbackoffhigh = new NumericUpDown() { Maximum = 95, Minimum = 5, Value = 50 };
+			var lowbackoffhigh = new Extensions.NumericUpDownEx() { Unit = "%", Maximum = 95, Minimum = 5, Value = 50 };
 			lowbackoffhigh.Value = Convert.ToDecimal(AutoAdjust.Low.Backoff.High).Constrain(5, 95);
 			layout.Controls.Add(lowbackoffhigh);
 			layout.Controls.Add(new Label() { Text = "Backoff average CPU%", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true });
-			var lowbackoffavg = new NumericUpDown() { Maximum = 95, Minimum = 5, Value = 50 };
+			var lowbackoffavg = new Extensions.NumericUpDownEx() { Unit = "%", Maximum = 95, Minimum = 5, Value = 50 };
 			lowbackoffavg.Value = Convert.ToDecimal(AutoAdjust.Low.Backoff.Avg).Constrain(5, 95);
 			layout.Controls.Add(lowbackoffavg);
 			layout.Controls.Add(new Label() { Text = "Backoff low CPU%", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true });
-			var lowbackofflow = new NumericUpDown() { Maximum = 95, Minimum = 5, Value = 50 };
+			var lowbackofflow = new Extensions.NumericUpDownEx() { Unit = "%", Maximum = 95, Minimum = 5, Value = 50 };
 			lowbackofflow.Value = Convert.ToDecimal(AutoAdjust.Low.Backoff.Low).Constrain(5, 95);
 			layout.Controls.Add(lowbackofflow);
 			layout.Controls.Add(new Label() { Text = "Backoff level", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true });

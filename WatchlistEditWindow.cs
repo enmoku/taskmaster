@@ -132,7 +132,7 @@ namespace Taskmaster
 			Controller.FriendlyName = newfriendlyname;
 			Controller.Executable = execName.Text.Length > 0 ? execName.Text.Trim() : null;
 			Controller.Path = pathName.Text.Length > 0 ? pathName.Text.Trim() : null;
-			if (priorityClass.SelectedIndex == 5)
+			if (priorityClass.SelectedIndex == 5) // ignored
 			{
 				Controller.Priority = null;
 				Controller.PriorityStrategy = ProcessPriorityStrategy.None;
@@ -141,12 +141,19 @@ namespace Taskmaster
 			{
 				Controller.Priority = ProcessHelpers.IntToPriority(priorityClass.SelectedIndex); // is this right?
 				Controller.PriorityStrategy = ProcessPriorityStrategy.None;
-				if (increasePrio.Checked && decreasePrio.Checked)
-					Controller.PriorityStrategy = ProcessPriorityStrategy.Force;
-				else if (increasePrio.Checked && !decreasePrio.Checked)
-					Controller.PriorityStrategy = ProcessPriorityStrategy.Increase;
-				else if (decreasePrio.Checked && !increasePrio.Checked)
-					Controller.PriorityStrategy = ProcessPriorityStrategy.Decrease;
+				switch (priorityClassMethod.SelectedIndex)
+				{
+					case 0: // increase
+						Controller.PriorityStrategy = ProcessPriorityStrategy.Increase;
+						break;
+					case 1: // decrease
+						Controller.PriorityStrategy = ProcessPriorityStrategy.Decrease;
+						break;
+					default:
+					case 2: // bidirectional
+						Controller.PriorityStrategy = ProcessPriorityStrategy.Force;
+						break;
+				}
 			}
 
 			if (affstrategy.SelectedIndex != 0)
@@ -172,8 +179,18 @@ namespace Taskmaster
 			Controller.Rescan = Convert.ToInt32(rescanFreq.Value);
 			Controller.AllowPaging = allowPaging.Checked;
 			Controller.ForegroundOnly = foregroundOnly.Checked;
-			Controller.BackgroundPowerdown = Controller.ForegroundOnly && bacgroundPowerdown.Checked;
-			
+			Controller.BackgroundPowerdown = Controller.ForegroundOnly && backgroundPowerdown.Checked;
+
+			if (bgPriorityClass.SelectedIndex != 5)
+				Controller.BackgroundPriority = ProcessHelpers.IntToPriority(bgPriorityClass.SelectedIndex);
+			else
+				Controller.BackgroundPriority = null;
+
+			if (bgAffinityMask.Value >= 0)
+				Controller.BackgroundAffinity = new IntPtr(Convert.ToInt32(bgAffinityMask.Value));
+			else
+				Controller.BackgroundAffinity = null;
+
 			if (ignorelist.Items.Count > 0)
 			{
 				List<string> ignlist = new List<string>();
@@ -196,19 +213,26 @@ namespace Taskmaster
 		TextBox friendlyName = new TextBox();
 		TextBox execName = new TextBox();
 		TextBox pathName = new TextBox();
+
 		ComboBox priorityClass = null;
-		CheckBox increasePrio = new CheckBox();
-		CheckBox decreasePrio = new CheckBox();
+		ComboBox priorityClassMethod = null;
+		ComboBox bgPriorityClass = null;
+
 		ComboBox affstrategy = new ComboBox();
-		NumericUpDown affinityMask = new NumericUpDown();
+		NumericUpDown affinityMask = null;
+		NumericUpDown bgAffinityMask = null;
+
+		ComboBox volumeMethod = null;
+		Extensions.NumericUpDownEx volume = null;
+
 		Button allbutton = new Button();
 		Button clearbutton = new Button();
-		NumericUpDown rescanFreq = new NumericUpDown();
-		NumericUpDown modifyDelay = new NumericUpDown();
+		Extensions.NumericUpDownEx rescanFreq = null;
+		Extensions.NumericUpDownEx modifyDelay = null;
 		CheckBox allowPaging = new CheckBox();
 		ComboBox powerPlan = new ComboBox();
 		CheckBox foregroundOnly = new CheckBox();
-		CheckBox bacgroundPowerdown = new CheckBox();
+		CheckBox backgroundPowerdown = new CheckBox();
 		ListView ignorelist = new ListView();
 		int cpumask = 0;
 
@@ -218,7 +242,7 @@ namespace Taskmaster
 			AutoSizeMode = AutoSizeMode.GrowOnly;
 			AutoSize = true;
 
-			Text = Controller.FriendlyName + " ("+ (Controller.Executable ?? Controller.Path) + ") – " + Application.ProductName;
+			Text = Controller.FriendlyName + " (" + (Controller.Executable ?? Controller.Path) + ") – " + Application.ProductName;
 
 			Padding = new Padding(12);
 
@@ -326,12 +350,12 @@ namespace Taskmaster
 			ignorelist.HeaderStyle = ColumnHeaderStyle.None;
 			ignorelist.Width = 180;
 			ignorelist.Columns.Add("Executable", -2);
+			tooltip.SetToolTip(ignorelist, "Executables to ignore for matching with this rule.\nOnly exact matches work.\n\nRequires path to be defined.");
 
 			if (Controller.IgnoreList != null)
 			{
 				foreach (string item in Controller.IgnoreList)
 					ignorelist.Items.Add(item);
-
 			}
 
 			var ignorelistmenu = new ContextMenuStrip();
@@ -366,11 +390,6 @@ namespace Taskmaster
 
 			// PRIORITY
 			lt.Controls.Add(new Label { Text = "Priority class", TextAlign = System.Drawing.ContentAlignment.MiddleLeft });
-			var priopanel = new TableLayoutPanel()
-			{
-				ColumnCount = 1,
-				AutoSize = true
-			};
 			priorityClass = new ComboBox
 			{
 				Dock = DockStyle.Left,
@@ -381,40 +400,37 @@ namespace Taskmaster
 			priorityClass.Width = 180;
 			priorityClass.SelectedIndex = Controller.Priority?.ToInt32() ?? 5;
 			tooltip.SetToolTip(priorityClass, "CPU priority for the application.\nIf both increase and decrease are disabled, this has no effect.");
-			var incdecpanel = new TableLayoutPanel()
+
+			priorityClassMethod = new ComboBox
 			{
-				ColumnCount = 4,
-				AutoSize = true,
+				Dock = DockStyle.Left,
+				DropDownStyle = ComboBoxStyle.DropDownList,
+				Items = { "Increase only", "Decrease only", "Bidirectional" },
+				SelectedIndex = 2,
 			};
-			incdecpanel.Controls.Add(new Label() { Text = "Increase:", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true });
-			increasePrio.Checked = Controller.PriorityStrategy == ProcessPriorityStrategy.Increase || Controller.PriorityStrategy == ProcessPriorityStrategy.Force;
-			increasePrio.AutoSize = true;
-			incdecpanel.Controls.Add(increasePrio);
-			incdecpanel.Controls.Add(new Label() { Text = "Decrease:", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true });
-			decreasePrio.Checked = Controller.PriorityStrategy == ProcessPriorityStrategy.Decrease || Controller.PriorityStrategy == ProcessPriorityStrategy.Force;
-			decreasePrio.AutoSize = true;
-			incdecpanel.Controls.Add(decreasePrio);
-			priopanel.Controls.Add(priorityClass);
-			priopanel.Controls.Add(incdecpanel);
-			lt.Controls.Add(priopanel);
-			lt.Controls.Add(new Label()); // empty
+
+			switch (Controller.PriorityStrategy)
+			{
+				case ProcessPriorityStrategy.Increase:
+					priorityClassMethod.SelectedIndex = 0;
+					break;
+				case ProcessPriorityStrategy.Decrease:
+					priorityClassMethod.SelectedIndex = 1;
+					break;
+				default:
+					priorityClassMethod.SelectedIndex = 2;
+					break;
+			}
+
+			lt.Controls.Add(priorityClass);
+			lt.Controls.Add(priorityClassMethod);
 
 			priorityClass.SelectedIndexChanged += (s, e) => {
-				if (priorityClass.SelectedIndex == 5)
-				{
-					increasePrio.Enabled = false;
-					decreasePrio.Enabled = false;
-				}
-				else
-				{
-					increasePrio.Enabled = true;
-					decreasePrio.Enabled = true;
-				}
+				priorityClassMethod.Enabled = priorityClass.SelectedIndex != 5; // disable method selection
 			};
 
-			// lt.Controls.Add(priorityClass);
-
 			// AFFINITY
+
 			var corelist = new List<CheckBox>();
 
 			lt.Controls.Add(new Label { Text = "Affinity", TextAlign = System.Drawing.ContentAlignment.MiddleLeft });
@@ -435,14 +451,15 @@ namespace Taskmaster
 			lt.Controls.Add(new Label()); // empty, right
 
 			lt.Controls.Add(new Label() { Text = "Affinity mask\n& cores", TextAlign = System.Drawing.ContentAlignment.MiddleLeft }); // left
-			affinityMask.Width = 80;
-			affinityMask.Maximum = ProcessManager.AllCPUsMask;
-			affinityMask.Minimum = -1;
-			affinityMask.Value = (Controller.Affinity?.ToInt32() ?? 0);
+			affinityMask = new NumericUpDown()
+			{
+				Width = 80,
+				Maximum = ProcessManager.AllCPUsMask,
+				Minimum = -1,
+				Value = (Controller.Affinity?.ToInt32() ?? 0),
+			};
 
 			tooltip.SetToolTip(affinityMask, "CPU core afffinity as integer mask.\nEnter 0 to let OS manage this as normal.\nFull affinity is same as 0, there's no difference.\nExamples:\n14 = all but first core on quadcore.\n254 = all but first core on octocore.\n-1 = Ignored");
-
-			// lt.Controls.Add(affinityMask);
 
 			// ---------------------------------------------------------------------------------------------------------
 
@@ -466,7 +483,7 @@ namespace Taskmaster
 				var box = new CheckBox();
 				var bitoff = bit;
 				box.AutoSize = true;
-				box.Checked = ((Math.Max(0,cpumask) & (1 << bitoff)) != 0);
+				box.Checked = ((Math.Max(0, cpumask) & (1 << bitoff)) != 0);
 				box.CheckedChanged += (sender, e) =>
 				{
 					if (cpumask < 0) cpumask = 0;
@@ -495,7 +512,7 @@ namespace Taskmaster
 
 			afflayout.Controls.Add(corelayout);
 
-			var buttonpanel = new TableLayoutPanel()
+			var affbuttonpanel = new TableLayoutPanel()
 			{
 				ColumnCount = 1,
 				AutoSize = true,
@@ -510,8 +527,8 @@ namespace Taskmaster
 			{
 				foreach (var litem in corelist) litem.Checked = true;
 			};
-			buttonpanel.Controls.Add(allbutton);
-			buttonpanel.Controls.Add(clearbutton);
+			affbuttonpanel.Controls.Add(allbutton);
+			affbuttonpanel.Controls.Add(clearbutton);
 
 			affinityMask.ValueChanged += (sender, e) =>
 			{
@@ -519,7 +536,7 @@ namespace Taskmaster
 				try { cpumask = (int)affinityMask.Value; }
 				catch { cpumask = 0; affinityMask.Value = 0; }
 				foreach (var bu in corelist)
-					bu.Checked = ((Math.Max(0,cpumask) & (1 << bitoff++)) != 0);
+					bu.Checked = ((Math.Max(0, cpumask) & (1 << bitoff++)) != 0);
 			};
 
 			switch (Controller.AffinityStrategy)
@@ -537,16 +554,63 @@ namespace Taskmaster
 			}
 
 			lt.Controls.Add(afflayout);
-			lt.Controls.Add(buttonpanel);
+			lt.Controls.Add(affbuttonpanel);
+
+			// ---------------------------------------------------------------------------------------------------------
+
+			// FOREGROUND
+
+			lt.Controls.Add(new Label { Text = "Foreground only", TextAlign = System.Drawing.ContentAlignment.MiddleLeft });
+			foregroundOnly.Checked = Controller.ForegroundOnly;
+			tooltip.SetToolTip(foregroundOnly, "Priority and affinity are lowered when this app is not in focus.");
+			lt.Controls.Add(foregroundOnly);
+			lt.Controls.Add(new Label()); // empty
+
+			// BACKGROUND PRIORITY & AFFINITY
+
+			lt.Controls.Add(new Label { Text = "Background priority", TextAlign = System.Drawing.ContentAlignment.MiddleLeft });
+
+			bgPriorityClass = new ComboBox
+			{
+				Dock = DockStyle.Left,
+				DropDownStyle = ComboBoxStyle.DropDownList,
+				Items = { "Idle", "Below Normal", "Normal", "Above Normal", "High", "Ignored" }, // System.Enum.GetNames(typeof(ProcessPriorityClass)), 
+				SelectedIndex = 5
+			};
+			bgPriorityClass.Width = 180;
+			if (Controller.BackgroundPriority.HasValue)
+				bgPriorityClass.SelectedIndex = Controller.BackgroundPriority.Value.ToInt32();
+			tooltip.SetToolTip(bgPriorityClass, "Same as normal priority.\nIgnored causes priority to be untouched.");
+
+			lt.Controls.Add(bgPriorityClass);
+			lt.Controls.Add(new Label()); // empty
+
+			lt.Controls.Add(new Label { Text = "Background affinity", TextAlign = System.Drawing.ContentAlignment.MiddleLeft });
+
+			bgAffinityMask = new NumericUpDown()
+			{
+				Width = 80,
+				Maximum = ProcessManager.AllCPUsMask,
+				Minimum = -1,
+				Value = (Controller.BackgroundAffinity?.ToInt32() ?? -1),
+			};
+			tooltip.SetToolTip(bgAffinityMask, "Same as normal affinity.\nStrategy is 'force' only for this.\n-1 causes affinity to be untouched.");
+
+			lt.Controls.Add(bgAffinityMask); // empty
+			lt.Controls.Add(new Label()); // empty
 
 			// ---------------------------------------------------------------------------------------------------------
 
 			// RESCAN
 			lt.Controls.Add(new Label { Text = "Rescan frequency", TextAlign = System.Drawing.ContentAlignment.MiddleLeft });
-			rescanFreq.Minimum = 0;
-			rescanFreq.Maximum = 60 * 24;
-			rescanFreq.Value = Controller.Rescan;
-			rescanFreq.Width = 80;
+			rescanFreq = new Extensions.NumericUpDownEx()
+			{
+				Unit = "m",
+				Minimum = 0,
+				Maximum = 60 * 24,
+				Value = Controller.Rescan,
+				Width = 80,
+			};
 			tooltip.SetToolTip(rescanFreq, "How often to rescan for this app, in minutes.\nSometimes instances slip by.");
 			lt.Controls.Add(rescanFreq);
 			lt.Controls.Add(new Label()); // empty
@@ -557,11 +621,15 @@ namespace Taskmaster
 			// MODIFY DELAY
 
 			lt.Controls.Add(new Label() { Text = "Modify delay", TextAlign = System.Drawing.ContentAlignment.MiddleLeft });
-			modifyDelay.Minimum = 0;
-			modifyDelay.Maximum = 180;
-			modifyDelay.DecimalPlaces = 1;
-			modifyDelay.Value = ((decimal)Controller.ModifyDelay) / 1000;
-			modifyDelay.Width = 80;
+			modifyDelay = new Extensions.NumericUpDownEx()
+			{
+				Unit = "s",
+				DecimalPlaces = 1,
+				Minimum = 0,
+				Maximum = 180,
+				Width = 80,
+				Value = Controller.ModifyDelay / 1000.0M,
+			};
 			tooltip.SetToolTip(modifyDelay, "Delay before the process is actually attempted modification.\nEither to keep original priority for a short while, or to counter early self-adjustment.\nThis is also applied to foreground only limited modifications.");
 			lt.Controls.Add(modifyDelay);
 			lt.Controls.Add(new Label()); // empty
@@ -583,19 +651,35 @@ namespace Taskmaster
 			lt.Controls.Add(powerPlan);
 			lt.Controls.Add(new Label()); // empty
 
-			// FOREGROUND
-			lt.Controls.Add(new Label { Text = "Foreground only", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true });
-			foregroundOnly.Checked = Controller.ForegroundOnly;
-			tooltip.SetToolTip(foregroundOnly, "Lower priority and power mode is restored when this app is not in focus.");
-			lt.Controls.Add(foregroundOnly);
+			// POWERDOWN in background
+			lt.Controls.Add(new Label() { Text = "Background powerdown", TextAlign = System.Drawing.ContentAlignment.MiddleLeft });
+			backgroundPowerdown.Checked = Controller.BackgroundPowerdown;
+			tooltip.SetToolTip(backgroundPowerdown, "Power down any power mode when the app goes off focus.\nRequires foreground only to be enabled.");
+			lt.Controls.Add(backgroundPowerdown);
 			lt.Controls.Add(new Label()); // empty
 
-			// POWERDOWN in background
-			lt.Controls.Add(new Label() { Text = "Background powerdown", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true });
-			bacgroundPowerdown.Checked = Controller.BackgroundPowerdown;
-			tooltip.SetToolTip(bacgroundPowerdown, "Power down any power mode when the app goes off focus.");
-			lt.Controls.Add(bacgroundPowerdown);
-			lt.Controls.Add(new Label()); // empty
+			// FOREGROUND ONLY TOGGLE
+			bool fge = foregroundOnly.Checked;
+			bool pwe = powerPlan.SelectedIndex != 3;
+
+			foregroundOnly.CheckedChanged += (s, e) =>
+			{
+				fge = foregroundOnly.Checked;
+				bgPriorityClass.Enabled = fge;
+				bgAffinityMask.Enabled = fge;
+				backgroundPowerdown.Enabled = (pwe && fge);
+			};
+
+			bool bgpd = backgroundPowerdown.Checked;
+			powerPlan.SelectionChangeCommitted += (s, e) =>
+			{
+				pwe = powerPlan.SelectedIndex != 3;
+				backgroundPowerdown.Enabled = (pwe && fge);
+			};
+
+			bgPriorityClass.Enabled = fge;
+			bgAffinityMask.Enabled = fge;
+			backgroundPowerdown.Enabled = fge;
 
 			// TODO: Add modifying background priority
 
@@ -607,6 +691,61 @@ namespace Taskmaster
 			lt.Controls.Add(new Label()); // empty
 
 			// lt.Controls.Add(new Label { Text=""})
+
+			// AUDIO
+
+			lt.Controls.Add(new Label { Text = "Mixer Volume", TextAlign = System.Drawing.ContentAlignment.MiddleLeft });
+
+			volumeMethod = new ComboBox()
+			{
+				Dock = DockStyle.Left,
+				DropDownStyle = ComboBoxStyle.DropDownList,
+				Items = { "Increase", "Decrease", "Increase from mute", "Decrease from full", "Force", "Ignore" },
+				SelectedIndex = 5,
+			};
+
+			switch (Controller.VolumeStrategy)
+			{
+				case AudioVolumeStrategy.Increase:
+					volumeMethod.SelectedIndex = 0;
+					break;
+				case AudioVolumeStrategy.Decrease:
+					volumeMethod.SelectedIndex = 1;
+					break;
+				case AudioVolumeStrategy.IncreaseFromMute:
+					volumeMethod.SelectedIndex = 2;
+					break;
+				case AudioVolumeStrategy.DecreaseFromFull:
+					volumeMethod.SelectedIndex = 3;
+					break;
+				case AudioVolumeStrategy.Force:
+					volumeMethod.SelectedIndex = 4;
+					break;
+				default:
+				case AudioVolumeStrategy.Ignore:
+					volumeMethod.SelectedIndex = 5;
+					break;
+			}
+
+			lt.Controls.Add(volumeMethod);
+			lt.Controls.Add(new Label());
+
+			lt.Controls.Add(new Label());
+			volume = new Extensions.NumericUpDownEx()
+			{
+				Unit = "%",
+				DecimalPlaces = 1,
+				Increment = 1.0M,
+				Maximum = 100.0M,
+				Minimum = 0.0M,
+				Width = 80,
+				Value = Convert.ToDecimal(Controller.Volume) * 100.0M,
+			};
+			tooltip.SetToolTip(volume, "Percentage of device maximum volume.");
+			lt.Controls.Add(volume);
+			lt.Controls.Add(new Label());
+
+			// BUTTONS
 
 			var finalizebuttons = new TableLayoutPanel() { ColumnCount = 2, AutoSize = true };
 			var saveButton = new Button() { Text = "Save" }; // SAVE

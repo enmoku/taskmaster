@@ -240,8 +240,8 @@ namespace Taskmaster
 			{
 				app["Foreground only"].BoolValue = ForegroundOnly;
 
-				if (BackgroundPriority != ProcessPriorityClass.RealTime)
-					app["Background priority"].IntValue = ProcessHelpers.PriorityToInt(BackgroundPriority);
+				if (BackgroundPriority.HasValue)
+					app["Background priority"].IntValue = ProcessHelpers.PriorityToInt(BackgroundPriority.Value);
 				else
 					app.Remove("Background priority");
 
@@ -392,7 +392,7 @@ namespace Taskmaster
 		HashSet<int> PausedIds = new HashSet<int>();
 
 		public bool BackgroundPowerdown { get; set; } = true;
-		public ProcessPriorityClass BackgroundPriority { get; set; } = ProcessPriorityClass.RealTime;
+		public ProcessPriorityClass? BackgroundPriority { get; set; } = null;
 		public IntPtr? BackgroundAffinity { get; set; } = IntPtr.Zero;
 
 		/// <summary>
@@ -418,12 +418,12 @@ namespace Taskmaster
 
 			try
 			{
-				if (BackgroundPriority != ProcessPriorityClass.RealTime)
+				if (BackgroundPriority.HasValue)
 				{
 					oldPriority = info.Process.PriorityClass;
-					if (oldPriority != BackgroundPriority)
+					if (oldPriority != BackgroundPriority.Value)
 					{
-						info.Process.PriorityClass = BackgroundPriority;
+						info.Process.PriorityClass = BackgroundPriority.Value;
 						mPriority = true;
 					}
 				}
@@ -459,7 +459,7 @@ namespace Taskmaster
 				sbs.Append("[").Append(FriendlyName).Append("] ").Append(FormatPathName(info))
 					.Append(" (#").Append(info.Id).Append(")");
 				if (mPriority)
-					sbs.Append("; Priority: ").Append(oldPriority.ToString()).Append("→").Append(BackgroundPriority.ToString());
+					sbs.Append("; Priority: ").Append(oldPriority.ToString()).Append("→").Append(BackgroundPriority.Value.ToString());
 				if (mAffinity)
 					sbs.Append("; Affinity: ").Append(oldAffinity.ToInt32()).Append("→").Append(BackgroundAffinity.Value.ToInt32());
 				if (!mAffinity && !mPriority)

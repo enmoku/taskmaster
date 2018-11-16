@@ -431,7 +431,7 @@ namespace Taskmaster
 		{
 			var rv = true;
 
-			if (prc.Priority.HasValue && prc.ForegroundOnly && prc.BackgroundPriority.ToInt32() >= prc.Priority.Value.ToInt32())
+			if (prc.Priority.HasValue && prc.ForegroundOnly && prc.BackgroundPriority.Value.ToInt32() >= prc.Priority.Value.ToInt32())
 			{
 				prc.ForegroundOnly = false;
 				Log.Warning("[" + prc.FriendlyName + "] Background priority equal or higher than foreground priority, ignoring.");
@@ -689,6 +689,9 @@ namespace Taskmaster
 				IntPtr? baff = null;
 				if (baffn >= 0)
 					baff = new IntPtr(baffn);
+				ProcessPriorityClass? bprio = null;
+				int bpriot = section.TryGet("Background priority")?.IntValue ?? -1;
+				if (bpriot >= 0) bprio = ProcessHelpers.IntToPriority(bpriot);
 
 				var prc = new ProcessController(section.Name, prioR, (aff == 0 ? AllCPUsMask : aff))
 				{
@@ -704,7 +707,7 @@ namespace Taskmaster
 					ForegroundOnly = (section.TryGet("Foreground only")?.BoolValue ?? false),
 					Recheck = (section.TryGet("Recheck")?.IntValue ?? 0),
 					PowerPlan = pmode,
-					BackgroundPriority = ProcessHelpers.IntToPriority((section.TryGet("Background priority")?.IntValue ?? DefaultBackgroundPriority).Constrain(1, 3)),
+					BackgroundPriority = bprio,
 					BackgroundAffinity = baff,
 					BackgroundPowerdown = (section.TryGet("Background powerdown")?.BoolValue ?? false),
 					IgnoreList = (section.TryGet("Ignore")?.StringValueArray ?? null),

@@ -472,7 +472,7 @@ namespace Taskmaster
 		}
 
 		Label micName;
-		NumericUpDown micVol;
+		Extensions.NumericUpDownEx micVol;
 		readonly object micList_lock = new object();
 		ListView micList;
 		readonly object appList_lock = new object();
@@ -1337,20 +1337,21 @@ namespace Taskmaster
 				//AutoSize = true // why not?
 			};
 
-			var micVolLabel2 = new Label
+			micVol = new Extensions.NumericUpDownEx
 			{
-				Text = "%",
-				Dock = DockStyle.Top,
-				TextAlign = System.Drawing.ContentAlignment.MiddleLeft,
-				//AutoSize = true // why not?
+				Unit = "%",
+				Increment = 1.0M,
+				Maximum = 100.0M,
+				Minimum = 0.0M,
+				Width = 60,
+				ReadOnly = true,
+				Enabled = false,
+				Dock = DockStyle.Top
 			};
-
-			micVol = new NumericUpDown { Maximum = 100, Minimum = 0, Width = 60, ReadOnly = true, Enabled = false, Dock = DockStyle.Top };
 			micVol.ValueChanged += UserMicVol;
 
 			miccntrl.Controls.Add(micVolLabel);
 			miccntrl.Controls.Add(micVol);
-			miccntrl.Controls.Add(micVolLabel2);
 
 			var corLbll = new Label
 			{
