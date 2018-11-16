@@ -91,32 +91,34 @@ namespace Taskmaster
 			var exnam = (execName.Text.Length > 0);
 			var path = (pathName.Text.Length > 0);
 
+			bool valid = true;
+
 			if (!fnlen || friendlyName.Text.Contains("]") || friendlyName.Text.Contains("["))
 			{
-				Controller.Valid = false;
+				valid = false;
 				MessageBox.Show("Friendly name is missing or includes illegal characters (such as square brackets).", "Malconfigured friendly name", MessageBoxButtons.OK, MessageBoxIcon.Error, MessageBoxDefaultButton.Button1);
 			}
 
 			if (!path && !exnam)
 			{
-				Controller.Valid = false;
+				valid = false;
 				MessageBox.Show("No path nor executable defined.", "Configuration error", MessageBoxButtons.OK, MessageBoxIcon.Error, MessageBoxDefaultButton.Button1);
 			}
 
 			if ((rescanFreq.Value > 0) && !exnam)
 			{
-				Controller.Valid = false;
+				valid = false;
 				MessageBox.Show("Rescan requires executable to be defined.", "Configuration error", MessageBoxButtons.OK, MessageBoxIcon.Error, MessageBoxDefaultButton.Button1);
 			}
 
 			var dprc = Taskmaster.Components.processmanager.getWatchedController(friendlyName.Text);
 			if (dprc != null && dprc != Controller)
 			{
-				Controller.Valid = false;
+				valid = false;
 				MessageBox.Show("Friendly Name conflict.", "Configuration error", MessageBoxButtons.OK, MessageBoxIcon.Error, MessageBoxDefaultButton.Button1);
 			}
 
-			if (!Controller.Valid)
+			if (!valid)
 			{
 				Log.Warning("[" + friendlyName.Text + "] Can't save, configuration invalid.");
 				return;

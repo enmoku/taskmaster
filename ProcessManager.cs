@@ -466,7 +466,7 @@ namespace Taskmaster
 				}
 			}
 
-			return (prc.Valid = rv);
+			return rv;
 		}
 
 		public void SaveController(ProcessController prc)

@@ -39,22 +39,15 @@ namespace Taskmaster
 	/// </summary>
 	sealed public class ProcessController : IDisposable
 	{
+		// EVENTS
 		public event EventHandler<ProcessEventArgs> Modified;
 
-		/// <summary>
-		/// Public identifier.
-		/// </summary>
-		public int Id { get; set; } = -1;
+		// OTHER STUFF
 
 		/// <summary>
 		/// Whether or not this rule is enabled.
 		/// </summary>
 		public bool Enabled { get; set; } = false;
-
-		/// <summary>
-		/// Whether this rule is valid.
-		/// </summary>
-		public bool Valid { get; set; } = false;
 
 		/// <summary>
 		/// Human-readable friendly name for the process.
