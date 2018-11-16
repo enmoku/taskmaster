@@ -1,10 +1,10 @@
 ﻿//
-// PowerPresets.cs
+// NumericUpDownEx.cs
 //
 // Author:
 //       M.A. (https://github.com/mkahvi)
 //
-// Copyright (c) 2018 M.A.
+// Copyright (c) 2016 M.A.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -26,47 +26,37 @@
 
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using Taskmaster.PowerInfo;
+using System.Windows.Forms;
 
-namespace Taskmaster
+namespace Taskmaster.Extensions
 {
-	static class PowerAutoadjustPresets
+	/// <summary>
+	/// Extension on NumericUpDown to show some form of unit of measure.
+	/// </summary>
+	class NumericUpDownEx : NumericUpDown
 	{
-		public static AutoAdjustSettings Default()
+		NumberFormatInfo FormatInfo = new NumberFormatInfo();
+
+		public NumericUpDownEx() : base()
 		{
-			return new AutoAdjustSettings()
+			// nothing here
+		}
+
+		public string Unit { get; set; } = null;
+
+		protected override void UpdateEditText()
+		{
+			if (!string.IsNullOrEmpty(Unit))
 			{
-				DefaultMode = PowerMode.Balanced,
-				High = {
-					Mode = PowerMode.HighPerformance,
-					Backoff = {
-						High = 60,
-						Avg = 40,
-						Low = 15,
-						Level = 3,
-					},
-					Commit = {
-						Level = 3,
-						Threshold = 70
-					}
-				},
-				Low = {
-					Mode = PowerMode.PowerSaver,
-					Backoff = {
-						High = 50,
-						Avg = 35,
-						Low = 25,
-						Level = 5,
-					},
-					Commit = {
-						Level = 7,
-						Threshold = 15
-					}
-				}
-			};
+				FormatInfo.NumberDecimalDigits = DecimalPlaces;
+				Text = string.Format(FormatInfo, "{0:F}", Value) + " " + Unit;
+			}
+			else
+				base.UpdateEditText();
 		}
 	}
 }
