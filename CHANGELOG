@@ -3,6 +3,9 @@ Comprehensive changes can be found in Git change history:
 	https://github.com/mkahvi/taskmaster/commits/master
 
 ## [0.11...]
+### 2018-11-16
+	Fixed: Wrong power mode selected in watchlist edit window.
+	Changed: Power mode changes don't show for watchlist modifications to avoid spammyness from background powerdown setting.
 ### 2018-11-15
 	Internal: Removed as much as possible of Serilog's formatted string usage. This should fix large number of output related bugs.
 ### 2018-11-13
