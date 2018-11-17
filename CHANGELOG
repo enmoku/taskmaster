@@ -3,6 +3,8 @@ Comprehensive changes can be found in Git change history:
 	https://github.com/mkahvi/taskmaster/commits/master
 
 ## [0.11...]
+### 2018-11-17
+	Internal: A lot of changes that had been left for later. At most fixed some obscure bugs.
 ### 2018-11-16
 	Fixed: Wrong power mode selected in watchlist edit window.
 	Changed: Power mode changes don't show for watchlist modifications to avoid spammyness from background powerdown setting.
