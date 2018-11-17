@@ -690,6 +690,9 @@ namespace Taskmaster
 				int bpriot = section.TryGet("Background priority")?.IntValue ?? -1;
 				if (bpriot >= 0) bprio = ProcessHelpers.IntToPriority(bpriot);
 
+				PathVisibilityOptions pvis = PathVisibilityOptions.File;
+				pvis = (PathVisibilityOptions)(section.TryGet("Path visibility")?.IntValue.Constrain(0,3) ?? 0);
+
 				var prc = new ProcessController(section.Name, prioR, (aff == 0 ? AllCPUsMask : aff))
 				{
 					Enabled = section.TryGet("Enabled")?.BoolValue ?? true,
@@ -703,6 +706,7 @@ namespace Taskmaster
 					//BackgroundIO = (section.TryGet("Background I/O")?.BoolValue ?? false), // Doesn't work
 					Recheck = (section.TryGet("Recheck")?.IntValue ?? 0),
 					PowerPlan = pmode,
+					PathVisibility = pvis,
 					BackgroundPriority = bprio,
 					BackgroundAffinity = baff,
 					BackgroundPowerdown = (section.TryGet("Background powerdown")?.BoolValue ?? false),

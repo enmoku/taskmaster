@@ -131,7 +131,7 @@ namespace Taskmaster
 
 		public bool AllowPaging = false;
 
-		public PathVisibilityOptions PathVisibility;
+		public PathVisibilityOptions PathVisibility = PathVisibilityOptions.File;
 
 		string PathMask = string.Empty;
 
@@ -683,6 +683,8 @@ namespace Taskmaster
 			{
 				switch (PathVisibility)
 				{
+					case PathVisibilityOptions.Smart:
+						// not implemented
 					default:
 					case PathVisibilityOptions.File:
 						return System.IO.Path.GetFileName(info.Path);
