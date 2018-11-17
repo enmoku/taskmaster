@@ -45,8 +45,6 @@ namespace Taskmaster
 		public static string datapath = System.IO.Path.Combine(
 			Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "MKAh", "Taskmaster");
 
-		// TODO: Pre-allocate space for the log files.
-
 		public static ConfigManager Config = null;
 		public static ComponentContainer Components = new ComponentContainer();
 
@@ -1139,9 +1137,8 @@ namespace Taskmaster
 				}
 				catch (Exception ex)
 				{
-					Log.Fatal("Unhandled exception! Dying.");
 					Logging.Stacktrace(ex);
-					// TODO: ACTUALLY DIE
+					throw new RunstateException("Unhandled", Runstate.CriticalFailure, ex);
 				}
 
 				if (SelfOptimize && !RunOnce) // return decent processing speed to quickly exit
