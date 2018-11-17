@@ -126,7 +126,9 @@ namespace Taskmaster
 
 			if (Taskmaster.DebugMonitor)
 			{
-				var idle = User.IdleFor(User.LastActive());
+				var lastact = User.LastActive();
+				var idle = User.IdleFor(lastact);
+				if (lastact == uint.MinValue) idle = 0; // HACK
 				Log.Debug("<Monitor> Power state: " + CurrentMonitorState.ToString() + " (last user activity " + Convert.ToInt32(idle) + "s ago)");
 			}
 
@@ -153,7 +155,9 @@ namespace Taskmaster
 				if (CurrentMonitorState == MonitorPowerMode.Off) return;
 				if (!SessionLocked) return;
 
-				double idletime = User.IdleFor(User.LastActive());
+				uint lastact = User.LastActive();
+				double idletime = User.IdleFor(lastact);
+				if (lastact == uint.MinValue) idletime = 0; // HACK
 
 				if (idletime >= Convert.ToDouble(SessionLockPowerOffIdleTimeout))
 				{
@@ -338,9 +342,7 @@ namespace Taskmaster
 		{
 			if (Behaviour != PowerBehaviour.Auto) return;
 
-			await Task.Delay(0).ConfigureAwait(false);
-
-			// TODO: Asyncify. Mostly math so probably unnecessary.
+			await Task.Delay(0).ConfigureAwait(false); // unnecessary?
 
 			var Reaction = PowerReaction.Average;
 			var ReactionaryPlan = AutoAdjust.DefaultMode;
@@ -1037,12 +1039,7 @@ namespace Taskmaster
 
 				SavedMode = CurrentMode;
 
-				if (SavedMode == PowerMode.Undefined)
-				{
-					Log.Warning("<Power> Failed to get current mode, defafulting to balanced as restore option.");
-					// TODO: Use normal power restoration
-					SavedMode = PowerMode.Balanced;
-				}
+				if (SavedMode == PowerMode.Undefined) Log.Warning("<Power> Failed to get current mode for later restoration.");
 			}
 		}
 
@@ -1064,7 +1061,6 @@ namespace Taskmaster
 			}
 
 			Debug.Assert(sourcePid == 0 || sourcePid > 4);
-			if (Paused) return; // TODO: What to do in the unlikely event of this being called while paused?
 
 			try
 			{
@@ -1158,7 +1154,11 @@ namespace Taskmaster
 
 			lock (power_lock)
 			{
-				if (RestoreModeMethod != ModeMethod.Saved)
+				if (RestoreModeMethod == ModeMethod.Saved)
+				{
+					if (SavedMode == PowerMode.Undefined) SavedMode = RestoreMode;
+				}
+				else
 					SavedMode = RestoreMode;
 
 				if (SavedMode != CurrentMode && SavedMode != PowerMode.Undefined)
@@ -1274,6 +1274,7 @@ namespace Taskmaster
 			}
 		}
 
+		// BUG: ?? There might be odd behaviour if this is called while Paused==true
 		void InternalSetMode(PowerMode mode, bool verbose = true)
 		{
 			var plan = Guid.Empty;

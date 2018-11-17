@@ -164,6 +164,8 @@ namespace Taskmaster
 			BatchProcessingTimer = new System.Timers.Timer(1000 * 5);
 			BatchProcessingTimer.Elapsed += BatchProcessingTick;
 
+			ScanEverythingEndEvent += UnregisterFreeMemoryTick;
+
 			Log.Information("<Process> Component Loaded.");
 		}
 
@@ -176,19 +178,16 @@ namespace Taskmaster
 		// TODO: Need an ID mapping
 		public ProcessController getWatchedController(string name)
 		{
-			ProcessController prc = null;
 			lock (watchlist_lock)
 			{
 				foreach (var item in watchlist)
 				{
 					if (item.FriendlyName.Equals(name, StringComparison.InvariantCultureIgnoreCase))
-					{
-						prc = item;
-					}
+						return item;
 				}
 			}
 
-			return prc;
+			return null;
 		}
 
 		/// <summary>
@@ -227,15 +226,6 @@ namespace Taskmaster
 			activeappmonitor.ActiveChanged += ForegroundAppChangedEvent;
 		}
 
-		void RegisterFreeMemoryTick()
-		{
-			ScanEverythingEndEvent -= UnregisterFreeMemoryTick; // avoid multiple registrations
-			ScanEverythingEndEvent += UnregisterFreeMemoryTick;
-
-			ProcessDetectedEvent -= FreeMemoryTick; // avoid multiple registrations
-			ProcessDetectedEvent += FreeMemoryTick;
-		}
-
 		void UnregisterFreeMemoryTick(object sender, EventArgs ev) => ProcessDetectedEvent -= FreeMemoryTick;
 
 		string freememoryignore = null;
@@ -260,7 +250,7 @@ namespace Taskmaster
 
 		public void Unignore(int processId) => ignorePids.Remove(processId);
 
-		public async Task FreeMemory(string executable = null, bool quiet=false)
+		public async Task FreeMemory(string executable = null, bool quiet=false, int ignorePid=-1)
 		{
 			if (!Taskmaster.PagingEnabled) return;
 
@@ -285,32 +275,33 @@ namespace Taskmaster
 			//await Task.Delay(0).ConfigureAwait(false);
 
 			freememoryignore = executable;
-			await FreeMemoryInternal().ConfigureAwait(false);
+			await FreeMemoryInternal(ignorePid).ConfigureAwait(false);
 			freememoryignore = string.Empty;
 		}
 
-		public async Task FreeMemory(int pid = -1)
+		public async Task FreeMemory(int ignorePid = -1)
 		{
-			if (pid > 4) Ignore(pid);
-			await FreeMemoryInternal().ConfigureAwait(false);
-			if (pid > 4) Unignore(pid);
+			await FreeMemoryInternal(ignorePid).ConfigureAwait(false);
 		}
 
-		async Task FreeMemoryInternal()
+		async Task FreeMemoryInternal(int ignorePid = -1)
 		{
 			var b1 = Taskmaster.Components.healthmonitor.FreeMemory();
 
-			// TODO: Somehow make sure FreeMemoryTick is not called on followup scans in case they're run too close together
-
 			try
 			{
-				RegisterFreeMemoryTick();
+				ScanEverythingPaused = true;
 
-				await ScanEverything().ConfigureAwait(false); // TODO: Call for this to happen otherwise
+				// TODO: Pause ScanEverything until we're done
+				ProcessDetectedEvent += FreeMemoryTick;
+
+				await ScanEverything(ignorePid).ConfigureAwait(false); // TODO: Call for this to happen otherwise
+				ScanEverythingPaused = false;
 
 				Taskmaster.Components.healthmonitor.InvalidateFreeMemory(); // just in case
 
-				var b2 = Taskmaster.Components.healthmonitor.FreeMemory(); // TODO: Wait a little longer to allow OS to Actually page stuff
+				// TODO: Wait a little longer to allow OS to Actually page stuff. Might not matter?
+				var b2 = Taskmaster.Components.healthmonitor.FreeMemory();
 
 				if (Taskmaster.DebugPaging)
 				{
@@ -328,13 +319,14 @@ namespace Taskmaster
 			}
 		}
 
+		bool ScanEverythingPaused = false;
 		public void ScanEverythingRequest(object sender, EventArgs e)
 		{
 			if (Taskmaster.Trace) Log.Verbose("Rescan requested.");
-
+			if (ScanEverythingPaused) return;
 			// this stays on UI thread for some reason
 
-			Task.Run(ScanEverything);
+			Task.Run(async () => { await ScanEverything(); });
 		}
 
 		System.Threading.Timer rescanTimer;
@@ -354,19 +346,22 @@ namespace Taskmaster
 
 		int scan_lock = 0;
 
-		public async Task ScanEverything()
+		public async Task ScanEverything(int ignorePid=-1)
 		{
 			var now = DateTime.Now;
-			LastScan = now;
-			NextScan = now.AddSeconds(RescanEverythingFrequency);
 
 			if (!Atomic.Lock(ref scan_lock)) return;
+
+			LastScan = now;
+			NextScan = now.AddSeconds(RescanEverythingFrequency);
 
 			if (Taskmaster.DebugFullScan) Log.Debug("<Process> Full Scan: Start");
 
 			await Task.Delay(0).ConfigureAwait(false); // asyncify
 
 			ScanEverythingStartEvent?.Invoke(this, null);
+
+			if (ignorePid > 4) Ignore(ignorePid);
 
 			var procs = Process.GetProcesses();
 			int count = procs.Length - 2; // -2 for Idle&System
@@ -413,6 +408,8 @@ namespace Taskmaster
 
 			ScanEverythingEndEvent?.Invoke(this, null);
 
+			if (ignorePid > 4) Unignore(ignorePid);
+
 			Atomic.Unlock(ref scan_lock);
 		}
 
@@ -433,7 +430,7 @@ namespace Taskmaster
 
 			if (prc.Priority.HasValue && prc.ForegroundOnly && prc.BackgroundPriority.Value.ToInt32() >= prc.Priority.Value.ToInt32())
 			{
-				prc.ForegroundOnly = false;
+				prc.SetForegroundOnly(false);
 				Log.Warning("[" + prc.FriendlyName + "] Background priority equal or higher than foreground priority, ignoring.");
 			}
 
@@ -621,7 +618,7 @@ namespace Taskmaster
 
 				if (!section.Contains("Priority") && !section.Contains("Affinity") && !section.Contains("Power mode"))
 				{
-					// TODO: Deal with incorrect configuration lacking image
+					// TODO: Deal with incorrect configuration lacking these things
 					Log.Warning("[" + section.Name + "] No priority, affinity, nor power plan. Ignoring.");
 					continue;
 				}
@@ -704,7 +701,6 @@ namespace Taskmaster
 					Path = (section.TryGet("Path")?.StringValue ?? null),
 					ModifyDelay = (section.TryGet("Modify delay")?.IntValue ?? 0),
 					//BackgroundIO = (section.TryGet("Background I/O")?.BoolValue ?? false), // Doesn't work
-					ForegroundOnly = (section.TryGet("Foreground only")?.BoolValue ?? false),
 					Recheck = (section.TryGet("Recheck")?.IntValue ?? 0),
 					PowerPlan = pmode,
 					BackgroundPriority = bprio,
@@ -713,6 +709,8 @@ namespace Taskmaster
 					IgnoreList = (section.TryGet("Ignore")?.StringValueArray ?? null),
 					AllowPaging = (section.TryGet("Allow paging")?.BoolValue ?? false),
 				};
+
+				prc.SetForegroundOnly(section.TryGet("Foreground only")?.BoolValue ?? false);
 
 				prc.Volume = volume;
 				prc.VolumeStrategy = volumestrategy;
@@ -1017,7 +1015,7 @@ namespace Taskmaster
 					}
 
 					// Log.Debug("with: "+ pc.Path);
-					if (prc.MatchPath(info.Path)) // TODO: make this compatible with OSes that aren't case insensitive?
+					if (prc.MatchPath(info.Path))
 					{
 						// if (cacheGet)
 						// 	Log.Debug("[{FriendlyName}] {Exec} (#{Pid}) – PATH CACHE GET!! :D", pc.FriendlyName, name, pid);
@@ -1235,7 +1233,6 @@ namespace Taskmaster
 				return; // ProcessState.AccessDenied;
 			}
 
-			// TODO: check proc.processName for presence in images.
 			ProcessController prc = null;
 
 			lock (execontrol_lock)
@@ -1407,7 +1404,7 @@ namespace Taskmaster
 				try
 				{
 					// This happens only when encountering a process with elevated privileges, e.g. admin
-					// TODO: Mark as admin process
+					// TODO: Mark as admin process?
 					info.Name = info.Process.ProcessName;
 				}
 				catch

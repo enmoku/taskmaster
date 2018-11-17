@@ -93,8 +93,7 @@ namespace Taskmaster
 		/// Determines if the values are only maintained when the app is in foreground.
 		/// </summary>
 		/// <value><c>true</c> if foreground; otherwise, <c>false</c>.</value>
-		// TODO: Clean up when this is disabled.
-		public bool ForegroundOnly { get; set; } = false;
+		public bool ForegroundOnly { get; private set; } = false;
 
 		/// <summary>
 		/// Target priority class for the process.
@@ -172,6 +171,20 @@ namespace Taskmaster
 
 		const string watchlistfile = "Watchlist.ini";
 
+		public void SetForegroundOnly(bool fgonly)
+		{
+			if (ForegroundOnly && fgonly == false)
+			{
+				lock (foreground_lock)
+				{
+					PausedIds.Clear();
+					ForegroundWatch.Clear();
+				}
+			}
+
+			ForegroundOnly = fgonly;
+		}
+
 		public void DeleteConfig(ConfigWrapper cfg = null)
 		{
 			if (cfg == null)
@@ -179,6 +192,31 @@ namespace Taskmaster
 
 			cfg.Config.Remove(FriendlyName); // remove the section, should remove items in the section
 			cfg.MarkDirty();
+		}
+
+		public void Update()
+		{
+			//TODO: Update power
+			lock (powerlist_lock)
+			{
+				if (PowerPlan == PowerInfo.PowerMode.Undefined)
+				{
+					foreach (int pid in PowerList.ToArray())
+					{
+						PowerList.Remove(pid);
+						Taskmaster.Components.powermanager?.Release(pid);
+					}
+				}
+			}
+
+			lock (foreground_lock)
+			{
+				if (!ForegroundOnly)
+				{
+					ForegroundWatch.Clear();
+					PausedIds.Clear();
+				}
+			}
 		}
 
 		public void SaveConfig(ConfigWrapper cfg = null, SharpConfig.Section app = null)
@@ -581,18 +619,34 @@ namespace Taskmaster
 
 		// -----------------------------------------------
 
+		HashSet<int> PowerList = new HashSet<int>();
+		object powerlist_lock = new object();
+
 		bool SetPower(ProcessEx info)
 		{
 			Debug.Assert(Taskmaster.PowerManagerEnabled);
 			Debug.Assert(PowerPlan != PowerInfo.PowerMode.Undefined);
 
-			info.PowerWait = true;
-			Taskmaster.Components.processmanager.WaitForExit(info); // TODO: need nicer way to signal this
+			lock (powerlist_lock)
+			{
 
-			return Taskmaster.Components.powermanager.Force(PowerPlan, info.Id);
+				info.PowerWait = true;
+				Taskmaster.Components.processmanager.WaitForExit(info); // TODO: need nicer way to signal this
+
+				PowerList.Add(info.Id);
+
+				return Taskmaster.Components.powermanager.Force(PowerPlan, info.Id);
+			}
 		}
 
-		void UndoPower(ProcessEx info) => Taskmaster.Components.powermanager?.Release(info.Id);
+		void UndoPower(ProcessEx info)
+		{
+			lock (powerlist_lock)
+			{
+				PowerList.Remove(info.Id);
+				Taskmaster.Components.powermanager?.Release(info.Id);
+			}
+		}
 
 		/*
 		// Windows doesn't allow setting this for other processes
@@ -681,6 +735,7 @@ namespace Taskmaster
 
 		public bool MatchPath(string path)
 		{
+			// TODO: make this compatible with OSes that aren't case insensitive?
 			return path.StartsWith(Path, StringComparison.InvariantCultureIgnoreCase);
 		}
 
@@ -1007,7 +1062,7 @@ namespace Taskmaster
 			}
 			if (Affinity.HasValue)
 			{
-				// TODO: respect display configuration for 
+				// TODO: respect display configuration for affinity
 				sbs.Append("; Affinity: ");
 				if (mAffinity)
 					sbs.Append(oldAffinity.ToInt32()).Append(" → ");

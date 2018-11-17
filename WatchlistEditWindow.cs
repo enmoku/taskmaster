@@ -81,7 +81,6 @@ namespace Taskmaster
 			Controller.Enabled = false;
 			
 			// TODO: VALIDATE FOR GRIMMY'S SAKE!
-			// TODO: Foreground/Powermode need to be informed of any relevant changes.
 
 			// -----------------------------------------------
 			// VALIDATE
@@ -125,8 +124,8 @@ namespace Taskmaster
 
 			// -----------------------------------------------
 
-			// TODO: Warn about conflicting section name
 			string newfriendlyname = friendlyName.Text.Trim();
+
 			if (!newPrc && !newfriendlyname.Equals(Controller.FriendlyName))
 				Controller.DeleteConfig(); // SharpConfig doesn't seem to support renaming sections, so we delete the old one instead
 
@@ -179,7 +178,7 @@ namespace Taskmaster
 			if (Controller.PowerPlan == PowerInfo.PowerMode.Custom) Controller.PowerPlan = PowerInfo.PowerMode.Undefined;
 			Controller.Rescan = Convert.ToInt32(rescanFreq.Value);
 			Controller.AllowPaging = allowPaging.Checked;
-			Controller.ForegroundOnly = foregroundOnly.Checked;
+			Controller.SetForegroundOnly(foregroundOnly.Checked);
 			Controller.BackgroundPowerdown = Controller.ForegroundOnly && backgroundPowerdown.Checked;
 
 			if (bgPriorityClass.SelectedIndex != 5)
@@ -209,6 +208,8 @@ namespace Taskmaster
 			Log.Information("[" + Controller.FriendlyName + "] " + (newPrc ? "Created" : "Modified"));
 
 			DialogResult = DialogResult.OK;
+
+			Controller.Update();
 
 			Close();
 		}
@@ -683,8 +684,6 @@ namespace Taskmaster
 			bgPriorityClass.Enabled = fge;
 			bgAffinityMask.Enabled = fge;
 			backgroundPowerdown.Enabled = fge;
-
-			// TODO: Add modifying background priority
 
 			// PAGING
 			lt.Controls.Add(new Label { Text = "Allow paging", TextAlign = System.Drawing.ContentAlignment.MiddleLeft });

@@ -151,7 +151,7 @@ namespace Taskmaster
 			// Tray.Click += RestoreMainWindow;
 			Tray.MouseClick += ShowWindow;
 
-			// TODO: Toast Notifications
+			// TODO: Toast Notifications. Apparently not supported by Win7, so nevermind.
 
 			if (Tray.Icon == null)
 			{
@@ -408,14 +408,6 @@ namespace Taskmaster
 			}
 		}
 
-		void CompactEvent(object sender, EventArgs e)
-		{
-			// TODO: Move this call to self-maintenance
-			System.Runtime.GCSettings.LargeObjectHeapCompactionMode = System.Runtime.GCLargeObjectHeapCompactionMode.CompactOnce;
-			GC.Collect(GC.MaxGeneration, GCCollectionMode.Forced, true, true);
-			GC.WaitForPendingFinalizers();
-		}
-
 		void WindowClosed(object sender, FormClosingEventArgs e)
 		{
 			// CLEANUP: Console.WriteLine("START:TrayAccess.WindowClosed");
@@ -449,7 +441,6 @@ namespace Taskmaster
 			Tray.MouseDoubleClick += UnloseWindow;
 
 			window.FormClosing += WindowClosed;
-			window.FormClosed += CompactEvent;
 		}
 
 		Process[] Explorer;

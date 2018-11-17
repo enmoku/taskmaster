@@ -280,8 +280,6 @@ namespace Taskmaster
 			bool rv = NativeMethods.GetLastInputInfo(ref info);
 			if (rv) return info.dwTime;
 
-			// TODO: Throw
-
 			return uint.MinValue;
 		}
 

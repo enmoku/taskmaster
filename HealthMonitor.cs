@@ -377,34 +377,27 @@ namespace Taskmaster
 						{
 							// The following should just call something in ProcessManager
 							int ignorepid = -1;
-							try
+
+							if (Settings.MemIgnoreFocus && Taskmaster.Components.activeappmonitor != null)
 							{
-								if (Settings.MemIgnoreFocus && Taskmaster.Components.activeappmonitor != null)
+								uint lastact = User.LastActive();
+								if (lastact != uint.MinValue && User.IdleFor(lastact) <= (60 * 60 * 3))
 								{
-									if (User.IdleFor(User.LastActive()) <= (60 * 60 * 3))
-									{
-										ignorepid = Taskmaster.Components.activeappmonitor.Foreground;
-										Log.Verbose("<Auto-Doc> Protecting foreground app (#{Id})", ignorepid);
-										Taskmaster.Components.processmanager.Ignore(ignorepid);
-									}
+									ignorepid = Taskmaster.Components.activeappmonitor.Foreground;
+									Log.Verbose("<Auto-Doc> Protecting foreground app (#{Id})", ignorepid);
 								}
-
-								var sbs = new System.Text.StringBuilder();
-								sbs.Append("<<Auto-Doc>> Free memory low [")
-									.Append(HumanInterface.ByteString((long)(memfreemb * 1_000_000)))
-									.Append("], attempting to improve situation.");
-								if (ignorepid > 4)
-									sbs.Append(" Ignoring foreground (#").Append(ignorepid).Append(").");
-
-								Log.Warning(sbs.ToString());
-
-								Taskmaster.Components.processmanager?.FreeMemory(null, quiet: true);
 							}
-							finally
-							{
-								if (ignorepid > 4)
-									Taskmaster.Components.processmanager.Unignore(ignorepid);
-							}
+
+							var sbs = new System.Text.StringBuilder();
+							sbs.Append("<<Auto-Doc>> Free memory low [")
+								.Append(HumanInterface.ByteString((long)(memfreemb * 1_000_000)))
+								.Append("], attempting to improve situation.");
+							if (ignorepid > 4)
+								sbs.Append(" Ignoring foreground (#").Append(ignorepid).Append(").");
+
+							Log.Warning(sbs.ToString());
+
+							Taskmaster.Components.processmanager?.FreeMemory(null, quiet: true, ignorePid: ignorepid);
 
 							// sampled too soon, OS has had no significant time to swap out data
 
