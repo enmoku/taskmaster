@@ -268,6 +268,19 @@ namespace Taskmaster
 					return;
 				}
 
+				foreach (var prc in procs)
+				{
+					try
+					{
+						if (executable.Equals(prc.ProcessName))
+						{
+							ignorePid = prc.Id;
+							break;
+						}
+					}
+					catch  {} // ignore
+				}
+
 				if (Taskmaster.DebugPaging && !quiet)
 					Log.Debug("<Process> Paging applications to free memory for: " + executable);
 			}
