@@ -72,7 +72,7 @@ namespace Taskmaster
 				menu_rescan.Enabled = true;
 			});
 			menu_configuration = new ToolStripMenuItem("Configuration");
-			var menu_configuration_autopower = new ToolStripMenuItem("Power auto-adjust", null, ShowPowerConfig);
+			var menu_configuration_autopower = new ToolStripMenuItem("Power configuration", null, ShowPowerConfig);
 			var menu_configuration_folder = new ToolStripMenuItem("Open in file manager", null, ShowConfigRequest);
 			menu_configuration.DropDownItems.Add(menu_configuration_autopower);
 			menu_configuration.DropDownItems.Add(new ToolStripSeparator());
@@ -351,7 +351,7 @@ namespace Taskmaster
 			{
 				try
 				{
-					PowerConfigWindow.ShowPowerConfig();
+					PowerConfigWindow.Show();
 				}
 				catch (Exception ex) { Logging.Stacktrace(ex); }
 			}));

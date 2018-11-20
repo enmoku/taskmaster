@@ -515,30 +515,36 @@ namespace Taskmaster
 			var restoremode = power.GetSetDefault("Restore mode", "Default", out modified).StringValue;
 			power["Restore mode"].Comment = "Default, Original, Saved, or specific power mode.";
 			dirtyconfig |= modified;
+			RestoreModeMethod newmodemethod = RestoreModeMethod.Default;
+			PowerMode newrestoremode = PowerMode.Undefined;
+
 			switch (restoremode.ToLowerInvariant())
 			{
 				case "original":
-					RestoreModeMethod = ModeMethod.Original;
-					RestoreMode = OriginalMode;
+					newmodemethod = RestoreModeMethod.Original;
+					newrestoremode = OriginalMode;
 					break;
 				case "default":
-					RestoreModeMethod = ModeMethod.Default;
-					RestoreMode = AutoAdjust.DefaultMode;
+					newmodemethod = RestoreModeMethod.Default;
+					newrestoremode = AutoAdjust.DefaultMode;
 					break;
 				case "saved":
-					RestoreModeMethod = ModeMethod.Saved;
-					RestoreMode = PowerMode.Undefined;
+					newmodemethod = RestoreModeMethod.Saved;
+					newrestoremode = PowerMode.Undefined;
 					break;
 				default:
-					RestoreModeMethod = ModeMethod.Custom;
-					RestoreMode = GetModeByName(restoremode);
+					newmodemethod = RestoreModeMethod.Custom;
+					newrestoremode = GetModeByName(restoremode);
 					if (RestoreMode == PowerMode.Custom)
 					{
 						// TODO: Complain about bad config
-						RestoreMode = AutoAdjust.DefaultMode;
+						Log.Warning("<Power> Restore mode name unintelligible.");
+						newrestoremode = AutoAdjust.DefaultMode;
 					}
 					break;
 			}
+			SetRestoreMode(newmodemethod, newrestoremode);
+			saveneeded = false;
 
 			PowerdownDelay = power.GetSetDefault("Watchlist powerdown delay", 0, out modified).IntValue.Constrain(0, 60);
 			power["Watchlist powerdown delay"].Comment = "Delay, in seconds (0 to 60, 0 disables), for when to wind down power mode set by watchlist.";
@@ -660,7 +666,7 @@ namespace Taskmaster
 			LogBehaviourState();
 
 			Log.Information("<Power> Session lock: " + (SessionLockPowerMode == PowerMode.Custom ? "Ignored" : SessionLockPowerMode.ToString()));
-			Log.Information("<Power> Restore mode: " + RestoreModeMethod.ToString() + " [" + RestoreMode.ToString() + "]");
+			Log.Information("<Power> Restore mode: " + RestoreMethod.ToString() + " [" + RestoreMode.ToString() + "]");
 
 			Log.Information("<Session> User AFK timeout: " + (SessionLockPowerOffIdleTimeout == 0 ? "Disabled" : $"{SessionLockPowerOffIdleTimeout}s"));
 			Log.Information("<Session> Immediate power off on lock: " + (SessionLockPowerOff ? "Enabled" : "Disabled"));
@@ -669,6 +675,7 @@ namespace Taskmaster
 		}
 
 		bool saveneeded = false;
+		bool savebehaviour = false;
 		void SaveConfig()
 		{
 			if (!saveneeded) return;
@@ -678,12 +685,12 @@ namespace Taskmaster
 
 			var power = corecfg.Config["Power"];
 			power["Default mode"].StringValue = AutoAdjust.DefaultMode.ToString();
-			power["Restore mode"].StringValue = RestoreModeMethod.ToString();
+
+			power["Restore mode"].StringValue = (RestoreMethod == RestoreModeMethod.Custom ? RestoreMode.ToString() : RestoreMethod.ToString());
 			if (PowerdownDelay > 0)
 				power["Watchlist powerdown delay"].IntValue = PowerdownDelay;
 			else
 				power.Remove("Watchlist powerdown delay");
-
 			var autopower = corecfg.Config["Power / Auto"];
 
 			autopower["Auto-adjust"].BoolValue = (Behaviour == PowerBehaviour.Auto);
@@ -714,6 +721,11 @@ namespace Taskmaster
 			saver["Monitor power off idle timeout"].IntValue = SessionLockPowerOffIdleTimeout;
 			saver["Monitor power off on lock"].BoolValue = SessionLockPowerOff;
 
+			if (savebehaviour)
+			{
+				autopower["Auto-adjust"].BoolValue = (Behaviour == PowerBehaviour.Auto);
+			}
+
 			// --------------------------------------------------------------------------------------------------------
 
 			// CPU SAMPLING
@@ -724,13 +736,29 @@ namespace Taskmaster
 
 		public void LogBehaviourState()
 		{
-			Log.Information("<Power> Behaviour: " +
-				(Behaviour == PowerBehaviour.Auto ? "Automatic" : Behaviour == PowerBehaviour.RuleBased ? "Rule-controlled" : "Manual"));
+			string mode = string.Empty;
+			switch (Behaviour)
+			{
+				case PowerBehaviour.Auto:
+					mode = "Auto-adjust";
+					break;
+				case PowerBehaviour.RuleBased:
+					mode = "Rule-based";
+					break;
+				case PowerBehaviour.Manual:
+					mode = "Manual";
+					break;
+				default:
+					mode = "Undefined";
+					break;
+			}
+
+			Log.Information("<Power> Behaviour: " + mode);
 		}
 
 		int BackoffCounter { get; set; } = 0;
 
-		enum ModeMethod
+		public enum RestoreModeMethod
 		{
 			Original,
 			Saved,
@@ -738,8 +766,8 @@ namespace Taskmaster
 			Custom
 		};
 
-		ModeMethod RestoreModeMethod = ModeMethod.Saved;
-		PowerMode RestoreMode { get; set; } = PowerMode.Balanced;
+		public RestoreModeMethod RestoreMethod { get; private set; } = RestoreModeMethod.Default;
+		public PowerMode RestoreMode { get; private set; } = PowerMode.Balanced;
 
 		void SessionLockEvent(object sender, SessionSwitchEventArgs ev)
 		{
@@ -980,10 +1008,41 @@ namespace Taskmaster
 			public PowerBehaviour Behaviour = PowerBehaviour.Undefined;
 		}
 
+		public void SetRestoreMode(RestoreModeMethod method, PowerMode mode)
+		{
+			RestoreMethod = method;
+			switch (method)
+			{
+				case RestoreModeMethod.Default:
+					RestoreMode = AutoAdjust.DefaultMode;
+					break;
+				case RestoreModeMethod.Original:
+					RestoreMode = OriginalMode;
+					break;
+				case RestoreModeMethod.Saved:
+					RestoreMode = PowerMode.Undefined;
+					break;
+				case RestoreModeMethod.Custom:
+					RestoreMode = mode;
+					break;
+			}
+
+			saveneeded = true;
+			if (Taskmaster.ImmediateSave) SaveConfig();
+		}
+
+		public void SaveNeeded(bool behaviour = false)
+		{
+			saveneeded = true;
+			if (behaviour) savebehaviour = true;
+
+			Log.Debug("<Power> Behaviour: " + Behaviour.ToString() + ", Restore method: " + RestoreMethod.ToString() + ", mode: " + RestoreMode.ToString());
+		}
+
 		public PowerBehaviour SetBehaviour(PowerBehaviour pb)
 		{
 			Debug.Assert(pb == Behaviour);
-			if (pb == Behaviour) return Behaviour; // this shouldn't happen
+			if (pb == Behaviour) return Behaviour;
 
 			Task.Run(async () =>
 			{
@@ -1154,7 +1213,7 @@ namespace Taskmaster
 
 			lock (power_lock)
 			{
-				if (RestoreModeMethod == ModeMethod.Saved)
+				if (RestoreMethod == RestoreModeMethod.Saved)
 				{
 					if (SavedMode == PowerMode.Undefined) SavedMode = RestoreMode;
 				}
@@ -1252,7 +1311,7 @@ namespace Taskmaster
 				rv = mode != CurrentMode;
 				if (rv)
 				{
-					SavedMode = RestoreModeMethod == ModeMethod.Saved ? CurrentMode : RestoreMode;
+					SavedMode = RestoreMethod == RestoreModeMethod.Saved ? CurrentMode : RestoreMode;
 					InternalSetMode(mode, verbose: Taskmaster.DebugPower);
 
 					if (Taskmaster.DebugPower) Log.Debug("<Power> Forced to: " + CurrentMode.ToString());
@@ -1328,7 +1387,7 @@ namespace Taskmaster
 				onBehaviourChange = null;
 				onBatteryResume = null;
 
-				var finalmode = RestoreModeMethod == ModeMethod.Saved ? SavedMode : RestoreMode;
+				var finalmode = RestoreMethod == RestoreModeMethod.Saved ? SavedMode : RestoreMode;
 				if (finalmode != CurrentMode)
 				{
 					InternalSetMode(finalmode, true);

@@ -122,7 +122,7 @@ namespace Taskmaster
 			{
 				try
 				{
-					PowerConfigWindow.ShowPowerConfig();
+					PowerConfigWindow.Show();
 				}
 				catch (Exception ex) { Logging.Stacktrace(ex); }
 			}));
@@ -826,7 +826,7 @@ namespace Taskmaster
 			var menu_config_behaviour = new ToolStripMenuItem("Behaviour");
 			var menu_config_logging = new ToolStripMenuItem("Logging");
 			var menu_config_bitmaskstyle = new ToolStripMenuItem("Bitmask style");
-			var menu_config_power = new ToolStripMenuItem("Power");
+			//var menu_config_power = new ToolStripMenuItem("Power");// this submenu is no longer used
 
 			// Sub Sub Items
 			var menu_config_behaviour_autoopen = new ToolStripMenuItem("Auto-open menus")
@@ -936,9 +936,9 @@ namespace Taskmaster
 			menu_config_bitmaskstyle.DropDownItems.Add(menu_config_bitmaskstyle_decimal);
 			//menu_config_bitmaskstyle.DropDownItems.Add(menu_config_bitmaskstyle_both);
 
-			var menu_config_power_autoadjust = new ToolStripMenuItem("Auto-adjust tuning");
+			var menu_config_power_autoadjust = new ToolStripMenuItem("Power configuration");
 			menu_config_power_autoadjust.Click += PowerConfigRequest;
-			menu_config_power.DropDownItems.Add(menu_config_power_autoadjust);
+			//menu_config_power.DropDownItems.Add(menu_config_power_autoadjust); // sub-menu removed
 
 			//
 
@@ -979,7 +979,7 @@ namespace Taskmaster
 			menu_config.DropDownItems.Add(menu_config_logging);
 			menu_config.DropDownItems.Add(menu_config_bitmaskstyle);
 			menu_config.DropDownItems.Add(new ToolStripSeparator());
-			menu_config.DropDownItems.Add(menu_config_power);
+			menu_config.DropDownItems.Add(menu_config_power_autoadjust);
 			menu_config.DropDownItems.Add(new ToolStripSeparator());
 			menu_config.DropDownItems.Add(menu_config_components);
 			menu_config.DropDownItems.Add(new ToolStripSeparator());
@@ -1152,7 +1152,7 @@ namespace Taskmaster
 			var menu_info_about = new ToolStripMenuItem("About", null, (s, e) =>
 			{
 				MessageBox.Show(Application.ProductName + " (" + Application.ProductVersion + ")\n\nCreated by M.A., 2016-2018\n\nFree system maintenance and de-obnoxifying app.\n\nAvailable under MIT license.",
-								"About Taskmaster!", MessageBoxButtons.OK, MessageBoxIcon.Information, MessageBoxDefaultButton.Button1, MessageBoxOptions.DefaultDesktopOnly, false);
+								"About Taskmaster!", MessageBoxButtons.OK, MessageBoxIcon.Information, MessageBoxDefaultButton.Button1, MessageBoxOptions.DefaultDesktopOnly);
 			});
 			menu_info.DropDownItems.Add(menu_info_github);
 			menu_info.DropDownItems.Add(menu_info_itchio);
