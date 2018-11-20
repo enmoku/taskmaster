@@ -3,6 +3,10 @@ Comprehensive changes can be found in Git change history:
 	https://github.com/mkahvi/taskmaster/commits/master
 
 ## [0.11...]
+### 2018-11-20
+	Added: Behaviour and Restore Mode configuration to power configuration UI
+	Changed: 'Power auto-adjust configuration' is now just 'Power configuration'
+	Fixed: 'Free memory for' option did not actually work properly if you selected anything besides the empty option.
 ### 2018-11-17
 	Internal: A lot of changes that had been left for later. At most fixed some obscure bugs.
 	Fixed: Path visibility option was not actually read from Watchlist.ini
