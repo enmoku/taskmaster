@@ -1036,7 +1036,8 @@ namespace Taskmaster
 			saveneeded = true;
 			if (behaviour) savebehaviour = true;
 
-			Log.Debug("<Power> Behaviour: " + Behaviour.ToString() + ", Restore method: " + RestoreMethod.ToString() + ", mode: " + RestoreMode.ToString());
+			if (Taskmaster.DebugPower)
+				Log.Debug("<Power> Behaviour: " + Behaviour.ToString() + ", Restore method: " + RestoreMethod.ToString() + ", mode: " + RestoreMode.ToString());
 		}
 
 		public PowerBehaviour SetBehaviour(PowerBehaviour pb)
