@@ -51,7 +51,7 @@ namespace Taskmaster.UI
 			MinimizeBox = false;
 			MaximizeBox = false;
 
-			StartPosition = FormStartPosition.CenterScreen;
+			StartPosition = FormStartPosition.CenterParent;
 
 			//Padding = CustomPadding;
 
