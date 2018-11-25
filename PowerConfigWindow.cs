@@ -220,8 +220,10 @@ namespace Taskmaster
 			defaultmode.SelectedIndex = AutoAdjust.DefaultMode == PowerMode.Balanced ? 1 : AutoAdjust.DefaultMode == PowerMode.PowerSaver ? 2 : 0;
 
 			layout.Controls.Add(new Label() { Text = "Auto-Adjust", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Font = boldfont });
-
 			layout.Controls.Add(new Label()); // empty
+
+			layout.Controls.Add(new Label() { Text = "Sample frequency (sec)", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true });
+			layout.Controls.Add(new Label() { Text = power.CPUSampleInterval.ToString(), TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true }); // empty
 
 			layout.Controls.Add(new Label() { Text = "Default mode", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true });
 			layout.Controls.Add(defaultmode);
