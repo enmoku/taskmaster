@@ -1058,7 +1058,7 @@ namespace Taskmaster
 				if (fPriority)
 				{
 					sbs.Append(" [Failed]");
-					if (Taskmaster.ShowInaction)
+					if (Taskmaster.ShowInaction && Taskmaster.DebugProcesses)
 						Log.Warning("[" + FriendlyName + "] " + info.Name + " (#" + info.Id + ") failed to set process priority.");
 				}
 			}
@@ -1073,7 +1073,7 @@ namespace Taskmaster
 				if (fAffinity)
 				{
 					sbs.Append(" [Failed]");
-					if (Taskmaster.ShowInaction)
+					if (Taskmaster.ShowInaction && Taskmaster.DebugProcesses)
 						Log.Warning("[" + FriendlyName + "] " + info.Name + " (#" + info.Id + ") failed to set process affinity.");
 				}
 
