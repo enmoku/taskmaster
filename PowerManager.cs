@@ -206,6 +206,9 @@ namespace Taskmaster
 			SystemEvents.SessionSwitch += SessionLockEvent;
 		}
 
+		/// <summary>
+		/// CPU Sample Interval. In seconds.
+		/// </summary>
 		public int CPUSampleInterval { get; set; } = 5;
 		public int CPUSampleCount { get; set; } = 5;
 		PerformanceCounterWrapper CPUCounter = null;
