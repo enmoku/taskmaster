@@ -6,6 +6,7 @@ Comprehensive changes can be found in Git change history:
 ### 2018-11-25
 	Added: Show CPU sample frequency in power configuration. This is to help understand the delays involved.
 	Fixed: Show Inaction was showing some debug information even when Process debug was not enabled as well.
+	Fixed: Power config window was messing with high and low power mode backoff levels. Constrained to 1 to 20 instead of 5 to 95.
 ### 2018-11-20
 	Added: Behaviour and Restore Mode configuration to power configuration UI
 	Changed: 'Power auto-adjust configuration' is now just 'Power configuration'

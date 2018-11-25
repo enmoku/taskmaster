@@ -263,8 +263,8 @@ namespace Taskmaster
 			layout.Controls.Add(highbackofflow);
 
 			layout.Controls.Add(new Label() { Text = "Backoff level", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true });
-			var highbackofflevel = new NumericUpDown() { Maximum = 95, Minimum = 5, Value = 50 };
-			highbackofflevel.Value = Convert.ToDecimal(AutoAdjust.High.Backoff.Level).Constrain(5, 95);
+			var highbackofflevel = new NumericUpDown() { Maximum = 10, Minimum = 1, Value = 5 };
+			highbackofflevel.Value = Convert.ToDecimal(AutoAdjust.High.Backoff.Level);
 			layout.Controls.Add(highbackofflevel);
 
 			var lowmode = new ComboBox()
@@ -301,8 +301,8 @@ namespace Taskmaster
 			lowbackofflow.Value = Convert.ToDecimal(AutoAdjust.Low.Backoff.Low).Constrain(5, 95);
 			layout.Controls.Add(lowbackofflow);
 			layout.Controls.Add(new Label() { Text = "Backoff level", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true });
-			var lowbackofflevel = new NumericUpDown() { Maximum = 95, Minimum = 5, Value = 50 };
-			lowbackofflevel.Value = Convert.ToDecimal(AutoAdjust.Low.Backoff.Level).Constrain(5, 95);
+			var lowbackofflevel = new NumericUpDown() { Maximum = 10, Minimum = 1, Value = 5 };
+			lowbackofflevel.Value = Convert.ToDecimal(AutoAdjust.Low.Backoff.Level);
 			layout.Controls.Add(lowbackofflevel);
 
 			var savebutton = new Button() { Text = "Save", Anchor = AnchorStyles.Right };
