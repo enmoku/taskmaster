@@ -423,20 +423,30 @@ namespace Taskmaster
 				Foreground = activewindowev.Id = pid;
 				HangTick = 0;
 
-				try
+				if (pid > 4)
 				{
-					var proc = Process.GetProcessById(activewindowev.Id);
-					activewindowev.Process = proc;
-					activewindowev.Executable = proc.ProcessName;
-				}
-				catch (ArgumentException)
-				{
-					// Process already gone
-					return;
-				}
 
-				if (Taskmaster.DebugForeground && Taskmaster.ShowInaction)
-					Log.Debug("Active Window (#{Pid}): {Title}", activewindowev.Id, activewindowev.Title);
+					try
+					{
+						var proc = Process.GetProcessById(activewindowev.Id);
+						activewindowev.Process = proc;
+						activewindowev.Executable = proc.ProcessName;
+					}
+					catch (ArgumentException)
+					{
+						// Process already gone
+						return;
+					}
+
+					if (Taskmaster.DebugForeground && Taskmaster.ShowInaction)
+						Log.Debug("Active Window (#{Pid}): {Title}", activewindowev.Id, activewindowev.Title);
+				}
+				else
+				{
+					// shouldn't happen, but who knows?
+					activewindowev.Process = null;
+					activewindowev.Executable = string.Empty;
+				}
 
 				LastSwap = DateTime.Now;
 				ActiveChanged?.Invoke(this, activewindowev);
