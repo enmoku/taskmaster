@@ -1108,7 +1108,7 @@ namespace Taskmaster
 						System.Threading.ManualResetEvent endsignal = null;
 						EventHandler end = delegate { endsignal?.Set(); };
 
-						if (State = Runstate.RunOnce)
+						if (State == Runstate.RunOnce)
 						{
 							endsignal = new System.Threading.ManualResetEvent(false);
 							Components.processmanager.ScanEverythingEndEvent += end;
