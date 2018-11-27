@@ -505,6 +505,16 @@ namespace Taskmaster
 			var power = corecfg.Config["Power"];
 			bool modified = false, dirtyconfig = false;
 
+			var behaviourstring = power.GetSetDefault("Behaviour", "Rule-based", out modified).StringValue;
+			power["Behaviour"].Comment = "auto, manual, or rule-based";
+			if (behaviourstring.StartsWith("auto", StringComparison.InvariantCultureIgnoreCase))
+				LaunchBehaviour = PowerBehaviour.Auto;
+			else if (behaviourstring.StartsWith("manual", StringComparison.InvariantCultureIgnoreCase))
+				LaunchBehaviour = PowerBehaviour.Manual;
+			else
+				LaunchBehaviour = PowerBehaviour.RuleBased;
+			Behaviour = LaunchBehaviour;
+
 			var defaultmode = power.GetSetDefault("Default mode", GetModeName(PowerMode.Balanced), out modified).StringValue;
 			power["Default mode"].Comment = "This is what power plan we fall back on when nothing else is considered.";
 			AutoAdjust.DefaultMode = GetModeByName(defaultmode);
@@ -554,17 +564,27 @@ namespace Taskmaster
 			dirtyconfig |= modified;
 
 			var autopower = corecfg.Config["Power / Auto"];
-			var bAutoAdjust = autopower.GetSetDefault("Auto-adjust", false, out modified).BoolValue;
-			autopower["Auto-adjust"].Comment = "Automatically adjust power mode based on the criteria here.";
-			dirtyconfig |= modified;
-			if (bAutoAdjust)
+
+			// DEPRECATED
+			if (autopower.Contains("Auto-adjust"))
 			{
-				Behaviour = PowerBehaviour.Auto;
-				if (PowerdownDelay > 0)
+				bool bautoadjust = autopower.TryGet("Auto-adjust")?.BoolValue ?? false;
+
+				if (bautoadjust)
 				{
-					PowerdownDelay = 0;
-					Log.Warning("<Power> Powerdown delay is not compatible with auto-adjust, powerdown delay disabled.");
+					power["Behaviour"].StringValue = "auto";
+					saveneeded = true;
+					LaunchBehaviour = PowerBehaviour.Auto;
+					Behaviour = PowerBehaviour.Auto;
 				}
+
+				autopower.Remove("Auto-adjust");
+			}
+
+			if (LaunchBehaviour == PowerBehaviour.Auto && PowerdownDelay > 0) 
+			{
+				PowerdownDelay = 0;
+				Log.Warning("<Power> Powerdown delay is not compatible with auto-adjust, powerdown delay disabled.");
 			}
 
 			// should probably be in hardware/cpu section
@@ -688,6 +708,20 @@ namespace Taskmaster
 			corecfg.MarkDirty();
 
 			var power = corecfg.Config["Power"];
+
+			string sbehaviour = "rule-based"; // default to rule-based
+			switch (LaunchBehaviour)
+			{
+				case PowerBehaviour.Auto:
+					sbehaviour = "auto";
+					break;
+				case PowerBehaviour.Manual:
+					sbehaviour = "manual";
+					break;
+				default: break; // ignore
+			}
+			power["Behaviour"].StringValue = sbehaviour;
+
 			power["Default mode"].StringValue = AutoAdjust.DefaultMode.ToString();
 
 			power["Restore mode"].StringValue = (RestoreMethod == RestoreModeMethod.Custom ? RestoreMode.ToString() : RestoreMethod.ToString());
@@ -697,7 +731,6 @@ namespace Taskmaster
 				power.Remove("Watchlist powerdown delay");
 			var autopower = corecfg.Config["Power / Auto"];
 
-			autopower["Auto-adjust"].BoolValue = (Behaviour == PowerBehaviour.Auto);
 			autopower["Pause unneeded CPU sampler"].BoolValue = PauseUnneededSampler;
 
 			// BACKOFF
@@ -724,11 +757,6 @@ namespace Taskmaster
 
 			saver["Monitor power off idle timeout"].IntValue = SessionLockPowerOffIdleTimeout;
 			saver["Monitor power off on lock"].BoolValue = SessionLockPowerOff;
-
-			if (savebehaviour)
-			{
-				autopower["Auto-adjust"].BoolValue = (Behaviour == PowerBehaviour.Auto);
-			}
 
 			// --------------------------------------------------------------------------------------------------------
 
@@ -1253,6 +1281,7 @@ namespace Taskmaster
 		static readonly object power_lock = new object();
 		static readonly object powerLockI = new object();
 
+		public PowerBehaviour LaunchBehaviour { get; set; } = PowerBehaviour.RuleBased;
 		public PowerBehaviour Behaviour { get; private set; } = PowerBehaviour.RuleBased;
 
 		bool AutoAdjustSetMode(PowerMode mode)

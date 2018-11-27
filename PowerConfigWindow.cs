@@ -37,7 +37,7 @@ namespace Taskmaster
 		public AutoAdjustSettings newAutoAdjust = null;
 		PowerManager power = null;
 
-		public PowerManager.PowerBehaviour NewBehaviour = PowerManager.PowerBehaviour.Undefined;
+		public PowerManager.PowerBehaviour NewLaunchBehaviour = PowerManager.PowerBehaviour.Undefined;
 		public PowerManager.RestoreModeMethod NewRestoreMethod = PowerManager.RestoreModeMethod.Default;
 		public PowerMode NewRestoreMode = PowerMode.Undefined;
 		public PowerMode NewLockMode = PowerMode.Undefined;
@@ -92,8 +92,8 @@ namespace Taskmaster
 				"Rule-based = Watchlist rules\n" +
 				"Manual = Fully user controlled");
 
-			NewBehaviour = power.Behaviour;
-			switch (power.Behaviour)
+			NewLaunchBehaviour = power.LaunchBehaviour;
+			switch (power.LaunchBehaviour)
 			{
 				case PowerManager.PowerBehaviour.Auto:
 				default:
@@ -112,14 +112,14 @@ namespace Taskmaster
 				switch (behaviour.SelectedIndex)
 				{
 					case 0:
-						NewBehaviour = PowerManager.PowerBehaviour.Auto;
+						NewLaunchBehaviour = PowerManager.PowerBehaviour.Auto;
 						break;
 					default:
 					case 1:
-						NewBehaviour = PowerManager.PowerBehaviour.RuleBased;
+						NewLaunchBehaviour = PowerManager.PowerBehaviour.RuleBased;
 						break;
 					case 2:
-						NewBehaviour = PowerManager.PowerBehaviour.Manual;
+						NewLaunchBehaviour = PowerManager.PowerBehaviour.Manual;
 						break;
 				}
 			};
@@ -434,7 +434,8 @@ namespace Taskmaster
 				MonitorPowerOff = ((monitorofftoggle.SelectedIndex == 0) ? false : true);
 
 				power.SetAutoAdjust(pcw.newAutoAdjust);
-				power.SetBehaviour(pcw.NewBehaviour);
+
+				power.LaunchBehaviour = pcw.NewLaunchBehaviour;
 
 				power.SessionLockPowerOff = pcw.MonitorPowerOff;
 				power.SessionLockPowerMode = pcw.NewLockMode;

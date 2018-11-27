@@ -90,10 +90,7 @@ namespace Taskmaster
 
 			if (Taskmaster.PowerManagerEnabled)
 			{
-				power_auto = new ToolStripMenuItem("Auto", null, SetAutoPower);
-				power_auto.Checked = false;
-				power_auto.CheckOnClick = true;
-				power_auto.Enabled = false;
+				power_auto = new ToolStripMenuItem("Auto", null, SetAutoPower) { Checked = false, CheckOnClick = true, Enabled = false };
 
 				power_highperf = new ToolStripMenuItem(PowerManager.GetModeName(PowerInfo.PowerMode.HighPerformance), null, (s, e) => { ResetPower(PowerInfo.PowerMode.HighPerformance); });
 				power_balanced = new ToolStripMenuItem(PowerManager.GetModeName(PowerInfo.PowerMode.Balanced), null, (s, e) => { ResetPower(PowerInfo.PowerMode.Balanced); });
@@ -256,6 +253,7 @@ namespace Taskmaster
 			powermanager.onPlanChange += HighlightPowerModeEvent;
 
 			power_auto.Checked = powermanager.Behaviour == PowerManager.PowerBehaviour.Auto;
+			power_manual.Checked = powermanager.Behaviour == PowerManager.PowerBehaviour.Manual;
 			power_auto.Enabled = true;
 			HighlightPowerMode();
 		}
