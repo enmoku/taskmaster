@@ -3,6 +3,8 @@ Comprehensive changes can be found in Git change history:
 	https://github.com/mkahvi/taskmaster/commits/master
 
 ## [0.11...]
+### 2018-11-27
+	Fixed: Show Inaction was showing debug info for things that were not explicitly enabled.
 ### 2018-11-25
 	Added: Show CPU sample frequency in power configuration. This is to help understand the delays involved.
 	Fixed: Show Inaction was showing some debug information even when Process debug was not enabled as well.
