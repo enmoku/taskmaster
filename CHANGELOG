@@ -6,6 +6,8 @@ Comprehensive changes can be found in Git change history:
 ### 2018-11-27
 	Fixed: Show Inaction was showing debug info for things that were not explicitly enabled.
 	Added: Monitor power and power mode during session lock options added to power config.
+	Fixed: Incorrect reading of some command-line arguments, notably --bootdelay which ignored the supplied number.
+	Fixed: --bootdelay was not actually used, now it is. Max delay is 5 minutes.
 ### 2018-11-25
 	Added: Show CPU sample frequency in power configuration. This is to help understand the delays involved.
 	Fixed: Show Inaction was showing some debug information even when Process debug was not enabled as well.
