@@ -823,7 +823,7 @@ namespace Taskmaster
 				switch (args[i])
 				{
 					case "--bootdelay":
-						if (args.Length > i && !args[i].StartsWith("--"))
+						if (args.Length > i && !args[i+1].StartsWith("--"))
 						{
 							try
 							{
@@ -866,7 +866,7 @@ namespace Taskmaster
 
 						break;
 					case "--restart":
-						if (args.Length > i && !args[i].StartsWith("--"))
+						if (args.Length > i && !args[i+1].StartsWith("--"))
 						{
 							try
 							{
@@ -877,7 +877,7 @@ namespace Taskmaster
 
 						break;
 					case "--admin":
-						if (args.Length > i && !args[i].StartsWith("--"))
+						if (args.Length > i && !args[i+1].StartsWith("--"))
 						{
 							try
 							{
