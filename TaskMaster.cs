@@ -817,17 +817,18 @@ namespace Taskmaster
 		static void ParseArguments(string[] args)
 		{
 			var StartDelay = 0;
+			var uptime = TimeSpan.Zero;
 
 			for (int i = 0; i < args.Length; i++)
 			{
 				switch (args[i])
 				{
 					case "--bootdelay":
-						if (args.Length > i && !args[i+1].StartsWith("--"))
+						if (args.Length > i+1 && !args[i+1].StartsWith("--"))
 						{
 							try
 							{
-								StartDelay = Convert.ToInt32(args[++i]);
+								StartDelay = Convert.ToInt32(args[++i]).Constrain(1, 60*5);
 							}
 							catch
 							{
@@ -835,18 +836,6 @@ namespace Taskmaster
 							}
 						}
 
-						var uptimeMin = 30;
-						if (args.Length > 1)
-						{
-							try
-							{
-								var nup = Convert.ToInt32(args[1]);
-								uptimeMin = nup.Constrain(5, 360);
-							}
-							catch { } // NOP
-						}
-
-						var uptime = TimeSpan.Zero;
 						try
 						{
 							using (var uptimecounter = new PerformanceCounter("System", "System Up Time"))
@@ -856,17 +845,14 @@ namespace Taskmaster
 								uptimecounter.Close();
 							}
 						}
-						catch { }
-
-						if (uptime.TotalSeconds < uptimeMin)
+						catch
 						{
-							Console.WriteLine("Delaying proper startup for " + uptimeMin + " seconds.");
-							System.Threading.Thread.Sleep(Math.Max(0, uptimeMin - Convert.ToInt32(uptime.TotalSeconds)) * 1000);
+							uptime = TimeSpan.Zero;
 						}
 
 						break;
 					case "--restart":
-						if (args.Length > i && !args[i+1].StartsWith("--"))
+						if (args.Length > i+1 && !args[i+1].StartsWith("--"))
 						{
 							try
 							{
@@ -877,7 +863,7 @@ namespace Taskmaster
 
 						break;
 					case "--admin":
-						if (args.Length > i && !args[i+1].StartsWith("--"))
+						if (args.Length > i+1 && !args[i+1].StartsWith("--"))
 						{
 							try
 							{
@@ -920,6 +906,18 @@ namespace Taskmaster
 						break;
 					default:
 						break;
+				}
+			}
+
+			if (StartDelay > 0 && uptime.TotalSeconds < 300)
+			{
+				//Console.WriteLine("Delaying proper startup for " + uptimeMinSeconds + " seconds.");
+
+				var remainingdelay = StartDelay - uptime.TotalSeconds;
+				if (remainingdelay > 5)
+				{
+					Console.WriteLine("Delaying start by " + remainingdelay + " seconds");
+					System.Threading.Thread.Sleep(Convert.ToInt32(remainingdelay) * 1000);
 				}
 			}
 		}
