@@ -48,16 +48,14 @@ namespace Taskmaster
 		public static ConfigManager Config = null;
 		public static ComponentContainer Components = new ComponentContainer();
 
-		static bool RunOnce = false;
-		public static bool Restart = false;
-		public static bool RestartElevated = false;
+		static Runstate State = Runstate.Normal;
+		static bool RestartElevated = false;
 		static int RestartCounter = 0;
 		static int AdminCounter = 0;
 
 		public static void RestartRequest(object sender, EventArgs e)
 		{
-			Restart = true;
-			UnifiedExit();
+			UnifiedExit(restart:true);
 		}
 
 		public static void ConfirmExit(bool restart = false, bool admin = false)
@@ -70,10 +68,9 @@ namespace Taskmaster
 
 			if (rv != DialogResult.Yes) return;
 			
-			Restart = restart;
 			RestartElevated = admin;
 
-			UnifiedExit();
+			UnifiedExit(restart);
 		}
 
 		// User logs outt
@@ -86,10 +83,13 @@ namespace Taskmaster
 
 		delegate void EmptyFunction();
 
-		public static void UnifiedExit()
+		public static void UnifiedExit(bool restart=false)
 		{
+			State = restart ? Runstate.Restart : Runstate.Exit;
+
 			if (System.Windows.Forms.Application.MessageLoop)
 				Application.Exit();
+			// nothing else should be needed.
 		}
 
 		/// <summary>
@@ -223,7 +223,7 @@ namespace Taskmaster
 			bool tray = true;
 			bool aware = true;
 
-			if (RunOnce)
+			if (State == Runstate.RunOnce)
 			{
 				tray = false;
 				aware = false;
@@ -322,7 +322,7 @@ namespace Taskmaster
 
 			// UI
 
-			if (ShowOnStart && !RunOnce)
+			if (ShowOnStart && State == Runstate.Normal)
 			{
 				BuildMainWindow();
 				Components.mainwindow?.Reveal();
@@ -918,7 +918,7 @@ namespace Taskmaster
 
 						break;
 					case "--once":
-						RunOnce = true;
+						State = Runstate.RunOnce;
 						break;
 					default:
 						break;
@@ -1110,7 +1110,7 @@ namespace Taskmaster
 						System.Threading.ManualResetEvent endsignal = null;
 						EventHandler end = delegate { endsignal?.Set(); };
 
-						if (RunOnce)
+						if (State = Runstate.RunOnce)
 						{
 							endsignal = new System.Threading.ManualResetEvent(false);
 							Components.processmanager.ScanEverythingEndEvent += end;
@@ -1126,7 +1126,7 @@ namespace Taskmaster
 						}
 					}
 
-					if (!RunOnce)
+					if (State == Runstate.Normal)
 					{
 						Components.trayaccess.EnsureVisible();
 
@@ -1141,7 +1141,7 @@ namespace Taskmaster
 					throw new RunstateException("Unhandled", Runstate.CriticalFailure, ex);
 				}
 
-				if (SelfOptimize && !RunOnce) // return decent processing speed to quickly exit
+				if (SelfOptimize && State == Runstate.Normal) // return decent processing speed to quickly exit
 				{
 					var self = Process.GetCurrentProcess();
 					self.PriorityClass = ProcessPriorityClass.AboveNormal;
@@ -1173,7 +1173,7 @@ namespace Taskmaster
 
 				Log.Information("Taskmaster! (#" + Process.GetCurrentProcess().Id + ") END! [Clean]");
 
-				if (Restart) // happens only on power resume (waking from hibernation) or when manually set
+				if (State == Runstate.Restart) // happens only on power resume (waking from hibernation) or when manually set
 				{
 					Utility.Dispose(ref Components);
 					Utility.Dispose(ref singleton);
@@ -1183,8 +1183,6 @@ namespace Taskmaster
 					{
 						if (!System.IO.File.Exists(Application.ExecutablePath))
 							Log.Fatal("Executable missing: " + Application.ExecutablePath); // this should be "impossible"
-
-						Restart = false; // pointless probably
 
 						var info = Process.GetCurrentProcess().StartInfo;
 						//info.FileName = Process.GetCurrentProcess().ProcessName;

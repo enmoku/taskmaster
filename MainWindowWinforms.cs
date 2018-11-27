@@ -962,8 +962,7 @@ namespace Taskmaster
 
 							if (rv == DialogResult.OK)
 							{
-								Taskmaster.Restart = true;
-								Taskmaster.UnifiedExit();
+								Taskmaster.UnifiedExit(restart:true);
 							}
 						}
 					}

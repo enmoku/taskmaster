@@ -392,15 +392,18 @@ namespace Taskmaster
 			lt.Controls.Add(ignorelist);
 			lt.Controls.Add(new Label()); // empty
 
+			var priorities = new string[] { "Low", "Below Normal", "Normal", "Above Normal", "High", "Ignored" };
+
 			// PRIORITY
 			lt.Controls.Add(new Label { Text = "Priority class", TextAlign = System.Drawing.ContentAlignment.MiddleLeft });
 			priorityClass = new ComboBox
 			{
 				Dock = DockStyle.Left,
 				DropDownStyle = ComboBoxStyle.DropDownList,
-				Items = { "Idle", "Below Normal", "Normal", "Above Normal", "High", "Ignored" }, // System.Enum.GetNames(typeof(ProcessPriorityClass)), 
-				SelectedIndex = 2
 			};
+			priorityClass.Items.AddRange(priorities);
+			priorityClass.SelectedIndex = 2;
+
 			priorityClass.Width = 180;
 			priorityClass.SelectedIndex = Controller.Priority?.ToInt32() ?? 5;
 			tooltip.SetToolTip(priorityClass, "CPU priority for the application.\nIf both increase and decrease are disabled, this has no effect.");
@@ -578,9 +581,10 @@ namespace Taskmaster
 			{
 				Dock = DockStyle.Left,
 				DropDownStyle = ComboBoxStyle.DropDownList,
-				Items = { "Idle", "Below Normal", "Normal", "Above Normal", "High", "Ignored" }, // System.Enum.GetNames(typeof(ProcessPriorityClass)), 
-				SelectedIndex = 5
 			};
+			bgPriorityClass.Items.AddRange(priorities);
+			bgPriorityClass.SelectedIndex = 5;
+
 			bgPriorityClass.Width = 180;
 			if (Controller.BackgroundPriority.HasValue)
 				bgPriorityClass.SelectedIndex = Controller.BackgroundPriority.Value.ToInt32();
