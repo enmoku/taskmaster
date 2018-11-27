@@ -266,6 +266,8 @@ namespace Taskmaster
 		public void OnActiveWindowChanged(object sender, WindowChangedArgs windowchangeev)
 		{
 			if (!IsHandleCreated) return;
+			if (windowchangeev.Process == null) return;
+
 			BeginInvoke(new Action(() =>
 			{
 				// int maxlength = 70;
@@ -1036,7 +1038,12 @@ namespace Taskmaster
 
 			var menu_debug_inaction = new ToolStripMenuItem("Show inaction") { Checked = Taskmaster.ShowInaction, CheckOnClick = true };
 			menu_debug_inaction.Click += (sender, e) => { Taskmaster.ShowInaction = menu_debug_inaction.Checked; };
-			var menu_debug_scanning = new ToolStripMenuItem("Scanning") { Checked = Taskmaster.DebugFullScan, CheckOnClick = true };
+			var menu_debug_scanning = new ToolStripMenuItem("Scanning")
+			{
+				Checked = Taskmaster.DebugFullScan,
+				CheckOnClick = true,
+				Enabled = Taskmaster.ProcessMonitorEnabled,
+			};
 			menu_debug_scanning.Click += (sender, e) =>
 			{
 				Taskmaster.DebugFullScan = menu_debug_scanning.Checked;
@@ -1046,14 +1053,20 @@ namespace Taskmaster
 			var menu_debug_procs = new ToolStripMenuItem("Processes")
 			{
 				Checked = Taskmaster.DebugProcesses,
-				CheckOnClick = true
+				CheckOnClick = true,
+				Enabled = Taskmaster.ProcessMonitorEnabled,
 			};
 			menu_debug_procs.Click += (sender, e) =>
 			{
 				Taskmaster.DebugProcesses = menu_debug_procs.Checked;
 				if (Taskmaster.DebugProcesses) EnsureVerbosityLevel();
 			};
-			var menu_debug_foreground = new ToolStripMenuItem("Foreground") { Checked = Taskmaster.DebugForeground, CheckOnClick = true };
+			var menu_debug_foreground = new ToolStripMenuItem("Foreground")
+			{
+				Checked = Taskmaster.DebugForeground,
+				CheckOnClick = true,
+				Enabled = Taskmaster.ActiveAppMonitorEnabled,
+			};
 			menu_debug_foreground.Click += (sender, e) =>
 			{
 				Taskmaster.DebugForeground = menu_debug_foreground.Checked;
@@ -1075,13 +1088,23 @@ namespace Taskmaster
 				}
 			};
 
-			var menu_debug_paths = new ToolStripMenuItem("Paths") { Checked = Taskmaster.DebugPaths, CheckOnClick = true };
+			var menu_debug_paths = new ToolStripMenuItem("Paths")
+			{
+				Checked = Taskmaster.DebugPaths,
+				CheckOnClick = true,
+				Enabled = Taskmaster.PathMonitorEnabled,
+			};
 			menu_debug_paths.Click += (sender, e) =>
 			{
 				Taskmaster.DebugPaths = menu_debug_paths.Checked;
 				if (Taskmaster.DebugPaths) EnsureVerbosityLevel();
 			};
-			var menu_debug_power = new ToolStripMenuItem("Power") { Checked = Taskmaster.DebugPower, CheckOnClick = true };
+			var menu_debug_power = new ToolStripMenuItem("Power")
+			{
+				Checked = Taskmaster.DebugPower,
+				CheckOnClick = true,
+				Enabled = Taskmaster.PowerManagerEnabled,
+			};
 			menu_debug_power.Click += (sender, e) =>
 			{
 				Taskmaster.DebugPower = menu_debug_power.Checked;
@@ -1100,20 +1123,35 @@ namespace Taskmaster
 				}
 			};
 
-			var menu_debug_session = new ToolStripMenuItem("Session") { Checked = Taskmaster.DebugSession, CheckOnClick = true };
+			var menu_debug_session = new ToolStripMenuItem("Session")
+			{
+				Checked = Taskmaster.DebugSession,
+				CheckOnClick = true,
+				Enabled = Taskmaster.PowerManagerEnabled,
+			};
 			menu_debug_session.Click += (s, e) =>
 			{
 				Taskmaster.DebugSession = menu_debug_session.Checked;
 				if (Taskmaster.DebugSession) EnsureVerbosityLevel();
 			};
-			var menu_debug_monitor = new ToolStripMenuItem("Monitor") { Checked = Taskmaster.DebugMonitor, CheckOnClick = true };
+			var menu_debug_monitor = new ToolStripMenuItem("Monitor")
+			{
+				Checked = Taskmaster.DebugMonitor,
+				CheckOnClick = true,
+				Enabled = Taskmaster.PowerManagerEnabled,
+			};
 			menu_debug_monitor.Click += (s, e) =>
 			{
 				Taskmaster.DebugMonitor = menu_debug_monitor.Checked;
 				if (Taskmaster.DebugMonitor) EnsureVerbosityLevel();
 			};
 
-			var menu_debug_audio = new ToolStripMenuItem("Audio") { Checked = Taskmaster.DebugAudio, CheckOnClick = true };
+			var menu_debug_audio = new ToolStripMenuItem("Audio")
+			{
+				Checked = Taskmaster.DebugAudio,
+				CheckOnClick = true,
+				Enabled = Taskmaster.AudioManagerEnabled,
+			};
 			menu_debug_audio.Click += (s, e) =>
 			{
 				Taskmaster.DebugAudio = menu_debug_audio.Checked;
