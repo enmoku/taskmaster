@@ -1227,10 +1227,17 @@ namespace Taskmaster
 						break;
 				}
 			}
+			catch (OutOfMemoryException ex)
+			{
+				Components?.Dispose();
+				Logging.Stacktrace(ex, crashsafe: true);
+
+				return 1;
+			}
 			catch (Exception ex)
 			{
-				Logging.Stacktrace(ex, crashsafe: true);
 				Components?.Dispose();
+				Logging.Stacktrace(ex, crashsafe: true);
 
 				return 1;
 			}
