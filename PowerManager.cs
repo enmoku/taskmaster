@@ -268,7 +268,7 @@ namespace Taskmaster
 		/// <summary>
 		/// Session lock power mode
 		/// </summary>
-		PowerMode SessionLockPowerMode = PowerMode.PowerSaver;
+		public PowerMode SessionLockPowerMode { get; set; } = PowerMode.PowerSaver;
 		/// <summary>
 		/// Power saver on log off
 		/// </summary>
@@ -293,7 +293,7 @@ namespace Taskmaster
 		/// <summary>
 		/// Power off monitor directly on lock off.
 		/// </summary>
-		bool SessionLockPowerOff = true;
+		public bool SessionLockPowerOff { get; set; }  = true;
 
 		public event EventHandler<ProcessorEventArgs> onAutoAdjustAttempt;
 		public event EventHandler<PowerModeEventArgs> onPlanChange;
@@ -668,7 +668,7 @@ namespace Taskmaster
 
 			LogBehaviourState();
 
-			Log.Information("<Power> Session lock: " + (SessionLockPowerMode == PowerMode.Custom ? "Ignored" : SessionLockPowerMode.ToString()));
+			Log.Information("<Power> Session lock: " + (SessionLockPowerMode == PowerMode.Undefined ? "Ignored" : SessionLockPowerMode.ToString()));
 			Log.Information("<Power> Restore mode: " + RestoreMethod.ToString() + " [" + RestoreMode.ToString() + "]");
 
 			Log.Information("<Session> User AFK timeout: " + (SessionLockPowerOffIdleTimeout == 0 ? "Disabled" : $"{SessionLockPowerOffIdleTimeout}s"));
@@ -818,16 +818,14 @@ namespace Taskmaster
 				SleepTickCount = 0;
 
 				// should be unnecessary, but...
-				if (CurrentMonitorState != MonitorPowerMode.On)
+				if (CurrentMonitorState != MonitorPowerMode.On) // session unlocked but monitor still off?
 				{
-					if (Taskmaster.DebugMonitor || Taskmaster.DebugSession)
-						Log.Debug("<Session:Unlock> Monitor still not on... Odd, isn't it?");
-
-					SetMonitorMode(MonitorPowerMode.On);
+					Log.Warning("<Session:Unlock> Monitor still not on... Concerning, isn't it?");
+					SetMonitorMode(MonitorPowerMode.On); // attempt to wake it
 				}
 			}
 
-			if (SessionLockPowerMode == PowerMode.Custom) return;
+			if (SessionLockPowerMode == PowerMode.Undefined) return;
 
 			try
 			{
@@ -841,18 +839,15 @@ namespace Taskmaster
 						// SET POWER SAVER
 						lock (power_lock)
 						{
-							if (SessionLockPowerMode != PowerMode.Custom)
-							{
-								if (Taskmaster.DebugSession)
-									Log.Debug("<Session:Lock> Enforcing power plan: " + SessionLockPowerMode.ToString());
+							if (Taskmaster.DebugSession)
+								Log.Debug("<Session:Lock> Enforcing power plan: " + SessionLockPowerMode.ToString());
 
-								Paused = true;
+							Paused = true;
 
-								if (PauseUnneededSampler) CPUTimer.Stop();
+							if (PauseUnneededSampler) CPUTimer.Stop();
 
-								if (CurrentMode != SessionLockPowerMode)
-									InternalSetMode(PowerMode.PowerSaver, true);
-							}
+							if (CurrentMode != SessionLockPowerMode)
+								InternalSetMode(PowerMode.PowerSaver, true);
 						}
 						break;
 					case SessionSwitchReason.SessionLogon:
@@ -860,20 +855,15 @@ namespace Taskmaster
 						// RESTORE POWER MODE
 						lock (power_lock)
 						{
-							if (SessionLockPowerMode != PowerMode.Custom)
-							{
-								if (Taskmaster.DebugSession || Taskmaster.ShowSessionActions || Taskmaster.DebugPower)
-									Log.Information("<Session:Unlock> Restoring normal power.");
+							if (Taskmaster.DebugSession || Taskmaster.ShowSessionActions || Taskmaster.DebugPower)
+								Log.Information("<Session:Unlock> Restoring normal power.");
 
-								if (CurrentMode == SessionLockPowerMode)
-								{
-									InternalSetMode(RestoreMode, true);
-								}
+							if (CurrentMode == SessionLockPowerMode)
+								InternalSetMode(RestoreMode, true);
 
-								Paused = false;
+							Paused = false;
 
-								if (PauseUnneededSampler) CPUTimer.Start();
-							}
+							if (PauseUnneededSampler) CPUTimer.Start();
 						}
 						break;
 					default:
