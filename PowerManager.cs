@@ -1298,7 +1298,7 @@ namespace Taskmaster
 			{
 				if (forceModeSources.Contains(sourcePid))
 				{
-					if (Taskmaster.ShowInaction)
+					if (Taskmaster.DebugPower && Taskmaster.ShowInaction)
 						Log.Debug("<Power> Forcing cancelled, source already in list.");
 					return false;
 				}

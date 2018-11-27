@@ -464,14 +464,14 @@ namespace Taskmaster
 			{
 				if (IgnoreProcessName(prc.ExecutableFriendlyName))
 				{
-					if (Taskmaster.ShowInaction)
+					if (Taskmaster.ShowInaction && Taskmaster.DebugProcesses)
 						Log.Warning(prc.Executable ?? prc.ExecutableFriendlyName + " in ignore list; all changes denied.");
 
 					// rv = false; // We'll leave the config in.
 				}
 				else if (ProtectedProcessName(prc.ExecutableFriendlyName))
 				{
-					if (Taskmaster.ShowInaction)
+					if (Taskmaster.ShowInaction && Taskmaster.DebugProcesses)
 						Log.Warning(prc.Executable ?? prc.ExecutableFriendlyName + " in protected list; priority changing denied.");
 				}
 			}
@@ -983,7 +983,7 @@ namespace Taskmaster
 			{
 				if (info.Process.HasExited) // can throw
 				{
-					if (Taskmaster.ShowInaction)
+					if (Taskmaster.ShowInaction && Taskmaster.DebugProcesses)
 						Log.Verbose(info.Name + " (#"+info.Id+") has already exited.");
 					return null; // return ProcessState.Invalid;
 				}
@@ -1406,7 +1406,7 @@ namespace Taskmaster
 			catch (ArgumentException)
 			{
 				info.State = ProcessModification.Exited;
-				if (Taskmaster.ShowInaction)
+				if (Taskmaster.ShowInaction && Taskmaster.DebugProcesses)
 					Log.Verbose("Caught #" + info.Id + " but it vanished.");
 				return;
 			}
