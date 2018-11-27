@@ -627,6 +627,7 @@ namespace Taskmaster
 
 			var saver = corecfg.Config["AFK Power"];
 			saver.Comment = "All these options control when to enforce power save mode regardless of any other options.";
+
 			var sessionlockmodename = saver.GetSetDefault("Session lock", GetModeName(PowerMode.PowerSaver), out modified).StringValue;
 			saver["Session lock"].Comment = "Power mode to set when session is locked, such as by pressing winkey+L. Unrecognizable values disable this.";
 			dirtyconfig |= modified;
@@ -1370,12 +1371,11 @@ namespace Taskmaster
 				CPUTimer?.Dispose();
 				CPUCounter?.Dispose();
 
-				MonitorPower -= MonitorPowerEvent;
+				MonitorPower = null;
 				MonitorSleepTimer?.Dispose();
 
 				onCPUSampling = null;
 				SessionLock = null;
-				MonitorPower = null;
 				onAutoAdjustAttempt = null;
 				onPlanChange = null;
 				onBehaviourChange = null;
