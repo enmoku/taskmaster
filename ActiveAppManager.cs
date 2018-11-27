@@ -434,7 +434,6 @@ namespace Taskmaster
 					// Process already gone
 					return;
 				}
-				catch (Exception ex) { Logging.Stacktrace(ex); } // NOP
 
 				if (Taskmaster.DebugForeground && Taskmaster.ShowInaction)
 					Log.Debug("Active Window (#{Pid}): {Title}", activewindowev.Id, activewindowev.Title);
@@ -445,6 +444,7 @@ namespace Taskmaster
 			catch (Exception ex)
 			{
 				Logging.Stacktrace(ex);
+				return; // HACK, WndProc probably shouldn't throw
 			}
 			finally
 			{
