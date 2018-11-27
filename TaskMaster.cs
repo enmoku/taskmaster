@@ -81,8 +81,6 @@ namespace Taskmaster
 			// if (Taskmaster.VeryVerbose) Console.WriteLine("END:Core.ExitRequest - Exit hang averted");
 		}
 
-		delegate void EmptyFunction();
-
 		public static void UnifiedExit(bool restart=false)
 		{
 			State = restart ? Runstate.Restart : Runstate.Exit;
