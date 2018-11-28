@@ -237,7 +237,7 @@ namespace Taskmaster
 			powmon.Enabled = true;
 			powmon.Checked = initial ? true : Taskmaster.PowerManagerEnabled;
 			powbehaviour.Enabled = powmon.Checked;
-			var behaviour = Taskmaster.Components.powermanager.LaunchBehaviour;
+			var behaviour = Taskmaster.Components.powermanager?.LaunchBehaviour ?? PowerManager.PowerBehaviour.RuleBased;
 			switch (behaviour)
 			{
 				case PowerManager.PowerBehaviour.Auto:
