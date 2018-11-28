@@ -1152,7 +1152,7 @@ namespace Taskmaster
 
 				Task.Run(async () =>
 				{
-					if (Behaviour == PowerBehaviour.Auto && PowerdownDelay > 0)
+					if (Behaviour != PowerBehaviour.Auto && PowerdownDelay > 0)
 					{
 						if (Taskmaster.DebugPower)
 							Log.Debug("<Power> Powerdown delay: " + PowerdownDelay + "s");
