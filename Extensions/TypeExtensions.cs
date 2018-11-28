@@ -43,6 +43,11 @@ namespace Taskmaster
 			return Math.Min(Math.Max(value, InclusiveMinimum), InclusiveMaximum);
 		}
 
+		public static long Constrain(this long value, long InclusiveMinimum, long InclusiveMaximum)
+		{
+			return Math.Min(Math.Max(value, InclusiveMinimum), InclusiveMaximum);
+		}
+
 		public static float Constrain(this float value, float InclusiveMinimum, float InclusiveMaximum)
 		{
 			return Math.Min(Math.Max(value, InclusiveMinimum), InclusiveMaximum);
