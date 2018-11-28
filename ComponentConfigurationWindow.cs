@@ -70,15 +70,27 @@ namespace Taskmaster
 
 			var tooltip = new ToolTip();
 
+			var audioman = new CheckBox()
+			{
+				AutoSize = true,
+				Dock = DockStyle.Left,
+				Checked = initial ? false : Taskmaster.AudioManagerEnabled,
+			};
+			tooltip.SetToolTip(audioman, "Automatically set application mixer volume.");
+
+			layout.Controls.Add(new Label { Text = "Audio manager", AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, Padding = CustomPadding, Dock = DockStyle.Left });
+			layout.Controls.Add(audioman);
+
 			var micmon = new CheckBox()
 			{
 				AutoSize = true,
 				//BackColor = System.Drawing.Color.Azure,
-				Dock = DockStyle.Left
+				Dock = DockStyle.Left,
+				Checked = initial ? false : Taskmaster.MicrophoneMonitorEnabled,
 			};
-			micmon.Checked = initial ? false : Taskmaster.MicrophoneMonitorEnabled;
 			tooltip.SetToolTip(micmon, "Monitor default communications device and keep its volume.");
-			layout.Controls.Add(new Label { Text = "Microphone monitor", AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, Padding = CustomPadding, Dock = DockStyle.Left });
+
+			layout.Controls.Add(new Label { Text = "Microphone manager", AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, Padding = CustomPadding, Dock = DockStyle.Left });
 			layout.Controls.Add(micmon);
 			micmon.Click += (sender, e) =>
 			{
@@ -205,11 +217,11 @@ namespace Taskmaster
 				//BackColor = System.Drawing.Color.Azure,
 				Dock = DockStyle.Left
 			};
-			var powauto = new CheckBox()
+			var powbehaviour = new ComboBox()
 			{
-				AutoSize = true,
-				//BackColor = System.Drawing.Color.Azure,
-				Dock = DockStyle.Left
+				Items = { "Auto-adjust", "Rule-based", "Manual" },
+				DropDownStyle = ComboBoxStyle.DropDownList,
+				SelectedIndex = 1,
 			};
 
 			tooltip.SetToolTip(powmon, "Manage power mode.\nNot recommended if you already have a power manager.");
@@ -224,25 +236,28 @@ namespace Taskmaster
 			layout.Controls.Add(powmon);
 			powmon.Enabled = true;
 			powmon.Checked = initial ? true : Taskmaster.PowerManagerEnabled;
-			powauto.Checked = initial ? true : (Taskmaster.Components.powermanager?.LaunchBehaviour == PowerManager.PowerBehaviour.Auto);
-			powmon.Click += (sender, e) =>
+			powbehaviour.Enabled = powmon.Checked;
+			var behaviour = Taskmaster.Components.powermanager.LaunchBehaviour;
+			switch (behaviour)
 			{
-				if (powmon.Checked == false)
-				{
-					powauto.Checked = false;
-					powauto.Enabled = false;
-				}
-				else
-					powauto.Enabled = true;
-			};
+				case PowerManager.PowerBehaviour.Auto:
+					powbehaviour.SelectedIndex = 0;
+					break;
+				default:
+				case PowerManager.PowerBehaviour.RuleBased:
+					powbehaviour.SelectedIndex = 1;
+					break;
+				case PowerManager.PowerBehaviour.Manual:
+					powbehaviour.SelectedIndex = 2;
+					break;
+			}
 
-			tooltip.SetToolTip(powauto, "Automatically adjust power mode based on system load.");
-			layout.Controls.Add(new Label { Text = "Power auto-adjust", AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, Padding = CustomPadding, Dock = DockStyle.Left });
-			layout.Controls.Add(powauto);
-			powauto.Click += (sender, e) =>
-			{
-				if (powauto.Checked) powmon.Checked = true;
-			};
+			tooltip.SetToolTip(powbehaviour,
+				"Auto-adjust = Automatically adjust power mode based on system load or by watchlist rules\n"+
+				"Rule-based = Watchlist rules can affect it\n"+
+				"Manual = User control only");
+			layout.Controls.Add(new Label { Text = "Power behaviour", AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, Padding = CustomPadding, Dock = DockStyle.Left });
+			layout.Controls.Add(powbehaviour);
 
 			var fgmon = new CheckBox()
 			{
@@ -350,6 +365,7 @@ namespace Taskmaster
 				compsec["Process"].BoolValue = procmon.Checked;
 				compsec["Process paths"].BoolValue = pathmon.Checked;
 				compsec["Microphone"].BoolValue = micmon.Checked;
+				compsec["Audio"].BoolValue = audioman.Checked;
 				// compsec["Media"].BoolValue = mediamon.Checked;
 				compsec["Foreground"].BoolValue = fgmon.Checked;
 				compsec["Network"].BoolValue = netmon.Checked;
@@ -359,7 +375,7 @@ namespace Taskmaster
 				compsec["Health"].BoolValue = autodoc.Checked;
 
 				var powsec = cfg.Config["Power"];
-				powsec["Auto-adjust"].BoolValue = powauto.Checked;
+				if (powmon.Checked) powsec["Behaviour"].StringValue = powbehaviour.Text.ToLower();
 
 				var optsec = cfg.Config["Options"];
 				optsec["Show on start"].BoolValue = showonstart.Checked;
