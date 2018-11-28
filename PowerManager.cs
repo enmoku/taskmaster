@@ -496,7 +496,7 @@ namespace Taskmaster
 		}
 
 		bool PauseUnneededSampler = false;
-		public static int PowerdownDelay { get; set; } = 0;
+		int PowerdownDelay { get; set; } = 0;
 
 		void LoadConfig()
 		{
@@ -579,12 +579,6 @@ namespace Taskmaster
 				}
 
 				autopower.Remove("Auto-adjust");
-			}
-
-			if (LaunchBehaviour == PowerBehaviour.Auto && PowerdownDelay > 0) 
-			{
-				PowerdownDelay = 0;
-				Log.Warning("<Power> Powerdown delay is not compatible with auto-adjust, powerdown delay disabled.");
 			}
 
 			// should probably be in hardware/cpu section
@@ -1174,7 +1168,7 @@ namespace Taskmaster
 
 				Task.Run(async () =>
 				{
-					if (PowerdownDelay > 0)
+					if (Behaviour == PowerBehaviour.Auto && PowerdownDelay > 0)
 					{
 						if (Taskmaster.DebugPower)
 							Log.Debug("<Power> Powerdown delay: " + PowerdownDelay + "s");

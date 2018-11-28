@@ -3,6 +3,9 @@ Comprehensive changes can be found in Git change history:
 	https://github.com/mkahvi/taskmaster/commits/master
 
 ## [0.11...]
+### 2018-11-28
+	Changed: Powerdown delay is untouched in the .ini to allow swapping back and forth between settings.
+		It is now simply ignored when it is problematic.
 ### 2018-11-27
 	Fixed: Show Inaction was showing debug info for things that were not explicitly enabled.
 	Added: Monitor power and power mode during session lock options added to power config.
