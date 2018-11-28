@@ -9,6 +9,7 @@ Comprehensive changes can be found in Git change history:
 	Fixed: Component configuration was severely outdated.
 	Removed: Immediate configuration saving. It was causing bugs for no real benefits.
 	Fixed: Some oddities in power config saving.
+	Fixed: Powerdown delay logic was flipped.
 ### 2018-11-27
 	Fixed: Show Inaction was showing debug info for things that were not explicitly enabled.
 	Added: Monitor power and power mode during session lock options added to power config.
