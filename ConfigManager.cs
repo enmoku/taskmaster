@@ -145,7 +145,6 @@ namespace Taskmaster
 			System.Diagnostics.Debug.Assert(Config != null);
 
 			Dirty = true;
-			if (Taskmaster.ImmediateSave) Save(force:true);
 		}
 
 		public void Save(bool force=false)

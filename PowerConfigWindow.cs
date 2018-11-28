@@ -442,7 +442,7 @@ namespace Taskmaster
 
 				power.SetRestoreMode(pcw.NewRestoreMethod, pcw.NewRestoreMode);
 
-				power.SaveNeeded(behaviour: true);
+				power.SaveConfig();
 
 				Log.Information("<<UI>> Power config changed.");
 

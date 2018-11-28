@@ -439,7 +439,6 @@ namespace Taskmaster
 		public static bool ShowInTaskbar = false;
 		public static int AffinityStyle = 0;
 		public static bool GlobalHotkeys = false;
-		public static bool ImmediateSave = true;
 
 		public static string coreconfig = "Core.ini";
 		static void LoadCoreConfig()
@@ -612,10 +611,6 @@ namespace Taskmaster
 			var maintsec = cfg["Maintenance"];
 			CleanupInterval = maintsec.GetSetDefault("Cleanup interval", 15, out modified).IntValue.Constrain(1, 1440);
 			maintsec["Cleanup interval"].Comment = "In minutes, 1 to 1440. How frequently to perform general sanitation of TM itself.";
-			dirtyconfig |= modified;
-
-			ImmediateSave = perfsec.GetSetDefault("Immediate configuration saving", false, out modified).BoolValue;
-			perfsec["Immediate configuration saving"].Comment = "Immediately save configuration files instead of at exit.";
 			dirtyconfig |= modified;
 
 			var newsettings = optsec?.SettingCount ?? 0 + compsec?.SettingCount ?? 0 + perfsec?.SettingCount ?? 0;

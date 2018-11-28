@@ -293,7 +293,7 @@ namespace Taskmaster
 		/// <summary>
 		/// Power off monitor directly on lock off.
 		/// </summary>
-		public bool SessionLockPowerOff { get; set; }  = true;
+		public bool SessionLockPowerOff { get; set; } = true;
 
 		public event EventHandler<ProcessorEventArgs> onAutoAdjustAttempt;
 		public event EventHandler<PowerModeEventArgs> onPlanChange;
@@ -330,7 +330,6 @@ namespace Taskmaster
 			lock (autoadjust_lock)
 			{
 				AutoAdjust = settings;
-				saveneeded = true;
 			}
 
 			// TODO: Call reset on power manager?
@@ -556,8 +555,8 @@ namespace Taskmaster
 					}
 					break;
 			}
+
 			SetRestoreMode(newmodemethod, newrestoremode);
-			saveneeded = false;
 
 			PowerdownDelay = power.GetSetDefault("Watchlist powerdown delay", 0, out modified).IntValue.Constrain(0, 60);
 			power["Watchlist powerdown delay"].Comment = "Delay, in seconds (0 to 60, 0 disables), for when to wind down power mode set by watchlist.";
@@ -573,7 +572,7 @@ namespace Taskmaster
 				if (bautoadjust)
 				{
 					power["Behaviour"].StringValue = "auto";
-					saveneeded = true;
+					dirtyconfig = true;
 					LaunchBehaviour = PowerBehaviour.Auto;
 					Behaviour = PowerBehaviour.Auto;
 				}
@@ -692,14 +691,9 @@ namespace Taskmaster
 			if (dirtyconfig) corecfg.MarkDirty();
 		}
 
-		bool saveneeded = false;
-		bool savebehaviour = false;
-		void SaveConfig()
+		public void SaveConfig()
 		{
-			if (!saveneeded) return;
-
 			var corecfg = Taskmaster.Config.Load(Taskmaster.coreconfig);
-			corecfg.MarkDirty();
 
 			var power = corecfg.Config["Power"];
 
@@ -758,6 +752,8 @@ namespace Taskmaster
 			var hwsec = corecfg.Config["Hardware"];
 			hwsec["CPU sample interval"].IntValue = CPUSampleInterval;
 			hwsec["CPU sample count"].IntValue = CPUSampleCount;
+
+			corecfg.MarkDirty();
 		}
 
 		public void LogBehaviourState()
@@ -1042,18 +1038,6 @@ namespace Taskmaster
 					RestoreMode = mode;
 					break;
 			}
-
-			saveneeded = true;
-			if (Taskmaster.ImmediateSave) SaveConfig();
-		}
-
-		public void SaveNeeded(bool behaviour = false)
-		{
-			saveneeded = true;
-			if (behaviour) savebehaviour = true;
-
-			if (Taskmaster.DebugPower)
-				Log.Debug("<Power> Behaviour: " + Behaviour.ToString() + ", Restore method: " + RestoreMethod.ToString() + ", mode: " + RestoreMode.ToString());
 		}
 
 		public PowerBehaviour SetBehaviour(PowerBehaviour pb)

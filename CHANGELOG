@@ -7,6 +7,8 @@ Comprehensive changes can be found in Git change history:
 	Changed: Powerdown delay is untouched in the .ini to allow swapping back and forth between settings.
 		It is now simply ignored when it is problematic.
 	Fixed: Component configuration was severely outdated.
+	Removed: Immediate configuration saving. It was causing bugs for no real benefits.
+	Fixed: Some oddities in power config saving.
 ### 2018-11-27
 	Fixed: Show Inaction was showing debug info for things that were not explicitly enabled.
 	Added: Monitor power and power mode during session lock options added to power config.
