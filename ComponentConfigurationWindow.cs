@@ -327,7 +327,7 @@ namespace Taskmaster
 				AutoSize = true,
 				//BackColor = System.Drawing.Color.Azure,
 				Dock = DockStyle.Left,
-				Checked = initial ? true : Taskmaster.HealthMonitorEnabled,
+				Checked = initial ? false : Taskmaster.HealthMonitorEnabled,
 			};
 			layout.Controls.Add(new Label()
 			{

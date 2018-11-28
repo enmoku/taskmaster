@@ -476,7 +476,7 @@ namespace Taskmaster
 			AudioManagerEnabled = compsec.GetSetDefault("Audio", true, out modified).BoolValue;
 			compsec["Audio"].Comment = "Monitor audio sessions and set their volume as per user configuration.";
 			dirtyconfig |= modified;
-			MicrophoneMonitorEnabled = compsec.GetSetDefault("Microphone", true, out modified).BoolValue;
+			MicrophoneMonitorEnabled = compsec.GetSetDefault("Microphone", false, out modified).BoolValue;
 			compsec["Microphone"].Comment = "Monitor and force-keep microphone volume.";
 			dirtyconfig |= modified;
 			// MediaMonitorEnabled = compsec.GetSetDefault("Media", true, out modified).BoolValue;
@@ -498,7 +498,7 @@ namespace Taskmaster
 			compsec["Maintenance"].Comment = "Enable basic maintenance monitoring functionality.";
 			dirtyconfig |= modified;
 
-			HealthMonitorEnabled = compsec.GetSetDefault("Health", true, out modified).BoolValue;
+			HealthMonitorEnabled = compsec.GetSetDefault("Health", false, out modified).BoolValue;
 			compsec["Health"].Comment = "General system health monitoring suite.";
 			dirtyconfig |= modified;
 
