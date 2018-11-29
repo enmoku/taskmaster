@@ -2149,6 +2149,7 @@ namespace Taskmaster
 			}
 		}
 
+		// This should be somewhere else
 		void CopyRuleToClipboard(object sender, EventArgs ea)
 		{
 			if (watchlistRules.SelectedItems.Count == 1)
@@ -2187,7 +2188,11 @@ namespace Taskmaster
 						sbs.Append("Affinity strategy = ").Append((int)prc.AffinityStrategy).AppendLine();
 					}
 					if (prc.PowerPlan != PowerInfo.PowerMode.Undefined)
+					{
 						sbs.Append("Power plan = ").Append(PowerManager.GetModeName(prc.PowerPlan)).AppendLine();
+						if (prc.BackgroundPowerdown)
+							sbs.Append("Background powerdown = ").Append(prc.BackgroundPowerdown).AppendLine();
+					}
 					if (prc.Rescan > 0)
 						sbs.Append("Rescan = ").Append(prc.Rescan).AppendLine();
 					if (prc.Recheck > 0)
@@ -2195,7 +2200,22 @@ namespace Taskmaster
 					if (prc.AllowPaging)
 						sbs.Append("Allow paging = ").Append(prc.AllowPaging).AppendLine();
 					if (prc.ForegroundOnly)
+					{
 						sbs.Append("Foreground only = ").Append(prc.ForegroundOnly).AppendLine();
+						if (prc.BackgroundPriority.HasValue)
+							sbs.Append("Background priority = ").Append(prc.BackgroundPriority.Value.ToInt32()).AppendLine();
+						if (prc.BackgroundAffinity.HasValue)
+							sbs.Append("Background affinity = ").Append(prc.BackgroundAffinity.Value.ToInt32()).AppendLine();
+					}
+
+					if (prc.PathVisibility != PathVisibilityOptions.File)
+						sbs.Append("Path visibility = ").Append((int)prc.PathVisibility).AppendLine();
+
+					if (prc.VolumeStrategy != AudioVolumeStrategy.Ignore)
+					{
+						sbs.Append("Volume = ").Append($"{prc.Volume:N2}").AppendLine();
+						sbs.Append("Volume strategy = ").Append((int)prc.VolumeStrategy).AppendLine();
+					}
 
 					// TODO: Add Resize and Modify Delay
 
