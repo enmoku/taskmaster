@@ -306,10 +306,12 @@ namespace Taskmaster
 
 			layout.Controls.Add(new Label() { Text = "Commit CPU% threshold", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Fill });
 			var highcommitthreshold = new Extensions.NumericUpDownEx() { Unit = "%", Maximum = 95, Minimum = 5, Value = 50 };
+			tooltip.SetToolTip(highcommitthreshold,"Low CPU use % that must be maintained for this operation mode to be enacted.");
 			highcommitthreshold.Value = Convert.ToDecimal(AutoAdjust.High.Commit.Threshold).Constrain(5, 95);
 			layout.Controls.Add(highcommitthreshold);
 			layout.Controls.Add(new Label() { Text = "Commit level", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Fill });
 			var highcommitlevel = new NumericUpDown() { Maximum = 15, Minimum = 0, Value = 3 };
+			tooltip.SetToolTip(highcommitlevel, "How many consequent samples must match threshold to commit to it.");
 			highcommitlevel.Value = AutoAdjust.High.Commit.Level.Constrain(0, 15);
 			layout.Controls.Add(highcommitlevel);
 			layout.Controls.Add(new Label() { Text = "Backoff high CPU%", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Fill });
@@ -346,10 +348,12 @@ namespace Taskmaster
 
 			layout.Controls.Add(new Label() { Text = "Commit CPU% threshold", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Fill });
 			var lowcommitthreshold = new Extensions.NumericUpDownEx() { Unit = "%", Maximum = 95, Minimum = 5, Value = 50 };
+			tooltip.SetToolTip(lowcommitthreshold, "High CPU use % that must not be maintained for this operation mode to be enacted.");
 			lowcommitthreshold.Value = Convert.ToDecimal(AutoAdjust.Low.Commit.Threshold).Constrain(5, 95);
 			layout.Controls.Add(lowcommitthreshold);
 			layout.Controls.Add(new Label() { Text = "Commit level", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Fill });
 			var lowcommitlevel = new NumericUpDown() { Maximum = 15, Minimum = 0, Value = 3 };
+			tooltip.SetToolTip(lowcommitlevel, "How many consequent samples must match threshold to commit to it.");
 			lowcommitlevel.Value = AutoAdjust.Low.Commit.Level.Constrain(0, 15);
 			layout.Controls.Add(lowcommitlevel);
 			layout.Controls.Add(new Label() { Text = "Backoff high CPU%", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Fill });

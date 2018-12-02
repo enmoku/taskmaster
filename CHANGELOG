@@ -6,6 +6,7 @@ Comprehensive changes can be found in Git change history:
 ### 2018-12-02
 	Changed: CPU sampler pausing is more thorough.
 	Changed: Debug is less spammy.
+	Added: Power configuration has little bit more tooltip details.
 ### 2018-11-29
 	Fixed: Watchlist copy to clipboard option was not including some options.
 ### 2018-11-28
