@@ -306,13 +306,7 @@ namespace Taskmaster
 
 			processmanager.ProcessModified += ProcessTouchEvent;
 
-			if (IsHandleCreated)
-			{
-				BeginInvoke(new Action(() =>
-				{
-					processingcount.Text = ProcessManager.Handling.ToString();
-				}));
-			}
+			ProcessNewInstanceCount(this, null);
 
 			var items = processmanager.getExitWaitList();
 
