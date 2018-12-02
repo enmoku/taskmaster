@@ -3,6 +3,9 @@ Comprehensive changes can be found in Git change history:
 	https://github.com/mkahvi/taskmaster/commits/master
 
 ## [0.11...]
+### 2018-12-02
+	Changed: CPU sampler pausing is more thorough.
+	Changed: Debug is less spammy.
 ### 2018-11-29
 	Fixed: Watchlist copy to clipboard option was not including some options.
 ### 2018-11-28

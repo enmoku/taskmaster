@@ -88,19 +88,10 @@ namespace Taskmaster
 
 			// SystemEvents.PowerModeChanged += BatteryChargingEvent; // Without laptop testing this feature is difficult
 
-			CPUCounter = new PerformanceCounterWrapper("Processor", "% Processor Time", "_Total");
-
 			onCPUSampling += CPULoadEvent;
 
-			CPUSamples = new float[CPUSampleCount];
-
-			CPUTimer = new System.Timers.Timer(CPUSampleInterval * 1000);
-			CPUTimer.Elapsed += CPUSampler;
-
-			if (Behaviour == PowerBehaviour.Auto || !PauseUnneededSampler)
-			{
-				CPUTimer.Start();
-			}
+			if (Behaviour == PowerBehaviour.Auto)
+				StartCPUMonitor();
 
 			if (Behaviour == PowerBehaviour.RuleBased && !Forced)
 				Restore();
@@ -118,6 +109,40 @@ namespace Taskmaster
 				MonitorPower += MonitorPowerEvent;
 			}
 		}
+
+		void StartCPUMonitor()
+		{
+			try
+			{
+				if (CPUTimer == null)
+				{
+					CPUTimer = new System.Timers.Timer(CPUSampleInterval * 1000);
+					CPUTimer.Elapsed += CPUSampler;
+
+					CPUSamples = new float[CPUSampleCount];
+				}
+
+				CPUCounter = new PerformanceCounterWrapper("Processor", "% Processor Time", "_Total");
+
+				if (Behaviour == PowerBehaviour.Auto || !PauseUnneededSampler)
+					CPUTimer.Start();
+			}
+			catch (Exception ex)
+			{
+				Logging.Stacktrace(ex);
+				StopCPUMonitor();
+			}
+		}
+
+		void StopCPUMonitor()
+		{
+			CPUTimer?.Dispose();
+			CPUTimer = null;
+
+			CPUCounter?.Dispose();
+			CPUCounter = null;
+		}
+
 
 		void MonitorPowerEvent(object sender, MonitorPowerEventArgs ev)
 		{
@@ -212,7 +237,7 @@ namespace Taskmaster
 		public int CPUSampleInterval { get; set; } = 5;
 		public int CPUSampleCount { get; set; } = 5;
 		PerformanceCounterWrapper CPUCounter = null;
-		readonly System.Timers.Timer CPUTimer = null;
+		System.Timers.Timer CPUTimer = null;
 
 		public event EventHandler<ProcessorEventArgs> onCPUSampling;
 		float[] CPUSamples;
@@ -224,41 +249,30 @@ namespace Taskmaster
 		{
 			if (!Atomic.Lock(ref cpusampler_lock)) return; // uhhh... probably should ping warning if this return is triggered
 
-			try
+			float sample = CPUCounter.Value; // slowest part
+			CPUAverage -= CPUSamples[CPUSampleLoop];
+			CPUAverage += CPUSamples[CPUSampleLoop] = sample;
+			CPUSampleLoop = (CPUSampleLoop + 1) % CPUSampleCount; // loop offset
+
+			float CPULow = float.MaxValue;
+			float CPUHigh = float.MinValue;
+
+			for (int i = 0; i < CPUSampleCount; i++)
 			{
-				float sample = CPUCounter.Value; // slowest part
-				CPUAverage -= CPUSamples[CPUSampleLoop];
-				CPUAverage += sample;
-
-				CPUSamples[CPUSampleLoop] = sample;
-				CPUSampleLoop = (CPUSampleLoop + 1) % CPUSampleCount; // loop offset
-
-				float CPULow = float.MaxValue;
-				float CPUHigh = float.MinValue;
-
-				for (int i = 0; i < CPUSampleCount; i++)
-				{
-					var cur = CPUSamples[i];
-					if (cur < CPULow) CPULow = cur;
-					else if (cur > CPUHigh) CPUHigh = cur;
-				}
-
-				onCPUSampling?.Invoke(this, new ProcessorEventArgs()
-				{
-					Current = sample,
-					Average = CPUAverage / CPUSampleCount,
-					High = CPUHigh,
-					Low = CPULow
-				});
+				var cur = CPUSamples[i];
+				if (cur < CPULow) CPULow = cur;
+				else if (cur > CPUHigh) CPUHigh = cur;
 			}
-			catch (Exception ex)
+
+			onCPUSampling?.Invoke(this, new ProcessorEventArgs()
 			{
-				Logging.Stacktrace(ex);
-			}
-			finally
-			{
-				Atomic.Unlock(ref cpusampler_lock);
-			}
+				Current = sample,
+				Average = CPUAverage / CPUSampleCount,
+				High = CPUHigh,
+				Low = CPULow
+			});
+
+			Atomic.Unlock(ref cpusampler_lock);
 		}
 
 		/// <summary>
@@ -462,8 +476,9 @@ namespace Taskmaster
 				{
 					if (Forced)
 					{
-						if (Taskmaster.DebugPower && Taskmaster.ShowInaction)
+						if (Taskmaster.DebugPower && Taskmaster.ShowInaction && !WarnedForceMode)
 							Log.Debug("<Power> Can't override forced power mode.");
+						WarnedForceMode = true;
 					}
 					else if (ReadyToAdjust)
 					{
@@ -488,10 +503,13 @@ namespace Taskmaster
 			onAutoAdjustAttempt?.Invoke(this, ev);
 		}
 
+		bool WarnedForceMode = false;
+
 		void ResetAutoadjust()
 		{
 			BackoffCounter = HighPressure = LowPressure = 0;
 			PreviousReaction = PowerReaction.Average;
+			WarnedForceMode = false;
 		}
 
 		bool PauseUnneededSampler = false;
@@ -863,7 +881,7 @@ namespace Taskmaster
 
 							Paused = true;
 
-							if (PauseUnneededSampler) CPUTimer.Stop();
+							if (PauseUnneededSampler) StopCPUMonitor();
 
 							if (CurrentMode != SessionLockPowerMode)
 								InternalSetMode(PowerMode.PowerSaver, true);
@@ -882,7 +900,7 @@ namespace Taskmaster
 
 							Paused = false;
 
-							if (PauseUnneededSampler) CPUTimer.Start();
+							if (PauseUnneededSampler) StartCPUMonitor();
 						}
 						break;
 					default:
@@ -1058,20 +1076,15 @@ namespace Taskmaster
 					{
 						ResetAutoadjust();
 
-						if (PauseUnneededSampler)
-						{
-							CPUSamples = new float[CPUSampleCount]; // reset samples
-							CPUTimer.Start();
-							Log.Debug("CPU sampler restarted.");
-						}
+						if (PauseUnneededSampler) StartCPUMonitor();
 					}
 					else if (Behaviour == PowerBehaviour.RuleBased)
 					{
-						if (PauseUnneededSampler) CPUTimer.Stop();
+						if (PauseUnneededSampler) StopCPUMonitor();
 					}
 					else // MANUAL
 					{
-						if (PauseUnneededSampler) CPUTimer.Stop();
+						if (PauseUnneededSampler) StopCPUMonitor();
 
 						Taskmaster.Components.processmanager.CancelPowerWait(); // need nicer way to do this
 
@@ -1112,13 +1125,7 @@ namespace Taskmaster
 		/// </remarks>
 		public void Release(int sourcePid)
 		{
-			if (Taskmaster.DebugPower)
-			{
-				if (sourcePid == 0)
-					Log.Debug("<Power> Release – clearing all locks");
-				else
-					Log.Debug("<Power> Release #" + sourcePid);
-			}
+			if (Taskmaster.DebugPower) Log.Debug("<Power> Releasing " + (sourcePid==0?"all locks":$"#{sourcePid}"));
 
 			Debug.Assert(sourcePid == 0 || sourcePid > 4);
 
@@ -1129,8 +1136,6 @@ namespace Taskmaster
 					if (sourcePid == 0)
 					{
 						forceModeSources.Clear();
-						if (Taskmaster.DebugPower)
-							Log.Debug("<Power> Cleared forced list.");
 					}
 					else if (forceModeSources.Contains(sourcePid))
 					{
@@ -1153,12 +1158,7 @@ namespace Taskmaster
 				Task.Run(async () =>
 				{
 					if (Behaviour != PowerBehaviour.Auto && PowerdownDelay > 0)
-					{
-						if (Taskmaster.DebugPower)
-							Log.Debug("<Power> Powerdown delay: " + PowerdownDelay + "s");
-
-						await Task.Delay(PowerdownDelay * 1000).ConfigureAwait(false);
-					}
+						await Task.Delay(PowerdownDelay * 1_000).ConfigureAwait(false);
 
 					ReleaseFinal();
 				});
@@ -1171,34 +1171,24 @@ namespace Taskmaster
 
 		void ReleaseFinal()
 		{
-			try
+			lock (forceModeSources_lock)
 			{
-				lock (forceModeSources_lock)
+				if (forceModeSources.Count == 0)
 				{
-					if (forceModeSources.Count == 0)
-					{
-						// TODO: Restore Powerdown delay functionality here.
+					// TODO: Restore Powerdown delay functionality here.
 
-						if (Taskmaster.DebugPower) Log.Debug("<Power> No power locks left, restoring power to normal.");
+					if (Taskmaster.DebugPower) Log.Debug("<Power> No power locks left.");
 
-						Restore();
-					}
-					else
+					Restore();
+				}
+				else
+				{
+					if (Taskmaster.DebugPower)
 					{
-						if (Taskmaster.DebugPower)
-						{
-							Log.Debug("<Power> Forced mode still requested by " + forceModeSources.Count + " sources.");
-							if (Forced)
-							{
-								Log.Debug("<Power> Sources: " + string.Join(", ", forceModeSources.ToArray()));
-							}
-						}
+						Log.Debug("<Power> Forced mode still requested by " + forceModeSources.Count + " sources.");
+						if (Forced) Log.Debug("<Power> Sources: " + string.Join(", ", forceModeSources.ToArray()));
 					}
 				}
-			}
-			catch (Exception ex)
-			{
-				Logging.Stacktrace(ex);
 			}
 		}
 
@@ -1375,8 +1365,7 @@ namespace Taskmaster
 			{
 				if (Taskmaster.Trace) Log.Verbose("Disposing power manager...");
 
-				CPUTimer?.Dispose();
-				CPUCounter?.Dispose();
+				StopCPUMonitor();
 
 				MonitorPower = null;
 				MonitorSleepTimer?.Dispose();
