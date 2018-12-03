@@ -347,11 +347,7 @@ namespace Taskmaster
 			if (!IsHandleCreated) return;
 			BeginInvoke(new Action(() =>
 			{
-				try
-				{
-					PowerConfigWindow.Show();
-				}
-				catch (Exception ex) { Logging.Stacktrace(ex); }
+				PowerConfigWindow.Show();
 			}));
 		}
 
