@@ -109,6 +109,10 @@ namespace Taskmaster
 		/// </summary>
 		Finished,
 		/// <summary>
+		/// Done processing.
+		/// </summary>
+		Abandoned,
+		/// <summary>
 		/// Tin.
 		/// </summary>
 		Invalid

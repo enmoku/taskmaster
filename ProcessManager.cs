@@ -1254,73 +1254,75 @@ namespace Taskmaster
 
 			await Task.Delay(0).ConfigureAwait(false);
 
-			if (IgnoreProcessID(ea.Info.Id) || IgnoreProcessName(ea.Info.Name))
+			try
 			{
-				if (Taskmaster.Trace) Log.Verbose("Ignoring process: " + ea.Info.Name + " (#" + ea.Info.Id + ")");
-				return; // ProcessState.Ignored;
-			}
-
-			if (string.IsNullOrEmpty(ea.Info.Name))
-			{
-				Log.Warning("#" + ea.Info.Id + " details unaccessible, ignored.");
-				return; // ProcessState.AccessDenied;
-			}
-
-			ProcessController prc = null;
-
-			lock (execontrol_lock)
-				execontrol.TryGetValue(ea.Info.Name.ToLowerInvariant(), out prc);
-
-			if (prc != null)
-			{
-				if (!prc.Enabled)
+				if (IgnoreProcessID(ea.Info.Id) || IgnoreProcessName(ea.Info.Name))
 				{
-					if (Taskmaster.DebugProcesses)
-						Log.Debug("[" + prc.FriendlyName + "] Matched, but rule disabled; ignoring.");
-					ea.Info.State = ProcessModification.Ignored;
+					if (Taskmaster.Trace) Log.Verbose("Ignoring process: " + ea.Info.Name + " (#" + ea.Info.Id + ")");
+					return; // ProcessState.Ignored;
+				}
+
+				if (string.IsNullOrEmpty(ea.Info.Name))
+				{
+					Log.Warning("#" + ea.Info.Id + " details unaccessible, ignored.");
+					return; // ProcessState.AccessDenied;
+				}
+
+				ProcessController prc = null;
+
+				lock (execontrol_lock)
+					execontrol.TryGetValue(ea.Info.Name.ToLowerInvariant(), out prc);
+
+				if (prc != null)
+				{
+					if (!prc.Enabled)
+					{
+						if (Taskmaster.DebugProcesses)
+							Log.Debug("[" + prc.FriendlyName + "] Matched, but rule disabled; ignoring.");
+						ea.Info.State = ProcessModification.Ignored;
+						return;
+					}
+
+					// await System.Threading.Tasks.Task.Delay(ProcessModifyDelay).ConfigureAwait(false);
+
+					try
+					{
+						prc.Modify(ea.Info);
+					}
+					catch (Exception ex)
+					{
+						Log.Fatal("[" + prc.FriendlyName + "] " + ea.Info.Name + " (#" + ea.Info.Id + ") MASSIVE FAILURE!!!");
+						Logging.Stacktrace(ex);
+						return; // ProcessState.Error;
+					}
+
+					ForegroundWatch(ea.Info, prc);
 					return;
 				}
 
-				// await System.Threading.Tasks.Task.Delay(ProcessModifyDelay).ConfigureAwait(false);
+				// Log.Verbose("{AppName} not in executable control list.", info.Name);
 
-				try
+				if (WatchlistWithPath > 0 && !ea.Info.Handled)
 				{
-					prc.Modify(ea.Info);
-				}
-				catch (Exception ex)
-				{
-					Log.Fatal("[" + prc.FriendlyName + "] " + ea.Info.Name + " (#" + ea.Info.Id + ") MASSIVE FAILURE!!!");
-					Logging.Stacktrace(ex);
-
-					return; // ProcessState.Error;
-				}
-				finally
-				{
-					HandlingStateChange?.Invoke(this, new InstanceHandlingArgs()
-					{
-						State = ProcessHandlingState.Finished,
-						Info = ea.Info,
-						Controller = ea.Control,
-					});
+					// Log.Verbose("Checking paths for '{ProcessName}' (#{ProcessID})", info.Name, info.Id);
+					CheckPathWatch(ea.Info);
+					return;
 				}
 
-				ForegroundWatch(ea.Info, prc);
-				return;
+				/*
+				if (ControlChildren) // this slows things down a lot it seems
+					ChildController(info);
+				*/
 			}
-
-			// Log.Verbose("{AppName} not in executable control list.", info.Name);
-
-			if (WatchlistWithPath > 0 && !ea.Info.Handled)
+			finally
 			{
-				// Log.Verbose("Checking paths for '{ProcessName}' (#{ProcessID})", info.Name, info.Id);
-				CheckPathWatch(ea.Info);
-				return;
+				HandlingStateChange?.Invoke(this, new InstanceHandlingArgs()
+				{
+					State = ea.Info.State == ProcessModification.Modified ? ProcessHandlingState.Finished : ProcessHandlingState.Abandoned,
+					Info = ea.Info,
+					Controller = ea.Control,
+				});
 			}
-
-			/*
-			if (ControlChildren) // this slows things down a lot it seems
-				ChildController(info);
-			*/
 		}
 
 		readonly object batchprocessing_lock = new object();
@@ -1381,45 +1383,59 @@ namespace Taskmaster
 		{
 			SignalProcessHandled(1); // wmi new instance
 
-			var wmiquerytime = Stopwatch.StartNew();
-
-			// TODO: Instance groups?
-			var pid = -1;
-			var name = string.Empty;
-			var path = string.Empty;
-			System.Management.ManagementBaseObject targetInstance;
+			int pid = -1;
+			string name = string.Empty;
+			string path = string.Empty;
+			ProcessEx info = null;
 
 			try
 			{
-				targetInstance = (System.Management.ManagementBaseObject)e.NewEvent.Properties["TargetInstance"].Value;
-				pid = Convert.ToInt32((string)targetInstance.Properties["Handle"].Value);
-				path = (string)(targetInstance.Properties["ExecutablePath"].Value);
+				var wmiquerytime = Stopwatch.StartNew();
+
+				// TODO: Instance groups?
+				System.Management.ManagementBaseObject targetInstance;
+
+				try
+				{
+					targetInstance = (System.Management.ManagementBaseObject)e.NewEvent.Properties["TargetInstance"].Value;
+					pid = Convert.ToInt32((string)targetInstance.Properties["Handle"].Value);
+					path = (string)(targetInstance.Properties["ExecutablePath"].Value);
+				}
+				catch { }
+				finally
+				{
+					wmiquerytime.Stop();
+					Statistics.WMIPollTime += wmiquerytime.Elapsed.TotalSeconds;
+					Statistics.WMIPolling += 1;
+				}
+
+				if (IgnoreProcessID(pid)) return; // We just don't care
+
+				if (!string.IsNullOrEmpty(path))
+					name = System.IO.Path.GetFileNameWithoutExtension(path);
+
+				if (string.IsNullOrEmpty(name))
+				{
+					// likely process exited too fast
+					if (Taskmaster.DebugProcesses && Taskmaster.ShowInaction) Log.Debug("<<WMI>> Failed to acquire neither process name nor process Id");
+
+					return;
+				}
+
+				info = ProcessManagerUtility.GetInfo(pid, path: path, getPath: true);
+				if (info != null) await NewInstanceTriagePhaseTwo(info);
 			}
-			catch { }
 			finally
 			{
-				wmiquerytime.Stop();
-				Statistics.WMIPollTime += wmiquerytime.Elapsed.TotalSeconds;
-				Statistics.WMIPolling += 1;
+				HandlingStateChange?.Invoke(this, new InstanceHandlingArgs()
+				{
+					State = ProcessHandlingState.Finished,
+					Info = info ?? new ProcessEx { Id = pid },
+					Controller = null,
+				});
+
+				SignalProcessHandled(-1); // done with it
 			}
-
-			if (IgnoreProcessID(pid)) return; // We just don't care
-
-			if (!string.IsNullOrEmpty(path))
-				name = System.IO.Path.GetFileNameWithoutExtension(path);
-
-			if (string.IsNullOrEmpty(name))
-			{
-				// likely process exited too fast
-				if (Taskmaster.DebugProcesses && Taskmaster.ShowInaction) Log.Debug("<<WMI>> Failed to acquire neither process name nor process Id");
-				SignalProcessHandled(-1); // done early
-				return;
-			}
-
-			ProcessEx info = ProcessManagerUtility.GetInfo(pid, path: path, getPath: true);
-			if (info != null) NewInstanceTriagePhaseTwo(info);
-
-			SignalProcessHandled(-1); // done with it
 		}
 
 		async Task NewInstanceTriagePhaseTwo(ProcessEx info)

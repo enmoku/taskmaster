@@ -230,7 +230,7 @@ namespace Taskmaster
 
 			// TODO: Hook device changes
 			micmon.VolumeChanged += VolumeChangeDetected;
-			FormClosing += (s,e) => { micmon.VolumeChanged -= VolumeChangeDetected; };
+			FormClosing += (s, e) => { micmon.VolumeChanged -= VolumeChangeDetected; };
 		}
 
 		readonly string AnyIgnoredValue = string.Empty; // Any/Ignored
@@ -293,8 +293,10 @@ namespace Taskmaster
 			processmanager.onWaitForExitEvent += ExitWaitListHandler;
 			PathCacheUpdate(null, null);
 
-			foreach (var prc in processmanager.getWatchlist()) AddToWatchlistList(prc);
-				WatchlistColor();
+			foreach (var prc in processmanager.getWatchlist())
+				AddToWatchlistList(prc);
+
+			WatchlistColor();
 
 			rescanRequest += processmanager.ScanEverythingRequest;
 
@@ -687,9 +689,9 @@ namespace Taskmaster
 
 		ToolStripMenuItem menu_debug_loglevel_info = null;
 		ToolStripMenuItem menu_debug_loglevel_debug = null;
-		#if DEBUG
+#if DEBUG
 		ToolStripMenuItem menu_debug_loglevel_trace = null;
-		#endif
+#endif
 
 		void EnsureVerbosityLevel()
 		{
@@ -704,9 +706,9 @@ namespace Taskmaster
 
 			menu_debug_loglevel_info.Checked = (level == Serilog.Events.LogEventLevel.Information);
 			menu_debug_loglevel_debug.Checked = (level == Serilog.Events.LogEventLevel.Debug);
-			#if DEBUG
+#if DEBUG
 			menu_debug_loglevel_trace.Checked = (level == Serilog.Events.LogEventLevel.Verbose);
-			#endif
+#endif
 			switch (level)
 			{
 				default:
@@ -716,11 +718,11 @@ namespace Taskmaster
 				case Serilog.Events.LogEventLevel.Debug:
 					verbositylevel.Text = "Debug";
 					break;
-				#if DEBUG
+#if DEBUG
 				case Serilog.Events.LogEventLevel.Verbose:
 					verbositylevel.Text = "Trace";
 					break;
-				#endif
+#endif
 			}
 		}
 
@@ -730,9 +732,9 @@ namespace Taskmaster
 		void BuildUI()
 		{
 			Text = Application.ProductName + " (" + Application.ProductVersion + ")"
-				#if DEBUG
+#if DEBUG
 				+ " DEBUG"
-				#endif
+#endif
 				;
 
 			// Padding = new Padding(6);
@@ -857,7 +859,8 @@ namespace Taskmaster
 				Checked = Taskmaster.ShowProcessAdjusts,
 				CheckOnClick = true,
 			};
-			menu_config_logging_adjusts.Click += (s, e) => {
+			menu_config_logging_adjusts.Click += (s, e) =>
+			{
 				Taskmaster.ShowProcessAdjusts = menu_config_logging_adjusts.Checked;
 
 				var corecfg = Taskmaster.Config.Load(Taskmaster.coreconfig);
@@ -883,7 +886,8 @@ namespace Taskmaster
 				corecfg.Config["Logging"]["Show network errors"].BoolValue = Taskmaster.ShowNetworkErrors;
 				corecfg.MarkDirty();
 			};
-			menu_config_logging_session.Click += (s, e) => {
+			menu_config_logging_session.Click += (s, e) =>
+			{
 				Taskmaster.ShowSessionActions = menu_config_logging_session.Checked;
 
 				var corecfg = Taskmaster.Config.Load(Taskmaster.coreconfig);
@@ -902,7 +906,8 @@ namespace Taskmaster
 			{
 				Checked = Taskmaster.AffinityStyle == 1,
 			};
-			menu_config_bitmaskstyle_bitmask.Click += (s, e) => {
+			menu_config_bitmaskstyle_bitmask.Click += (s, e) =>
+			{
 				Taskmaster.AffinityStyle = 0;
 				menu_config_bitmaskstyle_bitmask.Checked = true;
 				menu_config_bitmaskstyle_decimal.Checked = false;
@@ -912,7 +917,8 @@ namespace Taskmaster
 				corecfg.Config["Quality of Life"]["Core affinity style"].IntValue = 0;
 				corecfg.MarkDirty();
 			};
-			menu_config_bitmaskstyle_decimal.Click += (s, e) => {
+			menu_config_bitmaskstyle_decimal.Click += (s, e) =>
+			{
 				Taskmaster.AffinityStyle = 1;
 				menu_config_bitmaskstyle_bitmask.Checked = false;
 				menu_config_bitmaskstyle_decimal.Checked = true;
@@ -952,7 +958,7 @@ namespace Taskmaster
 
 							if (rv == DialogResult.OK)
 							{
-								Taskmaster.UnifiedExit(restart:true);
+								Taskmaster.UnifiedExit(restart: true);
 							}
 						}
 					}
@@ -1049,25 +1055,9 @@ namespace Taskmaster
 			{
 				Taskmaster.DebugProcesses = menu_debug_procs.Checked;
 				if (Taskmaster.DebugProcesses)
-				{
-					if (!ProcessDebugTab_visible)
-					{
-						ProcessDebugTab_visible = true;
-						tabLayout.Controls.Add(ProcessDebugTab);
-					}
-					EnsureVerbosityLevel();
-				}
+					StartProcessDebug();
 				else
-				{
-					bool refocus = tabLayout.SelectedTab.Equals(ProcessDebugTab);
-					if (ProcessDebugTab_visible)
-					{
-						ProcessDebugTab_visible = false;
-						tabLayout.Controls.Remove(ProcessDebugTab);
-					}
-					// TODO: unlink events
-					if (refocus) tabLayout.SelectedIndex = 1; // watchlist
-				}
+					StopProcessDebug();
 			};
 			var menu_debug_foreground = new ToolStripMenuItem("Foreground")
 			{
@@ -1079,29 +1069,9 @@ namespace Taskmaster
 			{
 				Taskmaster.DebugForeground = menu_debug_foreground.Checked;
 				if (Taskmaster.DebugForeground)
-				{
-					if (!ProcessDebugTab_visible)
-					{
-						ProcessDebugTab_visible = true;
-						activeappmonitor.ActiveChanged += OnActiveWindowChanged;
-						tabLayout.Controls.Add(ProcessDebugTab);
-					}
-					EnsureVerbosityLevel();
-				}
+					StartProcessDebug();
 				else
-				{
-					if (ProcessDebugTab_visible)
-					{
-						bool refocus = tabLayout.SelectedTab.Equals(ProcessDebugTab);
-						ProcessDebugTab_visible = false;
-						if (activeappmonitor != null)
-						{
-							activeappmonitor.ActiveChanged -= OnActiveWindowChanged;
-						}
-						tabLayout.Controls.Remove(ProcessDebugTab);
-						if (refocus) tabLayout.SelectedIndex = 1; // watchlist
-					}
-				}
+					StopProcessDebug();
 			};
 
 			var menu_debug_paths = new ToolStripMenuItem("Paths")
@@ -1221,20 +1191,24 @@ namespace Taskmaster
 			menu.Items.Add(menu_info);
 
 			// no simpler way?
-			
-			menu_action.MouseEnter += (s, e) => {
+
+			menu_action.MouseEnter += (s, e) =>
+			{
 				if (Form.ActiveForm != this) return;
 				if (Taskmaster.AutoOpenMenus) menu_action.ShowDropDown();
 			};
-			menu_config.MouseEnter += (s, e) => {
+			menu_config.MouseEnter += (s, e) =>
+			{
 				if (Form.ActiveForm != this) return;
 				if (Taskmaster.AutoOpenMenus) menu_config.ShowDropDown();
 			};
-			menu_debug.MouseEnter += (s, e) => {
+			menu_debug.MouseEnter += (s, e) =>
+			{
 				if (Form.ActiveForm != this) return;
 				if (Taskmaster.AutoOpenMenus) menu_debug.ShowDropDown();
 			};
-			menu_info.MouseEnter += (s, e) => {
+			menu_info.MouseEnter += (s, e) =>
+			{
 				if (Form.ActiveForm != this) return;
 				if (Taskmaster.AutoOpenMenus) menu_info.ShowDropDown();
 			};
@@ -1272,7 +1246,7 @@ namespace Taskmaster
 				AutoSize = true,
 			};
 
-#region Main Window Row 0, game monitor / active window monitor
+			#region Main Window Row 0, game monitor / active window monitor
 			var activepanel = new TableLayoutPanel
 			{
 				Dock = DockStyle.Fill,
@@ -1285,9 +1259,9 @@ namespace Taskmaster
 			var activeLabelUX = new Label() { Text = "Active:", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, Width = 40 };
 			activeLabel = new Label()
 			{
-				Dock = DockStyle.Top,
-				Text = "no active window found",
 				AutoSize = true,
+				Dock = DockStyle.Left,
+				Text = "no active window found",
 				TextAlign = System.Drawing.ContentAlignment.MiddleLeft,
 				AutoEllipsis = true,
 			};
@@ -1311,9 +1285,9 @@ namespace Taskmaster
 
 			// infopanel.Controls.Add(activepanel);
 			// infoTab.Controls.Add(infopanel);
-#endregion
+			#endregion
 
-#region Load UI config
+			#region Load UI config
 			var uicfg = Taskmaster.Config.Load(uiconfig);
 			var wincfg = uicfg.Config["Windows"];
 			var colcfg = uicfg.Config["Columns"];
@@ -1345,9 +1319,9 @@ namespace Taskmaster
 				}
 			}
 
-#endregion
+			#endregion
 
-#region Main Window Row 1, microphone device
+			#region Main Window Row 1, microphone device
 			var micpanel = new TableLayoutPanel
 			{
 				Dock = DockStyle.Fill,
@@ -1375,7 +1349,7 @@ namespace Taskmaster
 			};
 			micNameRow.Controls.Add(micDevLbl);
 			micNameRow.Controls.Add(AudioInputDevice);
-#endregion
+			#endregion
 
 			var miccntrl = new TableLayoutPanel()
 			{
@@ -1584,7 +1558,7 @@ namespace Taskmaster
 				FullRowSelect = true,
 				MinimumSize = new System.Drawing.Size(-2, -2),
 			};
-			
+
 			var numberColumns = new int[] { 0, AdjustColumn };
 			var watchlistSorter = new WatchlistSorter(numberColumns);
 			WatchlistRules.ListViewItemSorter = watchlistSorter; // what's the point of this?
@@ -1645,7 +1619,8 @@ namespace Taskmaster
 			// UI Log
 			// -1 = contents, -2 = heading
 			loglist.Columns.Add("Event Log", -2, HorizontalAlignment.Left); // 2
-			ResizeLogList = delegate {
+			ResizeLogList = delegate
+			{
 				loglist.Columns[0].Width = -2;
 				//loglist.Height = -2;
 				//loglist.Width = -2;
@@ -1849,16 +1824,15 @@ namespace Taskmaster
 
 			processlayout.Controls.Add(new Label()
 			{
+				AutoSize = true,
 				Text = "Exit wait list...",
 				TextAlign = System.Drawing.ContentAlignment.MiddleLeft,
-				AutoSize = true,
 				Dock = DockStyle.Left,
 				Padding = new Padding(6)
 			});
 
 			exitwaitlist = new ListView()
 			{
-				//Parent = this,
 				AutoSize = true,
 				//Height = 180,
 				//Width = tabLayout.Width - 12, // FIXME: 3 for the bevel, but how to do this "right"?
@@ -1880,6 +1854,7 @@ namespace Taskmaster
 
 			processlayout.Controls.Add(new Label()
 			{
+				AutoSize = true,
 				Text = "Processing list",
 				TextAlign = System.Drawing.ContentAlignment.MiddleLeft,
 				Dock = DockStyle.Left,
@@ -1898,6 +1873,7 @@ namespace Taskmaster
 			processinglist.Columns.Add("Id", 50);
 			processinglist.Columns.Add("Executable", 280);
 			processinglist.Columns.Add("State", 160);
+			processinglist.Columns.Add("Time", 80);
 
 			ProcessingListMap = new Dictionary<int, ListViewItem>();
 
@@ -1908,6 +1884,93 @@ namespace Taskmaster
 			// End: UI Log
 
 			tabLayout.SelectedIndex = opentab >= tabLayout.TabCount ? 0 : opentab;
+		}
+
+		void StartProcessDebug()
+		{
+			bool enabled = Taskmaster.DebugProcesses || Taskmaster.DebugForeground;
+			if (!enabled) return;
+
+			if (Taskmaster.DebugForeground) activeappmonitor.ActiveChanged += OnActiveWindowChanged;
+			if (Taskmaster.DebugProcesses) processmanager.HandlingStateChange += ProcessHandlingStateChangeEvent;
+
+			if (!ProcessDebugTab_visible)
+			{
+				ProcessDebugTab_visible = true;
+				tabLayout.Controls.Add(ProcessDebugTab);
+			}
+
+			EnsureVerbosityLevel();
+		}
+
+		ConcurrentDictionary<int, ListViewItem> ProcessEventMap = new ConcurrentDictionary<int, ListViewItem>();
+
+		void ProcessHandlingStateChangeEvent(object sender, InstanceHandlingArgs e)
+		{
+			var now = DateTime.Now;
+
+			try
+			{
+				ListViewItem item = null;
+
+				int key = e.Info.Id;
+				bool newitem = false;
+				if (!ProcessEventMap.TryGetValue(key, out item))
+				{
+					item = new ListViewItem(new string[] { key.ToString(), e.Info.Name, string.Empty, string.Empty});
+					newitem = true;
+				}
+
+				if (newitem) ProcessEventMap.TryAdd(key, item);
+
+				BeginInvoke(new Action(async () =>
+				{
+					try
+					{
+						// 0 = Id, 1 = Name, 2 = State
+						item.SubItems[0].Text = e.Info.Id.ToString();
+						item.SubItems[2].Text = e.State.ToString();
+						item.SubItems[3].Text = now.ToLongTimeString();
+
+						if (newitem) processinglist.Items.Insert(0, item);
+
+						if (e.State == ProcessHandlingState.Finished || e.State == ProcessHandlingState.Abandoned)
+						{
+							await Task.Delay(15_000).ConfigureAwait(true);
+
+							ProcessEventMap.TryRemove(key, out item);
+							if (item != null) processinglist.Items.Remove(item);
+						}
+					}
+					catch (Exception ex)
+					{
+						Logging.Stacktrace(ex);
+					}
+				}));
+			}
+			catch (Exception ex)
+			{
+				Logging.Stacktrace(ex);
+			}
+		}
+
+		void StopProcessDebug()
+		{
+			if (!Taskmaster.DebugForeground && activeappmonitor != null) activeappmonitor.ActiveChanged -= OnActiveWindowChanged;
+			if (!Taskmaster.DebugProcesses) processmanager.HandlingStateChange -= ProcessHandlingStateChangeEvent;
+
+			bool enabled = Taskmaster.DebugProcesses || Taskmaster.DebugForeground;
+			if (enabled) return;
+
+			bool refocus = tabLayout.SelectedTab.Equals(ProcessDebugTab);
+			if (ProcessDebugTab_visible)
+			{
+				ProcessDebugTab_visible = false;
+				tabLayout.Controls.Remove(ProcessDebugTab);
+			}
+
+			// TODO: unlink events
+			if (refocus) tabLayout.SelectedIndex = 1; // watchlist
 		}
 
 		StatusStrip statusbar;
@@ -2324,8 +2387,8 @@ namespace Taskmaster
 
 			activeappmonitor = aamon;
 
-			if (Taskmaster.DebugForeground)
-				activeappmonitor.ActiveChanged += OnActiveWindowChanged;
+			if (Taskmaster.DebugForeground || Taskmaster.DebugProcesses)
+				StartProcessDebug();
 		}
 
 		public void Hook(PowerManager pman)
@@ -2609,6 +2672,7 @@ namespace Taskmaster
 						processmanager.onWaitForExitEvent -= ExitWaitListHandler; //ExitWaitListHandler;
 						processmanager.onInstanceHandling -= ProcessNewInstanceCount;
 						processmanager.onProcessHandled -= ExitWaitListHandler;
+						processmanager.HandlingStateChange -= ProcessHandlingStateChangeEvent;
 						processmanager = null;
 					}
 				}
