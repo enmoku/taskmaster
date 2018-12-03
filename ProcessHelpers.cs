@@ -82,6 +82,14 @@ namespace Taskmaster
 		Undefined
 	}
 
+	public enum ProcessHandlingState
+	{
+		Triage,
+		Datamining,
+		Processing,
+		Finished
+	}
+
 	public enum ProcessAffinityStrategy
 	{
 		None = 0,
