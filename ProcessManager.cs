@@ -1386,6 +1386,7 @@ namespace Taskmaster
 			{
 				// likely process exited too fast
 				if (Taskmaster.DebugProcesses && Taskmaster.ShowInaction) Log.Debug("<<WMI>> Failed to acquire neither process name nor process Id");
+				SignalProcessHandled(-1); // done early
 				return;
 			}
 
