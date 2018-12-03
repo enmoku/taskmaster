@@ -39,6 +39,13 @@ namespace Taskmaster
 		public int Total { get; set; } = 0;
 	}
 
+	sealed public class InstanceHandlingArgs : EventArgs
+	{
+		public ProcessEx Info = null;
+		public ProcessController Controller = null;
+		public ProcessHandlingState State = ProcessHandlingState.Invalid;
+	}
+
 	[Serializable]
 	sealed public class ProcessNotFoundException : Exception
 	{
@@ -52,20 +59,20 @@ namespace Taskmaster
 		/// Process filename without extension
 		/// Cached from Process.ProcessFilename
 		/// </summary>
-		public string Name=string.Empty;
+		public string Name = string.Empty;
 		/// <summary>
 		/// Process fullpath, including filename with extension
 		/// </summary>
-		public string Path=string.Empty;
+		public string Path = string.Empty;
 		/// <summary>
 		/// Process Id.
 		/// </summary>
-		public int Id=-1;
+		public int Id = -1;
 
 		/// <summary>
 		/// Process reference.
 		/// </summary>
-		public Process Process=null;
+		public Process Process = null;
 		/// <summary>
 		/// .Process.Refresh() should be called for this if the Process needs to be accessed.
 		/// </summary>
@@ -74,11 +81,11 @@ namespace Taskmaster
 		/// <summary>
 		/// Has this Process been handled already?
 		/// </summary>
-		public bool Handled=false;
+		public bool Handled = false;
 		/// <summary>
 		/// Path was matched with a rule.
 		/// </summary>
-		public bool PathMatched=false;
+		public bool PathMatched = false;
 
 		public bool PowerWait = false;
 		public bool ActiveWait = false;
@@ -250,7 +257,7 @@ namespace Taskmaster
 
 		public void Unignore(int processId) => ignorePids.Remove(processId);
 
-		public async Task FreeMemory(string executable = null, bool quiet=false, int ignorePid=-1)
+		public async Task FreeMemory(string executable = null, bool quiet = false, int ignorePid = -1)
 		{
 			if (!Taskmaster.PagingEnabled) return;
 
@@ -278,7 +285,7 @@ namespace Taskmaster
 							break;
 						}
 					}
-					catch  {} // ignore
+					catch { } // ignore
 				}
 
 				if (Taskmaster.DebugPaging && !quiet)
@@ -328,7 +335,7 @@ namespace Taskmaster
 			}
 			finally
 			{
-				UnregisterFreeMemoryTick(null,null);
+				UnregisterFreeMemoryTick(null, null);
 			}
 		}
 
@@ -357,9 +364,11 @@ namespace Taskmaster
 		public event EventHandler<ProcessEventArgs> onProcessHandled;
 		public event EventHandler<ProcessEventArgs> onWaitForExitEvent;
 
+		public event EventHandler<InstanceHandlingArgs> HandlingStateChange;
+
 		int scan_lock = 0;
 
-		public async Task ScanEverything(int ignorePid=-1)
+		public async Task ScanEverything(int ignorePid = -1)
 		{
 			var now = DateTime.Now;
 
@@ -659,7 +668,7 @@ namespace Taskmaster
 				ProcessPriorityStrategy priostrat = ProcessPriorityStrategy.None;
 				if (prioR != null)
 				{
-					var priorityStrat = section.TryGet("Priority strategy")?.IntValue.Constrain(0,3) ?? -1;
+					var priorityStrat = section.TryGet("Priority strategy")?.IntValue.Constrain(0, 3) ?? -1;
 
 					if (priorityStrat > 0)
 						priostrat = (ProcessPriorityStrategy)priorityStrat;
@@ -688,7 +697,7 @@ namespace Taskmaster
 				ProcessAffinityStrategy affStrat = ProcessAffinityStrategy.None;
 				if (aff > 0)
 				{
-					int affinityStrat = section.TryGet("Affinity strategy")?.IntValue.Constrain(0,3) ?? 2;
+					int affinityStrat = section.TryGet("Affinity strategy")?.IntValue.Constrain(0, 3) ?? 2;
 					affStrat = (ProcessAffinityStrategy)affinityStrat;
 				}
 
@@ -704,7 +713,7 @@ namespace Taskmaster
 				if (bpriot >= 0) bprio = ProcessHelpers.IntToPriority(bpriot);
 
 				PathVisibilityOptions pvis = PathVisibilityOptions.File;
-				pvis = (PathVisibilityOptions)(section.TryGet("Path visibility")?.IntValue.Constrain(0,3) ?? 0);
+				pvis = (PathVisibilityOptions)(section.TryGet("Path visibility")?.IntValue.Constrain(0, 3) ?? 0);
 
 				var prc = new ProcessController(section.Name, prioR, (aff == 0 ? AllCPUsMask : aff))
 				{
@@ -748,7 +757,7 @@ namespace Taskmaster
 				int[] resize = section.TryGet("Resize")?.IntValueArray ?? null; // width,height
 				if (resize != null && resize.Length == 4)
 				{
-					int resstrat = section.TryGet("Resize strategy")?.IntValue.Constrain(0,3) ?? -1;
+					int resstrat = section.TryGet("Resize strategy")?.IntValue.Constrain(0, 3) ?? -1;
 					if (resstrat < 0) resstrat = 0;
 
 					prc.ResizeStrategy = (WindowResizeStrategy)resstrat;
@@ -874,7 +883,7 @@ namespace Taskmaster
 			}
 
 			if (cancelled > 0)
-				Log.Information("Cancelled power mode wait on "+cancelled+" process(es).");
+				Log.Information("Cancelled power mode wait on " + cancelled + " process(es).");
 		}
 
 		public void WaitForExit(ProcessEx info)
@@ -984,7 +993,7 @@ namespace Taskmaster
 				if (info.Process.HasExited) // can throw
 				{
 					if (Taskmaster.ShowInaction && Taskmaster.DebugProcesses)
-						Log.Verbose(info.Name + " (#"+info.Id+") has already exited.");
+						Log.Verbose(info.Name + " (#" + info.Id + ") has already exited.");
 					return null; // return ProcessState.Invalid;
 				}
 			}
@@ -1236,6 +1245,13 @@ namespace Taskmaster
 			Debug.Assert(!IgnoreProcessID(ea.Info.Id), "CheckProcess received invalid process ID: " + ea.Info.Id);
 			//Debug.Assert(execontrol != null); // triggers only if this function is running when the app is closing
 
+			HandlingStateChange?.Invoke(this, new InstanceHandlingArgs()
+			{
+				State = ProcessHandlingState.Triage,
+				Info = ea.Info,
+				Controller = ea.Control,
+			});
+
 			await Task.Delay(0).ConfigureAwait(false);
 
 			if (IgnoreProcessID(ea.Info.Id) || IgnoreProcessName(ea.Info.Name))
@@ -1260,7 +1276,7 @@ namespace Taskmaster
 				if (!prc.Enabled)
 				{
 					if (Taskmaster.DebugProcesses)
-						Log.Debug("["+ prc.FriendlyName+"] Matched, but rule disabled; ignoring.");
+						Log.Debug("[" + prc.FriendlyName + "] Matched, but rule disabled; ignoring.");
 					ea.Info.State = ProcessModification.Ignored;
 					return;
 				}
@@ -1275,7 +1291,17 @@ namespace Taskmaster
 				{
 					Log.Fatal("[" + prc.FriendlyName + "] " + ea.Info.Name + " (#" + ea.Info.Id + ") MASSIVE FAILURE!!!");
 					Logging.Stacktrace(ex);
+
 					return; // ProcessState.Error;
+				}
+				finally
+				{
+					HandlingStateChange?.Invoke(this, new InstanceHandlingArgs()
+					{
+						State = ProcessHandlingState.Finished,
+						Info = ea.Info,
+						Controller = ea.Control,
+					});
 				}
 
 				ForegroundWatch(ea.Info, prc);
@@ -1342,7 +1368,7 @@ namespace Taskmaster
 			SignalProcessHandled(-(list.Count)); // batch done
 		}
 
-		public static int Handling { get; private set; }
+		public int Handling { get; private set; }
 
 		void SignalProcessHandled(int adjust)
 		{
@@ -1455,6 +1481,13 @@ namespace Taskmaster
 						Logging.Stacktrace(ex);
 					}
 				}
+
+				HandlingStateChange?.Invoke(this, new InstanceHandlingArgs()
+				{
+					Info = info,
+					Controller = null,
+					State = ProcessHandlingState.Delayed
+				});
 			}
 			else
 			{
