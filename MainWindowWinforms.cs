@@ -1895,6 +1895,10 @@ namespace Taskmaster
 				Dock = DockStyle.Fill,
 			};
 
+			processinglist.Columns.Add("Id", 50);
+			processinglist.Columns.Add("Executable", 280);
+			processinglist.Columns.Add("State", 160);
+
 			ProcessingListMap = new Dictionary<int, ListViewItem>();
 
 			processlayout.Controls.Add(processinglist);
