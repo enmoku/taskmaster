@@ -84,10 +84,34 @@ namespace Taskmaster
 
 	public enum ProcessHandlingState
 	{
+		/// <summary>
+		/// 
+		/// </summary>
 		Triage,
+		/// <summary>
+		/// Process is waiting to be handled later
+		/// </summary>
+		Delayed,
+		/// <summary>
+		/// Collecting info
+		/// </summary>
 		Datamining,
+		/// <summary>
+		/// Brief activation
+		/// </summary>
+		Active,
+		/// <summary>
+		/// Affecting changes
+		/// </summary>
 		Processing,
-		Finished
+		/// <summary>
+		/// Done processing.
+		/// </summary>
+		Finished,
+		/// <summary>
+		/// Tin.
+		/// </summary>
+		Invalid
 	}
 
 	public enum ProcessAffinityStrategy
