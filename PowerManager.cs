@@ -1120,12 +1120,10 @@ namespace Taskmaster
 		/// Restores normal power mode and frees the associated source pid from holding it.
 		/// </summary>
 		/// <param name="sourcePid">0 releases all locks.</param>
-		/// <remarks>
-		/// 
-		/// </remarks>
+		/// <remarks>uses: forceModeSources_lock</remarks>
 		public void Release(int sourcePid)
 		{
-			if (Taskmaster.DebugPower) Log.Debug("<Power> Releasing " + (sourcePid==0?"all locks":$"#{sourcePid}"));
+			if (Taskmaster.DebugPower) Log.Debug("<Power> Releasing " + (sourcePid == 0 ? "all locks" : $"#{sourcePid}"));
 
 			Debug.Assert(sourcePid == 0 || sourcePid > 4);
 
@@ -1169,6 +1167,7 @@ namespace Taskmaster
 			}
 		}
 
+		/// <remarks>uses: forceModeSources_lock</remarks>
 		void ReleaseFinal()
 		{
 			lock (forceModeSources_lock)
@@ -1215,7 +1214,7 @@ namespace Taskmaster
 				{
 					// if (Behaviour == PowerBehaviour.Auto) return; // this is very optimistic
 
-					InternalSetMode(SavedMode, verbose:Taskmaster.DebugPower);
+					InternalSetMode(SavedMode, verbose: Taskmaster.DebugPower);
 					SavedMode = PowerMode.Undefined;
 
 					// Log.Information("<Power> Restored to: {PowerMode}", CurrentMode.ToString());
@@ -1267,12 +1266,14 @@ namespace Taskmaster
 			}
 			return true;
 		}
-		
-		public int ForceCount => forceModeSources.Count;
+
+		/// <remarks>uses: forceModeSources_lock</remarks>
+		public int ForceCount { get { lock (forceModeSources_lock) return forceModeSources.Count; } }
 
 		HashSet<int> forceModeSources = new HashSet<int>();
 		readonly object forceModeSources_lock = new object();
 
+		/// <remarks>uses: forceModeSources_lock</remarks>
 		public bool Force(PowerMode mode, int sourcePid)
 		{
 			if (Behaviour == PowerBehaviour.Manual) return false;
