@@ -641,67 +641,12 @@ namespace Taskmaster
 
 		public void SetupEventHooks()
 		{
-			NetworkChanged(null, null);
-			NetworkAvailable = NetworkInterface.GetIsNetworkAvailable();
+			NetworkChanged(null, null); // initialize event handler's initial values
 
 			NetworkChange.NetworkAvailabilityChanged += NetworkChanged;
 			NetworkChange.NetworkAddressChanged += NetAddrChanged;
 
 			// CheckInet().Wait(); // unnecessary?
-		}
-
-		bool AntiFlickerEnabled = true;
-		bool NoFlicker = false;
-		int DelayedNetworkUpdateLimiter = 0;
-		async void DelayedNetworkConnectedUpdate(bool available, bool delayed=true)
-		{
-			// delay output, but output immediately if internet becomes available...
-
-			if (!Atomic.Lock(ref DelayedNetworkUpdateLimiter)) return;
-
-			await Task.Delay(0).ConfigureAwait(false); // asyncify
-
-			if (!AntiFlickerEnabled) NoFlicker = true;
-
-			try
-			{
-				if (available)
-				{
-					CheckInet();
-					if (InternetAvailable) return;
-				}
-
-				if (NoFlicker && delayed)
-				{
-					const int delay = 15;
-					int sleep = Convert.ToInt32(DateTime.Now.TimeTo(lastnetworkchange.AddSeconds(delay)).TotalSeconds * 1000) + 250;
-
-					await Task.Delay(sleep.Constrain(1_000, 16_000));
-
-					var lastchange = DateTime.Now.TimeSince(lastnetworkchange);
-					if (lastchange.TotalSeconds < delay)
-					{
-						if (Taskmaster.DebugNet) Log.Verbose("<Net> Delaying network status testing again: " +
-							$"{lastchange.TotalSeconds:N0}s < {delay}s" + " is too soon");
-						DelayedNetworkConnectedUpdate(NetworkAvailable);
-						return;
-					}
-					else
-					{
-						if (AntiFlickerEnabled) NoFlicker = false;
-					}
-				}
-
-				Log.Information("<Network> Status changed: " + (available ? "Connected" : "Disconnected"));
-				NoFlicker = true;
-
-				if (NetworkAvailable)
-					needUpdate = true;
-			}
-			finally
-			{
-				Atomic.Unlock(ref DelayedNetworkUpdateLimiter);
-			}
 		}
 
 		bool LastReportedNetAvailable = false;
@@ -731,20 +676,53 @@ namespace Taskmaster
 			LastReportedNetAvailable = NetworkAvailable;
 		}
 
-		DateTime lastnetworkchange = DateTime.MinValue;
-		void NetworkChanged(object sender, EventArgs e)
+		/// <summary>
+		/// Non-blocking lock for NetworkChanged event output
+		/// </summary>
+		int NetworkChangeAntiFlickerLock = 0;
+		/// <summary>
+		/// For tracking how many times NetworkChanged is triggered
+		/// </summary>
+		int NetworkChangeCounter = 4; // 4 to force fast inet check on start
+		/// <summary>
+		/// Last time NetworkChanged was triggered
+		/// </summary>
+		DateTime LastNetworkChange = DateTime.MinValue;
+		async void NetworkChanged(object sender, EventArgs e)
 		{
 			var oldNetAvailable = NetworkAvailable;
 			bool available = NetworkAvailable = NetworkInterface.GetIsNetworkAvailable();
 
-			lastnetworkchange = DateTime.Now;
+			LastNetworkChange = DateTime.Now;
+
+			NetworkChangeCounter++;
 
 			// do stuff only if this is different from last time
 			if (oldNetAvailable != available)
 			{
-				if (Taskmaster.DebugNet) Log.Verbose("<Net> Delaying network status testing");
+				if (Atomic.Lock(ref NetworkChangeAntiFlickerLock))
+				{
+					try
+					{
+						await Task.Delay(0).ConfigureAwait(false);
 
-				DelayedNetworkConnectedUpdate(available);
+						int loopbreakoff = 0;
+						while (LastNetworkChange.TimeTo(DateTime.Now).TotalSeconds < 5)
+						{
+							if (loopbreakoff++ >= 3) break; // arbitrary end based on double reconnect behaviour of some routers
+							if (NetworkChangeCounter >= 4) break; // break off in case NetworkChanged event is received often enough
+							await Task.Delay(2_000).ConfigureAwait(true);
+						}
+
+						CheckInet();
+						NetworkChangeCounter = 0;
+						ReportNetAvailability();
+					}
+					finally
+					{
+						Atomic.Unlock(ref NetworkChangeAntiFlickerLock);
+					}
+				}
 
 				ReportNetAvailability();
 
