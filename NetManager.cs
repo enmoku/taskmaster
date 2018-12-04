@@ -408,20 +408,8 @@ namespace Taskmaster
 
 				if (oldInetAvailable != InternetAvailable)
 				{
-					var sbs = new System.Text.StringBuilder();
-
-					sbs.Append("<Network> Status: ")
-						.Append(NetworkAvailable ? "Up" : "Down")
-						.Append(", Internet: ")
-						.Append(InternetAvailable ? "Connected" : "Disconnected")
-						.Append(" - ");
-
-					if (NetworkAvailable && !InternetAvailable) sbs.Append("ISP/route problems");
-					else if (!NetworkAvailable) sbs.Append("Cable unplugged or router/modem down");
-					else sbs.Append("All OK");
-
-					if (!NetworkAvailable || !InternetAvailable) Log.Warning(sbs.ToString());
-					else Log.Information(sbs.ToString());
+					needUpdate = true;
+					ReportNetAvailability();
 				}
 				else
 				{
@@ -432,6 +420,7 @@ namespace Taskmaster
 					{
 						if (interrupt)
 							Log.Warning("<Network> Internet check interrupted. Potential hardware/driver issues.");
+
 						if (dnsfail)
 							Log.Warning("<Network> DNS test failed, test host unreachable. Test host may be down.");
 
@@ -661,6 +650,7 @@ namespace Taskmaster
 			// CheckInet().Wait(); // unnecessary?
 		}
 
+		bool AntiFlickerEnabled = true;
 		bool netAntiFlicker = false;
 		int DelayedNetworkUpdateLimiter = 0;
 		async void DelayedNetworkConnectedUpdate(bool available, bool delayed=true)
@@ -671,16 +661,14 @@ namespace Taskmaster
 
 			await Task.Delay(0).ConfigureAwait(false); // asyncify
 
+			if (!AntiFlickerEnabled) netAntiFlicker = true;
+
 			try
 			{
 				if (available)
 				{
 					CheckInet();
-					if (InternetAvailable)
-					{
-						needUpdate = true;
-						return;
-					}
+					if (InternetAvailable) return;
 				}
 
 				if (netAntiFlicker && delayed)
@@ -688,7 +676,7 @@ namespace Taskmaster
 					const int delay = 15;
 					int sleep = Convert.ToInt32(DateTime.Now.TimeTo(lastnetworkchange.AddSeconds(delay)).TotalSeconds * 1000) + 250;
 
-					await Task.Delay(sleep.Constrain(1000, 16000));
+					await Task.Delay(sleep.Constrain(1_000, 16_000));
 
 					var lastchange = DateTime.Now.TimeSince(lastnetworkchange);
 					if (lastchange.TotalSeconds < delay)
@@ -699,7 +687,9 @@ namespace Taskmaster
 						return;
 					}
 					else
-						netAntiFlicker = false;
+					{
+						if (AntiFlickerEnabled) netAntiFlicker = false;
+					}
 				}
 
 				Log.Information("<Network> Status changed: " + (available ? "Connected" : "Disconnected"));
@@ -713,6 +703,33 @@ namespace Taskmaster
 			{
 				Atomic.Unlock(ref DelayedNetworkUpdateLimiter);
 			}
+		}
+
+		bool LastReportedNetAvailable = false;
+		bool LastReportedInetAvailable = false;
+
+		void ReportNetAvailability()
+		{
+			var sbs = new System.Text.StringBuilder();
+
+			bool changed = (LastReportedInetAvailable != InternetAvailable) || (LastReportedNetAvailable != NetworkAvailable);
+			if (!changed) return; // bail out if nothing has changed
+
+			sbs.Append("<Network> Status: ")
+				.Append(NetworkAvailable ? "Connected" : "Disconnected")
+				.Append(", Internet: ")
+				.Append(InternetAvailable ? "Connected" : "Disconnected")
+				.Append(" - ");
+
+			if (NetworkAvailable && !InternetAvailable) sbs.Append("Route problems");
+			else if (!NetworkAvailable) sbs.Append("Cable unplugged or router/modem down");
+			else sbs.Append("All OK");
+
+			if (!NetworkAvailable || !InternetAvailable) Log.Warning(sbs.ToString());
+			else Log.Information(sbs.ToString());
+
+			LastReportedInetAvailable = InternetAvailable;
+			LastReportedNetAvailable = NetworkAvailable;
 		}
 
 		DateTime lastnetworkchange = DateTime.MinValue;
@@ -729,6 +746,8 @@ namespace Taskmaster
 				if (Taskmaster.DebugNet) Log.Verbose("<Net> Delaying network status testing");
 
 				DelayedNetworkConnectedUpdate(available);
+
+				ReportNetAvailability();
 
 				NetworkStatusChange?.Invoke(this, new NetworkStatus { Available = available });
 			}
