@@ -583,9 +583,10 @@ namespace Taskmaster
 			if (newIgnoreList != null)
 			{
 				IgnoreList = newIgnoreList;
-				Log.Information("<Process> Custom ignore list loaded: " + string.Join(", ", IgnoreList));
+				Log.Information("<Process> Custom ignore list loaded.");
 				dirtyconfig |= modified;
 			}
+			if (Taskmaster.DebugProcesses) Log.Debug("<Process> Ignore list: " + string.Join(", ", IgnoreList));
 
 			IgnoreSystem32Path = ignsetting.GetSetDefault("Ignore System32", true, out modified).BoolValue;
 			ignsetting["Ignore System32"].Comment = "Ignore programs in %SYSTEMROOT%/System32 folder.";
