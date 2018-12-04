@@ -154,6 +154,8 @@ namespace Taskmaster
 				if (Taskmaster.Trace)
 					Log.Verbose("Disposing memory sink...");
 
+				onNewEvent = null;
+
 				p_output?.Dispose();
 			}
 

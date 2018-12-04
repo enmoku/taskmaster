@@ -1743,6 +1743,7 @@ namespace Taskmaster
 				onInstanceHandling = null;
 				onProcessHandled = null;
 				onWaitForExitEvent = null;
+				HandlingStateChange = null;
 
 				CancelPowerWait();
 				WaitForExitList.Clear();

@@ -193,6 +193,8 @@ namespace Taskmaster
 			{
 				if (Taskmaster.Trace) Log.Verbose("Disposing microphone monitor...");
 
+				VolumeChanged = null;
+
 				if (m_dev != null)
 				{
 					m_dev.AudioEndpointVolume.OnVolumeNotification -= VolumeChangedHandler;

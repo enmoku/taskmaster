@@ -1366,6 +1366,9 @@ namespace Taskmaster
 			{
 				if (Taskmaster.Trace) Log.Verbose("Disposing power manager...");
 
+				SessionLock = null;
+				MonitorPower = null;
+
 				StopCPUMonitor();
 
 				MonitorPower = null;

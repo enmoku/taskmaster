@@ -753,6 +753,12 @@ namespace Taskmaster
 			if (disposing)
 			{
 				if (Taskmaster.Trace) Log.Verbose("Disposing network monitor...");
+
+				onSampling = null;
+				InternetStatusChange = null;
+				IPChanged = null;
+				NetworkStatusChange = null;
+
 				ReportCurrentUpstate();
 				ReportUptime();
 

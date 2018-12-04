@@ -190,6 +190,8 @@ namespace Taskmaster
 				if (Taskmaster.Trace)
 					Log.Verbose("Disposing disk manager...");
 
+				onTempScan = null;
+
 				sysWatcher?.Dispose();
 				userWatcher?.Dispose();
 				TempScanTimer?.Dispose();
