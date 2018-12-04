@@ -651,7 +651,7 @@ namespace Taskmaster
 		}
 
 		bool AntiFlickerEnabled = true;
-		bool netAntiFlicker = false;
+		bool NoFlicker = false;
 		int DelayedNetworkUpdateLimiter = 0;
 		async void DelayedNetworkConnectedUpdate(bool available, bool delayed=true)
 		{
@@ -661,7 +661,7 @@ namespace Taskmaster
 
 			await Task.Delay(0).ConfigureAwait(false); // asyncify
 
-			if (!AntiFlickerEnabled) netAntiFlicker = true;
+			if (!AntiFlickerEnabled) NoFlicker = true;
 
 			try
 			{
@@ -671,7 +671,7 @@ namespace Taskmaster
 					if (InternetAvailable) return;
 				}
 
-				if (netAntiFlicker && delayed)
+				if (NoFlicker && delayed)
 				{
 					const int delay = 15;
 					int sleep = Convert.ToInt32(DateTime.Now.TimeTo(lastnetworkchange.AddSeconds(delay)).TotalSeconds * 1000) + 250;
@@ -688,12 +688,12 @@ namespace Taskmaster
 					}
 					else
 					{
-						if (AntiFlickerEnabled) netAntiFlicker = false;
+						if (AntiFlickerEnabled) NoFlicker = false;
 					}
 				}
 
 				Log.Information("<Network> Status changed: " + (available ? "Connected" : "Disconnected"));
-				netAntiFlicker = true;
+				NoFlicker = true;
 
 				if (NetworkAvailable)
 					needUpdate = true;
