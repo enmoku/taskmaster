@@ -211,7 +211,6 @@ namespace Taskmaster
 					SleepTickCount = 0;
 				}
 			}
-			catch { throw; } // for finally block
 			finally
 			{
 				Atomic.Unlock(ref monitorsleeptimer_lock);

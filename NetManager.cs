@@ -698,7 +698,6 @@ namespace Taskmaster
 				if (NetworkAvailable)
 					needUpdate = true;
 			}
-			catch { throw; } // for finally block
 			finally
 			{
 				Atomic.Unlock(ref DelayedNetworkUpdateLimiter);

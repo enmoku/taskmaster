@@ -1330,7 +1330,6 @@ namespace Taskmaster
 
 							await Scan().ConfigureAwait(false);
 						}
-						catch { throw; } // for finally block
 						finally
 						{
 							Atomic.Unlock(ref ScheduledScan);

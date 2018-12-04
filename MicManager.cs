@@ -285,7 +285,6 @@ namespace Taskmaster
 
 						VolumeChanged?.Invoke(this, new VolumeChangedEventArgs { Old = oldVol, New = Target, Corrections = Corrections });
 					}
-					catch { throw;  } // required for finally to be guaranteed
 					finally
 					{
 						Atomic.Unlock(ref correcting);
