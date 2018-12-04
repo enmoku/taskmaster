@@ -55,7 +55,7 @@ namespace Taskmaster
 
 		public static void RestartRequest(object sender, EventArgs e)
 		{
-			UnifiedExit(restart:true);
+			UnifiedExit(restart: true);
 		}
 
 		public static void ConfirmExit(bool restart = false, bool admin = false)
@@ -81,7 +81,7 @@ namespace Taskmaster
 			// if (Taskmaster.VeryVerbose) Console.WriteLine("END:Core.ExitRequest - Exit hang averted");
 		}
 
-		public static void UnifiedExit(bool restart=false)
+		public static void UnifiedExit(bool restart = false)
 		{
 			State = restart ? Runstate.Restart : Runstate.Exit;
 
@@ -137,10 +137,10 @@ namespace Taskmaster
 
 				try
 				{
-					if (Components.diskmanager != null)
+					if (Components.storagemanager != null)
 					{
 						if (Taskmaster.Trace) Console.WriteLine("... hooking NVM manager");
-						Components.mainwindow.Hook(Components.diskmanager);
+						Components.mainwindow.Hook(Components.storagemanager);
 					}
 
 					if (Components.processmanager != null)
@@ -246,7 +246,7 @@ namespace Taskmaster
 				ProcessMonitorEnabled ? (Task.Run(() => { Components.processmanager = new ProcessManager(); })) : Task.CompletedTask,
 				(ActiveAppMonitorEnabled && ProcessMonitorEnabled) ? (Task.Run(()=> {Components.activeappmonitor = new ActiveAppManager(eventhook:false); })) : Task.CompletedTask,
 				NetworkMonitorEnabled ? (Task.Run(() => { Components.netmonitor = new NetManager(); })) : Task.CompletedTask,
-				MaintenanceMonitorEnabled ? (Task.Run(() => { Components.diskmanager = new DiskManager(); })) : Task.CompletedTask,
+				MaintenanceMonitorEnabled ? (Task.Run(() => { Components.storagemanager = new StorageManager(); })) : Task.CompletedTask,
 				HealthMonitorEnabled ? (Task.Run(() => { Components.healthmonitor = new HealthMonitor(); })) : Task.CompletedTask,
 			};
 
@@ -266,6 +266,7 @@ namespace Taskmaster
 			if (tray) Components.trayaccess = new TrayAccess();
 
 			Log.Information("<Core> Waiting for component loading.");
+
 			try
 			{
 				Task.WaitAll(init);
@@ -386,6 +387,9 @@ namespace Taskmaster
 
 		public static bool DebugMemory { get; set; } = false;
 		public static bool DebugPaging { get; set; } = false;
+		public static bool DebugStorage { get; set; } = false;
+
+		public static bool DebugHealth { get; set; } = false;
 
 		public static bool DebugNet { get; set; } = false;
 		public static bool DebugMic { get; set; } = false;
@@ -667,6 +671,7 @@ namespace Taskmaster
 
 			DebugMemory = dbgsec.TryGet("Memory")?.BoolValue ?? false;
 			DebugPaging = dbgsec.TryGet("Paging")?.BoolValue ?? true;
+			DebugStorage = dbgsec.TryGet("Storage")?.BoolValue ?? false;
 
 			DebugNet = dbgsec.TryGet("Network")?.BoolValue ?? false;
 			DebugMic = dbgsec.TryGet("Microphone")?.BoolValue ?? false;

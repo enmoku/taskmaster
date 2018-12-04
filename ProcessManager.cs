@@ -173,7 +173,7 @@ namespace Taskmaster
 
 			ScanEverythingEndEvent += UnregisterFreeMemoryTick;
 
-			Log.Information("<Process> Component Loaded.");
+			if (Taskmaster.DebugProcesses) Log.Information("<Process> Component Loaded.");
 		}
 
 		public ProcessController[] getWatchlist()
@@ -323,11 +323,8 @@ namespace Taskmaster
 				// TODO: Wait a little longer to allow OS to Actually page stuff. Might not matter?
 				var b2 = Taskmaster.Components.healthmonitor.FreeMemory();
 
-				if (Taskmaster.DebugPaging)
-				{
-					Log.Information("<Memory> Paging complete, observed memory change: " +
-						HumanInterface.ByteString((long)((b2 - b1) * 1000000), true));
-				}
+				Log.Information("<Memory> Paging complete, observed memory change: " +
+					HumanInterface.ByteString((long)((b2 - b1) * 1_000_000), true));
 			}
 			catch (Exception ex)
 			{
@@ -586,7 +583,7 @@ namespace Taskmaster
 			if (newIgnoreList != null)
 			{
 				IgnoreList = newIgnoreList;
-				Log.Information("<Process> Custom application ignore list loaded.");
+				Log.Information("<Process> Custom ignore list loaded: " + string.Join(", ", IgnoreList));
 				dirtyconfig |= modified;
 			}
 

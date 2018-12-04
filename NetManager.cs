@@ -112,7 +112,7 @@ namespace Taskmaster
 			AnalyzeTrafficBehaviourTick(null); // initialize, not really needed
 			packetStatTimer = new System.Threading.Timer(AnalyzeTrafficBehaviourTick, null, 500, PacketStatTimerInterval * 1000);
 
-			Log.Information("<Network> Component loaded.");
+			if (Taskmaster.DebugNet) Log.Information("<Network> Component loaded.");
 		}
 
 		public string GetDeviceData(string devicename)

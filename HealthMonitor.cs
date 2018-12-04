@@ -160,7 +160,7 @@ namespace Taskmaster
 			healthTimer.Elapsed += TimerCheck;
 			healthTimer.Start();
 
-			Log.Information("<Auto-Doc> Component loaded");
+			if (Taskmaster.DebugHealth) Log.Information("<Auto-Doc> Component loaded");
 		}
 
 		readonly System.Timers.Timer healthTimer = null;

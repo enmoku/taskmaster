@@ -1,5 +1,5 @@
 ﻿//
-// DiskManager.cs
+// StorageManager.cs
 //
 // Author:
 //       M.A. (https://github.com/mkahvi)
@@ -31,7 +31,7 @@ using Serilog;
 
 namespace Taskmaster
 {
-	sealed public class DiskManager : IDisposable
+	sealed public class StorageManager : IDisposable
 	{
 		static readonly string systemTemp = System.IO.Path.Combine(System.Environment.GetFolderPath(Environment.SpecialFolder.Windows), "Temp");
 		static string userTemp => System.IO.Path.GetTempPath();
@@ -42,7 +42,7 @@ namespace Taskmaster
 		readonly System.Timers.Timer TempScanTimer;
 		int TimerDue = 1000 * 60 * 60 * 24; // 24 hours
 
-		public DiskManager()
+		public StorageManager()
 		{
 			userWatcher = new System.IO.FileSystemWatcher(userTemp);
 			userWatcher.NotifyFilter = System.IO.NotifyFilters.Size;
@@ -65,7 +65,7 @@ namespace Taskmaster
 
 			onBurden += ReScanTemp;
 
-			Log.Information("<Maintenance> Component loaded.");
+			if (Taskmaster.DebugStorage) Log.Information("<Maintenance> Component loaded.");
 		}
 
 		static long ReScanBurden = 0;
@@ -109,7 +109,7 @@ namespace Taskmaster
 		void DirectorySize(System.IO.DirectoryInfo dinfo, ref DirectoryStats stats)
 		{
 			var i = 1;
-			var dea = new DiskEventArgs { State = ScanState.Segment, Stats = stats };
+			var dea = new StorageEventArgs { State = ScanState.Segment, Stats = stats };
 			try
 			{
 				foreach (System.IO.FileInfo fi in dinfo.GetFiles())
@@ -148,15 +148,15 @@ namespace Taskmaster
 				ReScanBurden = 0;
 
 				Log.Information("Temp folders scanning initiated...");
-				onTempScan?.Invoke(null, new DiskEventArgs { State = ScanState.Start, Stats = dst });
+				onTempScan?.Invoke(null, new StorageEventArgs { State = ScanState.Start, Stats = dst });
 				DirectorySize(new System.IO.DirectoryInfo(systemTemp), ref dst);
 				if (systemTemp != userTemp)
 				{
-					onTempScan?.Invoke(null, new DiskEventArgs { State = ScanState.Segment, Stats = dst });
+					onTempScan?.Invoke(null, new StorageEventArgs { State = ScanState.Segment, Stats = dst });
 					DirectorySize(new System.IO.DirectoryInfo(userTemp), ref dst);
 				}
 
-				onTempScan?.Invoke(null, new DiskEventArgs { State = ScanState.End, Stats = dst });
+				onTempScan?.Invoke(null, new StorageEventArgs { State = ScanState.End, Stats = dst });
 				Log.Information("Temp contents: " + dst.Files + " files, " + dst.Dirs + " dirs, " + $"{(dst.Size / 1_000_000f):N2} MBs");
 			}
 			catch { throw; } // for finally block
@@ -173,7 +173,7 @@ namespace Taskmaster
 			End
 		};
 
-		public event EventHandler<DiskEventArgs> onTempScan;
+		public event EventHandler<StorageEventArgs> onTempScan;
 
 		public void Dispose()
 		{
@@ -188,7 +188,7 @@ namespace Taskmaster
 			if (disposing)
 			{
 				if (Taskmaster.Trace)
-					Log.Verbose("Disposing disk manager...");
+					Log.Verbose("Disposing storage manager...");
 
 				onTempScan = null;
 
@@ -201,9 +201,9 @@ namespace Taskmaster
 		}
 	}
 
-	sealed public class DiskEventArgs : EventArgs
+	sealed public class StorageEventArgs : EventArgs
 	{
-		public DiskManager.ScanState State { get; set; }
-		public DiskManager.DirectoryStats Stats { get; set; }
+		public StorageManager.ScanState State { get; set; }
+		public StorageManager.DirectoryStats Stats { get; set; }
 	}
 }

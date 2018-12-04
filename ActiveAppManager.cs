@@ -111,7 +111,7 @@ namespace Taskmaster
 			hungTimer.Elapsed += HangDetector;
 			hungTimer.Start();
 
-			Log.Information("<Foreground> Component loaded.");
+			if (Taskmaster.DebugForeground) Log.Information("<Foreground> Component loaded.");
 		}
 
 		int Hysterisis = 500;

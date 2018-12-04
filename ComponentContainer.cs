@@ -39,7 +39,7 @@ namespace Taskmaster
 		public ProcessManager processmanager = null;
 		public TrayAccess trayaccess = null;
 		public NetManager netmonitor = null;
-		public DiskManager diskmanager = null;
+		public StorageManager storagemanager = null;
 		public PowerManager powermanager = null;
 		public ActiveAppManager activeappmonitor = null;
 		public HealthMonitor healthmonitor = null;
@@ -66,7 +66,7 @@ namespace Taskmaster
 					processmanager?.Dispose();
 					trayaccess?.Dispose();
 					netmonitor?.Dispose();
-					diskmanager?.Dispose();
+					storagemanager?.Dispose();
 					powermanager?.Dispose();
 					activeappmonitor?.Dispose();
 					healthmonitor?.Dispose();

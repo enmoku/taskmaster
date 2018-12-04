@@ -205,7 +205,7 @@ namespace Taskmaster
 
 		// HOOKS
 		MicManager micmon = null;
-		DiskManager diskmanager = null;
+		StorageManager storagemanager = null;
 		ProcessManager processmanager = null;
 		ActiveAppManager activeappmonitor = null;
 		PowerManager powermanager = null;
@@ -276,10 +276,10 @@ namespace Taskmaster
 
 		public event EventHandler rescanRequest;
 
-		public void Hook(DiskManager diskman)
+		public void Hook(StorageManager nvmman)
 		{
-			diskmanager = diskman;
-			diskmanager.onTempScan += TempScanStats;
+			storagemanager = nvmman;
+			storagemanager.onTempScan += TempScanStats;
 		}
 
 		public void Hook(ProcessManager control)
@@ -2349,7 +2349,7 @@ namespace Taskmaster
 		Label tempObjectCount;
 		Label tempObjectSize;
 
-		public void TempScanStats(object sender, DiskEventArgs ev)
+		public void TempScanStats(object sender, StorageEventArgs ev)
 		{
 			if (!IsHandleCreated) return;
 			BeginInvoke(new Action(() =>
@@ -2657,10 +2657,10 @@ namespace Taskmaster
 
 				try
 				{
-					if (diskmanager != null)
+					if (storagemanager != null)
 					{
-						diskmanager.onTempScan -= TempScanStats;
-						diskmanager = null;
+						storagemanager.onTempScan -= TempScanStats;
+						storagemanager = null;
 					}
 				}
 				catch { }

@@ -176,7 +176,7 @@ namespace Taskmaster
 			Log.Information("<Microphone> Default device: " + m_dev.FriendlyName + " (volume: " + $"{Target:N1}%)");
 			Volume = Target;
 
-			Log.Information("<Microphone> Component loaded.");
+			if (Taskmaster.DebugMic) Log.Information("<Microphone> Component loaded.");
 		}
 
 		bool disposed; // false

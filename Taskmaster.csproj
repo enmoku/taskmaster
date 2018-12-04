@@ -141,7 +141,7 @@
       <SubType>Form</SubType>
     </Compile>
     <Compile Include="Cache.cs" />
-    <Compile Include="DiskManager.cs" />
+    <Compile Include="StorageManager.cs" />
     <Compile Include="HumanInterface.cs" />
     <Compile Include="InitFailure.cs" />
     <Compile Include="ComponentConfigurationWindow.cs">
