@@ -887,7 +887,7 @@ namespace Taskmaster
 							if (PauseUnneededSampler) StopCPUMonitor();
 
 							if (CurrentMode != SessionLockPowerMode)
-								InternalSetMode(PowerMode.PowerSaver, true);
+								InternalSetMode(SessionLockPowerMode, verbose: true);
 						}
 						break;
 					case SessionSwitchReason.SessionLogon:
@@ -899,7 +899,7 @@ namespace Taskmaster
 								Log.Information("<Session:Unlock> Restoring normal power.");
 
 							if (CurrentMode == SessionLockPowerMode)
-								InternalSetMode(RestoreMode, true);
+								InternalSetMode(RestoreMode, verbose: true);
 
 							Paused = false;
 
@@ -1217,7 +1217,7 @@ namespace Taskmaster
 				{
 					// if (Behaviour == PowerBehaviour.Auto) return; // this is very optimistic
 
-					InternalSetMode(SavedMode, verbose: Taskmaster.DebugPower);
+					InternalSetMode(SavedMode);
 					SavedMode = PowerMode.Undefined;
 
 					// Log.Information("<Power> Restored to: {PowerMode}", CurrentMode.ToString());
@@ -1308,9 +1308,7 @@ namespace Taskmaster
 				if (rv)
 				{
 					SavedMode = RestoreMethod == RestoreModeMethod.Saved ? CurrentMode : RestoreMode;
-					InternalSetMode(mode, verbose: Taskmaster.DebugPower);
-
-					if (Taskmaster.DebugPower) Log.Debug("<Power> Forced to: " + CurrentMode.ToString());
+					InternalSetMode(mode);
 				}
 				else
 				{
@@ -1387,7 +1385,7 @@ namespace Taskmaster
 				var finalmode = RestoreMethod == RestoreModeMethod.Saved ? SavedMode : RestoreMode;
 				if (finalmode != CurrentMode)
 				{
-					InternalSetMode(finalmode, true);
+					InternalSetMode(finalmode, verbose: true);
 					Log.Information("<Power> Restored.");
 				}
 				Log.Information("<Power> Auto-adjusted " + AutoAdjustCounter + " time(s).");
