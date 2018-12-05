@@ -538,7 +538,7 @@ namespace Taskmaster
 			var defaultmode = power.GetSetDefault("Default mode", GetModeName(PowerMode.Balanced), out modified).StringValue;
 			power["Default mode"].Comment = "This is what power plan we fall back on when nothing else is considered.";
 			AutoAdjust.DefaultMode = GetModeByName(defaultmode);
-			if (AutoAdjust.DefaultMode == PowerMode.Custom)
+			if (AutoAdjust.DefaultMode == PowerMode.Undefined)
 			{
 				Log.Warning("<Power> Default mode malconfigured, defaulting to balanced.");
 				AutoAdjust.DefaultMode = PowerMode.Balanced;
@@ -568,7 +568,7 @@ namespace Taskmaster
 				default:
 					newmodemethod = RestoreModeMethod.Custom;
 					newrestoremode = GetModeByName(restoremode);
-					if (RestoreMode == PowerMode.Custom)
+					if (RestoreMode == PowerMode.Undefined)
 					{
 						// TODO: Complain about bad config
 						Log.Warning("<Power> Restore mode name unintelligible.");
@@ -1015,7 +1015,7 @@ namespace Taskmaster
 				case "high performance":
 					return PowerMode.HighPerformance;
 				default:
-					return PowerMode.Custom;
+					return PowerMode.Undefined;
 			}
 		}
 

@@ -175,7 +175,6 @@ namespace Taskmaster
 
 			Controller.ModifyDelay = (int)(modifyDelay.Value * 1000);
 			Controller.PowerPlan = PowerManager.GetModeByName(powerPlan.Text);
-			if (Controller.PowerPlan == PowerInfo.PowerMode.Custom) Controller.PowerPlan = PowerInfo.PowerMode.Undefined;
 			Controller.Rescan = Convert.ToInt32(rescanFreq.Value);
 			Controller.AllowPaging = allowPaging.Checked;
 			Controller.SetForegroundOnly(foregroundOnly.Checked);
