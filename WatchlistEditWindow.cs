@@ -209,7 +209,7 @@ namespace Taskmaster
 
 			DialogResult = DialogResult.OK;
 
-			Controller.Update();
+			Controller.Clean();
 
 			Close();
 		}

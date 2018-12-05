@@ -787,7 +787,25 @@ namespace Taskmaster
 				if (Taskmaster.PersistentWatchlistStats) prc.LoadStats();
 				SaveController(prc);
 				prc.Modified += ProcessModifiedProxy;
+				//prc.Paused += ProcessPausedProxy;
+				//prc.Resumed += ProcessResumedProxy;
+				prc.WaitingExit += ProcessWaitingExitProxy;
 			}
+		}
+
+		private void ProcessWaitingExitProxy(object sender, ProcessEventArgs e)
+		{
+			WaitForExit(e.Info, e.Control);
+		}
+
+		private void ProcessResumedProxy(object sender, ProcessEventArgs e)
+		{
+			throw new NotImplementedException();
+		}
+
+		private void ProcessPausedProxy(object sender, ProcessEventArgs e)
+		{
+			throw new NotImplementedException();
 		}
 
 		void ProcessModifiedProxy(object sender, ProcessEventArgs ev)
@@ -807,13 +825,16 @@ namespace Taskmaster
 
 				watchlist.Remove(prc);
 				prc.Modified -= ProcessModifiedProxy;
+				prc.Paused -= ProcessPausedProxy;
+				prc.Resumed -= ProcessResumedProxy;
+				prc.WaitingExit -= ProcessWaitingExitProxy;
 			}
 		}
 
 		readonly object waitforexit_lock = new object();
 		Dictionary<int, ProcessEx> WaitForExitList = new Dictionary<int, ProcessEx>();
 
-		void WaitForExitTriggered(ProcessEx info, ProcessRunningState state = ProcessRunningState.Exiting)
+		void WaitForExitTriggered(ProcessEx info, ProcessController controller, ProcessRunningState state = ProcessRunningState.Exiting)
 		{
 			if (Taskmaster.DebugForeground || Taskmaster.DebugPower)
 			{
@@ -833,6 +854,8 @@ namespace Taskmaster
 
 			lock (waitforexit_lock)
 				WaitForExitList.Remove(info.Id);
+
+			controller?.End(info);
 
 			onWaitForExitEvent?.Invoke(this, new ProcessEventArgs() { Control = null, Info = info, State = state });
 		}
@@ -877,14 +900,14 @@ namespace Taskmaster
 			if (clearList != null)
 			{
 				while (clearList.Count > 0)
-					WaitForExitTriggered(clearList.Pop(), ProcessRunningState.Cancel);
+					WaitForExitTriggered(clearList.Pop(), null, ProcessRunningState.Cancel);
 			}
 
 			if (cancelled > 0)
 				Log.Information("Cancelled power mode wait on " + cancelled + " process(es).");
 		}
 
-		public void WaitForExit(ProcessEx info)
+		public void WaitForExit(ProcessEx info, ProcessController controller)
 		{
 			bool exithooked = false;
 
@@ -897,7 +920,7 @@ namespace Taskmaster
 				try
 				{
 					info.Process.EnableRaisingEvents = true;
-					info.Process.Exited += (s, e) => { WaitForExitTriggered(info); };
+					info.Process.Exited += (s, e) => { WaitForExitTriggered(info, controller); };
 					exithooked = true;
 				}
 				catch (InvalidOperationException) // already exited
@@ -1221,7 +1244,7 @@ namespace Taskmaster
 					ForegroundWaitlist.Add(info.Id, prc);
 			}
 
-			if (!keyexists) WaitForExit(info);
+			if (!keyexists) WaitForExit(info, prc);
 
 			if (Taskmaster.Trace && Taskmaster.DebugForeground)
 			{
@@ -1666,9 +1689,9 @@ namespace Taskmaster
 
 			// TODO: Verify that this is actually useful?
 
+			Stack<ProcessEx> triggerList = null;
 			try
 			{
-				Stack<ProcessEx> triggerList;
 				lock (waitforexit_lock)
 				{
 					var items = WaitForExitList.Values;
@@ -1705,7 +1728,7 @@ namespace Taskmaster
 				if (triggerList != null)
 				{
 					while (triggerList.Count > 0)
-						WaitForExitTriggered(triggerList.Pop()); // causes removal so can't be done in above loop
+						WaitForExitTriggered(triggerList.Pop(), null); // causes removal so can't be done in above loop
 				}
 			}
 			catch (Exception ex)
@@ -1715,6 +1738,7 @@ namespace Taskmaster
 			finally
 			{
 				Atomic.Unlock(ref cleanup_lock);
+				triggerList?.Clear();
 			}
 		}
 

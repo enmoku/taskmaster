@@ -42,6 +42,11 @@ namespace Taskmaster
 		// EVENTS
 		public event EventHandler<ProcessEventArgs> Modified;
 
+		public event EventHandler<ProcessEventArgs> Paused;
+		public event EventHandler<ProcessEventArgs> Resumed;
+
+		public event EventHandler<ProcessEventArgs> WaitingExit;
+
 		// Core information
 		/// <summary>
 		/// 
@@ -194,7 +199,23 @@ namespace Taskmaster
 			cfg.MarkDirty();
 		}
 
-		public void Update()
+		/// <summary>
+		/// End various things for the given process
+		/// </summary>
+		public void End(ProcessEx info)
+		{
+			lock (foreground_lock)
+			{
+				ForegroundWatch.Remove(info.Id);
+				PausedIds.Remove(info.Id);
+			}
+			lock (powerlist_lock)
+			{
+				PowerList.Remove(info.Id);
+			}
+		}
+
+		public void Clean()
 		{
 			//TODO: Update power
 			lock (powerlist_lock)
@@ -435,7 +456,7 @@ namespace Taskmaster
 		public void Pause(ProcessEx info)
 		{
 			Debug.Assert(ForegroundOnly == true);
-			Debug.Assert(!isPaused(info));
+			Debug.Assert(!PausedIds.Contains(info.Id));
 
 			PausedIds.Add(info.Id);
 
@@ -505,9 +526,9 @@ namespace Taskmaster
 			}
 
 			ForegroundMonitor(info);
-		}
 
-		bool isPaused(ProcessEx info) => PausedIds.Contains(info.Id);
+			Paused?.Invoke(this, new ProcessEventArgs() { Control = this, Info = info, State = ProcessRunningState.Reduced });
+		}
 
 		object foreground_lock = new object();
 
@@ -521,7 +542,7 @@ namespace Taskmaster
 
 			lock (foreground_lock)
 			{
-				if (!isPaused(info))
+				if (!PausedIds.Contains(info.Id))
 				{
 					if (Taskmaster.DebugForeground)
 						Log.Debug("<Foreground> " + FormatPathName(info) + " (#" + info.Id + ") not paused; not resuming.");
@@ -590,6 +611,8 @@ namespace Taskmaster
 
 				PausedIds.Remove(info.Id);
 			}
+
+			Resumed?.Invoke(this, new ProcessEventArgs() { Control = this, Info = info, State = ProcessRunningState.Restored });
 		}
 
 		/// <summary>
@@ -629,14 +652,15 @@ namespace Taskmaster
 
 			lock (powerlist_lock)
 			{
-
 				info.PowerWait = true;
-				Taskmaster.Components.processmanager.WaitForExit(info); // TODO: need nicer way to signal this
-
 				PowerList.Add(info.Id);
-
-				return Taskmaster.Components.powermanager.Force(PowerPlan, info.Id);
 			}
+
+			var ea = new ProcessEventArgs() { Info = info, Control = this, State = ProcessRunningState.Undefined };
+			WaitingExit?.Invoke(this, ea);
+			Resumed?.Invoke(this, ea);
+
+			return Taskmaster.Components.powermanager.Force(PowerPlan, info.Id);
 		}
 
 		void UndoPower(ProcessEx info)
@@ -708,14 +732,8 @@ namespace Taskmaster
 
 				ForegroundWatch.Add(info.Id);
 
-				info.Process.Exited += (o, s) =>
-				{
-					lock (foreground_lock)
-					{
-						ForegroundWatch.Remove(info.Id);
-						PausedIds.Remove(info.Id);
-					}
-				};
+				info.Process.EnableRaisingEvents = true;
+				info.Process.Exited += (o, s) => { End(info); };
 
 				var sbs = new System.Text.StringBuilder();
 				sbs.Append("[").Append(FriendlyName).Append("] ")
@@ -752,7 +770,7 @@ namespace Taskmaster
 
 			if (ForegroundOnly)
 			{
-				if (isPaused(info))
+				if (PausedIds.Contains(info.Id))
 				{
 					if (Taskmaster.Trace && Taskmaster.DebugForeground)
 						Log.Debug("<Foreground> " + FormatPathName(info) + " (#" + info.Id + ") in background, ignoring.");
@@ -1425,7 +1443,10 @@ namespace Taskmaster
 			{
 				if (Taskmaster.Trace) Log.Verbose("Disposing process controller [" + FriendlyName + "]");
 
-				Modified = null; // clear events
+				// clear event handlers
+				Modified = null;
+				Paused = null;
+				Resumed = null;
 
 				if (NeedsSaving) SaveConfig();
 			}
