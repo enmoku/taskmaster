@@ -3,6 +3,9 @@ Comprehensive changes can be found in Git change history:
 	https://github.com/mkahvi/taskmaster/commits/master
 
 ## [0.11...]
+### 2018-12-05
+	Fix: Ensure restore mode & method are set.
+	Fix: Ensure process exit is detected properly and that they're cleaned up.
 ### 2018-12-04
 	Changed: Internet checking changed to be faster and smarter. Testing still required to verify.
 	Internal: Better cleanup of event handlers
