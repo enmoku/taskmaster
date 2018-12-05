@@ -345,6 +345,9 @@ namespace Taskmaster
 				AutoAdjust = settings;
 			}
 
+			if (RestoreMethod == RestoreModeMethod.Default)
+				SetRestoreMode(RestoreMethod, RestoreMode);
+
 			// TODO: Call reset on power manager?
 		}
 
