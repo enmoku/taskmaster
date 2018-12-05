@@ -151,9 +151,10 @@ namespace Taskmaster
 
 			if (Taskmaster.DebugMonitor)
 			{
-				var lastact = User.LastActive();
-				var idle = User.IdleFor(lastact);
+				uint lastact = User.LastActive();
+				double idle = User.IdleFor(lastact);
 				if (lastact == uint.MinValue) idle = 0; // HACK
+
 				Log.Debug("<Monitor> Power state: " + CurrentMonitorState.ToString() + " (last user activity " + Convert.ToInt32(idle) + "s ago)");
 			}
 
