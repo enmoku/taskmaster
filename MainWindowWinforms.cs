@@ -1892,7 +1892,6 @@ namespace Taskmaster
 			bool enabled = Taskmaster.DebugProcesses || Taskmaster.DebugForeground;
 			if (!enabled) return;
 
-			if (Taskmaster.DebugForeground) activeappmonitor.ActiveChanged += OnActiveWindowChanged;
 			if (Taskmaster.DebugProcesses) processmanager.HandlingStateChange += ProcessHandlingStateChangeEvent;
 
 			if (!ProcessDebugTab_visible)
@@ -2387,6 +2386,8 @@ namespace Taskmaster
 			if (Taskmaster.Trace) Log.Verbose("Hooking active app manager.");
 
 			activeappmonitor = aamon;
+
+			activeappmonitor.ActiveChanged += OnActiveWindowChanged;
 
 			if (Taskmaster.DebugForeground || Taskmaster.DebugProcesses)
 				StartProcessDebug();
