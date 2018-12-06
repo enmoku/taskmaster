@@ -368,16 +368,21 @@ namespace Taskmaster
 			return string.Empty;
 		}
 
+		System.Drawing.Rectangle windowrect;
+		NativeMethods.RECT screenrect;
 		bool Fullscreen(IntPtr hwnd)
 		{
-			NativeMethods.RECT rect = new NativeMethods.RECT();
+			// TODO: Is it possible to cache screen? multimonitor setup may make it hard... would that save anything?
+			var screen = System.Windows.Forms.Screen.FromHandle(hwnd); // passes
 
-			System.Windows.Forms.Screen screen = System.Windows.Forms.Screen.FromHandle(hwnd); // passes
+			NativeMethods.GetWindowRect(hwnd, ref screenrect);
+			//var windowrect = new System.Drawing.Rectangle(rect.Left, rect.Top, rect.Right - rect.Left, rect.Bottom - rect.Top);
+			windowrect.Height = screenrect.Bottom - screenrect.Top;
+			windowrect.Width = screenrect.Right - screenrect.Left;
+			windowrect.X = screenrect.Left;
+			windowrect.Y = screenrect.Top;
 
-			NativeMethods.GetWindowRect(hwnd, ref rect);
-			var r = new System.Drawing.Rectangle(rect.Left, rect.Top, rect.Right - rect.Left, rect.Bottom - rect.Top);
-
-			bool full = r.Equals(screen.Bounds);
+			bool full = windowrect.Equals(screen.Bounds);
 
 			return full;
 		}
@@ -421,6 +426,9 @@ namespace Taskmaster
 				};
 
 				NativeMethods.GetWindowThreadProcessId(hwnd, out int pid);
+
+				bool fs = Fullscreen(hwnd);
+				activewindowev.Fullscreen = fs ? Trinary.True : Trinary.False;
 
 				Foreground = activewindowev.Id = pid;
 				HangTick = 0;
