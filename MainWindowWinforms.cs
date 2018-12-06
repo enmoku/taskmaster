@@ -1245,43 +1245,46 @@ namespace Taskmaster
 			};
 
 			#region Main Window Row 0, game monitor / active window monitor
-			var activepanel = new TableLayoutPanel
+			if (Taskmaster.ActiveAppMonitorEnabled)
 			{
-				Dock = DockStyle.Fill,
-				RowCount = 1,
-				ColumnCount = 6,
-				AutoSize = true,
-				//Width = tabLayout.Width - 3,
-			};
+				var foregroundapppanel = new TableLayoutPanel
+				{
+					Dock = DockStyle.Fill,
+					RowCount = 1,
+					ColumnCount = 6,
+					AutoSize = true,
+					//Width = tabLayout.Width - 3,
+				};
 
-			var activeLabelUX = new Label() { Text = "Active:", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, Width = 40 };
-			activeLabel = new Label()
-			{
-				AutoSize = true,
-				Dock = DockStyle.Left,
-				Text = "no active window found",
-				TextAlign = System.Drawing.ContentAlignment.MiddleLeft,
-				AutoEllipsis = true,
-			};
-			activeExec = new Label() { Dock = DockStyle.Top, Text = "n/a", Width = 100, TextAlign = System.Drawing.ContentAlignment.MiddleLeft };
-			activeFullscreen = new Label() { Dock = DockStyle.Top, Text = "n/a", Width = 60, TextAlign = System.Drawing.ContentAlignment.MiddleCenter };
-			activePID = new Label() { Text = "n/a", Width = 60, TextAlign = System.Drawing.ContentAlignment.MiddleCenter };
+				activeLabel = new Label()
+				{
+					AutoSize = true,
+					Dock = DockStyle.Left,
+					Text = "no active window found",
+					TextAlign = System.Drawing.ContentAlignment.MiddleLeft,
+					AutoEllipsis = true,
+				};
+				activeExec = new Label() { Dock = DockStyle.Top, Text = "n/a", Width = 100, TextAlign = System.Drawing.ContentAlignment.MiddleLeft };
+				activeFullscreen = new Label() { Dock = DockStyle.Top, Text = "n/a", Width = 60, TextAlign = System.Drawing.ContentAlignment.MiddleCenter };
+				activePID = new Label() { Text = "n/a", Width = 60, TextAlign = System.Drawing.ContentAlignment.MiddleCenter };
 
-			activepanel.Controls.Add(activeLabelUX);
-			activepanel.Controls.Add(activeLabel);
-			activepanel.Controls.Add(activeExec);
-			activepanel.Controls.Add(activeFullscreen);
-			activepanel.Controls.Add(new Label { Text = "Id:", Width = 20, TextAlign = System.Drawing.ContentAlignment.MiddleLeft });
-			activepanel.Controls.Add(activePID);
+				foregroundapppanel.Controls.Add(new Label() { Text = "Active window:", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, Width = 80 });
+				foregroundapppanel.Controls.Add(activeLabel);
+				foregroundapppanel.Controls.Add(activeExec);
+				foregroundapppanel.Controls.Add(activeFullscreen);
+				foregroundapppanel.Controls.Add(new Label { Text = "Id:", Width = 20, TextAlign = System.Drawing.ContentAlignment.MiddleLeft });
+				foregroundapppanel.Controls.Add(activePID);
 
-			activepanel.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
-			activepanel.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
-			activepanel.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
-			activepanel.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
-			activepanel.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
-			activepanel.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+				foregroundapppanel.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+				foregroundapppanel.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+				foregroundapppanel.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+				foregroundapppanel.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+				foregroundapppanel.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+				foregroundapppanel.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
 
-			infopanel.Controls.Add(activepanel);
+				infopanel.Controls.Add(foregroundapppanel);
+			}
+
 			infoTab.Controls.Add(infopanel);
 			#endregion
 
@@ -1708,39 +1711,43 @@ namespace Taskmaster
 				TextAlign = System.Drawing.ContentAlignment.MiddleLeft,
 			};
 
-			var tempmonitorpanel = new TableLayoutPanel
+			if (Taskmaster.TempMonitorEnabled)
 			{
-				Dock = DockStyle.Top,
-				RowCount = 1,
-				ColumnCount = 5,
-				Height = 40,
-				AutoSize = true
-			};
-			tempmonitorpanel.Controls.Add(new Label
-			{
-				Text = "Temp",
-				Dock = DockStyle.Left,
-				TextAlign = System.Drawing.ContentAlignment.MiddleRight,
-				AutoSize = true
-			});
-			tempmonitorpanel.Controls.Add(new Label
-			{
-				Text = "Objects",
-				Dock = DockStyle.Left,
-				TextAlign = System.Drawing.ContentAlignment.MiddleRight,
-				AutoSize = true
-			});
-			tempmonitorpanel.Controls.Add(tempObjectCount);
-			tempmonitorpanel.Controls.Add(new Label
-			{
-				Text = "Size (MB)",
-				Dock = DockStyle.Left,
-				TextAlign = System.Drawing.ContentAlignment.MiddleRight,
-				AutoSize = true
-			});
-			tempmonitorpanel.Controls.Add(tempObjectSize);
+				var tempmonitorpanel = new TableLayoutPanel
+				{
+					Dock = DockStyle.Top,
+					RowCount = 1,
+					ColumnCount = 5,
+					Height = 40,
+					AutoSize = true
+				};
+				tempmonitorpanel.Controls.Add(new Label
+				{
+					Text = "Temp",
+					Dock = DockStyle.Left,
+					TextAlign = System.Drawing.ContentAlignment.MiddleRight,
+					AutoSize = true
+				});
+				tempmonitorpanel.Controls.Add(new Label
+				{
+					Text = "Objects",
+					Dock = DockStyle.Left,
+					TextAlign = System.Drawing.ContentAlignment.MiddleRight,
+					AutoSize = true
+				});
+				tempmonitorpanel.Controls.Add(tempObjectCount);
+				tempmonitorpanel.Controls.Add(new Label
+				{
+					Text = "Size (MB)",
+					Dock = DockStyle.Left,
+					TextAlign = System.Drawing.ContentAlignment.MiddleRight,
+					AutoSize = true
+				});
+				tempmonitorpanel.Controls.Add(tempObjectSize);
 
-			infopanel.Controls.Add(tempmonitorpanel);
+				infopanel.Controls.Add(tempmonitorpanel);
+			}
+
 			infoTab.Controls.Add(infopanel);
 
 			// POWER DEBUG TAB
