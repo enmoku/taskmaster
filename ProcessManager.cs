@@ -1418,11 +1418,14 @@ namespace Taskmaster
 
 				try
 				{
-					targetInstance = (System.Management.ManagementBaseObject)e.NewEvent.Properties["TargetInstance"].Value;
-					pid = Convert.ToInt32((string)targetInstance.Properties["Handle"].Value);
-					path = (string)(targetInstance.Properties["ExecutablePath"].Value);
+					targetInstance = e.NewEvent.Properties["TargetInstance"].Value as System.Management.ManagementBaseObject;
+					pid = targetInstance.Properties["Handle"].Value as int? ?? 0;
+					path = targetInstance.Properties["ExecutablePath"].Value as string;
 				}
-				catch { }
+				catch (Exception ex)
+				{
+					Logging.Stacktrace(ex);
+				}
 				finally
 				{
 					wmiquerytime.Stop();
