@@ -844,8 +844,23 @@ namespace Taskmaster
 				corecfg.MarkDirty();
 			};
 
+			var menu_config_behaviour_exitconfirm = new ToolStripMenuItem("Exit confirmation")
+			{
+				Checked = Taskmaster.ExitConfirmation,
+				CheckOnClick = true,
+			};
+			menu_config_behaviour_exitconfirm.Click += (sender, e) =>
+			{
+				Taskmaster.ExitConfirmation = menu_config_behaviour_exitconfirm.Checked;
+
+				var corecfg = Taskmaster.Config.Load(Taskmaster.coreconfig);
+				corecfg.Config["Quality of Life"]["Exit confirmation"].BoolValue = Taskmaster.ExitConfirmation;
+				corecfg.MarkDirty();
+			};
+
 			menu_config_behaviour.DropDownItems.Add(menu_config_behaviour_autoopen);
 			menu_config_behaviour.DropDownItems.Add(menu_config_behaviour_taskbar);
+			menu_config_behaviour.DropDownItems.Add(menu_config_behaviour_exitconfirm);
 
 			var menu_config_logging_adjusts = new ToolStripMenuItem("Process adjusts")
 			{
