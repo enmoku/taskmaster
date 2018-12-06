@@ -1213,7 +1213,6 @@ namespace Taskmaster
 				if (Taskmaster.AutoOpenMenus) menu_info.ShowDropDown();
 			};
 
-			// TODO: INFO TAB needs more work
 			var infoTab = new TabPage("Info");
 			tabLayout.Controls.Add(infoTab);
 
@@ -1486,11 +1485,8 @@ namespace Taskmaster
 			if (Taskmaster.ProcessMonitorEnabled && ProcessManager.RescanEverythingFrequency > 0)
 				UItimer.Tick += UpdateRescanCountdown;
 
-			/*
-			// TODO: INFO TAB needs more work
 			if (Taskmaster.PathCacheLimit > 0)
 				UItimer.Tick += PathCacheUpdate;
-			*/
 
 			ifaceList = new ListView
 			{
@@ -1649,7 +1645,7 @@ namespace Taskmaster
 				cfg.MarkDirty();
 			}
 
-			// TODO: INFO TAB needs more work
+			// Path Cache
 			var cachePanel = new TableLayoutPanel()
 			{
 				ColumnCount = 5,
