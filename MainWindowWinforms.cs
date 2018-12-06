@@ -2117,8 +2117,16 @@ namespace Taskmaster
 			if (!UIOpen) return;
 			if (!IsHandleCreated) return;
 
-			BeginInvoke(new Action(() => { 
+			BeginInvoke(new Action(() =>
+			{
 				cpuload.Text = $"{ev.Current:N2} %";
+
+				// bad place to do this, but eh..
+				if (Taskmaster.HealthMonitorEnabled)
+				{
+					ramload.Text = $"{Taskmaster.Components.healthmonitor.FreeMemory() / 1000:N2} GB";
+						//vramload.Text = $"{Taskmaster.Components.healthmonitor.VRAM()} MB"; // this returns total, not free or used
+				}
 			}));
 		}
 
