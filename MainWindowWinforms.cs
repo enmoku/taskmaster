@@ -292,7 +292,7 @@ namespace Taskmaster
 			processmanager.onInstanceHandling += ProcessNewInstanceCount;
 			processmanager.onProcessHandled += ExitWaitListHandler;
 			processmanager.onWaitForExitEvent += ExitWaitListHandler;
-			PathCacheUpdate(null, null);
+			if (Taskmaster.DebugCache) PathCacheUpdate(null, null);
 
 			foreach (var prc in processmanager.getWatchlist())
 				AddToWatchlistList(prc);
@@ -523,6 +523,7 @@ namespace Taskmaster
 		public void PathCacheUpdate(object sender, EventArgs ev)
 		{
 			if (!IsHandleCreated) return;
+			Debug.Assert(Taskmaster.DebugCache);
 
 			if (PathCacheUpdateSkips++ == 4)
 				PathCacheUpdateSkips = 0;
@@ -1495,7 +1496,9 @@ namespace Taskmaster
 				UItimer.Tick += UpdateRescanCountdown;
 
 			if (Taskmaster.PathCacheLimit > 0)
-				UItimer.Tick += PathCacheUpdate;
+			{
+				if (Taskmaster.DebugCache) UItimer.Tick += PathCacheUpdate;
+			}
 
 			ifaceList = new ListView
 			{
@@ -1655,70 +1658,73 @@ namespace Taskmaster
 			}
 
 			// Path Cache
-			var cachePanel = new TableLayoutPanel()
+			TableLayoutPanel cachePanel = null;
+			if (Taskmaster.DebugCache)
 			{
-				ColumnCount = 5,
-				AutoSize = true,
-				Dock = DockStyle.Fill,
-			};
+				cachePanel = new TableLayoutPanel()
+				{
+					ColumnCount = 5,
+					AutoSize = true,
+					Dock = DockStyle.Fill,
+				};
 
-			cachePanel.Controls.Add(new Label()
-			{
-				Text = "Path cache:",
-				TextAlign = System.Drawing.ContentAlignment.MiddleLeft,
-				AutoSize = true
-			});
-			cachePanel.Controls.Add(new Label()
-			{
-				Text = "Objects",
-				TextAlign = System.Drawing.ContentAlignment.MiddleLeft,
-				AutoSize = true
-			});
-			cacheObjects = new Label()
-			{
-				AutoSize = true,
-				Width = 40,
-				Text = "n/a",
-				TextAlign = System.Drawing.ContentAlignment.MiddleLeft
-			};
-			cachePanel.Controls.Add(cacheObjects);
-			cachePanel.Controls.Add(new Label()
-			{
-				Text = "Ratio",
-				TextAlign = System.Drawing.ContentAlignment.MiddleLeft,
-				AutoSize = true
-			});
-			cacheRatio = new Label()
-			{
-				AutoSize = true,
-				Width = 40,
-				Text = "n/a",
-				TextAlign = System.Drawing.ContentAlignment.MiddleLeft
-			};
-			cachePanel.Controls.Add(cacheRatio);
+				cachePanel.Controls.Add(new Label()
+				{
+					Text = "Path cache:",
+					TextAlign = System.Drawing.ContentAlignment.MiddleLeft,
+					AutoSize = true
+				});
+				cachePanel.Controls.Add(new Label()
+				{
+					Text = "Objects",
+					TextAlign = System.Drawing.ContentAlignment.MiddleLeft,
+					AutoSize = true
+				});
+				cacheObjects = new Label()
+				{
+					AutoSize = true,
+					Width = 40,
+					Text = "n/a",
+					TextAlign = System.Drawing.ContentAlignment.MiddleLeft
+				};
+				cachePanel.Controls.Add(cacheObjects);
+				cachePanel.Controls.Add(new Label()
+				{
+					Text = "Ratio",
+					TextAlign = System.Drawing.ContentAlignment.MiddleLeft,
+					AutoSize = true
+				});
+				cacheRatio = new Label()
+				{
+					AutoSize = true,
+					Width = 40,
+					Text = "n/a",
+					TextAlign = System.Drawing.ContentAlignment.MiddleLeft
+				};
+				cachePanel.Controls.Add(cacheRatio);
 
-			infopanel.Controls.Add(cachePanel);
+				tempObjectCount = new Label()
+				{
+					Width = 40,
+					//Dock = DockStyle.Left,
+					Text = "n/a",
+					TextAlign = System.Drawing.ContentAlignment.MiddleLeft,
+				};
 
-			tempObjectCount = new Label()
-			{
-				Width = 40,
-				//Dock = DockStyle.Left,
-				Text = "n/a",
-				TextAlign = System.Drawing.ContentAlignment.MiddleLeft,
-			};
+				tempObjectSize = new Label()
+				{
+					Width = 40,
+					//Margin = new Padding(3 + 3),
+					//Dock = DockStyle.Left,
+					Text = "n/a",
+					TextAlign = System.Drawing.ContentAlignment.MiddleLeft,
+				};
+			}
 
-			tempObjectSize = new Label()
-			{
-				Width = 40,
-				//Margin = new Padding(3 + 3),
-				//Dock = DockStyle.Left,
-				Text = "n/a",
-				TextAlign = System.Drawing.ContentAlignment.MiddleLeft,
-			};
-
+			TableLayoutPanel tempmonitorpanel = null;
 			if (Taskmaster.TempMonitorEnabled)
 			{
-				var tempmonitorpanel = new TableLayoutPanel
+				tempmonitorpanel = new TableLayoutPanel
 				{
 					Dock = DockStyle.Top,
 					RowCount = 1,
@@ -1749,18 +1755,16 @@ namespace Taskmaster
 					AutoSize = true
 				});
 				tempmonitorpanel.Controls.Add(tempObjectSize);
-
-				infopanel.Controls.Add(tempmonitorpanel);
 			}
 
 			var hwpanel = new TableLayoutPanel()
 			{
 				ColumnCount = 2,
 				AutoSize = true,
-				Dock = DockStyle.Fill,
+				//Dock = DockStyle.Fill,
 			};
 
-			hwpanel.Controls.Add(new Label() { Text = "CPU%", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left });
+			hwpanel.Controls.Add(new Label() { Text = "CPU", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left });
 			cpuload = new Label() { Text = "n/a", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left };
 			hwpanel.Controls.Add(cpuload);
 			// TODO: Add high, low and average
@@ -1773,9 +1777,11 @@ namespace Taskmaster
 			vramload = new Label() { Text = "n/a", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left };
 			hwpanel.Controls.Add(vramload);
 
-			infopanel.Controls.Add(hwpanel);
-
 			infoTab.Controls.Add(infopanel);
+
+			if (hwpanel != null) infopanel.Controls.Add(hwpanel);
+			if (cachePanel != null) infopanel.Controls.Add(cachePanel);
+			if (tempmonitorpanel != null) infopanel.Controls.Add(tempmonitorpanel);
 
 			// POWER DEBUG TAB
 
