@@ -26,6 +26,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Management;
 using System.Threading.Tasks;
 using Serilog;
 
@@ -144,10 +145,10 @@ namespace Taskmaster
 
 			LoadConfig();
 
+			memfree = new PerformanceCounterWrapper("Memory", "Available MBytes", null);
+
 			if (Settings.MemLevel > 0 && Taskmaster.PagingEnabled)
 			{
-				memfree = new PerformanceCounterWrapper("Memory", "Available MBytes", null);
-
 				Log.Information("<Auto-Doc> Memory auto-paging level: {Level} MB", Settings.MemLevel);
 			}
 
@@ -440,6 +441,43 @@ namespace Taskmaster
 		DateTime LastMemoryWarning = DateTime.MinValue;
 		long MemoryWarningCooldown = 30;
 
+		// VRAM  / GPU
+
+		/// <summary>
+		/// Returns maximum available VRAM in MB.
+		/// </summary>
+		/// <returns></returns>
+		public int VRAM()
+		{
+			if (!Taskmaster.WMIQueries) return 0;
+
+			int vram = 0;
+
+			try
+			{
+				using (ManagementObjectSearcher searcher = new ManagementObjectSearcher("SELECT AdapterRAM FROM Win32_VideoController"))
+				{
+
+					foreach (ManagementObject mo in searcher.Get())
+					{
+						var ram = mo["AdapterRAM"] as uint?;
+
+						if (ram.HasValue)
+						{
+							vram = (int)(ram.Value / 1048576);
+							break;
+						}
+					}
+				}
+			}
+			catch (Exception ex)
+			{
+				Logging.Stacktrace(ex);
+			}
+
+			return vram;
+		}
+
 		bool disposed; // = false;
 		public void Dispose()
 		{
@@ -463,6 +501,7 @@ namespace Taskmaster
 				//commitpercentile?.Dispose();
 				//commitpercentile = null;
 				memfree?.Dispose();
+				memfree = null;
 
 				PerformanceCounterWrapper.Sensors.Clear();
 			}
