@@ -49,9 +49,9 @@ namespace Taskmaster
 		public static ComponentContainer Components = new ComponentContainer();
 
 		static Runstate State = Runstate.Normal;
-		static bool RestartElevated = false;
-		static int RestartCounter = 0;
-		static int AdminCounter = 0;
+		static bool RestartElevated { get; set; } = false;
+		static int RestartCounter { get; set; } = 0;
+		static int AdminCounter { get; set; } = 0;
 
 		public static void RestartRequest(object sender, EventArgs e)
 		{
@@ -61,13 +61,15 @@ namespace Taskmaster
 		public static void ConfirmExit(bool restart = false, bool admin = false)
 		{
 			var rv = DialogResult.Yes;
-			if (RequestExitConfirm)
-				rv = MessageBox.Show("Are you sure you want to " + (restart ? "restart" : "exit") + " Taskmaster?",
-									 (restart ? "Restart" : "Exit") + Application.ProductName + " ???",
-									 MessageBoxButtons.YesNo, MessageBoxIcon.Question, MessageBoxDefaultButton.Button1, MessageBoxOptions.DefaultDesktopOnly, false);
+			if (Taskmaster.ExitConfirmation)
+			{
+				if (ExitConfirmation)
+					rv = MessageBox.Show("Are you sure you want to " + (restart ? "restart" : "exit") + " Taskmaster?",
+										 (restart ? "Restart" : "Exit") + Application.ProductName + " ???",
+										 MessageBoxButtons.YesNo, MessageBoxIcon.Question, MessageBoxDefaultButton.Button1, MessageBoxOptions.DefaultDesktopOnly, false);
+				if (rv != DialogResult.Yes) return;
+			}
 
-			if (rv != DialogResult.Yes) return;
-			
 			RestartElevated = admin;
 
 			UnifiedExit(restart);
@@ -394,8 +396,8 @@ namespace Taskmaster
 		public static bool DebugNet { get; set; } = false;
 		public static bool DebugMic { get; set; } = false;
 
-		public static bool Trace = false;
-		public static bool ShowInaction = false;
+		public static bool Trace { get; set; } = false;
+		public static bool ShowInaction { get; set; } = false;
 
 		public static bool ProcessMonitorEnabled { get; private set; } = true;
 		public static bool PathMonitorEnabled { get; private set; } = true;
@@ -423,13 +425,13 @@ namespace Taskmaster
 
 		// public static bool LowMemory { get; private set; } = true; // low memory mode; figure out way to auto-enable this when system is low on memory
 
-		public static int TempRescanDelay = 60 * 60_000; // 60 minutes
-		public static int TempRescanThreshold = 1000;
+		public static int TempRescanDelay { get; set; } = 60 * 60_000; // 60 minutes
+		public static int TempRescanThreshold { get; set; } = 1000;
 
-		public static int PathCacheLimit = 200;
-		public static int PathCacheMaxAge = 1800;
+		public static int PathCacheLimit { get; set; } = 200;
+		public static int PathCacheMaxAge { get; set; } = 1800;
 
-		public static int CleanupInterval = 15;
+		public static int CleanupInterval { get; set; } = 15;
 
 		/// <summary>
 		/// Whether to use WMI queries for investigating failed path checks to determine if an application was launched in watched path.
@@ -441,11 +443,11 @@ namespace Taskmaster
 
 		public static string ConfigVersion = "alpha.2";
 
-		public static bool RequestExitConfirm = true;
-		public static bool AutoOpenMenus = true;
-		public static bool ShowInTaskbar = false;
-		public static int AffinityStyle = 0;
-		public static bool GlobalHotkeys = false;
+		public static bool ExitConfirmation { get; set; } = true;
+		public static bool AutoOpenMenus { get; set; } = true;
+		public static bool ShowInTaskbar { get; set; } = false;
+		public static int AffinityStyle { get; set; } = 0;
+		public static bool GlobalHotkeys { get; set; } = false;
 
 		public static string coreconfig = "Core.ini";
 		static void LoadCoreConfig()
@@ -509,7 +511,7 @@ namespace Taskmaster
 			dirtyconfig |= modified;
 
 			var qol = cfg["Quality of Life"];
-			RequestExitConfirm = qol.GetSetDefault("Confirm exit", true, out modified).BoolValue;
+			ExitConfirmation = qol.GetSetDefault("Confirm exit", true, out modified).BoolValue;
 			dirtyconfig |= modified;
 			AutoOpenMenus = qol.GetSetDefault("Auto-open menus", true, out modified).BoolValue;
 			dirtyconfig |= modified;
