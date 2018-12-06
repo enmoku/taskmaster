@@ -220,6 +220,7 @@ namespace Taskmaster
 							Log.Verbose("WMI fetch (#" + processId + "): " + path);
 							wmitime.Stop();
 							Statistics.WMIquerytime += wmitime.Elapsed.TotalSeconds;
+							item.Dispose();
 							return mpath.ToString();
 						}
 					}
