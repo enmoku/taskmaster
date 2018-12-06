@@ -1837,17 +1837,23 @@ namespace Taskmaster
 		}
 	}
 
-	sealed public class ProcessorEventArgs : EventArgs
+	sealed public class PowerEventArgs : ProcessorEventArgs
 	{
-		public float Current;
-		public float Average;
-		public float Low;
-		public float High;
+		public PowerInfo.PowerMode Mode = PowerInfo.PowerMode.Undefined;
 
-		public PowerInfo.PowerMode Mode;
+		public float Pressure = 0F;
 
-		public float Pressure;
+		public bool Enacted = false;
 
-		public bool Handled;
+		public static PowerEventArgs From(ProcessorEventArgs ea)
+		{
+			return new PowerEventArgs
+			{
+				Current = ea.Current,
+				Average = ea.Average,
+				High = ea.High,
+				Low = ea.Low
+			};
+		}
 	}
 }

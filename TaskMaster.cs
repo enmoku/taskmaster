@@ -174,6 +174,12 @@ namespace Taskmaster
 						if (Taskmaster.Trace) Console.WriteLine("... hooking POW manager");
 						Components.mainwindow.Hook(Components.powermanager);
 					}
+
+					if (Components.cpumonitor != null)
+					{
+						if (Taskmaster.Trace) Console.WriteLine("... hooking CPU monitor");
+						Components.mainwindow.Hook(Components.cpumonitor);
+					}
 				}
 				catch (Exception ex)
 				{
@@ -245,6 +251,7 @@ namespace Taskmaster
 			Task[] init =
 			{
 				PowerManagerEnabled ? (Task.Run(() => { Components.powermanager = new PowerManager(); })) : Task.CompletedTask,
+				PowerManagerEnabled ? (Task.Run(()=> { Components.cpumonitor = new CPUMonitor(); })) : Task.CompletedTask,
 				ProcessMonitorEnabled ? (Task.Run(() => { Components.processmanager = new ProcessManager(); })) : Task.CompletedTask,
 				(ActiveAppMonitorEnabled && ProcessMonitorEnabled) ? (Task.Run(()=> {Components.activeappmonitor = new ActiveAppManager(eventhook:false); })) : Task.CompletedTask,
 				NetworkMonitorEnabled ? (Task.Run(() => { Components.netmonitor = new NetManager(); })) : Task.CompletedTask,
@@ -290,7 +297,8 @@ namespace Taskmaster
 			if (PowerManagerEnabled)
 			{
 				Components.trayaccess.Hook(Components.powermanager);
-				Components.powermanager.onBatteryResume += RestartRequest;
+				Components.powermanager.onBatteryResume += RestartRequest; // HACK
+				Components.powermanager.Hook(Components.cpumonitor);
 			}
 
 			if (ProcessMonitorEnabled && PowerManagerEnabled)

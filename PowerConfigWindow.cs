@@ -285,7 +285,7 @@ namespace Taskmaster
 			layout.Controls.Add(new Label()); // empty
 
 			layout.Controls.Add(new Label() { Text = "Sample frequency (sec)", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Fill });
-			layout.Controls.Add(new Label() { Text = power.CPUSampleInterval.ToString(), TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Fill });
+			layout.Controls.Add(new Label() { Text = Taskmaster.Components.cpumonitor.SampleInterval.ToString(), TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Fill });
 
 			layout.Controls.Add(new Label() { Text = "Default mode", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Fill });
 			layout.Controls.Add(defaultmode);

@@ -45,6 +45,7 @@ namespace Taskmaster
 		public HealthMonitor healthmonitor = null;
 		public SelfMaintenance selfmaintenance = null;
 		public AudioManager audiomanager = null;
+		public CPUMonitor cpumonitor = null;
 
 		public ComponentContainer()
 		{
@@ -72,6 +73,7 @@ namespace Taskmaster
 					healthmonitor?.Dispose();
 					selfmaintenance?.Dispose();
 					audiomanager?.Dispose();
+					cpumonitor?.Dispose();
 				}
 
 				disposed = true;

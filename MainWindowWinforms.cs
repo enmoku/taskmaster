@@ -209,6 +209,7 @@ namespace Taskmaster
 		ProcessManager processmanager = null;
 		ActiveAppManager activeappmonitor = null;
 		PowerManager powermanager = null;
+		CPUMonitor cpumonitor = null;
 		NetManager netmonitor = null;
 
 		#region Microphone control code
@@ -1104,13 +1105,13 @@ namespace Taskmaster
 				Taskmaster.DebugPower = menu_debug_power.Checked;
 				if (Taskmaster.DebugPower)
 				{
-					powermanager.onAutoAdjustAttempt += CPULoadHandler;
+					powermanager.onAutoAdjustAttempt += PowerLoadHandler;
 					tabLayout.Controls.Add(powerDebugTab);
 					EnsureVerbosityLevel();
 				}
 				else
 				{
-					powermanager.onAutoAdjustAttempt -= CPULoadHandler;
+					powermanager.onAutoAdjustAttempt -= PowerLoadHandler;
 					bool refocus = tabLayout.SelectedTab.Equals(powerDebugTab);
 					tabLayout.Controls.Remove(powerDebugTab);
 					if (refocus) tabLayout.SelectedIndex = 1; // watchlist
@@ -1752,6 +1753,28 @@ namespace Taskmaster
 				infopanel.Controls.Add(tempmonitorpanel);
 			}
 
+			var hwpanel = new TableLayoutPanel()
+			{
+				ColumnCount = 2,
+				AutoSize = true,
+				Dock = DockStyle.Fill,
+			};
+
+			hwpanel.Controls.Add(new Label() { Text = "CPU%", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left });
+			cpuload = new Label() { Text = "n/a", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left };
+			hwpanel.Controls.Add(cpuload);
+			// TODO: Add high, low and average
+
+			hwpanel.Controls.Add(new Label() { Text = "RAM", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left });
+			ramload = new Label() { Text = "n/a", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left };
+			hwpanel.Controls.Add(ramload);
+
+			hwpanel.Controls.Add(new Label() { Text = "VRAM", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left });
+			vramload = new Label() { Text = "n/a", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left };
+			hwpanel.Controls.Add(vramload);
+
+			infopanel.Controls.Add(hwpanel);
+
 			infoTab.Controls.Add(infopanel);
 
 			// POWER DEBUG TAB
@@ -2089,10 +2112,19 @@ namespace Taskmaster
 			}));
 		}
 
-		public void CPULoadHandler(object sender, ProcessorEventArgs ev) // Event Handler
+		public void CPULoadHandler(object sender, ProcessorEventArgs ev)
 		{
 			if (!UIOpen) return;
+			if (!IsHandleCreated) return;
 
+			BeginInvoke(new Action(() => { 
+				cpuload.Text = $"{ev.Current:N2} %";
+			}));
+		}
+
+		public void PowerLoadHandler(object sender, PowerEventArgs ev)
+		{
+			if (!UIOpen) return;
 			if (!IsHandleCreated) return;
 
 			BeginInvoke(new Action(() =>
@@ -2107,7 +2139,7 @@ namespace Taskmaster
 						$"{ev.High:N2}%",
 						$"{ev.Low:N2}%",
 						reactionary,
-						ev.Handled.ToString(),
+						ev.Enacted.ToString(),
 						$"{ev.Pressure*100f:N1}%"
 					})
 					{
@@ -2350,8 +2382,12 @@ namespace Taskmaster
 			}
 		}
 
-		Label tempObjectCount;
-		Label tempObjectSize;
+		Label tempObjectCount = null;
+		Label tempObjectSize = null;
+
+		Label cpuload = null;
+		Label ramload = null;
+		Label vramload = null;
 
 		public void TempScanStats(object sender, StorageEventArgs ev)
 		{
@@ -2405,12 +2441,18 @@ namespace Taskmaster
 
 			powermanager = pman;
 			if (Taskmaster.DebugPower)
-				powermanager.onAutoAdjustAttempt += CPULoadHandler;
+				powermanager.onAutoAdjustAttempt += PowerLoadHandler;
 			powermanager.onBehaviourChange += PowerBehaviourDebugEvent;
 			powermanager.onPlanChange += PowerPlanDebugEvent;
 
 			PowerBehaviourDebugEvent(this, new PowerManager.PowerBehaviourEventArgs { Behaviour = powermanager.Behaviour }); // populates powerbalancer_behaviourr
 			PowerPlanDebugEvent(this, new PowerModeEventArgs() { NewMode = powermanager.CurrentMode }); // populates powerbalancer_plan
+		}
+
+		public void Hook(CPUMonitor monitor)
+		{
+			cpumonitor = monitor;
+			cpumonitor.onSampling += CPULoadHandler;
 		}
 
 		public void PowerBehaviourDebugEvent(object sender, PowerManager.PowerBehaviourEventArgs ea)
@@ -2646,10 +2688,20 @@ namespace Taskmaster
 				{
 					if (powermanager != null)
 					{
-						powermanager.onAutoAdjustAttempt -= CPULoadHandler;
+						powermanager.onAutoAdjustAttempt -= PowerLoadHandler;
 						powermanager.onBehaviourChange -= PowerBehaviourDebugEvent;
 						powermanager.onPlanChange -= PowerPlanDebugEvent;
 						powermanager = null;
+					}
+				}
+				catch { }
+
+				try
+				{
+					if (cpumonitor != null)
+					{
+						cpumonitor.onSampling -= CPULoadHandler;
+						cpumonitor = null;
 					}
 				}
 				catch { }

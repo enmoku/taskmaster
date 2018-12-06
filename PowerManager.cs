@@ -88,11 +88,6 @@ namespace Taskmaster
 
 			// SystemEvents.PowerModeChanged += BatteryChargingEvent; // Without laptop testing this feature is difficult
 
-			onCPUSampling += CPULoadEvent;
-
-			if (Behaviour == PowerBehaviour.Auto)
-				StartCPUMonitor();
-
 			if (Behaviour == PowerBehaviour.RuleBased && !Forced)
 				Restore();
 
@@ -110,39 +105,13 @@ namespace Taskmaster
 			}
 		}
 
-		void StartCPUMonitor()
+		CPUMonitor cpumonitor = null;
+
+		public void Hook(CPUMonitor monitor)
 		{
-			try
-			{
-				if (CPUTimer == null)
-				{
-					CPUTimer = new System.Timers.Timer(CPUSampleInterval * 1000);
-					CPUTimer.Elapsed += CPUSampler;
-
-					CPUSamples = new float[CPUSampleCount];
-				}
-
-				CPUCounter = new PerformanceCounterWrapper("Processor", "% Processor Time", "_Total");
-
-				if (Behaviour == PowerBehaviour.Auto || !PauseUnneededSampler)
-					CPUTimer.Start();
-			}
-			catch (Exception ex)
-			{
-				Logging.Stacktrace(ex);
-				StopCPUMonitor();
-			}
+			cpumonitor = monitor;
+			cpumonitor.onSampling += CPULoadHandler;
 		}
-
-		void StopCPUMonitor()
-		{
-			CPUTimer?.Dispose();
-			CPUTimer = null;
-
-			CPUCounter?.Dispose();
-			CPUCounter = null;
-		}
-
 
 		void MonitorPowerEvent(object sender, MonitorPowerEventArgs ev)
 		{
@@ -232,50 +201,6 @@ namespace Taskmaster
 		}
 
 		/// <summary>
-		/// CPU Sample Interval. In seconds.
-		/// </summary>
-		public int CPUSampleInterval { get; set; } = 5;
-		public int CPUSampleCount { get; set; } = 5;
-		PerformanceCounterWrapper CPUCounter = null;
-		System.Timers.Timer CPUTimer = null;
-
-		public event EventHandler<ProcessorEventArgs> onCPUSampling;
-		float[] CPUSamples;
-		int CPUSampleLoop = 0;
-		float CPUAverage = 0f;
-
-		int cpusampler_lock = 0;
-		void CPUSampler(object sender, EventArgs ev)
-		{
-			if (!Atomic.Lock(ref cpusampler_lock)) return; // uhhh... probably should ping warning if this return is triggered
-
-			float sample = CPUCounter.Value; // slowest part
-			CPUAverage -= CPUSamples[CPUSampleLoop];
-			CPUAverage += CPUSamples[CPUSampleLoop] = sample;
-			CPUSampleLoop = (CPUSampleLoop + 1) % CPUSampleCount; // loop offset
-
-			float CPULow = float.MaxValue;
-			float CPUHigh = float.MinValue;
-
-			for (int i = 0; i < CPUSampleCount; i++)
-			{
-				var cur = CPUSamples[i];
-				if (cur < CPULow) CPULow = cur;
-				else if (cur > CPUHigh) CPUHigh = cur;
-			}
-
-			onCPUSampling?.Invoke(this, new ProcessorEventArgs()
-			{
-				Current = sample,
-				Average = CPUAverage / CPUSampleCount,
-				High = CPUHigh,
-				Low = CPULow
-			});
-
-			Atomic.Unlock(ref cpusampler_lock);
-		}
-
-		/// <summary>
 		/// Power saver on monitor sleep
 		/// </summary>
 		bool SaverOnMonitorSleep = false;
@@ -309,7 +234,7 @@ namespace Taskmaster
 		/// </summary>
 		public bool SessionLockPowerOff { get; set; } = true;
 
-		public event EventHandler<ProcessorEventArgs> onAutoAdjustAttempt;
+		public event EventHandler<PowerEventArgs> onAutoAdjustAttempt;
 		public event EventHandler<PowerModeEventArgs> onPlanChange;
 		public event EventHandler<PowerBehaviourEventArgs> onBehaviourChange;
 		public event EventHandler onBatteryResume;
@@ -357,7 +282,7 @@ namespace Taskmaster
 		PowerReaction PreviousReaction = PowerReaction.Average;
 
 		// TODO: Simplify this mess
-		public async void CPULoadEvent(object sender, ProcessorEventArgs ev)
+		public async void CPULoadHandler(object sender, ProcessorEventArgs pev)
 		{
 			if (Behaviour != PowerBehaviour.Auto) return;
 
@@ -368,8 +293,10 @@ namespace Taskmaster
 
 			var Ready = false;
 
+			var ev = PowerEventArgs.From(pev);
+
 			ev.Pressure = 0;
-			ev.Handled = false;
+			ev.Enacted = false;
 
 			lock (autoadjust_lock)
 			{
@@ -463,7 +390,7 @@ namespace Taskmaster
 					if (AutoAdjustSetMode(ReactionaryPlan))
 					{
 						AutoAdjustCounter++;
-						ev.Handled = true;
+						ev.Enacted = true;
 					}
 					else
 					{
@@ -515,7 +442,6 @@ namespace Taskmaster
 			WarnedForceMode = false;
 		}
 
-		bool PauseUnneededSampler = false;
 		int PowerdownDelay { get; set; } = 0;
 
 		void LoadConfig()
@@ -601,11 +527,6 @@ namespace Taskmaster
 				autopower.Remove("Auto-adjust");
 			}
 
-			// should probably be in hardware/cpu section
-			PauseUnneededSampler = autopower.GetSetDefault("Pause unneeded CPU sampler", false, out modified).BoolValue;
-			autopower["Pause unneeded CPU sampler"].Comment = "Pausing the sampler causes re-enabling it to have a delay in proper behaviour much like at TM's startup.";
-			dirtyconfig |= modified;
-
 			// BACKOFF
 			AutoAdjust.Low.Backoff.Level = autopower.GetSetDefault("Low backoff level", 1, out modified).IntValue.Constrain(0, 10);
 			autopower["Low backoff level"].Comment = "1 to 10. Consequent backoff reactions that is required before it actually triggers.";
@@ -685,18 +606,6 @@ namespace Taskmaster
 
 			// --------------------------------------------------------------------------------------------------------
 
-			// CPU SAMPLING
-			// this really should be elsewhere
-			var hwsec = corecfg.Config["Hardware"];
-			CPUSampleInterval = hwsec.GetSetDefault("CPU sample interval", 2, out modified).IntValue.Constrain(1, 15);
-			hwsec["CPU sample interval"].Comment = "1 to 15, in seconds. Frequency at which CPU usage is sampled. Recommended value: 1 to 5 seconds.";
-			dirtyconfig |= modified;
-			CPUSampleCount = hwsec.GetSetDefault("CPU sample count", 5, out modified).IntValue.Constrain(3, 30);
-			hwsec["CPU sample count"].Comment = "3 to 30. Number of CPU samples to keep. Recommended value is: Count * Interval <= 30 seconds";
-			dirtyconfig |= modified;
-
-			Log.Information("<CPU> CPU sampler: " + CPUSampleInterval + "s × " + CPUSampleCount +
-				" = " + (CPUSampleCount * CPUSampleInterval) + "s observation period");
 			Log.Information("<Power> Watchlist powerdown delay: " + (PowerdownDelay == 0 ? "Disabled" : (PowerdownDelay + "s")));
 
 			// --------------------------------------------------------------------------------------------------------
@@ -712,6 +621,7 @@ namespace Taskmaster
 			if (dirtyconfig) corecfg.MarkDirty();
 		}
 
+		// TODO: Should detect if saving is ACTUALLY needed
 		public void SaveConfig()
 		{
 			var corecfg = Taskmaster.Config.Load(Taskmaster.coreconfig);
@@ -740,8 +650,6 @@ namespace Taskmaster
 				power.Remove("Watchlist powerdown delay");
 			var autopower = corecfg.Config["Power / Auto"];
 
-			autopower["Pause unneeded CPU sampler"].BoolValue = PauseUnneededSampler;
-
 			// BACKOFF
 			autopower["Low backoff level"].IntValue = AutoAdjust.Low.Backoff.Level;
 			autopower["High backoff level"].IntValue = AutoAdjust.High.Backoff.Level;
@@ -768,11 +676,6 @@ namespace Taskmaster
 			saver["Monitor power off on lock"].BoolValue = SessionLockPowerOff;
 
 			// --------------------------------------------------------------------------------------------------------
-
-			// CPU SAMPLING
-			var hwsec = corecfg.Config["Hardware"];
-			hwsec["CPU sample interval"].IntValue = CPUSampleInterval;
-			hwsec["CPU sample count"].IntValue = CPUSampleCount;
 
 			corecfg.MarkDirty();
 		}
@@ -884,8 +787,6 @@ namespace Taskmaster
 
 							Paused = true;
 
-							if (PauseUnneededSampler) StopCPUMonitor();
-
 							if (CurrentMode != SessionLockPowerMode)
 								InternalSetMode(SessionLockPowerMode, verbose: true);
 						}
@@ -902,8 +803,6 @@ namespace Taskmaster
 								InternalSetMode(RestoreMode, verbose: true);
 
 							Paused = false;
-
-							if (PauseUnneededSampler) StartCPUMonitor();
 						}
 						break;
 					default:
@@ -1066,37 +965,36 @@ namespace Taskmaster
 			Debug.Assert(pb == Behaviour);
 			if (pb == Behaviour) return Behaviour;
 
-			Task.Run(async () =>
+			bool reset = false;
+			lock (autoadjust_lock)
 			{
-				await Task.Delay(0).ConfigureAwait(false);
+				Behaviour = pb;
+				LogBehaviourState();
 
-				lock (autoadjust_lock)
+				switch (Behaviour)
 				{
-					Behaviour = pb;
-					LogBehaviourState();
-
-					if (Behaviour == PowerBehaviour.Auto)
-					{
+					case PowerBehaviour.Auto:
 						ResetAutoadjust();
 
-						if (PauseUnneededSampler) StartCPUMonitor();
-					}
-					else if (Behaviour == PowerBehaviour.RuleBased)
-					{
-						if (PauseUnneededSampler) StopCPUMonitor();
-					}
-					else // MANUAL
-					{
-						if (PauseUnneededSampler) StopCPUMonitor();
-
+						if (cpumonitor == null) 
+						{
+							reset = true;
+							Log.Error("<Power> CPU monitor disabled, auto-adjust not possible. Resetting to rule-based behaviour.");
+						}
+						break;
+					default:
+					case PowerBehaviour.RuleBased:
+						break;
+					case PowerBehaviour.Manual:
 						Taskmaster.Components.processmanager.CancelPowerWait(); // need nicer way to do this
-
 						Release(0);
-					}
+						break;
 				}
+			}
 
-				onBehaviourChange?.Invoke(this, new PowerBehaviourEventArgs { Behaviour = Behaviour });
-			});
+			if (reset) return SetBehaviour(PowerBehaviour.RuleBased);
+
+			onBehaviourChange?.Invoke(this, new PowerBehaviourEventArgs { Behaviour = Behaviour });
 
 			return Behaviour;
 		}
@@ -1370,12 +1268,18 @@ namespace Taskmaster
 				SessionLock = null;
 				MonitorPower = null;
 
-				StopCPUMonitor();
+				if (cpumonitor != null)
+				{
+					try
+					{
+						cpumonitor.onSampling -= CPULoadHandler;
+					}
+					catch { }
+				}
 
 				MonitorPower = null;
 				MonitorSleepTimer?.Dispose();
 
-				onCPUSampling = null;
 				SessionLock = null;
 				onAutoAdjustAttempt = null;
 				onPlanChange = null;

@@ -7,6 +7,7 @@ Comprehensive changes can be found in Git change history:
 	Added: UI option to toggle exit confirmation.
 	Fixed: Exit confirmation setting now respected.
 	Changed: Info tab re-enabled. Still work in progress.
+	Internal: CPU monitoring moved out of power management to its own component.
 ### 2018-12-05
 	Fix: Ensure restore mode & method are set.
 	Fix: Ensure process exit is detected properly and that they're cleaned up.

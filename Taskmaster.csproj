@@ -114,6 +114,7 @@
     <Compile Include="Extensions\NumericUpDownEx.cs">
       <SubType>Component</SubType>
     </Compile>
+    <Compile Include="CPUMonitor.cs" />
     <Compile Include="LicenseDialog.cs">
       <SubType>Form</SubType>
     </Compile>
