@@ -511,7 +511,7 @@ namespace Taskmaster
 			dirtyconfig |= modified;
 
 			var qol = cfg["Quality of Life"];
-			ExitConfirmation = qol.GetSetDefault("Confirm exit", true, out modified).BoolValue;
+			ExitConfirmation = qol.GetSetDefault("Exit confirmation", true, out modified).BoolValue;
 			dirtyconfig |= modified;
 			AutoOpenMenus = qol.GetSetDefault("Auto-open menus", true, out modified).BoolValue;
 			dirtyconfig |= modified;
