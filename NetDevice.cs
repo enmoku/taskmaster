@@ -88,6 +88,7 @@ namespace Taskmaster
 	sealed public class NetDevice
 	{
 		public int Index { get; set; }
+		public Guid Id { get; set; }
 
 		public string Name { get; set; } = string.Empty;
 		public NetworkInterfaceType Type { get; set; } = NetworkInterfaceType.Unknown;

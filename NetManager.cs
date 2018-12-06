@@ -112,6 +112,20 @@ namespace Taskmaster
 			AnalyzeTrafficBehaviourTick(null); // initialize, not really needed
 			packetStatTimer = new System.Threading.Timer(AnalyzeTrafficBehaviourTick, null, 500, PacketStatTimerInterval * 1000);
 
+			/*
+			// Reset time could be used for initial internet start time as it is the only even remotely relevant one
+			// ... but it's not honestly truly indicative of it.
+			using (ManagementObjectSearcher searcher = new ManagementObjectSearcher("SELECT DeviceID,TimeOfLastReset FROM Win32_NetworkAdapter"))
+			{
+				foreach (ManagementObject mo in searcher.Get())
+				{
+					string netreset = mo["TimeOfLastReset"] as string;
+					var reset = ManagementDateTimeConverter.ToDateTime(netreset);
+					Console.WriteLine("NET RESET: " + reset);
+				}
+			}
+			*/
+
 			if (Taskmaster.DebugNet) Log.Information("<Network> Component loaded.");
 		}
 
@@ -531,6 +545,7 @@ namespace Taskmaster
 					var devi = new NetDevice
 					{
 						Index = ti,
+						Id = Guid.Parse(dev.Id),
 						Name = dev.Name,
 						Type = dev.NetworkInterfaceType,
 						Status = dev.OperationalStatus,
