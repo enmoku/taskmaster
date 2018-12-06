@@ -409,6 +409,9 @@ namespace Taskmaster
 		public static bool HealthMonitorEnabled { get; private set; } = true;
 		public static bool AudioManagerEnabled { get; private set; } = true;
 
+		// EXPERIMENTAL FEATURES
+		public static bool TempMonitorEnabled { get; private set; } = false;
+
 		public static bool ShowOnStart { get; private set; } = true;
 
 		public static bool SelfOptimize { get; private set; } = true;
