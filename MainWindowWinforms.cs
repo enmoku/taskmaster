@@ -1213,11 +1213,9 @@ namespace Taskmaster
 				if (Taskmaster.AutoOpenMenus) menu_info.ShowDropDown();
 			};
 
-			/*
 			// TODO: INFO TAB needs more work
 			var infoTab = new TabPage("Info");
 			tabLayout.Controls.Add(infoTab);
-			*/
 
 			var watchTab = new TabPage("Watchlist");
 			tabLayout.Controls.Add(watchTab);
@@ -1283,8 +1281,8 @@ namespace Taskmaster
 			activepanel.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
 			activepanel.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
 
-			// infopanel.Controls.Add(activepanel);
-			// infoTab.Controls.Add(infopanel);
+			infopanel.Controls.Add(activepanel);
+			infoTab.Controls.Add(infopanel);
 			#endregion
 
 			#region Load UI config
@@ -1648,7 +1646,6 @@ namespace Taskmaster
 				cfg.MarkDirty();
 			}
 
-			/*
 			// TODO: INFO TAB needs more work
 			var cachePanel = new TableLayoutPanel()
 			{
@@ -1745,7 +1742,6 @@ namespace Taskmaster
 
 			infopanel.Controls.Add(tempmonitorpanel);
 			infoTab.Controls.Add(infopanel);
-			*/
 
 			// POWER DEBUG TAB
 
