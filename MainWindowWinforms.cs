@@ -1816,8 +1816,6 @@ namespace Taskmaster
 				Dock = DockStyle.Fill,
 			};
 
-			processlayout.Controls.Add(activepanel);
-
 			processlayout.Controls.Add(new Label()
 			{
 				AutoSize = true,
