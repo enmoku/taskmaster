@@ -1795,7 +1795,8 @@ namespace Taskmaster
 					if (lastmodifylist.SelectedItems.Count > 0)
 					{
 						string path = lastmodifylist.SelectedItems[0].SubItems[5].Text;
-						Clipboard.SetText(path, TextDataFormat.UnicodeText);
+						if (!string.IsNullOrEmpty(path))
+							Clipboard.SetText(path, TextDataFormat.UnicodeText);
 					}
 				}
 			});
