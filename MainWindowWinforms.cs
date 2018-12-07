@@ -256,11 +256,13 @@ namespace Taskmaster
 				}
 				catch (Exception ex) { Logging.Stacktrace(ex); }
 
-				try
+				if (Taskmaster.LastModifiedList)
 				{
-					lock (lastmodify_lock)
+					try
 					{
-						var mi = new ListViewItem(new string[] {
+						lock (lastmodify_lock)
+						{
+							var mi = new ListViewItem(new string[] {
 						DateTime.Now.ToLongTimeString(),
 						ev.Info.Name,
 						ev.Control.FriendlyName,
@@ -268,11 +270,12 @@ namespace Taskmaster
 						HumanInterface.BitMask(ev.Affinity.ToInt32(), ProcessManager.CPUCount),
 						ev.Info.Path
 					});
-						lastmodifylist.Items.Add(mi);
-						if (lastmodifylist.Items.Count > 5) lastmodifylist.Items.RemoveAt(0);
+							lastmodifylist.Items.Add(mi);
+							if (lastmodifylist.Items.Count > 5) lastmodifylist.Items.RemoveAt(0);
+						}
 					}
+					catch (Exception ex) { Logging.Stacktrace(ex); }
 				}
-				catch (Exception ex) { Logging.Stacktrace(ex); }
 			}));
 		}
 
@@ -1757,58 +1760,63 @@ namespace Taskmaster
 			hwpanel.Controls.Add(vramload);
 
 			#region Last modified
-			var lastmodifypanel = new TableLayoutPanel
+			TableLayoutPanel lastmodifypanel = null;
+			if (Taskmaster.LastModifiedList)
 			{
-				Dock = DockStyle.Top,
-				ColumnCount = 1,
-				Height = 40,
-				AutoSize = true
-			};
-
-			lastmodifypanel.Controls.Add(new Label() { Text = "Last process modifications", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left });
-			lastmodifylist = new ListView()
-			{
-				Parent = this,
-				Dock = DockStyle.Top,
-				AutoSize = true,
-				View = View.Details,
-				FullRowSelect = true,
-				HeaderStyle = ColumnHeaderStyle.Nonclickable,
-				//Scrollable = true,
-				MinimumSize = new System.Drawing.Size(-2, 60),
-				//MinimumSize = new System.Drawing.Size(-2, -2), // doesn't work
-				//Anchor = AnchorStyles.Top,
-			};
-
-			lastmodifylist.Columns.Add("Time", 60);
-			lastmodifylist.Columns.Add("Executable", appwidths[2]);
-			lastmodifylist.Columns.Add("Rule", appwidths[1]);
-			lastmodifylist.Columns.Add("Priority", appwidths[3]);
-			lastmodifylist.Columns.Add("Affinity", appwidths[4]);
-			lastmodifylist.Columns.Add("Path", -2);
-
-			lastmodifypanel.Controls.Add(lastmodifylist);
-			var lastmodifyms = new ContextMenuStrip();
-			var lastmodifycopy = new ToolStripMenuItem("Copy path to clipboard", null, (s,e) => {
-				lock (lastmodify_lock)
+				lastmodifypanel = new TableLayoutPanel
 				{
-					if (lastmodifylist.SelectedItems.Count > 0)
+					Dock = DockStyle.Top,
+					ColumnCount = 1,
+					Height = 40,
+					AutoSize = true
+				};
+
+				lastmodifypanel.Controls.Add(new Label() { Text = "Last process modifications", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left });
+				lastmodifylist = new ListView()
+				{
+					Parent = this,
+					Dock = DockStyle.Top,
+					AutoSize = true,
+					View = View.Details,
+					FullRowSelect = true,
+					HeaderStyle = ColumnHeaderStyle.Nonclickable,
+					//Scrollable = true,
+					MinimumSize = new System.Drawing.Size(-2, 60),
+					//MinimumSize = new System.Drawing.Size(-2, -2), // doesn't work
+					//Anchor = AnchorStyles.Top,
+				};
+
+				lastmodifylist.Columns.Add("Time", 60);
+				lastmodifylist.Columns.Add("Executable", appwidths[2]);
+				lastmodifylist.Columns.Add("Rule", appwidths[1]);
+				lastmodifylist.Columns.Add("Priority", appwidths[3]);
+				lastmodifylist.Columns.Add("Affinity", appwidths[4]);
+				lastmodifylist.Columns.Add("Path", -2);
+
+				lastmodifypanel.Controls.Add(lastmodifylist);
+				var lastmodifyms = new ContextMenuStrip();
+				var lastmodifycopy = new ToolStripMenuItem("Copy path to clipboard", null, (s, e) =>
+				{
+					lock (lastmodify_lock)
 					{
-						string path = lastmodifylist.SelectedItems[0].SubItems[5].Text;
-						if (!string.IsNullOrEmpty(path))
-							Clipboard.SetText(path, TextDataFormat.UnicodeText);
+						if (lastmodifylist.SelectedItems.Count > 0)
+						{
+							string path = lastmodifylist.SelectedItems[0].SubItems[5].Text;
+							if (!string.IsNullOrEmpty(path))
+								Clipboard.SetText(path, TextDataFormat.UnicodeText);
+						}
 					}
-				}
-			});
-			lastmodifyms.Opened += (s, e) =>
-			{
-				lock (lastmodify_lock)
+				});
+				lastmodifyms.Opened += (s, e) =>
 				{
-					lastmodifycopy.Enabled = (lastmodifylist.SelectedItems.Count == 1);
-				}
-			};
-			lastmodifyms.Items.Add(lastmodifycopy);
-			lastmodifylist.ContextMenuStrip = lastmodifyms;
+					lock (lastmodify_lock)
+					{
+						lastmodifycopy.Enabled = (lastmodifylist.SelectedItems.Count == 1);
+					}
+				};
+				lastmodifyms.Items.Add(lastmodifycopy);
+				lastmodifylist.ContextMenuStrip = lastmodifyms;
+			}
 			#endregion
 
 			// Insert info panel/tab contents
@@ -2207,12 +2215,12 @@ namespace Taskmaster
 
 			BeginInvoke(new Action(() =>
 			{
-				cpuload.Text = $"{ev.Current:N2} %";
+				cpuload.Text = $"{ev.Current:N1} %, Avg: {ev.Average:N1} %, Hi: {ev.High:N1} %, Lo: {ev.Low:N1} %";
 
 				// bad place to do this, but eh..
 				if (Taskmaster.HealthMonitorEnabled)
 				{
-					ramload.Text = $"{Taskmaster.Components.healthmonitor.FreeMemory() / 1000:N2} GB";
+					ramload.Text = $"{Taskmaster.Components.healthmonitor.FreeMemory() / 1000:N2} of {Taskmaster.Components.healthmonitor.TotalMemory() / 1024:N1} GB free";
 						//vramload.Text = $"{Taskmaster.Components.healthmonitor.VRAM()} MB"; // this returns total, not free or used
 				}
 			}));
