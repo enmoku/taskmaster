@@ -1419,7 +1419,8 @@ namespace Taskmaster
 				try
 				{
 					targetInstance = e.NewEvent.Properties["TargetInstance"].Value as System.Management.ManagementBaseObject;
-					pid = targetInstance.Properties["Handle"].Value as int? ?? 0;
+					//var tpid = targetInstance.Properties["Handle"].Value as int?; // doesn't work for some reason
+					pid = Convert.ToInt32(targetInstance.Properties["Handle"].Value as string);
 					path = targetInstance.Properties["ExecutablePath"].Value as string;
 				}
 				catch (Exception ex)
