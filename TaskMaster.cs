@@ -421,6 +421,7 @@ namespace Taskmaster
 
 		// EXPERIMENTAL FEATURES
 		public static bool TempMonitorEnabled { get; private set; } = false;
+		public static bool LastModifiedList { get; private set; } = false;
 		// DEBUG INFO
 		public static bool DebugCache { get; private set; } = false;
 
