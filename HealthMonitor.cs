@@ -246,6 +246,25 @@ namespace Taskmaster
 			}
 		}
 
+		double Memory = double.NaN;
+		public double TotalMemory()
+		{
+			if (!double.IsNaN(Memory)) return Memory;
+
+			using (ManagementClass mc = new ManagementClass("Win32_ComputerSystem"))
+			{
+				using (var res = mc.GetInstances())
+				{
+					foreach (var item in res)
+					{
+						return (Memory = Convert.ToDouble(Convert.ToUInt64(item.Properties["TotalPhysicalMemory"].Value)) / 1048576d);
+					}
+				}
+			}
+
+			return double.NaN;
+		}
+
 		DateTime FreeMemory_last = DateTime.MinValue;
 		float FreeMemory_cached = 0f;
 		/// <summary>
