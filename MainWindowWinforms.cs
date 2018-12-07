@@ -638,7 +638,7 @@ namespace Taskmaster
 				{
 					var li = ifaceList.SelectedItems[0];
 					var ipv4addr = li.SubItems[IPv4Column].Text;
-					Clipboard.SetText(ipv4addr);
+					Clipboard.SetText(ipv4addr, TextDataFormat.UnicodeText);
 				}
 				catch (Exception ex) { Logging.Stacktrace(ex); }
 			}
@@ -652,7 +652,7 @@ namespace Taskmaster
 				{
 					var li = ifaceList.SelectedItems[0];
 					var ipv6addr = "[" + li.SubItems[IPv6Column].Text + "]";
-					Clipboard.SetText(ipv6addr);
+					Clipboard.SetText(ipv6addr, TextDataFormat.UnicodeText);
 				}
 				catch (Exception ex) { Logging.Stacktrace(ex); }
 			}
@@ -663,7 +663,7 @@ namespace Taskmaster
 			if (ifaceList.SelectedItems.Count == 1)
 			{
 				string data = netmonitor.GetDeviceData(ifaceList.SelectedItems[0].SubItems[0].Text);
-				Clipboard.SetText(data);
+				Clipboard.SetText(data, TextDataFormat.UnicodeText);
 			}
 		}
 
@@ -678,7 +678,7 @@ namespace Taskmaster
 
 				if (sbs.Length > 0)
 				{
-					Clipboard.SetText(sbs.ToString());
+					Clipboard.SetText(sbs.ToString(), TextDataFormat.UnicodeText);
 				}
 			}
 			catch (Exception ex) { Logging.Stacktrace(ex); }
@@ -2465,7 +2465,7 @@ namespace Taskmaster
 
 					try
 					{
-						Clipboard.SetText(sbs.ToString());
+						Clipboard.SetText(sbs.ToString(), TextDataFormat.UnicodeText);
 						Log.Information("[" + name + "] Configuration saved to clipboard.");
 					}
 					catch
