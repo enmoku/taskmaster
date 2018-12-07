@@ -1124,7 +1124,17 @@ namespace Taskmaster
 			info.Handled = true;
 			info.Modified = DateTime.Now;
 
-			if (modified) Modified?.Invoke(this, new ProcessEventArgs { Control = this, Info = info });
+			if (modified)
+			{
+				Modified?.Invoke(this, new ProcessEventArgs {
+					Control = this,
+					Info = info,
+					Affinity = newAffinity,
+					AffinityOld = oldAffinity,
+					Priority = newPriority,
+					PriorityOld = oldPriority
+				});
+			}
 
 			sbs.Clear();
 
@@ -1464,5 +1474,9 @@ namespace Taskmaster
 		public ProcessController Control { get; set; } = null;
 		public ProcessEx Info = null;
 		public ProcessRunningState State = ProcessRunningState.Undefined;
+		public ProcessPriorityClass Priority = ProcessPriorityClass.Idle;
+		public ProcessPriorityClass PriorityOld = ProcessPriorityClass.Idle;
+		public IntPtr Affinity = IntPtr.Zero;
+		public IntPtr AffinityOld = IntPtr.Zero;
 	}
 }

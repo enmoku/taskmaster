@@ -255,6 +255,24 @@ namespace Taskmaster
 						Log.Error(ev.Control.FriendlyName + " not found in UI watchlist list.");
 				}
 				catch (Exception ex) { Logging.Stacktrace(ex); }
+
+				try
+				{
+					lock (lastmodify_lock)
+					{
+						var mi = new ListViewItem(new string[] {
+						DateTime.Now.ToLongTimeString(),
+						ev.Info.Name,
+						ev.Control.FriendlyName,
+						ev.Priority.ToString(),
+						HumanInterface.BitMask(ev.Affinity.ToInt32(), ProcessManager.CPUCount),
+						ev.Info.Path
+					});
+						lastmodifylist.Items.Add(mi);
+						if (lastmodifylist.Items.Count > 5) lastmodifylist.Items.RemoveAt(0);
+					}
+				}
+				catch (Exception ex) { Logging.Stacktrace(ex); }
 			}));
 		}
 
@@ -475,6 +493,9 @@ namespace Taskmaster
 		readonly object Watchlist_lock = new object();
 		ConcurrentDictionary<ProcessController, ListViewItem> WatchlistMap = new ConcurrentDictionary<ProcessController, ListViewItem>();
 		Label corCountLabel;
+
+		ListView lastmodifylist;
+		readonly object lastmodify_lock = new object();
 
 		ListView powerbalancerlog;
 		readonly object powerbalancerlog_lock = new object();
@@ -1253,49 +1274,7 @@ namespace Taskmaster
 				AutoSize = true,
 			};
 
-			#region Main Window Row 0, game monitor / active window monitor
-			if (Taskmaster.ActiveAppMonitorEnabled)
-			{
-				var foregroundapppanel = new TableLayoutPanel
-				{
-					Dock = DockStyle.Fill,
-					RowCount = 1,
-					ColumnCount = 6,
-					AutoSize = true,
-					//Width = tabLayout.Width - 3,
-				};
-
-				activeLabel = new Label()
-				{
-					AutoSize = true,
-					Dock = DockStyle.Left,
-					Text = "no active window found",
-					TextAlign = System.Drawing.ContentAlignment.MiddleLeft,
-					AutoEllipsis = true,
-				};
-				activeExec = new Label() { Dock = DockStyle.Top, Text = "n/a", Width = 100, TextAlign = System.Drawing.ContentAlignment.MiddleLeft };
-				activeFullscreen = new Label() { Dock = DockStyle.Top, Text = "n/a", Width = 60, TextAlign = System.Drawing.ContentAlignment.MiddleCenter };
-				activePID = new Label() { Text = "n/a", Width = 60, TextAlign = System.Drawing.ContentAlignment.MiddleCenter };
-
-				foregroundapppanel.Controls.Add(new Label() { Text = "Active window:", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, Width = 80 });
-				foregroundapppanel.Controls.Add(activeLabel);
-				foregroundapppanel.Controls.Add(activeExec);
-				foregroundapppanel.Controls.Add(activeFullscreen);
-				foregroundapppanel.Controls.Add(new Label { Text = "Id:", Width = 20, TextAlign = System.Drawing.ContentAlignment.MiddleLeft });
-				foregroundapppanel.Controls.Add(activePID);
-
-				foregroundapppanel.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
-				foregroundapppanel.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
-				foregroundapppanel.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
-				foregroundapppanel.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
-				foregroundapppanel.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
-				foregroundapppanel.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
-
-				infopanel.Controls.Add(foregroundapppanel);
-			}
-
 			infoTab.Controls.Add(infopanel);
-			#endregion
 
 			#region Load UI config
 			var uicfg = Taskmaster.Config.Load(uiconfig);
@@ -1777,11 +1756,67 @@ namespace Taskmaster
 			vramload = new Label() { Text = "n/a", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left };
 			hwpanel.Controls.Add(vramload);
 
-			infoTab.Controls.Add(infopanel);
+			#region Last modified
+			var lastmodifypanel = new TableLayoutPanel
+			{
+				Dock = DockStyle.Top,
+				ColumnCount = 1,
+				Height = 40,
+				AutoSize = true
+			};
 
+			lastmodifypanel.Controls.Add(new Label() { Text = "Last process modifications", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left });
+			lastmodifylist = new ListView()
+			{
+				Parent = this,
+				Dock = DockStyle.Top,
+				AutoSize = true,
+				View = View.Details,
+				FullRowSelect = true,
+				HeaderStyle = ColumnHeaderStyle.Nonclickable,
+				//Scrollable = true,
+				MinimumSize = new System.Drawing.Size(-2, 60),
+				//MinimumSize = new System.Drawing.Size(-2, -2), // doesn't work
+				//Anchor = AnchorStyles.Top,
+			};
+
+			lastmodifylist.Columns.Add("Time", 60);
+			lastmodifylist.Columns.Add("Executable", appwidths[2]);
+			lastmodifylist.Columns.Add("Rule", appwidths[1]);
+			lastmodifylist.Columns.Add("Priority", appwidths[3]);
+			lastmodifylist.Columns.Add("Affinity", appwidths[4]);
+			lastmodifylist.Columns.Add("Path", -2);
+
+			lastmodifypanel.Controls.Add(lastmodifylist);
+			var lastmodifyms = new ContextMenuStrip();
+			var lastmodifycopy = new ToolStripMenuItem("Copy path to clipboard", null, (s,e) => {
+				lock (lastmodify_lock)
+				{
+					if (lastmodifylist.SelectedItems.Count > 0)
+					{
+						string path = lastmodifylist.SelectedItems[0].SubItems[5].Text;
+						Clipboard.SetText(path, TextDataFormat.UnicodeText);
+					}
+				}
+			});
+			lastmodifyms.Opened += (s, e) =>
+			{
+				lock (lastmodify_lock)
+				{
+					lastmodifycopy.Enabled = (lastmodifylist.SelectedItems.Count == 1);
+				}
+			};
+			lastmodifyms.Items.Add(lastmodifycopy);
+			lastmodifylist.ContextMenuStrip = lastmodifyms;
+			#endregion
+
+			// Insert info panel/tab contents
 			if (hwpanel != null) infopanel.Controls.Add(hwpanel);
 			if (cachePanel != null) infopanel.Controls.Add(cachePanel);
 			if (tempmonitorpanel != null) infopanel.Controls.Add(tempmonitorpanel);
+			if (lastmodifypanel != null) infopanel.Controls.Add(lastmodifypanel);
+
+			infoTab.Controls.Add(infopanel);
 
 			// POWER DEBUG TAB
 
@@ -1855,6 +1890,45 @@ namespace Taskmaster
 				AutoSize = true,
 				Dock = DockStyle.Fill,
 			};
+
+			#region Active window monitor
+			var foregroundapppanel = new TableLayoutPanel
+			{
+				Dock = DockStyle.Fill,
+				RowCount = 1,
+				ColumnCount = 6,
+				AutoSize = true,
+				//Width = tabLayout.Width - 3,
+			};
+
+			activeLabel = new Label()
+			{
+				AutoSize = true,
+				Dock = DockStyle.Left,
+				Text = "no active window found",
+				TextAlign = System.Drawing.ContentAlignment.MiddleLeft,
+				AutoEllipsis = true,
+			};
+			activeExec = new Label() { Dock = DockStyle.Top, Text = "n/a", Width = 100, TextAlign = System.Drawing.ContentAlignment.MiddleLeft };
+			activeFullscreen = new Label() { Dock = DockStyle.Top, Text = "n/a", Width = 60, TextAlign = System.Drawing.ContentAlignment.MiddleCenter };
+			activePID = new Label() { Text = "n/a", Width = 60, TextAlign = System.Drawing.ContentAlignment.MiddleCenter };
+
+			foregroundapppanel.Controls.Add(new Label() { Text = "Active window:", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, Width = 80 });
+			foregroundapppanel.Controls.Add(activeLabel);
+			foregroundapppanel.Controls.Add(activeExec);
+			foregroundapppanel.Controls.Add(activeFullscreen);
+			foregroundapppanel.Controls.Add(new Label { Text = "Id:", Width = 20, TextAlign = System.Drawing.ContentAlignment.MiddleLeft });
+			foregroundapppanel.Controls.Add(activePID);
+
+			foregroundapppanel.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+			foregroundapppanel.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+			foregroundapppanel.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+			foregroundapppanel.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+			foregroundapppanel.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+			foregroundapppanel.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+
+			processlayout.Controls.Add(foregroundapppanel);
+			#endregion
 
 			processlayout.Controls.Add(new Label()
 			{
@@ -1933,6 +2007,9 @@ namespace Taskmaster
 				tabLayout.Controls.Add(ProcessDebugTab);
 			}
 
+			if (activeappmonitor != null && Taskmaster.DebugForeground)
+				activeappmonitor.ActiveChanged += OnActiveWindowChanged;
+
 			EnsureVerbosityLevel();
 		}
 
@@ -2001,6 +2078,10 @@ namespace Taskmaster
 				ProcessDebugTab_visible = false;
 				tabLayout.Controls.Remove(ProcessDebugTab);
 			}
+
+			if (activeappmonitor != null && Taskmaster.DebugForeground)
+				activeappmonitor.ActiveChanged -= OnActiveWindowChanged;
+
 
 			// TODO: unlink events
 			if (refocus) tabLayout.SelectedIndex = 1; // watchlist
@@ -2440,8 +2521,6 @@ namespace Taskmaster
 			if (Taskmaster.Trace) Log.Verbose("Hooking active app manager.");
 
 			activeappmonitor = aamon;
-
-			activeappmonitor.ActiveChanged += OnActiveWindowChanged;
 
 			if (Taskmaster.DebugForeground || Taskmaster.DebugProcesses)
 				StartProcessDebug();

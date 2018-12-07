@@ -3,6 +3,8 @@ Comprehensive changes can be found in Git change history:
 	https://github.com/mkahvi/taskmaster/commits/master
 
 ## [0.11...]
+### 2018-12-07
+	Added: Last modified list to the info tab, with option to copy path of the app to clipboard.
 ### 2018-12-06
 	Added: UI option to toggle exit confirmation.
 	Fixed: Exit confirmation setting now respected.
