@@ -983,6 +983,9 @@ namespace Taskmaster
 		{
 			System.Threading.Mutex singleton = null;
 
+			System.Windows.Forms.Application.SetUnhandledExceptionMode(UnhandledExceptionMode.Automatic);
+			System.Windows.Forms.Application.ThreadException += UnhandledUIException;
+
 			// Multi-core JIT
 			// https://docs.microsoft.com/en-us/dotnet/api/system.runtime.profileoptimization
 			{
@@ -1220,6 +1223,14 @@ namespace Taskmaster
 			}
 
 			return 0;
+		}
+
+		/// <summary>
+		/// Process unhandled WinForms exceptions.
+		/// </summary>
+		private static void UnhandledUIException(object sender, System.Threading.ThreadExceptionEventArgs e)
+		{
+			Logging.Stacktrace(e.Exception);
 		}
 	}
 }
