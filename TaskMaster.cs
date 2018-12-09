@@ -643,8 +643,10 @@ namespace Taskmaster
 				}
 				else
 				{
+					Log.Warning("<Core> Admin rights detected, user rejected proceeding.");
 					Application.Exit();
-					Environment.Exit(2);
+					throw new RunstateException("Admin rights rejected", Runstate.QuickExit);
+					return;
 				}
 			}
 			// STOP IT
@@ -1069,6 +1071,10 @@ namespace Taskmaster
 					LoadCoreConfig();
 					SetupComponents();
 				}
+				catch (RunstateException)
+				{
+					throw;
+				}
 				catch (Exception ex) // this seems to happen only when Avast cybersecurity is scanning TM
 				{
 					Log.Fatal("Exiting due to initialization failure.");
@@ -1198,6 +1204,8 @@ namespace Taskmaster
 					case Runstate.Restart:
 						break;
 				}
+
+				return -1; // should trigger finally block
 			}
 			catch (OutOfMemoryException ex)
 			{
