@@ -992,6 +992,7 @@ namespace Taskmaster
 
 							if (rv == DialogResult.OK)
 							{
+								Log.Information("<UI> Restart request");
 								Taskmaster.UnifiedExit(restart: true);
 							}
 						}
