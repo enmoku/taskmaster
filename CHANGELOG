@@ -3,6 +3,8 @@ Comprehensive changes can be found in Git change history:
 	https://github.com/mkahvi/taskmaster/commits/master
 
 ## [0.11...]
+### 2018-12-09
+	Removed: The run once (--once) option. Unnecessary complication and not in spirit of what TM is for.
 ### 2018-12-07
 	Added: Last modified list to the info tab, with option to copy path of the app to clipboard.
 ### 2018-12-06

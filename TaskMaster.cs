@@ -229,23 +229,6 @@ namespace Taskmaster
 			bool tray = true;
 			bool aware = true;
 
-			if (State == Runstate.RunOnce)
-			{
-				tray = false;
-				aware = false;
-				PowerManagerEnabled = false;
-				MicrophoneMonitorEnabled = false;
-				MaintenanceMonitorEnabled = false;
-				HealthMonitorEnabled = false;
-				NetworkMonitorEnabled = false;
-				ActiveAppMonitorEnabled = false;
-				AudioManagerEnabled = false;
-
-				WMIPolling = false;
-				
-				SelfOptimize = false;
-			}
-
 			// Parallel loading, cuts down startup time some.
 			// This is really bad if something fails
 			Task[] init =
@@ -917,9 +900,6 @@ namespace Taskmaster
 						}
 
 						break;
-					case "--once":
-						State = Runstate.RunOnce;
-						break;
 					default:
 						break;
 				}
@@ -1118,25 +1098,7 @@ namespace Taskmaster
 				try
 				{
 					if (Taskmaster.ProcessMonitorEnabled)
-					{
-						System.Threading.ManualResetEvent endsignal = null;
-						EventHandler end = delegate { endsignal?.Set(); };
-
-						if (State == Runstate.RunOnce)
-						{
-							endsignal = new System.Threading.ManualResetEvent(false);
-							Components.processmanager.ScanEverythingEndEvent += end;
-						}
-
-						Evaluate();
-
-						if (endsignal != null)
-						{
-							endsignal.WaitOne(); // wait for evaluate to end (re to be signaled)
-							Components.processmanager.ScanEverythingEndEvent -= end;
-							Utility.Dispose(ref endsignal);
-						}
-					}
+						Evaluate(); // internally async always
 
 					if (State == Runstate.Normal)
 					{

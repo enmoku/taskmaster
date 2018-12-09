@@ -34,7 +34,6 @@ namespace Taskmaster
 		Exit,
 		QuickExit,
 		CriticalFailure,
-		RunOnce,
 		Restart
 	}
 
