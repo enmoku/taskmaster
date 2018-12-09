@@ -158,6 +158,8 @@ namespace Taskmaster
 
 			Microsoft.Win32.SystemEvents.SessionEnding += SessionEndingEvent; // depends on messagepump
 
+			EnsureVisible();
+
 			if (Taskmaster.Trace) Log.Verbose("<Tray> Initialized");
 		}
 

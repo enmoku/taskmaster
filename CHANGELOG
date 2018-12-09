@@ -4,6 +4,7 @@ Comprehensive changes can be found in Git change history:
 
 ## [0.11...]
 ### 2018-12-09
+	Fixed: Accidentally disabled tray context menu.
 	Added: Logging for unhandled WinForms exceptions.
 	Removed: The run once (--once) option. Unnecessary complication and not in spirit of what TM is for.
 ### 2018-12-07
