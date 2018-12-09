@@ -1119,7 +1119,7 @@ namespace Taskmaster
 				}
 			}
 
-			TryResize(info);
+			if (Taskmaster.WindowResizeEnabled && Resize.HasValue) TryResize(info);
 
 			info.Handled = true;
 			info.Modified = DateTime.Now;
