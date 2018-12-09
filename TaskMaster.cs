@@ -397,6 +397,7 @@ namespace Taskmaster
 		// EXPERIMENTAL FEATURES
 		public static bool TempMonitorEnabled { get; private set; } = false;
 		public static bool LastModifiedList { get; private set; } = false;
+		public static bool WindowResizeEnabled { get; private set; } = false;
 		// DEBUG INFO
 		public static bool DebugCache { get; private set; } = false;
 
@@ -668,6 +669,12 @@ namespace Taskmaster
 
 			DebugNet = dbgsec.TryGet("Network")?.BoolValue ?? false;
 			DebugMic = dbgsec.TryGet("Microphone")?.BoolValue ?? false;
+
+			var exsec = cfg["Experimental"];
+			WindowResizeEnabled = exsec.TryGet("Window Resize")?.BoolValue ?? false;
+			LastModifiedList = exsec.TryGet("Last Modified")?.BoolValue ?? false;
+			TempMonitorEnabled = exsec.TryGet("Temp Monitor")?.BoolValue ?? false;
+
 
 #if DEBUG
 			Trace = dbgsec.TryGet("Trace")?.BoolValue ?? false;
