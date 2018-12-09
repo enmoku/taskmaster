@@ -79,9 +79,8 @@ namespace Taskmaster
 		{
 			State = restart ? Runstate.Restart : Runstate.Exit;
 
-			if (System.Windows.Forms.Application.MessageLoop) // WinForms is running
+			if (System.Windows.Forms.Application.MessageLoop)
 				Application.Exit();
-
 			// nothing else should be needed.
 		}
 
