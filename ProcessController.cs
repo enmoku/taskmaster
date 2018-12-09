@@ -1252,10 +1252,7 @@ namespace Taskmaster
 									Log.Debug("Saving " + info.Name + " (#" + info.Id + ") size to " +
 										Resize.Value.Width + "×" + Resize.Value.Height);
 
-								var cfg = Taskmaster.Config.Load(watchlistfile);
-								var app = cfg.Config[FriendlyName];
-
-								SaveConfig(cfg, app);
+								NeedsSaving = true;
 							}
 						}
 						catch (Exception ex)
