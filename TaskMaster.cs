@@ -75,14 +75,6 @@ namespace Taskmaster
 			UnifiedExit(restart);
 		}
 
-		// User logs outt
-		public static void SessionEndExitRequest(object sender, EventArgs e)
-		{
-			UnifiedExit();
-			// CLEANUP:
-			// if (Taskmaster.VeryVerbose) Console.WriteLine("END:Core.ExitRequest - Exit hang averted");
-		}
-
 		public static void UnifiedExit(bool restart = false)
 		{
 			State = restart ? Runstate.Restart : Runstate.Exit;
