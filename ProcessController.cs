@@ -508,26 +508,74 @@ namespace Taskmaster
 				}
 			}
 
-			if (Taskmaster.DebugForeground)
+			if (Taskmaster.DebugForeground && Taskmaster.ShowProcessAdjusts)
 			{
-				var sbs = new System.Text.StringBuilder();
-				sbs.Append("[").Append(FriendlyName).Append("] ").Append(FormatPathName(info))
-					.Append(" (#").Append(info.Id).Append(")");
-				if (mPriority)
-					sbs.Append("; Priority: ").Append(oldPriority.ToString()).Append("→").Append(BackgroundPriority.Value.ToString());
-				if (mAffinity)
-					sbs.Append("; Affinity: ").Append(oldAffinity.ToInt32()).Append("→").Append(BackgroundAffinity.Value.ToInt32());
-				if (!mAffinity && !mPriority)
-					sbs.Append("; Already at target values");
-				sbs.Append(" [Background]");
+				var ev = new ProcessEventArgs()
+				{
+					Priority = mPriority ? BackgroundPriority : null,
+					PriorityOld = oldPriority,
+					Affinity = mAffinity ? BackgroundAffinity : null,
+					AffinityOld = oldAffinity,
+					Info = info,
+					Control = this,
+					State = ProcessRunningState.Reduced,
+				};
 
-				Log.Debug(sbs.ToString());
-				sbs.Clear();
+				ev.User = new System.Text.StringBuilder();
+				if (!mAffinity && !mPriority)
+					ev.User.Append("; Already at target values");
+				ev.User.Append(" [Background]");
+
+				LogAdjust(ev, debug: true);
 			}
 
 			ForegroundMonitor(info);
 
 			Paused?.Invoke(this, new ProcessEventArgs() { Control = this, Info = info, State = ProcessRunningState.Reduced });
+		}
+
+		void LogAdjust(ProcessEventArgs ev, bool debug=false)
+		{
+			var sbs = new System.Text.StringBuilder();
+			sbs.Append("[").Append(FriendlyName).Append("] ").Append(FormatPathName(ev.Info))
+				.Append(" (#").Append(ev.Info.Id).Append(")");
+
+			sbs.Append("; Priority: ");
+			if (ev.PriorityOld.HasValue)
+			{
+				sbs.Append(ev.PriorityOld.Value.ToString());
+				if (ev.Priority.HasValue)
+					sbs.Append(" → ").Append(ev.Priority.Value.ToString());
+				if (ev.PriorityFail) sbs.Append(" [Failed]");
+				if (ev.Protected) sbs.Append(" [Protected]");
+			}
+			else
+				sbs.Append("n/a");
+
+			sbs.Append("; Affinity: ");
+			if (ev.AffinityOld.HasValue)
+			{
+				sbs.Append(ev.AffinityOld.Value.ToInt32());
+				if (ev.Affinity.HasValue)
+					sbs.Append(" → ").Append(ev.Affinity.Value.ToInt32());
+			}
+			else
+				sbs.Append("n/a");
+			if (ev.AffinityFail) sbs.Append(" [Failed]");
+
+			if (Taskmaster.DebugProcesses) sbs.Append(" [").Append(AffinityStrategy.ToString()).Append("]");
+
+			if (ev.User != null)
+			{
+				sbs.Append(ev.User);
+				ev.User.Clear();
+				ev.User = null;
+			}
+
+			if (!debug) Log.Information(sbs.ToString());
+			else Log.Debug(sbs.ToString());
+
+			sbs.Clear();
 		}
 
 		object foreground_lock = new object();
@@ -578,21 +626,25 @@ namespace Taskmaster
 					return;
 				}
 
-				if (Taskmaster.DebugForeground)
+				if (Taskmaster.DebugForeground && Taskmaster.ShowProcessAdjusts)
 				{
-					var sbs = new System.Text.StringBuilder();
-					sbs.Append("[").Append(FriendlyName).Append("] ").Append(FormatPathName(info))
-						.Append(" (#").Append(info.Id).Append(")");
-					if (mPriority)
-						sbs.Append("; Priority: ").Append(oldPriority.ToString()).Append("→").Append(Priority.ToString());
-					if (mAffinity)
-						sbs.Append("; Affinity: ").Append(oldAffinity.ToInt32()).Append("→").Append(Affinity.Value.ToInt32());
-					if (!mAffinity && !mPriority)
-						sbs.Append("; Already at target values");
-					sbs.Append(" [Foreground]");
+					var ev = new ProcessEventArgs()
+					{
+						Priority = mPriority ? (ProcessPriorityClass?)BackgroundPriority.Value : null,
+						PriorityOld = oldPriority,
+						Affinity = mAffinity ? (IntPtr?)BackgroundAffinity.Value : null,
+						AffinityOld = oldAffinity,
+						Info = info,
+						Control = this,
+						State = ProcessRunningState.Reduced,
+					};
 
-					Log.Debug(sbs.ToString());
-					sbs.Clear();
+					ev.User = new System.Text.StringBuilder();
+					if (!mAffinity && !mPriority)
+						ev.User.Append("; Already at target values");
+					ev.User.Append(" [Foreground]");
+
+					LogAdjust(ev, debug: true);
 				}
 
 				// PausedState.Priority = Priority;
@@ -735,15 +787,34 @@ namespace Taskmaster
 				info.Process.EnableRaisingEvents = true;
 				info.Process.Exited += (o, s) => { End(info); };
 
-				var sbs = new System.Text.StringBuilder();
-				sbs.Append("[").Append(FriendlyName).Append("] ")
-					.Append(FormatPathName(info))
-					.Append(" (#").Append(info.Id).Append(")");
-				if (Priority.HasValue) sbs.Append("; Priority:").Append(Priority.Value.ToString());
-				if (Affinity.HasValue) sbs.Append("; Affinity:").Append(Affinity.Value.ToInt32());
-				if (PowerPlan != PowerInfo.PowerMode.Undefined) sbs.Append("; Power:").Append(PowerPlan.GetShortName());
-				sbs.Append(" – Foreground Only");
-				Log.Information(sbs.ToString());
+				ProcessPriorityClass? oPriority = null;
+				IntPtr? oAffinity = null;
+				try
+				{
+					oPriority = info.Process.PriorityClass;
+					oAffinity = info.Process.ProcessorAffinity;
+				}
+				catch { }
+
+				if (Taskmaster.ShowProcessAdjusts)
+				{
+					var ev = new ProcessEventArgs()
+					{
+						Priority = null,
+						PriorityOld = Priority,
+						Affinity = null,
+						AffinityOld = Affinity,
+						Info = info,
+						Control = this,
+						State = ProcessRunningState.Undefined,
+					};
+
+					ev.User = new System.Text.StringBuilder();
+					if (PowerPlan != PowerInfo.PowerMode.Undefined) ev.User.Append("; Power:").Append(PowerPlan.GetShortName());
+					ev.User.Append(" – Foreground Only");
+
+					LogAdjust(ev);
+				}
 			}
 		}
 
@@ -792,8 +863,9 @@ namespace Taskmaster
 			}
 
 			bool responding = true;
-			var oldPriority = ProcessPriorityClass.RealTime;
-			var oldAffinity = IntPtr.Zero;
+			ProcessPriorityClass? oldPriority = null;
+			IntPtr? oldAffinity = null;
+
 			int oldAffinityMask = 0;
 			var oldPower = PowerInfo.PowerMode.Undefined;
 
@@ -812,7 +884,7 @@ namespace Taskmaster
 
 				oldAffinity = info.Process.ProcessorAffinity;
 				oldPriority = info.Process.PriorityClass;
-				oldAffinityMask = oldAffinity.ToInt32();
+				oldAffinityMask = oldAffinity.Value.ToInt32();
 			}
 			catch (InvalidOperationException) // Already exited
 			{
@@ -841,10 +913,10 @@ namespace Taskmaster
 				return; // return ProcessState.Ignored;
 			}
 
-			bool protectedfile = ProcessManager.ProtectedProcessName(info.Name);
+			bool isProtectedFile = ProcessManager.ProtectedProcessName(info.Name);
 			// TODO: IgnoreSystem32Path
 
-			if (protectedfile && Taskmaster.ShowInaction && Taskmaster.DebugProcesses)
+			if (isProtectedFile && Taskmaster.ShowInaction && Taskmaster.DebugProcesses)
 				Log.Debug("[" + FriendlyName + "] " + info.Name + " (#" + info.Id + ") in protected list, limiting tampering.");
 
 			// TODO: Validate path.
@@ -869,15 +941,15 @@ namespace Taskmaster
 				}
 			}
 
-			var newPriority = ProcessPriorityClass.RealTime;
-			var newAffinity = IntPtr.Zero;
+			ProcessPriorityClass? newPriority = null;
+			IntPtr? newAffinity = null;
 			var newPower = PowerInfo.PowerMode.Undefined;
 
 			bool mAffinity = false, mPriority = false, mPower = false, modified = false, fAffinity = false, fPriority = false;
 			LastSeen = DateTime.Now;
 
-			newAffinity = Affinity.GetValueOrDefault();
-			newPriority = Priority.GetValueOrDefault();
+			newAffinity = Affinity;
+			newPriority = Priority;
 
 			if (ForegroundOnly) ForegroundMonitor(info);
 
@@ -885,7 +957,7 @@ namespace Taskmaster
 			bool doModifyAffinity = false;
 			bool doModifyPower = false;
 
-			if (!protectedfile)
+			if (!isProtectedFile)
 			{
 				if (Priority.HasValue)
 				{
@@ -895,6 +967,7 @@ namespace Taskmaster
 							Log.Debug("[" + FriendlyName + "] " + info.Name + " (#" + info.Id + ") not in foreground, not prioritizing.");
 
 						Pause(info);
+						// return?
 					}
 					else
 						doModifyPriority = true;
@@ -972,7 +1045,7 @@ namespace Taskmaster
 			{
 				try
 				{
-					info.Process.ProcessorAffinity = newAffinity;
+					info.Process.ProcessorAffinity = newAffinity.Value;
 					modified = mAffinity = true;
 				}
 				catch { fAffinity = true; } // ignore errors, this is all we care of them
@@ -1011,14 +1084,6 @@ namespace Taskmaster
 					//mPower = (oldPP != Taskmaster.powermanager.CurrentMode);
 				}
 			}
-
-			// OUTPUT LOGS
-
-			var sbs = new System.Text.StringBuilder();
-
-			sbs.Append("[").Append(FriendlyName).Append("] ")
-				.Append(FormatPathName(info))
-				.Append(" (#").Append(info.Id).Append(")"); // PID
 
 			if (modified)
 			{
@@ -1068,55 +1133,45 @@ namespace Taskmaster
 
 			if (Priority.HasValue)
 			{
-				sbs.Append("; Priority: ");
-				if (mPriority)
-					sbs.Append(oldPriority.ToString()).Append(" → ");
-				sbs.Append(newPriority.ToString());
-				if (protectedfile) sbs.Append(" [Protected]");
-				if (fPriority)
-				{
-					sbs.Append(" [Failed]");
-					if (Taskmaster.ShowInaction && Taskmaster.DebugProcesses)
-						Log.Warning("[" + FriendlyName + "] " + info.Name + " (#" + info.Id + ") failed to set process priority.");
-				}
+				if (fPriority && Taskmaster.ShowInaction && Taskmaster.DebugProcesses)
+					Log.Warning("[" + FriendlyName + "] " + info.Name + " (#" + info.Id + ") failed to set process priority.");
 			}
 			if (Affinity.HasValue)
 			{
-				// TODO: respect display configuration for affinity
-				sbs.Append("; Affinity: ");
-				if (mAffinity)
-					sbs.Append(oldAffinity.ToInt32()).Append(" → ");
-				sbs.Append(newAffinity);
-
-				if (fAffinity)
-				{
-					sbs.Append(" [Failed]");
-					if (Taskmaster.ShowInaction && Taskmaster.DebugProcesses)
-						Log.Warning("[" + FriendlyName + "] " + info.Name + " (#" + info.Id + ") failed to set process affinity.");
-				}
-
-				if (Taskmaster.DebugProcesses) sbs.Append(" [").Append(AffinityStrategy.ToString()).Append("]");
+				if (fAffinity && Taskmaster.ShowInaction && Taskmaster.DebugProcesses)
+					Log.Warning("[" + FriendlyName + "] " + info.Name + " (#" + info.Id + ") failed to set process affinity.");
 			}
 
-			if (mPower) sbs.Append(" [Power Mode: ").Append(PowerPlan.ToString()).Append("]");
+			bool logevent = false;
+			bool debug = false;
 
 			if (modified)
-			{
-				if (Taskmaster.DebugProcesses || Taskmaster.ShowProcessAdjusts)
-				{
-					if (ForegroundOnly && !Taskmaster.ShowForegroundTransitions) { } // do nothing
-					else
-						Log.Information(sbs.ToString());
-				}
-			}
+				logevent = Taskmaster.ShowProcessAdjusts && !(ForegroundOnly && !Taskmaster.ShowForegroundTransitions);
 			else
+				logevent = debug = (Taskmaster.ShowInaction && Taskmaster.DebugProcesses);
+
+			if (logevent)
 			{
-				// if (DateTime.Now - LastSeen
-				if (Taskmaster.ShowInaction && Taskmaster.DebugProcesses)
+				var ev = new ProcessEventArgs()
 				{
-					sbs.Append(" – looks OK, not touched.");
-					Log.Debug(sbs.ToString());
-				}
+					Priority = mPriority ? newPriority : null,
+					PriorityOld = oldPriority,
+					Affinity = mAffinity ? newAffinity : null,
+					AffinityOld = oldAffinity,
+					Control = this,
+					Info = info,
+					State = ProcessRunningState.Found,
+					User = new System.Text.StringBuilder(),
+					PriorityFail = fPriority,
+					AffinityFail = fAffinity,
+					Protected = isProtectedFile,
+				};
+
+				if (mPower) ev.User.Append(" [Power Mode: ").Append(PowerPlan.ToString()).Append("]");
+
+				if (!modified && debug) ev.User.Append(" – looks OK, not touched.");
+
+				LogAdjust(ev, debug);
 			}
 
 			if (Taskmaster.WindowResizeEnabled && Resize.HasValue) TryResize(info);
@@ -1135,8 +1190,6 @@ namespace Taskmaster
 					PriorityOld = oldPriority
 				});
 			}
-
-			sbs.Clear();
 
 			if (Recheck > 0)
 			{
@@ -1471,9 +1524,19 @@ namespace Taskmaster
 		public ProcessController Control { get; set; } = null;
 		public ProcessEx Info = null;
 		public ProcessRunningState State = ProcessRunningState.Undefined;
-		public ProcessPriorityClass Priority = ProcessPriorityClass.Idle;
-		public ProcessPriorityClass PriorityOld = ProcessPriorityClass.Idle;
-		public IntPtr Affinity = IntPtr.Zero;
-		public IntPtr AffinityOld = IntPtr.Zero;
+
+		public ProcessPriorityClass? Priority = null;
+		public ProcessPriorityClass? PriorityOld = null;
+		public IntPtr? Affinity = null;
+		public IntPtr? AffinityOld = null;
+
+		public bool Protected = false;
+		public bool AffinityFail = false;
+		public bool PriorityFail = false;
+
+		/// <summary>
+		/// Text for end-users.
+		/// </summary>
+		public System.Text.StringBuilder User = null;
 	}
 }

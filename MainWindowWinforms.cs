@@ -263,13 +263,13 @@ namespace Taskmaster
 						lock (lastmodify_lock)
 						{
 							var mi = new ListViewItem(new string[] {
-						DateTime.Now.ToLongTimeString(),
-						ev.Info.Name,
-						ev.Control.FriendlyName,
-						ev.Priority.ToString(),
-						HumanInterface.BitMask(ev.Affinity.ToInt32(), ProcessManager.CPUCount),
-						ev.Info.Path
-					});
+								DateTime.Now.ToLongTimeString(),
+								ev.Info.Name,
+								ev.Control.FriendlyName,
+								(ev.Priority.HasValue ? ev.Priority.Value.ToString() : "n/a"),
+								(ev.Affinity.HasValue ? HumanInterface.BitMask(ev.Affinity.Value.ToInt32(), ProcessManager.CPUCount) : "n/a"),
+								ev.Info.Path
+							});
 							lastmodifylist.Items.Add(mi);
 							if (lastmodifylist.Items.Count > 5) lastmodifylist.Items.RemoveAt(0);
 						}
