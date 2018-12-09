@@ -401,7 +401,7 @@ namespace Taskmaster
 
 			foreground_counter++;
 
-			await System.Threading.Tasks.Task.Delay(Hysterisis); // minded
+			await System.Threading.Tasks.Task.Delay(Hysterisis);
 
 			lock (foregroundswap_lock)
 			{

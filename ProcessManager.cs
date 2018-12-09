@@ -337,6 +337,9 @@ namespace Taskmaster
 		}
 
 		bool ScanEverythingPaused = false;
+		/// <summary>
+		/// Spawn separate thread to run program scanning.
+		/// </summary>
 		public void ScanEverythingRequest(object sender, EventArgs e)
 		{
 			if (Taskmaster.Trace) Log.Verbose("Rescan requested.");

@@ -688,6 +688,8 @@ namespace Taskmaster
 			Log.Information("<Core> Path cache: " + (PathCacheLimit == 0 ? "Disabled" : PathCacheLimit + " items"));
 
 			Log.Information("<Core> Paging: " + (PagingEnabled ? "Enabled" : "Disabled"));
+
+			return;
 		}
 
 		static int isAdmin = -1;
@@ -1108,8 +1110,6 @@ namespace Taskmaster
 
 					if (State == Runstate.Normal)
 					{
-						Components.trayaccess.EnsureVisible();
-
 						System.Windows.Forms.Application.Run(); // WinForms
 
 						// System.Windows.Application.Current.Run(); // WPF
@@ -1190,8 +1190,6 @@ namespace Taskmaster
 			}
 			catch (RunstateException ex)
 			{
-				Components?.Dispose();
-
 				switch (ex.State)
 				{
 					case Runstate.CriticalFailure:
@@ -1212,14 +1210,14 @@ namespace Taskmaster
 				Components?.Dispose();
 				Logging.Stacktrace(ex, crashsafe: true);
 
-				return 1;
+				return 1; // should trigger finally block
 			}
 			catch (Exception ex)
 			{
 				Components?.Dispose();
 				Logging.Stacktrace(ex, crashsafe: true);
 
-				return 1;
+				return 1; // should trigger finally block
 			}
 			finally
 			{
