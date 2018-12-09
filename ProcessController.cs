@@ -1149,7 +1149,7 @@ namespace Taskmaster
 
 		void TryResize(ProcessEx info)
 		{
-			if (!Resize.HasValue) return;
+			Debug.Assert(Resize.HasValue);
 
 			if (Taskmaster.DebugResize) Log.Debug("Attempting resize on " + info.Name + " (#" + info.Id + ")");
 
