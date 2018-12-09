@@ -644,7 +644,7 @@ namespace Taskmaster
 				else
 				{
 					Log.Warning("<Core> Admin rights detected, user rejected proceeding.");
-					Application.Exit();
+					UnifiedExit();
 					throw new RunstateException("Admin rights rejected", Runstate.QuickExit);
 					return;
 				}
@@ -892,9 +892,8 @@ namespace Taskmaster
 								catch { } // without finally block might not execute
 								finally
 								{
-									if (System.Windows.Forms.Application.MessageLoop)
-										Application.Exit();
-									Environment.Exit(0);
+									UnifiedExit(restart: true);
+									throw new RunstateException("Quick exit to restart", Runstate.Restart);
 								}
 							}
 						}
@@ -933,9 +932,9 @@ namespace Taskmaster
 				license.ShowDialog();
 				if (license.DialogResult != DialogResult.Yes)
 				{
-					if (System.Windows.Forms.Application.MessageLoop)
-						Application.Exit();
-					Environment.Exit(-1);
+					UnifiedExit();
+					throw new RunstateException("License not accepted.", Runstate.QuickExit);
+					return;
 				}
 			}
 		}
