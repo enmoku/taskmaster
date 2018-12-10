@@ -1614,6 +1614,10 @@ namespace Taskmaster
 			ResizeLogList = delegate
 			{
 				loglist.Columns[0].Width = -2;
+
+				// HACK: Enable visual styles causes horizontal bar to always be present without the following.
+				loglist.Columns[0].Width = loglist.Columns[0].Width - 2;
+
 				//loglist.Height = -2;
 				//loglist.Width = -2;
 				loglist.Height = ClientSize.Height - (tabLayout.Height + statusbar.Height + menu.Height);
