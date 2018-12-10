@@ -729,29 +729,6 @@ namespace Taskmaster
 				SelectedIndex = 5,
 			};
 
-			switch (Controller.VolumeStrategy)
-			{
-				case AudioVolumeStrategy.Increase:
-					volumeMethod.SelectedIndex = 0;
-					break;
-				case AudioVolumeStrategy.Decrease:
-					volumeMethod.SelectedIndex = 1;
-					break;
-				case AudioVolumeStrategy.IncreaseFromMute:
-					volumeMethod.SelectedIndex = 2;
-					break;
-				case AudioVolumeStrategy.DecreaseFromFull:
-					volumeMethod.SelectedIndex = 3;
-					break;
-				case AudioVolumeStrategy.Force:
-					volumeMethod.SelectedIndex = 4;
-					break;
-				default:
-				case AudioVolumeStrategy.Ignore:
-					volumeMethod.SelectedIndex = 5;
-					break;
-			}
-
 			lt.Controls.Add(volumeMethod);
 			lt.Controls.Add(new Label());
 
@@ -774,6 +751,36 @@ namespace Taskmaster
 			{
 				volume.Enabled = false;
 				volumeMethod.Enabled = false;
+
+				switch (Controller.VolumeStrategy)
+				{
+					case AudioVolumeStrategy.Increase:
+						volumeMethod.SelectedIndex = 0;
+						break;
+					case AudioVolumeStrategy.Decrease:
+						volumeMethod.SelectedIndex = 1;
+						break;
+					case AudioVolumeStrategy.IncreaseFromMute:
+						volumeMethod.SelectedIndex = 2;
+						break;
+					case AudioVolumeStrategy.DecreaseFromFull:
+						volumeMethod.SelectedIndex = 3;
+						break;
+					case AudioVolumeStrategy.Force:
+						volumeMethod.SelectedIndex = 4;
+						break;
+					default:
+					case AudioVolumeStrategy.Ignore:
+						volumeMethod.SelectedIndex = 5;
+						break;
+				}
+
+				// disable volume control if method is to ignore it
+				volume.Enabled = !(volumeMethod.SelectedIndex == 5);
+				volumeMethod.SelectedIndexChanged += (s, e) =>
+				{
+					volume.Enabled = !(volumeMethod.SelectedIndex == 5);
+				};
 			}
 
 			if (!Taskmaster.PowerManagerEnabled)
