@@ -638,7 +638,7 @@ namespace Taskmaster
 				Value = Controller.Rescan,
 				Width = 80,
 			};
-			tooltip.SetToolTip(rescanFreq, "How often to rescan for this app, in minutes.\nSometimes instances slip by.");
+			tooltip.SetToolTip(rescanFreq, "How often to rescan for this app, in minutes.\nSometimes instances slip by.\n0 disables this.");
 			lt.Controls.Add(rescanFreq);
 			lt.Controls.Add(new Label()); // empty
 
