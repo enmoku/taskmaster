@@ -1777,7 +1777,7 @@ namespace Taskmaster
 				};
 
 				lastmodifypanel.Controls.Add(new Label() { Text = "Last process modifications", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left });
-				lastmodifylist = new ListView()
+				lastmodifylist = new UI.ListViewEx()
 				{
 					Parent = this,
 					Dock = DockStyle.Top,
@@ -1850,7 +1850,7 @@ namespace Taskmaster
 				Padding = new Padding(6)
 			});
 
-			powerbalancerlog = new ListView()
+			powerbalancerlog = new UI.ListViewEx()
 			{
 				Parent = this,
 				Dock = DockStyle.Top,
@@ -1953,7 +1953,7 @@ namespace Taskmaster
 				Padding = new Padding(6)
 			});
 
-			exitwaitlist = new ListView()
+			exitwaitlist = new UI.ListViewEx()
 			{
 				AutoSize = true,
 				//Height = 180,
@@ -1983,7 +1983,7 @@ namespace Taskmaster
 				Padding = new Padding(6)
 			});
 
-			processinglist = new ListView()
+			processinglist = new UI.ListViewEx()
 			{
 				AutoSize = true,
 				FullRowSelect = true,

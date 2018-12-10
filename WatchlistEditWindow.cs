@@ -240,7 +240,7 @@ namespace Taskmaster
 		ComboBox powerPlan = new ComboBox();
 		CheckBox foregroundOnly = new CheckBox();
 		CheckBox backgroundPowerdown = new CheckBox();
-		ListView ignorelist = new ListView();
+		ListView ignorelist = new UI.ListViewEx();
 		int cpumask = 0;
 
 		void BuildUI()
