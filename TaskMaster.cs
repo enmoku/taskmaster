@@ -992,6 +992,7 @@ namespace Taskmaster
 
 			System.Windows.Forms.Application.SetUnhandledExceptionMode(UnhandledExceptionMode.Automatic);
 			System.Windows.Forms.Application.ThreadException += UnhandledUIException;
+			System.Windows.Forms.Application.EnableVisualStyles();
 
 			// Multi-core JIT
 			// https://docs.microsoft.com/en-us/dotnet/api/system.runtime.profileoptimization

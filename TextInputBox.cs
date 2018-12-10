@@ -53,6 +53,7 @@ namespace Taskmaster
 
 			var textbox = new TextBox()
 			{
+				ShortcutsEnabled = true,
 			};
 
 			if (input != null) textbox.Text = input;
