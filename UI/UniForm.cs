@@ -44,6 +44,7 @@ namespace Taskmaster.UI
 			AllowTransparency = false;
 			DoubleBuffered = true;
 
+			SetStyle(ControlStyles.OptimizedDoubleBuffer | ControlStyles.AllPaintingInWmPaint, true);
 			//SetStyle(ControlStyles.CacheText, true); // performance
 
 			Icon = System.Drawing.Icon.ExtractAssociatedIcon(System.Reflection.Assembly.GetExecutingAssembly().Location);
