@@ -85,9 +85,9 @@ namespace Taskmaster
 			// -----------------------------------------------
 			// VALIDATE
 
-			var fnlen = (friendlyName.Text.Length > 0);
-			var exnam = (execName.Text.Length > 0);
-			var path = (pathName.Text.Length > 0);
+			bool fnlen = (friendlyName.Text.Length > 0);
+			bool exnam = (execName.Text.Length > 0);
+			bool path = (pathName.Text.Length > 0);
 
 			bool valid = true;
 
@@ -201,6 +201,9 @@ namespace Taskmaster
 			else
 				Controller.IgnoreList = null;
 
+			if (desc.Text.Length > 0)
+				Controller.Description = desc.Text;
+
 			Controller.Enabled = enOrig;
 			Controller.SaveConfig();
 
@@ -213,9 +216,10 @@ namespace Taskmaster
 			Close();
 		}
 
-		TextBox friendlyName = new TextBox();
-		TextBox execName = new TextBox();
-		TextBox pathName = new TextBox();
+		TextBox friendlyName = null;
+		TextBox execName = null;
+		TextBox pathName = null;
+		TextBox desc = null;
 
 		ComboBox priorityClass = null;
 		ComboBox priorityClassMethod = null;
@@ -244,6 +248,10 @@ namespace Taskmaster
 			// Size = new System.Drawing.Size(340, 480); // width, height
 			AutoSizeMode = AutoSizeMode.GrowOnly;
 			AutoSize = true;
+
+			friendlyName = new TextBox() { ShortcutsEnabled = true };
+			execName = new TextBox() { ShortcutsEnabled = true };
+			pathName = new TextBox() { ShortcutsEnabled = true };
 
 			Text = Controller.FriendlyName + " (" + (Controller.Executable ?? Controller.Path) + ") – " + Application.ProductName;
 
@@ -346,6 +354,18 @@ namespace Taskmaster
 			};
 			lt.Controls.Add(pathName);
 			lt.Controls.Add(findpathbutton);
+
+			// DESCRIPTION
+			lt.Controls.Add(new Label() { Text = "Description", TextAlign = System.Drawing.ContentAlignment.MiddleLeft });
+			desc = new TextBox()
+			{
+				Multiline = false,
+				Dock = DockStyle.Top,
+				ShortcutsEnabled = true,
+			};
+			desc.Text = Controller.Description;
+			lt.Controls.Add(desc);
+			lt.Controls.Add(new Label()); // empty
 
 			// IGNORE
 

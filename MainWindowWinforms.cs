@@ -2429,6 +2429,10 @@ namespace Taskmaster
 						sbs.Append("Image = ").Append(prc.Executable).AppendLine();
 					if (!string.IsNullOrEmpty(prc.Path))
 						sbs.Append("Path = ").Append(prc.Path).AppendLine();
+
+					if (!string.IsNullOrEmpty(prc.Description))
+						sbs.Append("Description = " + prc.Description);
+
 					if (prc.IgnoreList != null)
 						sbs.Append("Ignore = { ").Append(string.Join(", ", prc.IgnoreList)).Append(" }").AppendLine();
 					if (prc.Priority.HasValue)

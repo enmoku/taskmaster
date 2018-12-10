@@ -81,6 +81,11 @@ namespace Taskmaster
 
 		public string Path { get; set; } = string.Empty;
 
+		/// <summary>
+		/// User description for the rule.
+		/// </summary>
+		public string Description { get; set; } = string.Empty;
+
 		public float Volume { get; set; } = 0.5f;
 		public AudioVolumeStrategy VolumeStrategy { get; set; } = AudioVolumeStrategy.Ignore;
 
@@ -261,6 +266,11 @@ namespace Taskmaster
 
 			app.Remove("Increase"); // DEPRECATED
 			app.Remove("Decrease"); // DEPRECATED
+
+			if (!string.IsNullOrEmpty(Description))
+				app["Description"].StringValue = Description;
+			else
+				app.Remove("Description");
 
 			if (Priority.HasValue)
 			{

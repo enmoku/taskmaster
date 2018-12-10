@@ -720,6 +720,7 @@ namespace Taskmaster
 				{
 					Enabled = section.TryGet("Enabled")?.BoolValue ?? true,
 					Executable = section.TryGet("Image")?.StringValue ?? null,
+					Description = section.TryGet("Description")?.StringValue ?? null,
 					// friendly name is filled automatically
 					PriorityStrategy = priostrat,
 					AffinityStrategy = affStrat,
