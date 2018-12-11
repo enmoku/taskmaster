@@ -42,7 +42,17 @@ namespace Taskmaster
 		public PowerMode NewRestoreMode = PowerMode.Undefined;
 		public PowerMode NewLockMode = PowerMode.Undefined;
 
-		public bool MonitorPowerOff = false;
+		ComboBox behaviour = null, restore = null;
+
+		ComboBox defaultmode = null, highmode = null, lowmode = null;
+		Extensions.NumericUpDownEx highcommitthreshold = null, highbackoffhigh = null, highbackoffavg = null, highbackofflow = null;
+		NumericUpDown highcommitlevel = null, highbackofflevel = null;
+		Extensions.NumericUpDownEx lowcommitthreshold = null, lowbackoffhigh = null, lowbackoffavg = null, lowbackofflow = null;
+		NumericUpDown lowcommitlevel = null, lowbackofflevel = null;
+
+		bool MonitorPowerOff = false;
+		ComboBox monitoroffmode = null;
+		CheckBox monitorofftoggle = null;
 
 		public PowerConfigWindow(ComponentContainer components)
 		{
@@ -79,7 +89,7 @@ namespace Taskmaster
 			layout.Controls.Add(new Label() { Text = "Basic Settings", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, Font = boldfont, AutoSize = true, Dock = DockStyle.Fill });
 			layout.Controls.Add(new Label()); // empty
 
-			var behaviour = new ComboBox()
+			behaviour = new ComboBox()
 			{
 				DropDownStyle = ComboBoxStyle.DropDownList,
 				Items = { "Auto-Adjust", "Rule-based", "Manual" },
@@ -91,21 +101,6 @@ namespace Taskmaster
 				"Auto-adjust = As per auto-adjust behaviour and watchlist rules\n" +
 				"Rule-based = Watchlist rules\n" +
 				"Manual = Fully user controlled");
-
-			NewLaunchBehaviour = power.LaunchBehaviour;
-			switch (power.LaunchBehaviour)
-			{
-				case PowerManager.PowerBehaviour.Auto:
-				default:
-					behaviour.SelectedIndex = 0;
-					break;
-				case PowerManager.PowerBehaviour.RuleBased:
-					behaviour.SelectedIndex = 1;
-					break;
-				case PowerManager.PowerBehaviour.Manual:
-					behaviour.SelectedIndex = 2;
-					break;
-			}
 
 			behaviour.SelectedIndexChanged += (s, e) =>
 			{
@@ -127,7 +122,7 @@ namespace Taskmaster
 			layout.Controls.Add(new Label() { Text = "Launch behaviour", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Fill });
 			layout.Controls.Add(behaviour);
 
-			var restore = new ComboBox()
+			restore = new ComboBox()
 			{
 				DropDownStyle = ComboBoxStyle.DropDownList,
 				Items = { "Original", "Default", "Saved", powermodes[0], powermodes[1], powermodes[2] },
@@ -135,43 +130,6 @@ namespace Taskmaster
 				AutoSize = true,
 				Dock = DockStyle.Fill,
 			};
-
-			switch (power.RestoreMethod)
-			{
-				default:
-				case PowerManager.RestoreModeMethod.Default:
-					NewRestoreMethod = PowerManager.RestoreModeMethod.Default;
-					NewRestoreMode = PowerMode.Undefined;
-					restore.SelectedIndex = 1;
-					break;
-				case PowerManager.RestoreModeMethod.Original:
-					NewRestoreMethod = PowerManager.RestoreModeMethod.Original;
-					NewRestoreMode = PowerMode.Undefined;
-					restore.SelectedIndex = 0;
-					break;
-				case PowerManager.RestoreModeMethod.Saved:
-					NewRestoreMethod = PowerManager.RestoreModeMethod.Saved;
-					NewRestoreMode = PowerMode.Undefined;
-					restore.SelectedIndex = 2;
-					break;
-				case PowerManager.RestoreModeMethod.Custom:
-					NewRestoreMethod = PowerManager.RestoreModeMethod.Custom;
-					NewRestoreMode = power.RestoreMode;
-					switch (power.RestoreMode)
-					{
-						case PowerMode.HighPerformance:
-							restore.SelectedIndex = 3;
-							break;
-						default:
-						case PowerMode.Balanced:
-							restore.SelectedIndex = 4;
-							break;
-						case PowerMode.PowerSaver:
-							restore.SelectedIndex = 5;
-							break;
-					}
-					break;
-			}
 
 			tooltip.SetToolTip(restore,
 				"Which power mode to restore when cancelling rule-based power modes.\n\n" +
@@ -220,7 +178,7 @@ namespace Taskmaster
 			layout.Controls.Add(new Label() { Text = "Monitor off", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, Font = boldfont, AutoSize = true, Dock = DockStyle.Fill });
 			layout.Controls.Add(new Label()); // empty
 
-			var monitoroffmode = new ComboBox()
+			monitoroffmode = new ComboBox()
 			{
 				DropDownStyle = ComboBoxStyle.DropDownList,
 				AutoCompleteSource = AutoCompleteSource.ListItems,
@@ -232,34 +190,15 @@ namespace Taskmaster
 			monitoroffmode.Items.Add("Ignore");
 			monitoroffmode.Items.AddRange(powermodes);
 
-			switch (power.SessionLockPowerMode)
-			{
-				default:
-					monitoroffmode.SelectedIndex = 0;
-					break;
-				case PowerMode.HighPerformance:
-					monitoroffmode.SelectedIndex = 1;
-					break;
-				case PowerMode.Balanced:
-					monitoroffmode.SelectedIndex = 2;
-					break;
-				case PowerMode.PowerSaver:
-					monitoroffmode.SelectedIndex = 3;
-					break;
-			}
-
 			layout.Controls.Add(new Label() { Text = "Power mode", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Fill });
 			layout.Controls.Add(monitoroffmode);
 
 			tooltip.SetToolTip(monitoroffmode, "Power mode to set when monitor is off.");
 
 			MonitorPowerOff = power.SessionLockPowerOff;
-			var monitorofftoggle = new ComboBox()
+			monitorofftoggle = new CheckBox()
 			{
-				Items = { "Ignore", "Monitor off" },
-				SelectedIndex = MonitorPowerOff ? 1 : 0,
-				AutoSize = true,
-				Dock = DockStyle.Fill,
+				Dock = DockStyle.Left,
 			};
 
 			layout.Controls.Add(new Label() { Text = "Session lock", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Fill });
@@ -269,7 +208,7 @@ namespace Taskmaster
 
 			// AUTO-ADJUST
 
-			var defaultmode = new ComboBox()
+			defaultmode = new ComboBox()
 			{
 				DropDownStyle = ComboBoxStyle.DropDownList,
 				AutoCompleteSource = AutoCompleteSource.ListItems,
@@ -279,7 +218,6 @@ namespace Taskmaster
 			};
 
 			defaultmode.Items.AddRange(powermodes);
-			defaultmode.SelectedIndex = AutoAdjust.DefaultMode == PowerMode.Balanced ? 1 : AutoAdjust.DefaultMode == PowerMode.PowerSaver ? 2 : 0;
 
 			layout.Controls.Add(new Label() { Text = "Auto-Adjust", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, Font = boldfont, AutoSize = true, Dock = DockStyle.Fill });
 			layout.Controls.Add(new Label()); // empty
@@ -290,7 +228,7 @@ namespace Taskmaster
 			layout.Controls.Add(new Label() { Text = "Default mode", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Fill });
 			layout.Controls.Add(defaultmode);
 
-			var highmode = new ComboBox()
+			highmode = new ComboBox()
 			{
 				DropDownStyle = ComboBoxStyle.DropDownList,
 				AutoCompleteSource = AutoCompleteSource.ListItems,
@@ -299,40 +237,33 @@ namespace Taskmaster
 				Dock = DockStyle.Fill,
 			};
 			highmode.Items.AddRange(powermodes);
-			highmode.SelectedIndex = AutoAdjust.High.Mode == PowerMode.Balanced ? 1 : AutoAdjust.High.Mode == PowerMode.PowerSaver ? 2 : 0;
 
 			layout.Controls.Add(new Label() { Text = "High mode", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, Font = boldfont, AutoSize = true, Dock = DockStyle.Fill });
 			layout.Controls.Add(highmode);
 
 			layout.Controls.Add(new Label() { Text = "Commit CPU% threshold", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Fill });
-			var highcommitthreshold = new Extensions.NumericUpDownEx() { Unit = "%", Maximum = 95, Minimum = 5, Value = 50 };
+			highcommitthreshold = new Extensions.NumericUpDownEx() { Unit = "%", Maximum = 95, Minimum = 5, Value = 50 };
 			tooltip.SetToolTip(highcommitthreshold,"Low CPU use % that must be maintained for this operation mode to be enacted.");
-			highcommitthreshold.Value = Convert.ToDecimal(AutoAdjust.High.Commit.Threshold).Constrain(5, 95);
 			layout.Controls.Add(highcommitthreshold);
 			layout.Controls.Add(new Label() { Text = "Commit level", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Fill });
-			var highcommitlevel = new NumericUpDown() { Maximum = 15, Minimum = 0, Value = 3 };
+			highcommitlevel = new NumericUpDown() { Maximum = 15, Minimum = 0, Value = 3 };
 			tooltip.SetToolTip(highcommitlevel, "How many consequent samples must match threshold to commit to it.");
-			highcommitlevel.Value = AutoAdjust.High.Commit.Level.Constrain(0, 15);
 			layout.Controls.Add(highcommitlevel);
 			layout.Controls.Add(new Label() { Text = "Backoff high CPU%", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Fill });
-			var highbackoffhigh = new Extensions.NumericUpDownEx() { Unit = "%", Maximum = 95, Minimum = 5, Value = 50 };
-			highbackoffhigh.Value = Convert.ToDecimal(AutoAdjust.High.Backoff.High).Constrain(5, 95);
+			highbackoffhigh = new Extensions.NumericUpDownEx() { Unit = "%", Maximum = 95, Minimum = 5, Value = 50 };
 			layout.Controls.Add(highbackoffhigh);
 			layout.Controls.Add(new Label() { Text = "Backoff average CPU%", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Fill });
-			var highbackoffavg = new Extensions.NumericUpDownEx() { Unit = "%", Maximum = 95, Minimum = 5, Value = 50 };
-			highbackoffavg.Value = Convert.ToDecimal(AutoAdjust.High.Backoff.Avg).Constrain(5, 95);
+			highbackoffavg = new Extensions.NumericUpDownEx() { Unit = "%", Maximum = 95, Minimum = 5, Value = 50 };
 			layout.Controls.Add(highbackoffavg);
 			layout.Controls.Add(new Label() { Text = "Backoff low CPU%", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Fill });
-			var highbackofflow = new Extensions.NumericUpDownEx() { Unit = "%", Maximum = 95, Minimum = 5, Value = 50 };
-			highbackofflow.Value = Convert.ToDecimal(AutoAdjust.High.Backoff.Low).Constrain(5, 95);
+			highbackofflow = new Extensions.NumericUpDownEx() { Unit = "%", Maximum = 95, Minimum = 5, Value = 50 };
 			layout.Controls.Add(highbackofflow);
 
 			layout.Controls.Add(new Label() { Text = "Backoff level", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Fill });
-			var highbackofflevel = new NumericUpDown() { Maximum = 10, Minimum = 1, Value = 5 };
-			highbackofflevel.Value = Convert.ToDecimal(AutoAdjust.High.Backoff.Level);
+			highbackofflevel = new NumericUpDown() { Maximum = 10, Minimum = 1, Value = 5 };
 			layout.Controls.Add(highbackofflevel);
 
-			var lowmode = new ComboBox()
+			lowmode = new ComboBox()
 			{
 				DropDownStyle = ComboBoxStyle.DropDownList,
 				AutoCompleteSource = AutoCompleteSource.ListItems,
@@ -341,49 +272,69 @@ namespace Taskmaster
 				Dock = DockStyle.Fill,
 			};
 			lowmode.Items.AddRange(powermodes);
-			lowmode.SelectedIndex = AutoAdjust.Low.Mode == PowerMode.Balanced ? 1 : AutoAdjust.Low.Mode == PowerMode.PowerSaver ? 2 : 0;
 
 			layout.Controls.Add(new Label() { Text = "Low mode", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, Font=boldfont, AutoSize = true, Dock = DockStyle.Fill });
 			layout.Controls.Add(lowmode);
-
 			layout.Controls.Add(new Label() { Text = "Commit CPU% threshold", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Fill });
-			var lowcommitthreshold = new Extensions.NumericUpDownEx() { Unit = "%", Maximum = 95, Minimum = 5, Value = 50 };
+			lowcommitthreshold = new Extensions.NumericUpDownEx() { Unit = "%", Maximum = 95, Minimum = 5, Value = 50 };
 			tooltip.SetToolTip(lowcommitthreshold, "High CPU use % that must not be maintained for this operation mode to be enacted.");
-			lowcommitthreshold.Value = Convert.ToDecimal(AutoAdjust.Low.Commit.Threshold).Constrain(5, 95);
 			layout.Controls.Add(lowcommitthreshold);
 			layout.Controls.Add(new Label() { Text = "Commit level", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Fill });
-			var lowcommitlevel = new NumericUpDown() { Maximum = 15, Minimum = 0, Value = 3 };
+			lowcommitlevel = new NumericUpDown() { Maximum = 15, Minimum = 0, Value = 3 };
 			tooltip.SetToolTip(lowcommitlevel, "How many consequent samples must match threshold to commit to it.");
-			lowcommitlevel.Value = AutoAdjust.Low.Commit.Level.Constrain(0, 15);
 			layout.Controls.Add(lowcommitlevel);
 			layout.Controls.Add(new Label() { Text = "Backoff high CPU%", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Fill });
-			var lowbackoffhigh = new Extensions.NumericUpDownEx() { Unit = "%", Maximum = 95, Minimum = 5, Value = 50 };
-			lowbackoffhigh.Value = Convert.ToDecimal(AutoAdjust.Low.Backoff.High).Constrain(5, 95);
+			lowbackoffhigh = new Extensions.NumericUpDownEx() { Unit = "%", Maximum = 95, Minimum = 5, Value = 50 };
 			layout.Controls.Add(lowbackoffhigh);
 			layout.Controls.Add(new Label() { Text = "Backoff average CPU%", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Fill });
-			var lowbackoffavg = new Extensions.NumericUpDownEx() { Unit = "%", Maximum = 95, Minimum = 5, Value = 50 };
-			lowbackoffavg.Value = Convert.ToDecimal(AutoAdjust.Low.Backoff.Avg).Constrain(5, 95);
+			lowbackoffavg = new Extensions.NumericUpDownEx() { Unit = "%", Maximum = 95, Minimum = 5, Value = 50 };
 			layout.Controls.Add(lowbackoffavg);
 			layout.Controls.Add(new Label() { Text = "Backoff low CPU%", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Fill });
-			var lowbackofflow = new Extensions.NumericUpDownEx() { Unit = "%", Maximum = 95, Minimum = 5, Value = 50 };
-			lowbackofflow.Value = Convert.ToDecimal(AutoAdjust.Low.Backoff.Low).Constrain(5, 95);
+			lowbackofflow = new Extensions.NumericUpDownEx() { Unit = "%", Maximum = 95, Minimum = 5, Value = 50 };
 			layout.Controls.Add(lowbackofflow);
 			layout.Controls.Add(new Label() { Text = "Backoff level", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Fill });
-			var lowbackofflevel = new NumericUpDown() { Maximum = 10, Minimum = 1, Value = 5 };
-			lowbackofflevel.Value = Convert.ToDecimal(AutoAdjust.Low.Backoff.Level);
+			lowbackofflevel = new NumericUpDown() { Maximum = 10, Minimum = 1, Value = 5 };
 			layout.Controls.Add(lowbackofflevel);
 
 			var savebutton = new Button() { Text = "Save", Anchor = AnchorStyles.Right };
-			savebutton.Click += (sender, e) =>
+			savebutton.Click += Save;
+			var cancelbutton = new Button() { Text = "Cancel", Anchor = AnchorStyles.Left };
+			cancelbutton.Click += Cancel;
+			cancelbutton.NotifyDefault(true);
+			UpdateDefaultButton();
+			var resetbutton = new Button() { Text = "Reset", Anchor = AnchorStyles.Right };
+			resetbutton.Click += Reset;
+
+			layout.Controls.Add(savebutton);
+			layout.Controls.Add(cancelbutton);
+			layout.Controls.Add(resetbutton);
+
+			Controls.Add(layout);
+
+			AutoSizeMode = AutoSizeMode.GrowAndShrink;
+
+			// Height = layout.Height;
+			// Width = layout.Width;
+
+			FillAutoAdjust(AutoAdjust);
+		}
+
+		void Cancel(object sender, EventArgs ev)
+		{
+			DialogResult = DialogResult.Cancel;
+			Close();
+		}
+
+		void Save(object sender, EventArgs ev)
+		{
+			DialogResult = DialogResult.OK;
+
+			// TODO: Sanity check the settings
+
+			newAutoAdjust = new AutoAdjustSettings
 			{
-				DialogResult = DialogResult.OK;
-
-				// TODO: Sanity check the settings
-
-				newAutoAdjust = new AutoAdjustSettings
-				{
-					DefaultMode = PowerManager.GetModeByName(defaultmode.Text),
-					Low =
+				DefaultMode = PowerManager.GetModeByName(defaultmode.Text),
+				Low =
 					{
 						Mode = PowerManager.GetModeByName(lowmode.Text),
 						Commit =
@@ -399,7 +350,7 @@ namespace Taskmaster
 							Level = Convert.ToInt32(lowbackofflevel.Value),
 						}
 					},
-					High =
+				High =
 					{
 						Mode = PowerManager.GetModeByName(highmode.Text),
 						Commit =
@@ -415,60 +366,147 @@ namespace Taskmaster
 							Level = Convert.ToInt32(highbackofflevel.Value),
 						}
 					}
-				};
-
-				// passing the new config is done elsewhere
-
-				switch (monitoroffmode.SelectedIndex)
-				{
-					case 0: // ignore
-						NewLockMode = PowerMode.Undefined;
-						break;
-					case 1: // high
-						NewLockMode = PowerMode.HighPerformance;
-						break;
-					case 2: // balanced
-						NewLockMode = PowerMode.Balanced;
-						break;
-					case 3: // saver
-						NewLockMode = PowerMode.PowerSaver;
-						break;
-				}
-
-				MonitorPowerOff = ((monitorofftoggle.SelectedIndex == 0) ? false : true);
-
-				power.SetAutoAdjust(pcw.newAutoAdjust);
-
-				power.LaunchBehaviour = pcw.NewLaunchBehaviour;
-
-				power.SessionLockPowerOff = pcw.MonitorPowerOff;
-				power.SessionLockPowerMode = pcw.NewLockMode;
-
-				power.SetRestoreMode(pcw.NewRestoreMethod, pcw.NewRestoreMode);
-
-				power.SaveConfig();
-
-				Log.Information("<<UI>> Power config changed.");
-
-				Close();
 			};
-			var cancelbutton = new Button() { Text = "Cancel", Anchor = AnchorStyles.Left };
-			cancelbutton.Click += (sender, e) =>
+
+			// passing the new config is done elsewhere
+
+			switch (monitoroffmode.SelectedIndex)
 			{
-				DialogResult = DialogResult.Cancel;
-				Close();
-			};
-			cancelbutton.NotifyDefault(true);
-			UpdateDefaultButton();
-			layout.Controls.Add(savebutton);
-			layout.Controls.Add(cancelbutton);
+				case 0: // ignore
+					NewLockMode = PowerMode.Undefined;
+					break;
+				case 1: // high
+					NewLockMode = PowerMode.HighPerformance;
+					break;
+				case 2: // balanced
+					NewLockMode = PowerMode.Balanced;
+					break;
+				case 3: // saver
+					NewLockMode = PowerMode.PowerSaver;
+					break;
+			}
 
-			Controls.Add(layout);
+			MonitorPowerOff = monitorofftoggle.Checked;
 
-			AutoSizeMode = AutoSizeMode.GrowAndShrink;
+			power.SetAutoAdjust(pcw.newAutoAdjust);
 
-			// Height = layout.Height;
-			// Width = layout.Width;
+			power.LaunchBehaviour = pcw.NewLaunchBehaviour;
+
+			power.SessionLockPowerOff = pcw.MonitorPowerOff;
+			power.SessionLockPowerMode = pcw.NewLockMode;
+
+			power.SetRestoreMode(pcw.NewRestoreMethod, pcw.NewRestoreMode);
+
+			power.SaveConfig();
+
+			Log.Information("<<UI>> Power config changed.");
+
+			Close();
+		}
+
+		void Reset(object sender, EventArgs ev)
+		{
+			NewLaunchBehaviour = PowerManager.PowerBehaviour.RuleBased;
+			NewRestoreMethod = PowerManager.RestoreModeMethod.Default;
+			NewRestoreMode = PowerMode.Balanced;
+			monitorofftoggle.Checked = true;
+			monitoroffmode.SelectedIndex = 3; // power saver
+
+			var preset = PowerAutoadjustPresets.Default();
+			FillAutoAdjust(preset);
+		}
+
+		void FillAutoAdjust(AutoAdjustSettings AutoAdjust)
+		{
+			NewLaunchBehaviour = power.LaunchBehaviour;
+			switch (power.LaunchBehaviour)
+			{
+				case PowerManager.PowerBehaviour.Auto:
+				default:
+					behaviour.SelectedIndex = 0;
+					break;
+				case PowerManager.PowerBehaviour.RuleBased:
+					behaviour.SelectedIndex = 1;
+					break;
+				case PowerManager.PowerBehaviour.Manual:
+					behaviour.SelectedIndex = 2;
+					break;
+			}
+
+			NewRestoreMethod = power.RestoreMethod;
+			NewRestoreMode = power.RestoreMode;
+			switch (NewRestoreMethod)
+			{
+				default:
+				case PowerManager.RestoreModeMethod.Default:
+					NewRestoreMethod = PowerManager.RestoreModeMethod.Default;
+					NewRestoreMode = PowerMode.Undefined;
+					restore.SelectedIndex = 1;
+					break;
+				case PowerManager.RestoreModeMethod.Original:
+					NewRestoreMethod = PowerManager.RestoreModeMethod.Original;
+					NewRestoreMode = PowerMode.Undefined;
+					restore.SelectedIndex = 0;
+					break;
+				case PowerManager.RestoreModeMethod.Saved:
+					NewRestoreMethod = PowerManager.RestoreModeMethod.Saved;
+					NewRestoreMode = PowerMode.Undefined;
+					restore.SelectedIndex = 2;
+					break;
+				case PowerManager.RestoreModeMethod.Custom:
+					NewRestoreMethod = PowerManager.RestoreModeMethod.Custom;
+					NewRestoreMode = power.RestoreMode;
+					switch (power.RestoreMode)
+					{
+						case PowerMode.HighPerformance:
+							restore.SelectedIndex = 3;
+							break;
+						default:
+						case PowerMode.Balanced:
+							restore.SelectedIndex = 4;
+							break;
+						case PowerMode.PowerSaver:
+							restore.SelectedIndex = 5;
+							break;
+					}
+					break;
+			}
+
+			var SessionLockPowerMode = power.SessionLockPowerMode;
+			switch (SessionLockPowerMode)
+			{
+				default:
+					monitoroffmode.SelectedIndex = 0;
+					break;
+				case PowerMode.HighPerformance:
+					monitoroffmode.SelectedIndex = 1;
+					break;
+				case PowerMode.Balanced:
+					monitoroffmode.SelectedIndex = 2;
+					break;
+				case PowerMode.PowerSaver:
+					monitoroffmode.SelectedIndex = 3;
+					break;
+			}
+			monitorofftoggle.Checked = MonitorPowerOff;
+
+			defaultmode.SelectedIndex = AutoAdjust.DefaultMode == PowerMode.Balanced ? 1 : AutoAdjust.DefaultMode == PowerMode.PowerSaver ? 2 : 0;
+
+			highmode.SelectedIndex = AutoAdjust.High.Mode == PowerMode.Balanced ? 1 : AutoAdjust.High.Mode == PowerMode.PowerSaver ? 2 : 0;
+			highcommitthreshold.Value = Convert.ToDecimal(AutoAdjust.High.Commit.Threshold).Constrain(5, 95);
+			highcommitlevel.Value = AutoAdjust.High.Commit.Level.Constrain(0, 15);
+			highbackoffhigh.Value = Convert.ToDecimal(AutoAdjust.High.Backoff.High).Constrain(5, 95);
+			highbackoffavg.Value = Convert.ToDecimal(AutoAdjust.High.Backoff.Avg).Constrain(5, 95);
+			highbackofflow.Value = Convert.ToDecimal(AutoAdjust.High.Backoff.Low).Constrain(5, 95);
+			highbackofflevel.Value = Convert.ToDecimal(AutoAdjust.High.Backoff.Level);
+
+			lowmode.SelectedIndex = AutoAdjust.Low.Mode == PowerMode.Balanced ? 1 : AutoAdjust.Low.Mode == PowerMode.PowerSaver ? 2 : 0;
+			lowcommitthreshold.Value = Convert.ToDecimal(AutoAdjust.Low.Commit.Threshold).Constrain(5, 95);
+			lowcommitlevel.Value = AutoAdjust.Low.Commit.Level.Constrain(0, 15);
+			lowbackoffhigh.Value = Convert.ToDecimal(AutoAdjust.Low.Backoff.High).Constrain(5, 95);
+			lowbackoffavg.Value = Convert.ToDecimal(AutoAdjust.Low.Backoff.Avg).Constrain(5, 95);
+			lowbackofflow.Value = Convert.ToDecimal(AutoAdjust.Low.Backoff.Low).Constrain(5, 95);
+			lowbackofflevel.Value = Convert.ToDecimal(AutoAdjust.Low.Backoff.Level);
 		}
 
 		static PowerConfigWindow pcw = null;
