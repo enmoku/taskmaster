@@ -5,6 +5,7 @@ Comprehensive changes can be found in Git change history:
 ## [0.12...]
 ### 2018-12-11
 	Fixed: Foreground hang detector can have some undesirable behaviour.
+	Fixed: Loglist was sizing wrong. Hopefully fixed.
 ### 2018-12-10 Version 0.12
 	Added: Watchlist rules now have description property for user comments.
 	Changed: Visual styles are enabled. This was required to allow keyboard shortcuts in text fields like ctrl-a.
