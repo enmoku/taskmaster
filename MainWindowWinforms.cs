@@ -1625,6 +1625,7 @@ namespace Taskmaster
 			};
 			ResizeEnd += ResizeLogList;
 			Resize += ResizeLogList;
+			Shown += ResizeLogList;
 
 			loglistms = new ContextMenuStrip();
 			var logcopy = new ToolStripMenuItem("Copy to clipboard", null, CopyLogToClipboard);
