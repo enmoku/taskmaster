@@ -46,7 +46,7 @@ namespace Taskmaster
 						High = 60,
 						Avg = 40,
 						Low = 15,
-						Level = 3,
+						Level = 7,
 					},
 					Commit = {
 						Level = 3,
@@ -59,7 +59,7 @@ namespace Taskmaster
 						High = 50,
 						Avg = 35,
 						Low = 25,
-						Level = 5,
+						Level = 3,
 					},
 					Commit = {
 						Level = 7,
