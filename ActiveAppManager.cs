@@ -185,8 +185,6 @@ namespace Taskmaster
 					HangTick = 0;
 				}
 
-				if (pid <= 4) return; // Ignore system processes. We can do nothing useful for them.
-
 				if (fg != null && !fg.Responding)
 				{
 					string name = string.Empty;
@@ -197,22 +195,33 @@ namespace Taskmaster
 					catch
 					{
 						// probably gone?
+						if (pid <= 4) name = "<OS>";
 					}
+
+					var sbs = new System.Text.StringBuilder();
+					sbs.Append("<Foreground> ");
+					if (!string.IsNullOrEmpty(name))
+						sbs.Append(name).Append(" (#").Append(pid).Append(")");
+					else
+						sbs.Append("#").Append(pid);
 
 					if (HangTick == 1)
 					{
-						Log.Warning("<Foreground> {Name} (#{Pid}) is not responding!", name, pid);
+						sbs.Append(" is not responding!");
+						Log.Warning(sbs.ToString());
 					}
 					else if (HangTick > 1)
 					{
 						double hung = now.TimeSince(HangTime).TotalSeconds;
 
-						var sbs = new System.Text.StringBuilder();
-						sbs.Append("<Foreground> Hung ");
-						if (!string.IsNullOrEmpty(name))
-							sbs.Append(name).Append(" (#").Append(pid).Append(")");
-						else
-							sbs.Append("#").Append(pid);
+						sbs.Append(" hung!");
+
+						if (pid <= 4)
+						{
+							Log.Warning(sbs.ToString());
+							return; // Ignore system processes. We can do nothing useful for them.
+						}
+
 						sbs.Append(" – ");
 						bool acted = false;
 						if (HangMinimizeTick > 0 && hung > HangMinimizeTick && !Minimized)
