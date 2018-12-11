@@ -152,6 +152,7 @@ namespace Taskmaster
 		int HangMinimizeTick = 180;
 		int HangReduceTick = 240;
 		int HangKillTick = 300;
+
 		Process fg = null;
 
 		bool Minimized = false;
@@ -178,7 +179,13 @@ namespace Taskmaster
 				if (since.TotalSeconds < 5) return;
 
 				if (PreviousFG != pid)
+				{
+					// foreground changed
 					fg = Process.GetProcessById(pid);
+					HangTick = 0;
+				}
+
+				if (pid <= 4) return; // Ignore system processes. We can do nothing useful for them.
 
 				if (fg != null && !fg.Responding)
 				{
@@ -298,6 +305,8 @@ namespace Taskmaster
 			}
 
 			Taskmaster.Components.processmanager.Unignore(IgnoreHung);
+			IgnoreHung = -1;
+
 			HangTick = 0;
 			HangTime = DateTime.MaxValue;
 		}
