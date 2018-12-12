@@ -844,7 +844,7 @@ namespace Taskmaster
 		public async void Touch(ProcessEx info, bool refresh = false)
 		{
 			Debug.Assert(info.Process != null, "ProcessController.Touch given null process.");
-			Debug.Assert(info.Id > 4, "ProcessController.Touch given invalid process ID");
+			Debug.Assert(!ProcessManager.SystemProcessId(info.Id), "ProcessController.Touch given invalid process ID");
 			Debug.Assert(!string.IsNullOrEmpty(info.Name), "ProcessController.Touch given empty process name.");
 
 			bool foreground = true;

@@ -195,7 +195,7 @@ namespace Taskmaster
 					catch
 					{
 						// probably gone?
-						if (pid <= 4) name = "<OS>";
+						if (ProcessManager.SystemProcessId(pid)) name = "<OS>";
 					}
 
 					var sbs = new System.Text.StringBuilder();
@@ -216,7 +216,7 @@ namespace Taskmaster
 
 						sbs.Append(" hung!");
 
-						if (pid <= 4)
+						if (ProcessManager.SystemProcessId(pid))
 						{
 							Log.Warning(sbs.ToString());
 							return; // Ignore system processes. We can do nothing useful for them.
@@ -292,6 +292,7 @@ namespace Taskmaster
 						Taskmaster.Components.processmanager.Unignore(IgnoreHung);
 						IgnoreHung = pid;
 						Taskmaster.Components.processmanager.Ignore(IgnoreHung);
+
 					}
 
 					HangTick++;
@@ -451,7 +452,7 @@ namespace Taskmaster
 				Foreground = activewindowev.Id = pid;
 				HangTick = 0;
 
-				if (pid > 4)
+				if (!ProcessManager.SystemProcessId(pid))
 				{
 
 					try

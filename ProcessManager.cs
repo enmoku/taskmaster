@@ -252,10 +252,18 @@ namespace Taskmaster
 			catch { } // process.Handle may throw which we don't care about
 		}
 
-		HashSet<int> ignorePids = new HashSet<int>();
-		public void Ignore(int processId) => ignorePids.Add(processId);
+		List<int> ignorePids = new List<int>(6);
 
-		public void Unignore(int processId) => ignorePids.Remove(processId);
+		public void Ignore(int pid)
+		{
+			ignorePids.Add(pid);
+			if (ignorePids.Count > 5) ignorePids.RemoveAt(0);
+		}
+
+		public void Unignore(int pid)
+		{
+			ignorePids.Remove(pid);
+		}
 
 		public async Task FreeMemory(string executable = null, bool quiet = false, int ignorePid = -1)
 		{
@@ -383,7 +391,7 @@ namespace Taskmaster
 
 			ScanEverythingStartEvent?.Invoke(this, null);
 
-			if (ignorePid > 4) Ignore(ignorePid);
+			if (!SystemProcessId(ignorePid)) Ignore(ignorePid);
 
 			var procs = Process.GetProcesses();
 			int count = procs.Length - 2; // -2 for Idle&System
@@ -430,7 +438,7 @@ namespace Taskmaster
 
 			ScanEverythingEndEvent?.Invoke(this, null);
 
-			if (ignorePid > 4) Unignore(ignorePid);
+			if (!SystemProcessId(ignorePid)) Unignore(ignorePid);
 
 			Atomic.Unlock(ref scan_lock);
 		}
@@ -845,7 +853,7 @@ namespace Taskmaster
 				Log.Debug("<Process> " + info.Name + " (#" + info.Id + ") exited [Power: " + info.PowerWait + ", Active: " + info.ActiveWait + "]");
 			}
 
-			Debug.Assert(info.Id > 4);
+			Debug.Assert(!SystemProcessId(info.Id));
 
 			if (info.ActiveWait)
 			{
@@ -1142,8 +1150,14 @@ namespace Taskmaster
 
 		bool IgnoreSystem32Path = true;
 
-		const int LowestInvalidPid = 4;
-		bool IgnoreProcessID(int pid) => (pid <= LowestInvalidPid || ignorePids.Contains(pid));
+		/// <summary>
+		/// Tests if the process ID is core system process (0[idle] or 4[system]) that can never be valid program.
+		/// </summary>
+		/// <returns>true if the pid should not be used</returns>
+		[System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
+		public static bool SystemProcessId(int pid) => pid <= 4;
+
+		bool IgnoreProcessID(int pid) => SystemProcessId(pid) || ignorePids.Contains(pid);
 
 		public static bool IgnoreProcessName(string name) => IgnoreList.Contains(name, StringComparer.InvariantCultureIgnoreCase);
 

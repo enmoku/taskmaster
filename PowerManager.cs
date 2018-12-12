@@ -987,7 +987,7 @@ namespace Taskmaster
 						break;
 					case PowerBehaviour.Manual:
 						Taskmaster.Components.processmanager.CancelPowerWait(); // need nicer way to do this
-						Release(0);
+						Release(-1);
 						break;
 				}
 			}
@@ -1024,15 +1024,15 @@ namespace Taskmaster
 		/// <remarks>uses: forceModeSources_lock</remarks>
 		public void Release(int sourcePid)
 		{
-			if (Taskmaster.DebugPower) Log.Debug("<Power> Releasing " + (sourcePid == 0 ? "all locks" : $"#{sourcePid}"));
+			if (Taskmaster.DebugPower) Log.Debug("<Power> Releasing " + (sourcePid == -1 ? "all locks" : $"#{sourcePid}"));
 
-			Debug.Assert(sourcePid == 0 || sourcePid > 4);
+			Debug.Assert(sourcePid == -1 || !ProcessManager.SystemProcessId(sourcePid));
 
 			try
 			{
 				lock (forceModeSources_lock)
 				{
-					if (sourcePid == 0)
+					if (sourcePid == -1)
 					{
 						forceModeSources.Clear();
 					}
@@ -1051,7 +1051,7 @@ namespace Taskmaster
 					if (forceModeSources.Count == 0) Forced = false;
 
 					if (Taskmaster.DebugPower)
-						Log.Debug("<Power> Released " + (sourcePid == 0 ? "All" : $"#{sourcePid}"));
+						Log.Debug("<Power> Released " + (sourcePid == -1 ? "All" : $"#{sourcePid}"));
 				}
 
 				Task.Run(async () =>
