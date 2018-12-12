@@ -41,6 +41,8 @@ namespace Taskmaster.UI
 		{
 			var handle = this.Handle; // unused; forces handle creation
 
+			AutoScaleMode = AutoScaleMode.Dpi;
+
 			AllowTransparency = false;
 			DoubleBuffered = true;
 

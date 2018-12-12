@@ -992,7 +992,8 @@ namespace Taskmaster
 
 			System.Windows.Forms.Application.SetUnhandledExceptionMode(UnhandledExceptionMode.Automatic);
 			System.Windows.Forms.Application.ThreadException += UnhandledUIException;
-			System.Windows.Forms.Application.EnableVisualStyles();
+			System.Windows.Forms.Application.EnableVisualStyles(); // required by shortcuts and high dpi-awareness
+			System.Windows.Forms.Application.SetCompatibleTextRenderingDefault(false); // required by high dpi-awareness
 
 			// Multi-core JIT
 			// https://docs.microsoft.com/en-us/dotnet/api/system.runtime.profileoptimization
