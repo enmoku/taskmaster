@@ -476,7 +476,7 @@ namespace Taskmaster
 			lt.Controls.Add(affstrategy);
 			lt.Controls.Add(new Label()); // empty, right
 
-			lt.Controls.Add(new Label() { Text = "Affinity mask\n& cores", TextAlign = System.Drawing.ContentAlignment.MiddleLeft }); // left
+			lt.Controls.Add(new Label() { Text = "Affinity mask\n&& Cores", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize=true }); // left
 			affinityMask = new NumericUpDown()
 			{
 				Width = 80,
@@ -679,7 +679,7 @@ namespace Taskmaster
 			lt.Controls.Add(new Label()); // empty
 
 			// POWERDOWN in background
-			lt.Controls.Add(new Label() { Text = "Background powerdown", TextAlign = System.Drawing.ContentAlignment.MiddleLeft });
+			lt.Controls.Add(new Label() { Text = "Background powerdown", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true });
 			backgroundPowerdown.Checked = Controller.BackgroundPowerdown;
 			tooltip.SetToolTip(backgroundPowerdown, "Power down any power mode when the app goes off focus.\nRequires foreground only to be enabled.");
 			lt.Controls.Add(backgroundPowerdown);
