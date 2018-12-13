@@ -226,8 +226,10 @@ namespace Taskmaster
 			AudioInputVolume.Minimum = Convert.ToDecimal(micmon.Minimum);
 			AudioInputVolume.Value = Convert.ToInt32(micmon.Volume);
 
+			AudioInputs.BeginUpdate();
 			foreach (var dev in micmon.enumerate())
 				AudioInputs.Items.Add(new ListViewItem(new string[] { dev.Name, dev.GUID }));
+			AudioInputs.EndUpdate();
 
 			// TODO: Hook device changes
 			micmon.VolumeChanged += VolumeChangeDetected;
@@ -258,6 +260,8 @@ namespace Taskmaster
 
 				if (Taskmaster.LastModifiedList)
 				{
+					lastmodifylist.BeginUpdate();
+
 					try
 					{
 						lock (lastmodify_lock)
@@ -275,6 +279,10 @@ namespace Taskmaster
 						}
 					}
 					catch (Exception ex) { Logging.Stacktrace(ex); }
+					finally
+					{
+						lastmodifylist.EndUpdate();
+					}
 				}
 			}));
 		}
@@ -315,10 +323,14 @@ namespace Taskmaster
 			processmanager.onWaitForExitEvent += ExitWaitListHandler;
 			if (Taskmaster.DebugCache) PathCacheUpdate(null, null);
 
+			WatchlistRules.BeginUpdate();
+
 			foreach (var prc in processmanager.getWatchlist())
 				AddToWatchlistList(prc);
 
 			WatchlistColor();
+
+			WatchlistRules.EndUpdate();
 
 			rescanRequest += processmanager.ScanEverythingRequest;
 
@@ -421,9 +433,13 @@ namespace Taskmaster
 
 			BeginInvoke(new Action(() =>
 			{
+				WatchlistRules.BeginUpdate();
+
 				WatchlistRules.Items.Add(litem);
 				FormatWatchlist(litem, prc);
 				WatchlistItemColor(litem, prc);
+
+				WatchlistRules.EndUpdate();
 			}));
 		}
 
@@ -440,6 +456,8 @@ namespace Taskmaster
 
 			BeginInvoke(new Action(() =>
 			{
+				WatchlistRules.BeginUpdate();
+
 				litem.SubItems[NameColumn].Text = prc.FriendlyName;
 				litem.SubItems[ExeColumn].Text = prc.Executable;
 				litem.SubItems[PrioColumn].Text = prc.Priority?.ToString() ?? AnyIgnoredValue;
@@ -456,6 +474,8 @@ namespace Taskmaster
 				litem.SubItems[AffColumn].Text = aff;
 				litem.SubItems[PowerColumn].Text = (prc.PowerPlan != PowerInfo.PowerMode.Undefined ? prc.PowerPlan.ToString() : AnyIgnoredValue);
 				litem.SubItems[PathColumn].Text = (string.IsNullOrEmpty(prc.Path) ? AnyIgnoredValue : prc.Path);
+
+				WatchlistRules.EndUpdate();
 			}));
 		}
 
@@ -466,8 +486,12 @@ namespace Taskmaster
 			{
 				BeginInvoke(new Action(() =>
 				{
+					WatchlistRules.BeginUpdate();
+
 					FormatWatchlist(litem, prc);
 					WatchlistItemColor(litem, prc);
+
+					WatchlistRules.EndUpdate();
 				}));
 			}
 		}
@@ -482,7 +506,11 @@ namespace Taskmaster
 			{
 				BeginInvoke(new Action(() =>
 				{
+					WatchlistRules.BeginUpdate();
+
 					WatchlistItemColor(li, pc);
+
+					WatchlistRules.EndUpdate();
 				}));
 			}
 		}
@@ -1568,7 +1596,9 @@ namespace Taskmaster
 				}
 
 				// deadlock if locked while adding
+				WatchlistRules.BeginUpdate();
 				WatchlistRules.Sort();
+				WatchlistRules.EndUpdate();
 			};
 
 			watchlistms = new ContextMenuStrip();
@@ -1613,6 +1643,7 @@ namespace Taskmaster
 			loglist.Columns.Add("Event Log", -2, HorizontalAlignment.Left); // 2
 			ResizeLogList = delegate
 			{
+				loglist.BeginUpdate();
 				loglist.Columns[0].Width = -2;
 
 				// HACK: Enable visual styles causes horizontal bar to always be present without the following.
@@ -1622,6 +1653,7 @@ namespace Taskmaster
 				//loglist.Width = -2;
 				loglist.Height = ClientSize.Height - (tabLayout.Height + statusbar.Height + menu.Height);
 				ShowLastLog();
+				loglist.EndUpdate();
 			};
 			ResizeEnd += ResizeLogList;
 			Resize += ResizeLogList;
@@ -2050,6 +2082,8 @@ namespace Taskmaster
 
 				BeginInvoke(new Action(async () =>
 				{
+					processinglist.BeginUpdate();
+
 					try
 					{
 						// 0 = Id, 1 = Name, 2 = State
@@ -2071,6 +2105,8 @@ namespace Taskmaster
 					{
 						Logging.Stacktrace(ex);
 					}
+
+					processinglist.EndUpdate();
 				}));
 			}
 			catch (Exception ex)
@@ -2202,10 +2238,13 @@ namespace Taskmaster
 								(ev.Info.ActiveWait ? "FORCED" : "n/a")
 							});
 
-								ExitWaitlistMap.Add(ev.Info.Id, li);
+								exitwaitlist.BeginUpdate();
 
+								ExitWaitlistMap.Add(ev.Info.Id, li);
 								exitwaitlist.Items.Add(li);
 								li.EnsureVisible();
+
+								exitwaitlist.EndUpdate();
 							}
 						}
 					}
@@ -2239,6 +2278,8 @@ namespace Taskmaster
 
 			BeginInvoke(new Action(() =>
 			{
+				powerbalancerlog.BeginUpdate();
+
 				try
 				{
 					var reactionary = PowerManager.GetModeName(ev.Mode);
@@ -2277,6 +2318,10 @@ namespace Taskmaster
 					}
 				}
 				catch (Exception ex) { Logging.Stacktrace(ex); }
+				finally
+				{
+					powerbalancerlog.EndUpdate();
+				}
 			}));
 		}
 
@@ -2316,6 +2361,8 @@ namespace Taskmaster
 				var oneitem = WatchlistRules.SelectedItems.Count == 1;
 				if (oneitem)
 				{
+					WatchlistRules.BeginUpdate();
+
 					var li = WatchlistRules.SelectedItems[0];
 					var prc = Taskmaster.Components.processmanager.getWatchedController(li.SubItems[NameColumn].Text);
 					if (prc != null)
@@ -2329,6 +2376,8 @@ namespace Taskmaster
 
 						WatchlistItemColor(li, prc);
 					}
+
+					WatchlistRules.EndUpdate();
 				}
 				else
 					watchlistenable.Enabled = false;
@@ -2370,9 +2419,14 @@ namespace Taskmaster
 				if (rv == DialogResult.OK)
 				{
 					var prc = ew.Controller;
+
+					WatchlistRules.BeginUpdate();
+
 					processmanager.AddController(prc);
 					AddToWatchlistList(prc);
 					WatchlistColor();
+
+					WatchlistRules.EndUpdate();
 				}
 			}
 			catch (Exception ex) { Logging.Stacktrace(ex); }
@@ -2524,8 +2578,10 @@ namespace Taskmaster
 			lock (loglistLock)
 			{
 				// Log.Verbose("Filling GUI log.");
+				loglist.BeginUpdate();
 				foreach (var evmsg in MemoryLog.MemorySink.ToArray())
 					loglist.Items.Add(evmsg.Message);
+				loglist.EndUpdate();
 			}
 
 			ShowLastLog();
@@ -2593,11 +2649,14 @@ namespace Taskmaster
 			{
 				lock (netstatus_lock)
 				{
-					ifaceList.Items.Clear();
-
-					foreach (var dev in netmonitor.GetInterfaces())
+					ifaceList.BeginUpdate();
+					try
 					{
-						var li = new ListViewItem(new string[] {
+						ifaceList.Items.Clear();
+
+						foreach (var dev in netmonitor.GetInterfaces())
+						{
+							var li = new ListViewItem(new string[] {
 							dev.Name,
 							dev.Type.ToString(),
 							dev.Status.ToString(),
@@ -2608,10 +2667,15 @@ namespace Taskmaster
 							"n/a", // error delta
 							"n/a", // total errors
 						})
-						{
-							UseItemStyleForSubItems = false
-						};
-						ifaceList.Items.Add(li);
+							{
+								UseItemStyleForSubItems = false
+							};
+							ifaceList.Items.Add(li);
+						}
+					}
+					finally
+					{
+						ifaceList.EndUpdate();
 					}
 				}
 			}));
@@ -2645,6 +2709,8 @@ namespace Taskmaster
 			{
 				lock (netstatus_lock)
 				{
+					ifaceList.BeginUpdate();
+
 					try
 					{
 						ifaceList.Items[ea.Traffic.Index].SubItems[PacketDeltaColumn].Text = "+"+ea.Traffic.Delta.Unicast;
@@ -2660,6 +2726,8 @@ namespace Taskmaster
 					{
 						Logging.Stacktrace(ex);
 					}
+
+					ifaceList.EndUpdate();
 				}
 			}));
 		}
@@ -2717,9 +2785,11 @@ namespace Taskmaster
 		{
 			lock (loglistLock)
 			{
+				loglist.BeginUpdate();
 				//loglist.Clear();
 				loglist.Items.Clear();
 				MemoryLog.MemorySink.Clear();
+				loglist.EndUpdate();
 			}
 		}
 
@@ -2734,6 +2804,8 @@ namespace Taskmaster
 			{
 				lock (loglistLock)
 				{
+					loglist.BeginUpdate();
+
 					var excessitems = Math.Max(0, (loglist.Items.Count - MaxLogSize));
 					while (excessitems-- > 0)
 						loglist.Items.RemoveAt(0);
@@ -2742,6 +2814,8 @@ namespace Taskmaster
 					if ((int)evmsg.Level >= (int)Serilog.Events.LogEventLevel.Error)
 						li.ForeColor = System.Drawing.Color.Red;
 					li.EnsureVisible();
+
+					loglist.EndUpdate();
 				}
 			}));
 		}
