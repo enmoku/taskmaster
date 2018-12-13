@@ -771,15 +771,18 @@ namespace Taskmaster
 				{
 					case PathVisibilityOptions.Smart:
 						{
-							var ptss = info.Path.Split(System.IO.Path.DirectorySeparatorChar, System.IO.Path.AltDirectorySeparatorChar);
-							if (ptss.Length <= 5) return info.Path;
-							List<string> parts = new List<string>(ptss);
-							while (parts.Count > 6) parts.RemoveAt(parts.Count - 2);
+							int count = 0;
+							foreach (char c in info.Path)
+								if (c == System.IO.Path.DirectorySeparatorChar || c == System.IO.Path.AltDirectorySeparatorChar) count++;
+							if (count <= 5) return info.Path;
+							List<string> parts = new List<string>(info.Path.Split(System.IO.Path.DirectorySeparatorChar, System.IO.Path.AltDirectorySeparatorChar));
+							parts.RemoveRange(4, parts.Count - 5);
+							parts[0] = parts[0] + System.IO.Path.DirectorySeparatorChar; // Path.Combine handles drive letter weird
 							// Minimal structure
 							// drive A B C file
 							// 1 2 3 4 5
 							// c:\programs\brand\app\app.exe
-							parts.Insert(parts.Count - 2, "...");
+							parts.Insert(parts.Count - 1, "..."); // ellipsis
 							return System.IO.Path.Combine(parts.ToArray());
 						}
 					default:
