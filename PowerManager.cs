@@ -1115,7 +1115,7 @@ namespace Taskmaster
 				{
 					// if (Behaviour == PowerBehaviour.Auto) return; // this is very optimistic
 
-					InternalSetMode(SavedMode);
+					InternalSetMode(SavedMode, verbose:false);
 					SavedMode = PowerMode.Undefined;
 
 					// Log.Information("<Power> Restored to: {PowerMode}", CurrentMode.ToString());
@@ -1206,7 +1206,7 @@ namespace Taskmaster
 				if (rv)
 				{
 					SavedMode = RestoreMethod == RestoreModeMethod.Saved ? CurrentMode : RestoreMode;
-					InternalSetMode(mode);
+					InternalSetMode(mode, verbose:false);
 				}
 				else
 				{

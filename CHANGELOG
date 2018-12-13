@@ -7,6 +7,7 @@ Comprehensive changes can be found in Git change history:
 	Added: High DPI-awareness. Untested, may simply be broken. On default 96 DPI this has no observable effect as expected.
 	External: Serilog updated from v2.6.0 to v2.7.1
 	External: NAudio updated from v1.8.4 to v1.8.5
+	Fixed: Power mode changes from foreground only & background powerdown were far too spammy.
 ### 2018-12-11
 	Fixed: Foreground hang detector can have some undesirable behaviour.
 	Fixed: Loglist was sizing wrong. Hopefully fixed.
