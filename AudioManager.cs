@@ -26,6 +26,7 @@
 
 using System;
 using System.Diagnostics;
+using Serilog;
 
 namespace Taskmaster
 {
@@ -57,7 +58,7 @@ namespace Taskmaster
 				throw new InitFailure("Failed to capture default audio output device.");
 			}
 
-			Serilog.Log.Information("<Audio> Defalt device: " + mmdev_media.DeviceFriendlyName);
+			Log.Information("<Audio> Default device: " + mmdev_media.DeviceFriendlyName);
 
 			mmdev_media.AudioSessionManager.OnSessionCreated += OnSessionCreated;
 
@@ -135,26 +136,26 @@ namespace Taskmaster
 
 						if (volAdjusted)
 						{
-							Serilog.Log.Information("<Audio> " + info.Name + " (#" + info.Id + ") " +
+							Log.Information("<Audio> " + info.Name + " (#" + info.Id + ") " +
 								"volume changed from " + $"{(oldvolume * 100):N1}%" + " to " + $"{(prc.Volume * 100):N1}%");
 						}
 						else
 						{
 							if (Taskmaster.ShowInaction && Taskmaster.DebugAudio)
-								Serilog.Log.Debug("<Audio> " + info.Name + " (#" + pid + ") Volume: " + $"{(volume * 100):N1}%" +
+								Log.Debug("<Audio> " + info.Name + " (#" + pid + ") Volume: " + $"{(volume * 100):N1}%" +
 									" – Already correct (Plan: " + prc.VolumeStrategy.ToString() + ")");
 						}
 					}
 					else
 					{
 						if (Taskmaster.ShowInaction && Taskmaster.DebugAudio)
-							Serilog.Log.Debug("<Audio> " + info.Name + " (#" + pid + ") Volume: " + $"{(volume * 100):N1}%" +
+							Log.Debug("<Audio> " + info.Name + " (#" + pid + ") Volume: " + $"{(volume * 100):N1}%" +
 								" – not watched: " + info.Path);
 					}
 				}
 				else
 				{
-					Serilog.Log.Debug("<Audio> Failed to get info for session (#{Pid})", pid);
+					Log.Debug("<Audio> Failed to get info for session (#{Pid})", pid);
 				}
 			}
 			catch (Exception ex)
@@ -202,7 +203,7 @@ namespace Taskmaster
 
 		public void OnDisplayNameChanged(string displayName)
 		{
-			Serilog.Log.Debug("<Audio> Display name changed: " + displayName);
+			Log.Debug("<Audio> Display name changed: " + displayName);
 		}
 
 		public void OnGroupingParamChanged(ref Guid groupingId)
@@ -212,7 +213,7 @@ namespace Taskmaster
 
 		public void OnIconPathChanged(string iconPath)
 		{
-			Serilog.Log.Debug("<Audio> Icon path changed: " + iconPath);
+			Log.Debug("<Audio> Icon path changed: " + iconPath);
 		}
 
 		public void OnSessionDisconnected(NAudio.CoreAudioApi.Interfaces.AudioSessionDisconnectReason disconnectReason)
@@ -223,7 +224,7 @@ namespace Taskmaster
 			string name = session.DisplayName;
 
 			// Don't care really
-			Serilog.Log.Debug("<Audio> " + name + " (#" + pid + ") Disconnected: " + disconnectReason.ToString());
+			Log.Debug("<Audio> " + name + " (#" + pid + ") Disconnected: " + disconnectReason.ToString());
 
 			switch (disconnectReason)
 			{
@@ -250,7 +251,7 @@ namespace Taskmaster
 			string instance = session.GetSessionInstanceIdentifier;
 			string name = session.DisplayName;
 
-			Serilog.Log.Debug("<Audio> " + name + " (#" + pid + ") State changed: " + state.ToString());
+			Log.Debug("<Audio> " + name + " (#" + pid + ") State changed: " + state.ToString());
 
 			switch (state)
 			{
@@ -266,7 +267,7 @@ namespace Taskmaster
 
 		public void OnVolumeChanged(float volume, bool isMuted)
 		{
-			Serilog.Log.Debug("<Audio> Volume: " + $"{volume:N2}" + ", Muted: " + (isMuted ? "True" : "False"));
+			Log.Debug("<Audio> Volume: " + $"{volume:N2}" + ", Muted: " + (isMuted ? "True" : "False"));
 		}
 	}
 
