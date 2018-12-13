@@ -1784,6 +1784,9 @@ namespace Taskmaster
 				//Dock = DockStyle.Fill,
 			};
 
+			hwpanel.Controls.Add(new Label() { Text = "Core", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left, Font = boldfont });
+			hwpanel.Controls.Add(new Label()); // empty
+
 			hwpanel.Controls.Add(new Label() { Text = "CPU", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left });
 			cpuload = new Label() { Text = "n/a", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left };
 			hwpanel.Controls.Add(cpuload);

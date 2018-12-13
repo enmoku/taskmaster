@@ -37,9 +37,13 @@ namespace Taskmaster.UI
 	{
 		readonly protected Padding CustomPadding = new Padding(6);
 
+		protected System.Drawing.Font boldfont = null;
+
 		public UniForm()
 		{
 			var handle = this.Handle; // unused; forces handle creation
+
+			boldfont = new System.Drawing.Font(Font, System.Drawing.FontStyle.Bold);
 
 			AutoScaleMode = AutoScaleMode.Dpi;
 

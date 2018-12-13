@@ -73,8 +73,6 @@ namespace Taskmaster
 				PowerManager.GetModeName(PowerMode.HighPerformance), PowerManager.GetModeName(PowerMode.Balanced), PowerManager.GetModeName(PowerMode.PowerSaver)
 			};
 
-			var boldfont = new System.Drawing.Font(Font, System.Drawing.FontStyle.Bold);
-
 			var layout = new TableLayoutPanel()
 			{
 				ColumnCount = 2,
