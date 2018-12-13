@@ -770,14 +770,27 @@ namespace Taskmaster
 				switch (PathVisibility)
 				{
 					case PathVisibilityOptions.Smart:
-						// not implemented
+						{
+							var ptss = info.Path.Split(System.IO.Path.DirectorySeparatorChar, System.IO.Path.AltDirectorySeparatorChar);
+							if (ptss.Length <= 5) return info.Path;
+							List<string> parts = new List<string>(ptss);
+							while (parts.Count > 6) parts.RemoveAt(parts.Count - 2);
+							// Minimal structure
+							// drive A B C file
+							// 1 2 3 4 5
+							// c:\programs\brand\app\app.exe
+							parts.Insert(parts.Count - 2, "...");
+							return System.IO.Path.Combine(parts.ToArray());
+						}
 					default:
 					case PathVisibilityOptions.File:
 						return System.IO.Path.GetFileName(info.Path);
 					case PathVisibilityOptions.Folder:
-						var parts = info.Path.Split(System.IO.Path.DirectorySeparatorChar, System.IO.Path.AltDirectorySeparatorChar);
-						var partpath = parts[parts.Length - 2] + System.IO.Path.DirectorySeparatorChar + parts[parts.Length - 1];
-						return partpath;
+						{
+							var parts = info.Path.Split(System.IO.Path.DirectorySeparatorChar, System.IO.Path.AltDirectorySeparatorChar);
+							var partpath = parts[parts.Length - 2] + System.IO.Path.DirectorySeparatorChar + parts[parts.Length - 1];
+							return partpath;
+						}
 					case PathVisibilityOptions.Full:
 						return info.Path;
 				}
