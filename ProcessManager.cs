@@ -516,7 +516,7 @@ namespace Taskmaster
 			lock (watchlist_lock)
 				watchlist.Add(prc);
 
-			Log.Verbose("[" + prc.FriendlyName + "] Match: " + (prc.Executable ?? prc.Path) + ", " +
+			if (Taskmaster.Trace) Log.Verbose("[" + prc.FriendlyName + "] Match: " + (prc.Executable ?? prc.Path) + ", " +
 				prc.Priority.ToString() + ", Mask:" + prc.Affinity.ToString() +
 				", Rescan: " + prc.Rescan + "m, Recheck: " + prc.Recheck + "s, FgOnly: " + prc.ForegroundOnly.ToString());
 		}
@@ -536,12 +536,12 @@ namespace Taskmaster
 			BatchProcessing = coreperf.GetSetDefault("Batch processing", false, out modified).BoolValue;
 			coreperf["Batch processing"].Comment = "Process management works in delayed batches instead of immediately.";
 			dirtyconfig |= modified;
-			Log.Information("Batch processing: " + (BatchProcessing ? "Enabled" : "Disabled"));
+			Log.Information("<Process> Batch processing: " + (BatchProcessing ? "Enabled" : "Disabled"));
 			if (BatchProcessing)
 			{
 				BatchDelay = coreperf.GetSetDefault("Batch processing delay", 2500, out modified).IntValue.Constrain(500, 15000);
 				dirtyconfig |= modified;
-				Log.Information("Batch processing delay: " + $"{BatchDelay / 1000:N1}s");
+				Log.Information("<Process> Batch processing delay: " + $"{BatchDelay / 1000:N1}s");
 				BatchProcessingThreshold = coreperf.GetSetDefault("Batch processing threshold", 5, out modified).IntValue.Constrain(1, 30);
 				dirtyconfig |= modified;
 				Log.Information("<Process> Batch processing threshold: " + BatchProcessingThreshold);
