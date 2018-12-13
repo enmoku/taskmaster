@@ -100,13 +100,5 @@ namespace Taskmaster
 		// Stats
 		public NetTraffic Outgoing;
 		public NetTraffic Incoming;
-
-		public void PrintStats()
-		{
-			Console.WriteLine("Incoming: " + Incoming.Unicast + "(+" + Incoming.NonUnicast + ") " +
-				"Err(" + Incoming.Errors + ") Dis(" + Incoming.Discards + ") Unk(" + Incoming.Unknown + ")");
-			Console.WriteLine("Outgoing: " + Outgoing.Unicast + "(+" + Outgoing.NonUnicast + ") " +
-				"Err(" + Outgoing.Errors + ") Dis(" + Outgoing.Discards + ")");
-		}
 	}
 }

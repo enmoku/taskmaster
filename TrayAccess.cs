@@ -378,8 +378,7 @@ namespace Taskmaster
 
 		void ShowWindow(object sender, MouseEventArgs e)
 		{
-			if (Taskmaster.Trace)
-				Console.WriteLine("Tray Click");
+			if (Taskmaster.Trace) Log.Verbose("Tray Click");
 
 			if (e.Button == MouseButtons.Left)
 			{

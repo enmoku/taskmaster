@@ -342,7 +342,7 @@ namespace Taskmaster
 			}
 
 			if (Taskmaster.Trace)
-				Console.WriteLine("Displaying Tray Icon");
+				Log.Verbose("Displaying Tray Icon");
 			Components.trayaccess?.RefreshVisibility();
 		}
 
@@ -771,12 +771,12 @@ namespace Taskmaster
 						byte[] nullarray = { 0 };
 						fs.Write(nullarray, 0, 1);
 					}
-					Console.WriteLine("Pre-allocated file: " + fullpath + " (" + (oldsize / boundary) + "kB -> " + allockb + "kB)");
+					Log.Debug("<Core> Pre-allocated file: " + fullpath + " (" + (oldsize / boundary) + "kB -> " + allockb + "kB)");
 				}
 			}
 			catch (System.IO.FileNotFoundException)
 			{
-				Console.WriteLine("Failed to open file: " + fullpath);
+				Log.Error("<Core> Failed to open file: " + fullpath);
 			}
 			catch (Exception ex)
 			{
@@ -914,7 +914,7 @@ namespace Taskmaster
 				var remainingdelay = StartDelay - uptime.TotalSeconds;
 				if (remainingdelay > 5)
 				{
-					Console.WriteLine("Delaying start by " + remainingdelay + " seconds");
+					Log.Information("Delaying start by " + remainingdelay + " seconds");
 					System.Threading.Thread.Sleep(Convert.ToInt32(remainingdelay) * 1000);
 				}
 			}

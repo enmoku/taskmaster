@@ -343,7 +343,7 @@ namespace Taskmaster
 				else if (address_changed)
 				{
 					// same state but address change was detected
-					Console.WriteLine("<Network> DEBUG: Address changed but internet connectivity unaffected.");
+					Log.Verbose("<Network> DEBUG: Address changed but internet connectivity unaffected.");
 				}
 			}
 			catch (Exception ex)
