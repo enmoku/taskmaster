@@ -163,14 +163,12 @@ namespace Taskmaster
 			if (Taskmaster.Trace) Log.Verbose("<Tray> Initialized");
 		}
 
-		public void SessionEndingEvent(object sender, EventArgs ev)
+		public void SessionEndingEvent(object sender, Microsoft.Win32.SessionEndingEventArgs ev)
 		{
-			// queue exit
-			Log.Information("<Session:Ending> Exiting...");
-			BeginInvoke(new Action(() => {
-				Microsoft.Win32.SystemEvents.SessionEnding -= SessionEndingEvent;
-				Taskmaster.UnifiedExit();
-			}));
+			// is this safe?
+			Taskmaster.Components?.Dispose();
+			Taskmaster.Components = null;
+			Taskmaster.UnifiedExit();
 		}
 
 		bool registered = false;
