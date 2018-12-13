@@ -78,15 +78,11 @@ namespace Taskmaster
 			menu_configuration.DropDownItems.Add(new ToolStripSeparator());
 			menu_configuration.DropDownItems.Add(menu_configuration_folder);
 
-			menu_runatstart_reg = new ToolStripMenuItem("Run at start (RegRun)", null, RunAtStartMenuClick_Reg);
 			menu_runatstart_sch = new ToolStripMenuItem("Schedule at login (Admin)", null, RunAtStartMenuClick_Sch);
 
-			bool runatstartreg = RunAtStartRegRun(enabled: false, dryrun: true);
 			bool runatstartsch = RunAtStartScheduler(enabled: false, dryrun: true);
-			menu_runatstart_reg.Checked = runatstartreg;
 			menu_runatstart_sch.Checked = runatstartsch;
-			Log.Information("<Core> Run-at-start – Registry: {Enabled}, Scheduler: {Found}",
-				(runatstartreg ? "Enabled" : "Disabled"), (runatstartsch ? "Found" : "Missing"));
+			Log.Information("<Core> Run-at-start – Scheduler: " + (runatstartsch ? "Found" : "Missing"));
 
 			if (Taskmaster.PowerManagerEnabled)
 			{
@@ -116,7 +112,6 @@ namespace Taskmaster
 			ms.Items.Add(menu_rescan);
 			ms.Items.Add(new ToolStripSeparator());
 			ms.Items.Add(menu_configuration);
-			ms.Items.Add(menu_runatstart_reg);
 			ms.Items.Add(menu_runatstart_sch);
 			if (Taskmaster.PowerManagerEnabled)
 			{
@@ -652,8 +647,6 @@ namespace Taskmaster
 						if (rv == DialogResult.No) return;
 					}
 				}
-
-				menu_runatstart_reg.Checked = RunAtStartRegRun(!menu_runatstart_reg.Checked);
 			}
 			catch (Exception ex)
 			{
@@ -789,55 +782,6 @@ namespace Taskmaster
 			//if (toggled) Log.Debug("<Tray> Scheduled task toggled.");
 
 			return enabled;
-		}
-
-		bool RunAtStartRegRun(bool enabled, bool dryrun = false)
-		{
-			var runatstart_path = @"Software\Microsoft\Windows\CurrentVersion\Run";
-			var runatstart_key = "MKAh-Taskmaster";
-			string runatstart;
-			var runvalue = Environment.GetCommandLineArgs()[0] + " --bootdelay";
-			try
-			{
-				var key = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(runatstart_path, true);
-				if (key != null)
-				{
-					runatstart = (string)key.GetValue(runatstart_key, string.Empty);
-
-					if (dryrun)
-					{
-						bool rv = (runatstart.Equals(runvalue, StringComparison.InvariantCultureIgnoreCase));
-						return rv;
-					}
-
-					if (enabled)
-					{
-						if (runatstart.Equals(runvalue, StringComparison.InvariantCultureIgnoreCase))
-							return true;
-
-						key.SetValue(runatstart_key, runvalue);
-						Log.Information("Run at OS startup enabled: " + Environment.GetCommandLineArgs()[0]);
-						return true;
-					}
-					else if (!enabled)
-					{
-						//if (!runatstart.ToLowerInvariant().Equals(runvalue.ToLowerInvariant()))
-						//	return false;
-
-						key.DeleteValue(runatstart_key);
-						Log.Information("Run at OS startup disabled.");
-						// return false;
-					}
-				}
-				else
-					Log.Debug("Registry run at startup key not found.");
-			}
-			catch (Exception ex)
-			{
-				Logging.Stacktrace(ex);
-			}
-
-			return false;
 		}
 	}
 }
