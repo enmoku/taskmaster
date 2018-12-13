@@ -751,7 +751,9 @@ namespace Taskmaster
 			{
 				volume.Enabled = false;
 				volumeMethod.Enabled = false;
-
+			}
+			else
+			{
 				switch (Controller.VolumeStrategy)
 				{
 					case AudioVolumeStrategy.Increase:
