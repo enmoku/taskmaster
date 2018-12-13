@@ -281,8 +281,8 @@ namespace Taskmaster
 	public enum PathVisibilityOptions
 	{
 		File = 0,
-		Folder = 2,
-		Smart = 1,
+		Folder = 1,
+		Smart = 2,
 		Full = 3
 	}
 }
