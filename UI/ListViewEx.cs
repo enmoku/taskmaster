@@ -41,9 +41,12 @@ namespace Taskmaster.UI
 	{
 		public ListViewEx()
 		{
+			DoubleBuffered = true;
+
 			SetStyle(
 				ControlStyles.OptimizedDoubleBuffer | ControlStyles.AllPaintingInWmPaint | ControlStyles.EnableNotifyMessage,
 				true);
+			UpdateStyles();
 		}
 
 		protected override void OnNotifyMessage(Message m)

@@ -48,6 +48,7 @@ namespace Taskmaster.UI
 
 			SetStyle(ControlStyles.OptimizedDoubleBuffer | ControlStyles.AllPaintingInWmPaint, true);
 			//SetStyle(ControlStyles.CacheText, true); // performance
+			UpdateStyles();
 
 			Icon = System.Drawing.Icon.ExtractAssociatedIcon(System.Reflection.Assembly.GetExecutingAssembly().Location);
 
