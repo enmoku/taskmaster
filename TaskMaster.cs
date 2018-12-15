@@ -343,6 +343,8 @@ namespace Taskmaster
 			if (Taskmaster.Trace)
 				Log.Verbose("Displaying Tray Icon");
 			trayaccess?.RefreshVisibility();
+
+			Log.Information("<Core> Component loading finished. " + DisposalChute.Count + " initialized.");
 		}
 
 		public static bool ShowProcessAdjusts { get; set; } = true;
