@@ -111,7 +111,6 @@
   <ItemGroup>
     <Compile Include="ActiveAppManager.cs" />
     <Compile Include="AudioManager.cs" />
-    <Compile Include="ComponentContainer.cs" />
     <Compile Include="ConfigManager.cs" />
     <Compile Include="Extensions\NumericUpDownEx.cs">
       <SubType>Component</SubType>
