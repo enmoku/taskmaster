@@ -91,8 +91,8 @@ namespace Taskmaster
 
 		public static void ExitCleanup()
 		{
-			mainwindow.Enabled = false;
-			trayaccess.Enabled = false;
+			if (!mainwindow.IsDisposed) mainwindow.Enabled = false;
+			if (!trayaccess.IsDisposed) trayaccess.Enabled = false;
 
 			while (DisposalChute.Count > 0)
 				DisposalChute.Pop().Dispose();
