@@ -95,7 +95,16 @@ namespace Taskmaster
 			if (!trayaccess?.IsDisposed ?? false) trayaccess.Enabled = false;
 
 			while (DisposalChute.Count > 0)
-				DisposalChute.Pop().Dispose();
+			{
+				try
+				{
+					DisposalChute.Pop().Dispose();
+				}
+				catch (Exception ex)
+				{
+					Logging.Stacktrace(ex);
+				}
+			}
 		}
 
 		public static void UnifiedExit(bool restart = false)
