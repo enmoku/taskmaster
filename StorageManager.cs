@@ -66,6 +66,8 @@ namespace Taskmaster
 			onBurden += ReScanTemp;
 
 			if (Taskmaster.DebugStorage) Log.Information("<Maintenance> Component loaded.");
+
+			Taskmaster.DisposalChute.Push(this);
 		}
 
 		static long ReScanBurden = 0;

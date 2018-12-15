@@ -156,13 +156,14 @@ namespace Taskmaster
 			EnsureVisible();
 
 			if (Taskmaster.Trace) Log.Verbose("<Tray> Initialized");
+
+			Taskmaster.DisposalChute.Push(this);
 		}
 
 		public void SessionEndingEvent(object sender, Microsoft.Win32.SessionEndingEventArgs ev)
 		{
 			// is this safe?
-			Taskmaster.Components?.Dispose();
-			Taskmaster.Components = null;
+			Taskmaster.ExitCleanup();
 			Taskmaster.UnifiedExit();
 		}
 
@@ -210,7 +211,7 @@ namespace Taskmaster
 					{
 						try
 						{
-							int ignorepid = Taskmaster.Components.activeappmonitor?.Foreground ?? -1;
+							int ignorepid = Taskmaster.activeappmonitor?.Foreground ?? -1;
 							Log.Information("<Tray> Hotkey detected, freeing memory while ignoring foreground{Ign} if possible.",
 								ignorepid > 4 ? (" (#" + ignorepid + ")") : string.Empty);
 							await processmanager.FreeMemory(ignorepid).ConfigureAwait(false);

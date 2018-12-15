@@ -103,6 +103,8 @@ namespace Taskmaster
 
 				MonitorPower += MonitorPowerEvent;
 			}
+
+			Taskmaster.DisposalChute.Push(this);
 		}
 
 		CPUMonitor cpumonitor = null;
@@ -986,7 +988,7 @@ namespace Taskmaster
 					case PowerBehaviour.RuleBased:
 						break;
 					case PowerBehaviour.Manual:
-						Taskmaster.Components.processmanager.CancelPowerWait(); // need nicer way to do this
+						Taskmaster.processmanager.CancelPowerWait(); // need nicer way to do this
 						Release(-1);
 						break;
 				}

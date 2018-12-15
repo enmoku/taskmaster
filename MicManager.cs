@@ -177,6 +177,8 @@ namespace Taskmaster
 			Volume = Target;
 
 			if (Taskmaster.DebugMic) Log.Information("<Microphone> Component loaded.");
+
+			Taskmaster.DisposalChute.Push(this);
 		}
 
 		bool disposed; // false

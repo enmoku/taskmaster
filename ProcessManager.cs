@@ -174,6 +174,8 @@ namespace Taskmaster
 			ScanEverythingEndEvent += UnregisterFreeMemoryTick;
 
 			if (Taskmaster.DebugProcesses) Log.Information("<Process> Component Loaded.");
+
+			Taskmaster.DisposalChute.Push(this);
 		}
 
 		public ProcessController[] getWatchlist()
@@ -314,7 +316,7 @@ namespace Taskmaster
 
 		async Task FreeMemoryInternal(int ignorePid = -1)
 		{
-			var b1 = Taskmaster.Components.healthmonitor.FreeMemory();
+			var b1 = Taskmaster.healthmonitor.FreeMemory();
 
 			try
 			{
@@ -326,10 +328,10 @@ namespace Taskmaster
 				await ScanEverything(ignorePid).ConfigureAwait(false); // TODO: Call for this to happen otherwise
 				ScanEverythingPaused = false;
 
-				Taskmaster.Components.healthmonitor.InvalidateFreeMemory(); // just in case
+				Taskmaster.healthmonitor.InvalidateFreeMemory(); // just in case
 
 				// TODO: Wait a little longer to allow OS to Actually page stuff. Might not matter?
-				var b2 = Taskmaster.Components.healthmonitor.FreeMemory();
+				var b2 = Taskmaster.healthmonitor.FreeMemory();
 
 				Log.Information("<Memory> Paging complete, observed memory change: " +
 					HumanInterface.ByteString((long)((b2 - b1) * 1_000_000), true));
@@ -862,7 +864,7 @@ namespace Taskmaster
 			}
 
 			if (info.PowerWait)
-				Taskmaster.Components.powermanager.Release(info.Id);
+				Taskmaster.powermanager.Release(info.Id);
 
 			lock (waitforexit_lock)
 				WaitForExitList.Remove(info.Id);

@@ -127,6 +127,8 @@ namespace Taskmaster
 			*/
 
 			if (Taskmaster.DebugNet) Log.Information("<Network> Component loaded.");
+
+			Taskmaster.DisposalChute.Push(this);
 		}
 
 		public string GetDeviceData(string devicename)

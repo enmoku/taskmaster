@@ -230,7 +230,7 @@ namespace Taskmaster
 					foreach (int pid in PowerList.ToArray())
 					{
 						PowerList.Remove(pid);
-						Taskmaster.Components.powermanager?.Release(pid);
+						Taskmaster.powermanager?.Release(pid);
 					}
 				}
 			}
@@ -722,7 +722,7 @@ namespace Taskmaster
 			WaitingExit?.Invoke(this, ea);
 			Resumed?.Invoke(this, ea);
 
-			return Taskmaster.Components.powermanager.Force(PowerPlan, info.Id);
+			return Taskmaster.powermanager.Force(PowerPlan, info.Id);
 		}
 
 		void UndoPower(ProcessEx info)
@@ -730,7 +730,7 @@ namespace Taskmaster
 			lock (powerlist_lock)
 			{
 				PowerList.Remove(info.Id);
-				Taskmaster.Components.powermanager?.Release(info.Id);
+				Taskmaster.powermanager?.Release(info.Id);
 			}
 		}
 
@@ -874,7 +874,7 @@ namespace Taskmaster
 					return; // don't touch paused item
 				}
 
-				foreground = Taskmaster.Components.activeappmonitor?.Foreground.Equals(info.Id) ?? true;
+				foreground = Taskmaster.activeappmonitor?.Foreground.Equals(info.Id) ?? true;
 			}
 
 			info.PowerWait = (PowerPlan != PowerInfo.PowerMode.Undefined);

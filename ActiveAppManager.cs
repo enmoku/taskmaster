@@ -112,6 +112,8 @@ namespace Taskmaster
 			hungTimer.Start();
 
 			if (Taskmaster.DebugForeground) Log.Information("<Foreground> Component loaded.");
+
+			Taskmaster.DisposalChute.Push(this);
 		}
 
 		int Hysterisis = 500;
@@ -289,9 +291,9 @@ namespace Taskmaster
 						Reduced = false;
 						Minimized = false;
 
-						Taskmaster.Components.processmanager.Unignore(IgnoreHung);
+						Taskmaster.processmanager.Unignore(IgnoreHung);
 						IgnoreHung = pid;
-						Taskmaster.Components.processmanager.Ignore(IgnoreHung);
+						Taskmaster.processmanager.Ignore(IgnoreHung);
 
 					}
 
@@ -304,7 +306,7 @@ namespace Taskmaster
 			catch (ArgumentException) { } // NOP, already exited
 			catch (Exception ex)
 			{
-				Taskmaster.Components.processmanager.Unignore(IgnoreHung);
+				Taskmaster.processmanager.Unignore(IgnoreHung);
 
 				Logging.Stacktrace(ex);
 				return;
@@ -314,7 +316,7 @@ namespace Taskmaster
 				Atomic.Unlock(ref hangdetector_lock);
 			}
 
-			Taskmaster.Components.processmanager.Unignore(IgnoreHung);
+			Taskmaster.processmanager.Unignore(IgnoreHung);
 			IgnoreHung = -1;
 
 			HangTick = 0;

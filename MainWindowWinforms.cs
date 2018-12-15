@@ -2181,7 +2181,7 @@ namespace Taskmaster
 				{
 					if (exsel.ShowDialog(this) == DialogResult.OK)
 					{
-						await Taskmaster.Components.processmanager?.FreeMemory(exsel.Selection);
+						await Taskmaster.processmanager?.FreeMemory(exsel.Selection);
 					}
 				}
 			}
@@ -2268,8 +2268,8 @@ namespace Taskmaster
 				// bad place to do this, but eh..
 				if (Taskmaster.HealthMonitorEnabled)
 				{
-					ramload.Text = $"{Taskmaster.Components.healthmonitor.FreeMemory() / 1000:N2} of {Taskmaster.Components.healthmonitor.TotalMemory() / 1024:N1} GB free";
-						//vramload.Text = $"{Taskmaster.Components.healthmonitor.VRAM()} MB"; // this returns total, not free or used
+					ramload.Text = $"{Taskmaster.healthmonitor.FreeMemory() / 1000:N2} of {Taskmaster.healthmonitor.TotalMemory() / 1024:N1} GB free";
+						//vramload.Text = $"{Taskmaster.healthmonitor.VRAM()} MB"; // this returns total, not free or used
 				}
 			}));
 		}
@@ -2344,7 +2344,7 @@ namespace Taskmaster
 				if (oneitem)
 				{
 					var li = WatchlistRules.SelectedItems[0];
-					var prc = Taskmaster.Components.processmanager.getWatchedController(li.SubItems[NameColumn].Text);
+					var prc = Taskmaster.processmanager.getWatchedController(li.SubItems[NameColumn].Text);
 					if (prc != null)
 					{
 						watchlistenable.Enabled = true;
@@ -2367,7 +2367,7 @@ namespace Taskmaster
 					WatchlistRules.BeginUpdate();
 
 					var li = WatchlistRules.SelectedItems[0];
-					var prc = Taskmaster.Components.processmanager.getWatchedController(li.SubItems[NameColumn].Text);
+					var prc = Taskmaster.processmanager.getWatchedController(li.SubItems[NameColumn].Text);
 					if (prc != null)
 					{
 						watchlistenable.Enabled = true;
@@ -2396,7 +2396,7 @@ namespace Taskmaster
 				{
 					var li = WatchlistRules.SelectedItems[0];
 					var name = li.SubItems[NameColumn].Text;
-					var prc = Taskmaster.Components.processmanager.getWatchedController(name);
+					var prc = Taskmaster.processmanager.getWatchedController(name);
 
 					using (var editdialog = new WatchlistEditWindow(prc)) // 1 = executable
 					{
@@ -2443,7 +2443,7 @@ namespace Taskmaster
 				{
 					var li = WatchlistRules.SelectedItems[0];
 
-					var prc = Taskmaster.Components.processmanager.getWatchedController(li.SubItems[NameColumn].Text);
+					var prc = Taskmaster.processmanager.getWatchedController(li.SubItems[NameColumn].Text);
 					if (prc != null)
 					{
 						var rv = MessageBox.Show("Really remove '"+prc.FriendlyName+"'", "Remove watchlist item", MessageBoxButtons.YesNo, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button2);

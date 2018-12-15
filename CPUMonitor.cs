@@ -50,6 +50,8 @@ namespace Taskmaster
 			LoadConfig();
 
 			Start();
+
+			Taskmaster.DisposalChute.Push(this);
 		}
 
 		public void LoadConfig()

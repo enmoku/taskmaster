@@ -162,6 +162,8 @@ namespace Taskmaster
 			healthTimer.Start();
 
 			if (Taskmaster.DebugHealth) Log.Information("<Auto-Doc> Component loaded");
+
+			Taskmaster.DisposalChute.Push(this);
 		}
 
 		readonly System.Timers.Timer healthTimer = null;
@@ -398,12 +400,12 @@ namespace Taskmaster
 							// The following should just call something in ProcessManager
 							int ignorepid = -1;
 
-							if (Settings.MemIgnoreFocus && Taskmaster.Components.activeappmonitor != null)
+							if (Settings.MemIgnoreFocus && Taskmaster.activeappmonitor != null)
 							{
 								uint lastact = User.LastActive();
 								if (lastact != uint.MinValue && User.IdleFor(lastact) <= (60 * 60 * 3))
 								{
-									ignorepid = Taskmaster.Components.activeappmonitor.Foreground;
+									ignorepid = Taskmaster.activeappmonitor.Foreground;
 									Log.Verbose("<Auto-Doc> Protecting foreground app (#{Id})", ignorepid);
 								}
 							}
@@ -417,7 +419,7 @@ namespace Taskmaster
 
 							Log.Warning(sbs.ToString());
 
-							Taskmaster.Components.processmanager?.FreeMemory(null, quiet: true, ignorePid: ignorepid);
+							Taskmaster.processmanager?.FreeMemory(null, quiet: true, ignorePid: ignorepid);
 
 							// sampled too soon, OS has had no significant time to swap out data
 

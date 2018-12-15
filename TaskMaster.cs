@@ -46,7 +46,21 @@ namespace Taskmaster
 			Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "MKAh", "Taskmaster");
 
 		public static ConfigManager Config = null;
-		public static ComponentContainer Components = new ComponentContainer();
+
+		public static MicManager micmonitor = null;
+		public static MainWindow mainwindow = null;
+		public static ProcessManager processmanager = null;
+		public static TrayAccess trayaccess = null;
+		public static NetManager netmonitor = null;
+		public static StorageManager storagemanager = null;
+		public static PowerManager powermanager = null;
+		public static ActiveAppManager activeappmonitor = null;
+		public static HealthMonitor healthmonitor = null;
+		public static SelfMaintenance selfmaintenance = null;
+		public static AudioManager audiomanager = null;
+		public static CPUMonitor cpumonitor = null;
+
+		public static Stack<IDisposable> DisposalChute = new Stack<IDisposable>();
 
 		static Runstate State = Runstate.Normal;
 		static bool RestartElevated { get; set; } = false;
@@ -75,6 +89,16 @@ namespace Taskmaster
 			UnifiedExit(restart);
 		}
 
+		public static void ExitCleanup()
+		{
+			mainwindow.Enabled = false;
+			trayaccess.Enabled = false;
+
+			while (DisposalChute.Count > 0)
+				DisposalChute.Pop().Dispose();
+			DisposalChute = null;
+		}
+
 		public static void UnifiedExit(bool restart = false)
 		{
 			State = restart ? Runstate.Restart : Runstate.Exit;
@@ -91,7 +115,7 @@ namespace Taskmaster
 		{
 			try
 			{
-				Components.processmanager?.ScanEverythingRequest(null, null);
+				processmanager?.ScanEverythingRequest(null, null);
 			}
 			catch (Exception ex)
 			{
@@ -107,7 +131,7 @@ namespace Taskmaster
 			{
 				// Log.Debug("Bringing to front");
 				BuildMainWindow();
-				Components.mainwindow?.Reveal();
+				mainwindow?.Reveal();
 			}
 			catch (Exception ex)
 			{
@@ -123,65 +147,43 @@ namespace Taskmaster
 		{
 			lock (mainwindow_creation_lock)
 			{
-				if (Components.mainwindow != null) return;
-				if (Taskmaster.Trace) Console.WriteLine("Building MainWindow");
+				if (mainwindow != null) return;
 
-				Components.mainwindow = new MainWindow();
-				Components.mainwindow.FormClosed += (s, e) => { Components.mainwindow = null; };
+				mainwindow = new MainWindow();
+				mainwindow.FormClosed += (s, e) => { mainwindow = null; };
 
 				try
 				{
-					if (Components.storagemanager != null)
-					{
-						if (Taskmaster.Trace) Console.WriteLine("... hooking NVM manager");
-						Components.mainwindow.Hook(Components.storagemanager);
-					}
+					if (storagemanager != null)
+						mainwindow.Hook(storagemanager);
 
-					if (Components.processmanager != null)
-					{
-						if (Taskmaster.Trace) Console.WriteLine("... hooking PROC manager");
-						Components.mainwindow.Hook(Components.processmanager);
-					}
+					if (processmanager != null)
+						mainwindow.Hook(processmanager);
 
-					if (Components.micmonitor != null)
-					{
-						if (Taskmaster.Trace) Console.WriteLine("... hooking MIC monitor");
-						Components.mainwindow.Hook(Components.micmonitor);
-					}
+					if (micmonitor != null)
+						mainwindow.Hook(micmonitor);
 
-					if (Components.netmonitor != null)
-					{
-						if (Taskmaster.Trace) Console.WriteLine("... hooking NET monitor");
-						Components.mainwindow.Hook(Components.netmonitor);
-					}
+					if (netmonitor != null)
+						mainwindow.Hook(netmonitor);
 
-					if (Components.activeappmonitor != null)
-					{
-						if (Taskmaster.Trace) Console.WriteLine("... hooking APP manager");
-						Components.mainwindow.Hook(Components.activeappmonitor);
-					}
+					if (activeappmonitor != null)
+						mainwindow.Hook(activeappmonitor);
 
-					if (Components.powermanager != null)
-					{
-						if (Taskmaster.Trace) Console.WriteLine("... hooking POW manager");
-						Components.mainwindow.Hook(Components.powermanager);
-					}
+					if (powermanager != null)
+						mainwindow.Hook(powermanager);
 
-					if (Components.cpumonitor != null)
-					{
-						if (Taskmaster.Trace) Console.WriteLine("... hooking CPU monitor");
-						Components.mainwindow.Hook(Components.cpumonitor);
-					}
+					if (cpumonitor != null)
+						mainwindow.Hook(cpumonitor);
+
+					if (hardware != null)
+						mainwindow.Hook(hardware);
 				}
 				catch (Exception ex)
 				{
 					Logging.Stacktrace(ex);
 				}
 
-				if (Taskmaster.Trace) Console.WriteLine("... hooking to TRAY");
-				Components.trayaccess.Hook(Components.mainwindow);
-
-				if (Taskmaster.Trace) Console.WriteLine("MainWindow built");
+				trayaccess.Hook(mainwindow);
 			}
 		}
 
@@ -219,35 +221,34 @@ namespace Taskmaster
 			Log.Information("<Core> Loading components...");
 
 			bool tray = true;
-			bool aware = true;
 
 			// Parallel loading, cuts down startup time some.
 			// This is really bad if something fails
 			Task[] init =
 			{
-				PowerManagerEnabled ? (Task.Run(() => { Components.powermanager = new PowerManager(); })) : Task.CompletedTask,
-				PowerManagerEnabled ? (Task.Run(()=> { Components.cpumonitor = new CPUMonitor(); })) : Task.CompletedTask,
-				ProcessMonitorEnabled ? (Task.Run(() => { Components.processmanager = new ProcessManager(); })) : Task.CompletedTask,
-				(ActiveAppMonitorEnabled && ProcessMonitorEnabled) ? (Task.Run(()=> {Components.activeappmonitor = new ActiveAppManager(eventhook:false); })) : Task.CompletedTask,
-				NetworkMonitorEnabled ? (Task.Run(() => { Components.netmonitor = new NetManager(); })) : Task.CompletedTask,
-				MaintenanceMonitorEnabled ? (Task.Run(() => { Components.storagemanager = new StorageManager(); })) : Task.CompletedTask,
-				HealthMonitorEnabled ? (Task.Run(() => { Components.healthmonitor = new HealthMonitor(); })) : Task.CompletedTask,
+				PowerManagerEnabled ? (Task.Run(() => { powermanager = new PowerManager(); })) : Task.CompletedTask,
+				PowerManagerEnabled ? (Task.Run(()=> { cpumonitor = new CPUMonitor(); })) : Task.CompletedTask,
+				ProcessMonitorEnabled ? (Task.Run(() => { processmanager = new ProcessManager(); })) : Task.CompletedTask,
+				(ActiveAppMonitorEnabled && ProcessMonitorEnabled) ? (Task.Run(()=> {activeappmonitor = new ActiveAppManager(eventhook:false); })) : Task.CompletedTask,
+				NetworkMonitorEnabled ? (Task.Run(() => { netmonitor = new NetManager(); })) : Task.CompletedTask,
+				MaintenanceMonitorEnabled ? (Task.Run(() => { storagemanager = new StorageManager(); })) : Task.CompletedTask,
+				HealthMonitorEnabled ? (Task.Run(() => { healthmonitor = new HealthMonitor(); })) : Task.CompletedTask,
 			};
 
 			// MMDEV requires main thread
 			try
 			{
-				if (MicrophoneMonitorEnabled) Components.micmonitor = new MicManager();
+				if (MicrophoneMonitorEnabled) micmonitor = new MicManager();
 			}
 			catch (InitFailure)
 			{
-				Components.micmonitor = null;
+				micmonitor = null;
 			}
 
-			if (AudioManagerEnabled) Components.audiomanager = new AudioManager(); // EXPERIMENTAL
+			if (AudioManagerEnabled) audiomanager = new AudioManager(); // EXPERIMENTAL
 
 			// WinForms makes the following components not load nicely if not done here.
-			if (tray) Components.trayaccess = new TrayAccess();
+			if (tray) trayaccess = new TrayAccess();
 
 			Log.Information("<Core> Waiting for component loading.");
 
@@ -271,9 +272,9 @@ namespace Taskmaster
 
 			if (PowerManagerEnabled)
 			{
-				Components.trayaccess.Hook(Components.powermanager);
-				Components.powermanager.onBatteryResume += RestartRequest; // HACK
-				Components.powermanager.Hook(Components.cpumonitor);
+				trayaccess.Hook(powermanager);
+				powermanager.onBatteryResume += RestartRequest; // HACK
+				powermanager.Hook(cpumonitor);
 			}
 
 			if (ProcessMonitorEnabled && PowerManagerEnabled)
@@ -281,27 +282,27 @@ namespace Taskmaster
 
 			if (NetworkMonitorEnabled)
 			{
-				Components.netmonitor.SetupEventHooks();
-				Components.netmonitor.Tray = Components.trayaccess;
+				netmonitor.SetupEventHooks();
+				netmonitor.Tray = trayaccess;
 			}
 
-			if (Components.processmanager != null)
-				Components.trayaccess?.Hook(Components.processmanager);
+			if (processmanager != null)
+				trayaccess?.Hook(processmanager);
 
 			if (ActiveAppMonitorEnabled && ProcessMonitorEnabled)
 			{
-				Components.processmanager.Hook(Components.activeappmonitor);
-				Components.activeappmonitor.SetupEventHook();
+				processmanager.Hook(activeappmonitor);
+				activeappmonitor.SetupEventHook();
 			}
 
 			if (PowerManagerEnabled)
 			{
-				Components.powermanager.SetupEventHook();
+				powermanager.SetupEventHook();
 			}
 
 			if (GlobalHotkeys)
 			{
-				Components.trayaccess.RegisterGlobalHotkeys();
+				trayaccess.RegisterGlobalHotkeys();
 			}
 
 			// UI
@@ -309,7 +310,7 @@ namespace Taskmaster
 			if (ShowOnStart && State == Runstate.Normal)
 			{
 				BuildMainWindow();
-				Components.mainwindow?.Reveal();
+				mainwindow?.Reveal();
 			}
 
 			// Self-optimization
@@ -338,12 +339,12 @@ namespace Taskmaster
 					catch { Log.Warning("Failed to set self to background mode."); }
 				}
 
-				Components.selfmaintenance = new SelfMaintenance();
+				selfmaintenance = new SelfMaintenance();
 			}
 
 			if (Taskmaster.Trace)
 				Log.Verbose("Displaying Tray Icon");
-			Components.trayaccess?.RefreshVisibility();
+			trayaccess?.RefreshVisibility();
 		}
 
 		public static bool ShowProcessAdjusts { get; set; } = true;
@@ -1142,7 +1143,7 @@ namespace Taskmaster
 
 				// CLEANUP for exit
 
-				Components?.Dispose();
+				ExitCleanup();
 
 				Log.Information("WMI queries: " + $"{Statistics.WMIquerytime:N2}s [" + Statistics.WMIqueries + "]");
 				Log.Information("Self-maintenance: " + $"{Statistics.MaintenanceTime:N2}s [" + Statistics.MaintenanceCount + "]");
@@ -1158,8 +1159,9 @@ namespace Taskmaster
 
 				if (State == Runstate.Restart) // happens only on power resume (waking from hibernation) or when manually set
 				{
-					Utility.Dispose(ref Components);
-					Utility.Dispose(ref singleton);
+					ExitCleanup();
+
+					singleton?.Dispose();
 
 					Log.Information("Restarting...");
 					try
@@ -1210,21 +1212,24 @@ namespace Taskmaster
 			}
 			catch (OutOfMemoryException ex)
 			{
-				Components?.Dispose();
+				ExitCleanup();
+
 				Logging.Stacktrace(ex, crashsafe: true);
 
 				return 1; // should trigger finally block
 			}
 			catch (Exception ex)
 			{
-				Components?.Dispose();
+				ExitCleanup();
+
 				Logging.Stacktrace(ex, crashsafe: true);
 
 				return 1; // should trigger finally block
 			}
 			finally
 			{
-				Components?.Dispose();
+				ExitCleanup();
+
 				Config?.Dispose();
 				singleton?.Dispose();
 

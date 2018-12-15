@@ -54,12 +54,12 @@ namespace Taskmaster
 		ComboBox monitoroffmode = null;
 		CheckBox monitorofftoggle = null;
 
-		public PowerConfigWindow(ComponentContainer components)
+		public PowerConfigWindow()
 		{
 			Text = "Power Configuration";
 
-			var AutoAdjust = oldAutoAdjust = components.powermanager.AutoAdjust;
-			power = components.powermanager;
+			var AutoAdjust = oldAutoAdjust = Taskmaster.powermanager.AutoAdjust;
+			power = Taskmaster.powermanager;
 
 			FormBorderStyle = FormBorderStyle.FixedDialog;
 
@@ -221,7 +221,7 @@ namespace Taskmaster
 			layout.Controls.Add(new Label()); // empty
 
 			layout.Controls.Add(new Label() { Text = "Sample frequency (sec)", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Fill });
-			layout.Controls.Add(new Label() { Text = Taskmaster.Components.cpumonitor.SampleInterval.ToString(), TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Fill });
+			layout.Controls.Add(new Label() { Text = Taskmaster.cpumonitor.SampleInterval.ToString(), TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Fill });
 
 			layout.Controls.Add(new Label() { Text = "Default mode", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Fill });
 			layout.Controls.Add(defaultmode);
@@ -529,8 +529,8 @@ namespace Taskmaster
 				try
 				{
 					// this is really horrifying mess
-					var power = Taskmaster.Components.powermanager;
-					using (pcw = new PowerConfigWindow(Taskmaster.Components))
+					var power = Taskmaster.powermanager;
+					using (pcw = new PowerConfigWindow())
 					{
 						var res = pcw.ShowDialog();
 						if (pcw.DialogResult == DialogResult.OK)

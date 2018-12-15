@@ -70,6 +70,8 @@ namespace Taskmaster
 
 			}
 			*/
+
+			Taskmaster.DisposalChute.Push(this);
 		}
 
 		private void OnSessionCreated(object sender, NAudio.CoreAudioApi.Interfaces.IAudioSessionControl asession)
@@ -89,8 +91,8 @@ namespace Taskmaster
 				if (info != null)
 				{
 					//OnNewSession?.Invoke(this, info);
-					var prc = Taskmaster.Components.processmanager.getController(info.Name);
-					if (prc == null && !string.IsNullOrEmpty(info.Path)) prc = Taskmaster.Components.processmanager.getWatchedPath(info);
+					var prc = Taskmaster.processmanager.getController(info.Name);
+					if (prc == null && !string.IsNullOrEmpty(info.Path)) prc = Taskmaster.processmanager.getWatchedPath(info);
 					if (prc != null)
 					{
 						bool volAdjusted = false;
