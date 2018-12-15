@@ -595,7 +595,12 @@ namespace Taskmaster
 		public void RefreshVisibility()
 		{
 			Tray.Visible = false;
+			ms.Visible = false;
+
 			Tray.Visible = true;
+			ms.Visible = true;
+
+			Enable();
 		}
 
 		int ensuringvisibility = 0;
@@ -605,7 +610,7 @@ namespace Taskmaster
 
 			try
 			{
-				Enable();
+				RefreshVisibility();
 
 				int attempts = 0;
 				while (!Tray.Visible)
