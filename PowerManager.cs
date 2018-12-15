@@ -964,8 +964,8 @@ namespace Taskmaster
 
 		public PowerBehaviour SetBehaviour(PowerBehaviour pb)
 		{
-			Debug.Assert(pb == Behaviour);
-			if (pb == Behaviour) return Behaviour;
+			//Debug.Assert(pb == Behaviour);
+			if (pb == Behaviour) return Behaviour; // rare instance, likely caused by toggling manual mode
 
 			bool reset = false;
 			lock (autoadjust_lock)
@@ -994,7 +994,7 @@ namespace Taskmaster
 				}
 			}
 
-			if (reset) return SetBehaviour(PowerBehaviour.RuleBased);
+			if (reset) Behaviour = PowerBehaviour.RuleBased;
 
 			onBehaviourChange?.Invoke(this, new PowerBehaviourEventArgs { Behaviour = Behaviour });
 
