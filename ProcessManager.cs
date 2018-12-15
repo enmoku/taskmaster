@@ -235,6 +235,13 @@ namespace Taskmaster
 			activeappmonitor.ActiveChanged += ForegroundAppChangedEvent;
 		}
 
+		PowerManager powermanager = null;
+		public void Hook(PowerManager power)
+		{
+			powermanager = power;
+			powermanager.onBehaviourChange += PowerBehaviourEvent;
+		}
+
 		void UnregisterFreeMemoryTick(object sender, EventArgs ev) => ProcessDetectedEvent -= FreeMemoryTick;
 
 		string freememoryignore = null;
@@ -1793,6 +1800,12 @@ namespace Taskmaster
 
 				CancelPowerWait();
 				WaitForExitList.Clear();
+
+				if (powermanager != null)
+				{
+					powermanager.onBehaviourChange -= PowerBehaviourEvent;
+					powermanager = null;
+				}
 
 				try
 				{

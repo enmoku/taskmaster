@@ -277,9 +277,6 @@ namespace Taskmaster
 				powermanager.Hook(cpumonitor);
 			}
 
-			if (ProcessMonitorEnabled && PowerManagerEnabled)
-				Components.powermanager.onBehaviourChange += Components.processmanager.PowerBehaviourEvent;
-
 			if (NetworkMonitorEnabled)
 			{
 				netmonitor.SetupEventHooks();
@@ -298,6 +295,7 @@ namespace Taskmaster
 			if (PowerManagerEnabled)
 			{
 				powermanager.SetupEventHook();
+				processmanager.Hook(powermanager);
 			}
 
 			if (GlobalHotkeys)
