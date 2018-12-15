@@ -91,12 +91,11 @@ namespace Taskmaster
 
 		public static void ExitCleanup()
 		{
-			if (!mainwindow.IsDisposed) mainwindow.Enabled = false;
-			if (!trayaccess.IsDisposed) trayaccess.Enabled = false;
+			if (!mainwindow?.IsDisposed ?? false) mainwindow.Enabled = false;
+			if (!trayaccess?.IsDisposed ?? false) trayaccess.Enabled = false;
 
 			while (DisposalChute.Count > 0)
 				DisposalChute.Pop().Dispose();
-			DisposalChute = null;
 		}
 
 		public static void UnifiedExit(bool restart = false)
