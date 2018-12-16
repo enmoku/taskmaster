@@ -801,8 +801,18 @@ namespace Taskmaster
 							if (Taskmaster.DebugSession || Taskmaster.ShowSessionActions || Taskmaster.DebugPower)
 								Log.Information("<Session:Unlock> Restoring normal power.");
 
+							Behaviour = LaunchBehaviour;
+
 							if (CurrentMode == SessionLockPowerMode)
-								InternalSetMode(RestoreMode, verbose: true);
+							{
+								PowerMode mode = RestoreMode;
+								if (mode == PowerMode.Undefined && SavedMode != PowerMode.Undefined)
+									mode = SavedMode;
+								else
+									mode = PowerMode.Balanced;
+
+								InternalSetMode(mode, verbose: true);
+							}
 
 							Paused = false;
 						}
