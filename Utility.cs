@@ -30,38 +30,6 @@ using System.Runtime.CompilerServices;
 
 namespace Taskmaster
 {
-	/// <summary>
-	/// Simplified wrappers for System.Threading.Interlocked stuff.
-	/// </summary>
-	public static class Atomic
-	{
-		/// <summary>
-		/// Lock the specified lockvalue.
-		/// Performs simple check and set swap of 0 and 1.
-		/// 0 is unlocked, 1 is locked.
-		/// Simplifies basic use of System.Threading.Interlocked.CompareExchange
-		/// </summary>
-		/// <returns>If lock was successfully acquired.</returns>
-		/// <param name="lockvalue">Variable used as the lock.</param>
-		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		public static bool Lock(ref int lockvalue)
-		{
-			Debug.Assert(lockvalue == 0 || lockvalue == 1);
-			return (System.Threading.Interlocked.CompareExchange(ref lockvalue, 1, 0) == 0);
-		}
-
-		/// <summary>
-		/// Release the lock.
-		/// </summary>
-		/// <param name="lockvalue">Variable used as the lock.</param>
-		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		public static void Unlock(ref int lockvalue)
-		{
-			Debug.Assert(lockvalue != 0);
-			lockvalue = 0;
-		}
-	}
-
 	public enum Trinary
 	{
 		False = 0,
@@ -162,50 +130,6 @@ namespace Taskmaster
 		}
 	}
 
-	public static class Bit
-	{
-		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		public static int Set(int dec, int index) => Or(dec, (1 << index));
-
-		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		public static bool IsSet(int dec, int index) => And(dec, (1 << index)) != 0;
-
-		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		public static int Unset(int dec, int index) => And(dec, ~(1 << index));
-
-		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		public static int Or(int dec1, int dec2) => dec1 | dec2;
-
-		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		public static int And(int dec1, int dec2) => dec1 & dec2;
-
-		public static int Count(int i)
-		{
-			i = i - ((i >> 1) & 0x55555555);
-			i = (i & 0x33333333) + ((i >> 2) & 0x33333333);
-			return (((i + (i >> 4)) & 0x0F0F0F0F) * 0x01010101) >> 24;
-		}
-
-		public static int Fill(int num, int mask, int maxbits)
-		{
-			var bits = Count(num);
-
-			for (int i = 0; i < 32; i++)
-			{
-				if (IsSet(mask, i))
-				{
-					if (!IsSet(num, i))
-					{
-						num = Set(num, i);
-						bits++;
-					}
-				}
-			}
-
-			return num;
-		}
-	}
-
 	public static class Logging
 	{
 		public static void Log(string text, [CallerFilePath] string file = "", [CallerMemberName] string member = "", [CallerLineNumber] int line = 0)
@@ -263,36 +187,6 @@ namespace Taskmaster
 					throw; // nothing to be done, we're already crashing and burning by this point
 				}
 			}
-		}
-	}
-
-	public static class User
-	{
-		/// <summary>
-		/// Pass this to IdleFor(uint).
-		/// </summary>
-		/// <returns>Ticks since boot.</returns>
-		public static uint LastActive()
-		{
-			var info = new NativeMethods.LASTINPUTINFO();
-			info.cbSize = (uint)System.Runtime.InteropServices.Marshal.SizeOf(info);
-			info.dwTime = 0;
-			bool rv = NativeMethods.GetLastInputInfo(ref info);
-			if (rv) return info.dwTime;
-
-			return uint.MinValue;
-		}
-
-		/// <summary>
-		/// Should be called in same thread as LastActive. Odd behaviour expected if the code runs on different core.
-		/// </summary>
-		/// <param name="lastActive">Last active time, as returned by LastActive</param>
-		/// <returns>Seconds for how long user has been idle</returns>
-		public static double IdleFor(uint lastActive)
-		{
-			double eticks = Convert.ToDouble(Environment.TickCount);
-			double uticks = Convert.ToDouble(lastActive);
-			return (eticks - uticks) / 1000f;
 		}
 	}
 }

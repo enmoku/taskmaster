@@ -28,6 +28,7 @@ using System;
 using System.Collections.Generic;
 using System.Management;
 using System.Threading.Tasks;
+using MKAh;
 using Serilog;
 
 namespace Taskmaster
@@ -403,7 +404,7 @@ namespace Taskmaster
 							if (Settings.MemIgnoreFocus && Taskmaster.activeappmonitor != null)
 							{
 								uint lastact = User.LastActive();
-								if (lastact != uint.MinValue && User.IdleFor(lastact) <= (60 * 60 * 3))
+								if (lastact != uint.MinValue && User.TicksToSeconds(lastact) <= (60 * 60 * 3))
 								{
 									ignorepid = Taskmaster.activeappmonitor.Foreground;
 									Log.Verbose("<Auto-Doc> Protecting foreground app (#{Id})", ignorepid);

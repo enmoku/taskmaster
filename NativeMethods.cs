@@ -198,20 +198,6 @@ namespace Taskmaster
 		[DllImport("user32.dll")] // SetLastError = true
 		public static extern bool MoveWindow(IntPtr hWnd, int X, int Y, int nWidth, int nHeight, bool bRepaint);
 
-		[DllImport("user32.dll")]
-		public static extern bool GetLastInputInfo(ref LASTINPUTINFO plii);
-
-		[StructLayout(LayoutKind.Sequential)]
-		public struct LASTINPUTINFO
-		{
-			public static readonly int SizeOf = Marshal.SizeOf(typeof(LASTINPUTINFO));
-
-			[MarshalAs(UnmanagedType.U4)]
-			public UInt32 cbSize;
-			[MarshalAs(UnmanagedType.U4)]
-			public UInt32 dwTime;
-		}
-
 		[System.Runtime.InteropServices.DllImport("user32.dll")]
 		public static extern bool RegisterHotKey(IntPtr hWnd, int id, int fsModifiers, int vk);
 		[System.Runtime.InteropServices.DllImport("user32.dll")]

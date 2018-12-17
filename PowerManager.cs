@@ -32,6 +32,7 @@ using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using Microsoft.Win32;
+using MKAh;
 using Serilog;
 using Taskmaster.PowerInfo;
 
@@ -123,7 +124,7 @@ namespace Taskmaster
 			if (Taskmaster.DebugMonitor)
 			{
 				uint lastact = User.LastActive();
-				double idle = User.IdleFor(lastact);
+				double idle = User.TicksToSeconds(lastact);
 				if (lastact == uint.MinValue) idle = 0; // HACK
 
 				Log.Debug("<Monitor> Power state: " + CurrentMonitorState.ToString() + " (last user activity " + Convert.ToInt32(idle) + "s ago)");
@@ -153,7 +154,7 @@ namespace Taskmaster
 				if (!SessionLocked) return;
 
 				uint lastact = User.LastActive();
-				double idletime = User.IdleFor(lastact);
+				double idletime = User.TicksToSeconds(lastact);
 				if (lastact == uint.MinValue) idletime = 0; // HACK
 
 				if (idletime >= Convert.ToDouble(SessionLockPowerOffIdleTimeout))

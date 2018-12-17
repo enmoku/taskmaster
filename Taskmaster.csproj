@@ -142,6 +142,11 @@
     <Compile Include="UI\UniForm.cs">
       <SubType>Form</SubType>
     </Compile>
+    <Compile Include="Utility\AtomicLock.cs" />
+    <Compile Include="Utility\BitOperations.cs" />
+    <Compile Include="Utility\DiscardException.cs" />
+    <Compile Include="Utility\LogAndDiscardException.cs" />
+    <Compile Include="Utility\UserActivity.cs" />
     <Compile Include="WatchlistEditWindow.cs">
       <SubType>Form</SubType>
     </Compile>
