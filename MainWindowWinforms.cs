@@ -727,7 +727,6 @@ namespace Taskmaster
 		int PathColumn = 7;
 
 		TabPage micTab = null;
-		TabPage netTab = null;
 		TabPage powerDebugTab = null;
 		bool ProcessDebugTab_visible = false;
 		TabPage ProcessDebugTab = null;
@@ -1285,9 +1284,6 @@ namespace Taskmaster
 			micTab = new TabPage("Microphone");
 			if (Taskmaster.MicrophoneMonitorEnabled)
 				tabLayout.Controls.Add(micTab);
-			netTab = new TabPage("Network");
-			if (Taskmaster.NetworkMonitorEnabled)
-				tabLayout.Controls.Add(netTab);
 			powerDebugTab = new TabPage("Power Debug");
 			if (Taskmaster.DebugPower)
 				tabLayout.Controls.Add(powerDebugTab);
@@ -1446,45 +1442,93 @@ namespace Taskmaster
 			// End: Microphone enumeration
 
 			// Main Window row 4-5, internet status
-			var netlayout = new TableLayoutPanel
+			TableLayoutPanel netlayout = null;
+			if (Taskmaster.NetworkMonitorEnabled)
 			{
-				Dock = DockStyle.Fill,
-				AutoSize = true,
-			};
+				netlayout = new TableLayoutPanel
+				{
+					Dock = DockStyle.Fill,
+					AutoSize = true,
+				};
 
-			netstatuslabel = new Label() { Dock = DockStyle.Left, Text = "Uninitialized", AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft };
-			inetstatuslabel = new Label() { Dock = DockStyle.Left, Text = "Uninitialized", AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft };
-			uptimeAvgLabel = new Label() { Dock = DockStyle.Left, Text = "Uninitialized", AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft };
-			uptimestatuslabel = new Label
-			{
-				Dock = DockStyle.Left,
-				Text = "Uninitialized",
-				AutoSize = true,
-				TextAlign = System.Drawing.ContentAlignment.MiddleLeft
-			};
+				netstatuslabel = new Label() { Dock = DockStyle.Left, Text = uninitialized, AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft };
+				inetstatuslabel = new Label() { Dock = DockStyle.Left, Text = uninitialized, AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft };
+				uptimeAvgLabel = new Label() { Dock = DockStyle.Left, Text = uninitialized, AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft };
+				uptimestatuslabel = new Label
+				{
+					Dock = DockStyle.Left,
+					Text = uninitialized,
+					AutoSize = true,
+					TextAlign = System.Drawing.ContentAlignment.MiddleLeft
+				};
 
-			var netstatus = new TableLayoutPanel
-			{
-				ColumnCount = 6,
-				RowCount = 1,
-				Dock = DockStyle.Fill,
-				AutoSize = true
-			};
-			netstatus.Controls.Add(new Label() { Text = "Network status:", Dock = DockStyle.Left, AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft });
-			netstatus.Controls.Add(netstatuslabel);
-			netstatus.Controls.Add(new Label() { Text = "Internet status:", Dock = DockStyle.Left, AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft });
-			netstatus.Controls.Add(inetstatuslabel);
-			netstatus.Controls.Add(new Label() { Text = "Uptime:", Dock = DockStyle.Left, AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft });
-			netstatus.Controls.Add(uptimestatuslabel);
+				var netstatus = new TableLayoutPanel
+				{
+					ColumnCount = 4,
+					RowCount = 1,
+					Dock = DockStyle.Fill,
+					AutoSize = true
+				};
+				netstatus.Controls.Add(new Label() { Text = "Network:", Dock = DockStyle.Left, AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft });
+				netstatus.Controls.Add(netstatuslabel);
 
-			netstatus.Controls.Add(
-				new Label { Text = "Average:", Dock = DockStyle.Left, AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft },
-				4, 1);
-			netstatus.Controls.Add(uptimeAvgLabel, 5, 1);
+				netstatus.Controls.Add(new Label() { Text = "Uptime:", Dock = DockStyle.Left, AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft });
+				netstatus.Controls.Add(uptimestatuslabel);
+
+				netstatus.Controls.Add(new Label() { Text = "Internet:", Dock = DockStyle.Left, AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft });
+				netstatus.Controls.Add(inetstatuslabel);
+
+				netstatus.Controls.Add(	new Label {Text = "Average:", Dock = DockStyle.Left, AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft });
+				netstatus.Controls.Add(uptimeAvgLabel);
+
+				ifaceList = new ListView
+				{
+					Dock = DockStyle.Top,
+					AutoSize = true,
+					//Width = tabLayout.Width - 3, // FIXME: why does 3 work? can't we do this automatically?
+					Height = 80,
+					View = View.Details,
+					FullRowSelect = true
+				};
+				ifacems = new ContextMenuStrip();
+				ifacems.Opened += InterfaceContextMenuOpen;
+				var ifaceip4copy = new ToolStripMenuItem("Copy IPv4 address", null, CopyIPv4AddressToClipboard);
+				var ifaceip6copy = new ToolStripMenuItem("Copy IPv6 address", null, CopyIPv6AddressToClipboard);
+				var ifacecopy = new ToolStripMenuItem("Copy full information", null, CopyIfaceToClipboard);
+				ifacems.Items.Add(ifaceip4copy);
+				ifacems.Items.Add(ifaceip6copy);
+				ifacems.Items.Add(ifacecopy);
+				ifaceList.ContextMenuStrip = ifacems;
+
+				ifaceList.Columns.Add("Device", ifacewidths[0]); // 0
+				ifaceList.Columns.Add("Type", ifacewidths[1]); // 1
+				ifaceList.Columns.Add("Status", ifacewidths[2]); // 2
+				ifaceList.Columns.Add("Link speed", ifacewidths[3]); // 3
+				ifaceList.Columns.Add("IPv4", ifacewidths[4]); // 4
+				ifaceList.Columns.Add("IPv6", ifacewidths[5]); // 5
+				ifaceList.Columns.Add("Packet Δ", ifacewidths[6]); // 6
+				ifaceList.Columns.Add("Error Δ", ifacewidths[7]); // 7
+				ifaceList.Columns.Add("Errors", ifacewidths[8]); // 8
+				PacketDeltaColumn = 6;
+				ErrorDeltaColumn = 7;
+				ErrorTotalColumn = 8;
+
+				ifaceList.Scrollable = true;
+
+				IPv4Column = 4;
+				IPv6Column = 5;
+
+				netlayout.Controls.Add(netstatus);
+				netlayout.RowStyles.Add(new RowStyle(SizeType.AutoSize, 32)); // why?
+				netlayout.Controls.Add(ifaceList);
+
+				//netTab.Controls.Add(netlayout);
+			}
+			// End: Inet status
 
 			GotFocus += UpdateUptime;
-
 			GotFocus += StartUIUpdates;
+
 			FormClosing += StopUIUpdates;
 			VisibleChanged += (sender, e) =>
 			{
@@ -1510,50 +1554,6 @@ namespace Taskmaster
 			{
 				if (Taskmaster.DebugCache) UItimer.Tick += PathCacheUpdate;
 			}
-
-			ifaceList = new ListView
-			{
-				Dock = DockStyle.Top,
-				AutoSize = true,
-				//Width = tabLayout.Width - 3, // FIXME: why does 3 work? can't we do this automatically?
-				Height = 180,
-				View = View.Details,
-				FullRowSelect = true
-			};
-			ifacems = new ContextMenuStrip();
-			ifacems.Opened += InterfaceContextMenuOpen;
-			var ifaceip4copy = new ToolStripMenuItem("Copy IPv4 address", null, CopyIPv4AddressToClipboard);
-			var ifaceip6copy = new ToolStripMenuItem("Copy IPv6 address", null, CopyIPv6AddressToClipboard);
-			var ifacecopy = new ToolStripMenuItem("Copy full information", null, CopyIfaceToClipboard);
-			ifacems.Items.Add(ifaceip4copy);
-			ifacems.Items.Add(ifaceip6copy);
-			ifacems.Items.Add(ifacecopy);
-			ifaceList.ContextMenuStrip = ifacems;
-
-			ifaceList.Columns.Add("Device", ifacewidths[0]); // 0
-			ifaceList.Columns.Add("Type", ifacewidths[1]); // 1
-			ifaceList.Columns.Add("Status", ifacewidths[2]); // 2
-			ifaceList.Columns.Add("Link speed", ifacewidths[3]); // 3
-			ifaceList.Columns.Add("IPv4", ifacewidths[4]); // 4
-			ifaceList.Columns.Add("IPv6", ifacewidths[5]); // 5
-			ifaceList.Columns.Add("Packet Δ", ifacewidths[6]); // 6
-			ifaceList.Columns.Add("Error Δ", ifacewidths[7]); // 7
-			ifaceList.Columns.Add("Errors", ifacewidths[8]); // 8
-			PacketDeltaColumn = 6;
-			ErrorDeltaColumn = 7;
-			ErrorTotalColumn = 8;
-
-			ifaceList.Scrollable = true;
-
-			IPv4Column = 4;
-			IPv6Column = 5;
-
-			netlayout.Controls.Add(netstatus);
-			netlayout.RowStyles.Add(new RowStyle(SizeType.AutoSize, 32)); // why?
-			netlayout.Controls.Add(ifaceList);
-
-			netTab.Controls.Add(netlayout);
-			// End: Inet status
 
 			// End: Settings
 
@@ -1865,6 +1865,7 @@ namespace Taskmaster
 			if (cachePanel != null) infopanel.Controls.Add(cachePanel);
 			if (tempmonitorpanel != null) infopanel.Controls.Add(tempmonitorpanel);
 			if (lastmodifypanel != null) infopanel.Controls.Add(lastmodifypanel);
+			if (netlayout != null) infopanel.Controls.Add(netlayout);
 
 			infoTab.Controls.Add(infopanel);
 
@@ -2741,6 +2742,9 @@ namespace Taskmaster
 
 		System.Drawing.Color inetBgColor = System.Drawing.Color.Red;
 
+		const string uninitialized = "Uninitialized";
+		string ConnectedText(bool connected) => connected ? "Connected" : "Disconnected";
+
 		object netstatus_lock = new object();
 
 		void InetStatusLabel(bool available)
@@ -2748,7 +2752,7 @@ namespace Taskmaster
 			if (!IsHandleCreated) return;
 			BeginInvoke(new Action(() =>
 			{
-				inetstatuslabel.Text = available ? "Connected" : "Disconnected";
+				inetstatuslabel.Text = ConnectedText(available);
 				// inetstatuslabel.BackColor = available ? System.Drawing.Color.LightGoldenrodYellow : System.Drawing.Color.Red;
 				inetstatuslabel.BackColor = available ? System.Drawing.SystemColors.Menu : System.Drawing.Color.Red;
 			}));
@@ -2769,7 +2773,7 @@ namespace Taskmaster
 			if (!IsHandleCreated) return;
 			BeginInvoke(new Action(() =>
 			{
-				netstatuslabel.Text = available ? "Up" : "Down";
+				netstatuslabel.Text = ConnectedText(available);
 				// netstatuslabel.BackColor = available ? System.Drawing.Color.LightGoldenrodYellow : System.Drawing.Color.Red;
 				netstatuslabel.BackColor = available ? System.Drawing.SystemColors.Menu : System.Drawing.Color.Red;
 			}));
