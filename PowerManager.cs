@@ -200,7 +200,7 @@ namespace Taskmaster
 			NativeMethods.RegisterPowerSettingNotification(
 				Handle, ref GUID_CONSOLE_DISPLAY_STATE, NativeMethods.DEVICE_NOTIFY_WINDOW_HANDLE);
 
-			SystemEvents.SessionSwitch += SessionLockEvent;
+			SystemEvents.SessionSwitch += SessionLockEvent; // BUG: this is wrong, TM should pause to not interfere with other users
 		}
 
 		/// <summary>
@@ -475,7 +475,7 @@ namespace Taskmaster
 			dirtyconfig |= modified;
 
 			var restoremode = power.GetSetDefault("Restore mode", "Default", out modified).StringValue;
-			power["Restore mode"].Comment = "Default, Original, Saved, or specific power mode.";
+			power["Restore mode"].Comment = "Default, Original, Saved, or specific power mode. Power mode to restore with rule-based behaviour.";
 			dirtyconfig |= modified;
 			RestoreModeMethod newmodemethod = RestoreModeMethod.Default;
 			PowerMode newrestoremode = PowerMode.Undefined;
@@ -802,6 +802,7 @@ namespace Taskmaster
 							if (Taskmaster.DebugSession || Taskmaster.ShowSessionActions || Taskmaster.DebugPower)
 								Log.Information("<Session:Unlock> Restoring normal power.");
 
+							// TODO: Add configuration for this
 							Behaviour = LaunchBehaviour;
 
 							if (CurrentMode == SessionLockPowerMode)
