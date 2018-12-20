@@ -767,8 +767,6 @@ namespace Taskmaster
 					prc.Resize = new System.Drawing.Rectangle(resize[0], resize[1], resize[2], resize[3]);
 				}
 
-				if (upgrade) prc.SaveConfig(appcfg, section);
-
 				AddController(prc);
 
 				// cnt.Children &= ControlChildren;
