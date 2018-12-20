@@ -546,7 +546,7 @@ namespace Taskmaster
 			BatchProcessing = coreperf.GetSetDefault("Batch processing", false, out modified).BoolValue;
 			coreperf["Batch processing"].Comment = "Process management works in delayed batches instead of immediately.";
 			dirtyconfig |= modified;
-			Log.Information("<Process> Batch processing: " + (BatchProcessing ? "Enabled" : "Disabled"));
+			Log.Information("<Process> Batch processing: " + (BatchProcessing ? HumanReadable.Generic.Enabled : HumanReadable.Generic.Disabled));
 			if (BatchProcessing)
 			{
 				BatchDelay = coreperf.GetSetDefault("Batch processing delay", 2500, out modified).IntValue.Constrain(500, 15000);
@@ -657,7 +657,7 @@ namespace Taskmaster
 					continue;
 				}
 
-				if (!section.Contains("Priority") && !section.Contains("Affinity") && !section.Contains("Power mode"))
+				if (!section.Contains(HumanReadable.System.Process.Priority) && !section.Contains("Affinity") && !section.Contains("Power mode"))
 				{
 					// TODO: Deal with incorrect configuration lacking these things
 					Log.Warning("[" + section.Name + "] No priority, affinity, nor power plan. Ignoring.");
@@ -673,7 +673,7 @@ namespace Taskmaster
 					//		Shift bits to allowed range. Assume at least one core must be assigned, and in case of holes at least one core must be unassigned.
 					aff = -1; // ignore
 				}
-				var prio = section.TryGet("Priority")?.IntValue ?? -1;
+				var prio = section.TryGet(HumanReadable.System.Process.Priority)?.IntValue ?? -1;
 				ProcessPriorityClass? prioR = null;
 				if (prio >= 0) prioR = ProcessHelpers.IntToPriority(prio);
 				var pmodes = section.TryGet("Power mode")?.StringValue ?? null;
@@ -687,7 +687,7 @@ namespace Taskmaster
 				ProcessPriorityStrategy priostrat = ProcessPriorityStrategy.None;
 				if (prioR != null)
 				{
-					var priorityStrat = section.TryGet("Priority strategy")?.IntValue.Constrain(0, 3) ?? -1;
+					var priorityStrat = section.TryGet(HumanReadable.System.Process.PriorityStrategy)?.IntValue.Constrain(0, 3) ?? -1;
 
 					if (priorityStrat > 0)
 						priostrat = (ProcessPriorityStrategy)priorityStrat;
@@ -736,7 +736,7 @@ namespace Taskmaster
 
 				var prc = new ProcessController(section.Name, prioR, (aff == 0 ? AllCPUsMask : aff))
 				{
-					Enabled = section.TryGet("Enabled")?.BoolValue ?? true,
+					Enabled = section.TryGet(HumanReadable.Generic.Enabled)?.BoolValue ?? true,
 					Executable = section.TryGet("Image")?.StringValue ?? null,
 					Description = section.TryGet("Description")?.StringValue ?? null,
 					// friendly name is filled automatically

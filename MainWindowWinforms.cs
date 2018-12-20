@@ -1603,7 +1603,7 @@ namespace Taskmaster
 
 			watchlistms = new ContextMenuStrip();
 			watchlistms.Opened += WatchlistContextMenuOpen;
-			watchlistenable = new ToolStripMenuItem("Enabled", null, EnableWatchlistRule);
+			watchlistenable = new ToolStripMenuItem(HumanReadable.Generic.Enabled, null, EnableWatchlistRule);
 			var watchlistedit = new ToolStripMenuItem("Edit", null, EditWatchlistRule);
 			var watchlistadd = new ToolStripMenuItem("Create new", null, AddWatchlistRule);
 			var watchlistdel = new ToolStripMenuItem("Remove", null, DeleteWatchlistRule);
@@ -1622,8 +1622,8 @@ namespace Taskmaster
 			WatchlistRules.Columns.Add("#", appwidths[0]);
 			WatchlistRules.Columns.Add("Name", appwidths[1]);
 			WatchlistRules.Columns.Add("Executable", appwidths[2]);
-			WatchlistRules.Columns.Add("Priority", appwidths[3]);
-			WatchlistRules.Columns.Add("Affinity", appwidths[4]);
+			WatchlistRules.Columns.Add(HumanReadable.System.Process.Priority, appwidths[3]);
+			WatchlistRules.Columns.Add(HumanReadable.System.Process.Affinity, appwidths[4]);
 			WatchlistRules.Columns.Add("Power Plan", appwidths[5]);
 			WatchlistRules.Columns.Add("Adjusts", appwidths[6]);
 			WatchlistRules.Columns.Add("Path", appwidths[7]);
@@ -1830,8 +1830,8 @@ namespace Taskmaster
 				lastmodifylist.Columns.Add("Time", 60);
 				lastmodifylist.Columns.Add("Executable", appwidths[2]);
 				lastmodifylist.Columns.Add("Rule", appwidths[1]);
-				lastmodifylist.Columns.Add("Priority", appwidths[3]);
-				lastmodifylist.Columns.Add("Affinity", appwidths[4]);
+				lastmodifylist.Columns.Add(HumanReadable.System.Process.Priority, appwidths[3]);
+				lastmodifylist.Columns.Add(HumanReadable.System.Process.Affinity, appwidths[4]);
 				lastmodifylist.Columns.Add("Path", -2);
 
 				lastmodifypanel.Controls.Add(lastmodifylist);
@@ -2374,7 +2374,7 @@ namespace Taskmaster
 						watchlistenable.Enabled = true;
 						watchlistenable.Checked = prc.Enabled = !watchlistenable.Checked;
 
-						Log.Information("[" + prc.FriendlyName + "] " + (prc.Enabled ? "Enabled" : "Disabled"));
+						Log.Information("[" + prc.FriendlyName + "] " + (prc.Enabled ? HumanReadable.Generic.Enabled : HumanReadable.Generic.Disabled));
 
 						prc.SaveConfig();
 
@@ -2500,13 +2500,13 @@ namespace Taskmaster
 						sbs.Append("Ignore = { ").Append(string.Join(", ", prc.IgnoreList)).Append(" }").AppendLine();
 					if (prc.Priority.HasValue)
 					{
-						sbs.Append("Priority = ").Append(prc.Priority.Value.ToInt32()).AppendLine();
-						sbs.Append("Priority strategy = ").Append((int)prc.PriorityStrategy).AppendLine();
+						sbs.Append(HumanReadable.System.Process.Priority).Append(" = ").Append(prc.Priority.Value.ToInt32()).AppendLine();
+						sbs.Append(HumanReadable.System.Process.PriorityStrategy).Append(" = ").Append((int)prc.PriorityStrategy).AppendLine();
 					}
 					if (prc.Affinity.HasValue)
 					{
-						sbs.Append("Affinity = ").Append(prc.Affinity.Value.ToInt32()).AppendLine();
-						sbs.Append("Affinity strategy = ").Append((int)prc.AffinityStrategy).AppendLine();
+						sbs.Append(HumanReadable.System.Process.Affinity).Append(" = ").Append(prc.Affinity.Value.ToInt32()).AppendLine();
+						sbs.Append(HumanReadable.System.Process.AffinityStrategy).Append(" = ").Append((int)prc.AffinityStrategy).AppendLine();
 					}
 					if (prc.PowerPlan != PowerInfo.PowerMode.Undefined)
 					{

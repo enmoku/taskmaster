@@ -626,10 +626,10 @@ namespace Taskmaster
 			monitorCleanShutdown();
 
 			Log.Information("<Core> Verbosity: "+ MemoryLog.MemorySink.LevelSwitch.MinimumLevel.ToString());
-			Log.Information("<Core> Self-optimize: "+ (SelfOptimize ? "Enabled" : "Disabled"));
+			Log.Information("<Core> Self-optimize: "+ (SelfOptimize ? HumanReadable.Generic.Enabled : HumanReadable.Generic.Disabled));
 			// Log.Information("Low memory mode: {LowMemory}", (LowMemory ? "Enabled." : "Disabled."));
-			Log.Information("<<WMI>> Event watcher: " + (WMIPolling ? "Enabled" : "Disabled") + " (Rate: " + WMIPollDelay + "s)");
-			Log.Information("<<WMI>> Queries: " + (WMIQueries ? "Enabled" : "Disabled"));
+			Log.Information("<<WMI>> Event watcher: " + (WMIPolling ? HumanReadable.Generic.Enabled : HumanReadable.Generic.Disabled) + " (Rate: " + WMIPollDelay + "s)");
+			Log.Information("<<WMI>> Queries: " + (WMIQueries ? HumanReadable.Generic.Enabled : HumanReadable.Generic.Disabled));
 
 			// PROTECT USERS FROM TOO HIGH PERMISSIONS
 			var isadmin = IsAdministrator();
@@ -693,9 +693,9 @@ namespace Taskmaster
 
 			Log.Information("<Core> Privilege level: " + (isadmin ? "Admin" : "User"));
 
-			Log.Information("<Core> Path cache: " + (PathCacheLimit == 0 ? "Disabled" : PathCacheLimit + " items"));
+			Log.Information("<Core> Path cache: " + (PathCacheLimit == 0 ? HumanReadable.Generic.Disabled : PathCacheLimit + " items"));
 
-			Log.Information("<Core> Paging: " + (PagingEnabled ? "Enabled" : "Disabled"));
+			Log.Information("<Core> Paging: " + (PagingEnabled ? HumanReadable.Generic.Enabled : HumanReadable.Generic.Disabled));
 
 			return;
 		}

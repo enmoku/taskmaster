@@ -415,7 +415,7 @@ namespace Taskmaster
 			var priorities = new string[] { "Low", "Below Normal", "Normal", "Above Normal", "High", "Ignored" };
 
 			// PRIORITY
-			lt.Controls.Add(new Label { Text = "Priority class", TextAlign = System.Drawing.ContentAlignment.MiddleLeft });
+			lt.Controls.Add(new Label { Text = HumanReadable.System.Process.PriorityClass, TextAlign = System.Drawing.ContentAlignment.MiddleLeft });
 			priorityClass = new ComboBox
 			{
 				Dock = DockStyle.Left,

@@ -42,6 +42,9 @@ namespace Taskmaster
 			public const string Undefined = "Undefined";
 
 			public const string QualityOfLife = "Quality of Life";
+
+			public const string Enabled = "Enabled";
+			public const string Disabled = "Disabled";
 		}
 
 		public static class System
@@ -51,6 +54,12 @@ namespace Taskmaster
 				public const string Section = "Process";
 				public const string Foreground = "Foreground";
 				public const string Background = "Background";
+
+				public const string Priority = "Priority";
+				public const string PriorityClass = Priority + " class";
+				public const string PriorityStrategy = Priority + " strategy";
+				public const string Affinity = "Affinity";
+				public const string AffinityStrategy = Affinity + " strategy";
 			}
 		}
 

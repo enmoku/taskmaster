@@ -275,13 +275,13 @@ namespace Taskmaster
 
 			if (Priority.HasValue)
 			{
-				app["Priority"].IntValue = ProcessHelpers.PriorityToInt(Priority.Value);
-				app["Priority strategy"].IntValue = (int)PriorityStrategy;
+				app[HumanReadable.System.Process.Priority].IntValue = ProcessHelpers.PriorityToInt(Priority.Value);
+				app[HumanReadable.System.Process.PriorityStrategy].IntValue = (int)PriorityStrategy;
 			}
 			else
 			{
-				app.Remove("Priority");
-				app.Remove("Priority strategy");
+				app.Remove(HumanReadable.System.Process.Priority);
+				app.Remove(HumanReadable.System.Process.PriorityStrategy);
 			}
 
 			if (Affinity.HasValue && Affinity.Value.ToInt32() >= 0)
@@ -348,8 +348,8 @@ namespace Taskmaster
 				else app.Remove("Recheck");
 			}
 
-			if (!Enabled) app["Enabled"].BoolValue = Enabled;
-			else app.Remove("Enabled");
+			if (!Enabled) app[HumanReadable.Generic.Enabled].BoolValue = Enabled;
+			else app.Remove(HumanReadable.Generic.Enabled);
 
 			if (IgnoreList != null && IgnoreList.Length > 0)
 				app["Ignore"].StringValueArray = IgnoreList;

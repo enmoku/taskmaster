@@ -609,7 +609,7 @@ namespace Taskmaster
 
 			// --------------------------------------------------------------------------------------------------------
 
-			Log.Information("<Power> Watchlist powerdown delay: " + (PowerdownDelay == 0 ? "Disabled" : (PowerdownDelay + "s")));
+			Log.Information("<Power> Watchlist powerdown delay: " + (PowerdownDelay == 0 ? HumanReadable.Generic.Disabled : (PowerdownDelay + "s")));
 
 			// --------------------------------------------------------------------------------------------------------
 
@@ -618,8 +618,8 @@ namespace Taskmaster
 			Log.Information("<Power> Session lock: " + (SessionLockPowerMode == PowerMode.Undefined ? "Ignored" : SessionLockPowerMode.ToString()));
 			Log.Information("<Power> Restore mode: " + RestoreMethod.ToString() + " [" + RestoreMode.ToString() + "]");
 
-			Log.Information("<Session> User AFK timeout: " + (SessionLockPowerOffIdleTimeout == 0 ? "Disabled" : $"{SessionLockPowerOffIdleTimeout}s"));
-			Log.Information("<Session> Immediate power off on lock: " + (SessionLockPowerOff ? "Enabled" : "Disabled"));
+			Log.Information("<Session> User AFK timeout: " + (SessionLockPowerOffIdleTimeout == 0 ? HumanReadable.Generic.Disabled : $"{SessionLockPowerOffIdleTimeout}s"));
+			Log.Information("<Session> Immediate power off on lock: " + (SessionLockPowerOff ? HumanReadable.Generic.Enabled : HumanReadable.Generic.Disabled));
 
 			if (dirtyconfig) corecfg.MarkDirty();
 		}
