@@ -215,8 +215,15 @@ namespace Taskmaster
 			{
 				AutoSize = true,
 				//BackColor = System.Drawing.Color.Azure,
-				Dock = DockStyle.Left
+				Dock = DockStyle.Left,
+				Enabled = true,
+				Checked = initial ? true : Taskmaster.PowerManagerEnabled,
 			};
+			tooltip.SetToolTip(powmon, "Manage power mode.\nNot recommended if you already have a power manager.");
+
+			layout.Controls.Add(new Label { Text = "Power manager", AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, Padding = CustomPadding, Dock = DockStyle.Left });
+			layout.Controls.Add(powmon);
+
 			var powbehaviour = new ComboBox()
 			{
 				Items = { HumanReadable.Hardware.Power.AutoAdjust, HumanReadable.Hardware.Power.RuleBased, HumanReadable.Hardware.Power.Manual },
@@ -224,21 +231,8 @@ namespace Taskmaster
 				SelectedIndex = 1,
 			};
 
-			tooltip.SetToolTip(powmon, "Manage power mode.\nNot recommended if you already have a power manager.");
-			layout.Controls.Add(new Label
-			{
-				Text = "Power manager",
-				AutoSize = true,
-				TextAlign = System.Drawing.ContentAlignment.MiddleLeft,
-				Padding = CustomPadding,
-				Dock = DockStyle.Left
-			});
-			layout.Controls.Add(powmon);
-			powmon.Enabled = true;
-			powmon.Checked = initial ? true : Taskmaster.PowerManagerEnabled;
 			powbehaviour.Enabled = powmon.Checked;
-			var behaviour = Taskmaster.powermanager?.LaunchBehaviour ?? PowerManager.PowerBehaviour.RuleBased;
-			switch (behaviour)
+			switch (Taskmaster.powermanager?.LaunchBehaviour ?? PowerManager.PowerBehaviour.RuleBased)
 			{
 				case PowerManager.PowerBehaviour.Auto:
 					powbehaviour.SelectedIndex = 0;
