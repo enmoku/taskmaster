@@ -55,6 +55,9 @@ namespace Taskmaster
 				public const string Foreground = "Foreground";
 				public const string Background = "Background";
 
+				public const string Executable = "Executable";
+				public const string Path = "Path";
+
 				public const string Priority = "Priority";
 				public const string PriorityClass = Priority + " class";
 				public const string PriorityStrategy = Priority + " strategy";

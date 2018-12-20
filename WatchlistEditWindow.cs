@@ -287,7 +287,7 @@ namespace Taskmaster
 			lt.Controls.Add(new Label()); // empty
 
 			// EXECUTABLE
-			lt.Controls.Add(new Label { Text = "Executable", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, Dock = DockStyle.Left });
+			lt.Controls.Add(new Label { Text = HumanReadable.System.Process.Executable, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, Dock = DockStyle.Left });
 			execName.Text = Controller.Executable;
 			execName.Width = 180;
 			tooltip.SetToolTip(execName, "Executable name, used to recognize these applications.\nFull filename, including extension if any.");
@@ -373,7 +373,7 @@ namespace Taskmaster
 			ignorelist.View = View.Details;
 			ignorelist.HeaderStyle = ColumnHeaderStyle.None;
 			ignorelist.Width = 180;
-			ignorelist.Columns.Add("Executable", -2);
+			ignorelist.Columns.Add(HumanReadable.System.Process.Executable, -2);
 			tooltip.SetToolTip(ignorelist, "Executables to ignore for matching with this rule.\nOnly exact matches work.\n\nRequires path to be defined.");
 
 			if (Controller.IgnoreList != null)
@@ -875,7 +875,7 @@ namespace Taskmaster
 			}
 
 			if (execName.Text.Length > 0)
-				sbs.Append("Executable: ").Append(exnam ? "OK" : "Fail").Append(" – Found: ").Append(exfound).AppendLine();
+				sbs.Append(HumanReadable.System.Process.Executable).Append(": ").Append(exnam ? "OK" : "Fail").Append(" – Found: ").Append(exfound).AppendLine();
 			if (pathName.Text.Length > 0)
 				sbs.Append("Path: ").Append(path ? "OK" : "Fail").Append(" - Found: ").Append(pfound).AppendLine();
 

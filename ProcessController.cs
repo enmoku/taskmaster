@@ -261,9 +261,9 @@ namespace Taskmaster
 			else
 				app.Remove("Image");
 			if (!string.IsNullOrEmpty(Path))
-				app["Path"].StringValue = Path;
+				app[HumanReadable.System.Process.Path].StringValue = Path;
 			else
-				app.Remove("Path");
+				app.Remove(HumanReadable.System.Process.Path);
 
 			if (!string.IsNullOrEmpty(Description))
 				app["Description"].StringValue = Description;

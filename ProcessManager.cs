@@ -650,7 +650,7 @@ namespace Taskmaster
 			{
 				bool upgrade = false;
 
-				if (!section.Contains("Image") && !section.Contains("Path"))
+				if (!section.Contains("Image") && !section.Contains(HumanReadable.System.Process.Path))
 				{
 					// TODO: Deal with incorrect configuration lacking image
 					Log.Warning("'" + section.Name + "' has no image nor path.");
@@ -725,7 +725,7 @@ namespace Taskmaster
 					PriorityStrategy = priostrat,
 					AffinityStrategy = affStrat,
 					Rescan = (section.TryGet("Rescan")?.IntValue ?? 0),
-					Path = (section.TryGet("Path")?.StringValue ?? null),
+					Path = (section.TryGet(HumanReadable.System.Process.Path)?.StringValue ?? null),
 					ModifyDelay = (section.TryGet("Modify delay")?.IntValue ?? 0),
 					//BackgroundIO = (section.TryGet("Background I/O")?.BoolValue ?? false), // Doesn't work
 					Recheck = (section.TryGet("Recheck")?.IntValue ?? 0),

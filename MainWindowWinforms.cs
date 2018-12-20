@@ -1621,7 +1621,7 @@ namespace Taskmaster
 
 			WatchlistRules.Columns.Add("#", appwidths[0]);
 			WatchlistRules.Columns.Add("Name", appwidths[1]);
-			WatchlistRules.Columns.Add("Executable", appwidths[2]);
+			WatchlistRules.Columns.Add(HumanReadable.System.Process.Executable, appwidths[2]);
 			WatchlistRules.Columns.Add(HumanReadable.System.Process.Priority, appwidths[3]);
 			WatchlistRules.Columns.Add(HumanReadable.System.Process.Affinity, appwidths[4]);
 			WatchlistRules.Columns.Add("Power Plan", appwidths[5]);
@@ -1828,7 +1828,7 @@ namespace Taskmaster
 				};
 
 				lastmodifylist.Columns.Add("Time", 60);
-				lastmodifylist.Columns.Add("Executable", appwidths[2]);
+				lastmodifylist.Columns.Add(HumanReadable.System.Process.Executable, appwidths[2]);
 				lastmodifylist.Columns.Add("Rule", appwidths[1]);
 				lastmodifylist.Columns.Add(HumanReadable.System.Process.Priority, appwidths[3]);
 				lastmodifylist.Columns.Add(HumanReadable.System.Process.Affinity, appwidths[4]);
@@ -2003,7 +2003,7 @@ namespace Taskmaster
 			ExitWaitlistMap = new Dictionary<int, ListViewItem>();
 
 			exitwaitlist.Columns.Add("Id", 50);
-			exitwaitlist.Columns.Add("Executable", 280);
+			exitwaitlist.Columns.Add(HumanReadable.System.Process.Executable, 280);
 			exitwaitlist.Columns.Add("State", 160);
 			exitwaitlist.Columns.Add("Power", 80);
 
@@ -2030,7 +2030,7 @@ namespace Taskmaster
 			};
 
 			processinglist.Columns.Add("Id", 50);
-			processinglist.Columns.Add("Executable", 280);
+			processinglist.Columns.Add(HumanReadable.System.Process.Executable, 280);
 			processinglist.Columns.Add("State", 160);
 			processinglist.Columns.Add("Time", 80);
 
