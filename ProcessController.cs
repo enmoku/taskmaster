@@ -265,9 +265,6 @@ namespace Taskmaster
 			else
 				app.Remove("Path");
 
-			app.Remove("Increase"); // DEPRECATED
-			app.Remove("Decrease"); // DEPRECATED
-
 			if (!string.IsNullOrEmpty(Description))
 				app["Description"].StringValue = Description;
 			else
