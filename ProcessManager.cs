@@ -540,6 +540,8 @@ namespace Taskmaster
 
 			var coreperf = corecfg.Config["Performance"];
 
+			bool upgrade = false;
+
 			bool dirtyconfig = false, modified = false;
 			// ControlChildren = coreperf.GetSetDefault("Child processes", false, out tdirty).BoolValue;
 			// dirtyconfig |= tdirty;
@@ -599,8 +601,17 @@ namespace Taskmaster
 
 			// Taskmaster.cfg["Applications"]["Ignored"].StringValueArray = IgnoreList;
 			var ignsetting = corecfg.Config["Applications"];
-			string[] newIgnoreList = ignsetting.GetSetDefault("Ignored", IgnoreList, out modified)?.StringValueArray;
+			if (!ignsetting.Contains(HumanReadable.Generic.Ignore)) // DEPRECATED UPGRADE PATH
+			{
+				string[] tnewIgnoreList = ignsetting["Ignored"].StringValueArray;
+				ignsetting[HumanReadable.Generic.Ignore].StringValueArray = tnewIgnoreList;
+				upgrade = true;
+				ignsetting.Remove("Ignored");
+			}
+			string[] newIgnoreList = ignsetting.GetSetDefault(HumanReadable.Generic.Ignore, IgnoreList, out modified)?.StringValueArray;
+
 			ignsetting.PreComment = "Special hardcoded protection applied to: consent, winlogon, wininit, and csrss.\nThese are vital system services and messing with them can cause severe system malfunctioning.\nMess with the ignore list at your own peril.";
+
 			if (newIgnoreList != null)
 			{
 				IgnoreList = newIgnoreList;
@@ -646,10 +657,9 @@ namespace Taskmaster
 			var newsettings = coreperf.SettingCount;
 			if (dirtyconfig) corecfg.MarkDirty();
 
+			bool upgradewatchlist = false;
 			foreach (SharpConfig.Section section in appcfg.Config)
 			{
-				bool upgrade = false;
-
 				if (!section.Contains("Image") && !section.Contains(HumanReadable.System.Process.Path))
 				{
 					// TODO: Deal with incorrect configuration lacking image
@@ -720,7 +730,7 @@ namespace Taskmaster
 				{
 					Enabled = section.TryGet(HumanReadable.Generic.Enabled)?.BoolValue ?? true,
 					Executable = section.TryGet("Image")?.StringValue ?? null,
-					Description = section.TryGet("Description")?.StringValue ?? null,
+					Description = section.TryGet(HumanReadable.Generic.Description)?.StringValue ?? null,
 					// friendly name is filled automatically
 					PriorityStrategy = priostrat,
 					AffinityStrategy = affStrat,
@@ -734,7 +744,7 @@ namespace Taskmaster
 					BackgroundPriority = bprio,
 					BackgroundAffinity = baff,
 					BackgroundPowerdown = (section.TryGet("Background powerdown")?.BoolValue ?? false),
-					IgnoreList = (section.TryGet("Ignore")?.StringValueArray ?? null),
+					IgnoreList = (section.TryGet(HumanReadable.Generic.Ignore)?.StringValueArray ?? null),
 					AllowPaging = (section.TryGet("Allow paging")?.BoolValue ?? false),
 				};
 
@@ -768,6 +778,9 @@ namespace Taskmaster
 				}
 
 				AddController(prc);
+
+				if (upgrade) corecfg.MarkDirty();
+				if (upgradewatchlist) appcfg.MarkDirty();
 
 				// cnt.Children &= ControlChildren;
 

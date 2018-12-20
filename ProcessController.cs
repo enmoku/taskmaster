@@ -349,9 +349,9 @@ namespace Taskmaster
 			else app.Remove(HumanReadable.Generic.Enabled);
 
 			if (IgnoreList != null && IgnoreList.Length > 0)
-				app["Ignore"].StringValueArray = IgnoreList;
+				app[HumanReadable.Generic.Ignore].StringValueArray = IgnoreList;
 			else
-				app.Remove("Ignore");
+				app.Remove(HumanReadable.Generic.Ignore);
 
 			if (ModifyDelay > 0)
 				app["Modify delay"].IntValue = ModifyDelay;
