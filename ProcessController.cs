@@ -266,9 +266,9 @@ namespace Taskmaster
 				app.Remove(HumanReadable.System.Process.Path);
 
 			if (!string.IsNullOrEmpty(Description))
-				app["Description"].StringValue = Description;
+				app[HumanReadable.Generic.Description].StringValue = Description;
 			else
-				app.Remove("Description");
+				app.Remove(HumanReadable.Generic.Description);
 
 			if (Priority.HasValue)
 			{

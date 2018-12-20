@@ -615,7 +615,7 @@ namespace Taskmaster
 
 			LogBehaviourState();
 
-			Log.Information("<Power> Session lock: " + (SessionLockPowerMode == PowerMode.Undefined ? "Ignored" : SessionLockPowerMode.ToString()));
+			Log.Information("<Power> Session lock: " + (SessionLockPowerMode == PowerMode.Undefined ? HumanReadable.Generic.Ignore : SessionLockPowerMode.ToString()));
 			Log.Information("<Power> Restore mode: " + RestoreMethod.ToString() + " [" + RestoreMode.ToString() + "]");
 
 			Log.Information("<Session> User AFK timeout: " + (SessionLockPowerOffIdleTimeout == 0 ? HumanReadable.Generic.Disabled : $"{SessionLockPowerOffIdleTimeout}s"));

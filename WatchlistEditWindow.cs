@@ -357,7 +357,7 @@ namespace Taskmaster
 			lt.Controls.Add(findpathbutton);
 
 			// DESCRIPTION
-			lt.Controls.Add(new Label() { Text = "Description", TextAlign = System.Drawing.ContentAlignment.MiddleLeft });
+			lt.Controls.Add(new Label() { Text = HumanReadable.Generic.Description, TextAlign = System.Drawing.ContentAlignment.MiddleLeft });
 			desc = new TextBox()
 			{
 				Multiline = false,
@@ -408,11 +408,11 @@ namespace Taskmaster
 					ignorelist.Items.Remove(ignorelist.SelectedItems[0]);
 			}));
 
-			lt.Controls.Add(new Label() { Text = "Ignore", TextAlign = System.Drawing.ContentAlignment.MiddleLeft });
+			lt.Controls.Add(new Label() { Text = HumanReadable.Generic.Ignore, TextAlign = System.Drawing.ContentAlignment.MiddleLeft });
 			lt.Controls.Add(ignorelist);
 			lt.Controls.Add(new Label()); // empty
 
-			var priorities = new string[] { "Low", "Below Normal", "Normal", "Above Normal", "High", "Ignored" };
+			var priorities = new string[] { "Low", "Below Normal", "Normal", "Above Normal", "High", HumanReadable.Generic.Ignore };
 
 			// PRIORITY
 			lt.Controls.Add(new Label { Text = HumanReadable.System.Process.PriorityClass, TextAlign = System.Drawing.ContentAlignment.MiddleLeft });
@@ -462,7 +462,7 @@ namespace Taskmaster
 
 			lt.Controls.Add(new Label { Text = "Affinity", TextAlign = System.Drawing.ContentAlignment.MiddleLeft });
 			affstrategy.DropDownStyle = ComboBoxStyle.DropDownList;
-			affstrategy.Items.AddRange(new string[] { "Ignored", "Limit (Default)", "Force" });
+			affstrategy.Items.AddRange(new string[] { HumanReadable.Generic.Ignore, "Limit (Default)", "Force" });
 			tooltip.SetToolTip(affstrategy, "Limit constrains cores to the defined range but does not increase used cores beyond what the app is already using.\nForce sets the affinity mask to the defined regardless of anything.");
 			affstrategy.SelectedIndexChanged += (s, e) =>
 			{
@@ -726,7 +726,7 @@ namespace Taskmaster
 			{
 				Dock = DockStyle.Left,
 				DropDownStyle = ComboBoxStyle.DropDownList,
-				Items = { "Increase", "Decrease", "Increase from mute", "Decrease from full", "Force", "Ignore" },
+				Items = { "Increase", "Decrease", "Increase from mute", "Decrease from full", "Force", HumanReadable.Generic.Ignore },
 				SelectedIndex = 5,
 			};
 

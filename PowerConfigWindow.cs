@@ -185,7 +185,7 @@ namespace Taskmaster
 				Dock = DockStyle.Fill,
 			};
 
-			monitoroffmode.Items.Add("Ignore");
+			monitoroffmode.Items.Add(HumanReadable.Generic.Ignore);
 			monitoroffmode.Items.AddRange(powermodes);
 
 			layout.Controls.Add(new Label() { Text = "Power mode", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Fill });

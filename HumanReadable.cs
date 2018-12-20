@@ -45,6 +45,10 @@ namespace Taskmaster
 
 			public const string Enabled = "Enabled";
 			public const string Disabled = "Disabled";
+
+			public const string Description = "Description";
+
+			public const string Ignore = "Ignore";
 		}
 
 		public static class System
