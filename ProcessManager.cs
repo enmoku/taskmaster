@@ -691,26 +691,8 @@ namespace Taskmaster
 
 					if (priorityStrat > 0)
 						priostrat = (ProcessPriorityStrategy)priorityStrat;
-					else if (priorityStrat == -1)
-					{
-						// DEPRECATETD
-						var increase = (section.TryGet("Increase")?.BoolValue ?? false);
-						var decrease = (section.TryGet("Decrease")?.BoolValue ?? true);
-						if (increase && decrease)
-							priostrat = ProcessPriorityStrategy.Force;
-						else if (increase)
-							priostrat = ProcessPriorityStrategy.Increase;
-						else if (decrease)
-							priostrat = ProcessPriorityStrategy.Decrease;
-
-						section.Remove("Increase");
-						section.Remove("Decrease");
-						upgrade = true;
-					}
 					else // 0
-					{
-						prioR = null;
-					}
+						prioR = null; // invalid data
 				}
 
 				ProcessAffinityStrategy affStrat = ProcessAffinityStrategy.None;
