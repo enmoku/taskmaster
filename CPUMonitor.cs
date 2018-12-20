@@ -63,12 +63,12 @@ namespace Taskmaster
 
 			// SAMPLING
 			// this really should be elsewhere
-			var hwsec = corecfg.Config["Hardware"];
-			SampleInterval = hwsec.GetSetDefault("CPU sample interval", 2, out modified).IntValue.Constrain(1, 15);
-			hwsec["CPU sample interval"].Comment = "1 to 15, in seconds. Frequency at which CPU usage is sampled. Recommended value: 1 to 5 seconds.";
+			var hwsec = corecfg.Config[HumanReadable.Hardware.Section];
+			SampleInterval = hwsec.GetSetDefault(HumanReadable.Hardware.CPU.Settings.SampleInterval, 2, out modified).IntValue.Constrain(1, 15);
+			hwsec[HumanReadable.Hardware.CPU.Settings.SampleInterval].Comment = "1 to 15, in seconds. Frequency at which CPU usage is sampled. Recommended value: 1 to 5 seconds.";
 			dirtyconfig |= modified;
-			SampleCount = hwsec.GetSetDefault("CPU sample count", 5, out modified).IntValue.Constrain(3, 30);
-			hwsec["CPU sample count"].Comment = "3 to 30. Number of CPU samples to keep. Recommended value is: Count * Interval <= 30 seconds";
+			SampleCount = hwsec.GetSetDefault(HumanReadable.Hardware.CPU.Settings.SampleCount, 5, out modified).IntValue.Constrain(3, 30);
+			hwsec[HumanReadable.Hardware.CPU.Settings.SampleCount].Comment = "3 to 30. Number of CPU samples to keep. Recommended value is: Count * Interval <= 30 seconds";
 			dirtyconfig |= modified;
 
 			Log.Information("<CPU> Sampler: " + SampleInterval + "s × " + SampleCount +
@@ -82,9 +82,9 @@ namespace Taskmaster
 			var corecfg = Taskmaster.Config.Load(Taskmaster.coreconfig);
 
 			// SAMPLING
-			var hwsec = corecfg.Config["Hardware"];
-			hwsec["CPU sample interval"].IntValue = SampleInterval;
-			hwsec["CPU sample count"].IntValue = SampleCount;
+			var hwsec = corecfg.Config[HumanReadable.Hardware.Section];
+			hwsec[HumanReadable.Hardware.CPU.Settings.SampleInterval].IntValue = SampleInterval;
+			hwsec[HumanReadable.Hardware.CPU.Settings.SampleCount].IntValue = SampleCount;
 
 			corecfg.MarkDirty();
 		}

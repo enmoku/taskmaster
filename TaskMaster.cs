@@ -471,14 +471,14 @@ namespace Taskmaster
 			var oldsettings = optsec?.SettingCount ?? 0 + compsec?.SettingCount ?? 0 + perfsec?.SettingCount ?? 0;
 
 			// [Components]
-			ProcessMonitorEnabled = compsec.GetSetDefault("Process", true, out modified).BoolValue;
-			compsec["Process"].Comment = "Monitor starting processes based on their name. Configure in Apps.ini";
+			ProcessMonitorEnabled = compsec.GetSetDefault(HumanReadable.System.Process.Section, true, out modified).BoolValue;
+			compsec[HumanReadable.System.Process.Section].Comment = "Monitor starting processes based on their name. Configure in Apps.ini";
 			dirtyconfig |= modified;
 			PathMonitorEnabled = compsec.GetSetDefault("Process paths", true, out modified).BoolValue;
 			compsec["Process paths"].Comment = "Monitor starting processes based on their location. Configure in Paths.ini";
 			dirtyconfig |= modified;
-			AudioManagerEnabled = compsec.GetSetDefault("Audio", true, out modified).BoolValue;
-			compsec["Audio"].Comment = "Monitor audio sessions and set their volume as per user configuration.";
+			AudioManagerEnabled = compsec.GetSetDefault(HumanReadable.Hardware.Audio.Section, true, out modified).BoolValue;
+			compsec[HumanReadable.Hardware.Audio.Section].Comment = "Monitor audio sessions and set their volume as per user configuration.";
 			dirtyconfig |= modified;
 			MicrophoneMonitorEnabled = compsec.GetSetDefault("Microphone", false, out modified).BoolValue;
 			compsec["Microphone"].Comment = "Monitor and force-keep microphone volume.";
@@ -486,8 +486,8 @@ namespace Taskmaster
 			// MediaMonitorEnabled = compsec.GetSetDefault("Media", true, out modified).BoolValue;
 			// compsec["Media"].Comment = "Unused";
 			// dirtyconfig |= modified;
-			ActiveAppMonitorEnabled = compsec.GetSetDefault("Foreground", true, out modified).BoolValue;
-			compsec["Foreground"].Comment = "Game/Foreground app monitoring and adjustment.";
+			ActiveAppMonitorEnabled = compsec.GetSetDefault(HumanReadable.System.Process.Foreground, true, out modified).BoolValue;
+			compsec[HumanReadable.System.Process.Foreground].Comment = "Game/Foreground app monitoring and adjustment.";
 			dirtyconfig |= modified;
 			NetworkMonitorEnabled = compsec.GetSetDefault("Network", true, out modified).BoolValue;
 			compsec["Network"].Comment = "Monitor network uptime and current IP addresses.";
@@ -506,7 +506,7 @@ namespace Taskmaster
 			compsec["Health"].Comment = "General system health monitoring suite.";
 			dirtyconfig |= modified;
 
-			var qol = cfg["Quality of Life"];
+			var qol = cfg[HumanReadable.Generic.QualityOfLife];
 			ExitConfirmation = qol.GetSetDefault("Exit confirmation", true, out modified).BoolValue;
 			dirtyconfig |= modified;
 			AutoOpenMenus = qol.GetSetDefault("Auto-open menus", true, out modified).BoolValue;
@@ -515,7 +515,7 @@ namespace Taskmaster
 			dirtyconfig |= modified;
 			GlobalHotkeys = qol.GetSetDefault("Register global hotkeys", false, out modified).BoolValue;
 			dirtyconfig |= modified;
-			AffinityStyle = qol.GetSetDefault("Core affinity style", 0, out modified).IntValue.Constrain(0, 1);
+			AffinityStyle = qol.GetSetDefault(HumanReadable.Hardware.CPU.Settings.AffinityStyle, 0, out modified).IntValue.Constrain(0, 1);
 			dirtyconfig |= modified;
 
 			var logsec = cfg["Logging"];
@@ -658,14 +658,14 @@ namespace Taskmaster
 			DebugProcesses = dbgsec.TryGet("Processes")?.BoolValue ?? false;
 			DebugPaths = dbgsec.TryGet("Paths")?.BoolValue ?? false;
 			DebugFullScan = dbgsec.TryGet("Full scan")?.BoolValue ?? false;
-			DebugAudio = dbgsec.TryGet("Audio")?.BoolValue ?? false;
+			DebugAudio = dbgsec.TryGet(HumanReadable.Hardware.Audio.Section)?.BoolValue ?? false;
 
-			DebugForeground = dbgsec.TryGet("Foreground")?.BoolValue ?? false;
+			DebugForeground = dbgsec.TryGet(HumanReadable.System.Process.Foreground)?.BoolValue ?? false;
 
 			DebugPower = dbgsec.TryGet("Power")?.BoolValue ?? false;
-			DebugAutoPower = dbgsec.TryGet("Auto-adjust")?.BoolValue ?? false;
+			DebugAutoPower = dbgsec.TryGet(HumanReadable.Hardware.Power.AutoAdjust)?.BoolValue ?? false;
 			//DebugPowerRules = dbgsec.TryGet("Paths")?.BoolValue ?? false;
-			DebugMonitor = dbgsec.TryGet("Monitor")?.BoolValue ?? false;
+			DebugMonitor = dbgsec.TryGet(HumanReadable.Hardware.Monitor.Section)?.BoolValue ?? false;
 
 			DebugSession = dbgsec.TryGet("Session")?.BoolValue ?? false;
 			DebugResize = dbgsec.TryGet("Resize")?.BoolValue ?? false;

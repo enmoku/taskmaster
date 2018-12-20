@@ -454,7 +454,7 @@ namespace Taskmaster
 			var power = corecfg.Config["Power"];
 			bool modified = false, dirtyconfig = false;
 
-			var behaviourstring = power.GetSetDefault("Behaviour", "Rule-based", out modified).StringValue;
+			var behaviourstring = power.GetSetDefault("Behaviour", HumanReadable.Hardware.Power.RuleBased, out modified).StringValue;
 			power["Behaviour"].Comment = "auto, manual, or rule-based";
 			if (behaviourstring.StartsWith("auto", StringComparison.InvariantCultureIgnoreCase))
 				LaunchBehaviour = PowerBehaviour.Auto;
@@ -515,9 +515,9 @@ namespace Taskmaster
 			var autopower = corecfg.Config["Power / Auto"];
 
 			// DEPRECATED
-			if (autopower.Contains("Auto-adjust"))
+			if (autopower.Contains(HumanReadable.Hardware.Power.AutoAdjust))
 			{
-				bool bautoadjust = autopower.TryGet("Auto-adjust")?.BoolValue ?? false;
+				bool bautoadjust = autopower.TryGet(HumanReadable.Hardware.Power.AutoAdjust)?.BoolValue ?? false;
 
 				if (bautoadjust)
 				{
@@ -527,7 +527,7 @@ namespace Taskmaster
 					Behaviour = PowerBehaviour.Auto;
 				}
 
-				autopower.Remove("Auto-adjust");
+				autopower.Remove(HumanReadable.Hardware.Power.AutoAdjust);
 			}
 
 			// BACKOFF
@@ -631,14 +631,14 @@ namespace Taskmaster
 
 			var power = corecfg.Config["Power"];
 
-			string sbehaviour = "rule-based"; // default to rule-based
+			string sbehaviour = HumanReadable.Hardware.Power.RuleBased.ToLower(); // default to rule-based
 			switch (LaunchBehaviour)
 			{
 				case PowerBehaviour.Auto:
-					sbehaviour = "auto";
+					sbehaviour = HumanReadable.Hardware.Power.AutoAdjust.ToLower();
 					break;
 				case PowerBehaviour.Manual:
-					sbehaviour = "manual";
+					sbehaviour = HumanReadable.Hardware.Power.Manual.ToLower();
 					break;
 				default: break; // ignore
 			}
@@ -689,16 +689,16 @@ namespace Taskmaster
 			switch (Behaviour)
 			{
 				case PowerBehaviour.Auto:
-					mode = "Auto-adjust";
+					mode = HumanReadable.Hardware.Power.AutoAdjust;
 					break;
 				case PowerBehaviour.RuleBased:
-					mode = "Rule-based";
+					mode = HumanReadable.Hardware.Power.RuleBased;
 					break;
 				case PowerBehaviour.Manual:
-					mode = "Manual";
+					mode = HumanReadable.Hardware.Power.Manual;
 					break;
 				default:
-					mode = "Undefined";
+					mode = HumanReadable.Generic.Undefined;
 					break;
 			}
 

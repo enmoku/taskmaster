@@ -219,7 +219,7 @@ namespace Taskmaster
 			};
 			var powbehaviour = new ComboBox()
 			{
-				Items = { "Auto-adjust", "Rule-based", "Manual" },
+				Items = { HumanReadable.Hardware.Power.AutoAdjust, HumanReadable.Hardware.Power.RuleBased, HumanReadable.Hardware.Power.Manual },
 				DropDownStyle = ComboBoxStyle.DropDownList,
 				SelectedIndex = 1,
 			};
@@ -362,12 +362,12 @@ namespace Taskmaster
 				opt.Comment = "Magical";
 
 				var compsec = cfg.Config["Components"];
-				compsec["Process"].BoolValue = procmon.Checked;
+				compsec[HumanReadable.System.Process.Section].BoolValue = procmon.Checked;
 				compsec["Process paths"].BoolValue = pathmon.Checked;
 				compsec["Microphone"].BoolValue = micmon.Checked;
-				compsec["Audio"].BoolValue = audioman.Checked;
+				compsec[HumanReadable.Hardware.Audio.Section].BoolValue = audioman.Checked;
 				// compsec["Media"].BoolValue = mediamon.Checked;
-				compsec["Foreground"].BoolValue = fgmon.Checked;
+				compsec[HumanReadable.System.Process.Foreground].BoolValue = fgmon.Checked;
 				compsec["Network"].BoolValue = netmon.Checked;
 				compsec["Power"].BoolValue = powmon.Checked;
 				compsec["Paging"].BoolValue = paging.Checked;

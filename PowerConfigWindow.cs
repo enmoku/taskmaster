@@ -90,7 +90,7 @@ namespace Taskmaster
 			behaviour = new ComboBox()
 			{
 				DropDownStyle = ComboBoxStyle.DropDownList,
-				Items = { "Auto-Adjust", "Rule-based", "Manual" },
+				Items = { HumanReadable.Hardware.Power.AutoAdjust, HumanReadable.Hardware.Power.RuleBased, HumanReadable.Hardware.Power.Manual },
 				SelectedIndex = 2,
 				AutoSize = true,
 				Dock = DockStyle.Fill,
@@ -217,7 +217,7 @@ namespace Taskmaster
 
 			defaultmode.Items.AddRange(powermodes);
 
-			layout.Controls.Add(new Label() { Text = "Auto-Adjust", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, Font = boldfont, AutoSize = true, Dock = DockStyle.Fill });
+			layout.Controls.Add(new Label() { Text = HumanReadable.Hardware.Power.AutoAdjust, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, Font = boldfont, AutoSize = true, Dock = DockStyle.Fill });
 			layout.Controls.Add(new Label()); // empty
 
 			layout.Controls.Add(new Label() { Text = "Sample frequency (sec)", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Fill });

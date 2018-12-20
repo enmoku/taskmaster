@@ -879,7 +879,7 @@ namespace Taskmaster
 				Taskmaster.AutoOpenMenus = menu_config_behaviour_autoopen.Checked;
 
 				var corecfg = Taskmaster.Config.Load(Taskmaster.coreconfig);
-				corecfg.Config["Quality of Life"]["Auto-open menus"].BoolValue = Taskmaster.AutoOpenMenus;
+				corecfg.Config[HumanReadable.Generic.QualityOfLife]["Auto-open menus"].BoolValue = Taskmaster.AutoOpenMenus;
 				corecfg.MarkDirty();
 			};
 
@@ -893,7 +893,7 @@ namespace Taskmaster
 				Taskmaster.ShowInTaskbar = ShowInTaskbar = menu_config_behaviour_taskbar.Checked;
 
 				var corecfg = Taskmaster.Config.Load(Taskmaster.coreconfig);
-				corecfg.Config["Quality of Life"]["Show in taskbar"].BoolValue = Taskmaster.ShowInTaskbar;
+				corecfg.Config[HumanReadable.Generic.QualityOfLife]["Show in taskbar"].BoolValue = Taskmaster.ShowInTaskbar;
 				corecfg.MarkDirty();
 			};
 
@@ -907,7 +907,7 @@ namespace Taskmaster
 				Taskmaster.ExitConfirmation = menu_config_behaviour_exitconfirm.Checked;
 
 				var corecfg = Taskmaster.Config.Load(Taskmaster.coreconfig);
-				corecfg.Config["Quality of Life"]["Exit confirmation"].BoolValue = Taskmaster.ExitConfirmation;
+				corecfg.Config[HumanReadable.Generic.QualityOfLife]["Exit confirmation"].BoolValue = Taskmaster.ExitConfirmation;
 				corecfg.MarkDirty();
 			};
 
@@ -975,7 +975,7 @@ namespace Taskmaster
 				// TODO: re-render watchlistRules
 
 				var corecfg = Taskmaster.Config.Load(Taskmaster.coreconfig);
-				corecfg.Config["Quality of Life"]["Core affinity style"].IntValue = 0;
+				corecfg.Config[HumanReadable.Generic.QualityOfLife][HumanReadable.Hardware.CPU.Settings.AffinityStyle].IntValue = 0;
 				corecfg.MarkDirty();
 			};
 			menu_config_bitmaskstyle_decimal.Click += (s, e) =>
@@ -986,7 +986,7 @@ namespace Taskmaster
 				// TODO: re-render watchlistRules
 
 				var corecfg = Taskmaster.Config.Load(Taskmaster.coreconfig);
-				corecfg.Config["Quality of Life"]["Core affinity style"].IntValue = 1;
+				corecfg.Config[HumanReadable.Generic.QualityOfLife][HumanReadable.Hardware.CPU.Settings.AffinityStyle].IntValue = 1;
 				corecfg.MarkDirty();
 			};
 			//var menu_config_bitmaskstyle_both = new ToolStripMenuItem("Decimal [Bitmask]");
@@ -1121,7 +1121,7 @@ namespace Taskmaster
 				else
 					StopProcessDebug();
 			};
-			var menu_debug_foreground = new ToolStripMenuItem("Foreground")
+			var menu_debug_foreground = new ToolStripMenuItem(HumanReadable.System.Process.Foreground)
 			{
 				Checked = Taskmaster.DebugForeground,
 				CheckOnClick = true,
@@ -1182,7 +1182,7 @@ namespace Taskmaster
 				Taskmaster.DebugSession = menu_debug_session.Checked;
 				if (Taskmaster.DebugSession) EnsureVerbosityLevel();
 			};
-			var menu_debug_monitor = new ToolStripMenuItem("Monitor")
+			var menu_debug_monitor = new ToolStripMenuItem(HumanReadable.Hardware.Monitor.Section)
 			{
 				Checked = Taskmaster.DebugMonitor,
 				CheckOnClick = true,
@@ -1194,7 +1194,7 @@ namespace Taskmaster
 				if (Taskmaster.DebugMonitor) EnsureVerbosityLevel();
 			};
 
-			var menu_debug_audio = new ToolStripMenuItem("Audio")
+			var menu_debug_audio = new ToolStripMenuItem(HumanReadable.Hardware.Audio.Section)
 			{
 				Checked = Taskmaster.DebugAudio,
 				CheckOnClick = true,
@@ -2207,7 +2207,7 @@ namespace Taskmaster
 
 						if (ExitWaitlistMap.TryGetValue(ev.Info.Id, out ListViewItem li))
 						{
-							li.SubItems[2].Text = fg ? "Foreground" : "Background";
+							li.SubItems[2].Text = fg ? HumanReadable.System.Process.Foreground : HumanReadable.System.Process.Background;
 
 							// Log.Debug("WaitlistHandler: {Name} = {State}", ev.Info.Name, ev.State.ToString());
 							switch (ev.State)
@@ -2238,7 +2238,7 @@ namespace Taskmaster
 								li = new ListViewItem(new string[] {
 								ev.Info.Id.ToString(),
 								ev.Info.Name,
-								(fg ? "Foreground" : "Background"),
+								(fg ? HumanReadable.System.Process.Foreground : HumanReadable.System.Process.Background),
 								(ev.Info.ActiveWait ? "FORCED" : "n/a")
 							});
 
@@ -2632,7 +2632,11 @@ namespace Taskmaster
 			if (!IsHandleCreated) return;
 			BeginInvoke(new Action(() =>
 			{
-				powerbalancer_behaviour.Text = (ea.Behaviour == PowerManager.PowerBehaviour.Auto) ? "Automatic" : ((ea.Behaviour == PowerManager.PowerBehaviour.Manual) ? "Manual" : "Rule-based");
+				powerbalancer_behaviour.Text = (ea.Behaviour == PowerManager.PowerBehaviour.Auto) ?
+					HumanReadable.Hardware.Power.AutoAdjust : 
+					((ea.Behaviour == PowerManager.PowerBehaviour.Manual) ?
+						HumanReadable.Hardware.Power.Manual : HumanReadable.Hardware.Power.RuleBased
+					);
 				if (ea.Behaviour != PowerManager.PowerBehaviour.Auto)
 					powerbalancerlog.Items.Clear();
 			}));
