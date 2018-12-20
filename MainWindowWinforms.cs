@@ -1626,7 +1626,7 @@ namespace Taskmaster
 			WatchlistRules.Columns.Add(HumanReadable.System.Process.Affinity, appwidths[4]);
 			WatchlistRules.Columns.Add("Power Plan", appwidths[5]);
 			WatchlistRules.Columns.Add("Adjusts", appwidths[6]);
-			WatchlistRules.Columns.Add("Path", appwidths[7]);
+			WatchlistRules.Columns.Add(HumanReadable.System.Process.Path, appwidths[7]);
 			WatchlistRules.Scrollable = true;
 			WatchlistRules.Alignment = ListViewAlignment.Left;
 
@@ -1832,7 +1832,7 @@ namespace Taskmaster
 				lastmodifylist.Columns.Add("Rule", appwidths[1]);
 				lastmodifylist.Columns.Add(HumanReadable.System.Process.Priority, appwidths[3]);
 				lastmodifylist.Columns.Add(HumanReadable.System.Process.Affinity, appwidths[4]);
-				lastmodifylist.Columns.Add("Path", -2);
+				lastmodifylist.Columns.Add(HumanReadable.System.Process.Path, -2);
 
 				lastmodifypanel.Controls.Add(lastmodifylist);
 				var lastmodifyms = new ContextMenuStrip();

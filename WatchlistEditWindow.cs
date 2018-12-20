@@ -321,7 +321,7 @@ namespace Taskmaster
 			lt.Controls.Add(findexecbutton);
 
 			// PATH
-			lt.Controls.Add(new Label { Text = "Path", TextAlign = System.Drawing.ContentAlignment.MiddleLeft });
+			lt.Controls.Add(new Label { Text = HumanReadable.System.Process.Path, TextAlign = System.Drawing.ContentAlignment.MiddleLeft });
 			pathName.Text = Controller.Path;
 			pathName.Width = 180;
 			tooltip.SetToolTip(pathName, "Path name; rule will match only paths that include this, subfolders included.\nPartial matching is allowed.");
