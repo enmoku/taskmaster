@@ -49,6 +49,8 @@ namespace Taskmaster
 			public const string Description = "Description";
 
 			public const string Ignore = "Ignore";
+
+			public const string Ellipsis = "…";
 		}
 
 		public static class System
