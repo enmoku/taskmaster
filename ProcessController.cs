@@ -769,11 +769,8 @@ namespace Taskmaster
 				{
 					case PathVisibilityOptions.Smart:
 						{
-							int count = 0;
-							foreach (char c in info.Path)
-								if (c == System.IO.Path.DirectorySeparatorChar || c == System.IO.Path.AltDirectorySeparatorChar) count++;
-							if (count <= 5) return info.Path;
 							List<string> parts = new List<string>(info.Path.Split(System.IO.Path.DirectorySeparatorChar, System.IO.Path.AltDirectorySeparatorChar));
+							if (parts.Count <= 5) return info.Path;
 							parts.RemoveRange(4, parts.Count - 5);
 							parts[0] = parts[0] + System.IO.Path.DirectorySeparatorChar; // Path.Combine handles drive letter weird
 							// Minimal structure
