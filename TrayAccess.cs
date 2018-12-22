@@ -34,9 +34,20 @@ using Serilog;
 
 namespace Taskmaster
 {
+	sealed public class TrayShownEventArgs : EventArgs
+	{
+		public bool Visible = false;
+	}
+
+	/// <summary>
+	/// 
+	/// </summary>
+	// Form is used for catching some system events
 	sealed public class TrayAccess : UI.UniForm //, IDisposable
 	{
 		NotifyIcon Tray;
+
+		public event EventHandler<TrayShownEventArgs> TrayMenuShown;
 
 		ContextMenuStrip ms;
 		ToolStripMenuItem menu_windowopen;
@@ -156,9 +167,16 @@ namespace Taskmaster
 
 			EnsureVisible();
 
+			ms.VisibleChanged += MenuVisibilityChangedEvent;
+
 			if (Taskmaster.Trace) Log.Verbose("<Tray> Initialized");
 
 			Taskmaster.DisposalChute.Push(this);
+		}
+
+		private void MenuVisibilityChangedEvent(object sender, EventArgs e)
+		{
+			TrayMenuShown?.Invoke(this, new TrayShownEventArgs() { Visible = ms.Visible });
 		}
 
 		public void SessionEndingEvent(object sender, Microsoft.Win32.SessionEndingEventArgs ev)
