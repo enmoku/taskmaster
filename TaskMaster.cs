@@ -228,8 +228,6 @@ namespace Taskmaster
 		{
 			Log.Information("<Core> Loading components...");
 
-			bool tray = true;
-
 			// Parallel loading, cuts down startup time some.
 			// This is really bad if something fails
 			Task[] init =
@@ -256,7 +254,7 @@ namespace Taskmaster
 			if (AudioManagerEnabled) audiomanager = new AudioManager(); // EXPERIMENTAL
 
 			// WinForms makes the following components not load nicely if not done here.
-			if (tray) trayaccess = new TrayAccess();
+			trayaccess = new TrayAccess();
 
 			Log.Information("<Core> Waiting for component loading.");
 
