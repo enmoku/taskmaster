@@ -192,7 +192,61 @@ namespace Taskmaster
 				}
 
 				trayaccess.Hook(mainwindow);
+
+				mainwindow.LostFocus += WindowLostFocusEvent;
+				mainwindow.GotFocus += WindowGotFocusEvent;
 			}
+		}
+
+		static bool MainWindowFocus = false;
+		static bool TrayShown = false;
+
+		static void WindowGotFocusEvent(object sender, EventArgs e)
+		{
+			MainWindowFocus = true;
+
+			OptimizeResponsiviness();
+		}
+
+		static void WindowLostFocusEvent(object sender, EventArgs e)
+		{
+			MainWindowFocus = false;
+
+			OptimizeResponsiviness();
+		}
+
+		static void TrayMenuShownEvent(object sender, TrayShownEventArgs e)
+		{
+			TrayShown = e.Visible;
+
+			OptimizeResponsiviness();
+		}
+
+		static void OptimizeResponsiviness()
+		{
+			var self = Process.GetCurrentProcess();
+
+			if (MainWindowFocus || TrayShown)
+			{
+				self.PriorityClass = ProcessPriorityClass.AboveNormal;
+
+				if (SelfOptimizeBGIO)
+				{
+					try { ProcessController.SetIOPriority(self, NativeMethods.PriorityTypes.PROCESS_MODE_BACKGROUND_END); }
+					catch { }
+				}
+			}
+			else
+			{
+				self.PriorityClass = SelfPriority;
+
+				if (SelfOptimizeBGIO)
+				{
+					try { ProcessController.SetIOPriority(self, NativeMethods.PriorityTypes.PROCESS_MODE_BACKGROUND_BEGIN); }
+					catch { }
+				}
+			}
+
 		}
 
 		static void PreSetup()
@@ -255,6 +309,7 @@ namespace Taskmaster
 
 			// WinForms makes the following components not load nicely if not done here.
 			trayaccess = new TrayAccess();
+			trayaccess.TrayMenuShown += TrayMenuShownEvent;
 
 			Log.Information("<Core> Waiting for component loading.");
 
@@ -320,8 +375,9 @@ namespace Taskmaster
 			// Self-optimization
 			if (SelfOptimize)
 			{
+				OptimizeResponsiviness();
+
 				var self = Process.GetCurrentProcess();
-				self.PriorityClass = SelfPriority; // should never throw
 				System.Threading.Thread currentThread = System.Threading.Thread.CurrentThread;
 				currentThread.Priority = self.PriorityClass.ToThreadPriority(); // is this useful?
 
@@ -336,12 +392,6 @@ namespace Taskmaster
 				}
 
 				self.ProcessorAffinity = new IntPtr(SelfAffinity); // this should never throw an exception
-
-				if (SelfOptimizeBGIO)
-				{
-					try { ProcessController.SetIOPriority(self, NativeMethods.PriorityTypes.PROCESS_MODE_BACKGROUND_BEGIN); }
-					catch { Log.Warning("Failed to set self to background mode."); }
-				}
 
 				selfmaintenance = new SelfMaintenance();
 			}
@@ -1131,7 +1181,7 @@ namespace Taskmaster
 					throw new RunstateException("Unhandled", Runstate.CriticalFailure, ex);
 				}
 
-				if (SelfOptimize && State == Runstate.Normal) // return decent processing speed to quickly exit
+				if (SelfOptimize) // return decent processing speed to quickly exit
 				{
 					var self = Process.GetCurrentProcess();
 					self.PriorityClass = ProcessPriorityClass.AboveNormal;
