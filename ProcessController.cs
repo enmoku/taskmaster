@@ -761,6 +761,8 @@ namespace Taskmaster
 
 		HashSet<int> ForegroundWatch = new HashSet<int>();
 
+
+		int PathElements = 0;
 		string FormatPathName(ProcessEx info)
 		{
 			if (!string.IsNullOrEmpty(info.Path))
@@ -769,15 +771,49 @@ namespace Taskmaster
 				{
 					case PathVisibilityOptions.Smart:
 						{
+							// TODO: Cut off bin, x86, x64, win64, win32 or similar generic folder parts
 							List<string> parts = new List<string>(info.Path.Split(System.IO.Path.DirectorySeparatorChar, System.IO.Path.AltDirectorySeparatorChar));
-							if (parts.Count <= 5) return info.Path;
-							parts.RemoveRange(4, parts.Count - 5);
-							parts[0] = parts[0] + System.IO.Path.DirectorySeparatorChar; // Path.Combine handles drive letter weird
-							// Minimal structure
-							// drive A B C file
-							// 1 2 3 4 5
-							// c:\programs\brand\app\app.exe
-							parts.Insert(parts.Count - 1, "..."); // ellipsis
+							if (!string.IsNullOrEmpty(Path))
+							{
+								// cut Path from the output
+								// following notes assume matching c:\program files
+
+								// WISHFUL THINKING: Branch Predictor Hint: The following is unlikely to be true.
+								if (PathElements == 0)
+								{
+									foreach (char c in Path)
+										if (c == System.IO.Path.DirectorySeparatorChar || c == System.IO.Path.AltDirectorySeparatorChar) PathElements++;
+									PathElements++;
+								}
+
+								parts.RemoveRange(0, PathElements);
+
+								if (parts.Count > 3)
+								{
+									// c:\program files\brand\app\version\random\element\executable.exe
+									// ...\brand\app\...\executable.exe
+									parts.RemoveRange(2, parts.Count - 3); // remove all but two first and last
+									parts.Insert(2, HumanReadable.Generic.Ellipsis);
+								}
+
+								// ...\brand\app\app.exe
+
+								parts.Insert(0, HumanReadable.Generic.Ellipsis);
+							}
+							else if (parts.Count <= 5) return info.Path; // as is
+							else
+							{
+								// Minimal structure
+								// drive A B C file
+								// 1 2 3 4 5
+								// c:\programs\brand\app\app.exe as is
+								// c:\programs\brand\app\v2.5\x256\bin\app.exe -> c:\programs\brand\app\...\app.exe
+
+								parts.RemoveRange(4, parts.Count - 5);
+								parts[0] = parts[0] + System.IO.Path.DirectorySeparatorChar; // Path.Combine handles drive letter weird
+								parts.Insert(parts.Count - 1, HumanReadable.Generic.Ellipsis);
+							}
+
 							return System.IO.Path.Combine(parts.ToArray());
 						}
 					default:
