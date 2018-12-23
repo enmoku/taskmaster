@@ -195,6 +195,7 @@ namespace Taskmaster
 			TopMost = true;
 			TopMost = false;
 			Show();
+			Activate();
 		}
 
 		public void ShowLastLog()
