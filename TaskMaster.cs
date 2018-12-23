@@ -202,14 +202,14 @@ namespace Taskmaster
 		static bool MainWindowFocus = false;
 		static bool TrayShown = false;
 
-		static void WindowGotFocusEvent(object sender, EventArgs e)
+		static void WindowActivatedEvent(object sender, EventArgs e)
 		{
 			MainWindowFocus = true;
-
+			
 			OptimizeResponsiviness();
 		}
 
-		static void WindowLostFocusEvent(object sender, EventArgs e)
+		static void WindowDeactivatedEvent(object sender, EventArgs e)
 		{
 			MainWindowFocus = false;
 
