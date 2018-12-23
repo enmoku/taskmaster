@@ -188,7 +188,9 @@ namespace Taskmaster
 
 		public void Reveal()
 		{
+			WindowState = FormWindowState.Normal;
 			Show();
+			// shuffle to top in the most hackish way possible, these are all unreliable
 			BringToFront(); // does nothing without show(), unreliable even with it
 			TopMost = true;
 			TopMost = false;
