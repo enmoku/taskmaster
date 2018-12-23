@@ -193,8 +193,9 @@ namespace Taskmaster
 
 				trayaccess.Hook(mainwindow);
 
-				mainwindow.LostFocus += WindowLostFocusEvent;
-				mainwindow.GotFocus += WindowGotFocusEvent;
+				// .GotFocus and .LostFocus are apparently unreliable as per the API
+				mainwindow.Activated += WindowActivatedEvent;
+				mainwindow.Deactivate += WindowDeactivatedEvent;
 			}
 		}
 
