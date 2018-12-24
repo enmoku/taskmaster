@@ -151,16 +151,6 @@ namespace Taskmaster
 		/// </summary>
 		public int ModifyDelay { get; set; } = 0;
 
-		int p_Rescan;
-		/// <summary>
-		/// Delay in minutes before we try to use Scan again.
-		/// </summary>
-		public int Rescan
-		{
-			get { return p_Rescan; }
-			set { p_Rescan = value.Constrain(0, 300); }
-		}
-
 		/// <summary>
 		/// Frienly executable name as required by various System.Process functions.
 		/// Same as <see cref="T:Taskmaster.ProcessControl.Executable"/> but with the extension missing.
@@ -339,8 +329,7 @@ namespace Taskmaster
 
 			if (!string.IsNullOrEmpty(Executable))
 			{
-				if (Rescan > 0) app["Rescan"].IntValue = Rescan;
-				else app.Remove("Rescan");
+				app.Remove("Rescan"); // OBSOLETE
 				if (Recheck > 0) app["Recheck"].IntValue = Recheck;
 				else app.Remove("Recheck");
 			}
@@ -875,7 +864,7 @@ namespace Taskmaster
 			}
 		}
 
-		public async Task Modify(ProcessEx info)
+		public void Modify(ProcessEx info)
 		{
 			Touch(info);
 			if (Recheck > 0) TouchReapply(info);
@@ -1431,57 +1420,15 @@ namespace Taskmaster
 			}
 		}
 
-		/// <summary>
-		/// Synchronous call to RescanWithSchedule()
-		/// </summary>
-		public int TryScan()
-		{
-			RescanWithSchedule();
-
-			return Convert.ToInt32((LastScan.AddMinutes(Rescan) - DateTime.Now).TotalMinutes); // this will produce wrong numbers
-		}
-
-		DateTime LastScan = DateTime.MinValue;
+		public DateTime LastScan { get; private set; } = DateTime.MinValue;
 
 		/// <summary>
 		/// Atomic lock for RescanWithSchedule()
 		/// </summary>
 		int ScheduledScan = 0;
 
-		/// <exception>None</exception>
-		async Task RescanWithSchedule()
-		{
-			try
-			{
-				var n = (DateTime.Now - LastScan).TotalMinutes;
-				if (Rescan > 0 && n >= Rescan)
-				{
-					if (Atomic.Lock(ref ScheduledScan))
-					{
-						try
-						{
-							if (Taskmaster.DebugProcesses)
-								Log.Debug("[" + FriendlyName + "] Rescan initiating.");
-
-							await Scan().ConfigureAwait(false);
-						}
-						finally
-						{
-							Atomic.Unlock(ref ScheduledScan);
-						}
-					}
-				}
-				// else
-				// 	Log.Verbose("[{FriendlyName}] Scan too recent, ignoring.", FriendlyName); // this is too spammy.
-			}
-			catch (Exception ex)
-			{
-				Logging.Stacktrace(ex);
-			}
-		}
-
 		int ScanModifyCount = 0;
-		public async Task Scan()
+		public void Scan()
 		{
 			if (string.IsNullOrEmpty(ExecutableFriendlyName)) return;
 

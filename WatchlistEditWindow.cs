@@ -103,12 +103,6 @@ namespace Taskmaster
 				MessageBox.Show("No path nor executable defined.", "Configuration error", MessageBoxButtons.OK, MessageBoxIcon.Error, MessageBoxDefaultButton.Button1);
 			}
 
-			if ((rescanFreq.Value > 0) && !exnam)
-			{
-				valid = false;
-				MessageBox.Show("Rescan requires executable to be defined.", "Configuration error", MessageBoxButtons.OK, MessageBoxIcon.Error, MessageBoxDefaultButton.Button1);
-			}
-
 			var dprc = Taskmaster.processmanager.getWatchedController(friendlyName.Text);
 			if (dprc != null && dprc != Controller)
 			{
@@ -175,7 +169,6 @@ namespace Taskmaster
 
 			Controller.ModifyDelay = (int)(modifyDelay.Value * 1000);
 			Controller.PowerPlan = PowerManager.GetModeByName(powerPlan.Text);
-			Controller.Rescan = Convert.ToInt32(rescanFreq.Value);
 			Controller.AllowPaging = allowPaging.Checked;
 			Controller.SetForegroundOnly(foregroundOnly.Checked);
 			Controller.BackgroundPowerdown = Controller.ForegroundOnly && backgroundPowerdown.Checked;
@@ -234,7 +227,6 @@ namespace Taskmaster
 
 		Button allbutton = new Button();
 		Button clearbutton = new Button();
-		Extensions.NumericUpDownEx rescanFreq = null;
 		Extensions.NumericUpDownEx modifyDelay = null;
 		CheckBox allowPaging = new CheckBox();
 		ComboBox powerPlan = new ComboBox();
@@ -629,20 +621,6 @@ namespace Taskmaster
 
 			// ---------------------------------------------------------------------------------------------------------
 
-			// RESCAN
-			lt.Controls.Add(new Label { Text = "Rescan frequency", TextAlign = System.Drawing.ContentAlignment.MiddleLeft });
-			rescanFreq = new Extensions.NumericUpDownEx()
-			{
-				Unit = "m",
-				Minimum = 0,
-				Maximum = 60 * 24,
-				Value = Controller.Rescan,
-				Width = 80,
-			};
-			tooltip.SetToolTip(rescanFreq, "How often to rescan for this app, in minutes.\nSometimes instances slip by.\n0 disables this.");
-			lt.Controls.Add(rescanFreq);
-			lt.Controls.Add(new Label()); // empty
-
 			// lt.Controls.Add(new Label { Text="Children"});
 			// lt.Controls.Add(new Label { Text="Child priority"});
 
@@ -882,8 +860,6 @@ namespace Taskmaster
 			if (!exnam && !path)
 				sbs.Append("Both path and executable are missing!").AppendLine();
 
-			if ((rescanFreq.Value > 0) && !exnam)
-				sbs.Append("Rescan frequency REQUIRES executable to be defined.").AppendLine();
 			if (priorityClass.SelectedIndex == 5)
 				sbs.Append("Priority class is to be ignored.").AppendLine();
 			if (cpumask == -1 || affstrategy.SelectedIndex == 0)

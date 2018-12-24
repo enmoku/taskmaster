@@ -2517,8 +2517,6 @@ namespace Taskmaster
 						if (prc.BackgroundPowerdown)
 							sbs.Append("Background powerdown = ").Append(prc.BackgroundPowerdown).AppendLine();
 					}
-					if (prc.Rescan > 0)
-						sbs.Append("Rescan = ").Append(prc.Rescan).AppendLine();
 					if (prc.Recheck > 0)
 						sbs.Append("Recheck = ").Append(prc.Recheck).AppendLine();
 					if (prc.AllowPaging)

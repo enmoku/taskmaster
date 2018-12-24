@@ -149,12 +149,6 @@ namespace Taskmaster
 
 			InitWMIEventWatcher();
 
-			if (execontrol.Count > 0 && RescanDelay > 0)
-			{
-				if (Taskmaster.Trace) Log.Verbose("Starting rescan timer.");
-				rescanTimer = new System.Threading.Timer(RescanOnTimerTick, null, 500, RescanDelay * 1000);
-			}
-
 			ProcessDetectedEvent += ProcessTriage;
 
 			if (RescanEverythingFrequency > 0)
@@ -367,8 +361,6 @@ namespace Taskmaster
 			Task.Run(async () => { await ScanEverything(); });
 		}
 
-		System.Threading.Timer rescanTimer;
-
 		/// <summary>
 		/// Event fired by ScanEverything and WMI new process
 		/// </summary>
@@ -454,7 +446,6 @@ namespace Taskmaster
 		}
 
 		static int BatchDelay = 2500;
-		static int RescanDelay = 0; // 5 minutes
 		public static int RescanEverythingFrequency { get; private set; } = 15; // seconds
 		public static DateTime LastScan { get; private set; } = DateTime.MinValue;
 		public static DateTime NextScan { get; set; } = DateTime.MinValue;
@@ -472,12 +463,6 @@ namespace Taskmaster
 			{
 				prc.SetForegroundOnly(false);
 				Log.Warning("[" + prc.FriendlyName + "] Background priority equal or higher than foreground priority, ignoring.");
-			}
-
-			if (prc.Rescan > 0 && string.IsNullOrEmpty(prc.ExecutableFriendlyName))
-			{
-				Log.Warning("[" + prc.FriendlyName + "] Configuration error, can not rescan without image name.");
-				prc.Rescan = 0;
 			}
 
 			if (string.IsNullOrEmpty(prc.Executable) && string.IsNullOrEmpty(prc.Path))
@@ -529,7 +514,7 @@ namespace Taskmaster
 			if (Taskmaster.Trace) Log.Verbose("[" + prc.FriendlyName + "] Match: " + (prc.Executable ?? prc.Path) + ", " +
 				(prc.Priority.HasValue ? Readable.ProcessPriority(prc.Priority.Value) : "n/a") +
 				", Mask:" + (prc.Affinity.HasValue ? prc.Affinity.Value.ToString() : "n/a") +
-				", Rescan: " + prc.Rescan + "m, Recheck: " + prc.Recheck + "s, FgOnly: " + prc.ForegroundOnly.ToString());
+				", Recheck: " + prc.Recheck + "s, FgOnly: " + prc.ForegroundOnly.ToString());
 		}
 
 		public void loadWatchlist()
@@ -560,9 +545,12 @@ namespace Taskmaster
 				Log.Information("<Process> Batch processing threshold: " + BatchProcessingThreshold);
 			}
 
-			RescanDelay = coreperf.GetSetDefault("Rescan frequency", 0, out modified).IntValue.Constrain(0, 60 * 6) * 60;
-			coreperf["Rescan frequency"].Comment = "In minutes. How often to check for apps that want to be rescanned. Disabled if rescan everything is enabled. 0 disables.";
-			dirtyconfig |= modified;
+			// OBSOLETE
+			if (coreperf.Contains("Rescan frequency"))
+			{
+				coreperf.Remove("Rescan frequency");
+				dirtyconfig |= true;
+			}
 
 			RescanEverythingFrequency = coreperf.GetSetDefault("Rescan everything frequency", 15, out modified).IntValue.Constrain(0, 60 * 60 * 24);
 			if (RescanEverythingFrequency > 0)
@@ -575,12 +563,7 @@ namespace Taskmaster
 			dirtyconfig |= modified;
 
 			if (RescanEverythingFrequency > 0)
-			{
 				Log.Information("<Process> Rescan everything every " + RescanEverythingFrequency + " seconds.");
-				RescanDelay = 0;
-			}
-			else
-				Log.Information("<Process> Per-app rescan frequency: " + $"{RescanDelay / 60:N1}m");
 
 			// --------------------------------------------------------------------------------------------------------
 
@@ -735,7 +718,6 @@ namespace Taskmaster
 					// friendly name is filled automatically
 					PriorityStrategy = priostrat,
 					AffinityStrategy = affStrat,
-					Rescan = (section.TryGet("Rescan")?.IntValue ?? 0),
 					Path = (section.TryGet(HumanReadable.System.Process.Path)?.StringValue ?? null),
 					ModifyDelay = (section.TryGet("Modify delay")?.IntValue ?? 0),
 					//BackgroundIO = (section.TryGet("Background I/O")?.BoolValue ?? false), // Doesn't work
@@ -761,12 +743,6 @@ namespace Taskmaster
 				if (!prc.Priority.HasValue) prc.PriorityStrategy = ProcessPriorityStrategy.None;
 				else if (prc.PriorityStrategy == ProcessPriorityStrategy.None) prc.Priority = null;
 
-				if (string.IsNullOrEmpty(prc.Executable) && prc.Rescan > 0)
-				{
-					prc.Rescan = 0;
-					Log.Warning("[" + prc.FriendlyName + "] Rescan defined with no executable name.");
-				}
-
 				int[] resize = section.TryGet("Resize")?.IntValueArray ?? null; // width,height
 				if (resize != null && resize.Length == 4)
 				{
@@ -780,14 +756,21 @@ namespace Taskmaster
 
 				AddController(prc);
 
-				if (upgrade) corecfg.MarkDirty();
-				if (upgradewatchlist) appcfg.MarkDirty();
+				// OBSOLETE
+				if (section.Contains("Rescan"))
+				{
+					section.Remove("Rescan");
+					upgradewatchlist |= true;
+				}
 
 				// cnt.Children &= ControlChildren;
 
 				// cnt.delay = section.Contains("delay") ? section["delay"].IntValue : 30; // TODO: Add centralized default delay
 				// cnt.delayIncrement = section.Contains("delay increment") ? section["delay increment"].IntValue : 15; // TODO: Add centralized default increment
 			}
+
+			if (upgrade) corecfg.MarkDirty();
+			if (upgradewatchlist) appcfg.MarkDirty();
 
 			// --------------------------------------------------------------------------------------------------------
 
@@ -1558,76 +1541,6 @@ namespace Taskmaster
 			}
 		}
 
-		void RescanOnTimerTick(object state) => Task.Run(RescanOnTimer);
-
-		int rescan_lock = 0;
-
-		async Task RescanOnTimer()
-		{
-			if (!Atomic.Lock(ref rescan_lock)) return;
-
-			await Task.Delay(0).ConfigureAwait(false); // async
-
-			try
-			{
-				// Log.Verbose("Rescanning...");
-
-				var nextscan = 1;
-				var tnext = 0;
-				var rescanrequests = 0;
-				string nextscanfor = null;
-
-				lock (execontrol_lock)
-				{
-					var pcs = execontrol.Values;
-					foreach (ProcessController prc in pcs)
-					{
-						if (prc.Rescan == 0) continue;
-
-						rescanrequests++;
-
-						tnext = prc.TryScan();
-
-						if (tnext > nextscan)
-						{
-							nextscan = tnext;
-							nextscanfor = prc.FriendlyName;
-						}
-					}
-				}
-
-				if (rescanrequests == 0)
-				{
-					if (Taskmaster.Trace) Log.Verbose("No apps have requests to rescan, stopping rescanning.");
-					Utility.Dispose(ref rescanTimer);
-				}
-				else
-				{
-					try
-					{
-						rescanTimer.Change(500, nextscan.Constrain(1, 360) * (1000 * 60));
-					}
-					catch (Exception ex)
-					{
-						Log.Error("Failed to set rescan timer based on scheduled next scan.");
-						rescanTimer.Change(500, 5 * (1000 * 60));
-
-						Logging.Stacktrace(ex);
-					}
-
-					Log.Verbose("Rescan set to occur after " + nextscan + " minutes; Next in line: " + nextscanfor);
-				}
-			}
-			catch (Exception ex)
-			{
-				Logging.Stacktrace(ex);
-			}
-			finally
-			{
-				Atomic.Unlock(ref rescan_lock);
-			}
-		}
-
 		System.Management.ManagementEventWatcher watcher = null;
 		void InitWMIEventWatcher()
 		{
@@ -1813,8 +1726,6 @@ namespace Taskmaster
 						activeappmonitor = null;
 					}
 
-
-					Utility.Dispose(ref rescanTimer);
 					RescanEverythingTimer?.Dispose();
 					BatchProcessingTimer?.Dispose();
 				}
