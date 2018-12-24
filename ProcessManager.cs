@@ -527,7 +527,8 @@ namespace Taskmaster
 				watchlist.Add(prc);
 
 			if (Taskmaster.Trace) Log.Verbose("[" + prc.FriendlyName + "] Match: " + (prc.Executable ?? prc.Path) + ", " +
-				prc.Priority.ToString() + ", Mask:" + prc.Affinity.ToString() +
+				(prc.Priority.HasValue ? Readable.ProcessPriority(prc.Priority.Value) : "n/a") +
+				", Mask:" + (prc.Affinity.HasValue ? prc.Affinity.Value.ToString() : "n/a") +
 				", Rescan: " + prc.Rescan + "m, Recheck: " + prc.Recheck + "s, FgOnly: " + prc.ForegroundOnly.ToString());
 		}
 

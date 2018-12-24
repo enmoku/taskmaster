@@ -273,7 +273,7 @@ namespace Taskmaster
 								DateTime.Now.ToLongTimeString(),
 								ev.Info.Name,
 								ev.Control.FriendlyName,
-								(ev.Priority.HasValue ? ev.Priority.Value.ToString() : "n/a"),
+								(ev.Priority.HasValue ? MKAh.Readable.ProcessPriority(ev.Priority.Value) : "n/a"),
 								(ev.Affinity.HasValue ? HumanInterface.BitMask(ev.Affinity.Value.ToInt32(), ProcessManager.CPUCount) : "n/a"),
 								ev.Info.Path
 							});

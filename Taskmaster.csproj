@@ -147,6 +147,7 @@
     <Compile Include="Utility\BitOperations.cs" />
     <Compile Include="Utility\DiscardException.cs" />
     <Compile Include="Utility\LogAndDiscardException.cs" />
+    <Compile Include="Utility\ProcessPriorityClass.cs" />
     <Compile Include="Utility\UserActivity.cs" />
     <Compile Include="WatchlistEditWindow.cs">
       <SubType>Form</SubType>

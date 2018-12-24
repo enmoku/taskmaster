@@ -551,9 +551,9 @@ namespace Taskmaster
 			sbs.Append("; Priority: ");
 			if (ev.PriorityOld.HasValue)
 			{
-				sbs.Append(ev.PriorityOld.Value.ToString());
+				sbs.Append(Readable.ProcessPriority(ev.PriorityOld.Value));
 				if (ev.Priority.HasValue)
-					sbs.Append(" → ").Append(ev.Priority.Value.ToString());
+					sbs.Append(" → ").Append(Readable.ProcessPriority(ev.Priority.Value));
 				if (ev.PriorityFail) sbs.Append(" [Failed]");
 				if (ev.Protected) sbs.Append(" [Protected]");
 			}
