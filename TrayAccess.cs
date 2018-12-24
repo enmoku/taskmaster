@@ -56,6 +56,7 @@ namespace Taskmaster
 		ToolStripMenuItem menu_runatstart_reg;
 		ToolStripMenuItem menu_runatstart_sch;
 		ToolStripMenuItem menu_exit;
+
 		ToolStripMenuItem power_auto;
 		ToolStripMenuItem power_highperf;
 		ToolStripMenuItem power_balanced;
@@ -399,7 +400,7 @@ namespace Taskmaster
 			}
 		}
 
-		async void UnloseWindow(object sender, MouseEventArgs e)
+		void UnloseWindow(object sender, MouseEventArgs e)
 		{
 			if (e.Button == MouseButtons.Left)
 			{

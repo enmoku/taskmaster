@@ -303,7 +303,7 @@ namespace Taskmaster
 			Log.Information(sbs.ToString());
 		}
 
-		public async void SampleDeviceState(object state)
+		public void SampleDeviceState(object state)
 		{
 			RecordDeviceState(InternetAvailable, false);
 		}
