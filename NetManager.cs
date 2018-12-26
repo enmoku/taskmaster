@@ -367,89 +367,90 @@ namespace Taskmaster
 		{
 			// TODO: Figure out how to get Actual start time of internet connectivity.
 
-			if (!Atomic.Lock(ref InetCheckLimiter)) return InternetAvailable;
-
-			if (Taskmaster.Trace) Log.Verbose("<Network> Checking internet connectivity...");
-
-			try
+			if (Atomic.Lock(ref InetCheckLimiter))
 			{
-				var oldInetAvailable = InternetAvailable;
-				bool timeout = false;
-				bool dnsfail = false;
-				bool interrupt = false;
-				if (NetworkAvailable)
+				if (Taskmaster.Trace) Log.Verbose("<Network> Checking internet connectivity...");
+
+				try
 				{
-					try
+					var oldInetAvailable = InternetAvailable;
+					bool timeout = false;
+					bool dnsfail = false;
+					bool interrupt = false;
+					if (NetworkAvailable)
 					{
-						Dns.GetHostEntry(dnstestaddress); // FIXME: There should be some other method than DNS testing
-						InternetAvailable = true;
-						Notified = false;
-						// TODO: Don't rely on DNS?
-					}
-					catch (System.Net.Sockets.SocketException ex)
-					{
-						InternetAvailable = false;
-						switch (ex.SocketErrorCode)
+						try
 						{
-							case System.Net.Sockets.SocketError.AccessDenied:
-							case System.Net.Sockets.SocketError.SystemNotReady:
-								break;
-							case System.Net.Sockets.SocketError.TryAgain:
-							case System.Net.Sockets.SocketError.TimedOut:
-							default:
-								timeout = true;
-								InternetAvailable = true;
-								return InternetAvailable;
-							case System.Net.Sockets.SocketError.SocketError:
-							case System.Net.Sockets.SocketError.Interrupted:
-							case System.Net.Sockets.SocketError.Fault:
-								interrupt = true;
-								break;
-							case System.Net.Sockets.SocketError.HostUnreachable:
-								break;
-							case System.Net.Sockets.SocketError.HostNotFound:
-							case System.Net.Sockets.SocketError.HostDown:
-								dnsfail = true;
-								break;
-							case System.Net.Sockets.SocketError.NetworkDown:
-							case System.Net.Sockets.SocketError.NetworkReset:
-							case System.Net.Sockets.SocketError.NetworkUnreachable:
-								break;
+							Dns.GetHostEntry(dnstestaddress); // FIXME: There should be some other method than DNS testing
+							InternetAvailable = true;
+							Notified = false;
+							// TODO: Don't rely on DNS?
+						}
+						catch (System.Net.Sockets.SocketException ex)
+						{
+							InternetAvailable = false;
+							switch (ex.SocketErrorCode)
+							{
+								case System.Net.Sockets.SocketError.AccessDenied:
+								case System.Net.Sockets.SocketError.SystemNotReady:
+									break;
+								case System.Net.Sockets.SocketError.TryAgain:
+								case System.Net.Sockets.SocketError.TimedOut:
+								default:
+									timeout = true;
+									InternetAvailable = true;
+									return InternetAvailable;
+								case System.Net.Sockets.SocketError.SocketError:
+								case System.Net.Sockets.SocketError.Interrupted:
+								case System.Net.Sockets.SocketError.Fault:
+									interrupt = true;
+									break;
+								case System.Net.Sockets.SocketError.HostUnreachable:
+									break;
+								case System.Net.Sockets.SocketError.HostNotFound:
+								case System.Net.Sockets.SocketError.HostDown:
+									dnsfail = true;
+									break;
+								case System.Net.Sockets.SocketError.NetworkDown:
+								case System.Net.Sockets.SocketError.NetworkReset:
+								case System.Net.Sockets.SocketError.NetworkUnreachable:
+									break;
+							}
 						}
 					}
-				}
-				else
-					InternetAvailable = false;
+					else
+						InternetAvailable = false;
 
-				RecordDeviceState(InternetAvailable, address_changed);
+					RecordDeviceState(InternetAvailable, address_changed);
 
-				if (oldInetAvailable != InternetAvailable)
-				{
-					needUpdate = true;
-					ReportNetAvailability();
-				}
-				else
-				{
-					if (timeout)
-						Log.Information("<Network> Internet availability test inconclusive, assuming connected.");
-
-					if (!Notified && NetworkAvailable)
+					if (oldInetAvailable != InternetAvailable)
 					{
-						if (interrupt)
-							Log.Warning("<Network> Internet check interrupted. Potential hardware/driver issues.");
-
-						if (dnsfail)
-							Log.Warning("<Network> DNS test failed, test host unreachable. Test host may be down.");
-
-						Notified = dnsfail || interrupt;
+						needUpdate = true;
+						ReportNetAvailability();
 					}
+					else
+					{
+						if (timeout)
+							Log.Information("<Network> Internet availability test inconclusive, assuming connected.");
 
-					if (Taskmaster.Trace) Log.Verbose("<Network> Connectivity unchanged.");
+						if (!Notified && NetworkAvailable)
+						{
+							if (interrupt)
+								Log.Warning("<Network> Internet check interrupted. Potential hardware/driver issues.");
+
+							if (dnsfail)
+								Log.Warning("<Network> DNS test failed, test host unreachable. Test host may be down.");
+
+							Notified = dnsfail || interrupt;
+						}
+
+						if (Taskmaster.Trace) Log.Verbose("<Network> Connectivity unchanged.");
+					}
 				}
-			}
-			finally
-			{
-				Atomic.Unlock(ref InetCheckLimiter);
+				finally
+				{
+					Atomic.Unlock(ref InetCheckLimiter);
+				}
 			}
 
 			InternetStatusChange?.Invoke(this, new InternetStatus { Available = InternetAvailable, Start = LastUptimeStart, Uptime = Uptime });
@@ -678,9 +679,9 @@ namespace Taskmaster
 			if (!changed) return; // bail out if nothing has changed
 
 			sbs.Append("<Network> Status: ")
-				.Append(NetworkAvailable ? "Connected" : "Disconnected")
+				.Append(NetworkAvailable ? HumanReadable.Hardware.Network.Connected : HumanReadable.Hardware.Network.Disconnected)
 				.Append(", Internet: ")
-				.Append(InternetAvailable ? "Connected" : "Disconnected")
+				.Append(InternetAvailable ? HumanReadable.Hardware.Network.Connected : HumanReadable.Hardware.Network.Disconnected)
 				.Append(" - ");
 
 			if (NetworkAvailable && !InternetAvailable) sbs.Append("Route problems");
@@ -715,6 +716,8 @@ namespace Taskmaster
 
 			NetworkChangeCounter++;
 
+			NetworkStatusChange?.Invoke(this, new NetworkStatus { Available = available });
+
 			// do stuff only if this is different from last time
 			if (oldNetAvailable != available)
 			{
@@ -743,8 +746,6 @@ namespace Taskmaster
 				}
 
 				ReportNetAvailability();
-
-				NetworkStatusChange?.Invoke(this, new NetworkStatus { Available = available });
 			}
 			else
 			{

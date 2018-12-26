@@ -2654,18 +2654,19 @@ namespace Taskmaster
 
 		public void UpdateNetwork(object sender, EventArgs ev)
 		{
+			InetStatusLabel(netmonitor.InternetAvailable);
+			NetStatusLabel(netmonitor.NetworkAvailable);
+
 			BeginInvoke(new Action(() =>
 			{
-				lock (netstatus_lock)
+				ifaceList.BeginUpdate();
+				try
 				{
-					ifaceList.BeginUpdate();
-					try
-					{
-						ifaceList.Items.Clear();
+					ifaceList.Items.Clear();
 
-						foreach (var dev in netmonitor.GetInterfaces())
-						{
-							var li = new ListViewItem(new string[] {
+					foreach (var dev in netmonitor.GetInterfaces())
+					{
+						var li = new ListViewItem(new string[] {
 							dev.Name,
 							dev.Type.ToString(),
 							dev.Status.ToString(),
@@ -2676,21 +2677,17 @@ namespace Taskmaster
 							"n/a", // error delta
 							"n/a", // total errors
 						})
-							{
-								UseItemStyleForSubItems = false
-							};
-							ifaceList.Items.Add(li);
-						}
-					}
-					finally
-					{
-						ifaceList.EndUpdate();
+						{
+							UseItemStyleForSubItems = false
+						};
+						ifaceList.Items.Add(li);
 					}
 				}
+				finally
+				{
+					ifaceList.EndUpdate();
+				}
 			}));
-
-			InetStatusLabel(netmonitor.InternetAvailable);
-			NetStatusLabel(netmonitor.NetworkAvailable);
 
 			// Tray?.Tooltip(2000, "Internet " + (net.InternetAvailable ? "available" : "unavailable"), "Taskmaster", net.InternetAvailable ? ToolTipIcon.Info : ToolTipIcon.Warning);
 		}
@@ -2716,28 +2713,25 @@ namespace Taskmaster
 			if (!IsHandleCreated) return;
 			BeginInvoke(new Action(() =>
 			{
-				lock (netstatus_lock)
+				ifaceList.BeginUpdate();
+
+				try
 				{
-					ifaceList.BeginUpdate();
+					ifaceList.Items[ea.Traffic.Index].SubItems[PacketDeltaColumn].Text = "+" + ea.Traffic.Delta.Unicast;
+					ifaceList.Items[ea.Traffic.Index].SubItems[ErrorDeltaColumn].Text = "+" + ea.Traffic.Delta.Errors;
+					if (ea.Traffic.Delta.Errors > 0)
+						ifaceList.Items[ea.Traffic.Index].SubItems[ErrorDeltaColumn].ForeColor = System.Drawing.Color.OrangeRed;
+					else
+						ifaceList.Items[ea.Traffic.Index].SubItems[ErrorDeltaColumn].ForeColor = System.Drawing.SystemColors.ControlText;
 
-					try
-					{
-						ifaceList.Items[ea.Traffic.Index].SubItems[PacketDeltaColumn].Text = "+"+ea.Traffic.Delta.Unicast;
-						ifaceList.Items[ea.Traffic.Index].SubItems[ErrorDeltaColumn].Text = "+"+ea.Traffic.Delta.Errors;
-						if (ea.Traffic.Delta.Errors > 0)
-							ifaceList.Items[ea.Traffic.Index].SubItems[ErrorDeltaColumn].ForeColor = System.Drawing.Color.OrangeRed;
-						else
-							ifaceList.Items[ea.Traffic.Index].SubItems[ErrorDeltaColumn].ForeColor = System.Drawing.SystemColors.ControlText;
-
-						ifaceList.Items[ea.Traffic.Index].SubItems[ErrorTotalColumn].Text = ea.Traffic.Total.Errors.ToString();
-					}
-					catch (Exception ex)
-					{
-						Logging.Stacktrace(ex);
-					}
-
-					ifaceList.EndUpdate();
+					ifaceList.Items[ea.Traffic.Index].SubItems[ErrorTotalColumn].Text = ea.Traffic.Total.Errors.ToString();
 				}
+				catch (Exception ex)
+				{
+					Logging.Stacktrace(ex);
+				}
+
+				ifaceList.EndUpdate();
 			}));
 		}
 
@@ -2745,27 +2739,22 @@ namespace Taskmaster
 		int ErrorDeltaColumn = 7;
 		int ErrorTotalColumn = 8;
 
-		System.Drawing.Color inetBgColor = System.Drawing.Color.Red;
-
 		const string uninitialized = "Uninitialized";
-		string ConnectedText(bool connected) => connected ? "Connected" : "Disconnected";
-
-		object netstatus_lock = new object();
 
 		void InetStatusLabel(bool available)
 		{
 			if (!IsHandleCreated) return;
 			BeginInvoke(new Action(() =>
 			{
-				inetstatuslabel.Text = ConnectedText(available);
+				inetstatuslabel.Text = available ? HumanReadable.Hardware.Network.Connected : HumanReadable.Hardware.Network.Disconnected;
 				// inetstatuslabel.BackColor = available ? System.Drawing.Color.LightGoldenrodYellow : System.Drawing.Color.Red;
-				inetstatuslabel.BackColor = available ? System.Drawing.SystemColors.Menu : System.Drawing.Color.Red;
+				//inetstatuslabel.BackColor = available ? System.Drawing.SystemColors.Menu : System.Drawing.Color.Red;
 			}));
 		}
 
 		public void InetStatus(object sender, InternetStatus e)
 		{
-			lock (netstatus_lock) InetStatusLabel(e.Available);
+			InetStatusLabel(e.Available);
 		}
 
 		public void IPChange(object sender, EventArgs e)
@@ -2778,15 +2767,15 @@ namespace Taskmaster
 			if (!IsHandleCreated) return;
 			BeginInvoke(new Action(() =>
 			{
-				netstatuslabel.Text = ConnectedText(available);
+				netstatuslabel.Text = available ? HumanReadable.Hardware.Network.Connected : HumanReadable.Hardware.Network.Disconnected;
 				// netstatuslabel.BackColor = available ? System.Drawing.Color.LightGoldenrodYellow : System.Drawing.Color.Red;
-				netstatuslabel.BackColor = available ? System.Drawing.SystemColors.Menu : System.Drawing.Color.Red;
+				//netstatuslabel.BackColor = available ? System.Drawing.SystemColors.Menu : System.Drawing.Color.Red;
 			}));
 		}
 
 		public void NetStatus(object sender, NetworkStatus e)
 		{
-			lock (netstatus_lock) NetStatusLabel(e.Available);
+			NetStatusLabel(e.Available);
 		}
 
 		// BUG: DO NOT LOG INSIDE THIS FOR FUCKS SAKE

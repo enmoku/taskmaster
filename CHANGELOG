@@ -3,6 +3,8 @@ Comprehensive changes can be found in Git change history:
 	https://github.com/mkahvi/taskmaster/commits/master
 
 ## [0.12...]
+### 2018-12-27
+	Changed: Improved network availability reporting. It is much more responsive to changes and no longer gets stuck in disconnected state at times.
 ### 2018-12-24
 	Removed: Per watchlist rule Rescan option. It was only used if global scanning was disabled.
 		Since the mechanism is the same as global scan, it is recommended to just use potentially faster global scan instead.

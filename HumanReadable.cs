@@ -89,6 +89,12 @@ namespace Taskmaster
 				}
 			}
 
+			public static class Network
+			{
+				public const string Connected = "Connected";
+				public const string Disconnected = "Disconnected";
+			}
+
 			public static class Audio
 			{
 				public const string Section = "Audio";
