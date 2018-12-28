@@ -363,12 +363,12 @@ namespace Taskmaster
 				// compsec["Media"].BoolValue = mediamon.Checked;
 				compsec[HumanReadable.System.Process.Foreground].BoolValue = fgmon.Checked;
 				compsec["Network"].BoolValue = netmon.Checked;
-				compsec["Power"].BoolValue = powmon.Checked;
+				compsec[HumanReadable.Hardware.Power.Section].BoolValue = powmon.Checked;
 				compsec["Paging"].BoolValue = paging.Checked;
 				compsec["Maintenance"].BoolValue = tempmon.Checked;
 				compsec["Health"].BoolValue = autodoc.Checked;
 
-				var powsec = cfg.Config["Power"];
+				var powsec = cfg.Config[HumanReadable.Hardware.Power.Section];
 				if (powmon.Checked) powsec["Behaviour"].StringValue = powbehaviour.Text.ToLower();
 
 				var optsec = cfg.Config["Options"];

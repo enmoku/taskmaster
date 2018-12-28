@@ -451,7 +451,7 @@ namespace Taskmaster
 		{
 			var corecfg = Taskmaster.Config.Load(Taskmaster.coreconfig);
 
-			var power = corecfg.Config["Power"];
+			var power = corecfg.Config[HumanReadable.Hardware.Power.Section];
 			bool modified = false, dirtyconfig = false;
 
 			var behaviourstring = power.GetSetDefault("Behaviour", HumanReadable.Hardware.Power.RuleBased, out modified).StringValue;
@@ -521,7 +521,7 @@ namespace Taskmaster
 
 				if (bautoadjust)
 				{
-					power["Behaviour"].StringValue = "auto";
+					power["Behaviour"].StringValue = HumanReadable.Hardware.Power.AutoAdjust;
 					dirtyconfig = true;
 					LaunchBehaviour = PowerBehaviour.Auto;
 					Behaviour = PowerBehaviour.Auto;
@@ -629,7 +629,7 @@ namespace Taskmaster
 		{
 			var corecfg = Taskmaster.Config.Load(Taskmaster.coreconfig);
 
-			var power = corecfg.Config["Power"];
+			var power = corecfg.Config[HumanReadable.Hardware.Power.Section];
 
 			string sbehaviour = HumanReadable.Hardware.Power.RuleBased.ToLower(); // default to rule-based
 			switch (LaunchBehaviour)

@@ -452,7 +452,7 @@ namespace Taskmaster
 
 			var corelist = new List<CheckBox>();
 
-			lt.Controls.Add(new Label { Text = "Affinity", TextAlign = System.Drawing.ContentAlignment.MiddleLeft });
+			lt.Controls.Add(new Label { Text = HumanReadable.System.Process.Affinity, TextAlign = System.Drawing.ContentAlignment.MiddleLeft });
 			affstrategy.DropDownStyle = ComboBoxStyle.DropDownList;
 			affstrategy.Items.AddRange(new string[] { HumanReadable.Generic.Ignore, "Limit (Default)", "Force" });
 			tooltip.SetToolTip(affstrategy, "Limit constrains cores to the defined range but does not increase used cores beyond what the app is already using.\nForce sets the affinity mask to the defined regardless of anything.");
@@ -641,7 +641,7 @@ namespace Taskmaster
 			lt.Controls.Add(new Label()); // empty
 
 			// POWER
-			lt.Controls.Add(new Label { Text = "Power plan", TextAlign = System.Drawing.ContentAlignment.MiddleLeft });
+			lt.Controls.Add(new Label { Text = HumanReadable.Hardware.Power.Plan, TextAlign = System.Drawing.ContentAlignment.MiddleLeft });
 			powerPlan.Items.AddRange(new string[] {
 				PowerManager.GetModeName(PowerInfo.PowerMode.HighPerformance),
 				PowerManager.GetModeName(PowerInfo.PowerMode.Balanced),

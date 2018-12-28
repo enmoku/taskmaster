@@ -109,6 +109,9 @@ namespace Taskmaster
 			{
 				public const string Section = "Power";
 
+				public const string Plan = Section + " plan";
+				public const string Mode = Section + " mode";
+
 				public const string BackgroundPowerdown = "Background powerdown";
 
 				public const string AutoAdjust = "Auto-adjust";

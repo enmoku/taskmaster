@@ -651,14 +651,14 @@ namespace Taskmaster
 					continue;
 				}
 
-				if (!section.Contains(HumanReadable.System.Process.Priority) && !section.Contains("Affinity") && !section.Contains("Power mode"))
+				if (!section.Contains(HumanReadable.System.Process.Priority) && !section.Contains(HumanReadable.System.Process.Affinity) && !section.Contains(HumanReadable.Hardware.Power.Mode))
 				{
 					// TODO: Deal with incorrect configuration lacking these things
 					Log.Warning("[" + section.Name + "] No priority, affinity, nor power plan. Ignoring.");
 					continue;
 				}
 
-				var aff = section.TryGet("Affinity")?.IntValue ?? -1;
+				var aff = section.TryGet(HumanReadable.System.Process.Affinity)?.IntValue ?? -1;
 				if (aff > AllCPUsMask)
 				{
 					Log.Warning("[" + section.Name + "] Affinity(" + aff + ") is malconfigured. Ignoring.");
@@ -670,7 +670,7 @@ namespace Taskmaster
 				var prio = section.TryGet(HumanReadable.System.Process.Priority)?.IntValue ?? -1;
 				ProcessPriorityClass? prioR = null;
 				if (prio >= 0) prioR = ProcessHelpers.IntToPriority(prio);
-				var pmodes = section.TryGet("Power mode")?.StringValue ?? null;
+				var pmodes = section.TryGet(HumanReadable.Hardware.Power.Mode)?.StringValue ?? null;
 				var pmode = PowerManager.GetModeByName(pmodes);
 				if (pmode == PowerInfo.PowerMode.Custom)
 				{
@@ -692,7 +692,7 @@ namespace Taskmaster
 				ProcessAffinityStrategy affStrat = ProcessAffinityStrategy.None;
 				if (aff > 0)
 				{
-					int affinityStrat = section.TryGet("Affinity strategy")?.IntValue.Constrain(0, 3) ?? 2;
+					int affinityStrat = section.TryGet(HumanReadable.System.Process.AffinityStrategy)?.IntValue.Constrain(0, 3) ?? 2;
 					affStrat = (ProcessAffinityStrategy)affinityStrat;
 				}
 

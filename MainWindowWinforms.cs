@@ -1150,7 +1150,7 @@ namespace Taskmaster
 				Taskmaster.DebugPaths = menu_debug_paths.Checked;
 				if (Taskmaster.DebugPaths) EnsureVerbosityLevel();
 			};
-			var menu_debug_power = new ToolStripMenuItem("Power")
+			var menu_debug_power = new ToolStripMenuItem(HumanReadable.Hardware.Power.Section)
 			{
 				Checked = Taskmaster.DebugPower,
 				CheckOnClick = true,
@@ -1627,7 +1627,7 @@ namespace Taskmaster
 			WatchlistRules.Columns.Add(HumanReadable.System.Process.Executable, appwidths[2]);
 			WatchlistRules.Columns.Add(HumanReadable.System.Process.Priority, appwidths[3]);
 			WatchlistRules.Columns.Add(HumanReadable.System.Process.Affinity, appwidths[4]);
-			WatchlistRules.Columns.Add("Power Plan", appwidths[5]);
+			WatchlistRules.Columns.Add(HumanReadable.Hardware.Power.Plan, appwidths[5]);
 			WatchlistRules.Columns.Add("Adjusts", appwidths[6]);
 			WatchlistRules.Columns.Add(HumanReadable.System.Process.Path, appwidths[7]);
 			WatchlistRules.Scrollable = true;
@@ -2008,7 +2008,7 @@ namespace Taskmaster
 			exitwaitlist.Columns.Add("Id", 50);
 			exitwaitlist.Columns.Add(HumanReadable.System.Process.Executable, 280);
 			exitwaitlist.Columns.Add("State", 160);
-			exitwaitlist.Columns.Add("Power", 80);
+			exitwaitlist.Columns.Add(HumanReadable.Hardware.Power.Section, 80);
 
 			processlayout.Controls.Add(exitwaitlist);
 
@@ -2513,7 +2513,7 @@ namespace Taskmaster
 					}
 					if (prc.PowerPlan != PowerInfo.PowerMode.Undefined)
 					{
-						sbs.Append("Power plan = ").Append(PowerManager.GetModeName(prc.PowerPlan)).AppendLine();
+						sbs.Append(HumanReadable.Hardware.Power.Plan).Append(" = ").Append(PowerManager.GetModeName(prc.PowerPlan)).AppendLine();
 						if (prc.BackgroundPowerdown)
 							sbs.Append("Background powerdown = ").Append(prc.BackgroundPowerdown).AppendLine();
 					}

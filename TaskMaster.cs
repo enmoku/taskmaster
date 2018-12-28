@@ -541,8 +541,8 @@ namespace Taskmaster
 			NetworkMonitorEnabled = compsec.GetSetDefault("Network", true, out modified).BoolValue;
 			compsec["Network"].Comment = "Monitor network uptime and current IP addresses.";
 			dirtyconfig |= modified;
-			PowerManagerEnabled = compsec.GetSetDefault("Power", true, out modified).BoolValue;
-			compsec["Power"].Comment = "Enable power plan management.";
+			PowerManagerEnabled = compsec.GetSetDefault(HumanReadable.Hardware.Power.Section, true, out modified).BoolValue;
+			compsec[HumanReadable.Hardware.Power.Section].Comment = "Enable power plan management.";
 			dirtyconfig |= modified;
 			PagingEnabled = compsec.GetSetDefault("Paging", true, out modified).BoolValue;
 			compsec["Paging"].Comment = "Enable paging of apps as per their configuration.";
@@ -711,7 +711,7 @@ namespace Taskmaster
 
 			DebugForeground = dbgsec.TryGet(HumanReadable.System.Process.Foreground)?.BoolValue ?? false;
 
-			DebugPower = dbgsec.TryGet("Power")?.BoolValue ?? false;
+			DebugPower = dbgsec.TryGet(HumanReadable.Hardware.Power.Section)?.BoolValue ?? false;
 			DebugAutoPower = dbgsec.TryGet(HumanReadable.Hardware.Power.AutoAdjust)?.BoolValue ?? false;
 			//DebugPowerRules = dbgsec.TryGet("Paths")?.BoolValue ?? false;
 			DebugMonitor = dbgsec.TryGet(HumanReadable.Hardware.Monitor.Section)?.BoolValue ?? false;

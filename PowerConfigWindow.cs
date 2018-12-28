@@ -188,7 +188,7 @@ namespace Taskmaster
 			monitoroffmode.Items.Add(HumanReadable.Generic.Ignore);
 			monitoroffmode.Items.AddRange(powermodes);
 
-			layout.Controls.Add(new Label() { Text = "Power mode", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Fill });
+			layout.Controls.Add(new Label() { Text = HumanReadable.Hardware.Power.Mode, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Fill });
 			layout.Controls.Add(monitoroffmode);
 
 			tooltip.SetToolTip(monitoroffmode, "Power mode to set when monitor is off.");

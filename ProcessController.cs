@@ -276,20 +276,20 @@ namespace Taskmaster
 				var affinity = Affinity.Value.ToInt32();
 				//if (affinity == ProcessManager.allCPUsMask) affinity = 0; // convert back
 
-				app["Affinity"].IntValue = affinity;
-				app["Affinity strategy"].IntValue = (int)AffinityStrategy;
+				app[HumanReadable.System.Process.Affinity].IntValue = affinity;
+				app[HumanReadable.System.Process.AffinityStrategy].IntValue = (int)AffinityStrategy;
 			}
 			else
 			{
-				app.Remove("Affinity");
-				app.Remove("Affinity strategy");
+				app.Remove(HumanReadable.System.Process.Affinity);
+				app.Remove(HumanReadable.System.Process.AffinityStrategy);
 			}
 
 			var pmode = PowerManager.GetModeName(PowerPlan);
 			if (PowerPlan != PowerInfo.PowerMode.Undefined)
-				app["Power mode"].StringValue = PowerManager.GetModeName(PowerPlan);
+				app[HumanReadable.Hardware.Power.Mode].StringValue = PowerManager.GetModeName(PowerPlan);
 			else
-				app.Remove("Power mode");
+				app.Remove(HumanReadable.Hardware.Power.Mode);
 
 			if (ForegroundOnly)
 			{
