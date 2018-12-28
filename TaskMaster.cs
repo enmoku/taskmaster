@@ -456,6 +456,8 @@ namespace Taskmaster
 		public static bool TempMonitorEnabled { get; private set; } = false;
 		public static bool LastModifiedList { get; private set; } = false;
 		public static bool WindowResizeEnabled { get; private set; } = false;
+		public static bool IgnoreRecentlyModified { get; private set; } = false;
+
 		// DEBUG INFO
 		public static bool DebugCache { get; private set; } = false;
 
@@ -730,6 +732,7 @@ namespace Taskmaster
 
 			var exsec = cfg["Experimental"];
 			WindowResizeEnabled = exsec.TryGet("Window Resize")?.BoolValue ?? false;
+			IgnoreRecentlyModified = exsec.TryGet("Ignore recently modified")?.BoolValue ?? false;
 			LastModifiedList = exsec.TryGet("Last Modified")?.BoolValue ?? false;
 			TempMonitorEnabled = exsec.TryGet("Temp Monitor")?.BoolValue ?? false;
 

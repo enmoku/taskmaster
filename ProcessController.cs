@@ -1233,7 +1233,9 @@ namespace Taskmaster
 			if (modified)
 			{
 				var now = DateTime.Now;
-				RecentlyModified.AddOrUpdate(info.Id, now, (int key, DateTime modtime) => modtime);
+
+				if (Taskmaster.IgnoreRecentlyModified)
+					RecentlyModified.AddOrUpdate(info.Id, now, (int key, DateTime modtime) => modtime);
 
 				InternalRefresh(now);
 			}
