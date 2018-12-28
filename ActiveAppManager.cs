@@ -390,9 +390,9 @@ namespace Taskmaster
 			return string.Empty;
 		}
 
-		System.Drawing.Rectangle windowrect;
-		NativeMethods.RECT screenrect;
-		bool Fullscreen(IntPtr hwnd)
+		static System.Drawing.Rectangle windowrect;
+		static NativeMethods.RECT screenrect;
+		public static bool Fullscreen(IntPtr hwnd)
 		{
 			// TODO: Is it possible to cache screen? multimonitor setup may make it hard... would that save anything?
 			var screen = System.Windows.Forms.Screen.FromHandle(hwnd); // passes
