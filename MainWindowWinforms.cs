@@ -274,8 +274,8 @@ namespace Taskmaster
 								DateTime.Now.ToLongTimeString(),
 								ev.Info.Name,
 								ev.Control.FriendlyName,
-								(ev.Priority.HasValue ? MKAh.Readable.ProcessPriority(ev.Priority.Value) : "n/a"),
-								(ev.Affinity.HasValue ? HumanInterface.BitMask(ev.Affinity.Value.ToInt32(), ProcessManager.CPUCount) : "n/a"),
+								(ev.PriorityNew.HasValue ? MKAh.Readable.ProcessPriority(ev.PriorityNew.Value) : "n/a"),
+								(ev.AffinityNew.HasValue ? HumanInterface.BitMask(ev.AffinityNew.Value.ToInt32(), ProcessManager.CPUCount) : "n/a"),
 								ev.Info.Path
 							});
 							lastmodifylist.Items.Add(mi);

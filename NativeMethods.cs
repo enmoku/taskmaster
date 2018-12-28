@@ -217,5 +217,9 @@ namespace Taskmaster
 
 		public const int SW_FORCEMINIMIZE = 11;
 		public const int SW_MINIMIZE = 6;
+
+		[DllImport("user32.dll")]
+		[return: MarshalAs(UnmanagedType.Bool)]
+		public static extern bool IsWindowVisible(IntPtr hWnd);
 	}
 }

@@ -224,6 +224,8 @@ namespace Taskmaster
 			ForegroundWatch?.Clear();
 			PausedIds?.Clear();
 			PowerList?.Clear();
+
+			RecentlyModified?.Clear();
 		}
 
 		public void SaveConfig(ConfigWrapper cfg = null, SharpConfig.Section app = null)
@@ -439,6 +441,7 @@ namespace Taskmaster
 		ConcurrentDictionary<int, int> PausedIds = new ConcurrentDictionary<int, int>(); // HACK: There's no ConcurrentHashSet
 		ConcurrentDictionary<int, int> PowerList = new ConcurrentDictionary<int, int>(); // HACK
 		ConcurrentDictionary<int, int> ForegroundWatch = new ConcurrentDictionary<int, int>(); // HACK
+		ConcurrentDictionary<int, DateTime> RecentlyModified = new ConcurrentDictionary<int, DateTime>();
 
 		public bool BackgroundPowerdown { get; set; } = true;
 		public ProcessPriorityClass? BackgroundPriority { get; set; } = null;
@@ -507,9 +510,9 @@ namespace Taskmaster
 			{
 				var ev = new ProcessEventArgs()
 				{
-					Priority = mPriority ? BackgroundPriority : null,
+					PriorityNew = mPriority ? BackgroundPriority : null,
 					PriorityOld = oldPriority,
-					Affinity = mAffinity ? BackgroundAffinity : null,
+					AffinityNew = mAffinity ? BackgroundAffinity : null,
 					AffinityOld = oldAffinity,
 					Info = info,
 					Control = this,
@@ -521,7 +524,7 @@ namespace Taskmaster
 					ev.User.Append("; Already at target values");
 				ev.User.Append(" [Background]");
 
-				LogAdjust(ev, debug: true);
+				LogAdjust(ev);
 			}
 
 			ForegroundMonitor(info);
@@ -529,7 +532,7 @@ namespace Taskmaster
 			Paused?.Invoke(this, new ProcessEventArgs() { Control = this, Info = info, State = ProcessRunningState.Reduced });
 		}
 
-		void LogAdjust(ProcessEventArgs ev, bool debug=false)
+		void LogAdjust(ProcessEventArgs ev)
 		{
 			var sbs = new System.Text.StringBuilder();
 			sbs.Append("[").Append(FriendlyName).Append("] ").Append(FormatPathName(ev.Info))
@@ -539,8 +542,8 @@ namespace Taskmaster
 			if (ev.PriorityOld.HasValue)
 			{
 				sbs.Append(Readable.ProcessPriority(ev.PriorityOld.Value));
-				if (ev.Priority.HasValue)
-					sbs.Append(" → ").Append(Readable.ProcessPriority(ev.Priority.Value));
+				if (ev.PriorityNew.HasValue)
+					sbs.Append(" → ").Append(Readable.ProcessPriority(ev.PriorityNew.Value));
 				if (ev.PriorityFail) sbs.Append(" [Failed]");
 				if (ev.Protected) sbs.Append(" [Protected]");
 			}
@@ -551,11 +554,12 @@ namespace Taskmaster
 			if (ev.AffinityOld.HasValue)
 			{
 				sbs.Append(ev.AffinityOld.Value.ToInt32());
-				if (ev.Affinity.HasValue)
-					sbs.Append(" → ").Append(ev.Affinity.Value.ToInt32());
+				if (ev.AffinityNew.HasValue)
+					sbs.Append(" → ").Append(ev.AffinityNew.Value.ToInt32());
 			}
 			else
 				sbs.Append("n/a");
+
 			if (ev.AffinityFail) sbs.Append(" [Failed]");
 
 			if (Taskmaster.DebugProcesses) sbs.Append(" [").Append(AffinityStrategy.ToString()).Append("]");
@@ -567,10 +571,11 @@ namespace Taskmaster
 				ev.User = null;
 			}
 
-			if (!debug) Log.Information(sbs.ToString());
+			if (!(Taskmaster.ShowInaction && Taskmaster.DebugProcesses)) Log.Information(sbs.ToString());
 			else Log.Debug(sbs.ToString());
 
 			sbs.Clear();
+			sbs = null;
 		}
 
 		public void Resume(ProcessEx info)
@@ -622,9 +627,9 @@ namespace Taskmaster
 			{
 				var ev = new ProcessEventArgs()
 				{
-					Priority = mPriority ? (ProcessPriorityClass?)BackgroundPriority.Value : null,
+					PriorityNew = mPriority ? (ProcessPriorityClass?)BackgroundPriority.Value : null,
 					PriorityOld = oldPriority,
-					Affinity = mAffinity ? (IntPtr?)BackgroundAffinity.Value : null,
+					AffinityNew = mAffinity ? (IntPtr?)BackgroundAffinity.Value : null,
 					AffinityOld = oldAffinity,
 					Info = info,
 					Control = this,
@@ -636,7 +641,7 @@ namespace Taskmaster
 					ev.User.Append("; Already at target values");
 				ev.User.Append(" [Foreground]");
 
-				LogAdjust(ev, debug: true);
+				LogAdjust(ev);
 			}
 
 			// PausedState.Priority = Priority;
@@ -824,9 +829,9 @@ namespace Taskmaster
 			{
 				var ev = new ProcessEventArgs()
 				{
-					Priority = null,
+					PriorityNew = null,
 					PriorityOld = Priority,
-					Affinity = null,
+					AffinityNew = null,
 					AffinityOld = Affinity,
 					Info = info,
 					Control = this,
@@ -861,6 +866,18 @@ namespace Taskmaster
 			Debug.Assert(!string.IsNullOrEmpty(info.Name), "ProcessController.Touch given empty process name.");
 
 			bool foreground = true;
+			
+
+			if (RecentlyModified.TryGetValue(info.Id, out DateTime time))
+			{
+				if (time.TimeTo(DateTime.Now).TotalMinutes < 5f)
+				{
+					if (Taskmaster.DebugProcesses) Log.Debug("[" + FriendlyName + "] #" + info.Id + " ignored due to recent modification.");
+					return;
+				}
+
+				RecentlyModified.TryRemove(info.Id, out _);
+			}
 
 			if (ForegroundOnly)
 			{
@@ -971,8 +988,8 @@ namespace Taskmaster
 			bool mAffinity = false, mPriority = false, mPower = false, modified = false, fAffinity = false, fPriority = false;
 			LastSeen = DateTime.Now;
 
-			newAffinity = Affinity;
-			newPriority = Priority;
+			newAffinity = null;
+			newPriority = null;
 
 			if (ForegroundOnly) ForegroundMonitor(info);
 
@@ -1005,6 +1022,7 @@ namespace Taskmaster
 			if (Affinity.HasValue)
 			{
 				var newAffinityMask = Affinity.Value.ToInt32();
+				newAffinity = Affinity;
 				if (oldAffinityMask != newAffinityMask)
 				{
 					/*
@@ -1051,6 +1069,30 @@ namespace Taskmaster
 
 			// APPLY CHANGES HERE
 
+			bool visible = false;
+
+			// this works, kinda, but not very well with odd things like Chrome
+			if (doModifyPriority && VisiblePriority.HasValue)
+			{
+				try
+				{
+					visible = NativeMethods.IsWindowVisible(info.Process.MainWindowHandle);
+					if (visible)
+					{
+						newPriority = VisiblePriority.Value;
+
+						if (VisiblePriority.Value != info.Process.PriorityClass)
+						{
+							info.Process.PriorityClass = newPriority.Value;
+							modified = mPriority = true;
+						}
+
+						doModifyPriority = false; // block normal modification
+					}
+				}
+				catch { fPriority = false; }
+			}
+
 			if (doModifyPriority)
 			{
 				try
@@ -1058,7 +1100,7 @@ namespace Taskmaster
 					if (info.Process.SetLimitedPriority(Priority.Value, PriorityStrategy))
 					{
 						modified = mPriority = true;
-						newPriority = Priority.Value;
+						newPriority = info.Process.PriorityClass;
 					}
 				}
 				catch { fPriority = true; } // ignore errors, this is all we care of them
@@ -1171,53 +1213,79 @@ namespace Taskmaster
 			if (modified)
 				logevent = Taskmaster.ShowProcessAdjusts && !(ForegroundOnly && !Taskmaster.ShowForegroundTransitions);
 			else
-				logevent = debug = (Taskmaster.ShowInaction && Taskmaster.DebugProcesses);
+				logevent = (Taskmaster.ShowInaction && Taskmaster.DebugProcesses);
+
+			var ev = new ProcessEventArgs()
+			{
+				PriorityNew = newPriority,
+				PriorityOld = oldPriority,
+				AffinityNew = newAffinity,
+				AffinityOld = oldAffinity,
+				Control = this,
+				Info = info,
+				State = ProcessRunningState.Found,
+				PriorityFail = fPriority,
+				AffinityFail = fAffinity,
+				Protected = isProtectedFile,
+			};
 
 			if (logevent)
 			{
-				var ev = new ProcessEventArgs()
-				{
-					Priority = mPriority ? newPriority : null,
-					PriorityOld = oldPriority,
-					Affinity = mAffinity ? newAffinity : null,
-					AffinityOld = oldAffinity,
-					Control = this,
-					Info = info,
-					State = ProcessRunningState.Found,
-					User = new System.Text.StringBuilder(),
-					PriorityFail = fPriority,
-					AffinityFail = fAffinity,
-					Protected = isProtectedFile,
-				};
+				var sbs = new System.Text.StringBuilder();
 
-				if (mPower) ev.User.Append(" [Power Mode: ").Append(PowerPlan.ToString()).Append("]");
+				if (mPower) sbs.Append(" [Power Mode: ").Append(PowerPlan.ToString()).Append("]");
 
-				if (!modified && debug) ev.User.Append(" – looks OK, not touched.");
+				if (visible) sbs.Append(" [Visible]");
 
-				LogAdjust(ev, debug);
+				if (!modified && (Taskmaster.ShowInaction && Taskmaster.DebugProcesses)) sbs.Append(" – looks OK, not touched.");
+
+				ev.User = sbs;
+
+				LogAdjust(ev);
 			}
-
-			if (Taskmaster.WindowResizeEnabled && Resize.HasValue) TryResize(info);
 
 			info.Handled = true;
 			info.Modified = DateTime.Now;
 
-			if (modified)
-			{
-				Modified?.Invoke(this, new ProcessEventArgs {
-					Control = this,
-					Info = info,
-					Affinity = newAffinity,
-					AffinityOld = oldAffinity,
-					Priority = newPriority,
-					PriorityOld = oldPriority
-				});
-			}
+			if (modified) Modified?.Invoke(this, ev);
 
 			if (Recheck > 0)
 			{
 				info.NeedsRefresh = true;
 				TouchReapply(info);
+			}
+
+			if (Taskmaster.WindowResizeEnabled && Resize.HasValue) TryResize(info);
+
+			if (modified)
+			{
+				var now = DateTime.Now;
+				RecentlyModified.AddOrUpdate(info.Id, now, (int key, DateTime time) => time);
+
+				InternalRefresh(now);
+			}
+		}
+
+		int refresh_lock = 0;
+		async Task InternalRefresh(DateTime now)
+		{
+			if (!Atomic.Lock(ref refresh_lock)) return;
+
+			await Task.Delay(0).ConfigureAwait(false);
+
+			try
+			{
+				if (RecentlyModified.Count > 5)
+				{
+					foreach (var r in RecentlyModified)
+					{
+						if (r.Value.TimeTo(now).TotalMinutes > 5) RecentlyModified.TryRemove(r.Key, out _);
+					}
+				}
+			}
+			finally
+			{
+				Atomic.Unlock(ref refresh_lock);
 			}
 		}
 
@@ -1506,9 +1574,9 @@ namespace Taskmaster
 		public ProcessEx Info = null;
 		public ProcessRunningState State = ProcessRunningState.Undefined;
 
-		public ProcessPriorityClass? Priority = null;
+		public ProcessPriorityClass? PriorityNew = null;
 		public ProcessPriorityClass? PriorityOld = null;
-		public IntPtr? Affinity = null;
+		public IntPtr? AffinityNew = null;
 		public IntPtr? AffinityOld = null;
 
 		public bool Protected = false;
