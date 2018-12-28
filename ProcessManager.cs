@@ -687,10 +687,6 @@ namespace Taskmaster
 				ProcessPriorityClass? prioR = null;
 				if (prio >= 0) prioR = ProcessHelpers.IntToPriority(prio);
 
-				var vprio = section.TryGet("Visible priority")?.IntValue ?? -1;
-				ProcessPriorityClass? prioV = null;
-				if (vprio >= 0) prioV = ProcessHelpers.IntToPriority(vprio);
-
 				var pmodes = section.TryGet(HumanReadable.Hardware.Power.Mode)?.StringValue ?? null;
 				var pmode = PowerManager.GetModeByName(pmodes);
 				if (pmode == PowerInfo.PowerMode.Custom)
@@ -751,8 +747,6 @@ namespace Taskmaster
 					IgnoreList = (section.TryGet(HumanReadable.Generic.Ignore)?.StringValueArray ?? null),
 					AllowPaging = (section.TryGet("Allow paging")?.BoolValue ?? false),
 				};
-
-				prc.VisiblePriority = prioV;
 
 				prc.SetForegroundOnly(section.TryGet("Foreground only")?.BoolValue ?? false);
 

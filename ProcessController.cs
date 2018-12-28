@@ -112,8 +112,6 @@ namespace Taskmaster
 		/// </summary>
 		public System.Diagnostics.ProcessPriorityClass? Priority { get; set; } = null;
 
-		public System.Diagnostics.ProcessPriorityClass? VisiblePriority { get; set; } = null;
-
 		public ProcessPriorityStrategy PriorityStrategy { get; set; } = ProcessPriorityStrategy.None;
 
 		/// <summary>
@@ -1070,31 +1068,6 @@ namespace Taskmaster
 			}
 
 			// APPLY CHANGES HERE
-
-			bool visible = false;
-
-			// this works, kinda, but not very well with odd things like Chrome
-			if (doModifyPriority && VisiblePriority.HasValue)
-			{
-				try
-				{
-					visible = NativeMethods.IsWindowVisible(info.Process.MainWindowHandle);
-					if (visible)
-					{
-						newPriority = VisiblePriority.Value;
-
-						if (VisiblePriority.Value != info.Process.PriorityClass)
-						{
-							info.Process.PriorityClass = newPriority.Value;
-							modified = mPriority = true;
-						}
-
-						doModifyPriority = false; // block normal modification
-					}
-				}
-				catch { fPriority = false; }
-			}
-
 			if (doModifyPriority)
 			{
 				try
@@ -1236,8 +1209,6 @@ namespace Taskmaster
 				var sbs = new System.Text.StringBuilder();
 
 				if (mPower) sbs.Append(" [Power Mode: ").Append(PowerPlan.ToString()).Append("]");
-
-				if (visible) sbs.Append(" [Visible]");
 
 				if (!modified && (Taskmaster.ShowInaction && Taskmaster.DebugProcesses)) sbs.Append(" – looks OK, not touched.");
 
