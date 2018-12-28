@@ -558,7 +558,11 @@ namespace Taskmaster
 			// DEPRECATED
 			if (coreperf.Contains("Rescan everything frequency"))
 			{
-				coreperf.GetSetDefault("Scan frequency", coreperf.TryGet("Rescan everything frequency")?.IntValue ?? 15, out _);
+				try
+				{
+					coreperf.GetSetDefault("Scan frequency", coreperf.TryGet("Rescan everything frequency")?.IntValue ?? 15, out _);
+				}
+				catch { } // non int value
 				coreperf.Remove("Rescan everything frequency");
 				dirtyconfig |= true;
 				Log.Debug("<Process> Deprecated INI cleanup: Rescan everything frequency");
