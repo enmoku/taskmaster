@@ -1022,7 +1022,6 @@ namespace Taskmaster
 			if (Affinity.HasValue)
 			{
 				var newAffinityMask = Affinity.Value.ToInt32();
-				newAffinity = Affinity;
 				if (oldAffinityMask != newAffinityMask)
 				{
 					/*
@@ -1063,7 +1062,10 @@ namespace Taskmaster
 					}
 
 					if (oldAffinityMask != newAffinityMask)
+					{
 						doModifyAffinity = true;
+						if (!newAffinity.HasValue) newAffinity = Affinity;
+					}
 				}
 			}
 
