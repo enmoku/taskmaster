@@ -24,6 +24,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
+using System;
 using System.Collections.Generic;
 using Microsoft.Win32;
 
@@ -48,6 +49,7 @@ namespace Taskmaster
 				{
 					if (path.Contains("/steamapps/common/") || path.Contains(SteamIdentifier.Replace("/", @"\")))
 					{
+						Console.WriteLine("Steam games install path found");
 						var off = path.IndexOf("steamapps") + SteamIdentifier.Length;
 						paths.Add(path.Substring(0, off));
 					}

@@ -528,6 +528,7 @@ namespace Taskmaster
 				}
 
 				autopower.Remove(HumanReadable.Hardware.Power.AutoAdjust);
+				Log.Debug("<Power> Deprecated INI cleanup: Auto-adjust");
 			}
 
 			// BACKOFF

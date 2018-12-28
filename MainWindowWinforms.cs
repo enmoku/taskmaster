@@ -111,6 +111,7 @@ namespace Taskmaster
 			if (Taskmaster.Trace)
 				Log.Verbose("MainWindow constructed");
 		}
+
 		public void ShowConfigRequest(object sender, EventArgs e)
 		{
 			// TODO: Introduce configuration window

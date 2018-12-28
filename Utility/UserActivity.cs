@@ -31,6 +31,9 @@ namespace MKAh
 {
 	public static class User
 	{
+		/// <summary>
+		/// User idle time in seconds.
+		/// </summary>
 		public static double UserIdleTime()
 		{
 			var lastact = LastActive();
