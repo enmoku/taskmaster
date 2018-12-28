@@ -1550,7 +1550,7 @@ namespace Taskmaster
 			if (Taskmaster.NetworkMonitorEnabled)
 				UItimer.Tick += UpdateUptime;
 
-			if (Taskmaster.ProcessMonitorEnabled && ProcessManager.RescanEverythingFrequency > 0)
+			if (Taskmaster.ProcessMonitorEnabled && ProcessManager.ScanFrequency > 0)
 				UItimer.Tick += UpdateRescanCountdown;
 
 			if (Taskmaster.PathCacheLimit > 0)

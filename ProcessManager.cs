@@ -151,9 +151,9 @@ namespace Taskmaster
 
 			ProcessDetectedEvent += ProcessTriage;
 
-			if (RescanEverythingFrequency > 0)
+			if (ScanFrequency > 0)
 			{
-				RescanEverythingTimer = new System.Timers.Timer(RescanEverythingFrequency * 1000);
+				RescanEverythingTimer = new System.Timers.Timer(ScanFrequency * 1000);
 				RescanEverythingTimer.Elapsed += ScanEverythingRequest;
 				RescanEverythingTimer.Start();
 			}
@@ -385,7 +385,7 @@ namespace Taskmaster
 			if (!Atomic.Lock(ref scan_lock)) return;
 
 			LastScan = now;
-			NextScan = now.AddSeconds(RescanEverythingFrequency);
+			NextScan = now.AddSeconds(ScanFrequency);
 
 			if (Taskmaster.DebugFullScan) Log.Debug("<Process> Full Scan: Start");
 
@@ -446,7 +446,10 @@ namespace Taskmaster
 		}
 
 		static int BatchDelay = 2500;
-		public static int RescanEverythingFrequency { get; private set; } = 15; // seconds
+		/// <summary>
+		/// In seconds.
+		/// </summary>
+		public static int ScanFrequency { get; private set; } = 15;
 		public static DateTime LastScan { get; private set; } = DateTime.MinValue;
 		public static DateTime NextScan { get; set; } = DateTime.MinValue;
 		static bool BatchProcessing; // = false;
@@ -550,20 +553,29 @@ namespace Taskmaster
 			{
 				coreperf.Remove("Rescan frequency");
 				dirtyconfig |= true;
+				Log.Debug("<Process> Obsoleted INI cleanup: Rescan frequency");
+			}
+			// DEPRECATED
+			if (coreperf.Contains("Rescan everything frequency"))
+			{
+				coreperf.GetSetDefault("Scan frequency", coreperf.TryGet("Rescan everything frequency")?.IntValue ?? 15, out _);
+				coreperf.Remove("Rescan everything frequency");
+				dirtyconfig |= true;
+				Log.Debug("<Process> Deprecated INI cleanup: Rescan everything frequency");
 			}
 
-			RescanEverythingFrequency = coreperf.GetSetDefault("Rescan everything frequency", 15, out modified).IntValue.Constrain(0, 60 * 60 * 24);
-			if (RescanEverythingFrequency > 0)
+			ScanFrequency = coreperf.GetSetDefault("Scan frequency", 15, out modified).IntValue.Constrain(0, 60 * 60 * 24);
+			if (ScanFrequency > 0)
 			{
-				if (RescanEverythingFrequency < 5) RescanEverythingFrequency = 5;
+				if (ScanFrequency < 5) ScanFrequency = 5;
 				// RescanEverythingFrequency *= 1000; // to seconds
 			}
 
 			coreperf["Rescan everything frequency"].Comment = "Frequency (in seconds) at which we rescan everything. 0 disables.";
 			dirtyconfig |= modified;
 
-			if (RescanEverythingFrequency > 0)
-				Log.Information("<Process> Rescan everything every " + RescanEverythingFrequency + " seconds.");
+			if (ScanFrequency > 0)
+				Log.Information("<Process> Rescan everything every " + ScanFrequency + " seconds.");
 
 			// --------------------------------------------------------------------------------------------------------
 
@@ -670,6 +682,11 @@ namespace Taskmaster
 				var prio = section.TryGet(HumanReadable.System.Process.Priority)?.IntValue ?? -1;
 				ProcessPriorityClass? prioR = null;
 				if (prio >= 0) prioR = ProcessHelpers.IntToPriority(prio);
+
+				var vprio = section.TryGet("Visible priority")?.IntValue ?? -1;
+				ProcessPriorityClass? prioV = null;
+				if (vprio >= 0) prioV = ProcessHelpers.IntToPriority(vprio);
+
 				var pmodes = section.TryGet(HumanReadable.Hardware.Power.Mode)?.StringValue ?? null;
 				var pmode = PowerManager.GetModeByName(pmodes);
 				if (pmode == PowerInfo.PowerMode.Custom)
@@ -730,6 +747,8 @@ namespace Taskmaster
 					IgnoreList = (section.TryGet(HumanReadable.Generic.Ignore)?.StringValueArray ?? null),
 					AllowPaging = (section.TryGet("Allow paging")?.BoolValue ?? false),
 				};
+
+				prc.VisiblePriority = prioV;
 
 				prc.SetForegroundOnly(section.TryGet("Foreground only")?.BoolValue ?? false);
 
@@ -1627,6 +1646,14 @@ namespace Taskmaster
 			if (!Atomic.Lock(ref cleanup_lock)) return; // cleanup already in progress
 
 			// TODO: Verify that this is actually useful?
+
+			if (ScanFrequency < 300 && User.UserIdleTime() > (60f * 60f * 2f)) // 2 hours
+			{
+				foreach (var prc in watchlist)
+				{
+					prc.Refresh();
+				}
+			}
 
 			Stack<ProcessEx> triggerList = null;
 			try

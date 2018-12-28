@@ -25,6 +25,7 @@
 // THE SOFTWARE.
 
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
@@ -109,9 +110,11 @@ namespace Taskmaster
 		/// <summary>
 		/// Target priority class for the process.
 		/// </summary>
-		public System.Diagnostics.ProcessPriorityClass? Priority = null;
+		public System.Diagnostics.ProcessPriorityClass? Priority { get; set; } = null;
 
-		public ProcessPriorityStrategy PriorityStrategy = ProcessPriorityStrategy.None;
+		public System.Diagnostics.ProcessPriorityClass? VisiblePriority { get; set; } = null;
+
+		public ProcessPriorityStrategy PriorityStrategy { get; set; } = ProcessPriorityStrategy.None;
 
 		/// <summary>
 		/// CPU core affinity.
@@ -176,11 +179,8 @@ namespace Taskmaster
 		{
 			if (ForegroundOnly && fgonly == false)
 			{
-				lock (foreground_lock)
-				{
-					PausedIds.Clear();
-					ForegroundWatch.Clear();
-				}
+				PausedIds.Clear();
+				ForegroundWatch.Clear();
 			}
 
 			ForegroundOnly = fgonly;
@@ -200,40 +200,30 @@ namespace Taskmaster
 		/// </summary>
 		public void End(ProcessEx info)
 		{
-			lock (foreground_lock)
-			{
-				ForegroundWatch.Remove(info.Id);
-				PausedIds.Remove(info.Id);
-			}
-			lock (powerlist_lock)
-			{
-				PowerList.Remove(info.Id);
-			}
+			ForegroundWatch.TryRemove(info.Id, out _);
+			PausedIds.TryRemove(info.Id, out _);
+
+			PowerList.TryRemove(info.Id, out _);
 		}
 
-		public void Clean()
+		/// <summary>
+		/// Refresh the controller, freeing resources, locks, etc.
+		/// </summary>
+		public void Refresh()
 		{
 			//TODO: Update power
-			lock (powerlist_lock)
+			if (PowerList != null)
 			{
-				if (PowerPlan == PowerInfo.PowerMode.Undefined)
+				foreach (int pid in PowerList.Keys.ToArray())
 				{
-					foreach (int pid in PowerList.ToArray())
-					{
-						PowerList.Remove(pid);
-						Taskmaster.powermanager?.Release(pid);
-					}
+					PowerList.TryRemove(pid, out _);
+					Taskmaster.powermanager?.Release(pid);
 				}
 			}
 
-			lock (foreground_lock)
-			{
-				if (!ForegroundOnly)
-				{
-					ForegroundWatch.Clear();
-					PausedIds.Clear();
-				}
-			}
+			ForegroundWatch?.Clear();
+			PausedIds?.Clear();
+			PowerList?.Clear();
 		}
 
 		public void SaveConfig(ConfigWrapper cfg = null, SharpConfig.Section app = null)
@@ -329,7 +319,11 @@ namespace Taskmaster
 
 			if (!string.IsNullOrEmpty(Executable))
 			{
-				app.Remove("Rescan"); // OBSOLETE
+				if (app.Contains("Rescan"))
+				{
+					app.Remove("Rescan"); // OBSOLETE
+					Log.Debug("<Process> Obsoleted INI cleanup: Rescan frequency");
+				}
 				if (Recheck > 0) app["Recheck"].IntValue = Recheck;
 				else app.Remove("Recheck");
 			}
@@ -441,7 +435,10 @@ namespace Taskmaster
 			}
 		}
 
-		HashSet<int> PausedIds = new HashSet<int>();
+		// The following should be combined somehow?
+		ConcurrentDictionary<int, int> PausedIds = new ConcurrentDictionary<int, int>(); // HACK: There's no ConcurrentHashSet
+		ConcurrentDictionary<int, int> PowerList = new ConcurrentDictionary<int, int>(); // HACK
+		ConcurrentDictionary<int, int> ForegroundWatch = new ConcurrentDictionary<int, int>(); // HACK
 
 		public bool BackgroundPowerdown { get; set; } = true;
 		public ProcessPriorityClass? BackgroundPriority { get; set; } = null;
@@ -453,9 +450,10 @@ namespace Taskmaster
 		public void Pause(ProcessEx info)
 		{
 			Debug.Assert(ForegroundOnly == true);
-			Debug.Assert(!PausedIds.Contains(info.Id));
+			Debug.Assert(!PausedIds.ContainsKey(info.Id));
 
-			PausedIds.Add(info.Id);
+			if (!PausedIds.TryAdd(info.Id, 0))
+				return; // already paused
 
 			if (Taskmaster.DebugForeground && Taskmaster.Trace)
 				Log.Debug("[" + FriendlyName + "] Quelling " + info.Name + " (#" + info.Id + ")");
@@ -575,8 +573,6 @@ namespace Taskmaster
 			sbs.Clear();
 		}
 
-		object foreground_lock = new object();
-
 		public void Resume(ProcessEx info)
 		{
 			Debug.Assert(ForegroundOnly == true);
@@ -585,81 +581,79 @@ namespace Taskmaster
 			ProcessPriorityClass oldPriority = ProcessPriorityClass.RealTime;
 			IntPtr oldAffinity = IntPtr.Zero;
 
-			lock (foreground_lock)
+			if (!PausedIds.ContainsKey(info.Id))
 			{
-				if (!PausedIds.Contains(info.Id))
-				{
-					if (Taskmaster.DebugForeground)
-						Log.Debug("<Foreground> " + FormatPathName(info) + " (#" + info.Id + ") not paused; not resuming.");
-					return; // can't resume unpaused item
-				}
-				try
-				{
-					if (Priority.HasValue && info.Process.PriorityClass.ToInt32() != Priority.Value.ToInt32())
-					{
-						info.Process.PriorityClass = Priority.Value;
-						mPriority = true;
-					}
-
-					if (Affinity.HasValue)
-					{
-						info.Process.ProcessorAffinity = Affinity.Value;
-						mAffinity = true;
-					}
-				}
-				catch (InvalidOperationException) // ID not available, probably exited
-				{
-					PausedIds.Remove(info.Id);
-					return;
-				}
-				catch (Win32Exception) // access error
-				{
-					PausedIds.Remove(info.Id);
-					return;
-				}
-				catch (Exception ex)
-				{
-					Logging.Stacktrace(ex);
-					return;
-				}
-
-				if (Taskmaster.DebugForeground && Taskmaster.ShowProcessAdjusts)
-				{
-					var ev = new ProcessEventArgs()
-					{
-						Priority = mPriority ? (ProcessPriorityClass?)BackgroundPriority.Value : null,
-						PriorityOld = oldPriority,
-						Affinity = mAffinity ? (IntPtr?)BackgroundAffinity.Value : null,
-						AffinityOld = oldAffinity,
-						Info = info,
-						Control = this,
-						State = ProcessRunningState.Reduced,
-					};
-
-					ev.User = new System.Text.StringBuilder();
-					if (!mAffinity && !mPriority)
-						ev.User.Append("; Already at target values");
-					ev.User.Append(" [Foreground]");
-
-					LogAdjust(ev, debug: true);
-				}
-
-				// PausedState.Priority = Priority;
-				// PausedState.PowerMode = PowerPlan;
-
-				if (Taskmaster.PowerManagerEnabled)
-				{
-					if (PowerPlan != PowerInfo.PowerMode.Undefined && BackgroundPowerdown)
-					{
-						if (Taskmaster.DebugPower || Taskmaster.DebugForeground)
-							Log.Debug("[" + FriendlyName + "] " + info.Name + " (#" + info.Id + ") foreground power on");
-
-						SetPower(info);
-					}
-				}
-
-				PausedIds.Remove(info.Id);
+				if (Taskmaster.DebugForeground)
+					Log.Debug("<Foreground> " + FormatPathName(info) + " (#" + info.Id + ") not paused; not resuming.");
+				return; // can't resume unpaused item
 			}
+
+			try
+			{
+				if (Priority.HasValue && info.Process.PriorityClass.ToInt32() != Priority.Value.ToInt32())
+				{
+					info.Process.PriorityClass = Priority.Value;
+					mPriority = true;
+				}
+
+				if (Affinity.HasValue)
+				{
+					info.Process.ProcessorAffinity = Affinity.Value;
+					mAffinity = true;
+				}
+			}
+			catch (InvalidOperationException) // ID not available, probably exited
+			{
+				PausedIds.TryRemove(info.Id, out _);
+				return;
+			}
+			catch (Win32Exception) // access error
+			{
+				PausedIds.TryRemove(info.Id, out _);
+				return;
+			}
+			catch (Exception ex)
+			{
+				Logging.Stacktrace(ex);
+				return;
+			}
+
+			if (Taskmaster.DebugForeground && Taskmaster.ShowProcessAdjusts)
+			{
+				var ev = new ProcessEventArgs()
+				{
+					Priority = mPriority ? (ProcessPriorityClass?)BackgroundPriority.Value : null,
+					PriorityOld = oldPriority,
+					Affinity = mAffinity ? (IntPtr?)BackgroundAffinity.Value : null,
+					AffinityOld = oldAffinity,
+					Info = info,
+					Control = this,
+					State = ProcessRunningState.Reduced,
+				};
+
+				ev.User = new System.Text.StringBuilder();
+				if (!mAffinity && !mPriority)
+					ev.User.Append("; Already at target values");
+				ev.User.Append(" [Foreground]");
+
+				LogAdjust(ev, debug: true);
+			}
+
+			// PausedState.Priority = Priority;
+			// PausedState.PowerMode = PowerPlan;
+
+			if (Taskmaster.PowerManagerEnabled)
+			{
+				if (PowerPlan != PowerInfo.PowerMode.Undefined && BackgroundPowerdown)
+				{
+					if (Taskmaster.DebugPower || Taskmaster.DebugForeground)
+						Log.Debug("[" + FriendlyName + "] " + info.Name + " (#" + info.Id + ") foreground power on");
+
+					SetPower(info);
+				}
+			}
+
+			PausedIds.TryRemove(info.Id, out _);
 
 			Resumed?.Invoke(this, new ProcessEventArgs() { Control = this, Info = info, State = ProcessRunningState.Restored });
 		}
@@ -691,19 +685,13 @@ namespace Taskmaster
 
 		// -----------------------------------------------
 
-		HashSet<int> PowerList = new HashSet<int>();
-		object powerlist_lock = new object();
-
 		bool SetPower(ProcessEx info)
 		{
 			Debug.Assert(Taskmaster.PowerManagerEnabled);
 			Debug.Assert(PowerPlan != PowerInfo.PowerMode.Undefined);
 
-			lock (powerlist_lock)
-			{
-				info.PowerWait = true;
-				PowerList.Add(info.Id);
-			}
+			info.PowerWait = true;
+			PowerList.TryAdd(info.Id, 0);
 
 			var ea = new ProcessEventArgs() { Info = info, Control = this, State = ProcessRunningState.Undefined };
 			WaitingExit?.Invoke(this, ea);
@@ -714,11 +702,8 @@ namespace Taskmaster
 
 		void UndoPower(ProcessEx info)
 		{
-			lock (powerlist_lock)
-			{
-				PowerList.Remove(info.Id);
-				Taskmaster.powermanager?.Release(info.Id);
-			}
+			PowerList.TryRemove(info.Id, out _);
+			Taskmaster.powermanager?.Release(info.Id);
 		}
 
 		/*
@@ -747,9 +732,6 @@ namespace Taskmaster
 
 			return false;
 		}
-
-		HashSet<int> ForegroundWatch = new HashSet<int>();
-
 
 		int PathElements = 0;
 		string FormatPathName(ProcessEx info)
@@ -824,43 +806,38 @@ namespace Taskmaster
 
 		void ForegroundMonitor(ProcessEx info)
 		{
-			lock (foreground_lock)
+			if (!ForegroundWatch.TryAdd(info.Id, 0)) return;
+
+			info.Process.EnableRaisingEvents = true;
+			info.Process.Exited += (o, s) => { End(info); };
+
+			ProcessPriorityClass? oPriority = null;
+			IntPtr? oAffinity = null;
+			try
 			{
-				if (ForegroundWatch.Contains(info.Id)) return;
+				oPriority = info.Process.PriorityClass;
+				oAffinity = info.Process.ProcessorAffinity;
+			}
+			catch { }
 
-				ForegroundWatch.Add(info.Id);
-
-				info.Process.EnableRaisingEvents = true;
-				info.Process.Exited += (o, s) => { End(info); };
-
-				ProcessPriorityClass? oPriority = null;
-				IntPtr? oAffinity = null;
-				try
+			if (Taskmaster.ShowProcessAdjusts)
+			{
+				var ev = new ProcessEventArgs()
 				{
-					oPriority = info.Process.PriorityClass;
-					oAffinity = info.Process.ProcessorAffinity;
-				}
-				catch { }
+					Priority = null,
+					PriorityOld = Priority,
+					Affinity = null,
+					AffinityOld = Affinity,
+					Info = info,
+					Control = this,
+					State = ProcessRunningState.Undefined,
+				};
 
-				if (Taskmaster.ShowProcessAdjusts)
-				{
-					var ev = new ProcessEventArgs()
-					{
-						Priority = null,
-						PriorityOld = Priority,
-						Affinity = null,
-						AffinityOld = Affinity,
-						Info = info,
-						Control = this,
-						State = ProcessRunningState.Undefined,
-					};
+				ev.User = new System.Text.StringBuilder();
+				if (PowerPlan != PowerInfo.PowerMode.Undefined) ev.User.Append("; Power:").Append(PowerPlan.GetShortName());
+				ev.User.Append(" – Foreground Only");
 
-					ev.User = new System.Text.StringBuilder();
-					if (PowerPlan != PowerInfo.PowerMode.Undefined) ev.User.Append("; Power:").Append(PowerPlan.GetShortName());
-					ev.User.Append(" – Foreground Only");
-
-					LogAdjust(ev);
-				}
+				LogAdjust(ev);
 			}
 		}
 
@@ -887,7 +864,7 @@ namespace Taskmaster
 
 			if (ForegroundOnly)
 			{
-				if (PausedIds.Contains(info.Id))
+				if (PausedIds.ContainsKey(info.Id))
 				{
 					if (Taskmaster.Trace && Taskmaster.DebugForeground)
 						Log.Debug("<Foreground> " + FormatPathName(info) + " (#" + info.Id + ") in background, ignoring.");

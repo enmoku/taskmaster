@@ -154,7 +154,7 @@ namespace Taskmaster
 				Minimum = 0,
 				Maximum = 360,
 				Dock = DockStyle.Left,
-				Value = initial ? 15 : ProcessManager.RescanEverythingFrequency,
+				Value = initial ? 15 : ProcessManager.ScanFrequency,
 				Width = 60,
 			};
 			var defaultBackColor = scanfrequency.BackColor;
@@ -208,7 +208,7 @@ namespace Taskmaster
 				}
 			};
 			var wmi = Taskmaster.WMIPolling;
-			var scan = ProcessManager.RescanEverythingFrequency > 0;
+			var scan = ProcessManager.ScanFrequency > 0;
 			ScanOrWMI.SelectedIndex = initial ? 0 : ((wmi && scan) ? 2 : (wmi ? 1 : 0));
 
 			var powmon = new CheckBox()
