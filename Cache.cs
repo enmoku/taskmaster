@@ -72,7 +72,7 @@ namespace Taskmaster
 
 		readonly object cache_lock = new object();
 
-		Timer pruneTimer = new Timer(1000 * 60 * 10);
+		System.Threading.Timer pruneTimer = null;
 
 		int Overflow = 10;
 		int MaxCache = 20;
@@ -91,19 +91,7 @@ namespace Taskmaster
 			MinCache = minItems;
 			Overflow = (MaxCache / 2).Constrain(2, 50);
 
-			pruneTimer.Interval = interval * 1000 * 60;
-			pruneTimer.Elapsed += (s, e) =>
-			{
-				try
-				{
-					Prune();
-				}
-				catch (Exception ex)
-				{
-					Logging.Stacktrace(ex);
-				}
-			};
-			pruneTimer.Start();
+			pruneTimer = new System.Threading.Timer(Prune, null, 15_000L, Convert.ToInt64(interval) * 60_000L);
 		}
 
 		int prune_in_progress = 0;
@@ -111,9 +99,10 @@ namespace Taskmaster
 		/// <summary>
 		/// Prune cache.
 		/// </summary>
-		void Prune()
+		void Prune(object _)
 		{
 			if (!Atomic.Lock(ref prune_in_progress)) return; // only one instance.
+			if (disposed) return; // HACK: dumbness with timers
 
 			try
 			{
@@ -195,6 +184,10 @@ namespace Taskmaster
 						}
 					}
 				}
+			}
+			catch(Exception ex)
+			{
+				Logging.Stacktrace(ex);
 			}
 			finally
 			{

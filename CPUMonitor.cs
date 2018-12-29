@@ -40,7 +40,7 @@ namespace Taskmaster
 		public int SampleInterval { get; set; } = 5;
 		public int SampleCount { get; set; } = 5;
 		PerformanceCounterWrapper Counter = null;
-		System.Timers.Timer Timer = null;
+		System.Threading.Timer Timer = null;
 
 		float[] Samples;
 		int SampleLoop = 0;
@@ -98,9 +98,6 @@ namespace Taskmaster
 
 				if (Timer == null)
 				{
-					Timer = new System.Timers.Timer(SampleInterval * 1000);
-					Timer.Elapsed += Sampler;
-
 					Samples = new float[SampleCount];
 
 					// prepopulate
@@ -109,9 +106,11 @@ namespace Taskmaster
 						Samples[i] = Counter.Value;
 						Average += Samples[i];
 					}
+
+					Timer = new System.Threading.Timer(Sampler, null, System.Threading.Timeout.Infinite, SampleInterval * 1_000);
 				}
 
-				Timer.Start();
+				Timer.Change(1_000, SampleInterval * 1_000); // start
 			}
 			catch (Exception ex)
 			{
@@ -148,9 +147,10 @@ namespace Taskmaster
 			Average = tAverage / SampleCount;
 		}
 
-		void Sampler(object sender, EventArgs ev)
+		void Sampler(object _)
 		{
 			if (!Atomic.Lock(ref sampler_lock)) return; // uhhh... probably should ping warning if this return is triggered
+			if (disposed) return; // HACK: dumbness with timers
 
 			float sample = Counter.Value; // slowest part
 			Samples[SampleLoop] = sample;

@@ -58,8 +58,8 @@ namespace Taskmaster
 			}
 
 			TempScanTimer = new System.Timers.Timer(TimerDue);
-			Task.Run(async () => { await ScanTemp(); });
-			TempScanTimer.Elapsed += async (s, e) => { await ScanTemp().ConfigureAwait(false); };
+			ScanTemp(null, null);
+			TempScanTimer.Elapsed += ScanTemp;
 			TempScanTimer.Start();
 
 			Log.Information("<Maintenance> Temp folder scanner will be performed once per day.");
@@ -96,7 +96,7 @@ namespace Taskmaster
 			LastTempScan = now;
 
 			TempScanTimer.Stop();
-			ScanTemp();
+			ScanTemp(null,null);
 			TempScanTimer.Start();
 		}
 
@@ -138,9 +138,10 @@ namespace Taskmaster
 
 		int scantemp_lock = 0;
 
-		public async Task ScanTemp()
+		async void ScanTemp(object sender, EventArgs ev)
 		{
 			if (!Atomic.Lock(ref scantemp_lock)) return;
+			if (disposed) return; // HACK: timers be dumb
 
 			try
 			{

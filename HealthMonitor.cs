@@ -158,16 +158,14 @@ namespace Taskmaster
 				Log.Information("<Auto-Doc> Disk space warning level: {Level} MB", Settings.LowDriveSpaceThreshold);
 			}
 
-			healthTimer = new System.Timers.Timer(Settings.Frequency * 60_000);
-			healthTimer.Elapsed += TimerCheck;
-			healthTimer.Start();
+			healthTimer = new System.Threading.Timer(TimerCheck, null, 15_000, Settings.Frequency * 60_000);
 
 			if (Taskmaster.DebugHealth) Log.Information("<Auto-Doc> Component loaded");
 
 			Taskmaster.DisposalChute.Push(this);
 		}
 
-		readonly System.Timers.Timer healthTimer = null;
+		readonly System.Threading.Timer healthTimer = null;
 
 		DateTime MemFreeLast = DateTime.MinValue;
 
@@ -225,11 +223,12 @@ namespace Taskmaster
 
 		int HealthCheck_lock = 0;
 		//async void TimerCheck(object state)
-		async void TimerCheck(object sender, EventArgs ev)
+		async void TimerCheck(object _)
 		{
 			// skip if already running...
 			// happens sometimes when the timer keeps running but not the code here
 			if (!Atomic.Lock(ref HealthCheck_lock)) return;
+			if (disposed) return; // HACK: dumbness with timers
 
 			try
 			{

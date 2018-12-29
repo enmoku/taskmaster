@@ -336,7 +336,7 @@ namespace Taskmaster
 
 			WatchlistRules.EndUpdate();
 
-			rescanRequest += processmanager.ScanEverythingRequest;
+			rescanRequest += processmanager.ScanRequest;
 
 			processmanager.ProcessModified += ProcessTouchEvent;
 

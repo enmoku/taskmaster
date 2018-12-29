@@ -151,20 +151,18 @@ namespace Taskmaster
 
 			ProcessDetectedEvent += ProcessTriage;
 
-			if (ScanFrequency > 0)
-			{
-				ScanTimer = new System.Timers.Timer(ScanFrequency * 1000);
-				ScanTimer.Elapsed += ScanRequest;
-				ScanTimer.Start();
-			}
+			if (ScanFrequency > 0) ScanTimer = new System.Threading.Timer(ScanRequest, null, 15_000, ScanFrequency * 1_000);
 
 			if (Taskmaster.PathCacheLimit > 0)
 			{
 				ProcessManagerUtility.Initialize();
 			}
 
-			BatchProcessingTimer = new System.Timers.Timer(1000 * 5);
-			BatchProcessingTimer.Elapsed += BatchProcessingTick;
+			if (BatchProcessing)
+			{
+				BatchProcessingTimer = new System.Timers.Timer(1000 * 5);
+				BatchProcessingTimer.Elapsed += BatchProcessingTick;
+			}
 
 			ScanEndEvent += UnregisterFreeMemoryTick;
 
@@ -352,13 +350,15 @@ namespace Taskmaster
 		/// <summary>
 		/// Spawn separate thread to run program scanning.
 		/// </summary>
-		public void ScanRequest(object sender, EventArgs e)
+		public void ScanRequest(object _)
 		{
+			if (disposed) return; // HACK: dumb timers be dumb
+
 			if (Taskmaster.Trace) Log.Verbose("Rescan requested.");
 			if (ScanPaused) return;
 			// this stays on UI thread for some reason
 
-			Task.Run(async () => { await Scan(); });
+			Scan();
 		}
 
 		/// <summary>
@@ -456,7 +456,7 @@ namespace Taskmaster
 		static int BatchProcessingThreshold = 5;
 		// static bool ControlChildren = false; // = false;
 
-		readonly System.Timers.Timer ScanTimer = null;
+		readonly System.Threading.Timer ScanTimer = null;
 
 		public bool ValidateController(ProcessController prc)
 		{
