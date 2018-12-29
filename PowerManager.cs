@@ -191,7 +191,9 @@ namespace Taskmaster
 				if (SleepTickCount >= 5)
 				{
 					// it would be better if this wasn't needed, but we don't want to spam our failure in the logs too much
-					Log.Warning("<Session:Lock> Repeated failure to put monitor to sleep, giving up.");
+					Log.Warning("<Session:Lock> Repeated failure to put monitor to sleep, giving up. Other apps may be interfering");
+					// TODO: Detect other apps that have used SetThreadExecutionState(ES_CONTINUOUS) to prevent monitor sleep
+					// ... this is supposedly not possible.
 					StopDisplayTimer();
 				}
 			}
