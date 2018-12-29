@@ -53,7 +53,6 @@ namespace Taskmaster
 		ToolStripMenuItem menu_windowopen;
 		ToolStripMenuItem menu_rescan;
 		ToolStripMenuItem menu_configuration;
-		ToolStripMenuItem menu_runatstart_reg;
 		ToolStripMenuItem menu_runatstart_sch;
 		ToolStripMenuItem menu_exit;
 
@@ -586,7 +585,6 @@ namespace Taskmaster
 				Utility.Dispose(ref menu_configuration);
 				Utility.Dispose(ref menu_exit);
 				Utility.Dispose(ref menu_rescan);
-				Utility.Dispose(ref menu_runatstart_reg);
 				Utility.Dispose(ref menu_windowopen);
 				Utility.Dispose(ref ms);
 				Utility.Dispose(ref power_auto);
@@ -652,28 +650,6 @@ namespace Taskmaster
 			}
 		}
 
-		void RunAtStartMenuClick_Reg(object sender, EventArgs ev)
-		{
-			try
-			{
-				if (!menu_runatstart_reg.Checked)
-				{
-					var isadmin = Taskmaster.IsAdministrator();
-					if (isadmin)
-					{
-						var rv = System.Windows.Forms.MessageBox.Show("Run at start does not support elevated privilege that you have. Is this alright?\n\nIf you absolutely need admin rights, create on logon scheduled task.",
-												 System.Windows.Forms.Application.ProductName + " – Run at Start normal privilege problem.",
-										MessageBoxButtons.YesNo, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button2, System.Windows.Forms.MessageBoxOptions.DefaultDesktopOnly, false);
-						if (rv == DialogResult.No) return;
-					}
-				}
-			}
-			catch (Exception ex)
-			{
-				Logging.Stacktrace(ex);
-			}
-		}
-
 		void RunAtStartMenuClick_Sch(object _, EventArgs _ea)
 		{
 			try
@@ -700,12 +676,6 @@ namespace Taskmaster
 				}
 
 				menu_runatstart_sch.Checked = RunAtStartScheduler(!menu_runatstart_sch.Checked);
-
-				if (menu_runatstart_sch.Checked && menu_runatstart_reg.Checked)
-				{
-					// don't have both enabled
-					RunAtStartMenuClick_Reg(this, null);
-				}
 			}
 			catch (Exception ex)
 			{
