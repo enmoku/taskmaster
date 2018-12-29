@@ -117,7 +117,7 @@ namespace Taskmaster
 		/// <summary>
 		/// CPU core affinity.
 		/// </summary>
-		public IntPtr? Affinity = null;
+		public int AffinityMask { get; set; } = -1;
 
 		public ProcessAffinityStrategy AffinityStrategy = ProcessAffinityStrategy.None;
 		int ScatterOffset = 0;
@@ -166,7 +166,7 @@ namespace Taskmaster
 			Priority = priority;
 			if (affinity >= 0)
 			{
-				Affinity = new IntPtr(affinity);
+				AffinityMask = affinity;
 				AffinityStrategy = ProcessAffinityStrategy.Limit;
 			}
 		}
@@ -261,12 +261,11 @@ namespace Taskmaster
 				app.Remove(HumanReadable.System.Process.PriorityStrategy);
 			}
 
-			if (Affinity.HasValue && Affinity.Value.ToInt32() >= 0)
+			if (AffinityMask >= 0)
 			{
-				var affinity = Affinity.Value.ToInt32();
 				//if (affinity == ProcessManager.allCPUsMask) affinity = 0; // convert back
 
-				app[HumanReadable.System.Process.Affinity].IntValue = affinity;
+				app[HumanReadable.System.Process.Affinity].IntValue = AffinityMask;
 				app[HumanReadable.System.Process.AffinityStrategy].IntValue = (int)AffinityStrategy;
 			}
 			else
@@ -290,8 +289,8 @@ namespace Taskmaster
 				else
 					app.Remove("Background priority");
 
-				if (BackgroundAffinity.HasValue)
-					app["Background affinity"].IntValue = BackgroundAffinity.Value.ToInt32();
+				if (BackgroundAffinity >= 0)
+					app["Background affinity"].IntValue = BackgroundAffinity;
 				else
 					app.Remove("Background affinity");
 
@@ -443,7 +442,7 @@ namespace Taskmaster
 
 		public bool BackgroundPowerdown { get; set; } = true;
 		public ProcessPriorityClass? BackgroundPriority { get; set; } = null;
-		public IntPtr? BackgroundAffinity { get; set; } = IntPtr.Zero;
+		public int BackgroundAffinity { get; set; } = -1;
 
 		/// <summary>
 		/// Pause the specified foreground process.
@@ -465,7 +464,7 @@ namespace Taskmaster
 
 			bool mAffinity = false, mPriority = false;
 			ProcessPriorityClass oldPriority = ProcessPriorityClass.RealTime;
-			IntPtr oldAffinity = IntPtr.Zero;
+			int oldAffinity = 0;
 
 			try
 			{
@@ -478,12 +477,12 @@ namespace Taskmaster
 						mPriority = true;
 					}
 				}
-				if (BackgroundAffinity.HasValue)
+				if (BackgroundAffinity >= 0)
 				{
-					oldAffinity = info.Process.ProcessorAffinity;
-					if (oldAffinity.ToInt32() != BackgroundAffinity.Value.ToInt32())
+					oldAffinity = info.Process.ProcessorAffinity.ToInt32();
+					if (oldAffinity != BackgroundAffinity)
 					{
-						info.Process.ProcessorAffinity = BackgroundAffinity.Value;
+						info.Process.ProcessorAffinity = new IntPtr(BackgroundAffinity);
 						mAffinity = true;
 					}
 				}
@@ -510,7 +509,7 @@ namespace Taskmaster
 				{
 					PriorityNew = mPriority ? BackgroundPriority : null,
 					PriorityOld = oldPriority,
-					AffinityNew = mAffinity ? BackgroundAffinity : null,
+					AffinityNew = mAffinity ? BackgroundAffinity : -1,
 					AffinityOld = oldAffinity,
 					Info = info,
 					Control = this,
@@ -549,11 +548,11 @@ namespace Taskmaster
 				sbs.Append("n/a");
 
 			sbs.Append("; Affinity: ");
-			if (ev.AffinityOld.HasValue)
+			if (ev.AffinityOld >= 0)
 			{
-				sbs.Append(ev.AffinityOld.Value.ToInt32());
-				if (ev.AffinityNew.HasValue)
-					sbs.Append(" → ").Append(ev.AffinityNew.Value.ToInt32());
+				sbs.Append(ev.AffinityOld);
+				if (ev.AffinityNew >= 0)
+					sbs.Append(" → ").Append(ev.AffinityNew);
 			}
 			else
 				sbs.Append("n/a");
@@ -599,9 +598,10 @@ namespace Taskmaster
 					mPriority = true;
 				}
 
-				if (Affinity.HasValue)
+				if (AffinityMask >= 0)
 				{
-					info.Process.ProcessorAffinity = Affinity.Value;
+					// TODO: Apply affinity strategy
+					info.Process.ProcessorAffinity = new IntPtr(AffinityMask);
 					mAffinity = true;
 				}
 			}
@@ -627,8 +627,8 @@ namespace Taskmaster
 				{
 					PriorityNew = mPriority ? (ProcessPriorityClass?)BackgroundPriority.Value : null,
 					PriorityOld = oldPriority,
-					AffinityNew = mAffinity ? (IntPtr?)BackgroundAffinity.Value : null,
-					AffinityOld = oldAffinity,
+					AffinityNew = mAffinity ? BackgroundAffinity : -1,
+					AffinityOld = oldAffinity.ToInt32(),
 					Info = info,
 					Control = this,
 					State = ProcessRunningState.Reduced,
@@ -829,8 +829,8 @@ namespace Taskmaster
 				{
 					PriorityNew = null,
 					PriorityOld = Priority,
-					AffinityNew = null,
-					AffinityOld = Affinity,
+					AffinityNew = -1,
+					AffinityOld = AffinityMask,
 					Info = info,
 					Control = this,
 					State = ProcessRunningState.Undefined,
@@ -864,7 +864,7 @@ namespace Taskmaster
 			Debug.Assert(!string.IsNullOrEmpty(info.Name), "ProcessController.Touch given empty process name.");
 
 			bool foreground = true;
-			
+
 
 			if (RecentlyModified.TryGetValue(info.Id, out DateTime time))
 			{
@@ -1017,12 +1017,27 @@ namespace Taskmaster
 					Log.Verbose("[" + FriendlyName + "] " + info.Name + " (#" + info.Id + ") protected.");
 			}
 
-			if (Affinity.HasValue)
+			int newAffinityMask = -1;
+
+			if (AffinityMask >= 0)
 			{
-				var newAffinityMask = Affinity.Value.ToInt32();
+				newAffinityMask = AffinityMask;
+
+				int modifiedAffinityMask = ProcessManagerUtility.ApplyAffinityStrategy(oldAffinityMask, newAffinityMask, AffinityStrategy);
+				if (modifiedAffinityMask != newAffinityMask)
+					newAffinityMask = modifiedAffinityMask;
+
 				if (oldAffinityMask != newAffinityMask)
 				{
-					/*
+					newAffinity = new IntPtr(newAffinityMask);
+					doModifyAffinity = true;
+				}
+				else
+					newAffinityMask = -1;
+
+				/*
+				if (oldAffinityMask != newAffinityMask)
+				{
 					var taff = Affinity;
 					if (AllowedCores || !Increase)
 					{
@@ -1048,23 +1063,10 @@ namespace Taskmaster
 						// shuffle cores from old to new
 						taff = new IntPtr(minaff);
 					}
-					*/
 					// int bitsnew = Bit.Count(newAffinityMask);
 					// TODO: Somehow shift bits old to new if there's free spots
-
-					int modifiedAffinity = ProcessManagerUtility.ApplyAffinityStrategy(oldAffinityMask, newAffinityMask, AffinityStrategy);
-					if (modifiedAffinity != newAffinityMask)
-					{
-						newAffinityMask = modifiedAffinity;
-						newAffinity = new IntPtr(newAffinityMask);
-					}
-
-					if (oldAffinityMask != newAffinityMask)
-					{
-						doModifyAffinity = true;
-						if (!newAffinity.HasValue) newAffinity = Affinity;
-					}
 				}
+				*/
 			}
 
 			// APPLY CHANGES HERE
@@ -1176,7 +1178,7 @@ namespace Taskmaster
 				if (fPriority && Taskmaster.ShowInaction && Taskmaster.DebugProcesses)
 					Log.Warning("[" + FriendlyName + "] " + info.Name + " (#" + info.Id + ") failed to set process priority.");
 			}
-			if (Affinity.HasValue)
+			if (AffinityMask >= 0)
 			{
 				if (fAffinity && Taskmaster.ShowInaction && Taskmaster.DebugProcesses)
 					Log.Warning("[" + FriendlyName + "] " + info.Name + " (#" + info.Id + ") failed to set process affinity.");
@@ -1194,8 +1196,8 @@ namespace Taskmaster
 			{
 				PriorityNew = newPriority,
 				PriorityOld = oldPriority,
-				AffinityNew = newAffinity,
-				AffinityOld = oldAffinity,
+				AffinityNew = newAffinityMask,
+				AffinityOld = oldAffinityMask,
 				Control = this,
 				Info = info,
 				State = ProcessRunningState.Found,
@@ -1551,8 +1553,8 @@ namespace Taskmaster
 
 		public ProcessPriorityClass? PriorityNew = null;
 		public ProcessPriorityClass? PriorityOld = null;
-		public IntPtr? AffinityNew = null;
-		public IntPtr? AffinityOld = null;
+		public int AffinityNew = -1;
+		public int AffinityOld = -1;
 
 		public bool Protected = false;
 		public bool AffinityFail = false;

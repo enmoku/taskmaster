@@ -275,7 +275,7 @@ namespace Taskmaster
 								ev.Info.Name,
 								ev.Control.FriendlyName,
 								(ev.PriorityNew.HasValue ? MKAh.Readable.ProcessPriority(ev.PriorityNew.Value) : "n/a"),
-								(ev.AffinityNew.HasValue ? HumanInterface.BitMask(ev.AffinityNew.Value.ToInt32(), ProcessManager.CPUCount) : "n/a"),
+								(ev.AffinityNew >= 0 ? HumanInterface.BitMask(ev.AffinityNew, ProcessManager.CPUCount) : "n/a"),
 								ev.Info.Path
 							});
 							lastmodifylist.Items.Add(mi);
@@ -403,7 +403,7 @@ namespace Taskmaster
 						li.SubItems[PathColumn].ForeColor = GrayText;
 					if (prc.PowerPlan == PowerInfo.PowerMode.Undefined)
 						li.SubItems[PowerColumn].ForeColor = GrayText;
-					if (!prc.Affinity.HasValue)
+					if (prc.AffinityMask < 0)
 						li.SubItems[AffColumn].ForeColor = GrayText;
 				}
 				catch (Exception ex)
@@ -423,12 +423,12 @@ namespace Taskmaster
 		void AddToWatchlistList(ProcessController prc)
 		{
 			string aff = AnyIgnoredValue;
-			if (prc.Affinity.HasValue && prc.Affinity.Value.ToInt32() != ProcessManager.AllCPUsMask)
+			if (prc.AffinityMask > 0)
 			{
 				if (Taskmaster.AffinityStyle == 0)
-					aff = HumanInterface.BitMask(prc.Affinity.Value.ToInt32(), ProcessManager.CPUCount);
+					aff = HumanInterface.BitMask(prc.AffinityMask, ProcessManager.CPUCount);
 				else
-					aff = prc.Affinity.Value.ToInt32().ToString();
+					aff = prc.AffinityMask.ToString();
 			}
 
 			var litem = new ListViewItem(new string[] { (num++).ToString(), prc.FriendlyName, prc.Executable, string.Empty, aff, string.Empty, prc.Adjusts.ToString(), string.Empty });
@@ -466,14 +466,14 @@ namespace Taskmaster
 				litem.SubItems[ExeColumn].Text = prc.Executable;
 				litem.SubItems[PrioColumn].Text = prc.Priority?.ToString() ?? AnyIgnoredValue;
 				string aff = AnyIgnoredValue;
-				if (prc.Affinity.HasValue)
+				if (prc.AffinityMask >= 0)
 				{
-					if (prc.Affinity.Value.ToInt32() == ProcessManager.AllCPUsMask)
+					if (prc.AffinityMask == ProcessManager.AllCPUsMask)
 						aff = "Full/OS";
 					else if (Taskmaster.AffinityStyle == 0)
-						aff = HumanInterface.BitMask(prc.Affinity.Value.ToInt32(), ProcessManager.CPUCount);
+						aff = HumanInterface.BitMask(prc.AffinityMask, ProcessManager.CPUCount);
 					else
-						aff = prc.Affinity.Value.ToInt32().ToString();
+						aff = prc.AffinityMask.ToString();
 				}
 				litem.SubItems[AffColumn].Text = aff;
 				litem.SubItems[PowerColumn].Text = (prc.PowerPlan != PowerInfo.PowerMode.Undefined ? prc.PowerPlan.ToString() : AnyIgnoredValue);
@@ -2507,9 +2507,9 @@ namespace Taskmaster
 						sbs.Append(HumanReadable.System.Process.Priority).Append(" = ").Append(prc.Priority.Value.ToInt32()).AppendLine();
 						sbs.Append(HumanReadable.System.Process.PriorityStrategy).Append(" = ").Append((int)prc.PriorityStrategy).AppendLine();
 					}
-					if (prc.Affinity.HasValue)
+					if (prc.AffinityMask >= 0)
 					{
-						sbs.Append(HumanReadable.System.Process.Affinity).Append(" = ").Append(prc.Affinity.Value.ToInt32()).AppendLine();
+						sbs.Append(HumanReadable.System.Process.Affinity).Append(" = ").Append(prc.AffinityMask).AppendLine();
 						sbs.Append(HumanReadable.System.Process.AffinityStrategy).Append(" = ").Append((int)prc.AffinityStrategy).AppendLine();
 					}
 					if (prc.PowerPlan != PowerInfo.PowerMode.Undefined)
@@ -2527,8 +2527,8 @@ namespace Taskmaster
 						sbs.Append("Foreground only = ").Append(prc.ForegroundOnly).AppendLine();
 						if (prc.BackgroundPriority.HasValue)
 							sbs.Append("Background priority = ").Append(prc.BackgroundPriority.Value.ToInt32()).AppendLine();
-						if (prc.BackgroundAffinity.HasValue)
-							sbs.Append("Background affinity = ").Append(prc.BackgroundAffinity.Value.ToInt32()).AppendLine();
+						if (prc.BackgroundAffinity >= 0)
+							sbs.Append("Background affinity = ").Append(prc.BackgroundAffinity).AppendLine();
 					}
 
 					if (prc.PathVisibility != PathVisibilityOptions.File)

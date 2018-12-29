@@ -516,7 +516,7 @@ namespace Taskmaster
 
 			if (Taskmaster.Trace) Log.Verbose("[" + prc.FriendlyName + "] Match: " + (prc.Executable ?? prc.Path) + ", " +
 				(prc.Priority.HasValue ? Readable.ProcessPriority(prc.Priority.Value) : "n/a") +
-				", Mask:" + (prc.Affinity.HasValue ? prc.Affinity.Value.ToString() : "n/a") +
+				", Mask:" + (prc.AffinityMask >= 0 ? prc.AffinityMask.ToString() : "n/a") +
 				", Recheck: " + prc.Recheck + "s, FgOnly: " + prc.ForegroundOnly.ToString());
 		}
 
@@ -716,10 +716,7 @@ namespace Taskmaster
 				float volume = section.TryGet("Volume")?.FloatValue.Constrain(0.0f, 1.0f) ?? 0.5f;
 				AudioVolumeStrategy volumestrategy = (AudioVolumeStrategy)(section.TryGet("Volume strategy")?.IntValue.Constrain(0, 5) ?? 0);
 
-				int baffn = section.TryGet("Background affinity")?.IntValue ?? -1;
-				IntPtr? baff = null;
-				if (baffn >= 0)
-					baff = new IntPtr(baffn);
+				int baff = section.TryGet("Background affinity")?.IntValue ?? -1;
 				ProcessPriorityClass? bprio = null;
 				int bpriot = section.TryGet("Background priority")?.IntValue ?? -1;
 				if (bpriot >= 0) bprio = ProcessHelpers.IntToPriority(bpriot);
@@ -754,8 +751,8 @@ namespace Taskmaster
 				prc.VolumeStrategy = volumestrategy;
 
 				// TODO: Blurp about following configuration errors
-				if (!prc.Affinity.HasValue) prc.AffinityStrategy = ProcessAffinityStrategy.None;
-				else if (prc.AffinityStrategy == ProcessAffinityStrategy.None) prc.Affinity = null;
+				if (prc.AffinityMask < 0) prc.AffinityStrategy = ProcessAffinityStrategy.None;
+				else if (prc.AffinityStrategy == ProcessAffinityStrategy.None) prc.AffinityMask = -1;
 
 				if (!prc.Priority.HasValue) prc.PriorityStrategy = ProcessPriorityStrategy.None;
 				else if (prc.PriorityStrategy == ProcessPriorityStrategy.None) prc.Priority = null;

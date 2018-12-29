@@ -153,17 +153,17 @@ namespace Taskmaster
 			if (affstrategy.SelectedIndex != 0)
 			{
 				if (cpumask == -1)
-					Controller.Affinity = null;
+					Controller.AffinityMask = -1;
 				else
 				{
-					Controller.Affinity = new IntPtr(cpumask);
+					Controller.AffinityMask = cpumask;
 					Controller.AffinityStrategy = affstrategy.SelectedIndex == 1 ? ProcessAffinityStrategy.Limit : ProcessAffinityStrategy.Force;
 				}
 			}
 			else
 			{
 				// strategy = ignore
-				Controller.Affinity = null;
+				Controller.AffinityMask = -1;
 				Controller.AffinityStrategy = ProcessAffinityStrategy.None;
 			}
 
@@ -179,9 +179,9 @@ namespace Taskmaster
 				Controller.BackgroundPriority = null;
 
 			if (bgAffinityMask.Value >= 0)
-				Controller.BackgroundAffinity = new IntPtr(Convert.ToInt32(bgAffinityMask.Value));
+				Controller.BackgroundAffinity = Convert.ToInt32(bgAffinityMask.Value);
 			else
-				Controller.BackgroundAffinity = null;
+				Controller.BackgroundAffinity = -1;
 
 			if (ignorelist.Items.Count > 0)
 			{
@@ -475,7 +475,7 @@ namespace Taskmaster
 				Width = 80,
 				Maximum = ProcessManager.AllCPUsMask,
 				Minimum = -1,
-				Value = (Controller.Affinity?.ToInt32() ?? 0),
+				Value = Math.Max(0, Controller.AffinityMask),
 			};
 
 			tooltip.SetToolTip(affinityMask, "CPU core afffinity as integer mask.\nEnter 0 to let OS manage this as normal.\nFull affinity is same as 0, there's no difference.\nExamples:\n14 = all but first core on quadcore.\n254 = all but first core on octocore.\n-1 = Ignored");
@@ -496,7 +496,7 @@ namespace Taskmaster
 				AutoSize = true,
 			};
 
-			cpumask = Controller.Affinity?.ToInt32() ?? -1;
+			cpumask = Controller.AffinityMask;
 			for (int bit = 0; bit < ProcessManager.CPUCount; bit++)
 			{
 				var box = new CheckBox();
@@ -612,7 +612,7 @@ namespace Taskmaster
 				Width = 80,
 				Maximum = ProcessManager.AllCPUsMask,
 				Minimum = -1,
-				Value = (Controller.BackgroundAffinity?.ToInt32() ?? -1),
+				Value = Controller.BackgroundAffinity,
 			};
 			tooltip.SetToolTip(bgAffinityMask, "Same as normal affinity.\nStrategy is 'force' only for this.\n-1 causes affinity to be untouched.");
 
