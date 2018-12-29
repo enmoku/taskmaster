@@ -153,9 +153,9 @@ namespace Taskmaster
 
 			if (ScanFrequency > 0)
 			{
-				RescanEverythingTimer = new System.Timers.Timer(ScanFrequency * 1000);
-				RescanEverythingTimer.Elapsed += ScanEverythingRequest;
-				RescanEverythingTimer.Start();
+				ScanTimer = new System.Timers.Timer(ScanFrequency * 1000);
+				ScanTimer.Elapsed += ScanRequest;
+				ScanTimer.Start();
 			}
 
 			if (Taskmaster.PathCacheLimit > 0)
@@ -166,7 +166,7 @@ namespace Taskmaster
 			BatchProcessingTimer = new System.Timers.Timer(1000 * 5);
 			BatchProcessingTimer.Elapsed += BatchProcessingTick;
 
-			ScanEverythingEndEvent += UnregisterFreeMemoryTick;
+			ScanEndEvent += UnregisterFreeMemoryTick;
 
 			if (Taskmaster.DebugProcesses) Log.Information("<Process> Component Loaded.");
 
@@ -322,13 +322,13 @@ namespace Taskmaster
 
 			try
 			{
-				ScanEverythingPaused = true;
+				ScanPaused = true;
 
-				// TODO: Pause ScanEverything until we're done
+				// TODO: Pause Scan until we're done
 				ProcessDetectedEvent += FreeMemoryTick;
 
-				await ScanEverything(ignorePid).ConfigureAwait(false); // TODO: Call for this to happen otherwise
-				ScanEverythingPaused = false;
+				await Scan(ignorePid).ConfigureAwait(false); // TODO: Call for this to happen otherwise
+				ScanPaused = false;
 
 				Taskmaster.healthmonitor.InvalidateFreeMemory(); // just in case
 
@@ -348,25 +348,25 @@ namespace Taskmaster
 			}
 		}
 
-		bool ScanEverythingPaused = false;
+		bool ScanPaused = false;
 		/// <summary>
 		/// Spawn separate thread to run program scanning.
 		/// </summary>
-		public void ScanEverythingRequest(object sender, EventArgs e)
+		public void ScanRequest(object sender, EventArgs e)
 		{
 			if (Taskmaster.Trace) Log.Verbose("Rescan requested.");
-			if (ScanEverythingPaused) return;
+			if (ScanPaused) return;
 			// this stays on UI thread for some reason
 
-			Task.Run(async () => { await ScanEverything(); });
+			Task.Run(async () => { await Scan(); });
 		}
 
 		/// <summary>
-		/// Event fired by ScanEverything and WMI new process
+		/// Event fired by Scan and WMI new process
 		/// </summary>
 		public event EventHandler<ProcessEventArgs> ProcessDetectedEvent;
-		public event EventHandler ScanEverythingStartEvent;
-		public event EventHandler ScanEverythingEndEvent;
+		public event EventHandler ScanStartEvent;
+		public event EventHandler ScanEndEvent;
 
 		public event EventHandler<ProcessEventArgs> ProcessModified;
 
@@ -378,7 +378,7 @@ namespace Taskmaster
 
 		int scan_lock = 0;
 
-		public async Task ScanEverything(int ignorePid = -1)
+		public async Task Scan(int ignorePid = -1)
 		{
 			var now = DateTime.Now;
 
@@ -391,7 +391,7 @@ namespace Taskmaster
 
 			await Task.Delay(0).ConfigureAwait(false); // asyncify
 
-			ScanEverythingStartEvent?.Invoke(this, null);
+			ScanStartEvent?.Invoke(this, null);
 
 			if (!SystemProcessId(ignorePid)) Ignore(ignorePid);
 
@@ -438,7 +438,7 @@ namespace Taskmaster
 
 			SignalProcessHandled(-count); // scan done
 
-			ScanEverythingEndEvent?.Invoke(this, null);
+			ScanEndEvent?.Invoke(this, null);
 
 			if (!SystemProcessId(ignorePid)) Unignore(ignorePid);
 
@@ -456,7 +456,7 @@ namespace Taskmaster
 		static int BatchProcessingThreshold = 5;
 		// static bool ControlChildren = false; // = false;
 
-		readonly System.Timers.Timer RescanEverythingTimer = null;
+		readonly System.Timers.Timer ScanTimer = null;
 
 		public bool ValidateController(ProcessController prc)
 		{
@@ -572,14 +572,14 @@ namespace Taskmaster
 			if (ScanFrequency > 0)
 			{
 				if (ScanFrequency < 5) ScanFrequency = 5;
-				// RescanEverythingFrequency *= 1000; // to seconds
+				// ScanFrequency *= 1000; // to seconds
 			}
 
-			coreperf["Rescan everything frequency"].Comment = "Frequency (in seconds) at which we rescan everything. 0 disables.";
+			coreperf["Scan frequency"].Comment = "Frequency (in seconds) at which we scan for processes. 0 disables.";
 			dirtyconfig |= modified;
 
 			if (ScanFrequency > 0)
-				Log.Information("<Process> Rescan everything every " + ScanFrequency + " seconds.");
+				Log.Information("<Process> Scan every " + ScanFrequency + " seconds.");
 
 			// --------------------------------------------------------------------------------------------------------
 
@@ -1722,8 +1722,8 @@ namespace Taskmaster
 				ProcessDetectedEvent -= ProcessTriage;
 
 				ProcessDetectedEvent = null;
-				ScanEverythingStartEvent = null;
-				ScanEverythingEndEvent = null;
+				ScanStartEvent = null;
+				ScanEndEvent = null;
 				ProcessModified = null;
 				onInstanceHandling = null;
 				onProcessHandled = null;
@@ -1750,7 +1750,7 @@ namespace Taskmaster
 						activeappmonitor = null;
 					}
 
-					RescanEverythingTimer?.Dispose();
+					ScanTimer?.Dispose();
 					BatchProcessingTimer?.Dispose();
 				}
 				catch (Exception ex)

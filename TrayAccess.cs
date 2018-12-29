@@ -259,7 +259,7 @@ namespace Taskmaster
 		public void Hook(ProcessManager pman)
 		{
 			processmanager = pman;
-			RescanRequest += processmanager.ScanEverythingRequest;
+			RescanRequest += processmanager.ScanRequest;
 		}
 
 		PowerManager powermanager = null;
@@ -571,7 +571,7 @@ namespace Taskmaster
 
 				UnregisterGlobalHotkeys();
 
-				RescanRequest -= processmanager.ScanEverythingRequest;
+				RescanRequest -= processmanager.ScanRequest;
 				RescanRequest = null;
 
 				if (powermanager != null)
