@@ -63,6 +63,30 @@ namespace Taskmaster
 			return Math.Min(Math.Max(value, InclusiveMinimum), InclusiveMaximum);
 		}
 
+		/// <summary>
+		/// Constrains maximum value.
+		/// </summary>
+		public static int Max(this int value, int max)
+		{
+			return Math.Min(value, max);
+		}
+
+		/// <summary>
+		/// Constrains minimum value.
+		/// </summary>
+		public static int Min(this int value, int min)
+		{
+			return Math.Max(value, min);
+		}
+
+		/// <summary>
+		/// Replace value with another
+		/// </summary>
+		public static int Replace(this int value, int from, int to)
+		{
+			return value == from ? to : value;
+		}
+
 		public static IPAddress GetAddress(this NetworkInterface iface)
 		{
 			Debug.Assert(iface != null);
