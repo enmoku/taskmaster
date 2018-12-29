@@ -148,6 +148,11 @@ namespace Taskmaster
 		string PathMask = string.Empty;
 
 		/// <summary>
+		/// Controls whether this particular controller allows itself to be logged.
+		/// </summary>
+		public bool LogAdjusts { get; set; } = true;
+		
+		/// <summary>
 		/// Delay in milliseconds before we attempt to alter the process.
 		/// </summary>
 		public int ModifyDelay { get; set; } = 0;
@@ -531,6 +536,8 @@ namespace Taskmaster
 
 		void LogAdjust(ProcessEventArgs ev)
 		{
+			if (!LogAdjusts) return;
+
 			var sbs = new System.Text.StringBuilder();
 			sbs.Append("[").Append(FriendlyName).Append("] ").Append(FormatPathName(ev.Info))
 				.Append(" (#").Append(ev.Info.Id).Append(")");

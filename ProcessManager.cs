@@ -747,6 +747,8 @@ namespace Taskmaster
 
 				prc.SetForegroundOnly(section.TryGet("Foreground only")?.BoolValue ?? false);
 
+				prc.LogAdjusts = section.TryGet("Logging")?.BoolValue ?? true;
+
 				prc.Volume = volume;
 				prc.VolumeStrategy = volumestrategy;
 
