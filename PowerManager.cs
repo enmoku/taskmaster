@@ -132,20 +132,34 @@ namespace Taskmaster
 
 			if (CurrentMonitorState == MonitorPowerMode.On && SessionLocked)
 			{
-				MonitorSleepTimer?.Start();
+				StartDisplayTimer();
 			}
 			else if (CurrentMonitorState == MonitorPowerMode.Off)
 			{
-				MonitorSleepTimer?.Stop();
+				StopDisplayTimer();
 			}
 		}
 
-		System.Timers.Timer MonitorSleepTimer;
+		void StopDisplayTimer()
+		{
+			MonitorSleepTimer?.Stop();
+			SleepTickCount = -1; // hackish way to check in callback if the timer is active
+		}
 
-		int SleepTickCount = 0;
+		void StartDisplayTimer()
+		{
+			SleepTickCount = 0; // reset
+			MonitorSleepTimer?.Start();
+		}
+
+		readonly System.Timers.Timer MonitorSleepTimer;
+
+		int SleepTickCount = -1;
 		int monitorsleeptimer_lock = 0;
 		void MonitorSleepTimerTick(object _, EventArgs _ea)
 		{
+			if (SleepTickCount < 0) return; // timer disabled, excess call might occur as per timer nonsense
+
 			if (!Atomic.Lock(ref monitorsleeptimer_lock)) return;
 
 			try
@@ -168,20 +182,17 @@ namespace Taskmaster
 				}
 				else
 				{
-					SleepTickCount = 0; // reset
-
 					if (Taskmaster.ShowSessionActions || Taskmaster.DebugMonitor)
 						Log.Information("<Session:Lock> User active too recently (" + $"{idletime:N1}s" + " ago), delaying monitor power down...");
 
-					MonitorSleepTimer?.Start(); // TODO: Make this happen sooner if user was not active recently
+					StartDisplayTimer(); // TODO: Make this happen sooner if user was not active recently
 				}
 
 				if (SleepTickCount >= 5)
 				{
 					// it would be better if this wasn't needed, but we don't want to spam our failure in the logs too much
 					Log.Warning("<Session:Lock> Repeated failure to put monitor to sleep, giving up.");
-					MonitorSleepTimer?.Stop();
-					SleepTickCount = 0;
+					StopDisplayTimer();
 				}
 			}
 			finally
@@ -750,7 +761,7 @@ namespace Taskmaster
 						if (Taskmaster.ShowSessionActions || Taskmaster.DebugSession || Taskmaster.DebugMonitor)
 							Log.Information("<Session:Lock> Instant monitor power off disabled, waiting for user idle.");
 
-						MonitorSleepTimer?.Start();
+						StartDisplayTimer();
 					}
 				}
 				else
@@ -761,8 +772,7 @@ namespace Taskmaster
 			}
 			else
 			{
-				MonitorSleepTimer?.Stop();
-				SleepTickCount = 0;
+				StopDisplayTimer();
 
 				// should be unnecessary, but...
 				if (CurrentMonitorState != MonitorPowerMode.On) // session unlocked but monitor still off?
