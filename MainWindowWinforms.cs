@@ -579,6 +579,7 @@ namespace Taskmaster
 		public void PathCacheUpdate(object sender, EventArgs ev)
 		{
 			if (!IsHandleCreated) return;
+
 			Debug.Assert(Taskmaster.DebugCache);
 
 			if (PathCacheUpdateSkips++ == 4)
@@ -586,12 +587,9 @@ namespace Taskmaster
 			else
 				return;
 
-			BeginInvoke(new Action(() =>
-			{
-				cacheObjects.Text = Statistics.PathCacheCurrent.ToString();
-				var ratio = (Statistics.PathCacheMisses > 0 ? (Statistics.PathCacheHits / Statistics.PathCacheMisses) : 1);
-				cacheRatio.Text = ratio <= 99.99f ? $"{ratio:N2}" : ">99.99"; // let's just not overflow the UI
-			}));
+			cacheObjects.Text = Statistics.PathCacheCurrent.ToString();
+			var ratio = (Statistics.PathCacheMisses > 0 ? (Statistics.PathCacheHits / Statistics.PathCacheMisses) : 1);
+			cacheRatio.Text = ratio <= 99.99f ? $"{ratio:N2}" : ">99.99"; // let's just not overflow the UI
 		}
 
 		// BackColor = System.Drawing.Color.LightGoldenrodYellow
@@ -603,7 +601,7 @@ namespace Taskmaster
 		public static Serilog.Core.LoggingLevelSwitch LogIncludeLevel;
 
 		int UIUpdateFrequency = 500;
-		Timer UItimer;
+		System.Windows.Forms.Timer UItimer;
 
 		static bool UIOpen = true;
 		void StartUIUpdates(object sender, EventArgs e)
@@ -621,27 +619,22 @@ namespace Taskmaster
 		void UpdateRescanCountdown(object sender, EventArgs ev)
 		{
 			if (!IsHandleCreated) return;
-			BeginInvoke(new Action(() =>
-			{
-				processingtimer.Text = $"{DateTime.Now.TimeTo(ProcessManager.NextScan).TotalSeconds:N0}s";
-			}));
+
+			processingtimer.Text = $"{DateTime.Now.TimeTo(ProcessManager.NextScan).TotalSeconds:N0}s";
 		}
 
 		void UpdateUptime(object sender, EventArgs e)
 		{
-			if (netmonitor != null)
-			{
-				if (!IsHandleCreated) return;
-				BeginInvoke(new Action(() =>
-				{
-					uptimestatuslabel.Text = HumanInterface.TimeString(netmonitor.Uptime);
-					var avg = netmonitor.UptimeAverage();
-					if (double.IsInfinity(avg))
-						uptimeAvgLabel.Text = "Infinite";
-					else
-						uptimeAvgLabel.Text = HumanInterface.TimeString(TimeSpan.FromMinutes(avg));
-				}));
-			}
+			Debug.Assert(netmonitor != null);
+
+			if (!IsHandleCreated) return;
+
+			uptimestatuslabel.Text = HumanInterface.TimeString(netmonitor.Uptime);
+			var avg = netmonitor.UptimeAverage();
+			if (double.IsInfinity(avg))
+				uptimeAvgLabel.Text = "Infinite";
+			else
+				uptimeAvgLabel.Text = HumanInterface.TimeString(TimeSpan.FromMinutes(avg));
 		}
 
 		ListView ifaceList;
@@ -1547,7 +1540,7 @@ namespace Taskmaster
 				}
 			};
 
-			UItimer = new Timer { Interval = UIUpdateFrequency };
+			UItimer = new System.Windows.Forms.Timer { Interval = UIUpdateFrequency };
 			if (Taskmaster.NetworkMonitorEnabled)
 				UItimer.Tick += UpdateUptime;
 
