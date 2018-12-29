@@ -123,7 +123,7 @@ namespace Taskmaster
 
 			try
 			{
-				PowerConfigWindow.Show();
+				PowerConfigWindow.Reveal();
 			}
 			catch (Exception ex) { Logging.Stacktrace(ex); }
 		}

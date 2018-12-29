@@ -511,7 +511,7 @@ namespace Taskmaster
 		static int PowerConfigVisible = 0;
 		static object PowerConfig_lock = new object();
 
-		public static void Show()
+		public static void Reveal()
 		{
 			//await Task.Delay(0);
 			if (pcw != null)

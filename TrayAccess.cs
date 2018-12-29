@@ -361,7 +361,7 @@ namespace Taskmaster
 		{
 			if (!IsHandleCreated) return;
 
-			PowerConfigWindow.Show();
+			PowerConfigWindow.Reveal();
 		}
 
 		int restoremainwindow_lock = 0;
