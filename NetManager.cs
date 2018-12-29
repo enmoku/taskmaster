@@ -583,7 +583,7 @@ namespace Taskmaster
 			}
 		}
 
-		async void NetAddrChanged(object sender, EventArgs e)
+		async void NetAddrChanged(object _, EventArgs _ea)
 		{
 			var tmpnow = DateTime.Now;
 
@@ -707,7 +707,7 @@ namespace Taskmaster
 		/// Last time NetworkChanged was triggered
 		/// </summary>
 		DateTime LastNetworkChange = DateTime.MinValue;
-		async void NetworkChanged(object sender, EventArgs e)
+		async void NetworkChanged(object _, EventArgs _ea)
 		{
 			var oldNetAvailable = NetworkAvailable;
 			bool available = NetworkAvailable = NetworkInterface.GetIsNetworkAvailable();

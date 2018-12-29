@@ -235,10 +235,10 @@ namespace Taskmaster
 			powermanager.onBehaviourChange += PowerBehaviourEvent;
 		}
 
-		void UnregisterFreeMemoryTick(object sender, EventArgs ev) => ProcessDetectedEvent -= FreeMemoryTick;
+		void UnregisterFreeMemoryTick(object _, EventArgs _ea) => ProcessDetectedEvent -= FreeMemoryTick;
 
 		string freememoryignore = null;
-		void FreeMemoryTick(object sender, ProcessEventArgs ea)
+		void FreeMemoryTick(object _, ProcessEventArgs ea)
 		{
 			if (IgnoreProcessID(ea.Info.Id) ||
 				(!string.IsNullOrEmpty(freememoryignore) &&
@@ -350,7 +350,7 @@ namespace Taskmaster
 		/// <summary>
 		/// Spawn separate thread to run program scanning.
 		/// </summary>
-		public void ScanRequest(object _)
+		public async void ScanRequest(object _)
 		{
 			if (disposed) return; // HACK: dumb timers be dumb
 
@@ -358,7 +358,7 @@ namespace Taskmaster
 			if (ScanPaused) return;
 			// this stays on UI thread for some reason
 
-			Scan();
+			Task.Run(new Action(async delegate { Scan(); })); // without task.run this will block for some reason
 		}
 
 		/// <summary>
@@ -808,24 +808,24 @@ namespace Taskmaster
 			}
 		}
 
-		private void ProcessWaitingExitProxy(object sender, ProcessEventArgs e)
+		private void ProcessWaitingExitProxy(object _, ProcessEventArgs e)
 		{
 			WaitForExit(e.Info, e.Control);
 		}
 
-		private void ProcessResumedProxy(object sender, ProcessEventArgs e)
+		private void ProcessResumedProxy(object _, ProcessEventArgs _ea)
 		{
 			throw new NotImplementedException();
 		}
 
-		private void ProcessPausedProxy(object sender, ProcessEventArgs e)
+		private void ProcessPausedProxy(object _, ProcessEventArgs _ea)
 		{
 			throw new NotImplementedException();
 		}
 
-		void ProcessModifiedProxy(object sender, ProcessEventArgs ev)
+		void ProcessModifiedProxy(object _, ProcessEventArgs ea)
 		{
-			ProcessModified?.Invoke(sender, ev);
+			ProcessModified?.Invoke(_, ea);
 		}
 
 		public void RemoveController(ProcessController prc)
@@ -875,7 +875,7 @@ namespace Taskmaster
 			onWaitForExitEvent?.Invoke(this, new ProcessEventArgs() { Control = null, Info = info, State = state });
 		}
 
-		public void PowerBehaviourEvent(object sender, PowerManager.PowerBehaviourEventArgs ea)
+		public void PowerBehaviourEvent(object _, PowerManager.PowerBehaviourEventArgs ea)
 		{
 			if (ea.Behaviour == PowerManager.PowerBehaviour.Manual)
 				CancelPowerWait();
@@ -961,7 +961,7 @@ namespace Taskmaster
 		readonly object foreground_lock = new object();
 		Dictionary<int, ProcessController> ForegroundWaitlist = new Dictionary<int, ProcessController>(6);
 
-		public void ForegroundAppChangedEvent(object sender, WindowChangedArgs ev)
+		public void ForegroundAppChangedEvent(object _, WindowChangedArgs ev)
 		{
 			if (Taskmaster.DebugForeground)
 				Log.Verbose("<Process> Foreground Received: #" + ev.Id);
@@ -1279,7 +1279,7 @@ namespace Taskmaster
 		}
 
 		// TODO: This should probably be pushed into ProcessController somehow.
-		async void ProcessTriage(object sender, ProcessEventArgs ea)
+		async void ProcessTriage(object _, ProcessEventArgs ea)
 		{
 			Debug.Assert(!string.IsNullOrEmpty(ea.Info.Name), "CheckProcess received null process name.");
 			Debug.Assert(ea.Info != null);
@@ -1372,7 +1372,7 @@ namespace Taskmaster
 		List<ProcessEx> ProcessBatch = new List<ProcessEx>();
 		readonly System.Timers.Timer BatchProcessingTimer = null;
 
-		void BatchProcessingTick(object sender, EventArgs ev)
+		void BatchProcessingTick(object _, EventArgs _ea)
 		{
 			lock (batchprocessing_lock)
 			{
@@ -1421,7 +1421,7 @@ namespace Taskmaster
 		}
 
 		// This needs to return faster
-		async void NewInstanceTriage(object sender, System.Management.EventArrivedEventArgs e)
+		async void NewInstanceTriage(object _, System.Management.EventArrivedEventArgs ea)
 		{
 			SignalProcessHandled(1); // wmi new instance
 
@@ -1439,7 +1439,7 @@ namespace Taskmaster
 
 				try
 				{
-					targetInstance = e.NewEvent.Properties["TargetInstance"].Value as System.Management.ManagementBaseObject;
+					targetInstance = ea.NewEvent.Properties["TargetInstance"].Value as System.Management.ManagementBaseObject;
 					//var tpid = targetInstance.Properties["Handle"].Value as int?; // doesn't work for some reason
 					pid = Convert.ToInt32(targetInstance.Properties["Handle"].Value as string);
 					path = targetInstance.Properties["ExecutablePath"].Value as string;
@@ -1602,7 +1602,7 @@ namespace Taskmaster
 
 				if (BatchProcessing) BatchProcessingTimer.Start();
 
-				watcher.Stopped += (object sender, System.Management.StoppedEventArgs e) =>
+				watcher.Stopped += (_, _ea) =>
 				{
 					if (Taskmaster.DebugWMI)
 						Log.Debug("<<WMI>> New instance watcher stopped.");

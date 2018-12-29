@@ -317,13 +317,13 @@ namespace Taskmaster
 			FillAutoAdjust(AutoAdjust);
 		}
 
-		void Cancel(object sender, EventArgs ev)
+		void Cancel(object _, EventArgs _ea)
 		{
 			DialogResult = DialogResult.Cancel;
 			Close();
 		}
 
-		void Save(object sender, EventArgs ev)
+		void Save(object _, EventArgs _ea)
 		{
 			DialogResult = DialogResult.OK;
 
@@ -402,7 +402,7 @@ namespace Taskmaster
 			Close();
 		}
 
-		void Reset(object sender, EventArgs ev)
+		void Reset(object _, EventArgs _ea)
 		{
 			NewLaunchBehaviour = PowerManager.PowerBehaviour.RuleBased;
 			NewRestoreMethod = PowerManager.RestoreModeMethod.Default;

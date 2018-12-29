@@ -75,7 +75,7 @@ namespace Taskmaster
 			BuildUI();
 		}
 
-		void SaveInfo(object sender, System.EventArgs ev)
+		void SaveInfo(object _, System.EventArgs _ea)
 		{
 			var enOrig = Controller.Enabled;
 			Controller.Enabled = false;
@@ -795,7 +795,7 @@ namespace Taskmaster
 			// ---
 		}
 
-		void ValidateWatchedItem(object sender, EventArgs ev)
+		void ValidateWatchedItem(object _, EventArgs _ea)
 		{
 			var fnlen = (friendlyName.Text.Length > 0);
 			var exnam = (execName.Text.Length > 0);

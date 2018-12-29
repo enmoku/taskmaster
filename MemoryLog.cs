@@ -119,15 +119,15 @@ namespace Taskmaster
 			Emit(this, new LogEventArgs(formattedtext, e.Level, e));
 		}
 
-		void Emit(object sender, LogEventArgs e)
+		void Emit(object _, LogEventArgs ea)
 		{
 			lock (LogLock)
 			{
 				if (Logs.Count > Max) Logs.RemoveAt(0);
-				Logs.Add(e);
+				Logs.Add(ea);
 			}
 
-			onNewEvent?.Invoke(sender, e);
+			onNewEvent?.Invoke(_, ea);
 		}
 
 		public LogEventArgs[] ToArray()

@@ -127,7 +127,7 @@ namespace Taskmaster
 			Controls.Add(rowlayout);
 		}
 
-		void SaveSelection(object sender, EventArgs ev)
+		void SaveSelection(object _, EventArgs _ea)
 		{
 			Selection = selection.Text;
 			DialogResult = DialogResult.OK;

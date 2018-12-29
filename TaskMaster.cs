@@ -67,7 +67,7 @@ namespace Taskmaster
 		static int RestartCounter { get; set; } = 0;
 		static int AdminCounter { get; set; } = 0;
 
-		public static void RestartRequest(object sender, EventArgs e)
+		public static void RestartRequest(object _, EventArgs _ea)
 		{
 			UnifiedExit(restart: true);
 		}
@@ -123,7 +123,7 @@ namespace Taskmaster
 		{
 			try
 			{
-				processmanager?.ScanRequest(null, null);
+				processmanager?.ScanRequest(null);
 			}
 			catch (Exception ex)
 			{
@@ -202,21 +202,21 @@ namespace Taskmaster
 		static bool MainWindowFocus = false;
 		static bool TrayShown = false;
 
-		static void WindowActivatedEvent(object sender, EventArgs e)
+		static void WindowActivatedEvent(object _, EventArgs _ea)
 		{
 			MainWindowFocus = true;
 			
 			OptimizeResponsiviness();
 		}
 
-		static void WindowDeactivatedEvent(object sender, EventArgs e)
+		static void WindowDeactivatedEvent(object _, EventArgs _ea)
 		{
 			MainWindowFocus = false;
 
 			OptimizeResponsiviness();
 		}
 
-		static void TrayMenuShownEvent(object sender, TrayShownEventArgs e)
+		static void TrayMenuShownEvent(object _, TrayShownEventArgs e)
 		{
 			TrayShown = e.Visible;
 
@@ -1302,9 +1302,9 @@ namespace Taskmaster
 		/// <summary>
 		/// Process unhandled WinForms exceptions.
 		/// </summary>
-		private static void UnhandledUIException(object sender, System.Threading.ThreadExceptionEventArgs e)
+		private static void UnhandledUIException(object _, System.Threading.ThreadExceptionEventArgs ea)
 		{
-			Logging.Stacktrace(e.Exception);
+			Logging.Stacktrace(ea.Exception);
 		}
 	}
 }

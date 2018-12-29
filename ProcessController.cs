@@ -689,7 +689,7 @@ namespace Taskmaster
 
 		// -----------------------------------------------
 
-		void ProcessEnd(object sender, EventArgs ev)
+		void ProcessEnd(object _, EventArgs _ea)
 		{
 		}
 

@@ -72,7 +72,7 @@ namespace Taskmaster
 				Icon = System.Drawing.Icon.ExtractAssociatedIcon(System.Reflection.Assembly.GetExecutingAssembly().Location) // is this really the best way?
 			};
 			Tray.BalloonTipText = Tray.Text;
-			Tray.Disposed += (object sender, EventArgs e) => { Tray = null; };
+			Tray.Disposed += (_, _ea) => { Tray = null; };
 			
 			if (Taskmaster.Trace) Log.Verbose("Generating tray icon.");
 
@@ -175,12 +175,12 @@ namespace Taskmaster
 			Taskmaster.DisposalChute.Push(this);
 		}
 
-		private void MenuVisibilityChangedEvent(object sender, EventArgs e)
+		private void MenuVisibilityChangedEvent(object _, EventArgs _ea)
 		{
-			TrayMenuShown?.Invoke(this, new TrayShownEventArgs() { Visible = ms.Visible });
+			TrayMenuShown?.Invoke(null, new TrayShownEventArgs() { Visible = ms.Visible });
 		}
 
-		public void SessionEndingEvent(object sender, Microsoft.Win32.SessionEndingEventArgs ev)
+		public void SessionEndingEvent(object _, Microsoft.Win32.SessionEndingEventArgs _ea)
 		{
 			// is this safe?
 			Taskmaster.ExitCleanup();
@@ -254,12 +254,12 @@ namespace Taskmaster
 		public void Enable() => ms.Enabled = true;
 
 		public event EventHandler RescanRequest;
-
+		 
 		ProcessManager processmanager = null;
 		public void Hook(ProcessManager pman)
 		{
 			processmanager = pman;
-			RescanRequest += processmanager.ScanRequest;
+			RescanRequest += (_,_ea) => processmanager.ScanRequest(null);
 		}
 
 		PowerManager powermanager = null;
@@ -274,7 +274,7 @@ namespace Taskmaster
 			HighlightPowerMode();
 		}
 
-		void SetAutoPower(object sender, EventArgs ev)
+		void SetAutoPower(object _, EventArgs _ea)
 		{
 			if (power_auto.Checked)
 			{
@@ -287,7 +287,7 @@ namespace Taskmaster
 			}
 		}
 
-		void SetManualPower(object sender, EventArgs e)
+		void SetManualPower(object _, EventArgs _ea)
 		{
 			if (power_manual.Checked)
 			{
@@ -298,7 +298,7 @@ namespace Taskmaster
 				powermanager.SetBehaviour(PowerManager.PowerBehaviour.RuleBased);
 		}
 
-		void HighlightPowerModeEvent(object sender, PowerModeEventArgs ev) => HighlightPowerMode();
+		void HighlightPowerModeEvent(object _, PowerModeEventArgs _ea) => HighlightPowerMode();
 
 		void HighlightPowerMode()
 		{
@@ -349,26 +349,24 @@ namespace Taskmaster
 			}
 		}
 
-		void ShowConfigRequest(object sender, EventArgs e)
+		void ShowConfigRequest(object _, EventArgs e)
 		{
 			// CLEANUP: Console.WriteLine("Opening config folder.");
 			Process.Start(Taskmaster.datapath);
 
-			mainwindow?.ShowConfigRequest(sender, e);
+			mainwindow?.ShowConfigRequest(null, e);
 			// CLEANUP: Console.WriteLine("Done opening config folder.");
 		}
 
-		void ShowPowerConfig(object sender, EventArgs e)
+		void ShowPowerConfig(object _, EventArgs _ea)
 		{
 			if (!IsHandleCreated) return;
-			BeginInvoke(new Action(() =>
-			{
-				PowerConfigWindow.Show();
-			}));
+
+			PowerConfigWindow.Show();
 		}
 
 		int restoremainwindow_lock = 0;
-		void RestoreMainWindow(object sender, EventArgs e)
+		void RestoreMainWindow(object _, EventArgs _ea)
 		{
 			if (!Atomic.Lock(ref restoremainwindow_lock)) return; // already being done
 
@@ -390,24 +388,24 @@ namespace Taskmaster
 			}
 		}
 
-		void ShowWindow(object sender, MouseEventArgs e)
+		void ShowWindow(object _, MouseEventArgs e)
 		{
 			if (Taskmaster.Trace) Log.Verbose("Tray Click");
 
 			if (e.Button == MouseButtons.Left)
 			{
-				RestoreMainWindow(sender, null);
+				RestoreMainWindow(null, null);
 			}
 		}
 
-		void UnloseWindow(object sender, MouseEventArgs e)
+		void UnloseWindow(object _, MouseEventArgs e)
 		{
 			if (e.Button == MouseButtons.Left)
 			{
-				RestoreMainWindow(sender, null);
+				RestoreMainWindow(null, null);
 				try
 				{
-					mainwindow?.UnloseWindowRequest(sender, null); // null reference crash sometimes
+					mainwindow?.UnloseWindowRequest(null, null); // null reference crash sometimes
 				}
 				catch (Exception ex)
 				{
@@ -417,7 +415,7 @@ namespace Taskmaster
 			}
 		}
 
-		void WindowClosed(object sender, FormClosingEventArgs e)
+		void WindowClosed(object _, FormClosingEventArgs e)
 		{
 			// CLEANUP: Console.WriteLine("START:TrayAccess.WindowClosed");
 
@@ -571,7 +569,6 @@ namespace Taskmaster
 
 				UnregisterGlobalHotkeys();
 
-				RescanRequest -= processmanager.ScanRequest;
 				RescanRequest = null;
 
 				if (powermanager != null)
@@ -677,7 +674,7 @@ namespace Taskmaster
 			}
 		}
 
-		void RunAtStartMenuClick_Sch(object sender, EventArgs ev)
+		void RunAtStartMenuClick_Sch(object _, EventArgs _ea)
 		{
 			try
 			{

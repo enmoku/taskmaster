@@ -74,13 +74,13 @@ namespace Taskmaster
 			Taskmaster.DisposalChute.Push(this);
 		}
 
-		private void OnSessionCreated(object sender, NAudio.CoreAudioApi.Interfaces.IAudioSessionControl asession)
+		private void OnSessionCreated(object _, NAudio.CoreAudioApi.Interfaces.IAudioSessionControl ea)
 		{
 			Debug.Assert(System.Threading.Thread.CurrentThread != Context, "Must be called in same thread.");
 
 			try
 			{
-				var session = new NAudio.CoreAudioApi.AudioSessionControl(asession);
+				var session = new NAudio.CoreAudioApi.AudioSessionControl(ea);
 
 				int pid = (int)session.GetProcessID;
 				string name = session.DisplayName;

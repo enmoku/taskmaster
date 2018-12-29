@@ -116,7 +116,7 @@ namespace Taskmaster
 			cpumonitor.onSampling += CPULoadHandler;
 		}
 
-		void MonitorPowerEvent(object sender, MonitorPowerEventArgs ev)
+		void MonitorPowerEvent(object _, MonitorPowerEventArgs ev)
 		{
 			var OldPowerState = CurrentMonitorState;
 			CurrentMonitorState = ev.Mode;
@@ -144,7 +144,7 @@ namespace Taskmaster
 
 		int SleepTickCount = 0;
 		int monitorsleeptimer_lock = 0;
-		void MonitorSleepTimerTick(object sender, EventArgs ev)
+		void MonitorSleepTimerTick(object _, EventArgs _ea)
 		{
 			if (!Atomic.Lock(ref monitorsleeptimer_lock)) return;
 
@@ -285,7 +285,7 @@ namespace Taskmaster
 		PowerReaction PreviousReaction = PowerReaction.Average;
 
 		// TODO: Simplify this mess
-		public async void CPULoadHandler(object sender, ProcessorEventArgs pev)
+		public async void CPULoadHandler(object _, ProcessorEventArgs pev)
 		{
 			if (Behaviour != PowerBehaviour.Auto) return;
 
@@ -719,7 +719,7 @@ namespace Taskmaster
 		public RestoreModeMethod RestoreMethod { get; private set; } = RestoreModeMethod.Default;
 		public PowerMode RestoreMode { get; private set; } = PowerMode.Balanced;
 
-		void SessionLockEvent(object sender, SessionSwitchEventArgs ev)
+		void SessionLockEvent(object _, SessionSwitchEventArgs ev)
 		{
 			switch (ev.Reason)
 			{
@@ -831,7 +831,7 @@ namespace Taskmaster
 			}
 		}
 
-		void BatteryChargingEvent(object sender, PowerModeChangedEventArgs ev)
+		void BatteryChargingEvent(object _, PowerModeChangedEventArgs ev)
 		{
 			switch (ev.Mode)
 			{

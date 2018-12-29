@@ -80,7 +80,7 @@ namespace Taskmaster
 
 			// CenterToScreen();
 
-			Shown += (object sender, EventArgs e) =>
+			Shown += (_, _ea) =>
 			{
 				if (!IsHandleCreated) return;
 				BeginInvoke(new Action(() =>
@@ -112,25 +112,23 @@ namespace Taskmaster
 				Log.Verbose("MainWindow constructed");
 		}
 
-		public void ShowConfigRequest(object sender, EventArgs e)
+		public void ShowConfigRequest(object _, EventArgs _ea)
 		{
 			// TODO: Introduce configuration window
 		}
 
-		public void PowerConfigRequest(object sender, EventArgs e)
+		public void PowerConfigRequest(object _, EventArgs _ea)
 		{
 			if (!IsHandleCreated) return;
-			BeginInvoke(new Action(() =>
+
+			try
 			{
-				try
-				{
-					PowerConfigWindow.Show();
-				}
-				catch (Exception ex) { Logging.Stacktrace(ex); }
-			}));
+				PowerConfigWindow.Show();
+			}
+			catch (Exception ex) { Logging.Stacktrace(ex); }
 		}
 
-		public void ExitRequest(object sender, EventArgs e)
+		public void ExitRequest(object _, EventArgs _ea)
 		{
 			try
 			{
@@ -139,7 +137,7 @@ namespace Taskmaster
 			catch (Exception ex) { Logging.Stacktrace(ex); }
 		}
 
-		void WindowClose(object sender, FormClosingEventArgs e)
+		void WindowClose(object _, FormClosingEventArgs ea)
 		{
 			try
 			{
@@ -148,7 +146,7 @@ namespace Taskmaster
 				if (!Taskmaster.Trace) return;
 
 				// Console.WriteLine("WindowClose = " + e.CloseReason);
-				switch (e.CloseReason)
+				switch (ea.CloseReason)
 				{
 					case CloseReason.UserClosing:
 						// X was pressed or similar
@@ -163,7 +161,7 @@ namespace Taskmaster
 						Log.Debug("Exit: User asked to close.");
 						break;
 					default:
-						Log.Debug("Exit: Unidentified close reason: " + e.CloseReason.ToString());
+						Log.Debug("Exit: Unidentified close reason: " + ea.CloseReason.ToString());
 						break;
 				}
 				// CLEANUP: Console.WriteLine("WindowClose.Handled");
@@ -175,16 +173,14 @@ namespace Taskmaster
 		/// <summary>
 		/// Restores the main window to the center of the screen.
 		/// </summary>
-		public void UnloseWindowRequest(object sender, EventArgs e)
+		public void UnloseWindowRequest(object _, EventArgs e)
 		{
 			if (Taskmaster.Trace) Log.Verbose("Making sure main window is not lost.");
 
 			if (!IsHandleCreated) return;
-			BeginInvoke(new Action(() =>
-			{
-				CenterToScreen();
-				Reveal();
-			}));
+
+			CenterToScreen();
+			Reveal();
 		}
 
 		public void Reveal()
@@ -242,7 +238,7 @@ namespace Taskmaster
 
 		readonly string AnyIgnoredValue = string.Empty; // Any/Ignored
 
-		public void ProcessTouchEvent(object sender, ProcessEventArgs ev)
+		public void ProcessTouchEvent(object _, ProcessEventArgs ev)
 		{
 			// Log.Verbose("Process adjust received for '{FriendlyName}'.", e.Control.FriendlyName);
 			if (!IsHandleCreated) return;
@@ -291,7 +287,7 @@ namespace Taskmaster
 			}));
 		}
 
-		public void OnActiveWindowChanged(object sender, WindowChangedArgs windowchangeev)
+		public void OnActiveWindowChanged(object _, WindowChangedArgs windowchangeev)
 		{
 			if (!IsHandleCreated) return;
 			if (windowchangeev.Process == null) return;
@@ -336,7 +332,7 @@ namespace Taskmaster
 
 			WatchlistRules.EndUpdate();
 
-			rescanRequest += processmanager.ScanRequest;
+			rescanRequest += (_,_ea) => processmanager.ScanRequest(null);
 
 			processmanager.ProcessModified += ProcessTouchEvent;
 
@@ -359,7 +355,7 @@ namespace Taskmaster
 			}
 		}
 
-		void ProcessNewInstanceCount(object sender, InstanceEventArgs e)
+		void ProcessNewInstanceCount(object _, InstanceEventArgs e)
 		{
 			if (!IsHandleCreated) return;
 			BeginInvoke(new Action(() =>
@@ -500,12 +496,12 @@ namespace Taskmaster
 			}
 		}
 
-		public void WatchlistPathLocatedEvent(object sender, PathControlEventArgs e)
+		public void WatchlistPathLocatedEvent(object controller, PathControlEventArgs e)
 		{
 			if (!IsHandleCreated) return;
-			Debug.Assert(sender != null);
+			Debug.Assert(controller != null);
 
-			var pc = (ProcessController)sender;
+			var pc = (ProcessController)controller;
 			if (WatchlistMap.TryGetValue(pc, out ListViewItem li))
 			{
 				BeginInvoke(new Action(() =>
@@ -544,19 +540,19 @@ namespace Taskmaster
 		ListView processinglist;
 		Dictionary<int, ListViewItem> ProcessingListMap;
 
-		void UserMicVol(object sender, EventArgs e)
+		void UserMicVol(object _, EventArgs _ea)
 		{
 			// TODO: Handle volume changes. Not really needed. Give presets?
 			// micMonitor.setVolume(micVol.Value);
 		}
 
-		void VolumeChangeDetected(object sender, VolumeChangedEventArgs e)
+		void VolumeChangeDetected(object _, VolumeChangedEventArgs ea)
 		{
 			if (!IsHandleCreated) return;
 			BeginInvoke(new Action(() =>
 			{
-				AudioInputVolume.Value = Convert.ToInt32(e.New); // this could throw ArgumentOutOfRangeException, but we trust the source
-				corCountLabel.Text = e.Corrections.ToString();
+				AudioInputVolume.Value = Convert.ToInt32(ea.New); // this could throw ArgumentOutOfRangeException, but we trust the source
+				corCountLabel.Text = ea.Corrections.ToString();
 			}));
 		}
 
@@ -576,7 +572,7 @@ namespace Taskmaster
 
 		int PathCacheUpdateSkips = 3;
 
-		public void PathCacheUpdate(object sender, EventArgs ev)
+		public void PathCacheUpdate(object _, EventArgs _ea)
 		{
 			if (!IsHandleCreated) return;
 
@@ -604,30 +600,29 @@ namespace Taskmaster
 		System.Windows.Forms.Timer UItimer;
 
 		static bool UIOpen = true;
-		void StartUIUpdates(object sender, EventArgs e)
+		void StartUIUpdates(object _, EventArgs _ea)
 		{
 			if (!UItimer.Enabled) UItimer.Start();
 			UIOpen = true;
 		}
 
-		void StopUIUpdates(object sender, EventArgs e)
+		void StopUIUpdates(object _, EventArgs _ea)
 		{
 			if (UItimer.Enabled) UItimer.Stop();
 			UIOpen = false;
 		}
 
-		void UpdateRescanCountdown(object sender, EventArgs ev)
+		void UpdateRescanCountdown(object _, EventArgs _ea)
 		{
 			if (!IsHandleCreated) return;
 
 			processingtimer.Text = $"{DateTime.Now.TimeTo(ProcessManager.NextScan).TotalSeconds:N0}s";
 		}
 
-		void UpdateUptime(object sender, EventArgs e)
+		void UpdateUptime(object _, EventArgs _ea)
 		{
-			Debug.Assert(netmonitor != null);
-
 			if (!IsHandleCreated) return;
+			if (netmonitor == null) return;
 
 			uptimestatuslabel.Text = HumanInterface.TimeString(netmonitor.Uptime);
 			var avg = netmonitor.UptimeAverage();
@@ -644,7 +639,7 @@ namespace Taskmaster
 		ContextMenuStrip watchlistms;
 		ToolStripMenuItem watchlistenable;
 
-		void InterfaceContextMenuOpen(object sender, EventArgs e)
+		void InterfaceContextMenuOpen(object _, EventArgs _ea)
 		{
 			try
 			{
@@ -658,7 +653,7 @@ namespace Taskmaster
 		int IPv4Column = 4;
 		int IPv6Column = 5;
 
-		void CopyIPv4AddressToClipboard(object sender, EventArgs ea)
+		void CopyIPv4AddressToClipboard(object _, EventArgs _ea)
 		{
 			if (ifaceList.SelectedItems.Count == 1)
 			{
@@ -672,7 +667,7 @@ namespace Taskmaster
 			}
 		}
 
-		void CopyIPv6AddressToClipboard(object sender, EventArgs ea)
+		void CopyIPv6AddressToClipboard(object _, EventArgs _ea)
 		{
 			if (ifaceList.SelectedItems.Count == 1)
 			{
@@ -686,7 +681,7 @@ namespace Taskmaster
 			}
 		}
 
-		void CopyIfaceToClipboard(object sender, EventArgs ea)
+		void CopyIfaceToClipboard(object _, EventArgs _ea)
 		{
 			if (ifaceList.SelectedItems.Count == 1)
 			{
@@ -695,7 +690,7 @@ namespace Taskmaster
 			}
 		}
 
-		void CopyLogToClipboard(object sender, EventArgs ea)
+		void CopyLogToClipboard(object _, EventArgs _ea)
 		{
 			try
 			{
@@ -2063,7 +2058,7 @@ namespace Taskmaster
 
 		ConcurrentDictionary<int, ListViewItem> ProcessEventMap = new ConcurrentDictionary<int, ListViewItem>();
 
-		void ProcessHandlingStateChangeEvent(object sender, InstanceHandlingArgs e)
+		void ProcessHandlingStateChangeEvent(object _, InstanceHandlingArgs ea)
 		{
 			var now = DateTime.Now;
 
@@ -2071,11 +2066,11 @@ namespace Taskmaster
 			{
 				ListViewItem item = null;
 
-				int key = e.Info.Id;
+				int key = ea.Info.Id;
 				bool newitem = false;
 				if (!ProcessEventMap.TryGetValue(key, out item))
 				{
-					item = new ListViewItem(new string[] { key.ToString(), e.Info.Name, string.Empty, string.Empty});
+					item = new ListViewItem(new string[] { key.ToString(), ea.Info.Name, string.Empty, string.Empty});
 					newitem = true;
 				}
 
@@ -2088,13 +2083,13 @@ namespace Taskmaster
 					try
 					{
 						// 0 = Id, 1 = Name, 2 = State
-						item.SubItems[0].Text = e.Info.Id.ToString();
-						item.SubItems[2].Text = e.State.ToString();
+						item.SubItems[0].Text = ea.Info.Id.ToString();
+						item.SubItems[2].Text = ea.State.ToString();
 						item.SubItems[3].Text = now.ToLongTimeString();
 
 						if (newitem) processinglist.Items.Insert(0, item);
 
-						if (e.State == ProcessHandlingState.Finished || e.State == ProcessHandlingState.Abandoned)
+						if (ea.State == ProcessHandlingState.Finished || ea.State == ProcessHandlingState.Abandoned)
 						{
 							await Task.Delay(15_000).ConfigureAwait(true);
 
@@ -2171,7 +2166,7 @@ namespace Taskmaster
 			statusbar.Items.Add(adjustcounter);
 		}
 
-		async void FreeMemoryRequest(object sender, EventArgs ev)
+		async void FreeMemoryRequest(object _, EventArgs _ea)
 		{
 			try
 			{
@@ -2188,7 +2183,7 @@ namespace Taskmaster
 
 		readonly object exitwaitlist_lock = new object();
 
-		public void ExitWaitListHandler(object sender, ProcessEventArgs ev)
+		public void ExitWaitListHandler(object _, ProcessEventArgs ea)
 		{
 			if (activeappmonitor == null) return;
 
@@ -2200,18 +2195,18 @@ namespace Taskmaster
 				{
 					try
 					{
-						bool fg = (ev.Info.Id == (activeappmonitor?.Foreground ?? ev.Info.Id));
+						bool fg = (ea.Info.Id == (activeappmonitor?.Foreground ?? ea.Info.Id));
 
-						if (ExitWaitlistMap.TryGetValue(ev.Info.Id, out ListViewItem li))
+						if (ExitWaitlistMap.TryGetValue(ea.Info.Id, out ListViewItem li))
 						{
 							li.SubItems[2].Text = fg ? HumanReadable.System.Process.Foreground : HumanReadable.System.Process.Background;
 
 							// Log.Debug("WaitlistHandler: {Name} = {State}", ev.Info.Name, ev.State.ToString());
-							switch (ev.State)
+							switch (ea.State)
 							{
 								case ProcessRunningState.Exiting:
 									exitwaitlist.Items.Remove(li);
-									ExitWaitlistMap.Remove(ev.Info.Id);
+									ExitWaitlistMap.Remove(ea.Info.Id);
 									break;
 								case ProcessRunningState.Found:
 								case ProcessRunningState.Reduced:
@@ -2224,24 +2219,24 @@ namespace Taskmaster
 									li.EnsureVisible();
 									break;
 								default:
-									Log.Debug("Received unhandled process (#" + ev.Info.Id + ") state: " + ev.State.ToString());
+									Log.Debug("Received unhandled process (#" + ea.Info.Id + ") state: " + ea.State.ToString());
 									break;
 							}
 						}
 						else
 						{
-							if (ev.State == ProcessRunningState.Starting)
+							if (ea.State == ProcessRunningState.Starting)
 							{
 								li = new ListViewItem(new string[] {
-								ev.Info.Id.ToString(),
-								ev.Info.Name,
+								ea.Info.Id.ToString(),
+								ea.Info.Name,
 								(fg ? HumanReadable.System.Process.Foreground : HumanReadable.System.Process.Background),
-								(ev.Info.ActiveWait ? "FORCED" : "n/a")
+								(ea.Info.ActiveWait ? "FORCED" : "n/a")
 							});
 
 								exitwaitlist.BeginUpdate();
 
-								ExitWaitlistMap.Add(ev.Info.Id, li);
+								ExitWaitlistMap.Add(ea.Info.Id, li);
 								exitwaitlist.Items.Add(li);
 								li.EnsureVisible();
 
@@ -2254,14 +2249,14 @@ namespace Taskmaster
 			}));
 		}
 
-		public void CPULoadHandler(object sender, ProcessorEventArgs ev)
+		public void CPULoadHandler(object _, ProcessorEventArgs ea)
 		{
 			if (!UIOpen) return;
 			if (!IsHandleCreated) return;
 
 			BeginInvoke(new Action(() =>
 			{
-				cpuload.Text = $"{ev.Current:N1} %, Avg: {ev.Average:N1} %, Hi: {ev.High:N1} %, Lo: {ev.Low:N1} %";
+				cpuload.Text = $"{ea.Current:N1} %, Avg: {ea.Average:N1} %, Hi: {ea.High:N1} %, Lo: {ea.Low:N1} %";
 
 				// bad place to do this, but eh..
 				if (Taskmaster.HealthMonitorEnabled)
@@ -2272,7 +2267,7 @@ namespace Taskmaster
 			}));
 		}
 
-		public void PowerLoadHandler(object sender, PowerEventArgs ev)
+		public void PowerLoadHandler(object _, PowerEventArgs ea)
 		{
 			if (!UIOpen) return;
 			if (!IsHandleCreated) return;
@@ -2283,24 +2278,24 @@ namespace Taskmaster
 
 				try
 				{
-					var reactionary = PowerManager.GetModeName(ev.Mode);
+					var reactionary = PowerManager.GetModeName(ea.Mode);
 
 					var li = new ListViewItem(new string[] {
-						$"{ev.Current:N2}%",
-						$"{ev.Average:N2}%",
-						$"{ev.High:N2}%",
-						$"{ev.Low:N2}%",
+						$"{ea.Current:N2}%",
+						$"{ea.Average:N2}%",
+						$"{ea.High:N2}%",
+						$"{ea.Low:N2}%",
 						reactionary,
-						ev.Enacted.ToString(),
-						$"{ev.Pressure*100f:N1}%"
+						ea.Enacted.ToString(),
+						$"{ea.Pressure*100f:N1}%"
 					})
 					{
 						UseItemStyleForSubItems = false
 					};
 
-					if (ev.Mode == PowerInfo.PowerMode.HighPerformance)
+					if (ea.Mode == PowerInfo.PowerMode.HighPerformance)
 						li.SubItems[3].BackColor = System.Drawing.Color.FromArgb(255, 230, 230);
-					else if (ev.Mode == PowerInfo.PowerMode.PowerSaver)
+					else if (ea.Mode == PowerInfo.PowerMode.PowerSaver)
 						li.SubItems[2].BackColor = System.Drawing.Color.FromArgb(240, 255, 230);
 					else
 					{
@@ -2326,7 +2321,7 @@ namespace Taskmaster
 			}));
 		}
 
-		void WatchlistContextMenuOpen(object sender, EventArgs ea)
+		void WatchlistContextMenuOpen(object _, EventArgs _ea)
 		{
 			bool oneitem = true;
 			oneitem = WatchlistRules.SelectedItems.Count == 1;
@@ -2355,7 +2350,7 @@ namespace Taskmaster
 			catch (Exception ex) { Logging.Stacktrace(ex); }
 		}
 
-		void EnableWatchlistRule(object sender, EventArgs ea)
+		void EnableWatchlistRule(object _, EventArgs _ea)
 		{
 			try
 			{
@@ -2386,7 +2381,7 @@ namespace Taskmaster
 			catch (Exception ex) { Logging.Stacktrace(ex); }
 		}
 
-		void EditWatchlistRule(object sender, EventArgs ea)
+		void EditWatchlistRule(object _, EventArgs _ea)
 		{
 			if (WatchlistRules.SelectedItems.Count == 1)
 			{
@@ -2411,7 +2406,7 @@ namespace Taskmaster
 			}
 		}
 
-		void AddWatchlistRule(object sender, EventArgs ea)
+		void AddWatchlistRule(object _, EventArgs _ea)
 		{
 			try
 			{
@@ -2433,7 +2428,7 @@ namespace Taskmaster
 			catch (Exception ex) { Logging.Stacktrace(ex); }
 		}
 
-		void DeleteWatchlistRule(object sender, EventArgs ea)
+		void DeleteWatchlistRule(object _, EventArgs _ea)
 		{
 			if (WatchlistRules.SelectedItems.Count == 1)
 			{
@@ -2464,7 +2459,7 @@ namespace Taskmaster
 		}
 
 		// This should be somewhere else
-		void CopyRuleToClipboard(object sender, EventArgs ea)
+		void CopyRuleToClipboard(object _, EventArgs _ea)
 		{
 			if (WatchlistRules.SelectedItems.Count == 1)
 			{
@@ -2556,13 +2551,13 @@ namespace Taskmaster
 		Label ramload = null;
 		Label vramload = null;
 
-		public void TempScanStats(object sender, StorageEventArgs ev)
+		public void TempScanStats(object _, StorageEventArgs ea)
 		{
 			if (!IsHandleCreated) return;
 			BeginInvoke(new Action(() =>
 			{
-				tempObjectSize.Text = (ev.Stats.Size / 1_000_000).ToString();
-				tempObjectCount.Text = (ev.Stats.Dirs + ev.Stats.Files).ToString();
+				tempObjectSize.Text = (ea.Stats.Size / 1_000_000).ToString();
+				tempObjectCount.Text = (ea.Stats.Dirs + ea.Stats.Files).ToString();
 			}));
 		}
 
@@ -2622,7 +2617,7 @@ namespace Taskmaster
 			cpumonitor.onSampling += CPULoadHandler;
 		}
 
-		public void PowerBehaviourDebugEvent(object sender, PowerManager.PowerBehaviourEventArgs ea)
+		public void PowerBehaviourDebugEvent(object _, PowerManager.PowerBehaviourEventArgs ea)
 		{
 			if (!IsHandleCreated) return;
 			BeginInvoke(new Action(() =>
@@ -2637,16 +2632,16 @@ namespace Taskmaster
 			}));
 		}
 
-		public void PowerPlanDebugEvent(object sender, PowerModeEventArgs ev)
+		public void PowerPlanDebugEvent(object _, PowerModeEventArgs ea)
 		{
 			if (!IsHandleCreated) return;
 			BeginInvoke(new Action(() =>
 			{
-				powerbalancer_plan.Text = PowerManager.GetModeName(ev.NewMode);
+				powerbalancer_plan.Text = PowerManager.GetModeName(ea.NewMode);
 			}));
 		}
 
-		public void UpdateNetwork(object sender, EventArgs ev)
+		public void UpdateNetwork(object _, EventArgs _ea)
 		{
 			InetStatusLabel(netmonitor.InternetAvailable);
 			NetStatusLabel(netmonitor.NetworkAvailable);
@@ -2702,7 +2697,7 @@ namespace Taskmaster
 			netmonitor.onSampling += NetSampleHandler;
 		}
 
-		void NetSampleHandler(object sender, NetDeviceTrafficEventArgs ea)
+		void NetSampleHandler(object _, NetDeviceTrafficEventArgs ea)
 		{
 			if (!IsHandleCreated) return;
 			BeginInvoke(new Action(() =>
@@ -2746,12 +2741,12 @@ namespace Taskmaster
 			}));
 		}
 
-		public void InetStatus(object sender, InternetStatus e)
+		public void InetStatus(object _, InternetStatus ea)
 		{
-			InetStatusLabel(e.Available);
+			InetStatusLabel(ea.Available);
 		}
 
-		public void IPChange(object sender, EventArgs e)
+		public void IPChange(object _, EventArgs ea)
 		{
 
 		}
@@ -2767,9 +2762,9 @@ namespace Taskmaster
 			}));
 		}
 
-		public void NetStatus(object sender, NetworkStatus e)
+		public void NetStatus(object _, NetworkStatus ea)
 		{
-			NetStatusLabel(e.Available);
+			NetStatusLabel(ea.Available);
 		}
 
 		// BUG: DO NOT LOG INSIDE THIS FOR FUCKS SAKE
@@ -2788,9 +2783,9 @@ namespace Taskmaster
 			}
 		}
 
-		public void NewLogReceived(object sender, LogEventArgs evmsg)
+		public void NewLogReceived(object _, LogEventArgs ea)
 		{
-			if (LogIncludeLevel.MinimumLevel > evmsg.Level) return;
+			if (LogIncludeLevel.MinimumLevel > ea.Level) return;
 
 			var t = DateTime.Now;
 
@@ -2805,8 +2800,8 @@ namespace Taskmaster
 					while (excessitems-- > 0)
 						loglist.Items.RemoveAt(0);
 
-					var li = loglist.Items.Add(evmsg.Message);
-					if ((int)evmsg.Level >= (int)Serilog.Events.LogEventLevel.Error)
+					var li = loglist.Items.Add(ea.Message);
+					if ((int)ea.Level >= (int)Serilog.Events.LogEventLevel.Error)
 						li.ForeColor = System.Drawing.Color.Red;
 					li.EnsureVisible();
 

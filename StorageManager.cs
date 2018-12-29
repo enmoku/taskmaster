@@ -73,7 +73,7 @@ namespace Taskmaster
 
 		static long ReScanBurden = 0;
 
-		void ModifyTemp(object sender, FileSystemEventArgs ev)
+		void ModifyTemp(object _, FileSystemEventArgs ev)
 		{
 			ReScanBurden++;
 			if (ReScanBurden % 100 == 0)
@@ -89,7 +89,7 @@ namespace Taskmaster
 		}
 
 		DateTime LastTempScan = DateTime.MinValue;
-		void ReScanTemp(object sender, EventArgs ev)
+		void ReScanTemp(object _, EventArgs _ea)
 		{
 			var now = DateTime.Now;
 			if (now.TimeSince(LastTempScan).TotalMinutes <= 15) return; // too soon
@@ -138,7 +138,7 @@ namespace Taskmaster
 
 		int scantemp_lock = 0;
 
-		async void ScanTemp(object sender, EventArgs ev)
+		async void ScanTemp(object _, EventArgs _ea)
 		{
 			if (!Atomic.Lock(ref scantemp_lock)) return;
 			if (disposed) return; // HACK: timers be dumb
