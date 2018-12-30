@@ -444,9 +444,7 @@ namespace Taskmaster
 			lt.Controls.Add(priorityClass);
 			lt.Controls.Add(priorityClassMethod);
 
-			priorityClass.SelectedIndexChanged += (s, e) => {
-				priorityClassMethod.Enabled = priorityClass.SelectedIndex != 5; // disable method selection
-			};
+			priorityClass.SelectedIndexChanged += (s, e) => priorityClassMethod.Enabled = priorityClass.SelectedIndex != 5; // disable method selection
 
 			// AFFINITY
 

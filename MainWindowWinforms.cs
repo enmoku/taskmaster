@@ -233,7 +233,7 @@ namespace Taskmaster
 
 			// TODO: Hook device changes
 			micmon.VolumeChanged += VolumeChangeDetected;
-			FormClosing += (s, e) => { micmon.VolumeChanged -= VolumeChangeDetected; };
+			FormClosing += (s, e) => micmon.VolumeChanged -= VolumeChangeDetected;
 		}
 
 		readonly string AnyIgnoredValue = string.Empty; // Any/Ignored
@@ -1027,7 +1027,7 @@ namespace Taskmaster
 				}
 			});
 
-			var menu_config_folder = new ToolStripMenuItem("Open in file manager", null, (s, e) => { Process.Start(Taskmaster.datapath); });
+			var menu_config_folder = new ToolStripMenuItem("Open in file manager", null, (s, e) => Process.Start(Taskmaster.datapath));
 			// menu_config.DropDownItems.Add(menu_config_log);
 			menu_config.DropDownItems.Add(menu_config_behaviour);
 			menu_config.DropDownItems.Add(menu_config_logging);
@@ -1089,7 +1089,7 @@ namespace Taskmaster
 			UpdateLogLevelSelection();
 
 			var menu_debug_inaction = new ToolStripMenuItem("Show inaction") { Checked = Taskmaster.ShowInaction, CheckOnClick = true };
-			menu_debug_inaction.Click += (sender, e) => { Taskmaster.ShowInaction = menu_debug_inaction.Checked; };
+			menu_debug_inaction.Click += (sender, e) => Taskmaster.ShowInaction = menu_debug_inaction.Checked;
 			var menu_debug_scanning = new ToolStripMenuItem("Scanning")
 			{
 				Checked = Taskmaster.DebugFullScan,
@@ -1201,7 +1201,7 @@ namespace Taskmaster
 				if (Taskmaster.DebugAudio) EnsureVerbosityLevel();
 			};
 
-			var menu_debug_clear = new ToolStripMenuItem("Clear UI log", null, (sender, e) => { ClearLog(); });
+			var menu_debug_clear = new ToolStripMenuItem("Clear UI log", null, (sender, e) => ClearLog());
 
 			// TODO: This menu needs to be clearer
 			menu_debug.DropDownItems.Add(menu_debug_loglevel);
@@ -1223,8 +1223,8 @@ namespace Taskmaster
 			var menu_info = new ToolStripMenuItem("Info");
 			menu_info.DropDown.AutoClose = true;
 			// Sub Items
-			var menu_info_github = new ToolStripMenuItem("Github", null, (sender, e) => { Process.Start(Taskmaster.GitURL); });
-			var menu_info_itchio = new ToolStripMenuItem("Itch.io", null, (sender, e) => { Process.Start(Taskmaster.ItchURL); });
+			var menu_info_github = new ToolStripMenuItem("Github", null, (sender, e) => Process.Start(Taskmaster.GitURL));
+			var menu_info_itchio = new ToolStripMenuItem("Itch.io", null, (sender, e) => Process.Start(Taskmaster.ItchURL));
 			var menu_info_license = new ToolStripMenuItem("License", null, (s, e) =>
 			{
 				try { using (var n = new LicenseDialog(initial: false)) { n.ShowDialog(); } }

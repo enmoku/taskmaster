@@ -66,8 +66,8 @@ namespace Taskmaster
 				var config = new ConfigWrapper(scfg, filename);
 				Loaded.Add(config);
 
-				config.onUnload += (cfg, ea) => { Loaded.Remove((ConfigWrapper)cfg); };
-				config.onSave += (cfg, ea) => { Save((ConfigWrapper)cfg); };
+				config.onUnload += (cfg, ea) => Loaded.Remove((ConfigWrapper)cfg);
+				config.onSave += (cfg, ea) => Save((ConfigWrapper)cfg);
 
 				return config;
 			}

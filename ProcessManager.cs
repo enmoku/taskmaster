@@ -935,7 +935,7 @@ namespace Taskmaster
 				try
 				{
 					info.Process.EnableRaisingEvents = true;
-					info.Process.Exited += (s, e) => { WaitForExitTriggered(info, controller); };
+					info.Process.Exited += (s, e) => WaitForExitTriggered(info, controller);
 					exithooked = true;
 				}
 				catch (InvalidOperationException) // already exited
@@ -1387,7 +1387,7 @@ namespace Taskmaster
 				}
 			}
 
-			Task.Run(new Action(() => { NewInstanceBatchProcessing(); })).ConfigureAwait(false);
+			Task.Run(new Action(() => NewInstanceBatchProcessing())).ConfigureAwait(false);
 		}
 
 		void NewInstanceBatchProcessing()

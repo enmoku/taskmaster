@@ -819,7 +819,7 @@ namespace Taskmaster
 			if (!ForegroundWatch.TryAdd(info.Id, 0)) return;
 
 			info.Process.EnableRaisingEvents = true;
-			info.Process.Exited += (o, s) => { End(info); };
+			info.Process.Exited += (o, s) => End(info);
 
 			ProcessPriorityClass? oPriority = null;
 			IntPtr? oAffinity = null;

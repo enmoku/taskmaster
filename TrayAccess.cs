@@ -71,7 +71,7 @@ namespace Taskmaster
 				Icon = System.Drawing.Icon.ExtractAssociatedIcon(System.Reflection.Assembly.GetExecutingAssembly().Location) // is this really the best way?
 			};
 			Tray.BalloonTipText = Tray.Text;
-			Tray.Disposed += (_, _ea) => { Tray = null; };
+			Tray.Disposed += (_, _ea) => Tray = null;
 			
 			if (Taskmaster.Trace) Log.Verbose("Generating tray icon.");
 
@@ -100,9 +100,9 @@ namespace Taskmaster
 			{
 				power_auto = new ToolStripMenuItem("Auto", null, SetAutoPower) { Checked = false, CheckOnClick = true, Enabled = false };
 
-				power_highperf = new ToolStripMenuItem(PowerManager.GetModeName(PowerInfo.PowerMode.HighPerformance), null, (s, e) => { ResetPower(PowerInfo.PowerMode.HighPerformance); });
-				power_balanced = new ToolStripMenuItem(PowerManager.GetModeName(PowerInfo.PowerMode.Balanced), null, (s, e) => { ResetPower(PowerInfo.PowerMode.Balanced); });
-				power_saving = new ToolStripMenuItem(PowerManager.GetModeName(PowerInfo.PowerMode.PowerSaver), null, (s, e) => { ResetPower(PowerInfo.PowerMode.PowerSaver); });
+				power_highperf = new ToolStripMenuItem(PowerManager.GetModeName(PowerInfo.PowerMode.HighPerformance), null, (s, e) => ResetPower(PowerInfo.PowerMode.HighPerformance));
+				power_balanced = new ToolStripMenuItem(PowerManager.GetModeName(PowerInfo.PowerMode.Balanced), null, (s, e) => ResetPower(PowerInfo.PowerMode.Balanced));
+				power_saving = new ToolStripMenuItem(PowerManager.GetModeName(PowerInfo.PowerMode.PowerSaver), null, (s, e) => ResetPower(PowerInfo.PowerMode.PowerSaver));
 				power_manual = new ToolStripMenuItem("Manual override", null, SetManualPower) { CheckOnClick = true };
 			}
 
@@ -537,7 +537,7 @@ namespace Taskmaster
 
 					if (added)
 					{
-						proc.Exited += (s, e) => { ExplorerCrashHandler(info.Id); };
+						proc.Exited += (s, e) => ExplorerCrashHandler(info.Id);
 						proc.EnableRaisingEvents = true;
 					}
 

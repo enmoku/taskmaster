@@ -158,7 +158,7 @@ namespace Taskmaster
 				if (mainwindow != null) return;
 
 				mainwindow = new MainWindow();
-				mainwindow.FormClosed += (s, e) => { mainwindow = null; };
+				mainwindow.FormClosed += (s, e) => mainwindow = null;
 
 				try
 				{
@@ -287,13 +287,13 @@ namespace Taskmaster
 			// This is really bad if something fails
 			Task[] init =
 			{
-				PowerManagerEnabled ? (Task.Run(() => { powermanager = new PowerManager(); })) : Task.CompletedTask,
-				PowerManagerEnabled ? (Task.Run(()=> { cpumonitor = new CPUMonitor(); })) : Task.CompletedTask,
-				ProcessMonitorEnabled ? (Task.Run(() => { processmanager = new ProcessManager(); })) : Task.CompletedTask,
-				(ActiveAppMonitorEnabled && ProcessMonitorEnabled) ? (Task.Run(()=> {activeappmonitor = new ActiveAppManager(eventhook:false); })) : Task.CompletedTask,
-				NetworkMonitorEnabled ? (Task.Run(() => { netmonitor = new NetManager(); })) : Task.CompletedTask,
-				MaintenanceMonitorEnabled ? (Task.Run(() => { storagemanager = new StorageManager(); })) : Task.CompletedTask,
-				HealthMonitorEnabled ? (Task.Run(() => { healthmonitor = new HealthMonitor(); })) : Task.CompletedTask,
+				PowerManagerEnabled ? (Task.Run(() => powermanager = new PowerManager())) : Task.CompletedTask,
+				PowerManagerEnabled ? (Task.Run(()=> cpumonitor = new CPUMonitor())) : Task.CompletedTask,
+				ProcessMonitorEnabled ? (Task.Run(() => processmanager = new ProcessManager())) : Task.CompletedTask,
+				(ActiveAppMonitorEnabled && ProcessMonitorEnabled) ? (Task.Run(()=> activeappmonitor = new ActiveAppManager(eventhook:false))) : Task.CompletedTask,
+				NetworkMonitorEnabled ? (Task.Run(() => netmonitor = new NetManager())) : Task.CompletedTask,
+				MaintenanceMonitorEnabled ? (Task.Run(() => storagemanager = new StorageManager())) : Task.CompletedTask,
+				HealthMonitorEnabled ? (Task.Run(() => healthmonitor = new HealthMonitor())) : Task.CompletedTask,
 			};
 
 			// MMDEV requires main thread
