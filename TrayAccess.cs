@@ -243,7 +243,7 @@ namespace Taskmaster
 						{
 							Atomic.Unlock(ref hotkeyinprogress);
 						}
-					}));
+					})).ConfigureAwait(false);
 				}
 			}
 

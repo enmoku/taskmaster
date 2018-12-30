@@ -358,7 +358,7 @@ namespace Taskmaster
 			if (ScanPaused) return;
 			// this stays on UI thread for some reason
 
-			Task.Run(() => Scan());
+			Task.Run(() => Scan()).ConfigureAwait(false);
 		}
 
 		/// <summary>
@@ -1387,7 +1387,7 @@ namespace Taskmaster
 				}
 			}
 
-			Task.Run(new Action(() => { NewInstanceBatchProcessing(); }));
+			Task.Run(new Action(() => { NewInstanceBatchProcessing(); })).ConfigureAwait(false);
 		}
 
 		void NewInstanceBatchProcessing()

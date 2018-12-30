@@ -1410,7 +1410,7 @@ namespace Taskmaster
 							Logging.Stacktrace(ex);
 						}
 						if (Taskmaster.DebugResize) Log.Debug("<Resize> Stopping monitoring " + info.Name + " (#" + info.Id + ")");
-					}));
+					})).ConfigureAwait(false);
 
 					info.Process.EnableRaisingEvents = true;
 					info.Process.Exited += (s, ev) =>

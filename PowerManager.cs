@@ -1087,7 +1087,7 @@ namespace Taskmaster
 						await Task.Delay(PowerdownDelay * 1_000).ConfigureAwait(false);
 
 					ReleaseFinal();
-				});
+				}).ConfigureAwait(false);
 			}
 			catch (Exception ex)
 			{
