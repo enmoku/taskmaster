@@ -570,16 +570,14 @@ namespace Taskmaster
 
 			if (Taskmaster.DebugProcesses) sbs.Append(" [").Append(AffinityStrategy.ToString()).Append("]");
 
-			if (ev.User != null)
-			{
-				sbs.Append(ev.User);
-				ev.User.Clear();
-				ev.User = null;
-			}
+			if (ev.User != null) sbs.Append(ev.User);
 
+			// TODO: Add option to logging to file but still show in UI
 			if (!(Taskmaster.ShowInaction && Taskmaster.DebugProcesses)) Log.Information(sbs.ToString());
 			else Log.Debug(sbs.ToString());
 
+			ev.User?.Clear();
+			ev.User = null;
 			sbs.Clear();
 			sbs = null;
 		}
