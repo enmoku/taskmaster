@@ -1,4 +1,4 @@
-//
+﻿//
 // PowerManager.cs
 //
 // Author:
@@ -127,14 +127,20 @@ namespace Taskmaster
 				double idle = User.TicksToSeconds(lastact);
 				if (lastact == uint.MinValue) idle = 0; // HACK
 
-				Log.Debug("<Monitor> Power state: " + CurrentMonitorState.ToString() + " (last user activity " + Convert.ToInt32(idle) + "s ago)");
+				Log.Debug("<Monitor> Power state: " + ev.Mode.ToString() + " (last user activity " + Convert.ToInt32(idle) + "s ago)");
 			}
 
-			if (CurrentMonitorState == MonitorPowerMode.On && SessionLocked)
+			if (OldPowerState == ev.Mode)
+			{
+				Log.Debug("Received monitor power event: " + OldPowerState.ToString() + " → " + ev.Mode.ToString());
+				return; //
+			}
+
+			if (ev.Mode == MonitorPowerMode.On && SessionLocked)
 			{
 				StartDisplayTimer();
 			}
-			else if (CurrentMonitorState == MonitorPowerMode.Off)
+			else if (ev.Mode == MonitorPowerMode.Off)
 			{
 				StopDisplayTimer();
 			}
@@ -148,7 +154,7 @@ namespace Taskmaster
 
 		void StartDisplayTimer()
 		{
-			SleepTickCount = 0; // reset
+			if (SleepTickCount < 0) SleepTickCount = 0; // reset
 			MonitorSleepTimer?.Start();
 		}
 
@@ -158,15 +164,16 @@ namespace Taskmaster
 		int monitorsleeptimer_lock = 0;
 		void MonitorSleepTimerTick(object _, EventArgs _ea)
 		{
-			if (SleepTickCount < 0) return; // timer disabled, excess call might occur as per timer nonsense
+			if (CurrentMonitorState == MonitorPowerMode.Off || !SessionLocked || SleepTickCount < 0)
+			{
+				StopDisplayTimer();
+				return;
+			}
 
 			if (!Atomic.Lock(ref monitorsleeptimer_lock)) return;
 
 			try
 			{
-				if (CurrentMonitorState == MonitorPowerMode.Off) return;
-				if (!SessionLocked) return;
-
 				uint lastact = User.LastActive();
 				double idletime = User.TicksToSeconds(lastact);
 				if (lastact == uint.MinValue) idletime = 0; // HACK
@@ -887,18 +894,16 @@ namespace Taskmaster
 				}
 				else if (ps.PowerSetting == GUID_CONSOLE_DISPLAY_STATE)
 				{
+					MonitorPowerMode mode = MonitorPowerMode.Invalid;
 					switch (ps.Data)
 					{
-						case 0x0: // power off
-							MonitorPower?.Invoke(this, new MonitorPowerEventArgs(MonitorPowerMode.Off));
-							break;
-						case 0x1: // power on
-							MonitorPower?.Invoke(this, new MonitorPowerEventArgs(MonitorPowerMode.On));
-							break;
-						case 0x2: // standby
-							MonitorPower?.Invoke(this, new MonitorPowerEventArgs(MonitorPowerMode.Standby));
-							break;
+						case 0x0: mode = MonitorPowerMode.Off; break;
+						case 0x1: mode = MonitorPowerMode.On; break;
+						case 0x2: mode = MonitorPowerMode.Standby; break;
+						default: break;
 					}
+
+					MonitorPower?.Invoke(this, new MonitorPowerEventArgs(mode));
 				}
 			}
 
