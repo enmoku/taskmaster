@@ -332,7 +332,11 @@ namespace Taskmaster
 
 			WatchlistRules.EndUpdate();
 
-			rescanRequest += (_,_ea) => processmanager.ScanRequest(null);
+			rescanRequest += async (_, _ea) =>
+			{
+				await Task.Delay(0).ConfigureAwait(false);
+				processmanager?.ScanRequest(null);
+			};
 
 			processmanager.ProcessModified += ProcessTouchEvent;
 
@@ -481,8 +485,7 @@ namespace Taskmaster
 
 		public void UpdateWatchlist(ProcessController prc)
 		{
-			ListViewItem litem = null;
-			if (WatchlistMap.TryGetValue(prc, out litem))
+			if (WatchlistMap.TryGetValue(prc, out ListViewItem litem))
 			{
 				BeginInvoke(new Action(() =>
 				{
@@ -814,12 +817,12 @@ namespace Taskmaster
 			var menu_action = new ToolStripMenuItem("Actions");
 			menu_action.DropDown.AutoClose = true;
 			// Sub Items
-			var menu_action_rescan = new ToolStripMenuItem("Rescan", null, (o, s) =>
-			{
+			var menu_action_rescan = new ToolStripMenuItem("Rescan", null, async (o, s) => {
+				await Task.Delay(0).ConfigureAwait(false);
 				rescanRequest?.Invoke(this, null);
 			})
 			{
-				Enabled = Taskmaster.ProcessMonitorEnabled,
+					Enabled = Taskmaster.ProcessMonitorEnabled,
 			};
 			var menu_action_memoryfocus = new ToolStripMenuItem("Free memory for...", null, FreeMemoryRequest)
 			{
@@ -2076,12 +2079,12 @@ namespace Taskmaster
 
 				if (newitem) ProcessEventMap.TryAdd(key, item);
 
-				BeginInvoke(new Action(async () =>
+				BeginInvoke(new Action(() =>
 				{
-					processinglist.BeginUpdate();
-
 					try
 					{
+						processinglist.BeginUpdate();
+
 						// 0 = Id, 1 = Name, 2 = State
 						item.SubItems[0].Text = ea.Info.Id.ToString();
 						item.SubItems[2].Text = ea.State.ToString();
@@ -2091,24 +2094,42 @@ namespace Taskmaster
 
 						if (ea.State == ProcessHandlingState.Finished || ea.State == ProcessHandlingState.Abandoned)
 						{
-							await Task.Delay(15_000).ConfigureAwait(true);
-
-							ProcessEventMap.TryRemove(key, out item);
-							if (item != null) processinglist.Items.Remove(item);
+							RemoveOldProcessingEntry(key);
 						}
+
+						processinglist.EndUpdate();
+					}
+					catch (System.ObjectDisposedException)
+					{
+						// bah
 					}
 					catch (Exception ex)
 					{
 						Logging.Stacktrace(ex);
 					}
-
-					processinglist.EndUpdate();
 				}));
 			}
 			catch (Exception ex)
 			{
 				Logging.Stacktrace(ex);
 			}
+		}
+
+		async void RemoveOldProcessingEntry(int key)
+		{
+			await Task.Delay(15_000).ConfigureAwait(false);
+
+			BeginInvoke(new Action(() =>
+			{
+				if (!IsHandleCreated) return;
+
+				try
+				{
+					if (ProcessEventMap.TryRemove(key, out ListViewItem item))
+						processinglist.Items.Remove(item);
+				}
+				catch { }
+			}));
 		}
 
 		void StopProcessDebug()

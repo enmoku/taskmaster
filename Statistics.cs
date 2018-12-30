@@ -47,6 +47,8 @@ namespace Taskmaster
 
 		public static long TouchCount { get; set; } = 0;
 
+		public static long TouchIgnore { get; set; } = 0;
+
 		public static int FatalErrors { get; set; } = 0;
 
 		public static long PathFindAttempts { get; set; } = 0;

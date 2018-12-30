@@ -99,7 +99,7 @@ namespace Taskmaster
 
 			string formattedtext = string.Empty;
 
-			lock (sinklock)
+			lock (sinklock) // is lock faster than repeated new?
 			{
 				try
 				{

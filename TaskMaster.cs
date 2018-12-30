@@ -1210,6 +1210,7 @@ namespace Taskmaster
 				Log.Information("Path cache: " + Statistics.PathCacheHits + " hits, " + Statistics.PathCacheMisses + " misses");
 				Log.Information("Path finding: " + Statistics.PathFindAttempts + " total attempts; " + Statistics.PathFindViaModule +
 					" via module info, " + Statistics.PathFindViaC + " via C call, " + Statistics.PathFindViaWMI + " via WMI");
+				Log.Information("Processes modified: " + Statistics.TouchCount + "; Ignored for remodification: " + Statistics.TouchIgnore);
 
 				CleanShutdown();
 

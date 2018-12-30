@@ -154,6 +154,8 @@ namespace Taskmaster
 		
 		/// <summary>
 		/// Delay in milliseconds before we attempt to alter the process.
+		/// For example, to allow a process to function at default settings for a while, or to work around undesirable settings
+		/// the process sets for itself.
 		/// </summary>
 		public int ModifyDelay { get; set; } = 0;
 

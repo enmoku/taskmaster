@@ -358,7 +358,7 @@ namespace Taskmaster
 			if (ScanPaused) return;
 			// this stays on UI thread for some reason
 
-			Task.Run(new Action(async delegate { await Scan(); })); // without task.run this will block for some reason
+			Task.Run(() => Scan());
 		}
 
 		/// <summary>
