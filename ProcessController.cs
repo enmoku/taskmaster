@@ -445,7 +445,7 @@ namespace Taskmaster
 		ConcurrentDictionary<int, int> PausedIds = new ConcurrentDictionary<int, int>(); // HACK: There's no ConcurrentHashSet
 		ConcurrentDictionary<int, int> PowerList = new ConcurrentDictionary<int, int>(); // HACK
 		ConcurrentDictionary<int, int> ForegroundWatch = new ConcurrentDictionary<int, int>(); // HACK
-		ConcurrentDictionary<int, DateTime> RecentlyModified = new ConcurrentDictionary<int, DateTime>();
+		ConcurrentDictionary<int, RecentlyModifiedInfo> RecentlyModified = new ConcurrentDictionary<int, RecentlyModifiedInfo>();
 
 		public bool BackgroundPowerdown { get; set; } = true;
 		public ProcessPriorityClass? BackgroundPriority { get; set; } = null;
@@ -872,18 +872,6 @@ namespace Taskmaster
 
 			bool foreground = true;
 
-
-			if (RecentlyModified.TryGetValue(info.Id, out DateTime time))
-			{
-				if (time.TimeTo(DateTime.Now).TotalMinutes < 5f)
-				{
-					if (Taskmaster.DebugProcesses) Log.Debug("[" + FriendlyName + "] #" + info.Id + " ignored due to recent modification.");
-					return;
-				}
-
-				RecentlyModified.TryRemove(info.Id, out _);
-			}
-
 			if (ForegroundOnly)
 			{
 				if (PausedIds.ContainsKey(info.Id))
@@ -947,6 +935,42 @@ namespace Taskmaster
 				Logging.Stacktrace(ex);
 				info.State = ProcessModification.Invalid;
 				return;
+			}
+
+			RecentlyModifiedInfo ormt = null;
+			if (RecentlyModified.TryGetValue(info.Id, out ormt))
+			{
+				try
+				{
+					if (ormt.Info.Process.ProcessName.Equals(info.Process.ProcessName))
+					{
+						bool expected = false;
+						if ((Priority.HasValue && info.Process.PriorityClass != Priority.Value) ||
+							(AffinityMask >= 0 && info.Process.ProcessorAffinity.ToInt32() != AffinityMask))
+							ormt.UnexpectedState += 1;
+						else
+						{
+							ormt.ExpectedState += 1;
+							expected = true;
+						}
+
+						if (ormt.LastIgnored.TimeTo(DateTime.Now).TotalSeconds < ProcessManager.ScanFrequency+5)
+						{
+							if (Taskmaster.DebugProcesses) Log.Debug("[" + FriendlyName + "] #" + info.Id + " ignored due to recent modification." +
+								(expected ? $" Expected: {ormt.ExpectedState} :)" : $" Unexpected: {ormt.UnexpectedState} :("));
+
+							if (ormt.UnexpectedState == 3) Log.Debug("[" + FriendlyName + "] #" + info.Id + " is resisting being modified.");
+
+							ormt.LastIgnored = DateTime.Now;
+
+							Statistics.TouchIgnore++;
+
+							return;
+						}
+					}
+				}
+				catch { }
+				//RecentlyModified.TryRemove(info.Id, out _);
 			}
 
 			if (Taskmaster.Trace) Log.Verbose("[" + FriendlyName + "] Touching: " + info.Name + " (#" + info.Id + ")");
@@ -1192,7 +1216,6 @@ namespace Taskmaster
 			}
 
 			bool logevent = false;
-			bool debug = false;
 
 			if (modified)
 				logevent = Taskmaster.ShowProcessAdjusts && !(ForegroundOnly && !Taskmaster.ShowForegroundTransitions);
@@ -1244,7 +1267,36 @@ namespace Taskmaster
 				var now = DateTime.Now;
 
 				if (Taskmaster.IgnoreRecentlyModified)
-					RecentlyModified.AddOrUpdate(info.Id, now, (int key, DateTime modtime) => modtime);
+				{
+					var rmt = new RecentlyModifiedInfo()
+					{
+						Info = info,
+						LastModified = now,
+						ExpectedState = 1,
+						UnexpectedState = 0,
+					};
+
+					RecentlyModified.AddOrUpdate(info.Id, rmt, (int key, RecentlyModifiedInfo urmt) =>
+					{
+						try
+						{
+							if (urmt.Info.Process.ProcessName.Equals(info.Process.ProcessName))
+							{
+								urmt.LastModified = now;
+								urmt.UnexpectedState += 1;
+								return urmt;
+							}
+						}
+						catch { }
+
+						urmt.Info = info;
+						urmt.LastModified = now;
+						urmt.UnexpectedState += 1;
+						urmt.ExpectedState = 0;
+
+						return urmt;
+					});
+				}
 
 				InternalRefresh(now);
 			}
@@ -1263,7 +1315,9 @@ namespace Taskmaster
 				{
 					foreach (var r in RecentlyModified)
 					{
-						if (r.Value.TimeTo(now).TotalMinutes > 5) RecentlyModified.TryRemove(r.Key, out _);
+						if ((r.Value.LastIgnored.TimeTo(now).TotalSeconds > ProcessManager.ScanFrequency+5)
+							|| (r.Value.LastModified.TimeTo(now).TotalMinutes > 10f))
+							RecentlyModified.TryRemove(r.Key, out _);
 					}
 				}
 			}
@@ -1571,5 +1625,16 @@ namespace Taskmaster
 		/// Text for end-users.
 		/// </summary>
 		public System.Text.StringBuilder User = null;
+	}
+
+	sealed public class RecentlyModifiedInfo
+	{
+		public ProcessEx Info { get; set; } = null;
+
+		public uint UnexpectedState = 0;
+		public uint ExpectedState = 0;
+
+		public DateTime LastModified = DateTime.MinValue;
+		public DateTime LastIgnored = DateTime.MinValue;
 	}
 }
