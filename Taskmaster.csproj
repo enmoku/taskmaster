@@ -182,7 +182,6 @@
     <Compile Include="ProcessSelectDialog.cs">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Include="SampleSet.cs" />
     <Compile Include="Statistics.cs" />
     <Compile Include="TaskMaster.cs" />
     <Compile Include="TrayAccess.cs">
