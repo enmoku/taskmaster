@@ -30,8 +30,8 @@ namespace Taskmaster
 {
 	sealed public class Uptime
 	{
-		public int Time { get; set; }
-		public DateTime Stamp { get; set; }
+		public int Time { get; set; } = int.MinValue;
+		public DateTimeOffset Stamp { get; set; } = DateTimeOffset.MinValue;
 	}
 
 	sealed public class UptimeTracker
@@ -51,7 +51,7 @@ namespace Taskmaster
 		{
 			Count += 1;
 			Total += time;
-			Stack.Enqueue(new Uptime { Time = time, Stamp = System.DateTime.UtcNow });
+			Stack.Enqueue(new Uptime { Time = time, Stamp = System.DateTimeOffset.UtcNow });
 		}
 
 		public void Pull()

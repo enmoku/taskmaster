@@ -167,7 +167,7 @@ namespace Taskmaster
 
 		readonly System.Threading.Timer healthTimer = null;
 
-		DateTime MemFreeLast = DateTime.MinValue;
+		DateTimeOffset MemFreeLast = DateTimeOffset.MinValue;
 
 		void LoadConfig()
 		{
@@ -267,7 +267,7 @@ namespace Taskmaster
 			return double.NaN;
 		}
 
-		DateTime FreeMemory_last = DateTime.MinValue;
+		DateTimeOffset FreeMemory_last = DateTimeOffset.MinValue;
 		float FreeMemory_cached = 0f;
 		/// <summary>
 		/// Free memory, in megabytes.
@@ -275,7 +275,7 @@ namespace Taskmaster
 		public float FreeMemory()
 		{
 			// this might be pointless
-			var now = DateTime.Now;
+			var now = DateTimeOffset.UtcNow;
 			if (now.TimeSince(FreeMemory_last).TotalSeconds > 2)
 			{
 				FreeMemory_last = now;
@@ -287,7 +287,7 @@ namespace Taskmaster
 
 		public void InvalidateFreeMemory()
 		{
-			FreeMemory_last = DateTime.MinValue;
+			FreeMemory_last = DateTimeOffset.MinValue;
 		}
 
 		async Task CheckErrors()
@@ -325,13 +325,13 @@ namespace Taskmaster
 
 		List<string> warnedDrives = new List<string>();
 
-		DateTime LastDriveWarning = DateTime.MinValue;
+		DateTimeOffset LastDriveWarning = DateTimeOffset.MinValue;
 
 		async Task CheckNVM()
 		{
 			await Task.Delay(0).ConfigureAwait(false);
 
-			var now = DateTime.Now;
+			var now = DateTimeOffset.UtcNow;
 			if (now.TimeSince(LastDriveWarning).TotalHours >= 24)
 				warnedDrives.Clear();
 
@@ -382,13 +382,13 @@ namespace Taskmaster
 
 			// Console.WriteLine("<<Auto-Doc>> Checking...");
 
+			var now = DateTimeOffset.UtcNow;
+
 			try
 			{
 				if (Settings.MemLevel > 0)
 				{
 					var memfreemb = FreeMemory();
-
-					var now = DateTime.Now;
 
 					if (memfreemb <= Settings.MemLevel)
 					{
@@ -459,7 +459,7 @@ namespace Taskmaster
 
 		float MemoryWarningThreshold = 1.5f;
 		bool WarnedAboutLowMemory = false;
-		DateTime LastMemoryWarning = DateTime.MinValue;
+		DateTimeOffset LastMemoryWarning = DateTimeOffset.MinValue;
 		long MemoryWarningCooldown = 30;
 
 		// VRAM  / GPU

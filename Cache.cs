@@ -41,7 +41,7 @@ namespace Taskmaster
 		public K1 AccessKey;
 		public K2 ReturnKey;
 		public T Item;
-		public DateTime Access;
+		public DateTimeOffset Access;
 		public long Desirability;
 	}
 
@@ -162,7 +162,7 @@ namespace Taskmaster
 						}
 					);
 
-					var now = DateTime.Now;
+					var now = DateTimeOffset.UtcNow;
 					while (list.Count > 0)
 					{
 						var bu = list.ElementAt(0);
@@ -216,7 +216,7 @@ namespace Taskmaster
 					Items.Remove(accesskey); // .Replace
 				}
 
-				var ci = new CacheItem<K1, K2, T> { AccessKey = accesskey, ReturnKey = returnkey, Item = item, Access = DateTime.Now, Desirability = 1 };
+				var ci = new CacheItem<K1, K2, T> { AccessKey = accesskey, ReturnKey = returnkey, Item = item, Access = DateTimeOffset.UtcNow, Desirability = 1 };
 				CacheItem<K1, K2, T> t = ci;
 				Items.Add(accesskey, t);
 			}
@@ -249,7 +249,7 @@ namespace Taskmaster
 						}
 
 						item.Desirability++;
-						item.Access = DateTime.Now;
+						item.Access = DateTimeOffset.UtcNow;
 						cacheditem = item.Item;
 						Hits++;
 						return item.ReturnKey;

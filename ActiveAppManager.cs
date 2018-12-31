@@ -123,7 +123,7 @@ namespace Taskmaster
 
 		public int Foreground { get; private set; } = -1;
 
-		DateTime LastSwap = DateTime.MinValue;
+		DateTimeOffset LastSwap = DateTimeOffset.MinValue;
 
 		/// <summary>
 		/// Calls SetWinEventHook, which delivers messages to the _thread_ that called it.
@@ -147,7 +147,7 @@ namespace Taskmaster
 		}
 
 		readonly System.Threading.Timer hungTimer = null;
-		DateTime HangTime = DateTime.MaxValue;
+		DateTimeOffset HangTime = DateTimeOffset.MaxValue;
 
 		int PreviousFG = 0;
 		int HangTick = 0;
@@ -177,7 +177,7 @@ namespace Taskmaster
 			{
 				int pid = Foreground;
 
-				DateTime now = DateTime.Now;
+				DateTimeOffset now = DateTimeOffset.UtcNow;
 				TimeSpan since = now.TimeSince(LastSwap); // since app was last changed
 				if (since.TotalSeconds < 5) return;
 
@@ -321,7 +321,7 @@ namespace Taskmaster
 			IgnoreHung = -1;
 
 			HangTick = 0;
-			HangTime = DateTime.MaxValue;
+			HangTime = DateTimeOffset.MaxValue;
 		}
 
 		public void SetupEventHookEvent(object _, ProcessEventArgs _ea)
@@ -480,7 +480,7 @@ namespace Taskmaster
 					activewindowev.Executable = string.Empty;
 				}
 
-				LastSwap = DateTime.Now;
+				LastSwap = DateTimeOffset.UtcNow;
 				ActiveChanged?.Invoke(this, activewindowev);
 			}
 			catch (Exception ex)

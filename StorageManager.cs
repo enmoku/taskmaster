@@ -88,10 +88,10 @@ namespace Taskmaster
 			}
 		}
 
-		DateTime LastTempScan = DateTime.MinValue;
+		DateTimeOffset LastTempScan = DateTimeOffset.MinValue;
 		void ReScanTemp(object _, EventArgs _ea)
 		{
-			var now = DateTime.Now;
+			var now = DateTimeOffset.UtcNow;
 			if (now.TimeSince(LastTempScan).TotalMinutes <= 15) return; // too soon
 			LastTempScan = now;
 

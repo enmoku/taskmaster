@@ -1022,7 +1022,7 @@ namespace Taskmaster
 		{
 			string logpath = System.IO.Path.Combine(Taskmaster.datapath, "Logs");
 
-			DateTime lastDate = DateTime.MinValue;
+			DateTimeOffset lastDate = DateTimeOffset.MinValue;
 			FileInfo lastFile = null;
 			string lastPath = null;
 

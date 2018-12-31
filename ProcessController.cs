@@ -434,7 +434,7 @@ namespace Taskmaster
 				stats.MarkDirty();
 			}
 
-			if (LastSeen != DateTime.MinValue)
+			if (LastSeen != DateTimeOffset.MinValue)
 			{
 				stats.Config[key]["Last seen"].SetValue(LastSeen.Unixstamp());
 				stats.MarkDirty();
@@ -675,11 +675,11 @@ namespace Taskmaster
 		/// <summary>
 		/// Last seen any associated process.
 		/// </summary>
-		public DateTime LastSeen { get; set; } = DateTime.MinValue;
+		public DateTimeOffset LastSeen { get; set; } = DateTimeOffset.MinValue;
 		/// <summary>
 		/// Last modified any associated process.
 		/// </summary>
-		public DateTime LastTouch { get; set; } = DateTime.MinValue;
+		public DateTimeOffset LastTouch { get; set; } = DateTimeOffset.MinValue;
 
 		/*
 		public bool Children = false;
@@ -937,6 +937,8 @@ namespace Taskmaster
 				return;
 			}
 
+			var now = DateTimeOffset.UtcNow;
+
 			RecentlyModifiedInfo ormt = null;
 			if (RecentlyModified.TryGetValue(info.Id, out ormt))
 			{
@@ -954,14 +956,14 @@ namespace Taskmaster
 							expected = true;
 						}
 
-						if (ormt.LastIgnored.TimeTo(DateTime.Now).TotalSeconds < ProcessManager.ScanFrequency+5)
+						if (ormt.LastIgnored.TimeTo(now).TotalSeconds < ProcessManager.ScanFrequency+5)
 						{
 							if (Taskmaster.DebugProcesses) Log.Debug("[" + FriendlyName + "] #" + info.Id + " ignored due to recent modification." +
 								(expected ? $" Expected: {ormt.ExpectedState} :)" : $" Unexpected: {ormt.UnexpectedState} :("));
 
 							if (ormt.UnexpectedState == 3) Log.Debug("[" + FriendlyName + "] #" + info.Id + " is resisting being modified.");
 
-							ormt.LastIgnored = DateTime.Now;
+							ormt.LastIgnored = now;
 
 							Statistics.TouchIgnore++;
 
@@ -1015,7 +1017,7 @@ namespace Taskmaster
 			var newPower = PowerInfo.PowerMode.Undefined;
 
 			bool mAffinity = false, mPriority = false, mPower = false, modified = false, fAffinity = false, fPriority = false;
-			LastSeen = DateTime.Now;
+			LastSeen = DateTimeOffset.UtcNow;
 
 			newAffinity = null;
 			newPriority = null;
@@ -1199,7 +1201,7 @@ namespace Taskmaster
 				}
 				*/
 
-				LastTouch = DateTime.Now;
+				LastTouch = now;
 
 				ScanModifyCount++;
 			}
@@ -1250,7 +1252,7 @@ namespace Taskmaster
 			}
 
 			info.Handled = true;
-			info.Modified = DateTime.Now;
+			info.Modified = now;
 
 			if (modified) Modified?.Invoke(this, ev);
 
@@ -1264,8 +1266,6 @@ namespace Taskmaster
 
 			if (modified)
 			{
-				var now = DateTime.Now;
-
 				if (Taskmaster.IgnoreRecentlyModified)
 				{
 					var rmt = new RecentlyModifiedInfo()
@@ -1303,7 +1303,7 @@ namespace Taskmaster
 		}
 
 		int refresh_lock = 0;
-		async Task InternalRefresh(DateTime now)
+		async Task InternalRefresh(DateTimeOffset now)
 		{
 			if (!Atomic.Lock(ref refresh_lock)) return;
 
@@ -1503,7 +1503,7 @@ namespace Taskmaster
 			}
 		}
 
-		public DateTime LastScan { get; private set; } = DateTime.MinValue;
+		public DateTimeOffset LastScan { get; private set; } = DateTimeOffset.MinValue;
 
 		/// <summary>
 		/// Atomic lock for RescanWithSchedule()
@@ -1529,7 +1529,7 @@ namespace Taskmaster
 			}
 
 			// LastSeen = LastScan;
-			LastScan = DateTime.Now;
+			LastScan = DateTimeOffset.UtcNow;
 
 			if (procs.Length == 0) return;
 
@@ -1634,7 +1634,7 @@ namespace Taskmaster
 		public uint UnexpectedState = 0;
 		public uint ExpectedState = 0;
 
-		public DateTime LastModified = DateTime.MinValue;
-		public DateTime LastIgnored = DateTime.MinValue;
+		public DateTimeOffset LastModified = DateTimeOffset.MinValue;
+		public DateTimeOffset LastIgnored = DateTimeOffset.MinValue;
 	}
 }

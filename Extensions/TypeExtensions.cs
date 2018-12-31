@@ -133,17 +133,21 @@ namespace Taskmaster
 
 	static public class DateExtensions
 	{
-		static readonly DateTime UnixEpoch = new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+		//static readonly DateTime UnixEpoch = new new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+		static readonly DateTimeOffset UnixEpoch = new DateTimeOffset(new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc));
 
-		public static long Unixstamp(this DateTime dt) => Convert.ToInt64(dt.ToUniversalTime().Subtract(UnixEpoch).TotalSeconds);
+		//public static long Unixstamp(this DateTime dt) => Convert.ToInt64(dt.ToUniversalTime().Subtract(UnixEpoch).TotalSeconds);
+		public static long Unixstamp(this DateTimeOffset dt) => Convert.ToInt64(dt.Subtract(UnixEpoch).TotalSeconds);
 
-		public static DateTime Unixstamp(this long unixstamp) => (UnixEpoch + TimeSpan.FromSeconds(unixstamp));
+		public static DateTimeOffset Unixstamp(this long unixstamp) => (UnixEpoch + TimeSpan.FromSeconds(unixstamp));
 
 		/// <summary>
 		/// Time since, because (now - since) just confuses me.
 		/// </summary>
-		public static TimeSpan TimeSince(this DateTime now, DateTime since) => (now - since);
+		//public static TimeSpan TimeSince(this DateTime now, DateTime since) => (now - since);
+		public static TimeSpan TimeSince(this DateTimeOffset now, DateTimeOffset since) => (now - since);
 
-		public static TimeSpan TimeTo(this DateTime now, DateTime to) => (to - now);
+		//public static TimeSpan TimeTo(this DateTime now, DateTime to) => (to - now);
+		public static TimeSpan TimeTo(this DateTimeOffset now, DateTimeOffset to) => (to - now);
 	}
 }

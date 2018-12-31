@@ -91,7 +91,7 @@ namespace Taskmaster
 		public bool PowerWait = false;
 		public bool ActiveWait = false;
 
-		public DateTime Modified = DateTime.MinValue;
+		public DateTimeOffset Modified = DateTimeOffset.MinValue;
 		public ProcessModification State = ProcessModification.Invalid;
 
 		#region IDisposable Support
@@ -380,7 +380,7 @@ namespace Taskmaster
 
 		public async Task Scan(int ignorePid = -1)
 		{
-			var now = DateTime.Now;
+			var now = DateTimeOffset.UtcNow;
 
 			if (!Atomic.Lock(ref scan_lock)) return;
 
@@ -450,8 +450,8 @@ namespace Taskmaster
 		/// In seconds.
 		/// </summary>
 		public static int ScanFrequency { get; private set; } = 15;
-		public static DateTime LastScan { get; private set; } = DateTime.MinValue;
-		public static DateTime NextScan { get; set; } = DateTime.MinValue;
+		public static DateTimeOffset LastScan { get; private set; } = DateTimeOffset.MinValue;
+		public static DateTimeOffset NextScan { get; set; } = DateTimeOffset.MinValue;
 		static bool BatchProcessing; // = false;
 		static int BatchProcessingThreshold = 5;
 		// static bool ControlChildren = false; // = false;
@@ -1117,7 +1117,7 @@ namespace Taskmaster
 				}
 
 				info.Handled = true;
-				info.Modified = DateTime.Now;
+				info.Modified = DateTimeOffset.UtcNow;
 
 				ForegroundWatch(info, matchedprc); // already called?
 			}

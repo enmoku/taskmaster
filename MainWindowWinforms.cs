@@ -619,7 +619,7 @@ namespace Taskmaster
 		{
 			if (!IsHandleCreated) return;
 
-			processingtimer.Text = $"{DateTime.Now.TimeTo(ProcessManager.NextScan).TotalSeconds:N0}s";
+			processingtimer.Text = $"{DateTimeOffset.UtcNow.TimeTo(ProcessManager.NextScan).TotalSeconds:N0}s";
 		}
 
 		void UpdateUptime(object _, EventArgs _ea)
@@ -2063,8 +2063,6 @@ namespace Taskmaster
 
 		void ProcessHandlingStateChangeEvent(object _, InstanceHandlingArgs ea)
 		{
-			var now = DateTime.Now;
-
 			try
 			{
 				ListViewItem item = null;
@@ -2088,7 +2086,7 @@ namespace Taskmaster
 						// 0 = Id, 1 = Name, 2 = State
 						item.SubItems[0].Text = ea.Info.Id.ToString();
 						item.SubItems[2].Text = ea.State.ToString();
-						item.SubItems[3].Text = now.ToLongTimeString();
+						item.SubItems[3].Text = DateTime.Now.ToLongTimeString();
 
 						if (newitem) processinglist.Items.Insert(0, item);
 
@@ -2807,8 +2805,6 @@ namespace Taskmaster
 		public void NewLogReceived(object _, LogEventArgs ea)
 		{
 			if (LogIncludeLevel.MinimumLevel > ea.Level) return;
-
-			var t = DateTime.Now;
 
 			if (!IsHandleCreated) return;
 			BeginInvoke(new Action(() =>

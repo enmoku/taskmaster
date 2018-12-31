@@ -39,7 +39,7 @@ namespace Taskmaster
 	public class NetworkStatus : EventArgs
 	{
 		public bool Available = false;
-		public DateTime Start = DateTime.MinValue;
+		public DateTimeOffset Start = DateTimeOffset.MinValue;
 		public TimeSpan Uptime = TimeSpan.MinValue;
 	}
 
@@ -96,9 +96,10 @@ namespace Taskmaster
 
 		public NetManager()
 		{
-			UptimeRecordStart = DateTime.Now;
+			var now = DateTimeOffset.UtcNow;
 
-			LastUptimeStart = DateTime.Now;
+			UptimeRecordStart = now;
+			LastUptimeStart = now;
 
 			LoadConfig();
 
@@ -229,8 +230,8 @@ namespace Taskmaster
 
 		readonly int MaxSamples = 20;
 		List<double> UptimeSamples = new List<double>(20);
-		DateTime UptimeRecordStart; // since we started recording anything
-		DateTime LastUptimeStart; // since we last knew internet to be initialized
+		DateTimeOffset UptimeRecordStart; // since we started recording anything
+		DateTimeOffset LastUptimeStart; // since we last knew internet to be initialized
 		readonly object uptime_lock = new object();
 
 		/// <summary>
@@ -242,7 +243,7 @@ namespace Taskmaster
 			get
 			{
 				if (InternetAvailable)
-					return (DateTime.Now - LastUptimeStart);
+					return (DateTimeOffset.UtcNow - LastUptimeStart);
 
 				return TimeSpan.Zero;
 			}
@@ -287,7 +288,7 @@ namespace Taskmaster
 			sbs.Append("<Network> Average uptime: ");
 			lock (uptime_lock)
 			{
-				var currentUptime = DateTime.Now.TimeSince(LastUptimeStart).TotalMinutes;
+				var currentUptime = DateTimeOffset.UtcNow.TimeSince(LastUptimeStart).TotalMinutes;
 
 				int cnt = UptimeSamples.Count;
 				sbs.Append($"{(UptimeSamples.Sum() + currentUptime) / (cnt + 1):N1}").Append(" minutes");
@@ -297,7 +298,7 @@ namespace Taskmaster
 			}
 
 			sbs.Append(" since: ").Append(UptimeRecordStart)
-			   .Append(" (").Append($"{(DateTime.Now - UptimeRecordStart).TotalHours:N2}").Append("h ago)")
+			   .Append(" (").Append($"{(DateTimeOffset.UtcNow - UptimeRecordStart).TotalHours:N2}").Append("h ago)")
 			   .Append(".");
 
 			Log.Information(sbs.ToString());
@@ -317,13 +318,14 @@ namespace Taskmaster
 
 			try
 			{
+				var now = DateTimeOffset.UtcNow;
 				if (online_state != lastOnlineState)
 				{
 					lastOnlineState = online_state;
 
 					if (online_state)
 					{
-						LastUptimeStart = DateTime.Now;
+						LastUptimeStart = now;
 
 						Task.Delay(new TimeSpan(0, 5, 0)).ContinueWith(x => ReportCurrentUpstate());
 					}
@@ -331,7 +333,7 @@ namespace Taskmaster
 					{
 						lock (uptime_lock)
 						{
-							var newUptime = (DateTime.Now - LastUptimeStart).TotalMinutes;
+							var newUptime = (now - LastUptimeStart).TotalMinutes;
 							UptimeSamples.Add(newUptime);
 
 							if (UptimeSamples.Count > MaxSamples)
@@ -585,7 +587,7 @@ namespace Taskmaster
 
 		async void NetAddrChanged(object _, EventArgs _ea)
 		{
-			var tmpnow = DateTime.Now;
+			var now = DateTimeOffset.UtcNow;
 
 			bool AvailabilityChanged = InternetAvailable;
 
@@ -706,13 +708,13 @@ namespace Taskmaster
 		/// <summary>
 		/// Last time NetworkChanged was triggered
 		/// </summary>
-		DateTime LastNetworkChange = DateTime.MinValue;
+		DateTimeOffset LastNetworkChange = DateTimeOffset.MinValue;
 		async void NetworkChanged(object _, EventArgs _ea)
 		{
 			var oldNetAvailable = NetworkAvailable;
 			bool available = NetworkAvailable = NetworkInterface.GetIsNetworkAvailable();
 
-			LastNetworkChange = DateTime.Now;
+			LastNetworkChange = DateTimeOffset.UtcNow;
 
 			NetworkChangeCounter++;
 
@@ -728,7 +730,7 @@ namespace Taskmaster
 						await Task.Delay(0).ConfigureAwait(false);
 
 						int loopbreakoff = 0;
-						while (LastNetworkChange.TimeTo(DateTime.Now).TotalSeconds < 5)
+						while (LastNetworkChange.TimeTo(DateTimeOffset.UtcNow).TotalSeconds < 5)
 						{
 							if (loopbreakoff++ >= 3) break; // arbitrary end based on double reconnect behaviour of some routers
 							if (NetworkChangeCounter >= 4) break; // break off in case NetworkChanged event is received often enough

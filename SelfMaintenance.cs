@@ -36,12 +36,13 @@ namespace Taskmaster
 		{
 			try
 			{
-				var now = DateTime.Now;
+				var now = DateTimeOffset.UtcNow;
 				var next = now.AddDays(1);
 				var nextmidnight = Convert.ToInt64(now.TimeTo(next).TotalMilliseconds);
+				DateTime lnext = next.UtcDateTime;
 
 				Log.Information("<Self-Maintenance> Next maintenance: {Date} {Time} [in {Ms} ms]",
-					next.ToLongDateString(), next.ToLongTimeString(), nextmidnight);
+					lnext.ToLongDateString(), lnext.ToLongTimeString(), nextmidnight);
 
 				timer = new System.Threading.Timer(Tick, null,
 					nextmidnight,
