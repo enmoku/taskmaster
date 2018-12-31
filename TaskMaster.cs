@@ -678,8 +678,7 @@ namespace Taskmaster
 			Log.Information("<Core> Verbosity: "+ MemoryLog.MemorySink.LevelSwitch.MinimumLevel.ToString());
 			Log.Information("<Core> Self-optimize: "+ (SelfOptimize ? HumanReadable.Generic.Enabled : HumanReadable.Generic.Disabled));
 			// Log.Information("Low memory mode: {LowMemory}", (LowMemory ? "Enabled." : "Disabled."));
-			Log.Information("<<WMI>> Event watcher: " + (ProcessManager.WMIPolling ? HumanReadable.Generic.Enabled : HumanReadable.Generic.Disabled) + " (Rate: " + ProcessManager.WMIPollDelay + "s)");
-			Log.Information("<<WMI>> Queries: " + (WMIQueries ? HumanReadable.Generic.Enabled : HumanReadable.Generic.Disabled));
+			Log.Information("<Core> WMI queries: " + (WMIQueries ? HumanReadable.Generic.Enabled : HumanReadable.Generic.Disabled));
 
 			// PROTECT USERS FROM TOO HIGH PERMISSIONS
 			var isadmin = IsAdministrator();
