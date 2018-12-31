@@ -377,7 +377,7 @@ namespace Taskmaster
 				var perf = cfg.Config["Performance"];
 				var freq = (int)scanfrequency.Value;
 				if (freq < 5 && freq != 0) freq = 5;
-				perf["Rescan everything frequency"].IntValue = (ScanOrWMI.SelectedIndex != 1 ? freq : 0);
+				perf["Scan frequency"].IntValue = (ScanOrWMI.SelectedIndex != 1 ? freq : 0);
 				perf["WMI event watcher"].BoolValue = (ScanOrWMI.SelectedIndex != 0);
 				perf["WMI poll delay"].IntValue = ((int)wmipolling.Value);
 				perf["WMI queries"].BoolValue = (ScanOrWMI.SelectedIndex != 0);
