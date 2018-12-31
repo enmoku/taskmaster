@@ -2090,9 +2090,15 @@ namespace Taskmaster
 
 						if (newitem) processinglist.Items.Insert(0, item);
 
-						if (ea.State == ProcessHandlingState.Finished || ea.State == ProcessHandlingState.Abandoned)
+						switch (ea.State)
 						{
-							RemoveOldProcessingEntry(key);
+							case ProcessHandlingState.Finished:
+							case ProcessHandlingState.Abandoned:
+							case ProcessHandlingState.Modified:
+							case ProcessHandlingState.Unmodified:
+								RemoveOldProcessingEntry(key);
+								break;
+							default: break;
 						}
 
 						processinglist.EndUpdate();
