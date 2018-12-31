@@ -495,7 +495,7 @@ namespace Taskmaster
 		public static bool WMIPolling { get; private set; } = false;
 		public static int WMIPollDelay { get; private set; } = 5;
 
-		public static string ConfigVersion = "alpha.2";
+		public static string ConfigVersion = "alpha.3";
 
 		public static bool ExitConfirmation { get; set; } = true;
 		public static bool AutoOpenMenus { get; set; } = true;
