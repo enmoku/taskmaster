@@ -105,6 +105,14 @@ namespace Taskmaster
 		/// </summary>
 		Processing,
 		/// <summary>
+		/// Done modifying with some modifications enacted.
+		/// </summary>
+		Modified,
+		/// <summary>
+		/// Done modifying but nothing was done.
+		/// </summary>
+		Unmodified,
+		/// <summary>
 		/// Done processing.
 		/// </summary>
 		Finished,

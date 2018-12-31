@@ -56,7 +56,7 @@ namespace Taskmaster
 				ShortcutsEnabled = true,
 			};
 
-			if (input != null) textbox.Text = input;
+			textbox.Text = input ?? string.Empty;
 
 			layout.Controls.Add(new Label() { Text = message, TextAlign = System.Drawing.ContentAlignment.MiddleLeft });
 			layout.Controls.Add(textbox);

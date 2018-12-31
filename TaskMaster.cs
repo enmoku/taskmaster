@@ -1212,12 +1212,14 @@ namespace Taskmaster
 
 				ExitCleanup();
 
-				Log.Information("WMI queries: " + $"{Statistics.WMIquerytime:N2}s [" + Statistics.WMIqueries + "]");
-				Log.Information("Self-maintenance: " + $"{Statistics.MaintenanceTime:N2}s [" + Statistics.MaintenanceCount + "]");
-				Log.Information("Path cache: " + Statistics.PathCacheHits + " hits, " + Statistics.PathCacheMisses + " misses");
-				Log.Information("Path finding: " + Statistics.PathFindAttempts + " total attempts; " + Statistics.PathFindViaModule +
+				Log.Information("<Stat> WMI queries: " + $"{Statistics.WMIquerytime:N2}s [" + Statistics.WMIqueries + "]");
+				Log.Information("<Stat> WMI polling: " + $"{Statistics.WMIPollTime:N2}s [" + Statistics.WMIPolling + "]");
+				Log.Information("<Stat> Self-maintenance: " + $"{Statistics.MaintenanceTime:N2}s [" + Statistics.MaintenanceCount + "]");
+				Log.Information("<Stat> Path cache: " + Statistics.PathCacheHits + " hits, " + Statistics.PathCacheMisses + " misses");
+				Log.Information("<Stat> Path finding: " + Statistics.PathFindAttempts + " total attempts; " + Statistics.PathFindViaModule +
 					" via module info, " + Statistics.PathFindViaC + " via C call, " + Statistics.PathFindViaWMI + " via WMI");
-				Log.Information("Processes modified: " + Statistics.TouchCount + "; Ignored for remodification: " + Statistics.TouchIgnore);
+				Log.Information("<Stat> Processes modified: " + Statistics.TouchCount + "; Ignored for remodification: " + Statistics.TouchIgnore);
+				Log.Information("<Stat> Process modify time range: " + $"{Statistics.TouchTimeShortest:N0} – {Statistics.TouchTimeLongest:N0} milliseconds");
 
 				CleanShutdown();
 

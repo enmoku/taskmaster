@@ -46,8 +46,10 @@ namespace Taskmaster
 		public static double PathCacheMisses { get; set; } = 0;
 
 		public static long TouchCount { get; set; } = 0;
-
 		public static long TouchIgnore { get; set; } = 0;
+
+		public static double TouchTimeLongest { get; set; } = 0d;
+		public static double TouchTimeShortest { get; set; } = double.MaxValue;
 
 		public static int FatalErrors { get; set; } = 0;
 

@@ -43,6 +43,13 @@ namespace Taskmaster
 
 	sealed public class InstanceHandlingArgs : EventArgs
 	{
+		public InstanceHandlingArgs(ProcessHandlingState state, ProcessEx info, ProcessController controller)
+		{
+			State = state;
+			Info = info;
+			Controller = controller;
+		}
+
 		public ProcessEx Info = null;
 		public ProcessController Controller = null;
 		public ProcessHandlingState State = ProcessHandlingState.Invalid;
@@ -172,6 +179,8 @@ namespace Taskmaster
 			if (Taskmaster.DebugProcesses) Log.Information("<Process> Component Loaded.");
 
 			Taskmaster.DisposalChute.Push(this);
+
+			HandlingStateChange += CollectProcessHandlingStatistics;
 		}
 
 		public ProcessController[] getWatchlist()
@@ -244,9 +253,7 @@ namespace Taskmaster
 		string freememoryignore = null;
 		void FreeMemoryTick(object _, ProcessEventArgs ea)
 		{
-			if (IgnoreProcessID(ea.Info.Id) ||
-				(!string.IsNullOrEmpty(freememoryignore) &&
-				ea.Info.Name.Equals(freememoryignore, StringComparison.InvariantCultureIgnoreCase)))
+			if (!string.IsNullOrEmpty(freememoryignore) && ea.Info.Name.Equals(freememoryignore, StringComparison.InvariantCultureIgnoreCase))
 				return;
 
 			if (Taskmaster.DebugMemory) Log.Debug("<Process> Paging: " + ea.Info.Name + " (#" + ea.Info.Id + ")");
@@ -404,16 +411,13 @@ namespace Taskmaster
 			Debug.Assert(count > 0);
 			SignalProcessHandled(count); // scan start
 
-			ProcessEventArgs pea;
-
 			var i = 0;
 			foreach (var process in procs)
 			{
 				++i;
-				pea = null;
 
-				string name;
-				int pid;
+				string name = string.Empty;
+				int pid = 0;
 
 				try
 				{
@@ -425,17 +429,15 @@ namespace Taskmaster
 				if (IgnoreProcessID(pid) || IgnoreProcessName(name) || pid == Process.GetCurrentProcess().Id)
 					continue;
 
-				pea = new ProcessEventArgs
+				if (Taskmaster.DebugFullScan)
+					Log.Verbose("<Process> Checking [" + i + "/" + count + "] " + name + " (#" + pid + ")");
+
+				ProcessDetectedEvent?.Invoke(this, new ProcessEventArgs
 				{
 					Info = new ProcessEx() { Process = process, Id = pid, Name = name, Path = null, Start = DateTimeOffset.UtcNow },
 					Control = null,
 					State = ProcessRunningState.Found,
-				};
-
-				if (Taskmaster.DebugFullScan)
-					Log.Verbose("<Process> Checking [" + i + "/" + count + "] " + name + " (#" + pid + ")");
-
-				ProcessDetectedEvent?.Invoke(this, pea);
+				});
 			}
 
 			if (Taskmaster.DebugFullScan) Log.Debug("<Process> Full Scan: Complete");
@@ -1150,7 +1152,8 @@ namespace Taskmaster
 			"audiodg" // audio device isolation
 		};
 
-		bool IgnoreSystem32Path = true;
+		// %SYSTEMROOT%\System32 (Environment.SpecialFolder.System)
+		bool IgnoreSystem32Path { get; set; } = true;
 
 		/// <summary>
 		/// Tests if the process ID is core system process (0[idle] or 4[system]) that can never be valid program.
@@ -1159,10 +1162,13 @@ namespace Taskmaster
 		[System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
 		public static bool SystemProcessId(int pid) => pid <= 4;
 
+		[System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
 		bool IgnoreProcessID(int pid) => SystemProcessId(pid) || ignorePids.Contains(pid);
 
+		[System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
 		public static bool IgnoreProcessName(string name) => IgnoreList.Contains(name, StringComparer.InvariantCultureIgnoreCase);
 
+		[System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
 		public static bool ProtectedProcessName(string name) => ProtectList.Contains(name, StringComparer.InvariantCultureIgnoreCase);
 		// %SYSTEMROOT%
 
@@ -1277,32 +1283,27 @@ namespace Taskmaster
 			onProcessHandled?.Invoke(this, new ProcessEventArgs() { Control = prc, Info = info, State = ProcessRunningState.Found });
 		}
 
+		private void CollectProcessHandlingStatistics(object _, InstanceHandlingArgs e)
+		{
+			if (e.State == ProcessHandlingState.Finished)
+			{
+				var now = DateTimeOffset.UtcNow;
+				double time = e.Info.Start.TimeTo(now).TotalMilliseconds;
+				Console.WriteLine("Modify time: " + $"{time:N0} ms");
+				if (Statistics.TouchTimeLongest < time) Statistics.TouchTimeLongest = time;
+				else if (Statistics.TouchTimeShortest > time) Statistics.TouchTimeLongest = time;
+			}
+		}
+
 		// TODO: This should probably be pushed into ProcessController somehow.
 		async void ProcessTriage(object _, ProcessEventArgs ea)
 		{
-			Debug.Assert(!string.IsNullOrEmpty(ea.Info.Name), "CheckProcess received null process name.");
-			Debug.Assert(ea.Info != null);
-			Debug.Assert(ea.Info.Process != null, "CheckProcess received null process.");
-			Debug.Assert(!IgnoreProcessID(ea.Info.Id), "CheckProcess received invalid process ID: " + ea.Info.Id);
-			//Debug.Assert(execontrol != null); // triggers only if this function is running when the app is closing
-
-			HandlingStateChange?.Invoke(this, new InstanceHandlingArgs()
-			{
-				State = ProcessHandlingState.Triage,
-				Info = ea.Info,
-				Controller = ea.Control,
-			});
-
 			await Task.Delay(0).ConfigureAwait(false);
+
+			HandlingStateChange?.Invoke(this, new InstanceHandlingArgs(ProcessHandlingState.Triage, ea.Info, ea.Control));
 
 			try
 			{
-				if (IgnoreProcessID(ea.Info.Id) || IgnoreProcessName(ea.Info.Name))
-				{
-					if (Taskmaster.Trace) Log.Verbose("Ignoring process: " + ea.Info.Name + " (#" + ea.Info.Id + ")");
-					return; // ProcessState.Ignored;
-				}
-
 				if (string.IsNullOrEmpty(ea.Info.Name))
 				{
 					Log.Warning("#" + ea.Info.Id + " details unaccessible, ignored.");
@@ -1352,12 +1353,7 @@ namespace Taskmaster
 			}
 			finally
 			{
-				HandlingStateChange?.Invoke(this, new InstanceHandlingArgs()
-				{
-					State = ea.Info.State == ProcessModification.Modified ? ProcessHandlingState.Finished : ProcessHandlingState.Abandoned,
-					Info = ea.Info,
-					Controller = ea.Control,
-				});
+				HandlingStateChange?.Invoke(this, new InstanceHandlingArgs(ea.Info.State == ProcessModification.Modified ? ProcessHandlingState.Modified : ProcessHandlingState.Unmodified, ea.Info, ea.Control));
 			}
 		}
 
@@ -1426,16 +1422,16 @@ namespace Taskmaster
 			string path = string.Empty;
 			ProcessEx info = null;
 
+			bool abandoned = false;
+
 			try
 			{
 				var wmiquerytime = Stopwatch.StartNew();
 
 				// TODO: Instance groups?
-				System.Management.ManagementBaseObject targetInstance;
-
 				try
 				{
-					targetInstance = ea.NewEvent.Properties["TargetInstance"].Value as System.Management.ManagementBaseObject;
+					var targetInstance = ea.NewEvent.Properties["TargetInstance"].Value as System.Management.ManagementBaseObject;
 					//var tpid = targetInstance.Properties["Handle"].Value as int?; // doesn't work for some reason
 					pid = Convert.ToInt32(targetInstance.Properties["Handle"].Value as string);
 					path = targetInstance.Properties["ExecutablePath"].Value as string;
@@ -1443,6 +1439,8 @@ namespace Taskmaster
 				catch (Exception ex)
 				{
 					Logging.Stacktrace(ex);
+					abandoned = true;
+					return;
 				}
 				finally
 				{
@@ -1451,7 +1449,11 @@ namespace Taskmaster
 					Statistics.WMIPolling += 1;
 				}
 
-				if (IgnoreProcessID(pid)) return; // We just don't care
+				if (IgnoreProcessID(pid))
+				{
+					abandoned = true;
+					return; // We just don't care
+				}
 
 				if (!string.IsNullOrEmpty(path))
 					name = System.IO.Path.GetFileNameWithoutExtension(path);
@@ -1460,28 +1462,32 @@ namespace Taskmaster
 				{
 					// likely process exited too fast
 					if (Taskmaster.DebugProcesses && Taskmaster.ShowInaction) Log.Debug("<<WMI>> Failed to acquire neither process name nor process Id");
+					abandoned = true;
+					return;
+				}
 
+				if (IgnoreProcessName(name))
+				{
+					abandoned = true;
 					return;
 				}
 
 				info = ProcessManagerUtility.GetInfo(pid, path: path, getPath: true);
-				info.Start = now;
-				if (info != null) await NewInstanceTriagePhaseTwo(info);
+				if (info != null)
+				{
+					info.Start = now;
+					NewInstanceTriagePhaseTwo(info);
+				}
 			}
 			finally
 			{
-				HandlingStateChange?.Invoke(this, new InstanceHandlingArgs()
-				{
-					State = ProcessHandlingState.Finished,
-					Info = info ?? new ProcessEx { Id = pid, Start = now },
-					Controller = null,
-				});
+				HandlingStateChange?.Invoke(this, new InstanceHandlingArgs(abandoned ? ProcessHandlingState.Abandoned : ProcessHandlingState.Finished, info ?? new ProcessEx { Id = pid, Start = now }, null));
 
 				SignalProcessHandled(-1); // done with it
 			}
 		}
 
-		async Task NewInstanceTriagePhaseTwo(ProcessEx info)
+		void NewInstanceTriagePhaseTwo(ProcessEx info)
 		{
 			//await Task.Delay(0).ConfigureAwait(false);
 
@@ -1541,12 +1547,7 @@ namespace Taskmaster
 					}
 				}
 
-				HandlingStateChange?.Invoke(this, new InstanceHandlingArgs()
-				{
-					Info = info,
-					Controller = null,
-					State = ProcessHandlingState.Delayed
-				});
+				HandlingStateChange?.Invoke(this, new InstanceHandlingArgs(ProcessHandlingState.Delayed, info, null));
 			}
 			else
 			{
@@ -1714,8 +1715,6 @@ namespace Taskmaster
 			if (disposing)
 			{
 				if (Taskmaster.Trace) Log.Verbose("Disposing process manager...");
-
-				ProcessDetectedEvent -= ProcessTriage;
 
 				ProcessDetectedEvent = null;
 				ScanStartEvent = null;
