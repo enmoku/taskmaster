@@ -25,6 +25,7 @@
 // THE SOFTWARE.
 
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
@@ -69,6 +70,8 @@ namespace Taskmaster
 		/// Process Id.
 		/// </summary>
 		public int Id = -1;
+
+		public DateTimeOffset Start;
 
 		/// <summary>
 		/// Process reference.
@@ -127,9 +130,9 @@ namespace Taskmaster
 	sealed public class ProcessManager : IDisposable
 	{
 		/// <summary>
-		/// Actively watched process images.
+		/// Watch rules
 		/// </summary>
-		List<ProcessController> watchlist = new List<ProcessController>();
+		List<ProcessController> Watchlist = new List<ProcessController>();
 		readonly object watchlist_lock = new object();
 
 		// ctor, constructor
@@ -174,7 +177,7 @@ namespace Taskmaster
 		public ProcessController[] getWatchlist()
 		{
 			lock (watchlist_lock)
-				return watchlist.ToArray();
+				return Watchlist.ToArray();
 		}
 
 		// TODO: Need an ID mapping
@@ -182,7 +185,7 @@ namespace Taskmaster
 		{
 			lock (watchlist_lock)
 			{
-				foreach (var item in watchlist)
+				foreach (var item in Watchlist)
 				{
 					if (item.FriendlyName.Equals(name, StringComparison.InvariantCultureIgnoreCase))
 						return item;
@@ -201,16 +204,17 @@ namespace Taskmaster
 		/// <summary>
 		/// Executable name to ProcessControl mapping.
 		/// </summary>
-		Dictionary<string, ProcessController> execontrol = new Dictionary<string, ProcessController>();
-		object execontrol_lock = new object();
+		ConcurrentDictionary<string, ProcessController> ExeToController = new ConcurrentDictionary<string, ProcessController>();
 
-		public ProcessController getController(string executable)
+		public ProcessController getController(ProcessEx info)
 		{
-			ProcessController rv = null;
-			lock (execontrol_lock)
-				execontrol.TryGetValue(executable.ToLowerInvariant(), out rv);
+			if (ExeToController.TryGetValue(info.Name.ToLowerInvariant(), out ProcessController rv))
+				return rv;
 
-			return rv;
+			if (!string.IsNullOrEmpty(info.Path))
+				return getWatchedPath(info);
+
+			return null;
 		}
 
 		public static int CPUCount = Environment.ProcessorCount;
@@ -423,7 +427,7 @@ namespace Taskmaster
 
 				pea = new ProcessEventArgs
 				{
-					Info = new ProcessEx() { Process = process, Id = pid, Name = name, Path = null },
+					Info = new ProcessEx() { Process = process, Id = pid, Name = name, Path = null, Start = DateTimeOffset.UtcNow },
 					Control = null,
 					State = ProcessRunningState.Found,
 				};
@@ -502,8 +506,7 @@ namespace Taskmaster
 			}
 			else
 			{
-				lock (execontrol_lock)
-					execontrol.Add(prc.ExecutableFriendlyName.ToLowerInvariant(), prc);
+				ExeToController.TryAdd(prc.ExecutableFriendlyName.ToLowerInvariant(), prc);
 
 				if (!string.IsNullOrEmpty(prc.Path))
 					WatchlistWithHybrid += 1;
@@ -512,7 +515,7 @@ namespace Taskmaster
 			}
 
 			lock (watchlist_lock)
-				watchlist.Add(prc);
+				Watchlist.Add(prc);
 
 			if (Taskmaster.Trace) Log.Verbose("[" + prc.FriendlyName + "] Match: " + (prc.Executable ?? prc.Path) + ", " +
 				(prc.Priority.HasValue ? Readable.ProcessPriority(prc.Priority.Value) : "n/a") +
@@ -790,7 +793,7 @@ namespace Taskmaster
 
 			// --------------------------------------------------------------------------------------------------------
 
-			Log.Information("<Process> Name-based watchlist: " + (execontrol.Count - WatchlistWithHybrid) + " items");
+			Log.Information("<Process> Name-based watchlist: " + (ExeToController.Count - WatchlistWithHybrid) + " items");
 			Log.Information("<Process> Path-based watchlist: " + WatchlistWithPath + " items");
 			Log.Information("<Process> Hybrid watchlist: " + WatchlistWithHybrid + " items");
 		}
@@ -830,20 +833,16 @@ namespace Taskmaster
 
 		public void RemoveController(ProcessController prc)
 		{
-			lock (watchlist_lock)
-			{
-				lock (execontrol_lock)
-				{
-					if (!string.IsNullOrEmpty(prc.ExecutableFriendlyName))
-						execontrol.Remove(prc.ExecutableFriendlyName.ToLowerInvariant());
-				}
+			if (!string.IsNullOrEmpty(prc.ExecutableFriendlyName))
+				ExeToController.TryRemove(prc.ExecutableFriendlyName.ToLowerInvariant(), out _);
 
-				watchlist.Remove(prc);
-				prc.Modified -= ProcessModifiedProxy;
-				prc.Paused -= ProcessPausedProxy;
-				prc.Resumed -= ProcessResumedProxy;
-				prc.WaitingExit -= ProcessWaitingExitProxy;
-			}
+			lock (watchlist_lock)
+				Watchlist.Remove(prc);
+
+			prc.Modified -= ProcessModifiedProxy;
+			prc.Paused -= ProcessPausedProxy;
+			prc.Resumed -= ProcessResumedProxy;
+			prc.WaitingExit -= ProcessWaitingExitProxy;
 		}
 
 		readonly object waitforexit_lock = new object();
@@ -1059,8 +1058,8 @@ namespace Taskmaster
 			// TODO: This needs to be FASTER
 			lock (watchlist_lock)
 			{
-				Debug.Assert(watchlist != null);
-				foreach (ProcessController prc in watchlist)
+				Debug.Assert(Watchlist != null);
+				foreach (ProcessController prc in Watchlist)
 				{
 					if (!prc.Enabled) continue;
 					if (string.IsNullOrEmpty(prc.Path)) continue;
@@ -1310,12 +1309,7 @@ namespace Taskmaster
 					return; // ProcessState.AccessDenied;
 				}
 
-				ProcessController prc = null;
-
-				lock (execontrol_lock)
-					execontrol.TryGetValue(ea.Info.Name.ToLowerInvariant(), out prc);
-
-				if (prc != null)
+				if (ExeToController.TryGetValue(ea.Info.Name.ToLowerInvariant(), out ProcessController prc))
 				{
 					if (!prc.Enabled)
 					{
@@ -1425,6 +1419,8 @@ namespace Taskmaster
 		{
 			SignalProcessHandled(1); // wmi new instance
 
+			var now = DateTimeOffset.UtcNow;
+
 			int pid = -1;
 			string name = string.Empty;
 			string path = string.Empty;
@@ -1469,6 +1465,7 @@ namespace Taskmaster
 				}
 
 				info = ProcessManagerUtility.GetInfo(pid, path: path, getPath: true);
+				info.Start = now;
 				if (info != null) await NewInstanceTriagePhaseTwo(info);
 			}
 			finally
@@ -1476,7 +1473,7 @@ namespace Taskmaster
 				HandlingStateChange?.Invoke(this, new InstanceHandlingArgs()
 				{
 					State = ProcessHandlingState.Finished,
-					Info = info ?? new ProcessEx { Id = pid },
+					Info = info ?? new ProcessEx { Id = pid, Start = now },
 					Controller = null,
 				});
 
@@ -1646,10 +1643,9 @@ namespace Taskmaster
 
 			if (ScanFrequency < 300 && User.UserIdleTime() > (60f * 60f * 2f)) // 2 hours
 			{
-				foreach (var prc in watchlist)
-				{
-					prc.Refresh();
-				}
+				lock (watchlist_lock)
+					foreach (var prc in Watchlist)
+						prc.Refresh();
 			}
 
 			Stack<ProcessEx> triggerList = null;
@@ -1763,21 +1759,18 @@ namespace Taskmaster
 
 				try
 				{
-					lock (execontrol_lock)
-					{
-						execontrol?.Clear();
-						execontrol = null;
-					}
+					ExeToController?.Clear();
+					ExeToController = null;
+
+					var wcfg = Taskmaster.Config.Load(watchfile);
 
 					lock (watchlist_lock)
 					{
-						var wcfg = Taskmaster.Config.Load(watchfile);
-
-						foreach (var prc in watchlist)
+						foreach (var prc in Watchlist)
 							if (prc.NeedsSaving) prc.SaveConfig(wcfg);
 
-						watchlist?.Clear();
-						watchlist = null;
+						Watchlist?.Clear();
+						Watchlist = null;
 					}
 				}
 				catch (Exception ex)
@@ -1797,10 +1790,8 @@ namespace Taskmaster
 			if (Taskmaster.Trace) Log.Verbose("Saving stats...");
 
 			lock (watchlist_lock)
-			{
-				foreach (ProcessController prc in watchlist)
+				foreach (ProcessController prc in Watchlist)
 					prc.SaveStats();
-			}
 		}
 	}
 

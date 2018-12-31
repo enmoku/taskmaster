@@ -149,7 +149,6 @@ namespace Taskmaster
 		void StopDisplayTimer()
 		{
 			MonitorSleepTimer?.Stop();
-			SleepTickCount = -1; // hackish way to check in callback if the timer is active
 		}
 
 		void StartDisplayTimer()
@@ -782,6 +781,7 @@ namespace Taskmaster
 			else
 			{
 				StopDisplayTimer();
+				SleepTickCount = -1;
 
 				// should be unnecessary, but...
 				if (CurrentMonitorState != MonitorPowerMode.On) // session unlocked but monitor still off?

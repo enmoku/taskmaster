@@ -26,6 +26,7 @@
 
 using System;
 using System.Diagnostics;
+using System.Threading.Tasks;
 using Serilog;
 
 namespace Taskmaster
@@ -74,9 +75,18 @@ namespace Taskmaster
 			Taskmaster.DisposalChute.Push(this);
 		}
 
-		private void OnSessionCreated(object _, NAudio.CoreAudioApi.Interfaces.IAudioSessionControl ea)
+		ProcessManager processmanager = null;
+		public void Hook(ProcessManager procman)
+		{
+			processmanager = procman;
+		}
+
+		private async void OnSessionCreated(object _, NAudio.CoreAudioApi.Interfaces.IAudioSessionControl ea)
 		{
 			Debug.Assert(System.Threading.Thread.CurrentThread != Context, "Must be called in same thread.");
+			Debug.Assert(processmanager != null, "ProcessManager has not been hooked");
+
+			await Task.Delay(0).ConfigureAwait(false);
 
 			try
 			{
@@ -91,8 +101,7 @@ namespace Taskmaster
 				if (info != null)
 				{
 					//OnNewSession?.Invoke(this, info);
-					var prc = Taskmaster.processmanager.getController(info.Name);
-					if (prc == null && !string.IsNullOrEmpty(info.Path)) prc = Taskmaster.processmanager.getWatchedPath(info);
+					var prc = processmanager.getController(info);
 					if (prc != null)
 					{
 						bool volAdjusted = false;
@@ -175,6 +184,7 @@ namespace Taskmaster
 			{
 				if (disposing)
 				{
+					mmdev_media.AudioSessionManager.OnSessionCreated -= OnSessionCreated; // redundant
 					mmdev_media?.Dispose();
 				}
 
