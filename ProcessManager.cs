@@ -1287,11 +1287,11 @@ namespace Taskmaster
 		{
 			if (e.State == ProcessHandlingState.Finished)
 			{
-				var now = DateTimeOffset.UtcNow;
-				double time = e.Info.Start.TimeTo(now).TotalMilliseconds;
-				Console.WriteLine("Modify time: " + $"{time:N0} ms");
-				if (Statistics.TouchTimeLongest < time) Statistics.TouchTimeLongest = time;
-				else if (Statistics.TouchTimeShortest > time) Statistics.TouchTimeLongest = time;
+				e.Info.Timer.Stop();
+				long time = e.Info.Timer.ElapsedMilliseconds;
+				Console.WriteLine("Modify time: " + $"{time} ms");
+				Statistics.TouchTimeLongest = Math.Max(time, Statistics.TouchTimeLongest);
+				Statistics.TouchTimeShortest = Math.Min(time, Statistics.TouchTimeShortest);
 			}
 		}
 
