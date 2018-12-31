@@ -312,11 +312,15 @@ namespace Taskmaster
 			trayaccess = new TrayAccess();
 			trayaccess.TrayMenuShown += TrayMenuShownEvent;
 
-			Log.Information("<Core> Waiting for component loading.");
-
 			try
 			{
-				Task.WaitAll(init);
+				// wait for component initialization
+				if (!Task.WaitAll(init, 5_000))
+				{
+					Log.Warning("<Core> Components still loading.");
+					if (!Task.WaitAll(init, 115_000)) // total wait time of 120 seconds
+						throw new InitFailure("Component initialization taking excessively long, aborting.");
+				}
 			}
 			catch (AggregateException ex)
 			{
