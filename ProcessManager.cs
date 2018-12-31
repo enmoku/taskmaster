@@ -78,7 +78,7 @@ namespace Taskmaster
 		/// </summary>
 		public int Id = -1;
 
-		public DateTimeOffset Start;
+		public Stopwatch Timer;
 
 		/// <summary>
 		/// Process reference.
@@ -113,8 +113,10 @@ namespace Taskmaster
 			{
 				if (disposing)
 				{
-					Process.Dispose();
+					Process?.Dispose();
 					Process = null;
+					Timer?.Stop();
+					Timer = null;
 				}
 
 				disposed = true;
@@ -432,9 +434,12 @@ namespace Taskmaster
 				if (Taskmaster.DebugFullScan)
 					Log.Verbose("<Process> Checking [" + i + "/" + count + "] " + name + " (#" + pid + ")");
 
+				var timer = new Stopwatch();
+				timer.Start();
+
 				ProcessDetectedEvent?.Invoke(this, new ProcessEventArgs
 				{
-					Info = new ProcessEx() { Process = process, Id = pid, Name = name, Path = null, Start = DateTimeOffset.UtcNow },
+					Info = new ProcessEx() { Process = process, Id = pid, Name = name, Path = null, Timer = timer },
 					Control = null,
 					State = ProcessRunningState.Found,
 				});
@@ -1416,6 +1421,8 @@ namespace Taskmaster
 			SignalProcessHandled(1); // wmi new instance
 
 			var now = DateTimeOffset.UtcNow;
+			var timer = new Stopwatch();
+			timer.Start();
 
 			int pid = -1;
 			string name = string.Empty;
@@ -1475,13 +1482,13 @@ namespace Taskmaster
 				info = ProcessManagerUtility.GetInfo(pid, path: path, getPath: true);
 				if (info != null)
 				{
-					info.Start = now;
+					info.Timer = timer;
 					NewInstanceTriagePhaseTwo(info);
 				}
 			}
 			finally
 			{
-				HandlingStateChange?.Invoke(this, new InstanceHandlingArgs(abandoned ? ProcessHandlingState.Abandoned : ProcessHandlingState.Finished, info ?? new ProcessEx { Id = pid, Start = now }, null));
+				HandlingStateChange?.Invoke(this, new InstanceHandlingArgs(abandoned ? ProcessHandlingState.Abandoned : ProcessHandlingState.Finished, info ?? new ProcessEx { Id = pid, Timer = timer }, null));
 
 				SignalProcessHandled(-1); // done with it
 			}
