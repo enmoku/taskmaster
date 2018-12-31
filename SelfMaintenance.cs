@@ -55,7 +55,7 @@ namespace Taskmaster
 				throw;
 			}
 
-			Log.Information("<Self-Maintenance> Initialized.");
+			if (Taskmaster.Trace) Log.Information("<Self-Maintenance> Initialized.");
 
 			Taskmaster.DisposalChute.Push(this);
 		}

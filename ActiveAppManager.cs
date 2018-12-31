@@ -142,7 +142,7 @@ namespace Taskmaster
 				return false;
 			}
 
-			Log.Information("<Foreground> Event hook initialized.");
+			if (Taskmaster.Trace) Log.Information("<Foreground> Event hook initialized.");
 			return true;
 		}
 

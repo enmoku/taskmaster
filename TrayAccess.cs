@@ -541,7 +541,7 @@ namespace Taskmaster
 						proc.EnableRaisingEvents = true;
 					}
 
-					Log.Information("<Tray> Explorer (#{ExplorerProcessID}) registered.", info.Id);
+					if (Taskmaster.Trace) Log.Information("<Tray> Explorer (#{ExplorerProcessID}) registered.", info.Id);
 				}
 
 				return true;
@@ -724,7 +724,7 @@ namespace Taskmaster
 			if (rvq && procfind.ExitCode == 0) found = true;
 			else if (!procfind.HasExited) procfind.Kill();
 
-			Log.Information("<Tray> Scheduled task {Found}found.", (found ? "" : "NOT "));
+			if (Taskmaster.Trace) Log.Debug("<Tray> Scheduled task " + (found ? "" : "NOT ") + "found.");
 
 			if (dryrun) return found; // this is bad, but fits the following logic
 
