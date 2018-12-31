@@ -176,7 +176,7 @@ namespace Taskmaster
 				Minimum = 1,
 				Maximum = 5,
 				Unit = "s",
-				Value = initial ? 5 : Taskmaster.WMIPollDelay,
+				Value = initial ? 5 : ProcessManager.WMIPollDelay,
 				Dock = DockStyle.Left,
 				Enabled = false,
 				Width = 60,
@@ -207,7 +207,7 @@ namespace Taskmaster
 					wmipolling.Value = 5;
 				}
 			};
-			var wmi = Taskmaster.WMIPolling;
+			var wmi = ProcessManager.WMIPolling;
 			var scan = ProcessManager.ScanFrequency > 0;
 			ScanOrWMI.SelectedIndex = initial ? 0 : ((wmi && scan) ? 2 : (wmi ? 1 : 0));
 

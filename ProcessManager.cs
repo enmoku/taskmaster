@@ -144,6 +144,9 @@ namespace Taskmaster
 		List<ProcessController> Watchlist = new List<ProcessController>();
 		readonly object watchlist_lock = new object();
 
+		public static bool WMIPolling { get; private set; } = true;
+		public static int WMIPollDelay { get; private set; } = 5;
+
 		// ctor, constructor
 		public ProcessManager()
 		{
@@ -157,7 +160,21 @@ namespace Taskmaster
 
 			Log.Information("<CPU> Full CPU mask: " + Convert.ToString(AllCPUsMask, 2) + " (" + AllCPUsMask + " = OS control)");
 
-			loadWatchlist();
+			var corecfg = Taskmaster.Config.Load(Taskmaster.coreconfig);
+
+			var perfsec = corecfg.Config["Performance"];
+
+			bool dirtyconfig = false, modified = false;
+			WMIPolling = perfsec.GetSetDefault("WMI event watcher", false, out modified).BoolValue;
+			perfsec["WMI event watcher"].Comment = "Use WMI to be notified of new processes starting.\nIf disabled, only rescanning everything will cause processes to be noticed.";
+			dirtyconfig |= modified;
+			WMIPollDelay = perfsec.GetSetDefault("WMI poll delay", 5, out modified).IntValue.Constrain(1, 30);
+			perfsec["WMI poll delay"].Comment = "WMI process watcher delay (in seconds).  Smaller gives better results but can inrease CPU usage. Accepted values: 1 to 30.";
+			dirtyconfig |= modified;
+
+			if (dirtyconfig) corecfg.MarkDirty();
+
+			loadWatchlist(corecfg);
 
 			InitWMIEventWatcher();
 
@@ -530,12 +547,10 @@ namespace Taskmaster
 				", Recheck: " + prc.Recheck + "s, FgOnly: " + prc.ForegroundOnly.ToString());
 		}
 
-		public void loadWatchlist()
+		public void loadWatchlist(ConfigWrapper corecfg)
 		{
 			if (Taskmaster.DebugProcesses)
 				Log.Information("<Process> Loading configuration...");
-
-			var corecfg = Taskmaster.Config.Load(Taskmaster.coreconfig);
 
 			var coreperf = corecfg.Config["Performance"];
 
@@ -1565,7 +1580,7 @@ namespace Taskmaster
 		System.Management.ManagementEventWatcher watcher = null;
 		void InitWMIEventWatcher()
 		{
-			if (!Taskmaster.WMIPolling) return;
+			if (!WMIPolling) return;
 
 			// FIXME: doesn't seem to work when lots of new processes start at the same time.
 			try
@@ -1592,7 +1607,7 @@ namespace Taskmaster
 
 				// var query = new System.Management.EventQuery("SELECT TargetInstance FROM __InstanceCreationEvent WITHIN 5 WHERE TargetInstance ISA 'Win32_Process'");
 				var query = new System.Management.EventQuery(
-					"SELECT * FROM __InstanceCreationEvent WITHIN " + Taskmaster.WMIPollDelay + " WHERE TargetInstance ISA 'Win32_Process'");
+					"SELECT * FROM __InstanceCreationEvent WITHIN " + WMIPollDelay + " WHERE TargetInstance ISA 'Win32_Process'");
 				watcher = new System.Management.ManagementEventWatcher(scope, query); // Avast cybersecurity causes this to throw an exception
 			}
 			catch (Exception ex)

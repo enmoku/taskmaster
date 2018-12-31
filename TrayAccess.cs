@@ -94,11 +94,11 @@ namespace Taskmaster
 
 			bool runatstartsch = RunAtStartScheduler(enabled: false, dryrun: true);
 			menu_runatstart_sch.Checked = runatstartsch;
-			Log.Information("<Core> Run-at-start – Scheduler: " + (runatstartsch ? "Found" : "Missing"));
+			Log.Information("<Core> Run-at-start scheduler: " + (runatstartsch ? "Found" : "Missing"));
 
 			if (Taskmaster.PowerManagerEnabled)
 			{
-				power_auto = new ToolStripMenuItem("Auto", null, SetAutoPower) { Checked = false, CheckOnClick = true, Enabled = false };
+				power_auto = new ToolStripMenuItem(HumanReadable.Hardware.Power.AutoAdjust, null, SetAutoPower) { Checked = false, CheckOnClick = true, Enabled = false };
 
 				power_highperf = new ToolStripMenuItem(PowerManager.GetModeName(PowerInfo.PowerMode.HighPerformance), null, (s, e) => ResetPower(PowerInfo.PowerMode.HighPerformance));
 				power_balanced = new ToolStripMenuItem(PowerManager.GetModeName(PowerInfo.PowerMode.Balanced), null, (s, e) => ResetPower(PowerInfo.PowerMode.Balanced));

@@ -492,8 +492,6 @@ namespace Taskmaster
 		/// </summary>
 		/// <value><c>true</c> if WMI queries are enabled; otherwise, <c>false</c>.</value>
 		public static bool WMIQueries { get; private set; } = false;
-		public static bool WMIPolling { get; private set; } = false;
-		public static int WMIPollDelay { get; private set; } = 5;
 
 		public static string ConfigVersion = "alpha.3";
 
@@ -641,16 +639,10 @@ namespace Taskmaster
 			WMIQueries = perfsec.GetSetDefault("WMI queries", true, out modified).BoolValue;
 			perfsec["WMI queries"].Comment = "WMI is considered buggy and slow. Unfortunately necessary for some functionality.";
 			dirtyconfig |= modified;
-			WMIPolling = perfsec.GetSetDefault("WMI event watcher", false, out modified).BoolValue;
-			perfsec["WMI event watcher"].Comment = "Use WMI to be notified of new processes starting.\nIf disabled, only rescanning everything will cause processes to be noticed.";
-			dirtyconfig |= modified;
-			WMIPollDelay = perfsec.GetSetDefault("WMI poll delay", 5, out modified).IntValue.Constrain(1, 30);
-			perfsec["WMI poll delay"].Comment = "WMI process watcher delay (in seconds).  Smaller gives better results but can inrease CPU usage. Accepted values: 1 to 30.";
-			dirtyconfig |= modified;
 
-			perfsec.GetSetDefault("Child processes", false, out modified); // unused here
-			perfsec["Child processes"].Comment = "Enables controlling process priority based on parent process if nothing else matches. This is slow and unreliable.";
-			dirtyconfig |= modified;
+			//perfsec.GetSetDefault("Child processes", false, out modified); // unused here
+			//perfsec["Child processes"].Comment = "Enables controlling process priority based on parent process if nothing else matches. This is slow and unreliable.";
+			//dirtyconfig |= modified;
 			TempRescanThreshold = perfsec.GetSetDefault("Temp rescan threshold", 1000, out modified).IntValue;
 			perfsec["Temp rescan threshold"].Comment = "How many changes we wait to temp folder before expediting rescanning it.";
 			dirtyconfig |= modified;
@@ -686,7 +678,7 @@ namespace Taskmaster
 			Log.Information("<Core> Verbosity: "+ MemoryLog.MemorySink.LevelSwitch.MinimumLevel.ToString());
 			Log.Information("<Core> Self-optimize: "+ (SelfOptimize ? HumanReadable.Generic.Enabled : HumanReadable.Generic.Disabled));
 			// Log.Information("Low memory mode: {LowMemory}", (LowMemory ? "Enabled." : "Disabled."));
-			Log.Information("<<WMI>> Event watcher: " + (WMIPolling ? HumanReadable.Generic.Enabled : HumanReadable.Generic.Disabled) + " (Rate: " + WMIPollDelay + "s)");
+			Log.Information("<<WMI>> Event watcher: " + (ProcessManager.WMIPolling ? HumanReadable.Generic.Enabled : HumanReadable.Generic.Disabled) + " (Rate: " + ProcessManager.WMIPollDelay + "s)");
 			Log.Information("<<WMI>> Queries: " + (WMIQueries ? HumanReadable.Generic.Enabled : HumanReadable.Generic.Disabled));
 
 			// PROTECT USERS FROM TOO HIGH PERMISSIONS
