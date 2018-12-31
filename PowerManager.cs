@@ -146,8 +146,9 @@ namespace Taskmaster
 			}
 		}
 
-		void StopDisplayTimer()
+		void StopDisplayTimer(bool reset = false)
 		{
+			if (reset) SleepTickCount = -1;
 			MonitorSleepTimer?.Stop();
 		}
 
@@ -200,7 +201,7 @@ namespace Taskmaster
 					Log.Warning("<Session:Lock> Repeated failure to put monitor to sleep, giving up. Other apps may be interfering");
 					// TODO: Detect other apps that have used SetThreadExecutionState(ES_CONTINUOUS) to prevent monitor sleep
 					// ... this is supposedly not possible.
-					StopDisplayTimer();
+					StopDisplayTimer(reset:true);
 				}
 			}
 			finally
@@ -780,8 +781,7 @@ namespace Taskmaster
 			}
 			else
 			{
-				StopDisplayTimer();
-				SleepTickCount = -1;
+				StopDisplayTimer(reset:true);
 
 				// should be unnecessary, but...
 				if (CurrentMonitorState != MonitorPowerMode.On) // session unlocked but monitor still off?
