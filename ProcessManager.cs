@@ -160,21 +160,9 @@ namespace Taskmaster
 
 			Log.Information("<CPU> Full CPU mask: " + Convert.ToString(AllCPUsMask, 2) + " (" + AllCPUsMask + " = OS control)");
 
-			var corecfg = Taskmaster.Config.Load(Taskmaster.coreconfig);
+			loadConfig();
 
-			var perfsec = corecfg.Config["Performance"];
-
-			bool dirtyconfig = false, modified = false;
-			WMIPolling = perfsec.GetSetDefault("WMI event watcher", false, out modified).BoolValue;
-			perfsec["WMI event watcher"].Comment = "Use WMI to be notified of new processes starting.\nIf disabled, only rescanning everything will cause processes to be noticed.";
-			dirtyconfig |= modified;
-			WMIPollDelay = perfsec.GetSetDefault("WMI poll delay", 5, out modified).IntValue.Constrain(1, 30);
-			perfsec["WMI poll delay"].Comment = "WMI process watcher delay (in seconds).  Smaller gives better results but can inrease CPU usage. Accepted values: 1 to 30.";
-			dirtyconfig |= modified;
-
-			if (dirtyconfig) corecfg.MarkDirty();
-
-			loadWatchlist(corecfg);
+			loadWatchlist();
 
 			InitWMIEventWatcher();
 
@@ -547,64 +535,77 @@ namespace Taskmaster
 				", Recheck: " + prc.Recheck + "s, FgOnly: " + prc.ForegroundOnly.ToString());
 		}
 
-		public void loadWatchlist(ConfigWrapper corecfg)
+		void loadConfig()
 		{
 			if (Taskmaster.DebugProcesses)
 				Log.Information("<Process> Loading configuration...");
 
-			var coreperf = corecfg.Config["Performance"];
+			var corecfg = Taskmaster.Config.Load(Taskmaster.coreconfig);
 
-			bool upgrade = false;
+			var perfsec = corecfg.Config["Performance"];
 
 			bool dirtyconfig = false, modified = false;
 			// ControlChildren = coreperf.GetSetDefault("Child processes", false, out tdirty).BoolValue;
 			// dirtyconfig |= tdirty;
-			BatchProcessing = coreperf.GetSetDefault("Batch processing", false, out modified).BoolValue;
-			coreperf["Batch processing"].Comment = "Process management works in delayed batches instead of immediately.";
+			BatchProcessing = perfsec.GetSetDefault("Batch processing", false, out modified).BoolValue;
+			perfsec["Batch processing"].Comment = "Process management works in delayed batches instead of immediately.";
 			dirtyconfig |= modified;
 			Log.Information("<Process> Batch processing: " + (BatchProcessing ? HumanReadable.Generic.Enabled : HumanReadable.Generic.Disabled));
 			if (BatchProcessing)
 			{
-				BatchDelay = coreperf.GetSetDefault("Batch processing delay", 2500, out modified).IntValue.Constrain(500, 15000);
+				BatchDelay = perfsec.GetSetDefault("Batch processing delay", 2500, out modified).IntValue.Constrain(500, 15000);
 				dirtyconfig |= modified;
 				Log.Information("<Process> Batch processing delay: " + $"{BatchDelay / 1000:N1}s");
-				BatchProcessingThreshold = coreperf.GetSetDefault("Batch processing threshold", 5, out modified).IntValue.Constrain(1, 30);
+				BatchProcessingThreshold = perfsec.GetSetDefault("Batch processing threshold", 5, out modified).IntValue.Constrain(1, 30);
 				dirtyconfig |= modified;
 				Log.Information("<Process> Batch processing threshold: " + BatchProcessingThreshold);
 			}
 
 			// OBSOLETE
-			if (coreperf.Contains("Rescan frequency"))
+			if (perfsec.Contains("Rescan frequency"))
 			{
-				coreperf.Remove("Rescan frequency");
+				perfsec.Remove("Rescan frequency");
 				dirtyconfig |= true;
 				Log.Debug("<Process> Obsoleted INI cleanup: Rescan frequency");
 			}
 			// DEPRECATED
-			if (coreperf.Contains("Rescan everything frequency"))
+			if (perfsec.Contains("Rescan everything frequency"))
 			{
 				try
 				{
-					coreperf.GetSetDefault("Scan frequency", coreperf.TryGet("Rescan everything frequency")?.IntValue ?? 15, out _);
+					perfsec.GetSetDefault("Scan frequency", perfsec.TryGet("Rescan everything frequency")?.IntValue ?? 15, out _);
 				}
 				catch { } // non int value
-				coreperf.Remove("Rescan everything frequency");
+				perfsec.Remove("Rescan everything frequency");
 				dirtyconfig |= true;
 				Log.Debug("<Process> Deprecated INI cleanup: Rescan everything frequency");
 			}
 
-			ScanFrequency = coreperf.GetSetDefault("Scan frequency", 15, out modified).IntValue.Constrain(0, 60 * 60 * 24);
+			ScanFrequency = perfsec.GetSetDefault("Scan frequency", 15, out modified).IntValue.Constrain(0, 60 * 60 * 24);
 			if (ScanFrequency > 0)
 			{
 				if (ScanFrequency < 5) ScanFrequency = 5;
 				// ScanFrequency *= 1000; // to seconds
 			}
 
-			coreperf["Scan frequency"].Comment = "Frequency (in seconds) at which we scan for processes. 0 disables.";
+			perfsec["Scan frequency"].Comment = "Frequency (in seconds) at which we scan for processes. 0 disables.";
 			dirtyconfig |= modified;
 
 			if (ScanFrequency > 0)
 				Log.Information("<Process> Scan every " + ScanFrequency + " seconds.");
+
+			// --------------------------------------------------------------------------------------------------------
+
+			WMIPolling = perfsec.GetSetDefault("WMI event watcher", false, out modified).BoolValue;
+			perfsec["WMI event watcher"].Comment = "Use WMI to be notified of new processes starting.\nIf disabled, only rescanning everything will cause processes to be noticed.";
+			dirtyconfig |= modified;
+			WMIPollDelay = perfsec.GetSetDefault("WMI poll delay", 5, out modified).IntValue.Constrain(1, 30);
+			perfsec["WMI poll delay"].Comment = "WMI process watcher delay (in seconds).  Smaller gives better results but can inrease CPU usage. Accepted values: 1 to 30.";
+			dirtyconfig |= modified;
+
+			Log.Information("<Process> New instance event watcher: " + (WMIPolling ? HumanReadable.Generic.Enabled : HumanReadable.Generic.Disabled));
+			if (WMIPolling)
+				Log.Information("<Process> New instance poll delay: " + $"{WMIPollDelay}s");
 
 			// --------------------------------------------------------------------------------------------------------
 
@@ -630,7 +631,7 @@ namespace Taskmaster
 			{
 				string[] tnewIgnoreList = ignsetting["Ignored"].StringValueArray;
 				ignsetting[HumanReadable.Generic.Ignore].StringValueArray = tnewIgnoreList;
-				upgrade = true;
+				dirtyconfig = true;
 				ignsetting.Remove("Ignored");
 			}
 			string[] newIgnoreList = ignsetting.GetSetDefault(HumanReadable.Generic.Ignore, IgnoreList, out modified)?.StringValueArray;
@@ -651,10 +652,16 @@ namespace Taskmaster
 
 			// Log.Information("Child process monitoring: {ChildControl}", (ControlChildren ? "Enabled" : "Disabled"));
 
-			// --------------------------------------------------------------------------------------------------------
+			if (dirtyconfig) corecfg.MarkDirty();
+		}
 
+		void loadWatchlist()
+		{
 			Log.Information("<Process> Loading watchlist...");
+
 			var appcfg = Taskmaster.Config.Load(watchfile);
+
+			bool dirtyconfig = false;
 
 			if (appcfg.Config.SectionCount == 0)
 			{
@@ -679,10 +686,6 @@ namespace Taskmaster
 
 			// --------------------------------------------------------------------------------------------------------
 
-			var newsettings = coreperf.SettingCount;
-			if (dirtyconfig) corecfg.MarkDirty();
-
-			bool upgradewatchlist = false;
 			foreach (SharpConfig.Section section in appcfg.Config)
 			{
 				if (!section.Contains("Image") && !section.Contains(HumanReadable.System.Process.Path))
@@ -801,7 +804,7 @@ namespace Taskmaster
 				if (section.Contains("Rescan"))
 				{
 					section.Remove("Rescan");
-					upgradewatchlist |= true;
+					dirtyconfig |= true;
 				}
 
 				// cnt.Children &= ControlChildren;
@@ -810,8 +813,7 @@ namespace Taskmaster
 				// cnt.delayIncrement = section.Contains("delay increment") ? section["delay increment"].IntValue : 15; // TODO: Add centralized default increment
 			}
 
-			if (upgrade) corecfg.MarkDirty();
-			if (upgradewatchlist) appcfg.MarkDirty();
+			if (dirtyconfig) appcfg.MarkDirty();
 
 			// --------------------------------------------------------------------------------------------------------
 
