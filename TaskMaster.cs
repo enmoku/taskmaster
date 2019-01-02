@@ -116,21 +116,6 @@ namespace Taskmaster
 			// nothing else should be needed.
 		}
 
-		/// <summary>
-		/// Call any supporting functions to re-evaluate current situation.
-		/// </summary>
-		public static void Evaluate()
-		{
-			try
-			{
-				processmanager?.HastenScan();
-			}
-			catch (Exception ex)
-			{
-				Logging.Stacktrace(ex);
-			}
-		}
-
 		public static void ShowMainWindow()
 		{
 			//await Task.Delay(0);
@@ -1167,9 +1152,6 @@ namespace Taskmaster
 
 				try
 				{
-					if (Taskmaster.ProcessMonitorEnabled)
-						Evaluate(); // internally async always
-
 					if (State == Runstate.Normal)
 					{
 						System.Windows.Forms.Application.Run(); // WinForms

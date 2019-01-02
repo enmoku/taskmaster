@@ -183,7 +183,7 @@ namespace Taskmaster
 
 			HandlingStateChange += CollectProcessHandlingStatistics;
 
-			if (ScanFrequency > 0) ScanTimer = new System.Threading.Timer(TimedScan, null, 15_000, ScanFrequency * 1_000);
+			if (ScanFrequency > 0) ScanTimer = new System.Threading.Timer(TimedScan, null, 5, ScanFrequency * 1_000);
 
 			if (Taskmaster.DebugProcesses) Log.Information("<Process> Component Loaded.");
 
