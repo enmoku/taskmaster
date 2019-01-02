@@ -93,7 +93,7 @@ namespace Taskmaster
 			if (Behaviour == PowerBehaviour.RuleBased && !Forced)
 				Restore();
 
-			if (SessionLockPowerOffIdleTimeout != 0)
+			if (SessionLockPowerOffIdleTimeout > 0)
 			{
 				MonitorSleepTimer = new System.Timers.Timer(SessionLockPowerOffIdleTimeout * 1000)
 				{
@@ -624,8 +624,9 @@ namespace Taskmaster
 			// UserActiveCancel = saver.GetSetDefault("Cancel on activity", true, out modified).BoolValue;
 			// dirtyconfig |= modified;
 
-			SessionLockPowerOffIdleTimeout = saver.GetSetDefault("Monitor power off idle timeout", 300, out modified).IntValue.Constrain(15, 600);
-			saver["Monitor power off idle timeout"].Comment = "User needs to be this many seconds idle before we power down monitors when session is locked. 0 disables.";
+			var monoffidletime = saver.GetSetDefault("Monitor power off idle timeout", 180, out modified).IntValue;
+			SessionLockPowerOffIdleTimeout = monoffidletime >= 30 ? monoffidletime.Constrain(30, 600) : 0;
+			saver["Monitor power off idle timeout"].Comment = "User needs to be this many seconds idle before we power down monitors when session is locked. 0 disables. Less than 30 is rounded up to 30.";
 			dirtyconfig |= modified;
 
 			SessionLockPowerOff = saver.GetSetDefault("Monitor power off on lock", true, out modified).BoolValue;
