@@ -3,6 +3,16 @@ Comprehensive changes can be found in Git change history:
 	https://github.com/mkahvi/taskmaster/commits/master
 
 ## [0.12...]
+### 2018-01-02
+	Changed: Changing power behaviour attempts to restore power before continuing, such as the one set at launch.
+		This makes disabling manual mode behave better, but in some cases this can cause
+		power mode flickering briefly as the new behaviour takes over.
+	Changed: Scan requests now invoke it via interaction with the timer instead of calling the scan directly.
+		Hopefully making double calls to scan not happen.
+### 2018-12-31
+	Internal: Lots of changes. Config version upgraded.
+### 2018-12-29
+	Added: Option to disable logging of watchlist rules per rule. Only configurable in the Watchlist.ini for now.
 ### 2018-12-27
 	Changed: Improved network availability reporting. It is much more responsive to changes and no longer gets stuck in disconnected state at times.
 ### 2018-12-24
