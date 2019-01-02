@@ -1319,13 +1319,13 @@ namespace Taskmaster
 			onProcessHandled?.Invoke(this, new ProcessEventArgs() { Control = prc, Info = info, State = ProcessRunningState.Found });
 		}
 
-		private void CollectProcessHandlingStatistics(object _, InstanceHandlingArgs e)
+		async void CollectProcessHandlingStatistics(object _, InstanceHandlingArgs e)
 		{
 			if (e.State == ProcessHandlingState.Finished)
 			{
 				e.Info.Timer.Stop();
 				long time = e.Info.Timer.ElapsedMilliseconds;
-				Console.WriteLine("Modify time: " + $"{time} ms");
+				if (Taskmaster.Trace) Console.WriteLine("Modify time: " + $"{time} ms");
 				Statistics.TouchTimeLongest = Math.Max(time, Statistics.TouchTimeLongest);
 				Statistics.TouchTimeShortest = Math.Min(time, Statistics.TouchTimeShortest);
 			}
