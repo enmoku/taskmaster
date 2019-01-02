@@ -25,6 +25,7 @@
 // THE SOFTWARE.
 
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
@@ -107,6 +108,9 @@ namespace Taskmaster
 
 			Taskmaster.DisposalChute.Push(this);
 		}
+
+		public int ForceCount { get { return ForceModeSourcesMap.Count; } }
+		ConcurrentDictionary<int, int> ForceModeSourcesMap = new ConcurrentDictionary<int, int>();
 
 		CPUMonitor cpumonitor = null;
 
@@ -1003,6 +1007,8 @@ namespace Taskmaster
 				Behaviour = pb;
 				LogBehaviourState();
 
+				Restore();
+
 				switch (Behaviour)
 				{
 					case PowerBehaviour.Auto:
@@ -1053,8 +1059,7 @@ namespace Taskmaster
 		/// Restores normal power mode and frees the associated source pid from holding it.
 		/// </summary>
 		/// <param name="sourcePid">0 releases all locks.</param>
-		/// <remarks>uses: forceModeSources_lock</remarks>
-		public void Release(int sourcePid)
+		public async void Release(int sourcePid)
 		{
 			if (Taskmaster.DebugPower) Log.Debug("<Power> Releasing " + (sourcePid == -1 ? "all locks" : $"#{sourcePid}"));
 
@@ -1062,29 +1067,30 @@ namespace Taskmaster
 
 			try
 			{
-				lock (forceModeSources_lock)
+				if (sourcePid == -1)
 				{
-					if (sourcePid == -1)
-					{
-						forceModeSources.Clear();
-					}
-					else if (forceModeSources.Contains(sourcePid))
-					{
-						forceModeSources.Remove(sourcePid);
-						if (Taskmaster.DebugPower && Taskmaster.Trace)
-							Log.Debug("<Power> Force mode source freed, " + forceModeSources.Count + " remain.");
-					}
-					else
-					{
-						if (Taskmaster.DebugPower)
-							Log.Debug("<Power> Restore mode called for object [" + sourcePid + "] that has no forcing registered. Or waitlist was expunged.");
-					}
-
-					if (forceModeSources.Count == 0) Forced = false;
-
-					if (Taskmaster.DebugPower)
-						Log.Debug("<Power> Released " + (sourcePid == -1 ? "All" : $"#{sourcePid}"));
+					ForceModeSourcesMap.Clear();
 				}
+				else if (ForceModeSourcesMap.TryRemove(sourcePid, out _))
+				{
+					if (Taskmaster.DebugPower && Taskmaster.Trace)
+						Log.Debug("<Power> Force mode source freed, " + ForceModeSourcesMap.Count + " remain.");
+				}
+				else if (ForceModeSourcesMap.Count > 0)
+				{
+					if (Taskmaster.DebugPower && Taskmaster.Trace)
+						Log.Debug("<Power> Force mode release for unincluded ID, " + ForceModeSourcesMap.Count + " remain.");
+				}
+				else
+				{
+					if (Taskmaster.DebugPower)
+						Log.Debug("<Power> Restore mode called for object [" + sourcePid + "] that has no forcing registered. Or waitlist was expunged.");
+				}
+
+				Forced = ForceModeSourcesMap.Count > 0;
+
+				if (Taskmaster.DebugPower)
+					Log.Debug("<Power> Released " + (sourcePid == -1 ? "All" : $"#{sourcePid}"));
 
 				Task.Run(async () =>
 				{
@@ -1103,23 +1109,21 @@ namespace Taskmaster
 		/// <remarks>uses: forceModeSources_lock</remarks>
 		void ReleaseFinal()
 		{
-			lock (forceModeSources_lock)
+			int lockCount = ForceModeSourcesMap.Count;
+			if (lockCount == 0)
 			{
-				if (forceModeSources.Count == 0)
-				{
-					// TODO: Restore Powerdown delay functionality here.
+				// TODO: Restore Powerdown delay functionality here.
 
-					if (Taskmaster.DebugPower) Log.Debug("<Power> No power locks left.");
+				if (Taskmaster.DebugPower) Log.Debug("<Power> No power locks left.");
 
-					Restore();
-				}
-				else
+				Restore();
+			}
+			else
+			{
+				if (Taskmaster.DebugPower)
 				{
-					if (Taskmaster.DebugPower)
-					{
-						Log.Debug("<Power> Forced mode still requested by " + forceModeSources.Count + " sources.");
-						if (Forced) Log.Debug("<Power> Sources: " + string.Join(", ", forceModeSources.ToArray()));
-					}
+					Log.Debug("<Power> Forced mode still requested by " + lockCount + " sources.");
+					if (Forced) Log.Debug("<Power> Sources: " + string.Join(", ", ForceModeSourcesMap.Keys.ToArray()));
 				}
 			}
 		}
@@ -1200,13 +1204,6 @@ namespace Taskmaster
 			return true;
 		}
 
-		/// <remarks>uses: forceModeSources_lock</remarks>
-		public int ForceCount { get { lock (forceModeSources_lock) return forceModeSources.Count; } }
-
-		HashSet<int> forceModeSources = new HashSet<int>();
-		readonly object forceModeSources_lock = new object();
-
-		/// <remarks>uses: forceModeSources_lock</remarks>
 		public bool Force(PowerMode mode, int sourcePid)
 		{
 			if (Behaviour == PowerBehaviour.Manual) return false;
@@ -1216,19 +1213,14 @@ namespace Taskmaster
 
 			SaveMode();
 
-			lock (forceModeSources_lock)
+			if (!ForceModeSourcesMap.TryAdd(sourcePid, 0))
 			{
-				if (forceModeSources.Contains(sourcePid))
-				{
-					if (Taskmaster.DebugPower && Taskmaster.ShowInaction)
-						Log.Debug("<Power> Forcing cancelled, source already in list.");
-					return false;
-				}
-
-				if (Taskmaster.DebugPower) Log.Debug("<Power> Lock #" + sourcePid);
-
-				forceModeSources.Add(sourcePid);
+				if (Taskmaster.DebugPower && Taskmaster.ShowInaction)
+					Log.Debug("<Power> Forcing cancelled, source already in list.");
+				return false;
 			}
+
+			if (Taskmaster.DebugPower) Log.Debug("<Power> Lock #" + sourcePid);
 
 			Forced = true;
 
