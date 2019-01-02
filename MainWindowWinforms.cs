@@ -335,7 +335,7 @@ namespace Taskmaster
 			rescanRequest += async (_, _ea) =>
 			{
 				await Task.Delay(0).ConfigureAwait(false);
-				processmanager?.ScanRequest(null);
+				processmanager?.ForceScan();
 			};
 
 			processmanager.ProcessModified += ProcessTouchEvent;

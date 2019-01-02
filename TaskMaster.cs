@@ -123,7 +123,7 @@ namespace Taskmaster
 		{
 			try
 			{
-				processmanager?.ScanRequest(null);
+				processmanager?.ForceScan();
 			}
 			catch (Exception ex)
 			{

@@ -258,7 +258,7 @@ namespace Taskmaster
 		public void Hook(ProcessManager pman)
 		{
 			processmanager = pman;
-			RescanRequest += (_,_ea) => processmanager.ScanRequest(null);
+			RescanRequest += (_,_ea) => processmanager.ForceScan();
 		}
 
 		PowerManager powermanager = null;

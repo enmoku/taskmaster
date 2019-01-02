@@ -168,8 +168,6 @@ namespace Taskmaster
 
 			ProcessDetectedEvent += ProcessTriage;
 
-			if (ScanFrequency > 0) ScanTimer = new System.Threading.Timer(ScanRequest, null, 15_000, ScanFrequency * 1_000);
-
 			if (Taskmaster.PathCacheLimit > 0)
 			{
 				ProcessManagerUtility.Initialize();
@@ -183,11 +181,13 @@ namespace Taskmaster
 
 			ScanEndEvent += UnregisterFreeMemoryTick;
 
+			HandlingStateChange += CollectProcessHandlingStatistics;
+
+			if (ScanFrequency > 0) ScanTimer = new System.Threading.Timer(TimedScan, null, 15_000, ScanFrequency * 1_000);
+
 			if (Taskmaster.DebugProcesses) Log.Information("<Process> Component Loaded.");
 
 			Taskmaster.DisposalChute.Push(this);
-
-			HandlingStateChange += CollectProcessHandlingStatistics;
 		}
 
 		public ProcessController[] getWatchlist()
@@ -368,9 +368,17 @@ namespace Taskmaster
 		/// <summary>
 		/// Spawn separate thread to run program scanning.
 		/// </summary>
-		public async void ScanRequest(object _)
+		async void TimedScan(object _)
 		{
-			if (disposed) return; // HACK: dumb timers be dumb
+			if (disposed) // HACK: dumb timers be dumb
+			{
+				try
+				{
+					ScanTimer?.Dispose();
+				}
+				catch (ObjectDisposedException) { }
+				return;
+			}
 
 			if (Taskmaster.Trace) Log.Verbose("Rescan requested.");
 			if (ScanPaused) return;
@@ -395,6 +403,12 @@ namespace Taskmaster
 		public event EventHandler<InstanceHandlingArgs> HandlingStateChange;
 
 		int scan_lock = 0;
+
+		public async void ForceScan()
+		{
+			//if (DateTimeOffset.UtcNow.TimeTo(NextScan).TotalSeconds > 3) // skip if the next scan is to happen real soon
+				ScanTimer.Change(0, ScanFrequency * 1_000);
+		}
 
 		public async Task Scan(int ignorePid = -1)
 		{
