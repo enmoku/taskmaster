@@ -335,7 +335,7 @@ namespace Taskmaster
 			rescanRequest += async (_, _ea) =>
 			{
 				await Task.Delay(0).ConfigureAwait(false);
-				processmanager?.ForceScan();
+				processmanager?.HastenScan();
 			};
 
 			processmanager.ProcessModified += ProcessTouchEvent;
@@ -2396,6 +2396,8 @@ namespace Taskmaster
 						prc.SaveConfig();
 
 						WatchlistItemColor(li, prc);
+
+						processmanager?.HastenScan();
 					}
 
 					WatchlistRules.EndUpdate();
@@ -2424,6 +2426,7 @@ namespace Taskmaster
 						if (rv == DialogResult.OK)
 						{
 							UpdateWatchlist(prc);
+							processmanager?.HastenScan();
 						}
 					}
 				}
@@ -2448,6 +2451,8 @@ namespace Taskmaster
 					WatchlistColor();
 
 					WatchlistRules.EndUpdate();
+
+					processmanager?.HastenScan();
 				}
 			}
 			catch (Exception ex) { Logging.Stacktrace(ex); }

@@ -404,9 +404,9 @@ namespace Taskmaster
 
 		int scan_lock = 0;
 
-		public async void ForceScan()
+		public async void HastenScan()
 		{
-			//if (DateTimeOffset.UtcNow.TimeTo(NextScan).TotalSeconds > 3) // skip if the next scan is to happen real soon
+			if (DateTimeOffset.UtcNow.TimeTo(NextScan).TotalSeconds > 3) // skip if the next scan is to happen real soon
 				ScanTimer.Change(0, ScanFrequency * 1_000);
 		}
 
@@ -897,8 +897,7 @@ namespace Taskmaster
 
 			if (info.ActiveWait)
 			{
-				lock (foreground_lock)
-					ForegroundWaitlist.Remove(info.Id);
+				ForegroundWaitlist.TryRemove(info.Id, out _);
 			}
 
 			if (info.PowerWait)
@@ -995,8 +994,7 @@ namespace Taskmaster
 		ProcessController PreviousForegroundController = null;
 		ProcessEx PreviousForegroundInfo;
 
-		readonly object foreground_lock = new object();
-		Dictionary<int, ProcessController> ForegroundWaitlist = new Dictionary<int, ProcessController>(6);
+		ConcurrentDictionary<int, ProcessController> ForegroundWaitlist = new ConcurrentDictionary<int, ProcessController>(1, 6);
 
 		public void ForegroundAppChangedEvent(object _, WindowChangedArgs ev)
 		{
@@ -1010,7 +1008,8 @@ namespace Taskmaster
 					if (PreviousForegroundController != null)
 					{
 						//Log.Debug("PUTTING PREVIOUS FOREGROUND APP to BACKGROUND");
-						PreviousForegroundController.Pause(PreviousForegroundInfo);
+						if (PreviousForegroundController.ForegroundOnly)
+							PreviousForegroundController.Pause(PreviousForegroundInfo);
 
 						onProcessHandled?.Invoke(this, new ProcessEventArgs() { Control = PreviousForegroundController, Info = PreviousForegroundInfo, State = ProcessRunningState.Reduced });
 					}
@@ -1022,15 +1021,9 @@ namespace Taskmaster
 				}
 			}
 
-			ProcessController prc = null;
-			lock (foreground_lock)
-				ForegroundWaitlist.TryGetValue(ev.Id, out prc);
-
-			if (prc != null)
+			if (ForegroundWaitlist.TryGetValue(ev.Id, out ProcessController prc))
 			{
-				ProcessEx info = null;
-				WaitForExitList.TryGetValue(ev.Id, out info);
-				if (info != null)
+				if (WaitForExitList.TryGetValue(ev.Id, out ProcessEx info))
 				{
 					if (Taskmaster.Trace && Taskmaster.DebugForeground)
 						Log.Debug("[" + prc.FriendlyName + "] " + info.Name + " (#" + info.Id + ") on foreground!");
@@ -1300,13 +1293,9 @@ namespace Taskmaster
 			if (!prc.ForegroundOnly) return;
 
 			var keyexists = true;
-			lock (foreground_lock)
-			{
-				if ((keyexists = ForegroundWaitlist.ContainsKey(info.Id)) == false)
-					ForegroundWaitlist.Add(info.Id, prc);
-			}
 
-			if (!keyexists) WaitForExit(info, prc);
+			if (ForegroundWaitlist.TryAdd(info.Id, prc))
+				WaitForExit(info, prc);
 
 			if (Taskmaster.Trace && Taskmaster.DebugForeground)
 			{
