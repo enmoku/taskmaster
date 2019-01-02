@@ -9,6 +9,7 @@ Comprehensive changes can be found in Git change history:
 		power mode flickering briefly as the new behaviour takes over.
 	Changed: Scan requests now invoke it via interaction with the timer instead of calling the scan directly.
 		Hopefully making double calls to scan not happen.
+	Internal: Various improvements to scanning.
 ### 2018-12-31
 	Internal: Lots of changes. Config version upgraded.
 ### 2018-12-29
