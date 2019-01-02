@@ -4,7 +4,7 @@
 // Author:
 //       M.A. (https://github.com/mkahvi)
 //
-// Copyright (c) 2018 M.A.
+// Copyright (c) 2018–2019 M.A.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -816,7 +816,7 @@ namespace Taskmaster
 							Paused = true;
 
 							if (CurrentMode != SessionLockPowerMode)
-								InternalSetMode(SessionLockPowerMode, verbose: true);
+								InternalSetMode(SessionLockPowerMode, cause:new Cause(OriginType.Session, "Lock"), verbose: true);
 						}
 						break;
 					case SessionSwitchReason.SessionLogon:
@@ -838,7 +838,7 @@ namespace Taskmaster
 								else
 									mode = PowerMode.Balanced;
 
-								InternalSetMode(mode, verbose: true);
+								InternalSetMode(mode, cause:new Cause(OriginType.Session, "Unlock"), verbose: true);
 							}
 
 							Paused = false;
@@ -969,6 +969,7 @@ namespace Taskmaster
 			Auto,
 			RuleBased,
 			Manual,
+			Internal,
 			Undefined
 		}
 
@@ -1152,7 +1153,7 @@ namespace Taskmaster
 				{
 					// if (Behaviour == PowerBehaviour.Auto) return; // this is very optimistic
 
-					InternalSetMode(SavedMode, verbose:false);
+					InternalSetMode(SavedMode, cause:new Cause(OriginType.None, "Restoration"), verbose:false);
 					SavedMode = PowerMode.Undefined;
 
 					// Log.Information("<Power> Restored to: {PowerMode}", CurrentMode.ToString());
@@ -1176,7 +1177,7 @@ namespace Taskmaster
 					else if (plan.Equals(HighPerformance)) { CurrentMode = PowerMode.HighPerformance; }
 					else { CurrentMode = PowerMode.Undefined; }
 
-					Log.Information("<Power> Current: " + CurrentMode.ToString() + " (" + plan.ToString() + ")");
+					Log.Information("<Power> Current: " + CurrentMode.ToString());
 				}
 			}
 
@@ -1242,16 +1243,16 @@ namespace Taskmaster
 			return rv;
 		}
 
-		public void SetMode(PowerMode mode, bool verbose = true)
+		public void SetMode(PowerMode mode, Cause cause=null, bool verbose = true)
 		{
 			lock (power_lock)
 			{
-				InternalSetMode(mode, verbose);
+				InternalSetMode(mode, cause, verbose:verbose);
 			}
 		}
 
 		// BUG: ?? There might be odd behaviour if this is called while Paused==true
-		void InternalSetMode(PowerMode mode, bool verbose = true)
+		void InternalSetMode(PowerMode mode, Cause cause=null, bool verbose = true)
 		{
 			var plan = Guid.Empty;
 			switch (mode)
@@ -1269,7 +1270,32 @@ namespace Taskmaster
 			}
 
 			if ((verbose && (CurrentMode != mode)) || Taskmaster.DebugPower)
-				Log.Information("<Power> Setting to: " + mode.ToString() + " (" + plan.ToString() + ")");
+			{
+				string extra = string.Empty;
+				if (cause != null)
+				{
+					switch (cause.Origin)
+					{
+						case OriginType.User:
+							extra = " – User Action";
+							break;
+						case OriginType.Session:
+							extra = " – Session " + cause.Detail;
+							break;
+						case OriginType.PowerManager:
+							extra = " – " + Behaviour.ToString() + ": " + cause.Detail;
+							break;
+						case OriginType.Watchlist:
+							extra = " – Rule: " + cause.Detail;
+							break;
+						default:
+							extra = " – " + cause.Detail;
+							break;
+					}
+				}
+
+				Log.Information("<Power> Mode: " + GetModeName(mode));
+			}
 
 			CurrentMode = mode;
 			NativeMethods.PowerSetActiveScheme((IntPtr)null, ref plan);
@@ -1279,6 +1305,8 @@ namespace Taskmaster
 		protected override void Dispose(bool disposing)
 		{
 			if (disposed) return;
+
+			Behaviour = PowerBehaviour.Internal;
 
 			try
 			{
@@ -1311,12 +1339,8 @@ namespace Taskmaster
 				onBehaviourChange = null;
 				onBatteryResume = null;
 
-				var finalmode = RestoreMethod == RestoreModeMethod.Saved ? SavedMode : RestoreMode;
-				if (finalmode != CurrentMode)
-				{
-					InternalSetMode(finalmode, verbose: true);
-					Log.Information("<Power> Restored.");
-				}
+				Restore();
+
 				Log.Information("<Power> Auto-adjusted " + AutoAdjustCounter + " time(s).");
 
 				SaveConfig();

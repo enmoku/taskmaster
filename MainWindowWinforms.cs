@@ -1,10 +1,10 @@
 //
-// MainWindow.cs
+// MainWindowWinforms.cs
 //
 // Author:
 //       M.A. (https://github.com/mkahvi)
 //
-// Copyright (c) 2016-2018 M.A.
+// Copyright (c) 2016–2019 M.A.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -476,7 +476,7 @@ namespace Taskmaster
 						aff = prc.AffinityMask.ToString();
 				}
 				litem.SubItems[AffColumn].Text = aff;
-				litem.SubItems[PowerColumn].Text = (prc.PowerPlan != PowerInfo.PowerMode.Undefined ? prc.PowerPlan.ToString() : AnyIgnoredValue);
+				litem.SubItems[PowerColumn].Text = (prc.PowerPlan != PowerInfo.PowerMode.Undefined ? PowerManager.GetModeName(prc.PowerPlan) : AnyIgnoredValue);
 				litem.SubItems[PathColumn].Text = (string.IsNullOrEmpty(prc.Path) ? AnyIgnoredValue : prc.Path);
 
 				WatchlistRules.EndUpdate();

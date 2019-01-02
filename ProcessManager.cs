@@ -4,7 +4,7 @@
 // Author:
 //       M.A. (https://github.com/mkahvi)
 //
-// Copyright (c) 2016-2018 M.A.
+// Copyright (c) 2016–2019 M.A.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -788,6 +788,14 @@ namespace Taskmaster
 				};
 
 				prc.SetForegroundOnly(section.TryGet("Foreground only")?.BoolValue ?? false);
+
+				if (!prc.ForegroundOnly)
+				{
+					// sanity checking for bad config
+					prc.BackgroundAffinity = -1;
+					prc.BackgroundPriority = null;
+					prc.BackgroundPowerdown = false;
+				}
 
 				prc.LogAdjusts = section.TryGet("Logging")?.BoolValue ?? true;
 

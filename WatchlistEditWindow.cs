@@ -204,6 +204,7 @@ namespace Taskmaster
 
 			DialogResult = DialogResult.OK;
 
+			Controller.SanityCheck();
 			Controller.Refresh();
 
 			Close();

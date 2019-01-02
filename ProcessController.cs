@@ -4,7 +4,7 @@
 // Author:
 //       M.A. (https://github.com/mkahvi)
 //
-// Copyright (c) 2016-2018 M.A.
+// Copyright (c) 2016–2019 M.A.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -189,9 +189,42 @@ namespace Taskmaster
 			}
 
 			ForegroundOnly = fgonly;
+		}
 
-			if ((ForegroundOnly && BackgroundPowerdown && PowerPlan == PowerInfo.PowerMode.Undefined) || !ForegroundOnly)
+		public void SanityCheck()
+		{
+			if (ForegroundOnly)
+			{
+				if (BackgroundPowerdown && PowerPlan == PowerInfo.PowerMode.Undefined)
+					BackgroundPowerdown = false;
+			}
+			else
+			{
+				// sanity checking
+				BackgroundAffinity = -1;
+				BackgroundPriority = null;
 				BackgroundPowerdown = false;
+			}
+
+			if (AffinityMask >= 0)
+			{
+				if (Bit.Count(BackgroundAffinity) > Bit.Count(AffinityMask))
+				{
+					// this be bad
+				}
+			}
+			else
+				BackgroundAffinity = -1;
+
+			if (Priority.HasValue)
+			{
+				if (BackgroundPriority.HasValue && Priority.Value.ToInt32() < BackgroundPriority.Value.ToInt32())
+				{
+					// this be bad
+				}
+			}
+			else
+				BackgroundPriority = null;
 		}
 
 		public void DeleteConfig(ConfigWrapper cfg = null)
@@ -1226,7 +1259,7 @@ namespace Taskmaster
 			{
 				var sbs = new System.Text.StringBuilder();
 
-				if (mPower) sbs.Append(" [Power Mode: ").Append(PowerPlan.ToString()).Append("]");
+				if (mPower) sbs.Append(" [Power Mode: ").Append(PowerManager.GetModeName(PowerPlan)).Append("]");
 
 				if (!modified && (Taskmaster.ShowInaction && Taskmaster.DebugProcesses)) sbs.Append(" – looks OK, not touched.");
 

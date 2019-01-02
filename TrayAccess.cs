@@ -100,9 +100,9 @@ namespace Taskmaster
 			{
 				power_auto = new ToolStripMenuItem(HumanReadable.Hardware.Power.AutoAdjust, null, SetAutoPower) { Checked = false, CheckOnClick = true, Enabled = false };
 
-				power_highperf = new ToolStripMenuItem(PowerManager.GetModeName(PowerInfo.PowerMode.HighPerformance), null, (s, e) => ResetPower(PowerInfo.PowerMode.HighPerformance));
-				power_balanced = new ToolStripMenuItem(PowerManager.GetModeName(PowerInfo.PowerMode.Balanced), null, (s, e) => ResetPower(PowerInfo.PowerMode.Balanced));
-				power_saving = new ToolStripMenuItem(PowerManager.GetModeName(PowerInfo.PowerMode.PowerSaver), null, (s, e) => ResetPower(PowerInfo.PowerMode.PowerSaver));
+				power_highperf = new ToolStripMenuItem(PowerManager.GetModeName(PowerInfo.PowerMode.HighPerformance), null, (s, e) => SetPower(PowerInfo.PowerMode.HighPerformance));
+				power_balanced = new ToolStripMenuItem(PowerManager.GetModeName(PowerInfo.PowerMode.Balanced), null, (s, e) => SetPower(PowerInfo.PowerMode.Balanced));
+				power_saving = new ToolStripMenuItem(PowerManager.GetModeName(PowerInfo.PowerMode.PowerSaver), null, (s, e) => SetPower(PowerInfo.PowerMode.PowerSaver));
 				power_manual = new ToolStripMenuItem("Manual override", null, SetManualPower) { CheckOnClick = true };
 			}
 
@@ -321,7 +321,7 @@ namespace Taskmaster
 			}
 		}
 
-		void ResetPower(PowerInfo.PowerMode mode)
+		void SetPower(PowerInfo.PowerMode mode)
 		{
 			try
 			{
@@ -337,7 +337,7 @@ namespace Taskmaster
 					Log.Debug("<Power> Setting manual mode: {Mode}", mode.ToString());
 
 				// powermanager.Restore(0).Wait(); // already called by setBehaviour as necessary
-				powermanager?.SetMode(mode);
+				powermanager?.SetMode(mode, cause:new Cause(OriginType.User));
 
 				// powermanager.RequestMode(mode);
 				HighlightPowerMode();
