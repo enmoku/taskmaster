@@ -302,17 +302,16 @@ namespace Taskmaster
 			}
 		}
 
-		string logpath = System.IO.Path.Combine(Taskmaster.datapath, "Logs");
 		async Task CheckLogs()
 		{
 			await Task.Delay(0).ConfigureAwait(false);
 
 			long size = 0;
 
-			var files = System.IO.Directory.GetFiles(logpath, "*", System.IO.SearchOption.AllDirectories);
+			var files = System.IO.Directory.GetFiles(Taskmaster.logpath, "*", System.IO.SearchOption.AllDirectories);
 			foreach (var filename in files)
 			{
-				var fi = new System.IO.FileInfo(System.IO.Path.Combine(logpath, filename));
+				var fi = new System.IO.FileInfo(System.IO.Path.Combine(Taskmaster.logpath, filename));
 				size += fi.Length;
 			}
 

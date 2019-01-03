@@ -60,6 +60,10 @@
     <Prefer32Bit>false</Prefer32Bit>
     <OutputPath>bin\Release\</OutputPath>
   </PropertyGroup>
+  <PropertyGroup>
+    <BuildDate>$([System.DateTime]::UtcNow.ToString("yyyy/MM/dd HH:mm:ss K"))</BuildDate>
+  </PropertyGroup>
+  <PropertyGroup />
   <PropertyGroup />
   <PropertyGroup>
     <ApplicationManifest>app.manifest</ApplicationManifest>
@@ -229,6 +233,6 @@
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>
-    <PreBuildEvent>echo %25DATE%25 %25TIME%25 &gt; "$(ProjectDir)\Resources\BuildDate.txt"</PreBuildEvent>
+    <PreBuildEvent>echo $(BuildDate) &gt; "$(ProjectDir)\Resources\BuildDate.txt"</PreBuildEvent>
   </PropertyGroup>
 </Project>

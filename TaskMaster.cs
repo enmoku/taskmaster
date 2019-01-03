@@ -42,8 +42,8 @@ namespace Taskmaster
 		public static string ItchURL { get; } = "https://mkah.itch.io/taskmaster";
 
 		//public static SharpConfig.Configuration cfg;
-		public static string datapath = System.IO.Path.Combine(
-			Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "MKAh", "Taskmaster");
+		public static string datapath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "MKAh", "Taskmaster");
+		public static string logpath = Path.Combine(datapath, "Logs");
 
 		public static ConfigManager Config = null;
 
@@ -1003,8 +1003,6 @@ namespace Taskmaster
 
 		static void PreallocLastLog()
 		{
-			string logpath = System.IO.Path.Combine(Taskmaster.datapath, "Logs");
-
 			DateTimeOffset lastDate = DateTimeOffset.MinValue;
 			FileInfo lastFile = null;
 			string lastPath = null;
@@ -1028,6 +1026,17 @@ namespace Taskmaster
 			}
 		}
 
+		public static bool Portable { get; internal set; } = false;
+		static void TryPortableMode()
+		{
+			string portpath = Path.Combine(Path.GetDirectoryName(Environment.GetCommandLineArgs()[0]), "Config");
+			if (Directory.Exists(portpath))
+			{
+				datapath = portpath;
+				Portable = true;
+			}
+		}
+
 		// entry point to the application
 		[STAThread] // supposedly needed to avoid shit happening with the WinForms GUI and other GUI toolkits
 		static public int Main(string[] args)
@@ -1038,6 +1047,8 @@ namespace Taskmaster
 			System.Windows.Forms.Application.ThreadException += UnhandledUIException;
 			System.Windows.Forms.Application.EnableVisualStyles(); // required by shortcuts and high dpi-awareness
 			System.Windows.Forms.Application.SetCompatibleTextRenderingDefault(false); // required by high dpi-awareness
+
+			TryPortableMode();
 
 			// Multi-core JIT
 			// https://docs.microsoft.com/en-us/dotnet/api/system.runtime.profileoptimization
@@ -1059,7 +1070,7 @@ namespace Taskmaster
 					// INIT LOGGER
 					var logswitch = new LoggingLevelSwitch(LogEventLevel.Information);
 
-					var logpathtemplate = System.IO.Path.Combine(datapath, "Logs", "taskmaster-{Date}.log");
+					var logpathtemplate = System.IO.Path.Combine(logpath, "taskmaster-{Date}.log");
 					Serilog.Log.Logger = new Serilog.LoggerConfiguration()
 #if DEBUG
 						.MinimumLevel.Verbose()
@@ -1092,19 +1103,16 @@ namespace Taskmaster
 						return -1;
 					}
 
-					/*
-					var builddate = Convert.ToDateTime(Properties.Resources.BuildDate);
+					var builddate = DateTime.ParseExact(Properties.Resources.BuildDate.Trim(), "yyyy/MM/dd HH:mm:ss K", null, System.Globalization.DateTimeStyles.None);
 
-					Log.Information("Taskmaster! (#{ProcessID}) {Admin}– Version: {Version} [{Date} {Time}] – START!",
-									Process.GetCurrentProcess().Id, (IsAdministrator() ? "[ADMIN] " : ""),
-									System.Reflection.Assembly.GetExecutingAssembly().GetName().Version,
-									builddate.ToShortDateString(), builddate.ToShortTimeString());
-					*/
+					var now = DateTime.Now;
+					var age = (now - builddate).TotalDays;
 
-					Log.Information("Taskmaster! (#" + Process.GetCurrentProcess().Id + ") " +
-						(IsAdministrator() ? "[ADMIN] " : "") +
-						"– Version: " + System.Reflection.Assembly.GetExecutingAssembly().GetName().Version +
-						" – START!");
+					Log.Information("Taskmaster! (#" + Process.GetCurrentProcess().Id + ")" +
+						(IsAdministrator() ? " [ADMIN]" : "") +
+						(Portable ? " [PORTABLE]" : "") +
+						" – Version: " + System.Reflection.Assembly.GetExecutingAssembly().GetName().Version +
+						" – Built: " + builddate.ToString("yyyy/MM/dd HH:mm") + $" [{age:N0} days old]");
 				}
 				catch (Exception ex)
 				{

@@ -152,9 +152,8 @@ namespace Taskmaster
 			{
 				try
 				{
-					string logpath = System.IO.Path.Combine(Taskmaster.datapath, "Logs");
-					if (!System.IO.Directory.Exists(logpath)) System.IO.Directory.CreateDirectory(logpath);
-					var logfile = System.IO.Path.Combine(logpath, "crash.log");
+					if (!System.IO.Directory.Exists(Taskmaster.logpath)) System.IO.Directory.CreateDirectory(Taskmaster.logpath);
+					var logfile = System.IO.Path.Combine(Taskmaster.logpath, "crash.log");
 
 					var now = DateTime.Now;
 					var logcontents = new System.Collections.Generic.List<string>
