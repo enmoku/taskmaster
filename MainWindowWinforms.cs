@@ -2842,34 +2842,39 @@ namespace Taskmaster
 
 		void SaveUIState()
 		{
-			if (WatchlistRules.Columns.Count == 0) return;
+			if (!IsHandleCreated) return;
 
-			List<int> appWidths = new List<int>(WatchlistRules.Columns.Count);
-			for (int i = 0; i < WatchlistRules.Columns.Count; i++)
-				appWidths.Add(WatchlistRules.Columns[i].Width);
+			Invoke(new Action(() =>
+			{
+				if (WatchlistRules.Columns.Count == 0) return;
 
-			List<int> ifaceWidths = new List<int>(ifaceList.Columns.Count);
-			for (int i = 0; i < ifaceList.Columns.Count; i++)
-				ifaceWidths.Add(ifaceList.Columns[i].Width);
+				List<int> appWidths = new List<int>(WatchlistRules.Columns.Count);
+				for (int i = 0; i < WatchlistRules.Columns.Count; i++)
+					appWidths.Add(WatchlistRules.Columns[i].Width);
 
-			List<int> micWidths = new List<int>(AudioInputs.Columns.Count);
-			for (int i = 0; i < AudioInputs.Columns.Count; i++)
-				micWidths.Add(AudioInputs.Columns[i].Width);
+				List<int> ifaceWidths = new List<int>(ifaceList.Columns.Count);
+				for (int i = 0; i < ifaceList.Columns.Count; i++)
+					ifaceWidths.Add(ifaceList.Columns[i].Width);
 
-			var cfg = Taskmaster.Config.Load(uiconfig);
-			var cols = cfg.Config["Columns"];
-			cols["Apps"].IntValueArray = appWidths.ToArray();
-			// cols["Paths"].IntValueArray = pathWidths.ToArray();
-			cols["Mics"].IntValueArray = micWidths.ToArray();
-			cols["Interfaces"].IntValueArray = ifaceWidths.ToArray();
+				List<int> micWidths = new List<int>(AudioInputs.Columns.Count);
+				for (int i = 0; i < AudioInputs.Columns.Count; i++)
+					micWidths.Add(AudioInputs.Columns[i].Width);
 
-			var uistate = cfg.Config["Tabs"];
-			uistate["Open"].IntValue = tabLayout.SelectedIndex;
+				var cfg = Taskmaster.Config.Load(uiconfig);
+				var cols = cfg.Config["Columns"];
+				cols["Apps"].IntValueArray = appWidths.ToArray();
+				// cols["Paths"].IntValueArray = pathWidths.ToArray();
+				cols["Mics"].IntValueArray = micWidths.ToArray();
+				cols["Interfaces"].IntValueArray = ifaceWidths.ToArray();
 
-			var windows = cfg.Config["Windows"];
-			windows["Main"].IntValueArray = new int[] { Bounds.Left, Bounds.Top, Bounds.Width, Bounds.Height };
+				var uistate = cfg.Config["Tabs"];
+				uistate["Open"].IntValue = tabLayout.SelectedIndex;
 
-			cfg.MarkDirty();
+				var windows = cfg.Config["Windows"];
+				windows["Main"].IntValueArray = new int[] { Bounds.Left, Bounds.Top, Bounds.Width, Bounds.Height };
+
+				cfg.MarkDirty();
+			}));
 		}
 
 		bool disposed = false;
