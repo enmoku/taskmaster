@@ -3,6 +3,9 @@ Comprehensive changes can be found in Git change history:
 	https://github.com/mkahvi/taskmaster/commits/master
 
 ## [0.12...]
+### 2018-01-03
+	Fixed: The dialog shown when you have already instance of TM running now actually CAN restart or kill the original instance.
+	Changed: Exit procedure is different again. This may result in new crashes on exit.
 ### 2018-01-02
 	Changed: Changing power behaviour attempts to restore power before continuing, such as the one set at launch.
 		This makes disabling manual mode behave better, but in some cases this can cause
