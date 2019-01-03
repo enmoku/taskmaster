@@ -111,8 +111,9 @@ namespace Taskmaster
 		{
 			State = restart ? Runstate.Restart : Runstate.Exit;
 
-			if (System.Windows.Forms.Application.MessageLoop)
+			//if (System.Windows.Forms.Application.MessageLoop) // fails if called from another thread
 				Application.Exit();
+
 			// nothing else should be needed.
 		}
 
