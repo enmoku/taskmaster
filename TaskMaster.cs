@@ -104,6 +104,8 @@ namespace Taskmaster
 				{
 					Logging.Stacktrace(ex);
 				}
+
+				pipe = null;
 			}
 		}
 
@@ -1036,6 +1038,109 @@ namespace Taskmaster
 				datapath = portpath;
 				Portable = true;
 			}
+			else if (!File.Exists(Path.Combine(datapath, "Core.ini")))
+			{
+				var rv = MessageBox.Show(
+					"Setup portable installation?", "Taskmaster!",
+					MessageBoxButtons.YesNo, MessageBoxIcon.Question, MessageBoxDefaultButton.Button2);
+
+				if (rv == DialogResult.Yes)
+				{
+					datapath = portpath;
+					Portable = true;
+					System.IO.Directory.CreateDirectory(datapath); // this might fail, but we don't really care.
+				}
+			}
+		}
+
+		const string PipeName = @"\\.\MKAh\Taskmaster\Pipe";
+		const string PipeRestart = "TM...RESTART";
+		const string PipeTerm = "TM...TERMINATE";
+		static System.IO.Pipes.NamedPipeServerStream pipe = null;
+
+		static System.Threading.CancellationTokenSource cancel = new System.Threading.CancellationTokenSource();
+
+		static async void PipeCleaner(IAsyncResult result)
+		{
+			if (pipe == null) return;
+
+			pipe.EndWaitForConnection(result);
+
+			if (!result.IsCompleted) return;
+			if (!pipe.IsConnected) return;
+			if (!pipe.IsMessageComplete) return;
+
+			byte[] buffer = new byte[16];
+			try
+			{
+				pipe.ReadAsync(buffer, 0, 16).ContinueWith(async delegate
+				{
+					try
+					{
+						var str = System.Text.UTF8Encoding.UTF8.GetString(buffer, 0, 16);
+						if (str.StartsWith(PipeRestart))
+						{
+							Log.Warning("<IPC> Restart request received.");
+							UnifiedExit(restart: true);
+						}
+						else if (str.StartsWith(PipeTerm))
+						{
+							Log.Warning("<IPC> Termination request received.");
+							UnifiedExit(restart: false);
+						}
+
+						pipe.Disconnect();
+						pipe.BeginWaitForConnection(PipeCleaner, null);
+					}
+					catch (Exception ex)
+					{
+						Logging.Stacktrace(ex);
+					}
+				});
+			}
+			catch (Exception ex)
+			{
+				Logging.Stacktrace(ex);
+			}
+		}
+
+		static void PipeDream()
+		{
+			var ps = new System.IO.Pipes.PipeSecurity();
+			ps.AddAccessRule(new System.IO.Pipes.PipeAccessRule("Users", System.IO.Pipes.PipeAccessRights.Write, System.Security.AccessControl.AccessControlType.Allow));
+			ps.AddAccessRule(new System.IO.Pipes.PipeAccessRule(System.Security.Principal.WindowsIdentity.GetCurrent().Name, System.IO.Pipes.PipeAccessRights.FullControl, System.Security.AccessControl.AccessControlType.Allow));
+			ps.AddAccessRule(new System.IO.Pipes.PipeAccessRule("SYSTEM", System.IO.Pipes.PipeAccessRights.FullControl, System.Security.AccessControl.AccessControlType.Allow));
+
+			pipe = new System.IO.Pipes.NamedPipeServerStream(PipeName, System.IO.Pipes.PipeDirection.In, 1, System.IO.Pipes.PipeTransmissionMode.Message, System.IO.Pipes.PipeOptions.Asynchronous, 16, 8);
+
+			DisposalChute.Push(pipe);
+
+			pipe.BeginWaitForConnection(PipeCleaner, null);
+		}
+
+		static void PipeExplorer(bool restart=true)
+		{
+			Console.WriteLine("Attempting to communicate with running instance of TM.");
+
+			try
+			{
+				using (var pe = new System.IO.Pipes.NamedPipeClientStream(".", PipeName, System.IO.Pipes.PipeAccessRights.Write, System.IO.Pipes.PipeOptions.WriteThrough, System.Security.Principal.TokenImpersonationLevel.Impersonation, HandleInheritability.None))
+				{
+					pe.Connect(5_000);
+					if (pe.IsConnected)
+					{
+						byte[] buffer = System.Text.UTF8Encoding.UTF8.GetBytes(restart ? PipeRestart : PipeTerm);
+						//pe.WriteTimeout = 5_000;
+						pe.WriteAsync(buffer, 0, buffer.Length, cancel.Token).Wait(5_000);
+						cancel.Cancel();
+					}
+					System.Threading.Thread.Sleep(100); // HACK: pipes don't like things happening too fast.
+				}
+			}
+			catch (Exception ex)
+			{
+				Logging.Stacktrace(ex, crashsafe: true);
+			}
 		}
 
 		// entry point to the application
@@ -1050,6 +1155,34 @@ namespace Taskmaster
 			System.Windows.Forms.Application.SetCompatibleTextRenderingDefault(false); // required by high dpi-awareness
 
 			TryPortableMode();
+
+			// Singleton
+			bool mutexgained = false;
+			singleton = new System.Threading.Mutex(true, "088f7210-51b2-4e06-9bd4-93c27a973874.taskmaster", out mutexgained);
+			if (!mutexgained)
+			{
+				// already running, signal original process
+				var rv = MessageBox.Show(
+					"Already operational.\n\nAbort to kill running instance and exit this.\nRetry to try to recover [restart] running instance.\nIgnore to exit this.",
+					System.Windows.Forms.Application.ProductName + "!",
+					MessageBoxButtons.AbortRetryIgnore, MessageBoxIcon.Exclamation, MessageBoxDefaultButton.Button2);
+
+				switch (rv)
+				{
+					case DialogResult.Retry:
+						PipeExplorer(restart:true);
+						break;
+					case DialogResult.Abort:
+						PipeExplorer(restart: false);
+						break;
+					case DialogResult.Ignore:
+						break;
+				}
+
+				return -1;
+			}
+
+			PipeDream();
 
 			// Multi-core JIT
 			// https://docs.microsoft.com/en-us/dotnet/api/system.runtime.profileoptimization
@@ -1088,21 +1221,6 @@ namespace Taskmaster
 					ParseArguments(args);
 
 					// STARTUP
-
-					if (Taskmaster.Trace) Log.Verbose("Testing for single instance.");
-
-					// Singleton
-					bool mutexgained = false;
-					singleton = new System.Threading.Mutex(true, "088f7210-51b2-4e06-9bd4-93c27a973874.taskmaster", out mutexgained);
-					if (!mutexgained)
-					{
-						// already running, signal original process
-						var rv = MessageBox.Show(
-							"Already operational.\n\nAbort to kill running instance and exit this.\nRetry to try to recover running instance.\nIgnore to exit this.",
-							System.Windows.Forms.Application.ProductName + "!",
-							MessageBoxButtons.AbortRetryIgnore, MessageBoxIcon.Exclamation, MessageBoxDefaultButton.Button2);
-						return -1;
-					}
 
 					var builddate = DateTime.ParseExact(Properties.Resources.BuildDate.Trim(), "yyyy/MM/dd HH:mm:ss K", null, System.Globalization.DateTimeStyles.None);
 
