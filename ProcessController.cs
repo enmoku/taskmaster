@@ -490,13 +490,13 @@ namespace Taskmaster
 		/// <summary>
 		/// Pause the specified foreground process.
 		/// </summary>
-		public void Pause(ProcessEx info)
+		public void Pause(ProcessEx info, bool firsttime = false)
 		{
-			Debug.Assert(ForegroundOnly == true);
-			Debug.Assert(!PausedIds.ContainsKey(info.Id));
+			Debug.Assert(ForegroundOnly == true, "Pause called for non-foreground only rule");
+			//Debug.Assert(!PausedIds.ContainsKey(info.Id));
 
 			if (!PausedIds.TryAdd(info.Id, 0))
-				return; // already paused
+				return; // already paused.
 
 			if (Taskmaster.DebugForeground && Taskmaster.Trace)
 				Log.Debug("[" + FriendlyName + "] Quelling " + info.Name + " (#" + info.Id + ")");
@@ -537,36 +537,40 @@ namespace Taskmaster
 
 			if (Taskmaster.PowerManagerEnabled)
 			{
-				if (PowerPlan != PowerInfo.PowerMode.Undefined && BackgroundPowerdown)
+				if (PowerPlan != PowerInfo.PowerMode.Undefined)
 				{
-					if (Taskmaster.DebugPower)
-						Log.Debug("[" + FriendlyName + "] " + info.Name + " (#" + info.Id + ") background power down");
+					if (BackgroundPowerdown)
+					{
+						if (Taskmaster.DebugPower)
+							Log.Debug("[" + FriendlyName + "] " + info.Name + " (#" + info.Id + ") background power down");
 
-					UndoPower(info);
+						UndoPower(info);
+					}
+					else
+					{
+						SetPower(info); // kinda hackish to call this here, but...
+					}
 				}
 			}
 
-			if (Taskmaster.ShowProcessAdjusts)
+			if (Taskmaster.ShowProcessAdjusts && firsttime)
 			{
-				if (!ForegroundWatch.TryGetValue(info.Id, out _))
+				var ev = new ProcessEventArgs()
 				{
-					var ev = new ProcessEventArgs()
-					{
-						PriorityNew = mPriority ? BackgroundPriority : null,
-						PriorityOld = oldPriority,
-						AffinityNew = mAffinity ? BackgroundAffinity : -1,
-						AffinityOld = oldAffinity,
-						Info = info,
-						Control = this,
-						State = ProcessRunningState.Reduced,
-					};
+					PriorityNew = mPriority ? BackgroundPriority : null,
+					PriorityOld = oldPriority,
+					AffinityNew = mAffinity ? BackgroundAffinity : -1,
+					AffinityOld = oldAffinity,
+					Info = info,
+					Control = this,
+					State = ProcessRunningState.Reduced,
+				};
 
-					ev.User = new System.Text.StringBuilder();
+				ev.User = new System.Text.StringBuilder();
 
-					ev.User.Append(" – Background Mode");
+				ev.User.Append(" – Background Mode");
 
-					LogAdjust(ev);
-				}
+				LogAdjust(ev);
 			}
 
 			Paused?.Invoke(this, new ProcessEventArgs() { Control = this, Info = info, State = ProcessRunningState.Reduced });
@@ -750,7 +754,6 @@ namespace Taskmaster
 
 			info.PowerWait = true;
 			PowerList.TryAdd(info.Id, 0);
-
 			var ea = new ProcessEventArgs() { Info = info, Control = this, State = ProcessRunningState.Undefined };
 			WaitingExit?.Invoke(this, ea);
 			Resumed?.Invoke(this, ea);
@@ -1033,38 +1036,36 @@ namespace Taskmaster
 			newAffinity = null;
 			newPriority = null;
 
-			bool doModifyPriority = false;
+			bool doModifyPriority = !isProtectedFile;
 			bool doModifyAffinity = false;
 			bool doModifyPower = false;
 
 			if (!isProtectedFile)
 			{
-				if (!foreground && ForegroundOnly)
-				{
-					if (Taskmaster.DebugForeground || Taskmaster.ShowInaction)
-						Log.Debug("[" + FriendlyName + "] " + info.Name + " (#" + info.Id + ") not in foreground, not prioritizing.");
-
-					Pause(info);
-
-					if (BackgroundPowerdown && PowerPlan != PowerInfo.PowerMode.Undefined)
-						return;
-				}
-				else
-					doModifyPriority = true;
-
 				if (ForegroundOnly)
 				{
+					bool firsttime = false;
 					if (ForegroundWatch.TryAdd(info.Id, 0))
 					{
 						info.Process.EnableRaisingEvents = true;
 						info.Process.Exited += (o, s) => End(info);
+						firsttime = true;
+					}
+
+					if (!foreground)
+					{
+						if (Taskmaster.DebugForeground || Taskmaster.ShowInaction)
+							Log.Debug("[" + FriendlyName + "] " + info.Name + " (#" + info.Id + ") not in foreground, not prioritizing.");
+
+						Pause(info, firsttime);
+						return;
 					}
 				}
 			}
 			else
 			{
 				if (Taskmaster.ShowInaction && Taskmaster.DebugProcesses)
-					Log.Verbose("[" + FriendlyName + "] " + info.Name + " (#" + info.Id + ") protected.");
+					Log.Verbose("[" + FriendlyName + "] " + info.Name + " (#" + info.Id + ") PROTECTED");
 			}
 
 			int newAffinityMask = -1;
