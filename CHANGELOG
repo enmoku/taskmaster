@@ -3,6 +3,12 @@ Comprehensive changes can be found in Git change history:
 	https://github.com/mkahvi/taskmaster/commits/master
 
 ## [0.12...]
+### 2018-01-04
+	Fixed: Volume settings in watchlist rules were not saved.
+	Fixed: Some numeric scrolling controls reset when entering values manually, ignoring the user input.
+	Improved: Watchlist rule validation.
+	Added: Global hotkey ctrl-alt-shift-r now invokes rescan.
+	Added: Global hotkeys can now be enabled in component configuration window.
 ### 2018-01-03
 	Fixed: The dialog shown when you have already instance of TM running now actually CAN restart or kill the original instance.
 	Changed: Exit procedure is different again. This may result in new crashes on exit.
