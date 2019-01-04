@@ -294,6 +294,17 @@ namespace Taskmaster
 			{
 			};
 
+			// REGISTER GLOBAL HOTKEYS
+			var hotkeys = new CheckBox()
+			{
+				AutoSize = true,
+				Dock = DockStyle.Left,
+				Checked = Taskmaster.GlobalHotkeys,
+			};
+			tooltip.SetToolTip(hotkeys, "Register globally accessible hotkeys for certain actions.");
+			layout.Controls.Add(new Label { Text = "Global hotkeys", AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, Padding = CustomPadding, Dock = DockStyle.Left });
+			layout.Controls.Add(hotkeys);
+
 			// SHOW ON START
 			var showonstart = new CheckBox()
 			{
@@ -381,6 +392,9 @@ namespace Taskmaster
 				perf["WMI event watcher"].BoolValue = (ScanOrWMI.SelectedIndex != 0);
 				perf["WMI poll delay"].IntValue = ((int)wmipolling.Value);
 				perf["WMI queries"].BoolValue = (ScanOrWMI.SelectedIndex != 0);
+
+				var qol = cfg.Config["Quality of Life"];
+				qol["Register global hotkeys"].BoolValue = hotkeys.Checked;
 
 				cfg.Save(force:true);
 
