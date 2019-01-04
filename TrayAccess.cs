@@ -186,19 +186,25 @@ namespace Taskmaster
 			Taskmaster.UnifiedExit();
 		}
 
+		int hotkeymodifiers = (int)NativeMethods.KeyModifier.Control | (int)NativeMethods.KeyModifier.Shift | (int)NativeMethods.KeyModifier.Alt;
+
 		bool registered = false;
+		// TODO: Move this off elsewhere
 		public void RegisterGlobalHotkeys()
 		{
+			Debug.Assert(Taskmaster.IsMainThread(), "RegisterGlobalHotkeys must be called from main thread");
+
 			if (registered) return;
 
 			try
 			{
-				int hotkeyId = 0;
-				int modifiers = (int)NativeMethods.KeyModifier.Control | (int)NativeMethods.KeyModifier.Shift | (int)NativeMethods.KeyModifier.Alt;
+				NativeMethods.RegisterHotKey(Handle, 0, hotkeymodifiers, Keys.M.GetHashCode());
 
-				NativeMethods.RegisterHotKey(Handle, hotkeyId, modifiers, Keys.M.GetHashCode());
+				Log.Information("<Global> Registered hotkey: ctrl-alt-shift-m = free memory [ignore foreground]");
 
-				Log.Information("<Tray> Registered global hotkey: ctrl-alt-shift-m = free memory [for foreground]");
+				NativeMethods.RegisterHotKey(Handle, 1, hotkeymodifiers, Keys.R.GetHashCode());
+
+				Log.Information("<Global> Registered hotkey: ctrl-alt-shift-r = scan");
 
 				registered = true;
 			}
@@ -210,40 +216,47 @@ namespace Taskmaster
 
 		void UnregisterGlobalHotkeys()
 		{
-			NativeMethods.UnregisterHotKey(Handle, 0);
-		}
+			Debug.Assert(Taskmaster.IsMainThread(), "UnregisterGlobalHotkeys must be called from main thread");
 
-		int hotkeyinprogress = 0;
+			if (registered)
+			{
+				NativeMethods.UnregisterHotKey(Handle, 0);
+				NativeMethods.UnregisterHotKey(Handle, 1);
+			}
+		}
 
 		protected override void WndProc(ref Message m)
 		{
 			if (m.Msg == NativeMethods.WM_HOTKEY)
 			{
-				//Keys key = (Keys)(((int)m.LParam >> 16) & 0xFFFF);
-				//NativeMethods.KeyModifier modifier = (NativeMethods.KeyModifier)((int)m.LParam & 0xFFFF);
+				Keys key = (Keys)(((int)m.LParam >> 16) & 0xFFFF);
+				//NativeMethods.KeyModifier modifiers = (NativeMethods.KeyModifier)((int)m.LParam & 0xFFFF);
+				int modifiers =(int)m.LParam & 0xFFFF;
 				int id = m.WParam.ToInt32(); // registered hotkey id
 
-				if (Atomic.Lock(ref hotkeyinprogress))
+				if (modifiers != hotkeymodifiers)
+					Log.Debug("<Global> Received unexpected modifier keys: " + modifiers + " instead of " + hotkeymodifiers);
+
+				switch (key)
 				{
-					if (Taskmaster.Trace) Log.Verbose("<Tray> Hotkey ctrl-alt-shift-m detected!!!");
-					Task.Run(new Action(async () =>
-					{
-						try
+					case Keys.M:
+						if (Taskmaster.Trace) Log.Verbose("<Global> Hotkey ctrl-alt-shift-m detected!!!");
+						Task.Run(new Action(async () =>
 						{
 							int ignorepid = Taskmaster.activeappmonitor?.Foreground ?? -1;
-							Log.Information("<Tray> Hotkey detected, freeing memory while ignoring foreground{Ign} if possible.",
-								ignorepid > 4 ? (" (#" + ignorepid + ")") : string.Empty);
+							Log.Information("<Global> Hotkey detected; Freeing memory while ignoring foreground"+
+								(ignorepid > 4 ? $" (#{ignorepid})" : string.Empty) + " if possible.");
 							await processmanager.FreeMemory(ignorepid).ConfigureAwait(false);
-						}
-						catch (Exception ex)
-						{
-							Logging.Stacktrace(ex);
-						}
-						finally
-						{
-							Atomic.Unlock(ref hotkeyinprogress);
-						}
-					})).ConfigureAwait(false);
+						})).ConfigureAwait(false);
+						break;
+					case Keys.R:
+						if (Taskmaster.Trace) Log.Verbose("<Global> Hotkey ctrl-alt-shift-r detected!!!");
+						Log.Information("<Global> Hotkey detected; Hastening next scan.");
+						processmanager?.HastenScan();
+						break;
+					default:
+						Log.Debug("<Global> Received unexpected key event: " + key.ToString());
+						break;
 				}
 			}
 

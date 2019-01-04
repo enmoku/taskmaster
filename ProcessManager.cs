@@ -329,7 +329,14 @@ namespace Taskmaster
 
 		public async Task FreeMemory(int ignorePid = -1)
 		{
-			await FreeMemoryInternal(ignorePid).ConfigureAwait(false);
+			try
+			{
+				await FreeMemoryInternal(ignorePid).ConfigureAwait(false);
+			}
+			catch (Exception ex)
+			{
+				Logging.Stacktrace(ex);
+			}
 		}
 
 		async Task FreeMemoryInternal(int ignorePid = -1)
