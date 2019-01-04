@@ -46,17 +46,33 @@ namespace Taskmaster.Extensions
 			// nothing here
 		}
 
-		public string Unit { get; set; } = null;
+		public string Unit { get; set; } = string.Empty;
 
+		// turn text to value
+		new protected void ParseEditText()
+		{
+			if (decimal.TryParse((string.IsNullOrEmpty(Unit) ? Text : Text.Replace(Unit, "")).Trim(), out decimal tval))
+				Value = Math.Min(Math.Max(tval, Minimum), Maximum);
+			else
+			{
+				//throw new NotImplementedException();
+				// HACK: Just ignore... fuck if there's reasonable default for garbled user data
+			}
+		}
+
+		// Turn value to text. Called by Value=# setter
 		protected override void UpdateEditText()
 		{
-			if (!string.IsNullOrEmpty(Unit))
+			if (UserEdit)
 			{
-				FormatInfo.NumberDecimalDigits = DecimalPlaces;
-				Text = string.Format(FormatInfo, "{0:F}", Value) + " " + Unit;
+				UserEdit = false; // HACK: to prevent infinite loop
+				ParseEditText(); // HACK: For some reason ValidateEditText() is not called and instead this happens
+				return; // HACK: UpdateEditText is called by ParseEditText indirectly by Value=??
 			}
-			else
-				base.UpdateEditText();
+
+			FormatInfo.NumberDecimalDigits = DecimalPlaces;
+
+			Text = string.Format(FormatInfo, "{0:F}", Value) + (!string.IsNullOrEmpty(Unit) ? $" {Unit}" : "");
 		}
 	}
 }
