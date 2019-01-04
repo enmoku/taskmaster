@@ -207,13 +207,15 @@ namespace Taskmaster
 			}
 
 			Controller.Enabled = enOrig;
+
+			Controller.SanityCheck();
+
 			Controller.SaveConfig();
 
 			Log.Information("[" + Controller.FriendlyName + "] " + (newPrc ? "Created" : "Modified"));
 
 			DialogResult = DialogResult.OK;
 
-			Controller.SanityCheck();
 			Controller.Refresh();
 
 			Close();
@@ -716,7 +718,7 @@ namespace Taskmaster
 				Maximum = 100.0M,
 				Minimum = 0.0M,
 				Width = 80,
-				Value = Convert.ToDecimal(Controller.Volume * 100.0),
+				Value = Convert.ToDecimal(Controller.Volume * 100f),
 			};
 			tooltip.SetToolTip(volume, "Percentage of device maximum volume.");
 			lt.Controls.Add(volume);

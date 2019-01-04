@@ -225,6 +225,9 @@ namespace Taskmaster
 			}
 			else
 				BackgroundPriority = null;
+
+			if (VolumeStrategy == AudioVolumeStrategy.Ignore)
+				Volume = float.NaN;
 		}
 
 		public void DeleteConfig(ConfigWrapper cfg = null)
