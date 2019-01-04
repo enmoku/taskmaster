@@ -137,16 +137,10 @@ namespace Taskmaster
 				Controller.PriorityStrategy = ProcessPriorityStrategy.None;
 				switch (priorityClassMethod.SelectedIndex)
 				{
-					case 0: // increase
-						Controller.PriorityStrategy = ProcessPriorityStrategy.Increase;
-						break;
-					case 1: // decrease
-						Controller.PriorityStrategy = ProcessPriorityStrategy.Decrease;
-						break;
+					case 0: Controller.PriorityStrategy = ProcessPriorityStrategy.Increase; break;
+					case 1: Controller.PriorityStrategy = ProcessPriorityStrategy.Decrease; break;
 					default:
-					case 2: // bidirectional
-						Controller.PriorityStrategy = ProcessPriorityStrategy.Force;
-						break;
+					case 2: Controller.PriorityStrategy = ProcessPriorityStrategy.Force; break;
 				}
 			}
 
@@ -196,6 +190,21 @@ namespace Taskmaster
 
 			if (desc.Text.Length > 0)
 				Controller.Description = desc.Text;
+
+			if (Taskmaster.AudioManagerEnabled && volumeMethod.SelectedIndex != 5)
+			{
+				switch (volumeMethod.SelectedIndex)
+				{
+					case 0: Controller.VolumeStrategy = AudioVolumeStrategy.Increase; break;
+					case 1: Controller.VolumeStrategy = AudioVolumeStrategy.Decrease; break;
+					case 2: Controller.VolumeStrategy = AudioVolumeStrategy.IncreaseFromMute; break;
+					case 3: Controller.VolumeStrategy = AudioVolumeStrategy.DecreaseFromFull; break;
+					case 4: Controller.VolumeStrategy = AudioVolumeStrategy.Force; break;
+					default: Controller.VolumeStrategy = AudioVolumeStrategy.Ignore; break;
+				}
+
+				Controller.Volume = Convert.ToSingle(volume.Value) / 100f;
+			}
 
 			Controller.Enabled = enOrig;
 			Controller.SaveConfig();
@@ -431,15 +440,9 @@ namespace Taskmaster
 
 			switch (Controller.PriorityStrategy)
 			{
-				case ProcessPriorityStrategy.Increase:
-					priorityClassMethod.SelectedIndex = 0;
-					break;
-				case ProcessPriorityStrategy.Decrease:
-					priorityClassMethod.SelectedIndex = 1;
-					break;
-				default:
-					priorityClassMethod.SelectedIndex = 2;
-					break;
+				case ProcessPriorityStrategy.Increase: priorityClassMethod.SelectedIndex = 0; break;
+				case ProcessPriorityStrategy.Decrease: priorityClassMethod.SelectedIndex = 1; break;
+				default: priorityClassMethod.SelectedIndex = 2; break;
 			}
 
 			lt.Controls.Add(priorityClass);
@@ -559,16 +562,10 @@ namespace Taskmaster
 
 			switch (Controller.AffinityStrategy)
 			{
-				case ProcessAffinityStrategy.Force:
-					affstrategy.SelectedIndex = 2;
-					break;
+				case ProcessAffinityStrategy.Force: affstrategy.SelectedIndex = 2; break;
 				default:
-				case ProcessAffinityStrategy.Limit:
-					affstrategy.SelectedIndex = 1;
-					break;
-				case ProcessAffinityStrategy.None:
-					affstrategy.SelectedIndex = 0;
-					break;
+				case ProcessAffinityStrategy.Limit: affstrategy.SelectedIndex = 1; break;
+				case ProcessAffinityStrategy.None: affstrategy.SelectedIndex = 0; break;
 			}
 
 			lt.Controls.Add(afflayout);
@@ -734,25 +731,13 @@ namespace Taskmaster
 			{
 				switch (Controller.VolumeStrategy)
 				{
-					case AudioVolumeStrategy.Increase:
-						volumeMethod.SelectedIndex = 0;
-						break;
-					case AudioVolumeStrategy.Decrease:
-						volumeMethod.SelectedIndex = 1;
-						break;
-					case AudioVolumeStrategy.IncreaseFromMute:
-						volumeMethod.SelectedIndex = 2;
-						break;
-					case AudioVolumeStrategy.DecreaseFromFull:
-						volumeMethod.SelectedIndex = 3;
-						break;
-					case AudioVolumeStrategy.Force:
-						volumeMethod.SelectedIndex = 4;
-						break;
+					case AudioVolumeStrategy.Increase: volumeMethod.SelectedIndex = 0; break;
+					case AudioVolumeStrategy.Decrease: volumeMethod.SelectedIndex = 1; break;
+					case AudioVolumeStrategy.IncreaseFromMute: volumeMethod.SelectedIndex = 2; break;
+					case AudioVolumeStrategy.DecreaseFromFull: volumeMethod.SelectedIndex = 3; break;
+					case AudioVolumeStrategy.Force: volumeMethod.SelectedIndex = 4; break;
 					default:
-					case AudioVolumeStrategy.Ignore:
-						volumeMethod.SelectedIndex = 5;
-						break;
+					case AudioVolumeStrategy.Ignore: volumeMethod.SelectedIndex = 5; break;
 				}
 
 				// disable volume control if method is to ignore it
