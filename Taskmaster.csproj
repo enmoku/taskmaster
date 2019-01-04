@@ -121,6 +121,7 @@
   <ItemGroup>
     <Compile Include="ActiveAppManager.cs" />
     <Compile Include="AudioManager.cs" />
+    <Compile Include="Cause.cs" />
     <Compile Include="ConfigManager.cs" />
     <Compile Include="Extensions\NumericUpDownEx.cs">
       <SubType>Component</SubType>
@@ -188,9 +189,7 @@
     </Compile>
     <Compile Include="Statistics.cs" />
     <Compile Include="TaskMaster.cs" />
-    <Compile Include="TrayAccess.cs">
-      <SubType>Form</SubType>
-    </Compile>
+    <Compile Include="TrayAccess.cs" />
     <Compile Include="Utility.cs" />
     <Compile Include="Extensions\ProcessExtensions.cs" />
     <Compile Include="Extensions\SharpConfigExtensions.cs" />
