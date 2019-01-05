@@ -5,6 +5,8 @@ Comprehensive changes can be found in Git change history:
 ## [0.12...]
 ### 2018-01-05
 	Internal: Massive internal changes that should improve responsiviness but also potentially cause new bugs.
+	Fixed: Watchlist ignore list was not actually ignoring things properly.
+	Fixed: Some unreliability with foreground only rules.
 ### 2018-01-04
 	Fixed: Volume settings in watchlist rules were not saved.
 	Fixed: Some numeric scrolling controls reset when entering values manually, ignoring the user input.
