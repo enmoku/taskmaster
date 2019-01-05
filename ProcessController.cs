@@ -1000,7 +1000,7 @@ namespace Taskmaster
 
 			if (Taskmaster.Trace) Log.Verbose("[" + FriendlyName + "] Touching: " + info.Name + " (#" + info.Id + ")");
 
-			if (IgnoreList != null && IgnoreList.Contains(info.Name, StringComparer.InvariantCultureIgnoreCase))
+			if (IgnoreList != null && IgnoreList.Any(item => item.Equals(info.Name, StringComparison.InvariantCultureIgnoreCase)))
 			{
 				if (Taskmaster.ShowInaction && Taskmaster.DebugProcesses)
 					Log.Debug("[" + FriendlyName + "] " + info.Name + " (#" + info.Id + ") ignored due to user defined rule.");
@@ -1049,17 +1049,18 @@ namespace Taskmaster
 			bool doModifyAffinity = false;
 			bool doModifyPower = false;
 
+			bool firsttime = true;
 			if (!isProtectedFile)
 			{
 				if (ForegroundOnly)
 				{
-					bool firsttime = false;
 					if (ForegroundWatch.TryAdd(info.Id, 0))
 					{
 						info.Process.EnableRaisingEvents = true;
 						info.Process.Exited += (o, s) => End(info);
-						firsttime = true;
 					}
+					else 
+						firsttime = false;
 
 					if (!foreground)
 					{
@@ -1211,10 +1212,9 @@ namespace Taskmaster
 
 			bool logevent = false;
 
-			if (modified)
-				logevent = Taskmaster.ShowProcessAdjusts && !(ForegroundOnly && !Taskmaster.ShowForegroundTransitions);
-			else
-				logevent = (Taskmaster.ShowInaction && Taskmaster.DebugProcesses);
+			if (modified) logevent = Taskmaster.ShowProcessAdjusts && !(ForegroundOnly && !Taskmaster.ShowForegroundTransitions);
+			logevent |= (firsttime && ForegroundOnly);
+			logevent |= (Taskmaster.ShowInaction && Taskmaster.DebugProcesses);
 
 			var ev = new ProcessEventArgs()
 			{

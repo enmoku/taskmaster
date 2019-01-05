@@ -761,6 +761,15 @@ namespace Taskmaster
 				PathVisibilityOptions pvis = PathVisibilityOptions.File;
 				pvis = (PathVisibilityOptions)(section.TryGet("Path visibility")?.IntValue.Constrain(0, 3) ?? 0);
 
+				string[] tignorelist = (section.TryGet(HumanReadable.Generic.Ignore)?.StringValueArray ?? null);
+				if (tignorelist != null && tignorelist.Length > 0)
+				{
+					for (int i = 0; i < tignorelist.Length; i++)
+						tignorelist[i] = tignorelist[i].ToLowerInvariant();
+				}
+				else
+					tignorelist = null;
+
 				var prc = new ProcessController(section.Name, prioR, (aff == 0 ? AllCPUsMask : aff))
 				{
 					Enabled = section.TryGet(HumanReadable.Generic.Enabled)?.BoolValue ?? true,
@@ -778,7 +787,7 @@ namespace Taskmaster
 					BackgroundPriority = bprio,
 					BackgroundAffinity = baff,
 					BackgroundPowerdown = (section.TryGet("Background powerdown")?.BoolValue ?? false),
-					IgnoreList = (section.TryGet(HumanReadable.Generic.Ignore)?.StringValueArray ?? null),
+					IgnoreList = tignorelist,
 					AllowPaging = (section.TryGet("Allow paging")?.BoolValue ?? false),
 				};
 
@@ -1072,7 +1081,7 @@ namespace Taskmaster
 			if (string.IsNullOrEmpty(info.Path) && !ProcessManagerUtility.FindPath(info))
 				return null; // return ProcessState.Error;
 
-			if (IgnoreSystem32Path && info.Path.Contains(Environment.GetFolderPath(Environment.SpecialFolder.System)))
+			if (IgnoreSystem32Path && info.Path.StartsWith(Environment.GetFolderPath(Environment.SpecialFolder.System)))
 			{
 				if (Taskmaster.ShowInaction && Taskmaster.DebugProcesses)
 					Log.Debug("<Process/Path> " + info.Name + " (#" + info.Id + ") in System32, ignoring");
@@ -1181,10 +1190,10 @@ namespace Taskmaster
 		bool IgnoreProcessID(int pid) => SystemProcessId(pid) || ignorePids.Contains(pid);
 
 		[System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
-		public static bool IgnoreProcessName(string name) => IgnoreList.Contains(name, StringComparer.InvariantCultureIgnoreCase);
+		public static bool IgnoreProcessName(string name) => IgnoreList.Any(item => item.Equals(name, StringComparison.InvariantCultureIgnoreCase));
 
 		[System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
-		public static bool ProtectedProcessName(string name) => ProtectList.Contains(name, StringComparer.InvariantCultureIgnoreCase);
+		public static bool ProtectedProcessName(string name) => ProtectList.Any(item => item.Equals(name, StringComparison.InvariantCultureIgnoreCase));
 		// %SYSTEMROOT%
 
 		/*

@@ -2186,7 +2186,7 @@ namespace Taskmaster
 					{
 						li.SubItems[2].Text = fg ? HumanReadable.System.Process.Foreground : HumanReadable.System.Process.Background;
 
-						Log.Debug("WaitlistHandler: " + ea.Info.Name + " = " + ea.State.ToString());
+						if (Taskmaster.Trace && Taskmaster.DebugForeground) Log.Debug("WaitlistHandler: " + ea.Info.Name + " = " + ea.State.ToString());
 						switch (ea.State)
 						{
 							case ProcessRunningState.Exiting:
@@ -2941,7 +2941,7 @@ namespace Taskmaster
 			var liy = (ListViewItem)y;
 			var result = 0;
 
-			Number = NumberColumns.Contains(Column);
+			Number = NumberColumns.Any(item => item == Column);
 
 			if (!Number)
 				result = Comparer.Compare(lix.SubItems[Column].Text, liy.SubItems[Column].Text);

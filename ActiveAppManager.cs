@@ -468,7 +468,7 @@ namespace Taskmaster
 					}
 
 					if (Taskmaster.DebugForeground && Taskmaster.ShowInaction)
-						Log.Debug("<Foreground >Active #" + activewindowev.Id + ": " + activewindowev.Title);
+						Log.Debug("<Foreground> Active #" + activewindowev.Id + ": " + activewindowev.Title);
 				}
 				else
 				{
