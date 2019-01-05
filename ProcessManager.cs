@@ -398,9 +398,8 @@ namespace Taskmaster
 
 		public event EventHandler<ProcessEventArgs> ProcessModified;
 
-		public event EventHandler<InstanceEventArgs> onInstanceHandling;
+		public event EventHandler<InstanceEventArgs> HandlingCounter;
 		public event EventHandler<ProcessEventArgs> ProcessStateChange;
-		public event EventHandler<ProcessEventArgs> onWaitForExitEvent;
 
 		public event EventHandler<InstanceHandlingArgs> HandlingStateChange;
 
@@ -1416,7 +1415,7 @@ namespace Taskmaster
 		void SignalProcessHandled(int adjust)
 		{
 			Handling += adjust;
-			onInstanceHandling?.Invoke(this, new InstanceEventArgs { Count = adjust, Total = Handling });
+			HandlingCounter?.Invoke(this, new InstanceEventArgs { Count = adjust, Total = Handling });
 		}
 
 		// This needs to return faster
@@ -1727,9 +1726,8 @@ namespace Taskmaster
 				ScanStartEvent = null;
 				ScanEndEvent = null;
 				ProcessModified = null;
-				onInstanceHandling = null;
+				HandlingCounter = null;
 				ProcessStateChange = null;
-				onWaitForExitEvent = null;
 				HandlingStateChange = null;
 
 				CancelPowerWait();

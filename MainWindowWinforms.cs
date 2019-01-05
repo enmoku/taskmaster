@@ -311,9 +311,8 @@ namespace Taskmaster
 
 			processmanager = control;
 
-			processmanager.onInstanceHandling += ProcessNewInstanceCount;
+			processmanager.HandlingCounter += ProcessNewInstanceCount;
 			processmanager.ProcessStateChange += ExitWaitListHandler;
-			processmanager.onWaitForExitEvent += ExitWaitListHandler;
 			if (Taskmaster.DebugCache) PathCacheUpdate(null, null);
 
 			WatchlistRules.BeginUpdate();
@@ -2897,8 +2896,7 @@ namespace Taskmaster
 					if (processmanager != null)
 					{
 						processmanager.ProcessModified -= ProcessTouchEvent;
-						processmanager.onWaitForExitEvent -= ExitWaitListHandler; //ExitWaitListHandler;
-						processmanager.onInstanceHandling -= ProcessNewInstanceCount;
+						processmanager.HandlingCounter -= ProcessNewInstanceCount;
 						processmanager.ProcessStateChange -= ExitWaitListHandler;
 						processmanager.HandlingStateChange -= ProcessHandlingStateChangeEvent;
 						processmanager = null;
