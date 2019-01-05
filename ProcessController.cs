@@ -1358,125 +1358,116 @@ namespace Taskmaster
 
 			try
 			{
-				lock (ResizeWaitList_lock)
+				if (ResizeWaitList.ContainsKey(info.Id)) return;
+
+				IntPtr hwnd = info.Process.MainWindowHandle;
+				if (!NativeMethods.GetWindowRect(hwnd, ref rect))
 				{
-					if (ResizeWaitList.Contains(info.Id)) return;
+					if (Taskmaster.DebugResize) Log.Debug("Failed to retrieve current size of " + info.Name + " (#" + info.Id + ")");
+				}
 
-					IntPtr hwnd = info.Process.MainWindowHandle;
-					if (!NativeMethods.GetWindowRect(hwnd, ref rect))
+				var oldrect = new System.Drawing.Rectangle(rect.Left, rect.Top, rect.Right - rect.Left, rect.Bottom - rect.Top);
+
+				var newsize = new System.Drawing.Rectangle(
+					Resize.Value.Left != 0 ? Resize.Value.Left : oldrect.Left,
+					Resize.Value.Top != 0 ? Resize.Value.Top : oldrect.Top,
+					Resize.Value.Width != 0 ? Resize.Value.Width : oldrect.Width,
+					Resize.Value.Height != 0 ? Resize.Value.Height : oldrect.Height
+					);
+
+				if (!newsize.Equals(oldrect))
+				{
+					if (Taskmaster.DebugResize)
+						Log.Debug("Resizing " + info.Name + " (#" + info.Id + ") from " +
+							oldrect.Width + "×" + oldrect.Height + " to " +
+							newsize.Width + "×" + newsize.Height);
+
+					// TODO: Add option to monitor the app and save the new size so relaunching the app keeps the size.
+
+					NativeMethods.MoveWindow(hwnd, newsize.Left, newsize.Top, newsize.Width, newsize.Height, true);
+
+					if (ResizeStrategy != WindowResizeStrategy.None)
 					{
-						if (Taskmaster.DebugResize) Log.Debug("Failed to retrieve current size of " + info.Name + " (#" + info.Id + ")");
+						Resize = newsize;
+						NeedsSaving = true;
 					}
+				}
 
-					var oldrect = new System.Drawing.Rectangle(rect.Left, rect.Top, rect.Right - rect.Left, rect.Bottom - rect.Top);
+				if (ResizeStrategy == WindowResizeStrategy.None)
+				{
+					if (Taskmaster.DebugResize) Log.Debug("Remembering size or pos not enabled for " + info.Name + " (#" + info.Id + ")");
+					return;
+				}
 
-					var newsize = new System.Drawing.Rectangle(
-						Resize.Value.Left != 0 ? Resize.Value.Left : oldrect.Left,
-						Resize.Value.Top != 0 ? Resize.Value.Top : oldrect.Top,
-						Resize.Value.Width != 0 ? Resize.Value.Width : oldrect.Width,
-						Resize.Value.Height != 0 ? Resize.Value.Height : oldrect.Height
-						);
+				ResizeWaitList.TryAdd(info.Id, 0);
 
-					if (!newsize.Equals(oldrect))
+				System.Threading.ManualResetEvent re = new System.Threading.ManualResetEvent(false);
+				Task.Run(new Action(() =>
+				{
+					if (Taskmaster.DebugResize) Log.Debug("<Resize> Starting monitoring " + info.Name + " (#" + info.Id + ")");
+					try
 					{
-						if (Taskmaster.DebugResize)
-							Log.Debug("Resizing " + info.Name + " (#" + info.Id + ") from " +
-								oldrect.Width + "×" + oldrect.Height + " to " +
-								newsize.Width + "×" + newsize.Height);
-
-						// TODO: Add option to monitor the app and save the new size so relaunching the app keeps the size.
-
-						NativeMethods.MoveWindow(hwnd, newsize.Left, newsize.Top, newsize.Width, newsize.Height, true);
-
-						if (ResizeStrategy != WindowResizeStrategy.None)
+						while (!re.WaitOne(60_000))
 						{
+							if (Taskmaster.DebugResize) Log.Debug("<Resize> Recording size and position for " + info.Name + " (#" + info.Id + ")");
+
+							NativeMethods.GetWindowRect(hwnd, ref rect);
+
+							bool rpos = Bit.IsSet(((int)ResizeStrategy), (int)WindowResizeStrategy.Position);
+							bool rsiz = Bit.IsSet(((int)ResizeStrategy), (int)WindowResizeStrategy.Size);
+							newsize = new System.Drawing.Rectangle(
+								rpos ? rect.Left : Resize.Value.Left, rpos ? rect.Top : Resize.Value.Top,
+								rsiz ? rect.Right - rect.Left : Resize.Value.Left, rsiz ? rect.Bottom - rect.Top : Resize.Value.Top
+								);
+
 							Resize = newsize;
 							NeedsSaving = true;
 						}
 					}
-
-					if (ResizeStrategy == WindowResizeStrategy.None)
+					catch (Exception ex)
 					{
-						if (Taskmaster.DebugResize) Log.Debug("Remembering size or pos not enabled for " + info.Name + " (#" + info.Id + ")");
-						return;
+						Logging.Stacktrace(ex);
 					}
+					if (Taskmaster.DebugResize) Log.Debug("<Resize> Stopping monitoring " + info.Name + " (#" + info.Id + ")");
+				})).ConfigureAwait(false);
 
-					ResizeWaitList.Add(info.Id);
-
-					System.Threading.ManualResetEvent re = new System.Threading.ManualResetEvent(false);
-					Task.Run(new Action(() =>
+				info.Process.EnableRaisingEvents = true;
+				info.Process.Exited += (s, ev) =>
+				{
+					try
 					{
-						if (Taskmaster.DebugResize) Log.Debug("<Resize> Starting monitoring " + info.Name + " (#" + info.Id + ")");
-						try
+						re.Set();
+						re.Reset();
+
+						ResizeWaitList.TryRemove(info.Id, out _);
+
+						if ((Bit.IsSet(((int)ResizeStrategy), (int)WindowResizeStrategy.Size)
+							&& (oldrect.Width != Resize.Value.Width || oldrect.Height != Resize.Value.Height))
+							|| (Bit.IsSet(((int)ResizeStrategy), (int)WindowResizeStrategy.Position)
+							&& (oldrect.Left != Resize.Value.Left || oldrect.Top != Resize.Value.Top)))
 						{
-							while (!re.WaitOne(60_000))
-							{
-								if (Taskmaster.DebugResize) Log.Debug("<Resize> Recording size and position for " + info.Name + " (#" + info.Id + ")");
+							if (Taskmaster.DebugResize)
+								Log.Debug("Saving " + info.Name + " (#" + info.Id + ") size to " +
+									Resize.Value.Width + "×" + Resize.Value.Height);
 
-								NativeMethods.GetWindowRect(hwnd, ref rect);
-
-								bool rpos = Bit.IsSet(((int)ResizeStrategy), (int)WindowResizeStrategy.Position);
-								bool rsiz = Bit.IsSet(((int)ResizeStrategy), (int)WindowResizeStrategy.Size);
-								newsize = new System.Drawing.Rectangle(
-									rpos ? rect.Left : Resize.Value.Left, rpos ? rect.Top : Resize.Value.Top,
-									rsiz ? rect.Right - rect.Left : Resize.Value.Left, rsiz ? rect.Bottom - rect.Top : Resize.Value.Top
-									);
-
-								Resize = newsize;
-								NeedsSaving = true;
-							}
+							NeedsSaving = true;
 						}
-						catch (Exception ex)
-						{
-							Logging.Stacktrace(ex);
-						}
-						if (Taskmaster.DebugResize) Log.Debug("<Resize> Stopping monitoring " + info.Name + " (#" + info.Id + ")");
-					})).ConfigureAwait(false);
-
-					info.Process.EnableRaisingEvents = true;
-					info.Process.Exited += (s, ev) =>
+					}
+					catch (Exception ex)
 					{
-						try
-						{
-							re.Set();
-							re.Reset();
-
-							lock (ResizeWaitList_lock)
-							{
-								ResizeWaitList.Remove(info.Id);
-							}
-
-							if ((Bit.IsSet(((int)ResizeStrategy), (int)WindowResizeStrategy.Size)
-								&& (oldrect.Width != Resize.Value.Width || oldrect.Height != Resize.Value.Height))
-								|| (Bit.IsSet(((int)ResizeStrategy), (int)WindowResizeStrategy.Position)
-								&& (oldrect.Left != Resize.Value.Left || oldrect.Top != Resize.Value.Top)))
-							{
-								if (Taskmaster.DebugResize)
-									Log.Debug("Saving " + info.Name + " (#" + info.Id + ") size to " +
-										Resize.Value.Width + "×" + Resize.Value.Height);
-
-								NeedsSaving = true;
-							}
-						}
-						catch (Exception ex)
-						{
-							Logging.Stacktrace(ex);
-						}
-						finally
-						{
-							ResizeWaitList.Remove(info.Id);
-						}
-					};
-				}
+						Logging.Stacktrace(ex);
+					}
+					finally
+					{
+						ResizeWaitList.TryRemove(info.Id, out _);
+					}
+				};
 			}
 			catch (Exception ex)
 			{
 				Logging.Stacktrace(ex);
 
-				lock (ResizeWaitList_lock)
-				{
-					ResizeWaitList.Remove(info.Id);
-				}
+				ResizeWaitList.TryRemove(info.Id, out _);
 			}
 		}
 
@@ -1488,8 +1479,7 @@ namespace Taskmaster
 		public bool RememberPos = false;
 		//public int[] Resize = null;
 		public System.Drawing.Rectangle? Resize = null;
-		List<int> ResizeWaitList = new List<int>();
-		object ResizeWaitList_lock = new object();
+		ConcurrentDictionary<int, int> ResizeWaitList = new ConcurrentDictionary<int, int>();
 
 		async Task TouchReapply(ProcessEx info)
 		{

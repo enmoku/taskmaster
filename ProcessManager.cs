@@ -141,8 +141,7 @@ namespace Taskmaster
 		/// <summary>
 		/// Watch rules
 		/// </summary>
-		List<ProcessController> Watchlist = new List<ProcessController>();
-		readonly object watchlist_lock = new object();
+		ConcurrentDictionary<ProcessController, int> Watchlist = new ConcurrentDictionary<ProcessController, int>();
 
 		public static bool WMIPolling { get; private set; } = true;
 		public static int WMIPollDelay { get; private set; } = 5;
@@ -192,20 +191,16 @@ namespace Taskmaster
 
 		public ProcessController[] getWatchlist()
 		{
-			lock (watchlist_lock)
-				return Watchlist.ToArray();
+			return Watchlist.Keys.ToArray();
 		}
 
 		// TODO: Need an ID mapping
 		public ProcessController getWatchedController(string name)
 		{
-			lock (watchlist_lock)
+			foreach (var item in Watchlist.Keys)
 			{
-				foreach (var item in Watchlist)
-				{
-					if (item.FriendlyName.Equals(name, StringComparison.InvariantCultureIgnoreCase))
-						return item;
-				}
+				if (item.FriendlyName.Equals(name, StringComparison.InvariantCultureIgnoreCase))
+					return item;
 			}
 
 			return null;
@@ -547,8 +542,7 @@ namespace Taskmaster
 				// Log.Verbose("[{ExecutableName}] Added to monitoring.", cnt.FriendlyName);
 			}
 
-			lock (watchlist_lock)
-				Watchlist.Add(prc);
+			Watchlist.TryAdd(prc, 0);
 
 			if (Taskmaster.Trace) Log.Verbose("[" + prc.FriendlyName + "] Match: " + (prc.Executable ?? prc.Path) + ", " +
 				(prc.Priority.HasValue ? Readable.ProcessPriority(prc.Priority.Value) : "n/a") +
@@ -889,8 +883,7 @@ namespace Taskmaster
 			if (!string.IsNullOrEmpty(prc.ExecutableFriendlyName))
 				ExeToController.TryRemove(prc.ExecutableFriendlyName.ToLowerInvariant(), out _);
 
-			lock (watchlist_lock)
-				Watchlist.Remove(prc);
+			Watchlist.TryRemove(prc, out _);
 
 			prc.Modified -= ProcessModifiedProxy;
 			prc.Paused -= ProcessPausedProxy;
@@ -898,8 +891,7 @@ namespace Taskmaster
 			prc.WaitingExit -= ProcessWaitingExitProxy;
 		}
 
-		readonly object waitforexit_lock = new object();
-		Dictionary<int, ProcessEx> WaitForExitList = new Dictionary<int, ProcessEx>();
+		ConcurrentDictionary<int, ProcessEx> WaitForExitList = new ConcurrentDictionary<int, ProcessEx>();
 
 		void WaitForExitTriggered(ProcessEx info, ProcessController controller, ProcessRunningState state = ProcessRunningState.Exiting)
 		{
@@ -918,8 +910,7 @@ namespace Taskmaster
 			if (info.PowerWait)
 				Taskmaster.powermanager.Release(info.Id);
 
-			lock (waitforexit_lock)
-				WaitForExitList.Remove(info.Id);
+			WaitForExitList.TryRemove(info.Id, out _);
 
 			controller?.End(info);
 
@@ -937,28 +928,26 @@ namespace Taskmaster
 			var cancelled = 0;
 
 			Stack<ProcessEx> clearList = null;
-			lock (waitforexit_lock)
+
+			if (WaitForExitList.Count == 0) return;
+
+			var items = WaitForExitList.Values;
+			clearList = new Stack<ProcessEx>();
+			foreach (var info in items)
 			{
-				if (WaitForExitList.Count == 0) return;
-
-				var items = WaitForExitList.Values;
-				clearList = new Stack<ProcessEx>();
-				foreach (var info in items)
+				if (info.PowerWait)
 				{
-					if (info.PowerWait)
+					// don't clear if we're still waiting for foreground
+					if (!info.ActiveWait)
 					{
-						// don't clear if we're still waiting for foreground
-						if (!info.ActiveWait)
+						try
 						{
-							try
-							{
-								info.Process.EnableRaisingEvents = false;
-							}
-							catch { } // nope, this throwing just verifies we're doing the right thing
-
-							clearList.Push(info);
-							cancelled++;
+							info.Process.EnableRaisingEvents = false;
 						}
+						catch { } // nope, this throwing just verifies we're doing the right thing
+
+						clearList.Push(info);
+						cancelled++;
 					}
 				}
 			}
@@ -977,27 +966,23 @@ namespace Taskmaster
 		{
 			bool exithooked = false;
 
-			lock (waitforexit_lock)
+			if (!WaitForExitList.TryAdd(info.Id, info))
+				return;
+
+			try
 			{
-				if (WaitForExitList.ContainsKey(info.Id)) return;
-
-				WaitForExitList.Add(info.Id, info);
-
-				try
-				{
-					info.Process.EnableRaisingEvents = true;
-					info.Process.Exited += (s, e) => WaitForExitTriggered(info, controller);
-					exithooked = true;
-				}
-				catch (InvalidOperationException) // already exited
-				{
-					WaitForExitList.Remove(info.Id);
-				}
-				catch (Exception ex) // unknown error
-				{
-					Logging.Stacktrace(ex);
-					WaitForExitList.Remove(info.Id);
-				}
+				info.Process.EnableRaisingEvents = true;
+				info.Process.Exited += (s, e) => WaitForExitTriggered(info, controller);
+				exithooked = true;
+			}
+			catch (InvalidOperationException) // already exited
+			{
+				WaitForExitList.TryRemove(info.Id, out _);
+			}
+			catch (Exception ex) // unknown error
+			{
+				Logging.Stacktrace(ex);
+				WaitForExitList.TryRemove(info.Id, out _);
 			}
 
 			if (exithooked)
@@ -1061,8 +1046,6 @@ namespace Taskmaster
 			PreviousForegroundController = null;
 		}
 
-		readonly object systemlock = new object();
-
 		// TODO: ADD CACHE: pid -> process name, path, process
 
 		public ProcessController getWatchedPath(ProcessEx info)
@@ -1102,37 +1085,33 @@ namespace Taskmaster
 			}
 
 			// TODO: This needs to be FASTER
-			lock (watchlist_lock)
+			foreach (ProcessController prc in Watchlist.Keys)
 			{
-				Debug.Assert(Watchlist != null);
-				foreach (ProcessController prc in Watchlist)
+				if (!prc.Enabled) continue;
+				if (string.IsNullOrEmpty(prc.Path)) continue;
+
+				if (!string.IsNullOrEmpty(prc.Executable))
 				{
-					if (!prc.Enabled) continue;
-					if (string.IsNullOrEmpty(prc.Path)) continue;
-
-					if (!string.IsNullOrEmpty(prc.Executable))
+					if (prc.Executable.Equals(info.Name, StringComparison.InvariantCultureIgnoreCase))
 					{
-						if (prc.Executable.Equals(info.Name, StringComparison.InvariantCultureIgnoreCase))
-						{
-							if (Taskmaster.DebugPaths)
-								Log.Debug("<Process> [" + prc.FriendlyName + "] Path+Exe matched.");
-						}
-						else
-							continue; // CheckPathWatch does not handle combo path+exes
-					}
-
-					// Log.Debug("with: "+ pc.Path);
-					if (prc.MatchPath(info.Path))
-					{
-						// if (cacheGet)
-						// 	Log.Debug("[{FriendlyName}] {Exec} (#{Pid}) – PATH CACHE GET!! :D", pc.FriendlyName, name, pid);
 						if (Taskmaster.DebugPaths)
-							Log.Verbose("[" + prc.FriendlyName + "] (CheckPathWatch) Matched at: " + info.Path);
-
-						info.PathMatched = true;
-						matchedprc = prc;
-						break;
+							Log.Debug("<Process> [" + prc.FriendlyName + "] Path+Exe matched.");
 					}
+					else
+						continue; // CheckPathWatch does not handle combo path+exes
+				}
+
+				// Log.Debug("with: "+ pc.Path);
+				if (prc.MatchPath(info.Path))
+				{
+					// if (cacheGet)
+					// 	Log.Debug("[{FriendlyName}] {Exec} (#{Pid}) – PATH CACHE GET!! :D", pc.FriendlyName, name, pid);
+					if (Taskmaster.DebugPaths)
+						Log.Verbose("[" + prc.FriendlyName + "] (CheckPathWatch) Matched at: " + info.Path);
+
+					info.PathMatched = true;
+					matchedprc = prc;
+					break;
 				}
 			}
 
@@ -1640,7 +1619,7 @@ namespace Taskmaster
 			{
 				watcher.EventArrived += NewInstanceTriage;
 
-				if (BatchProcessing) BatchProcessingTimer.Start();
+				if (BatchProcessing) lock (batchprocessing_lock) BatchProcessingTimer.Start();
 
 				watcher.Stopped += (_, _ea) =>
 				{
@@ -1686,44 +1665,40 @@ namespace Taskmaster
 
 			if (ScanFrequency < 300 && User.UserIdleTime() > (60f * 60f * 2f)) // 2 hours
 			{
-				lock (watchlist_lock)
-					foreach (var prc in Watchlist)
-						prc.Refresh();
+				foreach (var prc in Watchlist.Keys)
+					prc.Refresh();
 			}
 
 			Stack<ProcessEx> triggerList = null;
 			try
 			{
-				lock (waitforexit_lock)
+				var items = WaitForExitList.Values;
+				foreach (var info in items)
 				{
-					var items = WaitForExitList.Values;
-					foreach (var info in items)
+					try
 					{
-						try
-						{
-							info.Process.Refresh();
-							info.Process.WaitForExit(20);
-						}
-						catch { } // ignore
+						info.Process.Refresh();
+						info.Process.WaitForExit(20);
 					}
+					catch { } // ignore
+				}
 
-					System.Threading.Thread.Sleep(1000); // Meh
+				System.Threading.Thread.Sleep(1000); // Meh
 
-					triggerList = new Stack<ProcessEx>();
-					foreach (var info in items)
+				triggerList = new Stack<ProcessEx>();
+				foreach (var info in items)
+				{
+					try
 					{
-						try
-						{
-							info.Process.Refresh();
-							info.Process.WaitForExit(20);
-							if (info.Process.HasExited)
-								triggerList.Push(info);
-						}
-						catch
-						{
-							//Logging.Stacktrace(ex);
-							triggerList.Push(info);// potentially unwanted behaviour, but it's better this way
-						}
+						info.Process.Refresh();
+						info.Process.WaitForExit(20);
+						if (info.Process.HasExited)
+							triggerList.Push(info);
+					}
+					catch
+					{
+						//Logging.Stacktrace(ex);
+						triggerList.Push(info);// potentially unwanted behaviour, but it's better this way
 					}
 				}
 
@@ -1805,14 +1780,11 @@ namespace Taskmaster
 
 					var wcfg = Taskmaster.Config.Load(watchfile);
 
-					lock (watchlist_lock)
-					{
-						foreach (var prc in Watchlist)
-							if (prc.NeedsSaving) prc.SaveConfig(wcfg);
+					foreach (var prc in Watchlist.Keys)
+						if (prc.NeedsSaving) prc.SaveConfig(wcfg);
 
-						Watchlist?.Clear();
-						Watchlist = null;
-					}
+					Watchlist?.Clear();
+					Watchlist = null;
 				}
 				catch (Exception ex)
 				{
@@ -1830,9 +1802,8 @@ namespace Taskmaster
 
 			if (Taskmaster.Trace) Log.Verbose("Saving stats...");
 
-			lock (watchlist_lock)
-				foreach (ProcessController prc in Watchlist)
-					prc.SaveStats();
+			foreach (ProcessController prc in Watchlist.Keys)
+				prc.SaveStats();
 		}
 	}
 

@@ -25,6 +25,7 @@
 // THE SOFTWARE.
 
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -64,13 +65,11 @@ namespace Taskmaster
 
 		StoreStrategy CacheStoreStrategy = StoreStrategy.ReplaceNoMatch;
 
-		readonly Dictionary<K1, CacheItem<K1, K2, T>> Items = new Dictionary<K1, CacheItem<K1, K2, T>>();
+		readonly ConcurrentDictionary<K1, CacheItem<K1, K2, T>> Items = new ConcurrentDictionary<K1, CacheItem<K1, K2, T>>();
 
 		public long Count => Items.Count;
 		public long Hits { get; private set; } = 0;
 		public long Misses { get; private set; } = 0;
-
-		readonly object cache_lock = new object();
 
 		System.Threading.Timer pruneTimer = null;
 
@@ -99,7 +98,7 @@ namespace Taskmaster
 		/// <summary>
 		/// Prune cache.
 		/// </summary>
-		void Prune(object _)
+		void Prune(object _discard)
 		{
 			if (!Atomic.Lock(ref prune_in_progress)) return; // only one instance.
 			if (disposed) return; // HACK: dumbness with timers
@@ -110,82 +109,79 @@ namespace Taskmaster
 
 				if (Items.Count <= MaxCache && CacheEvictStrategy == EvictStrategy.LeastUsed) return;
 
-				lock (cache_lock)
+				var list = Items.Values.ToList(); // would be nice to cache this list
+
+				list.Sort(delegate (CacheItem<K1, K2, T> x, CacheItem<K1, K2, T> y)
 				{
-					var list = Items.Values.ToList(); // would be nice to cache this list
-
-					list.Sort(delegate (CacheItem<K1, K2, T> x, CacheItem<K1, K2, T> y)
+					if (CacheEvictStrategy == EvictStrategy.LeastRecent)
 					{
-						if (CacheEvictStrategy == EvictStrategy.LeastRecent)
-						{
-							if (x.Access < y.Access) return -1;
-							if (x.Access > y.Access) return 1;
-						// Both have equal at this point
-						if (x.Desirability < y.Desirability)
-								return -1;
-							if (x.Desirability > y.Desirability) return 1;
-						}
-						else
-						{
-							if (x.Desirability < y.Desirability) return -1;
-							if (x.Desirability > y.Desirability) return 1;
-						// Both have equal at this point
-						if (x.Access < y.Access)
-								return -1;
-							if (x.Access > y.Access) return 1;
-						}
-
-						return 0;
-					});
-
-					// Log.Debug("CACHE STATE: FIRST({First}) LAST({LAST})", list.First().Access, list.Last().Access);
-					// Log.Debug("CACHE ITEMS BEFORE PRUNE: {Items}", Items.Count);
-					while (Items.Count > MaxCache)
-					{
-						var bu = list.ElementAt(0);
-						var key = bu.AccessKey;
-						// Log.Debug("--- REMOVING: Key:{Key}, Last Access: {Date}, Desirability: {Value}",
-						// 		  key, bu.Access, bu.Desirability);
-						Items.Remove(key);
-						list.RemoveAt(0);
+						if (x.Access < y.Access) return -1;
+						if (x.Access > y.Access) return 1;
+							// Both have equal at this point
+							if (x.Desirability < y.Desirability)
+							return -1;
+						if (x.Desirability > y.Desirability) return 1;
 					}
-					// Log.Debug("CACHE ITEMS AFTER PRUNE: {Items}", Items.Count);
-
-					double bi = double.NaN;
-
-					var deleteItem = new Action<K1>(
-						(K1 key) =>
-						{
-							if (Taskmaster.Trace) Log.Verbose($"Removing {bi:N1} min old item.");
-							Items.Remove(key);
-							list.RemoveAt(0);
-						}
-					);
-
-					var now = DateTimeOffset.UtcNow;
-					while (list.Count > 0)
+					else
 					{
-						var bu = list.ElementAt(0);
-						bi = now.TimeSince(bu.Access).TotalMinutes;
+						if (x.Desirability < y.Desirability) return -1;
+						if (x.Desirability > y.Desirability) return 1;
+							// Both have equal at this point
+							if (x.Access < y.Access)
+							return -1;
+						if (x.Access > y.Access) return 1;
+					}
 
-						if (CacheEvictStrategy == EvictStrategy.LeastRecent)
-						{
-							if (bi > MaxAge)
-								deleteItem(bu.AccessKey);
-							else
-								break;
-						}
-						else // .LeastUsed, TM is never going to reach this.
-						{
-							if (bi > MinAge)
-								deleteItem(bu.AccessKey);
-							else
-								break;
-						}
+					return 0;
+				});
+
+				// Log.Debug("CACHE STATE: FIRST({First}) LAST({LAST})", list.First().Access, list.Last().Access);
+				// Log.Debug("CACHE ITEMS BEFORE PRUNE: {Items}", Items.Count);
+				while (Items.Count > MaxCache)
+				{
+					var bu = list.ElementAt(0);
+					var key = bu.AccessKey;
+					// Log.Debug("--- REMOVING: Key:{Key}, Last Access: {Date}, Desirability: {Value}",
+					// 		  key, bu.Access, bu.Desirability);
+					Items.TryRemove(key, out _);
+					list.Remove(bu);
+				}
+				// Log.Debug("CACHE ITEMS AFTER PRUNE: {Items}", Items.Count);
+
+				double bi = double.NaN;
+
+				var deleteItem = new Action<K1>(
+					(K1 key) =>
+					{
+						if (Taskmaster.Trace) Log.Verbose($"Removing {bi:N1} min old item.");
+						if (Items.TryRemove(key, out var item))
+							list.Remove(item);
+					}
+				);
+
+				var now = DateTimeOffset.UtcNow;
+				while (list.Count > 0)
+				{
+					var bu = list.ElementAt(0);
+					bi = now.TimeSince(bu.Access).TotalMinutes;
+
+					if (CacheEvictStrategy == EvictStrategy.LeastRecent)
+					{
+						if (bi > MaxAge)
+							deleteItem(bu.AccessKey);
+						else
+							break;
+					}
+					else // .LeastUsed, TM is never going to reach this.
+					{
+						if (bi > MinAge)
+							deleteItem(bu.AccessKey);
+						else
+							break;
 					}
 				}
 			}
-			catch(Exception ex)
+			catch (Exception ex)
 			{
 				Logging.Stacktrace(ex);
 			}
@@ -206,20 +202,17 @@ namespace Taskmaster
 		{
 			Misses++;
 
-			lock (cache_lock)
+			if (Items.ContainsKey(accesskey))
 			{
-				if (Items.ContainsKey(accesskey))
-				{
-					if (CacheStoreStrategy == StoreStrategy.Fail)
-						return false;
+				if (CacheStoreStrategy == StoreStrategy.Fail)
+					return false;
 
-					Items.Remove(accesskey); // .Replace
-				}
-
-				var ci = new CacheItem<K1, K2, T> { AccessKey = accesskey, ReturnKey = returnkey, Item = item, Access = DateTimeOffset.UtcNow, Desirability = 1 };
-				CacheItem<K1, K2, T> t = ci;
-				Items.Add(accesskey, t);
+				Items.TryRemove(accesskey, out _); // .Replace
 			}
+
+			var ci = new CacheItem<K1, K2, T> { AccessKey = accesskey, ReturnKey = returnkey, Item = item, Access = DateTimeOffset.UtcNow, Desirability = 1 };
+			CacheItem<K1, K2, T> t = ci;
+			Items.TryAdd(accesskey, t);
 
 			return true;
 		}
@@ -235,25 +228,22 @@ namespace Taskmaster
 		{
 			try
 			{
-				lock (cache_lock)
+				CacheItem<K1, K2, T> item;
+				if (Items.TryGetValue(key, out item))
 				{
-					CacheItem<K1, K2, T> item;
-					if (Items.TryGetValue(key, out item))
+					if (returnkeytest != null && !item.ReturnKey.Equals(returnkeytest)) // == does not match positively identical strings for some reason
 					{
-						if (returnkeytest != null && !item.ReturnKey.Equals(returnkeytest)) // == does not match positively identical strings for some reason
-						{
-							cacheditem = null;
-							Misses++;
-							Drop(key);
-							return null;
-						}
-
-						item.Desirability++;
-						item.Access = DateTimeOffset.UtcNow;
-						cacheditem = item.Item;
-						Hits++;
-						return item.ReturnKey;
+						cacheditem = null;
+						Misses++;
+						Drop(key);
+						return null;
 					}
+
+					item.Desirability++;
+					item.Access = DateTimeOffset.UtcNow;
+					cacheditem = item.Item;
+					Hits++;
+					return item.ReturnKey;
 				}
 			}
 			catch
@@ -275,7 +265,7 @@ namespace Taskmaster
 			return null;
 		}
 
-		public void Drop(K1 key) => Items.Remove(key);
+		public void Drop(K1 key) => Items.TryRemove(key, out _);
 
 		#region IDisposable Support
 		bool disposed = false; // To detect redundant calls

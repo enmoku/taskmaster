@@ -508,8 +508,6 @@ namespace Taskmaster
 		}
 
 		static PowerConfigWindow pcw = null;
-		static int PowerConfigVisible = 0;
-		static object PowerConfig_lock = new object();
 
 		public static void Reveal()
 		{
@@ -524,31 +522,28 @@ namespace Taskmaster
 				catch { } // don't care, if the above fails, the window doesn't exist and we can follow through after
 			}
 
-			lock (PowerConfig_lock)
+			try
 			{
-				try
+				// this is really horrifying mess
+				var power = Taskmaster.powermanager;
+				using (pcw = new PowerConfigWindow())
 				{
-					// this is really horrifying mess
-					var power = Taskmaster.powermanager;
-					using (pcw = new PowerConfigWindow())
+					var res = pcw.ShowDialog();
+					if (pcw.DialogResult == DialogResult.OK)
 					{
-						var res = pcw.ShowDialog();
-						if (pcw.DialogResult == DialogResult.OK)
-						{
-							// NOP
-						}
-						else
-						{
-							if (Taskmaster.Trace) Log.Verbose("<<UI>> Power config cancelled.");
-						}
+						// NOP
+					}
+					else
+					{
+						if (Taskmaster.Trace) Log.Verbose("<<UI>> Power config cancelled.");
 					}
 				}
-				catch { } // finally might not be executed otherwise
-				finally
-				{
-					pcw?.Dispose();
-					pcw = null;
-				}
+			}
+			catch { } // finally might not be executed otherwise
+			finally
+			{
+				pcw?.Dispose();
+				pcw = null;
 			}
 		}
 	}

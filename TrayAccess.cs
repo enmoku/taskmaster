@@ -25,6 +25,7 @@
 // THE SOFTWARE.
 
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Threading.Tasks;
@@ -465,15 +466,12 @@ namespace Taskmaster
 		Process[] Explorer;
 		async void ExplorerCrashHandler(int processId)
 		{
-			lock (explorer_lock)
-			{
-				KnownExplorerInstances.Remove(processId);
+			KnownExplorerInstances.TryRemove(processId, out _);
 
-				if (KnownExplorerInstances.Count > 0)
-				{
-					if (Taskmaster.Trace) Log.Verbose("<Tray> Explorer (#{Id}) exited but is not the last known explorer instance.", processId);
-					return;
-				}
+			if (KnownExplorerInstances.Count > 0)
+			{
+				if (Taskmaster.Trace) Log.Verbose("<Tray> Explorer (#{Id}) exited but is not the last known explorer instance.", processId);
+				return;
 			}
 
 			Log.Warning("<Tray> Explorer (#{Pid}) crash detected!", processId);
@@ -507,15 +505,8 @@ namespace Taskmaster
 			EnsureVisible();
 		}
 
-		object explorer_lock = new object();
-		HashSet<int> KnownExplorerInstances = new HashSet<int>();
-		Process[] ExplorerInstances
-		{
-			get
-			{
-				return Process.GetProcessesByName("explorer");
-			}
-		}
+		ConcurrentDictionary<int, int> KnownExplorerInstances = new ConcurrentDictionary<int, int>();
+		Process[] ExplorerInstances => Process.GetProcessesByName("explorer");
 
 		bool RegisterExplorerExit(Process[] procs = null)
 		{
@@ -542,13 +533,7 @@ namespace Taskmaster
 						}
 					}
 
-					bool added = false;
-					lock (explorer_lock)
-					{
-						added = KnownExplorerInstances.Add(info.Id);
-					}
-
-					if (added)
+					if (KnownExplorerInstances.TryAdd(info.Id, 0))
 					{
 						proc.Exited += (s, e) => ExplorerCrashHandler(info.Id);
 						proc.EnableRaisingEvents = true;
@@ -569,11 +554,7 @@ namespace Taskmaster
 		{
 			if (disposed) return;
 
-			try
-			{
-				Microsoft.Win32.SystemEvents.SessionEnding -= SessionEndingEvent; // leaks if not disposed
-			}
-			catch { }
+			Microsoft.Win32.SystemEvents.SessionEnding -= SessionEndingEvent; // leaks if not disposed
 
 			if (disposing)
 			{

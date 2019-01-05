@@ -214,7 +214,6 @@ namespace Taskmaster
 			}
 		}
 
-		bool SessionLocked = false;
 		MonitorPowerMode CurrentMonitorState = MonitorPowerMode.Invalid;
 
 		public void SetupEventHook()
@@ -282,6 +281,7 @@ namespace Taskmaster
 		}
 
 		bool Paused = false;
+		bool SessionLocked = false;
 		bool Forced = false;
 
 		long AutoAdjustCounter = 0;
@@ -289,18 +289,15 @@ namespace Taskmaster
 		public AutoAdjustSettings AutoAdjust { get; private set; } = new AutoAdjustSettings();
 		readonly object autoadjust_lock = new object();
 
-		public async Task SetAutoAdjust(AutoAdjustSettings settings)
+		public void SetAutoAdjust(AutoAdjustSettings settings)
 		{
-			await Task.Delay(0).ConfigureAwait(false);
-
 			lock (autoadjust_lock)
 			{
 				AutoAdjust = settings;
+
+				if (RestoreMethod == RestoreModeMethod.Default)
+					SetRestoreMode(RestoreMethod, RestoreMode);
 			}
-
-			if (RestoreMethod == RestoreModeMethod.Default)
-				SetRestoreMode(RestoreMethod, RestoreMode);
-
 			// TODO: Call reset on power manager?
 		}
 
@@ -309,24 +306,21 @@ namespace Taskmaster
 		PowerReaction PreviousReaction = PowerReaction.Average;
 
 		// TODO: Simplify this mess
-		public async void CPULoadHandler(object _, ProcessorEventArgs pev)
+		public void CPULoadHandler(object _, ProcessorEventArgs pev)
 		{
 			if (Behaviour != PowerBehaviour.Auto) return;
 
-			await Task.Delay(0).ConfigureAwait(false); // unnecessary?
-
-			var Reaction = PowerReaction.Average;
-			var ReactionaryPlan = AutoAdjust.DefaultMode;
-
-			var Ready = false;
-
 			var ev = PowerEventArgs.From(pev);
-
-			ev.Pressure = 0;
-			ev.Enacted = false;
 
 			lock (autoadjust_lock)
 			{
+				var Reaction = PowerReaction.Average;
+				var ReactionaryPlan = AutoAdjust.DefaultMode;
+
+				var Ready = false;
+
+				ev.Pressure = 0;
+				ev.Enacted = false;
 
 				if (PreviousReaction == PowerReaction.High)
 				{
@@ -408,7 +402,7 @@ namespace Taskmaster
 					}
 				}
 
-				var ReadyToAdjust = (Ready && !Forced && !Paused);
+				var ReadyToAdjust = (Ready && !Forced && !SessionLocked);
 
 				if (ReadyToAdjust && ReactionaryPlan != CurrentMode)
 				{
@@ -453,9 +447,9 @@ namespace Taskmaster
 						}
 					}
 				}
-			}
 
-			ev.Mode = ReactionaryPlan;
+				ev.Mode = ReactionaryPlan;
+			}
 
 			onAutoAdjustAttempt?.Invoke(this, ev);
 		}
@@ -657,55 +651,60 @@ namespace Taskmaster
 
 			var power = corecfg.Config[HumanReadable.Hardware.Power.Section];
 
-			string sbehaviour = HumanReadable.Hardware.Power.RuleBased.ToLower(); // default to rule-based
-			switch (LaunchBehaviour)
+			lock (autoadjust_lock)
 			{
-				case PowerBehaviour.Auto:
-					sbehaviour = HumanReadable.Hardware.Power.AutoAdjust.ToLower();
-					break;
-				case PowerBehaviour.Manual:
-					sbehaviour = HumanReadable.Hardware.Power.Manual.ToLower();
-					break;
-				default: break; // ignore
+				lock (power_lock)
+				{
+					string sbehaviour = HumanReadable.Hardware.Power.RuleBased.ToLower(); // default to rule-based
+					switch (LaunchBehaviour)
+					{
+						case PowerBehaviour.Auto:
+							sbehaviour = HumanReadable.Hardware.Power.AutoAdjust.ToLower();
+							break;
+						case PowerBehaviour.Manual:
+							sbehaviour = HumanReadable.Hardware.Power.Manual.ToLower();
+							break;
+						default: break; // ignore
+					}
+					power["Behaviour"].StringValue = sbehaviour;
+
+					power["Default mode"].StringValue = AutoAdjust.DefaultMode.ToString();
+
+					power["Restore mode"].StringValue = (RestoreMethod == RestoreModeMethod.Custom ? RestoreMode.ToString() : RestoreMethod.ToString());
+					if (PowerdownDelay > 0)
+						power["Watchlist powerdown delay"].IntValue = PowerdownDelay;
+					else
+						power.Remove("Watchlist powerdown delay");
+					var autopower = corecfg.Config["Power / Auto"];
+
+					// BACKOFF
+					autopower["Low backoff level"].IntValue = AutoAdjust.Low.Backoff.Level;
+					autopower["High backoff level"].IntValue = AutoAdjust.High.Backoff.Level;
+
+					// COMMIT
+					autopower["Low commit level"].IntValue = AutoAdjust.Low.Commit.Level;
+					autopower["High commit level"].IntValue = AutoAdjust.High.Commit.Level;
+
+					// THRESHOLDS
+					autopower["High threshold"].FloatValue = AutoAdjust.High.Commit.Threshold;
+					autopower["High backoff thresholds"].FloatValueArray = new float[] { AutoAdjust.High.Backoff.High, AutoAdjust.High.Backoff.Avg, AutoAdjust.High.Backoff.Low };
+
+					autopower["Low threshold"].FloatValue = AutoAdjust.Low.Commit.Threshold;
+					autopower["Low backoff thresholds"].FloatValueArray = new float[] { AutoAdjust.Low.Backoff.High, AutoAdjust.Low.Backoff.Avg, AutoAdjust.Low.Backoff.Low };
+
+					// POWER MODES
+					power["Low mode"].StringValue = GetModeName(AutoAdjust.Low.Mode);
+					power["High mode"].StringValue = GetModeName(AutoAdjust.High.Mode);
+
+					var saver = corecfg.Config["AFK Power"];
+					saver["Session lock"].StringValue = GetModeName(SessionLockPowerMode);
+
+					saver["Monitor power off idle timeout"].IntValue = SessionLockPowerOffIdleTimeout;
+					saver["Monitor power off on lock"].BoolValue = SessionLockPowerOff;
+
+					// --------------------------------------------------------------------------------------------------------
+				}
 			}
-			power["Behaviour"].StringValue = sbehaviour;
-
-			power["Default mode"].StringValue = AutoAdjust.DefaultMode.ToString();
-
-			power["Restore mode"].StringValue = (RestoreMethod == RestoreModeMethod.Custom ? RestoreMode.ToString() : RestoreMethod.ToString());
-			if (PowerdownDelay > 0)
-				power["Watchlist powerdown delay"].IntValue = PowerdownDelay;
-			else
-				power.Remove("Watchlist powerdown delay");
-			var autopower = corecfg.Config["Power / Auto"];
-
-			// BACKOFF
-			autopower["Low backoff level"].IntValue = AutoAdjust.Low.Backoff.Level;
-			autopower["High backoff level"].IntValue = AutoAdjust.High.Backoff.Level;
-
-			// COMMIT
-			autopower["Low commit level"].IntValue = AutoAdjust.Low.Commit.Level;
-			autopower["High commit level"].IntValue = AutoAdjust.High.Commit.Level;
-
-			// THRESHOLDS
-			autopower["High threshold"].FloatValue = AutoAdjust.High.Commit.Threshold;
-			autopower["High backoff thresholds"].FloatValueArray = new float[] { AutoAdjust.High.Backoff.High, AutoAdjust.High.Backoff.Avg, AutoAdjust.High.Backoff.Low };
-
-			autopower["Low threshold"].FloatValue = AutoAdjust.Low.Commit.Threshold;
-			autopower["Low backoff thresholds"].FloatValueArray = new float[] { AutoAdjust.Low.Backoff.High, AutoAdjust.Low.Backoff.Avg, AutoAdjust.Low.Backoff.Low };
-
-			// POWER MODES
-			power["Low mode"].StringValue = GetModeName(AutoAdjust.Low.Mode);
-			power["High mode"].StringValue = GetModeName(AutoAdjust.High.Mode);
-
-			var saver = corecfg.Config["AFK Power"];
-			saver["Session lock"].StringValue = GetModeName(SessionLockPowerMode);
-
-			saver["Monitor power off idle timeout"].IntValue = SessionLockPowerOffIdleTimeout;
-			saver["Monitor power off on lock"].BoolValue = SessionLockPowerOff;
-
-			// --------------------------------------------------------------------------------------------------------
-
 			corecfg.MarkDirty();
 		}
 
@@ -744,12 +743,18 @@ namespace Taskmaster
 		public RestoreModeMethod RestoreMethod { get; private set; } = RestoreModeMethod.Default;
 		public PowerMode RestoreMode { get; private set; } = PowerMode.Balanced;
 
-		void SessionLockEvent(object _, SessionSwitchEventArgs ev)
+		async void SessionLockEvent(object _, SessionSwitchEventArgs ev)
 		{
+			// BUG: ODD BEHAVIOUR ON ACCOUNT SWAP
 			switch (ev.Reason)
 			{
+				case SessionSwitchReason.SessionLogoff:
+					Log.Information("<Session> Logoff detected. Exiting.");
+					Taskmaster.UnifiedExit(restart:false);
+					return;
 				case SessionSwitchReason.SessionLock:
 					SessionLocked = true;
+					// TODO: Pause most of TM's functionality to avoid problems with account swapping
 					break;
 				case SessionSwitchReason.SessionUnlock:
 					SessionLocked = false;
@@ -758,6 +763,8 @@ namespace Taskmaster
 
 			if (Taskmaster.DebugSession)
 				Log.Debug("<Session> State: " + (SessionLocked ? "Locked" : "Unlocked"));
+
+			await Task.Delay(0).ConfigureAwait(false); // async
 
 			if (SessionLocked)
 			{
@@ -808,25 +815,23 @@ namespace Taskmaster
 					case SessionSwitchReason.SessionLock:
 						setpowersaver:
 						// SET POWER SAVER
+						if (Taskmaster.DebugSession)
+							Log.Debug("<Session:Lock> Enforcing power plan: " + SessionLockPowerMode.ToString());
+
 						lock (power_lock)
 						{
-							if (Taskmaster.DebugSession)
-								Log.Debug("<Session:Lock> Enforcing power plan: " + SessionLockPowerMode.ToString());
-
-							Paused = true;
-
 							if (CurrentMode != SessionLockPowerMode)
-								InternalSetMode(SessionLockPowerMode, cause:new Cause(OriginType.Session, "Lock"), verbose: true);
+								InternalSetMode(SessionLockPowerMode, cause: new Cause(OriginType.Session, "Lock"), verbose: true);
 						}
 						break;
 					case SessionSwitchReason.SessionLogon:
 					case SessionSwitchReason.SessionUnlock:
 						// RESTORE POWER MODE
+						if (Taskmaster.DebugSession || Taskmaster.ShowSessionActions || Taskmaster.DebugPower)
+							Log.Information("<Session:Unlock> Restoring normal power.");
+
 						lock (power_lock)
 						{
-							if (Taskmaster.DebugSession || Taskmaster.ShowSessionActions || Taskmaster.DebugPower)
-								Log.Information("<Session:Unlock> Restoring normal power.");
-
 							// TODO: Add configuration for this
 							Behaviour = LaunchBehaviour;
 
@@ -840,8 +845,6 @@ namespace Taskmaster
 
 								InternalSetMode(mode, cause:new Cause(OriginType.Session, "Unlock"), verbose: true);
 							}
-
-							Paused = false;
 						}
 						break;
 					default:
@@ -1004,32 +1007,30 @@ namespace Taskmaster
 			if (pb == Behaviour) return Behaviour; // rare instance, likely caused by toggling manual mode
 
 			bool reset = false;
-			lock (autoadjust_lock)
+
+			Behaviour = pb;
+			LogBehaviourState();
+
+			Restore();
+
+			switch (Behaviour)
 			{
-				Behaviour = pb;
-				LogBehaviourState();
+				case PowerBehaviour.Auto:
+					ResetAutoadjust();
 
-				Restore();
-
-				switch (Behaviour)
-				{
-					case PowerBehaviour.Auto:
-						ResetAutoadjust();
-
-						if (cpumonitor == null) 
-						{
-							reset = true;
-							Log.Error("<Power> CPU monitor disabled, auto-adjust not possible. Resetting to rule-based behaviour.");
-						}
-						break;
-					default:
-					case PowerBehaviour.RuleBased:
-						break;
-					case PowerBehaviour.Manual:
-						Taskmaster.processmanager.CancelPowerWait(); // need nicer way to do this
-						Release(-1);
-						break;
-				}
+					if (cpumonitor == null)
+					{
+						reset = true;
+						Log.Error("<Power> CPU monitor disabled, auto-adjust not possible. Resetting to rule-based behaviour.");
+					}
+					break;
+				default:
+				case PowerBehaviour.RuleBased:
+					break;
+				case PowerBehaviour.Manual:
+					Taskmaster.processmanager.CancelPowerWait(); // need nicer way to do this
+					Release(-1);
+					break;
 			}
 
 			if (reset) Behaviour = PowerBehaviour.RuleBased;
@@ -1185,7 +1186,6 @@ namespace Taskmaster
 		}
 
 		static readonly object power_lock = new object();
-		static readonly object powerLockI = new object();
 
 		public PowerBehaviour LaunchBehaviour { get; set; } = PowerBehaviour.RuleBased;
 		public PowerBehaviour Behaviour { get; private set; } = PowerBehaviour.RuleBased;
@@ -1196,7 +1196,7 @@ namespace Taskmaster
 
 			lock (power_lock)
 			{
-				if (Paused) return false;
+				if (SessionLocked) return false;
 
 				if (mode == CurrentMode || Forced)
 					return false;
@@ -1209,7 +1209,7 @@ namespace Taskmaster
 		public bool Force(PowerMode mode, int sourcePid)
 		{
 			if (Behaviour == PowerBehaviour.Manual) return false;
-			if (Paused) return false;
+			if (SessionLocked) return false;
 
 			var rv = false;
 
@@ -1308,11 +1308,7 @@ namespace Taskmaster
 
 			Behaviour = PowerBehaviour.Internal;
 
-			try
-			{
-				SystemEvents.SessionSwitch -= SessionLockEvent; // leaks if not disposed
-			}
-			catch { }
+			SystemEvents.SessionSwitch -= SessionLockEvent; // leaks if not disposed
 
 			if (disposing)
 			{

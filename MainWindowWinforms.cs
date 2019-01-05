@@ -85,13 +85,10 @@ namespace Taskmaster
 				if (!IsHandleCreated) return;
 				BeginInvoke(new Action(() =>
 				{
-					lock (loglistLock)
+					if (loglist.Items.Count > 0) // needed in case of bugs or clearlog
 					{
-						if (loglist.Items.Count > 0) // needed in case of bugs or clearlog
-						{
-							loglist.TopItem = loglist.Items[loglist.Items.Count - 1];
-							ShowLastLog();
-						}
+						loglist.TopItem = loglist.Items[loglist.Items.Count - 1];
+						ShowLastLog();
 					}
 				}));
 			};
@@ -264,19 +261,16 @@ namespace Taskmaster
 
 					try
 					{
-						lock (lastmodify_lock)
-						{
-							var mi = new ListViewItem(new string[] {
-								DateTime.Now.ToLongTimeString(),
-								ev.Info.Name,
-								ev.Control.FriendlyName,
-								(ev.PriorityNew.HasValue ? MKAh.Readable.ProcessPriority(ev.PriorityNew.Value) : "n/a"),
-								(ev.AffinityNew >= 0 ? HumanInterface.BitMask(ev.AffinityNew, ProcessManager.CPUCount) : "n/a"),
-								ev.Info.Path
-							});
-							lastmodifylist.Items.Add(mi);
-							if (lastmodifylist.Items.Count > 5) lastmodifylist.Items.RemoveAt(0);
-						}
+						var mi = new ListViewItem(new string[] {
+							DateTime.Now.ToLongTimeString(),
+							ev.Info.Name,
+							ev.Control.FriendlyName,
+							(ev.PriorityNew.HasValue ? MKAh.Readable.ProcessPriority(ev.PriorityNew.Value) : "n/a"),
+							(ev.AffinityNew >= 0 ? HumanInterface.BitMask(ev.AffinityNew, ProcessManager.CPUCount) : "n/a"),
+							ev.Info.Path
+						});
+						lastmodifylist.Items.Add(mi);
+						if (lastmodifylist.Items.Count > 5) lastmodifylist.Items.RemoveAt(0);
 					}
 					catch (Exception ex) { Logging.Stacktrace(ex); }
 					finally
@@ -522,24 +516,20 @@ namespace Taskmaster
 		Extensions.NumericUpDownEx AudioInputVolume;
 		ListView AudioInputs;
 		ListView WatchlistRules;
-		// object pathList_lock = new object();
-		// ListView pathList;
-		readonly object Watchlist_lock = new object();
+
 		ConcurrentDictionary<ProcessController, ListViewItem> WatchlistMap = new ConcurrentDictionary<ProcessController, ListViewItem>();
+
 		Label corCountLabel;
 
 		ListView lastmodifylist;
-		readonly object lastmodify_lock = new object();
-
 		ListView powerbalancerlog;
-		readonly object powerbalancerlog_lock = new object();
 
 		Label powerbalancer_behaviour;
 		Label powerbalancer_plan;
 		Label powerbalancer_forcedcount;
 
 		ListView exitwaitlist;
-		Dictionary<int, ListViewItem> ExitWaitlistMap;
+		ConcurrentDictionary<int, ListViewItem> ExitWaitlistMap;
 		ListView processinglist;
 		Dictionary<int, ListViewItem> ProcessingListMap;
 
@@ -1833,22 +1823,16 @@ namespace Taskmaster
 				var lastmodifyms = new ContextMenuStrip();
 				var lastmodifycopy = new ToolStripMenuItem("Copy path to clipboard", null, (s, e) =>
 				{
-					lock (lastmodify_lock)
+					if (lastmodifylist.SelectedItems.Count > 0)
 					{
-						if (lastmodifylist.SelectedItems.Count > 0)
-						{
-							string path = lastmodifylist.SelectedItems[0].SubItems[5].Text;
-							if (!string.IsNullOrEmpty(path))
-								Clipboard.SetText(path, TextDataFormat.UnicodeText);
-						}
+						string path = lastmodifylist.SelectedItems[0].SubItems[5].Text;
+						if (!string.IsNullOrEmpty(path))
+							Clipboard.SetText(path, TextDataFormat.UnicodeText);
 					}
 				});
 				lastmodifyms.Opened += (s, e) =>
 				{
-					lock (lastmodify_lock)
-					{
-						lastmodifycopy.Enabled = (lastmodifylist.SelectedItems.Count == 1);
-					}
+					lastmodifycopy.Enabled = (lastmodifylist.SelectedItems.Count == 1);
 				};
 				lastmodifyms.Items.Add(lastmodifycopy);
 				lastmodifylist.ContextMenuStrip = lastmodifyms;
@@ -1995,7 +1979,7 @@ namespace Taskmaster
 				MinimumSize = new System.Drawing.Size(-2, 80),
 				Dock = DockStyle.Fill,
 			};
-			ExitWaitlistMap = new Dictionary<int, ListViewItem>();
+			ExitWaitlistMap = new ConcurrentDictionary<int, ListViewItem>();
 
 			exitwaitlist.Columns.Add("Id", 50);
 			exitwaitlist.Columns.Add(HumanReadable.System.Process.Executable, 280);
@@ -2206,9 +2190,7 @@ namespace Taskmaster
 			catch (Exception ex) { Logging.Stacktrace(ex); }
 		}
 
-		readonly object exitwaitlist_lock = new object();
-
-		public void ExitWaitListHandler(object _, ProcessEventArgs ea)
+		public void ExitWaitListHandler(object _discard, ProcessEventArgs ea)
 		{
 			if (activeappmonitor == null) return;
 
@@ -2216,61 +2198,58 @@ namespace Taskmaster
 
 			BeginInvoke(new Action(() =>
 			{
-				lock (exitwaitlist_lock)
+				try
 				{
-					try
+					bool fg = (ea.Info.Id == (activeappmonitor?.Foreground ?? ea.Info.Id));
+
+					if (ExitWaitlistMap.TryGetValue(ea.Info.Id, out ListViewItem li))
 					{
-						bool fg = (ea.Info.Id == (activeappmonitor?.Foreground ?? ea.Info.Id));
+						li.SubItems[2].Text = fg ? HumanReadable.System.Process.Foreground : HumanReadable.System.Process.Background;
 
-						if (ExitWaitlistMap.TryGetValue(ea.Info.Id, out ListViewItem li))
+						// Log.Debug("WaitlistHandler: {Name} = {State}", ev.Info.Name, ev.State.ToString());
+						switch (ea.State)
 						{
-							li.SubItems[2].Text = fg ? HumanReadable.System.Process.Foreground : HumanReadable.System.Process.Background;
-
-							// Log.Debug("WaitlistHandler: {Name} = {State}", ev.Info.Name, ev.State.ToString());
-							switch (ea.State)
-							{
-								case ProcessRunningState.Exiting:
-									exitwaitlist.Items.Remove(li);
-									ExitWaitlistMap.Remove(ea.Info.Id);
-									break;
-								case ProcessRunningState.Found:
-								case ProcessRunningState.Reduced:
-									break;
-								//case ProcessEventArgs.ProcessState.Starting: // this should never get here
-								case ProcessRunningState.Restored:
-									// move item to top
-									exitwaitlist.Items.RemoveAt(li.Index);
-									exitwaitlist.Items.Insert(0, li);
-									li.EnsureVisible();
-									break;
-								default:
-									Log.Debug("Received unhandled process (#" + ea.Info.Id + ") state: " + ea.State.ToString());
-									break;
-							}
-						}
-						else
-						{
-							if (ea.State == ProcessRunningState.Starting)
-							{
-								li = new ListViewItem(new string[] {
-								ea.Info.Id.ToString(),
-								ea.Info.Name,
-								(fg ? HumanReadable.System.Process.Foreground : HumanReadable.System.Process.Background),
-								(ea.Info.ActiveWait ? "FORCED" : "n/a")
-							});
-
-								exitwaitlist.BeginUpdate();
-
-								ExitWaitlistMap.Add(ea.Info.Id, li);
-								exitwaitlist.Items.Add(li);
+							case ProcessRunningState.Exiting:
+								exitwaitlist.Items.Remove(li);
+								ExitWaitlistMap.TryRemove(ea.Info.Id, out _);
+								break;
+							case ProcessRunningState.Found:
+							case ProcessRunningState.Reduced:
+								break;
+							//case ProcessEventArgs.ProcessState.Starting: // this should never get here
+							case ProcessRunningState.Restored:
+								// move item to top
+								exitwaitlist.Items.Remove(li);
+								exitwaitlist.Items.Insert(0, li);
 								li.EnsureVisible();
-
-								exitwaitlist.EndUpdate();
-							}
+								break;
+							default:
+								Log.Debug("Received unhandled process (#" + ea.Info.Id + ") state: " + ea.State.ToString());
+								break;
 						}
 					}
-					catch (Exception ex) { Logging.Stacktrace(ex); }
+					else
+					{
+						if (ea.State == ProcessRunningState.Starting)
+						{
+							li = new ListViewItem(new string[] {
+									ea.Info.Id.ToString(),
+									ea.Info.Name,
+									(fg ? HumanReadable.System.Process.Foreground : HumanReadable.System.Process.Background),
+									(ea.Info.ActiveWait ? "FORCED" : "n/a")
+								});
+
+							exitwaitlist.BeginUpdate();
+
+							ExitWaitlistMap.TryAdd(ea.Info.Id, li);
+							exitwaitlist.Items.Add(li);
+							li.EnsureVisible();
+
+							exitwaitlist.EndUpdate();
+						}
+					}
 				}
+				catch (Exception ex) { Logging.Stacktrace(ex); }
 			}));
 		}
 
@@ -2328,15 +2307,12 @@ namespace Taskmaster
 						li.SubItems[2].BackColor = System.Drawing.Color.FromArgb(255, 250, 230);
 					}
 
-					lock (powerbalancerlog_lock)
-					{
-						// this tends to throw if this event is being handled while the window is being closed
-						if (powerbalancerlog.Items.Count > 3)
-							powerbalancerlog.Items.RemoveAt(0);
-						powerbalancerlog.Items.Add(li);
+					// this tends to throw if this event is being handled while the window is being closed
+					if (powerbalancerlog.Items.Count > 3)
+						powerbalancerlog.Items.RemoveAt(0);
+					powerbalancerlog.Items.Add(li);
 
-						powerbalancer_forcedcount.Text = powermanager.ForceCount.ToString();
-					}
+					powerbalancer_forcedcount.Text = powermanager.ForceCount.ToString();
 				}
 				catch (Exception ex) { Logging.Stacktrace(ex); }
 				finally
@@ -2476,11 +2452,8 @@ namespace Taskmaster
 
 							prc.DeleteConfig();
 							Log.Information("[" + prc.FriendlyName + "] Rule removed");
-							lock (Watchlist_lock)
-							{
-								WatchlistMap.TryRemove(prc, out ListViewItem _);
-								WatchlistRules.Items.Remove(li);
-							}
+							WatchlistMap.TryRemove(prc, out ListViewItem _);
+							WatchlistRules.Items.Remove(li);
 						}
 					}
 				}
@@ -2591,7 +2564,6 @@ namespace Taskmaster
 			}));
 		}
 
-		readonly object loglistLock = new object();
 		ListView loglist = null;
 		MenuStrip menu = null;
 
@@ -2599,14 +2571,11 @@ namespace Taskmaster
 		{
 			MemoryLog.MemorySink.onNewEvent += NewLogReceived;
 
-			lock (loglistLock)
-			{
-				// Log.Verbose("Filling GUI log.");
-				loglist.BeginUpdate();
-				foreach (var evmsg in MemoryLog.MemorySink.ToArray())
-					loglist.Items.Add(evmsg.Message);
-				loglist.EndUpdate();
-			}
+			// Log.Verbose("Filling GUI log.");
+			loglist.BeginUpdate();
+			foreach (var evmsg in MemoryLog.MemorySink.ToArray())
+				loglist.Items.Add(evmsg.Message);
+			loglist.EndUpdate();
 
 			ShowLastLog();
 
@@ -2803,14 +2772,11 @@ namespace Taskmaster
 
 		void ClearLog()
 		{
-			lock (loglistLock)
-			{
-				loglist.BeginUpdate();
-				//loglist.Clear();
-				loglist.Items.Clear();
-				MemoryLog.MemorySink.Clear();
-				loglist.EndUpdate();
-			}
+			loglist.BeginUpdate();
+			//loglist.Clear();
+			loglist.Items.Clear();
+			MemoryLog.MemorySink.Clear();
+			loglist.EndUpdate();
 		}
 
 		public void NewLogReceived(object _, LogEventArgs ea)
@@ -2820,21 +2786,18 @@ namespace Taskmaster
 			if (!IsHandleCreated) return;
 			BeginInvoke(new Action(() =>
 			{
-				lock (loglistLock)
-				{
-					loglist.BeginUpdate();
+				loglist.BeginUpdate();
 
-					var excessitems = Math.Max(0, (loglist.Items.Count - MaxLogSize));
-					while (excessitems-- > 0)
-						loglist.Items.RemoveAt(0);
+				var excessitems = Math.Max(0, (loglist.Items.Count - MaxLogSize));
+				while (excessitems-- > 0)
+					loglist.Items.RemoveAt(0);
 
-					var li = loglist.Items.Add(ea.Message);
-					if ((int)ea.Level >= (int)Serilog.Events.LogEventLevel.Error)
-						li.ForeColor = System.Drawing.Color.Red;
-					li.EnsureVisible();
+				var li = loglist.Items.Add(ea.Message);
+				if ((int)ea.Level >= (int)Serilog.Events.LogEventLevel.Error)
+					li.ForeColor = System.Drawing.Color.Red;
+				li.EnsureVisible();
 
-					loglist.EndUpdate();
-				}
+				loglist.EndUpdate();
 			}));
 		}
 
