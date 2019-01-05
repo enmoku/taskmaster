@@ -549,8 +549,7 @@ namespace Taskmaster
 
 		void loadConfig()
 		{
-			if (Taskmaster.DebugProcesses)
-				Log.Information("<Process> Loading configuration...");
+			if (Taskmaster.DebugProcesses) Log.Information("<Process> Loading configuration...");
 
 			var corecfg = Taskmaster.Config.Load(Taskmaster.coreconfig);
 
@@ -892,7 +891,8 @@ namespace Taskmaster
 		{
 			if (Taskmaster.DebugForeground || Taskmaster.DebugPower)
 			{
-				Log.Debug("<Process> " + info.Name + " (#" + info.Id + ") exited [Power: " + info.PowerWait + ", Active: " + info.ActiveWait + "]");
+				Log.Debug("[" + controller.FriendlyName + "] " + info.Name +
+					" (#" + info.Id + ") exited [Power: " + info.PowerWait + ", Active: " + info.ActiveWait + "]");
 			}
 
 			Debug.Assert(!SystemProcessId(info.Id));
@@ -1075,7 +1075,7 @@ namespace Taskmaster
 			if (IgnoreSystem32Path && info.Path.Contains(Environment.GetFolderPath(Environment.SpecialFolder.System)))
 			{
 				if (Taskmaster.ShowInaction && Taskmaster.DebugProcesses)
-					Log.Debug("<Process> " + info.Name + " (#" + info.Id + ") in System32, ignoring");
+					Log.Debug("<Process/Path> " + info.Name + " (#" + info.Id + ") in System32, ignoring");
 				return null;
 			}
 
@@ -1090,7 +1090,7 @@ namespace Taskmaster
 					if (prc.Executable.Equals(info.Name, StringComparison.InvariantCultureIgnoreCase))
 					{
 						if (Taskmaster.DebugPaths)
-							Log.Debug("<Process> [" + prc.FriendlyName + "] Path+Exe matched.");
+							Log.Debug("[" + prc.FriendlyName + "] Path+Exe matched.");
 					}
 					else
 						continue; // CheckPathWatch does not handle combo path+exes
@@ -1380,8 +1380,7 @@ namespace Taskmaster
 				{
 					BatchProcessingTimer.Stop();
 
-					if (Taskmaster.DebugProcesses)
-						Log.Debug("<Process> New instance timer stopped.");
+					if (Taskmaster.DebugProcesses) Log.Debug("<Process> New instance timer stopped.");
 
 					return;
 				}
