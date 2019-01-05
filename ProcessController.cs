@@ -576,6 +576,8 @@ namespace Taskmaster
 				LogAdjust(ev);
 			}
 
+			info.State = ProcessModification.Paused;
+
 			Paused?.Invoke(this, new ProcessEventArgs() { Control = this, Info = info, State = ProcessRunningState.Reduced });
 		}
 
@@ -717,6 +719,8 @@ namespace Taskmaster
 					SetPower(info);
 				}
 			}
+
+			info.State = ProcessModification.Resumed;
 
 			PausedIds.TryRemove(info.Id, out _);
 

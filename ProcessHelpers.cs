@@ -58,6 +58,14 @@ namespace Taskmaster
 		/// </summary>
 		Ignored,
 		/// <summary>
+		/// Background transition
+		/// </summary>
+		Paused,
+		/// <summary>
+		/// Foreground transition
+		/// </summary>
+		Resumed,
+		/// <summary>
 		/// Unspecified error occured.
 		/// </summary>
 		Error,
