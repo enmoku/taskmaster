@@ -198,7 +198,7 @@ namespace Taskmaster
 					catch
 					{
 						// probably gone?
-						if (ProcessManager.SystemProcessId(pid)) name = "<OS>";
+						if (ProcessManager.SystemProcessId(pid)) name = "<OS>"; // this might also signify the desktop, for some reason
 					}
 
 					var sbs = new System.Text.StringBuilder();
@@ -382,10 +382,7 @@ namespace Taskmaster
 
 			// Window title, we don't care tbh.
 			if (NativeMethods.GetWindowText(hwnd, buff, nChars) > 0) // get title? not really useful for most things
-			{
-				// System.Console.WriteLine("Active window: {0}", buff);
 				return buff.ToString();
-			}
 
 			return string.Empty;
 		}

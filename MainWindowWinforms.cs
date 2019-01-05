@@ -313,7 +313,7 @@ namespace Taskmaster
 			processmanager = control;
 
 			processmanager.onInstanceHandling += ProcessNewInstanceCount;
-			processmanager.onProcessHandled += ExitWaitListHandler;
+			processmanager.ProcessStateChange += ExitWaitListHandler;
 			processmanager.onWaitForExitEvent += ExitWaitListHandler;
 			if (Taskmaster.DebugCache) PathCacheUpdate(null, null);
 
@@ -2193,7 +2193,6 @@ namespace Taskmaster
 		public void ExitWaitListHandler(object _discard, ProcessEventArgs ea)
 		{
 			if (activeappmonitor == null) return;
-
 			if (!IsHandleCreated) return;
 
 			BeginInvoke(new Action(() =>
@@ -2206,7 +2205,7 @@ namespace Taskmaster
 					{
 						li.SubItems[2].Text = fg ? HumanReadable.System.Process.Foreground : HumanReadable.System.Process.Background;
 
-						// Log.Debug("WaitlistHandler: {Name} = {State}", ev.Info.Name, ev.State.ToString());
+						Log.Debug("WaitlistHandler: " + ea.Info.Name + " = " + ea.State.ToString());
 						switch (ea.State)
 						{
 							case ProcessRunningState.Exiting:
@@ -2901,7 +2900,7 @@ namespace Taskmaster
 						processmanager.ProcessModified -= ProcessTouchEvent;
 						processmanager.onWaitForExitEvent -= ExitWaitListHandler; //ExitWaitListHandler;
 						processmanager.onInstanceHandling -= ProcessNewInstanceCount;
-						processmanager.onProcessHandled -= ExitWaitListHandler;
+						processmanager.ProcessStateChange -= ExitWaitListHandler;
 						processmanager.HandlingStateChange -= ProcessHandlingStateChangeEvent;
 						processmanager = null;
 					}

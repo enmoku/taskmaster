@@ -91,7 +91,7 @@ namespace Taskmaster
 
 			if (dirtyconf) cfg.MarkDirty();
 
-			Log.Information("<Network> Traffic sample frequency: {Interval}s", PacketStatTimerInterval);
+			Log.Information("<Network> Traffic sample frequency: " + PacketStatTimerInterval + "s");
 		}
 
 		public NetManager()
@@ -106,8 +106,6 @@ namespace Taskmaster
 			InterfaceInitialization();
 
 			UpdateInterfaces(); // initialize
-
-			// Log.Debug("{IFACELIST} – count: {c}", CurrentInterfaceList, CurrentInterfaceList.Count);
 
 			deviceSampleTimer = new System.Threading.Timer(x => RecordDeviceState(InternetAvailable, false), null, 15000, DeviceTimerInterval * 60000);
 
@@ -188,15 +186,12 @@ namespace Taskmaster
 					long discards = (incoming.Discards - oldincoming.Discards) + (outgoing.Discards - oldoutgoing.Discards);
 					long packets = (incoming.Unicast - oldincoming.Unicast) + (outgoing.Unicast - oldoutgoing.Unicast);
 
-					// Console.WriteLine("{0} : Packets(+{1}), Errors(+{2}), Discarded(+{3})", ifaces[index].Name, packets, errors, discards);
-
 					if (errors > 0 // only if errors
 						&& Taskmaster.ShowNetworkErrors // user wants to see this
 						&& !ErrorReports.Peaked // we're not waiting for report counter to go down
 						&& ErrorReports.Pump()) // error reporting not full
 					{
-						Log.Warning("<Network> {Device} is suffering from traffic errors! (+{Rate} since last sample)",
-							ifaces[index].Name, errors);
+						Log.Warning("<Network> " + ifaces[index].Name + " is suffering from traffic errors! (+" + errors + " since last sample)");
 					}
 					else
 						ErrorReports.Leak();

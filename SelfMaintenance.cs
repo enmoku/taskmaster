@@ -41,8 +41,8 @@ namespace Taskmaster
 				var nextmidnight = Convert.ToInt64(now.TimeTo(next).TotalMilliseconds);
 				DateTime lnext = next.UtcDateTime;
 
-				Log.Information("<Self-Maintenance> Next maintenance: {Date} {Time} [in {Ms} ms]",
-					lnext.ToLongDateString(), lnext.ToLongTimeString(), nextmidnight);
+				Log.Information("<Self-Maintenance> Next maintenance: " +
+					lnext.ToLongDateString() + " " + lnext.ToLongTimeString() + " [in " + nextmidnight + " ms]");
 
 				timer = new System.Threading.Timer(Tick, null,
 					nextmidnight,
@@ -79,7 +79,7 @@ namespace Taskmaster
 
 				long newmem = GC.GetTotalMemory(true);
 
-				Log.Debug("<Self-Maintenance> Done, saved {kBytes} kB.", (oldmem-newmem)/1000);
+				Log.Debug("<Self-Maintenance> Done, saved " + ((oldmem - newmem) / 1_000) + " kB.");
 
 				if (Taskmaster.Trace) Log.Verbose("Running periodic cleanup");
 

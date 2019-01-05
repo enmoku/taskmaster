@@ -347,8 +347,7 @@ namespace Taskmaster
 				power_manual.Checked = true;
 				power_auto.Checked = false;
 
-				if (Taskmaster.DebugPower)
-					Log.Debug("<Power> Setting manual mode: {Mode}", mode.ToString());
+				if (Taskmaster.DebugPower) Log.Debug("<Power> Setting manual mode: " + mode.ToString());
 
 				// powermanager.Restore(0).Wait(); // already called by setBehaviour as necessary
 				powermanager?.SetMode(mode, cause:new Cause(OriginType.User));
@@ -470,11 +469,11 @@ namespace Taskmaster
 
 			if (KnownExplorerInstances.Count > 0)
 			{
-				if (Taskmaster.Trace) Log.Verbose("<Tray> Explorer (#{Id}) exited but is not the last known explorer instance.", processId);
+				if (Taskmaster.Trace) Log.Verbose("<Tray> Explorer (#" + processId + ") exited but is not the last known explorer instance.");
 				return;
 			}
 
-			Log.Warning("<Tray> Explorer (#{Pid}) crash detected!", processId);
+			Log.Warning("<Tray> Explorer (#" + processId + ") crash detected!");
 
 			Log.Information("<Tray> Giving explorer some time to recover on its own...");
 
@@ -528,7 +527,7 @@ namespace Taskmaster
 					{
 						if (!info.Path.StartsWith(Environment.GetFolderPath(Environment.SpecialFolder.Windows), StringComparison.InvariantCultureIgnoreCase))
 						{
-							if (Taskmaster.Trace) Log.Verbose("<Tray> Explorer (#{Pid}) not in system root.", info.Id);
+							if (Taskmaster.Trace) Log.Verbose("<Tray> Explorer (#" + info.Id + ") not in system root.");
 							continue;
 						}
 					}
@@ -539,7 +538,7 @@ namespace Taskmaster
 						proc.EnableRaisingEvents = true;
 					}
 
-					if (Taskmaster.Trace) Log.Information("<Tray> Explorer (#{ExplorerProcessID}) registered.", info.Id);
+					if (Taskmaster.Trace) Log.Information("<Tray> Explorer (#" + info.Id + ") registered.");
 				}
 
 				return true;

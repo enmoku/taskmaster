@@ -1156,8 +1156,6 @@ namespace Taskmaster
 
 					InternalSetMode(SavedMode, cause:new Cause(OriginType.None, "Restoration"), verbose:false);
 					SavedMode = PowerMode.Undefined;
-
-					// Log.Information("<Power> Restored to: {PowerMode}", CurrentMode.ToString());
 				}
 			}
 		}

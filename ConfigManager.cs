@@ -58,7 +58,7 @@ namespace Taskmaster
 					scfg = SharpConfig.Configuration.LoadFromFile(fullpath);
 				else
 				{
-					Log.Warning("Not found: {Path}", fullpath);
+					Log.Warning("Not found: " + fullpath);
 					scfg = new SharpConfig.Configuration();
 					System.IO.Directory.CreateDirectory(datapath);
 				}

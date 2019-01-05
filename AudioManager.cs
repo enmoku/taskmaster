@@ -166,7 +166,7 @@ namespace Taskmaster
 				}
 				else
 				{
-					Log.Debug("<Audio> Failed to get info for session (#{Pid})", pid);
+					Log.Debug("<Audio> Failed to get info for session (#" + pid + ")");
 				}
 			}
 			catch (Exception ex)

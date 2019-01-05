@@ -44,10 +44,14 @@ namespace Taskmaster
 		// EVENTS
 		public event EventHandler<ProcessEventArgs> Modified;
 
+		/// <summary>
+		/// Process gone to background
+		/// </summary>
 		public event EventHandler<ProcessEventArgs> Paused;
+		/// <summary>
+		/// Process back on foreground.
+		/// </summary>
 		public event EventHandler<ProcessEventArgs> Resumed;
-
-		public event EventHandler<ProcessEventArgs> WaitingExit;
 
 		// Core information
 		/// <summary>
@@ -762,8 +766,6 @@ namespace Taskmaster
 			info.PowerWait = true;
 			PowerList.TryAdd(info.Id, 0);
 			var ea = new ProcessEventArgs() { Info = info, Control = this, State = ProcessRunningState.Undefined };
-			WaitingExit?.Invoke(this, ea);
-			Resumed?.Invoke(this, ea);
 
 			return Taskmaster.powermanager.Force(PowerPlan, info.Id);
 		}
@@ -1164,8 +1166,6 @@ namespace Taskmaster
 				{
 					// NOP, don't caree
 				}
-				if (mBGIO == false)
-					Log.Warning("[{FriendlyName}] {Exec} (#{Pid}) Failed to set background I/O mode.", FriendlyName, info.Name, info.Id);
 			}
 			*/
 
@@ -1192,39 +1192,6 @@ namespace Taskmaster
 					Statistics.TouchCount++;
 					Adjusts += 1; // don't increment on power changes
 				}
-
-				/*
-				// Check if the change took effect?
-				if (mPriority)
-				{
-					try
-					{
-						info.Process.Refresh();
-						newPriority = info.Process.PriorityClass;
-						if (newPriority.ToInt32() != Priority.Value.ToInt32())
-						{
-							Log.Warning("[{FriendlyName}] {Exe} (#{Pid}) Post-mortem of modification: FAILURE (Expected: {TgPrio}, Detected: {CurPrio}).",
-										FriendlyName, info.Name, info.Id, Priority.ToString(), newPriority.ToString());
-						}
-					}
-					catch (InvalidOperationException)
-					{
-						// Already exited
-						info.State = ProcessModification.Exited;
-						return;
-					}
-					catch (Win32Exception)
-					{
-						info.State = ProcessModification.AccessDenied;
-						return;
-					}
-					catch (Exception ex)
-					{
-						Logging.Stacktrace(ex);
-						return;
-					}
-				}
-				*/
 
 				LastTouch = now;
 

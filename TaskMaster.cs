@@ -38,8 +38,8 @@ namespace Taskmaster
 {
 	public static class Taskmaster
 	{
-		public static string GitURL { get; } = "https://github.com/mkahvi/taskmaster";
-		public static string ItchURL { get; } = "https://mkah.itch.io/taskmaster";
+		public static string GitURL => "https://github.com/mkahvi/taskmaster";
+		public static string ItchURL => "https://mkah.itch.io/taskmaster";
 
 		//public static SharpConfig.Configuration cfg;
 		public static string datapath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "MKAh", "Taskmaster");
@@ -665,7 +665,6 @@ namespace Taskmaster
 
 			Log.Information("<Core> Verbosity: "+ MemoryLog.MemorySink.LevelSwitch.MinimumLevel.ToString());
 			Log.Information("<Core> Self-optimize: "+ (SelfOptimize ? HumanReadable.Generic.Enabled : HumanReadable.Generic.Disabled));
-			// Log.Information("Low memory mode: {LowMemory}", (LowMemory ? "Enabled." : "Disabled."));
 			Log.Information("<Core> WMI queries: " + (WMIQueries ? HumanReadable.Generic.Enabled : HumanReadable.Generic.Disabled));
 
 			// PROTECT USERS FROM TOO HIGH PERMISSIONS

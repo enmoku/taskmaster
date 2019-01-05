@@ -399,7 +399,7 @@ namespace Taskmaster
 		public event EventHandler<ProcessEventArgs> ProcessModified;
 
 		public event EventHandler<InstanceEventArgs> onInstanceHandling;
-		public event EventHandler<ProcessEventArgs> onProcessHandled;
+		public event EventHandler<ProcessEventArgs> ProcessStateChange;
 		public event EventHandler<ProcessEventArgs> onWaitForExitEvent;
 
 		public event EventHandler<InstanceHandlingArgs> HandlingStateChange;
@@ -538,8 +538,6 @@ namespace Taskmaster
 
 				if (!string.IsNullOrEmpty(prc.Path))
 					WatchlistWithHybrid += 1;
-
-				// Log.Verbose("[{ExecutableName}] Added to monitoring.", cnt.FriendlyName);
 			}
 
 			Watchlist.TryAdd(prc, 0);
@@ -854,7 +852,8 @@ namespace Taskmaster
 				prc.Modified += ProcessModifiedProxy;
 				//prc.Paused += ProcessPausedProxy;
 				//prc.Resumed += ProcessResumedProxy;
-				prc.WaitingExit += ProcessWaitingExitProxy;
+				prc.Paused += ProcessWaitingExitProxy;
+				//prc.WaitingExit += ProcessWaitingExitProxy;
 			}
 		}
 
@@ -888,7 +887,6 @@ namespace Taskmaster
 			prc.Modified -= ProcessModifiedProxy;
 			prc.Paused -= ProcessPausedProxy;
 			prc.Resumed -= ProcessResumedProxy;
-			prc.WaitingExit -= ProcessWaitingExitProxy;
 		}
 
 		ConcurrentDictionary<int, ProcessEx> WaitForExitList = new ConcurrentDictionary<int, ProcessEx>();
@@ -914,7 +912,7 @@ namespace Taskmaster
 
 			controller?.End(info);
 
-			onWaitForExitEvent?.Invoke(this, new ProcessEventArgs() { Control = null, Info = info, State = state });
+			ProcessStateChange?.Invoke(this, new ProcessEventArgs() { Control = null, Info = info, State = state });
 		}
 
 		public void PowerBehaviourEvent(object _, PowerManager.PowerBehaviourEventArgs ea)
@@ -986,7 +984,7 @@ namespace Taskmaster
 			}
 
 			if (exithooked)
-				onWaitForExitEvent?.Invoke(this, new ProcessEventArgs() { Control = null, Info = info, State = ProcessRunningState.Starting });
+				ProcessStateChange?.Invoke(this, new ProcessEventArgs() { Control = null, Info = info, State = ProcessRunningState.Found });
 		}
 
 		public ProcessEx[] getExitWaitList() => WaitForExitList.Values.ToArray(); // copy is good here
@@ -1011,7 +1009,7 @@ namespace Taskmaster
 						if (PreviousForegroundController.ForegroundOnly)
 							PreviousForegroundController.Pause(PreviousForegroundInfo);
 
-						onProcessHandled?.Invoke(this, new ProcessEventArgs() { Control = PreviousForegroundController, Info = PreviousForegroundInfo, State = ProcessRunningState.Reduced });
+						ProcessStateChange?.Invoke(this, new ProcessEventArgs() { Control = PreviousForegroundController, Info = PreviousForegroundInfo, State = ProcessRunningState.Reduced });
 					}
 				}
 				else
@@ -1030,7 +1028,7 @@ namespace Taskmaster
 
 					if (prc.ForegroundOnly) prc.Resume(info);
 
-					onProcessHandled?.Invoke(this, new ProcessEventArgs() { Control = prc, Info = info, State = ProcessRunningState.Restored });
+					ProcessStateChange?.Invoke(this, new ProcessEventArgs() { Control = prc, Info = info, State = ProcessRunningState.Restored });
 
 					PreviousForegroundInfo = info;
 					PreviousForegroundController = prc;
@@ -1101,11 +1099,8 @@ namespace Taskmaster
 						continue; // CheckPathWatch does not handle combo path+exes
 				}
 
-				// Log.Debug("with: "+ pc.Path);
 				if (prc.MatchPath(info.Path))
 				{
-					// if (cacheGet)
-					// 	Log.Debug("[{FriendlyName}] {Exec} (#{Pid}) – PATH CACHE GET!! :D", pc.FriendlyName, name, pid);
 					if (Taskmaster.DebugPaths)
 						Log.Verbose("[" + prc.FriendlyName + "] (CheckPathWatch) Matched at: " + info.Path);
 
@@ -1299,7 +1294,7 @@ namespace Taskmaster
 					Log.Debug("[" + prc.FriendlyName + "] " + info.Name + " (#" + info.Id + ") already in foreground watchlist.");
 			}
 
-			onProcessHandled?.Invoke(this, new ProcessEventArgs() { Control = prc, Info = info, State = ProcessRunningState.Found });
+			ProcessStateChange?.Invoke(this, new ProcessEventArgs() { Control = prc, Info = info, State = ProcessRunningState.Found });
 		}
 
 		async void CollectProcessHandlingStatistics(object _, InstanceHandlingArgs e)
@@ -1356,11 +1351,8 @@ namespace Taskmaster
 					return;
 				}
 
-				// Log.Verbose("{AppName} not in executable control list.", info.Name);
-
 				if (WatchlistWithPath > 0 && !ea.Info.Handled)
 				{
-					// Log.Verbose("Checking paths for '{ProcessName}' (#{ProcessID})", info.Name, info.Id);
 					CheckPathWatch(ea.Info);
 					return;
 				}
@@ -1738,7 +1730,7 @@ namespace Taskmaster
 				ScanEndEvent = null;
 				ProcessModified = null;
 				onInstanceHandling = null;
-				onProcessHandled = null;
+				ProcessStateChange = null;
 				onWaitForExitEvent = null;
 				HandlingStateChange = null;
 

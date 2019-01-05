@@ -150,12 +150,12 @@ namespace Taskmaster
 
 			if (Settings.MemLevel > 0 && Taskmaster.PagingEnabled)
 			{
-				Log.Information("<Auto-Doc> Memory auto-paging level: {Level} MB", Settings.MemLevel);
+				Log.Information("<Auto-Doc> Memory auto-paging level: " + Settings.MemLevel + " MB");
 			}
 
 			if (Settings.LowDriveSpaceThreshold > 0)
 			{
-				Log.Information("<Auto-Doc> Disk space warning level: {Level} MB", Settings.LowDriveSpaceThreshold);
+				Log.Information("<Auto-Doc> Disk space warning level: " + Settings.LowDriveSpaceThreshold + " MB");
 			}
 
 			healthTimer = new System.Threading.Timer(TimerCheck, null, 15_000, Settings.Frequency * 60_000);
@@ -338,8 +338,6 @@ namespace Taskmaster
 			{
 				if (drive.IsReady)
 				{
-					//Log.Debug("<Auto-Doc> {Drive} free space: {Space}", drive.Name, HumanInterface.ByteString(drive.AvailableFreeSpace));
-
 					if ((drive.AvailableFreeSpace / 1_000_000) < Settings.LowDriveSpaceThreshold)
 					{
 						if (warnedDrives.Contains(drive.Name)) continue;
@@ -357,8 +355,8 @@ namespace Taskmaster
 						//Console.WriteLine(sqrbi.i64Size);
 						long rbsize = sqrbi.i64Size;
 
-						Log.Warning("<Auto-Doc> Low free space on {Drive} ({Space}); recycle bin has: {Recycle}",
-							drive.Name, HumanInterface.ByteString(drive.AvailableFreeSpace), HumanInterface.ByteString(rbsize));
+						Log.Warning("<Auto-Doc> Low free space on " + drive.Name
+							+ " (" + HumanInterface.ByteString(drive.AvailableFreeSpace) + "); recycle bin has: " + HumanInterface.ByteString(rbsize));
 
 						warnedDrives.Add(drive.Name);
 						LastDriveWarning = now;
@@ -405,7 +403,7 @@ namespace Taskmaster
 								if (lastact != uint.MinValue && User.TicksToSeconds(lastact) <= (60 * 60 * 3))
 								{
 									ignorepid = Taskmaster.activeappmonitor.Foreground;
-									Log.Verbose("<Auto-Doc> Protecting foreground app (#{Id})", ignorepid);
+									Log.Verbose("<Auto-Doc> Protecting foreground app (#" + ignorepid + ")");
 								}
 							}
 
@@ -419,18 +417,6 @@ namespace Taskmaster
 							Log.Warning(sbs.ToString());
 
 							Taskmaster.processmanager?.FreeMemory(null, quiet: true, ignorePid: ignorepid);
-
-							// sampled too soon, OS has had no significant time to swap out data
-
-							// FreeMemory returns before the process is complete, so the following is done too soon.
-							/*
-							var memfreemb2 = memfree.Value; // MB
-
-							Log.Information("<<Auto-Doc>> Free memory: {Memory} ({Change} change observed)",
-								HumanInterface.ByteString((long)(memfreemb2 * 1_000_000)),
-								//HumanInterface.ByteString((long)commitb2), HumanInterface.ByteString((long)commitlimitb),
-								HumanInterface.ByteString((long)((memfreemb2 - memfreemb) * 1_000_000), positivesign: true));
-							*/
 						}
 					}
 					else if ((memfreemb * MemoryWarningThreshold) <= Settings.MemLevel)
@@ -440,8 +426,7 @@ namespace Taskmaster
 							WarnedAboutLowMemory = true;
 							LastMemoryWarning = now;
 
-							Log.Warning("<Memory> Free memory fairly low: {Memory}",
-								HumanInterface.ByteString((long)(memfreemb * 1_000_000)));
+							Log.Warning("<Memory> Free memory fairly low: " + HumanInterface.ByteString((long)(memfreemb * 1_000_000)));
 						}
 					}
 					else
