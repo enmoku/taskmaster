@@ -1278,10 +1278,12 @@ namespace Taskmaster
 		{
 			if (!prc.ForegroundOnly) return;
 
-			var keyexists = true;
+			var keyexists = false;
 
 			if (ForegroundWaitlist.TryAdd(info.Id, prc))
 				WaitForExit(info, prc);
+			else
+				keyexists = true;
 
 			if (Taskmaster.Trace && Taskmaster.DebugForeground)
 			{
@@ -1291,7 +1293,7 @@ namespace Taskmaster
 					Log.Debug("[" + prc.FriendlyName + "] " + info.Name + " (#" + info.Id + ") already in foreground watchlist.");
 			}
 
-			ProcessStateChange?.Invoke(this, new ProcessEventArgs() { Control = prc, Info = info, State = ProcessRunningState.Found });
+			ProcessStateChange?.Invoke(this, new ProcessEventArgs() { Control = prc, Info = info, State = keyexists ? ProcessRunningState.Found : ProcessRunningState.Starting });
 		}
 
 		async void CollectProcessHandlingStatistics(object _, InstanceHandlingArgs e)

@@ -317,6 +317,8 @@ namespace Taskmaster
 
 			WatchlistRules.BeginUpdate();
 
+			ProcessNewInstanceCount(this, new InstanceEventArgs() { Total = 0, Count = 0 });
+
 			foreach (var prc in processmanager.getWatchlist())
 				AddToWatchlistList(prc);
 
@@ -324,31 +326,12 @@ namespace Taskmaster
 
 			WatchlistRules.EndUpdate();
 
-			rescanRequest += async (_, _ea) =>
-			{
-				await Task.Delay(0).ConfigureAwait(false);
-				processmanager?.HastenScan();
-			};
+			rescanRequest += (_, _ea) => processmanager?.HastenScan();
 
 			processmanager.ProcessModified += ProcessTouchEvent;
 
-			ProcessNewInstanceCount(this, new InstanceEventArgs() { Total = 0, Count = 0 });
-
-			var items = processmanager.getExitWaitList();
-
-			foreach (var bu in items)
-			{
-				ExitWaitListHandler(this, new ProcessEventArgs() { Control = null, State = ProcessRunningState.Starting, Info = bu });
-			}
-
-			if (Taskmaster.ActiveAppMonitorEnabled)
-			{
-				var items2 = processmanager.getExitWaitList();
-				foreach (var bu in items2)
-				{
-					ExitWaitListHandler(this, new ProcessEventArgs() { Control = null, Info = bu, State = ProcessRunningState.Found });
-				}
-			}
+			foreach (var bu in processmanager.getExitWaitList())
+				ExitWaitListHandler(this, new ProcessEventArgs() { Control = null, State = ProcessRunningState.Found, Info = bu });
 		}
 
 		void ProcessNewInstanceCount(object _, InstanceEventArgs e)
