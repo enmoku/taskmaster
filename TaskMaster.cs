@@ -384,7 +384,6 @@ namespace Taskmaster
 					for (int i = 0; i < Environment.ProcessorCount - 1; i++)
 						selfCPUmask = (selfCPUmask << 1);
 					SelfAffinity = selfCPUmask;
-					// Console.WriteLine("Setting own CPU mask to: {0} ({1})", Convert.ToString(selfCPUmask, 2), selfCPUmask);
 				}
 
 				self.ProcessorAffinity = new IntPtr(SelfAffinity); // this should never throw an exception

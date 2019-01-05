@@ -91,14 +91,9 @@ namespace Taskmaster
 						Statistics.PathCacheHits++;
 						cacheGet = true;
 						info.Path = cpath;
-						// Log.Debug("PATH CACHE ITEM GET: {Path}", info.Path);
 					}
 					else
-					{
-						// Statistics.PathCacheMisses++; // will be done when adding the entry
 						pathCache.Drop(info.Id);
-						// Log.Debug("PATH CACHE ITEM BEGONE!");
-					}
 
 					Statistics.PathCacheCurrent = pathCache.Count;
 				}
@@ -115,7 +110,6 @@ namespace Taskmaster
 
 				Statistics.PathCacheCurrent = pathCache.Count;
 				if (Statistics.PathCacheCurrent > Statistics.PathCachePeak) Statistics.PathCachePeak = Statistics.PathCacheCurrent;
-				// Log.Debug("PATH CACHE ADD: {Path}", info.Path);
 			}
 
 			return true;

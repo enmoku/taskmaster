@@ -237,7 +237,6 @@ namespace Taskmaster
 
 		public void ProcessTouchEvent(object _, ProcessEventArgs ev)
 		{
-			// Log.Verbose("Process adjust received for '{FriendlyName}'.", e.Control.FriendlyName);
 			if (!IsHandleCreated) return;
 			BeginInvoke(new Action(() =>
 			{

@@ -663,8 +663,6 @@ namespace Taskmaster
 			ignsetting["Ignore System32"].Comment = "Ignore programs in %SYSTEMROOT%/System32 folder.";
 			dirtyconfig |= modified;
 
-			// Log.Information("Child process monitoring: {ChildControl}", (ControlChildren ? "Enabled" : "Disabled"));
-
 			if (dirtyconfig) corecfg.MarkDirty();
 		}
 

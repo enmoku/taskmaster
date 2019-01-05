@@ -135,18 +135,13 @@ namespace Taskmaster
 					return 0;
 				});
 
-				// Log.Debug("CACHE STATE: FIRST({First}) LAST({LAST})", list.First().Access, list.Last().Access);
-				// Log.Debug("CACHE ITEMS BEFORE PRUNE: {Items}", Items.Count);
 				while (Items.Count > MaxCache)
 				{
 					var bu = list.ElementAt(0);
 					var key = bu.AccessKey;
-					// Log.Debug("--- REMOVING: Key:{Key}, Last Access: {Date}, Desirability: {Value}",
-					// 		  key, bu.Access, bu.Desirability);
 					Items.TryRemove(key, out _);
 					list.Remove(bu);
 				}
-				// Log.Debug("CACHE ITEMS AFTER PRUNE: {Items}", Items.Count);
 
 				double bi = double.NaN;
 
