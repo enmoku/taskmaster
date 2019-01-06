@@ -2262,16 +2262,19 @@ namespace Taskmaster
 
 				try
 				{
-					var reactionary = PowerManager.GetModeName(ea.Mode);
+					string reactionary = HumanReadable.Generic.NotAvailable;
+					bool unsteady = ea.Reaction != PowerManager.PowerReaction.Steady;
+					if (unsteady) reactionary = PowerManager.GetModeName(ea.Mode);
 
 					var li = new ListViewItem(new string[] {
 						$"{ea.Current:N2}%",
 						$"{ea.Average:N2}%",
 						$"{ea.High:N2}%",
 						$"{ea.Low:N2}%",
+						ea.Reaction.ToString(),
 						reactionary,
-						ea.Enacted.ToString(),
-						$"{ea.Pressure*100f:N1}%"
+						(unsteady ? ea.Enacted.ToString() : HumanReadable.Generic.NotAvailable),
+						(unsteady ? $"{ea.Pressure*100f:N1}%" : HumanReadable.Generic.NotAvailable)
 					})
 					{
 						UseItemStyleForSubItems = false

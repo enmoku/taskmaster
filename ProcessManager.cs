@@ -1808,6 +1808,7 @@ namespace Taskmaster
 	sealed public class PowerEventArgs : ProcessorEventArgs
 	{
 		public PowerInfo.PowerMode Mode = PowerInfo.PowerMode.Undefined;
+		public PowerManager.PowerReaction Reaction = PowerManager.PowerReaction.Steady;
 
 		public float Pressure = 0F;
 

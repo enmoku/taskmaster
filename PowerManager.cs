@@ -307,6 +307,9 @@ namespace Taskmaster
 
 		bool Paused = false;
 		bool SessionLocked = false;
+		/// <summary>
+		/// Power mode is forced, auto-adjust and other automatic changes are disabled.
+		/// </summary>
 		bool Forced = false;
 
 		long AutoAdjustCounter = 0;
@@ -364,6 +367,8 @@ namespace Taskmaster
 
 						ev.Pressure = ((float)BackoffCounter) / ((float)AutoAdjust.High.Backoff.Level);
 					}
+					else
+						Reaction = PowerReaction.Steady;
 				}
 				else if (PreviousReaction == PowerReaction.Low)
 				{
@@ -382,6 +387,8 @@ namespace Taskmaster
 
 						ev.Pressure = ((float)BackoffCounter) / ((float)AutoAdjust.Low.Backoff.Level);
 					}
+					else
+						Reaction = PowerReaction.Steady;
 				}
 				else // Currently at medium power
 				{
@@ -413,20 +420,21 @@ namespace Taskmaster
 
 						ev.Pressure = ((float)LowPressure) / ((float)AutoAdjust.Low.Commit.Level);
 					}
-					else
+					else // keep power at medium
 					{
 						// Console.WriteLine("NOP");
 
-						Reaction = PowerReaction.Average;
+						Reaction = PowerReaction.Steady;
 						ReactionaryPlan = AutoAdjust.DefaultMode;
 
 						ResetAutoadjust();
 
 						// Only time this should cause actual power mode change is when something else changes power mode
 						Ready = true;
+						//ev.Pressure = 1; // required for actually changing mode
 					}
 				}
-
+				
 				var ReadyToAdjust = (Ready && !Forced && !SessionLocked);
 
 				if (ReadyToAdjust && ReactionaryPlan != CurrentMode)
@@ -473,8 +481,9 @@ namespace Taskmaster
 					}
 				}
 
+				ev.Reaction = Reaction;
 				ev.Mode = ReactionaryPlan;
-			}
+			} // lock (autoadjust_lock)
 
 			onAutoAdjustAttempt?.Invoke(this, ev);
 		}
@@ -1236,6 +1245,10 @@ namespace Taskmaster
 			return true;
 		}
 
+		/// <summary>
+		/// Set power mode and lock it, preventing changes outside of manual control.
+		/// </summary>
+		// BUG: If user forces disparate modes, only last forcing takes effect.
 		public bool Force(PowerMode mode, int sourcePid)
 		{
 			if (Behaviour == PowerBehaviour.Manual) return false;
