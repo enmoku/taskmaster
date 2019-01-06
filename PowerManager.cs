@@ -171,6 +171,7 @@ namespace Taskmaster
 		readonly System.Timers.Timer MonitorSleepTimer;
 
 		int SleepTickCount = -1;
+		int SleepGivenUp = 0;
 		int monitorsleeptimer_lock = 0;
 		void MonitorSleepTimerTick(object _, EventArgs _ea)
 		{
@@ -199,8 +200,9 @@ namespace Taskmaster
 				{
 					SleepTickCount++;
 
-					if (Taskmaster.ShowSessionActions || Taskmaster.DebugMonitor)
-						Log.Information("<Session:Lock> User idle; Monitor power down, attempt " + SleepTickCount + "...");
+					if ((Taskmaster.ShowSessionActions || Taskmaster.DebugMonitor) && SleepGivenUp <= 1)
+						Log.Information("<Session:Lock> User idle (" + $"{idletime:N0}" + "s); Monitor power down, attempt " +
+							SleepTickCount + "...");
 
 					SetMonitorMode(MonitorPowerMode.Off);
 				}
@@ -215,9 +217,13 @@ namespace Taskmaster
 				if (SleepTickCount >= 5)
 				{
 					// it would be better if this wasn't needed, but we don't want to spam our failure in the logs too much
-					Log.Warning("<Session:Lock> Repeated failure to put monitor to sleep, giving up. Other apps may be interfering");
+					if (SleepGivenUp == 0)
+						Log.Warning("<Session:Lock> Repeated failure to put monitor to sleep. Other apps may be interfering");
+					else if (SleepGivenUp == 1)
+						Log.Warning("<Session:Lock> Monitor sleep failures persist, stopping logging.");
 					// TODO: Detect other apps that have used SetThreadExecutionState(ES_CONTINUOUS) to prevent monitor sleep
 					// ... this is supposedly not possible.
+					SleepGivenUp++;
 					StopDisplayTimer(reset:true);
 				}
 			}
@@ -834,7 +840,7 @@ namespace Taskmaster
 						lock (power_lock)
 						{
 							if (CurrentMode != SessionLockPowerMode)
-								InternalSetMode(SessionLockPowerMode, cause: new Cause(OriginType.Session, "Lock"), verbose: true);
+								InternalSetMode(SessionLockPowerMode, new Cause(OriginType.Session, "Lock"), verbose: true);
 						}
 						break;
 					case SessionSwitchReason.SessionLogon:
@@ -843,21 +849,21 @@ namespace Taskmaster
 						if (Taskmaster.DebugSession || Taskmaster.ShowSessionActions || Taskmaster.DebugPower)
 							Log.Information("<Session:Unlock> Restoring normal power.");
 
+						SleepGivenUp = 0;
+
 						lock (power_lock)
 						{
 							// TODO: Add configuration for this
+
+							PowerMode mode = RestoreMode;
+							if (mode == PowerMode.Undefined && SavedMode != PowerMode.Undefined)
+								mode = SavedMode;
+							else
+								mode = PowerMode.Balanced;
+
+							InternalSetMode(mode, new Cause(OriginType.Session, "Unlock"), verbose: true);
+
 							Behaviour = LaunchBehaviour;
-
-							if (CurrentMode == SessionLockPowerMode)
-							{
-								PowerMode mode = RestoreMode;
-								if (mode == PowerMode.Undefined && SavedMode != PowerMode.Undefined)
-									mode = SavedMode;
-								else
-									mode = PowerMode.Balanced;
-
-								InternalSetMode(mode, cause:new Cause(OriginType.Session, "Unlock"), verbose: true);
-							}
 						}
 						break;
 					default:
@@ -1167,7 +1173,7 @@ namespace Taskmaster
 				{
 					// if (Behaviour == PowerBehaviour.Auto) return; // this is very optimistic
 
-					InternalSetMode(SavedMode, cause:new Cause(OriginType.None, "Restoration"), verbose:false);
+					InternalSetMode(SavedMode, new Cause(OriginType.None, "Restoration"), verbose:false);
 					SavedMode = PowerMode.Undefined;
 				}
 			}
