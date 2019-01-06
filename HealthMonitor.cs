@@ -4,7 +4,7 @@
 // Author:
 //       M.A. (https://github.com/mkahvi)
 //
-// Copyright (c) 2018 M.A.
+// Copyright (c) 2018–2019 M.A.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -399,8 +399,8 @@ namespace Taskmaster
 
 							if (Settings.MemIgnoreFocus && Taskmaster.activeappmonitor != null)
 							{
-								uint lastact = User.LastActive();
-								if (lastact != uint.MinValue && User.TicksToSeconds(lastact) <= (60 * 60 * 3))
+								var idle = User.IdleTime();
+								if (idle.TotalMinutes <= 3d)
 								{
 									ignorepid = Taskmaster.activeappmonitor.Foreground;
 									Log.Verbose("<Auto-Doc> Protecting foreground app (#" + ignorepid + ")");

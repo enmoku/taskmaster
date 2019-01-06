@@ -4,7 +4,7 @@
 // Author:
 //       M.A. (https://github.com/mkahvi)
 //
-// Copyright (c) 2018 M.A.
+// Copyright (c) 2018–2019 M.A.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -34,25 +34,33 @@ namespace MKAh
 		/// <summary>
 		/// User idle time in seconds.
 		/// </summary>
-		public static double UserIdleTime()
+		public static TimeSpan IdleTime()
 		{
-			var lastact = LastActive();
-			return TicksToSeconds(lastact);
+			uint uticks = LastActive();
+			uint eticks = Taskmaster.NativeMethods.GetTickCount();
+
+			long ticks = uticks;
+			if (uticks < eticks) ticks += (uint.MaxValue - eticks); // overflow
+			else ticks -= eticks;
+
+			return LastActiveTimespan(uticks);
 		}
 
 		/// <summary>
-		/// Pass this to IdleFor(uint).
+		/// Wrapper for GetLastInputInfo() which returns 32 bit tick count when user was last active.
+		/// Does not detect gamepad activity.
 		/// </summary>
 		/// <returns>Ticks since boot.</returns>
+		// BUG: This gets weird if the system has not been rebooted in 24.9 days
+		// https://docs.microsoft.com/en-us/dotnet/api/system.environment.tickcount?view=netframework-4.7.2
 		public static uint LastActive()
 		{
 			var info = new LASTINPUTINFO();
 			info.cbSize = (uint)Marshal.SizeOf(info);
 			info.dwTime = 0;
-			bool rv = GetLastInputInfo(ref info);
-			if (rv) return info.dwTime;
+			GetLastInputInfo(ref info); // ignore failure to retrieve data
 
-			return uint.MinValue;
+			return info.dwTime;
 		}
 
 		/// <summary>
@@ -60,15 +68,13 @@ namespace MKAh
 		/// </summary>
 		/// <param name="lastActive">Last active time, as returned by LastActive</param>
 		/// <returns>Seconds for how long user has been idle</returns>
-		public static double TicksToSeconds(uint lastActive)
+		public static TimeSpan LastActiveTimespan(long lastActive)
 		{
-			double eticks = Convert.ToDouble(Environment.TickCount);
-			double uticks = Convert.ToDouble(lastActive);
-			return (eticks - uticks) / 1000f;
+			return TimeSpan.FromTicks(lastActive);
 		}
 
 		[DllImport("user32.dll")]
-		internal static extern bool GetLastInputInfo(ref LASTINPUTINFO plii);
+		internal static extern bool GetLastInputInfo(ref LASTINPUTINFO lastinputinfo);
 
 		[StructLayout(LayoutKind.Sequential)]
 		internal struct LASTINPUTINFO

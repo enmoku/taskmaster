@@ -127,11 +127,15 @@ namespace Taskmaster
 
 			if (Taskmaster.DebugMonitor)
 			{
-				uint lastact = User.LastActive();
-				double idle = User.TicksToSeconds(lastact);
-				if (lastact == uint.MinValue) idle = 0; // HACK
+				var idle = User.IdleTime();
+				double sidletime = Time.Simplify(idle, out Time.Timescale scale);
+				var timename = Time.TimescaleString(scale);
 
-				Log.Debug("<Monitor> Power state: " + ev.Mode.ToString() + " (last user activity " + Convert.ToInt32(idle) + "s ago)");
+				//uint lastact = User.LastActive();
+				//var idle = User.LastActiveTimespan(lastact);
+				//if (lastact == uint.MinValue) idle = TimeSpan.Zero; // HACK
+
+				Log.Debug("<Monitor> Power state: " + ev.Mode.ToString() + " (last user activity " + $"{sidletime:N1} {timename}" + " ago)");
 			}
 
 			if (OldPowerState == ev.Mode)
@@ -178,14 +182,13 @@ namespace Taskmaster
 		int monitorsleeptimer_lock = 0;
 		void MonitorSleepTimerTick(object _, EventArgs _ea)
 		{
-			uint lastact = User.LastActive();
-			double idletime = User.TicksToSeconds(lastact);
+			var idle = User.IdleTime();
 
 			if (SessionLockPowerMode != PowerMode.Undefined)
 			{
 				lock (power_lock)
 				{
-					if (CurrentMode != SessionLockPowerMode && idletime > 120)
+					if (CurrentMode != SessionLockPowerMode && idle.TotalMinutes > 2d)
 						InternalSetMode(SessionLockPowerMode, new Cause(OriginType.Session, "User inactivity"), verbose: false);
 				}
 			}
@@ -200,14 +203,15 @@ namespace Taskmaster
 
 			try
 			{
-				if (lastact == uint.MinValue) idletime = 0; // HACK
-
-				if (idletime >= Convert.ToDouble(SessionLockPowerOffIdleTimeout))
+				if (idle.TotalSeconds >= Convert.ToDouble(SessionLockPowerOffIdleTimeout))
 				{
 					SleepTickCount++;
 
+					double sidletime = Time.Simplify(idle, out Time.Timescale scale);
+					var timename = Time.TimescaleString(scale);
+
 					if ((Taskmaster.ShowSessionActions || Taskmaster.DebugMonitor) && SleepGivenUp <= 1)
-						Log.Information("<Session:Lock> User idle (" + $"{idletime:N0}" + "s); Monitor power down, attempt " +
+						Log.Information("<Session:Lock> User idle (" + $"{sidletime:N1} {timename}" + "); Monitor power down, attempt " +
 							SleepTickCount + "...");
 
 					SetMonitorMode(MonitorPowerMode.Off);

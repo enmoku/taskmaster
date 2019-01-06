@@ -4,7 +4,7 @@
 // Author:
 //       M.A. (https://github.com/mkahvi)
 //
-// Copyright (c) 2016-2018 M.A.
+// Copyright (c) 2016-2019 M.A.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -49,13 +49,6 @@ namespace Taskmaster
 		public static bool Nonce(this Trinary tri) => (tri == Trinary.Nonce);
 	}
 
-	public enum Timescale
-	{
-		Seconds,
-		Minutes,
-		Hours,
-	}
-
 	public static class Utility
 	{
 		public static void Swap<T>(ref T a, ref T b)
@@ -76,45 +69,6 @@ namespace Taskmaster
 			{
 				Logging.Stacktrace(ex);
 			}
-		}
-
-		public static string TimescaleString(Timescale t)
-		{
-			switch (t)
-			{
-				case Timescale.Seconds:
-					return "second(s)";
-				case Timescale.Minutes:
-					return "minute(s)";
-				case Timescale.Hours:
-					return "hour(s)";
-			}
-
-			return string.Empty;
-		}
-
-		public static double SimpleTime(double seconds, out Timescale scale)
-		{
-			Debug.Assert(seconds >= 0);
-
-			double time = seconds;
-
-			if (time > 7200.0)
-			{
-				time /= 3600.0;
-				scale = Timescale.Hours;
-			}
-			else if (time > 120.0)
-			{
-				time /= 60.0;
-				scale = Timescale.Minutes;
-			}
-			else
-			{
-				scale = Timescale.Seconds;
-			}
-
-			return time;
 		}
 
 		public static void LogAndDiscardException(Action action)

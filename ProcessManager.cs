@@ -1662,7 +1662,7 @@ namespace Taskmaster
 
 			// TODO: Verify that this is actually useful?
 
-			if (ScanFrequency < 300 && User.UserIdleTime() > (60f * 60f * 2f)) // 2 hours
+			if (ScanFrequency < 300 && User.IdleTime() > (60f * 60f * 2f)) // 2 hours
 			{
 				foreach (var prc in Watchlist.Keys)
 					prc.Refresh();
