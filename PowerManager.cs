@@ -219,7 +219,7 @@ namespace Taskmaster
 				else
 				{
 					if (Taskmaster.ShowSessionActions || Taskmaster.DebugMonitor)
-						Log.Information("<Session:Lock> User active too recently (" + $"{idletime:N1}s" + " ago), delaying monitor power down...");
+						Log.Information("<Session:Lock> User active too recently (" + $"{idle.TotalSeconds:N1}s" + " ago), delaying monitor power down...");
 
 					StartDisplayTimer(); // TODO: Make this happen sooner if user was not active recently
 				}
