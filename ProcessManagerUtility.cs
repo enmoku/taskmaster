@@ -4,7 +4,7 @@
 // Author:
 //       M.A. (https://github.com/mkahvi)
 //
-// Copyright (c) 2018 M.A.
+// Copyright (c) 2018–2019 M.A.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
