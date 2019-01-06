@@ -843,10 +843,13 @@ namespace Taskmaster
 						if (Taskmaster.DebugSession)
 							Log.Debug("<Session:Lock> Enforcing power plan: " + SessionLockPowerMode.ToString());
 
-						lock (power_lock)
+						if (SessionLockPowerMode != PowerMode.Undefined)
 						{
-							if (CurrentMode != SessionLockPowerMode)
-								InternalSetMode(SessionLockPowerMode, new Cause(OriginType.Session, "Lock"), verbose: true);
+							lock (power_lock)
+							{
+								if (CurrentMode != SessionLockPowerMode)
+									InternalSetMode(SessionLockPowerMode, new Cause(OriginType.Session, "Lock"), verbose: true);
+							}
 						}
 						break;
 					case SessionSwitchReason.SessionLogon:
@@ -860,16 +863,7 @@ namespace Taskmaster
 						lock (power_lock)
 						{
 							// TODO: Add configuration for this
-
-							PowerMode mode = RestoreMode;
-							if (mode == PowerMode.Undefined && SavedMode != PowerMode.Undefined)
-								mode = SavedMode;
-							else
-								mode = PowerMode.Balanced;
-
-							InternalSetMode(mode, new Cause(OriginType.Session, "Unlock"), verbose: true);
-
-							Behaviour = LaunchBehaviour;
+							ResetPower(new Cause(OriginType.Session, "Unlock"), true);
 						}
 						break;
 					default:
@@ -881,6 +875,19 @@ namespace Taskmaster
 			{
 				Logging.Stacktrace(ex);
 			}
+		}
+
+		void ResetPower(Cause cause = null, bool verbose = false)
+		{
+			PowerMode mode = RestoreMode;
+			if (mode == PowerMode.Undefined && SavedMode != PowerMode.Undefined)
+				mode = SavedMode;
+			else
+				mode = PowerMode.Balanced;
+
+			InternalSetMode(mode, cause, verbose: verbose);
+
+			Behaviour = LaunchBehaviour;
 		}
 
 		void BatteryChargingEvent(object _, PowerModeChangedEventArgs ev)
