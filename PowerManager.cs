@@ -142,10 +142,13 @@ namespace Taskmaster
 
 			if (ev.Mode == MonitorPowerMode.On && SessionLocked)
 			{
-				lock (power_lock)
+				if (SessionLockPowerMode != PowerMode.Undefined)
 				{
-					if (CurrentMode == SessionLockPowerMode)
-						InternalSetMode(PowerMode.Balanced, new Cause(OriginType.Session, "User activity"), verbose: false);
+					lock (power_lock)
+					{
+						if (CurrentMode == SessionLockPowerMode)
+							InternalSetMode(PowerMode.Balanced, new Cause(OriginType.Session, "User activity"), verbose: false);
+					}
 				}
 
 				StartDisplayTimer();
@@ -178,10 +181,13 @@ namespace Taskmaster
 			uint lastact = User.LastActive();
 			double idletime = User.TicksToSeconds(lastact);
 
-			lock (power_lock)
+			if (SessionLockPowerMode != PowerMode.Undefined)
 			{
-				if (CurrentMode != SessionLockPowerMode && idletime > 120)
-					InternalSetMode(SessionLockPowerMode, new Cause(OriginType.Session, "User inactivity"), verbose: false);
+				lock (power_lock)
+				{
+					if (CurrentMode != SessionLockPowerMode && idletime > 120)
+						InternalSetMode(SessionLockPowerMode, new Cause(OriginType.Session, "User inactivity"), verbose: false);
+				}
 			}
 
 			if (CurrentMonitorState == MonitorPowerMode.Off || !SessionLocked || SleepTickCount < 0)
