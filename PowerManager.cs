@@ -142,6 +142,12 @@ namespace Taskmaster
 
 			if (ev.Mode == MonitorPowerMode.On && SessionLocked)
 			{
+				lock (power_lock)
+				{
+					if (CurrentMode == SessionLockPowerMode)
+						InternalSetMode(PowerMode.Balanced, new Cause(OriginType.Session, "User activity"), verbose: false);
+				}
+
 				StartDisplayTimer();
 			}
 			else if (ev.Mode == MonitorPowerMode.Off)
@@ -168,6 +174,15 @@ namespace Taskmaster
 		int monitorsleeptimer_lock = 0;
 		void MonitorSleepTimerTick(object _, EventArgs _ea)
 		{
+			uint lastact = User.LastActive();
+			double idletime = User.TicksToSeconds(lastact);
+
+			lock (power_lock)
+			{
+				if (CurrentMode != SessionLockPowerMode && idletime > 120)
+					InternalSetMode(SessionLockPowerMode, new Cause(OriginType.Session, "User inactivity"), verbose: false);
+			}
+
 			if (CurrentMonitorState == MonitorPowerMode.Off || !SessionLocked || SleepTickCount < 0)
 			{
 				StopDisplayTimer();
@@ -178,8 +193,6 @@ namespace Taskmaster
 
 			try
 			{
-				uint lastact = User.LastActive();
-				double idletime = User.TicksToSeconds(lastact);
 				if (lastact == uint.MinValue) idletime = 0; // HACK
 
 				if (idletime >= Convert.ToDouble(SessionLockPowerOffIdleTimeout))
