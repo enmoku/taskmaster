@@ -1862,6 +1862,7 @@ namespace Taskmaster
 			powerbalancerlog.Columns.Add("Average", 60);
 			powerbalancerlog.Columns.Add("High", 60);
 			powerbalancerlog.Columns.Add("Low", 60);
+			powerbalancerlog.Columns.Add("Reaction", 80);
 			powerbalancerlog.Columns.Add("Reactionary Plan", 120);
 			powerbalancerlog.Columns.Add("Enacted", 60);
 			powerbalancerlog.Columns.Add("Pressure", 60);
