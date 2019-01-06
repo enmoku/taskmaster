@@ -350,7 +350,7 @@ namespace Taskmaster
 				if (Taskmaster.DebugPower) Log.Debug("<Power> Setting manual mode: " + mode.ToString());
 
 				// powermanager.Restore(0).Wait(); // already called by setBehaviour as necessary
-				powermanager?.SetMode(mode, cause:new Cause(OriginType.User));
+				powermanager?.SetMode(mode, new Cause(OriginType.User));
 
 				// powermanager.RequestMode(mode);
 				HighlightPowerMode();
