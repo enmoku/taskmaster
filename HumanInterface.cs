@@ -40,7 +40,7 @@ namespace Taskmaster
 
 		public static string TimeString(TimeSpan time)
 		{
-			if (time.TotalMilliseconds <= 0) return "n/a";
+			if (time.TotalMilliseconds <= 0) return HumanReadable.Generic.NotAvailable;
 
 			var s = new System.Text.StringBuilder();
 

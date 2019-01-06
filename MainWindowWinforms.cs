@@ -264,8 +264,8 @@ namespace Taskmaster
 							DateTime.Now.ToLongTimeString(),
 							ev.Info.Name,
 							ev.Control.FriendlyName,
-							(ev.PriorityNew.HasValue ? MKAh.Readable.ProcessPriority(ev.PriorityNew.Value) : "n/a"),
-							(ev.AffinityNew >= 0 ? HumanInterface.BitMask(ev.AffinityNew, ProcessManager.CPUCount) : "n/a"),
+							(ev.PriorityNew.HasValue ? MKAh.Readable.ProcessPriority(ev.PriorityNew.Value) : HumanReadable.Generic.NotAvailable),
+							(ev.AffinityNew >= 0 ? HumanInterface.BitMask(ev.AffinityNew, ProcessManager.CPUCount) : HumanReadable.Generic.NotAvailable),
 							ev.Info.Path
 						});
 						lastmodifylist.Items.Add(mi);
@@ -1322,7 +1322,7 @@ namespace Taskmaster
 				TextAlign = System.Drawing.ContentAlignment.MiddleLeft,
 				//AutoSize = true // why not?
 			};
-			AudioInputDevice = new Label { Text = "N/A", Dock = DockStyle.Left, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, AutoEllipsis = true };
+			AudioInputDevice = new Label { Text = HumanReadable.Generic.NotAvailable, Dock = DockStyle.Left, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, AutoEllipsis = true };
 			var micNameRow = new TableLayoutPanel
 			{
 				Dock = DockStyle.Fill,
@@ -1670,7 +1670,7 @@ namespace Taskmaster
 				{
 					AutoSize = true,
 					Width = 40,
-					Text = "n/a",
+					Text = HumanReadable.Generic.NotAvailable,
 					TextAlign = System.Drawing.ContentAlignment.MiddleLeft
 				};
 				cachePanel.Controls.Add(cacheObjects);
@@ -1684,7 +1684,7 @@ namespace Taskmaster
 				{
 					AutoSize = true,
 					Width = 40,
-					Text = "n/a",
+					Text = HumanReadable.Generic.NotAvailable,
 					TextAlign = System.Drawing.ContentAlignment.MiddleLeft
 				};
 				cachePanel.Controls.Add(cacheRatio);
@@ -1693,7 +1693,7 @@ namespace Taskmaster
 				{
 					Width = 40,
 					//Dock = DockStyle.Left,
-					Text = "n/a",
+					Text = HumanReadable.Generic.NotAvailable,
 					TextAlign = System.Drawing.ContentAlignment.MiddleLeft,
 				};
 
@@ -1702,7 +1702,7 @@ namespace Taskmaster
 					Width = 40,
 					//Margin = new Padding(3 + 3),
 					//Dock = DockStyle.Left,
-					Text = "n/a",
+					Text = HumanReadable.Generic.NotAvailable,
 					TextAlign = System.Drawing.ContentAlignment.MiddleLeft,
 				};
 			}
@@ -1754,12 +1754,12 @@ namespace Taskmaster
 			hwpanel.Controls.Add(new Label()); // empty
 
 			hwpanel.Controls.Add(new Label() { Text = "CPU", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left });
-			cpuload = new Label() { Text = "n/a", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left };
+			cpuload = new Label() { Text = HumanReadable.Generic.NotAvailable, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left };
 			hwpanel.Controls.Add(cpuload);
 			// TODO: Add high, low and average
 
 			hwpanel.Controls.Add(new Label() { Text = "RAM", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left });
-			ramload = new Label() { Text = "n/a", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left };
+			ramload = new Label() { Text = HumanReadable.Generic.NotAvailable, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left };
 			hwpanel.Controls.Add(ramload);
 
 			hwpanel.Controls.Add(new Label() { Text = "VRAM", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left });
@@ -1875,13 +1875,13 @@ namespace Taskmaster
 				Dock = DockStyle.Top
 			};
 			powerbalancerstatus.Controls.Add(new Label() { Text = "Behaviour:", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true });
-			powerbalancer_behaviour = new Label() { Text = "n/a", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true };
+			powerbalancer_behaviour = new Label() { Text = HumanReadable.Generic.NotAvailable, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true };
 			powerbalancerstatus.Controls.Add(powerbalancer_behaviour);
 			powerbalancerstatus.Controls.Add(new Label() { Text = "| Plan:", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true });
-			powerbalancer_plan = new Label() { Text = "n/a", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true };
+			powerbalancer_plan = new Label() { Text = HumanReadable.Generic.NotAvailable, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true };
 			powerbalancerstatus.Controls.Add(powerbalancer_plan);
 			powerbalancerstatus.Controls.Add(new Label() { Text = "Forced by:", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true });
-			powerbalancer_forcedcount = new Label() { Text = "n/a", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true };
+			powerbalancer_forcedcount = new Label() { Text = HumanReadable.Generic.NotAvailable, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true };
 			powerbalancerstatus.Controls.Add(powerbalancer_forcedcount);
 
 			powerbalancerstatus.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
@@ -1920,9 +1920,9 @@ namespace Taskmaster
 				TextAlign = System.Drawing.ContentAlignment.MiddleLeft,
 				AutoEllipsis = true,
 			};
-			activeExec = new Label() { Dock = DockStyle.Top, Text = "n/a", Width = 100, TextAlign = System.Drawing.ContentAlignment.MiddleLeft };
-			activeFullscreen = new Label() { Dock = DockStyle.Top, Text = "n/a", Width = 60, TextAlign = System.Drawing.ContentAlignment.MiddleCenter };
-			activePID = new Label() { Text = "n/a", Width = 60, TextAlign = System.Drawing.ContentAlignment.MiddleCenter };
+			activeExec = new Label() { Dock = DockStyle.Top, Text = HumanReadable.Generic.NotAvailable, Width = 100, TextAlign = System.Drawing.ContentAlignment.MiddleLeft };
+			activeFullscreen = new Label() { Dock = DockStyle.Top, Text = HumanReadable.Generic.NotAvailable, Width = 60, TextAlign = System.Drawing.ContentAlignment.MiddleCenter };
+			activePID = new Label() { Text = HumanReadable.Generic.NotAvailable, Width = 60, TextAlign = System.Drawing.ContentAlignment.MiddleCenter };
 
 			foregroundapppanel.Controls.Add(new Label() { Text = "Active window:", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, Width = 80 });
 			foregroundapppanel.Controls.Add(activeLabel);
@@ -2140,15 +2140,15 @@ namespace Taskmaster
 
 			statusbar.Items.Add("Processing");
 			statusbar.Items.Add("Items:");
-			processingcount = new ToolStripStatusLabel("[   n/a   ]") { AutoSize=false };
+			processingcount = new ToolStripStatusLabel("[   "+ HumanReadable.Generic.NotAvailable + "   ]") { AutoSize=false };
 			statusbar.Items.Add(processingcount);
 			statusbar.Items.Add("Next scan in:");
-			processingtimer = new ToolStripStatusLabel("[   n/a   ]") { AutoSize = false };
+			processingtimer = new ToolStripStatusLabel("[   "+ HumanReadable.Generic.NotAvailable + "   ]") { AutoSize = false };
 			statusbar.Items.Add(processingtimer);
 			var spacer = new ToolStripStatusLabel() { Alignment = ToolStripItemAlignment.Right, Width=-2, Spring=true };
 			statusbar.Items.Add(spacer);
 			statusbar.Items.Add(new ToolStripStatusLabel("Verbosity:"));
-			verbositylevel = new ToolStripStatusLabel("n/a");
+			verbositylevel = new ToolStripStatusLabel(HumanReadable.Generic.NotAvailable);
 			statusbar.Items.Add(verbositylevel);
 
 			statusbar.Items.Add(new ToolStripStatusLabel("Adjusted:") { Alignment = ToolStripItemAlignment.Right});
@@ -2216,7 +2216,7 @@ namespace Taskmaster
 									ea.Info.Id.ToString(),
 									ea.Info.Name,
 									(fg ? HumanReadable.System.Process.Foreground : HumanReadable.System.Process.Background),
-									(ea.Info.ActiveWait ? "FORCED" : "n/a")
+									(ea.Info.ActiveWait ? "FORCED" : HumanReadable.Generic.NotAvailable)
 								});
 
 							exitwaitlist.BeginUpdate();
@@ -2639,11 +2639,11 @@ namespace Taskmaster
 							dev.Type.ToString(),
 							dev.Status.ToString(),
 							HumanInterface.ByteString(dev.Speed),
-							dev.IPv4Address?.ToString() ?? "n/a",
-							dev.IPv6Address?.ToString() ?? "n/a",
-							"n/a", // traffic delta
-							"n/a", // error delta
-							"n/a", // total errors
+							dev.IPv4Address?.ToString() ?? HumanReadable.Generic.NotAvailable,
+							dev.IPv6Address?.ToString() ?? HumanReadable.Generic.NotAvailable,
+							HumanReadable.Generic.NotAvailable, // traffic delta
+							HumanReadable.Generic.NotAvailable, // error delta
+							HumanReadable.Generic.NotAvailable, // total errors
 						})
 						{
 							UseItemStyleForSubItems = false

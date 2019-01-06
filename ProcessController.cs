@@ -607,7 +607,7 @@ namespace Taskmaster
 				if (ev.Protected) sbs.Append(" [Protected]");
 			}
 			else
-				sbs.Append("n/a");
+				sbs.Append(HumanReadable.Generic.NotAvailable);
 
 			sbs.Append("; Affinity: ");
 			if (ev.AffinityOld >= 0)
@@ -620,7 +620,7 @@ namespace Taskmaster
 					sbs.Append($" [{AffinityMask}]");
 			}
 			else
-				sbs.Append("n/a");
+				sbs.Append(HumanReadable.Generic.NotAvailable);
 
 			if (ev.AffinityFail) sbs.Append(" [Failed]");
 
