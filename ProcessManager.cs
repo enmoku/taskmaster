@@ -803,7 +803,7 @@ namespace Taskmaster
 
 				prc.LogAdjusts = section.TryGet("Logging")?.BoolValue ?? true;
 
-				prc.Volume = volume;
+				prc.Volume = volume.Constrain(0f, 1f);
 				prc.VolumeStrategy = volumestrategy;
 
 				// TODO: Blurp about following configuration errors
