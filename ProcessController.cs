@@ -52,6 +52,10 @@ namespace Taskmaster
 		/// Process back on foreground.
 		/// </summary>
 		public event EventHandler<ProcessEventArgs> Resumed;
+		/// <summary>
+		/// Process is waiting for exit.
+		/// </summary>
+		public event EventHandler<ProcessEventArgs> WaitingExit;
 
 		// Core information
 		/// <summary>
@@ -250,6 +254,9 @@ namespace Taskmaster
 		{
 			ForegroundWatch.TryRemove(info.Id, out _);
 			PausedIds.TryRemove(info.Id, out _);
+
+			if (info.PowerWait)
+				Taskmaster.powermanager.Release(info.Id);
 
 			PowerList.TryRemove(info.Id, out _);
 		}
@@ -767,7 +774,9 @@ namespace Taskmaster
 			PowerList.TryAdd(info.Id, 0);
 			var ea = new ProcessEventArgs() { Info = info, Control = this, State = ProcessRunningState.Undefined };
 
-			return Taskmaster.powermanager.Force(PowerPlan, info.Id);
+			bool rv = Taskmaster.powermanager.Force(PowerPlan, info.Id);
+			WaitingExit?.Invoke(this, ea);
+			return rv;
 		}
 
 		void UndoPower(ProcessEx info)
@@ -1130,7 +1139,9 @@ namespace Taskmaster
 				*/
 			}
 			else
-				Debug.WriteLine($"{info.Name} #{info.Id} --- affinity not touched");
+			{
+				if (Taskmaster.DebugProcesses) Debug.WriteLine($"{info.Name} #{info.Id} --- affinity not touched");
+			}
 
 			// APPLY CHANGES HERE
 			if (doModifyPriority)

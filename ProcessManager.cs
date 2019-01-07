@@ -858,7 +858,7 @@ namespace Taskmaster
 				//prc.Paused += ProcessPausedProxy;
 				//prc.Resumed += ProcessResumedProxy;
 				prc.Paused += ProcessWaitingExitProxy;
-				//prc.WaitingExit += ProcessWaitingExitProxy;
+				prc.WaitingExit += ProcessWaitingExitProxy;
 			}
 		}
 
@@ -907,12 +907,7 @@ namespace Taskmaster
 			Debug.Assert(!SystemProcessId(info.Id));
 
 			if (info.ActiveWait)
-			{
 				ForegroundWaitlist.TryRemove(info.Id, out _);
-			}
-
-			if (info.PowerWait)
-				Taskmaster.powermanager.Release(info.Id);
 
 			WaitForExitList.TryRemove(info.Id, out _);
 
@@ -968,29 +963,30 @@ namespace Taskmaster
 
 		public void WaitForExit(ProcessEx info, ProcessController controller)
 		{
-			bool exithooked = false;
-
-			if (!WaitForExitList.TryAdd(info.Id, info))
-				return;
-
-			try
+			if (WaitForExitList.TryAdd(info.Id, info))
 			{
-				info.Process.EnableRaisingEvents = true;
-				info.Process.Exited += (s, e) => WaitForExitTriggered(info, controller);
-				exithooked = true;
-			}
-			catch (InvalidOperationException) // already exited
-			{
-				WaitForExitList.TryRemove(info.Id, out _);
-			}
-			catch (Exception ex) // unknown error
-			{
-				Logging.Stacktrace(ex);
-				WaitForExitList.TryRemove(info.Id, out _);
-			}
+				bool exithooked = false;
 
-			if (exithooked)
-				ProcessStateChange?.Invoke(this, new ProcessEventArgs() { Control = null, Info = info, State = ProcessRunningState.Found });
+				try
+				{
+					info.Process.EnableRaisingEvents = true;
+					info.Process.Exited += (_, _ea) => WaitForExitTriggered(info, controller);
+					// TODO: Just in case check if it exited while we were doing this.
+					exithooked = true;
+				}
+				catch (InvalidOperationException) // already exited
+				{
+					WaitForExitList.TryRemove(info.Id, out _);
+				}
+				catch (Exception ex) // unknown error
+				{
+					Logging.Stacktrace(ex);
+					WaitForExitList.TryRemove(info.Id, out _);
+				}
+
+				if (exithooked)
+					ProcessStateChange?.Invoke(this, new ProcessEventArgs() { Control = null, Info = info, State = ProcessRunningState.Undefined });
+			}
 		}
 
 		public ProcessEx[] getExitWaitList() => WaitForExitList.Values.ToArray(); // copy is good here
