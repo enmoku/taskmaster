@@ -75,10 +75,17 @@ namespace Taskmaster
 
 		void Save(ConfigWrapper cfg)
 		{
-			lock (config_lock)
+			try
 			{
-				var fullpath = System.IO.Path.Combine(datapath, cfg.File);
-				cfg.Config.SaveToFile(fullpath);
+				lock (config_lock)
+				{
+					var fullpath = System.IO.Path.Combine(datapath, cfg.File);
+					cfg.Config.SaveToFile(fullpath);
+				}
+			}
+			catch (Exception ex)
+			{
+				Logging.Stacktrace(ex);
 			}
 		}
 
@@ -147,7 +154,7 @@ namespace Taskmaster
 			Dirty = true;
 		}
 
-		public void Save(bool force=false)
+		public void Save(bool force = false)
 		{
 			System.Diagnostics.Debug.Assert(Config != null);
 

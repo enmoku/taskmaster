@@ -1169,10 +1169,7 @@ namespace Taskmaster
 			else
 			{
 				if (Taskmaster.DebugPower)
-				{
-					Log.Debug("<Power> Forced mode still requested by " + lockCount + " sources.");
-					if (Forced) Log.Debug("<Power> Sources: " + string.Join(", ", ForceModeSourcesMap.Keys.ToArray()));
-				}
+					Log.Debug("<Power> Forced mode still requested by " + lockCount + " sources: " + string.Join(", ", ForceModeSourcesMap.Keys.ToArray()));
 			}
 		}
 
