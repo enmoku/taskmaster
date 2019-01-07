@@ -1235,7 +1235,7 @@ namespace Taskmaster
 				}
 				catch (Exception ex)
 				{
-					Logging.Stacktrace(ex);
+					Logging.Stacktrace(ex, crashsafe:true);
 					throw;
 				}
 
