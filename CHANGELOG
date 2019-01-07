@@ -5,8 +5,9 @@ Comprehensive changes can be found in Git change history:
 ## [0.12...]
 ### 2018-01-07
 	Fixed: User idle calculation. Ticks are a lie.
-	Fixed: A bug in watchlist rule sanity checking.
-	Fixed: UI state saving. It was not respecting disabled components.
+	Fixed: A bug in watchlist rule sanity checking. (reported by Chairkicker Nick)
+	Fixed: UI state saving. It was not respecting disabled components. (reported by Chairkicker Nick)
+	Fixed: Powerdown does not occur if foreground only rule is not used. (reported by Chairkicker Nick)
 ### 2018-01-06
 	Added: Power mode is briefly set to balanced if user is active during session lock to improve session unlock responsiviness.
 	Added: Power debug now shows current reaction on top of reactionary plan.
@@ -68,7 +69,7 @@ Comprehensive changes can be found in Git change history:
 
 ## [0.11...]
 ### 2018-12-09
-	Fixed: Accidentally disabled tray context menu.
+	Fixed: Accidentally disabled tray context menu. (reported by Chairkicker Nick)
 	Added: Logging for unhandled WinForms exceptions.
 	Removed: The run once (--once) option. Unnecessary complication and not in spirit of what TM is for.
 	Added: Ability to enable some experimental features via Core.ini [Experimental] section.
@@ -101,16 +102,17 @@ Comprehensive changes can be found in Git change history:
 ### 2018-11-28
 	Changed: Powerdown delay is untouched in the .ini to allow swapping back and forth between settings.
 		It is now simply ignored when it is problematic.
-	Fixed: Component configuration was severely outdated.
-	Removed: Immediate configuration saving. It was causing bugs for no real benefits.
+	Fixed: Component configuration was severely outdated. (reported by Chairkicker Nick)
+	Removed: Immediate configuration saving. It was causing bugs for no real benefits. (reported by Chairkicker Nick)
 	Fixed: Some oddities in power config saving.
-	Fixed: Powerdown delay logic was flipped.
+	Fixed: Powerdown delay logic was flipped. (reported by Chairkicker Nick)
 ### 2018-11-27
 	Fixed: Show Inaction was showing debug info for things that were not explicitly enabled.
 	Added: Monitor power and power mode during session lock options added to power config.
 	Fixed: Incorrect reading of some command-line arguments, notably --bootdelay which ignored the supplied number.
 	Fixed: --bootdelay was not actually used, now it is. Max delay is 5 minutes.
-	Added: Proper launch behaviour support. Auto-adjust option in Core.ini deprecated in favor of better Behaviour option.
+	Added: Proper launch behaviour support. (requested by Chairkicker Nick)
+		Auto-adjust option in Core.ini deprecated in favor of better Behaviour option.
 ### 2018-11-25
 	Added: Show CPU sample frequency in power configuration. This is to help understand the delays involved.
 	Fixed: Show Inaction was showing some debug information even when Process debug was not enabled as well.
@@ -128,7 +130,8 @@ Comprehensive changes can be found in Git change history:
 	Added: Background affinity and priority control to watchlist edit window. Formerly only available via direct .ini editing.
 	Added: Audio control to watchlist edit window. Formerly ony available via direct .ini editing.
 	Changed: Watchlist edit window is now a little more logically sorted.
-	FIXED: Components are now saved! This was broken not too long ago. Some other configuration savings were also enforced just in case.
+	FIXED: Components are now saved! This was broken not too long ago. (reported by Chairkicker Nick)
+		Some other configuration savings were also enforced just in case.
 	Changed: Watchlist edit window now has some features disabled if associated component is disabled.
 ### 2018-11-15
 	Internal: Removed as much as possible of Serilog's formatted string usage. This should fix large number of output related bugs.
@@ -170,7 +173,7 @@ Comprehensive changes can be found in Git change history:
 	Changed: Console output disabled for non-debug versions.
 	Internal: Removed several unused internal references (WindowsBase, System.Xaml, PresentationCore, PresentationFramework).
 ### 2018-10-31
-	Fixed: Crash on last day of a month
+	Fixed: Crash on last day of a month. (via a related report by Chairkicker Nick)
 	Fixed: Setting affinity strategy to ignored from force or limit in UI is now respected.
 	Fixed: Watchlist formatting is now uniform whether you just started TM or modified a rule.
 ### 2018-10-22
@@ -254,11 +257,11 @@ Comprehensive changes can be found in Git change history:
 	Fixed: A fatal error related to failure to extract path from process module.
 ### 2018-05-21
 	Changed: Dialog from component config now allows instant restarting of TM if so desired.
-	Fixed: Problems with new unconfigured TM setups.
+	Fixed: Problems with new unconfigured TM setups. (reported by Chairkicker Nick)
 ### 2018-05-20
 	Added: ctrl-alt-shift-m global hotkey to free memory except from current foreground app. This is disabled by default and requires enabling via `Register global hotkeys` in Core.ini.
 	Changed: A lot of internal scheduling was altered, hopefully to make TM more responsive.
-	Fixed: Rolled back a change that provided extended version information due to it causing crashes on some systems. Cause is known, fix is not.
+	Fixed: Rolled back a change that provided extended version information due to it causing crashes on some systems. Cause is known, fix is not.  (reported by Chairkicker Nick)
 ### 2018-05-19
 	Fixed: Watchlist rule edit window allowed entering garbage in affinity strategy.
 	Changed: Saving a watchlist rule does not delete the old.
@@ -284,13 +287,13 @@ Comprehensive changes can be found in Git change history:
 	Changed: Resize&reposition uses `Resize strategy` option instead of `Remember size` and `Remember position`.
 		0 = None, 1 = Size, 2 = Position, 3 = Both
 		Upgrading to new settings should happen automatically for now.
-	Fixed: Resize & reposition settings should no longer reset to 0 under certain circumstances.
+	Fixed: Resize & reposition settings should no longer reset to 0 under certain circumstances. (reported by Chairkicker Nick)
 	Fixed: Uncaught error in app hang detector.
 ### 2018-05-15
 	Fixed: Crash in watchlist rule editor if the affinity checkboxes were used.
 	Changed: Internal restructuring, removed PostSharp usage due to its interfererence with build process. Should have no effect for end users.
 ### 2018-05-13
-	Changed: Remember window sizes and positions works a little differently.
+	Changed: Remember window sizes and positions works a little differently. (requested by Chairkicker Nick)
 	Added: More debug output
 	Changed: Affinity setting no longer increases the number of allowed cores. This may later become configurable to allow increasing them.
 ### 2018-05-12
@@ -311,7 +314,7 @@ Comprehensive changes can be found in Git change history:
 	Changed: Explorer crash handling. It's more informative which process crashed and should handle multiple explorer processes better.
 
 ### 2018-05-05 Version 0.10
-	Changed: Allow watchlist rules with no affinity nor priority.
+	Changed: Allow watchlist rules with no affinity nor priority. (requested by Chairkicker Nick)
 	Fixed: Empty network device list if it was last active tab.
 
 ## [0.9...]
@@ -334,17 +337,17 @@ Comprehensive changes can be found in Git change history:
 ### 2018-04-25
 	Added: [Debug] section in Core.ini with secret options to enable various debug functions at launch.
 ### 2018-04-24
-	Fixed: Default power mode is not applied on start-up if auto-adjust is disabled.
+	Fixed: Default power mode is not applied on start-up if auto-adjust is disabled. (reported by Chairkicker Nick)
 	Removed: Experimental path location feature. Limited usability, documentation, and lack of desire to maintain it made it unwanted.
 	Changed: You can now copy multiple lines from the log at the same time to clipboard.
 ### 2018-04-23
-	Fixed: Error at HealthMonitor.cs:380 when foreground monitor was disabled.
+	Fixed: Error at HealthMonitor.cs:380 when foreground monitor was disabled. (reported by Chairkicker Nick)
 	Changed: How empty watchlist is detected.
 ### 2018-04-22
 	Fixed: Retarded WinForms bug.
 ### 2018-04-18
 	Added: Health monitor now warns of low diskspace. Defaults to 150 MB.
-	Added: Experimental feature to resize detected apps. Usable as `Resize={Top,Left,Width,Height}` in Watchlist.ini.
+	Added: Experimental feature to resize detected apps. Usable as `Resize={Top,Left,Width,Height}` in Watchlist.ini. (requested by Chairkicker Nick)
 	Added: `Remember size=true/false` and `Remember position=true/false` in Watchlist.ini to control the `Resize` option.
 	Fixed: Removing a rule did not do proper cleanup, causing rule with similar options to not work correctly without restart.
 ### 2018-04-17
@@ -387,8 +390,8 @@ Comprehensive changes can be found in Git change history:
 	Fixed: Dialog positions sanitized, they should be more consistent now.
 	Changed: Log verbosity option moved to debug menu.
 ### 2018-03-29
-	Changed: Tabs for components are now hidden as are process and power debug tabs when said things are disabled.
+	Changed: Tabs for components are now hidden as are process and power debug tabs when said things are disabled. (requested by Chairkicker Nick)
 	Fixed: Power mode was not reflected in UI.
 	Added: `Background powerdown` option added to Watchlist.ini to disable power mode forcing when not in foreground.
 ### 2018-03-29
-	Fixed: Power mode restroration is now more reliable.
+	Fixed: Power mode restroration is now more reliable. (reported by Chairkicker Nick)
