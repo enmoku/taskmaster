@@ -1247,9 +1247,11 @@ namespace Taskmaster
 			var watchTab = new TabPage("Watchlist");
 			tabLayout.Controls.Add(watchTab);
 
-			micTab = new TabPage("Microphone");
 			if (Taskmaster.MicrophoneMonitorEnabled)
+			{
+				micTab = new TabPage("Microphone");
 				tabLayout.Controls.Add(micTab);
+			}
 			powerDebugTab = new TabPage("Power Debug");
 			if (Taskmaster.DebugPower)
 				tabLayout.Controls.Add(powerDebugTab);
@@ -1277,17 +1279,26 @@ namespace Taskmaster
 
 			var opentab = uicfg.Config["Tabs"].TryGet("Open")?.IntValue ?? 0;
 
+			int[] appwidths = null;
 			int[] appwidthsDefault = new int[] { 20, 120, 140, 82, 60, 76, 46, 140 };
-			var appwidths = colcfg.GetSetDefault("Apps", appwidthsDefault).IntValueArray;
+			appwidths = colcfg.GetSetDefault("Apps", appwidthsDefault).IntValueArray;
 			if (appwidths.Length != appwidthsDefault.Length) appwidths = appwidthsDefault;
 
-			int[] micwidthsDefault = new int[] { 200, 220 };
-			var micwidths = colcfg.GetSetDefault("Mics", micwidthsDefault).IntValueArray;
-			if (micwidths.Length != micwidthsDefault.Length) micwidths = micwidthsDefault;
+			int[] micwidths = null;
+			if (Taskmaster.MicrophoneMonitorEnabled)
+			{
+				int[] micwidthsDefault = new int[] { 200, 220 };
+				micwidths = colcfg.GetSetDefault("Mics", micwidthsDefault).IntValueArray;
+				if (micwidths.Length != micwidthsDefault.Length) micwidths = micwidthsDefault;
+			}
 
-			int[] ifacewidthsDefault = new int[] { 110, 60, 50, 70, 90, 192, 60, 60, 40 };
-			var ifacewidths = colcfg.GetSetDefault("Interfaces", ifacewidthsDefault).IntValueArray;
-			if (ifacewidths.Length != ifacewidthsDefault.Length) ifacewidths = ifacewidthsDefault;
+			int[] ifacewidths = null;
+			if (Taskmaster.NetworkMonitorEnabled)
+			{
+				int[] ifacewidthsDefault = new int[] { 110, 60, 50, 70, 90, 192, 60, 60, 40 };
+				ifacewidths = colcfg.GetSetDefault("Interfaces", ifacewidthsDefault).IntValueArray;
+				if (ifacewidths.Length != ifacewidthsDefault.Length) ifacewidths = ifacewidthsDefault;
+			}
 
 			var winpos = wincfg["Main"].IntValueArray;
 
@@ -1305,106 +1316,108 @@ namespace Taskmaster
 			#endregion
 
 			#region Main Window Row 1, microphone device
-			var micpanel = new TableLayoutPanel
+			if (Taskmaster.MicrophoneMonitorEnabled)
 			{
-				Dock = DockStyle.Fill,
-				RowCount = 3,
-				//Width = tabLayout.Width - 12
-			};
-			micpanel.RowStyles.Add(new RowStyle(SizeType.Absolute, 32));
-			micpanel.RowStyles.Add(new RowStyle(SizeType.Absolute, 32));
+				var micpanel = new TableLayoutPanel
+				{
+					Dock = DockStyle.Fill,
+					RowCount = 3,
+					//Width = tabLayout.Width - 12
+				};
+				micpanel.RowStyles.Add(new RowStyle(SizeType.Absolute, 32));
+				micpanel.RowStyles.Add(new RowStyle(SizeType.Absolute, 32));
 
-			var micDevLbl = new Label
-			{
-				Text = "Default communications device:",
-				Dock = DockStyle.Left,
-				Width = 180,
-				TextAlign = System.Drawing.ContentAlignment.MiddleLeft,
-				//AutoSize = true // why not?
-			};
-			AudioInputDevice = new Label { Text = HumanReadable.Generic.NotAvailable, Dock = DockStyle.Left, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, AutoEllipsis = true };
-			var micNameRow = new TableLayoutPanel
-			{
-				Dock = DockStyle.Fill,
-				RowCount = 1,
-				ColumnCount = 2,
-				//AutoSize = true // why not?
-			};
-			micNameRow.Controls.Add(micDevLbl);
-			micNameRow.Controls.Add(AudioInputDevice);
-			#endregion
+				var micDevLbl = new Label
+				{
+					Text = "Default communications device:",
+					Dock = DockStyle.Left,
+					Width = 180,
+					TextAlign = System.Drawing.ContentAlignment.MiddleLeft,
+					//AutoSize = true // why not?
+				};
+				AudioInputDevice = new Label { Text = HumanReadable.Generic.NotAvailable, Dock = DockStyle.Left, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, AutoEllipsis = true };
+				var micNameRow = new TableLayoutPanel
+				{
+					Dock = DockStyle.Fill,
+					RowCount = 1,
+					ColumnCount = 2,
+					//AutoSize = true // why not?
+				};
+				micNameRow.Controls.Add(micDevLbl);
+				micNameRow.Controls.Add(AudioInputDevice);
+				#endregion
 
-			var miccntrl = new TableLayoutPanel()
-			{
-				ColumnCount = 5,
-				RowCount = 1,
-				Dock = DockStyle.Fill,
-				AutoSize = true,
-			};
-			miccntrl.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
-			miccntrl.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+				var miccntrl = new TableLayoutPanel()
+				{
+					ColumnCount = 5,
+					RowCount = 1,
+					Dock = DockStyle.Fill,
+					AutoSize = true,
+				};
+				miccntrl.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+				miccntrl.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 
-			var micVolLabel = new Label
-			{
-				Text = "Mic volume",
-				Dock = DockStyle.Top,
-				TextAlign = System.Drawing.ContentAlignment.MiddleLeft,
-				//AutoSize = true // why not?
-			};
+				var micVolLabel = new Label
+				{
+					Text = "Mic volume",
+					Dock = DockStyle.Top,
+					TextAlign = System.Drawing.ContentAlignment.MiddleLeft,
+					//AutoSize = true // why not?
+				};
 
-			AudioInputVolume = new Extensions.NumericUpDownEx
-			{
-				Unit = "%",
-				Increment = 1.0M,
-				Maximum = 100.0M,
-				Minimum = 0.0M,
-				Width = 60,
-				ReadOnly = true,
-				Enabled = false,
-				Dock = DockStyle.Top
-			};
-			AudioInputVolume.ValueChanged += UserMicVol;
+				AudioInputVolume = new Extensions.NumericUpDownEx
+				{
+					Unit = "%",
+					Increment = 1.0M,
+					Maximum = 100.0M,
+					Minimum = 0.0M,
+					Width = 60,
+					ReadOnly = true,
+					Enabled = false,
+					Dock = DockStyle.Top
+				};
+				AudioInputVolume.ValueChanged += UserMicVol;
 
-			miccntrl.Controls.Add(micVolLabel);
-			miccntrl.Controls.Add(AudioInputVolume);
+				miccntrl.Controls.Add(micVolLabel);
+				miccntrl.Controls.Add(AudioInputVolume);
 
-			var corLbll = new Label
-			{
-				Text = "Correction count:",
-				Dock = DockStyle.Top,
-				//AutoSize = true, // why not?
-				TextAlign = System.Drawing.ContentAlignment.MiddleLeft,
-			};
+				var corLbll = new Label
+				{
+					Text = "Correction count:",
+					Dock = DockStyle.Top,
+					//AutoSize = true, // why not?
+					TextAlign = System.Drawing.ContentAlignment.MiddleLeft,
+				};
 
-			corCountLabel = new Label
-			{
-				Dock = DockStyle.Top,
-				Text = "0",
-				TextAlign = System.Drawing.ContentAlignment.MiddleLeft,
-				//AutoSize = true, // why not?
-			};
-			miccntrl.Controls.Add(corLbll);
-			miccntrl.Controls.Add(corCountLabel);
-			// End: Volume control
+				corCountLabel = new Label
+				{
+					Dock = DockStyle.Top,
+					Text = "0",
+					TextAlign = System.Drawing.ContentAlignment.MiddleLeft,
+					//AutoSize = true, // why not?
+				};
+				miccntrl.Controls.Add(corLbll);
+				miccntrl.Controls.Add(corCountLabel);
+				// End: Volume control
 
-			// Main Window row 3, microphone device enumeration
-			AudioInputs = new ListView
-			{
-				Dock = DockStyle.Top,
-				//Width = tabLayout.Width - 12, // FIXME: 3 for the bevel, but how to do this "right"?
-				Height = 120,
-				View = View.Details,
-				AutoSize = true,
-				FullRowSelect = true
-			};
-			AudioInputs.Columns.Add("Name", micwidths[0]);
-			AudioInputs.Columns.Add("GUID", micwidths[1]);
+				// Main Window row 3, microphone device enumeration
+				AudioInputs = new ListView
+				{
+					Dock = DockStyle.Top,
+					//Width = tabLayout.Width - 12, // FIXME: 3 for the bevel, but how to do this "right"?
+					Height = 120,
+					View = View.Details,
+					AutoSize = true,
+					FullRowSelect = true
+				};
+				AudioInputs.Columns.Add("Name", micwidths[0]);
+				AudioInputs.Columns.Add("GUID", micwidths[1]);
 
-			micpanel.Controls.Add(micNameRow);
-			micpanel.Controls.Add(miccntrl);
-			micpanel.Controls.Add(AudioInputs);
-			micTab.Controls.Add(micpanel);
-
+				micpanel.Controls.Add(micNameRow);
+				micpanel.Controls.Add(miccntrl);
+				micpanel.Controls.Add(AudioInputs);
+				micTab.Controls.Add(micpanel);
+			}
 			// End: Microphone enumeration
 
 			// Main Window row 4-5, internet status
@@ -2793,34 +2806,46 @@ namespace Taskmaster
 
 			Invoke(new Action(() =>
 			{
-				if (WatchlistRules.Columns.Count == 0) return;
+				try
+				{
+					if (WatchlistRules.Columns.Count == 0) return;
 
-				List<int> appWidths = new List<int>(WatchlistRules.Columns.Count);
-				for (int i = 0; i < WatchlistRules.Columns.Count; i++)
-					appWidths.Add(WatchlistRules.Columns[i].Width);
+					var cfg = Taskmaster.Config.Load(uiconfig);
+					var cols = cfg.Config["Columns"];
 
-				List<int> ifaceWidths = new List<int>(ifaceList.Columns.Count);
-				for (int i = 0; i < ifaceList.Columns.Count; i++)
-					ifaceWidths.Add(ifaceList.Columns[i].Width);
+					List<int> appWidths = new List<int>(WatchlistRules.Columns.Count);
+					for (int i = 0; i < WatchlistRules.Columns.Count; i++)
+						appWidths.Add(WatchlistRules.Columns[i].Width);
+					cols["Apps"].IntValueArray = appWidths.ToArray();
 
-				List<int> micWidths = new List<int>(AudioInputs.Columns.Count);
-				for (int i = 0; i < AudioInputs.Columns.Count; i++)
-					micWidths.Add(AudioInputs.Columns[i].Width);
+					if (Taskmaster.NetworkMonitorEnabled)
+					{
+						List<int> ifaceWidths = new List<int>(ifaceList.Columns.Count);
+						for (int i = 0; i < ifaceList.Columns.Count; i++)
+							ifaceWidths.Add(ifaceList.Columns[i].Width);
+						cols["Interfaces"].IntValueArray = ifaceWidths.ToArray();
+					}
 
-				var cfg = Taskmaster.Config.Load(uiconfig);
-				var cols = cfg.Config["Columns"];
-				cols["Apps"].IntValueArray = appWidths.ToArray();
-				// cols["Paths"].IntValueArray = pathWidths.ToArray();
-				cols["Mics"].IntValueArray = micWidths.ToArray();
-				cols["Interfaces"].IntValueArray = ifaceWidths.ToArray();
+					if (Taskmaster.MicrophoneMonitorEnabled)
+					{
+						List<int> micWidths = new List<int>(AudioInputs.Columns.Count);
+						for (int i = 0; i < AudioInputs.Columns.Count; i++)
+							micWidths.Add(AudioInputs.Columns[i].Width);
+						cols["Mics"].IntValueArray = micWidths.ToArray();
+					}
 
-				var uistate = cfg.Config["Tabs"];
-				uistate["Open"].IntValue = tabLayout.SelectedIndex;
+					var uistate = cfg.Config["Tabs"];
+					uistate["Open"].IntValue = tabLayout.SelectedIndex;
 
-				var windows = cfg.Config["Windows"];
-				windows["Main"].IntValueArray = new int[] { Bounds.Left, Bounds.Top, Bounds.Width, Bounds.Height };
+					var windows = cfg.Config["Windows"];
+					windows["Main"].IntValueArray = new int[] { Bounds.Left, Bounds.Top, Bounds.Width, Bounds.Height };
 
-				cfg.MarkDirty();
+					cfg.MarkDirty();
+				}
+				catch (Exception ex)
+				{
+					Logging.Stacktrace(ex);
+				}
 			}));
 		}
 
