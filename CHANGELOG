@@ -5,6 +5,7 @@ Comprehensive changes can be found in Git change history:
 ## [0.12...]
 ### 2018-01-07
 	Fixed: User idle calculation. Ticks are a lie.
+	Fixed: A bug in watchlist rule sanity checking.
 ### 2018-01-06
 	Added: Power mode is briefly set to balanced if user is active during session lock to improve session unlock responsiviness.
 	Added: Power debug now shows current reaction on top of reactionary plan.
