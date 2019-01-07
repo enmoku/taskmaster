@@ -92,7 +92,7 @@ namespace Taskmaster
 
 			layout.Controls.Add(new Label { Text = "Microphone manager", AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, Padding = CustomPadding, Dock = DockStyle.Left });
 			layout.Controls.Add(micmon);
-			micmon.Click += (sender, e) =>
+			micmon.Click += (_, _ea) =>
 			{
 			};
 
@@ -106,7 +106,7 @@ namespace Taskmaster
 			layout.Controls.Add(new Label { Text = "Network monitor", AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, Padding = CustomPadding, Dock = DockStyle.Left });
 			layout.Controls.Add(netmon);
 			netmon.Checked = initial ? true : Taskmaster.NetworkMonitorEnabled;
-			netmon.Click += (sender, e) =>
+			netmon.Click += (_, _ea) =>
 			{
 			};
 
@@ -132,7 +132,7 @@ namespace Taskmaster
 			layout.Controls.Add(new Label { Text = "Process/path manager", AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, Padding = CustomPadding, Dock = DockStyle.Left });
 			layout.Controls.Add(pathmon);
 			pathmon.Checked = initial ? true : Taskmaster.PathMonitorEnabled;
-			pathmon.Click += (sender, e) =>
+			pathmon.Click += (_, _ea) =>
 			{
 			};
 
@@ -158,7 +158,7 @@ namespace Taskmaster
 				Width = 60,
 			};
 			var defaultBackColor = scanfrequency.BackColor;
-			scanfrequency.ValueChanged += (sender, e) =>
+			scanfrequency.ValueChanged += (_, _ea) =>
 			{
 				if (ScanOrWMI.SelectedIndex == 0 && scanfrequency.Value == 0)
 					scanfrequency.Value = 1;
@@ -183,7 +183,7 @@ namespace Taskmaster
 			};
 			layout.Controls.Add(wmipolling);
 			tooltip.SetToolTip(wmipolling, "In seconds.");
-			ScanOrWMI.SelectedIndexChanged += (sender, e) =>
+			ScanOrWMI.SelectedIndexChanged += (_, _ea) =>
 			{
 				if (ScanOrWMI.SelectedIndex == 0) // SCan only
 				{
@@ -263,7 +263,7 @@ namespace Taskmaster
 			tooltip.SetToolTip(fgmon, "Allow processes and power mode to be managed based on if a process is in the foreground.\nPOWER MODE SWITCHING NOT IMPLEMENTED.");
 			layout.Controls.Add(new Label { Text = "Foreground manager", AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, Padding = CustomPadding, Dock = DockStyle.Left });
 			layout.Controls.Add(fgmon);
-			fgmon.Click += (sender, e) =>
+			fgmon.Click += (_, _ea) =>
 			{
 			};
 
@@ -290,7 +290,7 @@ namespace Taskmaster
 			layout.Controls.Add(new Label { Text = "Allow paging", AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, Padding = CustomPadding, Dock = DockStyle.Left });
 			layout.Controls.Add(paging);
 			paging.Checked = initial ? false : Taskmaster.PagingEnabled;
-			paging.Click += (sender, e) =>
+			paging.Click += (_, _ea) =>
 			{
 			};
 
@@ -323,7 +323,7 @@ namespace Taskmaster
 			});
 			layout.Controls.Add(showonstart);
 			showonstart.Checked = initial ? false : Taskmaster.ShowOnStart;
-			showonstart.Click += (sender, e) =>
+			showonstart.Click += (_, _ea) =>
 			{
 			};
 
@@ -356,7 +356,7 @@ namespace Taskmaster
 				Dock = DockStyle.Right
 			};
 			// l.Controls.Add(savebutton);
-			savebutton.Click += (sender, e) =>
+			savebutton.Click += (_, _ea) =>
 			{
 				Taskmaster.ComponentConfigurationDone = true;
 
@@ -416,7 +416,7 @@ namespace Taskmaster
 			};
 
 			// l.Controls.Add(endbutton);
-			endbutton.Click += (sender, e) =>
+			endbutton.Click += (_, _ea) =>
 			{
 				Taskmaster.ComponentConfigurationDone = false;
 				Close();
@@ -440,7 +440,7 @@ namespace Taskmaster
 			Controls.Add(baselayout);
 
 			// Cross-componenty checkbox functionality
-			procmon.CheckedChanged += (o, e) =>
+			procmon.CheckedChanged += (_, _ea) =>
 			{
 				// fgmon requires process monitor
 				fgmon.Enabled = procmon.Checked;

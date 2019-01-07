@@ -230,7 +230,7 @@ namespace Taskmaster
 
 			// TODO: Hook device changes
 			micmon.VolumeChanged += VolumeChangeDetected;
-			FormClosing += (s, e) => micmon.VolumeChanged -= VolumeChangeDetected;
+			FormClosing += (_, _ea) => micmon.VolumeChanged -= VolumeChangeDetected;
 		}
 
 		readonly string AnyIgnoredValue = string.Empty; // Any/Ignored
@@ -788,7 +788,7 @@ namespace Taskmaster
 			var menu_action = new ToolStripMenuItem("Actions");
 			menu_action.DropDown.AutoClose = true;
 			// Sub Items
-			var menu_action_rescan = new ToolStripMenuItem("Rescan", null, async (o, s) => {
+			var menu_action_rescan = new ToolStripMenuItem("Rescan", null, async (_, _ea) => {
 				await Task.Delay(0).ConfigureAwait(false);
 				rescanRequest?.Invoke(this, null);
 			})
@@ -800,14 +800,14 @@ namespace Taskmaster
 				Enabled = Taskmaster.PagingEnabled,
 			};
 			ToolStripMenuItem menu_action_restart = null;
-			menu_action_restart = new ToolStripMenuItem("Restart", null, (s, e) =>
+			menu_action_restart = new ToolStripMenuItem("Restart", null, (_, _ea) =>
 			{
 				menu_action_restart.Enabled = false;
 				Taskmaster.ConfirmExit(restart: true);
 				menu_action_restart.Enabled = true;
 			});
 			ToolStripMenuItem menu_action_restartadmin = null;
-			menu_action_restartadmin = new ToolStripMenuItem("Restart as admin", null, (s, e) =>
+			menu_action_restartadmin = new ToolStripMenuItem("Restart as admin", null, (_, _ea) =>
 			{
 				menu_action_restartadmin.Enabled = false;
 				Taskmaster.ConfirmExit(restart: true, admin: true);
@@ -840,7 +840,7 @@ namespace Taskmaster
 				Checked = Taskmaster.AutoOpenMenus,
 				CheckOnClick = true,
 			};
-			menu_config_behaviour_autoopen.Click += (sender, e) =>
+			menu_config_behaviour_autoopen.Click += (_, _ea) =>
 			{
 				Taskmaster.AutoOpenMenus = menu_config_behaviour_autoopen.Checked;
 
@@ -854,7 +854,7 @@ namespace Taskmaster
 				Checked = Taskmaster.ShowInTaskbar,
 				CheckOnClick = true,
 			};
-			menu_config_behaviour_taskbar.Click += (sender, e) =>
+			menu_config_behaviour_taskbar.Click += (_, _ea) =>
 			{
 				Taskmaster.ShowInTaskbar = ShowInTaskbar = menu_config_behaviour_taskbar.Checked;
 
@@ -868,7 +868,7 @@ namespace Taskmaster
 				Checked = Taskmaster.ExitConfirmation,
 				CheckOnClick = true,
 			};
-			menu_config_behaviour_exitconfirm.Click += (sender, e) =>
+			menu_config_behaviour_exitconfirm.Click += (_, _ea) =>
 			{
 				Taskmaster.ExitConfirmation = menu_config_behaviour_exitconfirm.Checked;
 
@@ -886,7 +886,7 @@ namespace Taskmaster
 				Checked = Taskmaster.ShowProcessAdjusts,
 				CheckOnClick = true,
 			};
-			menu_config_logging_adjusts.Click += (s, e) =>
+			menu_config_logging_adjusts.Click += (_, _ea) =>
 			{
 				Taskmaster.ShowProcessAdjusts = menu_config_logging_adjusts.Checked;
 
@@ -905,7 +905,7 @@ namespace Taskmaster
 				Checked = Taskmaster.ShowNetworkErrors,
 				CheckOnClick = true,
 			};
-			menu_config_logging_neterrors.Click += (s, e) =>
+			menu_config_logging_neterrors.Click += (_, _ea) =>
 			{
 				Taskmaster.ShowNetworkErrors = menu_config_logging_neterrors.Checked;
 
@@ -913,7 +913,7 @@ namespace Taskmaster
 				corecfg.Config["Logging"]["Show network errors"].BoolValue = Taskmaster.ShowNetworkErrors;
 				corecfg.MarkDirty();
 			};
-			menu_config_logging_session.Click += (s, e) =>
+			menu_config_logging_session.Click += (_, _ea) =>
 			{
 				Taskmaster.ShowSessionActions = menu_config_logging_session.Checked;
 
@@ -933,7 +933,7 @@ namespace Taskmaster
 			{
 				Checked = Taskmaster.AffinityStyle == 1,
 			};
-			menu_config_bitmaskstyle_bitmask.Click += (s, e) =>
+			menu_config_bitmaskstyle_bitmask.Click += (_, _ea) =>
 			{
 				Taskmaster.AffinityStyle = 0;
 				menu_config_bitmaskstyle_bitmask.Checked = true;
@@ -944,7 +944,7 @@ namespace Taskmaster
 				corecfg.Config[HumanReadable.Generic.QualityOfLife][HumanReadable.Hardware.CPU.Settings.AffinityStyle].IntValue = 0;
 				corecfg.MarkDirty();
 			};
-			menu_config_bitmaskstyle_decimal.Click += (s, e) =>
+			menu_config_bitmaskstyle_decimal.Click += (_, _ea) =>
 			{
 				Taskmaster.AffinityStyle = 1;
 				menu_config_bitmaskstyle_bitmask.Checked = false;
@@ -968,10 +968,10 @@ namespace Taskmaster
 			//
 
 			var menu_config_log = new ToolStripMenuItem("Logging");
-			var menu_config_log_power = new ToolStripMenuItem("Power mode changes", null, (sender, e) => { });
+			var menu_config_log_power = new ToolStripMenuItem("Power mode changes", null, (_, _ea) => { });
 			menu_config_log.DropDownItems.Add(menu_config_log_power);
 
-			var menu_config_components = new ToolStripMenuItem("Components", null, (sender, e) =>
+			var menu_config_components = new ToolStripMenuItem("Components", null, (_, _ea) =>
 			{
 				try
 				{
@@ -998,7 +998,7 @@ namespace Taskmaster
 				}
 			});
 
-			var menu_config_folder = new ToolStripMenuItem("Open in file manager", null, (s, e) => Process.Start(Taskmaster.datapath));
+			var menu_config_folder = new ToolStripMenuItem("Open in file manager", null, (_, _ea) => Process.Start(Taskmaster.datapath));
 			// menu_config.DropDownItems.Add(menu_config_log);
 			menu_config.DropDownItems.Add(menu_config_behaviour);
 			menu_config.DropDownItems.Add(menu_config_logging);
@@ -1019,7 +1019,7 @@ namespace Taskmaster
 			LogIncludeLevel = MemoryLog.MemorySink.LevelSwitch; // HACK
 
 			menu_debug_loglevel_info = new ToolStripMenuItem("Info", null,
-			(s, e) =>
+			(_, _ea) =>
 			{
 				LogIncludeLevel.MinimumLevel = Serilog.Events.LogEventLevel.Information;
 				UpdateLogLevelSelection();
@@ -1029,7 +1029,7 @@ namespace Taskmaster
 				Checked = (LogIncludeLevel.MinimumLevel == Serilog.Events.LogEventLevel.Information),
 			};
 			menu_debug_loglevel_debug = new ToolStripMenuItem("Debug", null,
-			(s, e) =>
+			(_, _ea) =>
 			{
 				LogIncludeLevel.MinimumLevel = Serilog.Events.LogEventLevel.Debug;
 				UpdateLogLevelSelection();
@@ -1040,7 +1040,7 @@ namespace Taskmaster
 			};
 #if DEBUG
 			menu_debug_loglevel_trace = new ToolStripMenuItem("Trace", null,
-			(s, e) =>
+			(_, _ea) =>
 			{
 				LogIncludeLevel.MinimumLevel = Serilog.Events.LogEventLevel.Verbose;
 				UpdateLogLevelSelection();
@@ -1060,14 +1060,14 @@ namespace Taskmaster
 			UpdateLogLevelSelection();
 
 			var menu_debug_inaction = new ToolStripMenuItem("Show inaction") { Checked = Taskmaster.ShowInaction, CheckOnClick = true };
-			menu_debug_inaction.Click += (sender, e) => Taskmaster.ShowInaction = menu_debug_inaction.Checked;
+			menu_debug_inaction.Click += (_, _ea) => Taskmaster.ShowInaction = menu_debug_inaction.Checked;
 			var menu_debug_scanning = new ToolStripMenuItem("Scanning")
 			{
 				Checked = Taskmaster.DebugFullScan,
 				CheckOnClick = true,
 				Enabled = Taskmaster.ProcessMonitorEnabled,
 			};
-			menu_debug_scanning.Click += (sender, e) =>
+			menu_debug_scanning.Click += (_, _ea) =>
 			{
 				Taskmaster.DebugFullScan = menu_debug_scanning.Checked;
 				if (Taskmaster.DebugFullScan) EnsureVerbosityLevel();
@@ -1079,7 +1079,7 @@ namespace Taskmaster
 				CheckOnClick = true,
 				Enabled = Taskmaster.ProcessMonitorEnabled,
 			};
-			menu_debug_procs.Click += (sender, e) =>
+			menu_debug_procs.Click += (_, _ea) =>
 			{
 				Taskmaster.DebugProcesses = menu_debug_procs.Checked;
 				if (Taskmaster.DebugProcesses)
@@ -1093,7 +1093,7 @@ namespace Taskmaster
 				CheckOnClick = true,
 				Enabled = Taskmaster.ActiveAppMonitorEnabled,
 			};
-			menu_debug_foreground.Click += (sender, e) =>
+			menu_debug_foreground.Click += (_, _ea) =>
 			{
 				Taskmaster.DebugForeground = menu_debug_foreground.Checked;
 				if (Taskmaster.DebugForeground)
@@ -1108,7 +1108,7 @@ namespace Taskmaster
 				CheckOnClick = true,
 				Enabled = Taskmaster.PathMonitorEnabled,
 			};
-			menu_debug_paths.Click += (sender, e) =>
+			menu_debug_paths.Click += (_, _ea) =>
 			{
 				Taskmaster.DebugPaths = menu_debug_paths.Checked;
 				if (Taskmaster.DebugPaths) EnsureVerbosityLevel();
@@ -1119,7 +1119,7 @@ namespace Taskmaster
 				CheckOnClick = true,
 				Enabled = Taskmaster.PowerManagerEnabled,
 			};
-			menu_debug_power.Click += (sender, e) =>
+			menu_debug_power.Click += (_, _ea) =>
 			{
 				Taskmaster.DebugPower = menu_debug_power.Checked;
 				if (Taskmaster.DebugPower)
@@ -1143,7 +1143,7 @@ namespace Taskmaster
 				CheckOnClick = true,
 				Enabled = Taskmaster.PowerManagerEnabled,
 			};
-			menu_debug_session.Click += (s, e) =>
+			menu_debug_session.Click += (_, _ea) =>
 			{
 				Taskmaster.DebugSession = menu_debug_session.Checked;
 				if (Taskmaster.DebugSession) EnsureVerbosityLevel();
@@ -1154,7 +1154,7 @@ namespace Taskmaster
 				CheckOnClick = true,
 				Enabled = Taskmaster.PowerManagerEnabled,
 			};
-			menu_debug_monitor.Click += (s, e) =>
+			menu_debug_monitor.Click += (_, _ea) =>
 			{
 				Taskmaster.DebugMonitor = menu_debug_monitor.Checked;
 				if (Taskmaster.DebugMonitor) EnsureVerbosityLevel();
@@ -1166,13 +1166,13 @@ namespace Taskmaster
 				CheckOnClick = true,
 				Enabled = Taskmaster.AudioManagerEnabled,
 			};
-			menu_debug_audio.Click += (s, e) =>
+			menu_debug_audio.Click += (_, _ea) =>
 			{
 				Taskmaster.DebugAudio = menu_debug_audio.Checked;
 				if (Taskmaster.DebugAudio) EnsureVerbosityLevel();
 			};
 
-			var menu_debug_clear = new ToolStripMenuItem("Clear UI log", null, (sender, e) => ClearLog());
+			var menu_debug_clear = new ToolStripMenuItem("Clear UI log", null, (_, _ea) => ClearLog());
 
 			// TODO: This menu needs to be clearer
 			menu_debug.DropDownItems.Add(menu_debug_loglevel);
@@ -1194,14 +1194,14 @@ namespace Taskmaster
 			var menu_info = new ToolStripMenuItem("Info");
 			menu_info.DropDown.AutoClose = true;
 			// Sub Items
-			var menu_info_github = new ToolStripMenuItem("Github", null, (sender, e) => Process.Start(Taskmaster.GitURL));
-			var menu_info_itchio = new ToolStripMenuItem("Itch.io", null, (sender, e) => Process.Start(Taskmaster.ItchURL));
-			var menu_info_license = new ToolStripMenuItem("License", null, (s, e) =>
+			var menu_info_github = new ToolStripMenuItem("Github", null, (_, _ea) => Process.Start(Taskmaster.GitURL));
+			var menu_info_itchio = new ToolStripMenuItem("Itch.io", null, (_, _ea) => Process.Start(Taskmaster.ItchURL));
+			var menu_info_license = new ToolStripMenuItem("License", null, (_, _ea) =>
 			{
 				try { using (var n = new LicenseDialog(initial: false)) { n.ShowDialog(); } }
 				catch (Exception ex) { Logging.Stacktrace(ex); }
 			});
-			var menu_info_about = new ToolStripMenuItem("About", null, (s, e) =>
+			var menu_info_about = new ToolStripMenuItem("About", null, (_, _ea) =>
 			{
 				MessageBox.Show(Application.ProductName + " (" + Application.ProductVersion + ")\n\nCreated by M.A., 2016-2018\n\nFree system maintenance and de-obnoxifying app.\n\nAvailable under MIT license.",
 								"About Taskmaster!", MessageBoxButtons.OK, MessageBoxIcon.Information, MessageBoxDefaultButton.Button1, MessageBoxOptions.DefaultDesktopOnly);
@@ -1220,22 +1220,22 @@ namespace Taskmaster
 
 			// no simpler way?
 
-			menu_action.MouseEnter += (s, e) =>
+			menu_action.MouseEnter += (_, _ea) =>
 			{
 				if (Form.ActiveForm != this) return;
 				if (Taskmaster.AutoOpenMenus) menu_action.ShowDropDown();
 			};
-			menu_config.MouseEnter += (s, e) =>
+			menu_config.MouseEnter += (_, _ea) =>
 			{
 				if (Form.ActiveForm != this) return;
 				if (Taskmaster.AutoOpenMenus) menu_config.ShowDropDown();
 			};
-			menu_debug.MouseEnter += (s, e) =>
+			menu_debug.MouseEnter += (_, _ea) =>
 			{
 				if (Form.ActiveForm != this) return;
 				if (Taskmaster.AutoOpenMenus) menu_debug.ShowDropDown();
 			};
-			menu_info.MouseEnter += (s, e) =>
+			menu_info.MouseEnter += (_, _ea) =>
 			{
 				if (Form.ActiveForm != this) return;
 				if (Taskmaster.AutoOpenMenus) menu_info.ShowDropDown();
@@ -1509,16 +1509,16 @@ namespace Taskmaster
 			GotFocus += StartUIUpdates;
 
 			FormClosing += StopUIUpdates;
-			VisibleChanged += (sender, e) =>
+			VisibleChanged += (sender, ea) =>
 			{
 				if (Visible)
 				{
-					UpdateUptime(sender, e);
-					StartUIUpdates(sender, e);
+					UpdateUptime(sender, ea);
+					StartUIUpdates(sender, ea);
 				}
 				else
 				{
-					StopUIUpdates(sender, e);
+					StopUIUpdates(sender, ea);
 				}
 			};
 
@@ -1561,9 +1561,9 @@ namespace Taskmaster
 			var numberColumns = new int[] { 0, AdjustColumn };
 			var watchlistSorter = new WatchlistSorter(numberColumns);
 			WatchlistRules.ListViewItemSorter = watchlistSorter; // what's the point of this?
-			WatchlistRules.ColumnClick += (sender, e) =>
+			WatchlistRules.ColumnClick += (_, ea) =>
 			{
-				if (watchlistSorter.Column == e.Column)
+				if (watchlistSorter.Column == ea.Column)
 				{
 					// flip order
 					watchlistSorter.Order = watchlistSorter.Order == SortOrder.Ascending ? SortOrder.Descending : SortOrder.Ascending;
@@ -1571,7 +1571,7 @@ namespace Taskmaster
 				else
 				{
 					watchlistSorter.Order = SortOrder.Ascending;
-					watchlistSorter.Column = e.Column;
+					watchlistSorter.Column = ea.Column;
 				}
 
 				// deadlock if locked while adding
@@ -1815,7 +1815,7 @@ namespace Taskmaster
 
 				lastmodifypanel.Controls.Add(lastmodifylist);
 				var lastmodifyms = new ContextMenuStrip();
-				var lastmodifycopy = new ToolStripMenuItem("Copy path to clipboard", null, (s, e) =>
+				var lastmodifycopy = new ToolStripMenuItem("Copy path to clipboard", null, (_, _ea) =>
 				{
 					if (lastmodifylist.SelectedItems.Count > 0)
 					{
@@ -1824,7 +1824,7 @@ namespace Taskmaster
 							Clipboard.SetText(path, TextDataFormat.UnicodeText);
 					}
 				});
-				lastmodifyms.Opened += (s, e) =>
+				lastmodifyms.Opened += (_, _ea) =>
 				{
 					lastmodifycopy.Enabled = (lastmodifylist.SelectedItems.Count == 1);
 				};

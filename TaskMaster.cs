@@ -146,7 +146,7 @@ namespace Taskmaster
 				if (mainwindow != null) return;
 
 				mainwindow = new MainWindow();
-				mainwindow.FormClosed += (s, e) => mainwindow = null;
+				mainwindow.FormClosed += (_, _ea) => mainwindow = null;
 
 				try
 				{
@@ -583,8 +583,8 @@ namespace Taskmaster
 					break;
 				#endif
 			}
-
 			dirtyconfig |= modified;
+
 			ShowInaction = logsec.GetSetDefault("Show inaction", false, out modified).BoolValue;
 			logsec["Show inaction"].Comment = "Shows lack of action take on processes.";
 			dirtyconfig |= modified;
