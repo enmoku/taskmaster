@@ -31,9 +31,15 @@ namespace Taskmaster
 {
 	public static class NativeMethods
 	{
+		/// <summary>
+		/// Tick count as ulong. Actually milliseconds.
+		/// </summary>
 		[DllImport("kernel32.dll")]
 		public static extern ulong GetTickCount64();
 
+		/// <summary>
+		/// Tick count as uint. Actually milliseconds.
+		/// </summary>
 		[DllImport("kernel32.dll")]
 		public static extern uint GetTickCount();
 

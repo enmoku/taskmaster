@@ -36,23 +36,26 @@ namespace MKAh
 		/// </summary>
 		public static TimeSpan IdleTime()
 		{
-			uint uticks = LastActive();
-			uint eticks = Taskmaster.NativeMethods.GetTickCount();
+			uint ums = LastActive();
+			uint ems = Taskmaster.NativeMethods.GetTickCount();
 
-			long ticks = uticks;
-			if (uticks < eticks) ticks += (uint.MaxValue - eticks); // overflow
-			else ticks -= eticks;
+			long fms = ems;
+			if (ums > ems) fms -= uint.MaxValue - ums; // overflow
+			else fms -= ums;
+			//Console.WriteLine($"IdleTime\n- Idle:  {ums}\n- Env:   {ems}\n-   {(ums > ems ? "Over+"+(uint.MaxValue - ems) : "Std")}\n- Final: {ms}");
 
-			return LastActiveTimespan(uticks);
+			return LastActiveTimespan(fms);
 		}
 
 		/// <summary>
-		/// Wrapper for GetLastInputInfo() which returns 32 bit tick count when user was last active.
+		/// Wrapper for GetLastInputInfo() which returns 32 bit "tick" count when user was last active.
 		/// Does not detect gamepad activity.
+		/// Actually returns milliseconds instead of ticks despite the documentation.
 		/// </summary>
-		/// <returns>Ticks since boot.</returns>
+		/// <returns>Milliseconds since boot.</returns>
 		// BUG: This gets weird if the system has not been rebooted in 24.9 days
 		// https://docs.microsoft.com/en-us/dotnet/api/system.environment.tickcount?view=netframework-4.7.2
+		// https://docs.microsoft.com/en-us/windows/desktop/api/winuser/ns-winuser-taglastinputinfo
 		public static uint LastActive()
 		{
 			var info = new LASTINPUTINFO();
@@ -66,13 +69,19 @@ namespace MKAh
 		/// <summary>
 		/// Should be called in same thread as LastActive. Odd behaviour expected if the code runs on different core.
 		/// </summary>
-		/// <param name="lastActive">Last active time, as returned by LastActive</param>
+		/// <param name="ms">Last active time, as returned by LastActive</param>
 		/// <returns>Seconds for how long user has been idle</returns>
-		public static TimeSpan LastActiveTimespan(long lastActive)
+		public static TimeSpan LastActiveTimespan(long ms)
 		{
-			return TimeSpan.FromTicks(lastActive);
+			return TimeSpan.FromMilliseconds(ms);
 		}
 
+		/// <summary>
+		/// Official documentation lies about dwTime being ticks. It's actually milliseconds
+		/// ... unless the concept of ticks has changed since.
+		/// </summary>
+		/// <param name="lastinputinfo"></param>
+		/// <returns></returns>
 		[DllImport("user32.dll")]
 		internal static extern bool GetLastInputInfo(ref LASTINPUTINFO lastinputinfo);
 
