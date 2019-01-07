@@ -142,7 +142,7 @@ namespace Taskmaster
 
 				if (!Taskmaster.Trace) return;
 
-				// Console.WriteLine("WindowClose = " + e.CloseReason);
+				Debug.WriteLine("WindowClose = " + ea.CloseReason.ToString());
 				switch (ea.CloseReason)
 				{
 					case CloseReason.UserClosing:
@@ -161,7 +161,7 @@ namespace Taskmaster
 						Log.Debug("Exit: Unidentified close reason: " + ea.CloseReason.ToString());
 						break;
 				}
-				// CLEANUP: Console.WriteLine("WindowClose.Handled");
+				Debug.WriteLine("WindowClose.Handled");
 			}
 			catch (Exception ex) { Logging.Stacktrace(ex); }
 		}

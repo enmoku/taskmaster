@@ -1311,7 +1311,7 @@ namespace Taskmaster
 			{
 				e.Info.Timer.Stop();
 				long time = e.Info.Timer.ElapsedMilliseconds;
-				if (Taskmaster.Trace) Console.WriteLine("Modify time: " + $"{time} ms");
+				if (Taskmaster.Trace) Debug.WriteLine("Modify time: " + $"{time} ms");
 				Statistics.TouchTimeLongest = Math.Max(time, Statistics.TouchTimeLongest);
 				Statistics.TouchTimeShortest = Math.Min(time, Statistics.TouchTimeShortest);
 			}

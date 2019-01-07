@@ -59,7 +59,7 @@ namespace Taskmaster
 					name = module.ModuleName;
 				}
 				catch { }
-				Console.WriteLine(" -- " + name + " = " + file);
+				Debug.WriteLine("ProcessAnalysis: " + name + " = " + file);
 			}
 
 			return pa;

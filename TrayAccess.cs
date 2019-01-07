@@ -363,11 +363,10 @@ namespace Taskmaster
 
 		void ShowConfigRequest(object _, EventArgs e)
 		{
-			// CLEANUP: Console.WriteLine("Opening config folder.");
+			Debug.WriteLine("Opening config folder.");
 			Process.Start(Taskmaster.datapath);
 
 			mainwindow?.ShowConfigRequest(null, e);
-			// CLEANUP: Console.WriteLine("Done opening config folder.");
 		}
 
 		void ShowPowerConfig(object _, EventArgs _ea)
@@ -429,8 +428,6 @@ namespace Taskmaster
 
 		void WindowClosed(object _, FormClosingEventArgs e)
 		{
-			// CLEANUP: Console.WriteLine("START:TrayAccess.WindowClosed");
-
 			switch (e.CloseReason)
 			{
 				case CloseReason.ApplicationExitCall:
@@ -438,16 +435,9 @@ namespace Taskmaster
 					return;
 			}
 
-			// if (Taskmaster.LowMemory)
-			// {
-			// CLEANUP: Console.WriteLine("DEBUG:TrayAccess.WindowClosed.SaveMemory");
-
 			Tray.MouseDoubleClick -= UnloseWindow;
 
 			mainwindow = null;
-
-			// }
-			// CLEANUP: Console.WriteLine("END:TrayAccess.WindowClosed");
 		}
 
 		MainWindow mainwindow = null;

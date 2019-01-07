@@ -954,7 +954,7 @@ namespace Taskmaster
 
 			if (StartDelay > 0 && uptime.TotalSeconds < 300)
 			{
-				//Console.WriteLine("Delaying proper startup for " + uptimeMinSeconds + " seconds.");
+				Debug.WriteLine("Delaying proper startup for " + $"{uptime.TotalSeconds:N1}" + " seconds.");
 
 				var remainingdelay = StartDelay - uptime.TotalSeconds;
 				if (remainingdelay > 5)
@@ -999,7 +999,7 @@ namespace Taskmaster
 				? "Thread pool" : thread.Name;
 			if (string.IsNullOrEmpty(name))
 				name = "#" + thread.ManagedThreadId;
-			Console.WriteLine("Continuation on: " + name + " --- " + message);
+			Debug.WriteLine("Continuation on: " + name + " --- " + message);
 		}
 
 		static void PreallocLastLog()
@@ -1118,7 +1118,7 @@ namespace Taskmaster
 
 		static void PipeExplorer(bool restart=true)
 		{
-			Console.WriteLine("Attempting to communicate with running instance of TM.");
+			Debug.WriteLine("Attempting to communicate with running instance of TM.");
 
 			try
 			{
@@ -1145,6 +1145,8 @@ namespace Taskmaster
 		[STAThread] // supposedly needed to avoid shit happening with the WinForms GUI and other GUI toolkits
 		static public int Main(string[] args)
 		{
+			//Debug.Listeners.Add(new TextWriterTraceListener(System.Console.Out));
+
 			System.Threading.Mutex singleton = null;
 
 			System.Windows.Forms.Application.SetUnhandledExceptionMode(UnhandledExceptionMode.Automatic);
@@ -1180,7 +1182,7 @@ namespace Taskmaster
 				return -1;
 			}
 
-			PipeDream();
+			PipeDream(); // IPC with other instances of TM
 
 			// Multi-core JIT
 			// https://docs.microsoft.com/en-us/dotnet/api/system.runtime.profileoptimization
@@ -1263,11 +1265,12 @@ namespace Taskmaster
 					if (RestartCounter > 0) Log.Information("<Core> Restarted " + RestartCounter + " time(s)");
 					Log.Information("<Core> Initialization complete...");
 
-					/*
-					Console.WriteLine("Embedded Resources");
-					foreach (var name in System.Reflection.Assembly.GetExecutingAssembly().GetManifestResourceNames())
-						Console.WriteLine(" - " + name);
-					*/
+					if (Debug.Listeners.Count > 0)
+					{
+						Debug.WriteLine("Embedded Resources");
+						foreach (var name in System.Reflection.Assembly.GetExecutingAssembly().GetManifestResourceNames())
+							Debug.WriteLine(" - " + name);
+					}
 				}
 				catch (Exception ex)
 				{

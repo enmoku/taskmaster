@@ -426,7 +426,7 @@ namespace Taskmaster
 					}
 					else // keep power at medium
 					{
-						// Console.WriteLine("NOP");
+						if (Taskmaster.DebugAutoPower) Debug.WriteLine("Auto-adjust NOP");
 
 						Reaction = PowerReaction.Steady;
 						ReactionaryPlan = AutoAdjust.DefaultMode;

@@ -105,9 +105,9 @@ namespace Taskmaster
 				{
 					Sensors.Remove(Counter);
 					Counter.Dispose();
-					throw;
 					// TODO: Driver/Adapter vanished and other problems, try to re-acquire it.
-					// Console.WriteLine("DEBUG :: PFC(" + _pfc.CategoryName + "//" + _pfc.CounterName + "//" + _pfc.InstanceName + ") vanished.");
+					Debug.WriteLine("DEBUG :: PFC(" + Counter.CategoryName + "//" + Counter.CounterName + "//" + Counter.InstanceName + ") vanished.");
+					throw;
 				}
 
 				return float.NaN;

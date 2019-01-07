@@ -88,7 +88,7 @@ namespace Taskmaster
 	{
 		public static void Log(string text, [CallerFilePath] string file = "", [CallerMemberName] string member = "", [CallerLineNumber] int line = 0)
 		{
-			Console.WriteLine($"{System.IO.Path.GetFileName(file)}_{member}({line}): {text}");
+			Debug.WriteLine($"{System.IO.Path.GetFileName(file)}_{member}({line}): {text}");
 		}
 
 		public static void Warn(string text, [CallerFilePath] string file = "", [CallerMemberName] string member = "", [CallerLineNumber] int line = 0)
@@ -133,7 +133,7 @@ namespace Taskmaster
 					}
 
 					System.IO.File.WriteAllLines(logfile, logcontents, System.Text.Encoding.Unicode);
-					Console.WriteLine("Crash log written to " + logfile);
+					Debug.WriteLine("Crash log written to " + logfile);
 				}
 				catch
 				{

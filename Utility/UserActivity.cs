@@ -25,6 +25,7 @@
 // THE SOFTWARE.
 
 using System;
+using System.Diagnostics;
 using System.Runtime.InteropServices;
 
 namespace MKAh
@@ -42,7 +43,7 @@ namespace MKAh
 			long fms = ems;
 			if (ums > ems) fms -= uint.MaxValue - ums; // overflow
 			else fms -= ums;
-			//Console.WriteLine($"IdleTime\n- Idle:  {ums}\n- Env:   {ems}\n-   {(ums > ems ? "Over+"+(uint.MaxValue - ems) : "Std")}\n- Final: {ms}");
+			Debug.WriteLine($"IdleTime\n- Idle:  {ums}\n- Env:   {ems}\n-   {(ums > ems ? "Over+"+(uint.MaxValue - ems) : "Std")}\n- Final: {fms}");
 
 			return LastActiveTimespan(fms);
 		}

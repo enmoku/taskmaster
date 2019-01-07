@@ -1130,7 +1130,7 @@ namespace Taskmaster
 				*/
 			}
 			else
-				Console.WriteLine($"{info.Name} #{info.Id} --- affinity not touched");
+				Debug.WriteLine($"{info.Name} #{info.Id} --- affinity not touched");
 
 			// APPLY CHANGES HERE
 			if (doModifyPriority)
