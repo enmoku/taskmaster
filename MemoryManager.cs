@@ -33,8 +33,6 @@ namespace Taskmaster
 {
 	static class MemoryManager
 	{
-		static bool Populated = false;
-
 		/// <summary>
 		/// Total physical system memory in bytes.
 		/// </summary>
@@ -119,6 +117,8 @@ namespace Taskmaster
 				pfcprivate = null;
 				pfccommit?.Dispose();
 				pfccommit = null;
+				pfcfree?.Dispose();
+				pfcfree = null;
 			}
 		}
 

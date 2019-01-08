@@ -245,26 +245,6 @@ namespace Taskmaster
 			}
 		}
 
-		double Memory = double.NaN;
-		public double TotalMemory()
-		{
-			if (!double.IsNaN(Memory)) return Memory;
-
-			// there's probably better way to do this?
-			using (ManagementClass mc = new ManagementClass("Win32_ComputerSystem"))
-			{
-				using (var res = mc.GetInstances())
-				{
-					foreach (var item in res)
-					{
-						return (Memory = Convert.ToDouble(Convert.ToUInt64(item.Properties["TotalPhysicalMemory"].Value)) / 1048576d);
-					}
-				}
-			}
-
-			return double.NaN;
-		}
-
 		async Task CheckErrors()
 		{
 			await Task.Delay(0).ConfigureAwait(false);
@@ -404,11 +384,17 @@ namespace Taskmaster
 					else
 						WarnedAboutLowMemory = false;
 
-					if (MemoryManager.Pressure > 1d)
+					double pressure = MemoryManager.Pressure;
+					if (pressure > 1d)
 					{
 						if (!WarnedAboutMemoryPressure && now.TimeSince(LastPressureWarning).TotalSeconds > MemoryWarningCooldown)
 						{
-							Log.Warning("<Memory> Memory pressure is over 100%, please close applications to improve performance.");
+							double actualgoal = ((MemoryManager.Total * (pressure - 1d)) / 1_048_576);
+							double freegoal = actualgoal + Math.Max(512d, MemoryManager.Total * 0.02 / 1_048_576); // 512 MB or 2% extra to give space for disk cache
+							Debug.WriteLine("Pressure:    " + $"{pressure*100:N1}%");
+							Debug.WriteLine("Actual goal: " + $"{actualgoal:N2}");
+							Debug.WriteLine("Stated goal: " + $"{freegoal:N2}");
+							Log.Warning("<Memory> High pressure ("+$"{pressure*100:N1}%"+"), please close applications to improve performance (suggested goal: "+$"{freegoal:N0}"+" MB).");
 							// TODO: Could list like ~5 apps that are using most memory here
 							WarnedAboutMemoryPressure = true;
 							LastPressureWarning = now;
