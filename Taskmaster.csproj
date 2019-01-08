@@ -137,6 +137,7 @@
     </Compile>
     <Compile Include="PowerPresets.cs" />
     <Compile Include="ProcessEx.cs" />
+    <Compile Include="ProcessUtility.cs" />
     <Compile Include="ProcessTypes.cs" />
     <Compile Include="Properties\Resources.Designer.cs">
       <AutoGen>True</AutoGen>

@@ -94,8 +94,6 @@ namespace Taskmaster
 
 			loadConfig();
 
-			pathCache = new Cache<int, string, string>(Taskmaster.PathCacheMaxAge, (uint)Taskmaster.PathCacheLimit, (uint)(Taskmaster.PathCacheLimit / 10).Constrain(20, 60));
-
 			loadWatchlist();
 
 			InitWMIEventWatcher();
@@ -118,8 +116,6 @@ namespace Taskmaster
 
 			Taskmaster.DisposalChute.Push(this);
 		}
-
-		static Cache<int, string, string> pathCache = null;
 
 		public ProcessController[] getWatchlist()
 		{
@@ -1003,7 +999,7 @@ namespace Taskmaster
 				return null; // return ProcessState.AccessDenied; // we don't care wwhat this error is
 			}
 
-			if (string.IsNullOrEmpty(info.Path) && !FindPath(info))
+			if (string.IsNullOrEmpty(info.Path) && !ProcessUtility.FindPath(info))
 				return null; // return ProcessState.Error;
 
 			if (IgnoreSystem32Path && info.Path.StartsWith(Environment.GetFolderPath(Environment.SpecialFolder.System)))
@@ -1301,35 +1297,6 @@ namespace Taskmaster
 			}
 		}
 
-		public static ProcessEx GetInfo(int ProcessID, Process process = null, string name = null, string path = null, bool getPath = false)
-		{
-			try
-			{
-				if (process == null) process = Process.GetProcessById(ProcessID);
-
-				var info = new ProcessEx()
-				{
-					Id = ProcessID,
-					Process = process,
-					Name = string.IsNullOrEmpty(name) ? process.ProcessName : name,
-					State = ProcessModification.OK,
-					Path = path,
-				};
-
-				if (getPath && string.IsNullOrEmpty(path)) FindPath(info);
-
-				return info;
-			}
-			catch (InvalidOperationException) { } // already exited
-			catch (ArgumentException) { } // already exited
-			catch (Exception ex)
-			{
-				Logging.Stacktrace(ex);
-			}
-
-			return null;
-		}
-
 		readonly object batchprocessing_lock = new object();
 		int processListLockRestart = 0;
 		List<ProcessEx> ProcessBatch = new List<ProcessEx>();
@@ -1446,7 +1413,7 @@ namespace Taskmaster
 					return;
 				}
 
-				info = ProcessManager.GetInfo(pid, path: path, getPath: true);
+				info = ProcessUtility.GetInfo(pid, path: path, getPath: true);
 				if (info != null)
 				{
 					info.Timer = timer;
@@ -1597,44 +1564,7 @@ namespace Taskmaster
 			}
 		}
 
-		public static bool FindPath(ProcessEx info)
-		{
-			var cacheGet = false;
-
-			// Try to get the path from cache
-			if (pathCache.Get(info.Id, out string cpath, info.Name) != null)
-			{
-				if (!string.IsNullOrEmpty(cpath))
-				{
-					Statistics.PathCacheHits++;
-					cacheGet = true;
-					info.Path = cpath;
-				}
-				else
-				{
-					pathCache.Drop(info.Id);
-				}
-			}
-
-			// Try harder
-			if (string.IsNullOrEmpty(info.Path) && !ProcessManagerUtility.FindPathExtended(info)) return false;
-
-			// Add to path cache
-			if (!cacheGet)
-			{
-				pathCache.Add(info.Id, info.Name, info.Path);
-				Statistics.PathCacheMisses++; // adding new entry is as bad a miss
-
-				if (Statistics.PathCacheCurrent > Statistics.PathCachePeak) Statistics.PathCachePeak = Statistics.PathCacheCurrent;
-			}
-
-			Statistics.PathCacheCurrent = pathCache.Count;
-
-			return true;
-		}
-
 		const string watchfile = "Watchlist.ini";
-
 
 		int cleanup_lock = 0;
 		/// <summary>

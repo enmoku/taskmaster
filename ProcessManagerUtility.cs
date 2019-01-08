@@ -34,14 +34,6 @@ namespace Taskmaster
 {
 	public static class ProcessManagerUtility
 	{
-		[Conditional("DEBUG")]
-		public static void PathCacheStats()
-		{
-			Log.Debug("Path cache state: " + Statistics.PathCacheCurrent + " items (Hits: " + Statistics.PathCacheHits +
-				", Misses: " + Statistics.PathCacheMisses +
-				", Ratio: " + $"{(Statistics.PathCacheMisses > 0 ? (Statistics.PathCacheHits / Statistics.PathCacheMisses) : 1):N2})");
-		}
-
 		/// <summary>
 		/// Use FindPath() instead. This is called by it.
 		/// </summary>

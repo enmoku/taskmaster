@@ -509,7 +509,7 @@ namespace Taskmaster
 				Explorer = procs;
 				foreach (var proc in procs)
 				{
-					var info = ProcessManager.GetInfo(proc.Id, process: proc, name:"explorer", getPath: true);
+					var info = ProcessUtility.GetInfo(proc.Id, process: proc, name:"explorer", getPath: true);
 
 					if (info == null) continue; // things failed, move on
 

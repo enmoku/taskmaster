@@ -1022,28 +1022,6 @@ namespace Taskmaster
 			if (isProtectedFile && Taskmaster.ShowInaction && Taskmaster.DebugProcesses)
 				Log.Debug("[" + FriendlyName + "] " + info.Name + " (#" + info.Id + ") in protected list, limiting tampering.");
 
-			// TODO: Validate path.
-			if (!string.IsNullOrEmpty(Path))
-			{
-				if (string.IsNullOrEmpty(info.Path) && !ProcessManager.FindPath(info))
-					return; // return ProcessState.Error;
-
-				if (info.PathMatched || MatchPath(info.Path)) // FIXME: this is done twice
-				{
-					// OK
-					if (Taskmaster.DebugPaths && !info.PathMatched)
-						Log.Verbose("[" + FriendlyName + "] (Touch) Matched at: " + info.Path);
-
-					info.PathMatched = true;
-				}
-				else
-				{
-					if (Taskmaster.DebugPaths)
-						Log.Verbose("[" + FriendlyName + "] " + info.Path + " NOT IN " + Path + " – IGNORING");
-					return; // return ProcessState.Ignored;
-				}
-			}
-
 			ProcessPriorityClass? newPriority = null;
 			IntPtr? newAffinity = null;
 			var newPower = PowerInfo.PowerMode.Undefined;
@@ -1542,7 +1520,7 @@ namespace Taskmaster
 				catch { continue; } // access failure or similar, we don't care
 				try
 				{
-					var info = ProcessManager.GetInfo(pid, process, name, null, getPath: !string.IsNullOrEmpty(Path));
+					var info = ProcessUtility.GetInfo(pid, process, name, null, getPath: !string.IsNullOrEmpty(Path));
 					Modify(info);
 				}
 				catch (Exception ex)

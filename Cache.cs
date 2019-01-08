@@ -36,7 +36,6 @@ using Serilog;
 namespace Taskmaster
 {
 	// TODO: Turn K2 into a delegate
-
 	struct CacheItem<K1, K2, T> where T : class where K2 : class
 	{
 		public K1 AccessKey;

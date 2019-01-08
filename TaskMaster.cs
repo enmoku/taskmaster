@@ -263,6 +263,8 @@ namespace Taskmaster
 		{
 			Log.Information("<Core> Loading components...");
 
+			ProcessUtility.InitializeCache();
+
 			// Parallel loading, cuts down startup time some.
 			// This is really bad if something fails
 			Task[] init =
