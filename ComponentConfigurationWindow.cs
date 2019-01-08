@@ -209,7 +209,7 @@ namespace Taskmaster
 				}
 			};
 			var wmi = ProcessManager.WMIPolling;
-			var scan = ProcessManager.ScanFrequency > 0;
+			var scan = ProcessManager.ScanFrequency != TimeSpan.Zero;
 			ScanOrWMI.SelectedIndex = initial ? 0 : ((wmi && scan) ? 2 : (wmi ? 1 : 0));
 
 			var powmon = new CheckBox()
