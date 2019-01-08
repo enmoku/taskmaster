@@ -25,6 +25,7 @@
 // THE SOFTWARE.
 
 using System;
+using System.Diagnostics;
 
 namespace Taskmaster
 {
@@ -74,37 +75,44 @@ namespace Taskmaster
 		}
 
 		static float SizeThreshold = 1.2f;
-		static readonly double Giga = 1000000000;
-		static readonly double Mega = 1000000;
-		static readonly double Kilo = 1000;
-		static string[] ByteLetter = {"B","kB","MB","GB"};
+		const int Giga = 3;
+		const int Mega = 2;
+		const int Kilo = 1;
+		const int Byte = 0;
+		static double[] MultiplierSI = { 1, 1_000, 1_000_000, 1_000_000_000 };
+		static double[] MultiplierIEC = { 1, 1_024, 1_048_576, 1_073_741_824 };
+		static string[] ByteLetterSI = {"B","kB","MB","GB"};
+		static string[] ByteLetterIEC = { "B", "KiB", "MiB", "GiB" };
 
 		static System.Globalization.NumberFormatInfo numberformat = new System.Globalization.NumberFormatInfo() { NumberDecimalDigits = 3 };
 
-		public static string ByteString(long bytes, bool positivesign=false)
+		public static string ByteString(long bytes, bool positivesign=false, bool iec=false)
 		{
 			double div = 1;
 			int letter = 0;
 
-			if (Math.Abs(bytes) > (Giga * SizeThreshold))
+			var multiplier = iec ? MultiplierIEC : MultiplierSI;
+			var byteletter = iec ? ByteLetterIEC : ByteLetterSI;
+
+			if (Math.Abs(bytes) > (multiplier[Giga] * SizeThreshold))
 			{
-				div = Giga;
-				letter = 3;
+				div = multiplier[Giga];
+				letter = Giga;
 			}
-			else if (Math.Abs(bytes) > (Mega * SizeThreshold))
+			else if (Math.Abs(bytes) > (multiplier[Mega] * SizeThreshold))
 			{
-				div = Mega;
-				letter = 2;
+				div = multiplier[Mega];
+				letter = Mega;
 			}
 			else if (Math.Abs(bytes) > (Kilo * SizeThreshold))
 			{
-				div = Kilo;
-				letter = 1;
+				div = multiplier[Kilo];
+				letter = Kilo;
 			}
 			else
 			{
 				div = 1;
-				letter = 0;
+				letter = Byte;
 			}
 
 			double num = bytes / div;
@@ -117,7 +125,7 @@ namespace Taskmaster
 				return string.Format(
 					numberformat,
 					"{1}{0:N} {2}",
-					num, ((positivesign && bytes > 0) ? "+" : ""), ByteLetter[letter]);
+					num, ((positivesign && bytes > 0) ? "+" : ""), byteletter[letter]);
 			}
 		}
 	}
