@@ -67,20 +67,20 @@ namespace Taskmaster
 
 		readonly ConcurrentDictionary<K1, CacheItem<K1, K2, T>> Items = new ConcurrentDictionary<K1, CacheItem<K1, K2, T>>();
 
-		public long Count => Items.Count;
-		public long Hits { get; private set; } = 0;
-		public long Misses { get; private set; } = 0;
+		public ulong Count => Convert.ToUInt64(Items.Count);
+		public ulong Hits { get; private set; } = 0;
+		public ulong Misses { get; private set; } = 0;
 
 		System.Threading.Timer pruneTimer = null;
 
-		int Overflow = 10;
-		int MaxCache = 20;
-		int MinCache = 10;
+		uint Overflow = 10;
+		uint MaxCache = 20;
+		uint MinCache = 10;
 
-		int MinAge = 5;
-		int MaxAge = 60;
+		uint MinAge = 5;
+		uint MaxAge = 60;
 
-		public Cache(double interval = 10, int maxItems = 100, int minItems = 10,
+		public Cache(double interval = 10, uint maxItems = 100, uint minItems = 10,
 					 StoreStrategy store = StoreStrategy.ReplaceNoMatch, EvictStrategy evict = EvictStrategy.LeastRecent)
 		{
 			CacheStoreStrategy = store;
@@ -88,7 +88,7 @@ namespace Taskmaster
 
 			MaxCache = maxItems;
 			MinCache = minItems;
-			Overflow = (MaxCache / 2).Constrain(2, 50);
+			Overflow = Math.Min(Math.Max(MaxCache / 2, 2), 50);
 
 			pruneTimer = new System.Threading.Timer(Prune, null, 15_000L, Convert.ToInt64(interval) * 60_000L);
 		}
@@ -260,7 +260,11 @@ namespace Taskmaster
 			return null;
 		}
 
-		public void Drop(K1 key) => Items.TryRemove(key, out _);
+		public void Drop(K1 key)
+		{
+			Items.TryRemove(key, out _);
+			Statistics.PathCacheCurrent = Count;
+		}
 
 		#region IDisposable Support
 		bool disposed = false; // To detect redundant calls
@@ -272,6 +276,7 @@ namespace Taskmaster
 				if (disposing)
 				{
 					Utility.Dispose(ref pruneTimer);
+					Items?.Clear();
 				}
 
 				disposed = true;

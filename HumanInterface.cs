@@ -84,9 +84,7 @@ namespace Taskmaster
 		static string[] ByteLetterSI = {"B","kB","MB","GB"};
 		static string[] ByteLetterIEC = { "B", "KiB", "MiB", "GiB" };
 
-		static System.Globalization.NumberFormatInfo numberformat = new System.Globalization.NumberFormatInfo() { NumberDecimalDigits = 3 };
-
-		public static string ByteString(long bytes, bool positivesign=false, bool iec=false)
+		public static string ByteString(long bytes, bool positivesign = false, bool iec = false)
 		{
 			double div = 1;
 			int letter = 0;
@@ -117,16 +115,10 @@ namespace Taskmaster
 
 			double num = bytes / div;
 
-			lock (numberformat) // lock vs new.. hmm
-			{
-				// Don't show decimals for bytes, do whatever for the rest.
-				numberformat.NumberDecimalDigits = div == 1 ? 0 : ((num < 10) ? 3 : ((num > 100) ? 1 : 2));
-
-				return string.Format(
-					numberformat,
-					"{1}{0:N} {2}",
-					num, ((positivesign && bytes > 0) ? "+" : ""), byteletter[letter]);
-			}
+			return string.Format(
+				new System.Globalization.NumberFormatInfo() { NumberDecimalDigits = div == 1 ? 0 : ((num < 10) ? 3 : ((num > 100) ? 1 : 2)) },
+				"{1}{0:N} {2}",
+				num, ((positivesign && bytes > 0) ? "+" : ""), byteletter[letter]);
 		}
 	}
 }

@@ -34,28 +34,29 @@ namespace Taskmaster
 		public static int WMIqueries { get; set; } = 0;
 		public static double WMIquerytime { get; set; } = 0;
 
-		public static int WMIPolling { get; set; } = 0;
+		public static ulong WMIPolling { get; set; } = 0;
 		public static double WMIPollTime { get; set; } = 0;
 
-		public static int MaintenanceCount { get; set; } = 0;
+		public static ulong MaintenanceCount { get; set; } = 0;
 		public static double MaintenanceTime { get; set; } = 0;
 
-		public static double PathCacheCurrent { get; set; } = 0;
-		public static double PathCachePeak { get; set; } = 0;
-		public static double PathCacheHits { get; set; } = 0;
-		public static double PathCacheMisses { get; set; } = 0;
+		public static ulong PathCacheCurrent { get; set; } = 0;
+		public static ulong PathCachePeak { get; set; } = 0;
+		public static ulong PathCacheHits { get; set; } = 0;
+		public static ulong PathCacheMisses { get; set; } = 0;
 
-		public static long TouchCount { get; set; } = 0;
-		public static long TouchIgnore { get; set; } = 0;
+		public static ulong TouchCount { get; set; } = 0;
+		public static ulong TouchIgnore { get; set; } = 0;
 
-		public static long TouchTimeLongest { get; set; } = 0L;
-		public static long TouchTimeShortest { get; set; } = long.MaxValue;
+		public static ulong TouchTimeLongest { get; set; } = 0L;
+		public static ulong TouchTimeShortest { get; set; } = long.MaxValue;
 
-		public static int FatalErrors { get; set; } = 0;
+		public static uint FatalErrors { get; set; } = 0;
 
-		public static long PathFindAttempts { get; set; } = 0;
-		public static long PathFindViaModule { get; set; } = 0;
-		public static long PathFindViaC { get; set; } = 0;
-		public static long PathFindViaWMI { get; set; } = 0;
+		public static ulong PathFindAttempts { get; set; } = 0;
+		public static ulong PathFindViaModule { get; set; } = 0;
+		public static ulong PathFindViaC { get; set; } = 0;
+		public static ulong PathFindViaWMI { get; set; } = 0;
+		public static ulong PathNotFound { get; set; } = 0;
 	}
 }

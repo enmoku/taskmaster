@@ -34,13 +34,6 @@ namespace Taskmaster
 {
 	public static class ProcessManagerUtility
 	{
-		static Cache<int, string, string> pathCache;
-
-		public static void Initialize()
-		{
-			pathCache = new Cache<int, string, string>(Taskmaster.PathCacheMaxAge, Taskmaster.PathCacheLimit, (Taskmaster.PathCacheLimit / 10).Constrain(5, 10));
-		}
-
 		[Conditional("DEBUG")]
 		public static void PathCacheStats()
 		{
@@ -49,77 +42,10 @@ namespace Taskmaster
 				", Ratio: " + $"{(Statistics.PathCacheMisses > 0 ? (Statistics.PathCacheHits / Statistics.PathCacheMisses) : 1):N2})");
 		}
 
-		public static ProcessEx GetInfo(int ProcessID, Process process = null, string name = null, string path = null, bool getPath = false)
-		{
-			try
-			{
-				if (process == null) process = Process.GetProcessById(ProcessID);
-
-				var info = new ProcessEx()
-				{
-					Id = ProcessID,
-					Process = process,
-					Name = string.IsNullOrEmpty(name) ? process.ProcessName : name,
-					State = ProcessModification.OK,
-					Path = path,
-				};
-
-				if (getPath && string.IsNullOrEmpty(path)) FindPath(info);
-
-				return info;
-			}
-			catch (InvalidOperationException) { } // already exited
-			catch (ArgumentException) { } // already exited
-			catch (Exception ex)
-			{
-				Logging.Stacktrace(ex);
-			}
-
-			return null;
-		}
-
-		public static bool FindPath(ProcessEx info)
-		{
-			var cacheGet = false;
-
-			// Try to get the path from cache
-			if (pathCache != null)
-			{
-				if (pathCache.Get(info.Id, out string cpath, info.Name) != null)
-				{
-					if (!string.IsNullOrEmpty(cpath))
-					{
-						Statistics.PathCacheHits++;
-						cacheGet = true;
-						info.Path = cpath;
-					}
-					else
-						pathCache.Drop(info.Id);
-
-					Statistics.PathCacheCurrent = pathCache.Count;
-				}
-			}
-
-			// Try harder
-			if (string.IsNullOrEmpty(info.Path) && !FindPathExtended(info)) return false;
-
-			// Add to path cache
-			if (pathCache != null && !cacheGet)
-			{
-				pathCache.Add(info.Id, info.Name, info.Path);
-				Statistics.PathCacheMisses++; // adding new entry is as bad a miss
-
-				Statistics.PathCacheCurrent = pathCache.Count;
-				if (Statistics.PathCacheCurrent > Statistics.PathCachePeak) Statistics.PathCachePeak = Statistics.PathCacheCurrent;
-			}
-
-			return true;
-		}
-
 		/// <summary>
 		/// Use FindPath() instead. This is called by it.
 		/// </summary>
-		private static bool FindPathExtended(ProcessEx info)
+		public static bool FindPathExtended(ProcessEx info)
 		{
 			System.Diagnostics.Debug.Assert(string.IsNullOrEmpty(info.Path), "FindPathExtended called even though path known.");
 
@@ -127,12 +53,7 @@ namespace Taskmaster
 
 			try
 			{
-				info.Path = info.Process.MainModule?.FileName ?? null; // this will cause win32exception of various types, we don't Really care which error it is
-				Statistics.PathFindViaModule++;
-			}
-			catch (NullReferenceException) // Main Module is sometimes inaccessible or the filename missing, usually access problems of some sort
-			{
-				info.Path = string.Empty;
+				info.Path = info.Process?.MainModule?.FileName ?? string.Empty; // this will cause win32exception of various types, we don't Really care which error it is
 			}
 			catch (System.ComponentModel.Win32Exception)
 			{
@@ -146,46 +67,49 @@ namespace Taskmaster
 
 			if (string.IsNullOrEmpty(info.Path))
 			{
-				info.Path = GetProcessPathViaC(info.Id);
-
-				if (string.IsNullOrEmpty(info.Path))
+				if (!GetProcessPathViaC(info.Id, out info.Path))
 				{
-					info.Path = GetProcessPathViaWMI(info.Id);
-					if (string.IsNullOrEmpty(info.Path)) return false;
+					if (!GetProcessPathViaWMI(info.Id, out info.Path))
+					{
+						Statistics.PathNotFound++;
+						return false;
+					}
 					Statistics.PathFindViaWMI++;
 				}
 				else
 					Statistics.PathFindViaC++;
 			}
+			else
+				Statistics.PathFindViaModule++;
 
 			return true;
 		}
 
 		// https://stackoverflow.com/a/34991822
-		public static string GetProcessPathViaC(int pid)
+		public static bool GetProcessPathViaC(int pid, out string path)
 		{
 			const int PROCESS_QUERY_INFORMATION = 0x0400;
 			// const int PROCESS_VM_READ = 0x0010; // is this really needed?
+			path = string.Empty;
 
-			var processHandle = NativeMethods.OpenProcess(PROCESS_QUERY_INFORMATION, false, pid);
+			//var processHandle = NativeMethods.OpenProcess(PROCESS_QUERY_INFORMATION, false, pid);
+			var proc = Process.GetProcessById(pid);
+			//if (processHandle == IntPtr.Zero)
+			if (proc == null) return false;
 
-			if (processHandle == IntPtr.Zero) return null;
-
-			const int lengthSb = 4000;
+			const int lengthSb = 32768; // this is the maximum path length NTFS supports
 
 			var sb = new System.Text.StringBuilder(lengthSb);
 
-			string result = null;
-
-			if (NativeMethods.GetModuleFileNameEx(processHandle, IntPtr.Zero, sb, lengthSb) > 0)
+			if (NativeMethods.GetModuleFileNameEx(proc.Handle, IntPtr.Zero, sb, lengthSb) > 0)
 			{
 				// result = Path.GetFileName(sb.ToString());
-				result = sb.ToString();
+				path = sb.ToString();
+				return true;
 			}
 
-			NativeMethods.CloseHandle(processHandle);
-
-			return result;
+			//NativeMethods.CloseHandle(processHandle);
+			return false;
 		}
 
 		/// <summary>
@@ -194,15 +118,16 @@ namespace Taskmaster
 		/// </summary>
 		/// <returns>The process path.</returns>
 		/// <param name="processId">Process ID</param>
-		static string GetProcessPathViaWMI(int processId)
+		static bool GetProcessPathViaWMI(int processId, out string path)
 		{
-			if (!Taskmaster.WMIQueries) return null;
+			path = string.Empty;
+
+			if (!Taskmaster.WMIQueries) return false;
 
 			var wmitime = Stopwatch.StartNew();
 
 			Statistics.WMIqueries++;
 
-			string path = null;
 			try
 			{
 				using (var searcher = new ManagementObjectSearcher(
@@ -213,14 +138,17 @@ namespace Taskmaster
 				{
 					foreach (ManagementObject item in searcher.Get())
 					{
-						var mpath = item["ExecutablePath"];
-						if (mpath != null)
+						using (item)
 						{
-							Log.Verbose("WMI fetch (#" + processId + "): " + path);
-							wmitime.Stop();
-							Statistics.WMIquerytime += wmitime.Elapsed.TotalSeconds;
-							item.Dispose();
-							return mpath.ToString();
+							var mpath = item["ExecutablePath"];
+							if (mpath != null)
+							{
+								Log.Verbose("WMI fetch (#" + processId + "): " + path);
+								wmitime.Stop();
+								Statistics.WMIquerytime += wmitime.Elapsed.TotalSeconds;
+								path = mpath.ToString();
+								return path.Length > 1;
+							}
 						}
 					}
 				}
@@ -230,11 +158,13 @@ namespace Taskmaster
 				Logging.Stacktrace(ex);
 				// NOP, don't caree
 			}
+			finally
+			{
+				wmitime.Stop();
+				Statistics.WMIquerytime += wmitime.Elapsed.TotalSeconds;
+			}
 
-			wmitime.Stop();
-			Statistics.WMIquerytime += wmitime.Elapsed.TotalSeconds;
-
-			return path;
+			return false;
 		}
 
 		public static int ApplyAffinityStrategy(int source, int target, ProcessAffinityStrategy strategy)

@@ -1025,7 +1025,7 @@ namespace Taskmaster
 			// TODO: Validate path.
 			if (!string.IsNullOrEmpty(Path))
 			{
-				if (string.IsNullOrEmpty(info.Path) && !ProcessManagerUtility.FindPath(info))
+				if (string.IsNullOrEmpty(info.Path) && !ProcessManager.FindPath(info))
 					return; // return ProcessState.Error;
 
 				if (info.PathMatched || MatchPath(info.Path)) // FIXME: this is done twice
@@ -1542,7 +1542,7 @@ namespace Taskmaster
 				catch { continue; } // access failure or similar, we don't care
 				try
 				{
-					var info = ProcessManagerUtility.GetInfo(pid, process, name, null, getPath: !string.IsNullOrEmpty(Path));
+					var info = ProcessManager.GetInfo(pid, process, name, null, getPath: !string.IsNullOrEmpty(Path));
 					Modify(info);
 				}
 				catch (Exception ex)

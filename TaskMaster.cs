@@ -95,18 +95,10 @@ namespace Taskmaster
 			if (!trayaccess?.IsDisposed ?? false) trayaccess.Enabled = false;
 
 			while (DisposalChute.Count > 0)
-			{
-				try
-				{
-					DisposalChute.Pop().Dispose();
-				}
-				catch (Exception ex)
-				{
-					Logging.Stacktrace(ex);
-				}
+				MKAh.Utility.LogAndDiscardException(() => DisposalChute.Pop().Dispose());
 
-				pipe = null;
-			}
+			pipe?.Dispose();
+			pipe = null;
 		}
 
 		public static void UnifiedExit(bool restart = false)
@@ -637,11 +629,9 @@ namespace Taskmaster
 			perfsec["Temp rescan delay"].Comment = "How many minutes to wait before rescanning temp after crossing the threshold.";
 			dirtyconfig |= modified;
 
-			PathCacheLimit = perfsec.GetSetDefault("Path cache", 60, out modified).IntValue;
+			PathCacheLimit = perfsec.GetSetDefault("Path cache", 60, out modified).IntValue.Constrain(20, 200);
 			perfsec["Path cache"].Comment = "Path searching is very heavy process; this configures how many processes to remember paths for.\nThe cache is allowed to occasionally overflow for half as much.";
 			dirtyconfig |= modified;
-			if (PathCacheLimit < 0) PathCacheLimit = 0;
-			if (PathCacheLimit > 0 && PathCacheLimit < 20) PathCacheLimit = 20;
 
 			PathCacheMaxAge = perfsec.GetSetDefault("Path cache max age", 15, out modified).IntValue;
 			perfsec["Path cache max age"].Comment = "Maximum age, in minutes, of cached objects. Min: 1 (1min), Max: 1440 (1day).\nThese will be removed even if the cache is appropriate size.";
@@ -766,21 +756,6 @@ namespace Taskmaster
 		static void CleanShutdown()
 		{
 			var corestats = Config.Load(corestatfile);
-
-			var wmi = corestats.Config["WMI queries"];
-			string timespent = "Time", querycount = "Queries";
-			bool modified = false, dirtyconfig = false;
-
-			wmi[timespent].DoubleValue = wmi.GetSetDefault(timespent, 0d, out modified).DoubleValue + Statistics.WMIquerytime;
-			dirtyconfig |= modified;
-			wmi[querycount].IntValue = wmi.GetSetDefault(querycount, 0, out modified).IntValue + Statistics.WMIqueries;
-			dirtyconfig |= modified;
-			var ps = corestats.Config["Parent seeking"];
-			ps[timespent].DoubleValue = ps.GetSetDefault(timespent, 0d, out modified).DoubleValue + Statistics.Parentseektime;
-			dirtyconfig |= modified;
-			ps[querycount].IntValue = ps.GetSetDefault(querycount, 0, out modified).IntValue + Statistics.ParentSeeks;
-			dirtyconfig |= modified;
-
 			corestats.Config["Core"]["Running"].BoolValue = false;
 			corestats.Save(force:true);
 		}
@@ -1062,15 +1037,16 @@ namespace Taskmaster
 		{
 			if (pipe == null) return;
 
-			pipe.EndWaitForConnection(result);
-
-			if (!result.IsCompleted) return;
-			if (!pipe.IsConnected) return;
-			if (!pipe.IsMessageComplete) return;
-
-			byte[] buffer = new byte[16];
 			try
 			{
+				pipe.EndWaitForConnection(result);
+
+				if (!result.IsCompleted) return;
+				if (!pipe.IsConnected) return;
+				if (!pipe.IsMessageComplete) return;
+
+				byte[] buffer = new byte[16];
+
 				pipe.ReadAsync(buffer, 0, 16).ContinueWith(async delegate
 				{
 					try
@@ -1095,6 +1071,10 @@ namespace Taskmaster
 						Logging.Stacktrace(ex);
 					}
 				});
+			}
+			catch (ObjectDisposedException)
+			{
+				return;
 			}
 			catch (Exception ex)
 			{
@@ -1318,12 +1298,12 @@ namespace Taskmaster
 				Log.Information("<Stat> Self-maintenance: " + $"{Statistics.MaintenanceTime:N2}s [" + Statistics.MaintenanceCount + "]");
 				Log.Information("<Stat> Path cache: " + Statistics.PathCacheHits + " hits, " + Statistics.PathCacheMisses + " misses");
 				Log.Information("<Stat> Path finding: " + Statistics.PathFindAttempts + " total attempts; " + Statistics.PathFindViaModule +
-					" via module info, " + Statistics.PathFindViaC + " via C call, " + Statistics.PathFindViaWMI + " via WMI");
+					" via module info, " + Statistics.PathFindViaC + " via C call, " + Statistics.PathFindViaWMI + " via WMI, " + Statistics.PathNotFound + " not found");
 				Log.Information("<Stat> Processes modified: " + Statistics.TouchCount + "; Ignored for remodification: " + Statistics.TouchIgnore);
 				if (Statistics.TouchTimeShortest == long.MaxValue) 
 				Log.Information("<Stat> Process modify time range: " +
-					(Statistics.TouchTimeShortest == long.MaxValue ? "?" : $"{Statistics.TouchTimeShortest}") + " – " +
-					(Statistics.TouchTimeLongest == long.MinValue ? "?" : $"{Statistics.TouchTimeLongest}") + " milliseconds");
+					(Statistics.TouchTimeShortest == ulong.MaxValue ? "?" : $"{Statistics.TouchTimeShortest}") + " – " +
+					(Statistics.TouchTimeLongest == ulong.MinValue ? "?" : $"{Statistics.TouchTimeLongest}") + " milliseconds");
 
 				CleanShutdown();
 

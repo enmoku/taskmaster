@@ -63,74 +63,6 @@ namespace Taskmaster
 		public int Id { get; set; } = -1;
 	}
 
-	sealed public class ProcessEx : IDisposable
-	{
-		/// <summary>
-		/// Process filename without extension
-		/// Cached from Process.ProcessFilename
-		/// </summary>
-		public string Name = string.Empty;
-		/// <summary>
-		/// Process fullpath, including filename with extension
-		/// </summary>
-		public string Path = string.Empty;
-		/// <summary>
-		/// Process Id.
-		/// </summary>
-		public int Id = -1;
-
-		public Stopwatch Timer;
-
-		/// <summary>
-		/// Process reference.
-		/// </summary>
-		public Process Process = null;
-		/// <summary>
-		/// .Process.Refresh() should be called for this if the Process needs to be accessed.
-		/// </summary>
-		public bool NeedsRefresh = false;
-
-		/// <summary>
-		/// Has this Process been handled already?
-		/// </summary>
-		public bool Handled = false;
-		/// <summary>
-		/// Path was matched with a rule.
-		/// </summary>
-		public bool PathMatched = false;
-
-		public bool PowerWait = false;
-		public bool ActiveWait = false;
-
-		public DateTimeOffset Modified = DateTimeOffset.MinValue;
-		public ProcessModification State = ProcessModification.Invalid;
-
-		#region IDisposable Support
-		private bool disposed = false; // To detect redundant calls
-
-		void Dispose(bool disposing)
-		{
-			if (!disposed)
-			{
-				if (disposing)
-				{
-					Process?.Dispose();
-					Process = null;
-					Timer?.Stop();
-					Timer = null;
-				}
-
-				disposed = true;
-			}
-		}
-
-		public void Dispose()
-		{
-			Dispose(true);
-		}
-		#endregion
-	}
-
 	enum ProcessFlags
 	{
 		PowerWait = 1 << 6,
@@ -162,16 +94,13 @@ namespace Taskmaster
 
 			loadConfig();
 
+			pathCache = new Cache<int, string, string>(Taskmaster.PathCacheMaxAge, (uint)Taskmaster.PathCacheLimit, (uint)(Taskmaster.PathCacheLimit / 10).Constrain(20, 60));
+
 			loadWatchlist();
 
 			InitWMIEventWatcher();
 
 			ProcessDetectedEvent += ProcessTriage;
-
-			if (Taskmaster.PathCacheLimit > 0)
-			{
-				ProcessManagerUtility.Initialize();
-			}
 
 			if (BatchProcessing)
 			{
@@ -189,6 +118,8 @@ namespace Taskmaster
 
 			Taskmaster.DisposalChute.Push(this);
 		}
+
+		static Cache<int, string, string> pathCache = null;
 
 		public ProcessController[] getWatchlist()
 		{
@@ -1077,7 +1008,7 @@ namespace Taskmaster
 				return null; // return ProcessState.AccessDenied; // we don't care wwhat this error is
 			}
 
-			if (string.IsNullOrEmpty(info.Path) && !ProcessManagerUtility.FindPath(info))
+			if (string.IsNullOrEmpty(info.Path) && !FindPath(info))
 				return null; // return ProcessState.Error;
 
 			if (IgnoreSystem32Path && info.Path.StartsWith(Environment.GetFolderPath(Environment.SpecialFolder.System)))
@@ -1309,7 +1240,7 @@ namespace Taskmaster
 			if (e.State == ProcessHandlingState.Finished)
 			{
 				e.Info.Timer.Stop();
-				long time = e.Info.Timer.ElapsedMilliseconds;
+				ulong time = Convert.ToUInt64(e.Info.Timer.ElapsedMilliseconds);
 				if (Taskmaster.Trace) Debug.WriteLine("Modify time: " + $"{time} ms");
 				Statistics.TouchTimeLongest = Math.Max(time, Statistics.TouchTimeLongest);
 				Statistics.TouchTimeShortest = Math.Min(time, Statistics.TouchTimeShortest);
@@ -1373,6 +1304,35 @@ namespace Taskmaster
 			{
 				HandlingStateChange?.Invoke(this, new InstanceHandlingArgs(ea.Info.State == ProcessModification.Modified ? ProcessHandlingState.Modified : ProcessHandlingState.Unmodified, ea.Info, ea.Control));
 			}
+		}
+
+		public static ProcessEx GetInfo(int ProcessID, Process process = null, string name = null, string path = null, bool getPath = false)
+		{
+			try
+			{
+				if (process == null) process = Process.GetProcessById(ProcessID);
+
+				var info = new ProcessEx()
+				{
+					Id = ProcessID,
+					Process = process,
+					Name = string.IsNullOrEmpty(name) ? process.ProcessName : name,
+					State = ProcessModification.OK,
+					Path = path,
+				};
+
+				if (getPath && string.IsNullOrEmpty(path)) FindPath(info);
+
+				return info;
+			}
+			catch (InvalidOperationException) { } // already exited
+			catch (ArgumentException) { } // already exited
+			catch (Exception ex)
+			{
+				Logging.Stacktrace(ex);
+			}
+
+			return null;
 		}
 
 		readonly object batchprocessing_lock = new object();
@@ -1491,7 +1451,7 @@ namespace Taskmaster
 					return;
 				}
 
-				info = ProcessManagerUtility.GetInfo(pid, path: path, getPath: true);
+				info = ProcessManager.GetInfo(pid, path: path, getPath: true);
 				if (info != null)
 				{
 					info.Timer = timer;
@@ -1640,6 +1600,42 @@ namespace Taskmaster
 				Log.Error("Failed to initialize new instance watcher.");
 				throw new InitFailure("New instance watcher not initialized");
 			}
+		}
+
+		public static bool FindPath(ProcessEx info)
+		{
+			var cacheGet = false;
+
+			// Try to get the path from cache
+			if (pathCache.Get(info.Id, out string cpath, info.Name) != null)
+			{
+				if (!string.IsNullOrEmpty(cpath))
+				{
+					Statistics.PathCacheHits++;
+					cacheGet = true;
+					info.Path = cpath;
+				}
+				else
+				{
+					pathCache.Drop(info.Id);
+				}
+			}
+
+			// Try harder
+			if (string.IsNullOrEmpty(info.Path) && !ProcessManagerUtility.FindPathExtended(info)) return false;
+
+			// Add to path cache
+			if (!cacheGet)
+			{
+				pathCache.Add(info.Id, info.Name, info.Path);
+				Statistics.PathCacheMisses++; // adding new entry is as bad a miss
+
+				if (Statistics.PathCacheCurrent > Statistics.PathCachePeak) Statistics.PathCachePeak = Statistics.PathCacheCurrent;
+			}
+
+			Statistics.PathCacheCurrent = pathCache.Count;
+
+			return true;
 		}
 
 		const string watchfile = "Watchlist.ini";
