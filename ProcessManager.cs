@@ -29,6 +29,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Management;
 using System.Threading.Tasks;
 using MKAh;
 using Serilog;
@@ -1427,7 +1428,7 @@ namespace Taskmaster
 		}
 
 		// This needs to return faster
-		async void NewInstanceTriage(object _, System.Management.EventArrivedEventArgs ea)
+		async void NewInstanceTriage(object _, EventArrivedEventArgs ea)
 		{
 			SignalProcessHandled(1); // wmi new instance
 
@@ -1449,7 +1450,7 @@ namespace Taskmaster
 				// TODO: Instance groups?
 				try
 				{
-					var targetInstance = ea.NewEvent.Properties["TargetInstance"].Value as System.Management.ManagementBaseObject;
+					var targetInstance = ea.NewEvent.Properties["TargetInstance"].Value as ManagementBaseObject;
 					//var tpid = targetInstance.Properties["Handle"].Value as int?; // doesn't work for some reason
 					pid = Convert.ToInt32(targetInstance.Properties["Handle"].Value as string);
 					path = targetInstance.Properties["ExecutablePath"].Value as string;
@@ -1573,7 +1574,7 @@ namespace Taskmaster
 			}
 		}
 
-		System.Management.ManagementEventWatcher watcher = null;
+		ManagementEventWatcher watcher = null;
 		void InitWMIEventWatcher()
 		{
 			if (!WMIPolling) return;
@@ -1583,10 +1584,6 @@ namespace Taskmaster
 			{
 				// Transition to permanent event listener?
 				// https://msdn.microsoft.com/en-us/library/windows/desktop/aa393014(v=vs.85).aspx
-
-				var scope = new System.Management.ManagementScope(
-					new System.Management.ManagementPath(@"\\.\root\CIMV2")
-				);
 
 				/*
 				// Causes access denied error?
@@ -1602,9 +1599,10 @@ namespace Taskmaster
 				// var tracequery = new System.Management.EventQuery("SELECT * FROM Win32_ProcessStartTrace");
 
 				// var query = new System.Management.EventQuery("SELECT TargetInstance FROM __InstanceCreationEvent WITHIN 5 WHERE TargetInstance ISA 'Win32_Process'");
-				var query = new System.Management.EventQuery(
-					"SELECT * FROM __InstanceCreationEvent WITHIN " + WMIPollDelay + " WHERE TargetInstance ISA 'Win32_Process'");
-				watcher = new System.Management.ManagementEventWatcher(scope, query); // Avast cybersecurity causes this to throw an exception
+				watcher = new ManagementEventWatcher(
+					new ManagementScope(@"\\.\root\CIMV2"),
+					new EventQuery("SELECT * FROM __InstanceCreationEvent WITHIN " + WMIPollDelay + " WHERE TargetInstance ISA 'Win32_Process'")
+					); // Avast cybersecurity causes this to throw an exception
 			}
 			catch (Exception ex)
 			{

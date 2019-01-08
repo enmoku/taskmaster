@@ -26,6 +26,7 @@
 
 using System;
 using System.Diagnostics;
+using System.Management;
 using MKAh;
 using Serilog;
 
@@ -202,12 +203,15 @@ namespace Taskmaster
 			Statistics.WMIqueries++;
 
 			string path = null;
-			var wmiQueryString = "SELECT ExecutablePath FROM Win32_Process WHERE ProcessId = " + processId;
 			try
 			{
-				using (var searcher = new System.Management.ManagementObjectSearcher(wmiQueryString))
+				using (var searcher = new ManagementObjectSearcher(
+					new ManagementScope(@"\\.\root\CIMV2"),
+					new SelectQuery("SELECT ExecutablePath FROM Win32_Process WHERE ProcessId = " + processId),
+					new EnumerationOptions(null, new TimeSpan(0, 1, 0), 1, false, true, false, false, false, true, false)
+					))
 				{
-					foreach (System.Management.ManagementObject item in searcher.Get())
+					foreach (ManagementObject item in searcher.Get())
 					{
 						var mpath = item["ExecutablePath"];
 						if (mpath != null)
