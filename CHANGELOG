@@ -3,6 +3,9 @@ Comprehensive changes can be found in Git change history:
 	https://github.com/mkahvi/taskmaster/commits/master
 
 ## [0.12...]
+### 2018-01-08
+	Added: Memory pressure display on info tab. 100% or over is bad, mkay?
+	Internal: Changed how memory is queried. Should be better now.
 ### 2018-01-07
 	Fixed: User idle calculation. Ticks are a lie.
 	Fixed: A bug in watchlist rule sanity checking. (reported by Chairkicker Nick)
