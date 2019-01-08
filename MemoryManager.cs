@@ -4,7 +4,7 @@
 // Author:
 //       M.A. (https://github.com/mkahvi)
 //
-// Copyright (c) 2018 M.A.
+// Copyright (c) 2018–2019 M.A.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -26,11 +26,112 @@
 
 using System;
 using System.Diagnostics;
+using System.Management;
 using System.Runtime.InteropServices;
 
 namespace Taskmaster
 {
-	// BUG: Requires Windows 8 or later
+	static class MemoryManager
+	{
+		static bool Populated = false;
+
+		/// <summary>
+		/// Total physical system memory in bytes.
+		/// </summary>
+		public static ulong Total { get; private set; } = 0;
+		/// <summary>
+		/// 
+		/// </summary>
+		public static ulong Load { get; private set; } = 0;
+		/// <summary>
+		/// Memory used.
+		/// </summary>
+		public static ulong Used { get; private set; } = 0;
+
+		/// <summary>
+		/// Private bytes.
+		/// </summary>
+		public static ulong Private => Convert.ToUInt64(pfcprivate?.Value ?? 0);
+		/// <summary>
+		/// Memory pressure. 0.0 to 1.0 scale.
+		/// Queries a performance counter and may be slow as such.
+		/// </summary>
+		public static double Pressure => (double)Private / (double)Total;
+		/// <summary>
+		/// Free memory, in megabytes.
+		/// </summary>
+		public static float Free => pfcfree?.Value ?? 0;
+		/// <summary>
+		/// Free memory in bytes.
+		/// Update() required to match current state.
+		/// </summary>
+		public static ulong FreeBytes { get; private set; } = 0;
+
+		static PerformanceCounterWrapper pfcprivate = new PerformanceCounterWrapper("Process", "Private Bytes", "_Total");
+		static PerformanceCounterWrapper pfccommit = new PerformanceCounterWrapper("Memory", "% Committed Bytes In Use", null);
+		static PerformanceCounterWrapper pfcfree = new PerformanceCounterWrapper("Memory", "Available MBytes", null);
+
+		// ctor
+		static MemoryManager()
+		{
+			Update();
+
+			Debug.WriteLine("Total memory:  " + Total);
+			Debug.WriteLine("Private bytes: " + Private);
+
+			/*
+			// Win32_ComputerSystem -> TotalPhysicalMemory maps to MEMORYSTATUSEX.ullTotalPhys
+			using (ManagementClass mc = new ManagementClass("Win32_ComputerSystem"))
+			{
+				using (var res = mc.GetInstances())
+				{
+					foreach (var item in res)
+					{
+						Total = Convert.ToUInt64(item.Properties["TotalPhysicalMemory"].Value);
+						break;
+					}
+				}
+			}
+			*/
+		}
+
+		public static void Update()
+		{
+			var mem = new MEMORYSTATUSEX
+			{
+				dwLength = (uint)Marshal.SizeOf(typeof(MEMORYSTATUSEX))
+			};
+			GlobalMemoryStatusEx(ref mem);
+			Total = mem.ullTotalPhys;
+			FreeBytes = mem.ullAvailPhys;
+			Used = Total - mem.ullAvailPhys;
+			if (Taskmaster.Trace) Debug.WriteLine("MEMORY - Total: " + Total + ", Free: " + FreeBytes + ", Used: " + Used);
+		}
+
+		// weird hack
+		static readonly Finalizer finalizer = new Finalizer();
+		sealed class Finalizer
+		{
+			~Finalizer()
+			{
+				Debug.WriteLine("MemoryManager static finalization");
+				pfcprivate?.Dispose();
+				pfcprivate = null;
+				pfccommit?.Dispose();
+				pfccommit = null;
+			}
+		}
+
+		// start: P/Invoke
+
+		// https://docs.microsoft.com/en-us/windows/desktop/api/sysinfoapi/nf-sysinfoapi-globalmemorystatusex
+		[return: System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.Bool)]
+		[System.Runtime.InteropServices.DllImport("kernel32.dll", CharSet = System.Runtime.InteropServices.CharSet.Auto, SetLastError = true)]
+		static extern bool GlobalMemoryStatusEx(ref MEMORYSTATUSEX lpBuffer);
+
+		// end: P/Invoke
+	}
+
 
 	/*
 	sealed class MemoryController
@@ -60,12 +161,14 @@ namespace Taskmaster
 		ProcessPowerThrottling,
 	}
 
+	// BUG: Requires Windows 8 or later
 	[StructLayout(LayoutKind.Sequential)]
 	public struct MEMORY_PRIORITY_INFORMATION
 	{
 		public ulong MemoryPriority;
 	}
 
+	// BUG: Requires Windows 8 or later
 	public enum MemoryPriority
 	{
 		VeryLow = 1, // MEMORY_PRIORITY_VERY_LOWW
@@ -81,4 +184,56 @@ namespace Taskmaster
 		public static extern bool SetProcessInformation(IntPtr hProcess, PROCESS_INFORMATION_CLASS ProcessInformationClass, IntPtr ProcessInformation, uint ProcessInformationSize);
 	}
 	*/
+
+	/// <summary>
+	/// 
+	/// </summary>
+	// http://www.pinvoke.net/default.aspx/Structures/MEMORYSTATUSEX.html
+	// https://docs.microsoft.com/en-us/windows/desktop/api/sysinfoapi/ns-sysinfoapi-_memorystatusex
+	[System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential, CharSet = System.Runtime.InteropServices.CharSet.Auto)]
+	internal struct MEMORYSTATUSEX
+	{
+		// size of the structure in bytes. Used by C functions
+		public uint dwLength;
+
+		/// <summary>
+		/// 0 to 100, percentage of memory usage
+		/// </summary>
+		public uint dwMemoryLoad;
+
+		/// <summary>
+		/// Total size of physical memory, in bytes.
+		/// </summary>
+		public ulong ullTotalPhys;
+
+		/// <summary>
+		/// Size of physical memory available, in bytes. 
+		/// </summary>
+		public ulong ullAvailPhys;
+
+		/// <summary>
+		/// Size of the committed memory limit, in bytes. This is physical memory plus the size of the page file, minus a small overhead. 
+		/// </summary>
+		public ulong ullTotalPageFile;
+
+		/// <summary>
+		/// Size of available memory to commit, in bytes. The limit is ullTotalPageFile. 
+		/// </summary>
+		public ulong ullAvailPageFile;
+
+		/// <summary>
+		/// Total size of the user mode portion of the virtual address space of the calling process, in bytes. 
+		/// </summary>
+		public ulong ullTotalVirtual;
+
+		/// <summary>
+		/// Size of unreserved and uncommitted memory in the user mode portion of the virtual address space of the calling process, in bytes. 
+		/// </summary>
+		public ulong ullAvailVirtual;
+
+		/// <summary>
+		/// Size of unreserved and uncommitted memory in the extended portion of the virtual address space of the calling process, in bytes. 
+		/// </summary>
+		public ulong ullAvailExtendedVirtual;
+	}
 }

@@ -45,7 +45,7 @@ namespace Taskmaster
 		/// <summary>
 		/// Free megabytes.
 		/// </summary>
-		public int MemLevel { get; set; } = 1000;
+		public ulong MemLevel { get; set; } = 1000;
 
 		/// <summary>
 		/// Ignore foreground application.
@@ -147,8 +147,6 @@ namespace Taskmaster
 
 			LoadConfig();
 
-			memfree = new PerformanceCounterWrapper("Memory", "Available MBytes", null);
-
 			if (Settings.MemLevel > 0 && Taskmaster.PagingEnabled)
 			{
 				Log.Information("<Auto-Doc> Memory auto-paging level: " + Settings.MemLevel + " MB");
@@ -183,7 +181,7 @@ namespace Taskmaster
 			var freememsec = cfg.Config["Free Memory"];
 			freememsec.Comment = "Attempt to free memory when available memory goes below a threshold.";
 
-			Settings.MemLevel = freememsec.GetSetDefault("Threshold", 1000, out modified).IntValue;
+			Settings.MemLevel =(ulong)freememsec.GetSetDefault("Threshold", 1000, out modified).IntValue;
 			// MemLevel = MemLevel > 0 ? MemLevel.Constrain(1, 2000) : 0;
 			freememsec["Threshold"].Comment = "When memory goes down to this level, we act.";
 			configdirty |= modified;
@@ -220,8 +218,6 @@ namespace Taskmaster
 			if (configdirty) cfg.MarkDirty();
 		}
 
-		PerformanceCounterWrapper memfree = null;
-
 		int HealthCheck_lock = 0;
 		//async void TimerCheck(object state)
 		async void TimerCheck(object _)
@@ -254,6 +250,7 @@ namespace Taskmaster
 		{
 			if (!double.IsNaN(Memory)) return Memory;
 
+			// there's probably better way to do this?
 			using (ManagementClass mc = new ManagementClass("Win32_ComputerSystem"))
 			{
 				using (var res = mc.GetInstances())
@@ -266,29 +263,6 @@ namespace Taskmaster
 			}
 
 			return double.NaN;
-		}
-
-		DateTimeOffset FreeMemory_last = DateTimeOffset.MinValue;
-		float FreeMemory_cached = 0f;
-		/// <summary>
-		/// Free memory, in megabytes.
-		/// </summary>
-		public float FreeMemory()
-		{
-			// this might be pointless
-			var now = DateTimeOffset.UtcNow;
-			if (now.TimeSince(FreeMemory_last).TotalSeconds > 2)
-			{
-				FreeMemory_last = now;
-				return FreeMemory_cached = memfree.Value;
-			}
-
-			return FreeMemory_cached;
-		}
-
-		public void InvalidateFreeMemory()
-		{
-			FreeMemory_last = DateTimeOffset.MinValue;
 		}
 
 		async Task CheckErrors()
@@ -382,7 +356,8 @@ namespace Taskmaster
 			{
 				if (Settings.MemLevel > 0)
 				{
-					var memfreemb = FreeMemory();
+					MemoryManager.Update();
+					var memfreemb = MemoryManager.FreeBytes;
 
 					if (memfreemb <= Settings.MemLevel)
 					{
@@ -406,7 +381,7 @@ namespace Taskmaster
 
 							var sbs = new System.Text.StringBuilder();
 							sbs.Append("<<Auto-Doc>> Free memory low [")
-								.Append(HumanInterface.ByteString((long)(memfreemb * 1_000_000)))
+								.Append(HumanInterface.ByteString((long)memfreemb * 1_048_576, iec:true))
 								.Append("], attempting to improve situation.");
 							if (!ProcessManager.SystemProcessId(ignorepid))
 								sbs.Append(" Ignoring foreground (#").Append(ignorepid).Append(").");
@@ -423,13 +398,28 @@ namespace Taskmaster
 							WarnedAboutLowMemory = true;
 							LastMemoryWarning = now;
 
-							Log.Warning("<Memory> Free memory fairly low: " + HumanInterface.ByteString((long)(memfreemb * 1_000_000)));
+							Log.Warning("<Memory> Free memory fairly low: " + HumanInterface.ByteString((long)memfreemb * 1_048_576, iec:true));
 						}
 					}
 					else
-					{
 						WarnedAboutLowMemory = false;
+
+					if (MemoryManager.Pressure > 1d)
+					{
+						if (!WarnedAboutMemoryPressure && now.TimeSince(LastPressureWarning).TotalSeconds > MemoryWarningCooldown)
+						{
+							Log.Warning("<Memory> Memory pressure is over 100%, please close applications to improve performance.");
+							// TODO: Could list like ~5 apps that are using most memory here
+							WarnedAboutMemoryPressure = true;
+							LastPressureWarning = now;
+						}
+						else
+						{
+							// warned too recently, ignore for now
+						}
 					}
+					else
+						WarnedAboutMemoryPressure = false;
 				}
 			}
 			catch (Exception ex)
@@ -438,6 +428,9 @@ namespace Taskmaster
 			}
 		}
 
+		bool WarnedAboutMemoryPressure = false;
+		DateTimeOffset LastPressureWarning = DateTimeOffset.MinValue;
+
 		float MemoryWarningThreshold = 1.5f;
 		bool WarnedAboutLowMemory = false;
 		DateTimeOffset LastMemoryWarning = DateTimeOffset.MinValue;
@@ -445,28 +438,35 @@ namespace Taskmaster
 
 		// VRAM  / GPU
 
+		ulong vram_value { get; set; } = 0;
 		/// <summary>
 		/// Returns maximum available VRAM in MB.
 		/// </summary>
 		/// <returns></returns>
-		public int VRAM()
+		public ulong VRAM()
 		{
 			if (!Taskmaster.WMIQueries) return 0;
 
-			int vram = 0;
+			if (vram_value != 0) return vram_value;
 
 			try
 			{
-				using (ManagementObjectSearcher searcher = new ManagementObjectSearcher("SELECT AdapterRAM FROM Win32_VideoController"))
+				// apparently this maps to registry stuff:
+				// https://docs.microsoft.com/en-us/windows-hardware/drivers/display/setting-hardware-information-in-the-registry
+				// VideoPortGetRegistryParameters
+				using (var searcher = new ManagementObjectSearcher(
+					new ManagementScope(@"\\.\root\CIMV2"),
+					new SelectQuery("SELECT AdapterRAM FROM Win32_VideoController"),
+					new EnumerationOptions(null, new TimeSpan(0, 5, 0), 1, false, true, false, false, false, true, false)
+					))
 				{
-
 					foreach (ManagementObject mo in searcher.Get())
 					{
-						var ram = mo["AdapterRAM"] as uint?;
+						var ram = mo["AdapterRAM"] as ulong?;
 
 						if (ram.HasValue)
 						{
-							vram = (int)(ram.Value / 1048576);
+							vram_value = ram.Value;
 							break;
 						}
 					}
@@ -477,7 +477,7 @@ namespace Taskmaster
 				Logging.Stacktrace(ex);
 			}
 
-			return vram;
+			return vram_value;
 		}
 
 		bool disposed; // = false;
@@ -502,8 +502,6 @@ namespace Taskmaster
 				//commitlimit = null;
 				//commitpercentile?.Dispose();
 				//commitpercentile = null;
-				memfree?.Dispose();
-				memfree = null;
 			}
 
 			disposed = true;

@@ -336,7 +336,9 @@ namespace Taskmaster
 
 		async Task FreeMemoryInternal(int ignorePid = -1)
 		{
-			var b1 = Taskmaster.healthmonitor.FreeMemory();
+			MemoryManager.Update();
+			ulong b1 = MemoryManager.FreeBytes;
+			//var b1 = MemoryManager.Free;
 
 			try
 			{
@@ -348,13 +350,13 @@ namespace Taskmaster
 				await Scan(ignorePid).ConfigureAwait(false); // TODO: Call for this to happen otherwise
 				ScanPaused = false;
 
-				Taskmaster.healthmonitor.InvalidateFreeMemory(); // just in case
-
 				// TODO: Wait a little longer to allow OS to Actually page stuff. Might not matter?
-				var b2 = Taskmaster.healthmonitor.FreeMemory();
+				//var b2 = MemoryManager.Free;
+				MemoryManager.Update();
+				ulong b2 = MemoryManager.FreeBytes;
 
 				Log.Information("<Memory> Paging complete, observed memory change: " +
-					HumanInterface.ByteString((long)((b2 - b1) * 1_000_000), true));
+					HumanInterface.ByteString((long)(b2 - b1), true, iec: true));
 			}
 			catch (Exception ex)
 			{

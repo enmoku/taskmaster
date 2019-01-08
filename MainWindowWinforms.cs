@@ -1529,6 +1529,8 @@ namespace Taskmaster
 			if (Taskmaster.ProcessMonitorEnabled && ProcessManager.ScanFrequency > 0)
 				UItimer.Tick += UpdateRescanCountdown;
 
+			UItimer.Tick += UpdateHWStats;
+
 			if (Taskmaster.PathCacheLimit > 0)
 			{
 				if (Taskmaster.DebugCache) UItimer.Tick += PathCacheUpdate;
@@ -2247,6 +2249,21 @@ namespace Taskmaster
 			}));
 		}
 
+		// Called by UI update timer, should be UI thread by default
+		void UpdateHWStats(object _, EventArgs _ea)
+		{
+			MemoryManager.Update();
+			double freegb = (double)MemoryManager.FreeBytes / 1_073_741_824d;
+			double totalgb = (double)MemoryManager.Total / 1_073_741_824d;
+			double usage = 1 - (freegb / totalgb);
+			ramload.Text = $"{freegb:N2} of {totalgb:N1} GB free ({usage * 100d:N1}% usage), {MemoryManager.Pressure * 100:N1} % pressure";
+
+			// TODO: Print warning if MemoryManager.Pressure > 100%
+
+			//vramload.Text = $"{Taskmaster.healthmonitor.VRAM()/1_048_576:N0} MB"; // this returns total, not free or used
+		}
+
+		// called by cpumonitor, not in UI thread by default
 		public void CPULoadHandler(object _, ProcessorEventArgs ea)
 		{
 			if (!UIOpen) return;
@@ -2255,13 +2272,6 @@ namespace Taskmaster
 			BeginInvoke(new Action(() =>
 			{
 				cpuload.Text = $"{ea.Current:N1} %, Avg: {ea.Average:N1} %, Hi: {ea.High:N1} %, Lo: {ea.Low:N1} %";
-
-				// bad place to do this, but eh..
-				if (Taskmaster.HealthMonitorEnabled)
-				{
-					ramload.Text = $"{Taskmaster.healthmonitor.FreeMemory() / 1000:N2} of {Taskmaster.healthmonitor.TotalMemory() / 1024:N1} GB free";
-						//vramload.Text = $"{Taskmaster.healthmonitor.VRAM()} MB"; // this returns total, not free or used
-				}
 			}));
 		}
 
