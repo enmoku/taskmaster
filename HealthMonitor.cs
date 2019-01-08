@@ -504,8 +504,6 @@ namespace Taskmaster
 				//commitpercentile = null;
 				memfree?.Dispose();
 				memfree = null;
-
-				PerformanceCounterWrapper.Sensors.Clear();
 			}
 
 			disposed = true;

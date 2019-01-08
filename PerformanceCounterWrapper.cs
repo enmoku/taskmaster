@@ -32,8 +32,6 @@ namespace Taskmaster
 {
 	sealed public class PerformanceCounterWrapper : IDisposable
 	{
-		public static List<PerformanceCounter> Sensors = new List<PerformanceCounter>(3);
-
 		public PerformanceCounter Counter { get; private set; }
 
 		string p_CategoryName = null;
@@ -53,7 +51,7 @@ namespace Taskmaster
 
 			if (p_ScrapFirst) { var scrap = Value; }
 
-			Sensors.Add(Counter);
+			Manager.Sensors.Add(Counter);
 		}
 
 		public PerformanceCounterWrapper(string category, string counter, string instance = null, bool scrapfirst = true)
@@ -83,7 +81,7 @@ namespace Taskmaster
 					Counter.Dispose();
 					try
 					{
-						Sensors.Remove(Counter);
+						Manager.Sensors.Remove(Counter);
 					}
 					catch { }
 					Counter = null;
@@ -103,7 +101,7 @@ namespace Taskmaster
 				}
 				catch (System.InvalidOperationException)
 				{
-					Sensors.Remove(Counter);
+					Manager.Sensors.Remove(Counter);
 					Counter.Dispose();
 					// TODO: Driver/Adapter vanished and other problems, try to re-acquire it.
 					Debug.WriteLine("DEBUG :: PFC(" + Counter.CategoryName + "//" + Counter.CounterName + "//" + Counter.InstanceName + ") vanished.");
@@ -115,5 +113,28 @@ namespace Taskmaster
 		}
 
 		public CounterSample Sample => Counter.NextSample();
+	}
+
+	// Manager for ensuring disposal of sensors
+	internal static class Manager
+	{
+		internal static List<PerformanceCounter> Sensors = new List<PerformanceCounter>(3);
+
+		static Manager()
+		{
+			// NOP
+		}
+
+		// weird hack
+		static readonly Finalizer finalizer = new Finalizer();
+		sealed class Finalizer
+		{
+			~Finalizer()
+			{
+				Debug.WriteLine("PerformanceCounterManager static finalization");
+				Sensors.Clear();
+				Sensors = null;
+			}
+		}
 	}
 }
