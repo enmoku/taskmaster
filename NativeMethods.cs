@@ -126,6 +126,7 @@ namespace Taskmaster
 		public const int SC_MONITORPOWER = 0xF170;
 		public const int PBT_POWERSETTINGCHANGE = 0x8013;
 		public const int HWND_BROADCAST = 0xFFFF;
+		public const int HWND_TOPMOST = -1;
 
 		[Flags]
 		public enum SendMessageTimeoutFlags : uint

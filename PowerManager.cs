@@ -138,7 +138,7 @@ namespace Taskmaster
 				Log.Debug("<Monitor> Power state: " + ev.Mode.ToString() + " (last user activity " + $"{sidletime:N1} {timename}" + " ago)");
 			}
 
-			if (OldPowerState == ev.Mode)
+			if (OldPowerState == CurrentMonitorState)
 			{
 				Log.Debug("Received monitor power event: " + OldPowerState.ToString() + " → " + ev.Mode.ToString());
 				return; //
@@ -180,7 +180,7 @@ namespace Taskmaster
 		int SleepTickCount = -1;
 		int SleepGivenUp = 0;
 		int monitorsleeptimer_lock = 0;
-		void MonitorSleepTimerTick(object _, EventArgs _ea)
+		async void MonitorSleepTimerTick(object _, EventArgs _ea)
 		{
 			var idle = User.IdleTime();
 
@@ -203,7 +203,19 @@ namespace Taskmaster
 
 			try
 			{
-				if (idle.TotalSeconds >= Convert.ToDouble(SessionLockPowerOffIdleTimeout))
+				if (SleepTickCount >= 5)
+				{
+					// it would be better if this wasn't needed, but we don't want to spam our failure in the logs too much
+					if (SleepGivenUp == 0)
+						Log.Warning("<Session:Lock> Repeated failure to put monitor to sleep. Other apps may be interfering");
+					else if (SleepGivenUp == 1)
+						Log.Warning("<Session:Lock> Monitor sleep failures persist, stopping logging.");
+					// TODO: Detect other apps that have used SetThreadExecutionState(ES_CONTINUOUS) to prevent monitor sleep
+					// ... this is supposedly not possible.
+					SleepGivenUp++;
+					StopDisplayTimer(reset: true);
+				}
+				else if (idle.TotalSeconds >= Convert.ToDouble(SessionLockPowerOffIdleTimeout))
 				{
 					SleepTickCount++;
 
@@ -222,19 +234,6 @@ namespace Taskmaster
 						Log.Information("<Session:Lock> User active too recently (" + $"{idle.TotalSeconds:N1}s" + " ago), delaying monitor power down...");
 
 					StartDisplayTimer(); // TODO: Make this happen sooner if user was not active recently
-				}
-
-				if (SleepTickCount >= 5)
-				{
-					// it would be better if this wasn't needed, but we don't want to spam our failure in the logs too much
-					if (SleepGivenUp == 0)
-						Log.Warning("<Session:Lock> Repeated failure to put monitor to sleep. Other apps may be interfering");
-					else if (SleepGivenUp == 1)
-						Log.Warning("<Session:Lock> Monitor sleep failures persist, stopping logging.");
-					// TODO: Detect other apps that have used SetThreadExecutionState(ES_CONTINUOUS) to prevent monitor sleep
-					// ... this is supposedly not possible.
-					SleepGivenUp++;
-					StopDisplayTimer(reset:true);
 				}
 			}
 			finally
@@ -1389,26 +1388,23 @@ namespace Taskmaster
 			disposed = true;
 		}
 
-		public const int WM_SYSCOMMAND = 0x0112;
-		public const int WM_POWERBROADCAST = 0x218;
-		public const int SC_MONITORPOWER = 0xF170;
-		public const int PBT_POWERSETTINGCHANGE = 0x8013;
-		public const int HWND_BROADCAST = 0xFFFF;
-
 		void SetMonitorMode(MonitorPowerMode powermode)
 		{
 			Debug.Assert(powermode != MonitorPowerMode.Invalid);
-
 			int NewPowerMode = (int)powermode; // -1 = Powering On, 1 = Low Power (low backlight, etc.), 2 = Power Off
 
-			//IntPtr Broadcast = new IntPtr(HWND_BROADCAST);
-			IntPtr TopMost = new IntPtr(-1);
+			//IntPtr Broadcast = new IntPtr(NativeMethods.HWND_BROADCAST);
+			//IntPtr hWnd = new IntPtr(NativeMethods.HWND_TOPMOST);
 
 			IntPtr result = new IntPtr(-1); // unused, but necessary
-			uint timeout = 200; // ms per window, we don't really care if they process them
-			var flags = NativeMethods.SendMessageTimeoutFlags.SMTO_ABORTIFHUNG;
+			uint timeout = 5000; // ms per window, we don't really care if they process them
+			var flags = NativeMethods.SendMessageTimeoutFlags.SMTO_ABORTIFHUNG|NativeMethods.SendMessageTimeoutFlags.SMTO_NORMAL;
 
-			NativeMethods.SendMessageTimeout(TopMost, WM_SYSCOMMAND, SC_MONITORPOWER, NewPowerMode, flags, timeout, out result);
+			IntPtr hWnd = Handle; // send to self works for this
+			// there's a lot of discussion on what is the correct way to do this, and many agree broadcast is not good choice even if it works
+			// NEVER send it via SendMessage(), only via SendMessageTimeout()
+			// PostMessage() is also valid.
+			NativeMethods.SendMessageTimeout(hWnd, NativeMethods.WM_SYSCOMMAND, NativeMethods.SC_MONITORPOWER, NewPowerMode, flags, timeout, out result);
 		}
 	}
 }
