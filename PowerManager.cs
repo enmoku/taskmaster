@@ -1411,22 +1411,4 @@ namespace Taskmaster
 			NativeMethods.SendMessageTimeout(TopMost, WM_SYSCOMMAND, SC_MONITORPOWER, NewPowerMode, flags, timeout, out result);
 		}
 	}
-
-	public static class PowerExtensions
-	{
-		public static string GetShortName(this PowerMode mode)
-		{
-			switch (mode)
-			{
-				case PowerMode.HighPerformance:
-					return "High";
-				case PowerMode.PowerSaver:
-					return "Low";
-				case PowerMode.Balanced:
-					return "Medium";
-				default:
-					return "Unknown";
-			}
-		}
-	}
 }
