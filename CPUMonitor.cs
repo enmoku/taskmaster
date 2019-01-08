@@ -37,7 +37,7 @@ namespace Taskmaster
 		/// <summary>
 		/// Sample Interval. In seconds.
 		/// </summary>
-		public int SampleInterval { get; set; } = 5;
+		public TimeSpan SampleInterval { get; set; } = TimeSpan.FromSeconds(5);
 		public int SampleCount { get; set; } = 5;
 		PerformanceCounterWrapper Counter = null;
 		System.Threading.Timer Timer = null;
@@ -64,7 +64,7 @@ namespace Taskmaster
 			// SAMPLING
 			// this really should be elsewhere
 			var hwsec = corecfg.Config[HumanReadable.Hardware.Section];
-			SampleInterval = hwsec.GetSetDefault(HumanReadable.Hardware.CPU.Settings.SampleInterval, 2, out modified).IntValue.Constrain(1, 15);
+			SampleInterval = TimeSpan.FromSeconds(hwsec.GetSetDefault(HumanReadable.Hardware.CPU.Settings.SampleInterval, 2, out modified).IntValue.Constrain(1, 15));
 			hwsec[HumanReadable.Hardware.CPU.Settings.SampleInterval].Comment = "1 to 15, in seconds. Frequency at which CPU usage is sampled. Recommended value: 1 to 5 seconds.";
 			dirtyconfig |= modified;
 			SampleCount = hwsec.GetSetDefault(HumanReadable.Hardware.CPU.Settings.SampleCount, 5, out modified).IntValue.Constrain(3, 30);
@@ -72,18 +72,20 @@ namespace Taskmaster
 			dirtyconfig |= modified;
 
 			Log.Information("<CPU> Sampler: " + SampleInterval + "s × " + SampleCount +
-				" = " + (SampleCount * SampleInterval) + "s observation period");
+				" = " + $"{SampleCount * SampleInterval.TotalSeconds:N0}s" + " observation period");
 
 			if (dirtyconfig) corecfg.MarkDirty();
 		}
 
 		public void SaveConfig()
 		{
+			return; // these are not modified at runtime YET
+
 			var corecfg = Taskmaster.Config.Load(Taskmaster.coreconfig);
 
 			// SAMPLING
 			var hwsec = corecfg.Config[HumanReadable.Hardware.Section];
-			hwsec[HumanReadable.Hardware.CPU.Settings.SampleInterval].IntValue = SampleInterval;
+			hwsec[HumanReadable.Hardware.CPU.Settings.SampleInterval].IntValue = Convert.ToInt32(SampleInterval.TotalSeconds);
 			hwsec[HumanReadable.Hardware.CPU.Settings.SampleCount].IntValue = SampleCount;
 
 			corecfg.MarkDirty();
@@ -107,10 +109,10 @@ namespace Taskmaster
 						Average += Samples[i];
 					}
 
-					Timer = new System.Threading.Timer(Sampler, null, System.Threading.Timeout.Infinite, SampleInterval * 1_000);
+					Timer = new System.Threading.Timer(Sampler, null, System.Threading.Timeout.InfiniteTimeSpan, SampleInterval);
 				}
 
-				Timer.Change(1_000, SampleInterval * 1_000); // start
+				Timer.Change(TimeSpan.FromSeconds(1), SampleInterval); // start
 			}
 			catch (Exception ex)
 			{

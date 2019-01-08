@@ -24,6 +24,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
+using System;
 using System.Windows.Forms;
 
 namespace Taskmaster
@@ -146,7 +147,7 @@ namespace Taskmaster
 			};
 			layout.Controls.Add(ScanOrWMI);
 			tooltip.SetToolTip(ScanOrWMI, "Scanning involves getting all procesess and going through the list, which can cause tiny CPU spiking.\nWMI polling sets up system WMI event listener.\nWMI is known to be slow and buggy, though when it performs well, it does it better than scanning in this case.\nSystem WmiPrvSE or similar process may be seen increasing in activity with WMI in use.");
-
+			
 			layout.Controls.Add(new Label() { Text = "Scan frequency", AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, Padding = CustomPadding, Dock = DockStyle.Left });
 			var scanfrequency = new Extensions.NumericUpDownEx()
 			{
@@ -154,7 +155,7 @@ namespace Taskmaster
 				Minimum = 0,
 				Maximum = 360,
 				Dock = DockStyle.Left,
-				Value = initial ? 15 : ProcessManager.ScanFrequency,
+				Value = initial ? 15 : Convert.ToDecimal(ProcessManager.ScanFrequency.TotalSeconds),
 				Width = 60,
 			};
 			var defaultBackColor = scanfrequency.BackColor;

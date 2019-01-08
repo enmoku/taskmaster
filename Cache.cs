@@ -80,17 +80,19 @@ namespace Taskmaster
 		uint MinAge = 5;
 		uint MaxAge = 60;
 
-		public Cache(double interval = 10, uint maxItems = 100, uint minItems = 10,
+		public Cache(TimeSpan interval, uint maxItems = 100, uint minItems = 10,
 					 StoreStrategy store = StoreStrategy.ReplaceNoMatch, EvictStrategy evict = EvictStrategy.LeastRecent)
 		{
 			CacheStoreStrategy = store;
 			CacheEvictStrategy = evict;
 
+			if (interval.TotalSeconds < 10) interval = new TimeSpan(0, 0, 10);
+
 			MaxCache = maxItems;
 			MinCache = minItems;
 			Overflow = Math.Min(Math.Max(MaxCache / 2, 2), 50);
 
-			pruneTimer = new System.Threading.Timer(Prune, null, 15_000L, Convert.ToInt64(interval) * 60_000L);
+			pruneTimer = new System.Threading.Timer(Prune, null, TimeSpan.FromSeconds(15), interval);
 		}
 
 		int prune_in_progress = 0;

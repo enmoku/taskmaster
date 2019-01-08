@@ -1526,7 +1526,7 @@ namespace Taskmaster
 			if (Taskmaster.NetworkMonitorEnabled)
 				UItimer.Tick += UpdateUptime;
 
-			if (Taskmaster.ProcessMonitorEnabled && ProcessManager.ScanFrequency > 0)
+			if (Taskmaster.ProcessMonitorEnabled && ProcessManager.ScanFrequency != TimeSpan.Zero)
 				UItimer.Tick += UpdateRescanCountdown;
 
 			UItimer.Tick += UpdateHWStats;

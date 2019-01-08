@@ -462,7 +462,7 @@ namespace Taskmaster
 		public static int TempRescanThreshold { get; set; } = 1000;
 
 		public static int PathCacheLimit { get; set; } = 200;
-		public static int PathCacheMaxAge { get; set; } = 1800;
+		public static TimeSpan PathCacheMaxAge { get; set; } = new TimeSpan(30, 0, 0);
 
 		public static int CleanupInterval { get; set; } = 15;
 
@@ -633,10 +633,8 @@ namespace Taskmaster
 			perfsec["Path cache"].Comment = "Path searching is very heavy process; this configures how many processes to remember paths for.\nThe cache is allowed to occasionally overflow for half as much.";
 			dirtyconfig |= modified;
 
-			PathCacheMaxAge = perfsec.GetSetDefault("Path cache max age", 15, out modified).IntValue;
+			PathCacheMaxAge = new TimeSpan(0, perfsec.GetSetDefault("Path cache max age", 15, out modified).IntValue.Constrain(1, 1440), 0);
 			perfsec["Path cache max age"].Comment = "Maximum age, in minutes, of cached objects. Min: 1 (1min), Max: 1440 (1day).\nThese will be removed even if the cache is appropriate size.";
-			if (PathCacheMaxAge < 1) PathCacheMaxAge = 1;
-			if (PathCacheMaxAge > 1440) PathCacheMaxAge = 1440;
 			dirtyconfig |= modified;
 
 			// 

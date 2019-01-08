@@ -109,7 +109,7 @@ namespace Taskmaster
 
 			if (dirty) corecfg.MarkDirty();
 
-			hungTimer = new System.Threading.Timer(HangDetector, null, 15_000, 60_000); // starts the timer
+			hungTimer = new System.Threading.Timer(HangDetector, null, TimeSpan.FromSeconds(15), TimeSpan.FromSeconds(60)); // starts the timer
 
 			if (Taskmaster.DebugForeground) Log.Information("<Foreground> Component loaded.");
 

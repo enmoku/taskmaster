@@ -40,7 +40,7 @@ namespace Taskmaster
 		/// <summary>
 		/// Scanning frequency.
 		/// </summary>
-		public int Frequency { get; set; } = 5 * 60;
+		public TimeSpan Frequency { get; set; } = TimeSpan.FromMinutes(5);
 
 		/// <summary>
 		/// Free megabytes.
@@ -157,7 +157,7 @@ namespace Taskmaster
 				Log.Information("<Auto-Doc> Disk space warning level: " + Settings.LowDriveSpaceThreshold + " MB");
 			}
 
-			healthTimer = new System.Threading.Timer(TimerCheck, null, 15_000, Settings.Frequency * 60_000);
+			healthTimer = new System.Threading.Timer(TimerCheck, null, TimeSpan.FromSeconds(15), Settings.Frequency);
 
 			if (Taskmaster.DebugHealth) Log.Information("<Auto-Doc> Component loaded");
 
@@ -174,7 +174,7 @@ namespace Taskmaster
 			bool modified = false, configdirty = false;
 
 			var gensec = cfg.Config["General"];
-			Settings.Frequency = gensec.GetSetDefault("Frequency", 5, out modified).IntValue.Constrain(1, 60 * 24);
+			Settings.Frequency = TimeSpan.FromMinutes(gensec.GetSetDefault("Frequency", 5, out modified).IntValue.Constrain(1, 60 * 24));
 			gensec["Frequency"].Comment = "How often we check for anything. In minutes.";
 			configdirty |= modified;
 
@@ -284,6 +284,8 @@ namespace Taskmaster
 		async Task CheckNVM()
 		{
 			await Task.Delay(0).ConfigureAwait(false);
+
+			// TODO: Add defrag suggestion based on PerformanceCounterWrapper("LogicalDisk", "Split IO/sec", "_Total");
 
 			var now = DateTimeOffset.UtcNow;
 			if (now.TimeSince(LastDriveWarning).TotalHours >= 24)

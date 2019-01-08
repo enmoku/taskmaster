@@ -988,7 +988,7 @@ namespace Taskmaster
 							expected = true;
 						}
 
-						if (ormt.LastIgnored.TimeTo(now).TotalSeconds < ProcessManager.ScanFrequency+5)
+						if (ormt.LastIgnored.TimeTo(now).TotalSeconds < ProcessManager.ScanFrequency.TotalSeconds+5)
 						{
 							if (Taskmaster.DebugProcesses) Log.Debug("[" + FriendlyName + "] #" + info.Id + " ignored due to recent modification." +
 								(expected ? $" Expected: {ormt.ExpectedState} :)" : $" Unexpected: {ormt.UnexpectedState} :("));
@@ -1318,7 +1318,7 @@ namespace Taskmaster
 				{
 					foreach (var r in RecentlyModified)
 					{
-						if ((r.Value.LastIgnored.TimeTo(now).TotalSeconds > ProcessManager.ScanFrequency+5)
+						if ((r.Value.LastIgnored.TimeTo(now).TotalSeconds > ProcessManager.ScanFrequency.TotalSeconds+5)
 							|| (r.Value.LastModified.TimeTo(now).TotalMinutes > 10f))
 							RecentlyModified.TryRemove(r.Key, out _);
 					}

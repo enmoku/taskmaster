@@ -112,7 +112,7 @@ namespace Taskmaster
 
 			HandlingStateChange += CollectProcessHandlingStatistics;
 
-			if (ScanFrequency > 0) ScanTimer = new System.Threading.Timer(TimedScan, null, 5_000, ScanFrequency * 1_000);
+			if (ScanFrequency != TimeSpan.Zero) ScanTimer = new System.Threading.Timer(TimedScan, null, TimeSpan.FromSeconds(5), ScanFrequency);
 
 			if (Taskmaster.DebugProcesses) Log.Information("<Process> Component Loaded.");
 
@@ -342,7 +342,7 @@ namespace Taskmaster
 		public async void HastenScan()
 		{
 			if (DateTimeOffset.UtcNow.TimeTo(NextScan).TotalSeconds > 3) // skip if the next scan is to happen real soon
-				ScanTimer.Change(0, ScanFrequency * 1_000);
+				ScanTimer.Change(TimeSpan.Zero, ScanFrequency);
 		}
 
 		public async Task Scan(int ignorePid = -1)
@@ -352,7 +352,7 @@ namespace Taskmaster
 			if (!Atomic.Lock(ref scan_lock)) return;
 
 			LastScan = now;
-			NextScan = now.AddSeconds(ScanFrequency);
+			NextScan = now.Add(ScanFrequency);
 
 			if (Taskmaster.DebugFullScan) Log.Debug("<Process> Full Scan: Start");
 
@@ -414,7 +414,7 @@ namespace Taskmaster
 		/// <summary>
 		/// In seconds.
 		/// </summary>
-		public static int ScanFrequency { get; private set; } = 15;
+		public static TimeSpan ScanFrequency { get; private set; } = TimeSpan.Zero;
 		public static DateTimeOffset LastScan { get; private set; } = DateTimeOffset.MinValue;
 		public static DateTimeOffset NextScan { get; set; } = DateTimeOffset.MinValue;
 		static bool BatchProcessing; // = false;
@@ -526,17 +526,12 @@ namespace Taskmaster
 				Log.Debug("<Process> Deprecated INI cleanup: Rescan everything frequency");
 			}
 
-			ScanFrequency = perfsec.GetSetDefault("Scan frequency", 15, out modified).IntValue.Constrain(0, 60 * 60 * 24);
-			if (ScanFrequency > 0)
-			{
-				if (ScanFrequency < 5) ScanFrequency = 5;
-				// ScanFrequency *= 1000; // to seconds
-			}
-
+			var tscan = perfsec.GetSetDefault("Scan frequency", 15, out modified).IntValue.Constrain(0, 360);
+			if (tscan > 0) ScanFrequency = TimeSpan.FromSeconds(tscan.Constrain(5, 360));
 			perfsec["Scan frequency"].Comment = "Frequency (in seconds) at which we scan for processes. 0 disables.";
 			dirtyconfig |= modified;
 
-			if (ScanFrequency > 0)
+			if (ScanFrequency != TimeSpan.Zero)
 				Log.Information("<Process> Scan every " + ScanFrequency + " seconds.");
 
 			// --------------------------------------------------------------------------------------------------------
@@ -1654,7 +1649,7 @@ namespace Taskmaster
 
 			// TODO: Verify that this is actually useful?
 
-			if (ScanFrequency < 300 && User.IdleTime().TotalHours > 2d)
+			if (User.IdleTime().TotalHours > 2d)
 			{
 				foreach (var prc in Watchlist.Keys)
 					prc.Refresh();
