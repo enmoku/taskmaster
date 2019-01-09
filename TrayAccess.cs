@@ -455,43 +455,54 @@ namespace Taskmaster
 		Process[] Explorer;
 		async void ExplorerCrashHandler(int processId)
 		{
-			KnownExplorerInstances.TryRemove(processId, out _);
-
-			if (KnownExplorerInstances.Count > 0)
+			try
 			{
-				if (Taskmaster.Trace) Log.Verbose("<Tray> Explorer (#" + processId + ") exited but is not the last known explorer instance.");
-				return;
-			}
+				KnownExplorerInstances.TryRemove(processId, out _);
 
-			Log.Warning("<Tray> Explorer (#" + processId + ") crash detected!");
-
-			Log.Information("<Tray> Giving explorer some time to recover on its own...");
-
-			await Task.Delay(12000).ConfigureAwait(false); // force async, 12 seconds
-
-			var n = new Stopwatch();
-			n.Start();
-			Process[] procs;
-			while ((procs = ExplorerInstances).Length == 0)
-			{
-				if (n.Elapsed.TotalHours >= 24)
+				if (KnownExplorerInstances.Count > 0)
 				{
-					Log.Error("<Tray> Explorer has not recovered in excessive timeframe, giving up.");
+					if (Taskmaster.Trace) Log.Verbose("<Tray> Explorer (#" + processId + ") exited but is not the last known explorer instance.");
 					return;
 				}
 
-				await Task.Delay(1000 * 60 * 5).ConfigureAwait(false); // wait 5 minutes
+				Log.Warning("<Tray> Explorer (#" + processId + ") crash detected!");
+
+				Log.Information("<Tray> Giving explorer some time to recover on its own...");
+
+				await Task.Delay(TimeSpan.FromSeconds(12)).ConfigureAwait(false); // force async, 12 seconds
+
+				var n = new Stopwatch();
+				n.Start();
+				Process[] procs;
+				do
+				{
+					if (n.Elapsed.TotalHours >= 24)
+					{
+						Log.Error("<Tray> Explorer has not recovered in excessive timeframe, giving up.");
+						return;
+					}
+
+					await Task.Delay(TimeSpan.FromMinutes(5)).ConfigureAwait(false); // wait 5 minutes
+
+					procs = ExplorerInstances;
+				}
+				while (procs.Length == 0);
+
+				n.Stop();
+
+				if (!RegisterExplorerExit(procs))
+				{
+					Log.Warning("<Tray> Explorer registration failed.");
+					return;
+				}
+
+				EnsureVisible();
 			}
-
-			n.Stop();
-
-			if (!RegisterExplorerExit(procs))
+			catch (Exception ex)
 			{
-				Log.Warning("<Tray> Explorer registration failed.");
-				return;
+				Logging.Stacktrace(ex);
+				throw;
 			}
-
-			EnsureVisible();
 		}
 
 		ConcurrentDictionary<int, int> KnownExplorerInstances = new ConcurrentDictionary<int, int>();
@@ -499,43 +510,50 @@ namespace Taskmaster
 
 		bool RegisterExplorerExit(Process[] procs = null)
 		{
-			if (Taskmaster.Trace) Log.Verbose("<Tray> Registering Explorer crash monitor.");
-			// this is for dealing with notify icon disappearing on explorer.exe crash/restart
-
-			if (procs == null || procs.Length == 0) procs = ExplorerInstances;
-
-			if (procs.Length > 0)
+			try
 			{
-				Explorer = procs;
-				foreach (var proc in procs)
+				if (Taskmaster.Trace) Log.Verbose("<Tray> Registering Explorer crash monitor.");
+				// this is for dealing with notify icon disappearing on explorer.exe crash/restart
+
+				if (procs == null || procs.Length == 0) procs = ExplorerInstances;
+
+				if (procs.Length > 0)
 				{
-					var info = ProcessUtility.GetInfo(proc.Id, process: proc, name:"explorer", getPath: true);
-
-					if (info == null) continue; // things failed, move on
-
-					if (!string.IsNullOrEmpty(info.Path))
+					Explorer = procs;
+					foreach (var proc in procs)
 					{
-						if (!info.Path.StartsWith(Environment.GetFolderPath(Environment.SpecialFolder.Windows), StringComparison.InvariantCultureIgnoreCase))
+						var info = ProcessUtility.GetInfo(proc.Id, process: proc, name: "explorer", getPath: true);
+
+						if (info == null) continue; // things failed, move on
+
+						if (!string.IsNullOrEmpty(info.Path))
 						{
-							if (Taskmaster.Trace) Log.Verbose("<Tray> Explorer (#" + info.Id + ") not in system root.");
-							continue;
+							if (!info.Path.StartsWith(Environment.GetFolderPath(Environment.SpecialFolder.Windows), StringComparison.InvariantCultureIgnoreCase))
+							{
+								if (Taskmaster.Trace) Log.Verbose("<Tray> Explorer (#" + info.Id + ") not in system root.");
+								continue;
+							}
+						}
+
+						if (KnownExplorerInstances.TryAdd(info.Id, 0))
+						{
+							proc.Exited += (s, e) => ExplorerCrashHandler(info.Id);
+							proc.EnableRaisingEvents = true;
+							Log.Information("<Tray> Explorer (#" + info.Id + ") being monitored for crashes.");
 						}
 					}
 
-					if (KnownExplorerInstances.TryAdd(info.Id, 0))
-					{
-						proc.Exited += (s, e) => ExplorerCrashHandler(info.Id);
-						proc.EnableRaisingEvents = true;
-					}
-
-					if (Taskmaster.Trace) Log.Information("<Tray> Explorer (#" + info.Id + ") registered.");
+					return true;
 				}
 
-				return true;
+				Log.Warning("<Tray> Explorer not found.");
+				return false;
 			}
-
-			Log.Warning("<Tray> Explorer not found.");
-			return false;
+			catch (Exception ex)
+			{
+				Logging.Stacktrace(ex);
+				throw;
+			}
 		}
 
 		bool disposed = false;
@@ -755,6 +773,14 @@ namespace Taskmaster
 			//if (toggled) Log.Debug("<Tray> Scheduled task toggled.");
 
 			return enabled;
+
+		}
+
+		~TrayAccess()
+		{
+			if (Tray != null) Tray.Visible = false;
+			Tray?.Dispose();
+			Tray = null;
 		}
 	}
 }
