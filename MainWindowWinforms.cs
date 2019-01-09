@@ -2628,11 +2628,7 @@ namespace Taskmaster
 			if (!IsHandleCreated) return;
 			BeginInvoke(new Action(() =>
 			{
-				powerbalancer_behaviour.Text = (ea.Behaviour == PowerManager.PowerBehaviour.Auto) ?
-					HumanReadable.Hardware.Power.AutoAdjust : 
-					((ea.Behaviour == PowerManager.PowerBehaviour.Manual) ?
-						HumanReadable.Hardware.Power.Manual : HumanReadable.Hardware.Power.RuleBased
-					);
+				powerbalancer_behaviour.Text = PowerManager.GetBehaviourName(ea.Behaviour);
 				if (ea.Behaviour != PowerManager.PowerBehaviour.Auto)
 					powerbalancerlog.Items.Clear();
 			}));

@@ -963,6 +963,21 @@ namespace Taskmaster
 			base.WndProc(ref m); // is this necessary?
 		}
 
+		public static string GetBehaviourName(PowerBehaviour behaviour)
+		{
+			switch (behaviour)
+			{
+				case PowerBehaviour.Auto:
+					return HumanReadable.Hardware.Power.AutoAdjust;
+				case PowerBehaviour.Manual:
+					return HumanReadable.Hardware.Power.Manual;
+				case PowerBehaviour.RuleBased:
+					return HumanReadable.Hardware.Power.RuleBased;
+				default:
+					return HumanReadable.Generic.Undefined;
+			}
+		}
+
 		public static string GetModeName(PowerMode mode)
 		{
 			switch (mode)
