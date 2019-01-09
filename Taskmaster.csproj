@@ -123,6 +123,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="ActiveAppManager.cs" />
+    <Compile Include="AlertManager.cs" />
     <Compile Include="AudioManager.cs" />
     <Compile Include="Cause.cs" />
     <Compile Include="ConfigManager.cs" />
@@ -152,6 +153,9 @@
     <Compile Include="SelfMaintenance.cs" />
     <Compile Include="HumanReadable.cs" />
     <Compile Include="TextInputBox.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="UI\HiddenWindow.cs">
       <SubType>Form</SubType>
     </Compile>
     <Compile Include="UI\ListViewEx.cs">
