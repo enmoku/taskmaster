@@ -1749,6 +1749,7 @@ namespace Taskmaster
 			{
 				ColumnCount = 2,
 				AutoSize = true,
+				AutoSizeMode = AutoSizeMode.GrowOnly,
 				//Dock = DockStyle.Fill,
 				Dock = DockStyle.Fill,
 			};
@@ -1787,28 +1788,29 @@ namespace Taskmaster
 				hwpanel.Controls.Add(gpufan);
 			}
 
-			TableLayoutPanel powerinfo = null;
+			TableLayoutPanel powerpanel = null;
 			#region Power
 			if (Taskmaster.PowerManagerEnabled)
 			{
-				powerinfo = new TableLayoutPanel()
+				powerpanel = new TableLayoutPanel()
 				{
 					ColumnCount = 2,
 					AutoSize = true,
+					AutoSizeMode = AutoSizeMode.GrowOnly,
 					Dock = DockStyle.Fill,
 				};
 
 				pwmode = new Label { Text = HumanReadable.Generic.Uninitialized, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left };
 				pwcause = new Label { Text = HumanReadable.Generic.Uninitialized, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left };
 				pwbehaviour = new Label { Text = HumanReadable.Generic.Uninitialized, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left };
-				powerinfo.Controls.Add(new Label { Text = "Power", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left, Font = boldfont });
-				powerinfo.Controls.Add(new Label()); // EMPTY
-				powerinfo.Controls.Add(new Label { Text = "Behaviour:", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left });
-				powerinfo.Controls.Add(pwbehaviour);
-				powerinfo.Controls.Add(new Label { Text = "Mode:", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left });
-				powerinfo.Controls.Add(pwmode);
-				powerinfo.Controls.Add(new Label { Text = "Cause:", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left });
-				powerinfo.Controls.Add(pwcause);
+				powerpanel.Controls.Add(new Label { Text = "Power", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left, Font = boldfont });
+				powerpanel.Controls.Add(new Label()); // EMPTY
+				powerpanel.Controls.Add(new Label { Text = "Behaviour:", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left });
+				powerpanel.Controls.Add(pwbehaviour);
+				powerpanel.Controls.Add(new Label { Text = "Mode:", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left });
+				powerpanel.Controls.Add(pwmode);
+				powerpanel.Controls.Add(new Label { Text = "Cause:", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left });
+				powerpanel.Controls.Add(pwcause);
 			}
 			#endregion
 
@@ -1891,7 +1893,7 @@ namespace Taskmaster
 
 			// Insert info panel/tab contents
 			if (hwpanel != null) coresystems.Controls.Add(hwpanel);
-			if (powerinfo != null) additionalsystems.Controls.Add(powerinfo);
+			if (powerpanel != null) additionalsystems.Controls.Add(powerpanel);
 			systemlayout.Controls.Add(coresystems);
 			systemlayout.Controls.Add(additionalsystems);
 			infopanel.Controls.Add(systemlayout);
