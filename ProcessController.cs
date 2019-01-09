@@ -90,6 +90,7 @@ namespace Taskmaster
 		}
 
 		public string Path { get; set; } = string.Empty;
+		int PathElements { get; set; }  = 0;
 
 		/// <summary>
 		/// User description for the rule.
@@ -199,8 +200,20 @@ namespace Taskmaster
 			ForegroundOnly = fgonly;
 		}
 
+		void Prepare()
+		{
+			if (PathElements == 0 && !string.IsNullOrEmpty(Path))
+			{
+				foreach (char c in Path)
+					if (c == System.IO.Path.DirectorySeparatorChar || c == System.IO.Path.AltDirectorySeparatorChar) PathElements++;
+				PathElements++;
+			}
+		}
+
 		public void SanityCheck()
 		{
+			Prepare();
+
 			if (ForegroundOnly)
 			{
 				if (BackgroundPowerdown && PowerPlan == PowerInfo.PowerMode.Undefined)
@@ -812,32 +825,37 @@ namespace Taskmaster
 			return false;
 		}
 
-		int PathElements = 0;
 		string FormatPathName(ProcessEx info)
 		{
 			if (!string.IsNullOrEmpty(info.Path))
 			{
 				switch (PathVisibility)
 				{
+					case PathVisibilityOptions.Process:
+						return info.Name;
+					case PathVisibilityOptions.Partial:
+						if (PathElements > 0)
+						{
+							List<string> parts = new List<string>(info.Path.Split(System.IO.Path.DirectorySeparatorChar, System.IO.Path.AltDirectorySeparatorChar));
+							// replace Path
+							parts.RemoveRange(0, PathElements);
+							parts.Insert(0, HumanReadable.Generic.Ellipsis);
+							return System.IO.Path.Combine(parts.ToArray());
+						}
+						else
+							return info.Path;
 					case PathVisibilityOptions.Smart:
 						{
 							// TODO: Cut off bin, x86, x64, win64, win32 or similar generic folder parts
 							List<string> parts = new List<string>(info.Path.Split(System.IO.Path.DirectorySeparatorChar, System.IO.Path.AltDirectorySeparatorChar));
-							if (!string.IsNullOrEmpty(Path))
+							if (PathElements > 0)
 							{
 								// cut Path from the output
 								// following notes assume matching c:\program files
 
-								// WISHFUL THINKING: Branch Predictor Hint: The following is unlikely to be true.
-								if (PathElements == 0)
-								{
-									foreach (char c in Path)
-										if (c == System.IO.Path.DirectorySeparatorChar || c == System.IO.Path.AltDirectorySeparatorChar) PathElements++;
-									PathElements++;
-								}
+								parts.RemoveRange(0, PathElements); // remove Path component
 
-								parts.RemoveRange(0, PathElements);
-
+								// replace 
 								if (parts.Count > 3)
 								{
 									// c:\program files\brand\app\version\random\element\executable.exe
@@ -846,9 +864,9 @@ namespace Taskmaster
 									parts.Insert(2, HumanReadable.Generic.Ellipsis);
 								}
 
-								// ...\brand\app\app.exe
+								parts.Insert(0, HumanReadable.Generic.Ellipsis); // add starting ellipsis
 
-								parts.Insert(0, HumanReadable.Generic.Ellipsis);
+								// ...\brand\app\app.exe
 							}
 							else if (parts.Count <= 5) return info.Path; // as is
 							else

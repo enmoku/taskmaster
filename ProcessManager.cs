@@ -683,8 +683,8 @@ namespace Taskmaster
 				int bpriot = section.TryGet("Background priority")?.IntValue ?? -1;
 				if (bpriot >= 0) bprio = ProcessHelpers.IntToPriority(bpriot);
 
-				PathVisibilityOptions pvis = PathVisibilityOptions.File;
-				pvis = (PathVisibilityOptions)(section.TryGet("Path visibility")?.IntValue.Constrain(0, 3) ?? 0);
+				PathVisibilityOptions pvis = PathVisibilityOptions.Process;
+				pvis = (PathVisibilityOptions)(section.TryGet("Path visibility")?.IntValue.Constrain(-1, 4) ?? 4);
 
 				string[] tignorelist = (section.TryGet(HumanReadable.Generic.Ignore)?.StringValueArray ?? null);
 				if (tignorelist != null && tignorelist.Length > 0)
@@ -748,6 +748,8 @@ namespace Taskmaster
 
 					prc.Resize = new System.Drawing.Rectangle(resize[0], resize[1], resize[2], resize[3]);
 				}
+
+				prc.SanityCheck();
 
 				AddController(prc);
 
