@@ -148,8 +148,11 @@ namespace Taskmaster
 
 			if (Taskmaster.Trace) Log.Verbose("Tray menu ready");
 
-			if (!RegisterExplorerExit())
-				throw new InitFailure("<Tray> Explorer registeriong failed; not running?");
+			var cfg = Taskmaster.Config.Load("Core.ini");
+			var exsec = cfg.Config["Experimental"];
+			int exdelay = exsec.TryGet("Explorer Restart")?.IntValue ?? 0;
+			if (exdelay > 0) ExplorerRestartHelpDelay = TimeSpan.FromSeconds(exdelay.Min(5));
+			RegisterExplorerExit();
 
 			ms.Enabled = false;
 
@@ -452,6 +455,8 @@ namespace Taskmaster
 			window.FormClosing += WindowClosed;
 		}
 
+		TimeSpan ExplorerRestartHelpDelay { get; set; } = TimeSpan.Zero;
+
 		Process[] Explorer;
 		async void ExplorerCrashHandler(int processId)
 		{
@@ -473,6 +478,7 @@ namespace Taskmaster
 
 				var n = new Stopwatch();
 				n.Start();
+				bool startAttempt = true;
 				Process[] procs;
 				do
 				{
@@ -480,6 +486,16 @@ namespace Taskmaster
 					{
 						Log.Error("<Tray> Explorer has not recovered in excessive timeframe, giving up.");
 						return;
+					}
+					else if (startAttempt && ExplorerRestartHelpDelay != TimeSpan.Zero && n.Elapsed >= ExplorerRestartHelpDelay)
+					{
+						Log.Information("<Tray> Restarting explorer as per user configured timer.");
+						Process.Start(new ProcessStartInfo
+						{
+							FileName = System.IO.Path.Combine(System.Environment.GetFolderPath(System.Environment.SpecialFolder.Windows), "explorer.exe"),
+							UseShellExecute = true
+						});
+						startAttempt = false;
 					}
 
 					await Task.Delay(TimeSpan.FromMinutes(5)).ConfigureAwait(false); // wait 5 minutes
