@@ -7,6 +7,8 @@ Comprehensive changes can be found in Git change history:
 	Internal: Various readability improvements.
 	Added: Experimental feature to restart explorer.exe when it crashes. Disabled by default.
 		`Explorer Restart=seconds´ in Core.ini [Experimental] section.
+	Fixed: Component configuration was not showing current values correctly.
+	Changed: UI has received several changes. Things may be broken now.
 ### 2018-01-08
 	Added: Memory pressure display on info tab. 100% or over is bad, mkay?
 	Internal: Changed how memory is queried. Should be better now.
