@@ -41,8 +41,16 @@ namespace Taskmaster
 {
 	sealed public class PowerModeEventArgs : EventArgs
 	{
-		public PowerMode OldMode { get; set; }
-		public PowerMode NewMode { get; set; }
+		public PowerModeEventArgs(PowerMode newmode, PowerMode oldmode = PowerMode.Undefined, Cause cause = null)
+		{
+			NewMode = newmode;
+			OldMode = oldmode;
+			Cause = cause;
+		}
+
+		public PowerMode OldMode { get; set; } = PowerMode.Undefined;
+		public PowerMode NewMode { get; set; } = PowerMode.Undefined;
+		public Cause Cause { get; set; } = null;
 	}
 
 	public enum MonitorPowerMode
@@ -83,6 +91,7 @@ namespace Taskmaster
 		public PowerManager()
 		{
 			OriginalMode = getPowerMode();
+			ExpectedMode = OriginalMode;
 
 			AutoAdjust = PowerAutoadjustPresets.Default();
 
@@ -923,6 +932,8 @@ namespace Taskmaster
 			}
 		}
 
+		Cause ExpectedCause = new Cause(OriginType.None);
+		PowerMode ExpectedMode = PowerMode.Undefined;
 		protected override void WndProc(ref Message m)
 		{
 			if (m.Msg == NativeMethods.WM_POWERBROADCAST &&
@@ -940,7 +951,8 @@ namespace Taskmaster
 					else if (newPersonality == PowerSaver) { CurrentMode = PowerMode.PowerSaver; }
 					else { CurrentMode = PowerMode.Undefined; }
 
-					onPlanChange?.Invoke(this, new PowerModeEventArgs { OldMode = old, NewMode = CurrentMode });
+					onPlanChange?.Invoke(this, new PowerModeEventArgs(CurrentMode, old, CurrentMode == ExpectedMode ? ExpectedCause : null));
+					ExpectedCause = null;
 
 					if (Taskmaster.DebugPower)
 						Log.Information("<Power/OS> Change detected: " + CurrentMode.ToString() + " (" + newPersonality.ToString() + ")");
@@ -1334,7 +1346,8 @@ namespace Taskmaster
 				Log.Information("<Power> Mode: " + GetModeName(mode));
 			}
 
-			CurrentMode = mode;
+			ExpectedMode = CurrentMode = mode;
+			ExpectedCause = cause;
 			NativeMethods.PowerSetActiveScheme((IntPtr)null, ref plan);
 		}
 
