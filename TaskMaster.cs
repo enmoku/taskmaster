@@ -59,6 +59,7 @@ namespace Taskmaster
 		public static SelfMaintenance selfmaintenance = null;
 		public static AudioManager audiomanager = null;
 		public static CPUMonitor cpumonitor = null;
+		public static HardwareMonitor hardware = null;
 
 		public static Stack<IDisposable> DisposalChute = new Stack<IDisposable>();
 
@@ -278,6 +279,7 @@ namespace Taskmaster
 				NetworkMonitorEnabled ? (Task.Run(() => netmonitor = new NetManager())) : Task.CompletedTask,
 				MaintenanceMonitorEnabled ? (Task.Run(() => storagemanager = new StorageManager())) : Task.CompletedTask,
 				HealthMonitorEnabled ? (Task.Run(() => healthmonitor = new HealthMonitor())) : Task.CompletedTask,
+				HardwareMonitorEnabled ? (Task.Run(() => hardware = new HardwareMonitor())) : Task.CompletedTask,
 			};
 
 			// MMDEV requires main thread
@@ -364,6 +366,8 @@ namespace Taskmaster
 				mainwindow?.Reveal();
 			}
 
+			if (HardwareMonitorEnabled) Task.Run(async () => hardware.Start()); // this is slow
+
 			// Self-optimization
 			if (SelfOptimize)
 			{
@@ -441,6 +445,7 @@ namespace Taskmaster
 		public static bool MaintenanceMonitorEnabled { get; private set; } = true;
 		public static bool HealthMonitorEnabled { get; private set; } = true;
 		public static bool AudioManagerEnabled { get; private set; } = true;
+		public static bool HardwareMonitorEnabled { get; private set; } = false;
 
 		// EXPERIMENTAL FEATURES
 		public static bool TempMonitorEnabled { get; private set; } = false;
@@ -543,6 +548,10 @@ namespace Taskmaster
 
 			HealthMonitorEnabled = compsec.GetSetDefault("Health", false, out modified).BoolValue;
 			compsec["Health"].Comment = "General system health monitoring suite.";
+			dirtyconfig |= modified;
+
+			HardwareMonitorEnabled = compsec.GetSetDefault(HumanReadable.Hardware.Section, false, out modified).BoolValue;
+			compsec[HumanReadable.Hardware.Section].Comment = "Temperature, fan, etc. monitoring via OpenHardwareMonitor.";
 			dirtyconfig |= modified;
 
 			var qol = cfg[HumanReadable.Generic.QualityOfLife];
