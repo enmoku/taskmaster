@@ -50,23 +50,15 @@ namespace Taskmaster
 			else
 				StartPosition = FormStartPosition.CenterParent;
 
-			var baselayout = new TableLayoutPanel()
-			{
-				Parent = this,
-				ColumnCount = 1,
-				AutoSize = true,
-				//Dock = DockStyle.Fill,
-				//Dock = DockStyle.Top,
-				//BackColor = System.Drawing.Color.Aqua,
-			};
-
 			var layout = new TableLayoutPanel()
 			{
-				Parent = baselayout,
-				Dock = DockStyle.Left,
+				Parent = this,
 				ColumnCount = 2,
 				AutoSize = true,
-				//BackColor = System.Drawing.Color.YellowGreen,
+				Padding = new Padding(3),
+				Dock = DockStyle.Fill,
+				//Dock = DockStyle.Top,
+				//BackColor = System.Drawing.Color.Aqua,
 			};
 
 			var tooltip = new ToolTip();
@@ -186,27 +178,13 @@ namespace Taskmaster
 			tooltip.SetToolTip(wmipolling, "In seconds.");
 			ScanOrWMI.SelectedIndexChanged += (_, _ea) =>
 			{
-				if (ScanOrWMI.SelectedIndex == 0) // SCan only
-				{
-					scanfrequency.Enabled = true;
-					scanfrequency.Value = 15;
-					// wmipolling.Value = 5;
-					wmipolling.Enabled = false;
-				}
-				else if (ScanOrWMI.SelectedIndex == 1) // WMI only
-				{
-					scanfrequency.Value = 0;
-					scanfrequency.Enabled = false;
-					wmipolling.Value = 5;
-					wmipolling.Enabled = true;
-				}
-				else
-				{
-					scanfrequency.Enabled = true; // Both
-					scanfrequency.Value = 60 * 5;
-					wmipolling.Enabled = true;
-					wmipolling.Value = 5;
-				}
+				// Not WMI-only
+				if (scanfrequency.Enabled = ScanOrWMI.SelectedIndex != 1)
+					scanfrequency.Value = initial ? 15 : Convert.ToDecimal(ProcessManager.ScanFrequency.TotalSeconds);
+
+				// Not Scan-only
+				if (wmipolling.Enabled = ScanOrWMI.SelectedIndex != 0)
+					wmipolling.Value = initial ? 5 : ProcessManager.WMIPollDelay;
 			};
 			var wmi = ProcessManager.WMIPolling;
 			var scan = ProcessManager.ScanFrequency != TimeSpan.Zero;
@@ -389,7 +367,7 @@ namespace Taskmaster
 				var perf = cfg.Config["Performance"];
 				var freq = (int)scanfrequency.Value;
 				if (freq < 5 && freq != 0) freq = 5;
-				perf["Scan frequency"].IntValue = (ScanOrWMI.SelectedIndex != 1 ? freq : 0);
+				perf["Scan frequency"].IntValue = (ScanOrWMI.SelectedIndex == 1 ? 0 : freq);
 				perf["WMI event watcher"].BoolValue = (ScanOrWMI.SelectedIndex != 0);
 				perf["WMI poll delay"].IntValue = ((int)wmipolling.Value);
 				perf["WMI queries"].BoolValue = (ScanOrWMI.SelectedIndex != 0);
@@ -411,9 +389,9 @@ namespace Taskmaster
 				Text = "Cancel",
 				//AutoSize = true,
 				Width = 80,
-				Height = 20,
+				Height = 26,
 				//BackColor = System.Drawing.Color.Azure,
-				Dock = DockStyle.Right
+				Dock = DockStyle.Left
 			};
 
 			// l.Controls.Add(endbutton);
@@ -423,22 +401,14 @@ namespace Taskmaster
 				Close();
 			};
 
-			var buttonpanel = new TableLayoutPanel()
-			{
-				AutoSize = true,
-				//BackColor = System.Drawing.Color.LimeGreen
-			};
-			buttonpanel.ColumnCount = 2;
-			// buttonpanel.Dock = DockStyle.Fill;
-			// buttonpanel.AutoSize = true;
-			// buttonpanel.Width = 160;
+			layout.Controls.Add(savebutton);
+			layout.Controls.Add(endbutton);
 
-			buttonpanel.Controls.Add(savebutton);
-			buttonpanel.Controls.Add(endbutton);
-
-			baselayout.Controls.Add(layout);
-			baselayout.Controls.Add(buttonpanel);
-			Controls.Add(baselayout);
+			AcceptButton = savebutton;
+			CancelButton = endbutton;
+			savebutton.NotifyDefault(true);
+			endbutton.NotifyDefault(false);
+			UpdateDefaultButton();
 
 			// Cross-componenty checkbox functionality
 			procmon.CheckedChanged += (_, _ea) =>
