@@ -65,8 +65,8 @@ namespace Taskmaster
 
 			bool dirty = false, modified = false;
 			var perfsec = corecfg.Config["Performance"];
-			Hysterisis = perfsec.GetSetDefault("Foreground hysterisis", 1500, out modified).IntValue.Constrain(0, 30000);
-			perfsec["Foreground hysterisis"].Comment = "In milliseconds, from 0 to 30000. Delay before we inspect foreground app, in case user rapidly swaps apps.";
+			Hysterisis = TimeSpan.FromMilliseconds(perfsec.GetSetDefault("Foreground hysterisis", 1500, out modified).IntValue.Constrain(500, 30000));
+			perfsec["Foreground hysterisis"].Comment = "In milliseconds, from 500 to 30000. Delay before we inspect foreground app, in case user rapidly swaps apps.";
 			dirty |= modified;
 
 			var emsec = corecfg.Config["Emergency"];
@@ -116,7 +116,7 @@ namespace Taskmaster
 			Taskmaster.DisposalChute.Push(this);
 		}
 
-		int Hysterisis = 500;
+		TimeSpan Hysterisis { get; set; } = TimeSpan.FromSeconds(0.5d);
 
 		readonly NativeMethods.WinEventDelegate ForegroundEventDelegate;
 		IntPtr windowseventhook = IntPtr.Zero;

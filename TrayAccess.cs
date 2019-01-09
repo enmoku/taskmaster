@@ -614,7 +614,7 @@ namespace Taskmaster
 
 					RefreshVisibility();
 
-					await Task.Delay(15 * 1000).ConfigureAwait(true);
+					await Task.Delay(TimeSpan.FromSeconds(15)).ConfigureAwait(true);
 
 					if (++attempts >= 5)
 					{

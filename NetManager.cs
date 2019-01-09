@@ -322,7 +322,7 @@ namespace Taskmaster
 					{
 						LastUptimeStart = now;
 
-						Task.Delay(new TimeSpan(0, 5, 0)).ContinueWith(x => ReportCurrentUpstate());
+						Task.Delay(TimeSpan.FromMinutes(5)).ContinueWith(x => ReportCurrentUpstate());
 					}
 					else // went offline
 					{
@@ -729,7 +729,7 @@ namespace Taskmaster
 						{
 							if (loopbreakoff++ >= 3) break; // arbitrary end based on double reconnect behaviour of some routers
 							if (NetworkChangeCounter >= 4) break; // break off in case NetworkChanged event is received often enough
-							await Task.Delay(2_000).ConfigureAwait(true);
+							await Task.Delay(TimeSpan.FromSeconds(2)).ConfigureAwait(true);
 						}
 
 						CheckInet();

@@ -2102,7 +2102,7 @@ namespace Taskmaster
 
 		async void RemoveOldProcessingEntry(int key)
 		{
-			await Task.Delay(15_000).ConfigureAwait(false);
+			await Task.Delay(TimeSpan.FromSeconds(15)).ConfigureAwait(false);
 
 			BeginInvoke(new Action(() =>
 			{

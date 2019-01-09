@@ -61,7 +61,7 @@ namespace Taskmaster
 
 		public double VolumeHysterisis { get; } = 0.05;
 		public double SmallVolumeHysterisis { get; } = 0.05 / 4;
-		public int AdjustDelay { get; } = 5000;
+		TimeSpan AdjustDelay { get; } = TimeSpan.FromSeconds(5);
 
 		readonly NAudio.Mixer.UnsignedMixerControl Control;
 

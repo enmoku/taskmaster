@@ -500,7 +500,7 @@ namespace Taskmaster
 			WarnedForceMode = false;
 		}
 
-		int PowerdownDelay { get; set; } = 0;
+		TimeSpan PowerdownDelay { get; set; } = TimeSpan.Zero;
 
 		void LoadConfig()
 		{
@@ -563,9 +563,10 @@ namespace Taskmaster
 
 			SetRestoreMode(newmodemethod, newrestoremode);
 
-			PowerdownDelay = power.GetSetDefault("Watchlist powerdown delay", 0, out modified).IntValue.Constrain(0, 60);
+			var tdelay = power.GetSetDefault("Watchlist powerdown delay", 0, out modified).IntValue.Constrain(0, 60);
 			power["Watchlist powerdown delay"].Comment = "Delay, in seconds (0 to 60, 0 disables), for when to wind down power mode set by watchlist.";
 			dirtyconfig |= modified;
+			if (tdelay > 0) PowerdownDelay = TimeSpan.FromSeconds(tdelay);
 
 			var autopower = corecfg.Config["Power / Auto"];
 
@@ -666,7 +667,7 @@ namespace Taskmaster
 
 			// --------------------------------------------------------------------------------------------------------
 
-			Log.Information("<Power> Watchlist powerdown delay: " + (PowerdownDelay == 0 ? HumanReadable.Generic.Disabled : (PowerdownDelay + "s")));
+			Log.Information("<Power> Watchlist powerdown delay: " + (PowerdownDelay == TimeSpan.Zero ? HumanReadable.Generic.Disabled : (PowerdownDelay + "s")));
 
 			// --------------------------------------------------------------------------------------------------------
 
@@ -708,8 +709,8 @@ namespace Taskmaster
 					power["Default mode"].StringValue = AutoAdjust.DefaultMode.ToString();
 
 					power["Restore mode"].StringValue = (RestoreMethod == RestoreModeMethod.Custom ? RestoreMode.ToString() : RestoreMethod.ToString());
-					if (PowerdownDelay > 0)
-						power["Watchlist powerdown delay"].IntValue = PowerdownDelay;
+					if (PowerdownDelay != TimeSpan.Zero)
+						power["Watchlist powerdown delay"].IntValue = Convert.ToInt32(PowerdownDelay.TotalSeconds);
 					else
 						power.Remove("Watchlist powerdown delay");
 					var autopower = corecfg.Config["Power / Auto"];
@@ -1141,8 +1142,8 @@ namespace Taskmaster
 
 				Task.Run(async () =>
 				{
-					if (Behaviour != PowerBehaviour.Auto && PowerdownDelay > 0)
-						await Task.Delay(PowerdownDelay * 1_000).ConfigureAwait(false);
+					if (Behaviour != PowerBehaviour.Auto && PowerdownDelay != TimeSpan.Zero)
+						await Task.Delay(PowerdownDelay).ConfigureAwait(false);
 
 					ReleaseFinal();
 				}).ConfigureAwait(false);
