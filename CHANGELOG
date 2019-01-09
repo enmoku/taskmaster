@@ -9,6 +9,7 @@ Comprehensive changes can be found in Git change history:
 		`Explorer Restart=seconds´ in Core.ini [Experimental] section.
 	Fixed: Component configuration was not showing current values correctly.
 	Changed: UI has received several changes. Things may be broken now.
+	Added: Path Visibility option now has -1 (Process) and 4 (Partial) options.
 ### 2018-01-08
 	Added: Memory pressure display on info tab. 100% or over is bad, mkay?
 	Internal: Changed how memory is queried. Should be better now.
