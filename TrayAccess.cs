@@ -489,6 +489,7 @@ namespace Taskmaster
 					}
 					else if (startAttempt && ExplorerRestartHelpDelay != TimeSpan.Zero && n.Elapsed >= ExplorerRestartHelpDelay)
 					{
+						// TODO: This shouldn't happen if the session is exiting.
 						Log.Information("<Tray> Restarting explorer as per user configured timer.");
 						Process.Start(new ProcessStartInfo
 						{

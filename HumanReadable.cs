@@ -52,6 +52,7 @@ namespace Taskmaster
 
 			public const string Ellipsis = "…";
 			public const string NotAvailable = "n/a";
+			public const string Uninitialized = "Uninitialized";
 		}
 
 		public static class System

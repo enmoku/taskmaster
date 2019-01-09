@@ -298,7 +298,8 @@ namespace Taskmaster
 			savebutton.Click += Save;
 			var cancelbutton = new Button() { Text = "Cancel", Anchor = AnchorStyles.Left };
 			cancelbutton.Click += Cancel;
-			cancelbutton.NotifyDefault(true);
+			savebutton.NotifyDefault(true);
+			cancelbutton.NotifyDefault(false);
 			UpdateDefaultButton();
 			var resetbutton = new Button() { Text = "Reset", Anchor = AnchorStyles.Right };
 			resetbutton.Click += Reset;

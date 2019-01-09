@@ -56,8 +56,8 @@ namespace Taskmaster
 			}
 		}
 
-		public double Minimum { get; } = 0;
-		public double Maximum { get; } = 100;
+		public double Minimum { get; set; } = 0;
+		public double Maximum { get; set; } = 100;
 
 		public double VolumeHysterisis { get; } = 0.05;
 		public double SmallVolumeHysterisis { get; } = 0.05 / 4;

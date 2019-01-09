@@ -39,15 +39,16 @@ namespace Taskmaster
 			if (initial)
 				StartPosition = FormStartPosition.CenterScreen;
 
-			var layout = new TableLayoutPanel()
+			var layout = new FlowLayoutPanel()
 			{
-				ColumnCount = 1,
 				AutoSize = true,
-				Padding = new Padding(12),
+				FlowDirection = FlowDirection.TopDown,
+				Margin = CustomPadding,
+				Padding = CustomPadding,
 			};
-			var buttonlayout = new TableLayoutPanel()
+			var buttonlayout = new FlowLayoutPanel()
 			{
-				ColumnCount = 2,
+				FlowDirection = FlowDirection.LeftToRight,
 				AutoSize = true,
 			};
 
@@ -89,7 +90,7 @@ namespace Taskmaster
 				Text = "You must accept the following license to use this application.",
 				AutoSize = true,
 				TextAlign = System.Drawing.ContentAlignment.MiddleLeft,
-				Margin = CustomPadding,
+				Padding = CustomPadding,
 				Font = new System.Drawing.Font(System.Drawing.FontFamily.GenericSansSerif, DefaultFont.Size * 1.2f),
 			};
 

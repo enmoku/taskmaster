@@ -80,7 +80,7 @@ namespace Taskmaster
 		// https://stackoverflow.com/a/34991822
 		public static bool GetProcessPathViaC(int pid, out string path)
 		{
-			const int PROCESS_QUERY_INFORMATION = 0x0400;
+			//const int PROCESS_QUERY_INFORMATION = 0x0400;
 			// const int PROCESS_VM_READ = 0x0010; // is this really needed?
 			path = string.Empty;
 
