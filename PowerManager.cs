@@ -1315,29 +1315,7 @@ namespace Taskmaster
 
 			if ((verbose && (CurrentMode != mode)) || Taskmaster.DebugPower)
 			{
-				string extra = string.Empty;
-				if (cause != null)
-				{
-					switch (cause.Origin)
-					{
-						case OriginType.User:
-							extra = " – User Action";
-							break;
-						case OriginType.Session:
-							extra = " – Session " + cause.Detail;
-							break;
-						case OriginType.PowerManager:
-							extra = " – " + Behaviour.ToString() + ": " + cause.Detail;
-							break;
-						case OriginType.Watchlist:
-							extra = " – Rule: " + cause.Detail;
-							break;
-						default:
-							extra = " – " + cause.Detail;
-							break;
-					}
-				}
-
+				string extra = cause != null ? " - " + cause.ToString() : string.Empty;
 				Log.Information("<Power> Mode: " + GetModeName(mode));
 			}
 

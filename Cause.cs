@@ -45,5 +45,23 @@ namespace Taskmaster
 
 		readonly public OriginType Origin = OriginType.None;
 		readonly public string Detail = string.Empty;
+
+		public override string ToString()
+		{
+			string str = string.Empty;
+			switch (Origin)
+			{
+				case OriginType.User:
+					return "User Action";
+				case OriginType.Session:
+					return "Session " + Detail;
+				case OriginType.PowerManager:
+					return Taskmaster.powermanager.Behaviour.ToString() + ": " + Detail; // ugly, but...
+				case OriginType.Watchlist:
+					return "Rule: " + Detail;
+				default:
+					return Detail;
+			}
+		}
 	}
 }
