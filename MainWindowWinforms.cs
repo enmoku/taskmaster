@@ -1765,9 +1765,27 @@ namespace Taskmaster
 			ramload = new Label() { Text = HumanReadable.Generic.Uninitialized, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left };
 			hwpanel.Controls.Add(ramload);
 
-			hwpanel.Controls.Add(new Label() { Text = "VRAM", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left });
-			vramload = new Label() { Text = "n/a", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left };
-			hwpanel.Controls.Add(vramload);
+			if (Taskmaster.HardwareMonitorEnabled)
+			{
+				hwpanel.Controls.Add(new Label() { Text = "GPU", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left, Font = boldfont });
+				hwpanel.Controls.Add(new Label()); // empty
+
+				hwpanel.Controls.Add(new Label() { Text = "VRAM", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left });
+				gpuvram = new Label() { Text = HumanReadable.Generic.Uninitialized, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left };
+				hwpanel.Controls.Add(gpuvram);
+
+				hwpanel.Controls.Add(new Label() { Text = "Load", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left });
+				gpuload = new Label() { Text = HumanReadable.Generic.Uninitialized, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left };
+				hwpanel.Controls.Add(gpuload);
+
+				hwpanel.Controls.Add(new Label() { Text = "Temp", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left });
+				gputemp = new Label() { Text = HumanReadable.Generic.Uninitialized, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left };
+				hwpanel.Controls.Add(gputemp);
+
+				hwpanel.Controls.Add(new Label() { Text = "Fan", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left });
+				gpufan = new Label() { Text = HumanReadable.Generic.Uninitialized, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left };
+				hwpanel.Controls.Add(gpufan);
+			}
 
 			TableLayoutPanel powerinfo = null;
 			#region Power
@@ -1818,7 +1836,6 @@ namespace Taskmaster
 					//Scrollable = true,
 					MinimumSize = new System.Drawing.Size(-2, 60),
 					//MinimumSize = new System.Drawing.Size(-2, -2), // doesn't work
-					//Anchor = AnchorStyles.Top,
 				};
 
 				lastmodifylist.Columns.Add("Time", 60);
@@ -2055,6 +2072,31 @@ namespace Taskmaster
 			// End: UI Log
 
 			tabLayout.SelectedIndex = opentab >= tabLayout.TabCount ? 0 : opentab;
+		}
+
+		public void CPULoadEvent(object _, CPUSensorEventArgs ea)
+		{
+			if (!IsHandleCreated) return;
+
+			BeginInvoke(new Action(() =>
+			{
+				//
+			}));
+		}
+
+		public void GPULoadEvent(object _, GPUSensorEventArgs ea)
+		{
+			if (!IsHandleCreated) return;
+
+			BeginInvoke(new Action(() =>
+			{
+				gpufan.Text = $"{ea.Data.FanLoad:N0}% {ea.Data.FanSpeed} RPM";
+
+				gputemp.Text = $"{ea.Data.Temperature:N0} C";
+				gpuvram.Text = $"{ea.Data.MemLoad:N1}% {ea.Data.MemTotal / 1024} GB [{ea.Data.MemCtrl:N1}%]";
+
+				gpuload.Text = $"{ea.Data.Load:N1}%";
+			}));
 		}
 
 		void StartProcessDebug()
@@ -2595,11 +2637,15 @@ namespace Taskmaster
 
 		Label cpuload = null;
 		Label ramload = null;
-		Label vramload = null;
 
 		Label pwmode = null;
 		Label pwcause = null;
 		Label pwbehaviour = null;
+
+		Label gpuvram = null;
+		Label gpuload = null;
+		Label gputemp = null;
+		Label gpufan = null;
 
 		public void TempScanStats(object _, StorageEventArgs ea)
 		{
@@ -2684,6 +2730,13 @@ namespace Taskmaster
 				pwmode.Text = PowerManager.GetModeName(e.NewMode);
 				pwcause.Text = e.Cause != null ? e.Cause.ToString() : HumanReadable.Generic.Undefined;
 			}));
+		}
+
+		HardwareMonitor hw = null;
+		public void Hook(HardwareMonitor hardware)
+		{
+			hw = hardware;
+			hw.GPUPolling += GPULoadEvent;
 		}
 
 		public void Hook(CPUMonitor monitor)
@@ -2956,6 +3009,16 @@ namespace Taskmaster
 					{
 						cpumonitor.onSampling -= CPULoadHandler;
 						cpumonitor = null;
+					}
+				}
+				catch { }
+
+				try
+				{
+					if (hw != null)
+					{
+						hw.GPUPolling -= GPULoadEvent;
+						hw = null;
 					}
 				}
 				catch { }

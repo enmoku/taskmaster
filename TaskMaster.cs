@@ -62,6 +62,8 @@ namespace Taskmaster
 
 		public static Stack<IDisposable> DisposalChute = new Stack<IDisposable>();
 
+		public static OS.HiddenWindow hiddenwindow; // depends on chute
+
 		static Runstate State = Runstate.Normal;
 		static bool RestartElevated { get; set; } = false;
 		static int RestartCounter { get; set; } = 0;
@@ -1133,6 +1135,8 @@ namespace Taskmaster
 			System.Windows.Forms.Application.ThreadException += UnhandledUIException;
 			System.Windows.Forms.Application.EnableVisualStyles(); // required by shortcuts and high dpi-awareness
 			System.Windows.Forms.Application.SetCompatibleTextRenderingDefault(false); // required by high dpi-awareness
+
+			hiddenwindow = new OS.HiddenWindow();
 
 			TryPortableMode();
 
