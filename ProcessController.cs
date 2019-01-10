@@ -152,7 +152,7 @@ namespace Taskmaster
 
 		public bool AllowPaging = false;
 
-		public PathVisibilityOptions PathVisibility = PathVisibilityOptions.File;
+		public PathVisibilityOptions PathVisibility = PathVisibilityOptions.Process;
 
 		string PathMask = string.Empty;
 
@@ -206,7 +206,9 @@ namespace Taskmaster
 			{
 				foreach (char c in Path)
 					if (c == System.IO.Path.DirectorySeparatorChar || c == System.IO.Path.AltDirectorySeparatorChar) PathElements++;
-				PathElements++;
+
+				if (!(Path.EndsWith(System.IO.Path.DirectorySeparatorChar.ToString()) || Path.EndsWith(System.IO.Path.AltDirectorySeparatorChar.ToString())))
+					PathElements++;
 			}
 		}
 
@@ -249,6 +251,13 @@ namespace Taskmaster
 
 			if (VolumeStrategy == AudioVolumeStrategy.Ignore)
 				Volume = 0.5f;
+
+			if (PathVisibility == PathVisibilityOptions.Invalid)
+			{
+				bool nopath = string.IsNullOrEmpty(Path); // no path defined
+				// process if no path is defined as this will always be something specific, otherwise partial path
+				PathVisibility = nopath ? PathVisibilityOptions.Process : PathVisibilityOptions.Partial;
+			}
 		}
 
 		public void DeleteConfig(ConfigWrapper cfg = null)
@@ -381,7 +390,7 @@ namespace Taskmaster
 			else
 				app.Remove("Allow paging");
 
-			if (PathVisibility != PathVisibilityOptions.File)
+			if (PathVisibility != PathVisibilityOptions.Process)
 				app["Path visibility"].IntValue = (int)PathVisibility;
 			else
 				app.Remove("Path visibility");
@@ -858,6 +867,8 @@ namespace Taskmaster
 								// replace 
 								if (parts.Count > 3)
 								{
+									// TODO: Special cases for %APPDATA% and similar?
+
 									// c:\program files\brand\app\version\random\element\executable.exe
 									// ...\brand\app\...\executable.exe
 									parts.RemoveRange(2, parts.Count - 3); // remove all but two first and last
