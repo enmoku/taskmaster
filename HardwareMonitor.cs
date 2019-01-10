@@ -110,8 +110,10 @@ namespace Taskmaster
 				foreach (var hw in computer.Hardware)
 				{
 					hw.Update();
+					/*
 					foreach (var shw in hw.SubHardware)
 						shw.Update();
+					*/
 
 					/*
 					 * 
@@ -207,6 +209,11 @@ namespace Taskmaster
 			{
 				Logging.Stacktrace(ex);
 				throw;
+			}
+			finally
+			{
+				computer?.Close(); // not needed?
+				computer = null;
 			}
 
 			Log.Verbose("<Hardware> Component loaded.");
