@@ -1343,7 +1343,7 @@ namespace Taskmaster
 			if ((verbose && (CurrentMode != mode)) || Taskmaster.DebugPower)
 			{
 				string extra = cause != null ? " - " + cause.ToString() : string.Empty;
-				Log.Information("<Power> Mode: " + GetModeName(mode));
+				Log.Information("<Power> Mode: " + GetModeName(mode) + extra);
 			}
 
 			ExpectedMode = CurrentMode = mode;
