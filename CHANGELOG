@@ -3,6 +3,8 @@ Comprehensive changes can be found in Git change history:
 	https://github.com/mkahvi/taskmaster/commits/master
 
 ## [0.12...]
+### 2018-01-10
+	Added: Path visibility can now be changed in UI now.
 ### 2018-01-09
 	Internal: Various readability improvements.
 	Added: Experimental feature to restart explorer.exe when it crashes. Disabled by default.
