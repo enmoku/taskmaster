@@ -556,8 +556,16 @@ namespace Taskmaster
 						{
 							proc.Exited += (s, e) => ExplorerCrashHandler(info.Id);
 							proc.EnableRaisingEvents = true;
-							Log.Information("<Tray> Explorer (#" + info.Id + ") being monitored for crashes.");
 						}
+					}
+
+					if (KnownExplorerInstances.Count > 0)
+					{
+						Log.Information("<Tray> Explorer (#" + string.Join(", #", KnownExplorerInstances.Keys) + ") being monitored for crashes.");
+					}
+					else
+					{
+						Log.Warning("<Tray> Explorer not found for monitoring.");
 					}
 
 					return true;
