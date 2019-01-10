@@ -575,17 +575,15 @@ namespace Taskmaster
 		int UIUpdateFrequency = 500;
 		System.Windows.Forms.Timer UItimer;
 
-		static bool UIOpen = true;
 		void StartUIUpdates(object _, EventArgs _ea)
 		{
-			if (!UItimer.Enabled) UItimer.Start();
-			UIOpen = true;
+			if (!IsHandleCreated) StopUIUpdates(null, null);
+			else if (!UItimer?.Enabled ?? false) UItimer?.Start();
 		}
 
 		void StopUIUpdates(object _, EventArgs _ea)
 		{
-			if (UItimer.Enabled) UItimer.Stop();
-			UIOpen = false;
+			if (UItimer?.Enabled ?? false) UItimer?.Stop();
 		}
 
 		void UpdateRescanCountdown(object _, EventArgs _ea)
@@ -2346,7 +2344,6 @@ namespace Taskmaster
 		// called by cpumonitor, not in UI thread by default
 		public void CPULoadHandler(object _, ProcessorEventArgs ea)
 		{
-			if (!UIOpen) return;
 			if (!IsHandleCreated) return;
 
 			BeginInvoke(new Action(() =>
@@ -2357,7 +2354,6 @@ namespace Taskmaster
 
 		public void PowerLoadHandler(object _, PowerEventArgs ea)
 		{
-			if (!UIOpen) return;
 			if (!IsHandleCreated) return;
 
 			BeginInvoke(new Action(() =>
@@ -2609,7 +2605,7 @@ namespace Taskmaster
 							sbs.Append("Background affinity = ").Append(prc.BackgroundAffinity).AppendLine();
 					}
 
-					if (prc.PathVisibility != PathVisibilityOptions.File)
+					if (prc.PathVisibility != PathVisibilityOptions.Process)
 						sbs.Append("Path visibility = ").Append((int)prc.PathVisibility).AppendLine();
 
 					if (prc.VolumeStrategy != AudioVolumeStrategy.Ignore)
@@ -2723,6 +2719,7 @@ namespace Taskmaster
 			}));
 		}
 
+		DateTimeOffset LastCauseTime = DateTimeOffset.MinValue;
 		private void PowerPlanEvent(object sender, PowerModeEventArgs e)
 		{
 			if (!IsHandleCreated) return;
