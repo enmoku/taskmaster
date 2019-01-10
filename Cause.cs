@@ -60,7 +60,7 @@ namespace Taskmaster
 				case OriginType.Watchlist:
 					return "Rule: " + Detail;
 				default:
-					return Detail;
+					return string.IsNullOrEmpty(Detail) ? HumanReadable.Generic.Undefined : Detail;
 			}
 		}
 	}
