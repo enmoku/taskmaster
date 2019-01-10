@@ -144,6 +144,20 @@ namespace Taskmaster
 				}
 			}
 
+			PathVisibilityOptions pvis = PathVisibilityOptions.Invalid;
+			switch (pathVisibility.SelectedIndex)
+			{
+				default:
+				case 0: pvis = PathVisibilityOptions.Invalid; break;
+				case 1: pvis = PathVisibilityOptions.Process; break;
+				case 2: pvis = PathVisibilityOptions.File; break;
+				case 3: pvis = PathVisibilityOptions.Folder; break;
+				case 4: pvis = PathVisibilityOptions.Full; break;
+				case 5: pvis = PathVisibilityOptions.Partial; break;
+				case 6: pvis = PathVisibilityOptions.Smart; break;
+			}
+			Controller.PathVisibility = pvis;
+
 			if (affstrategy.SelectedIndex != 0)
 			{
 				if (cpumask == -1)
@@ -224,27 +238,28 @@ namespace Taskmaster
 		TextBox friendlyName = null;
 		TextBox execName = null;
 		TextBox pathName = null;
+		ComboBox pathVisibility = null;
 		TextBox desc = null;
 
 		ComboBox priorityClass = null;
 		ComboBox priorityClassMethod = null;
 		ComboBox bgPriorityClass = null;
 
-		ComboBox affstrategy = new ComboBox();
+		ComboBox affstrategy = null;
 		NumericUpDown affinityMask = null;
 		NumericUpDown bgAffinityMask = null;
 
 		ComboBox volumeMethod = null;
 		Extensions.NumericUpDownEx volume = null;
 
-		Button allbutton = new Button();
-		Button clearbutton = new Button();
+		Button allbutton = null;
+		Button clearbutton = null;
 		Extensions.NumericUpDownEx modifyDelay = null;
-		CheckBox allowPaging = new CheckBox();
-		ComboBox powerPlan = new ComboBox();
-		CheckBox foregroundOnly = new CheckBox();
-		CheckBox backgroundPowerdown = new CheckBox();
-		ListView ignorelist = new UI.ListViewEx();
+		CheckBox allowPaging = null;
+		ComboBox powerPlan = null;
+		CheckBox foregroundOnly = null;
+		CheckBox backgroundPowerdown = null;
+		ListView ignorelist = null;
 		
 		int cpumask = 0;
 
@@ -253,10 +268,6 @@ namespace Taskmaster
 			// Size = new System.Drawing.Size(340, 480); // width, height
 			AutoSizeMode = AutoSizeMode.GrowOnly;
 			AutoSize = true;
-
-			friendlyName = new TextBox() { ShortcutsEnabled = true };
-			execName = new TextBox() { ShortcutsEnabled = true };
-			pathName = new TextBox() { ShortcutsEnabled = true };
 
 			Text = Controller.FriendlyName + " (" + (Controller.Executable ?? Controller.Path) + ") – " + Application.ProductName;
 
@@ -274,9 +285,13 @@ namespace Taskmaster
 			};
 
 			lt.Controls.Add(new Label { Text = "Friendly name", TextAlign = System.Drawing.ContentAlignment.MiddleLeft });
-			friendlyName.Text = Controller.FriendlyName;
-			friendlyName.Width = 180;
-			friendlyName.CausesValidation = true;
+			friendlyName = new TextBox()
+			{
+				ShortcutsEnabled = true,
+				Text = Controller.FriendlyName,
+				Width = 180,
+				CausesValidation = true,
+			};
 			friendlyName.Validating += (sender, e) =>
 			{
 				if (friendlyName.Text.Contains("]") || friendlyName.Text.Length == 0)
@@ -292,8 +307,12 @@ namespace Taskmaster
 
 			// EXECUTABLE
 			lt.Controls.Add(new Label { Text = HumanReadable.System.Process.Executable, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, Dock = DockStyle.Left });
-			execName.Text = Controller.Executable;
-			execName.Width = 180;
+			execName = new TextBox()
+			{
+				ShortcutsEnabled = true,
+				Text = Controller.Executable,
+				Width = 180,
+			};
 			tooltip.SetToolTip(execName, "Executable name, used to recognize these applications.\nFull filename, including extension if any.");
 			var findexecbutton = new Button()
 			{
@@ -326,8 +345,12 @@ namespace Taskmaster
 
 			// PATH
 			lt.Controls.Add(new Label { Text = HumanReadable.System.Process.Path, TextAlign = System.Drawing.ContentAlignment.MiddleLeft });
-			pathName.Text = Controller.Path;
-			pathName.Width = 180;
+			pathName = new TextBox()
+			{
+				ShortcutsEnabled = true,
+				Text = Controller.Path,
+				Width = 180,
+			};
 			tooltip.SetToolTip(pathName, "Path name; rule will match only paths that include this, subfolders included.\nPartial matching is allowed.");
 			var findpathbutton = new Button()
 			{
@@ -360,6 +383,39 @@ namespace Taskmaster
 			lt.Controls.Add(pathName);
 			lt.Controls.Add(findpathbutton);
 
+			// PATH VISIBILITY
+			pathVisibility = new ComboBox()
+			{
+				DropDownStyle = ComboBoxStyle.DropDownList,
+				Dock = DockStyle.Left,
+				Width = 180,
+			};
+			pathVisibility.Items.AddRange(new string[] {
+				"Default: Process or Partial",
+				"Process name (run)",
+				"File name (run.exe)",
+				@"Folder (app\run.exe)",
+				@"Full (c:\programs\brand\app\v2.4\bin\run.exe)",
+				@"Partial (...\app\run.exe)",
+				@"Smart (c:\programs\brand\...\run.exe)"
+			});
+
+			switch (Controller.PathVisibility)
+			{
+				default:
+				case PathVisibilityOptions.Invalid: pathVisibility.SelectedIndex = 0; break;
+				case PathVisibilityOptions.Process: pathVisibility.SelectedIndex = 1; break;
+				case PathVisibilityOptions.File: pathVisibility.SelectedIndex = 2; break;
+				case PathVisibilityOptions.Folder: pathVisibility.SelectedIndex = 3; break;
+				case PathVisibilityOptions.Full: pathVisibility.SelectedIndex = 4; break;
+				case PathVisibilityOptions.Partial: pathVisibility.SelectedIndex = 5; break;
+				case PathVisibilityOptions.Smart: pathVisibility.SelectedIndex = 6; break;
+			}
+			lt.Controls.Add(new Label { Text = "Path visibility", TextAlign = System.Drawing.ContentAlignment.MiddleLeft });
+			lt.Controls.Add(pathVisibility);
+			lt.Controls.Add(new Label()); // empty
+			tooltip.SetToolTip(pathVisibility, "How the process is shown in logs.\nProcess name option is fastest but least descriptive.\nSmart is marginally slowest.");
+
 			// DESCRIPTION
 			lt.Controls.Add(new Label() { Text = HumanReadable.Generic.Description, TextAlign = System.Drawing.ContentAlignment.MiddleLeft });
 			desc = new TextBox()
@@ -374,9 +430,13 @@ namespace Taskmaster
 
 			// IGNORE
 
-			ignorelist.View = View.Details;
-			ignorelist.HeaderStyle = ColumnHeaderStyle.None;
-			ignorelist.Width = 180;
+			ignorelist = new UI.ListViewEx()
+			{
+				View = View.Details,
+				HeaderStyle = ColumnHeaderStyle.None,
+				//Width = 180,
+				Dock = DockStyle.Left,
+			};
 			ignorelist.Columns.Add(HumanReadable.System.Process.Executable, -2);
 			tooltip.SetToolTip(ignorelist, "Executables to ignore for matching with this rule.\nOnly exact matches work.\n\nRequires path to be defined.");
 
@@ -424,6 +484,7 @@ namespace Taskmaster
 			{
 				Dock = DockStyle.Left,
 				DropDownStyle = ComboBoxStyle.DropDownList,
+				Width = 180,
 			};
 			priorityClass.Items.AddRange(priorities);
 			priorityClass.SelectedIndex = 2;
@@ -435,6 +496,7 @@ namespace Taskmaster
 			priorityClassMethod = new ComboBox
 			{
 				Dock = DockStyle.Left,
+				//Width = 100,
 				DropDownStyle = ComboBoxStyle.DropDownList,
 				Items = { "Increase only", "Decrease only", "Bidirectional" },
 				SelectedIndex = 2,
@@ -457,7 +519,12 @@ namespace Taskmaster
 			var corelist = new List<CheckBox>();
 
 			lt.Controls.Add(new Label { Text = HumanReadable.System.Process.Affinity, TextAlign = System.Drawing.ContentAlignment.MiddleLeft });
-			affstrategy.DropDownStyle = ComboBoxStyle.DropDownList;
+			affstrategy = new ComboBox()
+			{
+				Dock = DockStyle.Left,
+				DropDownStyle = ComboBoxStyle.DropDownList,
+				Width = 180,
+			};
 			affstrategy.Items.AddRange(new string[] { HumanReadable.Generic.Ignore, "Limit (Default)", "Force" });
 			tooltip.SetToolTip(affstrategy, "Limit constrains cores to the defined range but does not increase used cores beyond what the app is already using.\nForce sets the affinity mask to the defined regardless of anything.");
 			affstrategy.SelectedIndexChanged += (s, e) =>
@@ -473,7 +540,7 @@ namespace Taskmaster
 			lt.Controls.Add(affstrategy);
 			lt.Controls.Add(new Label()); // empty, right
 
-			lt.Controls.Add(new Label() { Text = "Affinity mask\n&& Cores", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize=true }); // left
+			lt.Controls.Add(new Label() { Text = "Affinity mask\n&& Cores", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true }); // left
 			affinityMask = new NumericUpDown()
 			{
 				Width = 80,
@@ -540,12 +607,12 @@ namespace Taskmaster
 				ColumnCount = 1,
 				AutoSize = true,
 			};
-			clearbutton.Text = "None";
+			clearbutton = new Button() { Text = "None" };
 			clearbutton.Click += (sender, e) =>
 			{
 				foreach (var litem in corelist) litem.Checked = false;
 			};
-			allbutton.Text = "All";
+			allbutton = new Button() { Text = "All" };
 			allbutton.Click += (sender, e) =>
 			{
 				foreach (var litem in corelist) litem.Checked = true;
@@ -578,7 +645,10 @@ namespace Taskmaster
 			// FOREGROUND
 
 			lt.Controls.Add(new Label { Text = "Foreground only", TextAlign = System.Drawing.ContentAlignment.MiddleLeft });
-			foregroundOnly.Checked = Controller.ForegroundOnly;
+			foregroundOnly = new CheckBox()
+			{
+				Checked = Controller.ForegroundOnly,
+			};
 			tooltip.SetToolTip(foregroundOnly, "Priority and affinity are lowered when this app is not in focus.");
 			lt.Controls.Add(foregroundOnly);
 			lt.Controls.Add(new Label()); // empty
@@ -591,11 +661,11 @@ namespace Taskmaster
 			{
 				Dock = DockStyle.Left,
 				DropDownStyle = ComboBoxStyle.DropDownList,
+				Width = 180,
 			};
 			bgPriorityClass.Items.AddRange(priorities);
 			bgPriorityClass.SelectedIndex = 5;
 
-			bgPriorityClass.Width = 180;
 			if (Controller.BackgroundPriority.HasValue)
 				bgPriorityClass.SelectedIndex = Controller.BackgroundPriority.Value.ToInt32();
 			tooltip.SetToolTip(bgPriorityClass, "Same as normal priority.\nIgnored causes priority to be untouched.");
@@ -640,24 +710,37 @@ namespace Taskmaster
 
 			// POWER
 			lt.Controls.Add(new Label { Text = HumanReadable.Hardware.Power.Plan, TextAlign = System.Drawing.ContentAlignment.MiddleLeft });
+			powerPlan = new ComboBox()
+			{
+				DropDownStyle = ComboBoxStyle.DropDownList,
+				Dock = DockStyle.Left,
+				Width = 180,
+			};
 			powerPlan.Items.AddRange(new string[] {
 				PowerManager.GetModeName(PowerInfo.PowerMode.HighPerformance),
 				PowerManager.GetModeName(PowerInfo.PowerMode.Balanced),
 				PowerManager.GetModeName(PowerInfo.PowerMode.PowerSaver),
 				PowerManager.GetModeName(PowerInfo.PowerMode.Undefined)
 			});
-			int ppi = (int)Controller.PowerPlan;
-			if (ppi <= 2) ppi = 2 - ppi;
-			powerPlan.DropDownStyle = ComboBoxStyle.DropDownList;
-			powerPlan.SelectedIndex = System.Math.Min(ppi, 3);
-			powerPlan.Width = 180;
+			int ppi = 3;
+			switch (Controller.PowerPlan)
+			{
+				case PowerInfo.PowerMode.HighPerformance: ppi = 0; break;
+				case PowerInfo.PowerMode.Balanced: ppi = 1; break;
+				case PowerInfo.PowerMode.PowerSaver: ppi = 2; break;
+				default: ppi = 3; break;
+			}
+			powerPlan.SelectedIndex = ppi;
 			tooltip.SetToolTip(powerPlan, "Power Mode to be used when this application is detected. Leaving this undefined disables it.");
 			lt.Controls.Add(powerPlan);
 			lt.Controls.Add(new Label()); // empty
 
 			// POWERDOWN in background
 			lt.Controls.Add(new Label() { Text = "Background powerdown", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true });
-			backgroundPowerdown.Checked = Controller.BackgroundPowerdown;
+			backgroundPowerdown = new CheckBox()
+			{
+				Checked = Controller.BackgroundPowerdown,
+			};
 			tooltip.SetToolTip(backgroundPowerdown, "Power down any power mode when the app goes off focus.\nRequires foreground only to be enabled.");
 			lt.Controls.Add(backgroundPowerdown);
 			lt.Controls.Add(new Label()); // empty
@@ -687,7 +770,10 @@ namespace Taskmaster
 
 			// PAGING
 			lt.Controls.Add(new Label { Text = "Allow paging", TextAlign = System.Drawing.ContentAlignment.MiddleLeft });
-			allowPaging.Checked = Controller.AllowPaging;
+			allowPaging = new CheckBox()
+			{
+				Checked = Controller.AllowPaging,
+			};
 			tooltip.SetToolTip(allowPaging, "Allow this application to be paged when it is requested.\nNOT FULLY IMPLEMENTED.");
 			lt.Controls.Add(allowPaging);
 			lt.Controls.Add(new Label()); // empty
@@ -704,6 +790,7 @@ namespace Taskmaster
 				DropDownStyle = ComboBoxStyle.DropDownList,
 				Items = { "Increase", "Decrease", "Increase from mute", "Decrease from full", "Force", HumanReadable.Generic.Ignore },
 				SelectedIndex = 5,
+				Width = 180,
 			};
 
 			lt.Controls.Add(volumeMethod);
