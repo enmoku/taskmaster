@@ -662,8 +662,8 @@ namespace Taskmaster
 			// UserActiveCancel = saver.GetSetDefault("Cancel on activity", true, out modified).BoolValue;
 			// dirtyconfig |= modified;
 
-			var monoffidletime = saver.GetSetDefault("Monitor power off idle timeout", 180, out modified).IntValue;
-			SessionLockPowerOffIdleTimeout = monoffidletime >= 30 ? monoffidletime.Constrain(30, 600) : 0;
+			int monoffidletime = saver.GetSetDefault("Monitor power off idle timeout", 180, out modified).IntValue;
+			SessionLockPowerOffIdleTimeout = monoffidletime > 0 ? TimeSpan.FromSeconds(monoffidletime.Constrain(30, 600)) : TimeSpan.Zero;
 			saver["Monitor power off idle timeout"].Comment = "User needs to be this many seconds idle before we power down monitors when session is locked. 0 disables. Less than 30 is rounded up to 30.";
 			dirtyconfig |= modified;
 
@@ -682,7 +682,7 @@ namespace Taskmaster
 			Log.Information("<Power> Session lock: " + (SessionLockPowerMode == PowerMode.Undefined ? HumanReadable.Generic.Ignore : SessionLockPowerMode.ToString()));
 			Log.Information("<Power> Restore mode: " + RestoreMethod.ToString() + " [" + RestoreMode.ToString() + "]");
 
-			Log.Information("<Session> User AFK timeout: " + (SessionLockPowerOffIdleTimeout == 0 ? HumanReadable.Generic.Disabled : $"{SessionLockPowerOffIdleTimeout}s"));
+			Log.Information("<Session> User AFK timeout: " + (SessionLockPowerOffIdleTimeout == TimeSpan.Zero ? HumanReadable.Generic.Disabled : $"{SessionLockPowerOffIdleTimeout.TotalSeconds:N0}s"));
 			Log.Information("<Session> Immediate power off on lock: " + (SessionLockPowerOff ? HumanReadable.Generic.Enabled : HumanReadable.Generic.Disabled));
 
 			if (dirtyconfig) corecfg.MarkDirty();
@@ -743,7 +743,7 @@ namespace Taskmaster
 					var saver = corecfg.Config["AFK Power"];
 					saver["Session lock"].StringValue = GetModeName(SessionLockPowerMode);
 
-					saver["Monitor power off idle timeout"].IntValue = SessionLockPowerOffIdleTimeout;
+					saver["Monitor power off idle timeout"].IntValue = Convert.ToInt32(SessionLockPowerOffIdleTimeout.TotalSeconds);
 					saver["Monitor power off on lock"].BoolValue = SessionLockPowerOff;
 
 					// --------------------------------------------------------------------------------------------------------
