@@ -590,7 +590,7 @@ namespace Taskmaster
 		{
 			if (!IsHandleCreated) return;
 
-			if (LastCauseTime.TimeTo(DateTimeOffset.UtcNow).TotalMinutes >= 1)
+			if (LastCauseTime.TimeTo(DateTimeOffset.UtcNow).TotalMinutes >= 3d)
 			{
 				pwcause.Text = HumanReadable.Generic.NotAvailable;
 			}
