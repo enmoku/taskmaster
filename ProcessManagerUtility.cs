@@ -201,12 +201,33 @@ namespace Taskmaster
 
 	public enum PathVisibilityOptions
 	{
+		/// <summary>
+		/// Process name. Usually executable name without extension.
+		/// </summary>
 		Process = -1,
+		/// <summary>
+		/// Filename with extension.
+		/// </summary>
 		File = 0,
+		/// <summary>
+		/// .../Folder/executable.ext
+		/// </summary>
 		Folder = 1,
+		/// <summary>
+		/// Smart reduction of full path. Not always as smart as desirable.
+		/// </summary>
 		Smart = 2,
+		/// <summary>
+		/// Complete path.
+		/// </summary>
 		Full = 3,
+		/// <summary>
+		/// Partial path removes some basic elements that seem redundant.
+		/// </summary>
 		Partial = 4,
+		/// <summary>
+		/// Invalid.
+		/// </summary>
 		Invalid = -2,
 	}
 }
