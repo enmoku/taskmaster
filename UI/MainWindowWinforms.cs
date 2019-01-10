@@ -586,6 +586,16 @@ namespace Taskmaster
 			if (UItimer?.Enabled ?? false) UItimer?.Stop();
 		}
 
+		void Cleanup(object _, EventArgs _ea)
+		{
+			if (!IsHandleCreated) return;
+
+			if (LastCauseTime.TimeTo(DateTimeOffset.UtcNow).TotalMinutes >= 1)
+			{
+				pwcause.Text = HumanReadable.Generic.NotAvailable;
+			}
+		}
+
 		void UpdateRescanCountdown(object _, EventArgs _ea)
 		{
 			if (!IsHandleCreated) return;
@@ -1523,6 +1533,7 @@ namespace Taskmaster
 				UItimer.Tick += UpdateRescanCountdown;
 
 			UItimer.Tick += UpdateHWStats;
+			UItimer.Tick += Cleanup;
 
 			if (Taskmaster.PathCacheLimit > 0)
 			{
@@ -2728,6 +2739,7 @@ namespace Taskmaster
 			{
 				pwmode.Text = PowerManager.GetModeName(e.NewMode);
 				pwcause.Text = e.Cause != null ? e.Cause.ToString() : HumanReadable.Generic.Undefined;
+				LastCauseTime = DateTimeOffset.UtcNow;
 			}));
 		}
 
