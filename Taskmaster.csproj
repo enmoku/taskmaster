@@ -132,15 +132,15 @@
     </Compile>
     <Compile Include="CPUMonitor.cs" />
     <Compile Include="HardwareMonitor.cs" />
-    <Compile Include="LicenseDialog.cs">
+    <Compile Include="UI\LicenseDialog.cs">
       <SubType>Form</SubType>
     </Compile>
     <Compile Include="LinearMeter.cs" />
     <Compile Include="NativeMethods.cs" />
-    <Compile Include="PowerConfigWindow.cs">
+    <Compile Include="UI\Config\PowerConfigWindow.cs">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Include="PowerPresets.cs" />
+    <Compile Include="Config\Presets\PowerPresets.cs" />
     <Compile Include="ProcessEx.cs" />
     <Compile Include="ProcessUtility.cs" />
     <Compile Include="ProcessTypes.cs" />
@@ -149,10 +149,10 @@
       <DesignTime>True</DesignTime>
       <DependentUpon>Resources.resx</DependentUpon>
     </Compile>
-    <Compile Include="RunstateException.cs" />
+    <Compile Include="Events\RunstateException.cs" />
     <Compile Include="SelfMaintenance.cs" />
-    <Compile Include="HumanReadable.cs" />
-    <Compile Include="TextInputBox.cs">
+    <Compile Include="Utility\HumanReadable.cs" />
+    <Compile Include="UI\TextInputBox.cs">
       <SubType>Form</SubType>
     </Compile>
     <Compile Include="UI\HiddenWindow.cs">
@@ -171,17 +171,17 @@
     <Compile Include="Utility\LogAndDiscardException.cs" />
     <Compile Include="Utility\ProcessPriorityClass.cs" />
     <Compile Include="Utility\UserActivity.cs" />
-    <Compile Include="WatchlistEditWindow.cs">
+    <Compile Include="UI\Config\WatchlistEditWindow.cs">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Include="Cache.cs" />
+    <Compile Include="Utility\Cache.cs" />
     <Compile Include="StorageManager.cs" />
-    <Compile Include="HumanInterface.cs" />
-    <Compile Include="InitFailure.cs" />
-    <Compile Include="ComponentConfigurationWindow.cs">
+    <Compile Include="Utility\HumanInterface.cs" />
+    <Compile Include="Events\InitFailure.cs" />
+    <Compile Include="UI\Config\ComponentConfigurationWindow.cs">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Include="MainWindowWinforms.cs">
+    <Compile Include="UI\MainWindowWinforms.cs">
       <SubType>Form</SubType>
     </Compile>
     <Compile Include="MemoryLog.cs" />
@@ -195,7 +195,7 @@
     <Compile Include="ProcessController.cs" />
     <Compile Include="ProcessHelpers.cs" />
     <Compile Include="ProcessManager.cs" />
-    <Compile Include="ProcessSelectDialog.cs">
+    <Compile Include="UI\ProcessSelectDialog.cs">
       <SubType>Form</SubType>
     </Compile>
     <Compile Include="Statistics.cs" />
@@ -209,14 +209,15 @@
     <Compile Include="HealthMonitor.cs" />
     <Compile Include="ProcessManagerUtility.cs" />
     <Compile Include="PowerInfo.cs" />
-    <Compile Include="PerformanceCounterWrapper.cs" />
-    <Compile Include="HealthMonitorConfig.cs">
+    <Compile Include="Wrappers\PerformanceCounterWrapper.cs" />
+    <Compile Include="UI\Config\HealthMonitorConfig.cs">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Include="WatchlistRuleGenerator.cs" />
-    <Compile Include="WatchlistRuleGeneratorWindow.cs">
+    <Compile Include="Config\Presets\WatchlistRuleGenerator.cs" />
+    <Compile Include="UI\Config\WatchlistRuleGeneratorWindow.cs">
       <SubType>Form</SubType>
     </Compile>
+    <Compile Include="Wrappers\SharpConfigWrapper.cs" />
   </ItemGroup>
   <ItemGroup>
     <BootstrapperPackage Include=".NETFramework,Version=v4.7.1">
@@ -241,6 +242,7 @@
   <ItemGroup>
     <None Include="Resources\BuildDate.txt" />
   </ItemGroup>
+  <ItemGroup />
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>
     <PreBuildEvent>echo $(BuildDate) &gt; "$(ProjectDir)\Resources\BuildDate.txt"</PreBuildEvent>
