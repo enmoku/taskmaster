@@ -901,7 +901,7 @@ namespace Taskmaster
 					case PathVisibilityOptions.Folder:
 						{
 							var parts = info.Path.Split(System.IO.Path.DirectorySeparatorChar, System.IO.Path.AltDirectorySeparatorChar);
-							var partpath = parts[parts.Length - 2] + System.IO.Path.DirectorySeparatorChar + parts[parts.Length - 1];
+							var partpath = System.IO.Path.Combine(HumanReadable.Generic.Ellipsis, parts[parts.Length - 2], parts[parts.Length - 1]);
 							return partpath;
 						}
 					case PathVisibilityOptions.Full:
