@@ -38,16 +38,16 @@ namespace MKAh
 			Hours,
 		}
 
-		public static string TimescaleString(Timescale t)
+		public static string TimescaleString(Timescale t, bool plural=true)
 		{
 			switch (t)
 			{
 				case Timescale.Seconds:
-					return "second(s)";
+					return $"second{(plural?"s":"")}";
 				case Timescale.Minutes:
-					return "minute(s)";
+					return $"minute{(plural?"s":"")}";
 				case Timescale.Hours:
-					return "hour(s)";
+					return $"hour{(plural ? "s" : "")}";
 			}
 
 			return string.Empty;
