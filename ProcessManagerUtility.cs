@@ -207,5 +207,6 @@ namespace Taskmaster
 		Smart = 2,
 		Full = 3,
 		Partial = 4,
+		Invalid = -2,
 	}
 }
