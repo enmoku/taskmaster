@@ -34,6 +34,11 @@ namespace Taskmaster
 {
 	static public class CoreTypeExtensions
 	{
+		/// <summary>
+		/// Returns true if as equal as possible.
+		/// </summary>
+		public static bool RoughlyEqual(this double value, double other) =>  Math.Abs(value - other) <= double.Epsilon;
+
 		// Core Type extension
 		/// <summary>
 		/// int.Constrain(minimum, maximum)
