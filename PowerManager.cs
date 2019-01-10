@@ -102,15 +102,10 @@ namespace Taskmaster
 			if (Behaviour == PowerBehaviour.RuleBased && !Forced)
 				Restore();
 
-			if (SessionLockPowerOffIdleTimeout > 0)
+			if (SessionLockPowerOffIdleTimeout != TimeSpan.Zero)
 			{
-				MonitorSleepTimer = new System.Timers.Timer(SessionLockPowerOffIdleTimeout * 1000)
-				{
-					Enabled = false,
-					AutoReset = false
-				};
-
-				MonitorSleepTimer.Elapsed += MonitorSleepTimerTick;
+				var stopped = System.Threading.Timeout.InfiniteTimeSpan;
+				MonitorSleepTimer = new System.Threading.Timer(MonitorSleepTimerTick, null, stopped, stopped);
 
 				MonitorPower += MonitorPowerEvent;
 			}
@@ -138,7 +133,7 @@ namespace Taskmaster
 			{
 				var idle = User.IdleTime();
 				double sidletime = Time.Simplify(idle, out Time.Timescale scale);
-				var timename = Time.TimescaleString(scale);
+				var timename = Time.TimescaleString(scale, !sidletime.RoughlyEqual(1d));
 
 				//uint lastact = User.LastActive();
 				//var idle = User.LastActiveTimespan(lastact);
@@ -175,21 +170,23 @@ namespace Taskmaster
 		void StopDisplayTimer(bool reset = false)
 		{
 			if (reset) SleepTickCount = -1;
-			MonitorSleepTimer?.Stop();
+			var stopped = System.Threading.Timeout.InfiniteTimeSpan;
+			MonitorSleepTimer?.Change(stopped, stopped);
 		}
 
 		void StartDisplayTimer()
 		{
 			if (SleepTickCount < 0) SleepTickCount = 0; // reset
-			MonitorSleepTimer?.Start();
+			var minute = TimeSpan.FromMinutes(1);
+			MonitorSleepTimer?.Change(minute, minute);
 		}
 
-		readonly System.Timers.Timer MonitorSleepTimer;
+		System.Threading.Timer MonitorSleepTimer;
 
 		int SleepTickCount = -1;
 		int SleepGivenUp = 0;
 		int monitorsleeptimer_lock = 0;
-		async void MonitorSleepTimerTick(object _, EventArgs _ea)
+		async void MonitorSleepTimerTick(object _)
 		{
 			var idle = User.IdleTime();
 
@@ -224,12 +221,12 @@ namespace Taskmaster
 					SleepGivenUp++;
 					StopDisplayTimer(reset: true);
 				}
-				else if (idle.TotalSeconds >= Convert.ToDouble(SessionLockPowerOffIdleTimeout))
+				else if (idle >= SessionLockPowerOffIdleTimeout)
 				{
 					SleepTickCount++;
 
 					double sidletime = Time.Simplify(idle, out Time.Timescale scale);
-					var timename = Time.TimescaleString(scale);
+					var timename = Time.TimescaleString(scale, !sidletime.RoughlyEqual(1d));
 
 					if ((Taskmaster.ShowSessionActions || Taskmaster.DebugMonitor) && SleepGivenUp <= 1)
 						Log.Information("<Session:Lock> User idle (" + $"{sidletime:N1} {timename}" + "); Monitor power down, attempt " +
@@ -291,7 +288,7 @@ namespace Taskmaster
 		/// <summary>
 		/// User must be inactive for this many seconds.
 		/// </summary>
-		int SessionLockPowerOffIdleTimeout = 300;
+		TimeSpan SessionLockPowerOffIdleTimeout = TimeSpan.FromSeconds(120);
 		/// <summary>
 		/// Power off monitor directly on lock off.
 		/// </summary>
@@ -453,7 +450,7 @@ namespace Taskmaster
 				{
 					if (Taskmaster.DebugPower) Log.Debug("<Power> Auto-adjust: " + Reaction.ToString());
 
-					if (AutoAdjustSetMode(ReactionaryPlan))
+					if (AutoAdjustSetMode(ReactionaryPlan, new Cause(OriginType.PowerManager, Reaction.ToString())))
 					{
 						AutoAdjustCounter++;
 						ev.Enacted = true;
@@ -790,6 +787,9 @@ namespace Taskmaster
 		public RestoreModeMethod RestoreMethod { get; private set; } = RestoreModeMethod.Default;
 		public PowerMode RestoreMode { get; private set; } = PowerMode.Balanced;
 
+		TimeSpan MonitorOffLastLock = TimeSpan.Zero;
+		Stopwatch SessionLockCounter = new Stopwatch();
+
 		async void SessionLockEvent(object _, SessionSwitchEventArgs ev)
 		{
 			// BUG: ODD BEHAVIOUR ON ACCOUNT SWAP
@@ -801,10 +801,15 @@ namespace Taskmaster
 					return;
 				case SessionSwitchReason.SessionLock:
 					SessionLocked = true;
+					MonitorOffLastLock = MonitorPowerOffCounter.Elapsed;
+					SessionLockCounter.Reset();
+					SessionLockCounter.Start();
 					// TODO: Pause most of TM's functionality to avoid problems with account swapping
 					break;
 				case SessionSwitchReason.SessionUnlock:
 					SessionLocked = false;
+					MonitorOffLastLock = MonitorPowerOffCounter.Elapsed - MonitorOffLastLock;
+					SessionLockCounter.Stop();
 					break;
 			}
 
@@ -847,6 +852,14 @@ namespace Taskmaster
 				{
 					Log.Warning("<Session:Unlock> Monitor still not on... Concerning, isn't it?");
 					SetMonitorMode(MonitorPowerMode.On); // attempt to wake it
+				}
+
+				if (SessionLockPowerOff)
+				{
+					var off = MonitorOffLastLock;
+					var total = SessionLockCounter.Elapsed;
+					double percentage = off.TotalHours / total.TotalHours;
+					Log.Information("<Session:Unlock> Monitor off time: " + $"{off.TotalHours:N1} / {total.TotalHours:N1} hours ({percentage:N0}%)");
 				}
 			}
 
@@ -932,8 +945,13 @@ namespace Taskmaster
 			}
 		}
 
+		public TimeSpan MonitorPowerOffTotal => MonitorPowerOffCounter.Elapsed;
+
 		Cause ExpectedCause = new Cause(OriginType.None);
 		PowerMode ExpectedMode = PowerMode.Undefined;
+		MonitorPowerMode ExpectedMonitorPower = MonitorPowerMode.On;
+		Stopwatch MonitorPowerOffCounter = new Stopwatch();
+
 		protected override void WndProc(ref Message m)
 		{
 			if (m.Msg == NativeMethods.WM_POWERBROADCAST &&
@@ -960,10 +978,23 @@ namespace Taskmaster
 				else if (ps.PowerSetting == GUID_CONSOLE_DISPLAY_STATE)
 				{
 					MonitorPowerMode mode = MonitorPowerMode.Invalid;
+
 					switch (ps.Data)
 					{
-						case 0x0: mode = MonitorPowerMode.Off; break;
-						case 0x1: mode = MonitorPowerMode.On; break;
+						case 0x0:
+							mode = MonitorPowerMode.Off;
+							if (mode == ExpectedMonitorPower)
+							{
+								MonitorPowerOffCounter.Start();
+							}
+							break;
+						case 0x1:
+							mode = MonitorPowerMode.On;
+							if (mode == ExpectedMonitorPower)
+							{
+								MonitorPowerOffCounter.Stop();
+							}
+							break;
 						case 0x2: mode = MonitorPowerMode.Standby; break;
 						default: break;
 					}
@@ -1257,7 +1288,7 @@ namespace Taskmaster
 		public PowerBehaviour LaunchBehaviour { get; set; } = PowerBehaviour.RuleBased;
 		public PowerBehaviour Behaviour { get; private set; } = PowerBehaviour.RuleBased;
 
-		bool AutoAdjustSetMode(PowerMode mode)
+		bool AutoAdjustSetMode(PowerMode mode, Cause cause)
 		{
 			Debug.Assert(Behaviour == PowerBehaviour.Auto, "This is for auto adjusting only.");
 
@@ -1268,7 +1299,7 @@ namespace Taskmaster
 				if (mode == CurrentMode || Forced)
 					return false;
 
-				InternalSetMode(mode, verbose: false);
+				InternalSetMode(mode, cause, verbose: false);
 			}
 			return true;
 		}
@@ -1303,7 +1334,7 @@ namespace Taskmaster
 				if (rv)
 				{
 					SavedMode = RestoreMethod == RestoreModeMethod.Saved ? CurrentMode : RestoreMode;
-					InternalSetMode(mode, verbose:false);
+					InternalSetMode(mode, cause: new Cause(OriginType.PowerManager, $"PID:{sourcePid}"), verbose:false);
 				}
 				else
 				{
@@ -1342,8 +1373,8 @@ namespace Taskmaster
 
 			if ((verbose && (CurrentMode != mode)) || Taskmaster.DebugPower)
 			{
-				string extra = cause != null ? " - " + cause.ToString() : string.Empty;
-				Log.Information("<Power> Mode: " + GetModeName(mode) + extra);
+				string extra = cause != null ? " - Cause: " + cause.ToString() : string.Empty;
+				Log.Information("<Power> Setting mode: " + GetModeName(mode) + extra);
 			}
 
 			ExpectedMode = CurrentMode = mode;
@@ -1395,23 +1426,34 @@ namespace Taskmaster
 			disposed = true;
 		}
 
-		void SetMonitorMode(MonitorPowerMode powermode)
+		async void SetMonitorMode(MonitorPowerMode powermode)
 		{
 			Debug.Assert(powermode != MonitorPowerMode.Invalid);
 			int NewPowerMode = (int)powermode; // -1 = Powering On, 1 = Low Power (low backlight, etc.), 2 = Power Off
 
-			//IntPtr Broadcast = new IntPtr(NativeMethods.HWND_BROADCAST);
+			IntPtr Broadcast = new IntPtr(NativeMethods.HWND_BROADCAST);
 			//IntPtr hWnd = new IntPtr(NativeMethods.HWND_TOPMOST);
 
 			IntPtr result = new IntPtr(-1); // unused, but necessary
-			uint timeout = 5000; // ms per window, we don't really care if they process them
-			var flags = NativeMethods.SendMessageTimeoutFlags.SMTO_ABORTIFHUNG|NativeMethods.SendMessageTimeoutFlags.SMTO_NORMAL;
+			uint timeout = 500; // ms per window, we don't really care if they process them
+			var flags = NativeMethods.SendMessageTimeoutFlags.SMTO_ABORTIFHUNG|NativeMethods.SendMessageTimeoutFlags.SMTO_NORMAL|NativeMethods.SendMessageTimeoutFlags.SMTO_NOTIMEOUTIFNOTHUNG;
 
-			IntPtr hWnd = Handle; // send to self works for this
+			//IntPtr hWnd = Handle; // send to self works for this? seems even more unreliable
 			// there's a lot of discussion on what is the correct way to do this, and many agree broadcast is not good choice even if it works
 			// NEVER send it via SendMessage(), only via SendMessageTimeout()
 			// PostMessage() is also valid.
-			NativeMethods.SendMessageTimeout(hWnd, NativeMethods.WM_SYSCOMMAND, NativeMethods.SC_MONITORPOWER, NewPowerMode, flags, timeout, out result);
+
+			await Task.Delay(0).ConfigureAwait(false);
+
+			NativeMethods.SendMessageTimeout(Broadcast, NativeMethods.WM_SYSCOMMAND, NativeMethods.SC_MONITORPOWER, NewPowerMode, flags, timeout, out result);
+			/*
+			bool rv = NativeMethods.PostMessage(Broadcast, NativeMethods.WM_SYSCOMMAND, NativeMethods.SC_MONITORPOWER, NewPowerMode);
+			if (!rv)
+			{
+				int errorcode = Marshal.GetLastWin32Error();
+				Log.Error("<P/Invoke> PostMessage error: " + errorcode + (errorcode==5?" [access denied]":string.Empty));
+			}
+			*/
 		}
 	}
 }
