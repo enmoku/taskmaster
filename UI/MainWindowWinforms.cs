@@ -1211,8 +1211,23 @@ namespace Taskmaster
 			});
 			var menu_info_about = new ToolStripMenuItem("About", null, (_, _ea) =>
 			{
-				MessageBox.Show(Application.ProductName + " (" + Application.ProductVersion + ")\n\nCreated by M.A., 2016-2018\n\nFree system maintenance and de-obnoxifying app.\n\nAvailable under MIT license.",
-								"About Taskmaster!", MessageBoxButtons.OK, MessageBoxIcon.Information, MessageBoxDefaultButton.Button1, MessageBoxOptions.DefaultDesktopOnly);
+				var builddate = Taskmaster.BuildDate();
+
+				var now = DateTime.Now;
+				var age = (now - builddate).TotalDays;
+
+				MessageBox.Show(
+					Application.ProductName +
+					"\nVersion: " + Application.ProductVersion +
+					"\nBuilt: " + $"{builddate.ToString("yyyy/MM/dd HH:mm")} [{age:N0} days old]" +
+					"\n\nCreated by M.A., 2016–2019" +
+					"\n\nAt Github: " + Taskmaster.GitURL +
+					"\nAt Itch.io: " + Taskmaster.ItchURL +
+					"\n\nFree system maintenance and de-obnoxifying app.\n\nAvailable under MIT license.",
+					"About Taskmaster!",
+					MessageBoxButtons.OK, MessageBoxIcon.Information,
+					MessageBoxDefaultButton.Button1, MessageBoxOptions.DefaultDesktopOnly
+					);
 			});
 			menu_info.DropDownItems.Add(menu_info_github);
 			menu_info.DropDownItems.Add(menu_info_itchio);
