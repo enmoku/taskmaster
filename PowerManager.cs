@@ -219,7 +219,8 @@ namespace Taskmaster
 					// TODO: Detect other apps that have used SetThreadExecutionState(ES_CONTINUOUS) to prevent monitor sleep
 					// ... this is supposedly not possible.
 					SleepGivenUp++;
-					StopDisplayTimer(reset: true);
+
+					//StopDisplayTimer(reset: true); // stop sleep attempts
 				}
 				else if (idle >= SessionLockPowerOffIdleTimeout)
 				{
@@ -228,7 +229,7 @@ namespace Taskmaster
 					double sidletime = Time.Simplify(idle, out Time.Timescale scale);
 					var timename = Time.TimescaleString(scale, !sidletime.RoughlyEqual(1d));
 
-					if ((Taskmaster.ShowSessionActions || Taskmaster.DebugMonitor) && SleepGivenUp <= 1)
+					if ((Taskmaster.ShowSessionActions && SleepGivenUp <= 1) || Taskmaster.DebugMonitor)
 						Log.Information("<Session:Lock> User idle (" + $"{sidletime:N1} {timename}" + "); Monitor power down, attempt " +
 							SleepTickCount + "...");
 
@@ -801,14 +802,13 @@ namespace Taskmaster
 					return;
 				case SessionSwitchReason.SessionLock:
 					SessionLocked = true;
-					MonitorOffLastLock = MonitorPowerOffCounter.Elapsed;
-					SessionLockCounter.Reset();
-					SessionLockCounter.Start();
+					MonitorOffLastLock = MonitorPowerOffTotal;
+					SessionLockCounter.Restart();
 					// TODO: Pause most of TM's functionality to avoid problems with account swapping
 					break;
 				case SessionSwitchReason.SessionUnlock:
 					SessionLocked = false;
-					MonitorOffLastLock = MonitorPowerOffCounter.Elapsed - MonitorOffLastLock;
+					MonitorOffLastLock = MonitorPowerOffTotal - MonitorOffLastLock;
 					SessionLockCounter.Stop();
 					break;
 			}
@@ -969,7 +969,7 @@ namespace Taskmaster
 					else if (newPersonality == PowerSaver) { CurrentMode = PowerMode.PowerSaver; }
 					else { CurrentMode = PowerMode.Undefined; }
 
-					onPlanChange?.Invoke(this, new PowerModeEventArgs(CurrentMode, old, CurrentMode == ExpectedMode ? ExpectedCause : null));
+					onPlanChange?.Invoke(this, new PowerModeEventArgs(CurrentMode, old, CurrentMode == ExpectedMode ? ExpectedCause : new Cause(OriginType.None, "External")));
 					ExpectedCause = null;
 
 					if (Taskmaster.DebugPower)
@@ -984,16 +984,12 @@ namespace Taskmaster
 						case 0x0:
 							mode = MonitorPowerMode.Off;
 							if (mode == ExpectedMonitorPower)
-							{
 								MonitorPowerOffCounter.Start();
-							}
 							break;
 						case 0x1:
 							mode = MonitorPowerMode.On;
 							if (mode == ExpectedMonitorPower)
-							{
 								MonitorPowerOffCounter.Stop();
-							}
 							break;
 						case 0x2: mode = MonitorPowerMode.Standby; break;
 						default: break;
@@ -1431,10 +1427,9 @@ namespace Taskmaster
 			Debug.Assert(powermode != MonitorPowerMode.Invalid);
 			int NewPowerMode = (int)powermode; // -1 = Powering On, 1 = Low Power (low backlight, etc.), 2 = Power Off
 
-			IntPtr Broadcast = new IntPtr(NativeMethods.HWND_BROADCAST);
-			//IntPtr hWnd = new IntPtr(NativeMethods.HWND_TOPMOST);
+			IntPtr Broadcast = new IntPtr(NativeMethods.HWND_BROADCAST); // unreliable
+			IntPtr Topmost = new IntPtr(NativeMethods.HWND_TOPMOST);
 
-			IntPtr result = new IntPtr(-1); // unused, but necessary
 			uint timeout = 500; // ms per window, we don't really care if they process them
 			var flags = NativeMethods.SendMessageTimeoutFlags.SMTO_ABORTIFHUNG|NativeMethods.SendMessageTimeoutFlags.SMTO_NORMAL|NativeMethods.SendMessageTimeoutFlags.SMTO_NOTIMEOUTIFNOTHUNG;
 
@@ -1445,7 +1440,8 @@ namespace Taskmaster
 
 			await Task.Delay(0).ConfigureAwait(false);
 
-			NativeMethods.SendMessageTimeout(Broadcast, NativeMethods.WM_SYSCOMMAND, NativeMethods.SC_MONITORPOWER, NewPowerMode, flags, timeout, out result);
+			ExpectedMonitorPower = powermode;
+			NativeMethods.SendMessageTimeout(Topmost, NativeMethods.WM_SYSCOMMAND, NativeMethods.SC_MONITORPOWER, NewPowerMode, flags, timeout, out _);
 			/*
 			bool rv = NativeMethods.PostMessage(Broadcast, NativeMethods.WM_SYSCOMMAND, NativeMethods.SC_MONITORPOWER, NewPowerMode);
 			if (!rv)
