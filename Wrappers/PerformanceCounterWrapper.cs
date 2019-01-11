@@ -39,8 +39,13 @@ namespace Taskmaster
 		string p_InstanceName = null;
 		bool p_ScrapFirst = true;
 
-		void InitCounter()
+		public PerformanceCounterWrapper(string category, string counter, string instance = null, bool scrapfirst = true)
 		{
+			p_CategoryName = category;
+			p_CounterName = counter;
+			p_InstanceName = instance;
+			p_ScrapFirst = scrapfirst;
+
 			Counter = new System.Diagnostics.PerformanceCounter()
 			{
 				CategoryName = p_CategoryName,
@@ -51,16 +56,7 @@ namespace Taskmaster
 
 			if (p_ScrapFirst) { var scrap = Value; }
 
-			Manager.Sensors.Add(Counter);
-		}
-
-		public PerformanceCounterWrapper(string category, string counter, string instance = null, bool scrapfirst = true)
-		{
-			p_CategoryName = category;
-			p_CounterName = counter;
-			p_InstanceName = instance;
-			p_ScrapFirst = scrapfirst;
-			InitCounter();
+			Manager.Sensors.Add(this);
 		}
 
 		bool disposed = false;
@@ -81,7 +77,7 @@ namespace Taskmaster
 					Counter.Dispose();
 					try
 					{
-						Manager.Sensors?.Remove(Counter);
+						Manager.Sensors?.Remove(this);
 					}
 					catch { }
 					Counter = null;
@@ -101,7 +97,7 @@ namespace Taskmaster
 				}
 				catch (System.InvalidOperationException)
 				{
-					Manager.Sensors.Remove(Counter);
+					Manager.Sensors?.Remove(this);
 					Counter.Dispose();
 					// TODO: Driver/Adapter vanished and other problems, try to re-acquire it.
 					Debug.WriteLine("DEBUG :: PFC(" + Counter.CategoryName + "//" + Counter.CounterName + "//" + Counter.InstanceName + ") vanished.");
@@ -118,7 +114,7 @@ namespace Taskmaster
 	// Manager for ensuring disposal of sensors
 	internal static class Manager
 	{
-		internal static List<PerformanceCounter> Sensors = new List<PerformanceCounter>(3);
+		internal static List<PerformanceCounterWrapper> Sensors = new List<PerformanceCounterWrapper>(3);
 
 		static Manager()
 		{

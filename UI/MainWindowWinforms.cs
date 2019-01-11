@@ -40,8 +40,6 @@ namespace Taskmaster
 	// [ThreadAffine] // would be nice, but huge dependency pile
 	sealed public class MainWindow : UI.UniForm
 	{
-		Padding DefaultPadding = new Padding(3);
-
 		// constructor
 		public MainWindow()
 		{
@@ -1264,21 +1262,21 @@ namespace Taskmaster
 				if (Taskmaster.AutoOpenMenus) menu_info.ShowDropDown();
 			};
 
-			var infoTab = new TabPage("Info") { Padding = DefaultPadding };
+			var infoTab = new TabPage("Info") { Padding = CustomPadding };
 			tabLayout.Controls.Add(infoTab);
 
-			var watchTab = new TabPage("Watchlist") { Padding = DefaultPadding };
+			var watchTab = new TabPage("Watchlist") { Padding = CustomPadding };
 			tabLayout.Controls.Add(watchTab);
 
 			if (Taskmaster.MicrophoneMonitorEnabled)
 			{
-				micTab = new TabPage("Microphone") { Padding = DefaultPadding };
+				micTab = new TabPage("Microphone") { Padding = CustomPadding };
 				tabLayout.Controls.Add(micTab);
 			}
-			powerDebugTab = new TabPage("Power Debug") { Padding = DefaultPadding };
+			powerDebugTab = new TabPage("Power Debug") { Padding = CustomPadding };
 			if (Taskmaster.DebugPower)
 				tabLayout.Controls.Add(powerDebugTab);
-			ProcessDebugTab = new TabPage("Process Debug") { Padding = DefaultPadding };
+			ProcessDebugTab = new TabPage("Process Debug") { Padding = CustomPadding };
 			ProcessDebugTab_visible = false;
 			if (Taskmaster.DebugProcesses || Taskmaster.DebugForeground)
 			{
@@ -1948,7 +1946,7 @@ namespace Taskmaster
 				TextAlign = System.Drawing.ContentAlignment.MiddleLeft,
 				AutoSize = true,
 				Dock = DockStyle.Left,
-				Padding = DefaultPadding,
+				Padding = CustomPadding,
 			});
 
 			powerbalancerlog = new UI.ListViewEx()
@@ -2042,7 +2040,7 @@ namespace Taskmaster
 				Text = "Exit wait list...",
 				TextAlign = System.Drawing.ContentAlignment.MiddleLeft,
 				Dock = DockStyle.Left,
-				Padding = DefaultPadding
+				Padding = CustomPadding
 			});
 
 			exitwaitlist = new UI.ListViewEx()
