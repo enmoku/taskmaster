@@ -81,7 +81,7 @@ namespace Taskmaster
 					Counter.Dispose();
 					try
 					{
-						Manager.Sensors.Remove(Counter);
+						Manager.Sensors?.Remove(Counter);
 					}
 					catch { }
 					Counter = null;
