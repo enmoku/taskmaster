@@ -1215,7 +1215,7 @@ namespace Taskmaster
 
 					// STARTUP
 
-					var builddate = DateTime.ParseExact(Properties.Resources.BuildDate.Trim(), "yyyy/MM/dd HH:mm:ss K", null, System.Globalization.DateTimeStyles.None);
+					var builddate = BuildDate();
 
 					var now = DateTime.Now;
 					var age = (now - builddate).TotalDays;
@@ -1404,6 +1404,11 @@ namespace Taskmaster
 			}
 
 			return 0;
+		}
+
+		public static DateTime BuildDate()
+		{
+			return DateTime.ParseExact(Properties.Resources.BuildDate.Trim(), "yyyy/MM/dd HH:mm:ss K", null, System.Globalization.DateTimeStyles.None);
 		}
 
 		/// <summary>
