@@ -684,7 +684,6 @@ namespace Taskmaster
 					Log.Warning("<Core> Admin rights detected, user rejected proceeding.");
 					UnifiedExit();
 					throw new RunstateException("Admin rights rejected", Runstate.QuickExit);
-					return;
 				}
 			}
 			// STOP IT
@@ -964,7 +963,6 @@ namespace Taskmaster
 				{
 					UnifiedExit();
 					throw new RunstateException("License not accepted.", Runstate.QuickExit);
-					return;
 				}
 			}
 		}

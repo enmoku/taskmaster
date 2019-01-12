@@ -103,8 +103,6 @@ namespace Taskmaster
 					Debug.WriteLine("DEBUG :: PFC(" + Counter.CategoryName + "//" + Counter.CounterName + "//" + Counter.InstanceName + ") vanished.");
 					throw;
 				}
-
-				return float.NaN;
 			}
 		}
 
