@@ -61,7 +61,7 @@ namespace Taskmaster.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to 19/05/2018 17:45:31.37 
+        ///   Looks up a localized string similar to 2019/01/12 09:54:19 Z 
         ///.
         /// </summary>
         internal static string BuildDate {
@@ -88,6 +88,16 @@ namespace Taskmaster.Properties {
         internal static string LICENSE {
             get {
                 return ResourceManager.GetString("LICENSE", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to C:\Users\Mayflower\Documents\Projects\TaskMaster\Taskmaster\ 
+        ///.
+        /// </summary>
+        internal static string ProjectDirectory {
+            get {
+                return ResourceManager.GetString("ProjectDirectory", resourceCulture);
             }
         }
         
