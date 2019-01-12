@@ -160,10 +160,12 @@ namespace Taskmaster
 				}
 
 				StartDisplayTimer();
+				MonitorOffLastLock.Stop();
 			}
 			else if (ev.Mode == MonitorPowerMode.Off)
 			{
 				StopDisplayTimer();
+				if (SessionLocked) MonitorOffLastLock.Start();
 			}
 		}
 
@@ -788,8 +790,8 @@ namespace Taskmaster
 		public RestoreModeMethod RestoreMethod { get; private set; } = RestoreModeMethod.Default;
 		public PowerMode RestoreMode { get; private set; } = PowerMode.Balanced;
 
-		TimeSpan MonitorOffLastLock = TimeSpan.Zero;
 		Stopwatch SessionLockCounter = new Stopwatch();
+		Stopwatch MonitorOffLastLock = new Stopwatch();
 
 		async void SessionLockEvent(object _, SessionSwitchEventArgs ev)
 		{
@@ -802,13 +804,13 @@ namespace Taskmaster
 					return;
 				case SessionSwitchReason.SessionLock:
 					SessionLocked = true;
-					MonitorOffLastLock = MonitorPowerOffTotal;
+					MonitorOffLastLock.Restart();
 					SessionLockCounter.Restart();
 					// TODO: Pause most of TM's functionality to avoid problems with account swapping
 					break;
 				case SessionSwitchReason.SessionUnlock:
 					SessionLocked = false;
-					MonitorOffLastLock = MonitorPowerOffTotal - MonitorOffLastLock;
+					MonitorOffLastLock.Stop();
 					SessionLockCounter.Stop();
 					break;
 			}
@@ -856,7 +858,7 @@ namespace Taskmaster
 
 				if (SessionLockPowerOff)
 				{
-					var off = MonitorOffLastLock;
+					var off = MonitorOffLastLock.Elapsed;
 					var total = SessionLockCounter.Elapsed;
 					double percentage = off.TotalHours / total.TotalHours;
 					Log.Information("<Session:Unlock> Monitor off time: " + $"{off.TotalHours:N1} / {total.TotalHours:N1} hours ({percentage*100:N1} %)");
@@ -944,8 +946,6 @@ namespace Taskmaster
 					break;
 			}
 		}
-
-		public TimeSpan MonitorPowerOffTotal => MonitorPowerOffCounter.Elapsed;
 
 		Cause ExpectedCause = new Cause(OriginType.None);
 		PowerMode ExpectedMode = PowerMode.Undefined;
