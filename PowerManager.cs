@@ -859,7 +859,7 @@ namespace Taskmaster
 					var off = MonitorOffLastLock;
 					var total = SessionLockCounter.Elapsed;
 					double percentage = off.TotalHours / total.TotalHours;
-					Log.Information("<Session:Unlock> Monitor off time: " + $"{off.TotalHours:N1} / {total.TotalHours:N1} hours ({percentage:N0}%)");
+					Log.Information("<Session:Unlock> Monitor off time: " + $"{off.TotalHours:N1} / {total.TotalHours:N1} hours ({percentage*100:N1} %)");
 				}
 			}
 
@@ -1430,7 +1430,7 @@ namespace Taskmaster
 			IntPtr Broadcast = new IntPtr(NativeMethods.HWND_BROADCAST); // unreliable
 			IntPtr Topmost = new IntPtr(NativeMethods.HWND_TOPMOST);
 
-			uint timeout = 500; // ms per window, we don't really care if they process them
+			uint timeout = 200; // ms per window, we don't really care if they process them
 			var flags = NativeMethods.SendMessageTimeoutFlags.SMTO_ABORTIFHUNG|NativeMethods.SendMessageTimeoutFlags.SMTO_NORMAL|NativeMethods.SendMessageTimeoutFlags.SMTO_NOTIMEOUTIFNOTHUNG;
 
 			//IntPtr hWnd = Handle; // send to self works for this? seems even more unreliable
@@ -1441,15 +1441,7 @@ namespace Taskmaster
 			await Task.Delay(0).ConfigureAwait(false);
 
 			ExpectedMonitorPower = powermode;
-			NativeMethods.SendMessageTimeout(Topmost, NativeMethods.WM_SYSCOMMAND, NativeMethods.SC_MONITORPOWER, NewPowerMode, flags, timeout, out _);
-			/*
-			bool rv = NativeMethods.PostMessage(Broadcast, NativeMethods.WM_SYSCOMMAND, NativeMethods.SC_MONITORPOWER, NewPowerMode);
-			if (!rv)
-			{
-				int errorcode = Marshal.GetLastWin32Error();
-				Log.Error("<P/Invoke> PostMessage error: " + errorcode + (errorcode==5?" [access denied]":string.Empty));
-			}
-			*/
+			NativeMethods.SendMessageTimeout(Broadcast, NativeMethods.WM_SYSCOMMAND, NativeMethods.SC_MONITORPOWER, NewPowerMode, flags, timeout, out _);
 		}
 	}
 }

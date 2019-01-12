@@ -87,7 +87,7 @@ namespace Taskmaster
 				Control.Percent = _volume = value;
 
 				if (Taskmaster.DebugMic)
-					Log.Debug("<Microphone> DEBUG Volume = " + $"{value:N1}%" + " (actual: " + $"{Control.Percent:N1}%)");
+					Log.Debug("<Microphone> DEBUG Volume = " + $"{value:N1} %" + " (actual: " + $"{Control.Percent:N1} %)");
 			}
 		}
 
@@ -174,7 +174,7 @@ namespace Taskmaster
 			}
 			
 			Target = devvol.Constrain(0, 100);
-			Log.Information("<Microphone> Default device: " + m_dev.FriendlyName + " (volume: " + $"{Target:N1}%)");
+			Log.Information("<Microphone> Default device: " + m_dev.FriendlyName + " (volume: " + $"{Target:N1} %)");
 			Volume = Target;
 
 			if (Taskmaster.DebugMic) Log.Information("<Microphone> Component loaded.");
@@ -257,11 +257,11 @@ namespace Taskmaster
 			if (Math.Abs(newVol - Target) <= SmallVolumeHysterisis)
 			{
 				if (Taskmaster.ShowInaction && Taskmaster.DebugMic)
-					Log.Verbose("<Microphone> Volume change too small (" + $"{Math.Abs(newVol - Target):N1}%" + ") to act on.");
+					Log.Verbose("<Microphone> Volume change too small (" + $"{Math.Abs(newVol - Target):N1} %" + ") to act on.");
 				return;
 			}
 
-			if (Taskmaster.Trace) Log.Verbose("<Microphone> Volume changed from " + $"{oldVol:N1}%" + " to " + $"{newVol:N1}%");
+			if (Taskmaster.Trace) Log.Verbose("<Microphone> Volume changed from " + $"{oldVol:N1} %" + " to " + $"{newVol:N1} %");
 
 			// This is a light HYSTERISIS limiter in case someone is sliding a volume bar around,
 			// we act on it only once every [AdjustDelay] ms.

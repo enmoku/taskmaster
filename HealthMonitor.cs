@@ -393,10 +393,10 @@ namespace Taskmaster
 						{
 							double actualgoal = ((MemoryManager.Total * (pressure - 1d)) / 1_048_576);
 							double freegoal = actualgoal + Math.Max(512d, MemoryManager.Total * 0.02 / 1_048_576); // 512 MB or 2% extra to give space for disk cache
-							Debug.WriteLine("Pressure:    " + $"{pressure*100:N1}%");
+							Debug.WriteLine("Pressure:    " + $"{pressure * 100:N1} %");
 							Debug.WriteLine("Actual goal: " + $"{actualgoal:N2}");
 							Debug.WriteLine("Stated goal: " + $"{freegoal:N2}");
-							Log.Warning("<Memory> High pressure ("+$"{pressure*100:N1}%"+"), please close applications to improve performance (suggested goal: "+$"{freegoal:N0}"+" MB).");
+							Log.Warning("<Memory> High pressure (" + $"{pressure * 100:N1} %" + "), please close applications to improve performance (suggested goal: " + $"{freegoal:N0}" + " MB).");
 							// TODO: Could list like ~5 apps that are using most memory here
 							WarnedAboutMemoryPressure = true;
 							LastPressureWarning = now;

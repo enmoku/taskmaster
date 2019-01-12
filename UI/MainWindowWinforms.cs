@@ -1546,7 +1546,7 @@ namespace Taskmaster
 				UItimer.Tick += UpdateRescanCountdown;
 
 			UItimer.Tick += UpdateHWStats;
-			UItimer.Tick += Cleanup;
+			//UItimer.Tick += Cleanup;
 
 			if (Taskmaster.PathCacheLimit > 0)
 			{
@@ -2114,12 +2114,12 @@ namespace Taskmaster
 
 			BeginInvoke(new Action(() =>
 			{
-				gpufan.Text = $"{ea.Data.FanLoad:N0}% {ea.Data.FanSpeed} RPM";
+				gpufan.Text = $"{ea.Data.FanLoad:N0} % {ea.Data.FanSpeed} RPM";
 
 				gputemp.Text = $"{ea.Data.Temperature:N0} C";
-				gpuvram.Text = $"{ea.Data.MemLoad:N1}% {ea.Data.MemTotal / 1024} GB [{ea.Data.MemCtrl:N1}%]";
+				gpuvram.Text = $"{ea.Data.MemLoad:N1} % {ea.Data.MemTotal / 1024} GB [{ea.Data.MemCtrl:N1} %]";
 
-				gpuload.Text = $"{ea.Data.Load:N1}%";
+				gpuload.Text = $"{ea.Data.Load:N1} %";
 			}));
 		}
 
@@ -2358,7 +2358,7 @@ namespace Taskmaster
 			double freegb = (double)MemoryManager.FreeBytes / 1_073_741_824d;
 			double totalgb = (double)MemoryManager.Total / 1_073_741_824d;
 			double usage = 1 - (freegb / totalgb);
-			ramload.Text = $"{freegb:N2} of {totalgb:N1} GB free ({usage * 100d:N1}% usage), {MemoryManager.Pressure * 100:N1} % pressure";
+			ramload.Text = $"{freegb:N2} of {totalgb:N1} GB free ({usage * 100d:N1} % usage), {MemoryManager.Pressure * 100:N1} % pressure";
 
 			// TODO: Print warning if MemoryManager.Pressure > 100%
 
@@ -2391,14 +2391,14 @@ namespace Taskmaster
 					if (unsteady) reactionary = PowerManager.GetModeName(ea.Mode);
 
 					var li = new ListViewItem(new string[] {
-						$"{ea.Current:N2}%",
-						$"{ea.Average:N2}%",
-						$"{ea.High:N2}%",
-						$"{ea.Low:N2}%",
+						$"{ea.Current:N2} %",
+						$"{ea.Average:N2} %",
+						$"{ea.High:N2} %",
+						$"{ea.Low:N2} %",
 						ea.Reaction.ToString(),
 						reactionary,
 						(unsteady ? ea.Enacted.ToString() : HumanReadable.Generic.NotAvailable),
-						(unsteady ? $"{ea.Pressure*100f:N1}%" : HumanReadable.Generic.NotAvailable)
+						(unsteady ? $"{ea.Pressure * 100f:N1} %" : HumanReadable.Generic.NotAvailable)
 					})
 					{
 						UseItemStyleForSubItems = false
