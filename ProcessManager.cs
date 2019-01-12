@@ -1236,8 +1236,7 @@ namespace Taskmaster
 				//case ProcessHandlingState.Unmodified:
 					e.Info.Timer.Stop();
 					ulong time = Convert.ToUInt64(e.Info.Timer.ElapsedMilliseconds);
-					//if (Taskmaster.Trace)
-						Debug.WriteLine("Modify time: " + $"{time} ms");
+					if (Taskmaster.Trace) Debug.WriteLine("Modify time: " + $"{time} ms");
 					Statistics.TouchTime = time;
 					Statistics.TouchTimeLongest = Math.Max(time, Statistics.TouchTimeLongest);
 					Statistics.TouchTimeShortest = Math.Min(time, Statistics.TouchTimeShortest);
