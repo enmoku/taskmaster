@@ -25,6 +25,7 @@
 // THE SOFTWARE.
 
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 
@@ -86,51 +87,48 @@ namespace Taskmaster
 
 	public static class Logging
 	{
-		public static void Log(string text, [CallerFilePath] string file = "", [CallerMemberName] string member = "", [CallerLineNumber] int line = 0)
+		static void AppendStacktace(Exception ex, ref List<string> output)
 		{
-			Debug.WriteLine($"{System.IO.Path.GetFileName(file)}_{member}({line}): {text}");
-		}
-
-		public static void Warn(string text, [CallerFilePath] string file = "", [CallerMemberName] string member = "", [CallerLineNumber] int line = 0)
-		{
-			Serilog.Log.Warning($"{System.IO.Path.GetFileName(file)}_{member}({line}): {text}");
+			var projectdir = Properties.Resources.ProjectDirectory.Trim();
+			var trace = ex.StackTrace.Replace(projectdir, HumanReadable.Generic.Ellipsis + System.IO.Path.DirectorySeparatorChar);
+			output.Add("");
+			output.Add("----- Stacktrace -----");
+			output.Add(trace);
 		}
 
 		public static void Stacktrace(Exception ex, bool crashsafe = false, [CallerMemberName] string method = "")
 		{
 			if (!crashsafe)
 			{
-				Serilog.Log.Fatal($"{ex.GetType().Name} : {ex.Message}{Environment.NewLine}Reported at {method}{Environment.NewLine}{ex.StackTrace}");
+				var projectdir = Properties.Resources.ProjectDirectory.Trim();
+				var trace = ex.StackTrace.Replace(projectdir, HumanReadable.Generic.Ellipsis + System.IO.Path.DirectorySeparatorChar);
+				Serilog.Log.Fatal($"Exception: {ex.GetType().Name} : {ex.Message} – Reported at {method}\n{trace}");
 			}
 			else
 			{
 				try
 				{
 					if (!System.IO.Directory.Exists(Taskmaster.logpath)) System.IO.Directory.CreateDirectory(Taskmaster.logpath);
-					var logfile = System.IO.Path.Combine(Taskmaster.logpath, "crash.log");
+
+					// "crash-{DateTime.Now.ToString("yyyyMMdd-HHmmss")}.log"
+					var logfile = System.IO.Path.Combine(Taskmaster.logpath, $"crash.log");
 
 					var now = DateTime.Now;
-					var logcontents = new System.Collections.Generic.List<string>
+
+					var logcontents = new List<string>
 					{
-						"Date:         " + now.ToLongDateString(),
-						"Time:         " + now.ToLongTimeString(),
+						"Datetime:     " + now.ToLongDateString() + " " + now.ToLongTimeString(),
 						"",
 						"Command line: " + Environment.CommandLine,
 						"",
 						"Exception:    " + ex.GetType().Name,
-						"Message:      " + ex.Message,
-						"Site:         " + method,
-						"",
-						"----- Stacktrace -----",
-						ex.StackTrace
+						"Message:      " + ex.Message
 					};
 
+					AppendStacktace(ex, ref logcontents);
+
 					if (ex.InnerException != null)
-					{
-						logcontents.Add("");
-						logcontents.Add("------ Stacktrace -----");
-						logcontents.Add(ex.InnerException.StackTrace);
-					}
+						AppendStacktace(ex.InnerException, ref logcontents);
 
 					System.IO.File.WriteAllLines(logfile, logcontents, System.Text.Encoding.Unicode);
 					Debug.WriteLine("Crash log written to " + logfile);
