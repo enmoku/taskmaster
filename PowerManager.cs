@@ -1190,7 +1190,7 @@ namespace Taskmaster
 
 				Forced = ForceModeSourcesMap.Count > 0;
 
-				if (Taskmaster.DebugPower)
+				if (Taskmaster.Trace && Taskmaster.DebugPower)
 					Log.Debug("<Power> Released " + (sourcePid == -1 ? "All" : $"#{sourcePid}"));
 
 				Task.Run(async () =>
@@ -1333,7 +1333,7 @@ namespace Taskmaster
 				}
 				else
 				{
-					if (Taskmaster.DebugPower) Log.Debug("<Power> Force power mode for mode that is already active. Ignoring.");
+					if (Taskmaster.Trace && Taskmaster.DebugPower) Log.Debug("<Power> Force power mode for mode that is already active. Ignoring.");
 				}
 			}
 
