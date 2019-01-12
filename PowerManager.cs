@@ -452,7 +452,7 @@ namespace Taskmaster
 				{
 					if (Taskmaster.DebugPower) Log.Debug("<Power> Auto-adjust: " + Reaction.ToString());
 
-					if (AutoAdjustSetMode(ReactionaryPlan, new Cause(OriginType.PowerManager, Reaction.ToString())))
+					if (AutoAdjustSetMode(ReactionaryPlan, new Cause(OriginType.AutoAdjust, Reaction.ToString())))
 					{
 						AutoAdjustCounter++;
 						ev.Enacted = true;
@@ -1329,7 +1329,7 @@ namespace Taskmaster
 				if (rv)
 				{
 					SavedMode = RestoreMethod == RestoreModeMethod.Saved ? CurrentMode : RestoreMode;
-					InternalSetMode(mode, cause: new Cause(OriginType.PowerManager, $"PID:{sourcePid}"), verbose:false);
+					InternalSetMode(mode, cause: new Cause(OriginType.Watchlist, $"PID:{sourcePid}"), verbose:false);
 				}
 				else
 				{

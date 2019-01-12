@@ -30,7 +30,7 @@ namespace Taskmaster
 	{
 		None,
 		Watchlist,
-		PowerManager,
+		AutoAdjust,
 		User,
 		Session
 	}
@@ -55,7 +55,7 @@ namespace Taskmaster
 					return "User Action";
 				case OriginType.Session:
 					return "Session " + Detail;
-				case OriginType.PowerManager:
+				case OriginType.AutoAdjust:
 					return Taskmaster.powermanager.Behaviour.ToString() + ": " + Detail; // ugly, but...
 				case OriginType.Watchlist:
 					return "Rule: " + Detail;
