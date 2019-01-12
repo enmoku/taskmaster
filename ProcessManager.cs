@@ -345,6 +345,8 @@ namespace Taskmaster
 		{
 			var now = DateTimeOffset.UtcNow;
 
+			CleanWaitForExitList(); // HACK
+
 			if (!Atomic.Lock(ref scan_lock)) return;
 
 			LastScan = now;
@@ -843,6 +845,37 @@ namespace Taskmaster
 
 			ProcessStateChange?.Invoke(this, new ProcessEventArgs() { Info = info, State = state });
 
+			CleanWaitForExitList(); // HACK
+		}
+
+		int CleanWaitForExitList_lock = 0;
+		async void CleanWaitForExitList()
+		{
+			if (!Atomic.Lock(ref CleanWaitForExitList_lock)) return;
+
+			await Task.Delay(TimeSpan.FromSeconds(15)).ConfigureAwait(false);
+
+			Task.Run(async () =>
+			{
+				try
+				{
+					foreach (var info in WaitForExitList.Values)
+					{
+						try
+						{
+							if (!info.Process.HasExited) continue; // only reason we keep this
+						}
+						catch { }
+
+						Log.Warning("[" + info.Controller.FriendlyName + "] exited without notice; Cleaning.");
+						WaitForExitTriggered(info);
+					}
+				}
+				finally
+				{
+					Atomic.Unlock(ref CleanWaitForExitList_lock);
+				}
+			}).ConfigureAwait(false);
 		}
 
 		public void PowerBehaviourEvent(object _, PowerManager.PowerBehaviourEventArgs ea)
