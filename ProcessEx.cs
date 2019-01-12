@@ -53,6 +53,11 @@ namespace Taskmaster
 		public Process Process = null;
 
 		/// <summary>
+		/// Controller associated with this process.
+		/// </summary>
+		public ProcessController Controller = null;
+
+		/// <summary>
 		/// Has this Process been handled already?
 		/// </summary>
 		public bool Handled = false;

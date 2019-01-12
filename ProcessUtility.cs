@@ -39,7 +39,7 @@ namespace Taskmaster
 			pathCache = new Cache<int, string, string>(Taskmaster.PathCacheMaxAge, (uint)Taskmaster.PathCacheLimit, (uint)(Taskmaster.PathCacheLimit / 10).Constrain(20, 60));
 		}
 
-		public static ProcessEx GetInfo(int ProcessID, Process process = null, string name = null, string path = null, bool getPath = false)
+		public static ProcessEx GetInfo(int ProcessID, Process process = null, ProcessController controller = null, string name = null, string path = null, bool getPath = false)
 		{
 			try
 			{
@@ -49,6 +49,7 @@ namespace Taskmaster
 				{
 					Id = ProcessID,
 					Process = process,
+					Controller = controller,
 					Name = string.IsNullOrEmpty(name) ? process.ProcessName : name,
 					State = ProcessModification.OK,
 					Path = path,

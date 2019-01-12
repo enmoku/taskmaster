@@ -1542,7 +1542,7 @@ namespace Taskmaster
 				catch { continue; } // access failure or similar, we don't care
 				try
 				{
-					var info = ProcessUtility.GetInfo(pid, process, name, null, getPath: !string.IsNullOrEmpty(Path));
+					var info = ProcessUtility.GetInfo(pid, process, this, name, null, getPath: !string.IsNullOrEmpty(Path));
 					Modify(info);
 				}
 				catch (Exception ex)

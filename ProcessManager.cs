@@ -147,11 +147,13 @@ namespace Taskmaster
 
 		public ProcessController getController(ProcessEx info)
 		{
+			if (info.Controller != null) return info.Controller; // unnecessary, but...
+
 			if (ExeToController.TryGetValue(info.Name.ToLowerInvariant(), out ProcessController rv))
-				return rv;
+				return info.Controller = rv;
 
 			if (!string.IsNullOrEmpty(info.Path))
-				return getWatchedPath(info);
+				return info.Controller = getWatchedPath(info);
 
 			return null;
 		}
@@ -1047,15 +1049,11 @@ namespace Taskmaster
 
 			await Task.Delay(0).ConfigureAwait(false);
 
-			ProcessController matchedprc = null;
-
-			matchedprc = getWatchedPath(info);
-
-			if (matchedprc != null)
+			if ((info.Controller = getWatchedPath(info)) != null)
 			{
 				try
 				{
-					matchedprc.Touch(info);
+					info.Controller.Touch(info);
 				}
 				catch (Exception ex)
 				{
@@ -1066,7 +1064,7 @@ namespace Taskmaster
 				info.Handled = true;
 				info.Modified = DateTimeOffset.UtcNow;
 
-				ForegroundWatch(info, matchedprc); // already called?
+				ForegroundWatch(info); // already called?
 			}
 		}
 
@@ -1205,8 +1203,10 @@ namespace Taskmaster
 		/// <summary>
 		/// Add to foreground watch list if necessary.
 		/// </summary>
-		void ForegroundWatch(ProcessEx info, ProcessController prc)
+		void ForegroundWatch(ProcessEx info)
 		{
+			var prc = info.Controller;
+
 			if (!prc.ForegroundOnly) return;
 
 			var keyexists = false;
@@ -1259,8 +1259,10 @@ namespace Taskmaster
 					return; // ProcessState.AccessDenied;
 				}
 
-				if (ExeToController.TryGetValue(ea.Info.Name.ToLowerInvariant(), out ProcessController prc))
+				if (ExeToController.TryGetValue(ea.Info.Name.ToLowerInvariant(), out var prc))
 				{
+					ea.Info.Controller = prc; // fill
+
 					if (!prc.Enabled)
 					{
 						if (Taskmaster.DebugProcesses)
