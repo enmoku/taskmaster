@@ -49,7 +49,7 @@ namespace Taskmaster
 		public static ulong TouchIgnore { get; set; } = 0;
 
 		public static ulong TouchTimeLongest { get; set; } = 0L;
-		public static ulong TouchTimeShortest { get; set; } = long.MaxValue;
+		public static ulong TouchTimeShortest { get; set; } = ulong.MaxValue;
 
 		public static uint FatalErrors { get; set; } = 0;
 

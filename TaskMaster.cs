@@ -1311,7 +1311,6 @@ namespace Taskmaster
 				Log.Information("<Stat> Path finding: " + Statistics.PathFindAttempts + " total attempts; " + Statistics.PathFindViaModule +
 					" via module info, " + Statistics.PathFindViaC + " via C call, " + Statistics.PathFindViaWMI + " via WMI, " + Statistics.PathNotFound + " not found");
 				Log.Information("<Stat> Processes modified: " + Statistics.TouchCount + "; Ignored for remodification: " + Statistics.TouchIgnore);
-				if (Statistics.TouchTimeShortest == long.MaxValue) 
 				Log.Information("<Stat> Process modify time range: " +
 					(Statistics.TouchTimeShortest == ulong.MaxValue ? "?" : $"{Statistics.TouchTimeShortest}") + " – " +
 					(Statistics.TouchTimeLongest == ulong.MinValue ? "?" : $"{Statistics.TouchTimeLongest}") + " milliseconds");
