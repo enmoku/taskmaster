@@ -12,6 +12,8 @@ Comprehensive changes can be found in Git change history:
 	Fixed: Rule-based power mode changes were not being applied properly.
 	Changed: Exit is not less redundant. Maybe slightly faster as such, too?
 	Added: `Unique crash logs´ option in [Logging] in Core.ini.
+	Added: Programmatically disable WER dialogs for TM.
+		Microsoft does not communicate with me about what WER sends to them, so whyyyy would I want that?
 ### 2018-01-11
 	Added: Monitor power off time and percentage is now shown at end of session unlock.
 ### 2018-01-10
