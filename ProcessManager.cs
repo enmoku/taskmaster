@@ -44,15 +44,13 @@ namespace Taskmaster
 
 	sealed public class InstanceHandlingArgs : EventArgs
 	{
-		public InstanceHandlingArgs(ProcessHandlingState state, ProcessEx info, ProcessController controller)
+		public InstanceHandlingArgs(ProcessHandlingState state, ProcessEx info)
 		{
 			State = state;
 			Info = info;
-			Controller = controller;
 		}
 
 		public ProcessEx Info = null;
-		public ProcessController Controller = null;
 		public ProcessHandlingState State = ProcessHandlingState.Invalid;
 	}
 
@@ -392,7 +390,6 @@ namespace Taskmaster
 				ProcessDetectedEvent?.Invoke(this, new ProcessEventArgs
 				{
 					Info = new ProcessEx() { Process = process, Id = pid, Name = name, Path = null, Timer = timer },
-					Control = null,
 					State = ProcessRunningState.Found,
 				});
 			}
@@ -793,7 +790,7 @@ namespace Taskmaster
 
 		private void ProcessWaitingExitProxy(object _, ProcessEventArgs e)
 		{
-			WaitForExit(e.Info, e.Control);
+			WaitForExit(e.Info);
 		}
 
 		private void ProcessResumedProxy(object _, ProcessEventArgs _ea)
@@ -825,11 +822,13 @@ namespace Taskmaster
 
 		ConcurrentDictionary<int, ProcessEx> WaitForExitList = new ConcurrentDictionary<int, ProcessEx>();
 
-		void WaitForExitTriggered(ProcessEx info, ProcessController controller, ProcessRunningState state = ProcessRunningState.Exiting)
+		void WaitForExitTriggered(ProcessEx info, ProcessRunningState state = ProcessRunningState.Exiting)
 		{
+			Debug.Assert(info.Controller != null, "ProcessController not defined");
+
 			if (Taskmaster.DebugForeground || Taskmaster.DebugPower)
 			{
-				Log.Debug("[" + controller.FriendlyName + "] " + info.Name +
+				Log.Debug("[" + info.Controller.FriendlyName + "] " + info.Name +
 					" (#" + info.Id + ") exited [Power: " + info.PowerWait + ", Active: " + info.ActiveWait + "]");
 			}
 
@@ -840,9 +839,10 @@ namespace Taskmaster
 
 			WaitForExitList.TryRemove(info.Id, out _);
 
-			controller?.End(info);
+			info.Controller?.End(info);
 
-			ProcessStateChange?.Invoke(this, new ProcessEventArgs() { Control = null, Info = info, State = state });
+			ProcessStateChange?.Invoke(this, new ProcessEventArgs() { Info = info, State = state });
+
 		}
 
 		public void PowerBehaviourEvent(object _, PowerManager.PowerBehaviourEventArgs ea)
@@ -883,15 +883,17 @@ namespace Taskmaster
 			if (clearList != null)
 			{
 				while (clearList.Count > 0)
-					WaitForExitTriggered(clearList.Pop(), null, ProcessRunningState.Cancel);
+					WaitForExitTriggered(clearList.Pop(), ProcessRunningState.Cancel);
 			}
 
 			if (cancelled > 0)
 				Log.Information("Cancelled power mode wait on " + cancelled + " process(es).");
 		}
 
-		public void WaitForExit(ProcessEx info, ProcessController controller)
+		public void WaitForExit(ProcessEx info)
 		{
+			Debug.Assert(info.Controller != null);
+
 			if (WaitForExitList.TryAdd(info.Id, info))
 			{
 				bool exithooked = false;
@@ -899,9 +901,12 @@ namespace Taskmaster
 				try
 				{
 					info.Process.EnableRaisingEvents = true;
-					info.Process.Exited += (_, _ea) => WaitForExitTriggered(info, controller);
+					info.Process.Exited += (_, _ea) => WaitForExitTriggered(info);
 					// TODO: Just in case check if it exited while we were doing this.
 					exithooked = true;
+
+					info.Process.Refresh();
+					if (info.Process.HasExited) throw new InvalidOperationException("Exited after we registered for it?");
 				}
 				catch (InvalidOperationException) // already exited
 				{
@@ -914,7 +919,7 @@ namespace Taskmaster
 				}
 
 				if (exithooked)
-					ProcessStateChange?.Invoke(this, new ProcessEventArgs() { Control = null, Info = info, State = ProcessRunningState.Undefined });
+					ProcessStateChange?.Invoke(this, new ProcessEventArgs() { Info = info, State = ProcessRunningState.Undefined });
 			}
 		}
 
@@ -940,7 +945,7 @@ namespace Taskmaster
 						if (PreviousForegroundController.ForegroundOnly)
 							PreviousForegroundController.Pause(PreviousForegroundInfo);
 
-						ProcessStateChange?.Invoke(this, new ProcessEventArgs() { Control = PreviousForegroundController, Info = PreviousForegroundInfo, State = ProcessRunningState.Reduced });
+						ProcessStateChange?.Invoke(this, new ProcessEventArgs() { Info = PreviousForegroundInfo, State = ProcessRunningState.Reduced });
 					}
 				}
 				else
@@ -959,7 +964,7 @@ namespace Taskmaster
 
 					if (prc.ForegroundOnly) prc.Resume(info);
 
-					ProcessStateChange?.Invoke(this, new ProcessEventArgs() { Control = prc, Info = info, State = ProcessRunningState.Restored });
+					ProcessStateChange?.Invoke(this, new ProcessEventArgs() { Info = info, State = ProcessRunningState.Restored });
 
 					PreviousForegroundInfo = info;
 					PreviousForegroundController = prc;
@@ -1046,6 +1051,7 @@ namespace Taskmaster
 		async void CheckPathWatch(ProcessEx info)
 		{
 			Debug.Assert(info.Process != null);
+			Debug.Assert(info.Controller == null, "CheckPathWatch received a process that already was matched");
 
 			await Task.Delay(0).ConfigureAwait(false);
 
@@ -1212,7 +1218,7 @@ namespace Taskmaster
 			var keyexists = false;
 
 			if (ForegroundWaitlist.TryAdd(info.Id, prc))
-				WaitForExit(info, prc);
+				WaitForExit(info);
 			else
 				keyexists = true;
 
@@ -1224,7 +1230,7 @@ namespace Taskmaster
 					Log.Debug("[" + prc.FriendlyName + "] " + info.Name + " (#" + info.Id + ") already in foreground watchlist.");
 			}
 
-			ProcessStateChange?.Invoke(this, new ProcessEventArgs() { Control = prc, Info = info, State = keyexists ? ProcessRunningState.Found : ProcessRunningState.Starting });
+			ProcessStateChange?.Invoke(this, new ProcessEventArgs() { Info = info, State = keyexists ? ProcessRunningState.Found : ProcessRunningState.Starting });
 		}
 
 		async void CollectProcessHandlingStatistics(object _, InstanceHandlingArgs e)
@@ -1249,7 +1255,7 @@ namespace Taskmaster
 		{
 			await Task.Delay(0).ConfigureAwait(false);
 
-			HandlingStateChange?.Invoke(this, new InstanceHandlingArgs(ProcessHandlingState.Triage, ea.Info, ea.Control));
+			HandlingStateChange?.Invoke(this, new InstanceHandlingArgs(ProcessHandlingState.Triage, ea.Info));
 
 			try
 			{
@@ -1284,11 +1290,11 @@ namespace Taskmaster
 						return; // ProcessState.Error;
 					}
 
-					ForegroundWatch(ea.Info, prc);
+					ForegroundWatch(ea.Info);
 					return;
 				}
 
-				if (WatchlistWithPath > 0 && !ea.Info.Handled)
+				if (WatchlistWithPath > 0 && ea.Info.Controller == null)
 				{
 					CheckPathWatch(ea.Info);
 					return;
@@ -1301,7 +1307,7 @@ namespace Taskmaster
 			}
 			finally
 			{
-				HandlingStateChange?.Invoke(this, new InstanceHandlingArgs(ea.Info.State == ProcessModification.Modified ? ProcessHandlingState.Modified : ProcessHandlingState.Unmodified, ea.Info, ea.Control));
+				HandlingStateChange?.Invoke(this, new InstanceHandlingArgs(ea.Info.State == ProcessModification.Modified ? ProcessHandlingState.Modified : ProcessHandlingState.Unmodified, ea.Info));
 			}
 		}
 
@@ -1430,7 +1436,7 @@ namespace Taskmaster
 			}
 			finally
 			{
-				HandlingStateChange?.Invoke(this, new InstanceHandlingArgs(abandoned ? ProcessHandlingState.Abandoned : ProcessHandlingState.Finished, info ?? new ProcessEx { Id = pid, Timer = timer }, null));
+				HandlingStateChange?.Invoke(this, new InstanceHandlingArgs(abandoned ? ProcessHandlingState.Abandoned : ProcessHandlingState.Finished, info ?? new ProcessEx { Id = pid, Timer = timer }));
 
 				SignalProcessHandled(-1); // done with it
 			}
@@ -1496,7 +1502,7 @@ namespace Taskmaster
 					}
 				}
 
-				HandlingStateChange?.Invoke(this, new InstanceHandlingArgs(ProcessHandlingState.Delayed, info, null));
+				HandlingStateChange?.Invoke(this, new InstanceHandlingArgs(ProcessHandlingState.Delayed, info));
 			}
 			else
 			{
@@ -1629,7 +1635,7 @@ namespace Taskmaster
 				if (triggerList != null)
 				{
 					while (triggerList.Count > 0)
-						WaitForExitTriggered(triggerList.Pop(), null); // causes removal so can't be done in above loop
+						WaitForExitTriggered(triggerList.Pop()); // causes removal so can't be done in above loop
 				}
 			}
 			catch (Exception ex)

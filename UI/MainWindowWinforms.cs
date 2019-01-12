@@ -234,22 +234,23 @@ namespace Taskmaster
 
 		readonly string AnyIgnoredValue = string.Empty; // Any/Ignored
 
-		public void ProcessTouchEvent(object _, ProcessEventArgs ev)
+		public void ProcessTouchEvent(object _, ProcessEventArgs ea)
 		{
 			if (!IsHandleCreated) return;
+			var prc = ea.Info.Controller; // cache
 			BeginInvoke(new Action(() =>
 			{
 				adjustcounter.Text = Statistics.TouchCount.ToString();
 
 				try
 				{
-					if (WatchlistMap.TryGetValue(ev.Control, out ListViewItem item))
+					if (WatchlistMap.TryGetValue(prc, out ListViewItem item))
 					{
-						item.SubItems[AdjustColumn].Text = ev.Control.Adjusts.ToString();
-						// item.SubItems[SeenColumn].Text = e.Control.LastSeen.ToLocalTime().ToString();
+						item.SubItems[AdjustColumn].Text = prc.Adjusts.ToString();
+						// item.SubItems[SeenColumn].Text = prc.LastSeen.ToLocalTime().ToString();
 					}
 					else
-						Log.Error(ev.Control.FriendlyName + " not found in UI watchlist list.");
+						Log.Error(prc.FriendlyName + " not found in UI watchlist list.");
 				}
 				catch (Exception ex) { Logging.Stacktrace(ex); }
 
@@ -261,11 +262,11 @@ namespace Taskmaster
 					{
 						var mi = new ListViewItem(new string[] {
 							DateTime.Now.ToLongTimeString(),
-							ev.Info.Name,
-							ev.Control.FriendlyName,
-							(ev.PriorityNew.HasValue ? MKAh.Readable.ProcessPriority(ev.PriorityNew.Value) : HumanReadable.Generic.NotAvailable),
-							(ev.AffinityNew >= 0 ? HumanInterface.BitMask(ev.AffinityNew, ProcessManager.CPUCount) : HumanReadable.Generic.NotAvailable),
-							ev.Info.Path
+							ea.Info.Name,
+							prc.FriendlyName,
+							(ea.PriorityNew.HasValue ? MKAh.Readable.ProcessPriority(ea.PriorityNew.Value) : HumanReadable.Generic.NotAvailable),
+							(ea.AffinityNew >= 0 ? HumanInterface.BitMask(ea.AffinityNew, ProcessManager.CPUCount) : HumanReadable.Generic.NotAvailable),
+							ea.Info.Path
 						});
 						lastmodifylist.Items.Add(mi);
 						if (lastmodifylist.Items.Count > 5) lastmodifylist.Items.RemoveAt(0);
@@ -330,7 +331,7 @@ namespace Taskmaster
 			processmanager.ProcessModified += ProcessTouchEvent;
 
 			foreach (var bu in processmanager.getExitWaitList())
-				ExitWaitListHandler(this, new ProcessEventArgs() { Control = null, State = ProcessRunningState.Found, Info = bu });
+				ExitWaitListHandler(this, new ProcessEventArgs() { State = ProcessRunningState.Found, Info = bu });
 		}
 
 		void ProcessNewInstanceCount(object _, InstanceEventArgs e)

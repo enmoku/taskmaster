@@ -529,6 +529,7 @@ namespace Taskmaster
 		public void Pause(ProcessEx info, bool firsttime = false)
 		{
 			Debug.Assert(ForegroundOnly == true, "Pause called for non-foreground only rule");
+			Debug.Assert(info.Controller != null);
 			//Debug.Assert(!PausedIds.ContainsKey(info.Id));
 
 			if (!PausedIds.TryAdd(info.Id, 0))
@@ -598,7 +599,6 @@ namespace Taskmaster
 					AffinityNew = mAffinity ? BackgroundAffinity : -1,
 					AffinityOld = oldAffinity,
 					Info = info,
-					Control = this,
 					State = ProcessRunningState.Reduced,
 				};
 
@@ -611,7 +611,7 @@ namespace Taskmaster
 
 			info.State = ProcessModification.Paused;
 
-			Paused?.Invoke(this, new ProcessEventArgs() { Control = this, Info = info, State = ProcessRunningState.Reduced });
+			Paused?.Invoke(this, new ProcessEventArgs() { Info = info, State = ProcessRunningState.Reduced });
 		}
 
 		void LogAdjust(ProcessEventArgs ev)
@@ -670,6 +670,7 @@ namespace Taskmaster
 		public void Resume(ProcessEx info)
 		{
 			Debug.Assert(ForegroundOnly == true);
+			Debug.Assert(info.Controller != null);
 
 			bool mAffinity = false, mPriority = false;
 			ProcessPriorityClass oldPriority = ProcessPriorityClass.RealTime;
@@ -728,7 +729,6 @@ namespace Taskmaster
 					AffinityNew = mAffinity ? newAffinity : -1,
 					AffinityOld = oldAffinity,
 					Info = info,
-					Control = this,
 					State = ProcessRunningState.Reduced,
 				};
 
@@ -757,7 +757,7 @@ namespace Taskmaster
 
 			PausedIds.TryRemove(info.Id, out _);
 
-			Resumed?.Invoke(this, new ProcessEventArgs() { Control = this, Info = info, State = ProcessRunningState.Restored });
+			Resumed?.Invoke(this, new ProcessEventArgs() { Info = info, State = ProcessRunningState.Restored });
 		}
 
 		/// <summary>
@@ -791,10 +791,11 @@ namespace Taskmaster
 		{
 			Debug.Assert(Taskmaster.PowerManagerEnabled);
 			Debug.Assert(PowerPlan != PowerInfo.PowerMode.Undefined);
+			Debug.Assert(info.Controller != null);
 
 			info.PowerWait = true;
 			PowerList.TryAdd(info.Id, 0);
-			var ea = new ProcessEventArgs() { Info = info, Control = this, State = ProcessRunningState.Undefined };
+			var ea = new ProcessEventArgs() { Info = info, State = ProcessRunningState.Undefined };
 
 			bool rv = Taskmaster.powermanager.Force(PowerPlan, info.Id);
 			WaitingExit?.Invoke(this, ea);
@@ -930,6 +931,7 @@ namespace Taskmaster
 			Debug.Assert(info.Process != null, "ProcessController.Touch given null process.");
 			Debug.Assert(!ProcessManager.SystemProcessId(info.Id), "ProcessController.Touch given invalid process ID");
 			Debug.Assert(!string.IsNullOrEmpty(info.Name), "ProcessController.Touch given empty process name.");
+			Debug.Assert(info.Controller != null);
 
 			bool foreground = true;
 
@@ -1236,7 +1238,6 @@ namespace Taskmaster
 				PriorityOld = oldPriority,
 				AffinityNew = newAffinityMask,
 				AffinityOld = oldAffinityMask,
-				Control = this,
 				Info = info,
 				State = ProcessRunningState.Found,
 				PriorityFail = fPriority,

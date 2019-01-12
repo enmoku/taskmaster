@@ -31,7 +31,6 @@ namespace Taskmaster
 {
 	sealed public class ProcessEventArgs : EventArgs
 	{
-		public ProcessController Control { get; set; } = null;
 		public ProcessEx Info = null;
 		public ProcessRunningState State = ProcessRunningState.Undefined;
 
