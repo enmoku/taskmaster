@@ -579,7 +579,7 @@ namespace Taskmaster
 					if (BackgroundPowerdown)
 					{
 						if (Taskmaster.DebugPower)
-							Log.Debug("[" + FriendlyName + "] " + info.Name + " (#" + info.Id + ") background power down");
+							Log.Debug("[" + FriendlyName + "] " + info.Name + " (#" + info.Id + ") power down");
 
 						UndoPower(info);
 					}

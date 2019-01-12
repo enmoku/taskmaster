@@ -1215,7 +1215,7 @@ namespace Taskmaster
 			{
 				// TODO: Restore Powerdown delay functionality here.
 
-				if (Taskmaster.DebugPower) Log.Debug("<Power> No power locks left.");
+				if (Taskmaster.Trace && Taskmaster.DebugPower) Log.Debug("<Power> No power locks left.");
 
 				Restore();
 			}
@@ -1234,8 +1234,6 @@ namespace Taskmaster
 				return;
 			}
 
-			if (Taskmaster.DebugPower) Log.Debug("<Power> Restoring power mode!");
-
 			lock (power_lock)
 			{
 				if (RestoreMethod == RestoreModeMethod.Saved)
@@ -1249,8 +1247,14 @@ namespace Taskmaster
 				{
 					// if (Behaviour == PowerBehaviour.Auto) return; // this is very optimistic
 
+					if (Taskmaster.DebugPower) Log.Debug("<Power> Restoring power mode: " + SavedMode.ToString());
+
 					InternalSetMode(SavedMode, new Cause(OriginType.None, "Restoration"), verbose:false);
 					SavedMode = PowerMode.Undefined;
+				}
+				else
+				{
+					if (Taskmaster.DebugPower) Log.Debug("<Power> Power restoration cancelled, target mode is same as current.");
 				}
 			}
 		}
