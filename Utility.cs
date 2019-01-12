@@ -110,8 +110,8 @@ namespace Taskmaster
 				{
 					if (!System.IO.Directory.Exists(Taskmaster.logpath)) System.IO.Directory.CreateDirectory(Taskmaster.logpath);
 
-					// "crash-{DateTime.Now.ToString("yyyyMMdd-HHmmss")}.log"
-					var logfile = System.IO.Path.Combine(Taskmaster.logpath, $"crash.log");
+					string logfilename = Taskmaster.UniqueCrashLogs ? $"crash-{DateTime.Now.ToString("yyyyMMdd-HHmmss-fff")}.log" : "crash.log";
+					var logfile = System.IO.Path.Combine(Taskmaster.logpath, logfilename);
 
 					var now = DateTime.Now;
 

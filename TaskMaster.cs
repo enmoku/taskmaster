@@ -445,6 +445,7 @@ namespace Taskmaster
 		public static bool DebugMic { get; set; } = false;
 
 		public static bool Trace { get; set; } = false;
+		public static bool UniqueCrashLogs { get; set; } = false;
 		public static bool ShowInaction { get; set; } = false;
 
 		public static bool ProcessMonitorEnabled { get; private set; } = true;
@@ -601,6 +602,10 @@ namespace Taskmaster
 					break;
 				#endif
 			}
+			dirtyconfig |= modified;
+
+			UniqueCrashLogs = logsec.GetSetDefault("Unique crash logs", false, out modified).BoolValue;
+			logsec["Unique crash logs"].Comment = "On crash instead of creating crash.log in Logs, create crash-YYYYMMDD-HHMMSS-FFF.log instead. These are not cleaned out automatically!";
 			dirtyconfig |= modified;
 
 			ShowInaction = logsec.GetSetDefault("Show inaction", false, out modified).BoolValue;
