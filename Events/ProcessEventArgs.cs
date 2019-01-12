@@ -1,10 +1,10 @@
 ﻿//
-// HiddenWindow.cs
+// ProcessEventArgs.cs
 //
 // Author:
 //       M.A. (https://github.com/mkahvi)
 //
-// Copyright (c) 2018 M.A.
+// Copyright (c) 2018–2019 M.A.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -24,16 +24,29 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
+using System;
 using System.Diagnostics;
 
-namespace Taskmaster.OS
+namespace Taskmaster
 {
-	public class HiddenWindow : UI.UniForm
+	sealed public class ProcessEventArgs : EventArgs
 	{
-		public HiddenWindow()
-		{
-			Taskmaster.DisposalChute.Push(this);
-			if (Taskmaster.Trace) Debug.WriteLine("HiddenWindow initialized");
-		}
+		public ProcessController Control { get; set; } = null;
+		public ProcessEx Info = null;
+		public ProcessRunningState State = ProcessRunningState.Undefined;
+
+		public ProcessPriorityClass? PriorityNew = null;
+		public ProcessPriorityClass? PriorityOld = null;
+		public int AffinityNew = -1;
+		public int AffinityOld = -1;
+
+		public bool Protected = false;
+		public bool AffinityFail = false;
+		public bool PriorityFail = false;
+
+		/// <summary>
+		/// Text for end-users.
+		/// </summary>
+		public System.Text.StringBuilder User = null;
 	}
 }

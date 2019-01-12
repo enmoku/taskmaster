@@ -1033,7 +1033,6 @@ namespace Taskmaster
 					if (Taskmaster.DebugPaths)
 						Log.Verbose("[" + prc.FriendlyName + "] (CheckPathWatch) Matched at: " + info.Path);
 
-					info.PathMatched = true;
 					matchedprc = prc;
 					break;
 				}
@@ -1230,13 +1229,19 @@ namespace Taskmaster
 
 		async void CollectProcessHandlingStatistics(object _, InstanceHandlingArgs e)
 		{
-			if (e.State == ProcessHandlingState.Finished)
+			switch (e.State)
 			{
-				e.Info.Timer.Stop();
-				ulong time = Convert.ToUInt64(e.Info.Timer.ElapsedMilliseconds);
-				if (Taskmaster.Trace) Debug.WriteLine("Modify time: " + $"{time} ms");
-				Statistics.TouchTimeLongest = Math.Max(time, Statistics.TouchTimeLongest);
-				Statistics.TouchTimeShortest = Math.Min(time, Statistics.TouchTimeShortest);
+				case ProcessHandlingState.Finished:
+				case ProcessHandlingState.Modified:
+				//case ProcessHandlingState.Unmodified:
+					e.Info.Timer.Stop();
+					ulong time = Convert.ToUInt64(e.Info.Timer.ElapsedMilliseconds);
+					//if (Taskmaster.Trace)
+						Debug.WriteLine("Modify time: " + $"{time} ms");
+					Statistics.TouchTime = time;
+					Statistics.TouchTimeLongest = Math.Max(time, Statistics.TouchTimeLongest);
+					Statistics.TouchTimeShortest = Math.Min(time, Statistics.TouchTimeShortest);
+					break;
 			}
 		}
 
@@ -1721,27 +1726,6 @@ namespace Taskmaster
 
 			foreach (ProcessController prc in Watchlist.Keys)
 				prc.SaveStats();
-		}
-	}
-
-	sealed public class PowerEventArgs : ProcessorEventArgs
-	{
-		public PowerInfo.PowerMode Mode = PowerInfo.PowerMode.Undefined;
-		public PowerManager.PowerReaction Reaction = PowerManager.PowerReaction.Steady;
-
-		public float Pressure = 0F;
-
-		public bool Enacted = false;
-
-		public static PowerEventArgs From(ProcessorEventArgs ea)
-		{
-			return new PowerEventArgs
-			{
-				Current = ea.Current,
-				Average = ea.Average,
-				High = ea.High,
-				Low = ea.Low
-			};
 		}
 	}
 }

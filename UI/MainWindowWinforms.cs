@@ -25,7 +25,6 @@
 // THE SOFTWARE.
 
 using System;
-using System.Collections;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -474,25 +473,6 @@ namespace Taskmaster
 			}
 		}
 
-		public void WatchlistPathLocatedEvent(object controller, PathControlEventArgs e)
-		{
-			if (!IsHandleCreated) return;
-			Debug.Assert(controller != null);
-
-			var pc = (ProcessController)controller;
-			if (WatchlistMap.TryGetValue(pc, out ListViewItem li))
-			{
-				BeginInvoke(new Action(() =>
-				{
-					WatchlistRules.BeginUpdate();
-
-					WatchlistItemColor(li, pc);
-
-					WatchlistRules.EndUpdate();
-				}));
-			}
-		}
-
 		Label AudioInputDevice;
 		Extensions.NumericUpDownEx AudioInputVolume;
 		ListView AudioInputs;
@@ -598,7 +578,14 @@ namespace Taskmaster
 		{
 			if (!IsHandleCreated) return;
 
+			// Rescan Countdown
 			processingtimer.Text = $"{DateTimeOffset.UtcNow.TimeTo(ProcessManager.NextScan).TotalSeconds:N0}s";
+
+			// Modify Latency
+			ulong min = Statistics.TouchTimeShortest;
+			ulong cur = Statistics.TouchTime;
+			ulong max = Statistics.TouchTimeLongest;
+			modifylatency.Text = (min == ulong.MaxValue ? "?" : min.ToString()) + $"–{cur}–{max} ms";
 		}
 
 		void UpdateUptime(object _, EventArgs _ea)
@@ -2245,6 +2232,7 @@ namespace Taskmaster
 		StatusStrip statusbar;
 		ToolStripStatusLabel processingcount;
 		ToolStripStatusLabel processingtimer;
+		ToolStripStatusLabel modifylatency;
 		ToolStripStatusLabel verbositylevel;
 		ToolStripStatusLabel adjustcounter;
 
@@ -2263,8 +2251,10 @@ namespace Taskmaster
 			statusbar.Items.Add("Next scan in:");
 			processingtimer = new ToolStripStatusLabel("["+ HumanReadable.Generic.Uninitialized + "]") { AutoSize = false };
 			statusbar.Items.Add(processingtimer);
-			var spacer = new ToolStripStatusLabel() { Alignment = ToolStripItemAlignment.Right, Width=-2, Spring=true };
-			statusbar.Items.Add(spacer);
+			statusbar.Items.Add("Latency:");
+			modifylatency = new ToolStripStatusLabel("[" + HumanReadable.Generic.Uninitialized + "]") { AutoSize = true };
+			statusbar.Items.Add(modifylatency);
+			statusbar.Items.Add(new ToolStripStatusLabel() { Alignment = ToolStripItemAlignment.Right, Width = -2, Spring = true });
 			statusbar.Items.Add(new ToolStripStatusLabel("Verbosity:"));
 			verbositylevel = new ToolStripStatusLabel(HumanReadable.Generic.Uninitialized);
 			statusbar.Items.Add(verbositylevel);
@@ -3105,39 +3095,6 @@ namespace Taskmaster
 			}
 
 			disposed = true;
-		}
-	}
-
-	sealed public class WatchlistSorter : IComparer
-	{
-		public int Column { get; set; } = 0;
-		public SortOrder Order { get; set; } = SortOrder.Ascending;
-		public bool Number { get; set; } = false;
-
-		readonly CaseInsensitiveComparer Comparer = new CaseInsensitiveComparer();
-
-		readonly int[] NumberColumns = new int[] { };
-
-		public WatchlistSorter(int[] numberColumns = null)
-		{
-			if (numberColumns != null)
-				NumberColumns = numberColumns;
-		}
-
-		public int Compare(object x, object y)
-		{
-			var lix = (ListViewItem)x;
-			var liy = (ListViewItem)y;
-			var result = 0;
-
-			Number = NumberColumns.Any(item => item == Column);
-
-			if (!Number)
-				result = Comparer.Compare(lix.SubItems[Column].Text, liy.SubItems[Column].Text);
-			else
-				result = Comparer.Compare(Convert.ToInt64(lix.SubItems[Column].Text), Convert.ToInt64(liy.SubItems[Column].Text));
-
-			return Order == SortOrder.Ascending ? result : -result;
 		}
 	}
 }

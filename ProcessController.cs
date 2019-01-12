@@ -950,12 +950,6 @@ namespace Taskmaster
 
 			await Task.Delay(refresh ? 0 : ModifyDelay).ConfigureAwait(false);
 
-			if (info.NeedsRefresh || ModifyDelay > 0)
-			{
-				info.Process.Refresh();
-				info.NeedsRefresh = false;
-			}
-
 			bool responding = true;
 			ProcessPriorityClass? oldPriority = null;
 			IntPtr? oldAffinity = null;
@@ -967,6 +961,8 @@ namespace Taskmaster
 
 			try
 			{
+				if (ModifyDelay > 0) info.Process.Refresh();
+
 				responding = info.Process.Responding;
 
 				if (info.Process.HasExited)
@@ -1266,11 +1262,7 @@ namespace Taskmaster
 
 			if (modified) Modified?.Invoke(this, ev);
 
-			if (Recheck > 0)
-			{
-				info.NeedsRefresh = true;
-				TouchReapply(info);
-			}
+			if (Recheck > 0) TouchReapply(info);
 
 			if (Taskmaster.WindowResizeEnabled && Resize.HasValue) TryResize(info);
 
@@ -1479,6 +1471,7 @@ namespace Taskmaster
 
 			try
 			{
+				info.Process.Refresh();
 				if (info.Process.HasExited)
 				{
 					if (Taskmaster.Trace) Log.Verbose("[" + FriendlyName + "] " + info.Name + " (#" + info.Id + ") is gone yo.");
@@ -1600,31 +1593,6 @@ namespace Taskmaster
 
 			disposed = true;
 		}
-	}
-
-	sealed public class PathControlEventArgs : EventArgs
-	{
-	}
-
-	sealed public class ProcessEventArgs : EventArgs
-	{
-		public ProcessController Control { get; set; } = null;
-		public ProcessEx Info = null;
-		public ProcessRunningState State = ProcessRunningState.Undefined;
-
-		public ProcessPriorityClass? PriorityNew = null;
-		public ProcessPriorityClass? PriorityOld = null;
-		public int AffinityNew = -1;
-		public int AffinityOld = -1;
-
-		public bool Protected = false;
-		public bool AffinityFail = false;
-		public bool PriorityFail = false;
-
-		/// <summary>
-		/// Text for end-users.
-		/// </summary>
-		public System.Text.StringBuilder User = null;
 	}
 
 	sealed public class RecentlyModifiedInfo

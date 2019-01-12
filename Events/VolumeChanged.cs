@@ -1,10 +1,10 @@
 ﻿//
-// HiddenWindow.cs
+// VolumeChanged.cs
 //
 // Author:
 //       M.A. (https://github.com/mkahvi)
 //
-// Copyright (c) 2018 M.A.
+// Copyright (c) 2016-2019 M.A.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -24,16 +24,14 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-using System.Diagnostics;
+using System;
 
-namespace Taskmaster.OS
+namespace Taskmaster
 {
-	public class HiddenWindow : UI.UniForm
+	sealed public class VolumeChangedEventArgs : EventArgs
 	{
-		public HiddenWindow()
-		{
-			Taskmaster.DisposalChute.Push(this);
-			if (Taskmaster.Trace) Debug.WriteLine("HiddenWindow initialized");
-		}
+		public double Old { get; set; }
+		public double New { get; set; }
+		public int Corrections { get; set; }
 	}
 }

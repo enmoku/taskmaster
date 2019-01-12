@@ -178,11 +178,6 @@ namespace Taskmaster
 		Both = 3
 	}
 
-	public static class ProcessStateExtensions
-	{
-		public static bool OK(this ProcessModification ps) => (ps != ProcessModification.Invalid);
-	}
-
 	public static class ProcessHelpers
 	{
 		/// <summary>

@@ -1,10 +1,10 @@
 ﻿//
-// HiddenWindow.cs
+// WatchlistSorter.cs
 //
 // Author:
 //       M.A. (https://github.com/mkahvi)
 //
-// Copyright (c) 2018 M.A.
+// Copyright (c) 2018–2019 M.A.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -24,16 +24,43 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-using System.Diagnostics;
+using System;
+using System.Collections;
+using System.Linq;
+using System.Windows.Forms;
 
-namespace Taskmaster.OS
+namespace Taskmaster
 {
-	public class HiddenWindow : UI.UniForm
+	sealed public class WatchlistSorter : IComparer
 	{
-		public HiddenWindow()
+		public int Column { get; set; } = 0;
+		public SortOrder Order { get; set; } = SortOrder.Ascending;
+		public bool Number { get; set; } = false;
+
+		readonly CaseInsensitiveComparer Comparer = new CaseInsensitiveComparer();
+
+		readonly int[] NumberColumns = new int[] { };
+
+		public WatchlistSorter(int[] numberColumns = null)
 		{
-			Taskmaster.DisposalChute.Push(this);
-			if (Taskmaster.Trace) Debug.WriteLine("HiddenWindow initialized");
+			if (numberColumns != null)
+				NumberColumns = numberColumns;
+		}
+
+		public int Compare(object x, object y)
+		{
+			var lix = (ListViewItem)x;
+			var liy = (ListViewItem)y;
+			var result = 0;
+
+			Number = NumberColumns.Any(item => item == Column);
+
+			if (!Number)
+				result = Comparer.Compare(lix.SubItems[Column].Text, liy.SubItems[Column].Text);
+			else
+				result = Comparer.Compare(Convert.ToInt64(lix.SubItems[Column].Text), Convert.ToInt64(liy.SubItems[Column].Text));
+
+			return Order == SortOrder.Ascending ? result : -result;
 		}
 	}
 }

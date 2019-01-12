@@ -36,18 +36,6 @@ using Serilog;
 
 namespace Taskmaster
 {
-	public class NetworkStatus : EventArgs
-	{
-		public bool Available = false;
-		public DateTimeOffset Start = DateTimeOffset.MinValue;
-		public TimeSpan Uptime = TimeSpan.MinValue;
-	}
-
-	sealed public class InternetStatus : NetworkStatus
-	{
-		public bool IPChanged = false;
-	}
-
 	sealed public class NetManager : IDisposable
 	{
 		public event EventHandler<InternetStatus> InternetStatusChange;

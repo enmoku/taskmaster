@@ -48,6 +48,7 @@ namespace Taskmaster
 		public static ulong TouchCount { get; set; } = 0;
 		public static ulong TouchIgnore { get; set; } = 0;
 
+		public static ulong TouchTime { get; set; } = 50L; // double the expected average
 		public static ulong TouchTimeLongest { get; set; } = 0L;
 		public static ulong TouchTimeShortest { get; set; } = ulong.MaxValue;
 

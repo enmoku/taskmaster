@@ -25,15 +25,11 @@
 // THE SOFTWARE.
 
 using System;
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Taskmaster
 {
-	sealed public class ProcessEx : IDisposable
+	sealed public class ProcessEx
 	{
 		/// <summary>
 		/// Process filename without extension
@@ -55,49 +51,16 @@ namespace Taskmaster
 		/// Process reference.
 		/// </summary>
 		public Process Process = null;
-		/// <summary>
-		/// .Process.Refresh() should be called for this if the Process needs to be accessed.
-		/// </summary>
-		public bool NeedsRefresh = false;
 
 		/// <summary>
 		/// Has this Process been handled already?
 		/// </summary>
 		public bool Handled = false;
-		/// <summary>
-		/// Path was matched with a rule.
-		/// </summary>
-		public bool PathMatched = false;
 
 		public bool PowerWait = false;
 		public bool ActiveWait = false;
 
 		public DateTimeOffset Modified = DateTimeOffset.MinValue;
 		public ProcessModification State = ProcessModification.Invalid;
-
-		#region IDisposable Support
-		private bool disposed = false; // To detect redundant calls
-
-		void Dispose(bool disposing)
-		{
-			if (!disposed)
-			{
-				if (disposing)
-				{
-					Process?.Dispose();
-					Process = null;
-					Timer?.Stop();
-					Timer = null;
-				}
-
-				disposed = true;
-			}
-		}
-
-		public void Dispose()
-		{
-			Dispose(true);
-		}
-		#endregion
 	}
 }

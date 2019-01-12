@@ -133,7 +133,5 @@ namespace Taskmaster
 			Dispose(true);
 		}
 		#endregion
-
-
 	}
 }

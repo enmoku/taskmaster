@@ -32,13 +32,6 @@ using Serilog;
 
 namespace Taskmaster
 {
-	sealed public class VolumeChangedEventArgs : EventArgs
-	{
-		public double Old { get; set; }
-		public double New { get; set; }
-		public int Corrections { get; set; }
-	}
-
 	sealed public class MicManager : IDisposable
 	{
 		public event EventHandler<VolumeChangedEventArgs> VolumeChanged;
@@ -182,39 +175,6 @@ namespace Taskmaster
 			Taskmaster.DisposalChute.Push(this);
 		}
 
-		bool disposed; // false
-		public void Dispose()
-		{
-			Dispose(true);
-		}
-
-		void Dispose(bool disposing)
-		{
-			if (disposed) return;
-
-			if (disposing)
-			{
-				if (Taskmaster.Trace) Log.Verbose("Disposing microphone monitor...");
-
-				VolumeChanged = null;
-
-				if (m_dev != null)
-				{
-					m_dev.AudioEndpointVolume.OnVolumeNotification -= VolumeChangedHandler;
-					m_dev = null;
-				}
-
-				if (micstatsdirty)
-				{
-					var stats = Taskmaster.Config.Load(statfile);
-					stats.Config["Statistics"]["Corrections"].IntValue = Corrections;
-					stats.Save(force:true);
-				}
-			}
-
-			disposed = true;
-		}
-
 		/// <summary>
 		/// Enumerate this instance.
 		/// </summary>
@@ -302,6 +262,39 @@ namespace Taskmaster
 			{
 				if (Taskmaster.Trace) Log.Verbose("<Microphone> DEBUG NotCorrected");
 			}
+		}
+
+		bool disposed; // false
+		public void Dispose()
+		{
+			Dispose(true);
+		}
+
+		void Dispose(bool disposing)
+		{
+			if (disposed) return;
+
+			if (disposing)
+			{
+				if (Taskmaster.Trace) Log.Verbose("Disposing microphone monitor...");
+
+				VolumeChanged = null;
+
+				if (m_dev != null)
+				{
+					m_dev.AudioEndpointVolume.OnVolumeNotification -= VolumeChangedHandler;
+					m_dev = null;
+				}
+
+				if (micstatsdirty)
+				{
+					var stats = Taskmaster.Config.Load(statfile);
+					stats.Config["Statistics"]["Corrections"].IntValue = Corrections;
+					stats.Save(force: true);
+				}
+			}
+
+			disposed = true;
 		}
 	}
 }
