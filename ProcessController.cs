@@ -277,10 +277,7 @@ namespace Taskmaster
 			ForegroundWatch.TryRemove(info.Id, out _);
 			PausedIds.TryRemove(info.Id, out _);
 
-			if (info.PowerWait)
-				Taskmaster.powermanager.Release(info.Id);
-
-			PowerList.TryRemove(info.Id, out _);
+			UndoPower(info);
 		}
 
 		/// <summary>
@@ -289,18 +286,13 @@ namespace Taskmaster
 		public void Refresh()
 		{
 			//TODO: Update power
-			if (PowerList != null)
-			{
-				foreach (int pid in PowerList.Keys.ToArray())
-				{
-					PowerList.TryRemove(pid, out _);
-					Taskmaster.powermanager?.Release(pid);
-				}
-			}
+			foreach (var info in PowerList.Values)
+				Taskmaster.powermanager?.Release(info.Id);
+
+			PowerList?.Clear();
 
 			ForegroundWatch?.Clear();
 			PausedIds?.Clear();
-			PowerList?.Clear();
 
 			RecentlyModified?.Clear();
 		}
@@ -515,7 +507,7 @@ namespace Taskmaster
 
 		// The following should be combined somehow?
 		ConcurrentDictionary<int, int> PausedIds = new ConcurrentDictionary<int, int>(); // HACK: There's no ConcurrentHashSet
-		ConcurrentDictionary<int, int> PowerList = new ConcurrentDictionary<int, int>(); // HACK
+		ConcurrentDictionary<int, ProcessEx> PowerList = new ConcurrentDictionary<int, ProcessEx>(); // HACK
 		ConcurrentDictionary<int, int> ForegroundWatch = new ConcurrentDictionary<int, int>(); // HACK
 		ConcurrentDictionary<int, RecentlyModifiedInfo> RecentlyModified = new ConcurrentDictionary<int, RecentlyModifiedInfo>();
 
@@ -794,7 +786,7 @@ namespace Taskmaster
 			Debug.Assert(info.Controller != null);
 
 			info.PowerWait = true;
-			PowerList.TryAdd(info.Id, 0);
+			PowerList.TryAdd(info.Id, info);
 			var ea = new ProcessEventArgs() { Info = info, State = ProcessRunningState.Undefined };
 
 			bool rv = Taskmaster.powermanager.Force(PowerPlan, info.Id);
@@ -804,8 +796,10 @@ namespace Taskmaster
 
 		void UndoPower(ProcessEx info)
 		{
-			PowerList.TryRemove(info.Id, out _);
-			Taskmaster.powermanager?.Release(info.Id);
+			if (PowerList.TryRemove(info.Id, out _))
+			{
+				Taskmaster.powermanager?.Release(info.Id);
+			}
 		}
 
 		/*
@@ -925,6 +919,9 @@ namespace Taskmaster
 			return path.StartsWith(Path, StringComparison.InvariantCultureIgnoreCase);
 		}
 
+		[System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
+		bool InForeground(int pid) => ForegroundOnly ? Taskmaster.activeappmonitor?.Foreground.Equals(pid) ?? true : true;
+
 		// TODO: Simplify this
 		public async void Touch(ProcessEx info, bool refresh = false)
 		{
@@ -932,8 +929,6 @@ namespace Taskmaster
 			Debug.Assert(!ProcessManager.SystemProcessId(info.Id), "ProcessController.Touch given invalid process ID");
 			Debug.Assert(!string.IsNullOrEmpty(info.Name), "ProcessController.Touch given empty process name.");
 			Debug.Assert(info.Controller != null);
-
-			bool foreground = true;
 
 			if (ForegroundOnly)
 			{
@@ -943,8 +938,6 @@ namespace Taskmaster
 						Log.Debug("<Foreground> " + FormatPathName(info) + " (#" + info.Id + ") in background, ignoring.");
 					return; // don't touch paused item
 				}
-
-				foreground = Taskmaster.activeappmonitor?.Foreground.Equals(info.Id) ?? true;
 			}
 
 			info.PowerWait = (PowerPlan != PowerInfo.PowerMode.Undefined);
@@ -1062,6 +1055,8 @@ namespace Taskmaster
 			bool doModifyPriority = !isProtectedFile;
 			bool doModifyAffinity = false;
 			bool doModifyPower = false;
+
+			bool foreground = InForeground(info.Id);
 
 			bool firsttime = true;
 			if (!isProtectedFile)
