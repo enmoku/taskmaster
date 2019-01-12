@@ -128,6 +128,11 @@
     <Compile Include="AudioManager.cs" />
     <Compile Include="Cause.cs" />
     <Compile Include="ConfigManager.cs" />
+    <Compile Include="Events\InternetStatus.cs" />
+    <Compile Include="Events\NetworkStatus.cs" />
+    <Compile Include="Events\PowerEventArgs.cs" />
+    <Compile Include="Events\ProcessEventArgs.cs" />
+    <Compile Include="Events\VolumeChanged.cs" />
     <Compile Include="Extensions\NumericUpDownEx.cs">
       <SubType>Component</SubType>
     </Compile>
@@ -152,6 +157,7 @@
     </Compile>
     <Compile Include="Events\RunstateException.cs" />
     <Compile Include="SelfMaintenance.cs" />
+    <Compile Include="UI\WatchlistSorter.cs" />
     <Compile Include="Utility\HumanReadable.cs" />
     <Compile Include="UI\TextInputBox.cs">
       <SubType>Form</SubType>
