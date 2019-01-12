@@ -57,11 +57,6 @@ namespace Taskmaster
 		/// </summary>
 		public ProcessController Controller = null;
 
-		/// <summary>
-		/// Has this Process been handled already?
-		/// </summary>
-		public bool Handled = false;
-
 		public bool PowerWait = false;
 		public bool ActiveWait = false;
 

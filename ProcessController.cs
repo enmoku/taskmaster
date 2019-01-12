@@ -1258,10 +1258,14 @@ namespace Taskmaster
 				LogAdjust(ev);
 			}
 
-			info.Handled = true;
-			info.Modified = now;
-
-			if (modified) Modified?.Invoke(this, ev);
+			if (modified)
+			{
+				info.State = ProcessModification.Modified;
+				info.Modified = now;
+				Modified?.Invoke(this, ev);
+			}
+			else
+				info.State = ProcessModification.Ignored;
 
 			if (Recheck > 0) TouchReapply(info);
 

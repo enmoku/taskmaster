@@ -1100,7 +1100,6 @@ namespace Taskmaster
 					return;
 				}
 
-				info.Handled = true;
 				info.Modified = DateTimeOffset.UtcNow;
 
 				ForegroundWatch(info); // already called?
