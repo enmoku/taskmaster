@@ -1164,6 +1164,8 @@ namespace Taskmaster
 		{
 			//Debug.Listeners.Add(new TextWriterTraceListener(System.Console.Out));
 
+			NativeMethods.SetErrorMode(NativeMethods.SetErrorMode(NativeMethods.ErrorModes.SEM_SYSTEMDEFAULT) | NativeMethods.ErrorModes.SEM_NOGPFAULTERRORBOX | NativeMethods.ErrorModes.SEM_FAILCRITICALERRORS);
+
 			System.Threading.Mutex singleton = null;
 
 			System.Windows.Forms.Application.SetUnhandledExceptionMode(UnhandledExceptionMode.Automatic);

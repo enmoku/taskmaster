@@ -249,5 +249,35 @@ namespace Taskmaster
 		[DllImport("user32.dll")]
 		[return: MarshalAs(UnmanagedType.Bool)]
 		public static extern bool IsWindowVisible(IntPtr hWnd);
+
+		[Flags]
+		public enum ErrorModes : uint
+		{
+			/// <summary>
+			/// Use the system default, which is to display all error dialog boxes.
+			/// </summary>
+			SEM_SYSTEMDEFAULT = 0x0,
+			/// <summary>
+			/// The system does not display the critical-error-handler message box. Instead, the system sends the error to the calling process.
+			/// 
+			/// Best practice is that all applications call the process-wide SetErrorMode function with a parameter of SEM_FAILCRITICALERRORS at startup. This is to prevent error mode dialogs from hanging the application.
+			/// </summary>
+			SEM_FAILCRITICALERRORS = 0x0001,
+			/// <summary>
+			/// Relevant only to Itanium processors.
+			/// </summary>
+			SEM_NOALIGNMENTFAULTEXCEPT = 0x0004,
+			/// <summary>
+			/// The system does not display the Windows Error Reporting dialog.
+			/// </summary>
+			SEM_NOGPFAULTERRORBOX = 0x0002,
+			/// <summary>
+			/// The OpenFile function does not display a message box when it fails to find a file. Instead, the error is returned to the caller. This error mode overrides the OF_PROMPT flag.
+			/// </summary>
+			SEM_NOOPENFILEERRORBOX = 0x8000
+		}
+
+		[DllImport("kernel32.dll")]
+		public static extern ErrorModes SetErrorMode(ErrorModes mode);
 	}
 }
