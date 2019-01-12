@@ -585,7 +585,9 @@ namespace Taskmaster
 			ulong min = Statistics.TouchTimeShortest;
 			ulong cur = Statistics.TouchTime;
 			ulong max = Statistics.TouchTimeLongest;
-			modifylatency.Text = (min == ulong.MaxValue ? "?" : min.ToString()) + $"–{cur}–{max} ms";
+			modifylatency.Text = (min == ulong.MaxValue ? "?" : min.ToString()) + "–" +
+				(cur == ulong.MinValue ? "?" : cur.ToString()) + "-" +
+				(max == ulong.MinValue ? "?" : max.ToString()) + " ms";
 		}
 
 		void UpdateUptime(object _, EventArgs _ea)
