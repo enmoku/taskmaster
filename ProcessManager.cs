@@ -867,7 +867,7 @@ namespace Taskmaster
 						}
 						catch { }
 
-						Log.Warning("[" + info.Controller.FriendlyName + "] exited without notice; Cleaning.");
+						Log.Warning("[" + info.Controller.FriendlyName + "] " + info.Name + " (#" + info.Id + ") exited without notice; Cleaning.");
 						WaitForExitTriggered(info);
 					}
 				}
