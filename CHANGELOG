@@ -7,6 +7,8 @@ Comprehensive changes can be found in Git change history:
 	Changed: Stacktraces should no longer include project directory as it was not useful.
 		Note: It would be preferable if the generated .pbd didn't have it instead.
 	Added: Modify latency display to the UI.
+	Internal: Lots of code changes to how process handling happens. Something may have broke.
+	Added: Better cleanup after process exit.
 ### 2018-01-11
 	Added: Monitor power off time and percentage is now shown at end of session unlock.
 ### 2018-01-10
