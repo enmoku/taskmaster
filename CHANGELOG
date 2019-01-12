@@ -3,6 +3,12 @@ Comprehensive changes can be found in Git change history:
 	https://github.com/mkahvi/taskmaster/commits/master
 
 ## [0.12...]
+### 2018-01-12
+	Changed: Stacktraces should no longer include project directory as it was not useful.
+		Note: It would be preferable if the generated .pbd didn't have it instead.
+	Added: Modify latency display to the UI.
+### 2018-01-11
+	Added: Monitor power off time and percentage is now shown at end of session unlock.
 ### 2018-01-10
 	Added: Path visibility can now be changed in UI now.
 ### 2018-01-09
