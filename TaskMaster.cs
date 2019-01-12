@@ -92,16 +92,29 @@ namespace Taskmaster
 			UnifiedExit(restart);
 		}
 
+		static bool CleanedUp = false;
 		public static void ExitCleanup()
 		{
-			if (!mainwindow?.IsDisposed ?? false) mainwindow.Enabled = false;
-			if (!trayaccess?.IsDisposed ?? false) trayaccess.Enabled = false;
+			if (CleanedUp) return;
 
-			while (DisposalChute.Count > 0)
-				MKAh.Utility.LogAndDiscardException(() => DisposalChute.Pop().Dispose());
+			try
+			{
+				if (!mainwindow?.IsDisposed ?? false) mainwindow.Enabled = false;
+				if (!trayaccess?.IsDisposed ?? false) trayaccess.Enabled = false;
 
-			pipe?.Dispose();
-			pipe = null;
+				while (DisposalChute.Count > 0)
+					MKAh.Utility.LogAndDiscardException(() => DisposalChute.Pop().Dispose());
+
+				pipe = null; // disposing the pipe seems to just cause problems
+			}
+			catch (Exception ex)
+			{
+				Logging.Stacktrace(ex, crashsafe:true);
+			}
+			finally
+			{
+				CleanedUp = true;
+			}
 		}
 
 		public static void UnifiedExit(bool restart = false)
@@ -1045,10 +1058,13 @@ namespace Taskmaster
 		static async void PipeCleaner(IAsyncResult result)
 		{
 			if (pipe == null) return;
+			if (result.IsCompleted) return; // for some reason empty completion appears on exit
 
 			try
 			{
-				pipe.EndWaitForConnection(result);
+				var lp = pipe;
+				//pipe = null;
+				lp.EndWaitForConnection(result);
 
 				if (!result.IsCompleted) return;
 				if (!pipe.IsConnected) return;
@@ -1056,7 +1072,7 @@ namespace Taskmaster
 
 				byte[] buffer = new byte[16];
 
-				pipe.ReadAsync(buffer, 0, 16).ContinueWith(async delegate
+				lp.ReadAsync(buffer, 0, 16).ContinueWith(async delegate
 				{
 					try
 					{
@@ -1072,12 +1088,16 @@ namespace Taskmaster
 							UnifiedExit(restart: false);
 						}
 
-						pipe.Disconnect();
-						pipe.BeginWaitForConnection(PipeCleaner, null);
+						lp.Disconnect();
+						lp.BeginWaitForConnection(PipeCleaner, null);
 					}
 					catch (Exception ex)
 					{
 						Logging.Stacktrace(ex);
+					}
+					finally
+					{
+						//PipeDream(); // restart listening pipe
 					}
 				});
 			}
@@ -1091,7 +1111,7 @@ namespace Taskmaster
 			}
 		}
 
-		static void PipeDream()
+		static System.IO.Pipes.NamedPipeServerStream PipeDream()
 		{
 			var ps = new System.IO.Pipes.PipeSecurity();
 			ps.AddAccessRule(new System.IO.Pipes.PipeAccessRule("Users", System.IO.Pipes.PipeAccessRights.Write, System.Security.AccessControl.AccessControlType.Allow));
@@ -1100,9 +1120,11 @@ namespace Taskmaster
 
 			pipe = new System.IO.Pipes.NamedPipeServerStream(PipeName, System.IO.Pipes.PipeDirection.In, 1, System.IO.Pipes.PipeTransmissionMode.Message, System.IO.Pipes.PipeOptions.Asynchronous, 16, 8);
 
-			DisposalChute.Push(pipe);
+			//DisposalChute.Push(pipe);
 
 			pipe.BeginWaitForConnection(PipeCleaner, null);
+
+			return pipe;
 		}
 
 		static void PipeExplorer(bool restart=true)
@@ -1114,14 +1136,15 @@ namespace Taskmaster
 				using (var pe = new System.IO.Pipes.NamedPipeClientStream(".", PipeName, System.IO.Pipes.PipeAccessRights.Write, System.IO.Pipes.PipeOptions.WriteThrough, System.Security.Principal.TokenImpersonationLevel.Impersonation, HandleInheritability.None))
 				{
 					pe.Connect(5_000);
-					if (pe.IsConnected)
+					if (pe.IsConnected && pe.CanWrite)
 					{
 						byte[] buffer = System.Text.UTF8Encoding.UTF8.GetBytes(restart ? PipeRestart : PipeTerm);
 						//pe.WriteTimeout = 5_000;
-						pe.WriteAsync(buffer, 0, buffer.Length, cancel.Token).Wait(5_000);
-						cancel.Cancel();
+						pe.Write(buffer, 0, buffer.Length);
+						pe.WaitForPipeDrain();
 					}
-					System.Threading.Thread.Sleep(100); // HACK: pipes don't like things happening too fast.
+					//System.Threading.Thread.Sleep(100); // HACK: async pipes don't like things happening too fast.
+					pe.Close();
 				}
 			}
 			catch (Exception ex)
@@ -1173,7 +1196,7 @@ namespace Taskmaster
 				return -1;
 			}
 
-			PipeDream(); // IPC with other instances of TM
+			pipe = PipeDream(); // IPC with other instances of TM
 
 			// Multi-core JIT
 			// https://docs.microsoft.com/en-us/dotnet/api/system.runtime.profileoptimization
@@ -1300,8 +1323,6 @@ namespace Taskmaster
 
 				Log.Information("Exiting...");
 
-				// CLEANUP for exit
-
 				ExitCleanup();
 
 				Log.Information("<Stat> WMI queries: " + $"{Statistics.WMIquerytime:N2}s [" + Statistics.WMIqueries + "]");
@@ -1323,8 +1344,6 @@ namespace Taskmaster
 
 				if (State == Runstate.Restart) // happens only on power resume (waking from hibernation) or when manually set
 				{
-					ExitCleanup();
-
 					singleton?.Dispose();
 
 					Log.Information("Restarting...");
@@ -1376,16 +1395,12 @@ namespace Taskmaster
 			}
 			catch (OutOfMemoryException ex)
 			{
-				ExitCleanup();
-
 				Logging.Stacktrace(ex, crashsafe: true);
 
 				return 1; // should trigger finally block
 			}
 			catch (Exception ex)
 			{
-				ExitCleanup();
-
 				Logging.Stacktrace(ex, crashsafe: true);
 
 				return 1; // should trigger finally block
