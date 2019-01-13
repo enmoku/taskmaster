@@ -102,8 +102,6 @@ namespace Taskmaster
 				BatchProcessingTimer.Elapsed += BatchProcessingTick;
 			}
 
-			ScanEndEvent += UnregisterFreeMemoryTick;
-
 			HandlingStateChange += CollectProcessHandlingStatistics;
 
 			if (ScanFrequency != TimeSpan.Zero) ScanTimer = new System.Threading.Timer(TimedScan, null, TimeSpan.FromSeconds(5), ScanFrequency);
@@ -176,18 +174,16 @@ namespace Taskmaster
 			powermanager.onBehaviourChange += PowerBehaviourEvent;
 		}
 
-		void UnregisterFreeMemoryTick(object _, EventArgs _ea) => ProcessDetectedEvent -= FreeMemoryTick;
-
 		string freememoryignore = null;
 		void FreeMemoryTick(object _, ProcessEventArgs ea)
 		{
-			if (!string.IsNullOrEmpty(freememoryignore) && ea.Info.Name.Equals(freememoryignore, StringComparison.InvariantCultureIgnoreCase))
-				return;
-
-			if (Taskmaster.DebugMemory) Log.Debug("<Process> Paging: " + ea.Info.Name + " (#" + ea.Info.Id + ")");
-
 			try
 			{
+				if (!string.IsNullOrEmpty(freememoryignore) && ea.Info.Name.Equals(freememoryignore, StringComparison.InvariantCultureIgnoreCase))
+					return;
+
+				if (Taskmaster.DebugMemory) Log.Debug("<Process> Paging: " + ea.Info.Name + " (#" + ea.Info.Id + ")");
+
 				NativeMethods.EmptyWorkingSet(ea.Info.Process.Handle);
 			}
 			catch { } // process.Handle may throw which we don't care about
@@ -290,7 +286,7 @@ namespace Taskmaster
 			}
 			finally
 			{
-				UnregisterFreeMemoryTick(null, null);
+				ProcessDetectedEvent -= FreeMemoryTick;
 			}
 		}
 
@@ -300,21 +296,30 @@ namespace Taskmaster
 		/// </summary>
 		async void TimedScan(object _)
 		{
-			if (disposed) // HACK: dumb timers be dumb
+			try
 			{
-				try
+				if (disposed) // HACK: dumb timers be dumb
 				{
-					ScanTimer?.Dispose();
+					try
+					{
+						ScanTimer?.Dispose();
+					}
+					catch (ObjectDisposedException) { }
+					return;
 				}
-				catch (ObjectDisposedException) { }
-				return;
+
+				if (Taskmaster.Trace) Log.Verbose("Rescan requested.");
+				if (ScanPaused) return;
+				// this stays on UI thread for some reason
+
+				Task.Run(() => Scan()).ConfigureAwait(false);
 			}
-
-			if (Taskmaster.Trace) Log.Verbose("Rescan requested.");
-			if (ScanPaused) return;
-			// this stays on UI thread for some reason
-
-			Task.Run(() => Scan()).ConfigureAwait(false);
+			catch (Exception ex)
+			{
+				Logging.Stacktrace(ex);
+				Log.Error("Stopping periodic scans");
+				ScanTimer.Change(System.Threading.Timeout.InfiniteTimeSpan, System.Threading.Timeout.InfiniteTimeSpan);
+			}
 		}
 
 		/// <summary>
@@ -789,7 +794,17 @@ namespace Taskmaster
 
 		private void ProcessWaitingExitProxy(object _, ProcessEventArgs ea)
 		{
-			WaitForExit(ea.Info);
+			try
+			{
+				WaitForExit(ea.Info);
+			}
+			catch (Exception ex)
+			{
+				Logging.Stacktrace(ex);
+				Log.Error("Unregistering '" + ea.Info.Controller.FriendlyName + "' exit wait proxy");
+				ea.Info.Controller.Paused -= ProcessWaitingExitProxy;
+				ea.Info.Controller.WaitingExit -= ProcessWaitingExitProxy;
+			}
 		}
 
 		private void ProcessResumedProxy(object _, ProcessEventArgs _ea)
@@ -804,7 +819,16 @@ namespace Taskmaster
 
 		void ProcessModifiedProxy(object _, ProcessEventArgs ea)
 		{
-			ProcessModified?.Invoke(_, ea);
+			try
+			{
+				ProcessModified?.Invoke(_, ea);
+			}
+			catch (Exception ex)
+			{
+				Logging.Stacktrace(ex);
+				Log.Error("Unregistering '" + ea.Info.Controller.FriendlyName + "' process modified proxy");
+				ea.Info.Controller.Modified -= ProcessModifiedProxy;
+			}
 		}
 
 		public void RemoveController(ProcessController prc)
@@ -826,22 +850,29 @@ namespace Taskmaster
 			Debug.Assert(info.Controller != null, "ProcessController not defined");
 			Debug.Assert(!SystemProcessId(info.Id), "WaitForExitTriggered for system process");
 
-			if (Taskmaster.DebugForeground || Taskmaster.DebugPower)
+			try
 			{
-				Log.Debug("[" + info.Controller.FriendlyName + "] " + info.Name +
-					" (#" + info.Id + ") exited [Power: " + info.PowerWait + ", Active: " + info.ActiveWait + "]");
+				if (Taskmaster.DebugForeground || Taskmaster.DebugPower)
+				{
+					Log.Debug("[" + info.Controller.FriendlyName + "] " + info.Name +
+						" (#" + info.Id + ") exited [Power: " + info.PowerWait + ", Active: " + info.ActiveWait + "]");
+				}
+
+				if (info.ActiveWait)
+					ForegroundWaitlist.TryRemove(info.Id, out _);
+
+				WaitForExitList.TryRemove(info.Id, out _);
+
+				info.Controller?.End(info);
+
+				ProcessStateChange?.Invoke(this, new ProcessEventArgs() { Info = info, State = state });
+
+				CleanWaitForExitList(); // HACK
 			}
-
-			if (info.ActiveWait)
-				ForegroundWaitlist.TryRemove(info.Id, out _);
-
-			WaitForExitList.TryRemove(info.Id, out _);
-
-			info.Controller?.End(info);
-
-			ProcessStateChange?.Invoke(this, new ProcessEventArgs() { Info = info, State = state });
-
-			CleanWaitForExitList(); // HACK
+			catch (Exception ex)
+			{
+				Logging.Stacktrace(ex);
+			}
 		}
 
 		int CleanWaitForExitList_lock = 0;
@@ -876,8 +907,17 @@ namespace Taskmaster
 
 		public void PowerBehaviourEvent(object _, PowerManager.PowerBehaviourEventArgs ea)
 		{
-			if (ea.Behaviour == PowerManager.PowerBehaviour.Manual)
-				CancelPowerWait();
+			try
+			{
+				if (ea.Behaviour == PowerManager.PowerBehaviour.Manual)
+					CancelPowerWait();
+			}
+			catch (Exception ex)
+			{
+				Logging.Stacktrace(ex);
+				Log.Error("Unregistering power behaviour event");
+				powermanager.onBehaviourChange -= PowerBehaviourEvent;
+			}
 		}
 
 		public void CancelPowerWait()
@@ -957,52 +997,61 @@ namespace Taskmaster
 
 		public void ForegroundAppChangedEvent(object _, WindowChangedArgs ev)
 		{
-			if (Taskmaster.DebugForeground)
-				Log.Verbose("<Process> Foreground Received: #" + ev.Id);
-
-			if (PreviousForegroundInfo != null)
+			try
 			{
-				if (PreviousForegroundInfo.Id != ev.Id) // testing previous to current might be superfluous
-				{
-					if (PreviousForegroundController != null)
-					{
-						//Log.Debug("PUTTING PREVIOUS FOREGROUND APP to BACKGROUND");
-						if (PreviousForegroundController.ForegroundOnly)
-							PreviousForegroundController.Pause(PreviousForegroundInfo);
+				if (Taskmaster.DebugForeground)
+					Log.Verbose("<Process> Foreground Received: #" + ev.Id);
 
-						ProcessStateChange?.Invoke(this, new ProcessEventArgs() { Info = PreviousForegroundInfo, State = ProcessRunningState.Paused });
+				if (PreviousForegroundInfo != null)
+				{
+					if (PreviousForegroundInfo.Id != ev.Id) // testing previous to current might be superfluous
+					{
+						if (PreviousForegroundController != null)
+						{
+							//Log.Debug("PUTTING PREVIOUS FOREGROUND APP to BACKGROUND");
+							if (PreviousForegroundController.ForegroundOnly)
+								PreviousForegroundController.Pause(PreviousForegroundInfo);
+
+							ProcessStateChange?.Invoke(this, new ProcessEventArgs() { Info = PreviousForegroundInfo, State = ProcessRunningState.Paused });
+						}
+					}
+					else
+					{
+						if (Taskmaster.ShowInaction && Taskmaster.DebugForeground)
+							Log.Debug("<Foreground> Changed but the app is still the same. Curious, don't you think?");
 					}
 				}
-				else
-				{
-					if (Taskmaster.ShowInaction && Taskmaster.DebugForeground)
-						Log.Debug("<Foreground> Changed but the app is still the same. Curious, don't you think?");
-				}
-			}
 
-			if (ForegroundWaitlist.TryGetValue(ev.Id, out ProcessController prc))
+				if (ForegroundWaitlist.TryGetValue(ev.Id, out ProcessController prc))
+				{
+					if (WaitForExitList.TryGetValue(ev.Id, out ProcessEx info))
+					{
+						if (Taskmaster.Trace && Taskmaster.DebugForeground)
+							Log.Debug("[" + prc.FriendlyName + "] " + info.Name + " (#" + info.Id + ") on foreground!");
+
+						if (prc.ForegroundOnly) prc.Resume(info);
+
+						ProcessStateChange?.Invoke(this, new ProcessEventArgs() { Info = info, State = ProcessRunningState.Resumed });
+
+						PreviousForegroundInfo = info;
+						PreviousForegroundController = prc;
+
+						return;
+					}
+				}
+
+				if (Taskmaster.DebugForeground && Taskmaster.Trace)
+					Log.Debug("<Process> NULLING PREVIOUS FOREGRDOUND");
+
+				PreviousForegroundInfo = null;
+				PreviousForegroundController = null;
+			}
+			catch (Exception ex)
 			{
-				if (WaitForExitList.TryGetValue(ev.Id, out ProcessEx info))
-				{
-					if (Taskmaster.Trace && Taskmaster.DebugForeground)
-						Log.Debug("[" + prc.FriendlyName + "] " + info.Name + " (#" + info.Id + ") on foreground!");
-
-					if (prc.ForegroundOnly) prc.Resume(info);
-
-					ProcessStateChange?.Invoke(this, new ProcessEventArgs() { Info = info, State = ProcessRunningState.Resumed });
-
-					PreviousForegroundInfo = info;
-					PreviousForegroundController = prc;
-
-					return;
-				}
+				Logging.Stacktrace(ex);
+				Log.Error("Unregistering foreground changed event");
+				activeappmonitor.ActiveChanged -= ForegroundAppChangedEvent;
 			}
-
-			if (Taskmaster.DebugForeground && Taskmaster.Trace)
-				Log.Debug("<Process> NULLING PREVIOUS FOREGRDOUND");
-
-			PreviousForegroundInfo = null;
-			PreviousForegroundController = null;
 		}
 
 		// TODO: ADD CACHE: pid -> process name, path, process
@@ -1283,14 +1332,14 @@ namespace Taskmaster
 		// TODO: This should probably be pushed into ProcessController somehow.
 		async void ProcessTriage(object _, ProcessEventArgs ea)
 		{
-			await Task.Delay(0).ConfigureAwait(false);
-
-			ea.Info.State = ProcessHandlingState.Triage;
-
-			HandlingStateChange?.Invoke(this, new InstanceHandlingArgs(ea.Info));
-
 			try
 			{
+				await Task.Delay(0).ConfigureAwait(false);
+
+				ea.Info.State = ProcessHandlingState.Triage;
+
+				HandlingStateChange?.Invoke(this, new InstanceHandlingArgs(ea.Info));
+
 				if (string.IsNullOrEmpty(ea.Info.Name))
 				{
 					Log.Warning("#" + ea.Info.Id + " details unaccessible, ignored.");
@@ -1337,6 +1386,12 @@ namespace Taskmaster
 					ChildController(info);
 				*/
 			}
+			catch (Exception ex)
+			{
+				Logging.Stacktrace(ex);
+				Log.Error("Unregistering process triage");
+				ProcessDetectedEvent -= ProcessTriage;
+			}
 			finally
 			{
 				HandlingStateChange?.Invoke(this, new InstanceHandlingArgs(ea.Info));
@@ -1350,41 +1405,56 @@ namespace Taskmaster
 
 		void BatchProcessingTick(object _, EventArgs _ea)
 		{
-			lock (batchprocessing_lock)
+			try
 			{
-				if (ProcessBatch.Count == 0)
+				lock (batchprocessing_lock)
 				{
-					BatchProcessingTimer.Stop();
+					if (ProcessBatch.Count == 0)
+					{
+						BatchProcessingTimer.Stop();
 
-					if (Taskmaster.DebugProcesses) Log.Debug("<Process> New instance timer stopped.");
+						if (Taskmaster.DebugProcesses) Log.Debug("<Process> New instance timer stopped.");
 
-					return;
+						return;
+					}
 				}
-			}
 
-			Task.Run(new Action(() => NewInstanceBatchProcessing())).ConfigureAwait(false);
+				Task.Run(new Action(() => NewInstanceBatchProcessing())).ConfigureAwait(false);
+			}
+			catch (Exception ex)
+			{
+				Logging.Stacktrace(ex);
+				Log.Error("Unregistering batch processing");
+				BatchProcessingTimer.Elapsed -= BatchProcessingTick;
+			}
 		}
 
 		void NewInstanceBatchProcessing()
 		{
 			//await Task.Delay(0).ConfigureAwait(false);
-
-			List<ProcessEx> list = new List<ProcessEx>();
-
-			lock (batchprocessing_lock)
+			try
 			{
-				if (ProcessBatch.Count == 0) return;
+				List<ProcessEx> list = new List<ProcessEx>();
 
-				BatchProcessingTimer.Stop();
+				lock (batchprocessing_lock)
+				{
+					if (ProcessBatch.Count == 0) return;
 
-				processListLockRestart = 0;
-				Utility.Swap(ref list, ref ProcessBatch);
+					BatchProcessingTimer.Stop();
+
+					processListLockRestart = 0;
+					Utility.Swap(ref list, ref ProcessBatch);
+				}
+
+				foreach (var info in list)
+					ProcessDetectedEvent?.Invoke(this, new ProcessEventArgs { Info = info });
+
+				SignalProcessHandled(-(list.Count)); // batch done
 			}
-
-			foreach (var info in list)
-				ProcessDetectedEvent?.Invoke(this, new ProcessEventArgs { Info = info });
-
-			SignalProcessHandled(-(list.Count)); // batch done
+			catch (Exception ex)
+			{
+				Logging.Stacktrace(ex);
+			}
 		}
 
 		public int Handling { get; private set; }
@@ -1398,8 +1468,6 @@ namespace Taskmaster
 		// This needs to return faster
 		async void NewInstanceTriage(object _, EventArrivedEventArgs ea)
 		{
-			SignalProcessHandled(1); // wmi new instance
-
 			var now = DateTimeOffset.UtcNow;
 			var timer = Stopwatch.StartNew();
 
@@ -1408,12 +1476,11 @@ namespace Taskmaster
 			string path = string.Empty;
 			ProcessEx info = null;
 
-			bool abandoned = false;
-
 			try
 			{
-				var wmiquerytime = Stopwatch.StartNew();
+				SignalProcessHandled(1); // wmi new instance
 
+				var wmiquerytime = Stopwatch.StartNew();
 				// TODO: Instance groups?
 				try
 				{
@@ -1425,7 +1492,6 @@ namespace Taskmaster
 				catch (Exception ex)
 				{
 					Logging.Stacktrace(ex);
-					info.State = ProcessHandlingState.Abandoned;
 					return;
 				}
 				finally
@@ -1455,7 +1521,12 @@ namespace Taskmaster
 					NewInstanceTriagePhaseTwo(info);
 				}
 			}
-			catch { } // ignore.. kinda bad, but eh...
+			catch (Exception ex)
+			{
+				Logging.Stacktrace(ex);
+				Log.Error("Unregistering new instance triage");
+				watcher.EventArrived -= NewInstanceTriage;
+			}
 			finally
 			{
 				HandlingStateChange?.Invoke(this, new InstanceHandlingArgs(info ?? new ProcessEx { Id = pid, Timer = timer, State = ProcessHandlingState.Invalid }));
