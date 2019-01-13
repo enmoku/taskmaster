@@ -930,6 +930,7 @@ namespace Taskmaster
 			};
 
 			menu_config_logging.DropDownItems.Add(menu_config_logging_adjusts);
+			menu_config_logging.DropDownItems.Add(menu_config_logging_latency);
 			menu_config_logging.DropDownItems.Add(menu_config_logging_session);
 			menu_config_logging.DropDownItems.Add(menu_config_logging_neterrors);
 

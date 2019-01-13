@@ -653,7 +653,7 @@ namespace Taskmaster
 
 
 			if (Taskmaster.ShowAdjustLatency)
-				sbs.Append($" ({ev.Info.Timer.Elapsed.TotalMilliseconds} ms)");
+				sbs.Append($" ({ev.Info.Timer.Elapsed.TotalMilliseconds:N0} ms)");
 
 			// TODO: Add option to logging to file but still show in UI
 			if (!(Taskmaster.ShowInaction && Taskmaster.DebugProcesses)) Log.Information(sbs.ToString());
