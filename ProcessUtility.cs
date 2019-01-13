@@ -39,25 +39,25 @@ namespace Taskmaster
 			pathCache = new Cache<int, string, string>(Taskmaster.PathCacheMaxAge, (uint)Taskmaster.PathCacheLimit, (uint)(Taskmaster.PathCacheLimit / 10).Constrain(20, 60));
 		}
 
-		public static ProcessEx GetInfo(int ProcessID, Process process = null, ProcessController controller = null, string name = null, string path = null, bool getPath = false)
+		public static bool GetInfo(int ProcessID, out ProcessEx info, Process process = null, ProcessController controller = null, string name = null, string path = null, bool getPath = false)
 		{
 			try
 			{
 				if (process == null) process = Process.GetProcessById(ProcessID);
 
-				var info = new ProcessEx()
+				info = new ProcessEx()
 				{
 					Id = ProcessID,
 					Process = process,
 					Controller = controller,
 					Name = string.IsNullOrEmpty(name) ? process.ProcessName : name,
-					State = ProcessModification.OK,
+					State = ProcessHandlingState.Triage,
 					Path = path,
 				};
 
 				if (getPath && string.IsNullOrEmpty(path)) FindPath(info);
 
-				return info;
+				return true;
 			}
 			catch (InvalidOperationException) { } // already exited
 			catch (ArgumentException) { } // already exited
@@ -66,7 +66,8 @@ namespace Taskmaster
 				Logging.Stacktrace(ex);
 			}
 
-			return null;
+			info = null;
+			return false;
 		}
 
 		public static bool FindPath(ProcessEx info)

@@ -44,14 +44,12 @@ namespace Taskmaster
 
 	sealed public class InstanceHandlingArgs : EventArgs
 	{
-		public InstanceHandlingArgs(ProcessHandlingState state, ProcessEx info)
+		public InstanceHandlingArgs(ProcessEx info)
 		{
-			State = state;
 			Info = info;
 		}
 
 		public ProcessEx Info = null;
-		public ProcessHandlingState State = ProcessHandlingState.Invalid;
 	}
 
 	[Serializable]
@@ -362,7 +360,7 @@ namespace Taskmaster
 
 			var procs = Process.GetProcesses();
 			int count = procs.Length - 2; // -2 for Idle&System
-			Debug.Assert(count > 0);
+			Debug.Assert(count > 0, "System has no running processes"); // should be impossible to fail
 			SignalProcessHandled(count); // scan start
 
 			var i = 0;
@@ -789,9 +787,9 @@ namespace Taskmaster
 			}
 		}
 
-		private void ProcessWaitingExitProxy(object _, ProcessEventArgs e)
+		private void ProcessWaitingExitProxy(object _, ProcessEventArgs ea)
 		{
-			WaitForExit(e.Info);
+			WaitForExit(ea.Info);
 		}
 
 		private void ProcessResumedProxy(object _, ProcessEventArgs _ea)
@@ -826,14 +824,13 @@ namespace Taskmaster
 		void WaitForExitTriggered(ProcessEx info, ProcessRunningState state = ProcessRunningState.Exiting)
 		{
 			Debug.Assert(info.Controller != null, "ProcessController not defined");
+			Debug.Assert(!SystemProcessId(info.Id), "WaitForExitTriggered for system process");
 
 			if (Taskmaster.DebugForeground || Taskmaster.DebugPower)
 			{
 				Log.Debug("[" + info.Controller.FriendlyName + "] " + info.Name +
 					" (#" + info.Id + ") exited [Power: " + info.PowerWait + ", Active: " + info.ActiveWait + "]");
 			}
-
-			Debug.Assert(!SystemProcessId(info.Id));
 
 			if (info.ActiveWait)
 				ForegroundWaitlist.TryRemove(info.Id, out _);
@@ -891,9 +888,8 @@ namespace Taskmaster
 
 			if (WaitForExitList.Count == 0) return;
 
-			var items = WaitForExitList.Values;
 			clearList = new Stack<ProcessEx>();
-			foreach (var info in items)
+			foreach (var info in WaitForExitList.Values)
 			{
 				if (info.PowerWait)
 				{
@@ -912,11 +908,8 @@ namespace Taskmaster
 				}
 			}
 
-			if (clearList != null)
-			{
-				while (clearList.Count > 0)
-					WaitForExitTriggered(clearList.Pop(), ProcessRunningState.Cancel);
-			}
+			while (clearList.Count > 0)
+				WaitForExitTriggered(clearList.Pop(), ProcessRunningState.Cancel);
 
 			if (cancelled > 0)
 				Log.Information("Cancelled power mode wait on " + cancelled + " process(es).");
@@ -924,7 +917,7 @@ namespace Taskmaster
 
 		public void WaitForExit(ProcessEx info)
 		{
-			Debug.Assert(info.Controller != null);
+			Debug.Assert(info.Controller != null, "No controller attached");
 
 			if (WaitForExitList.TryAdd(info.Id, info))
 			{
@@ -977,7 +970,7 @@ namespace Taskmaster
 						if (PreviousForegroundController.ForegroundOnly)
 							PreviousForegroundController.Pause(PreviousForegroundInfo);
 
-						ProcessStateChange?.Invoke(this, new ProcessEventArgs() { Info = PreviousForegroundInfo, State = ProcessRunningState.Reduced });
+						ProcessStateChange?.Invoke(this, new ProcessEventArgs() { Info = PreviousForegroundInfo, State = ProcessRunningState.Paused });
 					}
 				}
 				else
@@ -996,7 +989,7 @@ namespace Taskmaster
 
 					if (prc.ForegroundOnly) prc.Resume(info);
 
-					ProcessStateChange?.Invoke(this, new ProcessEventArgs() { Info = info, State = ProcessRunningState.Restored });
+					ProcessStateChange?.Invoke(this, new ProcessEventArgs() { Info = info, State = ProcessRunningState.Resumed });
 
 					PreviousForegroundInfo = info;
 					PreviousForegroundController = prc;
@@ -1082,7 +1075,7 @@ namespace Taskmaster
 
 		async void CheckPathWatch(ProcessEx info)
 		{
-			Debug.Assert(info.Process != null);
+			Debug.Assert(info.Process != null, "No Process attached");
 			Debug.Assert(info.Controller == null, "CheckPathWatch received a process that already was matched");
 
 			await Task.Delay(0).ConfigureAwait(false);
@@ -1098,8 +1091,6 @@ namespace Taskmaster
 					Logging.Stacktrace(ex);
 					return;
 				}
-
-				info.Modified = DateTimeOffset.UtcNow;
 
 				ForegroundWatch(info); // already called?
 			}
@@ -1264,28 +1255,21 @@ namespace Taskmaster
 			ProcessStateChange?.Invoke(this, new ProcessEventArgs() { Info = info, State = keyexists ? ProcessRunningState.Found : ProcessRunningState.Starting });
 		}
 
-		async void CollectProcessHandlingStatistics(object _, InstanceHandlingArgs e)
+		async void CollectProcessHandlingStatistics(object _, InstanceHandlingArgs ea)
 		{
 			try
 			{
-				switch (e.State)
+				if (ea.Info.Handled || ea.Info.Exited)
 				{
-					case ProcessHandlingState.Finished:
-					case ProcessHandlingState.Modified:
-						//case ProcessHandlingState.Unmodified:
-						e.Info.Timer.Stop();
-						long elapsed = e.Info.Timer.ElapsedMilliseconds;
-						int delay = e.Info.Controller.ModifyDelay;
-						ulong time = Convert.ToUInt64(elapsed - Math.Min(delay, elapsed)); // to avoid overflows
-						if (Taskmaster.Trace) Debug.WriteLine("Modify time: " + $"{time} ms + {delay} ms delay");
-						Statistics.TouchTime = time;
-						Statistics.TouchTimeLongest = Math.Max(time, Statistics.TouchTimeLongest);
-						Statistics.TouchTimeShortest = Math.Min(time, Statistics.TouchTimeShortest);
-						break;
-					case ProcessHandlingState.Abandoned:
-					case ProcessHandlingState.Invalid:
-						e.Info.Timer.Stop();
-						break;
+					//case ProcessHandlingState.Unmodified:
+					ea.Info.Timer.Stop();
+					long elapsed = ea.Info.Timer.ElapsedMilliseconds;
+					int delay = ea.Info.Controller?.ModifyDelay ?? 0;
+					ulong time = Convert.ToUInt64(elapsed - Math.Min(delay, elapsed)); // to avoid overflows
+					if (Taskmaster.Trace) Debug.WriteLine("Modify time: " + $"{time} ms + {delay} ms delay");
+					Statistics.TouchTime = time;
+					Statistics.TouchTimeLongest = Math.Max(time, Statistics.TouchTimeLongest);
+					Statistics.TouchTimeShortest = Math.Min(time, Statistics.TouchTimeShortest);
 				}
 			}
 			catch (Exception ex)
@@ -1301,7 +1285,9 @@ namespace Taskmaster
 		{
 			await Task.Delay(0).ConfigureAwait(false);
 
-			HandlingStateChange?.Invoke(this, new InstanceHandlingArgs(ProcessHandlingState.Triage, ea.Info));
+			ea.Info.State = ProcessHandlingState.Triage;
+
+			HandlingStateChange?.Invoke(this, new InstanceHandlingArgs(ea.Info));
 
 			try
 			{
@@ -1319,7 +1305,7 @@ namespace Taskmaster
 					{
 						if (Taskmaster.DebugProcesses)
 							Log.Debug("[" + prc.FriendlyName + "] Matched, but rule disabled; ignoring.");
-						ea.Info.State = ProcessModification.Ignored;
+						ea.Info.State = ProcessHandlingState.Abandoned;
 						return;
 					}
 
@@ -1353,7 +1339,7 @@ namespace Taskmaster
 			}
 			finally
 			{
-				HandlingStateChange?.Invoke(this, new InstanceHandlingArgs(ea.Info.State == ProcessModification.Modified ? ProcessHandlingState.Modified : ProcessHandlingState.Unmodified, ea.Info));
+				HandlingStateChange?.Invoke(this, new InstanceHandlingArgs(ea.Info));
 			}
 		}
 
@@ -1439,7 +1425,7 @@ namespace Taskmaster
 				catch (Exception ex)
 				{
 					Logging.Stacktrace(ex);
-					abandoned = true;
+					info.State = ProcessHandlingState.Abandoned;
 					return;
 				}
 				finally
@@ -1449,11 +1435,7 @@ namespace Taskmaster
 					Statistics.WMIPolling += 1;
 				}
 
-				if (IgnoreProcessID(pid))
-				{
-					abandoned = true;
-					return; // We just don't care
-				}
+				if (IgnoreProcessID(pid)) return; // We just don't care
 
 				if (!string.IsNullOrEmpty(path))
 					name = System.IO.Path.GetFileNameWithoutExtension(path);
@@ -1462,26 +1444,21 @@ namespace Taskmaster
 				{
 					// likely process exited too fast
 					if (Taskmaster.DebugProcesses && Taskmaster.ShowInaction) Log.Debug("<<WMI>> Failed to acquire neither process name nor process Id");
-					abandoned = true;
 					return;
 				}
 
-				if (IgnoreProcessName(name))
-				{
-					abandoned = true;
-					return;
-				}
+				if (IgnoreProcessName(name)) return;
 
-				info = ProcessUtility.GetInfo(pid, path: path, getPath: true);
-				if (info != null)
+				if (ProcessUtility.GetInfo(pid, out info, path: path, getPath: true))
 				{
 					info.Timer = timer;
 					NewInstanceTriagePhaseTwo(info);
 				}
 			}
+			catch { } // ignore.. kinda bad, but eh...
 			finally
 			{
-				HandlingStateChange?.Invoke(this, new InstanceHandlingArgs(abandoned ? ProcessHandlingState.Abandoned : ProcessHandlingState.Finished, info ?? new ProcessEx { Id = pid, Timer = timer }));
+				HandlingStateChange?.Invoke(this, new InstanceHandlingArgs(info ?? new ProcessEx { Id = pid, Timer = timer, State = ProcessHandlingState.Invalid }));
 
 				SignalProcessHandled(-1); // done with it
 			}
@@ -1497,7 +1474,7 @@ namespace Taskmaster
 			}
 			catch (ArgumentException)
 			{
-				info.State = ProcessModification.Exited;
+				info.State = ProcessHandlingState.Exited;
 				if (Taskmaster.ShowInaction && Taskmaster.DebugProcesses)
 					Log.Verbose("Caught #" + info.Id + " but it vanished.");
 				return;
@@ -1547,7 +1524,9 @@ namespace Taskmaster
 					}
 				}
 
-				HandlingStateChange?.Invoke(this, new InstanceHandlingArgs(ProcessHandlingState.Delayed, info));
+				info.State = ProcessHandlingState.Batching;
+
+				HandlingStateChange?.Invoke(this, new InstanceHandlingArgs(info));
 			}
 			else
 			{

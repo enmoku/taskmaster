@@ -97,8 +97,7 @@ namespace Taskmaster
 
 				float volume = session.SimpleAudioVolume.Volume;
 
-				var info = ProcessUtility.GetInfo(pid, getPath:true);
-				if (info != null)
+				if (ProcessUtility.GetInfo(pid, out var info, getPath: true))
 				{
 					//OnNewSession?.Invoke(this, info);
 					var prc = processmanager.getController(info);

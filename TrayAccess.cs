@@ -456,7 +456,7 @@ namespace Taskmaster
 		MainWindow mainwindow = null;
 		public void Hook(MainWindow window)
 		{
-			Debug.Assert(window != null);
+			Debug.Assert(window != null, "Hooking null main window");
 
 			mainwindow = window;
 
@@ -548,9 +548,8 @@ namespace Taskmaster
 					Explorer = procs;
 					foreach (var proc in procs)
 					{
-						var info = ProcessUtility.GetInfo(proc.Id, process: proc, name: "explorer", getPath: true);
 
-						if (info == null) continue; // things failed, move on
+						if (!ProcessUtility.GetInfo(proc.Id, out var info, process: proc, name: "explorer", getPath: true)) continue; // things failed, move on
 
 						if (!string.IsNullOrEmpty(info.Path))
 						{

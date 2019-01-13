@@ -35,32 +35,58 @@ namespace Taskmaster
 		/// Process filename without extension
 		/// Cached from Process.ProcessFilename
 		/// </summary>
-		public string Name = string.Empty;
+		public string Name { get; set; } = string.Empty;
 		/// <summary>
 		/// Process fullpath, including filename with extension
 		/// </summary>
-		public string Path = string.Empty;
+		public string Path { get; set; } = string.Empty;
 		/// <summary>
 		/// Process Id.
 		/// </summary>
-		public int Id = -1;
+		public int Id { get; set; } = -1;
 
-		public Stopwatch Timer;
+		public Stopwatch Timer { get; set; } = null;
 
 		/// <summary>
 		/// Process reference.
 		/// </summary>
-		public Process Process = null;
+		public Process Process { get; set; } = null;
 
 		/// <summary>
 		/// Controller associated with this process.
 		/// </summary>
-		public ProcessController Controller = null;
+		public ProcessController Controller { get; set; } = null;
 
-		public bool PowerWait = false;
-		public bool ActiveWait = false;
+		public bool PowerWait { get; set; } = false;
+		public bool ActiveWait { get; set; } = false;
 
-		public DateTimeOffset Modified = DateTimeOffset.MinValue;
-		public ProcessModification State = ProcessModification.Invalid;
+		public DateTimeOffset Modified { get; set; } = DateTimeOffset.MinValue;
+		internal ProcessHandlingState _state = ProcessHandlingState.Invalid;
+		public ProcessHandlingState State
+		{
+			get { return _state; }
+			set
+			{
+				switch (value)
+				{
+					case ProcessHandlingState.Exited:
+						Exited = true;
+						goto handled;
+					case ProcessHandlingState.Modified:
+						Modified = DateTimeOffset.UtcNow;
+						goto handled;
+					case ProcessHandlingState.Finished:
+					case ProcessHandlingState.Abandoned:
+					case ProcessHandlingState.AccessDenied:
+					case ProcessHandlingState.Invalid:
+						handled:
+						Handled = true;
+						break;
+				}
+			}
+		}
+
+		public bool Handled { get; set; } = false;
+		public bool Exited { get; set; } = false;
 	}
 }

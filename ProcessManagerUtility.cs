@@ -43,9 +43,10 @@ namespace Taskmaster
 
 			Statistics.PathFindAttempts++;
 
+			string path = string.Empty;
 			try
 			{
-				info.Path = info.Process?.MainModule?.FileName ?? string.Empty; // this will cause win32exception of various types, we don't Really care which error it is
+				path = info.Process?.MainModule?.FileName ?? string.Empty; // this will cause win32exception of various types, we don't Really care which error it is
 			}
 			catch (System.ComponentModel.Win32Exception)
 			{
@@ -57,11 +58,11 @@ namespace Taskmaster
 				// NOP, don't care 
 			}
 
-			if (string.IsNullOrEmpty(info.Path))
+			if (string.IsNullOrEmpty(path))
 			{
-				if (!GetProcessPathViaC(info.Id, out info.Path))
+				if (!GetProcessPathViaC(info.Id, out path))
 				{
-					if (!GetProcessPathViaWMI(info.Id, out info.Path))
+					if (!GetProcessPathViaWMI(info.Id, out path))
 					{
 						Statistics.PathNotFound++;
 						return false;
@@ -73,6 +74,8 @@ namespace Taskmaster
 			}
 			else
 				Statistics.PathFindViaModule++;
+
+			info.Path = path;
 
 			return true;
 		}

@@ -521,7 +521,8 @@ namespace Taskmaster
 		public void Pause(ProcessEx info, bool firsttime = false)
 		{
 			Debug.Assert(ForegroundOnly == true, "Pause called for non-foreground only rule");
-			Debug.Assert(info.Controller != null);
+			Debug.Assert(info.Controller != null, "No controller attached");
+
 			//Debug.Assert(!PausedIds.ContainsKey(info.Id));
 
 			if (!PausedIds.TryAdd(info.Id, 0))
@@ -593,7 +594,7 @@ namespace Taskmaster
 					AffinityNew = mAffinity ? BackgroundAffinity : -1,
 					AffinityOld = oldAffinity,
 					Info = info,
-					State = ProcessRunningState.Reduced,
+					State = ProcessRunningState.Paused,
 				};
 
 				ev.User = new System.Text.StringBuilder();
@@ -603,9 +604,9 @@ namespace Taskmaster
 				LogAdjust(ev);
 			}
 
-			info.State = ProcessModification.Paused;
+			info.State = ProcessHandlingState.Paused;
 
-			Paused?.Invoke(this, new ProcessEventArgs() { Info = info, State = ProcessRunningState.Reduced });
+			Paused?.Invoke(this, new ProcessEventArgs() { Info = info, State = ProcessRunningState.Paused });
 		}
 
 		void LogAdjust(ProcessEventArgs ev)
@@ -623,7 +624,7 @@ namespace Taskmaster
 				if (ev.PriorityNew.HasValue)
 					sbs.Append(" → ").Append(Readable.ProcessPriority(ev.PriorityNew.Value));
 
-				if (Priority.HasValue && ev.State == ProcessRunningState.Reduced && Priority != ev.PriorityNew)
+				if (Priority.HasValue && ev.State == ProcessRunningState.Paused && Priority != ev.PriorityNew)
 					sbs.Append($" [{ProcessHelpers.PriorityToInt(Priority.Value)}]");
 
 				if (ev.PriorityFail) sbs.Append(" [Failed]");
@@ -639,7 +640,7 @@ namespace Taskmaster
 				if (ev.AffinityNew >= 0)
 					sbs.Append(" → ").Append(ev.AffinityNew);
 
-				if (AffinityMask >= 0 && ev.State == ProcessRunningState.Reduced && AffinityMask != ev.AffinityNew)
+				if (AffinityMask >= 0 && ev.State == ProcessRunningState.Paused && AffinityMask != ev.AffinityNew)
 					sbs.Append($" [{AffinityMask}]");
 			}
 			else
@@ -672,8 +673,8 @@ namespace Taskmaster
 
 		public void Resume(ProcessEx info)
 		{
-			Debug.Assert(ForegroundOnly == true);
-			Debug.Assert(info.Controller != null);
+			Debug.Assert(ForegroundOnly == true, "Resume called for non-foreground rule");
+			Debug.Assert(info.Controller != null, "No controller attached");
 
 			bool mAffinity = false, mPriority = false;
 			ProcessPriorityClass oldPriority = ProcessPriorityClass.RealTime;
@@ -737,7 +738,7 @@ namespace Taskmaster
 				}
 			}
 
-			info.State = ProcessModification.Resumed;
+			info.State = ProcessHandlingState.Resumed;
 
 			PausedIds.TryRemove(info.Id, out _);
 
@@ -752,7 +753,7 @@ namespace Taskmaster
 					AffinityNew = mAffinity ? newAffinity : -1,
 					AffinityOld = oldAffinity,
 					Info = info,
-					State = ProcessRunningState.Reduced,
+					State = ProcessRunningState.Paused,
 				};
 
 				ev.User = new System.Text.StringBuilder();
@@ -762,7 +763,7 @@ namespace Taskmaster
 				LogAdjust(ev);
 			}
 
-			Resumed?.Invoke(this, new ProcessEventArgs() { Info = info, State = ProcessRunningState.Restored });
+			Resumed?.Invoke(this, new ProcessEventArgs() { Info = info, State = ProcessRunningState.Resumed });
 		}
 
 		/// <summary>
@@ -794,16 +795,17 @@ namespace Taskmaster
 
 		bool SetPower(ProcessEx info)
 		{
-			Debug.Assert(Taskmaster.PowerManagerEnabled);
-			Debug.Assert(PowerPlan != PowerInfo.PowerMode.Undefined);
-			Debug.Assert(info.Controller != null);
+			Debug.Assert(Taskmaster.PowerManagerEnabled, "SetPower called despite power manager being disabled");
+			Debug.Assert(PowerPlan != PowerInfo.PowerMode.Undefined, "Powerplan is undefined");
+			Debug.Assert(info.Controller != null, "No controller attached");
 
 			info.PowerWait = true;
 			PowerList.TryAdd(info.Id, info);
-			var ea = new ProcessEventArgs() { Info = info, State = ProcessRunningState.Undefined };
 
 			bool rv = Taskmaster.powermanager.Force(PowerPlan, info.Id);
-			WaitingExit?.Invoke(this, ea);
+
+			WaitingExit?.Invoke(this, new ProcessEventArgs() { Info = info, State = ProcessRunningState.Undefined });
+
 			return rv;
 		}
 
@@ -941,7 +943,7 @@ namespace Taskmaster
 			Debug.Assert(info.Process != null, "ProcessController.Touch given null process.");
 			Debug.Assert(!ProcessManager.SystemProcessId(info.Id), "ProcessController.Touch given invalid process ID");
 			Debug.Assert(!string.IsNullOrEmpty(info.Name), "ProcessController.Touch given empty process name.");
-			Debug.Assert(info.Controller != null);
+			Debug.Assert(info.Controller != null, "No controller attached");
 
 			if (ForegroundOnly)
 			{
@@ -986,19 +988,19 @@ namespace Taskmaster
 			}
 			catch (InvalidOperationException) // Already exited
 			{
-				info.State = ProcessModification.Exited;
+				info.State = ProcessHandlingState.Exited;
 				return;
 			}
 			catch (Win32Exception) // denied
 			{
 				// failure to retrieve exit code, this probably means we don't have sufficient rights. assume it is gone.
-				info.State = ProcessModification.AccessDenied;
+				info.State = ProcessHandlingState.AccessDenied;
 				return;
 			}
 			catch (Exception ex) // invalidoperation or notsupported, neither should happen
 			{
 				Logging.Stacktrace(ex);
-				info.State = ProcessModification.Invalid;
+				info.State = ProcessHandlingState.Invalid;
 				return;
 			}
 
@@ -1270,12 +1272,11 @@ namespace Taskmaster
 
 			if (modified)
 			{
-				info.State = ProcessModification.Modified;
-				info.Modified = now;
+				info.State = ProcessHandlingState.Modified;
 				Modified?.Invoke(this, ev);
 			}
 			else
-				info.State = ProcessModification.Ignored;
+				info.State = ProcessHandlingState.Abandoned;
 
 			if (Recheck > 0) TouchReapply(info);
 
@@ -1348,7 +1349,7 @@ namespace Taskmaster
 
 		void TryResize(ProcessEx info)
 		{
-			Debug.Assert(Resize.HasValue);
+			Debug.Assert(Resize.HasValue, "Trying to resize when resize is not defined");
 
 			if (Taskmaster.DebugResize) Log.Debug("Attempting resize on " + info.Name + " (#" + info.Id + ")");
 
@@ -1557,8 +1558,8 @@ namespace Taskmaster
 				catch { continue; } // access failure or similar, we don't care
 				try
 				{
-					var info = ProcessUtility.GetInfo(pid, process, this, name, null, getPath: !string.IsNullOrEmpty(Path));
-					Modify(info);
+					if (ProcessUtility.GetInfo(pid, out var info, process, this, name, null, getPath: !string.IsNullOrEmpty(Path)))
+						Modify(info);
 				}
 				catch (Exception ex)
 				{

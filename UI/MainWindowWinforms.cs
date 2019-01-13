@@ -2171,21 +2171,12 @@ namespace Taskmaster
 
 						// 0 = Id, 1 = Name, 2 = State
 						item.SubItems[0].Text = ea.Info.Id.ToString();
-						item.SubItems[2].Text = ea.State.ToString();
+						item.SubItems[2].Text = ea.Info.State.ToString();
 						item.SubItems[3].Text = DateTime.Now.ToLongTimeString();
 
 						if (newitem) processinglist.Items.Insert(0, item);
 
-						switch (ea.State)
-						{
-							case ProcessHandlingState.Finished:
-							case ProcessHandlingState.Abandoned:
-							case ProcessHandlingState.Modified:
-							case ProcessHandlingState.Unmodified:
-								RemoveOldProcessingEntry(key);
-								break;
-							default: break;
-						}
+						if (ea.Info.Handled) RemoveOldProcessingEntry(key);
 
 						processinglist.EndUpdate();
 					}
@@ -2313,15 +2304,16 @@ namespace Taskmaster
 						if (Taskmaster.Trace && Taskmaster.DebugForeground) Log.Debug("WaitlistHandler: " + ea.Info.Name + " = " + ea.State.ToString());
 						switch (ea.State)
 						{
+							case ProcessRunningState.Cancel:
 							case ProcessRunningState.Exiting:
 								exitwaitlist.Items.Remove(li);
 								ExitWaitlistMap.TryRemove(ea.Info.Id, out _);
 								break;
 							case ProcessRunningState.Found:
-							case ProcessRunningState.Reduced:
+							case ProcessRunningState.Paused:
 								break;
 							//case ProcessEventArgs.ProcessState.Starting: // this should never get here
-							case ProcessRunningState.Restored:
+							case ProcessRunningState.Resumed:
 								// move item to top
 								exitwaitlist.Items.Remove(li);
 								exitwaitlist.Items.Insert(0, li);

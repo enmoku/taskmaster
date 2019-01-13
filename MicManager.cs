@@ -26,6 +26,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using MKAh;
 using Serilog;
@@ -94,7 +95,7 @@ namespace Taskmaster
 		/// <exception cref="InitFailure">When initialization fails in a way that can not be continued from.</exception>
 		public MicManager()
 		{
-			System.Diagnostics.Debug.Assert(Taskmaster.IsMainThread(), "Requires main thread");
+			Debug.Assert(Taskmaster.IsMainThread(), "Requires main thread");
 
 			// Target = Maximum; // superfluous; CLEANUP
 

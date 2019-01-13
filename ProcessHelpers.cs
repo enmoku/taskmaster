@@ -35,28 +35,69 @@ using Microsoft.Win32.SafeHandles; // SafeHandleMinusOneIsInvalid
 
 namespace Taskmaster
 {
-	public enum ProcessModification
+	public enum ProcessRunningState
 	{
 		/// <summary>
-		/// Process is already set to what it should be.
+		/// New Instance
 		/// </summary>
-		OK,
+		Starting,
 		/// <summary>
-		/// Process was modified.
+		/// Scanning located, unsure if just started
+		/// </summary>
+		Found,
+		/// <summary>
+		/// Setting to background
+		/// </summary>
+		Paused,
+		/// <summary>
+		/// Setting to foreground
+		/// </summary>
+		Resumed,
+		/// <summary>
+		/// For undoing various things
+		/// </summary>
+		Cancel,
+		/// <summary>
+		/// 
+		/// </summary>
+		Exiting,
+		Undefined
+	}
+
+	public enum ProcessHandlingState
+	{
+		/// <summary>
+		/// New instance
+		/// </summary>
+		Triage, // unused
+		/// <summary>
+		/// Process is waiting to be handled later
+		/// </summary>
+		Batching, // unused
+		/// <summary>
+		/// Collecting info
+		/// </summary>
+		Datamining, // unused
+		/// <summary>
+		/// Brief activation
+		/// </summary>
+		Active, // unused
+		/// <summary>
+		/// Affecting changes
+		/// </summary>
+		Processing, // unused
+		/// <summary>
+		/// Done modifying with some modifications enacted.
 		/// </summary>
 		Modified,
 		/// <summary>
-		/// Process modification was delayed.
+		/// Done modifying but nothing was done.
 		/// </summary>
-		Delayed,
+		Unmodified, // unused
 		/// <summary>
-		/// Failed to access process.
+		/// Done processing.
 		/// </summary>
-		AccessDenied,
-		/// <summary>
-		/// Ignored due to other reasons.
-		/// </summary>
-		Ignored,
+		Finished, // unused?
 		/// <summary>
 		/// Background transition
 		/// </summary>
@@ -66,72 +107,21 @@ namespace Taskmaster
 		/// </summary>
 		Resumed,
 		/// <summary>
-		/// Unspecified error occured.
-		/// </summary>
-		Error,
-		/// <summary>
-		/// Nothing has been done.
-		/// </summary>
-		Invalid,
-		/// <summary>
-		/// No longer running
-		/// </summary>
-		Exited
-	}
-
-	public enum ProcessRunningState
-	{
-		Starting,
-		Found,
-		Reduced,
-		Restored,
-		Cancel,
-		Exiting,
-		Undefined
-	}
-
-	public enum ProcessHandlingState
-	{
-		/// <summary>
-		/// 
-		/// </summary>
-		Triage,
-		/// <summary>
-		/// Process is waiting to be handled later
-		/// </summary>
-		Delayed,
-		/// <summary>
-		/// Collecting info
-		/// </summary>
-		Datamining,
-		/// <summary>
-		/// Brief activation
-		/// </summary>
-		Active,
-		/// <summary>
-		/// Affecting changes
-		/// </summary>
-		Processing,
-		/// <summary>
-		/// Done modifying with some modifications enacted.
-		/// </summary>
-		Modified,
-		/// <summary>
-		/// Done modifying but nothing was done.
-		/// </summary>
-		Unmodified,
-		/// <summary>
-		/// Done processing.
-		/// </summary>
-		Finished,
-		/// <summary>
 		/// Done processing.
 		/// </summary>
 		Abandoned,
 		/// <summary>
 		/// Tin.
 		/// </summary>
-		Invalid
+		Invalid,
+		/// <summary>
+		/// Failed to access process.
+		/// </summary>
+		AccessDenied,
+		/// <summary>
+		/// No longer running
+		/// </summary>
+		Exited
 	}
 
 	public enum ProcessAffinityStrategy
