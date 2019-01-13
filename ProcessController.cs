@@ -651,9 +651,14 @@ namespace Taskmaster
 
 			if (ev.User != null) sbs.Append(ev.User);
 
-
 			if (Taskmaster.ShowAdjustLatency)
-				sbs.Append($" ({ev.Info.Timer.Elapsed.TotalMilliseconds:N0} ms)");
+			{
+				// BUG: For some obscure reason ev.Info.Timer is paused during Task.Delay(ModifyDelay) in Touch()
+				// ... and does not need adjustment for it here.
+				sbs.Append($" ({ev.Info.Timer.Elapsed.TotalMilliseconds:N0} ms latency");
+				if (ModifyDelay > 0) sbs.Append($" + {ModifyDelay/1000:N0}s delay");
+				sbs.Append(")");
+			}
 
 			// TODO: Add option to logging to file but still show in UI
 			if (!(Taskmaster.ShowInaction && Taskmaster.DebugProcesses)) Log.Information(sbs.ToString());

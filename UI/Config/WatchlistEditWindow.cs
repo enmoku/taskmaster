@@ -175,7 +175,7 @@ namespace Taskmaster
 				Controller.AffinityStrategy = ProcessAffinityStrategy.None;
 			}
 
-			Controller.ModifyDelay = (int)(modifyDelay.Value * 1000);
+			Controller.ModifyDelay = (int)(modifyDelay.Value * 1_000);
 			Controller.PowerPlan = PowerManager.GetModeByName(powerPlan.Text);
 			Controller.AllowPaging = allowPaging.Checked;
 			Controller.SetForegroundOnly(foregroundOnly.Checked);
@@ -702,7 +702,7 @@ namespace Taskmaster
 				Minimum = 0,
 				Maximum = 180,
 				Width = 80,
-				Value = Controller.ModifyDelay / 1000.0M,
+				Value = Controller.ModifyDelay / 1_000.0M,
 			};
 			tooltip.SetToolTip(modifyDelay, "Delay before the process is actually attempted modification.\nEither to keep original priority for a short while, or to counter early self-adjustment.\nThis is also applied to foreground only limited modifications.");
 			lt.Controls.Add(modifyDelay);

@@ -159,12 +159,12 @@ namespace Taskmaster
 				}
 
 				StartDisplayTimer();
-				MonitorOffLastLock.Stop();
+				MonitorOffLastLock?.Stop();
 			}
 			else if (ev.Mode == MonitorPowerMode.Off)
 			{
 				StopDisplayTimer();
-				if (SessionLocked) MonitorOffLastLock.Start();
+				if (SessionLocked) MonitorOffLastLock?.Start();
 			}
 		}
 
@@ -789,8 +789,9 @@ namespace Taskmaster
 		public RestoreModeMethod RestoreMethod { get; private set; } = RestoreModeMethod.Default;
 		public PowerMode RestoreMode { get; private set; } = PowerMode.Balanced;
 
-		Stopwatch SessionLockCounter = new Stopwatch();
-		Stopwatch MonitorOffLastLock = new Stopwatch();
+		Stopwatch SessionLockCounter = null;
+		Stopwatch MonitorOffLastLock = null;
+		Stopwatch MonitorPowerOffCounter = new Stopwatch(); // unused?
 
 		async void SessionLockEvent(object _, SessionSwitchEventArgs ev)
 		{
@@ -803,14 +804,14 @@ namespace Taskmaster
 					return;
 				case SessionSwitchReason.SessionLock:
 					SessionLocked = true;
-					MonitorOffLastLock.Restart();
-					SessionLockCounter.Restart();
+					MonitorOffLastLock = Stopwatch.StartNew();
+					SessionLockCounter = Stopwatch.StartNew();
 					// TODO: Pause most of TM's functionality to avoid problems with account swapping
 					break;
 				case SessionSwitchReason.SessionUnlock:
 					SessionLocked = false;
-					MonitorOffLastLock.Stop();
-					SessionLockCounter.Stop();
+					MonitorOffLastLock?.Stop();
+					SessionLockCounter?.Stop();
 					break;
 			}
 
@@ -857,8 +858,8 @@ namespace Taskmaster
 
 				if (SessionLockPowerOff)
 				{
-					var off = MonitorOffLastLock.Elapsed;
-					var total = SessionLockCounter.Elapsed;
+					var off = MonitorOffLastLock?.Elapsed ?? TimeSpan.Zero;
+					var total = SessionLockCounter?.Elapsed ?? TimeSpan.Zero;
 					double percentage = off.TotalHours / total.TotalHours;
 					Log.Information("<Session:Unlock> Monitor off time: " + $"{off.TotalHours:N1} / {total.TotalHours:N1} hours ({percentage*100:N1} %)");
 				}
@@ -949,7 +950,6 @@ namespace Taskmaster
 		Cause ExpectedCause = new Cause(OriginType.None);
 		PowerMode ExpectedMode = PowerMode.Undefined;
 		MonitorPowerMode ExpectedMonitorPower = MonitorPowerMode.On;
-		Stopwatch MonitorPowerOffCounter = new Stopwatch();
 
 		protected override void WndProc(ref Message m)
 		{

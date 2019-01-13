@@ -486,18 +486,17 @@ namespace Taskmaster
 
 				await Task.Delay(TimeSpan.FromSeconds(12)).ConfigureAwait(false); // force async, 12 seconds
 
-				var n = new Stopwatch();
-				n.Start();
+				var ExplorerRestarTtimer = Stopwatch.StartNew();
 				bool startAttempt = true;
 				Process[] procs;
 				do
 				{
-					if (n.Elapsed.TotalHours >= 24)
+					if (ExplorerRestarTtimer.Elapsed.TotalHours >= 24)
 					{
 						Log.Error("<Tray> Explorer has not recovered in excessive timeframe, giving up.");
 						return;
 					}
-					else if (startAttempt && ExplorerRestartHelpDelay != TimeSpan.Zero && n.Elapsed >= ExplorerRestartHelpDelay)
+					else if (startAttempt && ExplorerRestartHelpDelay != TimeSpan.Zero && ExplorerRestarTtimer.Elapsed >= ExplorerRestartHelpDelay)
 					{
 						// TODO: This shouldn't happen if the session is exiting.
 						Log.Information("<Tray> Restarting explorer as per user configured timer.");
@@ -515,7 +514,7 @@ namespace Taskmaster
 				}
 				while (procs.Length == 0);
 
-				n.Stop();
+				ExplorerRestarTtimer.Stop();
 
 				if (!RegisterExplorerExit(procs))
 				{

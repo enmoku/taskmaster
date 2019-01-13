@@ -386,8 +386,7 @@ namespace Taskmaster
 				if (Taskmaster.DebugFullScan)
 					Log.Verbose("<Process> Checking [" + i + "/" + count + "] " + name + " (#" + pid + ")");
 
-				var timer = new Stopwatch();
-				timer.Start();
+				var timer = Stopwatch.StartNew();
 
 				ProcessDetectedEvent?.Invoke(this, new ProcessEventArgs
 				{
@@ -1267,22 +1266,33 @@ namespace Taskmaster
 
 		async void CollectProcessHandlingStatistics(object _, InstanceHandlingArgs e)
 		{
-			switch (e.State)
+			try
 			{
-				case ProcessHandlingState.Finished:
-				case ProcessHandlingState.Modified:
-				//case ProcessHandlingState.Unmodified:
-					e.Info.Timer.Stop();
-					ulong time = Convert.ToUInt64(e.Info.Timer.ElapsedMilliseconds);
-					if (Taskmaster.Trace) Debug.WriteLine("Modify time: " + $"{time} ms");
-					Statistics.TouchTime = time;
-					Statistics.TouchTimeLongest = Math.Max(time, Statistics.TouchTimeLongest);
-					Statistics.TouchTimeShortest = Math.Min(time, Statistics.TouchTimeShortest);
-					break;
-				case ProcessHandlingState.Abandoned:
-				case ProcessHandlingState.Invalid:
-					e.Info.Timer.Stop();
-					break;
+				switch (e.State)
+				{
+					case ProcessHandlingState.Finished:
+					case ProcessHandlingState.Modified:
+						//case ProcessHandlingState.Unmodified:
+						e.Info.Timer.Stop();
+						long elapsed = e.Info.Timer.ElapsedMilliseconds;
+						int delay = e.Info.Controller.ModifyDelay;
+						ulong time = Convert.ToUInt64(elapsed - Math.Min(delay, elapsed)); // to avoid overflows
+						if (Taskmaster.Trace) Debug.WriteLine("Modify time: " + $"{time} ms + {delay} ms delay");
+						Statistics.TouchTime = time;
+						Statistics.TouchTimeLongest = Math.Max(time, Statistics.TouchTimeLongest);
+						Statistics.TouchTimeShortest = Math.Min(time, Statistics.TouchTimeShortest);
+						break;
+					case ProcessHandlingState.Abandoned:
+					case ProcessHandlingState.Invalid:
+						e.Info.Timer.Stop();
+						break;
+				}
+			}
+			catch (Exception ex)
+			{
+				Logging.Stacktrace(ex);
+				Log.Error("Disabling collecting of process handling statistics");
+				HandlingStateChange -= CollectProcessHandlingStatistics;
 			}
 		}
 
@@ -1405,8 +1415,7 @@ namespace Taskmaster
 			SignalProcessHandled(1); // wmi new instance
 
 			var now = DateTimeOffset.UtcNow;
-			var timer = new Stopwatch();
-			timer.Start();
+			var timer = Stopwatch.StartNew();
 
 			int pid = -1;
 			string name = string.Empty;

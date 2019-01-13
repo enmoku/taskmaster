@@ -587,7 +587,7 @@ namespace Taskmaster
 			ulong cur = Statistics.TouchTime;
 			ulong max = Statistics.TouchTimeLongest;
 			modifylatency.Text = (min == ulong.MaxValue ? "?" : min.ToString()) + "–" +
-				(cur == ulong.MinValue ? "?" : cur.ToString()) + "-" +
+				(cur == ulong.MaxValue ? "?" : cur.ToString()) + "-" +
 				(max == ulong.MinValue ? "?" : max.ToString()) + " ms";
 		}
 
