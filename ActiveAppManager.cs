@@ -324,7 +324,7 @@ namespace Taskmaster
 			HangTime = DateTimeOffset.MaxValue;
 		}
 
-		public void SetupEventHookEvent(object _, ProcessEventArgs _ea)
+		public void SetupEventHookEvent(object _, ProcessModificationEventArgs _ea)
 		{
 			// SetupEventHook();
 		}

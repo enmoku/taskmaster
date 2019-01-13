@@ -175,7 +175,7 @@ namespace Taskmaster
 		}
 
 		string freememoryignore = null;
-		void FreeMemoryTick(object _, ProcessEventArgs ea)
+		void FreeMemoryTick(object _, ProcessModificationEventArgs ea)
 		{
 			try
 			{
@@ -325,14 +325,14 @@ namespace Taskmaster
 		/// <summary>
 		/// Event fired by Scan and WMI new process
 		/// </summary>
-		public event EventHandler<ProcessEventArgs> ProcessDetectedEvent;
+		public event EventHandler<ProcessModificationEventArgs> ProcessDetectedEvent;
 		public event EventHandler ScanStartEvent;
 		public event EventHandler ScanEndEvent;
 
-		public event EventHandler<ProcessEventArgs> ProcessModified;
+		public event EventHandler<ProcessModificationEventArgs> ProcessModified;
 
 		public event EventHandler<InstanceEventArgs> HandlingCounter;
-		public event EventHandler<ProcessEventArgs> ProcessStateChange;
+		public event EventHandler<ProcessModificationEventArgs> ProcessStateChange;
 
 		public event EventHandler<InstanceHandlingArgs> HandlingStateChange;
 
@@ -391,7 +391,7 @@ namespace Taskmaster
 
 				var timer = Stopwatch.StartNew();
 
-				ProcessDetectedEvent?.Invoke(this, new ProcessEventArgs
+				ProcessDetectedEvent?.Invoke(this, new ProcessModificationEventArgs
 				{
 					Info = new ProcessEx() { Process = process, Id = pid, Name = name, Path = null, Timer = timer },
 					State = ProcessRunningState.Found,
@@ -792,7 +792,7 @@ namespace Taskmaster
 			}
 		}
 
-		private void ProcessWaitingExitProxy(object _, ProcessEventArgs ea)
+		private void ProcessWaitingExitProxy(object _, ProcessModificationEventArgs ea)
 		{
 			try
 			{
@@ -807,17 +807,17 @@ namespace Taskmaster
 			}
 		}
 
-		private void ProcessResumedProxy(object _, ProcessEventArgs _ea)
+		private void ProcessResumedProxy(object _, ProcessModificationEventArgs _ea)
 		{
 			throw new NotImplementedException();
 		}
 
-		private void ProcessPausedProxy(object _, ProcessEventArgs _ea)
+		private void ProcessPausedProxy(object _, ProcessModificationEventArgs _ea)
 		{
 			throw new NotImplementedException();
 		}
 
-		void ProcessModifiedProxy(object _, ProcessEventArgs ea)
+		void ProcessModifiedProxy(object _, ProcessModificationEventArgs ea)
 		{
 			try
 			{
@@ -865,7 +865,7 @@ namespace Taskmaster
 
 				info.Controller?.End(info);
 
-				ProcessStateChange?.Invoke(this, new ProcessEventArgs() { Info = info, State = state });
+				ProcessStateChange?.Invoke(this, new ProcessModificationEventArgs() { Info = info, State = state });
 
 				CleanWaitForExitList(); // HACK
 			}
@@ -984,7 +984,7 @@ namespace Taskmaster
 				}
 
 				if (exithooked)
-					ProcessStateChange?.Invoke(this, new ProcessEventArgs() { Info = info, State = ProcessRunningState.Undefined });
+					ProcessStateChange?.Invoke(this, new ProcessModificationEventArgs() { Info = info, State = ProcessRunningState.Undefined });
 			}
 		}
 
@@ -1012,7 +1012,7 @@ namespace Taskmaster
 							if (PreviousForegroundController.ForegroundOnly)
 								PreviousForegroundController.Pause(PreviousForegroundInfo);
 
-							ProcessStateChange?.Invoke(this, new ProcessEventArgs() { Info = PreviousForegroundInfo, State = ProcessRunningState.Paused });
+							ProcessStateChange?.Invoke(this, new ProcessModificationEventArgs() { Info = PreviousForegroundInfo, State = ProcessRunningState.Paused });
 						}
 					}
 					else
@@ -1031,7 +1031,7 @@ namespace Taskmaster
 
 						if (prc.ForegroundOnly) prc.Resume(info);
 
-						ProcessStateChange?.Invoke(this, new ProcessEventArgs() { Info = info, State = ProcessRunningState.Resumed });
+						ProcessStateChange?.Invoke(this, new ProcessModificationEventArgs() { Info = info, State = ProcessRunningState.Resumed });
 
 						PreviousForegroundInfo = info;
 						PreviousForegroundController = prc;
@@ -1301,7 +1301,7 @@ namespace Taskmaster
 					Log.Debug("[" + prc.FriendlyName + "] " + info.Name + " (#" + info.Id + ") already in foreground watchlist.");
 			}
 
-			ProcessStateChange?.Invoke(this, new ProcessEventArgs() { Info = info, State = keyexists ? ProcessRunningState.Found : ProcessRunningState.Starting });
+			ProcessStateChange?.Invoke(this, new ProcessModificationEventArgs() { Info = info, State = keyexists ? ProcessRunningState.Found : ProcessRunningState.Starting });
 		}
 
 		async void CollectProcessHandlingStatistics(object _, InstanceHandlingArgs ea)
@@ -1330,7 +1330,7 @@ namespace Taskmaster
 		}
 
 		// TODO: This should probably be pushed into ProcessController somehow.
-		async void ProcessTriage(object _, ProcessEventArgs ea)
+		async void ProcessTriage(object _, ProcessModificationEventArgs ea)
 		{
 			try
 			{
@@ -1447,7 +1447,7 @@ namespace Taskmaster
 				}
 
 				foreach (var info in list)
-					ProcessDetectedEvent?.Invoke(this, new ProcessEventArgs { Info = info });
+					ProcessDetectedEvent?.Invoke(this, new ProcessModificationEventArgs { Info = info });
 
 				SignalProcessHandled(-(list.Count)); // batch done
 			}
@@ -1601,7 +1601,7 @@ namespace Taskmaster
 			}
 			else
 			{
-				ProcessDetectedEvent?.Invoke(this, new ProcessEventArgs { Info = info });
+				ProcessDetectedEvent?.Invoke(this, new ProcessModificationEventArgs { Info = info });
 			}
 		}
 

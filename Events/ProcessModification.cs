@@ -1,5 +1,5 @@
 ﻿//
-// ProcessEventArgs.cs
+// ProcessModification.cs
 //
 // Author:
 //       M.A. (https://github.com/mkahvi)
@@ -29,7 +29,7 @@ using System.Diagnostics;
 
 namespace Taskmaster
 {
-	sealed public class ProcessEventArgs : EventArgs
+	sealed public class ProcessModificationEventArgs : EventArgs
 	{
 		public ProcessEx Info = null;
 		public ProcessRunningState State = ProcessRunningState.Undefined;

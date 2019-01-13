@@ -42,20 +42,20 @@ namespace Taskmaster
 	sealed public class ProcessController : IDisposable
 	{
 		// EVENTS
-		public event EventHandler<ProcessEventArgs> Modified;
+		public event EventHandler<ProcessModificationEventArgs> Modified;
 
 		/// <summary>
 		/// Process gone to background
 		/// </summary>
-		public event EventHandler<ProcessEventArgs> Paused;
+		public event EventHandler<ProcessModificationEventArgs> Paused;
 		/// <summary>
 		/// Process back on foreground.
 		/// </summary>
-		public event EventHandler<ProcessEventArgs> Resumed;
+		public event EventHandler<ProcessModificationEventArgs> Resumed;
 		/// <summary>
 		/// Process is waiting for exit.
 		/// </summary>
-		public event EventHandler<ProcessEventArgs> WaitingExit;
+		public event EventHandler<ProcessModificationEventArgs> WaitingExit;
 
 		// Core information
 		/// <summary>
@@ -587,7 +587,7 @@ namespace Taskmaster
 
 			if (Taskmaster.ShowProcessAdjusts && firsttime)
 			{
-				var ev = new ProcessEventArgs()
+				var ev = new ProcessModificationEventArgs()
 				{
 					PriorityNew = mPriority ? BackgroundPriority : null,
 					PriorityOld = oldPriority,
@@ -606,10 +606,10 @@ namespace Taskmaster
 
 			info.State = ProcessHandlingState.Paused;
 
-			Paused?.Invoke(this, new ProcessEventArgs() { Info = info, State = ProcessRunningState.Paused });
+			Paused?.Invoke(this, new ProcessModificationEventArgs() { Info = info, State = ProcessRunningState.Paused });
 		}
 
-		void LogAdjust(ProcessEventArgs ev)
+		void LogAdjust(ProcessModificationEventArgs ev)
 		{
 			if (!LogAdjusts) return;
 
@@ -746,7 +746,7 @@ namespace Taskmaster
 
 			if (Taskmaster.DebugForeground && Taskmaster.ShowProcessAdjusts)
 			{
-				var ev = new ProcessEventArgs()
+				var ev = new ProcessModificationEventArgs()
 				{
 					PriorityNew = mPriority ? (ProcessPriorityClass?)Priority.Value : null,
 					PriorityOld = oldPriority,
@@ -763,7 +763,7 @@ namespace Taskmaster
 				LogAdjust(ev);
 			}
 
-			Resumed?.Invoke(this, new ProcessEventArgs() { Info = info, State = ProcessRunningState.Resumed });
+			Resumed?.Invoke(this, new ProcessModificationEventArgs() { Info = info, State = ProcessRunningState.Resumed });
 		}
 
 		/// <summary>
@@ -804,7 +804,7 @@ namespace Taskmaster
 
 			bool rv = Taskmaster.powermanager.Force(PowerPlan, info.Id);
 
-			WaitingExit?.Invoke(this, new ProcessEventArgs() { Info = info, State = ProcessRunningState.Undefined });
+			WaitingExit?.Invoke(this, new ProcessModificationEventArgs() { Info = info, State = ProcessRunningState.Undefined });
 
 			return rv;
 		}
@@ -1242,7 +1242,7 @@ namespace Taskmaster
 			logevent |= (firsttime && ForegroundOnly);
 			logevent |= (Taskmaster.ShowInaction && Taskmaster.DebugProcesses);
 
-			var ev = new ProcessEventArgs()
+			var ev = new ProcessModificationEventArgs()
 			{
 				PriorityNew = newPriority,
 				PriorityOld = oldPriority,

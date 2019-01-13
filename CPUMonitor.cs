@@ -4,7 +4,7 @@
 // Author:
 //       M.A. (https://github.com/mkahvi)
 //
-// Copyright (c) 2018 M.A.
+// Copyright (c) 2018–2019 M.A.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -32,14 +32,14 @@ namespace Taskmaster
 {
 	public class CPUMonitor : IDisposable
 	{
-		public event EventHandler<ProcessorEventArgs> onSampling;
+		public event EventHandler<ProcessorLoadEventArgs> onSampling;
 
 		/// <summary>
-		/// Sample Interval. In seconds.
+		/// Sample Interval.
 		/// </summary>
 		public TimeSpan SampleInterval { get; set; } = TimeSpan.FromSeconds(5);
 		public int SampleCount { get; set; } = 5;
-		PerformanceCounterWrapper Counter = null;
+		PerformanceCounterWrapper Counter = new PerformanceCounterWrapper("Processor", "% Processor Time", "_Total");
 		System.Threading.Timer Timer = null;
 
 		float[] Samples;
@@ -50,7 +50,29 @@ namespace Taskmaster
 		{
 			LoadConfig();
 
-			Start();
+			try
+			{
+				if (Timer == null)
+				{
+					Samples = new float[SampleCount];
+
+					// prepopulate
+					for (int i = 0; i < SampleCount; i++)
+					{
+						Samples[i] = Counter.Value;
+						Average += Samples[i];
+					}
+
+					Timer = new System.Threading.Timer(Sampler, null, System.Threading.Timeout.InfiniteTimeSpan, SampleInterval);
+				}
+
+				Timer.Change(TimeSpan.FromSeconds(1), SampleInterval); // start
+			}
+			catch (Exception ex)
+			{
+				Logging.Stacktrace(ex);
+				Timer?.Dispose();
+			}
 
 			Taskmaster.DisposalChute.Push(this);
 		}
@@ -91,45 +113,6 @@ namespace Taskmaster
 			corecfg.MarkDirty();
 		}
 
-		public void Start()
-		{
-			try
-			{
-				if (Counter == null)
-					Counter = new PerformanceCounterWrapper("Processor", "% Processor Time", "_Total");
-
-				if (Timer == null)
-				{
-					Samples = new float[SampleCount];
-
-					// prepopulate
-					for (int i = 0; i < SampleCount; i++)
-					{
-						Samples[i] = Counter.Value;
-						Average += Samples[i];
-					}
-
-					Timer = new System.Threading.Timer(Sampler, null, System.Threading.Timeout.InfiniteTimeSpan, SampleInterval);
-				}
-
-				Timer.Change(TimeSpan.FromSeconds(1), SampleInterval); // start
-			}
-			catch (Exception ex)
-			{
-				Logging.Stacktrace(ex);
-				Stop();
-			}
-		}
-
-		public void Stop()
-		{
-			Timer?.Dispose();
-			Timer = null;
-
-			Counter?.Dispose();
-			Counter = null;
-		}
-
 		int sampler_lock = 0;
 
 		[System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
@@ -159,13 +142,14 @@ namespace Taskmaster
 			SampleLoop = (SampleLoop + 1) % SampleCount; // loop offset
 
 			Calculate();
-
-			onSampling?.Invoke(this, new ProcessorEventArgs()
+			
+			onSampling?.Invoke(this, new ProcessorLoadEventArgs()
 			{
 				Current = sample,
 				Average = Average,
 				High = High,
-				Low = Low
+				Low = Low,
+				Period = SampleInterval
 			});
 
 			Atomic.Unlock(ref sampler_lock);
@@ -176,16 +160,20 @@ namespace Taskmaster
 
 		protected virtual void Dispose(bool disposing)
 		{
-			if (!disposed)
-			{
-				if (disposing)
-				{
-					Stop();
-					SaveConfig();
-				}
+			if (disposed) return;
 
-				disposed = true;
+			if (disposing)
+			{
+				Timer?.Dispose();
+				Timer = null;
+
+				Counter?.Dispose();
+				Counter = null;
+
+				SaveConfig();
 			}
+
+			disposed = true;
 		}
 
 		public void Dispose()
@@ -193,13 +181,5 @@ namespace Taskmaster
 			Dispose(true);
 		}
 		#endregion
-	}
-
-	public class ProcessorEventArgs : EventArgs
-	{
-		public float Current;
-		public float Average;
-		public float Low;
-		public float High;
 	}
 }

@@ -234,7 +234,7 @@ namespace Taskmaster
 
 		readonly string AnyIgnoredValue = string.Empty; // Any/Ignored
 
-		public void ProcessTouchEvent(object _, ProcessEventArgs ea)
+		public void ProcessTouchEvent(object _, ProcessModificationEventArgs ea)
 		{
 			if (!IsHandleCreated) return;
 			var prc = ea.Info.Controller; // cache
@@ -331,7 +331,7 @@ namespace Taskmaster
 			processmanager.ProcessModified += ProcessTouchEvent;
 
 			foreach (var bu in processmanager.getExitWaitList())
-				ExitWaitListHandler(this, new ProcessEventArgs() { State = ProcessRunningState.Found, Info = bu });
+				ExitWaitListHandler(this, new ProcessModificationEventArgs() { State = ProcessRunningState.Found, Info = bu });
 		}
 
 		void ProcessNewInstanceCount(object _, InstanceEventArgs e)
@@ -2286,7 +2286,7 @@ namespace Taskmaster
 			catch (Exception ex) { Logging.Stacktrace(ex); }
 		}
 
-		public void ExitWaitListHandler(object _discard, ProcessEventArgs ea)
+		public void ExitWaitListHandler(object _discard, ProcessModificationEventArgs ea)
 		{
 			if (activeappmonitor == null) return;
 			if (!IsHandleCreated) return;
@@ -2364,7 +2364,7 @@ namespace Taskmaster
 		}
 
 		// called by cpumonitor, not in UI thread by default
-		public void CPULoadHandler(object _, ProcessorEventArgs ea)
+		public void CPULoadHandler(object _, ProcessorLoadEventArgs ea)
 		{
 			if (!IsHandleCreated) return;
 
@@ -2374,7 +2374,7 @@ namespace Taskmaster
 			}));
 		}
 
-		public void PowerLoadHandler(object _, PowerEventArgs ea)
+		public void PowerLoadHandler(object _, AutoAdjustReactionEventArgs ea)
 		{
 			if (!IsHandleCreated) return;
 

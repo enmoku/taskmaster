@@ -1,5 +1,5 @@
 ﻿//
-// PowerEventArgs.cs
+// ProcessorLoad.cs
 //
 // Author:
 //       M.A. (https://github.com/mkahvi)
@@ -24,26 +24,36 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
+using System;
+
 namespace Taskmaster
 {
-	sealed public class PowerEventArgs : ProcessorEventArgs
+	/// <summary>
+	/// Processor load event.
+	/// Values are in percentages from 0.0f to 100.0f
+	/// </summary>
+	public class ProcessorLoadEventArgs : EventArgs
 	{
-		public PowerInfo.PowerMode Mode = PowerInfo.PowerMode.Undefined;
-		public PowerManager.PowerReaction Reaction = PowerManager.PowerReaction.Steady;
+		/// <summary>
+		/// Current load, from 0.0f to 100.0f.
+		/// </summary>
+		public float Current { get; set; } = 0.0f;
+		/// <summary>
+		/// Averageload, from 0.0f to 100.0f.
+		/// </summary>
+		public float Average { get; set; } = 0.0f;
+		/// <summary>
+		/// Lowest load, from 0.0f to 100.0f.
+		/// </summary>
+		public float Low { get; set; } = 0.0f;
+		/// <summary>
+		/// Highest load, from 0.0f to 100.0f.
+		/// </summary>
+		public float High { get; set; } = 0.0f;
 
-		public float Pressure = 0F;
-
-		public bool Enacted = false;
-
-		public static PowerEventArgs From(ProcessorEventArgs ea)
-		{
-			return new PowerEventArgs
-			{
-				Current = ea.Current,
-				Average = ea.Average,
-				High = ea.High,
-				Low = ea.Low
-			};
-		}
+		/// <summary>
+		/// Time period for when Low, Average, and High loads were observed.
+		/// </summary>
+		public TimeSpan Period { get; set; } = TimeSpan.Zero;
 	}
 }

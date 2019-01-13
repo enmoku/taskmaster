@@ -296,7 +296,7 @@ namespace Taskmaster
 		/// </summary>
 		public bool SessionLockPowerOff { get; set; } = true;
 
-		public event EventHandler<PowerEventArgs> onAutoAdjustAttempt;
+		public event EventHandler<AutoAdjustReactionEventArgs> onAutoAdjustAttempt;
 		public event EventHandler<PowerModeEventArgs> onPlanChange;
 		public event EventHandler<PowerBehaviourEventArgs> onBehaviourChange;
 		public event EventHandler onBatteryResume;
@@ -345,11 +345,11 @@ namespace Taskmaster
 		PowerReaction PreviousReaction = PowerReaction.Average;
 
 		// TODO: Simplify this mess
-		public void CPULoadHandler(object _, ProcessorEventArgs pev)
+		public void CPULoadHandler(object _, ProcessorLoadEventArgs pev)
 		{
 			if (Behaviour != PowerBehaviour.Auto) return;
 
-			var ev = PowerEventArgs.From(pev);
+			var ev = AutoAdjustReactionEventArgs.From(pev);
 
 			lock (autoadjust_lock)
 			{
@@ -452,7 +452,7 @@ namespace Taskmaster
 				{
 					if (Taskmaster.DebugPower) Log.Debug("<Power> Auto-adjust: " + Reaction.ToString());
 
-					if (AutoAdjustSetMode(ReactionaryPlan, new Cause(OriginType.AutoAdjust, Reaction.ToString())))
+					if (AutoAdjustSetMode(ReactionaryPlan, new Cause(OriginType.AutoAdjust, $"{Reaction}, CPU: {pev.Current}%")))
 					{
 						AutoAdjustCounter++;
 						ev.Enacted = true;
