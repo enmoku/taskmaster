@@ -1174,6 +1174,8 @@ namespace Taskmaster
 			System.Windows.Forms.Application.EnableVisualStyles(); // required by shortcuts and high dpi-awareness
 			System.Windows.Forms.Application.SetCompatibleTextRenderingDefault(false); // required by high dpi-awareness
 
+			AppDomain.CurrentDomain.UnhandledException += UnhandledException;
+
 			hiddenwindow = new OS.HiddenWindow();
 
 			TryPortableMode();
@@ -1424,6 +1426,21 @@ namespace Taskmaster
 			}
 
 			return 0;
+		}
+
+		private static void UnhandledException(object sender, UnhandledExceptionEventArgs ea)
+		{
+			var ex = (Exception)ea.ExceptionObject;
+			Log.Fatal(ex, "Unhandled exception!!! Writing to crash log.");
+			Logging.Stacktrace(ex, crashsafe:true);
+
+			if (ea.IsTerminating)
+			{
+				ExitCleanup();
+				Config?.Dispose();
+				MKAh.Utility.LogAndDiscardException(() => trayaccess?.Dispose()); // possibly bad, but...
+				Log.CloseAndFlush();
+			}
 		}
 
 		public static DateTime BuildDate()
