@@ -251,16 +251,27 @@ namespace Taskmaster
 								(ignorepid > 4 ? $" (#{ignorepid})" : string.Empty) + " if possible.");
 							await processmanager.FreeMemory(ignorepid).ConfigureAwait(false);
 						})).ConfigureAwait(false);
+						m.Result = IntPtr.Zero;
 						break;
 					case Keys.R:
 						if (Taskmaster.Trace) Log.Verbose("<Global> Hotkey ctrl-alt-shift-r detected!!!");
 						Log.Information("<Global> Hotkey detected; Hastening next scan.");
 						processmanager?.HastenScan();
+						m.Result = IntPtr.Zero;
 						break;
 					default:
 						Log.Debug("<Global> Received unexpected key event: " + key.ToString());
 						break;
 				}
+			}
+			else if (m.Msg == NativeMethods.WM_COMPACTING)
+			{
+				Log.Debug("<System> WM_COMPACTING received");
+				// wParam = The ratio of central processing unit(CPU) time currently spent by the system compacting memory to CPU time currently spent by the system performing other operations.For example, 0x8000 represents 50 percent of CPU time spent compacting memory.
+				// lParam = This parameter is not used.
+				System.Runtime.GCSettings.LargeObjectHeapCompactionMode = System.Runtime.GCLargeObjectHeapCompactionMode.CompactOnce;
+				GC.Collect(GC.MaxGeneration, GCCollectionMode.Forced, false, true);
+				m.Result = IntPtr.Zero;
 			}
 
 			base.WndProc(ref m); // is this necessary?

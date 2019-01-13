@@ -121,6 +121,7 @@ namespace Taskmaster
 		}
 
 		public const int WM_HOTKEY = 0x0312;
+		public const int WM_COMPACTING = 0x0041;
 		public const int WM_SYSCOMMAND = 0x0112;
 		public const int WM_POWERBROADCAST = 0x218;
 		public const int SC_MONITORPOWER = 0xF170;

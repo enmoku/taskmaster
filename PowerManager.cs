@@ -973,6 +973,8 @@ namespace Taskmaster
 
 					if (Taskmaster.DebugPower)
 						Log.Information("<Power/OS> Change detected: " + CurrentMode.ToString() + " (" + newPersonality.ToString() + ")");
+
+					m.Result = IntPtr.Zero;
 				}
 				else if (ps.PowerSetting == GUID_CONSOLE_DISPLAY_STATE)
 				{
@@ -993,6 +995,8 @@ namespace Taskmaster
 						case 0x2: mode = MonitorPowerMode.Standby; break;
 						default: break;
 					}
+
+					m.Result = IntPtr.Zero;
 
 					MonitorPower?.Invoke(this, new MonitorPowerEventArgs(mode));
 				}
