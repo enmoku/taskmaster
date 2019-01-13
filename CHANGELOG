@@ -6,6 +6,8 @@ Comprehensive changes can be found in Git change history:
 ### 2018-01-13
 	Added: Option to show adjust latency per item. This is not saved between restarts.
 	Added: Handler for unhandled exceptions. Should write to crash log.
+	Internal: Process tracking changed. Bugs may have been introduced.
+	Internal: A lot of error catching added. Some non-errors might be caught now.
 ### 2018-01-12
 	Changed: Stacktraces should no longer include project directory as it was not useful.
 		Note: It would be preferable if the generated .pbd didn't have it instead.
