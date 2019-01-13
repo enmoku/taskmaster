@@ -44,16 +44,16 @@ namespace Taskmaster
 
 			StartPosition = FormStartPosition.CenterParent;
 
-			Width = 260;
-			Height = 100;
+			AutoSize = true;
+			AutoSizeMode = AutoSizeMode.GrowAndShrink;
 
 			Text = "Choose Executable – " + System.Windows.Forms.Application.ProductName;
 
-			var rowlayout = new TableLayoutPanel()
+			var layout = new TableLayoutPanel()
 			{
 				ColumnCount = 1,
 				AutoSize = true,
-				Dock = DockStyle.Top
+				Dock = DockStyle.Fill
 			};
 
 			selection = new ComboBox()
@@ -89,7 +89,7 @@ namespace Taskmaster
 			selection.Items.AddRange(procnames.ToArray());
 			selection.AutoCompleteSource = AutoCompleteSource.ListItems;
 
-			rowlayout.Controls.Add(selection);
+			layout.Controls.Add(selection);
 
 			var buttonlayout = new TableLayoutPanel()
 			{
@@ -102,6 +102,7 @@ namespace Taskmaster
 			{
 				Text = "Select",
 				AutoSize = true,
+				Dock = DockStyle.Top,
 			};
 			selectbutton.Click += SaveSelection;
 			selection.KeyDown += (sender, e) =>
@@ -113,6 +114,7 @@ namespace Taskmaster
 			{
 				Text = "Cancel",
 				AutoSize = true,
+				Dock = DockStyle.Top,
 			};
 			cancelbutton.Click += (sender, e) =>
 			{
@@ -121,10 +123,12 @@ namespace Taskmaster
 			};
 			buttonlayout.Controls.Add(selectbutton);
 			buttonlayout.Controls.Add(cancelbutton);
+			buttonlayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50f));
+			buttonlayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50f));
 
-			rowlayout.Controls.Add(buttonlayout);
+			layout.Controls.Add(buttonlayout);
 
-			Controls.Add(rowlayout);
+			Controls.Add(layout);
 		}
 
 		void SaveSelection(object _, EventArgs _ea)
