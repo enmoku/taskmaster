@@ -582,6 +582,8 @@ namespace Taskmaster
 				}
 			}
 
+			info.Timer.Stop();
+
 			if (Taskmaster.ShowProcessAdjusts && firsttime)
 			{
 				var ev = new ProcessEventArgs()
@@ -649,6 +651,10 @@ namespace Taskmaster
 
 			if (ev.User != null) sbs.Append(ev.User);
 
+
+			if (Taskmaster.ShowAdjustLatency)
+				sbs.Append($" ({ev.Info.Timer.Elapsed.TotalMilliseconds} ms)");
+
 			// TODO: Add option to logging to file but still show in UI
 			if (!(Taskmaster.ShowInaction && Taskmaster.DebugProcesses)) Log.Information(sbs.ToString());
 			else Log.Debug(sbs.ToString());
@@ -712,6 +718,26 @@ namespace Taskmaster
 				return;
 			}
 
+			// PausedState.Priority = Priority;
+			// PausedState.PowerMode = PowerPlan;
+
+			if (Taskmaster.PowerManagerEnabled)
+			{
+				if (PowerPlan != PowerInfo.PowerMode.Undefined && BackgroundPowerdown)
+				{
+					if (Taskmaster.DebugPower || Taskmaster.DebugForeground)
+						Log.Debug("[" + FriendlyName + "] " + info.Name + " (#" + info.Id + ") foreground power on");
+
+					SetPower(info);
+				}
+			}
+
+			info.State = ProcessModification.Resumed;
+
+			PausedIds.TryRemove(info.Id, out _);
+
+			info.Timer.Stop();
+
 			if (Taskmaster.DebugForeground && Taskmaster.ShowProcessAdjusts)
 			{
 				var ev = new ProcessEventArgs()
@@ -730,24 +756,6 @@ namespace Taskmaster
 
 				LogAdjust(ev);
 			}
-
-			// PausedState.Priority = Priority;
-			// PausedState.PowerMode = PowerPlan;
-
-			if (Taskmaster.PowerManagerEnabled)
-			{
-				if (PowerPlan != PowerInfo.PowerMode.Undefined && BackgroundPowerdown)
-				{
-					if (Taskmaster.DebugPower || Taskmaster.DebugForeground)
-						Log.Debug("[" + FriendlyName + "] " + info.Name + " (#" + info.Id + ") foreground power on");
-
-					SetPower(info);
-				}
-			}
-
-			info.State = ProcessModification.Resumed;
-
-			PausedIds.TryRemove(info.Id, out _);
 
 			Resumed?.Invoke(this, new ProcessEventArgs() { Info = info, State = ProcessRunningState.Restored });
 		}
@@ -1239,6 +1247,8 @@ namespace Taskmaster
 				AffinityFail = fAffinity,
 				Protected = isProtectedFile,
 			};
+
+			info.Timer.Stop();
 
 			if (logevent)
 			{

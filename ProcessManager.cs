@@ -1279,6 +1279,10 @@ namespace Taskmaster
 					Statistics.TouchTimeLongest = Math.Max(time, Statistics.TouchTimeLongest);
 					Statistics.TouchTimeShortest = Math.Min(time, Statistics.TouchTimeShortest);
 					break;
+				case ProcessHandlingState.Abandoned:
+				case ProcessHandlingState.Invalid:
+					e.Info.Timer.Stop();
+					break;
 			}
 		}
 

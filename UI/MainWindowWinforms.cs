@@ -891,11 +891,30 @@ namespace Taskmaster
 				corecfg.MarkDirty();
 			};
 
+			var menu_config_logging_latency = new ToolStripMenuItem("Adjust latency")
+			{
+				Checked = Taskmaster.ShowAdjustLatency,
+				CheckOnClick = true,
+			};
+			menu_config_logging_latency.Click += (_, _ea) =>
+			{
+				Taskmaster.ShowAdjustLatency = menu_config_logging_latency.Checked;
+			};
+
 			var menu_config_logging_session = new ToolStripMenuItem("Session actions")
 			{
 				Checked = Taskmaster.ShowSessionActions,
 				CheckOnClick = true,
 			};
+			menu_config_logging_session.Click += (_, _ea) =>
+			{
+				Taskmaster.ShowSessionActions = menu_config_logging_session.Checked;
+
+				var corecfg = Taskmaster.Config.Load(Taskmaster.coreconfig);
+				corecfg.Config["Logging"]["Show session actions"].BoolValue = Taskmaster.ShowSessionActions;
+				corecfg.MarkDirty();
+			};
+
 			var menu_config_logging_neterrors = new ToolStripMenuItem("Network errors")
 			{
 				Checked = Taskmaster.ShowNetworkErrors,
@@ -909,14 +928,7 @@ namespace Taskmaster
 				corecfg.Config["Logging"]["Show network errors"].BoolValue = Taskmaster.ShowNetworkErrors;
 				corecfg.MarkDirty();
 			};
-			menu_config_logging_session.Click += (_, _ea) =>
-			{
-				Taskmaster.ShowSessionActions = menu_config_logging_session.Checked;
 
-				var corecfg = Taskmaster.Config.Load(Taskmaster.coreconfig);
-				corecfg.Config["Logging"]["Show session actions"].BoolValue = Taskmaster.ShowSessionActions;
-				corecfg.MarkDirty();
-			};
 			menu_config_logging.DropDownItems.Add(menu_config_logging_adjusts);
 			menu_config_logging.DropDownItems.Add(menu_config_logging_session);
 			menu_config_logging.DropDownItems.Add(menu_config_logging_neterrors);

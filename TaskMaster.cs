@@ -414,6 +414,7 @@ namespace Taskmaster
 		public static bool ShowProcessAdjusts { get; set; } = true;
 		public static bool ShowForegroundTransitions { get; set; } = false;
 		public static bool ShowSessionActions { get; set; } = true;
+		public static bool ShowAdjustLatency { get; set; } = false;
 		public static bool ShowNetworkErrors { get; set; } = true;
 
 		public static bool DebugProcesses { get; set; } = false;
