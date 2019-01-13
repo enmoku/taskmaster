@@ -34,7 +34,6 @@ using Serilog;
 
 namespace Taskmaster
 {
-	[Serializable]
 	sealed internal class HealthMonitorSettings
 	{
 		/// <summary>

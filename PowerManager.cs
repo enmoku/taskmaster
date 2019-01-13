@@ -1432,7 +1432,7 @@ namespace Taskmaster
 		async void SetMonitorMode(MonitorPowerMode powermode)
 		{
 			Debug.Assert(powermode != MonitorPowerMode.Invalid);
-			int NewPowerMode = (int)powermode; // -1 = Powering On, 1 = Low Power (low backlight, etc.), 2 = Power Off
+			long NewPowerMode = (int)powermode; // -1 = Powering On, 1 = Low Power (low backlight, etc.), 2 = Power Off
 
 			IntPtr Broadcast = new IntPtr(NativeMethods.HWND_BROADCAST); // unreliable
 			IntPtr Topmost = new IntPtr(NativeMethods.HWND_TOPMOST);

@@ -106,7 +106,7 @@ namespace Taskmaster
 		[DllImport("powrprof.dll", EntryPoint = "PowerGetActiveScheme")]
 		public static extern uint PowerGetActiveScheme(IntPtr UserPowerKey, out IntPtr PowerPlanGuid);
 
-		public const int DEVICE_NOTIFY_WINDOW_HANDLE = 0x00000000;
+		public const int DEVICE_NOTIFY_WINDOW_HANDLE = 0x00000000; // DWORD
 
 		// SetLastError
 		[DllImport("user32.dll", EntryPoint = "RegisterPowerSettingNotification", CallingConvention = CallingConvention.StdCall)]
@@ -120,14 +120,20 @@ namespace Taskmaster
 			public byte Data;
 		}
 
-		public const int WM_HOTKEY = 0x0312;
-		public const int WM_COMPACTING = 0x0041;
-		public const int WM_SYSCOMMAND = 0x0112;
-		public const int WM_POWERBROADCAST = 0x218;
-		public const int SC_MONITORPOWER = 0xF170;
-		public const int PBT_POWERSETTINGCHANGE = 0x8013;
-		public const int HWND_BROADCAST = 0xFFFF;
-		public const int HWND_TOPMOST = -1;
+		// uMsg = uint, but Windows.Forms.Message.Msg is int
+		// lParam = int or long
+		// wParam = uint or ulong
+
+		public const int WM_HOTKEY = 0x0312; // uMsg
+		public const int WM_COMPACTING = 0x0041; // uMsg
+		public const int WM_SYSCOMMAND = 0x0112; // uMsg
+		public const int WM_POWERBROADCAST = 0x218; // uMsg
+
+		public const long SC_MONITORPOWER = 0xF170; // wParam
+		public const long PBT_POWERSETTINGCHANGE = 0x8013; // wParam
+
+		public const int HWND_BROADCAST = 0xFFFF; // hWnd
+		public const int HWND_TOPMOST = -1; // hWnd
 
 		[Flags]
 		public enum SendMessageTimeoutFlags : uint
@@ -156,7 +162,7 @@ namespace Taskmaster
 
 		[DllImport("user32.dll", CharSet = CharSet.Auto)] // SetLastError
 		public static extern IntPtr SendMessageTimeout(
-			IntPtr hWnd, int Msg, int wParam, int lParam,
+			IntPtr hWnd, int Msg, ulong wParam, long lParam,
 			SendMessageTimeoutFlags flags, uint timeout, out IntPtr result);
 
 		// for ProcessMAnagerUtility.cs

@@ -71,15 +71,18 @@ namespace Taskmaster.UI
 		{
 			if (disposed) return;
 
-			base.Dispose(disposing);
-
 			if (disposing)
 			{
 				Icon?.Dispose();
 				Icon = null;
 
+				boldfont?.Dispose();
+				boldfont = null;
+
 				disposed = true;
 			}
+
+			base.Dispose(disposing);
 		}
 	}
 }

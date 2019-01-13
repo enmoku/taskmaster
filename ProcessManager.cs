@@ -36,33 +36,33 @@ using Serilog;
 
 namespace Taskmaster
 {
-	sealed public class InstanceEventArgs : EventArgs
+	sealed public class ProcessingCountEventArgs : EventArgs
 	{
-		public int Count { get; set; } = 0;
+		/// <summary>
+		/// Adjustment to previous total.
+		/// </summary>
+		public int Adjust { get; set; } = 0;
+		/// <summary>
+		/// Total items being processed.
+		/// </summary>
 		public int Total { get; set; } = 0;
+
+		public ProcessingCountEventArgs(int count, int total)
+		{
+			Adjust = count;
+			Total = total;
+		}
 	}
 
-	sealed public class InstanceHandlingArgs : EventArgs
+	sealed public class HandlingStateChangeEventArgs : EventArgs
 	{
-		public InstanceHandlingArgs(ProcessEx info)
+		public ProcessEx Info { get; set; } = null;
+
+		public HandlingStateChangeEventArgs(ProcessEx info)
 		{
+			Debug.Assert(info != null, "ProcessEx is not assigned");
 			Info = info;
 		}
-
-		public ProcessEx Info = null;
-	}
-
-	[Serializable]
-	sealed public class ProcessNotFoundException : Exception
-	{
-		public string Name { get; set; } = null;
-		public int Id { get; set; } = -1;
-	}
-
-	enum ProcessFlags
-	{
-		PowerWait = 1 << 6,
-		ActiveWait = 1 << 7
 	}
 
 	sealed public class ProcessManager : IDisposable
@@ -331,10 +331,10 @@ namespace Taskmaster
 
 		public event EventHandler<ProcessModificationEventArgs> ProcessModified;
 
-		public event EventHandler<InstanceEventArgs> HandlingCounter;
+		public event EventHandler<ProcessingCountEventArgs> HandlingCounter;
 		public event EventHandler<ProcessModificationEventArgs> ProcessStateChange;
 
-		public event EventHandler<InstanceHandlingArgs> HandlingStateChange;
+		public event EventHandler<HandlingStateChangeEventArgs> HandlingStateChange;
 
 		int scan_lock = 0;
 
@@ -1304,7 +1304,7 @@ namespace Taskmaster
 			ProcessStateChange?.Invoke(this, new ProcessModificationEventArgs() { Info = info, State = keyexists ? ProcessRunningState.Found : ProcessRunningState.Starting });
 		}
 
-		async void CollectProcessHandlingStatistics(object _, InstanceHandlingArgs ea)
+		async void CollectProcessHandlingStatistics(object _, HandlingStateChangeEventArgs ea)
 		{
 			try
 			{
@@ -1338,7 +1338,7 @@ namespace Taskmaster
 
 				ea.Info.State = ProcessHandlingState.Triage;
 
-				HandlingStateChange?.Invoke(this, new InstanceHandlingArgs(ea.Info));
+				HandlingStateChange?.Invoke(this, new HandlingStateChangeEventArgs(ea.Info));
 
 				if (string.IsNullOrEmpty(ea.Info.Name))
 				{
@@ -1394,7 +1394,7 @@ namespace Taskmaster
 			}
 			finally
 			{
-				HandlingStateChange?.Invoke(this, new InstanceHandlingArgs(ea.Info));
+				HandlingStateChange?.Invoke(this, new HandlingStateChangeEventArgs(ea.Info));
 			}
 		}
 
@@ -1457,12 +1457,12 @@ namespace Taskmaster
 			}
 		}
 
-		public int Handling { get; private set; }
+		public int Handling { get; private set; } = 0; // this isn't used for much...
 
 		void SignalProcessHandled(int adjust)
 		{
 			Handling += adjust;
-			HandlingCounter?.Invoke(this, new InstanceEventArgs { Count = adjust, Total = Handling });
+			HandlingCounter?.Invoke(this, new ProcessingCountEventArgs(adjust, Handling));
 		}
 
 		// This needs to return faster
@@ -1529,7 +1529,7 @@ namespace Taskmaster
 			}
 			finally
 			{
-				HandlingStateChange?.Invoke(this, new InstanceHandlingArgs(info ?? new ProcessEx { Id = pid, Timer = timer, State = ProcessHandlingState.Invalid }));
+				HandlingStateChange?.Invoke(this, new HandlingStateChangeEventArgs(info ?? new ProcessEx { Id = pid, Timer = timer, State = ProcessHandlingState.Invalid }));
 
 				SignalProcessHandled(-1); // done with it
 			}
@@ -1597,7 +1597,7 @@ namespace Taskmaster
 
 				info.State = ProcessHandlingState.Batching;
 
-				HandlingStateChange?.Invoke(this, new InstanceHandlingArgs(info));
+				HandlingStateChange?.Invoke(this, new HandlingStateChangeEventArgs(info));
 			}
 			else
 			{

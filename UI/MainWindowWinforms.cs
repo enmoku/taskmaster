@@ -317,7 +317,7 @@ namespace Taskmaster
 
 			WatchlistRules.BeginUpdate();
 
-			ProcessNewInstanceCount(this, new InstanceEventArgs() { Total = 0, Count = 0 });
+			ProcessNewInstanceCount(this, new ProcessingCountEventArgs(0, 0));
 
 			foreach (var prc in processmanager.getWatchlist())
 				AddToWatchlistList(prc);
@@ -334,7 +334,7 @@ namespace Taskmaster
 				ExitWaitListHandler(this, new ProcessModificationEventArgs() { State = ProcessRunningState.Found, Info = bu });
 		}
 
-		void ProcessNewInstanceCount(object _, InstanceEventArgs e)
+		void ProcessNewInstanceCount(object _, ProcessingCountEventArgs e)
 		{
 			if (!IsHandleCreated) return;
 			BeginInvoke(new Action(() =>
@@ -2147,7 +2147,7 @@ namespace Taskmaster
 
 		ConcurrentDictionary<int, ListViewItem> ProcessEventMap = new ConcurrentDictionary<int, ListViewItem>();
 
-		void ProcessHandlingStateChangeEvent(object _, InstanceHandlingArgs ea)
+		void ProcessHandlingStateChangeEvent(object _, HandlingStateChangeEventArgs ea)
 		{
 			try
 			{
