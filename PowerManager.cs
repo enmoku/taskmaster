@@ -452,7 +452,7 @@ namespace Taskmaster
 				{
 					if (Taskmaster.DebugPower) Log.Debug("<Power> Auto-adjust: " + Reaction.ToString());
 
-					if (AutoAdjustSetMode(ReactionaryPlan, new Cause(OriginType.AutoAdjust, $"{Reaction}, CPU: {pev.Current}%")))
+					if (AutoAdjustSetMode(ReactionaryPlan, new Cause(OriginType.AutoAdjust, $"{Reaction}, CPU: {pev.Current:N1}%")))
 					{
 						AutoAdjustCounter++;
 						ev.Enacted = true;
