@@ -39,6 +39,8 @@ namespace Taskmaster
 	// [ThreadAffine] // would be nice, but huge dependency pile
 	sealed public class MainWindow : UI.UniForm
 	{
+		ToolTip tooltip = new ToolTip();
+
 		// constructor
 		public MainWindow()
 		{
@@ -46,6 +48,14 @@ namespace Taskmaster
 			FormClosing += WindowClose;
 
 			BuildUI();
+
+			tooltip.IsBalloon = true;
+			tooltip.InitialDelay = 2000;
+			tooltip.ShowAlways = true;
+
+			WatchlistSearchTimer = new Timer();
+			WatchlistSearchTimer.Interval = 250;
+			WatchlistSearchTimer.Tick += WatchlistSearchTimer_Tick;
 
 			// TODO: Detect mic device changes
 			// TODO: Delay fixing by 5 seconds to prevent fix diarrhea
@@ -1571,6 +1581,8 @@ namespace Taskmaster
 				MinimumSize = new System.Drawing.Size(-2, -2),
 			};
 
+			WatchlistRules.KeyPress += WatchlistRulesKeyboardSearch;
+
 			var numberColumns = new int[] { 0, AdjustColumn };
 			var watchlistSorter = new WatchlistSorter(numberColumns);
 			WatchlistRules.ListViewItemSorter = watchlistSorter; // what's the point of this?
@@ -2099,6 +2111,85 @@ namespace Taskmaster
 			// End: UI Log
 
 			tabLayout.SelectedIndex = opentab >= tabLayout.TabCount ? 0 : opentab;
+		}
+
+		Stopwatch WatchlistSearchInputTimer = new Stopwatch();
+		Timer WatchlistSearchTimer = null;
+		string SearchString = string.Empty;
+		private void WatchlistRulesKeyboardSearch(object _, KeyPressEventArgs ea)
+		{
+			bool ctrlchar = char.IsControl(ea.KeyChar);
+
+			// RESET
+			if (WatchlistSearchInputTimer.ElapsedMilliseconds > 2_700) // previous input too long ago
+				SearchString = string.Empty;
+
+			if (string.IsNullOrEmpty(SearchString)) // catches above and initial state
+				WatchlistSearchTimer.Start();
+
+			WatchlistSearchInputTimer.Restart();
+
+			if (char.IsControl(ea.KeyChar))
+			{
+				if (ea.KeyChar == (char)Keys.Back && SearchString.Length > 0) // BACKSPACE
+					SearchString = SearchString.Remove(SearchString.Length - 1); // ugly and probably slow
+				else if (ea.KeyChar == (char)Keys.Escape)
+					SearchString = string.Empty;
+				else
+					SearchString += ea.KeyChar;
+			}
+			else
+				SearchString += ea.KeyChar;
+
+			if (!WatchlistSearchTimer.Enabled) WatchlistSearchTimer.Start();
+
+			ea.Handled = true;
+
+			tooltip.Show("Searching: " + SearchString, WatchlistRules,
+				WatchlistRules.ClientSize.Width/3, WatchlistRules.ClientSize.Height,
+				string.IsNullOrEmpty(SearchString) ? 500 : 2_500);
+		}
+
+		private void WatchlistSearchTimer_Tick(object sender, EventArgs e)
+		{
+			bool foundprimary = false, found = false;
+
+			if (!string.IsNullOrEmpty(SearchString))
+			{
+				var search = SearchString.ToLowerInvariant();
+
+				foreach (ListViewItem item in WatchlistRules.Items)
+				{
+					found = false;
+
+					if (item.SubItems[NameColumn].Text.ToLower().Contains(search))
+						found = true;
+					else if (item.SubItems[ExeColumn].Text.ToLower().Contains(search))
+						found = true;
+					else if (item.SubItems[PathColumn].Text.ToLower().Contains(search))
+						found = true;
+
+					if (found)
+					{
+						if (!foundprimary)
+						{
+							foundprimary = true;
+							WatchlistRules.FocusedItem = item;
+							item.Focused = true;
+							item.EnsureVisible();
+						}
+					}
+
+					item.Selected = found;
+				}
+			}
+
+			if (found) WatchlistSearchTimer.Stop();
+			else if (WatchlistSearchInputTimer.ElapsedMilliseconds > 1_000)
+			{
+				WatchlistSearchTimer.Stop();
+				WatchlistSearchInputTimer.Stop();
+			}
 		}
 
 		public void CPULoadEvent(object _, CPUSensorEventArgs ea)
