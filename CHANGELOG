@@ -3,6 +3,8 @@ Comprehensive changes can be found in Git change history:
 	https://github.com/mkahvi/taskmaster/commits/master
 
 ## [0.12...]
+### 2018-01-14
+	Added: Watchlist now has basic search function. Just start typing and it'll highlight anything that has matching names.
 ### 2018-01-13
 	Added: Option to show adjust latency per item. This is not saved between restarts.
 	Added: Handler for unhandled exceptions. Should write to crash log.
