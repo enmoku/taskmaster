@@ -844,12 +844,15 @@ namespace Taskmaster
 			return false;
 		}
 
+		static string[] UnwantedPathBits = new string[] { "x64", "x86", "bin", "debug", "release", "win32", "win64", "common" };
+
 		string FormatPathName(ProcessEx info)
 		{
 			if (!string.IsNullOrEmpty(info.Path))
 			{
 				switch (PathVisibility)
 				{
+					default:
 					case PathVisibilityOptions.Process:
 						return info.Name;
 					case PathVisibilityOptions.Partial:
@@ -875,14 +878,31 @@ namespace Taskmaster
 								parts.RemoveRange(0, PathElements); // remove Path component
 
 								// replace 
-								if (parts.Count > 3)
+								if (parts.Count > 4)
 								{
 									// TODO: Special cases for %APPDATA% and similar?
 
 									// c:\program files\brand\app\version\random\element\executable.exe
 									// ...\brand\app\...\executable.exe
-									parts.RemoveRange(2, parts.Count - 3); // remove all but two first and last
-									parts.Insert(2, HumanReadable.Generic.Ellipsis);
+									parts.RemoveRange(3, parts.Count - 4); // remove all but two first and last
+									parts.Insert(3, HumanReadable.Generic.Ellipsis);
+
+									bool replaced = false;
+									// remove unwanted bits
+									for (int i = 0; i < parts.Count; i++)
+									{
+										if (UnwantedPathBits.Contains(parts[i].ToLowerInvariant()))
+										{
+											if (replaced)
+												parts.RemoveAt(i--); // remove current and roll back loop
+											else
+												parts[i] = HumanReadable.Generic.Ellipsis;
+
+											replaced = true;
+										}
+										else
+											replaced = false;
+									}
 								}
 
 								parts.Insert(0, HumanReadable.Generic.Ellipsis); // add starting ellipsis
@@ -904,15 +924,6 @@ namespace Taskmaster
 							}
 
 							return System.IO.Path.Combine(parts.ToArray());
-						}
-					default:
-					case PathVisibilityOptions.File:
-						return System.IO.Path.GetFileName(info.Path);
-					case PathVisibilityOptions.Folder:
-						{
-							var parts = info.Path.Split(System.IO.Path.DirectorySeparatorChar, System.IO.Path.AltDirectorySeparatorChar);
-							var partpath = System.IO.Path.Combine(HumanReadable.Generic.Ellipsis, parts[parts.Length - 2], parts[parts.Length - 1]);
-							return partpath;
 						}
 					case PathVisibilityOptions.Full:
 						return info.Path;

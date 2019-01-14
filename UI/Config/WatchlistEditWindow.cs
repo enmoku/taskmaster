@@ -150,11 +150,9 @@ namespace Taskmaster
 				default:
 				case 0: pvis = PathVisibilityOptions.Invalid; break;
 				case 1: pvis = PathVisibilityOptions.Process; break;
-				case 2: pvis = PathVisibilityOptions.File; break;
-				case 3: pvis = PathVisibilityOptions.Folder; break;
-				case 4: pvis = PathVisibilityOptions.Full; break;
-				case 5: pvis = PathVisibilityOptions.Partial; break;
-				case 6: pvis = PathVisibilityOptions.Smart; break;
+				case 2: pvis = PathVisibilityOptions.Partial; break;
+				case 3: pvis = PathVisibilityOptions.Full; break;
+				case 4: pvis = PathVisibilityOptions.Smart; break;
 			}
 			Controller.PathVisibility = pvis;
 
@@ -393,11 +391,9 @@ namespace Taskmaster
 			pathVisibility.Items.AddRange(new string[] {
 				"Default: Process or Partial",
 				"Process name (run)",
-				"File name (run.exe)",
-				@"Folder (app\run.exe)",
-				@"Full (c:\programs\brand\app\v2.4\bin\run.exe)",
 				@"Partial (...\app\run.exe)",
-				@"Smart (c:\programs\brand\...\run.exe)"
+				@"Full (c:\programs\brand\app\v2.4\bin\run.exe)",
+				@"Smart (...\brand\...\run.exe)"
 			});
 
 			switch (Controller.PathVisibility)
@@ -405,11 +401,9 @@ namespace Taskmaster
 				default:
 				case PathVisibilityOptions.Invalid: pathVisibility.SelectedIndex = 0; break;
 				case PathVisibilityOptions.Process: pathVisibility.SelectedIndex = 1; break;
-				case PathVisibilityOptions.File: pathVisibility.SelectedIndex = 2; break;
-				case PathVisibilityOptions.Folder: pathVisibility.SelectedIndex = 3; break;
-				case PathVisibilityOptions.Full: pathVisibility.SelectedIndex = 4; break;
-				case PathVisibilityOptions.Partial: pathVisibility.SelectedIndex = 5; break;
-				case PathVisibilityOptions.Smart: pathVisibility.SelectedIndex = 6; break;
+				case PathVisibilityOptions.Partial: pathVisibility.SelectedIndex = 2; break;
+				case PathVisibilityOptions.Full: pathVisibility.SelectedIndex = 3; break;
+				case PathVisibilityOptions.Smart: pathVisibility.SelectedIndex = 4; break;
 			}
 			lt.Controls.Add(new Label { Text = "Path visibility", TextAlign = System.Drawing.ContentAlignment.MiddleLeft });
 			lt.Controls.Add(pathVisibility);
