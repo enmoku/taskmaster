@@ -860,8 +860,9 @@ namespace Taskmaster
 				{
 					var off = MonitorOffLastLock?.Elapsed ?? TimeSpan.Zero;
 					var total = SessionLockCounter?.Elapsed ?? TimeSpan.Zero;
-					double percentage = off.TotalHours / total.TotalHours;
-					Log.Information("<Session:Unlock> Monitor off time: " + $"{off.TotalHours:N1} / {total.TotalHours:N1} hours ({percentage*100:N1} %)");
+					double percentage = off.TotalMinutes / total.TotalMinutes;
+
+					Log.Information("<Session:Unlock> Monitor off time: " + $"{off.TotalMinutes:N1} / {total.TotalMinutes:N1} minutess ({percentage * 100d:N1} %)");
 				}
 			}
 
