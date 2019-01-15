@@ -108,6 +108,10 @@ namespace Taskmaster
 				// NOP
 				Debug.WriteLine("GetModuleFileNameEx - Access Denied - " + $"{info.Name} (#{info.Id})");
 			}
+			catch (InvalidOperationException)
+			{
+				// Already exited
+			}
 			catch (Exception ex)
 			{
 				Logging.Stacktrace(ex);
