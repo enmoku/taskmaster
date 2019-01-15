@@ -102,6 +102,11 @@ namespace Taskmaster
 
 		public string[] IgnoreList { get; set; } = null;
 
+		/// <summary>
+		/// Processes are viable for analysis.
+		/// </summary>
+		public bool Analyze { get; set; } = false;
+
 		/*
 		/// <summary>
 		/// Determines if the process I/O is to be set background.

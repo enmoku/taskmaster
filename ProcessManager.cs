@@ -67,6 +67,8 @@ namespace Taskmaster
 
 	sealed public class ProcessManager : IDisposable
 	{
+		ProcessAnalyzer analyzer = new ProcessAnalyzer();
+
 		/// <summary>
 		/// Watch rules
 		/// </summary>
@@ -78,7 +80,6 @@ namespace Taskmaster
 		// ctor, constructor
 		public ProcessManager()
 		{
-			Log.Information("<CPU> Logical cores: " + CPUCount);
 
 			AllCPUsMask = Convert.ToInt32(Math.Pow(2, CPUCount) - 1 + double.Epsilon);
 
@@ -86,7 +87,7 @@ namespace Taskmaster
 			//for (int i = 0; i < CPUCount - 1; i++)
 			//	allCPUsMask = (allCPUsMask << 1) | 1;
 
-			Log.Information("<CPU> Full CPU mask: " + Convert.ToString(AllCPUsMask, 2) + " (" + AllCPUsMask + " = OS control)");
+			Log.Information("<CPU> Logical cores: " + CPUCount + ", full mask: " + Convert.ToString(AllCPUsMask, 2) + " (" + AllCPUsMask + " = OS control)");
 
 			loadConfig();
 
@@ -147,15 +148,13 @@ namespace Taskmaster
 				return info.Controller = rv;
 
 			if (!string.IsNullOrEmpty(info.Path))
-				return info.Controller = getWatchedPath(info);
+				return getWatchedPath(info);
 
 			return null;
 		}
 
 		public static int CPUCount = Environment.ProcessorCount;
 		public static int AllCPUsMask = Convert.ToInt32(Math.Pow(2, CPUCount) - 1 + double.Epsilon);
-
-		//int ProcessModifyDelay = 4800;
 
 		public int DefaultBackgroundPriority = 1;
 		public int DefaultBackgroundAffinity = 0;
@@ -558,7 +557,7 @@ namespace Taskmaster
 			// OffFocusPowerCancel = fgpausesec.GetSetDefault("Power mode cancel", true, out modified).BoolValue;
 			// dirtyconfig |= modified;
 
-			DefaultBackgroundAffinity = fgpausesec.GetSetDefault("Default affinity", 14, out modified).IntValue.Constrain(0, 254);
+			DefaultBackgroundAffinity = fgpausesec.GetSetDefault("Default affinity", 14, out modified).IntValue.Constrain(0, AllCPUsMask);
 			dirtyconfig |= modified;
 
 			// --------------------------------------------------------------------------------------------------------
@@ -716,6 +715,7 @@ namespace Taskmaster
 					BackgroundPowerdown = (section.TryGet("Background powerdown")?.BoolValue ?? false),
 					IgnoreList = tignorelist,
 					AllowPaging = (section.TryGet("Allow paging")?.BoolValue ?? false),
+					Analyze = (section.TryGet("Analyze")?.BoolValue ?? false),
 				};
 
 				prc.SetForegroundOnly(section.TryGet("Foreground only")?.BoolValue ?? false);
@@ -1043,6 +1043,8 @@ namespace Taskmaster
 
 		public ProcessController getWatchedPath(ProcessEx info)
 		{
+			if (WatchlistWithPath <= 0) return null;
+
 			ProcessController matchedprc = null;
 
 			try
@@ -1104,30 +1106,9 @@ namespace Taskmaster
 				}
 			}
 
+			info.Controller = matchedprc;
+
 			return matchedprc;
-		}
-
-		async void CheckPathWatch(ProcessEx info)
-		{
-			Debug.Assert(info.Process != null, "No Process attached");
-			Debug.Assert(info.Controller == null, "CheckPathWatch received a process that already was matched");
-
-			await Task.Delay(0).ConfigureAwait(false);
-
-			if ((info.Controller = getWatchedPath(info)) != null)
-			{
-				try
-				{
-					await info.Controller.Touch(info);
-				}
-				catch (Exception ex)
-				{
-					Logging.Stacktrace(ex);
-					return;
-				}
-
-				ForegroundWatch(info); // already called?
-			}
 		}
 
 		public static string[] ProtectList { get; private set; } = {
@@ -1330,40 +1311,34 @@ namespace Taskmaster
 					Log.Warning("#" + ea.Info.Id + " details unaccessible, ignored.");
 					return; // ProcessState.AccessDenied;
 				}
-
+				
 				if (ExeToController.TryGetValue(ea.Info.Name.ToLowerInvariant(), out var prc))
-				{
 					ea.Info.Controller = prc; // fill
 
-					if (!prc.Enabled)
+				if (ea.Info.Controller == null)
+					getWatchedPath(ea.Info);
+
+				if (ea.Info.Controller != null)
+				{
+					if (!ea.Info.Controller.Enabled)
 					{
-						if (Taskmaster.DebugProcesses)
-							Log.Debug("[" + prc.FriendlyName + "] Matched, but rule disabled; ignoring.");
+						if (Taskmaster.DebugProcesses) Log.Debug("[" + ea.Info.Controller.FriendlyName + "] Matched, but rule disabled; ignoring.");
 						ea.Info.State = ProcessHandlingState.Abandoned;
 						return;
 					}
 
-					// await System.Threading.Tasks.Task.Delay(ProcessModifyDelay).ConfigureAwait(false);
-
 					try
 					{
-						prc.Modify(ea.Info);
+						ea.Info.Controller.Modify(ea.Info);
+
+						ForegroundWatch(ea.Info);
+
+						if (ea.Info.Controller.Analyze && ea.Info.State == ProcessHandlingState.Modified) analyzer.Analyze(ea.Info);
 					}
 					catch (Exception ex)
 					{
-						Log.Fatal("[" + prc.FriendlyName + "] " + ea.Info.Name + " (#" + ea.Info.Id + ") MASSIVE FAILURE!!!");
 						Logging.Stacktrace(ex);
-						return; // ProcessState.Error;
 					}
-
-					ForegroundWatch(ea.Info);
-					return;
-				}
-
-				if (WatchlistWithPath > 0 && ea.Info.Controller == null)
-				{
-					CheckPathWatch(ea.Info);
-					return;
 				}
 
 				/*

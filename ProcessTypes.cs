@@ -4,7 +4,7 @@
 // Author:
 //       M.A. (https://github.com/mkahvi)
 //
-// Copyright (c) 2018 M.A.
+// Copyright (c) 2018–2019 M.A.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -28,6 +28,39 @@ namespace Taskmaster
 {
 	public enum ProcessType
 	{
+		/// <summary>
+		/// Unspecified type of process.
+		/// </summary>
 		Generic,
+		/// <summary>
+		/// Video game.
+		/// e.g. Undertale
+		/// </summary>
+		Game,
+		/// <summary>
+		/// Tiny utility process, not needing much resources.
+		/// e.g. calc
+		/// </summary>
+		Utility,
+		/// <summary>
+		/// High priority work oriented process.
+		/// e.g. Blender, Sai, Photoshop, etc.
+		/// </summary>
+		Productivity,
+		/// <summary>
+		/// Low priority service.
+		/// e.g. Windows Search
+		/// </summary>
+		LoService,
+		/// <summary>
+		/// High priority service.
+		/// e.g. audiodg
+		/// </summary>
+		HiService,
+		/// <summary>
+		/// System process. These should not be touched.
+		/// e.g. dwm, csrss, winlogon, wininit
+		/// </summary>
+		System
 	};
 }
