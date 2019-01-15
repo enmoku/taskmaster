@@ -326,8 +326,8 @@ namespace Taskmaster
 		/// Event fired by Scan and WMI new process
 		/// </summary>
 		public event EventHandler<ProcessModificationEventArgs> ProcessDetectedEvent;
-		public event EventHandler ScanStartEvent;
-		public event EventHandler ScanEndEvent;
+		//public event EventHandler ScanStartEvent;
+		//public event EventHandler ScanEndEvent;
 
 		public event EventHandler<ProcessModificationEventArgs> ProcessModified;
 
@@ -336,14 +336,13 @@ namespace Taskmaster
 
 		public event EventHandler<HandlingStateChangeEventArgs> HandlingStateChange;
 
-		int scan_lock = 0;
-
 		public async void HastenScan()
 		{
 			if (DateTimeOffset.UtcNow.TimeTo(NextScan).TotalSeconds > 3) // skip if the next scan is to happen real soon
 				ScanTimer.Change(TimeSpan.Zero, ScanFrequency);
 		}
 
+		int scan_lock = 0;
 		public async Task Scan(int ignorePid = -1)
 		{
 			var now = DateTimeOffset.UtcNow;
@@ -359,7 +358,7 @@ namespace Taskmaster
 
 			await Task.Delay(0).ConfigureAwait(false); // asyncify
 
-			ScanStartEvent?.Invoke(this, null);
+			//ScanStartEvent?.Invoke(this, null);
 
 			if (!SystemProcessId(ignorePid)) Ignore(ignorePid);
 
@@ -402,7 +401,7 @@ namespace Taskmaster
 
 			SignalProcessHandled(-count); // scan done
 
-			ScanEndEvent?.Invoke(this, null);
+			//ScanEndEvent?.Invoke(this, null);
 
 			if (!SystemProcessId(ignorePid)) Unignore(ignorePid);
 
@@ -784,7 +783,7 @@ namespace Taskmaster
 			{
 				if (Taskmaster.PersistentWatchlistStats) prc.LoadStats();
 				SaveController(prc);
-				prc.Modified += ProcessModifiedProxy;
+				prc.Modified += ProcessModified;
 				//prc.Paused += ProcessPausedProxy;
 				//prc.Resumed += ProcessResumedProxy;
 				prc.Paused += ProcessWaitingExitProxy;
@@ -817,20 +816,6 @@ namespace Taskmaster
 			throw new NotImplementedException();
 		}
 
-		void ProcessModifiedProxy(object _, ProcessModificationEventArgs ea)
-		{
-			try
-			{
-				ProcessModified?.Invoke(_, ea);
-			}
-			catch (Exception ex)
-			{
-				Logging.Stacktrace(ex);
-				Log.Error("Unregistering '" + ea.Info.Controller.FriendlyName + "' process modified proxy");
-				ea.Info.Controller.Modified -= ProcessModifiedProxy;
-			}
-		}
-
 		public void RemoveController(ProcessController prc)
 		{
 			if (!string.IsNullOrEmpty(prc.ExecutableFriendlyName))
@@ -838,7 +823,7 @@ namespace Taskmaster
 
 			Watchlist.TryRemove(prc, out _);
 
-			prc.Modified -= ProcessModifiedProxy;
+			prc.Modified -= ProcessModified;
 			prc.Paused -= ProcessPausedProxy;
 			prc.Resumed -= ProcessResumedProxy;
 		}
@@ -1133,7 +1118,7 @@ namespace Taskmaster
 			{
 				try
 				{
-					info.Controller.Touch(info);
+					await info.Controller.Touch(info);
 				}
 				catch (Exception ex)
 				{
@@ -1403,7 +1388,7 @@ namespace Taskmaster
 		List<ProcessEx> ProcessBatch = new List<ProcessEx>();
 		readonly System.Timers.Timer BatchProcessingTimer = null;
 
-		void BatchProcessingTick(object _, EventArgs _ea)
+		async void BatchProcessingTick(object _, EventArgs _ea)
 		{
 			try
 			{
@@ -1487,7 +1472,32 @@ namespace Taskmaster
 					var targetInstance = ea.NewEvent.Properties["TargetInstance"].Value as ManagementBaseObject;
 					//var tpid = targetInstance.Properties["Handle"].Value as int?; // doesn't work for some reason
 					pid = Convert.ToInt32(targetInstance.Properties["Handle"].Value as string);
+					var iname = targetInstance.Properties["Name"].Value as string;
 					path = targetInstance.Properties["ExecutablePath"].Value as string;
+					name = System.IO.Path.GetFileNameWithoutExtension(iname);
+					if (string.IsNullOrEmpty(path))
+					{
+						// CommandLine sometimes has the path when executablepath does not
+						var cmdl = targetInstance.Properties["CommandLine"].Value as string;
+						if (!string.IsNullOrEmpty(cmdl))
+						{
+							int off = 0;
+							string npath = "";
+							if (cmdl[0] == '"')
+							{
+								off = cmdl.IndexOf('"', 1);
+								npath = cmdl.Substring(1, off - 1);
+							}
+							else
+							{
+								off = cmdl.IndexOf(' ', 1);
+								npath = cmdl.Substring(0, off);
+							}
+
+							if (npath.IndexOf('"', 0) >= 0) Log.Fatal("WMI.TargetInstance.CommandLine still had invalid characters: " + npath);
+							path = npath;
+						}
+					}
 				}
 				catch (Exception ex)
 				{
@@ -1503,10 +1513,10 @@ namespace Taskmaster
 
 				if (IgnoreProcessID(pid)) return; // We just don't care
 
-				if (!string.IsNullOrEmpty(path))
+				if (string.IsNullOrEmpty(name) && !string.IsNullOrEmpty(path))
 					name = System.IO.Path.GetFileNameWithoutExtension(path);
 
-				if (string.IsNullOrEmpty(name))
+				if (string.IsNullOrEmpty(name) && pid < 0)
 				{
 					// likely process exited too fast
 					if (Taskmaster.DebugProcesses && Taskmaster.ShowInaction) Log.Debug("<<WMI>> Failed to acquire neither process name nor process Id");
@@ -1515,7 +1525,7 @@ namespace Taskmaster
 
 				if (IgnoreProcessName(name)) return;
 
-				if (ProcessUtility.GetInfo(pid, out info, path: path, getPath: true))
+				if (ProcessUtility.GetInfo(pid, out info, path: path, getPath: true, name: name))
 				{
 					info.Timer = timer;
 					NewInstanceTriagePhaseTwo(info);
@@ -1525,7 +1535,10 @@ namespace Taskmaster
 			{
 				Logging.Stacktrace(ex);
 				Log.Error("Unregistering new instance triage");
-				watcher.EventArrived -= NewInstanceTriage;
+				if (watcher != null) watcher.EventArrived -= NewInstanceTriage;
+				watcher?.Dispose();
+				watcher = null;
+				timer?.Stop();
 			}
 			finally
 			{
@@ -1538,70 +1551,80 @@ namespace Taskmaster
 		void NewInstanceTriagePhaseTwo(ProcessEx info)
 		{
 			//await Task.Delay(0).ConfigureAwait(false);
-
 			try
 			{
-				info.Process = Process.GetProcessById(info.Id);
-			}
-			catch (ArgumentException)
-			{
-				info.State = ProcessHandlingState.Exited;
-				if (Taskmaster.ShowInaction && Taskmaster.DebugProcesses)
-					Log.Verbose("Caught #" + info.Id + " but it vanished.");
-				return;
+				try
+				{
+					info.Process = Process.GetProcessById(info.Id);
+				}
+				catch (ArgumentException)
+				{
+					info.State = ProcessHandlingState.Exited;
+					if (Taskmaster.ShowInaction && Taskmaster.DebugProcesses)
+						Log.Verbose("Caught #" + info.Id + " but it vanished.");
+					return;
+				}
+				catch (Exception ex)
+				{
+					Logging.Stacktrace(ex);
+					return;
+				}
+
+				if (string.IsNullOrEmpty(info.Name))
+				{
+					try
+					{
+						// This happens only when encountering a process with elevated privileges, e.g. admin
+						// TODO: Mark as admin process?
+						info.Name = info.Process.ProcessName;
+					}
+					catch
+					{
+						Log.Error("Failed to retrieve name of process #" + info.Id);
+						return;
+					}
+				}
+
+				if (Taskmaster.Trace) Log.Verbose("Caught: " + info.Name + " (#" + info.Id + ") at: " + info.Path);
+
+				// info.Process.StartTime; // Only present if we started it
+
+				if (BatchProcessing)
+				{
+					lock (batchprocessing_lock)
+					{
+						try
+						{
+							ProcessBatch.Add(info);
+
+							// Delay process timer a few times.
+							if (BatchProcessingTimer.Enabled &&
+								(++processListLockRestart < BatchProcessingThreshold))
+								BatchProcessingTimer.Stop();
+							BatchProcessingTimer.Start();
+						}
+						catch (Exception ex)
+						{
+							Logging.Stacktrace(ex);
+						}
+					}
+
+					info.State = ProcessHandlingState.Batching;
+
+					HandlingStateChange?.Invoke(this, new HandlingStateChangeEventArgs(info));
+				}
+				else
+				{
+					ProcessDetectedEvent?.Invoke(this, new ProcessModificationEventArgs { Info = info });
+				}
 			}
 			catch (Exception ex)
 			{
 				Logging.Stacktrace(ex);
-				return;
 			}
-
-			if (string.IsNullOrEmpty(info.Name))
+			finally
 			{
-				try
-				{
-					// This happens only when encountering a process with elevated privileges, e.g. admin
-					// TODO: Mark as admin process?
-					info.Name = info.Process.ProcessName;
-				}
-				catch
-				{
-					Log.Error("Failed to retrieve name of process #" + info.Id);
-					return;
-				}
-			}
 
-			if (Taskmaster.Trace) Log.Verbose("Caught: " + info.Name + " (#" + info.Id + ") at: " + info.Path);
-
-			// info.Process.StartTime; // Only present if we started it
-
-			if (BatchProcessing)
-			{
-				lock (batchprocessing_lock)
-				{
-					try
-					{
-						ProcessBatch.Add(info);
-
-						// Delay process timer a few times.
-						if (BatchProcessingTimer.Enabled &&
-							(++processListLockRestart < BatchProcessingThreshold))
-							BatchProcessingTimer.Stop();
-						BatchProcessingTimer.Start();
-					}
-					catch (Exception ex)
-					{
-						Logging.Stacktrace(ex);
-					}
-				}
-
-				info.State = ProcessHandlingState.Batching;
-
-				HandlingStateChange?.Invoke(this, new HandlingStateChangeEventArgs(info));
-			}
-			else
-			{
-				ProcessDetectedEvent?.Invoke(this, new ProcessModificationEventArgs { Info = info });
 			}
 		}
 
@@ -1617,16 +1640,19 @@ namespace Taskmaster
 				// https://msdn.microsoft.com/en-us/library/windows/desktop/aa393014(v=vs.85).aspx
 
 				/*
-				// Causes access denied error?
-				ManagementEventWatcher w = null;
-				WqlEventQuery q = new WqlEventQuery();
-				q.EventClassName = "Win32_ProcessStartTrace";
-				w = new ManagementEventWatcher(scope, q);
-				w.EventArrived += NewInstanceTriage2;
-				w.Start();
+				// Win32_ProcessStartTrace requires Admin rights
+
+				if (Taskmaster.IsAdministrator())
+				{
+					ManagementEventWatcher w = null;
+					WqlEventQuery q = new WqlEventQuery();
+					q.EventClassName = "Win32_ProcessStartTrace";
+					var w = new ManagementEventWatcher(scope, q);
+					w.EventArrived += NewInstanceTriage2;
+					w.Start();
+				}
 				*/
 
-				// Test if listening for Win32_ProcessStartTrace is any better?
 				// var tracequery = new System.Management.EventQuery("SELECT * FROM Win32_ProcessStartTrace");
 
 				// var query = new System.Management.EventQuery("SELECT TargetInstance FROM __InstanceCreationEvent WITHIN 5 WHERE TargetInstance ISA 'Win32_Process'");
@@ -1634,15 +1660,7 @@ namespace Taskmaster
 					new ManagementScope(@"\\.\root\CIMV2"),
 					new EventQuery("SELECT * FROM __InstanceCreationEvent WITHIN " + WMIPollDelay + " WHERE TargetInstance ISA 'Win32_Process'")
 					); // Avast cybersecurity causes this to throw an exception
-			}
-			catch (Exception ex)
-			{
-				Logging.Stacktrace(ex);
-				throw new InitFailure("<<WMI>> Event watcher initialization failure");
-			}
 
-			if (watcher != null)
-			{
 				watcher.EventArrived += NewInstanceTriage;
 
 				if (BatchProcessing) lock (batchprocessing_lock) BatchProcessingTimer.Start();
@@ -1654,22 +1672,14 @@ namespace Taskmaster
 					// Restart it maybe? This probably happens when WMI service is stopped or restarted.?
 				};
 
-				try
-				{
-					watcher.Start();
-					if (Taskmaster.DebugWMI)
-						Log.Debug("<<WMI>> New instance watcher initialized.");
-				}
-				catch
-				{
-					Log.Fatal("<<WMI>> New instance watcher failed to initialize.");
-					throw new InitFailure("New instance watched failed to initialize");
-				}
+				watcher.Start();
+
+				if (Taskmaster.DebugWMI) Log.Debug("<<WMI>> New instance watcher initialized.");
 			}
-			else
+			catch (Exception ex)
 			{
-				Log.Error("Failed to initialize new instance watcher.");
-				throw new InitFailure("New instance watcher not initialized");
+				Logging.Stacktrace(ex);
+				throw new InitFailure("<<WMI>> Event watcher initialization failure");
 			}
 		}
 
@@ -1759,8 +1769,8 @@ namespace Taskmaster
 				if (Taskmaster.Trace) Log.Verbose("Disposing process manager...");
 
 				ProcessDetectedEvent = null;
-				ScanStartEvent = null;
-				ScanEndEvent = null;
+				//ScanStartEvent = null;
+				//ScanEndEvent = null;
 				ProcessModified = null;
 				HandlingCounter = null;
 				ProcessStateChange = null;

@@ -32,6 +32,9 @@ using Serilog;
 
 namespace Taskmaster
 {
+	/// <summary>
+	/// Manager for non-volatile memory (NVM).
+	/// </summary>
 	sealed public class StorageManager : IDisposable
 	{
 		static readonly string systemTemp = System.IO.Path.Combine(System.Environment.GetFolderPath(Environment.SpecialFolder.Windows), "Temp");

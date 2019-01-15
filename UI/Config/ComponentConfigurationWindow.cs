@@ -246,6 +246,19 @@ namespace Taskmaster
 			{
 			};
 
+			// NVM monitor
+			var nvmmon = new CheckBox()
+			{
+				AutoSize = true,
+				Dock = DockStyle.Left,
+				Checked = Taskmaster.StorageMonitorEnabled,
+				Enabled = false,
+			};
+			tooltip.SetToolTip(nvmmon, "Monitor non-volatile memory (HDDs, SSDs, etc.)");
+			layout.Controls.Add(new Label { Text = "NVM monitor", AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, Padding = CustomPadding, Dock = DockStyle.Left });
+			layout.Controls.Add(nvmmon);
+
+			// TEMP monitor
 			var tempmon = new CheckBox()
 			{
 				AutoSize = true,

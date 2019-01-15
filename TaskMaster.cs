@@ -290,7 +290,7 @@ namespace Taskmaster
 				ProcessMonitorEnabled ? (Task.Run(() => processmanager = new ProcessManager())) : Task.CompletedTask,
 				(ActiveAppMonitorEnabled && ProcessMonitorEnabled) ? (Task.Run(()=> activeappmonitor = new ActiveAppManager(eventhook:false))) : Task.CompletedTask,
 				NetworkMonitorEnabled ? (Task.Run(() => netmonitor = new NetManager())) : Task.CompletedTask,
-				MaintenanceMonitorEnabled ? (Task.Run(() => storagemanager = new StorageManager())) : Task.CompletedTask,
+				StorageMonitorEnabled ? (Task.Run(() => storagemanager = new StorageManager())) : Task.CompletedTask,
 				HealthMonitorEnabled ? (Task.Run(() => healthmonitor = new HealthMonitor())) : Task.CompletedTask,
 				HardwareMonitorEnabled ? (Task.Run(() => hardware = new HardwareMonitor())) : Task.CompletedTask,
 			};
@@ -458,6 +458,7 @@ namespace Taskmaster
 		public static bool ActiveAppMonitorEnabled { get; private set; } = true;
 		public static bool PowerManagerEnabled { get; private set; } = true;
 		public static bool MaintenanceMonitorEnabled { get; private set; } = true;
+		public static bool StorageMonitorEnabled { get; private set; } = true;
 		public static bool HealthMonitorEnabled { get; private set; } = true;
 		public static bool AudioManagerEnabled { get; private set; } = true;
 		public static bool HardwareMonitorEnabled { get; private set; } = false;
@@ -556,6 +557,9 @@ namespace Taskmaster
 			dirtyconfig |= modified;
 			PagingEnabled = compsec.GetSetDefault("Paging", true, out modified).BoolValue;
 			compsec["Paging"].Comment = "Enable paging of apps as per their configuration.";
+			dirtyconfig |= modified;
+			StorageMonitorEnabled = compsec.GetSetDefault("Storage", false, out modified).BoolValue;
+			compsec["Storage"].Comment = "Enable NVM storage monitoring functionality.";
 			dirtyconfig |= modified;
 			MaintenanceMonitorEnabled = compsec.GetSetDefault("Maintenance", false, out modified).BoolValue;
 			compsec["Maintenance"].Comment = "Enable basic maintenance monitoring functionality.";
@@ -1339,8 +1343,11 @@ namespace Taskmaster
 				Log.Information("<Stat> WMI polling: " + $"{Statistics.WMIPollTime:N2}s [" + Statistics.WMIPolling + "]");
 				Log.Information("<Stat> Self-maintenance: " + $"{Statistics.MaintenanceTime:N2}s [" + Statistics.MaintenanceCount + "]");
 				Log.Information("<Stat> Path cache: " + Statistics.PathCacheHits + " hits, " + Statistics.PathCacheMisses + " misses");
-				Log.Information("<Stat> Path finding: " + Statistics.PathFindAttempts + " total attempts; " + Statistics.PathFindViaModule +
-					" via module info, " + Statistics.PathFindViaC + " via C call, " + Statistics.PathFindViaWMI + " via WMI, " + Statistics.PathNotFound + " not found");
+				Log.Information("<Stat> Path finding: " + Statistics.PathFindAttempts + " total attempts; " +
+					Statistics.PathFindViaModule + " via module info, " +
+					Statistics.PathFindViaC + " via C call, " +
+					Statistics.PathFindViaWMI + " via WMI, " +
+					Statistics.PathNotFound + " not found");
 				Log.Information("<Stat> Processes modified: " + Statistics.TouchCount + "; Ignored for remodification: " + Statistics.TouchIgnore);
 				Log.Information("<Stat> Process modify time range: " +
 					(Statistics.TouchTimeShortest == ulong.MaxValue ? "?" : $"{Statistics.TouchTimeShortest}") + " – " +

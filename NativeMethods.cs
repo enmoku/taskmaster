@@ -167,11 +167,20 @@ namespace Taskmaster
 
 		// for ProcessMAnagerUtility.cs
 
+		public const uint PROCESS_QUERY_INFORMATION = 0x0400; // DWORD
+		public const uint PROCESS_VM_READ = 0x0010; // DWORD
+
+		/// <summary>
+		/// MUST CLOSE THE RETURNED HANDLE WITH CLOSEHANDLE!!!
+		/// </summary>
 		[DllImport("kernel32.dll")]
 		public static extern IntPtr OpenProcess(uint processAccess, bool bInheritHandle, int processId);
 
-		[DllImport("psapi.dll", CharSet = CharSet.Unicode, ThrowOnUnmappableChar = true)]
-		public static extern uint GetModuleFileNameEx(IntPtr hProcess, IntPtr hModule, [Out] System.Text.StringBuilder lpBaseName, [In] [MarshalAs(UnmanagedType.U4)] int nSize);
+		/// <summary>
+		/// The process must have PROCESS_QUERY_INFORMATION and PROCESS_VM_READ access rights.
+		/// </summary>
+		[DllImport("psapi.dll", SetLastError = true, CharSet = CharSet.Unicode, BestFitMapping = false, ThrowOnUnmappableChar = true)]
+		public static extern uint GetModuleFileNameEx(IntPtr hProcess, IntPtr hModule, [Out] System.Text.StringBuilder lpBaseName, [In] [MarshalAs(UnmanagedType.U4)] uint nSize);
 
 		[DllImport("kernel32.dll")] // SetLastError = true
 		[return: MarshalAs(UnmanagedType.Bool)]

@@ -933,10 +933,10 @@ namespace Taskmaster
 				return info.Name; // NAME
 		}
 
-		public void Modify(ProcessEx info)
+		public async void Modify(ProcessEx info)
 		{
-			Touch(info);
-			if (Recheck > 0) TouchReapply(info);
+			await Touch(info);
+			if (Recheck > 0) await TouchReapply(info);
 		}
 
 		public bool MatchPath(string path)
@@ -949,385 +949,392 @@ namespace Taskmaster
 		bool InForeground(int pid) => ForegroundOnly ? Taskmaster.activeappmonitor?.Foreground.Equals(pid) ?? true : true;
 
 		// TODO: Simplify this
-		public async void Touch(ProcessEx info, bool refresh = false)
+		public async Task Touch(ProcessEx info, bool refresh = false)
 		{
 			Debug.Assert(info.Process != null, "ProcessController.Touch given null process.");
 			Debug.Assert(!ProcessManager.SystemProcessId(info.Id), "ProcessController.Touch given invalid process ID");
 			Debug.Assert(!string.IsNullOrEmpty(info.Name), "ProcessController.Touch given empty process name.");
 			Debug.Assert(info.Controller != null, "No controller attached");
 
-			if (ForegroundOnly)
-			{
-				if (PausedIds.ContainsKey(info.Id))
-				{
-					if (Taskmaster.Trace && Taskmaster.DebugForeground)
-						Log.Debug("<Foreground> " + FormatPathName(info) + " (#" + info.Id + ") in background, ignoring.");
-					return; // don't touch paused item
-				}
-			}
-
-			info.PowerWait = (PowerPlan != PowerInfo.PowerMode.Undefined);
-			info.ActiveWait = ForegroundOnly;
-
-			await Task.Delay(refresh ? 0 : ModifyDelay).ConfigureAwait(false);
-
-			bool responding = true;
-			ProcessPriorityClass? oldPriority = null;
-			IntPtr? oldAffinity = null;
-
-			int oldAffinityMask = 0;
-			var oldPower = PowerInfo.PowerMode.Undefined;
-
-			// EXTRACT INFORMATION
-
 			try
 			{
-				if (ModifyDelay > 0) info.Process.Refresh();
-
-				responding = info.Process.Responding;
-
-				if (info.Process.HasExited)
+				if (ForegroundOnly)
 				{
-					if (Taskmaster.DebugProcesses)
-						Log.Debug("[" + FriendlyName + "] " + info.Name + " (#" + info.Id + ") has already exited.");
-					return; // return ProcessState.Invalid;
+					if (PausedIds.ContainsKey(info.Id))
+					{
+						if (Taskmaster.Trace && Taskmaster.DebugForeground)
+							Log.Debug("<Foreground> " + FormatPathName(info) + " (#" + info.Id + ") in background, ignoring.");
+						return; // don't touch paused item
+					}
 				}
 
-				oldAffinity = info.Process.ProcessorAffinity;
-				oldPriority = info.Process.PriorityClass;
-				oldAffinityMask = oldAffinity.Value.ToInt32();
-			}
-			catch (InvalidOperationException) // Already exited
-			{
-				info.State = ProcessHandlingState.Exited;
-				return;
-			}
-			catch (Win32Exception) // denied
-			{
-				// failure to retrieve exit code, this probably means we don't have sufficient rights. assume it is gone.
-				info.State = ProcessHandlingState.AccessDenied;
-				return;
-			}
-			catch (Exception ex) // invalidoperation or notsupported, neither should happen
-			{
-				Logging.Stacktrace(ex);
-				info.State = ProcessHandlingState.Invalid;
-				return;
-			}
+				info.PowerWait = (PowerPlan != PowerInfo.PowerMode.Undefined);
+				info.ActiveWait = ForegroundOnly;
 
-			var now = DateTimeOffset.UtcNow;
+				await Task.Delay(refresh ? 0 : ModifyDelay).ConfigureAwait(false);
 
-			RecentlyModifiedInfo ormt = null;
-			if (RecentlyModified.TryGetValue(info.Id, out ormt))
-			{
+				bool responding = true;
+				ProcessPriorityClass? oldPriority = null;
+				IntPtr? oldAffinity = null;
+
+				int oldAffinityMask = 0;
+				var oldPower = PowerInfo.PowerMode.Undefined;
+
+				// EXTRACT INFORMATION
+
 				try
 				{
-					if (ormt.Info.Process.ProcessName.Equals(info.Process.ProcessName))
+					if (ModifyDelay > 0) info.Process.Refresh();
+
+					responding = info.Process.Responding;
+
+					if (info.Process.HasExited)
 					{
-						bool expected = false;
-						if ((Priority.HasValue && info.Process.PriorityClass != Priority.Value) ||
-							(AffinityMask >= 0 && info.Process.ProcessorAffinity.ToInt32() != AffinityMask))
-							ormt.UnexpectedState += 1;
-						else
+						if (Taskmaster.DebugProcesses)
+							Log.Debug("[" + FriendlyName + "] " + info.Name + " (#" + info.Id + ") has already exited.");
+						return; // return ProcessState.Invalid;
+					}
+
+					oldAffinity = info.Process.ProcessorAffinity;
+					oldPriority = info.Process.PriorityClass;
+					oldAffinityMask = oldAffinity.Value.ToInt32();
+				}
+				catch (InvalidOperationException) // Already exited
+				{
+					info.State = ProcessHandlingState.Exited;
+					return;
+				}
+				catch (Win32Exception) // denied
+				{
+					// failure to retrieve exit code, this probably means we don't have sufficient rights. assume it is gone.
+					info.State = ProcessHandlingState.AccessDenied;
+					return;
+				}
+				catch (Exception ex) // invalidoperation or notsupported, neither should happen
+				{
+					Logging.Stacktrace(ex);
+					info.State = ProcessHandlingState.Invalid;
+					return;
+				}
+
+				var now = DateTimeOffset.UtcNow;
+
+				RecentlyModifiedInfo ormt = null;
+				if (RecentlyModified.TryGetValue(info.Id, out ormt))
+				{
+					try
+					{
+						if (ormt.Info.Process.ProcessName.Equals(info.Process.ProcessName))
 						{
-							ormt.ExpectedState += 1;
-							expected = true;
+							bool expected = false;
+							if ((Priority.HasValue && info.Process.PriorityClass != Priority.Value) ||
+								(AffinityMask >= 0 && info.Process.ProcessorAffinity.ToInt32() != AffinityMask))
+								ormt.UnexpectedState += 1;
+							else
+							{
+								ormt.ExpectedState += 1;
+								expected = true;
+							}
+
+							if (ormt.LastIgnored.TimeTo(now).TotalSeconds < ProcessManager.ScanFrequency.TotalSeconds + 5)
+							{
+								if (Taskmaster.DebugProcesses) Log.Debug("[" + FriendlyName + "] #" + info.Id + " ignored due to recent modification." +
+									(expected ? $" Expected: {ormt.ExpectedState} :)" : $" Unexpected: {ormt.UnexpectedState} :("));
+
+								if (ormt.UnexpectedState == 3) Log.Debug("[" + FriendlyName + "] #" + info.Id + " is resisting being modified.");
+
+								ormt.LastIgnored = now;
+
+								Statistics.TouchIgnore++;
+
+								return;
+							}
 						}
+					}
+					catch { }
+					//RecentlyModified.TryRemove(info.Id, out _);
+				}
 
-						if (ormt.LastIgnored.TimeTo(now).TotalSeconds < ProcessManager.ScanFrequency.TotalSeconds+5)
+				if (Taskmaster.Trace) Log.Verbose("[" + FriendlyName + "] Touching: " + info.Name + " (#" + info.Id + ")");
+
+				if (IgnoreList != null && IgnoreList.Any(item => item.Equals(info.Name, StringComparison.InvariantCultureIgnoreCase)))
+				{
+					if (Taskmaster.ShowInaction && Taskmaster.DebugProcesses)
+						Log.Debug("[" + FriendlyName + "] " + info.Name + " (#" + info.Id + ") ignored due to user defined rule.");
+					return; // return ProcessState.Ignored;
+				}
+
+				bool isProtectedFile = ProcessManager.ProtectedProcessName(info.Name);
+				// TODO: IgnoreSystem32Path
+
+				if (isProtectedFile && Taskmaster.ShowInaction && Taskmaster.DebugProcesses)
+					Log.Debug("[" + FriendlyName + "] " + info.Name + " (#" + info.Id + ") in protected list, limiting tampering.");
+
+				ProcessPriorityClass? newPriority = null;
+				IntPtr? newAffinity = null;
+				var newPower = PowerInfo.PowerMode.Undefined;
+
+				bool mAffinity = false, mPriority = false, mPower = false, modified = false, fAffinity = false, fPriority = false;
+				LastSeen = DateTimeOffset.UtcNow;
+
+				newAffinity = null;
+				newPriority = null;
+
+				bool doModifyPriority = !isProtectedFile;
+				bool doModifyAffinity = false;
+				bool doModifyPower = false;
+
+				bool foreground = InForeground(info.Id);
+
+				bool firsttime = true;
+				if (!isProtectedFile)
+				{
+					if (ForegroundOnly)
+					{
+						if (ForegroundWatch.TryAdd(info.Id, 0))
 						{
-							if (Taskmaster.DebugProcesses) Log.Debug("[" + FriendlyName + "] #" + info.Id + " ignored due to recent modification." +
-								(expected ? $" Expected: {ormt.ExpectedState} :)" : $" Unexpected: {ormt.UnexpectedState} :("));
+							info.Process.EnableRaisingEvents = true;
+							info.Process.Exited += (o, s) => End(info);
+						}
+						else
+							firsttime = false;
 
-							if (ormt.UnexpectedState == 3) Log.Debug("[" + FriendlyName + "] #" + info.Id + " is resisting being modified.");
+						if (!foreground)
+						{
+							if (Taskmaster.DebugForeground || Taskmaster.ShowInaction)
+								Log.Debug("[" + FriendlyName + "] " + info.Name + " (#" + info.Id + ") not in foreground, not prioritizing.");
 
-							ormt.LastIgnored = now;
-
-							Statistics.TouchIgnore++;
-
+							Pause(info, firsttime);
 							return;
 						}
 					}
 				}
-				catch { }
-				//RecentlyModified.TryRemove(info.Id, out _);
-			}
-
-			if (Taskmaster.Trace) Log.Verbose("[" + FriendlyName + "] Touching: " + info.Name + " (#" + info.Id + ")");
-
-			if (IgnoreList != null && IgnoreList.Any(item => item.Equals(info.Name, StringComparison.InvariantCultureIgnoreCase)))
-			{
-				if (Taskmaster.ShowInaction && Taskmaster.DebugProcesses)
-					Log.Debug("[" + FriendlyName + "] " + info.Name + " (#" + info.Id + ") ignored due to user defined rule.");
-				return; // return ProcessState.Ignored;
-			}
-
-			bool isProtectedFile = ProcessManager.ProtectedProcessName(info.Name);
-			// TODO: IgnoreSystem32Path
-
-			if (isProtectedFile && Taskmaster.ShowInaction && Taskmaster.DebugProcesses)
-				Log.Debug("[" + FriendlyName + "] " + info.Name + " (#" + info.Id + ") in protected list, limiting tampering.");
-
-			ProcessPriorityClass? newPriority = null;
-			IntPtr? newAffinity = null;
-			var newPower = PowerInfo.PowerMode.Undefined;
-
-			bool mAffinity = false, mPriority = false, mPower = false, modified = false, fAffinity = false, fPriority = false;
-			LastSeen = DateTimeOffset.UtcNow;
-
-			newAffinity = null;
-			newPriority = null;
-
-			bool doModifyPriority = !isProtectedFile;
-			bool doModifyAffinity = false;
-			bool doModifyPower = false;
-
-			bool foreground = InForeground(info.Id);
-
-			bool firsttime = true;
-			if (!isProtectedFile)
-			{
-				if (ForegroundOnly)
+				else
 				{
-					if (ForegroundWatch.TryAdd(info.Id, 0))
-					{
-						info.Process.EnableRaisingEvents = true;
-						info.Process.Exited += (o, s) => End(info);
-					}
-					else 
-						firsttime = false;
-
-					if (!foreground)
-					{
-						if (Taskmaster.DebugForeground || Taskmaster.ShowInaction)
-							Log.Debug("[" + FriendlyName + "] " + info.Name + " (#" + info.Id + ") not in foreground, not prioritizing.");
-
-						Pause(info, firsttime);
-						return;
-					}
+					if (Taskmaster.ShowInaction && Taskmaster.DebugProcesses)
+						Log.Verbose("[" + FriendlyName + "] " + info.Name + " (#" + info.Id + ") PROTECTED");
 				}
-			}
-			else
-			{
-				if (Taskmaster.ShowInaction && Taskmaster.DebugProcesses)
-					Log.Verbose("[" + FriendlyName + "] " + info.Name + " (#" + info.Id + ") PROTECTED");
-			}
 
-			int newAffinityMask = -1;
+				int newAffinityMask = -1;
 
-			if (AffinityMask >= 0)
-			{
-				newAffinityMask = AffinityMask;
-
-				int modifiedAffinityMask = ProcessManagerUtility.ApplyAffinityStrategy(oldAffinityMask, newAffinityMask, AffinityStrategy);
-				if (modifiedAffinityMask != newAffinityMask)
-					newAffinityMask = modifiedAffinityMask;
-
-				if (oldAffinityMask != newAffinityMask)
+				if (AffinityMask >= 0)
 				{
-					newAffinity = new IntPtr(newAffinityMask);
-					doModifyAffinity = true;
+					newAffinityMask = AffinityMask;
+
+					int modifiedAffinityMask = ProcessManagerUtility.ApplyAffinityStrategy(oldAffinityMask, newAffinityMask, AffinityStrategy);
+					if (modifiedAffinityMask != newAffinityMask)
+						newAffinityMask = modifiedAffinityMask;
+
+					if (oldAffinityMask != newAffinityMask)
+					{
+						newAffinity = new IntPtr(newAffinityMask);
+						doModifyAffinity = true;
+					}
+					else
+						newAffinityMask = -1;
+
+					/*
+					if (oldAffinityMask != newAffinityMask)
+					{
+						var taff = Affinity;
+						if (AllowedCores || !Increase)
+						{
+							var minaff = Bit.Or(newAffinityMask, oldAffinityMask);
+							var mincount = Bit.Count(minaff);
+							var bitsold = Bit.Count(oldAffinityMask);
+							var bitsnew = Bit.Count(newAffinityMask);
+							var minaff1 = minaff;
+							minaff = Bit.Fill(minaff, bitsnew, Math.Min(bitsold, bitsnew));
+							if (minaff1 != minaff)
+							{
+								Console.WriteLine("--- Affinity | Core Shift ---");
+								Console.WriteLine(Convert.ToString(minaff1, 2).PadLeft(ProcessManager.CPUCount));
+								Console.WriteLine(Convert.ToString(minaff, 2).PadLeft(ProcessManager.CPUCount));
+							}
+							else
+							{
+								Console.WriteLine("--- Affinity | Meh ---");
+								Console.WriteLine(Convert.ToString(Affinity.ToInt32(), 2).PadLeft(ProcessManager.CPUCount));
+								Console.WriteLine(Convert.ToString(minaff, 2).PadLeft(ProcessManager.CPUCount));
+							}
+
+							// shuffle cores from old to new
+							taff = new IntPtr(minaff);
+						}
+						// int bitsnew = Bit.Count(newAffinityMask);
+						// TODO: Somehow shift bits old to new if there's free spots
+					}
+					*/
 				}
 				else
-					newAffinityMask = -1;
+				{
+					if (Taskmaster.DebugProcesses) Debug.WriteLine($"{info.Name} #{info.Id} --- affinity not touched");
+				}
+
+				// APPLY CHANGES HERE
+				if (doModifyPriority)
+				{
+					try
+					{
+						if (info.Process.SetLimitedPriority(Priority.Value, PriorityStrategy))
+						{
+							modified = mPriority = true;
+							newPriority = info.Process.PriorityClass;
+						}
+					}
+					catch { fPriority = true; } // ignore errors, this is all we care of them
+				}
+
+				if (doModifyAffinity)
+				{
+					try
+					{
+						info.Process.ProcessorAffinity = newAffinity.Value;
+						modified = mAffinity = true;
+					}
+					catch { fAffinity = true; } // ignore errors, this is all we care of them
+				}
 
 				/*
-				if (oldAffinityMask != newAffinityMask)
+				if (BackgroundIO)
 				{
-					var taff = Affinity;
-					if (AllowedCores || !Increase)
+					try
 					{
-						var minaff = Bit.Or(newAffinityMask, oldAffinityMask);
-						var mincount = Bit.Count(minaff);
-						var bitsold = Bit.Count(oldAffinityMask);
-						var bitsnew = Bit.Count(newAffinityMask);
-						var minaff1 = minaff;
-						minaff = Bit.Fill(minaff, bitsnew, Math.Min(bitsold, bitsnew));
-						if (minaff1 != minaff)
-						{
-							Console.WriteLine("--- Affinity | Core Shift ---");
-							Console.WriteLine(Convert.ToString(minaff1, 2).PadLeft(ProcessManager.CPUCount));
-							Console.WriteLine(Convert.ToString(minaff, 2).PadLeft(ProcessManager.CPUCount));
-						}
-						else
-						{
-							Console.WriteLine("--- Affinity | Meh ---");
-							Console.WriteLine(Convert.ToString(Affinity.ToInt32(), 2).PadLeft(ProcessManager.CPUCount));
-							Console.WriteLine(Convert.ToString(minaff, 2).PadLeft(ProcessManager.CPUCount));
-						}
-
-						// shuffle cores from old to new
-						taff = new IntPtr(minaff);
+						//mBGIO = SetBackground(info.Process); // doesn't work, can only be done to current process
 					}
-					// int bitsnew = Bit.Count(newAffinityMask);
-					// TODO: Somehow shift bits old to new if there's free spots
+					catch
+					{
+						// NOP, don't caree
+					}
 				}
 				*/
-			}
-			else
-			{
-				if (Taskmaster.DebugProcesses) Debug.WriteLine($"{info.Name} #{info.Id} --- affinity not touched");
-			}
 
-			// APPLY CHANGES HERE
-			if (doModifyPriority)
-			{
-				try
+				//var oldPP = PowerInfo.PowerMode.Undefined;
+				if (Taskmaster.PowerManagerEnabled && PowerPlan != PowerInfo.PowerMode.Undefined)
 				{
-					if (info.Process.SetLimitedPriority(Priority.Value, PriorityStrategy))
+					if (!foreground && BackgroundPowerdown)
 					{
-						modified = mPriority = true;
-						newPriority = info.Process.PriorityClass;
+						if (Taskmaster.DebugForeground)
+							Log.Debug(info.Name + " (#" + info.Id + ") not in foreground, not powering up.");
+					}
+					else
+					{
+						//oldPower = Taskmaster.powermanager.CurrentMode;
+						mPower = SetPower(info);
+						//mPower = (oldPP != Taskmaster.powermanager.CurrentMode);
 					}
 				}
-				catch { fPriority = true; } // ignore errors, this is all we care of them
-			}
 
-			if (doModifyAffinity)
-			{
-				try
+				if (modified)
 				{
-					info.Process.ProcessorAffinity = newAffinity.Value;
-					modified = mAffinity = true;
-				}
-				catch { fAffinity = true; } // ignore errors, this is all we care of them
-			}
+					if (mPriority || mAffinity)
+					{
+						Statistics.TouchCount++;
+						Adjusts += 1; // don't increment on power changes
+					}
 
-			/*
-			if (BackgroundIO)
-			{
-				try
-				{
-					//mBGIO = SetBackground(info.Process); // doesn't work, can only be done to current process
-				}
-				catch
-				{
-					// NOP, don't caree
-				}
-			}
-			*/
+					LastTouch = now;
 
-			//var oldPP = PowerInfo.PowerMode.Undefined;
-			if (Taskmaster.PowerManagerEnabled && PowerPlan != PowerInfo.PowerMode.Undefined)
-			{
-				if (!foreground && BackgroundPowerdown)
+					ScanModifyCount++;
+				}
+
+				if (Priority.HasValue)
 				{
-					if (Taskmaster.DebugForeground)
-						Log.Debug(info.Name + " (#" + info.Id + ") not in foreground, not powering up.");
+					if (fPriority && Taskmaster.ShowInaction && Taskmaster.DebugProcesses)
+						Log.Warning("[" + FriendlyName + "] " + info.Name + " (#" + info.Id + ") failed to set process priority.");
+				}
+				if (AffinityMask >= 0)
+				{
+					if (fAffinity && Taskmaster.ShowInaction && Taskmaster.DebugProcesses)
+						Log.Warning("[" + FriendlyName + "] " + info.Name + " (#" + info.Id + ") failed to set process affinity.");
+				}
+
+				bool logevent = false;
+
+				if (modified) logevent = Taskmaster.ShowProcessAdjusts && !(ForegroundOnly && !Taskmaster.ShowForegroundTransitions);
+				logevent |= (firsttime && ForegroundOnly);
+				logevent |= (Taskmaster.ShowInaction && Taskmaster.DebugProcesses);
+
+				var ev = new ProcessModificationEventArgs()
+				{
+					PriorityNew = newPriority,
+					PriorityOld = oldPriority,
+					AffinityNew = newAffinityMask,
+					AffinityOld = oldAffinityMask,
+					Info = info,
+					State = ProcessRunningState.Found,
+					PriorityFail = fPriority,
+					AffinityFail = fAffinity,
+					Protected = isProtectedFile,
+				};
+
+				info.Timer.Stop();
+
+				if (logevent)
+				{
+					var sbs = new System.Text.StringBuilder();
+
+					if (mPower) sbs.Append(" [Power Mode: ").Append(PowerManager.GetModeName(PowerPlan)).Append("]");
+
+					if (!modified && (Taskmaster.ShowInaction && Taskmaster.DebugProcesses)) sbs.Append(" – looks OK, not touched.");
+
+					ev.User = sbs;
+
+					LogAdjust(ev);
+				}
+
+				if (modified)
+				{
+					info.State = ProcessHandlingState.Modified;
+					Modified?.Invoke(this, ev);
 				}
 				else
+					info.State = ProcessHandlingState.Abandoned;
+
+				if (Recheck > 0) TouchReapply(info);
+				
+				if (Taskmaster.WindowResizeEnabled && Resize.HasValue) TryResize(info);
+
+				if (modified)
 				{
-					//oldPower = Taskmaster.powermanager.CurrentMode;
-					mPower = SetPower(info);
-					//mPower = (oldPP != Taskmaster.powermanager.CurrentMode);
-				}
-			}
-
-			if (modified)
-			{
-				if (mPriority || mAffinity)
-				{
-					Statistics.TouchCount++;
-					Adjusts += 1; // don't increment on power changes
-				}
-
-				LastTouch = now;
-
-				ScanModifyCount++;
-			}
-
-			if (Priority.HasValue)
-			{
-				if (fPriority && Taskmaster.ShowInaction && Taskmaster.DebugProcesses)
-					Log.Warning("[" + FriendlyName + "] " + info.Name + " (#" + info.Id + ") failed to set process priority.");
-			}
-			if (AffinityMask >= 0)
-			{
-				if (fAffinity && Taskmaster.ShowInaction && Taskmaster.DebugProcesses)
-					Log.Warning("[" + FriendlyName + "] " + info.Name + " (#" + info.Id + ") failed to set process affinity.");
-			}
-
-			bool logevent = false;
-
-			if (modified) logevent = Taskmaster.ShowProcessAdjusts && !(ForegroundOnly && !Taskmaster.ShowForegroundTransitions);
-			logevent |= (firsttime && ForegroundOnly);
-			logevent |= (Taskmaster.ShowInaction && Taskmaster.DebugProcesses);
-
-			var ev = new ProcessModificationEventArgs()
-			{
-				PriorityNew = newPriority,
-				PriorityOld = oldPriority,
-				AffinityNew = newAffinityMask,
-				AffinityOld = oldAffinityMask,
-				Info = info,
-				State = ProcessRunningState.Found,
-				PriorityFail = fPriority,
-				AffinityFail = fAffinity,
-				Protected = isProtectedFile,
-			};
-
-			info.Timer.Stop();
-
-			if (logevent)
-			{
-				var sbs = new System.Text.StringBuilder();
-
-				if (mPower) sbs.Append(" [Power Mode: ").Append(PowerManager.GetModeName(PowerPlan)).Append("]");
-
-				if (!modified && (Taskmaster.ShowInaction && Taskmaster.DebugProcesses)) sbs.Append(" – looks OK, not touched.");
-
-				ev.User = sbs;
-
-				LogAdjust(ev);
-			}
-
-			if (modified)
-			{
-				info.State = ProcessHandlingState.Modified;
-				Modified?.Invoke(this, ev);
-			}
-			else
-				info.State = ProcessHandlingState.Abandoned;
-
-			if (Recheck > 0) TouchReapply(info);
-
-			if (Taskmaster.WindowResizeEnabled && Resize.HasValue) TryResize(info);
-
-			if (modified)
-			{
-				if (Taskmaster.IgnoreRecentlyModified)
-				{
-					var rmt = new RecentlyModifiedInfo()
+					if (Taskmaster.IgnoreRecentlyModified)
 					{
-						Info = info,
-						LastModified = now,
-						ExpectedState = 1,
-						UnexpectedState = 0,
-					};
-
-					RecentlyModified.AddOrUpdate(info.Id, rmt, (int key, RecentlyModifiedInfo urmt) =>
-					{
-						try
+						var rmt = new RecentlyModifiedInfo()
 						{
-							if (urmt.Info.Process.ProcessName.Equals(info.Process.ProcessName))
+							Info = info,
+							LastModified = now,
+							ExpectedState = 1,
+							UnexpectedState = 0,
+						};
+
+						RecentlyModified.AddOrUpdate(info.Id, rmt, (int key, RecentlyModifiedInfo urmt) =>
+						{
+							try
 							{
-								urmt.LastModified = now;
-								urmt.UnexpectedState += 1;
-								return urmt;
+								if (urmt.Info.Process.ProcessName.Equals(info.Process.ProcessName))
+								{
+									urmt.LastModified = now;
+									urmt.UnexpectedState += 1;
+									return urmt;
+								}
 							}
-						}
-						catch { }
+							catch { }
 
-						urmt.Info = info;
-						urmt.LastModified = now;
-						urmt.UnexpectedState += 1;
-						urmt.ExpectedState = 0;
+							urmt.Info = info;
+							urmt.LastModified = now;
+							urmt.UnexpectedState += 1;
+							urmt.ExpectedState = 0;
 
-						return urmt;
-					});
+							return urmt;
+						});
+					}
+
+					InternalRefresh(now);
 				}
-
-				InternalRefresh(now);
+			}
+			catch (Exception ex)
+			{
+				Logging.Stacktrace(ex);
 			}
 		}
 
@@ -1505,7 +1512,7 @@ namespace Taskmaster
 					return;
 				}
 
-				Touch(info, refresh: true);
+				await Touch(info, refresh: true);
 			}
 			catch (Win32Exception) // access denied
 			{
@@ -1557,6 +1564,8 @@ namespace Taskmaster
 				Log.Debug("[" + FriendlyName + "] Scanning found " + procs.Length + " instance(s)");
 
 			ScanModifyCount = 0;
+			var t = new ParallelOptions() { MaxDegreeOfParallelism = ProcessManager.CPUCount/2 };
+
 			foreach (Process process in procs)
 			{
 				string name;
@@ -1567,6 +1576,7 @@ namespace Taskmaster
 					pid = process.Id;
 				}
 				catch { continue; } // access failure or similar, we don't care
+
 				try
 				{
 					if (ProcessUtility.GetInfo(pid, out var info, process, this, name, null, getPath: !string.IsNullOrEmpty(Path)))

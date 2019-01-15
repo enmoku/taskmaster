@@ -25,6 +25,7 @@
 // THE SOFTWARE.
 
 using System;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.Management;
 using MKAh;
@@ -60,9 +61,9 @@ namespace Taskmaster
 
 			if (string.IsNullOrEmpty(path))
 			{
-				if (!GetProcessPathViaC(info.Id, out path))
+				if (!GetPathViaC(info, out path))
 				{
-					if (!GetProcessPathViaWMI(info.Id, out path))
+					if (!GetPathViaWMI(info.Id, out path))
 					{
 						Statistics.PathNotFound++;
 						return false;
@@ -81,29 +82,41 @@ namespace Taskmaster
 		}
 
 		// https://stackoverflow.com/a/34991822
-		public static bool GetProcessPathViaC(int pid, out string path)
+		public static bool GetPathViaC(ProcessEx info, out string path)
 		{
-			//const int PROCESS_QUERY_INFORMATION = 0x0400;
-			// const int PROCESS_VM_READ = 0x0010; // is this really needed?
 			path = string.Empty;
+			IntPtr handle = IntPtr.Zero;
 
-			//var processHandle = NativeMethods.OpenProcess(PROCESS_QUERY_INFORMATION, false, pid);
-			var proc = Process.GetProcessById(pid);
-			//if (processHandle == IntPtr.Zero)
-			if (proc == null) return false;
-
-			const int lengthSb = 32768; // this is the maximum path length NTFS supports
-
-			var sb = new System.Text.StringBuilder(lengthSb);
-
-			if (NativeMethods.GetModuleFileNameEx(proc.Handle, IntPtr.Zero, sb, lengthSb) > 0)
+			try
 			{
-				// result = Path.GetFileName(sb.ToString());
-				path = sb.ToString();
-				return true;
+				handle = NativeMethods.OpenProcess(NativeMethods.PROCESS_QUERY_INFORMATION | NativeMethods.PROCESS_VM_READ, false, info.Id);
+				if (handle == IntPtr.Zero) return false; // failed to open process
+
+				const int lengthSb = 32768; // this is the maximum path length NTFS supports
+
+				var sb = new System.Text.StringBuilder(lengthSb);
+
+				if (NativeMethods.GetModuleFileNameEx(info.Process.Handle, IntPtr.Zero, sb, lengthSb) > 0)
+				{
+					// result = Path.GetFileName(sb.ToString());
+					path = sb.ToString();
+					return true;
+				}
+			}
+			catch (Win32Exception) // Access Denied
+			{
+				// NOP
+				Debug.WriteLine("GetModuleFileNameEx - Access Denied - " + $"{info.Name} (#{info.Id})");
+			}
+			catch (Exception ex)
+			{
+				Logging.Stacktrace(ex);
+			}
+			finally
+			{
+				NativeMethods.CloseHandle(handle);
 			}
 
-			//NativeMethods.CloseHandle(processHandle);
 			return false;
 		}
 
@@ -113,7 +126,7 @@ namespace Taskmaster
 		/// </summary>
 		/// <returns>The process path.</returns>
 		/// <param name="processId">Process ID</param>
-		static bool GetProcessPathViaWMI(int processId, out string path)
+		static bool GetPathViaWMI(int processId, out string path)
 		{
 			path = string.Empty;
 

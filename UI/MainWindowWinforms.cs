@@ -2345,7 +2345,7 @@ namespace Taskmaster
 			statusbar.Items.Add("Processing");
 			statusbar.Items.Add("Items:");
 			processingcount = new ToolStripStatusLabel("["+ HumanReadable.Generic.Uninitialized + "]") { AutoSize=false };
-			statusbar.Items.Add(processingcount);
+			statusbar.Items.Add(processingcount); // not truly useful for anything but debug to show if processing is hanging Somewhere
 			statusbar.Items.Add("Next scan in:");
 			processingtimer = new ToolStripStatusLabel("["+ HumanReadable.Generic.Uninitialized + "]") { AutoSize = false };
 			statusbar.Items.Add(processingtimer);
