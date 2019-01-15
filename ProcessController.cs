@@ -1066,6 +1066,7 @@ namespace Taskmaster
 				{
 					if (Taskmaster.ShowInaction && Taskmaster.DebugProcesses)
 						Log.Debug("[" + FriendlyName + "] " + info.Name + " (#" + info.Id + ") ignored due to user defined rule.");
+					info.State = ProcessHandlingState.Abandoned;
 					return; // return ProcessState.Ignored;
 				}
 
@@ -1110,6 +1111,7 @@ namespace Taskmaster
 								Log.Debug("[" + FriendlyName + "] " + info.Name + " (#" + info.Id + ") not in foreground, not prioritizing.");
 
 							Pause(info, firsttime);
+							info.State = ProcessHandlingState.Paused;
 							return;
 						}
 					}
