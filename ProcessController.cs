@@ -940,10 +940,10 @@ namespace Taskmaster
 				return info.Name; // NAME
 		}
 
-		public async void Modify(ProcessEx info)
+		public async Task Modify(ProcessEx info)
 		{
 			await Touch(info);
-			if (Recheck > 0) await TouchReapply(info);
+			if (Recheck > 0) TouchReapply(info);
 		}
 
 		public bool MatchPath(string path)
@@ -1074,6 +1074,8 @@ namespace Taskmaster
 					return; // return ProcessState.Ignored;
 				}
 
+				info.Valid = true;
+
 				bool isProtectedFile = ProcessManager.ProtectedProcessName(info.Name);
 				// TODO: IgnoreSystem32Path
 
@@ -1115,7 +1117,6 @@ namespace Taskmaster
 								Log.Debug("[" + FriendlyName + "] " + info.Name + " (#" + info.Id + ") not in foreground, not prioritizing.");
 
 							Pause(info, firsttime);
-							info.State = ProcessHandlingState.Paused;
 							return;
 						}
 					}
@@ -1247,8 +1248,6 @@ namespace Taskmaster
 					}
 
 					LastTouch = now;
-
-					ScanModifyCount++;
 				}
 
 				if (Priority.HasValue)
@@ -1302,7 +1301,7 @@ namespace Taskmaster
 					Modified?.Invoke(this, ev);
 				}
 				else
-					info.State = ProcessHandlingState.Abandoned;
+					info.State = ProcessHandlingState.Finished;
 
 				if (Recheck > 0) TouchReapply(info);
 				
@@ -1547,84 +1546,6 @@ namespace Taskmaster
 				Logging.Stacktrace(ex);
 				return; //throw; // would throw but this is async function
 			}
-		}
-
-		public DateTimeOffset LastScan { get; private set; } = DateTimeOffset.MinValue;
-
-		/// <summary>
-		/// Atomic lock for RescanWithSchedule()
-		/// </summary>
-		int ScheduledScan = 0;
-
-		int ScanModifyCount = 0;
-		public void Scan()
-		{
-			if (string.IsNullOrEmpty(ExecutableFriendlyName)) return;
-
-			//await Task.Delay(0);
-
-			Process[] procs;
-			try
-			{
-				procs = Process.GetProcessesByName(ExecutableFriendlyName); // should be case insensitive by default
-			}
-			catch // name not found
-			{
-				if (Taskmaster.Trace) Log.Verbose(Executable ?? ExecutableFriendlyName + " is not running");
-				return;
-			}
-
-			// LastSeen = LastScan;
-			LastScan = DateTimeOffset.UtcNow;
-
-			if (procs.Length == 0) return;
-
-			if (Taskmaster.DebugProcesses)
-				Log.Debug("[" + FriendlyName + "] Scanning found " + procs.Length + " instance(s)");
-
-			ScanModifyCount = 0;
-			var t = new ParallelOptions() { MaxDegreeOfParallelism = ProcessManager.CPUCount/2 };
-
-			foreach (Process process in procs)
-			{
-				string name;
-				int pid;
-				try
-				{
-					name = process.ProcessName;
-					pid = process.Id;
-				}
-				catch (OutOfMemoryException) { throw; }
-				catch { continue; } // access failure or similar, we don't care
-
-				try
-				{
-					if (ProcessUtility.GetInfo(pid, out var info, process, this, name, null, getPath: !string.IsNullOrEmpty(Path)))
-						Modify(info);
-				}
-				catch (OutOfMemoryException) { throw; }
-				catch (Exception ex)
-				{
-					Logging.Stacktrace(ex);
-					continue;
-				}
-			}
-
-			if (ScanModifyCount > 0)
-			{
-				if (Taskmaster.DebugProcesses)
-					Log.Verbose("[" + FriendlyName + "] Scan modified " + ScanModifyCount + " out of " + procs.Length + " instance(s)");
-			}
-		}
-
-		public bool Locate()
-		{
-			if (!string.IsNullOrEmpty(Path))
-			{
-				if (System.IO.Directory.Exists(Path)) return true;
-				return false;
-			}
-			return false;
 		}
 
 		public void Dispose()

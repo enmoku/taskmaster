@@ -88,6 +88,7 @@ namespace Taskmaster
 			}
 		}
 
+		public bool Valid { get; set; } = false;
 		public bool Handled { get; set; } = false;
 		public bool Exited { get; set; } = false;
 	}

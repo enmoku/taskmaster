@@ -387,13 +387,13 @@ namespace Taskmaster
 				if (Taskmaster.DebugFullScan)
 					Log.Verbose("<Process> Checking [" + i + "/" + count + "] " + name + " (#" + pid + ")");
 
-				var timer = Stopwatch.StartNew();
-
-				ProcessDetectedEvent?.Invoke(this, new ProcessModificationEventArgs
+				if (ProcessUtility.GetInfo(pid, out var info, process, null, name, null, getPath: true))
 				{
-					Info = new ProcessEx() { Process = process, Id = pid, Name = name, Path = null, Timer = timer },
-					State = ProcessRunningState.Found,
-				});
+					info.Timer = Stopwatch.StartNew();
+					ProcessDetectedEvent?.Invoke(this,
+						new ProcessModificationEventArgs { Info = info, State = ProcessRunningState.Found }
+						);
+				}
 			}
 
 			if (Taskmaster.DebugFullScan) Log.Debug("<Process> Full Scan: Complete");
