@@ -49,7 +49,12 @@ namespace Taskmaster
 			{
 				path = info.Process?.MainModule?.FileName ?? string.Empty; // this will cause win32exception of various types, we don't Really care which error it is
 			}
-			catch (System.ComponentModel.Win32Exception)
+			catch (InvalidOperationException)
+			{
+				// already gone
+				return false;
+			}
+			catch (Win32Exception)
 			{
 				// Access denied problems of varying sorts
 			}
