@@ -529,7 +529,7 @@ namespace Taskmaster
 			dirtyconfig |= modified;
 
 			if (ScanFrequency != TimeSpan.Zero)
-				Log.Information("<Process> Scan every " + ScanFrequency + " seconds.");
+				Log.Information("<Process> Scan every " + $"{ScanFrequency.TotalSeconds:N0}" + " seconds.");
 
 			// --------------------------------------------------------------------------------------------------------
 
