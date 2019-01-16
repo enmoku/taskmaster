@@ -891,14 +891,14 @@ namespace Taskmaster
 
 									// c:\program files\brand\app\version\random\element\executable.exe
 									// ...\brand\app\...\executable.exe
-									parts.RemoveRange(3, parts.Count - 4); // remove all but two first and last
-									parts.Insert(3, HumanReadable.Generic.Ellipsis);
+									//parts.RemoveRange(3, parts.Count - 4); // remove all but two first and last
+									//parts.Insert(3, HumanReadable.Generic.Ellipsis);
 
 									bool replaced = false;
 									// remove unwanted bits
 									for (int i = 0; i < parts.Count; i++)
 									{
-										if (UnwantedPathBits.Contains(parts[i].ToLowerInvariant()))
+										if ((i > 2 && i < parts.Count - 3 ) || UnwantedPathBits.Contains(parts[i].ToLowerInvariant()))
 										{
 											if (replaced)
 												parts.RemoveAt(i--); // remove current and roll back loop
