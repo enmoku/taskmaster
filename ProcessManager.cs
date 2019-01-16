@@ -1553,6 +1553,7 @@ namespace Taskmaster
 						// TODO: Mark as admin process?
 						info.Name = info.Process.ProcessName;
 					}
+					catch (OutOfMemoryException) { throw; }
 					catch
 					{
 						Log.Error("Failed to retrieve name of process #" + info.Id);
@@ -1705,6 +1706,7 @@ namespace Taskmaster
 						if (info.Process.HasExited)
 							triggerList.Push(info);
 					}
+					catch (OutOfMemoryException) { throw; }
 					catch
 					{
 						//Logging.Stacktrace(ex);

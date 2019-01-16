@@ -133,6 +133,7 @@ namespace Taskmaster
 					if (i++ % 100 == 0) onTempScan?.Invoke(null, dea);
 				}
 			}
+			catch (OutOfMemoryException) { throw; }
 			catch
 			{
 				Log.Error("Failed to access temp folder: " + dinfo.FullName);

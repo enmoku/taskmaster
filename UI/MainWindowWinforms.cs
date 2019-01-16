@@ -2734,6 +2734,7 @@ namespace Taskmaster
 						Clipboard.SetText(sbs.ToString(), TextDataFormat.UnicodeText);
 						Log.Information("[" + name + "] Configuration saved to clipboard.");
 					}
+					catch (OutOfMemoryException) { throw; }
 					catch
 					{
 						Log.Warning("[" + name + "] Failed to copy configuration to clipboard.");

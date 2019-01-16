@@ -482,6 +482,7 @@ namespace Taskmaster
 						stamp = ls.GetValue<long>();
 						LastSeen = stamp.Unixstamp();
 					}
+					catch (OutOfMemoryException) { throw; }
 					catch { } // NOP
 				}
 			}
@@ -565,9 +566,8 @@ namespace Taskmaster
 					}
 				}
 			}
-			catch
-			{
-			}
+			catch (OutOfMemoryException) { throw; }
+			catch { }
 			// info.Process.ProcessorAffinity = OriginalState.Affinity;
 
 			if (Taskmaster.PowerManagerEnabled)
@@ -723,6 +723,7 @@ namespace Taskmaster
 				PausedIds.TryRemove(info.Id, out _);
 				return;
 			}
+			catch (OutOfMemoryException) { throw; }
 			catch (Exception ex)
 			{
 				Logging.Stacktrace(ex);
@@ -844,6 +845,7 @@ namespace Taskmaster
 			}
 			catch (InvalidOperationException) { } // Already exited
 			catch (ArgumentException) { } // already exited?
+			catch (OutOfMemoryException) { throw; }
 			catch (Exception ex) { Logging.Stacktrace(ex); }
 
 			return false;
@@ -1015,6 +1017,7 @@ namespace Taskmaster
 					info.State = ProcessHandlingState.AccessDenied;
 					return;
 				}
+				catch (OutOfMemoryException) { throw; }
 				catch (Exception ex) // invalidoperation or notsupported, neither should happen
 				{
 					Logging.Stacktrace(ex);
@@ -1056,6 +1059,7 @@ namespace Taskmaster
 							}
 						}
 					}
+					catch (OutOfMemoryException) { throw; }
 					catch { }
 					//RecentlyModified.TryRemove(info.Id, out _);
 				}
@@ -1189,6 +1193,7 @@ namespace Taskmaster
 							newPriority = info.Process.PriorityClass;
 						}
 					}
+					catch (OutOfMemoryException) { throw; }
 					catch { fPriority = true; } // ignore errors, this is all we care of them
 				}
 
@@ -1199,6 +1204,7 @@ namespace Taskmaster
 						info.Process.ProcessorAffinity = newAffinity.Value;
 						modified = mAffinity = true;
 					}
+					catch (OutOfMemoryException) { throw; }
 					catch { fAffinity = true; } // ignore errors, this is all we care of them
 				}
 
@@ -1325,6 +1331,7 @@ namespace Taskmaster
 									return urmt;
 								}
 							}
+							catch (OutOfMemoryException) { throw; }
 							catch { }
 
 							urmt.Info = info;
@@ -1339,6 +1346,7 @@ namespace Taskmaster
 					InternalRefresh(now);
 				}
 			}
+			catch (OutOfMemoryException) { throw; }
 			catch (Exception ex)
 			{
 				Logging.Stacktrace(ex);
@@ -1446,6 +1454,7 @@ namespace Taskmaster
 							NeedsSaving = true;
 						}
 					}
+					catch (OutOfMemoryException) { throw; }
 					catch (Exception ex)
 					{
 						Logging.Stacktrace(ex);
@@ -1475,6 +1484,7 @@ namespace Taskmaster
 							NeedsSaving = true;
 						}
 					}
+					catch (OutOfMemoryException) { throw; }
 					catch (Exception ex)
 					{
 						Logging.Stacktrace(ex);
@@ -1485,6 +1495,7 @@ namespace Taskmaster
 					}
 				};
 			}
+			catch (OutOfMemoryException) { throw; }
 			catch (Exception ex)
 			{
 				Logging.Stacktrace(ex);
@@ -1529,6 +1540,7 @@ namespace Taskmaster
 			{
 				return;
 			}
+			catch (OutOfMemoryException) { throw; }
 			catch (Exception ex)
 			{
 				Log.Warning("[" + FriendlyName + "] " + info.Name + " (#" + info.Id + ") – something bad happened.");
@@ -1582,6 +1594,7 @@ namespace Taskmaster
 					name = process.ProcessName;
 					pid = process.Id;
 				}
+				catch (OutOfMemoryException) { throw; }
 				catch { continue; } // access failure or similar, we don't care
 
 				try
@@ -1589,6 +1602,7 @@ namespace Taskmaster
 					if (ProcessUtility.GetInfo(pid, out var info, process, this, name, null, getPath: !string.IsNullOrEmpty(Path)))
 						Modify(info);
 				}
+				catch (OutOfMemoryException) { throw; }
 				catch (Exception ex)
 				{
 					Logging.Stacktrace(ex);

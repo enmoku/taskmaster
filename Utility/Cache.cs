@@ -242,6 +242,7 @@ namespace Taskmaster
 					return item.ReturnKey;
 				}
 			}
+			catch (OutOfMemoryException) { throw; }
 			catch
 			{
 				// NOP, don't caree

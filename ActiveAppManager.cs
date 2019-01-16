@@ -195,6 +195,7 @@ namespace Taskmaster
 					{
 						name = fg.ProcessName;
 					}
+					catch (OutOfMemoryException) { throw; }
 					catch
 					{
 						// probably gone?
@@ -249,6 +250,7 @@ namespace Taskmaster
 								sbs.Append("Affinity reduced");
 								aff = true;
 							}
+							catch (OutOfMemoryException) { throw; }
 							catch
 							{
 								if (acted) sbs.Append(", ");
@@ -261,6 +263,7 @@ namespace Taskmaster
 								sbs.Append(", Priority reduced");
 								prio = true;
 							}
+							catch (OutOfMemoryException) { throw; }
 							catch
 							{
 								sbs.Append(", Priority reduction failed");
@@ -276,6 +279,7 @@ namespace Taskmaster
 								if (acted) sbs.Append(", ");
 								sbs.Append("Terminated");
 							}
+							catch (OutOfMemoryException) { throw; }
 							catch
 							{
 								if (acted) sbs.Append(", ");

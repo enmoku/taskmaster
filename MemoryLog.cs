@@ -106,6 +106,7 @@ namespace Taskmaster
 					p_textFormatter.Format(e, p_output);
 					formattedtext = p_output.ToString();
 				}
+				catch (OutOfMemoryException) { throw; }
 				catch
 				{
 					return; // ignore, kinda

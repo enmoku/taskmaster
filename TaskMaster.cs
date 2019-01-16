@@ -885,6 +885,7 @@ namespace Taskmaster
 							{
 								StartDelay = Convert.ToInt32(args[++i]).Constrain(1, 60*5);
 							}
+							catch (OutOfMemoryException) { throw; }
 							catch
 							{
 								StartDelay = 30;
@@ -900,6 +901,7 @@ namespace Taskmaster
 								uptimecounter.Close();
 							}
 						}
+						catch (OutOfMemoryException) { throw; }
 						catch
 						{
 							uptime = TimeSpan.Zero;

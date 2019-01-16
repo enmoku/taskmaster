@@ -133,6 +133,7 @@ namespace Taskmaster
 					System.IO.File.WriteAllLines(logfile, logcontents, System.Text.Encoding.Unicode);
 					Debug.WriteLine("Crash log written to " + logfile);
 				}
+				catch (OutOfMemoryException) { throw; }
 				catch
 				{
 					throw; // nothing to be done, we're already crashing and burning by this point
