@@ -1329,11 +1329,12 @@ namespace Taskmaster
 
 					try
 					{
-						ea.Info.Controller.Modify(ea.Info);
+						await ea.Info.Controller.Modify(ea.Info).ContinueWith((x) => {
+							ForegroundWatch(ea.Info);
 
-						ForegroundWatch(ea.Info);
-
-						if (ea.Info.Controller.Analyze && ea.Info.State == ProcessHandlingState.Modified) analyzer.Analyze(ea.Info);
+							if (ea.Info.Controller.Analyze && ea.Info.Valid && ea.Info.State != ProcessHandlingState.Abandoned)
+								analyzer.Analyze(ea.Info);
+						});
 					}
 					catch (Exception ex)
 					{

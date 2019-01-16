@@ -29,10 +29,12 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 using Serilog;
+using System.Collections.Concurrent;
 
 namespace Taskmaster
 {
@@ -45,37 +47,76 @@ namespace Taskmaster
 	{
 		public ProcessAnalyzer()
 		{
+
 		}
 
 		public async void Analyze(ProcessEx info)
 		{
+			if (string.IsNullOrEmpty(info.Path)) return;
+
+			var crypt = new System.Security.Cryptography.SHA512Cng();
+			byte[] hash = crypt.ComputeHash(Encoding.UTF8.GetBytes(info.Path.ToLowerInvariant()));
+
+			// TODO: Prevent bloating somehow.
+			if (!cache.TryAdd(hash, 0)) return; // already there
+
+			bool record = Taskmaster.RecordAnalysis > 0;
+
+			int delay = record ? Taskmaster.RecordAnalysis.Constrain(10, 180) : 30;
+			Log.Debug($"<Analysis> {info.Name} (#{info.Id}) scheduled");
+
+			var linkedModules = new List<ModuleInfo>();
+			var identifiedModules = new List<ModuleInfo>();
+			long privMem = 0;
+			long threadCount = 0;
+			long workingSet = 0;
+			long virtualMem = 0;
+
+			bool x64 = true;
+
+			string modFile = string.Empty;
+			FileVersionInfo version = null;
+			long modMemory = 0;
+
 			try
 			{
-				await Task.Delay(TimeSpan.FromSeconds(15));
+				await Task.Delay(TimeSpan.FromSeconds(delay));
 
-				var pa = new ProcessAnalysis();
-				pa.bla = true;
+				//var pa = new ProcessAnalysis();
+				//pa.bla = true;
 
-				Debug.WriteLine("Analyzing:" + $"{info.Name} (#{info.Id})");
+				if (info.Process.HasExited)
+				{
+					Log.Debug($"<Analysis> {info.Name} (#{info.Id}) cancelled; already gone");
+					cache.TryRemove(hash, out _);
+					return;
+				}
 
-				if (info.Process.HasExited) return;
+				if (Taskmaster.Trace) Debug.WriteLine("Analyzing:" + $"{info.Name} (#{info.Id})");
+
+				modFile = info.Process.MainModule.FileName;
+				version = info.Process.MainModule.FileVersionInfo;
+				modMemory = info.Process.MainModule.ModuleMemorySize;
 
 				// Process.Modules unfortunately returned only ntdll.dll, wow64.dll, wow64win.dll, and wow64cpu.dll for a game and seems unusuable for what it was desired
+				foreach (ProcessModule mod in info.Process.Modules)
+				{
+					if (mod.ModuleName.StartsWith("wow64.dll", StringComparison.InvariantCultureIgnoreCase))
+					{
+						x64 = false;
+						break;
+					}
+				}
 
 				IntPtr[] modulePtrs = new IntPtr[0];
 				int bytesNeeded = 0;
 
 				// Determine number of modules
 				if (!EnumProcessModulesEx(info.Process.Handle, modulePtrs, 0, out bytesNeeded, (uint)ModuleFilter.ListModulesAll))
-				{
 					return;
-				}
-
-				bool wxwidgets = false, dsound = false, xaudio=false, physx = false, gamecontroller = false, gameux = false, openal = false, x86 = false, dx9 = false, dx10=false, dx11=false, dx12=false, bink = false, net = true;
 
 				int totalModules = bytesNeeded / IntPtr.Size;
 				modulePtrs = new IntPtr[totalModules];
-				List<string> linkedModules = new List<string>();
 				var handle = info.Process.Handle;
 				if (EnumProcessModulesEx(handle, modulePtrs, bytesNeeded, out bytesNeeded, (uint)ModuleFilter.ListModulesAll))
 				{
@@ -91,73 +132,208 @@ namespace Taskmaster
 						//linkedModules.Add(moduleName.ToLowerInvariant());
 						//Debug.WriteLine(" - " + moduleName);
 
-						if (moduleName.StartsWith("wxmsw", StringComparison.InvariantCultureIgnoreCase))
-							wxwidgets = true;
-						else if (moduleName.StartsWith("dsound.dll", StringComparison.InvariantCultureIgnoreCase))
-							dsound = true;
-						else if (moduleName.StartsWith("xaudio", StringComparison.InvariantCultureIgnoreCase))
-							xaudio = true;
-						else if (moduleName.StartsWith("physx", StringComparison.InvariantCultureIgnoreCase))
-							physx = true;
-						else if (moduleName.StartsWith("xinput", StringComparison.InvariantCultureIgnoreCase))
-							gamecontroller = true;
-						else if (moduleName.StartsWith("dinput", StringComparison.InvariantCultureIgnoreCase))
-							gamecontroller = true;
-						else if (moduleName.StartsWith("gameux.dll", StringComparison.InvariantCultureIgnoreCase))
-							gameux = true;
-						else if (moduleName.StartsWith("openal32.dll", StringComparison.InvariantCultureIgnoreCase)) // wrap_oal.dll too
-							openal = true;
-						else if (moduleName.StartsWith("wow64.dll", StringComparison.InvariantCultureIgnoreCase))
-							x86 = true;
-						else if (moduleName.StartsWith("d3d9.dll", StringComparison.InvariantCultureIgnoreCase))
-							dx9 = true;
-						else if (moduleName.StartsWith("d3dx9_", StringComparison.InvariantCultureIgnoreCase))
-							dx9 = true;
-						else if (moduleName.StartsWith("d3dx10_", StringComparison.InvariantCultureIgnoreCase))
-							dx10 = true;
-						else if (moduleName.StartsWith("d3dx11_", StringComparison.InvariantCultureIgnoreCase))
-							dx11 = true;
-						else if (moduleName.StartsWith("d3dx12_", StringComparison.InvariantCultureIgnoreCase))
-							dx12 = true;
-						else if (moduleName.StartsWith("binkw32.dll", StringComparison.InvariantCultureIgnoreCase))
-							bink = true;
-						else if (moduleName.StartsWith("wsock32.dll", StringComparison.InvariantCultureIgnoreCase))
-							net = true;
+						var mi = IdentifyModule(moduleName.Trim());
+						if (mi.Type != ModuleType.Unknown)
+							identifiedModules.Add(mi);
+
+						if (record) linkedModules.Add(mi);
 					}
 				}
 
-				var sbs = new StringBuilder();
-				sbs.Append("<Process> Analysis of ").Append(info.Name).Append($" (#{info.Id})").Append(" complete, components identified: ");
-				List<string> components = new List<string>();
-				if (dsound || openal || xaudio) components.Add("Sound");
-				if (physx) components.Add("Physics");
-				if (gamecontroller) components.Add("Controller");
-				if (gameux) components.Add("GameUX");
-				if (dx9) components.Add("DX9");
-				if (dx10) components.Add("DX10");
-				if (dx11) components.Add("DX11");
-				if (dx12) components.Add("DX12");
-				if (x86) components.Add("32-bit");
-				else components.Add("64-bit");
-				if (bink) components.Add("Bink");
-				if (net) components.Add("Net");
-				sbs.Append(string.Join(", ", components));
-
-				Log.Information(sbs.ToString());
+				try
+				{
+					privMem = info.Process.PrivateMemorySize64 / 1_048_576;
+					workingSet = info.Process.PeakWorkingSet64 / 1_048_576;
+					virtualMem = info.Process.PeakVirtualMemorySize64 / 1_048_576;
+					threadCount = info.Process.Threads.Count;
+				}
+				catch { }
 			}
 			catch (InvalidOperationException)
 			{
 				// already exited
+				cache.TryRemove(hash, out _);
+				Log.Debug($"[{info.Controller.FriendlyName}] {info.Name} (#{info.Id}) exited before analysis could begin.");
 			}
 			catch (Win32Exception)
 			{
 				// access denied
+				cache.TryRemove(hash, out _);
+				Log.Debug($"[{info.Controller.FriendlyName}] {info.Name} (#{info.Id}) was denied access for analysis.");
 			}
+			catch (OutOfMemoryException) { throw; }
+			catch (Exception ex)
+			{
+				cache.TryRemove(hash, out _);
+				Logging.Stacktrace(ex);
+			}
+
+			try
+			{
+				// LOG analysis
+				bool memLow = privMem < 8; // less than 8MB private memory
+				bool memModerate = privMem > 400; // more than 400 MB
+				bool memHigh = privMem > 1200; // more than 1200 MB
+				bool memExtreme = privMem > 2600; // more than 2600 MB
+
+				var sbs = new StringBuilder();
+				sbs.Append("<Analysis> ").Append(info.Name).Append($" (#{info.Id})").Append(" – facts identified: ");
+				List<string> components = new List<string>();
+
+				if (x64) components.Add("64-bit");
+				else components.Add("32-bit");
+
+				foreach (var mod in identifiedModules)
+					components.Add(mod.Detail);
+
+				if (memLow) components.Add("Memory(Low)");
+				else if (memExtreme) components.Add("Memory(Extreme)");
+				else if (memHigh) components.Add("Memory(High)");
+				else if (memModerate) components.Add("Memory(Moderate)");
+
+				if (components.Count > 0) sbs.Append(string.Join(", ", components));
+				else sbs.Append("None");
+
+				Log.Information(sbs.ToString());
+
+				// RECORD analysis
+
+				if (record)
+				{
+					var file = $"{DateTime.Now.ToString("yyyyMMdd-HHmmss-fff")}-{info.Name}.analysis.yml";
+					var path = Path.Combine(Taskmaster.datapath, "Analysis");
+					var endpath = Path.Combine(path, file);
+					var di = Directory.CreateDirectory(path);
+
+					var contents = new StringBuilder();
+					contents.Append("Analysis:").AppendLine()
+						.Append("\t").Append("Process: ").Append(info.Name).AppendLine()
+						.Append("\t").Append("Module : ").Append(modFile).AppendLine()
+						.Append("\t").Append("Version: ").Append(version.FileVersion.ToString()).AppendLine()
+						.Append("\t").Append("Product: ").Append(version.ProductName.ToString()).AppendLine()
+						.Append("\t").Append("Company: ").Append(version.CompanyName.ToString()).AppendLine()
+						.Append("\t").Append("64-bit : ").Append(x64 ? "Yes" : "No").AppendLine()
+						.Append("\t").Append("Path   : ").Append(info.Path).AppendLine()
+						.Append("\t").Append("Threads: ").Append(threadCount).AppendLine()
+						.Append("\t").Append("Memory : ").AppendLine()
+						.Append("\t\t- ").Append("Module  : ").Append(modMemory/1_048_576).AppendLine()
+						.Append("\t\t- ").Append("Private : ").Append(privMem).AppendLine()
+						.Append("\t\t- ").Append("Working : ").Append(workingSet).AppendLine()
+						.Append("\t\t- ").Append("Virtual : ").Append(virtualMem).AppendLine()
+						.Append("\t").Append("Modules: ").AppendLine();
+
+					foreach (var mod in linkedModules)
+					{
+						contents.Append("\t\t- ").Append(mod.Name).AppendLine();
+						if (mod.Type != ModuleType.Unknown)
+							contents.Append("\t\t  Type     : ").Append(mod.Type.ToString()).AppendLine();
+						if (!string.IsNullOrEmpty(mod.Detail))
+							contents.Append("\t\t  Identity : ").Append(mod.Detail).AppendLine();
+					}
+
+					File.WriteAllText(endpath, contents.ToString());
+				}
+			}
+			catch (OutOfMemoryException) { throw; }
 			catch (Exception ex)
 			{
 				Logging.Stacktrace(ex);
 			}
 		}
+
+		public ModuleInfo IdentifyModule(string moduleName)
+		{
+			var mi = new ModuleInfo(moduleName);
+
+			if (moduleName.StartsWith("wxmsw", StringComparison.InvariantCultureIgnoreCase))
+			{
+				mi.Type = ModuleType.Interface;
+				mi.Detail = "WxWidgets";
+				mi.Open = true;
+			}
+			else if (moduleName.StartsWith("dsound.dll", StringComparison.InvariantCultureIgnoreCase))
+			{
+				mi.Type = ModuleType.Audio;
+				mi.Detail = "DirectSound";
+			}
+			else if (moduleName.StartsWith("xaudio", StringComparison.InvariantCultureIgnoreCase))
+			{
+				mi.Type = ModuleType.Audio;
+				mi.Detail = "XAudio";
+			}
+			else if (moduleName.StartsWith("physx", StringComparison.InvariantCultureIgnoreCase))
+			{
+				mi.Type = ModuleType.Physics;
+				mi.Detail = "PhysX";
+				mi.Proprietary = true;
+			}
+			else if (moduleName.StartsWith("xinput", StringComparison.InvariantCultureIgnoreCase))
+			{
+				mi.Type = ModuleType.Controller;
+				mi.Detail = "XInput";
+			}
+			else if (moduleName.StartsWith("dinput", StringComparison.InvariantCultureIgnoreCase))
+			{
+				mi.Type = ModuleType.Controller;
+				mi.Detail = "DirectInput";
+			}
+			else if (moduleName.StartsWith("gameux.dll", StringComparison.InvariantCultureIgnoreCase))
+			{
+				mi.Type = ModuleType.Generic;
+				mi.Detail = "GameUx (Game Explorer)";
+			}
+			else if (moduleName.StartsWith("openal32.dll", StringComparison.InvariantCultureIgnoreCase)) // wrap_oal.dll too
+			{
+				mi.Type = ModuleType.Audio;
+				mi.Detail = "OpenAL";
+				mi.Open = true;
+			}
+			else if (moduleName.StartsWith("wow64.dll", StringComparison.InvariantCultureIgnoreCase))
+			{
+				mi.Type = ModuleType.Generic;
+				mi.Detail = "Windows-on-Windows";
+			}
+			else if (moduleName.StartsWith("d3d9.dll", StringComparison.InvariantCultureIgnoreCase))
+			{
+				mi.Type = ModuleType.Multimedia;
+				mi.Detail = "DirectX 9";
+			}
+			else if (moduleName.StartsWith("d3dx9_", StringComparison.InvariantCultureIgnoreCase))
+			{
+				mi.Type = ModuleType.Multimedia;
+				mi.Detail = "DirectX 9";
+			}
+			else if (moduleName.StartsWith("d3dx10_", StringComparison.InvariantCultureIgnoreCase))
+			{
+				mi.Type = ModuleType.Multimedia;
+				mi.Detail = "DirectX 10";
+			}
+			else if (moduleName.StartsWith("d3dx11_", StringComparison.InvariantCultureIgnoreCase))
+			{
+				mi.Type = ModuleType.Multimedia;
+				mi.Detail = "DirectX 11";
+			}
+			else if (moduleName.StartsWith("d3dx12_", StringComparison.InvariantCultureIgnoreCase))
+			{
+				mi.Type = ModuleType.Multimedia;
+				mi.Detail = "DirectX 12";
+			}
+			else if (moduleName.StartsWith("binkw32.dll", StringComparison.InvariantCultureIgnoreCase))
+			{
+				mi.Type = ModuleType.Multimedia;
+				mi.Detail = "Bink";
+				mi.Proprietary = true;
+			}
+			else if (moduleName.StartsWith("wsock32.dll", StringComparison.InvariantCultureIgnoreCase))
+			{
+				mi.Type = ModuleType.Network;
+				mi.Detail = "WinSock";
+			}
+
+			return mi;
+		}
+
+		ConcurrentDictionary<byte[], int> cache = new ConcurrentDictionary<byte[], int>(new StructuralEqualityComparer<byte[]>());
 
 		[StructLayout(LayoutKind.Sequential)]
 		public struct ModuleInformation
@@ -183,5 +359,38 @@ namespace Taskmaster
 
 		[DllImport("psapi.dll", SetLastError = true)]
 		public static extern bool GetModuleInformation(IntPtr hProcess, IntPtr hModule, out ModuleInformation lpmodinfo, uint cb);
+	}
+
+	sealed public class ModuleInfo
+	{
+		public ModuleInfo(string name) { Name = name; }
+
+		public string Name = string.Empty;
+		public ModuleType Type = ModuleType.Unknown;
+		public string Detail = string.Empty;
+
+		/// <summary>
+		/// Relates to proprietary hardware or software that requires special access to use.
+		/// </summary>
+		public bool Proprietary = false;
+		/// <summary>
+		/// Open standard.
+		/// </summary>
+		public bool Open = false;
+	}
+
+	public enum ModuleType
+	{
+		Audio, // xaudio, openal
+		Graphics, // dx11, opengl
+		Controller, // xinput
+		Network, // WinSock
+		Multimedia, // Bink
+		Physics, // PhysX/Havok
+		Interface, // wxwidgets
+		Processing, // OpenCL
+		Unknown,
+		Generic, // API
+		System // kernel
 	}
 }

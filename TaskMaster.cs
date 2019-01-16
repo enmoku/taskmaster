@@ -468,6 +468,7 @@ namespace Taskmaster
 		public static bool LastModifiedList { get; private set; } = false;
 		public static bool WindowResizeEnabled { get; private set; } = false;
 		public static bool IgnoreRecentlyModified { get; private set; } = false;
+		public static int RecordAnalysis { get; private set; } = 0;
 
 		// DEBUG INFO
 		public static bool DebugCache { get; private set; } = false;
@@ -742,7 +743,7 @@ namespace Taskmaster
 			IgnoreRecentlyModified = exsec.TryGet("Ignore recently modified")?.BoolValue ?? false;
 			LastModifiedList = exsec.TryGet("Last Modified")?.BoolValue ?? false;
 			TempMonitorEnabled = exsec.TryGet("Temp Monitor")?.BoolValue ?? false;
-
+			RecordAnalysis = exsec.TryGet("Record analysis")?.IntValue ?? 0;
 
 #if DEBUG
 			Trace = dbgsec.TryGet("Trace")?.BoolValue ?? false;
