@@ -67,6 +67,8 @@ namespace Taskmaster
 			get { return _state; }
 			set
 			{
+				_state = value;
+
 				switch (value)
 				{
 					case ProcessHandlingState.Exited:
