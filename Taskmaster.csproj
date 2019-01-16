@@ -159,6 +159,7 @@
     <Compile Include="Events\RunstateException.cs" />
     <Compile Include="SelfMaintenance.cs" />
     <Compile Include="UI\WatchlistSorter.cs" />
+    <Compile Include="Utility\StructuralEqualityComparer.cs" />
     <Compile Include="Utility\HumanReadable.cs" />
     <Compile Include="UI\TextInputBox.cs">
       <SubType>Form</SubType>
