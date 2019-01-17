@@ -62,7 +62,7 @@ namespace Taskmaster
 			Log.Debug($"<Analysis> {info.Name} (#{info.Id}) scheduled");
 
 			var linkedModules = new List<ModuleInfo>();
-			var identifiedModules = new List<ModuleInfo>();
+			var identifiedModules = new ConcurrentDictionary<string, ModuleInfo>();
 			long privMem = 0;
 			long threadCount = 0;
 			long workingSet = 0;
@@ -129,8 +129,7 @@ namespace Taskmaster
 						//Debug.WriteLine(" - " + moduleName);
 
 						var mi = IdentifyModule(moduleName.Trim());
-						if (mi.Type != ModuleType.Unknown && mi.Primary)
-							identifiedModules.Add(mi);
+						if (mi.Primary) identifiedModules.TryAdd(mi.Identity, mi);
 
 						if (record) linkedModules.Add(mi);
 					}
@@ -173,24 +172,57 @@ namespace Taskmaster
 				bool memExtreme = privMem > 2600; // more than 2600 MB
 
 				var sbs = new StringBuilder();
-				sbs.Append("<Analysis> ").Append(info.Name).Append($" (#{info.Id})").Append(" – facts identified: ");
+				sbs.Append("<Analysis> ").Append(info.Name).Append($" (#{info.Id})").Append(" facts: ");
 				List<string> components = new List<string>();
 
 				if (x64) components.Add("64-bit");
 				else components.Add("32-bit");
-
-				foreach (var mod in identifiedModules)
-					components.Add(mod.Identity);
 
 				if (memLow) components.Add("Memory(Low)");
 				else if (memExtreme) components.Add("Memory(Extreme)");
 				else if (memHigh) components.Add("Memory(High)");
 				else if (memModerate) components.Add("Memory(Moderate)");
 
+				long latestDX = 0, latestDXX = 0;
+				foreach (var modname in identifiedModules.Keys)
+				{
+					components.Add(modname);
+
+					// recommendations
+					if (modname.StartsWith("DirectX", StringComparison.InvariantCultureIgnoreCase))
+					{
+						if (identifiedModules.TryGetValue(modname, out var mod))
+						{
+							if (modname.IndexOf("extension", StringComparison.InvariantCultureIgnoreCase) >= 0)
+								latestDXX = Math.Max(mod.Value, latestDXX);
+							else
+								latestDX = Math.Max(mod.Value, latestDX);
+						}
+					}
+				}
+
 				if (components.Count > 0) sbs.Append(string.Join(", ", components));
 				else sbs.Append("None");
 
 				Log.Information(sbs.ToString());
+
+				// DUMP RECOMMENDATIONS
+
+				var recommendations = new List<string>();
+
+				if (latestDXX > latestDX)
+					recommendations.Add($"force DX {latestDX / 10} rendering");
+
+				if (identifiedModules.ContainsKey("PhysX"))
+					recommendations.Add("disable PhysX");
+
+				if (recommendations.Count > 0)
+				{
+					sbs.Clear();
+					sbs.Append("<Analysis> ").Append(info.Name).Append($" (#{info.Id})").Append(" recommendations: ");
+					sbs.Append(string.Join(", ", recommendations));
+					Log.Information(sbs.ToString());
+				}
 
 				// RECORD analysis
 
@@ -204,15 +236,13 @@ namespace Taskmaster
 					var contents = new StringBuilder();
 					contents.Append("Analysis:").AppendLine()
 						.Append("\t").Append("Process: ").Append(info.Name).AppendLine()
-						.Append("\t").Append("Module : ").Append(modFile).AppendLine()
-						.Append("\t").Append("Version: ").Append(version.FileVersion.ToString()).AppendLine()
-						.Append("\t").Append("Product: ").Append(version.ProductName.ToString()).AppendLine()
-						.Append("\t").Append("Company: ").Append(version.CompanyName.ToString()).AppendLine()
+						.Append("\t").Append("Version: ").Append(version.FileVersion?.ToString() ?? string.Empty).AppendLine()
+						.Append("\t").Append("Product: ").Append(version.ProductName?.ToString() ?? string.Empty).AppendLine()
+						.Append("\t").Append("Company: ").Append(version.CompanyName?.ToString() ?? string.Empty).AppendLine()
 						.Append("\t").Append("64-bit : ").Append(x64 ? "Yes" : "No").AppendLine()
 						.Append("\t").Append("Path   : ").Append(info.Path).AppendLine()
 						.Append("\t").Append("Threads: ").Append(threadCount).AppendLine()
 						.Append("\t").Append("Memory : ").AppendLine()
-						.Append("\t\t- ").Append("Module  : ").Append(modMemory/1_048_576).AppendLine()
 						.Append("\t\t- ").Append("Private : ").Append(privMem).AppendLine()
 						.Append("\t\t- ").Append("Working : ").Append(workingSet).AppendLine()
 						.Append("\t\t- ").Append("Virtual : ").Append(virtualMem).AppendLine()
@@ -220,10 +250,13 @@ namespace Taskmaster
 
 					foreach (var mod in linkedModules)
 					{
-						contents.Append("\t\t- ").Append(mod.Name).AppendLine();
-						if (mod.Type != ModuleType.Unknown)
+						bool notUnknown = mod.Type != ModuleType.Unknown;
+						bool hasIdentity = !string.IsNullOrEmpty(mod.Identity);
+						bool subItems = notUnknown || hasIdentity;
+						contents.Append("\t\t- ").Append(mod.Name).Append(subItems ? ":" : "").AppendLine();
+						if (notUnknown)
 							contents.Append("\t\t  Type     : ").Append(mod.Type.ToString()).AppendLine();
-						if (!string.IsNullOrEmpty(mod.Identity))
+						if (hasIdentity)
 							contents.Append("\t\t  Identity : ").Append(mod.Identity).AppendLine();
 					}
 
@@ -253,6 +286,7 @@ namespace Taskmaster
 				mi.Type = ModuleType.Audio;
 				mi.Identity = "DirectSound";
 				mi.Primary = true;
+				mi.Upgrade = "XAudio";
 			}
 			else if (moduleName.StartsWith("xaudio", StringComparison.InvariantCultureIgnoreCase))
 			{
@@ -266,6 +300,9 @@ namespace Taskmaster
 				mi.Identity = "PhysX";
 				mi.Proprietary = true;
 				mi.Primary = true;
+				// If possible, using something else for physics would be good.
+				// This is likely loaded regardless of such choice.
+				mi.Recommendation = ModuleRecommendation.Change;
 			}
 			else if (moduleName.StartsWith("xinput", StringComparison.InvariantCultureIgnoreCase))
 			{
@@ -278,11 +315,22 @@ namespace Taskmaster
 				mi.Type = ModuleType.Controller;
 				mi.Identity = "DirectInput";
 				mi.Primary = true;
+				// Unless non-gamepads are involved, directinput is bad...
+				// This will likely be loaded regardless of users chosen controller, however.
+				mi.Recommendation = ModuleRecommendation.Change;
+				mi.Upgrade = "XInput";
+			}
+			else if (moduleName.StartsWith("d3d8thk.dll", StringComparison.InvariantCultureIgnoreCase))
+			{
+				mi.Type = ModuleType.Generic;
+				mi.Identity = "DirectX 8 Thunk API";
+				mi.Value = 8;
+				mi.Recommendation = ModuleRecommendation.Change; // upgrade to DX11 if possible
 			}
 			else if (moduleName.StartsWith("gameux.dll", StringComparison.InvariantCultureIgnoreCase))
 			{
 				mi.Type = ModuleType.Generic;
-				mi.Identity = "GameUx (Game Explorer)";
+				mi.Identity = "GameUX";
 			}
 			else if (moduleName.StartsWith("openal32.dll", StringComparison.InvariantCultureIgnoreCase)) // wrap_oal.dll too
 			{
@@ -295,59 +343,71 @@ namespace Taskmaster
 			{
 				mi.Type = ModuleType.Generic;
 				mi.Identity = "Windows-on-Windows";
+				mi.Recommendation = ModuleRecommendation.Change; // Should run 64-bit version if available
 			}
 			else if (moduleName.StartsWith("d3d9.dll", StringComparison.InvariantCultureIgnoreCase))
 			{
 				mi.Type = ModuleType.Multimedia;
 				mi.Identity = "DirectX 9";
+				mi.Value = 90;
 				mi.Primary = true;
 			}
 			else if (moduleName.StartsWith("d3dx9_", StringComparison.InvariantCultureIgnoreCase))
 			{
 				mi.Type = ModuleType.Multimedia;
 				mi.Identity = "DirectX 9 Extensions";
+				mi.Value = 90;
 				mi.Extension = true;
 			}
 			else if (moduleName.StartsWith("d3d10.dll", StringComparison.InvariantCultureIgnoreCase))
 			{
 				mi.Type = ModuleType.Multimedia;
 				mi.Identity = "DirectX 10";
+				mi.Value = 100;
 				mi.Primary = true;
+				// Anything else is better. This is likely loaded regardless of user choice.
+				mi.Recommendation = ModuleRecommendation.Change;
 			}
 			else if (moduleName.StartsWith("d3d10_1.dll", StringComparison.InvariantCultureIgnoreCase))
 			{
 				mi.Type = ModuleType.Multimedia;
 				mi.Identity = "DirectX 10.1";
+				mi.Value = 101;
 				mi.Extension = true;
 			}
 			else if (moduleName.StartsWith("d3dx10_", StringComparison.InvariantCultureIgnoreCase))
 			{
 				mi.Type = ModuleType.Multimedia;
 				mi.Identity = "DirectX 10 Extensions";
+				mi.Value = 100;
 				mi.Extension = true;
 			}
 			else if (moduleName.StartsWith("d3d11.dll", StringComparison.InvariantCultureIgnoreCase))
 			{
 				mi.Type = ModuleType.Multimedia;
 				mi.Identity = "DirectX 11";
+				mi.Value = 110;
 				mi.Primary = true;
 			}
 			else if (moduleName.StartsWith("d3dx11_", StringComparison.InvariantCultureIgnoreCase))
 			{
 				mi.Type = ModuleType.Multimedia;
 				mi.Identity = "DirectX 11 Extensions";
+				mi.Value = 110;
 				mi.Extension = true;
 			}
 			else if (moduleName.StartsWith("d3d12.dll", StringComparison.InvariantCultureIgnoreCase))
 			{
 				mi.Type = ModuleType.Multimedia;
 				mi.Identity = "DirectX 12";
+				mi.Value = 120;
 				mi.Primary = true;
 			}
 			else if (moduleName.StartsWith("d3dx12_", StringComparison.InvariantCultureIgnoreCase))
 			{
 				mi.Type = ModuleType.Multimedia;
 				mi.Identity = "DirectX 12 Extensions";
+				mi.Value = 120;
 				mi.Extension = true;
 			}
 			else if (moduleName.StartsWith("binkw32.dll", StringComparison.InvariantCultureIgnoreCase))
@@ -371,7 +431,17 @@ namespace Taskmaster
 			{
 				mi.Type = ModuleType.Graphics;
 				mi.Identity = "GDI"; // deprecated graphics API, may still be loaded as part of the newer ones?
-				mi.Primary = true;
+
+				//mi.Primary = true;
+				//mi.Deprecated = true;
+
+				mi.Recommendation = ModuleRecommendation.Change; // GDI+
+			}
+			else if (moduleName.StartsWith("gdiplus.dll", StringComparison.InvariantCultureIgnoreCase))
+			{
+				mi.Type = ModuleType.Graphics;
+				mi.Identity = "GDI+";
+				//mi.Primary = true;
 			}
 			else if (moduleName.StartsWith("steamapi.dll", StringComparison.InvariantCultureIgnoreCase))
 			{
@@ -393,6 +463,20 @@ namespace Taskmaster
 			{
 				mi.Type = ModuleType.Unknown;
 				mi.Identity = "Downlevel API"; // ??? is this just older versions of dlls being loaded?
+			}
+			else if (moduleName.StartsWith("unityplayer.dll", StringComparison.InvariantCultureIgnoreCase))
+			{
+				mi.Type = ModuleType.Framework;
+				mi.Identity = "Unity engine";
+				mi.Primary = true;
+				// Unity has some performance problems, but most of them seem to be caused by just bad programming by devs,
+				// probably not doing some optimizations that they expect the engine to do on its own.
+			}
+			else if (moduleName.StartsWith("opengl32.dll", StringComparison.InvariantCultureIgnoreCase))
+			{
+				mi.Type = ModuleType.Graphics;
+				mi.Identity = "OpenGL";
+				mi.Primary = true;
 			}
 
 			return mi;
@@ -431,6 +515,17 @@ namespace Taskmaster
 		public string Name = string.Empty;
 		public ModuleType Type = ModuleType.Unknown;
 		public string Identity = string.Empty;
+		public long Value = 0;
+
+		public string Upgrade = string.Empty;
+
+		//public List<string> Incompatible = new List<string>();
+
+		/// <summary>
+		/// Recommended action to be taken when possible.
+		/// </summary>
+		public ModuleRecommendation Recommendation = ModuleRecommendation.Undefined;
+		//public string Explanation = string.Empty;
 
 		/// <summary>
 		/// Primary component.
@@ -462,6 +557,15 @@ namespace Taskmaster
 		Processing, // OpenCL
 		Unknown,
 		Generic, // API
-		System // kernel
+		System, // kernel
+		Framework, // engine
+	}
+
+	public enum ModuleRecommendation
+	{
+		Undefined,
+		Enable,
+		Disable,
+		Change,
 	}
 }
