@@ -29,7 +29,6 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
-using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
@@ -38,17 +37,14 @@ using System.Collections.Concurrent;
 
 namespace Taskmaster
 {
-	sealed public class ProcessAnalysis
-	{
-		public bool bla;
-	}
-
 	sealed public class ProcessAnalyzer
 	{
 		public ProcessAnalyzer()
 		{
 
 		}
+
+		ConcurrentDictionary<byte[], int> cache = new ConcurrentDictionary<byte[], int>(new StructuralEqualityComparer<byte[]>());
 
 		public async void Analyze(ProcessEx info)
 		{
@@ -133,7 +129,7 @@ namespace Taskmaster
 						//Debug.WriteLine(" - " + moduleName);
 
 						var mi = IdentifyModule(moduleName.Trim());
-						if (mi.Type != ModuleType.Unknown)
+						if (mi.Type != ModuleType.Unknown && mi.Primary)
 							identifiedModules.Add(mi);
 
 						if (record) linkedModules.Add(mi);
@@ -184,7 +180,7 @@ namespace Taskmaster
 				else components.Add("32-bit");
 
 				foreach (var mod in identifiedModules)
-					components.Add(mod.Detail);
+					components.Add(mod.Identity);
 
 				if (memLow) components.Add("Memory(Low)");
 				else if (memExtreme) components.Add("Memory(Extreme)");
@@ -227,8 +223,8 @@ namespace Taskmaster
 						contents.Append("\t\t- ").Append(mod.Name).AppendLine();
 						if (mod.Type != ModuleType.Unknown)
 							contents.Append("\t\t  Type     : ").Append(mod.Type.ToString()).AppendLine();
-						if (!string.IsNullOrEmpty(mod.Detail))
-							contents.Append("\t\t  Identity : ").Append(mod.Detail).AppendLine();
+						if (!string.IsNullOrEmpty(mod.Identity))
+							contents.Append("\t\t  Identity : ").Append(mod.Identity).AppendLine();
 					}
 
 					File.WriteAllText(endpath, contents.ToString());
@@ -241,6 +237,7 @@ namespace Taskmaster
 			}
 		}
 
+		// TODO: build external library of components that's loaded as a dictionary of sorts
 		public ModuleInfo IdentifyModule(string moduleName)
 		{
 			var mi = new ModuleInfo(moduleName);
@@ -248,92 +245,158 @@ namespace Taskmaster
 			if (moduleName.StartsWith("wxmsw", StringComparison.InvariantCultureIgnoreCase))
 			{
 				mi.Type = ModuleType.Interface;
-				mi.Detail = "WxWidgets";
+				mi.Identity = "WxWidgets";
 				mi.Open = true;
 			}
 			else if (moduleName.StartsWith("dsound.dll", StringComparison.InvariantCultureIgnoreCase))
 			{
 				mi.Type = ModuleType.Audio;
-				mi.Detail = "DirectSound";
+				mi.Identity = "DirectSound";
+				mi.Primary = true;
 			}
 			else if (moduleName.StartsWith("xaudio", StringComparison.InvariantCultureIgnoreCase))
 			{
 				mi.Type = ModuleType.Audio;
-				mi.Detail = "XAudio";
+				mi.Identity = "XAudio";
+				mi.Primary = true;
 			}
 			else if (moduleName.StartsWith("physx", StringComparison.InvariantCultureIgnoreCase))
 			{
 				mi.Type = ModuleType.Physics;
-				mi.Detail = "PhysX";
+				mi.Identity = "PhysX";
 				mi.Proprietary = true;
+				mi.Primary = true;
 			}
 			else if (moduleName.StartsWith("xinput", StringComparison.InvariantCultureIgnoreCase))
 			{
 				mi.Type = ModuleType.Controller;
-				mi.Detail = "XInput";
+				mi.Identity = "XInput";
+				mi.Primary = true;
 			}
 			else if (moduleName.StartsWith("dinput", StringComparison.InvariantCultureIgnoreCase))
 			{
 				mi.Type = ModuleType.Controller;
-				mi.Detail = "DirectInput";
+				mi.Identity = "DirectInput";
+				mi.Primary = true;
 			}
 			else if (moduleName.StartsWith("gameux.dll", StringComparison.InvariantCultureIgnoreCase))
 			{
 				mi.Type = ModuleType.Generic;
-				mi.Detail = "GameUx (Game Explorer)";
+				mi.Identity = "GameUx (Game Explorer)";
 			}
 			else if (moduleName.StartsWith("openal32.dll", StringComparison.InvariantCultureIgnoreCase)) // wrap_oal.dll too
 			{
 				mi.Type = ModuleType.Audio;
-				mi.Detail = "OpenAL";
+				mi.Identity = "OpenAL";
 				mi.Open = true;
+				mi.Primary = true;
 			}
 			else if (moduleName.StartsWith("wow64.dll", StringComparison.InvariantCultureIgnoreCase))
 			{
 				mi.Type = ModuleType.Generic;
-				mi.Detail = "Windows-on-Windows";
+				mi.Identity = "Windows-on-Windows";
 			}
 			else if (moduleName.StartsWith("d3d9.dll", StringComparison.InvariantCultureIgnoreCase))
 			{
 				mi.Type = ModuleType.Multimedia;
-				mi.Detail = "DirectX 9";
+				mi.Identity = "DirectX 9";
+				mi.Primary = true;
 			}
 			else if (moduleName.StartsWith("d3dx9_", StringComparison.InvariantCultureIgnoreCase))
 			{
 				mi.Type = ModuleType.Multimedia;
-				mi.Detail = "DirectX 9";
+				mi.Identity = "DirectX 9 Extensions";
+				mi.Extension = true;
+			}
+			else if (moduleName.StartsWith("d3d10.dll", StringComparison.InvariantCultureIgnoreCase))
+			{
+				mi.Type = ModuleType.Multimedia;
+				mi.Identity = "DirectX 10";
+				mi.Primary = true;
+			}
+			else if (moduleName.StartsWith("d3d10_1.dll", StringComparison.InvariantCultureIgnoreCase))
+			{
+				mi.Type = ModuleType.Multimedia;
+				mi.Identity = "DirectX 10.1";
+				mi.Extension = true;
 			}
 			else if (moduleName.StartsWith("d3dx10_", StringComparison.InvariantCultureIgnoreCase))
 			{
 				mi.Type = ModuleType.Multimedia;
-				mi.Detail = "DirectX 10";
+				mi.Identity = "DirectX 10 Extensions";
+				mi.Extension = true;
+			}
+			else if (moduleName.StartsWith("d3d11.dll", StringComparison.InvariantCultureIgnoreCase))
+			{
+				mi.Type = ModuleType.Multimedia;
+				mi.Identity = "DirectX 11";
+				mi.Primary = true;
 			}
 			else if (moduleName.StartsWith("d3dx11_", StringComparison.InvariantCultureIgnoreCase))
 			{
 				mi.Type = ModuleType.Multimedia;
-				mi.Detail = "DirectX 11";
+				mi.Identity = "DirectX 11 Extensions";
+				mi.Extension = true;
+			}
+			else if (moduleName.StartsWith("d3d12.dll", StringComparison.InvariantCultureIgnoreCase))
+			{
+				mi.Type = ModuleType.Multimedia;
+				mi.Identity = "DirectX 12";
+				mi.Primary = true;
 			}
 			else if (moduleName.StartsWith("d3dx12_", StringComparison.InvariantCultureIgnoreCase))
 			{
 				mi.Type = ModuleType.Multimedia;
-				mi.Detail = "DirectX 12";
+				mi.Identity = "DirectX 12 Extensions";
+				mi.Extension = true;
 			}
 			else if (moduleName.StartsWith("binkw32.dll", StringComparison.InvariantCultureIgnoreCase))
 			{
 				mi.Type = ModuleType.Multimedia;
-				mi.Detail = "Bink";
+				mi.Identity = "Bink";
 				mi.Proprietary = true;
 			}
 			else if (moduleName.StartsWith("wsock32.dll", StringComparison.InvariantCultureIgnoreCase))
 			{
 				mi.Type = ModuleType.Network;
-				mi.Detail = "WinSock";
+				mi.Identity = "WinSock";
+				mi.Primary = true;
+			}
+			else if (moduleName.StartsWith("bugsplat.dll", StringComparison.InvariantCultureIgnoreCase))
+			{
+				mi.Type = ModuleType.Generic;
+				mi.Identity = "BugSplat";
+			}
+			else if (moduleName.StartsWith("gdi32.dll", StringComparison.InvariantCultureIgnoreCase))
+			{
+				mi.Type = ModuleType.Graphics;
+				mi.Identity = "GDI"; // deprecated graphics API, may still be loaded as part of the newer ones?
+				mi.Primary = true;
+			}
+			else if (moduleName.StartsWith("steamapi.dll", StringComparison.InvariantCultureIgnoreCase))
+			{
+				mi.Type = ModuleType.Generic;
+				mi.Identity = "Steam API"; // distributed via Steam, not a guarantee of anything
+			}
+			else if (moduleName.StartsWith("fmodex.dll", StringComparison.InvariantCultureIgnoreCase))
+			{
+				mi.Type = ModuleType.Audio;
+				mi.Identity = "FMOD EX";
+				mi.Primary = true;
+			}
+			else if (moduleName.StartsWith("stlport.dll", StringComparison.InvariantCultureIgnoreCase))
+			{
+				mi.Type = ModuleType.Generic;
+				mi.Identity = "STLPort"; // Alternate C++ STL http://www.stlport.org/
+			}
+			else if (moduleName.StartsWith("api-ms-win-downlevel-", StringComparison.InvariantCultureIgnoreCase))
+			{
+				mi.Type = ModuleType.Unknown;
+				mi.Identity = "Downlevel API"; // ??? is this just older versions of dlls being loaded?
 			}
 
 			return mi;
 		}
-
-		ConcurrentDictionary<byte[], int> cache = new ConcurrentDictionary<byte[], int>(new StructuralEqualityComparer<byte[]>());
 
 		[StructLayout(LayoutKind.Sequential)]
 		public struct ModuleInformation
@@ -367,8 +430,16 @@ namespace Taskmaster
 
 		public string Name = string.Empty;
 		public ModuleType Type = ModuleType.Unknown;
-		public string Detail = string.Empty;
+		public string Identity = string.Empty;
 
+		/// <summary>
+		/// Primary component.
+		/// </summary>
+		public bool Primary = false;
+		/// <summary>
+		/// Extension to some other component, not too interesting on its own.
+		/// </summary>
+		public bool Extension = false;
 		/// <summary>
 		/// Relates to proprietary hardware or software that requires special access to use.
 		/// </summary>
