@@ -89,36 +89,31 @@ namespace Taskmaster
 			bool exnam = (execName.Text.Length > 0);
 			bool path = (pathName.Text.Length > 0);
 
-			bool valid = true;
-
 			if (!fnlen || friendlyName.Text.Contains("]") || friendlyName.Text.Contains("["))
 			{
-				valid = false;
-				MessageBox.Show("Friendly name is missing or includes illegal characters (such as square brackets).", "Malconfigured friendly name", MessageBoxButtons.OK, MessageBoxIcon.Error, MessageBoxDefaultButton.Button1);
+				MessageBox.Show("Friendly name is missing or includes illegal characters (such as square brackets).", "Malconfigured friendly name",
+					MessageBoxButtons.OK, MessageBoxIcon.Error, MessageBoxDefaultButton.Button1);
+				return;
 			}
 
 			if (!path && !exnam)
 			{
-				valid = false;
-				MessageBox.Show("No path nor executable defined.", "Configuration error", MessageBoxButtons.OK, MessageBoxIcon.Error, MessageBoxDefaultButton.Button1);
+				MessageBox.Show("No path nor executable defined.", "Configuration error",
+					MessageBoxButtons.OK, MessageBoxIcon.Error, MessageBoxDefaultButton.Button1);
+				return;
 			}
 
-			var dprc = Taskmaster.processmanager.getWatchedController(friendlyName.Text);
+			string newfriendlyname = friendlyName.Text.Trim();
+
+			var dprc = Taskmaster.processmanager.getWatchedController(newfriendlyname);
 			if (dprc != null && dprc != Controller)
 			{
-				valid = false;
-				MessageBox.Show("Friendly Name conflict.", "Configuration error", MessageBoxButtons.OK, MessageBoxIcon.Error, MessageBoxDefaultButton.Button1);
-			}
-
-			if (!valid)
-			{
-				Log.Warning("[" + friendlyName.Text + "] Can't save, configuration invalid.");
+				MessageBox.Show("Friendly Name conflict.", "Configuration error",
+					MessageBoxButtons.OK, MessageBoxIcon.Error, MessageBoxDefaultButton.Button1);
 				return;
 			}
 
 			// -----------------------------------------------
-
-			string newfriendlyname = friendlyName.Text.Trim();
 
 			if (!newPrc && !newfriendlyname.Equals(Controller.FriendlyName))
 				Controller.DeleteConfig(); // SharpConfig doesn't seem to support renaming sections, so we delete the old one instead
