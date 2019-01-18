@@ -389,7 +389,7 @@ namespace Taskmaster
 				Width = 180,
 			};
 			pathVisibility.Items.AddRange(new string[] {
-				"Default: Process or Partial",
+				"Auto-select",
 				"Process name (run)",
 				@"Partial (...\app\run.exe)",
 				@"Full (c:\programs\brand\app\v2.4\bin\run.exe)",
@@ -408,7 +408,7 @@ namespace Taskmaster
 			lt.Controls.Add(new Label { Text = "Path visibility", TextAlign = System.Drawing.ContentAlignment.MiddleLeft });
 			lt.Controls.Add(pathVisibility);
 			lt.Controls.Add(new Label()); // empty
-			tooltip.SetToolTip(pathVisibility, "How the process is shown in logs.\nProcess name option is fastest but least descriptive.\nSmart is marginally slowest.");
+			tooltip.SetToolTip(pathVisibility, "How the process is shown in logs.\nProcess name option is fastest but least descriptive.\nSmart is marginally slowest.\nAuto-select sets something depending on whether executable or path are defined.");
 
 			// DESCRIPTION
 			lt.Controls.Add(new Label() { Text = HumanReadable.Generic.Description, TextAlign = System.Drawing.ContentAlignment.MiddleLeft });

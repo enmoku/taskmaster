@@ -259,9 +259,11 @@ namespace Taskmaster
 
 			if (PathVisibility == PathVisibilityOptions.Invalid)
 			{
-				bool nopath = string.IsNullOrEmpty(Path); // no path defined
-				// process if no path is defined as this will always be something specific, otherwise partial path
-				PathVisibility = nopath ? PathVisibilityOptions.Process : PathVisibilityOptions.Partial;
+				bool haveExe = !string.IsNullOrEmpty(Executable);
+				bool havePath = !string.IsNullOrEmpty(Path);
+				if (haveExe && havePath) PathVisibility = PathVisibilityOptions.Process;
+				else if (havePath) PathVisibility = PathVisibilityOptions.Partial;
+				else PathVisibility = PathVisibilityOptions.Full;
 			}
 		}
 
