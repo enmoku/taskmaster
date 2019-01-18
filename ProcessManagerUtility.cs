@@ -68,12 +68,8 @@ namespace Taskmaster
 			{
 				if (!GetPathViaC(info, out path))
 				{
-					if (!GetPathViaWMI(info.Id, out path))
-					{
-						Statistics.PathNotFound++;
-						return false;
-					}
-					Statistics.PathFindViaWMI++;
+					Statistics.PathNotFound++;
+					return false;
 				}
 				else
 					Statistics.PathFindViaC++;
@@ -124,61 +120,6 @@ namespace Taskmaster
 			finally
 			{
 				NativeMethods.CloseHandle(handle);
-			}
-
-			return false;
-		}
-
-		/// <summary>
-		/// Retrieve file path for the process.
-		/// Slow due to use of WMI.
-		/// </summary>
-		/// <returns>The process path.</returns>
-		/// <param name="processId">Process ID</param>
-		static bool GetPathViaWMI(int processId, out string path)
-		{
-			path = string.Empty;
-
-			if (!Taskmaster.WMIQueries) return false;
-
-			var wmitime = Stopwatch.StartNew();
-
-			Statistics.WMIqueries++;
-
-			try
-			{
-				using (var searcher = new ManagementObjectSearcher(
-					new ManagementScope(@"\\.\root\CIMV2"),
-					new SelectQuery("SELECT ExecutablePath FROM Win32_Process WHERE ProcessId = " + processId),
-					new EnumerationOptions(null, new TimeSpan(0, 1, 0), 1, false, true, false, false, false, true, false)
-					))
-				{
-					foreach (ManagementObject item in searcher.Get())
-					{
-						using (item)
-						{
-							var mpath = item["ExecutablePath"];
-							if (mpath != null)
-							{
-								Log.Verbose("WMI fetch (#" + processId + "): " + path);
-								wmitime.Stop();
-								Statistics.WMIquerytime += wmitime.Elapsed.TotalSeconds;
-								path = mpath.ToString();
-								return path.Length > 1;
-							}
-						}
-					}
-				}
-			}
-			catch (Exception ex)
-			{
-				Logging.Stacktrace(ex);
-				// NOP, don't caree
-			}
-			finally
-			{
-				wmitime.Stop();
-				Statistics.WMIquerytime += wmitime.Elapsed.TotalSeconds;
 			}
 
 			return false;
