@@ -338,6 +338,7 @@ namespace Taskmaster
 				mi.Identity = "OpenAL";
 				mi.Open = true;
 				mi.Primary = true;
+				mi.Upgrade = "OpenAL Soft"; // Potential, not necessarily any better (https://kcat.strangesoft.net/openal.html)
 			}
 			else if (moduleName.StartsWith("wow64.dll", StringComparison.InvariantCultureIgnoreCase))
 			{
