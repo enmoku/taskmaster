@@ -1728,7 +1728,11 @@ namespace Taskmaster
 					TextAlign = System.Drawing.ContentAlignment.MiddleLeft
 				};
 				cachePanel.Controls.Add(cacheRatio);
+			}
 
+			TableLayoutPanel tempmonitorpanel = null;
+			if (Taskmaster.TempMonitorEnabled)
+			{
 				tempObjectCount = new Label()
 				{
 					Width = 40,
@@ -1744,11 +1748,7 @@ namespace Taskmaster
 					Text = HumanReadable.Generic.Uninitialized,
 					TextAlign = System.Drawing.ContentAlignment.MiddleLeft,
 				};
-			}
 
-			TableLayoutPanel tempmonitorpanel = null;
-			if (Taskmaster.TempMonitorEnabled)
-			{
 				tempmonitorpanel = new TableLayoutPanel
 				{
 					Dock = DockStyle.Top,
