@@ -25,6 +25,7 @@
 // THE SOFTWARE.
 
 using System;
+using System.Diagnostics;
 using System.IO;
 using System.Threading.Tasks;
 using MKAh;
@@ -43,31 +44,39 @@ namespace Taskmaster
 		readonly System.IO.FileSystemWatcher userWatcher;
 		readonly System.IO.FileSystemWatcher sysWatcher;
 
-		readonly System.Timers.Timer TempScanTimer;
-		int TimerDue = 1000 * 60 * 60 * 24; // 24 hours
+		readonly System.Threading.Timer TempScanTimer;
+		TimeSpan TimerDue = TimeSpan.FromHours(24);
 
 		public StorageManager()
 		{
-			userWatcher = new System.IO.FileSystemWatcher(userTemp);
-			userWatcher.NotifyFilter = System.IO.NotifyFilters.Size;
-			userWatcher.Deleted += ModifyTemp;
-			userWatcher.Created += ModifyTemp;
-			if (systemTemp != userTemp)
+			if (Taskmaster.TempMonitorEnabled)
 			{
-				sysWatcher = new System.IO.FileSystemWatcher(systemTemp);
-				sysWatcher.NotifyFilter = System.IO.NotifyFilters.Size;
-				sysWatcher.Deleted += ModifyTemp;
-				sysWatcher.Created += ModifyTemp;
+				userWatcher = new System.IO.FileSystemWatcher(userTemp)
+				{
+					NotifyFilter = System.IO.NotifyFilters.Size,
+					IncludeSubdirectories = true
+				};
+				userWatcher.Deleted += ModifyTemp;
+				userWatcher.Changed += ModifyTemp;
+				userWatcher.Created += ModifyTemp;
+				if (systemTemp != userTemp)
+				{
+					sysWatcher = new System.IO.FileSystemWatcher(systemTemp)
+					{
+						NotifyFilter = System.IO.NotifyFilters.Size,
+						IncludeSubdirectories = true
+					};
+					sysWatcher.Deleted += ModifyTemp;
+					sysWatcher.Changed += ModifyTemp;
+					sysWatcher.Created += ModifyTemp;
+				}
+
+				TempScanTimer = new System.Threading.Timer(ScanTemp, null, TimeSpan.FromSeconds(30), TimerDue);
+
+				Log.Information("<Maintenance> Temp folder scanner will be performed once per day.");
+
+				onBurden += ReScanTemp;
 			}
-
-			TempScanTimer = new System.Timers.Timer(TimerDue);
-			ScanTemp(null, null);
-			TempScanTimer.Elapsed += ScanTemp;
-			TempScanTimer.Start();
-
-			Log.Information("<Maintenance> Temp folder scanner will be performed once per day.");
-
-			onBurden += ReScanTemp;
 
 			if (Taskmaster.DebugStorage) Log.Information("<Maintenance> Component loaded.");
 
@@ -76,18 +85,27 @@ namespace Taskmaster
 
 		static long ReScanBurden = 0;
 
-		void ModifyTemp(object _, FileSystemEventArgs ev)
+		async void ModifyTemp(object _, FileSystemEventArgs ev)
 		{
-			ReScanBurden++;
-			if (ReScanBurden % 100 == 0)
+			try
 			{
-				Log.Information("<Maintenance> Significant amount of changes have occurred to temp folders");
-			}
+				Debug.WriteLine("TEMP modified (" + ev.ChangeType.ToString() + "): " + ev.FullPath);
 
-			if (ReScanBurden % 1000 == 0)
+				if (ReScanBurden % 100 == 0)
+				{
+					Log.Debug("<Maintenance> Significant amount of changes have occurred to temp folders");
+				}
+
+				if (ReScanBurden % 1000 == 0)
+				{
+					Log.Warning("<Maintenance> Number of changes to temp folders exceeding tolerance.");
+					onBurden?.Invoke(this, null);
+				}
+			}
+			catch (OutOfMemoryException) { throw; }
+			catch (Exception ex)
 			{
-				Log.Warning("<Maintenance> Number of changes to temp folders exceeding tolerance.");
-				onBurden?.Invoke(this, null);
+				Logging.Stacktrace(ex);
 			}
 		}
 
@@ -98,9 +116,7 @@ namespace Taskmaster
 			if (now.TimeSince(LastTempScan).TotalMinutes <= 15) return; // too soon
 			LastTempScan = now;
 
-			TempScanTimer.Stop();
-			ScanTemp(null,null);
-			TempScanTimer.Start();
+			TempScanTimer.Change(TimeSpan.FromSeconds(5), TimerDue);
 		}
 
 		event EventHandler onBurden;
@@ -142,7 +158,7 @@ namespace Taskmaster
 
 		int scantemp_lock = 0;
 
-		async void ScanTemp(object _, EventArgs _ea)
+		async void ScanTemp(object _)
 		{
 			if (!Atomic.Lock(ref scantemp_lock)) return;
 			if (disposed) return; // HACK: timers be dumb
