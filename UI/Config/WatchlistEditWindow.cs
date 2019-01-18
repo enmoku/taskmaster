@@ -79,6 +79,8 @@ namespace Taskmaster
 		{
 			var enOrig = Controller.Enabled;
 			Controller.Enabled = false;
+
+			if (!newPrc) Controller.Refresh(); // make sure we don't cling to things
 			
 			// TODO: VALIDATE FOR GRIMMY'S SAKE!
 
@@ -109,6 +111,17 @@ namespace Taskmaster
 			if (dprc != null && dprc != Controller)
 			{
 				MessageBox.Show("Friendly Name conflict.", "Configuration error",
+					MessageBoxButtons.OK, MessageBoxIcon.Error, MessageBoxDefaultButton.Button1);
+				return;
+			}
+
+			bool hasPrio = priorityClass.SelectedIndex != 5;
+			bool hasAff = affinityMask.Value != -1;
+			bool hasPow = powerPlan.SelectedIndex != 3;
+
+			if (!hasPrio && !hasAff && !hasPow)
+			{
+				MessageBox.Show("No priority, affinity, nor power plan defined.", "Configuration error",
 					MessageBoxButtons.OK, MessageBoxIcon.Error, MessageBoxDefaultButton.Button1);
 				return;
 			}
@@ -213,7 +226,7 @@ namespace Taskmaster
 				Controller.Volume = Convert.ToSingle(volume.Value) / 100f;
 			}
 
-			Controller.Enabled = enOrig;
+			Controller.Enabled = newPrc ? true : enOrig;
 
 			Controller.SanityCheck();
 

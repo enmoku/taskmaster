@@ -6,6 +6,7 @@ Comprehensive changes can be found in Git change history:
 ### 2018-01-18
 	Changed: Default path visibility flipped to Process if Executable is defined and Partial otherwise
 		Previously it was show Process if Path was not defined and Partial otherwise.
+	Fixed: UI allowed creation of invalid watchlist rules (no priority, affinity, nor power).
 ### 2018-01-17
 	Changed: Process analysis improved
 	Fixed: Weird time formatting in power configuration window.
