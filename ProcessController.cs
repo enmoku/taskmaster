@@ -389,7 +389,7 @@ namespace Taskmaster
 			else
 				app.Remove("Allow paging");
 
-			if (PathVisibility != PathVisibilityOptions.Process)
+			if (PathVisibility != PathVisibilityOptions.Invalid)
 				app["Path visibility"].IntValue = (int)PathVisibility;
 			else
 				app.Remove("Path visibility");

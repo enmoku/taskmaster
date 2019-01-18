@@ -2718,7 +2718,7 @@ namespace Taskmaster
 							sbs.Append("Background affinity = ").Append(prc.BackgroundAffinity).AppendLine();
 					}
 
-					if (prc.PathVisibility != PathVisibilityOptions.Process)
+					if (prc.PathVisibility != PathVisibilityOptions.Invalid)
 						sbs.Append("Path visibility = ").Append((int)prc.PathVisibility).AppendLine();
 
 					if (prc.VolumeStrategy != AudioVolumeStrategy.Ignore)
