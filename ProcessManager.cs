@@ -638,7 +638,7 @@ namespace Taskmaster
 				}
 
 				var aff = section.TryGet(HumanReadable.System.Process.Affinity)?.IntValue ?? -1;
-				if (aff > AllCPUsMask)
+				if (aff > AllCPUsMask || aff < -1)
 				{
 					Log.Warning("[" + section.Name + "] Affinity(" + aff + ") is malconfigured. Ignoring.");
 					//aff = Bit.And(aff, allCPUsMask); // at worst case results in 1 core used
@@ -670,7 +670,7 @@ namespace Taskmaster
 				}
 
 				ProcessAffinityStrategy affStrat = ProcessAffinityStrategy.None;
-				if (aff > 0)
+				if (aff >= 0)
 				{
 					int affinityStrat = section.TryGet(HumanReadable.System.Process.AffinityStrategy)?.IntValue.Constrain(0, 3) ?? 2;
 					affStrat = (ProcessAffinityStrategy)affinityStrat;
@@ -696,7 +696,7 @@ namespace Taskmaster
 				else
 					tignorelist = null;
 
-				var prc = new ProcessController(section.Name, prioR, (aff == 0 ? AllCPUsMask : aff))
+				var prc = new ProcessController(section.Name, prioR, aff)
 				{
 					Enabled = section.TryGet(HumanReadable.Generic.Enabled)?.BoolValue ?? true,
 					Executable = section.TryGet("Image")?.StringValue ?? null,

@@ -453,7 +453,7 @@ namespace Taskmaster
 				string aff = AnyIgnoredValue;
 				if (prc.AffinityMask >= 0)
 				{
-					if (prc.AffinityMask == ProcessManager.AllCPUsMask)
+					if (prc.AffinityMask == ProcessManager.AllCPUsMask || prc.AffinityMask == 0)
 						aff = "Full/OS";
 					else if (Taskmaster.AffinityStyle == 0)
 						aff = HumanInterface.BitMask(prc.AffinityMask, ProcessManager.CPUCount);

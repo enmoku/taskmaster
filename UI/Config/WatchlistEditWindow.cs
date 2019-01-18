@@ -548,7 +548,7 @@ namespace Taskmaster
 				Width = 80,
 				Maximum = ProcessManager.AllCPUsMask,
 				Minimum = -1,
-				Value = Controller.AffinityMask.Min(-1).Replace(ProcessManager.AllCPUsMask, 0),
+				Value = Controller.AffinityMask.Constrain(-1, ProcessManager.AllCPUsMask),
 			};
 
 			tooltip.SetToolTip(affinityMask, "CPU core afffinity as integer mask.\nEnter 0 to let OS manage this as normal.\nFull affinity is same as 0, there's no difference.\nExamples:\n14 = all but first core on quadcore.\n254 = all but first core on octocore.\n-1 = Ignored");
@@ -569,7 +569,7 @@ namespace Taskmaster
 				AutoSize = true,
 			};
 
-			cpumask = Controller.AffinityMask.Replace(ProcessManager.AllCPUsMask, 0);
+			cpumask = Controller.AffinityMask;
 			for (int bit = 0; bit < ProcessManager.CPUCount; bit++)
 			{
 				var box = new CheckBox();

@@ -3,6 +3,8 @@ Comprehensive changes can be found in Git change history:
 	https://github.com/mkahvi/taskmaster/commits/master
 
 ## [0.12...]
+### 2018-01-19
+	Fixed: Weird affinity saving.
 ### 2018-01-18
 	Changed: Default path visibility flipped to Process if Executable is defined and Partial otherwise
 		Previously it was show Process if Path was not defined and Partial otherwise.
