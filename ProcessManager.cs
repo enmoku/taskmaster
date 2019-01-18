@@ -335,10 +335,10 @@ namespace Taskmaster
 
 		public event EventHandler<HandlingStateChangeEventArgs> HandlingStateChange;
 
-		public async void HastenScan()
+		public async void HastenScan(int delay=15)
 		{
-			if (DateTimeOffset.UtcNow.TimeTo(NextScan).TotalSeconds > 3) // skip if the next scan is to happen real soon
-				ScanTimer.Change(TimeSpan.Zero, ScanFrequency);
+			if (DateTimeOffset.UtcNow.TimeTo(NextScan).TotalSeconds > 15) // skip if the next scan is to happen real soon
+				ScanTimer.Change(TimeSpan.FromSeconds(delay.Constrain(5, 60)), ScanFrequency);
 		}
 
 		int scan_lock = 0;

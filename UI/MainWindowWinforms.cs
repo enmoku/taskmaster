@@ -2624,7 +2624,7 @@ namespace Taskmaster
 
 					WatchlistRules.EndUpdate();
 
-					processmanager?.HastenScan();
+					processmanager?.HastenScan(60);
 				}
 			}
 			catch (Exception ex) { Logging.Stacktrace(ex); }
