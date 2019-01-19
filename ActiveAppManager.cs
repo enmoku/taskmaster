@@ -333,10 +333,7 @@ namespace Taskmaster
 			// SetupEventHook();
 		}
 
-		~ActiveAppManager()
-		{
-			Dispose(false);
-		}
+		~ActiveAppManager() => Dispose(false);
 
 		public void Dispose()
 		{

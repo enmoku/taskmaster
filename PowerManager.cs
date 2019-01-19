@@ -112,7 +112,7 @@ namespace Taskmaster
 			Taskmaster.DisposalChute.Push(this);
 		}
 
-		public int ForceCount { get { return ForceModeSourcesMap.Count; } }
+		public int ForceCount => ForceModeSourcesMap.Count;
 		ConcurrentDictionary<int, int> ForceModeSourcesMap = new ConcurrentDictionary<int, int>();
 
 		CPUMonitor cpumonitor = null;
@@ -123,48 +123,118 @@ namespace Taskmaster
 			cpumonitor.onSampling += CPULoadHandler;
 		}
 
-		void MonitorPowerEvent(object _, MonitorPowerEventArgs ev)
+		async void MonitorPowerEvent(object _, MonitorPowerEventArgs ev)
 		{
-			var OldPowerState = CurrentMonitorState;
-			CurrentMonitorState = ev.Mode;
-
-			if (Taskmaster.DebugMonitor)
+			try
 			{
-				var idle = User.IdleTime();
-				double sidletime = Time.Simplify(idle, out Time.Timescale scale);
-				var timename = Time.TimescaleString(scale, !sidletime.RoughlyEqual(1d));
+				var OldPowerState = CurrentMonitorState;
+				CurrentMonitorState = ev.Mode;
 
-				//uint lastact = User.LastActive();
-				//var idle = User.LastActiveTimespan(lastact);
-				//if (lastact == uint.MinValue) idle = TimeSpan.Zero; // HACK
-
-				Log.Debug("<Monitor> Power state: " + ev.Mode.ToString() + " (last user activity " + $"{sidletime:N1} {timename}" + " ago)");
-			}
-
-			if (OldPowerState == CurrentMonitorState)
-			{
-				Log.Debug("Received monitor power event: " + OldPowerState.ToString() + " → " + ev.Mode.ToString());
-				return; //
-			}
-
-			if (ev.Mode == MonitorPowerMode.On && SessionLocked)
-			{
-				if (SessionLockPowerMode != PowerMode.Undefined)
+				if (Taskmaster.DebugMonitor)
 				{
-					lock (power_lock)
-					{
-						if (CurrentMode == SessionLockPowerMode)
-							InternalSetMode(PowerMode.Balanced, new Cause(OriginType.Session, "User activity"), verbose: false);
-					}
+					var idle = User.IdleTime();
+					double sidletime = Time.Simplify(idle, out Time.Timescale scale);
+					var timename = Time.TimescaleString(scale, !sidletime.RoughlyEqual(1d));
+
+					//uint lastact = User.LastActive();
+					//var idle = User.LastActiveTimespan(lastact);
+					//if (lastact == uint.MinValue) idle = TimeSpan.Zero; // HACK
+
+					Log.Debug("<Monitor> Power state: " + ev.Mode.ToString() + " (last user activity " + $"{sidletime:N1} {timename}" + " ago)");
 				}
 
-				StartDisplayTimer();
-				MonitorOffLastLock?.Stop();
+				if (OldPowerState == CurrentMonitorState)
+				{
+					Log.Debug("Received monitor power event: " + OldPowerState.ToString() + " → " + ev.Mode.ToString());
+					return; //
+				}
+
+				if (ev.Mode == MonitorPowerMode.On && SessionLocked)
+				{
+					if (SessionLockPowerMode != PowerMode.Undefined)
+					{
+						lock (power_lock)
+						{
+							if (CurrentMode == SessionLockPowerMode)
+								InternalSetMode(PowerMode.Balanced, new Cause(OriginType.Session, "User activity"), verbose: false);
+						}
+					}
+
+					StartDisplayTimer();
+					MonitorOffLastLock?.Stop();
+
+					if (Taskmaster.DebugMonitor)
+						DebugMonitorWake();
+				}
+				else if (ev.Mode == MonitorPowerMode.Off)
+				{
+					StopDisplayTimer();
+					if (SessionLocked) MonitorOffLastLock?.Start();
+				}
 			}
-			else if (ev.Mode == MonitorPowerMode.Off)
+			catch (OutOfMemoryException) { throw; }
+			catch (Exception ex)
 			{
-				StopDisplayTimer();
-				if (SessionLocked) MonitorOffLastLock?.Start();
+				Logging.Stacktrace(ex);
+			}
+		}
+
+		async void DebugMonitorWake()
+		{
+			await Task.Delay(0).ConfigureAwait(false);
+
+			string pcfg = "PowerCfg";
+
+			var timer = Stopwatch.StartNew();
+
+			ProcessStartInfo info = null;
+
+			info = new ProcessStartInfo(pcfg, "-lastwake")
+			{
+				CreateNoWindow = true,
+				RedirectStandardOutput = true,
+				UseShellExecute = false
+			};
+			using (var proc = Process.Start(info))
+			{
+				Debug.WriteLine(info.FileName + " " + info.Arguments);
+				while (!proc.StandardOutput.EndOfStream)
+				{
+					if (timer.ElapsedMilliseconds > 30_000) return;
+					Debug.WriteLine(proc.StandardOutput.ReadLine());
+				}
+			}
+
+			info = new ProcessStartInfo(pcfg, "-RequestsOverride")
+			{
+				CreateNoWindow = true,
+				RedirectStandardOutput = true,
+				UseShellExecute = false
+			};
+			using (var proc = Process.Start(info))
+			{
+				Debug.WriteLine(info.FileName + " " + info.Arguments);
+				while (!proc.StandardOutput.EndOfStream)
+				{
+					if (timer.ElapsedMilliseconds > 30_000) return;
+					Debug.WriteLine(proc.StandardOutput.ReadLine());
+				}
+			}
+
+			info = new ProcessStartInfo(pcfg, "-Requests")
+			{
+				CreateNoWindow = true,
+				RedirectStandardOutput = true,
+				UseShellExecute = false
+			};
+			using (var proc = Process.Start(info))
+			{
+				Debug.WriteLine($"{info.FileName} {info.Arguments}");
+				while (!proc.StandardOutput.EndOfStream)
+				{
+					if (timer.ElapsedMilliseconds > 30_000) return;
+					Debug.WriteLine(proc.StandardOutput.ReadLine());
+				}
 			}
 		}
 
@@ -958,7 +1028,7 @@ namespace Taskmaster
 				m.WParam.ToInt32() == NativeMethods.PBT_POWERSETTINGCHANGE)
 			{
 				var ps = (NativeMethods.POWERBROADCAST_SETTING)Marshal.PtrToStructure(m.LParam, typeof(NativeMethods.POWERBROADCAST_SETTING));
-
+				
 				if (ps.PowerSetting == GUID_POWERSCHEME_PERSONALITY && ps.DataLength == Marshal.SizeOf(typeof(Guid)))
 				{
 					var pData = (IntPtr)(m.LParam.ToInt32() + Marshal.SizeOf(ps) - 4); // -4 is to align to the ps.Data
@@ -986,12 +1056,11 @@ namespace Taskmaster
 						case 0x0:
 							mode = MonitorPowerMode.Off;
 							if (mode == ExpectedMonitorPower)
-								MonitorPowerOffCounter.Start();
+								MonitorPowerOffCounter.Start(); // only start the counter if we caused it
 							break;
 						case 0x1:
 							mode = MonitorPowerMode.On;
-							if (mode == ExpectedMonitorPower)
-								MonitorPowerOffCounter.Stop();
+							MonitorPowerOffCounter.Stop();
 							break;
 						case 0x2: mode = MonitorPowerMode.Standby; break;
 						default: break;
@@ -1180,23 +1249,23 @@ namespace Taskmaster
 				else if (ForceModeSourcesMap.TryRemove(sourcePid, out _))
 				{
 					if (Taskmaster.DebugPower && Taskmaster.Trace)
-						Log.Debug("<Power> Force mode source freed, " + ForceModeSourcesMap.Count + " remain.");
+						Log.Debug("<Power> Force mode source freed, " + ForceModeSourcesMap.Count.ToString() + " remain.");
 				}
 				else if (ForceModeSourcesMap.Count > 0)
 				{
 					if (Taskmaster.DebugPower && Taskmaster.Trace)
-						Log.Debug("<Power> Force mode release for unincluded ID, " + ForceModeSourcesMap.Count + " remain.");
+						Log.Debug("<Power> Force mode release for unincluded ID, " + ForceModeSourcesMap.Count.ToString() + " remain.");
 				}
 				else
 				{
 					if (Taskmaster.DebugPower)
-						Log.Debug("<Power> Restore mode called for object [" + sourcePid + "] that has no forcing registered. Or waitlist was expunged.");
+						Log.Debug("<Power> Restore mode called for object [" + sourcePid.ToString() + "] that has no forcing registered. Or waitlist was expunged.");
 				}
 
 				Forced = ForceModeSourcesMap.Count > 0;
 
 				if (Taskmaster.Trace && Taskmaster.DebugPower)
-					Log.Debug("<Power> Released " + (sourcePid == -1 ? "All" : $"#{sourcePid}"));
+					Log.Debug("<Power> Released " + (sourcePid == -1 ? "All" : $"#{sourcePid.ToString()}"));
 
 				Task.Run(async () =>
 				{

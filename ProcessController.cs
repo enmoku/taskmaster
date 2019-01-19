@@ -79,14 +79,8 @@ namespace Taskmaster
 		/// </summary>
 		public string Executable
 		{
-			get
-			{
-				return p_Executable;
-			}
-			set
-			{
-				ExecutableFriendlyName = System.IO.Path.GetFileNameWithoutExtension(p_Executable = value);
-			}
+			get => p_Executable;
+			set => ExecutableFriendlyName = System.IO.Path.GetFileNameWithoutExtension(p_Executable = value);
 		}
 
 		public string Path { get; set; } = string.Empty;
@@ -145,14 +139,8 @@ namespace Taskmaster
 		int p_Recheck = 0;
 		public int Recheck
 		{
-			get
-			{
-				return p_Recheck;
-			}
-			set
-			{
-				p_Recheck = value.Constrain(0, 300);
-			}
+			get => p_Recheck;
+			set => p_Recheck = value.Constrain(0, 300);
 		}
 
 		public bool AllowPaging = false;

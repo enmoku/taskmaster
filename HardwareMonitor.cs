@@ -305,10 +305,7 @@ namespace Taskmaster
 			}
 		}
 
-		~HardwareMonitor() {
-			// Do not change this code. Put cleanup code in Dispose(bool disposing) above.
-			Dispose(false);
-		}
+		~HardwareMonitor() => Dispose(false);
 
 		public void Dispose()
 		{

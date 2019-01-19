@@ -3005,7 +3005,7 @@ namespace Taskmaster
 
 		// BUG: DO NOT LOG INSIDE THIS FOR FUCKS SAKE
 		// it creates an infinite log loop
-		public int MaxLogSize { get { return MemoryLog.MemorySink.Max; } private set { MemoryLog.MemorySink.Max = value; } }
+		public int MaxLogSize { get => MemoryLog.MemorySink.Max; private set => MemoryLog.MemorySink.Max = value; }
 
 		void ClearLog()
 		{

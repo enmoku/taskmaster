@@ -779,7 +779,7 @@ namespace Taskmaster
 			{
 				// This will solve the high privilege problem, but really? Do I want to?
 				var runtime = Environment.GetCommandLineArgs()[0];
-				string argscreate = "/Create /tn MKAh-Taskmaster /tr \"\\\"" + runtime + "\\\" --scheduler --bootdelay\" /sc onlogon /delay 0:30 /it /RL HIGHEST";
+				string argscreate = "/Create /tn MKAh-Taskmaster /tr \"\\\"" + runtime + "\\\" --scheduler "+Taskmaster.BootDelayArg+"\" /sc onlogon /delay 0:30 /it /RL HIGHEST";
 				info.Arguments = argscreate;
 				var procnew = Process.Start(info);
 				created = procnew.WaitForExit(3000);

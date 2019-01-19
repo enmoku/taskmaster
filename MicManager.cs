@@ -40,14 +40,8 @@ namespace Taskmaster
 		double _target;
 		public double Target
 		{
-			get
-			{
-				return _target;
-			}
-			set
-			{
-				_target = value.Constrain(Minimum, Maximum);
-			}
+			get => _target;
+			set => _target = value.Constrain(Minimum, Maximum);
 		}
 
 		public double Minimum { get; set; } = 0;
@@ -66,12 +60,9 @@ namespace Taskmaster
 			/// Return cached volume. Use Control.Percent for actual current volume.
 			/// </summary>
 			/// <returns>The volume.</returns>
-			get
-			{
-				// We need this to not directly refer to Control.Percent to avoid adding extra cache variables and managing them.
-				// Much easier this way since you still have Control.Percent for up-to-date volume where necessary (shouldn't be, the _volume is updated decently).
-				return _volume;
-			}
+			// We need this to not directly refer to Control.Percent to avoid adding extra cache variables and managing them.
+			// Much easier this way since you still have Control.Percent for up-to-date volume where necessary (shouldn't be, the _volume is updated decently).
+			get => _volume;
 			/// <summary>
 			/// This will trigger VolumeChangedEvent so make sure you don't do infinite loops.
 			/// </summary>

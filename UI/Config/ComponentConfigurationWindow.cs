@@ -350,8 +350,6 @@ namespace Taskmaster
 			// l.Controls.Add(savebutton);
 			savebutton.Click += (_, _ea) =>
 			{
-				Taskmaster.ComponentConfigurationDone = true;
-
 				var cfg = Taskmaster.Config.Load(Taskmaster.coreconfig);
 				var mainsec = cfg.Config["Core"];
 				var opt = mainsec["Version"];
@@ -410,7 +408,7 @@ namespace Taskmaster
 			// l.Controls.Add(endbutton);
 			endbutton.Click += (_, _ea) =>
 			{
-				Taskmaster.ComponentConfigurationDone = false;
+				DialogResult = DialogResult.Abort;
 				Close();
 			};
 

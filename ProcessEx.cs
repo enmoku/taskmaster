@@ -64,7 +64,7 @@ namespace Taskmaster
 		internal ProcessHandlingState _state = ProcessHandlingState.Invalid;
 		public ProcessHandlingState State
 		{
-			get { return _state; }
+			get => _state;
 			set
 			{
 				_state = value;

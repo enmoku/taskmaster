@@ -225,6 +225,7 @@ namespace Taskmaster
 
 			layout.Controls.Add(new Label() { Text = "Default mode", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Fill });
 			layout.Controls.Add(defaultmode);
+			tooltip.SetToolTip(defaultmode, "The default power mode to use when neither high nor low mode match");
 
 			highmode = new ComboBox()
 			{

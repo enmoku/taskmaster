@@ -224,8 +224,7 @@ namespace Taskmaster
 		{
 			try
 			{
-				CacheItem<K1, K2, T> item;
-				if (Items.TryGetValue(key, out item))
+				if (Items.TryGetValue(key, out var item))
 				{
 					if (returnkeytest != null && !item.ReturnKey.Equals(returnkeytest)) // == does not match positively identical strings for some reason
 					{

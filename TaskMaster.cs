@@ -28,6 +28,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using Serilog;
@@ -251,28 +252,16 @@ namespace Taskmaster
 			// INITIAL CONFIGURATIONN
 			var tcfg = Config.Load(Taskmaster.coreconfig);
 			var sec = tcfg.Config.TryGet("Core")?.TryGet("Version")?.StringValue ?? null;
+			bool initConfig = false;
 			if (sec == null || sec != ConfigVersion)
 			{
-				try
+				using (var initialconfig = new ComponentConfigurationWindow())
 				{
-					using (var initialconfig = new ComponentConfigurationWindow())
-						initialconfig.ShowDialog();
-				}
-				catch (Exception ex)
-				{
-					Logging.Stacktrace(ex);
-					throw;
-				}
-
-				if (ComponentConfigurationDone == false)
-				{
-					Log.CloseAndFlush();
-					throw new InitFailure("Component configuration cancelled");
+					initialconfig.ShowDialog();
+					if (initialconfig.DialogResult != DialogResult.OK)
+						throw new InitFailure("Component configuration cancelled");
 				}
 			}
-
-			tcfg = null;
-			sec = null;
 		}
 
 		static void SetupComponents()
@@ -868,7 +857,9 @@ namespace Taskmaster
 			}
 		}
 
-		public static bool ComponentConfigurationDone = false;
+		public const string BootDelayArg = "--bootdelay";
+		public const string AdminArg = "--admin";
+		public const string RestartArg = "--restart";
 
 		static void ParseArguments(string[] args)
 		{
@@ -879,7 +870,7 @@ namespace Taskmaster
 			{
 				switch (args[i])
 				{
-					case "--bootdelay":
+					case BootDelayArg:
 						if (args.Length > i+1 && !args[i+1].StartsWith("--"))
 						{
 							try
@@ -909,7 +900,7 @@ namespace Taskmaster
 						}
 
 						break;
-					case "--restart":
+					case RestartArg:
 						if (args.Length > i+1 && !args[i+1].StartsWith("--"))
 						{
 							try
@@ -920,7 +911,7 @@ namespace Taskmaster
 						}
 
 						break;
-					case "--admin":
+					case AdminArg:
 						if (args.Length > i+1 && !args[i+1].StartsWith("--"))
 						{
 							try
@@ -939,7 +930,7 @@ namespace Taskmaster
 								{
 									var info = Process.GetCurrentProcess().StartInfo;
 									info.FileName = Process.GetCurrentProcess().ProcessName;
-									info.Arguments = "--admin "+ ++AdminCounter;
+									info.Arguments = AdminArg + " " + ++AdminCounter;
 									info.Verb = "runas"; // elevate privileges
 									Log.CloseAndFlush();
 									var proc = Process.Start(info);
@@ -993,11 +984,7 @@ namespace Taskmaster
 			}
 		}
 
-		public static bool IsMainThread()
-		{
-			return (System.Threading.Thread.CurrentThread.IsThreadPoolThread == false &&
-					System.Threading.Thread.CurrentThread.ManagedThreadId == 1);
-		}
+		public static bool IsMainThread() => System.Threading.Thread.CurrentThread.IsThreadPoolThread == false && System.Threading.Thread.CurrentThread.ManagedThreadId == 1;
 
 		// Useful for figuring out multi-threading related problems
 		// From StarOverflow: https://stackoverflow.com/q/22579206
@@ -1166,6 +1153,8 @@ namespace Taskmaster
 			}
 		}
 
+		const string SingletonID = "088f7210-51b2-4e06-9bd4-93c27a973874.taskmaster";
+
 		// entry point to the application
 		[STAThread] // supposedly needed to avoid shit happening with the WinForms GUI and other GUI toolkits
 		static public int Main(string[] args)
@@ -1188,8 +1177,7 @@ namespace Taskmaster
 			TryPortableMode();
 
 			// Singleton
-			bool mutexgained = false;
-			singleton = new System.Threading.Mutex(true, "088f7210-51b2-4e06-9bd4-93c27a973874.taskmaster", out mutexgained);
+			singleton = new System.Threading.Mutex(true, SingletonID, out bool mutexgained);
 			if (!mutexgained)
 			{
 				// already running, signal original process
@@ -1226,8 +1214,6 @@ namespace Taskmaster
 
 			try
 			{
-				try
-				{
 					Config = new ConfigManager(datapath);
 
 					LicenseBoiler();
@@ -1258,70 +1244,36 @@ namespace Taskmaster
 					var now = DateTime.Now;
 					var age = (now - builddate).TotalDays;
 
-					Log.Information("Taskmaster! (#" + Process.GetCurrentProcess().Id + ")" +
-						(IsAdministrator() ? " [ADMIN]" : "") +
-						(Portable ? " [PORTABLE]" : "") +
-						" – Version: " + System.Reflection.Assembly.GetExecutingAssembly().GetName().Version +
-						" – Built: " + builddate.ToString("yyyy/MM/dd HH:mm") + $" [{age:N0} days old]");
-				}
-				catch (Exception ex)
-				{
-					Logging.Stacktrace(ex, crashsafe:true);
-					throw;
-				}
+					var sbs = new StringBuilder();
+					sbs.Append("Taskmaster! (#").Append(Process.GetCurrentProcess().Id).Append(")")
+						.Append(IsAdministrator() ? " [ADMIN]" : "").Append(Portable ? " [PORTABLE]" : "")
+						.Append(" – Version: ").Append(System.Reflection.Assembly.GetExecutingAssembly().GetName().Version)
+						.Append(" – Built: ").Append(builddate.ToString("yyyy/MM/dd HH:mm")).Append($" [{age:N0} days old]");
+					Log.Information(sbs.ToString());
 
 				//PreallocLastLog();
 
-				try
+				PreSetup();
+				LoadCoreConfig();
+				SetupComponents();
+
+				Config.Flush(); // early save of configs
+
+				if (RestartCounter > 0) Log.Information("<Core> Restarted " + RestartCounter.ToString() + " time(s)");
+				Log.Information("<Core> Initialization complete...");
+
+				if (Debug.Listeners.Count > 0)
 				{
-					PreSetup();
-					LoadCoreConfig();
-					SetupComponents();
-				}
-				catch (RunstateException)
-				{
-					throw;
-				}
-				catch (Exception ex) // this seems to happen only when Avast cybersecurity is scanning TM
-				{
-					Log.Fatal("Exiting due to initialization failure.");
-					Logging.Stacktrace(ex); // this doesn't work for some reason?
-					throw new RunstateException("Initialization failure", Runstate.CriticalFailure, ex);
+					Debug.WriteLine("Embedded Resources");
+					foreach (var name in System.Reflection.Assembly.GetExecutingAssembly().GetManifestResourceNames())
+						Debug.WriteLine(" - " + name);
 				}
 
-				try
+				if (State == Runstate.Normal)
 				{
-					Config.Flush(); // early save of configs
+					System.Windows.Forms.Application.Run(); // WinForms
 
-					if (RestartCounter > 0) Log.Information("<Core> Restarted " + RestartCounter + " time(s)");
-					Log.Information("<Core> Initialization complete...");
-
-					if (Debug.Listeners.Count > 0)
-					{
-						Debug.WriteLine("Embedded Resources");
-						foreach (var name in System.Reflection.Assembly.GetExecutingAssembly().GetManifestResourceNames())
-							Debug.WriteLine(" - " + name);
-					}
-				}
-				catch (Exception ex)
-				{
-					Logging.Stacktrace(ex);
-					throw;
-				}
-
-				try
-				{
-					if (State == Runstate.Normal)
-					{
-						System.Windows.Forms.Application.Run(); // WinForms
-
-						// System.Windows.Application.Current.Run(); // WPF
-					}
-				}
-				catch (Exception ex)
-				{
-					Logging.Stacktrace(ex);
-					throw new RunstateException("Unhandled", Runstate.CriticalFailure, ex);
+					// System.Windows.Application.Current.Run(); // WPF
 				}
 
 				if (SelfOptimize) // return decent processing speed to quickly exit
@@ -1342,19 +1294,7 @@ namespace Taskmaster
 
 				ExitCleanup();
 
-				Log.Information("<Stat> WMI queries: " + $"{Statistics.WMIquerytime:N2}s [" + Statistics.WMIqueries + "]");
-				Log.Information("<Stat> WMI polling: " + $"{Statistics.WMIPollTime:N2}s [" + Statistics.WMIPolling + "]");
-				Log.Information("<Stat> Self-maintenance: " + $"{Statistics.MaintenanceTime:N2}s [" + Statistics.MaintenanceCount + "]");
-				Log.Information("<Stat> Path cache: " + Statistics.PathCacheHits + " hits, " + Statistics.PathCacheMisses + " misses");
-				Log.Information("<Stat> Path finding: " + Statistics.PathFindAttempts + " total attempts; " +
-					Statistics.PathFindViaModule + " via module info, " +
-					Statistics.PathFindViaC + " via C call, " +
-					Statistics.PathFindViaWMI + " via WMI, " +
-					Statistics.PathNotFound + " not found");
-				Log.Information("<Stat> Processes modified: " + Statistics.TouchCount + "; Ignored for remodification: " + Statistics.TouchIgnore);
-				Log.Information("<Stat> Process modify time range: " +
-					(Statistics.TouchTimeShortest == ulong.MaxValue ? "?" : $"{Statistics.TouchTimeShortest}") + " – " +
-					(Statistics.TouchTimeLongest == ulong.MinValue ? "?" : $"{Statistics.TouchTimeLongest}") + " milliseconds");
+				PrintStats();
 
 				CleanShutdown();
 
@@ -1365,36 +1305,14 @@ namespace Taskmaster
 				if (State == Runstate.Restart) // happens only on power resume (waking from hibernation) or when manually set
 				{
 					singleton?.Dispose();
-
-					Log.Information("Restarting...");
-					try
-					{
-						if (!System.IO.File.Exists(Application.ExecutablePath))
-							Log.Fatal("Executable missing: " + Application.ExecutablePath); // this should be "impossible"
-
-						var info = Process.GetCurrentProcess().StartInfo;
-						//info.FileName = Process.GetCurrentProcess().ProcessName;
-						info.WorkingDirectory = System.IO.Path.GetDirectoryName(Application.ExecutablePath);
-						info.FileName = System.IO.Path.GetFileName(Application.ExecutablePath);
-
-						List<string> nargs = new List<string> { "--restart " + ++RestartCounter };  // has no real effect
-						if (RestartElevated)
-						{
-							nargs.Add("--admin " + ++AdminCounter);
-							info.Verb = "runas"; // elevate privileges
-						}
-
-						info.Arguments = string.Join(" ", nargs);
-
-						Log.CloseAndFlush();
-
-						var proc = Process.Start(info);
-					}
-					catch (Exception ex)
-					{
-						Logging.Stacktrace(ex, crashsafe: true);
-					}
+					Restart();
+					return 0;
 				}
+			}
+			catch (InitFailure ex)
+			{
+				Logging.Stacktrace(ex, crashsafe: true);
+				return -1; // should trigger finally block
 			}
 			catch (RunstateException ex)
 			{
@@ -1438,6 +1356,58 @@ namespace Taskmaster
 			return 0;
 		}
 
+		static void PrintStats()
+		{
+
+			Log.Information($"<Stat> WMI queries: {Statistics.WMIquerytime:N2}s [{Statistics.WMIqueries:N}]");
+			Log.Information($"<Stat> WMI polling: {Statistics.WMIPollTime:N2}s [{Statistics.WMIPolling}]");
+			Log.Information($"<Stat> Self-maintenance: {Statistics.MaintenanceTime:N2}s [{Statistics.MaintenanceCount}]");
+			Log.Information($"<Stat> Path cache: {Statistics.PathCacheHits} hits, {Statistics.PathCacheMisses} misses");
+			Log.Information("<Stat> Path finding: " + Statistics.PathFindAttempts + " total attempts; " +
+				Statistics.PathFindViaModule + " via module info, " +
+				Statistics.PathFindViaC + " via C call, " +
+				Statistics.PathFindViaWMI + " via WMI, " +
+				Statistics.PathNotFound + " not found");
+			Log.Information($"<Stat> Processes modified: {Statistics.TouchCount}; Ignored for remodification: {Statistics.TouchIgnore}");
+			Log.Information("<Stat> Process modify time range: " +
+				(Statistics.TouchTimeShortest == ulong.MaxValue ? "?" : $"{Statistics.TouchTimeShortest}") + " – " +
+				(Statistics.TouchTimeLongest == ulong.MinValue ? "?" : $"{Statistics.TouchTimeLongest}") + " milliseconds");
+		}
+
+		static void Restart()
+		{
+
+			Log.Information("Restarting...");
+			try
+			{
+				if (!System.IO.File.Exists(Application.ExecutablePath))
+					Log.Fatal("Executable missing: " + Application.ExecutablePath); // this should be "impossible"
+
+				var info = Process.GetCurrentProcess().StartInfo;
+				//info.FileName = Process.GetCurrentProcess().ProcessName;
+				info.WorkingDirectory = System.IO.Path.GetDirectoryName(Application.ExecutablePath);
+				info.FileName = System.IO.Path.GetFileName(Application.ExecutablePath);
+
+				var nargs = new List<string> { RestartArg, (++RestartCounter).ToString() };  // has no real effect
+				if (RestartElevated)
+				{
+					nargs.Add(AdminArg);
+					nargs.Add((++AdminCounter).ToString());
+					info.Verb = "runas"; // elevate privileges
+				}
+				
+				info.Arguments = string.Join(" ", nargs);
+
+				Log.CloseAndFlush();
+
+				Process.Start(info);
+			}
+			catch (Exception ex)
+			{
+				Logging.Stacktrace(ex, crashsafe: true);
+			}
+		}
+
 		private static void UnhandledException(object sender, UnhandledExceptionEventArgs ea)
 		{
 			var ex = (Exception)ea.ExceptionObject;
@@ -1453,17 +1423,11 @@ namespace Taskmaster
 			}
 		}
 
-		public static DateTime BuildDate()
-		{
-			return DateTime.ParseExact(Properties.Resources.BuildDate.Trim(), "yyyy/MM/dd HH:mm:ss K", null, System.Globalization.DateTimeStyles.None);
-		}
+		public static DateTime BuildDate() => DateTime.ParseExact(Properties.Resources.BuildDate.Trim(), "yyyy/MM/dd HH:mm:ss K", null, System.Globalization.DateTimeStyles.None);
 
 		/// <summary>
 		/// Process unhandled WinForms exceptions.
 		/// </summary>
-		private static void UnhandledUIException(object _, System.Threading.ThreadExceptionEventArgs ea)
-		{
-			Logging.Stacktrace(ea.Exception);
-		}
+		private static void UnhandledUIException(object _, System.Threading.ThreadExceptionEventArgs ea) => Logging.Stacktrace(ea.Exception);
 	}
 }

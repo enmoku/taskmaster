@@ -26,6 +26,7 @@
 
 using System;
 using System.Diagnostics;
+using System.Text;
 using System.Threading.Tasks;
 using Serilog;
 
@@ -191,10 +192,7 @@ namespace Taskmaster
 			}
 		}
 
-		public void Dispose()
-		{
-			Dispose(true);
-		}
+		public void Dispose() => Dispose(true);
 		#endregion
 	}
 
@@ -235,7 +233,9 @@ namespace Taskmaster
 			string name = session.DisplayName;
 
 			// Don't care really
-			Log.Debug("<Audio> " + name + " (#" + pid + ") Disconnected: " + disconnectReason.ToString());
+			var sbs = new StringBuilder();
+			sbs.Append("<Audio> ").Append(name).Append(" (#").Append(pid).Append(") Disconnected: ").Append(disconnectReason.ToString());
+			Log.Debug(sbs.ToString());
 
 			switch (disconnectReason)
 			{
@@ -262,7 +262,9 @@ namespace Taskmaster
 			string instance = session.GetSessionInstanceIdentifier;
 			string name = session.DisplayName;
 
-			Log.Debug("<Audio> " + name + " (#" + pid + ") State changed: " + state.ToString());
+			var sbs = new StringBuilder();
+			sbs.Append("<Audio> ").Append(name).Append(" (#").Append(pid).Append(") State changed: ").Append(state.ToString());
+			Log.Debug(sbs.ToString());
 
 			switch (state)
 			{
@@ -278,7 +280,9 @@ namespace Taskmaster
 
 		public void OnVolumeChanged(float volume, bool isMuted)
 		{
-			Log.Debug("<Audio> Volume: " + $"{volume:N2}" + ", Muted: " + (isMuted ? "True" : "False"));
+			var sbs = new StringBuilder();
+			sbs.Append("<Audio> Volume: ").Append($"{volume:N2}").Append(", Muted: ").Append((isMuted ? "True" : "False"));
+			Log.Debug(sbs.ToString());
 		}
 	}
 

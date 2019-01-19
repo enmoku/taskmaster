@@ -307,10 +307,7 @@ public static class ProcessExtensions
 		}
 
 		[SecurityPermission(SecurityAction.LinkDemand, UnmanagedCode = true)]
-		internal SafeSnapshotHandle(IntPtr handle) : base(true)
-		{
-			SetHandle(handle);
-		}
+		internal SafeSnapshotHandle(IntPtr handle) : base(true) => SetHandle(handle);
 
 		protected override bool ReleaseHandle() => CloseHandle(handle);
 
