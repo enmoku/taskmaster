@@ -40,9 +40,9 @@ namespace Taskmaster
 		public TimeSpan SampleInterval { get; set; } = TimeSpan.FromSeconds(5);
 		public int SampleCount { get; set; } = 5;
 		PerformanceCounterWrapper Counter = new PerformanceCounterWrapper("Processor", "% Processor Time", "_Total");
-		System.Threading.Timer Timer = null;
+		System.Threading.Timer CPUSampleTimer = null;
 
-		float[] Samples;
+		readonly float[] Samples;
 		int SampleLoop = 0;
 		float Average, Low, High;
 
@@ -52,7 +52,7 @@ namespace Taskmaster
 
 			try
 			{
-				if (Timer == null)
+				if (CPUSampleTimer == null)
 				{
 					Samples = new float[SampleCount];
 
@@ -63,15 +63,15 @@ namespace Taskmaster
 						Average += Samples[i];
 					}
 
-					Timer = new System.Threading.Timer(Sampler, null, System.Threading.Timeout.InfiniteTimeSpan, SampleInterval);
+					CPUSampleTimer = new System.Threading.Timer(Sampler, null, System.Threading.Timeout.InfiniteTimeSpan, SampleInterval);
 				}
 
-				Timer.Change(TimeSpan.FromSeconds(1), SampleInterval); // start
+				CPUSampleTimer.Change(TimeSpan.FromSeconds(1), SampleInterval); // start
 			}
 			catch (Exception ex)
 			{
 				Logging.Stacktrace(ex);
-				Timer?.Dispose();
+				CPUSampleTimer?.Dispose();
 			}
 
 			Taskmaster.DisposalChute.Push(this);
@@ -164,8 +164,8 @@ namespace Taskmaster
 
 			if (disposing)
 			{
-				Timer?.Dispose();
-				Timer = null;
+				CPUSampleTimer?.Dispose();
+				CPUSampleTimer = null;
 
 				Counter?.Dispose();
 				Counter = null;
