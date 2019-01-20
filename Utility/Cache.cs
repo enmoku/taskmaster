@@ -47,22 +47,8 @@ namespace Taskmaster
 
 	sealed public class Cache<K1, K2, T> : IDisposable where T : class where K2 : class
 	{
-		public enum EvictStrategy
-		{
-			LeastUsed,
-			LeastRecent
-		};
-
-		EvictStrategy CacheEvictStrategy = EvictStrategy.LeastRecent;
-
-		public enum StoreStrategy
-		{
-			ReplaceAlways,
-			ReplaceNoMatch,
-			Fail,
-		};
-
-		StoreStrategy CacheStoreStrategy = StoreStrategy.ReplaceNoMatch;
+		readonly EvictStrategy CacheEvictStrategy = EvictStrategy.LeastRecent;
+		readonly StoreStrategy CacheStoreStrategy = StoreStrategy.ReplaceNoMatch;
 
 		readonly ConcurrentDictionary<K1, CacheItem<K1, K2, T>> Items = new ConcurrentDictionary<K1, CacheItem<K1, K2, T>>();
 
@@ -290,6 +276,19 @@ namespace Taskmaster
 		}
 		#endregion
 	}
+
+	public enum EvictStrategy
+	{
+		LeastUsed,
+		LeastRecent
+	};
+
+	public enum StoreStrategy
+	{
+		ReplaceAlways,
+		ReplaceNoMatch,
+		Fail,
+	};
 
 	sealed public class CacheEventArgs : EventArgs
 	{

@@ -1050,7 +1050,7 @@ namespace Taskmaster
 		const string PipeTerm = "TM...TERMINATE";
 		static System.IO.Pipes.NamedPipeServerStream pipe = null;
 
-		static System.Threading.CancellationTokenSource cancel = new System.Threading.CancellationTokenSource();
+		static readonly System.Threading.CancellationTokenSource cancel = new System.Threading.CancellationTokenSource();
 
 		static void PipeCleaner(IAsyncResult result)
 		{

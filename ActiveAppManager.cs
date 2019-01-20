@@ -346,14 +346,14 @@ namespace Taskmaster
 		{
 			if (disposed) return;
 
+			hungTimer?.Dispose();
+
 			if (disposing)
 			{
 				if (Taskmaster.Trace)
 					Log.Verbose("Disposing FG monitor...");
 
 				ActiveChanged = null;
-
-				hungTimer?.Dispose();
 
 				NativeMethods.UnhookWinEvent(windowseventhook); // Automatic
 			}

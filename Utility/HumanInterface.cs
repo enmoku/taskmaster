@@ -73,15 +73,15 @@ namespace Taskmaster
 			return s.ToString();
 		}
 
-		static float SizeThreshold = 1.2f;
+		const float SizeThreshold = 1.2f;
 		const int Giga = 3;
 		const int Mega = 2;
 		const int Kilo = 1;
 		const int Byte = 0;
-		static double[] MultiplierSI = { 1, 1_000, 1_000_000, 1_000_000_000 };
-		static double[] MultiplierIEC = { 1, 1_024, 1_048_576, 1_073_741_824 };
-		static string[] ByteLetterSI = {"B","kB","MB","GB"};
-		static string[] ByteLetterIEC = { "B", "KiB", "MiB", "GiB" };
+		readonly static double[] MultiplierSI = { 1, 1_000, 1_000_000, 1_000_000_000 };
+		readonly static double[] MultiplierIEC = { 1, 1_024, 1_048_576, 1_073_741_824 };
+		readonly static string[] ByteLetterSI = { "B", "kB", "MB", "GB" };
+		readonly static string[] ByteLetterIEC = { "B", "KiB", "MiB", "GiB" };
 
 		public static string ByteString(long bytes, bool positivesign = false, bool iec = false)
 		{
@@ -116,8 +116,8 @@ namespace Taskmaster
 
 			return string.Format(
 				new System.Globalization.NumberFormatInfo() { NumberDecimalDigits = div == 1 ? 0 : ((num < 10) ? 3 : ((num > 100) ? 1 : 2)) },
-				"{1}{0:N} {2}",
-				num, ((positivesign && bytes > 0) ? "+" : ""), byteletter[letter]);
+				"{0}{1:N} {2}",
+				((positivesign && bytes > 0) ? "+" : ""), num, byteletter[letter]);
 		}
 	}
 }

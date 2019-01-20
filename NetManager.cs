@@ -137,7 +137,7 @@ namespace Taskmaster
 		LinearMeter PacketWarning = new LinearMeter(15);
 		LinearMeter ErrorReports = new LinearMeter(5);
 
-		volatile List<NetDevice> CurrentInterfaceList = new List<NetDevice>(0);
+		List<NetDevice> CurrentInterfaceList = new List<NetDevice>(2);
 
 		void AnalyzeTrafficBehaviourTick(object state) => AnalyzeTrafficBehaviour();
 
@@ -485,7 +485,7 @@ namespace Taskmaster
 			}
 		}
 
-		object interfaces_lock = new object();
+		readonly object interfaces_lock = new object();
 		int InterfaceUpdateLimiter = 0;
 		bool needUpdate = true;
 

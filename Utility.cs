@@ -28,6 +28,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
+using System.Text;
 
 namespace Taskmaster
 {
@@ -87,13 +88,13 @@ namespace Taskmaster
 
 	public static class Logging
 	{
-		static void AppendStacktace(Exception ex, ref List<string> output)
+		static void AppendStacktace(Exception ex, ref StringBuilder output)
 		{
 			var projectdir = Properties.Resources.ProjectDirectory.Trim();
 			var trace = ex.StackTrace.Replace(projectdir, HumanReadable.Generic.Ellipsis + System.IO.Path.DirectorySeparatorChar);
-			output.Add("");
-			output.Add("----- Stacktrace -----");
-			output.Add(trace);
+			output.AppendLine()
+				.Append("----- Stacktrace -----").AppendLine()
+				.Append(trace).AppendLine();
 		}
 
 		public static void Stacktrace(Exception ex, bool crashsafe = false, [CallerMemberName] string method = "")
@@ -115,22 +116,20 @@ namespace Taskmaster
 
 					var now = DateTime.Now;
 
-					var logcontents = new List<string>
-					{
-						"Datetime:     " + now.ToLongDateString() + " " + now.ToLongTimeString(),
-						"",
-						"Command line: " + Environment.CommandLine,
-						"",
-						"Exception:    " + ex.GetType().Name,
-						"Message:      " + ex.Message
-					};
+					var sbs = new StringBuilder();
+					sbs.Append("Datetime:     ").Append(now.ToLongDateString()).Append(" ").Append(now.ToLongTimeString()).AppendLine()
+						.AppendLine()
+						.Append("Command line: ").Append(Environment.CommandLine).AppendLine()
+						.AppendLine()
+						.Append("Exception:    ").Append(ex.GetType().Name).AppendLine()
+						.Append("Message:      ").Append(ex.Message).AppendLine();
 
-					AppendStacktace(ex, ref logcontents);
+					AppendStacktace(ex, ref sbs);
 
 					if (ex.InnerException != null)
-						AppendStacktace(ex.InnerException, ref logcontents);
+						AppendStacktace(ex.InnerException, ref sbs);
 
-					System.IO.File.WriteAllLines(logfile, logcontents, System.Text.Encoding.Unicode);
+					System.IO.File.WriteAllText(logfile, sbs.ToString(), Encoding.Unicode);
 					Debug.WriteLine("Crash log written to " + logfile);
 				}
 				catch (OutOfMemoryException) { throw; }

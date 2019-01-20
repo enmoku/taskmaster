@@ -467,8 +467,14 @@ namespace Taskmaster
 
 		TimeSpan ExplorerRestartHelpDelay { get; set; } = TimeSpan.Zero;
 
+		async void ExplorerCrashEvent(object sender, EventArgs _ea)
+		{
+			var proc = (Process)sender;
+			ExplorerCrashHandler(proc.Id);
+		}
+
 		Process[] Explorer;
-		async void ExplorerCrashHandler(int processId)
+		async Task ExplorerCrashHandler(int processId)
 		{
 			try
 			{
@@ -562,7 +568,7 @@ namespace Taskmaster
 
 						if (KnownExplorerInstances.TryAdd(info.Id, 0))
 						{
-							proc.Exited += (s, e) => ExplorerCrashHandler(info.Id);
+							proc.Exited += ExplorerCrashEvent;
 							proc.EnableRaisingEvents = true;
 						}
 					}

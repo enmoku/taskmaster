@@ -32,12 +32,12 @@ namespace Taskmaster
 {
 	sealed public class PerformanceCounterWrapper : IDisposable
 	{
-		public PerformanceCounter Counter { get; private set; }
+		PerformanceCounter Counter { get; set; } = null;
 
-		string p_CategoryName = null;
-		string p_CounterName = null;
-		string p_InstanceName = null;
-		bool p_ScrapFirst = true;
+		readonly string p_CategoryName = null;
+		readonly string p_CounterName = null;
+		readonly string p_InstanceName = null;
+		readonly bool p_ScrapFirst = true;
 
 		public PerformanceCounterWrapper(string category, string counter, string instance = null, bool scrapfirst = true)
 		{

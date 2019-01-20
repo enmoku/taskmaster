@@ -105,7 +105,9 @@ namespace Taskmaster
 
 			HandlingStateChange += CollectProcessHandlingStatistics;
 
-			if (ScanFrequency != TimeSpan.Zero) ScanTimer = new System.Threading.Timer(TimedScan, null, TimeSpan.FromSeconds(5), ScanFrequency);
+			var InitialScanDelay = TimeSpan.FromSeconds(5);
+			NextScan = DateTimeOffset.UtcNow.Add(InitialScanDelay);
+			if (ScanFrequency != TimeSpan.Zero) ScanTimer = new System.Threading.Timer(TimedScan, null, InitialScanDelay, ScanFrequency);
 
 			if (Taskmaster.DebugProcesses) Log.Information("<Process> Component Loaded.");
 
@@ -338,18 +340,21 @@ namespace Taskmaster
 		public async void HastenScan(int delay=15)
 		{
 			if (DateTimeOffset.UtcNow.TimeTo(NextScan).TotalSeconds > 15) // skip if the next scan is to happen real soon
-				ScanTimer.Change(TimeSpan.FromSeconds(delay.Constrain(5, 60)), ScanFrequency);
+			{
+				var delayspan = TimeSpan.FromSeconds(delay.Constrain(5, 60));
+				NextScan = DateTimeOffset.UtcNow.Add(delayspan);
+				ScanTimer.Change(delayspan, ScanFrequency);
+			}
 		}
 
 		int scan_lock = 0;
 		public async Task Scan(int ignorePid = -1)
 		{
-			var now = DateTimeOffset.UtcNow;
-
 			await CleanWaitForExitList(); // HACK
 
 			if (!Atomic.Lock(ref scan_lock)) return;
 
+			var now = DateTimeOffset.UtcNow;
 			LastScan = now;
 			NextScan = now.Add(ScanFrequency);
 

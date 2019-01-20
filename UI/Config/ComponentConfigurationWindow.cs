@@ -242,9 +242,6 @@ namespace Taskmaster
 			tooltip.SetToolTip(fgmon, "Allow processes and power mode to be managed based on if a process is in the foreground.\nPOWER MODE SWITCHING NOT IMPLEMENTED.");
 			layout.Controls.Add(new Label { Text = "Foreground manager", AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, Padding = CustomPadding, Dock = DockStyle.Left });
 			layout.Controls.Add(fgmon);
-			fgmon.Click += (_, _ea) =>
-			{
-			};
 
 			// NVM monitor
 			var nvmmon = new CheckBox()
@@ -282,9 +279,6 @@ namespace Taskmaster
 			layout.Controls.Add(new Label { Text = "Allow paging", AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, Padding = CustomPadding, Dock = DockStyle.Left });
 			layout.Controls.Add(paging);
 			paging.Checked = initial ? false : Taskmaster.PagingEnabled;
-			paging.Click += (_, _ea) =>
-			{
-			};
 
 			// REGISTER GLOBAL HOTKEYS
 			var hotkeys = new CheckBox()
@@ -315,9 +309,6 @@ namespace Taskmaster
 			});
 			layout.Controls.Add(showonstart);
 			showonstart.Checked = initial ? false : Taskmaster.ShowOnStart;
-			showonstart.Click += (_, _ea) =>
-			{
-			};
 
 			var autodoc = new CheckBox()
 			{
@@ -406,11 +397,7 @@ namespace Taskmaster
 			};
 
 			// l.Controls.Add(endbutton);
-			endbutton.Click += (_, _ea) =>
-			{
-				DialogResult = DialogResult.Abort;
-				Close();
-			};
+			endbutton.Click += EndButtonClick;
 
 			layout.Controls.Add(savebutton);
 			layout.Controls.Add(endbutton);
@@ -422,11 +409,15 @@ namespace Taskmaster
 			UpdateDefaultButton();
 
 			// Cross-componenty checkbox functionality
-			procmon.CheckedChanged += (_, _ea) =>
-			{
-				// fgmon requires process monitor
-				fgmon.Enabled = procmon.Checked;
-			};
+
+			// fgmon.Enabled is bound to procmon.Checked, procmon however is always in use and checkbox disabled so this doesn't matter
+			//fgmon.DataBindings.Add("Enabled", procmon, "Checked", false, DataSourceUpdateMode.Never);
+		}
+
+		void EndButtonClick(object _, EventArgs _ea)
+		{
+			DialogResult = DialogResult.Abort;
+			Close();
 		}
 	}
 }

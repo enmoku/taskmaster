@@ -36,7 +36,7 @@ namespace Taskmaster
 	{
 		public ProcessController Controller;
 
-		bool newPrc = false;
+		readonly bool newPrc = false;
 
 		// Adding
 		public WatchlistEditWindow()

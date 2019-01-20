@@ -179,7 +179,7 @@ namespace Taskmaster
 			}
 		}
 
-		async void DebugMonitorWake()
+		async Task DebugMonitorWake()
 		{
 			await Task.Delay(0).ConfigureAwait(false);
 

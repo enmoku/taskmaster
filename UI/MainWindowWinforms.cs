@@ -53,8 +53,10 @@ namespace Taskmaster
 			tooltip.InitialDelay = 2000;
 			tooltip.ShowAlways = true;
 
-			WatchlistSearchTimer = new Timer();
-			WatchlistSearchTimer.Interval = 250;
+			WatchlistSearchTimer = new Timer
+			{
+				Interval = 250
+			};
 			WatchlistSearchTimer.Tick += WatchlistSearchTimer_Tick;
 
 			// TODO: Detect mic device changes
@@ -89,18 +91,7 @@ namespace Taskmaster
 
 			// CenterToScreen();
 
-			Shown += (_, _ea) =>
-			{
-				if (!IsHandleCreated) return;
-				BeginInvoke(new Action(() =>
-				{
-					if (loglist.Items.Count > 0) // needed in case of bugs or clearlog
-					{
-						loglist.TopItem = loglist.Items[loglist.Items.Count - 1];
-						ShowLastLog();
-					}
-				}));
-			};
+			Shown += onShown;
 
 			// TODO: WPF
 			/*
@@ -116,6 +107,18 @@ namespace Taskmaster
 
 			if (Taskmaster.Trace)
 				Log.Verbose("MainWindow constructed");
+		}
+
+		void onShown(object _, EventArgs _ea)
+		{
+			if (!IsHandleCreated)
+				return;
+
+			if (loglist.Items.Count > 0) // needed in case of bugs or clearlog
+			{
+				loglist.TopItem = loglist.Items[loglist.Items.Count - 1];
+				ShowLastLog();
+			}
 		}
 
 		public void ShowConfigRequest(object _, EventArgs _ea)
@@ -336,12 +339,22 @@ namespace Taskmaster
 
 			WatchlistRules.EndUpdate();
 
-			rescanRequest += (_, _ea) => processmanager?.HastenScan();
+			rescanRequest += RescanRequestEvent;
 
 			processmanager.ProcessModified += ProcessTouchEvent;
 
 			foreach (var bu in processmanager.getExitWaitList())
 				ExitWaitListHandler(this, new ProcessModificationEventArgs() { State = ProcessRunningState.Found, Info = bu });
+		}
+
+		void RescanRequestEvent(object _, EventArgs _ea)
+		{
+			processmanager?.HastenScan();
+		}
+
+		void RestartRequestEvent(object sender, EventArgs _ea)
+		{
+			Taskmaster.ConfirmExit(restart: true, admin: sender == menu_action_restartadmin);
 		}
 
 		void ProcessNewInstanceCount(object _, ProcessingCountEventArgs e)
@@ -353,8 +366,8 @@ namespace Taskmaster
 			}));
 		}
 
-		System.Drawing.Color GrayText = System.Drawing.Color.FromArgb(130, 130, 130);
-		System.Drawing.Color AlterColor = System.Drawing.Color.FromArgb(245, 245, 245);
+		readonly System.Drawing.Color GrayText = System.Drawing.Color.FromArgb(130, 130, 130);
+		readonly System.Drawing.Color AlterColor = System.Drawing.Color.FromArgb(245, 245, 245);
 
 		/// <summary>
 		/// 
@@ -691,6 +704,7 @@ namespace Taskmaster
 
 		TabControl tabLayout = null;
 
+		// TODO: Easier column access somehow than this?
 		//int OrderColumn = 0;
 		int NameColumn = 1;
 		int ExeColumn = 2;
@@ -749,9 +763,12 @@ namespace Taskmaster
 		int MinimumHeight = 0;
 		//int MinimumWidth = 0;
 
+		ToolStripMenuItem menu_action_restart = null;
+		ToolStripMenuItem menu_action_restartadmin = null;
+
 		void BuildUI()
 		{
-			Text = Application.ProductName + " (" + Application.ProductVersion + ")"
+			Text = $"{Application.ProductName} ({Application.ProductVersion})"
 #if DEBUG
 				+ " DEBUG"
 #endif
@@ -794,31 +811,16 @@ namespace Taskmaster
 			var menu_action = new ToolStripMenuItem("Actions");
 			menu_action.DropDown.AutoClose = true;
 			// Sub Items
-			var menu_action_rescan = new ToolStripMenuItem("Rescan", null, async (_, _ea) => {
-				await Task.Delay(0).ConfigureAwait(false);
-				rescanRequest?.Invoke(this, null);
-			})
+			var menu_action_rescan = new ToolStripMenuItem("Rescan", null, RescanRequestEvent)
 			{
-					Enabled = Taskmaster.ProcessMonitorEnabled,
+				Enabled = Taskmaster.ProcessMonitorEnabled,
 			};
 			var menu_action_memoryfocus = new ToolStripMenuItem("Free memory for...", null, FreeMemoryRequest)
 			{
 				Enabled = Taskmaster.PagingEnabled,
 			};
-			ToolStripMenuItem menu_action_restart = null;
-			menu_action_restart = new ToolStripMenuItem("Restart", null, (_, _ea) =>
-			{
-				menu_action_restart.Enabled = false;
-				Taskmaster.ConfirmExit(restart: true);
-				menu_action_restart.Enabled = true;
-			});
-			ToolStripMenuItem menu_action_restartadmin = null;
-			menu_action_restartadmin = new ToolStripMenuItem("Restart as admin", null, (_, _ea) =>
-			{
-				menu_action_restartadmin.Enabled = false;
-				Taskmaster.ConfirmExit(restart: true, admin: true);
-				menu_action_restartadmin.Enabled = true;
-			})
+			menu_action_restart = new ToolStripMenuItem("Restart", null, RestartRequestEvent);
+			menu_action_restartadmin = new ToolStripMenuItem("Restart as admin", null, RestartRequestEvent)
 			{
 				Enabled = !Taskmaster.IsAdministrator()
 			};
