@@ -252,7 +252,6 @@ namespace Taskmaster
 			// INITIAL CONFIGURATIONN
 			var tcfg = Config.Load(Taskmaster.coreconfig);
 			var sec = tcfg.Config.TryGet("Core")?.TryGet("Version")?.StringValue ?? null;
-			bool initConfig = false;
 			if (sec == null || sec != ConfigVersion)
 			{
 				using (var initialconfig = new ComponentConfigurationWindow())
@@ -397,7 +396,7 @@ namespace Taskmaster
 				Log.Verbose("Displaying Tray Icon");
 			trayaccess?.RefreshVisibility();
 
-			Log.Information("<Core> Component loading finished. " + DisposalChute.Count + " initialized.");
+			Log.Information($"<Core> Component loading finished. {DisposalChute.Count.ToString()} initialized.");
 		}
 
 		public static bool ShowProcessAdjusts { get; set; } = true;
@@ -740,11 +739,11 @@ namespace Taskmaster
 
 			// END DEBUG
 
-			Log.Information("<Core> Privilege level: " + (isadmin ? "Admin" : "User"));
+			Log.Information($"<Core> Privilege level: {(isadmin ? "Admin" : "User")}");
 
-			Log.Information("<Core> Path cache: " + (PathCacheLimit == 0 ? HumanReadable.Generic.Disabled : PathCacheLimit + " items"));
+			Log.Information($"<Core> Path cache: {(PathCacheLimit == 0 ? HumanReadable.Generic.Disabled : PathCacheLimit.ToString())} items");
 
-			Log.Information("<Core> Paging: " + (PagingEnabled ? HumanReadable.Generic.Enabled : HumanReadable.Generic.Disabled));
+			Log.Information($"<Core> Paging: {(PagingEnabled ? HumanReadable.Generic.Enabled : HumanReadable.Generic.Disabled)}");
 
 			return;
 		}
@@ -814,7 +813,8 @@ namespace Taskmaster
 						byte[] nullarray = { 0 };
 						fs.Write(nullarray, 0, 1);
 					}
-					Log.Debug("<Core> Pre-allocated file: " + fullpath + " (" + (oldsize / boundary) + "kB -> " + allockb + "kB)");
+
+					Log.Debug($"<Core> Pre-allocated file: {fullpath} ({(oldsize / boundary).ToString()} kB -> {allockb.ToString()} kB)");
 				}
 			}
 			catch (System.IO.FileNotFoundException)
@@ -930,7 +930,7 @@ namespace Taskmaster
 								{
 									var info = Process.GetCurrentProcess().StartInfo;
 									info.FileName = Process.GetCurrentProcess().ProcessName;
-									info.Arguments = AdminArg + " " + ++AdminCounter;
+									info.Arguments = $"{AdminArg} {(++AdminCounter).ToString()}";
 									info.Verb = "runas"; // elevate privileges
 									Log.CloseAndFlush();
 									var proc = Process.Start(info);
@@ -956,13 +956,13 @@ namespace Taskmaster
 
 			if (StartDelay > 0 && uptime.TotalSeconds < 300)
 			{
-				Debug.WriteLine("Delaying proper startup for " + $"{uptime.TotalSeconds:N1}" + " seconds.");
+				Debug.WriteLine($"Delaying proper startup for {uptime.TotalSeconds:N1} seconds.");
 
 				var remainingdelay = StartDelay - uptime.TotalSeconds;
 				if (remainingdelay > 5)
 				{
-					Log.Information("Delaying start by " + remainingdelay + " seconds");
-					System.Threading.Thread.Sleep(Convert.ToInt32(remainingdelay) * 1000);
+					Log.Information($"Delaying start by {remainingdelay:N0} seconds");
+					System.Threading.Thread.Sleep(TimeSpan.FromSeconds(remainingdelay));
 				}
 			}
 		}
@@ -992,11 +992,8 @@ namespace Taskmaster
 		public static void ThreadIdentity(string message = "")
 		{
 			var thread = System.Threading.Thread.CurrentThread;
-			string name = thread.IsThreadPoolThread
-				? "Thread pool" : thread.Name;
-			if (string.IsNullOrEmpty(name))
-				name = "#" + thread.ManagedThreadId;
-			Debug.WriteLine("Continuation on: " + name + " --- " + message);
+			string name = thread.IsThreadPoolThread ? "Thread pool" : (string.IsNullOrEmpty(thread.Name) ? $"#{thread.ManagedThreadId.ToString()}" : thread.Name);
+			Debug.WriteLine($"Continuation on: {name} --- {message}");
 		}
 
 		static void PreallocLastLog()
@@ -1055,7 +1052,7 @@ namespace Taskmaster
 
 		static System.Threading.CancellationTokenSource cancel = new System.Threading.CancellationTokenSource();
 
-		static async void PipeCleaner(IAsyncResult result)
+		static void PipeCleaner(IAsyncResult result)
 		{
 			if (pipe == null) return;
 			if (result.IsCompleted) return; // for some reason empty completion appears on exit
@@ -1072,7 +1069,7 @@ namespace Taskmaster
 
 				byte[] buffer = new byte[16];
 
-				lp.ReadAsync(buffer, 0, 16).ContinueWith(async delegate
+				lp.ReadAsync(buffer, 0, 16).ContinueWith(delegate
 				{
 					try
 					{
@@ -1113,18 +1110,27 @@ namespace Taskmaster
 
 		static System.IO.Pipes.NamedPipeServerStream PipeDream()
 		{
-			var ps = new System.IO.Pipes.PipeSecurity();
-			ps.AddAccessRule(new System.IO.Pipes.PipeAccessRule("Users", System.IO.Pipes.PipeAccessRights.Write, System.Security.AccessControl.AccessControlType.Allow));
-			ps.AddAccessRule(new System.IO.Pipes.PipeAccessRule(System.Security.Principal.WindowsIdentity.GetCurrent().Name, System.IO.Pipes.PipeAccessRights.FullControl, System.Security.AccessControl.AccessControlType.Allow));
-			ps.AddAccessRule(new System.IO.Pipes.PipeAccessRule("SYSTEM", System.IO.Pipes.PipeAccessRights.FullControl, System.Security.AccessControl.AccessControlType.Allow));
+			try
+			{
+				var ps = new System.IO.Pipes.PipeSecurity();
+				ps.AddAccessRule(new System.IO.Pipes.PipeAccessRule("Users", System.IO.Pipes.PipeAccessRights.Write, System.Security.AccessControl.AccessControlType.Allow));
+				ps.AddAccessRule(new System.IO.Pipes.PipeAccessRule(System.Security.Principal.WindowsIdentity.GetCurrent().Name, System.IO.Pipes.PipeAccessRights.FullControl, System.Security.AccessControl.AccessControlType.Allow));
+				ps.AddAccessRule(new System.IO.Pipes.PipeAccessRule("SYSTEM", System.IO.Pipes.PipeAccessRights.FullControl, System.Security.AccessControl.AccessControlType.Allow));
 
-			pipe = new System.IO.Pipes.NamedPipeServerStream(PipeName, System.IO.Pipes.PipeDirection.In, 1, System.IO.Pipes.PipeTransmissionMode.Message, System.IO.Pipes.PipeOptions.Asynchronous, 16, 8);
+				pipe = new System.IO.Pipes.NamedPipeServerStream(PipeName, System.IO.Pipes.PipeDirection.In, 1, System.IO.Pipes.PipeTransmissionMode.Message, System.IO.Pipes.PipeOptions.Asynchronous, 16, 8);
 
-			//DisposalChute.Push(pipe);
+				//DisposalChute.Push(pipe);
 
-			pipe.BeginWaitForConnection(PipeCleaner, null);
+				pipe.BeginWaitForConnection(PipeCleaner, null);
 
-			return pipe;
+				return pipe;
+			}
+			catch (IOException) // no pipes available?
+			{
+
+			}
+
+			return null;
 		}
 
 		static void PipeExplorer(bool restart=true)
@@ -1300,7 +1306,7 @@ namespace Taskmaster
 
 				Utility.Dispose(ref Config);
 
-				Log.Information("Taskmaster! (#" + Process.GetCurrentProcess().Id + ") END! [Clean]");
+				Log.Information($"Taskmaster! (#{Process.GetCurrentProcess().Id.ToString()}) END! [Clean]");
 
 				if (State == Runstate.Restart) // happens only on power resume (waking from hibernation) or when manually set
 				{
@@ -1358,20 +1364,23 @@ namespace Taskmaster
 
 		static void PrintStats()
 		{
-
-			Log.Information($"<Stat> WMI queries: {Statistics.WMIquerytime:N2}s [{Statistics.WMIqueries:N}]");
-			Log.Information($"<Stat> WMI polling: {Statistics.WMIPollTime:N2}s [{Statistics.WMIPolling}]");
-			Log.Information($"<Stat> Self-maintenance: {Statistics.MaintenanceTime:N2}s [{Statistics.MaintenanceCount}]");
-			Log.Information($"<Stat> Path cache: {Statistics.PathCacheHits} hits, {Statistics.PathCacheMisses} misses");
-			Log.Information("<Stat> Path finding: " + Statistics.PathFindAttempts + " total attempts; " +
-				Statistics.PathFindViaModule + " via module info, " +
-				Statistics.PathFindViaC + " via C call, " +
-				Statistics.PathFindViaWMI + " via WMI, " +
-				Statistics.PathNotFound + " not found");
-			Log.Information($"<Stat> Processes modified: {Statistics.TouchCount}; Ignored for remodification: {Statistics.TouchIgnore}");
-			Log.Information("<Stat> Process modify time range: " +
-				(Statistics.TouchTimeShortest == ulong.MaxValue ? "?" : $"{Statistics.TouchTimeShortest}") + " – " +
-				(Statistics.TouchTimeLongest == ulong.MinValue ? "?" : $"{Statistics.TouchTimeLongest}") + " milliseconds");
+			Log.Information($"<Stat> WMI queries: {Statistics.WMIquerytime:N2}s [{Statistics.WMIqueries.ToString()}]");
+			Log.Information($"<Stat> WMI polling: {Statistics.WMIPollTime:N2}s [{Statistics.WMIPolling.ToString()}]");
+			Log.Information($"<Stat> Self-maintenance: {Statistics.MaintenanceTime:N2}s [{Statistics.MaintenanceCount.ToString()}]");
+			Log.Information($"<Stat> Path cache: {Statistics.PathCacheHits.ToString()} hits, {Statistics.PathCacheMisses.ToString()} misses");
+			var sbs = new StringBuilder();
+			sbs.Append("<Stat> Path finding: ").Append(Statistics.PathFindAttempts).Append(" total attempts; ")
+				.Append(Statistics.PathFindViaModule).Append(" via module info, ")
+				.Append(Statistics.PathFindViaC).Append(" via C call, ")
+				.Append(Statistics.PathFindViaWMI).Append(" via WMI, ")
+				.Append(Statistics.PathNotFound).Append(" not found");
+			Log.Information(sbs.ToString());
+			Log.Information($"<Stat> Processes modified: {Statistics.TouchCount.ToString()}; Ignored for remodification: {Statistics.TouchIgnore.ToString()}");
+			sbs.Clear();
+			sbs.Append("<Stat> Process modify time range: ")
+				.Append((Statistics.TouchTimeShortest == ulong.MaxValue ? "?" : Statistics.TouchTimeShortest.ToString()))
+				.Append(" – ").Append(Statistics.TouchTimeLongest == ulong.MinValue ? "?" : Statistics.TouchTimeLongest.ToString()).Append(" milliseconds");
+			Log.Information(sbs.ToString());
 		}
 
 		static void Restart()

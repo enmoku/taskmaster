@@ -273,7 +273,7 @@ namespace Taskmaster
 		// TODO: build external library of components that's loaded as a dictionary of sorts
 		public ModuleInfo IdentifyModule(string moduleName)
 		{
-			var mi = new ModuleInfo(moduleName);
+			var mi = new ModuleInfo { Name = moduleName };
 
 			if (moduleName.StartsWith("wxmsw", StringComparison.InvariantCultureIgnoreCase))
 			{
@@ -511,8 +511,6 @@ namespace Taskmaster
 
 	sealed public class ModuleInfo
 	{
-		public ModuleInfo(string name) { Name = name; }
-
 		public string Name = string.Empty;
 		public ModuleType Type = ModuleType.Unknown;
 		public string Identity = string.Empty;
