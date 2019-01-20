@@ -59,10 +59,10 @@ namespace MKAh
 		// https://docs.microsoft.com/en-us/windows/desktop/api/winuser/ns-winuser-taglastinputinfo
 		public static uint LastActive()
 		{
-			var info = new LASTINPUTINFO();
+			var info = new NativeMethods.LASTINPUTINFO();
 			info.cbSize = (uint)Marshal.SizeOf(info);
 			info.dwTime = 0;
-			GetLastInputInfo(ref info); // ignore failure to retrieve data
+			NativeMethods.GetLastInputInfo(ref info); // ignore failure to retrieve data
 
 			return info.dwTime;
 		}
@@ -76,7 +76,10 @@ namespace MKAh
 		{
 			return TimeSpan.FromMilliseconds(ms);
 		}
+	}
 
+	static partial class NativeMethods
+	{
 		/// <summary>
 		/// Official documentation lies about dwTime being ticks. It's actually milliseconds
 		/// ... unless the concept of ticks has changed since.

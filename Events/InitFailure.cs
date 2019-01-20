@@ -28,7 +28,7 @@ using System;
 
 namespace Taskmaster
 {
-	sealed public class InitFailure : Exception
+	public sealed class InitFailure : Exception
 	{
 		public InitFailure(string description, Exception innerException=null) : base(description, innerException)
 		{

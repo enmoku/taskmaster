@@ -29,7 +29,7 @@ using System.Threading;
 
 namespace Taskmaster
 {
-	public static class ProcessExtensions
+	public static partial class ProcessExtensions
 	{
 		/// <summary>
 		/// Sets the priority based on limitations. Can throw an error if Process.PriorityClass is inaccessible.

@@ -70,22 +70,27 @@ namespace Taskmaster
 		/// New instance
 		/// </summary>
 		Triage, // unused
+
 		/// <summary>
 		/// Process is waiting to be handled later
 		/// </summary>
 		Batching, // unused
+
 		/// <summary>
 		/// Collecting info
 		/// </summary>
 		Datamining, // unused
+
 		/// <summary>
 		/// Brief activation
 		/// </summary>
 		Active, // unused
+
 		/// <summary>
 		/// Affecting changes
 		/// </summary>
 		Processing, // unused
+
 		/// <summary>
 		/// Done modifying with some modifications enacted.
 		/// </summary>
@@ -94,10 +99,12 @@ namespace Taskmaster
 		/// Done modifying but nothing was done.
 		/// </summary>
 		Unmodified, // unused
+
 		/// <summary>
 		/// Done processing.
 		/// </summary>
 		Finished, // unused?
+
 		/// <summary>
 		/// Background transition
 		/// </summary>
@@ -178,11 +185,16 @@ namespace Taskmaster
 		{
 			switch (priority)
 			{
-				case ProcessPriorityClass.Idle: return 0;
-				case ProcessPriorityClass.BelowNormal: return 1;
-				default: return 2; //ProcessPriorityClass.Normal, 2
-				case ProcessPriorityClass.AboveNormal: return 3;
-				case ProcessPriorityClass.High: return 4;
+				case ProcessPriorityClass.Idle:
+					return 0;
+				case ProcessPriorityClass.BelowNormal:
+					return 1;
+				default:
+					return 2; //ProcessPriorityClass.Normal, 2
+				case ProcessPriorityClass.AboveNormal:
+					return 3;
+				case ProcessPriorityClass.High:
+					return 4;
 			}
 		}
 
@@ -197,11 +209,16 @@ namespace Taskmaster
 
 			switch (priority)
 			{
-				case 0: return ProcessPriorityClass.Idle;
-				case 1: return ProcessPriorityClass.BelowNormal;
-				default: return ProcessPriorityClass.Normal;
-				case 3: return ProcessPriorityClass.AboveNormal;
-				case 4: return ProcessPriorityClass.High;
+				case 0:
+					return ProcessPriorityClass.Idle;
+				case 1:
+					return ProcessPriorityClass.BelowNormal;
+				default:
+					return ProcessPriorityClass.Normal;
+				case 3:
+					return ProcessPriorityClass.AboveNormal;
+				case 4:
+					return ProcessPriorityClass.High;
 			}
 		}
 
@@ -210,68 +227,85 @@ namespace Taskmaster
 		public static extern uint GetProcessImageFileName(IntPtr hProcess, [Out] System.Text.StringBuilder lpImageFileName, [In] [MarshalAs(UnmanagedType.U4)] int nSize);
 		*/
 	}
-}
 
-/// <summary>
-/// Credit goes to Mark Hurd at http://stackoverflow.com/a/16756808/6761963
-/// </summary>
-/// 
-public static class ProcessExtensions
-{
-	/// <exception cref="Win32Exception">If system snapshot does not return anything.</exception>
-	public static int ParentProcessId(this Process process)
+	/// <summary>
+	/// Credit goes to Mark Hurd at http://stackoverflow.com/a/16756808/6761963
+	/// </summary>
+	/// 
+	public static partial class ProcessExtensions
 	{
-		Debug.Assert(process != null);
-		return ParentProcessId(process.Id);
-	}
-
-	/// <exception cref="Win32Exception">If system snapshot does not return anything.</exception>
-	public static int ParentProcessId(int Id)
-	{
-		Debug.Assert(Id > -1);
-
-		var pe32 = new PROCESSENTRY32 { };
-		pe32.dwSize = (uint)Marshal.SizeOf(typeof(PROCESSENTRY32));
-		using (var hSnapshot = CreateToolhelp32Snapshot(SnapshotFlags.Process, (uint)Id))
+		/// <exception cref="Win32Exception">If system snapshot does not return anything.</exception>
+		public static int ParentProcessId(this Process process)
 		{
-			if (hSnapshot.IsInvalid) return -1;
-
-			if (!Process32First(hSnapshot, ref pe32))
-			{
-				var errno = Marshal.GetLastWin32Error();
-				if (errno == ERROR_NO_MORE_FILES) return -1;
-				throw new Win32Exception(errno);
-			}
-
-			do
-			{
-				if (pe32.th32ProcessID == (uint)Id)
-					return (int)pe32.th32ParentProcessID;
-			}
-			while (Process32Next(hSnapshot, ref pe32));
+			Debug.Assert(process != null);
+			return ParentProcessId(process.Id);
 		}
 
-		return -1;
+		/// <exception cref="Win32Exception">If system snapshot does not return anything.</exception>
+		public static int ParentProcessId(int Id)
+		{
+			Debug.Assert(Id > -1);
+			IntPtr ptr = IntPtr.Zero;
+			try
+			{
+				ptr = NativeMethods.CreateToolhelp32Snapshot(SnapshotFlags.Process, (uint)Id);
+				if (ptr == IntPtr.Zero)
+					return -1;
+
+				var pe32 = new PROCESSENTRY32 { };
+				pe32.dwSize = (uint)Marshal.SizeOf(typeof(PROCESSENTRY32));
+
+				if (!NativeMethods.Process32First(ptr, ref pe32))
+				{
+					var errno = Marshal.GetLastWin32Error();
+					if (errno == NativeMethods.ERROR_NO_MORE_FILES)
+						return -1;
+					throw new Win32Exception(errno);
+				}
+
+				do
+				{
+					if (pe32.th32ProcessID == (uint)Id)
+						return (int)pe32.th32ParentProcessID;
+				}
+				while (NativeMethods.Process32Next(ptr, ref pe32));
+			}
+			catch (Exception ex)
+			{
+				Logging.Stacktrace(ex);
+			}
+			finally
+			{
+				if (ptr != IntPtr.Zero)
+					NativeMethods.CloseHandle(ptr);
+			}
+
+			return -1;
+		}
 	}
 
-	const int ERROR_NO_MORE_FILES = 0x12;
-	[DllImport("kernel32.dll", SetLastError = true)]
-	static extern SafeSnapshotHandle CreateToolhelp32Snapshot(SnapshotFlags flags, uint id);
+	static partial class NativeMethods
+	{
+		internal const int ERROR_NO_MORE_FILES = 0x12;
 
-	/// <summary>
-	/// Retrieves information about the first process encountered in a system snapshot.
-	/// </summary>
-	[DllImport("kernel32.dll", SetLastError = true)]
-	static extern bool Process32First(SafeSnapshotHandle hSnapshot, ref PROCESSENTRY32 lppe);
+		[DllImport("kernel32.dll", SetLastError = true)]
+		static internal extern IntPtr CreateToolhelp32Snapshot(SnapshotFlags dwFlags, uint th32ProcessID);
 
-	/// <summary>
-	/// Retrieves information about the next process recorded in a system snapshot.
-	/// </summary>
-	[DllImport("kernel32.dll", SetLastError = true)]
-	static extern bool Process32Next(SafeSnapshotHandle hSnapshot, ref PROCESSENTRY32 lppe);
+		/// <summary>
+		/// Retrieves information about the first process encountered in a system snapshot.
+		/// </summary>
+		[DllImport("kernel32.dll")]
+		static internal extern bool Process32First(IntPtr hSnapshot, ref PROCESSENTRY32 lppe);
+
+		/// <summary>
+		/// Retrieves information about the next process recorded in a system snapshot.
+		/// </summary>
+		[DllImport("kernel32.dll")]
+		static internal extern bool Process32Next(IntPtr hSnapshot, ref PROCESSENTRY32 lppe);
+	}
 
 	[Flags]
-	enum SnapshotFlags : uint
+	internal enum SnapshotFlags : uint
 	{
 		HeapList = 0x00000001,
 		Process = 0x00000002,
@@ -284,7 +318,7 @@ public static class ProcessExtensions
 	}
 
 	[StructLayout(LayoutKind.Sequential)]
-	struct PROCESSENTRY32
+	internal struct PROCESSENTRY32
 	{
 		public uint dwSize;
 		public uint cntUsage;
@@ -298,20 +332,4 @@ public static class ProcessExtensions
 		[MarshalAs(UnmanagedType.ByValTStr, SizeConst = 260)]
 		public string szExeFile;
 	};
-
-	[SuppressUnmanagedCodeSecurity, HostProtection(SecurityAction.LinkDemand, MayLeakOnAbort = true)]
-	internal sealed class SafeSnapshotHandle : SafeHandleMinusOneIsInvalid
-	{
-		internal SafeSnapshotHandle() : base(true)
-		{
-		}
-
-		[SecurityPermission(SecurityAction.LinkDemand, UnmanagedCode = true)]
-		internal SafeSnapshotHandle(IntPtr handle) : base(true) => SetHandle(handle);
-
-		protected override bool ReleaseHandle() => CloseHandle(handle);
-
-		[ReliabilityContract(Consistency.WillNotCorruptState, Cer.Success), DllImport("kernel32.dll", CharSet = CharSet.Auto, SetLastError = true, ExactSpelling = true)]
-		static extern bool CloseHandle(IntPtr handle);
-	}
 }

@@ -346,7 +346,7 @@ namespace Taskmaster
 		{
 			var now = DateTimeOffset.UtcNow;
 
-			CleanWaitForExitList(); // HACK
+			await CleanWaitForExitList(); // HACK
 
 			if (!Atomic.Lock(ref scan_lock)) return;
 
@@ -861,13 +861,13 @@ namespace Taskmaster
 		}
 
 		int CleanWaitForExitList_lock = 0;
-		async void CleanWaitForExitList()
+		async Task CleanWaitForExitList()
 		{
 			if (!Atomic.Lock(ref CleanWaitForExitList_lock)) return;
 
 			await Task.Delay(TimeSpan.FromSeconds(15)).ConfigureAwait(false);
 
-			Task.Run(async () =>
+			await Task.Run(async () =>
 			{
 				try
 				{
@@ -879,7 +879,7 @@ namespace Taskmaster
 						}
 						catch { }
 
-						Log.Warning("[" + info.Controller.FriendlyName + "] " + info.Name + " (#" + info.Id + ") exited without notice; Cleaning.");
+						Log.Warning($"[{info.Controller.FriendlyName}] {info.Name} (#{info.Id.ToString()}) exited without notice; Cleaning.");
 						WaitForExitTriggered(info);
 					}
 				}

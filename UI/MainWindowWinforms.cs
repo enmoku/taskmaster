@@ -2287,7 +2287,7 @@ namespace Taskmaster
 			}
 		}
 
-		async void RemoveOldProcessingEntry(int key)
+		async Task RemoveOldProcessingEntry(int key)
 		{
 			await Task.Delay(TimeSpan.FromSeconds(15)).ConfigureAwait(false);
 

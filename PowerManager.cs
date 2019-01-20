@@ -1234,9 +1234,9 @@ namespace Taskmaster
 		/// Restores normal power mode and frees the associated source pid from holding it.
 		/// </summary>
 		/// <param name="sourcePid">0 releases all locks.</param>
-		public async void Release(int sourcePid)
+		public async Task Release(int sourcePid)
 		{
-			if (Taskmaster.DebugPower) Log.Debug("<Power> Releasing " + (sourcePid == -1 ? "all locks" : $"#{sourcePid}"));
+			if (Taskmaster.DebugPower) Log.Debug($"<Power> Releasing {(sourcePid == -1 ? "all locks" : $"#{sourcePid.ToString()}")}");
 
 			Debug.Assert(sourcePid == -1 || !ProcessManager.SystemProcessId(sourcePid));
 

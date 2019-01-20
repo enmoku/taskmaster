@@ -98,11 +98,11 @@ namespace Taskmaster
 			{
 				dwLength = (uint)Marshal.SizeOf(typeof(MEMORYSTATUSEX))
 			};
-			GlobalMemoryStatusEx(ref mem);
+			NativeMethods.GlobalMemoryStatusEx(ref mem);
 			Total = mem.ullTotalPhys;
 			FreeBytes = mem.ullAvailPhys;
 			Used = Total - mem.ullAvailPhys;
-			if (Taskmaster.Trace) Debug.WriteLine("MEMORY - Total: " + Total + ", Free: " + FreeBytes + ", Used: " + Used);
+			if (Taskmaster.Trace) Debug.WriteLine($"MEMORY - Total: {Total.ToString()}, Free: {FreeBytes.ToString()}, Used: {Used.ToString()}");
 		}
 
 		// weird hack
@@ -120,17 +120,15 @@ namespace Taskmaster
 				pfcfree = null;
 			}
 		}
+	}
 
-		// start: P/Invoke
-
+	static partial class NativeMethods
+	{
 		// https://docs.microsoft.com/en-us/windows/desktop/api/sysinfoapi/nf-sysinfoapi-globalmemorystatusex
 		[return: System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.Bool)]
 		[System.Runtime.InteropServices.DllImport("kernel32.dll", CharSet = System.Runtime.InteropServices.CharSet.Auto, SetLastError = true)]
-		static extern bool GlobalMemoryStatusEx(ref MEMORYSTATUSEX lpBuffer);
-
-		// end: P/Invoke
+		static internal extern bool GlobalMemoryStatusEx(ref MEMORYSTATUSEX lpBuffer);
 	}
-
 
 	/*
 	sealed class MemoryController

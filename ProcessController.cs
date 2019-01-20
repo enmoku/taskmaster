@@ -197,8 +197,11 @@ namespace Taskmaster
 		{
 			if (PathElements == 0 && !string.IsNullOrEmpty(Path))
 			{
-				foreach (char c in Path)
+				for (int i = 0; i < Path.Length; i++)
+				{
+					char c = Path[i];
 					if (c == System.IO.Path.DirectorySeparatorChar || c == System.IO.Path.AltDirectorySeparatorChar) PathElements++;
+				}
 
 				if (!(Path.EndsWith(System.IO.Path.DirectorySeparatorChar.ToString()) || Path.EndsWith(System.IO.Path.AltDirectorySeparatorChar.ToString())))
 					PathElements++;

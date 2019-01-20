@@ -29,7 +29,7 @@ using System.Runtime.InteropServices;
 
 namespace Taskmaster
 {
-	public static class NativeMethods
+	public static partial class NativeMethods
 	{
 		/// <summary>
 		/// Tick count as ulong. Actually milliseconds.

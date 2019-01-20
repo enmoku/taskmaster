@@ -46,7 +46,7 @@ namespace Taskmaster
 
 		ConcurrentDictionary<byte[], int> cache = new ConcurrentDictionary<byte[], int>(new StructuralEqualityComparer<byte[]>());
 
-		public async void Analyze(ProcessEx info)
+		public async Task Analyze(ProcessEx info)
 		{
 			if (string.IsNullOrEmpty(info.Path)) return;
 
@@ -108,18 +108,18 @@ namespace Taskmaster
 				int bytesNeeded = 0;
 
 				// Determine number of modules
-				if (!EnumProcessModulesEx(info.Process.Handle, modulePtrs, 0, out bytesNeeded, (uint)ModuleFilter.ListModulesAll))
+				if (!NativeMethods.EnumProcessModulesEx(info.Process.Handle, modulePtrs, 0, out bytesNeeded, (uint)NativeMethods.ModuleFilter.ListModulesAll))
 					return;
 
 				int totalModules = bytesNeeded / IntPtr.Size;
 				modulePtrs = new IntPtr[totalModules];
 				var handle = info.Process.Handle;
-				if (EnumProcessModulesEx(handle, modulePtrs, bytesNeeded, out bytesNeeded, (uint)ModuleFilter.ListModulesAll))
+				if (NativeMethods.EnumProcessModulesEx(handle, modulePtrs, bytesNeeded, out bytesNeeded, (uint)NativeMethods.ModuleFilter.ListModulesAll))
 				{
 					for (int index = 0; index < totalModules; index++)
 					{
 						StringBuilder modulePath = new StringBuilder(1024);
-						GetModuleFileNameEx(handle, modulePtrs[index], modulePath, (uint)(modulePath.Capacity));
+						NativeMethods.GetModuleFileNameEx(handle, modulePtrs[index], modulePath, (uint)(modulePath.Capacity));
 
 						string moduleName = Path.GetFileName(modulePath.ToString());
 						//ModuleInformation moduleInformation = new ModuleInformation();
@@ -211,7 +211,7 @@ namespace Taskmaster
 				var recommendations = new List<string>();
 
 				if (latestDXX > latestDX)
-					recommendations.Add($"force DX {latestDX / 10} rendering");
+					recommendations.Add($"force DX {(latestDX / 10).ToString()} rendering");
 
 				if (identifiedModules.ContainsKey("PhysX"))
 					recommendations.Add("disable PhysX");
@@ -482,31 +482,6 @@ namespace Taskmaster
 
 			return mi;
 		}
-
-		[StructLayout(LayoutKind.Sequential)]
-		public struct ModuleInformation
-		{
-			public IntPtr lpBaseOfDll;
-			public uint SizeOfImage;
-			public IntPtr EntryPoint;
-		}
-
-		internal enum ModuleFilter
-		{
-			ListModulesDefault = 0x0,
-			ListModules32Bit = 0x01,
-			ListModules64Bit = 0x02,
-			ListModulesAll = 0x03,
-		}
-
-		[DllImport("psapi.dll")]
-		public static extern bool EnumProcessModulesEx(IntPtr hProcess, [MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.U4)] [In][Out] IntPtr[] lphModule, int cb, [MarshalAs(UnmanagedType.U4)] out int lpcbNeeded, uint dwFilterFlag);
-
-		[DllImport("psapi.dll")]
-		public static extern uint GetModuleFileNameEx(IntPtr hProcess, IntPtr hModule, [Out] StringBuilder lpBaseName, [In] [MarshalAs(UnmanagedType.U4)] uint nSize);
-
-		[DllImport("psapi.dll", SetLastError = true)]
-		public static extern bool GetModuleInformation(IntPtr hProcess, IntPtr hModule, out ModuleInformation lpmodinfo, uint cb);
 	}
 
 	sealed public class ModuleInfo
@@ -566,5 +541,30 @@ namespace Taskmaster
 		Enable,
 		Disable,
 		Change,
+	}
+
+	static partial class NativeMethods
+	{
+		[StructLayout(LayoutKind.Sequential)]
+		internal struct ModuleInformation
+		{
+			public IntPtr lpBaseOfDll;
+			public uint SizeOfImage;
+			public IntPtr EntryPoint;
+		}
+
+		internal enum ModuleFilter
+		{
+			ListModulesDefault = 0x0,
+			ListModules32Bit = 0x01,
+			ListModules64Bit = 0x02,
+			ListModulesAll = 0x03,
+		}
+
+		[DllImport("psapi.dll")]
+		internal static extern bool EnumProcessModulesEx(IntPtr hProcess, [MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.U4)] [In][Out] IntPtr[] lphModule, int cb, [MarshalAs(UnmanagedType.U4)] out int lpcbNeeded, uint dwFilterFlag);
+
+		[DllImport("psapi.dll", SetLastError = true)]
+		internal static extern bool GetModuleInformation(IntPtr hProcess, IntPtr hModule, out ModuleInformation lpmodinfo, uint cb);
 	}
 }
