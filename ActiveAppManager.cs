@@ -109,7 +109,7 @@ namespace Taskmaster
 
 			if (dirty) corecfg.MarkDirty();
 
-			hungTimer = new System.Threading.Timer(HangDetector, null, TimeSpan.FromSeconds(15), TimeSpan.FromSeconds(60)); // starts the timer
+			HangTimer = new System.Threading.Timer(HangDetector, null, TimeSpan.FromSeconds(15), TimeSpan.FromSeconds(60)); // starts the timer
 
 			if (Taskmaster.DebugForeground) Log.Information("<Foreground> Component loaded.");
 
@@ -146,7 +146,7 @@ namespace Taskmaster
 			return true;
 		}
 
-		readonly System.Threading.Timer hungTimer = null;
+		readonly System.Threading.Timer HangTimer = null;
 		DateTimeOffset HangTime = DateTimeOffset.MaxValue;
 
 		int PreviousFG = 0;
@@ -346,7 +346,7 @@ namespace Taskmaster
 		{
 			if (disposed) return;
 
-			hungTimer?.Dispose();
+			HangTimer?.Dispose();
 
 			if (disposing)
 			{

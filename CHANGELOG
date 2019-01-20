@@ -3,6 +3,8 @@ Comprehensive changes can be found in Git change history:
 	https://github.com/mkahvi/taskmaster/commits/master
 
 ## [0.12...]
+### 2018-01-20
+	Internal: Large number of changes that should not affect functionality.
 ### 2018-01-19
 	Fixed: Weird affinity saving.
 ### 2018-01-18
