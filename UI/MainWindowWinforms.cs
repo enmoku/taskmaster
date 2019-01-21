@@ -2781,7 +2781,11 @@ namespace Taskmaster
 			// Log.Verbose("Filling GUI log.");
 			loglist.BeginUpdate();
 			foreach (var evmsg in MemoryLog.MemorySink.ToArray())
-				loglist.Items.Add(evmsg.Message);
+			{
+				var li = loglist.Items.Add(evmsg.Message);
+				if ((int)evmsg.Level >= (int)Serilog.Events.LogEventLevel.Error)
+					li.ForeColor = System.Drawing.Color.Red;
+			}
 			loglist.EndUpdate();
 
 			ShowLastLog();
