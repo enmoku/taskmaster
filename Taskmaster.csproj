@@ -11,6 +11,7 @@
     <ApplicationIcon>taskmaster-hammer.ico</ApplicationIcon>
     <CodePage>65001</CodePage>
     <IsWebBootstrapper>false</IsWebBootstrapper>
+    <AllowedReferenceRelatedFileExtensions>.pdb;.manifest</AllowedReferenceRelatedFileExtensions>
     <NuGetPackageImportStamp>
     </NuGetPackageImportStamp>
     <TargetFrameworkProfile />
@@ -69,7 +70,6 @@
     <ApplicationManifest>app.manifest</ApplicationManifest>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="Microsoft.CSharp" />
     <Reference Include="NAudio, Version=1.8.5.0, Culture=neutral, processorArchitecture=MSIL">
       <HintPath>..\packages\NAudio.1.8.5\lib\net35\NAudio.dll</HintPath>
     </Reference>
@@ -109,6 +109,7 @@
     <None Include="app.manifest">
       <SubType>Designer</SubType>
     </None>
+    <None Include="Resources\KnownModules.ini" />
     <None Include="Resources\ProjectDirectory.txt" />
     <Content Include="taskmaster-hammer.ico" />
     <Content Include="LICENSE">
@@ -239,9 +240,6 @@
       <ProductName>.NET Framework 3.5 SP1</ProductName>
       <Install>false</Install>
     </BootstrapperPackage>
-  </ItemGroup>
-  <ItemGroup>
-    <WCFMetadata Include="Connected Services\" />
   </ItemGroup>
   <ItemGroup>
     <None Include="CHANGELOG">
