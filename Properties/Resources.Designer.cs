@@ -70,6 +70,12 @@ namespace Taskmaster.Properties {
             }
         }
         
+        internal static string KnownModules {
+            get {
+                return ResourceManager.GetString("KnownModules", resourceCulture);
+            }
+        }
+        
         /// <summary>
         ///   Looks up a localized string similar to The MIT License (MIT)
         ///

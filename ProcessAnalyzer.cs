@@ -34,6 +34,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Serilog;
 using System.Collections.Concurrent;
+using System.Linq;
 
 namespace Taskmaster
 {
@@ -41,7 +42,14 @@ namespace Taskmaster
 	{
 		public ProcessAnalyzer()
 		{
+			var modulepath = Path.Combine(Taskmaster.datapath, ModuleFile);
+			if (!File.Exists(modulepath) || new FileInfo(modulepath).LastWriteTimeUtc < Taskmaster.BuildDate())
+				File.WriteAllText(modulepath, Properties.Resources.KnownModules, Encoding.UTF8);
+			Load(ModuleFile);
 
+			var usermodulepath = Path.Combine(Taskmaster.datapath, UserModuleFile);
+			if (File.Exists(usermodulepath))
+				Load(UserModuleFile);
 		}
 
 		ConcurrentDictionary<byte[], int> cache = new ConcurrentDictionary<byte[], int>(new StructuralEqualityComparer<byte[]>());
@@ -61,8 +69,8 @@ namespace Taskmaster
 			int delay = record ? Taskmaster.RecordAnalysis.Constrain(10, 180) : 30;
 			Log.Debug($"<Analysis> {info.Name} (#{info.Id}) scheduled");
 
-			var linkedModules = new List<ModuleInfo>();
-			var identifiedModules = new ConcurrentDictionary<string, ModuleInfo>();
+			var AllLinkedModules = new ConcurrentDictionary<string, ModuleInfo>();
+			var ImportantModules = new ConcurrentDictionary<string, ModuleInfo>();
 			long privMem = 0;
 			long threadCount = 0;
 			long workingSet = 0;
@@ -128,10 +136,22 @@ namespace Taskmaster
 						//linkedModules.Add(moduleName.ToLowerInvariant());
 						//Debug.WriteLine(" - " + moduleName);
 
-						var mi = IdentifyModule(moduleName.Trim());
-						if (mi.Primary) identifiedModules.TryAdd(mi.Identity, mi);
+						var file = moduleName.Trim();
+						var identity = IdentifyModule(file);
 
-						if (record) linkedModules.Add(mi);
+						ModuleInfo mi = null;
+						if (AllLinkedModules.TryGetValue(identity, out mi))
+							{ /* NOP */ }
+						else if (KnownModules.TryGetValue(identity, out var lmi))
+							mi = lmi.Clone();
+						else
+							mi = new ModuleInfo() { Identity = "Unknown" };
+
+						mi.Detected.Add(file);
+
+						AllLinkedModules.TryAdd(identity, mi);
+
+						if (mi.Listed) ImportantModules.TryAdd(identity, mi);
 					}
 				}
 
@@ -184,14 +204,14 @@ namespace Taskmaster
 				else if (memModerate) components.Add("Memory(Moderate)");
 
 				long latestDX = 0, latestDXX = 0;
-				foreach (var modname in identifiedModules.Keys)
+				foreach (var modname in ImportantModules.Keys)
 				{
 					components.Add(modname);
 
 					// recommendations
 					if (modname.StartsWith("DirectX", StringComparison.InvariantCultureIgnoreCase))
 					{
-						if (identifiedModules.TryGetValue(modname, out var mod))
+						if (ImportantModules.TryGetValue(modname, out var mod))
 						{
 							if (modname.IndexOf("extension", StringComparison.InvariantCultureIgnoreCase) >= 0)
 								latestDXX = Math.Max(mod.Value, latestDXX);
@@ -213,7 +233,7 @@ namespace Taskmaster
 				if (latestDXX > latestDX)
 					recommendations.Add($"force DX {(latestDX / 10).ToString()} rendering");
 
-				if (identifiedModules.ContainsKey("PhysX"))
+				if (ImportantModules.ContainsKey("PhysX"))
 					recommendations.Add("disable PhysX");
 
 				if (recommendations.Count > 0)
@@ -235,29 +255,25 @@ namespace Taskmaster
 
 					var contents = new StringBuilder();
 					contents.Append("Analysis:").AppendLine()
-						.Append("\t").Append("Process: ").Append(info.Name).AppendLine()
-						.Append("\t").Append("Version: ").Append(version.FileVersion?.ToString() ?? string.Empty).AppendLine()
-						.Append("\t").Append("Product: ").Append(version.ProductName?.ToString() ?? string.Empty).AppendLine()
-						.Append("\t").Append("Company: ").Append(version.CompanyName?.ToString() ?? string.Empty).AppendLine()
-						.Append("\t").Append("64-bit : ").Append(x64 ? "Yes" : "No").AppendLine()
-						.Append("\t").Append("Path   : ").Append(info.Path).AppendLine()
-						.Append("\t").Append("Threads: ").Append(threadCount).AppendLine()
-						.Append("\t").Append("Memory : ").AppendLine()
-						.Append("\t\t- ").Append("Private : ").Append(privMem).AppendLine()
-						.Append("\t\t- ").Append("Working : ").Append(workingSet).AppendLine()
-						.Append("\t\t- ").Append("Virtual : ").Append(virtualMem).AppendLine()
-						.Append("\t").Append("Modules: ").AppendLine();
+						.Append("  ").Append("Process: ").Append(info.Name).AppendLine()
+						.Append("  ").Append("Version: ").Append(version.FileVersion?.ToString() ?? string.Empty).AppendLine()
+						.Append("  ").Append("Product: ").Append(version.ProductName?.ToString() ?? string.Empty).AppendLine()
+						.Append("  ").Append("Company: ").Append(version.CompanyName?.ToString() ?? string.Empty).AppendLine()
+						.Append("  ").Append("64-bit : ").Append(x64 ? "Yes" : "No").AppendLine()
+						.Append("  ").Append("Path   : ").Append(info.Path).AppendLine()
+						.Append("  ").Append("Threads: ").Append(threadCount).AppendLine()
+						.Append("  ").Append("Memory : ").AppendLine()
+						.Append("    ").Append("Private : ").Append(privMem).AppendLine()
+						.Append("    ").Append("Working : ").Append(workingSet).AppendLine()
+						.Append("    ").Append("Virtual : ").Append(virtualMem).AppendLine()
+						.Append("  ").Append("Modules: ").AppendLine();
 
-					foreach (var mod in linkedModules)
+					foreach (var mod in AllLinkedModules.Values)
 					{
-						bool notUnknown = mod.Type != ModuleType.Unknown;
-						bool hasIdentity = !string.IsNullOrEmpty(mod.Identity);
-						bool subItems = notUnknown || hasIdentity;
-						contents.Append("\t\t- ").Append(mod.Name).Append(subItems ? ":" : "").AppendLine();
-						if (notUnknown)
-							contents.Append("\t\t  Type     : ").Append(mod.Type.ToString()).AppendLine();
-						if (hasIdentity)
-							contents.Append("\t\t  Identity : ").Append(mod.Identity).AppendLine();
+						contents.Append("    ").Append(mod.Identity).Append(":").AppendLine();
+						if (mod.Type != ModuleType.Unknown)
+							contents.Append("      Type: ").Append(mod.Type.ToString()).AppendLine();
+						contents.Append("      Files: [ " + string.Join(", ", mod.Detected) + " ]").AppendLine();
 					}
 
 					File.WriteAllText(endpath, contents.ToString());
@@ -271,222 +287,133 @@ namespace Taskmaster
 		}
 
 		// TODO: build external library of components that's loaded as a dictionary of sorts
-		public ModuleInfo IdentifyModule(string moduleName)
+		public string IdentifyModule(string moduleName)
 		{
-			var mi = new ModuleInfo { Name = moduleName };
-
-			if (moduleName.StartsWith("wxmsw", StringComparison.InvariantCultureIgnoreCase))
+			var name = moduleName.ToLowerInvariant();
+			foreach (var modfile in KnownFiles)
 			{
-				mi.Type = ModuleType.Interface;
-				mi.Identity = "WxWidgets";
-				mi.Open = true;
-			}
-			else if (moduleName.StartsWith("dsound.dll", StringComparison.InvariantCultureIgnoreCase))
-			{
-				mi.Type = ModuleType.Audio;
-				mi.Identity = "DirectSound";
-				mi.Primary = true;
-				mi.Upgrade = "XAudio";
-			}
-			else if (moduleName.StartsWith("xaudio", StringComparison.InvariantCultureIgnoreCase))
-			{
-				mi.Type = ModuleType.Audio;
-				mi.Identity = "XAudio";
-				mi.Primary = true;
-			}
-			else if (moduleName.StartsWith("physx", StringComparison.InvariantCultureIgnoreCase))
-			{
-				mi.Type = ModuleType.Physics;
-				mi.Identity = "PhysX";
-				mi.Proprietary = true;
-				mi.Primary = true;
-				// If possible, using something else for physics would be good.
-				// This is likely loaded regardless of such choice.
-				mi.Recommendation = ModuleRecommendation.Change;
-			}
-			else if (moduleName.StartsWith("xinput", StringComparison.InvariantCultureIgnoreCase))
-			{
-				mi.Type = ModuleType.Controller;
-				mi.Identity = "XInput";
-				mi.Primary = true;
-			}
-			else if (moduleName.StartsWith("dinput", StringComparison.InvariantCultureIgnoreCase))
-			{
-				mi.Type = ModuleType.Controller;
-				mi.Identity = "DirectInput";
-				mi.Primary = true;
-				// Unless non-gamepads are involved, directinput is bad...
-				// This will likely be loaded regardless of users chosen controller, however.
-				mi.Recommendation = ModuleRecommendation.Change;
-				mi.Upgrade = "XInput";
-			}
-			else if (moduleName.StartsWith("d3d8thk.dll", StringComparison.InvariantCultureIgnoreCase))
-			{
-				mi.Type = ModuleType.Generic;
-				mi.Identity = "DirectX 8 Thunk API";
-				mi.Value = 8;
-				mi.Recommendation = ModuleRecommendation.Change; // upgrade to DX11 if possible
-			}
-			else if (moduleName.StartsWith("gameux.dll", StringComparison.InvariantCultureIgnoreCase))
-			{
-				mi.Type = ModuleType.Generic;
-				mi.Identity = "GameUX";
-			}
-			else if (moduleName.StartsWith("openal32.dll", StringComparison.InvariantCultureIgnoreCase)) // wrap_oal.dll too
-			{
-				mi.Type = ModuleType.Audio;
-				mi.Identity = "OpenAL";
-				mi.Open = true;
-				mi.Primary = true;
-				mi.Upgrade = "OpenAL Soft"; // Potential, not necessarily any better (https://kcat.strangesoft.net/openal.html)
-			}
-			else if (moduleName.StartsWith("wow64.dll", StringComparison.InvariantCultureIgnoreCase))
-			{
-				mi.Type = ModuleType.Generic;
-				mi.Identity = "Windows-on-Windows";
-				mi.Recommendation = ModuleRecommendation.Change; // Should run 64-bit version if available
-			}
-			else if (moduleName.StartsWith("d3d9.dll", StringComparison.InvariantCultureIgnoreCase))
-			{
-				mi.Type = ModuleType.Multimedia;
-				mi.Identity = "DirectX 9";
-				mi.Value = 90;
-				mi.Primary = true;
-			}
-			else if (moduleName.StartsWith("d3dx9_", StringComparison.InvariantCultureIgnoreCase))
-			{
-				mi.Type = ModuleType.Multimedia;
-				mi.Identity = "DirectX 9 Extensions";
-				mi.Value = 90;
-				mi.Extension = true;
-			}
-			else if (moduleName.StartsWith("d3d10.dll", StringComparison.InvariantCultureIgnoreCase))
-			{
-				mi.Type = ModuleType.Multimedia;
-				mi.Identity = "DirectX 10";
-				mi.Value = 100;
-				mi.Primary = true;
-				// Anything else is better. This is likely loaded regardless of user choice.
-				mi.Recommendation = ModuleRecommendation.Change;
-			}
-			else if (moduleName.StartsWith("d3d10_1.dll", StringComparison.InvariantCultureIgnoreCase))
-			{
-				mi.Type = ModuleType.Multimedia;
-				mi.Identity = "DirectX 10.1";
-				mi.Value = 101;
-				mi.Extension = true;
-			}
-			else if (moduleName.StartsWith("d3dx10_", StringComparison.InvariantCultureIgnoreCase))
-			{
-				mi.Type = ModuleType.Multimedia;
-				mi.Identity = "DirectX 10 Extensions";
-				mi.Value = 100;
-				mi.Extension = true;
-			}
-			else if (moduleName.StartsWith("d3d11.dll", StringComparison.InvariantCultureIgnoreCase))
-			{
-				mi.Type = ModuleType.Multimedia;
-				mi.Identity = "DirectX 11";
-				mi.Value = 110;
-				mi.Primary = true;
-			}
-			else if (moduleName.StartsWith("d3dx11_", StringComparison.InvariantCultureIgnoreCase))
-			{
-				mi.Type = ModuleType.Multimedia;
-				mi.Identity = "DirectX 11 Extensions";
-				mi.Value = 110;
-				mi.Extension = true;
-			}
-			else if (moduleName.StartsWith("d3d12.dll", StringComparison.InvariantCultureIgnoreCase))
-			{
-				mi.Type = ModuleType.Multimedia;
-				mi.Identity = "DirectX 12";
-				mi.Value = 120;
-				mi.Primary = true;
-			}
-			else if (moduleName.StartsWith("d3dx12_", StringComparison.InvariantCultureIgnoreCase))
-			{
-				mi.Type = ModuleType.Multimedia;
-				mi.Identity = "DirectX 12 Extensions";
-				mi.Value = 120;
-				mi.Extension = true;
-			}
-			else if (moduleName.StartsWith("binkw32.dll", StringComparison.InvariantCultureIgnoreCase))
-			{
-				mi.Type = ModuleType.Multimedia;
-				mi.Identity = "Bink";
-				mi.Proprietary = true;
-			}
-			else if (moduleName.StartsWith("wsock32.dll", StringComparison.InvariantCultureIgnoreCase))
-			{
-				mi.Type = ModuleType.Network;
-				mi.Identity = "WinSock";
-				mi.Primary = true;
-			}
-			else if (moduleName.StartsWith("bugsplat.dll", StringComparison.InvariantCultureIgnoreCase))
-			{
-				mi.Type = ModuleType.Generic;
-				mi.Identity = "BugSplat";
-			}
-			else if (moduleName.StartsWith("gdi32.dll", StringComparison.InvariantCultureIgnoreCase))
-			{
-				mi.Type = ModuleType.Graphics;
-				mi.Identity = "GDI"; // deprecated graphics API, may still be loaded as part of the newer ones?
-
-				//mi.Primary = true;
-				//mi.Deprecated = true;
-
-				mi.Recommendation = ModuleRecommendation.Change; // GDI+
-			}
-			else if (moduleName.StartsWith("gdiplus.dll", StringComparison.InvariantCultureIgnoreCase))
-			{
-				mi.Type = ModuleType.Graphics;
-				mi.Identity = "GDI+";
-				//mi.Primary = true;
-			}
-			else if (moduleName.StartsWith("steamapi.dll", StringComparison.InvariantCultureIgnoreCase))
-			{
-				mi.Type = ModuleType.Generic;
-				mi.Identity = "Steam API"; // distributed via Steam, not a guarantee of anything
-			}
-			else if (moduleName.StartsWith("fmodex.dll", StringComparison.InvariantCultureIgnoreCase))
-			{
-				mi.Type = ModuleType.Audio;
-				mi.Identity = "FMOD EX";
-				mi.Primary = true;
-			}
-			else if (moduleName.StartsWith("stlport.dll", StringComparison.InvariantCultureIgnoreCase))
-			{
-				mi.Type = ModuleType.Generic;
-				mi.Identity = "STLPort"; // Alternate C++ STL http://www.stlport.org/
-			}
-			else if (moduleName.StartsWith("api-ms-win-downlevel-", StringComparison.InvariantCultureIgnoreCase))
-			{
-				mi.Type = ModuleType.Unknown;
-				mi.Identity = "Downlevel API"; // ??? is this just older versions of dlls being loaded?
-			}
-			else if (moduleName.StartsWith("unityplayer.dll", StringComparison.InvariantCultureIgnoreCase))
-			{
-				mi.Type = ModuleType.Framework;
-				mi.Identity = "Unity engine";
-				mi.Primary = true;
-				// Unity has some performance problems, but most of them seem to be caused by just bad programming by devs,
-				// probably not doing some optimizations that they expect the engine to do on its own.
-			}
-			else if (moduleName.StartsWith("opengl32.dll", StringComparison.InvariantCultureIgnoreCase))
-			{
-				mi.Type = ModuleType.Graphics;
-				mi.Identity = "OpenGL";
-				mi.Primary = true;
+				if (name.StartsWith(modfile.Key.ToLowerInvariant()))
+					return modfile.Value.Identity;
 			}
 
-			return mi;
+			return "Unknown";
+		}
+
+		static string[] yesvalues = { "yes", "true" };
+
+		const string ModuleFile = "Modules.Known.ini";
+		const string UserModuleFile = "Modules.User.ini";
+
+		/// <summary>
+		/// Identity to Module
+		/// </summary>
+		ConcurrentDictionary<string, ModuleInfo> KnownModules = new ConcurrentDictionary<string, ModuleInfo>();
+		/// <summary>
+		/// File matching to Module
+		/// </summary>
+		ConcurrentDictionary<string, ModuleInfo> KnownFiles = new ConcurrentDictionary<string, ModuleInfo>();
+
+		readonly Dictionary<string, ModuleRecommendation> RecMap = new Dictionary<string, ModuleRecommendation>()
+		{
+			{ "enable", ModuleRecommendation.Enable },
+			{ "disable", ModuleRecommendation.Disable },
+			{ "change", ModuleRecommendation.Change },
+		};
+
+		readonly Dictionary<string, ModuleType> TypeMap = new Dictionary<string, ModuleType>()
+		{
+			{ "audio", ModuleType.Audio },
+			{ "controller", ModuleType.Controller },
+			{ "framework", ModuleType.Framework },
+			{ "generic", ModuleType.Generic },
+			{ "graphics", ModuleType.Graphics },
+			{ "interface", ModuleType.Interface },
+			{ "multimedia", ModuleType.Multimedia },
+			{ "network", ModuleType.Network },
+			{ "physics", ModuleType.Physics },
+			{ "processing", ModuleType.Processing },
+			{ "system", ModuleType.System },
+		};
+
+		public void Load(string file)
+		{
+			try
+			{
+				var modulepath = Path.Combine(Taskmaster.datapath, file);
+
+				var cfg = Taskmaster.Config.Load(modulepath);
+
+				foreach (var section in cfg.Config)
+				{
+					try
+					{
+						string name = section.Name;
+						if (KnownModules.ContainsKey(name)) continue;
+
+						var files = section.TryGet("files")?.StringValueArray ?? null;
+
+						if (files == null || files.Length == 0) continue;
+
+						bool listed = yesvalues.Contains(section.TryGet("listed")?.StringValue.ToLowerInvariant() ?? "no");
+						//string upgrade = section.TryGet("upgrade")?.StringValue ?? null;
+						//bool open = yesvalues.Contains(section.TryGet("open")?.StringValue.ToLowerInvariant() ?? "no");
+						//bool prop = yesvalues.Contains(section.TryGet("proprietary")?.StringValue.ToLowerInvariant() ?? "no");
+						bool ext = yesvalues.Contains(section.TryGet("extension")?.StringValue.ToLowerInvariant() ?? "no");
+						string ttype = section.TryGet("type")?.StringValue.ToLowerInvariant() ?? "unknown"; // TODO
+						//string trec = section.TryGet("recommendation")?.StringValue.ToLowerInvariant() ?? null;
+						//string notes = section.TryGet("notes")?.StringValue ?? null;
+						long value = section.TryGet("value")?.IntValue ?? 0;
+						/*
+						ModuleRecommendation rec = ModuleRecommendation.Undefined;
+						if (!RecMap.TryGetValue(trec, out rec))
+							rec = ModuleRecommendation.Undefined;
+						*/
+						ModuleType type = ModuleType.Unknown;
+						if (!TypeMap.TryGetValue(ttype, out type))
+							type = ModuleType.Unknown;
+
+						string identity = section.Name;
+
+						var mi = new ModuleInfo
+						{
+							Identity = identity,
+							Type = type,
+							Files = files,
+							Listed = listed,
+							//Upgrade = upgrade,
+							//Open = open,
+							//Extension = ext,
+							//Proprietary = prop,
+							//Recommendation = rec,
+							Value = value,
+						};
+
+						if (KnownModules.TryAdd(identity, mi))
+						{
+							foreach (var kfile in files)
+								KnownFiles.TryAdd(kfile, mi);
+						}
+					}
+					catch (Exception ex)
+					{
+						Logging.Stacktrace(ex);
+					}
+				}
+
+				Log.Information($"<Analysis> Modules known: {KnownModules.Count.ToString()}");
+			}
+			catch (Exception ex)
+			{
+				Logging.Stacktrace(ex);
+			}
+
 		}
 	}
 
 	sealed public class ModuleInfo
 	{
-		public string Name = string.Empty;
+		public string[] Files = null;
+		public List<string> Detected = new List<string>();
 		public ModuleType Type = ModuleType.Unknown;
 		public string Identity = string.Empty;
 		public long Value = 0;
@@ -504,7 +431,7 @@ namespace Taskmaster
 		/// <summary>
 		/// Primary component.
 		/// </summary>
-		public bool Primary = false;
+		public bool Listed = false;
 		/// <summary>
 		/// Extension to some other component, not too interesting on its own.
 		/// </summary>
@@ -517,6 +444,31 @@ namespace Taskmaster
 		/// Open standard.
 		/// </summary>
 		public bool Open = false;
+
+		public ModuleInfo Clone()
+		{
+			string[] farr = null;
+			if (Files.Length > 0)
+			{
+				farr = new string[Files.Length];
+				Files.CopyTo(farr, 0);
+			}
+
+			var lmi = new ModuleInfo()
+			{
+				Files = farr,
+				Type = Type,
+				Identity = Identity,
+				Value = Value,
+				Recommendation = Recommendation,
+				Listed = Listed,
+				Extension = Extension,
+				Proprietary = Proprietary,
+				Open = Open,
+			};
+			lmi.Detected.AddRange(Detected);
+			return lmi;
+		}
 	}
 
 	public enum ModuleType
