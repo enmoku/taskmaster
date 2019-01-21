@@ -3,6 +3,9 @@ Comprehensive changes can be found in Git change history:
 	https://github.com/mkahvi/taskmaster/commits/master
 
 ## [0.12...]
+### 2018-01-22
+	Fixed: Errors were not colored on initial load.
+	Changed: Analyzer is more user configurable.
 ### 2018-01-20
 	Internal: Large number of changes that should not affect functionality.
 ### 2018-01-19
