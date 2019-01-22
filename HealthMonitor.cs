@@ -34,56 +34,13 @@ using Serilog;
 
 namespace Taskmaster
 {
-	sealed internal class HealthMonitorSettings
-	{
-		/// <summary>
-		/// Scanning frequency.
-		/// </summary>
-		public TimeSpan Frequency { get; set; } = TimeSpan.FromMinutes(5);
-
-		/// <summary>
-		/// Free megabytes.
-		/// </summary>
-		public ulong MemLevel { get; set; } = 1000;
-
-		/// <summary>
-		/// Ignore foreground application.
-		/// </summary>
-		public bool MemIgnoreFocus { get; set; } = true;
-
-		/// <summary>
-		/// Ignore applications.
-		/// </summary>
-		public string[] IgnoreList { get; set; } = { };
-
-		/// <summary>
-		/// Cooldown in minutes before we attempt to do anything about low memory again.
-		/// </summary>
-		public int MemCooldown { get; set; } = 60;
-
-		/// <summary>
-		/// Fatal errors until we force exit.
-		/// </summary>
-		public int FatalErrorThreshold { get; set; } = 10;
-
-		/// <summary>
-		/// Log file total size at which we force exit.
-		/// </summary>
-		public int FatalLogSizeThreshold { get; set; } = 5;
-
-		/// <summary>
-		/// Low drive space threshold in megabytes.
-		/// </summary>
-		public long LowDriveSpaceThreshold { get; set; } = 150;
-	}
-
 	/// <summary>
 	/// Monitors for variety of problems and reports on them.
 	/// </summary>
 	sealed public class HealthMonitor : IDisposable // Auto-Doc
 	{
 		//Dictionary<int, Problem> activeProblems = new Dictionary<int, Problem>();
-		HealthMonitorSettings Settings = new HealthMonitorSettings();
+		Settings.HealthMonitor Settings = new Settings.HealthMonitor();
 
 		public HealthMonitor()
 		{
