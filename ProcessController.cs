@@ -801,12 +801,25 @@ namespace Taskmaster
 			Debug.Assert(PowerPlan != PowerInfo.PowerMode.Undefined, "Powerplan is undefined");
 			Debug.Assert(info.Controller != null, "No controller attached");
 
-			info.PowerWait = true;
-			PowerList.TryAdd(info.Id, info);
+			bool rv = false;
 
-			bool rv = Taskmaster.powermanager.Force(PowerPlan, info.Id);
+			try
+			{
+				info.PowerWait = true;
+				PowerList.TryAdd(info.Id, info);
 
-			WaitingExit?.Invoke(this, new ProcessModificationEventArgs() { Info = info, State = ProcessRunningState.Undefined });
+				rv = Taskmaster.powermanager.Force(PowerPlan, info.Id);
+
+				info.Process.EnableRaisingEvents = true;
+				info.Process.Exited += (_, _ea) => End(info);
+
+				WaitingExit?.Invoke(this, new ProcessModificationEventArgs() { Info = info, State = ProcessRunningState.Undefined });
+			}
+			catch (Exception ex)
+			{
+				Logging.Stacktrace(ex);
+				throw;
+			}
 
 			return rv;
 		}
@@ -938,7 +951,7 @@ namespace Taskmaster
 
 		public async Task Modify(ProcessEx info)
 		{
-			await Touch(info);
+			await Touch(info).ConfigureAwait(false);
 			if (Recheck > 0) TouchReapply(info);
 		}
 
@@ -952,7 +965,7 @@ namespace Taskmaster
 		bool InForeground(int pid) => ForegroundOnly ? Taskmaster.activeappmonitor?.Foreground.Equals(pid) ?? true : true;
 
 		// TODO: Simplify this
-		public async Task Touch(ProcessEx info, bool refresh = false)
+		async Task Touch(ProcessEx info, bool refresh = false)
 		{
 			Debug.Assert(info.Process != null, "ProcessController.Touch given null process.");
 			Debug.Assert(!ProcessManager.SystemProcessId(info.Id), "ProcessController.Touch given invalid process ID");
@@ -967,6 +980,7 @@ namespace Taskmaster
 					{
 						if (Taskmaster.Trace && Taskmaster.DebugForeground)
 							Log.Debug("<Foreground> " + FormatPathName(info) + " (#" + info.Id + ") in background, ignoring.");
+						info.State = ProcessHandlingState.Paused;
 						return; // don't touch paused item
 					}
 				}
@@ -995,6 +1009,7 @@ namespace Taskmaster
 					{
 						if (Taskmaster.DebugProcesses)
 							Log.Debug("[" + FriendlyName + "] " + info.Name + " (#" + info.Id + ") has already exited.");
+						info.State = ProcessHandlingState.Exited;
 						return; // return ProcessState.Invalid;
 					}
 
@@ -1040,7 +1055,7 @@ namespace Taskmaster
 								expected = true;
 							}
 
-							if (ormt.LastIgnored.TimeTo(now).TotalSeconds < ProcessManager.ScanFrequency.TotalSeconds + 5)
+							if (ormt.LastIgnored.TimeTo(now) < Taskmaster.IgnoreRecentlyModified)
 							{
 								if (Taskmaster.DebugProcesses) Log.Debug("[" + FriendlyName + "] #" + info.Id + " ignored due to recent modification." +
 									(expected ? $" Expected: {ormt.ExpectedState} :)" : $" Unexpected: {ormt.UnexpectedState} :("));
@@ -1051,6 +1066,7 @@ namespace Taskmaster
 
 								Statistics.TouchIgnore++;
 
+								info.State = ProcessHandlingState.Unmodified;
 								return;
 							}
 						}
@@ -1101,8 +1117,19 @@ namespace Taskmaster
 					{
 						if (ForegroundWatch.TryAdd(info.Id, 0))
 						{
-							info.Process.EnableRaisingEvents = true;
-							info.Process.Exited += (o, s) => End(info);
+							try
+							{
+								WaitingExit?.Invoke(this, new ProcessModificationEventArgs() { Info = info, State = ProcessRunningState.Resumed });
+								info.Process.EnableRaisingEvents = true;
+								info.Process.Exited += (_, _ea) => End(info);
+								info.Process.Refresh();
+								if (info.Process.HasExited) End(info);
+							}
+							catch
+							{
+								End(info);
+								throw;
+							}
 						}
 						else
 							firsttime = false;
@@ -1113,6 +1140,7 @@ namespace Taskmaster
 								Log.Debug("[" + FriendlyName + "] " + info.Name + " (#" + info.Id + ") not in foreground, not prioritizing.");
 
 							Pause(info, firsttime);
+							info.State = ProcessHandlingState.Paused;
 							return;
 						}
 					}
@@ -1305,7 +1333,7 @@ namespace Taskmaster
 
 				if (modified)
 				{
-					if (Taskmaster.IgnoreRecentlyModified)
+					if (Taskmaster.IgnoreRecentlyModified > TimeSpan.Zero)
 					{
 						var rmt = new RecentlyModifiedInfo()
 						{
@@ -1320,18 +1348,17 @@ namespace Taskmaster
 							try
 							{
 								if (urmt.Info.Process.ProcessName.Equals(info.Process.ProcessName))
-								{
-									urmt.LastModified = now;
-									urmt.UnexpectedState += 1;
 									return urmt;
-								}
 							}
 							catch (OutOfMemoryException) { throw; }
 							catch { }
+							finally
+							{
+								urmt.LastModified = now;
+								urmt.UnexpectedState += 1;
+							}
 
 							urmt.Info = info;
-							urmt.LastModified = now;
-							urmt.UnexpectedState += 1;
 							urmt.ExpectedState = 0;
 
 							return urmt;
@@ -1341,9 +1368,10 @@ namespace Taskmaster
 					InternalRefresh(now);
 				}
 			}
-			catch (OutOfMemoryException) { throw; }
+			catch (OutOfMemoryException) { info.State = ProcessHandlingState.Abandoned; throw; }
 			catch (Exception ex)
 			{
+				info.State = ProcessHandlingState.Invalid;
 				Logging.Stacktrace(ex);
 			}
 		}
@@ -1361,8 +1389,8 @@ namespace Taskmaster
 				{
 					foreach (var r in RecentlyModified)
 					{
-						if ((r.Value.LastIgnored.TimeTo(now).TotalSeconds > ProcessManager.ScanFrequency.TotalSeconds+5)
-							|| (r.Value.LastModified.TimeTo(now).TotalMinutes > 10f))
+						if ((r.Value.LastIgnored.TimeTo(now) > Taskmaster.IgnoreRecentlyModified)
+							|| (r.Value.LastModified.TimeTo(now).TotalMinutes > 15f))
 							RecentlyModified.TryRemove(r.Key, out _);
 					}
 				}
@@ -1458,43 +1486,46 @@ namespace Taskmaster
 				})).ConfigureAwait(false);
 
 				info.Process.EnableRaisingEvents = true;
-				info.Process.Exited += (s, ev) =>
-				{
-					try
-					{
-						re.Set();
-						re.Reset();
-
-						ResizeWaitList.TryRemove(info.Id, out _);
-
-						if ((Bit.IsSet(((int)ResizeStrategy), (int)WindowResizeStrategy.Size)
-							&& (oldrect.Width != Resize.Value.Width || oldrect.Height != Resize.Value.Height))
-							|| (Bit.IsSet(((int)ResizeStrategy), (int)WindowResizeStrategy.Position)
-							&& (oldrect.Left != Resize.Value.Left || oldrect.Top != Resize.Value.Top)))
-						{
-							if (Taskmaster.DebugResize)
-								Log.Debug("Saving " + info.Name + " (#" + info.Id + ") size to " +
-									Resize.Value.Width + "×" + Resize.Value.Height);
-
-							NeedsSaving = true;
-						}
-					}
-					catch (OutOfMemoryException) { throw; }
-					catch (Exception ex)
-					{
-						Logging.Stacktrace(ex);
-					}
-					finally
-					{
-						ResizeWaitList.TryRemove(info.Id, out _);
-					}
-				};
+				info.Process.Exited += (_, _ea) => ProcessEndResize(info, oldrect, re);
+				info.Process.Refresh();
+				if (info.Process.HasExited) ProcessEndResize(info, oldrect, re);
 			}
 			catch (OutOfMemoryException) { throw; }
 			catch (Exception ex)
 			{
 				Logging.Stacktrace(ex);
+				ResizeWaitList.TryRemove(info.Id, out _);
+			}
+		}
 
+		void ProcessEndResize(ProcessEx info, System.Drawing.Rectangle oldrect, System.Threading.ManualResetEvent re)
+		{
+			try
+			{
+				re.Set();
+				re.Reset();
+
+				ResizeWaitList.TryRemove(info.Id, out _);
+
+				if ((Bit.IsSet(((int)ResizeStrategy), (int)WindowResizeStrategy.Size)
+					&& (oldrect.Width != Resize.Value.Width || oldrect.Height != Resize.Value.Height))
+					|| (Bit.IsSet(((int)ResizeStrategy), (int)WindowResizeStrategy.Position)
+					&& (oldrect.Left != Resize.Value.Left || oldrect.Top != Resize.Value.Top)))
+				{
+					if (Taskmaster.DebugResize)
+						Log.Debug("Saving " + info.Name + " (#" + info.Id + ") size to " +
+							Resize.Value.Width + "×" + Resize.Value.Height);
+
+					NeedsSaving = true;
+				}
+			}
+			catch (OutOfMemoryException) { throw; }
+			catch (Exception ex)
+			{
+				Logging.Stacktrace(ex);
+			}
+			finally
+			{
 				ResizeWaitList.TryRemove(info.Id, out _);
 			}
 		}

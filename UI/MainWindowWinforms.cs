@@ -2388,11 +2388,15 @@ namespace Taskmaster
 			{
 				try
 				{
+					bool fgonly = ea.Info.Controller.ForegroundOnly;
 					bool fg = (ea.Info.Id == (activeappmonitor?.Foreground ?? ea.Info.Id));
 
 					if (ExitWaitlistMap.TryGetValue(ea.Info.Id, out ListViewItem li))
 					{
-						li.SubItems[2].Text = fg ? HumanReadable.System.Process.Foreground : HumanReadable.System.Process.Background;
+						if (fgonly)
+							li.SubItems[2].Text = fg ? HumanReadable.System.Process.Foreground : HumanReadable.System.Process.Background;
+						else
+							li.SubItems[2].Text = "ACTIVE";
 
 						if (Taskmaster.Trace && Taskmaster.DebugForeground) Log.Debug("WaitlistHandler: " + ea.Info.Name + " = " + ea.State.ToString());
 						switch (ea.State)
@@ -2408,9 +2412,9 @@ namespace Taskmaster
 							//case ProcessEventArgs.ProcessState.Starting: // this should never get here
 							case ProcessRunningState.Resumed:
 								// move item to top
-								exitwaitlist.Items.Remove(li);
-								exitwaitlist.Items.Insert(0, li);
-								li.EnsureVisible();
+								//exitwaitlist.Items.Remove(li);
+								//exitwaitlist.Items.Insert(0, li);
+								//li.EnsureVisible();
 								break;
 							default:
 								Log.Debug("Received unhandled process (#" + ea.Info.Id + ") state: " + ea.State.ToString());
@@ -2419,23 +2423,16 @@ namespace Taskmaster
 					}
 					else
 					{
-						if (ea.State == ProcessRunningState.Starting)
-						{
-							li = new ListViewItem(new string[] {
-									ea.Info.Id.ToString(),
-									ea.Info.Name,
-									(fg ? HumanReadable.System.Process.Foreground : HumanReadable.System.Process.Background),
-									(ea.Info.ActiveWait ? "FORCED" : HumanReadable.Generic.NotAvailable)
-								});
+						li = new ListViewItem(new string[] {
+							ea.Info.Id.ToString(),
+							ea.Info.Name,
+							(fgonly ? (fg ? HumanReadable.System.Process.Foreground : HumanReadable.System.Process.Background) : "ACTIVE"),
+							(ea.Info.PowerWait ? "FORCED" : HumanReadable.Generic.NotAvailable)
+						});
 
-							exitwaitlist.BeginUpdate();
-
-							ExitWaitlistMap.TryAdd(ea.Info.Id, li);
-							exitwaitlist.Items.Add(li);
-							li.EnsureVisible();
-
-							exitwaitlist.EndUpdate();
-						}
+						ExitWaitlistMap.TryAdd(ea.Info.Id, li);
+						exitwaitlist.Items.Insert(0, li);
+						li.EnsureVisible();
 					}
 				}
 				catch (Exception ex) { Logging.Stacktrace(ex); }
@@ -3145,8 +3142,11 @@ namespace Taskmaster
 
 				try
 				{
-					activeappmonitor.ActiveChanged -= OnActiveWindowChanged;
-					activeappmonitor = null;
+					if (activeappmonitor != null)
+					{
+						activeappmonitor.ActiveChanged -= OnActiveWindowChanged;
+						activeappmonitor = null;
+					}
 				}
 				catch { }
 
@@ -3159,6 +3159,7 @@ namespace Taskmaster
 					}
 				}
 				catch { }
+
 				try
 				{
 					if (processmanager != null)

@@ -455,7 +455,7 @@ namespace Taskmaster
 		public static bool TempMonitorEnabled { get; private set; } = false;
 		public static bool LastModifiedList { get; private set; } = false;
 		public static bool WindowResizeEnabled { get; private set; } = false;
-		public static bool IgnoreRecentlyModified { get; private set; } = false;
+		public static TimeSpan IgnoreRecentlyModified { get; private set; } = TimeSpan.Zero;
 		public static int RecordAnalysis { get; private set; } = 0;
 
 		// DEBUG INFO
@@ -728,7 +728,7 @@ namespace Taskmaster
 
 			var exsec = cfg["Experimental"];
 			WindowResizeEnabled = exsec.TryGet("Window Resize")?.BoolValue ?? false;
-			IgnoreRecentlyModified = exsec.TryGet("Ignore recently modified")?.BoolValue ?? false;
+			IgnoreRecentlyModified = TimeSpan.FromMinutes(exsec.TryGet("Ignore recently modified")?.IntValue ?? 0);
 			LastModifiedList = exsec.TryGet("Last Modified")?.BoolValue ?? false;
 			TempMonitorEnabled = exsec.TryGet("Temp Monitor")?.BoolValue ?? false;
 			RecordAnalysis = exsec.TryGet("Record analysis")?.IntValue ?? 0;

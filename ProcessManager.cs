@@ -95,8 +95,6 @@ namespace Taskmaster
 
 			InitWMIEventWatcher();
 
-			ProcessDetectedEvent += ProcessTriage;
-
 			if (BatchProcessing)
 			{
 				BatchProcessingTimer = new System.Timers.Timer(1000 * 5);
@@ -339,9 +337,10 @@ namespace Taskmaster
 
 		public async void HastenScan(int delay=15)
 		{
-			if (DateTimeOffset.UtcNow.TimeTo(NextScan).TotalSeconds > 15) // skip if the next scan is to happen real soon
+			double nextscan = Math.Max(0, DateTimeOffset.UtcNow.TimeTo(NextScan).TotalSeconds);
+			if (nextscan > 5) // skip if the next scan is to happen real soon
 			{
-				var delayspan = TimeSpan.FromSeconds(delay.Constrain(5, 60));
+				var delayspan = TimeSpan.FromSeconds(delay.Constrain(3, Convert.ToInt32(Math.Min(60d, nextscan))));
 				NextScan = DateTimeOffset.UtcNow.Add(delayspan);
 				ScanTimer.Change(delayspan, ScanFrequency);
 			}
@@ -395,9 +394,12 @@ namespace Taskmaster
 				if (ProcessUtility.GetInfo(pid, out var info, process, null, name, null, getPath: true))
 				{
 					info.Timer = Stopwatch.StartNew();
+					ProcessTriage(info);
 					ProcessDetectedEvent?.Invoke(this,
 						new ProcessModificationEventArgs { Info = info, State = ProcessRunningState.Found }
 						);
+
+					HandlingStateChange?.Invoke(this, new HandlingStateChangeEventArgs(info));
 				}
 			}
 
@@ -761,9 +763,9 @@ namespace Taskmaster
 				AddController(prc);
 
 				// OBSOLETE
-				if (section.Contains("Rescan"))
+				if (section.Contains(HumanReadable.System.Process.Rescan))
 				{
-					section.Remove("Rescan");
+					section.Remove(HumanReadable.System.Process.Rescan);
 					dirtyconfig |= true;
 				}
 
@@ -956,7 +958,7 @@ namespace Taskmaster
 				try
 				{
 					info.Process.EnableRaisingEvents = true;
-					info.Process.Exited += (_, _ea) => WaitForExitTriggered(info);
+					info.Process.Exited += (_, _ea) => WaitForExitTriggered(info, ProcessRunningState.Exiting);
 					// TODO: Just in case check if it exited while we were doing this.
 					exithooked = true;
 
@@ -965,12 +967,12 @@ namespace Taskmaster
 				}
 				catch (InvalidOperationException) // already exited
 				{
-					WaitForExitList.TryRemove(info.Id, out _);
+					WaitForExitTriggered(info, ProcessRunningState.Exiting);
 				}
 				catch (Exception ex) // unknown error
 				{
 					Logging.Stacktrace(ex);
-					WaitForExitList.TryRemove(info.Id, out _);
+					WaitForExitTriggered(info, ProcessRunningState.Exiting);
 				}
 
 				if (exithooked)
@@ -1301,44 +1303,47 @@ namespace Taskmaster
 		}
 
 		// TODO: This should probably be pushed into ProcessController somehow.
-		async void ProcessTriage(object _, ProcessModificationEventArgs ea)
+		async void ProcessTriage(ProcessEx info)
 		{
 			try
 			{
 				await Task.Delay(0).ConfigureAwait(false);
 
-				ea.Info.State = ProcessHandlingState.Triage;
+				info.State = ProcessHandlingState.Triage;
 
-				HandlingStateChange?.Invoke(this, new HandlingStateChangeEventArgs(ea.Info));
+				HandlingStateChange?.Invoke(this, new HandlingStateChangeEventArgs(info));
 
-				if (string.IsNullOrEmpty(ea.Info.Name))
+				if (string.IsNullOrEmpty(info.Name))
 				{
-					Log.Warning("#" + ea.Info.Id + " details unaccessible, ignored.");
+					Log.Warning($"#{info.Id.ToString()} details unaccessible, ignored.");
+					info.State = ProcessHandlingState.AccessDenied;
 					return; // ProcessState.AccessDenied;
 				}
 				
-				if (ExeToController.TryGetValue(ea.Info.Name.ToLowerInvariant(), out var prc))
-					ea.Info.Controller = prc; // fill
+				if (ExeToController.TryGetValue(info.Name.ToLowerInvariant(), out var prc))
+					info.Controller = prc; // fill
 
-				if (ea.Info.Controller == null)
-					getWatchedPath(ea.Info);
+				if (info.Controller == null)
+					getWatchedPath(info);
 
-				if (ea.Info.Controller != null)
+				if (info.Controller != null)
 				{
-					if (!ea.Info.Controller.Enabled)
+					if (!info.Controller.Enabled)
 					{
-						if (Taskmaster.DebugProcesses) Log.Debug("[" + ea.Info.Controller.FriendlyName + "] Matched, but rule disabled; ignoring.");
-						ea.Info.State = ProcessHandlingState.Abandoned;
+						if (Taskmaster.DebugProcesses) Log.Debug("[" + info.Controller.FriendlyName + "] Matched, but rule disabled; ignoring.");
+						info.State = ProcessHandlingState.Abandoned;
 						return;
 					}
 
 					try
 					{
-						await ea.Info.Controller.Modify(ea.Info).ContinueWith((x) => {
-							ForegroundWatch(ea.Info);
+						info.State = ProcessHandlingState.Processing;
+						await info.Controller.Modify(info).ContinueWith((x) =>
+						{
+							ForegroundWatch(info);
 
-							if (ea.Info.Controller.Analyze && ea.Info.Valid && ea.Info.State != ProcessHandlingState.Abandoned)
-								analyzer.Analyze(ea.Info);
+							if (info.Controller.Analyze && info.Valid && info.State != ProcessHandlingState.Abandoned)
+								analyzer.Analyze(info);
 						});
 					}
 					catch (Exception ex)
@@ -1346,6 +1351,8 @@ namespace Taskmaster
 						Logging.Stacktrace(ex);
 					}
 				}
+				else
+					info.State = ProcessHandlingState.Abandoned;
 
 				/*
 				if (ControlChildren) // this slows things down a lot it seems
@@ -1355,12 +1362,10 @@ namespace Taskmaster
 			catch (Exception ex)
 			{
 				Logging.Stacktrace(ex);
-				Log.Error("Unregistering process triage");
-				ProcessDetectedEvent -= ProcessTriage;
 			}
 			finally
 			{
-				HandlingStateChange?.Invoke(this, new HandlingStateChangeEventArgs(ea.Info));
+				HandlingStateChange?.Invoke(this, new HandlingStateChangeEventArgs(info));
 			}
 		}
 
@@ -1413,7 +1418,11 @@ namespace Taskmaster
 				}
 
 				foreach (var info in list)
+				{
+					ProcessTriage(info);
 					ProcessDetectedEvent?.Invoke(this, new ProcessModificationEventArgs { Info = info });
+					HandlingStateChange?.Invoke(this, new HandlingStateChangeEventArgs(info));
+				}
 
 				SignalProcessHandled(-(list.Count)); // batch done
 			}
@@ -1472,6 +1481,7 @@ namespace Taskmaster
 							else
 							{
 								off = cmdl.IndexOf(' ', 1);
+								if (off <= 1) Log.Error("!!! Something wrong: " + cmdl);
 								npath = cmdl.Substring(0, off);
 							}
 
@@ -1483,6 +1493,7 @@ namespace Taskmaster
 				catch (Exception ex)
 				{
 					Logging.Stacktrace(ex);
+					info.State = ProcessHandlingState.Invalid;
 					return;
 				}
 				finally
@@ -1504,12 +1515,13 @@ namespace Taskmaster
 					return;
 				}
 
-				if (IgnoreProcessName(name)) return;
+				if (IgnoreProcessName(name))
+					return;
 
 				if (ProcessUtility.GetInfo(pid, out info, path: path, getPath: true, name: name))
 				{
 					info.Timer = timer;
-					NewInstanceTriagePhaseTwo(info);
+					NewInstanceTriagePhaseTwo(info, out var state);
 				}
 			}
 			catch (Exception ex)
@@ -1529,9 +1541,11 @@ namespace Taskmaster
 			}
 		}
 
-		void NewInstanceTriagePhaseTwo(ProcessEx info)
+		void NewInstanceTriagePhaseTwo(ProcessEx info, out ProcessHandlingState state)
 		{
 			//await Task.Delay(0).ConfigureAwait(false);
+			info.State = ProcessHandlingState.Invalid;
+
 			try
 			{
 				try
@@ -1540,7 +1554,7 @@ namespace Taskmaster
 				}
 				catch (ArgumentException)
 				{
-					info.State = ProcessHandlingState.Exited;
+					state = info.State = ProcessHandlingState.Exited;
 					if (Taskmaster.ShowInaction && Taskmaster.DebugProcesses)
 						Log.Verbose("Caught #" + info.Id + " but it vanished.");
 					return;
@@ -1548,6 +1562,7 @@ namespace Taskmaster
 				catch (Exception ex)
 				{
 					Logging.Stacktrace(ex);
+					state = info.State = ProcessHandlingState.Invalid;
 					return;
 				}
 
@@ -1563,6 +1578,7 @@ namespace Taskmaster
 					catch
 					{
 						Log.Error("Failed to retrieve name of process #" + info.Id);
+						state = info.State = ProcessHandlingState.Invalid;
 						return;
 					}
 				}
@@ -1591,22 +1607,23 @@ namespace Taskmaster
 						}
 					}
 
-					info.State = ProcessHandlingState.Batching;
-
-					HandlingStateChange?.Invoke(this, new HandlingStateChangeEventArgs(info));
+					state = info.State = ProcessHandlingState.Batching;
 				}
 				else
 				{
+					state = info.State = ProcessHandlingState.Triage;
+					ProcessTriage(info);
 					ProcessDetectedEvent?.Invoke(this, new ProcessModificationEventArgs { Info = info });
 				}
 			}
 			catch (Exception ex)
 			{
 				Logging.Stacktrace(ex);
+				state = info.State = ProcessHandlingState.Invalid;
 			}
 			finally
 			{
-
+				HandlingStateChange?.Invoke(this, new HandlingStateChangeEventArgs(info));
 			}
 		}
 
@@ -1678,13 +1695,10 @@ namespace Taskmaster
 		{
 			if (!Atomic.Lock(ref cleanup_lock)) return; // cleanup already in progress
 
-			// TODO: Verify that this is actually useful?
+			if (Taskmaster.DebugPower || Taskmaster.DebugProcesses)
+				Log.Debug("<Process> Periodic cleanup");
 
-			if (User.IdleTime().TotalHours > 2d)
-			{
-				foreach (var prc in Watchlist.Keys)
-					prc.Refresh();
-			}
+			// TODO: Verify that this is actually useful?
 
 			Stack<ProcessEx> triggerList = null;
 			try
@@ -1724,6 +1738,12 @@ namespace Taskmaster
 				{
 					while (triggerList.Count > 0)
 						WaitForExitTriggered(triggerList.Pop()); // causes removal so can't be done in above loop
+				}
+
+				if (User.IdleTime().TotalHours > 2d)
+				{
+					foreach (var prc in Watchlist.Keys)
+						prc.Refresh();
 				}
 			}
 			catch (Exception ex)
