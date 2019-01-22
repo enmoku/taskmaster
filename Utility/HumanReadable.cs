@@ -65,6 +65,9 @@ namespace Taskmaster
 				public const string PriorityStrategy = Priority + " strategy";
 				public const string Affinity = "Affinity";
 				public const string AffinityStrategy = Affinity + " strategy";
+
+				public const string Restart = "Restart";
+				public const string Rescan = "Rescan";
 			}
 		}
 

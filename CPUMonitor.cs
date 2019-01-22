@@ -93,7 +93,7 @@ namespace Taskmaster
 			hwsec[HumanReadable.Hardware.CPU.Settings.SampleCount].Comment = "3 to 30. Number of CPU samples to keep. Recommended value is: Count * Interval <= 30 seconds";
 			dirtyconfig |= modified;
 
-			Log.Information("<CPU> Sampler: " + SampleInterval + "s × " + SampleCount +
+			Log.Information("<CPU> Sampler: " + $"{ SampleInterval.TotalSeconds:N0}" + "s × " + SampleCount +
 				" = " + $"{SampleCount * SampleInterval.TotalSeconds:N0}s" + " observation period");
 
 			if (dirtyconfig) corecfg.MarkDirty();

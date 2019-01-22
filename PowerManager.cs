@@ -752,7 +752,8 @@ namespace Taskmaster
 
 			// --------------------------------------------------------------------------------------------------------
 
-			Log.Information("<Power> Watchlist powerdown delay: " + (PowerdownDelay == TimeSpan.Zero ? HumanReadable.Generic.Disabled : (PowerdownDelay + "s")));
+			Log.Information("<Power> Watchlist powerdown delay: " +
+				(PowerdownDelay == TimeSpan.Zero ? HumanReadable.Generic.Disabled : $"{PowerdownDelay.TotalSeconds:N0} s")); 
 
 			// --------------------------------------------------------------------------------------------------------
 

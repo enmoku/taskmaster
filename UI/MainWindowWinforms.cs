@@ -811,7 +811,7 @@ namespace Taskmaster
 			var menu_action = new ToolStripMenuItem("Actions");
 			menu_action.DropDown.AutoClose = true;
 			// Sub Items
-			var menu_action_rescan = new ToolStripMenuItem("Rescan", null, RescanRequestEvent)
+			var menu_action_rescan = new ToolStripMenuItem(HumanReadable.System.Process.Rescan, null, RescanRequestEvent)
 			{
 				Enabled = Taskmaster.ProcessMonitorEnabled,
 			};
@@ -2048,8 +2048,8 @@ namespace Taskmaster
 				foregroundapppanel.Controls.Add(activePID);
 
 				processlayout.Controls.Add(foregroundapppanel);
+				#endregion
 			}
-			#endregion
 
 			processlayout.Controls.Add(new Label()
 			{

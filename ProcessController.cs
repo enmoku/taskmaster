@@ -283,6 +283,9 @@ namespace Taskmaster
 		/// </summary>
 		public void Refresh()
 		{
+			if (Taskmaster.DebugPower || Taskmaster.DebugProcesses)
+				Log.Debug($"[{FriendlyName}] Refresh");
+
 			//TODO: Update power
 			foreach (var info in PowerList.Values)
 				Taskmaster.powermanager?.Release(info.Id);
@@ -387,9 +390,9 @@ namespace Taskmaster
 
 			if (!string.IsNullOrEmpty(Executable))
 			{
-				if (app.Contains("Rescan"))
+				if (app.Contains(HumanReadable.System.Process.Rescan))
 				{
-					app.Remove("Rescan"); // OBSOLETE
+					app.Remove(HumanReadable.System.Process.Rescan); // OBSOLETE
 					Log.Debug("<Process> Obsoleted INI cleanup: Rescan frequency");
 				}
 				if (Recheck > 0) app["Recheck"].IntValue = Recheck;

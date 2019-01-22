@@ -77,11 +77,9 @@ namespace Taskmaster
 
 			ms = new ContextMenuStrip();
 			menu_windowopen = new ToolStripMenuItem("Open", null, RestoreMainWindow);
-			menu_rescan = new ToolStripMenuItem("Rescan", null, (o, s) =>
+			menu_rescan = new ToolStripMenuItem(HumanReadable.System.Process.Rescan, null, (o, s) =>
 			{
-				menu_rescan.Enabled = false;
 				RescanRequest?.Invoke(this, null);
-				menu_rescan.Enabled = true;
 			});
 			menu_configuration = new ToolStripMenuItem("Configuration");
 			var menu_configuration_autopower = new ToolStripMenuItem("Power configuration", null, ShowPowerConfig);
