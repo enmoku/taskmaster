@@ -29,6 +29,7 @@ using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Linq;
 using System.Runtime.InteropServices;
+using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using Microsoft.Win32;
@@ -522,7 +523,13 @@ namespace Taskmaster
 				{
 					if (Taskmaster.DebugPower) Log.Debug("<Power> Auto-adjust: " + Reaction.ToString());
 
-					if (AutoAdjustSetMode(ReactionaryPlan, new Cause(OriginType.AutoAdjust, $"{Reaction}, CPU: {pev.Current:N1}%")))
+					var sbs = new StringBuilder();
+					if (CurrentMode != PowerMode.Balanced && Reaction == PowerReaction.Average)
+						sbs.Append($"Backing off from {PreviousReaction}");
+					else
+						sbs.Append($"Committing to {Reaction}");
+
+					if (AutoAdjustSetMode(ReactionaryPlan, new Cause(OriginType.AutoAdjust, sbs.ToString())))
 					{
 						AutoAdjustCounter++;
 						ev.Enacted = true;
