@@ -455,8 +455,8 @@ namespace Taskmaster
 		public static bool TempMonitorEnabled { get; private set; } = false;
 		public static bool LastModifiedList { get; private set; } = false;
 		public static bool WindowResizeEnabled { get; private set; } = false;
-		public static TimeSpan IgnoreRecentlyModified { get; private set; } = TimeSpan.Zero;
-		public static int RecordAnalysis { get; private set; } = 0;
+		public static TimeSpan IgnoreRecentlyModified { get; set; } = TimeSpan.Zero;
+		public static TimeSpan RecordAnalysis { get; set; } = TimeSpan.Zero;
 
 		// DEBUG INFO
 		public static bool DebugCache { get; private set; } = false;
@@ -731,7 +731,8 @@ namespace Taskmaster
 			IgnoreRecentlyModified = TimeSpan.FromMinutes(exsec.TryGet("Ignore recently modified")?.IntValue ?? 0);
 			LastModifiedList = exsec.TryGet("Last Modified")?.BoolValue ?? false;
 			TempMonitorEnabled = exsec.TryGet("Temp Monitor")?.BoolValue ?? false;
-			RecordAnalysis = exsec.TryGet("Record analysis")?.IntValue ?? 0;
+			int trecanalysis = exsec.TryGet("Record analysis")?.IntValue ?? 0;
+			RecordAnalysis = trecanalysis <= 0 ? TimeSpan.Zero : TimeSpan.FromSeconds(trecanalysis.Constrain(0, 180));
 
 #if DEBUG
 			Trace = dbgsec.TryGet("Trace")?.BoolValue ?? false;

@@ -46,7 +46,7 @@ namespace Taskmaster.Extensions
 			// nothing here
 		}
 
-		public string Unit { get; set; } = string.Empty;
+		public string Unit { get; set; } = string.Empty; // BUG: this does not trigger UpdateEditText
 
 		// turn text to value
 		new protected void ParseEditText()

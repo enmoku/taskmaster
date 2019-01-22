@@ -64,9 +64,9 @@ namespace Taskmaster
 			// TODO: Prevent bloating somehow.
 			if (!cache.TryAdd(hash, 0)) return; // already there
 
-			bool record = Taskmaster.RecordAnalysis > 0;
+			bool record = Taskmaster.RecordAnalysis != TimeSpan.Zero;
 
-			int delay = record ? Taskmaster.RecordAnalysis.Constrain(10, 180) : 30;
+			TimeSpan delay = record ? Taskmaster.RecordAnalysis : TimeSpan.FromSeconds(30);
 			Log.Debug($"<Analysis> {info.Name} (#{info.Id}) scheduled");
 
 			var AllLinkedModules = new ConcurrentDictionary<string, ModuleInfo>();
@@ -84,7 +84,7 @@ namespace Taskmaster
 
 			try
 			{
-				await Task.Delay(TimeSpan.FromSeconds(delay));
+				await Task.Delay(delay);
 
 				//var pa = new ProcessAnalysis();
 				//pa.bla = true;

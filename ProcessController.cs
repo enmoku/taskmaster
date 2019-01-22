@@ -814,6 +814,8 @@ namespace Taskmaster
 				info.Process.Exited += (_, _ea) => End(info);
 
 				WaitingExit?.Invoke(this, new ProcessModificationEventArgs() { Info = info, State = ProcessRunningState.Undefined });
+
+				if (Taskmaster.DebugPower) Log.Debug($"[{FriendlyName}] Power exit wait for {info.Name} (#{info.Id.ToString()}) set");
 			}
 			catch (Exception ex)
 			{

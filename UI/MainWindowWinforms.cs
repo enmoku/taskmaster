@@ -36,7 +36,6 @@ using Serilog;
 namespace Taskmaster
 {
 	// public class MainWindow : System.Windows.Window; // TODO: WPF
-	// [ThreadAffine] // would be nice, but huge dependency pile
 	sealed public class MainWindow : UI.UniForm
 	{
 		ToolTip tooltip = new ToolTip();
