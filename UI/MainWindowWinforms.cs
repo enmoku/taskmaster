@@ -1018,6 +1018,18 @@ namespace Taskmaster
 				}
 			});
 
+			var menu_config_experiments = new ToolStripMenuItem("Experiments", null, (_, _ea) =>
+			{
+				using (var n = new UI.Config.ExperimentConfig())
+				{
+					n.ShowDialog();
+					if (n.DialogResult == DialogResult.OK)
+					{
+						Log.Information("<Experiments> Settings changed");
+					}
+				}
+			});
+
 			var menu_config_folder = new ToolStripMenuItem("Open in file manager", null, (_, _ea) => Process.Start(Taskmaster.datapath));
 			// menu_config.DropDownItems.Add(menu_config_log);
 			menu_config.DropDownItems.Add(menu_config_behaviour);
@@ -1027,6 +1039,8 @@ namespace Taskmaster
 			menu_config.DropDownItems.Add(menu_config_power_autoadjust);
 			menu_config.DropDownItems.Add(new ToolStripSeparator());
 			menu_config.DropDownItems.Add(menu_config_components);
+			menu_config.DropDownItems.Add(new ToolStripSeparator());
+			menu_config.DropDownItems.Add(menu_config_experiments);
 			menu_config.DropDownItems.Add(new ToolStripSeparator());
 			menu_config.DropDownItems.Add(menu_config_folder);
 

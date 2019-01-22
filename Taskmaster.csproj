@@ -140,6 +140,9 @@
     </Compile>
     <Compile Include="CPUMonitor.cs" />
     <Compile Include="HardwareMonitor.cs" />
+    <Compile Include="UI\Config\ExperimentConfig.cs">
+      <SubType>Form</SubType>
+    </Compile>
     <Compile Include="UI\LicenseDialog.cs">
       <SubType>Form</SubType>
     </Compile>
