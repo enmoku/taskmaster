@@ -45,9 +45,9 @@ namespace Taskmaster
 		ComboBox behaviour = null, restore = null;
 
 		ComboBox defaultmode = null, highmode = null, lowmode = null;
-		Extensions.NumericUpDownEx highcommitthreshold = null, highbackoffhigh = null, highbackoffavg = null, highbackofflow = null;
+		Extensions.NumericUpDownEx highcommitthreshold = null, highbackoffhigh = null, highbackoffmean = null, highbackofflow = null;
 		NumericUpDown highcommitlevel = null, highbackofflevel = null;
-		Extensions.NumericUpDownEx lowcommitthreshold = null, lowbackoffhigh = null, lowbackoffavg = null, lowbackofflow = null;
+		Extensions.NumericUpDownEx lowcommitthreshold = null, lowbackoffhigh = null, lowbackoffmean = null, lowbackofflow = null;
 		NumericUpDown lowcommitlevel = null, lowbackofflevel = null;
 
 		bool MonitorPowerOff = false;
@@ -252,8 +252,8 @@ namespace Taskmaster
 			highbackoffhigh = new Extensions.NumericUpDownEx() { Unit = "%", Maximum = 95, Minimum = 5, Value = 50 };
 			layout.Controls.Add(highbackoffhigh);
 			layout.Controls.Add(new Label() { Text = "Backoff average CPU%", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Fill });
-			highbackoffavg = new Extensions.NumericUpDownEx() { Unit = "%", Maximum = 95, Minimum = 5, Value = 50 };
-			layout.Controls.Add(highbackoffavg);
+			highbackoffmean = new Extensions.NumericUpDownEx() { Unit = "%", Maximum = 95, Minimum = 5, Value = 50 };
+			layout.Controls.Add(highbackoffmean);
 			layout.Controls.Add(new Label() { Text = "Backoff low CPU%", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Fill });
 			highbackofflow = new Extensions.NumericUpDownEx() { Unit = "%", Maximum = 95, Minimum = 5, Value = 50 };
 			layout.Controls.Add(highbackofflow);
@@ -286,8 +286,8 @@ namespace Taskmaster
 			lowbackoffhigh = new Extensions.NumericUpDownEx() { Unit = "%", Maximum = 95, Minimum = 5, Value = 50 };
 			layout.Controls.Add(lowbackoffhigh);
 			layout.Controls.Add(new Label() { Text = "Backoff average CPU%", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Fill });
-			lowbackoffavg = new Extensions.NumericUpDownEx() { Unit = "%", Maximum = 95, Minimum = 5, Value = 50 };
-			layout.Controls.Add(lowbackoffavg);
+			lowbackoffmean = new Extensions.NumericUpDownEx() { Unit = "%", Maximum = 95, Minimum = 5, Value = 50 };
+			layout.Controls.Add(lowbackoffmean);
 			layout.Controls.Add(new Label() { Text = "Backoff low CPU%", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Fill });
 			lowbackofflow = new Extensions.NumericUpDownEx() { Unit = "%", Maximum = 95, Minimum = 5, Value = 50 };
 			layout.Controls.Add(lowbackofflow);
@@ -345,7 +345,7 @@ namespace Taskmaster
 						Backoff =
 						{
 							High=Convert.ToSingle(lowbackoffhigh.Value),
-							Avg = Convert.ToSingle(lowbackoffavg.Value),
+							Mean = Convert.ToSingle(lowbackoffmean.Value),
 							Low = Convert.ToSingle(lowbackofflow.Value),
 							Level = Convert.ToInt32(lowbackofflevel.Value),
 						}
@@ -361,7 +361,7 @@ namespace Taskmaster
 						Backoff =
 						{
 							High = Convert.ToSingle(highbackoffhigh.Value),
-							Avg = Convert.ToSingle(highbackoffavg.Value),
+							Mean = Convert.ToSingle(highbackoffmean.Value),
 							Low = Convert.ToSingle(highbackofflow.Value),
 							Level = Convert.ToInt32(highbackofflevel.Value),
 						}
@@ -496,7 +496,7 @@ namespace Taskmaster
 			highcommitthreshold.Value = Convert.ToDecimal(AutoAdjust.High.Commit.Threshold).Constrain(5, 95);
 			highcommitlevel.Value = AutoAdjust.High.Commit.Level.Constrain(0, 15);
 			highbackoffhigh.Value = Convert.ToDecimal(AutoAdjust.High.Backoff.High).Constrain(5, 95);
-			highbackoffavg.Value = Convert.ToDecimal(AutoAdjust.High.Backoff.Avg).Constrain(5, 95);
+			highbackoffmean.Value = Convert.ToDecimal(AutoAdjust.High.Backoff.Mean).Constrain(5, 95);
 			highbackofflow.Value = Convert.ToDecimal(AutoAdjust.High.Backoff.Low).Constrain(5, 95);
 			highbackofflevel.Value = Convert.ToDecimal(AutoAdjust.High.Backoff.Level);
 
@@ -504,7 +504,7 @@ namespace Taskmaster
 			lowcommitthreshold.Value = Convert.ToDecimal(AutoAdjust.Low.Commit.Threshold).Constrain(5, 95);
 			lowcommitlevel.Value = AutoAdjust.Low.Commit.Level.Constrain(0, 15);
 			lowbackoffhigh.Value = Convert.ToDecimal(AutoAdjust.Low.Backoff.High).Constrain(5, 95);
-			lowbackoffavg.Value = Convert.ToDecimal(AutoAdjust.Low.Backoff.Avg).Constrain(5, 95);
+			lowbackoffmean.Value = Convert.ToDecimal(AutoAdjust.Low.Backoff.Mean).Constrain(5, 95);
 			lowbackofflow.Value = Convert.ToDecimal(AutoAdjust.Low.Backoff.Low).Constrain(5, 95);
 			lowbackofflevel.Value = Convert.ToDecimal(AutoAdjust.Low.Backoff.Level);
 		}

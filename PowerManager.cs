@@ -373,13 +373,6 @@ namespace Taskmaster
 		public event EventHandler<PowerBehaviourEventArgs> onBehaviourChange;
 		public event EventHandler onBatteryResume;
 
-		enum ThresholdLevel
-		{
-			High = 0,
-			Average = 1,
-			Low = 2
-		}
-
 		public enum PowerReaction
 		{
 			High = 1,
@@ -437,7 +430,7 @@ namespace Taskmaster
 				{
 					// Downgrade to MEDIUM power level
 					if (ev.High <= AutoAdjust.High.Backoff.High
-						|| ev.Average <= AutoAdjust.High.Backoff.Avg
+						|| ev.Mean <= AutoAdjust.High.Backoff.Mean
 						|| ev.Low <= AutoAdjust.High.Backoff.Low)
 					{
 						Reaction = PowerReaction.Average;
@@ -457,7 +450,7 @@ namespace Taskmaster
 				{
 					// Upgrade to MEDIUM power level
 					if (ev.High >= AutoAdjust.Low.Backoff.High
-						|| ev.Average >= AutoAdjust.Low.Backoff.Avg
+						|| ev.Mean >= AutoAdjust.Low.Backoff.Mean
 						|| ev.Low >= AutoAdjust.Low.Backoff.Low)
 					{
 						Reaction = PowerReaction.Average;
@@ -693,29 +686,29 @@ namespace Taskmaster
 			AutoAdjust.High.Commit.Threshold = autopower.GetSetDefault("High threshold", 70, out modified).FloatValue;
 			autopower["High threshold"].Comment = "If low CPU value keeps over this, we swap to high mode.";
 			dirtyconfig |= modified;
-			var hbtt = autopower.GetSetDefault("High backoff thresholds", new float[] { AutoAdjust.High.Backoff.High, AutoAdjust.High.Backoff.Avg, AutoAdjust.High.Backoff.Low }, out modified).FloatValueArray;
+			var hbtt = autopower.GetSetDefault("High backoff thresholds", new float[] { AutoAdjust.High.Backoff.High, AutoAdjust.High.Backoff.Mean, AutoAdjust.High.Backoff.Low }, out modified).FloatValueArray;
 			if (hbtt != null && hbtt.Length == 3)
 			{
 				AutoAdjust.High.Backoff.Low = hbtt[2];
-				AutoAdjust.High.Backoff.Avg = hbtt[1];
+				AutoAdjust.High.Backoff.Mean = hbtt[1];
 				AutoAdjust.High.Backoff.High = hbtt[0];
 			}
 
-			autopower["High backoff thresholds"].Comment = "High, Average and Low CPU usage values, any of which is enough to break away from high power mode.";
+			autopower["High backoff thresholds"].Comment = "High, Mean and Low CPU usage values, any of which is enough to break away from high power mode.";
 			dirtyconfig |= modified;
 
 			AutoAdjust.Low.Commit.Threshold = autopower.GetSetDefault("Low threshold", 15, out modified).FloatValue;
 			autopower["Low threshold"].Comment = "If high CPU value keeps under this, we swap to low mode.";
 			dirtyconfig |= modified;
-			var lbtt = autopower.GetSetDefault("Low backoff thresholds", new float[] { AutoAdjust.Low.Backoff.High, AutoAdjust.Low.Backoff.Avg, AutoAdjust.Low.Backoff.Low }, out modified).FloatValueArray;
+			var lbtt = autopower.GetSetDefault("Low backoff thresholds", new float[] { AutoAdjust.Low.Backoff.High, AutoAdjust.Low.Backoff.Mean, AutoAdjust.Low.Backoff.Low }, out modified).FloatValueArray;
 			if (lbtt != null && lbtt.Length == 3)
 			{
 				AutoAdjust.Low.Backoff.Low = lbtt[2];
-				AutoAdjust.Low.Backoff.Avg = lbtt[1];
+				AutoAdjust.Low.Backoff.Mean = lbtt[1];
 				AutoAdjust.Low.Backoff.High = lbtt[0];
 			}
 
-			autopower["Low backoff thresholds"].Comment = "High, Average and Low CPU uage values, any of which is enough to break away from low mode.";
+			autopower["Low backoff thresholds"].Comment = "High, Mean and Low CPU uage values, any of which is enough to break away from low mode.";
 			dirtyconfig |= modified;
 
 			// POWER MODES
@@ -812,10 +805,10 @@ namespace Taskmaster
 
 					// THRESHOLDS
 					autopower["High threshold"].FloatValue = AutoAdjust.High.Commit.Threshold;
-					autopower["High backoff thresholds"].FloatValueArray = new float[] { AutoAdjust.High.Backoff.High, AutoAdjust.High.Backoff.Avg, AutoAdjust.High.Backoff.Low };
+					autopower["High backoff thresholds"].FloatValueArray = new float[] { AutoAdjust.High.Backoff.High, AutoAdjust.High.Backoff.Mean, AutoAdjust.High.Backoff.Low };
 
 					autopower["Low threshold"].FloatValue = AutoAdjust.Low.Commit.Threshold;
-					autopower["Low backoff thresholds"].FloatValueArray = new float[] { AutoAdjust.Low.Backoff.High, AutoAdjust.Low.Backoff.Avg, AutoAdjust.Low.Backoff.Low };
+					autopower["Low backoff thresholds"].FloatValueArray = new float[] { AutoAdjust.Low.Backoff.High, AutoAdjust.Low.Backoff.Mean, AutoAdjust.Low.Backoff.Low };
 
 					// POWER MODES
 					power["Low mode"].StringValue = GetModeName(AutoAdjust.Low.Mode);

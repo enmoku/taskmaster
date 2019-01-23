@@ -44,12 +44,16 @@ namespace Taskmaster
 		/// </summary>
 		public TimeSpan SampleInterval { get; set; } = TimeSpan.FromSeconds(5);
 		public int SampleCount { get; set; } = 5;
-		PerformanceCounterWrapper Counter = new PerformanceCounterWrapper("Processor", "% Processor Time", "_Total");
+		PerformanceCounterWrapper CPUload = new PerformanceCounterWrapper("Processor", "% Processor Time", "_Total");
+		PerformanceCounterWrapper CPUqueue = new PerformanceCounterWrapper("System", "Processor Queue Length", null);
+
+		//PerformanceCounterWrapper CPUIRQ = new PerformanceCounterWrapper("Processor", "% Interrupt Time", "_Total");
+
 		System.Threading.Timer CPUSampleTimer = null;
 
 		readonly float[] Samples;
 		int SampleLoop = 0;
-		float Average, Low, High;
+		float Mean, Low, High;
 
 		public CPUMonitor()
 		{
@@ -64,8 +68,8 @@ namespace Taskmaster
 					// prepopulate
 					for (int i = 0; i < SampleCount; i++)
 					{
-						Samples[i] = Counter.Value;
-						Average += Samples[i];
+						Samples[i] = CPUload.Value;
+						Mean += Samples[i];
 					}
 
 					CPUSampleTimer = new System.Threading.Timer(Sampler, null, System.Threading.Timeout.InfiniteTimeSpan, SampleInterval);
@@ -137,7 +141,7 @@ namespace Taskmaster
 
 			Low = tLow;
 			High = tHigh;
-			Average = tAverage / SampleCount;
+			Mean = tAverage / SampleCount;
 		}
 
 		void Sampler(object _)
@@ -147,7 +151,7 @@ namespace Taskmaster
 
 			try
 			{
-				float sample = Counter.Value; // slowest part
+				float sample = CPUload.Value; // slowest part
 				Samples[SampleLoop] = sample;
 				SampleLoop = (SampleLoop + 1) % SampleCount; // loop offset
 
@@ -156,7 +160,7 @@ namespace Taskmaster
 				onSampling?.Invoke(this, new ProcessorLoadEventArgs()
 				{
 					Current = sample,
-					Average = Average,
+					Mean = Mean,
 					High = High,
 					Low = Low,
 					Period = SampleInterval
@@ -288,8 +292,8 @@ namespace Taskmaster
 				CPUSampleTimer?.Dispose();
 				CPUSampleTimer = null;
 
-				Counter?.Dispose();
-				Counter = null;
+				CPUload?.Dispose();
+				CPUload = null;
 
 				if (prcman != null)
 				{

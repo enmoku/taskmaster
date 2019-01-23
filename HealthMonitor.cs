@@ -34,6 +34,22 @@ using Serilog;
 
 namespace Taskmaster
 {
+	public sealed class HealthReport
+	{
+		// Counters
+		public float PageFaults = 0f;
+		public float PageInputs = 0f;
+		public float SplitIO = 0f;
+		public float NVMTransfers = 0f;
+		public float NVMQueue = 0f;
+		public float NVMDelay = 0f;
+		public float NetQueue = 0f;
+
+		// Memory
+		public float MemPressure = 0f;
+		public float MemUsage = 0f;
+	}
+
 	/// <summary>
 	/// Monitors for variety of problems and reports on them.
 	/// </summary>
@@ -41,6 +57,44 @@ namespace Taskmaster
 	{
 		//Dictionary<int, Problem> activeProblems = new Dictionary<int, Problem>();
 		readonly Settings.HealthMonitor Settings = new Settings.HealthMonitor();
+
+		// Hard Page Faults
+		PerformanceCounterWrapper PageFaults = new PerformanceCounterWrapper("Memory", "Page Faults/sec", null);
+		PerformanceCounterWrapper PageInputs = null;
+
+		// NVM
+		PerformanceCounterWrapper SplitIO = new PerformanceCounterWrapper("LogicalDisk", "Split IO/sec", "_Total");
+		PerformanceCounterWrapper NVMTransfers = new PerformanceCounterWrapper("LogicalDisk", "Disk Transfers/sec", "_Total");
+		PerformanceCounterWrapper NVMQueue = new PerformanceCounterWrapper("PhysicalDisk", "Current Disk Queue Length", "_Total");
+
+		PerformanceCounterWrapper NVMReadDelay = new PerformanceCounterWrapper("LogicalDisk", "Avg. Disk Sec/Read", "_Total");
+		PerformanceCounterWrapper NVMWriteDelay = new PerformanceCounterWrapper("LogicalDisk", "Avg. Disk Sec/Write", "_Total");
+
+		// Net
+		PerformanceCounterWrapper NetQueue = null;
+
+		/*
+		PerformanceCounterWrapper NetRetransmit = new PerformanceCounterWrapper("TCP", "Segments Retransmitted/sec", "_Total");
+		PerformanceCounterWrapper NetConnFails = new PerformanceCounterWrapper("TCP", "Connection Failures", "_Total");
+		PerformanceCounterWrapper NetConnReset = new PerformanceCounterWrapper("TCP", "Connections Reset", "_Total");
+		*/
+
+		public HealthReport Poll()
+		{
+			return new HealthReport()
+			{
+				PageFaults = PageFaults.Value,
+				PageInputs = PageInputs?.Value ?? float.NaN,
+				SplitIO = SplitIO.Value,
+				NVMTransfers = NVMTransfers.Value,
+				NVMQueue = NVMQueue.Value,
+				NVMDelay = Math.Max(NVMReadDelay.Value, NVMWriteDelay.Value),
+				NetQueue = NetQueue.Value,
+
+				//MemPressure = 0f,
+				//MemUsage = 0f,
+			};
+		}
 
 		public HealthMonitor()
 		{
@@ -103,15 +157,21 @@ namespace Taskmaster
 
 			LoadConfig();
 
-			if (Settings.MemLevel > 0 && Taskmaster.PagingEnabled)
+			var firstnic = new PerformanceCounterCategory("Network Interface").GetInstanceNames()[1]; // 0 = loopback
+			NetQueue = new PerformanceCounterWrapper("Network Interface", "Output Queue Length", firstnic);
+			try
 			{
-				Log.Information("<Auto-Doc> Memory auto-paging level: " + Settings.MemLevel + " MB");
+				PageInputs = new PerformanceCounterWrapper("Memory", "Page Inputs/sec", null);
+			}
+			catch (InvalidOperationException) // counter not found... admin only?
+			{
 			}
 
+			if (Settings.MemLevel > 0 && Taskmaster.PagingEnabled)
+				Log.Information($"<Auto-Doc> Memory auto-paging level: {Settings.MemLevel.ToString()} MB");
+
 			if (Settings.LowDriveSpaceThreshold > 0)
-			{
-				Log.Information("<Auto-Doc> Disk space warning level: " + Settings.LowDriveSpaceThreshold + " MB");
-			}
+				Log.Information($"<Auto-Doc> Disk space warning level: {Settings.LowDriveSpaceThreshold.ToString()} MB");
 
 			healthTimer = new System.Threading.Timer(TimerCheck, null, TimeSpan.FromSeconds(15), Settings.Frequency);
 

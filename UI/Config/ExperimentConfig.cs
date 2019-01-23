@@ -49,8 +49,8 @@ namespace Taskmaster.UI.Config
 				Parent = this,
 			};
 
-			layout.Controls.Add(new Label { Text = "EXPERIMENTAL", Font = boldfont, ForeColor = System.Drawing.Color.Maroon, AutoSize = true });
-			layout.Controls.Add(new Label { Text = "You've been warned", Font = boldfont, ForeColor=System.Drawing.Color.Maroon, AutoSize = true });
+			layout.Controls.Add(new Label { Text = "EXPERIMENTAL", Font = boldfont, ForeColor = System.Drawing.Color.Maroon, AutoSize = true, Padding = CustomPadding });
+			layout.Controls.Add(new Label { Text = "You've been warned", Font = boldfont, ForeColor=System.Drawing.Color.Maroon, AutoSize = true, Padding = CustomPadding });
 
 			var savebutton = new Button()
 			{
@@ -74,7 +74,7 @@ namespace Taskmaster.UI.Config
 				Value = Convert.ToDecimal(Taskmaster.IgnoreRecentlyModified.TotalMinutes),
 			};
 
-			layout.Controls.Add(new Label { Text = "Ignore recently modified" });
+			layout.Controls.Add(new Label { Text = "Ignore recently modified", AutoSize = true });
 			layout.Controls.Add(IgnoreRecentlyModifiedCooldown);
 
 			var RecordAnalysisDelay = new Extensions.NumericUpDownEx()
@@ -85,7 +85,7 @@ namespace Taskmaster.UI.Config
 				Value = Convert.ToDecimal(Taskmaster.RecordAnalysis.TotalSeconds),
 			};
 
-			layout.Controls.Add(new Label { Text = "Record analysis delay" });
+			layout.Controls.Add(new Label { Text = "Record analysis delay", AutoSize = true });
 			layout.Controls.Add(RecordAnalysisDelay);
 
 			// FILL IN BOTTOM

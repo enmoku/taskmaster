@@ -182,6 +182,9 @@ namespace Taskmaster
 
 					if (hardware != null)
 						mainwindow.Hook(hardware);
+
+					if (healthmonitor != null)
+						mainwindow.Hook(healthmonitor);
 				}
 				catch (Exception ex)
 				{

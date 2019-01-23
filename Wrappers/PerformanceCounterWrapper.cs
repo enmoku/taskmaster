@@ -100,6 +100,7 @@ namespace Taskmaster
 					Manager.Sensors?.Remove(this);
 					Counter.Dispose();
 					// TODO: Driver/Adapter vanished and other problems, try to re-acquire it.
+					// OR: The counter may require admin rights
 					Debug.WriteLine("DEBUG :: PFC(" + Counter.CategoryName + "//" + Counter.CounterName + "//" + Counter.InstanceName + ") vanished.");
 					throw;
 				}

@@ -41,7 +41,7 @@ namespace Taskmaster
 		/// <summary>
 		/// Averageload, from 0.0f to 100.0f.
 		/// </summary>
-		public float Average { get; set; } = 0.0f;
+		public float Mean { get; set; } = 0.0f;
 		/// <summary>
 		/// Lowest load, from 0.0f to 100.0f.
 		/// </summary>

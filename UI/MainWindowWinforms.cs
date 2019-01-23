@@ -348,7 +348,7 @@ namespace Taskmaster
 
 		void RescanRequestEvent(object _, EventArgs _ea)
 		{
-			processmanager?.HastenScan();
+			processmanager?.HastenScan(0);
 		}
 
 		void RestartRequestEvent(object sender, EventArgs _ea)
@@ -569,7 +569,7 @@ namespace Taskmaster
 		Label netstatuslabel;
 		Label inetstatuslabel;
 		Label uptimestatuslabel;
-		Label uptimeAvgLabel;
+		Label uptimeMeanLabel;
 
 		public static Serilog.Core.LoggingLevelSwitch LogIncludeLevel;
 
@@ -619,11 +619,11 @@ namespace Taskmaster
 			if (netmonitor == null) return;
 
 			uptimestatuslabel.Text = HumanInterface.TimeString(netmonitor.Uptime);
-			var avg = netmonitor.UptimeAverage();
-			if (double.IsInfinity(avg))
-				uptimeAvgLabel.Text = "Infinite";
+			var mean = netmonitor.UptimeMean();
+			if (double.IsInfinity(mean))
+				uptimeMeanLabel.Text = "Infinite";
 			else
-				uptimeAvgLabel.Text = HumanInterface.TimeString(TimeSpan.FromMinutes(avg));
+				uptimeMeanLabel.Text = HumanInterface.TimeString(TimeSpan.FromMinutes(mean));
 		}
 
 		ListView NetworkDevices;
@@ -1479,7 +1479,7 @@ namespace Taskmaster
 			{
 				netstatuslabel = new Label() { Dock = DockStyle.Left, Text = HumanReadable.Generic.Uninitialized, AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft };
 				inetstatuslabel = new Label() { Dock = DockStyle.Left, Text = HumanReadable.Generic.Uninitialized, AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft };
-				uptimeAvgLabel = new Label() { Dock = DockStyle.Left, Text = HumanReadable.Generic.Uninitialized, AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft };
+				uptimeMeanLabel = new Label() { Dock = DockStyle.Left, Text = HumanReadable.Generic.Uninitialized, AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft };
 				uptimestatuslabel = new Label
 				{
 					Dock = DockStyle.Left,
@@ -1505,7 +1505,7 @@ namespace Taskmaster
 				netstatus.Controls.Add(inetstatuslabel);
 
 				netstatus.Controls.Add(	new Label {Text = "Average:", Dock = DockStyle.Left, AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft });
-				netstatus.Controls.Add(uptimeAvgLabel);
+				netstatus.Controls.Add(uptimeMeanLabel);
 
 				NetworkDevices = new ListView
 				{
@@ -1840,6 +1840,40 @@ namespace Taskmaster
 				hwpanel.Controls.Add(gpufan);
 			}
 
+			TableLayoutPanel nvmpanel = null;
+			#region NVM
+			if (Taskmaster.HealthMonitorEnabled)
+			{
+				nvmpanel = new TableLayoutPanel()
+				{
+					ColumnCount = 2,
+					AutoSize = true,
+					AutoSizeMode = AutoSizeMode.GrowOnly,
+					Dock = DockStyle.Fill,
+				};
+
+				nvmtransfers = new Label { Text = HumanReadable.Generic.Uninitialized, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left };
+				nvmsplitio = new Label { Text = HumanReadable.Generic.Uninitialized, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left };
+				nvmdelay = new Label { Text = HumanReadable.Generic.Uninitialized, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left };
+				nvmqueued = new Label { Text = HumanReadable.Generic.Uninitialized, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left };
+				hardfaults = new Label { Text = HumanReadable.Generic.Uninitialized, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left };
+
+				nvmpanel.Controls.Add(new Label { Text = "Non-Volatile Memory", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left, Font = boldfont });
+				nvmpanel.Controls.Add(new Label()); // EMPTY
+
+				nvmpanel.Controls.Add(new Label { Text = "Transfers:", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left });
+				nvmpanel.Controls.Add(nvmtransfers);
+				nvmpanel.Controls.Add(new Label { Text = "Split I/O:", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left });
+				nvmpanel.Controls.Add(nvmsplitio);
+				nvmpanel.Controls.Add(new Label { Text = "Delay:", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left });
+				nvmpanel.Controls.Add(nvmdelay);
+				nvmpanel.Controls.Add(new Label { Text = "Queued:", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left });
+				nvmpanel.Controls.Add(nvmqueued);
+				nvmpanel.Controls.Add(new Label { Text = "Hard faults:", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left });
+				nvmpanel.Controls.Add(hardfaults);
+			}
+			#endregion
+
 			TableLayoutPanel powerpanel = null;
 			#region Power
 			if (Taskmaster.PowerManagerEnabled)
@@ -1855,7 +1889,7 @@ namespace Taskmaster
 				pwmode = new Label { Text = HumanReadable.Generic.Uninitialized, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left };
 				pwcause = new Label { Text = HumanReadable.Generic.Uninitialized, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left };
 				pwbehaviour = new Label { Text = HumanReadable.Generic.Uninitialized, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left };
-				powerpanel.Controls.Add(new Label { Text = "Power", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left, Font = boldfont });
+				powerpanel.Controls.Add(new Label { Text = HumanReadable.Hardware.Power.Section, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left, Font = boldfont });
 				powerpanel.Controls.Add(new Label()); // EMPTY
 				powerpanel.Controls.Add(new Label { Text = "Behaviour:", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left });
 				powerpanel.Controls.Add(pwbehaviour);
@@ -1946,6 +1980,7 @@ namespace Taskmaster
 			// Insert info panel/tab contents
 			if (hwpanel != null) coresystems.Controls.Add(hwpanel);
 			if (powerpanel != null) additionalsystems.Controls.Add(powerpanel);
+			if (nvmpanel != null) additionalsystems.Controls.Add(nvmpanel);
 			systemlayout.Controls.Add(coresystems);
 			systemlayout.Controls.Add(additionalsystems);
 			infopanel.Controls.Add(systemlayout);
@@ -2457,9 +2492,9 @@ namespace Taskmaster
 		}
 
 		// Called by UI update timer, should be UI thread by default
-		void UpdateHWStats(object _, EventArgs _ea)
+		async void UpdateHWStats(object _, EventArgs _ea)
 		{
-			MemoryManager.Update();
+			MemoryManager.Update(); // TODO: this is kinda dumb way to do things
 			double freegb = (double)MemoryManager.FreeBytes / 1_073_741_824d;
 			double totalgb = (double)MemoryManager.Total / 1_073_741_824d;
 			double usage = 1 - (freegb / totalgb);
@@ -2477,7 +2512,9 @@ namespace Taskmaster
 
 			BeginInvoke(new Action(() =>
 			{
-				cpuload.Text = $"{ea.Current:N1} %, Avg: {ea.Average:N1} %, Hi: {ea.High:N1} %, Lo: {ea.Low:N1} %";
+				cpuload.Text = $"{ea.Current:N1} % ({ea.Low:N1} < {ea.Mean:N1} < {ea.High:N1})";
+				// 50 % (33.2 < 52.1 < 72.8)
+
 			}));
 		}
 
@@ -2497,7 +2534,7 @@ namespace Taskmaster
 
 					var li = new ListViewItem(new string[] {
 						$"{ea.Current:N2} %",
-						$"{ea.Average:N2} %",
+						$"{ea.Mean:N2} %",
 						$"{ea.High:N2} %",
 						$"{ea.Low:N2} %",
 						ea.Reaction.ToString(),
@@ -2585,7 +2622,7 @@ namespace Taskmaster
 
 						WatchlistItemColor(li, prc);
 
-						processmanager?.HastenScan();
+						processmanager?.HastenScan(20);
 					}
 
 					WatchlistRules.EndUpdate();
@@ -2614,7 +2651,7 @@ namespace Taskmaster
 						if (rv == DialogResult.OK)
 						{
 							UpdateWatchlist(prc);
-							processmanager?.HastenScan();
+							processmanager?.HastenScan(60);
 						}
 					}
 				}
@@ -2770,6 +2807,12 @@ namespace Taskmaster
 		Label pwcause = null;
 		Label pwbehaviour = null;
 
+		Label nvmtransfers = null;
+		Label nvmsplitio = null;
+		Label nvmdelay = null;
+		Label nvmqueued = null;
+		Label hardfaults = null;
+
 		Label gpuvram = null;
 		Label gpuload = null;
 		Label gputemp = null;
@@ -2879,9 +2922,48 @@ namespace Taskmaster
 			cpumonitor.onSampling += CPULoadHandler;
 		}
 
+		HealthMonitor healthmonitor = null;
+		public void Hook(HealthMonitor hmon)
+		{
+			healthmonitor = hmon;
+
+			UItimer.Tick += UpdateHealthMon;
+		}
+
+		private void UpdateHealthMon(object sender, EventArgs e)
+		{
+			if (!IsHandleCreated) return;
+			if (disposed) return;
+
+			try
+			{
+				var health = healthmonitor.Poll();
+
+				float impact_transfers = health.NVMTransfers;
+				float impact_splits = health.SplitIO;
+				float impact_delay = health.NVMDelay;
+				float impact_queue = health.NVMQueue;
+				//float impact_faults = health.PageFaults;
+
+				nvmtransfers.Text = $"{health.NVMTransfers:N1}";
+				nvmsplitio.Text = $"{health.SplitIO:N2}";
+				nvmdelay.Text = $"{health.NVMDelay:N1} ms";
+				nvmqueued.Text = $"{health.NVMQueue:N1}";
+
+				hardfaults.Text = !float.IsNaN(health.PageInputs) ? $"{health.PageInputs / health.PageFaults:N1} %" : HumanReadable.Generic.NotAvailable;
+			}
+			catch (OutOfMemoryException) { throw; }
+			catch (Exception ex)
+			{
+				Logging.Stacktrace(ex);
+			}
+		}
+
 		public void PowerBehaviourDebugEvent(object _, PowerManager.PowerBehaviourEventArgs ea)
 		{
 			if (!IsHandleCreated) return;
+			if (disposed) return;
+
 			BeginInvoke(new Action(() =>
 			{
 				powerbalancer_behaviour.Text = PowerManager.GetBehaviourName(ea.Behaviour);

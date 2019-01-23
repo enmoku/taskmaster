@@ -28,6 +28,7 @@ using System;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Management;
+using System.Text;
 using MKAh;
 using Serilog;
 
@@ -128,23 +129,30 @@ namespace Taskmaster
 		public static int ApplyAffinityStrategy(int source, int target, ProcessAffinityStrategy strategy)
 		{
 			int newAffinityMask = target;
+			StringBuilder sbs = null;
+			if (Taskmaster.DebugProcesses)
+			{
+				sbs = new StringBuilder();
+				sbs.Append("Affinity Strategy(").Append(Convert.ToString(source, 2)).Append(", ").Append(strategy.ToString()).Append(")");
+			}
+
 			// Don't increase the number of cores
 			if (strategy == ProcessAffinityStrategy.Limit)
 			{
+				if (sbs != null) sbs.Append(" Cores(").Append(Bit.Count(source)).Append("->").Append(Bit.Count(target)).Append(")");
+
 				int excesscores = Bit.Count(target) - Bit.Count(source);
 				if (excesscores > 0)
 				{
-					if (Taskmaster.DebugProcesses) Debug.WriteLine("Old Affinity Mask: " + Convert.ToString(newAffinityMask, 2));
 					for (int i = 0; i < ProcessManager.CPUCount; i++)
 					{
 						if (Bit.IsSet(newAffinityMask, i))
 						{
 							newAffinityMask = Bit.Unset(newAffinityMask, i);
-							if (Taskmaster.DebugProcesses) Debug.WriteLine("Int Affinity Mask: " + Convert.ToString(newAffinityMask, 2));
+							if (sbs != null) sbs.Append(" -> ").Append(Convert.ToString(newAffinityMask, 2));
 							if (--excesscores <= 0) break;
 						}
 					}
-					if (Taskmaster.DebugProcesses) Debug.WriteLine("New Affinity Mask: " + Convert.ToString(newAffinityMask, 2));
 				}
 			}
 			else if (strategy == ProcessAffinityStrategy.Scatter)
@@ -159,6 +167,12 @@ namespace Taskmaster
 					}
 				}
 				*/
+			}
+
+			if (sbs != null)
+			{
+				sbs.Append(" = ").Append(Convert.ToString(newAffinityMask, 2));
+				Debug.WriteLine(sbs.ToString());
 			}
 
 			return newAffinityMask;

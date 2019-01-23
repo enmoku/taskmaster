@@ -158,6 +158,12 @@ namespace Taskmaster
 				UpdateInterfaces(); // force refresh
 				var ifaces = CurrentInterfaceList;
 
+				if (oldifaces.Count != ifaces.Count)
+				{
+					if (Taskmaster.DebugNet) Log.Warning("<Network> Interface count mismatch (" + oldifaces.Count + " vs " + ifaces.Count + "), skipping analysis.");
+					return;
+				}
+
 				if (ifaces == null) return; // no interfaces, just quit
 
 				for (int index = 0; index < ifaces.Count; index++)
@@ -235,7 +241,7 @@ namespace Taskmaster
 		/// <summary>
 		/// Returns uptime in minutes or positive infinite if no average is known
 		/// </summary>
-		public double UptimeAverage()
+		public double UptimeMean()
 		{
 			lock (uptime_lock)
 			{
@@ -600,7 +606,7 @@ namespace Taskmaster
 				if (ipv4changed)
 				{
 					var outstr4 = new System.Text.StringBuilder();
-					outstr4.Append("IPv4 address changed: ").Append(oldV4Address).Append(" -> ").Append(IPv4Address);
+					outstr4.Append("<Network> IPv4 address changed: ").Append(oldV4Address).Append(" → ").Append(IPv4Address);
 					Log.Information(outstr4.ToString());
 					sbs.Append(outstr4).AppendLine();
 				}
@@ -610,7 +616,7 @@ namespace Taskmaster
 				if (ipv6changed)
 				{
 					var outstr6 = new System.Text.StringBuilder();
-					outstr6.Append("IPv6 address changed: ").Append(oldV6Address).Append(" -> ").Append(IPv6Address);
+					outstr6.Append("<Network> IPv6 address changed: ").Append(oldV6Address).Append(" → ").Append(IPv6Address);
 					Log.Information(outstr6.ToString());
 					sbs.Append(outstr6).AppendLine();
 				}

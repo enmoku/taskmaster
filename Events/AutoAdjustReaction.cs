@@ -46,7 +46,7 @@ namespace Taskmaster
 			return new AutoAdjustReactionEventArgs
 			{
 				Current = ea.Current,
-				Average = ea.Average,
+				Mean = ea.Mean,
 				High = ea.High,
 				Low = ea.Low,
 				Period = ea.Period

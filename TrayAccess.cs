@@ -254,7 +254,7 @@ namespace Taskmaster
 					case Keys.R:
 						if (Taskmaster.Trace) Log.Verbose("<Global> Hotkey ctrl-alt-shift-r detected!!!");
 						Log.Information("<Global> Hotkey detected; Hastening next scan.");
-						processmanager?.HastenScan();
+						processmanager?.HastenScan(5);
 						m.Result = IntPtr.Zero;
 						break;
 					default:

@@ -44,7 +44,7 @@ namespace Taskmaster
 					Mode = PowerMode.HighPerformance,
 					Backoff = {
 						High = 60,
-						Avg = 40,
+						Mean = 40,
 						Low = 15,
 						Level = 7,
 					},
@@ -57,7 +57,7 @@ namespace Taskmaster
 					Mode = PowerMode.PowerSaver,
 					Backoff = {
 						High = 50,
-						Avg = 35,
+						Mean = 35,
 						Low = 25,
 						Level = 3,
 					},

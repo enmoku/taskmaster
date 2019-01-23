@@ -57,7 +57,7 @@ namespace Taskmaster
 			public int Level;
 
 			public float Low;
-			public float Avg;
+			public float Mean;
 			public float High;
 		}
 

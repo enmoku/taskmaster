@@ -1045,7 +1045,7 @@ namespace Taskmaster
 				{
 					try
 					{
-						if (ormt.Info.Process.ProcessName.Equals(info.Process.ProcessName))
+						if (ormt.Info.Name.Equals(info.Name))
 						{
 							bool expected = false;
 							if ((Priority.HasValue && info.Process.PriorityClass != Priority.Value) ||
@@ -1057,7 +1057,8 @@ namespace Taskmaster
 								expected = true;
 							}
 
-							if (ormt.LastIgnored.TimeTo(now) < Taskmaster.IgnoreRecentlyModified)
+							if (ormt.LastIgnored.TimeTo(now) < Taskmaster.IgnoreRecentlyModified ||
+								ormt.LastModified.TimeTo(now) < Taskmaster.IgnoreRecentlyModified)
 							{
 								if (Taskmaster.DebugProcesses) Log.Debug("[" + FriendlyName + "] #" + info.Id + " ignored due to recent modification." +
 									(expected ? $" Expected: {ormt.ExpectedState} :)" : $" Unexpected: {ormt.UnexpectedState} :("));
@@ -1361,6 +1362,7 @@ namespace Taskmaster
 							catch { }
 							finally
 							{
+								Debug.WriteLine("Recently Modified, updating for " + urmt.Info.Id + " " + urmt.Info.Name);
 								urmt.LastModified = now;
 								urmt.UnexpectedState += 1;
 							}
@@ -1397,7 +1399,7 @@ namespace Taskmaster
 					foreach (var r in RecentlyModified)
 					{
 						if ((r.Value.LastIgnored.TimeTo(now) > Taskmaster.IgnoreRecentlyModified)
-							|| (r.Value.LastModified.TimeTo(now).TotalMinutes > 15f))
+							|| (r.Value.LastModified.TimeTo(now) > Taskmaster.IgnoreRecentlyModified))
 							RecentlyModified.TryRemove(r.Key, out _);
 					}
 				}
