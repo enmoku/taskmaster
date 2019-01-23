@@ -135,6 +135,7 @@
     <Compile Include="Events\ProcessModification.cs" />
     <Compile Include="Events\ProcessorLoad.cs" />
     <Compile Include="Events\VolumeChanged.cs" />
+    <Compile Include="Settings\HealthMonitor.cs" />
     <Compile Include="UI\Extensions\NumericUpDownEx.cs">
       <SubType>Component</SubType>
     </Compile>

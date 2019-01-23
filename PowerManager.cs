@@ -261,6 +261,7 @@ namespace Taskmaster
 		async void MonitorSleepTimerTick(object _)
 		{
 			var idle = User.IdleTime();
+			if (disposed) return; // HACK
 
 			if (SessionLockPowerMode != PowerMode.Undefined)
 			{

@@ -30,6 +30,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Management;
+using System.Text;
 using System.Threading.Tasks;
 using MKAh;
 using Serilog;
@@ -107,6 +108,8 @@ namespace Taskmaster
 			NextScan = DateTimeOffset.UtcNow.Add(InitialScanDelay);
 			if (ScanFrequency != TimeSpan.Zero) ScanTimer = new System.Threading.Timer(TimedScan, null, InitialScanDelay, ScanFrequency);
 
+			ProcessDetectedEvent += ProcessTriage;
+
 			if (Taskmaster.DebugProcesses) Log.Information("<Process> Component Loaded.");
 
 			Taskmaster.DisposalChute.Push(this);
@@ -174,7 +177,7 @@ namespace Taskmaster
 		}
 
 		string freememoryignore = null;
-		void FreeMemoryTick(object _, ProcessModificationEventArgs ea)
+		void FreeMemoryTick(object _, HandlingStateChangeEventArgs ea)
 		{
 			try
 			{
@@ -295,18 +298,10 @@ namespace Taskmaster
 		/// </summary>
 		async void TimedScan(object _)
 		{
+			if (disposed) return; // HACK: dumb timers be dumb
+
 			try
 			{
-				if (disposed) // HACK: dumb timers be dumb
-				{
-					try
-					{
-						ScanTimer?.Dispose();
-					}
-					catch (ObjectDisposedException) { }
-					return;
-				}
-
 				if (Taskmaster.Trace) Log.Verbose("Rescan requested.");
 				if (ScanPaused) return;
 				// this stays on UI thread for some reason
@@ -324,7 +319,7 @@ namespace Taskmaster
 		/// <summary>
 		/// Event fired by Scan and WMI new process
 		/// </summary>
-		public event EventHandler<ProcessModificationEventArgs> ProcessDetectedEvent;
+		public event EventHandler<HandlingStateChangeEventArgs> ProcessDetectedEvent;
 		//public event EventHandler ScanStartEvent;
 		//public event EventHandler ScanEndEvent;
 
@@ -394,12 +389,9 @@ namespace Taskmaster
 				if (ProcessUtility.GetInfo(pid, out var info, process, null, name, null, getPath: true))
 				{
 					info.Timer = Stopwatch.StartNew();
-					ProcessTriage(info);
-					ProcessDetectedEvent?.Invoke(this,
-						new ProcessModificationEventArgs { Info = info, State = ProcessRunningState.Found }
-						);
-
-					HandlingStateChange?.Invoke(this, new HandlingStateChangeEventArgs(info));
+					var ev = new HandlingStateChangeEventArgs(info);
+					ProcessDetectedEvent?.Invoke(this, ev);
+					HandlingStateChange?.Invoke(this, ev);
 				}
 			}
 
@@ -1259,22 +1251,20 @@ namespace Taskmaster
 
 			if (!prc.ForegroundOnly) return;
 
-			var keyexists = false;
-
-			if (ForegroundWaitlist.TryAdd(info.Id, prc))
+			bool keyadded = false;
+			if (keyadded = ForegroundWaitlist.TryAdd(info.Id, prc))
 				WaitForExit(info);
-			else
-				keyexists = true;
 
 			if (Taskmaster.Trace && Taskmaster.DebugForeground)
 			{
-				if (!keyexists)
-					Log.Debug("[" + prc.FriendlyName + "] " + info.Name + " (#" + info.Id + ") added to foreground watchlist.");
-				else
-					Log.Debug("[" + prc.FriendlyName + "] " + info.Name + " (#" + info.Id + ") already in foreground watchlist.");
+				var sbs = new StringBuilder();
+				sbs.Append("[").Append(prc.FriendlyName).Append("] ").Append(info.Name).Append(" (#").Append(info.Id).Append(") ")
+					.Append(!keyadded ? "already in" : "added to").Append(" foreground watchlist.");
+
+				Log.Debug(sbs.ToString());
 			}
 
-			ProcessStateChange?.Invoke(this, new ProcessModificationEventArgs() { Info = info, State = keyexists ? ProcessRunningState.Found : ProcessRunningState.Starting });
+			ProcessStateChange?.Invoke(this, new ProcessModificationEventArgs() { Info = info, State = ProcessRunningState.Found });
 		}
 
 		async void CollectProcessHandlingStatistics(object _, HandlingStateChangeEventArgs ea)
@@ -1303,8 +1293,12 @@ namespace Taskmaster
 		}
 
 		// TODO: This should probably be pushed into ProcessController somehow.
-		async void ProcessTriage(ProcessEx info)
+		async void ProcessTriage(object _, HandlingStateChangeEventArgs ev)
 		{
+			if (disposed) return;
+
+			ProcessEx info = ev.Info;
+
 			try
 			{
 				await Task.Delay(0).ConfigureAwait(false);
@@ -1419,9 +1413,9 @@ namespace Taskmaster
 
 				foreach (var info in list)
 				{
-					ProcessTriage(info);
-					ProcessDetectedEvent?.Invoke(this, new ProcessModificationEventArgs { Info = info });
-					HandlingStateChange?.Invoke(this, new HandlingStateChangeEventArgs(info));
+					var ev = new HandlingStateChangeEventArgs(info);
+					ProcessDetectedEvent?.Invoke(this, ev);
+					HandlingStateChange?.Invoke(this, ev);
 				}
 
 				SignalProcessHandled(-(list.Count)); // batch done
@@ -1450,6 +1444,8 @@ namespace Taskmaster
 			string name = string.Empty;
 			string path = string.Empty;
 			ProcessEx info = null;
+
+			ProcessHandlingState state = ProcessHandlingState.Invalid;
 
 			try
 			{
@@ -1493,7 +1489,7 @@ namespace Taskmaster
 				catch (Exception ex)
 				{
 					Logging.Stacktrace(ex);
-					info.State = ProcessHandlingState.Invalid;
+					state = ProcessHandlingState.Invalid;
 					return;
 				}
 				finally
@@ -1512,16 +1508,16 @@ namespace Taskmaster
 				{
 					// likely process exited too fast
 					if (Taskmaster.DebugProcesses && Taskmaster.ShowInaction) Log.Debug("<<WMI>> Failed to acquire neither process name nor process Id");
+					state = ProcessHandlingState.AccessDenied;
 					return;
 				}
 
-				if (IgnoreProcessName(name))
-					return;
+				if (IgnoreProcessName(name)) return;
 
 				if (ProcessUtility.GetInfo(pid, out info, path: path, getPath: true, name: name))
 				{
 					info.Timer = timer;
-					NewInstanceTriagePhaseTwo(info, out var state);
+					NewInstanceTriagePhaseTwo(info, out state);
 				}
 			}
 			catch (Exception ex)
@@ -1535,7 +1531,7 @@ namespace Taskmaster
 			}
 			finally
 			{
-				HandlingStateChange?.Invoke(this, new HandlingStateChangeEventArgs(info ?? new ProcessEx { Id = pid, Timer = timer, State = ProcessHandlingState.Invalid }));
+				HandlingStateChange?.Invoke(this, new HandlingStateChangeEventArgs(info ?? new ProcessEx { Id = pid, Timer = timer, State = state }));
 
 				SignalProcessHandled(-1); // done with it
 			}
@@ -1545,6 +1541,7 @@ namespace Taskmaster
 		{
 			//await Task.Delay(0).ConfigureAwait(false);
 			info.State = ProcessHandlingState.Invalid;
+			var ev = new HandlingStateChangeEventArgs(info);
 
 			try
 			{
@@ -1612,8 +1609,7 @@ namespace Taskmaster
 				else
 				{
 					state = info.State = ProcessHandlingState.Triage;
-					ProcessTriage(info);
-					ProcessDetectedEvent?.Invoke(this, new ProcessModificationEventArgs { Info = info });
+					ProcessDetectedEvent?.Invoke(this, ev);
 				}
 			}
 			catch (Exception ex)
@@ -1623,7 +1619,7 @@ namespace Taskmaster
 			}
 			finally
 			{
-				HandlingStateChange?.Invoke(this, new HandlingStateChangeEventArgs(info));
+				HandlingStateChange?.Invoke(this, ev);
 			}
 		}
 

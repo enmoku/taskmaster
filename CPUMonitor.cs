@@ -25,6 +25,8 @@
 // THE SOFTWARE.
 
 using System;
+using System.Collections.Concurrent;
+using System.Diagnostics;
 using MKAh;
 using Serilog;
 
@@ -32,6 +34,9 @@ namespace Taskmaster
 {
 	public class CPUMonitor : IDisposable
 	{
+		// Experimental feature
+		public bool CPULoaderMonitoring { get; set; } = false;
+
 		public event EventHandler<ProcessorLoadEventArgs> onSampling;
 
 		/// <summary>
@@ -93,6 +98,9 @@ namespace Taskmaster
 			hwsec[HumanReadable.Hardware.CPU.Settings.SampleCount].Comment = "3 to 30. Number of CPU samples to keep. Recommended value is: Count * Interval <= 30 seconds";
 			dirtyconfig |= modified;
 
+			var exsec = corecfg.Config["Experimental"];
+			CPULoaderMonitoring = exsec.TryGet("CPU loaders")?.BoolValue ?? false;
+
 			Log.Information("<CPU> Sampler: " + $"{ SampleInterval.TotalSeconds:N0}" + "s × " + SampleCount +
 				" = " + $"{SampleCount * SampleInterval.TotalSeconds:N0}s" + " observation period");
 
@@ -137,23 +145,136 @@ namespace Taskmaster
 			if (!Atomic.Lock(ref sampler_lock)) return; // uhhh... probably should ping warning if this return is triggered
 			if (disposed) return; // HACK: dumbness with timers
 
-			float sample = Counter.Value; // slowest part
-			Samples[SampleLoop] = sample;
-			SampleLoop = (SampleLoop + 1) % SampleCount; // loop offset
-
-			Calculate();
-			
-			onSampling?.Invoke(this, new ProcessorLoadEventArgs()
+			try
 			{
-				Current = sample,
-				Average = Average,
-				High = High,
-				Low = Low,
-				Period = SampleInterval
-			});
+				float sample = Counter.Value; // slowest part
+				Samples[SampleLoop] = sample;
+				SampleLoop = (SampleLoop + 1) % SampleCount; // loop offset
 
-			Atomic.Unlock(ref sampler_lock);
+				Calculate();
+
+				onSampling?.Invoke(this, new ProcessorLoadEventArgs()
+				{
+					Current = sample,
+					Average = Average,
+					High = High,
+					Low = Low,
+					Period = SampleInterval
+				});
+			}
+			catch (OutOfMemoryException) { throw; }
+			catch (Exception ex)
+			{
+				Logging.Stacktrace(ex);
+			}
+			finally
+			{
+				Atomic.Unlock(ref sampler_lock);
+			}
 		}
+
+
+		ProcessManager prcman = null;
+		public void Hook(ProcessManager processmanager)
+		{
+			prcman = processmanager;
+
+			if (CPULoaderMonitoring)
+			{
+				//prcman.ProcessDetectedEvent += ProcessDetectedEvent;
+			}
+		}
+
+		/*
+		#region Load monitoring
+		ConcurrentDictionary<int, ProcessEx> Loaders = new ConcurrentDictionary<int, ProcessEx>();
+		ConcurrentDictionary<int, ProcessEx> Monitoring = new ConcurrentDictionary<int, ProcessEx>();
+		ConcurrentDictionary<string, CounterChunk> ProcessCounters = new ConcurrentDictionary<string, CounterChunk>();
+
+		object monitoring_lock = new object();
+
+		async void FindLoaders()
+		{
+			try
+			{
+
+			}
+			catch (Exception ex)
+			{
+
+			}
+		}
+
+		async void ProcessDetectedEvent(object _, HandlingStateChangeEventArgs ev)
+		{
+			ReceiveProcess(ev.Info);
+		}
+
+		async void ReceiveProcess(ProcessEx info)
+		{
+			try
+			{
+				if (Monitoring.TryAdd(info.Id, info))
+				{
+					info.Process.Exited += RemoveProcess;
+					info.Process.EnableRaisingEvents = true;
+
+					CounterChunk counterchunk = null;
+					if (ProcessCounters.TryGetValue(info.Name, out counterchunk))
+					{
+						counterchunk.References += 1;
+					}
+					else
+					{
+						var cpucounter = new PerformanceCounterWrapper("Processor", "% Processor Time", info.Name);
+						var memcounter = new PerformanceCounterWrapper("Process", "Working Set", info.Name);
+
+						counterchunk = new CounterChunk()
+						{
+							CPUCounter = cpucounter,
+							MEMCounter = memcounter,
+
+							Name = info.Name,
+							References = 1
+						};
+
+						ProcessCounters.TryAdd(info.Name, counterchunk);
+					}
+
+					info.Process.Refresh();
+					if (info.Process.HasExited) RemoveProcess(info.Process, null);
+				}
+			}
+			catch (Exception ex)
+			{
+				Logging.Stacktrace(ex);
+			}
+		}
+
+		async void RemoveProcess(object sender, EventArgs _)
+		{
+			try
+			{
+				var process = (Process)sender;
+
+				if (Monitoring.TryRemove(process.Id, out ProcessEx info))
+				{
+					if (ProcessCounters.TryGetValue(info.Name, out var counterchunk))
+					{
+						if (--counterchunk.References <= 0)
+						{
+							ProcessCounters.TryRemove(info.Name, out _);
+						}
+					}
+				}
+			}
+			catch (Exception ex)
+			{
+				Logging.Stacktrace(ex);
+			}
+		}
+		#endregion Load monitoring
+		*/
 
 		#region IDisposable Support
 		private bool disposed = false; // To detect redundant calls
@@ -170,6 +291,12 @@ namespace Taskmaster
 				Counter?.Dispose();
 				Counter = null;
 
+				if (prcman != null)
+				{
+					//prcman.ProcessDetectedEvent -= ProcessDetectedEvent;
+					prcman = null;
+				}
+
 				SaveConfig();
 			}
 
@@ -181,5 +308,14 @@ namespace Taskmaster
 			Dispose(true);
 		}
 		#endregion
+	}
+
+	internal sealed class CounterChunk
+	{
+		internal PerformanceCounterWrapper CPUCounter = null;
+		internal PerformanceCounterWrapper MEMCounter = null;
+		internal uint References = 0;
+		internal string Name = string.Empty;
+		internal ConcurrentDictionary<int, ProcessEx> Processes = new ConcurrentDictionary<int, ProcessEx>();
 	}
 }

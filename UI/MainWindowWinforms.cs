@@ -2429,6 +2429,10 @@ namespace Taskmaster
 								//exitwaitlist.Items.Insert(0, li);
 								//li.EnsureVisible();
 								break;
+							case ProcessRunningState.Starting:
+								//break;
+							case ProcessRunningState.Undefined:
+								//break;
 							default:
 								Log.Debug("Received unhandled process (#" + ea.Info.Id + ") state: " + ea.State.ToString());
 								break;

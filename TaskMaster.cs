@@ -337,7 +337,11 @@ namespace Taskmaster
 			}
 
 			if (processmanager != null)
+			{
 				trayaccess?.Hook(processmanager);
+				if (cpumonitor != null)
+					cpumonitor.Hook(processmanager);
+			}
 
 			if (ActiveAppMonitorEnabled && ProcessMonitorEnabled)
 			{

@@ -40,7 +40,7 @@ namespace Taskmaster
 	sealed public class HealthMonitor : IDisposable // Auto-Doc
 	{
 		//Dictionary<int, Problem> activeProblems = new Dictionary<int, Problem>();
-		Settings.HealthMonitor Settings = new Settings.HealthMonitor();
+		readonly Settings.HealthMonitor Settings = new Settings.HealthMonitor();
 
 		public HealthMonitor()
 		{

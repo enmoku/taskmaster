@@ -1072,6 +1072,11 @@ namespace Taskmaster
 								return;
 							}
 						}
+						else
+						{
+							if (Taskmaster.DebugProcesses) Log.Debug("[" + FriendlyName + "] #" + info.Id + " passed because name does not match; new: " +
+								info.Name + ", old: " + ormt.Info.Name);
+						}
 					}
 					catch (OutOfMemoryException) { throw; }
 					catch { }
