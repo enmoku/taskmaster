@@ -155,6 +155,8 @@ namespace Taskmaster
 				Samples[SampleLoop] = sample;
 				SampleLoop = (SampleLoop + 1) % SampleCount; // loop offset
 
+				float queue = CPUqueue.Value;
+
 				Calculate();
 
 				onSampling?.Invoke(this, new ProcessorLoadEventArgs()
@@ -163,7 +165,8 @@ namespace Taskmaster
 					Mean = Mean,
 					High = High,
 					Low = Low,
-					Period = SampleInterval
+					Period = SampleInterval,
+					Queue = queue
 				});
 			}
 			catch (OutOfMemoryException) { throw; }

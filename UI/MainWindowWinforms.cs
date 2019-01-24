@@ -1797,7 +1797,7 @@ namespace Taskmaster
 				tempmonitorpanel.Controls.Add(tempObjectSize);
 			}
 
-			var hwpanel = new TableLayoutPanel()
+			TableLayoutPanel corepanel = new TableLayoutPanel()
 			{
 				ColumnCount = 2,
 				AutoSize = true,
@@ -1806,41 +1806,51 @@ namespace Taskmaster
 				Dock = DockStyle.Fill,
 			};
 
-			hwpanel.Controls.Add(new Label() { Text = "Core", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left, Font = boldfont });
-			hwpanel.Controls.Add(new Label()); // empty
+			Label corelabel = new Label() { Text = "Core", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left, Font = boldfont };
 
-			hwpanel.Controls.Add(new Label() { Text = "CPU", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left });
+			corepanel.Controls.Add(new Label() { Text = "CPU", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left });
 			cpuload = new Label() { Text = HumanReadable.Generic.Uninitialized, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left };
-			hwpanel.Controls.Add(cpuload);
+			corepanel.Controls.Add(cpuload);
 			// TODO: Add high, low and average
 
-			hwpanel.Controls.Add(new Label() { Text = "RAM", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left });
+			corepanel.Controls.Add(new Label() { Text = "RAM", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left });
 			ramload = new Label() { Text = HumanReadable.Generic.Uninitialized, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left };
-			hwpanel.Controls.Add(ramload);
+			corepanel.Controls.Add(ramload);
 
+			TableLayoutPanel gpupanel = null;
+			Label gpulabel = null;
 			if (Taskmaster.HardwareMonitorEnabled)
 			{
-				hwpanel.Controls.Add(new Label() { Text = "GPU", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left, Font = boldfont });
-				hwpanel.Controls.Add(new Label()); // empty
+				gpupanel = new TableLayoutPanel()
+				{
+					ColumnCount = 2,
+					AutoSize = true,
+					AutoSizeMode = AutoSizeMode.GrowOnly,
+					//Dock = DockStyle.Fill,
+					Dock = DockStyle.Fill,
+				};
 
-				hwpanel.Controls.Add(new Label() { Text = "VRAM", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left });
+				gpulabel = new Label() { Text = "GPU", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left, Font = boldfont };
+
+				gpupanel.Controls.Add(new Label() { Text = "VRAM", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left });
 				gpuvram = new Label() { Text = HumanReadable.Generic.Uninitialized, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left };
-				hwpanel.Controls.Add(gpuvram);
+				gpupanel.Controls.Add(gpuvram);
 
-				hwpanel.Controls.Add(new Label() { Text = "Load", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left });
+				gpupanel.Controls.Add(new Label() { Text = "Load", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left });
 				gpuload = new Label() { Text = HumanReadable.Generic.Uninitialized, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left };
-				hwpanel.Controls.Add(gpuload);
+				gpupanel.Controls.Add(gpuload);
 
-				hwpanel.Controls.Add(new Label() { Text = "Temp", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left });
+				corepanel.Controls.Add(new Label() { Text = "Temp", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left });
 				gputemp = new Label() { Text = HumanReadable.Generic.Uninitialized, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left };
-				hwpanel.Controls.Add(gputemp);
+				corepanel.Controls.Add(gputemp);
 
-				hwpanel.Controls.Add(new Label() { Text = "Fan", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left });
+				gpupanel.Controls.Add(new Label() { Text = "Fan", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left });
 				gpufan = new Label() { Text = HumanReadable.Generic.Uninitialized, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left };
-				hwpanel.Controls.Add(gpufan);
+				gpupanel.Controls.Add(gpufan);
 			}
 
 			TableLayoutPanel nvmpanel = null;
+			Label nvmlabel = null;
 			#region NVM
 			if (Taskmaster.HealthMonitorEnabled)
 			{
@@ -1856,24 +1866,24 @@ namespace Taskmaster
 				nvmsplitio = new Label { Text = HumanReadable.Generic.Uninitialized, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left };
 				nvmdelay = new Label { Text = HumanReadable.Generic.Uninitialized, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left };
 				nvmqueued = new Label { Text = HumanReadable.Generic.Uninitialized, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left };
-				hardfaults = new Label { Text = HumanReadable.Generic.Uninitialized, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left };
+				//hardfaults = new Label { Text = HumanReadable.Generic.Uninitialized, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left };
 
-				nvmpanel.Controls.Add(new Label { Text = "Non-Volatile Memory", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left, Font = boldfont });
-				nvmpanel.Controls.Add(new Label()); // EMPTY
+				nvmlabel = new Label { Text = "Non-Volatile Memory", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left, Font = boldfont };
 
-				nvmpanel.Controls.Add(new Label { Text = "Transfers:", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left });
+				nvmpanel.Controls.Add(new Label { Text = "Transfers", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left });
 				nvmpanel.Controls.Add(nvmtransfers);
-				nvmpanel.Controls.Add(new Label { Text = "Split I/O:", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left });
+				nvmpanel.Controls.Add(new Label { Text = "Split I/O", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left });
 				nvmpanel.Controls.Add(nvmsplitio);
-				nvmpanel.Controls.Add(new Label { Text = "Delay:", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left });
+				nvmpanel.Controls.Add(new Label { Text = "Delay", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left });
 				nvmpanel.Controls.Add(nvmdelay);
-				nvmpanel.Controls.Add(new Label { Text = "Queued:", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left });
+				nvmpanel.Controls.Add(new Label { Text = "Queued", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left });
 				nvmpanel.Controls.Add(nvmqueued);
-				nvmpanel.Controls.Add(new Label { Text = "Hard faults:", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left });
-				nvmpanel.Controls.Add(hardfaults);
+				//nvmpanel.Controls.Add(new Label { Text = "Hard faults", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left });
+				//nvmpanel.Controls.Add(hardfaults);
 			}
 			#endregion
 
+			Label powerlabel = null;
 			TableLayoutPanel powerpanel = null;
 			#region Power
 			if (Taskmaster.PowerManagerEnabled)
@@ -1886,11 +1896,11 @@ namespace Taskmaster
 					Dock = DockStyle.Fill,
 				};
 
+				powerlabel = new Label { Text = HumanReadable.Hardware.Power.Section, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left, Font = boldfont };
+
 				pwmode = new Label { Text = HumanReadable.Generic.Uninitialized, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left };
 				pwcause = new Label { Text = HumanReadable.Generic.Uninitialized, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left };
 				pwbehaviour = new Label { Text = HumanReadable.Generic.Uninitialized, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left };
-				powerpanel.Controls.Add(new Label { Text = HumanReadable.Hardware.Power.Section, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left, Font = boldfont });
-				powerpanel.Controls.Add(new Label()); // EMPTY
 				powerpanel.Controls.Add(new Label { Text = "Behaviour:", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left });
 				powerpanel.Controls.Add(pwbehaviour);
 				powerpanel.Controls.Add(new Label { Text = "Mode:", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left });
@@ -1957,32 +1967,51 @@ namespace Taskmaster
 			{
 				FlowDirection = FlowDirection.TopDown,
 				WrapContents = false,
-				AutoSize = true,
 				Dock = DockStyle.Fill,
+				AutoSizeMode = AutoSizeMode.GrowOnly,
+				AutoSize = true,
 			};
 
 			var additionalsystems = new FlowLayoutPanel()
 			{
 				FlowDirection = FlowDirection.TopDown,
 				WrapContents = false,
-				AutoSize = true,
 				Dock = DockStyle.Fill,
+				AutoSizeMode = AutoSizeMode.GrowOnly,
+				AutoSize = true,
 			};
 
 			var systemlayout = new TableLayoutPanel()
 			{
 				ColumnCount = 2,
 				RowCount = 1,
-				AutoSize = true,
 				Dock = DockStyle.Fill,
+				AutoSizeMode = AutoSizeMode.GrowOnly,
+				AutoSize = true,
 			};
 
 			// Insert info panel/tab contents
-			if (hwpanel != null) coresystems.Controls.Add(hwpanel);
-			if (powerpanel != null) additionalsystems.Controls.Add(powerpanel);
-			if (nvmpanel != null) additionalsystems.Controls.Add(nvmpanel);
+			if (corepanel != null)
+			{
+				coresystems.Controls.Add(corelabel);
+				coresystems.Controls.Add(corepanel);
+				coresystems.Controls.Add(gpulabel);
+				coresystems.Controls.Add(gpupanel);
+			}
+			if (powerpanel != null)
+			{
+				additionalsystems.Controls.Add(powerlabel);
+				additionalsystems.Controls.Add(powerpanel);
+			}
+			if (nvmpanel != null)
+			{
+				additionalsystems.Controls.Add(nvmlabel);
+				additionalsystems.Controls.Add(nvmpanel);
+			}
 			systemlayout.Controls.Add(coresystems);
 			systemlayout.Controls.Add(additionalsystems);
+			systemlayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50f));
+			systemlayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50f)); // surprisingly not redundant
 			infopanel.Controls.Add(systemlayout);
 
 			if (netstatus != null && NetworkDevices != null)
@@ -2512,9 +2541,8 @@ namespace Taskmaster
 
 			BeginInvoke(new Action(() =>
 			{
-				cpuload.Text = $"{ea.Current:N1} % ({ea.Low:N1} < {ea.Mean:N1} < {ea.High:N1})";
-				// 50 % (33.2 < 52.1 < 72.8)
-
+				cpuload.Text = $"{ea.Current:N1} %, Low: {ea.Low:N1} %, Mean: {ea.Mean:N1} %, High: {ea.High:N1} %; Queue: {ea.Queue:N0}";
+				// 50 %, Low: 33.2 %, Mean: 52.1 %, High: 72.8 %, Queue: 1
 			}));
 		}
 
@@ -2928,7 +2956,16 @@ namespace Taskmaster
 			healthmonitor = hmon;
 
 			UItimer.Tick += UpdateHealthMon;
+
+			oldHealthReport = healthmonitor.Poll();
 		}
+
+		HealthReport oldHealthReport = null;
+
+		int skipTransfers = 0;
+		int skipSplits = 0;
+		int skipDelays = 0;
+		int skipQueues = 0;
 
 		private void UpdateHealthMon(object sender, EventArgs e)
 		{
@@ -2945,12 +2982,66 @@ namespace Taskmaster
 				float impact_queue = health.NVMQueue;
 				//float impact_faults = health.PageFaults;
 
-				nvmtransfers.Text = $"{health.NVMTransfers:N1}";
-				nvmsplitio.Text = $"{health.SplitIO:N2}";
-				nvmdelay.Text = $"{health.NVMDelay:N1} ms";
-				nvmqueued.Text = $"{health.NVMQueue:N1}";
+				if (health.NVMTransfers >= float.Epsilon)
+				{
+					nvmtransfers.Text = $"{health.NVMTransfers:N1}{(health.NVMTransfers > 250 ? (health.NVMTransfers > 500 ? " extreme" : " high") : "")}";
+					nvmtransfers.ForeColor = DefaultForeColor;
+					skipTransfers = 0;
+				}
+				else
+				{
+					if (skipTransfers++ == 0)
+						nvmtransfers.ForeColor = System.Drawing.SystemColors.InactiveCaptionText;
+					else
+						nvmtransfers.Text = "---";
+				}
 
-				hardfaults.Text = !float.IsNaN(health.PageInputs) ? $"{health.PageInputs / health.PageFaults:N1} %" : HumanReadable.Generic.NotAvailable;
+				if (health.SplitIO >= float.Epsilon)
+				{
+					nvmsplitio.Text = $"{health.SplitIO:N2}{(health.SplitIO > 20 ? (health.SplitIO >= health.NVMTransfers*0.5 ? " extreme" :  " high") : "")}";
+					nvmsplitio.ForeColor = DefaultForeColor;
+					skipSplits = 0;
+				}
+				else
+				{
+					if (skipSplits++ == 0)
+						nvmsplitio.ForeColor = System.Drawing.SystemColors.InactiveCaptionText;
+					else
+						nvmsplitio.Text = "---";
+				}
+
+				if (health.NVMDelay >= float.Epsilon)
+				{
+					float delay = health.NVMDelay * 1000;
+					nvmdelay.Text = $"{delay:N1} ms{(delay > 20 ? (health.NVMDelay > 50 ? " extreme" : " high") : "")}";
+					nvmdelay.ForeColor = DefaultForeColor;
+					skipDelays = 0;
+				}
+				else
+				{
+					if (skipDelays++ == 0)
+						nvmdelay.ForeColor = System.Drawing.SystemColors.InactiveCaptionText;
+					else
+						nvmdelay.Text = "---";
+				}
+
+				if (health.NVMQueue >= float.Epsilon)
+				{
+					nvmqueued.Text = $"{health.NVMQueue:N0}{(health.NVMQueue > 2 ? (health.NVMQueue > 8 ? " extreme" : " high") : "")}";
+					nvmqueued.ForeColor = DefaultForeColor;
+					skipQueues = 0;
+				}
+				else
+				{
+					if (skipQueues++ == 0)
+						nvmqueued.ForeColor = System.Drawing.SystemColors.InactiveCaptionText;
+					else
+						nvmqueued.Text = "---";
+				}
+
+				//hardfaults.Text = !float.IsNaN(health.PageInputs) ? $"{health.PageInputs / health.PageFaults:N1} %" : HumanReadable.Generic.NotAvailable;
+
+				oldHealthReport = health;
 			}
 			catch (OutOfMemoryException) { throw; }
 			catch (Exception ex)

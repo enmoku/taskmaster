@@ -37,23 +37,28 @@ namespace Taskmaster
 		/// <summary>
 		/// Current load, from 0.0f to 100.0f.
 		/// </summary>
-		public float Current { get; set; } = 0.0f;
+		public float Current { get; set; } = float.NaN;
 		/// <summary>
 		/// Averageload, from 0.0f to 100.0f.
 		/// </summary>
-		public float Mean { get; set; } = 0.0f;
+		public float Mean { get; set; } = float.NaN;
 		/// <summary>
 		/// Lowest load, from 0.0f to 100.0f.
 		/// </summary>
-		public float Low { get; set; } = 0.0f;
+		public float Low { get; set; } = float.NaN;
 		/// <summary>
 		/// Highest load, from 0.0f to 100.0f.
 		/// </summary>
-		public float High { get; set; } = 0.0f;
+		public float High { get; set; } = float.NaN;
 
 		/// <summary>
 		/// Time period for when Low, Average, and High loads were observed.
 		/// </summary>
 		public TimeSpan Period { get; set; } = TimeSpan.Zero;
+
+		/// <summary>
+		/// Thread queue length
+		/// </summary>
+		public float Queue { get; set; } = float.NaN;
 	}
 }

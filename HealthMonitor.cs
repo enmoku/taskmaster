@@ -59,7 +59,7 @@ namespace Taskmaster
 		readonly Settings.HealthMonitor Settings = new Settings.HealthMonitor();
 
 		// Hard Page Faults
-		PerformanceCounterWrapper PageFaults = new PerformanceCounterWrapper("Memory", "Page Faults/sec", null);
+		//PerformanceCounterWrapper PageFaults = new PerformanceCounterWrapper("Memory", "Page Faults/sec", null);
 		PerformanceCounterWrapper PageInputs = null;
 
 		// NVM
@@ -83,8 +83,8 @@ namespace Taskmaster
 		{
 			return new HealthReport()
 			{
-				PageFaults = PageFaults.Value,
-				PageInputs = PageInputs?.Value ?? float.NaN,
+				//PageFaults = PageFaults.Value,
+				//PageInputs = PageInputs?.Value ?? float.NaN,
 				SplitIO = SplitIO.Value,
 				NVMTransfers = NVMTransfers.Value,
 				NVMQueue = NVMQueue.Value,
@@ -161,7 +161,7 @@ namespace Taskmaster
 			NetQueue = new PerformanceCounterWrapper("Network Interface", "Output Queue Length", firstnic);
 			try
 			{
-				PageInputs = new PerformanceCounterWrapper("Memory", "Page Inputs/sec", null);
+				//PageInputs = new PerformanceCounterWrapper("Memory", "Page Inputs/sec", null);
 			}
 			catch (InvalidOperationException) // counter not found... admin only?
 			{
