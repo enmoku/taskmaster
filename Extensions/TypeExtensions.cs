@@ -37,61 +37,76 @@ namespace Taskmaster
 		/// <summary>
 		/// Returns true if as equal as possible.
 		/// </summary>
+		[System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
 		public static bool RoughlyEqual(this double value, double other) =>  Math.Abs(value - other) <= double.Epsilon;
+
+		[System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
+		public static bool RoughlyEqual(this float value, float other) => Math.Abs(value - other) <= float.Epsilon;
 
 		// Core Type extension
 		/// <summary>
 		/// int.Constrain(minimum, maximum)
 		/// </summary>
+		[System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
 		public static int Constrain(this int value, int InclusiveMinimum, int InclusiveMaximum)
-		{
-			return Math.Min(Math.Max(value, InclusiveMinimum), InclusiveMaximum);
-		}
+			=> Math.Min(Math.Max(value, InclusiveMinimum), InclusiveMaximum);
 
+		[System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
 		public static long Constrain(this long value, long InclusiveMinimum, long InclusiveMaximum)
-		{
-			return Math.Min(Math.Max(value, InclusiveMinimum), InclusiveMaximum);
-		}
+			=> Math.Min(Math.Max(value, InclusiveMinimum), InclusiveMaximum);
 
+		[System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
 		public static float Constrain(this float value, float InclusiveMinimum, float InclusiveMaximum)
-		{
-			return Math.Min(Math.Max(value, InclusiveMinimum), InclusiveMaximum);
-		}
+			=> Math.Min(Math.Max(value, InclusiveMinimum), InclusiveMaximum);
 
+		[System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
 		public static double Constrain(this double value, double InclusiveMinimum, double InclusiveMaximum)
-		{
-			return Math.Min(Math.Max(value, InclusiveMinimum), InclusiveMaximum);
-		}
+			=> Math.Min(Math.Max(value, InclusiveMinimum), InclusiveMaximum);
 
+		[System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
 		public static decimal Constrain(this decimal value, decimal InclusiveMinimum, decimal InclusiveMaximum)
-		{
-			return Math.Min(Math.Max(value, InclusiveMinimum), InclusiveMaximum);
-		}
+			=> Math.Min(Math.Max(value, InclusiveMinimum), InclusiveMaximum);
 
 		/// <summary>
 		/// Constrains maximum value.
 		/// </summary>
-		public static int Max(this int value, int max)
-		{
-			return Math.Min(value, max);
-		}
+		[System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
+		public static int Max(this int value, int max) => Math.Min(value, max);
+
+		[System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
+		public static long Max(this long value, long max) => Math.Min(value, max);
+
+		[System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
+		public static float Max(this float value, float max) => Math.Min(value, max);
+
+		[System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
+		public static double Max(this double value, double max) => Math.Min(value, max);
 
 		/// <summary>
 		/// Constrains minimum value.
 		/// </summary>
-		public static int Min(this int value, int min)
-		{
-			return Math.Max(value, min);
-		}
+		[System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
+		public static int Min(this int value, int min) => Math.Max(value, min);
+
+		[System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
+		public static long Min(this long value, long min) => Math.Max(value, min);
+
+		[System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
+		public static float Min(this float value, float min) => Math.Max(value, min);
+
+		[System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
+		public static double Min(this double value, double min) => Math.Max(value, min);
 
 		/// <summary>
 		/// Replace value with another
 		/// </summary>
-		public static int Replace(this int value, int from, int to)
-		{
-			return value == from ? to : value;
-		}
+		[System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
+		public static int Replace(this int value, int from, int to) => value == from ? to : value;
 
+		[System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
+		public static long Replace(this long value, long from, long to) => value == from ? to : value;
+
+		// IP Address
 		public static IPAddress GetAddress(this NetworkInterface iface)
 		{
 			Debug.Assert(iface != null);
@@ -142,17 +157,21 @@ namespace Taskmaster
 		static readonly DateTimeOffset UnixEpoch = new DateTimeOffset(new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc));
 
 		//public static long Unixstamp(this DateTime dt) => Convert.ToInt64(dt.ToUniversalTime().Subtract(UnixEpoch).TotalSeconds);
+		[System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
 		public static long Unixstamp(this DateTimeOffset dt) => Convert.ToInt64(dt.Subtract(UnixEpoch).TotalSeconds);
 
+		[System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
 		public static DateTimeOffset Unixstamp(this long unixstamp) => (UnixEpoch + TimeSpan.FromSeconds(unixstamp));
 
 		/// <summary>
 		/// Time since, because (now - since) just confuses me.
 		/// </summary>
 		//public static TimeSpan TimeSince(this DateTime now, DateTime since) => (now - since);
+		[System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
 		public static TimeSpan TimeSince(this DateTimeOffset now, DateTimeOffset since) => (now - since);
 
 		//public static TimeSpan TimeTo(this DateTime now, DateTime to) => (to - now);
+		[System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
 		public static TimeSpan TimeTo(this DateTimeOffset now, DateTimeOffset to) => (to - now);
 	}
 }
