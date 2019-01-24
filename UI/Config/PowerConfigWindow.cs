@@ -50,6 +50,8 @@ namespace Taskmaster
 		Extensions.NumericUpDownEx lowcommitthreshold = null, lowbackoffhigh = null, lowbackoffmean = null, lowbackofflow = null;
 		NumericUpDown lowcommitlevel = null, lowbackofflevel = null;
 
+		NumericUpDown loQueue = null, hiQueue = null;
+
 		bool MonitorPowerOff = false;
 		ComboBox monitoroffmode = null;
 		CheckBox monitorofftoggle = null;
@@ -262,6 +264,11 @@ namespace Taskmaster
 			highbackofflevel = new NumericUpDown() { Maximum = 10, Minimum = 1, Value = 5 };
 			layout.Controls.Add(highbackofflevel);
 
+			layout.Controls.Add(new Label() { Text = "Queue barrier", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Fill });
+			hiQueue = new NumericUpDown() { Maximum = 10, Minimum = 0, Value = 2 };
+			layout.Controls.Add(hiQueue);
+			tooltip.SetToolTip(hiQueue, "If there are at least this many queued threads, lower power modes are disallowed.");
+
 			lowmode = new ComboBox()
 			{
 				DropDownStyle = ComboBoxStyle.DropDownList,
@@ -294,6 +301,11 @@ namespace Taskmaster
 			layout.Controls.Add(new Label() { Text = "Backoff level", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Fill });
 			lowbackofflevel = new NumericUpDown() { Maximum = 10, Minimum = 1, Value = 5 };
 			layout.Controls.Add(lowbackofflevel);
+
+			layout.Controls.Add(new Label() { Text = "Queue barrier", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Fill });
+			loQueue = new NumericUpDown() { Maximum = 10, Minimum = 0, Value = 2 };
+			layout.Controls.Add(loQueue);
+			tooltip.SetToolTip(loQueue, "If there are at least this many queued threads, low mode is disallowed.");
 
 			var savebutton = new Button() { Text = "Save", Anchor = AnchorStyles.Right };
 			savebutton.Click += Save;
@@ -365,6 +377,11 @@ namespace Taskmaster
 							Low = Convert.ToSingle(highbackofflow.Value),
 							Level = Convert.ToInt32(highbackofflevel.Value),
 						}
+					},
+				Queue =
+					{
+						High = Convert.ToInt32(hiQueue.Value),
+						Low = Convert.ToInt32(loQueue.Value),
 					}
 			};
 
@@ -499,6 +516,7 @@ namespace Taskmaster
 			highbackoffmean.Value = Convert.ToDecimal(AutoAdjust.High.Backoff.Mean).Constrain(5, 95);
 			highbackofflow.Value = Convert.ToDecimal(AutoAdjust.High.Backoff.Low).Constrain(5, 95);
 			highbackofflevel.Value = Convert.ToDecimal(AutoAdjust.High.Backoff.Level);
+			hiQueue.Value = Convert.ToDecimal(AutoAdjust.Queue.High);
 
 			lowmode.SelectedIndex = AutoAdjust.Low.Mode == PowerMode.Balanced ? 1 : AutoAdjust.Low.Mode == PowerMode.PowerSaver ? 2 : 0;
 			lowcommitthreshold.Value = Convert.ToDecimal(AutoAdjust.Low.Commit.Threshold).Constrain(5, 95);
@@ -507,6 +525,7 @@ namespace Taskmaster
 			lowbackoffmean.Value = Convert.ToDecimal(AutoAdjust.Low.Backoff.Mean).Constrain(5, 95);
 			lowbackofflow.Value = Convert.ToDecimal(AutoAdjust.Low.Backoff.Low).Constrain(5, 95);
 			lowbackofflevel.Value = Convert.ToDecimal(AutoAdjust.Low.Backoff.Level);
+			loQueue.Value = Convert.ToDecimal(AutoAdjust.Queue.Low);
 		}
 
 		static PowerConfigWindow pcw = null;

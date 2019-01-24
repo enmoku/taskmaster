@@ -65,7 +65,11 @@ namespace Taskmaster
 						Level = 7,
 						Threshold = 15
 					}
-				}
+				},
+				Queue = {
+					 High = 5,
+					 Low = 2,
+				},
 			};
 		}
 	}

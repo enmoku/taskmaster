@@ -407,6 +407,7 @@ namespace Taskmaster
 
 		int HighPressure = 0;
 		int LowPressure = 0;
+		float queuePressureAdjust = 0f;
 		PowerReaction PreviousReaction = PowerReaction.Average;
 
 		// TODO: Simplify this mess
@@ -429,9 +430,10 @@ namespace Taskmaster
 				if (PreviousReaction == PowerReaction.High)
 				{
 					// Downgrade to MEDIUM power level
-					if (ev.High <= AutoAdjust.High.Backoff.High
+					if (ev.Queue <= AutoAdjust.Queue.High
+						&& (ev.High <= AutoAdjust.High.Backoff.High
 						|| ev.Mean <= AutoAdjust.High.Backoff.Mean
-						|| ev.Low <= AutoAdjust.High.Backoff.Low)
+						|| ev.Low <= AutoAdjust.High.Backoff.Low))
 					{
 						Reaction = PowerReaction.Average;
 						ReactionaryPlan = AutoAdjust.DefaultMode;
@@ -441,7 +443,8 @@ namespace Taskmaster
 						if (BackoffCounter >= AutoAdjust.High.Backoff.Level)
 							Ready = true;
 
-						ev.Pressure = ((float)BackoffCounter) / ((float)AutoAdjust.High.Backoff.Level);
+						queuePressureAdjust = (AutoAdjust.Queue.Low > 0 ? ev.Queue / 10 : 0); // 10% per queued thread
+						ev.Pressure = ((float)BackoffCounter) / ((float)AutoAdjust.High.Backoff.Level) - queuePressureAdjust;
 					}
 					else
 						Reaction = PowerReaction.Steady;
@@ -461,14 +464,15 @@ namespace Taskmaster
 						if (BackoffCounter >= AutoAdjust.Low.Backoff.Level)
 							Ready = true;
 
-						ev.Pressure = ((float)BackoffCounter) / ((float)AutoAdjust.Low.Backoff.Level);
+						queuePressureAdjust = (AutoAdjust.Queue.Low > 0 ? ev.Queue / 5 : 0); // 20% per queued thread
+						ev.Pressure = ((float)BackoffCounter) / ((float)AutoAdjust.Low.Backoff.Level) + queuePressureAdjust;
 					}
 					else
 						Reaction = PowerReaction.Steady;
 				}
 				else // Currently at medium power
 				{
-					if (ev.Low > AutoAdjust.High.Commit.Threshold && AutoAdjust.High.Mode != AutoAdjust.DefaultMode) // Low CPU is above threshold for High mode
+					if (ev.Queue >= AutoAdjust.Queue.High && ev.Low > AutoAdjust.High.Commit.Threshold && AutoAdjust.High.Mode != AutoAdjust.DefaultMode) // Low CPU is above threshold for High mode
 					{
 						// Downgrade to LOW power levell
 						Reaction = PowerReaction.High;
@@ -480,9 +484,10 @@ namespace Taskmaster
 						if (HighPressure >= AutoAdjust.High.Commit.Level)
 							Ready = true;
 
-						ev.Pressure = ((float)HighPressure) / ((float)AutoAdjust.High.Commit.Level);
+						queuePressureAdjust = (AutoAdjust.Queue.High > 0 ? ev.Queue / 5 : 0); // 20% per queued thread
+						ev.Pressure = ((float)HighPressure) / ((float)AutoAdjust.High.Commit.Level) + queuePressureAdjust;
 					}
-					else if (ev.High < AutoAdjust.Low.Commit.Threshold && AutoAdjust.Low.Mode != AutoAdjust.DefaultMode) // High CPU is below threshold for Low mode
+					else if (ev.Queue < AutoAdjust.Queue.Low && ev.High < AutoAdjust.Low.Commit.Threshold && AutoAdjust.Low.Mode != AutoAdjust.DefaultMode) // High CPU is below threshold for Low mode
 					{
 						// Upgrade to HIGH power levele
 						Reaction = PowerReaction.Low;
@@ -494,7 +499,8 @@ namespace Taskmaster
 						if (LowPressure >= AutoAdjust.Low.Commit.Level)
 							Ready = true;
 
-						ev.Pressure = ((float)LowPressure) / ((float)AutoAdjust.Low.Commit.Level);
+						queuePressureAdjust = (AutoAdjust.Queue.High > 0 ? ev.Queue / 5 : 0); // 20% per queued thread
+						ev.Pressure = ((float)LowPressure) / ((float)AutoAdjust.Low.Commit.Level) + queuePressureAdjust;
 					}
 					else // keep power at medium
 					{
@@ -719,6 +725,13 @@ namespace Taskmaster
 			AutoAdjust.High.Mode = GetModeByName(highmode);
 			dirtyconfig |= modified;
 
+			// QUEUE BARRIERS
+			AutoAdjust.Queue.High = autopower.GetSetDefault("High queue barrier", 5, out modified).IntValue.Constrain(0, 20);
+			dirtyconfig |= modified;
+			AutoAdjust.Queue.Low = autopower.GetSetDefault("Low queue barrier", 2, out modified).IntValue.Constrain(0, 10);
+			dirtyconfig |= modified;
+			if (AutoAdjust.Queue.Low >= AutoAdjust.Queue.High) AutoAdjust.Queue.Low = Math.Max(0, AutoAdjust.Queue.High - 1);
+
 			var saver = corecfg.Config["AFK Power"];
 			saver.Comment = "All these options control when to enforce power save mode regardless of any other options.";
 
@@ -809,6 +822,10 @@ namespace Taskmaster
 
 					autopower["Low threshold"].FloatValue = AutoAdjust.Low.Commit.Threshold;
 					autopower["Low backoff thresholds"].FloatValueArray = new float[] { AutoAdjust.Low.Backoff.High, AutoAdjust.Low.Backoff.Mean, AutoAdjust.Low.Backoff.Low };
+
+					// QUEUE BARRIERS
+					autopower["High queue barrier"].IntValue = AutoAdjust.Queue.High;
+					autopower["Low queue barrier"].IntValue = AutoAdjust.Queue.Low;
 
 					// POWER MODES
 					power["Low mode"].StringValue = GetModeName(AutoAdjust.Low.Mode);
@@ -1023,6 +1040,7 @@ namespace Taskmaster
 		Cause ExpectedCause = new Cause(OriginType.None);
 		PowerMode ExpectedMode = PowerMode.Undefined;
 		MonitorPowerMode ExpectedMonitorPower = MonitorPowerMode.On;
+		DateTimeOffset LastExternalWarning = DateTimeOffset.MinValue;
 
 		protected override void WndProc(ref Message m)
 		{
@@ -1046,6 +1064,13 @@ namespace Taskmaster
 
 					if (Taskmaster.DebugPower)
 						Log.Information("<Power/OS> Change detected: " + CurrentMode.ToString() + " (" + newPersonality.ToString() + ")");
+
+					var now = DateTimeOffset.UtcNow;
+					if (CurrentMode != ExpectedMode && Behaviour == PowerBehaviour.Auto && LastExternalWarning.TimeTo(now).TotalSeconds > 30)
+					{
+						LastExternalWarning = now;
+						Log.Warning("<Power/OS> Unexpected power mode change detected (" + GetModeName(CurrentMode) + ") while auto-adjust is enabled.");
+					}
 
 					m.Result = IntPtr.Zero;
 				}
