@@ -39,10 +39,24 @@ namespace Taskmaster
 
 		sealed public class AutoAdjustSettings
 		{
+			/// <summary>
+			/// Low mode control
+			/// </summary>
 			public PowerLevels Low;
+			/// <summary>
+			/// High mode control
+			/// </summary>
 			public PowerLevels High;
 
+			/// <summary>
+			/// Default mode when neither low or high is in effect
+			/// </summary>
 			public PowerMode DefaultMode = PowerMode.Balanced;
+
+			/// <summary>
+			/// CPU queue adjustment
+			/// </summary>
+			public QueueBarriers Queue;
 		}
 
 		public struct PowerLevels
@@ -65,6 +79,16 @@ namespace Taskmaster
 		{
 			public int Level;
 			public float Threshold;
+		}
+
+		public struct QueueBarriers
+		{
+			/// <summary>
+			/// Queue equal or above this will prevent low mode.
+			/// </summary>
+			public int Low;
+			// Queue equal or above this will prevent non-high mode.
+			public int High;
 		}
 	}
 }
