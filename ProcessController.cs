@@ -267,15 +267,23 @@ namespace Taskmaster
 			cfg.MarkDirty();
 		}
 
+		void ProcessExitEvent(object sender, EventArgs _ea)
+		{
+			var process = (Process)sender;
+			RecentlyModified.TryRemove(process.Id, out _);
+		}
+
 		/// <summary>
 		/// End various things for the given process
 		/// </summary>
-		public void End(ProcessEx info)
+		public void End(object sender, EventArgs _ea)
 		{
-			ForegroundWatch.TryRemove(info.Id, out _);
-			PausedIds.TryRemove(info.Id, out _);
+			var process = (Process)sender;
 
-			UndoPower(info);
+			ForegroundWatch.TryRemove(process.Id, out _);
+			PausedIds.TryRemove(process.Id, out _);
+
+			UndoPower(process.Id);
 		}
 
 		/// <summary>
@@ -575,7 +583,7 @@ namespace Taskmaster
 						if (Taskmaster.DebugPower)
 							Log.Debug("[" + FriendlyName + "] " + info.Name + " (#" + info.Id + ") power down");
 
-						UndoPower(info);
+						UndoPower(info.Id);
 					}
 					else
 					{
@@ -811,7 +819,7 @@ namespace Taskmaster
 				rv = Taskmaster.powermanager.Force(PowerPlan, info.Id);
 
 				info.Process.EnableRaisingEvents = true;
-				info.Process.Exited += (_, _ea) => End(info);
+				info.Process.Exited += End;
 
 				WaitingExit?.Invoke(this, new ProcessModificationEventArgs() { Info = info, State = ProcessRunningState.Undefined });
 
@@ -826,11 +834,11 @@ namespace Taskmaster
 			return rv;
 		}
 
-		void UndoPower(ProcessEx info)
+		void UndoPower(int pid)
 		{
-			if (PowerList.TryRemove(info.Id, out _))
+			if (PowerList.TryRemove(pid, out _))
 			{
-				Taskmaster.powermanager?.Release(info.Id);
+				Taskmaster.powermanager?.Release(pid);
 			}
 		}
 
@@ -1040,6 +1048,7 @@ namespace Taskmaster
 
 				var now = DateTimeOffset.UtcNow;
 
+				// TEST FOR RECENTLY MODIFIED
 				RecentlyModifiedInfo ormt = null;
 				if (RecentlyModified.TryGetValue(info.Id, out ormt))
 				{
@@ -1047,6 +1056,14 @@ namespace Taskmaster
 					{
 						if (ormt.Info.Name.Equals(info.Name))
 						{
+							if (ormt.FreeWill)
+							{
+								if (Taskmaster.ShowInaction && Taskmaster.DebugProcesses)
+									Log.Debug($"[{FriendlyName}] {info.Name} (#{info.Id.ToString()}) has been granted agency, ignoring.");
+								info.State = ProcessHandlingState.Abandoned;
+								return;
+							}
+
 							bool expected = false;
 							if ((Priority.HasValue && info.Process.PriorityClass != Priority.Value) ||
 								(AffinityMask >= 0 && info.Process.ProcessorAffinity.ToInt32() != AffinityMask))
@@ -1063,7 +1080,13 @@ namespace Taskmaster
 								if (Taskmaster.DebugProcesses) Log.Debug("[" + FriendlyName + "] #" + info.Id + " ignored due to recent modification." +
 									(expected ? $" Expected: {ormt.ExpectedState} :)" : $" Unexpected: {ormt.UnexpectedState} :("));
 
-								if (ormt.UnexpectedState == 3) Log.Debug("[" + FriendlyName + "] #" + info.Id + " is resisting being modified.");
+								if (ormt.UnexpectedState == 3) // 2-3 seems good number
+								{
+									ormt.FreeWill = true;
+									Log.Information($"[{FriendlyName}] {info.Name} (#{info.Id.ToString()}) is resisting being modified: Agency granted.");
+									// TODO: Let it be.
+									ormt.Info.Process.Exited += ProcessExitEvent;
+								}
 
 								ormt.LastIgnored = now;
 
@@ -1077,6 +1100,8 @@ namespace Taskmaster
 						{
 							if (Taskmaster.DebugProcesses) Log.Debug("[" + FriendlyName + "] #" + info.Id + " passed because name does not match; new: " +
 								info.Name + ", old: " + ormt.Info.Name);
+
+							RecentlyModified.TryRemove(info.Id, out _); // id does not match name
 						}
 					}
 					catch (OutOfMemoryException) { throw; }
@@ -1129,13 +1154,13 @@ namespace Taskmaster
 							{
 								WaitingExit?.Invoke(this, new ProcessModificationEventArgs() { Info = info, State = ProcessRunningState.Resumed });
 								info.Process.EnableRaisingEvents = true;
-								info.Process.Exited += (_, _ea) => End(info);
+								info.Process.Exited += End;
 								info.Process.Refresh();
-								if (info.Process.HasExited) End(info);
+								if (info.Process.HasExited) End(info.Process, null);
 							}
 							catch
 							{
-								End(info);
+								End(info.Process, null);
 								throw;
 							}
 						}
@@ -1514,7 +1539,10 @@ namespace Taskmaster
 				re.Set();
 				re.Reset();
 
-				ResizeWaitList.TryRemove(info.Id, out _);
+				if (!ResizeWaitList.TryRemove(info.Id, out _))
+				{
+					//Log.Debug("Process Exit");
+				}
 
 				if ((Bit.IsSet(((int)ResizeStrategy), (int)WindowResizeStrategy.Size)
 					&& (oldrect.Width != Resize.Value.Width || oldrect.Height != Resize.Value.Height))
@@ -1613,6 +1641,8 @@ namespace Taskmaster
 	sealed public class RecentlyModifiedInfo
 	{
 		public ProcessEx Info { get; set; } = null;
+
+		public bool FreeWill = false;
 
 		public uint UnexpectedState = 0;
 		public uint ExpectedState = 0;
