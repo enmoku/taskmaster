@@ -3,6 +3,10 @@ Comprehensive changes can be found in Git change history:
 	https://github.com/mkahvi/taskmaster/commits/master
 
 ## [0.12...]
+### 2018-01-25
+	Added: Thread queue barriers to power auto-adjust.
+### 2018-01-24
+	Changed: Recently modified ignoring improved. Programs that try to know what is best for them are let to do so.
 ### 2018-01-23
 	Added: Health monitor now enables NVM stats in the UI.
 	Internal: Lots of small internal changes.
