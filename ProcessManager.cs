@@ -306,7 +306,7 @@ namespace Taskmaster
 				if (ScanPaused) return;
 				// this stays on UI thread for some reason
 
-				Task.Run(() => Scan()).ConfigureAwait(false);
+				await Task.Run(() => Scan()).ConfigureAwait(false);
 			}
 			catch (Exception ex)
 			{
@@ -847,7 +847,7 @@ namespace Taskmaster
 
 				WaitForExitList.TryRemove(info.Id, out _);
 
-				info.Controller?.End(info);
+				info.Controller?.End(info.Process, null);
 
 				ProcessStateChange?.Invoke(this, new ProcessModificationEventArgs() { Info = info, State = state });
 
@@ -951,6 +951,7 @@ namespace Taskmaster
 				{
 					info.Process.EnableRaisingEvents = true;
 					info.Process.Exited += (_, _ea) => WaitForExitTriggered(info, ProcessRunningState.Exiting);
+
 					// TODO: Just in case check if it exited while we were doing this.
 					exithooked = true;
 
@@ -1384,7 +1385,7 @@ namespace Taskmaster
 					}
 				}
 
-				Task.Run(new Action(() => NewInstanceBatchProcessing())).ConfigureAwait(false);
+				await Task.Run(new Action(() => NewInstanceBatchProcessing())).ConfigureAwait(false);
 			}
 			catch (Exception ex)
 			{

@@ -2976,10 +2976,11 @@ namespace Taskmaster
 			{
 				var health = healthmonitor.Poll();
 
-				float impact_transfers = health.NVMTransfers;
-				float impact_splits = health.SplitIO;
-				float impact_delay = health.NVMDelay;
-				float impact_queue = health.NVMQueue;
+				float impact_transfers = (health.NVMTransfers / 500).Max(3); // expected to cause 0 to 2, and up to 4
+				float impact_splits = health.SplitIO / 125; // expected to cause 0 to 2
+				float impact_delay = health.NVMDelay / 12; // should cause 0 to 4 usually
+				float impact_queue = (health.NVMQueue / 2).Max(4);
+				float impact = impact_transfers + impact_splits + impact_delay + impact_queue;
 				//float impact_faults = health.PageFaults;
 
 				if (health.NVMTransfers >= float.Epsilon)
@@ -2993,12 +2994,12 @@ namespace Taskmaster
 					if (skipTransfers++ == 0)
 						nvmtransfers.ForeColor = System.Drawing.SystemColors.InactiveCaptionText;
 					else
-						nvmtransfers.Text = "---";
+						nvmtransfers.Text = "0.0";
 				}
 
 				if (health.SplitIO >= float.Epsilon)
 				{
-					nvmsplitio.Text = $"{health.SplitIO:N2}{(health.SplitIO > 20 ? (health.SplitIO >= health.NVMTransfers*0.5 ? " extreme" :  " high") : "")}";
+					nvmsplitio.Text = $"{health.SplitIO:N1}{(health.SplitIO > 20 ? (health.SplitIO >= health.NVMTransfers*0.5 ? " extreme" :  " high") : "")}";
 					nvmsplitio.ForeColor = DefaultForeColor;
 					skipSplits = 0;
 				}
@@ -3007,7 +3008,7 @@ namespace Taskmaster
 					if (skipSplits++ == 0)
 						nvmsplitio.ForeColor = System.Drawing.SystemColors.InactiveCaptionText;
 					else
-						nvmsplitio.Text = "---";
+						nvmsplitio.Text = "0.0";
 				}
 
 				if (health.NVMDelay >= float.Epsilon)
@@ -3022,7 +3023,7 @@ namespace Taskmaster
 					if (skipDelays++ == 0)
 						nvmdelay.ForeColor = System.Drawing.SystemColors.InactiveCaptionText;
 					else
-						nvmdelay.Text = "---";
+						nvmdelay.Text = "0 ms";
 				}
 
 				if (health.NVMQueue >= float.Epsilon)
@@ -3036,7 +3037,7 @@ namespace Taskmaster
 					if (skipQueues++ == 0)
 						nvmqueued.ForeColor = System.Drawing.SystemColors.InactiveCaptionText;
 					else
-						nvmqueued.Text = "---";
+						nvmqueued.Text = "0";
 				}
 
 				//hardfaults.Text = !float.IsNaN(health.PageInputs) ? $"{health.PageInputs / health.PageFaults:N1} %" : HumanReadable.Generic.NotAvailable;
