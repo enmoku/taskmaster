@@ -472,7 +472,9 @@ namespace Taskmaster
 				}
 				else // Currently at medium power
 				{
-					if (ev.Queue >= AutoAdjust.Queue.High && ev.Low > AutoAdjust.High.Commit.Threshold && AutoAdjust.High.Mode != AutoAdjust.DefaultMode) // Low CPU is above threshold for High mode
+					if ((ev.Queue >= AutoAdjust.Queue.High
+						|| ev.Low > AutoAdjust.High.Commit.Threshold) // Low CPU is above threshold for High mode
+						&& AutoAdjust.High.Mode != CurrentMode)
 					{
 						// Downgrade to LOW power levell
 						Reaction = PowerReaction.High;
@@ -487,7 +489,9 @@ namespace Taskmaster
 						queuePressureAdjust = (AutoAdjust.Queue.High > 0 ? ev.Queue / 5 : 0); // 20% per queued thread
 						ev.Pressure = ((float)HighPressure) / ((float)AutoAdjust.High.Commit.Level) + queuePressureAdjust;
 					}
-					else if (ev.Queue < AutoAdjust.Queue.Low && ev.High < AutoAdjust.Low.Commit.Threshold && AutoAdjust.Low.Mode != AutoAdjust.DefaultMode) // High CPU is below threshold for Low mode
+					else if (ev.Queue < AutoAdjust.Queue.Low
+						&& ev.High < AutoAdjust.Low.Commit.Threshold // High CPU is below threshold for Low mode
+						&& AutoAdjust.Low.Mode != CurrentMode)
 					{
 						// Upgrade to HIGH power levele
 						Reaction = PowerReaction.Low;
