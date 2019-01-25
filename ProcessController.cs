@@ -1051,8 +1051,7 @@ namespace Taskmaster
 				var now = DateTimeOffset.UtcNow;
 
 				// TEST FOR RECENTLY MODIFIED
-				RecentlyModifiedInfo ormt = null;
-				if (RecentlyModified.TryGetValue(info.Id, out ormt))
+				if (RecentlyModified.TryGetValue(info.Id, out RecentlyModifiedInfo ormt))
 				{
 					try
 					{
@@ -1071,10 +1070,12 @@ namespace Taskmaster
 								(AffinityMask >= 0 && info.Process.ProcessorAffinity.ToInt32() != AffinityMask))
 							{
 								ormt.ExpectedState--;
+								Debug.WriteLine($"[{FriendlyName}] {FormatPathName(info)} (#{info.Id.ToString()}) Recently Modified ({ormt.ExpectedState}) ---");
 							}
 							else
 							{
 								ormt.ExpectedState++;
+								Debug.WriteLine($"[{FriendlyName}] {FormatPathName(info)} (#{info.Id.ToString()}) Recently Modified ({ormt.ExpectedState}) +++");
 								expected = true;
 							}
 
@@ -1096,6 +1097,12 @@ namespace Taskmaster
 
 								Statistics.TouchIgnore++;
 
+								info.State = ProcessHandlingState.Unmodified;
+								return;
+							}
+							else if (expected)
+							{
+								// this potentially ignores power modification
 								info.State = ProcessHandlingState.Unmodified;
 								return;
 							}
@@ -1360,6 +1367,32 @@ namespace Taskmaster
 				{
 					info.State = ProcessHandlingState.Modified;
 					Modified?.Invoke(this, ev);
+
+					if (Taskmaster.IgnoreRecentlyModified > TimeSpan.Zero)
+					{
+						var rmt = new RecentlyModifiedInfo()
+						{
+							Info = info,
+							LastModified = now,
+							LastIgnored = DateTimeOffset.MinValue,
+							FreeWill = false,
+							ExpectedState = 0,
+						};
+
+						RecentlyModified.AddOrUpdate(info.Id, rmt, (int key, RecentlyModifiedInfo nrmt)=> {
+							if (!nrmt.Info.Name.Equals(info.Name))
+							{
+								// REPLACE. THIS SEEMS WRONG
+								nrmt.Info = info;
+								nrmt.FreeWill = false;
+								nrmt.ExpectedState = 0;
+								nrmt.LastModified = now;
+								nrmt.LastIgnored = DateTimeOffset.MinValue;
+							}
+							return nrmt;
+						});
+					}
+					InternalRefresh(now);
 				}
 				else
 					info.State = ProcessHandlingState.Finished;
@@ -1367,47 +1400,6 @@ namespace Taskmaster
 				if (Recheck > 0) TouchReapply(info);
 				
 				if (Taskmaster.WindowResizeEnabled && Resize.HasValue) TryResize(info);
-
-				if (modified)
-				{
-					if (Taskmaster.IgnoreRecentlyModified > TimeSpan.Zero)
-					{
-						var rmt = new RecentlyModifiedInfo()
-						{
-							Info = info,
-							LastModified = now,
-							ExpectedState = 1,
-						};
-
-						RecentlyModified.AddOrUpdate(info.Id, rmt, (int key, RecentlyModifiedInfo urmt) =>
-						{
-							// UPDATE
-							try
-							{
-								if (urmt.Info.Name.Equals(info.Name))
-								{
-									urmt.ExpectedState++;
-									return urmt;
-								}
-							}
-							catch (OutOfMemoryException) { throw; }
-							catch { }
-							finally
-							{
-								Debug.WriteLine("Recently Modified, updating for " + urmt.Info.Id + " " + urmt.Info.Name);
-								urmt.LastModified = now;
-							}
-
-							// REPLACE. THIS SEEMS WRONG
-							urmt.Info = info;
-							urmt.ExpectedState = 1;
-
-							return urmt;
-						});
-					}
-
-					InternalRefresh(now);
-				}
 			}
 			catch (OutOfMemoryException) { info.State = ProcessHandlingState.Abandoned; throw; }
 			catch (Exception ex)
