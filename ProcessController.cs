@@ -565,7 +565,7 @@ namespace Taskmaster
 				{
 					if (oldAffinity != BackgroundAffinity)
 					{
-						info.Process.ProcessorAffinity = new IntPtr(BackgroundAffinity);
+						info.Process.ProcessorAffinity = new IntPtr(BackgroundAffinity.Replace(0, ProcessManager.AllCPUsMask));
 						mAffinity = true;
 					}
 				}
@@ -712,7 +712,7 @@ namespace Taskmaster
 					newAffinity = ProcessManagerUtility.ApplyAffinityStrategy(oldAffinity, AffinityMask, AffinityStrategy);
 					if (newAffinity != oldAffinity)
 					{
-						info.Process.ProcessorAffinity = new IntPtr(newAffinity);
+						info.Process.ProcessorAffinity = new IntPtr(newAffinity.Replace(0, ProcessManager.AllCPUsMask));
 						mAffinity = true;
 					}
 				}
@@ -1207,7 +1207,7 @@ namespace Taskmaster
 
 					if (oldAffinityMask != newAffinityMask)
 					{
-						newAffinity = new IntPtr(newAffinityMask);
+						newAffinity = new IntPtr(newAffinityMask.Replace(0, ProcessManager.AllCPUsMask));
 						doModifyAffinity = true;
 					}
 					else

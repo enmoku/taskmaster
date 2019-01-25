@@ -245,7 +245,7 @@ namespace Taskmaster
 							bool aff = false, prio = false;
 							try
 							{
-								fg.ProcessorAffinity = new IntPtr(1);
+								fg.ProcessorAffinity = new IntPtr(1); // TODO: set this to something else than the first core
 								if (acted) sbs.Append(", ");
 								sbs.Append("Affinity reduced");
 								aff = true;

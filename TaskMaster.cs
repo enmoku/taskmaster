@@ -313,7 +313,7 @@ namespace Taskmaster
 
 			if (PowerManagerEnabled)
 			{
-				Task.WhenAll(new Task[] { PowMan }).ContinueWith((_) => {
+				Task.WhenAll(new Task[] { PowMan, CpuMon }).ContinueWith((_) => {
 					trayaccess.Hook(powermanager);
 					powermanager.onBatteryResume += RestartRequest; // HACK
 					powermanager.Hook(cpumonitor);
@@ -425,7 +425,9 @@ namespace Taskmaster
 					SelfAffinity = selfCPUmask;
 				}
 
-				self.ProcessorAffinity = new IntPtr(SelfAffinity); // this should never throw an exception
+				Debug.WriteLine("Self-affinity: " + SelfAffinity);
+
+				self.ProcessorAffinity = new IntPtr(SelfAffinity.Replace(0, ProcessManager.AllCPUsMask)); // this should never throw an exception
 
 				selfmaintenance = new SelfMaintenance();
 			}
