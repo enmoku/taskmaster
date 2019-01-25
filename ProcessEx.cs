@@ -36,10 +36,17 @@ namespace Taskmaster
 		/// Cached from Process.ProcessFilename
 		/// </summary>
 		public string Name { get; set; } = string.Empty;
+
 		/// <summary>
 		/// Process fullpath, including filename with extension
 		/// </summary>
 		public string Path { get; set; } = string.Empty;
+
+		/// <summary>
+		/// For use by FormatPathName()
+		/// </summary>
+		public string FormattedPath { get; set; } = null;
+
 		/// <summary>
 		/// Process Id.
 		/// </summary>

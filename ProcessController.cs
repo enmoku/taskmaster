@@ -874,6 +874,8 @@ namespace Taskmaster
 
 		string FormatPathName(ProcessEx info)
 		{
+			if (!string.IsNullOrEmpty(info.FormattedPath)) return info.FormattedPath;
+
 			if (!string.IsNullOrEmpty(info.Path))
 			{
 				switch (PathVisibility)
@@ -888,7 +890,7 @@ namespace Taskmaster
 							// replace Path
 							parts.RemoveRange(0, PathElements);
 							parts.Insert(0, HumanReadable.Generic.Ellipsis);
-							return System.IO.Path.Combine(parts.ToArray());
+							return info.FormattedPath = System.IO.Path.Combine(parts.ToArray());
 						}
 						else
 							return info.Path;
@@ -949,7 +951,7 @@ namespace Taskmaster
 								parts.Insert(parts.Count - 1, HumanReadable.Generic.Ellipsis);
 							}
 
-							return System.IO.Path.Combine(parts.ToArray());
+							return info.FormattedPath = System.IO.Path.Combine(parts.ToArray());
 						}
 					case PathVisibilityOptions.Full:
 						return info.Path;
@@ -1067,10 +1069,12 @@ namespace Taskmaster
 							bool expected = false;
 							if ((Priority.HasValue && info.Process.PriorityClass != Priority.Value) ||
 								(AffinityMask >= 0 && info.Process.ProcessorAffinity.ToInt32() != AffinityMask))
-								ormt.UnexpectedState += 1;
+							{
+								ormt.ExpectedState--;
+							}
 							else
 							{
-								ormt.ExpectedState += 1;
+								ormt.ExpectedState++;
 								expected = true;
 							}
 
@@ -1078,9 +1082,9 @@ namespace Taskmaster
 								ormt.LastModified.TimeTo(now) < Taskmaster.IgnoreRecentlyModified)
 							{
 								if (Taskmaster.DebugProcesses) Log.Debug("[" + FriendlyName + "] #" + info.Id + " ignored due to recent modification." +
-									(expected ? $" Expected: {ormt.ExpectedState} :)" : $" Unexpected: {ormt.UnexpectedState} :("));
+									(expected ? $" Expected: {ormt.ExpectedState} :)" : $" Unexpected: {ormt.ExpectedState} :("));
 
-								if (ormt.UnexpectedState == 3) // 2-3 seems good number
+								if (ormt.ExpectedState == -2) // 2-3 seems good number
 								{
 									ormt.FreeWill = true;
 									Log.Information($"[{FriendlyName}] {info.Name} (#{info.Id.ToString()}) is resisting being modified: Agency granted.");
@@ -1373,15 +1377,18 @@ namespace Taskmaster
 							Info = info,
 							LastModified = now,
 							ExpectedState = 1,
-							UnexpectedState = 0,
 						};
 
 						RecentlyModified.AddOrUpdate(info.Id, rmt, (int key, RecentlyModifiedInfo urmt) =>
 						{
+							// UPDATE
 							try
 							{
-								if (urmt.Info.Process.ProcessName.Equals(info.Process.ProcessName))
+								if (urmt.Info.Name.Equals(info.Name))
+								{
+									urmt.ExpectedState++;
 									return urmt;
+								}
 							}
 							catch (OutOfMemoryException) { throw; }
 							catch { }
@@ -1389,11 +1396,11 @@ namespace Taskmaster
 							{
 								Debug.WriteLine("Recently Modified, updating for " + urmt.Info.Id + " " + urmt.Info.Name);
 								urmt.LastModified = now;
-								urmt.UnexpectedState += 1;
 							}
 
+							// REPLACE. THIS SEEMS WRONG
 							urmt.Info = info;
-							urmt.ExpectedState = 0;
+							urmt.ExpectedState = 1;
 
 							return urmt;
 						});
@@ -1644,8 +1651,7 @@ namespace Taskmaster
 
 		public bool FreeWill = false;
 
-		public uint UnexpectedState = 0;
-		public uint ExpectedState = 0;
+		public int ExpectedState = 0;
 
 		public DateTimeOffset LastModified = DateTimeOffset.MinValue;
 		public DateTimeOffset LastIgnored = DateTimeOffset.MinValue;
