@@ -979,7 +979,7 @@ namespace Taskmaster
 				}
 
 				if (exithooked)
-					ProcessStateChange?.Invoke(this, new ProcessModificationEventArgs() { Info = info, State = ProcessRunningState.Undefined });
+					ProcessStateChange?.Invoke(this, new ProcessModificationEventArgs() { Info = info, State = ProcessRunningState.Found });
 			}
 		}
 
