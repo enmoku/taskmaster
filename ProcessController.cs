@@ -1027,7 +1027,7 @@ namespace Taskmaster
 
 					oldAffinity = info.Process.ProcessorAffinity;
 					oldPriority = info.Process.PriorityClass;
-					oldAffinityMask = oldAffinity.Value.ToInt32();
+					oldAffinityMask = oldAffinity.Value.ToInt32().Replace(0, ProcessManager.AllCPUsMask);
 				}
 				catch (InvalidOperationException) // Already exited
 				{
@@ -1199,7 +1199,7 @@ namespace Taskmaster
 
 				if (AffinityMask >= 0)
 				{
-					newAffinityMask = AffinityMask;
+					newAffinityMask = AffinityMask.Replace(0, ProcessManager.AllCPUsMask);
 
 					int modifiedAffinityMask = ProcessManagerUtility.ApplyAffinityStrategy(oldAffinityMask, newAffinityMask, AffinityStrategy);
 					if (modifiedAffinityMask != newAffinityMask)

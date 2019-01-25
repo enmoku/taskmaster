@@ -10,6 +10,7 @@ Comprehensive changes can be found in Git change history:
 	Internal: Path visibility changes to shown path is cached in some instances, in case it is used in multiple parts.
 	FIXED: A MAJOR BUG IN POWER AUTO-ADJUST. This potentially caused crippling of the computer due to power saver mode getting stuck. Was fun.
 	Changed: Ignore recently modified moved to normal features from experiments due to high success.
+	Fixed: Weirdness with full CPU mask
 ### 2018-01-24
 	Changed: Recently modified ignoring improved. Programs that try to know what is best for them are let to do so.
 ### 2018-01-23
