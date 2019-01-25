@@ -2498,7 +2498,7 @@ namespace Taskmaster
 							case ProcessRunningState.Undefined:
 								//break;
 							default:
-								Log.Debug("Received unhandled process (#" + ea.Info.Id + ") state: " + ea.State.ToString());
+								Log.Debug("<UI> Received unhandled process (#" + ea.Info.Id + ") state: " + ea.State.ToString());
 								break;
 						}
 					}

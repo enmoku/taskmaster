@@ -324,6 +324,9 @@ namespace Taskmaster
 
 		MonitorPowerMode CurrentMonitorState = MonitorPowerMode.Invalid;
 
+		/// <summary>
+		/// Requires main thread?
+		/// </summary>
 		public void SetupEventHook()
 		{
 			NativeMethods.RegisterPowerSettingNotification(
