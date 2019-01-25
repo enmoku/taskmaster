@@ -1368,7 +1368,7 @@ namespace Taskmaster
 					info.State = ProcessHandlingState.Modified;
 					Modified?.Invoke(this, ev);
 
-					if (ProcessManager.IgnoreRecentlyModified > TimeSpan.Zero)
+					if (ProcessManager.IgnoreRecentlyModified.HasValue)
 					{
 						var rmt = new RecentlyModifiedInfo()
 						{

@@ -495,7 +495,7 @@ namespace Taskmaster
 		public static bool TempMonitorEnabled { get; private set; } = false;
 		public static bool LastModifiedList { get; private set; } = false;
 		public static bool WindowResizeEnabled { get; private set; } = false;
-		public static TimeSpan RecordAnalysis { get; set; } = TimeSpan.Zero;
+		public static TimeSpan? RecordAnalysis { get; set; } = null;
 
 		// DEBUG INFO
 		public static bool DebugCache { get; private set; } = false;
@@ -769,7 +769,7 @@ namespace Taskmaster
 			LastModifiedList = exsec.TryGet("Last Modified")?.BoolValue ?? false;
 			TempMonitorEnabled = exsec.TryGet("Temp Monitor")?.BoolValue ?? false;
 			int trecanalysis = exsec.TryGet("Record analysis")?.IntValue ?? 0;
-			RecordAnalysis = trecanalysis <= 0 ? TimeSpan.Zero : TimeSpan.FromSeconds(trecanalysis.Constrain(0, 180));
+			RecordAnalysis = trecanalysis > 0 ? (TimeSpan?)TimeSpan.FromSeconds(trecanalysis.Constrain(0, 180)) : null;
 
 #if DEBUG
 			Trace = dbgsec.TryGet("Trace")?.BoolValue ?? false;

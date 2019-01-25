@@ -163,7 +163,7 @@ namespace Taskmaster
 				Minimum = 0,
 				Maximum = 360,
 				Dock = DockStyle.Left,
-				Value = initial ? 15 : Convert.ToDecimal(ProcessManager.ScanFrequency.TotalSeconds),
+				Value = initial ? 15 : Convert.ToDecimal(ProcessManager.ScanFrequency.Value.TotalSeconds),
 				Width = 60,
 			};
 			var defaultBackColor = scanfrequency.BackColor;
@@ -196,14 +196,14 @@ namespace Taskmaster
 			{
 				// Not WMI-only
 				if (scanfrequency.Enabled = ScanOrWMI.SelectedIndex != 1)
-					scanfrequency.Value = initial ? 15 : Convert.ToDecimal(ProcessManager.ScanFrequency.TotalSeconds);
+					scanfrequency.Value = initial ? 15 : Convert.ToDecimal(ProcessManager.ScanFrequency.Value.TotalSeconds);
 
 				// Not Scan-only
 				if (wmipolling.Enabled = ScanOrWMI.SelectedIndex != 0)
 					wmipolling.Value = initial ? 5 : WMIPollDelay;
 			};
 			var wmi = WMIPolling;
-			var scan = ProcessManager.ScanFrequency != TimeSpan.Zero;
+			var scan = ProcessManager.ScanFrequency.HasValue;
 			ScanOrWMI.SelectedIndex = initial ? 0 : ((wmi && scan) ? 2 : (wmi ? 1 : 0));
 
 			var powmon = new CheckBox()

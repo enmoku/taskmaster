@@ -71,7 +71,7 @@ namespace Taskmaster.UI.Config
 				Minimum = 0,
 				Maximum = 60,
 				Unit = "mins",
-				Value = Convert.ToDecimal(ProcessManager.IgnoreRecentlyModified.TotalMinutes),
+				Value = Convert.ToDecimal(ProcessManager.IgnoreRecentlyModified.Value.TotalMinutes),
 			};
 
 			layout.Controls.Add(new Label { Text = "Ignore recently modified", AutoSize = true });
@@ -82,7 +82,7 @@ namespace Taskmaster.UI.Config
 				Minimum = 0,
 				Maximum = 300,
 				Unit = "secs",
-				Value = Convert.ToDecimal(Taskmaster.RecordAnalysis.TotalSeconds),
+				Value = Convert.ToDecimal(Taskmaster.RecordAnalysis.Value.TotalSeconds),
 			};
 
 			layout.Controls.Add(new Label { Text = "Record analysis delay", AutoSize = true });
@@ -106,7 +106,7 @@ namespace Taskmaster.UI.Config
 				exsec["Record analysis"].IntValue = Convert.ToInt32(RecordAnalysisDelay.Value);
 
 				var perfsec = cfg["Performance"];
-				perfsec["Ignore recently modified"].IntValue = Convert.ToInt32(ProcessManager.IgnoreRecentlyModified.TotalMinutes);
+				perfsec["Ignore recently modified"].IntValue = Convert.ToInt32(ProcessManager.IgnoreRecentlyModified.Value.TotalMinutes);
 
 				corecfg.MarkDirty();
 

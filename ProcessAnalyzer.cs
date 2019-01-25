@@ -57,6 +57,7 @@ namespace Taskmaster
 		public async Task Analyze(ProcessEx info)
 		{
 			if (string.IsNullOrEmpty(info.Path)) return;
+			if (!Taskmaster.RecordAnalysis.HasValue) return;
 
 			var crypt = new System.Security.Cryptography.SHA512Cng();
 			byte[] hash = crypt.ComputeHash(Encoding.UTF8.GetBytes(info.Path.ToLowerInvariant()));
@@ -64,9 +65,9 @@ namespace Taskmaster
 			// TODO: Prevent bloating somehow.
 			if (!cache.TryAdd(hash, 0)) return; // already there
 
-			bool record = Taskmaster.RecordAnalysis != TimeSpan.Zero;
+			bool record = Taskmaster.RecordAnalysis.HasValue;
 
-			TimeSpan delay = record ? Taskmaster.RecordAnalysis : TimeSpan.FromSeconds(30);
+			TimeSpan delay = record ? Taskmaster.RecordAnalysis.Value : TimeSpan.FromSeconds(30);
 			Log.Debug($"<Analysis> {info.Name} (#{info.Id}) scheduled");
 
 			var AllLinkedModules = new ConcurrentDictionary<string, ModuleInfo>();

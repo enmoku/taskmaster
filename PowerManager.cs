@@ -102,7 +102,7 @@ namespace Taskmaster
 			if (Behaviour == PowerBehaviour.RuleBased && !Forced)
 				Restore();
 
-			if (SessionLockPowerOffIdleTimeout != TimeSpan.Zero)
+			if (SessionLockPowerOffIdleTimeout.HasValue)
 			{
 				var stopped = System.Threading.Timeout.InfiniteTimeSpan;
 				MonitorSleepTimer = new System.Threading.Timer(MonitorSleepTimerTick, null, stopped, stopped);
@@ -365,7 +365,7 @@ namespace Taskmaster
 		/// <summary>
 		/// User must be inactive for this many seconds.
 		/// </summary>
-		TimeSpan SessionLockPowerOffIdleTimeout = TimeSpan.FromSeconds(120);
+		TimeSpan? SessionLockPowerOffIdleTimeout = TimeSpan.FromSeconds(120);
 		/// <summary>
 		/// Power off monitor directly on lock off.
 		/// </summary>
@@ -599,7 +599,7 @@ namespace Taskmaster
 			WarnedForceMode = false;
 		}
 
-		TimeSpan PowerdownDelay { get; set; } = TimeSpan.Zero;
+		TimeSpan? PowerdownDelay { get; set; } = null;
 
 		void LoadConfig()
 		{
@@ -763,7 +763,7 @@ namespace Taskmaster
 			// dirtyconfig |= modified;
 
 			int monoffidletime = saver.GetSetDefault("Monitor power off idle timeout", 180, out modified).IntValue;
-			SessionLockPowerOffIdleTimeout = monoffidletime > 0 ? TimeSpan.FromSeconds(monoffidletime.Constrain(30, 600)) : TimeSpan.Zero;
+			SessionLockPowerOffIdleTimeout = monoffidletime > 0 ? (TimeSpan?)TimeSpan.FromSeconds(monoffidletime.Constrain(30, 600)) : null;
 			saver["Monitor power off idle timeout"].Comment = "User needs to be this many seconds idle before we power down monitors when session is locked. 0 disables. Less than 30 is rounded up to 30.";
 			dirtyconfig |= modified;
 
@@ -774,7 +774,7 @@ namespace Taskmaster
 			// --------------------------------------------------------------------------------------------------------
 
 			Log.Information("<Power> Watchlist powerdown delay: " +
-				(PowerdownDelay == TimeSpan.Zero ? HumanReadable.Generic.Disabled : $"{PowerdownDelay.TotalSeconds:N0} s")); 
+				(PowerdownDelay.HasValue ? $"{PowerdownDelay.Value.TotalSeconds:N0} s" : HumanReadable.Generic.Disabled)); 
 
 			// --------------------------------------------------------------------------------------------------------
 
@@ -783,7 +783,7 @@ namespace Taskmaster
 			Log.Information("<Power> Session lock: " + (SessionLockPowerMode == PowerMode.Undefined ? HumanReadable.Generic.Ignore : SessionLockPowerMode.ToString()));
 			Log.Information("<Power> Restore mode: " + RestoreMethod.ToString() + " [" + RestoreMode.ToString() + "]");
 
-			Log.Information("<Session> User AFK timeout: " + (SessionLockPowerOffIdleTimeout == TimeSpan.Zero ? HumanReadable.Generic.Disabled : $"{SessionLockPowerOffIdleTimeout.TotalSeconds:N0}s"));
+			Log.Information("<Session> User AFK timeout: " + (SessionLockPowerOffIdleTimeout.HasValue ? $"{SessionLockPowerOffIdleTimeout.Value.TotalSeconds:N0}s" : HumanReadable.Generic.Disabled));
 			Log.Information("<Session> Immediate power off on lock: " + (SessionLockPowerOff ? HumanReadable.Generic.Enabled : HumanReadable.Generic.Disabled));
 
 			if (dirtyconfig) corecfg.MarkDirty();
@@ -816,8 +816,8 @@ namespace Taskmaster
 					power["Default mode"].StringValue = AutoAdjust.DefaultMode.ToString();
 
 					power["Restore mode"].StringValue = (RestoreMethod == RestoreModeMethod.Custom ? RestoreMode.ToString() : RestoreMethod.ToString());
-					if (PowerdownDelay != TimeSpan.Zero)
-						power["Watchlist powerdown delay"].IntValue = Convert.ToInt32(PowerdownDelay.TotalSeconds);
+					if (PowerdownDelay.HasValue)
+						power["Watchlist powerdown delay"].IntValue = Convert.ToInt32(PowerdownDelay.Value.TotalSeconds);
 					else
 						power.Remove("Watchlist powerdown delay");
 					var autopower = corecfg.Config["Power / Auto"];
@@ -848,7 +848,7 @@ namespace Taskmaster
 					var saver = corecfg.Config["AFK Power"];
 					saver["Session lock"].StringValue = GetModeName(SessionLockPowerMode);
 
-					saver["Monitor power off idle timeout"].IntValue = Convert.ToInt32(SessionLockPowerOffIdleTimeout.TotalSeconds);
+					saver["Monitor power off idle timeout"].IntValue = Convert.ToInt32(SessionLockPowerOffIdleTimeout.Value.TotalSeconds);
 					saver["Monitor power off on lock"].BoolValue = SessionLockPowerOff;
 
 					// --------------------------------------------------------------------------------------------------------
@@ -1310,8 +1310,8 @@ namespace Taskmaster
 
 				Task.Run(async () =>
 				{
-					if (Behaviour != PowerBehaviour.Auto && PowerdownDelay != TimeSpan.Zero)
-						await Task.Delay(PowerdownDelay).ConfigureAwait(false);
+					if (Behaviour != PowerBehaviour.Auto && PowerdownDelay.HasValue)
+						await Task.Delay(PowerdownDelay.Value).ConfigureAwait(false);
 
 					ReleaseFinal();
 				}).ConfigureAwait(false);

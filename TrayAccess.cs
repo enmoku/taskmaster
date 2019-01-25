@@ -149,6 +149,7 @@ namespace Taskmaster
 			var exsec = cfg.Config["Experimental"];
 			int exdelay = exsec.TryGet("Explorer Restart")?.IntValue ?? 0;
 			if (exdelay > 0) ExplorerRestartHelpDelay = TimeSpan.FromSeconds(exdelay.Min(5));
+			else ExplorerRestartHelpDelay = null;
 			RegisterExplorerExit();
 
 			ms.Enabled = false;
@@ -463,7 +464,7 @@ namespace Taskmaster
 			window.FormClosing += WindowClosed;
 		}
 
-		TimeSpan ExplorerRestartHelpDelay { get; set; } = TimeSpan.Zero;
+		TimeSpan? ExplorerRestartHelpDelay { get; set; } = null;
 
 		async void ExplorerCrashEvent(object sender, EventArgs _ea)
 		{
@@ -490,17 +491,17 @@ namespace Taskmaster
 
 				await Task.Delay(TimeSpan.FromSeconds(12)).ConfigureAwait(false); // force async, 12 seconds
 
-				var ExplorerRestarTtimer = Stopwatch.StartNew();
+				var ExplorerRestartTimer = Stopwatch.StartNew();
 				bool startAttempt = true;
 				Process[] procs;
 				do
 				{
-					if (ExplorerRestarTtimer.Elapsed.TotalHours >= 24)
+					if (ExplorerRestartTimer.Elapsed.TotalHours >= 24)
 					{
 						Log.Error("<Tray> Explorer has not recovered in excessive timeframe, giving up.");
 						return;
 					}
-					else if (startAttempt && ExplorerRestartHelpDelay != TimeSpan.Zero && ExplorerRestarTtimer.Elapsed >= ExplorerRestartHelpDelay)
+					else if (startAttempt && ExplorerRestartHelpDelay.HasValue && ExplorerRestartTimer.Elapsed >= ExplorerRestartHelpDelay.Value)
 					{
 						// TODO: This shouldn't happen if the session is exiting.
 						Log.Information("<Tray> Restarting explorer as per user configured timer.");
@@ -518,7 +519,7 @@ namespace Taskmaster
 				}
 				while (procs.Length == 0);
 
-				ExplorerRestarTtimer.Stop();
+				ExplorerRestartTimer.Stop();
 
 				if (!RegisterExplorerExit(procs))
 				{

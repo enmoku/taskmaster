@@ -78,7 +78,7 @@ namespace Taskmaster
 		public bool WMIPolling { get; private set; } = true;
 		public int WMIPollDelay { get; private set; } = 5;
 
-		public static TimeSpan IgnoreRecentlyModified { get; set; } = TimeSpan.FromMinutes(30);
+		public static TimeSpan? IgnoreRecentlyModified { get; set; } = TimeSpan.FromMinutes(30);
 
 		// ctor, constructor
 		public ProcessManager()
@@ -108,7 +108,7 @@ namespace Taskmaster
 
 			var InitialScanDelay = TimeSpan.FromSeconds(5);
 			NextScan = DateTimeOffset.UtcNow.Add(InitialScanDelay);
-			if (ScanFrequency != TimeSpan.Zero) ScanTimer = new System.Threading.Timer(TimedScan, null, InitialScanDelay, ScanFrequency);
+			if (ScanFrequency.HasValue) ScanTimer = new System.Threading.Timer(TimedScan, null, InitialScanDelay, ScanFrequency.Value);
 
 			ProcessDetectedEvent += ProcessTriage;
 
@@ -339,7 +339,7 @@ namespace Taskmaster
 			{
 				var delayspan = TimeSpan.FromSeconds(delay.Constrain(3, Convert.ToInt32(Math.Min(60d, nextscan))));
 				NextScan = DateTimeOffset.UtcNow.Add(delayspan);
-				ScanTimer.Change(delayspan, ScanFrequency);
+				ScanTimer.Change(delayspan, ScanFrequency.Value);
 			}
 		}
 
@@ -352,7 +352,7 @@ namespace Taskmaster
 
 			var now = DateTimeOffset.UtcNow;
 			LastScan = now;
-			NextScan = now.Add(ScanFrequency);
+			NextScan = now.Add(ScanFrequency.Value);
 
 			if (Taskmaster.DebugFullScan) Log.Debug("<Process> Full Scan: Start");
 
@@ -412,7 +412,7 @@ namespace Taskmaster
 		/// <summary>
 		/// In seconds.
 		/// </summary>
-		public static TimeSpan ScanFrequency { get; private set; } = TimeSpan.Zero;
+		public static TimeSpan? ScanFrequency { get; private set; } = TimeSpan.FromSeconds(180);
 		DateTimeOffset LastScan { get; set; } = DateTimeOffset.MinValue; // UNUSED
 		public DateTimeOffset NextScan { get; set; } = DateTimeOffset.MinValue;
 		bool BatchProcessing; // = false;
@@ -529,11 +529,12 @@ namespace Taskmaster
 
 			var tscan = perfsec.GetSetDefault("Scan frequency", 15, out modified).IntValue.Constrain(0, 360);
 			if (tscan > 0) ScanFrequency = TimeSpan.FromSeconds(tscan.Constrain(5, 360));
+			else ScanFrequency = null;
 			perfsec["Scan frequency"].Comment = "Frequency (in seconds) at which we scan for processes. 0 disables.";
 			dirtyconfig |= modified;
 
-			if (ScanFrequency != TimeSpan.Zero)
-				Log.Information("<Process> Scan every " + $"{ScanFrequency.TotalSeconds:N0}" + " seconds.");
+			if (ScanFrequency.HasValue)
+				Log.Information("<Process> Scan every " + $"{ScanFrequency.Value.TotalSeconds:N0}" + " seconds.");
 
 			// --------------------------------------------------------------------------------------------------------
 
@@ -592,9 +593,9 @@ namespace Taskmaster
 
 			if (dirtyconfig) corecfg.MarkDirty();
 
-			if (IgnoreRecentlyModified != TimeSpan.Zero)
-				Log.Information($"<Process> Ignore recently modified: {IgnoreRecentlyModified.TotalMinutes:N1} minute cooldown");
-			Log.Information($"<Process> Self-determination: {(IgnoreRecentlyModified != TimeSpan.Zero ? "Possible" : "Impossible")}");
+			if (IgnoreRecentlyModified.HasValue)
+				Log.Information($"<Process> Ignore recently modified: {IgnoreRecentlyModified.Value.TotalMinutes:N1} minute cooldown");
+			Log.Information($"<Process> Self-determination: {(IgnoreRecentlyModified.HasValue ? "Possible" : "Impossible")}");
 		}
 
 		void LoadWatchlist()
