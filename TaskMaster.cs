@@ -771,7 +771,7 @@ namespace Taskmaster
 			return rv;
 		}
 
-		static string corestatfile = "Core.Statistics.ini";
+		const string corestatfile = "Core.Statistics.ini";
 		static void monitorCleanShutdown()
 		{
 			var corestats = Config.Load(corestatfile);
@@ -1057,8 +1057,6 @@ namespace Taskmaster
 		const string PipeRestart = "TM...RESTART";
 		const string PipeTerm = "TM...TERMINATE";
 		static System.IO.Pipes.NamedPipeServerStream pipe = null;
-
-		static readonly System.Threading.CancellationTokenSource cancel = new System.Threading.CancellationTokenSource();
 
 		static void PipeCleaner(IAsyncResult result)
 		{
@@ -1425,7 +1423,7 @@ namespace Taskmaster
 			}
 		}
 
-		private static void UnhandledException(object sender, UnhandledExceptionEventArgs ea)
+		static void UnhandledException(object sender, UnhandledExceptionEventArgs ea)
 		{
 			var ex = (Exception)ea.ExceptionObject;
 			Log.Fatal(ex, "Unhandled exception!!! Writing to crash log.");
@@ -1445,6 +1443,6 @@ namespace Taskmaster
 		/// <summary>
 		/// Process unhandled WinForms exceptions.
 		/// </summary>
-		private static void UnhandledUIException(object _, System.Threading.ThreadExceptionEventArgs ea) => Logging.Stacktrace(ea.Exception);
+		static void UnhandledUIException(object _, System.Threading.ThreadExceptionEventArgs ea) => Logging.Stacktrace(ea.Exception);
 	}
 }

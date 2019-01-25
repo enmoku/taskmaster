@@ -602,7 +602,7 @@ namespace Taskmaster
 			if (!IsHandleCreated) return;
 
 			// Rescan Countdown
-			processingtimer.Text = $"{DateTimeOffset.UtcNow.TimeTo(ProcessManager.NextScan).TotalSeconds:N0}s";
+			processingtimer.Text = $"{DateTimeOffset.UtcNow.TimeTo(processmanager.NextScan).TotalSeconds:N0}s";
 
 			// Modify Latency
 			ulong min = Statistics.TouchTimeShortest;
@@ -2615,7 +2615,7 @@ namespace Taskmaster
 				if (oneitem)
 				{
 					var li = WatchlistRules.SelectedItems[0];
-					var prc = Taskmaster.processmanager.getWatchedController(li.SubItems[NameColumn].Text);
+					var prc = Taskmaster.processmanager.GetController(li.SubItems[NameColumn].Text);
 					if (prc != null)
 					{
 						watchlistenable.Enabled = true;
@@ -2638,7 +2638,7 @@ namespace Taskmaster
 					WatchlistRules.BeginUpdate();
 
 					var li = WatchlistRules.SelectedItems[0];
-					var prc = Taskmaster.processmanager.getWatchedController(li.SubItems[NameColumn].Text);
+					var prc = Taskmaster.processmanager.GetController(li.SubItems[NameColumn].Text);
 					if (prc != null)
 					{
 						watchlistenable.Enabled = true;
@@ -2669,7 +2669,7 @@ namespace Taskmaster
 				{
 					var li = WatchlistRules.SelectedItems[0];
 					var name = li.SubItems[NameColumn].Text;
-					var prc = Taskmaster.processmanager.getWatchedController(name);
+					var prc = Taskmaster.processmanager.GetController(name);
 
 					using (var editdialog = new WatchlistEditWindow(prc)) // 1 = executable
 					{
@@ -2719,7 +2719,7 @@ namespace Taskmaster
 				{
 					var li = WatchlistRules.SelectedItems[0];
 
-					var prc = Taskmaster.processmanager.getWatchedController(li.SubItems[NameColumn].Text);
+					var prc = Taskmaster.processmanager.GetController(li.SubItems[NameColumn].Text);
 					if (prc != null)
 					{
 						var rv = MessageBox.Show("Really remove '"+prc.FriendlyName+"'", "Remove watchlist item", MessageBoxButtons.YesNo, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button2);
@@ -2749,7 +2749,7 @@ namespace Taskmaster
 					var name = li.SubItems[NameColumn].Text;
 					ProcessController prc = null;
 
-					prc = processmanager.getWatchedController(name);
+					prc = processmanager.GetController(name);
 
 					if (prc == null)
 					{

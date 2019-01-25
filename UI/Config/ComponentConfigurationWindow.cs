@@ -50,6 +50,22 @@ namespace Taskmaster
 			else
 				StartPosition = FormStartPosition.CenterParent;
 
+			bool WMIPolling = false;
+			int WMIPollDelay = 5;
+
+			if (Taskmaster.processmanager == null)
+			{
+				var corecfg = Taskmaster.Config.Load(Taskmaster.coreconfig);
+				var perfsec = corecfg.Config["Performance"];
+				WMIPolling = perfsec.TryGet("WMI event watcher")?.BoolValue ?? true;
+				WMIPollDelay = perfsec.TryGet("WMI poll delay")?.IntValue ?? 5;
+			}
+			else
+			{
+				WMIPolling = Taskmaster.processmanager.WMIPolling;
+				WMIPollDelay = Taskmaster.processmanager.WMIPollDelay;
+			}
+
 			var layout = new TableLayoutPanel()
 			{
 				Parent = this,
@@ -169,7 +185,7 @@ namespace Taskmaster
 				Minimum = 1,
 				Maximum = 5,
 				Unit = "s",
-				Value = initial ? 5 : ProcessManager.WMIPollDelay,
+				Value = initial ? 5 : WMIPollDelay,
 				Dock = DockStyle.Left,
 				Enabled = false,
 				Width = 60,
@@ -184,9 +200,9 @@ namespace Taskmaster
 
 				// Not Scan-only
 				if (wmipolling.Enabled = ScanOrWMI.SelectedIndex != 0)
-					wmipolling.Value = initial ? 5 : ProcessManager.WMIPollDelay;
+					wmipolling.Value = initial ? 5 : WMIPollDelay;
 			};
-			var wmi = ProcessManager.WMIPolling;
+			var wmi = WMIPolling;
 			var scan = ProcessManager.ScanFrequency != TimeSpan.Zero;
 			ScanOrWMI.SelectedIndex = initial ? 0 : ((wmi && scan) ? 2 : (wmi ? 1 : 0));
 

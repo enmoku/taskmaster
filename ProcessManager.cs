@@ -75,8 +75,8 @@ namespace Taskmaster
 		/// </summary>
 		ConcurrentDictionary<ProcessController, int> Watchlist = new ConcurrentDictionary<ProcessController, int>();
 
-		public static bool WMIPolling { get; private set; } = true;
-		public static int WMIPollDelay { get; private set; } = 5;
+		public bool WMIPolling { get; private set; } = true;
+		public int WMIPollDelay { get; private set; } = 5;
 
 		// ctor, constructor
 		public ProcessManager()
@@ -92,7 +92,7 @@ namespace Taskmaster
 
 			loadConfig();
 
-			loadWatchlist();
+			LoadWatchlist();
 
 			InitWMIEventWatcher();
 
@@ -121,11 +121,11 @@ namespace Taskmaster
 		}
 
 		// TODO: Need an ID mapping
-		public ProcessController getWatchedController(string name)
+		public ProcessController GetController(string friendlyname)
 		{
 			foreach (var item in Watchlist.Keys)
 			{
-				if (item.FriendlyName.Equals(name, StringComparison.InvariantCultureIgnoreCase))
+				if (item.FriendlyName.Equals(friendlyname, StringComparison.InvariantCultureIgnoreCase))
 					return item;
 			}
 
@@ -342,7 +342,7 @@ namespace Taskmaster
 		}
 
 		int scan_lock = 0;
-		public async Task Scan(int ignorePid = -1)
+		async Task Scan(int ignorePid = -1)
 		{
 			await CleanWaitForExitList(); // HACK
 
@@ -406,20 +406,20 @@ namespace Taskmaster
 			Atomic.Unlock(ref scan_lock);
 		}
 
-		static int BatchDelay = 2500;
+		int BatchDelay = 2500;
 		/// <summary>
 		/// In seconds.
 		/// </summary>
 		public static TimeSpan ScanFrequency { get; private set; } = TimeSpan.Zero;
-		public static DateTimeOffset LastScan { get; private set; } = DateTimeOffset.MinValue;
-		public static DateTimeOffset NextScan { get; set; } = DateTimeOffset.MinValue;
-		static bool BatchProcessing; // = false;
-		static int BatchProcessingThreshold = 5;
+		DateTimeOffset LastScan { get; set; } = DateTimeOffset.MinValue; // UNUSED
+		public DateTimeOffset NextScan { get; set; } = DateTimeOffset.MinValue;
+		bool BatchProcessing; // = false;
+		int BatchProcessingThreshold = 5;
 		// static bool ControlChildren = false; // = false;
 
 		readonly System.Threading.Timer ScanTimer = null;
 
-		public bool ValidateController(ProcessController prc)
+		bool ValidateController(ProcessController prc)
 		{
 			var rv = true;
 
@@ -455,7 +455,7 @@ namespace Taskmaster
 			return rv;
 		}
 
-		public void SaveController(ProcessController prc)
+		void SaveController(ProcessController prc)
 		{
 			if (string.IsNullOrEmpty(prc.Executable))
 			{
@@ -540,8 +540,7 @@ namespace Taskmaster
 			dirtyconfig |= modified;
 
 			Log.Information("<Process> New instance event watcher: " + (WMIPolling ? HumanReadable.Generic.Enabled : HumanReadable.Generic.Disabled));
-			if (WMIPolling)
-				Log.Information("<Process> New instance poll delay: " + $"{WMIPollDelay}s");
+			if (WMIPolling) Log.Information("<Process> New instance poll delay: " + $"{WMIPollDelay}s");
 
 			// --------------------------------------------------------------------------------------------------------
 
@@ -589,7 +588,7 @@ namespace Taskmaster
 			if (dirtyconfig) corecfg.MarkDirty();
 		}
 
-		void loadWatchlist()
+		void LoadWatchlist()
 		{
 			Log.Information("<Process> Loading watchlist...");
 
@@ -790,7 +789,7 @@ namespace Taskmaster
 			}
 		}
 
-		private void ProcessWaitingExitProxy(object _, ProcessModificationEventArgs ea)
+		void ProcessWaitingExitProxy(object _, ProcessModificationEventArgs ea)
 		{
 			try
 			{
@@ -805,12 +804,12 @@ namespace Taskmaster
 			}
 		}
 
-		private void ProcessResumedProxy(object _, ProcessModificationEventArgs _ea)
+		void ProcessResumedProxy(object _, ProcessModificationEventArgs _ea)
 		{
 			throw new NotImplementedException();
 		}
 
-		private void ProcessPausedProxy(object _, ProcessModificationEventArgs _ea)
+		void ProcessPausedProxy(object _, ProcessModificationEventArgs _ea)
 		{
 			throw new NotImplementedException();
 		}
@@ -864,16 +863,18 @@ namespace Taskmaster
 		{
 			if (!Atomic.Lock(ref CleanWaitForExitList_lock)) return;
 
-			await Task.Delay(TimeSpan.FromSeconds(15)).ConfigureAwait(false);
 
 			await Task.Run(async () =>
 			{
+				await Task.Delay(TimeSpan.FromSeconds(15)).ConfigureAwait(true);
+
 				try
 				{
 					foreach (var info in WaitForExitList.Values)
 					{
 						try
 						{
+							info.Process.Refresh();
 							if (!info.Process.HasExited) continue; // only reason we keep this
 						}
 						catch { }
@@ -889,7 +890,7 @@ namespace Taskmaster
 			}).ConfigureAwait(false);
 		}
 
-		public void PowerBehaviourEvent(object _, PowerManager.PowerBehaviourEventArgs ea)
+		void PowerBehaviourEvent(object _, PowerManager.PowerBehaviourEventArgs ea)
 		{
 			try
 			{
@@ -939,7 +940,7 @@ namespace Taskmaster
 				Log.Information("Cancelled power mode wait on " + cancelled + " process(es).");
 		}
 
-		public void WaitForExit(ProcessEx info)
+		void WaitForExit(ProcessEx info)
 		{
 			Debug.Assert(info.Controller != null, "No controller attached");
 
@@ -980,7 +981,7 @@ namespace Taskmaster
 
 		ConcurrentDictionary<int, ProcessController> ForegroundWaitlist = new ConcurrentDictionary<int, ProcessController>(1, 6);
 
-		public void ForegroundAppChangedEvent(object _, WindowChangedArgs ev)
+		void ForegroundAppChangedEvent(object _, WindowChangedArgs ev)
 		{
 			try
 			{
@@ -1041,7 +1042,7 @@ namespace Taskmaster
 
 		// TODO: ADD CACHE: pid -> process name, path, process
 
-		public ProcessController getWatchedPath(ProcessEx info)
+		ProcessController getWatchedPath(ProcessEx info)
 		{
 			if (WatchlistWithPath <= 0) return null;
 
@@ -1111,7 +1112,7 @@ namespace Taskmaster
 			return matchedprc;
 		}
 
-		public static string[] ProtectList { get; private set; } = {
+		static string[] ProtectList { get; set; } = {
 			"consent", // UAC, user account control prompt
 			"winlogon", // core system
 			"wininit", // core system
@@ -1121,7 +1122,8 @@ namespace Taskmaster
 			"LogonUI", // session lock
 			"services", // service control manager
 		};
-		public static string[] IgnoreList { get; private set; } = {
+
+		static string[] IgnoreList { get; set; } = {
 			"svchost", // service host
 			"taskeng", // task scheduler
 			"consent", // UAC, user account control prompt
@@ -1153,7 +1155,7 @@ namespace Taskmaster
 		bool IgnoreProcessID(int pid) => SystemProcessId(pid) || ignorePids.Contains(pid);
 
 		[System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
-		public static bool IgnoreProcessName(string name) => IgnoreList.Any(item => item.Equals(name, StringComparison.InvariantCultureIgnoreCase));
+		static bool IgnoreProcessName(string name) => IgnoreList.Any(item => item.Equals(name, StringComparison.InvariantCultureIgnoreCase));
 
 		[System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
 		public static bool ProtectedProcessName(string name) => ProtectList.Any(item => item.Equals(name, StringComparison.InvariantCultureIgnoreCase));
@@ -1268,7 +1270,7 @@ namespace Taskmaster
 			ProcessStateChange?.Invoke(this, new ProcessModificationEventArgs() { Info = info, State = ProcessRunningState.Found });
 		}
 
-		async void CollectProcessHandlingStatistics(object _, HandlingStateChangeEventArgs ea)
+		void CollectProcessHandlingStatistics(object _, HandlingStateChangeEventArgs ea)
 		{
 			try
 			{
@@ -1302,8 +1304,6 @@ namespace Taskmaster
 
 			try
 			{
-				await Task.Delay(0).ConfigureAwait(false);
-
 				info.State = ProcessHandlingState.Triage;
 
 				HandlingStateChange?.Invoke(this, new HandlingStateChangeEventArgs(info));
@@ -1369,7 +1369,7 @@ namespace Taskmaster
 		List<ProcessEx> ProcessBatch = new List<ProcessEx>();
 		readonly System.Timers.Timer BatchProcessingTimer = null;
 
-		async void BatchProcessingTick(object _, EventArgs _ea)
+		void BatchProcessingTick(object _, EventArgs _ea)
 		{
 			try
 			{
@@ -1385,7 +1385,7 @@ namespace Taskmaster
 					}
 				}
 
-				await Task.Run(new Action(() => NewInstanceBatchProcessing())).ConfigureAwait(false);
+				Task.Run(new Action(() => NewInstanceBatchProcessing())).ConfigureAwait(false);
 			}
 			catch (Exception ex)
 			{
@@ -1427,7 +1427,7 @@ namespace Taskmaster
 			}
 		}
 
-		public int Handling { get; private set; } = 0; // this isn't used for much...
+		int Handling { get; set; } = 0; // this isn't used for much...
 
 		void SignalProcessHandled(int adjust)
 		{
@@ -1436,7 +1436,7 @@ namespace Taskmaster
 		}
 
 		// This needs to return faster
-		async void NewInstanceTriage(object _, EventArrivedEventArgs ea)
+		void NewInstanceTriage(object _, EventArrivedEventArgs ea)
 		{
 			var now = DateTimeOffset.UtcNow;
 			var timer = Stopwatch.StartNew();
@@ -1621,6 +1621,7 @@ namespace Taskmaster
 			finally
 			{
 				HandlingStateChange?.Invoke(this, ev);
+
 			}
 		}
 
@@ -1677,6 +1678,12 @@ namespace Taskmaster
 				Logging.Stacktrace(ex);
 				throw new InitFailure("<<WMI>> Event watcher initialization failure");
 			}
+		}
+
+		void StopWMIEventWatcher()
+		{
+			watcher?.Dispose();
+			watcher = null;
 		}
 
 		const string watchfile = "Watchlist.ini";
