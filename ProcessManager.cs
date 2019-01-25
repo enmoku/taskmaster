@@ -78,6 +78,8 @@ namespace Taskmaster
 		public bool WMIPolling { get; private set; } = true;
 		public int WMIPollDelay { get; private set; } = 5;
 
+		public static TimeSpan IgnoreRecentlyModified { get; set; } = TimeSpan.FromMinutes(30);
+
 		// ctor, constructor
 		public ProcessManager()
 		{
@@ -502,6 +504,9 @@ namespace Taskmaster
 				Log.Information("<Process> Batch processing threshold: " + BatchProcessingThreshold);
 			}
 
+			IgnoreRecentlyModified = TimeSpan.FromMinutes(perfsec.GetSetDefault("Ignore recently modified", 30, out modified).IntValue.Constrain(0, 24 * 60));
+			perfsec["Ignore recently modified"].Comment = "Performance optimization. More notably this enables granting self-determination to apps that actually think they know better.";
+
 			// OBSOLETE
 			if (perfsec.Contains("Rescan frequency"))
 			{
@@ -586,6 +591,10 @@ namespace Taskmaster
 			dirtyconfig |= modified;
 
 			if (dirtyconfig) corecfg.MarkDirty();
+
+			if (IgnoreRecentlyModified != TimeSpan.Zero)
+				Log.Information($"<Process> Ignore recently modified: {IgnoreRecentlyModified.TotalMinutes:N1} minute cooldown");
+			Log.Information($"<Process> Self-determination: {(IgnoreRecentlyModified != TimeSpan.Zero ? "Possible" : "Impossible")}");
 		}
 
 		void LoadWatchlist()

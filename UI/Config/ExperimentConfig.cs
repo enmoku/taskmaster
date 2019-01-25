@@ -71,7 +71,7 @@ namespace Taskmaster.UI.Config
 				Minimum = 0,
 				Maximum = 60,
 				Unit = "mins",
-				Value = Convert.ToDecimal(Taskmaster.IgnoreRecentlyModified.TotalMinutes),
+				Value = Convert.ToDecimal(ProcessManager.IgnoreRecentlyModified.TotalMinutes),
 			};
 
 			layout.Controls.Add(new Label { Text = "Ignore recently modified", AutoSize = true });
@@ -94,7 +94,7 @@ namespace Taskmaster.UI.Config
 			{
 				// Set to current use
 
-				Taskmaster.IgnoreRecentlyModified = TimeSpan.FromMinutes(Convert.ToDouble(IgnoreRecentlyModifiedCooldown.Value));
+				ProcessManager.IgnoreRecentlyModified = TimeSpan.FromMinutes(Convert.ToDouble(IgnoreRecentlyModifiedCooldown.Value));
 				Taskmaster.RecordAnalysis = TimeSpan.FromSeconds(Convert.ToDouble(RecordAnalysisDelay.Value));
 
 				// Record for restarts
@@ -103,8 +103,10 @@ namespace Taskmaster.UI.Config
 				var cfg = corecfg.Config;
 
 				var exsec = cfg["Experimental"];
-				exsec["Ignore recently modified"].IntValue = Convert.ToInt32(Taskmaster.IgnoreRecentlyModified.TotalMinutes);
 				exsec["Record analysis"].IntValue = Convert.ToInt32(RecordAnalysisDelay.Value);
+
+				var perfsec = cfg["Performance"];
+				perfsec["Ignore recently modified"].IntValue = Convert.ToInt32(ProcessManager.IgnoreRecentlyModified.TotalMinutes);
 
 				corecfg.MarkDirty();
 

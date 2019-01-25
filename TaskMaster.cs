@@ -462,7 +462,6 @@ namespace Taskmaster
 		public static bool TempMonitorEnabled { get; private set; } = false;
 		public static bool LastModifiedList { get; private set; } = false;
 		public static bool WindowResizeEnabled { get; private set; } = false;
-		public static TimeSpan IgnoreRecentlyModified { get; set; } = TimeSpan.Zero;
 		public static TimeSpan RecordAnalysis { get; set; } = TimeSpan.Zero;
 
 		// DEBUG INFO
@@ -642,7 +641,6 @@ namespace Taskmaster
 			PersistentWatchlistStats = perfsec.GetSetDefault("Persistent watchlist statistics", true, out modified).BoolValue;
 			dirtyconfig |= modified;
 
-
 			SelfOptimizeBGIO = perfsec.GetSetDefault("Background I/O mode", false, out modified).BoolValue;
 			perfsec["Background I/O mode"].Comment = "Sets own priority exceptionally low. Warning: This can make TM's UI and functionality quite unresponsive.";
 			dirtyconfig |= modified;
@@ -735,7 +733,6 @@ namespace Taskmaster
 
 			var exsec = cfg["Experimental"];
 			WindowResizeEnabled = exsec.TryGet("Window Resize")?.BoolValue ?? false;
-			IgnoreRecentlyModified = TimeSpan.FromMinutes(exsec.TryGet("Ignore recently modified")?.IntValue ?? 0);
 			LastModifiedList = exsec.TryGet("Last Modified")?.BoolValue ?? false;
 			TempMonitorEnabled = exsec.TryGet("Temp Monitor")?.BoolValue ?? false;
 			int trecanalysis = exsec.TryGet("Record analysis")?.IntValue ?? 0;
