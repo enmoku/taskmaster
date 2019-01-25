@@ -29,7 +29,8 @@ namespace Taskmaster
 	sealed public class AutoAdjustReactionEventArgs : ProcessorLoadEventArgs
 	{
 		public PowerInfo.PowerMode Mode = PowerInfo.PowerMode.Undefined;
-		public PowerManager.PowerReaction Reaction = PowerManager.PowerReaction.Steady;
+		public PowerManager.PowerReaction Reaction = PowerManager.PowerReaction.Average;
+		public bool Steady = false;
 
 		/// <summary>
 		/// Pressure to change, from 0.0f to 1.0f.

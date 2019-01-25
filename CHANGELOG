@@ -8,6 +8,7 @@ Comprehensive changes can be found in Git change history:
 	Added: Warning about power mode being changed externally when auto-adjust is enabled.
 	Fixed: Recently modified being weird.
 	Internal: Path visibility changes to shown path is cached in some instances, in case it is used in multiple parts.
+	FIXED: A MAJOR BUG IN POWER AUTO-ADJUST. This potentially caused crippling of the computer due to power saver mode getting stuck. Was fun.
 ### 2018-01-24
 	Changed: Recently modified ignoring improved. Programs that try to know what is best for them are let to do so.
 ### 2018-01-23

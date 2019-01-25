@@ -378,7 +378,6 @@ namespace Taskmaster
 			High = 1,
 			Average = 0,
 			Low = -1,
-			Steady = 2
 		}
 
 		bool Paused = false;
@@ -447,7 +446,10 @@ namespace Taskmaster
 						ev.Pressure = ((float)BackoffCounter) / ((float)AutoAdjust.High.Backoff.Level) - queuePressureAdjust;
 					}
 					else
-						Reaction = PowerReaction.Steady;
+					{
+						Reaction = PowerReaction.High;
+						ev.Steady = true;
+					}
 				}
 				else if (PreviousReaction == PowerReaction.Low)
 				{
@@ -468,7 +470,10 @@ namespace Taskmaster
 						ev.Pressure = ((float)BackoffCounter) / ((float)AutoAdjust.Low.Backoff.Level) + queuePressureAdjust;
 					}
 					else
-						Reaction = PowerReaction.Steady;
+					{
+						Reaction = PowerReaction.Low;
+						ev.Steady = true;
+					}
 				}
 				else // Currently at medium power
 				{
@@ -510,7 +515,8 @@ namespace Taskmaster
 					{
 						if (Taskmaster.DebugAutoPower) Debug.WriteLine("Auto-adjust NOP");
 
-						Reaction = PowerReaction.Steady;
+						Reaction = PowerReaction.Average;
+						ev.Steady = true;
 						ReactionaryPlan = AutoAdjust.DefaultMode;
 
 						ResetAutoadjust();
@@ -546,6 +552,7 @@ namespace Taskmaster
 					}
 
 					ResetAutoadjust();
+
 					PreviousReaction = Reaction;
 				}
 				else
