@@ -272,18 +272,29 @@ namespace Taskmaster
 
 			ProcessUtility.InitializeCache();
 
+			Task PowMan = Task.CompletedTask,
+				CpuMon = Task.CompletedTask,
+				ProcMon = Task.CompletedTask,
+				FgMon = Task.CompletedTask,
+				NetMon = Task.CompletedTask,
+				StorMon = Task.CompletedTask,
+				HpMon = Task.CompletedTask,
+				HwMon = Task.CompletedTask,
+				VolMan = Task.CompletedTask;
+
 			// Parallel loading, cuts down startup time some.
 			// This is really bad if something fails
 			Task[] init =
 			{
-				PowerManagerEnabled ? (Task.Run(() => powermanager = new PowerManager())) : Task.CompletedTask,
-				PowerManagerEnabled ? (Task.Run(()=> cpumonitor = new CPUMonitor())) : Task.CompletedTask,
-				ProcessMonitorEnabled ? (Task.Run(() => processmanager = new ProcessManager())) : Task.CompletedTask,
-				(ActiveAppMonitorEnabled && ProcessMonitorEnabled) ? (Task.Run(()=> activeappmonitor = new ActiveAppManager(eventhook:false))) : Task.CompletedTask,
-				NetworkMonitorEnabled ? (Task.Run(() => netmonitor = new NetManager())) : Task.CompletedTask,
-				StorageMonitorEnabled ? (Task.Run(() => storagemanager = new StorageManager())) : Task.CompletedTask,
-				HealthMonitorEnabled ? (Task.Run(() => healthmonitor = new HealthMonitor())) : Task.CompletedTask,
-				HardwareMonitorEnabled ? (Task.Run(() => hardware = new HardwareMonitor())) : Task.CompletedTask,
+				PowerManagerEnabled ? (PowMan = Task.Run(() => powermanager = new PowerManager())) : Task.CompletedTask,
+				PowerManagerEnabled ? (CpuMon = Task.Run(()=> cpumonitor = new CPUMonitor())) : Task.CompletedTask,
+				ProcessMonitorEnabled ? (ProcMon = Task.Run(() => processmanager = new ProcessManager())) : Task.CompletedTask,
+				(ActiveAppMonitorEnabled && ProcessMonitorEnabled) ? (FgMon = Task.Run(()=> activeappmonitor = new ActiveAppManager(eventhook:false))) : Task.CompletedTask,
+				NetworkMonitorEnabled ? (NetMon = Task.Run(() => netmonitor = new NetManager())) : Task.CompletedTask,
+				StorageMonitorEnabled ? (StorMon = Task.Run(() => storagemanager = new StorageManager())) : Task.CompletedTask,
+				HealthMonitorEnabled ? (HpMon = Task.Run(() => healthmonitor = new HealthMonitor())) : Task.CompletedTask,
+				HardwareMonitorEnabled ? (HwMon = Task.Run(() => hardware = new HardwareMonitor())) : Task.CompletedTask,
+				AudioManagerEnabled ? ( VolMan = Task.Run(() => audiomanager = new AudioManager()) ) : Task.CompletedTask,
 			};
 
 			// MMDEV requires main thread
@@ -296,15 +307,49 @@ namespace Taskmaster
 				micmonitor = null;
 			}
 
-			if (AudioManagerEnabled) audiomanager = new AudioManager(); // EXPERIMENTAL
-
 			// WinForms makes the following components not load nicely if not done here.
 			trayaccess = new TrayAccess();
 			trayaccess.TrayMenuShown += TrayMenuShownEvent;
 
+			if (PowerManagerEnabled)
+			{
+				Task.WhenAll(new Task[] { PowMan }).ContinueWith((_) => {
+					trayaccess.Hook(powermanager);
+					powermanager.onBatteryResume += RestartRequest; // HACK
+					powermanager.Hook(cpumonitor);
+				});
+			}
+
+			Task.WhenAll(ProcMon).ContinueWith(
+				(x) => trayaccess?.Hook(processmanager));
+
+			if (PowerManagerEnabled)
+			{
+				Task.WhenAll(CpuMon).ContinueWith(
+					(x) => cpumonitor.Hook(processmanager));
+			}
+
+			if (HardwareMonitorEnabled)
+				Task.WhenAll(HwMon).ContinueWith((x) => hardware.Start()); // this is slow
+
+			if (NetworkMonitorEnabled)
+			{
+				Task.WhenAll(NetMon).ContinueWith((x) =>
+				{
+					netmonitor.SetupEventHooks();
+					netmonitor.Tray = trayaccess;
+				});
+			}
+
+			if (AudioManagerEnabled)
+			{
+				Task.WhenAll(new Task[] { ProcMon, VolMan }).ContinueWith(
+					(x) => audiomanager.Hook(processmanager));
+			}
+
 			try
 			{
-				// wait for component initialization
+				// WAIT for component initialization
 				if (!Task.WaitAll(init, 5_000))
 				{
 					Log.Warning("<Core> Components still loading.");
@@ -326,26 +371,6 @@ namespace Taskmaster
 
 			Log.Information("<Core> Components loaded; Hooking event handlers.");
 
-			if (PowerManagerEnabled)
-			{
-				trayaccess.Hook(powermanager);
-				powermanager.onBatteryResume += RestartRequest; // HACK
-				powermanager.Hook(cpumonitor);
-			}
-
-			if (NetworkMonitorEnabled)
-			{
-				netmonitor.SetupEventHooks();
-				netmonitor.Tray = trayaccess;
-			}
-
-			if (processmanager != null)
-			{
-				trayaccess?.Hook(processmanager);
-				if (cpumonitor != null)
-					cpumonitor.Hook(processmanager);
-			}
-
 			if (ActiveAppMonitorEnabled && ProcessMonitorEnabled)
 			{
 				processmanager.Hook(activeappmonitor);
@@ -358,9 +383,6 @@ namespace Taskmaster
 				processmanager.Hook(powermanager);
 			}
 
-			if (AudioManagerEnabled)
-				audiomanager.Hook(processmanager);
-
 			if (GlobalHotkeys)
 			{
 				trayaccess.RegisterGlobalHotkeys();
@@ -368,13 +390,22 @@ namespace Taskmaster
 
 			// UI
 
+			var secInit = new Task[] { PowMan, CpuMon, ProcMon, FgMon, NetMon, StorMon, HpMon, HwMon, VolMan };
+			if (!Task.WaitAll(secInit, 5_000))
+			{
+				Log.Warning("<Core> Component secondary loading still in progress.");
+				if (!Task.WaitAll(secInit, 25_000))
+					throw new InitFailure("Component secondary initialization taking excessively long, aborting.");
+			}
+
+			secInit = null;
+			init = null;
+
 			if (ShowOnStart && State == Runstate.Normal)
 			{
 				BuildMainWindow();
 				mainwindow?.Reveal();
 			}
-
-			if (HardwareMonitorEnabled) Task.Run(async () => hardware.Start()); // this is slow
 
 			// Self-optimization
 			if (SelfOptimize)
