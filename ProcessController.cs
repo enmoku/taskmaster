@@ -823,7 +823,7 @@ namespace Taskmaster
 
 				WaitingExit?.Invoke(this, new ProcessModificationEventArgs() { Info = info, State = ProcessRunningState.Undefined });
 
-				if (Taskmaster.DebugPower) Log.Debug($"[{FriendlyName}] Power exit wait for {info.Name} (#{info.Id.ToString()}) set");
+				if (Taskmaster.DebugPower) Log.Debug($"[{FriendlyName}] {FormatPathName(info)} (#{info.Id.ToString()}) power exit wait set");
 			}
 			catch (Exception ex)
 			{
@@ -1061,7 +1061,7 @@ namespace Taskmaster
 							if (ormt.FreeWill)
 							{
 								if (Taskmaster.ShowInaction && Taskmaster.DebugProcesses)
-									Log.Debug($"[{FriendlyName}] {info.Name} (#{info.Id.ToString()}) has been granted agency, ignoring.");
+									Log.Debug($"[{FriendlyName}] {FormatPathName(info)} (#{info.Id.ToString()}) has been granted agency, ignoring.");
 								info.State = ProcessHandlingState.Abandoned;
 								return;
 							}
@@ -1087,7 +1087,7 @@ namespace Taskmaster
 								if (ormt.ExpectedState == -2) // 2-3 seems good number
 								{
 									ormt.FreeWill = true;
-									Log.Information($"[{FriendlyName}] {info.Name} (#{info.Id.ToString()}) is resisting being modified: Agency granted.");
+									Log.Information($"[{FriendlyName}] {FormatPathName(info)} (#{info.Id.ToString()}) is resisting being modified: Agency granted.");
 									// TODO: Let it be.
 									ormt.Info.Process.Exited += ProcessExitEvent;
 								}
@@ -1241,7 +1241,7 @@ namespace Taskmaster
 				}
 				else
 				{
-					if (Taskmaster.DebugProcesses) Debug.WriteLine($"{info.Name} #{info.Id} --- affinity not touched");
+					if (Taskmaster.DebugProcesses) Debug.WriteLine($"{FormatPathName(info)} #{info.Id.ToString()} --- affinity not touched");
 				}
 
 				// APPLY CHANGES HERE
