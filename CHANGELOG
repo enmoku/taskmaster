@@ -3,6 +3,11 @@ Comprehensive changes can be found in Git change history:
 	https://github.com/mkahvi/taskmaster/commits/master
 
 ## [0.12...]
+### 2018-01-26
+	Added: Experimental affinity ideal option. Usage via `Affinity ideal=#` in Watchlist.ini with value as zero-indexed number for ideal core.
+		Assigned core must be one of the cores allowed by affinity mask.
+	Fixed: Auto-adjust was broken in odd ways.
+	Changed: Default thread queue barriers increase from 2 and 5 to 5 and 18. Still experimenting on good defaults.
 ### 2018-01-25
 	Added: Thread queue barriers to power auto-adjust.
 	Added: Warning about power mode being changed externally when auto-adjust is enabled.
