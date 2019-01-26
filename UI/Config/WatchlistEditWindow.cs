@@ -107,7 +107,7 @@ namespace Taskmaster
 
 			string newfriendlyname = friendlyName.Text.Trim();
 
-			var dprc = Taskmaster.processmanager.GetController(newfriendlyname);
+			var dprc = Taskmaster.processmanager.GetControllerByName(newfriendlyname);
 			if (dprc != null && dprc != Controller)
 			{
 				MessageBox.Show("Friendly Name conflict.", "Configuration error",
@@ -920,7 +920,7 @@ namespace Taskmaster
 			var samesection = Controller.FriendlyName.Equals(friendlyName.Text);
 			if (!samesection)
 			{
-				var dprc = Taskmaster.processmanager.GetController(friendlyName.Text);
+				var dprc = Taskmaster.processmanager.GetControllerByName(friendlyName.Text);
 				if (dprc != null)
 				{
 					sbs.Append("Friendly name conflict!");

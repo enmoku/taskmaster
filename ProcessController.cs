@@ -131,23 +131,20 @@ namespace Taskmaster
 		int ScatterOffset = 0;
 		int ScatterChunk = 1; // should default to Cores/4 or Range/2 at max, 1 at minimum.
 
+		public int AffinityIdeal = -1; // EXPERIMENTAL
+
 		/// <summary>
 		/// The power plan.
 		/// </summary>
 		public PowerInfo.PowerMode PowerPlan = PowerInfo.PowerMode.Undefined;
 
-		int p_Recheck = 0;
-		public int Recheck
-		{
-			get => p_Recheck;
-			set => p_Recheck = value.Constrain(0, 300);
-		}
+		public int Recheck { get; set; } = 0;
 
-		public bool AllowPaging = false;
+		public bool AllowPaging { get; set; } = false;
 
-		public PathVisibilityOptions PathVisibility = PathVisibilityOptions.Process;
+		public PathVisibilityOptions PathVisibility { get; set; } = PathVisibilityOptions.Process;
 
-		string PathMask = string.Empty;
+		string PathMask { get; set; } = string.Empty; // UNUSED
 
 		/// <summary>
 		/// Controls whether this particular controller allows itself to be logged.
@@ -708,14 +705,14 @@ namespace Taskmaster
 				oldAffinity = info.Process.ProcessorAffinity.ToInt32();
 				if (AffinityMask >= 0)
 				{
-					// TODO: Apply affinity strategy
-					newAffinity = ProcessManagerUtility.ApplyAffinityStrategy(oldAffinity, AffinityMask, AffinityStrategy);
-					if (newAffinity != oldAffinity)
+					if (EstablishNewAffinity(info, oldAffinity, out newAffinity))
 					{
 						info.Process.ProcessorAffinity = new IntPtr(newAffinity.Replace(0, ProcessManager.AllCPUsMask));
 						mAffinity = true;
 					}
 				}
+
+				if (AffinityIdeal >= 0) ApplyAffinityIdeal(info);
 			}
 			catch (InvalidOperationException) // ID not available, probably exited
 			{
@@ -961,9 +958,9 @@ namespace Taskmaster
 				return info.Name; // NAME
 		}
 
-		public async Task Modify(ProcessEx info)
+		public void Modify(ProcessEx info)
 		{
-			await Touch(info).ConfigureAwait(false);
+			Touch(info);
 			if (Recheck > 0) TouchReapply(info);
 		}
 
@@ -977,7 +974,7 @@ namespace Taskmaster
 		bool InForeground(int pid) => ForegroundOnly ? Taskmaster.activeappmonitor?.Foreground.Equals(pid) ?? true : true;
 
 		// TODO: Simplify this
-		async Task Touch(ProcessEx info, bool refresh = false)
+		void Touch(ProcessEx info, bool refresh = false)
 		{
 			Debug.Assert(info.Process != null, "ProcessController.Touch given null process.");
 			Debug.Assert(!ProcessManager.SystemProcessId(info.Id), "ProcessController.Touch given invalid process ID");
@@ -999,8 +996,6 @@ namespace Taskmaster
 
 				info.PowerWait = (PowerPlan != PowerInfo.PowerMode.Undefined);
 				info.ActiveWait = ForegroundOnly;
-
-				await Task.Delay(refresh ? 0 : ModifyDelay).ConfigureAwait(false);
 
 				bool responding = true;
 				ProcessPriorityClass? oldPriority = null;
@@ -1201,11 +1196,7 @@ namespace Taskmaster
 				{
 					newAffinityMask = AffinityMask.Replace(0, ProcessManager.AllCPUsMask);
 
-					int modifiedAffinityMask = ProcessManagerUtility.ApplyAffinityStrategy(oldAffinityMask, newAffinityMask, AffinityStrategy);
-					if (modifiedAffinityMask != newAffinityMask)
-						newAffinityMask = modifiedAffinityMask;
-
-					if (oldAffinityMask != newAffinityMask)
+					if (EstablishNewAffinity(info, oldAffinityMask, out newAffinityMask))
 					{
 						newAffinity = new IntPtr(newAffinityMask.Replace(0, ProcessManager.AllCPUsMask));
 						doModifyAffinity = true;
@@ -1272,10 +1263,14 @@ namespace Taskmaster
 					{
 						info.Process.ProcessorAffinity = newAffinity.Value;
 						modified = mAffinity = true;
+
 					}
 					catch (OutOfMemoryException) { throw; }
 					catch { fAffinity = true; } // ignore errors, this is all we care of them
 				}
+
+				if (AffinityIdeal >= 0)
+					ApplyAffinityIdeal(info);
 
 				/*
 				if (BackgroundIO)
@@ -1397,14 +1392,42 @@ namespace Taskmaster
 				else
 					info.State = ProcessHandlingState.Finished;
 
-				if (Recheck > 0) TouchReapply(info);
-				
 				if (Taskmaster.WindowResizeEnabled && Resize.HasValue) TryResize(info);
 			}
 			catch (OutOfMemoryException) { info.State = ProcessHandlingState.Abandoned; throw; }
 			catch (Exception ex)
 			{
 				info.State = ProcessHandlingState.Invalid;
+				Logging.Stacktrace(ex);
+			}
+		}
+
+		bool EstablishNewAffinity(ProcessEx info, int oldmask, out int newmask)
+		{
+			// TODO: Apply affinity strategy
+			newmask = ProcessManagerUtility.ApplyAffinityStrategy(oldmask, AffinityMask, AffinityStrategy);
+			return (newmask != oldmask);
+		}
+
+		void ApplyAffinity(ProcessEx info)
+		{
+
+		}
+
+		void ApplyAffinityIdeal(ProcessEx info)
+		{
+			try
+			{
+				var threads = info.Process.Threads;
+				threads[0].IdealProcessor = AffinityIdeal;
+				// Is there benefit for changing only the first/primary thread?
+				// Optimistically the main thread constains the app main loop and other core functions.
+				// This is not guaranteed however.
+			}
+			catch (OutOfMemoryException) { throw; }
+			catch (Win32Exception) { } // NOP; Access denied or such. Possibly malconfigured ideal
+			catch (Exception ex)
+			{
 				Logging.Stacktrace(ex);
 			}
 		}
@@ -1592,7 +1615,7 @@ namespace Taskmaster
 					return;
 				}
 
-				await Touch(info, refresh: true);
+				Touch(info, refresh: true);
 			}
 			catch (Win32Exception) // access denied
 			{

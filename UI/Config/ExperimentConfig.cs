@@ -82,7 +82,7 @@ namespace Taskmaster.UI.Config
 				Minimum = 0,
 				Maximum = 300,
 				Unit = "secs",
-				Value = Convert.ToDecimal(Taskmaster.RecordAnalysis.Value.TotalSeconds),
+				Value = Convert.ToDecimal(Taskmaster.RecordAnalysis.HasValue ? Taskmaster.RecordAnalysis.Value.TotalSeconds : 0),
 			};
 
 			layout.Controls.Add(new Label { Text = "Record analysis delay", AutoSize = true });
@@ -95,7 +95,7 @@ namespace Taskmaster.UI.Config
 				// Set to current use
 
 				ProcessManager.IgnoreRecentlyModified = TimeSpan.FromMinutes(Convert.ToDouble(IgnoreRecentlyModifiedCooldown.Value));
-				Taskmaster.RecordAnalysis = TimeSpan.FromSeconds(Convert.ToDouble(RecordAnalysisDelay.Value));
+				Taskmaster.RecordAnalysis = RecordAnalysisDelay.Value != decimal.Zero ? (TimeSpan?)TimeSpan.FromSeconds(Convert.ToDouble(RecordAnalysisDelay.Value)) : null;
 
 				// Record for restarts
 
@@ -103,7 +103,10 @@ namespace Taskmaster.UI.Config
 				var cfg = corecfg.Config;
 
 				var exsec = cfg["Experimental"];
-				exsec["Record analysis"].IntValue = Convert.ToInt32(RecordAnalysisDelay.Value);
+				if (RecordAnalysisDelay.Value != decimal.Zero)
+					exsec["Record analysis"].IntValue = Convert.ToInt32(RecordAnalysisDelay.Value);
+				else
+					exsec.Remove("Record analysis");
 
 				var perfsec = cfg["Performance"];
 				perfsec["Ignore recently modified"].IntValue = Convert.ToInt32(ProcessManager.IgnoreRecentlyModified.Value.TotalMinutes);

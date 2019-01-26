@@ -123,7 +123,7 @@ namespace Taskmaster
 		}
 
 		// TODO: Need an ID mapping
-		public ProcessController GetController(string friendlyname)
+		public ProcessController GetControllerByName(string friendlyname)
 		{
 			foreach (var item in Watchlist.Keys)
 			{
@@ -145,17 +145,21 @@ namespace Taskmaster
 		/// </summary>
 		ConcurrentDictionary<string, ProcessController> ExeToController = new ConcurrentDictionary<string, ProcessController>();
 
-		public ProcessController getController(ProcessEx info)
+		public bool GetController(ProcessEx info, out ProcessController prc)
 		{
-			if (info.Controller != null) return info.Controller; // unnecessary, but...
+			if (info.Controller != null)
+			{
+				prc = info.Controller;
+				return true;
+			}
 
-			if (ExeToController.TryGetValue(info.Name.ToLowerInvariant(), out ProcessController rv))
-				return info.Controller = rv;
+			if (ExeToController.TryGetValue(info.Name.ToLowerInvariant(), out prc))
+				return true;
 
-			if (!string.IsNullOrEmpty(info.Path))
-				return getWatchedPath(info);
+			if (!string.IsNullOrEmpty(info.Path) && GetPathController(info, out prc))
+				return true;
 
-			return null;
+			return false;
 		}
 
 		public static int CPUCount = Environment.ProcessorCount;
@@ -715,7 +719,7 @@ namespace Taskmaster
 					Path = (section.TryGet(HumanReadable.System.Process.Path)?.StringValue ?? null),
 					ModifyDelay = (section.TryGet("Modify delay")?.IntValue ?? 0),
 					//BackgroundIO = (section.TryGet("Background I/O")?.BoolValue ?? false), // Doesn't work
-					Recheck = (section.TryGet("Recheck")?.IntValue ?? 0),
+					Recheck = (section.TryGet("Recheck")?.IntValue ?? 0).Constrain(0, 300),
 					PowerPlan = pmode,
 					PathVisibility = pvis,
 					BackgroundPriority = bprio,
@@ -727,6 +731,17 @@ namespace Taskmaster
 				};
 
 				prc.SetForegroundOnly(section.TryGet("Foreground only")?.BoolValue ?? false);
+
+				prc.AffinityIdeal = section.TryGet("Affinity ideal")?.IntValue.Constrain(-1, CPUCount-1) ?? -1;
+				if (prc.AffinityIdeal >= 0)
+				{
+					Log.Debug("[" + prc.FriendlyName + "] EXPERIMENT Affinity ideal: " + prc.AffinityIdeal);
+					if (!Bit.IsSet(prc.AffinityMask, prc.AffinityIdeal))
+					{
+						Log.Debug("[" + prc.FriendlyName + "] EXPERIMENT Affinity ideal to mask mismatch: " + HumanInterface.BitMask(prc.AffinityMask, CPUCount) + ", ideal core: " + prc.AffinityIdeal);
+						prc.AffinityIdeal = -1;
+					}
+				}
 
 				if (!prc.ForegroundOnly)
 				{
@@ -1052,11 +1067,11 @@ namespace Taskmaster
 
 		// TODO: ADD CACHE: pid -> process name, path, process
 
-		ProcessController getWatchedPath(ProcessEx info)
+		bool GetPathController(ProcessEx info, out ProcessController prc)
 		{
-			if (WatchlistWithPath <= 0) return null;
+			prc = null;
 
-			ProcessController matchedprc = null;
+			if (WatchlistWithPath <= 0) return false;
 
 			try
 			{
@@ -1064,62 +1079,62 @@ namespace Taskmaster
 				{
 					if (Taskmaster.ShowInaction && Taskmaster.DebugProcesses)
 						Log.Verbose(info.Name + " (#" + info.Id + ") has already exited.");
-					return null; // return ProcessState.Invalid;
+					return false; // return ProcessState.Invalid;
 				}
 			}
 			catch (InvalidOperationException ex)
 			{
 				Log.Fatal("INVALID ACCESS to Process");
 				Logging.Stacktrace(ex);
-				return null; // return ProcessState.AccessDenied; //throw; // no point throwing
+				return false; // return ProcessState.AccessDenied; //throw; // no point throwing
 			}
 			catch (System.ComponentModel.Win32Exception ex)
 			{
 				if (ex.NativeErrorCode != 5) // what was this?
 					Log.Warning("Access error: " + info.Name + " (#" + info.Id + ")");
-				return null; // return ProcessState.AccessDenied; // we don't care wwhat this error is
+				return false; // return ProcessState.AccessDenied; // we don't care wwhat this error is
 			}
 
 			if (string.IsNullOrEmpty(info.Path) && !ProcessUtility.FindPath(info))
-				return null; // return ProcessState.Error;
+				return false; // return ProcessState.Error;
 
 			if (IgnoreSystem32Path && info.Path.StartsWith(Environment.GetFolderPath(Environment.SpecialFolder.System)))
 			{
 				if (Taskmaster.ShowInaction && Taskmaster.DebugProcesses)
 					Log.Debug("<Process/Path> " + info.Name + " (#" + info.Id + ") in System32, ignoring");
-				return null;
+				return false;
 			}
 
 			// TODO: This needs to be FASTER
-			foreach (ProcessController prc in Watchlist.Keys)
+			foreach (var lprc in Watchlist.Keys)
 			{
-				if (!prc.Enabled) continue;
-				if (string.IsNullOrEmpty(prc.Path)) continue;
+				if (!lprc.Enabled) continue;
+				if (string.IsNullOrEmpty(lprc.Path)) continue;
 
-				if (!string.IsNullOrEmpty(prc.Executable))
+				if (!string.IsNullOrEmpty(lprc.Executable))
 				{
-					if (prc.Executable.Equals(info.Name, StringComparison.InvariantCultureIgnoreCase))
+					if (lprc.Executable.Equals(info.Name, StringComparison.InvariantCultureIgnoreCase))
 					{
 						if (Taskmaster.DebugPaths)
-							Log.Debug("[" + prc.FriendlyName + "] Path+Exe matched.");
+							Log.Debug("[" + lprc.FriendlyName + "] Path+Exe matched.");
 					}
 					else
 						continue; // CheckPathWatch does not handle combo path+exes
 				}
 
-				if (prc.MatchPath(info.Path))
+				if (lprc.MatchPath(info.Path))
 				{
 					if (Taskmaster.DebugPaths)
-						Log.Verbose("[" + prc.FriendlyName + "] (CheckPathWatch) Matched at: " + info.Path);
+						Log.Verbose("[" + lprc.FriendlyName + "] (CheckPathWatch) Matched at: " + info.Path);
 
-					matchedprc = prc;
+					prc = lprc;
 					break;
 				}
 			}
 
-			info.Controller = matchedprc;
+			info.Controller = prc;
 
-			return matchedprc;
+			return prc != null;
 		}
 
 		static string[] ProtectList { get; set; } = {
@@ -1262,7 +1277,7 @@ namespace Taskmaster
 		{
 			var prc = info.Controller;
 
-			if (!prc.ForegroundOnly) return;
+			Debug.Assert(prc.ForegroundOnly);
 
 			bool keyadded = false;
 			if (keyadded = ForegroundWaitlist.TryAdd(info.Id, prc))
@@ -1312,6 +1327,8 @@ namespace Taskmaster
 
 			ProcessEx info = ev.Info;
 
+			bool Triaged = false;
+
 			try
 			{
 				info.State = ProcessHandlingState.Triage;
@@ -1324,14 +1341,12 @@ namespace Taskmaster
 					info.State = ProcessHandlingState.AccessDenied;
 					return; // ProcessState.AccessDenied;
 				}
-				
-				if (ExeToController.TryGetValue(info.Name.ToLowerInvariant(), out var prc))
+
+				ProcessController prc = null;
+				if (ExeToController.TryGetValue(info.Name.ToLowerInvariant(), out prc))
 					info.Controller = prc; // fill
 
-				if (info.Controller == null)
-					getWatchedPath(info);
-
-				if (info.Controller != null)
+				if (prc != null || GetPathController(info, out prc))
 				{
 					if (!info.Controller.Enabled)
 					{
@@ -1340,21 +1355,21 @@ namespace Taskmaster
 						return;
 					}
 
-					try
+					Triaged = true;
+					info.State = ProcessHandlingState.Processing;
+					Task.Run(() =>
 					{
-						info.State = ProcessHandlingState.Processing;
-						await info.Controller.Modify(info).ContinueWith((x) =>
+						try
 						{
-							ForegroundWatch(info);
+							info.Controller.Modify(info);
+
+							if (prc.ForegroundOnly) ForegroundWatch(info);
 
 							if (info.Controller.Analyze && info.Valid && info.State != ProcessHandlingState.Abandoned)
 								analyzer.Analyze(info);
-						});
-					}
-					catch (Exception ex)
-					{
-						Logging.Stacktrace(ex);
-					}
+						}
+						catch { throw; }
+					}).ConfigureAwait(false);
 				}
 				else
 					info.State = ProcessHandlingState.Abandoned;
@@ -1364,13 +1379,14 @@ namespace Taskmaster
 					ChildController(info);
 				*/
 			}
+			catch (OutOfMemoryException) { throw; }
 			catch (Exception ex)
 			{
 				Logging.Stacktrace(ex);
 			}
 			finally
 			{
-				HandlingStateChange?.Invoke(this, new HandlingStateChangeEventArgs(info));
+				if (!Triaged) HandlingStateChange?.Invoke(this, new HandlingStateChangeEventArgs(info));
 			}
 		}
 

@@ -101,8 +101,7 @@ namespace Taskmaster
 				if (ProcessUtility.GetInfo(pid, out var info, getPath: true, name: name))
 				{
 					//OnNewSession?.Invoke(this, info);
-					var prc = processmanager.getController(info);
-					if (prc != null)
+					if (processmanager.GetController(info, out var prc))
 					{
 						bool volAdjusted = false;
 						float oldvolume = session.SimpleAudioVolume.Volume;
