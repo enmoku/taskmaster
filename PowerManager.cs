@@ -772,9 +772,9 @@ namespace Taskmaster
 			dirtyconfig |= modified;
 
 			// QUEUE BARRIERS
-			AutoAdjust.Queue.High = autopower.GetSetDefault("High queue barrier", 5, out modified).IntValue.Constrain(0, 20);
+			AutoAdjust.Queue.High = autopower.GetSetDefault("High queue barrier", 5, out modified).IntValue.Constrain(0, 50);
 			dirtyconfig |= modified;
-			AutoAdjust.Queue.Low = autopower.GetSetDefault("Low queue barrier", 2, out modified).IntValue.Constrain(0, 10);
+			AutoAdjust.Queue.Low = autopower.GetSetDefault("Low queue barrier", 2, out modified).IntValue.Constrain(0, 20);
 			dirtyconfig |= modified;
 			if (AutoAdjust.Queue.Low >= AutoAdjust.Queue.High) AutoAdjust.Queue.Low = Math.Max(0, AutoAdjust.Queue.High - 1);
 

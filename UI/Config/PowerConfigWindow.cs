@@ -265,7 +265,7 @@ namespace Taskmaster
 			layout.Controls.Add(highbackofflevel);
 
 			layout.Controls.Add(new Label() { Text = "Queue barrier", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Fill });
-			hiQueue = new NumericUpDown() { Maximum = 10, Minimum = 0, Value = 2 };
+			hiQueue = new NumericUpDown() { Maximum = 50, Minimum = 0, Value = 12 };
 			layout.Controls.Add(hiQueue);
 			tooltip.SetToolTip(hiQueue, "If there are at least this many queued threads, lower power modes are disallowed.");
 
@@ -303,7 +303,7 @@ namespace Taskmaster
 			layout.Controls.Add(lowbackofflevel);
 
 			layout.Controls.Add(new Label() { Text = "Queue barrier", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Fill });
-			loQueue = new NumericUpDown() { Maximum = 10, Minimum = 0, Value = 2 };
+			loQueue = new NumericUpDown() { Maximum = 20, Minimum = 0, Value = 5 };
 			layout.Controls.Add(loQueue);
 			tooltip.SetToolTip(loQueue, "If there are at least this many queued threads, low mode is disallowed.");
 
