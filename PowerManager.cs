@@ -422,71 +422,78 @@ namespace Taskmaster
 			lock (autoadjust_lock)
 			{
 				var Reaction = PowerReaction.Average;
-				var ReactionaryPlan = AutoAdjust.DefaultMode;
 
 				var Ready = false;
 
 				ev.Pressure = 0;
 				ev.Enacted = false;
 
+				//Debug.WriteLine("AUTO-ADJUST: Previous Reaction: " + PreviousReaction.ToString());
+				//Debug.WriteLine("AUTO-ADJUST: Queue Length: " + ev.Queue.ToString());
 				if (PreviousReaction == PowerReaction.High)
 				{
-					// Downgrade to MEDIUM power level
+					// Backoff from High to Medium power level
 					if (ev.Queue <= AutoAdjust.Queue.High
 						&& (ev.High <= AutoAdjust.High.Backoff.High
 						|| ev.Mean <= AutoAdjust.High.Backoff.Mean
 						|| ev.Low <= AutoAdjust.High.Backoff.Low))
 					{
+						//Debug.WriteLine("AUTO-ADJUST: Motive: High to Average");
 						Reaction = PowerReaction.Average;
-						ReactionaryPlan = AutoAdjust.DefaultMode;
 
 						BackoffCounter++;
 
 						if (BackoffCounter >= AutoAdjust.High.Backoff.Level)
 							Ready = true;
 
-						queuePressureAdjust = (AutoAdjust.Queue.Low > 0 ? ev.Queue / 10 : 0); // 10% per queued thread
+						queuePressureAdjust = (AutoAdjust.Queue.High > 0 ? ev.Queue / AutoAdjust.Queue.High : 0f);
+						//Debug.WriteLine("AUTO-ADJUST: Queue pressure adjust: " + $"{queuePressureAdjust:N1}");
 						ev.Pressure = ((float)BackoffCounter) / ((float)AutoAdjust.High.Backoff.Level) - queuePressureAdjust;
+						//Debug.WriteLine("AUTO-ADJUST: Final pressure: " + $"{ev.Pressure:N1}");
 					}
 					else
 					{
+						//Debug.WriteLine("AUTO-ADJUST: Motive: High - Steady");
 						Reaction = PowerReaction.High;
 						ev.Steady = true;
 					}
 				}
 				else if (PreviousReaction == PowerReaction.Low)
 				{
-					// Upgrade to MEDIUM power level
-					if (ev.High >= AutoAdjust.Low.Backoff.High
+					// Backoff from Low to Medium power level
+					if (ev.Queue >= AutoAdjust.Queue.Low
+						|| ev.High >= AutoAdjust.Low.Backoff.High
 						|| ev.Mean >= AutoAdjust.Low.Backoff.Mean
 						|| ev.Low >= AutoAdjust.Low.Backoff.Low)
 					{
+						//Debug.WriteLine("AUTO-ADJUST: Motive: Low to Average");
 						Reaction = PowerReaction.Average;
-						ReactionaryPlan = AutoAdjust.DefaultMode;
 
 						BackoffCounter++;
 
 						if (BackoffCounter >= AutoAdjust.Low.Backoff.Level)
 							Ready = true;
 
-						queuePressureAdjust = (AutoAdjust.Queue.Low > 0 ? ev.Queue / 5 : 0); // 20% per queued thread
+						queuePressureAdjust = (AutoAdjust.Queue.Low > 0 ? ev.Queue / AutoAdjust.Queue.Low : 0);
+						//Debug.WriteLine("AUTO-ADJUST: Queue pressure adjust: " + $"{queuePressureAdjust:N1}");
 						ev.Pressure = ((float)BackoffCounter) / ((float)AutoAdjust.Low.Backoff.Level) + queuePressureAdjust;
+						//Debug.WriteLine("AUTO-ADJUST: Final pressure: " + $"{ev.Pressure:N1}");
 					}
 					else
 					{
+						//Debug.WriteLine("AUTO-ADJUST: Motive: Low - Steady");
 						Reaction = PowerReaction.Low;
 						ev.Steady = true;
 					}
 				}
 				else // Currently at medium power
 				{
-					if ((ev.Queue >= AutoAdjust.Queue.High
-						|| ev.Low > AutoAdjust.High.Commit.Threshold) // Low CPU is above threshold for High mode
+					if (ev.Low > AutoAdjust.High.Commit.Threshold // Low CPU is above threshold for High mode
 						&& AutoAdjust.High.Mode != CurrentMode)
 					{
-						// Downgrade to LOW power levell
+						//Debug.WriteLine("AUTO-ADJUST: Motive: Average to High");
+						// Commit to High power level
 						Reaction = PowerReaction.High;
-						ReactionaryPlan = AutoAdjust.High.Mode;
 
 						LowPressure = 0; // reset
 						HighPressure++;
@@ -495,15 +502,17 @@ namespace Taskmaster
 							Ready = true;
 
 						queuePressureAdjust = (AutoAdjust.Queue.High > 0 ? ev.Queue / 5 : 0); // 20% per queued thread
+						//Debug.WriteLine("AUTO-ADJUST: Queue pressure adjust: " + $"{queuePressureAdjust:N1}");
 						ev.Pressure = ((float)HighPressure) / ((float)AutoAdjust.High.Commit.Level) + queuePressureAdjust;
+						//Debug.WriteLine("AUTO-ADJUST: Final pressure: " + $"{ev.Pressure:N1}");
 					}
 					else if (ev.Queue < AutoAdjust.Queue.Low
 						&& ev.High < AutoAdjust.Low.Commit.Threshold // High CPU is below threshold for Low mode
 						&& AutoAdjust.Low.Mode != CurrentMode)
 					{
-						// Upgrade to HIGH power levele
+						//Debug.WriteLine("AUTO-ADJUST: Motive: Average to Low");
+						// Commit to Low power level
 						Reaction = PowerReaction.Low;
-						ReactionaryPlan = AutoAdjust.Low.Mode;
 
 						HighPressure = 0; // reset
 						LowPressure++;
@@ -511,16 +520,18 @@ namespace Taskmaster
 						if (LowPressure >= AutoAdjust.Low.Commit.Level)
 							Ready = true;
 
-						queuePressureAdjust = (AutoAdjust.Queue.High > 0 ? ev.Queue / 5 : 0); // 20% per queued thread
+						queuePressureAdjust = (AutoAdjust.Queue.High > 0 ? ev.Queue / AutoAdjust.Queue.High : 0);
+						//Debug.WriteLine("AUTO-ADJUST: Queue pressure adjust: " + $"{queuePressureAdjust:N1}");
 						ev.Pressure = ((float)LowPressure) / ((float)AutoAdjust.Low.Commit.Level) + queuePressureAdjust;
+						//Debug.WriteLine("AUTO-ADJUST: Final pressure: " + $"{ev.Pressure:N1}");
 					}
 					else // keep power at medium
 					{
+						//Debug.WriteLine("AUTO-ADJUST: Motive: Average - Steady");
 						if (Taskmaster.DebugAutoPower) Debug.WriteLine("Auto-adjust NOP");
 
 						Reaction = PowerReaction.Average;
 						ev.Steady = true;
-						ReactionaryPlan = AutoAdjust.DefaultMode;
 
 						ResetAutoadjust();
 
@@ -532,7 +543,9 @@ namespace Taskmaster
 				
 				var ReadyToAdjust = (Ready && !Forced && !SessionLocked);
 
-				if (ReadyToAdjust && ReactionaryPlan != CurrentMode)
+				var ReactionaryPlan = ReactionToMode(Reaction);
+
+				if (ReadyToAdjust && ev.Pressure >= 1f && ReactionaryPlan != CurrentMode)
 				{
 					if (Taskmaster.DebugPower) Log.Debug("<Power> Auto-adjust: " + Reaction.ToString());
 
@@ -588,6 +601,25 @@ namespace Taskmaster
 			} // lock (autoadjust_lock)
 
 			onAutoAdjustAttempt?.Invoke(this, ev);
+		}
+
+		PowerMode ReactionToMode(PowerReaction reaction)
+		{
+			PowerMode mode = PowerMode.Undefined;
+			switch (reaction)
+			{
+				case PowerReaction.High:
+					mode = AutoAdjust.High.Mode;
+					break;
+				default:
+				case PowerReaction.Average:
+					mode = AutoAdjust.DefaultMode;
+					break;
+				case PowerReaction.Low:
+					mode = AutoAdjust.Low.Mode;
+					break;
+			}
+			return mode;
 		}
 
 		bool WarnedForceMode = false;

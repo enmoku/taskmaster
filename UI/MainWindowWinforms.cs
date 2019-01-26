@@ -2050,12 +2050,12 @@ namespace Taskmaster
 				AutoSize = true,
 				//Height = 80,
 				//Width = tabLayout.Width - 12, // FIXME: 3 for the bevel, but how to do this "right"?
-				MinimumSize = new System.Drawing.Size(-2, 80),
+				MinimumSize = new System.Drawing.Size(-2, 180),
 				FullRowSelect = true,
 				View = View.Details,
 			};
 			powerbalancerlog.Columns.Add("Current", 60);
-			powerbalancerlog.Columns.Add("Average", 60);
+			powerbalancerlog.Columns.Add("Mean", 60);
 			powerbalancerlog.Columns.Add("High", 60);
 			powerbalancerlog.Columns.Add("Low", 60);
 			powerbalancerlog.Columns.Add("Reaction", 80);
@@ -2556,22 +2556,26 @@ namespace Taskmaster
 
 				try
 				{
-					string reactionary = HumanReadable.Generic.NotAvailable;
-					if (!ea.Steady) reactionary = PowerManager.GetModeName(ea.Mode);
-
 					var li = new ListViewItem(new string[] {
 						$"{ea.Current:N2} %",
 						$"{ea.Mean:N2} %",
 						$"{ea.High:N2} %",
 						$"{ea.Low:N2} %",
 						ea.Reaction.ToString(),
-						reactionary,
-						(!ea.Steady ? ea.Enacted.ToString() : HumanReadable.Generic.NotAvailable),
-						(!ea.Steady ? $"{ea.Pressure * 100f:N1} %" : HumanReadable.Generic.NotAvailable)
+						PowerManager.GetModeName(ea.Mode),
+						ea.Enacted.ToString(),
+						$"{ea.Pressure * 100f:N1} %"
 					})
 					{
 						UseItemStyleForSubItems = false
 					};
+
+					if (ea.Enacted)
+					{
+						li.SubItems[4].BackColor =
+							li.SubItems[5].BackColor =
+							li.SubItems[6].BackColor = System.Drawing.SystemColors.ActiveCaption;
+					}
 
 					if (ea.Mode == PowerInfo.PowerMode.HighPerformance)
 						li.SubItems[3].BackColor = System.Drawing.Color.FromArgb(255, 230, 230);
@@ -2584,7 +2588,7 @@ namespace Taskmaster
 					}
 
 					// this tends to throw if this event is being handled while the window is being closed
-					if (powerbalancerlog.Items.Count > 3)
+					if (powerbalancerlog.Items.Count > 7)
 						powerbalancerlog.Items.RemoveAt(0);
 					powerbalancerlog.Items.Add(li);
 

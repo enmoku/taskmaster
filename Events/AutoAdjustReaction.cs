@@ -50,7 +50,8 @@ namespace Taskmaster
 				Mean = ea.Mean,
 				High = ea.High,
 				Low = ea.Low,
-				Period = ea.Period
+				Period = ea.Period,
+				Queue = ea.Queue,
 			};
 		}
 	}
