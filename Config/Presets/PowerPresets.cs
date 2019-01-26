@@ -67,8 +67,8 @@ namespace Taskmaster
 					}
 				},
 				Queue = {
-					 High = 5,
-					 Low = 2,
+					 High = 18,
+					 Low = 5,
 				},
 			};
 		}
