@@ -1809,9 +1809,9 @@ namespace Taskmaster
 				gpuload = new Label() { Text = HumanReadable.Generic.Uninitialized, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left };
 				gpupanel.Controls.Add(gpuload);
 
-				corepanel.Controls.Add(new Label() { Text = "Temp", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left });
+				gpupanel.Controls.Add(new Label() { Text = "Temp", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left });
 				gputemp = new Label() { Text = HumanReadable.Generic.Uninitialized, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left };
-				corepanel.Controls.Add(gputemp);
+				gpupanel.Controls.Add(gputemp);
 
 				gpupanel.Controls.Add(new Label() { Text = "Fan", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left });
 				gpufan = new Label() { Text = HumanReadable.Generic.Uninitialized, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left };
@@ -2256,12 +2256,14 @@ namespace Taskmaster
 
 			BeginInvoke(new Action(() =>
 			{
-				gpufan.Text = $"{ea.Data.FanLoad:N0} % {ea.Data.FanSpeed} RPM";
+				float vramTotal = ea.Data.MemTotal / 1024;
+				float vramUsed = vramTotal * (ea.Data.MemLoad / 100);
+				float vramFree = vramTotal - vramUsed;
 
-				gputemp.Text = $"{ea.Data.Temperature:N0} C";
-				gpuvram.Text = $"{ea.Data.MemLoad:N1} % {ea.Data.MemTotal / 1024} GB [{ea.Data.MemCtrl:N1} %]";
-
+				gpuvram.Text = $"{vramFree:N2} of {vramTotal:N1} GiB free ({ea.Data.MemLoad:N1} % usage) [Controller: {ea.Data.MemCtrl:N1} %]";
 				gpuload.Text = $"{ea.Data.Load:N1} %";
+				gpufan.Text = $"{ea.Data.FanLoad:N1} % [{ea.Data.FanSpeed} RPM]";
+				gputemp.Text = $"{ea.Data.Temperature:N1} C";
 			}));
 		}
 
@@ -2497,7 +2499,7 @@ namespace Taskmaster
 			double freegb = (double)MemoryManager.FreeBytes / 1_073_741_824d;
 			double totalgb = (double)MemoryManager.Total / 1_073_741_824d;
 			double usage = 1 - (freegb / totalgb);
-			ramload.Text = $"{freegb:N2} of {totalgb:N1} GB free ({usage * 100d:N1} % usage), {MemoryManager.Pressure * 100:N1} % pressure";
+			ramload.Text = $"{freegb:N2} of {totalgb:N1} GiB free ({usage * 100d:N1} % usage), {MemoryManager.Pressure * 100:N1} % pressure";
 
 			// TODO: Print warning if MemoryManager.Pressure > 100%
 
