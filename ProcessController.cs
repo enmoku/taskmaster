@@ -589,8 +589,6 @@ namespace Taskmaster
 				}
 			}
 
-			info.Timer.Stop();
-
 			if (Taskmaster.ShowProcessAdjusts && firsttime)
 			{
 				var ev = new ProcessModificationEventArgs()
@@ -657,15 +655,6 @@ namespace Taskmaster
 			if (Taskmaster.DebugProcesses) sbs.Append(" [").Append(AffinityStrategy.ToString()).Append("]");
 
 			if (ev.User != null) sbs.Append(ev.User);
-
-			if (Taskmaster.ShowAdjustLatency)
-			{
-				// BUG: For some obscure reason ev.Info.Timer is paused during Task.Delay(ModifyDelay) in Touch()
-				// ... and does not need adjustment for it here.
-				sbs.Append($" ({ev.Info.Timer.Elapsed.TotalMilliseconds:N0} ms latency");
-				if (ModifyDelay > 0) sbs.Append($" + {ModifyDelay/1000:N0}s delay");
-				sbs.Append(")");
-			}
 
 			// TODO: Add option to logging to file but still show in UI
 			if (!(Taskmaster.ShowInaction && Taskmaster.DebugProcesses)) Log.Information(sbs.ToString());
@@ -748,8 +737,6 @@ namespace Taskmaster
 			info.State = ProcessHandlingState.Resumed;
 
 			PausedIds.TryRemove(info.Id, out _);
-
-			info.Timer.Stop();
 
 			if (Taskmaster.DebugForeground && Taskmaster.ShowProcessAdjusts)
 			{
@@ -1343,8 +1330,6 @@ namespace Taskmaster
 					Protected = isProtectedFile,
 				};
 
-				info.Timer.Stop();
-
 				if (logevent)
 				{
 					var sbs = new System.Text.StringBuilder();
@@ -1511,7 +1496,7 @@ namespace Taskmaster
 				ResizeWaitList.TryAdd(info.Id, 0);
 
 				System.Threading.ManualResetEvent re = new System.Threading.ManualResetEvent(false);
-				Task.Run(new Action(() =>
+				Task.Run(() =>
 				{
 					if (Taskmaster.DebugResize) Log.Debug("<Resize> Starting monitoring " + info.Name + " (#" + info.Id + ")");
 					try
@@ -1539,7 +1524,7 @@ namespace Taskmaster
 						Logging.Stacktrace(ex);
 					}
 					if (Taskmaster.DebugResize) Log.Debug("<Resize> Stopping monitoring " + info.Name + " (#" + info.Id + ")");
-				})).ConfigureAwait(false);
+				}).ConfigureAwait(false);
 
 				info.Process.EnableRaisingEvents = true;
 				info.Process.Exited += (_, _ea) => ProcessEndResize(info, oldrect, re);

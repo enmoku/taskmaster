@@ -104,11 +104,16 @@ namespace Taskmaster
 				BatchProcessingTimer.Elapsed += BatchProcessingTick;
 			}
 
-			HandlingStateChange += CollectProcessHandlingStatistics;
-
 			var InitialScanDelay = TimeSpan.FromSeconds(5);
 			NextScan = DateTimeOffset.UtcNow.Add(InitialScanDelay);
-			if (ScanFrequency.HasValue) ScanTimer = new System.Threading.Timer(TimedScan, null, InitialScanDelay, ScanFrequency.Value);
+			if (ScanFrequency.HasValue)
+			{
+				ScanTimer = new System.Timers.Timer(ScanFrequency.Value.TotalMilliseconds);
+				ScanTimer.Elapsed += TimedScan;
+				StartScanTimer();
+				if (ScanFrequency.Value.TotalSeconds > 15)
+					Task.Run(() => Scan());
+			}
 
 			ProcessDetectedEvent += ProcessTriage;
 
@@ -299,10 +304,11 @@ namespace Taskmaster
 		}
 
 		bool ScanPaused = false;
+
 		/// <summary>
 		/// Spawn separate thread to run program scanning.
 		/// </summary>
-		async void TimedScan(object _)
+		async void TimedScan(object _, EventArgs _ea)
 		{
 			if (disposed) return; // HACK: dumb timers be dumb
 
@@ -318,7 +324,7 @@ namespace Taskmaster
 			{
 				Logging.Stacktrace(ex);
 				Log.Error("Stopping periodic scans");
-				ScanTimer.Change(System.Threading.Timeout.InfiniteTimeSpan, System.Threading.Timeout.InfiniteTimeSpan);
+				ScanTimer?.Stop();
 			}
 		}
 
@@ -341,10 +347,18 @@ namespace Taskmaster
 			double nextscan = Math.Max(0, DateTimeOffset.UtcNow.TimeTo(NextScan).TotalSeconds);
 			if (nextscan > 5) // skip if the next scan is to happen real soon
 			{
-				var delayspan = TimeSpan.FromSeconds(delay.Constrain(3, Convert.ToInt32(Math.Min(60d, nextscan))));
-				NextScan = DateTimeOffset.UtcNow.Add(delayspan);
-				ScanTimer.Change(delayspan, ScanFrequency.Value);
+				NextScan = DateTimeOffset.UtcNow;
+				ScanTimer?.Stop();
+				Task.Run(() => Scan()).ContinueWith((_) => StartScanTimer()).ConfigureAwait(false);
 			}
+		}
+
+		void StartScanTimer()
+		{
+			// restart just in case
+			ScanTimer?.Stop();
+			ScanTimer?.Start();
+			NextScan = DateTimeOffset.UtcNow.AddMilliseconds(ScanTimer.Interval);
 		}
 
 		int scan_lock = 0;
@@ -394,7 +408,6 @@ namespace Taskmaster
 
 				if (ProcessUtility.GetInfo(pid, out var info, process, null, name, null, getPath: true))
 				{
-					info.Timer = Stopwatch.StartNew();
 					var ev = new HandlingStateChangeEventArgs(info);
 					ProcessDetectedEvent?.Invoke(this, ev);
 					HandlingStateChange?.Invoke(this, ev);
@@ -423,7 +436,7 @@ namespace Taskmaster
 		int BatchProcessingThreshold = 5;
 		// static bool ControlChildren = false; // = false;
 
-		readonly System.Threading.Timer ScanTimer = null;
+		readonly System.Timers.Timer ScanTimer = null;
 
 		bool ValidateController(ProcessController prc)
 		{
@@ -888,31 +901,27 @@ namespace Taskmaster
 		{
 			if (!Atomic.Lock(ref CleanWaitForExitList_lock)) return;
 
+			await Task.Delay(TimeSpan.FromSeconds(15)).ConfigureAwait(false);
 
-			await Task.Run(async () =>
+			try
 			{
-				await Task.Delay(TimeSpan.FromSeconds(15)).ConfigureAwait(true);
-
-				try
+				foreach (var info in WaitForExitList.Values)
 				{
-					foreach (var info in WaitForExitList.Values)
+					try
 					{
-						try
-						{
-							info.Process.Refresh();
-							if (!info.Process.HasExited) continue; // only reason we keep this
-						}
-						catch { }
-
-						Log.Warning($"[{info.Controller.FriendlyName}] {info.Name} (#{info.Id.ToString()}) exited without notice; Cleaning.");
-						WaitForExitTriggered(info);
+						info.Process.Refresh();
+						if (!info.Process.HasExited) continue; // only reason we keep this
 					}
+					catch { }
+
+					Log.Warning($"[{info.Controller.FriendlyName}] {info.Name} (#{info.Id.ToString()}) exited without notice; Cleaning.");
+					WaitForExitTriggered(info);
 				}
-				finally
-				{
-					Atomic.Unlock(ref CleanWaitForExitList_lock);
-				}
-			}).ConfigureAwait(false);
+			}
+			finally
+			{
+				Atomic.Unlock(ref CleanWaitForExitList_lock);
+			}
 		}
 
 		void PowerBehaviourEvent(object _, PowerManager.PowerBehaviourEventArgs ea)
@@ -1295,31 +1304,6 @@ namespace Taskmaster
 			ProcessStateChange?.Invoke(this, new ProcessModificationEventArgs() { Info = info, State = ProcessRunningState.Found });
 		}
 
-		void CollectProcessHandlingStatistics(object _, HandlingStateChangeEventArgs ea)
-		{
-			try
-			{
-				if (ea.Info.Handled || ea.Info.Exited)
-				{
-					//case ProcessHandlingState.Unmodified:
-					ea.Info.Timer.Stop();
-					long elapsed = ea.Info.Timer.ElapsedMilliseconds;
-					int delay = ea.Info.Controller?.ModifyDelay ?? 0;
-					ulong time = Convert.ToUInt64(elapsed - Math.Min(delay, elapsed)); // to avoid overflows
-					if (Taskmaster.Trace) Debug.WriteLine("Modify time: " + $"{time} ms + {delay} ms delay");
-					Statistics.TouchTime = time;
-					Statistics.TouchTimeLongest = Math.Max(time, Statistics.TouchTimeLongest);
-					Statistics.TouchTimeShortest = Math.Min(time, Statistics.TouchTimeShortest);
-				}
-			}
-			catch (Exception ex)
-			{
-				Logging.Stacktrace(ex);
-				Log.Error("Disabling collecting of process handling statistics");
-				HandlingStateChange -= CollectProcessHandlingStatistics;
-			}
-		}
-
 		// TODO: This should probably be pushed into ProcessController somehow.
 		async void ProcessTriage(object _, HandlingStateChangeEventArgs ev)
 		{
@@ -1357,19 +1341,13 @@ namespace Taskmaster
 
 					Triaged = true;
 					info.State = ProcessHandlingState.Processing;
-					Task.Run(() =>
-					{
-						try
-						{
-							info.Controller.Modify(info);
 
-							if (prc.ForegroundOnly) ForegroundWatch(info);
+					info.Controller.Modify(info);
 
-							if (info.Controller.Analyze && info.Valid && info.State != ProcessHandlingState.Abandoned)
-								analyzer.Analyze(info);
-						}
-						catch { throw; }
-					}).ConfigureAwait(false);
+					if (prc.ForegroundOnly) ForegroundWatch(info);
+
+					if (info.Controller.Analyze && info.Valid && info.State != ProcessHandlingState.Abandoned)
+						analyzer.Analyze(info);
 				}
 				else
 					info.State = ProcessHandlingState.Abandoned;
@@ -1395,46 +1373,22 @@ namespace Taskmaster
 		List<ProcessEx> ProcessBatch = new List<ProcessEx>();
 		readonly System.Timers.Timer BatchProcessingTimer = null;
 
-		void BatchProcessingTick(object _, EventArgs _ea)
+		async void BatchProcessingTick(object _, EventArgs _ea)
 		{
+			List<ProcessEx> list = null;
 			try
 			{
-				lock (batchprocessing_lock)
-				{
-					if (ProcessBatch.Count == 0)
-					{
-						BatchProcessingTimer.Stop();
-
-						if (Taskmaster.DebugProcesses) Log.Debug("<Process> New instance timer stopped.");
-
-						return;
-					}
-				}
-
-				Task.Run(new Action(() => NewInstanceBatchProcessing())).ConfigureAwait(false);
-			}
-			catch (Exception ex)
-			{
-				Logging.Stacktrace(ex);
-				Log.Error("Unregistering batch processing");
-				BatchProcessingTimer.Elapsed -= BatchProcessingTick;
-			}
-		}
-
-		void NewInstanceBatchProcessing()
-		{
-			//await Task.Delay(0).ConfigureAwait(false);
-			try
-			{
-				List<ProcessEx> list = new List<ProcessEx>();
+				await Task.Delay(0).ConfigureAwait(false);
 
 				lock (batchprocessing_lock)
 				{
-					if (ProcessBatch.Count == 0) return;
-
 					BatchProcessingTimer.Stop();
 
+					if (ProcessBatch.Count == 0) return;
+
 					processListLockRestart = 0;
+
+					list = new List<ProcessEx>(5);
 					Utility.Swap(ref list, ref ProcessBatch);
 				}
 
@@ -1444,12 +1398,16 @@ namespace Taskmaster
 					ProcessDetectedEvent?.Invoke(this, ev);
 					HandlingStateChange?.Invoke(this, ev);
 				}
-
-				SignalProcessHandled(-(list.Count)); // batch done
 			}
 			catch (Exception ex)
 			{
 				Logging.Stacktrace(ex);
+				Log.Error("Unregistering batch processing");
+				BatchProcessingTimer.Elapsed -= BatchProcessingTick;
+			}
+			finally
+			{
+				SignalProcessHandled(-(list.Count)); // batch done
 			}
 		}
 
@@ -1542,10 +1500,7 @@ namespace Taskmaster
 				if (IgnoreProcessName(name)) return;
 
 				if (ProcessUtility.GetInfo(pid, out info, path: path, getPath: true, name: name))
-				{
-					info.Timer = timer;
 					NewInstanceTriagePhaseTwo(info, out state);
-				}
 			}
 			catch (Exception ex)
 			{
@@ -1558,7 +1513,7 @@ namespace Taskmaster
 			}
 			finally
 			{
-				HandlingStateChange?.Invoke(this, new HandlingStateChangeEventArgs(info ?? new ProcessEx { Id = pid, Timer = timer, State = state }));
+				HandlingStateChange?.Invoke(this, new HandlingStateChangeEventArgs(info ?? new ProcessEx { Id = pid, State = state }));
 
 				SignalProcessHandled(-1); // done with it
 			}

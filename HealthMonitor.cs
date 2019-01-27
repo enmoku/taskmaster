@@ -173,14 +173,16 @@ namespace Taskmaster
 			if (Settings.LowDriveSpaceThreshold > 0)
 				Log.Information($"<Auto-Doc> Disk space warning level: {Settings.LowDriveSpaceThreshold.ToString()} MB");
 
-			healthTimer = new System.Threading.Timer(TimerCheck, null, TimeSpan.FromSeconds(15), Settings.Frequency);
+			HealthTimer = new System.Timers.Timer(Settings.Frequency.TotalMilliseconds);
+			HealthTimer.Elapsed += TimerCheck;
+			HealthTimer.Start();
 
 			if (Taskmaster.DebugHealth) Log.Information("<Auto-Doc> Component loaded");
 
 			Taskmaster.DisposalChute.Push(this);
 		}
 
-		readonly System.Threading.Timer healthTimer = null;
+		readonly System.Timers.Timer HealthTimer = null;
 
 		DateTimeOffset MemFreeLast = DateTimeOffset.MinValue;
 
@@ -236,7 +238,7 @@ namespace Taskmaster
 
 		int HealthCheck_lock = 0;
 		//async void TimerCheck(object state)
-		async void TimerCheck(object _)
+		async void TimerCheck(object _, EventArgs _ea)
 		{
 			// skip if already running...
 			// happens sometimes when the timer keeps running but not the code here
@@ -498,7 +500,7 @@ namespace Taskmaster
 			{
 				if (Taskmaster.Trace) Log.Verbose("Disposing health monitor...");
 
-				healthTimer?.Dispose();
+				HealthTimer?.Dispose();
 
 				//commitbytes?.Dispose();
 				//commitbytes = null;

@@ -44,10 +44,9 @@ namespace Taskmaster
 				Log.Information("<Self-Maintenance> Next maintenance: " +
 					lnext.ToLongDateString() + " " + lnext.ToLongTimeString() + " [in " + nextmidnight + " ms]");
 
-				timer = new System.Threading.Timer(Tick, null,
-					nextmidnight,
-					86400000 // once a day
-					);
+				timer = new System.Timers.Timer(86_400_000); // once a day
+				timer.Elapsed += MaintenanceTick;
+				timer.Start();
 			}
 			catch (Exception ex)
 			{
@@ -60,17 +59,17 @@ namespace Taskmaster
 			Taskmaster.DisposalChute.Push(this);
 		}
 
-		readonly System.Threading.Timer timer = null;
+		readonly System.Timers.Timer timer = null;
 
 		int CallbackLimiter = 0;
-		public void Tick(object state)
+		async void MaintenanceTick(object _, EventArgs _ea)
 		{
 			if (!Atomic.Lock(ref CallbackLimiter)) return;
 
+			var time = System.Diagnostics.Stopwatch.StartNew();
+
 			try
 			{
-				var time = System.Diagnostics.Stopwatch.StartNew();
-
 				long oldmem = GC.GetTotalMemory(false);
 
 				System.Runtime.GCSettings.LargeObjectHeapCompactionMode = System.Runtime.GCLargeObjectHeapCompactionMode.CompactOnce;
@@ -92,13 +91,6 @@ namespace Taskmaster
 				}
 
 				Taskmaster.Config.Flush();
-
-				time.Stop();
-
-				Statistics.MaintenanceCount++;
-				Statistics.MaintenanceTime += time.Elapsed.TotalSeconds;
-
-				if (Taskmaster.Trace) Log.Verbose("Maintenance took: " + $"{time.Elapsed.TotalSeconds:N2}s");
 			}
 			catch (Exception ex)
 			{
@@ -108,6 +100,12 @@ namespace Taskmaster
 			}
 			finally
 			{
+				time.Stop();
+				Statistics.MaintenanceCount++;
+				Statistics.MaintenanceTime += time.Elapsed.TotalSeconds;
+
+				if (Taskmaster.Trace) Log.Verbose("Maintenance took: " + $"{time.Elapsed.TotalSeconds:N2}s");
+
 				Atomic.Unlock(ref CallbackLimiter);
 			}
 		}

@@ -109,7 +109,9 @@ namespace Taskmaster
 
 			if (dirty) corecfg.MarkDirty();
 
-			HangTimer = new System.Threading.Timer(HangDetector, null, TimeSpan.FromSeconds(15), TimeSpan.FromSeconds(60)); // starts the timer
+			HangTimer = new System.Timers.Timer(60_000);
+			HangTimer.Elapsed += HangDetector;
+			HangTimer.Start();
 
 			if (Taskmaster.DebugForeground) Log.Information("<Foreground> Component loaded.");
 
@@ -146,7 +148,7 @@ namespace Taskmaster
 			return true;
 		}
 
-		readonly System.Threading.Timer HangTimer = null;
+		readonly System.Timers.Timer HangTimer = null;
 		DateTimeOffset HangTime = DateTimeOffset.MaxValue;
 
 		int PreviousFG = 0;
@@ -168,7 +170,7 @@ namespace Taskmaster
 		/// </summary>
 		// TODO: Hang check should only take action if user fails to swap apps (e.g. ctrl-alt-esc for taskmanager)
 		// TODO: Hang check should potentially do the following: Minimize app, Reduce priority, Reduce cores, Kill it
-		void HangDetector(object state)
+		void HangDetector(object _, EventArgs _ea)
 		{
 			if (!Atomic.Lock(ref hangdetector_lock)) return;
 			if (disposed) return; // kinda dumb, but apparently timer can fire off after being disposed...

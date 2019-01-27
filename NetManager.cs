@@ -48,8 +48,7 @@ namespace Taskmaster
 		int PacketStatTimerInterval = 15; // second
 		int ErrorReportLimit = 5;
 
-		System.Threading.Timer deviceSampleTimer;
-		System.Threading.Timer packetStatTimer;
+		System.Timers.Timer SampleTimer;
 
 		public event EventHandler<NetDeviceTrafficEventArgs> onSampling;
 
@@ -66,10 +65,12 @@ namespace Taskmaster
 
 			var devsec = cfg.Config["Devices"];
 			DeviceTimerInterval = devsec.GetSetDefault("Check frequency", 15, out dirty).IntValue.Constrain(1, 30) * 60;
+			devsec["Check frequency"].Comment = "Minutes";
 			dirtyconf |= dirty;
 
 			var pktsec = cfg.Config["Traffic"];
 			PacketStatTimerInterval = pktsec.GetSetDefault("Sample rate", 15, out dirty).IntValue.Constrain(1, 60);
+			pktsec["Sample rate"].Comment = "Seconds";
 			PacketWarning.Peak = PacketStatTimerInterval;
 			dirtyconf |= dirty;
 
@@ -95,11 +96,12 @@ namespace Taskmaster
 
 			UpdateInterfaces(); // initialize
 
-			deviceSampleTimer = new System.Threading.Timer(x => RecordDeviceState(InternetAvailable, false), null, 15000, DeviceTimerInterval * 60000);
+			SampleTimer = new System.Timers.Timer(PacketStatTimerInterval * 1_000);
+			SampleTimer.Elapsed += AnalyzeTrafficBehaviour;
+			SampleTimer.Elapsed += DeviceSampler;
 
-			AnalyzeTrafficBehaviourTick(null); // initialize, not really needed
-			packetStatTimer = new System.Threading.Timer(AnalyzeTrafficBehaviourTick, null, 500, PacketStatTimerInterval * 1000);
-
+			AnalyzeTrafficBehaviour(null, null); // initialize, not really needed
+				
 			/*
 			// Reset time could be used for initial internet start time as it is the only even remotely relevant one
 			// ... but it's not honestly truly indicative of it.
@@ -117,6 +119,11 @@ namespace Taskmaster
 			if (Taskmaster.DebugNet) Log.Information("<Network> Component loaded.");
 
 			Taskmaster.DisposalChute.Push(this);
+		}
+
+		private void DeviceSampler(object sender, System.Timers.ElapsedEventArgs e)
+		{
+			RecordUptimeState(InternetAvailable, false);
 		}
 
 		public string GetDeviceData(string devicename)
@@ -139,12 +146,10 @@ namespace Taskmaster
 
 		List<NetDevice> CurrentInterfaceList = new List<NetDevice>(2);
 
-		void AnalyzeTrafficBehaviourTick(object state) => AnalyzeTrafficBehaviour();
-
 		int TrafficAnalysisLimiter = 0;
 		NetTraffic outgoing, incoming, oldoutgoing, oldincoming;
 
-		void AnalyzeTrafficBehaviour()
+		async void AnalyzeTrafficBehaviour(object _, EventArgs _ea)
 		{
 			Debug.Assert(CurrentInterfaceList != null);
 
@@ -293,21 +298,22 @@ namespace Taskmaster
 			Log.Information(sbs.ToString());
 		}
 
-		public void SampleDeviceState(object state)
-		{
-			RecordDeviceState(InternetAvailable, false);
-		}
-
 		bool lastOnlineState = false;
 		int DeviceStateRecordLimiter = 0;
 
-		void RecordDeviceState(bool online_state, bool address_changed)
+		DateTimeOffset LastUptimeSample = DateTimeOffset.MinValue;
+
+		async void RecordUptimeState(bool online_state, bool address_changed)
 		{
 			if (!Atomic.Lock(ref DeviceStateRecordLimiter)) return;
 
 			try
 			{
 				var now = DateTimeOffset.UtcNow;
+				if (LastUptimeSample.TimeTo(now).TotalMinutes < DeviceTimerInterval)
+					return;
+
+				LastUptimeSample = now;
 				if (online_state != lastOnlineState)
 				{
 					lastOnlineState = online_state;
@@ -412,7 +418,7 @@ namespace Taskmaster
 					else
 						InternetAvailable = false;
 
-					RecordDeviceState(InternetAvailable, address_changed);
+					RecordUptimeState(InternetAvailable, address_changed);
 
 					if (oldInetAvailable != InternetAvailable)
 					{
@@ -768,8 +774,7 @@ namespace Taskmaster
 				ReportCurrentUpstate();
 				ReportUptime();
 
-				deviceSampleTimer?.Dispose();
-				packetStatTimer?.Dispose();
+				SampleTimer?.Dispose();
 			}
 
 			disposed = true;

@@ -44,7 +44,7 @@ namespace Taskmaster
 		readonly System.IO.FileSystemWatcher userWatcher;
 		readonly System.IO.FileSystemWatcher sysWatcher;
 
-		readonly System.Threading.Timer TempScanTimer;
+		readonly System.Timers.Timer TempScanTimer = null;
 		TimeSpan TimerDue = TimeSpan.FromHours(24);
 
 		public StorageManager()
@@ -71,7 +71,11 @@ namespace Taskmaster
 					sysWatcher.Created += ModifyTemp;
 				}
 
-				TempScanTimer = new System.Threading.Timer(ScanTemp, null, TimeSpan.FromSeconds(30), TimerDue);
+				TempScanTimer = new System.Timers.Timer(TimerDue.TotalMilliseconds);
+				TempScanTimer.Elapsed += ScanTemp;
+				TempScanTimer.Start();
+
+				Task.Run(() => ScanTemp(null, null));
 
 				Log.Information("<Maintenance> Temp folder scanner will be performed once per day.");
 
@@ -116,7 +120,8 @@ namespace Taskmaster
 			if (now.TimeSince(LastTempScan).TotalMinutes <= 15) return; // too soon
 			LastTempScan = now;
 
-			TempScanTimer.Change(TimeSpan.FromSeconds(5), TimerDue);
+			TempScanTimer?.Stop();
+			Task.Run(() => Task.Delay(5_000).ContinueWith((_x) => ScanTemp(null, null)));
 		}
 
 		event EventHandler onBurden;
@@ -158,7 +163,7 @@ namespace Taskmaster
 
 		int scantemp_lock = 0;
 
-		async void ScanTemp(object _)
+		async void ScanTemp(object _, EventArgs _ea)
 		{
 			if (!Atomic.Lock(ref scantemp_lock)) return;
 			if (disposed) return; // HACK: timers be dumb
@@ -186,6 +191,8 @@ namespace Taskmaster
 			finally
 			{
 				Atomic.Unlock(ref scantemp_lock);
+
+				TempScanTimer?.Start();
 			}
 		}
 

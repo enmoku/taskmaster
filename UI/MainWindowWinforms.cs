@@ -127,7 +127,7 @@ namespace Taskmaster
 
 		public void PowerConfigRequest(object _, EventArgs _ea)
 		{
-			if (!IsHandleCreated) return;
+			if (!IsHandleCreated || disposed) return;
 
 			try
 			{
@@ -185,7 +185,7 @@ namespace Taskmaster
 		{
 			if (Taskmaster.Trace) Log.Verbose("Making sure main window is not lost.");
 
-			if (!IsHandleCreated) return;
+			if (!IsHandleCreated || disposed) return;
 
 			CenterToScreen();
 			Reveal();
@@ -246,9 +246,10 @@ namespace Taskmaster
 
 		readonly string AnyIgnoredValue = string.Empty; // Any/Ignored
 
-		public void ProcessTouchEvent(object _, ProcessModificationEventArgs ea)
+		public async void ProcessTouchEvent(object _, ProcessModificationEventArgs ea)
 		{
-			if (!IsHandleCreated) return;
+			if (!IsHandleCreated || disposed) return;
+
 			var prc = ea.Info.Controller; // cache
 			BeginInvoke(new Action(() =>
 			{
@@ -292,9 +293,9 @@ namespace Taskmaster
 			}));
 		}
 
-		public void OnActiveWindowChanged(object _, WindowChangedArgs windowchangeev)
+		public async void OnActiveWindowChanged(object _, WindowChangedArgs windowchangeev)
 		{
-			if (!IsHandleCreated) return;
+			if (!IsHandleCreated || disposed) return;
 			if (windowchangeev.Process == null) return;
 
 			BeginInvoke(new Action(() =>
@@ -358,7 +359,8 @@ namespace Taskmaster
 
 		void ProcessNewInstanceCount(object _, ProcessingCountEventArgs e)
 		{
-			if (!IsHandleCreated) return;
+			if (!IsHandleCreated || disposed) return;
+
 			BeginInvoke(new Action(() =>
 			{
 				processingcount.Text = e.Total.ToString();
@@ -525,7 +527,8 @@ namespace Taskmaster
 
 		void VolumeChangeDetected(object _, VolumeChangedEventArgs ea)
 		{
-			if (!IsHandleCreated) return;
+			if (!IsHandleCreated || disposed) return;
+
 			BeginInvoke(new Action(() =>
 			{
 				AudioInputVolume.Value = Convert.ToInt32(ea.New); // this could throw ArgumentOutOfRangeException, but we trust the source
@@ -551,7 +554,7 @@ namespace Taskmaster
 
 		public void PathCacheUpdate(object _, EventArgs _ea)
 		{
-			if (!IsHandleCreated) return;
+			if (!IsHandleCreated || disposed) return;
 
 			Debug.Assert(Taskmaster.DebugCache);
 
@@ -603,14 +606,6 @@ namespace Taskmaster
 
 			// Rescan Countdown
 			processingtimer.Text = $"{DateTimeOffset.UtcNow.TimeTo(processmanager.NextScan).TotalSeconds:N0}s";
-
-			// Modify Latency
-			ulong min = Statistics.TouchTimeShortest;
-			ulong cur = Statistics.TouchTime;
-			ulong max = Statistics.TouchTimeLongest;
-			modifylatency.Text = (min == ulong.MaxValue ? "?" : min.ToString()) + "–" +
-				(cur == ulong.MaxValue ? "?" : cur.ToString()) + "-" +
-				(max == ulong.MinValue ? "?" : max.ToString()) + " ms";
 		}
 
 		void UpdateUptime(object _, EventArgs _ea)
@@ -742,21 +737,6 @@ namespace Taskmaster
 #if DEBUG
 			menu_debug_loglevel_trace.Checked = (level == Serilog.Events.LogEventLevel.Verbose);
 #endif
-			switch (level)
-			{
-				default:
-				case Serilog.Events.LogEventLevel.Information:
-					verbositylevel.Text = "Info";
-					break;
-				case Serilog.Events.LogEventLevel.Debug:
-					verbositylevel.Text = "Debug";
-					break;
-#if DEBUG
-				case Serilog.Events.LogEventLevel.Verbose:
-					verbositylevel.Text = "Trace";
-					break;
-#endif
-			}
 		}
 
 		int MinimumHeight = 0;
@@ -902,16 +882,6 @@ namespace Taskmaster
 				corecfg.MarkDirty();
 			};
 
-			var menu_config_logging_latency = new ToolStripMenuItem("Adjust latency")
-			{
-				Checked = Taskmaster.ShowAdjustLatency,
-				CheckOnClick = true,
-			};
-			menu_config_logging_latency.Click += (_, _ea) =>
-			{
-				Taskmaster.ShowAdjustLatency = menu_config_logging_latency.Checked;
-			};
-
 			var menu_config_logging_session = new ToolStripMenuItem("Session actions")
 			{
 				Checked = Taskmaster.ShowSessionActions,
@@ -941,7 +911,6 @@ namespace Taskmaster
 			};
 
 			menu_config_logging.DropDownItems.Add(menu_config_logging_adjusts);
-			menu_config_logging.DropDownItems.Add(menu_config_logging_latency);
 			menu_config_logging.DropDownItems.Add(menu_config_logging_session);
 			menu_config_logging.DropDownItems.Add(menu_config_logging_neterrors);
 
@@ -2317,8 +2286,12 @@ namespace Taskmaster
 
 		ConcurrentDictionary<int, ListViewItem> ProcessEventMap = new ConcurrentDictionary<int, ListViewItem>();
 
-		void ProcessHandlingStateChangeEvent(object _, HandlingStateChangeEventArgs ea)
+		async void ProcessHandlingStateChangeEvent(object _, HandlingStateChangeEventArgs ea)
 		{
+			if (!IsHandleCreated || disposed) return;
+
+			if (!Taskmaster.DebugProcesses && !Taskmaster.DebugForeground) return;
+
 			try
 			{
 				ListViewItem item = null;
@@ -2329,9 +2302,8 @@ namespace Taskmaster
 				{
 					item = new ListViewItem(new string[] { key.ToString(), ea.Info.Name, string.Empty, string.Empty});
 					newitem = true;
+					ProcessEventMap.TryAdd(key, item);
 				}
-
-				if (newitem) ProcessEventMap.TryAdd(key, item);
 
 				BeginInvoke(new Action(() =>
 				{
@@ -2391,16 +2363,17 @@ namespace Taskmaster
 			bool enabled = Taskmaster.DebugProcesses || Taskmaster.DebugForeground;
 			if (enabled) return;
 
+			if (activeappmonitor != null && Taskmaster.DebugForeground)
+				activeappmonitor.ActiveChanged -= OnActiveWindowChanged;
+
 			bool refocus = tabLayout.SelectedTab.Equals(ProcessDebugTab);
 			if (ProcessDebugTab_visible)
 			{
 				ProcessDebugTab_visible = false;
 				tabLayout.Controls.Remove(ProcessDebugTab);
+				processinglist.Items.Clear();
+				exitwaitlist.Items.Clear();
 			}
-
-			if (activeappmonitor != null && Taskmaster.DebugForeground)
-				activeappmonitor.ActiveChanged -= OnActiveWindowChanged;
-
 
 			// TODO: unlink events
 			if (refocus) tabLayout.SelectedIndex = 1; // watchlist
@@ -2409,9 +2382,8 @@ namespace Taskmaster
 		StatusStrip statusbar;
 		ToolStripStatusLabel processingcount;
 		ToolStripStatusLabel processingtimer;
-		ToolStripStatusLabel modifylatency;
-		ToolStripStatusLabel verbositylevel;
 		ToolStripStatusLabel adjustcounter;
+		ToolStripStatusLabel powermodestatusbar;
 
 		void BuildStatusbar()
 		{
@@ -2421,24 +2393,19 @@ namespace Taskmaster
 				Dock = DockStyle.Bottom,
 			};
 
-			statusbar.Items.Add("Processing");
-			statusbar.Items.Add("Items:");
+			statusbar.Items.Add("Processing:");
 			processingcount = new ToolStripStatusLabel("["+ HumanReadable.Generic.Uninitialized + "]") { AutoSize=false };
 			statusbar.Items.Add(processingcount); // not truly useful for anything but debug to show if processing is hanging Somewhere
 			statusbar.Items.Add("Next scan in:");
 			processingtimer = new ToolStripStatusLabel("["+ HumanReadable.Generic.Uninitialized + "]") { AutoSize = false };
 			statusbar.Items.Add(processingtimer);
-			statusbar.Items.Add("Latency:");
-			modifylatency = new ToolStripStatusLabel("[" + HumanReadable.Generic.Uninitialized + "]") { AutoSize = true };
-			statusbar.Items.Add(modifylatency);
 			statusbar.Items.Add(new ToolStripStatusLabel() { Alignment = ToolStripItemAlignment.Right, Width = -2, Spring = true });
-			statusbar.Items.Add(new ToolStripStatusLabel("Verbosity:"));
-			verbositylevel = new ToolStripStatusLabel(HumanReadable.Generic.Uninitialized);
-			statusbar.Items.Add(verbositylevel);
+			//verbositylevel = new ToolStripStatusLabel(HumanReadable.Generic.Uninitialized);
+			//statusbar.Items.Add(verbositylevel);
 
-			statusbar.Items.Add(new ToolStripStatusLabel("Adjusted:") { Alignment = ToolStripItemAlignment.Right});
-			adjustcounter = new ToolStripStatusLabel(Statistics.TouchCount.ToString()) { Alignment = ToolStripItemAlignment.Right };
-			statusbar.Items.Add(adjustcounter);
+			statusbar.Items.Add(new ToolStripStatusLabel("Power plan:") { Alignment = ToolStripItemAlignment.Right});
+			powermodestatusbar = new ToolStripStatusLabel(PowerManager.GetModeName(powermanager?.CurrentMode ?? PowerInfo.PowerMode.Undefined)) { Alignment = ToolStripItemAlignment.Right };
+			statusbar.Items.Add(powermodestatusbar);
 		}
 
 		async void FreeMemoryRequest(object _, EventArgs _ea)
@@ -2456,7 +2423,7 @@ namespace Taskmaster
 			catch (Exception ex) { Logging.Stacktrace(ex); }
 		}
 
-		public void ExitWaitListHandler(object _discard, ProcessModificationEventArgs ea)
+		public async void ExitWaitListHandler(object _discard, ProcessModificationEventArgs ea)
 		{
 			if (activeappmonitor == null) return;
 			if (!IsHandleCreated) return;
@@ -2523,6 +2490,9 @@ namespace Taskmaster
 		// Called by UI update timer, should be UI thread by default
 		async void UpdateHWStats(object _, EventArgs _ea)
 		{
+			if (!IsHandleCreated || disposed) return;
+			if (!ramload.Visible) return;
+
 			MemoryManager.Update(); // TODO: this is kinda dumb way to do things
 			double freegb = (double)MemoryManager.FreeBytes / 1_073_741_824d;
 			double totalgb = (double)MemoryManager.Total / 1_073_741_824d;
@@ -2535,9 +2505,11 @@ namespace Taskmaster
 		}
 
 		// called by cpumonitor, not in UI thread by default
-		public void CPULoadHandler(object _, ProcessorLoadEventArgs ea)
+		// TODO: Reverse this design, make the UI poll instead
+		public async void CPULoadHandler(object _, ProcessorLoadEventArgs ea)
 		{
-			if (!IsHandleCreated) return;
+			if (!IsHandleCreated || disposed) return;
+			if (!cpuload.Visible) return;
 
 			BeginInvoke(new Action(() =>
 			{
@@ -2546,9 +2518,9 @@ namespace Taskmaster
 			}));
 		}
 
-		public void PowerLoadHandler(object _, AutoAdjustReactionEventArgs ea)
+		public async void PowerLoadHandler(object _, AutoAdjustReactionEventArgs ea)
 		{
-			if (!IsHandleCreated) return;
+			if (!IsHandleCreated || disposed) return;
 
 			BeginInvoke(new Action(() =>
 			{
@@ -2849,7 +2821,7 @@ namespace Taskmaster
 		Label gputemp = null;
 		Label gpufan = null;
 
-		public void TempScanStats(object _, StorageEventArgs ea)
+		public async void TempScanStats(object _, StorageEventArgs ea)
 		{
 			if (!IsHandleCreated) return;
 			BeginInvoke(new Action(() =>
@@ -2917,9 +2889,9 @@ namespace Taskmaster
 			PowerPlanDebugEvent(this, pev); // populates powerbalancer_plan
 		}
 
-		private void PowerBehaviourEvent(object sender, PowerManager.PowerBehaviourEventArgs e)
+		private async void PowerBehaviourEvent(object sender, PowerManager.PowerBehaviourEventArgs e)
 		{
-			if (!IsHandleCreated) return;
+			if (!IsHandleCreated || disposed) return;
 
 			BeginInvoke(new Action(() =>
 			{
@@ -2930,11 +2902,11 @@ namespace Taskmaster
 		DateTimeOffset LastCauseTime = DateTimeOffset.MinValue;
 		private void PowerPlanEvent(object sender, PowerModeEventArgs e)
 		{
-			if (!IsHandleCreated) return;
+			if (!IsHandleCreated || disposed) return;
 
 			BeginInvoke(new Action(() =>
 			{
-				pwmode.Text = PowerManager.GetModeName(e.NewMode);
+				powermodestatusbar.Text = pwmode.Text = PowerManager.GetModeName(e.NewMode);
 				pwcause.Text = e.Cause != null ? e.Cause.ToString() : HumanReadable.Generic.Undefined;
 				LastCauseTime = DateTimeOffset.UtcNow;
 			}));
@@ -2970,10 +2942,10 @@ namespace Taskmaster
 		int skipDelays = 0;
 		int skipQueues = 0;
 
-		private void UpdateHealthMon(object sender, EventArgs e)
+		async void UpdateHealthMon(object sender, EventArgs e)
 		{
-			if (!IsHandleCreated) return;
-			if (disposed) return;
+			if (!IsHandleCreated || disposed) return;
+			if (!nvmtransfers.Visible) return;
 
 			try
 			{
@@ -3054,10 +3026,9 @@ namespace Taskmaster
 			}
 		}
 
-		public void PowerBehaviourDebugEvent(object _, PowerManager.PowerBehaviourEventArgs ea)
+		public async void PowerBehaviourDebugEvent(object _, PowerManager.PowerBehaviourEventArgs ea)
 		{
-			if (!IsHandleCreated) return;
-			if (disposed) return;
+			if (!IsHandleCreated || disposed) return;
 
 			BeginInvoke(new Action(() =>
 			{
@@ -3067,9 +3038,10 @@ namespace Taskmaster
 			}));
 		}
 
-		public void PowerPlanDebugEvent(object _, PowerModeEventArgs ea)
+		public async void PowerPlanDebugEvent(object _, PowerModeEventArgs ea)
 		{
-			if (!IsHandleCreated) return;
+			if (!IsHandleCreated || disposed) return;
+
 			BeginInvoke(new Action(() =>
 			{
 				powerbalancer_plan.Text = PowerManager.GetModeName(ea.NewMode);
@@ -3078,6 +3050,8 @@ namespace Taskmaster
 
 		public void UpdateNetwork(object _, EventArgs _ea)
 		{
+			if (!IsHandleCreated || disposed) return;
+
 			InetStatusLabel(netmonitor.InternetAvailable);
 			NetStatusLabel(netmonitor.NetworkAvailable);
 
@@ -3134,7 +3108,8 @@ namespace Taskmaster
 
 		void NetSampleHandler(object _, NetDeviceTrafficEventArgs ea)
 		{
-			if (!IsHandleCreated) return;
+			if (!IsHandleCreated || disposed) return;
+
 			BeginInvoke(new Action(() =>
 			{
 				NetworkDevices.BeginUpdate();
@@ -3165,7 +3140,8 @@ namespace Taskmaster
 
 		void InetStatusLabel(bool available)
 		{
-			if (!IsHandleCreated) return;
+			if (!IsHandleCreated || disposed) return;
+
 			BeginInvoke(new Action(() =>
 			{
 				inetstatuslabel.Text = available ? HumanReadable.Hardware.Network.Connected : HumanReadable.Hardware.Network.Disconnected;
@@ -3174,19 +3150,20 @@ namespace Taskmaster
 			}));
 		}
 
-		public void InetStatus(object _, InternetStatus ea)
+		public async void InetStatus(object _, InternetStatus ea)
 		{
 			InetStatusLabel(ea.Available);
 		}
 
-		public void IPChange(object _, EventArgs ea)
+		public async void IPChange(object _, EventArgs ea)
 		{
 
 		}
 
-		void NetStatusLabel(bool available)
+		async void NetStatusLabel(bool available)
 		{
-			if (!IsHandleCreated) return;
+			if (!IsHandleCreated || disposed) return;
+
 			BeginInvoke(new Action(() =>
 			{
 				netstatuslabel.Text = available ? HumanReadable.Hardware.Network.Connected : HumanReadable.Hardware.Network.Disconnected;
@@ -3195,7 +3172,7 @@ namespace Taskmaster
 			}));
 		}
 
-		public void NetStatus(object _, NetworkStatus ea)
+		public async void NetStatus(object _, NetworkStatus ea)
 		{
 			NetStatusLabel(ea.Available);
 		}
@@ -3213,8 +3190,10 @@ namespace Taskmaster
 			loglist.EndUpdate();
 		}
 
-		public void NewLogReceived(object _, LogEventArgs ea)
+		public async void NewLogReceived(object _, LogEventArgs ea)
 		{
+			if (!IsHandleCreated || disposed) return;
+
 			if (LogIncludeLevel.MinimumLevel > ea.Level) return;
 
 			if (!IsHandleCreated) return;

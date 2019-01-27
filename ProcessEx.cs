@@ -52,8 +52,6 @@ namespace Taskmaster
 		/// </summary>
 		public int Id { get; set; } = -1;
 
-		public Stopwatch Timer { get; set; } = null;
-
 		/// <summary>
 		/// Process reference.
 		/// </summary>

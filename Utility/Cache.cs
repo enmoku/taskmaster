@@ -56,7 +56,7 @@ namespace Taskmaster
 		public ulong Hits { get; private set; } = 0;
 		public ulong Misses { get; private set; } = 0;
 
-		System.Threading.Timer PruneTimer = null;
+		System.Timers.Timer PruneTimer = null;
 
 		uint Overflow = 10;
 		uint MaxCache = 20;
@@ -77,7 +77,9 @@ namespace Taskmaster
 			MinCache = minItems;
 			Overflow = Math.Min(Math.Max(MaxCache / 2, 2), 50);
 
-			PruneTimer = new System.Threading.Timer(Prune, null, TimeSpan.FromSeconds(15), interval);
+			PruneTimer = new System.Timers.Timer(interval.TotalMilliseconds);
+			PruneTimer.Elapsed += Prune;
+			PruneTimer.Start();
 		}
 
 		int prune_in_progress = 0;
@@ -85,7 +87,7 @@ namespace Taskmaster
 		/// <summary>
 		/// Prune cache.
 		/// </summary>
-		void Prune(object _discard)
+		void Prune(object _discard, EventArgs _ea)
 		{
 			if (!Atomic.Lock(ref prune_in_progress)) return; // only one instance.
 			if (disposed) return; // HACK: dumbness with timers
@@ -258,16 +260,15 @@ namespace Taskmaster
 
 		void Dispose(bool disposing)
 		{
-			if (!disposed)
-			{
-				if (disposing)
-				{
-					Utility.Dispose(ref PruneTimer);
-					Items?.Clear();
-				}
+			if (disposed) return;
 
-				disposed = true;
+			if (disposing)
+			{
+				Utility.Dispose(ref PruneTimer);
+				Items?.Clear();
 			}
+
+			disposed = true;
 		}
 
 		public void Dispose()

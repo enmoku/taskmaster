@@ -49,7 +49,7 @@ namespace Taskmaster
 
 		//PerformanceCounterWrapper CPUIRQ = new PerformanceCounterWrapper("Processor", "% Interrupt Time", "_Total");
 
-		System.Threading.Timer CPUSampleTimer = null;
+		System.Timers.Timer CPUSampleTimer = null;
 
 		readonly float[] Samples;
 		int SampleLoop = 0;
@@ -61,21 +61,16 @@ namespace Taskmaster
 
 			try
 			{
-				if (CPUSampleTimer == null)
+				Samples = new float[SampleCount];
+
+				// prepopulate
+				for (int i = 0; i < SampleCount; i++)
 				{
-					Samples = new float[SampleCount];
-
-					// prepopulate
-					for (int i = 0; i < SampleCount; i++)
-					{
-						Samples[i] = CPUload.Value;
-						Mean += Samples[i];
-					}
-
-					CPUSampleTimer = new System.Threading.Timer(Sampler, null, System.Threading.Timeout.InfiniteTimeSpan, SampleInterval);
+					Samples[i] = CPUload.Value;
+					Mean += Samples[i];
 				}
 
-				CPUSampleTimer.Change(TimeSpan.FromSeconds(1), SampleInterval); // start
+				CPUSampleTimer = new System.Timers.Timer(SampleInterval.TotalMilliseconds);
 			}
 			catch (Exception ex)
 			{

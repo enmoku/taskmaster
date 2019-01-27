@@ -105,7 +105,8 @@ namespace Taskmaster
 			if (SessionLockPowerOffIdleTimeout.HasValue)
 			{
 				var stopped = System.Threading.Timeout.InfiniteTimeSpan;
-				MonitorSleepTimer = new System.Threading.Timer(MonitorSleepTimerTick, null, stopped, stopped);
+				MonitorSleepTimer = new System.Timers.Timer(60_000);
+				MonitorSleepTimer.Elapsed += MonitorSleepTimerTick;
 
 				MonitorPower += MonitorPowerEvent;
 			}
@@ -242,23 +243,21 @@ namespace Taskmaster
 		void StopDisplayTimer(bool reset = false)
 		{
 			if (reset) SleepTickCount = -1;
-			var stopped = System.Threading.Timeout.InfiniteTimeSpan;
-			MonitorSleepTimer?.Change(stopped, stopped);
+			MonitorSleepTimer?.Stop();
 		}
 
 		void StartDisplayTimer()
 		{
 			if (SleepTickCount < 0) SleepTickCount = 0; // reset
-			var minute = TimeSpan.FromMinutes(1);
-			MonitorSleepTimer?.Change(minute, minute);
+			MonitorSleepTimer?.Start();
 		}
 
-		System.Threading.Timer MonitorSleepTimer;
+		System.Timers.Timer MonitorSleepTimer = null;
 
 		int SleepTickCount = -1;
 		int SleepGivenUp = 0;
 		int monitorsleeptimer_lock = 0;
-		async void MonitorSleepTimerTick(object _)
+		async void MonitorSleepTimerTick(object _, EventArgs _ea)
 		{
 			var idle = User.IdleTime();
 			if (disposed) return; // HACK
@@ -1340,13 +1339,7 @@ namespace Taskmaster
 				if (Taskmaster.Trace && Taskmaster.DebugPower)
 					Log.Debug("<Power> Released " + (sourcePid == -1 ? "All" : $"#{sourcePid.ToString()}"));
 
-				Task.Run(async () =>
-				{
-					if (Behaviour != PowerBehaviour.Auto && PowerdownDelay.HasValue)
-						await Task.Delay(PowerdownDelay.Value).ConfigureAwait(false);
-
-					ReleaseFinal();
-				}).ConfigureAwait(false);
+				ReleaseFinal();
 			}
 			catch (Exception ex)
 			{
@@ -1354,22 +1347,30 @@ namespace Taskmaster
 			}
 		}
 
+		object ReleaseFinal_lock = new object();
+
 		/// <remarks>uses: forceModeSources_lock</remarks>
-		void ReleaseFinal()
+		async void ReleaseFinal()
 		{
-			int lockCount = ForceModeSourcesMap.Count;
-			if (lockCount == 0)
-			{
-				// TODO: Restore Powerdown delay functionality here.
+			if (Behaviour != PowerBehaviour.Auto && PowerdownDelay.HasValue)
+				await Task.Delay(PowerdownDelay.Value).ConfigureAwait(false);
 
-				if (Taskmaster.Trace && Taskmaster.DebugPower) Log.Debug("<Power> No power locks left.");
-
-				Restore();
-			}
-			else
+			lock (ReleaseFinal_lock)
 			{
-				if (Taskmaster.DebugPower)
-					Log.Debug("<Power> Forced mode still requested by " + lockCount + " sources: " + string.Join(", ", ForceModeSourcesMap.Keys.ToArray()));
+				int lockCount = ForceModeSourcesMap.Count;
+				if (lockCount == 0)
+				{
+					// TODO: Restore Powerdown delay functionality here.
+
+					if (Taskmaster.Trace && Taskmaster.DebugPower) Log.Debug("<Power> No power locks left.");
+
+					Restore();
+				}
+				else
+				{
+					if (Taskmaster.DebugPower)
+						Log.Debug("<Power> Forced mode still requested by " + lockCount + " sources: " + string.Join(", ", ForceModeSourcesMap.Keys.ToArray()));
+				}
 			}
 		}
 
