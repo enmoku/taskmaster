@@ -6,7 +6,8 @@ Comprehensive changes can be found in Git change history:
 ### 2018-01-27
 	Removed: Adjust latency. It served no purpose than noise.
 	Changed: Status bar no longer shows as much useless information.
-	Changed: Swapped from Threading.Timer to Timers.Timer because Threading.Timer is prone to obscure delays.
+	Changed: Swapped from Threading.Timer to Timers.Timer because Threading.Timer is prone to obscure delays outside of my control or influence.
+	Changed: Reduced use of Task.Run as it seems to load threadpool as well.
 ### 2018-01-26
 	Added: Experimental affinity ideal option. Usage via `Affinity ideal=#` in Watchlist.ini with value as zero-indexed number for ideal core.
 		Assigned core must be one of the cores allowed by affinity mask.
