@@ -748,10 +748,9 @@ namespace Taskmaster
 				prc.AffinityIdeal = section.TryGet("Affinity ideal")?.IntValue.Constrain(-1, CPUCount-1) ?? -1;
 				if (prc.AffinityIdeal >= 0)
 				{
-					Log.Debug("[" + prc.FriendlyName + "] EXPERIMENT Affinity ideal: " + prc.AffinityIdeal);
 					if (!Bit.IsSet(prc.AffinityMask, prc.AffinityIdeal))
 					{
-						Log.Debug("[" + prc.FriendlyName + "] EXPERIMENT Affinity ideal to mask mismatch: " + HumanInterface.BitMask(prc.AffinityMask, CPUCount) + ", ideal core: " + prc.AffinityIdeal);
+						Log.Debug("[" + prc.FriendlyName + "] Affinity ideal to mask mismatch: " + HumanInterface.BitMask(prc.AffinityMask, CPUCount) + ", ideal core: " + prc.AffinityIdeal);
 						prc.AffinityIdeal = -1;
 					}
 				}
