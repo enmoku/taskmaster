@@ -197,7 +197,7 @@ namespace Taskmaster
 			else
 				Controller.BackgroundAffinity = -1;
 
-			if (ignorelist.Items.Count > 0)
+			if (ignorelist.Items.Count > 0 && execName.Text.Length == 0)
 			{
 				List<string> ignlist = new List<string>();
 				foreach (ListViewItem item in ignorelist.Items)
@@ -434,13 +434,20 @@ namespace Taskmaster
 
 			ignorelist = new UI.ListViewEx()
 			{
+				BorderStyle = BorderStyle.Fixed3D,
 				View = View.Details,
 				HeaderStyle = ColumnHeaderStyle.None,
-				//Width = 180,
 				Dock = DockStyle.Left,
+				Width = 180,
+				Height = 60,
+				Enabled = (execName.Text.Length == 0),
 			};
 			ignorelist.Columns.Add(HumanReadable.System.Process.Executable, -2);
-			tooltip.SetToolTip(ignorelist, "Executables to ignore for matching with this rule.\nOnly exact matches work.\n\nRequires path to be defined.");
+			tooltip.SetToolTip(ignorelist, "Executables to ignore for matching with this rule.\nOnly exact matches work.\n\nRequires path to be defined.\nHas no effect if executable is defined.");
+			execName.TextChanged += (_, _ea) =>
+			{
+				ignorelist.Enabled = (execName.Text.Length == 0);
+			};
 
 			if (Controller.IgnoreList != null)
 			{
@@ -738,7 +745,7 @@ namespace Taskmaster
 			lt.Controls.Add(new Label()); // empty
 
 			// POWERDOWN in background
-			lt.Controls.Add(new Label() { Text = "Background powerdown", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true });
+			lt.Controls.Add(new Label() { Text = "Background powerdown", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, Width = 100 });
 			backgroundPowerdown = new CheckBox()
 			{
 				Checked = Controller.BackgroundPowerdown,
@@ -941,6 +948,20 @@ namespace Taskmaster
 				sbs.Append("Affinity is to be ignored.").AppendLine();
 			if (ignorelist.Items.Count > 0 && execName.Text.Length > 0)
 				sbs.Append("Ignore list is meaningless with executable defined.").AppendLine();
+
+			foreach (ListViewItem item in ignorelist.Items)
+			{
+				if (execName.Text.Length > 0 && item.Text.Equals(System.IO.Path.GetFileNameWithoutExtension(execName.Text), StringComparison.InvariantCultureIgnoreCase))
+				{
+					sbs.Append("Ignore list contains the same executable as is being matched for. Stop that.").AppendLine();
+					break;
+				}
+				else if (item.Text.EndsWith(".exe", StringComparison.InvariantCultureIgnoreCase))
+				{
+					sbs.Append("Ignore list items should not include extensions.").AppendLine();
+					break;
+				}
+			}
 
 			MessageBox.Show(sbs.ToString(), "Validation results", MessageBoxButtons.OK, MessageBoxIcon.Information, MessageBoxDefaultButton.Button1);
 		}
