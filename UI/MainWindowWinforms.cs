@@ -253,7 +253,7 @@ namespace Taskmaster
 			var prc = ea.Info.Controller; // cache
 			BeginInvoke(new Action(() =>
 			{
-				adjustcounter.Text = Statistics.TouchCount.ToString();
+				//adjustcounter.Text = Statistics.TouchCount.ToString();
 
 				try
 				{
@@ -2382,7 +2382,7 @@ namespace Taskmaster
 		StatusStrip statusbar;
 		ToolStripStatusLabel processingcount;
 		ToolStripStatusLabel processingtimer;
-		ToolStripStatusLabel adjustcounter;
+		//ToolStripStatusLabel adjustcounter;
 		ToolStripStatusLabel powermodestatusbar;
 
 		void BuildStatusbar()
