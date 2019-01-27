@@ -71,6 +71,8 @@ namespace Taskmaster
 				}
 
 				CPUSampleTimer = new System.Timers.Timer(SampleInterval.TotalMilliseconds);
+				CPUSampleTimer.Elapsed += Sampler;
+				CPUSampleTimer.Start();
 			}
 			catch (Exception ex)
 			{
@@ -139,7 +141,7 @@ namespace Taskmaster
 			Mean = tAverage / SampleCount;
 		}
 
-		void Sampler(object _)
+		void Sampler(object _, EventArgs _ea)
 		{
 			if (!Atomic.Lock(ref sampler_lock)) return; // uhhh... probably should ping warning if this return is triggered
 			if (disposed) return; // HACK: dumbness with timers
