@@ -8,6 +8,7 @@ Comprehensive changes can be found in Git change history:
 	Added: Network input, output, and queue to the UI. Not terribly useful, but it's there.
 	Fixed: Net sample timer was not started since the timer update.
 	Changed: Network device list reduced in height.
+	Fixed: ArgumentOutOfRangeException for string.Substring() in …\ProcessManager.cs:line 1465
 ### 2018-01-27
 	Removed: Adjust latency. It served no purpose than noise.
 	Changed: Status bar no longer shows as much useless information.

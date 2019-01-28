@@ -1461,8 +1461,8 @@ namespace Taskmaster
 							else
 							{
 								off = cmdl.IndexOf(' ', 1);
-								if (off <= 1) Log.Error("!!! Something wrong: " + cmdl);
-								npath = cmdl.Substring(0, off);
+								// off < 1 = no arguments
+								npath = off <= 1 ? cmdl : cmdl.Substring(0, off);
 							}
 
 							if (npath.IndexOf('"', 0) >= 0) Log.Fatal("WMI.TargetInstance.CommandLine still had invalid characters: " + npath);
