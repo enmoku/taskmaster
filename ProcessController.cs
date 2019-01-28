@@ -694,7 +694,7 @@ namespace Taskmaster
 				oldAffinity = info.Process.ProcessorAffinity.ToInt32();
 				if (AffinityMask >= 0)
 				{
-					if (EstablishNewAffinity(info, oldAffinity, out newAffinity))
+					if (EstablishNewAffinity(oldAffinity, out newAffinity))
 					{
 						info.Process.ProcessorAffinity = new IntPtr(newAffinity.Replace(0, ProcessManager.AllCPUsMask));
 						mAffinity = true;
@@ -1183,7 +1183,7 @@ namespace Taskmaster
 				{
 					newAffinityMask = AffinityMask.Replace(0, ProcessManager.AllCPUsMask);
 
-					if (EstablishNewAffinity(info, oldAffinityMask, out newAffinityMask))
+					if (EstablishNewAffinity(oldAffinityMask, out newAffinityMask))
 					{
 						newAffinity = new IntPtr(newAffinityMask.Replace(0, ProcessManager.AllCPUsMask));
 						doModifyAffinity = true;
@@ -1387,7 +1387,10 @@ namespace Taskmaster
 			}
 		}
 
-		bool EstablishNewAffinity(ProcessEx info, int oldmask, out int newmask)
+		/// <summary>
+		/// Sets new affinity mask. Returns true if the new mask differs from old.
+		/// </summary>
+		bool EstablishNewAffinity(int oldmask, out int newmask)
 		{
 			// TODO: Apply affinity strategy
 			newmask = ProcessManagerUtility.ApplyAffinityStrategy(oldmask, AffinityMask, AffinityStrategy);
