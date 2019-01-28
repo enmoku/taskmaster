@@ -5,6 +5,9 @@ Comprehensive changes can be found in Git change history:
 ## [0.12...]
 ### 2018-01-28
 	Fixed: Background mode was not applying even foreground affinity if no background affinity was defined.
+	Added: Network input, output, and queue to the UI. Not terribly useful, but it's there.
+	Fixed: Net sample timer was not started since the timer update.
+	Changed: Network device list reduced in height.
 ### 2018-01-27
 	Removed: Adjust latency. It served no purpose than noise.
 	Changed: Status bar no longer shows as much useless information.
