@@ -573,6 +573,8 @@ namespace Taskmaster
 		Label inetstatuslabel;
 		Label uptimestatuslabel;
 		Label uptimeMeanLabel;
+		Label netTransmit;
+		Label netQueue;
 
 		public static Serilog.Core.LoggingLevelSwitch LogIncludeLevel;
 
@@ -608,7 +610,7 @@ namespace Taskmaster
 			processingtimer.Text = $"{DateTimeOffset.UtcNow.TimeTo(processmanager.NextScan).TotalSeconds:N0}s";
 		}
 
-		void UpdateUptime(object _, EventArgs _ea)
+		void UpdateNetwork(object _, EventArgs _ea)
 		{
 			if (!IsHandleCreated) return;
 			if (netmonitor == null) return;
@@ -619,6 +621,10 @@ namespace Taskmaster
 				uptimeMeanLabel.Text = "Infinite";
 			else
 				uptimeMeanLabel.Text = HumanInterface.TimeString(TimeSpan.FromMinutes(mean));
+
+			var delta = netmonitor.GetTraffic();
+			float netTotal = delta.Input + delta.Output;
+			netTransmit.Text = $"{delta.Input/1000:N1} kB In, {delta.Output/1000:N1} kB Out [{delta.Queue:N0} queued]";
 		}
 
 		ListView NetworkDevices;
@@ -1449,6 +1455,8 @@ namespace Taskmaster
 				netstatuslabel = new Label() { Dock = DockStyle.Left, Text = HumanReadable.Generic.Uninitialized, AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft };
 				inetstatuslabel = new Label() { Dock = DockStyle.Left, Text = HumanReadable.Generic.Uninitialized, AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft };
 				uptimeMeanLabel = new Label() { Dock = DockStyle.Left, Text = HumanReadable.Generic.Uninitialized, AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft };
+				netTransmit = new Label() { Dock = DockStyle.Left, Text = HumanReadable.Generic.Uninitialized, AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft };
+				netQueue = new Label() { Dock = DockStyle.Left, Text = HumanReadable.Generic.Uninitialized, AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft };
 				uptimestatuslabel = new Label
 				{
 					Dock = DockStyle.Left,
@@ -1459,29 +1467,39 @@ namespace Taskmaster
 
 				netstatus = new TableLayoutPanel
 				{
-					ColumnCount = 4,
+					ColumnCount = 6,
 					RowCount = 1,
 					Dock = DockStyle.Top,
 					AutoSize = true,
 				};
-				netstatus.Controls.Add(new Label() { Text = "Network:", Dock = DockStyle.Left, AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft });
+
+				// first row
+				netstatus.Controls.Add(new Label() { Text = "Network", Dock = DockStyle.Left, AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft });
 				netstatus.Controls.Add(netstatuslabel);
 
-				netstatus.Controls.Add(new Label() { Text = "Uptime:", Dock = DockStyle.Left, AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft });
+				netstatus.Controls.Add(new Label() { Text = "Uptime", Dock = DockStyle.Left, AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft });
 				netstatus.Controls.Add(uptimestatuslabel);
 
-				netstatus.Controls.Add(new Label() { Text = "Internet:", Dock = DockStyle.Left, AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft });
+				netstatus.Controls.Add(new Label() { Text = "Transmission", Dock = DockStyle.Left, AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft });
+				netstatus.Controls.Add(netTransmit);
+
+				// second row
+				netstatus.Controls.Add(new Label() { Text = "Internet", Dock = DockStyle.Left, AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft });
 				netstatus.Controls.Add(inetstatuslabel);
 
-				netstatus.Controls.Add(	new Label {Text = "Average:", Dock = DockStyle.Left, AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft });
+				netstatus.Controls.Add(	new Label {Text = "Average", Dock = DockStyle.Left, AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft });
 				netstatus.Controls.Add(uptimeMeanLabel);
+
+				//netstatus.Controls.Add(new Label() { Text = "??", Dock = DockStyle.Left, AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft });
+				//netstatus.Controls.Add(netQueue);
 
 				NetworkDevices = new ListView
 				{
 					AutoSize = true,
 					MinimumSize = new System.Drawing.Size(-2, 40),
 					View = View.Details,
-					FullRowSelect = true
+					FullRowSelect = true,
+					Height = 64,
 				};
 
 				infopanel.SizeChanged += (_, _ea) => NetworkDevices.Width = infopanel.ClientSize.Width - infopanel.Padding.Horizontal - infopanel.Margin.Vertical;
@@ -1518,7 +1536,7 @@ namespace Taskmaster
 			}
 			// End: Inet status
 
-			GotFocus += UpdateUptime;
+			GotFocus += UpdateNetwork;
 			GotFocus += StartUIUpdates;
 
 			FormClosing += StopUIUpdates;
@@ -1526,7 +1544,7 @@ namespace Taskmaster
 			{
 				if (Visible)
 				{
-					UpdateUptime(sender, ea);
+					UpdateNetwork(sender, ea);
 					StartUIUpdates(sender, ea);
 				}
 				else
@@ -1537,7 +1555,7 @@ namespace Taskmaster
 
 			UItimer = new System.Windows.Forms.Timer { Interval = UIUpdateFrequency };
 			if (Taskmaster.NetworkMonitorEnabled)
-				UItimer.Tick += UpdateUptime;
+				UItimer.Tick += UpdateNetwork;
 
 			if (Taskmaster.ProcessMonitorEnabled && ProcessManager.ScanFrequency.HasValue)
 				UItimer.Tick += UpdateRescanCountdown;
@@ -3050,7 +3068,7 @@ namespace Taskmaster
 			}));
 		}
 
-		public void UpdateNetwork(object _, EventArgs _ea)
+		public void UpdateNetworkDevices(object _, EventArgs _ea)
 		{
 			if (!IsHandleCreated || disposed) return;
 
@@ -3100,10 +3118,10 @@ namespace Taskmaster
 
 			netmonitor = net;
 
-			UpdateNetwork(this, null);
+			UpdateNetworkDevices(this, null);
 
 			netmonitor.InternetStatusChange += InetStatus;
-			netmonitor.IPChanged += UpdateNetwork;
+			netmonitor.IPChanged += UpdateNetworkDevices;
 			netmonitor.NetworkStatusChange += NetStatus;
 			netmonitor.onSampling += NetSampleHandler;
 		}
@@ -3354,7 +3372,7 @@ namespace Taskmaster
 					{
 						netmonitor.InternetStatusChange -= InetStatus;
 						netmonitor.NetworkStatusChange -= NetStatus;
-						netmonitor.IPChanged -= UpdateNetwork;
+						netmonitor.IPChanged -= UpdateNetworkDevices;
 						netmonitor.onSampling -= NetSampleHandler;
 						netmonitor = null;
 					}

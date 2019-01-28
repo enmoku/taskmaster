@@ -33,8 +33,8 @@ namespace Taskmaster
 	public struct NetDeviceTraffic
 	{
 		public int Index { get; set; }
-		public NetTraffic Delta { get; set; }
-		public NetTraffic Total { get; set; }
+		public NetTrafficData Delta { get; set; }
+		public NetTrafficData Total { get; set; }
 	}
 
 	public sealed class NetDeviceTrafficEventArgs : EventArgs
@@ -42,7 +42,7 @@ namespace Taskmaster
 		public NetDeviceTraffic Traffic;
 	}
 
-	public struct NetTraffic
+	public struct NetTrafficData
 	{
 		/// <summary>
 		/// Unicast packets
@@ -98,7 +98,7 @@ namespace Taskmaster
 		public IPAddress IPv6Address { get; set; } = null;
 
 		// Stats
-		public NetTraffic Outgoing;
-		public NetTraffic Incoming;
+		public NetTrafficData Outgoing;
+		public NetTrafficData Incoming;
 	}
 }

@@ -36,11 +36,29 @@ using Serilog;
 
 namespace Taskmaster
 {
+	public sealed class NetTrafficDelta
+	{
+		public float Input = float.NaN;
+		public float Output = float.NaN;
+		public float Queue = float.NaN;
+	}
+
+	public sealed class NetTrafficEventArgs : EventArgs
+	{
+		public NetTrafficDelta Delta = null;
+	}
+
 	sealed public class NetManager : IDisposable
 	{
 		public event EventHandler<InternetStatus> InternetStatusChange;
 		public event EventHandler IPChanged;
 		public event EventHandler<NetworkStatus> NetworkStatusChange;
+
+		public event EventHandler<NetTrafficEventArgs> NetworkTraffic;
+
+		PerformanceCounterWrapper NetInTrans = null;
+		PerformanceCounterWrapper NetOutTrans = null;
+		PerformanceCounterWrapper NetQueue = null;
 
 		string dnstestaddress = "google.com"; // should be fine, www is omitted to avoid deeper DNS queries
 
@@ -102,7 +120,7 @@ namespace Taskmaster
 			SampleTimer.Start();
 
 			AnalyzeTrafficBehaviour(null, null); // initialize, not really needed
-				
+
 			/*
 			// Reset time could be used for initial internet start time as it is the only even remotely relevant one
 			// ... but it's not honestly truly indicative of it.
@@ -117,9 +135,25 @@ namespace Taskmaster
 			}
 			*/
 
+			// TODO: SUPPORT MULTIPLE NICS
+			var firstnic = new PerformanceCounterCategory("Network Interface").GetInstanceNames()[1]; // 0 = loopback
+			NetInTrans = new PerformanceCounterWrapper("Network Interface", "Bytes Received/sec", firstnic);
+			NetOutTrans = new PerformanceCounterWrapper("Network Interface", "Bytes Sent/sec", firstnic);
+			NetQueue = new PerformanceCounterWrapper("Network Interface", "Output Queue Length", firstnic);
+
 			if (Taskmaster.DebugNet) Log.Information("<Network> Component loaded.");
 
 			Taskmaster.DisposalChute.Push(this);
+		}
+
+		public NetTrafficDelta GetTraffic()
+		{
+			return new NetTrafficDelta()
+			{
+				Input = NetInTrans.Value,
+				Output = NetOutTrans.Value,
+				Queue = NetQueue.Value,
+			};
 		}
 
 		private void DeviceSampler(object sender, System.Timers.ElapsedEventArgs e)
@@ -148,7 +182,7 @@ namespace Taskmaster
 		List<NetDevice> CurrentInterfaceList = new List<NetDevice>(2);
 
 		int TrafficAnalysisLimiter = 0;
-		NetTraffic outgoing, incoming, oldoutgoing, oldincoming;
+		NetTrafficData outgoing, incoming, oldoutgoing, oldincoming;
 
 		async void AnalyzeTrafficBehaviour(object _, EventArgs _ea)
 		{
@@ -202,8 +236,8 @@ namespace Taskmaster
 						new NetDeviceTraffic
 						{
 							Index = index,
-							Delta = new NetTraffic { Unicast = packets, Errors = errors, Discards = discards },
-							Total = new NetTraffic { Unicast = totalunicast, Errors = totalerrors, Discards = totaldiscards, Bytes = incoming.Bytes + outgoing.Bytes },
+							Delta = new NetTrafficData { Unicast = packets, Errors = errors, Discards = discards },
+							Total = new NetTrafficData { Unicast = totalunicast, Errors = totalerrors, Discards = totaldiscards, Bytes = incoming.Bytes + outgoing.Bytes },
 						}
 					});
 				}

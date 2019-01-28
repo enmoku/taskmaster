@@ -43,7 +43,6 @@ namespace Taskmaster
 		public float NVMTransfers = 0f;
 		public float NVMQueue = 0f;
 		public float NVMDelay = 0f;
-		public float NetQueue = 0f;
 
 		// Memory
 		public float MemPressure = 0f;
@@ -70,9 +69,6 @@ namespace Taskmaster
 		PerformanceCounterWrapper NVMReadDelay = new PerformanceCounterWrapper("LogicalDisk", "Avg. Disk Sec/Read", "_Total");
 		PerformanceCounterWrapper NVMWriteDelay = new PerformanceCounterWrapper("LogicalDisk", "Avg. Disk Sec/Write", "_Total");
 
-		// Net
-		PerformanceCounterWrapper NetQueue = null;
-
 		/*
 		PerformanceCounterWrapper NetRetransmit = new PerformanceCounterWrapper("TCP", "Segments Retransmitted/sec", "_Total");
 		PerformanceCounterWrapper NetConnFails = new PerformanceCounterWrapper("TCP", "Connection Failures", "_Total");
@@ -89,7 +85,6 @@ namespace Taskmaster
 				NVMTransfers = NVMTransfers.Value,
 				NVMQueue = NVMQueue.Value,
 				NVMDelay = Math.Max(NVMReadDelay.Value, NVMWriteDelay.Value),
-				NetQueue = NetQueue.Value,
 
 				//MemPressure = 0f,
 				//MemUsage = 0f,
@@ -157,8 +152,6 @@ namespace Taskmaster
 
 			LoadConfig();
 
-			var firstnic = new PerformanceCounterCategory("Network Interface").GetInstanceNames()[1]; // 0 = loopback
-			NetQueue = new PerformanceCounterWrapper("Network Interface", "Output Queue Length", firstnic);
 			try
 			{
 				//PageInputs = new PerformanceCounterWrapper("Memory", "Page Inputs/sec", null);
