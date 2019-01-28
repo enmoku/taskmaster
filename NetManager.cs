@@ -99,6 +99,7 @@ namespace Taskmaster
 			SampleTimer = new System.Timers.Timer(PacketStatTimerInterval * 1_000);
 			SampleTimer.Elapsed += AnalyzeTrafficBehaviour;
 			SampleTimer.Elapsed += DeviceSampler;
+			SampleTimer.Start();
 
 			AnalyzeTrafficBehaviour(null, null); // initialize, not really needed
 				
