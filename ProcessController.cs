@@ -557,6 +557,7 @@ namespace Taskmaster
 						mPriority = true;
 					}
 				}
+
 				oldAffinity = info.Process.ProcessorAffinity.ToInt32();
 				if (BackgroundAffinity >= 0)
 				{
@@ -1040,6 +1041,8 @@ namespace Taskmaster
 				// TEST FOR RECENTLY MODIFIED
 				if (RecentlyModified.TryGetValue(info.Id, out RecentlyModifiedInfo ormt))
 				{
+					LastSeen = DateTimeOffset.UtcNow;
+
 					try
 					{
 						if (ormt.Info.Name.Equals(info.Name))
@@ -1096,7 +1099,7 @@ namespace Taskmaster
 						}
 						else
 						{
-							if (Taskmaster.DebugProcesses) Log.Debug("[" + FriendlyName + "] #" + info.Id + " passed because name does not match; new: " +
+							if (Taskmaster.DebugProcesses) Log.Debug("[" + FriendlyName + "] #" + info.Id.ToString() + " passed because name does not match; new: " +
 								info.Name + ", old: " + ormt.Info.Name);
 
 							RecentlyModified.TryRemove(info.Id, out _); // id does not match name
@@ -1107,12 +1110,12 @@ namespace Taskmaster
 					//RecentlyModified.TryRemove(info.Id, out _);
 				}
 
-				if (Taskmaster.Trace) Log.Verbose("[" + FriendlyName + "] Touching: " + info.Name + " (#" + info.Id + ")");
+				if (Taskmaster.Trace) Log.Verbose("[" + FriendlyName + "] Touching: " + info.Name + " (#" + info.Id.ToString() + ")");
 
 				if (IgnoreList != null && IgnoreList.Any(item => item.Equals(info.Name, StringComparison.InvariantCultureIgnoreCase)))
 				{
 					if (Taskmaster.ShowInaction && Taskmaster.DebugProcesses)
-						Log.Debug("[" + FriendlyName + "] " + info.Name + " (#" + info.Id + ") ignored due to user defined rule.");
+						Log.Debug("[" + FriendlyName + "] " + info.Name + " (#" + info.Id.ToString() + ") ignored due to user defined rule.");
 					info.State = ProcessHandlingState.Abandoned;
 					return; // return ProcessState.Ignored;
 				}
@@ -1123,25 +1126,16 @@ namespace Taskmaster
 				// TODO: IgnoreSystem32Path
 
 				if (isProtectedFile && Taskmaster.ShowInaction && Taskmaster.DebugProcesses)
-					Log.Debug("[" + FriendlyName + "] " + info.Name + " (#" + info.Id + ") in protected list, limiting tampering.");
+					Log.Debug("[" + FriendlyName + "] " + info.Name + " (#" + info.Id.ToString() + ") in protected list, limiting tampering.");
 
 				ProcessPriorityClass? newPriority = null;
 				IntPtr? newAffinity = null;
-				var newPower = PowerInfo.PowerMode.Undefined;
 
 				bool mAffinity = false, mPriority = false, mPower = false, modified = false, fAffinity = false, fPriority = false;
-				LastSeen = DateTimeOffset.UtcNow;
-
-				newAffinity = null;
-				newPriority = null;
-
-				bool doModifyPriority = !isProtectedFile;
-				bool doModifyAffinity = false;
-				bool doModifyPower = false;
 
 				bool foreground = InForeground(info.Id);
 
-				bool firsttime = true;
+				bool FirstTimeSeenForForeground = true;
 				if (!isProtectedFile)
 				{
 					if (ForegroundOnly)
@@ -1163,14 +1157,14 @@ namespace Taskmaster
 							}
 						}
 						else
-							firsttime = false;
+							FirstTimeSeenForForeground = false;
 
 						if (!foreground)
 						{
 							if (Taskmaster.DebugForeground || Taskmaster.ShowInaction)
 								Log.Debug("[" + FriendlyName + "] " + info.Name + " (#" + info.Id + ") not in foreground, not prioritizing.");
 
-							Pause(info, firsttime);
+							Pause(info, FirstTimeSeenForForeground);
 							info.State = ProcessHandlingState.Paused;
 							return;
 						}
@@ -1182,6 +1176,21 @@ namespace Taskmaster
 						Log.Verbose("[" + FriendlyName + "] " + info.Name + " (#" + info.Id + ") PROTECTED");
 				}
 
+				// APPLY CHANGES HERE
+				if (!isProtectedFile)
+				{
+					try
+					{
+						if (info.Process.SetLimitedPriority(Priority.Value, PriorityStrategy))
+						{
+							modified = mPriority = true;
+							newPriority = info.Process.PriorityClass;
+						}
+					}
+					catch (OutOfMemoryException) { throw; }
+					catch { fPriority = true; } // ignore errors, this is all we care of them
+				}
+
 				int newAffinityMask = -1;
 
 				if (AffinityMask >= 0)
@@ -1191,11 +1200,17 @@ namespace Taskmaster
 					if (EstablishNewAffinity(oldAffinityMask, out newAffinityMask))
 					{
 						newAffinity = new IntPtr(newAffinityMask.Replace(0, ProcessManager.AllCPUsMask));
-						doModifyAffinity = true;
+						try
+						{
+							info.Process.ProcessorAffinity = newAffinity.Value;
+							modified = mAffinity = true;
+						}
+						catch (OutOfMemoryException) { throw; }
+						catch { fAffinity = true; } // ignore errors, this is all we care of them
 					}
 					else
 						newAffinityMask = -1;
-
+					
 					/*
 					if (oldAffinityMask != newAffinityMask)
 					{
@@ -1234,33 +1249,6 @@ namespace Taskmaster
 					if (Taskmaster.DebugProcesses) Debug.WriteLine($"{FormatPathName(info)} #{info.Id.ToString()} --- affinity not touched");
 				}
 
-				// APPLY CHANGES HERE
-				if (doModifyPriority)
-				{
-					try
-					{
-						if (info.Process.SetLimitedPriority(Priority.Value, PriorityStrategy))
-						{
-							modified = mPriority = true;
-							newPriority = info.Process.PriorityClass;
-						}
-					}
-					catch (OutOfMemoryException) { throw; }
-					catch { fPriority = true; } // ignore errors, this is all we care of them
-				}
-
-				if (doModifyAffinity)
-				{
-					try
-					{
-						info.Process.ProcessorAffinity = newAffinity.Value;
-						modified = mAffinity = true;
-
-					}
-					catch (OutOfMemoryException) { throw; }
-					catch { fAffinity = true; } // ignore errors, this is all we care of them
-				}
-
 				if (AffinityIdeal >= 0)
 					ApplyAffinityIdeal(info);
 
@@ -1288,9 +1276,7 @@ namespace Taskmaster
 					}
 					else
 					{
-						//oldPower = Taskmaster.powermanager.CurrentMode;
 						mPower = SetPower(info);
-						//mPower = (oldPP != Taskmaster.powermanager.CurrentMode);
 					}
 				}
 
@@ -1319,7 +1305,7 @@ namespace Taskmaster
 				bool logevent = false;
 
 				if (modified) logevent = Taskmaster.ShowProcessAdjusts && !(ForegroundOnly && !Taskmaster.ShowForegroundTransitions);
-				logevent |= (firsttime && ForegroundOnly);
+				logevent |= (FirstTimeSeenForForeground && ForegroundOnly);
 				logevent |= (Taskmaster.ShowInaction && Taskmaster.DebugProcesses);
 
 				var ev = new ProcessModificationEventArgs()
