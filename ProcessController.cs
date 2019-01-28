@@ -566,6 +566,11 @@ namespace Taskmaster
 						mAffinity = true;
 					}
 				}
+				else if (AffinityMask >= 0 && EstablishNewAffinity(oldAffinity, out int newAffinityMask)) // set foreground affinity otherwise
+				{
+					info.Process.ProcessorAffinity = new IntPtr(BackgroundAffinity.Replace(0, ProcessManager.AllCPUsMask));
+					mAffinity = true;
+				}
 			}
 			catch (OutOfMemoryException) { throw; }
 			catch { }
