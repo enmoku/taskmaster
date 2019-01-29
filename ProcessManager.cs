@@ -342,7 +342,7 @@ namespace Taskmaster
 
 		public event EventHandler<HandlingStateChangeEventArgs> HandlingStateChange;
 
-		public async void HastenScan(int delay=15)
+		public async void HastenScan(int delay = 15)
 		{
 			double nextscan = Math.Max(0, DateTimeOffset.UtcNow.TimeTo(NextScan).TotalSeconds);
 			if (nextscan > 5) // skip if the next scan is to happen real soon
@@ -743,6 +743,8 @@ namespace Taskmaster
 					Analyze = (section.TryGet("Analyze")?.BoolValue ?? false),
 				};
 
+				prc.ExclusiveMode = section.TryGet("Exclusive")?.BoolValue ?? false;
+
 				bool? deprecatedFgMode = section.TryGet("Foreground only")?.BoolValue; // DEPRECATED
 				bool? deprecatedBgPower = section.TryGet("Background powerdown")?.BoolValue; // DEPRECATED
 
@@ -777,7 +779,7 @@ namespace Taskmaster
 
 				//prc.SetForegroundMode((ForegroundMode)(section.TryGet("Foreground mode")?.IntValue.Constrain(-1, 2) ?? -1)); // NEW
 
-				prc.AffinityIdeal = section.TryGet("Affinity ideal")?.IntValue.Constrain(-1, CPUCount-1) ?? -1;
+				prc.AffinityIdeal = section.TryGet("Affinity ideal")?.IntValue.Constrain(-1, CPUCount - 1) ?? -1;
 				if (prc.AffinityIdeal >= 0)
 				{
 					if (!Bit.IsSet(prc.AffinityMask, prc.AffinityIdeal))
@@ -1369,6 +1371,8 @@ namespace Taskmaster
 
 					if (prc.Foreground != ForegroundMode.Ignore) ForegroundWatch(info);
 
+					if (prc.ExclusiveMode) ExclusiveMode(info);
+
 					if (info.Controller.Analyze && info.Valid && info.State != ProcessHandlingState.Abandoned)
 						analyzer.Analyze(info);
 				}
@@ -1388,6 +1392,129 @@ namespace Taskmaster
 			finally
 			{
 				if (!Triaged) HandlingStateChange?.Invoke(this, new HandlingStateChangeEventArgs(info));
+			}
+		}
+
+		object Exclusive_lock = new object();
+		ConcurrentDictionary<int, ProcessEx> ExclusiveList = new ConcurrentDictionary<int, ProcessEx>();
+
+		void ExclusiveMode(ProcessEx info)
+		{
+			if (!Taskmaster.IsAdministrator()) return; // sadly stopping services requires admin rights
+
+			try
+			{
+				lock (Exclusive_lock)
+				{
+					if (ExclusiveList.TryAdd(info.Id, info))
+					{
+						if (Taskmaster.DebugProcesses) Log.Debug($"<Exclusive> [{info.Controller.FriendlyName}] {info.Name} (#{info.Id.ToString()}) starting");
+						info.Process.EnableRaisingEvents = true;
+						info.Process.Exited += EndExclusiveMode;
+						ExclusiveStart();
+					}
+				}
+
+				info.Process.Refresh();
+				if (info.Process.HasExited) EndExclusiveMode(info.Process, null);
+			}
+			catch (OutOfMemoryException) { throw; }
+			catch (Exception ex)
+			{
+				Logging.Stacktrace(ex);
+			}
+		}
+
+		void EndExclusiveMode(object sender, EventArgs ea)
+		{
+			try
+			{
+				lock (Exclusive_lock)
+				{
+					var process = (Process)sender;
+					if (ExclusiveList.TryRemove(process.Id, out var info))
+					{
+						if (Taskmaster.DebugProcesses) Log.Debug($"<Exclusive> [{info.Controller.FriendlyName}] {info.Name} (#{info.Id.ToString()}) ending");
+						if (ExclusiveList.Count == 0)
+						{
+							if (Taskmaster.DebugProcesses) Log.Debug("<Exclusive> Ended for all, restarting services.");
+							ExclusiveEnd();
+						}
+						else
+						{
+							if (Taskmaster.DebugProcesses) Log.Debug("<Exclusive> Still used by: #" + string.Join(", #", ExclusiveList.Keys));
+						}
+					}
+				}
+			}
+			catch (OutOfMemoryException) { throw; }
+			catch (Exception ex)
+			{
+				Logging.Stacktrace(ex);
+			}
+		}
+
+		Lazy<System.ServiceProcess.ServiceController> windowsupdate = new Lazy<System.ServiceProcess.ServiceController>(
+			() =>
+			{
+				return new System.ServiceProcess.ServiceController("wuauserv");
+			});
+
+		bool ExclusiveEnabled = false;
+		bool WUAWasRunning = false;
+		void ExclusiveStart()
+		{
+			lock (Exclusive_lock)
+			{
+				if (ExclusiveEnabled) return;
+
+				try
+				{
+					WUAWasRunning = windowsupdate.Value.Status == System.ServiceProcess.ServiceControllerStatus.Running;
+					if (windowsupdate.Value.CanPauseAndContinue)
+						windowsupdate.Value.Pause();
+					else
+						windowsupdate.Value.Stop();
+				}
+				catch (OutOfMemoryException) { throw; }
+				catch (Exception ex)
+				{
+					Logging.Stacktrace(ex);
+				}
+				finally
+				{
+					ExclusiveEnabled = true;
+				}
+			}
+		}
+
+		void ExclusiveEnd()
+		{
+			lock (Exclusive_lock)
+			{
+				if (!ExclusiveEnabled || !WUAWasRunning)
+				{
+					ExclusiveEnabled = false;
+					return;
+				}
+
+				try
+				{
+					WUAWasRunning = windowsupdate.Value.Status == System.ServiceProcess.ServiceControllerStatus.Running;
+					if (windowsupdate.Value.CanPauseAndContinue)
+						windowsupdate.Value.Continue();
+					else
+						windowsupdate.Value.Start();
+				}
+				catch (OutOfMemoryException) { throw; }
+				catch (Exception ex)
+				{
+					Logging.Stacktrace(ex);
+				}
+				finally
+				{
+					ExclusiveEnabled = false;
+				}
 			}
 		}
 

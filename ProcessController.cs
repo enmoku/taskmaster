@@ -83,6 +83,8 @@ namespace Taskmaster
 			set => ExecutableFriendlyName = System.IO.Path.GetFileNameWithoutExtension(p_Executable = value);
 		}
 
+		public bool ExclusiveMode { get; set; } = false;
+
 		public string Path { get; set; } = string.Empty;
 		int PathElements { get; set; }  = 0;
 
