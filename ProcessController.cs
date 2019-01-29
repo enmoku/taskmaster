@@ -1333,8 +1333,8 @@ namespace Taskmaster
 					AffinityOld = oldAffinityMask,
 					Info = info,
 					State = ProcessRunningState.Found,
-					PriorityFail = fPriority,
-					AffinityFail = fAffinity,
+					PriorityFail = Priority.HasValue && fPriority,
+					AffinityFail = AffinityMask >= 0 && fAffinity,
 					Protected = isProtectedFile,
 				};
 
