@@ -184,8 +184,7 @@ namespace Taskmaster
 			Controller.ModifyDelay = (int)(modifyDelay.Value * 1_000);
 			Controller.PowerPlan = PowerManager.GetModeByName(powerPlan.Text);
 			Controller.AllowPaging = allowPaging.Checked;
-			Controller.SetForegroundOnly(foregroundOnly.Checked);
-			Controller.BackgroundPowerdown = Controller.ForegroundOnly && backgroundPowerdown.Checked;
+			Controller.SetForegroundMode((ForegroundMode)(ForegroundModeSelect.SelectedIndex - 1));
 
 			if (bgPriorityClass.SelectedIndex != 5)
 				Controller.BackgroundPriority = ProcessHelpers.IntToPriority(bgPriorityClass.SelectedIndex);
@@ -228,7 +227,7 @@ namespace Taskmaster
 
 			Controller.Enabled = newPrc ? true : enOrig;
 
-			Controller.SanityCheck();
+			Controller.Repair();
 
 			Controller.SaveConfig();
 
@@ -263,8 +262,8 @@ namespace Taskmaster
 		Extensions.NumericUpDownEx modifyDelay = null;
 		CheckBox allowPaging = null;
 		ComboBox powerPlan = null;
-		CheckBox foregroundOnly = null;
-		CheckBox backgroundPowerdown = null;
+		ComboBox ForegroundModeSelect = null;
+		ComboBox FullscreenMode = null;
 		ListView ignorelist = null;
 		
 		int cpumask = 0;
@@ -434,7 +433,7 @@ namespace Taskmaster
 
 			ignorelist = new UI.ListViewEx()
 			{
-				BorderStyle = BorderStyle.Fixed3D,
+				BorderStyle = BorderStyle.Fixed3D, // doesn't work with EnableVisualStyles
 				View = View.Details,
 				HeaderStyle = ColumnHeaderStyle.None,
 				Dock = DockStyle.Left,
@@ -653,13 +652,19 @@ namespace Taskmaster
 
 			// FOREGROUND
 
-			lt.Controls.Add(new Label { Text = "Foreground only", TextAlign = System.Drawing.ContentAlignment.MiddleLeft });
-			foregroundOnly = new CheckBox()
+			ForegroundModeSelect = new ComboBox()
 			{
-				Checked = Controller.ForegroundOnly,
+				Dock = DockStyle.Left,
+				DropDownStyle = ComboBoxStyle.DropDownList,
+				Width = 180,
 			};
-			tooltip.SetToolTip(foregroundOnly, "Priority and affinity are lowered when this app is not in focus.");
-			lt.Controls.Add(foregroundOnly);
+
+			ForegroundModeSelect.Items.AddRange( new string[] { "Ignore", "Priority and Affinity", "Priority, Affinity, and Power", "Power only" } );
+			ForegroundModeSelect.SelectedIndex = ((int)Controller.Foreground)+1;
+			tooltip.SetToolTip(ForegroundModeSelect, "Select which factors are lowered when this app is not in focus.");
+
+			lt.Controls.Add(new Label { Text = "Foreground mode", TextAlign = System.Drawing.ContentAlignment.MiddleLeft });
+			lt.Controls.Add(ForegroundModeSelect);
 			lt.Controls.Add(new Label()); // empty
 
 			// BACKGROUND PRIORITY & AFFINITY
@@ -744,38 +749,19 @@ namespace Taskmaster
 			lt.Controls.Add(powerPlan);
 			lt.Controls.Add(new Label()); // empty
 
-			// POWERDOWN in background
-			lt.Controls.Add(new Label() { Text = "Background powerdown", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, Width = 100 });
-			backgroundPowerdown = new CheckBox()
-			{
-				Checked = Controller.BackgroundPowerdown,
-			};
-			tooltip.SetToolTip(backgroundPowerdown, "Power down any power mode when the app goes off focus.\nRequires foreground only to be enabled.");
-			lt.Controls.Add(backgroundPowerdown);
-			lt.Controls.Add(new Label()); // empty
-
 			// FOREGROUND ONLY TOGGLE
-			bool fge = foregroundOnly.Checked;
+			bool fge = ForegroundModeSelect.SelectedIndex != 0;
 			bool pwe = powerPlan.SelectedIndex != 3;
 
-			foregroundOnly.CheckedChanged += (s, e) =>
+			ForegroundModeSelect.SelectedIndexChanged += (s, e) =>
 			{
-				fge = foregroundOnly.Checked;
-				bgPriorityClass.Enabled = fge;
-				bgAffinityMask.Enabled = fge;
-				backgroundPowerdown.Enabled = (pwe && fge);
+				fge = ForegroundModeSelect.SelectedIndex != 0;
+				bgPriorityClass.Enabled = fge && ForegroundModeSelect.SelectedIndex != 3;
+				bgAffinityMask.Enabled = fge && ForegroundModeSelect.SelectedIndex != 3;
 			};
 
-			bool bgpd = backgroundPowerdown.Checked;
-			powerPlan.SelectionChangeCommitted += (s, e) =>
-			{
-				pwe = powerPlan.SelectedIndex != 3;
-				backgroundPowerdown.Enabled = (pwe && fge);
-			};
-
-			bgPriorityClass.Enabled = fge;
-			bgAffinityMask.Enabled = fge;
-			backgroundPowerdown.Enabled = fge;
+			bgPriorityClass.Enabled = fge && ForegroundModeSelect.SelectedIndex != 3;
+			bgAffinityMask.Enabled = fge && ForegroundModeSelect.SelectedIndex != 3;
 
 			// PAGING
 			lt.Controls.Add(new Label { Text = "Allow paging", TextAlign = System.Drawing.ContentAlignment.MiddleLeft });

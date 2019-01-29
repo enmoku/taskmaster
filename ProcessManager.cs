@@ -438,13 +438,14 @@ namespace Taskmaster
 
 		readonly System.Timers.Timer ScanTimer = null;
 
+		// move all this to prc.Validate() or prc.SanityCheck();
 		bool ValidateController(ProcessController prc)
 		{
 			var rv = true;
 
-			if (prc.Priority.HasValue && prc.ForegroundOnly && prc.BackgroundPriority.Value.ToInt32() >= prc.Priority.Value.ToInt32())
+			if (prc.Priority.HasValue && prc.BackgroundPriority.HasValue && prc.BackgroundPriority.Value.ToInt32() >= prc.Priority.Value.ToInt32())
 			{
-				prc.SetForegroundOnly(false);
+				prc.SetForegroundMode(ForegroundMode.Ignore);
 				Log.Warning("[" + prc.FriendlyName + "] Background priority equal or higher than foreground priority, ignoring.");
 			}
 
@@ -493,7 +494,7 @@ namespace Taskmaster
 			if (Taskmaster.Trace) Log.Verbose("[" + prc.FriendlyName + "] Match: " + (prc.Executable ?? prc.Path) + ", " +
 				(prc.Priority.HasValue ? Readable.ProcessPriority(prc.Priority.Value) : HumanReadable.Generic.NotAvailable) +
 				", Mask:" + (prc.AffinityMask >= 0 ? prc.AffinityMask.ToString() : HumanReadable.Generic.NotAvailable) +
-				", Recheck: " + prc.Recheck + "s, FgOnly: " + prc.ForegroundOnly.ToString());
+				", Recheck: " + prc.Recheck + "s, Foreground: " + prc.Foreground.ToString());
 		}
 
 		void loadConfig()
@@ -737,13 +738,44 @@ namespace Taskmaster
 					PathVisibility = pvis,
 					BackgroundPriority = bprio,
 					BackgroundAffinity = baff,
-					BackgroundPowerdown = (section.TryGet("Background powerdown")?.BoolValue ?? false),
 					IgnoreList = tignorelist,
 					AllowPaging = (section.TryGet("Allow paging")?.BoolValue ?? false),
 					Analyze = (section.TryGet("Analyze")?.BoolValue ?? false),
 				};
 
-				prc.SetForegroundOnly(section.TryGet("Foreground only")?.BoolValue ?? false);
+				bool? deprecatedFgMode = section.TryGet("Foreground only")?.BoolValue; // DEPRECATED
+				bool? deprecatedBgPower = section.TryGet("Background powerdown")?.BoolValue; // DEPRECATED
+
+				// UPGRADE
+				int? foregroundMode = section.TryGet("Foreground mode")?.IntValue;
+				if (foregroundMode.HasValue)
+				{
+					prc.SetForegroundMode((ForegroundMode)foregroundMode.Value.Constrain(-1, 2));
+				}
+				else
+				{
+					bool fgmode = false, pwmod = false;
+					if (deprecatedFgMode.HasValue)
+						fgmode = deprecatedFgMode.Value;
+					if (deprecatedBgPower.HasValue)
+						pwmod = deprecatedBgPower.Value;
+
+					if (fgmode || pwmod)
+					{
+						prc.SetForegroundMode(pwmod ? (fgmode ? ForegroundMode.Full : ForegroundMode.PowerOnly) : (fgmode ? ForegroundMode.Standard : ForegroundMode.Ignore));
+						prc.NeedsSaving = true;
+					}
+				}
+
+				// CLEANUP DEPRECATED
+				if (deprecatedFgMode.HasValue || deprecatedBgPower.HasValue)
+				{
+					section.Remove("Foreground only");
+					section.Remove("Background powerdown");
+					dirtyconfig = true;
+				}
+
+				//prc.SetForegroundMode((ForegroundMode)(section.TryGet("Foreground mode")?.IntValue.Constrain(-1, 2) ?? -1)); // NEW
 
 				prc.AffinityIdeal = section.TryGet("Affinity ideal")?.IntValue.Constrain(-1, CPUCount-1) ?? -1;
 				if (prc.AffinityIdeal >= 0)
@@ -753,14 +785,6 @@ namespace Taskmaster
 						Log.Debug("[" + prc.FriendlyName + "] Affinity ideal to mask mismatch: " + HumanInterface.BitMask(prc.AffinityMask, CPUCount) + ", ideal core: " + prc.AffinityIdeal);
 						prc.AffinityIdeal = -1;
 					}
-				}
-
-				if (!prc.ForegroundOnly)
-				{
-					// sanity checking for bad config
-					prc.BackgroundAffinity = -1;
-					prc.BackgroundPriority = null;
-					prc.BackgroundPowerdown = false;
 				}
 
 				prc.LogAdjusts = section.TryGet("Logging")?.BoolValue ?? true;
@@ -786,7 +810,7 @@ namespace Taskmaster
 					prc.Resize = new System.Drawing.Rectangle(resize[0], resize[1], resize[2], resize[3]);
 				}
 
-				prc.SanityCheck();
+				prc.Repair();
 
 				AddController(prc);
 
@@ -1028,7 +1052,7 @@ namespace Taskmaster
 						if (PreviousForegroundController != null)
 						{
 							//Log.Debug("PUTTING PREVIOUS FOREGROUND APP to BACKGROUND");
-							if (PreviousForegroundController.ForegroundOnly)
+							if (PreviousForegroundController.Foreground != ForegroundMode.Ignore)
 								PreviousForegroundController.Pause(PreviousForegroundInfo);
 
 							ProcessStateChange?.Invoke(this, new ProcessModificationEventArgs() { Info = PreviousForegroundInfo, State = ProcessRunningState.Paused });
@@ -1048,7 +1072,7 @@ namespace Taskmaster
 						if (Taskmaster.Trace && Taskmaster.DebugForeground)
 							Log.Debug("[" + prc.FriendlyName + "] " + info.Name + " (#" + info.Id + ") on foreground!");
 
-						if (prc.ForegroundOnly) prc.Resume(info);
+						if (prc.Foreground != ForegroundMode.Ignore) prc.Resume(info);
 
 						ProcessStateChange?.Invoke(this, new ProcessModificationEventArgs() { Info = info, State = ProcessRunningState.Resumed });
 
@@ -1285,7 +1309,7 @@ namespace Taskmaster
 		{
 			var prc = info.Controller;
 
-			Debug.Assert(prc.ForegroundOnly);
+			Debug.Assert(prc.Foreground != ForegroundMode.Ignore);
 
 			bool keyadded = false;
 			if (keyadded = ForegroundWaitlist.TryAdd(info.Id, prc))
@@ -1343,7 +1367,7 @@ namespace Taskmaster
 
 					info.Controller.Modify(info);
 
-					if (prc.ForegroundOnly) ForegroundWatch(info);
+					if (prc.Foreground != ForegroundMode.Ignore) ForegroundWatch(info);
 
 					if (info.Controller.Analyze && info.Valid && info.State != ProcessHandlingState.Abandoned)
 						analyzer.Analyze(info);

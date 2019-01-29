@@ -112,8 +112,7 @@ namespace Taskmaster
 		/// <summary>
 		/// Determines if the values are only maintained when the app is in foreground.
 		/// </summary>
-		/// <value><c>true</c> if foreground; otherwise, <c>false</c>.</value>
-		public bool ForegroundOnly { get; private set; } = false;
+		public ForegroundMode Foreground { get; private set; } = ForegroundMode.Ignore;
 
 		/// <summary>
 		/// Target priority class for the process.
@@ -179,15 +178,24 @@ namespace Taskmaster
 
 		const string watchlistfile = "Watchlist.ini";
 
-		public void SetForegroundOnly(bool fgonly)
+		public void SetForegroundMode(ForegroundMode mode)
 		{
-			if (ForegroundOnly && fgonly == false)
-			{
-				PausedIds.Clear();
-				ForegroundWatch.Clear();
-			}
+			Foreground = mode;
 
-			ForegroundOnly = fgonly;
+			switch (mode)
+			{
+				case ForegroundMode.Ignore:
+					PausedIds.Clear();
+					ForegroundWatch.Clear();
+					break;
+				case ForegroundMode.Standard:
+					// TODO: clear power
+					break;
+				case ForegroundMode.Full:
+					break;
+				case ForegroundMode.PowerOnly:
+					break;
+			}
 		}
 
 		void Prepare()
@@ -205,21 +213,27 @@ namespace Taskmaster
 			}
 		}
 
-		public void SanityCheck()
+		public void Repair()
 		{
 			Prepare();
 
-			if (ForegroundOnly)
+			switch (Foreground)
 			{
-				if (BackgroundPowerdown && PowerPlan == PowerInfo.PowerMode.Undefined)
+				case ForegroundMode.Ignore:
+					BackgroundAffinity = -1;
+					BackgroundPriority = null;
 					BackgroundPowerdown = false;
-			}
-			else
-			{
-				// sanity checking
-				BackgroundAffinity = -1;
-				BackgroundPriority = null;
-				BackgroundPowerdown = false;
+					break;
+				case ForegroundMode.Standard:
+					break;
+				case ForegroundMode.Full:
+					if (PowerPlan == PowerInfo.PowerMode.Undefined)
+						Foreground = ForegroundMode.Standard;
+					break;
+				case ForegroundMode.PowerOnly:
+					if (PowerPlan == PowerInfo.PowerMode.Undefined)
+						Foreground = ForegroundMode.Ignore;
+					break;
 			}
 
 			if (AffinityMask >= 0)
@@ -357,30 +371,33 @@ namespace Taskmaster
 			else
 				app.Remove(HumanReadable.Hardware.Power.Mode);
 
-			if (ForegroundOnly)
+			switch (Foreground)
 			{
-				app["Foreground only"].BoolValue = ForegroundOnly;
-
-				if (BackgroundPriority.HasValue)
-					app["Background priority"].IntValue = ProcessHelpers.PriorityToInt(BackgroundPriority.Value);
-				else
-					app.Remove("Background priority");
-
-				if (BackgroundAffinity >= 0)
-					app["Background affinity"].IntValue = BackgroundAffinity;
-				else
-					app.Remove("Background affinity");
-
-				if (BackgroundPowerdown)
-					app["Background powerdown"].BoolValue = BackgroundPowerdown;
-				else
+				case ForegroundMode.Ignore:
 					app.Remove("Background powerdown");
-			}
-			else
-			{
-				app.Remove("Foreground only");
-				app.Remove("Background priority");
-				app.Remove("Background powerdown");
+					clearNonPower:
+					app.Remove("Foreground only");
+					app.Remove("Foreground mode");
+					app.Remove("Background priority");
+					app.Remove("Background affinity");
+					break;
+				case ForegroundMode.Standard:
+					app.Remove("Background powerdown");
+					saveFgMode:
+					app["Foreground mode"].IntValue = (int)Foreground;
+					if (BackgroundPriority.HasValue)
+						app["Background priority"].IntValue = ProcessHelpers.PriorityToInt(BackgroundPriority.Value);
+					else
+						app.Remove("Background priority");
+					if (BackgroundAffinity >= 0)
+						app["Background affinity"].IntValue = BackgroundAffinity;
+					else
+						app.Remove("Background affinity");
+					break;
+				case ForegroundMode.Full:
+					goto saveFgMode;
+				case ForegroundMode.PowerOnly:
+					goto clearNonPower;
 			}
 
 			if (AllowPaging)
@@ -527,7 +544,7 @@ namespace Taskmaster
 		/// </summary>
 		public void Pause(ProcessEx info, bool firsttime = false)
 		{
-			Debug.Assert(ForegroundOnly == true, "Pause called for non-foreground only rule");
+			Debug.Assert(Foreground != ForegroundMode.Ignore, "Pause called for non-foreground only rule");
 			Debug.Assert(info.Controller != null, "No controller attached");
 
 			//Debug.Assert(!PausedIds.ContainsKey(info.Id));
@@ -674,7 +691,7 @@ namespace Taskmaster
 
 		public void Resume(ProcessEx info)
 		{
-			Debug.Assert(ForegroundOnly == true, "Resume called for non-foreground rule");
+			Debug.Assert(Foreground != ForegroundMode.Ignore, "Resume called for non-foreground rule");
 			Debug.Assert(info.Controller != null, "No controller attached");
 
 			bool mAffinity = false, mPriority = false;
@@ -964,7 +981,7 @@ namespace Taskmaster
 		}
 
 		[System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
-		bool InForeground(int pid) => ForegroundOnly ? Taskmaster.activeappmonitor?.Foreground.Equals(pid) ?? true : true;
+		bool InForeground(int pid) => Foreground != ForegroundMode.Ignore ? Taskmaster.activeappmonitor?.Foreground.Equals(pid) ?? true : true;
 
 		// TODO: Simplify this
 		void Touch(ProcessEx info, bool refresh = false)
@@ -976,7 +993,7 @@ namespace Taskmaster
 
 			try
 			{
-				if (ForegroundOnly)
+				if (Foreground != ForegroundMode.Ignore)
 				{
 					if (PausedIds.ContainsKey(info.Id))
 					{
@@ -988,7 +1005,7 @@ namespace Taskmaster
 				}
 
 				info.PowerWait = (PowerPlan != PowerInfo.PowerMode.Undefined);
-				info.ActiveWait = ForegroundOnly;
+				info.ActiveWait = Foreground != ForegroundMode.Ignore;
 
 				bool responding = true;
 				ProcessPriorityClass? oldPriority = null;
@@ -1138,7 +1155,7 @@ namespace Taskmaster
 				bool FirstTimeSeenForForeground = true;
 				if (!isProtectedFile)
 				{
-					if (ForegroundOnly)
+					if (Foreground != ForegroundMode.Ignore)
 					{
 						if (ForegroundWatch.TryAdd(info.Id, 0))
 						{
@@ -1304,8 +1321,8 @@ namespace Taskmaster
 
 				bool logevent = false;
 
-				if (modified) logevent = Taskmaster.ShowProcessAdjusts && !(ForegroundOnly && !Taskmaster.ShowForegroundTransitions);
-				logevent |= (FirstTimeSeenForForeground && ForegroundOnly);
+				if (modified) logevent = Taskmaster.ShowProcessAdjusts && !(Foreground != ForegroundMode.Ignore && !Taskmaster.ShowForegroundTransitions);
+				logevent |= (FirstTimeSeenForForeground && Foreground != ForegroundMode.Ignore);
 				logevent |= (Taskmaster.ShowInaction && Taskmaster.DebugProcesses);
 
 				var ev = new ProcessModificationEventArgs()

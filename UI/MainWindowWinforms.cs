@@ -2452,7 +2452,7 @@ namespace Taskmaster
 			{
 				try
 				{
-					bool fgonly = ea.Info.Controller.ForegroundOnly;
+					bool fgonly = ea.Info.Controller.Foreground != ForegroundMode.Ignore;
 					bool fg = (ea.Info.Id == (activeappmonitor?.Foreground ?? ea.Info.Id));
 
 					if (ExitWaitlistMap.TryGetValue(ea.Info.Id, out ListViewItem li))
@@ -2785,9 +2785,9 @@ namespace Taskmaster
 						sbs.Append("Recheck = ").Append(prc.Recheck).AppendLine();
 					if (prc.AllowPaging)
 						sbs.Append("Allow paging = ").Append(prc.AllowPaging).AppendLine();
-					if (prc.ForegroundOnly)
+					if (prc.Foreground != ForegroundMode.Ignore)
 					{
-						sbs.Append("Foreground only = ").Append(prc.ForegroundOnly).AppendLine();
+						sbs.Append("Foreground mode = ").Append((int)prc.Foreground).AppendLine();
 						if (prc.BackgroundPriority.HasValue)
 							sbs.Append("Background priority = ").Append(prc.BackgroundPriority.Value.ToInt32()).AppendLine();
 						if (prc.BackgroundAffinity >= 0)
