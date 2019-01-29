@@ -718,23 +718,23 @@ namespace Taskmaster
 			}
 
 			// BACKOFF
-			AutoAdjust.Low.Backoff.Level = autopower.GetSetDefault("Low backoff level", 1, out modified).IntValue.Constrain(0, 10);
+			AutoAdjust.Low.Backoff.Level = autopower.GetSetDefault("Low backoff level", AutoAdjust.Low.Backoff.Level, out modified).IntValue.Constrain(0, 10);
 			autopower["Low backoff level"].Comment = "1 to 10. Consequent backoff reactions that is required before it actually triggers.";
 			dirtyconfig |= modified;
-			AutoAdjust.High.Backoff.Level = autopower.GetSetDefault("High backoff level", 3, out modified).IntValue.Constrain(0, 10);
+			AutoAdjust.High.Backoff.Level = autopower.GetSetDefault("High backoff level", AutoAdjust.High.Backoff.Level, out modified).IntValue.Constrain(0, 10);
 			autopower["High backoff level"].Comment = "1 to 10. Consequent backoff reactions that is required before it actually triggers.";
 			dirtyconfig |= modified;
 
 			// COMMIT
-			AutoAdjust.Low.Commit.Level = autopower.GetSetDefault("Low commit level", 7, out modified).IntValue.Constrain(1, 10);
+			AutoAdjust.Low.Commit.Level = autopower.GetSetDefault("Low commit level", AutoAdjust.Low.Commit.Level, out modified).IntValue.Constrain(1, 10);
 			autopower["Low commit level"].Comment = "1 to 10. Consequent commit reactions that is required before it actually triggers.";
 			dirtyconfig |= modified;
-			AutoAdjust.High.Commit.Level = autopower.GetSetDefault("High commit level", 3, out modified).IntValue.Constrain(1, 10);
+			AutoAdjust.High.Commit.Level = autopower.GetSetDefault("High commit level", AutoAdjust.High.Backoff.Level, out modified).IntValue.Constrain(1, 10);
 			autopower["High commit level"].Comment = "1 to 10. Consequent commit reactions that is required before it actually triggers.";
 			dirtyconfig |= modified;
 
 			// THRESHOLDS
-			AutoAdjust.High.Commit.Threshold = autopower.GetSetDefault("High threshold", 70, out modified).FloatValue;
+			AutoAdjust.High.Commit.Threshold = autopower.GetSetDefault("High threshold", AutoAdjust.High.Commit.Threshold, out modified).FloatValue;
 			autopower["High threshold"].Comment = "If low CPU value keeps over this, we swap to high mode.";
 			dirtyconfig |= modified;
 			var hbtt = autopower.GetSetDefault("High backoff thresholds", new float[] { AutoAdjust.High.Backoff.High, AutoAdjust.High.Backoff.Mean, AutoAdjust.High.Backoff.Low }, out modified).FloatValueArray;
@@ -771,9 +771,9 @@ namespace Taskmaster
 			dirtyconfig |= modified;
 
 			// QUEUE BARRIERS
-			AutoAdjust.Queue.High = autopower.GetSetDefault("High queue barrier", 5, out modified).IntValue.Constrain(0, 50);
+			AutoAdjust.Queue.High = autopower.GetSetDefault("High queue barrier", AutoAdjust.Queue.High, out modified).IntValue.Constrain(0, 50);
 			dirtyconfig |= modified;
-			AutoAdjust.Queue.Low = autopower.GetSetDefault("Low queue barrier", 2, out modified).IntValue.Constrain(0, 20);
+			AutoAdjust.Queue.Low = autopower.GetSetDefault("Low queue barrier", AutoAdjust.Queue.Low, out modified).IntValue.Constrain(0, 20);
 			dirtyconfig |= modified;
 			if (AutoAdjust.Queue.Low >= AutoAdjust.Queue.High) AutoAdjust.Queue.Low = Math.Max(0, AutoAdjust.Queue.High - 1);
 
