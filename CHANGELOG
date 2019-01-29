@@ -427,6 +427,7 @@ Comprehensive changes can be found in Git change history:
 	Fixed: Validation does not find executables correctly.
 	Changed: Some behind the scenes things to help catch an elusive problem with per-app power management.
 	Fixed: Resize settings not changed when the rule was edited in UI.
+	Changed: Watchlist validator now warns about core ignore, protected and system32 denial options affecting the rule.
 ### 2018-04-30
 	Changed: Code cleanup.
 ### 2018-04-29
