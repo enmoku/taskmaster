@@ -265,7 +265,7 @@ namespace Taskmaster
 			layout.Controls.Add(highbackofflevel);
 
 			layout.Controls.Add(new Label() { Text = "Queue barrier", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Fill });
-			hiQueue = new NumericUpDown() { Maximum = 50, Minimum = 0, Value = 12 };
+			hiQueue = new NumericUpDown() { Maximum = 100, Minimum = 0, Value = 12 };
 			layout.Controls.Add(hiQueue);
 			tooltip.SetToolTip(hiQueue, "If there are at least this many queued threads, lower power modes are disallowed.");
 
@@ -303,7 +303,7 @@ namespace Taskmaster
 			layout.Controls.Add(lowbackofflevel);
 
 			layout.Controls.Add(new Label() { Text = "Queue barrier", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Fill });
-			loQueue = new NumericUpDown() { Maximum = 20, Minimum = 0, Value = 5 };
+			loQueue = new NumericUpDown() { Maximum = 100, Minimum = 0, Value = 5 };
 			layout.Controls.Add(loQueue);
 			tooltip.SetToolTip(loQueue, "If there are at least this many queued threads, low mode is disallowed.");
 
@@ -515,8 +515,8 @@ namespace Taskmaster
 			highbackoffhigh.Value = Convert.ToDecimal(AutoAdjust.High.Backoff.High).Constrain(5, 95);
 			highbackoffmean.Value = Convert.ToDecimal(AutoAdjust.High.Backoff.Mean).Constrain(5, 95);
 			highbackofflow.Value = Convert.ToDecimal(AutoAdjust.High.Backoff.Low).Constrain(5, 95);
-			highbackofflevel.Value = Convert.ToDecimal(AutoAdjust.High.Backoff.Level);
-			hiQueue.Value = Convert.ToDecimal(AutoAdjust.Queue.High);
+			highbackofflevel.Value = Convert.ToDecimal(AutoAdjust.High.Backoff.Level).Constrain(1, 100);
+			hiQueue.Value = Convert.ToDecimal(AutoAdjust.Queue.High).Constrain(0, 100);
 
 			lowmode.SelectedIndex = AutoAdjust.Low.Mode == PowerMode.Balanced ? 1 : AutoAdjust.Low.Mode == PowerMode.PowerSaver ? 2 : 0;
 			lowcommitthreshold.Value = Convert.ToDecimal(AutoAdjust.Low.Commit.Threshold).Constrain(5, 95);
@@ -524,8 +524,8 @@ namespace Taskmaster
 			lowbackoffhigh.Value = Convert.ToDecimal(AutoAdjust.Low.Backoff.High).Constrain(5, 95);
 			lowbackoffmean.Value = Convert.ToDecimal(AutoAdjust.Low.Backoff.Mean).Constrain(5, 95);
 			lowbackofflow.Value = Convert.ToDecimal(AutoAdjust.Low.Backoff.Low).Constrain(5, 95);
-			lowbackofflevel.Value = Convert.ToDecimal(AutoAdjust.Low.Backoff.Level);
-			loQueue.Value = Convert.ToDecimal(AutoAdjust.Queue.Low);
+			lowbackofflevel.Value = Convert.ToDecimal(AutoAdjust.Low.Backoff.Level).Constrain(1, 100);
+			loQueue.Value = Convert.ToDecimal(AutoAdjust.Queue.Low).Constrain(0, 100);
 		}
 
 		static PowerConfigWindow pcw = null;
