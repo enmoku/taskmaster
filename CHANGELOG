@@ -7,6 +7,8 @@ Comprehensive changes can be found in Git change history:
 	Changed: Foreground only and background powerdown are now the same combobox in the rule editor.
 	Internal: Foreground only and background powerdown are now single Foreground mode setting, reflected in the Watchlist.ini as integer with values from -1 to 2.
 		-1 = Ignore [Default], 0 = Standard, 1 = Full, 2 = Power only
+	Changed: Watchlist validator now warns about core ignore, protected and system32 denial options affecting the rule.
+	Fixed: The logs claimed failures on some modifications that were never even tried.
 ### 2018-01-28
 	Fixed: Background mode was not applying even foreground affinity if no background affinity was defined.
 	Added: Network input, output, and queue to the UI. Not terribly useful, but it's there.
@@ -427,7 +429,6 @@ Comprehensive changes can be found in Git change history:
 	Fixed: Validation does not find executables correctly.
 	Changed: Some behind the scenes things to help catch an elusive problem with per-app power management.
 	Fixed: Resize settings not changed when the rule was edited in UI.
-	Changed: Watchlist validator now warns about core ignore, protected and system32 denial options affecting the rule.
 ### 2018-04-30
 	Changed: Code cleanup.
 ### 2018-04-29
