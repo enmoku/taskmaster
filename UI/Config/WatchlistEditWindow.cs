@@ -921,9 +921,21 @@ namespace Taskmaster
 			}
 
 			if (execName.Text.Length > 0)
+			{
 				sbs.Append(HumanReadable.System.Process.Executable).Append(": ").Append(exnam ? "OK" : "Fail").Append(" – Found: ").Append(exfound).AppendLine();
+				string lowname = System.IO.Path.GetFileNameWithoutExtension(execName.Text);
+				if (ProcessManager.ProtectedProcessName(lowname.ToLowerInvariant()))
+					sbs.Append("Defined executable is in core protected executables list. Priority adjustment denied.").AppendLine();
+
+				if (ProcessManager.IgnoreProcessName(lowname))
+					sbs.Append("Defined executable is in core ignore list. All changes denied.").AppendLine();
+			}
 			if (pathName.Text.Length > 0)
+			{
 				sbs.Append("Path: ").Append(path ? "OK" : "Fail").Append(" - Found: ").Append(pfound).AppendLine();
+				if (Taskmaster.processmanager.IgnoreSystem32Path && pathName.Text.StartsWith(Environment.GetFolderPath(Environment.SpecialFolder.System), StringComparison.InvariantCultureIgnoreCase))
+					sbs.Append("Path points to System32 even though core config denies it.").AppendLine();
+			}
 
 			if (!exnam && !path)
 				sbs.Append("Both path and executable are missing!").AppendLine();

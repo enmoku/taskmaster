@@ -1199,7 +1199,7 @@ namespace Taskmaster
 		};
 
 		// %SYSTEMROOT%\System32 (Environment.SpecialFolder.System)
-		bool IgnoreSystem32Path { get; set; } = true;
+		public bool IgnoreSystem32Path { get; private set; } = true;
 
 		/// <summary>
 		/// Tests if the process ID is core system process (0[idle] or 4[system]) that can never be valid program.
@@ -1209,10 +1209,10 @@ namespace Taskmaster
 		public static bool SystemProcessId(int pid) => pid <= 4;
 
 		[System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
-		bool IgnoreProcessID(int pid) => SystemProcessId(pid) || ignorePids.Contains(pid);
+		public bool IgnoreProcessID(int pid) => SystemProcessId(pid) || ignorePids.Contains(pid);
 
 		[System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
-		static bool IgnoreProcessName(string name) => IgnoreList.Any(item => item.Equals(name, StringComparison.InvariantCultureIgnoreCase));
+		public static bool IgnoreProcessName(string name) => IgnoreList.Any(item => item.Equals(name, StringComparison.InvariantCultureIgnoreCase));
 
 		[System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
 		public static bool ProtectedProcessName(string name) => ProtectList.Any(item => item.Equals(name, StringComparison.InvariantCultureIgnoreCase));
