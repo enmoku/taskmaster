@@ -364,7 +364,9 @@ namespace Taskmaster
 		int scan_lock = 0;
 		async Task Scan(int ignorePid = -1)
 		{
-			await CleanWaitForExitList(); // HACK
+			if (DisposedOrDisposing) return;
+
+			await CleanWaitForExitList().ConfigureAwait(true); // HACK
 
 			if (!Atomic.Lock(ref scan_lock)) return;
 
@@ -840,6 +842,8 @@ namespace Taskmaster
 
 		public void AddController(ProcessController prc)
 		{
+			if (DisposedOrDisposing) return;
+
 			if (ValidateController(prc))
 			{
 				if (Taskmaster.PersistentWatchlistStats) prc.LoadStats();
@@ -913,7 +917,7 @@ namespace Taskmaster
 
 				ProcessStateChange?.Invoke(this, new ProcessModificationEventArgs() { Info = info, State = state });
 
-				CleanWaitForExitList(); // HACK
+				CleanWaitForExitList().ConfigureAwait(true); // HACK
 			}
 			catch (Exception ex)
 			{
@@ -942,6 +946,19 @@ namespace Taskmaster
 					Log.Warning($"[{info.Controller.FriendlyName}] {info.Name} (#{info.Id.ToString()}) exited without notice; Cleaning.");
 					WaitForExitTriggered(info);
 				}
+
+				lock (Exclusive_lock)
+				{
+					foreach (var info in ExclusiveList.Values)
+					{
+						try
+						{
+							info.Process.Refresh();
+							if (info.Process.HasExited) EndExclusiveMode(info.Process, null);
+						}
+						catch { }
+					}
+				}
 			}
 			finally
 			{
@@ -951,6 +968,8 @@ namespace Taskmaster
 
 		void PowerBehaviourEvent(object _, PowerManager.PowerBehaviourEventArgs ea)
 		{
+			if (DisposedOrDisposing) return;
+
 			try
 			{
 				if (ea.Behaviour == PowerManager.PowerBehaviour.Manual)
@@ -1003,6 +1022,8 @@ namespace Taskmaster
 		{
 			Debug.Assert(info.Controller != null, "No controller attached");
 
+			if (DisposedOrDisposing) return;
+
 			if (WaitForExitList.TryAdd(info.Id, info))
 			{
 				bool exithooked = false;
@@ -1042,6 +1063,8 @@ namespace Taskmaster
 
 		void ForegroundAppChangedEvent(object _, WindowChangedArgs ev)
 		{
+			if (DisposedOrDisposing) return;
+
 			try
 			{
 				if (Taskmaster.DebugForeground)
@@ -1309,6 +1332,8 @@ namespace Taskmaster
 		/// </summary>
 		void ForegroundWatch(ProcessEx info)
 		{
+			if (DisposedOrDisposing) return;
+
 			var prc = info.Controller;
 
 			Debug.Assert(prc.Foreground != ForegroundMode.Ignore);
@@ -1332,7 +1357,7 @@ namespace Taskmaster
 		// TODO: This should probably be pushed into ProcessController somehow.
 		async void ProcessTriage(object _, HandlingStateChangeEventArgs ev)
 		{
-			if (disposed) return;
+			if (DisposedOrDisposing) return;
 
 			ProcessEx info = ev.Info;
 
@@ -1400,10 +1425,14 @@ namespace Taskmaster
 
 		void ExclusiveMode(ProcessEx info)
 		{
+			if (DisposedOrDisposing) return;
 			if (!Taskmaster.IsAdministrator()) return; // sadly stopping services requires admin rights
+
+			if (Taskmaster.DebugProcesses) Log.Debug($"[{info.Controller.FriendlyName}] {info.Name} (#{info.Id}) Exclusive mode initiating.");
 
 			try
 			{
+				bool ensureExit = false;
 				lock (Exclusive_lock)
 				{
 					if (ExclusiveList.TryAdd(info.Id, info))
@@ -1412,11 +1441,16 @@ namespace Taskmaster
 						info.Process.EnableRaisingEvents = true;
 						info.Process.Exited += EndExclusiveMode;
 						ExclusiveStart();
+
+						ensureExit = true;
 					}
 				}
 
-				info.Process.Refresh();
-				if (info.Process.HasExited) EndExclusiveMode(info.Process, null);
+				if (ensureExit)
+				{
+					info.Process.Refresh();
+					if (info.Process.HasExited) EndExclusiveMode(info.Process, null);
+				}
 			}
 			catch (OutOfMemoryException) { throw; }
 			catch (Exception ex)
@@ -1427,6 +1461,8 @@ namespace Taskmaster
 
 		void EndExclusiveMode(object sender, EventArgs ea)
 		{
+			if (DisposedOrDisposing) return;
+
 			try
 			{
 				lock (Exclusive_lock)
@@ -1466,6 +1502,8 @@ namespace Taskmaster
 		bool WUAWasRunning = false;
 		void ExclusiveStart()
 		{
+			if (DisposedOrDisposing) return;
+
 			lock (Exclusive_lock)
 			{
 				try
@@ -1506,10 +1544,13 @@ namespace Taskmaster
 
 				try
 				{
-					if (windowsupdate.Value.CanPauseAndContinue)
-						windowsupdate.Value.Continue();
-					else
-						windowsupdate.Value.Start();
+					if (!WUARunning)
+					{
+						if (windowsupdate.Value.CanPauseAndContinue)
+							windowsupdate.Value.Continue();
+						else
+							windowsupdate.Value.Start();
+					}
 				}
 				catch (OutOfMemoryException) { throw; }
 				catch (Exception ex)
@@ -1903,8 +1944,10 @@ namespace Taskmaster
 			Dispose(true);
 		}
 
+		bool DisposedOrDisposing = false;
 		void Dispose(bool disposing)
 		{
+			DisposedOrDisposing = true;
 			if (disposed) return;
 
 			if (disposing)
@@ -1921,6 +1964,10 @@ namespace Taskmaster
 
 				CancelPowerWait();
 				WaitForExitList.Clear();
+
+				windowsupdate.Value.Dispose();
+				ExclusiveList?.Clear();
+				ExclusiveEnd();
 
 				if (powermanager != null)
 				{
