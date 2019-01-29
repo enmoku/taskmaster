@@ -1680,7 +1680,7 @@ namespace Taskmaster
 			catch (Exception ex)
 			{
 				Logging.Stacktrace(ex);
-				throw new InitFailure("<<WMI>> Event watcher initialization failure");
+				throw new InitFailure("<<WMI>> Event watcher initialization failure", ex);
 			}
 		}
 
