@@ -90,10 +90,13 @@ namespace Taskmaster
 	{
 		static void AppendStacktace(Exception ex, ref StringBuilder output)
 		{
+			output.AppendLine()
+				.Append("Exception:    ").Append(ex.GetType().Name).AppendLine()
+				.Append("Message:      ").Append(ex.Message).AppendLine().AppendLine();
+
 			var projectdir = Properties.Resources.ProjectDirectory.Trim();
 			var trace = ex.StackTrace.Replace(projectdir, HumanReadable.Generic.Ellipsis + System.IO.Path.DirectorySeparatorChar);
-			output.AppendLine()
-				.Append("----- Stacktrace -----").AppendLine()
+			output.Append("----- Stacktrace -----").AppendLine()
 				.Append(trace).AppendLine();
 		}
 
@@ -119,15 +122,15 @@ namespace Taskmaster
 					var sbs = new StringBuilder();
 					sbs.Append("Datetime:     ").Append(now.ToLongDateString()).Append(" ").Append(now.ToLongTimeString()).AppendLine()
 						.AppendLine()
-						.Append("Command line: ").Append(Environment.CommandLine).AppendLine()
-						.AppendLine()
-						.Append("Exception:    ").Append(ex.GetType().Name).AppendLine()
-						.Append("Message:      ").Append(ex.Message).AppendLine();
+						.Append("Command line: ").Append(Environment.CommandLine).AppendLine();
 
 					AppendStacktace(ex, ref sbs);
 
 					if (ex.InnerException != null)
+					{
+						sbs.AppendLine().Append("--- Inner Exception ---").AppendLine();
 						AppendStacktace(ex.InnerException, ref sbs);
+					}
 
 					System.IO.File.WriteAllText(logfile, sbs.ToString(), Encoding.Unicode);
 					Debug.WriteLine("Crash log written to " + logfile);
