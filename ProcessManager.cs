@@ -1460,21 +1460,27 @@ namespace Taskmaster
 				return new System.ServiceProcess.ServiceController("wuauserv");
 			});
 
+		bool WUARunning => windowsupdate.Value.Status == System.ServiceProcess.ServiceControllerStatus.Running;
+
 		bool ExclusiveEnabled = false;
 		bool WUAWasRunning = false;
 		void ExclusiveStart()
 		{
 			lock (Exclusive_lock)
 			{
-				if (ExclusiveEnabled) return;
-
 				try
 				{
-					WUAWasRunning = windowsupdate.Value.Status == System.ServiceProcess.ServiceControllerStatus.Running;
-					if (windowsupdate.Value.CanPauseAndContinue)
-						windowsupdate.Value.Pause();
-					else
-						windowsupdate.Value.Stop();
+					bool cWUARunning = WUARunning;
+					if (ExclusiveEnabled && !cWUARunning) return;
+
+					if (cWUARunning)
+					{
+						if (windowsupdate.Value.CanPauseAndContinue)
+							windowsupdate.Value.Pause();
+						else
+							windowsupdate.Value.Stop();
+					}
+					WUAWasRunning = cWUARunning;
 				}
 				catch (OutOfMemoryException) { throw; }
 				catch (Exception ex)
@@ -1500,7 +1506,6 @@ namespace Taskmaster
 
 				try
 				{
-					WUAWasRunning = windowsupdate.Value.Status == System.ServiceProcess.ServiceControllerStatus.Running;
 					if (windowsupdate.Value.CanPauseAndContinue)
 						windowsupdate.Value.Continue();
 					else
