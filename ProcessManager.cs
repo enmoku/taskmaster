@@ -1508,6 +1508,7 @@ namespace Taskmaster
 			{
 				try
 				{
+					windowsupdate.Value.Refresh();
 					bool cWUARunning = WUARunning;
 					if (ExclusiveEnabled && !cWUARunning) return;
 
@@ -1519,6 +1520,10 @@ namespace Taskmaster
 							windowsupdate.Value.Stop();
 					}
 					WUAWasRunning = cWUARunning;
+				}
+				catch (InvalidOperationException) // not running
+				{
+					WUAWasRunning = false;
 				}
 				catch (OutOfMemoryException) { throw; }
 				catch (Exception ex)
@@ -1544,6 +1549,8 @@ namespace Taskmaster
 
 				try
 				{
+					windowsupdate.Value.Refresh();
+
 					if (!WUARunning)
 					{
 						if (windowsupdate.Value.CanPauseAndContinue)
@@ -1551,6 +1558,10 @@ namespace Taskmaster
 						else
 							windowsupdate.Value.Start();
 					}
+				}
+				catch (InvalidOperationException)
+				{
+					if (!WUARunning) Log.Error("<Exclusive> Failure to restart WUA");
 				}
 				catch (OutOfMemoryException) { throw; }
 				catch (Exception ex)
