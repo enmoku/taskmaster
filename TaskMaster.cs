@@ -811,7 +811,7 @@ namespace Taskmaster
 			if (!TempRunningDir.Exists)
 			{
 				TempRunningDir.Create();
-				TempRunningDir.Attributes |= FileAttributes.Hidden | FileAttributes.Temporary; // this doesn't appear to work
+				TempRunningDir.Attributes = FileAttributes.Directory | FileAttributes.Hidden; // this doesn't appear to work
 			}
 			else
 				Log.Warning("Unclean shutdown.");
