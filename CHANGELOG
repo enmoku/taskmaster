@@ -9,6 +9,7 @@ Comprehensive changes can be found in Git change history:
 		The previous setting was fine, but can result in TM appear to be functioning poorly.
 	Changed: Persistent watchlist, microphone and WMI stats removed.
 		Watchlist.Statistics.ini, Microphone.Statistics.ini, nor Core.Statistics.ini are automatically removed.
+	Changed: Detecting unclean shutdown now relies on temporary hidden folder that is created and deleted instead of Core.Statistics.ini.
 ### 2018-01-30
 	Fixed: Exclusive mode is being weird.
 ### 2018-01-29
