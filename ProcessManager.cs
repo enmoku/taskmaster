@@ -1733,9 +1733,8 @@ namespace Taskmaster
 					Statistics.WMIPolling += 1;
 				}
 
-
                 wmidelay = new DateTimeOffset(creation.ToUniversalTime()).TimeTo(now);
-                Debug.WriteLine($"WMI delay (#{pid}): {wmidelay.TotalMilliseconds:N0} ms");
+                if (Taskmaster.Trace) Debug.WriteLine($"WMI delay (#{pid}): {wmidelay.TotalMilliseconds:N0} ms");
 
 				if (IgnoreProcessID(pid)) return; // We just don't care
 
