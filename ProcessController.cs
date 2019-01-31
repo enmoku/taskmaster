@@ -74,15 +74,21 @@ namespace Taskmaster
 		/// </summary>
 		public string FriendlyName { get; set; } = null;
 
-		string p_Executable = null;
+		internal string p_Executable = null;
 		/// <summary>
-		/// Executable filename related to this.
+		/// Executable filename related to this, with extension.
 		/// </summary>
 		public string Executable
 		{
 			get => p_Executable;
 			set => ExecutableFriendlyName = System.IO.Path.GetFileNameWithoutExtension(p_Executable = value);
 		}
+
+		/// <summary>
+		/// Frienly executable name as required by various System.Process functions.
+		/// Same as <see cref="T:Taskmaster.ProcessControl.Executable"/> but with the extension missing.
+		/// </summary>
+		public string ExecutableFriendlyName { get; internal set; } = null;
 
 		public bool ExclusiveMode { get; set; } = false;
 
@@ -92,7 +98,7 @@ namespace Taskmaster
 		/// <summary>
 		/// User description for the rule.
 		/// </summary>
-		public string Description { get; set; } = string.Empty;
+		public string Description { get; set; } = string.Empty; // TODO: somehow unload this from memory
 
 		public float Volume { get; set; } = 0.5f;
 		public AudioVolumeStrategy VolumeStrategy { get; set; } = AudioVolumeStrategy.Ignore;
@@ -159,12 +165,6 @@ namespace Taskmaster
 		/// the process sets for itself.
 		/// </summary>
 		public int ModifyDelay { get; set; } = 0;
-
-		/// <summary>
-		/// Frienly executable name as required by various System.Process functions.
-		/// Same as <see cref="T:Taskmaster.ProcessControl.Executable"/> but with the extension missing.
-		/// </summary>
-		public string ExecutableFriendlyName { get; set; } = null;
 
 		public ProcessController(string name, ProcessPriorityClass? priority = null, int affinity = -1)
 		{
