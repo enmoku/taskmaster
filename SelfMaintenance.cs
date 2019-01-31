@@ -85,10 +85,7 @@ namespace Taskmaster
 				// TODO: This starts getting weird if cleanup interval is smaller than total delay of testing all items.
 				// (15*60) / 2 = item limit, and -1 or -2 for safety margin. Unlikely, but should probably be covered anyway.
 
-				if (Taskmaster.processmanager != null)
-				{
-					Taskmaster.processmanager.Cleanup();
-				}
+				Taskmaster.processmanager?.Cleanup();
 
 				Taskmaster.Config.Flush();
 			}

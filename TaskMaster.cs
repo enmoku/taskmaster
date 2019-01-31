@@ -518,8 +518,6 @@ namespace Taskmaster
 		public static int PathCacheLimit { get; set; } = 200;
 		public static TimeSpan PathCacheMaxAge { get; set; } = new TimeSpan(30, 0, 0);
 
-		public static int CleanupInterval { get; set; } = 15;
-
 		/// <summary>
 		/// Whether to use WMI queries for investigating failed path checks to determine if an application was launched in watched path.
 		/// </summary>
@@ -703,9 +701,7 @@ namespace Taskmaster
 
 			// 
 			var maintsec = cfg["Maintenance"];
-			CleanupInterval = maintsec.GetSetDefault("Cleanup interval", 15, out modified).IntValue.Constrain(1, 1440);
-			maintsec["Cleanup interval"].Comment = "In minutes, 1 to 1440. How frequently to perform general sanitation of TM itself.";
-			dirtyconfig |= modified;
+			maintsec.Remove("Cleanup interval"); // DEPRECATRED
 
 			var newsettings = optsec?.SettingCount ?? 0 + compsec?.SettingCount ?? 0 + perfsec?.SettingCount ?? 0;
 

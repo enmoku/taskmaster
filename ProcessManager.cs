@@ -110,25 +110,14 @@ namespace Taskmaster
 			{
 				ScanTimer = new System.Timers.Timer(ScanFrequency.Value.TotalMilliseconds);
 				ScanTimer.Elapsed += TimedScan;
-				StartScanTimer();
-                if (ScanFrequency.Value.TotalSeconds > 15)
-                {
-                    Task.Run(async () =>
-                    {
-                        try
-                        {
-                            await Scan().ConfigureAwait(false);
-                        }
-                        catch (OutOfMemoryException) { throw; }
-                        catch (Exception ex)
-                        {
-                            Logging.Stacktrace(ex);
-                        }
-                    }).ConfigureAwait(false);
-                }
+				Task.Run(() => Scan()).ContinueWith((_) => StartScanTimer()).ConfigureAwait(false);
 			}
 
 			ProcessDetectedEvent += ProcessTriage;
+
+			MaintenanceTimer = new System.Timers.Timer(1_000 * 60 * 60 * 3); // every 3 hours
+			MaintenanceTimer.Elapsed += CleanupTick;
+			MaintenanceTimer.Start();
 
 			if (Taskmaster.DebugProcesses) Log.Information("<Process> Component Loaded.");
 
@@ -263,18 +252,6 @@ namespace Taskmaster
 			freememoryignore = string.Empty;
 		}
 
-		public async Task FreeMemory(int ignorePid = -1)
-		{
-			try
-			{
-				await FreeMemoryInternal(ignorePid).ConfigureAwait(false);
-			}
-			catch (Exception ex)
-			{
-				Logging.Stacktrace(ex);
-			}
-		}
-
 		async Task FreeMemoryInternal(int ignorePid = -1)
 		{
 			MemoryManager.Update();
@@ -359,7 +336,7 @@ namespace Taskmaster
 			{
 				NextScan = DateTimeOffset.UtcNow;
 				ScanTimer?.Stop();
-				Task.Run(() => Scan()).ContinueWith((_) => StartScanTimer()).ConfigureAwait(false);
+				await Task.Run(() => Scan()).ContinueWith((_) => StartScanTimer()).ConfigureAwait(false);
 			}
 		}
 
@@ -380,8 +357,6 @@ namespace Taskmaster
 
             try
             {
-                await CleanWaitForExitList().ConfigureAwait(true); // HACK
-
                 var now = DateTimeOffset.UtcNow;
                 LastScan = now;
                 NextScan = now.Add(ScanFrequency.Value);
@@ -460,6 +435,7 @@ namespace Taskmaster
 		// static bool ControlChildren = false; // = false;
 
 		readonly System.Timers.Timer ScanTimer = null;
+		readonly System.Timers.Timer MaintenanceTimer = null;
 
 		// move all this to prc.Validate() or prc.SanityCheck();
 		bool ValidateController(ProcessController prc)
@@ -937,53 +913,10 @@ namespace Taskmaster
 				info.Controller?.End(info.Process, null);
 
 				ProcessStateChange?.Invoke(this, new ProcessModificationEventArgs() { Info = info, State = state });
-
-				CleanWaitForExitList().ConfigureAwait(true); // HACK
 			}
 			catch (Exception ex)
 			{
 				Logging.Stacktrace(ex);
-			}
-		}
-
-		int CleanWaitForExitList_lock = 0;
-		async Task CleanWaitForExitList()
-		{
-			if (!Atomic.Lock(ref CleanWaitForExitList_lock)) return;
-
-			await Task.Delay(TimeSpan.FromSeconds(15)).ConfigureAwait(false);
-
-			try
-			{
-				foreach (var info in WaitForExitList.Values)
-				{
-					try
-					{
-						info.Process.Refresh();
-						if (!info.Process.HasExited) continue; // only reason we keep this
-					}
-					catch { }
-
-					Log.Warning($"[{info.Controller.FriendlyName}] {info.Name} (#{info.Id.ToString()}) exited without notice; Cleaning.");
-					WaitForExitTriggered(info);
-				}
-
-				lock (Exclusive_lock)
-				{
-					foreach (var info in ExclusiveList.Values)
-					{
-						try
-						{
-							info.Process.Refresh();
-							if (info.Process.HasExited) EndExclusiveMode(info.Process, null);
-						}
-						catch { }
-					}
-				}
-			}
-			finally
-			{
-				Atomic.Unlock(ref CleanWaitForExitList_lock);
 			}
 		}
 
@@ -1930,6 +1863,13 @@ namespace Taskmaster
 
 		const string watchfile = "Watchlist.ini";
 
+		async void CleanupTick(object _, EventArgs _ea)
+		{
+			if (DisposedOrDisposing) return;
+
+			Cleanup();
+		}
+
 		int cleanup_lock = 0;
 		/// <summary>
 		/// Cleanup.
@@ -1937,8 +1877,10 @@ namespace Taskmaster
 		/// <remarks>
 		/// Locks: waitforexit_lock
 		/// </remarks>
-		public void Cleanup()
+		public async void Cleanup()
 		{
+			if (DisposedOrDisposing) return;
+
 			if (!Atomic.Lock(ref cleanup_lock)) return; // cleanup already in progress
 
 			if (Taskmaster.DebugPower || Taskmaster.DebugProcesses)
@@ -1960,7 +1902,7 @@ namespace Taskmaster
 					catch { } // ignore
 				}
 
-				System.Threading.Thread.Sleep(1000); // Meh
+				await Task.Delay(1_000).ConfigureAwait(false);
 
 				triggerList = new Stack<ProcessEx>();
 				foreach (var info in items)
@@ -1990,6 +1932,19 @@ namespace Taskmaster
 				{
 					foreach (var prc in Watchlist.Keys)
 						prc.Refresh();
+				}
+
+				lock (Exclusive_lock)
+				{
+					foreach (var info in ExclusiveList.Values)
+					{
+						try
+						{
+							info.Process.Refresh();
+							if (info.Process.HasExited) EndExclusiveMode(info.Process, null);
+						}
+						catch { }
+					}
 				}
 			}
 			catch (Exception ex)
@@ -2052,6 +2007,7 @@ namespace Taskmaster
 					}
 
 					ScanTimer?.Dispose();
+					MaintenanceTimer?.Dispose();
 					BatchProcessingTimer?.Dispose();
 				}
 				catch (Exception ex)
