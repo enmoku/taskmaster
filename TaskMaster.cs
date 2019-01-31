@@ -710,7 +710,7 @@ namespace Taskmaster
 			if (dirtyconfig || (oldsettings != newsettings)) // really unreliable, but meh
 				corecfg.MarkDirty();
 
-			monitorCleanShutdown();
+			MonitorCleanShutdown();
 
 			Log.Information("<Core> Verbosity: "+ MemoryLog.MemorySink.LevelSwitch.MinimumLevel.ToString());
 			Log.Information("<Core> Self-optimize: "+ (SelfOptimize ? HumanReadable.Generic.Enabled : HumanReadable.Generic.Disabled));
@@ -802,23 +802,36 @@ namespace Taskmaster
 			return rv;
 		}
 
-		const string corestatfile = "Core.Statistics.ini";
-		static void monitorCleanShutdown()
+		static DirectoryInfo TempRunningDir = null;
+
+		static void MonitorCleanShutdown()
 		{
-			var corestats = Config.Load(corestatfile);
+			var runningpath = System.IO.Path.Combine(datapath, ".running-TM0");
 
-			var running = corestats.Config.TryGet("Core")?.TryGet("Running")?.BoolValue ?? false;
-			if (running) Log.Warning("Unclean shutdown.");
+			TempRunningDir = new System.IO.DirectoryInfo(runningpath);
 
-			corestats.Config["Core"]["Running"].BoolValue = true;
-			corestats.Save(force:true);
+			if (!TempRunningDir.Exists)
+			{
+				TempRunningDir.Attributes = FileAttributes.Directory | FileAttributes.Hidden | FileAttributes.Temporary | FileAttributes.NotContentIndexed;
+				TempRunningDir.Create();
+			}
+			else
+				Log.Warning("Unclean shutdown.");
+		}
+
+		static readonly Finalizer finalizer = new Finalizer();
+		sealed class Finalizer
+		{
+			~Finalizer()
+			{
+				// Debug.WriteLine("Core static finalization");
+			}
 		}
 
 		static void CleanShutdown()
 		{
-			var corestats = Config.Load(corestatfile);
-			corestats.Config["Core"]["Running"].BoolValue = false;
-			corestats.Save(force:true);
+			TempRunningDir?.Delete();
+			TempRunningDir = null;
 		}
 
 		/// <summary>
