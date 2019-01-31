@@ -1415,11 +1415,6 @@ namespace Taskmaster
 				.Append(Statistics.PathNotFound).Append(" not found");
 			Log.Information(sbs.ToString());
 			Log.Information($"<Stat> Processes modified: {Statistics.TouchCount.ToString()}; Ignored for remodification: {Statistics.TouchIgnore.ToString()}");
-			sbs.Clear();
-			sbs.Append("<Stat> Process modify time range: ")
-				.Append((Statistics.TouchTimeShortest == ulong.MaxValue ? "?" : Statistics.TouchTimeShortest.ToString()))
-				.Append(" – ").Append(Statistics.TouchTimeLongest == ulong.MinValue ? "?" : Statistics.TouchTimeLongest.ToString()).Append(" milliseconds");
-			Log.Information(sbs.ToString());
 		}
 
 		static void Restart()
