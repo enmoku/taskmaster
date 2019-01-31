@@ -3,6 +3,10 @@ Comprehensive changes can be found in Git change history:
 	https://github.com/mkahvi/taskmaster/commits/master
 
 ## [0.12...]
+### 2018-01-31
+	Internal: Changes and added Adjust Delay debug option in Core.ini.
+### 2018-01-30
+	Fixed: Exclusive mode is being weird.
 ### 2018-01-29
 	Changed: Foreground only and background powerdown are now the same combobox in the rule editor.
 	Internal: Foreground only and background powerdown are now single Foreground mode setting, reflected in the Watchlist.ini as integer with values from -1 to 2.
