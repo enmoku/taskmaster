@@ -506,7 +506,7 @@ namespace Taskmaster
 		public static bool SelfOptimize { get; private set; } = true;
 		public static ProcessPriorityClass SelfPriority { get; private set; } = ProcessPriorityClass.BelowNormal;
 		public static bool SelfOptimizeBGIO { get; private set; } = false;
-		public static int SelfAffinity { get; private set; } = -1;
+		public static int SelfAffinity { get; private set; } = 0;
 
 		public static bool PersistentWatchlistStats { get; private set; }  = false;
 
@@ -665,10 +665,10 @@ namespace Taskmaster
 			SelfPriority = ProcessHelpers.IntToPriority(perfsec.GetSetDefault("Self-priority", 1, out modified).IntValue.Constrain(0, 2));
 			perfsec["Self-priority"].Comment = "Process priority to set for TM itself. Restricted to 0 (Low) to 2 (Normal).";
 			dirtyconfig |= modified;
-			SelfAffinity = perfsec.GetSetDefault("Self-affinity", -1, out modified).IntValue;
+			SelfAffinity = perfsec.GetSetDefault("Self-affinity", 0, out modified).IntValue;
 			perfsec["Self-affinity"].Comment = "Core mask as integer. 0 is for default OS control. -1 is for last core. Limiting to single core recommended.";
 			dirtyconfig |= modified;
-			if (SelfAffinity > Convert.ToInt32(Math.Pow(2, Environment.ProcessorCount) - 1 + double.Epsilon)) SelfAffinity = -1;
+			if (SelfAffinity > Convert.ToInt32(Math.Pow(2, Environment.ProcessorCount) - 1 + double.Epsilon)) SelfAffinity = 0;
 
 			PersistentWatchlistStats = perfsec.GetSetDefault("Persistent watchlist statistics", true, out modified).BoolValue;
 			dirtyconfig |= modified;
