@@ -297,8 +297,9 @@ namespace Taskmaster
 			finally
 			{
 				ProcessDetectedEvent -= FreeMemoryTick;
-				ScanTimer?.Start();
 			}
+
+			StartScanTimer();
 		}
 
 		/// <summary>
