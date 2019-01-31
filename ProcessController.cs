@@ -30,6 +30,7 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Linq;
+using System.Text;
 using System.Threading.Tasks;
 using MKAh;
 using Serilog;
@@ -1461,23 +1462,29 @@ namespace Taskmaster
 			}
 		}
 
-		NativeMethods.RECT rect = new NativeMethods.RECT();
-
-		void TryResize(ProcessEx info)
+		async void TryResize(ProcessEx info)
 		{
 			Debug.Assert(Resize.HasValue, "Trying to resize when resize is not defined");
 
-            try
-            {
-                if (Taskmaster.DebugResize) Log.Debug($"<Resize> Attempting on {info.Name} (#{info.Id.ToString()})");
+			await Task.Delay(0).ConfigureAwait(false); // asyncify
 
-				if (ResizeWaitList.ContainsKey(info.Id)) return;
+			bool gotCurrentSize = false, sizeChanging = false;
+
+			try
+			{
+				if (ResizeWaitList.ContainsKey(info.Id))
+				{
+					if (Taskmaster.DebugResize) Log.Debug($"<Resize> Already monitoring {info.Name} (#{info.Id.ToString()})");
+					return;
+				}
+
+				if (Taskmaster.DebugResize) Log.Debug($"<Resize> Attempting on {info.Name} (#{info.Id.ToString()})");
+
+				NativeMethods.RECT rect = new NativeMethods.RECT();
 
 				IntPtr hwnd = info.Process.MainWindowHandle;
-				if (!NativeMethods.GetWindowRect(hwnd, ref rect))
-				{
-					if (Taskmaster.DebugResize) Log.Debug($"<Resize> Failed to retrieve current size of {info.Name} (#{info.Id.ToString()})");
-				}
+				if (NativeMethods.GetWindowRect(hwnd, ref rect))
+					gotCurrentSize = true;
 
 				var oldrect = new System.Drawing.Rectangle(rect.Left, rect.Top, rect.Right - rect.Left, rect.Bottom - rect.Top);
 
@@ -1490,8 +1497,7 @@ namespace Taskmaster
 
 				if (!newsize.Equals(oldrect))
 				{
-					if (Taskmaster.DebugResize)
-						Log.Debug($"<Resize> Changing {info.Name} (#{info.Id.ToString()}) from {oldrect.Width.ToString()}×{oldrect.Height.ToString()} to {newsize.Width.ToString()}×{newsize.Height.ToString()}");
+					sizeChanging = true;
 
 					// TODO: Add option to monitor the app and save the new size so relaunching the app keeps the size.
 
@@ -1504,10 +1510,36 @@ namespace Taskmaster
 					}
 				}
 
+				StringBuilder sbs = null;
+				if (Taskmaster.DebugResize)
+				{
+					sbs = new StringBuilder();
+					sbs.Append("<Resize> ").Append(info.Name).Append(" (#").Append(info.Id).Append(")");
+					if (!gotCurrentSize)
+					{
+						sbs.Append(" Failed to get current size");
+						if (sizeChanging) sbs.Append(";");
+					}
+					if (sizeChanging)
+					{
+						sbs.Append(" Changing");
+						if (gotCurrentSize) sbs.Append(" from ").Append(oldrect.Width).Append("×").Append(oldrect.Height);
+						sbs.Append(" to ").Append(newsize.Width).Append("×").Append(newsize.Height);
+					}
+				}
+
 				if (ResizeStrategy == WindowResizeStrategy.None)
 				{
-					if (Taskmaster.DebugResize) Log.Debug($"<Resize> Remembering size or pos not enabled for {info.Name} (#{info.Id.ToString()})");
+					if (Taskmaster.DebugResize)
+					{
+						sbs.Append("; remembering size or pos not enabled.");
+						Log.Debug(sbs.ToString());
+					}
 					return;
+				}
+				else
+				{
+					if (Taskmaster.DebugResize) Log.Debug(sbs.ToString());
 				}
 
 				ResizeWaitList.TryAdd(info.Id, 0);
@@ -1551,6 +1583,8 @@ namespace Taskmaster
 			catch (OutOfMemoryException) { throw; }
 			catch (Exception ex)
 			{
+				if (Taskmaster.DebugResize) Log.Debug($"<Resize> Attempt failed for {info.Name} (#{info.Id.ToString()})");
+
 				Logging.Stacktrace(ex);
 				ResizeWaitList.TryRemove(info.Id, out _);
 			}
