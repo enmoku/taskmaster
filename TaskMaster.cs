@@ -806,14 +806,12 @@ namespace Taskmaster
 
 		static void MonitorCleanShutdown()
 		{
-			var runningpath = System.IO.Path.Combine(datapath, ".running-TM0");
-
-			TempRunningDir = new System.IO.DirectoryInfo(runningpath);
+			TempRunningDir = new System.IO.DirectoryInfo(System.IO.Path.Combine(datapath, ".running-TM0"));
 
 			if (!TempRunningDir.Exists)
 			{
-				TempRunningDir.Attributes = FileAttributes.Directory | FileAttributes.Hidden | FileAttributes.Temporary | FileAttributes.NotContentIndexed;
 				TempRunningDir.Create();
+				TempRunningDir.Attributes |= FileAttributes.Hidden | FileAttributes.Temporary; // this doesn't appear to work
 			}
 			else
 				Log.Warning("Unclean shutdown.");
