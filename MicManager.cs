@@ -37,18 +37,18 @@ namespace Taskmaster
 	{
 		public event EventHandler<VolumeChangedEventArgs> VolumeChanged;
 
-		double _target;
+		double _target = 50d;
 		public double Target
 		{
 			get => _target;
 			set => _target = value.Constrain(Minimum, Maximum);
 		}
 
-		public double Minimum { get; set; } = 0;
-		public double Maximum { get; set; } = 100;
+		public const double Minimum = 0d;
+		public const double Maximum = 100d;
 
-		public double VolumeHysterisis { get; } = 0.05;
-		public double SmallVolumeHysterisis { get; } = 0.05 / 4;
+		public const double VolumeHysterisis = 0.05d;
+		public const double SmallVolumeHysterisis = VolumeHysterisis / 4d;
 		TimeSpan AdjustDelay { get; } = TimeSpan.FromSeconds(5);
 
 		readonly NAudio.Mixer.UnsignedMixerControl Control;
@@ -80,8 +80,6 @@ namespace Taskmaster
 
 		public string DeviceName => m_dev.DeviceFriendlyName;
 
-		const string statfile = "Microphone.Statistics.ini";
-		
 		// ctor, constructor
 		/// <exception cref="InitFailure">When initialization fails in a way that can not be continued from.</exception>
 		public MicManager()
@@ -89,10 +87,6 @@ namespace Taskmaster
 			Debug.Assert(Taskmaster.IsMainThread(), "Requires main thread");
 
 			// Target = Maximum; // superfluous; CLEANUP
-
-			var stats = Taskmaster.Config.Load(statfile);
-			// there should be easier way for this, right?
-			Corrections = (stats.Config.Contains("Statistics") && stats.Config["Statistics"].Contains("Corrections")) ? stats.Config["Statistics"]["Corrections"].IntValue : 0;
 
 			// DEVICES
 
@@ -176,6 +170,9 @@ namespace Taskmaster
 			if (Taskmaster.Trace) Log.Verbose("<Microphone> Enumerating devices...");
 
 			var devices = new List<MicDevice>();
+
+			if (DisposedOrDisposing) return devices;
+
 			var mm_enum = new NAudio.CoreAudioApi.MMDeviceEnumerator();
 			if (mm_enum != null)
 			{
@@ -197,12 +194,13 @@ namespace Taskmaster
 		// TODO: Add device selection
 		// TODO: Add per device behaviour
 
-		public int Corrections { get; set; }
-		bool micstatsdirty; // false
+		public int Corrections { get; private set; } = 0;
 
-		static int correcting; // = 0;
+		int correcting_lock; // = 0;
 		async void VolumeChangedHandler(NAudio.CoreAudioApi.AudioVolumeNotificationData data)
 		{
+			if (DisposedOrDisposing) return;
+
 			var oldVol = Volume;
 			double newVol = data.MasterVolume * 100;
 
@@ -225,7 +223,7 @@ namespace Taskmaster
 				if (Taskmaster.Trace)
 					Log.Verbose($"<Microphone> DEBUG: Volume changed = [{oldVol:N1} → {newVol:N1}], Off.Target: {Math.Abs(newVol - Target):N1}");
 
-				if (Atomic.Lock(ref correcting))
+				if (Atomic.Lock(ref correcting_lock))
 				{
 					try
 					{
@@ -235,13 +233,12 @@ namespace Taskmaster
 						Log.Information($"<Microphone> Correcting volume from {oldVol:N1} to {Target:N1}");
 						Volume = Target;
 						Corrections += 1;
-						micstatsdirty = true;
 
 						VolumeChanged?.Invoke(this, new VolumeChangedEventArgs { Old = oldVol, New = Target, Corrections = Corrections });
 					}
 					finally
 					{
-						Atomic.Unlock(ref correcting);
+						Atomic.Unlock(ref correcting_lock);
 					}
 				}
 				else
@@ -255,7 +252,8 @@ namespace Taskmaster
 			}
 		}
 
-		bool disposed; // false
+		bool disposed = false; // false
+		bool DisposedOrDisposing = false;
 		public void Dispose()
 		{
 			Dispose(true);
@@ -263,6 +261,8 @@ namespace Taskmaster
 
 		void Dispose(bool disposing)
 		{
+			DisposedOrDisposing = true;
+
 			if (disposed) return;
 
 			if (disposing)
@@ -275,13 +275,6 @@ namespace Taskmaster
 				{
 					m_dev.AudioEndpointVolume.OnVolumeNotification -= VolumeChangedHandler;
 					m_dev = null;
-				}
-
-				if (micstatsdirty)
-				{
-					var stats = Taskmaster.Config.Load(statfile);
-					stats.Config["Statistics"]["Corrections"].IntValue = Corrections;
-					stats.Save(force: true);
 				}
 			}
 
