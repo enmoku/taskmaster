@@ -230,8 +230,8 @@ namespace Taskmaster
 
 			AudioInputDevice.Text = micmon.DeviceName;
 			corCountLabel.Text = micmon.Corrections.ToString();
-			AudioInputVolume.Maximum = Convert.ToDecimal(micmon.Maximum);
-			AudioInputVolume.Minimum = Convert.ToDecimal(micmon.Minimum);
+			AudioInputVolume.Maximum = Convert.ToDecimal(MicManager.Maximum);
+			AudioInputVolume.Minimum = Convert.ToDecimal(MicManager.Minimum);
 			AudioInputVolume.Value = Convert.ToInt32(micmon.Volume);
 
 			AudioInputs.BeginUpdate();

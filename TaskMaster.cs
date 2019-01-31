@@ -110,7 +110,7 @@ namespace Taskmaster
 			}
 			catch (Exception ex)
 			{
-				Logging.Stacktrace(ex, crashsafe:true);
+				Logging.Stacktrace(ex, crashsafe: true);
 			}
 			finally
 			{
@@ -123,7 +123,7 @@ namespace Taskmaster
 			State = restart ? Runstate.Restart : Runstate.Exit;
 
 			//if (System.Windows.Forms.Application.MessageLoop) // fails if called from another thread
-				Application.Exit();
+			Application.Exit();
 
 			// nothing else should be needed.
 		}
@@ -205,7 +205,7 @@ namespace Taskmaster
 		static void WindowActivatedEvent(object _, EventArgs _ea)
 		{
 			MainWindowFocus = true;
-			
+
 			OptimizeResponsiviness();
 		}
 
@@ -446,7 +446,7 @@ namespace Taskmaster
 
 		public static bool DebugProcesses { get; set; } = false;
 
-        public static bool DebugAdjustDelay { get; set; } = false;
+		public static bool DebugAdjustDelay { get; set; } = false;
 
 		public static bool DebugPaths { get; set; } = false;
 		public static bool DebugFullScan { get; set; } = false;
@@ -622,7 +622,7 @@ namespace Taskmaster
 				case 1:
 					MemoryLog.MemorySink.LevelSwitch.MinimumLevel = LogEventLevel.Debug;
 					break;
-				#if DEBUG
+#if DEBUG
 				case 2:
 					MemoryLog.MemorySink.LevelSwitch.MinimumLevel = LogEventLevel.Verbose;
 					break;
@@ -630,7 +630,7 @@ namespace Taskmaster
 					MemoryLog.MemorySink.LevelSwitch.MinimumLevel = LogEventLevel.Verbose;
 					Trace = true;
 					break;
-				#endif
+#endif
 			}
 			dirtyconfig |= modified;
 
@@ -712,8 +712,8 @@ namespace Taskmaster
 
 			MonitorCleanShutdown();
 
-			Log.Information("<Core> Verbosity: "+ MemoryLog.MemorySink.LevelSwitch.MinimumLevel.ToString());
-			Log.Information("<Core> Self-optimize: "+ (SelfOptimize ? HumanReadable.Generic.Enabled : HumanReadable.Generic.Disabled));
+			Log.Information("<Core> Verbosity: " + MemoryLog.MemorySink.LevelSwitch.MinimumLevel.ToString());
+			Log.Information("<Core> Self-optimize: " + (SelfOptimize ? HumanReadable.Generic.Enabled : HumanReadable.Generic.Disabled));
 			Log.Information("<Core> WMI queries: " + (WMIQueries ? HumanReadable.Generic.Enabled : HumanReadable.Generic.Disabled));
 
 			// PROTECT USERS FROM TOO HIGH PERMISSIONS
@@ -744,7 +744,7 @@ namespace Taskmaster
 			DebugFullScan = dbgsec.TryGet("Full scan")?.BoolValue ?? false;
 			DebugAudio = dbgsec.TryGet(HumanReadable.Hardware.Audio.Section)?.BoolValue ?? false;
 
-            DebugAdjustDelay = dbgsec.TryGet("Adjust Delay")?.BoolValue ?? false;
+			DebugAdjustDelay = dbgsec.TryGet("Adjust Delay")?.BoolValue ?? false;
 
 			DebugForeground = dbgsec.TryGet(HumanReadable.System.Process.Foreground)?.BoolValue ?? false;
 
