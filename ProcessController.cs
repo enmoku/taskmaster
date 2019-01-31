@@ -480,58 +480,6 @@ namespace Taskmaster
 			cfg.MarkDirty();
 		}
 
-		const string statfile = "Watchlist.Statistics.ini";
-
-		public void LoadStats()
-		{
-			var stats = Taskmaster.Config.Load(statfile);
-
-			string statkey = null;
-			if (!string.IsNullOrEmpty(Executable)) statkey = Executable;
-			else if (!string.IsNullOrEmpty(Path)) statkey = Path;
-
-			if (!string.IsNullOrEmpty(statkey))
-			{
-				Adjusts = stats.Config[statkey].TryGet("Adjusts")?.IntValue ?? 0;
-
-				var ls = stats.Config[statkey].TryGet("Last seen");
-				if (null != ls && !ls.IsEmpty)
-				{
-					var stamp = long.MinValue;
-					try
-					{
-						stamp = ls.GetValue<long>();
-						LastSeen = stamp.Unixstamp();
-					}
-					catch (OutOfMemoryException) { throw; }
-					catch { } // NOP
-				}
-			}
-		}
-
-		public void SaveStats()
-		{
-			var stats = Taskmaster.Config.Load(statfile);
-
-			// BROKEN?
-			string key = null;
-			if (!string.IsNullOrEmpty(Executable)) key = Executable;
-			else if (!string.IsNullOrEmpty(Path)) key = Path;
-			else return;
-
-			if (Adjusts > 0)
-			{
-				stats.Config[key]["Adjusts"].IntValue = Adjusts;
-				stats.MarkDirty();
-			}
-
-			if (LastSeen != DateTimeOffset.MinValue)
-			{
-				stats.Config[key]["Last seen"].SetValue(LastSeen.Unixstamp());
-				stats.MarkDirty();
-			}
-		}
-
 		// The following should be combined somehow?
 		ConcurrentDictionary<int, int> PausedIds = new ConcurrentDictionary<int, int>(); // HACK: There's no ConcurrentHashSet
 		ConcurrentDictionary<int, ProcessEx> PowerList = new ConcurrentDictionary<int, ProcessEx>(); // HACK

@@ -853,7 +853,6 @@ namespace Taskmaster
 
 			if (ValidateController(prc))
 			{
-				if (Taskmaster.PersistentWatchlistStats) prc.LoadStats();
 				SaveController(prc);
 				prc.Modified += ProcessModified;
 				//prc.Paused += ProcessPausedProxy;
@@ -2026,8 +2025,6 @@ namespace Taskmaster
 					// throw; // would throw but this is dispose
 				}
 
-				SaveStats();
-
 				try
 				{
 					ExeToController?.Clear();
@@ -2049,16 +2046,6 @@ namespace Taskmaster
 			}
 
 			disposed = true;
-		}
-
-		void SaveStats()
-		{
-			if (!Taskmaster.PersistentWatchlistStats) return;
-
-			if (Taskmaster.Trace) Log.Verbose("Saving stats...");
-
-			foreach (ProcessController prc in Watchlist.Keys)
-				prc.SaveStats();
 		}
 	}
 }
