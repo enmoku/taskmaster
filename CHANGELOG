@@ -7,6 +7,8 @@ Comprehensive changes can be found in Git change history:
 	Internal: Changes and added Adjust Delay debug option in Core.ini.
 	Changed: Default affinity for TM itself to 0 (OS control) instead of just the last core.
 		The previous setting was fine, but can result in TM appear to be functioning poorly.
+	Changed: Persistent watchlist, microphone and WMI stats removed.
+		Watchlist.Statistics.ini, Microphone.Statistics.ini, nor Core.Statistics.ini are automatically removed.
 ### 2018-01-30
 	Fixed: Exclusive mode is being weird.
 ### 2018-01-29
