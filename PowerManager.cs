@@ -142,12 +142,12 @@ namespace Taskmaster
 					//var idle = User.LastActiveTimespan(lastact);
 					//if (lastact == uint.MinValue) idle = TimeSpan.Zero; // HACK
 
-					Log.Debug("<Monitor> Power state: " + ev.Mode.ToString() + " (last user activity " + $"{sidletime:N1} {timename}" + " ago)");
+					Log.Debug($"<Monitor> Power state: {ev.Mode.ToString()} (last user activity {sidletime:N1} {timename} ago)");
 				}
 
 				if (OldPowerState == CurrentMonitorState)
 				{
-					Log.Debug("Received monitor power event: " + OldPowerState.ToString() + " → " + ev.Mode.ToString());
+					Log.Debug($"Received monitor power event: {OldPowerState.ToString()} → {ev.Mode.ToString()}");
 					return; //
 				}
 
@@ -199,7 +199,7 @@ namespace Taskmaster
 			};
 			using (var proc = Process.Start(info))
 			{
-				Debug.WriteLine(info.FileName + " " + info.Arguments);
+				Debug.WriteLine($"{info.FileName} {info.Arguments}");
 				while (!proc.StandardOutput.EndOfStream)
 				{
 					if (timer.ElapsedMilliseconds > 30_000) return;
@@ -215,7 +215,7 @@ namespace Taskmaster
 			};
 			using (var proc = Process.Start(info))
 			{
-				Debug.WriteLine(info.FileName + " " + info.Arguments);
+				Debug.WriteLine($"{info.FileName} {info.Arguments}");
 				while (!proc.StandardOutput.EndOfStream)
 				{
 					if (timer.ElapsedMilliseconds > 30_000) return;
@@ -302,8 +302,7 @@ namespace Taskmaster
 					var timename = Time.TimescaleString(scale, !sidletime.RoughlyEqual(1d));
 
 					if ((Taskmaster.ShowSessionActions && SleepGivenUp <= 1) || Taskmaster.DebugMonitor)
-						Log.Information("<Session:Lock> User idle (" + $"{sidletime:N1} {timename}" + "); Monitor power down, attempt " +
-							SleepTickCount + "...");
+						Log.Information($"<Session:Lock> User idle ({sidletime:N1} {timename}); Monitor power down, attempt {SleepTickCount}...");
 
 					SetMonitorMode(MonitorPowerMode.Off);
 				}
@@ -1108,7 +1107,7 @@ namespace Taskmaster
 					ExpectedCause = null;
 
 					if (Taskmaster.DebugPower)
-						Log.Information("<Power/OS> Change detected: " + CurrentMode.ToString() + " (" + newPersonality.ToString() + ")");
+						Log.Information($"<Power/OS> Change detected: {CurrentMode.ToString()} ({newPersonality.ToString()})");
 
 					var now = DateTimeOffset.UtcNow;
 					if (CurrentMode != ExpectedMode && Behaviour == PowerBehaviour.Auto && LastExternalWarning.TimeTo(now).TotalSeconds > 30)
@@ -1337,7 +1336,7 @@ namespace Taskmaster
 				Forced = ForceModeSourcesMap.Count > 0;
 
 				if (Taskmaster.Trace && Taskmaster.DebugPower)
-					Log.Debug("<Power> Released " + (sourcePid == -1 ? "All" : $"#{sourcePid.ToString()}"));
+					Log.Debug($"<Power> Released {(sourcePid == -1 ? "All" : sourcePid.ToString())}");
 
 				ReleaseFinal();
 			}
@@ -1423,7 +1422,7 @@ namespace Taskmaster
 					else if (plan.Equals(HighPerformance)) { CurrentMode = PowerMode.HighPerformance; }
 					else { CurrentMode = PowerMode.Undefined; }
 
-					Log.Information("<Power> Current: " + CurrentMode.ToString());
+					Log.Information($"<Power> Current: {CurrentMode.ToString()}");
 				}
 			}
 
@@ -1471,7 +1470,7 @@ namespace Taskmaster
 				return false;
 			}
 
-			if (Taskmaster.DebugPower) Log.Debug("<Power> Lock #" + sourcePid);
+			if (Taskmaster.DebugPower) Log.Debug($"<Power> Lock #{sourcePid.ToString()}");
 
 			Forced = true;
 
@@ -1520,7 +1519,7 @@ namespace Taskmaster
 
 			if ((verbose && (CurrentMode != mode)) || Taskmaster.DebugPower)
 			{
-				string extra = cause != null ? " - Cause: " + cause.ToString() : string.Empty;
+				string extra = cause != null ? $" - Cause: {cause.ToString()}" : string.Empty;
 				Log.Information("<Power> Setting mode: " + GetModeName(mode) + extra);
 			}
 

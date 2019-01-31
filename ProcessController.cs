@@ -1478,8 +1478,6 @@ namespace Taskmaster
 					return;
 				}
 
-				if (Taskmaster.DebugResize) Log.Debug($"<Resize> Attempting on {info.Name} (#{info.Id.ToString()})");
-
 				NativeMethods.RECT rect = new NativeMethods.RECT();
 
 				IntPtr hwnd = info.Process.MainWindowHandle;
