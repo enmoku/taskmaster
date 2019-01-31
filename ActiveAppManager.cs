@@ -301,7 +301,6 @@ namespace Taskmaster
 						Taskmaster.processmanager.Unignore(IgnoreHung);
 						IgnoreHung = pid;
 						Taskmaster.processmanager.Ignore(IgnoreHung);
-
 					}
 
 					HangTick++;
@@ -423,7 +422,7 @@ namespace Taskmaster
 
 			foreground_counter++;
 
-			await System.Threading.Tasks.Task.Delay(Hysterisis);
+			await System.Threading.Tasks.Task.Delay(Hysterisis); // asyncify
 
 			lock (foregroundswap_lock)
 			{

@@ -111,8 +111,21 @@ namespace Taskmaster
 				ScanTimer = new System.Timers.Timer(ScanFrequency.Value.TotalMilliseconds);
 				ScanTimer.Elapsed += TimedScan;
 				StartScanTimer();
-				if (ScanFrequency.Value.TotalSeconds > 15)
-					Task.Run(() => Scan());
+                if (ScanFrequency.Value.TotalSeconds > 15)
+                {
+                    Task.Run(async () =>
+                    {
+                        try
+                        {
+                            await Scan().ConfigureAwait(false);
+                        }
+                        catch (OutOfMemoryException) { throw; }
+                        catch (Exception ex)
+                        {
+                            Logging.Stacktrace(ex);
+                        }
+                    }).ConfigureAwait(false);
+                }
 			}
 
 			ProcessDetectedEvent += ProcessTriage;
@@ -202,18 +215,11 @@ namespace Taskmaster
 			catch { } // process.Handle may throw which we don't care about
 		}
 
-		List<int> ignorePids = new List<int>(6);
+        ConcurrentDictionary<int, int> ignorePids = new ConcurrentDictionary<int, int>();
 
-		public void Ignore(int pid)
-		{
-			ignorePids.Add(pid);
-			if (ignorePids.Count > 5) ignorePids.RemoveAt(0);
-		}
+        public void Ignore(int pid) => ignorePids.TryAdd(pid, 0);
 
-		public void Unignore(int pid)
-		{
-			ignorePids.Remove(pid);
-		}
+		public void Unignore(int pid) => ignorePids.TryRemove(pid, out _);
 
 		public async Task FreeMemory(string executable = null, bool quiet = false, int ignorePid = -1)
 		{
@@ -312,13 +318,15 @@ namespace Taskmaster
 		{
 			if (disposed) return; // HACK: dumb timers be dumb
 
-			try
-			{
+            try
+            {
 				if (Taskmaster.Trace) Log.Verbose("Rescan requested.");
 				if (ScanPaused) return;
-				// this stays on UI thread for some reason
+                // this stays on UI thread for some reason
 
-				await Task.Run(() => Scan()).ConfigureAwait(false);
+                await Task.Delay(0).ConfigureAwait(false); // asyncify
+
+                await Scan().ConfigureAwait(false);
 			}
 			catch (Exception ex)
 			{
@@ -344,6 +352,8 @@ namespace Taskmaster
 
 		public async void HastenScan(int delay = 15)
 		{
+            await Task.Delay(0).ConfigureAwait(false); // asyncify
+
 			double nextscan = Math.Max(0, DateTimeOffset.UtcNow.TimeTo(NextScan).TotalSeconds);
 			if (nextscan > 5) // skip if the next scan is to happen real soon
 			{
@@ -366,65 +376,76 @@ namespace Taskmaster
 		{
 			if (DisposedOrDisposing) return;
 
-			await CleanWaitForExitList().ConfigureAwait(true); // HACK
+            if (!Atomic.Lock(ref scan_lock)) return;
 
-			if (!Atomic.Lock(ref scan_lock)) return;
+            try
+            {
+                await CleanWaitForExitList().ConfigureAwait(true); // HACK
 
-			var now = DateTimeOffset.UtcNow;
-			LastScan = now;
-			NextScan = now.Add(ScanFrequency.Value);
+                var now = DateTimeOffset.UtcNow;
+                LastScan = now;
+                NextScan = now.Add(ScanFrequency.Value);
 
-			if (Taskmaster.DebugFullScan) Log.Debug("<Process> Full Scan: Start");
+                if (Taskmaster.DebugFullScan) Log.Debug("<Process> Full Scan: Start");
 
-			await Task.Delay(0).ConfigureAwait(false); // asyncify
+                await Task.Delay(0).ConfigureAwait(false); // asyncify
 
-			//ScanStartEvent?.Invoke(this, null);
+                //ScanStartEvent?.Invoke(this, null);
 
-			if (!SystemProcessId(ignorePid)) Ignore(ignorePid);
+                if (!SystemProcessId(ignorePid)) Ignore(ignorePid);
 
-			var procs = Process.GetProcesses();
-			int count = procs.Length - 2; // -2 for Idle&System
-			Debug.Assert(count > 0, "System has no running processes"); // should be impossible to fail
-			SignalProcessHandled(count); // scan start
+                var procs = Process.GetProcesses();
+                int count = procs.Length - 2; // -2 for Idle&System
+                Debug.Assert(count > 0, "System has no running processes"); // should be impossible to fail
+                SignalProcessHandled(count); // scan start
 
-			var i = 0;
-			foreach (var process in procs)
-			{
-				++i;
+                var i = 0;
+                foreach (var process in procs)
+                {
+                    ++i;
 
-				string name = string.Empty;
-				int pid = 0;
+                    string name = string.Empty;
+                    int pid = 0;
 
-				try
-				{
-					name = process.ProcessName;
-					pid = process.Id;
-				}
-				catch { continue; } // process inaccessible (InvalidOperationException or NotSupportedException)
+                    try
+                    {
+                        name = process.ProcessName;
+                        pid = process.Id;
+                    }
+                    catch { continue; } // process inaccessible (InvalidOperationException or NotSupportedException)
 
-				if (IgnoreProcessID(pid) || IgnoreProcessName(name) || pid == Process.GetCurrentProcess().Id)
-					continue;
+                    if (IgnoreProcessID(pid) || IgnoreProcessName(name) || pid == Process.GetCurrentProcess().Id)
+                        continue;
 
-				if (Taskmaster.DebugFullScan)
-					Log.Verbose("<Process> Checking [" + i + "/" + count + "] " + name + " (#" + pid + ")");
+                    if (Taskmaster.DebugFullScan)
+                        Log.Verbose("<Process> Checking [" + i + "/" + count + "] " + name + " (#" + pid + ")");
 
-				if (ProcessUtility.GetInfo(pid, out var info, process, null, name, null, getPath: true))
-				{
-					var ev = new HandlingStateChangeEventArgs(info);
-					ProcessDetectedEvent?.Invoke(this, ev);
-					HandlingStateChange?.Invoke(this, ev);
-				}
-			}
+                    if (ProcessUtility.GetInfo(pid, out var info, process, null, name, null, getPath: true))
+                    {
+                        info.Timer = Stopwatch.StartNew();
+                        var ev = new HandlingStateChangeEventArgs(info);
+                        ProcessDetectedEvent?.Invoke(this, ev);
+                        HandlingStateChange?.Invoke(this, ev);
+                    }
+                }
 
-			if (Taskmaster.DebugFullScan) Log.Debug("<Process> Full Scan: Complete");
+                if (Taskmaster.DebugFullScan) Log.Debug("<Process> Full Scan: Complete");
 
-			SignalProcessHandled(-count); // scan done
+                SignalProcessHandled(-count); // scan done
 
-			//ScanEndEvent?.Invoke(this, null);
+                //ScanEndEvent?.Invoke(this, null);
 
-			if (!SystemProcessId(ignorePid)) Unignore(ignorePid);
-
-			Atomic.Unlock(ref scan_lock);
+                if (!SystemProcessId(ignorePid)) Unignore(ignorePid);
+            }
+            catch (OutOfMemoryException) { throw; }
+            catch (Exception ex)
+            {
+                Logging.Stacktrace(ex);
+            }
+            finally
+            {
+                Atomic.Unlock(ref scan_lock);
+            }
 		}
 
 		int BatchDelay = 2500;
@@ -1234,7 +1255,7 @@ namespace Taskmaster
 		public static bool SystemProcessId(int pid) => pid <= 4;
 
 		[System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
-		public bool IgnoreProcessID(int pid) => SystemProcessId(pid) || ignorePids.Contains(pid);
+		public bool IgnoreProcessID(int pid) => SystemProcessId(pid) || ignorePids.ContainsKey(pid);
 
 		[System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
 		public static bool IgnoreProcessName(string name) => IgnoreList.Any(item => item.Equals(name, StringComparison.InvariantCultureIgnoreCase));
@@ -1363,8 +1384,10 @@ namespace Taskmaster
 
 			bool Triaged = false;
 
-			try
-			{
+            await Task.Delay(0).ConfigureAwait(false); // asyncify
+
+            try
+            {
 				info.State = ProcessHandlingState.Triage;
 
 				HandlingStateChange?.Invoke(this, new HandlingStateChangeEventArgs(info));
@@ -1380,29 +1403,43 @@ namespace Taskmaster
 				if (ExeToController.TryGetValue(info.Name.ToLowerInvariant(), out prc))
 					info.Controller = prc; // fill
 
-				if (prc != null || GetPathController(info, out prc))
-				{
-					if (!info.Controller.Enabled)
-					{
-						if (Taskmaster.DebugProcesses) Log.Debug("[" + info.Controller.FriendlyName + "] Matched, but rule disabled; ignoring.");
-						info.State = ProcessHandlingState.Abandoned;
-						return;
-					}
+                if (prc != null || GetPathController(info, out prc))
+                {
+                    if (!info.Controller.Enabled)
+                    {
+                        if (Taskmaster.DebugProcesses) Log.Debug("[" + info.Controller.FriendlyName + "] Matched, but rule disabled; ignoring.");
+                        info.State = ProcessHandlingState.Abandoned;
+                        return;
+                    }
 
-					Triaged = true;
-					info.State = ProcessHandlingState.Processing;
+                    Triaged = true;
+                    info.State = ProcessHandlingState.Processing;
 
-					info.Controller.Modify(info);
+                    await Task.Delay(0).ConfigureAwait(false); // asyncify again
 
-					if (prc.Foreground != ForegroundMode.Ignore) ForegroundWatch(info);
+                    try
+                    {
+                        info.Controller.Modify(info);
 
-					if (prc.ExclusiveMode) ExclusiveMode(info);
+                        if (prc.Foreground != ForegroundMode.Ignore) ForegroundWatch(info);
 
-					if (info.Controller.Analyze && info.Valid && info.State != ProcessHandlingState.Abandoned)
-						analyzer.Analyze(info);
-				}
-				else
-					info.State = ProcessHandlingState.Abandoned;
+                        if (prc.ExclusiveMode) ExclusiveMode(info);
+
+                        if (info.Controller.Analyze && info.Valid && info.State != ProcessHandlingState.Abandoned)
+                            analyzer.Analyze(info);
+                    }
+                    catch (OutOfMemoryException) { throw; }
+                    catch (Exception ex)
+                    {
+                        Logging.Stacktrace(ex);
+                    }
+                    finally
+                    {
+                        HandlingStateChange?.Invoke(this, new HandlingStateChangeEventArgs(info));
+                    }
+                }
+                else
+                    info.State = ProcessHandlingState.Abandoned;
 
 				/*
 				if (ControlChildren) // this slows things down a lot it seems
@@ -1585,12 +1622,12 @@ namespace Taskmaster
 
 		async void BatchProcessingTick(object _, EventArgs _ea)
 		{
-			List<ProcessEx> list = null;
+            List<ProcessEx> list = null;
 			try
 			{
-				await Task.Delay(0).ConfigureAwait(false);
+                await Task.Delay(0).ConfigureAwait(false); // asyncify
 
-				lock (batchprocessing_lock)
+                lock (batchprocessing_lock)
 				{
 					BatchProcessingTimer.Stop();
 
@@ -1639,8 +1676,10 @@ namespace Taskmaster
 			string name = string.Empty;
 			string path = string.Empty;
 			ProcessEx info = null;
+            DateTime creation = DateTime.MinValue;
+            TimeSpan wmidelay = TimeSpan.Zero;
 
-			ProcessHandlingState state = ProcessHandlingState.Invalid;
+            ProcessHandlingState state = ProcessHandlingState.Invalid;
 
 			try
 			{
@@ -1655,6 +1694,7 @@ namespace Taskmaster
 					pid = Convert.ToInt32(targetInstance.Properties["Handle"].Value as string);
 					var iname = targetInstance.Properties["Name"].Value as string;
 					path = targetInstance.Properties["ExecutablePath"].Value as string;
+                    creation = ManagementDateTimeConverter.ToDateTime(targetInstance.Properties["CreationDate"].Value as string);
 					name = System.IO.Path.GetFileNameWithoutExtension(iname);
 					if (string.IsNullOrEmpty(path))
 					{
@@ -1689,10 +1729,13 @@ namespace Taskmaster
 				}
 				finally
 				{
-					wmiquerytime.Stop();
-					Statistics.WMIPollTime += wmiquerytime.Elapsed.TotalSeconds;
+					Statistics.WMIPollTime += timer.Elapsed.TotalSeconds;
 					Statistics.WMIPolling += 1;
 				}
+
+
+                wmidelay = new DateTimeOffset(creation.ToUniversalTime()).TimeTo(now);
+                Debug.WriteLine($"WMI delay (#{pid}): {wmidelay.TotalMilliseconds:N0} ms");
 
 				if (IgnoreProcessID(pid)) return; // We just don't care
 
@@ -1709,8 +1752,12 @@ namespace Taskmaster
 
 				if (IgnoreProcessName(name)) return;
 
-				if (ProcessUtility.GetInfo(pid, out info, path: path, getPath: true, name: name))
-					NewInstanceTriagePhaseTwo(info, out state);
+                if (ProcessUtility.GetInfo(pid, out info, path: path, getPath: true, name: name))
+                {
+                    info.Timer = timer;
+                    info.WMIDelay = Convert.ToInt32(wmidelay.TotalMilliseconds);
+                    NewInstanceTriagePhaseTwo(info, out state);
+                }
 			}
 			catch (Exception ex)
 			{
@@ -1723,7 +1770,12 @@ namespace Taskmaster
 			}
 			finally
 			{
-				HandlingStateChange?.Invoke(this, new HandlingStateChangeEventArgs(info ?? new ProcessEx { Id = pid, State = state }));
+                if (info == null)
+                {
+                    info = new ProcessEx { Id = pid, Timer = timer, State = state};
+                    info.WMIDelay = Convert.ToInt32(wmidelay.TotalMilliseconds);
+                }
+                HandlingStateChange?.Invoke(this, new HandlingStateChangeEventArgs(info));
 
 				SignalProcessHandled(-1); // done with it
 			}

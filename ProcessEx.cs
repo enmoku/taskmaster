@@ -47,6 +47,9 @@ namespace Taskmaster
 		/// </summary>
 		public string FormattedPath { get; set; } = null;
 
+        public Stopwatch Timer = null;
+        public int WMIDelay = 0;
+
 		/// <summary>
 		/// Process Id.
 		/// </summary>
@@ -78,16 +81,17 @@ namespace Taskmaster
 				{
 					case ProcessHandlingState.Exited:
 						Exited = true;
-						goto handled;
+                        goto handled;
 					case ProcessHandlingState.Modified:
 						Modified = DateTimeOffset.UtcNow;
 						goto handled;
-					case ProcessHandlingState.Finished:
+                    case ProcessHandlingState.AccessDenied:
+                    case ProcessHandlingState.Finished:
 					case ProcessHandlingState.Abandoned:
-					case ProcessHandlingState.AccessDenied:
 					case ProcessHandlingState.Invalid:
-						handled:
-						Handled = true;
+                    handled:
+                        Handled = true;
+                        Timer?.Stop();
 						break;
 				}
 			}

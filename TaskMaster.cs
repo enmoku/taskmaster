@@ -446,6 +446,8 @@ namespace Taskmaster
 
 		public static bool DebugProcesses { get; set; } = false;
 
+        public static bool DebugAdjustDelay { get; set; } = false;
+
 		public static bool DebugPaths { get; set; } = false;
 		public static bool DebugFullScan { get; set; } = false;
 
@@ -743,6 +745,8 @@ namespace Taskmaster
 			DebugPaths = dbgsec.TryGet("Paths")?.BoolValue ?? false;
 			DebugFullScan = dbgsec.TryGet("Full scan")?.BoolValue ?? false;
 			DebugAudio = dbgsec.TryGet(HumanReadable.Hardware.Audio.Section)?.BoolValue ?? false;
+
+            DebugAdjustDelay = dbgsec.TryGet("Adjust Delay")?.BoolValue ?? false;
 
 			DebugForeground = dbgsec.TryGet(HumanReadable.System.Process.Foreground)?.BoolValue ?? false;
 

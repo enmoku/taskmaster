@@ -681,6 +681,12 @@ namespace Taskmaster
 
 			if (ev.User != null) sbs.Append(ev.User);
 
+            if (Taskmaster.DebugAdjustDelay)
+            {
+                sbs.Append(" – ").Append($"{ev.Info.Timer.ElapsedMilliseconds:N0} ms");
+                if (ev.Info.WMIDelay > 0) sbs.Append(" + ").Append(ev.Info.WMIDelay).Append(" ms watcher delay");
+            }
+
 			// TODO: Add option to logging to file but still show in UI
 			if (!(Taskmaster.ShowInaction && Taskmaster.DebugProcesses)) Log.Information(sbs.ToString());
 			else Log.Debug(sbs.ToString());
@@ -970,10 +976,10 @@ namespace Taskmaster
 				return info.Name; // NAME
 		}
 
-		public void Modify(ProcessEx info)
+		public async void Modify(ProcessEx info)
 		{
-			Touch(info);
-			if (Recheck > 0) TouchReapply(info);
+			await Touch(info);
+			if (Recheck > 0) TouchReapply(info); // this can go do its thing
 		}
 
 		public bool MatchPath(string path)
@@ -986,7 +992,7 @@ namespace Taskmaster
 		bool InForeground(int pid) => Foreground != ForegroundMode.Ignore ? Taskmaster.activeappmonitor?.Foreground.Equals(pid) ?? true : true;
 
 		// TODO: Simplify this
-		void Touch(ProcessEx info, bool refresh = false)
+		async Task Touch(ProcessEx info, bool refresh = false)
 		{
 			Debug.Assert(info.Process != null, "ProcessController.Touch given null process.");
 			Debug.Assert(!ProcessManager.SystemProcessId(info.Id), "ProcessController.Touch given invalid process ID");
@@ -1015,6 +1021,9 @@ namespace Taskmaster
 
 				int oldAffinityMask = 0;
 				var oldPower = PowerInfo.PowerMode.Undefined;
+
+
+                await Task.Delay(refresh ? 0 : ModifyDelay).ConfigureAwait(false);
 
 				// EXTRACT INFORMATION
 
@@ -1062,8 +1071,6 @@ namespace Taskmaster
 				{
 					LastSeen = DateTimeOffset.UtcNow;
 
-					try
-					{
 						if (ormt.Info.Name.Equals(info.Name))
 						{
 							if (ormt.FreeWill)
@@ -1123,9 +1130,6 @@ namespace Taskmaster
 
 							RecentlyModified.TryRemove(info.Id, out _); // id does not match name
 						}
-					}
-					catch (OutOfMemoryException) { throw; }
-					catch { }
 					//RecentlyModified.TryRemove(info.Id, out _);
 				}
 
@@ -1299,6 +1303,8 @@ namespace Taskmaster
 					}
 				}
 
+                info.Timer.Stop();
+
 				if (modified)
 				{
 					if (mPriority || mAffinity)
@@ -1461,16 +1467,16 @@ namespace Taskmaster
 		{
 			Debug.Assert(Resize.HasValue, "Trying to resize when resize is not defined");
 
-			if (Taskmaster.DebugResize) Log.Debug("Attempting resize on " + info.Name + " (#" + info.Id + ")");
+            try
+            {
+                if (Taskmaster.DebugResize) Log.Debug($"<Resize> Attempting on {info.Name} (#{info.Id.ToString()})");
 
-			try
-			{
 				if (ResizeWaitList.ContainsKey(info.Id)) return;
 
 				IntPtr hwnd = info.Process.MainWindowHandle;
 				if (!NativeMethods.GetWindowRect(hwnd, ref rect))
 				{
-					if (Taskmaster.DebugResize) Log.Debug("Failed to retrieve current size of " + info.Name + " (#" + info.Id + ")");
+					if (Taskmaster.DebugResize) Log.Debug($"<Resize> Failed to retrieve current size of {info.Name} (#{info.Id.ToString()})");
 				}
 
 				var oldrect = new System.Drawing.Rectangle(rect.Left, rect.Top, rect.Right - rect.Left, rect.Bottom - rect.Top);
@@ -1485,9 +1491,7 @@ namespace Taskmaster
 				if (!newsize.Equals(oldrect))
 				{
 					if (Taskmaster.DebugResize)
-						Log.Debug("Resizing " + info.Name + " (#" + info.Id + ") from " +
-							oldrect.Width + "×" + oldrect.Height + " to " +
-							newsize.Width + "×" + newsize.Height);
+						Log.Debug($"<Resize> Changing {info.Name} (#{info.Id.ToString()}) from {oldrect.Width.ToString()}×{oldrect.Height.ToString()} to {newsize.Width.ToString()}×{newsize.Height.ToString()}");
 
 					// TODO: Add option to monitor the app and save the new size so relaunching the app keeps the size.
 
@@ -1502,7 +1506,7 @@ namespace Taskmaster
 
 				if (ResizeStrategy == WindowResizeStrategy.None)
 				{
-					if (Taskmaster.DebugResize) Log.Debug("Remembering size or pos not enabled for " + info.Name + " (#" + info.Id + ")");
+					if (Taskmaster.DebugResize) Log.Debug($"<Resize> Remembering size or pos not enabled for {info.Name} (#{info.Id.ToString()})");
 					return;
 				}
 
@@ -1511,12 +1515,12 @@ namespace Taskmaster
 				System.Threading.ManualResetEvent re = new System.Threading.ManualResetEvent(false);
 				Task.Run(() =>
 				{
-					if (Taskmaster.DebugResize) Log.Debug("<Resize> Starting monitoring " + info.Name + " (#" + info.Id + ")");
+					if (Taskmaster.DebugResize) Log.Debug($"<Resize> Starting monitoring {info.Name} (#{info.Id.ToString()})");
 					try
 					{
 						while (!re.WaitOne(60_000))
 						{
-							if (Taskmaster.DebugResize) Log.Debug("<Resize> Recording size and position for " + info.Name + " (#" + info.Id + ")");
+							if (Taskmaster.DebugResize) Log.Debug($"<Resize> Recording size and position for {info.Name} (#{info.Id.ToString()})");
 
 							NativeMethods.GetWindowRect(hwnd, ref rect);
 
@@ -1536,10 +1540,10 @@ namespace Taskmaster
 					{
 						Logging.Stacktrace(ex);
 					}
-					if (Taskmaster.DebugResize) Log.Debug("<Resize> Stopping monitoring " + info.Name + " (#" + info.Id + ")");
+					if (Taskmaster.DebugResize) Log.Debug($"<Resize> Stopping monitoring {info.Name} (#{info.Id.ToString()})");
 				}).ConfigureAwait(false);
 
-				info.Process.EnableRaisingEvents = true;
+                info.Process.EnableRaisingEvents = true;
 				info.Process.Exited += (_, _ea) => ProcessEndResize(info, oldrect, re);
 				info.Process.Refresh();
 				if (info.Process.HasExited) ProcessEndResize(info, oldrect, re);
@@ -1599,7 +1603,7 @@ namespace Taskmaster
 
 		async Task TouchReapply(ProcessEx info)
 		{
-			await Task.Delay(Math.Max(Recheck, 5) * 1000).ConfigureAwait(false);
+			await Task.Delay(Math.Max(Recheck, 5) * 1_000).ConfigureAwait(false);
 
 			if (Taskmaster.DebugProcesses)
 				Log.Debug("[" + FriendlyName + "] " + info.Name + " (#" + info.Id + ") rechecking");
@@ -1610,10 +1614,11 @@ namespace Taskmaster
 				if (info.Process.HasExited)
 				{
 					if (Taskmaster.Trace) Log.Verbose("[" + FriendlyName + "] " + info.Name + " (#" + info.Id + ") is gone yo.");
+                    info.State = ProcessHandlingState.Exited;
 					return;
 				}
 
-				Touch(info, refresh: true);
+				await Touch(info, refresh: true).ConfigureAwait(false);
 			}
 			catch (Win32Exception) // access denied
 			{
@@ -1628,6 +1633,7 @@ namespace Taskmaster
 			{
 				Log.Warning("[" + FriendlyName + "] " + info.Name + " (#" + info.Id + ") – something bad happened.");
 				Logging.Stacktrace(ex);
+                info.State = ProcessHandlingState.Abandoned;
 				return; //throw; // would throw but this is async function
 			}
 		}
