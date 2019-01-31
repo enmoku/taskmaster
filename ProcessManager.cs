@@ -210,49 +210,64 @@ namespace Taskmaster
 
 		public void Unignore(int pid) => ignorePids.TryRemove(pid, out _);
 
+		int freemem_lock = 0;
 		public async Task FreeMemory(string executable = null, bool quiet = false, int ignorePid = -1)
 		{
 			if (!Taskmaster.PagingEnabled) return;
 
-			if (string.IsNullOrEmpty(executable))
-			{
-				if (Taskmaster.DebugPaging && !quiet)
-					Log.Debug("<Process> Paging applications to free memory...");
-			}
-			else
-			{
-				var procs = Process.GetProcessesByName(executable); // unnecessary maybe?
-				if (procs.Length == 0)
-				{
-					Log.Error(executable + " not found, not freeing memory for it.");
-					return;
-				}
+			if (!Atomic.Lock(ref freemem_lock)) return;
 
-				foreach (var prc in procs)
+			try
+			{
+				if (string.IsNullOrEmpty(executable))
 				{
-					try
+					if (Taskmaster.DebugPaging && !quiet)
+						Log.Debug("<Process> Paging applications to free memory...");
+				}
+				else
+				{
+					var procs = Process.GetProcessesByName(executable); // unnecessary maybe?
+					if (procs.Length == 0)
 					{
-						if (executable.Equals(prc.ProcessName))
-						{
-							ignorePid = prc.Id;
-							break;
-						}
+						Log.Error(executable + " not found, not freeing memory for it.");
+						return;
 					}
-					catch { } // ignore
+
+					foreach (var prc in procs)
+					{
+						try
+						{
+							if (executable.Equals(prc.ProcessName, StringComparison.InvariantCultureIgnoreCase))
+							{
+								ignorePid = prc.Id;
+								break;
+							}
+						}
+						catch { } // ignore
+					}
+
+					if (Taskmaster.DebugPaging && !quiet)
+						Log.Debug("<Process> Paging applications to free memory for: " + executable);
 				}
 
-				if (Taskmaster.DebugPaging && !quiet)
-					Log.Debug("<Process> Paging applications to free memory for: " + executable);
+				//await Task.Delay(0).ConfigureAwait(false);
+
+				freememoryignore = executable;
+				FreeMemoryInternal(ignorePid);
+				freememoryignore = string.Empty;
 			}
-
-			//await Task.Delay(0).ConfigureAwait(false);
-
-			freememoryignore = executable;
-			await FreeMemoryInternal(ignorePid).ConfigureAwait(false);
-			freememoryignore = string.Empty;
+			catch (OutOfMemoryException) { throw; }
+			catch (Exception ex)
+			{
+				Logging.Stacktrace(ex);
+			}
+			finally
+			{
+				Atomic.Unlock(ref freemem_lock);
+			}
 		}
 
-		async Task FreeMemoryInternal(int ignorePid = -1)
+		void FreeMemoryInternal(int ignorePid = -1)
 		{
 			MemoryManager.Update();
 			ulong b1 = MemoryManager.FreeBytes;
@@ -260,13 +275,12 @@ namespace Taskmaster
 
 			try
 			{
-				ScanPaused = true;
+				ScanTimer?.Stop();
 
 				// TODO: Pause Scan until we're done
 				ProcessDetectedEvent += FreeMemoryTick;
 
-				await Scan(ignorePid).ConfigureAwait(false); // TODO: Call for this to happen otherwise
-				ScanPaused = false;
+				Scan(ignorePid); // TODO: Call for this to happen otherwise
 
 				// TODO: Wait a little longer to allow OS to Actually page stuff. Might not matter?
 				//var b2 = MemoryManager.Free;
@@ -283,27 +297,24 @@ namespace Taskmaster
 			finally
 			{
 				ProcessDetectedEvent -= FreeMemoryTick;
+				ScanTimer?.Start();
 			}
 		}
-
-		bool ScanPaused = false;
 
 		/// <summary>
 		/// Spawn separate thread to run program scanning.
 		/// </summary>
 		async void TimedScan(object _, EventArgs _ea)
 		{
-			if (disposed) return; // HACK: dumb timers be dumb
+			if (DisposedOrDisposing) return; // HACK: dumb timers be dumb
 
             try
             {
 				if (Taskmaster.Trace) Log.Verbose("Rescan requested.");
-				if (ScanPaused) return;
-                // this stays on UI thread for some reason
 
                 await Task.Delay(0).ConfigureAwait(false); // asyncify
 
-                await Scan().ConfigureAwait(false);
+                Scan();
 			}
 			catch (Exception ex)
 			{
@@ -349,7 +360,7 @@ namespace Taskmaster
 		}
 
 		int scan_lock = 0;
-		async Task Scan(int ignorePid = -1)
+		void Scan(int ignorePid = -1)
 		{
 			if (DisposedOrDisposing) return;
 
@@ -362,8 +373,6 @@ namespace Taskmaster
                 NextScan = now.Add(ScanFrequency.Value);
 
                 if (Taskmaster.DebugFullScan) Log.Debug("<Process> Full Scan: Start");
-
-                await Task.Delay(0).ConfigureAwait(false); // asyncify
 
                 //ScanStartEvent?.Invoke(this, null);
 
