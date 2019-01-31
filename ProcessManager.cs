@@ -1134,7 +1134,7 @@ namespace Taskmaster
 
 				if (!string.IsNullOrEmpty(lprc.Executable))
 				{
-					if (lprc.Executable.Equals(info.Name, StringComparison.InvariantCultureIgnoreCase))
+					if (lprc.ExecutableFriendlyName.Equals(info.Name, StringComparison.InvariantCultureIgnoreCase))
 					{
 						if (Taskmaster.DebugPaths)
 							Log.Debug("[" + lprc.FriendlyName + "] Path+Exe matched.");
