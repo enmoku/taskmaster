@@ -834,7 +834,8 @@ namespace Taskmaster
 			return false;
 		}
 
-		static string[] UnwantedPathBits = new string[] { "x64", "x86", "bin", "debug", "release", "win32", "win64", "common" };
+		static string[] UnwantedPathBits = new string[] { "x64", "x86", "bin", "debug", "release", "win32", "win64", "common", "binaries" };
+		static string[] SpecialCasePathBits = new string[] { "steamapps" };
 
 		string FormatPathName(ProcessEx info)
 		{
@@ -883,7 +884,14 @@ namespace Taskmaster
 									// remove unwanted bits
 									for (int i = 0; i < parts.Count; i++)
 									{
-										if ((i > 2 && i < parts.Count - 3 ) || UnwantedPathBits.Contains(parts[i].ToLowerInvariant()))
+										string cur = parts[i].ToLowerInvariant();
+										if (SpecialCasePathBits.Contains(cur)) // steamapps
+										{
+											parts[i] = HumanReadable.Generic.Ellipsis;
+											parts.RemoveAt(++i); // common, i at app name, rolled over with loop
+											replaced = false;
+										}
+										else if ((i > 2 && i < parts.Count - 3 ) || UnwantedPathBits.Contains(cur))
 										{
 											if (replaced)
 												parts.RemoveAt(i--); // remove current and roll back loop
