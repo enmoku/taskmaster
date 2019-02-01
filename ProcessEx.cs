@@ -85,6 +85,7 @@ namespace Taskmaster
 					case ProcessHandlingState.Modified:
 						Modified = DateTimeOffset.UtcNow;
 						goto handled;
+					case ProcessHandlingState.Unmodified:
                     case ProcessHandlingState.AccessDenied:
                     case ProcessHandlingState.Finished:
 					case ProcessHandlingState.Abandoned:
