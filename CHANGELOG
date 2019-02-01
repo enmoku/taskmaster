@@ -3,6 +3,8 @@ Comprehensive changes can be found in Git change history:
 	https://github.com/mkahvi/taskmaster/commits/master
 
 ## [0.12...]
+### 2018-02-01
+	Internal: Simplified some things. Should have no visible effects to users.
 ### 2018-01-31
 	Internal: Changes and added Adjust Delay debug option in Core.ini.
 	Changed: Default affinity for TM itself to 0 (OS control) instead of just the last core.
