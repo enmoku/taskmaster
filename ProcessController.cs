@@ -563,16 +563,16 @@ namespace Taskmaster
 				}
 			}
 
+			info.State = ProcessHandlingState.Paused;
+
 			if (Taskmaster.ShowProcessAdjusts && firsttime)
 			{
-				var ev = new ProcessModificationEventArgs()
+				var ev = new ProcessModificationEventArgs(info)
 				{
 					PriorityNew = mPriority ? BackgroundPriority : null,
 					PriorityOld = oldPriority,
 					AffinityNew = mAffinity ? BackgroundAffinity : -1,
 					AffinityOld = oldAffinity,
-					Info = info,
-					State = ProcessRunningState.Paused,
 				};
 
 				ev.User = new System.Text.StringBuilder();
@@ -582,9 +582,7 @@ namespace Taskmaster
 				LogAdjust(ev);
 			}
 
-			info.State = ProcessHandlingState.Paused;
-
-			Paused?.Invoke(this, new ProcessModificationEventArgs() { Info = info, State = ProcessRunningState.Paused });
+			Paused?.Invoke(this, new ProcessModificationEventArgs(info));
 		}
 
 		void LogAdjust(ProcessModificationEventArgs ev)
@@ -602,7 +600,7 @@ namespace Taskmaster
 				if (ev.PriorityNew.HasValue)
 					sbs.Append(" → ").Append(Readable.ProcessPriority(ev.PriorityNew.Value));
 
-				if (Priority.HasValue && ev.State == ProcessRunningState.Paused && Priority != ev.PriorityNew)
+				if (Priority.HasValue && ev.Info.State == ProcessHandlingState.Paused && Priority != ev.PriorityNew)
 					sbs.Append($" [{ProcessHelpers.PriorityToInt(Priority.Value)}]");
 
 				if (ev.PriorityFail) sbs.Append(" [Failed]");
@@ -618,7 +616,7 @@ namespace Taskmaster
 				if (ev.AffinityNew >= 0)
 					sbs.Append(" → ").Append(ev.AffinityNew);
 
-				if (AffinityMask >= 0 && ev.State == ProcessRunningState.Paused && AffinityMask != ev.AffinityNew)
+				if (AffinityMask >= 0 && ev.Info.State == ProcessHandlingState.Paused && AffinityMask != ev.AffinityNew)
 					sbs.Append($" [{AffinityMask}]");
 			}
 			else
@@ -714,20 +712,18 @@ namespace Taskmaster
 				}
 			}
 
-			info.State = ProcessHandlingState.Resumed;
-
 			PausedIds.TryRemove(info.Id, out _);
+
+			info.State = ProcessHandlingState.Resumed;
 
 			if (Taskmaster.DebugForeground && Taskmaster.ShowProcessAdjusts)
 			{
-				var ev = new ProcessModificationEventArgs()
+				var ev = new ProcessModificationEventArgs(info)
 				{
 					PriorityNew = mPriority ? (ProcessPriorityClass?)Priority.Value : null,
 					PriorityOld = oldPriority,
 					AffinityNew = mAffinity ? newAffinity : -1,
 					AffinityOld = oldAffinity,
-					Info = info,
-					State = ProcessRunningState.Paused,
 				};
 
 				ev.User = new System.Text.StringBuilder();
@@ -737,7 +733,7 @@ namespace Taskmaster
 				LogAdjust(ev);
 			}
 
-			Resumed?.Invoke(this, new ProcessModificationEventArgs() { Info = info, State = ProcessRunningState.Resumed });
+			Resumed?.Invoke(this, new ProcessModificationEventArgs(info));
 		}
 
 		/// <summary>
@@ -785,7 +781,7 @@ namespace Taskmaster
 				info.Process.EnableRaisingEvents = true;
 				info.Process.Exited += End;
 
-				WaitingExit?.Invoke(this, new ProcessModificationEventArgs() { Info = info, State = ProcessRunningState.Undefined });
+				WaitingExit?.Invoke(this, new ProcessModificationEventArgs(info));
 
 				if (Taskmaster.DebugPower) Log.Debug($"[{FriendlyName}] {FormatPathName(info)} (#{info.Id.ToString()}) power exit wait set");
 			}
@@ -1124,7 +1120,7 @@ namespace Taskmaster
 						{
 							try
 							{
-								WaitingExit?.Invoke(this, new ProcessModificationEventArgs() { Info = info, State = ProcessRunningState.Resumed });
+								WaitingExit?.Invoke(this, new ProcessModificationEventArgs(info));
 								info.Process.EnableRaisingEvents = true;
 								info.Process.Exited += End;
 								info.Process.Refresh();
@@ -1145,7 +1141,7 @@ namespace Taskmaster
 								Log.Debug("[" + FriendlyName + "] " + info.Name + " (#" + info.Id + ") not in foreground, not prioritizing.");
 
 							Pause(info, FirstTimeSeenForForeground);
-							info.State = ProcessHandlingState.Paused;
+							// info.State = ProcessHandlingState.Paused; // Pause() sets this
 							return;
 						}
 					}
@@ -1290,14 +1286,12 @@ namespace Taskmaster
 				logevent |= (FirstTimeSeenForForeground && Foreground != ForegroundMode.Ignore);
 				logevent |= (Taskmaster.ShowInaction && Taskmaster.DebugProcesses);
 
-				var ev = new ProcessModificationEventArgs()
+				var ev = new ProcessModificationEventArgs(info)
 				{
 					PriorityNew = newPriority,
 					PriorityOld = oldPriority,
 					AffinityNew = newAffinityMask,
 					AffinityOld = oldAffinityMask,
-					Info = info,
-					State = ProcessRunningState.Found,
 					PriorityFail = Priority.HasValue && fPriority,
 					AffinityFail = AffinityMask >= 0 && fAffinity,
 					Protected = isProtectedFile,

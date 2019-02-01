@@ -31,8 +31,12 @@ namespace Taskmaster
 {
 	sealed public class ProcessModificationEventArgs : EventArgs
 	{
+		public ProcessModificationEventArgs(ProcessEx info)
+		{
+			Info = info;
+		}
+
 		public ProcessEx Info = null;
-		public ProcessRunningState State = ProcessRunningState.Undefined;
 
 		public ProcessPriorityClass? PriorityNew = null;
 		public ProcessPriorityClass? PriorityOld = null;

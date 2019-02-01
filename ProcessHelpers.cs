@@ -35,35 +35,6 @@ using Microsoft.Win32.SafeHandles; // SafeHandleMinusOneIsInvalid
 
 namespace Taskmaster
 {
-	public enum ProcessRunningState
-	{
-		/// <summary>
-		/// New Instance
-		/// </summary>
-		Starting,
-		/// <summary>
-		/// Scanning located, unsure if just started
-		/// </summary>
-		Found,
-		/// <summary>
-		/// Setting to background
-		/// </summary>
-		Paused,
-		/// <summary>
-		/// Setting to foreground
-		/// </summary>
-		Resumed,
-		/// <summary>
-		/// For undoing various things
-		/// </summary>
-		Cancel,
-		/// <summary>
-		/// 
-		/// </summary>
-		Exiting,
-		Undefined
-	}
-
 	public enum ProcessHandlingState
 	{
 		/// <summary>

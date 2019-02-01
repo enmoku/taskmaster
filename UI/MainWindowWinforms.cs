@@ -343,8 +343,8 @@ namespace Taskmaster
 
 			processmanager.ProcessModified += ProcessTouchEvent;
 
-			foreach (var bu in processmanager.getExitWaitList())
-				ExitWaitListHandler(this, new ProcessModificationEventArgs() { State = ProcessRunningState.Found, Info = bu });
+			foreach (var info in processmanager.getExitWaitList())
+				ExitWaitListHandler(this, new ProcessModificationEventArgs(info));
 		}
 
 		void RescanRequestEvent(object _, EventArgs _ea)
@@ -2462,30 +2462,22 @@ namespace Taskmaster
 						else
 							li.SubItems[2].Text = "ACTIVE";
 
-						if (Taskmaster.Trace && Taskmaster.DebugForeground) Log.Debug("WaitlistHandler: " + ea.Info.Name + " = " + ea.State.ToString());
-						switch (ea.State)
+						if (Taskmaster.Trace && Taskmaster.DebugForeground) Log.Debug("WaitlistHandler: " + ea.Info.Name + " = " + ea.Info.State.ToString());
+						switch (ea.Info.State)
 						{
-							case ProcessRunningState.Cancel:
-							case ProcessRunningState.Exiting:
-								exitwaitlist.Items.Remove(li);
-								ExitWaitlistMap.TryRemove(ea.Info.Id, out _);
+							case ProcessHandlingState.Paused:
 								break;
-							case ProcessRunningState.Found:
-							case ProcessRunningState.Paused:
-								break;
-							//case ProcessEventArgs.ProcessState.Starting: // this should never get here
-							case ProcessRunningState.Resumed:
+							case ProcessHandlingState.Resumed:
 								// move item to top
 								//exitwaitlist.Items.Remove(li);
 								//exitwaitlist.Items.Insert(0, li);
 								//li.EnsureVisible();
 								break;
-							case ProcessRunningState.Starting:
-								//break;
-							case ProcessRunningState.Undefined:
-								//break;
+							case ProcessHandlingState.Exited:
+								exitwaitlist.Items.Remove(li);
+								ExitWaitlistMap.TryRemove(ea.Info.Id, out _);
+								break;
 							default:
-								Log.Debug("<UI> Received unhandled process (#" + ea.Info.Id + ") state: " + ea.State.ToString());
 								break;
 						}
 					}

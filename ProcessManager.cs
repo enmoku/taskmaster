@@ -901,10 +901,12 @@ namespace Taskmaster
 
 		ConcurrentDictionary<int, ProcessEx> WaitForExitList = new ConcurrentDictionary<int, ProcessEx>();
 
-		void WaitForExitTriggered(ProcessEx info, ProcessRunningState state = ProcessRunningState.Exiting)
+		void WaitForExitTriggered(ProcessEx info)
 		{
 			Debug.Assert(info.Controller != null, "ProcessController not defined");
 			Debug.Assert(!SystemProcessId(info.Id), "WaitForExitTriggered for system process");
+
+			info.State = ProcessHandlingState.Exited;
 
 			try
 			{
@@ -921,7 +923,7 @@ namespace Taskmaster
 
 				info.Controller?.End(info.Process, null);
 
-				ProcessStateChange?.Invoke(this, new ProcessModificationEventArgs() { Info = info, State = state });
+				ProcessStateChange?.Invoke(this, new ProcessModificationEventArgs(info));
 			}
 			catch (Exception ex)
 			{
@@ -975,7 +977,7 @@ namespace Taskmaster
 			}
 
 			while (clearList.Count > 0)
-				WaitForExitTriggered(clearList.Pop(), ProcessRunningState.Cancel);
+				WaitForExitTriggered(clearList.Pop());
 
 			if (cancelled > 0)
 				Log.Information("Cancelled power mode wait on " + cancelled + " process(es).");
@@ -994,7 +996,7 @@ namespace Taskmaster
 				try
 				{
 					info.Process.EnableRaisingEvents = true;
-					info.Process.Exited += (_, _ea) => WaitForExitTriggered(info, ProcessRunningState.Exiting);
+					info.Process.Exited += (_, _ea) => WaitForExitTriggered(info);
 
 					// TODO: Just in case check if it exited while we were doing this.
 					exithooked = true;
@@ -1004,16 +1006,15 @@ namespace Taskmaster
 				}
 				catch (InvalidOperationException) // already exited
 				{
-					WaitForExitTriggered(info, ProcessRunningState.Exiting);
+					WaitForExitTriggered(info);
 				}
 				catch (Exception ex) // unknown error
 				{
 					Logging.Stacktrace(ex);
-					WaitForExitTriggered(info, ProcessRunningState.Exiting);
+					WaitForExitTriggered(info);
 				}
 
-				if (exithooked)
-					ProcessStateChange?.Invoke(this, new ProcessModificationEventArgs() { Info = info, State = ProcessRunningState.Found });
+				if (exithooked) ProcessStateChange?.Invoke(this, new ProcessModificationEventArgs(info));
 			}
 		}
 
@@ -1043,7 +1044,7 @@ namespace Taskmaster
 							if (PreviousForegroundController.Foreground != ForegroundMode.Ignore)
 								PreviousForegroundController.Pause(PreviousForegroundInfo);
 
-							ProcessStateChange?.Invoke(this, new ProcessModificationEventArgs() { Info = PreviousForegroundInfo, State = ProcessRunningState.Paused });
+							ProcessStateChange?.Invoke(this, new ProcessModificationEventArgs(PreviousForegroundInfo));
 						}
 					}
 					else
@@ -1062,7 +1063,7 @@ namespace Taskmaster
 
 						if (prc.Foreground != ForegroundMode.Ignore) prc.Resume(info);
 
-						ProcessStateChange?.Invoke(this, new ProcessModificationEventArgs() { Info = info, State = ProcessRunningState.Resumed });
+						ProcessStateChange?.Invoke(this, new ProcessModificationEventArgs(info));
 
 						PreviousForegroundInfo = info;
 						PreviousForegroundController = prc;
@@ -1314,7 +1315,7 @@ namespace Taskmaster
 				Log.Debug(sbs.ToString());
 			}
 
-			ProcessStateChange?.Invoke(this, new ProcessModificationEventArgs() { Info = info, State = ProcessRunningState.Found });
+			ProcessStateChange?.Invoke(this, new ProcessModificationEventArgs(info));
 		}
 
 		// TODO: This should probably be pushed into ProcessController somehow.
@@ -1323,8 +1324,6 @@ namespace Taskmaster
 			if (DisposedOrDisposing) return;
 
 			ProcessEx info = ev.Info;
-
-			bool Triaged = false;
 
             await Task.Delay(0).ConfigureAwait(false); // asyncify
 
@@ -1354,7 +1353,6 @@ namespace Taskmaster
                         return;
                     }
 
-                    Triaged = true;
                     info.State = ProcessHandlingState.Processing;
 
                     await Task.Delay(0).ConfigureAwait(false); // asyncify again
@@ -1369,6 +1367,12 @@ namespace Taskmaster
 
                         if (info.Controller.Analyze && info.Valid && info.State != ProcessHandlingState.Abandoned)
                             analyzer.Analyze(info);
+
+						if (info.State == ProcessHandlingState.Processing)
+						{
+							Debug.WriteLine($"[{info.Controller.FriendlyName}] {info.Name} (#{info.Name}) correcting state to finished");
+							info.State = ProcessHandlingState.Finished;
+						}
                     }
                     catch (OutOfMemoryException) { throw; }
                     catch (Exception ex)
@@ -1395,7 +1399,7 @@ namespace Taskmaster
 			}
 			finally
 			{
-				if (!Triaged) HandlingStateChange?.Invoke(this, new HandlingStateChangeEventArgs(info));
+				HandlingStateChange?.Invoke(this, new HandlingStateChangeEventArgs(info));
 			}
 		}
 
