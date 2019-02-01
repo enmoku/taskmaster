@@ -2100,8 +2100,8 @@ namespace Taskmaster
 					TextAlign = System.Drawing.ContentAlignment.MiddleLeft,
 					AutoEllipsis = true,
 				};
-				activeExec = new Label() { Dock = DockStyle.Top, Text = HumanReadable.Generic.Uninitialized, Width = 100, TextAlign = System.Drawing.ContentAlignment.MiddleLeft };
-				activeFullscreen = new Label() { Dock = DockStyle.Top, Text = HumanReadable.Generic.Uninitialized, Width = 60, TextAlign = System.Drawing.ContentAlignment.MiddleCenter };
+				activeExec = new Label() { Text = HumanReadable.Generic.Uninitialized, Width = 100, TextAlign = System.Drawing.ContentAlignment.MiddleLeft };
+				activeFullscreen = new Label() { Text = HumanReadable.Generic.Uninitialized, Width = 60, TextAlign = System.Drawing.ContentAlignment.MiddleCenter };
 				activePID = new Label() { Text = HumanReadable.Generic.Uninitialized, Width = 60, TextAlign = System.Drawing.ContentAlignment.MiddleCenter };
 
 				foregroundapppanel.Controls.Add(new Label() { Text = "Active window:", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, Width = 80 });
