@@ -444,12 +444,14 @@ namespace Taskmaster
 				BorderStyle = BorderStyle.Fixed3D, // doesn't work with EnableVisualStyles
 				View = View.Details,
 				HeaderStyle = ColumnHeaderStyle.None,
-				Dock = DockStyle.Left,
+				//Dock = DockStyle.Left,
+				FullRowSelect = true,
 				Width = 180,
-				Height = 60,
+				Height = 80,
 				Enabled = (execName.Text.Length == 0),
 			};
-			ignorelist.Columns.Add(HumanReadable.System.Process.Executable, -2);
+			ignorelist.Columns.Add(HumanReadable.System.Process.Executable, ignorelist.Width - 24); // arbitrary -24 to eliminate horizontal scrollbar
+
 			tooltip.SetToolTip(ignorelist, "Executables to ignore for matching with this rule.\nOnly exact matches work.\n\nRequires path to be defined.\nHas no effect if executable is defined.");
 			execName.TextChanged += (_, _ea) =>
 			{
@@ -586,22 +588,24 @@ namespace Taskmaster
 			cpumask = Controller.AffinityMask;
 			for (int bit = 0; bit < ProcessManager.CPUCount; bit++)
 			{
-				var box = new CheckBox();
-				var bitoff = bit;
-				box.AutoSize = true;
-				box.Checked = ((Math.Max(0, cpumask) & (1 << bitoff)) != 0);
+				int lbit = bit;
+				var box = new CheckBox
+				{
+					AutoSize = true,
+					Checked = ((Math.Max(0, cpumask) & (1 << lbit)) != 0)
+				};
 				box.CheckedChanged += (sender, e) =>
 				{
 					if (cpumask < 0) cpumask = 0;
 
 					if (box.Checked)
 					{
-						cpumask |= (1 << bitoff);
+						cpumask |= (1 << lbit);
 						affinityMask.Value = cpumask;
 					}
 					else
 					{
-						cpumask &= ~(1 << bitoff);
+						cpumask &= ~(1 << lbit);
 						affinityMask.Value = cpumask;
 					}
 				};
@@ -922,10 +926,7 @@ namespace Taskmaster
 			if (!samesection)
 			{
 				var dprc = Taskmaster.processmanager.GetControllerByName(friendlyName.Text);
-				if (dprc != null)
-				{
-					sbs.Append("Friendly name conflict!");
-				}
+				if (dprc != null) sbs.Append("Friendly name conflict!");
 			}
 
 			if (execName.Text.Length > 0)

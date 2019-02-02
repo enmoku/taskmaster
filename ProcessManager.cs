@@ -336,6 +336,8 @@ namespace Taskmaster
 
 		public async void HastenScan(int delay = 15)
 		{
+			// delay is unused but should be used somehow
+
             await Task.Delay(0).ConfigureAwait(false); // asyncify
 
 			double nextscan = Math.Max(0, DateTimeOffset.UtcNow.TimeTo(NextScan).TotalSeconds);
