@@ -31,9 +31,6 @@ namespace Taskmaster
 		public static int ParentSeeks { get; set; } = 0;
 		public static double Parentseektime { get; set; } = 0;
 
-		public static int WMIqueries { get; set; } = 0;
-		public static double WMIquerytime { get; set; } = 0;
-
 		public static ulong WMIPolling { get; set; } = 0;
 		public static double WMIPollTime { get; set; } = 0;
 

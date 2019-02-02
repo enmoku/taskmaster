@@ -435,50 +435,6 @@ namespace Taskmaster
 		DateTimeOffset LastMemoryWarning = DateTimeOffset.MinValue;
 		long MemoryWarningCooldown = 30;
 
-		// VRAM  / GPU
-
-		ulong vram_value { get; set; } = 0;
-		/// <summary>
-		/// Returns maximum available VRAM in MB.
-		/// </summary>
-		/// <returns></returns>
-		public ulong VRAM()
-		{
-			if (!Taskmaster.WMIQueries) return 0;
-
-			if (vram_value != 0) return vram_value;
-
-			try
-			{
-				// apparently this maps to registry stuff:
-				// https://docs.microsoft.com/en-us/windows-hardware/drivers/display/setting-hardware-information-in-the-registry
-				// VideoPortGetRegistryParameters
-				using (var searcher = new ManagementObjectSearcher(
-					new ManagementScope(@"\\.\root\CIMV2"),
-					new SelectQuery("SELECT AdapterRAM FROM Win32_VideoController"),
-					new EnumerationOptions(null, new TimeSpan(0, 5, 0), 1, false, true, false, false, false, true, false)
-					))
-				{
-					foreach (ManagementObject mo in searcher.Get())
-					{
-						var ram = mo["AdapterRAM"] as ulong?;
-
-						if (ram.HasValue)
-						{
-							vram_value = ram.Value;
-							break;
-						}
-					}
-				}
-			}
-			catch (Exception ex)
-			{
-				Logging.Stacktrace(ex);
-			}
-
-			return vram_value;
-		}
-
 		bool disposed; // = false;
 		public void Dispose()
 		{

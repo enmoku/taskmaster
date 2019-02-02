@@ -516,12 +516,6 @@ namespace Taskmaster
 		public static int PathCacheLimit { get; set; } = 200;
 		public static TimeSpan PathCacheMaxAge { get; set; } = new TimeSpan(30, 0, 0);
 
-		/// <summary>
-		/// Whether to use WMI queries for investigating failed path checks to determine if an application was launched in watched path.
-		/// </summary>
-		/// <value><c>true</c> if WMI queries are enabled; otherwise, <c>false</c>.</value>
-		public static bool WMIQueries { get; private set; } = false;
-
 		public static string ConfigVersion = "alpha.3";
 
 		public static bool ExitConfirmation { get; set; } = true;
@@ -679,9 +673,11 @@ namespace Taskmaster
 			perfsec["Background I/O mode"].Comment = "Sets own priority exceptionally low. Warning: This can make TM's UI and functionality quite unresponsive.";
 			dirtyconfig |= modified;
 
-			WMIQueries = perfsec.GetSetDefault("WMI queries", true, out modified).BoolValue;
-			perfsec["WMI queries"].Comment = "WMI is considered buggy and slow. Unfortunately necessary for some functionality.";
-			dirtyconfig |= modified;
+			if (perfsec.Contains("WMI queries"))
+			{
+				perfsec.Remove("WMI queries");
+				dirtyconfig |= modified;
+			}
 
 			//perfsec.GetSetDefault("Child processes", false, out modified); // unused here
 			//perfsec["Child processes"].Comment = "Enables controlling process priority based on parent process if nothing else matches. This is slow and unreliable.";
@@ -714,7 +710,6 @@ namespace Taskmaster
 
 			Log.Information("<Core> Verbosity: " + MemoryLog.MemorySink.LevelSwitch.MinimumLevel.ToString());
 			Log.Information("<Core> Self-optimize: " + (SelfOptimize ? HumanReadable.Generic.Enabled : HumanReadable.Generic.Disabled));
-			Log.Information("<Core> WMI queries: " + (WMIQueries ? HumanReadable.Generic.Enabled : HumanReadable.Generic.Disabled));
 
 			// PROTECT USERS FROM TOO HIGH PERMISSIONS
 			var isadmin = IsAdministrator();
@@ -1412,7 +1407,6 @@ namespace Taskmaster
 
 		static void PrintStats()
 		{
-			Log.Information($"<Stat> WMI queries: {Statistics.WMIquerytime:N2}s [{Statistics.WMIqueries.ToString()}]");
 			Log.Information($"<Stat> WMI polling: {Statistics.WMIPollTime:N2}s [{Statistics.WMIPolling.ToString()}]");
 			Log.Information($"<Stat> Self-maintenance: {Statistics.MaintenanceTime:N2}s [{Statistics.MaintenanceCount.ToString()}]");
 			Log.Information($"<Stat> Path cache: {Statistics.PathCacheHits.ToString()} hits, {Statistics.PathCacheMisses.ToString()} misses");
