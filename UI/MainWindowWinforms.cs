@@ -974,13 +974,14 @@ namespace Taskmaster
 						comps.ShowDialog();
 						if (comps.DialogResult == DialogResult.OK)
 						{
-							var rv = MessageBox.Show("TM needs to be restarted for changes to take effect.\n\nCancel to do so manually later.",
-								"Restart needed", MessageBoxButtons.OKCancel, MessageBoxIcon.Information, MessageBoxDefaultButton.Button1);
-
-							if (rv == DialogResult.OK)
+							using (var dialog = new SimpleMessageBox("Restart needed", "TM needs to be restarted for changes to take effect.\n\nCancel to do so manually later.", SimpleMessageBox.Buttons.AcceptCancel))
 							{
-								Log.Information("<UI> Restart request");
-								Taskmaster.UnifiedExit(restart: true);
+								dialog.ShowDialog();
+								if (dialog.Result == SimpleMessageBox.ResultType.OK)
+								{
+									Log.Information("<UI> Restart request");
+									Taskmaster.UnifiedExit(restart: true);
+								}
 							}
 						}
 					}
@@ -1216,18 +1217,18 @@ namespace Taskmaster
 				var now = DateTime.Now;
 				var age = (now - builddate).TotalDays;
 
-				MessageBox.Show(
-					Application.ProductName +
-					"\nVersion: " + Application.ProductVersion +
-					"\nBuilt: " + $"{builddate.ToString("yyyy/MM/dd HH:mm")} [{age:N0} days old]" +
-					"\n\nCreated by M.A., 2016–2019" +
-					"\n\nAt Github: " + Taskmaster.GitURL +
-					"\nAt Itch.io: " + Taskmaster.ItchURL +
-					"\n\nFree system maintenance and de-obnoxifying app.\n\nAvailable under MIT license.",
-					"About Taskmaster!",
-					MessageBoxButtons.OK, MessageBoxIcon.Information,
-					MessageBoxDefaultButton.Button1, MessageBoxOptions.DefaultDesktopOnly
-					);
+				using (var msg = new SimpleMessageBox("About Taskmaster!",
+						Application.ProductName +
+						"\nVersion: " + Application.ProductVersion +
+						"\nBuilt: " + $"{builddate.ToString("yyyy/MM/dd HH:mm")} [{age:N0} days old]" +
+						"\n\nCreated by M.A., 2016–2019" +
+						"\n\nAt Github: " + Taskmaster.GitURL +
+						"\nAt Itch.io: " + Taskmaster.ItchURL +
+						"\n\nFree system maintenance and de-obnoxifying app.\n\nAvailable under MIT license.",
+						SimpleMessageBox.Buttons.OK))
+				{
+					msg.ShowDialog();
+				}
 			});
 			menu_info.DropDownItems.Add(menu_info_github);
 			menu_info.DropDownItems.Add(menu_info_itchio);
@@ -2713,15 +2714,18 @@ namespace Taskmaster
 					var prc = Taskmaster.processmanager.GetControllerByName(li.SubItems[NameColumn].Text);
 					if (prc != null)
 					{
-						var rv = MessageBox.Show("Really remove '"+prc.FriendlyName+"'", "Remove watchlist item", MessageBoxButtons.YesNo, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button2);
-						if (rv == DialogResult.Yes)
+						using (var msg = new SimpleMessageBox("Remove watchlist item", $"Really remove '{prc.FriendlyName}'", SimpleMessageBox.Buttons.AcceptCancel))
 						{
-							processmanager.RemoveController(prc);
+							msg.ShowDialog();
+							if (msg.Result == SimpleMessageBox.ResultType.OK)
+							{
+								processmanager.RemoveController(prc);
 
-							prc.DeleteConfig();
-							Log.Information("[" + prc.FriendlyName + "] Rule removed");
-							WatchlistMap.TryRemove(prc, out ListViewItem _);
-							WatchlistRules.Items.Remove(li);
+								prc.DeleteConfig();
+								Log.Information("[" + prc.FriendlyName + "] Rule removed");
+								WatchlistMap.TryRemove(prc, out ListViewItem _);
+								WatchlistRules.Items.Remove(li);
+							}
 						}
 					}
 				}

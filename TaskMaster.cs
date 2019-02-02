@@ -78,14 +78,21 @@ namespace Taskmaster
 
 		public static void ConfirmExit(bool restart = false, bool admin = false)
 		{
-			var rv = DialogResult.Yes;
+			var rv = SimpleMessageBox.ResultType.OK;
 			if (Taskmaster.ExitConfirmation)
 			{
 				if (ExitConfirmation)
-					rv = MessageBox.Show("Are you sure you want to " + (restart ? "restart" : "exit") + " Taskmaster?",
-										 (restart ? "Restart" : "Exit") + Application.ProductName + " ???",
-										 MessageBoxButtons.YesNo, MessageBoxIcon.Question, MessageBoxDefaultButton.Button1, MessageBoxOptions.DefaultDesktopOnly, false);
-				if (rv != DialogResult.Yes) return;
+				{
+					using (var msg = new SimpleMessageBox(
+						(restart ? "Restart" : "Exit") + Application.ProductName + " ???",
+						"Are you sure you want to " + (restart ? "restart" : "exit") + " Taskmaster?",
+						SimpleMessageBox.Buttons.AcceptCancel))
+					{
+						msg.ShowDialog();
+						rv = msg.Result;
+					}
+				}
+				if (rv != SimpleMessageBox.ResultType.OK) return;
 			}
 
 			RestartElevated = admin;
@@ -716,9 +723,17 @@ namespace Taskmaster
 			var adminwarning = ((cfg["Core"].TryGet("Hell")?.StringValue ?? null) != "No");
 			if (isadmin && adminwarning)
 			{
-				var rv = MessageBox.Show("You're starting TM with admin rights, is this right?\n\nYou can cause bad system operation, such as complete system hang, if you configure or configured TM incorrectly.",
-										 Application.ProductName + " – admin access detected!!??", MessageBoxButtons.YesNo, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button2, MessageBoxOptions.DefaultDesktopOnly, false);
-				if (rv == DialogResult.Yes)
+				var rv = SimpleMessageBox.ResultType.Cancel;
+				using (var msg = new SimpleMessageBox(
+					"Taskmaster! – admin access!!??",
+					"You're starting TM with admin rights, is this right?\n\nYou can cause bad system operation, such as complete system hang, if you configure or configured TM incorrectly.",
+					SimpleMessageBox.Buttons.AcceptCancel))
+				{
+					msg.ShowDialog();
+					rv = msg.Result;
+				}
+
+				if (rv == SimpleMessageBox.ResultType.OK)
 				{
 					cfg["Core"]["Hell"].StringValue = "No";
 					corecfg.MarkDirty();
@@ -990,7 +1005,10 @@ namespace Taskmaster
 						}
 						else
 						{
-							MessageBox.Show("", "Failure to elevate privileges, resuming as normal.", MessageBoxButtons.OK, MessageBoxIcon.Error, MessageBoxDefaultButton.Button1);
+							using (var msg = new SimpleMessageBox("Taskmaster launch error", "Failure to elevate privileges, resuming as normal.", SimpleMessageBox.Buttons.OK))
+							{
+								msg.ShowDialog();
+							}
 						}
 
 						break;
@@ -1077,15 +1095,15 @@ namespace Taskmaster
 			}
 			else if (!File.Exists(Path.Combine(datapath, "Core.ini")))
 			{
-				var rv = MessageBox.Show(
-					"Setup portable installation?", "Taskmaster!",
-					MessageBoxButtons.YesNo, MessageBoxIcon.Question, MessageBoxDefaultButton.Button2);
-
-				if (rv == DialogResult.Yes)
+				using (var msg = new SimpleMessageBox("Taskmaster setup", "Setup portable installation?", SimpleMessageBox.Buttons.AcceptCancel))
 				{
-					datapath = portpath;
-					Portable = true;
-					System.IO.Directory.CreateDirectory(datapath); // this might fail, but we don't really care.
+					msg.ShowDialog();
+					if (msg.Result == SimpleMessageBox.ResultType.OK)
+					{
+						datapath = portpath;
+						Portable = true;
+						System.IO.Directory.CreateDirectory(datapath); // this might fail, but we don't really care.
+					}
 				}
 			}
 		}
@@ -1229,21 +1247,26 @@ namespace Taskmaster
 			singleton = new System.Threading.Mutex(true, SingletonID, out bool mutexgained);
 			if (!mutexgained)
 			{
+				SimpleMessageBox.ResultType rv = SimpleMessageBox.ResultType.Cancel;
+
 				// already running, signal original process
-				var rv = MessageBox.Show(
-					"Already operational.\n\nAbort to kill running instance and exit this.\nRetry to try to recover [restart] running instance.\nIgnore to exit this.",
-					System.Windows.Forms.Application.ProductName + "!",
-					MessageBoxButtons.AbortRetryIgnore, MessageBoxIcon.Exclamation, MessageBoxDefaultButton.Button2);
+				using (var msg = new SimpleMessageBox("Taskmaster!",
+					"Already operational.\n\nRetry to try to recover [restart] running instance.\nEnd to kill running instance and exit this.\nCancel to exit this.",
+					SimpleMessageBox.Buttons.RetryEndCancel))
+				{
+					msg.ShowDialog();
+					rv = msg.Result;
+				}
 
 				switch (rv)
 				{
-					case DialogResult.Retry:
+					case SimpleMessageBox.ResultType.Retry:
 						PipeExplorer(restart:true);
 						break;
-					case DialogResult.Abort:
+					case SimpleMessageBox.ResultType.End:
 						PipeExplorer(restart: false);
 						break;
-					case DialogResult.Ignore:
+					case SimpleMessageBox.ResultType.Cancel:
 						break;
 				}
 

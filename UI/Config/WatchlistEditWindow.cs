@@ -93,15 +93,19 @@ namespace Taskmaster
 
 			if (!fnlen || friendlyName.Text.Contains("]") || friendlyName.Text.Contains("["))
 			{
-				MessageBox.Show("Friendly name is missing or includes illegal characters (such as square brackets).", "Malconfigured friendly name",
-					MessageBoxButtons.OK, MessageBoxIcon.Error, MessageBoxDefaultButton.Button1);
+				using (var msg = new SimpleMessageBox("Malconfigured friendly name", "Friendly name is missing or includes illegal characters (such as square brackets).", SimpleMessageBox.Buttons.OK))
+				{
+					msg.ShowDialog();
+				}
 				return;
 			}
 
 			if (!path && !exnam)
 			{
-				MessageBox.Show("No path nor executable defined.", "Configuration error",
-					MessageBoxButtons.OK, MessageBoxIcon.Error, MessageBoxDefaultButton.Button1);
+				using (var msg = new SimpleMessageBox("Configuration error", "No path nor executable defined.", SimpleMessageBox.Buttons.OK))
+				{
+					msg.ShowDialog();
+				}
 				return;
 			}
 
@@ -110,8 +114,10 @@ namespace Taskmaster
 			var dprc = Taskmaster.processmanager.GetControllerByName(newfriendlyname);
 			if (dprc != null && dprc != Controller)
 			{
-				MessageBox.Show("Friendly Name conflict.", "Configuration error",
-					MessageBoxButtons.OK, MessageBoxIcon.Error, MessageBoxDefaultButton.Button1);
+				using (var msg = new SimpleMessageBox("Configuration error", "Friendly Name conflict.", SimpleMessageBox.Buttons.OK))
+				{
+					msg.ShowDialog();
+				}
 				return;
 			}
 
@@ -121,8 +127,10 @@ namespace Taskmaster
 
 			if (!hasPrio && !hasAff && !hasPow)
 			{
-				MessageBox.Show("No priority, affinity, nor power plan defined.", "Configuration error",
-					MessageBoxButtons.OK, MessageBoxIcon.Error, MessageBoxDefaultButton.Button1);
+				using (var msg = new SimpleMessageBox("Configuration error", "No priority, affinity, nor power plan defined.", SimpleMessageBox.Buttons.OK))
+				{
+					msg.ShowDialog();
+				}
 				return;
 			}
 
@@ -961,7 +969,18 @@ namespace Taskmaster
 				}
 			}
 
-			MessageBox.Show(sbs.ToString(), "Validation results", MessageBoxButtons.OK, MessageBoxIcon.Information, MessageBoxDefaultButton.Button1);
+			if (affinityMask.Value >= 0 && idealAffinity.Value > 0)
+			{
+				if (!MKAh.Bit.IsSet(Convert.ToInt32(affinityMask.Value).Replace(0, ProcessManager.AllCPUsMask), Convert.ToInt32(idealAffinity.Value) - 1))
+				{
+					sbs.Append("Affinity ideal is not within defined affinity.").AppendLine();
+				}
+			}
+
+			using (var msg = new SimpleMessageBox("Validation results", sbs.ToString(), SimpleMessageBox.Buttons.OK))
+			{
+				msg.ShowDialog();
+			}
 		}
 	}
 }

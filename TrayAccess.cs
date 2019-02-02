@@ -697,9 +697,10 @@ namespace Taskmaster
 
 				if (!isadmin)
 				{
-					var rv = MessageBox.Show("Scheduler can not be modified without admin rights.",
-												 System.Windows.Forms.Application.ProductName + " – run with scheduler at login",
-										MessageBoxButtons.OK, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button1, System.Windows.Forms.MessageBoxOptions.DefaultDesktopOnly, false);
+					using (var msg = new SimpleMessageBox("Taskmaster! – run at login", "Scheduler can not be modified without admin rights.", SimpleMessageBox.Buttons.OK))
+					{
+						msg.ShowDialog();
+					}
 					return;
 				}
 
@@ -707,12 +708,14 @@ namespace Taskmaster
 				{
 					if (isadmin)
 					{
-						var rv = System.Windows.Forms.MessageBox.Show("This will add on-login scheduler to run TM as admin, is this right?",
-												 System.Windows.Forms.Application.ProductName + " – run at login with scheduler",
-										MessageBoxButtons.YesNo, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button2, System.Windows.Forms.MessageBoxOptions.DefaultDesktopOnly, false);
-						if (rv == DialogResult.No) return;
+						using (var msg = new SimpleMessageBox("Taskmaster! – run at login", "This will add on-login scheduler to run TM as admin, is this right?", SimpleMessageBox.Buttons.AcceptCancel))
+						{
+							msg.ShowDialog();
+							if (msg.Result == SimpleMessageBox.ResultType.Cancel) return;
+						}
 					}
 				}
+				// can't be disabled without admin rights?
 
 				menu_runatstart_sch.Checked = RunAtStartScheduler(!menu_runatstart_sch.Checked);
 			}
