@@ -515,9 +515,8 @@ namespace Taskmaster
 		Label powerbalancer_forcedcount;
 
 		ListView exitwaitlist;
-		ConcurrentDictionary<int, ListViewItem> ExitWaitlistMap;
 		ListView processinglist;
-		Dictionary<int, ListViewItem> ProcessingListMap;
+		ConcurrentDictionary<int, ListViewItem> ExitWaitlistMap = new ConcurrentDictionary<int, ListViewItem>();
 
 		void UserMicVol(object _, EventArgs _ea)
 		{
@@ -2134,7 +2133,6 @@ namespace Taskmaster
 				MinimumSize = new System.Drawing.Size(-2, 80),
 				Dock = DockStyle.Fill,
 			};
-			ExitWaitlistMap = new ConcurrentDictionary<int, ListViewItem>();
 
 			exitwaitlist.Columns.Add("Id", 50);
 			exitwaitlist.Columns.Add(HumanReadable.System.Process.Executable, 280);
@@ -2167,8 +2165,6 @@ namespace Taskmaster
 			processinglist.Columns.Add(HumanReadable.System.Process.Executable, 280);
 			processinglist.Columns.Add("State", 160);
 			processinglist.Columns.Add("Time", 80);
-
-			ProcessingListMap = new Dictionary<int, ListViewItem>();
 
 			processlayout.Controls.Add(processinglist);
 
@@ -2304,6 +2300,9 @@ namespace Taskmaster
 			EnsureVerbosityLevel();
 		}
 
+		/// <summary>
+		/// Process ID to processinglist mapping.
+		/// </summary>
 		ConcurrentDictionary<int, ListViewItem> ProcessEventMap = new ConcurrentDictionary<int, ListViewItem>();
 
 		async void ProcessHandlingStateChangeEvent(object _, HandlingStateChangeEventArgs ea)
@@ -2390,6 +2389,11 @@ namespace Taskmaster
 			if (ProcessDebugTab_visible)
 			{
 				ProcessDebugTab_visible = false;
+
+				activePID.Text = HumanReadable.Generic.Undefined;
+				activeFullscreen.Text = HumanReadable.Generic.Undefined;
+				activeFullscreen.Text = HumanReadable.Generic.Undefined;
+
 				tabLayout.Controls.Remove(ProcessDebugTab);
 				processinglist.Items.Clear();
 				exitwaitlist.Items.Clear();
