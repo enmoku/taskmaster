@@ -233,6 +233,9 @@ namespace Taskmaster
 				Controller.Volume = Convert.ToSingle(volume.Value) / 100f;
 			}
 
+			Controller.AffinityIdeal = Convert.ToInt32(idealAffinity.Value) - 1;
+			Controller.LogAdjusts = logAdjusts.Checked;
+
 			Controller.Enabled = newPrc ? true : enOrig;
 
 			Controller.Repair();
@@ -261,6 +264,7 @@ namespace Taskmaster
 		ComboBox affstrategy = null;
 		NumericUpDown affinityMask = null;
 		NumericUpDown bgAffinityMask = null;
+		NumericUpDown idealAffinity = null;
 
 		ComboBox volumeMethod = null;
 		Extensions.NumericUpDownEx volume = null;
@@ -273,7 +277,9 @@ namespace Taskmaster
 		ComboBox ForegroundModeSelect = null;
 		ComboBox FullscreenMode = null;
 		ListView ignorelist = null;
-		
+
+		CheckBox logAdjusts = null;
+
 		int cpumask = 0;
 
 		void BuildUI()
@@ -377,11 +383,12 @@ namespace Taskmaster
 			{
 				try
 				{
+					// WinForms does not support positioning this
 					using (var folderdialog = new FolderBrowserDialog())
 					{
 						folderdialog.ShowNewFolderButton = false;
 						folderdialog.RootFolder = Environment.SpecialFolder.MyComputer;
-						var result = folderdialog.ShowDialog();
+						var result = folderdialog.ShowDialog(this);
 						if (result == DialogResult.OK && !string.IsNullOrEmpty(folderdialog.SelectedPath))
 						{
 							pathName.Text = folderdialog.SelectedPath;
@@ -660,6 +667,19 @@ namespace Taskmaster
 			lt.Controls.Add(afflayout);
 			lt.Controls.Add(affbuttonpanel);
 
+			idealAffinity = new NumericUpDown()
+			{
+				Width = 80,
+				Maximum = ProcessManager.CPUCount,
+				Minimum = 0,
+				Value = (Controller.AffinityIdeal + 1).Constrain(0, ProcessManager.CPUCount),
+			};
+			tooltip.SetToolTip(idealAffinity, "EXPERIMENTAL\nTell the OS to favor this particular core for the primary thread.\nMay not have any perceivable effect.\n0 disables this feature.");
+
+			lt.Controls.Add(new Label() { Text = "Ideal affinity", TextAlign = System.Drawing.ContentAlignment.MiddleLeft });
+			lt.Controls.Add(idealAffinity);
+			lt.Controls.Add(new Label()); // empty
+
 			// ---------------------------------------------------------------------------------------------------------
 
 			// FOREGROUND
@@ -848,6 +868,18 @@ namespace Taskmaster
 			{
 				powerPlan.Enabled = false;
 			}
+
+			// LOG ADJUSTS
+
+			logAdjusts = new CheckBox()
+			{
+				Checked = Controller.LogAdjusts,
+			};
+			tooltip.SetToolTip(logAdjusts, "You can disable logging adjust events for this specific rule, from both UI and disk.\nUse Configuration > Logging > Process adjusts for all.");
+
+			lt.Controls.Add(new Label() { Text = "Log adjusts", TextAlign = System.Drawing.ContentAlignment.MiddleLeft });
+			lt.Controls.Add(logAdjusts);
+			lt.Controls.Add(new Label());
 
 			// BUTTONS
 
