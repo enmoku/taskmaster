@@ -913,11 +913,10 @@ namespace Taskmaster
 				if (Taskmaster.DebugForeground || Taskmaster.DebugPower)
 				{
 					Log.Debug("[" + info.Controller.FriendlyName + "] " + info.Name +
-						" (#" + info.Id + ") exited [Power: " + info.PowerWait + ", Active: " + info.ActiveWait + "]");
+						" (#" + info.Id + ") exited [Power: " + info.PowerWait + ", Active: " + info.ForegroundWait + "]");
 				}
 
-				if (info.ActiveWait)
-					ForegroundWaitlist.TryRemove(info.Id, out _);
+				info.ForegroundWait = false;
 
 				WaitForExitList.TryRemove(info.Id, out _);
 
@@ -962,7 +961,7 @@ namespace Taskmaster
 				if (info.PowerWait)
 				{
 					// don't clear if we're still waiting for foreground
-					if (!info.ActiveWait)
+					if (!info.ForegroundWait)
 					{
 						try
 						{
@@ -1023,8 +1022,6 @@ namespace Taskmaster
 		ProcessController PreviousForegroundController = null;
 		ProcessEx PreviousForegroundInfo;
 
-		ConcurrentDictionary<int, ProcessController> ForegroundWaitlist = new ConcurrentDictionary<int, ProcessController>(1, 6);
-
 		void ForegroundAppChangedEvent(object _, WindowChangedArgs ev)
 		{
 			if (DisposedOrDisposing) return;
@@ -1054,10 +1051,11 @@ namespace Taskmaster
 					}
 				}
 
-				if (ForegroundWaitlist.TryGetValue(ev.Id, out ProcessController prc))
+				if (WaitForExitList.TryGetValue(ev.Id, out ProcessEx info))
 				{
-					if (WaitForExitList.TryGetValue(ev.Id, out ProcessEx info))
+					if (info.ForegroundWait)
 					{
+						var prc = info.Controller;
 						if (Taskmaster.Trace && Taskmaster.DebugForeground)
 							Log.Debug("[" + prc.FriendlyName + "] " + info.Name + " (#" + info.Id + ") on foreground!");
 
@@ -1303,8 +1301,10 @@ namespace Taskmaster
 			Debug.Assert(prc.Foreground != ForegroundMode.Ignore);
 
 			bool keyadded = false;
-			if (keyadded = ForegroundWaitlist.TryAdd(info.Id, prc))
-				WaitForExit(info);
+
+			info.ForegroundWait = true;
+
+			WaitForExit(info);
 
 			if (Taskmaster.Trace && Taskmaster.DebugForeground)
 			{

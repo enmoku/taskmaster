@@ -188,16 +188,38 @@ namespace Taskmaster
 			switch (mode)
 			{
 				case ForegroundMode.Ignore:
-					PausedIds.Clear();
-					ForegroundWatch.Clear();
+					Refresh();
 					break;
 				case ForegroundMode.Standard:
 					// TODO: clear power
+					ClearPower();
 					break;
 				case ForegroundMode.Full:
 					break;
 				case ForegroundMode.PowerOnly:
+					ClearActive();
 					break;
+			}
+		}
+
+		void ClearActive()
+		{
+			foreach (var info in ActiveWait.Values)
+			{
+				info.Paused = false;
+				info.ForegroundWait = false;
+			}
+		}
+
+		void ClearPower()
+		{
+			foreach (var info in ActiveWait.Values)
+			{
+				if (info.PowerWait)
+				{
+					Taskmaster.powermanager?.Release(info.Id);
+					info.PowerWait = false;
+				}
 			}
 		}
 
@@ -294,10 +316,14 @@ namespace Taskmaster
 		{
 			var process = (Process)sender;
 
-			ForegroundWatch.TryRemove(process.Id, out _);
-			PausedIds.TryRemove(process.Id, out _);
+			if (ActiveWait.TryGetValue(process.Id, out var info))
+			{
+				info.Paused = false; // IRRELEVANT
+				info.ForegroundWait = false; // IRRELEVANT
 
-			UndoPower(process.Id);
+				if (info.PowerWait && PowerPlan != PowerInfo.PowerMode.Undefined) UndoPower(info);
+				info.PowerWait = false;
+			}
 		}
 
 		/// <summary>
@@ -308,16 +334,26 @@ namespace Taskmaster
 			if (Taskmaster.DebugPower || Taskmaster.DebugProcesses)
 				Log.Debug($"[{FriendlyName}] Refresh");
 
-			//TODO: Update power
-			foreach (var info in PowerList.Values)
-				Taskmaster.powermanager?.Release(info.Id);
+			ClearActive();
+			ClearPower();
+			foreach (var info in ActiveWait.Values)
+			{
+				info.Process.Refresh();
+				if (!info.Process.HasExited)
+				{
+					info.Paused = false;
+					info.ForegroundWait = false;
+					info.PowerWait = false;
+					if (!Resize.HasValue)
+						info.Process.EnableRaisingEvents = false;
 
-			PowerList?.Clear();
+					// Re-apply the controller?
+				}
+			}
 
-			ForegroundWatch?.Clear();
-			PausedIds?.Clear();
+			if (!Resize.HasValue) ActiveWait.Clear();
 
-			RecentlyModified?.Clear();
+			RecentlyModified.Clear();
 		}
 
 		public void SaveConfig(ConfigWrapper cfg = null, SharpConfig.Section app = null)
@@ -481,9 +517,8 @@ namespace Taskmaster
 		}
 
 		// The following should be combined somehow?
-		ConcurrentDictionary<int, int> PausedIds = new ConcurrentDictionary<int, int>(); // HACK: There's no ConcurrentHashSet
-		ConcurrentDictionary<int, ProcessEx> PowerList = new ConcurrentDictionary<int, ProcessEx>(); // HACK
-		ConcurrentDictionary<int, int> ForegroundWatch = new ConcurrentDictionary<int, int>(); // HACK
+		ConcurrentDictionary<int, ProcessEx> ActiveWait = new ConcurrentDictionary<int, ProcessEx>();
+
 		ConcurrentDictionary<int, RecentlyModifiedInfo> RecentlyModified = new ConcurrentDictionary<int, RecentlyModifiedInfo>();
 
 		public bool BackgroundPowerdown { get; set; } = true;
@@ -500,8 +535,7 @@ namespace Taskmaster
 
 			//Debug.Assert(!PausedIds.ContainsKey(info.Id));
 
-			if (!PausedIds.TryAdd(info.Id, 0))
-				return; // already paused.
+			if (info.Paused) return; // already paused
 
 			if (Taskmaster.DebugForeground && Taskmaster.Trace)
 				Log.Debug("[" + FriendlyName + "] Quelling " + info.Name + " (#" + info.Id + ")");
@@ -554,7 +588,7 @@ namespace Taskmaster
 						if (Taskmaster.DebugPower)
 							Log.Debug("[" + FriendlyName + "] " + info.Name + " (#" + info.Id + ") power down");
 
-						UndoPower(info.Id);
+						UndoPower(info);
 					}
 					else
 					{
@@ -653,7 +687,7 @@ namespace Taskmaster
 			ProcessPriorityClass oldPriority = ProcessPriorityClass.RealTime;
 			int oldAffinity = -1, newAffinity = -1;
 
-			if (!PausedIds.ContainsKey(info.Id))
+			if (!info.Paused)
 			{
 				if (Taskmaster.DebugForeground)
 					Log.Debug("<Foreground> " + FormatPathName(info) + " (#" + info.Id + ") not paused; not resuming.");
@@ -683,18 +717,19 @@ namespace Taskmaster
 			}
 			catch (InvalidOperationException) // ID not available, probably exited
 			{
-				PausedIds.TryRemove(info.Id, out _);
+				info.Paused = false;
 				return;
 			}
 			catch (Win32Exception) // access error
 			{
-				PausedIds.TryRemove(info.Id, out _);
+				info.Paused = false;
 				return;
 			}
 			catch (OutOfMemoryException) { throw; }
 			catch (Exception ex)
 			{
 				Logging.Stacktrace(ex);
+				info.Paused = false;
 				return;
 			}
 
@@ -712,7 +747,7 @@ namespace Taskmaster
 				}
 			}
 
-			PausedIds.TryRemove(info.Id, out _);
+			info.Paused = false;
 
 			info.State = ProcessHandlingState.Resumed;
 
@@ -774,12 +809,9 @@ namespace Taskmaster
 			try
 			{
 				info.PowerWait = true;
-				PowerList.TryAdd(info.Id, info);
-
 				rv = Taskmaster.powermanager.Force(PowerPlan, info.Id);
 
-				info.Process.EnableRaisingEvents = true;
-				info.Process.Exited += End;
+				WaitForExit(info);
 
 				WaitingExit?.Invoke(this, new ProcessModificationEventArgs(info));
 
@@ -794,12 +826,9 @@ namespace Taskmaster
 			return rv;
 		}
 
-		void UndoPower(int pid)
+		void UndoPower(ProcessEx info)
 		{
-			if (PowerList.TryRemove(pid, out _))
-			{
-				Taskmaster.powermanager?.Release(pid);
-			}
+			if (info.PowerWait) Taskmaster.powermanager?.Release(info.Id);
 		}
 
 		/*
@@ -944,6 +973,32 @@ namespace Taskmaster
 		[System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
 		bool InForeground(int pid) => Foreground != ForegroundMode.Ignore ? Taskmaster.activeappmonitor?.Foreground.Equals(pid) ?? true : true;
 
+		bool WaitForExit(ProcessEx info)
+		{
+			ActiveWait.TryAdd(info.Id, info);
+
+			try
+			{
+				WaitingExit?.Invoke(this, new ProcessModificationEventArgs(info));
+				info.Process.EnableRaisingEvents = true;
+				info.Process.Exited += End;
+				info.Process.Refresh();
+				if (info.Process.HasExited)
+				{
+					End(info.Process, null);
+					return false;
+				}
+			}
+			catch
+			{
+				End(info.Process, null);
+				throw;
+				return false;
+			}
+
+			return true;
+		}
+
 		// TODO: Simplify this
 		async Task Touch(ProcessEx info, bool refresh = false)
 		{
@@ -954,19 +1009,16 @@ namespace Taskmaster
 
 			try
 			{
-				if (Foreground != ForegroundMode.Ignore)
+				if (Foreground != ForegroundMode.Ignore && info.Paused)
 				{
-					if (PausedIds.ContainsKey(info.Id))
-					{
-						if (Taskmaster.Trace && Taskmaster.DebugForeground)
-							Log.Debug("<Foreground> " + FormatPathName(info) + " (#" + info.Id + ") in background, ignoring.");
-						info.State = ProcessHandlingState.Paused;
-						return; // don't touch paused item
-					}
+					if (Taskmaster.Trace && Taskmaster.DebugForeground)
+						Log.Debug("<Foreground> " + FormatPathName(info) + " (#" + info.Id + ") in background, ignoring.");
+					info.State = ProcessHandlingState.Paused;
+					return; // don't touch paused item
 				}
 
 				info.PowerWait = (PowerPlan != PowerInfo.PowerMode.Undefined);
-				info.ActiveWait = Foreground != ForegroundMode.Ignore;
+				info.ForegroundWait = Foreground != ForegroundMode.Ignore;
 
 				bool responding = true;
 				ProcessPriorityClass? oldPriority = null;
@@ -1116,21 +1168,10 @@ namespace Taskmaster
 				{
 					if (Foreground != ForegroundMode.Ignore)
 					{
-						if (ForegroundWatch.TryAdd(info.Id, 0))
+						if (!info.ForegroundWait)
 						{
-							try
-							{
-								WaitingExit?.Invoke(this, new ProcessModificationEventArgs(info));
-								info.Process.EnableRaisingEvents = true;
-								info.Process.Exited += End;
-								info.Process.Refresh();
-								if (info.Process.HasExited) End(info.Process, null);
-							}
-							catch
-							{
-								End(info.Process, null);
-								throw;
-							}
+							info.ForegroundWait = true;
+							WaitForExit(info);
 						}
 						else
 							FirstTimeSeenForForeground = false;
@@ -1523,10 +1564,14 @@ namespace Taskmaster
 					if (Taskmaster.DebugResize) Log.Debug($"<Resize> Stopping monitoring {info.Name} (#{info.Id.ToString()})");
 				}).ConfigureAwait(false);
 
-                info.Process.EnableRaisingEvents = true;
-				info.Process.Exited += (_, _ea) => ProcessEndResize(info, oldrect, re);
-				info.Process.Refresh();
-				if (info.Process.HasExited) ProcessEndResize(info, oldrect, re);
+				info.Resize = true;
+				if (WaitForExit(info))
+				{
+					info.Process.EnableRaisingEvents = true;
+					info.Process.Exited += (_, _ea) => ProcessEndResize(info, oldrect, re);
+					info.Process.Refresh();
+					if (info.Process.HasExited) ProcessEndResize(info, oldrect, re);
+				}
 			}
 			catch (OutOfMemoryException) { throw; }
 			catch (Exception ex)

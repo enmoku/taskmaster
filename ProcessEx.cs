@@ -65,8 +65,22 @@ namespace Taskmaster
 		/// </summary>
 		public ProcessController Controller { get; set; } = null;
 
+		/// <summary>
+		/// Monitoring power plan.
+		/// </summary>
 		public bool PowerWait { get; set; } = false;
-		public bool ActiveWait { get; set; } = false;
+
+		/// <summary>
+		/// This is triggered by foreground transitions.
+		/// </summary>
+		public bool ForegroundWait { get; set; } = false;
+
+		public bool Resize { get; set; } = false;
+
+		/// <summary>
+		/// Currently in background.
+		/// </summary>
+		public bool Paused { get; set; } = false;
 
 		public DateTimeOffset Modified { get; set; } = DateTimeOffset.MinValue;
 		internal ProcessHandlingState _state = ProcessHandlingState.Invalid;
