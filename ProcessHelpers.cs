@@ -43,11 +43,6 @@ namespace Taskmaster
 		Triage, // unused
 
 		/// <summary>
-		/// Process is waiting to be handled later
-		/// </summary>
-		Batching, // unused
-
-		/// <summary>
 		/// Collecting info
 		/// </summary>
 		Datamining, // unused

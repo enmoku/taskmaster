@@ -68,7 +68,7 @@ namespace Taskmaster
 
 	sealed public class ProcessManager : IDisposable
 	{
-		ProcessAnalyzer analyzer = new ProcessAnalyzer();
+		ProcessAnalyzer analyzer = null;
 
 		/// <summary>
 		/// Watch rules
@@ -85,6 +85,8 @@ namespace Taskmaster
 		{
 
 			AllCPUsMask = Convert.ToInt32(Math.Pow(2, CPUCount) - 1 + double.Epsilon);
+
+			if (Taskmaster.RecordAnalysis.HasValue) analyzer = new ProcessAnalyzer();
 
 			//allCPUsMask = 1;
 			//for (int i = 0; i < CPUCount - 1; i++)
