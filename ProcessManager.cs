@@ -100,12 +100,6 @@ namespace Taskmaster
 
 			InitWMIEventWatcher();
 
-			if (BatchProcessing)
-			{
-				BatchProcessingTimer = new System.Timers.Timer(1000 * 5);
-				BatchProcessingTimer.Elapsed += BatchProcessingTick;
-			}
-
 			var InitialScanDelay = TimeSpan.FromSeconds(5);
 			NextScan = DateTimeOffset.UtcNow.Add(InitialScanDelay);
 			if (ScanFrequency.HasValue)
@@ -435,15 +429,13 @@ namespace Taskmaster
             }
 		}
 
-		int BatchDelay = 2500;
 		/// <summary>
 		/// In seconds.
 		/// </summary>
 		public static TimeSpan? ScanFrequency { get; private set; } = TimeSpan.FromSeconds(180);
 		DateTimeOffset LastScan { get; set; } = DateTimeOffset.MinValue; // UNUSED
 		public DateTimeOffset NextScan { get; set; } = DateTimeOffset.MinValue;
-		bool BatchProcessing; // = false;
-		int BatchProcessingThreshold = 5;
+
 		// static bool ControlChildren = false; // = false;
 
 		readonly System.Timers.Timer ScanTimer = null;
@@ -519,18 +511,13 @@ namespace Taskmaster
 			bool dirtyconfig = false, modified = false;
 			// ControlChildren = coreperf.GetSetDefault("Child processes", false, out tdirty).BoolValue;
 			// dirtyconfig |= tdirty;
-			BatchProcessing = perfsec.GetSetDefault("Batch processing", false, out modified).BoolValue;
-			perfsec["Batch processing"].Comment = "Process management works in delayed batches instead of immediately.";
-			dirtyconfig |= modified;
-			Log.Information("<Process> Batch processing: " + (BatchProcessing ? HumanReadable.Generic.Enabled : HumanReadable.Generic.Disabled));
-			if (BatchProcessing)
+
+			if (perfsec.Contains("Batch processing")) // DEPRECATED
 			{
-				BatchDelay = perfsec.GetSetDefault("Batch processing delay", 2500, out modified).IntValue.Constrain(500, 15000);
+				perfsec.Remove("Batch processing");
+				perfsec.Remove("Batch processing delay");
+				perfsec.Remove("Batch processing threshold");
 				dirtyconfig |= modified;
-				Log.Information("<Process> Batch processing delay: " + $"{BatchDelay / 1000:N1}s");
-				BatchProcessingThreshold = perfsec.GetSetDefault("Batch processing threshold", 5, out modified).IntValue.Constrain(1, 30);
-				dirtyconfig |= modified;
-				Log.Information("<Process> Batch processing threshold: " + BatchProcessingThreshold);
 			}
 
 			IgnoreRecentlyModified = TimeSpan.FromMinutes(perfsec.GetSetDefault("Ignore recently modified", 30, out modified).IntValue.Constrain(0, 24 * 60));
@@ -1563,49 +1550,6 @@ namespace Taskmaster
 			}
 		}
 
-		readonly object batchprocessing_lock = new object();
-		int processListLockRestart = 0;
-		List<ProcessEx> ProcessBatch = new List<ProcessEx>();
-		readonly System.Timers.Timer BatchProcessingTimer = null;
-
-		async void BatchProcessingTick(object _, EventArgs _ea)
-		{
-            List<ProcessEx> list = null;
-			try
-			{
-                await Task.Delay(0).ConfigureAwait(false); // asyncify
-
-                lock (batchprocessing_lock)
-				{
-					BatchProcessingTimer.Stop();
-
-					if (ProcessBatch.Count == 0) return;
-
-					processListLockRestart = 0;
-
-					list = new List<ProcessEx>(5);
-					Utility.Swap(ref list, ref ProcessBatch);
-				}
-
-				foreach (var info in list)
-				{
-					var ev = new HandlingStateChangeEventArgs(info);
-					ProcessDetectedEvent?.Invoke(this, ev);
-					HandlingStateChange?.Invoke(this, ev);
-				}
-			}
-			catch (Exception ex)
-			{
-				Logging.Stacktrace(ex);
-				Log.Error("Unregistering batch processing");
-				BatchProcessingTimer.Elapsed -= BatchProcessingTick;
-			}
-			finally
-			{
-				SignalProcessHandled(-(list.Count)); // batch done
-			}
-		}
-
 		int Handling { get; set; } = 0; // this isn't used for much...
 
 		void SignalProcessHandled(int adjust)
@@ -1775,33 +1719,8 @@ namespace Taskmaster
 
 				// info.Process.StartTime; // Only present if we started it
 
-				if (BatchProcessing)
-				{
-					lock (batchprocessing_lock)
-					{
-						try
-						{
-							ProcessBatch.Add(info);
-
-							// Delay process timer a few times.
-							if (BatchProcessingTimer.Enabled &&
-								(++processListLockRestart < BatchProcessingThreshold))
-								BatchProcessingTimer.Stop();
-							BatchProcessingTimer.Start();
-						}
-						catch (Exception ex)
-						{
-							Logging.Stacktrace(ex);
-						}
-					}
-
-					state = info.State = ProcessHandlingState.Batching;
-				}
-				else
-				{
-					state = info.State = ProcessHandlingState.Triage;
-					ProcessDetectedEvent?.Invoke(this, ev);
-				}
+				state = info.State = ProcessHandlingState.Triage;
+				ProcessDetectedEvent?.Invoke(this, ev);
 			}
 			catch (Exception ex)
 			{
@@ -1849,8 +1768,6 @@ namespace Taskmaster
 					); // Avast cybersecurity causes this to throw an exception
 
 				watcher.EventArrived += NewInstanceTriage;
-
-				if (BatchProcessing) lock (batchprocessing_lock) BatchProcessingTimer.Start();
 
 				watcher.Stopped += (_, _ea) =>
 				{
@@ -2023,7 +1940,6 @@ namespace Taskmaster
 
 					ScanTimer?.Dispose();
 					MaintenanceTimer?.Dispose();
-					BatchProcessingTimer?.Dispose();
 				}
 				catch (Exception ex)
 				{
