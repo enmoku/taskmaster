@@ -9,6 +9,7 @@ Comprehensive changes can be found in Git change history:
 	Removed: WMI Queries option from Core.ini, it was not used.
 	Removed: Lots of unused internal things.
 	Changed: Unified more functionality. Re-using already known facts about running processes. Bugs are expected.
+	Added: Retrieve old info when encountering same process again if available.
 ### 2018-02-01
 	Internal: Simplified some things. Should have no visible effects to users.
 ### 2018-01-31
