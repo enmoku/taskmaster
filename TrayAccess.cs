@@ -748,6 +748,7 @@ namespace Taskmaster
 			{
 				rvq = procfind.WaitForExit(30_000);
 
+				procfind.Refresh(); // unnecessary?
 				if (!procfind.HasExited)
 				{
 					if (!warned)

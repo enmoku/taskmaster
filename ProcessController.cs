@@ -318,6 +318,7 @@ namespace Taskmaster
 
 			if (ActiveWait.TryGetValue(process.Id, out var info))
 			{
+				info.State = ProcessHandlingState.Exited;
 				info.Paused = false; // IRRELEVANT
 				info.ForegroundWait = false; // IRRELEVANT
 
@@ -349,6 +350,8 @@ namespace Taskmaster
 
 					// Re-apply the controller?
 				}
+				else
+					info.State = ProcessHandlingState.Exited;
 			}
 
 			if (!Resize.HasValue) ActiveWait.Clear();
@@ -1384,8 +1387,6 @@ namespace Taskmaster
 				}
 				else
 					info.State = ProcessHandlingState.Finished;
-
-				if (Taskmaster.WindowResizeEnabled && Resize.HasValue) TryResize(info);
 			}
 			catch (OutOfMemoryException) { info.State = ProcessHandlingState.Abandoned; throw; }
 			catch (Exception ex)
@@ -1453,7 +1454,7 @@ namespace Taskmaster
 			}
 		}
 
-		async void TryResize(ProcessEx info)
+		public async Task TryResize(ProcessEx info)
 		{
 			Debug.Assert(Resize.HasValue, "Trying to resize when resize is not defined");
 
@@ -1463,7 +1464,7 @@ namespace Taskmaster
 
 			try
 			{
-				if (ResizeWaitList.ContainsKey(info.Id))
+				if (ActiveWait.TryGetValue(info.Id, out var oinfo) && oinfo.Resize)
 				{
 					if (Taskmaster.DebugResize) Log.Debug($"<Resize> Already monitoring {info.Name} (#{info.Id.ToString()})");
 					return;
@@ -1531,7 +1532,8 @@ namespace Taskmaster
 					if (Taskmaster.DebugResize) Log.Debug(sbs.ToString());
 				}
 
-				ResizeWaitList.TryAdd(info.Id, 0);
+				info.Resize = true;
+				ActiveWait.TryAdd(info.Id, info);
 
 				System.Threading.ManualResetEvent re = new System.Threading.ManualResetEvent(false);
 				Task.Run(() =>
@@ -1564,13 +1566,17 @@ namespace Taskmaster
 					if (Taskmaster.DebugResize) Log.Debug($"<Resize> Stopping monitoring {info.Name} (#{info.Id.ToString()})");
 				}).ConfigureAwait(false);
 
-				info.Resize = true;
 				if (WaitForExit(info))
 				{
 					info.Process.EnableRaisingEvents = true;
 					info.Process.Exited += (_, _ea) => ProcessEndResize(info, oldrect, re);
+					// TODO: 
 					info.Process.Refresh();
-					if (info.Process.HasExited) ProcessEndResize(info, oldrect, re);
+					if (info.Process.HasExited && info.Resize)
+					{
+						info.State = ProcessHandlingState.Exited;
+						ProcessEndResize(info, oldrect, re);
+					}
 				}
 			}
 			catch (OutOfMemoryException) { throw; }
@@ -1579,7 +1585,7 @@ namespace Taskmaster
 				if (Taskmaster.DebugResize) Log.Debug($"<Resize> Attempt failed for {info.Name} (#{info.Id.ToString()})");
 
 				Logging.Stacktrace(ex);
-				ResizeWaitList.TryRemove(info.Id, out _);
+				info.Resize = false;
 			}
 		}
 
@@ -1587,6 +1593,8 @@ namespace Taskmaster
 		{
 			try
 			{
+				info.Resize = false;
+
 				re.Set();
 				re.Reset();
 
@@ -1640,8 +1648,8 @@ namespace Taskmaster
 				info.Process.Refresh();
 				if (info.Process.HasExited)
 				{
+					info.State = ProcessHandlingState.Exited;
 					if (Taskmaster.Trace) Log.Verbose("[" + FriendlyName + "] " + info.Name + " (#" + info.Id + ") is gone yo.");
-                    info.State = ProcessHandlingState.Exited;
 					return;
 				}
 

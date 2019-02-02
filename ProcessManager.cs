@@ -83,7 +83,6 @@ namespace Taskmaster
 		// ctor, constructor
 		public ProcessManager()
 		{
-
 			AllCPUsMask = Convert.ToInt32(Math.Pow(2, CPUCount) - 1 + double.Epsilon);
 
 			if (Taskmaster.RecordAnalysis.HasValue) analyzer = new ProcessAnalyzer();
@@ -376,43 +375,76 @@ namespace Taskmaster
                 if (!SystemProcessId(ignorePid)) Ignore(ignorePid);
 
                 var procs = Process.GetProcesses();
-                int count = procs.Length - 2; // -2 for Idle&System
-                Debug.Assert(count > 0, "System has no running processes"); // should be impossible to fail
-                SignalProcessHandled(count); // scan start
+                int foundprocs = procs.Length - 2; // -2 for Idle&System
+                Debug.Assert(foundprocs > 0, "System has no running processes"); // should be impossible to fail
+                SignalProcessHandled(foundprocs); // scan start
 
-                var i = 0;
-                foreach (var process in procs)
-                {
-                    ++i;
+				int selfId = Process.GetCurrentProcess().Id;
 
-                    string name = string.Empty;
-                    int pid = 0;
+				int count = 0;
+				Parallel.ForEach(procs, (process) =>
+				{
+					++count;
 
-                    try
-                    {
-                        name = process.ProcessName;
-                        pid = process.Id;
-                    }
-                    catch { continue; } // process inaccessible (InvalidOperationException or NotSupportedException)
+					string name = string.Empty;
+					int pid = -1;
 
-                    if (IgnoreProcessID(pid) || IgnoreProcessName(name) || pid == Process.GetCurrentProcess().Id)
-                        continue;
+					try
+					{
+						name = process.ProcessName;
+						pid = process.Id;
+					}
+					catch
+					{
+						if (Taskmaster.ShowInaction && Taskmaster.DebugFullScan)
+							Log.Debug($"<Process/Scan> Failed to retrieve info for process: {name} (#{pid})");
+						return;
+					} // process inaccessible (InvalidOperationException or NotSupportedException)
 
-                    if (Taskmaster.DebugFullScan)
-                        Log.Verbose("<Process> Checking [" + i + "/" + count + "] " + name + " (#" + pid + ")");
+					try
+					{
+						if (IgnoreProcessID(pid) || IgnoreProcessName(name) || pid == selfId)
+						{
+							if (Taskmaster.ShowInaction && Taskmaster.DebugFullScan)
+								Log.Debug($"<Process/Scan> Ignoring {name} (#{pid})");
+							return;
+						}
 
-                    if (ProcessUtility.GetInfo(pid, out var info, process, null, name, null, getPath: true))
-                    {
-                        info.Timer = Stopwatch.StartNew();
-                        var ev = new HandlingStateChangeEventArgs(info);
-                        ProcessDetectedEvent?.Invoke(this, ev);
-                        HandlingStateChange?.Invoke(this, ev);
-                    }
-                }
+						if (Taskmaster.DebugFullScan) Log.Verbose($"<Process> Checking [{count}/{foundprocs}] {name} (#{pid})");
+
+						ProcessEx info = null;
+						if (WaitForExitList.TryGetValue(pid, out info))
+						{
+							Debug.WriteLine($"Re-using old ProcessEx: {info.Name} (#{info.Id})");
+							info.Process.Refresh();
+							if (info.Process.HasExited) // Stale, for some reason still kept
+							{
+								Debug.WriteLine("Re-using old ProcessEx - except not, stale");
+								WaitForExitList.TryRemove(pid, out _);
+								info = null;
+							}
+							else
+								info.State = ProcessHandlingState.Triage; // still valid
+						}
+
+						if (info != null || ProcessUtility.GetInfo(pid, out info, process, null, name, null, getPath: true))
+						{
+							info.Timer = Stopwatch.StartNew();
+							var ev = new HandlingStateChangeEventArgs(info);
+							ProcessDetectedEvent?.Invoke(this, ev);
+							HandlingStateChange?.Invoke(this, ev);
+						}
+					}
+					catch (OutOfMemoryException) { throw; }
+					catch (Exception ex)
+					{
+						Logging.Stacktrace(ex);
+					}
+				});
 
                 if (Taskmaster.DebugFullScan) Log.Debug("<Process> Full Scan: Complete");
 
-                SignalProcessHandled(-count); // scan done
+                SignalProcessHandled(-foundprocs); // scan done
 
                 //ScanEndEvent?.Invoke(this, null);
 
@@ -990,7 +1022,11 @@ namespace Taskmaster
 					exithooked = true;
 
 					info.Process.Refresh();
-					if (info.Process.HasExited) throw new InvalidOperationException("Exited after we registered for it?");
+					if (info.Process.HasExited)
+					{
+						info.State = ProcessHandlingState.Exited;
+						throw new InvalidOperationException("Exited after we registered for it?");
+					}
 				}
 				catch (InvalidOperationException) // already exited
 				{
@@ -1083,8 +1119,10 @@ namespace Taskmaster
 
 			try
 			{
+				info.Process.Refresh();
 				if (info.Process.HasExited) // can throw
 				{
+					info.State = ProcessHandlingState.Exited;
 					if (Taskmaster.ShowInaction && Taskmaster.DebugProcesses)
 						Log.Verbose(info.Name + " (#" + info.Id + ") has already exited.");
 					return false; // return ProcessState.Invalid;
@@ -1354,8 +1392,11 @@ namespace Taskmaster
 
                         if (prc.ExclusiveMode) ExclusiveMode(info);
 
-                        if (info.Controller.Analyze && info.Valid && info.State != ProcessHandlingState.Abandoned)
+                        if (Taskmaster.RecordAnalysis.HasValue && info.Controller.Analyze && info.Valid && info.State != ProcessHandlingState.Abandoned)
                             analyzer.Analyze(info);
+
+						if (Taskmaster.WindowResizeEnabled && prc.Resize.HasValue)
+							prc.TryResize(info);
 
 						if (info.State == ProcessHandlingState.Processing)
 						{
@@ -1421,7 +1462,11 @@ namespace Taskmaster
 				if (ensureExit)
 				{
 					info.Process.Refresh();
-					if (info.Process.HasExited) EndExclusiveMode(info.Process, null);
+					if (info.Process.HasExited)
+					{
+						info.State = ProcessHandlingState.Exited;
+						EndExclusiveMode(info.Process, null);
+					}
 				}
 			}
 			catch (OutOfMemoryException) { throw; }
@@ -1844,7 +1889,10 @@ namespace Taskmaster
 						info.Process.Refresh();
 						info.Process.WaitForExit(20);
 						if (info.Process.HasExited)
+						{
+							info.State = ProcessHandlingState.Exited;
 							triggerList.Push(info);
+						}
 					}
 					catch (OutOfMemoryException) { throw; }
 					catch
@@ -1873,7 +1921,11 @@ namespace Taskmaster
 						try
 						{
 							info.Process.Refresh();
-							if (info.Process.HasExited) EndExclusiveMode(info.Process, null);
+							if (info.Process.HasExited)
+							{
+								info.State = ProcessHandlingState.Exited;
+								EndExclusiveMode(info.Process, null);
+							}
 						}
 						catch { }
 					}

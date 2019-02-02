@@ -92,6 +92,7 @@ namespace Taskmaster
 
 				if (info.Process.HasExited)
 				{
+					info.State = ProcessHandlingState.Exited;
 					Log.Debug($"<Analysis> {info.Name} (#{info.Id}) cancelled; already gone");
 					cache.TryRemove(hash, out _);
 					return;
