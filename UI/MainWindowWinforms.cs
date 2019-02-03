@@ -713,9 +713,11 @@ namespace Taskmaster
 		int AdjustColumn = 6;
 		int PathColumn = 7;
 
+		TabPage infoTab = null;
+		TabPage watchTab = null;
+
 		TabPage micTab = null;
 		TabPage powerDebugTab = null;
-		bool ProcessDebugTab_visible = false;
 		TabPage ProcessDebugTab = null;
 
 		EventHandler ResizeLogList;
@@ -965,45 +967,9 @@ namespace Taskmaster
 			var menu_config_log_power = new ToolStripMenuItem("Power mode changes", null, (_, _ea) => { });
 			menu_config_log.DropDownItems.Add(menu_config_log_power);
 
-			var menu_config_components = new ToolStripMenuItem("Components", null, (_, _ea) =>
-			{
-				try
-				{
-					using (var comps = new ComponentConfigurationWindow(initial: false))
-					{
-						comps.ShowDialog();
-						if (comps.DialogResult == DialogResult.OK)
-						{
-							using (var dialog = new SimpleMessageBox("Restart needed", "TM needs to be restarted for changes to take effect.\n\nCancel to do so manually later.", SimpleMessageBox.Buttons.AcceptCancel))
-							{
-								dialog.ShowDialog();
-								if (dialog.Result == SimpleMessageBox.ResultType.OK)
-								{
-									Log.Information("<UI> Restart request");
-									Taskmaster.UnifiedExit(restart: true);
-								}
-							}
-						}
-					}
-				}
-				catch (Exception ex)
-				{
-					Logging.Stacktrace(ex);
-					//throw; // bad idea
-				}
-			});
+			var menu_config_components = new ToolStripMenuItem("Components", null, ShowComponentConfig);
 
-			var menu_config_experiments = new ToolStripMenuItem("Experiments", null, (_, _ea) =>
-			{
-				using (var n = new UI.Config.ExperimentConfig())
-				{
-					n.ShowDialog();
-					if (n.DialogResult == DialogResult.OK)
-					{
-						Log.Information("<Experiments> Settings changed");
-					}
-				}
-			});
+			var menu_config_experiments = new ToolStripMenuItem("Experiments", null, ShowExperimentConfig);
 
 			var menu_config_folder = new ToolStripMenuItem("Open in file manager", null, (_, _ea) => Process.Start(Taskmaster.datapath));
 			// menu_config.DropDownItems.Add(menu_config_log);
@@ -1210,26 +1176,8 @@ namespace Taskmaster
 				try { using (var n = new LicenseDialog(initial: false)) { n.ShowDialog(); } }
 				catch (Exception ex) { Logging.Stacktrace(ex); }
 			});
-			var menu_info_about = new ToolStripMenuItem("About", null, (_, _ea) =>
-			{
-				var builddate = Taskmaster.BuildDate();
+			var menu_info_about = new ToolStripMenuItem("About", null, ShowAboutDialog);
 
-				var now = DateTime.Now;
-				var age = (now - builddate).TotalDays;
-
-				using (var msg = new SimpleMessageBox("About Taskmaster!",
-						Application.ProductName +
-						"\nVersion: " + Application.ProductVersion +
-						"\nBuilt: " + $"{builddate.ToString("yyyy/MM/dd HH:mm")} [{age:N0} days old]" +
-						"\n\nCreated by M.A., 2016–2019" +
-						"\n\nAt Github: " + Taskmaster.GitURL +
-						"\nAt Itch.io: " + Taskmaster.ItchURL +
-						"\n\nFree system maintenance and de-obnoxifying app.\n\nAvailable under MIT license.",
-						SimpleMessageBox.Buttons.OK))
-				{
-					msg.ShowDialog();
-				}
-			});
 			menu_info.DropDownItems.Add(menu_info_github);
 			menu_info.DropDownItems.Add(menu_info_itchio);
 			menu_info.DropDownItems.Add(new ToolStripSeparator());
@@ -1265,10 +1213,10 @@ namespace Taskmaster
 				if (Taskmaster.AutoOpenMenus) menu_info.ShowDropDown();
 			};
 
-			var infoTab = new TabPage("Info") { Padding = CustomPadding };
+			infoTab = new TabPage("Info") { Padding = CustomPadding };
 			tabLayout.Controls.Add(infoTab);
 
-			var watchTab = new TabPage("Watchlist") { Padding = CustomPadding };
+			watchTab = new TabPage("Watchlist") { Padding = CustomPadding };
 			tabLayout.Controls.Add(watchTab);
 
 			if (Taskmaster.MicrophoneMonitorEnabled)
@@ -1280,12 +1228,8 @@ namespace Taskmaster
 			if (Taskmaster.DebugPower)
 				tabLayout.Controls.Add(powerDebugTab);
 			ProcessDebugTab = new TabPage("Process Debug") { Padding = CustomPadding };
-			ProcessDebugTab_visible = false;
 			if (Taskmaster.DebugProcesses || Taskmaster.DebugForeground)
-			{
-				ProcessDebugTab_visible = true;
 				tabLayout.Controls.Add(ProcessDebugTab);
-			}
 
 			var infopanel = new FlowLayoutPanel
 			{
@@ -1298,242 +1242,16 @@ namespace Taskmaster
 			};
 
 			#region Load UI config
-			var uicfg = Taskmaster.Config.Load(uiconfig);
-			var wincfg = uicfg.Config["Windows"];
-			var colcfg = uicfg.Config["Columns"];
-
-			var opentab = uicfg.Config["Tabs"].TryGet("Open")?.IntValue ?? 0;
-
-			int[] appwidths = null;
-			int[] appwidthsDefault = new int[] { 20, 120, 140, 82, 60, 76, 46, 140 };
-			appwidths = colcfg.GetSetDefault("Apps", appwidthsDefault).IntValueArray;
-			if (appwidths.Length != appwidthsDefault.Length) appwidths = appwidthsDefault;
-
-			int[] micwidths = null;
-			if (Taskmaster.MicrophoneMonitorEnabled)
-			{
-				int[] micwidthsDefault = new int[] { 200, 220 };
-				micwidths = colcfg.GetSetDefault("Mics", micwidthsDefault).IntValueArray;
-				if (micwidths.Length != micwidthsDefault.Length) micwidths = micwidthsDefault;
-			}
-
-			int[] ifacewidths = null;
-			if (Taskmaster.NetworkMonitorEnabled)
-			{
-				int[] ifacewidthsDefault = new int[] { 110, 60, 50, 70, 90, 192, 60, 60, 40 };
-				ifacewidths = colcfg.GetSetDefault("Interfaces", ifacewidthsDefault).IntValueArray;
-				if (ifacewidths.Length != ifacewidthsDefault.Length) ifacewidths = ifacewidthsDefault;
-			}
-
-			var winpos = wincfg["Main"].IntValueArray;
-
-			if (winpos != null && winpos.Length == 4)
-			{
-				var rectangle = new System.Drawing.Rectangle(winpos[0], winpos[1], winpos[2], winpos[3]);
-				if (Screen.AllScreens.Any(ø => ø.Bounds.IntersectsWith(Bounds))) // https://stackoverflow.com/q/495380
-				{
-					StartPosition = FormStartPosition.Manual;
-					Location = new System.Drawing.Point(rectangle.Left, rectangle.Top);
-					Bounds = rectangle;
-				}
-			}
-
+			int opentab;
+			int[] appwidths, micwidths, ifacewidths;
+			LoadUIConfiguration(out opentab, out appwidths, out micwidths, out ifacewidths);
 			#endregion
 
-			#region Main Window Row 1, microphone device
-			if (Taskmaster.MicrophoneMonitorEnabled)
-			{
-				var micpanel = new TableLayoutPanel
-				{
-					Dock = DockStyle.Fill,
-					ColumnCount = 1,
-					//Padding = DefaultPadding,
-					//Width = tabLayout.Width - 12
-				};
-				micpanel.RowStyles.Add(new RowStyle(SizeType.Absolute, 20)); // this is dumb
-
-				var micDevLbl = new Label
-				{
-					Text = "Default communications device:",
-					Dock = DockStyle.Top,
-					AutoSize = true,
-					Width = 180,
-					TextAlign = System.Drawing.ContentAlignment.MiddleLeft,
-					//AutoSize = true // why not?
-				};
-				AudioInputDevice = new Label { Text = HumanReadable.Generic.Uninitialized, Dock = DockStyle.Top, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, AutoEllipsis = true };
-				var micNameRow = new TableLayoutPanel
-				{
-					RowCount = 1,
-					ColumnCount = 2,
-					Dock = DockStyle.Top,
-					//AutoSize = true // why not?
-				};
-				micNameRow.Controls.Add(micDevLbl);
-				micNameRow.Controls.Add(AudioInputDevice);
-				#endregion
-
-				var miccntrl = new TableLayoutPanel()
-				{
-					RowCount = 1,
-					ColumnCount = 5,
-					Dock = DockStyle.Fill,
-					AutoSize = true,
-				};
-
-				var micVolLabel = new Label
-				{
-					Text = "Mic volume",
-					Dock = DockStyle.Top,
-					TextAlign = System.Drawing.ContentAlignment.MiddleLeft,
-					//AutoSize = true // why not?
-				};
-
-				AudioInputVolume = new Extensions.NumericUpDownEx
-				{
-					Unit = "%",
-					Increment = 1.0M,
-					Maximum = 100.0M,
-					Minimum = 0.0M,
-					Width = 60,
-					ReadOnly = true,
-					Enabled = false,
-					Dock = DockStyle.Top
-				};
-				AudioInputVolume.ValueChanged += UserMicVol;
-
-				miccntrl.Controls.Add(micVolLabel);
-				miccntrl.Controls.Add(AudioInputVolume);
-
-				var corLbll = new Label
-				{
-					Text = "Correction count:",
-					Dock = DockStyle.Top,
-					//AutoSize = true, // why not?
-					TextAlign = System.Drawing.ContentAlignment.MiddleLeft,
-				};
-
-				corCountLabel = new Label
-				{
-					Dock = DockStyle.Top,
-					Text = "0",
-					TextAlign = System.Drawing.ContentAlignment.MiddleLeft,
-					//AutoSize = true, // why not?
-				};
-				miccntrl.Controls.Add(corLbll);
-				miccntrl.Controls.Add(corCountLabel);
-				// End: Volume control
-
-				// Main Window row 3, microphone device enumeration
-				AudioInputs = new ListView
-				{
-					Dock = DockStyle.Top,
-					//Width = tabLayout.Width - 12, // FIXME: 3 for the bevel, but how to do this "right"?
-					Height = 120,
-					View = View.Details,
-					AutoSize = true,
-					MinimumSize = new System.Drawing.Size(-2, -2),
-					FullRowSelect = true
-				};
-				AudioInputs.Columns.Add("Name", micwidths[0]);
-				AudioInputs.Columns.Add("GUID", micwidths[1]);
-
-				micpanel.SizeChanged += (_, _ea) => AudioInputs.Width = micpanel.Width - micpanel.Margin.Horizontal - micpanel.Padding.Horizontal;
-
-				micpanel.Controls.Add(micNameRow);
-				micpanel.Controls.Add(miccntrl);
-				micpanel.Controls.Add(AudioInputs);
-
-				micTab.Controls.Add(micpanel);
-			}
-			// End: Microphone enumeration
+			if (Taskmaster.MicrophoneMonitorEnabled) BuildMicrophonePanel(micwidths);
 
 			// Main Window row 4-5, internet status
 			TableLayoutPanel netstatus = null;
-			if (Taskmaster.NetworkMonitorEnabled)
-			{
-				netstatuslabel = new Label() { Dock = DockStyle.Left, Text = HumanReadable.Generic.Uninitialized, AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft };
-				inetstatuslabel = new Label() { Dock = DockStyle.Left, Text = HumanReadable.Generic.Uninitialized, AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft };
-				uptimeMeanLabel = new Label() { Dock = DockStyle.Left, Text = HumanReadable.Generic.Uninitialized, AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft };
-				netTransmit = new Label() { Dock = DockStyle.Left, Text = HumanReadable.Generic.Uninitialized, AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft };
-				netQueue = new Label() { Dock = DockStyle.Left, Text = HumanReadable.Generic.Uninitialized, AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft };
-				uptimestatuslabel = new Label
-				{
-					Dock = DockStyle.Left,
-					Text = HumanReadable.Generic.Uninitialized,
-					AutoSize = true,
-					TextAlign = System.Drawing.ContentAlignment.MiddleLeft
-				};
-
-				netstatus = new TableLayoutPanel
-				{
-					ColumnCount = 6,
-					RowCount = 1,
-					Dock = DockStyle.Top,
-					AutoSize = true,
-				};
-
-				// first row
-				netstatus.Controls.Add(new Label() { Text = "Network", Dock = DockStyle.Left, AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft });
-				netstatus.Controls.Add(netstatuslabel);
-
-				netstatus.Controls.Add(new Label() { Text = "Uptime", Dock = DockStyle.Left, AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft });
-				netstatus.Controls.Add(uptimestatuslabel);
-
-				netstatus.Controls.Add(new Label() { Text = "Transmission", Dock = DockStyle.Left, AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft });
-				netstatus.Controls.Add(netTransmit);
-
-				// second row
-				netstatus.Controls.Add(new Label() { Text = "Internet", Dock = DockStyle.Left, AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft });
-				netstatus.Controls.Add(inetstatuslabel);
-
-				netstatus.Controls.Add(	new Label {Text = "Average", Dock = DockStyle.Left, AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft });
-				netstatus.Controls.Add(uptimeMeanLabel);
-
-				//netstatus.Controls.Add(new Label() { Text = "??", Dock = DockStyle.Left, AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft });
-				//netstatus.Controls.Add(netQueue);
-
-				NetworkDevices = new ListView
-				{
-					AutoSize = true,
-					MinimumSize = new System.Drawing.Size(-2, 40),
-					View = View.Details,
-					FullRowSelect = true,
-					Height = 64,
-				};
-
-				infopanel.SizeChanged += (_, _ea) => NetworkDevices.Width = infopanel.ClientSize.Width - infopanel.Padding.Horizontal - infopanel.Margin.Vertical;
-
-				ifacems = new ContextMenuStrip();
-				ifacems.Opened += InterfaceContextMenuOpen;
-				var ifaceip4copy = new ToolStripMenuItem("Copy IPv4 address", null, CopyIPv4AddressToClipboard);
-				var ifaceip6copy = new ToolStripMenuItem("Copy IPv6 address", null, CopyIPv6AddressToClipboard);
-				var ifacecopy = new ToolStripMenuItem("Copy full information", null, CopyIfaceToClipboard);
-				ifacems.Items.Add(ifaceip4copy);
-				ifacems.Items.Add(ifaceip6copy);
-				ifacems.Items.Add(ifacecopy);
-				NetworkDevices.ContextMenuStrip = ifacems;
-
-				NetworkDevices.Columns.Add("Device", ifacewidths[0]); // 0
-				NetworkDevices.Columns.Add("Type", ifacewidths[1]); // 1
-				NetworkDevices.Columns.Add("Status", ifacewidths[2]); // 2
-				NetworkDevices.Columns.Add("Link speed", ifacewidths[3]); // 3
-				NetworkDevices.Columns.Add("IPv4", ifacewidths[4]); // 4
-				NetworkDevices.Columns.Add("IPv6", ifacewidths[5]); // 5
-				NetworkDevices.Columns.Add("Packet Δ", ifacewidths[6]); // 6
-				NetworkDevices.Columns.Add("Error Δ", ifacewidths[7]); // 7
-				NetworkDevices.Columns.Add("Errors", ifacewidths[8]); // 8
-				PacketDeltaColumn = 6;
-				ErrorDeltaColumn = 7;
-				ErrorTotalColumn = 8;
-
-				NetworkDevices.Scrollable = true;
-
-				netstatus.RowStyles.Add(new RowStyle(SizeType.AutoSize, 32));
-
-				IPv4Column = 4;
-				IPv6Column = 5;
-			}
+			if (Taskmaster.NetworkMonitorEnabled) netstatus = BuildNetworkStatusUI(infopanel, ifacewidths);
 			// End: Inet status
 
 			GotFocus += UpdateNetwork;
@@ -1570,79 +1288,7 @@ namespace Taskmaster
 
 			// End: Settings
 
-			// Rule Listing
-			WatchlistRules = new ListView
-			{
-				Parent = this,
-				View = View.Details,
-				Dock = DockStyle.Fill,
-				AutoSize = true,
-				//Width = tabLayout.Width - 52,
-				//Height = 260, // FIXME: Should use remaining space
-				FullRowSelect = true,
-				MinimumSize = new System.Drawing.Size(-2, -2),
-			};
-
-			WatchlistRules.KeyPress += WatchlistRulesKeyboardSearch;
-
-			var numberColumns = new int[] { 0, AdjustColumn };
-			var watchlistSorter = new WatchlistSorter(numberColumns);
-			WatchlistRules.ListViewItemSorter = watchlistSorter; // what's the point of this?
-			WatchlistRules.ColumnClick += (_, ea) =>
-			{
-				if (watchlistSorter.Column == ea.Column)
-				{
-					// flip order
-					watchlistSorter.Order = watchlistSorter.Order == SortOrder.Ascending ? SortOrder.Descending : SortOrder.Ascending;
-				}
-				else
-				{
-					watchlistSorter.Order = SortOrder.Ascending;
-					watchlistSorter.Column = ea.Column;
-				}
-
-				// deadlock if locked while adding
-				WatchlistRules.BeginUpdate();
-				WatchlistRules.Sort();
-				WatchlistRules.EndUpdate();
-			};
-
-			watchlistms = new ContextMenuStrip();
-			watchlistms.Opened += WatchlistContextMenuOpen;
-			watchlistenable = new ToolStripMenuItem(HumanReadable.Generic.Enabled, null, EnableWatchlistRule);
-			var watchlistedit = new ToolStripMenuItem("Edit", null, EditWatchlistRule);
-			var watchlistadd = new ToolStripMenuItem("Create new", null, AddWatchlistRule);
-			var watchlistdel = new ToolStripMenuItem("Remove", null, DeleteWatchlistRule);
-			var watchlistclip = new ToolStripMenuItem("Copy to clipboard", null, CopyRuleToClipboard);
-
-			watchlistms.Items.Add(watchlistenable);
-			watchlistms.Items.Add(new ToolStripSeparator());
-			watchlistms.Items.Add(watchlistedit);
-			watchlistms.Items.Add(watchlistadd);
-			watchlistms.Items.Add(new ToolStripSeparator());
-			watchlistms.Items.Add(watchlistdel);
-			watchlistms.Items.Add(new ToolStripSeparator());
-			watchlistms.Items.Add(watchlistclip);
-			WatchlistRules.ContextMenuStrip = watchlistms;
-
-			WatchlistRules.Columns.Add("#", appwidths[0]);
-			WatchlistRules.Columns.Add("Name", appwidths[1]);
-			WatchlistRules.Columns.Add(HumanReadable.System.Process.Executable, appwidths[2]);
-			WatchlistRules.Columns.Add(HumanReadable.System.Process.Priority, appwidths[3]);
-			WatchlistRules.Columns.Add(HumanReadable.System.Process.Affinity, appwidths[4]);
-			WatchlistRules.Columns.Add(HumanReadable.Hardware.Power.Plan, appwidths[5]);
-			WatchlistRules.Columns.Add("Adjusts", appwidths[6]);
-			WatchlistRules.Columns.Add(HumanReadable.System.Process.Path, appwidths[7]);
-			WatchlistRules.Scrollable = true;
-			WatchlistRules.Alignment = ListViewAlignment.Left;
-
-			WatchlistRules.DoubleClick += EditWatchlistRule; // for in-app editing
-
-			// proclayout.Controls.Add(pathList);
-			//proclayout.Controls.Add(WatchlistRules);
-			watchTab.Controls.Add(WatchlistRules);
-
-			// End: App list
+			BuildWatchlist(appwidths);
 
 			// UI Log
 			// -1 = contents, -2 = heading
@@ -1685,104 +1331,9 @@ namespace Taskmaster
 				cfg.MarkDirty();
 			}
 
-			// Path Cache
-			TableLayoutPanel cachePanel = null;
-			if (Taskmaster.DebugCache)
-			{
-				cachePanel = new TableLayoutPanel()
-				{
-					ColumnCount = 5,
-					AutoSize = true,
-					Dock = DockStyle.Fill,
-				};
+			TableLayoutPanel cachePanel = Taskmaster.DebugCache ? BuildCachePanel() : null;
 
-				cachePanel.Controls.Add(new Label()
-				{
-					Text = "Path cache:",
-					TextAlign = System.Drawing.ContentAlignment.MiddleLeft,
-					AutoSize = true
-				});
-				cachePanel.Controls.Add(new Label()
-				{
-					Text = "Objects",
-					TextAlign = System.Drawing.ContentAlignment.MiddleLeft,
-					AutoSize = true
-				});
-				cacheObjects = new Label()
-				{
-					AutoSize = true,
-					Width = 40,
-					Text = HumanReadable.Generic.Uninitialized,
-					TextAlign = System.Drawing.ContentAlignment.MiddleLeft
-				};
-				cachePanel.Controls.Add(cacheObjects);
-				cachePanel.Controls.Add(new Label()
-				{
-					Text = "Ratio",
-					TextAlign = System.Drawing.ContentAlignment.MiddleLeft,
-					AutoSize = true
-				});
-				cacheRatio = new Label()
-				{
-					AutoSize = true,
-					Width = 40,
-					Text = HumanReadable.Generic.Uninitialized,
-					TextAlign = System.Drawing.ContentAlignment.MiddleLeft
-				};
-				cachePanel.Controls.Add(cacheRatio);
-			}
-
-			TableLayoutPanel tempmonitorpanel = null;
-			if (Taskmaster.TempMonitorEnabled)
-			{
-				tempObjectCount = new Label()
-				{
-					Width = 40,
-					//Dock = DockStyle.Left,
-					Text = HumanReadable.Generic.Uninitialized,
-					TextAlign = System.Drawing.ContentAlignment.MiddleLeft,
-				};
-
-				tempObjectSize = new Label()
-				{
-					Width = 40,
-					//Dock = DockStyle.Left,
-					Text = HumanReadable.Generic.Uninitialized,
-					TextAlign = System.Drawing.ContentAlignment.MiddleLeft,
-				};
-
-				tempmonitorpanel = new TableLayoutPanel
-				{
-					Dock = DockStyle.Top,
-					RowCount = 1,
-					ColumnCount = 5,
-					Height = 40,
-					AutoSize = true
-				};
-				tempmonitorpanel.Controls.Add(new Label
-				{
-					Text = "Temp",
-					Dock = DockStyle.Left,
-					TextAlign = System.Drawing.ContentAlignment.MiddleRight,
-					AutoSize = true
-				});
-				tempmonitorpanel.Controls.Add(new Label
-				{
-					Text = "Objects",
-					Dock = DockStyle.Left,
-					TextAlign = System.Drawing.ContentAlignment.MiddleRight,
-					AutoSize = true
-				});
-				tempmonitorpanel.Controls.Add(tempObjectCount);
-				tempmonitorpanel.Controls.Add(new Label
-				{
-					Text = "Size (MB)",
-					Dock = DockStyle.Left,
-					TextAlign = System.Drawing.ContentAlignment.MiddleRight,
-					AutoSize = true
-				});
-				tempmonitorpanel.Controls.Add(tempObjectSize);
-			}
+			TableLayoutPanel tempmonitorpanel = Taskmaster.TempMonitorEnabled ? BuildTempMonitorPanel() : null;
 
 			TableLayoutPanel corepanel = new TableLayoutPanel()
 			{
@@ -1838,117 +1389,14 @@ namespace Taskmaster
 
 			TableLayoutPanel nvmpanel = null;
 			Label nvmlabel = null;
-			#region NVM
-			if (Taskmaster.HealthMonitorEnabled)
-			{
-				nvmpanel = new TableLayoutPanel()
-				{
-					ColumnCount = 2,
-					AutoSize = true,
-					AutoSizeMode = AutoSizeMode.GrowOnly,
-					Dock = DockStyle.Fill,
-				};
-
-				nvmtransfers = new Label { Text = HumanReadable.Generic.Uninitialized, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left };
-				nvmsplitio = new Label { Text = HumanReadable.Generic.Uninitialized, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left };
-				nvmdelay = new Label { Text = HumanReadable.Generic.Uninitialized, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left };
-				nvmqueued = new Label { Text = HumanReadable.Generic.Uninitialized, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left };
-				//hardfaults = new Label { Text = HumanReadable.Generic.Uninitialized, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left };
-
-				nvmlabel = new Label { Text = "Non-Volatile Memory", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left, Font = boldfont };
-
-				nvmpanel.Controls.Add(new Label { Text = "Transfers", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left });
-				nvmpanel.Controls.Add(nvmtransfers);
-				nvmpanel.Controls.Add(new Label { Text = "Split I/O", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left });
-				nvmpanel.Controls.Add(nvmsplitio);
-				nvmpanel.Controls.Add(new Label { Text = "Delay", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left });
-				nvmpanel.Controls.Add(nvmdelay);
-				nvmpanel.Controls.Add(new Label { Text = "Queued", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left });
-				nvmpanel.Controls.Add(nvmqueued);
-				//nvmpanel.Controls.Add(new Label { Text = "Hard faults", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left });
-				//nvmpanel.Controls.Add(hardfaults);
-			}
-			#endregion
+			if (Taskmaster.HealthMonitorEnabled) BuildNVMPanel(out nvmpanel, out nvmlabel);
 
 			Label powerlabel = null;
 			TableLayoutPanel powerpanel = null;
-			#region Power
-			if (Taskmaster.PowerManagerEnabled)
-			{
-				powerpanel = new TableLayoutPanel()
-				{
-					ColumnCount = 2,
-					AutoSize = true,
-					AutoSizeMode = AutoSizeMode.GrowOnly,
-					Dock = DockStyle.Fill,
-				};
+			if (Taskmaster.PowerManagerEnabled) BuildPowerPanel(out powerlabel, out powerpanel);
 
-				powerlabel = new Label { Text = HumanReadable.Hardware.Power.Section, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left, Font = boldfont };
-
-				pwmode = new Label { Text = HumanReadable.Generic.Uninitialized, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left };
-				pwcause = new Label { Text = HumanReadable.Generic.Uninitialized, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left };
-				pwbehaviour = new Label { Text = HumanReadable.Generic.Uninitialized, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left };
-				powerpanel.Controls.Add(new Label { Text = "Behaviour:", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left });
-				powerpanel.Controls.Add(pwbehaviour);
-				powerpanel.Controls.Add(new Label { Text = "Mode:", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left });
-				powerpanel.Controls.Add(pwmode);
-				powerpanel.Controls.Add(new Label { Text = "Cause:", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left });
-				powerpanel.Controls.Add(pwcause);
-			}
-			#endregion
-
-			#region Last modified
 			TableLayoutPanel lastmodifypanel = null;
-			if (Taskmaster.LastModifiedList)
-			{
-				lastmodifypanel = new TableLayoutPanel
-				{
-					Dock = DockStyle.Top,
-					ColumnCount = 1,
-					Height = 40,
-					AutoSize = true
-				};
-
-				lastmodifypanel.Controls.Add(new Label() { Text = "Last process modifications", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left });
-				lastmodifylist = new UI.ListViewEx()
-				{
-					Parent = this,
-					Dock = DockStyle.Top,
-					AutoSize = true,
-					View = View.Details,
-					FullRowSelect = true,
-					HeaderStyle = ColumnHeaderStyle.Nonclickable,
-					//Scrollable = true,
-					MinimumSize = new System.Drawing.Size(-2, 60),
-					//MinimumSize = new System.Drawing.Size(-2, -2), // doesn't work
-				};
-
-				lastmodifylist.Columns.Add("Time", 60);
-				lastmodifylist.Columns.Add(HumanReadable.System.Process.Executable, appwidths[2]);
-				lastmodifylist.Columns.Add("Rule", appwidths[1]);
-				lastmodifylist.Columns.Add(HumanReadable.System.Process.Priority, appwidths[3]);
-				lastmodifylist.Columns.Add(HumanReadable.System.Process.Affinity, appwidths[4]);
-				lastmodifylist.Columns.Add(HumanReadable.System.Process.Path, -2);
-
-				lastmodifypanel.Controls.Add(lastmodifylist);
-				var lastmodifyms = new ContextMenuStrip();
-				var lastmodifycopy = new ToolStripMenuItem("Copy path to clipboard", null, (_, _ea) =>
-				{
-					if (lastmodifylist.SelectedItems.Count > 0)
-					{
-						string path = lastmodifylist.SelectedItems[0].SubItems[5].Text;
-						if (!string.IsNullOrEmpty(path))
-							Clipboard.SetText(path, TextDataFormat.UnicodeText);
-					}
-				});
-				lastmodifyms.Opened += (_, _ea) =>
-				{
-					lastmodifycopy.Enabled = (lastmodifylist.SelectedItems.Count == 1);
-				};
-				lastmodifyms.Items.Add(lastmodifycopy);
-				lastmodifylist.ContextMenuStrip = lastmodifyms;
-			}
-			#endregion
+			if (Taskmaster.LastModifiedList) lastmodifypanel = BuildLastModifiedPanel(appwidths);
 
 			var coresystems = new FlowLayoutPanel()
 			{
@@ -2014,63 +1462,7 @@ namespace Taskmaster
 
 			// POWER DEBUG TAB
 
-			var powerlayout = new TableLayoutPanel()
-			{
-				ColumnCount = 1,
-				AutoSize = true,
-				Dock = DockStyle.Fill
-			};
-
-			powerlayout.Controls.Add(new Label()
-			{
-				Text = "Power mode autobalancing tracker...",
-				TextAlign = System.Drawing.ContentAlignment.MiddleLeft,
-				AutoSize = true,
-				Dock = DockStyle.Left,
-				Padding = CustomPadding,
-			});
-
-			powerbalancerlog = new UI.ListViewEx()
-			{
-				Parent = this,
-				Dock = DockStyle.Top,
-				AutoSize = true,
-				//Height = 80,
-				//Width = tabLayout.Width - 12, // FIXME: 3 for the bevel, but how to do this "right"?
-				MinimumSize = new System.Drawing.Size(-2, 180),
-				FullRowSelect = true,
-				View = View.Details,
-			};
-			powerbalancerlog.Columns.Add("Current", 60);
-			powerbalancerlog.Columns.Add("Mean", 60);
-			powerbalancerlog.Columns.Add("High", 60);
-			powerbalancerlog.Columns.Add("Low", 60);
-			powerbalancerlog.Columns.Add("Reaction", 80);
-			powerbalancerlog.Columns.Add("Reactionary Plan", 120);
-			powerbalancerlog.Columns.Add("Enacted", 60);
-			powerbalancerlog.Columns.Add("Pressure", 60);
-
-			powerlayout.Controls.Add(powerbalancerlog);
-
-			var powerbalancerstatus = new FlowLayoutPanel()
-			{
-				FlowDirection =  FlowDirection.LeftToRight,
-				WrapContents = false,
-				AutoSize = true,
-				Dock = DockStyle.Top
-			};
-			powerbalancerstatus.Controls.Add(new Label() { Text = "Behaviour:", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true });
-			powerbalancer_behaviour = new Label() { Text = HumanReadable.Generic.Uninitialized, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true };
-			powerbalancerstatus.Controls.Add(powerbalancer_behaviour);
-			powerbalancerstatus.Controls.Add(new Label() { Text = "| Plan:", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true });
-			powerbalancer_plan = new Label() { Text = HumanReadable.Generic.Uninitialized, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true };
-			powerbalancerstatus.Controls.Add(powerbalancer_plan);
-			powerbalancerstatus.Controls.Add(new Label() { Text = "Forced by:", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true });
-			powerbalancer_forcedcount = new Label() { Text = HumanReadable.Generic.Uninitialized, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true };
-			powerbalancerstatus.Controls.Add(powerbalancer_forcedcount);
-
-			powerlayout.Controls.Add(powerbalancerstatus);
-			powerDebugTab.Controls.Add(powerlayout);
+			if (Taskmaster.PowerManagerEnabled) BuildPowerDebugPanel();
 
 			// -------------------------------------------------------------------------------------------------------
 			var processlayout = new TableLayoutPanel()
@@ -2174,6 +1566,635 @@ namespace Taskmaster
 			// End: UI Log
 
 			tabLayout.SelectedIndex = opentab >= tabLayout.TabCount ? 0 : opentab;
+		}
+
+		private void BuildWatchlist(int[] appwidths)
+		{
+			WatchlistRules = new ListView
+			{
+				Parent = this,
+				View = View.Details,
+				Dock = DockStyle.Fill,
+				AutoSize = true,
+				//Width = tabLayout.Width - 52,
+				//Height = 260, // FIXME: Should use remaining space
+				FullRowSelect = true,
+				MinimumSize = new System.Drawing.Size(-2, -2),
+			};
+
+			WatchlistRules.KeyPress += WatchlistRulesKeyboardSearch;
+
+			var numberColumns = new int[] { 0, AdjustColumn };
+			var watchlistSorter = new WatchlistSorter(numberColumns);
+			WatchlistRules.ListViewItemSorter = watchlistSorter; // what's the point of this?
+			WatchlistRules.ColumnClick += (_, ea) =>
+			{
+				if (watchlistSorter.Column == ea.Column)
+				{
+					// flip order
+					watchlistSorter.Order = watchlistSorter.Order == SortOrder.Ascending ? SortOrder.Descending : SortOrder.Ascending;
+				}
+				else
+				{
+					watchlistSorter.Order = SortOrder.Ascending;
+					watchlistSorter.Column = ea.Column;
+				}
+
+				// deadlock if locked while adding
+				WatchlistRules.BeginUpdate();
+				WatchlistRules.Sort();
+				WatchlistRules.EndUpdate();
+			};
+
+			watchlistms = new ContextMenuStrip();
+			watchlistms.Opened += WatchlistContextMenuOpen;
+			watchlistenable = new ToolStripMenuItem(HumanReadable.Generic.Enabled, null, EnableWatchlistRule);
+			var watchlistedit = new ToolStripMenuItem("Edit", null, EditWatchlistRule);
+			var watchlistadd = new ToolStripMenuItem("Create new", null, AddWatchlistRule);
+			var watchlistdel = new ToolStripMenuItem("Remove", null, DeleteWatchlistRule);
+			var watchlistclip = new ToolStripMenuItem("Copy to clipboard", null, CopyRuleToClipboard);
+
+			watchlistms.Items.Add(watchlistenable);
+			watchlistms.Items.Add(new ToolStripSeparator());
+			watchlistms.Items.Add(watchlistedit);
+			watchlistms.Items.Add(watchlistadd);
+			watchlistms.Items.Add(new ToolStripSeparator());
+			watchlistms.Items.Add(watchlistdel);
+			watchlistms.Items.Add(new ToolStripSeparator());
+			watchlistms.Items.Add(watchlistclip);
+			WatchlistRules.ContextMenuStrip = watchlistms;
+
+			WatchlistRules.Columns.Add("#", appwidths[0]);
+			WatchlistRules.Columns.Add("Name", appwidths[1]);
+			WatchlistRules.Columns.Add(HumanReadable.System.Process.Executable, appwidths[2]);
+			WatchlistRules.Columns.Add(HumanReadable.System.Process.Priority, appwidths[3]);
+			WatchlistRules.Columns.Add(HumanReadable.System.Process.Affinity, appwidths[4]);
+			WatchlistRules.Columns.Add(HumanReadable.Hardware.Power.Plan, appwidths[5]);
+			WatchlistRules.Columns.Add("Adjusts", appwidths[6]);
+			WatchlistRules.Columns.Add(HumanReadable.System.Process.Path, appwidths[7]);
+			WatchlistRules.Scrollable = true;
+			WatchlistRules.Alignment = ListViewAlignment.Left;
+
+			WatchlistRules.DoubleClick += EditWatchlistRule; // for in-app editing
+
+			watchTab.Controls.Add(WatchlistRules);
+		}
+
+		private void LoadUIConfiguration(out int opentab, out int[] appwidths, out int[] micwidths, out int[] ifacewidths)
+		{
+			var uicfg = Taskmaster.Config.Load(uiconfig);
+			var wincfg = uicfg.Config["Windows"];
+			var colcfg = uicfg.Config["Columns"];
+
+			opentab = uicfg.Config["Tabs"].TryGet("Open")?.IntValue ?? 0;
+			appwidths = null;
+			int[] appwidthsDefault = new int[] { 20, 120, 140, 82, 60, 76, 46, 140 };
+			appwidths = colcfg.GetSetDefault("Apps", appwidthsDefault).IntValueArray;
+			if (appwidths.Length != appwidthsDefault.Length) appwidths = appwidthsDefault;
+
+			micwidths = null;
+			if (Taskmaster.MicrophoneMonitorEnabled)
+			{
+				int[] micwidthsDefault = new int[] { 200, 220 };
+				micwidths = colcfg.GetSetDefault("Mics", micwidthsDefault).IntValueArray;
+				if (micwidths.Length != micwidthsDefault.Length) micwidths = micwidthsDefault;
+			}
+
+			ifacewidths = null;
+			if (Taskmaster.NetworkMonitorEnabled)
+			{
+				int[] ifacewidthsDefault = new int[] { 110, 60, 50, 70, 90, 192, 60, 60, 40 };
+				ifacewidths = colcfg.GetSetDefault("Interfaces", ifacewidthsDefault).IntValueArray;
+				if (ifacewidths.Length != ifacewidthsDefault.Length) ifacewidths = ifacewidthsDefault;
+			}
+
+			var winpos = wincfg["Main"].IntValueArray;
+
+			if (winpos != null && winpos.Length == 4)
+			{
+				var rectangle = new System.Drawing.Rectangle(winpos[0], winpos[1], winpos[2], winpos[3]);
+				if (Screen.AllScreens.Any(ø => ø.Bounds.IntersectsWith(Bounds))) // https://stackoverflow.com/q/495380
+				{
+					StartPosition = FormStartPosition.Manual;
+					Location = new System.Drawing.Point(rectangle.Left, rectangle.Top);
+					Bounds = rectangle;
+				}
+			}
+		}
+
+		private void BuildMicrophonePanel(int[] micwidths)
+		{
+			var micpanel = new TableLayoutPanel
+			{
+				Dock = DockStyle.Fill,
+				ColumnCount = 1,
+				//Padding = DefaultPadding,
+				//Width = tabLayout.Width - 12
+			};
+			micpanel.RowStyles.Add(new RowStyle(SizeType.Absolute, 20)); // this is dumb
+
+			var micDevLbl = new Label
+			{
+				Text = "Default communications device:",
+				Dock = DockStyle.Top,
+				AutoSize = true,
+				Width = 180,
+				TextAlign = System.Drawing.ContentAlignment.MiddleLeft,
+				//AutoSize = true // why not?
+			};
+			AudioInputDevice = new Label { Text = HumanReadable.Generic.Uninitialized, Dock = DockStyle.Top, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, AutoEllipsis = true };
+			var micNameRow = new TableLayoutPanel
+			{
+				RowCount = 1,
+				ColumnCount = 2,
+				Dock = DockStyle.Top,
+				//AutoSize = true // why not?
+			};
+			micNameRow.Controls.Add(micDevLbl);
+			micNameRow.Controls.Add(AudioInputDevice);
+
+			var miccntrl = new TableLayoutPanel()
+			{
+				RowCount = 1,
+				ColumnCount = 5,
+				Dock = DockStyle.Fill,
+				AutoSize = true,
+			};
+
+			var micVolLabel = new Label
+			{
+				Text = "Mic volume",
+				Dock = DockStyle.Top,
+				TextAlign = System.Drawing.ContentAlignment.MiddleLeft,
+				//AutoSize = true // why not?
+			};
+
+			AudioInputVolume = new Extensions.NumericUpDownEx
+			{
+				Unit = "%",
+				Increment = 1.0M,
+				Maximum = 100.0M,
+				Minimum = 0.0M,
+				Width = 60,
+				ReadOnly = true,
+				Enabled = false,
+				Dock = DockStyle.Top
+			};
+			AudioInputVolume.ValueChanged += UserMicVol;
+
+			miccntrl.Controls.Add(micVolLabel);
+			miccntrl.Controls.Add(AudioInputVolume);
+
+			var corLbll = new Label
+			{
+				Text = "Correction count:",
+				Dock = DockStyle.Top,
+				//AutoSize = true, // why not?
+				TextAlign = System.Drawing.ContentAlignment.MiddleLeft,
+			};
+
+			corCountLabel = new Label
+			{
+				Dock = DockStyle.Top,
+				Text = "0",
+				TextAlign = System.Drawing.ContentAlignment.MiddleLeft,
+				//AutoSize = true, // why not?
+			};
+			miccntrl.Controls.Add(corLbll);
+			miccntrl.Controls.Add(corCountLabel);
+			// End: Volume control
+
+			// Main Window row 3, microphone device enumeration
+			AudioInputs = new ListView
+			{
+				Dock = DockStyle.Top,
+				//Width = tabLayout.Width - 12, // FIXME: 3 for the bevel, but how to do this "right"?
+				Height = 120,
+				View = View.Details,
+				AutoSize = true,
+				MinimumSize = new System.Drawing.Size(-2, -2),
+				FullRowSelect = true
+			};
+			AudioInputs.Columns.Add("Name", micwidths[0]);
+			AudioInputs.Columns.Add("GUID", micwidths[1]);
+
+			micpanel.SizeChanged += (_, _ea) => AudioInputs.Width = micpanel.Width - micpanel.Margin.Horizontal - micpanel.Padding.Horizontal;
+
+			micpanel.Controls.Add(micNameRow);
+			micpanel.Controls.Add(miccntrl);
+			micpanel.Controls.Add(AudioInputs);
+
+			micTab.Controls.Add(micpanel);
+		}
+
+		private TableLayoutPanel BuildTempMonitorPanel()
+		{
+			TableLayoutPanel tempmonitorpanel;
+			tempObjectCount = new Label()
+			{
+				Width = 40,
+				//Dock = DockStyle.Left,
+				Text = HumanReadable.Generic.Uninitialized,
+				TextAlign = System.Drawing.ContentAlignment.MiddleLeft,
+			};
+
+			tempObjectSize = new Label()
+			{
+				Width = 40,
+				//Dock = DockStyle.Left,
+				Text = HumanReadable.Generic.Uninitialized,
+				TextAlign = System.Drawing.ContentAlignment.MiddleLeft,
+			};
+
+			tempmonitorpanel = new TableLayoutPanel
+			{
+				Dock = DockStyle.Top,
+				RowCount = 1,
+				ColumnCount = 5,
+				Height = 40,
+				AutoSize = true
+			};
+			tempmonitorpanel.Controls.Add(new Label
+			{
+				Text = "Temp",
+				Dock = DockStyle.Left,
+				TextAlign = System.Drawing.ContentAlignment.MiddleRight,
+				AutoSize = true
+			});
+			tempmonitorpanel.Controls.Add(new Label
+			{
+				Text = "Objects",
+				Dock = DockStyle.Left,
+				TextAlign = System.Drawing.ContentAlignment.MiddleRight,
+				AutoSize = true
+			});
+			tempmonitorpanel.Controls.Add(tempObjectCount);
+			tempmonitorpanel.Controls.Add(new Label
+			{
+				Text = "Size (MB)",
+				Dock = DockStyle.Left,
+				TextAlign = System.Drawing.ContentAlignment.MiddleRight,
+				AutoSize = true
+			});
+			tempmonitorpanel.Controls.Add(tempObjectSize);
+			return tempmonitorpanel;
+		}
+
+		private TableLayoutPanel BuildCachePanel()
+		{
+			var cachePanel = new TableLayoutPanel()
+			{
+				ColumnCount = 5,
+				AutoSize = true,
+				Dock = DockStyle.Fill,
+			};
+			cachePanel.Controls.Add(new Label()
+			{
+				Text = "Path cache:",
+				TextAlign = System.Drawing.ContentAlignment.MiddleLeft,
+				AutoSize = true
+			});
+			cachePanel.Controls.Add(new Label()
+			{
+				Text = "Objects",
+				TextAlign = System.Drawing.ContentAlignment.MiddleLeft,
+				AutoSize = true
+			});
+			cacheObjects = new Label()
+			{
+				AutoSize = true,
+				Width = 40,
+				Text = HumanReadable.Generic.Uninitialized,
+				TextAlign = System.Drawing.ContentAlignment.MiddleLeft
+			};
+			cachePanel.Controls.Add(cacheObjects);
+			cachePanel.Controls.Add(new Label()
+			{
+				Text = "Ratio",
+				TextAlign = System.Drawing.ContentAlignment.MiddleLeft,
+				AutoSize = true
+			});
+			cacheRatio = new Label()
+			{
+				AutoSize = true,
+				Width = 40,
+				Text = HumanReadable.Generic.Uninitialized,
+				TextAlign = System.Drawing.ContentAlignment.MiddleLeft
+			};
+			cachePanel.Controls.Add(cacheRatio);
+			return cachePanel;
+		}
+
+		void BuildPowerDebugPanel()
+		{
+			var powerlayout = new TableLayoutPanel()
+			{
+				ColumnCount = 1,
+				AutoSize = true,
+				Dock = DockStyle.Fill
+			};
+			powerlayout.Controls.Add(new Label()
+			{
+				Text = "Power mode autobalancing tracker...",
+				TextAlign = System.Drawing.ContentAlignment.MiddleLeft,
+				AutoSize = true,
+				Dock = DockStyle.Left,
+				Padding = CustomPadding,
+			});
+
+			powerbalancerlog = new UI.ListViewEx()
+			{
+				Parent = this,
+				Dock = DockStyle.Top,
+				AutoSize = true,
+				//Height = 80,
+				//Width = tabLayout.Width - 12, // FIXME: 3 for the bevel, but how to do this "right"?
+				MinimumSize = new System.Drawing.Size(-2, 180),
+				FullRowSelect = true,
+				View = View.Details,
+			};
+			powerbalancerlog.Columns.Add("Current", 60);
+			powerbalancerlog.Columns.Add("Mean", 60);
+			powerbalancerlog.Columns.Add("High", 60);
+			powerbalancerlog.Columns.Add("Low", 60);
+			powerbalancerlog.Columns.Add("Reaction", 80);
+			powerbalancerlog.Columns.Add("Reactionary Plan", 120);
+			powerbalancerlog.Columns.Add("Enacted", 60);
+			powerbalancerlog.Columns.Add("Pressure", 60);
+
+			powerlayout.Controls.Add(powerbalancerlog);
+
+			var powerbalancerstatus = new FlowLayoutPanel()
+			{
+				FlowDirection = FlowDirection.LeftToRight,
+				WrapContents = false,
+				AutoSize = true,
+				Dock = DockStyle.Top
+			};
+			powerbalancerstatus.Controls.Add(new Label() { Text = "Behaviour:", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true });
+			powerbalancer_behaviour = new Label() { Text = HumanReadable.Generic.Uninitialized, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true };
+			powerbalancerstatus.Controls.Add(powerbalancer_behaviour);
+			powerbalancerstatus.Controls.Add(new Label() { Text = "| Plan:", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true });
+			powerbalancer_plan = new Label() { Text = HumanReadable.Generic.Uninitialized, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true };
+			powerbalancerstatus.Controls.Add(powerbalancer_plan);
+			powerbalancerstatus.Controls.Add(new Label() { Text = "Forced by:", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true });
+			powerbalancer_forcedcount = new Label() { Text = HumanReadable.Generic.Uninitialized, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true };
+			powerbalancerstatus.Controls.Add(powerbalancer_forcedcount);
+
+			powerlayout.Controls.Add(powerbalancerstatus);
+
+			powerDebugTab.Controls.Add(powerlayout);
+		}
+
+		TableLayoutPanel BuildLastModifiedPanel(int[] appwidths)
+		{
+			var lastmodifypanel = new TableLayoutPanel
+			{
+				Dock = DockStyle.Top,
+				ColumnCount = 1,
+				Height = 40,
+				AutoSize = true
+			};
+			lastmodifypanel.Controls.Add(new Label() { Text = "Last process modifications", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left });
+			lastmodifylist = new UI.ListViewEx()
+			{
+				Parent = this,
+				Dock = DockStyle.Top,
+				AutoSize = true,
+				View = View.Details,
+				FullRowSelect = true,
+				HeaderStyle = ColumnHeaderStyle.Nonclickable,
+				//Scrollable = true,
+				MinimumSize = new System.Drawing.Size(-2, 60),
+				//MinimumSize = new System.Drawing.Size(-2, -2), // doesn't work
+			};
+
+			lastmodifylist.Columns.Add("Time", 60);
+			lastmodifylist.Columns.Add(HumanReadable.System.Process.Executable, appwidths[2]);
+			lastmodifylist.Columns.Add("Rule", appwidths[1]);
+			lastmodifylist.Columns.Add(HumanReadable.System.Process.Priority, appwidths[3]);
+			lastmodifylist.Columns.Add(HumanReadable.System.Process.Affinity, appwidths[4]);
+			lastmodifylist.Columns.Add(HumanReadable.System.Process.Path, -2);
+
+			lastmodifypanel.Controls.Add(lastmodifylist);
+			var lastmodifyms = new ContextMenuStrip();
+			var lastmodifycopy = new ToolStripMenuItem("Copy path to clipboard", null, (_, _ea) =>
+			{
+				if (lastmodifylist.SelectedItems.Count > 0)
+				{
+					string path = lastmodifylist.SelectedItems[0].SubItems[5].Text;
+					if (!string.IsNullOrEmpty(path))
+						Clipboard.SetText(path, TextDataFormat.UnicodeText);
+				}
+			});
+			lastmodifyms.Opened += (_, _ea) =>
+			{
+				lastmodifycopy.Enabled = (lastmodifylist.SelectedItems.Count == 1);
+			};
+			lastmodifyms.Items.Add(lastmodifycopy);
+			lastmodifylist.ContextMenuStrip = lastmodifyms;
+			return lastmodifypanel;
+		}
+
+		void BuildPowerPanel(out Label powerlabel, out TableLayoutPanel powerpanel)
+		{
+			powerpanel = new TableLayoutPanel()
+			{
+				ColumnCount = 2,
+				AutoSize = true,
+				AutoSizeMode = AutoSizeMode.GrowOnly,
+				Dock = DockStyle.Fill,
+			};
+
+			powerlabel = new Label { Text = HumanReadable.Hardware.Power.Section, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left, Font = boldfont };
+
+			pwmode = new Label { Text = HumanReadable.Generic.Uninitialized, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left };
+			pwcause = new Label { Text = HumanReadable.Generic.Uninitialized, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left };
+			pwbehaviour = new Label { Text = HumanReadable.Generic.Uninitialized, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left };
+			powerpanel.Controls.Add(new Label { Text = "Behaviour:", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left });
+			powerpanel.Controls.Add(pwbehaviour);
+			powerpanel.Controls.Add(new Label { Text = "Mode:", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left });
+			powerpanel.Controls.Add(pwmode);
+			powerpanel.Controls.Add(new Label { Text = "Cause:", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left });
+			powerpanel.Controls.Add(pwcause);
+		}
+
+		void BuildNVMPanel(out TableLayoutPanel nvmpanel, out Label nvmlabel)
+		{
+			nvmpanel = new TableLayoutPanel()
+			{
+				ColumnCount = 2,
+				AutoSize = true,
+				AutoSizeMode = AutoSizeMode.GrowOnly,
+				Dock = DockStyle.Fill,
+			};
+
+			nvmtransfers = new Label { Text = HumanReadable.Generic.Uninitialized, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left };
+			nvmsplitio = new Label { Text = HumanReadable.Generic.Uninitialized, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left };
+			nvmdelay = new Label { Text = HumanReadable.Generic.Uninitialized, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left };
+			nvmqueued = new Label { Text = HumanReadable.Generic.Uninitialized, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left };
+			//hardfaults = new Label { Text = HumanReadable.Generic.Uninitialized, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left };
+
+			nvmlabel = new Label { Text = "Non-Volatile Memory", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left, Font = boldfont };
+
+			nvmpanel.Controls.Add(new Label { Text = "Transfers", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left });
+			nvmpanel.Controls.Add(nvmtransfers);
+			nvmpanel.Controls.Add(new Label { Text = "Split I/O", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left });
+			nvmpanel.Controls.Add(nvmsplitio);
+			nvmpanel.Controls.Add(new Label { Text = "Delay", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left });
+			nvmpanel.Controls.Add(nvmdelay);
+			nvmpanel.Controls.Add(new Label { Text = "Queued", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left });
+			nvmpanel.Controls.Add(nvmqueued);
+			//nvmpanel.Controls.Add(new Label { Text = "Hard faults", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left });
+			//nvmpanel.Controls.Add(hardfaults);
+		}
+
+		TableLayoutPanel BuildNetworkStatusUI(FlowLayoutPanel infopanel, int[] ifacewidths)
+		{
+			TableLayoutPanel netstatus;
+			netstatuslabel = new Label() { Dock = DockStyle.Left, Text = HumanReadable.Generic.Uninitialized, AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft };
+			inetstatuslabel = new Label() { Dock = DockStyle.Left, Text = HumanReadable.Generic.Uninitialized, AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft };
+			uptimeMeanLabel = new Label() { Dock = DockStyle.Left, Text = HumanReadable.Generic.Uninitialized, AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft };
+			netTransmit = new Label() { Dock = DockStyle.Left, Text = HumanReadable.Generic.Uninitialized, AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft };
+			netQueue = new Label() { Dock = DockStyle.Left, Text = HumanReadable.Generic.Uninitialized, AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft };
+			uptimestatuslabel = new Label
+			{
+				Dock = DockStyle.Left,
+				Text = HumanReadable.Generic.Uninitialized,
+				AutoSize = true,
+				TextAlign = System.Drawing.ContentAlignment.MiddleLeft
+			};
+
+			netstatus = new TableLayoutPanel
+			{
+				ColumnCount = 6,
+				RowCount = 1,
+				Dock = DockStyle.Top,
+				AutoSize = true,
+			};
+
+			// first row
+			netstatus.Controls.Add(new Label() { Text = "Network", Dock = DockStyle.Left, AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft });
+			netstatus.Controls.Add(netstatuslabel);
+
+			netstatus.Controls.Add(new Label() { Text = "Uptime", Dock = DockStyle.Left, AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft });
+			netstatus.Controls.Add(uptimestatuslabel);
+
+			netstatus.Controls.Add(new Label() { Text = "Transmission", Dock = DockStyle.Left, AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft });
+			netstatus.Controls.Add(netTransmit);
+
+			// second row
+			netstatus.Controls.Add(new Label() { Text = "Internet", Dock = DockStyle.Left, AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft });
+			netstatus.Controls.Add(inetstatuslabel);
+
+			netstatus.Controls.Add(new Label { Text = "Average", Dock = DockStyle.Left, AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft });
+			netstatus.Controls.Add(uptimeMeanLabel);
+
+			//netstatus.Controls.Add(new Label() { Text = "??", Dock = DockStyle.Left, AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft });
+			//netstatus.Controls.Add(netQueue);
+
+			NetworkDevices = new ListView
+			{
+				AutoSize = true,
+				MinimumSize = new System.Drawing.Size(-2, 40),
+				View = View.Details,
+				FullRowSelect = true,
+				Height = 64,
+			};
+
+			infopanel.SizeChanged += (_, _ea) => NetworkDevices.Width = infopanel.ClientSize.Width - infopanel.Padding.Horizontal - infopanel.Margin.Vertical;
+
+			ifacems = new ContextMenuStrip();
+			ifacems.Opened += InterfaceContextMenuOpen;
+			var ifaceip4copy = new ToolStripMenuItem("Copy IPv4 address", null, CopyIPv4AddressToClipboard);
+			var ifaceip6copy = new ToolStripMenuItem("Copy IPv6 address", null, CopyIPv6AddressToClipboard);
+			var ifacecopy = new ToolStripMenuItem("Copy full information", null, CopyIfaceToClipboard);
+			ifacems.Items.Add(ifaceip4copy);
+			ifacems.Items.Add(ifaceip6copy);
+			ifacems.Items.Add(ifacecopy);
+			NetworkDevices.ContextMenuStrip = ifacems;
+
+			NetworkDevices.Columns.Add("Device", ifacewidths[0]); // 0
+			NetworkDevices.Columns.Add("Type", ifacewidths[1]); // 1
+			NetworkDevices.Columns.Add("Status", ifacewidths[2]); // 2
+			NetworkDevices.Columns.Add("Link speed", ifacewidths[3]); // 3
+			NetworkDevices.Columns.Add("IPv4", ifacewidths[4]); // 4
+			NetworkDevices.Columns.Add("IPv6", ifacewidths[5]); // 5
+			NetworkDevices.Columns.Add("Packet Δ", ifacewidths[6]); // 6
+			NetworkDevices.Columns.Add("Error Δ", ifacewidths[7]); // 7
+			NetworkDevices.Columns.Add("Errors", ifacewidths[8]); // 8
+			PacketDeltaColumn = 6;
+			ErrorDeltaColumn = 7;
+			ErrorTotalColumn = 8;
+
+			NetworkDevices.Scrollable = true;
+
+			netstatus.RowStyles.Add(new RowStyle(SizeType.AutoSize, 32));
+
+			IPv4Column = 4;
+			IPv6Column = 5;
+			return netstatus;
+		}
+
+		void ShowExperimentConfig(object sender, EventArgs ea)
+		{
+			using (var n = new UI.Config.ExperimentConfig())
+			{
+				n.ShowDialog();
+				if (n.DialogResult == DialogResult.OK)
+				{
+					Log.Information("<Experiments> Settings changed");
+				}
+			}
+		}
+
+		void ShowAboutDialog(object sender, EventArgs ea)
+		{
+			var builddate = Taskmaster.BuildDate();
+
+			var now = DateTime.Now;
+			var age = (now - builddate).TotalDays;
+
+			using (var msg = new SimpleMessageBox("About Taskmaster!",
+					Application.ProductName +
+					"\nVersion: " + Application.ProductVersion +
+					"\nBuilt: " + $"{builddate.ToString("yyyy/MM/dd HH:mm")} [{age:N0} days old]" +
+					"\n\nCreated by M.A., 2016–2019" +
+					"\n\nAt Github: " + Taskmaster.GitURL +
+					"\nAt Itch.io: " + Taskmaster.ItchURL +
+					"\n\nFree system maintenance and de-obnoxifying app.\n\nAvailable under MIT license.",
+					SimpleMessageBox.Buttons.OK))
+			{
+				msg.ShowDialog();
+			}
+		}
+
+		void ShowComponentConfig(object sender, EventArgs ea)
+		{
+			try
+			{
+				using (var comps = new ComponentConfigurationWindow(initial: false))
+				{
+					comps.ShowDialog();
+					if (comps.DialogResult == DialogResult.OK)
+					{
+						using (var dialog = new SimpleMessageBox("Restart needed", "TM needs to be restarted for changes to take effect.\n\nCancel to do so manually later.", SimpleMessageBox.Buttons.AcceptCancel))
+						{
+							dialog.ShowDialog();
+							if (dialog.Result == SimpleMessageBox.ResultType.OK)
+							{
+								Log.Information("<UI> Restart request");
+								Taskmaster.UnifiedExit(restart: true);
+							}
+						}
+					}
+				}
+			}
+			catch (Exception ex)
+			{
+				Logging.Stacktrace(ex);
+				//throw; // bad idea
+			}
 		}
 
 		Stopwatch WatchlistSearchInputTimer = new Stopwatch();
@@ -2289,11 +2310,8 @@ namespace Taskmaster
 
 			if (Taskmaster.DebugProcesses) processmanager.HandlingStateChange += ProcessHandlingStateChangeEvent;
 
-			if (!ProcessDebugTab_visible)
-			{
-				ProcessDebugTab_visible = true;
+			if (enabled)
 				tabLayout.Controls.Add(ProcessDebugTab);
-			}
 
 			if (activeappmonitor != null && Taskmaster.DebugForeground)
 				activeappmonitor.ActiveChanged += OnActiveWindowChanged;
@@ -2387,10 +2405,8 @@ namespace Taskmaster
 				activeappmonitor.ActiveChanged -= OnActiveWindowChanged;
 
 			bool refocus = tabLayout.SelectedTab.Equals(ProcessDebugTab);
-			if (ProcessDebugTab_visible)
+			if (!enabled)
 			{
-				ProcessDebugTab_visible = false;
-
 				activePID.Text = HumanReadable.Generic.Undefined;
 				activeFullscreen.Text = HumanReadable.Generic.Undefined;
 				activeFullscreen.Text = HumanReadable.Generic.Undefined;
