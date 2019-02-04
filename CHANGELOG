@@ -2,11 +2,13 @@
 Comprehensive changes can be found in Git change history:
 	https://github.com/mkahvi/taskmaster/commits/master
 
-## [0.12...]
-### 2018-02-04
+## [0.13...]
+### 2018-02-04 Version 0.13
 	Added: Watchlist rule editing automatically fills in path when running process is selected, if no path is defined yet.
 	Added: Process select dialog now can contain messages.
-	Internal: Lots of changes.
+	Internal: Lots of changes. And version bump.
+
+## [0.12...]
 ### 2018-02-03
 	Changed: Power mode stuff, especially in relation to session unlock.
 	Internal: Reducing monolithic nature of UI building. Should have no effect to end users.
