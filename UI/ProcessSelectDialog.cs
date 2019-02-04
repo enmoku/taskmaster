@@ -26,16 +26,22 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
+using System.Threading.Tasks;
 using System.Windows.Forms;
 
 namespace Taskmaster
 {
 	sealed public class ProcessSelectDialog : UI.UniForm
 	{
-		public string Selection { get; private set; } = null;
+		public string Name { get; private set; } = null;
 
 		ComboBox selection = null;
+
+		Button selectbutton = null, cancelbutton = null;
+
+		List<ProcessEx> InfoList = new List<ProcessEx>();
 
 		public ProcessSelectDialog(string message = "")
 		{
@@ -65,30 +71,6 @@ namespace Taskmaster
 				//Width = 160,
 			};
 
-			var procs = System.Diagnostics.Process.GetProcesses(); // TODO: Hook to ProcessManager.ScanEverything somehow
-			var procnames = new HashSet<string>();
-			foreach (var proc in procs)
-			{
-				try
-				{
-					if (proc.Id <= 4) continue;
-					procnames.Add(proc.ProcessName);
-				}
-				catch (InvalidOperationException)
-				{
-					// Already exited
-					continue;
-				}
-				catch (Exception ex)
-				{
-					Logging.Stacktrace(ex); // throws only if proc.processname fails
-					// NOP,don't care
-				}
-			}
-
-			selection.Items.AddRange(procnames.ToArray());
-			selection.AutoCompleteSource = AutoCompleteSource.ListItems;
-
 			if (!string.IsNullOrEmpty(message))
 			{
 				layout.Controls.Add(new Label() { Text = message, AutoSize = true, Dock = DockStyle.Fill, Padding = CustomPadding });
@@ -103,11 +85,12 @@ namespace Taskmaster
 				Dock = DockStyle.Top,
 			};
 
-			var selectbutton = new Button()
+			selectbutton = new Button()
 			{
 				Text = "Select",
 				AutoSize = true,
 				Dock = DockStyle.Top,
+				Enabled	= false,
 			};
 			selectbutton.Click += SaveSelection;
 			selection.KeyDown += (sender, e) =>
@@ -115,7 +98,7 @@ namespace Taskmaster
 				if (e.KeyCode == Keys.Enter)
 					SaveSelection(this, e);
 			};
-			var cancelbutton = new Button()
+			cancelbutton = new Button()
 			{
 				Text = "Cancel",
 				AutoSize = true,
@@ -134,12 +117,88 @@ namespace Taskmaster
 			layout.Controls.Add(buttonlayout);
 
 			Controls.Add(layout);
+
+			selection.Text = "[[ Scanning ]]";
+			selection.Enabled = false;
+
+			Populate().ConfigureAwait(false);
 		}
+
+		async Task Populate()
+		{
+			await Task.Delay(0).ConfigureAwait(false);
+
+			try
+			{
+				var procs = System.Diagnostics.Process.GetProcesses(); // TODO: Hook to ProcessManager.ScanEverything somehow
+
+				foreach (var proc in procs)
+				{
+					try
+					{
+						int pid = proc.Id;
+						string name = proc.ProcessName;
+
+						if (ProcessManager.SystemProcessId(pid)) continue;
+						if (ProcessManager.ProtectedProcessName(name)) continue;
+						if (ProcessManager.IgnoreProcessName(name)) continue;
+
+						if (ProcessUtility.GetInfo(pid, out var info, proc, name: proc.ProcessName, getPath: true))
+							InfoList.Add(info);
+					}
+					catch (InvalidOperationException)
+					{
+						// Already exited
+						continue;
+					}
+					catch (Exception ex)
+					{
+						Logging.Stacktrace(ex); // throws only if proc.processname fails
+												// NOP,don't care
+					}
+				}
+
+				InfoList = InfoList.OrderBy(inam => inam.Name).ThenBy(iid => iid.Id).ToList();
+				var output = InfoList.ConvertAll(x => $"{System.IO.Path.GetFileName(x.Path ?? x.Name)} #{x.Id}");
+
+				if (IsDisposed) return;
+
+				BeginInvoke(new Action(() =>
+				{
+					selection.Text = "";
+					selection.Enabled = true;
+
+					selection.Items.AddRange(output.ToArray());
+					selection.AutoCompleteSource = AutoCompleteSource.ListItems;
+					selectbutton.Enabled = true;
+				}));
+			}
+			catch (OutOfMemoryException) { throw; }
+			catch (Exception ex)
+			{
+				Logging.Stacktrace(ex);
+				DialogResult = DialogResult.Abort;
+				BeginInvoke(new Action(() => { Close(); }));
+			}
+		}
+
+		public ProcessEx Info = null;
 
 		void SaveSelection(object _, EventArgs _ea)
 		{
-			Selection = selection.Text;
-			DialogResult = DialogResult.OK;
+			try
+			{
+				int off = selection.SelectedIndex;
+				var info = InfoList[off];
+
+				Name = info.Name;
+				Info = info;
+				DialogResult = DialogResult.OK;
+			}
+			catch (Exception ex)
+			{
+				Logging.Stacktrace(ex);
+			}
 
 			Close();
 		}

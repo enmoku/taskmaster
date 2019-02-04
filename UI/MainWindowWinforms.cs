@@ -2450,7 +2450,7 @@ namespace Taskmaster
 				{
 					if (exsel.ShowDialog(this) == DialogResult.OK)
 					{
-						await Taskmaster.processmanager?.FreeMemory(exsel.Selection);
+						await Taskmaster.processmanager?.FreeMemory(exsel.Name);
 					}
 				}
 			}
