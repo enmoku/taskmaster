@@ -516,7 +516,7 @@ namespace Taskmaster
 
 		ListView exitwaitlist;
 		ListView processinglist;
-		ConcurrentDictionary<int, ListViewItem> ExitWaitlistMap = new ConcurrentDictionary<int, ListViewItem>();
+		ConcurrentDictionary<int, ListViewItem> ExitWaitlistMap = null;
 
 		void UserMicVol(object _, EventArgs _ea)
 		{
@@ -1465,6 +1465,32 @@ namespace Taskmaster
 			if (Taskmaster.PowerManagerEnabled) BuildPowerDebugPanel();
 
 			// -------------------------------------------------------------------------------------------------------
+
+			if (Taskmaster.DebugProcesses || Taskmaster.DebugForeground)
+				BuildProcessDebug();
+			// End Process Debug
+
+			tabLayout.SelectedIndex = opentab >= tabLayout.TabCount ? 0 : opentab;
+		}
+
+		private void BuildProcessDebug()
+		{
+			exitwaitlist = new UI.ListViewEx()
+			{
+				AutoSize = true,
+				//Height = 180,
+				//Width = tabLayout.Width - 12, // FIXME: 3 for the bevel, but how to do this "right"?
+				FullRowSelect = true,
+				View = View.Details,
+				MinimumSize = new System.Drawing.Size(-2, 80),
+				Dock = DockStyle.Fill,
+			};
+
+			exitwaitlist.Columns.Add("Id", 50);
+			exitwaitlist.Columns.Add(HumanReadable.System.Process.Executable, 280);
+			exitwaitlist.Columns.Add("State", 160);
+			exitwaitlist.Columns.Add(HumanReadable.Hardware.Power.Section, 80);
+
 			var processlayout = new TableLayoutPanel()
 			{
 				ColumnCount = 1,
@@ -1474,7 +1500,6 @@ namespace Taskmaster
 
 			if (Taskmaster.ActiveAppMonitorEnabled)
 			{
-				#region Active window monitor
 				var foregroundapppanel = new FlowLayoutPanel
 				{
 					Dock = DockStyle.Fill,
@@ -1504,7 +1529,6 @@ namespace Taskmaster
 				foregroundapppanel.Controls.Add(activePID);
 
 				processlayout.Controls.Add(foregroundapppanel);
-				#endregion
 			}
 
 			processlayout.Controls.Add(new Label()
@@ -1516,25 +1540,7 @@ namespace Taskmaster
 				Padding = CustomPadding
 			});
 
-			exitwaitlist = new UI.ListViewEx()
-			{
-				AutoSize = true,
-				//Height = 180,
-				//Width = tabLayout.Width - 12, // FIXME: 3 for the bevel, but how to do this "right"?
-				FullRowSelect = true,
-				View = View.Details,
-				MinimumSize = new System.Drawing.Size(-2, 80),
-				Dock = DockStyle.Fill,
-			};
-
-			exitwaitlist.Columns.Add("Id", 50);
-			exitwaitlist.Columns.Add(HumanReadable.System.Process.Executable, 280);
-			exitwaitlist.Columns.Add("State", 160);
-			exitwaitlist.Columns.Add(HumanReadable.Hardware.Power.Section, 80);
-
 			processlayout.Controls.Add(exitwaitlist);
-
-			// --- 
 
 			processlayout.Controls.Add(new Label()
 			{
@@ -1563,9 +1569,7 @@ namespace Taskmaster
 
 			ProcessDebugTab.Controls.Add(processlayout);
 
-			// End: UI Log
-
-			tabLayout.SelectedIndex = opentab >= tabLayout.TabCount ? 0 : opentab;
+			ExitWaitlistMap = new ConcurrentDictionary<int, ListViewItem>();
 		}
 
 		private void BuildWatchlist(int[] appwidths)
@@ -2304,7 +2308,12 @@ namespace Taskmaster
 			if (Taskmaster.DebugProcesses) processmanager.HandlingStateChange += ProcessHandlingStateChangeEvent;
 
 			if (enabled)
-				tabLayout.Controls.Add(ProcessDebugTab);
+			{
+				if (ProcessDebugTab.Controls.Count == 0) BuildProcessDebug();
+
+				if (!tabLayout.Controls.Contains(ProcessDebugTab))
+					tabLayout.Controls.Add(ProcessDebugTab);
+			}
 
 			if (activeappmonitor != null && Taskmaster.DebugForeground)
 				activeappmonitor.ActiveChanged += OnActiveWindowChanged;
@@ -2469,7 +2478,8 @@ namespace Taskmaster
 					bool fgonly = ea.Info.Controller.Foreground != ForegroundMode.Ignore;
 					bool fg = (ea.Info.Id == (activeappmonitor?.Foreground ?? ea.Info.Id));
 
-					if (ExitWaitlistMap.TryGetValue(ea.Info.Id, out ListViewItem li))
+					ListViewItem li = null;
+					if (ExitWaitlistMap?.TryGetValue(ea.Info.Id, out li) ?? false)
 					{
 						if (fgonly)
 							li.SubItems[2].Text = fg ? HumanReadable.System.Process.Foreground : HumanReadable.System.Process.Background;
@@ -2488,8 +2498,8 @@ namespace Taskmaster
 								//li.EnsureVisible();
 								break;
 							case ProcessHandlingState.Exited:
-								exitwaitlist.Items.Remove(li);
-								ExitWaitlistMap.TryRemove(ea.Info.Id, out _);
+								exitwaitlist?.Items.Remove(li);
+								ExitWaitlistMap?.TryRemove(ea.Info.Id, out _);
 								break;
 							default:
 								break;
@@ -2504,8 +2514,8 @@ namespace Taskmaster
 							(ea.Info.PowerWait ? "FORCED" : HumanReadable.Generic.NotAvailable)
 						});
 
-						ExitWaitlistMap.TryAdd(ea.Info.Id, li);
-						exitwaitlist.Items.Insert(0, li);
+						ExitWaitlistMap?.TryAdd(ea.Info.Id, li);
+						exitwaitlist?.Items.Insert(0, li);
 						li.EnsureVisible();
 					}
 				}
@@ -3398,7 +3408,7 @@ namespace Taskmaster
 
 				UItimer?.Dispose();
 				exitwaitlist?.Dispose();
-				ExitWaitlistMap.Clear();
+				ExitWaitlistMap?.Clear();
 			}
 
 			disposed = true;

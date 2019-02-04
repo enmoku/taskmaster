@@ -3,16 +3,18 @@ Comprehensive changes can be found in Git change history:
 	https://github.com/mkahvi/taskmaster/commits/master
 
 ## [0.13...]
-### 2018-02-04 Version 0.13
+### 2019-02-04 Version 0.13
 	Added: Watchlist rule editing automatically fills in path when running process is selected, if no path is defined yet.
 	Added: Process select dialog now can contain messages.
 	Internal: Lots of changes. And version bump.
+	Fixed: Year 2019 in changelog. Cut&paste bad, correct dating good.
+	Fixed: Process&Foreground debug.
 
 ## [0.12...]
-### 2018-02-03
+### 2019-02-03
 	Changed: Power mode stuff, especially in relation to session unlock.
 	Internal: Reducing monolithic nature of UI building. Should have no effect to end users.
-### 2018-02-02
+### 2019-02-02
 	Internal: Simplified things related process exit detection. Something may have broken.
 	Removed: Batch processing support.
 	Removed: WMI Queries option from Core.ini, it was not used.
@@ -21,18 +23,18 @@ Comprehensive changes can be found in Git change history:
 	Added: Retrieve old info when encountering same process again if available.
 	Added: Ideal affinity and adjust logging added to watchlist rule editing.
 	Changed: All messageboxes changed to use custom one to allow more context relevant positioning. Some things may be broken.
-### 2018-02-01
+### 2019-02-01
 	Internal: Simplified some things. Should have no visible effects to users.
-### 2018-01-31
+### 2019-01-31
 	Internal: Changes and added Adjust Delay debug option in Core.ini.
 	Changed: Default affinity for TM itself to 0 (OS control) instead of just the last core.
 		The previous setting was fine, but can result in TM appear to be functioning poorly.
 	Changed: Persistent watchlist, microphone and WMI stats removed.
 		Watchlist.Statistics.ini, Microphone.Statistics.ini, nor Core.Statistics.ini are automatically removed.
 	Changed: Detecting unclean shutdown now relies on temporary hidden folder that is created and deleted instead of Core.Statistics.ini.
-### 2018-01-30
+### 2019-01-30
 	Fixed: Exclusive mode is being weird.
-### 2018-01-29
+### 2019-01-29
 	Changed: Foreground only and background powerdown are now the same combobox in the rule editor.
 	Internal: Foreground only and background powerdown are now single Foreground mode setting, reflected in the Watchlist.ini as integer with values from -1 to 2.
 		-1 = Ignore [Default], 0 = Standard, 1 = Full, 2 = Power only
@@ -41,13 +43,13 @@ Comprehensive changes can be found in Git change history:
 	Changed: Various power manager numbers are now more lenient in allowed ranges.
 	Changed: Crash logs are now more descriptive in case the problem goes deeper.
 	Added: Experimental Exclusive mode to Watchlist rules. For now all it does is pause WUA. This requires TM be launched with admin rights.
-### 2018-01-28
+### 2019-01-28
 	Fixed: Background mode was not applying even foreground affinity if no background affinity was defined.
 	Added: Network input, output, and queue to the UI. Not terribly useful, but it's there.
 	Fixed: Net sample timer was not started since the timer update.
 	Changed: Network device list reduced in height.
 	Fixed: ArgumentOutOfRangeException for string.Substring() in …\ProcessManager.cs:line 1465
-### 2018-01-27
+### 2019-01-27
 	Removed: Adjust latency. It served no purpose than noise.
 	Changed: Status bar no longer shows as much useless information.
 	Changed: Swapped from Threading.Timer to Timers.Timer because Threading.Timer is prone to obscure delays outside of my control or influence.
@@ -55,12 +57,12 @@ Comprehensive changes can be found in Git change history:
 	Changed: Watchlist editor has better validation. Ignore list is treated better for malconfiguration.
 	Changed: Corrected stated memory unit in UI.
 	Fixed: GPU temperature was misplaced.
-### 2018-01-26
+### 2019-01-26
 	Added: Experimental affinity ideal option. Usage via `Affinity ideal=#` in Watchlist.ini with value as zero-indexed number for ideal core.
 		Assigned core must be one of the cores allowed by affinity mask.
 	Fixed: Auto-adjust was broken in odd ways.
 	Changed: Default thread queue barriers increase from 2 and 5 to 5 and 18. Still experimenting on good defaults.
-### 2018-01-25
+### 2019-01-25
 	Added: Thread queue barriers to power auto-adjust.
 	Added: Warning about power mode being changed externally when auto-adjust is enabled.
 	Fixed: Recently modified being weird.
@@ -70,51 +72,51 @@ Comprehensive changes can be found in Git change history:
 	Changed: Startup time should be slightly better with changes to how components are loaded.
 	Fixed: Weirdness with full CPU mask.
 	Fixed: TimeSpan.Zero related issues (some options that are disabled with time set to zero were not being disabled).
-### 2018-01-24
+### 2019-01-24
 	Changed: Recently modified ignoring improved. Programs that try to know what is best for them are let to do so.
-### 2018-01-23
+### 2019-01-23
 	Added: Health monitor now enables NVM stats in the UI.
 	Internal: Lots of small internal changes.
-### 2018-01-22
+### 2019-01-22
 	Fixed: Errors were not colored on initial load.
 	Changed: Analyzer is more user configurable.
 	Fixed: Process tracking is improved.
 	Added: Simple configuration window for some experimental features.
 	Fixed: Some odd number outputs.
-### 2018-01-20
+### 2019-01-20
 	Internal: Large number of changes that should not affect functionality.
 ### 2018-01-19
 	Fixed: Weird affinity saving.
-### 2018-01-18
+### 2019-01-18
 	Changed: Default path visibility flipped to Process if Executable is defined and Partial otherwise
 		Previously it was show Process if Path was not defined and Partial otherwise.
 	Fixed: UI allowed creation of invalid watchlist rules (no priority, affinity, nor power).
 	Changed: WMI will no longer be used for path fetching, it simply does not give results if other methods fail.
 	Fixed: Weird path visibility behaviour in terms of saving it (with Process set as the choice).
-### 2018-01-17
+### 2019-01-17
 	Changed: Process analysis improved
 	Fixed: Weird time formatting in power configuration window.
-### 2018-01-16
+### 2019-01-16
 	Fixed: An error with process already exited, yet again.
 	Changed: Process analysis is now much more comprehensive. Added `Record analysis´ experimental option.
 	Fixed: Process state was not being tracked properly.
 	Fixed: Weird output for scan frequency.
-### 2018-01-15
+### 2019-01-15
 	Changed: Process path acquisition improved.
 	Fixed: An error with process already exited.
 	Added: Beginnings of proper process analysis. Important for automatic process identification.
-### 2018-01-14 PARTIALLY INCOMPATIBLE CONFIG
+### 2019-01-14 PARTIALLY INCOMPATIBLE CONFIG
 	Added: Watchlist now has basic search function. Just start typing and it'll highlight anything that has matching names.
 	Changed: Path visibility File and Folder options removed.
 		The IDs used now match Invalid and Partial respectively. No automatic conversion in place.
 		Old partial matching will reset to default: automatic selection of process or partial.
 	Changed: Smart path visibility should be "smarter".
-### 2018-01-13
+### 2019-01-13
 	Added: Option to show adjust latency per item. This is not saved between restarts.
 	Added: Handler for unhandled exceptions. Should write to crash log.
 	Internal: Process tracking changed. Bugs may have been introduced.
 	Internal: A lot of error catching added. Some non-errors might be caught now.
-### 2018-01-12
+### 2019-01-12
 	Changed: Stacktraces should no longer include project directory as it was not useful.
 		Note: It would be preferable if the generated .pbd didn't have it instead.
 	Added: Modify latency display to the UI.
@@ -125,48 +127,48 @@ Comprehensive changes can be found in Git change history:
 	Added: `Unique crash logs´ option in [Logging] in Core.ini.
 	Added: Programmatically disable WER dialogs for TM.
 		Microsoft does not communicate with me about what WER sends to them, so whyyyy would I want that?
-### 2018-01-11
+### 2019-01-11
 	Added: Monitor power off time and percentage is now shown at end of session unlock.
-### 2018-01-10
+### 2019-01-10
 	Added: Path visibility can now be changed in UI now.
-### 2018-01-09
+### 2019-01-09
 	Internal: Various readability improvements.
 	Added: Experimental feature to restart explorer.exe when it crashes. Disabled by default.
 		`Explorer Restart=seconds´ in Core.ini [Experimental] section.
 	Fixed: Component configuration was not showing current values correctly.
 	Changed: UI has received several changes. Things may be broken now.
 	Added: Path Visibility option now has -1 (Process) and 4 (Partial) options.
-### 2018-01-08
+### 2019-01-08
 	Added: Memory pressure display on info tab. 100% or over is bad, mkay?
 	Internal: Changed how memory is queried. Should be better now.
 	Added: Warning about high memory pressure as it coincides with poor performance.
 	Internal: A lot of code re-organization. Path matching may be slightly broken as result.
 	Changed: Monitor sleep on session lock behaviour altered. Should be slightly more reliable now?
-### 2018-01-07
+### 2019-01-07
 	Fixed: User idle calculation. Ticks are a lie.
 	Fixed: A bug in watchlist rule sanity checking. (reported by Chairkicker Nick)
 	Fixed: UI state saving. It was not respecting disabled components. (reported by Chairkicker Nick)
 	Fixed: Powerdown does not occur if foreground only rule is not used. (reported by Chairkicker Nick)
-### 2018-01-06
+### 2019-01-06
 	Added: Power mode is briefly set to balanced if user is active during session lock to improve session unlock responsiviness.
 	Added: Power debug now shows current reaction on top of reactionary plan.
 		So it doesn't look like the reaction was actually to change it when it actually intends to keep current.
 	Fixed: User idle calculation, should now work "properly" if system is without rebooting for 29.7 days.
-### 2018-01-05
+### 2019-01-05
 	Internal: Massive internal changes that should improve responsiviness but also potentially cause new bugs.
 	Fixed: Watchlist ignore list was not actually ignoring things properly.
 	Fixed: Some unreliability with foreground only rules.
-### 2018-01-04
+### 2019-01-04
 	Fixed: Volume settings in watchlist rules were not saved.
 	Fixed: Some numeric scrolling controls reset when entering values manually, ignoring the user input.
 	Improved: Watchlist rule validation.
 	Added: Global hotkey ctrl-alt-shift-r now invokes rescan.
 	Added: Global hotkeys can now be enabled in component configuration window.
-### 2018-01-03
+### 2019-01-03
 	Fixed: The dialog shown when you have already instance of TM running now actually CAN restart or kill the original instance.
 	Changed: Exit procedure is different again. This may result in new crashes on exit.
 	Added: Portable mode. Enable by adding Config folder in the same directory as the executable.
-### 2018-01-02
+### 2019-01-02
 	Changed: Changing power behaviour attempts to restore power before continuing, such as the one set at launch.
 		This makes disabling manual mode behave better, but in some cases this can cause
 		power mode flickering briefly as the new behaviour takes over.
