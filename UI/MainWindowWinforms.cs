@@ -2155,7 +2155,7 @@ namespace Taskmaster
 			var now = DateTime.Now;
 			var age = (now - builddate).TotalDays;
 
-			using (var msg = new SimpleMessageBox("About Taskmaster!",
+			SimpleMessageBox.ShowModal("About Taskmaster!",
 					Application.ProductName +
 					"\nVersion: " + Application.ProductVersion +
 					"\nBuilt: " + $"{builddate.ToString("yyyy/MM/dd HH:mm")} [{age:N0} days old]" +
@@ -2163,10 +2163,7 @@ namespace Taskmaster
 					"\n\nAt Github: " + Taskmaster.GitURL +
 					"\nAt Itch.io: " + Taskmaster.ItchURL +
 					"\n\nFree system maintenance and de-obnoxifying app.\n\nAvailable under MIT license.",
-					SimpleMessageBox.Buttons.OK))
-			{
-				msg.ShowDialog();
-			}
+					SimpleMessageBox.Buttons.OK);
 		}
 
 		void ShowComponentConfig(object sender, EventArgs ea)
@@ -2178,14 +2175,10 @@ namespace Taskmaster
 					comps.ShowDialog();
 					if (comps.DialogResult == DialogResult.OK)
 					{
-						using (var dialog = new SimpleMessageBox("Restart needed", "TM needs to be restarted for changes to take effect.\n\nCancel to do so manually later.", SimpleMessageBox.Buttons.AcceptCancel))
+						if (SimpleMessageBox.ShowModal("Restart needed", "TM needs to be restarted for changes to take effect.\n\nCancel to do so manually later.", SimpleMessageBox.Buttons.AcceptCancel) == SimpleMessageBox.ResultType.OK)
 						{
-							dialog.ShowDialog();
-							if (dialog.Result == SimpleMessageBox.ResultType.OK)
-							{
-								Log.Information("<UI> Restart request");
-								Taskmaster.UnifiedExit(restart: true);
-							}
+							Log.Information("<UI> Restart request");
+							Taskmaster.UnifiedExit(restart: true);
 						}
 					}
 				}
@@ -2730,18 +2723,16 @@ namespace Taskmaster
 					var prc = Taskmaster.processmanager.GetControllerByName(li.SubItems[NameColumn].Text);
 					if (prc != null)
 					{
-						using (var msg = new SimpleMessageBox("Remove watchlist item", $"Really remove '{prc.FriendlyName}'", SimpleMessageBox.Buttons.AcceptCancel))
-						{
-							msg.ShowDialog();
-							if (msg.Result == SimpleMessageBox.ResultType.OK)
-							{
-								processmanager.RemoveController(prc);
 
-								prc.DeleteConfig();
-								Log.Information("[" + prc.FriendlyName + "] Rule removed");
-								WatchlistMap.TryRemove(prc, out ListViewItem _);
-								WatchlistRules.Items.Remove(li);
-							}
+						if (SimpleMessageBox.ShowModal("Remove watchlist item", $"Really remove '{prc.FriendlyName}'", SimpleMessageBox.Buttons.AcceptCancel)
+							== SimpleMessageBox.ResultType.OK)
+						{
+							processmanager.RemoveController(prc);
+
+							prc.DeleteConfig();
+							Log.Information("[" + prc.FriendlyName + "] Rule removed");
+							WatchlistMap.TryRemove(prc, out ListViewItem _);
+							WatchlistRules.Items.Remove(li);
 						}
 					}
 				}

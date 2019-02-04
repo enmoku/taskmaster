@@ -52,6 +52,16 @@ namespace Taskmaster
 
 		public ResultType Result { get; private set; } = ResultType.Cancel;
 
+		public static ResultType ShowModal(string title, string message, Buttons buttons)
+		{
+			using (var msg = new SimpleMessageBox(title, message, buttons))
+			{
+				msg.ShowDialog();
+
+				return msg.Result;
+			}
+		}
+
 		public SimpleMessageBox(string title, string message, Buttons buttons)
 		{
 			Text = title;

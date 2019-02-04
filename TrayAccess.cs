@@ -706,14 +706,8 @@ namespace Taskmaster
 
 				if (!menu_runatstart_sch.Checked)
 				{
-					if (isadmin)
-					{
-						using (var msg = new SimpleMessageBox("Taskmaster! – run at login", "This will add on-login scheduler to run TM as admin, is this right?", SimpleMessageBox.Buttons.AcceptCancel))
-						{
-							msg.ShowDialog();
-							if (msg.Result == SimpleMessageBox.ResultType.Cancel) return;
-						}
-					}
+					if (SimpleMessageBox.ShowModal("Taskmaster! – run at login", "This will add on-login scheduler to run TM as admin, is this right?", SimpleMessageBox.Buttons.AcceptCancel)
+						== SimpleMessageBox.ResultType.Cancel) return;
 				}
 				// can't be disabled without admin rights?
 

@@ -93,19 +93,13 @@ namespace Taskmaster
 
 			if (!fnlen || friendlyName.Text.Contains("]") || friendlyName.Text.Contains("["))
 			{
-				using (var msg = new SimpleMessageBox("Malconfigured friendly name", "Friendly name is missing or includes illegal characters (such as square brackets).", SimpleMessageBox.Buttons.OK))
-				{
-					msg.ShowDialog();
-				}
+				SimpleMessageBox.ShowModal("Malconfigured friendly name", "Friendly name is missing or includes illegal characters (such as square brackets).", SimpleMessageBox.Buttons.OK);
 				return;
 			}
 
 			if (!path && !exnam)
 			{
-				using (var msg = new SimpleMessageBox("Configuration error", "No path nor executable defined.", SimpleMessageBox.Buttons.OK))
-				{
-					msg.ShowDialog();
-				}
+				SimpleMessageBox.ShowModal("Configuration error", "No path nor executable defined.", SimpleMessageBox.Buttons.OK);
 				return;
 			}
 
@@ -114,10 +108,7 @@ namespace Taskmaster
 			var dprc = Taskmaster.processmanager.GetControllerByName(newfriendlyname);
 			if (dprc != null && dprc != Controller)
 			{
-				using (var msg = new SimpleMessageBox("Configuration error", "Friendly Name conflict.", SimpleMessageBox.Buttons.OK))
-				{
-					msg.ShowDialog();
-				}
+				SimpleMessageBox.ShowModal("Configuration error", "Friendly Name conflict.", SimpleMessageBox.Buttons.OK);
 				return;
 			}
 
@@ -127,10 +118,7 @@ namespace Taskmaster
 
 			if (!hasPrio && !hasAff && !hasPow)
 			{
-				using (var msg = new SimpleMessageBox("Configuration error", "No priority, affinity, nor power plan defined.", SimpleMessageBox.Buttons.OK))
-				{
-					msg.ShowDialog();
-				}
+				SimpleMessageBox.ShowModal("Configuration error", "No priority, affinity, nor power plan defined.", SimpleMessageBox.Buttons.OK);
 				return;
 			}
 
@@ -388,8 +376,7 @@ namespace Taskmaster
 					{
 						folderdialog.ShowNewFolderButton = false;
 						folderdialog.RootFolder = Environment.SpecialFolder.MyComputer;
-						var result = folderdialog.ShowDialog(this);
-						if (result == DialogResult.OK && !string.IsNullOrEmpty(folderdialog.SelectedPath))
+						if (folderdialog.ShowDialog(this) == DialogResult.OK && !string.IsNullOrEmpty(folderdialog.SelectedPath))
 						{
 							pathName.Text = folderdialog.SelectedPath;
 						}
@@ -479,8 +466,7 @@ namespace Taskmaster
 				{
 					using (var rs = new TextInputBox("Filename:", "Ignore executable"))
 					{
-						rs.ShowDialog();
-						if (rs.DialogResult == DialogResult.OK)
+						if (rs.ShowDialog() == DialogResult.OK)
 						{
 							ignorelist.Items.Add(rs.Value);
 						}
@@ -1010,10 +996,7 @@ namespace Taskmaster
 				}
 			}
 
-			using (var msg = new SimpleMessageBox("Validation results", sbs.ToString(), SimpleMessageBox.Buttons.OK))
-			{
-				msg.ShowDialog();
-			}
+			SimpleMessageBox.ShowModal("Validation results", sbs.ToString(), SimpleMessageBox.Buttons.OK);
 		}
 	}
 }

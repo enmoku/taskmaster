@@ -83,14 +83,10 @@ namespace Taskmaster
 			{
 				if (ExitConfirmation)
 				{
-					using (var msg = new SimpleMessageBox(
+					rv = SimpleMessageBox.ShowModal(
 						(restart ? "Restart" : "Exit") + Application.ProductName + " ???",
 						"Are you sure you want to " + (restart ? "restart" : "exit") + " Taskmaster?",
-						SimpleMessageBox.Buttons.AcceptCancel))
-					{
-						msg.ShowDialog();
-						rv = msg.Result;
-					}
+						SimpleMessageBox.Buttons.AcceptCancel);
 				}
 				if (rv != SimpleMessageBox.ResultType.OK) return;
 			}
@@ -723,15 +719,10 @@ namespace Taskmaster
 			var adminwarning = ((cfg["Core"].TryGet("Hell")?.StringValue ?? null) != "No");
 			if (isadmin && adminwarning)
 			{
-				var rv = SimpleMessageBox.ResultType.Cancel;
-				using (var msg = new SimpleMessageBox(
+				var rv = SimpleMessageBox.ShowModal(
 					"Taskmaster! – admin access!!??",
 					"You're starting TM with admin rights, is this right?\n\nYou can cause bad system operation, such as complete system hang, if you configure or configured TM incorrectly.",
-					SimpleMessageBox.Buttons.AcceptCancel))
-				{
-					msg.ShowDialog();
-					rv = msg.Result;
-				}
+					SimpleMessageBox.Buttons.AcceptCancel);
 
 				if (rv == SimpleMessageBox.ResultType.OK)
 				{
@@ -1005,10 +996,7 @@ namespace Taskmaster
 						}
 						else
 						{
-							using (var msg = new SimpleMessageBox("Taskmaster launch error", "Failure to elevate privileges, resuming as normal.", SimpleMessageBox.Buttons.OK))
-							{
-								msg.ShowDialog();
-							}
+							SimpleMessageBox.ShowModal("Taskmaster launch error", "Failure to elevate privileges, resuming as normal.", SimpleMessageBox.Buttons.OK);
 						}
 
 						break;
@@ -1095,15 +1083,12 @@ namespace Taskmaster
 			}
 			else if (!File.Exists(Path.Combine(datapath, "Core.ini")))
 			{
-				using (var msg = new SimpleMessageBox("Taskmaster setup", "Setup portable installation?", SimpleMessageBox.Buttons.AcceptCancel))
+				if (SimpleMessageBox.ShowModal("Taskmaster setup", "Setup portable installation?", SimpleMessageBox.Buttons.AcceptCancel)
+					== SimpleMessageBox.ResultType.OK)
 				{
-					msg.ShowDialog();
-					if (msg.Result == SimpleMessageBox.ResultType.OK)
-					{
-						datapath = portpath;
-						Portable = true;
-						System.IO.Directory.CreateDirectory(datapath); // this might fail, but we don't really care.
-					}
+					datapath = portpath;
+					Portable = true;
+					System.IO.Directory.CreateDirectory(datapath); // this might fail, but we don't really care.
 				}
 			}
 		}
