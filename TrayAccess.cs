@@ -693,14 +693,9 @@ namespace Taskmaster
 		{
 			try
 			{
-				var isadmin = Taskmaster.IsAdministrator();
-
-				if (!isadmin)
+				if (!Taskmaster.IsAdministrator())
 				{
-					using (var msg = new SimpleMessageBox("Taskmaster! – run at login", "Scheduler can not be modified without admin rights.", SimpleMessageBox.Buttons.OK))
-					{
-						msg.ShowDialog();
-					}
+					SimpleMessageBox.ShowModal("Taskmaster! – run at login", "Scheduler can not be modified without admin rights.", SimpleMessageBox.Buttons.OK);
 					return;
 				}
 
