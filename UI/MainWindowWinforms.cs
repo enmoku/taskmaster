@@ -2453,7 +2453,7 @@ namespace Taskmaster
 		{
 			try
 			{
-				using (var exsel = new ProcessSelectDialog())
+				using (var exsel = new ProcessSelectDialog("Select nothing to try free memory in general."))
 				{
 					if (exsel.ShowDialog(this) == DialogResult.OK)
 					{

@@ -37,7 +37,7 @@ namespace Taskmaster
 
 		ComboBox selection = null;
 
-		public ProcessSelectDialog()
+		public ProcessSelectDialog(string message = "")
 		{
 			WindowState = FormWindowState.Normal;
 			FormBorderStyle = FormBorderStyle.FixedDialog; // no min/max buttons as wanted
@@ -88,6 +88,11 @@ namespace Taskmaster
 
 			selection.Items.AddRange(procnames.ToArray());
 			selection.AutoCompleteSource = AutoCompleteSource.ListItems;
+
+			if (!string.IsNullOrEmpty(message))
+			{
+				layout.Controls.Add(new Label() { Text = message, AutoSize = true, Dock = DockStyle.Fill, Padding = CustomPadding });
+			}
 
 			layout.Controls.Add(selection);
 
