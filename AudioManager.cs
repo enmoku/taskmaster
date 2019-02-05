@@ -199,30 +199,21 @@ namespace Taskmaster
 	{
 		readonly NAudio.CoreAudioApi.AudioSessionControl session = null;
 
-		public AudioSession(NAudio.CoreAudioApi.AudioSessionControl audiosession)
-		{
-			session = audiosession;
-		}
+		public AudioSession(NAudio.CoreAudioApi.AudioSessionControl audiosession) => session = audiosession;
 
 		public void OnChannelVolumeChanged(uint channelCount, IntPtr newVolumes, uint channelIndex)
 		{
 			// Yeah
 		}
 
-		public void OnDisplayNameChanged(string displayName)
-		{
-			Log.Debug("<Audio> Display name changed: " + displayName);
-		}
+		public void OnDisplayNameChanged(string displayName) => Log.Debug("<Audio> Display name changed: " + displayName);
 
 		public void OnGroupingParamChanged(ref Guid groupingId)
 		{
 			// Ehhh?
 		}
 
-		public void OnIconPathChanged(string iconPath)
-		{
-			Log.Debug("<Audio> Icon path changed: " + iconPath);
-		}
+		public void OnIconPathChanged(string iconPath) => Log.Debug("<Audio> Icon path changed: " + iconPath);
 
 		public void OnSessionDisconnected(NAudio.CoreAudioApi.Interfaces.AudioSessionDisconnectReason disconnectReason)
 		{

@@ -34,10 +34,7 @@ namespace Taskmaster
 	{
 		readonly string datapath = string.Empty;
 
-		public ConfigManager(string path)
-		{
-			datapath = path;
-		}
+		public ConfigManager(string path) => datapath = path;
 
 		readonly object config_lock = new object();
 		readonly HashSet<ConfigWrapper> Loaded = new HashSet<ConfigWrapper>();

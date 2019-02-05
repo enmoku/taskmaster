@@ -1209,11 +1209,7 @@ namespace Taskmaster
 				//Padding = DefaultPadding,
 			};
 
-			#region Load UI config
-			int opentab;
-			int[] appwidths, micwidths, ifacewidths;
-			LoadUIConfiguration(out opentab, out appwidths, out micwidths, out ifacewidths);
-			#endregion
+			LoadUIConfiguration(out int opentab, out int[] appwidths, out int[] micwidths, out int[] ifacewidths);
 
 			if (Taskmaster.MicrophoneMonitorEnabled) BuildMicrophonePanel(micwidths);
 

@@ -64,13 +64,13 @@ namespace Taskmaster
 	public class MonitorPowerEventArgs : EventArgs
 	{
 		public MonitorPowerMode Mode;
-		public MonitorPowerEventArgs(MonitorPowerMode mode) { Mode = mode; }
+		public MonitorPowerEventArgs(MonitorPowerMode mode) => Mode = mode;
 	}
 
 	public class SessionLockEventArgs : EventArgs
 	{
 		public bool Locked = false;
-		public SessionLockEventArgs(bool locked = false) { Locked = locked; }
+		public SessionLockEventArgs(bool locked = false) => Locked = locked;
 	}
 
 	sealed public class PowerManager : Form // form is required for receiving messages, no other reason

@@ -43,8 +43,6 @@ namespace Taskmaster
 
 		public RunstateException(string message, Runstate state, Exception innerException = null)
 			: base(message, innerException)
-		{
-			State = state;
-		}
+			=> State = state;
 	}
 }

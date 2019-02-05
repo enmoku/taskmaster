@@ -31,10 +31,7 @@ namespace Taskmaster
 {
 	sealed public class ProcessModificationEventArgs : EventArgs
 	{
-		public ProcessModificationEventArgs(ProcessEx info)
-		{
-			Info = info;
-		}
+		public ProcessModificationEventArgs(ProcessEx info) => Info = info;
 
 		public ProcessEx Info = null;
 
