@@ -30,6 +30,7 @@ namespace Taskmaster
 	{
 		None,
 		Watchlist,
+		Internal,
 		AutoAdjust,
 		User,
 		Session
@@ -59,6 +60,7 @@ namespace Taskmaster
 					return Taskmaster.powermanager.Behaviour.ToString() + ": " + Detail; // ugly, but...
 				case OriginType.Watchlist:
 					return "Rule: " + Detail;
+				case OriginType.Internal:
 				default:
 					return string.IsNullOrEmpty(Detail) ? HumanReadable.Generic.Undefined : Detail;
 			}

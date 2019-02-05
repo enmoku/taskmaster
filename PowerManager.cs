@@ -100,7 +100,7 @@ namespace Taskmaster
 			// SystemEvents.PowerModeChanged += BatteryChargingEvent; // Without laptop testing this feature is difficult
 
 			if (Behaviour == PowerBehaviour.RuleBased && !Forced)
-				Restore();
+				Restore(new Cause(OriginType.Internal, "Initial"));
 
 			if (SessionLockPowerOffIdleTimeout.HasValue)
 			{
@@ -1027,7 +1027,7 @@ namespace Taskmaster
 					case SessionSwitchReason.SessionUnlock:
 						// RESTORE POWER MODE
 						if (Taskmaster.DebugSession || Taskmaster.ShowSessionActions || Taskmaster.DebugPower)
-							Log.Information("<Session:Unlock> Restoring normal power.");
+							Log.Information("<Session:Unlock> Restoring previous power configuration.");
 
 						SleepGivenUp = 0;
 
@@ -1271,7 +1271,7 @@ namespace Taskmaster
 			Behaviour = pb;
 			LogBehaviourState();
 
-			Restore();
+			Restore(new Cause(OriginType.User));
 
 			switch (Behaviour)
 			{
@@ -1336,7 +1336,7 @@ namespace Taskmaster
 
 					Forced = ForceModeSourcesMap.Count > 0;
 
-					if (!Forced) ReleaseFinal();
+					if (!Forced) ReleaseFinal(new Cause( OriginType.Watchlist, $"#{sourcePid} exited, requested mode ending."));
 
 					if (Taskmaster.Trace && Taskmaster.DebugPower)
 						Log.Debug($"<Power> Released {(sourcePid == -1 ? "All" : sourcePid.ToString())}");
@@ -1349,7 +1349,7 @@ namespace Taskmaster
 			}
 		}
 
-		async Task ReleaseFinal()
+		async Task ReleaseFinal(Cause cause=null)
 		{
 			await Task.Delay(0).ConfigureAwait(false);
 
@@ -1363,7 +1363,7 @@ namespace Taskmaster
 
 				if (Taskmaster.Trace && Taskmaster.DebugPower) Log.Debug("<Power> No power locks left.");
 
-				Restore();
+				Restore(cause);
 				return;
 			}
 			else
@@ -1373,7 +1373,7 @@ namespace Taskmaster
 			}
 		}
 
-		void Restore()
+		void Restore(Cause cause=null)
 		{
 			if (Behaviour == PowerBehaviour.Manual)
 			{
@@ -1398,7 +1398,7 @@ namespace Taskmaster
 
 					if (Taskmaster.DebugPower) Log.Debug("<Power> Restoring power mode: " + SavedMode.ToString());
 
-					InternalSetMode(SavedMode, new Cause(OriginType.None, "Restoration"), verbose:false);
+					InternalSetMode(SavedMode, cause ?? new Cause(OriginType.None, "Restoration"), verbose:false);
 					SavedMode = PowerMode.Undefined;
 				}
 				else
@@ -1573,7 +1573,7 @@ namespace Taskmaster
 				ForceModeSourcesMap?.Clear();
 				Forced = false;
 
-				Restore();
+				Restore(new Cause(OriginType.Internal, "Power Manager shutdown"));
 
 				Log.Information("<Power> Auto-adjusted " + AutoAdjustCounter + " time(s).");
 
