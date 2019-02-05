@@ -40,7 +40,7 @@ namespace Taskmaster
 		/// <summary>
 		/// New instance
 		/// </summary>
-		Triage, // unused
+		Triage,
 
 		/// <summary>
 		/// Collecting info
@@ -64,12 +64,12 @@ namespace Taskmaster
 		/// <summary>
 		/// Done modifying but nothing was done.
 		/// </summary>
-		Unmodified, // unused
+		Unmodified,
 
 		/// <summary>
 		/// Done processing.
 		/// </summary>
-		Finished, // unused?
+		Finished,
 
 		/// <summary>
 		/// Background transition

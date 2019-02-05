@@ -64,24 +64,12 @@ public static class SharpConfigExtensions
 
 	public static SharpConfig.Setting GetSetDefault<T>(this SharpConfig.Section section, string setting, T fallback)
 	{
-		return section.GetSetDefault(setting, fallback, out bool unused);
+		return section.GetSetDefault(setting, fallback, out _);
 	}
 
-	/// <summary>
-	/// 
-	/// </summary>
-	/// <returns>true if changed, false otherwise.</returns>
-	public static bool Set<T>(this SharpConfig.Setting setting, T value)
+	public static bool IsSet(this SharpConfig.Section section, string setting)
 	{
-		if (!setting.IsArray && string.IsNullOrEmpty(setting.GetValue<string>()))
-		{
-			if (!setting.GetValue<T>().Equals(value))
-			{
-				setting.SetValue(value);
-				return true;
-			}
-		}
-		return false;
+		return section.Contains(setting) && section[setting].StringValue.Length > 0;
 	}
 
 	/// <summary>
@@ -98,15 +86,18 @@ public static class SharpConfigExtensions
 		Debug.Assert(section != null);
 		Debug.Assert(!string.IsNullOrEmpty(setting));
 
-		SharpConfig.Setting rv;
-		rv = section[setting];
-		if (!rv.IsArray && string.IsNullOrEmpty(rv.GetValue<string>()))
+		SharpConfig.Setting rv = null;
+		if (!section.Contains(setting) && section[setting].StringValue.Length == 0)
 		{
-			section[setting].SetValue(fallback);
+			rv = section[setting];
+			rv.SetValue(fallback);
 			defaulted = true;
 		}
 		else
+		{
+			rv = section[setting];
 			defaulted = false;
+		}
 		// TODO: what do do about arrays?
 
 		return rv;

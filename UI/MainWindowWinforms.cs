@@ -244,8 +244,6 @@ namespace Taskmaster
 			FormClosing += (_, _ea) => micmon.VolumeChanged -= VolumeChangeDetected;
 		}
 
-		readonly string AnyIgnoredValue = string.Empty; // Any/Ignored
-
 		public async void ProcessTouchEvent(object _, ProcessModificationEventArgs ea)
 		{
 			if (!IsHandleCreated || disposed) return;
@@ -421,7 +419,7 @@ namespace Taskmaster
 		int num = 1;
 		void AddToWatchlistList(ProcessController prc)
 		{
-			string aff = AnyIgnoredValue;
+			string aff = string.Empty;
 			if (prc.AffinityMask > 0)
 			{
 				if (Taskmaster.AffinityStyle == 0)
@@ -463,8 +461,8 @@ namespace Taskmaster
 
 				litem.SubItems[NameColumn].Text = prc.FriendlyName;
 				litem.SubItems[ExeColumn].Text = prc.Executable;
-				litem.SubItems[PrioColumn].Text = prc.Priority?.ToString() ?? AnyIgnoredValue;
-				string aff = AnyIgnoredValue;
+				litem.SubItems[PrioColumn].Text = prc.Priority?.ToString() ?? string.Empty;
+				string aff = string.Empty;
 				if (prc.AffinityMask >= 0)
 				{
 					if (prc.AffinityMask == ProcessManager.AllCPUsMask || prc.AffinityMask == 0)
@@ -475,8 +473,8 @@ namespace Taskmaster
 						aff = prc.AffinityMask.ToString();
 				}
 				litem.SubItems[AffColumn].Text = aff;
-				litem.SubItems[PowerColumn].Text = (prc.PowerPlan != PowerInfo.PowerMode.Undefined ? PowerManager.GetModeName(prc.PowerPlan) : AnyIgnoredValue);
-				litem.SubItems[PathColumn].Text = (string.IsNullOrEmpty(prc.Path) ? AnyIgnoredValue : prc.Path);
+				litem.SubItems[PowerColumn].Text = (prc.PowerPlan != PowerInfo.PowerMode.Undefined ? PowerManager.GetModeName(prc.PowerPlan) : string.Empty);
+				litem.SubItems[PathColumn].Text = (string.IsNullOrEmpty(prc.Path) ? string.Empty : prc.Path);
 
 				WatchlistRules.EndUpdate();
 			}));
@@ -795,7 +793,6 @@ namespace Taskmaster
 			// LAYOUT ITEM CONFIGURATION
 
 			var menu_action = new ToolStripMenuItem("Actions");
-			menu_action.DropDown.AutoClose = true;
 			// Sub Items
 			var menu_action_rescan = new ToolStripMenuItem(HumanReadable.System.Process.Rescan, null, RescanRequestEvent)
 			{
@@ -821,7 +818,6 @@ namespace Taskmaster
 
 			// CONFIG menu item
 			var menu_config = new ToolStripMenuItem("Configuration");
-			menu_config.DropDown.AutoClose = true;
 			// Sub Items
 			var menu_config_behaviour = new ToolStripMenuItem("Behaviour");
 			var menu_config_logging = new ToolStripMenuItem("Logging");
@@ -987,7 +983,6 @@ namespace Taskmaster
 
 			// DEBUG menu item
 			var menu_debug = new ToolStripMenuItem("Debug");
-			menu_debug.DropDown.AutoClose = true;
 			// Sub Items
 			var menu_debug_loglevel = new ToolStripMenuItem("UI log level");
 
@@ -1101,12 +1096,17 @@ namespace Taskmaster
 				Taskmaster.DebugPower = menu_debug_power.Checked;
 				if (Taskmaster.DebugPower)
 				{
+					var pev = new PowerModeEventArgs(powermanager.CurrentMode);
+					PowerPlanDebugEvent(this, pev); // populates powerbalancer_plan
+					powermanager.onPlanChange += PowerPlanDebugEvent;
 					powermanager.onAutoAdjustAttempt += PowerLoadHandler;
+
 					tabLayout.Controls.Add(powerDebugTab);
 					EnsureVerbosityLevel();
 				}
 				else
 				{
+					powermanager.onPlanChange -= PowerPlanDebugEvent;
 					powermanager.onAutoAdjustAttempt -= PowerLoadHandler;
 					bool refocus = tabLayout.SelectedTab.Equals(powerDebugTab);
 					tabLayout.Controls.Remove(powerDebugTab);
@@ -1157,10 +1157,10 @@ namespace Taskmaster
 			menu_debug.DropDownItems.Add(menu_debug_inaction);
 			menu_debug.DropDownItems.Add(menu_debug_agency);
 			menu_debug.DropDownItems.Add(new ToolStripSeparator());
-			menu_debug.DropDownItems.Add(menu_debug_scanning);
+			//menu_debug.DropDownItems.Add(menu_debug_scanning);
 			menu_debug.DropDownItems.Add(menu_debug_procs);
 			menu_debug.DropDownItems.Add(menu_debug_foreground);
-			menu_debug.DropDownItems.Add(menu_debug_paths);
+			//menu_debug.DropDownItems.Add(menu_debug_paths);
 			menu_debug.DropDownItems.Add(menu_debug_power);
 			menu_debug.DropDownItems.Add(menu_debug_session);
 			menu_debug.DropDownItems.Add(menu_debug_monitor);
@@ -1170,69 +1170,34 @@ namespace Taskmaster
 
 			// INFO menu
 			var menu_info = new ToolStripMenuItem("Info");
-			menu_info.DropDown.AutoClose = true;
 			// Sub Items
-			var menu_info_github = new ToolStripMenuItem("Github", null, (_, _ea) => Process.Start(Taskmaster.GitURL));
-			var menu_info_itchio = new ToolStripMenuItem("Itch.io", null, (_, _ea) => Process.Start(Taskmaster.ItchURL));
-			var menu_info_license = new ToolStripMenuItem("License", null, (_, _ea) =>
-			{
-				try { using (var n = new LicenseDialog(initial: false)) { n.ShowDialog(); } }
-				catch (Exception ex) { Logging.Stacktrace(ex); }
-			});
-			var menu_info_about = new ToolStripMenuItem("About", null, ShowAboutDialog);
 
-			menu_info.DropDownItems.Add(menu_info_github);
-			menu_info.DropDownItems.Add(menu_info_itchio);
+			menu_info.DropDownItems.Add(new ToolStripMenuItem("Github", null, (_, _ea) => Process.Start(Taskmaster.GitURL)));
+			menu_info.DropDownItems.Add(new ToolStripMenuItem("Itch.io", null, (_, _ea) => Process.Start(Taskmaster.ItchURL)));
 			menu_info.DropDownItems.Add(new ToolStripSeparator());
-			menu_info.DropDownItems.Add(menu_info_license);
+			menu_info.DropDownItems.Add(new ToolStripMenuItem("License", null, (_, _ea) => OpenLicenseDialog()));
 			menu_info.DropDownItems.Add(new ToolStripSeparator());
-			menu_info.DropDownItems.Add(menu_info_about);
+			menu_info.DropDownItems.Add(new ToolStripMenuItem("About", null, ShowAboutDialog));
 
-			menu.Items.Add(menu_action);
-			menu.Items.Add(menu_config);
-			menu.Items.Add(menu_debug);
-			menu.Items.Add(menu_info);
+			menu.Items.AddRange(new[] { menu_action, menu_config, menu_debug, menu_info });
 
 			// no simpler way?
 
-			menu_action.MouseEnter += (_, _ea) =>
-			{
-				if (Form.ActiveForm != this) return;
-				if (Taskmaster.AutoOpenMenus) menu_action.ShowDropDown();
-			};
-			menu_config.MouseEnter += (_, _ea) =>
-			{
-				if (Form.ActiveForm != this) return;
-				if (Taskmaster.AutoOpenMenus) menu_config.ShowDropDown();
-			};
-			menu_debug.MouseEnter += (_, _ea) =>
-			{
-				if (Form.ActiveForm != this) return;
-				if (Taskmaster.AutoOpenMenus) menu_debug.ShowDropDown();
-			};
-			menu_info.MouseEnter += (_, _ea) =>
-			{
-				if (Form.ActiveForm != this) return;
-				if (Taskmaster.AutoOpenMenus) menu_info.ShowDropDown();
-			};
+			menu_action.MouseEnter += ToolStripMenuAutoOpen;
+			menu_config.MouseEnter += ToolStripMenuAutoOpen;
+			menu_debug.MouseEnter += ToolStripMenuAutoOpen;
+			menu_info.MouseEnter += ToolStripMenuAutoOpen;
+
+			menu_action.DropDown.AutoClose = true;
+			menu_config.DropDown.AutoClose = true;
+			menu_debug.DropDown.AutoClose = true;
+			menu_info.DropDown.AutoClose = true;
 
 			infoTab = new TabPage("Info") { Padding = CustomPadding };
 			tabLayout.Controls.Add(infoTab);
 
 			watchTab = new TabPage("Watchlist") { Padding = CustomPadding };
 			tabLayout.Controls.Add(watchTab);
-
-			if (Taskmaster.MicrophoneMonitorEnabled)
-			{
-				micTab = new TabPage("Microphone") { Padding = CustomPadding };
-				tabLayout.Controls.Add(micTab);
-			}
-			powerDebugTab = new TabPage("Power Debug") { Padding = CustomPadding };
-			if (Taskmaster.DebugPower)
-				tabLayout.Controls.Add(powerDebugTab);
-			ProcessDebugTab = new TabPage("Process Debug") { Padding = CustomPadding };
-			if (Taskmaster.DebugProcesses || Taskmaster.DebugForeground)
-				tabLayout.Controls.Add(ProcessDebugTab);
 
 			var infopanel = new FlowLayoutPanel
 			{
@@ -1465,15 +1430,29 @@ namespace Taskmaster
 
 			// POWER DEBUG TAB
 
-			if (Taskmaster.PowerManagerEnabled) BuildPowerDebugPanel();
+			if (Taskmaster.DebugPower) BuildPowerDebugPanel();
 
 			// -------------------------------------------------------------------------------------------------------
 
 			if (Taskmaster.DebugProcesses || Taskmaster.DebugForeground)
 				BuildProcessDebug();
+
 			// End Process Debug
 
 			tabLayout.SelectedIndex = opentab >= tabLayout.TabCount ? 0 : opentab;
+		}
+
+		void ToolStripMenuAutoOpen(object sender, EventArgs _)
+		{
+			var mi = sender as ToolStripMenuItem;
+			if (!ContainsFocus || !Taskmaster.AutoOpenMenus) return;
+			mi?.ShowDropDown();
+		}
+
+		private static void OpenLicenseDialog()
+		{
+			try { using (var n = new LicenseDialog(initial: false)) { n.ShowDialog(); } }
+			catch (Exception ex) { Logging.Stacktrace(ex); }
 		}
 
 		private void BuildProcessDebug()
@@ -1570,9 +1549,13 @@ namespace Taskmaster
 
 			processlayout.Controls.Add(processinglist);
 
+			ExitWaitlistMap = new ConcurrentDictionary<int, ListViewItem>();
+
+			ProcessDebugTab = new TabPage("Process Debug") { Padding = CustomPadding };
+
 			ProcessDebugTab.Controls.Add(processlayout);
 
-			ExitWaitlistMap = new ConcurrentDictionary<int, ListViewItem>();
+			tabLayout.Controls.Add(ProcessDebugTab);
 		}
 
 		private void BuildWatchlist(int[] appwidths)
@@ -1791,7 +1774,8 @@ namespace Taskmaster
 			micpanel.Controls.Add(miccntrl);
 			micpanel.Controls.Add(AudioInputs);
 
-			micTab.Controls.Add(micpanel);
+			micTab = new TabPage("Microphone") { Padding = CustomPadding };
+			tabLayout.Controls.Add(micTab);
 		}
 
 		private TableLayoutPanel BuildTempMonitorPanel()
@@ -1950,7 +1934,9 @@ namespace Taskmaster
 
 			powerlayout.Controls.Add(powerbalancerstatus);
 
+			powerDebugTab = new TabPage("Power Debug") { Padding = CustomPadding };
 			powerDebugTab.Controls.Add(powerlayout);
+			tabLayout.Controls.Add(powerDebugTab);
 		}
 
 		TableLayoutPanel BuildLastModifiedPanel(int[] appwidths)
@@ -2310,13 +2296,8 @@ namespace Taskmaster
 
 			if (Taskmaster.DebugProcesses) processmanager.HandlingStateChange += ProcessHandlingStateChangeEvent;
 
-			if (enabled)
-			{
-				if (ProcessDebugTab.Controls.Count == 0) BuildProcessDebug();
-
-				if (!tabLayout.Controls.Contains(ProcessDebugTab))
-					tabLayout.Controls.Add(ProcessDebugTab);
-			}
+			if (enabled && ProcessDebugTab == null)
+				BuildProcessDebug();
 
 			if (activeappmonitor != null && Taskmaster.DebugForeground)
 				activeappmonitor.ActiveChanged += OnActiveWindowChanged;
@@ -2916,7 +2897,6 @@ namespace Taskmaster
 				powermanager.onAutoAdjustAttempt += PowerLoadHandler;
 
 			powermanager.onBehaviourChange += PowerBehaviourDebugEvent;
-			powermanager.onPlanChange += PowerPlanDebugEvent;
 
 			powermanager.onPlanChange += PowerPlanEvent;
 			powermanager.onBehaviourChange += PowerBehaviourEvent;
@@ -2926,7 +2906,12 @@ namespace Taskmaster
 			PowerBehaviourEvent(this, bev); // populates pwbehaviour
 			var pev = new PowerModeEventArgs(powermanager.CurrentMode);
 			PowerPlanEvent(this, pev); // populates pwplan and pwcause
-			PowerPlanDebugEvent(this, pev); // populates powerbalancer_plan
+
+			if (Taskmaster.DebugPower)
+			{
+				PowerPlanDebugEvent(this, pev); // populates powerbalancer_plan
+				powermanager.onPlanChange += PowerPlanDebugEvent;
+			}
 		}
 
 		private async void PowerBehaviourEvent(object sender, PowerManager.PowerBehaviourEventArgs e)
@@ -3070,6 +3055,8 @@ namespace Taskmaster
 		{
 			if (!IsHandleCreated || disposed) return;
 
+			if (!Taskmaster.DebugPower) return;
+
 			BeginInvoke(new Action(() =>
 			{
 				powerbalancer_behaviour.Text = PowerManager.GetBehaviourName(ea.Behaviour);
@@ -3081,6 +3068,8 @@ namespace Taskmaster
 		public async void PowerPlanDebugEvent(object _, PowerModeEventArgs ea)
 		{
 			if (!IsHandleCreated || disposed) return;
+
+			if (!Taskmaster.DebugPower) return;
 
 			BeginInvoke(new Action(() =>
 			{
