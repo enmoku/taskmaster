@@ -1493,7 +1493,14 @@ namespace Taskmaster
 						if (ExclusiveList.Count == 0)
 						{
 							if (Taskmaster.DebugProcesses) Log.Debug("<Exclusive> Ended for all, restarting services.");
-							ExclusiveEnd();
+							try
+							{
+								ExclusiveEnd();
+							}
+							catch (InvalidOperationException)
+							{
+								Log.Warning($"<Exclusive> Failure to restart WUA after {info.Name} (#{info.Id}) exited.");
+							}
 						}
 						else
 						{
@@ -1580,16 +1587,7 @@ namespace Taskmaster
 							windowsupdate.Value.Start();
 					}
 				}
-				catch (InvalidOperationException ex)
-				{
-                    if (!WUARunning) Log.Error(ex, "<Exclusive> Failure to restart WUA");
-                    else Log.Error(ex, "<Exclusive> Unknown error");
-				}
 				catch (OutOfMemoryException) { throw; }
-				catch (Exception ex)
-				{
-					Logging.Stacktrace(ex);
-				}
 				finally
 				{
 					ExclusiveEnabled = false;
@@ -1973,7 +1971,7 @@ namespace Taskmaster
 
 				windowsupdate.Value.Dispose();
 				ExclusiveList?.Clear();
-				ExclusiveEnd();
+				MKAh.Utility.DiscardExceptions(() => ExclusiveEnd());
 
 				if (powermanager != null)
 				{
