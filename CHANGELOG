@@ -3,11 +3,15 @@ Comprehensive changes can be found in Git change history:
 	https://github.com/mkahvi/taskmaster/commits/master
 
 ## [0.13...]
+### 2019-02-05
+	Changed: Exclusive mode error handling.
+	Changed: Power mode reporting clarified.
+	Removed: Path and scanning debug options removed from UI.
 ### 2019-02-04 Version 0.13
 	Added: Watchlist rule editing automatically fills in path when running process is selected, if no path is defined yet.
 	Added: Process select dialog now can contain messages.
 	Internal: Lots of changes. And version bump.
-	Fixed: Year 2019 in changelog. Cut&paste bad, correct dating good.
+	Fixed: Year 2019 in changelog. Cut&paste bad, correct dating good. (reported by Chairkicker Nick)
 	Fixed: Process&Foreground debug.
 
 ## [0.12...]
