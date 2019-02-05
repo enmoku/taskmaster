@@ -1036,6 +1036,8 @@ namespace Taskmaster
 
 			var menu_debug_inaction = new ToolStripMenuItem("Show inaction") { Checked = Taskmaster.ShowInaction, CheckOnClick = true };
 			menu_debug_inaction.Click += (_, _ea) => Taskmaster.ShowInaction = menu_debug_inaction.Checked;
+			var menu_debug_agency = new ToolStripMenuItem("Show agency") { Checked = Taskmaster.ShowAgency, CheckOnClick = true };
+			menu_debug_agency.Click += (_, _ea) => Taskmaster.ShowAgency = menu_debug_agency.Checked;
 			var menu_debug_scanning = new ToolStripMenuItem("Scanning")
 			{
 				Checked = Taskmaster.DebugFullScan,
@@ -1153,6 +1155,7 @@ namespace Taskmaster
 			menu_debug.DropDownItems.Add(menu_debug_loglevel);
 			menu_debug.DropDownItems.Add(new ToolStripSeparator());
 			menu_debug.DropDownItems.Add(menu_debug_inaction);
+			menu_debug.DropDownItems.Add(menu_debug_agency);
 			menu_debug.DropDownItems.Add(new ToolStripSeparator());
 			menu_debug.DropDownItems.Add(menu_debug_scanning);
 			menu_debug.DropDownItems.Add(menu_debug_procs);

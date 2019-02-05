@@ -1112,7 +1112,8 @@ namespace Taskmaster
 								if (ormt.ExpectedState == -2) // 2-3 seems good number
 								{
 									ormt.FreeWill = true;
-									Log.Information($"[{FriendlyName}] {FormatPathName(info)} (#{info.Id.ToString()}) is resisting being modified: Agency granted.");
+									if (Taskmaster.ShowAgency)
+										Log.Debug($"[{FriendlyName}] {FormatPathName(info)} (#{info.Id.ToString()}) is resisting being modified: Agency granted.");
 									// TODO: Let it be.
 									ormt.Info.Process.Exited += ProcessExitEvent;
 								}

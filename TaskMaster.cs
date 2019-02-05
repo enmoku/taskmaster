@@ -480,6 +480,7 @@ namespace Taskmaster
 		public static bool Trace { get; set; } = false;
 		public static bool UniqueCrashLogs { get; set; } = false;
 		public static bool ShowInaction { get; set; } = false;
+		public static bool ShowAgency { get; set; } = false;
 
 		public static bool ProcessMonitorEnabled { get; private set; } = true;
 		public static bool PathMonitorEnabled { get; private set; } = true;
@@ -636,7 +637,11 @@ namespace Taskmaster
 			dirtyconfig |= modified;
 
 			ShowInaction = logsec.GetSetDefault("Show inaction", false, out modified).BoolValue;
-			logsec["Show inaction"].Comment = "Shows lack of action take on processes.";
+			logsec["Show inaction"].Comment = "Log lack of action taken on processes.";
+			dirtyconfig |= modified;
+
+			ShowAgency = logsec.GetSetDefault("Show agency", false, out modified).BoolValue;
+			logsec["Show agency"].Comment = "Log changes in agency, such as processes being left to decide their own fate.";
 			dirtyconfig |= modified;
 
 			ShowProcessAdjusts = logsec.GetSetDefault("Show process adjusts", true, out modified).BoolValue;
