@@ -3,6 +3,8 @@ Comprehensive changes can be found in Git change history:
 	https://github.com/mkahvi/taskmaster/commits/master
 
 ## [0.13...]
+### 2019-02-07
+	Fixed: Affinity ideal nor Log adjusts settings were not saved across restarts when set in UI.
 ### 2019-02-05
 	Changed: Exclusive mode error handling.
 	Changed: Power mode reporting clarified.
