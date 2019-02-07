@@ -407,6 +407,11 @@ namespace Taskmaster
 				app.Remove(HumanReadable.System.Process.AffinityStrategy);
 			}
 
+			if (AffinityIdeal >= 0)
+				app["Affinity ideal"].IntValue = AffinityIdeal;
+			else
+				app.Remove("Affinity ideal");
+
 			var pmode = PowerManager.GetModeName(PowerPlan);
 			if (PowerPlan != PowerInfo.PowerMode.Undefined)
 				app[HumanReadable.Hardware.Power.Mode].StringValue = PowerManager.GetModeName(PowerPlan);
@@ -513,6 +518,11 @@ namespace Taskmaster
 				app.Remove("Volume");
 				app.Remove("Volume strategy");
 			}
+
+			if (LogAdjusts)
+				app["Logging"].BoolValue = LogAdjusts;
+			else
+				app.Remove("Logging");
 
 			// pass to config manager
 			NeedsSaving = false;
