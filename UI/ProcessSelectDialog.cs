@@ -35,10 +35,11 @@ namespace Taskmaster
 {
 	sealed public class ProcessSelectDialog : UI.UniForm
 	{
-		public string Name { get; private set; } = null;
+		public string Executable { get; private set; } = null;
+
+		public ProcessEx Info { get; private set; } = null;
 
 		ComboBox selection = null;
-
 		Button selectbutton = null, cancelbutton = null;
 
 		List<ProcessEx> InfoList = new List<ProcessEx>();
@@ -182,8 +183,6 @@ namespace Taskmaster
 			}
 		}
 
-		public ProcessEx Info = null;
-
 		void SaveSelection(object _, EventArgs _ea)
 		{
 			try
@@ -191,7 +190,7 @@ namespace Taskmaster
 				int off = selection.SelectedIndex;
 				var info = InfoList[off];
 
-				Name = info.Name;
+				Executable = info.Name;
 				Info = info;
 				DialogResult = DialogResult.OK;
 			}

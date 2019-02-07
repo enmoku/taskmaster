@@ -338,7 +338,7 @@ namespace Taskmaster
 						if (exselectdialog.ShowDialog(this) == DialogResult.OK)
 						{
 							// SANITY CHECK: exselectdialog.Selection;
-							execName.Text = exselectdialog.Name;
+							execName.Text = exselectdialog.Executable;
 							if (string.IsNullOrEmpty(pathName.Text) && !string.IsNullOrEmpty(exselectdialog.Info.Path))
 								pathName.Text = System.IO.Path.GetDirectoryName(exselectdialog.Info.Path);
 						}
