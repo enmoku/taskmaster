@@ -1554,11 +1554,7 @@ namespace Taskmaster
 
 				if (cpumonitor != null)
 				{
-					try
-					{
-						cpumonitor.onSampling -= CPULoadHandler;
-					}
-					catch { }
+					cpumonitor.onSampling -= CPULoadHandler;
 				}
 
 				MonitorPower = null;
