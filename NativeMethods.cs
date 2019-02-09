@@ -191,18 +191,6 @@ namespace Taskmaster
 		[DllImport("kernel32.dll", CharSet = CharSet.Auto)] // SetLastError = true
 		public static extern bool SetPriorityClass(IntPtr handle, uint priorityClass);
 
-		public enum PriorityTypes
-		{
-			ABOVE_NORMAL_PRIORITY_CLASS = 0x00008000,
-			BELOW_NORMAL_PRIORITY_CLASS = 0x00004000,
-			HIGH_PRIORITY_CLASS = 0x00000080,
-			IDLE_PRIORITY_CLASS = 0x00000040,
-			NORMAL_PRIORITY_CLASS = 0x00000020,
-			PROCESS_MODE_BACKGROUND_BEGIN = 0x00100000,
-			PROCESS_MODE_BACKGROUND_END = 0x00200000,
-			REALTIME_PRIORITY_CLASS = 0x00000100
-		}
-
 		[DllImport("Kernel32.dll", CharSet = CharSet.Auto)] // SetLastError = true
 		public static extern bool DeviceIoControl(
 			Microsoft.Win32.SafeHandles.SafeFileHandle hDevice,

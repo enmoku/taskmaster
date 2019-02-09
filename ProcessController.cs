@@ -844,34 +844,6 @@ namespace Taskmaster
 			if (info.PowerWait) Taskmaster.powermanager?.Release(info.Id);
 		}
 
-		/*
-		// Windows doesn't allow setting this for other processes
-		bool SetBackground(Process process)
-		{
-			return SetIOPriority(process, PriorityTypes.PROCESS_MODE_BACKGROUND_BEGIN);
-		}
-		*/
-
-		/// <summary>
-		/// Set disk I/O priority. Works only for setting own process priority.
-		/// Would require invasive injecting to other process to affect them.
-		/// </summary>
-		/// <exception>None</exception>
-		public static bool SetIOPriority(Process process, NativeMethods.PriorityTypes priority)
-		{
-			try
-			{
-				var rv = NativeMethods.SetPriorityClass(process.Handle, (uint)priority);
-				return rv;
-			}
-			catch (InvalidOperationException) { } // Already exited
-			catch (ArgumentException) { } // already exited?
-			catch (OutOfMemoryException) { throw; }
-			catch (Exception ex) { Logging.Stacktrace(ex); }
-
-			return false;
-		}
-
 		static string[] UnwantedPathBits = new string[] { "x64", "x86", "bin", "debug", "release", "win32", "win64", "common", "binaries" };
 		static string[] SpecialCasePathBits = new string[] { "steamapps" };
 

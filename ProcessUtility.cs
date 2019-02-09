@@ -32,6 +32,49 @@ namespace Taskmaster
 {
 	public static class ProcessUtility
 	{
+		internal enum PriorityTypes
+		{
+			ABOVE_NORMAL_PRIORITY_CLASS = 0x00008000,
+			BELOW_NORMAL_PRIORITY_CLASS = 0x00004000,
+			HIGH_PRIORITY_CLASS = 0x00000080,
+			IDLE_PRIORITY_CLASS = 0x00000040,
+			NORMAL_PRIORITY_CLASS = 0x00000020,
+			PROCESS_MODE_BACKGROUND_BEGIN = 0x00100000,
+			PROCESS_MODE_BACKGROUND_END = 0x00200000,
+			REALTIME_PRIORITY_CLASS = 0x00000100
+		}
+
+		// Windows doesn't allow setting this for other processes
+		public static bool SetBackground(Process process)
+		{
+			return SetIOPriority(process, PriorityTypes.PROCESS_MODE_BACKGROUND_BEGIN);
+		}
+
+		public static bool UnsetBackground(Process process)
+		{
+			return SetIOPriority(process, PriorityTypes.PROCESS_MODE_BACKGROUND_END);
+		}
+
+		/// <summary>
+		/// Set disk I/O priority. Works only for setting own process priority.
+		/// Would require invasive injecting to other process to affect them.
+		/// </summary>
+		/// <exception>None</exception>
+		internal static bool SetIOPriority(Process process, PriorityTypes priority)
+		{
+			try
+			{
+				var rv = NativeMethods.SetPriorityClass(process.Handle, (uint)priority);
+				return rv;
+			}
+			catch (InvalidOperationException) { } // Already exited
+			catch (ArgumentException) { } // already exited?
+			catch (OutOfMemoryException) { throw; }
+			catch (Exception ex) { Logging.Stacktrace(ex); }
+
+			return false;
+		}
+
 		static Cache<int, string, string> pathCache = null;
 		public static void InitializeCache()
 		{

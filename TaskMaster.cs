@@ -232,13 +232,12 @@ namespace Taskmaster
 
 			if (MainWindowFocus || TrayShown)
 			{
-				self.PriorityClass = ProcessPriorityClass.AboveNormal;
-
 				if (SelfOptimizeBGIO)
 				{
-					try { ProcessController.SetIOPriority(self, NativeMethods.PriorityTypes.PROCESS_MODE_BACKGROUND_END); }
-					catch { }
+					MKAh.Utility.DiscardExceptions(() => ProcessUtility.UnsetBackground(self));
 				}
+
+				self.PriorityClass = ProcessPriorityClass.AboveNormal;
 			}
 			else
 			{
@@ -246,8 +245,7 @@ namespace Taskmaster
 
 				if (SelfOptimizeBGIO)
 				{
-					try { ProcessController.SetIOPriority(self, NativeMethods.PriorityTypes.PROCESS_MODE_BACKGROUND_BEGIN); }
-					catch { }
+					MKAh.Utility.DiscardExceptions(() => ProcessUtility.SetBackground(self));
 				}
 			}
 
@@ -1344,11 +1342,7 @@ namespace Taskmaster
 					self.PriorityClass = ProcessPriorityClass.AboveNormal;
 					if (Taskmaster.SelfOptimizeBGIO)
 					{
-						try
-						{
-							ProcessController.SetIOPriority(self, NativeMethods.PriorityTypes.PROCESS_MODE_BACKGROUND_END);
-						}
-						catch { }
+						MKAh.Utility.DiscardExceptions(() => ProcessUtility.SetBackground(self));
 					}
 				}
 
