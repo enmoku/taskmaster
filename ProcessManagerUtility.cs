@@ -87,12 +87,12 @@ namespace Taskmaster
 		public static bool GetPathViaC(ProcessEx info, out string path)
 		{
 			path = string.Empty;
-			IntPtr handle = IntPtr.Zero;
+			int handle = 0;
 
 			try
 			{
-				handle = NativeMethods.OpenProcess(NativeMethods.PROCESS_QUERY_INFORMATION | NativeMethods.PROCESS_VM_READ, false, info.Id);
-				if (handle == IntPtr.Zero) return false; // failed to open process
+				handle = NativeMethods.OpenProcess(NativeMethods.PROCESS_RIGHTS.PROCESS_QUERY_INFORMATION | NativeMethods.PROCESS_RIGHTS.PROCESS_VM_READ, false, info.Id);
+				if (handle == 0) return false; // failed to open process
 
 				const int lengthSb = 32768; // this is the maximum path length NTFS supports
 

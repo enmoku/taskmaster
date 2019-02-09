@@ -45,14 +45,14 @@ namespace Taskmaster
 		}
 
 		// Windows doesn't allow setting this for other processes
-		public static bool SetBackground(Process process)
+		public static bool SafeSetBackground(Process process)
 		{
-			return SetIOPriority(process, PriorityTypes.PROCESS_MODE_BACKGROUND_BEGIN);
+			return SafeSetIOPriority(process, PriorityTypes.PROCESS_MODE_BACKGROUND_BEGIN);
 		}
 
 		public static bool UnsetBackground(Process process)
 		{
-			return SetIOPriority(process, PriorityTypes.PROCESS_MODE_BACKGROUND_END);
+			return SafeSetIOPriority(process, PriorityTypes.PROCESS_MODE_BACKGROUND_END);
 		}
 
 		/// <summary>
@@ -60,7 +60,7 @@ namespace Taskmaster
 		/// Would require invasive injecting to other process to affect them.
 		/// </summary>
 		/// <exception>None</exception>
-		internal static bool SetIOPriority(Process process, PriorityTypes priority)
+		internal static bool SafeSetIOPriority(Process process, PriorityTypes priority)
 		{
 			try
 			{

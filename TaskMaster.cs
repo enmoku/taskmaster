@@ -245,7 +245,7 @@ namespace Taskmaster
 
 				if (SelfOptimizeBGIO)
 				{
-					MKAh.Utility.DiscardExceptions(() => ProcessUtility.SetBackground(self));
+					MKAh.Utility.DiscardExceptions(() => ProcessUtility.SafeSetBackground(self));
 				}
 			}
 
@@ -1342,7 +1342,7 @@ namespace Taskmaster
 					self.PriorityClass = ProcessPriorityClass.AboveNormal;
 					if (Taskmaster.SelfOptimizeBGIO)
 					{
-						MKAh.Utility.DiscardExceptions(() => ProcessUtility.SetBackground(self));
+						MKAh.Utility.DiscardExceptions(() => ProcessUtility.SafeSetBackground(self));
 					}
 				}
 

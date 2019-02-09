@@ -165,17 +165,6 @@ namespace Taskmaster
 			IntPtr hWnd, int Msg, ulong wParam, long lParam,
 			SendMessageTimeoutFlags flags, uint timeout, out IntPtr result);
 
-		// for ProcessMAnagerUtility.cs
-
-		public const uint PROCESS_QUERY_INFORMATION = 0x0400; // DWORD
-		public const uint PROCESS_VM_READ = 0x0010; // DWORD
-
-		/// <summary>
-		/// MUST CLOSE THE RETURNED HANDLE WITH CLOSEHANDLE!!!
-		/// </summary>
-		[DllImport("kernel32.dll")]
-		public static extern IntPtr OpenProcess(uint processAccess, bool bInheritHandle, int processId);
-
 		/// <summary>
 		/// The process must have PROCESS_QUERY_INFORMATION and PROCESS_VM_READ access rights.
 		/// </summary>
@@ -184,7 +173,7 @@ namespace Taskmaster
 
 		[DllImport("kernel32.dll")] // SetLastError = true
 		[return: MarshalAs(UnmanagedType.Bool)]
-		public static extern bool CloseHandle(IntPtr hObject);
+		public static extern bool CloseHandle(int Handle);
 
 		// for ProcessController.cs
 

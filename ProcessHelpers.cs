@@ -211,11 +211,11 @@ namespace Taskmaster
 		public static int ParentProcessId(int Id)
 		{
 			Debug.Assert(Id > -1);
-			IntPtr ptr = IntPtr.Zero;
+			int ptr = 0;
 			try
 			{
 				ptr = NativeMethods.CreateToolhelp32Snapshot(SnapshotFlags.Process, (uint)Id);
-				if (ptr == IntPtr.Zero)
+				if (ptr == 0)
 					return -1;
 
 				var pe32 = new PROCESSENTRY32 { };
@@ -242,7 +242,7 @@ namespace Taskmaster
 			}
 			finally
 			{
-				if (ptr != IntPtr.Zero)
+				if (ptr != 0)
 					NativeMethods.CloseHandle(ptr);
 			}
 
@@ -255,19 +255,19 @@ namespace Taskmaster
 		internal const int ERROR_NO_MORE_FILES = 0x12;
 
 		[DllImport("kernel32.dll", SetLastError = true)]
-		static internal extern IntPtr CreateToolhelp32Snapshot(SnapshotFlags dwFlags, uint th32ProcessID);
+		static internal extern int CreateToolhelp32Snapshot(SnapshotFlags dwFlags, uint th32ProcessID);
 
 		/// <summary>
 		/// Retrieves information about the first process encountered in a system snapshot.
 		/// </summary>
 		[DllImport("kernel32.dll")]
-		static internal extern bool Process32First(IntPtr hSnapshot, ref PROCESSENTRY32 lppe);
+		static internal extern bool Process32First(int hSnapshot, ref PROCESSENTRY32 lppe);
 
 		/// <summary>
 		/// Retrieves information about the next process recorded in a system snapshot.
 		/// </summary>
 		[DllImport("kernel32.dll")]
-		static internal extern bool Process32Next(IntPtr hSnapshot, ref PROCESSENTRY32 lppe);
+		static internal extern bool Process32Next(int hSnapshot, ref PROCESSENTRY32 lppe);
 	}
 
 	[Flags]
