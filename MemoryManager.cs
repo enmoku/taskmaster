@@ -152,12 +152,6 @@ namespace Taskmaster
 		}
 	}
 
-	public enum PROCESS_INFORMATION_CLASS
-	{
-		ProcessMemoryPriority,
-		ProcessPowerThrottling,
-	}
-
 	// BUG: Requires Windows 8 or later
 	[StructLayout(LayoutKind.Sequential)]
 	public struct MEMORY_PRIORITY_INFORMATION
@@ -177,8 +171,6 @@ namespace Taskmaster
 
 	public static class MemoryManager
 	{
-		[DllImport("kernel32.dll", EntryPoint = "SetProcessInformation", SetLastError = true)]
-		public static extern bool SetProcessInformation(IntPtr hProcess, PROCESS_INFORMATION_CLASS ProcessInformationClass, IntPtr ProcessInformation, uint ProcessInformationSize);
 	}
 	*/
 

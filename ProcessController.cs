@@ -128,6 +128,8 @@ namespace Taskmaster
 		/// </summary>
 		public System.Diagnostics.ProcessPriorityClass? Priority { get; set; } = null;
 
+		public int IOPriority { get; set; } = int.MinValue; // Win7 only?
+
 		public ProcessPriorityStrategy PriorityStrategy { get; set; } = ProcessPriorityStrategy.None;
 
 		/// <summary>
@@ -1147,6 +1149,8 @@ namespace Taskmaster
 
 				bool mAffinity = false, mPriority = false, mPower = false, modified = false, fAffinity = false, fPriority = false;
 
+				int nIO = -1;
+
 				bool foreground = InForeground(info.Id);
 
 				bool FirstTimeSeenForForeground = true;
@@ -1192,6 +1196,43 @@ namespace Taskmaster
 					}
 					catch (OutOfMemoryException) { throw; }
 					catch { fPriority = true; } // ignore errors, this is all we care of them
+
+					if (IOPriority != int.MinValue)
+					{
+						int handle = 0;
+						try
+						{
+							if ((handle = NativeMethods.OpenProcessFully(info.Process)) != 0)
+							{
+								int oprio = NativeMethods.GetIOPriority(handle);
+								if (oprio < 0)
+									Log.Debug($"[{FriendlyName}] {info.Name} (#{info.Id}) – I/O priority access error");
+								else if (oprio != IOPriority)
+								{
+									bool done = NativeMethods.SetIOPriority(handle, IOPriority);
+									nIO = NativeMethods.GetIOPriority(handle);
+
+									if (Taskmaster.DebugProcesses)
+									{
+										if (done && nIO != oprio)
+											Log.Debug($"[{FriendlyName}] {info.Name} (#{info.Id}) – I/O priority set from {oprio} to {nIO}, target: {IOPriority}");
+										else if (Taskmaster.ShowInaction)
+											Log.Debug($"[{FriendlyName}] {info.Name} (#{info.Id}) – I/O priority NOT set from {oprio} to {IOPriority}");
+									}
+								}
+								else if (Taskmaster.DebugProcesses && Taskmaster.ShowInaction)
+									Log.Debug($"[{FriendlyName}] {info.Name} (#{info.Id}) – I/O priority ALREADY set to {oprio}, target: {IOPriority}");
+							}
+							else if (Taskmaster.DebugProcesses && Taskmaster.ShowInaction)
+								Log.Debug($"[{FriendlyName}] {info.Name} (#{info.Id}) – I/O priority not set, failed to open process.");
+						}
+						catch { }
+						finally
+						{
+							if (handle != 0)
+								NativeMethods.CloseHandle(handle);
+						}
+					}
 				}
 
 				int newAffinityMask = -1;

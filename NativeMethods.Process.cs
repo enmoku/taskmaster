@@ -32,6 +32,159 @@ namespace Taskmaster
 {
 	public partial class NativeMethods
 	{
+		public static int OpenProcessFully(Process process)
+		{
+			try
+			{
+				int pid = process.Id;
+				int Handle = OpenProcess(PROCESS_RIGHTS.PROCESS_ALL_ACCESS, false, pid);
+				return Handle;
+			}
+			catch (Exception ex	)
+			{
+				Logging.Stacktrace(ex);
+			}
+
+			return 0;
+		}
+
+		public static bool SetIOPriority(int Handle, int Priority)
+		{
+			try
+			{
+				var ioPrio = new IntPtr(Priority);
+				int rv = NtSetInformationProcess(Handle, PROCESS_INFORMATION_CLASS_WIN7.ProcessIoPriority, ref ioPrio, 4);
+
+				int error = Marshal.GetLastWin32Error();
+				//Debug.WriteLine($"SetInformationProcess error code: {error} --- return value: {rv:X}");
+
+				return error == 0;
+			}
+			catch (Exception ex)
+			{
+				Logging.Stacktrace(ex);
+			}
+			return false;
+		}
+
+		public static int GetIOPriority(int Handle)
+		{
+			try
+			{
+				int resLen = 0;
+				var ioPrio = new IntPtr(0);
+				if (Handle == 0) return -1;
+				int rv = NtQueryInformationProcess(Handle, PROCESS_INFORMATION_CLASS_WIN7.ProcessIoPriority, ref ioPrio, 4, ref resLen);
+
+				int error = Marshal.GetLastWin32Error();
+				//Debug.WriteLine($"QueryInformationProcess error code: {error} --- return value: {rv:X}");
+
+				return error == 0 ? ioPrio.ToInt32() : -1;
+			}
+			catch (Exception ex)
+			{
+				Logging.Stacktrace(ex);
+			}
+			return 0;
+		}
+
+		[DllImport("ntdll.dll", SetLastError = true)]
+		public static extern int NtSetInformationProcess(int hProcess, PROCESS_INFORMATION_CLASS_WIN7 ProcessInformationClass, ref IntPtr ProcessInformation, uint ProcessInformationSize);
+
+		[DllImport("ntdll.dll", SetLastError = true)]
+		public static extern int NtQueryInformationProcess(int hProcess, PROCESS_INFORMATION_CLASS_WIN7 ProcessInformationClass, ref IntPtr ProcessInformation, uint ProcessInformationSize, ref int ReturnSize);
+
+		// It seems the contents of this enum were changed with Windows 8
+		public enum PROCESS_INFORMATION_CLASS_WIN7 : int // PROCESS_INFORMATION_CLASS, for Win7
+		{
+			/*
+			ProcessBasicInformation = 0,
+			ProcessQuotaLimits = 1,
+			ProcessIoCounters = 2,
+			ProcessVmCounters = 3,
+			ProcessTimes = 4,
+			ProcessBasePriority = 5,
+			ProcessRaisePriority = 6,
+			ProcessDebugPort = 7,
+			ProcessExceptionPort = 8,
+			ProcessAccessToken = 9,
+			ProcessLdtInformation = 10,
+			ProcessLdtSize = 11,
+			ProcessDefaultHardErrorMode = 12,
+			ProcessIoPortHandlers = 13,
+			ProcessPooledUsageAndLimits = 14,
+			ProcessWorkingSetWatch = 15,
+			ProcessUserModeIOPL = 16,
+			ProcessEnableAlignmentFaultFixup = 17,
+			ProcessPriorityClass = 18,
+			ProcessWx86Information = 19,
+			ProcessHandleCount = 20,
+			ProcessAffinityMask = 21,
+			ProcessPriorityBoost = 22,
+			ProcessDeviceMap = 23,
+			ProcessSessionInformation = 24,
+			ProcessForegroundInformation = 25,
+			ProcessWow64Information = 26,
+			ProcessImageFileName = 27,
+			ProcessLUIDDeviceMapsEnabled = 28,
+			ProcessBreakOnTermination = 29,
+			ProcessDebugObjectHandle = 30,
+			ProcessDebugFlags = 31,
+			ProcessHandleTracing = 32,
+			*/
+			ProcessIoPriority = 0x21,
+			/*
+			ProcessExecuteFlags = 0x22,
+			ProcessResourceManagement,
+			ProcessCookie,
+			ProcessImageInformation,
+			ProcessCycleTime,
+			ProcessPagePriority,
+			ProcessInstrumentationCallback = 40,
+			ProcessThreadStackAllocation,
+			ProcessWorkingSetWatchEx,
+			ProcessImageFileNameWin32,
+			ProcessImageFileMapping,
+			ProcessAffinityUpdateMode,
+			ProcessMemoryAllocationMode,
+			*/
+		}
+
+		enum PROCESS_INFORMATION_CLASS_WIN8 : int // PROCESS_INFORMATION_CLASS, for Win8 and newer (Win10 compatible, too)
+		{
+			ProcessMemoryPriority = 0,
+			ProcessMemoryExhaustionInfo = 1,
+			ProcessAppMemoryInfo = 2,
+			ProcessInPrivateInfo = 3,
+			ProcessPowerThrottling = 4,
+			ProcessReservedValue1 = 5,
+			ProcessTelemetryCoverageInfo = 6,
+			ProcessProtectionLevelInfo = 7,
+			ProcessLeapSecondInfo = 8,
+			ProcessInformationClassMax = 9,
+		}
+
+		public enum STANDARD_RIGHTS : uint
+		{
+			WRITE_OWNER = 524288,
+			WRITE_DAC = 262144,
+			READ_CONTROL = 131072,
+			DELETE = 65536,
+			SYNCHRONIZE = 1048576,
+			STANDARD_RIGHTS_REQUIRED = 983040,
+			STANDARD_RIGHTS_WRITE = READ_CONTROL,
+			STANDARD_RIGHTS_EXECUTE = READ_CONTROL,
+			STANDARD_RIGHTS_READ = READ_CONTROL,
+			STANDARD_RIGHTS_ALL = 2031616,
+			SPECIFIC_RIGHTS_ALL = 65535,
+			ACCESS_SYSTEM_SECURITY = 16777216,
+			MAXIMUM_ALLOWED = 33554432,
+			GENERIC_WRITE = 1073741824,
+			GENERIC_EXECUTE = 536870912,
+			GENERIC_READ = UInt16.MaxValue,
+			GENERIC_ALL = 268435456
+		}
+
 		public enum PROCESS_RIGHTS : uint
 		{
 			PROCESS_TERMINATE = 1,
