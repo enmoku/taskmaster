@@ -675,6 +675,9 @@ namespace Taskmaster
 
 			if (Taskmaster.DebugProcesses) sbs.Append(" [").Append(AffinityStrategy.ToString()).Append("]");
 
+			if (ev.NewIO >= 0)
+				sbs.Append(" – I/O: ").Append(IONames[ev.NewIO]);
+
 			if (ev.User != null) sbs.Append(ev.User);
 
             if (Taskmaster.DebugAdjustDelay)
@@ -692,6 +695,8 @@ namespace Taskmaster
 			sbs.Clear();
 			sbs = null;
 		}
+
+		readonly string[] IONames = new[] { "Background", "Low", "Normal" };
 
 		public void Resume(ProcessEx info)
 		{
@@ -1206,7 +1211,10 @@ namespace Taskmaster
 							{
 								int oprio = NativeMethods.GetIOPriority(handle);
 								if (oprio < 0)
-									Log.Debug($"[{FriendlyName}] {info.Name} (#{info.Id}) – I/O priority access error");
+								{
+									if (Taskmaster.DebugProcesses)
+										Log.Debug($"[{FriendlyName}] {info.Name} (#{info.Id}) – I/O priority access error");
+								}
 								else if (oprio != IOPriority)
 								{
 									bool done = NativeMethods.SetIOPriority(handle, IOPriority);
@@ -1363,6 +1371,7 @@ namespace Taskmaster
 					PriorityFail = Priority.HasValue && fPriority,
 					AffinityFail = AffinityMask >= 0 && fAffinity,
 					Protected = isProtectedFile,
+					NewIO = nIO,
 				};
 
 				if (logevent)

@@ -44,6 +44,8 @@ namespace Taskmaster
 		public bool AffinityFail = false;
 		public bool PriorityFail = false;
 
+		public int NewIO = -1;
+
 		/// <summary>
 		/// Text for end-users.
 		/// </summary>
