@@ -2706,6 +2706,7 @@ namespace Taskmaster
 						{
 							UpdateWatchlistRule(prc);
 							processmanager?.HastenScan(60, sort:true);
+							prc.Refresh();
 						}
 					}
 				}
