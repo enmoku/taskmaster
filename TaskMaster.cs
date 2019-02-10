@@ -417,18 +417,22 @@ namespace Taskmaster
 				System.Threading.Thread currentThread = System.Threading.Thread.CurrentThread;
 				currentThread.Priority = self.PriorityClass.ToThreadPriority(); // is this useful?
 
+				/*
 				if (SelfAffinity < 0)
 				{
 					// mask self to the last core
-					var selfCPUmask = 1;
+					int selfCPUmask = 1;
 					for (int i = 0; i < Environment.ProcessorCount - 1; i++)
 						selfCPUmask = (selfCPUmask << 1);
 					SelfAffinity = selfCPUmask;
 				}
+				*/
 
-				Debug.WriteLine("Self-affinity: " + SelfAffinity);
+				int selfAffMask = SelfAffinity.Replace(0, ProcessManager.AllCPUsMask);
+				Log.Information($"<Core> Self-optimizing, priority: {SelfPriority.ToString()}, affinity: {HumanInterface.BitMask(selfAffMask, ProcessManager.CPUCount)}");
 
-				self.ProcessorAffinity = new IntPtr(SelfAffinity.Replace(0, ProcessManager.AllCPUsMask)); // this should never throw an exception
+				self.ProcessorAffinity = new IntPtr(selfAffMask); // this should never throw an exception
+				self.PriorityClass = SelfPriority;
 
 				selfmaintenance = new SelfMaintenance();
 			}
@@ -664,8 +668,8 @@ namespace Taskmaster
 			SelfPriority = ProcessHelpers.IntToPriority(perfsec.GetSetDefault("Self-priority", 1, out modified).IntValue.Constrain(0, 2));
 			perfsec["Self-priority"].Comment = "Process priority to set for TM itself. Restricted to 0 (Low) to 2 (Normal).";
 			dirtyconfig |= modified;
-			SelfAffinity = perfsec.GetSetDefault("Self-affinity", 0, out modified).IntValue;
-			perfsec["Self-affinity"].Comment = "Core mask as integer. 0 is for default OS control. -1 is for last core. Limiting to single core recommended.";
+			SelfAffinity = perfsec.GetSetDefault("Self-affinity", 0, out modified).IntValue.Constrain(0, ProcessManager.AllCPUsMask);
+			perfsec["Self-affinity"].Comment = "Core mask as integer. 0 is for default OS control.";
 			dirtyconfig |= modified;
 			if (SelfAffinity > Convert.ToInt32(Math.Pow(2, Environment.ProcessorCount) - 1 + double.Epsilon)) SelfAffinity = 0;
 
