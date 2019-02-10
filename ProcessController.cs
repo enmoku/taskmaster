@@ -1404,11 +1404,6 @@ namespace Taskmaster
 				info.State = ProcessHandlingState.Invalid;
 				Logging.Stacktrace(ex);
 			}
-			finally
-			{
-				if (info.State == ProcessHandlingState.Unmodified)
-					SetIO(info);
-			}
 		}
 
 		private int SetIO(ProcessEx info, int overridePriority=-1)
