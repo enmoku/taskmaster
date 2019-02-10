@@ -6,6 +6,9 @@ Comprehensive changes can be found in Git change history:
 ### 2019-02-10
 	Changed: I/O priority requires `IO Priority=true` in [Experimental] in Core.ini.
 	Added: I/O priority is now in experiment config dialog and in watchlist rule editor.
+	Fixed: Watchlist search now clears itself on timer as intended.
+	Added: Ctrl-Backspace now tries to clear text to last whitespace character instead of printing weird character.
+	Changed: Unrecognized control characters are now ignored instead of being added to the search as garbage symbols.
 ### 2019-02-09
 	Internal: Hiding some things to not be usable where they shouldn't.
 	Added: I/O priority control. Watchlist.ini now has `IO priority` setting. This may be inherited, so care needs to be taken when applying it to launchers.

@@ -52,10 +52,7 @@ namespace Taskmaster
 			tooltip.InitialDelay = 2000;
 			tooltip.ShowAlways = true;
 
-			WatchlistSearchTimer = new Timer
-			{
-				Interval = 250
-			};
+			WatchlistSearchTimer = new Timer() { Interval = 250 };
 			WatchlistSearchTimer.Tick += WatchlistSearchTimer_Tick;
 
 			// TODO: Detect mic device changes
@@ -2195,14 +2192,23 @@ namespace Taskmaster
 
 			WatchlistSearchInputTimer.Restart();
 
+			//Debug.WriteLine($"INPUT: {((int)ea.KeyChar):X}");
 			if (char.IsControl(ea.KeyChar))
 			{
+				//Debug.WriteLine("CONTROL CHARACTER!");
 				if (ea.KeyChar == (char)Keys.Back && SearchString.Length > 0) // BACKSPACE
 					SearchString = SearchString.Remove(SearchString.Length - 1); // ugly and probably slow
+				else if (ea.KeyChar == 0x7F && SearchString.Length > 0) // 0x7F is ctrl-backspace (delete)
+					SearchString = SearchString.Remove(SearchString.LastIndexOfAny(new[] { ' ', '\t', '\r', '\n' }).Min(0));
 				else if (ea.KeyChar == (char)Keys.Escape)
+				{
 					SearchString = string.Empty;
-				else
-					SearchString += ea.KeyChar;
+					WatchlistSearchTimer.Stop();
+					return;
+				}
+				// ignore control characters otherwise
+				//else
+				//	SearchString += ea.KeyChar;
 			}
 			else
 				SearchString += ea.KeyChar;
@@ -2250,12 +2256,8 @@ namespace Taskmaster
 				}
 			}
 
-			if (found) WatchlistSearchTimer.Stop();
-			else if (WatchlistSearchInputTimer.ElapsedMilliseconds > 1_000)
-			{
+			if (found || WatchlistSearchInputTimer.ElapsedMilliseconds > 1_000)
 				WatchlistSearchTimer.Stop();
-				WatchlistSearchInputTimer.Stop();
-			}
 		}
 
 		public void CPULoadEvent(object _, CPUSensorEventArgs ea)
