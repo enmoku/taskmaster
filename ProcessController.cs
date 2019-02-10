@@ -65,6 +65,12 @@ namespace Taskmaster
 		public ProcessType Type = ProcessType.Generic;
 
 		/// <summary>
+		/// Order of preference
+		/// </summary>
+		public int OrderPreference { get; set; } = 10;
+		public int ActualOrder { get; set; } = 10;
+
+		/// <summary>
 		/// Whether or not this rule is enabled.
 		/// </summary>
 		public bool Enabled { get; set; } = false;
@@ -477,6 +483,8 @@ namespace Taskmaster
 
 			if (!Enabled) app[HumanReadable.Generic.Enabled].BoolValue = Enabled;
 			else app.Remove(HumanReadable.Generic.Enabled);
+
+			app["Preference"].IntValue = OrderPreference;
 
 			if (IgnoreList != null && IgnoreList.Length > 0)
 				app[HumanReadable.Generic.Ignore].StringValueArray = IgnoreList;

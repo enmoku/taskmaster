@@ -231,6 +231,8 @@ namespace Taskmaster
 
 			Controller.LogAdjusts = logAdjusts.Checked;
 
+			Controller.OrderPreference = Convert.ToInt32(preforder.Value).Constrain(0, 100);
+
 			Controller.Enabled = newPrc ? true : enOrig;
 
 			Controller.Repair();
@@ -273,6 +275,7 @@ namespace Taskmaster
 		ComboBox ForegroundModeSelect = null;
 		ComboBox FullscreenMode = null;
 		ListView ignorelist = null;
+		NumericUpDown preforder = null;
 
 		CheckBox logAdjusts = null;
 
@@ -895,6 +898,18 @@ namespace Taskmaster
 
 			lt.Controls.Add(new Label() { Text = "Log adjusts", TextAlign = System.Drawing.ContentAlignment.MiddleLeft });
 			lt.Controls.Add(logAdjusts);
+			lt.Controls.Add(new Label());
+
+			preforder = new NumericUpDown()
+			{
+				Minimum = 0,
+				Maximum = 100,
+				Value = Controller.OrderPreference.Constrain(0, 100),
+			};
+			tooltip.SetToolTip(preforder, "Rules with lower order are processed first.\nMost frequently modified apps should have lowest,\nbut this can also be used to control which rule is more likely to trigger.\n");
+
+			lt.Controls.Add(new Label() { Text = "Order preference", TextAlign = System.Drawing.ContentAlignment.MiddleLeft });
+			lt.Controls.Add(preforder);
 			lt.Controls.Add(new Label());
 
 			// BUTTONS

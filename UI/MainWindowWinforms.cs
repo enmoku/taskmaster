@@ -334,12 +334,37 @@ namespace Taskmaster
 
 			WatchlistRules.EndUpdate();
 
+			processmanager.WatchlistSorted += UpdateWatchlist;
+
 			rescanRequest += RescanRequestEvent;
 
 			processmanager.ProcessModified += ProcessTouchEvent;
 
 			foreach (var info in processmanager.getExitWaitList())
 				ExitWaitListHandler(this, new ProcessModificationEventArgs(info));
+		}
+
+		void UpdateWatchlist(object _, EventArgs _ea)
+		{
+			if (!IsHandleCreated) return;
+			if (disposed) return;
+
+			BeginInvoke(new Action(() =>
+			{
+				if (!IsHandleCreated) return;
+				if (disposed) return;
+
+				WatchlistRules.BeginUpdate();
+
+				foreach (var li in WatchlistMap)
+				{
+					li.Value.SubItems[0].Text = li.Key.ActualOrder.ToString();
+				}
+
+				// re-sort if user is not interacting?
+
+				WatchlistRules.EndUpdate();
+			}));
 		}
 
 		void RescanRequestEvent(object _, EventArgs _ea)
@@ -413,7 +438,6 @@ namespace Taskmaster
 				WatchlistItemColor(item.Value, item.Key);
 		}
 
-		int num = 1;
 		void AddToWatchlistList(ProcessController prc)
 		{
 			string aff = string.Empty;
@@ -425,7 +449,16 @@ namespace Taskmaster
 					aff = prc.AffinityMask.ToString();
 			}
 
-			var litem = new ListViewItem(new string[] { (num++).ToString(), prc.FriendlyName, prc.Executable, string.Empty, aff, string.Empty, prc.Adjusts.ToString(), string.Empty });
+			var litem = new ListViewItem(new string[] {
+				(prc.ActualOrder+1).ToString(),
+				prc.FriendlyName,
+				prc.Executable,
+				string.Empty,
+				aff,
+				string.Empty,
+				prc.Adjusts.ToString(),
+				string.Empty
+			});
 
 			WatchlistMap.TryAdd(prc, litem);
 
@@ -477,7 +510,7 @@ namespace Taskmaster
 			}));
 		}
 
-		public void UpdateWatchlist(ProcessController prc)
+		public void UpdateWatchlistRule(ProcessController prc)
 		{
 			if (WatchlistMap.TryGetValue(prc, out ListViewItem litem))
 			{
@@ -2671,8 +2704,8 @@ namespace Taskmaster
 
 						if (rv == DialogResult.OK)
 						{
-							UpdateWatchlist(prc);
-							processmanager?.HastenScan(60);
+							UpdateWatchlistRule(prc);
+							processmanager?.HastenScan(60, sort:true);
 						}
 					}
 				}

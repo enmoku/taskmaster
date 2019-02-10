@@ -73,7 +73,8 @@ namespace Taskmaster
 		/// <summary>
 		/// Watch rules
 		/// </summary>
-		ConcurrentDictionary<ProcessController, int> Watchlist = new ConcurrentDictionary<ProcessController, int>();
+		List<ProcessController> Watchlist = new List<ProcessController>();
+		readonly object watchlist_lock = new object();
 
 		public bool WMIPolling { get; private set; } = true;
 		public int WMIPollDelay { get; private set; } = 5;
@@ -121,19 +122,16 @@ namespace Taskmaster
 
 		public ProcessController[] getWatchlist()
 		{
-			return Watchlist.Keys.ToArray();
+			lock (watchlist_lock) return Watchlist.ToArray();
 		}
 
 		// TODO: Need an ID mapping
 		public ProcessController GetControllerByName(string friendlyname)
 		{
-			foreach (var item in Watchlist.Keys)
+			lock (watchlist_lock)
 			{
-				if (item.FriendlyName.Equals(friendlyname, StringComparison.InvariantCultureIgnoreCase))
-					return item;
+				return (from prc in Watchlist where prc.FriendlyName.Equals(friendlyname, StringComparison.InvariantCultureIgnoreCase) select prc).FirstOrDefault();
 			}
-
-			return null;
 		}
 
 		/// <summary>
@@ -334,18 +332,34 @@ namespace Taskmaster
 
 		public event EventHandler<HandlingStateChangeEventArgs> HandlingStateChange;
 
-		public async void HastenScan(int delay = 15)
+		int hastenscan = 0;
+		public async void HastenScan(int delay = 15, bool sort = false)
 		{
 			// delay is unused but should be used somehow
 
-            await Task.Delay(0).ConfigureAwait(false); // asyncify
+			if (!Atomic.Lock(ref hastenscan)) return;
 
-			double nextscan = Math.Max(0, DateTimeOffset.UtcNow.TimeTo(NextScan).TotalSeconds);
-			if (nextscan > 5) // skip if the next scan is to happen real soon
+			try
 			{
-				NextScan = DateTimeOffset.UtcNow;
-				ScanTimer?.Stop();
-				await Task.Run(() => Scan()).ContinueWith((_) => StartScanTimer()).ConfigureAwait(false);
+				await Task.Delay(0).ConfigureAwait(false); // asyncify
+
+				double nextscan = Math.Max(0, DateTimeOffset.UtcNow.TimeTo(NextScan).TotalSeconds);
+				if (nextscan > 5) // skip if the next scan is to happen real soon
+				{
+					NextScan = DateTimeOffset.UtcNow;
+					ScanTimer?.Stop();
+					if (sort) SortWatchlist();
+					await Task.Run(() => Scan()).ContinueWith((_) => StartScanTimer()).ConfigureAwait(false);
+				}
+			}
+			catch (OutOfMemoryException) { throw; }
+			catch (Exception ex)
+			{
+				Logging.Stacktrace(ex);
+			}
+			finally
+			{
+				Atomic.Unlock(ref hastenscan);
 			}
 		}
 
@@ -526,7 +540,11 @@ namespace Taskmaster
 					WatchlistWithHybrid += 1;
 			}
 
-			Watchlist.TryAdd(prc, 0);
+			lock (watchlist_lock)
+			{
+				Watchlist.Remove(prc);
+				Watchlist.Add(prc);
+			}
 
 			if (Taskmaster.Trace) Log.Verbose("[" + prc.FriendlyName + "] Match: " + (prc.Executable ?? prc.Path) + ", " +
 				(prc.Priority.HasValue ? Readable.ProcessPriority(prc.Priority.Value) : HumanReadable.Generic.NotAvailable) +
@@ -777,10 +795,13 @@ namespace Taskmaster
 
 				prc.ExclusiveMode = section.TryGet("Exclusive")?.BoolValue ?? false;
 
+				prc.OrderPreference = section.TryGet("Preference")?.IntValue.Constrain(0, 100) ?? prc.OrderPreference;
+
+				prc.IOPriority = section.TryGet("IO priority")?.IntValue.Constrain(0, 2) ?? int.MinValue; // 0-1 background, 2 = normal, anything else seems to have no effect
+																										  //prc.MMPriority = section.TryGet("MEM priority")?.IntValue ?? int.MinValue; // unused
 				bool? deprecatedFgMode = section.TryGet("Foreground only")?.BoolValue; // DEPRECATED
 				bool? deprecatedBgPower = section.TryGet("Background powerdown")?.BoolValue; // DEPRECATED
 
-				prc.IOPriority = section.TryGet("IO priority")?.IntValue.Constrain(0, 2) ?? int.MinValue; // 0-1 background, 2 = normal, anything else seems to have no effect
 				// UPGRADE
 				int? foregroundMode = section.TryGet("Foreground mode")?.IntValue;
 				if (foregroundMode.HasValue)
@@ -864,6 +885,8 @@ namespace Taskmaster
 
 			if (dirtyconfig) appcfg.MarkDirty();
 
+			SortWatchlist();
+
 			// --------------------------------------------------------------------------------------------------------
 
 			Log.Information("<Process> Name-based watchlist: " + (ExeToController.Count - WatchlistWithHybrid) + " items");
@@ -871,18 +894,47 @@ namespace Taskmaster
 			Log.Information("<Process> Hybrid watchlist: " + WatchlistWithHybrid + " items");
 		}
 
+		public void SortWatchlist()
+		{
+			lock (watchlist_lock)
+			{
+				Watchlist.Sort(delegate (ProcessController x, ProcessController y)
+				{
+					if (x.Enabled && !y.Enabled) return -1;
+					else if (!x.Enabled && y.Enabled) return 1;
+					else if (x.OrderPreference < y.OrderPreference) return -1;
+					else if (x.OrderPreference > y.OrderPreference) return 1;
+					else if (x.Adjusts > y.Adjusts) return -1;
+					else if (x.Adjusts < y.Adjusts) return 1;
+					else if (string.IsNullOrEmpty(x.Path) && !string.IsNullOrEmpty(y.Path)) return -1;
+					else if (!string.IsNullOrEmpty(x.Path) && string.IsNullOrEmpty(y.Path)) return 1;
+					return 0;
+				});
+
+				int order = 0;
+				foreach (var prc in Watchlist)
+					prc.ActualOrder = order++;
+			}
+
+			// TODO: Signal UI the actual order may have changed
+			WatchlistSorted?.Invoke(this, null);
+		}
+
+		public event EventHandler WatchlistSorted;
+
 		public void AddController(ProcessController prc)
 		{
 			if (DisposedOrDisposing) return;
 
 			if (ValidateController(prc))
 			{
-				SaveController(prc);
 				prc.Modified += ProcessModified;
 				//prc.Paused += ProcessPausedProxy;
 				//prc.Resumed += ProcessResumedProxy;
 				prc.Paused += ProcessWaitingExitProxy;
 				prc.WaitingExit += ProcessWaitingExitProxy;
+
+				SaveController(prc);
 			}
 		}
 
@@ -916,7 +968,10 @@ namespace Taskmaster
 			if (!string.IsNullOrEmpty(prc.ExecutableFriendlyName))
 				ExeToController.TryRemove(prc.ExecutableFriendlyName.ToLowerInvariant(), out _);
 
-			Watchlist.TryRemove(prc, out _);
+			lock (watchlist_lock)
+			{
+				Watchlist.Remove(prc);
+			}
 
 			prc.Modified -= ProcessModified;
 			prc.Paused -= ProcessPausedProxy;
@@ -1154,30 +1209,33 @@ namespace Taskmaster
 				return false;
 			}
 
-			// TODO: This needs to be FASTER
-			foreach (var lprc in Watchlist.Keys)
+			lock (watchlist_lock)
 			{
-				if (!lprc.Enabled) continue;
-				if (string.IsNullOrEmpty(lprc.Path)) continue;
-
-				if (!string.IsNullOrEmpty(lprc.Executable))
+				// TODO: This needs to be FASTER
+				foreach (var lprc in Watchlist)
 				{
-					if (lprc.ExecutableFriendlyName.Equals(info.Name, StringComparison.InvariantCultureIgnoreCase))
+					if (!lprc.Enabled) continue;
+					if (string.IsNullOrEmpty(lprc.Path)) continue;
+
+					if (!string.IsNullOrEmpty(lprc.Executable))
+					{
+						if (lprc.ExecutableFriendlyName.Equals(info.Name, StringComparison.InvariantCultureIgnoreCase))
+						{
+							if (Taskmaster.DebugPaths)
+								Log.Debug("[" + lprc.FriendlyName + "] Path+Exe matched.");
+						}
+						else
+							continue; // CheckPathWatch does not handle combo path+exes
+					}
+
+					if (lprc.MatchPath(info.Path))
 					{
 						if (Taskmaster.DebugPaths)
-							Log.Debug("[" + lprc.FriendlyName + "] Path+Exe matched.");
+							Log.Verbose("[" + lprc.FriendlyName + "] (CheckPathWatch) Matched at: " + info.Path);
+
+						prc = lprc;
+						break;
 					}
-					else
-						continue; // CheckPathWatch does not handle combo path+exes
-				}
-
-				if (lprc.MatchPath(info.Path))
-				{
-					if (Taskmaster.DebugPaths)
-						Log.Verbose("[" + lprc.FriendlyName + "] (CheckPathWatch) Matched at: " + info.Path);
-
-					prc = lprc;
-					break;
 				}
 			}
 
@@ -1846,6 +1904,8 @@ namespace Taskmaster
 			if (DisposedOrDisposing) return;
 
 			Cleanup();
+
+			SortWatchlist();
 		}
 
 		int cleanup_lock = 0;
@@ -1911,8 +1971,11 @@ namespace Taskmaster
 
 				if (User.IdleTime().TotalHours > 2d)
 				{
-					foreach (var prc in Watchlist.Keys)
-						prc.Refresh();
+					lock (watchlist_lock)
+					{
+						foreach (var prc in Watchlist)
+							prc.Refresh();
+					}
 				}
 
 				lock (Exclusive_lock)
@@ -2007,11 +2070,14 @@ namespace Taskmaster
 
 					var wcfg = Taskmaster.Config.Load(watchfile);
 
-					foreach (var prc in Watchlist.Keys)
-						if (prc.NeedsSaving) prc.SaveConfig(wcfg);
+					lock (watchlist_lock)
+					{
+						foreach (var prc in Watchlist)
+							if (prc.NeedsSaving) prc.SaveConfig(wcfg);
 
-					Watchlist?.Clear();
-					Watchlist = null;
+						Watchlist?.Clear();
+						Watchlist = null;
+					}
 				}
 				catch (Exception ex)
 				{
