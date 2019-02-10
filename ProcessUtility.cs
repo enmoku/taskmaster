@@ -32,6 +32,47 @@ namespace Taskmaster
 {
 	public static class ProcessUtility
 	{
+		/// <summary>
+		/// Throws: InvalidOperationException
+		/// </summary>
+		public static int SetIO(Process process, int target, out int newIO, bool decrease=true)
+		{
+			int handle = 0;
+			int original = -1;
+
+			try
+			{
+				if ((handle = NativeMethods.OpenProcessFully(process)) != 0)
+				{
+					original = NativeMethods.GetIOPriority(handle);
+
+					if (original < 0)
+						newIO = -1;
+					else if (!decrease && target < original)
+						newIO = -1;
+					else if (original != target)
+					{
+						if (NativeMethods.SetIOPriority(handle, target))
+							newIO = NativeMethods.GetIOPriority(handle);
+						else
+							throw new InvalidOperationException("Failed to modify process I/O priority");
+					}
+					else
+						newIO = target;
+				}
+				else
+					throw new ArgumentException("Failed to open process");
+			}
+			finally
+			{
+				if (handle != 0)
+					NativeMethods.CloseHandle(handle);
+			}
+
+			return original;
+		}
+
+
 		internal enum PriorityTypes
 		{
 			ABOVE_NORMAL_PRIORITY_CLASS = 0x00008000,

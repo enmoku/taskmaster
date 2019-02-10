@@ -1189,6 +1189,8 @@ namespace Taskmaster
 		{
 			if (DisposedOrDisposing) return;
 
+			int oIO = ProcessUtility.SetIO(ev.Process, 5, out int nIO, decrease:false);
+
 			try
 			{
 				if (Taskmaster.DebugForeground)
