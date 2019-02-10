@@ -14,6 +14,7 @@ Comprehensive changes can be found in Git change history:
 	Added: Rule ordering. Watchlist now has `Preference´ setting which defaults to 10. Lower order rules are processed first.
 		Rules are sorted internally from time to time using small number of criteria.
 		Rules with same order fall back to the other criteria to determine final order (e.g. rules with high adjust count will be sorted earlier).
+	Changed: New instances are added to scan block list for 5 seconds to avoid some odd things happenings.
 ### 2019-02-09
 	Internal: Hiding some things to not be usable where they shouldn't.
 	Added: I/O priority control. Watchlist.ini now has `IO priority` setting. This may be inherited, so care needs to be taken when applying it to launchers.

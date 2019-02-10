@@ -60,7 +60,7 @@ namespace Taskmaster
 
 		// Core information
 		/// <summary>
-		/// 
+		///
 		/// </summary>
 		public ProcessType Type = ProcessType.Generic;
 
@@ -99,6 +99,7 @@ namespace Taskmaster
 		public bool ExclusiveMode { get; set; } = false;
 
 		public string Path { get; set; } = string.Empty;
+
 		int PathElements { get; set; }  = 0;
 
 		/// <summary>
@@ -166,7 +167,7 @@ namespace Taskmaster
 		/// Controls whether this particular controller allows itself to be logged.
 		/// </summary>
 		public bool LogAdjusts { get; set; } = true;
-		
+
 		/// <summary>
 		/// Delay in milliseconds before we attempt to alter the process.
 		/// For example, to allow a process to function at default settings for a while, or to work around undesirable settings
@@ -373,7 +374,7 @@ namespace Taskmaster
 
 			if (cfg == null)
 				cfg = Taskmaster.Config.Load(watchlistfile);
-			
+
 			if (app == null)
 				app = cfg.Config[FriendlyName];
 
@@ -906,7 +907,7 @@ namespace Taskmaster
 
 								parts.RemoveRange(0, PathElements); // remove Path component
 
-								// replace 
+								// replace
 								if (parts.Count > 4)
 								{
 									// TODO: Special cases for %APPDATA% and similar?
@@ -973,12 +974,6 @@ namespace Taskmaster
 		{
 			await Touch(info);
 			if (Recheck > 0) TouchReapply(info); // this can go do its thing
-		}
-
-		public bool MatchPath(string path)
-		{
-			// TODO: make this compatible with OSes that aren't case insensitive?
-			return path.StartsWith(Path, StringComparison.InvariantCultureIgnoreCase);
 		}
 
 		[System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
@@ -1244,7 +1239,7 @@ namespace Taskmaster
 					}
 					else
 						newAffinityMask = -1;
-					
+
 					/*
 					if (oldAffinityMask != newAffinityMask)
 					{
@@ -1631,7 +1626,7 @@ namespace Taskmaster
 				{
 					info.Process.EnableRaisingEvents = true;
 					info.Process.Exited += (_, _ea) => ProcessEndResize(info, oldrect, re);
-					// TODO: 
+					// TODO:
 					info.Process.Refresh();
 					if (info.Process.HasExited && info.Resize)
 					{

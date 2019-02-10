@@ -391,7 +391,7 @@ namespace Taskmaster
 		readonly System.Drawing.Color AlterColor = System.Drawing.Color.FromArgb(245, 245, 245);
 
 		/// <summary>
-		/// 
+		///
 		/// </summary>
 		/// <remarks>No locks</remarks>
 		void WatchlistItemColor(ListViewItem li, ProcessController prc)
@@ -2731,7 +2731,7 @@ namespace Taskmaster
 
 					WatchlistRules.EndUpdate();
 
-					processmanager?.HastenScan(60);
+					processmanager?.HastenScan(60, sort:true);
 				}
 			}
 			catch (Exception ex) { Logging.Stacktrace(ex); }

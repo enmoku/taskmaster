@@ -81,7 +81,7 @@ namespace Taskmaster
 			Controller.Enabled = false;
 
 			if (!newPrc) Controller.Refresh(); // make sure we don't cling to things
-			
+
 			// TODO: VALIDATE FOR GRIMMY'S SAKE!
 
 			// -----------------------------------------------

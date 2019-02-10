@@ -73,7 +73,11 @@ namespace Taskmaster
 		/// <summary>
 		/// Watch rules
 		/// </summary>
-		List<ProcessController> Watchlist = new List<ProcessController>();
+		ConcurrentDictionary<ProcessController, int> Watchlist = new ConcurrentDictionary<ProcessController, int>();
+
+		ConcurrentDictionary<int, DateTimeOffset> ScanBlockList = new ConcurrentDictionary<int, DateTimeOffset>();
+
+		List<ProcessController> WatchlistCache = new List<ProcessController>();
 		readonly object watchlist_lock = new object();
 
 		public bool WMIPolling { get; private set; } = true;
@@ -109,8 +113,6 @@ namespace Taskmaster
 				Task.Run(() => Scan()).ContinueWith((_) => StartScanTimer()).ConfigureAwait(false);
 			}
 
-			ProcessDetectedEvent += ProcessTriage;
-
 			MaintenanceTimer = new System.Timers.Timer(1_000 * 60 * 60 * 3); // every 3 hours
 			MaintenanceTimer.Elapsed += CleanupTick;
 			MaintenanceTimer.Start();
@@ -122,16 +124,13 @@ namespace Taskmaster
 
 		public ProcessController[] getWatchlist()
 		{
-			lock (watchlist_lock) return Watchlist.ToArray();
+			return Watchlist.Keys.ToArray();
 		}
 
 		// TODO: Need an ID mapping
 		public ProcessController GetControllerByName(string friendlyname)
 		{
-			lock (watchlist_lock)
-			{
-				return (from prc in Watchlist where prc.FriendlyName.Equals(friendlyname, StringComparison.InvariantCultureIgnoreCase) select prc).FirstOrDefault();
-			}
+			return (from prc in Watchlist.Keys where prc.FriendlyName.Equals(friendlyname, StringComparison.InvariantCultureIgnoreCase) select prc).FirstOrDefault();
 		}
 
 		/// <summary>
@@ -183,19 +182,6 @@ namespace Taskmaster
 		}
 
 		string freememoryignore = null;
-		void FreeMemoryTick(object _, HandlingStateChangeEventArgs ea)
-		{
-			try
-			{
-				if (!string.IsNullOrEmpty(freememoryignore) && ea.Info.Name.Equals(freememoryignore, StringComparison.InvariantCultureIgnoreCase))
-					return;
-
-				if (Taskmaster.DebugMemory) Log.Debug("<Process> Paging: " + ea.Info.Name + " (#" + ea.Info.Id + ")");
-
-				NativeMethods.EmptyWorkingSet(ea.Info.Process.Handle);
-			}
-			catch { } // process.Handle may throw which we don't care about
-		}
 
         ConcurrentDictionary<int, int> ignorePids = new ConcurrentDictionary<int, int>();
 
@@ -262,6 +248,8 @@ namespace Taskmaster
 
 		void FreeMemoryInternal(int ignorePid = -1)
 		{
+			if (DisposedOrDisposing) return;
+
 			MemoryManager.Update();
 			ulong b1 = MemoryManager.FreeBytes;
 			//var b1 = MemoryManager.Free;
@@ -269,11 +257,9 @@ namespace Taskmaster
 			try
 			{
 				ScanTimer?.Stop();
-
 				// TODO: Pause Scan until we're done
-				ProcessDetectedEvent += FreeMemoryTick;
 
-				Scan(ignorePid); // TODO: Call for this to happen otherwise
+				Scan(ignorePid, freememory:true); // TODO: Call for this to happen otherwise
 
 				// TODO: Wait a little longer to allow OS to Actually page stuff. Might not matter?
 				//var b2 = MemoryManager.Free;
@@ -286,10 +272,6 @@ namespace Taskmaster
 			catch (Exception ex)
 			{
 				Logging.Stacktrace(ex);
-			}
-			finally
-			{
-				ProcessDetectedEvent -= FreeMemoryTick;
 			}
 
 			StartScanTimer();
@@ -318,10 +300,6 @@ namespace Taskmaster
 			}
 		}
 
-		/// <summary>
-		/// Event fired by Scan and WMI new process
-		/// </summary>
-		public event EventHandler<HandlingStateChangeEventArgs> ProcessDetectedEvent;
 		//public event EventHandler ScanStartEvent;
 		//public event EventHandler ScanEndEvent;
 
@@ -349,6 +327,7 @@ namespace Taskmaster
 					NextScan = DateTimeOffset.UtcNow;
 					ScanTimer?.Stop();
 					if (sort) SortWatchlist();
+
 					await Task.Run(() => Scan()).ContinueWith((_) => StartScanTimer()).ConfigureAwait(false);
 				}
 			}
@@ -372,30 +351,32 @@ namespace Taskmaster
 		}
 
 		int scan_lock = 0;
-		void Scan(int ignorePid = -1)
+		bool Scan(int ignorePid = -1, bool freememory = false)
 		{
-			if (DisposedOrDisposing) return;
+			if (DisposedOrDisposing) return false;
 
-            if (!Atomic.Lock(ref scan_lock)) return;
+			if (!Atomic.Lock(ref scan_lock)) return false;
 
-            try
-            {
-                var now = DateTimeOffset.UtcNow;
-                LastScan = now;
-                NextScan = now.Add(ScanFrequency.Value);
+			try
+			{
+				var now = DateTimeOffset.UtcNow;
+				LastScan = now;
+				NextScan = now.Add(ScanFrequency.Value);
 
-                if (Taskmaster.DebugFullScan) Log.Debug("<Process> Full Scan: Start");
+				if (Taskmaster.DebugFullScan) Log.Debug("<Process> Full Scan: Start");
 
-                //ScanStartEvent?.Invoke(this, null);
+				//ScanStartEvent?.Invoke(this, null);
 
-                if (!SystemProcessId(ignorePid)) Ignore(ignorePid);
+				if (!SystemProcessId(ignorePid)) Ignore(ignorePid);
 
-                var procs = Process.GetProcesses();
-                int foundprocs = procs.Length - 2; // -2 for Idle&System
-                Debug.Assert(foundprocs > 0, "System has no running processes"); // should be impossible to fail
-                SignalProcessHandled(foundprocs); // scan start
+				var procs = Process.GetProcesses();
+				int foundprocs = procs.Length - 2; // -2 for Idle&System
+				Debug.Assert(foundprocs > 0, "System has no running processes"); // should be impossible to fail
+				SignalProcessHandled(foundprocs); // scan start
 
 				int selfId = Process.GetCurrentProcess().Id;
+
+				//var loaderOffload = new List<ProcessEx>();
 
 				int count = 0;
 				Parallel.ForEach(procs, (process) =>
@@ -416,6 +397,13 @@ namespace Taskmaster
 							Log.Debug($"<Process/Scan> Failed to retrieve info for process: {name} (#{pid})");
 						return;
 					} // process inaccessible (InvalidOperationException or NotSupportedException)
+
+					if (ScanBlockList.TryGetValue(pid, out var found))
+					{
+						if (found.TimeTo(now).TotalSeconds < 5d)
+							return;
+						ScanBlockList.TryRemove(pid, out _);
+					}
 
 					try
 					{
@@ -446,9 +434,25 @@ namespace Taskmaster
 						if (info != null || ProcessUtility.GetInfo(pid, out info, process, null, name, null, getPath: true))
 						{
 							info.Timer = Stopwatch.StartNew();
-							var ev = new HandlingStateChangeEventArgs(info);
-							ProcessDetectedEvent?.Invoke(this, ev);
-							HandlingStateChange?.Invoke(this, ev);
+
+							ProcessTriage(info);
+
+							if (freememory)
+							{
+								MKAh.Utility.DiscardExceptions(() =>
+								{
+									if (!string.IsNullOrEmpty(freememoryignore) && info.Name.Equals(freememoryignore, StringComparison.InvariantCultureIgnoreCase))
+										return;
+
+									if (Taskmaster.DebugMemory) Log.Debug($"<Process> Paging: {info.Name} (#{info.Id})");
+
+									NativeMethods.EmptyWorkingSet(info.Process.Handle); // process.Handle may throw which we don't care about
+								});
+							}
+
+							HandlingStateChange?.Invoke(this, new HandlingStateChangeEventArgs(info));
+
+							//if (!info.Exited) loaderOffload.Add(info);
 						}
 					}
 					catch (OutOfMemoryException) { throw; }
@@ -458,23 +462,88 @@ namespace Taskmaster
 					}
 				});
 
-                if (Taskmaster.DebugFullScan) Log.Debug("<Process> Full Scan: Complete");
+				//SystemLoaderAnalysis(loaderOffload);
 
-                SignalProcessHandled(-foundprocs); // scan done
+				if (Taskmaster.DebugFullScan) Log.Debug("<Process> Full Scan: Complete");
 
-                //ScanEndEvent?.Invoke(this, null);
+				SignalProcessHandled(-foundprocs); // scan done
 
-                if (!SystemProcessId(ignorePid)) Unignore(ignorePid);
-            }
-            catch (OutOfMemoryException) { throw; }
-            catch (Exception ex)
-            {
-                Logging.Stacktrace(ex);
-            }
-            finally
-            {
-                Atomic.Unlock(ref scan_lock);
-            }
+				//ScanEndEvent?.Invoke(this, null);
+
+				if (!SystemProcessId(ignorePid)) Unignore(ignorePid);
+			}
+			catch (OutOfMemoryException) { throw; }
+			catch (Exception ex)
+			{
+				Logging.Stacktrace(ex);
+			}
+			finally
+			{
+				Atomic.Unlock(ref scan_lock);
+			}
+
+			return true;
+		}
+
+		int SystemLoader_lock = 0;
+		DateTimeOffset LastLoaderAnalysis = DateTimeOffset.MinValue;
+
+		async Task SystemLoaderAnalysis(List<ProcessEx> procs)
+		{
+			var now = DateTimeOffset.UtcNow;
+
+			if (!Atomic.Lock(ref SystemLoader_lock)) return;
+
+			// TODO: TEST IF ANY RESOURCE IS BEING DRAINED
+
+			try
+			{
+				if (LastLoaderAnalysis.TimeTo(now).TotalMinutes < 1d) return;
+
+				await Task.Delay(5_000).ConfigureAwait(false);
+
+				long PeakWorkingSet = 0;
+				ProcessEx PeakWorkingSetInfo = null;
+				long HighestPrivate = 0;
+				ProcessEx HighestPrivateInfo = null;
+
+				// TODO: Combine results of multiprocess apps
+				foreach (var info in procs)
+				{
+					try
+					{
+						info.Process.Refresh();
+						if (info.Process.HasExited) continue;
+
+						long ws = info.Process.PeakWorkingSet64, pm = info.Process.PrivateMemorySize64;
+						if (ws > PeakWorkingSet)
+						{
+							PeakWorkingSet = ws;
+							PeakWorkingSetInfo = info;
+						}
+						if (pm > HighestPrivate)
+						{
+							HighestPrivate = pm;
+							HighestPrivateInfo = info;
+						}
+					}
+					catch (OutOfMemoryException) { throw; }
+					catch (Exception ex)
+					{
+						Logging.Stacktrace(ex);
+					}
+				}
+			}
+			catch (OutOfMemoryException) { throw; }
+			catch (Exception ex)
+			{
+				Logging.Stacktrace(ex);
+			}
+			finally
+			{
+				LastLoaderAnalysis = DateTimeOffset.UtcNow;
+				Atomic.Unlock(ref SystemLoader_lock);
+			}
 		}
 
 		/// <summary>
@@ -526,6 +595,8 @@ namespace Taskmaster
 			return rv;
 		}
 
+		bool RecacheNeeded = true;
+
 		void SaveController(ProcessController prc)
 		{
 			if (string.IsNullOrEmpty(prc.Executable))
@@ -540,11 +611,8 @@ namespace Taskmaster
 					WatchlistWithHybrid += 1;
 			}
 
-			lock (watchlist_lock)
-			{
-				Watchlist.Remove(prc);
-				Watchlist.Add(prc);
-			}
+			Watchlist.TryAdd(prc, 0);
+			lock (watchlist_lock) RecacheNeeded = true;
 
 			if (Taskmaster.Trace) Log.Verbose("[" + prc.FriendlyName + "] Match: " + (prc.Executable ?? prc.Path) + ", " +
 				(prc.Priority.HasValue ? Readable.ProcessPriority(prc.Priority.Value) : HumanReadable.Generic.NotAvailable) +
@@ -885,6 +953,7 @@ namespace Taskmaster
 
 			if (dirtyconfig) appcfg.MarkDirty();
 
+			RecacheWatchlist();
 			SortWatchlist();
 
 			// --------------------------------------------------------------------------------------------------------
@@ -894,30 +963,44 @@ namespace Taskmaster
 			Log.Information("<Process> Hybrid watchlist: " + WatchlistWithHybrid + " items");
 		}
 
+		void RecacheWatchlist()
+		{
+			lock (watchlist_lock)
+			{
+				if (RecacheNeeded)
+				{
+					WatchlistCache = Watchlist.Keys.ToList();
+					RecacheNeeded = false;
+				}
+			}
+		}
+
 		public void SortWatchlist()
 		{
 			lock (watchlist_lock)
 			{
-				Watchlist.Sort(delegate (ProcessController x, ProcessController y)
-				{
-					if (x.Enabled && !y.Enabled) return -1;
-					else if (!x.Enabled && y.Enabled) return 1;
-					else if (x.OrderPreference < y.OrderPreference) return -1;
-					else if (x.OrderPreference > y.OrderPreference) return 1;
-					else if (x.Adjusts > y.Adjusts) return -1;
-					else if (x.Adjusts < y.Adjusts) return 1;
-					else if (string.IsNullOrEmpty(x.Path) && !string.IsNullOrEmpty(y.Path)) return -1;
-					else if (!string.IsNullOrEmpty(x.Path) && string.IsNullOrEmpty(y.Path)) return 1;
-					return 0;
-				});
+				WatchlistCache.Sort(WatchlistSorter);
 
 				int order = 0;
-				foreach (var prc in Watchlist)
+				foreach (var prc in WatchlistCache)
 					prc.ActualOrder = order++;
 			}
 
 			// TODO: Signal UI the actual order may have changed
 			WatchlistSorted?.Invoke(this, null);
+		}
+
+		int WatchlistSorter(ProcessController x, ProcessController y)
+		{
+			if (x.Enabled && !y.Enabled) return -1;
+			else if (!x.Enabled && y.Enabled) return 1;
+			else if (x.OrderPreference < y.OrderPreference) return -1;
+			else if (x.OrderPreference > y.OrderPreference) return 1;
+			else if (x.Adjusts > y.Adjusts) return -1;
+			else if (x.Adjusts < y.Adjusts) return 1;
+			else if (string.IsNullOrEmpty(x.Path) && !string.IsNullOrEmpty(y.Path)) return -1;
+			else if (!string.IsNullOrEmpty(x.Path) && string.IsNullOrEmpty(y.Path)) return 1;
+			return 0;
 		}
 
 		public event EventHandler WatchlistSorted;
@@ -968,10 +1051,7 @@ namespace Taskmaster
 			if (!string.IsNullOrEmpty(prc.ExecutableFriendlyName))
 				ExeToController.TryRemove(prc.ExecutableFriendlyName.ToLowerInvariant(), out _);
 
-			lock (watchlist_lock)
-			{
-				Watchlist.Remove(prc);
-			}
+			lock (watchlist_lock) RecacheNeeded = true;
 
 			prc.Modified -= ProcessModified;
 			prc.Paused -= ProcessPausedProxy;
@@ -1211,8 +1291,11 @@ namespace Taskmaster
 
 			lock (watchlist_lock)
 			{
+				RecacheWatchlist();
+
 				// TODO: This needs to be FASTER
-				foreach (var lprc in Watchlist)
+				// Can't parallelize...
+				foreach (var lprc in WatchlistCache)
 				{
 					if (!lprc.Enabled) continue;
 					if (string.IsNullOrEmpty(lprc.Path)) continue;
@@ -1228,7 +1311,7 @@ namespace Taskmaster
 							continue; // CheckPathWatch does not handle combo path+exes
 					}
 
-					if (lprc.MatchPath(info.Path))
+					if (lprc.Path.StartsWith(info.Path, StringComparison.InvariantCultureIgnoreCase))
 					{
 						if (Taskmaster.DebugPaths)
 							Log.Verbose("[" + lprc.FriendlyName + "] (CheckPathWatch) Matched at: " + info.Path);
@@ -1260,7 +1343,7 @@ namespace Taskmaster
 			"taskeng", // task scheduler
 			"consent", // UAC, user account control prompt
 			"taskhost", // task scheduler process host
-			"rundll32", // 
+			"rundll32", //
 			"dllhost", //
 			//"conhost", // console host, hosts command prompts (cmd.exe)
 			"dwm", // desktop window manager
@@ -1407,11 +1490,9 @@ namespace Taskmaster
 		}
 
 		// TODO: This should probably be pushed into ProcessController somehow.
-		async void ProcessTriage(object _, HandlingStateChangeEventArgs ev)
+		async void ProcessTriage(ProcessEx info)
 		{
 			if (DisposedOrDisposing) return;
-
-			ProcessEx info = ev.Info;
 
             await Task.Delay(0).ConfigureAwait(false); // asyncify
 
@@ -1688,6 +1769,9 @@ namespace Taskmaster
 					var targetInstance = ea.NewEvent.Properties["TargetInstance"].Value as ManagementBaseObject;
 					//var tpid = targetInstance.Properties["Handle"].Value as int?; // doesn't work for some reason
 					pid = Convert.ToInt32(targetInstance.Properties["Handle"].Value as string);
+
+					ScanBlockList.TryAdd(pid, DateTimeOffset.UtcNow);
+
 					var iname = targetInstance.Properties["Name"].Value as string;
 					path = targetInstance.Properties["ExecutablePath"].Value as string;
                     creation = ManagementDateTimeConverter.ToDateTime(targetInstance.Properties["CreationDate"].Value as string);
@@ -1780,7 +1864,6 @@ namespace Taskmaster
 		{
 			//await Task.Delay(0).ConfigureAwait(false);
 			info.State = ProcessHandlingState.Invalid;
-			var ev = new HandlingStateChangeEventArgs(info);
 
 			try
 			{
@@ -1824,7 +1907,8 @@ namespace Taskmaster
 				// info.Process.StartTime; // Only present if we started it
 
 				state = info.State = ProcessHandlingState.Triage;
-				ProcessDetectedEvent?.Invoke(this, ev);
+
+				ProcessTriage(info);
 			}
 			catch (Exception ex)
 			{
@@ -1833,7 +1917,7 @@ namespace Taskmaster
 			}
 			finally
 			{
-				HandlingStateChange?.Invoke(this, ev);
+				HandlingStateChange?.Invoke(this, new HandlingStateChangeEventArgs(info));
 
 			}
 		}
@@ -1899,13 +1983,20 @@ namespace Taskmaster
 
 		const string watchfile = "Watchlist.ini";
 
-		async void CleanupTick(object _, EventArgs _ea)
+		async void CleanupTick(object _sender, EventArgs _ea)
 		{
 			if (DisposedOrDisposing) return;
 
 			Cleanup();
 
 			SortWatchlist();
+
+			var now = DateTimeOffset.UtcNow;
+			foreach (var item in ScanBlockList)
+			{
+				if (item.Value.TimeTo(now).TotalSeconds > 5d)
+					ScanBlockList.TryRemove(item.Key, out _);
+			}
 		}
 
 		int cleanup_lock = 0;
@@ -1971,11 +2062,8 @@ namespace Taskmaster
 
 				if (User.IdleTime().TotalHours > 2d)
 				{
-					lock (watchlist_lock)
-					{
-						foreach (var prc in Watchlist)
-							prc.Refresh();
-					}
+					foreach (var prc in Watchlist.Keys)
+						prc.Refresh();
 				}
 
 				lock (Exclusive_lock)
@@ -2022,7 +2110,6 @@ namespace Taskmaster
 			{
 				if (Taskmaster.Trace) Log.Verbose("Disposing process manager...");
 
-				ProcessDetectedEvent = null;
 				//ScanStartEvent = null;
 				//ScanEndEvent = null;
 				ProcessModified = null;
@@ -2070,14 +2157,13 @@ namespace Taskmaster
 
 					var wcfg = Taskmaster.Config.Load(watchfile);
 
-					lock (watchlist_lock)
-					{
-						foreach (var prc in Watchlist)
-							if (prc.NeedsSaving) prc.SaveConfig(wcfg);
+					foreach (var prc in Watchlist.Keys)
+						if (prc.NeedsSaving) prc.SaveConfig(wcfg);
 
-						Watchlist?.Clear();
-						Watchlist = null;
-					}
+					Watchlist?.Clear();
+					Watchlist = null;
+					WatchlistCache?.Clear();
+					WatchlistCache = null;
 				}
 				catch (Exception ex)
 				{
