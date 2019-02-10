@@ -33,7 +33,7 @@ namespace Taskmaster
 	public static class ProcessUtility
 	{
 		/// <summary>
-		/// Throws: InvalidOperationException
+		/// Throws: InvalidOperationException, ArgumentException
 		/// </summary>
 		public static int SetIO(Process process, int target, out int newIO, bool decrease=true)
 		{

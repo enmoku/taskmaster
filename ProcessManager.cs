@@ -1185,12 +1185,11 @@ namespace Taskmaster
 		ProcessController PreviousForegroundController = null;
 		ProcessEx PreviousForegroundInfo;
 
-		void ForegroundAppChangedEvent(object _, WindowChangedArgs ev)
+		void ForegroundAppChangedEvent(object _sender, WindowChangedArgs ev)
 		{
 			if (DisposedOrDisposing) return;
 
-			int oIO = ProcessUtility.SetIO(ev.Process, 5, out int nIO, decrease:false);
-
+			Process process = ev.Process;
 			try
 			{
 				if (Taskmaster.DebugForeground)
@@ -1218,6 +1217,8 @@ namespace Taskmaster
 
 				if (WaitForExitList.TryGetValue(ev.Id, out ProcessEx info))
 				{
+					process = info.Process;
+
 					if (info.ForegroundWait)
 					{
 						var prc = info.Controller;
@@ -1246,6 +1247,17 @@ namespace Taskmaster
 				Logging.Stacktrace(ex);
 				Log.Error("Unregistering foreground changed event");
 				activeappmonitor.ActiveChanged -= ForegroundAppChangedEvent;
+			}
+			finally
+			{
+				try
+				{
+					if (process == null) process = Process.GetProcessById(ev.Id);
+					ProcessUtility.SetIO(process, 5, out _, decrease: false);
+				}
+				catch (OutOfMemoryException) { throw; }
+				catch (ArgumentException) { }
+				catch (InvalidOperationException) { }
 			}
 		}
 
