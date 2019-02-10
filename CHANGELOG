@@ -15,6 +15,9 @@ Comprehensive changes can be found in Git change history:
 		Rules are sorted internally from time to time using small number of criteria.
 		Rules with same order fall back to the other criteria to determine final order (e.g. rules with high adjust count will be sorted earlier).
 	Changed: New instances are added to scan block list for 5 seconds to avoid some odd things happenings.
+	Fixed: I/O priority was saved incorrectly in UI if set to ignore.
+	Changed: Rule controller is refreshed if it's modified during runtime.
+	Changed: If foreground monitor is active, it will ensure foreground apps have normal I/O priority.
 ### 2019-02-09
 	Internal: Hiding some things to not be usable where they shouldn't.
 	Added: I/O priority control. Watchlist.ini now has `IO priority` setting. This may be inherited, so care needs to be taken when applying it to launchers.
