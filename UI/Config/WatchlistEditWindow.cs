@@ -226,7 +226,8 @@ namespace Taskmaster
 			if (Taskmaster.IOPriorityEnabled)
 			{
 				int iop = ioPriority?.SelectedIndex ?? -1;
-				Controller.IOPriority = iop > 0 ? 3 - iop : 0;
+				Controller.IOPriority = iop > 0 ? 3 - iop : -1;
+				Debug.WriteLine($"[{Controller.FriendlyName}] I/O Priority: {Controller.IOPriority}");
 			}
 
 			Controller.LogAdjusts = logAdjusts.Checked;
