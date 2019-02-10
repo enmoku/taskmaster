@@ -414,6 +414,11 @@ namespace Taskmaster
 			else
 				app.Remove("Affinity ideal");
 
+			if (IOPriority >= 0)
+				app["IO priority"].IntValue = IOPriority;
+			else
+				app.Remove("IO priority");
+
 			var pmode = PowerManager.GetModeName(PowerPlan);
 			if (PowerPlan != PowerInfo.PowerMode.Undefined)
 				app[HumanReadable.Hardware.Power.Mode].StringValue = PowerManager.GetModeName(PowerPlan);
@@ -707,6 +712,8 @@ namespace Taskmaster
 			ProcessPriorityClass oldPriority = ProcessPriorityClass.RealTime;
 			int oldAffinity = -1, newAffinity = -1;
 
+			int nIO = -1;
+
 			if (!info.Paused)
 			{
 				if (Taskmaster.DebugForeground)
@@ -732,6 +739,9 @@ namespace Taskmaster
 						mAffinity = true;
 					}
 				}
+
+				if (Taskmaster.IOPriorityEnabled)
+					nIO = SetIO(info, 2); // force these to always have normal I/O priority
 
 				if (AffinityIdeal >= 0) ApplyAffinityIdeal(info);
 			}
@@ -779,6 +789,7 @@ namespace Taskmaster
 					PriorityOld = oldPriority,
 					AffinityNew = mAffinity ? newAffinity : -1,
 					AffinityOld = oldAffinity,
+					NewIO=nIO,
 				};
 
 				ev.User = new System.Text.StringBuilder();
@@ -1202,45 +1213,8 @@ namespace Taskmaster
 					catch (OutOfMemoryException) { throw; }
 					catch { fPriority = true; } // ignore errors, this is all we care of them
 
-					if (IOPriority != int.MinValue)
-					{
-						int handle = 0;
-						try
-						{
-							if ((handle = NativeMethods.OpenProcessFully(info.Process)) != 0)
-							{
-								int oprio = NativeMethods.GetIOPriority(handle);
-								if (oprio < 0)
-								{
-									if (Taskmaster.DebugProcesses)
-										Log.Debug($"[{FriendlyName}] {info.Name} (#{info.Id}) – I/O priority access error");
-								}
-								else if (oprio != IOPriority)
-								{
-									bool done = NativeMethods.SetIOPriority(handle, IOPriority);
-									nIO = NativeMethods.GetIOPriority(handle);
-
-									if (Taskmaster.DebugProcesses)
-									{
-										if (done && nIO != oprio)
-											Log.Debug($"[{FriendlyName}] {info.Name} (#{info.Id}) – I/O priority set from {oprio} to {nIO}, target: {IOPriority}");
-										else if (Taskmaster.ShowInaction)
-											Log.Debug($"[{FriendlyName}] {info.Name} (#{info.Id}) – I/O priority NOT set from {oprio} to {IOPriority}");
-									}
-								}
-								else if (Taskmaster.DebugProcesses && Taskmaster.ShowInaction)
-									Log.Debug($"[{FriendlyName}] {info.Name} (#{info.Id}) – I/O priority ALREADY set to {oprio}, target: {IOPriority}");
-							}
-							else if (Taskmaster.DebugProcesses && Taskmaster.ShowInaction)
-								Log.Debug($"[{FriendlyName}] {info.Name} (#{info.Id}) – I/O priority not set, failed to open process.");
-						}
-						catch { }
-						finally
-						{
-							if (handle != 0)
-								NativeMethods.CloseHandle(handle);
-						}
-					}
+					if (Taskmaster.IOPriorityEnabled && IOPriority >= 0)
+						nIO = SetIO(info);
 				}
 
 				int newAffinityMask = -1;
@@ -1427,6 +1401,52 @@ namespace Taskmaster
 				info.State = ProcessHandlingState.Invalid;
 				Logging.Stacktrace(ex);
 			}
+		}
+
+		private int SetIO(ProcessEx info, int overridePriority=-1)
+		{
+			int handle = 0;
+			int nIO = -1;
+
+			int target = overridePriority < 0 ? IOPriority : overridePriority;
+
+			try
+			{
+				if ((handle = NativeMethods.OpenProcessFully(info.Process)) != 0)
+				{
+					int oprio = NativeMethods.GetIOPriority(handle);
+					if (oprio < 0)
+					{
+						if (Taskmaster.DebugProcesses)
+							Log.Debug($"[{FriendlyName}] {info.Name} (#{info.Id}) – I/O priority access error");
+					}
+					else if (oprio != target)
+					{
+						bool done = NativeMethods.SetIOPriority(handle, target);
+						nIO = NativeMethods.GetIOPriority(handle);
+
+						if (Taskmaster.DebugProcesses)
+						{
+							if (done && nIO != oprio)
+								Log.Debug($"[{FriendlyName}] {info.Name} (#{info.Id}) – I/O priority set from {oprio} to {nIO}, target: {target}");
+							else if (Taskmaster.ShowInaction)
+								Log.Debug($"[{FriendlyName}] {info.Name} (#{info.Id}) – I/O priority NOT set from {oprio} to {target}");
+						}
+					}
+					else if (Taskmaster.DebugProcesses && Taskmaster.ShowInaction)
+						Log.Debug($"[{FriendlyName}] {info.Name} (#{info.Id}) – I/O priority ALREADY set to {oprio}, target: {target}");
+				}
+				else if (Taskmaster.DebugProcesses && Taskmaster.ShowInaction)
+					Log.Debug($"[{FriendlyName}] {info.Name} (#{info.Id}) – I/O priority not set, failed to open process.");
+			}
+			catch { }
+			finally
+			{
+				if (handle != 0)
+					NativeMethods.CloseHandle(handle);
+			}
+
+			return nIO;
 		}
 
 		/// <summary>

@@ -88,7 +88,19 @@ namespace Taskmaster.UI.Config
 			layout.Controls.Add(new Label { Text = "Record analysis delay", AutoSize = true });
 			layout.Controls.Add(RecordAnalysisDelay);
 
+
+			var iopriority = new CheckBox()
+			{
+				Checked = Taskmaster.IOPriorityEnabled,
+			};
+
+			layout.Controls.Add(new Label { Text = "I/O priority", AutoSize = true });
+			layout.Controls.Add(iopriority);
+
 			// FILL IN BOTTOM
+
+			layout.Controls.Add(new Label()); // empty
+			layout.Controls.Add(new Label { Text = "Restart required", Font = boldfont, ForeColor = System.Drawing.Color.Maroon, AutoSize = true, Padding = CustomPadding });
 
 			savebutton.Click += (_, _ea) =>
 			{
@@ -107,6 +119,11 @@ namespace Taskmaster.UI.Config
 					exsec["Record analysis"].IntValue = Convert.ToInt32(RecordAnalysisDelay.Value);
 				else
 					exsec.Remove("Record analysis");
+
+				if (iopriority.Checked)
+					exsec["IO Priority"].BoolValue = true;
+				else
+					exsec.Remove("IO Priority");
 
 				var perfsec = cfg["Performance"];
 				perfsec["Ignore recently modified"].IntValue = Convert.ToInt32(ProcessManager.IgnoreRecentlyModified.Value.TotalMinutes);

@@ -780,6 +780,7 @@ namespace Taskmaster
 				bool? deprecatedFgMode = section.TryGet("Foreground only")?.BoolValue; // DEPRECATED
 				bool? deprecatedBgPower = section.TryGet("Background powerdown")?.BoolValue; // DEPRECATED
 
+				prc.IOPriority = section.TryGet("IO priority")?.IntValue.Constrain(0, 2) ?? int.MinValue; // 0-1 background, 2 = normal, anything else seems to have no effect
 				// UPGRADE
 				int? foregroundMode = section.TryGet("Foreground mode")?.IntValue;
 				if (foregroundMode.HasValue)

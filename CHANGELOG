@@ -3,6 +3,9 @@ Comprehensive changes can be found in Git change history:
 	https://github.com/mkahvi/taskmaster/commits/master
 
 ## [0.13...]
+### 2019-02-10
+	Changed: I/O priority requires `IO Priority=true` in [Experimental] in Core.ini.
+	Added: I/O priority is now in experiment config dialog and in watchlist rule editor.
 ### 2019-02-09
 	Internal: Hiding some things to not be usable where they shouldn't.
 	Added: I/O priority control. Watchlist.ini now has `IO priority` setting. This may be inherited, so care needs to be taken when applying it to launchers.
