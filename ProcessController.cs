@@ -535,10 +535,7 @@ namespace Taskmaster
 				app.Remove("Volume strategy");
 			}
 
-			if (LogAdjusts)
-				app["Logging"].BoolValue = LogAdjusts;
-			else
-				app.Remove("Logging");
+			app["Logging"].BoolValue = LogAdjusts;
 
 			// pass to config manager
 			NeedsSaving = false;
