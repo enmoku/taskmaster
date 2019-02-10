@@ -1403,7 +1403,7 @@ namespace Taskmaster
 
 						if (info.State == ProcessHandlingState.Processing)
 						{
-							Debug.WriteLine($"[{info.Controller.FriendlyName}] {info.Name} (#{info.Name}) correcting state to finished");
+							Debug.WriteLine($"[{info.Controller.FriendlyName}] {info.Name} (#{info.Id}) correcting state to finished");
 							info.State = ProcessHandlingState.Finished;
 						}
                     }
