@@ -2833,6 +2833,9 @@ namespace Taskmaster
 							sbs.Append("Background affinity = ").Append(prc.BackgroundAffinity).AppendLine();
 					}
 
+					if (prc.ModifyDelay > 0)
+						sbs.Append("Modify delay = ").Append(prc.ModifyDelay).AppendLine();
+
 					if (prc.PathVisibility != PathVisibilityOptions.Invalid)
 						sbs.Append("Path visibility = ").Append((int)prc.PathVisibility).AppendLine();
 
@@ -2841,6 +2844,11 @@ namespace Taskmaster
 						sbs.Append("Volume = ").Append($"{prc.Volume:N2}").AppendLine();
 						sbs.Append("Volume strategy = ").Append((int)prc.VolumeStrategy).AppendLine();
 					}
+
+					sbs.Append("Preference = ").Append(prc.OrderPreference).AppendLine();
+
+					if (!prc.LogAdjusts)
+						sbs.Append("Logging = false").AppendLine();
 
 					if (!prc.Enabled)
 						sbs.Append("Enabled = false").AppendLine();
