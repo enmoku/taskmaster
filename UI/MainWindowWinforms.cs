@@ -1356,7 +1356,6 @@ namespace Taskmaster
 			corepanel.Controls.Add(ramload);
 
 			TableLayoutPanel gpupanel = null;
-			Label gpulabel = null;
 			if (Taskmaster.HardwareMonitorEnabled)
 			{
 				gpupanel = new TableLayoutPanel()
@@ -1367,8 +1366,6 @@ namespace Taskmaster
 					//Dock = DockStyle.Fill,
 					Dock = DockStyle.Fill,
 				};
-
-				gpulabel = new Label() { Text = "GPU", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left, Font = boldfont };
 
 				gpupanel.Controls.Add(new Label() { Text = "VRAM", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left });
 				gpuvram = new Label() { Text = HumanReadable.Generic.Uninitialized, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left };
@@ -1388,12 +1385,10 @@ namespace Taskmaster
 			}
 
 			TableLayoutPanel nvmpanel = null;
-			Label nvmlabel = null;
-			if (Taskmaster.HealthMonitorEnabled) BuildNVMPanel(out nvmpanel, out nvmlabel);
+			if (Taskmaster.HealthMonitorEnabled) BuildNVMPanel(out nvmpanel);
 
-			Label powerlabel = null;
 			TableLayoutPanel powerpanel = null;
-			if (Taskmaster.PowerManagerEnabled) BuildPowerPanel(out powerlabel, out powerpanel);
+			if (Taskmaster.PowerManagerEnabled) BuildPowerPanel(out powerpanel);
 
 			TableLayoutPanel lastmodifypanel = null;
 			if (Taskmaster.LastModifiedList) lastmodifypanel = BuildLastModifiedPanel(appwidths);
@@ -1428,19 +1423,19 @@ namespace Taskmaster
 			// Insert info panel/tab contents
 			if (corepanel != null)
 			{
-				coresystems.Controls.Add(corelabel);
+				coresystems.Controls.Add(new Label() { Text = "Core", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left, Font = boldfont });
 				coresystems.Controls.Add(corepanel);
-				coresystems.Controls.Add(gpulabel);
+				coresystems.Controls.Add(new Label() { Text = "GPU", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left, Font = boldfont });
 				coresystems.Controls.Add(gpupanel);
 			}
 			if (powerpanel != null)
 			{
-				additionalsystems.Controls.Add(powerlabel);
+				additionalsystems.Controls.Add(new Label { Text = HumanReadable.Hardware.Power.Section, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left, Font = boldfont });
 				additionalsystems.Controls.Add(powerpanel);
 			}
 			if (nvmpanel != null)
 			{
-				additionalsystems.Controls.Add(nvmlabel);
+				additionalsystems.Controls.Add(new Label { Text = "Non-Volatile Memory", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left, Font = boldfont });
 				additionalsystems.Controls.Add(nvmpanel);
 			}
 			systemlayout.Controls.Add(coresystems);
@@ -2021,7 +2016,7 @@ namespace Taskmaster
 			return lastmodifypanel;
 		}
 
-		void BuildPowerPanel(out Label powerlabel, out TableLayoutPanel powerpanel)
+		void BuildPowerPanel(out TableLayoutPanel powerpanel)
 		{
 			powerpanel = new TableLayoutPanel()
 			{
@@ -2030,8 +2025,6 @@ namespace Taskmaster
 				AutoSizeMode = AutoSizeMode.GrowOnly,
 				Dock = DockStyle.Fill,
 			};
-
-			powerlabel = new Label { Text = HumanReadable.Hardware.Power.Section, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left, Font = boldfont };
 
 			pwmode = new Label { Text = HumanReadable.Generic.Uninitialized, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left };
 			pwcause = new Label { Text = HumanReadable.Generic.Uninitialized, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left };
@@ -2044,7 +2037,7 @@ namespace Taskmaster
 			powerpanel.Controls.Add(pwcause);
 		}
 
-		void BuildNVMPanel(out TableLayoutPanel nvmpanel, out Label nvmlabel)
+		void BuildNVMPanel(out TableLayoutPanel nvmpanel)
 		{
 			nvmpanel = new TableLayoutPanel()
 			{
@@ -2059,8 +2052,6 @@ namespace Taskmaster
 			nvmdelay = new Label { Text = HumanReadable.Generic.Uninitialized, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left };
 			nvmqueued = new Label { Text = HumanReadable.Generic.Uninitialized, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left };
 			//hardfaults = new Label { Text = HumanReadable.Generic.Uninitialized, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left };
-
-			nvmlabel = new Label { Text = "Non-Volatile Memory", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left, Font = boldfont };
 
 			nvmpanel.Controls.Add(new Label { Text = "Transfers", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left });
 			nvmpanel.Controls.Add(nvmtransfers);
