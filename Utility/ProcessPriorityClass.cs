@@ -34,19 +34,31 @@ namespace MKAh
 		{
 			switch (priority)
 			{
-				case ProcessPriorityClass.RealTime:
-					return "Real Time";
-				case ProcessPriorityClass.High:
-					return "High";
-				case ProcessPriorityClass.AboveNormal:
-					return "Above Normal";
+				case ProcessPriorityClass.RealTime: return "Real Time";
+				case ProcessPriorityClass.High: return "High";
+				case ProcessPriorityClass.AboveNormal: return "Above Normal";
 				default:
-				case ProcessPriorityClass.Normal:
-					return "Normal";
-				case ProcessPriorityClass.BelowNormal:
-					return "Below Normal";
-				case ProcessPriorityClass.Idle:
-					return "Low"; // Idle is true only on pre-W2k
+				case ProcessPriorityClass.Normal: return "Normal";
+				case ProcessPriorityClass.BelowNormal: return "Below Normal";
+				case ProcessPriorityClass.Idle: return "Low"; // Idle is true only on pre-W2k
+			}
+		}
+	}
+
+	public static partial class Utility
+	{
+		public static ProcessPriorityClass ProcessPriority(string priority)
+		{
+			switch (priority.ToLowerInvariant())
+			{
+				case "real time": return ProcessPriorityClass.RealTime;
+				case "high": return ProcessPriorityClass.High;
+				case "above normal": return ProcessPriorityClass.AboveNormal;
+				default:
+				case "normal": return ProcessPriorityClass.Normal;
+				case "below normal": return ProcessPriorityClass.BelowNormal;
+				case "idle":
+				case "low":return ProcessPriorityClass.Idle;
 			}
 		}
 	}
