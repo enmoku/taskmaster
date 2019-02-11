@@ -2807,6 +2807,13 @@ namespace Taskmaster
 						sbs.Append(HumanReadable.System.Process.Affinity).Append(" = ").Append(prc.AffinityMask).AppendLine();
 						sbs.Append(HumanReadable.System.Process.AffinityStrategy).Append(" = ").Append((int)prc.AffinityStrategy).AppendLine();
 					}
+
+					if (prc.AffinityIdeal >= 0)
+						sbs.Append("Affinity ideal = ").Append(prc.AffinityIdeal).AppendLine();
+
+					if (prc.IOPriority >= 0)
+						sbs.Append("IO priority = ").Append(prc.IOPriority).AppendLine();
+
 					if (prc.PowerPlan != PowerInfo.PowerMode.Undefined)
 					{
 						sbs.Append(HumanReadable.Hardware.Power.Plan).Append(" = ").Append(PowerManager.GetModeName(prc.PowerPlan)).AppendLine();
