@@ -2835,6 +2835,9 @@ namespace Taskmaster
 						sbs.Append("Volume strategy = ").Append((int)prc.VolumeStrategy).AppendLine();
 					}
 
+					if (!prc.Enabled)
+						sbs.Append("Enabled = false").AppendLine();
+
 					// TODO: Add Resize and Modify Delay
 
 					try
