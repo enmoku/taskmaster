@@ -15,6 +15,9 @@ Comprehensive changes can be found in Git change history:
 	Changed: CPU hid from main UI if relevant component is disabled.
 	Added: Hardware monitor in experiment config.
 	Changed: Experiment dialog improved and it now asks for restart if saved.
+	Fixed: Added several missing items from watchlist rule copy to clipboard function.
+	Fixed: Watchlist sorting is better and does so correctly with priority and power columns.
+	Changed: Default watchlist updated and made to have all rules disabled by default. It's an example, not recommended.
 ### 2019-02-10
 	Changed: I/O priority requires `IO Priority=true` in [Experimental] in Core.ini.
 	Added: I/O priority is now in experiment config dialog and in watchlist rule editor.
