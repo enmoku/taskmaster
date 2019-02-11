@@ -25,10 +25,6 @@
 // THE SOFTWARE.
 
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows.Forms;
 
 namespace Taskmaster.UI.Config
@@ -41,6 +37,8 @@ namespace Taskmaster.UI.Config
 			AutoSizeMode = AutoSizeMode.GrowAndShrink;
 			AutoSize = true;
 
+			var tooltip = new ToolTip();
+
 			var layout = new TableLayoutPanel()
 			{
 				ColumnCount = 2,
@@ -49,8 +47,8 @@ namespace Taskmaster.UI.Config
 				Parent = this,
 			};
 
-			layout.Controls.Add(new Label { Text = "EXPERIMENTAL", Font = boldfont, ForeColor = System.Drawing.Color.Maroon, AutoSize = true, Padding = CustomPadding });
-			layout.Controls.Add(new Label { Text = "You've been warned", Font = boldfont, ForeColor=System.Drawing.Color.Maroon, AutoSize = true, Padding = CustomPadding });
+			layout.Controls.Add(new Label { Text = "EXPERIMENTAL", Font = boldfont, ForeColor = System.Drawing.Color.Maroon, Padding = CustomPadding, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true });
+			layout.Controls.Add(new Label { Text = "You've been warned", Font = boldfont, ForeColor=System.Drawing.Color.Maroon, Padding = CustomPadding, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true });
 
 			var savebutton = new Button()
 			{
@@ -74,7 +72,7 @@ namespace Taskmaster.UI.Config
 				Value = Convert.ToDecimal(ProcessManager.IgnoreRecentlyModified.Value.TotalMinutes),
 			};
 
-			layout.Controls.Add(new Label { Text = "Ignore recently modified", AutoSize = true });
+			layout.Controls.Add(new Label { Text = "Ignore recently modified", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true });
 			layout.Controls.Add(IgnoreRecentlyModifiedCooldown);
 
 			var RecordAnalysisDelay = new Extensions.NumericUpDownEx()
@@ -84,8 +82,9 @@ namespace Taskmaster.UI.Config
 				Unit = "secs",
 				Value = Convert.ToDecimal(Taskmaster.RecordAnalysis.HasValue ? Taskmaster.RecordAnalysis.Value.TotalSeconds : 0),
 			};
+			tooltip.SetToolTip(RecordAnalysisDelay, "Values higher than 0 enable process analysis\nThis needs to be enabled per watchlist rule to function");
 
-			layout.Controls.Add(new Label { Text = "Record analysis delay", AutoSize = true });
+			layout.Controls.Add(new Label { Text = "Record analysis delay", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true });
 			layout.Controls.Add(RecordAnalysisDelay);
 
 			var hwmon = new CheckBox()
@@ -101,14 +100,15 @@ namespace Taskmaster.UI.Config
 			{
 				Checked = Taskmaster.IOPriorityEnabled,
 			};
+			tooltip.SetToolTip(iopriority, "Enable I/O priority adjstment\nWARNING: This can be REALLY BAD\nTake care what you do.");
 
-			layout.Controls.Add(new Label { Text = "I/O priority", AutoSize = true });
+			layout.Controls.Add(new Label { Text = "I/O priority", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true });
 			layout.Controls.Add(iopriority);
 
 			// FILL IN BOTTOM
 
+			layout.Controls.Add(new Label { Text = "Restart required", Font = boldfont, ForeColor = System.Drawing.Color.Maroon, Padding = CustomPadding, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true });
 			layout.Controls.Add(new Label()); // empty
-			layout.Controls.Add(new Label { Text = "Restart required", Font = boldfont, ForeColor = System.Drawing.Color.Maroon, AutoSize = true, Padding = CustomPadding });
 
 			savebutton.Click += (_, _ea) =>
 			{
@@ -145,6 +145,7 @@ namespace Taskmaster.UI.Config
 				Close();
 			};
 
+			savebutton.Anchor = AnchorStyles.Right;
 			layout.Controls.Add(savebutton);
 			layout.Controls.Add(cancelbutton);
 		}
