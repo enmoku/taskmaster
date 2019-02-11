@@ -1117,7 +1117,6 @@ namespace Taskmaster
 			{
 				Checked = Taskmaster.DebugPaths,
 				CheckOnClick = true,
-				Enabled = Taskmaster.PathMonitorEnabled,
 			};
 			menu_debug_paths.Click += (_, _ea) =>
 			{

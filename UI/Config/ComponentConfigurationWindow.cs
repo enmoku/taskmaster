@@ -133,24 +133,10 @@ namespace Taskmaster
 				Dock = DockStyle.Left
 			};
 			tooltip.SetToolTip(procmon, "Manage processes based on their name. Default feature of Taskmaster and thus can not be disabled.");
-			layout.Controls.Add(new Label { Text = "Process/name manager", AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, Padding = CustomPadding, Dock = DockStyle.Left });
+			layout.Controls.Add(new Label { Text = "Process manager", AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, Padding = CustomPadding, Dock = DockStyle.Left });
 			layout.Controls.Add(procmon);
 			procmon.Enabled = false;
 			procmon.Checked = initial ? true : Taskmaster.ProcessMonitorEnabled;
-
-			var pathmon = new CheckBox()
-			{
-				AutoSize = true,
-				//BackColor = System.Drawing.Color.Azure,
-				Dock = DockStyle.Left
-			};
-			tooltip.SetToolTip(pathmon, "Manage processes based on their location.\nThese are processed only if by name matching does not catch something.\nPath-based processing is lenghtier process but should not cause significant resource drain.");
-			layout.Controls.Add(new Label { Text = "Process/path manager", AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, Padding = CustomPadding, Dock = DockStyle.Left });
-			layout.Controls.Add(pathmon);
-			pathmon.Checked = initial ? true : Taskmaster.PathMonitorEnabled;
-			pathmon.Click += (_, _ea) =>
-			{
-			};
 
 			layout.Controls.Add(new Label() { Text = "Process detection", AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, Padding = CustomPadding, Dock = DockStyle.Left });
 			var ScanOrWMI = new ComboBox()
@@ -376,7 +362,6 @@ namespace Taskmaster
 
 				var compsec = cfg.Config["Components"];
 				compsec[HumanReadable.System.Process.Section].BoolValue = procmon.Checked;
-				compsec["Process paths"].BoolValue = pathmon.Checked;
 				compsec["Microphone"].BoolValue = micmon.Checked;
 				compsec[HumanReadable.Hardware.Audio.Section].BoolValue = audioman.Checked;
 				// compsec["Media"].BoolValue = mediamon.Checked;

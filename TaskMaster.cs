@@ -485,7 +485,6 @@ namespace Taskmaster
 		public static bool ShowAgency { get; set; } = false;
 
 		public static bool ProcessMonitorEnabled { get; private set; } = true;
-		public static bool PathMonitorEnabled { get; private set; } = true;
 		public static bool MicrophoneMonitorEnabled { get; private set; } = false;
 		// public static bool MediaMonitorEnabled { get; private set; } = true;
 		public static bool NetworkMonitorEnabled { get; private set; } = true;
@@ -560,9 +559,9 @@ namespace Taskmaster
 			ProcessMonitorEnabled = compsec.GetSetDefault(HumanReadable.System.Process.Section, true, out modified).BoolValue;
 			compsec[HumanReadable.System.Process.Section].Comment = "Monitor starting processes based on their name. Configure in Apps.ini";
 			dirtyconfig |= modified;
-			PathMonitorEnabled = compsec.GetSetDefault("Process paths", true, out modified).BoolValue;
-			compsec["Process paths"].Comment = "Monitor starting processes based on their location. Configure in Paths.ini";
-			dirtyconfig |= modified;
+
+			compsec.Remove("Process paths"); // DEPRECATED
+
 			AudioManagerEnabled = compsec.GetSetDefault(HumanReadable.Hardware.Audio.Section, true, out modified).BoolValue;
 			compsec[HumanReadable.Hardware.Audio.Section].Comment = "Monitor audio sessions and set their volume as per user configuration.";
 			dirtyconfig |= modified;
