@@ -1011,7 +1011,7 @@ namespace Taskmaster
 
 			if (ValidateController(prc))
 			{
-				prc.Modified += ProcessModified;
+				prc.Modified += ProcessModifiedProxy;
 				//prc.Paused += ProcessPausedProxy;
 				//prc.Resumed += ProcessResumedProxy;
 				prc.Paused += ProcessWaitingExitProxy;
@@ -1019,6 +1019,11 @@ namespace Taskmaster
 
 				SaveController(prc);
 			}
+		}
+
+		void ProcessModifiedProxy(object sender, ProcessModificationEventArgs ea)
+		{
+			ProcessModified?.Invoke(sender, ea);
 		}
 
 		void ProcessWaitingExitProxy(object _, ProcessModificationEventArgs ea)
