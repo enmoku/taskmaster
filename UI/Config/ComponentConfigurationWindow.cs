@@ -52,18 +52,25 @@ namespace Taskmaster
 
 			bool WMIPolling = false;
 			int WMIPollDelay = 5;
+			int ScanFrequency = 180;
+			bool scan = true;
 
 			if (Taskmaster.processmanager == null)
 			{
 				var corecfg = Taskmaster.Config.Load(Taskmaster.coreconfig);
 				var perfsec = corecfg.Config["Performance"];
 				WMIPolling = perfsec.TryGet("WMI event watcher")?.BoolValue ?? true;
-				WMIPollDelay = perfsec.TryGet("WMI poll delay")?.IntValue ?? 5;
+				WMIPollDelay = perfsec.TryGet("WMI poll delay")?.IntValue ?? 2;
+				ScanFrequency = perfsec.TryGet("Scan frequency")?.IntValue ?? 180;
 			}
 			else
 			{
 				WMIPolling = Taskmaster.processmanager.WMIPolling;
 				WMIPollDelay = Taskmaster.processmanager.WMIPollDelay;
+				if (Taskmaster.processmanager.ScanFrequency.HasValue)
+					ScanFrequency = Convert.ToInt32(Taskmaster.processmanager.ScanFrequency.Value.TotalSeconds);
+				else
+					scan = false;
 			}
 
 			var layout = new TableLayoutPanel()
@@ -155,7 +162,7 @@ namespace Taskmaster
 			};
 			layout.Controls.Add(ScanOrWMI);
 			tooltip.SetToolTip(ScanOrWMI, "Scanning involves getting all procesess and going through the list, which can cause tiny CPU spiking.\nWMI polling sets up system WMI event listener.\nWMI is known to be slow and buggy, though when it performs well, it does it better than scanning in this case.\nSystem WmiPrvSE or similar process may be seen increasing in activity with WMI in use.");
-			
+
 			layout.Controls.Add(new Label() { Text = "Scan frequency", AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, Padding = CustomPadding, Dock = DockStyle.Left });
 			var scanfrequency = new Extensions.NumericUpDownEx()
 			{
@@ -163,7 +170,7 @@ namespace Taskmaster
 				Minimum = 0,
 				Maximum = 360,
 				Dock = DockStyle.Left,
-				Value = initial ? 15 : Convert.ToDecimal(ProcessManager.ScanFrequency.Value.TotalSeconds),
+				Value = initial ? 15 : ScanFrequency,
 				Width = 60,
 			};
 			var defaultBackColor = scanfrequency.BackColor;
@@ -194,17 +201,21 @@ namespace Taskmaster
 			tooltip.SetToolTip(wmipolling, "In seconds.");
 			ScanOrWMI.SelectedIndexChanged += (_, _ea) =>
 			{
-				// Not WMI-only
-				if (scanfrequency.Enabled = ScanOrWMI.SelectedIndex != 1)
-					scanfrequency.Value = initial ? 15 : Convert.ToDecimal(ProcessManager.ScanFrequency.Value.TotalSeconds);
+				scanfrequency.Enabled = ScanOrWMI.SelectedIndex != 1; // 0 or 2
+				wmipolling.Enabled = ScanOrWMI.SelectedIndex != 0; // 1 or 2
 
-				// Not Scan-only
-				if (wmipolling.Enabled = ScanOrWMI.SelectedIndex != 0)
-					wmipolling.Value = initial ? 5 : WMIPollDelay;
+				if (ScanOrWMI.SelectedIndex == 0) // Not WMI-only
+					scanfrequency.Value = initial ? 15 : ScanFrequency;
+				else if (ScanOrWMI.SelectedIndex == 1) // Not Scan-only
+					wmipolling.Value = initial ? 2 : WMIPollDelay;
+				else // Both
+				{
+					scanfrequency.Value = initial ? 180 : ScanFrequency;
+					wmipolling.Value = initial ? 2 : WMIPollDelay;
+				}
 			};
-			var wmi = WMIPolling;
-			var scan = ProcessManager.ScanFrequency.HasValue;
-			ScanOrWMI.SelectedIndex = initial ? 0 : ((wmi && scan) ? 2 : (wmi ? 1 : 0));
+
+			ScanOrWMI.SelectedIndex = initial ? 0 : ((WMIPolling && scan) ? 2 : (WMIPolling ? 1 : 0));
 
 			var powmon = new CheckBox()
 			{

@@ -549,7 +549,7 @@ namespace Taskmaster
 		/// <summary>
 		/// In seconds.
 		/// </summary>
-		public static TimeSpan? ScanFrequency { get; private set; } = TimeSpan.FromSeconds(180);
+		public TimeSpan? ScanFrequency { get; private set; } = TimeSpan.FromSeconds(180);
 		DateTimeOffset LastScan { get; set; } = DateTimeOffset.MinValue; // UNUSED
 		public DateTimeOffset NextScan { get; set; } = DateTimeOffset.MinValue;
 

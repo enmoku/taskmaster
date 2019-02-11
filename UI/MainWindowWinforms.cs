@@ -334,6 +334,9 @@ namespace Taskmaster
 
 			WatchlistRules.EndUpdate();
 
+			if (control.ScanFrequency.HasValue)
+				UItimer.Tick += UpdateRescanCountdown;
+
 			processmanager.WatchlistSorted += UpdateWatchlist;
 
 			rescanRequest += RescanRequestEvent;
@@ -634,7 +637,10 @@ namespace Taskmaster
 			if (!IsHandleCreated) return;
 
 			// Rescan Countdown
-			processingtimer.Text = $"{DateTimeOffset.UtcNow.TimeTo(processmanager.NextScan).TotalSeconds:N0}s";
+			if (processmanager.ScanFrequency.HasValue)
+				processingtimer.Text = $"{DateTimeOffset.UtcNow.TimeTo(processmanager.NextScan).TotalSeconds:N0}s";
+			else
+				processingtimer.Text = HumanReadable.Generic.NotAvailable;
 		}
 
 		void UpdateNetwork(object _, EventArgs _ea)
@@ -1271,9 +1277,6 @@ namespace Taskmaster
 			UItimer = new System.Windows.Forms.Timer { Interval = UIUpdateFrequency };
 			if (Taskmaster.NetworkMonitorEnabled)
 				UItimer.Tick += UpdateNetwork;
-
-			if (Taskmaster.ProcessMonitorEnabled && ProcessManager.ScanFrequency.HasValue)
-				UItimer.Tick += UpdateRescanCountdown;
 
 			UItimer.Tick += UpdateHWStats;
 			//UItimer.Tick += Cleanup;
