@@ -435,7 +435,7 @@ namespace Taskmaster
 						{
 							info.Timer = Stopwatch.StartNew();
 
-							ProcessTriage(info);
+							ProcessTriage(info).Wait();
 
 							if (freememory)
 							{
@@ -953,6 +953,7 @@ namespace Taskmaster
 
 			if (dirtyconfig) appcfg.MarkDirty();
 
+			RecacheNeeded = true;
 			RecacheWatchlist();
 			SortWatchlist();
 
@@ -1317,8 +1318,11 @@ namespace Taskmaster
 				foreach (var lprc in WatchlistCache)
 				{
 					if (!lprc.Enabled) continue;
-					if (string.IsNullOrEmpty(lprc.Path)) continue;
 
+					if (string.IsNullOrEmpty(lprc.Path)) continue;
+					if (!string.IsNullOrEmpty(lprc.Executable)) continue;
+
+					/*
 					if (!string.IsNullOrEmpty(lprc.Executable))
 					{
 						if (lprc.ExecutableFriendlyName.Equals(info.Name, StringComparison.InvariantCultureIgnoreCase))
@@ -1327,10 +1331,11 @@ namespace Taskmaster
 								Log.Debug("[" + lprc.FriendlyName + "] Path+Exe matched.");
 						}
 						else
-							continue; // CheckPathWatch does not handle combo path+exes
+							continue;
 					}
+					*/
 
-					if (lprc.Path.StartsWith(info.Path, StringComparison.InvariantCultureIgnoreCase))
+					if (info.Path.StartsWith(lprc.Path, StringComparison.InvariantCultureIgnoreCase))
 					{
 						if (Taskmaster.DebugPaths)
 							Log.Verbose("[" + lprc.FriendlyName + "] (CheckPathWatch) Matched at: " + info.Path);
@@ -1509,7 +1514,7 @@ namespace Taskmaster
 		}
 
 		// TODO: This should probably be pushed into ProcessController somehow.
-		async void ProcessTriage(ProcessEx info)
+		async Task ProcessTriage(ProcessEx info)
 		{
 			if (DisposedOrDisposing) return;
 
@@ -1532,29 +1537,31 @@ namespace Taskmaster
 				if (ExeToController.TryGetValue(info.Name.ToLowerInvariant(), out prc))
 					info.Controller = prc; // fill
 
-                if (prc != null || GetPathController(info, out prc))
-                {
-                    if (!info.Controller.Enabled)
-                    {
-                        if (Taskmaster.DebugProcesses) Log.Debug("[" + info.Controller.FriendlyName + "] Matched, but rule disabled; ignoring.");
-                        info.State = ProcessHandlingState.Abandoned;
-                        return;
-                    }
+				if (prc != null || GetPathController(info, out prc))
+				{
+					if (!info.Controller.Enabled)
+					{
+						if (Taskmaster.DebugProcesses) Log.Debug("[" + info.Controller.FriendlyName + "] Matched, but rule disabled; ignoring.");
+						info.State = ProcessHandlingState.Abandoned;
+						return;
+					}
 
-                    info.State = ProcessHandlingState.Processing;
+					info.State = ProcessHandlingState.Processing;
 
-                    await Task.Delay(0).ConfigureAwait(false); // asyncify again
+					await Task.Delay(0).ConfigureAwait(false); // asyncify again
 
-                    try
-                    {
-                        info.Controller.Modify(info);
+					try
+					{
+						Debug.WriteLine($"Trying to modify: {info.Name} (#{info.Id})");
 
-                        if (prc.Foreground != ForegroundMode.Ignore) ForegroundWatch(info);
+						info.Controller.Modify(info);
 
-                        if (prc.ExclusiveMode) ExclusiveMode(info);
+						if (prc.Foreground != ForegroundMode.Ignore) ForegroundWatch(info);
 
-                        if (Taskmaster.RecordAnalysis.HasValue && info.Controller.Analyze && info.Valid && info.State != ProcessHandlingState.Abandoned)
-                            analyzer.Analyze(info);
+						if (prc.ExclusiveMode) ExclusiveMode(info);
+
+						if (Taskmaster.RecordAnalysis.HasValue && info.Controller.Analyze && info.Valid && info.State != ProcessHandlingState.Abandoned)
+							analyzer.Analyze(info);
 
 						if (Taskmaster.WindowResizeEnabled && prc.Resize.HasValue)
 							prc.TryResize(info);
@@ -1564,19 +1571,22 @@ namespace Taskmaster
 							Debug.WriteLine($"[{info.Controller.FriendlyName}] {info.Name} (#{info.Id}) correcting state to finished");
 							info.State = ProcessHandlingState.Finished;
 						}
-                    }
-                    catch (OutOfMemoryException) { throw; }
-                    catch (Exception ex)
-                    {
-                        Logging.Stacktrace(ex);
-                    }
-                    finally
-                    {
-                        HandlingStateChange?.Invoke(this, new HandlingStateChangeEventArgs(info));
-                    }
-                }
-                else
-                    info.State = ProcessHandlingState.Abandoned;
+					}
+					catch (OutOfMemoryException) { throw; }
+					catch (Exception ex)
+					{
+						Logging.Stacktrace(ex);
+					}
+					finally
+					{
+						HandlingStateChange?.Invoke(this, new HandlingStateChangeEventArgs(info));
+					}
+				}
+				else
+				{
+					info.State = ProcessHandlingState.Abandoned;
+					Debug.WriteLine($"ProcessTriage no matching rule for: {info.Name} (#{info.Id})");
+				}
 
 				/*
 				if (ControlChildren) // this slows things down a lot it seems
@@ -1763,7 +1773,7 @@ namespace Taskmaster
 		}
 
 		// This needs to return faster
-		void NewInstanceTriage(object _, EventArrivedEventArgs ea)
+		async void NewInstanceTriage(object _, EventArrivedEventArgs ea)
 		{
 			var now = DateTimeOffset.UtcNow;
 			var timer = Stopwatch.StartNew();
@@ -1776,6 +1786,8 @@ namespace Taskmaster
             TimeSpan wmidelay = TimeSpan.Zero;
 
             ProcessHandlingState state = ProcessHandlingState.Invalid;
+
+			await Task.Delay(0).ConfigureAwait(false);
 
 			try
 			{
@@ -1848,14 +1860,26 @@ namespace Taskmaster
 					return;
 				}
 
-				if (IgnoreProcessName(name)) return;
+				Debug.WriteLine($"NewInstanceTriage: {name} (#{pid})");
 
-                if (ProcessUtility.GetInfo(pid, out info, path: path, getPath: true, name: name))
-                {
-                    info.Timer = timer;
-                    info.WMIDelay = Convert.ToInt32(wmidelay.TotalMilliseconds);
-                    NewInstanceTriagePhaseTwo(info, out state);
-                }
+				if (IgnoreProcessName(name))
+				{
+					if (Taskmaster.ShowInaction && Taskmaster.DebugProcesses)
+						Log.Debug($"<Process> {name} (#{pid}) ignored due to its name.");
+					return;
+				}
+
+				if (ProcessUtility.GetInfo(pid, out info, path: path, getPath: true, name: name))
+				{
+					info.Timer = timer;
+					info.WMIDelay = Convert.ToInt32(wmidelay.TotalMilliseconds);
+					NewInstanceTriagePhaseTwo(info, out state);
+				}
+				else
+				{
+					if (Taskmaster.ShowInaction && Taskmaster.DebugProcesses)
+						Log.Debug($"<Process> {name} (#{pid}) could not be mined for info.");
+				}
 			}
 			catch (Exception ex)
 			{
@@ -1927,7 +1951,7 @@ namespace Taskmaster
 
 				state = info.State = ProcessHandlingState.Triage;
 
-				ProcessTriage(info);
+				ProcessTriage(info).Wait();
 			}
 			catch (Exception ex)
 			{
@@ -1937,7 +1961,6 @@ namespace Taskmaster
 			finally
 			{
 				HandlingStateChange?.Invoke(this, new HandlingStateChangeEventArgs(info));
-
 			}
 		}
 

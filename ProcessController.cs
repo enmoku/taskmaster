@@ -1415,17 +1415,17 @@ namespace Taskmaster
 
 				if (original < 0)
 				{
-					if (Taskmaster.DebugProcesses)
+					if (Taskmaster.DebugProcesses && Taskmaster.Trace)
 						Log.Debug($"[{FriendlyName}] {info.Name} (#{info.Id}) – I/O priority access error");
 				}
 				else if (original == target)
 				{
-					if (Taskmaster.DebugProcesses && Taskmaster.ShowInaction)
+					if (Taskmaster.Trace && Taskmaster.DebugProcesses && Taskmaster.ShowInaction)
 						Log.Debug($"[{FriendlyName}] {info.Name} (#{info.Id}) – I/O priority ALREADY set to {original}, target: {target}");
 				}
 				else
 				{
-					if (Taskmaster.DebugProcesses)
+					if (Taskmaster.DebugProcesses && Taskmaster.Trace)
 					{
 						if (nIO >= 0 && nIO != original)
 							Log.Debug($"[{FriendlyName}] {info.Name} (#{info.Id}) – I/O priority set from {original} to {nIO}, target: {target}");
@@ -1437,12 +1437,12 @@ namespace Taskmaster
 			catch (OutOfMemoryException) { throw;  }
 			catch (ArgumentException)
 			{
-				if (Taskmaster.DebugProcesses && Taskmaster.ShowInaction)
+				if (Taskmaster.DebugProcesses && Taskmaster.ShowInaction && Taskmaster.Trace)
 					Log.Debug($"[{FriendlyName}] {info.Name} (#{info.Id}) – I/O priority not set, failed to open process.");
 			}
 			catch (InvalidOperationException)
 			{
-				if (Taskmaster.DebugProcesses)
+				if (Taskmaster.DebugProcesses && Taskmaster.Trace)
 					Log.Debug($"[{FriendlyName}] {info.Name} (#{info.Id}) – I/O priority access error");
 			}
 

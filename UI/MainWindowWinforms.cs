@@ -1022,6 +1022,7 @@ namespace Taskmaster
 			(_, _ea) =>
 			{
 				LogIncludeLevel.MinimumLevel = Serilog.Events.LogEventLevel.Information;
+				Taskmaster.Trace = false;
 				UpdateLogLevelSelection();
 			})
 			{
@@ -1032,6 +1033,7 @@ namespace Taskmaster
 			(_, _ea) =>
 			{
 				LogIncludeLevel.MinimumLevel = Serilog.Events.LogEventLevel.Debug;
+				Taskmaster.Trace = false;
 				UpdateLogLevelSelection();
 			})
 			{
@@ -1043,6 +1045,7 @@ namespace Taskmaster
 			(_, _ea) =>
 			{
 				LogIncludeLevel.MinimumLevel = Serilog.Events.LogEventLevel.Verbose;
+				Taskmaster.Trace = true;
 				UpdateLogLevelSelection();
 				Log.Warning("Trace events enabled. UI may become unresponsive due to their volume.");
 			})
