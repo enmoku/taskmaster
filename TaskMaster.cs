@@ -707,7 +707,7 @@ namespace Taskmaster
 			perfsec["Path cache max age"].Comment = "Maximum age, in minutes, of cached objects. Min: 1 (1min), Max: 1440 (1day).\nThese will be removed even if the cache is appropriate size.";
 			dirtyconfig |= modified;
 
-			// 
+			//
 			var maintsec = cfg["Maintenance"];
 			maintsec.Remove("Cleanup interval"); // DEPRECATRED
 
@@ -1232,9 +1232,10 @@ namespace Taskmaster
 
 			AppDomain.CurrentDomain.UnhandledException += UnhandledException;
 
-			hiddenwindow = new OS.HiddenWindow();
+			//hiddenwindow = new OS.HiddenWindow();
 
 			TryPortableMode();
+			logpath = Path.Combine(datapath, "Logs");
 
 			// Singleton
 			singleton = new System.Threading.Mutex(true, SingletonID, out bool mutexgained);
@@ -1453,7 +1454,7 @@ namespace Taskmaster
 					nargs.Add((++AdminCounter).ToString());
 					info.Verb = "runas"; // elevate privileges
 				}
-				
+
 				info.Arguments = string.Join(" ", nargs);
 
 				Log.CloseAndFlush();
