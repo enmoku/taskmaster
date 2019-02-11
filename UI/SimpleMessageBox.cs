@@ -24,11 +24,6 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows.Forms;
 
 namespace Taskmaster
@@ -82,9 +77,14 @@ namespace Taskmaster
 			var buttonlayout = new TableLayoutPanel()
 			{
 				RowCount = 1,
+				ColumnCount = 3,
 				AutoSize = true,
 				Dock = DockStyle.Top,
 			};
+
+			buttonlayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 33f));
+			buttonlayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 33f));
+			buttonlayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 33f));
 
 			var okbutton = new Button() { Text = "OK", Margin = CustomPadding };
 			okbutton.Click += (_, _ea) => { Result = ResultType.OK; Close();  };
@@ -101,19 +101,22 @@ namespace Taskmaster
 			switch (buttons)
 			{
 				case Buttons.OK:
+					okbutton.Anchor = AnchorStyles.Top;
+					buttonlayout.Controls.Add(new Label()); // empty
 					buttonlayout.Controls.Add(okbutton);
-					buttonlayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100f));
 					okbutton.NotifyDefault(true);
 					break;
 				case Buttons.AcceptCancel:
 					okbutton.Text = "Accept";
-					buttonlayout.ColumnCount = 2;
+					okbutton.Anchor = AnchorStyles.Right;
 					buttonlayout.Controls.Add(okbutton);
+					buttonlayout.Controls.Add(new Label()); // empty
 					buttonlayout.Controls.Add(cancelbutton);
 					okbutton.NotifyDefault(true);
 					break;
 				case Buttons.RetryEndCancel:
-					buttonlayout.ColumnCount = 3;
+					retrybutton.Anchor = AnchorStyles.Right;
+					endbutton.Anchor = AnchorStyles.Top;
 					buttonlayout.Controls.Add(retrybutton);
 					buttonlayout.Controls.Add(endbutton);
 					buttonlayout.Controls.Add(cancelbutton);
