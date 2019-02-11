@@ -2160,6 +2160,8 @@ namespace Taskmaster
 				if (n.DialogResult == DialogResult.OK)
 				{
 					Log.Information("<Experiments> Settings changed");
+
+					Taskmaster.ConfirmExit(restart: true, message: "Restart required for experimental settings to take effect.", alwaysconfirm:true);
 				}
 			}
 		}
