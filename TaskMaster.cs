@@ -76,20 +76,19 @@ namespace Taskmaster
 			UnifiedExit(restart: true);
 		}
 
-		public static void ConfirmExit(bool restart = false, bool admin = false)
+		public static void ConfirmExit(bool restart = false, bool admin = false, string message = null, bool alwaysconfirm=false)
 		{
 			var rv = SimpleMessageBox.ResultType.OK;
-			if (Taskmaster.ExitConfirmation)
+
+			if (alwaysconfirm || ExitConfirmation)
 			{
-				if (ExitConfirmation)
-				{
-					rv = SimpleMessageBox.ShowModal(
-						(restart ? "Restart" : "Exit") + Application.ProductName + " ???",
-						"Are you sure you want to " + (restart ? "restart" : "exit") + " Taskmaster?",
-						SimpleMessageBox.Buttons.AcceptCancel);
-				}
-				if (rv != SimpleMessageBox.ResultType.OK) return;
+				rv = SimpleMessageBox.ShowModal(
+					(restart ? "Restart" : "Exit") + Application.ProductName + " ???",
+					(string.IsNullOrEmpty(message) ? "" : message + "\n\n") +
+					"Are you sure you want to " + (restart ? "restart" : "exit") + " Taskmaster?",
+					SimpleMessageBox.Buttons.AcceptCancel);
 			}
+			if (rv != SimpleMessageBox.ResultType.OK) return;
 
 			RestartElevated = admin;
 
