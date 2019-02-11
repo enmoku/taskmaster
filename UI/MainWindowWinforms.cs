@@ -1670,7 +1670,7 @@ namespace Taskmaster
 
 			opentab = uicfg.Config["Tabs"].TryGet("Open")?.IntValue ?? 0;
 			appwidths = null;
-			int[] appwidthsDefault = new int[] { 20, 120, 140, 82, 60, 76, 46, 140 };
+			int[] appwidthsDefault = new int[] { 20, 120, 140, 82, 60, 76, 46, 160 };
 			appwidths = colcfg.GetSetDefault("Apps", appwidthsDefault).IntValueArray;
 			if (appwidths.Length != appwidthsDefault.Length) appwidths = appwidthsDefault;
 
