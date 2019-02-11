@@ -223,7 +223,7 @@ namespace Taskmaster
 				//BackColor = System.Drawing.Color.Azure,
 				Dock = DockStyle.Left,
 				Enabled = true,
-				Checked = initial ? true : Taskmaster.PowerManagerEnabled,
+				Checked = initial ? false : Taskmaster.PowerManagerEnabled,
 			};
 			tooltip.SetToolTip(powmon, "Manage power mode.\nNot recommended if you already have a power manager.");
 
@@ -275,7 +275,7 @@ namespace Taskmaster
 			{
 				AutoSize = true,
 				Dock = DockStyle.Left,
-				Checked = Taskmaster.StorageMonitorEnabled,
+				Checked = initial ? false : Taskmaster.StorageMonitorEnabled,
 				Enabled = false,
 			};
 			tooltip.SetToolTip(nvmmon, "Monitor non-volatile memory (HDDs, SSDs, etc.)");
