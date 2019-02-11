@@ -88,6 +88,14 @@ namespace Taskmaster.UI.Config
 			layout.Controls.Add(new Label { Text = "Record analysis delay", AutoSize = true });
 			layout.Controls.Add(RecordAnalysisDelay);
 
+			var hwmon = new CheckBox()
+			{
+				Checked = Taskmaster.HardwareMonitorEnabled,
+			};
+			tooltip.SetToolTip(hwmon, "Enables hardware (such as GPU) monitoring\nLimited usability currently.");
+
+			layout.Controls.Add(new Label { Text = "Hardware monitor", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true });
+			layout.Controls.Add(hwmon);
 
 			var iopriority = new CheckBox()
 			{
@@ -127,6 +135,9 @@ namespace Taskmaster.UI.Config
 
 				var perfsec = cfg["Performance"];
 				perfsec["Ignore recently modified"].IntValue = Convert.ToInt32(ProcessManager.IgnoreRecentlyModified.Value.TotalMinutes);
+
+				var compsec = cfg["Components"];
+				compsec[HumanReadable.Hardware.Section].BoolValue = hwmon.Checked;
 
 				corecfg.MarkDirty();
 
