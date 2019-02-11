@@ -1343,11 +1343,12 @@ namespace Taskmaster
 				Dock = DockStyle.Fill,
 			};
 
-			Label corelabel = new Label() { Text = "Core", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left, Font = boldfont };
-
-			corepanel.Controls.Add(new Label() { Text = "CPU", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left });
-			cpuload = new Label() { Text = HumanReadable.Generic.Uninitialized, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left };
-			corepanel.Controls.Add(cpuload);
+			if (Taskmaster.PowerManagerEnabled)
+			{
+				corepanel.Controls.Add(new Label() { Text = "CPU", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left });
+				cpuload = new Label() { Text = HumanReadable.Generic.Uninitialized, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left };
+				corepanel.Controls.Add(cpuload);
+			}
 			// TODO: Add high, low and average
 
 			corepanel.Controls.Add(new Label() { Text = "RAM", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left });
