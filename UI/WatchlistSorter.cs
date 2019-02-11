@@ -36,15 +36,23 @@ namespace Taskmaster
 		public int Column { get; set; } = 0;
 		public SortOrder Order { get; set; } = SortOrder.Ascending;
 		public bool Number { get; set; } = false;
+		public bool Priority { get; set; } = false;
+		public bool Power { get; set; } = false;
 
 		readonly CaseInsensitiveComparer Comparer = new CaseInsensitiveComparer();
 
 		readonly int[] NumberColumns = new int[] { };
+		readonly int PriorityColumn = -1;
+		readonly int PowerColumn = -1;
 
-		public WatchlistSorter(int[] numberColumns = null)
+		public WatchlistSorter(int[] numberColumns = null, int priorityColumn=-1, int powerColumn=-1)
 		{
 			if (numberColumns != null)
 				NumberColumns = numberColumns;
+			if (priorityColumn > 0)
+				PriorityColumn = priorityColumn;
+			if (powerColumn > 0)
+				PowerColumn = powerColumn;
 		}
 
 		public int Compare(object x, object y)
@@ -54,11 +62,25 @@ namespace Taskmaster
 			var result = 0;
 
 			Number = NumberColumns.Any(item => item == Column);
+			Priority = PriorityColumn == Column;
+			Power = PowerColumn == Column;
 
-			if (!Number)
-				result = Comparer.Compare(lix.SubItems[Column].Text, liy.SubItems[Column].Text);
-			else
+			if (Priority)
+			{
+				int lixp = lix.SubItems[Column].Text.Length > 0 ? MKAh.Utility.ProcessPriority(lix.SubItems[Column].Text).ToInt32() : -1;
+				int liyp = liy.SubItems[Column].Text.Length > 0 ? MKAh.Utility.ProcessPriority(liy.SubItems[Column].Text).ToInt32() : -1;
+				result = Comparer.Compare(lixp, liyp);
+			}
+			else if (Power)
+			{
+				int lixp = lix.SubItems[Column].Text.Length > 0 ? (int)PowerManager.GetModeByName(lix.SubItems[Column].Text) : (int)PowerInfo.PowerMode.Undefined;
+				int liyp = liy.SubItems[Column].Text.Length > 0 ? (int)PowerManager.GetModeByName(liy.SubItems[Column].Text) : (int)PowerInfo.PowerMode.Undefined;
+				result = Comparer.Compare(lixp, liyp);
+			}
+			else if (Number)
 				result = Comparer.Compare(Convert.ToInt64(lix.SubItems[Column].Text), Convert.ToInt64(liy.SubItems[Column].Text));
+			else
+				result = Comparer.Compare(lix.SubItems[Column].Text, liy.SubItems[Column].Text);
 
 			return Order == SortOrder.Ascending ? result : -result;
 		}

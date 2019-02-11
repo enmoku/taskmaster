@@ -28,7 +28,7 @@ namespace Taskmaster
 {
 	namespace PowerInfo
 	{
-		public enum PowerMode
+		public enum PowerMode : int
 		{
 			PowerSaver = 0,
 			Balanced = 1,

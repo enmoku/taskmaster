@@ -323,16 +323,17 @@ namespace Taskmaster
 			processmanager.ProcessStateChange += ExitWaitListHandler;
 			if (Taskmaster.DebugCache) PathCacheUpdate(null, null);
 
-			WatchlistRules.BeginUpdate();
-
 			ProcessNewInstanceCount(this, new ProcessingCountEventArgs(0, 0));
 
-			foreach (var prc in processmanager.getWatchlist())
-				AddToWatchlistList(prc);
+			BeginInvoke(new Action(() => {
+				WatchlistRules.BeginUpdate();
 
-			WatchlistColor();
+				foreach (var prc in processmanager.getWatchlist())
+					AddToWatchlistList(prc);
 
-			WatchlistRules.EndUpdate();
+				WatchlistColor();
+				WatchlistRules.EndUpdate();
+			}));
 
 			if (control.ScanFrequency.HasValue)
 				UItimer.Tick += UpdateRescanCountdown;
@@ -361,7 +362,8 @@ namespace Taskmaster
 
 				foreach (var li in WatchlistMap)
 				{
-					li.Value.SubItems[0].Text = li.Key.ActualOrder.ToString();
+					li.Value.SubItems[0].Text = (li.Key.ActualOrder+1).ToString();
+					WatchlistItemColor(li.Value, li.Key);
 				}
 
 				// re-sort if user is not interacting?
@@ -390,8 +392,10 @@ namespace Taskmaster
 			}));
 		}
 
-		readonly System.Drawing.Color GrayText = System.Drawing.Color.FromArgb(130, 130, 130);
-		readonly System.Drawing.Color AlterColor = System.Drawing.Color.FromArgb(245, 245, 245);
+		readonly System.Drawing.Color GrayText = System.Drawing.Color.FromArgb(130, 130, 130); // ignores user styles
+		readonly System.Drawing.Color AlterColor = System.Drawing.Color.FromArgb(245, 245, 245); // ignores user styles
+
+		readonly System.Drawing.Color DefaultLIBGColor = new ListViewItem().BackColor; // HACK
 
 		/// <summary>
 		///
@@ -399,46 +403,49 @@ namespace Taskmaster
 		/// <remarks>No locks</remarks>
 		void WatchlistItemColor(ListViewItem li, ProcessController prc)
 		{
-			BeginInvoke(new Action(() =>
+			var alter = (li.Index+1) % 2 == 0; // every even line
+
+			try
 			{
-				var alter = (li.Index + 1) % 2 == 0; // every even line
+				li.UseItemStyleForSubItems = false;
 
-				try
+				foreach (ListViewItem.ListViewSubItem si in li.SubItems)
 				{
-					li.UseItemStyleForSubItems = false;
+					if (prc.Enabled)
+						si.ForeColor = System.Drawing.SystemColors.WindowText;
+					else
+						si.ForeColor = GrayText;
 
-					foreach (ListViewItem.ListViewSubItem si in li.SubItems)
-					{
-						if (prc.Enabled)
-							si.ForeColor = System.Drawing.SystemColors.WindowText;
-						else
-							si.ForeColor = GrayText;
-
-						if (alter) si.BackColor = AlterColor;
-					}
-
-					alter = !alter;
-
-					if (prc.PriorityStrategy == ProcessPriorityStrategy.None)
-						li.SubItems[PrioColumn].ForeColor = GrayText;
-					if (string.IsNullOrEmpty(prc.Path))
-						li.SubItems[PathColumn].ForeColor = GrayText;
-					if (prc.PowerPlan == PowerInfo.PowerMode.Undefined)
-						li.SubItems[PowerColumn].ForeColor = GrayText;
-					if (prc.AffinityMask < 0)
-						li.SubItems[AffColumn].ForeColor = GrayText;
+					if (alter) si.BackColor = AlterColor;
+					else si.BackColor = DefaultLIBGColor;
 				}
-				catch (Exception ex)
-				{
-					Logging.Stacktrace(ex);
-				}
-			}));
+
+				alter = !alter;
+
+				if (prc.PriorityStrategy == ProcessPriorityStrategy.None)
+					li.SubItems[PrioColumn].ForeColor = GrayText;
+				if (string.IsNullOrEmpty(prc.Path))
+					li.SubItems[PathColumn].ForeColor = GrayText;
+				if (prc.PowerPlan == PowerInfo.PowerMode.Undefined)
+					li.SubItems[PowerColumn].ForeColor = GrayText;
+				if (prc.AffinityMask < 0)
+					li.SubItems[AffColumn].ForeColor = GrayText;
+			}
+			catch (Exception ex)
+			{
+				Logging.Stacktrace(ex);
+			}
 		}
 
 		void WatchlistColor()
 		{
-			foreach (var item in WatchlistMap.ToArray())
+			Debug.WriteLine("COLORING LINES");
+			int i = 0;
+			foreach (var item in WatchlistMap)
+			{
+				Debug.WriteLine($"{i++} --- {item.Value.Index} : {item.Value.Index%2==0} --- {item.Key.FriendlyName}");
 				WatchlistItemColor(item.Value, item.Key);
+			}
 		}
 
 		void AddToWatchlistList(ProcessController prc)
@@ -463,18 +470,15 @@ namespace Taskmaster
 				string.Empty
 			});
 
+			WatchlistRules.BeginUpdate();
+
+			WatchlistRules.Items.Add(litem);
 			WatchlistMap.TryAdd(prc, litem);
 
-			BeginInvoke(new Action(() =>
-			{
-				WatchlistRules.BeginUpdate();
+			FormatWatchlist(litem, prc);
+			WatchlistItemColor(litem, prc);
 
-				WatchlistRules.Items.Add(litem);
-				FormatWatchlist(litem, prc);
-				WatchlistItemColor(litem, prc);
-
-				WatchlistRules.EndUpdate();
-			}));
+			WatchlistRules.EndUpdate();
 		}
 
 		void FormatWatchlist(ListViewItem litem, ProcessController prc)
@@ -494,7 +498,7 @@ namespace Taskmaster
 
 				litem.SubItems[NameColumn].Text = prc.FriendlyName;
 				litem.SubItems[ExeColumn].Text = prc.Executable;
-				litem.SubItems[PrioColumn].Text = prc.Priority?.ToString() ?? string.Empty;
+				litem.SubItems[PrioColumn].Text = prc.Priority.HasValue ? MKAh.Readable.ProcessPriority(prc.Priority.Value) : string.Empty;
 				string aff = string.Empty;
 				if (prc.AffinityMask >= 0)
 				{
@@ -1602,7 +1606,7 @@ namespace Taskmaster
 			WatchlistRules.KeyPress += WatchlistRulesKeyboardSearch;
 
 			var numberColumns = new int[] { 0, AdjustColumn };
-			var watchlistSorter = new WatchlistSorter(numberColumns);
+			var watchlistSorter = new WatchlistSorter(numberColumns, PrioColumn, PowerColumn);
 			WatchlistRules.ListViewItemSorter = watchlistSorter; // what's the point of this?
 			WatchlistRules.ColumnClick += (_, ea) =>
 			{
@@ -1620,6 +1624,7 @@ namespace Taskmaster
 				// deadlock if locked while adding
 				WatchlistRules.BeginUpdate();
 				WatchlistRules.Sort();
+				WatchlistColor();
 				WatchlistRules.EndUpdate();
 			};
 
@@ -2727,7 +2732,6 @@ namespace Taskmaster
 
 					processmanager.AddController(prc);
 					AddToWatchlistList(prc);
-					WatchlistColor();
 
 					WatchlistRules.EndUpdate();
 
@@ -2762,6 +2766,8 @@ namespace Taskmaster
 					}
 				}
 				catch (Exception ex) { Logging.Stacktrace(ex); }
+
+				WatchlistColor();
 			}
 		}
 
