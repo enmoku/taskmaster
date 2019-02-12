@@ -43,8 +43,8 @@ namespace Taskmaster
 			{
 				AutoSize = true,
 				FlowDirection = FlowDirection.TopDown,
-				Margin = CustomPadding,
-				Padding = CustomPadding,
+				Margin = BigPadding,
+				Padding = BigPadding,
 			};
 			var buttonlayout = new FlowLayoutPanel()
 			{
@@ -90,7 +90,7 @@ namespace Taskmaster
 				Text = "You must accept the following license to use this application.",
 				AutoSize = true,
 				TextAlign = System.Drawing.ContentAlignment.MiddleLeft,
-				Padding = CustomPadding,
+				Padding = BigPadding,
 				Font = new System.Drawing.Font(System.Drawing.FontFamily.GenericSansSerif, DefaultFont.Size * 1.2f),
 			};
 

@@ -930,7 +930,7 @@ namespace Taskmaster
 
 			var validatebutton = new Button() { Text = "Validate" };
 			validatebutton.Click += ValidateWatchedItem;
-			validatebutton.Margin = CustomPadding;
+			validatebutton.Margin = BigPadding;
 
 			lt.Controls.Add(validatebutton);
 

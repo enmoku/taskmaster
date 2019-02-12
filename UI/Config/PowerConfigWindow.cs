@@ -405,14 +405,14 @@ namespace Taskmaster
 
 			MonitorPowerOff = monitorofftoggle.Checked;
 
-			power.SetAutoAdjust(pcw.newAutoAdjust);
+			power.SetAutoAdjust(newAutoAdjust);
 
-			power.LaunchBehaviour = pcw.NewLaunchBehaviour;
+			power.LaunchBehaviour = NewLaunchBehaviour;
 
-			power.SessionLockPowerOff = pcw.MonitorPowerOff;
-			power.SessionLockPowerMode = pcw.NewLockMode;
+			power.SessionLockPowerOff = MonitorPowerOff;
+			power.SessionLockPowerMode = NewLockMode;
 
-			power.SetRestoreMode(pcw.NewRestoreMethod, pcw.NewRestoreMode);
+			power.SetRestoreMode(NewRestoreMethod, NewRestoreMode);
 
 			power.SaveConfig();
 
@@ -528,26 +528,11 @@ namespace Taskmaster
 			loQueue.Value = Convert.ToDecimal(AutoAdjust.Queue.Low).Constrain(0, 100);
 		}
 
-		static PowerConfigWindow pcw = null;
-
 		public static void Reveal()
 		{
-			//await Task.Delay(0);
-			if (pcw != null)
-			{
-				try
-				{
-					pcw?.BringToFront();
-					return;
-				}
-				catch { } // don't care, if the above fails, the window doesn't exist and we can follow through after
-			}
-
 			try
 			{
-				// this is really horrifying mess
-				var power = Taskmaster.powermanager;
-				using (pcw = new PowerConfigWindow())
+				using (var pcw = new PowerConfigWindow())
 				{
 					var res = pcw.ShowDialog();
 					if (pcw.DialogResult == DialogResult.OK)
@@ -560,11 +545,10 @@ namespace Taskmaster
 					}
 				}
 			}
-			catch { } // finally might not be executed otherwise
-			finally
+			catch (OutOfMemoryException) { throw; }
+			catch (Exception ex)
 			{
-				pcw?.Dispose();
-				pcw = null;
+				Logging.Stacktrace(ex);
 			}
 		}
 	}

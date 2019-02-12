@@ -47,8 +47,8 @@ namespace Taskmaster.UI.Config
 				Parent = this,
 			};
 
-			layout.Controls.Add(new Label { Text = "EXPERIMENTAL", Font = boldfont, ForeColor = System.Drawing.Color.Maroon, Padding = CustomPadding, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true });
-			layout.Controls.Add(new Label { Text = "You've been warned", Font = boldfont, ForeColor=System.Drawing.Color.Maroon, Padding = CustomPadding, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true });
+			layout.Controls.Add(new Label { Text = "EXPERIMENTAL", Font = boldfont, ForeColor = System.Drawing.Color.Maroon, Padding = BigPadding, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true });
+			layout.Controls.Add(new Label { Text = "You've been warned", Font = boldfont, ForeColor=System.Drawing.Color.Maroon, Padding = BigPadding, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true });
 
 			var savebutton = new Button()
 			{
@@ -107,7 +107,7 @@ namespace Taskmaster.UI.Config
 
 			// FILL IN BOTTOM
 
-			layout.Controls.Add(new Label { Text = "Restart required", Font = boldfont, ForeColor = System.Drawing.Color.Maroon, Padding = CustomPadding, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true });
+			layout.Controls.Add(new Label { Text = "Restart required", Font = boldfont, ForeColor = System.Drawing.Color.Maroon, Padding = BigPadding, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true });
 			layout.Controls.Add(new Label()); // empty
 
 			savebutton.Click += (_, _ea) =>

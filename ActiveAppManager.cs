@@ -65,7 +65,7 @@ namespace Taskmaster
 
 			bool dirty = false, modified = false;
 			var perfsec = corecfg.Config["Performance"];
-			Hysterisis = TimeSpan.FromMilliseconds(perfsec.GetSetDefault("Foreground hysterisis", 1500, out modified).IntValue.Constrain(500, 30000));
+			Hysterisis = TimeSpan.FromMilliseconds(perfsec.GetSetDefault("Foreground hysterisis", 1500, out modified).IntValue.Constrain(200, 30000));
 			perfsec["Foreground hysterisis"].Comment = "In milliseconds, from 500 to 30000. Delay before we inspect foreground app, in case user rapidly swaps apps.";
 			dirty |= modified;
 
@@ -118,7 +118,7 @@ namespace Taskmaster
 			Taskmaster.DisposalChute.Push(this);
 		}
 
-		TimeSpan Hysterisis { get; set; } = TimeSpan.FromSeconds(0.5d);
+		public TimeSpan Hysterisis { get; set; } = TimeSpan.FromSeconds(0.5d);
 
 		readonly NativeMethods.WinEventDelegate ForegroundEventDelegate;
 		IntPtr windowseventhook = IntPtr.Zero;
@@ -133,7 +133,7 @@ namespace Taskmaster
 		/// </summary>
 		public bool SetupEventHook()
 		{
-			uint flags = NativeMethods.WINEVENT_OUTOFCONTEXT; // NativeMethods.WINEVENT_SKIPOWNPROCESS 
+			uint flags = NativeMethods.WINEVENT_OUTOFCONTEXT; // NativeMethods.WINEVENT_SKIPOWNPROCESS
 			windowseventhook = NativeMethods.SetWinEventHook(
 				NativeMethods.EVENT_SYSTEM_FOREGROUND, NativeMethods.EVENT_SYSTEM_FOREGROUND,
 				IntPtr.Zero, ForegroundEventDelegate, 0, 0, flags);
@@ -372,7 +372,7 @@ namespace Taskmaster
 
 			if (GetWindowText(handle, Buff, nChars) > 0)
 				return Buff.ToString();
-			
+
 			return null;
 		}
 		*/

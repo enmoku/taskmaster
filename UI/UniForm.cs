@@ -35,7 +35,9 @@ namespace Taskmaster.UI
 {
 	public partial class UniForm : Form
 	{
-		readonly protected Padding CustomPadding = new Padding(6);
+		readonly protected Padding BigPadding = new Padding(6);
+		readonly protected Padding SmallPadding = new Padding(3);
+		readonly protected Padding LeftSubPadding = new Padding(12, 3, 3, 3);
 
 		protected System.Drawing.Font boldfont = null;
 

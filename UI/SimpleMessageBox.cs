@@ -86,16 +86,16 @@ namespace Taskmaster
 			buttonlayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 33f));
 			buttonlayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 33f));
 
-			var okbutton = new Button() { Text = "OK", Margin = CustomPadding };
+			var okbutton = new Button() { Text = "OK", Margin = BigPadding };
 			okbutton.Click += (_, _ea) => { Result = ResultType.OK; Close();  };
 
-			var cancelbutton = new Button() { Text = "Cancel", Margin = CustomPadding };
+			var cancelbutton = new Button() { Text = "Cancel", Margin = BigPadding };
 			cancelbutton.Click += (_, _ea) => { Result = ResultType.Cancel; Close();  };
 
-			var retrybutton = new Button() { Text = "Retry", Margin = CustomPadding };
+			var retrybutton = new Button() { Text = "Retry", Margin = BigPadding };
 			retrybutton.Click += (_, _ea) => { Result = ResultType.Retry; Close(); };
 
-			var endbutton = new Button() { Text = "End", Margin = CustomPadding };
+			var endbutton = new Button() { Text = "End", Margin = BigPadding };
 			endbutton.Click += (_, _ea) => { Result = ResultType.End; Close(); };
 
 			switch (buttons)
@@ -124,7 +124,7 @@ namespace Taskmaster
 					break;
 			}
 
-			layout.Controls.Add(new Label() { Text = message, AutoSize = true, Dock = DockStyle.Fill, TextAlign = System.Drawing.ContentAlignment.TopLeft, Padding = CustomPadding });
+			layout.Controls.Add(new Label() { Text = message, AutoSize = true, Dock = DockStyle.Fill, TextAlign = System.Drawing.ContentAlignment.TopLeft, Padding = BigPadding });
 			layout.Controls.Add(buttonlayout);
 
 			StartPosition = FormStartPosition.CenterParent;

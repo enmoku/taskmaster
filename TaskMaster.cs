@@ -552,14 +552,16 @@ namespace Taskmaster
 			cfg["Core"].GetSetDefault("License", "Refused", out modified).StringValue = "Accepted";
 			dirtyconfig |= modified;
 
-			var oldsettings = optsec?.SettingCount ?? 0 + compsec?.SettingCount ?? 0 + perfsec?.SettingCount ?? 0;
-
 			// [Components]
 			ProcessMonitorEnabled = compsec.GetSetDefault(HumanReadable.System.Process.Section, true, out modified).BoolValue;
 			compsec[HumanReadable.System.Process.Section].Comment = "Monitor starting processes based on their name. Configure in Apps.ini";
 			dirtyconfig |= modified;
 
-			compsec.Remove("Process paths"); // DEPRECATED
+			if (compsec.Contains("Process paths"))
+			{
+				compsec.Remove("Process paths"); // DEPRECATED
+				dirtyconfig = true;
+			}
 
 			AudioManagerEnabled = compsec.GetSetDefault(HumanReadable.Hardware.Audio.Section, true, out modified).BoolValue;
 			compsec[HumanReadable.Hardware.Audio.Section].Comment = "Monitor audio sessions and set their volume as per user configuration.";
@@ -685,7 +687,7 @@ namespace Taskmaster
 			if (perfsec.Contains("WMI queries"))
 			{
 				perfsec.Remove("WMI queries");
-				dirtyconfig |= modified;
+				dirtyconfig = true;
 			}
 
 			//perfsec.GetSetDefault("Child processes", false, out modified); // unused here
@@ -710,10 +712,7 @@ namespace Taskmaster
 			var maintsec = cfg["Maintenance"];
 			maintsec.Remove("Cleanup interval"); // DEPRECATRED
 
-			var newsettings = optsec?.SettingCount ?? 0 + compsec?.SettingCount ?? 0 + perfsec?.SettingCount ?? 0;
-
-			if (dirtyconfig || (oldsettings != newsettings)) // really unreliable, but meh
-				corecfg.MarkDirty();
+			if (dirtyconfig) corecfg.MarkDirty();
 
 			MonitorCleanShutdown();
 

@@ -3,6 +3,8 @@ Comprehensive changes can be found in Git change history:
 	https://github.com/mkahvi/taskmaster/commits/master
 
 ## [0.13...]
+### 2019-02-12
+	Added: Advanced config dialog. Mostly for slowly adding missing confguration options in.
 ### 2019-02-11
 	Fixed: Per rule log adjusts was not saved if disabled.
 	Fixed: NullReferenceException & ArgumentException in relation to WinEventProc

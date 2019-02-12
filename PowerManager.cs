@@ -538,7 +538,7 @@ namespace Taskmaster
 						//ev.Pressure = 1; // required for actually changing mode
 					}
 				}
-				
+
 				var ReadyToAdjust = (Ready && !Forced && !SessionLocked);
 
 				var ReactionaryPlan = ReactionToMode(Reaction);
@@ -629,7 +629,7 @@ namespace Taskmaster
 			WarnedForceMode = false;
 		}
 
-		TimeSpan? PowerdownDelay { get; set; } = null;
+		public TimeSpan? PowerdownDelay { get; set; } = null;
 
 		void LoadConfig()
 		{
@@ -714,6 +714,12 @@ namespace Taskmaster
 
 				autopower.Remove(HumanReadable.Hardware.Power.AutoAdjust);
 				Log.Debug("<Power> Deprecated INI cleanup: Auto-adjust");
+			}
+
+			if (autopower.Contains("Pause unneeded CPU sampler")) // DEPRECATED
+			{
+				autopower.Remove("Pause unneeded CPU sampler");
+				dirtyconfig = true;
 			}
 
 			// BACKOFF
@@ -804,7 +810,7 @@ namespace Taskmaster
 			// --------------------------------------------------------------------------------------------------------
 
 			Log.Information("<Power> Watchlist powerdown delay: " +
-				(PowerdownDelay.HasValue ? $"{PowerdownDelay.Value.TotalSeconds:N0} s" : HumanReadable.Generic.Disabled)); 
+				(PowerdownDelay.HasValue ? $"{PowerdownDelay.Value.TotalSeconds:N0} s" : HumanReadable.Generic.Disabled));
 
 			// --------------------------------------------------------------------------------------------------------
 
@@ -1044,7 +1050,7 @@ namespace Taskmaster
 				Logging.Stacktrace(ex);
 			}
 		}
-		
+
 		void ResetPower(Cause cause = null, bool verbose = false)
 		{
 			PowerMode mode = RestoreMode;
@@ -1109,7 +1115,7 @@ namespace Taskmaster
 				m.WParam.ToInt32() == NativeMethods.PBT_POWERSETTINGCHANGE)
 			{
 				var ps = (NativeMethods.POWERBROADCAST_SETTING)Marshal.PtrToStructure(m.LParam, typeof(NativeMethods.POWERBROADCAST_SETTING));
-				
+
 				if (ps.PowerSetting == GUID_POWERSCHEME_PERSONALITY && ps.DataLength == Marshal.SizeOf(typeof(Guid)))
 				{
 					var pData = (IntPtr)(m.LParam.ToInt32() + Marshal.SizeOf(ps) - 4); // -4 is to align to the ps.Data

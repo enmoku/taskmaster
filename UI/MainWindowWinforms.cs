@@ -122,6 +122,17 @@ namespace Taskmaster
 			// TODO: Introduce configuration window
 		}
 
+		public void AdvancedConfigRequest(object _, EventArgs _ea)
+		{
+			if (!IsHandleCreated || disposed) return;
+
+			try
+			{
+				UI.Config.AdvancedConfig.Reveal();
+			}
+			catch (Exception ex) { Logging.Stacktrace(ex); }
+		}
+
 		public void PowerConfigRequest(object _, EventArgs _ea)
 		{
 			if (!IsHandleCreated || disposed) return;
@@ -612,7 +623,7 @@ namespace Taskmaster
 
 		public static Serilog.Core.LoggingLevelSwitch LogIncludeLevel;
 
-		int UIUpdateFrequency = 500;
+		public int UIUpdateFrequency { get; set; } = 500;
 		System.Windows.Forms.Timer UItimer;
 
 		void StartUIUpdates(object _, EventArgs _ea)
@@ -993,8 +1004,9 @@ namespace Taskmaster
 			menu_config_bitmaskstyle.DropDownItems.Add(menu_config_bitmaskstyle_decimal);
 			//menu_config_bitmaskstyle.DropDownItems.Add(menu_config_bitmaskstyle_both);
 
-			var menu_config_power_autoadjust = new ToolStripMenuItem("Power configuration");
-			menu_config_power_autoadjust.Click += PowerConfigRequest;
+			var menu_config_advanced = new ToolStripMenuItem("Advanced", null, AdvancedConfigRequest);
+
+			var menu_config_powermanagement = new ToolStripMenuItem("Power management", null, PowerConfigRequest);
 			//menu_config_power.DropDownItems.Add(menu_config_power_autoadjust); // sub-menu removed
 
 			//
@@ -1013,8 +1025,8 @@ namespace Taskmaster
 			menu_config.DropDownItems.Add(menu_config_logging);
 			menu_config.DropDownItems.Add(menu_config_bitmaskstyle);
 			menu_config.DropDownItems.Add(new ToolStripSeparator());
-			menu_config.DropDownItems.Add(menu_config_power_autoadjust);
-			menu_config.DropDownItems.Add(new ToolStripSeparator());
+			menu_config.DropDownItems.Add(menu_config_advanced);
+			menu_config.DropDownItems.Add(menu_config_powermanagement);
 			menu_config.DropDownItems.Add(menu_config_components);
 			menu_config.DropDownItems.Add(new ToolStripSeparator());
 			menu_config.DropDownItems.Add(menu_config_experiments);
@@ -1235,10 +1247,10 @@ namespace Taskmaster
 			menu_debug.DropDown.AutoClose = true;
 			menu_info.DropDown.AutoClose = true;
 
-			infoTab = new TabPage("Info") { Padding = CustomPadding };
+			infoTab = new TabPage("Info") { Padding = BigPadding };
 			tabLayout.Controls.Add(infoTab);
 
-			watchTab = new TabPage("Watchlist") { Padding = CustomPadding };
+			watchTab = new TabPage("Watchlist") { Padding = BigPadding };
 			tabLayout.Controls.Add(watchTab);
 
 			var infopanel = new FlowLayoutPanel
@@ -1550,7 +1562,7 @@ namespace Taskmaster
 				Text = "Exit wait list...",
 				TextAlign = System.Drawing.ContentAlignment.MiddleLeft,
 				Dock = DockStyle.Left,
-				Padding = CustomPadding
+				Padding = BigPadding
 			});
 
 			processlayout.Controls.Add(exitwaitlist);
@@ -1582,7 +1594,7 @@ namespace Taskmaster
 
 			ExitWaitlistMap = new ConcurrentDictionary<int, ListViewItem>();
 
-			ProcessDebugTab = new TabPage("Process Debug") { Padding = CustomPadding };
+			ProcessDebugTab = new TabPage("Process Debug") { Padding = BigPadding };
 
 			ProcessDebugTab.Controls.Add(processlayout);
 
@@ -1806,7 +1818,7 @@ namespace Taskmaster
 			micpanel.Controls.Add(miccntrl);
 			micpanel.Controls.Add(AudioInputs);
 
-			micTab = new TabPage("Microphone") { Padding = CustomPadding };
+			micTab = new TabPage("Microphone") { Padding = BigPadding };
 			tabLayout.Controls.Add(micTab);
 		}
 
@@ -1922,7 +1934,7 @@ namespace Taskmaster
 				TextAlign = System.Drawing.ContentAlignment.MiddleLeft,
 				AutoSize = true,
 				Dock = DockStyle.Left,
-				Padding = CustomPadding,
+				Padding = BigPadding,
 			});
 
 			powerbalancerlog = new UI.ListViewEx()
@@ -1966,7 +1978,7 @@ namespace Taskmaster
 
 			powerlayout.Controls.Add(powerbalancerstatus);
 
-			powerDebugTab = new TabPage("Power Debug") { Padding = CustomPadding };
+			powerDebugTab = new TabPage("Power Debug") { Padding = BigPadding };
 			powerDebugTab.Controls.Add(powerlayout);
 			tabLayout.Controls.Add(powerDebugTab);
 		}
