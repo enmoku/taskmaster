@@ -139,6 +139,9 @@
     <Compile Include="Events\VolumeChanged.cs" />
     <Compile Include="NativeMethods.Process.cs" />
     <Compile Include="Settings\HealthMonitor.cs" />
+    <Compile Include="UI\Config\AdvancedConfig.cs">
+      <SubType>Form</SubType>
+    </Compile>
     <Compile Include="UI\Extensions\NumericUpDownEx.cs">
       <SubType>Component</SubType>
     </Compile>
