@@ -160,7 +160,7 @@ namespace Taskmaster.UI.Config
 				int fghys = Convert.ToInt32(fgHysterisis.Value);
 				perfsec["Foreground hysterisis"].IntValue = fghys;
 				if (Taskmaster.ActiveAppMonitorEnabled)
-					Taskmaster.activeappmonitor.Hysterisis = TimeSpan.FromSeconds(fghys);
+					Taskmaster.activeappmonitor.Hysterisis = TimeSpan.FromMilliseconds(fghys);
 
 				corecfg.MarkDirty();
 
