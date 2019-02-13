@@ -62,8 +62,6 @@ namespace Taskmaster
 
 			Log.Information("<Audio> Default device: " + mmdev_media.DeviceFriendlyName);
 
-			mmdev_media.AudioSessionManager.OnSessionCreated += OnSessionCreated;
-
 			/*
 			var cfg = Taskmaster.Config.Load(configfile);
 
@@ -80,6 +78,8 @@ namespace Taskmaster
 		public void Hook(ProcessManager procman)
 		{
 			processmanager = procman;
+
+			mmdev_media.AudioSessionManager.OnSessionCreated += OnSessionCreated;
 		}
 
 		private async void OnSessionCreated(object _, NAudio.CoreAudioApi.Interfaces.IAudioSessionControl ea)
