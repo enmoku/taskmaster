@@ -47,14 +47,16 @@ namespace Taskmaster
 		public bool IsEmpty => Level == 0;
 		public bool IsEmptyOrPeaked => (IsEmpty || IsPeaked);
 
-		// pumps the internal value, returns if 
+		// pumps the internal value, returns if
 		/// <summary>
 		/// Pumps the meter up.
 		/// </summary>
 		/// <returns>True if peaked, false if not</returns>
 		public bool Pump(long amount=1)
 		{
-			if (Level < Peak)
+			bool pumped = ((amount > 0) && (Level < Peak));
+
+			if (pumped)
 			{
 				Level += amount;
 
@@ -63,21 +65,40 @@ namespace Taskmaster
 					Level = Peak;
 					Peaked = true;
 				}
-
-				return true;
 			}
 
-			return false;
+			return pumped;
 		}
 
-		public void Leak(long amount=1)
+		// Reduce level only if we've peaked.
+		public bool Drain(long amount=1)
 		{
-			Level -= amount;
-			if (Level <= 0)
+			bool drained = false;
+
+			if (Peaked)
 			{
-				Level = 0;
-				Peaked = false;
+				drained = Leak(amount);
 			}
+
+			return drained;
+		}
+
+		// Reduce level by specified amount.
+		public bool Leak(long amount=1)
+		{
+			bool leaked = Level > 0;
+
+			if (leaked)
+			{
+				Level -= amount;
+				if (Level <= 0)
+				{
+					Level = 0;
+					Peaked = false;
+				}
+			}
+
+			return leaked;
 		}
 
 		public void Empty()
