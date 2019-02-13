@@ -450,11 +450,11 @@ namespace Taskmaster
 
 		void WatchlistColor()
 		{
-			Debug.WriteLine("COLORING LINES");
-			int i = 0;
+			//Debug.WriteLine("COLORING LINES");
+			//int i = 0;
 			foreach (var item in WatchlistMap)
 			{
-				Debug.WriteLine($"{i++} --- {item.Value.Index} : {item.Value.Index % 2 == 0} --- {item.Key.FriendlyName}");
+				//Debug.WriteLine($"{i++} --- {item.Value.Index} : {item.Value.Index % 2 == 0} --- {item.Key.FriendlyName}");
 				WatchlistItemColor(item.Value, item.Key);
 			}
 		}

@@ -1552,7 +1552,7 @@ namespace Taskmaster
 
 					try
 					{
-						Debug.WriteLine($"Trying to modify: {info.Name} (#{info.Id})");
+						//Debug.WriteLine($"Trying to modify: {info.Name} (#{info.Id})");
 
 						info.Controller.Modify(info);
 
@@ -1585,7 +1585,7 @@ namespace Taskmaster
 				else
 				{
 					info.State = ProcessHandlingState.Abandoned;
-					Debug.WriteLine($"ProcessTriage no matching rule for: {info.Name} (#{info.Id})");
+					//Debug.WriteLine($"ProcessTriage no matching rule for: {info.Name} (#{info.Id})");
 				}
 
 				/*
