@@ -177,7 +177,7 @@ namespace Taskmaster
 		}
 
 		LinearMeter PacketWarning = new LinearMeter(15); // UNUSED
-		LinearMeter ErrorReports = new LinearMeter(5);
+		LinearMeter ErrorReports = new LinearMeter(5, 4);
 
 		List<NetDevice> CurrentInterfaceList = new List<NetDevice>(2);
 
@@ -232,7 +232,6 @@ namespace Taskmaster
 						&& ErrorReports.Pump(errorsInSample)) // error reporting not full
 					{
 						reportErrors = true;
-						errorsSinceLastReport = 0;
 					}
 					else
 					{
@@ -242,7 +241,10 @@ namespace Taskmaster
 					}
 
 					if (reportErrors)
+					{
 						Log.Warning($"<Network> {ifaces[index].Name} is suffering from traffic errors! (+{errorsSinceLastReport} errors, +{errorsInSample} in last sample)");
+						errorsSinceLastReport = 0;
+					}
 
 					onSampling?.Invoke(this, new NetDeviceTrafficEventArgs
 					{

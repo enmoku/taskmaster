@@ -41,6 +41,11 @@ namespace Taskmaster
 		{
 			Peak = peak;
 			Level = initial;
+			if (Level >= Peak)
+			{
+				Level = Peak;
+				Peaked = true;
+			}
 		}
 
 		public bool IsPeaked => Level == Peak;
@@ -70,7 +75,9 @@ namespace Taskmaster
 			return pumped;
 		}
 
-		// Reduce level only if we've peaked.
+		/// <summary>
+		/// Reduce level only if we've peaked.
+		/// </summary>
 		public bool Drain(long amount=1)
 		{
 			bool drained = false;
@@ -83,7 +90,11 @@ namespace Taskmaster
 			return drained;
 		}
 
-		// Reduce level by specified amount.
+		/// <summary>
+		/// Reduce level by specified amount.
+		/// </summary>
+		/// <param name="amount"></param>
+		/// <returns></returns>
 		public bool Leak(long amount=1)
 		{
 			bool leaked = Level > 0;
