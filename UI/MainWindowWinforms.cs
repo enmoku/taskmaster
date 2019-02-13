@@ -52,7 +52,7 @@ namespace Taskmaster
 			tooltip.InitialDelay = 2000;
 			tooltip.ShowAlways = true;
 
-			WatchlistSearchTimer = new Timer() { Interval = 250 };
+			WatchlistSearchTimer.Interval = 250;
 			WatchlistSearchTimer.Tick += WatchlistSearchTimer_Tick;
 
 			// TODO: Detect mic device changes
@@ -373,7 +373,7 @@ namespace Taskmaster
 
 				foreach (var li in WatchlistMap)
 				{
-					li.Value.SubItems[0].Text = (li.Key.ActualOrder+1).ToString();
+					li.Value.SubItems[0].Text = (li.Key.ActualOrder + 1).ToString();
 					WatchlistItemColor(li.Value, li.Key);
 				}
 
@@ -414,7 +414,7 @@ namespace Taskmaster
 		/// <remarks>No locks</remarks>
 		void WatchlistItemColor(ListViewItem li, ProcessController prc)
 		{
-			var alter = (li.Index+1) % 2 == 0; // every even line
+			var alter = (li.Index + 1) % 2 == 0; // every even line
 
 			try
 			{
@@ -454,7 +454,7 @@ namespace Taskmaster
 			int i = 0;
 			foreach (var item in WatchlistMap)
 			{
-				Debug.WriteLine($"{i++} --- {item.Value.Index} : {item.Value.Index%2==0} --- {item.Key.FriendlyName}");
+				Debug.WriteLine($"{i++} --- {item.Value.Index} : {item.Value.Index % 2 == 0} --- {item.Key.FriendlyName}");
 				WatchlistItemColor(item.Value, item.Key);
 			}
 		}
@@ -623,18 +623,29 @@ namespace Taskmaster
 
 		public static Serilog.Core.LoggingLevelSwitch LogIncludeLevel;
 
-		public int UIUpdateFrequency { get; set; } = 500;
-		System.Windows.Forms.Timer UItimer;
+		int _uiupdatefrequency = 500;
+		public int UIUpdateFrequency
+		{
+			get => _uiupdatefrequency;
+			set
+			{
+				int freq = value.Constrain(100, 5000);
+				_uiupdatefrequency = freq;
+				UItimer.Interval = freq;
+			}
+		}
+
+		readonly System.Windows.Forms.Timer UItimer = new System.Windows.Forms.Timer();
 
 		void StartUIUpdates(object _, EventArgs _ea)
 		{
 			if (!IsHandleCreated) StopUIUpdates(null, null);
-			else if (!UItimer?.Enabled ?? false) UItimer?.Start();
+			else if (!UItimer.Enabled) UItimer.Start();
 		}
 
 		void StopUIUpdates(object _, EventArgs _ea)
 		{
-			if (UItimer?.Enabled ?? false) UItimer?.Stop();
+			if (UItimer.Enabled) UItimer.Stop();
 		}
 
 		void Cleanup(object _, EventArgs _ea)
@@ -1289,11 +1300,11 @@ namespace Taskmaster
 				}
 			};
 
-			UItimer = new System.Windows.Forms.Timer { Interval = UIUpdateFrequency };
+			UItimer.Interval = UIUpdateFrequency;
 			if (Taskmaster.NetworkMonitorEnabled)
 				UItimer.Tick += UpdateNetwork;
 
-			UItimer.Tick += UpdateHWStats;
+			UItimer.Tick += UpdateMemoryStats;
 			//UItimer.Tick += Cleanup;
 
 			if (Taskmaster.PathCacheLimit > 0)
@@ -2064,10 +2075,10 @@ namespace Taskmaster
 				Dock = DockStyle.Fill,
 			};
 
-			nvmtransfers = new Label { Text = HumanReadable.Generic.Uninitialized, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left };
-			nvmsplitio = new Label { Text = HumanReadable.Generic.Uninitialized, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left };
-			nvmdelay = new Label { Text = HumanReadable.Generic.Uninitialized, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left };
-			nvmqueued = new Label { Text = HumanReadable.Generic.Uninitialized, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left };
+			nvmtransfers = new Label { Text = HumanReadable.Generic.Uninitialized, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Top };
+			nvmsplitio = new Label { Text = HumanReadable.Generic.Uninitialized, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Top };
+			nvmdelay = new Label { Text = HumanReadable.Generic.Uninitialized, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Top };
+			nvmqueued = new Label { Text = HumanReadable.Generic.Uninitialized, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Top };
 			//hardfaults = new Label { Text = HumanReadable.Generic.Uninitialized, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left };
 
 			nvmpanel.Controls.Add(new Label { Text = "Transfers", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left });
@@ -2226,7 +2237,7 @@ namespace Taskmaster
 		}
 
 		Stopwatch WatchlistSearchInputTimer = new Stopwatch();
-		Timer WatchlistSearchTimer = null;
+		readonly System.Windows.Forms.Timer WatchlistSearchTimer = new System.Windows.Forms.Timer();
 		string SearchString = string.Empty;
 		private void WatchlistRulesKeyboardSearch(object _, KeyPressEventArgs ea)
 		{
@@ -2555,7 +2566,7 @@ namespace Taskmaster
 		}
 
 		// Called by UI update timer, should be UI thread by default
-		async void UpdateHWStats(object _, EventArgs _ea)
+		async void UpdateMemoryStats(object _, EventArgs _ea)
 		{
 			if (!IsHandleCreated || disposed) return;
 			if (!ramload.Visible) return;
@@ -3465,7 +3476,8 @@ namespace Taskmaster
 				}
 				catch { }
 
-				UItimer?.Dispose();
+				WatchlistSearchTimer.Dispose();
+				UItimer.Dispose();
 				exitwaitlist?.Dispose();
 				ExitWaitlistMap?.Clear();
 			}
