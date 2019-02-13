@@ -176,13 +176,15 @@ namespace Taskmaster
 			return null;
 		}
 
-		LinearMeter PacketWarning = new LinearMeter(15);
+		LinearMeter PacketWarning = new LinearMeter(15); // UNUSED
 		LinearMeter ErrorReports = new LinearMeter(5);
 
 		List<NetDevice> CurrentInterfaceList = new List<NetDevice>(2);
 
 		int TrafficAnalysisLimiter = 0;
 		NetTrafficData outgoing, incoming, oldoutgoing, oldincoming;
+
+		long errorsSinceLastReport = 0;
 
 		async void AnalyzeTrafficBehaviour(object _, EventArgs _ea)
 		{
@@ -192,7 +194,7 @@ namespace Taskmaster
 
 			try
 			{
-				PacketWarning.Leak();
+				//PacketWarning.Drain();
 
 				var oldifaces = CurrentInterfaceList;
 				UpdateInterfaces(); // force refresh
@@ -216,19 +218,31 @@ namespace Taskmaster
 					long totalerrors = outgoing.Errors + incoming.Errors;
 					long totaldiscards = outgoing.Errors + incoming.Errors;
 					long totalunicast = outgoing.Errors + incoming.Errors;
-					long errors = (incoming.Errors - oldincoming.Errors) + (outgoing.Errors - oldoutgoing.Errors);
+					long errorsInSample = (incoming.Errors - oldincoming.Errors) + (outgoing.Errors - oldoutgoing.Errors);
 					long discards = (incoming.Discards - oldincoming.Discards) + (outgoing.Discards - oldoutgoing.Discards);
 					long packets = (incoming.Unicast - oldincoming.Unicast) + (outgoing.Unicast - oldoutgoing.Unicast);
 
-					if (errors > 0 // only if errors
-						&& Taskmaster.ShowNetworkErrors // user wants to see this
+					errorsSinceLastReport += errorsInSample;
+
+					bool reportErrors = false;
+
+					if (Taskmaster.ShowNetworkErrors // user wants to see this
+						&& errorsInSample > 0 // only if errors
 						&& !ErrorReports.Peaked // we're not waiting for report counter to go down
-						&& ErrorReports.Pump()) // error reporting not full
+						&& ErrorReports.Pump(errorsInSample)) // error reporting not full
 					{
-						Log.Warning("<Network> " + ifaces[index].Name + " is suffering from traffic errors! (+" + errors + " since last sample)");
+						reportErrors = true;
+						errorsSinceLastReport = 0;
 					}
 					else
-						ErrorReports.Leak();
+					{
+						// no error reporting until the meter goes down, giving ErrorReports.Peak worth of samples to ignore for error reporting
+						ErrorReports.Drain();
+						reportErrors = (ErrorReports.IsEmpty && errorsSinceLastReport > 0);
+					}
+
+					if (reportErrors)
+						Log.Warning($"<Network> {ifaces[index].Name} is suffering from traffic errors! (+{errorsSinceLastReport} errors, +{errorsInSample} in last sample)");
 
 					onSampling?.Invoke(this, new NetDeviceTrafficEventArgs
 					{
@@ -236,7 +250,7 @@ namespace Taskmaster
 						new NetDeviceTraffic
 						{
 							Index = index,
-							Delta = new NetTrafficData { Unicast = packets, Errors = errors, Discards = discards },
+							Delta = new NetTrafficData { Unicast = packets, Errors = errorsInSample, Discards = discards },
 							Total = new NetTrafficData { Unicast = totalunicast, Errors = totalerrors, Discards = totaldiscards, Bytes = incoming.Bytes + outgoing.Bytes },
 						}
 					});
