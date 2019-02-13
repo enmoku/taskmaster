@@ -1552,7 +1552,7 @@ namespace Taskmaster
 
 					try
 					{
-						//Debug.WriteLine($"Trying to modify: {info.Name} (#{info.Id})");
+						if (Taskmaster.Trace) Debug.WriteLine($"Trying to modify: {info.Name} (#{info.Id})");
 
 						info.Controller.Modify(info);
 
@@ -1585,7 +1585,7 @@ namespace Taskmaster
 				else
 				{
 					info.State = ProcessHandlingState.Abandoned;
-					//Debug.WriteLine($"ProcessTriage no matching rule for: {info.Name} (#{info.Id})");
+					if (Taskmaster.Trace) Debug.WriteLine($"ProcessTriage no matching rule for: {info.Name} (#{info.Id})");
 				}
 
 				/*
@@ -1860,7 +1860,7 @@ namespace Taskmaster
 					return;
 				}
 
-				Debug.WriteLine($"NewInstanceTriage: {name} (#{pid})");
+				if (Taskmaster.Trace) Debug.WriteLine($"NewInstanceTriage: {name} (#{pid})");
 
 				if (IgnoreProcessName(name))
 				{

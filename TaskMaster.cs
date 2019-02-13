@@ -756,7 +756,6 @@ namespace Taskmaster
 
 			DebugPower = dbgsec.TryGet(HumanReadable.Hardware.Power.Section)?.BoolValue ?? false;
 			DebugAutoPower = dbgsec.TryGet(HumanReadable.Hardware.Power.AutoAdjust)?.BoolValue ?? false;
-			//DebugPowerRules = dbgsec.TryGet("Paths")?.BoolValue ?? false;
 			DebugMonitor = dbgsec.TryGet(HumanReadable.Hardware.Monitor.Section)?.BoolValue ?? false;
 
 			DebugSession = dbgsec.TryGet("Session")?.BoolValue ?? false;

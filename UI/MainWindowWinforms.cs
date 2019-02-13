@@ -450,11 +450,11 @@ namespace Taskmaster
 
 		void WatchlistColor()
 		{
-			//Debug.WriteLine("COLORING LINES");
-			//int i = 0;
+			if (Taskmaster.Trace) Debug.WriteLine("COLORING LINES");
+			int i = 0;
 			foreach (var item in WatchlistMap)
 			{
-				//Debug.WriteLine($"{i++} --- {item.Value.Index} : {item.Value.Index % 2 == 0} --- {item.Key.FriendlyName}");
+				if (Taskmaster.Trace) Debug.WriteLine($"{i++} --- {item.Value.Index} : {item.Value.Index % 2 == 0} --- {item.Key.FriendlyName}");
 				WatchlistItemColor(item.Value, item.Key);
 			}
 		}
@@ -2252,10 +2252,10 @@ namespace Taskmaster
 
 			WatchlistSearchInputTimer.Restart();
 
-			//Debug.WriteLine($"INPUT: {((int)ea.KeyChar):X}");
+			if (Taskmaster.Trace) Debug.WriteLine($"INPUT: {((int)ea.KeyChar):X}");
 			if (char.IsControl(ea.KeyChar))
 			{
-				//Debug.WriteLine("CONTROL CHARACTER!");
+				if (Taskmaster.Trace) Debug.WriteLine("CONTROL CHARACTER!");
 				if (ea.KeyChar == (char)Keys.Back && SearchString.Length > 0) // BACKSPACE
 					SearchString = SearchString.Remove(SearchString.Length - 1); // ugly and probably slow
 				else if (ea.KeyChar == 0x7F && SearchString.Length > 0) // 0x7F is ctrl-backspace (delete)
