@@ -3,6 +3,8 @@ Comprehensive changes can be found in Git change history:
 	https://github.com/mkahvi/taskmaster/commits/master
 
 ## [0.13...]
+### 2019-02-14
+	Changed: Session end behaivour extended. TM should now properly block session end briefly, with a message, to do clean shutdown.
 ### 2019-02-13
 	Fixed: ArgumentOutOfRangeException caused by saving foreground hysterisis.
 	Changed: Improved network error reporting.

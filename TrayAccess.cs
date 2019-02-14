@@ -27,6 +27,7 @@
 using System;
 using System.Collections.Concurrent;
 using System.Diagnostics;
+using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using MKAh;
@@ -40,7 +41,7 @@ namespace Taskmaster
 	}
 
 	/// <summary>
-	/// 
+	///
 	/// </summary>
 	// Form is used for catching some system events
 	sealed public class TrayAccess : UI.UniForm //, IDisposable
@@ -72,7 +73,7 @@ namespace Taskmaster
 			};
 			Tray.BalloonTipText = Tray.Text;
 			Tray.Disposed += (_, _ea) => Tray = null;
-			
+
 			if (Taskmaster.Trace) Log.Verbose("Generating tray icon.");
 
 			ms = new ContextMenuStrip();
@@ -181,9 +182,12 @@ namespace Taskmaster
 			TrayMenuShown?.Invoke(null, new TrayShownEventArgs() { Visible = ms.Visible });
 		}
 
-		public void SessionEndingEvent(object _, Microsoft.Win32.SessionEndingEventArgs _ea)
+		public void SessionEndingEvent(object _, Microsoft.Win32.SessionEndingEventArgs ea)
 		{
+			ea.Cancel = true;
 			// is this safe?
+			Log.Information("<OS> Session end signal received.");
+
 			Taskmaster.ExitCleanup();
 			Taskmaster.UnifiedExit();
 		}
@@ -226,6 +230,9 @@ namespace Taskmaster
 				NativeMethods.UnregisterHotKey(Handle, 1);
 			}
 		}
+
+		const int WM_QUERYENDSESSION = 0x0011;
+		const int WM_ENDSESSION = 0x0016;
 
 		protected override void WndProc(ref Message m)
 		{
@@ -272,6 +279,28 @@ namespace Taskmaster
 				GC.Collect(GC.MaxGeneration, GCCollectionMode.Forced, false, true);
 				m.Result = IntPtr.Zero;
 			}
+			else if (m.Msg == WM_QUERYENDSESSION || m.Msg == WM_ENDSESSION)
+			{
+				ShutdownBlockReasonCreate(Handle, "Cleaning up");
+				Task.Run(() => {
+					try
+					{
+						Taskmaster.ExitCleanup();
+					}
+					finally
+					{
+						try
+						{
+							ShutdownBlockReasonDestroy(Handle);
+						}
+						finally
+						{
+							Taskmaster.UnifiedExit();
+						}
+					}
+				});
+				return; // block
+			}
 
 			base.WndProc(ref m); // is this necessary?
 		}
@@ -279,7 +308,7 @@ namespace Taskmaster
 		public void Enable() => ms.Enabled = true;
 
 		public event EventHandler RescanRequest;
-		 
+
 		ProcessManager processmanager = null;
 		public void Hook(ProcessManager pman)
 		{
@@ -813,5 +842,13 @@ namespace Taskmaster
 			Tray?.Dispose();
 			Tray = null;
 		}
+
+		// Vista or later required
+		[DllImport("user32.dll")]
+		internal extern static bool ShutdownBlockReasonCreate(IntPtr hWnd, [MarshalAs(UnmanagedType.LPWStr)] string pwszReason);
+
+		// Vista or later required
+		[DllImport("user32.dll")]
+		internal extern static bool ShutdownBlockReasonDestroy(IntPtr hWnd);
 	}
 }
