@@ -90,8 +90,7 @@ namespace Taskmaster
 
 		public PowerManager()
 		{
-			OriginalMode = getPowerMode();
-			ExpectedMode = OriginalMode;
+			ExpectedMode = OriginalMode = getPowerMode();
 
 			AutoAdjust = PowerAutoadjustPresets.Default();
 
