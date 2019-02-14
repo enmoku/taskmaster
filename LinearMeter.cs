@@ -4,7 +4,7 @@
 // Author:
 //       M.A. (https://github.com/mkahvi)
 //
-// Copyright (c) 2016-2018 M.A.
+// Copyright (c) 2016-2019 M.A.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -29,7 +29,21 @@ namespace Taskmaster
 	// badly named class
 	public class LinearMeter
 	{
-		public long Peak { get; set; } = long.MaxValue;
+		long _peak = long.MaxValue;
+		public long Peak
+		{
+			get => _peak;
+			set
+			{
+				_peak = value;
+				if (Level >= Peak)
+				{
+					Level = Peak;
+					Peaked = true;
+				}
+			}
+		}
+
 		public long Level { get; set; } = 0;
 
 		/// <summary>
@@ -37,15 +51,26 @@ namespace Taskmaster
 		/// </summary>
 		public bool Peaked { get; private set; } = false;
 
-		public LinearMeter(long peak, long initial=0)
+		public LinearMeter(long peak, long initial = 0)
 		{
 			Peak = peak;
 			Level = initial;
-			if (Level >= Peak)
+			Brim();
+		}
+
+		internal bool Brim()
+		{
+			bool brim = Level >= Peak;
+			if (brim)
 			{
 				Level = Peak;
 				Peaked = true;
 			}
+			else if (Level == 0)
+			{
+				Peaked = false;
+			}
+			return brim;
 		}
 
 		public bool IsPeaked => Level == Peak;
@@ -57,19 +82,14 @@ namespace Taskmaster
 		/// Pumps the meter up.
 		/// </summary>
 		/// <returns>True if peaked, false if not</returns>
-		public bool Pump(long amount=1)
+		public bool Pump(long amount = 1)
 		{
 			bool pumped = ((amount > 0) && (Level < Peak));
 
 			if (pumped)
 			{
 				Level += amount;
-
-				if (Level >= Peak)
-				{
-					Level = Peak;
-					Peaked = true;
-				}
+				Brim();
 			}
 
 			return pumped;
@@ -78,7 +98,7 @@ namespace Taskmaster
 		/// <summary>
 		/// Reduce level only if we've peaked.
 		/// </summary>
-		public bool Drain(long amount=1)
+		public bool Drain(long amount = 1)
 		{
 			bool drained = false;
 
@@ -95,7 +115,7 @@ namespace Taskmaster
 		/// </summary>
 		/// <param name="amount"></param>
 		/// <returns></returns>
-		public bool Leak(long amount=1)
+		public bool Leak(long amount = 1)
 		{
 			bool leaked = Level > 0;
 

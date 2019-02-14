@@ -185,6 +185,7 @@ namespace Taskmaster
 		NetTrafficData outgoing, incoming, oldoutgoing, oldincoming;
 
 		long errorsSinceLastReport = 0;
+		DateTimeOffset lastErrorReport = DateTimeOffset.MinValue;
 
 		async void AnalyzeTrafficBehaviour(object _, EventArgs _ea)
 		{
@@ -226,6 +227,12 @@ namespace Taskmaster
 
 					bool reportErrors = false;
 
+					// TODO: Better error limiter.
+					// Goals:
+					// - Show initial error.
+					// - Show errors in increasing rarity
+					// - Reset the increased rarity once it becomes too rare
+
 					if (Taskmaster.ShowNetworkErrors // user wants to see this
 						&& errorsInSample > 0 // only if errors
 						&& !ErrorReports.Peaked // we're not waiting for report counter to go down
@@ -240,10 +247,30 @@ namespace Taskmaster
 						reportErrors = (ErrorReports.IsEmpty && errorsSinceLastReport > 0);
 					}
 
+					var now = DateTimeOffset.UtcNow;
+					TimeSpan period = lastErrorReport.TimeTo(now);
+					double pmins = period.TotalHours < 24 ? period.TotalMinutes : double.NaN; // NaN-ify too large periods
+
 					if (reportErrors)
 					{
-						Log.Warning($"<Network> {ifaces[index].Name} is suffering from traffic errors! (+{errorsSinceLastReport} errors, +{errorsInSample} in last sample)");
+						Log.Warning($"<Network> {ifaces[index].Name} is suffering from traffic errors! (+{errorsSinceLastReport}, {errorsInSample} in last sample; period: {pmins:N1} minutes)");
 						errorsSinceLastReport = 0;
+						lastErrorReport = now;
+
+						// TODO: Slow down reports if they're excessively frequent
+
+						if (pmins < 1) ErrorReports.Peak += 5; // this slows down some reporting, but not in a good way
+					}
+					else
+					{
+						if (period.TotalMinutes > 5 && errorsSinceLastReport > 0) // report anyway
+						{
+							Log.Warning($"<Network> {ifaces[index].Name} had some traffic errors (+{errorsSinceLastReport}; period: {pmins:N1} minutes)");
+							errorsSinceLastReport = 0;
+							lastErrorReport = now;
+
+							ErrorReports.Peak = 5; // reset
+						}
 					}
 
 					onSampling?.Invoke(this, new NetDeviceTrafficEventArgs
