@@ -143,27 +143,39 @@ namespace Taskmaster
 
 			var mediasec = corecfg.Config["Media"];
 
-			bool dirty = !mediasec.Contains(mcontrol) || !mediasec.Contains(mvol);
-			Control = mediasec.GetSetDefault(mcontrol, false).BoolValue;
-			var defaultvol = mediasec.GetSetDefault(mvol, 100d).DoubleValue;
+			bool dirty = false, modified =false;
+			Control = mediasec.GetSetDefault(mcontrol, false, out modified).BoolValue;
+			dirty |= modified;
+			var defaultvol = mediasec.GetSetDefault(mvol, 100d, out modified).DoubleValue;
+			dirty |= modified;
 
 			mediasec.Remove("Microphone volume"); // DEPRECATED
 
 			var fname = "Microphone.Devices.ini";
 			var vname = "Volume";
+			var cname = "Control";
+
+			var guid = AudioManager.AudioDeviceIdToGuid(m_dev.ID);
 
 			var devcfg = Taskmaster.Config.Load(fname);
-			var guid = AudioManager.AudioDeviceIdToGuid(m_dev.ID);
+			var devsec = devcfg.Config[guid];
+
 			var devname = m_dev.DeviceFriendlyName;
-			dirty |= !(devcfg.Config[guid].Contains(vname));
-			var devvol = devcfg.Config[guid].GetSetDefault(vname, defaultvol).DoubleValue;
-			devcfg.Config[guid]["Name"].StringValue = devname;
-			if (dirty)
+			dirty |= !(devsec.Contains(vname));
+			var devvol = devsec.GetSetDefault(vname, defaultvol, out modified).DoubleValue;
+			dirty |= modified;
+			bool devcontrol = devsec.GetSetDefault(cname, false, out modified).BoolValue;
+			dirty |= modified;
+			if (!devsec.Contains("Name"))
 			{
-				devcfg.MarkDirty();
-				devcfg.Save(force: true);
+				devsec["Name"].StringValue = devname;
+				dirty = true;
 			}
-			
+
+			if (dirty) devcfg.MarkDirty();
+
+			if (Control && !devcontrol) Control = false; // disable general control if device control is disabled
+
 			Target = devvol.Constrain(0, 100);
 			Log.Information($"<Microphone> Default device: {m_dev.FriendlyName} (volume: {Target:N1} %) – Control: {(Control?"Enabled":"Disabled")}");
 
