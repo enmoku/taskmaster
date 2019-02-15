@@ -252,6 +252,24 @@ namespace Taskmaster
 			FormClosing += (_, _ea) => micmon.VolumeChanged -= VolumeChangeDetected;
 		}
 
+		void UserMicVol(object _, EventArgs _ea)
+		{
+			// TODO: Handle volume changes. Not really needed. Give presets?
+			// micMonitor.setVolume(micVol.Value);
+		}
+
+		void VolumeChangeDetected(object _, VolumeChangedEventArgs ea)
+		{
+			if (!IsHandleCreated || disposed) return;
+
+			BeginInvoke(new Action(() =>
+			{
+				AudioInputVolume.Value = Convert.ToInt32(ea.New); // this could throw ArgumentOutOfRangeException, but we trust the source
+				corCountLabel.Text = ea.Corrections.ToString();
+			}));
+		}
+		#endregion // Microphone control code
+
 		public async void ProcessTouchEvent(object _, ProcessModificationEventArgs ea)
 		{
 			if (!IsHandleCreated || disposed) return;
@@ -563,25 +581,6 @@ namespace Taskmaster
 		ListView exitwaitlist;
 		ListView processinglist;
 		ConcurrentDictionary<int, ListViewItem> ExitWaitlistMap = null;
-
-		void UserMicVol(object _, EventArgs _ea)
-		{
-			// TODO: Handle volume changes. Not really needed. Give presets?
-			// micMonitor.setVolume(micVol.Value);
-		}
-
-		void VolumeChangeDetected(object _, VolumeChangedEventArgs ea)
-		{
-			if (!IsHandleCreated || disposed) return;
-
-			BeginInvoke(new Action(() =>
-			{
-				AudioInputVolume.Value = Convert.ToInt32(ea.New); // this could throw ArgumentOutOfRangeException, but we trust the source
-				corCountLabel.Text = ea.Corrections.ToString();
-			}));
-		}
-
-		#endregion // Microphone control code
 
 		#region Foreground Monitor
 		Label activeLabel;
@@ -1830,6 +1829,9 @@ namespace Taskmaster
 			micpanel.Controls.Add(AudioInputs);
 
 			micTab = new TabPage("Microphone") { Padding = BigPadding };
+
+			micTab.Controls.Add(micpanel);
+
 			tabLayout.Controls.Add(micTab);
 		}
 
