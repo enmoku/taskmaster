@@ -193,6 +193,14 @@ namespace Taskmaster
 
 		public void Dispose() => Dispose(true);
 		#endregion
+
+		/// <summary>
+		/// Takes Device ID in form of {0.0.0.00000000}.{aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee} and retuurns GUID part only.
+		/// </summary>
+		public static string AudioDeviceIdToGuid(string deviceId)
+		{
+			return (deviceId.Split('}'))[1].Substring(2);
+		}
 	}
 
 	class AudioSession : NAudio.CoreAudioApi.Interfaces.IAudioSessionEventsHandler

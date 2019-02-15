@@ -141,7 +141,7 @@ namespace Taskmaster
 			var vname = "Volume";
 
 			var devcfg = Taskmaster.Config.Load(fname);
-			var guid = (m_dev.ID.Split('}'))[1].Substring(2);
+			var guid = AudioManager.AudioDeviceIdToGuid(m_dev.ID);
 			var devname = m_dev.DeviceFriendlyName;
 			var unset = !(devcfg.Config[guid].Contains(vname));
 			var devvol = devcfg.Config[guid].GetSetDefault(vname, defaultvol).DoubleValue;
@@ -179,7 +179,7 @@ namespace Taskmaster
 				var devs = mm_enum.EnumerateAudioEndPoints(NAudio.CoreAudioApi.DataFlow.Capture, NAudio.CoreAudioApi.DeviceState.Active);
 				foreach (var dev in devs)
 				{
-					var mdev = new MicDevice { Name = dev.DeviceFriendlyName, GUID = dev.ID.Split('}')[1].Substring(2) };
+					var mdev = new MicDevice { Name = dev.DeviceFriendlyName, GUID = AudioManager.AudioDeviceIdToGuid(dev.ID) };
 					devices.Add(mdev);
 					if (Taskmaster.Trace) Log.Verbose("<Microphone> Device: " + mdev.Name + " [GUID: " + mdev.GUID + "]");
 				}
