@@ -130,7 +130,11 @@ namespace Taskmaster
 		// TODO: Need an ID mapping
 		public ProcessController GetControllerByName(string friendlyname)
 		{
-			return (from prc in Watchlist.Keys where prc.FriendlyName.Equals(friendlyname, StringComparison.InvariantCultureIgnoreCase) select prc).FirstOrDefault();
+			return (from prc
+					in Watchlist.Keys
+					where prc.FriendlyName.Equals(friendlyname, StringComparison.InvariantCultureIgnoreCase)
+					select prc)
+					.FirstOrDefault();
 		}
 
 		/// <summary>
@@ -891,7 +895,7 @@ namespace Taskmaster
 					}
 				}
 
-				// CLEANUP DEPRECATED
+				// DEPRECATED
 				if (deprecatedFgMode.HasValue || deprecatedBgPower.HasValue)
 				{
 					section.Remove("Foreground only");
@@ -2052,7 +2056,7 @@ namespace Taskmaster
 		{
 			if (DisposedOrDisposing) return;
 
-			if (!Atomic.Lock(ref cleanup_lock)) return; // cleanup already in progress
+			if (!Atomic.Lock(ref cleanup_lock)) return; // already in progress
 
 			if (Taskmaster.DebugPower || Taskmaster.DebugProcesses)
 				Log.Debug("<Process> Periodic cleanup");

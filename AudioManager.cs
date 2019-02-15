@@ -267,7 +267,7 @@ namespace Taskmaster
 			switch (state)
 			{
 				case NAudio.CoreAudioApi.Interfaces.AudioSessionState.AudioSessionStateActive:
-					
+
 					break;
 				case NAudio.CoreAudioApi.Interfaces.AudioSessionState.AudioSessionStateExpired:
 				case NAudio.CoreAudioApi.Interfaces.AudioSessionState.AudioSessionStateInactive: // e.g. pause
