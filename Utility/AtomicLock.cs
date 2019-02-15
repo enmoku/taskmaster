@@ -46,7 +46,7 @@ namespace MKAh
 		public static bool Lock(ref int lockvalue)
 		{
 			Debug.Assert(lockvalue == 0 || lockvalue == 1);
-			return (System.Threading.Interlocked.CompareExchange(ref lockvalue, 1, 0) == 0);
+			return (global::System.Threading.Interlocked.CompareExchange(ref lockvalue, 1, 0) == 0);
 		}
 
 		/// <summary>

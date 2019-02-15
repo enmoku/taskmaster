@@ -722,7 +722,7 @@ namespace Taskmaster
 		{
 			try
 			{
-				if (!Taskmaster.IsAdministrator())
+				if (!MKAh.System.IsAdministrator())
 				{
 					SimpleMessageBox.ShowModal("Taskmaster! – run at login", "Scheduler can not be modified without admin rights.", SimpleMessageBox.Buttons.OK);
 					return;

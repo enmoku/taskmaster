@@ -866,7 +866,7 @@ namespace Taskmaster
 			menu_action_restart = new ToolStripMenuItem("Restart", null, RestartRequestEvent);
 			menu_action_restartadmin = new ToolStripMenuItem("Restart as admin", null, RestartRequestEvent)
 			{
-				Enabled = !Taskmaster.IsAdministrator()
+				Enabled = !MKAh.System.IsAdministrator()
 			};
 
 			var menu_action_exit = new ToolStripMenuItem("Exit", null, ExitRequest);
