@@ -247,6 +247,8 @@ namespace Taskmaster
 				AudioInputs.Items.Add(new ListViewItem(new string[] { dev.Name, dev.GUID }));
 			AudioInputs.EndUpdate();
 
+			micenable.SelectedIndex = micmonitor.Control ? 0 : 1;
+
 			// TODO: Hook device changes
 			micmon.VolumeChanged += VolumeChangeDetected;
 			FormClosing += (_, _ea) => micmon.VolumeChanged -= VolumeChangeDetected;
@@ -562,36 +564,37 @@ namespace Taskmaster
 			}
 		}
 
-		Label AudioInputDevice;
-		Extensions.NumericUpDownEx AudioInputVolume;
-		ListView AudioInputs;
-		ListView WatchlistRules;
+		Label AudioInputDevice = null;
+		Extensions.NumericUpDownEx AudioInputVolume = null;
+		ListView AudioInputs = null;
+		ListView WatchlistRules = null;
 
 		ConcurrentDictionary<ProcessController, ListViewItem> WatchlistMap = new ConcurrentDictionary<ProcessController, ListViewItem>();
 
-		Label corCountLabel;
+		Label corCountLabel = null;
+		ComboBox micenable = null;
 
-		ListView lastmodifylist;
-		ListView powerbalancerlog;
+		ListView lastmodifylist = null;
+		ListView powerbalancerlog = null;
 
-		Label powerbalancer_behaviour;
-		Label powerbalancer_plan;
-		Label powerbalancer_forcedcount;
+		Label powerbalancer_behaviour = null;
+		Label powerbalancer_plan = null;
+		Label powerbalancer_forcedcount = null;
 
-		ListView exitwaitlist;
-		ListView processinglist;
+		ListView exitwaitlist = null;
+		ListView processinglist = null;
 		ConcurrentDictionary<int, ListViewItem> ExitWaitlistMap = null;
 
 		#region Foreground Monitor
-		Label activeLabel;
-		Label activeExec;
-		Label activeFullscreen;
-		Label activePID;
+		Label activeLabel = null;
+		Label activeExec = null;
+		Label activeFullscreen = null;
+		Label activePID = null;
 		#endregion
 
 		#region Path Cache
-		Label cacheObjects;
-		Label cacheRatio;
+		Label cacheObjects = null;
+		Label cacheRatio = null;
 		#endregion
 
 		int PathCacheUpdateSkips = 3;
@@ -1737,16 +1740,7 @@ namespace Taskmaster
 			};
 			micpanel.RowStyles.Add(new RowStyle(SizeType.Absolute, 20)); // this is dumb
 
-			var micDevLbl = new Label
-			{
-				Text = "Default communications device:",
-				Dock = DockStyle.Top,
-				AutoSize = true,
-				Width = 180,
-				TextAlign = System.Drawing.ContentAlignment.MiddleLeft,
-				//AutoSize = true // why not?
-			};
-			AudioInputDevice = new Label { Text = HumanReadable.Generic.Uninitialized, Dock = DockStyle.Top, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, AutoEllipsis = true };
+			AudioInputDevice = new Label { Text = HumanReadable.Generic.Uninitialized, Dock = DockStyle.Left, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, AutoEllipsis = true };
 			var micNameRow = new TableLayoutPanel
 			{
 				RowCount = 1,
@@ -1754,23 +1748,15 @@ namespace Taskmaster
 				Dock = DockStyle.Top,
 				//AutoSize = true // why not?
 			};
-			micNameRow.Controls.Add(micDevLbl);
+			micNameRow.Controls.Add(new Label { Text = "Default communications device:", Dock = DockStyle.Left, /*Width = 180,*/ TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true });
 			micNameRow.Controls.Add(AudioInputDevice);
 
 			var miccntrl = new TableLayoutPanel()
 			{
 				RowCount = 1,
-				ColumnCount = 5,
+				ColumnCount = 6,
 				Dock = DockStyle.Fill,
 				AutoSize = true,
-			};
-
-			var micVolLabel = new Label
-			{
-				Text = "Mic volume",
-				Dock = DockStyle.Top,
-				TextAlign = System.Drawing.ContentAlignment.MiddleLeft,
-				//AutoSize = true // why not?
 			};
 
 			AudioInputVolume = new Extensions.NumericUpDownEx
@@ -1786,26 +1772,25 @@ namespace Taskmaster
 			};
 			AudioInputVolume.ValueChanged += UserMicVol;
 
-			miccntrl.Controls.Add(micVolLabel);
+			miccntrl.Controls.Add(new Label { Text = "Volume", Dock = DockStyle.Left, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true });
 			miccntrl.Controls.Add(AudioInputVolume);
 
-			var corLbll = new Label
+			corCountLabel = new Label { Text = "0", Dock = DockStyle.Left, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, };
+
+			miccntrl.Controls.Add(new Label { Text = "Correction count:", Dock = DockStyle.Left, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true });
+			miccntrl.Controls.Add(corCountLabel);
+
+			micenable = new ComboBox()
 			{
-				Text = "Correction count:",
-				Dock = DockStyle.Top,
-				//AutoSize = true, // why not?
-				TextAlign = System.Drawing.ContentAlignment.MiddleLeft,
+				DropDownStyle = ComboBoxStyle.DropDownList,
+				Items = { "Enabled", "Disabled" },
+				SelectedIndex = 1,
+				Enabled = false,
 			};
 
-			corCountLabel = new Label
-			{
-				Dock = DockStyle.Top,
-				Text = "0",
-				TextAlign = System.Drawing.ContentAlignment.MiddleLeft,
-				//AutoSize = true, // why not?
-			};
-			miccntrl.Controls.Add(corLbll);
-			miccntrl.Controls.Add(corCountLabel);
+			miccntrl.Controls.Add(new Label { Text = "Control:", Dock = DockStyle.Left, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, });
+			miccntrl.Controls.Add(micenable);
+
 			// End: Volume control
 
 			// Main Window row 3, microphone device enumeration
