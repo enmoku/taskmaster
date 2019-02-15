@@ -50,40 +50,48 @@ namespace Taskmaster
 
 		public static bool SetIOPriority(int Handle, int Priority)
 		{
-			try
+			// the functionality changed with Windows 8 drastically and likely does something else
+			if (MKAh.System.IsWin7)
 			{
-				var ioPrio = new IntPtr(Priority);
-				int rv = NtSetInformationProcess(Handle, PROCESS_INFORMATION_CLASS_WIN7.ProcessIoPriority, ref ioPrio, 4);
+				try
+				{
+					var ioPrio = new IntPtr(Priority);
+					int rv = NtSetInformationProcess(Handle, PROCESS_INFORMATION_CLASS_WIN7.ProcessIoPriority, ref ioPrio, 4);
 
-				int error = Marshal.GetLastWin32Error();
-				//Debug.WriteLine($"SetInformationProcess error code: {error} --- return value: {rv:X}");
+					int error = Marshal.GetLastWin32Error();
+					//Debug.WriteLine($"SetInformationProcess error code: {error} --- return value: {rv:X}");
 
-				return error == 0;
-			}
-			catch (Exception ex)
-			{
-				Logging.Stacktrace(ex);
+					return error == 0;
+				}
+				catch (Exception ex)
+				{
+					Logging.Stacktrace(ex);
+				}
 			}
 			return false;
 		}
 
 		public static int GetIOPriority(int Handle)
 		{
-			try
+			// the functionality changed with Windows 8 drastically and likely does something else
+			if (MKAh.System.IsWin7)
 			{
-				int resLen = 0;
-				var ioPrio = new IntPtr(0);
-				if (Handle == 0) return -1;
-				int rv = NtQueryInformationProcess(Handle, PROCESS_INFORMATION_CLASS_WIN7.ProcessIoPriority, ref ioPrio, 4, ref resLen);
+				try
+				{
+					int resLen = 0;
+					var ioPrio = new IntPtr(0);
+					if (Handle == 0) return -1;
+					int rv = NtQueryInformationProcess(Handle, PROCESS_INFORMATION_CLASS_WIN7.ProcessIoPriority, ref ioPrio, 4, ref resLen);
 
-				int error = Marshal.GetLastWin32Error();
-				//Debug.WriteLine($"QueryInformationProcess error code: {error} --- return value: {rv:X}");
+					int error = Marshal.GetLastWin32Error();
+					//Debug.WriteLine($"QueryInformationProcess error code: {error} --- return value: {rv:X}");
 
-				return error == 0 ? ioPrio.ToInt32() : -1;
-			}
-			catch (Exception ex)
-			{
-				Logging.Stacktrace(ex);
+					return error == 0 ? ioPrio.ToInt32() : -1;
+				}
+				catch (Exception ex)
+				{
+					Logging.Stacktrace(ex);
+				}
 			}
 			return 0;
 		}

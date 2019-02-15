@@ -720,7 +720,7 @@ namespace Taskmaster
 			Log.Information("<Core> Self-optimize: " + (SelfOptimize ? HumanReadable.Generic.Enabled : HumanReadable.Generic.Disabled));
 
 			// PROTECT USERS FROM TOO HIGH PERMISSIONS
-			var isadmin = IsAdministrator();
+			var isadmin = MKAh.System.IsAdministrator();
 			var adminwarning = ((cfg["Core"].TryGet("Hell")?.StringValue ?? null) != "No");
 			if (isadmin && adminwarning)
 			{
@@ -777,6 +777,11 @@ namespace Taskmaster
 			int trecanalysis = exsec.TryGet("Record analysis")?.IntValue ?? 0;
 			RecordAnalysis = trecanalysis > 0 ? (TimeSpan?)TimeSpan.FromSeconds(trecanalysis.Constrain(0, 180)) : null;
 			IOPriorityEnabled = exsec.TryGet("IO Priority")?.BoolValue ?? false;
+			if (!MKAh.System.IsWin7)
+			{
+				Log.Warning("<Core> I/O priority was enabled. Requires Win7 which you don't appear to be running.");
+				IOPriorityEnabled = false;
+			}
 
 #if DEBUG
 			Trace = dbgsec.TryGet("Trace")?.BoolValue ?? false;
@@ -791,21 +796,6 @@ namespace Taskmaster
 			Log.Information($"<Core> Paging: {(PagingEnabled ? HumanReadable.Generic.Enabled : HumanReadable.Generic.Disabled)}");
 
 			return;
-		}
-
-		static int isAdmin = -1;
-		public static bool IsAdministrator()
-		{
-			if (isAdmin != -1) return (isAdmin == 1);
-
-			// https://stackoverflow.com/a/10905713
-			var identity = System.Security.Principal.WindowsIdentity.GetCurrent();
-			var principal = new System.Security.Principal.WindowsPrincipal(identity);
-			var rv = principal.IsInRole(System.Security.Principal.WindowsBuiltInRole.Administrator);
-
-			isAdmin = rv ? 1 : 0;
-
-			return rv;
 		}
 
 		static DirectoryInfo TempRunningDir = null;
@@ -979,7 +969,7 @@ namespace Taskmaster
 
 						if (AdminCounter <= 1)
 						{
-							if (!IsAdministrator())
+							if (!MKAh.System.IsAdministrator())
 							{
 								Log.Information("Restarting with elevated privileges.");
 								try
@@ -1309,7 +1299,7 @@ namespace Taskmaster
 
 					var sbs = new StringBuilder();
 					sbs.Append("Taskmaster! (#").Append(Process.GetCurrentProcess().Id).Append(")")
-						.Append(IsAdministrator() ? " [ADMIN]" : "").Append(Portable ? " [PORTABLE]" : "")
+						.Append(MKAh.System.IsAdministrator() ? " [ADMIN]" : "").Append(Portable ? " [PORTABLE]" : "")
 						.Append(" – Version: ").Append(System.Reflection.Assembly.GetExecutingAssembly().GetName().Version)
 						.Append(" – Built: ").Append(builddate.ToString("yyyy/MM/dd HH:mm")).Append($" [{age:N0} days old]");
 					Log.Information(sbs.ToString());
