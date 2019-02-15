@@ -32,6 +32,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using Serilog;
+using Taskmaster.Events;
 
 namespace Taskmaster
 {
@@ -229,29 +230,150 @@ namespace Taskmaster
 		NetManager netmonitor = null;
 
 		#region Microphone control code
+
+		string AudioInputGUID = string.Empty;
+
+		void SetDefaultCommDevice()
+		{
+			BeginInvoke(new Action(() =>
+			{
+				try
+				{
+					var devname = micmon.DeviceName;
+
+					AudioInputGUID = micmon.DeviceGuid;
+
+					AudioInputDevice.Text = !string.IsNullOrEmpty(devname) ? devname : HumanReadable.Generic.NotAvailable;
+
+					corCountLabel.Text = micmon.Corrections.ToString();
+
+					AudioInputVolume.Maximum = Convert.ToDecimal(MicManager.Maximum);
+					AudioInputVolume.Minimum = Convert.ToDecimal(MicManager.Minimum);
+					AudioInputVolume.Value = Convert.ToInt32(micmon.Volume);
+
+					AudioInputEnable.SelectedIndex = micmon.Control ? 0 : 1;
+				}
+				catch (OutOfMemoryException) { throw; }
+				catch (Exception ex)
+				{
+					Logging.Stacktrace(ex);
+				}
+			}));
+		}
+
+		void UpdateAudioInputs()
+		{
+			AudioInputs.BeginUpdate();
+			// TODO: mark default device in list
+			AudioInputs.Items.Clear();
+			foreach (var dev in micmon.DeviceList())
+			{
+				AudioInputs.Items.Add(new ListViewItem(new string[] {
+					dev.Name,
+					dev.GUID,
+					$"{dev.Volume:N1} %",
+					$"{dev.Target:N1} %",
+					(dev.VolumeControl ? "Enabled" : "Disabled"),
+					dev.State.ToString(),
+				}));
+			}
+			AudioInputs.EndUpdate();
+		}
+
 		public void Hook(MicManager micmonitor)
 		{
 			Debug.Assert(micmonitor != null);
-			micmon = micmonitor;
+			try
+			{
+				micmon = micmonitor;
 
-			if (Taskmaster.Trace) Log.Verbose("Hooking microphone monitor.");
+				if (Taskmaster.Trace) Log.Verbose("Hooking microphone monitor.");
 
-			AudioInputDevice.Text = micmon.DeviceName;
-			corCountLabel.Text = micmon.Corrections.ToString();
-			AudioInputVolume.Maximum = Convert.ToDecimal(MicManager.Maximum);
-			AudioInputVolume.Minimum = Convert.ToDecimal(MicManager.Minimum);
-			AudioInputVolume.Value = Convert.ToInt32(micmon.Volume);
+				BeginInvoke(new Action(() =>
+				{
+					if (IsDisposed || !IsHandleCreated) return;
 
-			AudioInputs.BeginUpdate();
-			foreach (var dev in micmon.enumerate())
-				AudioInputs.Items.Add(new ListViewItem(new string[] { dev.Name, dev.GUID }));
-			AudioInputs.EndUpdate();
+					try
+					{
+						SetDefaultCommDevice();
+						UpdateAudioInputs();
+					}
+					catch (OutOfMemoryException) { throw; }
+					catch (Exception ex)
+					{
+						Logging.Stacktrace(ex);
+					}
+				}));
 
-			micenable.SelectedIndex = micmonitor.Control ? 0 : 1;
+				// TODO: Hook all device changes
+				micmon.VolumeChanged += VolumeChangeDetected;
+				micmon.StateChanged += MicrophoneStateChanged;
+				micmon.DefaultChanged += MicrophoneDefaultChanged;
 
-			// TODO: Hook device changes
-			micmon.VolumeChanged += VolumeChangeDetected;
-			FormClosing += (_, _ea) => micmon.VolumeChanged -= VolumeChangeDetected;
+				FormClosing += (_, _ea) => micmon.VolumeChanged -= VolumeChangeDetected;
+			}
+			catch (OutOfMemoryException) { throw; }
+			catch (Exception ex)
+			{
+				Logging.Stacktrace(ex);
+				throw;
+			}
+		}
+
+		private void MicrophoneDefaultChanged(object sender, AudioDefaultDeviceEventArgs ea)
+		{
+			if (IsDisposed || !IsHandleCreated) return;
+
+			AudioInputGUID = ea.GUID;
+
+			BeginInvoke(new Action(() =>
+			{
+				if (IsDisposed || !IsHandleCreated) return;
+
+				try
+				{
+					if (string.IsNullOrEmpty(AudioInputGUID))
+					{
+						AudioInputEnable.Text = HumanReadable.Generic.Uninitialized;
+						AudioInputDevice.Text = HumanReadable.Generic.Uninitialized;
+					}
+					else
+					{
+						//AudioInputEnable.SelectedIndex = micmon.Control ? 0 : 1;
+						//AudioInputEnable.Text = HumanReadable.Generic.Ellipsis;
+						//AudioInputDevice.Text = HumanReadable.Generic.Ellipsis;
+						SetDefaultCommDevice();
+					}
+
+					UpdateAudioInputs();
+				}
+				catch (OutOfMemoryException) { throw; }
+				catch(Exception ex)
+				{
+					Logging.Stacktrace(ex);
+				}
+			}));
+		}
+
+		private void MicrophoneStateChanged(object sender, Events.AudioDeviceStateEventArgs ea)
+		{
+			if (IsDisposed || !IsHandleCreated) return;
+
+			BeginInvoke(new Action(() =>
+			{
+				if (IsDisposed || !IsHandleCreated) return;
+
+				var li = (from ListViewItem lxi
+						  in AudioInputs.Items
+						  where lxi.SubItems[1].Text.Equals(ea.GUID, StringComparison.OrdinalIgnoreCase)
+						  select lxi)
+						  .FirstOrDefault();
+
+				if (li != null)
+				{
+					li.SubItems[5].Text = ea.State.ToString();
+				}
+			}));
 		}
 
 		void UserMicVol(object _, EventArgs _ea)
@@ -572,7 +694,7 @@ namespace Taskmaster
 		ConcurrentDictionary<ProcessController, ListViewItem> WatchlistMap = new ConcurrentDictionary<ProcessController, ListViewItem>();
 
 		Label corCountLabel = null;
-		ComboBox micenable = null;
+		ComboBox AudioInputEnable = null;
 
 		ListView lastmodifylist = null;
 		ListView powerbalancerlog = null;
@@ -1702,7 +1824,7 @@ namespace Taskmaster
 			micwidths = null;
 			if (Taskmaster.MicrophoneMonitorEnabled)
 			{
-				int[] micwidthsDefault = new int[] { 200, 220 };
+				int[] micwidthsDefault = new int[] { 200, 220, 60, 60, 60, 120 };
 				micwidths = colcfg.GetSetDefault("Mics", micwidthsDefault).IntValueArray;
 				if (micwidths.Length != micwidthsDefault.Length) micwidths = micwidthsDefault;
 			}
@@ -1780,7 +1902,7 @@ namespace Taskmaster
 			miccntrl.Controls.Add(new Label { Text = "Correction count:", Dock = DockStyle.Left, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true });
 			miccntrl.Controls.Add(corCountLabel);
 
-			micenable = new ComboBox()
+			AudioInputEnable = new ComboBox()
 			{
 				DropDownStyle = ComboBoxStyle.DropDownList,
 				Items = { "Enabled", "Disabled" },
@@ -1789,7 +1911,7 @@ namespace Taskmaster
 			};
 
 			miccntrl.Controls.Add(new Label { Text = "Control:", Dock = DockStyle.Left, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, });
-			miccntrl.Controls.Add(micenable);
+			miccntrl.Controls.Add(AudioInputEnable);
 
 			// End: Volume control
 
@@ -1806,6 +1928,10 @@ namespace Taskmaster
 			};
 			AudioInputs.Columns.Add("Name", micwidths[0]);
 			AudioInputs.Columns.Add("GUID", micwidths[1]);
+			AudioInputs.Columns.Add("Volume", micwidths[2]);
+			AudioInputs.Columns.Add("Target", micwidths[3]);
+			AudioInputs.Columns.Add("Control", micwidths[4]);
+			AudioInputs.Columns.Add("State", micwidths[5]);
 
 			micpanel.SizeChanged += (_, _ea) => AudioInputs.Width = micpanel.Width - micpanel.Margin.Horizontal - micpanel.Padding.Horizontal;
 

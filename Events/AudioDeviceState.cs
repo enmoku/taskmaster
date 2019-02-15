@@ -1,10 +1,10 @@
 ﻿//
-// MicDevice.cs
+// Events.AudioDeviceState.cs
 //
 // Author:
 //       M.A. (https://github.com/mkahvi)
 //
-// Copyright (c) 2017-2018 M.A.
+// Copyright (c) 2019 M.A.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -24,17 +24,17 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-namespace Taskmaster
+namespace Taskmaster.Events
 {
-	sealed public class MicDevice
+	public sealed class AudioDeviceStateEventArgs
 	{
-		public string Name { get; set; }
-		public string GUID { get; set; }
+		public AudioDeviceStateEventArgs(string guid, NAudio.CoreAudioApi.DeviceState state)
+		{
+			GUID = guid;
+			State = state;
+		}
 
-		public bool VolumeControl { get; set; }
-		public double Volume { get; set; }
-		public double Target { get; set; }
-
-		public NAudio.CoreAudioApi.DeviceState State { get; set; }
+		public string GUID { get; private set; }
+		public NAudio.CoreAudioApi.DeviceState State { get; private set; }
 	}
 }

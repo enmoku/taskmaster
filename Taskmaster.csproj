@@ -131,6 +131,8 @@
     <Compile Include="Cause.cs" />
     <Compile Include="ConfigManager.cs" />
     <Compile Include="Enums\ForegroundMode.cs" />
+    <Compile Include="Events\AudioDeviceState.cs" />
+    <Compile Include="Events\AudioDefaultDevice.cs" />
     <Compile Include="Events\InternetStatus.cs" />
     <Compile Include="Events\NetworkStatus.cs" />
     <Compile Include="Events\AutoAdjustReaction.cs" />

@@ -1,10 +1,10 @@
 ﻿//
-// MicDevice.cs
+// Events.AudioDefaultDevice.cs
 //
 // Author:
 //       M.A. (https://github.com/mkahvi)
 //
-// Copyright (c) 2017-2018 M.A.
+// Copyright (c) 2019 M.A.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -24,17 +24,26 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-namespace Taskmaster
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace Taskmaster.Events
 {
-	sealed public class MicDevice
+	public sealed class AudioDefaultDeviceEventArgs
 	{
-		public string Name { get; set; }
-		public string GUID { get; set; }
+		public AudioDefaultDeviceEventArgs(string guid, NAudio.CoreAudioApi.Role role, NAudio.CoreAudioApi.DataFlow flow)
+		{
+			GUID = guid;
+			Flow = flow;
+			Role = role;
+		}
 
-		public bool VolumeControl { get; set; }
-		public double Volume { get; set; }
-		public double Target { get; set; }
+		public string GUID { get; private set; }
 
-		public NAudio.CoreAudioApi.DeviceState State { get; set; }
+		public NAudio.CoreAudioApi.DataFlow Flow { get; private set; }
+		public NAudio.CoreAudioApi.Role Role { get; private set; }
 	}
 }
