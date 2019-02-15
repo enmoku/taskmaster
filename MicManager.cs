@@ -148,20 +148,76 @@ namespace Taskmaster
 
 				DeviceGuid = ea.GUID;
 
+				if (!string.IsNullOrEmpty(ea.GUID))
+					RegisterDefaultDevice();
+				else // no default
+					Log.Warning("<Microphone> No communications device found!");
+
+				DefaultChanged?.Invoke(this, ea);
 			}
+		}
 
-			if (dirty) devcfg.MarkDirty();
+		void UnregisterDefaultDevice()
+		{
+			VolumeControl = null;
+			if (m_dev != null) m_dev.AudioEndpointVolume.OnVolumeNotification -= VolumeChangedHandler; // unregister old
+			m_dev = null;
+		}
 
-			if (Control && !devcontrol) Control = false; // disable general control if device control is disabled
+		void RegisterDefaultDevice()
+		{
+			try
+			{
+				// FIXME: Deal with multiple recording devices.
+				var waveInDeviceNumber = IntPtr.Zero; // 0 is default or first?
 
-			Target = devvol.Constrain(0, 100);
-			Log.Information($"<Microphone> Default device: {m_dev.FriendlyName} (volume: {Target:N1} %) – Control: {(Control?"Enabled":"Disabled")}");
+				// get default communications device
+				try
+				{
+					m_dev = mm_enum.GetDefaultAudioEndpoint(NAudio.CoreAudioApi.DataFlow.Capture, NAudio.CoreAudioApi.Role.Communications);
+				}
+				catch (System.Runtime.InteropServices.COMException ex)
+				{
+					Logging.Stacktrace(ex);
+					// NOP
+				}
 
-			if (Control) Volume = Target;
+				if (m_dev == null)
+				{
+					Log.Error("<Microphone> No communications device found!");
+					return;
+				}
 
-			if (Taskmaster.DebugMic) Log.Information("<Microphone> Component loaded.");
+				NAudio.Mixer.MixerLine mixerLine = null;
+				try
+				{
+					mixerLine = new NAudio.Mixer.MixerLine(waveInDeviceNumber, 0, NAudio.Mixer.MixerFlags.WaveIn);
+				}
+				catch (NAudio.MmException)
+				{
+					Log.Error("<Microphone> Default device not found.");
+					m_dev = null;
+					return;
+				}
 
-			Taskmaster.DisposalChute.Push(this);
+				VolumeControl = (NAudio.Mixer.UnsignedMixerControl)mixerLine.Controls.FirstOrDefault(
+					(control) => control.ControlType == NAudio.Mixer.MixerControlType.Volume
+				);
+
+				_volume = (VolumeControl != null ? VolumeControl.Percent : double.NaN); // kinda hackish
+
+				m_dev.AudioEndpointVolume.OnVolumeNotification += VolumeChangedHandler;
+
+				//
+
+				var vname = "Volume";
+				var cname = "Control";
+
+				var guid = AudioManager.AudioDeviceIdToGuid(m_dev.ID);
+
+				var devcfg = Taskmaster.Config.Load(deviceFilename);
+				var devsec = devcfg.Config[guid];
+
 				bool dirty = false, modified = false;
 
 				var devname = m_dev.FriendlyName;
