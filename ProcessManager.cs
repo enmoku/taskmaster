@@ -1610,7 +1610,7 @@ namespace Taskmaster
 		void ExclusiveMode(ProcessEx info)
 		{
 			if (DisposedOrDisposing) return;
-			if (!Taskmaster.IsAdministrator()) return; // sadly stopping services requires admin rights
+			if (!MKAh.System.IsAdministrator()) return; // sadly stopping services requires admin rights
 
 			if (Taskmaster.DebugProcesses) Log.Debug($"[{info.Controller.FriendlyName}] {info.Name} (#{info.Id}) Exclusive mode initiating.");
 

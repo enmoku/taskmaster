@@ -193,6 +193,7 @@
     <Compile Include="Utility\HumanTime.cs" />
     <Compile Include="Utility\LogAndDiscardException.cs" />
     <Compile Include="Utility\ProcessPriorityClass.cs" />
+    <Compile Include="Utility\System.cs" />
     <Compile Include="Utility\UserActivity.cs" />
     <Compile Include="UI\Config\WatchlistEditWindow.cs">
       <SubType>Form</SubType>
