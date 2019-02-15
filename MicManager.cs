@@ -29,6 +29,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using MKAh;
+using NAudio.CoreAudioApi;
 using Serilog;
 
 namespace Taskmaster
@@ -36,6 +37,8 @@ namespace Taskmaster
 	sealed public class MicManager : IDisposable
 	{
 		public event EventHandler<VolumeChangedEventArgs> VolumeChanged;
+
+		public bool Control { get; private set; } = false;
 
 		double _target = 50d;
 		public double Target
@@ -51,7 +54,7 @@ namespace Taskmaster
 		public const double SmallVolumeHysterisis = VolumeHysterisis / 4d;
 		TimeSpan AdjustDelay { get; } = TimeSpan.FromSeconds(5);
 
-		readonly NAudio.Mixer.UnsignedMixerControl Control;
+		NAudio.Mixer.UnsignedMixerControl VolumeControl = null;
 
 		double _volume;
 		public double Volume
@@ -69,16 +72,18 @@ namespace Taskmaster
 			/// <param name="value">New volume as 0 to 100 double</param>
 			set
 			{
-				Control.Percent = _volume = value;
+				VolumeControl.Percent = _volume = value;
 
 				if (Taskmaster.DebugMic)
-					Log.Debug($"<Microphone> DEBUG Volume = {value:N1} % (actual: {Control.Percent:N1} %)");
+					Log.Debug($"<Microphone> DEBUG Volume = {value:N1} % (actual: {VolumeControl.Percent:N1} %)");
 			}
 		}
 
 		NAudio.CoreAudioApi.MMDevice m_dev;
 
 		public string DeviceName => m_dev.DeviceFriendlyName;
+
+		NAudio.CoreAudioApi.MMDeviceEnumerator mm_enum = null;
 
 		// ctor, constructor
 		/// <exception cref="InitFailure">When initialization fails in a way that can not be continued from.</exception>
@@ -105,23 +110,25 @@ namespace Taskmaster
 				throw new InitFailure("Failed to get default microphone device.", ex);
 			}
 
-			Control = (NAudio.Mixer.UnsignedMixerControl)mixerLine.Controls.FirstOrDefault(
+			VolumeControl = (NAudio.Mixer.UnsignedMixerControl)mixerLine.Controls.FirstOrDefault(
 				(control) => control.ControlType == NAudio.Mixer.MixerControlType.Volume
 			);
 
-			if (Control == null)
+			if (VolumeControl == null)
 			{
 				Log.Error("<Microphone> No volume control acquired!");
 				throw new InitFailure("Mic monitor control not acquired.");
 			}
 
-			_volume = Control.Percent;
+			_volume = VolumeControl.Percent;
 
 			// get default communications device
-			var mm_enum = new NAudio.CoreAudioApi.MMDeviceEnumerator();
+			mm_enum = new NAudio.CoreAudioApi.MMDeviceEnumerator();
 			m_dev = mm_enum?.GetDefaultAudioEndpoint(NAudio.CoreAudioApi.DataFlow.Capture, NAudio.CoreAudioApi.Role.Communications);
-			if (m_dev != null) m_dev.AudioEndpointVolume.OnVolumeNotification += VolumeChangedHandler;
-			mm_enum = null; // unnecessary?
+			if (m_dev != null)
+			{
+				m_dev.AudioEndpointVolume.OnVolumeNotification += VolumeChangedHandler;
+			}
 
 			if (m_dev == null)
 			{
@@ -129,13 +136,18 @@ namespace Taskmaster
 				throw new InitFailure("No communications device found");
 			}
 
-			var mvol = "Microphone volume";
+			var mvol = "Default recording volume";
+			var mcontrol = "Recording volume control";
 
 			var corecfg = Taskmaster.Config.Load(Taskmaster.coreconfig);
 
-			var save = false || !corecfg.Config["Media"].Contains(mvol);
-			var defaultvol = corecfg.Config["Media"].GetSetDefault(mvol, 100d).DoubleValue;
-			if (save) corecfg.MarkDirty();
+			var mediasec = corecfg.Config["Media"];
+
+			bool dirty = !mediasec.Contains(mcontrol) || !mediasec.Contains(mvol);
+			Control = mediasec.GetSetDefault(mcontrol, false).BoolValue;
+			var defaultvol = mediasec.GetSetDefault(mvol, 100d).DoubleValue;
+
+			mediasec.Remove("Microphone volume"); // DEPRECATED
 
 			var fname = "Microphone.Devices.ini";
 			var vname = "Volume";
@@ -143,18 +155,19 @@ namespace Taskmaster
 			var devcfg = Taskmaster.Config.Load(fname);
 			var guid = AudioManager.AudioDeviceIdToGuid(m_dev.ID);
 			var devname = m_dev.DeviceFriendlyName;
-			var unset = !(devcfg.Config[guid].Contains(vname));
+			dirty |= !(devcfg.Config[guid].Contains(vname));
 			var devvol = devcfg.Config[guid].GetSetDefault(vname, defaultvol).DoubleValue;
 			devcfg.Config[guid]["Name"].StringValue = devname;
-			if (unset)
+			if (dirty)
 			{
 				devcfg.MarkDirty();
 				devcfg.Save(force: true);
 			}
 			
 			Target = devvol.Constrain(0, 100);
-			Log.Information($"<Microphone> Default device: {m_dev.FriendlyName} (volume: {Target:N1} %)");
-			Volume = Target;
+			Log.Information($"<Microphone> Default device: {m_dev.FriendlyName} (volume: {Target:N1} %) – Control: {(Control?"Enabled":"Disabled")}");
+
+			if (Control) Volume = Target;
 
 			if (Taskmaster.DebugMic) Log.Information("<Microphone> Component loaded.");
 
@@ -228,13 +241,18 @@ namespace Taskmaster
 					try
 					{
 						await System.Threading.Tasks.Task.Delay(AdjustDelay); // actual hysterisis, this should be cancellable
-
-						oldVol = Control.Percent;
-						Log.Information($"<Microphone> Correcting volume from {oldVol:N1} to {Target:N1}");
-						Volume = Target;
-						Corrections += 1;
-
-						VolumeChanged?.Invoke(this, new VolumeChangedEventArgs { Old = oldVol, New = Target, Corrections = Corrections });
+						if (Control)
+						{
+							oldVol = VolumeControl.Percent;
+							Log.Information($"<Microphone> Correcting volume from {oldVol:N1} to {Target:N1}");
+							Volume = Target;
+							Corrections += 1;
+							VolumeChanged?.Invoke(this, new VolumeChangedEventArgs { Old = oldVol, New = Target, Corrections = Corrections });
+						}
+						else
+						{
+							Log.Debug($"<Microphone> Volume not corrected from {oldVol:N1}");
+						}
 					}
 					finally
 					{
@@ -268,6 +286,9 @@ namespace Taskmaster
 			if (disposing)
 			{
 				if (Taskmaster.Trace) Log.Verbose("Disposing microphone monitor...");
+
+				mm_enum?.Dispose();
+				mm_enum = null;
 
 				VolumeChanged = null;
 
