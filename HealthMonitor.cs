@@ -147,7 +147,7 @@ namespace Taskmaster
 			// How? : Monitor total CPU usage until it goes past certain threshold, check highest CPU usage app. ...
 			// ... Check if the app is in foreground.
 			// Use? : Warn about intense background tasks.
-			// Opt? : 
+			// Opt? :
 			// --------------------------------------------------------------------------------------------------------
 
 			LoadConfig();
@@ -477,7 +477,7 @@ namespace Taskmaster
 		int Id;
 		string Description;
 
-		// 
+		//
 		DateTime Occurrence;
 
 		// don't re-state the problem in this time

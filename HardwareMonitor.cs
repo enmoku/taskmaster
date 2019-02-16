@@ -112,13 +112,13 @@ namespace Taskmaster
 					*/
 
 					/*
-					 * 
+					 *
 					 * CPU Core #1 : Load = 60.00
 					 * CPU Core #2 : Load = 40.00
 					 * CPU Total : Load = 50.00
 					 * CPU Core #1 : Clock = 3,411.70
 					 * CPU Core #2 : Clock = 3,411.70
-					 * 
+					 *
 					 * GPU Core : Temperature = 42.00
 					 * GPU : Fan = 1,110.00
 					 * GPU Core : Clock = 796.94
