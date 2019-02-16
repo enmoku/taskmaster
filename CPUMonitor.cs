@@ -307,10 +307,7 @@ namespace Taskmaster
 			disposed = true;
 		}
 
-		public void Dispose()
-		{
-			Dispose(true);
-		}
+		public void Dispose() => Dispose(true);
 		#endregion
 	}
 

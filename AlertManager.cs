@@ -106,10 +106,7 @@ namespace Taskmaster
 			}
 		}
 
-		public void Dispose()
-		{
-			Dispose(true);
-		}
+		public void Dispose() => Dispose(true);
 		#endregion
 	}
 

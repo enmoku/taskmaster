@@ -828,10 +828,7 @@ namespace Taskmaster
 			}
 		}
 
-		public void Dispose()
-		{
-			Dispose(true);
-		}
+		public void Dispose() => Dispose(true);
 
 		bool disposed; // = false;
 		void Dispose(bool disposing)

@@ -444,10 +444,7 @@ namespace Taskmaster
 
 		bool disposed = false; // false
 		bool DisposedOrDisposing = false;
-		public void Dispose()
-		{
-			Dispose(true);
-		}
+		public void Dispose() => Dispose(true);
 
 		void Dispose(bool disposing)
 		{

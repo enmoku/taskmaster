@@ -334,20 +334,12 @@ namespace Taskmaster
 			// SetupEventHook();
 		}
 
-		~ActiveAppManager() => Dispose(false);
-
-		public void Dispose()
-		{
-			Dispose(true);
-			GC.SuppressFinalize(this);
-		}
+		public void Dispose() => Dispose(true);
 
 		bool disposed = false;
 		void Dispose(bool disposing)
 		{
 			if (disposed) return;
-
-			HangTimer?.Dispose();
 
 			if (disposing)
 			{
@@ -355,6 +347,7 @@ namespace Taskmaster
 					Log.Verbose("Disposing FG monitor...");
 
 				ActiveChanged = null;
+				HangTimer?.Dispose();
 
 				NativeMethods.UnhookWinEvent(windowseventhook); // Automatic
 			}

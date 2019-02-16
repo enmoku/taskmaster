@@ -2140,20 +2140,17 @@ namespace Taskmaster
 			}
 		}
 
-		bool disposed; // = false;
-		public void Dispose()
-		{
-			Dispose(true);
-		}
+		public void Dispose() => Dispose(true);
 
 		bool DisposedOrDisposing = false;
 		void Dispose(bool disposing)
 		{
-			DisposedOrDisposing = true;
-			if (disposed) return;
+			if (DisposedOrDisposing) return;
 
 			if (disposing)
 			{
+				DisposedOrDisposing = true;
+
 				if (Taskmaster.Trace) Log.Verbose("Disposing process manager...");
 
 				//ScanStartEvent = null;
@@ -2217,8 +2214,6 @@ namespace Taskmaster
 					// throw; // would throw but this is dispose
 				}
 			}
-
-			disposed = true;
 		}
 	}
 }

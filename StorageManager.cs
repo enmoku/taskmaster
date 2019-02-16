@@ -205,10 +205,7 @@ namespace Taskmaster
 
 		public event EventHandler<StorageEventArgs> onTempScan;
 
-		public void Dispose()
-		{
-			Dispose(true);
-		}
+		public void Dispose() => Dispose(true);
 
 		bool disposed = false;
 		void Dispose(bool disposing)

@@ -436,10 +436,7 @@ namespace Taskmaster
 		long MemoryWarningCooldown = 30;
 
 		bool disposed; // = false;
-		public void Dispose()
-		{
-			Dispose(true);
-		}
+		public void Dispose() => Dispose(true);
 
 		void Dispose(bool disposing)
 		{
