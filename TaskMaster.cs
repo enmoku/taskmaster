@@ -167,8 +167,12 @@ namespace Taskmaster
 					if (processmanager != null)
 						mainwindow.Hook(processmanager);
 
-					if (micmonitor != null)
-						mainwindow.Hook(micmonitor);
+					if (audiomanager != null)
+					{
+						mainwindow.Hook(audiomanager);
+						if (micmonitor != null)
+							mainwindow.Hook(micmonitor);
+					}
 
 					if (netmonitor != null)
 						mainwindow.Hook(netmonitor);
@@ -294,17 +298,27 @@ namespace Taskmaster
 				StorageMonitorEnabled ? (StorMon = Task.Run(() => storagemanager = new StorageManager())) : Task.CompletedTask,
 				HealthMonitorEnabled ? (HpMon = Task.Run(() => healthmonitor = new HealthMonitor())) : Task.CompletedTask,
 				HardwareMonitorEnabled ? (HwMon = Task.Run(() => hardware = new HardwareMonitor())) : Task.CompletedTask,
-				AudioManagerEnabled ? ( VolMan = Task.Run(() => audiomanager = new AudioManager()) ) : Task.CompletedTask,
 			};
 
 			// MMDEV requires main thread
 			try
 			{
-				if (MicrophoneMonitorEnabled) micmonitor = new MicManager();
+				if (AudioManagerEnabled)
+				{
+					audiomanager = new AudioManager();
+					if (MicrophoneManagerEnabled)
+					{
+						micmonitor = new MicManager();
+						micmonitor.Hook(audiomanager);
+					}
+				}
 			}
 			catch (InitFailure)
 			{
+				micmonitor?.Dispose();
 				micmonitor = null;
+				audiomanager?.Dispose();
+				audiomanager = null;
 			}
 
 			// WinForms makes the following components not load nicely if not done here.
@@ -484,7 +498,7 @@ namespace Taskmaster
 		public static bool ShowAgency { get; set; } = false;
 
 		public static bool ProcessMonitorEnabled { get; private set; } = true;
-		public static bool MicrophoneMonitorEnabled { get; private set; } = false;
+		public static bool MicrophoneManagerEnabled { get; private set; } = false;
 		// public static bool MediaMonitorEnabled { get; private set; } = true;
 		public static bool NetworkMonitorEnabled { get; private set; } = true;
 		public static bool PagingEnabled { get; private set; } = true;
@@ -566,7 +580,7 @@ namespace Taskmaster
 			AudioManagerEnabled = compsec.GetSetDefault(HumanReadable.Hardware.Audio.Section, true, out modified).BoolValue;
 			compsec[HumanReadable.Hardware.Audio.Section].Comment = "Monitor audio sessions and set their volume as per user configuration.";
 			dirtyconfig |= modified;
-			MicrophoneMonitorEnabled = compsec.GetSetDefault("Microphone", false, out modified).BoolValue;
+			MicrophoneManagerEnabled = compsec.GetSetDefault("Microphone", false, out modified).BoolValue;
 			compsec["Microphone"].Comment = "Monitor and force-keep microphone volume.";
 			dirtyconfig |= modified;
 			// MediaMonitorEnabled = compsec.GetSetDefault("Media", true, out modified).BoolValue;

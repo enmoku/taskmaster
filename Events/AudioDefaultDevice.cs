@@ -32,16 +32,14 @@ using System.Threading.Tasks;
 
 namespace Taskmaster.Events
 {
-	public sealed class AudioDefaultDeviceEventArgs
+	public sealed class AudioDefaultDeviceEventArgs : AudioDeviceEventArgs
 	{
-		public AudioDefaultDeviceEventArgs(string guid, NAudio.CoreAudioApi.Role role, NAudio.CoreAudioApi.DataFlow flow)
+		public AudioDefaultDeviceEventArgs(string guid, string id, NAudio.CoreAudioApi.Role role, NAudio.CoreAudioApi.DataFlow flow)
+			: base(guid, id)
 		{
-			GUID = guid;
 			Flow = flow;
 			Role = role;
 		}
-
-		public string GUID { get; private set; }
 
 		public NAudio.CoreAudioApi.DataFlow Flow { get; private set; }
 		public NAudio.CoreAudioApi.Role Role { get; private set; }

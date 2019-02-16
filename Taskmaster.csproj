@@ -127,10 +127,13 @@
   <ItemGroup>
     <Compile Include="ActiveAppManager.cs" />
     <Compile Include="AlertManager.cs" />
+    <Compile Include="AudioDeviceNotificationClient.cs" />
     <Compile Include="AudioManager.cs" />
+    <Compile Include="AudioSession.cs" />
     <Compile Include="Cause.cs" />
     <Compile Include="ConfigManager.cs" />
     <Compile Include="Enums\ForegroundMode.cs" />
+    <Compile Include="Events\AudioDevice.cs" />
     <Compile Include="Events\AudioDeviceState.cs" />
     <Compile Include="Events\AudioDefaultDevice.cs" />
     <Compile Include="Events\InternetStatus.cs" />
@@ -212,7 +215,7 @@
     </Compile>
     <Compile Include="MemoryLog.cs" />
     <Compile Include="MemoryManager.cs" />
-    <Compile Include="MicDevice.cs" />
+    <Compile Include="AudioDevice.cs" />
     <Compile Include="MicManager.cs" />
     <Compile Include="NetDevice.cs" />
     <Compile Include="NetManager.cs" />

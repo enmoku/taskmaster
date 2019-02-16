@@ -25,10 +25,11 @@
 // THE SOFTWARE.
 
 using System;
+using System.Collections.Concurrent;
 using System.Diagnostics;
-using System.Text;
 using System.Threading.Tasks;
 using Serilog;
+using Taskmaster.Events;
 
 namespace Taskmaster
 {
@@ -39,7 +40,24 @@ namespace Taskmaster
 	{
 		readonly System.Threading.Thread Context = null;
 
-		NAudio.CoreAudioApi.MMDevice mmdev_media = null;
+		public event EventHandler<Events.AudioDeviceStateEventArgs> StateChanged;
+		public event EventHandler<Events.AudioDefaultDeviceEventArgs> DefaultChanged;
+
+		public event EventHandler<Events.AudioDeviceEventArgs> Added;
+		public event EventHandler<Events.AudioDeviceEventArgs> Removed;
+
+		public NAudio.CoreAudioApi.MMDeviceEnumerator Enumerator = null;
+
+		/// <summary>
+		/// Games, voice communication, etc.
+		/// </summary>
+		AudioDevice ConsoleDevice = null;
+		/// <summary>
+		/// Multimedia, Movies, etc.
+		/// </summary>
+		AudioDevice MultimediaDevice = null;
+
+		readonly AudioDeviceNotificationClient notificationClient = null;
 
 		//public event EventHandler<ProcessEx> OnNewSession;
 
@@ -51,16 +69,20 @@ namespace Taskmaster
 		/// <exception cref="InitFailure">If audio device can not be found.</exception>
 		public AudioManager()
 		{
+			Debug.Assert(Taskmaster.IsMainThread(), "Requires main thread");
 			Context = System.Threading.Thread.CurrentThread;
 
-			var mm_enum = new NAudio.CoreAudioApi.MMDeviceEnumerator();
-			mmdev_media = mm_enum?.GetDefaultAudioEndpoint(NAudio.CoreAudioApi.DataFlow.Render, NAudio.CoreAudioApi.Role.Multimedia);
-			if (mmdev_media == null)
-			{
-				throw new InitFailure("Failed to capture default audio output device.");
-			}
+			Enumerator = new NAudio.CoreAudioApi.MMDeviceEnumerator();
 
-			Log.Information("<Audio> Default device: " + mmdev_media.DeviceFriendlyName);
+			GetDefaultDevice();
+
+			notificationClient = new AudioDeviceNotificationClient();
+			notificationClient.StateChanged += StateChangeProxy;
+			notificationClient.DefaultDevice += DefaultDeviceProxy;
+			notificationClient.Added += DeviceAddedProxy;
+			notificationClient.Removed += DeviceRemovedProxy;
+
+			Enumerator.RegisterEndpointNotificationCallback(notificationClient);
 
 			/*
 			var cfg = Taskmaster.Config.Load(configfile);
@@ -74,18 +96,91 @@ namespace Taskmaster
 			Taskmaster.DisposalChute.Push(this);
 		}
 
+		private void StateChangeProxy(object sender, Events.AudioDeviceStateEventArgs ea)
+		{
+			StateChanged?.Invoke(this, ea);
+		}
+
+		private void DefaultDeviceProxy(object sender, AudioDefaultDeviceEventArgs ea)
+		{
+			DefaultChanged?.Invoke(sender, ea);
+		}
+
+		private void DeviceAddedProxy(object sender, AudioDeviceEventArgs ea)
+		{
+			var dev = Enumerator.GetDevice(ea.ID);
+			if (dev != null)
+			{
+				var adev = new AudioDevice(dev);
+
+				Devices.TryAdd(ea.GUID, new AudioDevice(dev));
+
+				ea.Device = adev;
+
+				Added?.Invoke(sender, ea);
+			}
+		}
+
+		private void DeviceRemovedProxy(object sender, AudioDeviceEventArgs ea)
+		{
+			if (ea.GUID.Equals(MultimediaDevice.GUID, StringComparison.OrdinalIgnoreCase))
+				MultimediaDevice = null;
+
+			if (ea.GUID.Equals(ConsoleDevice.GUID, StringComparison.OrdinalIgnoreCase))
+				ConsoleDevice = null;
+
+			Devices.TryRemove(ea.GUID, out _);
+
+			Removed?.Invoke(sender, ea);
+		}
+
+		ConcurrentDictionary<string, AudioDevice> Devices = new ConcurrentDictionary<string, AudioDevice>();
+
+		public AudioDevice GetDevice(string guid)
+		{
+			if (Devices.TryGetValue(guid, out var dev))
+				return dev;
+
+			return null;
+		}
+
+		void GetDefaultDevice()
+		{
+			if (DisposingOrDisposed) return;
+
+			try
+			{
+				var mmdevmultimedia = Enumerator.GetDefaultAudioEndpoint(NAudio.CoreAudioApi.DataFlow.Render, NAudio.CoreAudioApi.Role.Multimedia);
+				var mmdevconsole = Enumerator.GetDefaultAudioEndpoint(NAudio.CoreAudioApi.DataFlow.Render, NAudio.CoreAudioApi.Role.Console);
+
+				MultimediaDevice = new AudioDevice(mmdevmultimedia);
+				ConsoleDevice = new AudioDevice(mmdevconsole);
+
+				Log.Information("<Audio> Default movie/music device: " + MultimediaDevice.Name);
+				Log.Information("<Audio> Default game/voip device: " + ConsoleDevice.Name);
+
+				MultimediaDevice.MMDevice.AudioSessionManager.OnSessionCreated += OnSessionCreated;
+				ConsoleDevice.MMDevice.AudioSessionManager.OnSessionCreated += OnSessionCreated;
+			}
+			catch (OutOfMemoryException) { throw; }
+			catch (Exception ex)
+			{
+				Logging.Stacktrace(ex);
+			}
+		}
+
 		ProcessManager processmanager = null;
 		public void Hook(ProcessManager procman)
 		{
 			processmanager = procman;
-
-			mmdev_media.AudioSessionManager.OnSessionCreated += OnSessionCreated;
 		}
 
 		private async void OnSessionCreated(object _, NAudio.CoreAudioApi.Interfaces.IAudioSessionControl ea)
 		{
 			Debug.Assert(System.Threading.Thread.CurrentThread != Context, "Must be called in same thread.");
-			Debug.Assert(processmanager != null, "ProcessManager has not been hooked");
+
+			if (DisposingOrDisposed) return;
+			if (processmanager == null) return;
 
 			await Task.Delay(0).ConfigureAwait(false);
 
@@ -146,28 +241,26 @@ namespace Taskmaster
 
 						if (volAdjusted)
 						{
-							Log.Information("<Audio> " + info.Name + " (#" + info.Id + ") " +
-								"volume changed from " + $"{oldvolume * 100:N1} %" + " to " + $"{prc.Volume * 100:N1} %");
+							Log.Information($"<Audio> {info.Name} (#{info.Id}) volume changed from {oldvolume * 100f:N1} % to {prc.Volume * 100f:N1} %");
 						}
 						else
 						{
 							if (Taskmaster.ShowInaction && Taskmaster.DebugAudio)
-								Log.Debug("<Audio> " + info.Name + " (#" + pid + ") Volume: " + $"{volume * 100:N1} %" +
-									" – Already correct (Plan: " + prc.VolumeStrategy.ToString() + ")");
+								Log.Debug($"<Audio> {info.Name} (#{pid}) Volume: {volume * 100f:N1} % – Already correct (Plan: {prc.VolumeStrategy.ToString()})");
 						}
 					}
 					else
 					{
 						if (Taskmaster.ShowInaction && Taskmaster.DebugAudio)
-							Log.Debug("<Audio> " + info.Name + " (#" + pid + ") Volume: " + $"{(volume * 100):N1} %" +
-								" – not watched: " + info.Path);
+							Log.Debug($"<Audio> {info.Name} (#{pid}) Volume: {(volume * 100f):N1} % – not watched: {info.Path}");
 					}
 				}
 				else
 				{
-					Log.Debug("<Audio> Failed to get info for session (#" + pid + ")");
+					Log.Debug($"<Audio> Failed to get info for session (#{pid})");
 				}
 			}
+			catch (OutOfMemoryException) { throw; }
 			catch (Exception ex)
 			{
 				Logging.Stacktrace(ex);
@@ -175,19 +268,26 @@ namespace Taskmaster
 		}
 
 		#region IDisposable Support
-		private bool disposed = false;
+		private bool DisposingOrDisposed = false;
 
 		protected virtual void Dispose(bool disposing)
 		{
-			if (!disposed)
+			if (!DisposingOrDisposed)
 			{
+				DisposingOrDisposed = true;
+
 				if (disposing)
 				{
-					mmdev_media.AudioSessionManager.OnSessionCreated -= OnSessionCreated; // redundant
-					mmdev_media?.Dispose();
-				}
+					//Enumerator?.UnregisterEndpointNotificationCallback(notificationClient);  // unnecessary? definitely hangs
+					Enumerator?.Dispose();
+					Enumerator = null;
 
-				disposed = true;
+					MultimediaDevice.MMDevice.AudioSessionManager.OnSessionCreated -= OnSessionCreated;
+					ConsoleDevice.MMDevice.AudioSessionManager.OnSessionCreated -= OnSessionCreated;
+
+					MultimediaDevice?.Dispose();
+					ConsoleDevice?.Dispose();
+				}
 			}
 		}
 
@@ -195,92 +295,11 @@ namespace Taskmaster
 		#endregion
 
 		/// <summary>
-		/// Takes Device ID in form of {0.0.0.00000000}.{aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee} and retuurns GUID part only.
+		/// Takes Device ID in form of {a.b.c.dddddddd}.{aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee} and retuurns GUID part only.
 		/// </summary>
 		public static string AudioDeviceIdToGuid(string deviceId)
 		{
 			return (deviceId.Split('}'))[1].Substring(2);
-		}
-	}
-
-	class AudioSession : NAudio.CoreAudioApi.Interfaces.IAudioSessionEventsHandler
-	{
-		readonly NAudio.CoreAudioApi.AudioSessionControl session = null;
-
-		public AudioSession(NAudio.CoreAudioApi.AudioSessionControl audiosession) => session = audiosession;
-
-		public void OnChannelVolumeChanged(uint channelCount, IntPtr newVolumes, uint channelIndex)
-		{
-			// Yeah
-		}
-
-		public void OnDisplayNameChanged(string displayName) => Log.Debug("<Audio> Display name changed: " + displayName);
-
-		public void OnGroupingParamChanged(ref Guid groupingId)
-		{
-			// Ehhh?
-		}
-
-		public void OnIconPathChanged(string iconPath) => Log.Debug("<Audio> Icon path changed: " + iconPath);
-
-		public void OnSessionDisconnected(NAudio.CoreAudioApi.Interfaces.AudioSessionDisconnectReason disconnectReason)
-		{
-			uint pid = session.GetProcessID;
-			//string process = session.GetSessionIdentifier;
-			string instance = session.GetSessionInstanceIdentifier;
-			string name = session.DisplayName;
-
-			// Don't care really
-			var sbs = new StringBuilder();
-			sbs.Append("<Audio> ").Append(name).Append(" (#").Append(pid).Append(") Disconnected: ").Append(disconnectReason.ToString());
-			Log.Debug(sbs.ToString());
-
-			switch (disconnectReason)
-			{
-				case NAudio.CoreAudioApi.Interfaces.AudioSessionDisconnectReason.DisconnectReasonDeviceRemoval:
-					break;
-				case NAudio.CoreAudioApi.Interfaces.AudioSessionDisconnectReason.DisconnectReasonExclusiveModeOverride:
-					break;
-				case NAudio.CoreAudioApi.Interfaces.AudioSessionDisconnectReason.DisconnectReasonFormatChanged:
-					break;
-				case NAudio.CoreAudioApi.Interfaces.AudioSessionDisconnectReason.DisconnectReasonServerShutdown:
-					break;
-				case NAudio.CoreAudioApi.Interfaces.AudioSessionDisconnectReason.DisconnectReasonSessionDisconnected:
-					break;
-				case NAudio.CoreAudioApi.Interfaces.AudioSessionDisconnectReason.DisconnectReasonSessionLogoff:
-					break;
-			}
-
-			session.UnRegisterEventClient(this); // unnecessary?
-		}
-
-		public void OnStateChanged(NAudio.CoreAudioApi.Interfaces.AudioSessionState state)
-		{
-			uint pid = session.GetProcessID;
-			string instance = session.GetSessionInstanceIdentifier;
-			string name = session.DisplayName;
-
-			var sbs = new StringBuilder();
-			sbs.Append("<Audio> ").Append(name).Append(" (#").Append(pid).Append(") State changed: ").Append(state.ToString());
-			Log.Debug(sbs.ToString());
-
-			switch (state)
-			{
-				case NAudio.CoreAudioApi.Interfaces.AudioSessionState.AudioSessionStateActive:
-
-					break;
-				case NAudio.CoreAudioApi.Interfaces.AudioSessionState.AudioSessionStateExpired:
-				case NAudio.CoreAudioApi.Interfaces.AudioSessionState.AudioSessionStateInactive: // e.g. pause
-					//session.UnRegisterEventClient(this); // unnecessary?
-					break;
-			}
-		}
-
-		public void OnVolumeChanged(float volume, bool isMuted)
-		{
-			var sbs = new StringBuilder();
-			sbs.Append("<Audio> Volume: ").Append($"{volume:N2}").Append(", Muted: ").Append((isMuted ? "True" : "False"));
-			Log.Debug(sbs.ToString());
 		}
 	}
 

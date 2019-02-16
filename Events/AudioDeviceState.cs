@@ -26,15 +26,14 @@
 
 namespace Taskmaster.Events
 {
-	public sealed class AudioDeviceStateEventArgs
+	public sealed class AudioDeviceStateEventArgs : AudioDeviceEventArgs
 	{
-		public AudioDeviceStateEventArgs(string guid, NAudio.CoreAudioApi.DeviceState state)
+		public AudioDeviceStateEventArgs(string guid, string id, NAudio.CoreAudioApi.DeviceState state)
+			: base(guid, id)
 		{
-			GUID = guid;
 			State = state;
 		}
 
-		public string GUID { get; private set; }
 		public NAudio.CoreAudioApi.DeviceState State { get; private set; }
 	}
 }

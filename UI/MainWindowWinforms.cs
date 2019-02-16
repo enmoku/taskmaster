@@ -125,7 +125,7 @@ namespace Taskmaster
 
 		public void AdvancedConfigRequest(object _, EventArgs _ea)
 		{
-			if (!IsHandleCreated || disposed) return;
+			if (!IsHandleCreated || DisposedOrDisposing) return;
 
 			try
 			{
@@ -136,7 +136,7 @@ namespace Taskmaster
 
 		public void PowerConfigRequest(object _, EventArgs _ea)
 		{
-			if (!IsHandleCreated || disposed) return;
+			if (!IsHandleCreated || DisposedOrDisposing) return;
 
 			try
 			{
@@ -194,7 +194,7 @@ namespace Taskmaster
 		{
 			if (Taskmaster.Trace) Log.Verbose("Making sure main window is not lost.");
 
-			if (!IsHandleCreated || disposed) return;
+			if (!IsHandleCreated || DisposedOrDisposing) return;
 
 			CenterToScreen();
 			Reveal();
@@ -261,23 +261,69 @@ namespace Taskmaster
 			}));
 		}
 
+		void AddAudioInput(AudioDevice device)
+		{
+			try
+			{
+				var li = new ListViewItem(new string[] {
+					device.Name,
+					device.GUID,
+					$"{device.Volume:N1} %",
+					$"{device.Target:N1} %",
+					(device.VolumeControl ? HumanReadable.Generic.Enabled : HumanReadable.Generic.Disabled),
+					device.State.ToString(),
+				});
+
+				AudioInputs.Items.Add(li);
+				MicGuidToAudioInputs.TryAdd(device.GUID, li);
+			}
+			catch (OutOfMemoryException) { throw; }
+			catch (Exception ex)
+			{
+				Logging.Stacktrace(ex);
+			}
+		}
+
+		void RemoveAudioInput(string GUID)
+		{
+
+
+			if (MicGuidToAudioInputs.TryRemove(device.GUID, out var li))
+			{
+				AudioInputs.Items.Remove(li);
+			}
+		}
+
 		void UpdateAudioInputs()
 		{
 			AudioInputs.BeginUpdate();
 			// TODO: mark default device in list
 			AudioInputs.Items.Clear();
-			foreach (var dev in micmon.DeviceList())
+			foreach (var dev in micmon.Devices)
 			{
-				AudioInputs.Items.Add(new ListViewItem(new string[] {
-					dev.Name,
-					dev.GUID,
-					$"{dev.Volume:N1} %",
-					$"{dev.Target:N1} %",
-					(dev.VolumeControl ? "Enabled" : "Disabled"),
-					dev.State.ToString(),
-				}));
+				AddAudioInput(dev);
 			}
 			AudioInputs.EndUpdate();
+		}
+
+		AudioManager audiomanager = null;
+		public void Hook(AudioManager manager)
+		{
+			Debug.Assert(manager != null);
+
+			try
+			{
+				audiomanager = manager;
+				audiomanager.StateChanged += AudioDeviceStateChanged;
+				audiomanager.Removed += AudioDeviceRemoved;
+				audiomanager.Added += AudioDeviceAdded;
+			}
+			catch (OutOfMemoryException) { throw; }
+			catch (Exception ex)
+			{
+				Logging.Stacktrace(ex);
+				throw;
+			}
 		}
 
 		public void Hook(MicManager micmonitor)
@@ -307,7 +353,6 @@ namespace Taskmaster
 
 				// TODO: Hook all device changes
 				micmon.VolumeChanged += VolumeChangeDetected;
-				micmon.StateChanged += MicrophoneStateChanged;
 				micmon.DefaultChanged += MicrophoneDefaultChanged;
 
 				FormClosing += (_, _ea) => micmon.VolumeChanged -= VolumeChangeDetected;
@@ -318,6 +363,16 @@ namespace Taskmaster
 				Logging.Stacktrace(ex);
 				throw;
 			}
+		}
+
+		private void AudioDeviceAdded(object sender, AudioDeviceEventArgs ea)
+		{
+			AddAudioInput(ea.Device);
+		}
+
+		private void AudioDeviceRemoved(object sender, AudioDeviceEventArgs ea)
+		{
+			RemoveAudioInput(ea.GUID);
 		}
 
 		private void MicrophoneDefaultChanged(object sender, AudioDefaultDeviceEventArgs ea)
@@ -355,21 +410,19 @@ namespace Taskmaster
 			}));
 		}
 
-		private void MicrophoneStateChanged(object sender, Events.AudioDeviceStateEventArgs ea)
+		ConcurrentDictionary<string, ListViewItem> MicGuidToAudioInputs = new ConcurrentDictionary<string, ListViewItem>();
+
+		private void AudioDeviceStateChanged(object sender, Events.AudioDeviceStateEventArgs ea)
 		{
 			if (IsDisposed || !IsHandleCreated) return;
+
+			Log.Debug($"Device State Changed: {ea.GUID} == {ea.State.ToString()}");
 
 			BeginInvoke(new Action(() =>
 			{
 				if (IsDisposed || !IsHandleCreated) return;
 
-				var li = (from ListViewItem lxi
-						  in AudioInputs.Items
-						  where lxi.SubItems[1].Text.Equals(ea.GUID, StringComparison.OrdinalIgnoreCase)
-						  select lxi)
-						  .FirstOrDefault();
-
-				if (li != null)
+				if (MicGuidToAudioInputs.TryGetValue(ea.GUID, out ListViewItem li))
 				{
 					li.SubItems[5].Text = ea.State.ToString();
 				}
@@ -384,7 +437,7 @@ namespace Taskmaster
 
 		void VolumeChangeDetected(object _, VolumeChangedEventArgs ea)
 		{
-			if (!IsHandleCreated || disposed) return;
+			if (!IsHandleCreated || DisposedOrDisposing) return;
 
 			BeginInvoke(new Action(() =>
 			{
@@ -396,7 +449,7 @@ namespace Taskmaster
 
 		public async void ProcessTouchEvent(object _, ProcessModificationEventArgs ea)
 		{
-			if (!IsHandleCreated || disposed) return;
+			if (!IsHandleCreated || DisposedOrDisposing) return;
 
 			var prc = ea.Info.Controller; // cache
 			BeginInvoke(new Action(() =>
@@ -443,7 +496,7 @@ namespace Taskmaster
 
 		public async void OnActiveWindowChanged(object _, WindowChangedArgs windowchangeev)
 		{
-			if (!IsHandleCreated || disposed) return;
+			if (!IsHandleCreated || DisposedOrDisposing) return;
 			if (windowchangeev.Process == null) return;
 
 			BeginInvoke(new Action(() =>
@@ -504,12 +557,12 @@ namespace Taskmaster
 		void UpdateWatchlist(object _, EventArgs _ea)
 		{
 			if (!IsHandleCreated) return;
-			if (disposed) return;
+			if (DisposedOrDisposing) return;
 
 			BeginInvoke(new Action(() =>
 			{
 				if (!IsHandleCreated) return;
-				if (disposed) return;
+				if (DisposedOrDisposing) return;
 
 				WatchlistRules.BeginUpdate();
 
@@ -537,7 +590,7 @@ namespace Taskmaster
 
 		void ProcessNewInstanceCount(object _, ProcessingCountEventArgs e)
 		{
-			if (!IsHandleCreated || disposed) return;
+			if (!IsHandleCreated || DisposedOrDisposing) return;
 
 			BeginInvoke(new Action(() =>
 			{
@@ -723,7 +776,7 @@ namespace Taskmaster
 
 		public void PathCacheUpdate(object _, EventArgs _ea)
 		{
-			if (!IsHandleCreated || disposed) return;
+			if (!IsHandleCreated || DisposedOrDisposing) return;
 
 			Debug.Assert(Taskmaster.DebugCache);
 
@@ -1400,7 +1453,7 @@ namespace Taskmaster
 
 			LoadUIConfiguration(out int opentab, out int[] appwidths, out int[] micwidths, out int[] ifacewidths);
 
-			if (Taskmaster.MicrophoneMonitorEnabled) BuildMicrophonePanel(micwidths);
+			if (Taskmaster.MicrophoneManagerEnabled) BuildMicrophonePanel(micwidths);
 
 			// Main Window row 4-5, internet status
 			TableLayoutPanel netstatus = null;
@@ -1822,7 +1875,7 @@ namespace Taskmaster
 			if (appwidths.Length != appwidthsDefault.Length) appwidths = appwidthsDefault;
 
 			micwidths = null;
-			if (Taskmaster.MicrophoneMonitorEnabled)
+			if (Taskmaster.MicrophoneManagerEnabled)
 			{
 				int[] micwidthsDefault = new int[] { 200, 220, 60, 60, 60, 120 };
 				micwidths = colcfg.GetSetDefault("Mics", micwidthsDefault).IntValueArray;
@@ -1905,7 +1958,7 @@ namespace Taskmaster
 			AudioInputEnable = new ComboBox()
 			{
 				DropDownStyle = ComboBoxStyle.DropDownList,
-				Items = { "Enabled", "Disabled" },
+				Items = { HumanReadable.Generic.Enabled, HumanReadable.Generic.Disabled },
 				SelectedIndex = 1,
 				Enabled = false,
 			};
@@ -2483,7 +2536,7 @@ namespace Taskmaster
 
 		async void ProcessHandlingStateChangeEvent(object _, HandlingStateChangeEventArgs ea)
 		{
-			if (!IsHandleCreated || disposed) return;
+			if (!IsHandleCreated || DisposedOrDisposing) return;
 
 			if (!Taskmaster.DebugProcesses && !Taskmaster.DebugForeground) return;
 
@@ -2681,7 +2734,7 @@ namespace Taskmaster
 		// Called by UI update timer, should be UI thread by default
 		async void UpdateMemoryStats(object _, EventArgs _ea)
 		{
-			if (!IsHandleCreated || disposed) return;
+			if (!IsHandleCreated || DisposedOrDisposing) return;
 			if (!ramload.Visible) return;
 
 			MemoryManager.Update(); // TODO: this is kinda dumb way to do things
@@ -2699,7 +2752,7 @@ namespace Taskmaster
 		// TODO: Reverse this design, make the UI poll instead
 		public async void CPULoadHandler(object _, ProcessorLoadEventArgs ea)
 		{
-			if (!IsHandleCreated || disposed) return;
+			if (!IsHandleCreated || DisposedOrDisposing) return;
 			if (!cpuload.Visible) return;
 
 			BeginInvoke(new Action(() =>
@@ -2711,7 +2764,7 @@ namespace Taskmaster
 
 		public async void PowerLoadHandler(object _, AutoAdjustReactionEventArgs ea)
 		{
-			if (!IsHandleCreated || disposed) return;
+			if (!IsHandleCreated || DisposedOrDisposing) return;
 
 			BeginInvoke(new Action(() =>
 			{
@@ -3107,7 +3160,7 @@ namespace Taskmaster
 
 		private async void PowerBehaviourEvent(object sender, PowerManager.PowerBehaviourEventArgs e)
 		{
-			if (!IsHandleCreated || disposed) return;
+			if (!IsHandleCreated || DisposedOrDisposing) return;
 
 			BeginInvoke(new Action(() =>
 			{
@@ -3118,7 +3171,7 @@ namespace Taskmaster
 		DateTimeOffset LastCauseTime = DateTimeOffset.MinValue;
 		private void PowerPlanEvent(object sender, PowerModeEventArgs e)
 		{
-			if (!IsHandleCreated || disposed) return;
+			if (!IsHandleCreated || DisposedOrDisposing) return;
 
 			BeginInvoke(new Action(() =>
 			{
@@ -3160,7 +3213,7 @@ namespace Taskmaster
 
 		async void UpdateHealthMon(object sender, EventArgs e)
 		{
-			if (!IsHandleCreated || disposed) return;
+			if (!IsHandleCreated || DisposedOrDisposing) return;
 			if (!nvmtransfers.Visible) return;
 
 			try
@@ -3244,7 +3297,7 @@ namespace Taskmaster
 
 		public async void PowerBehaviourDebugEvent(object _, PowerManager.PowerBehaviourEventArgs ea)
 		{
-			if (!IsHandleCreated || disposed) return;
+			if (!IsHandleCreated || DisposedOrDisposing) return;
 
 			if (!Taskmaster.DebugPower) return;
 
@@ -3258,7 +3311,7 @@ namespace Taskmaster
 
 		public async void PowerPlanDebugEvent(object _, PowerModeEventArgs ea)
 		{
-			if (!IsHandleCreated || disposed) return;
+			if (!IsHandleCreated || DisposedOrDisposing) return;
 
 			if (!Taskmaster.DebugPower) return;
 
@@ -3270,7 +3323,7 @@ namespace Taskmaster
 
 		public void UpdateNetworkDevices(object _, EventArgs _ea)
 		{
-			if (!IsHandleCreated || disposed) return;
+			if (!IsHandleCreated || DisposedOrDisposing) return;
 
 			InetStatusLabel(netmonitor.InternetAvailable);
 			NetStatusLabel(netmonitor.NetworkAvailable);
@@ -3328,7 +3381,7 @@ namespace Taskmaster
 
 		void NetSampleHandler(object _, NetDeviceTrafficEventArgs ea)
 		{
-			if (!IsHandleCreated || disposed) return;
+			if (!IsHandleCreated || DisposedOrDisposing) return;
 
 			BeginInvoke(new Action(() =>
 			{
@@ -3360,7 +3413,7 @@ namespace Taskmaster
 
 		void InetStatusLabel(bool available)
 		{
-			if (!IsHandleCreated || disposed) return;
+			if (!IsHandleCreated || DisposedOrDisposing) return;
 
 			BeginInvoke(new Action(() =>
 			{
@@ -3382,7 +3435,7 @@ namespace Taskmaster
 
 		async void NetStatusLabel(bool available)
 		{
-			if (!IsHandleCreated || disposed) return;
+			if (!IsHandleCreated || DisposedOrDisposing) return;
 
 			BeginInvoke(new Action(() =>
 			{
@@ -3412,7 +3465,7 @@ namespace Taskmaster
 
 		public async void NewLogReceived(object _, LogEventArgs ea)
 		{
-			if (!IsHandleCreated || disposed) return;
+			if (!IsHandleCreated || DisposedOrDisposing) return;
 
 			if (LogIncludeLevel.MinimumLevel > ea.Level) return;
 
@@ -3462,7 +3515,7 @@ namespace Taskmaster
 						cols["Interfaces"].IntValueArray = ifaceWidths.ToArray();
 					}
 
-					if (Taskmaster.MicrophoneMonitorEnabled)
+					if (Taskmaster.MicrophoneManagerEnabled)
 					{
 						List<int> micWidths = new List<int>(AudioInputs.Columns.Count);
 						for (int i = 0; i < AudioInputs.Columns.Count; i++)
@@ -3485,15 +3538,18 @@ namespace Taskmaster
 			}));
 		}
 
-		bool disposed = false;
+		#region IDispose
+		bool DisposedOrDisposing = false;
 		protected override void Dispose(bool disposing)
 		{
-			if (disposed) return;
+			if (DisposedOrDisposing) return;
 
 			base.Dispose(disposing);
 
 			if (disposing)
 			{
+				DisposedOrDisposing = true;
+
 				if (Taskmaster.Trace) Log.Verbose("Disposing main window...");
 
 				if (MemoryLog.MemorySink != null)
@@ -3594,8 +3650,7 @@ namespace Taskmaster
 				exitwaitlist?.Dispose();
 				ExitWaitlistMap?.Clear();
 			}
-
-			disposed = true;
 		}
+		#endregion Dispose
 	}
 }

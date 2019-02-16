@@ -37,10 +37,9 @@ namespace Taskmaster
 {
 	sealed public class MicManager : IDisposable
 	{
+		readonly System.Threading.Thread Context = null;
+
 		public event EventHandler<VolumeChangedEventArgs> VolumeChanged;
-
-		public event EventHandler<Events.AudioDeviceStateEventArgs> StateChanged;
-
 		public event EventHandler<Events.AudioDefaultDeviceEventArgs> DefaultChanged;
 
 		const string deviceFilename = "Microphone.Devices.ini";
@@ -86,12 +85,11 @@ namespace Taskmaster
 			}
 		}
 
-		NAudio.CoreAudioApi.MMDevice m_dev = null;
+		AudioDevice RecordingDevice = null;
 
-		public string DeviceName => m_dev?.FriendlyName ?? string.Empty; // does not fail like m_dev.ID
-		public string DeviceGuid { get; private set; } = string.Empty; // accessing m_dev.ID from here causes COMexception... thread local?
+		public string DeviceName => RecordingDevice?.Name ?? string.Empty;
+		public string DeviceGuid => RecordingDevice?.GUID ?? string.Empty;
 
-		readonly AudioDeviceNotificationClient notificationClient = null;
 		NAudio.CoreAudioApi.MMDeviceEnumerator mm_enum = null;
 
 		double DefaultVolume { get; set; } = 100d;
@@ -101,22 +99,7 @@ namespace Taskmaster
 		public MicManager()
 		{
 			Debug.Assert(Taskmaster.IsMainThread(), "Requires main thread");
-
-			mm_enum = new NAudio.CoreAudioApi.MMDeviceEnumerator();
-
-			if (mm_enum == null)
-			{
-				Log.Fatal("<Microphone> Failed to load multimedia device enumerator.");
-				throw new InitFailure("Failed to load multimedia device enumerator");
-			}
-
-			RegisterDefaultDevice();
-
-			notificationClient = new AudioDeviceNotificationClient();
-			notificationClient.StateChanged += StateChangeProxy;
-			notificationClient.DefaultDevice += ChangeDefaultDevice;
-
-			mm_enum.RegisterEndpointNotificationCallback(notificationClient);
+			Context = System.Threading.Thread.CurrentThread;
 
 			var mvol = "Default recording volume";
 			var mcontrol = "Recording volume control";
@@ -140,28 +123,101 @@ namespace Taskmaster
 			Taskmaster.DisposalChute.Push(this);
 		}
 
+		AudioManager audiomanager = null;
+		public void Hook(AudioManager manager)
+		{
+			Debug.Assert(manager != null, "AudioManager must not be null");
+
+			try
+			{
+				audiomanager = manager;
+				audiomanager.Added += DeviceAdded;
+				audiomanager.Removed += DeviceRemoved;
+				audiomanager.DefaultChanged += ChangeDefaultDevice;
+
+				EnumerateDevices();
+
+				RegisterDefaultDevice();
+			}
+			catch (OutOfMemoryException) { throw; }
+			catch (Exception ex)
+			{
+				Logging.Stacktrace(ex);
+			}
+		}
+
+		public void DeviceAdded(object sender, AudioDeviceEventArgs ea)
+		{
+			if (DisposedOrDisposing) return;
+			try
+			{
+				if (ea.Device.Flow == DataFlow.Capture)
+					KnownDevices.Add(ea.Device);
+			}
+			catch (OutOfMemoryException) { throw; }
+			catch (Exception ex)
+			{
+				Logging.Stacktrace(ex);
+			}
+		}
+
+		public void DeviceRemoved(object sender, AudioDeviceEventArgs ea)
+		{
+			if (DisposedOrDisposing) return;
+
+			try
+			{
+				var dev = (from idev in KnownDevices where idev.GUID.Equals(ea.GUID, StringComparison.OrdinalIgnoreCase) select idev).FirstOrDefault();
+				if (dev != null) KnownDevices.Remove(dev);
+			}
+			catch (OutOfMemoryException) { throw; }
+			catch (Exception ex)
+			{
+				Logging.Stacktrace(ex);
+			}
+		}
+
 		void ChangeDefaultDevice(object sender, AudioDefaultDeviceEventArgs ea)
 		{
-			if (ea.Flow == DataFlow.Capture && ea.Role == Role.Communications)
+			if (DisposedOrDisposing) return;
+
+			try
 			{
-				UnregisterDefaultDevice();
+				if (ea.Flow == DataFlow.Capture && ea.Role == Role.Communications)
+				{
+					UnregisterDefaultDevice();
 
-				DeviceGuid = ea.GUID;
+					if (!string.IsNullOrEmpty(ea.GUID))
+						RegisterDefaultDevice();
+					else // no default
+						Log.Warning("<Microphone> No communications device found!");
 
-				if (!string.IsNullOrEmpty(ea.GUID))
-					RegisterDefaultDevice();
-				else // no default
-					Log.Warning("<Microphone> No communications device found!");
-
-				DefaultChanged?.Invoke(this, ea);
+					DefaultChanged?.Invoke(this, ea);
+				}
+			}
+			catch (OutOfMemoryException) { throw; }
+			catch (Exception ex)
+			{
+				Logging.Stacktrace(ex);
 			}
 		}
 
 		void UnregisterDefaultDevice()
 		{
-			VolumeControl = null;
-			if (m_dev != null) m_dev.AudioEndpointVolume.OnVolumeNotification -= VolumeChangedHandler; // unregister old
-			m_dev = null;
+			try
+			{
+				RecordingDevice?.Dispose();
+			}
+			catch (OutOfMemoryException) { throw; }
+			catch (Exception ex)
+			{
+				Logging.Stacktrace(ex);
+			}
+			finally
+			{
+				VolumeControl = null;
+				RecordingDevice = null;
+			}
 		}
 
 		void RegisterDefaultDevice()
@@ -174,7 +230,9 @@ namespace Taskmaster
 				// get default communications device
 				try
 				{
-					m_dev = mm_enum.GetDefaultAudioEndpoint(NAudio.CoreAudioApi.DataFlow.Capture, NAudio.CoreAudioApi.Role.Communications);
+					RecordingDevice = null;
+					var m_dev = audiomanager.Enumerator?.GetDefaultAudioEndpoint(NAudio.CoreAudioApi.DataFlow.Capture, NAudio.CoreAudioApi.Role.Communications) ?? null;
+					if (m_dev != null) RecordingDevice = new AudioDevice(m_dev);
 				}
 				catch (System.Runtime.InteropServices.COMException ex)
 				{
@@ -182,7 +240,7 @@ namespace Taskmaster
 					// NOP
 				}
 
-				if (m_dev == null)
+				if (RecordingDevice == null)
 				{
 					Log.Error("<Microphone> No communications device found!");
 					return;
@@ -196,7 +254,8 @@ namespace Taskmaster
 				catch (NAudio.MmException)
 				{
 					Log.Error("<Microphone> Default device not found.");
-					m_dev = null;
+					RecordingDevice?.Dispose();
+					RecordingDevice = null;
 					return;
 				}
 
@@ -206,21 +265,18 @@ namespace Taskmaster
 
 				_volume = (VolumeControl != null ? VolumeControl.Percent : double.NaN); // kinda hackish
 
-				m_dev.AudioEndpointVolume.OnVolumeNotification += VolumeChangedHandler;
+				RecordingDevice.MMDevice.AudioEndpointVolume.OnVolumeNotification += VolumeChangedHandler;
 
 				//
 
 				var vname = "Volume";
 				var cname = "Control";
 
-				var guid = AudioManager.AudioDeviceIdToGuid(m_dev.ID);
-
 				var devcfg = Taskmaster.Config.Load(deviceFilename);
-				var devsec = devcfg.Config[guid];
+				var devsec = devcfg.Config[RecordingDevice.GUID];
 
 				bool dirty = false, modified = false;
 
-				var devname = m_dev.FriendlyName;
 				dirty |= !(devsec.Contains(vname));
 				var devvol = devsec.GetSetDefault(vname, DefaultVolume, out modified).DoubleValue;
 				dirty |= modified;
@@ -228,7 +284,7 @@ namespace Taskmaster
 				dirty |= modified;
 				if (!devsec.Contains("Name"))
 				{
-					devsec["Name"].StringValue = devname;
+					devsec["Name"].StringValue = RecordingDevice.Name;
 					dirty = true;
 				}
 
@@ -237,7 +293,7 @@ namespace Taskmaster
 				if (Control && !devcontrol) Control = false; // disable general control if device control is disabled
 
 				Target = devvol.Constrain(0.0d, 100.0d);
-				Log.Information($"<Microphone> Default device: {devname} (volume: {Target:N1} %) – Control: {(Control ? "Enabled" : "Disabled")}");
+				Log.Information($"<Microphone> Default device: {RecordingDevice.Name} (volume: {Target:N1} %) – Control: {(Control ? HumanReadable.Generic.Enabled : HumanReadable.Generic.Disabled)}");
 
 				if (Control) Volume = Target;
 			}
@@ -248,22 +304,15 @@ namespace Taskmaster
 			}
 		}
 
-		private void StateChangeProxy(object sender, Events.AudioDeviceStateEventArgs ea)
-		{
-			StateChanged?.Invoke(this, ea);
-		}
+		List<AudioDevice> KnownDevices = new List<AudioDevice>();
 
-		/// <summary>
-		/// Enumerate this instance.
-		/// </summary>
-		/// <returns>Enumeration of audio input devices as GUID/FriendlyName string pair.</returns>
-		public List<MicDevice> DeviceList()
+		void EnumerateDevices()
 		{
 			if (Taskmaster.Trace) Log.Verbose("<Microphone> Enumerating devices...");
 
-			var devices = new List<MicDevice>();
+			if (DisposedOrDisposing) return;
 
-			if (DisposedOrDisposing) return devices;
+			var devices = new List<AudioDevice>();
 
 			try
 			{
@@ -272,7 +321,8 @@ namespace Taskmaster
 
 				var devcfg = Taskmaster.Config.Load(deviceFilename);
 
-					var devs = mm_enum.EnumerateAudioEndPoints(NAudio.CoreAudioApi.DataFlow.Capture, NAudio.CoreAudioApi.DeviceState.Active);
+				var devs = audiomanager.Enumerator?.EnumerateAudioEndPoints(NAudio.CoreAudioApi.DataFlow.Capture, NAudio.CoreAudioApi.DeviceState.Active) ?? null;
+				if (devs == null) throw new InvalidOperationException("Enumerator not available, Audio Manager is dead");
 				foreach (var dev in devs)
 				{
 					try
@@ -288,14 +338,11 @@ namespace Taskmaster
 						dirty |= modified;
 						float target = devsec.TryGet("Volume")?.FloatValue ?? float.NaN;
 
-						var mdev = new MicDevice
+						var mdev = new AudioDevice(dev)
 						{
-							Name = dev.DeviceFriendlyName,
-							GUID = AudioManager.AudioDeviceIdToGuid(dev.ID),
 							VolumeControl = control,
 							Target = target,
 							Volume = dev.AudioSessionManager.SimpleAudioVolume.Volume * 100d, // simpleaudiovolume is 0.0 to 1.0 instead of 0.0 to 100.0
-							State = dev.State,
 						};
 
 						devices.Add(mdev);
@@ -311,7 +358,7 @@ namespace Taskmaster
 
 				if (dirty) devcfg.MarkDirty();
 
-				if (Taskmaster.Trace) Log.Verbose("<Microphone> " + devices.Count + " microphone(s)");
+				if (Taskmaster.Trace) Log.Verbose("<Microphone> " + KnownDevices.Count + " microphone(s)");
 			}
 			catch (OutOfMemoryException) { throw; }
 			catch (Exception ex)
@@ -319,8 +366,14 @@ namespace Taskmaster
 				Logging.Stacktrace(ex);
 			}
 
-			return devices;
+			KnownDevices = devices;
 		}
+
+		/// <summary>
+		/// Enumerate this instance.
+		/// </summary>
+		/// <returns>Enumeration of audio input devices as GUID/FriendlyName string pair.</returns>
+		public List<AudioDevice> Devices => new List<AudioDevice>(KnownDevices);
 
 		// TODO: Add device enumeration
 		// TODO: Add device selection
@@ -406,120 +459,13 @@ namespace Taskmaster
 			{
 				if (Taskmaster.Trace) Log.Verbose("Disposing microphone monitor...");
 
-				mm_enum?.UnregisterEndpointNotificationCallback(notificationClient);  // unnecessary?
-
-				mm_enum?.Dispose();
-				mm_enum = null;
-
 				VolumeChanged = null;
 
-				if (m_dev != null)
-				{
-					m_dev.AudioEndpointVolume.OnVolumeNotification -= VolumeChangedHandler;
-					m_dev = null;
-				}
+				RecordingDevice?.Dispose();
+				RecordingDevice = null;
 			}
 
 			disposed = true;
-		}
-	}
-
-	class AudioDeviceNotificationClient : NAudio.CoreAudioApi.Interfaces.IMMNotificationClient
-	{
-		public event EventHandler<Events.AudioDefaultDeviceEventArgs> DefaultDevice;
-		public event EventHandler Changed;
-		public event EventHandler Added;
-		public event EventHandler Removed;
-		public event EventHandler<Events.AudioDeviceStateEventArgs> StateChanged;
-		public event EventHandler PropertyChanged;
-
-		public void OnDefaultDeviceChanged(DataFlow flow, Role role, string defaultDeviceId)
-		{
-			bool HaveDefaultDevice = !string.IsNullOrEmpty(defaultDeviceId);
-
-			try
-			{
-				var guid = HaveDefaultDevice ? AudioManager.AudioDeviceIdToGuid(defaultDeviceId) : string.Empty;
-
-				if (Taskmaster.DebugAudio && Taskmaster.Trace)
-					Log.Verbose($"<Audio> Default device changed for {role.ToString()} ({flow.ToString()}): {(HaveDefaultDevice ? guid : HumanReadable.Generic.NotAvailable)}");
-
-				switch (role)
-				{
-					case Role.Console:
-					case Role.Multimedia:
-						return;
-					case Role.Communications:
-						break;
-				}
-
-				switch (flow)
-				{
-					case DataFlow.All:
-					case DataFlow.Render:
-						return;
-					case DataFlow.Capture:
-						break;
-				}
-
-				DefaultDevice?.Invoke(this, new Events.AudioDefaultDeviceEventArgs(guid, role, flow));
-			}
-			catch (OutOfMemoryException) { throw; }
-			catch (Exception ex)
-			{
-				Logging.Stacktrace(ex);
-			}
-
-			//Log.Information("<Audio> Default device changed: " + defaultDeviceId);
-		}
-
-		public void OnDeviceAdded(string pwstrDeviceId)
-		{
-			Log.Debug("<Audio> Device added: " + pwstrDeviceId);
-
-			Added?.Invoke(this, null);
-		}
-
-		public void OnDeviceRemoved(string deviceId)
-		{
-			Log.Debug("<Audio> Device removed: " + deviceId);
-
-			Removed?.Invoke(this, null);
-		}
-
-		public void OnDeviceStateChanged(string deviceId, DeviceState newState)
-		{
-			try
-			{
-				switch (newState)
-				{
-					case DeviceState.Active:
-						break;
-					case DeviceState.Disabled:
-						break;
-					case DeviceState.NotPresent:
-						break;
-					case DeviceState.Unplugged:
-						break;
-					case DeviceState.All:
-						break;
-				}
-
-				var guid = AudioManager.AudioDeviceIdToGuid(deviceId);
-				Log.Debug("<Audio> Device (" + guid + ") state: " + newState.ToString());
-
-				StateChanged?.Invoke(this, new Events.AudioDeviceStateEventArgs(guid, newState));
-			}
-			catch (OutOfMemoryException) { throw; }
-			catch (Exception ex)
-			{
-				Logging.Stacktrace(ex);
-			}
-		}
-
-		public void OnPropertyValueChanged(string pwstrDeviceId, PropertyKey key)
-		{
-			PropertyChanged?.Invoke(this, null);
 		}
 	}
 }

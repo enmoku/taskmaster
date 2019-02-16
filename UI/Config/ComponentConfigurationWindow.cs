@@ -102,9 +102,14 @@ namespace Taskmaster
 				AutoSize = true,
 				//BackColor = System.Drawing.Color.Azure,
 				Dock = DockStyle.Left,
-				Checked = initial ? false : Taskmaster.MicrophoneMonitorEnabled,
+				Checked = initial ? false : Taskmaster.MicrophoneManagerEnabled,
 			};
-			tooltip.SetToolTip(micmon, "Monitor default communications device and keep its volume.");
+			tooltip.SetToolTip(micmon, "Monitor default communications device and keep its volume.\nRequires audio manager to be enabled.");
+
+			audioman.CheckedChanged += (s,e) =>
+			{
+				micmon.Enabled = audioman.Checked;
+			};
 
 			layout.Controls.Add(new Label { Text = "Microphone manager", AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, Padding = BigPadding, Dock = DockStyle.Left });
 			layout.Controls.Add(micmon);
@@ -362,8 +367,8 @@ namespace Taskmaster
 
 				var compsec = cfg.Config["Components"];
 				compsec[HumanReadable.System.Process.Section].BoolValue = procmon.Checked;
-				compsec["Microphone"].BoolValue = micmon.Checked;
 				compsec[HumanReadable.Hardware.Audio.Section].BoolValue = audioman.Checked;
+				compsec["Microphone"].BoolValue = micmon.Checked;
 				// compsec["Media"].BoolValue = mediamon.Checked;
 				compsec[HumanReadable.System.Process.Foreground].BoolValue = fgmon.Checked;
 				compsec["Network"].BoolValue = netmon.Checked;
