@@ -5,6 +5,7 @@ Comprehensive changes can be found in Git change history:
 ## [0.13...]
 ### 2019-02-16
 	Changed: Audio and Microphone management. Microphone manager now depends on Audio Manager to function.
+	Fixed: Minor leaked bug.
 ### 2019-02-15
 	Fixed: Microphone tab was empty if the associated component was loaded.
 	Fixed: Potential massive bug if TM is used outside of Windows 7 with the experimental I/O priority enabled.

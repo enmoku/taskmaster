@@ -32,12 +32,9 @@ namespace Taskmaster
 	sealed public class AudioDevice : System.IDisposable
 	{
 		public AudioDevice(NAudio.CoreAudioApi.MMDevice device)
+			: this(AudioManager.AudioDeviceIdToGuid(device.ID), device.FriendlyName, device.DataFlow, device.State, device)
 		{
-			GUID = AudioManager.AudioDeviceIdToGuid(device.ID);
-			Name = device.FriendlyName;
-			State = device.State;
-			Flow = device.DataFlow;
-			MMDevice = device;
+			// nop
 		}
 
 		public AudioDevice(string guid, string name, NAudio.CoreAudioApi.DataFlow flow, NAudio.CoreAudioApi.DeviceState state, NAudio.CoreAudioApi.MMDevice device)
@@ -74,8 +71,11 @@ namespace Taskmaster
 
 				if (disposing)
 				{
-					Taskmaster.Context.Post(_ => { MMDevice?.Dispose(); }, null); // HACK: must happen in same thread as created
-					MMDevice = null;
+					if (Taskmaster.IsMainThread())
+					{
+						MMDevice?.Dispose();  // HACK: must happen in same thread as created
+						MMDevice = null;
+					}
 				}
 			}
 		}
