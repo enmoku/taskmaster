@@ -24,6 +24,9 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
+using System.Diagnostics;
+using System.Threading;
+
 namespace Taskmaster
 {
 	sealed public class AudioDevice : System.IDisposable
@@ -56,7 +59,7 @@ namespace Taskmaster
 		public NAudio.CoreAudioApi.DeviceState State { get; set; }
 		public NAudio.CoreAudioApi.DataFlow Flow { get; set; }
 
-		public NAudio.CoreAudioApi.MMDevice MMDevice { get; private set; }
+		public NAudio.CoreAudioApi.MMDevice MMDevice { get; private set; } = null;
 
 		public override string ToString() => $"{Name ?? "n/a"} {{{GUID ?? "n/a"}}}";
 
@@ -71,25 +74,13 @@ namespace Taskmaster
 
 				if (disposing)
 				{
-					//MMDevice?.Dispose(); // hangs
+					Taskmaster.Context.Post(_ => { MMDevice?.Dispose(); }, null); // HACK: must happen in same thread as created
+					MMDevice = null;
 				}
 			}
 		}
 
-		// TODO: override a finalizer only if Dispose(bool disposing) above has code to free unmanaged resources.
-		// ~AudioDevice() {
-		//   // Do not change this code. Put cleanup code in Dispose(bool disposing) above.
-		//   Dispose(false);
-		// }
-
-		// This code added to correctly implement the disposable pattern.
-		public void Dispose()
-		{
-			// Do not change this code. Put cleanup code in Dispose(bool disposing) above.
-			Dispose(true);
-			// TODO: uncomment the following line if the finalizer is overridden above.
-			// GC.SuppressFinalize(this);
-		}
+		public void Dispose() => Dispose(true);
 		#endregion
 	}
 }

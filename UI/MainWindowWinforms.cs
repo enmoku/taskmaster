@@ -286,9 +286,7 @@ namespace Taskmaster
 
 		void RemoveAudioInput(string GUID)
 		{
-
-
-			if (MicGuidToAudioInputs.TryRemove(device.GUID, out var li))
+			if (MicGuidToAudioInputs.TryRemove(GUID, out var li))
 			{
 				AudioInputs.Items.Remove(li);
 			}

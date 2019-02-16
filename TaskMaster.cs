@@ -25,10 +25,12 @@
 // THE SOFTWARE.
 
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using Serilog;
@@ -41,6 +43,8 @@ namespace Taskmaster
 	{
 		public static string GitURL => "https://github.com/mkahvi/taskmaster";
 		public static string ItchURL => "https://mkah.itch.io/taskmaster";
+
+		public readonly static SynchronizationContext Context = SynchronizationContext.Current;
 
 		//public static SharpConfig.Configuration cfg;
 		public static string datapath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "MKAh", "Taskmaster");
@@ -62,6 +66,9 @@ namespace Taskmaster
 		public static CPUMonitor cpumonitor = null;
 		public static HardwareMonitor hardware = null;
 
+		/// <summary>
+		/// For making sure disposal happens and that it does so in main thread.
+		/// </summary>
 		public static Stack<IDisposable> DisposalChute = new Stack<IDisposable>();
 
 		public static OS.HiddenWindow hiddenwindow; // depends on chute

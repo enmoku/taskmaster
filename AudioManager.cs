@@ -129,7 +129,8 @@ namespace Taskmaster
 			if (ea.GUID.Equals(ConsoleDevice.GUID, StringComparison.OrdinalIgnoreCase))
 				ConsoleDevice = null;
 
-			Devices.TryRemove(ea.GUID, out _);
+			if (Devices.TryRemove(ea.GUID, out var dev))
+				dev.Dispose();
 
 			Removed?.Invoke(sender, ea);
 		}
@@ -278,7 +279,7 @@ namespace Taskmaster
 
 				if (disposing)
 				{
-					//Enumerator?.UnregisterEndpointNotificationCallback(notificationClient);  // unnecessary? definitely hangs
+					Enumerator?.UnregisterEndpointNotificationCallback(notificationClient);  // unnecessary? definitely hangs if any mmdevice has been disposed
 					Enumerator?.Dispose();
 					Enumerator = null;
 
@@ -287,6 +288,9 @@ namespace Taskmaster
 
 					MultimediaDevice?.Dispose();
 					ConsoleDevice?.Dispose();
+
+					foreach (var dev in Devices.Values)
+						dev.Dispose();
 				}
 			}
 		}
