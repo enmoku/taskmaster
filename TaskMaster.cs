@@ -550,7 +550,7 @@ namespace Taskmaster
 		public static int AffinityStyle { get; set; } = 0;
 		public static bool GlobalHotkeys { get; set; } = false;
 
-		public static string coreconfig = "Core.ini";
+		public const string coreconfig = "Core.ini";
 		static void LoadCoreConfig()
 		{
 			Log.Information("<Core> Loading configuration...");
@@ -1097,7 +1097,7 @@ namespace Taskmaster
 				datapath = portpath;
 				Portable = true;
 			}
-			else if (!File.Exists(Path.Combine(datapath, "Core.ini")))
+			else if (!File.Exists(Path.Combine(datapath, Taskmaster.coreconfig)))
 			{
 				if (SimpleMessageBox.ShowModal("Taskmaster setup", "Setup portable installation?", SimpleMessageBox.Buttons.AcceptCancel)
 					== SimpleMessageBox.ResultType.OK)
@@ -1148,7 +1148,7 @@ namespace Taskmaster
 						}
 
 						lp.Disconnect();
-						lp.BeginWaitForConnection(PipeCleaner, null);
+						lp.BeginWaitForConnection(PipeCleaner, EventArgs.Empty);
 					}
 					catch (Exception ex)
 					{
@@ -1183,7 +1183,7 @@ namespace Taskmaster
 
 				//DisposalChute.Push(pipe);
 
-				pipe.BeginWaitForConnection(PipeCleaner, null);
+				pipe.BeginWaitForConnection(PipeCleaner, EventArgs.Empty);
 
 				return pipe;
 			}

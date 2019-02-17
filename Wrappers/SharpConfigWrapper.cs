@@ -60,7 +60,7 @@ namespace Taskmaster
 
 			if (!Dirty) return;
 
-			onSave?.Invoke(this, null);
+			onSave?.Invoke(this, EventArgs.Empty);
 
 			Dirty = false;
 		}
@@ -71,7 +71,7 @@ namespace Taskmaster
 
 			if (Dirty) Save();
 
-			onUnload?.Invoke(this, null);
+			onUnload?.Invoke(this, EventArgs.Empty);
 
 			Config = null;
 		}

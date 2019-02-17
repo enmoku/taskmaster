@@ -526,7 +526,7 @@ namespace Taskmaster.UI
 
 			processmanager.HandlingCounter += ProcessNewInstanceCount;
 			processmanager.ProcessStateChange += ExitWaitListHandler;
-			if (Taskmaster.DebugCache) PathCacheUpdate(null, null);
+			if (Taskmaster.DebugCache) PathCacheUpdate(null, EventArgs.Empty);
 
 			ProcessNewInstanceCount(this, new ProcessingCountEventArgs(0, 0));
 
@@ -541,7 +541,11 @@ namespace Taskmaster.UI
 			}));
 
 			if (control.ScanFrequency.HasValue)
+			{
 				UItimer.Tick += UpdateRescanCountdown;
+				GotFocus += UpdateRescanCountdown;
+				UpdateRescanCountdown(this, EventArgs.Empty);
+			}
 
 			processmanager.WatchlistSorted += UpdateWatchlist;
 
@@ -813,10 +817,16 @@ namespace Taskmaster.UI
 
 		readonly System.Windows.Forms.Timer UItimer = new System.Windows.Forms.Timer();
 
-		void StartUIUpdates(object _, EventArgs _ea)
+		void StartUIUpdates(object sender, EventArgs _ea)
 		{
-			if (!IsHandleCreated) StopUIUpdates(null, null);
-			else if (!UItimer.Enabled) UItimer.Start();
+			if (!IsHandleCreated) StopUIUpdates(this, EventArgs.Empty);
+			else if (!UItimer.Enabled)
+			{
+				UpdateMemoryStats(sender, EventArgs.Empty);
+				UpdateHealthMon(sender, EventArgs.Empty);
+				UpdateNetwork(sender, EventArgs.Empty);
+				UItimer.Start();
+			}
 		}
 
 		void StopUIUpdates(object _, EventArgs _ea)
@@ -837,6 +847,7 @@ namespace Taskmaster.UI
 		void UpdateRescanCountdown(object _, EventArgs _ea)
 		{
 			if (!IsHandleCreated) return;
+			if (processmanager == null) return; // not yet assigned
 
 			// Rescan Countdown
 			if (processmanager.ScanFrequency.HasValue)
@@ -1030,6 +1041,7 @@ namespace Taskmaster.UI
 
 			// LAYOUT ITEM CONFIGURATION
 
+			#region Actions toolstrip menu
 			var menu_action = new ToolStripMenuItem("Actions");
 			// Sub Items
 			var menu_action_rescan = new ToolStripMenuItem(HumanReadable.System.Process.Rescan, null, RescanRequestEvent)
@@ -1053,8 +1065,10 @@ namespace Taskmaster.UI
 			menu_action.DropDownItems.Add(menu_action_restart);
 			menu_action.DropDownItems.Add(menu_action_restartadmin);
 			menu_action.DropDownItems.Add(menu_action_exit);
+			#endregion // Actions toolstrip menu
 
 			// CONFIG menu item
+			#region Config toolstrip menu
 			var menu_config = new ToolStripMenuItem("Configuration");
 			// Sub Items
 			var menu_config_behaviour = new ToolStripMenuItem("Behaviour");
@@ -1219,8 +1233,10 @@ namespace Taskmaster.UI
 			menu_config.DropDownItems.Add(menu_config_experiments);
 			menu_config.DropDownItems.Add(new ToolStripSeparator());
 			menu_config.DropDownItems.Add(menu_config_folder);
+			#endregion // Config toolstrip menu
 
 			// DEBUG menu item
+			#region Debug toolstrip menu
 			var menu_debug = new ToolStripMenuItem("Debug");
 			// Sub Items
 			var menu_debug_loglevel = new ToolStripMenuItem("UI log level");
@@ -1408,8 +1424,10 @@ namespace Taskmaster.UI
 			menu_debug.DropDownItems.Add(menu_debug_audio);
 			menu_debug.DropDownItems.Add(new ToolStripSeparator());
 			menu_debug.DropDownItems.Add(menu_debug_clear);
+			#endregion // Debug toolstrip menu
 
 			// INFO menu
+			#region Info toolstrip menu
 			var menu_info = new ToolStripMenuItem("Info");
 			// Sub Items
 
@@ -1459,34 +1477,13 @@ namespace Taskmaster.UI
 			if (Taskmaster.NetworkMonitorEnabled) netstatus = BuildNetworkStatusUI(infopanel, ifacewidths);
 			// End: Inet status
 
-			GotFocus += UpdateNetwork;
 			GotFocus += StartUIUpdates;
 
 			FormClosing += StopUIUpdates;
-			VisibleChanged += (sender, ea) =>
-			{
-				if (Visible)
-				{
-					UpdateNetwork(sender, ea);
-					StartUIUpdates(sender, ea);
-				}
-				else
-				{
-					StopUIUpdates(sender, ea);
-				}
-			};
 
 			UItimer.Interval = UIUpdateFrequency;
-			if (Taskmaster.NetworkMonitorEnabled)
-				UItimer.Tick += UpdateNetwork;
 
-			UItimer.Tick += UpdateMemoryStats;
 			//UItimer.Tick += Cleanup;
-
-			if (Taskmaster.PathCacheLimit > 0)
-			{
-				if (Taskmaster.DebugCache) UItimer.Tick += PathCacheUpdate;
-			}
 
 			// End: Settings
 
@@ -3114,7 +3111,7 @@ namespace Taskmaster.UI
 
 			ShowLastLog();
 
-			ResizeLogList(this, null);
+			ResizeLogList(this, EventArgs.Empty);
 		}
 
 		public void Hook(ActiveAppManager aamon)
@@ -3201,6 +3198,10 @@ namespace Taskmaster.UI
 			UItimer.Tick += UpdateHealthMon;
 
 			oldHealthReport = healthmonitor.Poll();
+
+			UpdateMemoryStats(this, EventArgs.Empty);
+			UItimer.Tick += UpdateHealthMon;
+			GotFocus += UpdateHealthMon;
 		}
 
 		HealthReport oldHealthReport = null;
@@ -3213,6 +3214,7 @@ namespace Taskmaster.UI
 		async void UpdateHealthMon(object sender, EventArgs e)
 		{
 			if (!IsHandleCreated || DisposedOrDisposing) return;
+			if (healthmonitor == null) return;
 			if (!nvmtransfers.Visible) return;
 
 			try
@@ -3370,12 +3372,17 @@ namespace Taskmaster.UI
 
 			netmonitor = net;
 
-			UpdateNetworkDevices(this, null);
+			UpdateNetworkDevices(this, EventArgs.Empty);
 
 			netmonitor.InternetStatusChange += InetStatus;
 			netmonitor.IPChanged += UpdateNetworkDevices;
 			netmonitor.NetworkStatusChange += NetStatus;
 			netmonitor.onSampling += NetSampleHandler;
+
+			UItimer.Tick += UpdateNetwork;
+			GotFocus += UpdateNetwork;
+
+			UpdateNetwork(this, EventArgs.Empty);
 		}
 
 		void NetSampleHandler(object _, NetDeviceTrafficEventArgs ea)

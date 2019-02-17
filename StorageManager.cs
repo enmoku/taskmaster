@@ -75,7 +75,7 @@ namespace Taskmaster
 				TempScanTimer.Elapsed += ScanTemp;
 				TempScanTimer.Start();
 
-				Task.Run(() => ScanTemp(null, null));
+				Task.Run(() => ScanTemp(this, EventArgs.Empty));
 
 				Log.Information("<Maintenance> Temp folder scanner will be performed once per day.");
 
@@ -103,7 +103,7 @@ namespace Taskmaster
 				if (ReScanBurden % 1000 == 0)
 				{
 					Log.Warning("<Maintenance> Number of changes to temp folders exceeding tolerance.");
-					onBurden?.Invoke(this, null);
+					onBurden?.Invoke(this, EventArgs.Empty);
 				}
 			}
 			catch (OutOfMemoryException) { throw; }
@@ -121,7 +121,7 @@ namespace Taskmaster
 			LastTempScan = now;
 
 			TempScanTimer?.Stop();
-			Task.Run(() => Task.Delay(5_000).ContinueWith((_x) => ScanTemp(null, null)));
+			Task.Run(() => Task.Delay(5_000).ContinueWith((_x) => ScanTemp(this, EventArgs.Empty)));
 		}
 
 		event EventHandler onBurden;

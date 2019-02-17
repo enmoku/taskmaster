@@ -967,7 +967,7 @@ namespace Taskmaster
 				return info.Name; // NAME
 		}
 
-		public async void Modify(ProcessEx info)
+		public async Task Modify(ProcessEx info)
 		{
 			await Touch(info);
 			if (Recheck > 0) TouchReapply(info); // this can go do its thing
@@ -988,13 +988,13 @@ namespace Taskmaster
 				info.Process.Refresh();
 				if (info.Process.HasExited)
 				{
-					End(info.Process, null);
+					End(info.Process, EventArgs.Empty);
 					return false;
 				}
 			}
 			catch
 			{
-				End(info.Process, null);
+				End(info.Process, EventArgs.Empty);
 				throw;
 				return false;
 			}

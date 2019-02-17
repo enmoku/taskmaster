@@ -80,7 +80,7 @@ namespace Taskmaster.UI
 			menu_windowopen = new ToolStripMenuItem("Open", null, RestoreMainWindow);
 			menu_rescan = new ToolStripMenuItem(HumanReadable.System.Process.Rescan, null, (o, s) =>
 			{
-				RescanRequest?.Invoke(this, null);
+				RescanRequest?.Invoke(this, EventArgs.Empty);
 			});
 			menu_configuration = new ToolStripMenuItem("Configuration");
 			var menu_configuration_autopower = new ToolStripMenuItem("Power configuration", null, ShowPowerConfig);
@@ -146,7 +146,7 @@ namespace Taskmaster.UI
 
 			if (Taskmaster.Trace) Log.Verbose("Tray menu ready");
 
-			var cfg = Taskmaster.Config.Load("Core.ini");
+			var cfg = Taskmaster.Config.Load(Taskmaster.coreconfig);
 			var exsec = cfg.Config["Experimental"];
 			int exdelay = exsec.TryGet("Explorer Restart")?.IntValue ?? 0;
 			if (exdelay > 0) ExplorerRestartHelpDelay = TimeSpan.FromSeconds(exdelay.Min(5));
@@ -446,7 +446,7 @@ namespace Taskmaster.UI
 
 			if (e.Button == MouseButtons.Left)
 			{
-				RestoreMainWindow(null, null);
+				RestoreMainWindow(this, EventArgs.Empty);
 			}
 		}
 
@@ -454,10 +454,10 @@ namespace Taskmaster.UI
 		{
 			if (e.Button == MouseButtons.Left)
 			{
-				RestoreMainWindow(null, null);
+				RestoreMainWindow(this, EventArgs.Empty);
 				try
 				{
-					mainwindow?.UnloseWindowRequest(null, null); // null reference crash sometimes
+					mainwindow?.UnloseWindowRequest(this, EventArgs.Empty); // null reference crash sometimes
 				}
 				catch (Exception ex)
 				{

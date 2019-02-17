@@ -1097,7 +1097,7 @@ namespace Taskmaster
 					break;
 				case Microsoft.Win32.PowerModes.Resume:
 					Log.Information("Hibernation/Suspend end detected.");
-					onBatteryResume?.Invoke(this, null);
+					onBatteryResume?.Invoke(this, EventArgs.Empty);
 					// Invoke whatever is necessary to restore functionality after suspend breaking shit.
 					break;
 			}

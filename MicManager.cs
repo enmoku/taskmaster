@@ -230,9 +230,7 @@ namespace Taskmaster
 				// get default communications device
 				try
 				{
-					RecordingDevice = null;
-					var m_dev = audiomanager.Enumerator?.GetDefaultAudioEndpoint(NAudio.CoreAudioApi.DataFlow.Capture, NAudio.CoreAudioApi.Role.Communications) ?? null;
-					if (m_dev != null) RecordingDevice = new AudioDevice(m_dev);
+					RecordingDevice = audiomanager.RecordingDevice;
 				}
 				catch (System.Runtime.InteropServices.COMException ex)
 				{

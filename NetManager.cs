@@ -119,7 +119,7 @@ namespace Taskmaster
 			SampleTimer.Elapsed += DeviceSampler;
 			SampleTimer.Start();
 
-			AnalyzeTrafficBehaviour(null, null); // initialize, not really needed
+			AnalyzeTrafficBehaviour(this, EventArgs.Empty); // initialize, not really needed
 
 			/*
 			// Reset time could be used for initial internet start time as it is the only even remotely relevant one
@@ -716,7 +716,7 @@ namespace Taskmaster
 
 				if (ipv6changed || ipv6changed)
 				{
-					IPChanged?.Invoke(this, null);
+					IPChanged?.Invoke(this, EventArgs.Empty);
 				}
 			}
 			else
@@ -735,7 +735,7 @@ namespace Taskmaster
 
 		public void SetupEventHooks()
 		{
-			NetworkChanged(null, null); // initialize event handler's initial values
+			NetworkChanged(this, EventArgs.Empty); // initialize event handler's initial values
 
 			NetworkChange.NetworkAvailabilityChanged += NetworkChanged;
 			NetworkChange.NetworkAddressChanged += NetAddrChanged;

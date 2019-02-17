@@ -369,7 +369,7 @@ namespace Taskmaster
 
 				if (Taskmaster.DebugFullScan) Log.Debug("<Process> Full Scan: Start");
 
-				//ScanStartEvent?.Invoke(this, null);
+				//ScanStartEvent?.Invoke(this, EventArgs.Empty);
 
 				if (!SystemProcessId(ignorePid)) Ignore(ignorePid);
 
@@ -472,7 +472,7 @@ namespace Taskmaster
 
 				SignalProcessHandled(-foundprocs); // scan done
 
-				//ScanEndEvent?.Invoke(this, null);
+				//ScanEndEvent?.Invoke(this, EventArgs.Empty);
 
 				if (!SystemProcessId(ignorePid)) Unignore(ignorePid);
 			}
@@ -992,7 +992,7 @@ namespace Taskmaster
 			}
 
 			// TODO: Signal UI the actual order may have changed
-			WatchlistSorted?.Invoke(this, null);
+			WatchlistSorted?.Invoke(this, EventArgs.Empty);
 		}
 
 		int WatchlistSorter(ProcessController x, ProcessController y)
@@ -1089,7 +1089,7 @@ namespace Taskmaster
 
 				WaitForExitList.TryRemove(info.Id, out _);
 
-				info.Controller?.End(info.Process, null);
+				info.Controller?.End(info.Process, EventArgs.Empty);
 
 				ProcessStateChange?.Invoke(this, new ProcessModificationEventArgs(info));
 			}
@@ -1491,7 +1491,7 @@ namespace Taskmaster
 		/// <summary>
 		/// Add to foreground watch list if necessary.
 		/// </summary>
-		void ForegroundWatch(ProcessEx info)
+		async Task ForegroundWatch(ProcessEx info)
 		{
 			if (DisposedOrDisposing) return;
 
@@ -1558,7 +1558,7 @@ namespace Taskmaster
 					{
 						if (Taskmaster.Trace) Debug.WriteLine($"Trying to modify: {info.Name} (#{info.Id})");
 
-						info.Controller.Modify(info);
+						await info.Controller.Modify(info);
 
 						if (prc.Foreground != ForegroundMode.Ignore) ForegroundWatch(info);
 
@@ -1572,7 +1572,7 @@ namespace Taskmaster
 
 						if (info.State == ProcessHandlingState.Processing)
 						{
-							Debug.WriteLine($"[{info.Controller.FriendlyName}] {info.Name} (#{info.Id}) correcting state from {info.State.ToString()} to Finished");
+							Debug.WriteLine($"[{info.Controller.FriendlyName}] {info.Name} (#{info.Id}) correcting state to Finished");
 							info.State = ProcessHandlingState.Finished;
 						}
 					}
@@ -1611,7 +1611,7 @@ namespace Taskmaster
 		object Exclusive_lock = new object();
 		ConcurrentDictionary<int, ProcessEx> ExclusiveList = new ConcurrentDictionary<int, ProcessEx>();
 
-		void ExclusiveMode(ProcessEx info)
+		async Task ExclusiveMode(ProcessEx info)
 		{
 			if (DisposedOrDisposing) return;
 			if (!MKAh.System.IsAdministrator()) return; // sadly stopping services requires admin rights
@@ -1640,7 +1640,7 @@ namespace Taskmaster
 					if (info.Process.HasExited)
 					{
 						info.State = ProcessHandlingState.Exited;
-						EndExclusiveMode(info.Process, null);
+						EndExclusiveMode(info.Process, EventArgs.Empty);
 					}
 				}
 			}
@@ -2122,7 +2122,7 @@ namespace Taskmaster
 							if (info.Process.HasExited)
 							{
 								info.State = ProcessHandlingState.Exited;
-								EndExclusiveMode(info.Process, null);
+								EndExclusiveMode(info.Process, EventArgs.Empty);
 							}
 						}
 						catch { }

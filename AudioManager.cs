@@ -48,14 +48,21 @@ namespace Taskmaster
 
 		public NAudio.CoreAudioApi.MMDeviceEnumerator Enumerator = null;
 
+		public float OutVolume = 0.0f;
+		public float InVolume = 0.0f;
+
 		/// <summary>
 		/// Games, voice communication, etc.
 		/// </summary>
-		AudioDevice ConsoleDevice = null;
+		public AudioDevice ConsoleDevice { get; private set; } = null;
 		/// <summary>
 		/// Multimedia, Movies, etc.
 		/// </summary>
-		AudioDevice MultimediaDevice = null;
+		public AudioDevice MultimediaDevice { get; private set; } = null;
+		/// <summary>
+		/// Voice capture.
+		/// </summary>
+		public AudioDevice RecordingDevice { get; private set; } = null;
 
 		readonly AudioDeviceNotificationClient notificationClient = null;
 
@@ -93,8 +100,22 @@ namespace Taskmaster
 			}
 			*/
 
+			volumeTimer.Elapsed += VolumeTimer_Elapsed;
+
 			Taskmaster.DisposalChute.Push(this);
 		}
+
+		private void VolumeTimer_Elapsed(object sender, System.Timers.ElapsedEventArgs e)
+		{
+			throw new NotImplementedException();
+
+		}
+
+		System.Timers.Timer volumeTimer = new System.Timers.Timer(100);
+		public double VolumePollInterval => volumeTimer.Interval;
+
+		public void StartVolumePolling() => volumeTimer.Start();
+		public void StopVolumePolling() => volumeTimer.Stop();
 
 		private void StateChangeProxy(object sender, Events.AudioDeviceStateEventArgs ea)
 		{
@@ -153,12 +174,15 @@ namespace Taskmaster
 			{
 				var mmdevmultimedia = Enumerator.GetDefaultAudioEndpoint(NAudio.CoreAudioApi.DataFlow.Render, NAudio.CoreAudioApi.Role.Multimedia);
 				var mmdevconsole = Enumerator.GetDefaultAudioEndpoint(NAudio.CoreAudioApi.DataFlow.Render, NAudio.CoreAudioApi.Role.Console);
+				var mmdevinput = Enumerator.GetDefaultAudioEndpoint(NAudio.CoreAudioApi.DataFlow.Capture, NAudio.CoreAudioApi.Role.Communications);
 
 				MultimediaDevice = new AudioDevice(mmdevmultimedia);
 				ConsoleDevice = new AudioDevice(mmdevconsole);
+				RecordingDevice = new AudioDevice(mmdevinput);
 
 				Log.Information("<Audio> Default movie/music device: " + MultimediaDevice.Name);
 				Log.Information("<Audio> Default game/voip device: " + ConsoleDevice.Name);
+				Log.Information("<Audio> Default communications device: " + RecordingDevice.Name);
 
 				MultimediaDevice.MMDevice.AudioSessionManager.OnSessionCreated += OnSessionCreated;
 				ConsoleDevice.MMDevice.AudioSessionManager.OnSessionCreated += OnSessionCreated;
