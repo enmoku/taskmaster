@@ -71,7 +71,7 @@ namespace Taskmaster
 			{
 				string guid = AudioManager.AudioDeviceIdToGuid(pwstrDeviceId);
 
-				Log.Debug("<Audio> Device added: " + guid);
+				if (!Taskmaster.DebugAudio) Log.Debug("<Audio> Device added: " + guid);
 
 				Added?.Invoke(this, new Events.AudioDeviceEventArgs(guid, pwstrDeviceId));
 			}
@@ -88,7 +88,7 @@ namespace Taskmaster
 			{
 				string guid = AudioManager.AudioDeviceIdToGuid(deviceId);
 
-				Log.Debug("<Audio> Device removed: " + guid);
+				if (!Taskmaster.DebugAudio) Log.Debug("<Audio> Device removed: " + guid);
 
 				Removed?.Invoke(this, new Events.AudioDeviceEventArgs(guid, deviceId));
 			}
@@ -132,11 +132,13 @@ namespace Taskmaster
 
 		public void OnPropertyValueChanged(string pwstrDeviceId, PropertyKey key)
 		{
+			if (!Taskmaster.DebugAudio) return;
+
 			try
 			{
 				string guid = AudioManager.AudioDeviceIdToGuid(pwstrDeviceId);
 
-				Log.Debug("<Audio> Device (" + guid + ") property changed: " + key.ToString());
+				Log.Debug("<Audio> Device (" + guid + ") property changed: " + key.formatId.ToString() + " / " + key.propertyId);
 
 				//PropertyChanged?.Invoke(this, null);
 			}
