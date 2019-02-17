@@ -186,7 +186,7 @@
     <Compile Include="UI\HiddenWindow.cs">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Include="UI\ListViewEx.cs">
+    <Compile Include="UI\Extensions\ListViewEx.cs">
       <SubType>Component</SubType>
     </Compile>
     <Compile Include="UI\UniForm.cs">
@@ -229,7 +229,7 @@
     </Compile>
     <Compile Include="Statistics.cs" />
     <Compile Include="TaskMaster.cs" />
-    <Compile Include="TrayAccess.cs" />
+    <Compile Include="UI\TrayAccess.cs" />
     <Compile Include="Utility.cs" />
     <Compile Include="Extensions\ProcessExtensions.cs" />
     <Compile Include="Extensions\SharpConfigExtensions.cs" />

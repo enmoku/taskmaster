@@ -29,9 +29,9 @@ using System.Windows.Forms;
 using Serilog;
 using Taskmaster.PowerInfo;
 
-namespace Taskmaster
+namespace Taskmaster.UI
 {
-	sealed public class PowerConfigWindow : UI.UniForm
+	sealed public class PowerConfigWindow : UniForm
 	{
 		public AutoAdjustSettings oldAutoAdjust = null;
 		public AutoAdjustSettings newAutoAdjust = null;

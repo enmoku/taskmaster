@@ -32,7 +32,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 
-namespace Taskmaster.Extensions
+namespace Taskmaster.UI.Extensions
 {
 	/// <summary>
 	/// Extension on NumericUpDown to show some form of unit of measure.

@@ -24,14 +24,9 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows.Forms;
 
-namespace Taskmaster.UI
+namespace Taskmaster.UI.Extensions
 {
 	/// <summary>
 	/// Flicker free ListView. Not perfect, but better than default.

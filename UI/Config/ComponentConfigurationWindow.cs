@@ -27,9 +27,9 @@
 using System;
 using System.Windows.Forms;
 
-namespace Taskmaster
+namespace Taskmaster.UI.Config
 {
-	sealed public class ComponentConfigurationWindow : UI.UniForm
+	sealed public class ComponentConfigurationWindow : UniForm
 	{
 		public ComponentConfigurationWindow(bool initial = true)
 		{

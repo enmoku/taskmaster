@@ -53,9 +53,9 @@ namespace Taskmaster
 		public static ConfigManager Config = null;
 
 		public static MicManager micmonitor = null;
-		public static MainWindow mainwindow = null;
+		public static UI.MainWindow mainwindow = null;
 		public static ProcessManager processmanager = null;
-		public static TrayAccess trayaccess = null;
+		public static UI.TrayAccess trayaccess = null;
 		public static NetManager netmonitor = null;
 		public static StorageManager storagemanager = null;
 		public static PowerManager powermanager = null;
@@ -163,7 +163,7 @@ namespace Taskmaster
 			{
 				if (mainwindow != null) return;
 
-				mainwindow = new MainWindow();
+				mainwindow = new UI.MainWindow();
 				mainwindow.FormClosed += (_, _ea) => mainwindow = null;
 
 				try
@@ -229,7 +229,7 @@ namespace Taskmaster
 			OptimizeResponsiviness();
 		}
 
-		static void TrayMenuShownEvent(object _, TrayShownEventArgs e)
+		static void TrayMenuShownEvent(object _, UI.TrayShownEventArgs e)
 		{
 			TrayShown = e.Visible;
 
@@ -268,7 +268,7 @@ namespace Taskmaster
 			var sec = tcfg.Config.TryGet("Core")?.TryGet("Version")?.StringValue ?? null;
 			if (sec == null || sec != ConfigVersion)
 			{
-				using (var initialconfig = new ComponentConfigurationWindow())
+				using (var initialconfig = new UI.Config.ComponentConfigurationWindow())
 				{
 					initialconfig.ShowDialog();
 					if (initialconfig.DialogResult != DialogResult.OK)
@@ -329,7 +329,7 @@ namespace Taskmaster
 			}
 
 			// WinForms makes the following components not load nicely if not done here.
-			trayaccess = new TrayAccess();
+			trayaccess = new UI.TrayAccess();
 			trayaccess.TrayMenuShown += TrayMenuShownEvent;
 
 			if (PowerManagerEnabled)

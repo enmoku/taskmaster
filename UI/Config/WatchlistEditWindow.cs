@@ -30,7 +30,7 @@ using System.Diagnostics;
 using System.Windows.Forms;
 using Serilog;
 
-namespace Taskmaster
+namespace Taskmaster.UI.Config
 {
 	sealed public class WatchlistEditWindow : UI.UniForm
 	{
@@ -447,7 +447,7 @@ namespace Taskmaster
 
 			// IGNORE
 
-			ignorelist = new UI.ListViewEx()
+			ignorelist = new Extensions.ListViewEx()
 			{
 				BorderStyle = BorderStyle.Fixed3D, // doesn't work with EnableVisualStyles
 				View = View.Details,

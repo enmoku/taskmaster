@@ -33,11 +33,12 @@ using System.Threading.Tasks;
 using System.Windows.Forms;
 using Serilog;
 using Taskmaster.Events;
+using Taskmaster.UI;
 
-namespace Taskmaster
+namespace Taskmaster.UI
 {
 	// public class MainWindow : System.Windows.Window; // TODO: WPF
-	sealed public class MainWindow : UI.UniForm
+	sealed public class MainWindow : UniForm
 	{
 		ToolTip tooltip = new ToolTip();
 
@@ -129,7 +130,7 @@ namespace Taskmaster
 
 			try
 			{
-				UI.Config.AdvancedConfig.Reveal();
+				Config.AdvancedConfig.Reveal();
 			}
 			catch (Exception ex) { Logging.Stacktrace(ex); }
 		}
@@ -1686,7 +1687,7 @@ namespace Taskmaster
 
 		private void BuildProcessDebug()
 		{
-			exitwaitlist = new UI.ListViewEx()
+			exitwaitlist = new Extensions.ListViewEx()
 			{
 				AutoSize = true,
 				//Height = 180,
@@ -1762,7 +1763,7 @@ namespace Taskmaster
 				//Padding = new Padding(3),
 			});
 
-			processinglist = new UI.ListViewEx()
+			processinglist = new Extensions.ListViewEx()
 			{
 				AutoSize = true,
 				FullRowSelect = true,
@@ -2112,7 +2113,7 @@ namespace Taskmaster
 				Padding = BigPadding,
 			});
 
-			powerbalancerlog = new UI.ListViewEx()
+			powerbalancerlog = new Extensions.ListViewEx()
 			{
 				Parent = this,
 				Dock = DockStyle.Top,
@@ -2168,7 +2169,7 @@ namespace Taskmaster
 				AutoSize = true
 			};
 			lastmodifypanel.Controls.Add(new Label() { Text = "Last process modifications", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left });
-			lastmodifylist = new UI.ListViewEx()
+			lastmodifylist = new Extensions.ListViewEx()
 			{
 				Parent = this,
 				Dock = DockStyle.Top,
@@ -2346,7 +2347,7 @@ namespace Taskmaster
 
 		void ShowExperimentConfig(object sender, EventArgs ea)
 		{
-			using (var n = new UI.Config.ExperimentConfig())
+			using (var n = new Config.ExperimentConfig())
 			{
 				n.ShowDialog();
 				if (n.DialogResult == DialogResult.OK)
@@ -2380,7 +2381,7 @@ namespace Taskmaster
 		{
 			try
 			{
-				using (var comps = new ComponentConfigurationWindow(initial: false))
+				using (var comps = new Config.ComponentConfigurationWindow(initial: false))
 				{
 					comps.ShowDialog();
 					if (comps.DialogResult == DialogResult.OK)
@@ -2888,7 +2889,7 @@ namespace Taskmaster
 					var name = li.SubItems[NameColumn].Text;
 					var prc = Taskmaster.processmanager.GetControllerByName(name);
 
-					using (var editdialog = new WatchlistEditWindow(prc)) // 1 = executable
+					using (var editdialog = new Config.WatchlistEditWindow(prc)) // 1 = executable
 					{
 						var rv = editdialog.ShowDialog();
 						// WatchlistEditLock = 0;
@@ -2909,7 +2910,7 @@ namespace Taskmaster
 		{
 			try
 			{
-				var ew = new WatchlistEditWindow();
+				var ew = new Config.WatchlistEditWindow();
 				var rv = ew.ShowDialog();
 				if (rv == DialogResult.OK)
 				{

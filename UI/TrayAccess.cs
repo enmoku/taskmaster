@@ -33,7 +33,7 @@ using System.Windows.Forms;
 using MKAh;
 using Serilog;
 
-namespace Taskmaster
+namespace Taskmaster.UI
 {
 	sealed public class TrayShownEventArgs : EventArgs
 	{

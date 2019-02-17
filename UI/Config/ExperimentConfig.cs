@@ -29,7 +29,7 @@ using System.Windows.Forms;
 
 namespace Taskmaster.UI.Config
 {
-	public sealed class ExperimentConfig : UI.UniForm
+	public sealed class ExperimentConfig : UniForm
 	{
 		public ExperimentConfig()
 		{

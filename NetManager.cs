@@ -295,7 +295,7 @@ namespace Taskmaster
 			}
 		}
 
-		public TrayAccess Tray { get; set; } = null; // bad design
+		public UI.TrayAccess Tray { get; set; } = null; // bad design
 
 		public bool NetworkAvailable { get; private set; } = false;
 		public bool InternetAvailable { get; private set; } = false;
