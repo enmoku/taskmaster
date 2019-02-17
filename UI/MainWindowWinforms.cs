@@ -1667,6 +1667,19 @@ namespace Taskmaster.UI
 			// End Process Debug
 
 			tabLayout.SelectedIndex = opentab >= tabLayout.TabCount ? 0 : opentab;
+
+			// HANDLE TIMERS
+
+			UItimer.Tick += UpdateMemoryStats;
+			GotFocus += UpdateMemoryStats;
+			UpdateMemoryStats(this, EventArgs.Empty);
+
+			if (Taskmaster.DebugCache && Taskmaster.PathCacheLimit > 0)
+			{
+				UItimer.Tick += PathCacheUpdate;
+				GotFocus += PathCacheUpdate;
+				PathCacheUpdate(this, EventArgs.Empty);
+			}
 		}
 
 		void ToolStripMenuAutoOpen(object sender, EventArgs _)
@@ -3195,7 +3208,6 @@ namespace Taskmaster.UI
 		{
 			healthmonitor = hmon;
 
-			UItimer.Tick += UpdateHealthMon;
 
 			oldHealthReport = healthmonitor.Poll();
 
