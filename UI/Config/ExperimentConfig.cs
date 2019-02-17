@@ -24,6 +24,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
+using Serilog;
 using System;
 using System.Windows.Forms;
 
@@ -31,7 +32,8 @@ namespace Taskmaster.UI.Config
 {
 	public sealed class ExperimentConfig : UniForm
 	{
-		public ExperimentConfig()
+		public ExperimentConfig(bool center=false)
+			: base(center)
 		{
 			Text = "Experiment Configuration";
 			AutoSizeMode = AutoSizeMode.GrowAndShrink;
@@ -154,6 +156,28 @@ namespace Taskmaster.UI.Config
 		{
 			DialogResult = DialogResult.Cancel;
 			Close();
+		}
+
+		public static void Reveal(bool centerOnScreen=false)
+		{
+			try
+			{
+				using (var n = new Config.ExperimentConfig(centerOnScreen))
+				{
+					n.ShowDialog();
+					if (n.DialogResult == DialogResult.OK)
+					{
+						Log.Information("<Experiments> Settings changed");
+
+						Taskmaster.ConfirmExit(restart: true, message: "Restart required for experimental settings to take effect.", alwaysconfirm: true);
+					}
+				}
+			}
+			catch (OutOfMemoryException) { throw; }
+			catch (Exception ex)
+			{
+				Logging.Stacktrace(ex);
+			}
 		}
 	}
 }

@@ -56,7 +56,8 @@ namespace Taskmaster.UI
 		ComboBox monitoroffmode = null;
 		CheckBox monitorofftoggle = null;
 
-		public PowerConfigWindow()
+		public PowerConfigWindow(bool center = false)
+			: base(center)
 		{
 			Text = "Power Configuration";
 
@@ -528,11 +529,11 @@ namespace Taskmaster.UI
 			loQueue.Value = Convert.ToDecimal(AutoAdjust.Queue.Low).Constrain(0, 100);
 		}
 
-		public static void Reveal()
+		public static void Reveal(bool centerOnScreen=false)
 		{
 			try
 			{
-				using (var pcw = new PowerConfigWindow())
+				using (var pcw = new PowerConfigWindow(centerOnScreen))
 				{
 					var res = pcw.ShowDialog();
 					if (pcw.DialogResult == DialogResult.OK)

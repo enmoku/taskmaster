@@ -41,7 +41,7 @@ namespace Taskmaster.UI
 
 		protected System.Drawing.Font boldfont = null;
 
-		public UniForm()
+		public UniForm(bool centerOnScreen=false)
 		{
 			var handle = this.Handle; // unused; forces handle creation
 
@@ -61,7 +61,7 @@ namespace Taskmaster.UI
 			MinimizeBox = false;
 			MaximizeBox = false;
 
-			StartPosition = FormStartPosition.CenterParent;
+			StartPosition = centerOnScreen ? FormStartPosition.CenterScreen : FormStartPosition.CenterParent;
 
 			//Padding = CustomPadding;
 

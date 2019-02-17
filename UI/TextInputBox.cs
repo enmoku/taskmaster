@@ -33,6 +33,7 @@ namespace Taskmaster
 		public string Value { get; private set; } = null;
 
 		public TextInputBox(string message, string title, string input = null)
+			: base()
 		{
 			Text = title;
 

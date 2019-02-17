@@ -24,6 +24,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
+using Serilog;
 using System;
 using System.Windows.Forms;
 
@@ -31,7 +32,8 @@ namespace Taskmaster.UI.Config
 {
 	sealed public class ComponentConfigurationWindow : UniForm
 	{
-		public ComponentConfigurationWindow(bool initial = true)
+		public ComponentConfigurationWindow(bool initial = true, bool center = false)
+			: base(initial || center)
 		{
 			// Size = new System.Drawing.Size(220, 360); // width, height
 
@@ -44,11 +46,6 @@ namespace Taskmaster.UI.Config
 			WindowState = FormWindowState.Normal;
 			FormBorderStyle = FormBorderStyle.FixedDialog; // no min/max buttons as wanted
 			AutoSizeMode = AutoSizeMode.GrowAndShrink;
-
-			if (initial)
-				StartPosition = FormStartPosition.CenterScreen;
-			else
-				StartPosition = FormStartPosition.CenterParent;
 
 			bool WMIPolling = false;
 			int WMIPollDelay = 5;
@@ -435,6 +432,30 @@ namespace Taskmaster.UI.Config
 		{
 			DialogResult = DialogResult.Abort;
 			Close();
+		}
+
+		public static void Reveal(bool centerOnScreen=false)
+		{
+			try
+			{
+				using (var comps = new Config.ComponentConfigurationWindow(initial: false, center: centerOnScreen))
+				{
+					comps.ShowDialog();
+					if (comps.DialogResult == DialogResult.OK)
+					{
+						if (SimpleMessageBox.ShowModal("Restart needed", "TM needs to be restarted for changes to take effect.\n\nCancel to do so manually later.", SimpleMessageBox.Buttons.AcceptCancel) == SimpleMessageBox.ResultType.OK)
+						{
+							Log.Information("<UI> Restart request");
+							Taskmaster.UnifiedExit(restart: true);
+						}
+					}
+				}
+			}
+			catch (Exception ex)
+			{
+				Logging.Stacktrace(ex);
+				//throw; // bad idea
+			}
 		}
 	}
 }

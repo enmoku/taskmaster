@@ -50,13 +50,6 @@ namespace Taskmaster.UI
 
 		public event EventHandler<TrayShownEventArgs> TrayMenuShown;
 
-		ContextMenuStrip ms;
-		ToolStripMenuItem menu_windowopen;
-		ToolStripMenuItem menu_rescan;
-		ToolStripMenuItem menu_configuration;
-		ToolStripMenuItem menu_runatstart_sch;
-		ToolStripMenuItem menu_exit;
-
 		ToolStripMenuItem power_auto;
 		ToolStripMenuItem power_highperf;
 		ToolStripMenuItem power_balanced;
@@ -64,6 +57,7 @@ namespace Taskmaster.UI
 		ToolStripMenuItem power_manual;
 
 		public TrayAccess()
+			: base()
 		{
 			// BUILD UI
 			Tray = new NotifyIcon
@@ -76,24 +70,40 @@ namespace Taskmaster.UI
 
 			if (Taskmaster.Trace) Log.Verbose("Generating tray icon.");
 
-			ms = new ContextMenuStrip();
-			menu_windowopen = new ToolStripMenuItem("Open", null, RestoreMainWindow);
-			menu_rescan = new ToolStripMenuItem(HumanReadable.System.Process.Rescan, null, (o, s) =>
+			var ms = new ContextMenuStrip();
+			var menu_windowopen = new ToolStripMenuItem("Open main window", null, (_, _ea) => Taskmaster.ShowMainWindow());
+			var menu_volumeopen = new ToolStripMenuItem("Open volume meter", null, (_, _ea) => Taskmaster.BuildVolumeMeter())
 			{
-				RescanRequest?.Invoke(this, EventArgs.Empty);
-			});
-			menu_configuration = new ToolStripMenuItem("Configuration");
-			var menu_configuration_autopower = new ToolStripMenuItem("Power configuration", null, ShowPowerConfig);
-			var menu_configuration_folder = new ToolStripMenuItem("Open in file manager", null, ShowConfigRequest);
-			menu_configuration.DropDownItems.Add(menu_configuration_autopower);
-			menu_configuration.DropDownItems.Add(new ToolStripSeparator());
-			menu_configuration.DropDownItems.Add(menu_configuration_folder);
+				Enabled = Taskmaster.AudioManagerEnabled,
+			};
+			var menu_rescan = new ToolStripMenuItem(HumanReadable.System.Process.Rescan, null, (o, s) => RescanRequest?.Invoke(this, EventArgs.Empty));
+			var menu_configuration = new ToolStripMenuItem("Configuration");
 
-			menu_runatstart_sch = new ToolStripMenuItem("Schedule at login (Admin)", null, RunAtStartMenuClick_Sch);
+			var menu_runatstart_sch = new ToolStripMenuItem("Schedule at login (Admin)", null, RunAtStartMenuClick_Sch);
 
 			bool runatstartsch = RunAtStartScheduler(enabled: false, dryrun: true);
 			menu_runatstart_sch.Checked = runatstartsch;
 			Log.Information("<Core> Run-at-start scheduler: " + (runatstartsch ? "Found" : "Missing"));
+
+			menu_configuration.DropDownItems.Add(new ToolStripMenuItem("Power", null, (_, _ea) => PowerConfigWindow.Reveal(centerOnScreen:true)));
+			menu_configuration.DropDownItems.Add(new ToolStripMenuItem("Advanced", null, (_, _ea) => Config.AdvancedConfig.Reveal(centerOnScreen:true))); // FIXME: MODAL
+			menu_configuration.DropDownItems.Add(new ToolStripMenuItem("Components", null, (_, _ea) => Config.ComponentConfigurationWindow.Reveal(centerOnScreen:true))); // FIXME: MODAL
+			menu_configuration.DropDownItems.Add(new ToolStripSeparator());
+			menu_configuration.DropDownItems.Add(new ToolStripMenuItem("Experiments", null, (_,_ea) => Config.ExperimentConfig.Reveal(centerOnScreen:true))); // FIXME: MODAL
+			menu_configuration.DropDownItems.Add(new ToolStripSeparator());
+			menu_configuration.DropDownItems.Add(menu_runatstart_sch);
+			menu_configuration.DropDownItems.Add(new ToolStripSeparator());
+			menu_configuration.DropDownItems.Add(new ToolStripMenuItem("Open in file manager", null, (_, _ea) => Process.Start(Taskmaster.datapath)));
+
+			var menu_restart = new ToolStripMenuItem("Restart", null, (_s, _ea) => Taskmaster.ConfirmExit(restart: true));
+			var menu_exit = new ToolStripMenuItem("Exit", null, (_s, _ea) => Taskmaster.ConfirmExit(restart: false));
+
+			ms.Items.Add(menu_windowopen);
+			ms.Items.Add(menu_volumeopen);
+			ms.Items.Add(new ToolStripSeparator());
+			ms.Items.Add(menu_rescan);
+			ms.Items.Add(new ToolStripSeparator());
+			ms.Items.Add(menu_configuration);
 
 			if (Taskmaster.PowerManagerEnabled)
 			{
@@ -103,35 +113,9 @@ namespace Taskmaster.UI
 				power_balanced = new ToolStripMenuItem(PowerManager.GetModeName(PowerInfo.PowerMode.Balanced), null, (s, e) => SetPower(PowerInfo.PowerMode.Balanced));
 				power_saving = new ToolStripMenuItem(PowerManager.GetModeName(PowerInfo.PowerMode.PowerSaver), null, (s, e) => SetPower(PowerInfo.PowerMode.PowerSaver));
 				power_manual = new ToolStripMenuItem("Manual override", null, SetManualPower) { CheckOnClick = true };
-			}
 
-			ToolStripMenuItem menu_restart = null;
-			menu_restart = new ToolStripMenuItem("Restart", null, (o, s) =>
-			{
-				menu_restart.Enabled = false;
-				Taskmaster.ConfirmExit(restart: true);
-				menu_restart.Enabled = true;
-			});
-			menu_exit = new ToolStripMenuItem("Exit", null, (o, s) =>
-			{
-				menu_restart.Enabled = false;
-				Taskmaster.ConfirmExit(restart: false);
-				menu_restart.Enabled = true;
-			});
-			ms.Items.Add(menu_windowopen);
-			ms.Items.Add(new ToolStripSeparator());
-			ms.Items.Add(menu_rescan);
-			ms.Items.Add(new ToolStripSeparator());
-			ms.Items.Add(menu_configuration);
-			ms.Items.Add(menu_runatstart_sch);
-			if (Taskmaster.PowerManagerEnabled)
-			{
 				ms.Items.Add(new ToolStripSeparator());
-				var plab = new ToolStripLabel("--- Power Plan ---")
-				{
-					ForeColor = System.Drawing.SystemColors.GrayText
-				};
-				ms.Items.Add(plab);
+				ms.Items.Add(new ToolStripLabel("--- Power Plan ---") { ForeColor = System.Drawing.SystemColors.GrayText });
 				ms.Items.Add(power_auto);
 				ms.Items.Add(power_highperf);
 				ms.Items.Add(power_balanced);
@@ -152,8 +136,6 @@ namespace Taskmaster.UI
 			if (exdelay > 0) ExplorerRestartHelpDelay = TimeSpan.FromSeconds(exdelay.Min(5));
 			else ExplorerRestartHelpDelay = null;
 			RegisterExplorerExit();
-
-			ms.Enabled = false;
 
 			// Tray.Click += RestoreMainWindow;
 			Tray.MouseClick += ShowWindow;
@@ -177,12 +159,15 @@ namespace Taskmaster.UI
 			Taskmaster.DisposalChute.Push(this);
 		}
 
-		private void MenuVisibilityChangedEvent(object _, EventArgs _ea)
+		void MenuVisibilityChangedEvent(object sender, EventArgs _ea)
 		{
-			TrayMenuShown?.Invoke(null, new TrayShownEventArgs() { Visible = ms.Visible });
+			if (sender is ContextMenuStrip ms)
+			{
+				TrayMenuShown?.Invoke(null, new TrayShownEventArgs() { Visible = ms.Visible });
+			}
 		}
 
-		public void SessionEndingEvent(object _, Microsoft.Win32.SessionEndingEventArgs ea)
+		void SessionEndingEvent(object _, Microsoft.Win32.SessionEndingEventArgs ea)
 		{
 			ea.Cancel = true;
 			// is this safe?
@@ -194,13 +179,13 @@ namespace Taskmaster.UI
 
 		int hotkeymodifiers = (int)NativeMethods.KeyModifier.Control | (int)NativeMethods.KeyModifier.Shift | (int)NativeMethods.KeyModifier.Alt;
 
-		bool registered = false;
+		bool HotkeysRegistered = false;
 		// TODO: Move this off elsewhere
 		public void RegisterGlobalHotkeys()
 		{
 			Debug.Assert(Taskmaster.IsMainThread(), "RegisterGlobalHotkeys must be called from main thread");
 
-			if (registered) return;
+			if (HotkeysRegistered) return;
 
 			try
 			{
@@ -212,7 +197,7 @@ namespace Taskmaster.UI
 
 				Log.Information("<Global> Registered hotkey: ctrl-alt-shift-r = scan");
 
-				registered = true;
+				HotkeysRegistered = true;
 			}
 			catch (Exception ex)
 			{
@@ -224,7 +209,7 @@ namespace Taskmaster.UI
 		{
 			Debug.Assert(Taskmaster.IsMainThread(), "UnregisterGlobalHotkeys must be called from main thread");
 
-			if (registered)
+			if (HotkeysRegistered)
 			{
 				NativeMethods.UnregisterHotKey(Handle, 0);
 				NativeMethods.UnregisterHotKey(Handle, 1);
@@ -304,8 +289,6 @@ namespace Taskmaster.UI
 
 			base.WndProc(ref m); // is this necessary?
 		}
-
-		public void Enable() => ms.Enabled = true;
 
 		public event EventHandler RescanRequest;
 
@@ -402,51 +385,13 @@ namespace Taskmaster.UI
 			}
 		}
 
-		void ShowConfigRequest(object _, EventArgs e)
-		{
-			Debug.WriteLine("Opening config folder.");
-			Process.Start(Taskmaster.datapath);
-
-			mainwindow?.ShowConfigRequest(null, e);
-		}
-
-		void ShowPowerConfig(object _, EventArgs _ea)
-		{
-			if (!IsHandleCreated) return;
-
-			PowerConfigWindow.Reveal();
-		}
-
-		int restoremainwindow_lock = 0;
-		void RestoreMainWindow(object _, EventArgs _ea)
-		{
-			if (!Atomic.Lock(ref restoremainwindow_lock)) return; // already being done
-
-			try
-			{
-				Taskmaster.ShowMainWindow();
-
-				if (Taskmaster.Trace)
-					Log.Verbose("RestoreMainWindow done!");
-			}
-			catch (Exception ex)
-			{
-				Logging.Stacktrace(ex);
-				throw;
-			}
-			finally
-			{
-				Atomic.Unlock(ref restoremainwindow_lock);
-			}
-		}
-
 		void ShowWindow(object _, MouseEventArgs e)
 		{
 			if (Taskmaster.Trace) Log.Verbose("Tray Click");
 
 			if (e.Button == MouseButtons.Left)
 			{
-				RestoreMainWindow(this, EventArgs.Empty);
+				Taskmaster.ShowMainWindow();
 			}
 		}
 
@@ -454,7 +399,8 @@ namespace Taskmaster.UI
 		{
 			if (e.Button == MouseButtons.Left)
 			{
-				RestoreMainWindow(this, EventArgs.Empty);
+				Taskmaster.ShowMainWindow();
+
 				try
 				{
 					mainwindow?.UnloseWindowRequest(this, EventArgs.Empty); // null reference crash sometimes
@@ -623,15 +569,17 @@ namespace Taskmaster.UI
 			}
 		}
 
-		bool disposed = false;
+		bool DisposingOrDisposed = false;
 		protected override void Dispose(bool disposing)
 		{
-			if (disposed) return;
+			if (DisposingOrDisposed) return;
 
 			Microsoft.Win32.SystemEvents.SessionEnding -= SessionEndingEvent; // leaks if not disposed
 
 			if (disposing)
 			{
+				DisposingOrDisposed = true;
+
 				if (Taskmaster.Trace) Log.Verbose("Disposing tray...");
 
 				UnregisterGlobalHotkeys();
@@ -650,21 +598,9 @@ namespace Taskmaster.UI
 					Utility.Dispose(ref Tray);
 				}
 
-				Utility.Dispose(ref menu_configuration);
-				Utility.Dispose(ref menu_exit);
-				Utility.Dispose(ref menu_rescan);
-				Utility.Dispose(ref menu_windowopen);
-				Utility.Dispose(ref ms);
-				Utility.Dispose(ref power_auto);
-				Utility.Dispose(ref power_balanced);
-				Utility.Dispose(ref power_highperf);
-				Utility.Dispose(ref power_manual);
-				Utility.Dispose(ref power_saving);
 				// Free any other managed objects here.
 				//
 			}
-
-			disposed = true;
 		}
 
 		public event EventHandler TrayTooltipClicked;
@@ -675,12 +611,11 @@ namespace Taskmaster.UI
 			Tray.BalloonTipClicked += TrayTooltipClicked; // does this actually work for proxying?
 		}
 
+		// does this do anything really?
 		public void RefreshVisibility()
 		{
 			Tray.Visible = false;
 			Tray.Visible = true;
-
-			Enable();
 		}
 
 		int ensuringvisibility = 0;
@@ -718,28 +653,31 @@ namespace Taskmaster.UI
 			}
 		}
 
-		void RunAtStartMenuClick_Sch(object _, EventArgs _ea)
+		void RunAtStartMenuClick_Sch(object sender, EventArgs _ea)
 		{
-			try
+			if (sender is ToolStripMenuItem menu_runatstart_sch)
 			{
-				if (!MKAh.System.IsAdministrator())
+				try
 				{
-					SimpleMessageBox.ShowModal("Taskmaster! – run at login", "Scheduler can not be modified without admin rights.", SimpleMessageBox.Buttons.OK);
-					return;
-				}
+					if (!MKAh.System.IsAdministrator())
+					{
+						SimpleMessageBox.ShowModal("Taskmaster! – run at login", "Scheduler can not be modified without admin rights.", SimpleMessageBox.Buttons.OK);
+						return;
+					}
 
-				if (!menu_runatstart_sch.Checked)
+					if (!menu_runatstart_sch.Checked)
+					{
+						if (SimpleMessageBox.ShowModal("Taskmaster! – run at login", "This will add on-login scheduler to run TM as admin, is this right?", SimpleMessageBox.Buttons.AcceptCancel)
+							== SimpleMessageBox.ResultType.Cancel) return;
+					}
+					// can't be disabled without admin rights?
+
+					menu_runatstart_sch.Checked = RunAtStartScheduler(!menu_runatstart_sch.Checked);
+				}
+				catch (Exception ex)
 				{
-					if (SimpleMessageBox.ShowModal("Taskmaster! – run at login", "This will add on-login scheduler to run TM as admin, is this right?", SimpleMessageBox.Buttons.AcceptCancel)
-						== SimpleMessageBox.ResultType.Cancel) return;
+					Logging.Stacktrace(ex);
 				}
-				// can't be disabled without admin rights?
-
-				menu_runatstart_sch.Checked = RunAtStartScheduler(!menu_runatstart_sch.Checked);
-			}
-			catch (Exception ex)
-			{
-				Logging.Stacktrace(ex);
 			}
 		}
 

@@ -45,6 +45,7 @@ namespace Taskmaster
 		List<ProcessEx> InfoList = new List<ProcessEx>();
 
 		public ProcessSelectDialog(string message = "")
+			: base()
 		{
 			WindowState = FormWindowState.Normal;
 			FormBorderStyle = FormBorderStyle.FixedDialog; // no min/max buttons as wanted

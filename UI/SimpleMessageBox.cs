@@ -58,6 +58,7 @@ namespace Taskmaster
 		}
 
 		public SimpleMessageBox(string title, string message, Buttons buttons)
+			: base()
 		{
 			Text = title;
 

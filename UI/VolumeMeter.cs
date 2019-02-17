@@ -45,6 +45,7 @@ namespace Taskmaster.UI
 		int Frequency = 100;
 
 		public VolumeMeter()
+			: base()
 		{
 			Text = "Volume Meter – Taskmaster!";
 

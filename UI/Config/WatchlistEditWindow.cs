@@ -40,6 +40,7 @@ namespace Taskmaster.UI.Config
 
 		// Adding
 		public WatchlistEditWindow()
+			: base()
 		{
 			DialogResult = DialogResult.Abort;
 

@@ -32,7 +32,8 @@ namespace Taskmaster.UI.Config
 {
 	public sealed class AdvancedConfig : UI.UniForm
 	{
-		public AdvancedConfig()
+		public AdvancedConfig(bool center = false)
+			: base(center)
 		{
 			Text = "Advanced Configuration";
 
@@ -276,14 +277,14 @@ namespace Taskmaster.UI.Config
 			Close();
 		}
 
-		public static void Reveal()
+		public static void Reveal(bool centerOnScreen=false)
 		{
 			try
 			{
 				//await Task.Delay(0);
 				// this is really horrifying mess
 				var power = Taskmaster.powermanager;
-				using (var acw = new AdvancedConfig())
+				using (var acw = new AdvancedConfig(centerOnScreen))
 				{
 					var res = acw.ShowDialog();
 					if (acw.DialogResult == DialogResult.OK)

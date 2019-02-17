@@ -44,6 +44,7 @@ namespace Taskmaster.UI
 
 		// constructor
 		public MainWindow()
+			: base()
 		{
 			// InitializeComponent(); // TODO: WPF
 			FormClosing += WindowClose;
@@ -117,33 +118,6 @@ namespace Taskmaster.UI
 				loglist.TopItem = loglist.Items[loglist.Items.Count - 1];
 				ShowLastLog();
 			}
-		}
-
-		public void ShowConfigRequest(object _, EventArgs _ea)
-		{
-			// TODO: Introduce configuration window
-		}
-
-		public void AdvancedConfigRequest(object _, EventArgs _ea)
-		{
-			if (!IsHandleCreated || DisposedOrDisposing) return;
-
-			try
-			{
-				Config.AdvancedConfig.Reveal();
-			}
-			catch (Exception ex) { Logging.Stacktrace(ex); }
-		}
-
-		public void PowerConfigRequest(object _, EventArgs _ea)
-		{
-			if (!IsHandleCreated || DisposedOrDisposing) return;
-
-			try
-			{
-				PowerConfigWindow.Reveal();
-			}
-			catch (Exception ex) { Logging.Stacktrace(ex); }
 		}
 
 		public void ExitRequest(object _, EventArgs _ea)
@@ -1215,9 +1189,9 @@ namespace Taskmaster.UI
 			menu_config_bitmaskstyle.DropDownItems.Add(menu_config_bitmaskstyle_decimal);
 			//menu_config_bitmaskstyle.DropDownItems.Add(menu_config_bitmaskstyle_both);
 
-			var menu_config_advanced = new ToolStripMenuItem("Advanced", null, AdvancedConfigRequest);
+			var menu_config_advanced = new ToolStripMenuItem("Advanced", null, (_,_ea) => Config.AdvancedConfig.Reveal());
 
-			var menu_config_powermanagement = new ToolStripMenuItem("Power management", null, PowerConfigRequest);
+			var menu_config_powermanagement = new ToolStripMenuItem("Power management", null, (_,_ea) => PowerConfigWindow.Reveal());
 			//menu_config_power.DropDownItems.Add(menu_config_power_autoadjust); // sub-menu removed
 
 			//
@@ -1226,9 +1200,8 @@ namespace Taskmaster.UI
 			var menu_config_log_power = new ToolStripMenuItem("Power mode changes", null, (_, _ea) => { });
 			menu_config_log.DropDownItems.Add(menu_config_log_power);
 
-			var menu_config_components = new ToolStripMenuItem("Components", null, ShowComponentConfig);
-
-			var menu_config_experiments = new ToolStripMenuItem("Experiments", null, ShowExperimentConfig);
+			var menu_config_components = new ToolStripMenuItem("Components", null, (_,_ea) => Config.ComponentConfigurationWindow.Reveal()); // MODAL
+			var menu_config_experiments = new ToolStripMenuItem("Experiments", null, (_,_ea) => Config.ExperimentConfig.Reveal()); // MODAL
 
 			var menu_config_folder = new ToolStripMenuItem("Open in file manager", null, (_, _ea) => Process.Start(Taskmaster.datapath));
 			// menu_config.DropDownItems.Add(menu_config_log);
@@ -2375,16 +2348,7 @@ namespace Taskmaster.UI
 
 		void ShowExperimentConfig(object sender, EventArgs ea)
 		{
-			using (var n = new Config.ExperimentConfig())
-			{
-				n.ShowDialog();
-				if (n.DialogResult == DialogResult.OK)
-				{
-					Log.Information("<Experiments> Settings changed");
-
-					Taskmaster.ConfirmExit(restart: true, message: "Restart required for experimental settings to take effect.", alwaysconfirm:true);
-				}
-			}
+			Config.ExperimentConfig.Reveal();
 		}
 
 		void ShowAboutDialog(object sender, EventArgs ea)
@@ -2403,30 +2367,6 @@ namespace Taskmaster.UI
 					"\nAt Itch.io: " + Taskmaster.ItchURL +
 					"\n\nFree system maintenance and de-obnoxifying app.\n\nAvailable under MIT license.",
 					SimpleMessageBox.Buttons.OK);
-		}
-
-		void ShowComponentConfig(object sender, EventArgs ea)
-		{
-			try
-			{
-				using (var comps = new Config.ComponentConfigurationWindow(initial: false))
-				{
-					comps.ShowDialog();
-					if (comps.DialogResult == DialogResult.OK)
-					{
-						if (SimpleMessageBox.ShowModal("Restart needed", "TM needs to be restarted for changes to take effect.\n\nCancel to do so manually later.", SimpleMessageBox.Buttons.AcceptCancel) == SimpleMessageBox.ResultType.OK)
-						{
-							Log.Information("<UI> Restart request");
-							Taskmaster.UnifiedExit(restart: true);
-						}
-					}
-				}
-			}
-			catch (Exception ex)
-			{
-				Logging.Stacktrace(ex);
-				//throw; // bad idea
-			}
 		}
 
 		Stopwatch WatchlistSearchInputTimer = new Stopwatch();

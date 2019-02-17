@@ -33,6 +33,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using MKAh;
 using Serilog;
 using Serilog.Core;
 using Serilog.Events;
@@ -138,9 +139,12 @@ namespace Taskmaster
 			// nothing else should be needed.
 		}
 
+		static int restoremainwindow_lock = 0;
 		public static void ShowMainWindow()
 		{
 			//await Task.Delay(0);
+
+			if (!Atomic.Lock(ref restoremainwindow_lock)) return; // already being done
 
 			try
 			{
@@ -151,6 +155,10 @@ namespace Taskmaster
 			catch (Exception ex)
 			{
 				Logging.Stacktrace(ex);
+			}
+			finally
+			{
+				Atomic.Unlock(ref restoremainwindow_lock);
 			}
 		}
 
