@@ -35,6 +35,9 @@ namespace Taskmaster.UI.Config
 		public AdvancedConfig()
 		{
 			Text = "Advanced Configuration";
+
+			var corecfg = Taskmaster.Config.Load(Taskmaster.coreconfig);
+
 			AutoSizeMode = AutoSizeMode.GrowAndShrink;
 			AutoSize = true;
 
@@ -126,13 +129,78 @@ namespace Taskmaster.UI.Config
 			layout.Controls.Add(new Label { Text = "Powerdown delay", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Padding = LeftSubPadding });
 			layout.Controls.Add(watchlistPowerdown);
 
-			//
+			// VOLUME METER
+
+			layout.Controls.Add(new Label { Text = "Volume meter", Font = boldfont, Padding = BigPadding, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true });
+			layout.Controls.Add(new Label()); // empty
+
+			// Options
+			// - TopMost
+			// - Cap Max
+			// - Update Frequency
+
+			var volmeter_topmost = new CheckBox()
+			{
+
+			};
+
+			var volmeter_capout = new Extensions.NumericUpDownEx()
+			{
+				Unit ="%",
+				Maximum = 100,
+				Minimum = 20,
+				Value = 100,
+			};
+
+			var volmeter_capin = new Extensions.NumericUpDownEx()
+			{
+				Unit = "%",
+				Maximum = 100,
+				Minimum = 20,
+				Value = 100,
+			};
+
+			var volmeter_frequency = new Extensions.NumericUpDownEx()
+			{
+				Unit = "ms",
+				Increment = 20,
+				Minimum = 10,
+				Maximum = 5000,
+				Value = 100,
+			};
+
+			var volsec = corecfg.Config["Volume Meter"];
+			bool t_volmeter_topmost = volsec.TryGet("Topmost")?.BoolValue ?? true;
+			int t_volmeter_frequency = volsec.TryGet("Refresh")?.IntValue.Constrain(10, 5000) ?? 100;
+			int t_volmeter_capoutmax = volsec.TryGet("Output cap")?.IntValue.Constrain(20, 100) ?? 100;
+			int t_volmeter_capinmax = volsec.TryGet("Input cap")?.IntValue.Constrain(20, 100) ?? 100;
+
+			volmeter_topmost.Checked = t_volmeter_topmost;
+			volmeter_frequency.Value = t_volmeter_frequency;
+			volmeter_capout.Value = t_volmeter_capoutmax;
+			volmeter_capin.Value = t_volmeter_capinmax;
+
+			layout.Controls.Add(new Label { Text = "Refresh", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Padding = LeftSubPadding });
+			layout.Controls.Add(volmeter_frequency);
+			tooltip.SetToolTip(volmeter_frequency, "Update frequency for the volume bars. Lower is faster.");
+
+			layout.Controls.Add(new Label { Text = "Output cap", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Padding = LeftSubPadding });
+			layout.Controls.Add(volmeter_capout);
+			tooltip.SetToolTip(volmeter_capout, "Maximum volume for the bars. Helps make the bars more descriptive in case your software volume is very low.");
+			layout.Controls.Add(new Label { Text = "Input cap", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Padding = LeftSubPadding });
+			layout.Controls.Add(volmeter_capin);
+			tooltip.SetToolTip(volmeter_capin, "Maximum volume for the bars. Helps make the bars more descriptive in case your software volume is very low.");
+
+			layout.Controls.Add(new Label { Text = "Topmost", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Padding = LeftSubPadding });
+			layout.Controls.Add(volmeter_topmost);
+			tooltip.SetToolTip(volmeter_topmost, "Keeps the volume meter over other windows.");
+
+			// ----
 
 			savebutton.Click += (_, _ea) =>
 			{
 				// Record for restarts
 
-				var corecfg = Taskmaster.Config.Load(Taskmaster.coreconfig);
 				var cfg = corecfg.Config;
 
 				var uisec = cfg["User Interface"];
@@ -161,6 +229,20 @@ namespace Taskmaster.UI.Config
 				perfsec["Foreground hysterisis"].IntValue = fghys;
 				if (Taskmaster.ActiveAppMonitorEnabled)
 					Taskmaster.activeappmonitor.Hysterisis = TimeSpan.FromMilliseconds(fghys);
+
+				volsec["Topmost"].BoolValue = volmeter_topmost.Checked;
+
+				if (volmeter_capout.Value < 100)
+					volsec["Output cap"].IntValue = Convert.ToInt32(volmeter_capout.Value);
+				else
+					volsec.Remove("Output cap");
+
+				if (volmeter_capin.Value < 100)
+					volsec["Input cap"].IntValue = Convert.ToInt32(volmeter_capin.Value);
+				else
+					volsec.Remove("Input cap");
+
+				volsec["Refresh"].IntValue = Convert.ToInt32(volmeter_frequency.Value);
 
 				corecfg.MarkDirty();
 

@@ -1067,6 +1067,16 @@ namespace Taskmaster.UI
 			menu_action.DropDownItems.Add(menu_action_exit);
 			#endregion // Actions toolstrip menu
 
+			#region Miscellaneous toolstrip menu
+			var menu_view = new ToolStripMenuItem("View");
+			var menu_view_volume = new ToolStripMenuItem("Volume", null, ShowVolumeBox)
+			{
+				Enabled = Taskmaster.AudioManagerEnabled,
+			};
+
+			menu_view.DropDownItems.Add(menu_view_volume);
+			#endregion
+
 			// CONFIG menu item
 			#region Config toolstrip menu
 			var menu_config = new ToolStripMenuItem("Configuration");
@@ -1437,17 +1447,20 @@ namespace Taskmaster.UI
 			menu_info.DropDownItems.Add(new ToolStripMenuItem("License", null, (_, _ea) => OpenLicenseDialog()));
 			menu_info.DropDownItems.Add(new ToolStripSeparator());
 			menu_info.DropDownItems.Add(new ToolStripMenuItem("About", null, ShowAboutDialog));
+			#endregion
 
-			menu.Items.AddRange(new[] { menu_action, menu_config, menu_debug, menu_info });
+			menu.Items.AddRange(new[] { menu_action, menu_view, menu_config, menu_debug, menu_info });
 
 			// no simpler way?
 
 			menu_action.MouseEnter += ToolStripMenuAutoOpen;
+			menu_view.MouseEnter += ToolStripMenuAutoOpen;
 			menu_config.MouseEnter += ToolStripMenuAutoOpen;
 			menu_debug.MouseEnter += ToolStripMenuAutoOpen;
 			menu_info.MouseEnter += ToolStripMenuAutoOpen;
 
 			menu_action.DropDown.AutoClose = true;
+			menu_view.DropDown.AutoClose = true;
 			menu_config.DropDown.AutoClose = true;
 			menu_debug.DropDown.AutoClose = true;
 			menu_info.DropDown.AutoClose = true;
@@ -1679,6 +1692,17 @@ namespace Taskmaster.UI
 				UItimer.Tick += PathCacheUpdate;
 				GotFocus += PathCacheUpdate;
 				PathCacheUpdate(this, EventArgs.Empty);
+			}
+		}
+
+		VolumeMeter volumeBox = null;
+		void ShowVolumeBox(object sender, EventArgs e)
+		{
+			if (volumeBox == null)
+			{
+				volumeBox = new VolumeMeter();
+				volumeBox.FormClosed += (_, _ea) => volumeBox = null;
+				volumeBox.Show();
 			}
 		}
 

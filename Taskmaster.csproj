@@ -177,6 +177,9 @@
     <Compile Include="UI\SimpleMessageBox.cs">
       <SubType>Form</SubType>
     </Compile>
+    <Compile Include="UI\VolumeMeter.cs">
+      <SubType>Form</SubType>
+    </Compile>
     <Compile Include="UI\WatchlistSorter.cs" />
     <Compile Include="Utility\StructuralEqualityComparer.cs" />
     <Compile Include="Utility\HumanReadable.cs" />
