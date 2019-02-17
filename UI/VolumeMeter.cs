@@ -27,6 +27,7 @@
 using Serilog;
 using System;
 using System.Diagnostics;
+using System.Linq;
 using System.Windows.Forms;
 
 namespace Taskmaster.UI
@@ -147,6 +148,24 @@ namespace Taskmaster.UI
 			updateTimer.Interval = Frequency;
 			updateTimer.Tick += UpdateVolumeTick;
 			updateTimer.Start();
+
+			var uicfg = Taskmaster.Config.Load(MainWindow.UIConfig);
+			var winsec = uicfg.Config["Windows"];
+
+			var winpos = winsec["Volume"].IntValueArray;
+
+			if (winpos != null && winpos.Length == 2)
+			{
+				var rectangle = new System.Drawing.Rectangle(winpos[0], winpos[1], Bounds.Width, Bounds.Height);
+				if (Screen.AllScreens.Any(ø => ø.Bounds.IntersectsWith(Bounds))) // https://stackoverflow.com/q/495380
+				{
+					StartPosition = FormStartPosition.Manual;
+					Location = new System.Drawing.Point(rectangle.Left, rectangle.Top);
+					Bounds = rectangle;
+				}
+				else
+					CenterToParent();
+			}
 		}
 
 		private void UpdateVolumeTick(object sender, EventArgs e)
@@ -194,9 +213,16 @@ namespace Taskmaster.UI
 			{
 				DisposedOrDisposing = true;
 
+				if (Taskmaster.Trace) Log.Verbose("Disposing volume meter box...");
+
 				updateTimer.Dispose();
 
-				if (Taskmaster.Trace) Log.Verbose("Disposing volume box...");
+				var cfg = Taskmaster.Config.Load(MainWindow.UIConfig);
+				var winsec = cfg.Config["Windows"];
+
+				winsec["Volume"].IntValueArray = new int[] { Bounds.Left, Bounds.Top };
+
+				cfg.MarkDirty();
 			}
 		}
 		#endregion Dispose

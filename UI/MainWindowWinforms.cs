@@ -1897,7 +1897,7 @@ namespace Taskmaster.UI
 
 		private void LoadUIConfiguration(out int opentab, out int[] appwidths, out int[] micwidths, out int[] ifacewidths)
 		{
-			var uicfg = Taskmaster.Config.Load(uiconfig);
+			var uicfg = Taskmaster.Config.Load(UIConfig);
 			var wincfg = uicfg.Config["Windows"];
 			var colcfg = uicfg.Config["Columns"];
 
@@ -3529,7 +3529,7 @@ namespace Taskmaster.UI
 			}));
 		}
 
-		const string uiconfig = "UI.ini";
+		public const string UIConfig = "UI.ini";
 
 		void SaveUIState()
 		{
@@ -3541,7 +3541,7 @@ namespace Taskmaster.UI
 				{
 					if (WatchlistRules.Columns.Count == 0) return;
 
-					var cfg = Taskmaster.Config.Load(uiconfig);
+					var cfg = Taskmaster.Config.Load(UIConfig);
 					var cols = cfg.Config["Columns"];
 
 					List<int> appWidths = new List<int>(WatchlistRules.Columns.Count);
