@@ -134,15 +134,8 @@ namespace Taskmaster.UI.Config
 			layout.Controls.Add(new Label { Text = "Volume meter", Font = boldfont, Padding = BigPadding, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true });
 			layout.Controls.Add(new Label()); // empty
 
-			// Options
-			// - TopMost
-			// - Cap Max
-			// - Update Frequency
-
-			var volmeter_topmost = new CheckBox()
-			{
-
-			};
+			var volmeter_topmost = new CheckBox();
+			var volmeter_show = new CheckBox();
 
 			var volmeter_capout = new Extensions.NumericUpDownEx()
 			{
@@ -174,11 +167,13 @@ namespace Taskmaster.UI.Config
 			int t_volmeter_frequency = volsec.TryGet("Refresh")?.IntValue.Constrain(10, 5000) ?? 100;
 			int t_volmeter_capoutmax = volsec.TryGet("Output cap")?.IntValue.Constrain(20, 100) ?? 100;
 			int t_volmeter_capinmax = volsec.TryGet("Input cap")?.IntValue.Constrain(20, 100) ?? 100;
+			bool t_volmeter_show = volsec.TryGet("Show on start")?.BoolValue ?? false;
 
 			volmeter_topmost.Checked = t_volmeter_topmost;
 			volmeter_frequency.Value = t_volmeter_frequency;
 			volmeter_capout.Value = t_volmeter_capoutmax;
 			volmeter_capin.Value = t_volmeter_capinmax;
+			volmeter_show.Checked = t_volmeter_show;
 
 			layout.Controls.Add(new Label { Text = "Refresh", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Padding = LeftSubPadding });
 			layout.Controls.Add(volmeter_frequency);
@@ -194,6 +189,11 @@ namespace Taskmaster.UI.Config
 			layout.Controls.Add(new Label { Text = "Topmost", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Padding = LeftSubPadding });
 			layout.Controls.Add(volmeter_topmost);
 			tooltip.SetToolTip(volmeter_topmost, "Keeps the volume meter over other windows.");
+
+			layout.Controls.Add(new Label { Text = "Show on start", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Padding = LeftSubPadding });
+			layout.Controls.Add(volmeter_show);
+			tooltip.SetToolTip(volmeter_show, "Show volume meter on start.");
+
 
 			// ----
 
@@ -243,6 +243,8 @@ namespace Taskmaster.UI.Config
 					volsec.Remove("Input cap");
 
 				volsec["Refresh"].IntValue = Convert.ToInt32(volmeter_frequency.Value);
+
+				volsec["Show on start"].BoolValue = volmeter_show.Checked;
 
 				corecfg.MarkDirty();
 

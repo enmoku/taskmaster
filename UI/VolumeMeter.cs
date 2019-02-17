@@ -166,6 +166,8 @@ namespace Taskmaster.UI
 				else
 					CenterToParent();
 			}
+
+			Show();
 		}
 
 		private void UpdateVolumeTick(object sender, EventArgs e)
@@ -224,6 +226,8 @@ namespace Taskmaster.UI
 
 				cfg.MarkDirty();
 			}
+
+			Taskmaster.volumemeter = null; // HACK
 		}
 		#endregion Dispose
 	}

@@ -54,6 +54,7 @@ namespace Taskmaster
 
 		public static MicManager micmonitor = null;
 		public static UI.MainWindow mainwindow = null;
+		public static UI.VolumeMeter volumemeter = null;
 		public static ProcessManager processmanager = null;
 		public static UI.TrayAccess trayaccess = null;
 		public static NetManager netmonitor = null;
@@ -153,11 +154,19 @@ namespace Taskmaster
 			}
 		}
 
+		public static void BuildVolumeMeter()
+		{
+			if (volumemeter == null)
+			{
+				volumemeter = new UI.VolumeMeter();
+			}
+		}
+
 		public static object mainwindow_creation_lock = new object();
 		/// <summary>
 		/// Constructs and hooks the main window
 		/// </summary>
-		public static void BuildMainWindow()
+		public static void BuildMainWindow(bool reveal=false)
 		{
 			lock (mainwindow_creation_lock)
 			{
@@ -210,6 +219,8 @@ namespace Taskmaster
 				mainwindow.Activated += WindowActivatedEvent;
 				mainwindow.Deactivate += WindowDeactivatedEvent;
 			}
+
+			if (reveal) mainwindow?.Reveal();
 		}
 
 		static bool MainWindowFocus = false;
@@ -422,10 +433,10 @@ namespace Taskmaster
 			secInit = null;
 			init = null;
 
-			if (ShowOnStart && State == Runstate.Normal)
+			if (State == Runstate.Normal)
 			{
-				BuildMainWindow();
-				mainwindow?.Reveal();
+				if (ShowOnStart) BuildMainWindow(reveal:true);
+				if (ShowVolOnStart) BuildVolumeMeter();
 			}
 
 			// Self-optimization
@@ -528,6 +539,7 @@ namespace Taskmaster
 		public static bool DebugCache { get; private set; } = false;
 
 		public static bool ShowOnStart { get; private set; } = true;
+		public static bool ShowVolOnStart { get; private set; } = false;
 
 		public static bool SelfOptimize { get; private set; } = true;
 		public static ProcessPriorityClass SelfPriority { get; private set; } = ProcessPriorityClass.BelowNormal;
@@ -681,6 +693,10 @@ namespace Taskmaster
 			dirtyconfig |= modified;
 
 			ShowOnStart = optsec.GetSetDefault("Show on start", true, out modified).BoolValue;
+			dirtyconfig |= modified;
+
+			var volsec = cfg["Volume Meter"];
+			ShowVolOnStart = volsec.GetSetDefault("Show on start", false, out modified).BoolValue;
 			dirtyconfig |= modified;
 
 			// [Performance]

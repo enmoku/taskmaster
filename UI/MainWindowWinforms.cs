@@ -1695,15 +1695,9 @@ namespace Taskmaster.UI
 			}
 		}
 
-		VolumeMeter volumeBox = null;
 		void ShowVolumeBox(object sender, EventArgs e)
 		{
-			if (volumeBox == null)
-			{
-				volumeBox = new VolumeMeter();
-				volumeBox.FormClosed += (_, _ea) => volumeBox = null;
-				volumeBox.Show();
-			}
+			Taskmaster.BuildVolumeMeter();
 		}
 
 		void ToolStripMenuAutoOpen(object sender, EventArgs _)
