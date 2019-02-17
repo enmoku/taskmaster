@@ -156,6 +156,8 @@ namespace Taskmaster
 
 		public static void BuildVolumeMeter()
 		{
+			if (!Taskmaster.AudioManagerEnabled) return;
+
 			if (volumemeter == null)
 			{
 				volumemeter = new UI.VolumeMeter();
@@ -602,6 +604,9 @@ namespace Taskmaster
 			MicrophoneManagerEnabled = compsec.GetSetDefault("Microphone", false, out modified).BoolValue;
 			compsec["Microphone"].Comment = "Monitor and force-keep microphone volume.";
 			dirtyconfig |= modified;
+
+			if (!AudioManagerEnabled && MicrophoneManagerEnabled) MicrophoneManagerEnabled = false;
+
 			// MediaMonitorEnabled = compsec.GetSetDefault("Media", true, out modified).BoolValue;
 			// compsec["Media"].Comment = "Unused";
 			// dirtyconfig |= modified;

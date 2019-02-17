@@ -86,7 +86,11 @@ namespace Taskmaster.UI.Config
 			// FOREGROUND
 
 			layout.Controls.Add(new Label { Text = "Foreground", Font = boldfont, Padding = BigPadding, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true });
-			layout.Controls.Add(new Label()); // empty
+
+			if (Taskmaster.ActiveAppMonitorEnabled)
+				layout.Controls.Add(new Label()); // empty
+			else
+				layout.Controls.Add(new Label() { Text = "Disabled", Font = boldfont, Padding = BigPadding, ForeColor = System.Drawing.Color.Red, TextAlign = System.Drawing.ContentAlignment.MiddleLeft });
 
 			var fgHysterisis = new Extensions.NumericUpDownEx()
 			{
@@ -96,12 +100,17 @@ namespace Taskmaster.UI.Config
 				DecimalPlaces = 2,
 				Increment = 100m,
 				Value = 1500m,
-				Enabled = Taskmaster.ActiveAppMonitorEnabled,
 			};
 			tooltip.SetToolTip(fgHysterisis, "Delay for foreground swapping to take effect.\nLower values make swaps more responsive.\nHigher values make it react less to rapid app swapping.");
 
 			if (Taskmaster.ActiveAppMonitorEnabled)
 				fgHysterisis.Value = Convert.ToDecimal(Taskmaster.activeappmonitor.Hysterisis.TotalMilliseconds);
+			else
+			{
+				var cfg = Taskmaster.Config.Load(Taskmaster.coreconfig);
+				var perfsec = cfg.Config["Performance"];
+				fgHysterisis.Value = perfsec.TryGet("Foreground hysterisis")?.IntValue.Constrain(200, 30000) ?? 1500;
+			}
 
 			layout.Controls.Add(new Label { Text = "Foreground hysterisis", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Padding = LeftSubPadding });
 			layout.Controls.Add(fgHysterisis);
@@ -132,7 +141,11 @@ namespace Taskmaster.UI.Config
 			// VOLUME METER
 
 			layout.Controls.Add(new Label { Text = "Volume meter", Font = boldfont, Padding = BigPadding, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true });
-			layout.Controls.Add(new Label()); // empty
+
+			if (Taskmaster.AudioManagerEnabled)
+				layout.Controls.Add(new Label()); // empty
+			else
+				layout.Controls.Add(new Label() { Text = "Disabled", Font = boldfont, Padding = BigPadding, ForeColor = System.Drawing.Color.Red, TextAlign = System.Drawing.ContentAlignment.MiddleLeft });
 
 			var volmeter_topmost = new CheckBox();
 			var volmeter_show = new CheckBox();
