@@ -2467,16 +2467,51 @@ namespace Taskmaster.UI
 
 			BeginInvoke(new Action(() =>
 			{
-				float vramTotal = ea.Data.MemTotal / 1024;
-				float vramUsed = vramTotal * (ea.Data.MemLoad / 100);
+				try
+				{
+					GPUSensorUpdate(ea.Data);
+				}
+				catch (OutOfMemoryException) { throw; }
+				catch (Exception ex)
+				{
+					Logging.Stacktrace(ex);
+				}
+			}));
+		}
+
+		private void GPULoadPoller(object sender, EventArgs e)
+		{
+			try
+			{
+				var sensors = hw.GPU();
+				GPUSensorUpdate(sensors);
+			}
+			catch (OutOfMemoryException) { throw; }
+			catch (Exception ex)
+			{
+				Logging.Stacktrace(ex);
+			}
+		}
+
+		void GPUSensorUpdate(GPUSensors sensors)
+		{
+			try
+			{
+				float vramTotal = sensors.MemTotal / 1024;
+				float vramUsed = vramTotal * (sensors.MemLoad / 100);
 				float vramFree = vramTotal - vramUsed;
 
 				// gpuvram.Text = $"{vramFree:N2} of {vramTotal:N1} GiB free ({ea.Data.MemLoad:N1} % usage) [Controller: {ea.Data.MemCtrl:N1} %]";
-				gpuvram.Text = $"{vramFree:N2} GiB free ({ea.Data.MemLoad:N1} % usage) [Controller: {ea.Data.MemCtrl:N1} %]";
-				gpuload.Text = $"{ea.Data.Load:N1} %";
-				gpufan.Text = $"{ea.Data.FanLoad:N1} % [{ea.Data.FanSpeed} RPM]";
-				gputemp.Text = $"{ea.Data.Temperature:N1} C";
-			}));
+				gpuvram.Text = $"{vramFree:N2} GiB free ({sensors.MemLoad:N1} % usage) [Controller: {sensors.MemCtrl:N1} %]";
+				gpuload.Text = $"{sensors.Load:N1} %";
+				gpufan.Text = $"{sensors.FanLoad:N1} % [{sensors.FanSpeed} RPM]";
+				gputemp.Text = $"{sensors.Temperature:N1} C";
+			}
+			catch (OutOfMemoryException) { throw; }
+			catch (Exception ex)
+			{
+				Logging.Stacktrace(ex);
+			}
 		}
 
 		void StartProcessDebug()
@@ -3152,7 +3187,8 @@ namespace Taskmaster.UI
 		public void Hook(HardwareMonitor hardware)
 		{
 			hw = hardware;
-			hw.GPUPolling += GPULoadEvent;
+			//hw.GPUPolling += GPULoadEvent;
+			UItimer.Tick += GPULoadPoller;
 		}
 
 		public void Hook(CPUMonitor monitor)

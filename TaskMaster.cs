@@ -371,8 +371,8 @@ namespace Taskmaster
 					(x) => cpumonitor.Hook(processmanager));
 			}
 
-			if (HardwareMonitorEnabled)
-				Task.WhenAll(HwMon).ContinueWith((x) => hardware.Start()); // this is slow
+			//if (HardwareMonitorEnabled)
+			//	Task.WhenAll(HwMon).ContinueWith((x) => hardware.Start()); // this is slow
 
 			if (NetworkMonitorEnabled)
 			{
