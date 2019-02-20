@@ -3,11 +3,17 @@ Comprehensive changes can be found in Git change history:
 	https://github.com/mkahvi/taskmaster/commits/master
 
 ## [0.13...]
+### 2019-02-20
+	Changed: Audio device debug is now actually under audio debug.
+	Fixed: Spurious reporting of internet availability.
+### 2019-02-18
+	Changed: Disabled unnecessary debug output so it'll show only when relevant debug option is enabled.
 ### 2019-02-17
 	Fixed: Some problems with the new audio management.
 	Added: Volume meter, for both output and input.
 	Added: Volume meter configuration.
 	Added: Various configuration options to tray context menu.
+	Fixed: InvalidOperationException with exclusive mode
 ### 2019-02-16
 	Changed: Audio and Microphone management. Microphone manager now depends on Audio Manager to function.
 	Fixed: Minor leaked bug.
