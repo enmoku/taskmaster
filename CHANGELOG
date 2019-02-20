@@ -6,6 +6,8 @@ Comprehensive changes can be found in Git change history:
 ### 2019-02-20
 	Changed: Audio device debug is now actually under audio debug.
 	Fixed: Spurious reporting of internet availability.
+	Fixed: Rule edit window allowed including invalid characters in friendly name, executable and path fields, these are now caught.
+	Changed: Added more error catching code where it was missing.
 ### 2019-02-18
 	Changed: Disabled unnecessary debug output so it'll show only when relevant debug option is enabled.
 ### 2019-02-17
