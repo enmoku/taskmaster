@@ -30,6 +30,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Net;
 using System.Net.NetworkInformation;
+using System.Text;
 using System.Threading.Tasks;
 using MKAh;
 using Serilog;
@@ -116,7 +117,7 @@ namespace Taskmaster
 
 			SampleTimer = new System.Timers.Timer(PacketStatTimerInterval * 1_000);
 			SampleTimer.Elapsed += AnalyzeTrafficBehaviour;
-			SampleTimer.Elapsed += DeviceSampler;
+			//SampleTimer.Elapsed += DeviceSampler;
 			SampleTimer.Start();
 
 			AnalyzeTrafficBehaviour(this, EventArgs.Empty); // initialize, not really needed
@@ -334,19 +335,27 @@ namespace Taskmaster
 
 		bool InternetAvailableLast = false;
 
+		Stopwatch Downtime = null;
 		void ReportCurrentUpstate()
 		{
-			if (InternetAvailable)
+			if (InternetAvailable != InternetAvailableLast) // prevent spamming available message
 			{
-				if (InternetAvailable != InternetAvailableLast) // prevent spamming available message
+				if (InternetAvailable)
 				{
-					Log.Information("<Network> Internet available.");
-					// Log.Verbose("Current internet uptime: {UpTime:N1} minute(s)", Uptime.TotalMinutes);
+					Downtime?.Stop();
+					var sbs = new StringBuilder();
+					sbs.Append("<Network> Internet available.");
+					if (Downtime != null)
+					{
+						sbs.Append($"{Downtime.Elapsed.TotalMinutes:N1}").Append(" minutes downtime.");
+						Downtime = null;
+					}
+					Log.Information(sbs.ToString());
 				}
 				else
 				{
-					if (InternetAvailable != InternetAvailableLast) // prevent spamming unavailable message
-						Log.Warning("<Network> Internet access unavailable.");
+					Log.Warning("<Network> Internet unavailable.");
+					Downtime = Stopwatch.StartNew();
 				}
 
 				InternetAvailableLast = InternetAvailable;
@@ -421,9 +430,10 @@ namespace Taskmaster
 				else if (address_changed)
 				{
 					// same state but address change was detected
-					Log.Verbose("<Network> DEBUG: Address changed but internet connectivity unaffected.");
+					Log.Verbose("<Network> Address changed but internet connectivity unaffected.");
 				}
 			}
+			catch (OutOfMemoryException) { throw; }
 			catch (Exception ex)
 			{
 				Logging.Stacktrace(ex);
@@ -496,7 +506,7 @@ namespace Taskmaster
 					else
 						InternetAvailable = false;
 
-					RecordUptimeState(InternetAvailable, address_changed);
+					if (Taskmaster.Trace) RecordUptimeState(InternetAvailable, address_changed);
 
 					if (oldInetAvailable != InternetAvailable)
 					{
@@ -846,7 +856,6 @@ namespace Taskmaster
 				IPChanged = null;
 				NetworkStatusChange = null;
 
-				ReportCurrentUpstate();
 				ReportUptime();
 
 				SampleTimer?.Dispose();
