@@ -171,6 +171,12 @@ namespace Taskmaster.UI
 			Show();
 		}
 
+		float PreviousOut = 0.0f;
+
+		float PreviousIn = 0.0f;
+		int SuspicionIn = 0;
+		int SuspicionOut = 0;
+
 		private void UpdateVolumeTick(object sender, EventArgs e)
 		{
 			if (DisposedOrDisposing) return;
@@ -187,6 +193,31 @@ namespace Taskmaster.UI
 				OutputVolumeLabel.Text = $"{output * 100f:N2} %";
 				InputVolume.Value = Convert.ToInt32(input * 10000f).Constrain(0, VolumeInputCap);
 				InputVolumeLabel.Text = $"{input * 100f:N2} %";
+
+				if (input.RoughlyEqual(PreviousIn))
+				{
+					if (SuspicionIn++ > 10)
+						InputVolumeLabel.ForeColor = System.Drawing.Color.Red;
+				}
+				else
+				{
+					SuspicionIn = 0;
+					InputVolumeLabel.ForeColor = DefaultForeColor;
+				}
+
+				if (output.RoughlyEqual(PreviousOut))
+				{
+					if (SuspicionOut++ > 10)
+						OutputVolumeLabel.ForeColor = System.Drawing.Color.Red;
+				}
+				else
+				{
+					SuspicionOut = 0;
+					OutputVolumeLabel.ForeColor = DefaultForeColor;
+				}
+
+				PreviousIn = input;
+				PreviousOut = output;
 			}
 			catch (OutOfMemoryException) { throw; }
 			catch (Exception ex)
