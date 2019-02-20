@@ -389,8 +389,6 @@ namespace Taskmaster.UI
 		{
 			if (IsDisposed || !IsHandleCreated) return;
 
-			Log.Debug($"Device State Changed: {ea.GUID} == {ea.State.ToString()}");
-
 			BeginInvoke(new Action(() =>
 			{
 				if (IsDisposed || !IsHandleCreated) return;

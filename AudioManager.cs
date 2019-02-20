@@ -119,6 +119,15 @@ namespace Taskmaster
 
 		private void StateChangeProxy(object sender, Events.AudioDeviceStateEventArgs ea)
 		{
+			if (Taskmaster.DebugAudio)
+			{
+				string name = null;
+				if (Devices.TryGetValue(ea.GUID, out var device))
+					name = device.Name;
+
+				Log.Debug($"<Audio> Device {name ?? ea.GUID} state changed to {ea.State.ToString()}");
+			}
+
 			StateChanged?.Invoke(this, ea);
 		}
 
