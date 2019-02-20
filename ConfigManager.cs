@@ -41,32 +41,41 @@ namespace Taskmaster
 
 		public ConfigWrapper Load(string filename)
 		{
-			lock (config_lock)
+			try
 			{
-				foreach (var oldcfg in Loaded)
+				lock (config_lock)
 				{
-					if (oldcfg.File.Equals(filename))
-						return oldcfg;
+					foreach (var oldcfg in Loaded)
+					{
+						if (oldcfg.File.Equals(filename))
+							return oldcfg;
+					}
+					SharpConfig.Configuration scfg = null;
+
+					var fullpath = System.IO.Path.Combine(datapath, filename);
+					if (System.IO.File.Exists(fullpath))
+						scfg = SharpConfig.Configuration.LoadFromFile(fullpath);
+					else
+					{
+						Log.Warning("Not found: " + fullpath);
+						scfg = new SharpConfig.Configuration();
+						System.IO.Directory.CreateDirectory(datapath);
+					}
+
+					var config = new ConfigWrapper(scfg, filename);
+					Loaded.Add(config);
+
+					config.onUnload += (cfg, ea) => Loaded.Remove((ConfigWrapper)cfg);
+					config.onSave += (cfg, ea) => Save((ConfigWrapper)cfg);
+
+					return config;
 				}
-				SharpConfig.Configuration scfg = null;
-
-				var fullpath = System.IO.Path.Combine(datapath, filename);
-				if (System.IO.File.Exists(fullpath))
-					scfg = SharpConfig.Configuration.LoadFromFile(fullpath);
-				else
-				{
-					Log.Warning("Not found: " + fullpath);
-					scfg = new SharpConfig.Configuration();
-					System.IO.Directory.CreateDirectory(datapath);
-				}
-
-				var config = new ConfigWrapper(scfg, filename);
-				Loaded.Add(config);
-
-				config.onUnload += (cfg, ea) => Loaded.Remove((ConfigWrapper)cfg);
-				config.onSave += (cfg, ea) => Save((ConfigWrapper)cfg);
-
-				return config;
+			}
+			catch (OutOfMemoryException) { throw; }
+			catch (Exception ex)
+			{
+				Logging.Stacktrace(ex);
+				throw;
 			}
 		}
 
