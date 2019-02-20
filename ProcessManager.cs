@@ -1621,17 +1621,24 @@ namespace Taskmaster
 			try
 			{
 				bool ensureExit = false;
-				lock (Exclusive_lock)
+				try
 				{
-					if (ExclusiveList.TryAdd(info.Id, info))
+					lock (Exclusive_lock)
 					{
-						if (Taskmaster.DebugProcesses) Log.Debug($"<Exclusive> [{info.Controller.FriendlyName}] {info.Name} (#{info.Id.ToString()}) starting");
-						info.Process.EnableRaisingEvents = true;
-						info.Process.Exited += EndExclusiveMode;
-						ExclusiveStart();
+						if (ExclusiveList.TryAdd(info.Id, info))
+						{
+							if (Taskmaster.DebugProcesses) Log.Debug($"<Exclusive> [{info.Controller.FriendlyName}] {info.Name} (#{info.Id.ToString()}) starting");
+							info.Process.EnableRaisingEvents = true;
+							info.Process.Exited += EndExclusiveMode;
+							ExclusiveStart();
 
-						ensureExit = true;
+							ensureExit = true;
+						}
 					}
+				}
+				catch (InvalidOperationException)
+				{
+					ensureExit = true; // already exited
 				}
 
 				if (ensureExit)
@@ -1659,8 +1666,7 @@ namespace Taskmaster
 			{
 				lock (Exclusive_lock)
 				{
-					var process = (Process)sender;
-					if (ExclusiveList.TryRemove(process.Id, out var info))
+					if (sender is Process process && ExclusiveList.TryRemove(process.Id, out var info))
 					{
 						if (Taskmaster.DebugProcesses) Log.Debug($"<Exclusive> [{info.Controller.FriendlyName}] {info.Name} (#{info.Id.ToString()}) ending");
 						if (ExclusiveList.Count == 0)
