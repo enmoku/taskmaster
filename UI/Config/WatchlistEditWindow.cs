@@ -26,7 +26,9 @@
 
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Diagnostics;
+using System.Threading.Tasks;
 using System.Windows.Forms;
 using Serilog;
 
@@ -283,6 +285,8 @@ namespace Taskmaster.UI.Config
 
 		int cpumask = 0;
 
+		static char[] InvalidCharacters = new[] { ']', '#', ';' };
+
 		void BuildUI()
 		{
 			// Size = new System.Drawing.Size(340, 480); // width, height
@@ -312,15 +316,12 @@ namespace Taskmaster.UI.Config
 				Width = 180,
 				CausesValidation = true,
 			};
-			friendlyName.Validating += (sender, e) =>
+
+			friendlyName.Validating += (_, e) =>
 			{
-				if (friendlyName.Text.Contains("]") || friendlyName.Text.Length == 0)
-				{
-					e.Cancel = true;
-					friendlyName.Select(0, friendlyName.Text.Length);
-				}
+				e.Cancel = !ValidateName(friendlyName, InvalidCharacters);
 			};
-			tooltip.SetToolTip(friendlyName, "Human readable name, for user convenience.");
+			tooltip.SetToolTip(friendlyName, "Human readable name, for user convenience.\nInvalid characters: ], #, and ;");
 			lt.Controls.Add(friendlyName);
 
 			lt.Controls.Add(new Label()); // empty
@@ -333,6 +334,7 @@ namespace Taskmaster.UI.Config
 				Text = Controller.Executable,
 				Width = 180,
 			};
+			execName.Validating += ValidateFilename;
 			tooltip.SetToolTip(execName, "Executable name, used to recognize these applications.\nFull filename, including extension if any.");
 			var findexecbutton = new Button()
 			{
@@ -373,6 +375,7 @@ namespace Taskmaster.UI.Config
 				Text = Controller.Path,
 				Width = 180,
 			};
+			pathName.Validating += ValidatePathname;
 			tooltip.SetToolTip(pathName, "Path name; rule will match only paths that include this, subfolders included.\nPartial matching is allowed.");
 			var findpathbutton = new Button()
 			{
@@ -712,8 +715,8 @@ namespace Taskmaster.UI.Config
 				Width = 180,
 			};
 
-			ForegroundModeSelect.Items.AddRange( new string[] { "Ignore", "Priority and Affinity", "Priority, Affinity, and Power", "Power only" } );
-			ForegroundModeSelect.SelectedIndex = ((int)Controller.Foreground)+1;
+			ForegroundModeSelect.Items.AddRange(new string[] { "Ignore", "Priority and Affinity", "Priority, Affinity, and Power", "Power only" });
+			ForegroundModeSelect.SelectedIndex = ((int)Controller.Foreground) + 1;
 			tooltip.SetToolTip(ForegroundModeSelect, "Select which factors are lowered when this app is not in focus.");
 
 			lt.Controls.Add(new Label { Text = "Foreground mode", TextAlign = System.Drawing.ContentAlignment.MiddleLeft });
@@ -938,6 +941,41 @@ namespace Taskmaster.UI.Config
 			lt.Controls.Add(finalizebuttons);
 
 			// ---
+		}
+
+		bool ValidateName(TextBox box, char[] invalidChars)
+		{
+			bool rv = true;
+			int off = -1;
+			if (box.Text.Length == 0 || (off = box.Text.IndexOfAny(invalidChars)) >= 0)
+			{
+				rv = false;
+				if (off >= 0)
+					box.Select(off, 1);
+				else
+					box.Select(0, 0);
+				// FLASH HACK
+				var bgc = box.BackColor;
+				box.BackColor = System.Drawing.Color.OrangeRed;
+				BeginInvoke(new Action(async () =>
+				{
+					await Task.Delay(50).ConfigureAwait(true);
+					box.BackColor = bgc;
+				}));
+			}
+			return rv;
+		}
+
+		void ValidatePathname(object sender, CancelEventArgs e)
+		{
+			if (sender is TextBox box)
+				e.Cancel = !ValidateName(box, System.IO.Path.GetInvalidPathChars());
+		}
+
+		void ValidateFilename(object sender, CancelEventArgs e)
+		{
+			if (sender is TextBox box)
+				e.Cancel = !ValidateName(box, System.IO.Path.GetInvalidFileNameChars());
 		}
 
 		void ValidateWatchedItem(object _, EventArgs _ea)
