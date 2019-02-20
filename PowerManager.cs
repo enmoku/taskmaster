@@ -1341,7 +1341,8 @@ namespace Taskmaster
 
 					Forced = ForceModeSourcesMap.Count > 0;
 
-					if (!Forced) ReleaseFinal(new Cause( OriginType.Watchlist, $"#{sourcePid} exited, requested mode ending."));
+					if (!Forced)
+						ReleaseFinal(new Cause(OriginType.Watchlist, $"#{sourcePid} exited; " + (Behaviour == PowerBehaviour.Auto ? "auto-adjust resumed" : "restoring.")));
 
 					if (Taskmaster.Trace && Taskmaster.DebugPower)
 						Log.Debug($"<Power> Released {(sourcePid == -1 ? "All" : sourcePid.ToString())}");
