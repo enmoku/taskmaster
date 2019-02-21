@@ -56,11 +56,22 @@ namespace Taskmaster.UI
 			TopMost = volsec.GetSetDefault("Topmost", true, out modified).BoolValue;
 			dirty |= modified;
 			Frequency = volsec.GetSetDefault("Refresh", 100, out modified).IntValue.Constrain(10, 5000);
+			volsec["Refresh"].Comment = "Refresh delay. Lower is faster. Milliseconds from 10 to 5000.";
 			dirty |= modified;
-			VolumeOutputCap = volsec.GetSetDefault("Output", 100, out modified).IntValue.Constrain(20, 100) * 100;
+			int? upgradeOutCap = volsec.TryGet("Output")?.IntValue;
+			if (upgradeOutCap.HasValue) volsec["Output threshold"].IntValue = upgradeOutCap.Value;
+			VolumeOutputCap = volsec.GetSetDefault("Output threshold", 100, out modified).IntValue.Constrain(20, 100) * 100;
 			dirty |= modified;
-			VolumeInputCap = volsec.GetSetDefault("Input", 100, out modified).IntValue.Constrain(20, 100) * 100;
+			int? upgradeInCap = volsec.TryGet("Input")?.IntValue;
+			if (upgradeInCap.HasValue) volsec["Input threshold"].IntValue = upgradeInCap.Value;
+			VolumeInputCap = volsec.GetSetDefault("Input threshold", 100, out modified).IntValue.Constrain(20, 100) * 100;
 			dirty |= modified;
+
+			volsec.Remove("Cap");
+			volsec.Remove("Output");
+			volsec.Remove("Output cap");
+			volsec.Remove("Input");
+			volsec.Remove("Input cap");
 
 			if (dirty) cfg.MarkDirty();
 
@@ -189,10 +200,12 @@ namespace Taskmaster.UI
 				if (Taskmaster.DebugAudio && Taskmaster.Trace)
 					Debug.WriteLine($"Volume --- Output: {output:N2} --- Input: {input:N2}");
 
-				OutputVolume.Value = Convert.ToInt32(output * 10000f).Constrain(0, VolumeOutputCap);
+				OutputVolume.Value = Convert.ToInt32(output * 10000f).Constrain(0, OutputVolume.Maximum);
 				OutputVolumeLabel.Text = $"{output * 100f:N2} %";
-				InputVolume.Value = Convert.ToInt32(input * 10000f).Constrain(0, VolumeInputCap);
+				InputVolume.Value = Convert.ToInt32(input * 10000f).Constrain(0, InputVolume.Maximum);
 				InputVolumeLabel.Text = $"{input * 100f:N2} %";
+
+				// Check for suspicious volume activity
 
 				if (input.RoughlyEqual(PreviousIn))
 				{

@@ -3,6 +3,8 @@ Comprehensive changes can be found in Git change history:
 	https://github.com/mkahvi/taskmaster/commits/master
 
 ## [0.13...]
+### 2019-02-21
+	Fixed: Volume meter config was not working properly in the advanced config.
 ### 2019-02-20
 	Changed: Audio device debug is now actually under audio debug.
 	Fixed: Spurious reporting of internet availability.

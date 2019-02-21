@@ -179,8 +179,8 @@ namespace Taskmaster.UI.Config
 			var volsec = corecfg.Config["Volume Meter"];
 			bool t_volmeter_topmost = volsec.TryGet("Topmost")?.BoolValue ?? true;
 			int t_volmeter_frequency = volsec.TryGet("Refresh")?.IntValue.Constrain(10, 5000) ?? 100;
-			int t_volmeter_capoutmax = volsec.TryGet("Output cap")?.IntValue.Constrain(20, 100) ?? 100;
-			int t_volmeter_capinmax = volsec.TryGet("Input cap")?.IntValue.Constrain(20, 100) ?? 100;
+			int t_volmeter_capoutmax = volsec.TryGet("Output threshold")?.IntValue.Constrain(20, 100) ?? 100;
+			int t_volmeter_capinmax = volsec.TryGet("Input threshold")?.IntValue.Constrain(20, 100) ?? 100;
 			bool t_volmeter_show = volsec.TryGet("Show on start")?.BoolValue ?? false;
 
 			volmeter_topmost.Checked = t_volmeter_topmost;
@@ -207,7 +207,6 @@ namespace Taskmaster.UI.Config
 			layout.Controls.Add(new Label { Text = "Show on start", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Padding = LeftSubPadding });
 			layout.Controls.Add(volmeter_show);
 			tooltip.SetToolTip(volmeter_show, "Show volume meter on start.");
-
 
 			// ----
 
@@ -247,14 +246,14 @@ namespace Taskmaster.UI.Config
 				volsec["Topmost"].BoolValue = volmeter_topmost.Checked;
 
 				if (volmeter_capout.Value < 100)
-					volsec["Output cap"].IntValue = Convert.ToInt32(volmeter_capout.Value);
+					volsec["Output threshold"].IntValue = Convert.ToInt32(volmeter_capout.Value);
 				else
-					volsec.Remove("Output cap");
+					volsec.Remove("Output threshold");
 
 				if (volmeter_capin.Value < 100)
-					volsec["Input cap"].IntValue = Convert.ToInt32(volmeter_capin.Value);
+					volsec["Input threshold"].IntValue = Convert.ToInt32(volmeter_capin.Value);
 				else
-					volsec.Remove("Input cap");
+					volsec.Remove("Input threshold");
 
 				volsec["Refresh"].IntValue = Convert.ToInt32(volmeter_frequency.Value);
 
