@@ -115,7 +115,16 @@ namespace Taskmaster
 				if (!trayaccess?.IsDisposed ?? false) trayaccess.Enabled = false;
 
 				while (DisposalChute.Count > 0)
-					MKAh.Utility.LogAndDiscardException(() => DisposalChute.Pop().Dispose());
+				{
+					try
+					{
+						DisposalChute.Pop().Dispose();
+					}
+					catch (Exception ex)
+					{
+						Logging.Stacktrace(ex);
+					}
+				}
 
 				pipe = null; // disposing the pipe seems to just cause problems
 			}
@@ -1444,12 +1453,19 @@ namespace Taskmaster
 			}
 			finally
 			{
-				ExitCleanup();
+				try
+				{
+					ExitCleanup();
 
-				Config?.Dispose();
-				singleton?.Dispose();
+					Config?.Dispose();
+					singleton?.Dispose();
 
-				Log.CloseAndFlush();
+					Log.CloseAndFlush();
+				}
+				catch (Exception ex)
+				{
+					Logging.Stacktrace(ex, crashsafe: true);
+				}
 			}
 
 			return 0;
@@ -1514,7 +1530,6 @@ namespace Taskmaster
 			{
 				ExitCleanup();
 				Config?.Dispose();
-				MKAh.Utility.LogAndDiscardException(() => trayaccess?.Dispose()); // possibly bad, but...
 				Log.CloseAndFlush();
 			}
 		}

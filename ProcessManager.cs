@@ -343,6 +343,7 @@ namespace Taskmaster
 				}
 			}
 			catch (OutOfMemoryException) { throw; }
+			catch (TaskCanceledException) { } // NOP
 			catch (Exception ex)
 			{
 				Logging.Stacktrace(ex);
