@@ -413,13 +413,12 @@ namespace Taskmaster
 		//[SecurityPermissionAttribute(SecurityAction.Demand, UnmanagedCode = true)]
 		async void WinEventProc(IntPtr hWinEventHook, uint eventType, IntPtr hwnd, int idObject, int idChild, uint dwEventThread, uint dwmsEventTime)
 		{
-			if (DisposedOrDisposing) return;
-
 			if (eventType != NativeMethods.EVENT_SYSTEM_FOREGROUND) return; // does this ever trigger?
 
 			foreground_counter++;
 
 			await System.Threading.Tasks.Task.Delay(Hysterisis); // asyncify
+			if (DisposedOrDisposing) return;
 
 			lock (foregroundswap_lock)
 			{
@@ -479,6 +478,7 @@ namespace Taskmaster
 				LastSwap = DateTimeOffset.UtcNow;
 				ActiveChanged?.Invoke(this, activewindowev);
 			}
+			catch (ObjectDisposedException) { Statistics.DisposedAccesses++; } // NOP
 			catch (Exception ex)
 			{
 				Logging.Stacktrace(ex);

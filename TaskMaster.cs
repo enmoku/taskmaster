@@ -123,6 +123,7 @@ namespace Taskmaster
 					catch (Exception ex)
 					{
 						Logging.Stacktrace(ex);
+						if (ex is NullReferenceException) throw;
 					}
 				}
 
@@ -131,6 +132,7 @@ namespace Taskmaster
 			catch (Exception ex)
 			{
 				Logging.Stacktrace(ex, crashsafe: true);
+				if (ex is NullReferenceException) throw;
 			}
 			finally
 			{
@@ -164,6 +166,7 @@ namespace Taskmaster
 			catch (Exception ex)
 			{
 				Logging.Stacktrace(ex);
+				if (ex is NullReferenceException) throw;
 			}
 			finally
 			{
@@ -230,6 +233,7 @@ namespace Taskmaster
 				catch (Exception ex)
 				{
 					Logging.Stacktrace(ex);
+					if (ex is NullReferenceException) throw;
 				}
 
 				trayaccess.Hook(mainwindow);
@@ -929,6 +933,7 @@ namespace Taskmaster
 			catch (Exception ex)
 			{
 				Logging.Stacktrace(ex);
+				if (ex is NullReferenceException) throw;
 			}
 			finally
 			{
@@ -955,6 +960,7 @@ namespace Taskmaster
 
 				if (rv) fs.SetLength(allockb * 1024);
 			}
+			catch (Exception ex) when (ex is NullReferenceException || ex is OutOfMemoryException) { throw; }
 			catch { } // ignore, no access probably
 			finally
 			{
@@ -982,7 +988,7 @@ namespace Taskmaster
 							{
 								StartDelay = Convert.ToInt32(args[++i]).Constrain(1, 60*5);
 							}
-							catch (OutOfMemoryException) { throw; }
+							catch (Exception ex) when (ex is NullReferenceException || ex is OutOfMemoryException) { throw; }
 							catch
 							{
 								StartDelay = 30;
@@ -998,7 +1004,7 @@ namespace Taskmaster
 								uptimecounter.Close();
 							}
 						}
-						catch (OutOfMemoryException) { throw; }
+						catch (Exception ex) when (ex is NullReferenceException || ex is OutOfMemoryException) { throw; }
 						catch
 						{
 							uptime = TimeSpan.Zero;
@@ -1012,6 +1018,7 @@ namespace Taskmaster
 							{
 								RestartCounter = Convert.ToInt32(args[++i]);
 							}
+							catch (Exception ex) when (ex is NullReferenceException || ex is OutOfMemoryException) { throw; }
 							catch { }
 						}
 
@@ -1023,6 +1030,7 @@ namespace Taskmaster
 							{
 								AdminCounter = Convert.ToInt32(args[++i]);
 							}
+							catch (Exception ex) when (ex is NullReferenceException || ex is OutOfMemoryException) { throw; }
 							catch { }
 						}
 
@@ -1040,6 +1048,7 @@ namespace Taskmaster
 									Log.CloseAndFlush();
 									var proc = Process.Start(info);
 								}
+								catch (Exception ex) when (ex is NullReferenceException || ex is OutOfMemoryException) { throw; }
 								catch { } // without finally block might not execute
 								finally
 								{
@@ -1191,6 +1200,7 @@ namespace Taskmaster
 					catch (Exception ex)
 					{
 						Logging.Stacktrace(ex);
+						if (ex is NullReferenceException) throw;
 					}
 					finally
 					{
@@ -1198,13 +1208,11 @@ namespace Taskmaster
 					}
 				});
 			}
-			catch (ObjectDisposedException)
-			{
-				return;
-			}
+			catch (ObjectDisposedException) { Statistics.DisposedAccesses++; }
 			catch (Exception ex)
 			{
 				Logging.Stacktrace(ex);
+				if (ex is NullReferenceException) throw;
 			}
 		}
 
@@ -1256,6 +1264,7 @@ namespace Taskmaster
 			catch (Exception ex)
 			{
 				Logging.Stacktrace(ex, crashsafe: true);
+				if (ex is NullReferenceException) throw;
 			}
 		}
 
@@ -1439,12 +1448,6 @@ namespace Taskmaster
 
 				return -1; // should trigger finally block
 			}
-			catch (OutOfMemoryException ex)
-			{
-				Logging.Stacktrace(ex, crashsafe: true);
-
-				return 1; // should trigger finally block
-			}
 			catch (Exception ex)
 			{
 				Logging.Stacktrace(ex, crashsafe: true);
@@ -1465,6 +1468,7 @@ namespace Taskmaster
 				catch (Exception ex)
 				{
 					Logging.Stacktrace(ex, crashsafe: true);
+					if (ex is NullReferenceException) throw;
 				}
 			}
 
@@ -1517,6 +1521,7 @@ namespace Taskmaster
 			catch (Exception ex)
 			{
 				Logging.Stacktrace(ex, crashsafe: true);
+				if (ex is NullReferenceException) throw;
 			}
 		}
 

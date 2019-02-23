@@ -242,7 +242,7 @@ namespace Taskmaster
 				FreeMemoryInternal(ignorePid);
 				freememoryignore = string.Empty;
 			}
-			catch (OutOfMemoryException) { throw; }
+			catch (Exception ex) when (ex is NullReferenceException || ex is OutOfMemoryException) { throw; }
 			catch (Exception ex)
 			{
 				Logging.Stacktrace(ex);
@@ -342,7 +342,7 @@ namespace Taskmaster
 					await Task.Run(() => Scan(), ct).ContinueWith((_) => StartScanTimer(), ct).ConfigureAwait(false);
 				}
 			}
-			catch (OutOfMemoryException) { throw; }
+			catch (Exception ex) when (ex is NullReferenceException || ex is OutOfMemoryException) { throw; }
 			catch (TaskCanceledException) { } // NOP
 			catch (Exception ex)
 			{
@@ -365,10 +365,7 @@ namespace Taskmaster
 				ScanTimer?.Start();
 				NextScan = DateTimeOffset.UtcNow.AddMilliseconds(ScanTimer.Interval);
 			}
-			catch (ObjectDisposedException)
-			{
-
-			}
+			catch (ObjectDisposedException) { Statistics.DisposedAccesses++; }
 		}
 
 		int scan_lock = 0;
@@ -479,7 +476,7 @@ namespace Taskmaster
 							//if (!info.Exited) loaderOffload.Add(info);
 						}
 					}
-					catch (OutOfMemoryException) { throw; }
+					catch (Exception ex) when (ex is NullReferenceException || ex is OutOfMemoryException) { throw; }
 					catch (Exception ex)
 					{
 						Logging.Stacktrace(ex);
@@ -496,7 +493,7 @@ namespace Taskmaster
 
 				if (!SystemProcessId(ignorePid)) Unignore(ignorePid);
 			}
-			catch (OutOfMemoryException) { throw; }
+			catch (Exception ex) when (ex is NullReferenceException || ex is OutOfMemoryException) { throw; }
 			catch (Exception ex)
 			{
 				Logging.Stacktrace(ex);
@@ -552,14 +549,14 @@ namespace Taskmaster
 							HighestPrivateInfo = info;
 						}
 					}
-					catch (OutOfMemoryException) { throw; }
+					catch (Exception ex) when (ex is NullReferenceException || ex is OutOfMemoryException) { throw; }
 					catch (Exception ex)
 					{
 						Logging.Stacktrace(ex);
 					}
 				}
 			}
-			catch (OutOfMemoryException) { throw; }
+			catch (Exception ex) when (ex is NullReferenceException || ex is OutOfMemoryException) { throw; }
 			catch (Exception ex)
 			{
 				Logging.Stacktrace(ex);
@@ -1286,7 +1283,7 @@ namespace Taskmaster
 					if (process == null) process = Process.GetProcessById(ev.Id);
 					ProcessUtility.SetIO(process, 5, out _, decrease: false);
 				}
-				catch (OutOfMemoryException) { throw; }
+				catch (Exception ex) when (ex is NullReferenceException || ex is OutOfMemoryException) { throw; }
 				catch (ArgumentException) { }
 				catch (InvalidOperationException) { }
 			}
@@ -1599,7 +1596,7 @@ namespace Taskmaster
 							info.State = ProcessHandlingState.Finished;
 						}
 					}
-					catch (OutOfMemoryException) { throw; }
+					catch (Exception ex) when (ex is NullReferenceException || ex is OutOfMemoryException) { throw; }
 					catch (Exception ex)
 					{
 						Logging.Stacktrace(ex);
@@ -1620,7 +1617,7 @@ namespace Taskmaster
 					ChildController(info);
 				*/
 			}
-			catch (OutOfMemoryException) { throw; }
+			catch (Exception ex) when (ex is NullReferenceException || ex is OutOfMemoryException) { throw; }
 			catch (Exception ex)
 			{
 				Logging.Stacktrace(ex);
@@ -1674,7 +1671,7 @@ namespace Taskmaster
 					}
 				}
 			}
-			catch (OutOfMemoryException) { throw; }
+			catch (Exception ex) when (ex is NullReferenceException || ex is OutOfMemoryException) { throw; }
 			catch (Exception ex)
 			{
 				Logging.Stacktrace(ex);
@@ -1711,7 +1708,7 @@ namespace Taskmaster
 					}
 				}
 			}
-			catch (OutOfMemoryException) { throw; }
+			catch (Exception ex) when (ex is NullReferenceException || ex is OutOfMemoryException) { throw; }
 			catch (Exception ex)
 			{
 				Logging.Stacktrace(ex);
@@ -1754,7 +1751,7 @@ namespace Taskmaster
 				{
                     Log.Error(ex, "<Exclusive> Failure to stop WUA");
 				}
-				catch (OutOfMemoryException) { throw; }
+				catch (Exception ex) when (ex is NullReferenceException || ex is OutOfMemoryException) { throw; }
 				catch (Exception ex)
 				{
 					Logging.Stacktrace(ex);
@@ -1789,7 +1786,7 @@ namespace Taskmaster
 							windowsupdate.Value.Start();
 					}
 				}
-				catch (OutOfMemoryException) { throw; }
+				catch (Exception ex) when (ex is NullReferenceException || ex is OutOfMemoryException) { throw; }
 				finally
 				{
 					ExclusiveEnabled = false;
@@ -1971,7 +1968,7 @@ namespace Taskmaster
 						// TODO: Mark as admin process?
 						info.Name = info.Process.ProcessName;
 					}
-					catch (OutOfMemoryException) { throw; }
+					catch (Exception ex) when (ex is NullReferenceException || ex is OutOfMemoryException) { throw; }
 					catch
 					{
 						Log.Error("Failed to retrieve name of process #" + info.Id);
@@ -2124,7 +2121,7 @@ namespace Taskmaster
 							triggerList.Push(info);
 						}
 					}
-					catch (OutOfMemoryException) { throw; }
+					catch (Exception ex) when (ex is NullReferenceException || ex is OutOfMemoryException) { throw; }
 					catch
 					{
 						//Logging.Stacktrace(ex);

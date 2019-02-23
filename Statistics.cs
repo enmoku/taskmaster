@@ -52,5 +52,8 @@ namespace Taskmaster
 		public static ulong PathFindViaC { get; set; } = 0;
 		public static ulong PathFindViaWMI { get; set; } = 0;
 		public static ulong PathNotFound { get; set; } = 0;
+
+		// DEBUG
+		public static uint DisposedAccesses { get; set; } = 0;
 	}
 }
