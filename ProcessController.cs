@@ -194,6 +194,8 @@ namespace Taskmaster
 		{
 			Foreground = mode;
 
+			BackgroundPowerdown = (Foreground == ForegroundMode.PowerOnly || Foreground == ForegroundMode.Full);
+
 			switch (mode)
 			{
 				case ForegroundMode.Ignore:
@@ -261,14 +263,18 @@ namespace Taskmaster
 						FixedSomething = ForegroundFixed = true;
 					if (BackgroundAffinity >= 0)
 					{
+						Log.Warning($"[{FriendlyName}] Background affinity: {BackgroundAffinity} → -1");
 						BackgroundAffinity = -1;
 						BackgroundAffinityFixed = true;
 					}
 					if (BackgroundPriority.HasValue)
 					{
+						Log.Warning($"[{FriendlyName}] Background priority: {BackgroundPriority.Value.ToInt32()} → null");
 						BackgroundPriority = null;
 						BackgroundPriorityFixed = true;
 					}
+					if (BackgroundPowerdown == true)
+						Log.Warning($"[{FriendlyName}] Background powerdown:  true → false");
 					BackgroundPowerdown = false;
 					break;
 				case ForegroundMode.Standard:
@@ -276,6 +282,7 @@ namespace Taskmaster
 				case ForegroundMode.Full:
 					if (PowerPlan == PowerInfo.PowerMode.Undefined)
 					{
+						Log.Warning($"[{FriendlyName}] Powerplan undefined: Foreground mode from Full to Standard");
 						Foreground = ForegroundMode.Standard;
 						FixedSomething = ForegroundFixed = true;
 					}
@@ -283,44 +290,58 @@ namespace Taskmaster
 				case ForegroundMode.PowerOnly:
 					if (PowerPlan == PowerInfo.PowerMode.Undefined)
 					{
+						Log.Warning($"[{FriendlyName}] Powerplan undefined: Foreground mode from Power Only to Ignore");
 						Foreground = ForegroundMode.Ignore;
 						FixedSomething = ForegroundFixed = true;
 					}
 					break;
 			}
 
-			if (AffinityMask >= 0)
+			if (BackgroundAffinity >= 0)
 			{
-				if (Bit.Count(BackgroundAffinity) > Bit.Count(AffinityMask))
+				if (AffinityMask >= 0)
 				{
-					// this be bad
+					if (Bit.Count(BackgroundAffinity) > Bit.Count(AffinityMask))
+					{
+						Log.Warning($"[{FriendlyName}] Background affinity too great: {BackgroundAffinity} > {AffinityMask}");
+						// this be bad
+						BackgroundAffinity = -1;
+						FixedSomething = BackgroundAffinityFixed = true;
+						AffinityMismatchFixed = true;
+					}
+				}
+				else
+				{
+					Log.Warning($"[{FriendlyName}] Background affinity without foreground: {BackgroundAffinity} → -1");
+
 					BackgroundAffinity = -1;
 					FixedSomething = BackgroundAffinityFixed = true;
 					AffinityMismatchFixed = true;
 				}
 			}
-			else if (BackgroundAffinity >= 0)
-			{
-				BackgroundAffinity = -1;
-				FixedSomething = BackgroundAffinityFixed = true;
-				AffinityMismatchFixed = true;
-			}
 
-			if (Priority.HasValue)
+			if (BackgroundPriority.HasValue)
 			{
-				if (BackgroundPriority.HasValue && Priority.Value.ToInt32() < BackgroundPriority.Value.ToInt32())
+				if (Priority.HasValue)
 				{
-					// this be bad
+					if (BackgroundPriority.HasValue && Priority.Value.ToInt32() < BackgroundPriority.Value.ToInt32())
+					{
+						Log.Warning($"[{FriendlyName}] Background priority too great: {BackgroundPriority.Value.ToInt32()} > {Priority.Value.ToInt32()}");
+
+						// this be bad
+						BackgroundPriority = null;
+						FixedSomething = BackgroundPriorityFixed = true;
+						PriorityMismatchFixed = true;
+					}
+				}
+				else
+				{
+					Log.Warning($"[{FriendlyName}] Background priority without foreground: {BackgroundPriority.Value.ToInt32()} → null");
+
 					BackgroundPriority = null;
 					FixedSomething = BackgroundPriorityFixed = true;
 					PriorityMismatchFixed = true;
 				}
-			}
-			else if (BackgroundPriority.HasValue)
-			{
-				BackgroundPriority = null;
-				FixedSomething = BackgroundPriorityFixed = true;
-				PriorityMismatchFixed = true;
 			}
 
 			if (VolumeStrategy == AudioVolumeStrategy.Ignore)
@@ -334,10 +355,14 @@ namespace Taskmaster
 				else if (havePath) PathVisibility = PathVisibilityOptions.Partial;
 				else PathVisibility = PathVisibilityOptions.Full;
 				FixedSomething = PathVisibilityFixed = true;
+
+				Log.Warning($"[{FriendlyName}] Path Visibility from Invalid to {PathVisibility.ToString()}");
 			}
 
 			if (FixedSomething)
 			{
+				NeedsSaving = true;
+
 				var sbs = new StringBuilder();
 
 				sbs.Append("[").Append(FriendlyName).Append("]").Append(" Malconfigured. Following re-adjusted: ");
@@ -601,7 +626,10 @@ namespace Taskmaster
 
 		ConcurrentDictionary<int, RecentlyModifiedInfo> RecentlyModified = new ConcurrentDictionary<int, RecentlyModifiedInfo>();
 
-		public bool BackgroundPowerdown { get; set; } = true;
+		/// <summary>
+		/// Caching from Foreground
+		/// </summary>
+		bool BackgroundPowerdown { get; set; } = false;
 		public ProcessPriorityClass? BackgroundPriority { get; set; } = null;
 		public int BackgroundAffinity { get; set; } = -1;
 
