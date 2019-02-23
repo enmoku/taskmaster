@@ -91,6 +91,8 @@ namespace Taskmaster
 
 		async void ModifyTemp(object _, FileSystemEventArgs ev)
 		{
+			if (DisposedOrDisposing) return;
+
 			try
 			{
 				Debug.WriteLine("TEMP modified (" + ev.ChangeType.ToString() + "): " + ev.FullPath);
@@ -116,6 +118,8 @@ namespace Taskmaster
 		DateTimeOffset LastTempScan = DateTimeOffset.MinValue;
 		void ReScanTemp(object _, EventArgs _ea)
 		{
+			if (DisposedOrDisposing) return;
+
 			var now = DateTimeOffset.UtcNow;
 			if (now.TimeSince(LastTempScan).TotalMinutes <= 15) return; // too soon
 			LastTempScan = now;
@@ -135,6 +139,8 @@ namespace Taskmaster
 
 		void DirectorySize(System.IO.DirectoryInfo dinfo, ref DirectoryStats stats)
 		{
+			if (DisposedOrDisposing) throw new ObjectDisposedException("DirectorySize called after StorageManager was disposed.");
+
 			var i = 1;
 			var dea = new StorageEventArgs { State = ScanState.Segment, Stats = stats };
 			try
@@ -165,8 +171,9 @@ namespace Taskmaster
 
 		async void ScanTemp(object _, EventArgs _ea)
 		{
+			if (DisposedOrDisposing) return;
+
 			if (!Atomic.Lock(ref scantemp_lock)) return;
-			if (disposed) return; // HACK: timers be dumb
 
 			try
 			{
@@ -207,10 +214,11 @@ namespace Taskmaster
 
 		public void Dispose() => Dispose(true);
 
-		bool disposed = false;
+		bool DisposedOrDisposing = false;
 		void Dispose(bool disposing)
 		{
-			if (disposed) return;
+			if (DisposedOrDisposing) return;
+			DisposedOrDisposing = true;
 
 			if (disposing)
 			{
@@ -223,8 +231,6 @@ namespace Taskmaster
 				userWatcher?.Dispose();
 				TempScanTimer?.Dispose();
 			}
-
-			disposed = true;
 		}
 	}
 

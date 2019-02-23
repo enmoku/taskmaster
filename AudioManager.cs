@@ -108,7 +108,6 @@ namespace Taskmaster
 		private void VolumeTimer_Elapsed(object sender, System.Timers.ElapsedEventArgs e)
 		{
 			throw new NotImplementedException();
-
 		}
 
 		System.Timers.Timer volumeTimer = new System.Timers.Timer(100);
@@ -119,6 +118,8 @@ namespace Taskmaster
 
 		private void StateChangeProxy(object sender, Events.AudioDeviceStateEventArgs ea)
 		{
+			if (DisposingOrDisposed) return;
+
 			if (Taskmaster.DebugAudio)
 			{
 				string name = null;
@@ -133,11 +134,15 @@ namespace Taskmaster
 
 		private void DefaultDeviceProxy(object sender, AudioDefaultDeviceEventArgs ea)
 		{
+			if (DisposingOrDisposed) return;
+
 			DefaultChanged?.Invoke(sender, ea);
 		}
 
 		private void DeviceAddedProxy(object sender, AudioDeviceEventArgs ea)
 		{
+			if (DisposingOrDisposed) return;
+
 			var dev = Enumerator.GetDevice(ea.ID);
 			if (dev != null)
 			{
@@ -153,6 +158,8 @@ namespace Taskmaster
 
 		private void DeviceRemovedProxy(object sender, AudioDeviceEventArgs ea)
 		{
+			if (DisposingOrDisposed) return;
+
 			if (ea.GUID.Equals(MultimediaDevice.GUID, StringComparison.OrdinalIgnoreCase))
 				MultimediaDevice = null;
 

@@ -110,8 +110,7 @@ namespace Taskmaster.UI
 
 		void onShown(object _, EventArgs _ea)
 		{
-			if (!IsHandleCreated)
-				return;
+			if (!IsHandleCreated) return;
 
 			if (loglist.Items.Count > 0) // needed in case of bugs or clearlog
 			{
@@ -834,13 +833,13 @@ namespace Taskmaster.UI
 			if (netmonitor == null) return;
 
 			uptimestatuslabel.Text = HumanInterface.TimeString(netmonitor.Uptime);
-			var mean = netmonitor.UptimeMean();
+			var mean = netmonitor.UptimeMean;
 			if (double.IsInfinity(mean))
 				uptimeMeanLabel.Text = "Infinite";
 			else
 				uptimeMeanLabel.Text = HumanInterface.TimeString(TimeSpan.FromMinutes(mean));
 
-			var delta = netmonitor.GetTraffic();
+			var delta = netmonitor.GetTraffic;
 			float netTotal = delta.Input + delta.Output;
 			netTransmit.Text = $"{delta.Input/1000:N1} kB In, {delta.Output/1000:N1} kB Out [{delta.Queue:N0} queued]";
 		}
@@ -2483,7 +2482,7 @@ namespace Taskmaster.UI
 		{
 			try
 			{
-				var sensors = hw.GPU();
+				var sensors = hw.GPUSensorData();
 				GPUSensorUpdate(sensors);
 			}
 			catch (OutOfMemoryException) { throw; }
@@ -3203,7 +3202,7 @@ namespace Taskmaster.UI
 			healthmonitor = hmon;
 
 
-			oldHealthReport = healthmonitor.Poll();
+			oldHealthReport = healthmonitor.Poll;
 
 			UpdateMemoryStats(this, EventArgs.Empty);
 			UItimer.Tick += UpdateHealthMon;
@@ -3225,7 +3224,7 @@ namespace Taskmaster.UI
 
 			try
 			{
-				var health = healthmonitor.Poll();
+				var health = healthmonitor.Poll;
 
 				float impact_transfers = (health.NVMTransfers / 500).Max(3); // expected to cause 0 to 2, and up to 4
 				float impact_splits = health.SplitIO / 125; // expected to cause 0 to 2

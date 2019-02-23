@@ -147,23 +147,27 @@ namespace Taskmaster
 			Taskmaster.DisposalChute.Push(this);
 		}
 
-		public NetTrafficDelta GetTraffic()
+		public NetTrafficDelta GetTraffic
 		{
-			return new NetTrafficDelta()
+			get => new NetTrafficDelta()
 			{
-				Input = NetInTrans.Value,
-				Output = NetOutTrans.Value,
-				Queue = NetQueue.Value,
+				Input = NetInTrans?.Value ?? float.NaN,
+				Output = NetOutTrans?.Value ?? float.NaN,
+				Queue = NetQueue?.Value ?? float.NaN,
 			};
 		}
 
 		private void DeviceSampler(object sender, System.Timers.ElapsedEventArgs e)
 		{
+			if (DisposedOrDisposing) return;
+
 			RecordUptimeState(InternetAvailable, false);
 		}
 
 		public string GetDeviceData(string devicename)
 		{
+			if (DisposedOrDisposing) throw new ObjectDisposedException("GetDeviceData called after NetManager was disposed.");
+
 			foreach (var device in CurrentInterfaceList)
 			{
 				if (device.Name.Equals(devicename))
@@ -190,7 +194,9 @@ namespace Taskmaster
 
 		async void AnalyzeTrafficBehaviour(object _, EventArgs _ea)
 		{
-			Debug.Assert(CurrentInterfaceList != null);
+			if (DisposedOrDisposing) return;
+
+ 			Debug.Assert(CurrentInterfaceList != null);
 
 			if (!Atomic.Lock(ref TrafficAnalysisLimiter)) return;
 
@@ -325,11 +331,14 @@ namespace Taskmaster
 		/// <summary>
 		/// Returns uptime in minutes or positive infinite if no average is known
 		/// </summary>
-		public double UptimeMean()
+		public double UptimeMean
 		{
-			lock (uptime_lock)
+			get
 			{
-				return UptimeSamples.Count > 0 ? UptimeSamples.Average() : double.PositiveInfinity;
+				lock (uptime_lock)
+				{
+					return UptimeSamples.Count > 0 ? UptimeSamples.Average() : double.PositiveInfinity;
+				}
 			}
 		}
 
@@ -392,6 +401,8 @@ namespace Taskmaster
 
 		async void RecordUptimeState(bool online_state, bool address_changed)
 		{
+			if (DisposedOrDisposing) throw new ObjectDisposedException("RecordUptimeState called after NetManager was disposed.");
+
 			if (!Atomic.Lock(ref DeviceStateRecordLimiter)) return;
 
 			try
@@ -450,6 +461,8 @@ namespace Taskmaster
 		int InetCheckLimiter; // = 0;
 		bool CheckInet(bool address_changed = false)
 		{
+			if (DisposedOrDisposing) throw new ObjectDisposedException("CheckInet called after NetManager was disposed.");
+
 			// TODO: Figure out how to get Actual start time of internet connectivity.
 
 			if (Atomic.Lock(ref InetCheckLimiter))
@@ -552,6 +565,8 @@ namespace Taskmaster
 
 		void InterfaceInitialization()
 		{
+			if (DisposedOrDisposing) throw new ObjectDisposedException("InterfaceInitialization called after NetManager was disposed.");
+
 			bool ipv4 = false, ipv6 = false;
 			NetworkInterface[] adapters = NetworkInterface.GetAllNetworkInterfaces();
 			foreach (NetworkInterface n in adapters)
@@ -591,6 +606,8 @@ namespace Taskmaster
 
 		public void UpdateInterfaces()
 		{
+			if (DisposedOrDisposing) throw new ObjectDisposedException("UpdateInterfaces called after NetManager was disposed.");
+
 			if (!Atomic.Lock(ref InterfaceUpdateLimiter)) return;
 
 			needUpdate = false;
@@ -661,6 +678,8 @@ namespace Taskmaster
 
 		public List<NetDevice> GetInterfaces()
 		{
+			if (DisposedOrDisposing) throw new ObjectDisposedException("GetInterfaces called after NetManager was disposed.");
+
 			lock (interfaces_lock)
 			{
 				if (needUpdate) UpdateInterfaces();
@@ -670,6 +689,8 @@ namespace Taskmaster
 
 		async void NetAddrChanged(object _, EventArgs _ea)
 		{
+			if (DisposedOrDisposing) return;
+
 			var now = DateTimeOffset.UtcNow;
 
 			bool AvailabilityChanged = InternetAvailable;
@@ -758,6 +779,8 @@ namespace Taskmaster
 
 		void ReportNetAvailability()
 		{
+			if (DisposedOrDisposing) throw new ObjectDisposedException("ReportNetAvailability called after NetManager was disposed.");
+
 			var sbs = new System.Text.StringBuilder();
 
 			bool changed = (LastReportedInetAvailable != InternetAvailable) || (LastReportedNetAvailable != NetworkAvailable);
@@ -794,6 +817,8 @@ namespace Taskmaster
 		DateTimeOffset LastNetworkChange = DateTimeOffset.MinValue;
 		async void NetworkChanged(object _, EventArgs _ea)
 		{
+			if (DisposedOrDisposing) return;
+
 			var oldNetAvailable = NetworkAvailable;
 			bool available = NetworkAvailable = NetworkInterface.GetIsNetworkAvailable();
 
@@ -840,10 +865,11 @@ namespace Taskmaster
 
 		public void Dispose() => Dispose(true);
 
-		bool disposed; // = false;
+		bool DisposedOrDisposing = false;
 		void Dispose(bool disposing)
 		{
-			if (disposed) return;
+			if (DisposedOrDisposing) return;
+			DisposedOrDisposing = true;
 
 			// base.Dispose(disposing);
 
@@ -860,8 +886,6 @@ namespace Taskmaster
 
 				SampleTimer?.Dispose();
 			}
-
-			disposed = true;
 		}
 	}
 }

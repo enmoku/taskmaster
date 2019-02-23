@@ -64,6 +64,8 @@ namespace Taskmaster
 		int CallbackLimiter = 0;
 		async void MaintenanceTick(object _, EventArgs _ea)
 		{
+			if (DisposedOrDisposing) return;
+
 			if (!Atomic.Lock(ref CallbackLimiter)) return;
 
 			var time = System.Diagnostics.Stopwatch.StartNew();
@@ -108,18 +110,18 @@ namespace Taskmaster
 		}
 
 		#region IDisposable Support
-		private bool disposed = false; // To detect redundant calls
+		private bool DisposedOrDisposing = false; // To detect redundant calls
 
 		protected virtual void Dispose(bool disposing)
 		{
-			if (!disposed)
+			if (!DisposedOrDisposing)
 			{
+				DisposedOrDisposing = true;
+
 				if (disposing)
 				{
 					timer?.Dispose();
 				}
-
-				disposed = true;
 			}
 		}
 

@@ -217,13 +217,19 @@ namespace Taskmaster
 			Taskmaster.DisposalChute.Push(this);
 		}
 
-		public float CPU()
+		public float CPULoad
 		{
-			return cpuLoad.Value ?? float.NaN;
+			get
+			{
+				if (DisposedOrDisposing) throw new ObjectDisposedException("CPULoad accessed after HardwareMonitor was disposed.");
+				return cpuLoad.Value ?? float.NaN;
+			}
 		}
 
-		public GPUSensors GPU()
+		public GPUSensors GPUSensorData()
 		{
+			if (DisposedOrDisposing) throw new ObjectDisposedException("GPUSensorData accessed after HardwareMonitor was disposed.");
+
 			try
 			{
 				gpu.Update();
@@ -253,6 +259,7 @@ namespace Taskmaster
 		public void Start()
 		{
 			if (SensorPoller != null) return;
+			if (DisposedOrDisposing) throw new ObjectDisposedException("Start accessed after HardwareMonitor was disposed.");
 
 			SensorPoller = new System.Timers.Timer(5000);
 			SensorPoller.Elapsed += EmitGPU;
@@ -268,29 +275,35 @@ namespace Taskmaster
 
 		void EmitGPU(object _, EventArgs _ea)
 		{
-			GPUPolling?.Invoke(this, new GPUSensorEventArgs() { Data = GPU() });
+			if (DisposedOrDisposing) return;
+			GPUPolling?.Invoke(this, new GPUSensorEventArgs() { Data = GPUSensorData() });
 		}
 
 		void EmitCPU(object _, EventArgs _ea)
 		{
-			CPUPolling?.Invoke(this, new CPUSensorEventArgs() { Load = CPU() });
+			if (DisposedOrDisposing) return;
+			CPUPolling?.Invoke(this, new CPUSensorEventArgs() { Load = CPULoad });
 		}
 
 		public string GPUName { get; private set; } = string.Empty;
 
 		void Output(OpenHardwareMonitor.Hardware.ISensor sensor)
 		{
+			if (DisposedOrDisposing) return;
+
 			float? tmp = sensor.Value;
 			Log.Verbose(sensor.Name + " : " + sensor.SensorType.ToString() + " = " + (tmp.HasValue ? $"{tmp.Value:N2}" : HumanReadable.Generic.NotAvailable));
 		}
 
 		#region IDisposable Support
-		private bool disposed = false; // To detect redundant calls
+		private bool DisposedOrDisposing = false; // To detect redundant calls
 
 		protected virtual void Dispose(bool disposing)
 		{
-			if (!disposed)
+			if (!DisposedOrDisposing)
 			{
+				DisposedOrDisposing = true;
+
 				if (disposing)
 				{
 					Stop();
@@ -300,18 +313,12 @@ namespace Taskmaster
 
 				computer?.Close();
 				computer = null;
-
-				disposed = true;
 			}
 		}
 
 		~HardwareMonitor() => Dispose(false);
 
-		public void Dispose()
-		{
-			Dispose(true);
-			GC.SuppressFinalize(this);
-		}
+		public void Dispose() => Dispose(true);
 		#endregion
 	}
 }

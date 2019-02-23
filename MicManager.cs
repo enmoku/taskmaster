@@ -204,6 +204,8 @@ namespace Taskmaster
 
 		void UnregisterDefaultDevice()
 		{
+			if (DisposedOrDisposing) throw new ObjectDisposedException("UnregisterDefaultDevice called after MicManager was disposed.");
+
 			try
 			{
 				RecordingDevice?.Dispose();
@@ -222,6 +224,8 @@ namespace Taskmaster
 
 		void RegisterDefaultDevice()
 		{
+			if (DisposedOrDisposing) throw new ObjectDisposedException("RegisterDefaultDevice called after MicManager was disposed.");
+
 			try
 			{
 				// FIXME: Deal with multiple recording devices.
@@ -306,9 +310,9 @@ namespace Taskmaster
 
 		void EnumerateDevices()
 		{
-			if (Taskmaster.Trace) Log.Verbose("<Microphone> Enumerating devices...");
+			if (DisposedOrDisposing) throw new ObjectDisposedException("EnumerateDevices called after MicManager was disposed.");
 
-			if (DisposedOrDisposing) return;
+			if (Taskmaster.Trace) Log.Verbose("<Microphone> Enumerating devices...");
 
 			var devices = new List<AudioDevice>();
 
@@ -440,15 +444,14 @@ namespace Taskmaster
 			}
 		}
 
-		bool disposed = false; // false
 		bool DisposedOrDisposing = false;
+
 		public void Dispose() => Dispose(true);
 
 		void Dispose(bool disposing)
 		{
+			if (DisposedOrDisposing) return;
 			DisposedOrDisposing = true;
-
-			if (disposed) return;
 
 			if (disposing)
 			{
@@ -459,8 +462,6 @@ namespace Taskmaster
 				RecordingDevice?.Dispose();
 				RecordingDevice = null;
 			}
-
-			disposed = true;
 		}
 	}
 }

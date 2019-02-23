@@ -28,6 +28,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Management;
+using System.Threading;
 using System.Threading.Tasks;
 using MKAh;
 using Serilog;
@@ -57,6 +58,9 @@ namespace Taskmaster
 		//Dictionary<int, Problem> activeProblems = new Dictionary<int, Problem>();
 		readonly Settings.HealthMonitor Settings = new Settings.HealthMonitor();
 
+		readonly CancellationTokenSource cancellationSource = new CancellationTokenSource();
+		readonly CancellationToken ct;
+
 		// Hard Page Faults
 		//PerformanceCounterWrapper PageFaults = new PerformanceCounterWrapper("Memory", "Page Faults/sec", null);
 		PerformanceCounterWrapper PageInputs = null;
@@ -75,24 +79,31 @@ namespace Taskmaster
 		PerformanceCounterWrapper NetConnReset = new PerformanceCounterWrapper("TCP", "Connections Reset", "_Total");
 		*/
 
-		public HealthReport Poll()
+		public HealthReport Poll
 		{
-			return new HealthReport()
+			get
 			{
-				//PageFaults = PageFaults.Value,
-				//PageInputs = PageInputs?.Value ?? float.NaN,
-				SplitIO = SplitIO.Value,
-				NVMTransfers = NVMTransfers.Value,
-				NVMQueue = NVMQueue.Value,
-				NVMDelay = Math.Max(NVMReadDelay.Value, NVMWriteDelay.Value),
+				if (DisposedOrDisposing) throw new ObjectDisposedException("Poll called after HealthManager is disposed.");
 
-				//MemPressure = 0f,
-				//MemUsage = 0f,
-			};
+				return new HealthReport()
+				{
+					//PageFaults = PageFaults.Value,
+					//PageInputs = PageInputs?.Value ?? float.NaN,
+					SplitIO = SplitIO.Value,
+					NVMTransfers = NVMTransfers.Value,
+					NVMQueue = NVMQueue.Value,
+					NVMDelay = Math.Max(NVMReadDelay.Value, NVMWriteDelay.Value),
+
+					//MemPressure = 0f,
+					//MemUsage = 0f,
+				};
+			}
 		}
 
 		public HealthMonitor()
 		{
+			ct = cancellationSource.Token;
+
 			// TODO: Add different problems to monitor for
 
 			// --------------------------------------------------------------------------------------------------------
@@ -233,19 +244,22 @@ namespace Taskmaster
 		//async void TimerCheck(object state)
 		async void TimerCheck(object _, EventArgs _ea)
 		{
+			if (DisposedOrDisposing) return; // HACK: dumbness with timers
+
 			// skip if already running...
 			// happens sometimes when the timer keeps running but not the code here
 			if (!Atomic.Lock(ref HealthCheck_lock)) return;
-			if (disposed) return; // HACK: dumbness with timers
 
 			try
 			{
 				try
 				{
-					await CheckErrors().ConfigureAwait(false);
-					await CheckLogs().ConfigureAwait(false);
-					await CheckMemory().ConfigureAwait(false);
-					await CheckNVM().ConfigureAwait(false);
+					Task.WaitAll(new[] {
+						CheckErrors(),
+						CheckLogs(),
+						CheckMemory(),
+						CheckNVM()
+					}, ct);
 				}
 				catch (Exception ex) { Logging.Stacktrace(ex); }
 			}
@@ -258,6 +272,8 @@ namespace Taskmaster
 
 		async Task CheckErrors()
 		{
+			if (DisposedOrDisposing) throw new ObjectDisposedException("CheckErrors called after HealthMonitor was disposed.");
+
 			await Task.Delay(0).ConfigureAwait(false);
 
 			// TODO: Maybe make this errors within timeframe instead of total...?
@@ -270,6 +286,8 @@ namespace Taskmaster
 
 		async Task CheckLogs()
 		{
+			if (DisposedOrDisposing) throw new ObjectDisposedException("CheckErrors called after HealthMonitor was disposed.");
+
 			await Task.Delay(0).ConfigureAwait(false);
 
 			long size = 0;
@@ -294,6 +312,8 @@ namespace Taskmaster
 
 		async Task CheckNVM()
 		{
+			if (DisposedOrDisposing) throw new ObjectDisposedException("CheckErrors called after HealthMonitor was disposed.");
+
 			await Task.Delay(0).ConfigureAwait(false);
 
 			// TODO: Add defrag suggestion based on PerformanceCounterWrapper("LogicalDisk", "Split IO/sec", "_Total");
@@ -339,6 +359,8 @@ namespace Taskmaster
 
 		async Task CheckMemory()
 		{
+			if (DisposedOrDisposing) throw new ObjectDisposedException("CheckErrors called after HealthMonitor was disposed.");
+
 			await Task.Delay(0).ConfigureAwait(false);
 
 			Debug.WriteLine("<<Auto-Doc>> Checking...");
@@ -435,16 +457,20 @@ namespace Taskmaster
 		DateTimeOffset LastMemoryWarning = DateTimeOffset.MinValue;
 		long MemoryWarningCooldown = 30;
 
-		bool disposed; // = false;
+		bool DisposedOrDisposing; // = false;
 		public void Dispose() => Dispose(true);
 
 		void Dispose(bool disposing)
 		{
-			if (disposed) return;
+			if (DisposedOrDisposing) return;
 
 			if (disposing)
 			{
+				DisposedOrDisposing = true;
+
 				if (Taskmaster.Trace) Log.Verbose("Disposing health monitor...");
+
+				cancellationSource.Cancel();
 
 				HealthTimer?.Dispose();
 
@@ -455,8 +481,6 @@ namespace Taskmaster
 				//commitpercentile?.Dispose();
 				//commitpercentile = null;
 			}
-
-			disposed = true;
 		}
 	}
 

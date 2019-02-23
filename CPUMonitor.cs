@@ -144,7 +144,7 @@ namespace Taskmaster
 		void Sampler(object _, EventArgs _ea)
 		{
 			if (!Atomic.Lock(ref sampler_lock)) return; // uhhh... probably should ping warning if this return is triggered
-			if (disposed) return; // HACK: dumbness with timers
+			if (DisposedOrDisposing) return; // HACK: dumbness with timers
 
 			try
 			{
@@ -281,14 +281,16 @@ namespace Taskmaster
 		*/
 
 		#region IDisposable Support
-		private bool disposed = false; // To detect redundant calls
+		private bool DisposedOrDisposing = false; // To detect redundant calls
 
 		protected virtual void Dispose(bool disposing)
 		{
-			if (disposed) return;
+			if (DisposedOrDisposing) return;
 
 			if (disposing)
 			{
+				DisposedOrDisposing = true;
+
 				CPUSampleTimer?.Dispose();
 				CPUSampleTimer = null;
 
@@ -303,8 +305,6 @@ namespace Taskmaster
 
 				SaveConfig();
 			}
-
-			disposed = true;
 		}
 
 		public void Dispose() => Dispose(true);

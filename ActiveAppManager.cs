@@ -173,7 +173,7 @@ namespace Taskmaster
 		void HangDetector(object _, EventArgs _ea)
 		{
 			if (!Atomic.Lock(ref hangdetector_lock)) return;
-			if (disposed) return; // kinda dumb, but apparently timer can fire off after being disposed...
+			if (DisposedOrDisposing) return; // kinda dumb, but apparently timer can fire off after being disposed...
 
 			try
 			{
@@ -336,10 +336,10 @@ namespace Taskmaster
 
 		public void Dispose() => Dispose(true);
 
-		bool disposed = false;
+		bool DisposedOrDisposing = false;
 		void Dispose(bool disposing)
 		{
-			if (disposed) return;
+			if (DisposedOrDisposing) return;
 
 			if (disposing)
 			{
@@ -352,7 +352,7 @@ namespace Taskmaster
 				NativeMethods.UnhookWinEvent(windowseventhook); // Automatic
 			}
 
-			disposed = true;
+			DisposedOrDisposing = true;
 		}
 
 		/*
@@ -386,6 +386,8 @@ namespace Taskmaster
 		NativeMethods.RECT screenrect;
 		bool Fullscreen(IntPtr hwnd)
 		{
+			if (DisposedOrDisposing) throw new ObjectDisposedException("Fullscreen called after ActiveAppManager was disposed");
+
 			// TODO: Is it possible to cache screen? multimonitor setup may make it hard... would that save anything?
 			var screen = System.Windows.Forms.Screen.FromHandle(hwnd); // passes
 
@@ -411,6 +413,8 @@ namespace Taskmaster
 		//[SecurityPermissionAttribute(SecurityAction.Demand, UnmanagedCode = true)]
 		async void WinEventProc(IntPtr hWinEventHook, uint eventType, IntPtr hwnd, int idObject, int idChild, uint dwEventThread, uint dwmsEventTime)
 		{
+			if (DisposedOrDisposing) return;
+
 			if (eventType != NativeMethods.EVENT_SYSTEM_FOREGROUND) return; // does this ever trigger?
 
 			foreground_counter++;
