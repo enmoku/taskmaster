@@ -251,22 +251,41 @@ namespace Taskmaster
 		{
 			Prepare();
 
+			bool FixedSomething=false, ForegroundFixed = false, BackgroundAffinityFixed = false, BackgroundPriorityFixed = false, PathVisibilityFixed = false;
+			bool AffinityMismatchFixed = false, PriorityMismatchFixed = false;
+
 			switch (Foreground)
 			{
 				case ForegroundMode.Ignore:
-					BackgroundAffinity = -1;
-					BackgroundPriority = null;
+					if (BackgroundAffinity >= 0 || BackgroundPriority.HasValue || BackgroundPowerdown == true)
+						FixedSomething = ForegroundFixed = true;
+					if (BackgroundAffinity >= 0)
+					{
+						BackgroundAffinity = -1;
+						BackgroundAffinityFixed = true;
+					}
+					if (BackgroundPriority.HasValue)
+					{
+						BackgroundPriority = null;
+						BackgroundPriorityFixed = true;
+					}
 					BackgroundPowerdown = false;
 					break;
 				case ForegroundMode.Standard:
 					break;
 				case ForegroundMode.Full:
 					if (PowerPlan == PowerInfo.PowerMode.Undefined)
+					{
 						Foreground = ForegroundMode.Standard;
+						FixedSomething = ForegroundFixed = true;
+					}
 					break;
 				case ForegroundMode.PowerOnly:
 					if (PowerPlan == PowerInfo.PowerMode.Undefined)
+					{
 						Foreground = ForegroundMode.Ignore;
+						FixedSomething = ForegroundFixed = true;
+					}
 					break;
 			}
 
@@ -275,20 +294,34 @@ namespace Taskmaster
 				if (Bit.Count(BackgroundAffinity) > Bit.Count(AffinityMask))
 				{
 					// this be bad
+					BackgroundAffinity = -1;
+					FixedSomething = BackgroundAffinityFixed = true;
+					AffinityMismatchFixed = true;
 				}
 			}
-			else
+			else if (BackgroundAffinity >= 0)
+			{
 				BackgroundAffinity = -1;
+				FixedSomething = BackgroundAffinityFixed = true;
+				AffinityMismatchFixed = true;
+			}
 
 			if (Priority.HasValue)
 			{
 				if (BackgroundPriority.HasValue && Priority.Value.ToInt32() < BackgroundPriority.Value.ToInt32())
 				{
 					// this be bad
+					BackgroundPriority = null;
+					FixedSomething = BackgroundPriorityFixed = true;
+					PriorityMismatchFixed = true;
 				}
 			}
-			else
+			else if (BackgroundPriority.HasValue)
+			{
 				BackgroundPriority = null;
+				FixedSomething = BackgroundPriorityFixed = true;
+				PriorityMismatchFixed = true;
+			}
 
 			if (VolumeStrategy == AudioVolumeStrategy.Ignore)
 				Volume = 0.5f;
@@ -300,6 +333,27 @@ namespace Taskmaster
 				if (haveExe && havePath) PathVisibility = PathVisibilityOptions.Process;
 				else if (havePath) PathVisibility = PathVisibilityOptions.Partial;
 				else PathVisibility = PathVisibilityOptions.Full;
+				FixedSomething = PathVisibilityFixed = true;
+			}
+
+			if (FixedSomething)
+			{
+				var sbs = new StringBuilder();
+
+				sbs.Append("[").Append(FriendlyName).Append("]").Append(" Malconfigured. Following re-adjusted: ");
+
+				var fixedList = new List<string>();
+
+				if (PriorityMismatchFixed) fixedList.Add("priority mismatch");
+				if (AffinityMismatchFixed) fixedList.Add("affinity mismatch");
+				if (BackgroundAffinityFixed) fixedList.Add("background affinity");
+				if (BackgroundPriorityFixed) sbs.Append("background priority");
+				if (ForegroundFixed) fixedList.Add("foreground options");
+				if (PathVisibilityFixed) fixedList.Add("path visibility");
+
+				sbs.Append(string.Join(", ", fixedList));
+
+				Log.Error(sbs.ToString());
 			}
 		}
 
