@@ -3011,11 +3011,7 @@ namespace Taskmaster.UI
 						sbs.Append("IO priority = ").Append(prc.IOPriority).AppendLine();
 
 					if (prc.PowerPlan != PowerInfo.PowerMode.Undefined)
-					{
 						sbs.Append(HumanReadable.Hardware.Power.Plan).Append(" = ").Append(PowerManager.GetModeName(prc.PowerPlan)).AppendLine();
-						if (prc.BackgroundPowerdown)
-							sbs.Append("Background powerdown = ").Append(prc.BackgroundPowerdown).AppendLine();
-					}
 					if (prc.Recheck > 0)
 						sbs.Append("Recheck = ").Append(prc.Recheck).AppendLine();
 					if (prc.AllowPaging)
