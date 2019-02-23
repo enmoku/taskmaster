@@ -7,6 +7,8 @@ Comprehensive changes can be found in Git change history:
 	Changed: Process manager now has a lot of early cancellation features to aid in faster exit.
 	Internal: Added more checks for exit to avoid odd errors during it.
 	Changed: Watchlist repair function is now more verbose, giving some warning about adjustments to a rule.
+	Fixed: Watchlist repair was triggering on things it shouldn't.
+	Fixed: Copy to clipboard for watchlist was including deprecated content.
 ### 2019-02-21
 	Fixed: Volume meter config was not working properly in the advanced config.
 ### 2019-02-20
