@@ -33,7 +33,6 @@ using System.Threading.Tasks;
 using System.Windows.Forms;
 using Serilog;
 using Taskmaster.Events;
-using Taskmaster.UI;
 
 namespace Taskmaster.UI
 {
@@ -1146,9 +1145,49 @@ namespace Taskmaster.UI
 				corecfg.MarkDirty();
 			};
 
+			var menu_config_logging_info = new ToolStripMenuItem("Information")
+			{
+				Checked = Taskmaster.loglevelswitch.MinimumLevel == Serilog.Events.LogEventLevel.Information,
+				CheckOnClick = true,
+			};
+			var menu_config_logging_debug = new ToolStripMenuItem("Debug")
+			{
+				Checked = Taskmaster.loglevelswitch.MinimumLevel == Serilog.Events.LogEventLevel.Debug,
+				CheckOnClick = true,
+			};
+			var menu_config_logging_trace = new ToolStripMenuItem("Trace")
+			{
+				Checked = Taskmaster.loglevelswitch.MinimumLevel == Serilog.Events.LogEventLevel.Verbose,
+				CheckOnClick = true,
+			};
+			menu_config_logging_info.Click += (_, _ea) =>
+			{
+				menu_config_logging_debug.Checked = false;
+				menu_config_logging_trace.Checked = false;
+				Taskmaster.loglevelswitch.MinimumLevel = Serilog.Events.LogEventLevel.Information;
+			};
+			menu_config_logging_debug.Click += (_, _ea) =>
+			{
+				menu_config_logging_info.Checked = false;
+				menu_config_logging_trace.Checked = false;
+				Taskmaster.loglevelswitch.MinimumLevel = Serilog.Events.LogEventLevel.Debug;
+			};
+			menu_config_logging_trace.Click += (_, _ea) =>
+			{
+				menu_config_logging_info.Checked = false;
+				menu_config_logging_debug.Checked = false;
+				Taskmaster.loglevelswitch.MinimumLevel = Serilog.Events.LogEventLevel.Verbose;
+			};
+
 			menu_config_logging.DropDownItems.Add(menu_config_logging_adjusts);
 			menu_config_logging.DropDownItems.Add(menu_config_logging_session);
 			menu_config_logging.DropDownItems.Add(menu_config_logging_neterrors);
+			menu_config_logging.DropDownItems.Add(new ToolStripSeparator());
+			menu_config_logging.DropDownItems.Add(new ToolStripLabel("– NVM log Level –") { ForeColor = System.Drawing.SystemColors.GrayText });
+
+			menu_config_logging.DropDownItems.Add(menu_config_logging_info);
+			menu_config_logging.DropDownItems.Add(menu_config_logging_debug);
+			menu_config_logging.DropDownItems.Add(menu_config_logging_trace);
 
 			var menu_config_bitmaskstyle_bitmask = new ToolStripMenuItem("Bitmask")
 			{
@@ -3103,11 +3142,7 @@ namespace Taskmaster.UI
 			// Log.Verbose("Filling GUI log.");
 			loglist.BeginUpdate();
 			foreach (var evmsg in MemoryLog.MemorySink.ToArray())
-			{
-				var li = loglist.Items.Add(evmsg.Message);
-				if ((int)evmsg.Level >= (int)Serilog.Events.LogEventLevel.Error)
-					li.ForeColor = System.Drawing.Color.Red;
-			}
+				AddLog(evmsg);
 			loglist.EndUpdate();
 
 			ShowLastLog();
@@ -3470,7 +3505,7 @@ namespace Taskmaster.UI
 			loglist.EndUpdate();
 		}
 
-		public async void NewLogReceived(object _, LogEventArgs ea)
+		async void NewLogReceived(object _, LogEventArgs ea)
 		{
 			if (!IsHandleCreated || DisposedOrDisposing) return;
 
@@ -3485,13 +3520,18 @@ namespace Taskmaster.UI
 				while (excessitems-- > 0)
 					loglist.Items.RemoveAt(0);
 
-				var li = loglist.Items.Add(ea.Message);
-				if ((int)ea.Level >= (int)Serilog.Events.LogEventLevel.Error)
-					li.ForeColor = System.Drawing.Color.Red;
-				li.EnsureVisible();
+				AddLog(ea);
 
 				loglist.EndUpdate();
 			}));
+		}
+
+		void AddLog(LogEventArgs ea)
+		{
+			var li = loglist.Items.Add(ea.Message);
+			if ((int)ea.Level >= (int)Serilog.Events.LogEventLevel.Error)
+				li.ForeColor = System.Drawing.Color.Red;
+			li.EnsureVisible();
 		}
 
 		public const string UIConfig = "UI.ini";

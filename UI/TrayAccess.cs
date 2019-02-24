@@ -115,7 +115,7 @@ namespace Taskmaster.UI
 				power_manual = new ToolStripMenuItem("Manual override", null, SetManualPower) { CheckOnClick = true };
 
 				ms.Items.Add(new ToolStripSeparator());
-				ms.Items.Add(new ToolStripLabel("--- Power Plan ---") { ForeColor = System.Drawing.SystemColors.GrayText });
+				ms.Items.Add(new ToolStripLabel("– Power Plan –") { ForeColor = System.Drawing.SystemColors.GrayText });
 				ms.Items.Add(power_auto);
 				ms.Items.Add(power_highperf);
 				ms.Items.Add(power_balanced);

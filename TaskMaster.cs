@@ -80,10 +80,7 @@ namespace Taskmaster
 		static int RestartCounter { get; set; } = 0;
 		static int AdminCounter { get; set; } = 0;
 
-		public static void RestartRequest(object _, EventArgs _ea)
-		{
-			UnifiedExit(restart: true);
-		}
+		public static void RestartRequest(object _, EventArgs _ea) => UnifiedExit(restart: true);
 
 		public static void ConfirmExit(bool restart = false, bool admin = false, string message = null, bool alwaysconfirm=false)
 		{
@@ -295,7 +292,7 @@ namespace Taskmaster
 
 		}
 
-		static void PreSetup()
+		static void InitialConfiguration()
 		{
 			// INITIAL CONFIGURATIONN
 			var tcfg = Config.Load(Taskmaster.coreconfig);
@@ -311,7 +308,7 @@ namespace Taskmaster
 			}
 		}
 
-		static void SetupComponents()
+		static void InitializeComponents()
 		{
 			Log.Information("<Core> Loading components...");
 
@@ -677,20 +674,22 @@ namespace Taskmaster
 			{
 				default:
 				case 0:
-					MemoryLog.MemorySink.LevelSwitch.MinimumLevel = LogEventLevel.Information;
+					loglevelswitch.MinimumLevel = LogEventLevel.Information;
 					break;
-				case 1:
-					MemoryLog.MemorySink.LevelSwitch.MinimumLevel = LogEventLevel.Debug;
-					break;
-#if DEBUG
 				case 2:
-					MemoryLog.MemorySink.LevelSwitch.MinimumLevel = LogEventLevel.Verbose;
+					#if DEBUG
+					loglevelswitch.MinimumLevel = LogEventLevel.Verbose;
 					break;
+					#endif
 				case 3:
-					MemoryLog.MemorySink.LevelSwitch.MinimumLevel = LogEventLevel.Verbose;
+					#if DEBUG
+					loglevelswitch.MinimumLevel = LogEventLevel.Verbose;
 					Trace = true;
 					break;
-#endif
+					#endif
+				case 1:
+					loglevelswitch.MinimumLevel = LogEventLevel.Debug;
+					break;
 			}
 			dirtyconfig |= modified;
 
@@ -1268,7 +1267,9 @@ namespace Taskmaster
 			}
 		}
 
-		const string SingletonID = "088f7210-51b2-4e06-9bd4-93c27a973874.taskmaster";
+		const string SingletonID = "088f7210-51b2-4e06-9bd4-93c27a973874.taskmaster"; // garbage
+
+		public static LoggingLevelSwitch loglevelswitch = new LoggingLevelSwitch(LogEventLevel.Information);
 
 		// entry point to the application
 		[STAThread] // supposedly needed to avoid shit happening with the WinForms GUI and other GUI toolkits
@@ -1342,14 +1343,15 @@ namespace Taskmaster
 					// INIT LOGGER
 					var logswitch = new LoggingLevelSwitch(LogEventLevel.Information);
 
-					var logpathtemplate = System.IO.Path.Combine(logpath, "taskmaster-{Date}.log");
+				#if DEBUG
+				loglevelswitch.MinimumLevel = LogEventLevel.Debug;
+				if (Taskmaster.Trace) loglevelswitch.MinimumLevel = LogEventLevel.Verbose;
+				#endif
+
+				var logpathtemplate = System.IO.Path.Combine(logpath, "taskmaster-{Date}.log");
 					Serilog.Log.Logger = new Serilog.LoggerConfiguration()
-#if DEBUG
-						.MinimumLevel.Verbose()
+						.MinimumLevel.ControlledBy(loglevelswitch)
 						.WriteTo.Console(levelSwitch: new LoggingLevelSwitch(LogEventLevel.Verbose))
-#else
-						.MinimumLevel.Debug()
-#endif
 						.WriteTo.RollingFile(logpathtemplate, outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}",
 							levelSwitch: new LoggingLevelSwitch(Serilog.Events.LogEventLevel.Debug), retainedFileCountLimit: 3)
 						.WriteTo.MemorySink(levelSwitch: logswitch)
@@ -1374,9 +1376,9 @@ namespace Taskmaster
 
 				//PreallocLastLog();
 
-				PreSetup();
+				InitialConfiguration();
 				LoadCoreConfig();
-				SetupComponents();
+				InitializeComponents();
 
 				Config.Flush(); // early save of configs
 
