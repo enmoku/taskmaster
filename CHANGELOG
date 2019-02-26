@@ -9,6 +9,9 @@ Comprehensive changes can be found in Git change history:
 	Added: Show unmodified portions to Logging configuration.
 	Changed: By default unmodified portions are no longer shown.
 	Changed: I/O priority should no longer be output when it's unchanged.
+	Changed: Ignore recently modified config moved from experimental to advanced since it was not an experiment anymore.
+	Added: Show only final state to process adjust logging.
+	Changed: Some process adjust logging settings are now more logically organized in the UI.
 ### 2019-02-24
 	Internal: Some logging changes. Should not have impact to end users.
 ### 2019-02-23
