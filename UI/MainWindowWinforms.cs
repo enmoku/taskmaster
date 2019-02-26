@@ -501,6 +501,8 @@ namespace Taskmaster.UI
 
 			ProcessNewInstanceCount(this, new ProcessingCountEventArgs(0, 0));
 
+			WatchlistRules.VisibleChanged += (_, _ea) => { if (WatchlistRules.Visible) WatchlistColor(); };
+
 			BeginInvoke(new Action(() => {
 				WatchlistRules.BeginUpdate();
 
@@ -508,6 +510,7 @@ namespace Taskmaster.UI
 					AddToWatchlistList(prc);
 
 				WatchlistColor();
+
 				WatchlistRules.EndUpdate();
 			}));
 
@@ -617,13 +620,26 @@ namespace Taskmaster.UI
 			}
 		}
 
+		object watchlistcolor_lock = new object();
+		System.Threading.CancellationTokenSource uicts = new System.Threading.CancellationTokenSource();
+
 		void WatchlistColor()
 		{
+			System.Threading.CancellationToken ct = System.Threading.CancellationToken.None;
+
+			lock (watchlistcolor_lock)
+			{
+				uicts.Cancel();
+				uicts = new System.Threading.CancellationTokenSource();
+				ct = uicts.Token;
+			}
+
 			if (Taskmaster.Trace) Debug.WriteLine("COLORING LINES");
 			int i = 0;
 			foreach (var item in WatchlistMap)
 			{
-				if (Taskmaster.Trace) Debug.WriteLine($"{i++} --- {item.Value.Index} : {item.Value.Index % 2 == 0} --- {item.Key.FriendlyName}");
+				if (ct.IsCancellationRequested) return;
+				if (Taskmaster.Trace) Debug.WriteLine($"{i++:00} --- {item.Value.Index:00} : {(item.Value.Index+1) % 2 == 0} --- {item.Key.FriendlyName}");
 				WatchlistItemColor(item.Value, item.Key);
 			}
 		}
@@ -1868,7 +1884,9 @@ namespace Taskmaster.UI
 
 			var numberColumns = new int[] { 0, AdjustColumn };
 			var watchlistSorter = new WatchlistSorter(numberColumns, PrioColumn, PowerColumn);
+
 			WatchlistRules.ListViewItemSorter = watchlistSorter; // what's the point of this?
+
 			WatchlistRules.ColumnClick += (_, ea) =>
 			{
 				if (watchlistSorter.Column == ea.Column)
@@ -3021,7 +3039,7 @@ namespace Taskmaster.UI
 				}
 				catch (Exception ex) { Logging.Stacktrace(ex); }
 
-				WatchlistColor();
+				WatchlistColor(); // not necessary if the item removed was the last. Sadly not significant enough to give special case.
 			}
 		}
 
