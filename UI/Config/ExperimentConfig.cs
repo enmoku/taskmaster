@@ -66,17 +66,6 @@ namespace Taskmaster.UI.Config
 
 			// EXPERIMENTS
 
-			var IgnoreRecentlyModifiedCooldown = new Extensions.NumericUpDownEx()
-			{
-				Minimum = 0,
-				Maximum = 60,
-				Unit = "mins",
-				Value = Convert.ToDecimal(ProcessManager.IgnoreRecentlyModified.Value.TotalMinutes),
-			};
-
-			layout.Controls.Add(new Label { Text = "Ignore recently modified", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true });
-			layout.Controls.Add(IgnoreRecentlyModifiedCooldown);
-
 			var RecordAnalysisDelay = new Extensions.NumericUpDownEx()
 			{
 				Minimum = 0,
@@ -116,7 +105,6 @@ namespace Taskmaster.UI.Config
 			{
 				// Set to current use
 
-				ProcessManager.IgnoreRecentlyModified = TimeSpan.FromMinutes(Convert.ToDouble(IgnoreRecentlyModifiedCooldown.Value));
 				Taskmaster.RecordAnalysis = RecordAnalysisDelay.Value != decimal.Zero ? (TimeSpan?)TimeSpan.FromSeconds(Convert.ToDouble(RecordAnalysisDelay.Value)) : null;
 
 				// Record for restarts
@@ -134,9 +122,6 @@ namespace Taskmaster.UI.Config
 					exsec["IO Priority"].BoolValue = true;
 				else
 					exsec.Remove("IO Priority");
-
-				var perfsec = cfg["Performance"];
-				perfsec["Ignore recently modified"].IntValue = Convert.ToInt32(ProcessManager.IgnoreRecentlyModified.Value.TotalMinutes);
 
 				var compsec = cfg["Components"];
 				compsec[HumanReadable.Hardware.Section].BoolValue = hwmon.Checked;

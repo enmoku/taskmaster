@@ -121,6 +121,17 @@ namespace Taskmaster.UI.Config
 			layout.Controls.Add(new Label { Text = "Process management", Font = boldfont, Padding = BigPadding, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true });
 			layout.Controls.Add(new Label()); // empty
 
+			var IgnoreRecentlyModifiedCooldown = new Extensions.NumericUpDownEx()
+			{
+				Minimum = 0,
+				Maximum = 60,
+				Unit = "mins",
+				Value = Convert.ToDecimal(ProcessManager.IgnoreRecentlyModified.Value.TotalMinutes),
+			};
+
+			layout.Controls.Add(new Label { Text = "Ignore recently modified", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Padding = LeftSubPadding });
+			layout.Controls.Add(IgnoreRecentlyModifiedCooldown);
+
 			var watchlistPowerdown = new Extensions.NumericUpDownEx()
 			{
 				Minimum = 0m,
@@ -238,6 +249,17 @@ namespace Taskmaster.UI.Config
 				}
 
 				var perfsec = cfg["Performance"];
+
+				if (IgnoreRecentlyModifiedCooldown.Value > 0M)
+				{
+					ProcessManager.IgnoreRecentlyModified = TimeSpan.FromMinutes(Convert.ToDouble(IgnoreRecentlyModifiedCooldown.Value));
+					perfsec["Ignore recently modified"].IntValue = Convert.ToInt32(ProcessManager.IgnoreRecentlyModified.Value.TotalMinutes);
+				}
+				else
+				{
+					ProcessManager.IgnoreRecentlyModified = null;
+					perfsec.Remove("Ignore recently modified");
+				}
 
 				int fghys = Convert.ToInt32(fgHysterisis.Value);
 				perfsec["Foreground hysterisis"].IntValue = fghys;
