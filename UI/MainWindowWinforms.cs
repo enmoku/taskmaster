@@ -42,6 +42,8 @@ namespace Taskmaster.UI
 	{
 		ToolTip tooltip = new ToolTip();
 
+		bool AlternateRowColors { get; set; } = true;
+
 		// constructor
 		public MainWindow()
 			: base()
@@ -586,7 +588,7 @@ namespace Taskmaster.UI
 		/// <remarks>No locks</remarks>
 		void WatchlistItemColor(ListViewItem li, ProcessController prc)
 		{
-			var alter = (li.Index + 1) % 2 == 0; // every even line
+			var alter = AlternateRowColors ? ((li.Index + 1) % 2 == 0) : false; // every even line
 
 			try
 			{
@@ -1067,6 +1069,7 @@ namespace Taskmaster.UI
 			var menu_config = new ToolStripMenuItem("Configuration");
 			// Sub Items
 			var menu_config_behaviour = new ToolStripMenuItem("Behaviour");
+			var menu_config_visual = new ToolStripMenuItem("Visuals");
 			var menu_config_logging = new ToolStripMenuItem("Logging");
 			var menu_config_bitmaskstyle = new ToolStripMenuItem("Bitmask style");
 			//var menu_config_power = new ToolStripMenuItem("Power");// this submenu is no longer used
@@ -1118,6 +1121,27 @@ namespace Taskmaster.UI
 			menu_config_behaviour.DropDownItems.Add(menu_config_behaviour_taskbar);
 			menu_config_behaviour.DropDownItems.Add(menu_config_behaviour_exitconfirm);
 
+			// CONFIG -> VISUALS
+
+			var menu_config_visuals_rowalternate = new ToolStripMenuItem("Alternate row colors")
+			{
+				Checked = AlternateRowColors,
+				CheckOnClick = true,
+			};
+			menu_config_visuals_rowalternate.Click += (_, _ea) =>
+			{
+				AlternateRowColors = menu_config_visuals_rowalternate.Checked;
+
+				var uicfg = Taskmaster.Config.Load(UIConfig);
+				uicfg.Config["Visuals"]["Alternate row colors"].BoolValue = AlternateRowColors;
+				uicfg.MarkDirty();
+
+				WatchlistColor();
+			};
+
+			menu_config_visual.DropDownItems.Add(menu_config_visuals_rowalternate);
+
+			// CONFIG -> LOGGING
 			var menu_config_logging_adjusts = new ToolStripMenuItem("Process adjusts")
 			{
 				Checked = Taskmaster.ShowProcessAdjusts,
@@ -1285,6 +1309,7 @@ namespace Taskmaster.UI
 			var menu_config_folder = new ToolStripMenuItem("Open in file manager", null, (_, _ea) => Process.Start(Taskmaster.datapath));
 			// menu_config.DropDownItems.Add(menu_config_log);
 			menu_config.DropDownItems.Add(menu_config_behaviour);
+			menu_config.DropDownItems.Add(menu_config_visual);
 			menu_config.DropDownItems.Add(menu_config_logging);
 			menu_config.DropDownItems.Add(menu_config_bitmaskstyle);
 			menu_config.DropDownItems.Add(new ToolStripSeparator());
@@ -1946,6 +1971,7 @@ namespace Taskmaster.UI
 			var uicfg = Taskmaster.Config.Load(UIConfig);
 			var wincfg = uicfg.Config["Windows"];
 			var colcfg = uicfg.Config["Columns"];
+			var gencfg = uicfg.Config["Visual"];
 
 			opentab = uicfg.Config["Tabs"].TryGet("Open")?.IntValue ?? 0;
 			appwidths = null;
@@ -1981,6 +2007,9 @@ namespace Taskmaster.UI
 					Bounds = rectangle;
 				}
 			}
+
+			AlternateRowColors = gencfg.GetSetDefault("Alternate row colors", true, out bool modified).BoolValue;
+			if (modified) uicfg.MarkDirty();
 		}
 
 		void BuildMicrophonePanel(int[] micwidths)
