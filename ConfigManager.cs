@@ -47,7 +47,7 @@ namespace Taskmaster
 				{
 					foreach (var oldcfg in Loaded)
 					{
-						if (oldcfg.File.Equals(filename))
+						if (oldcfg.File.Equals(filename, StringComparison.InvariantCultureIgnoreCase))
 							return oldcfg;
 					}
 					SharpConfig.Configuration scfg = null;

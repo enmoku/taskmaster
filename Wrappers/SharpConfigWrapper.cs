@@ -34,7 +34,7 @@ namespace Taskmaster
 		public string File { get; private set; } = null;
 		string Path { get; set; } = null;
 
-		public bool Dirty { get; private set; } = false;
+		bool Dirty { get; set; } = false;
 
 		public event EventHandler onUnload;
 		public event EventHandler onSave;
