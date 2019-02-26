@@ -142,6 +142,8 @@ namespace Taskmaster
 			NetOutTrans = new PerformanceCounterWrapper("Network Interface", "Bytes Sent/sec", firstnic);
 			NetQueue = new PerformanceCounterWrapper("Network Interface", "Output Queue Length", firstnic);
 
+			lastErrorReport = DateTimeOffset.UtcNow; // crude
+
 			if (Taskmaster.DebugNet) Log.Information("<Network> Component loaded.");
 
 			Taskmaster.DisposalChute.Push(this);
@@ -260,7 +262,16 @@ namespace Taskmaster
 
 					if (reportErrors)
 					{
-						Log.Warning($"<Network> {ifaces[index].Name} is suffering from traffic errors! (+{errorsSinceLastReport}, {errorsInSample} in last sample; period: {pmins:N1} minutes)");
+						var sbs = new StringBuilder();
+						sbs.Append(ifaces[index].Name).Append(" is suffering from traffic errors! (");
+
+						bool longProblem = (errorsSinceLastReport > errorsInSample);
+						if (longProblem)
+							sbs.Append("+").Append(errorsSinceLastReport).Append(" errors, ").Append(errorsInSample).Append(" in last sample");
+						else
+							sbs.Append("+").Append(errorsInSample).Append(" errors in last sample");
+						if (!double.IsNaN(pmins)) sbs.Append($"; {pmins:N1}").Append(" minutes since last report");
+						sbs.Append(")");
 						errorsSinceLastReport = 0;
 						lastErrorReport = now;
 

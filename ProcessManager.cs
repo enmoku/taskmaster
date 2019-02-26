@@ -89,8 +89,6 @@ namespace Taskmaster
 		// ctor, constructor
 		public ProcessManager()
 		{
-			ct = cancellationTokenSource.Token;
-
 			AllCPUsMask = Convert.ToInt32(Math.Pow(2, CPUCount) - 1 + double.Epsilon);
 
 			if (Taskmaster.RecordAnalysis.HasValue) analyzer = new ProcessAnalyzer();
@@ -99,7 +97,7 @@ namespace Taskmaster
 			//for (int i = 0; i < CPUCount - 1; i++)
 			//	allCPUsMask = (allCPUsMask << 1) | 1;
 
-			Log.Information("<CPU> Logical cores: " + CPUCount + ", full mask: " + Convert.ToString(AllCPUsMask, 2) + " (" + AllCPUsMask + " = OS control)");
+			Log.Information($"<CPU> Logical cores: {CPUCount}, full mask: {Convert.ToString(AllCPUsMask, 2)} ({AllCPUsMask} = OS control)");
 
 			loadConfig();
 
@@ -113,7 +111,7 @@ namespace Taskmaster
 			{
 				ScanTimer = new System.Timers.Timer(ScanFrequency.Value.TotalMilliseconds);
 				ScanTimer.Elapsed += TimedScan;
-				Task.Run(() => Scan(), ct).ContinueWith((_) => StartScanTimer(), ct).ConfigureAwait(false);
+				Task.Run(() => Scan(), cts.Token).ContinueWith((_) => StartScanTimer(), cts.Token).ConfigureAwait(false);
 			}
 
 			MaintenanceTimer = new System.Timers.Timer(1_000 * 60 * 60 * 3); // every 3 hours
@@ -267,7 +265,7 @@ namespace Taskmaster
 				// TODO: Pause Scan until we're done
 
 				Scan(ignorePid, freememory:true); // TODO: Call for this to happen otherwise
-				if (ct.IsCancellationRequested) return;
+				if (cts.IsCancellationRequested) return;
 
 				// TODO: Wait a little longer to allow OS to Actually page stuff. Might not matter?
 				//var b2 = MemoryManager.Free;
@@ -297,10 +295,10 @@ namespace Taskmaster
 				if (Taskmaster.Trace) Log.Verbose("Rescan requested.");
 
                 await Task.Delay(0).ConfigureAwait(false); // asyncify
-				if (ct.IsCancellationRequested) return;
+				if (cts.IsCancellationRequested) return;
 
 				Scan();
-				if (ct.IsCancellationRequested) return;
+				if (cts.IsCancellationRequested) return;
 			}
 			catch (Exception ex)
 			{
@@ -337,9 +335,9 @@ namespace Taskmaster
 					NextScan = DateTimeOffset.UtcNow;
 					ScanTimer?.Stop();
 					if (sort) SortWatchlist();
-					if (ct.IsCancellationRequested) return;
+					if (cts.IsCancellationRequested) return;
 
-					await Task.Run(() => Scan(), ct).ContinueWith((_) => StartScanTimer(), ct).ConfigureAwait(false);
+					await Task.Run(() => Scan(), cts.Token).ContinueWith((_) => StartScanTimer(), cts.Token).ConfigureAwait(false);
 				}
 			}
 			catch (Exception ex) when (ex is NullReferenceException || ex is OutOfMemoryException) { throw; }
@@ -372,7 +370,7 @@ namespace Taskmaster
 		bool Scan(int ignorePid = -1, bool freememory = false)
 		{
 			if (DisposedOrDisposing) throw new ObjectDisposedException("Scan called when ProcessManager was already disposed");
-			if (ct.IsCancellationRequested) return false;
+			if (cts.IsCancellationRequested) return false;
 
 			if (!Atomic.Lock(ref scan_lock)) return false;
 
@@ -402,7 +400,7 @@ namespace Taskmaster
 				{
 					int lcount = Interlocked.Increment(ref count);
 
-					ct.ThrowIfCancellationRequested();
+					cts.Token.ThrowIfCancellationRequested();
 
 					string name = string.Empty;
 					int pid = -1;
@@ -522,7 +520,7 @@ namespace Taskmaster
 				if (LastLoaderAnalysis.TimeTo(now).TotalMinutes < 1d) return;
 
 				await Task.Delay(5_000).ConfigureAwait(false);
-				if (ct.IsCancellationRequested) return;
+				if (cts.IsCancellationRequested) return;
 
 				long PeakWorkingSet = 0;
 				ProcessEx PeakWorkingSetInfo = null;
@@ -1541,7 +1539,7 @@ namespace Taskmaster
 			if (DisposedOrDisposing) throw new ObjectDisposedException("ProcessTriage called when ProcessManager was already disposed");
 
 			await Task.Delay(0).ConfigureAwait(false); // asyncify
-			if (ct.IsCancellationRequested) return;
+			if (cts.IsCancellationRequested) return;
 
 			try
 			{
@@ -1572,7 +1570,7 @@ namespace Taskmaster
 					info.State = ProcessHandlingState.Processing;
 
 					await Task.Delay(0).ConfigureAwait(false); // asyncify again
-					if (ct.IsCancellationRequested) return;
+					if (cts.IsCancellationRequested) return;
 
 					try
 					{
@@ -1818,7 +1816,7 @@ namespace Taskmaster
             ProcessHandlingState state = ProcessHandlingState.Invalid;
 
 			await Task.Delay(0).ConfigureAwait(false);
-			if (ct.IsCancellationRequested) return;
+			if (cts.IsCancellationRequested) return;
 
 			try
 			{
@@ -1938,7 +1936,8 @@ namespace Taskmaster
 		{
 			//await Task.Delay(0).ConfigureAwait(false);
 			info.State = ProcessHandlingState.Invalid;
-			if (ct.IsCancellationRequested) throw new ObjectDisposedException("NewInstanceTriagePhaseTwo called when ProcessManager was already disposed");
+
+			if (cts.IsCancellationRequested) throw new ObjectDisposedException("NewInstanceTriagePhaseTwo called when ProcessManager was already disposed");
 
 			try
 			{
@@ -2106,7 +2105,7 @@ namespace Taskmaster
 				}
 
 				await Task.Delay(1_000).ConfigureAwait(false);
-				if (ct.IsCancellationRequested) return;
+				if (cts.IsCancellationRequested) return;
 
 				triggerList = new Stack<ProcessEx>();
 				foreach (var info in items)
@@ -2171,8 +2170,7 @@ namespace Taskmaster
 
 		public void Dispose() => Dispose(true);
 
-		readonly CancellationTokenSource cancellationTokenSource = new CancellationTokenSource();
-		readonly CancellationToken ct;
+		readonly CancellationTokenSource cts = new CancellationTokenSource();
 
 		bool DisposedOrDisposing = false;
 		void Dispose(bool disposing)
@@ -2185,7 +2183,7 @@ namespace Taskmaster
 
 				if (Taskmaster.Trace) Log.Verbose("Disposing process manager...");
 
-				cancellationTokenSource.Cancel(true);
+				cts.Cancel(true);
 
 				//ScanStartEvent = null;
 				//ScanEndEvent = null;
