@@ -3243,11 +3243,17 @@ namespace Taskmaster.UI
 		int skipDelays = 0;
 		int skipQueues = 0;
 
+		int updatehealthmon_lock = 0;
 		async void UpdateHealthMon(object sender, EventArgs e)
 		{
 			if (!IsHandleCreated || DisposedOrDisposing) return;
 			if (healthmonitor == null) return;
 			if (!nvmtransfers.Visible) return;
+			if (powermanager?.SessionLocked ?? false) return;
+
+			if (!Atomic.Lock(ref updatehealthmon_lock)) return;
+
+			await Task.Delay(100).ConfigureAwait(true);
 
 			try
 			{
@@ -3325,6 +3331,10 @@ namespace Taskmaster.UI
 			catch (Exception ex)
 			{
 				Logging.Stacktrace(ex);
+			}
+			finally
+			{
+				Atomic.Unlock(ref updatehealthmon_lock);
 			}
 		}
 
