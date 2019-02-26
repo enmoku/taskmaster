@@ -12,6 +12,9 @@ Comprehensive changes can be found in Git change history:
 	Changed: Ignore recently modified config moved from experimental to advanced since it was not an experiment anymore.
 	Added: Show only final state to process adjust logging.
 	Changed: Some process adjust logging settings are now more logically organized in the UI.
+	Fixed: Watchlist alternating row color was sometimes very strange.
+	Added: Option to disable the alternating row colors.
+	Internal: Small changes.
 ### 2019-02-24
 	Internal: Some logging changes. Should not have impact to end users.
 ### 2019-02-23
