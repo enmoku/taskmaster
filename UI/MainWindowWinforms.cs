@@ -1501,8 +1501,6 @@ namespace Taskmaster.UI
 
 			FormClosing += StopUIUpdates;
 
-			UItimer.Interval = UIUpdateFrequency;
-
 			//UItimer.Tick += Cleanup;
 
 			// End: Settings
@@ -1541,7 +1539,7 @@ namespace Taskmaster.UI
 			bool modified, tdirty = false;
 			MaxLogSize = cfg.Config["Logging"].GetSetDefault("UI max items", 200, out modified).IntValue;
 			tdirty |= modified;
-			UIUpdateFrequency = cfg.Config["User Interface"].GetSetDefault("Update frequency", 2000, out modified).IntValue.Constrain(100, 5000);
+			UItimer.Interval = cfg.Config["User Interface"].GetSetDefault("Update frequency", 2000, out modified).IntValue.Constrain(100, 5000);
 			tdirty |= modified;
 			if (tdirty)
 			{
