@@ -264,7 +264,7 @@ namespace Taskmaster
 				ScanTimer?.Stop();
 				// TODO: Pause Scan until we're done
 
-				Scan(ignorePid, freememory:true); // TODO: Call for this to happen otherwise
+				Scan(ignorePid, freememory: true); // TODO: Call for this to happen otherwise
 				if (cts.IsCancellationRequested) return;
 
 				// TODO: Wait a little longer to allow OS to Actually page stuff. Might not matter?
@@ -275,6 +275,7 @@ namespace Taskmaster
 				Log.Information("<Memory> Paging complete, observed memory change: " +
 					HumanInterface.ByteString((long)(b2 - b1), true, iec: true));
 			}
+			catch (Exception ex) when (ex is AggregateException || ex is OperationCanceledException) { throw; }
 			catch (Exception ex)
 			{
 				Logging.Stacktrace(ex);
@@ -300,6 +301,7 @@ namespace Taskmaster
 				Scan();
 				if (cts.IsCancellationRequested) return;
 			}
+			catch (Exception ex) when (ex is AggregateException || ex is OperationCanceledException) { throw; }
 			catch (Exception ex)
 			{
 				Logging.Stacktrace(ex);
@@ -454,7 +456,7 @@ namespace Taskmaster
 						{
 							info.Timer = Stopwatch.StartNew();
 
-							ProcessTriage(info).Wait();
+							ProcessTriage(info).Wait(cts.Token);
 
 							if (freememory)
 							{
@@ -475,6 +477,12 @@ namespace Taskmaster
 						}
 					}
 					catch (Exception ex) when (ex is NullReferenceException || ex is OutOfMemoryException) { throw; }
+					catch (OperationCanceledException) { throw; }
+					catch (AggregateException ex)
+					{
+						System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(ex.InnerException ?? ex).Throw();
+						throw;
+					}
 					catch (Exception ex)
 					{
 						Logging.Stacktrace(ex);
@@ -492,6 +500,12 @@ namespace Taskmaster
 				if (!SystemProcessId(ignorePid)) Unignore(ignorePid);
 			}
 			catch (Exception ex) when (ex is NullReferenceException || ex is OutOfMemoryException) { throw; }
+			catch (OperationCanceledException) { throw; }
+			catch (AggregateException ex)
+			{
+				System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(ex.InnerException ?? ex).Throw();
+				throw;
+			}
 			catch (Exception ex)
 			{
 				Logging.Stacktrace(ex);
