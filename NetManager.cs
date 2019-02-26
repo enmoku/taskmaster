@@ -157,7 +157,7 @@ namespace Taskmaster
 			};
 		}
 
-		private void DeviceSampler(object sender, System.Timers.ElapsedEventArgs e)
+		void DeviceSampler(object sender, System.Timers.ElapsedEventArgs e)
 		{
 			if (DisposedOrDisposing) return;
 

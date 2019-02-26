@@ -10,8 +10,8 @@
 
 namespace Taskmaster.Properties {
     using System;
-    
-    
+
+
     /// <summary>
     ///   A strongly-typed resource class, for looking up localized strings, etc.
     /// </summary>
@@ -23,15 +23,15 @@ namespace Taskmaster.Properties {
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
     [global::System.Runtime.CompilerServices.CompilerGeneratedAttribute()]
     internal class Resources {
-        
-        private static global::System.Resources.ResourceManager resourceMan;
-        
-        private static global::System.Globalization.CultureInfo resourceCulture;
-        
+
+        static global::System.Resources.ResourceManager resourceMan;
+
+        static global::System.Globalization.CultureInfo resourceCulture;
+
         [global::System.Diagnostics.CodeAnalysis.SuppressMessageAttribute("Microsoft.Performance", "CA1811:AvoidUncalledPrivateCode")]
         internal Resources() {
         }
-        
+
         /// <summary>
         ///   Returns the cached ResourceManager instance used by this class.
         /// </summary>
@@ -45,7 +45,7 @@ namespace Taskmaster.Properties {
                 return resourceMan;
             }
         }
-        
+
         /// <summary>
         ///   Overrides the current thread's CurrentUICulture property for all
         ///   resource lookups using this strongly typed resource class.
@@ -59,9 +59,9 @@ namespace Taskmaster.Properties {
                 resourceCulture = value;
             }
         }
-        
+
         /// <summary>
-        ///   Looks up a localized string similar to 2019/01/12 09:54:19 Z 
+        ///   Looks up a localized string similar to 2019/01/12 09:54:19 Z
         ///.
         /// </summary>
         internal static string BuildDate {
@@ -69,13 +69,13 @@ namespace Taskmaster.Properties {
                 return ResourceManager.GetString("BuildDate", resourceCulture);
             }
         }
-        
+
         internal static string KnownModules {
             get {
                 return ResourceManager.GetString("KnownModules", resourceCulture);
             }
         }
-        
+
         /// <summary>
         ///   Looks up a localized string similar to The MIT License (MIT)
         ///
@@ -96,9 +96,9 @@ namespace Taskmaster.Properties {
                 return ResourceManager.GetString("LICENSE", resourceCulture);
             }
         }
-        
+
         /// <summary>
-        ///   Looks up a localized string similar to C:\Users\Mayflower\Documents\Projects\TaskMaster\Taskmaster\ 
+        ///   Looks up a localized string similar to C:\Users\Mayflower\Documents\Projects\TaskMaster\Taskmaster\
         ///.
         /// </summary>
         internal static string ProjectDirectory {
@@ -106,7 +106,7 @@ namespace Taskmaster.Properties {
                 return ResourceManager.GetString("ProjectDirectory", resourceCulture);
             }
         }
-        
+
         /// <summary>
         ///   Looks up a localized string similar to # Default Configuration
         ///

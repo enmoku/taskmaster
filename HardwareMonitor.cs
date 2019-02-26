@@ -296,7 +296,7 @@ namespace Taskmaster
 		}
 
 		#region IDisposable Support
-		private bool DisposedOrDisposing = false; // To detect redundant calls
+		bool DisposedOrDisposing = false; // To detect redundant calls
 
 		protected virtual void Dispose(bool disposing)
 		{

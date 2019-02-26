@@ -1485,7 +1485,7 @@ namespace Taskmaster
 			}
 		}
 
-		private int SetIO(ProcessEx info, int overridePriority=-1)
+		int SetIO(ProcessEx info, int overridePriority=-1)
 		{
 			int target = overridePriority < 0 ? IOPriority : overridePriority;
 

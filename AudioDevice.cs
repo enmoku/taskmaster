@@ -61,7 +61,7 @@ namespace Taskmaster
 		public override string ToString() => $"{Name ?? "n/a"} {{{GUID ?? "n/a"}}}";
 
 		#region IDisposable Support
-		private bool DisposingOrDisposed = false; // To detect redundant calls
+		bool DisposingOrDisposed = false; // To detect redundant calls
 
 		void Dispose(bool disposing)
 		{

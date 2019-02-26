@@ -188,7 +188,7 @@ namespace Taskmaster.UI
 		int SuspicionIn = 0;
 		int SuspicionOut = 0;
 
-		private void UpdateVolumeTick(object sender, EventArgs e)
+		void UpdateVolumeTick(object sender, EventArgs e)
 		{
 			if (DisposedOrDisposing) return;
 

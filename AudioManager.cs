@@ -105,7 +105,7 @@ namespace Taskmaster
 			Taskmaster.DisposalChute.Push(this);
 		}
 
-		private void VolumeTimer_Elapsed(object sender, System.Timers.ElapsedEventArgs e)
+		void VolumeTimer_Elapsed(object sender, System.Timers.ElapsedEventArgs e)
 		{
 			throw new NotImplementedException();
 		}
@@ -116,7 +116,7 @@ namespace Taskmaster
 		public void StartVolumePolling() => volumeTimer.Start();
 		public void StopVolumePolling() => volumeTimer.Stop();
 
-		private void StateChangeProxy(object sender, Events.AudioDeviceStateEventArgs ea)
+		void StateChangeProxy(object sender, Events.AudioDeviceStateEventArgs ea)
 		{
 			if (DisposingOrDisposed) return;
 
@@ -132,14 +132,14 @@ namespace Taskmaster
 			StateChanged?.Invoke(this, ea);
 		}
 
-		private void DefaultDeviceProxy(object sender, AudioDefaultDeviceEventArgs ea)
+		void DefaultDeviceProxy(object sender, AudioDefaultDeviceEventArgs ea)
 		{
 			if (DisposingOrDisposed) return;
 
 			DefaultChanged?.Invoke(sender, ea);
 		}
 
-		private void DeviceAddedProxy(object sender, AudioDeviceEventArgs ea)
+		void DeviceAddedProxy(object sender, AudioDeviceEventArgs ea)
 		{
 			if (DisposingOrDisposed) return;
 
@@ -156,7 +156,7 @@ namespace Taskmaster
 			}
 		}
 
-		private void DeviceRemovedProxy(object sender, AudioDeviceEventArgs ea)
+		void DeviceRemovedProxy(object sender, AudioDeviceEventArgs ea)
 		{
 			if (DisposingOrDisposed) return;
 
@@ -216,7 +216,7 @@ namespace Taskmaster
 			processmanager = procman;
 		}
 
-		private async void OnSessionCreated(object _, NAudio.CoreAudioApi.Interfaces.IAudioSessionControl ea)
+		async void OnSessionCreated(object _, NAudio.CoreAudioApi.Interfaces.IAudioSessionControl ea)
 		{
 			Debug.Assert(System.Threading.Thread.CurrentThread != Context, "Must be called in same thread.");
 
@@ -309,7 +309,7 @@ namespace Taskmaster
 		}
 
 		#region IDisposable Support
-		private bool DisposingOrDisposed = false;
+		bool DisposingOrDisposed = false;
 
 		protected virtual void Dispose(bool disposing)
 		{

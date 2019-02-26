@@ -37,7 +37,7 @@ namespace Taskmaster
 		/// </summary>
 		public static ulong Total { get; private set; } = 0;
 		/// <summary>
-		/// 
+		///
 		/// </summary>
 		public static ulong Load { get; private set; } = 0;
 		/// <summary>
@@ -175,7 +175,7 @@ namespace Taskmaster
 	*/
 
 	/// <summary>
-	/// 
+	///
 	/// </summary>
 	// http://www.pinvoke.net/default.aspx/Structures/MEMORYSTATUSEX.html
 	// https://docs.microsoft.com/en-us/windows/desktop/api/sysinfoapi/ns-sysinfoapi-_memorystatusex
@@ -196,32 +196,32 @@ namespace Taskmaster
 		public ulong ullTotalPhys;
 
 		/// <summary>
-		/// Size of physical memory available, in bytes. 
+		/// Size of physical memory available, in bytes.
 		/// </summary>
 		public ulong ullAvailPhys;
 
 		/// <summary>
-		/// Size of the committed memory limit, in bytes. This is physical memory plus the size of the page file, minus a small overhead. 
+		/// Size of the committed memory limit, in bytes. This is physical memory plus the size of the page file, minus a small overhead.
 		/// </summary>
 		public ulong ullTotalPageFile;
 
 		/// <summary>
-		/// Size of available memory to commit, in bytes. The limit is ullTotalPageFile. 
+		/// Size of available memory to commit, in bytes. The limit is ullTotalPageFile.
 		/// </summary>
 		public ulong ullAvailPageFile;
 
 		/// <summary>
-		/// Total size of the user mode portion of the virtual address space of the calling process, in bytes. 
+		/// Total size of the user mode portion of the virtual address space of the calling process, in bytes.
 		/// </summary>
 		public ulong ullTotalVirtual;
 
 		/// <summary>
-		/// Size of unreserved and uncommitted memory in the user mode portion of the virtual address space of the calling process, in bytes. 
+		/// Size of unreserved and uncommitted memory in the user mode portion of the virtual address space of the calling process, in bytes.
 		/// </summary>
 		public ulong ullAvailVirtual;
 
 		/// <summary>
-		/// Size of unreserved and uncommitted memory in the extended portion of the virtual address space of the calling process, in bytes. 
+		/// Size of unreserved and uncommitted memory in the extended portion of the virtual address space of the calling process, in bytes.
 		/// </summary>
 		public ulong ullAvailExtendedVirtual;
 	}

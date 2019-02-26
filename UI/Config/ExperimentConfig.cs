@@ -152,7 +152,7 @@ namespace Taskmaster.UI.Config
 			layout.Controls.Add(cancelbutton);
 		}
 
-		private void Cancelbutton_Click(object sender, EventArgs e)
+		void Cancelbutton_Click(object sender, EventArgs e)
 		{
 			DialogResult = DialogResult.Cancel;
 			Close();

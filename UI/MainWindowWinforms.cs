@@ -31,6 +31,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using MKAh;
 using Serilog;
 using Taskmaster.Events;
 
@@ -336,17 +337,17 @@ namespace Taskmaster.UI
 			}
 		}
 
-		private void AudioDeviceAdded(object sender, AudioDeviceEventArgs ea)
+		void AudioDeviceAdded(object sender, AudioDeviceEventArgs ea)
 		{
 			AddAudioInput(ea.Device);
 		}
 
-		private void AudioDeviceRemoved(object sender, AudioDeviceEventArgs ea)
+		void AudioDeviceRemoved(object sender, AudioDeviceEventArgs ea)
 		{
 			RemoveAudioInput(ea.GUID);
 		}
 
-		private void MicrophoneDefaultChanged(object sender, AudioDefaultDeviceEventArgs ea)
+		void MicrophoneDefaultChanged(object sender, AudioDefaultDeviceEventArgs ea)
 		{
 			if (IsDisposed || !IsHandleCreated) return;
 
@@ -383,7 +384,7 @@ namespace Taskmaster.UI
 
 		ConcurrentDictionary<string, ListViewItem> MicGuidToAudioInputs = new ConcurrentDictionary<string, ListViewItem>();
 
-		private void AudioDeviceStateChanged(object sender, Events.AudioDeviceStateEventArgs ea)
+		void AudioDeviceStateChanged(object sender, Events.AudioDeviceStateEventArgs ea)
 		{
 			if (IsDisposed || !IsHandleCreated) return;
 
@@ -1712,13 +1713,13 @@ namespace Taskmaster.UI
 			mi?.ShowDropDown();
 		}
 
-		private static void OpenLicenseDialog()
+		static void OpenLicenseDialog()
 		{
 			try { using (var n = new LicenseDialog(initial: false)) { n.ShowDialog(); } }
 			catch (Exception ex) { Logging.Stacktrace(ex); }
 		}
 
-		private void BuildProcessDebug()
+		void BuildProcessDebug()
 		{
 			exitwaitlist = new Extensions.ListViewEx()
 			{
@@ -1821,7 +1822,7 @@ namespace Taskmaster.UI
 			tabLayout.Controls.Add(ProcessDebugTab);
 		}
 
-		private void BuildWatchlist(int[] appwidths)
+		void BuildWatchlist(int[] appwidths)
 		{
 			WatchlistRules = new ListView
 			{
@@ -1894,7 +1895,7 @@ namespace Taskmaster.UI
 			watchTab.Controls.Add(WatchlistRules);
 		}
 
-		private void LoadUIConfiguration(out int opentab, out int[] appwidths, out int[] micwidths, out int[] ifacewidths)
+		void LoadUIConfiguration(out int opentab, out int[] appwidths, out int[] micwidths, out int[] ifacewidths)
 		{
 			var uicfg = Taskmaster.Config.Load(UIConfig);
 			var wincfg = uicfg.Config["Windows"];
@@ -1936,7 +1937,7 @@ namespace Taskmaster.UI
 			}
 		}
 
-		private void BuildMicrophonePanel(int[] micwidths)
+		void BuildMicrophonePanel(int[] micwidths)
 		{
 			var micpanel = new TableLayoutPanel
 			{
@@ -2031,7 +2032,7 @@ namespace Taskmaster.UI
 			tabLayout.Controls.Add(micTab);
 		}
 
-		private TableLayoutPanel BuildTempMonitorPanel()
+		TableLayoutPanel BuildTempMonitorPanel()
 		{
 			TableLayoutPanel tempmonitorpanel;
 			tempObjectCount = new Label()
@@ -2084,7 +2085,7 @@ namespace Taskmaster.UI
 			return tempmonitorpanel;
 		}
 
-		private TableLayoutPanel BuildCachePanel()
+		TableLayoutPanel BuildCachePanel()
 		{
 			var cachePanel = new TableLayoutPanel()
 			{
@@ -2404,7 +2405,7 @@ namespace Taskmaster.UI
 		Stopwatch WatchlistSearchInputTimer = new Stopwatch();
 		readonly System.Windows.Forms.Timer WatchlistSearchTimer = new System.Windows.Forms.Timer();
 		string SearchString = string.Empty;
-		private void WatchlistRulesKeyboardSearch(object _, KeyPressEventArgs ea)
+		void WatchlistRulesKeyboardSearch(object _, KeyPressEventArgs ea)
 		{
 			bool ctrlchar = char.IsControl(ea.KeyChar);
 
@@ -2447,7 +2448,7 @@ namespace Taskmaster.UI
 				string.IsNullOrEmpty(SearchString) ? 500 : 2_500);
 		}
 
-		private void WatchlistSearchTimer_Tick(object sender, EventArgs e)
+		void WatchlistSearchTimer_Tick(object sender, EventArgs e)
 		{
 			bool foundprimary = false, found = false;
 
@@ -2513,7 +2514,7 @@ namespace Taskmaster.UI
 			}));
 		}
 
-		private void GPULoadPoller(object sender, EventArgs e)
+		void GPULoadPoller(object sender, EventArgs e)
 		{
 			try
 			{
@@ -3186,7 +3187,7 @@ namespace Taskmaster.UI
 			}
 		}
 
-		private async void PowerBehaviourEvent(object sender, PowerManager.PowerBehaviourEventArgs e)
+		async void PowerBehaviourEvent(object sender, PowerManager.PowerBehaviourEventArgs e)
 		{
 			if (!IsHandleCreated || DisposedOrDisposing) return;
 
@@ -3197,7 +3198,7 @@ namespace Taskmaster.UI
 		}
 
 		DateTimeOffset LastCauseTime = DateTimeOffset.MinValue;
-		private void PowerPlanEvent(object sender, PowerModeEventArgs e)
+		void PowerPlanEvent(object sender, PowerModeEventArgs e)
 		{
 			if (!IsHandleCreated || DisposedOrDisposing) return;
 
