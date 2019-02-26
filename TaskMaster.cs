@@ -497,6 +497,7 @@ namespace Taskmaster
 
 		public static bool ShowProcessAdjusts { get; set; } = true;
 		public static bool ShowUnmodifiedPortions { get; set; } = true;
+		public static bool ShowOnlyFinalState { get; set; } = false;
 		public static bool ShowForegroundTransitions { get; set; } = false;
 		public static bool ShowSessionActions { get; set; } = true;
 		public static bool ShowNetworkErrors { get; set; } = true;
@@ -718,6 +719,9 @@ namespace Taskmaster
 			logsec["Show session actions"].Comment = "Show blurbs about actions taken relating to sessions.";
 
 			ShowUnmodifiedPortions = logsec.GetSetDefault("Show unmodified portions", false, out modified).BoolValue;
+			dirtyconfig |= modified;
+
+			ShowOnlyFinalState = logsec.GetSetDefault("Show only final state", false, out modified).BoolValue;
 			dirtyconfig |= modified;
 
 			ShowOnStart = optsec.GetSetDefault("Show on start", true, out modified).BoolValue;

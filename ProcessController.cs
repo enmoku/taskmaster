@@ -731,6 +731,8 @@ namespace Taskmaster
 		{
 			if (!LogAdjusts) return;
 
+			bool onlyFinal = Taskmaster.ShowOnlyFinalState;
+
 			var sbs = new System.Text.StringBuilder();
 			sbs.Append("[").Append(FriendlyName).Append("] ").Append(FormatPathName(ev.Info))
 				.Append(" (#").Append(ev.Info.Id).Append(")");
@@ -740,10 +742,13 @@ namespace Taskmaster
 				sbs.Append("; Priority: ");
 				if (ev.PriorityOld.HasValue)
 				{
-					sbs.Append(Readable.ProcessPriority(ev.PriorityOld.Value));
+					if (!onlyFinal || !ev.PriorityNew.HasValue) sbs.Append(Readable.ProcessPriority(ev.PriorityOld.Value));
 
 					if (ev.PriorityNew.HasValue)
-						sbs.Append(" → ").Append(Readable.ProcessPriority(ev.PriorityNew.Value));
+					{
+						if (!onlyFinal) sbs.Append(" → ");
+						sbs.Append(Readable.ProcessPriority(ev.PriorityNew.Value));
+					}
 
 					if (Priority.HasValue && ev.Info.State == ProcessHandlingState.Paused && Priority != ev.PriorityNew)
 						sbs.Append($" [{ProcessHelpers.PriorityToInt(Priority.Value)}]");
@@ -760,10 +765,13 @@ namespace Taskmaster
 				sbs.Append("; Affinity: ");
 				if (ev.AffinityOld >= 0)
 				{
-					sbs.Append(ev.AffinityOld);
+					if (!onlyFinal || ev.AffinityNew < 0) sbs.Append(ev.AffinityOld);
 
 					if (ev.AffinityNew >= 0)
-						sbs.Append(" → ").Append(ev.AffinityNew);
+					{
+						if (!onlyFinal) sbs.Append(" → ");
+						sbs.Append(ev.AffinityNew);
+					}
 
 					if (AffinityMask >= 0 && ev.Info.State == ProcessHandlingState.Paused && AffinityMask != ev.AffinityNew)
 						sbs.Append($" [{AffinityMask}]");
