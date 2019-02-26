@@ -217,8 +217,9 @@ namespace Taskmaster.UI.Config
 				var cfg = corecfg.Config;
 
 				var uisec = cfg["User Interface"];
-				uisec["Update frequency"].IntValue = Convert.ToInt32(UIUpdateFrequency.Value);
-				Taskmaster.mainwindow.UIUpdateFrequency = Convert.ToInt32(UIUpdateFrequency.Value);
+				int uiupdatems = Convert.ToInt32(UIUpdateFrequency.Value).Constrain(100, 5000);
+				uisec["Update frequency"].IntValue = uiupdatems;
+				Taskmaster.mainwindow.UIUpdateFrequency = uiupdatems;
 
 				var powsec = cfg[HumanReadable.Hardware.Power.Section];
 

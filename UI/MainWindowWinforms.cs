@@ -773,14 +773,12 @@ namespace Taskmaster.UI
 
 		public static Serilog.Core.LoggingLevelSwitch LogIncludeLevel;
 
-		int _uiupdatefrequency = 500;
 		public int UIUpdateFrequency
 		{
-			get => _uiupdatefrequency;
+			get => UItimer.Interval;
 			set
 			{
 				int freq = value.Constrain(100, 5000);
-				_uiupdatefrequency = freq;
 				UItimer.Interval = freq;
 			}
 		}
