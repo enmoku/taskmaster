@@ -388,7 +388,7 @@ namespace Taskmaster
 		}
 
 		bool Paused = false;
-		bool SessionLocked = false;
+		public bool SessionLocked { get; private set; } = false;
 		/// <summary>
 		/// Power mode is forced, auto-adjust and other automatic changes are disabled.
 		/// </summary>
@@ -1058,6 +1058,15 @@ namespace Taskmaster
 						// HANDS OFF MODE
 						break;
 				}
+			}
+			catch (Exception ex)
+			{
+				Logging.Stacktrace(ex);
+			}
+
+			try
+			{
+				SessionLock?.Invoke(this, new SessionLockEventArgs(SessionLocked));
 			}
 			catch (Exception ex)
 			{
