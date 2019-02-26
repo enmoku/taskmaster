@@ -1004,6 +1004,8 @@ namespace Taskmaster
 		{
 			lock (watchlist_lock)
 			{
+				if (Taskmaster.Trace) Debug.WriteLine("SORTING PROCESS MANAGER WATCHLIST");
+
 				WatchlistCache.Sort(WatchlistSorter);
 
 				int order = 0;
@@ -1578,7 +1580,7 @@ namespace Taskmaster
 
 					try
 					{
-						if (Taskmaster.Trace) Debug.WriteLine($"Trying to modify: {info.Name} (#{info.Id})");
+						if (Taskmaster.Trace && Taskmaster.DebugProcesses) Debug.WriteLine($"Trying to modify: {info.Name} (#{info.Id})");
 
 						await info.Controller.Modify(info);
 
@@ -1611,7 +1613,7 @@ namespace Taskmaster
 				else
 				{
 					info.State = ProcessHandlingState.Abandoned;
-					if (Taskmaster.Trace) Debug.WriteLine($"ProcessTriage no matching rule for: {info.Name} (#{info.Id})");
+					if (Taskmaster.Trace && Taskmaster.DebugProcesses) Debug.WriteLine($"ProcessTriage no matching rule for: {info.Name} (#{info.Id})");
 				}
 
 				/*

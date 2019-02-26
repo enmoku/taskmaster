@@ -102,7 +102,7 @@ namespace Taskmaster
 			Total = mem.ullTotalPhys;
 			FreeBytes = mem.ullAvailPhys;
 			Used = Total - mem.ullAvailPhys;
-			if (Taskmaster.Trace) Debug.WriteLine($"MEMORY - Total: {Total.ToString()}, Free: {FreeBytes.ToString()}, Used: {Used.ToString()}");
+			if (Taskmaster.Trace && Taskmaster.DebugMemory) Debug.WriteLine($"MEMORY - Total: {Total.ToString()}, Free: {FreeBytes.ToString()}, Used: {Used.ToString()}");
 		}
 
 		// weird hack
