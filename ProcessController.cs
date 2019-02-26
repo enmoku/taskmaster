@@ -735,36 +735,44 @@ namespace Taskmaster
 			sbs.Append("[").Append(FriendlyName).Append("] ").Append(FormatPathName(ev.Info))
 				.Append(" (#").Append(ev.Info.Id).Append(")");
 
-			sbs.Append("; Priority: ");
-			if (ev.PriorityOld.HasValue)
+			if (Taskmaster.ShowUnmodifiedPortions || ev.PriorityNew.HasValue)
 			{
-				sbs.Append(Readable.ProcessPriority(ev.PriorityOld.Value));
-				if (ev.PriorityNew.HasValue)
-					sbs.Append(" → ").Append(Readable.ProcessPriority(ev.PriorityNew.Value));
+				sbs.Append("; Priority: ");
+				if (ev.PriorityOld.HasValue)
+				{
+					sbs.Append(Readable.ProcessPriority(ev.PriorityOld.Value));
 
-				if (Priority.HasValue && ev.Info.State == ProcessHandlingState.Paused && Priority != ev.PriorityNew)
-					sbs.Append($" [{ProcessHelpers.PriorityToInt(Priority.Value)}]");
+					if (ev.PriorityNew.HasValue)
+						sbs.Append(" → ").Append(Readable.ProcessPriority(ev.PriorityNew.Value));
+
+					if (Priority.HasValue && ev.Info.State == ProcessHandlingState.Paused && Priority != ev.PriorityNew)
+						sbs.Append($" [{ProcessHelpers.PriorityToInt(Priority.Value)}]");
+				}
+				else
+					sbs.Append(HumanReadable.Generic.NotAvailable);
 
 				if (ev.PriorityFail) sbs.Append(" [Failed]");
 				if (ev.Protected) sbs.Append(" [Protected]");
 			}
-			else
-				sbs.Append(HumanReadable.Generic.NotAvailable);
 
-			sbs.Append("; Affinity: ");
-			if (ev.AffinityOld >= 0)
+			if (Taskmaster.ShowUnmodifiedPortions || ev.AffinityNew >= 0)
 			{
-				sbs.Append(ev.AffinityOld);
-				if (ev.AffinityNew >= 0)
-					sbs.Append(" → ").Append(ev.AffinityNew);
+				sbs.Append("; Affinity: ");
+				if (ev.AffinityOld >= 0)
+				{
+					sbs.Append(ev.AffinityOld);
 
-				if (AffinityMask >= 0 && ev.Info.State == ProcessHandlingState.Paused && AffinityMask != ev.AffinityNew)
-					sbs.Append($" [{AffinityMask}]");
+					if (ev.AffinityNew >= 0)
+						sbs.Append(" → ").Append(ev.AffinityNew);
+
+					if (AffinityMask >= 0 && ev.Info.State == ProcessHandlingState.Paused && AffinityMask != ev.AffinityNew)
+						sbs.Append($" [{AffinityMask}]");
+				}
+				else
+					sbs.Append(HumanReadable.Generic.NotAvailable);
+
+				if (ev.AffinityFail) sbs.Append(" [Failed]");
 			}
-			else
-				sbs.Append(HumanReadable.Generic.NotAvailable);
-
-			if (ev.AffinityFail) sbs.Append(" [Failed]");
 
 			if (Taskmaster.DebugProcesses) sbs.Append(" [").Append(AffinityStrategy.ToString()).Append("]");
 
@@ -877,7 +885,7 @@ namespace Taskmaster
 					PriorityOld = oldPriority,
 					AffinityNew = mAffinity ? newAffinity : -1,
 					AffinityOld = oldAffinity,
-					NewIO=nIO,
+					NewIO = nIO,
 				};
 
 				ev.User = new System.Text.StringBuilder();
@@ -1504,6 +1512,7 @@ namespace Taskmaster
 				{
 					if (Taskmaster.Trace && Taskmaster.DebugProcesses && Taskmaster.ShowInaction)
 						Log.Debug($"[{FriendlyName}] {info.Name} (#{info.Id}) – I/O priority ALREADY set to {original}, target: {target}");
+					nIO = -1;
 				}
 				else
 				{

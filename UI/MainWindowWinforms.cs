@@ -1130,6 +1130,19 @@ namespace Taskmaster.UI
 				corecfg.MarkDirty();
 			};
 
+			var menu_config_logging_showunmodified = new ToolStripMenuItem("Show unmodified portions")
+			{
+				Checked = Taskmaster.ShowUnmodifiedPortions,
+				CheckOnClick = true,
+			};
+			menu_config_logging_showunmodified.Click += (_, _ea) =>
+			{
+				Taskmaster.ShowUnmodifiedPortions = menu_config_logging_showunmodified.Checked;
+				var corecfg = Taskmaster.Config.Load(Taskmaster.coreconfig);
+				corecfg.Config["Logging"]["Show unmodified portions"].BoolValue = menu_config_logging_showunmodified.Checked;
+				corecfg.MarkDirty();
+			};
+
 			var menu_config_logging_neterrors = new ToolStripMenuItem("Network errors")
 			{
 				Checked = Taskmaster.ShowNetworkErrors,
@@ -1180,6 +1193,8 @@ namespace Taskmaster.UI
 
 			menu_config_logging.DropDownItems.Add(menu_config_logging_adjusts);
 			menu_config_logging.DropDownItems.Add(menu_config_logging_session);
+			if (Taskmaster.PowerManagerEnabled)
+				menu_config_logging.DropDownItems.Add(menu_config_logging_showunmodified);
 			menu_config_logging.DropDownItems.Add(menu_config_logging_neterrors);
 			menu_config_logging.DropDownItems.Add(new ToolStripSeparator());
 			menu_config_logging.DropDownItems.Add(new ToolStripLabel("– NVM log Level –") { ForeColor = System.Drawing.SystemColors.GrayText });
