@@ -660,7 +660,11 @@ namespace Taskmaster
 				dirtyconfig |= modified;
 			}
 
-			IgnoreRecentlyModified = TimeSpan.FromMinutes(perfsec.GetSetDefault("Ignore recently modified", 30, out modified).IntValue.Constrain(0, 24 * 60));
+			int ignRecentlyModified = perfsec.GetSetDefault("Ignore recently modified", 30, out modified).IntValue.Constrain(0, 24 * 60);
+			if (ignRecentlyModified > 0)
+				IgnoreRecentlyModified = TimeSpan.FromMinutes(ignRecentlyModified);
+			else
+				IgnoreRecentlyModified = null;
 			perfsec["Ignore recently modified"].Comment = "Performance optimization. More notably this enables granting self-determination to apps that actually think they know better.";
 
 			// OBSOLETE
