@@ -1014,7 +1014,7 @@ namespace Taskmaster
 
 									bool replaced = false;
 									// remove unwanted bits
-									for (int i = 0; i < parts.Count; i++)
+									for (int i = 0; i < parts.Count-1; i++)
 									{
 										string cur = parts[i].ToLowerInvariant();
 										if (SpecialCasePathBits.Contains(cur)) // steamapps
