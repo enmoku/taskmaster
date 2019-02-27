@@ -9,7 +9,6 @@ Comprehensive changes can be found in Git change history:
 	Changed: I/O priority is restored to normal for processes that are granted agency.
 	Changed: Smart path ignores folder parts of certain length if they contain the executable name to avoid repeating parts.
 	Internal: Cleanup code is now hopefully better.
-	Changed: Smart path now removes more redundant parts.
 	Changed: Exclusive mode now also stops search indexer.
 ### 2019-02-26
 	Internal: UI code changes. Should consume less CPU now when the UI is open.
