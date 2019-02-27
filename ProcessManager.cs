@@ -1735,7 +1735,8 @@ namespace Taskmaster
 			}
 		}
 
-		ServiceWrapper WindowsUpdate = new ServiceWrapper("wuaserv");
+		readonly ServiceWrapper WindowsUpdate = new ServiceWrapper("wuaserv");
+		readonly ServiceWrapper SearchIndexer = new ServiceWrapper("wsearch");
 
 		bool ExclusiveEnabled = false;
 
@@ -1747,6 +1748,7 @@ namespace Taskmaster
 			{
 				ExclusiveEnabled = true;
 				WindowsUpdate.Stop();
+				SearchIndexer.Stop();
 			}
 		}
 
@@ -1757,6 +1759,7 @@ namespace Taskmaster
 				if (!ExclusiveEnabled) return;
 
 				WindowsUpdate.Start();
+				SearchIndexer.Start();
 			}
 		}
 
@@ -2214,6 +2217,7 @@ namespace Taskmaster
 				WaitForExitList.Clear();
 
 				WindowsUpdate.Dispose();
+				SearchIndexer.Dispose();
 
 				ExclusiveList?.Clear();
 				MKAh.Utility.DiscardExceptions(() => ExclusiveEnd());
