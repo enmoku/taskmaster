@@ -1023,7 +1023,9 @@ namespace Taskmaster
 											parts.RemoveAt(++i); // common, i at app name, rolled over with loop
 											replaced = false;
 										}
-										else if ((i > 2 && i < parts.Count - 3 ) || UnwantedPathBits.Contains(cur))
+										else if ((i > 2 && i < parts.Count - 3) // remove midpoint
+											|| UnwantedPathBits.Contains(cur) // flat out unwanted
+											|| (info.Name.Length > 5 && cur.Contains(info.Name.ToLowerInvariant()))) // folder contains exe name
 										{
 											if (replaced)
 												parts.RemoveAt(i--); // remove current and roll back loop
