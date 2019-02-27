@@ -42,7 +42,14 @@ namespace Taskmaster.UI
 	{
 		ToolTip tooltip = new ToolTip();
 
-		bool AlternateRowColors { get; set; } = true;
+		System.Drawing.Color WarningColor = System.Drawing.Color.Red;
+		System.Drawing.Color AlterColor = System.Drawing.Color.FromArgb(245, 245, 245); // ignores user styles
+
+		System.Drawing.Color DefaultLIBGColor = new ListViewItem().BackColor; // HACK
+
+		bool AlternateRowColorsLog { get; set; } = true;
+		bool AlternateRowColorsWatchlist { get; set; } = true;
+		bool AlternateRowColorsDevices { get; set; } = true;
 
 		// constructor
 		public MainWindow()
@@ -76,7 +83,7 @@ namespace Taskmaster.UI
 			MinimizeBox = true;
 
 			MinimumHeight += tabLayout.MinimumSize.Height;
-			MinimumHeight += loglist.MinimumSize.Height;
+			MinimumHeight += LogList.MinimumSize.Height;
 			MinimumHeight += menu.Height;
 			MinimumHeight += statusbar.Height;
 			MinimumHeight += 40; // why is this required? window deco?
@@ -114,9 +121,9 @@ namespace Taskmaster.UI
 		{
 			if (!IsHandleCreated) return;
 
-			if (loglist.Items.Count > 0) // needed in case of bugs or clearlog
+			if (LogList.Items.Count > 0) // needed in case of bugs or clearlog
 			{
-				loglist.TopItem = loglist.Items[loglist.Items.Count - 1];
+				LogList.TopItem = LogList.Items[LogList.Items.Count - 1];
 				ShowLastLog();
 			}
 		}
@@ -190,9 +197,9 @@ namespace Taskmaster.UI
 
 		public void ShowLastLog()
 		{
-			if (loglist.Items.Count > 0)
+			if (LogList.Items.Count > 0)
 			{
-				loglist.EnsureVisible(loglist.Items.Count - 1);
+				LogList.EnsureVisible(LogList.Items.Count - 1);
 			}
 		}
 
@@ -260,6 +267,18 @@ namespace Taskmaster.UI
 			}
 		}
 
+		void AlternateListviewRowColors(ListView lv, bool alternate=false)
+		{
+			bool alter = true;
+			foreach (ListViewItem li in lv.Items)
+			{
+				if (alternate && (alter = !alter))
+					li.BackColor = AlterColor;
+				else
+					li.BackColor = DefaultLIBGColor;
+			}
+		}
+
 		void RemoveAudioInput(string GUID)
 		{
 			if (MicGuidToAudioInputs.TryRemove(GUID, out var li))
@@ -277,6 +296,9 @@ namespace Taskmaster.UI
 			{
 				AddAudioInput(dev);
 			}
+
+			AlternateListviewRowColors(AudioInputs, AlternateRowColorsDevices);
+
 			AudioInputs.EndUpdate();
 		}
 
@@ -342,11 +364,13 @@ namespace Taskmaster.UI
 		void AudioDeviceAdded(object sender, AudioDeviceEventArgs ea)
 		{
 			AddAudioInput(ea.Device);
+			AlternateListviewRowColors(AudioInputs, AlternateRowColorsDevices);
 		}
 
 		void AudioDeviceRemoved(object sender, AudioDeviceEventArgs ea)
 		{
 			RemoveAudioInput(ea.GUID);
+			AlternateListviewRowColors(AudioInputs, AlternateRowColorsDevices);
 		}
 
 		void MicrophoneDefaultChanged(object sender, AudioDefaultDeviceEventArgs ea)
@@ -577,44 +601,36 @@ namespace Taskmaster.UI
 			}));
 		}
 
-		readonly System.Drawing.Color GrayText = System.Drawing.Color.FromArgb(130, 130, 130); // ignores user styles
-		readonly System.Drawing.Color AlterColor = System.Drawing.Color.FromArgb(245, 245, 245); // ignores user styles
-
-		readonly System.Drawing.Color DefaultLIBGColor = new ListViewItem().BackColor; // HACK
-
 		/// <summary>
 		///
 		/// </summary>
 		/// <remarks>No locks</remarks>
 		void WatchlistItemColor(ListViewItem li, ProcessController prc)
 		{
-			var alter = AlternateRowColors ? ((li.Index + 1) % 2 == 0) : false; // every even line
+			var alter = AlternateRowColorsWatchlist ? ((li.Index + 1) % 2 == 0) : false; // every even line
 
 			try
 			{
 				li.UseItemStyleForSubItems = false;
-
 				foreach (ListViewItem.ListViewSubItem si in li.SubItems)
 				{
 					if (prc.Enabled)
-						si.ForeColor = System.Drawing.SystemColors.WindowText;
+						si.ForeColor = System.Drawing.SystemColors.ControlText;
 					else
-						si.ForeColor = GrayText;
+						si.ForeColor = System.Drawing.SystemColors.GrayText;
 
 					if (alter) si.BackColor = AlterColor;
 					else si.BackColor = DefaultLIBGColor;
 				}
 
-				alter = !alter;
-
 				if (prc.PriorityStrategy == ProcessPriorityStrategy.None)
-					li.SubItems[PrioColumn].ForeColor = GrayText;
+					li.SubItems[PrioColumn].ForeColor = System.Drawing.SystemColors.GrayText;
 				if (string.IsNullOrEmpty(prc.Path))
-					li.SubItems[PathColumn].ForeColor = GrayText;
+					li.SubItems[PathColumn].ForeColor = System.Drawing.SystemColors.GrayText;
 				if (prc.PowerPlan == PowerInfo.PowerMode.Undefined)
-					li.SubItems[PowerColumn].ForeColor = GrayText;
+					li.SubItems[PowerColumn].ForeColor = System.Drawing.SystemColors.GrayText;
 				if (prc.AffinityMask < 0)
-					li.SubItems[AffColumn].ForeColor = GrayText;
+					li.SubItems[AffColumn].ForeColor = System.Drawing.SystemColors.GrayText;
 			}
 			catch (Exception ex)
 			{
@@ -924,7 +940,7 @@ namespace Taskmaster.UI
 			{
 				var sbs = new System.Text.StringBuilder(256);
 
-				foreach (ListViewItem item in loglist.SelectedItems)
+				foreach (ListViewItem item in LogList.SelectedItems)
 					sbs.Append(item.SubItems[0].Text);
 
 				if (sbs.Length > 0)
@@ -1009,7 +1025,7 @@ namespace Taskmaster.UI
 				SizeMode = TabSizeMode.Normal,
 			};
 
-			loglist = new ListView
+			LogList = new ListView
 			{
 				Parent = this,
 				Dock = DockStyle.Bottom,
@@ -1122,21 +1138,60 @@ namespace Taskmaster.UI
 			menu_config_behaviour.DropDownItems.Add(menu_config_behaviour_exitconfirm);
 
 			// CONFIG -> VISUALS
+			var menu_config_visuals_rowalternate = new ToolStripMenuItem("Alternate row colors");
 
-			var menu_config_visuals_rowalternate = new ToolStripMenuItem("Alternate row colors")
+			var menu_config_visuals_rowalternate_log = new ToolStripMenuItem("Log entries")
 			{
-				Checked = AlternateRowColors,
+				Checked = AlternateRowColorsLog,
 				CheckOnClick = true,
 			};
-			menu_config_visuals_rowalternate.Click += (_, _ea) =>
+			var menu_config_visuals_rowalternate_watchlist = new ToolStripMenuItem("Watchlist")
 			{
-				AlternateRowColors = menu_config_visuals_rowalternate.Checked;
+				Checked = AlternateRowColorsWatchlist,
+				CheckOnClick = true,
+			};
+			var menu_config_visuals_rowalternate_devices = new ToolStripMenuItem("Devices")
+			{
+				Checked = AlternateRowColorsDevices,
+				CheckOnClick = true,
+			};
+
+			menu_config_visuals_rowalternate.DropDownItems.Add(menu_config_visuals_rowalternate_log);
+			menu_config_visuals_rowalternate.DropDownItems.Add(menu_config_visuals_rowalternate_watchlist);
+			menu_config_visuals_rowalternate.DropDownItems.Add(menu_config_visuals_rowalternate_devices);
+
+			menu_config_visuals_rowalternate_log.Click += (_, _ea) =>
+			{
+				AlternateRowColorsLog = menu_config_visuals_rowalternate_log.Checked;
 
 				var uicfg = Taskmaster.Config.Load(UIConfig);
-				uicfg.Config["Visuals"]["Alternate row colors"].BoolValue = AlternateRowColors;
+				uicfg.Config["Visuals"]["Alternate log row colors"].BoolValue = AlternateRowColorsLog;
+				uicfg.MarkDirty();
+
+				if (LogList!=null)
+					AlternateListviewRowColors(LogList, AlternateRowColorsLog);
+			};
+			menu_config_visuals_rowalternate_watchlist.Click += (_, _ea) =>
+			{
+				AlternateRowColorsWatchlist = menu_config_visuals_rowalternate_watchlist.Checked;
+				var uicfg = Taskmaster.Config.Load(UIConfig);
+				uicfg.Config["Visuals"]["Alternate watchlist row colors"].BoolValue = AlternateRowColorsWatchlist;
 				uicfg.MarkDirty();
 
 				WatchlistColor();
+			};
+			menu_config_visuals_rowalternate_devices.Click += (_, _ea) =>
+			{
+				AlternateRowColorsDevices = menu_config_visuals_rowalternate_devices.Checked;
+
+				var uicfg = Taskmaster.Config.Load(UIConfig);
+				uicfg.Config["Visuals"]["Alternate device row colors"].BoolValue = AlternateRowColorsDevices;
+				uicfg.MarkDirty();
+
+				if (AudioInputs != null)
+					AlternateListviewRowColors(AudioInputs, AlternateRowColorsDevices);
+				if (NetworkDevices != null)
+					AlternateListviewRowColors(NetworkDevices, AlternateRowColorsDevices);
 			};
 
 			menu_config_visual.DropDownItems.Add(menu_config_visuals_rowalternate);
@@ -1579,20 +1634,20 @@ namespace Taskmaster.UI
 
 			// UI Log
 			// -1 = contents, -2 = heading
-			loglist.Columns.Add("Event Log", -2, HorizontalAlignment.Left); // 2
+			LogList.Columns.Add("Event Log", -2, HorizontalAlignment.Left); // 2
 			ResizeLogList = delegate
 			{
-				loglist.BeginUpdate();
-				loglist.Columns[0].Width = -2;
+				LogList.BeginUpdate();
+				LogList.Columns[0].Width = -2;
 
 				// HACK: Enable visual styles causes horizontal bar to always be present without the following.
-				loglist.Columns[0].Width = loglist.Columns[0].Width - 2;
+				LogList.Columns[0].Width = LogList.Columns[0].Width - 2;
 
 				//loglist.Height = -2;
 				//loglist.Width = -2;
-				loglist.Height = ClientSize.Height - tabLayout.Height - statusbar.Height - menu.Height;
+				LogList.Height = ClientSize.Height - tabLayout.Height - statusbar.Height - menu.Height;
 				ShowLastLog();
-				loglist.EndUpdate();
+				LogList.EndUpdate();
 			};
 			//ResizeEnd += ResizeLogList;
 			//Resize += ResizeLogList;
@@ -1603,7 +1658,7 @@ namespace Taskmaster.UI
 			loglistms = new ContextMenuStrip();
 			var logcopy = new ToolStripMenuItem("Copy to clipboard", null, CopyLogToClipboard);
 			loglistms.Items.Add(logcopy);
-			loglist.ContextMenuStrip = loglistms;
+			LogList.ContextMenuStrip = loglistms;
 
 			var cfg = Taskmaster.Config.Load(Taskmaster.coreconfig);
 			bool modified, tdirty = false;
@@ -2008,8 +2063,56 @@ namespace Taskmaster.UI
 				}
 			}
 
-			AlternateRowColors = gencfg.GetSetDefault("Alternate row colors", true, out bool modified).BoolValue;
-			if (modified) uicfg.MarkDirty();
+			bool modified = false, dirty=false;
+
+			//var alternateRowColor = gencfg.GetSetDefault("Alternate row color", new[] { 1 }, out modified).IntValueArray;
+
+			DefaultLIBGColor = new ListViewItem().BackColor; // HACK; gets current color scheme default color
+
+			AutocalcAlterColor();
+			AutocalcGrayText();
+
+			WarningColor = System.Drawing.Color.Red; // no decent way to autocalculate good warning color in case it blends with background
+
+			//GrayText = System.Drawing.Color.FromArgb(130, 130, 130); // ignores user styles
+			//AlterColor = System.Drawing.Color.FromArgb(245, 245, 245); // ignores user styles
+
+			AlternateRowColorsDevices = gencfg.GetSetDefault("Alternate device row colors", false, out modified).BoolValue;
+			dirty |= modified;
+			AlternateRowColorsWatchlist = gencfg.GetSetDefault("Alternate watchlist row colors", true, out modified).BoolValue;
+			dirty |= modified;
+			AlternateRowColorsLog = gencfg.GetSetDefault("Alternate log row colors", true, out modified).BoolValue;
+			dirty |= modified;
+
+			if (dirty) uicfg.MarkDirty();
+		}
+
+		void AutocalcAlterColor()
+		{
+			var defcolor = new ListViewItem().BackColor; // HACK; gets current color scheme default color
+
+			int red = defcolor.R, green = defcolor.G, blue = defcolor.B;
+
+			int totalRGB = blue + green + red;
+			int highest = Math.Max(Math.Max(blue, green), red);
+			int lowest = Math.Min(Math.Min(blue, green), red);
+
+			if (lowest > 200) // bright = darken
+			{
+				red = (red - Math.Max(Convert.ToInt32(red * 0.04), 6)).Constrain(0, 255);
+				green = (green - Math.Max(Convert.ToInt32(green * 0.04), 6)).Constrain(0, 255);
+				blue = (blue - Math.Max(Convert.ToInt32(blue * 0.04), 6)).Constrain(0, 255);
+				AlterColor = System.Drawing.Color.FromArgb(red, green, blue);
+			}
+			else // dark/midtone = brighten
+			{
+				red = (red + Math.Max(Convert.ToInt32(red * 0.04), 6)).Constrain(0, 255);
+				green = (green + Math.Max(Convert.ToInt32(green * 0.04), 6)).Constrain(0, 255);
+				blue = (blue + Math.Max(Convert.ToInt32(blue * 0.04), 6)).Constrain(0, 255);
+				AlterColor = System.Drawing.Color.FromArgb(red, green, blue);
+			}
+
+			Debug.WriteLine($"ALTER COLOR: {AlterColor.R}, {AlterColor.G}, {AlterColor.B}");
 		}
 
 		void BuildMicrophonePanel(int[] micwidths)
@@ -3204,7 +3307,7 @@ namespace Taskmaster.UI
 			}));
 		}
 
-		ListView loglist = null;
+		ListView LogList = null;
 		MenuStrip menu = null;
 
 		public void FillLog()
@@ -3212,10 +3315,10 @@ namespace Taskmaster.UI
 			MemoryLog.MemorySink.onNewEvent += NewLogReceived;
 
 			// Log.Verbose("Filling GUI log.");
-			loglist.BeginUpdate();
+			LogList.BeginUpdate();
 			foreach (var evmsg in MemoryLog.MemorySink.ToArray())
 				AddLog(evmsg);
-			loglist.EndUpdate();
+			LogList.EndUpdate();
 
 			ShowLastLog();
 
@@ -3345,13 +3448,13 @@ namespace Taskmaster.UI
 				if (health.NVMTransfers >= float.Epsilon)
 				{
 					nvmtransfers.Text = $"{health.NVMTransfers:N1}{(health.NVMTransfers > 250 ? (health.NVMTransfers > 500 ? " extreme" : " high") : "")}";
-					nvmtransfers.ForeColor = DefaultForeColor;
+					nvmtransfers.ForeColor = System.Drawing.SystemColors.WindowText;
 					skipTransfers = 0;
 				}
 				else
 				{
 					if (skipTransfers++ == 0)
-						nvmtransfers.ForeColor = System.Drawing.SystemColors.InactiveCaptionText;
+						nvmtransfers.ForeColor = System.Drawing.SystemColors.GrayText;
 					else
 						nvmtransfers.Text = "0.0";
 				}
@@ -3359,13 +3462,13 @@ namespace Taskmaster.UI
 				if (health.SplitIO >= float.Epsilon)
 				{
 					nvmsplitio.Text = $"{health.SplitIO:N1}{(health.SplitIO > 20 ? (health.SplitIO >= health.NVMTransfers*0.5 ? " extreme" :  " high") : "")}";
-					nvmsplitio.ForeColor = DefaultForeColor;
+					nvmsplitio.ForeColor = System.Drawing.SystemColors.WindowText;
 					skipSplits = 0;
 				}
 				else
 				{
 					if (skipSplits++ == 0)
-						nvmsplitio.ForeColor = System.Drawing.SystemColors.InactiveCaptionText;
+						nvmsplitio.ForeColor = System.Drawing.SystemColors.GrayText;
 					else
 						nvmsplitio.Text = "0.0";
 				}
@@ -3374,13 +3477,13 @@ namespace Taskmaster.UI
 				{
 					float delay = health.NVMDelay * 1000;
 					nvmdelay.Text = $"{delay:N1} ms{(delay > 20 ? (health.NVMDelay > 50 ? " extreme" : " high") : "")}";
-					nvmdelay.ForeColor = DefaultForeColor;
+					nvmdelay.ForeColor = System.Drawing.SystemColors.WindowText;
 					skipDelays = 0;
 				}
 				else
 				{
 					if (skipDelays++ == 0)
-						nvmdelay.ForeColor = System.Drawing.SystemColors.InactiveCaptionText;
+						nvmdelay.ForeColor = System.Drawing.SystemColors.GrayText;
 					else
 						nvmdelay.Text = "0 ms";
 				}
@@ -3388,13 +3491,13 @@ namespace Taskmaster.UI
 				if (health.NVMQueue >= float.Epsilon)
 				{
 					nvmqueued.Text = $"{health.NVMQueue:N0}{(health.NVMQueue > 2 ? (health.NVMQueue > 8 ? " extreme" : " high") : "")}";
-					nvmqueued.ForeColor = DefaultForeColor;
+					nvmqueued.ForeColor = System.Drawing.SystemColors.WindowText;
 					skipQueues = 0;
 				}
 				else
 				{
 					if (skipQueues++ == 0)
-						nvmqueued.ForeColor = System.Drawing.SystemColors.InactiveCaptionText;
+						nvmqueued.ForeColor = System.Drawing.SystemColors.GrayText;
 					else
 						nvmqueued.Text = "0";
 				}
@@ -3449,9 +3552,10 @@ namespace Taskmaster.UI
 
 			BeginInvoke(new Action(() =>
 			{
-				NetworkDevices.BeginUpdate();
 				try
 				{
+					NetworkDevices.BeginUpdate();
+
 					NetworkDevices.Items.Clear();
 
 					foreach (var dev in netmonitor.GetInterfaces())
@@ -3472,6 +3576,8 @@ namespace Taskmaster.UI
 						};
 						NetworkDevices.Items.Add(li);
 					}
+
+					AlternateListviewRowColors(NetworkDevices, AlternateRowColorsDevices);
 				}
 				finally
 				{
@@ -3580,11 +3686,11 @@ namespace Taskmaster.UI
 
 		void ClearLog()
 		{
-			loglist.BeginUpdate();
+			LogList.BeginUpdate();
 			//loglist.Clear();
-			loglist.Items.Clear();
+			LogList.Items.Clear();
 			MemoryLog.MemorySink.Clear();
-			loglist.EndUpdate();
+			LogList.EndUpdate();
 		}
 
 		async void NewLogReceived(object _, LogEventArgs ea)
@@ -3596,23 +3702,31 @@ namespace Taskmaster.UI
 			if (!IsHandleCreated) return;
 			BeginInvoke(new Action(() =>
 			{
-				loglist.BeginUpdate();
+				LogList.BeginUpdate();
 
-				var excessitems = Math.Max(0, (loglist.Items.Count - MaxLogSize));
+				var excessitems = Math.Max(0, (LogList.Items.Count - MaxLogSize));
 				while (excessitems-- > 0)
-					loglist.Items.RemoveAt(0);
+					LogList.Items.RemoveAt(0);
 
 				AddLog(ea);
 
-				loglist.EndUpdate();
+				LogList.EndUpdate();
 			}));
 		}
 
+		bool alterStep = true;
 		void AddLog(LogEventArgs ea)
 		{
-			var li = loglist.Items.Add(ea.Message);
+			var li = LogList.Items.Add(ea.Message);
+
+			// color errors and worse red
 			if ((int)ea.Level >= (int)Serilog.Events.LogEventLevel.Error)
 				li.ForeColor = System.Drawing.Color.Red;
+
+			// alternate back color
+			if (AlternateRowColorsLog && (alterStep = !alterStep))
+				li.BackColor = AlterColor;
+
 			li.EnsureVisible();
 		}
 
