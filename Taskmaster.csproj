@@ -143,6 +143,7 @@
     <Compile Include="Events\ProcessorLoad.cs" />
     <Compile Include="Events\VolumeChanged.cs" />
     <Compile Include="NativeMethods.Process.cs" />
+    <Compile Include="ServiceWrapper.cs" />
     <Compile Include="Settings\HealthMonitor.cs" />
     <Compile Include="UI\Config\AdvancedConfig.cs">
       <SubType>Form</SubType>
