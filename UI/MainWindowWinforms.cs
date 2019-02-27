@@ -2070,7 +2070,6 @@ namespace Taskmaster.UI
 			DefaultLIBGColor = new ListViewItem().BackColor; // HACK; gets current color scheme default color
 
 			AutocalcAlterColor();
-			AutocalcGrayText();
 
 			WarningColor = System.Drawing.Color.Red; // no decent way to autocalculate good warning color in case it blends with background
 
