@@ -1735,52 +1735,18 @@ namespace Taskmaster
 			}
 		}
 
-		Lazy<System.ServiceProcess.ServiceController> windowsupdate = new Lazy<System.ServiceProcess.ServiceController>(
-			() =>
-			{
-				return new System.ServiceProcess.ServiceController("wuauserv");
-			});
-
-		bool WUARunning => windowsupdate.Value.Status == System.ServiceProcess.ServiceControllerStatus.Running;
+		ServiceWrapper WindowsUpdate = new ServiceWrapper("wuaserv");
 
 		bool ExclusiveEnabled = false;
-		bool WUAWasRunning = false;
+
 		void ExclusiveStart()
 		{
 			if (DisposedOrDisposing) throw new ObjectDisposedException("ExclusiveStart called when ProcessManager was already disposed"); ;
 
-            bool cWUARunning = false;
-
             lock (Exclusive_lock)
 			{
-				try
-				{
-					windowsupdate.Value.Refresh();
-					cWUARunning = WUARunning;
-					if (ExclusiveEnabled && !cWUARunning) return;
-
-					if (cWUARunning)
-					{
-						if (windowsupdate.Value.CanPauseAndContinue)
-							windowsupdate.Value.Pause();
-						else
-							windowsupdate.Value.Stop();
-					}
-				}
-				catch (InvalidOperationException ex) // not running
-				{
-                    Log.Error(ex, "<Exclusive> Failure to stop WUA");
-				}
-				catch (Exception ex) when (ex is NullReferenceException || ex is OutOfMemoryException) { throw; }
-				catch (Exception ex)
-				{
-					Logging.Stacktrace(ex);
-				}
-				finally
-				{
-                    WUAWasRunning = cWUARunning;
-                    ExclusiveEnabled = true;
-				}
+				ExclusiveEnabled = true;
+				WindowsUpdate.Stop();
 			}
 		}
 
@@ -1788,29 +1754,9 @@ namespace Taskmaster
 		{
 			lock (Exclusive_lock)
 			{
-				if (!ExclusiveEnabled || !WUAWasRunning)
-				{
-					ExclusiveEnabled = false;
-					return;
-				}
+				if (!ExclusiveEnabled) return;
 
-				try
-				{
-					windowsupdate.Value.Refresh();
-
-					if (!WUARunning)
-					{
-						if (windowsupdate.Value.CanPauseAndContinue)
-							windowsupdate.Value.Continue();
-						else
-							windowsupdate.Value.Start();
-					}
-				}
-				catch (Exception ex) when (ex is NullReferenceException || ex is OutOfMemoryException) { throw; }
-				finally
-				{
-					ExclusiveEnabled = false;
-				}
+				WindowsUpdate.Start();
 			}
 		}
 
@@ -2267,8 +2213,7 @@ namespace Taskmaster
 				CancelPowerWait();
 				WaitForExitList.Clear();
 
-				if (windowsupdate.IsValueCreated)
-					windowsupdate.Value.Dispose();
+				WindowsUpdate.Dispose();
 
 				ExclusiveList?.Clear();
 				MKAh.Utility.DiscardExceptions(() => ExclusiveEnd());
