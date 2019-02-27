@@ -3,6 +3,9 @@ Comprehensive changes can be found in Git change history:
 	https://github.com/mkahvi/taskmaster/commits/master
 
 ## [0.13...]
+### 2019-02-27
+	Changed: Color configuration. Should now have increased compatibility with different color schemes.
+	Added: Option to enable&disable alternate row colors for more things.
 ### 2019-02-26
 	Internal: UI code changes. Should consume less CPU now when the UI is open.
 	Changed: Network error output to be more curt when the errors were only in the last sample.
