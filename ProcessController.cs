@@ -1214,6 +1214,8 @@ namespace Taskmaster
 										Log.Debug($"[{FriendlyName}] {FormatPathName(info)} (#{info.Id.ToString()}) is resisting being modified: Agency granted.");
 									// TODO: Let it be.
 									ormt.Info.Process.Exited += ProcessExitEvent;
+
+									if (IOPriority >= 0 && IOPriority < 2) SetIO(info, 2); // restore normal I/O for these in case we messed around with it
 								}
 
 								ormt.LastIgnored = now;
