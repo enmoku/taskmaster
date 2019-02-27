@@ -440,11 +440,13 @@ namespace Taskmaster
 						ProcessEx info = null;
 						if (WaitForExitList.TryGetValue(pid, out info))
 						{
-							Debug.WriteLine($"Re-using old ProcessEx: {info.Name} (#{info.Id})");
+							if (Taskmaster.Trace && Taskmaster.DebugProcesses)
+								Debug.WriteLine($"Re-using old ProcessEx: {info.Name} (#{info.Id})");
 							info.Process.Refresh();
 							if (info.Process.HasExited) // Stale, for some reason still kept
 							{
-								Debug.WriteLine("Re-using old ProcessEx - except not, stale");
+								if (Taskmaster.Trace && Taskmaster.DebugProcesses)
+									Debug.WriteLine("Re-using old ProcessEx - except not, stale");
 								WaitForExitList.TryRemove(pid, out _);
 								info = null;
 							}
