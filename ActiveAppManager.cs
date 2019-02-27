@@ -334,7 +334,14 @@ namespace Taskmaster
 			// SetupEventHook();
 		}
 
-		public void Dispose() => Dispose(true);
+		#region IDisposable
+		~ActiveAppManager() => Dispose(false);
+
+		public void Dispose()
+		{
+			Dispose(true);
+			GC.SuppressFinalize(this);
+		}
 
 		bool DisposedOrDisposing = false;
 		void Dispose(bool disposing)
@@ -348,12 +355,13 @@ namespace Taskmaster
 
 				ActiveChanged = null;
 				HangTimer?.Dispose();
-
-				NativeMethods.UnhookWinEvent(windowseventhook); // Automatic
 			}
+
+			NativeMethods.UnhookWinEvent(windowseventhook); // Automatic
 
 			DisposedOrDisposing = true;
 		}
+		#endregion
 
 		/*
 		public static string GetActiveWindowTitle()

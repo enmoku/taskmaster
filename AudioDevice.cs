@@ -24,6 +24,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
+using System;
 using System.Diagnostics;
 using System.Threading;
 
@@ -63,24 +64,25 @@ namespace Taskmaster
 		#region IDisposable Support
 		bool DisposingOrDisposed = false; // To detect redundant calls
 
+		~AudioDevice() => Dispose(false);
+
 		void Dispose(bool disposing)
 		{
-			if (!DisposingOrDisposed)
-			{
-				DisposingOrDisposed = true;
+			if (DisposingOrDisposed) return;
+			DisposingOrDisposed = true;
 
-				if (disposing)
-				{
-					if (Taskmaster.IsMainThread())
-					{
-						MMDevice?.Dispose();  // HACK: must happen in same thread as created
-						MMDevice = null;
-					}
-				}
+			if (Taskmaster.IsMainThread())
+			{
+				MMDevice?.Dispose();  // HACK: must happen in same thread as created
+				MMDevice = null;
 			}
 		}
 
-		public void Dispose() => Dispose(true);
+		public void Dispose()
+		{
+			Dispose(true);
+			GC.SuppressFinalize(this);
+		}
 		#endregion
 	}
 }

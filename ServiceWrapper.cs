@@ -128,24 +128,29 @@ namespace Taskmaster
 		readonly Lazy<ServiceController> Service;
 
 		#region IDisposable Support
+		~ServiceWrapper() => Dispose(false);
+
 		private bool DisposedOrDisposing = false; // To detect redundant calls
 
 		void Dispose(bool disposing)
 		{
 			if (DisposedOrDisposing) return;
-			DisposedOrDisposing = true;
 
-			if (disposing)
+			// this is desired even on destructor
+			if (Service.IsValueCreated)
 			{
-				if (Service.IsValueCreated)
-				{
-					if (NeedsRestart) Start();
-					Service.Value.Dispose();
-				}
+				if (NeedsRestart) Start();
+				Service.Value.Dispose();
 			}
+
+			DisposedOrDisposing = true;
 		}
 
-		public void Dispose() => Dispose(true);
+		public void Dispose()
+		{
+			Dispose(true);
+			GC.SuppressFinalize(this);
+		}
 		#endregion
 
 	}

@@ -1829,12 +1829,13 @@ namespace Taskmaster
 			}
 		}
 
+		#region IDisposable Support
 		public void Dispose() => Dispose(true);
 
-		bool disposed; // = false;
+		bool DisposedOrDisposing; // = false;
 		void Dispose(bool disposing)
 		{
-			if (disposed) return;
+			if (DisposedOrDisposing) return;
 
 			if (disposing)
 			{
@@ -1848,8 +1849,9 @@ namespace Taskmaster
 				if (NeedsSaving) SaveConfig();
 			}
 
-			disposed = true;
+			DisposedOrDisposing = true;
 		}
+		#endregion
 	}
 
 	sealed public class RecentlyModifiedInfo
