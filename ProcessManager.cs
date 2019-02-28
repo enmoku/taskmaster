@@ -264,7 +264,7 @@ namespace Taskmaster
 				ScanTimer?.Stop();
 				// TODO: Pause Scan until we're done
 
-				Scan(ignorePid, freememory: true); // TODO: Call for this to happen otherwise
+				Scan(ignorePid, PageToDisk: true); // TODO: Call for this to happen otherwise
 				if (cts.IsCancellationRequested) return;
 
 				// TODO: Wait a little longer to allow OS to Actually page stuff. Might not matter?
@@ -368,8 +368,12 @@ namespace Taskmaster
 			catch (ObjectDisposedException) { Statistics.DisposedAccesses++; }
 		}
 
+		readonly int SelfPID = Process.GetCurrentProcess().Id;
+
+		int ScanFoundProcs = 0;
+
 		int scan_lock = 0;
-		bool Scan(int ignorePid = -1, bool freememory = false)
+		bool Scan(int ignorePid = -1, bool PageToDisk = false)
 		{
 			if (DisposedOrDisposing) throw new ObjectDisposedException("Scan called when ProcessManager was already disposed");
 			if (cts.IsCancellationRequested) return false;
@@ -378,9 +382,7 @@ namespace Taskmaster
 
 			try
 			{
-				var now = DateTimeOffset.UtcNow;
-				LastScan = now;
-				NextScan = now.Add(ScanFrequency.Value);
+				NextScan = (LastScan = DateTimeOffset.UtcNow).Add(ScanFrequency.Value);
 
 				if (Taskmaster.DebugFullScan) Log.Debug("<Process> Full Scan: Start");
 
@@ -389,19 +391,16 @@ namespace Taskmaster
 				if (!SystemProcessId(ignorePid)) Ignore(ignorePid);
 
 				var procs = Process.GetProcesses();
-				int foundprocs = procs.Length - 2; // -2 for Idle&System
-				Debug.Assert(foundprocs > 0, "System has no running processes"); // should be impossible to fail
-				SignalProcessHandled(foundprocs); // scan start
-
-				int selfId = Process.GetCurrentProcess().Id;
+				ScanFoundProcs = procs.Length - 2; // -2 for Idle&System
+				Debug.Assert(ScanFoundProcs > 0, "System has no running processes"); // should be impossible to fail
+				SignalProcessHandled(ScanFoundProcs); // scan start
 
 				//var loaderOffload = new List<ProcessEx>();
 
-				int count = 0;
-				Parallel.ForEach(procs, (process) =>
-				{
-					int lcount = Interlocked.Increment(ref count);
+				List<ProcessEx> pageList = PageToDisk ? new List<ProcessEx>() : null;
 
+				foreach (var process in procs)
+				{
 					cts.Token.ThrowIfCancellationRequested();
 
 					string name = string.Empty;
@@ -411,33 +410,25 @@ namespace Taskmaster
 					{
 						name = process.ProcessName;
 						pid = process.Id;
-					}
-					catch
-					{
-						if (Taskmaster.ShowInaction && Taskmaster.DebugFullScan)
-							Log.Debug($"<Process/Scan> Failed to retrieve info for process: {name} (#{pid})");
-						return;
-					} // process inaccessible (InvalidOperationException or NotSupportedException)
 
-					if (ScanBlockList.TryGetValue(pid, out var found))
-					{
-						if (found.TimeTo(now).TotalSeconds < 5d)
-							return;
-						ScanBlockList.TryRemove(pid, out _);
-					}
+						if (ScanBlockList.TryGetValue(pid, out var found))
+						{
+							if (found.TimeTo(DateTimeOffset.UtcNow).TotalSeconds < 5d)
+								continue;
+							ScanBlockList.TryRemove(pid, out _);
+						}
 
-					try
-					{
-						if (IgnoreProcessID(pid) || IgnoreProcessName(name) || pid == selfId)
+						if (IgnoreProcessID(pid) || IgnoreProcessName(name) || pid == SelfPID)
 						{
 							if (Taskmaster.ShowInaction && Taskmaster.DebugFullScan)
 								Log.Debug($"<Process/Scan> Ignoring {name} (#{pid})");
-							return;
+							continue;
 						}
 
-						if (Taskmaster.DebugFullScan) Log.Verbose($"<Process> Checking [{lcount}/{foundprocs}] {name} (#{pid})");
+						if (Taskmaster.DebugFullScan) Log.Verbose($"<Process> Checking: {name} (#{pid})");
 
 						ProcessEx info = null;
+
 						if (WaitForExitList.TryGetValue(pid, out info))
 						{
 							if (Taskmaster.Trace && Taskmaster.DebugProcesses)
@@ -458,19 +449,20 @@ namespace Taskmaster
 						{
 							info.Timer = Stopwatch.StartNew();
 
-							ProcessTriage(info).Wait(cts.Token);
+							ProcessTriage(info);
 
-							if (freememory)
+							if (PageToDisk && (info.Controller?.AllowPaging ?? true))
 							{
-								MKAh.Utility.DiscardExceptions(() =>
+								try
 								{
 									if (!string.IsNullOrEmpty(freememoryignore) && info.Name.Equals(freememoryignore, StringComparison.InvariantCultureIgnoreCase))
-										return;
+										continue;
 
 									if (Taskmaster.DebugMemory) Log.Debug($"<Process> Paging: {info.Name} (#{info.Id})");
 
-									NativeMethods.EmptyWorkingSet(info.Process.Handle); // process.Handle may throw which we don't care about
-								});
+									pageList?.Add(info);
+								}
+								catch { } //  ignore
 							}
 
 							HandlingStateChange?.Invoke(this, new HandlingStateChangeEventArgs(info));
@@ -480,6 +472,11 @@ namespace Taskmaster
 					}
 					catch (Exception ex) when (ex is NullReferenceException || ex is OutOfMemoryException) { throw; }
 					catch (OperationCanceledException) { throw; }
+					catch (InvalidOperationException)
+					{
+						if (Taskmaster.ShowInaction && Taskmaster.DebugFullScan)
+							Log.Debug($"<Process/Scan> Failed to retrieve info for process: {name} (#{pid})");
+					}
 					catch (AggregateException ex)
 					{
 						System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(ex.InnerException ?? ex).Throw();
@@ -489,20 +486,38 @@ namespace Taskmaster
 					{
 						Logging.Stacktrace(ex);
 					}
-				});
+				}
 
 				//SystemLoaderAnalysis(loaderOffload);
 
+				if ((pageList?.Count ?? 0) > 0)
+				{
+					Task.Run(() =>
+					{
+						foreach (var info in pageList)
+						{
+							try
+							{
+								info.Process.Refresh();
+								if (info.Process.HasExited) continue;
+ 								NativeMethods.EmptyWorkingSet(info.Process.Handle); // process.Handle may throw which we don't care about
+							}
+							catch { }
+						}
+						pageList.Clear();
+
+					}, cts.Token).ConfigureAwait(false);
+				}
+
 				if (Taskmaster.DebugFullScan) Log.Debug("<Process> Full Scan: Complete");
 
-				SignalProcessHandled(-foundprocs); // scan done
+				SignalProcessHandled(-ScanFoundProcs); // scan done
 
 				//ScanEndEvent?.Invoke(this, EventArgs.Empty);
 
 				if (!SystemProcessId(ignorePid)) Unignore(ignorePid);
 			}
-			catch (Exception ex) when (ex is NullReferenceException || ex is OutOfMemoryException) { throw; }
-			catch (OperationCanceledException) { throw; }
+			catch (Exception ex) when (ex is NullReferenceException || ex is OutOfMemoryException || ex is OperationCanceledException) { throw; }
 			catch (AggregateException ex)
 			{
 				System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(ex.InnerException ?? ex).Throw();
@@ -518,6 +533,94 @@ namespace Taskmaster
 			}
 
 			return true;
+		}
+
+		private void ScanTriage(Process process, bool freememory)
+		{
+			cts.Token.ThrowIfCancellationRequested();
+
+			string name = string.Empty;
+			int pid = -1;
+
+			try
+			{
+				name = process.ProcessName;
+				pid = process.Id;
+
+				if (ScanBlockList.TryGetValue(pid, out var found))
+				{
+					if (found.TimeTo(DateTimeOffset.UtcNow).TotalSeconds < 5d)
+						return;
+					ScanBlockList.TryRemove(pid, out _);
+				}
+
+				if (IgnoreProcessID(pid) || IgnoreProcessName(name) || pid == SelfPID)
+				{
+					if (Taskmaster.ShowInaction && Taskmaster.DebugFullScan)
+						Log.Debug($"<Process/Scan> Ignoring {name} (#{pid})");
+					return;
+				}
+
+				if (Taskmaster.DebugFullScan) Log.Verbose($"<Process> Checking: {name} (#{pid})");
+
+				ProcessEx info = null;
+
+				if (WaitForExitList.TryGetValue(pid, out info))
+				{
+					if (Taskmaster.Trace && Taskmaster.DebugProcesses)
+						Debug.WriteLine($"Re-using old ProcessEx: {info.Name} (#{info.Id})");
+					info.Process.Refresh();
+					if (info.Process.HasExited) // Stale, for some reason still kept
+					{
+						if (Taskmaster.Trace && Taskmaster.DebugProcesses)
+							Debug.WriteLine("Re-using old ProcessEx - except not, stale");
+						WaitForExitList.TryRemove(pid, out _);
+						info = null;
+					}
+					else
+						info.State = ProcessHandlingState.Triage; // still valid
+				}
+
+				if (info != null || ProcessUtility.GetInfo(pid, out info, process, null, name, null, getPath: true))
+				{
+					info.Timer = Stopwatch.StartNew();
+
+					ProcessTriage(info);
+
+					if (freememory)
+					{
+						MKAh.Utility.DiscardExceptions(() =>
+						{
+							if (!string.IsNullOrEmpty(freememoryignore) && info.Name.Equals(freememoryignore, StringComparison.InvariantCultureIgnoreCase))
+								return;
+
+							if (Taskmaster.DebugMemory) Log.Debug($"<Process> Paging: {info.Name} (#{info.Id})");
+
+							NativeMethods.EmptyWorkingSet(info.Process.Handle); // process.Handle may throw which we don't care about
+						});
+					}
+
+					HandlingStateChange?.Invoke(this, new HandlingStateChangeEventArgs(info));
+
+					//if (!info.Exited) loaderOffload.Add(info);
+				}
+			}
+			catch (Exception ex) when (ex is NullReferenceException || ex is OutOfMemoryException) { throw; }
+			catch (OperationCanceledException) { throw; }
+			catch (InvalidOperationException)
+			{
+				if (Taskmaster.ShowInaction && Taskmaster.DebugFullScan)
+					Log.Debug($"<Process/Scan> Failed to retrieve info for process: {name} (#{pid})");
+			}
+			catch (AggregateException ex)
+			{
+				System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(ex.InnerException ?? ex).Throw();
+				throw;
+			}
+			catch (Exception ex)
+			{
+				Logging.Stacktrace(ex);
+			}
 		}
 
 		int SystemLoader_lock = 0;
@@ -1556,11 +1659,11 @@ namespace Taskmaster
 		}
 
 		// TODO: This should probably be pushed into ProcessController somehow.
-		async Task ProcessTriage(ProcessEx info)
+		async void ProcessTriage(ProcessEx info)
 		{
 			if (DisposedOrDisposing) throw new ObjectDisposedException("ProcessTriage called when ProcessManager was already disposed");
 
-			await Task.Delay(0).ConfigureAwait(false); // asyncify
+			await Task.Delay(0, cts.Token).ConfigureAwait(false); // asyncify
 			if (cts.IsCancellationRequested) return;
 
 			try
@@ -1591,7 +1694,7 @@ namespace Taskmaster
 
 					info.State = ProcessHandlingState.Processing;
 
-					await Task.Delay(0).ConfigureAwait(false); // asyncify again
+					await Task.Delay(0, cts.Token).ConfigureAwait(false); // asyncify again
 					if (cts.IsCancellationRequested) return;
 
 					try
@@ -1953,7 +2056,7 @@ namespace Taskmaster
 
 				state = info.State = ProcessHandlingState.Triage;
 
-				ProcessTriage(info).Wait();
+				ProcessTriage(info);
 			}
 			catch (Exception ex)
 			{
