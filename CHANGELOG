@@ -3,6 +3,15 @@ Comprehensive changes can be found in Git change history:
 	https://github.com/mkahvi/taskmaster/commits/master
 
 ## [0.13...]
+### 2019-03-01
+	Fixed: ObjectDisposedException on exit.
+	Fixed: ArgumentOutOfRangeException on new rule creation
+	Fixed: I/O priority was being affected with I/O priority disabled, if foreground monitor was also enabled.
+		This used invalid value however, which should've caused it to be ignored regardless, however.
+	Fixed: Path and File name validator in watchlist rule editor behaving badly if the field was empty.
+	Added: Volume meter can now be toggled from topmost.
+### 2019-02-28
+	Changed: Scan now uses single threaded loop instead of parallel loop. Parallel loop was causing strange responsiviness issues.
 ### 2019-02-27
 	Changed: Color configuration. Should now have increased compatibility with different color schemes.
 	Added: Option to enable&disable alternate row colors for more things.
