@@ -776,7 +776,7 @@ namespace Taskmaster.UI
 
 		~TrayAccess()
 		{
-			if (Tray != null) Tray.Visible = false;
+			if (!DisposingOrDisposed && Tray != null) Tray.Visible = false;
 			Tray?.Dispose();
 			Tray = null;
 		}
