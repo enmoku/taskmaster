@@ -135,7 +135,7 @@ namespace Taskmaster
 		/// </summary>
 		public System.Diagnostics.ProcessPriorityClass? Priority { get; set; } = null;
 
-		public int IOPriority { get; set; } = int.MinValue; // Win7 only?
+		public int IOPriority { get; set; } = -1; // Win7 only?
 
 		public ProcessPriorityStrategy PriorityStrategy { get; set; } = ProcessPriorityStrategy.None;
 
