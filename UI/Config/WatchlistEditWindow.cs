@@ -969,7 +969,10 @@ namespace Taskmaster.UI.Config
 		void ValidatePathname(object sender, CancelEventArgs e)
 		{
 			if (sender is TextBox box)
-				e.Cancel = !ValidateName(box, System.IO.Path.GetInvalidPathChars());
+			{
+				if (box.Text.Length > 0) // ignore empty box
+					e.Cancel = !ValidateName(box, System.IO.Path.GetInvalidPathChars());
+			}
 		}
 
 		void ValidateFilename(object sender, CancelEventArgs e)
