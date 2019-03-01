@@ -35,10 +35,14 @@ namespace Taskmaster
 		/// <summary>
 		/// Throws: InvalidOperationException, ArgumentException
 		/// </summary>
+		/// <param name="target">0 = Background, 1 = Low, 2 = Normal, 3 = Elevated, 4 = High</param>
 		public static int SetIO(Process process, int target, out int newIO, bool decrease=true)
 		{
 			int handle = 0;
 			int original = -1;
+			Debug.Assert(target >= 0 && target <= 4, "I/O target set to undefined value: " + target);
+
+			target = target.Constrain(0, 4); // ensure no invalid data is used.
 
 			try
 			{
@@ -53,7 +57,11 @@ namespace Taskmaster
 					else if (original != target)
 					{
 						if (NativeMethods.SetIOPriority(handle, target))
+						{
 							newIO = NativeMethods.GetIOPriority(handle);
+							if (newIO != target)
+								Debug.WriteLine($"{process.ProcessName} (#{process.Id}) - I/O not set correctly: {newIO} instead of {target}");
+						}
 						else
 							throw new InvalidOperationException("Failed to modify process I/O priority");
 					}

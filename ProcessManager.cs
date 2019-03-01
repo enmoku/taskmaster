@@ -1008,7 +1008,7 @@ namespace Taskmaster
 
 				prc.OrderPreference = section.TryGet("Preference")?.IntValue.Constrain(0, 100) ?? prc.OrderPreference;
 
-				prc.IOPriority = section.TryGet("IO priority")?.IntValue.Constrain(0, 2) ?? int.MinValue; // 0-1 background, 2 = normal, anything else seems to have no effect
+				prc.IOPriority = section.TryGet("IO priority")?.IntValue.Constrain(0, 4) ?? int.MinValue; // 0-1 background, 2 = normal, anything else seems to have no effect
 																										  //prc.MMPriority = section.TryGet("MEM priority")?.IntValue ?? int.MinValue; // unused
 				bool? deprecatedFgMode = section.TryGet("Foreground only")?.BoolValue; // DEPRECATED
 				bool? deprecatedBgPower = section.TryGet("Background powerdown")?.BoolValue; // DEPRECATED

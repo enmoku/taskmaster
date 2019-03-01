@@ -228,8 +228,8 @@ namespace Taskmaster.UI.Config
 
 			if (Taskmaster.IOPriorityEnabled)
 			{
-				int iop = ioPriority?.SelectedIndex ?? -1;
-				Controller.IOPriority = iop > 0 ? 3 - iop : -1;
+				Controller.IOPriority = (ioPriority?.SelectedIndex ?? 0) - 1;
+
 				Debug.WriteLine($"[{Controller.FriendlyName}] I/O Priority: {Controller.IOPriority}");
 			}
 
@@ -688,15 +688,15 @@ namespace Taskmaster.UI.Config
 
 			if (Taskmaster.IOPriorityEnabled)
 			{
-				int iop = Controller.IOPriority;
 				ioPriority = new ComboBox()
 				{
 					DropDownStyle = ComboBoxStyle.DropDownList,
-					Items = { "Ignore", "Normal", "Low", "Background" },
-					SelectedIndex = iop < 0 ? 0 : (3 - iop),
+					Items = { "Ignore", "Background", "Low [NONSTANDARD]", "Normal", "Elevated [NONSTANDARD]", "High [NONSTANDARD]" },
+					SelectedIndex = Controller.IOPriority + 1,
 					AutoSize = true,
 					Dock = DockStyle.Fill,
 				};
+
 				tooltip.SetToolTip(ioPriority, "EXPERIMENTAL\nDO NOT SET BACKGROUND FOR ANYTHING WITH USER INTERFACE\nAffects HDD/SSD access and Networking\nNormal is the default.\nBackground is for things that do not interact with user.");
 
 				lt.Controls.Add(new Label() { Text = "I/O priority", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, ForeColor = System.Drawing.Color.Red });
@@ -1082,7 +1082,11 @@ namespace Taskmaster.UI.Config
 			}
 
 			if (ioPriority != null && ioPriority.SelectedIndex != 0)
+			{
 				sbs.Append("Warning: I/O priority set! Be certain of what you're doing!").AppendLine();
+				if (ioPriority.SelectedIndex == 2 && ioPriority.SelectedIndex > 3)
+					sbs.Append("\tUnsupported I/O mode selected. Behaviour may be unexpected.").AppendLine();
+			}
 
 			SimpleMessageBox.ShowModal("Validation results", sbs.ToString(), SimpleMessageBox.Buttons.OK);
 		}

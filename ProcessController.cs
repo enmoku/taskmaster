@@ -845,7 +845,7 @@ namespace Taskmaster
 				}
 
 				if (Taskmaster.IOPriorityEnabled)
-					nIO = SetIO(info, 2); // force these to always have normal I/O priority
+					nIO = SetIO(info, DefaultForegroundIOPriority); // force these to always have normal I/O priority
 
 				if (AffinityIdeal >= 0) ApplyAffinityIdeal(info);
 			}
@@ -1217,7 +1217,8 @@ namespace Taskmaster
 									// TODO: Let it be.
 									ormt.Info.Process.Exited += ProcessExitEvent;
 
-									if (IOPriority >= 0 && IOPriority < 2) SetIO(info, 2); // restore normal I/O for these in case we messed around with it
+									// Agency granted, restore I/O priority to normal
+									if (IOPriority >= 0 && IOPriority < DefaultForegroundIOPriority) SetIO(info, DefaultForegroundIOPriority); // restore normal I/O for these in case we messed around with it
 								}
 
 								ormt.LastIgnored = now;
@@ -1504,6 +1505,8 @@ namespace Taskmaster
 				Logging.Stacktrace(ex);
 			}
 		}
+
+		int DefaultForegroundIOPriority = 2;
 
 		int SetIO(ProcessEx info, int overridePriority=-1)
 		{
