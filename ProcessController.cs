@@ -1179,69 +1179,70 @@ namespace Taskmaster
 				{
 					LastSeen = DateTimeOffset.UtcNow;
 
-						if (ormt.Info.Name.Equals(info.Name))
+					if (ormt.Info.Name.Equals(info.Name))
+					{
+						if (ormt.FreeWill)
 						{
-							if (ormt.FreeWill)
-							{
-								if (Taskmaster.ShowInaction && Taskmaster.DebugProcesses)
-									Log.Debug($"[{FriendlyName}] {FormatPathName(info)} (#{info.Id.ToString()}) has been granted agency, ignoring.");
-								info.State = ProcessHandlingState.Abandoned;
-								return;
-							}
+							if (Taskmaster.ShowInaction && Taskmaster.DebugProcesses)
+								Log.Debug($"[{FriendlyName}] {FormatPathName(info)} (#{info.Id.ToString()}) has been granted agency, ignoring.");
+							info.State = ProcessHandlingState.Abandoned;
+							return;
+						}
 
-							bool expected = false;
-							if ((Priority.HasValue && info.Process.PriorityClass != Priority.Value) ||
-								(AffinityMask >= 0 && info.Process.ProcessorAffinity.ToInt32() != AffinityMask))
-							{
-								ormt.ExpectedState--;
-								Debug.WriteLine($"[{FriendlyName}] {FormatPathName(info)} (#{info.Id.ToString()}) Recently Modified ({ormt.ExpectedState}) ---");
-							}
-							else
-							{
-								ormt.ExpectedState++;
-								Debug.WriteLine($"[{FriendlyName}] {FormatPathName(info)} (#{info.Id.ToString()}) Recently Modified ({ormt.ExpectedState}) +++");
-								expected = true;
-							}
-
-							if (ormt.LastIgnored.TimeTo(now) < ProcessManager.IgnoreRecentlyModified ||
-								ormt.LastModified.TimeTo(now) < ProcessManager.IgnoreRecentlyModified)
-							{
-								if (Taskmaster.DebugProcesses) Log.Debug("[" + FriendlyName + "] #" + info.Id + " ignored due to recent modification." +
-									(expected ? $" Expected: {ormt.ExpectedState} :)" : $" Unexpected: {ormt.ExpectedState} :("));
-
-								if (ormt.ExpectedState == -2) // 2-3 seems good number
-								{
-									ormt.FreeWill = true;
-									if (Taskmaster.ShowAgency)
-										Log.Debug($"[{FriendlyName}] {FormatPathName(info)} (#{info.Id.ToString()}) is resisting being modified: Agency granted.");
-									// TODO: Let it be.
-									ormt.Info.Process.Exited += ProcessExitEvent;
-
-									// Agency granted, restore I/O priority to normal
-									if (IOPriority >= 0 && IOPriority < DefaultForegroundIOPriority) SetIO(info, DefaultForegroundIOPriority); // restore normal I/O for these in case we messed around with it
-								}
-
-								ormt.LastIgnored = now;
-
-								Statistics.TouchIgnore++;
-
-								info.State = ProcessHandlingState.Unmodified;
-								return;
-							}
-							else if (expected)
-							{
-								// this potentially ignores power modification
-								info.State = ProcessHandlingState.Unmodified;
-								return;
-							}
+						bool expected = false;
+						if ((Priority.HasValue && info.Process.PriorityClass != Priority.Value) ||
+							(AffinityMask >= 0 && info.Process.ProcessorAffinity.ToInt32() != AffinityMask))
+						{
+							ormt.ExpectedState--;
+							Debug.WriteLine($"[{FriendlyName}] {FormatPathName(info)} (#{info.Id.ToString()}) Recently Modified ({ormt.ExpectedState}) ---");
 						}
 						else
 						{
-							if (Taskmaster.DebugProcesses) Log.Debug("[" + FriendlyName + "] #" + info.Id.ToString() + " passed because name does not match; new: " +
-								info.Name + ", old: " + ormt.Info.Name);
-
-							RecentlyModified.TryRemove(info.Id, out _); // id does not match name
+							ormt.ExpectedState++;
+							// TODO: allow modification in case this happens too much?
+							Debug.WriteLine($"[{FriendlyName}] {FormatPathName(info)} (#{info.Id.ToString()}) Recently Modified ({ormt.ExpectedState}) +++");
+							expected = true;
 						}
+
+						if (ormt.LastIgnored.TimeTo(now) < ProcessManager.IgnoreRecentlyModified ||
+							ormt.LastModified.TimeTo(now) < ProcessManager.IgnoreRecentlyModified)
+						{
+							if (Taskmaster.DebugProcesses) Log.Debug("[" + FriendlyName + "] #" + info.Id + " ignored due to recent modification." +
+								(expected ? $" Expected: {ormt.ExpectedState} :)" : $" Unexpected: {ormt.ExpectedState} :("));
+
+							if (ormt.ExpectedState == -2) // 2-3 seems good number
+							{
+								ormt.FreeWill = true;
+								if (Taskmaster.ShowAgency)
+									Log.Debug($"[{FriendlyName}] {FormatPathName(info)} (#{info.Id.ToString()}) is resisting being modified: Agency granted.");
+								// TODO: Let it be.
+								ormt.Info.Process.Exited += ProcessExitEvent;
+
+								// Agency granted, restore I/O priority to normal
+								if (IOPriority >= 0 && IOPriority < DefaultForegroundIOPriority) SetIO(info, DefaultForegroundIOPriority); // restore normal I/O for these in case we messed around with it
+							}
+
+							ormt.LastIgnored = now;
+
+							Statistics.TouchIgnore++;
+
+							info.State = ProcessHandlingState.Unmodified;
+							return;
+						}
+						else if (expected)
+						{
+							// this potentially ignores power modification
+							info.State = ProcessHandlingState.Unmodified;
+							return;
+						}
+					}
+					else
+					{
+						if (Taskmaster.DebugProcesses) Log.Debug("[" + FriendlyName + "] #" + info.Id.ToString() + " passed because name does not match; new: " +
+							info.Name + ", old: " + ormt.Info.Name);
+
+						RecentlyModified.TryRemove(info.Id, out _); // id does not match name
+					}
 					//RecentlyModified.TryRemove(info.Id, out _);
 				}
 
