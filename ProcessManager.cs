@@ -1008,7 +1008,7 @@ namespace Taskmaster
 
 				prc.OrderPreference = section.TryGet("Preference")?.IntValue.Constrain(0, 100) ?? prc.OrderPreference;
 
-				prc.IOPriority = section.TryGet("IO priority")?.IntValue.Constrain(0, 4) ?? int.MinValue; // 0-1 background, 2 = normal, anything else seems to have no effect
+				prc.IOPriority = section.TryGet("IO priority")?.IntValue.Constrain(0, 2) ?? int.MinValue; // 0-1 background, 2 = normal, anything else seems to have no effect
 																										  //prc.MMPriority = section.TryGet("MEM priority")?.IntValue ?? int.MinValue; // unused
 				bool? deprecatedFgMode = section.TryGet("Foreground only")?.BoolValue; // DEPRECATED
 				bool? deprecatedBgPower = section.TryGet("Background powerdown")?.BoolValue; // DEPRECATED
@@ -1406,7 +1406,7 @@ namespace Taskmaster
 					try
 					{
 						if (process == null) process = Process.GetProcessById(ev.Id);
-						ProcessUtility.SetIO(process, 4, out _, decrease: false); // set foreground app I/O to highest possible
+						ProcessUtility.SetIO(process, 2, out _, decrease: false); // set foreground app I/O to highest possible
 					}
 					catch (Exception ex) when (ex is NullReferenceException || ex is OutOfMemoryException) { throw; }
 					catch (ArgumentException) { }

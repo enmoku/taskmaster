@@ -40,9 +40,9 @@ namespace Taskmaster
 		{
 			int handle = 0;
 			int original = -1;
-			Debug.Assert(target >= 0 && target <= 4, "I/O target set to undefined value: " + target);
+			Debug.Assert(target >= 0 && target <= 2, "I/O target set to undefined value: " + target);
 
-			target = target.Constrain(0, 4); // ensure no invalid data is used.
+			target = target.Constrain(0, 2); // ensure no invalid data is used.
 
 			try
 			{

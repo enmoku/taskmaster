@@ -227,11 +227,7 @@ namespace Taskmaster.UI.Config
 			Controller.AffinityIdeal = Convert.ToInt32(idealAffinity.Value) - 1;
 
 			if (Taskmaster.IOPriorityEnabled)
-			{
 				Controller.IOPriority = (ioPriority?.SelectedIndex ?? 0) - 1;
-
-				Debug.WriteLine($"[{Controller.FriendlyName}] I/O Priority: {Controller.IOPriority}");
-			}
 
 			Controller.LogAdjusts = logAdjusts.Checked;
 
@@ -691,13 +687,13 @@ namespace Taskmaster.UI.Config
 				ioPriority = new ComboBox()
 				{
 					DropDownStyle = ComboBoxStyle.DropDownList,
-					Items = { "Ignore", "Background", "Low [NONSTANDARD]", "Normal", "Elevated [NONSTANDARD]", "High [NONSTANDARD]" },
+					Items = { "Ignore", "Background", "Low", "Normal" },
 					SelectedIndex = Controller.IOPriority + 1,
 					AutoSize = true,
 					Dock = DockStyle.Fill,
 				};
 
-				tooltip.SetToolTip(ioPriority, "EXPERIMENTAL\nDO NOT SET BACKGROUND FOR ANYTHING WITH USER INTERFACE\nAffects HDD/SSD access and Networking\nNormal is the default.\nBackground is for things that do not interact with user.");
+				tooltip.SetToolTip(ioPriority, "EXPERIMENTAL\nDO NOT SET BACKGROUND FOR ANYTHING WITH USER INTERFACE\nBackground setting may delay I/O almost indefinitely.\nAffects HDD/SSD access and Networking\nNormal is the default.\nBackground is for things that do not interact with user.");
 
 				lt.Controls.Add(new Label() { Text = "I/O priority", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, ForeColor = System.Drawing.Color.Red });
 				lt.Controls.Add(ioPriority);
