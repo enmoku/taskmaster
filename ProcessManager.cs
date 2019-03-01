@@ -1401,14 +1401,17 @@ namespace Taskmaster
 			}
 			finally
 			{
-				try
+				if (Taskmaster.IOPriorityEnabled)
 				{
-					if (process == null) process = Process.GetProcessById(ev.Id);
-					ProcessUtility.SetIO(process, 5, out _, decrease: false);
+					try
+					{
+						if (process == null) process = Process.GetProcessById(ev.Id);
+						ProcessUtility.SetIO(process, 4, out _, decrease: false); // set foreground app I/O to highest possible
+					}
+					catch (Exception ex) when (ex is NullReferenceException || ex is OutOfMemoryException) { throw; }
+					catch (ArgumentException) { }
+					catch (InvalidOperationException) { }
 				}
-				catch (Exception ex) when (ex is NullReferenceException || ex is OutOfMemoryException) { throw; }
-				catch (ArgumentException) { }
-				catch (InvalidOperationException) { }
 			}
 		}
 
