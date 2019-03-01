@@ -1196,6 +1196,38 @@ namespace Taskmaster.UI
 
 			menu_config_visual.DropDownItems.Add(menu_config_visuals_rowalternate);
 
+			//
+			var menu_config_visuals_topmost = new ToolStripMenuItem("Stay on top");
+
+
+			var menu_config_visuals_topmost_volume = new ToolStripMenuItem("Volume meter")
+			{
+				Checked = false,
+				CheckOnClick = true,
+			};
+			menu_config_visuals_topmost_volume.Click += (_, _ea) =>
+			{
+				var corecfg = Taskmaster.Config.Load(Taskmaster.coreconfig);
+				var volsec = corecfg.Config["Volume Meter"];
+
+				volsec["Topmost"].BoolValue = menu_config_visuals_topmost_volume.Checked;
+				corecfg.MarkDirty();
+
+				if (Taskmaster.volumemeter != null)
+					Taskmaster.volumemeter.TopMost = menu_config_visuals_topmost_volume.Checked;
+			};
+			/*
+			var menu_config_visuals_topmost_main = new ToolStripMenuItem("Main window")
+			{
+				Checked = TopMost,
+				CheckOnClick = true,
+			};
+			*/
+
+			menu_config_visuals_topmost.DropDownItems.Add(menu_config_visuals_topmost_volume);
+
+			menu_config_visual.DropDownItems.Add(menu_config_visuals_topmost);
+
 			// CONFIG -> LOGGING
 			var menu_config_logging_adjusts = new ToolStripMenuItem("Process adjusts")
 			{
@@ -1671,6 +1703,11 @@ namespace Taskmaster.UI
 				cfg.Config["Logging"]["UI max items"].Comment = "Maximum number of items/lines to retain on UI level.";
 				cfg.Config["User Interface"]["Update frequency"].Comment = "In milliseconds. Frequency of controlled UI updates. Affects visual accuracy of timers and such. Valid range: 100 to 5000.";
 				cfg.MarkDirty();
+			}
+
+			if (Taskmaster.AudioManagerEnabled)
+			{
+				menu_config_visuals_topmost_volume.Checked = cfg.Config.TryGet("Volume Meter")?.TryGet("Topmost")?.BoolValue ?? true;
 			}
 
 			TableLayoutPanel cachePanel = Taskmaster.DebugCache ? BuildCachePanel() : null;
