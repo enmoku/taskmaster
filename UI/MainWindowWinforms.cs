@@ -3081,6 +3081,8 @@ namespace Taskmaster.UI
 
 						prc.SaveConfig();
 
+						prc.Refresh();
+
 						WatchlistItemColor(li, prc);
 
 						processmanager?.HastenScan(20);
