@@ -1207,15 +1207,17 @@ namespace Taskmaster
 						if (ormt.LastIgnored.TimeTo(now) < ProcessManager.IgnoreRecentlyModified ||
 							ormt.LastModified.TimeTo(now) < ProcessManager.IgnoreRecentlyModified)
 						{
-							if (Taskmaster.DebugProcesses) Log.Debug("[" + FriendlyName + "] #" + info.Id + " ignored due to recent modification." +
-								(expected ? $" Expected: {ormt.ExpectedState} :)" : $" Unexpected: {ormt.ExpectedState} :("));
+							if (Taskmaster.DebugProcesses) Log.Debug($"[{FriendlyName}] #{info.Id} ignored due to recent modification. {(expected ? $" Expected: {ormt.ExpectedState} :)" : $" Unexpected: {ormt.ExpectedState} :(")}");
 
 							if (ormt.ExpectedState == -2) // 2-3 seems good number
 							{
 								ormt.FreeWill = true;
+
+								Debug.WriteLine($"[{FriendlyName}] {FormatPathName(info)} (#{info.Id.ToString()}) agency granted");
+
 								if (Taskmaster.ShowAgency)
 									Log.Debug($"[{FriendlyName}] {FormatPathName(info)} (#{info.Id.ToString()}) is resisting being modified: Agency granted.");
-								// TODO: Let it be.
+
 								ormt.Info.Process.Exited += ProcessExitEvent;
 
 								// Agency granted, restore I/O priority to normal
@@ -1235,23 +1237,24 @@ namespace Taskmaster
 							info.State = ProcessHandlingState.Unmodified;
 							return;
 						}
+
+						Debug.WriteLine($"[{FriendlyName}] {FormatPathName(info)} (#{info.Id.ToString()}) pass through");
 					}
 					else
 					{
-						if (Taskmaster.DebugProcesses) Log.Debug("[" + FriendlyName + "] #" + info.Id.ToString() + " passed because name does not match; new: " +
-							info.Name + ", old: " + ormt.Info.Name);
+						if (Taskmaster.DebugProcesses) Log.Debug($"[{FriendlyName}] #{info.Id.ToString()} passed because name does not match; new: {info.Name}, old: {ormt.Info.Name}");
 
 						RecentlyModified.TryRemove(info.Id, out _); // id does not match name
 					}
 					//RecentlyModified.TryRemove(info.Id, out _);
 				}
 
-				if (Taskmaster.Trace) Log.Verbose("[" + FriendlyName + "] Touching: " + info.Name + " (#" + info.Id.ToString() + ")");
+				if (Taskmaster.Trace) Log.Verbose($"[{FriendlyName}] Touching: {info.Name} (#{info.Id.ToString()})");
 
 				if (IgnoreList != null && IgnoreList.Any(item => item.Equals(info.Name, StringComparison.InvariantCultureIgnoreCase)))
 				{
 					if (Taskmaster.ShowInaction && Taskmaster.DebugProcesses)
-						Log.Debug("[" + FriendlyName + "] " + info.Name + " (#" + info.Id.ToString() + ") ignored due to user defined rule.");
+						Log.Debug($"[{FriendlyName}] {info.Name} (#{info.Id.ToString()}) ignored due to user defined rule.");
 					info.State = ProcessHandlingState.Abandoned;
 					return; // return ProcessState.Ignored;
 				}
