@@ -10,6 +10,7 @@ Comprehensive changes can be found in Git change history:
 		This used invalid value however, which should've caused it to be ignored regardless, however.
 	Fixed: Path and File name validator in watchlist rule editor behaving badly if the field was empty.
 	Added: Volume meter can now be toggled from topmost.
+	Added: Watchlist columns can now be re-ordered.
 ### 2019-02-28
 	Changed: Scan now uses single threaded loop instead of parallel loop. Parallel loop was causing strange responsiviness issues.
 ### 2019-02-27
