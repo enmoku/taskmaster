@@ -1645,7 +1645,7 @@ namespace Taskmaster.UI
 				//Padding = DefaultPadding,
 			};
 
-			LoadUIConfiguration(out int opentab, out int[] appwidths, out int[] micwidths, out int[] ifacewidths);
+			LoadUIConfiguration(out int opentab, out int[] appwidths, out int[] apporder, out int[] micwidths, out int[] ifacewidths);
 
 			if (Taskmaster.MicrophoneManagerEnabled) BuildMicrophonePanel(micwidths);
 
@@ -1662,7 +1662,7 @@ namespace Taskmaster.UI
 
 			// End: Settings
 
-			BuildWatchlist(appwidths);
+			BuildWatchlist(appwidths, apporder);
 
 			// UI Log
 			// -1 = contents, -2 = heading
@@ -1983,7 +1983,7 @@ namespace Taskmaster.UI
 			tabLayout.Controls.Add(ProcessDebugTab);
 		}
 
-		void BuildWatchlist(int[] appwidths)
+		void BuildWatchlist(int[] appwidths, int[] apporder)
 		{
 			WatchlistRules = new ListView
 			{
@@ -1995,6 +1995,7 @@ namespace Taskmaster.UI
 				//Height = 260, // FIXME: Should use remaining space
 				FullRowSelect = true,
 				MinimumSize = new System.Drawing.Size(-2, -2),
+				AllowColumnReorder = true,
 			};
 
 			WatchlistRules.KeyPress += WatchlistRulesKeyboardSearch;
@@ -2050,6 +2051,10 @@ namespace Taskmaster.UI
 			WatchlistRules.Columns.Add(HumanReadable.Hardware.Power.Plan, appwidths[5]);
 			WatchlistRules.Columns.Add("Adjusts", appwidths[6]);
 			WatchlistRules.Columns.Add(HumanReadable.System.Process.Path, appwidths[7]);
+
+			for (int i  = 0; i < 8; i++)
+				WatchlistRules.Columns[i].DisplayIndex = apporder[i];
+
 			WatchlistRules.Scrollable = true;
 			WatchlistRules.Alignment = ListViewAlignment.Left;
 
@@ -2058,33 +2063,45 @@ namespace Taskmaster.UI
 			watchTab.Controls.Add(WatchlistRules);
 		}
 
-		void LoadUIConfiguration(out int opentab, out int[] appwidths, out int[] micwidths, out int[] ifacewidths)
+		void LoadUIConfiguration(out int opentab, out int[] appwidths, out int[] apporder, out int[] micwidths, out int[] ifacewidths)
 		{
 			var uicfg = Taskmaster.Config.Load(UIConfig);
 			var wincfg = uicfg.Config["Windows"];
 			var colcfg = uicfg.Config["Columns"];
 			var gencfg = uicfg.Config["Visual"];
 
+			bool modified = false, dirty = false;
+
 			opentab = uicfg.Config["Tabs"].TryGet("Open")?.IntValue ?? 0;
 			appwidths = null;
-			int[] appwidthsDefault = new int[] { 20, 120, 140, 82, 60, 76, 46, 160 };
-			appwidths = colcfg.GetSetDefault("Apps", appwidthsDefault).IntValueArray;
+			var appwidthsDefault = new int[] { 20, 120, 140, 82, 60, 76, 46, 160 };
+			appwidths = colcfg.GetSetDefault("Apps", appwidthsDefault, out modified).IntValueArray;
 			if (appwidths.Length != appwidthsDefault.Length) appwidths = appwidthsDefault;
+			dirty |= modified;
+
+			var appOrderDefault = new int[] { 0, 1, 2, 3, 4, 5, 6, 7 };
+			apporder = colcfg.GetSetDefault("App order", appOrderDefault, out modified).IntValueArray;
+			var unqorder = new HashSet<int>(appOrderDefault.Length);
+			foreach (var i in apporder) unqorder.Add(i);
+			if (unqorder.Count != appOrderDefault.Length || unqorder.Max() != 7 || unqorder.Min() != 0) apporder = appOrderDefault;
+			dirty |= modified;
 
 			micwidths = null;
 			if (Taskmaster.MicrophoneManagerEnabled)
 			{
 				int[] micwidthsDefault = new int[] { 200, 220, 60, 60, 60, 120 };
-				micwidths = colcfg.GetSetDefault("Mics", micwidthsDefault).IntValueArray;
+				micwidths = colcfg.GetSetDefault("Mics", micwidthsDefault, out modified).IntValueArray;
 				if (micwidths.Length != micwidthsDefault.Length) micwidths = micwidthsDefault;
+				dirty |= modified;
 			}
 
 			ifacewidths = null;
 			if (Taskmaster.NetworkMonitorEnabled)
 			{
 				int[] ifacewidthsDefault = new int[] { 110, 60, 50, 70, 90, 192, 60, 60, 40 };
-				ifacewidths = colcfg.GetSetDefault("Interfaces", ifacewidthsDefault).IntValueArray;
+				ifacewidths = colcfg.GetSetDefault("Interfaces", ifacewidthsDefault, out modified).IntValueArray;
 				if (ifacewidths.Length != ifacewidthsDefault.Length) ifacewidths = ifacewidthsDefault;
+				dirty |= modified;
 			}
 
 			var winpos = wincfg["Main"].IntValueArray;
@@ -2099,8 +2116,6 @@ namespace Taskmaster.UI
 					Bounds = rectangle;
 				}
 			}
-
-			bool modified = false, dirty=false;
 
 			//var alternateRowColor = gencfg.GetSetDefault("Alternate row color", new[] { 1 }, out modified).IntValueArray;
 
@@ -3783,10 +3798,16 @@ namespace Taskmaster.UI
 					var cfg = Taskmaster.Config.Load(UIConfig);
 					var cols = cfg.Config["Columns"];
 
-					List<int> appWidths = new List<int>(WatchlistRules.Columns.Count);
+					var appWidths = new List<int>(WatchlistRules.Columns.Count);
+					var apporder = new List<int>(WatchlistRules.Columns.Count);
 					for (int i = 0; i < WatchlistRules.Columns.Count; i++)
+					{
 						appWidths.Add(WatchlistRules.Columns[i].Width);
+						apporder.Add(WatchlistRules.Columns[i].DisplayIndex);
+					}
+
 					cols["Apps"].IntValueArray = appWidths.ToArray();
+					cols["App order"].IntValueArray = apporder.ToArray();
 
 					if (Taskmaster.NetworkMonitorEnabled)
 					{
