@@ -54,7 +54,7 @@ namespace Taskmaster
 
 					var fullpath = System.IO.Path.Combine(datapath, filename);
 					if (System.IO.File.Exists(fullpath))
-						scfg = SharpConfig.Configuration.LoadFromFile(fullpath);
+						scfg = SharpConfig.Configuration.LoadFromFile(fullpath, System.Text.Encoding.UTF8);
 					else
 					{
 						Log.Warning("Not found: " + fullpath);
@@ -86,7 +86,7 @@ namespace Taskmaster
 				lock (config_lock)
 				{
 					var fullpath = System.IO.Path.Combine(datapath, cfg.File);
-					cfg.Config.SaveToFile(fullpath);
+					cfg.Config.SaveToFile(fullpath, System.Text.Encoding.UTF8);
 				}
 			}
 			catch (Exception ex)
