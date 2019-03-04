@@ -181,12 +181,74 @@ namespace Taskmaster
 			HealthTimer.Elapsed += TimerCheck;
 			HealthTimer.Start();
 
+			EmergencyTimer = new System.Timers.Timer(500);
+			EmergencyTimer.Elapsed += EmergencyTick;
+
 			if (Taskmaster.DebugHealth) Log.Information("<Auto-Doc> Component loaded");
 
 			Taskmaster.DisposalChute.Push(this);
 		}
 
+		int EmergencyTick_lock = 0;
+		int EmergencyPressure = -1;
+
+		bool CriticalMemoryWarning = false;
+		DateTimeOffset EmergencyOffset = DateTimeOffset.MinValue;
+		private void EmergencyTick(object sender, System.Timers.ElapsedEventArgs e)
+		{
+			try
+			{
+				if (!Atomic.Lock(ref EmergencyTick_lock)) return;
+
+				double pressure = MemoryManager.Pressure;
+				if (pressure > 1.10d) // 110%
+				{
+					if (EmergencyPressure < 0)
+					{
+						EmergencyPressure = 1;
+						EmergencyOffset = DateTimeOffset.UtcNow;
+					}
+					else if (EmergencyOffset.TimeTo(DateTimeOffset.UtcNow).TotalSeconds >= 30)
+					{
+						// TODO: Take action
+
+						if (!CriticalMemoryWarning)
+						{
+							Log.Warning("<Health> Free memory critically low. Please close applications to recover system responsiviness.");
+							CriticalMemoryWarning = true;
+						}
+					}
+				}
+				else
+				{
+					// things look okay
+					if (EmergencyPressure > 0)
+					{
+						EmergencyPressure = -1;
+						EmergencyOffset = DateTimeOffset.UtcNow;
+					}
+					else if (EmergencyOffset.TimeTo(DateTimeOffset.UtcNow).TotalSeconds >= 15)
+					{
+						EmergencyTimer.Stop();
+						CriticalMemoryWarning = false;
+					}
+
+					EmergencyPressure--;
+				}
+			}
+			catch (OutOfMemoryException) { throw; }
+			catch (Exception ex)
+			{
+				Logging.Stacktrace(ex);
+			}
+			finally
+			{
+				Atomic.Unlock(ref EmergencyTick_lock);
+			}
+		}
+
 		readonly System.Timers.Timer HealthTimer = null;
+		readonly System.Timers.Timer EmergencyTimer = null;
 
 		DateTimeOffset MemFreeLast = DateTimeOffset.MinValue;
 
@@ -405,6 +467,9 @@ namespace Taskmaster
 
 							Taskmaster.processmanager?.FreeMemory(null, quiet: true, ignorePid: ignorepid);
 						}
+
+						if (MemoryManager.Pressure > 1.05d) // 105%
+							EmergencyTimer.Enabled = true;
 					}
 					else if ((memfreemb * MemoryWarningThreshold) <= Settings.MemLevel)
 					{
@@ -473,6 +538,7 @@ namespace Taskmaster
 				cancellationSource.Cancel();
 
 				HealthTimer?.Dispose();
+				EmergencyTimer?.Dispose();
 
 				//commitbytes?.Dispose();
 				//commitbytes = null;
