@@ -24,6 +24,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
+using System;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 
@@ -34,6 +35,9 @@ namespace MKAh
 	/// </summary>
 	public static class Atomic
 	{
+		public const int Locked = 1;
+		public const int Unlocked = 0;
+
 		/// <summary>
 		/// Lock the specified lockvalue.
 		/// Performs simple check and set swap of 0 and 1.
@@ -45,8 +49,8 @@ namespace MKAh
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static bool Lock(ref int lockvalue)
 		{
-			Debug.Assert(lockvalue == 0 || lockvalue == 1);
-			return (global::System.Threading.Interlocked.CompareExchange(ref lockvalue, 1, 0) == 0);
+			Debug.Assert(lockvalue == Locked || lockvalue == Unlocked);
+			return (global::System.Threading.Interlocked.CompareExchange(ref lockvalue, Locked, Unlocked) == Unlocked);
 		}
 
 		/// <summary>
@@ -56,8 +60,49 @@ namespace MKAh
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static void Unlock(ref int lockvalue)
 		{
-			Debug.Assert(lockvalue != 0);
-			lockvalue = 0;
+			Debug.Assert(lockvalue != Unlocked);
+			lockvalue = Unlocked;
 		}
+	}
+
+	public class NonBlockingLock
+	{
+		int internal_lock = Atomic.Unlocked;
+
+		NonBlockingLock(bool locked=false) => internal_lock = locked ? Atomic.Locked : Atomic.Unlocked;
+
+		public bool Locked => internal_lock == Atomic.Locked;
+
+		public bool Lock() => Atomic.Lock(ref internal_lock);
+
+		public void Unlock() => Atomic.Unlock(ref internal_lock);
+	}
+
+	public class AutoUnlocker : IDisposable
+	{
+		readonly NonBlockingLock internal_lock = null;
+
+		AutoUnlocker(NonBlockingLock nblock)
+		{
+			if (nblock == null) throw new ArgumentNullException("nblock");
+			if (!nblock.Lock()) throw new ArgumentException("Already locked");
+
+			internal_lock = nblock;
+		}
+
+		#region IDisposable Support
+		private bool disposed = false; // To detect redundant calls
+
+		protected virtual void Dispose(bool disposing)
+		{
+			if (disposed) return;
+
+			internal_lock?.Unlock();
+
+			disposed = true;
+		}
+
+		public void Dispose() => Dispose(true);
+		#endregion
 	}
 }
