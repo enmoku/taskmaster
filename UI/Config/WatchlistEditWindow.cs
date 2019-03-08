@@ -348,10 +348,15 @@ namespace Taskmaster.UI.Config
 					{
 						if (exselectdialog.ShowDialog(this) == DialogResult.OK)
 						{
+							var info = exselectdialog.Info;
 							// SANITY CHECK: exselectdialog.Selection;
-							execName.Text = exselectdialog.Executable;
-							if (string.IsNullOrEmpty(pathName.Text) && !string.IsNullOrEmpty(exselectdialog.Info.Path))
-								pathName.Text = System.IO.Path.GetDirectoryName(exselectdialog.Info.Path);
+							execName.Text = info.Name;
+							if (!string.IsNullOrEmpty(info.Path))
+							{
+								if (string.IsNullOrEmpty(pathName.Text))
+									pathName.Text = System.IO.Path.GetDirectoryName(info.Path);
+								execName.Text = System.IO.Path.GetFileName(info.Path);
+							}
 						}
 					}
 					catch (Exception ex)
