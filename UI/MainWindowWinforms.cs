@@ -1532,7 +1532,8 @@ namespace Taskmaster.UI
 					powermanager.onPlanChange += PowerPlanDebugEvent;
 					powermanager.onAutoAdjustAttempt += PowerLoadHandler;
 
-					tabLayout.Controls.Add(powerDebugTab);
+					if (powerDebugTab == null) BuildPowerDebugPanel();
+					else tabLayout.Controls.Add(powerDebugTab);
 					EnsureVerbosityLevel();
 				}
 				else
