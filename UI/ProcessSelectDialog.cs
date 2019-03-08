@@ -38,7 +38,7 @@ namespace Taskmaster
 		public ProcessEx Info { get; private set; } = null;
 
 		ComboBox selection = null;
-		Button selectbutton = null, cancelbutton = null;
+		Button selectbutton = null, cancelbutton = null, refreshbutton = null;
 
 		List<ProcessEx> InfoList = new List<ProcessEx>();
 
@@ -65,6 +65,7 @@ namespace Taskmaster
 			selection = new ComboBox()
 			{
 				DropDownStyle = ComboBoxStyle.DropDown,
+				AutoCompleteSource = AutoCompleteSource.ListItems,
 				AutoCompleteMode = AutoCompleteMode.SuggestAppend,
 				AutoSize = true,
 				Dock = DockStyle.Top,
@@ -80,7 +81,8 @@ namespace Taskmaster
 
 			var buttonlayout = new TableLayoutPanel()
 			{
-				ColumnCount = 2,
+				ColumnCount = 3,
+				RowCount = 1,
 				AutoSize = true,
 				Dock = DockStyle.Top,
 			};
@@ -109,10 +111,31 @@ namespace Taskmaster
 				DialogResult = DialogResult.Abort;
 				Close();
 			};
+
+			refreshbutton = new Button()
+			{
+				Text = "Refresh",
+				AutoSize = true,
+				Enabled = false,
+				Dock = DockStyle.Top,
+			};
+			refreshbutton.Click += (_, _ea) =>
+			{
+				selectbutton.Enabled = false;
+				refreshbutton.Enabled = false;
+				selection.Enabled = false;
+				selection.Items.Clear();
+				selection.Text = "[[ Refreshing ]]";
+
+				Populate().ConfigureAwait(false);
+			};
+
 			buttonlayout.Controls.Add(selectbutton);
+			buttonlayout.Controls.Add(refreshbutton);
 			buttonlayout.Controls.Add(cancelbutton);
-			buttonlayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50f));
-			buttonlayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50f));
+			buttonlayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 33f));
+			buttonlayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 33f));
+			buttonlayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 33f));
 
 			layout.Controls.Add(buttonlayout);
 
@@ -121,12 +144,12 @@ namespace Taskmaster
 			selection.Text = "[[ Scanning ]]";
 			selection.Enabled = false;
 
-			Populate().ConfigureAwait(false);
+			Shown += (_, _ea) => Populate().ConfigureAwait(false);
 		}
 
 		async Task Populate()
 		{
-			await Task.Delay(0).ConfigureAwait(false);
+			await Task.Delay(100).ConfigureAwait(false);
 
 			try
 			{
@@ -169,8 +192,8 @@ namespace Taskmaster
 					selection.Enabled = true;
 
 					selection.Items.AddRange(output.ToArray());
-					selection.AutoCompleteSource = AutoCompleteSource.ListItems;
 					selectbutton.Enabled = true;
+					refreshbutton.Enabled = true;
 				}));
 			}
 			catch (OutOfMemoryException) { throw; }
