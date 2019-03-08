@@ -3,6 +3,12 @@ Comprehensive changes can be found in Git change history:
 	https://github.com/mkahvi/taskmaster/commits/master
 
 ## [0.13...]
+### 2019-03-08
+	Changed: Watchlist edit now tries to autofill executable name when available.
+	Fixed: Watchlist executable validation now complains if the file has no extension.
+	Added: Health monitor pressure warning now also informs of the pressure having been successfully alleviated.
+	Added: Refresh option to process select dialog.
+	Changed: Process select dialog now shows initial state more quickly instead of delaying until refresh is finished.
 ### 2019-03-01
 	Fixed: ObjectDisposedException on exit.
 	Fixed: ArgumentOutOfRangeException on new rule creation
