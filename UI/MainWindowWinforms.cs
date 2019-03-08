@@ -2932,7 +2932,7 @@ namespace Taskmaster.UI
 				{
 					if (exsel.ShowDialog(this) == DialogResult.OK)
 					{
-						await Taskmaster.processmanager?.FreeMemory(exsel.Executable);
+						await Taskmaster.processmanager?.FreeMemory(exsel.Info.Name);
 					}
 				}
 			}
