@@ -950,16 +950,22 @@ namespace Taskmaster.UI.Config
 					box.Select(off, 1);
 				else
 					box.Select(0, 0);
-				// FLASH HACK
-				var bgc = box.BackColor;
-				box.BackColor = System.Drawing.Color.OrangeRed;
-				BeginInvoke(new Action(async () =>
-				{
-					await Task.Delay(50).ConfigureAwait(true);
-					box.BackColor = bgc;
-				}));
+
+				FlashTextBox(box);
 			}
 			return rv;
+		}
+
+		void FlashTextBox(TextBox box)
+		{
+			// FLASH HACK
+			var bgc = box.BackColor;
+			box.BackColor = System.Drawing.Color.OrangeRed;
+			BeginInvoke(new Action(async () =>
+			{
+				await Task.Delay(50).ConfigureAwait(true);
+				box.BackColor = bgc;
+			}));
 		}
 
 		void ValidatePathname(object sender, CancelEventArgs e)
@@ -974,7 +980,18 @@ namespace Taskmaster.UI.Config
 		void ValidateFilename(object sender, CancelEventArgs e)
 		{
 			if (sender is TextBox box)
+			{
 				e.Cancel = !ValidateName(box, System.IO.Path.GetInvalidFileNameChars());
+				if (box == execName)
+				{
+					if (!box.Text.Contains("."))
+					{
+						box.SelectionStart = box.TextLength;
+						e.Cancel = true;
+						FlashTextBox(box);
+					}
+				}
+			}
 		}
 
 		void ValidateWatchedItem(object _, EventArgs _ea)
