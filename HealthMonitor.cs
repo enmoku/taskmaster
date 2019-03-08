@@ -487,6 +487,9 @@ namespace Taskmaster
 					double pressure = MemoryManager.Pressure;
 					if (pressure > 1d)
 					{
+						LastPressureEvent = now;
+						PressureAlleviatedBlurp = false;
+
 						if (!WarnedAboutMemoryPressure && now.TimeSince(LastPressureWarning).TotalSeconds > MemoryWarningCooldown)
 						{
 							double actualgoal = ((MemoryManager.Total * (pressure - 1d)) / 1_048_576);
@@ -494,10 +497,10 @@ namespace Taskmaster
 							Debug.WriteLine("Pressure:    " + $"{pressure * 100:N1} %");
 							Debug.WriteLine("Actual goal: " + $"{actualgoal:N2}");
 							Debug.WriteLine("Stated goal: " + $"{freegoal:N2}");
-							Log.Warning("<Memory> High pressure (" + $"{pressure * 100:N1} %" + "), please close applications to improve performance (suggested goal: " + $"{freegoal:N0}" + " MB).");
+							Log.Warning($"<Memory> High pressure ({pressure * 100:N1} %), please close applications to improve performance (suggested minimum goal: {freegoal:N0}" + " MiB).");
 							// TODO: Could list like ~5 apps that are using most memory here
 							WarnedAboutMemoryPressure = true;
-							LastPressureWarning = now;
+							LastPressureWarning = LastPressureEvent;
 						}
 						else
 						{
@@ -505,7 +508,18 @@ namespace Taskmaster
 						}
 					}
 					else
-						WarnedAboutMemoryPressure = false;
+					{
+						if (LastPressureEvent.TimeTo(now).TotalMinutes > 3d)
+						{
+							WarnedAboutMemoryPressure = false;
+
+							if (!PressureAlleviatedBlurp && pressure <= 0.95d)
+							{
+								Log.Information("<Memory> Pressure alleviated (" + $"{pressure * 100:N1} %" + ").");
+								PressureAlleviatedBlurp = true;
+							}
+						}
+					}
 				}
 			}
 			catch (Exception ex)
@@ -514,8 +528,9 @@ namespace Taskmaster
 			}
 		}
 
-		bool WarnedAboutMemoryPressure = false;
+		bool WarnedAboutMemoryPressure = false, PressureAlleviatedBlurp = true;
 		DateTimeOffset LastPressureWarning = DateTimeOffset.MinValue;
+		DateTimeOffset LastPressureEvent = DateTimeOffset.MinValue;
 
 		float MemoryWarningThreshold = 1.5f;
 		bool WarnedAboutLowMemory = false;
