@@ -40,12 +40,22 @@ namespace MKAh
 			uint ums = LastActive();
 			uint ems = Taskmaster.NativeMethods.GetTickCount();
 
-			long fms = ems;
-			if (ums > ems) fms -= uint.MaxValue - ums; // overflow
-			else fms -= ums;
-			Debug.WriteLine($"IdleTime\n- Idle:  {ums}\n- Env:   {ems}\n-   {(ums > ems ? "Over+"+(uint.MaxValue - ems) : "Std")}\n- Final: {fms}");
+			long fms = CorrectIdleTime(ums, ems);
 
-			return LastActiveTimespan(fms);
+			return TimeSpan.FromMilliseconds(fms);
+		}
+
+		/// <summary>
+		/// Returns elapsed ticks since last active, accounting for the 49 day wraparound.
+		/// </summary>
+		public static long CorrectIdleTime(long lastActiveTick, long currentTickCount)
+		{
+			long fms = currentTickCount;
+			if (lastActiveTick > currentTickCount) fms = (uint.MaxValue - lastActiveTick) + currentTickCount; // overflow
+			else fms -= lastActiveTick;
+			Debug.WriteLine($"IdleTime\n- Idle:  {lastActiveTick}\n- Env:   {currentTickCount}\n-   {(lastActiveTick > currentTickCount ? "Over+" + (uint.MaxValue - currentTickCount) : "Std")}\n- Final: {fms}");
+
+			return fms;
 		}
 
 		/// <summary>
@@ -65,16 +75,6 @@ namespace MKAh
 			NativeMethods.GetLastInputInfo(ref info); // ignore failure to retrieve data
 
 			return info.dwTime;
-		}
-
-		/// <summary>
-		/// Should be called in same thread as LastActive. Odd behaviour expected if the code runs on different core.
-		/// </summary>
-		/// <param name="ms">Last active time, as returned by LastActive</param>
-		/// <returns>Seconds for how long user has been idle</returns>
-		public static TimeSpan LastActiveTimespan(long ms)
-		{
-			return TimeSpan.FromMilliseconds(ms);
 		}
 	}
 
