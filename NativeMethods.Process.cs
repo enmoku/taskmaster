@@ -30,7 +30,7 @@ using System.Runtime.InteropServices;
 
 namespace Taskmaster
 {
-	public partial class NativeMethods
+	public static partial class NativeMethods
 	{
 		public static int OpenProcessFully(Process process)
 		{
