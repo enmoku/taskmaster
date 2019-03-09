@@ -317,6 +317,7 @@ namespace Taskmaster
 				try
 				{
 					Task.WaitAll(new[] {
+						CheckSystem(),
 						CheckErrors(),
 						CheckLogs(),
 						CheckMemory(),
@@ -330,6 +331,21 @@ namespace Taskmaster
 			{
 				Atomic.Unlock(ref HealthCheck_lock);
 			}
+		}
+
+		uint LastTick = uint.MinValue;
+		async Task CheckSystem()
+		{
+			if (DisposedOrDisposing) throw new ObjectDisposedException("CheckSystem called after HealthMonitor was disposed.");
+
+			await Task.Delay(0).ConfigureAwait(false);
+
+			uint ntick = NativeMethods.GetTickCount();
+
+			if (LastTick > ntick)
+				Log.Warning("<Health> kernel32.dll/GetTickCount() has wrapped around.");
+
+			LastTick = ntick;
 		}
 
 		async Task CheckErrors()
