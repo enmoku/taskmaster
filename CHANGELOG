@@ -5,6 +5,8 @@ Comprehensive changes can be found in Git change history:
 ## [0.13...]
 ### 2019-03-09
 	Changed: Free memory action is now more informative on what it does and what will happen.
+	Fixed: User idletime calculation now works correctly, especially at the Windows API stated failpoint of 49 days.
+	Added: Health monitor warns about the 49 day wraparound occurring.
 ### 2019-03-08
 	Changed: Watchlist edit now tries to autofill executable name when available.
 	Fixed: Watchlist executable validation now complains if the file has no extension.
