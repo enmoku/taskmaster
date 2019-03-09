@@ -3,10 +3,10 @@ using Taskmaster;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using MKAh;
 
-namespace Unit_Tests
+namespace Timing
 {
 	[TestClass]
-	public class TimeTests
+	public class Time
 	{
 		public TestContext TestContext { get; set; }
 

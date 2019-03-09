@@ -4,15 +4,15 @@ using System.Collections.Generic;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Taskmaster;
 
-namespace Unit_Tests
+namespace Types
 {
 	/// <summary>
 	/// Summary description for UnitTest1
 	/// </summary>
 	[TestClass]
-	public class ExtensionTests
+	public class Extensions
 	{
-		public ExtensionTests()
+		public Extensions()
 		{
 			//
 			// TODO: Add constructor logic here
@@ -39,7 +39,7 @@ namespace Unit_Tests
 		// [ClassCleanup()]
 		// public static void MyClassCleanup() { }
 		//
-		// Use TestInitialize to run code before running each test 
+		// Use TestInitialize to run code before running each test
 		// [TestInitialize()]
 		// public void MyTestInitialize() { }
 		//

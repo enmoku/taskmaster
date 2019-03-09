@@ -3,10 +3,10 @@ using Taskmaster;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using MKAh;
 
-namespace TaskMasterTests
+namespace Processes
 {
 	[TestClass]
-	public class ProcessControllerTests
+	public class ProcessController
 	{
 		public TestContext TestContext { get; set; }
 
