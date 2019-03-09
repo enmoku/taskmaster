@@ -2929,7 +2929,11 @@ namespace Taskmaster.UI
 		{
 			try
 			{
-				using (var exsel = new ProcessSelectDialog("Select nothing to try free memory in general."))
+				using (var exsel = new ProcessSelectDialog(
+					"WARNING: This Can be a Bad idea."+
+					"\nAll application memory is pushed to page file. This will temporarily increase available RAM,"+
+					"\nbut increases NVM usage significantly until apps have paged back the memory they actively need."+
+					"\n\nSelection omits chosen app from paging. Select nothing to try free memory in general."))
 				{
 					if (exsel.ShowDialog(this) == DialogResult.OK)
 					{

@@ -3,6 +3,8 @@ Comprehensive changes can be found in Git change history:
 	https://github.com/mkahvi/taskmaster/commits/master
 
 ## [0.13...]
+### 2019-03-09
+	Changed: Free memory action is now more informative on what it does and what will happen.
 ### 2019-03-08
 	Changed: Watchlist edit now tries to autofill executable name when available.
 	Fixed: Watchlist executable validation now complains if the file has no extension.
