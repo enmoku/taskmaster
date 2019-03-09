@@ -42,7 +42,7 @@ namespace Taskmaster
 
 		List<ProcessEx> InfoList = new List<ProcessEx>();
 
-		public ProcessSelectDialog(string message = "")
+		public ProcessSelectDialog(string message = "", string title=null)
 			: base()
 		{
 			WindowState = FormWindowState.Normal;
@@ -53,7 +53,10 @@ namespace Taskmaster
 			AutoSize = true;
 			AutoSizeMode = AutoSizeMode.GrowAndShrink;
 
-			Text = "Choose Executable – " + System.Windows.Forms.Application.ProductName;
+			if (string.IsNullOrEmpty(title))
+				Text = "Choose running process – " + System.Windows.Forms.Application.ProductName;
+			else
+				Text = title;
 
 			var layout = new TableLayoutPanel()
 			{
