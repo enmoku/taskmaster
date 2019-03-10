@@ -47,9 +47,9 @@ namespace Taskmaster
 
 		public ResultType Result { get; private set; } = ResultType.Cancel;
 
-		public static ResultType ShowModal(string title, string message, Buttons buttons)
+		public static ResultType ShowModal(string title, string message, Buttons buttons, Control parent=null)
 		{
-			using (var msg = new SimpleMessageBox(title, message, buttons))
+			using (var msg = new SimpleMessageBox(title, message, buttons, parent))
 			{
 				msg.ShowDialog();
 
@@ -57,9 +57,11 @@ namespace Taskmaster
 			}
 		}
 
-		public SimpleMessageBox(string title, string message, Buttons buttons)
+		public SimpleMessageBox(string title, string message, Buttons buttons, Control parent = null)
 			: base()
 		{
+			Parent = parent;
+
 			Text = title;
 
 			AutoSize = true;
@@ -128,7 +130,7 @@ namespace Taskmaster
 			layout.Controls.Add(new Label() { Text = message, AutoSize = true, Dock = DockStyle.Fill, TextAlign = System.Drawing.ContentAlignment.TopLeft, Padding = BigPadding });
 			layout.Controls.Add(buttonlayout);
 
-			StartPosition = FormStartPosition.CenterParent;
+			StartPosition = parent != null ? FormStartPosition.CenterParent : FormStartPosition.CenterScreen;
 		}
 	}
 }
