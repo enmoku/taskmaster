@@ -75,7 +75,7 @@ namespace Taskmaster
 				TempScanTimer.Elapsed += ScanTemp;
 				TempScanTimer.Start();
 
-				Task.Run(() => ScanTemp(this, EventArgs.Empty));
+				Taskmaster.OnStart += OnStart;
 
 				Log.Information("<Maintenance> Temp folder scanner will be performed once per day.");
 
@@ -85,6 +85,11 @@ namespace Taskmaster
 			if (Taskmaster.DebugStorage) Log.Information("<Maintenance> Component loaded.");
 
 			Taskmaster.DisposalChute.Push(this);
+		}
+
+		async void OnStart(object sender, EventArgs ea)
+		{
+			Task.Run(() => ScanTemp(this, EventArgs.Empty)).ConfigureAwait(false);
 		}
 
 		static long ReScanBurden = 0;

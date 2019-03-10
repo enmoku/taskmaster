@@ -111,16 +111,22 @@ namespace Taskmaster
 			{
 				ScanTimer = new System.Timers.Timer(ScanFrequency.Value.TotalMilliseconds);
 				ScanTimer.Elapsed += TimedScan;
-				Task.Run(() => Scan(), cts.Token).ContinueWith((_) => StartScanTimer(), cts.Token).ConfigureAwait(false);
 			}
 
 			MaintenanceTimer = new System.Timers.Timer(1_000 * 60 * 60 * 3); // every 3 hours
 			MaintenanceTimer.Elapsed += CleanupTick;
 			MaintenanceTimer.Start();
 
+			Taskmaster.OnStart += OnStart;
+
 			if (Taskmaster.DebugProcesses) Log.Information("<Process> Component Loaded.");
 
 			Taskmaster.DisposalChute.Push(this);
+		}
+
+		async void OnStart(object sender, EventArgs ea)
+		{
+			Task.Run(() => Scan(), cts.Token).ContinueWith((_) => StartScanTimer(), cts.Token).ConfigureAwait(false);
 		}
 
 		public ProcessController[] getWatchlist()
@@ -357,6 +363,8 @@ namespace Taskmaster
 		void StartScanTimer()
 		{
 			if (DisposedOrDisposing) throw new ObjectDisposedException("StartScanTimer called when ProcessManager was already disposed");
+
+			if (!ScanFrequency.HasValue) return; // dumb hack
 
 			try
 			{

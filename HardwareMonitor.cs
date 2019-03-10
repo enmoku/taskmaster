@@ -25,6 +25,7 @@
 // THE SOFTWARE.
 
 using System;
+using System.Threading.Tasks;
 using Serilog;
 
 namespace Taskmaster
@@ -86,23 +87,34 @@ namespace Taskmaster
 		{
 			Log.Verbose("<Hardware> Initializing...");
 
+			computer = new OpenHardwareMonitor.Hardware.Computer()
+			{
+				GPUEnabled = true,
+				CPUEnabled = true,
+				//MainboardEnabled = true, // doesn't seem to have anything
+				FanControllerEnabled = true,
+			};
+			computer.Open();
+
+			if (computer.Hardware.Length == 0)
+			{
+				computer.Close();
+				throw new InitFailure("OHM failed to initialize.");
+			}
+
+			Taskmaster.OnStart += OnStart;
+
+			Log.Verbose("<Hardware> Component loaded.");
+
+			Taskmaster.DisposalChute.Push(this);
+		}
+
+		async void OnStart(object sender, EventArgs ea)
+		{
+			await Task.Delay(0).ConfigureAwait(false);
+
 			try
 			{
-				computer = new OpenHardwareMonitor.Hardware.Computer()
-				{
-					GPUEnabled = true,
-					CPUEnabled = true,
-					//MainboardEnabled = true, // doesn't seem to have anything
-					FanControllerEnabled = true,
-				};
-				computer.Open();
-
-				if (computer.Hardware.Length == 0)
-				{
-					computer.Close();
-					throw new InitFailure("OHM failed to initialize.");
-				}
-
 				foreach (var hw in computer.Hardware)
 				{
 					hw.Update();
@@ -211,10 +223,6 @@ namespace Taskmaster
 				computer?.Close(); // not needed?
 				computer = null;
 			}
-
-			Log.Verbose("<Hardware> Component loaded.");
-
-			Taskmaster.DisposalChute.Push(this);
 		}
 
 		public float CPULoad
@@ -300,20 +308,18 @@ namespace Taskmaster
 
 		protected virtual void Dispose(bool disposing)
 		{
-			if (!DisposedOrDisposing)
+			if (DisposedOrDisposing) return;
+			DisposedOrDisposing = true;
+
+			if (disposing)
 			{
-				DisposedOrDisposing = true;
-
-				if (disposing)
-				{
-					Stop();
-					GPUPolling = null;
-					CPUPolling = null;
-				}
-
-				computer?.Close();
-				computer = null;
+				Stop();
+				GPUPolling = null;
+				CPUPolling = null;
 			}
+
+			computer?.Close();
+			computer = null;
 		}
 
 		~HardwareMonitor() => Dispose(false);
