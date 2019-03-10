@@ -109,6 +109,7 @@ namespace Taskmaster
 			Taskmaster.DisposalChute.Push(this);
 		}
 
+		bool Initialized = false;
 		async void OnStart(object sender, EventArgs ea)
 		{
 			await Task.Delay(0).ConfigureAwait(false);
@@ -212,6 +213,8 @@ namespace Taskmaster
 							break;
 					}
 				}
+
+				Initialized = true;
 			}
 			catch (Exception ex)
 			{
@@ -237,6 +240,7 @@ namespace Taskmaster
 		public GPUSensors GPUSensorData()
 		{
 			if (DisposedOrDisposing) throw new ObjectDisposedException("GPUSensorData accessed after HardwareMonitor was disposed.");
+			if (!Initialized) throw new InvalidOperationException("GPUSensorData accesssed before HardwareMonitor was initialized");
 
 			try
 			{
