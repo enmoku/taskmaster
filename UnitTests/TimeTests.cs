@@ -23,6 +23,12 @@ namespace Timing
 		}
 
 		[TestMethod]
+		public void GetTickCountCorrection()
+		{
+			Assert.AreEqual(10_000L, MKAh.User.CorrectIdleTime(12_000, 22_000), "Normal");
+		}
+
+		[TestMethod]
 		public void GetTickCountWrapAround()
 		{
 			uint diff = 5_000;
@@ -33,7 +39,7 @@ namespace Timing
 
 			Console.WriteLine($"GetTickCount: {highTick} -> {lowTick} = {result}");
 
-			Assert.AreEqual(diff*2L, result);
+			Assert.AreEqual(diff*2L, result, "49 day wrap around failpoint");
 		}
 	}
 }
