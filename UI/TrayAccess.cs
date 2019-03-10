@@ -694,84 +694,93 @@ namespace Taskmaster.UI
 			const string schexe = "schtasks";
 
 			string argsq = "/query /fo list /TN MKAh-Taskmaster";
-			ProcessStartInfo info = new ProcessStartInfo(schexe)
-			{
-				WindowStyle = ProcessWindowStyle.Hidden
-			};
-			info.Arguments = argsq;
 
-			var procfind = Process.Start(info);
-			bool rvq = false;
-			bool warned = false;
-			for (int i = 0; i < 3; i++)
+			try
 			{
-				rvq = procfind.WaitForExit(30_000);
-
-				procfind.Refresh(); // unnecessary?
-				if (!procfind.HasExited)
+				ProcessStartInfo info = new ProcessStartInfo(schexe)
 				{
-					if (!warned)
+					WindowStyle = ProcessWindowStyle.Hidden
+				};
+				info.Arguments = argsq;
+
+				var procfind = Process.Start(info);
+				bool rvq = false;
+				bool warned = false;
+				for (int i = 0; i < 3; i++)
+				{
+					rvq = procfind.WaitForExit(30_000);
+
+					procfind.Refresh(); // unnecessary?
+					if (!procfind.HasExited)
 					{
-						Log.Debug("<Tray> Task Scheduler is taking long time to respond.");
-						warned = true;
+						if (!warned)
+						{
+							Log.Debug("<Tray> Task Scheduler is taking long time to respond.");
+							warned = true;
+						}
 					}
+					else
+						break;
+				}
+
+				if (rvq && procfind.ExitCode == 0) found = true;
+				else if (!procfind.HasExited) procfind.Kill();
+
+				if (Taskmaster.Trace) Log.Debug("<Tray> Scheduled task " + (found ? "" : "NOT ") + "found.");
+
+				if (dryrun) return found; // this is bad, but fits the following logic
+
+				if (found && enabled)
+				{
+					string argstoggle = "/change /TN MKAh-Taskmaster /" + (enabled ? "ENABLE" : "DISABLE");
+					info.Arguments = argstoggle;
+					var proctoggle = Process.Start(info);
+					toggled = proctoggle.WaitForExit(3000); // this will succeed as long as the task is there
+					if (toggled && proctoggle.ExitCode == 0) Log.Information("<Tray> Scheduled task found and enabled");
+					else Log.Error("<Tray> Scheduled task NOT toggled.");
+					if (!proctoggle.HasExited) proctoggle.Kill();
+
+					return true;
+				}
+
+				if (enabled)
+				{
+					// This will solve the high privilege problem, but really? Do I want to?
+					var runtime = Environment.GetCommandLineArgs()[0];
+					string argscreate = "/Create /tn MKAh-Taskmaster /tr \"\\\"" + runtime + "\\\"\" /sc onlogon /it /RL HIGHEST";
+					info.Arguments = argscreate;
+					var procnew = Process.Start(info);
+					created = procnew.WaitForExit(3000);
+
+					if (created && procnew.ExitCode == 0) Log.Information("<Tray> Scheduled task created.");
+					else Log.Error("<Tray> Scheduled task NOT created.");
+
+					if (!procnew.HasExited) procnew.Kill();
 				}
 				else
-					break;
+				{
+					string argsdelete = "/Delete /TN MKAh-Taskmaster /F";
+					info.Arguments = argsdelete;
+
+					var procdel = Process.Start(info);
+					deleted = procdel.WaitForExit(3000);
+
+					if (deleted && procdel.ExitCode == 0) Log.Information("<Tray> Scheduled task deleted.");
+					else Log.Error("<Tray> Scheduled task NOT deleted.");
+
+					if (!procdel.HasExited) procdel.Kill();
+				}
+
+				//if (toggled) Log.Debug("<Tray> Scheduled task toggled.");
+
+				return enabled;
 			}
-
-			if (rvq && procfind.ExitCode == 0) found = true;
-			else if (!procfind.HasExited) procfind.Kill();
-
-			if (Taskmaster.Trace) Log.Debug("<Tray> Scheduled task " + (found ? "" : "NOT ") + "found.");
-
-			if (dryrun) return found; // this is bad, but fits the following logic
-
-			if (found && enabled)
+			catch (OutOfMemoryException) { throw; }
+			catch (Exception ex)
 			{
-				string argstoggle = "/change /TN MKAh-Taskmaster /" + (enabled ? "ENABLE" : "DISABLE");
-				info.Arguments = argstoggle;
-				var proctoggle = Process.Start(info);
-				toggled = proctoggle.WaitForExit(3000); // this will succeed as long as the task is there
-				if (toggled && proctoggle.ExitCode == 0) Log.Debug("<Tray> Scheduled task found and enabled");
-				else Log.Debug("<Tray> Scheduled task NOT toggled.");
-				if (!proctoggle.HasExited) proctoggle.Kill();
-
-				return true;
+				Logging.Stacktrace(ex);
+				throw;
 			}
-
-			if (enabled)
-			{
-				// This will solve the high privilege problem, but really? Do I want to?
-				var runtime = Environment.GetCommandLineArgs()[0];
-				string argscreate = "/Create /tn MKAh-Taskmaster /tr \"\\\"" + runtime + "\\\" --scheduler "+Taskmaster.BootDelayArg+"\" /sc onlogon /delay 0:30 /it /RL HIGHEST";
-				info.Arguments = argscreate;
-				var procnew = Process.Start(info);
-				created = procnew.WaitForExit(3000);
-
-				if (created && procnew.ExitCode == 0) Log.Debug("<Tray> Scheduled task created.");
-				else Log.Debug("<Tray> Scheduled task NOT created.");
-
-				if (!procnew.HasExited) procnew.Kill();
-			}
-			else
-			{
-				string argsdelete = "/Delete /TN MKAh-Taskmaster /F";
-				info.Arguments = argsdelete;
-
-				var procdel = Process.Start(info);
-				deleted = procdel.WaitForExit(3000);
-
-				if (deleted && procdel.ExitCode == 0) Log.Debug("<Tray> Scheduled task deleted.");
-				else Log.Debug("<Tray> Scheduled task NOT deleted.");
-
-				if (!procdel.HasExited) procdel.Kill();
-			}
-
-			//if (toggled) Log.Debug("<Tray> Scheduled task toggled.");
-
-			return enabled;
-
 		}
 
 		~TrayAccess()
