@@ -314,6 +314,8 @@ namespace Taskmaster
 		{
 			Log.Information("<Core> Loading components...");
 
+			var timer = Stopwatch.StartNew();
+
 			ProcessUtility.InitializeCache();
 
 			Task PowMan = Task.CompletedTask,
@@ -401,14 +403,16 @@ namespace Taskmaster
 					(x) => audiomanager.Hook(processmanager));
 			}
 
+			bool warned = false;
 			try
 			{
 				// WAIT for component initialization
 				if (!Task.WaitAll(init, 5_000))
 				{
-					Log.Warning("<Core> Components still loading.");
+					warned = true;
+					Log.Warning($"<Core> Components still loading ({timer.ElapsedMilliseconds} ms and ongoing)");
 					if (!Task.WaitAll(init, 115_000)) // total wait time of 120 seconds
-						throw new InitFailure("Component initialization taking excessively long, aborting.");
+						throw new InitFailure($"Component initialization taking excessively long ({timer.ElapsedMilliseconds} ms), aborting.");
 				}
 			}
 			catch (AggregateException ex)
@@ -423,7 +427,7 @@ namespace Taskmaster
 			// HOOKING
 			// Probably should transition to weak events
 
-			Log.Information("<Core> Components loaded; Hooking event handlers.");
+			Log.Information($"<Core> Components loaded ({timer.ElapsedMilliseconds} ms); Hooking event handlers.");
 
 			if (ActiveAppMonitorEnabled && ProcessMonitorEnabled)
 			{
@@ -494,7 +498,8 @@ namespace Taskmaster
 				Log.Verbose("Displaying Tray Icon");
 			trayaccess?.RefreshVisibility();
 
-			Log.Information($"<Core> Component loading finished. {DisposalChute.Count.ToString()} initialized.");
+			timer.Stop();
+			Log.Information($"<Core> Component loading finished ({timer.ElapsedMilliseconds} ms). {DisposalChute.Count.ToString()} initialized.");
 		}
 
 		public static bool ShowProcessAdjusts { get; set; } = true;
@@ -1259,67 +1264,71 @@ namespace Taskmaster
 		[STAThread] // supposedly needed to avoid shit happening with the WinForms GUI and other GUI toolkits
 		static public int Main(string[] args)
 		{
-			//Debug.Listeners.Add(new TextWriterTraceListener(System.Console.Out));
-
-			NativeMethods.SetErrorMode(NativeMethods.SetErrorMode(NativeMethods.ErrorModes.SEM_SYSTEMDEFAULT) | NativeMethods.ErrorModes.SEM_NOGPFAULTERRORBOX | NativeMethods.ErrorModes.SEM_FAILCRITICALERRORS);
-
-			System.Threading.Mutex singleton = null;
-
-			System.Windows.Forms.Application.SetUnhandledExceptionMode(UnhandledExceptionMode.Automatic);
-			System.Windows.Forms.Application.ThreadException += UnhandledUIException;
-			System.Windows.Forms.Application.EnableVisualStyles(); // required by shortcuts and high dpi-awareness
-			System.Windows.Forms.Application.SetCompatibleTextRenderingDefault(false); // required by high dpi-awareness
-
-			AppDomain.CurrentDomain.UnhandledException += UnhandledException;
-
-			//hiddenwindow = new OS.HiddenWindow();
-
-			TryPortableMode();
-			logpath = Path.Combine(datapath, "Logs");
-
-			// Singleton
-			singleton = new System.Threading.Mutex(true, SingletonID, out bool mutexgained);
-			if (!mutexgained)
-			{
-				SimpleMessageBox.ResultType rv = SimpleMessageBox.ResultType.Cancel;
-
-				// already running, signal original process
-				using (var msg = new SimpleMessageBox("Taskmaster!",
-					"Already operational.\n\nRetry to try to recover [restart] running instance.\nEnd to kill running instance and exit this.\nCancel to exit this.",
-					SimpleMessageBox.Buttons.RetryEndCancel))
-				{
-					msg.ShowDialog();
-					rv = msg.Result;
-				}
-
-				switch (rv)
-				{
-					case SimpleMessageBox.ResultType.Retry:
-						PipeExplorer(restart:true);
-						break;
-					case SimpleMessageBox.ResultType.End:
-						PipeExplorer(restart: false);
-						break;
-					case SimpleMessageBox.ResultType.Cancel:
-						break;
-				}
-
-				return -1;
-			}
-
-			pipe = PipeDream(); // IPC with other instances of TM
-
-			// Multi-core JIT
-			// https://docs.microsoft.com/en-us/dotnet/api/system.runtime.profileoptimization
-			{
-				var cachepath = System.IO.Path.Combine(datapath, "Cache");
-				if (!System.IO.Directory.Exists(cachepath)) System.IO.Directory.CreateDirectory(cachepath);
-				System.Runtime.ProfileOptimization.SetProfileRoot(cachepath);
-				System.Runtime.ProfileOptimization.StartProfile("jit.profile");
-			}
-
 			try
 			{
+				try
+				{
+					var startTimer = Stopwatch.StartNew();
+
+					//Debug.Listeners.Add(new TextWriterTraceListener(System.Console.Out));
+
+					NativeMethods.SetErrorMode(NativeMethods.SetErrorMode(NativeMethods.ErrorModes.SEM_SYSTEMDEFAULT) | NativeMethods.ErrorModes.SEM_NOGPFAULTERRORBOX | NativeMethods.ErrorModes.SEM_FAILCRITICALERRORS);
+
+					System.Threading.Mutex singleton = null;
+
+					System.Windows.Forms.Application.SetUnhandledExceptionMode(UnhandledExceptionMode.Automatic);
+					System.Windows.Forms.Application.ThreadException += UnhandledUIException;
+					System.Windows.Forms.Application.EnableVisualStyles(); // required by shortcuts and high dpi-awareness
+					System.Windows.Forms.Application.SetCompatibleTextRenderingDefault(false); // required by high dpi-awareness
+
+					AppDomain.CurrentDomain.UnhandledException += UnhandledException;
+
+					//hiddenwindow = new OS.HiddenWindow();
+
+					TryPortableMode();
+					logpath = Path.Combine(datapath, "Logs");
+
+					// Singleton
+					singleton = new System.Threading.Mutex(true, SingletonID, out bool mutexgained);
+					if (!mutexgained)
+					{
+						SimpleMessageBox.ResultType rv = SimpleMessageBox.ResultType.Cancel;
+
+						// already running, signal original process
+						using (var msg = new SimpleMessageBox("Taskmaster!",
+							"Already operational.\n\nRetry to try to recover [restart] running instance.\nEnd to kill running instance and exit this.\nCancel to exit this.",
+							SimpleMessageBox.Buttons.RetryEndCancel))
+						{
+							msg.ShowDialog();
+							rv = msg.Result;
+						}
+
+						switch (rv)
+						{
+							case SimpleMessageBox.ResultType.Retry:
+								PipeExplorer(restart: true);
+								break;
+							case SimpleMessageBox.ResultType.End:
+								PipeExplorer(restart: false);
+								break;
+							case SimpleMessageBox.ResultType.Cancel:
+								break;
+						}
+
+						return -1;
+					}
+
+					pipe = PipeDream(); // IPC with other instances of TM
+
+					// Multi-core JIT
+					// https://docs.microsoft.com/en-us/dotnet/api/system.runtime.profileoptimization
+					{
+						var cachepath = System.IO.Path.Combine(datapath, "Cache");
+						if (!System.IO.Directory.Exists(cachepath)) System.IO.Directory.CreateDirectory(cachepath);
+						System.Runtime.ProfileOptimization.SetProfileRoot(cachepath);
+						System.Runtime.ProfileOptimization.StartProfile("jit.profile");
+					}
+
 					Config = new ConfigManager(datapath);
 
 					LicenseBoiler();
@@ -1327,12 +1336,12 @@ namespace Taskmaster
 					// INIT LOGGER
 					var logswitch = new LoggingLevelSwitch(LogEventLevel.Information);
 
-				#if DEBUG
-				loglevelswitch.MinimumLevel = LogEventLevel.Debug;
-				if (Taskmaster.Trace) loglevelswitch.MinimumLevel = LogEventLevel.Verbose;
-				#endif
+#if DEBUG
+					loglevelswitch.MinimumLevel = LogEventLevel.Debug;
+					if (Taskmaster.Trace) loglevelswitch.MinimumLevel = LogEventLevel.Verbose;
+#endif
 
-				var logpathtemplate = System.IO.Path.Combine(logpath, "taskmaster-{Date}.log");
+					var logpathtemplate = System.IO.Path.Combine(logpath, "taskmaster-{Date}.log");
 					Serilog.Log.Logger = new Serilog.LoggerConfiguration()
 						.MinimumLevel.ControlledBy(loglevelswitch)
 						.WriteTo.Console(levelSwitch: new LoggingLevelSwitch(LogEventLevel.Verbose))
@@ -1358,22 +1367,29 @@ namespace Taskmaster
 						.Append(" – Built: ").Append(builddate.ToString("yyyy/MM/dd HH:mm")).Append($" [{age:N0} days old]");
 					Log.Information(sbs.ToString());
 
-				//PreallocLastLog();
+					//PreallocLastLog();
 
-				InitialConfiguration();
-				LoadCoreConfig();
-				InitializeComponents();
+					InitialConfiguration();
+					LoadCoreConfig();
+					InitializeComponents();
 
-				Config.Flush(); // early save of configs
+					Config.Flush(); // early save of configs
 
-				if (RestartCounter > 0) Log.Information("<Core> Restarted " + RestartCounter.ToString() + " time(s)");
-				Log.Information("<Core> Initialization complete...");
+					if (RestartCounter > 0) Log.Information("<Core> Restarted " + RestartCounter.ToString() + " time(s)");
+					startTimer.Stop();
+					Log.Information($"<Core> Initialization complete ({startTimer.ElapsedMilliseconds} ms)...");
+					startTimer = null;
 
-				if (Debug.Listeners.Count > 0)
+					if (Debug.Listeners.Count > 0)
+					{
+						Debug.WriteLine("Embedded Resources");
+						foreach (var name in System.Reflection.Assembly.GetExecutingAssembly().GetManifestResourceNames())
+							Debug.WriteLine(" - " + name);
+					}
+				}
+				finally
 				{
-					Debug.WriteLine("Embedded Resources");
-					foreach (var name in System.Reflection.Assembly.GetExecutingAssembly().GetManifestResourceNames())
-						Debug.WriteLine(" - " + name);
+
 				}
 
 				if (State == Runstate.Normal)
