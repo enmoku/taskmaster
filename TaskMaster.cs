@@ -308,6 +308,8 @@ namespace Taskmaster
 			}
 		}
 
+		public static event EventHandler OnStart;
+
 		static void InitializeComponents()
 		{
 			Log.Information("<Core> Loading components...");
@@ -1401,6 +1403,9 @@ namespace Taskmaster
 
 				if (State == Runstate.Normal)
 				{
+					OnStart?.Invoke(null, EventArgs.Empty);
+					OnStart = null;
+
 					System.Windows.Forms.Application.Run(); // WinForms
 
 					// System.Windows.Application.Current.Run(); // WPF
