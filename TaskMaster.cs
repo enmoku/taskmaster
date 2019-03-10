@@ -976,7 +976,6 @@ namespace Taskmaster
 			}
 		}
 
-		public const string BootDelayArg = "--bootdelay";
 		public const string AdminArg = "--admin";
 		public const string RestartArg = "--restart";
 
@@ -987,38 +986,14 @@ namespace Taskmaster
 
 			for (int i = 0; i < args.Length; i++)
 			{
+				if (!args[i].StartsWith("--"))
+				{
+					Log.Error("<Start> Unrecognized command-line parameter: " + args[i]);
+					continue;
+				}
+
 				switch (args[i])
 				{
-					case BootDelayArg:
-						if (args.Length > i+1 && !args[i+1].StartsWith("--"))
-						{
-							try
-							{
-								StartDelay = Convert.ToInt32(args[++i]).Constrain(1, 60*5);
-							}
-							catch (Exception ex) when (ex is NullReferenceException || ex is OutOfMemoryException) { throw; }
-							catch
-							{
-								StartDelay = 30;
-							}
-						}
-
-						try
-						{
-							using (var uptimecounter = new PerformanceCounter("System", "System Up Time"))
-							{
-								uptimecounter.NextValue();
-								uptime = TimeSpan.FromSeconds(uptimecounter.NextValue());
-								uptimecounter.Close();
-							}
-						}
-						catch (Exception ex) when (ex is NullReferenceException || ex is OutOfMemoryException) { throw; }
-						catch
-						{
-							uptime = TimeSpan.Zero;
-						}
-
-						break;
 					case RestartArg:
 						if (args.Length > i+1 && !args[i+1].StartsWith("--"))
 						{
