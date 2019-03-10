@@ -1264,6 +1264,8 @@ namespace Taskmaster
 		[STAThread] // supposedly needed to avoid shit happening with the WinForms GUI and other GUI toolkits
 		static public int Main(string[] args)
 		{
+			System.Threading.Mutex singleton = null;
+
 			try
 			{
 				try
@@ -1273,8 +1275,6 @@ namespace Taskmaster
 					//Debug.Listeners.Add(new TextWriterTraceListener(System.Console.Out));
 
 					NativeMethods.SetErrorMode(NativeMethods.SetErrorMode(NativeMethods.ErrorModes.SEM_SYSTEMDEFAULT) | NativeMethods.ErrorModes.SEM_NOGPFAULTERRORBOX | NativeMethods.ErrorModes.SEM_FAILCRITICALERRORS);
-
-					System.Threading.Mutex singleton = null;
 
 					System.Windows.Forms.Application.SetUnhandledExceptionMode(UnhandledExceptionMode.Automatic);
 					System.Windows.Forms.Application.ThreadException += UnhandledUIException;
