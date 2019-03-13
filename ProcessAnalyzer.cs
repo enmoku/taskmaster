@@ -352,19 +352,19 @@ namespace Taskmaster
 						string name = section.Name;
 						if (KnownModules.ContainsKey(name)) continue;
 
-						var files = section.TryGet("files")?.StringValueArray ?? null;
+						var files = section.Get("files")?.Array ?? null;
 
 						if (files == null || files.Length == 0) continue;
 
-						bool listed = yesvalues.Contains(section.TryGet("listed")?.StringValue.ToLowerInvariant() ?? "no");
-						//string upgrade = section.TryGet("upgrade")?.StringValue ?? null;
-						//bool open = yesvalues.Contains(section.TryGet("open")?.StringValue.ToLowerInvariant() ?? "no");
-						//bool prop = yesvalues.Contains(section.TryGet("proprietary")?.StringValue.ToLowerInvariant() ?? "no");
-						bool ext = yesvalues.Contains(section.TryGet("extension")?.StringValue.ToLowerInvariant() ?? "no");
-						string ttype = section.TryGet("type")?.StringValue.ToLowerInvariant() ?? "unknown"; // TODO
-						//string trec = section.TryGet("recommendation")?.StringValue.ToLowerInvariant() ?? null;
-						//string notes = section.TryGet("notes")?.StringValue ?? null;
-						long value = section.TryGet("value")?.IntValue ?? 0;
+						bool listed = yesvalues.Contains(section.Get("listed")?.Value.ToLowerInvariant() ?? "no");
+						//string upgrade = section.TryGet("upgrade")?.Value ?? null;
+						//bool open = yesvalues.Contains(section.TryGet("open")?.Value.ToLowerInvariant() ?? "no");
+						//bool prop = yesvalues.Contains(section.TryGet("proprietary")?.Value.ToLowerInvariant() ?? "no");
+						bool ext = yesvalues.Contains(section.Get("extension")?.Value.ToLowerInvariant() ?? "no");
+						string ttype = section.Get("type")?.Value.ToLowerInvariant() ?? "unknown"; // TODO
+						//string trec = section.TryGet("recommendation")?.Value.ToLowerInvariant() ?? null;
+						//string notes = section.TryGet("notes")?.Value ?? null;
+						long value = section.Get("value")?.IntValue ?? 0;
 						/*
 						ModuleRecommendation rec = ModuleRecommendation.Undefined;
 						if (!RecMap.TryGetValue(trec, out rec))

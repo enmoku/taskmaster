@@ -387,7 +387,7 @@ namespace Taskmaster
 			if (cfg == null)
 				cfg = Taskmaster.Config.Load(watchlistfile);
 
-			cfg.Config.Remove(FriendlyName); // remove the section, should remove items in the section
+			cfg.Config.TryRemove(FriendlyName); // remove the section, should remove items in the section
 			cfg.MarkDirty();
 		}
 
@@ -447,7 +447,7 @@ namespace Taskmaster
 			RecentlyModified.Clear();
 		}
 
-		public void SaveConfig(ConfigWrapper cfg = null, SharpConfig.Section app = null)
+		public void SaveConfig(ConfigWrapper cfg = null, MKAh.Ini.Section app = null)
 		{
 			// TODO: Check if anything actually was changed?
 
@@ -458,16 +458,16 @@ namespace Taskmaster
 				app = cfg.Config[FriendlyName];
 
 			if (!string.IsNullOrEmpty(Executable))
-				app["Image"].StringValue = Executable;
+				app["Image"].Value = Executable;
 			else
 				app.Remove("Image");
 			if (!string.IsNullOrEmpty(Path))
-				app[HumanReadable.System.Process.Path].StringValue = Path;
+				app[HumanReadable.System.Process.Path].Value = Path;
 			else
 				app.Remove(HumanReadable.System.Process.Path);
 
 			if (!string.IsNullOrEmpty(Description))
-				app[HumanReadable.Generic.Description].StringValue = Description;
+				app[HumanReadable.Generic.Description].Value = Description;
 			else
 				app.Remove(HumanReadable.Generic.Description);
 
@@ -507,7 +507,7 @@ namespace Taskmaster
 
 			var pmode = PowerManager.GetModeName(PowerPlan);
 			if (PowerPlan != PowerInfo.PowerMode.Undefined)
-				app[HumanReadable.Hardware.Power.Mode].StringValue = PowerManager.GetModeName(PowerPlan);
+				app[HumanReadable.Hardware.Power.Mode].Value = PowerManager.GetModeName(PowerPlan);
 			else
 				app.Remove(HumanReadable.Hardware.Power.Mode);
 
@@ -552,11 +552,6 @@ namespace Taskmaster
 
 			if (!string.IsNullOrEmpty(Executable))
 			{
-				if (app.Contains(HumanReadable.System.Process.Rescan))
-				{
-					app.Remove(HumanReadable.System.Process.Rescan); // OBSOLETE
-					Log.Debug("<Process> Obsoleted INI cleanup: Rescan frequency");
-				}
 				if (Recheck > 0) app["Recheck"].IntValue = Recheck;
 				else app.Remove("Recheck");
 			}
@@ -567,7 +562,7 @@ namespace Taskmaster
 			app["Preference"].IntValue = OrderPreference;
 
 			if (IgnoreList != null && IgnoreList.Length > 0)
-				app[HumanReadable.Generic.Ignore].StringValueArray = IgnoreList;
+				app[HumanReadable.Generic.Ignore].Array = IgnoreList;
 			else
 				app.Remove(HumanReadable.Generic.Ignore);
 
@@ -578,7 +573,7 @@ namespace Taskmaster
 
 			if (Resize.HasValue)
 			{
-				int[] res = app.TryGet("Resize")?.IntValueArray ?? null;
+				int[] res = app.Get("Resize")?.IntArray ?? null;
 				if (res == null || res.Length != 4) res = new int[] { 0, 0, 0, 0 };
 
 				if (Bit.IsSet((int)ResizeStrategy, (int)WindowResizeStrategy.Position))
@@ -593,7 +588,7 @@ namespace Taskmaster
 					res[3] = Resize.Value.Height;
 				}
 
-				app["Resize"].IntValueArray = res;
+				app["Resize"].IntArray = res;
 
 				app["Resize strategy"].IntValue = (int)ResizeStrategy;
 			}

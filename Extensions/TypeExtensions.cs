@@ -30,7 +30,7 @@ using System.Diagnostics;
 using System.Net;
 using System.Net.NetworkInformation;
 
-namespace Taskmaster
+namespace MKAh
 {
 	static public class CoreTypeExtensions
 	{

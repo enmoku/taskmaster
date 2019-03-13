@@ -116,8 +116,6 @@ namespace Taskmaster
 
 			if (dirty) corecfg.MarkDirty();
 
-			mediasec.Remove("Microphone volume"); // DEPRECATED
-
 			if (Taskmaster.DebugMic) Log.Information("<Microphone> Component loaded.");
 
 			Taskmaster.DisposalChute.Push(this);
@@ -286,7 +284,7 @@ namespace Taskmaster
 				dirty |= modified;
 				if (!devsec.Contains("Name"))
 				{
-					devsec["Name"].StringValue = RecordingDevice.Name;
+					devsec["Name"].Value = RecordingDevice.Name;
 					dirty = true;
 				}
 
@@ -333,12 +331,12 @@ namespace Taskmaster
 						var devsec = devcfg.Config[guid];
 						if (!devsec.Contains("Name"))
 						{
-							devsec["Name"].StringValue = dev.DeviceFriendlyName;
+							devsec["Name"].Value = dev.DeviceFriendlyName;
 							dirty = modified = true;
 						}
 						bool control = devsec.GetSetDefault("Control", false, out modified).BoolValue;
 						dirty |= modified;
-						float target = devsec.TryGet("Volume")?.FloatValue ?? float.NaN;
+						float target = devsec.Get("Volume")?.FloatValue ?? float.NaN;
 
 						var mdev = new AudioDevice(dev)
 						{

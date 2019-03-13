@@ -24,6 +24,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
+using MKAh;
 using Serilog;
 using System;
 using System.Diagnostics;
@@ -58,11 +59,11 @@ namespace Taskmaster.UI
 			Frequency = volsec.GetSetDefault("Refresh", 100, out modified).IntValue.Constrain(10, 5000);
 			volsec["Refresh"].Comment = "Refresh delay. Lower is faster. Milliseconds from 10 to 5000.";
 			dirty |= modified;
-			int? upgradeOutCap = volsec.TryGet("Output")?.IntValue;
+			int? upgradeOutCap = volsec.Get("Output")?.IntValue;
 			if (upgradeOutCap.HasValue) volsec["Output threshold"].IntValue = upgradeOutCap.Value;
 			VolumeOutputCap = volsec.GetSetDefault("Output threshold", 100, out modified).IntValue.Constrain(20, 100) * 100;
 			dirty |= modified;
-			int? upgradeInCap = volsec.TryGet("Input")?.IntValue;
+			int? upgradeInCap = volsec.Get("Input")?.IntValue;
 			if (upgradeInCap.HasValue) volsec["Input threshold"].IntValue = upgradeInCap.Value;
 			VolumeInputCap = volsec.GetSetDefault("Input threshold", 100, out modified).IntValue.Constrain(20, 100) * 100;
 			dirty |= modified;
@@ -164,7 +165,7 @@ namespace Taskmaster.UI
 			var uicfg = Taskmaster.Config.Load(MainWindow.UIConfig);
 			var winsec = uicfg.Config["Windows"];
 
-			var winpos = winsec["Volume"].IntValueArray;
+			var winpos = winsec["Volume"].IntArray;
 
 			if (winpos != null && winpos.Length == 2)
 			{
@@ -267,7 +268,7 @@ namespace Taskmaster.UI
 				var cfg = Taskmaster.Config.Load(MainWindow.UIConfig);
 				var winsec = cfg.Config["Windows"];
 
-				winsec["Volume"].IntValueArray = new int[] { Bounds.Left, Bounds.Top };
+				winsec["Volume"].IntArray = new int[] { Bounds.Left, Bounds.Top };
 
 				cfg.MarkDirty();
 			}

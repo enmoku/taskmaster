@@ -24,6 +24,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
+using MKAh;
 using Serilog;
 using System;
 using System.Windows.Forms;
@@ -110,7 +111,7 @@ namespace Taskmaster.UI.Config
 			{
 				var cfg = Taskmaster.Config.Load(Taskmaster.coreconfig);
 				var perfsec = cfg.Config["Performance"];
-				fgHysterisis.Value = perfsec.TryGet("Foreground hysterisis")?.IntValue.Constrain(200, 30000) ?? 1500;
+				fgHysterisis.Value = perfsec.Get("Foreground hysterisis")?.IntValue.Constrain(200, 30000) ?? 1500;
 			}
 
 			layout.Controls.Add(new Label { Text = "Foreground hysterisis", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Padding = LeftSubPadding });
@@ -188,11 +189,11 @@ namespace Taskmaster.UI.Config
 			};
 
 			var volsec = corecfg.Config["Volume Meter"];
-			bool t_volmeter_topmost = volsec.TryGet("Topmost")?.BoolValue ?? true;
-			int t_volmeter_frequency = volsec.TryGet("Refresh")?.IntValue.Constrain(10, 5000) ?? 100;
-			int t_volmeter_capoutmax = volsec.TryGet("Output threshold")?.IntValue.Constrain(20, 100) ?? 100;
-			int t_volmeter_capinmax = volsec.TryGet("Input threshold")?.IntValue.Constrain(20, 100) ?? 100;
-			bool t_volmeter_show = volsec.TryGet("Show on start")?.BoolValue ?? false;
+			bool t_volmeter_topmost = volsec.Get("Topmost")?.BoolValue ?? true;
+			int t_volmeter_frequency = volsec.Get("Refresh")?.IntValue.Constrain(10, 5000) ?? 100;
+			int t_volmeter_capoutmax = volsec.Get("Output threshold")?.IntValue.Constrain(20, 100) ?? 100;
+			int t_volmeter_capinmax = volsec.Get("Input threshold")?.IntValue.Constrain(20, 100) ?? 100;
+			bool t_volmeter_show = volsec.Get("Show on start")?.BoolValue ?? false;
 
 			volmeter_topmost.Checked = t_volmeter_topmost;
 			volmeter_frequency.Value = t_volmeter_frequency;

@@ -79,7 +79,7 @@ namespace Taskmaster
 			var dirtyconf = false;
 
 			var monsec = cfg.Config["Monitor"];
-			dnstestaddress = monsec.GetSetDefault("DNS test", "www.google.com", out dirty).StringValue;
+			dnstestaddress = monsec.GetSetDefault("DNS test", "www.google.com", out dirty).Value;
 			dirtyconf |= dirty;
 
 			var devsec = cfg.Config["Devices"];

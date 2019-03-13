@@ -100,7 +100,7 @@ namespace Taskmaster
 			dirtyconfig |= modified;
 
 			var exsec = corecfg.Config["Experimental"];
-			CPULoaderMonitoring = exsec.TryGet("CPU loaders")?.BoolValue ?? false;
+			CPULoaderMonitoring = exsec.Get("CPU loaders")?.BoolValue ?? false;
 
 			Log.Information("<CPU> Sampler: " + $"{ SampleInterval.TotalSeconds:N0}" + "s × " + SampleCount +
 				" = " + $"{SampleCount * SampleInterval.TotalSeconds:N0}s" + " observation period");

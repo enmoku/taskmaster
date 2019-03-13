@@ -34,6 +34,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using MKAh;
+using Ini = MKAh.Ini;
 using Serilog;
 
 namespace Taskmaster
@@ -779,40 +780,12 @@ namespace Taskmaster
 			// ControlChildren = coreperf.GetSetDefault("Child processes", false, out tdirty).BoolValue;
 			// dirtyconfig |= tdirty;
 
-			if (perfsec.Contains("Batch processing")) // DEPRECATED
-			{
-				perfsec.Remove("Batch processing");
-				perfsec.Remove("Batch processing delay");
-				perfsec.Remove("Batch processing threshold");
-				dirtyconfig |= modified;
-			}
-
 			int ignRecentlyModified = perfsec.GetSetDefault("Ignore recently modified", 30, out modified).IntValue.Constrain(0, 24 * 60);
 			if (ignRecentlyModified > 0)
 				IgnoreRecentlyModified = TimeSpan.FromMinutes(ignRecentlyModified);
 			else
 				IgnoreRecentlyModified = null;
 			perfsec["Ignore recently modified"].Comment = "Performance optimization. More notably this enables granting self-determination to apps that actually think they know better.";
-
-			// OBSOLETE
-			if (perfsec.Contains("Rescan frequency"))
-			{
-				perfsec.Remove("Rescan frequency");
-				dirtyconfig |= true;
-				Log.Debug("<Process> Obsoleted INI cleanup: Rescan frequency");
-			}
-			// DEPRECATED
-			if (perfsec.Contains("Rescan everything frequency"))
-			{
-				try
-				{
-					perfsec.GetSetDefault("Scan frequency", perfsec.TryGet("Rescan everything frequency")?.IntValue ?? 15, out _);
-				}
-				catch { } // non int value
-				perfsec.Remove("Rescan everything frequency");
-				dirtyconfig |= true;
-				Log.Debug("<Process> Deprecated INI cleanup: Rescan everything frequency");
-			}
 
 			var tscan = perfsec.GetSetDefault("Scan frequency", 15, out modified).IntValue.Constrain(0, 360);
 			if (tscan > 0) ScanFrequency = TimeSpan.FromSeconds(tscan.Constrain(5, 360));
@@ -826,7 +799,7 @@ namespace Taskmaster
 			// --------------------------------------------------------------------------------------------------------
 
 			WMIPolling = perfsec.GetSetDefault("WMI event watcher", false, out modified).BoolValue;
-			perfsec["WMI event watcher"].Comment = "Use WMI to be notified of new processes starting.\nIf disabled, only rescanning everything will cause processes to be noticed.";
+			perfsec["WMI event watcher"].Comment = "Use WMI to be notified of new processes starting. If disabled, only rescanning everything will cause processes to be noticed.";
 			dirtyconfig |= modified;
 			WMIPollDelay = perfsec.GetSetDefault("WMI poll delay", 5, out modified).IntValue.Constrain(1, 30);
 			perfsec["WMI poll delay"].Comment = "WMI process watcher delay (in seconds).  Smaller gives better results but can inrease CPU usage. Accepted values: 1 to 30.";
@@ -853,18 +826,11 @@ namespace Taskmaster
 
 			// --------------------------------------------------------------------------------------------------------
 
-			// Taskmaster.cfg["Applications"]["Ignored"].StringValueArray = IgnoreList;
+			// Taskmaster.cfg["Applications"]["Ignored"].StringArray = IgnoreList;
 			var ignsetting = corecfg.Config["Applications"];
-			if (!ignsetting.Contains(HumanReadable.Generic.Ignore)) // DEPRECATED UPGRADE PATH
-			{
-				string[] tnewIgnoreList = ignsetting["Ignored"].StringValueArray;
-				ignsetting[HumanReadable.Generic.Ignore].StringValueArray = tnewIgnoreList;
-				dirtyconfig = true;
-				ignsetting.Remove("Ignored");
-			}
-			string[] newIgnoreList = ignsetting.GetSetDefault(HumanReadable.Generic.Ignore, IgnoreList, out modified)?.StringValueArray;
+			string[] newIgnoreList = ignsetting.GetSetDefault(HumanReadable.Generic.Ignore, IgnoreList, out modified)?.Array;
 
-			ignsetting.PreComment = "Special hardcoded protection applied to: consent, winlogon, wininit, and csrss.\nThese are vital system services and messing with them can cause severe system malfunctioning.\nMess with the ignore list at your own peril.";
+			ignsetting[HumanReadable.Generic.Ignore].Comment = "Special hardcoded protection applied to: consent, winlogon, wininit, and csrss. These are vital system services and messing with them can cause severe system malfunctioning. Mess with the ignore list at your own peril.";
 
 			if (newIgnoreList != null)
 			{
@@ -890,8 +856,11 @@ namespace Taskmaster
 			Log.Information("<Process> Loading watchlist...");
 
 			var appcfg = Taskmaster.Config.Load(watchfile);
+			var mkahcfg = MKAh.Ini.Config.FromFile(System.IO.Path.Combine(Taskmaster.datapath, watchfile));
 
 			bool dirtyconfig = false;
+
+			Log.Debug("<MKAh/Ini> Watchlist – Sections: " + mkahcfg.SectionCount);
 
 			if (appcfg.Config.SectionCount == 0)
 			{
@@ -916,7 +885,7 @@ namespace Taskmaster
 
 			// --------------------------------------------------------------------------------------------------------
 
-			foreach (SharpConfig.Section section in appcfg.Config)
+			foreach (Ini.Section section in appcfg.Config)
 			{
 				if (!section.Contains("Image") && !section.Contains(HumanReadable.System.Process.Path))
 				{
@@ -932,7 +901,7 @@ namespace Taskmaster
 					continue;
 				}
 
-				var aff = section.TryGet(HumanReadable.System.Process.Affinity)?.IntValue ?? -1;
+				var aff = section.Get(HumanReadable.System.Process.Affinity)?.IntValue ?? -1;
 				if (aff > AllCPUsMask || aff < -1)
 				{
 					Log.Warning("[" + section.Name + "] Affinity(" + aff + ") is malconfigured. Ignoring.");
@@ -941,11 +910,11 @@ namespace Taskmaster
 					//		Shift bits to allowed range. Assume at least one core must be assigned, and in case of holes at least one core must be unassigned.
 					aff = -1; // ignore
 				}
-				var prio = section.TryGet(HumanReadable.System.Process.Priority)?.IntValue ?? -1;
+				var prio = section.Get(HumanReadable.System.Process.Priority)?.IntValue ?? -1;
 				ProcessPriorityClass? prioR = null;
 				if (prio >= 0) prioR = ProcessHelpers.IntToPriority(prio);
 
-				var pmodes = section.TryGet(HumanReadable.Hardware.Power.Mode)?.StringValue ?? null;
+				var pmodes = section.Get(HumanReadable.Hardware.Power.Mode)?.Value ?? null;
 				var pmode = PowerManager.GetModeByName(pmodes);
 				if (pmode == PowerInfo.PowerMode.Custom)
 				{
@@ -956,7 +925,7 @@ namespace Taskmaster
 				ProcessPriorityStrategy priostrat = ProcessPriorityStrategy.None;
 				if (prioR != null)
 				{
-					var priorityStrat = section.TryGet(HumanReadable.System.Process.PriorityStrategy)?.IntValue.Constrain(0, 3) ?? -1;
+					var priorityStrat = section.Get(HumanReadable.System.Process.PriorityStrategy)?.IntValue.Constrain(0, 3) ?? -1;
 
 					if (priorityStrat > 0)
 						priostrat = (ProcessPriorityStrategy)priorityStrat;
@@ -967,22 +936,22 @@ namespace Taskmaster
 				ProcessAffinityStrategy affStrat = ProcessAffinityStrategy.None;
 				if (aff >= 0)
 				{
-					int affinityStrat = section.TryGet(HumanReadable.System.Process.AffinityStrategy)?.IntValue.Constrain(0, 3) ?? 2;
+					int affinityStrat = section.Get(HumanReadable.System.Process.AffinityStrategy)?.IntValue.Constrain(0, 3) ?? 2;
 					affStrat = (ProcessAffinityStrategy)affinityStrat;
 				}
 
-				float volume = section.TryGet("Volume")?.FloatValue.Constrain(0.0f, 1.0f) ?? 0.5f;
-				AudioVolumeStrategy volumestrategy = (AudioVolumeStrategy)(section.TryGet("Volume strategy")?.IntValue.Constrain(0, 5) ?? 0);
+				float volume = section.Get("Volume")?.FloatValue.Constrain(0.0f, 1.0f) ?? 0.5f;
+				AudioVolumeStrategy volumestrategy = (AudioVolumeStrategy)(section.Get("Volume strategy")?.IntValue.Constrain(0, 5) ?? 0);
 
-				int baff = section.TryGet("Background affinity")?.IntValue ?? -1;
+				int baff = section.Get("Background affinity")?.IntValue ?? -1;
 				ProcessPriorityClass? bprio = null;
-				int bpriot = section.TryGet("Background priority")?.IntValue ?? -1;
+				int bpriot = section.Get("Background priority")?.IntValue ?? -1;
 				if (bpriot >= 0) bprio = ProcessHelpers.IntToPriority(bpriot);
 
 				PathVisibilityOptions pvis = PathVisibilityOptions.Process;
-				pvis = (PathVisibilityOptions)(section.TryGet("Path visibility")?.IntValue.Constrain(-1, 3) ?? 0);
+				pvis = (PathVisibilityOptions)(section.Get("Path visibility")?.IntValue.Constrain(-1, 3) ?? 0);
 
-				string[] tignorelist = (section.TryGet(HumanReadable.Generic.Ignore)?.StringValueArray ?? null);
+				string[] tignorelist = (section.Get(HumanReadable.Generic.Ignore)?.Array ?? null);
 				if (tignorelist != null && tignorelist.Length > 0)
 				{
 					for (int i = 0; i < tignorelist.Length; i++)
@@ -993,66 +962,39 @@ namespace Taskmaster
 
 				var prc = new ProcessController(section.Name, prioR, aff)
 				{
-					Enabled = section.TryGet(HumanReadable.Generic.Enabled)?.BoolValue ?? true,
-					Executable = section.TryGet("Image")?.StringValue ?? null,
-					Description = section.TryGet(HumanReadable.Generic.Description)?.StringValue ?? null,
+					Enabled = section.Get(HumanReadable.Generic.Enabled)?.BoolValue ?? true,
+					Executable = section.Get("Image")?.Value ?? null,
+					Description = section.Get(HumanReadable.Generic.Description)?.Value ?? null,
 					// friendly name is filled automatically
 					PriorityStrategy = priostrat,
 					AffinityStrategy = affStrat,
-					Path = (section.TryGet(HumanReadable.System.Process.Path)?.StringValue ?? null),
-					ModifyDelay = (section.TryGet("Modify delay")?.IntValue ?? 0),
+					Path = (section.Get(HumanReadable.System.Process.Path)?.Value ?? null),
+					ModifyDelay = (section.Get("Modify delay")?.IntValue ?? 0),
 					//BackgroundIO = (section.TryGet("Background I/O")?.BoolValue ?? false), // Doesn't work
-					Recheck = (section.TryGet("Recheck")?.IntValue ?? 0).Constrain(0, 300),
+					Recheck = (section.Get("Recheck")?.IntValue ?? 0).Constrain(0, 300),
 					PowerPlan = pmode,
 					PathVisibility = pvis,
 					BackgroundPriority = bprio,
 					BackgroundAffinity = baff,
 					IgnoreList = tignorelist,
-					AllowPaging = (section.TryGet("Allow paging")?.BoolValue ?? false),
-					Analyze = (section.TryGet("Analyze")?.BoolValue ?? false),
+					AllowPaging = (section.Get("Allow paging")?.BoolValue ?? false),
+					Analyze = (section.Get("Analyze")?.BoolValue ?? false),
 				};
 
-				prc.ExclusiveMode = section.TryGet("Exclusive")?.BoolValue ?? false;
+				prc.ExclusiveMode = section.Get("Exclusive")?.BoolValue ?? false;
 
-				prc.OrderPreference = section.TryGet("Preference")?.IntValue.Constrain(0, 100) ?? prc.OrderPreference;
+				prc.OrderPreference = section.Get("Preference")?.IntValue.Constrain(0, 100) ?? prc.OrderPreference;
 
-				prc.IOPriority = section.TryGet("IO priority")?.IntValue.Constrain(0, 2) ?? -1; // 0-1 background, 2 = normal, anything else seems to have no effect
+				prc.IOPriority = section.Get("IO priority")?.IntValue.Constrain(0, 2) ?? -1; // 0-1 background, 2 = normal, anything else seems to have no effect
 																										  //prc.MMPriority = section.TryGet("MEM priority")?.IntValue ?? int.MinValue; // unused
-				bool? deprecatedFgMode = section.TryGet("Foreground only")?.BoolValue; // DEPRECATED
-				bool? deprecatedBgPower = section.TryGet("Background powerdown")?.BoolValue; // DEPRECATED
-
 				// UPGRADE
-				int? foregroundMode = section.TryGet("Foreground mode")?.IntValue;
+				int? foregroundMode = section.Get("Foreground mode")?.IntValue;
 				if (foregroundMode.HasValue)
-				{
 					prc.SetForegroundMode((ForegroundMode)foregroundMode.Value.Constrain(-1, 2));
-				}
-				else
-				{
-					bool fgmode = false, pwmod = false;
-					if (deprecatedFgMode.HasValue)
-						fgmode = deprecatedFgMode.Value;
-					if (deprecatedBgPower.HasValue)
-						pwmod = deprecatedBgPower.Value;
-
-					if (fgmode || pwmod)
-					{
-						prc.SetForegroundMode(pwmod ? (fgmode ? ForegroundMode.Full : ForegroundMode.PowerOnly) : (fgmode ? ForegroundMode.Standard : ForegroundMode.Ignore));
-						prc.NeedsSaving = true;
-					}
-				}
-
-				// DEPRECATED
-				if (deprecatedFgMode.HasValue || deprecatedBgPower.HasValue)
-				{
-					section.Remove("Foreground only");
-					section.Remove("Background powerdown");
-					dirtyconfig = true;
-				}
 
 				//prc.SetForegroundMode((ForegroundMode)(section.TryGet("Foreground mode")?.IntValue.Constrain(-1, 2) ?? -1)); // NEW
 
-				prc.AffinityIdeal = section.TryGet("Affinity ideal")?.IntValue.Constrain(-1, CPUCount - 1) ?? -1;
+				prc.AffinityIdeal = section.Get("Affinity ideal")?.IntValue.Constrain(-1, CPUCount - 1) ?? -1;
 				if (prc.AffinityIdeal >= 0)
 				{
 					if (!Bit.IsSet(prc.AffinityMask, prc.AffinityIdeal))
@@ -1062,7 +1004,7 @@ namespace Taskmaster
 					}
 				}
 
-				prc.LogAdjusts = section.TryGet("Logging")?.BoolValue ?? true;
+				prc.LogAdjusts = section.Get("Logging")?.BoolValue ?? true;
 
 				prc.Volume = volume.Constrain(0f, 1f);
 				prc.VolumeStrategy = volumestrategy;
@@ -1074,10 +1016,10 @@ namespace Taskmaster
 				if (!prc.Priority.HasValue) prc.PriorityStrategy = ProcessPriorityStrategy.None;
 				else if (prc.PriorityStrategy == ProcessPriorityStrategy.None) prc.Priority = null;
 
-				int[] resize = section.TryGet("Resize")?.IntValueArray ?? null; // width,height
+				int[] resize = section.Get("Resize")?.IntArray ?? null; // width,height
 				if (resize != null && resize.Length == 4)
 				{
-					int resstrat = section.TryGet("Resize strategy")?.IntValue.Constrain(0, 3) ?? -1;
+					int resstrat = section.Get("Resize strategy")?.IntValue.Constrain(0, 3) ?? -1;
 					if (resstrat < 0) resstrat = 0;
 
 					prc.ResizeStrategy = (WindowResizeStrategy)resstrat;
@@ -1088,13 +1030,6 @@ namespace Taskmaster
 				prc.Repair();
 
 				AddController(prc);
-
-				// OBSOLETE
-				if (section.Contains(HumanReadable.System.Process.Rescan))
-				{
-					section.Remove(HumanReadable.System.Process.Rescan);
-					dirtyconfig |= true;
-				}
 
 				// cnt.Children &= ControlChildren;
 
@@ -1768,7 +1703,7 @@ namespace Taskmaster
 		async Task ExclusiveMode(ProcessEx info)
 		{
 			if (DisposedOrDisposing) throw new ObjectDisposedException("ExclusiveMode called when ProcessManager was already disposed"); ;
-			if (!MKAh.System.IsAdministrator()) return; // sadly stopping services requires admin rights
+			if (!MKAh.OperatingSystem.IsAdministrator()) return; // sadly stopping services requires admin rights
 
 			if (Taskmaster.DebugProcesses) Log.Debug($"[{info.Controller.FriendlyName}] {info.Name} (#{info.Id}) Exclusive mode initiating.");
 

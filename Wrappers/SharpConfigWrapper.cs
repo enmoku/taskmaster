@@ -30,7 +30,7 @@ namespace Taskmaster
 {
 	public class ConfigWrapper : IDisposable
 	{
-		public SharpConfig.Configuration Config { get; private set; } = null;
+		public MKAh.Ini.Config Config { get; private set; } = null;
 		public string File { get; private set; } = null;
 		string Path { get; set; } = null;
 
@@ -39,7 +39,7 @@ namespace Taskmaster
 		public event EventHandler onUnload;
 		public event EventHandler onSave;
 
-		public ConfigWrapper(SharpConfig.Configuration config, string filename)
+		public ConfigWrapper(MKAh.Ini.Config config, string filename)
 		{
 			Config = config;
 			File = filename;

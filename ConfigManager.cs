@@ -50,19 +50,22 @@ namespace Taskmaster
 						if (oldcfg.File.Equals(filename, StringComparison.InvariantCultureIgnoreCase))
 							return oldcfg;
 					}
-					SharpConfig.Configuration scfg = null;
+
+					MKAh.Ini.Config mcfg = null;
 
 					var fullpath = System.IO.Path.Combine(datapath, filename);
 					if (System.IO.File.Exists(fullpath))
-						scfg = SharpConfig.Configuration.LoadFromFile(fullpath, System.Text.Encoding.UTF8);
+					{
+						mcfg = MKAh.Ini.Config.FromFile(fullpath, System.Text.Encoding.UTF8);
+					}
 					else
 					{
 						Log.Warning("Not found: " + fullpath);
-						scfg = new SharpConfig.Configuration();
+						mcfg = new MKAh.Ini.Config();
 						System.IO.Directory.CreateDirectory(datapath);
 					}
 
-					var config = new ConfigWrapper(scfg, filename);
+					var config = new ConfigWrapper(mcfg, filename);
 					Loaded.Add(config);
 
 					config.onUnload += (cfg, ea) => Loaded.Remove((ConfigWrapper)cfg);
@@ -86,7 +89,7 @@ namespace Taskmaster
 				lock (config_lock)
 				{
 					var fullpath = System.IO.Path.Combine(datapath, cfg.File);
-					cfg.Config.SaveToFile(fullpath, System.Text.Encoding.UTF8);
+					cfg.Config.SaveToFile(fullpath, new System.Text.UTF8Encoding(false));
 				}
 			}
 			catch (Exception ex)

@@ -56,9 +56,9 @@ namespace Taskmaster.UI.Config
 			{
 				var corecfg = Taskmaster.Config.Load(Taskmaster.coreconfig);
 				var perfsec = corecfg.Config["Performance"];
-				WMIPolling = perfsec.TryGet("WMI event watcher")?.BoolValue ?? true;
-				WMIPollDelay = perfsec.TryGet("WMI poll delay")?.IntValue ?? 2;
-				ScanFrequency = perfsec.TryGet("Scan frequency")?.IntValue ?? 180;
+				WMIPolling = perfsec.Get("WMI event watcher")?.BoolValue ?? true;
+				WMIPollDelay = perfsec.Get("WMI poll delay")?.IntValue ?? 2;
+				ScanFrequency = perfsec.Get("Scan frequency")?.IntValue ?? 180;
 			}
 			else
 			{
@@ -359,7 +359,7 @@ namespace Taskmaster.UI.Config
 				var cfg = Taskmaster.Config.Load(Taskmaster.coreconfig);
 				var mainsec = cfg.Config["Core"];
 				var opt = mainsec["Version"];
-				opt.StringValue = Taskmaster.ConfigVersion;
+				opt.Value = Taskmaster.ConfigVersion;
 				opt.Comment = "Magical";
 
 				var compsec = cfg.Config["Components"];
@@ -375,7 +375,7 @@ namespace Taskmaster.UI.Config
 				compsec["Health"].BoolValue = autodoc.Checked;
 
 				var powsec = cfg.Config[HumanReadable.Hardware.Power.Section];
-				if (powmon.Checked) powsec["Behaviour"].StringValue = powbehaviour.Text.ToLower();
+				if (powmon.Checked) powsec["Behaviour"].Value = powbehaviour.Text.ToLower();
 
 				var optsec = cfg.Config["Options"];
 				optsec["Show on start"].BoolValue = showonstart.Checked;

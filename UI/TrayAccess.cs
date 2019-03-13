@@ -132,7 +132,7 @@ namespace Taskmaster.UI
 
 			var cfg = Taskmaster.Config.Load(Taskmaster.coreconfig);
 			var exsec = cfg.Config["Experimental"];
-			int exdelay = exsec.TryGet("Explorer Restart")?.IntValue ?? 0;
+			int exdelay = exsec.Get("Explorer Restart")?.IntValue ?? 0;
 			if (exdelay > 0) ExplorerRestartHelpDelay = TimeSpan.FromSeconds(exdelay.Min(5));
 			else ExplorerRestartHelpDelay = null;
 			RegisterExplorerExit();
@@ -659,7 +659,7 @@ namespace Taskmaster.UI
 			{
 				try
 				{
-					if (!MKAh.System.IsAdministrator())
+					if (!MKAh.OperatingSystem.IsAdministrator())
 					{
 						SimpleMessageBox.ShowModal("Taskmaster! – run at login", "Scheduler can not be modified without admin rights.", SimpleMessageBox.Buttons.OK);
 						return;

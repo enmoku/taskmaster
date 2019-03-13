@@ -47,7 +47,6 @@ namespace Taskmaster
 
 		public readonly static SynchronizationContext Context = SynchronizationContext.Current;
 
-		//public static SharpConfig.Configuration cfg;
 		public static string datapath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "MKAh", "Taskmaster");
 		public static string logpath = Path.Combine(datapath, "Logs");
 
@@ -296,7 +295,7 @@ namespace Taskmaster
 		{
 			// INITIAL CONFIGURATIONN
 			var tcfg = Config.Load(Taskmaster.coreconfig);
-			var sec = tcfg.Config.TryGet("Core")?.TryGet("Version")?.StringValue ?? null;
+			var sec = tcfg.Config.Get("Core")?.Get("Version")?.Value ?? null;
 			if (sec == null || sec != ConfigVersion)
 			{
 				using (var initialconfig = new UI.Config.ComponentConfigurationWindow())
@@ -599,10 +598,11 @@ namespace Taskmaster
 			var corecfg = Config.Load(coreconfig);
 			var cfg = corecfg.Config;
 
-			if (cfg.TryGet("Core")?.TryGet("Hello")?.RawValue != "Hi")
+			if (cfg.TryGet("Core", out var core) && core.TryGet("Hello", out var hello) && hello.Value.Equals("Hi"))
+			{ }
+			else
 			{
-				cfg["Core"]["Hello"].SetValue("Hi");
-				cfg["Core"]["Hello"].PreComment = "Heya";
+				cfg["Core"]["Hello"].Value = "Hi";
 				corecfg.MarkDirty();
 			}
 
@@ -611,19 +611,13 @@ namespace Taskmaster
 			var perfsec = cfg["Performance"];
 
 			bool modified = false, dirtyconfig = false;
-			cfg["Core"].GetSetDefault("License", "Refused", out modified).StringValue = "Accepted";
+			cfg["Core"].GetSetDefault("License", "Refused", out modified).Value = "Accepted";
 			dirtyconfig |= modified;
 
 			// [Components]
 			ProcessMonitorEnabled = compsec.GetSetDefault(HumanReadable.System.Process.Section, true, out modified).BoolValue;
 			compsec[HumanReadable.System.Process.Section].Comment = "Monitor starting processes based on their name. Configure in Apps.ini";
 			dirtyconfig |= modified;
-
-			if (compsec.Contains("Process paths"))
-			{
-				compsec.Remove("Process paths"); // DEPRECATED
-				dirtyconfig = true;
-			}
 
 			AudioManagerEnabled = compsec.GetSetDefault(HumanReadable.Hardware.Audio.Section, true, out modified).BoolValue;
 			compsec[HumanReadable.Hardware.Audio.Section].Comment = "Monitor audio sessions and set their volume as per user configuration.";
@@ -749,13 +743,6 @@ namespace Taskmaster
 			dirtyconfig |= modified;
 			if (SelfAffinity > Convert.ToInt32(Math.Pow(2, Environment.ProcessorCount) - 1 + double.Epsilon)) SelfAffinity = 0;
 
-			// DEPRECATED
-			if (perfsec.Contains("Persistent watchlist statistics"))
-			{
-				perfsec.Remove("Persistent watchlist statistics");
-				dirtyconfig |= modified;
-			}
-
 			SelfOptimizeBGIO = perfsec.GetSetDefault("Background I/O mode", false, out modified).BoolValue;
 			perfsec["Background I/O mode"].Comment = "Sets own priority exceptionally low. Warning: This can make TM's UI and functionality quite unresponsive.";
 			dirtyconfig |= modified;
@@ -777,11 +764,11 @@ namespace Taskmaster
 			dirtyconfig |= modified;
 
 			PathCacheLimit = perfsec.GetSetDefault("Path cache", 60, out modified).IntValue.Constrain(20, 200);
-			perfsec["Path cache"].Comment = "Path searching is very heavy process; this configures how many processes to remember paths for.\nThe cache is allowed to occasionally overflow for half as much.";
+			perfsec["Path cache"].Comment = "Path searching is very heavy process; this configures how many processes to remember paths for. The cache is allowed to occasionally overflow for half as much.";
 			dirtyconfig |= modified;
 
 			PathCacheMaxAge = new TimeSpan(0, perfsec.GetSetDefault("Path cache max age", 15, out modified).IntValue.Constrain(1, 1440), 0);
-			perfsec["Path cache max age"].Comment = "Maximum age, in minutes, of cached objects. Min: 1 (1min), Max: 1440 (1day).\nThese will be removed even if the cache is appropriate size.";
+			perfsec["Path cache max age"].Comment = "Maximum age, in minutes, of cached objects. Min: 1 (1min), Max: 1440 (1day). These will be removed even if the cache is appropriate size.";
 			dirtyconfig |= modified;
 
 			//
@@ -796,8 +783,8 @@ namespace Taskmaster
 			Log.Information("<Core> Self-optimize: " + (SelfOptimize ? HumanReadable.Generic.Enabled : HumanReadable.Generic.Disabled));
 
 			// PROTECT USERS FROM TOO HIGH PERMISSIONS
-			var isadmin = MKAh.System.IsAdministrator();
-			var adminwarning = ((cfg["Core"].TryGet("Hell")?.StringValue ?? null) != "No");
+			var isadmin = MKAh.OperatingSystem.IsAdministrator();
+			var adminwarning = ((cfg["Core"].Get("Hell")?.Value ?? null) != "No");
 			if (isadmin && adminwarning)
 			{
 				var rv = SimpleMessageBox.ShowModal(
@@ -807,7 +794,7 @@ namespace Taskmaster
 
 				if (rv == SimpleMessageBox.ResultType.OK)
 				{
-					cfg["Core"]["Hell"].StringValue = "No";
+					cfg["Core"]["Hell"].Value = "No";
 					corecfg.MarkDirty();
 				}
 				else
@@ -821,46 +808,46 @@ namespace Taskmaster
 
 			// DEBUG
 			var dbgsec = cfg["Debug"];
-			DebugProcesses = dbgsec.TryGet("Processes")?.BoolValue ?? false;
-			DebugPaths = dbgsec.TryGet("Paths")?.BoolValue ?? false;
-			DebugFullScan = dbgsec.TryGet("Full scan")?.BoolValue ?? false;
-			DebugAudio = dbgsec.TryGet(HumanReadable.Hardware.Audio.Section)?.BoolValue ?? false;
+			DebugProcesses = dbgsec.Get("Processes")?.BoolValue ?? false;
+			DebugPaths = dbgsec.Get("Paths")?.BoolValue ?? false;
+			DebugFullScan = dbgsec.Get("Full scan")?.BoolValue ?? false;
+			DebugAudio = dbgsec.Get(HumanReadable.Hardware.Audio.Section)?.BoolValue ?? false;
 
-			DebugAdjustDelay = dbgsec.TryGet("Adjust Delay")?.BoolValue ?? false;
+			DebugAdjustDelay = dbgsec.Get("Adjust Delay")?.BoolValue ?? false;
 
-			DebugForeground = dbgsec.TryGet(HumanReadable.System.Process.Foreground)?.BoolValue ?? false;
+			DebugForeground = dbgsec.Get(HumanReadable.System.Process.Foreground)?.BoolValue ?? false;
 
-			DebugPower = dbgsec.TryGet(HumanReadable.Hardware.Power.Section)?.BoolValue ?? false;
-			DebugAutoPower = dbgsec.TryGet(HumanReadable.Hardware.Power.AutoAdjust)?.BoolValue ?? false;
-			DebugMonitor = dbgsec.TryGet(HumanReadable.Hardware.Monitor.Section)?.BoolValue ?? false;
+			DebugPower = dbgsec.Get(HumanReadable.Hardware.Power.Section)?.BoolValue ?? false;
+			DebugAutoPower = dbgsec.Get(HumanReadable.Hardware.Power.AutoAdjust)?.BoolValue ?? false;
+			DebugMonitor = dbgsec.Get(HumanReadable.Hardware.Monitor.Section)?.BoolValue ?? false;
 
-			DebugSession = dbgsec.TryGet("Session")?.BoolValue ?? false;
-			DebugResize = dbgsec.TryGet("Resize")?.BoolValue ?? false;
+			DebugSession = dbgsec.Get("Session")?.BoolValue ?? false;
+			DebugResize = dbgsec.Get("Resize")?.BoolValue ?? false;
 
-			DebugWMI = dbgsec.TryGet("WMI")?.BoolValue ?? false;
+			DebugWMI = dbgsec.Get("WMI")?.BoolValue ?? false;
 
-			DebugMemory = dbgsec.TryGet("Memory")?.BoolValue ?? false;
-			DebugPaging = dbgsec.TryGet("Paging")?.BoolValue ?? true;
-			DebugStorage = dbgsec.TryGet("Storage")?.BoolValue ?? false;
+			DebugMemory = dbgsec.Get("Memory")?.BoolValue ?? false;
+			DebugPaging = dbgsec.Get("Paging")?.BoolValue ?? true;
+			DebugStorage = dbgsec.Get("Storage")?.BoolValue ?? false;
 
-			DebugNet = dbgsec.TryGet("Network")?.BoolValue ?? false;
-			DebugMic = dbgsec.TryGet("Microphone")?.BoolValue ?? false;
+			DebugNet = dbgsec.Get("Network")?.BoolValue ?? false;
+			DebugMic = dbgsec.Get("Microphone")?.BoolValue ?? false;
 
 			var exsec = cfg["Experimental"];
-			WindowResizeEnabled = exsec.TryGet("Window Resize")?.BoolValue ?? false;
-			LastModifiedList = exsec.TryGet("Last Modified")?.BoolValue ?? false;
-			TempMonitorEnabled = exsec.TryGet("Temp Monitor")?.BoolValue ?? false;
-			int trecanalysis = exsec.TryGet("Record analysis")?.IntValue ?? 0;
+			WindowResizeEnabled = exsec.Get("Window Resize")?.BoolValue ?? false;
+			LastModifiedList = exsec.Get("Last Modified")?.BoolValue ?? false;
+			TempMonitorEnabled = exsec.Get("Temp Monitor")?.BoolValue ?? false;
+			int trecanalysis = exsec.Get("Record analysis")?.IntValue ?? 0;
 			RecordAnalysis = trecanalysis > 0 ? (TimeSpan?)TimeSpan.FromSeconds(trecanalysis.Constrain(0, 180)) : null;
-			IOPriorityEnabled = exsec.TryGet("IO Priority")?.BoolValue ?? false;
-			if (!MKAh.System.IsWin7)
+			IOPriorityEnabled = exsec.Get("IO Priority")?.BoolValue ?? false;
+			if (!MKAh.OperatingSystem.IsWin7)
 			{
 				Log.Warning("<Core> I/O priority was enabled. Requires Win7 which you don't appear to be running.");
 				IOPriorityEnabled = false;
 			}
 
 #if DEBUG
-			Trace = dbgsec.TryGet("Trace")?.BoolValue ?? false;
+			Trace = dbgsec.Get("Trace")?.BoolValue ?? false;
 #endif
 
 			// END DEBUG
@@ -1024,7 +1011,7 @@ namespace Taskmaster
 
 						if (AdminCounter <= 1)
 						{
-							if (!MKAh.System.IsAdministrator())
+							if (!MKAh.OperatingSystem.IsAdministrator())
 							{
 								Log.Information("Restarting with elevated privileges.");
 								try
@@ -1073,7 +1060,7 @@ namespace Taskmaster
 		{
 			var cfg = Config.Load(coreconfig);
 
-			if (cfg.Config.TryGet("Core")?.TryGet("License")?.RawValue.Equals("Accepted") ?? false) return;
+			if (cfg.Config.Get("Core")?.Get("License")?.Value.Equals("Accepted") ?? false) return;
 
 			using (var license = new LicenseDialog())
 			{
@@ -1362,7 +1349,7 @@ namespace Taskmaster
 
 					var sbs = new StringBuilder();
 					sbs.Append("Taskmaster! (#").Append(Process.GetCurrentProcess().Id).Append(")")
-						.Append(MKAh.System.IsAdministrator() ? " [ADMIN]" : "").Append(Portable ? " [PORTABLE]" : "")
+						.Append(MKAh.OperatingSystem.IsAdministrator() ? " [ADMIN]" : "").Append(Portable ? " [PORTABLE]" : "")
 						.Append(" – Version: ").Append(System.Reflection.Assembly.GetExecutingAssembly().GetName().Version)
 						.Append(" – Built: ").Append(builddate.ToString("yyyy/MM/dd HH:mm")).Append($" [{age:N0} days old]");
 					Log.Information(sbs.ToString());

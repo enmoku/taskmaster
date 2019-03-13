@@ -263,7 +263,7 @@ namespace Taskmaster
 			configdirty |= modified;
 
 			var freememsec = cfg.Config["Free Memory"];
-			freememsec.Comment = "Attempt to free memory when available memory goes below a threshold.";
+			//freememsec.Comment = "Attempt to free memory when available memory goes below a threshold.";
 
 			Settings.MemLevel =(ulong)freememsec.GetSetDefault("Threshold", 1000, out modified).IntValue;
 			// MemLevel = MemLevel > 0 ? MemLevel.Constrain(1, 2000) : 0;
@@ -275,7 +275,7 @@ namespace Taskmaster
 				freememsec["Ignore foreground"].Comment = "Foreground app is not touched, regardless of anything.";
 				configdirty |= modified;
 
-				Settings.IgnoreList = freememsec.GetSetDefault("Ignore list", new string[] { }, out modified).StringValueArray;
+				Settings.IgnoreList = freememsec.GetSetDefault("Ignore list", new string[] { }, out modified).Array;
 				freememsec["Ignore list"].Comment = "List of apps that we don't touch regardless of anything.";
 				configdirty |= modified;
 

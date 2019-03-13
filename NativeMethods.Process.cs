@@ -51,7 +51,7 @@ namespace Taskmaster
 		public static bool SetIOPriority(int Handle, int Priority)
 		{
 			// the functionality changed with Windows 8 drastically and likely does something else
-			if (MKAh.System.IsWin7)
+			if (MKAh.OperatingSystem.IsWin7)
 			{
 				try
 				{
@@ -74,7 +74,7 @@ namespace Taskmaster
 		public static int GetIOPriority(int Handle)
 		{
 			// the functionality changed with Windows 8 drastically and likely does something else
-			if (MKAh.System.IsWin7)
+			if (MKAh.OperatingSystem.IsWin7)
 			{
 				try
 				{
