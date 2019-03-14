@@ -1,16 +1,15 @@
 ﻿using System;
 using Taskmaster;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 using MKAh;
+using NUnit;
+using NUnit.Framework;
 
 namespace Timing
 {
-	[TestClass]
+	[TestFixture]
 	public class Time
 	{
-		public TestContext TestContext { get; set; }
-
-		[TestMethod]
+		[Test]
 		public void AffinityBitCountTests()
 		{
 			uint eticks = (uint)Environment.TickCount;
@@ -22,13 +21,13 @@ namespace Timing
 			Assert.AreEqual(eticks/1000, pticks/1000);
 		}
 
-		[TestMethod]
+		[Test]
 		public void GetTickCountCorrection()
 		{
 			Assert.AreEqual(10_000L, MKAh.User.CorrectIdleTime(12_000, 22_000), "Normal");
 		}
 
-		[TestMethod]
+		[Test]
 		public void GetTickCountWrapAround()
 		{
 			uint diff = 5_000;

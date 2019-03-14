@@ -1,16 +1,14 @@
 ﻿using System;
 using Taskmaster;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 using MKAh;
+using NUnit.Framework;
 
 namespace Processes
 {
-	[TestClass]
+	[TestFixture]
 	public class ProcessController
 	{
-		public TestContext TestContext { get; set; }
-
-		[TestMethod]
+		[Test]
 		public void AffinityBitCountTests()
 		{
 			int testSource = 192;
@@ -25,7 +23,7 @@ namespace Processes
 			Assert.AreEqual(2, excesscores);
 		}
 
-		[TestMethod]
+		[Test]
 		public void AffinityBitManipTests()
 		{
 			int mask = 0b11110000; // 240
@@ -37,7 +35,7 @@ namespace Processes
 			Assert.AreEqual(expected, mask);
 		}
 
-		[TestMethod]
+		[Test]
 		public void CPUMaskTests()
 		{
 			int fakecpucount = 8;
@@ -46,7 +44,7 @@ namespace Processes
 			Assert.AreEqual(expectedoffset, offset);
 		}
 
-		[TestMethod]
+		[Test]
 		public void AffinityStrategyTests()
 		{
 			int testSource = 192;
@@ -71,7 +69,7 @@ namespace Processes
 			Assert.AreEqual(Bit.Count(testSource), Bit.Count(testProduct));
 		}
 
-		[TestMethod]
+		[Test]
 		public void AffinityTests()
 		{
 			int target = 240;

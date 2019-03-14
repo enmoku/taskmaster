@@ -1,14 +1,14 @@
 ﻿using System;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
+using NUnit.Framework;
 
 namespace Power
 {
-	[TestClass]
+	[TestFixture]
 	public class AutoAdjust
 	{
 		public TestContext TestContext { get; set; }
 
-		[TestMethod]
+		[Test]
 		public void CPULoadHandlerTests()
 		{
 			/*

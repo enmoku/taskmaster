@@ -1,21 +1,21 @@
-﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
+using NUnit;
+using NUnit.Framework;
+
 using Ini = MKAh.Ini;
 
 namespace IniFile
 {
-	[TestClass]
+	[TestFixture]
 	public class Reading
 	{
-		public TestContext TestContext { get; set; }
-
-		[TestMethod]
+		[Test]
 		public void Initialization()
 		{
 			var config = new Ini.Config();
@@ -35,7 +35,7 @@ namespace IniFile
 			Assert.AreEqual("[Test]\n", lines[0]);
 		}
 
-		[TestMethod]
+		[Test]
 		public void LoadFromText()
 		{
 			var data = Properties.Resources.TestIni;
@@ -45,7 +45,7 @@ namespace IniFile
 			config.Load(data.Split('\n'));
 		}
 
-		[TestMethod]
+		[Test]
 		public void StoreValue()
 		{
 			try
@@ -90,7 +90,7 @@ namespace IniFile
 			}
 		}
 
-		[TestMethod]
+		[Test]
 		public void Indexers()
 		{
 			var config = new Ini.Config();
@@ -98,7 +98,7 @@ namespace IniFile
 			config["Section"]["Key"].Value = "HaHaHa";
 
 			Assert.AreEqual(1, config.ItemCount);
-			Assert.AreEqual(1, config.Sections.First().ItemCount);
+			Assert.AreEqual(1, config.Items.First().ItemCount);
 
 			var section = config["Section"];
 
@@ -112,6 +112,52 @@ namespace IniFile
 		public void EmptyValues()
 		{
 
+		}
+
+		[Test]
+		public void SectionEnumerator()
+		{
+			var config = new Ini.Config();
+
+			config.Add(new Ini.Section("Test1", 5));
+			config.Add(new Ini.Section("Test2", 72));
+
+			var results = new List<string>();
+			var resultsInt = new List<int>();
+
+			foreach (Ini.Section section in config)
+			{
+				results.Add(section.Name);
+				resultsInt.Add(section.Index);
+			}
+
+			Assert.AreEqual("Test1", results[0]);
+			Assert.AreEqual(5, resultsInt[0]);
+			Assert.AreEqual("Test2", results[1]);
+			Assert.AreEqual(72, resultsInt[1]);
+		}
+
+		[Test]
+		public void SettingEnumerator()
+		{
+			var section = new Ini.Section("TestSection");
+
+			section.Add(new Ini.Setting() { Name = "Test1", IntValue = 5 });
+			section.Add(new Ini.Setting() { Name = "Test2", IntValue = 72 });
+
+			var results = new List<string>();
+			var resultInts = new List<string>();
+
+			foreach (Ini.Setting setting in section)
+			{
+				results.Add(setting.Name);
+				resultInts.Add(setting.Value);
+			}
+
+			Assert.AreEqual("Test1", results[0]);
+			Assert.AreEqual("5", resultInts[0]);
+			Assert.AreEqual("Test2", results[1]);
+			Assert.AreEqual("72", resultInts[1]);
 		}
 	}
 }
