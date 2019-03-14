@@ -242,6 +242,8 @@ namespace Taskmaster
 					// - Show errors in increasing rarity
 					// - Reset the increased rarity once it becomes too rare
 
+					//Debug.WriteLine($"NETWORK - Errors: +{errorsInSample}, NotPeaked: {!ErrorReports.Peaked}, Level: {ErrorReports.Level}/{ErrorReports.Peak}");
+
 					if (Taskmaster.ShowNetworkErrors // user wants to see this
 						&& errorsInSample > 0 // only if errors
 						&& !ErrorReports.Peaked // we're not waiting for report counter to go down
@@ -272,8 +274,12 @@ namespace Taskmaster
 							sbs.Append("+").Append(errorsInSample).Append(" errors in last sample");
 						if (!double.IsNaN(pmins)) sbs.Append($"; {pmins:N1}").Append(" minutes since last report");
 						sbs.Append(")");
+
+						Log.Warning(sbs.ToString());
+
 						errorsSinceLastReport = 0;
 						lastErrorReport = now;
+
 
 						// TODO: Slow down reports if they're excessively frequent
 
