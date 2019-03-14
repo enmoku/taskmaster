@@ -382,13 +382,12 @@ namespace MKAh
 						// proper array
 						// { "" }
 
-						Debug.WriteLine("GetArray: " + source);
-
+						//Debug.WriteLine("GetArray: " + source);
 
 						var array = GetArray(source, ArrayStart, out end);
 						value.Array = value.UnescapeArray(array);
 
-						Debug.WriteLine("Escaped:  "+value.EscapedValue);
+						//Debug.WriteLine("Escaped:  "+value.EscapedValue);
 
 						//value.Value = source.Substring(ArrayStart, end - ArrayStart).Trim();
 
