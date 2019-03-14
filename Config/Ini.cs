@@ -131,9 +131,8 @@ namespace MKAh
 			public char CommentChar = Constant.StandardComment;
 			public char[] CommentChars = { Constant.StandardComment, Constant.AlternateComment };
 
-			public List<Section> Sections { get; private set; } = new List<Section>();
-
-			public int ItemCount => Sections.Count;
+			public List<Section> Items { get; private set; } = new List<Section>();
+			public int ItemCount => Items.Count;
 
 			public string LineEnd = "\n";
 
@@ -206,7 +205,7 @@ namespace MKAh
 
 			void HandleLine(string line, int lineNumber, ref Section section)
 			{
-				Debug.WriteLine($"INI [{lineNumber}]: {line}");
+				Debug.WriteLine($"INI [{lineNumber:000}]: {line}");
 				if (string.IsNullOrWhiteSpace(line))
 				{
 					if (StripEmptyLines) return;
@@ -232,7 +231,7 @@ namespace MKAh
 					if (!PreserveWhitespace) SectionName = SectionName.Trim();
 
 					section = new Section(SectionName);
-					Sections.Add(section);
+					Items.Add(section);
 				}
 				else
 				{
@@ -259,8 +258,8 @@ namespace MKAh
 			#region Indexer
 			public Section this[int index]
 			{
-				get => Sections[index];
-				set => Sections[index] = value;
+				get => Items[index];
+				set => Items[index] = value;
 			}
 
 			public Section this[string name]
@@ -271,7 +270,7 @@ namespace MKAh
 					if (!TryGet(name, out section))
 					{
 						section = new Section(name);
-						Sections.Add(section);
+						Items.Add(section);
 					}
 
 					return section;
@@ -284,11 +283,11 @@ namespace MKAh
 
 					if (TryGet(value.Name, out var section))
 					{
-						Insert(Sections.IndexOf(section), value);
+						Insert(Items.IndexOf(section), value);
 						if (UniqueSections) Remove(section);
 					}
 					else
-						Sections.Add(value);
+						Items.Add(value);
 				}
 			}
 			#endregion
@@ -297,7 +296,7 @@ namespace MKAh
 			{
 				try
 				{
-					Sections.RemoveAt(i);
+					Items.RemoveAt(i);
 					return true;
 				}
 				catch
@@ -314,16 +313,16 @@ namespace MKAh
 				return false;
 			}
 
-			public bool Remove(Section section) => Sections.Remove(section);
-			public void RemoveAt(int index) => Sections.RemoveAt(index);
+			public bool Remove(Section section) => Items.Remove(section);
+			public void RemoveAt(int index) => Items.RemoveAt(index);
 
 			public void Add(Section section)
 			{
 				section.UniqueKeys = UniqueKeys;
-				Sections.Add(section);
+				Items.Add(section);
 			}
 
-			public void Insert(int index, Section section) => Sections.Insert(index, section);
+			public void Insert(int index, Section section) => Items.Insert(index, section);
 
 			public Section Get(string name) => TryGet(name, out var section) ? section : null;
 
@@ -331,7 +330,7 @@ namespace MKAh
 
 			public bool TryGet(string name, out Section value)
 			{
-				value = (from val in Sections
+				value = (from val in Items
 						 where !string.IsNullOrEmpty(val.Name)
 						 where val.Name.Equals(name, StringComparison.InvariantCultureIgnoreCase)
 						 select val).FirstOrDefault();
@@ -525,11 +524,49 @@ namespace MKAh
 				throw new FormatException("Quoted string end not found.");
 			}
 
+			public IEnumerable<string> EnumerateLines()
+			{
+				int lineNo = 0;
+
+				if (Header.ItemCount > 0)
+				{
+					foreach (Setting item in Header)
+					{
+						item.Line = lineNo++;
+						yield return item.Type != SettingType.Empty ? item.ToString() : string.Empty;
+					}
+
+					if (PadSections)
+					{
+						lineNo++;
+						yield return string.Empty;
+					}
+				}
+
+				foreach (Section section in this)
+				{
+					section.Line = lineNo++;
+					yield return $"{Constant.SectionStart}{section.Name}{Constant.SectionEnd}";
+
+					foreach (Setting item in section)
+					{
+						item.Line = lineNo++;
+						yield return item.Type != SettingType.Empty ? item.ToString() : string.Empty;
+					}
+
+					if (PadSections)
+					{
+						lineNo++;
+						yield return string.Empty;
+					}
+				}
+			}
+
 			public string[] GetLines()
 			{
-				int totallines = Sections.Count * 2 - 1;
-				foreach (var section in Sections)
-					totallines += section.Values.Count;
+				int totallines = Items.Count * 2 - 1;
+				foreach (var section in Items)
+					totallines += section.Items.Count;
 
 				var output = new List<string>(totallines);
 
@@ -539,7 +576,7 @@ namespace MKAh
 
 				if (Header.ItemCount > 0)
 				{
-					foreach (var kval in Header.Values)
+					foreach (var kval in Header.Items)
 					{
 						switch (kval.Type)
 						{
@@ -564,7 +601,7 @@ namespace MKAh
 					}
 				}
 
-				foreach (var section in Sections)
+				foreach (var section in Items)
 				{
 					if (section.Index >= 0)
 					{
@@ -573,7 +610,7 @@ namespace MKAh
 						section.Line = LineNo++;
 					}
 
-					foreach (var kval in section.Values)
+					foreach (var kval in section.Items)
 					{
 						switch (kval.Type)
 						{
@@ -615,6 +652,7 @@ namespace MKAh
 
 					SaveToStream(writer, lines);
 				}
+				lines = null;
 			}
 
 			public void SaveToStream(System.IO.StreamWriter writer, string[] lines = null)
@@ -626,7 +664,7 @@ namespace MKAh
 					writer.Write(line);
 			}
 
-			public IEnumerator<Section> GetEnumerator() => Sections.GetEnumerator();
+			public IEnumerator<Section> GetEnumerator() => Items.GetEnumerator();
 			IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 		}
 
@@ -944,8 +982,8 @@ namespace MKAh
 
 		public class Section : Interface.Value, Interface.Container<Setting>, IEnumerable<Setting>
 		{
-			public List<Setting> Values = new List<Setting>();
-			public int ItemCount => Values.Count;
+			public List<Setting> Items { get; private set; } = new List<Setting>();
+			public int ItemCount => Items.Count;
 
 			HashSet<string> hUniqueKeys = null;
 
@@ -975,8 +1013,8 @@ namespace MKAh
 			#region Indexers
 			public Setting this[int index]
 			{
-				get => Values[index];
-				set => Values.Insert(index, value);
+				get => Items[index];
+				set => Items.Insert(index, value);
 			}
 
 			public Setting this[string key]
@@ -987,7 +1025,7 @@ namespace MKAh
 					if (!TryGet(key, out value))
 					{
 						value = new Setting() { Name = key };
-						Values.Add(value);
+						Items.Add(value);
 					}
 
 					return value;
@@ -997,7 +1035,7 @@ namespace MKAh
 					// TODO: different behaviour with unique keys
 					if (TryGet(key, out var result))
 					{
-						Insert(Values.IndexOf(result), value);
+						Insert(Items.IndexOf(result), value);
 						if (UniqueKeys) Remove(result);
 					}
 					else
@@ -1012,7 +1050,7 @@ namespace MKAh
 
 			public bool TryGet(string name, out Setting value)
 			{
-				value = (from val in Values
+				value = (from val in Items
 						 where val.Type == SettingType.Generic
 						 where !string.IsNullOrEmpty(val.Name)
 						 where val.Name.Equals(name, StringComparison.InvariantCultureIgnoreCase)
@@ -1023,10 +1061,10 @@ namespace MKAh
 
 			public bool Contains(string key) => TryGet(key, out _);
 
-			public void Add(Setting value) => Values.Add(value);
-			public void Insert(int index, Setting value) => Values.Insert(index, value);
-			public bool Remove(Setting value) => Values.Remove(value);
-			public void RemoveAt(int index) => Values.RemoveAt(index);
+			public void Add(Setting value) => Items.Add(value);
+			public void Insert(int index, Setting value) => Items.Insert(index, value);
+			public bool Remove(Setting value) => Items.Remove(value);
+			public void RemoveAt(int index) => Items.RemoveAt(index);
 			public bool TryRemove(string key)
 			{
 				if (TryGet(key, out var value))
@@ -1038,7 +1076,7 @@ namespace MKAh
 				return false;
 			}
 
-			public IEnumerator<Setting> GetEnumerator() => Values.GetEnumerator();
+			public IEnumerator<Setting> GetEnumerator() => Items.GetEnumerator();
 			IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 		}
 	}
