@@ -29,12 +29,52 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using MKAh.Ini.Interface;
 
 namespace MKAh
 {
 	namespace Ini
 	{
-		public class Config : IEnumerable<Section>
+		namespace Interface
+		{
+			public class Value
+			{
+				public int Line { get; internal set; } = -1;
+
+				string _name = string.Empty;
+				public string Name
+				{
+					get => _name;
+					set
+					{
+						if (value != null && value.IndexOfAny(Config.ReservedCharacters) >= 0)
+							throw new ArgumentException("Name contains invalid characters.");
+						_name = value;
+					}
+				}
+			}
+
+			public interface Container<T>
+			{
+				int ItemCount { get; }
+
+				#region Indexers
+				T this[int index] { get; set; }
+				T this[string key] { get;set; }
+				#endregion
+
+				bool TryGet(string name, out T value);
+				bool Contains(string key);
+				T Get(string key);
+				void Add(T value);
+				void Insert(int index, T value);
+				bool Remove(T value);
+				void RemoveAt(int index);
+				bool TryRemove(string key);
+			}
+		}
+
+		public class Config : Interface.Container<Section>, IEnumerable<Section>
 		{
 			public static readonly char[] ReservedCharacters
 				= new[] { Constant.Quote, Constant.StandardComment, Constant.AlternateComment, Constant.KeyValueSeparator,
@@ -93,7 +133,7 @@ namespace MKAh
 
 			public List<Section> Sections { get; private set; } = new List<Section>();
 
-			public int SectionCount => Sections.Count;
+			public int ItemCount => Sections.Count;
 
 			public string LineEnd = "\n";
 
@@ -132,6 +172,8 @@ namespace MKAh
 			}
 
 			public Section Header { get; private set; } = new Section("HEADER", -1);
+
+			public Section this[int index] { get; set; }
 
 			public void Load(string[] lines)
 			{
@@ -281,6 +323,7 @@ namespace MKAh
 			}
 
 			public bool Remove(Section section) => Sections.Remove(section);
+			public void RemoveAt(int index) => Sections.RemoveAt(index);
 
 			public void Add(Section section)
 			{
@@ -288,26 +331,9 @@ namespace MKAh
 				Sections.Add(section);
 			}
 
-			public bool Insert(int index, Section section)
-			{
-				try
-				{
-					Sections.Insert(index, section);
-					return true;
-				}
-				catch
-				{
-					return false;
-				}
-			}
+			public void Insert(int index, Section section) => Sections.Insert(index, section);
 
-			public Section Get(string name)
-			{
-				if (TryGet(name, out var section))
-					return section;
-
-				throw new ArgumentOutOfRangeException($"{name} not found");
-			}
+			public Section Get(string name) => TryGet(name, out var section) ? section : null;
 
 			public bool Contains(string name) => TryGet(name, out _);
 
@@ -330,7 +356,7 @@ namespace MKAh
 
 				if (KeyValueSeparator >= 0 && (CommentStart > KeyValueSeparator || CommentStart == -1))
 				{
-					value = new Setting() { Key = source.Substring(0, KeyValueSeparator).Trim() };
+					value = new Setting() { Name = source.Substring(0, KeyValueSeparator).Trim() };
 
 					KeyValueSeparator++; // skip =
 
@@ -517,7 +543,9 @@ namespace MKAh
 
 				string formatted = null;
 
-				if (Header.ValueCount > 0)
+				int LineNo = 0;
+
+				if (Header.ItemCount > 0)
 				{
 					foreach (var kval in Header.Values)
 					{
@@ -526,13 +554,22 @@ namespace MKAh
 							default:
 								formatted = kval.ToString() + LineEnd;
 								output.Add(formatted);
+								kval.Line = LineNo++;
 								break;
 							case SettingType.Empty:
-								if (!StripEmptyLines) output.Add(LineEnd);
+								if (!StripEmptyLines)
+								{
+									output.Add(LineEnd);
+									kval.Line = LineNo++;
+								}
 								break;
 						}
 					}
-					if (PadSections) output.Add(LineEnd);
+					if (PadSections)
+					{
+						output.Add(LineEnd);
+						LineNo++;
+					}
 				}
 
 				foreach (var section in Sections)
@@ -541,6 +578,7 @@ namespace MKAh
 					{
 						formatted = $"[{section.Name}]{LineEnd}";
 						output.Add(formatted);
+						section.Line = LineNo++;
 					}
 
 					foreach (var kval in section.Values)
@@ -550,14 +588,23 @@ namespace MKAh
 							default:
 								formatted = kval.ToString() + LineEnd;
 								output.Add(formatted);
+								kval.Line = LineNo++;
 								break;
 							case SettingType.Empty:
-								if (!StripEmptyLines) output.Add(LineEnd);
+								if (!StripEmptyLines)
+								{
+									output.Add(LineEnd);
+									kval.Line = LineNo++;
+								}
 								break;
 						}
 					}
 
-					if (PadSections) output.Add(LineEnd);
+					if (PadSections)
+					{
+						output.Add(LineEnd);
+						LineNo++;
+					}
 				}
 
 				return output.ToArray();
@@ -612,7 +659,7 @@ namespace MKAh
 			Empty,
 		}
 
-		public class Setting
+		public class Setting : Interface.Value
 		{
 			public SettingType Type { get; private set; } = SettingType.Generic;
 
@@ -627,12 +674,11 @@ namespace MKAh
 				if (CommentOnly)
 					return $"# {Comment}";
 				else if (string.IsNullOrEmpty(Comment))
-					return $"{Key} = {EscapedValue}";
+					return $"{Name} = {EscapedValue}";
 				else
-					return $"{Key} = {EscapedValue} # {Comment}";
+					return $"{Name} = {EscapedValue} # {Comment}";
 			}
 
-			public string Key { get; set; } = null;
 			string _value = null;
 			public string Value
 			{
@@ -734,7 +780,7 @@ namespace MKAh
 				}
 			}
 
-			public bool CommentOnly => string.IsNullOrEmpty(Key);
+			public bool CommentOnly => string.IsNullOrEmpty(Name);
 
 			public bool IsArray => Array != null;
 			string[] _array = null;
@@ -904,24 +950,13 @@ namespace MKAh
 			}
 		}
 
-		public class Section : IEnumerable<Setting>
+		public class Section : Interface.Value, Interface.Container<Setting>, IEnumerable<Setting>
 		{
 			public List<Setting> Values = new List<Setting>();
-			public int ValueCount => Values.Count;
+			public int ItemCount => Values.Count;
 
 			HashSet<string> hUniqueKeys = null;
 
-			string _name = string.Empty;
-			public string Name
-			{
-				get => _name;
-				set
-				{
-					if (value != null && value.IndexOfAny(Config.ReservedCharacters) >= 0)
-						throw new ArgumentException("Name contains invalid characters.");
-					_name = value;
-				}
-			}
 			public int Index { get; private set; } = 0;
 
 			bool _uniqueKeys = false;
@@ -959,7 +994,7 @@ namespace MKAh
 					Setting value = null;
 					if (!TryGet(key, out value))
 					{
-						value = new Setting() { Key = key };
+						value = new Setting() { Name = key };
 						Values.Add(value);
 					}
 
@@ -980,12 +1015,14 @@ namespace MKAh
 			}
 			#endregion
 
+			public Setting Get(string key) => TryGet(key, out var value) ? value : null;
+
 			public bool TryGet(string name, out Setting value)
 			{
 				value = (from val in Values
 						 where val.Type == SettingType.Generic
-						 where !string.IsNullOrEmpty(val.Key)
-						 where val.Key.Equals(name, StringComparison.InvariantCultureIgnoreCase)
+						 where !string.IsNullOrEmpty(val.Name)
+						 where val.Name.Equals(name, StringComparison.InvariantCultureIgnoreCase)
 						 select val).FirstOrDefault();
 
 				return (value != null);
@@ -993,18 +1030,11 @@ namespace MKAh
 
 			public bool Contains(string key) => TryGet(key, out _);
 
-			public Setting Get(string key)
-			{
-				if (TryGet(key, out var value))
-					return value;
-
-				return null;
-			}
 			public void Add(Setting value) => Values.Add(value);
 			public void Insert(int index, Setting value) => Values.Insert(index, value);
 			public bool Remove(Setting value) => Values.Remove(value);
 			public void RemoveAt(int index) => Values.RemoveAt(index);
-			public bool Remove(string key)
+			public bool TryRemove(string key)
 			{
 				if (TryGet(key, out var value))
 				{
@@ -1032,7 +1062,7 @@ namespace MKAh
 			{
 				if (rv == null)
 				{
-					rv = new Ini.Setting() { Key = setting };
+					rv = new Ini.Setting() { Name = setting };
 					section.Add(rv);
 				}
 
@@ -1056,7 +1086,7 @@ namespace MKAh
 			{
 				if (rv == null)
 				{
-					rv = new Ini.Setting() { Key = setting };
+					rv = new Ini.Setting() { Name = setting };
 					section.Add(rv);
 				}
 

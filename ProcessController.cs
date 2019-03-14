@@ -33,6 +33,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using MKAh;
+using Ini = MKAh.Ini;
 using Serilog;
 
 namespace Taskmaster
@@ -447,7 +448,7 @@ namespace Taskmaster
 			RecentlyModified.Clear();
 		}
 
-		public void SaveConfig(ConfigWrapper cfg = null, MKAh.Ini.Section app = null)
+		public void SaveConfig(ConfigWrapper cfg = null, Ini.Section app = null)
 		{
 			// TODO: Check if anything actually was changed?
 
@@ -460,16 +461,16 @@ namespace Taskmaster
 			if (!string.IsNullOrEmpty(Executable))
 				app["Image"].Value = Executable;
 			else
-				app.Remove("Image");
+				app.TryRemove("Image");
 			if (!string.IsNullOrEmpty(Path))
 				app[HumanReadable.System.Process.Path].Value = Path;
 			else
-				app.Remove(HumanReadable.System.Process.Path);
+				app.TryRemove(HumanReadable.System.Process.Path);
 
 			if (!string.IsNullOrEmpty(Description))
 				app[HumanReadable.Generic.Description].Value = Description;
 			else
-				app.Remove(HumanReadable.Generic.Description);
+				app.TryRemove(HumanReadable.Generic.Description);
 
 			if (Priority.HasValue)
 			{
@@ -478,8 +479,8 @@ namespace Taskmaster
 			}
 			else
 			{
-				app.Remove(HumanReadable.System.Process.Priority);
-				app.Remove(HumanReadable.System.Process.PriorityStrategy);
+				app.TryRemove(HumanReadable.System.Process.Priority);
+				app.TryRemove(HumanReadable.System.Process.PriorityStrategy);
 			}
 
 			if (AffinityMask >= 0)
@@ -491,48 +492,48 @@ namespace Taskmaster
 			}
 			else
 			{
-				app.Remove(HumanReadable.System.Process.Affinity);
-				app.Remove(HumanReadable.System.Process.AffinityStrategy);
+				app.TryRemove(HumanReadable.System.Process.Affinity);
+				app.TryRemove(HumanReadable.System.Process.AffinityStrategy);
 			}
 
 			if (AffinityIdeal >= 0)
 				app["Affinity ideal"].IntValue = AffinityIdeal;
 			else
-				app.Remove("Affinity ideal");
+				app.TryRemove("Affinity ideal");
 
 			if (IOPriority >= 0)
 				app["IO priority"].IntValue = IOPriority;
 			else
-				app.Remove("IO priority");
+				app.TryRemove("IO priority");
 
 			var pmode = PowerManager.GetModeName(PowerPlan);
 			if (PowerPlan != PowerInfo.PowerMode.Undefined)
 				app[HumanReadable.Hardware.Power.Mode].Value = PowerManager.GetModeName(PowerPlan);
 			else
-				app.Remove(HumanReadable.Hardware.Power.Mode);
+				app.TryRemove(HumanReadable.Hardware.Power.Mode);
 
 			switch (Foreground)
 			{
 				case ForegroundMode.Ignore:
-					app.Remove("Background powerdown");
+					app.TryRemove("Background powerdown");
 					clearNonPower:
-					app.Remove("Foreground only");
-					app.Remove("Foreground mode");
-					app.Remove("Background priority");
-					app.Remove("Background affinity");
+					app.TryRemove("Foreground only");
+					app.TryRemove("Foreground mode");
+					app.TryRemove("Background priority");
+					app.TryRemove("Background affinity");
 					break;
 				case ForegroundMode.Standard:
-					app.Remove("Background powerdown");
+					app.TryRemove("Background powerdown");
 					saveFgMode:
 					app["Foreground mode"].IntValue = (int)Foreground;
 					if (BackgroundPriority.HasValue)
 						app["Background priority"].IntValue = ProcessHelpers.PriorityToInt(BackgroundPriority.Value);
 					else
-						app.Remove("Background priority");
+						app.TryRemove("Background priority");
 					if (BackgroundAffinity >= 0)
 						app["Background affinity"].IntValue = BackgroundAffinity;
 					else
-						app.Remove("Background affinity");
+						app.TryRemove("Background affinity");
 					break;
 				case ForegroundMode.Full:
 					goto saveFgMode;
@@ -543,33 +544,33 @@ namespace Taskmaster
 			if (AllowPaging)
 				app["Allow paging"].BoolValue = AllowPaging;
 			else
-				app.Remove("Allow paging");
+				app.TryRemove("Allow paging");
 
 			if (PathVisibility != PathVisibilityOptions.Invalid)
 				app["Path visibility"].IntValue = (int)PathVisibility;
 			else
-				app.Remove("Path visibility");
+				app.TryRemove("Path visibility");
 
 			if (!string.IsNullOrEmpty(Executable))
 			{
 				if (Recheck > 0) app["Recheck"].IntValue = Recheck;
-				else app.Remove("Recheck");
+				else app.TryRemove("Recheck");
 			}
 
 			if (!Enabled) app[HumanReadable.Generic.Enabled].BoolValue = Enabled;
-			else app.Remove(HumanReadable.Generic.Enabled);
+			else app.TryRemove(HumanReadable.Generic.Enabled);
 
 			app["Preference"].IntValue = OrderPreference;
 
 			if (IgnoreList != null && IgnoreList.Length > 0)
 				app[HumanReadable.Generic.Ignore].Array = IgnoreList;
 			else
-				app.Remove(HumanReadable.Generic.Ignore);
+				app.TryRemove(HumanReadable.Generic.Ignore);
 
 			if (ModifyDelay > 0)
 				app["Modify delay"].IntValue = ModifyDelay;
 			else
-				app.Remove("Modify delay");
+				app.TryRemove("Modify delay");
 
 			if (Resize.HasValue)
 			{
@@ -594,8 +595,8 @@ namespace Taskmaster
 			}
 			else
 			{
-				app.Remove("Resize strategy");
-				app.Remove("Resize");
+				app.TryRemove("Resize strategy");
+				app.TryRemove("Resize");
 			}
 
 			if (VolumeStrategy != AudioVolumeStrategy.Ignore)
@@ -605,8 +606,8 @@ namespace Taskmaster
 			}
 			else
 			{
-				app.Remove("Volume");
-				app.Remove("Volume strategy");
+				app.TryRemove("Volume");
+				app.TryRemove("Volume strategy");
 			}
 
 			app["Logging"].BoolValue = LogAdjusts;

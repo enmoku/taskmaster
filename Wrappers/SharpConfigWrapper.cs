@@ -25,12 +25,13 @@
 // THE SOFTWARE.
 
 using System;
+using Ini = MKAh.Ini;
 
 namespace Taskmaster
 {
 	public class ConfigWrapper : IDisposable
 	{
-		public MKAh.Ini.Config Config { get; private set; } = null;
+		public Ini.Config Config { get; private set; } = null;
 		public string File { get; private set; } = null;
 		string Path { get; set; } = null;
 
@@ -39,7 +40,7 @@ namespace Taskmaster
 		public event EventHandler onUnload;
 		public event EventHandler onSave;
 
-		public ConfigWrapper(MKAh.Ini.Config config, string filename)
+		public ConfigWrapper(Ini.Config config, string filename)
 		{
 			Config = config;
 			File = filename;

@@ -24,7 +24,7 @@ namespace IniFile
 
 			config.Add(section);
 
-			section.Add(new Ini.Setting() { Key = "Key" }); // empty value
+			section.Add(new Ini.Setting() { Name = "Key" }); // empty value
 
 			var lines = config.GetLines();
 
@@ -52,32 +52,32 @@ namespace IniFile
 			{
 				var section = new Ini.Section("Test");
 
-				var key0 = new Ini.Setting { Key = "Key0", Value = "#\"bob\"", Comment = "string" };
+				var key0 = new Ini.Setting { Name = "Key0", Value = "#\"bob\"", Comment = "string" };
 				Debug.WriteLine(key0.Value);
 				Assert.AreEqual("#\"bob\"", key0.Value);
 
-				var key1 = new Ini.Setting { Key = "Key1", Comment = "float" };
+				var key1 = new Ini.Setting { Name = "Key1", Comment = "float" };
 				key1.Set(0.5f);
 				Debug.WriteLine(key1.Value);
 				Assert.AreEqual("0.5", key1.Value);
 
-				var intarray = new Ini.Setting { Key = "IntArray", Comment = "ints" };
+				var intarray = new Ini.Setting { Name = "IntArray", Comment = "ints" };
 				intarray.Set(new[] { 1, 2f, 3 });
 				Debug.WriteLine(intarray.EscapedValue);
 				Assert.AreEqual("{ 1, 2, 3 }", intarray.EscapedValue);
 
-				var strarray = new Ini.Setting { Key = "StringArray", Comment = "strings" };
+				var strarray = new Ini.Setting { Name = "StringArray", Comment = "strings" };
 				strarray.Set(new[] { "abc", "xyz" });
 				Debug.WriteLine(strarray.EscapedValue);
 				Assert.AreEqual("{ abc, xyz }", strarray.EscapedValue);
 
-				var badarray = new Ini.Setting { Key = "BadArray", Comment = "bad strings" };
+				var badarray = new Ini.Setting { Name = "BadArray", Comment = "bad strings" };
 				badarray.Set(new[] { "a#b#c", "x\"y\"z", "\"doop\"#", "good", "  spaced", "#bad", "#\"test\"" });
 				Debug.WriteLine(badarray.EscapedValue);
 
 				Assert.AreEqual("{ \"a#b#c\", \"x\\\"y\\\"z\", \"\\\"doop\\\"#\", good, \"  spaced\", \"#bad\", \"#\\\"test\\\"\" }", badarray.EscapedValue);
 
-				var quotedArray = new Ini.Setting { Key="test", Value = "kakka\"bob\"" };
+				var quotedArray = new Ini.Setting { Name="test", Value = "kakka\"bob\"" };
 
 				section.Add(key0);
 				section.Add(key1);
@@ -97,12 +97,12 @@ namespace IniFile
 
 			config["Section"]["Key"].Value = "HaHaHa";
 
-			Assert.AreEqual(1, config.SectionCount);
-			Assert.AreEqual(1, config.Sections.First().ValueCount);
+			Assert.AreEqual(1, config.ItemCount);
+			Assert.AreEqual(1, config.Sections.First().ItemCount);
 
 			var section = config["Section"];
 
-			Assert.AreEqual(1, section.ValueCount);
+			Assert.AreEqual(1, section.ItemCount);
 
 			var value = section["Key"];
 

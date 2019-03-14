@@ -244,7 +244,7 @@ namespace Taskmaster.UI.Config
 				}
 				else
 				{
-					powsec.Remove("Watchlist powerdown delay");
+					powsec.TryRemove("Watchlist powerdown delay");
 					if (Taskmaster.PowerManagerEnabled)
 						Taskmaster.powermanager.PowerdownDelay = null;
 				}
@@ -259,7 +259,7 @@ namespace Taskmaster.UI.Config
 				else
 				{
 					ProcessManager.IgnoreRecentlyModified = null;
-					perfsec.Remove("Ignore recently modified");
+					perfsec.TryRemove("Ignore recently modified");
 				}
 
 				int fghys = Convert.ToInt32(fgHysterisis.Value);
@@ -272,12 +272,12 @@ namespace Taskmaster.UI.Config
 				if (volmeter_capout.Value < 100)
 					volsec["Output threshold"].IntValue = Convert.ToInt32(volmeter_capout.Value);
 				else
-					volsec.Remove("Output threshold");
+					volsec.TryRemove("Output threshold");
 
 				if (volmeter_capin.Value < 100)
 					volsec["Input threshold"].IntValue = Convert.ToInt32(volmeter_capin.Value);
 				else
-					volsec.Remove("Input threshold");
+					volsec.TryRemove("Input threshold");
 
 				volsec["Refresh"].IntValue = Convert.ToInt32(volmeter_frequency.Value);
 

@@ -843,7 +843,7 @@ namespace Taskmaster
 					if (PowerdownDelay.HasValue)
 						power["Watchlist powerdown delay"].IntValue = Convert.ToInt32(PowerdownDelay.Value.TotalSeconds);
 					else
-						power.Remove("Watchlist powerdown delay");
+						power.TryRemove("Watchlist powerdown delay");
 					var autopower = corecfg.Config["Power / Auto"];
 
 					// BACKOFF

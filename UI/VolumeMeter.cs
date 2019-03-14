@@ -68,11 +68,11 @@ namespace Taskmaster.UI
 			VolumeInputCap = volsec.GetSetDefault("Input threshold", 100, out modified).IntValue.Constrain(20, 100) * 100;
 			dirty |= modified;
 
-			volsec.Remove("Cap");
-			volsec.Remove("Output");
-			volsec.Remove("Output cap");
-			volsec.Remove("Input");
-			volsec.Remove("Input cap");
+			volsec.TryRemove("Cap");
+			volsec.TryRemove("Output");
+			volsec.TryRemove("Output cap");
+			volsec.TryRemove("Input");
+			volsec.TryRemove("Input cap");
 
 			if (dirty) cfg.MarkDirty();
 

@@ -780,17 +780,19 @@ namespace Taskmaster
 			// ControlChildren = coreperf.GetSetDefault("Child processes", false, out tdirty).BoolValue;
 			// dirtyconfig |= tdirty;
 
-			int ignRecentlyModified = perfsec.GetSetDefault("Ignore recently modified", 30, out modified).IntValue.Constrain(0, 24 * 60);
+			var ignRecentlyModifiedSetting = perfsec.GetSetDefault("Ignore recently modified", 30, out modified);
+			int ignRecentlyModified = ignRecentlyModifiedSetting.IntValue.Constrain(0, 24 * 60);
 			if (ignRecentlyModified > 0)
 				IgnoreRecentlyModified = TimeSpan.FromMinutes(ignRecentlyModified);
 			else
 				IgnoreRecentlyModified = null;
-			perfsec["Ignore recently modified"].Comment = "Performance optimization. More notably this enables granting self-determination to apps that actually think they know better.";
+			ignRecentlyModifiedSetting.Comment = "Performance optimization. More notably this enables granting self-determination to apps that actually think they know better.";
 
-			var tscan = perfsec.GetSetDefault("Scan frequency", 15, out modified).IntValue.Constrain(0, 360);
+			var tscanSetting = perfsec.GetSetDefault("Scan frequency", 15, out modified);
+			var tscan = tscanSetting.IntValue.Constrain(0, 360);
 			if (tscan > 0) ScanFrequency = TimeSpan.FromSeconds(tscan.Constrain(5, 360));
 			else ScanFrequency = null;
-			perfsec["Scan frequency"].Comment = "Frequency (in seconds) at which we scan for processes. 0 disables.";
+			if (modified) tscanSetting.Comment = "Frequency (in seconds) at which we scan for processes. 0 disables.";
 			dirtyconfig |= modified;
 
 			if (ScanFrequency.HasValue)
@@ -798,11 +800,13 @@ namespace Taskmaster
 
 			// --------------------------------------------------------------------------------------------------------
 
-			WMIPolling = perfsec.GetSetDefault("WMI event watcher", false, out modified).BoolValue;
-			perfsec["WMI event watcher"].Comment = "Use WMI to be notified of new processes starting. If disabled, only rescanning everything will cause processes to be noticed.";
+			var wmipollingSetting = perfsec.GetSetDefault("WMI event watcher", false, out modified);
+			WMIPolling = wmipollingSetting.BoolValue;
+			if (modified) wmipollingSetting.Comment = "Use WMI to be notified of new processes starting. If disabled, only rescanning everything will cause processes to be noticed.";
 			dirtyconfig |= modified;
-			WMIPollDelay = perfsec.GetSetDefault("WMI poll delay", 5, out modified).IntValue.Constrain(1, 30);
-			perfsec["WMI poll delay"].Comment = "WMI process watcher delay (in seconds).  Smaller gives better results but can inrease CPU usage. Accepted values: 1 to 30.";
+			var wmipolldelaySetting = perfsec.GetSetDefault("WMI poll delay", 5, out modified);
+			WMIPollDelay = wmipolldelaySetting.IntValue.Constrain(1, 30);
+			if (modified) wmipolldelaySetting.Comment = "WMI process watcher delay (in seconds).  Smaller gives better results but can inrease CPU usage. Accepted values: 1 to 30.";
 			dirtyconfig |= modified;
 
 			Log.Information("<Process> New instance event watcher: " + (WMIPolling ? HumanReadable.Generic.Enabled : HumanReadable.Generic.Disabled));
@@ -813,8 +817,9 @@ namespace Taskmaster
 			var fgpausesec = corecfg.Config["Foreground Focus Lost"];
 			// RestoreOriginal = fgpausesec.GetSetDefault("Restore original", false, out modified).BoolValue;
 			// dirtyconfig |= modified;
-			DefaultBackgroundPriority = fgpausesec.GetSetDefault("Default priority", 2, out modified).IntValue.Constrain(0, 4);
-			fgpausesec["Default priority"].Comment = "Default is normal to avoid excessive loading times while user is alt-tabbed.";
+			var defbgprioSetting = fgpausesec.GetSetDefault("Default priority", 2, out modified);
+			DefaultBackgroundPriority = defbgprioSetting.IntValue.Constrain(0, 4);
+			if (modified) defbgprioSetting.Comment = "Default is normal to avoid excessive loading times while user is alt-tabbed.";
 			dirtyconfig |= modified;
 			// OffFocusAffinity = fgpausesec.GetSetDefault("Affinity", 0, out modified).IntValue;
 			// dirtyconfig |= modified;
@@ -828,11 +833,11 @@ namespace Taskmaster
 
 			// Taskmaster.cfg["Applications"]["Ignored"].StringArray = IgnoreList;
 			var ignsetting = corecfg.Config["Applications"];
-			string[] newIgnoreList = ignsetting.GetSetDefault(HumanReadable.Generic.Ignore, IgnoreList, out modified)?.Array;
+			var ignlistSetting = ignsetting.GetSetDefault(HumanReadable.Generic.Ignore, IgnoreList, out modified);
+			string[] newIgnoreList = ignlistSetting.Array;
+			if (modified) ignlistSetting.Comment = "Special hardcoded protection applied to: consent, winlogon, wininit, and csrss. These are vital system services and messing with them can cause severe system malfunctioning. Mess with the ignore list at your own peril.";
 
-			ignsetting[HumanReadable.Generic.Ignore].Comment = "Special hardcoded protection applied to: consent, winlogon, wininit, and csrss. These are vital system services and messing with them can cause severe system malfunctioning. Mess with the ignore list at your own peril.";
-
-			if (newIgnoreList != null)
+			if ((newIgnoreList?.Length ?? 0) > 0)
 			{
 				IgnoreList = newIgnoreList;
 				Log.Information("<Process> Custom ignore list loaded.");
@@ -840,8 +845,9 @@ namespace Taskmaster
 			}
 			if (Taskmaster.DebugProcesses) Log.Debug("<Process> Ignore list: " + string.Join(", ", IgnoreList));
 
-			IgnoreSystem32Path = ignsetting.GetSetDefault("Ignore System32", true, out modified).BoolValue;
-			ignsetting["Ignore System32"].Comment = "Ignore programs in %SYSTEMROOT%/System32 folder.";
+			var ignSys32Setting = ignsetting.GetSetDefault("Ignore System32", true, out modified);
+			IgnoreSystem32Path = ignSys32Setting.BoolValue;
+			if (modified) ignSys32Setting.Comment = "Ignore programs in %SYSTEMROOT%/System32 folder.";
 			dirtyconfig |= modified;
 
 			if (dirtyconfig) corecfg.MarkDirty();
@@ -856,17 +862,14 @@ namespace Taskmaster
 			Log.Information("<Process> Loading watchlist...");
 
 			var appcfg = Taskmaster.Config.Load(watchfile);
-			var mkahcfg = MKAh.Ini.Config.FromFile(System.IO.Path.Combine(Taskmaster.datapath, watchfile));
 
 			bool dirtyconfig = false;
 
-			Log.Debug("<MKAh/Ini> Watchlist – Sections: " + mkahcfg.SectionCount);
-
-			if (appcfg.Config.SectionCount == 0)
+			if (appcfg.Config.ItemCount == 0)
 			{
 				Taskmaster.Config.Unload(appcfg);
 
-				Log.Warning("<Process> Watchlist empty; copying example list.");
+				Log.Warning("<Process> Watchlist empty; writing example list.");
 
 				// DEFAULT CONFIGURATION
 				var tpath = System.IO.Path.Combine(Taskmaster.datapath, watchfile);
@@ -887,6 +890,12 @@ namespace Taskmaster
 
 			foreach (Ini.Section section in appcfg.Config)
 			{
+				if (string.IsNullOrEmpty(section.Name))
+				{
+					Log.Warning("<Watchlist> Nameless section, skipping.");
+					continue;
+				}
+
 				if (!section.Contains("Image") && !section.Contains(HumanReadable.System.Process.Path))
 				{
 					// TODO: Deal with incorrect configuration lacking image

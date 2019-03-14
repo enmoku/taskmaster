@@ -749,7 +749,7 @@ namespace Taskmaster
 
 			if (perfsec.Contains("WMI queries"))
 			{
-				perfsec.Remove("WMI queries");
+				perfsec.TryRemove("WMI queries");
 				dirtyconfig = true;
 			}
 
@@ -773,7 +773,7 @@ namespace Taskmaster
 
 			//
 			var maintsec = cfg["Maintenance"];
-			maintsec.Remove("Cleanup interval"); // DEPRECATRED
+			maintsec.TryRemove("Cleanup interval"); // DEPRECATRED
 
 			if (dirtyconfig) corecfg.MarkDirty();
 
