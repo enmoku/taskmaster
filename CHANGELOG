@@ -3,6 +3,8 @@ Comprehensive changes can be found in Git change history:
 	https://github.com/mkahvi/taskmaster/commits/master
 
 ## [0.13...]
+### 2019-03-13
+	Replaced: SharpConfig with custom .ini handler.
 ### 2019-03-10
 	Removed: --bootdelay argument. If delay is desired, task scheduler can be used for it.
 	Fixed: Some message dialogs were positioned oddly at top-left corner of the screen.
