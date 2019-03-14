@@ -892,42 +892,49 @@ namespace Taskmaster
 			{
 				if (string.IsNullOrEmpty(section.Name))
 				{
-					Log.Warning("<Watchlist> Nameless section, skipping.");
+					Log.Warning($"<Watchlist:{section.Line}> Nameless section; Skipping.");
 					continue;
 				}
 
-				if (!section.Contains("Image") && !section.Contains(HumanReadable.System.Process.Path))
+				var ruleExec = section.Get("Image");
+				var rulePath = section.Get(HumanReadable.System.Process.Path);
+
+				if (ruleExec == null && rulePath == null)
 				{
 					// TODO: Deal with incorrect configuration lacking image
-					Log.Warning("'" + section.Name + "' has no image nor path.");
+					Log.Warning($"<Watchlist:{section.Line}> [" + section.Name + "] No image nor path; Skipping.");
 					continue;
 				}
 
-				if (!section.Contains(HumanReadable.System.Process.Priority) && !section.Contains(HumanReadable.System.Process.Affinity) && !section.Contains(HumanReadable.Hardware.Power.Mode))
+				var rulePrio = section.Get(HumanReadable.System.Process.Priority);
+				var ruleAff = section.Get(HumanReadable.System.Process.Affinity);
+				var rulePow = section.Get(HumanReadable.Hardware.Power.Mode);
+
+				if (rulePrio == null && ruleAff == null && rulePow == null)
 				{
 					// TODO: Deal with incorrect configuration lacking these things
-					Log.Warning("[" + section.Name + "] No priority, affinity, nor power plan. Ignoring.");
+					Log.Warning($"<Watchlist:{section.Line}> [{section.Name}] No priority, affinity, nor power plan; Skipping.");
 					continue;
 				}
 
-				var aff = section.Get(HumanReadable.System.Process.Affinity)?.IntValue ?? -1;
+				var aff = ruleAff?.IntValue ?? -1;
 				if (aff > AllCPUsMask || aff < -1)
 				{
-					Log.Warning("[" + section.Name + "] Affinity(" + aff + ") is malconfigured. Ignoring.");
+					Log.Warning($"<Watchlist:{ruleAff.Line}> [{section.Name}] Affinity({aff}) is malconfigured. Skipping.");
 					//aff = Bit.And(aff, allCPUsMask); // at worst case results in 1 core used
 					// TODO: Count bits, make 2^# assumption about intended cores but scale it to current core count.
 					//		Shift bits to allowed range. Assume at least one core must be assigned, and in case of holes at least one core must be unassigned.
 					aff = -1; // ignore
 				}
-				var prio = section.Get(HumanReadable.System.Process.Priority)?.IntValue ?? -1;
+				var prio = rulePrio?.IntValue ?? -1;
 				ProcessPriorityClass? prioR = null;
 				if (prio >= 0) prioR = ProcessHelpers.IntToPriority(prio);
 
-				var pmodes = section.Get(HumanReadable.Hardware.Power.Mode)?.Value ?? null;
+				var pmodes = rulePow?.Value ?? null;
 				var pmode = PowerManager.GetModeByName(pmodes);
 				if (pmode == PowerInfo.PowerMode.Custom)
 				{
-					Log.Warning("'" + section.Name + "' has unrecognized power plan: " + pmodes);
+					Log.Warning($"<Watchlist:{rulePow.Line}> [{section.Name}] Unrecognized power plan: {pmodes}");
 					pmode = PowerInfo.PowerMode.Undefined;
 				}
 
@@ -972,7 +979,7 @@ namespace Taskmaster
 				var prc = new ProcessController(section.Name, prioR, aff)
 				{
 					Enabled = section.Get(HumanReadable.Generic.Enabled)?.BoolValue ?? true,
-					Executable = section.Get("Image")?.Value ?? null,
+					Executable = ruleExec?.Value ?? null,
 					Description = section.Get(HumanReadable.Generic.Description)?.Value ?? null,
 					// friendly name is filled automatically
 					PriorityStrategy = priostrat,
@@ -1003,12 +1010,13 @@ namespace Taskmaster
 
 				//prc.SetForegroundMode((ForegroundMode)(section.TryGet("Foreground mode")?.IntValue.Constrain(-1, 2) ?? -1)); // NEW
 
-				prc.AffinityIdeal = section.Get("Affinity ideal")?.IntValue.Constrain(-1, CPUCount - 1) ?? -1;
+				var ruleIdeal = section.Get("Affinity ideal");
+				prc.AffinityIdeal = ruleIdeal?.IntValue.Constrain(-1, CPUCount - 1) ?? -1;
 				if (prc.AffinityIdeal >= 0)
 				{
 					if (!Bit.IsSet(prc.AffinityMask, prc.AffinityIdeal))
 					{
-						Log.Debug("[" + prc.FriendlyName + "] Affinity ideal to mask mismatch: " + HumanInterface.BitMask(prc.AffinityMask, CPUCount) + ", ideal core: " + prc.AffinityIdeal);
+						Log.Debug($"<Watchlist:{ruleIdeal.Line}> [{prc.FriendlyName}] Affinity ideal to mask mismatch: {HumanInterface.BitMask(prc.AffinityMask, CPUCount)}, ideal core: {prc.AffinityIdeal}");
 						prc.AffinityIdeal = -1;
 					}
 				}
@@ -1173,10 +1181,7 @@ namespace Taskmaster
 			try
 			{
 				if (Taskmaster.DebugForeground || Taskmaster.DebugPower)
-				{
-					Log.Debug("[" + info.Controller.FriendlyName + "] " + info.Name +
-						" (#" + info.Id + ") exited [Power: " + info.PowerWait + ", Active: " + info.ForegroundWait + "]");
-				}
+					Log.Debug($"[{info.Controller.FriendlyName}] {info.Name} (#{info.Id}) exited [Power: {info.PowerWait}, Active: {info.ForegroundWait}]");
 
 				info.ForegroundWait = false;
 
@@ -1326,7 +1331,7 @@ namespace Taskmaster
 					{
 						var prc = info.Controller;
 						if (Taskmaster.Trace && Taskmaster.DebugForeground)
-							Log.Debug("[" + prc.FriendlyName + "] " + info.Name + " (#" + info.Id + ") on foreground!");
+							Log.Debug($"[{prc.FriendlyName}] {info.Name} (#{info.Id}) on foreground!");
 
 						if (prc.Foreground != ForegroundMode.Ignore) prc.Resume(info);
 

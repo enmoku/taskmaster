@@ -121,7 +121,7 @@ namespace MKAh
 			public bool AllowNamelessSections = false;
 
 			public bool UniqueSections = false;
-			public bool UniqueKeys = false;
+			public bool UniqueKeys { get; } = false; // setting this to true not supported yet
 
 			public bool IgnoreMalformed = false;
 
@@ -173,8 +173,6 @@ namespace MKAh
 
 			public Section Header { get; private set; } = new Section("HEADER", -1);
 
-			public Section this[int index] { get; set; }
-
 			public void Load(string[] lines)
 			{
 				int lineNo = 0;
@@ -208,7 +206,7 @@ namespace MKAh
 
 			void HandleLine(string line, int lineNumber, ref Section section)
 			{
-				Debug.WriteLine("INI [" + lineNumber + "]: " + line);
+				Debug.WriteLine($"INI [{lineNumber}]: {line}");
 				if (string.IsNullOrWhiteSpace(line))
 				{
 					if (StripEmptyLines) return;
@@ -258,36 +256,31 @@ namespace MKAh
 				}
 			}
 
-			/*
+			#region Indexer
 			public Section this[int index]
 			{
 				get => Sections[index];
 				set => Sections[index] = value;
 			}
-			*/
 
-			#region Indexer
 			public Section this[string name]
 			{
 				get
 				{
-					var value = (from val in Sections
-								 where !string.IsNullOrEmpty(val.Name)
-								 where val.Name.Equals(name, StringComparison.InvariantCultureIgnoreCase)
-								 select val).FirstOrDefault();
-
-					if (value == null)
+					Section section = null;
+					if (!TryGet(name, out section))
 					{
-						value = new Section(name);
-						Sections.Add(value);
+						section = new Section(name);
+						Sections.Add(section);
 					}
 
-					return value;
+					return section;
 				}
-
 				set
 				{
 					value.UniqueKeys = UniqueKeys;
+
+					// TODO: different behaviour with unique keys
 
 					if (TryGet(value.Name, out var section))
 					{
@@ -296,7 +289,6 @@ namespace MKAh
 					}
 					else
 						Sections.Add(value);
-
 				}
 			}
 			#endregion
@@ -407,7 +399,6 @@ namespace MKAh
 						// properly quoted string
 						// "
 
-						end = start;
 						start = QuoteStart;
 
 						value.Value = GetQuotedString(source, QuoteStart, out end);
@@ -516,6 +507,8 @@ namespace MKAh
 
 			string GetQuotedString(string source, int offset, out int end)
 			{
+				Debug.Assert(source[offset].Equals(Constant.Quote));
+
 				offset++; // skip "
 
 				bool UnescapedQuote = false;
@@ -1002,6 +995,7 @@ namespace MKAh
 				}
 				set
 				{
+					// TODO: different behaviour with unique keys
 					if (TryGet(key, out var result))
 					{
 						Insert(Values.IndexOf(result), value);
