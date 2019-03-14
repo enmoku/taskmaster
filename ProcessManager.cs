@@ -839,8 +839,15 @@ namespace Taskmaster
 
 			if ((newIgnoreList?.Length ?? 0) > 0)
 			{
+				var ignoreOmitted = IgnoreList.Except(newIgnoreList);
+				var qlist = ignoreOmitted.ToList();
+
+				if (qlist.Count > 0)
+					Log.Warning("<Process> Custom ignore list loaded; omissions from default: " + string.Join(", ", qlist));
+				else
+					Log.Information("<Process> Custom ignore list loaded.");
+
 				IgnoreList = newIgnoreList;
-				Log.Information("<Process> Custom ignore list loaded.");
 				dirtyconfig |= modified;
 			}
 			if (Taskmaster.DebugProcesses) Log.Debug("<Process> Ignore list: " + string.Join(", ", IgnoreList));
@@ -849,6 +856,8 @@ namespace Taskmaster
 			IgnoreSystem32Path = ignSys32Setting.BoolValue;
 			if (modified) ignSys32Setting.Comment = "Ignore programs in %SYSTEMROOT%/System32 folder.";
 			dirtyconfig |= modified;
+
+			if (IgnoreSystem32Path) Log.Warning($"<Process> System32 ignore disabled.");
 
 			if (dirtyconfig) corecfg.MarkDirty();
 
