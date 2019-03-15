@@ -703,10 +703,11 @@ namespace Taskmaster
 
 			SetRestoreMode(newmodemethod, newrestoremode);
 
-			var tdelay = power.GetSetDefault("Watchlist powerdown delay", 0, out modified).IntValue.Constrain(0, 60);
-			power["Watchlist powerdown delay"].Comment = "Delay, in seconds (0 to 60, 0 disables), for when to wind down power mode set by watchlist.";
+			var tdelay = power.GetSetDefault("Watchlist powerdown delay", 0, out modified).IntValue.Constrain(0, 60 * 5);
+			power["Watchlist powerdown delay"].Comment = "Delay, in seconds (0 to 300, 0 disables), for when to wind down power mode set by watchlist.";
 			dirtyconfig |= modified;
 			if (tdelay > 0) PowerdownDelay = TimeSpan.FromSeconds(tdelay);
+			else PowerdownDelay = null;
 
 			var autopower = corecfg.Config["Power / Auto"];
 

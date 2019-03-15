@@ -136,7 +136,7 @@ namespace Taskmaster.UI.Config
 			var watchlistPowerdown = new Extensions.NumericUpDownEx()
 			{
 				Minimum = 0m,
-				Maximum = 60m,
+				Maximum = 300m,
 				Unit = "s",
 				DecimalPlaces = 0,
 				Increment = 1m,
