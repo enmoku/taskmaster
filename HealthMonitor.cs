@@ -258,45 +258,54 @@ namespace Taskmaster
 			bool modified = false, configdirty = false;
 
 			var gensec = cfg.Config["General"];
-			Settings.Frequency = TimeSpan.FromMinutes(gensec.GetSetDefault("Frequency", 5, out modified).IntValue.Constrain(1, 60 * 24));
-			gensec["Frequency"].Comment = "How often we check for anything. In minutes.";
+			var settingFreqSetting = gensec.GetSetDefault("Frequency", 5, out modified);
+			Settings.Frequency = TimeSpan.FromMinutes(settingFreqSetting.IntValue.Constrain(1, 60 * 24));
+			if (modified) settingFreqSetting.Comment = "How often we check for anything. In minutes.";
 			configdirty |= modified;
 
 			var freememsec = cfg.Config["Free Memory"];
 			//freememsec.Comment = "Attempt to free memory when available memory goes below a threshold.";
 
-			Settings.MemLevel =(ulong)freememsec.GetSetDefault("Threshold", 1000, out modified).IntValue;
+			var memLevelSetting = freememsec.GetSetDefault("Threshold", 1000, out modified);
+			Settings.MemLevel = (ulong)memLevelSetting.IntValue;
 			// MemLevel = MemLevel > 0 ? MemLevel.Constrain(1, 2000) : 0;
-			freememsec["Threshold"].Comment = "When memory goes down to this level, we act.";
+			if (modified) memLevelSetting.Comment = "When memory goes down to this level, we act.";
 			configdirty |= modified;
 			if (Settings.MemLevel > 0)
 			{
-				Settings.MemIgnoreFocus = freememsec.GetSetDefault("Ignore foreground", true, out modified).BoolValue;
-				freememsec["Ignore foreground"].Comment = "Foreground app is not touched, regardless of anything.";
+				var memIgnFocusSetting = freememsec.GetSetDefault("Ignore foreground", true, out modified);
+				Settings.MemIgnoreFocus = memIgnFocusSetting.BoolValue;
+				if (modified) memIgnFocusSetting.Comment = "Foreground app is not touched, regardless of anything.";
 				configdirty |= modified;
 
-				Settings.IgnoreList = freememsec.GetSetDefault("Ignore list", new string[] { }, out modified).Array;
-				freememsec["Ignore list"].Comment = "List of apps that we don't touch regardless of anything.";
+				var ignListSetting = freememsec.GetSetDefault("Ignore list", new string[] { }, out modified);
+				Settings.IgnoreList = ignListSetting.Array;
+				if (modified) ignListSetting.Comment = "List of apps that we don't touch regardless of anything.";
 				configdirty |= modified;
 
-				Settings.MemCooldown = freememsec.GetSetDefault("Cooldown", 60, out modified).IntValue.Constrain(1, 180);
-				freememsec["Cooldown"].Comment = "Don't do this again for this many minutes.";
+				var memCooldownSetting = freememsec.GetSetDefault("Cooldown", 60, out modified);
+				Settings.MemCooldown = memCooldownSetting.IntValue.Constrain(1, 180);
+				if (modified) memCooldownSetting.Comment = "Don't do this again for this many minutes.";
+				configdirty |= modified;
 			}
 
 			// SELF-MONITORING
 			var selfsec = cfg.Config["Self"];
-			Settings.FatalErrorThreshold = selfsec.GetSetDefault("Fatal error threshold", 10, out modified).IntValue.Constrain(1, 30);
-			selfsec["Fatal error threshold"].Comment = "Auto-exit once number of fatal errors reaches this. 10 is very generous default.";
+			var fatalErrThSetting = selfsec.GetSetDefault("Fatal error threshold", 10, out modified);
+			Settings.FatalErrorThreshold = fatalErrThSetting.IntValue.Constrain(1, 30);
+			if (modified) fatalErrThSetting.Comment = "Auto-exit once number of fatal errors reaches this. 10 is very generous default.";
 			configdirty |= modified;
 
-			Settings.FatalLogSizeThreshold = selfsec.GetSetDefault("Fatal log size threshold", 10, out modified).IntValue.Constrain(1, 500);
-			selfsec["Fatal log size threshold"].Comment = "Auto-exit if total log file size exceeds this. In megabytes.";
+			var fatalLogSetting = selfsec.GetSetDefault("Fatal log size threshold", 10, out modified);
+			Settings.FatalLogSizeThreshold = fatalLogSetting.IntValue.Constrain(1, 500);
+			if (modified) fatalLogSetting.Comment = "Auto-exit if total log file size exceeds this. In megabytes.";
 			configdirty |= modified;
 
 			// NVM
 			var nvmsec = cfg.Config["Non-Volatile Memory"];
-			Settings.LowDriveSpaceThreshold = nvmsec.GetSetDefault("Low space threshold", 150, out modified).IntValue.Constrain(0, 60000);
-			nvmsec["Low space threshold"].Comment = "Warn about free space going below this. In megabytes. From 0 to 60000.";
+			var lowDriveSetting = nvmsec.GetSetDefault("Low space threshold", 150, out modified);
+			Settings.LowDriveSpaceThreshold = lowDriveSetting.IntValue.Constrain(0, 60000);
+			if (modified) lowDriveSetting.Comment = "Warn about free space going below this. In megabytes. From 0 to 60000.";
 			configdirty |= modified;
 
 			if (configdirty) cfg.MarkDirty();

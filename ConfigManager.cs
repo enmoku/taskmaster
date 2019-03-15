@@ -45,6 +45,7 @@ namespace Taskmaster
 			{
 				lock (config_lock)
 				{
+					// TODO: Hash filenames
 					foreach (var oldcfg in Loaded)
 					{
 						if (oldcfg.File.Equals(filename, StringComparison.InvariantCultureIgnoreCase))

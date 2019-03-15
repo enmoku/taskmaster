@@ -277,16 +277,12 @@ namespace Taskmaster
 
 				bool dirty = false, modified = false;
 
-				dirty |= !(devsec.Contains(vname));
 				var devvol = devsec.GetSetDefault(vname, DefaultVolume, out modified).DoubleValue;
 				dirty |= modified;
 				bool devcontrol = devsec.GetSetDefault(cname, false, out modified).BoolValue;
 				dirty |= modified;
-				if (!devsec.Contains("Name"))
-				{
-					devsec["Name"].Value = RecordingDevice.Name;
-					dirty = true;
-				}
+				devsec.GetSetDefault("Name", RecordingDevice.Name, out modified);
+				dirty |= modified;
 
 				if (dirty) devcfg.MarkDirty();
 
@@ -329,11 +325,8 @@ namespace Taskmaster
 					{
 						string guid = AudioManager.AudioDeviceIdToGuid(dev.ID);
 						var devsec = devcfg.Config[guid];
-						if (!devsec.Contains("Name"))
-						{
-							devsec["Name"].Value = dev.DeviceFriendlyName;
-							dirty = modified = true;
-						}
+						devsec.GetSetDefault("Name", dev.DeviceFriendlyName, out modified);
+						dirty |= modified;
 						bool control = devsec.GetSetDefault("Control", false, out modified).BoolValue;
 						dirty |= modified;
 						float target = devsec.Get("Volume")?.FloatValue ?? float.NaN;

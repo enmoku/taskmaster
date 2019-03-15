@@ -92,11 +92,14 @@ namespace Taskmaster
 			// SAMPLING
 			// this really should be elsewhere
 			var hwsec = corecfg.Config[HumanReadable.Hardware.Section];
-			SampleInterval = TimeSpan.FromSeconds(hwsec.GetSetDefault(HumanReadable.Hardware.CPU.Settings.SampleInterval, 2, out modified).IntValue.Constrain(1, 15));
-			hwsec[HumanReadable.Hardware.CPU.Settings.SampleInterval].Comment = "1 to 15, in seconds. Frequency at which CPU usage is sampled. Recommended value: 1 to 5 seconds.";
+			var sampleIntervalSetting = hwsec.GetSetDefault(HumanReadable.Hardware.CPU.Settings.SampleInterval, 2, out modified);
+			SampleInterval = TimeSpan.FromSeconds(sampleIntervalSetting.IntValue.Constrain(1, 15));
+			if (modified) sampleIntervalSetting.Comment = "1 to 15, in seconds. Frequency at which CPU usage is sampled. Recommended value: 1 to 5 seconds.";
 			dirtyconfig |= modified;
-			SampleCount = hwsec.GetSetDefault(HumanReadable.Hardware.CPU.Settings.SampleCount, 5, out modified).IntValue.Constrain(3, 30);
-			hwsec[HumanReadable.Hardware.CPU.Settings.SampleCount].Comment = "3 to 30. Number of CPU samples to keep. Recommended value is: Count * Interval <= 30 seconds";
+
+			var sampleCountSetting = hwsec.GetSetDefault(HumanReadable.Hardware.CPU.Settings.SampleCount, 5, out modified);
+			SampleCount = sampleCountSetting.IntValue.Constrain(3, 30);
+			if (modified) sampleCountSetting.Comment = "3 to 30. Number of CPU samples to keep. Recommended value is: Count * Interval <= 30 seconds";
 			dirtyconfig |= modified;
 
 			var exsec = corecfg.Config["Experimental"];
