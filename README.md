@@ -27,9 +27,7 @@ Allowing apps that normally have higher priority to be pushed into the backgroun
 
 ## Command-line
 
-* --bootdelay – adds about 30 seconds delay before TM starts processing things, allowing other programs that probably are higher priority to finish startup.
 * --admin – requests privilege elevation if it's not already acquired.
-* --once - scans for processes and applies watchlist rules before exiting.
 
 ## Installing, deployment, and usage
 
@@ -43,11 +41,11 @@ User configuration can be found in:
 
 User configuration currently can not be changed during run-time.
 
-## Dependencies
+## DLL Dependencies
 
 * [NAudio](https://github.com/naudio/NAudio) – for audio devices
 * [Serilog](https://github.com/serilog/serilog) – for logging
-* [SharpConfig](https://github.com/cemdervis/SharpConfig) – for INI user configuration
+* [OpenHardwareMonitorLib](https://github.com/Ashwinning/openhardwaremonitorlib) - for GPU monitoring (only Nvidia tested due to lack of access to hardware or testers), desiring better supported/updated alternatives
 
 ## License
 
