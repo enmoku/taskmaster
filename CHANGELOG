@@ -5,7 +5,8 @@ Comprehensive changes can be found in Git change history:
 ## [0.13...]
 ### 2019-03-15
 	Changed: Maximum powerdown delay changed from 1 minute to 5 minutes.
-	Changead: NVM warnings should be now more sane and uniform in presentation
+	Changed: NVM warnings should be now more sane and uniform in presentation
+	Changed: Watchlist item rename now actually renames it instead of recreating it. This removes a hack used for SharpConfig.
 ### 2019-03-14
 	Internal: Various small config access improvements to minimize errors.
 ### 2019-03-13

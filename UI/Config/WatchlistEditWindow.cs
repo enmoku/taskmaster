@@ -128,10 +128,8 @@ namespace Taskmaster.UI.Config
 
 			// -----------------------------------------------
 
-			if (!newPrc && !newfriendlyname.Equals(Controller.FriendlyName))
-				Controller.DeleteConfig(); // SharpConfig doesn't seem to support renaming sections, so we delete the old one instead
+			Controller.SetName(newfriendlyname);
 
-			Controller.FriendlyName = newfriendlyname;
 			Controller.Executable = execName.Text.Length > 0 ? execName.Text.Trim() : null;
 			Controller.Path = pathName.Text.Length > 0 ? pathName.Text.Trim() : null;
 			if (priorityClass.SelectedIndex == 5) // ignored

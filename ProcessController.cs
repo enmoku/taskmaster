@@ -79,7 +79,7 @@ namespace Taskmaster
 		/// <summary>
 		/// Human-readable friendly name for the process.
 		/// </summary>
-		public string FriendlyName { get; set; } = null;
+		public string FriendlyName { get; private set; } = null;
 
 		internal string p_Executable = null;
 		/// <summary>
@@ -188,8 +188,6 @@ namespace Taskmaster
 				AffinityStrategy = ProcessAffinityStrategy.Limit;
 			}
 		}
-
-		const string watchlistfile = "Watchlist.ini";
 
 		public void SetForegroundMode(ForegroundMode mode)
 		{
@@ -383,12 +381,23 @@ namespace Taskmaster
 			}
 		}
 
+		public void SetName(string newName, ConfigWrapper cfg = null)
+		{
+			if (cfg == null) cfg = Taskmaster.Config.Load(ProcessManager.WatchlistFile); ;
+			Ini.Section section= cfg.Config.Get(FriendlyName);
+			if (section != null)
+			{
+				section.Name = newName;
+				cfg.MarkDirty();
+			}
+			FriendlyName = newName;
+		}
+
 		public void DeleteConfig(ConfigWrapper cfg = null)
 		{
-			if (cfg == null)
-				cfg = Taskmaster.Config.Load(watchlistfile);
+			if (cfg == null) cfg = Taskmaster.Config.Load(ProcessManager.WatchlistFile);
 
-			cfg.Config.TryRemove(FriendlyName); // remove the section, should remove items in the section
+			cfg.Config.TryRemove(FriendlyName); // remove the section, removes the items in the section
 			cfg.MarkDirty();
 		}
 
@@ -453,7 +462,7 @@ namespace Taskmaster
 			// TODO: Check if anything actually was changed?
 
 			if (cfg == null)
-				cfg = Taskmaster.Config.Load(watchlistfile);
+				cfg = Taskmaster.Config.Load(ProcessManager.WatchlistFile);
 
 			if (app == null)
 				app = cfg.Config[FriendlyName];

@@ -870,7 +870,7 @@ namespace Taskmaster
 		{
 			Log.Information("<Process> Loading watchlist...");
 
-			var appcfg = Taskmaster.Config.Load(watchfile);
+			var appcfg = Taskmaster.Config.Load(WatchlistFile);
 
 			bool dirtyconfig = false;
 
@@ -881,7 +881,7 @@ namespace Taskmaster
 				Log.Warning("<Process> Watchlist empty; writing example list.");
 
 				// DEFAULT CONFIGURATION
-				var tpath = System.IO.Path.Combine(Taskmaster.datapath, watchfile);
+				var tpath = System.IO.Path.Combine(Taskmaster.datapath, WatchlistFile);
 				try
 				{
 					System.IO.File.WriteAllText(tpath, Properties.Resources.Watchlist);
@@ -892,7 +892,7 @@ namespace Taskmaster
 					throw;
 				}
 
-				appcfg = Taskmaster.Config.Load(watchfile);
+				appcfg = Taskmaster.Config.Load(WatchlistFile);
 			}
 
 			// --------------------------------------------------------------------------------------------------------
@@ -2097,7 +2097,7 @@ namespace Taskmaster
 			watcher = null;
 		}
 
-		const string watchfile = "Watchlist.ini";
+		public const string WatchlistFile = "Watchlist.ini";
 
 		async void CleanupTick(object _sender, EventArgs _ea)
 		{
@@ -2266,7 +2266,7 @@ namespace Taskmaster
 					ExeToController?.Clear();
 					ExeToController = null;
 
-					var wcfg = Taskmaster.Config.Load(watchfile);
+					var wcfg = Taskmaster.Config.Load(WatchlistFile);
 
 					foreach (var prc in Watchlist.Keys)
 					{
