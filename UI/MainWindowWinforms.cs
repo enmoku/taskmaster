@@ -3465,7 +3465,6 @@ namespace Taskmaster.UI
 		{
 			healthmonitor = hmon;
 
-
 			oldHealthReport = healthmonitor.Poll;
 
 			UpdateMemoryStats(this, EventArgs.Empty);
@@ -3505,7 +3504,7 @@ namespace Taskmaster.UI
 
 				if (health.NVMTransfers >= float.Epsilon)
 				{
-					nvmtransfers.Text = $"{health.NVMTransfers:N1}{(health.NVMTransfers > 250 ? (health.NVMTransfers > 500 ? " extreme" : " high") : "")}";
+					nvmtransfers.Text = $"{health.NVMTransfers:N1} {WarningLevelString((int)health.NVMTransfers, 200, 320, 480)}";
 					nvmtransfers.ForeColor = System.Drawing.SystemColors.WindowText;
 					skipTransfers = 0;
 				}
@@ -3519,7 +3518,7 @@ namespace Taskmaster.UI
 
 				if (health.SplitIO >= float.Epsilon)
 				{
-					nvmsplitio.Text = $"{health.SplitIO:N1}{(health.SplitIO > 20 ? (health.SplitIO >= health.NVMTransfers*0.5 ? " extreme" :  " high") : "")}";
+					nvmsplitio.Text = $"{health.SplitIO:N1} {WarningLevelString((int)health.SplitIO, 20, 80, Math.Max(120, (int)(health.NVMTransfers * 0.5)))}";
 					nvmsplitio.ForeColor = System.Drawing.SystemColors.WindowText;
 					skipSplits = 0;
 				}
@@ -3534,7 +3533,7 @@ namespace Taskmaster.UI
 				if (health.NVMDelay >= float.Epsilon)
 				{
 					float delay = health.NVMDelay * 1000;
-					nvmdelay.Text = $"{delay:N1} ms{(delay > 20 ? (health.NVMDelay > 50 ? " extreme" : " high") : "")}";
+					nvmdelay.Text = $"{delay:N1} ms {WarningLevelString((int)delay, 22, 52, 70)}";
 					nvmdelay.ForeColor = System.Drawing.SystemColors.WindowText;
 					skipDelays = 0;
 				}
@@ -3548,7 +3547,7 @@ namespace Taskmaster.UI
 
 				if (health.NVMQueue >= float.Epsilon)
 				{
-					nvmqueued.Text = $"{health.NVMQueue:N0}{(health.NVMQueue > 2 ? (health.NVMQueue > 8 ? " extreme" : " high") : "")}";
+					nvmqueued.Text = $"{health.NVMQueue:N0} {WarningLevelString((int)health.NVMQueue, 2, 8, 22)}";
 					nvmqueued.ForeColor = System.Drawing.SystemColors.WindowText;
 					skipQueues = 0;
 				}
@@ -3565,6 +3564,7 @@ namespace Taskmaster.UI
 				oldHealthReport = health;
 			}
 			catch (OutOfMemoryException) { throw; }
+			catch (ObjectDisposedException) { throw; }
 			catch (Exception ex)
 			{
 				Logging.Stacktrace(ex);
@@ -3573,6 +3573,18 @@ namespace Taskmaster.UI
 			{
 				Atomic.Unlock(ref updatehealthmon_lock);
 			}
+		}
+
+		string WarningLevelString(int value, int high, int vhigh, int extreme)
+		{
+			if (value >= extreme)
+				return "extreme";
+			else if (value >= vhigh)
+				return "very high";
+			else if (value >= high)
+				return "high";
+			else
+				return string.Empty;
 		}
 
 		public async void PowerBehaviourDebugEvent(object _, PowerManager.PowerBehaviourEventArgs ea)
