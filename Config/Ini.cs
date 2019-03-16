@@ -564,9 +564,26 @@ namespace MKAh
 
 			public string[] GetLines()
 			{
-				int totallines = Items.Count * 2 - 1;
-				foreach (var section in Items)
+				int totallines = ItemCount;
+
+				if (PadSections)
+				{
+					totallines *= 2;
+					totallines--;
+				}
+
+				if (Header.ItemCount > 0)
+				{
+					totallines += Header.ItemCount;
+					if (PadSections) totallines++;
+				}
+
+				foreach (var section in this)
 					totallines += section.Items.Count;
+
+				Debug.WriteLine("INI GET LINES: " + totallines);
+
+				if (totallines == 0) throw new ArgumentNullException("Empty configuration");
 
 				var output = new List<string>(totallines);
 
