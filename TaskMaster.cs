@@ -369,6 +369,8 @@ namespace Taskmaster
 			if (PowerManagerEnabled)
 			{
 				Task.WhenAll(new Task[] { PowMan, CpuMon }).ContinueWith((_) => {
+					if (powermanager == null) throw new InitFailure("Power Manager has failed to initialize");
+					if (cpumonitor == null) throw new InitFailure("CPU Monitor has failed to initialize");
 					trayaccess.Hook(powermanager);
 					powermanager.onBatteryResume += RestartRequest; // HACK
 					powermanager.Hook(cpumonitor);
