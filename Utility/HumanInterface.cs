@@ -25,6 +25,7 @@
 // THE SOFTWARE.
 
 using System;
+using System.Text;
 
 namespace Taskmaster
 {
@@ -38,11 +39,14 @@ namespace Taskmaster
 			return new string(arr);
 		}
 
+		public static string PureTimeString(TimeSpan time)
+			=> $"{time.Days}:{time.Hours:00}:{time.Minutes:00}:{time.Seconds:00}.{time.Milliseconds:000}";
+
 		public static string TimeString(TimeSpan time)
 		{
 			if (time.TotalMilliseconds <= 0) return HumanReadable.Generic.NotAvailable;
 
-			var s = new System.Text.StringBuilder();
+			var s = new StringBuilder();
 
 			var days = false;
 			if (time.Days > 0)
@@ -65,6 +69,7 @@ namespace Taskmaster
 
 			if (hours || days)
 				s.Append(", ");
+
 			var min = time.Minutes + (time.Seconds / 60.0);
 			s.Append($"{min:N1}")
 				.Append(" minute");
