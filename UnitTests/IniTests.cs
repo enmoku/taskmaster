@@ -159,5 +159,72 @@ namespace IniFile
 			Assert.AreEqual("Test2", results[1]);
 			Assert.AreEqual("72", resultInts[1]);
 		}
+
+		[Test]
+		[TestCase(3)]
+		public void RecursiveSaveAndLoad(int repeats)
+		{
+			if (repeats < 2) repeats = 2;
+			if (repeats > 30) repeats = 30;
+
+			var config = new Ini.Config();
+
+			var section1Name = "Number Tests";
+			var section2Name = "String Tests";
+			var section1Var1Name = "IntArray";
+			var section1Var2Name = "DoubleValue";
+			var section2Var1Name = "StringArray";
+			var section2Var2Name = "String";
+
+			var s1var1value = new int[] { 1, 2, 3 };
+			var s1var1valueEscaped = "{ 1, 2, 3 }";
+			var s1var2value = 0.5d;
+			var s1var2valueFormatted = "0.5";
+			var s2var1value = new string[] { "abc", "xyz" };
+			var s2var1valueEscaped = "{ abc, xyz }";
+			var s2var2value = "Bad\"#";
+			var s2var2valueEscaped = "\"Bad\\\"#\"";
+
+			var section1 = new Ini.Section(section1Name);
+			section1.Add(new Ini.Setting() { Name = section1Var1Name, IntArray = s1var1value });
+			section1.Add(new Ini.Setting() { Name = section1Var2Name, DoubleValue = s1var2value });
+			config.Add(section1);
+
+			var section2 = new Ini.Section(section2Name);
+			section2.Add(new Ini.Setting() { Name = section2Var1Name, Array = s2var1value });
+			section2.Add(new Ini.Setting() { Name = section2Var2Name, Value = s2var2value });
+			config.Add(section2);
+
+			var data = config.GetLines();
+
+			for (int i = 0; i < repeats; i++)
+			{
+				config = Ini.Config.FromData(data); // read written config
+
+				Assert.AreEqual(2, config.ItemCount);
+				var s1 = config.Get(section1Name);
+				var s2 = config.Get(section2Name);
+
+				Assert.IsNotNull(s1);
+				Assert.IsNotNull(s2);
+
+				var s1v1 = s1.Get(section1Var1Name);
+				var s1v2 = s1.Get(section1Var2Name);
+				var s2v1 = s2.Get(section2Var1Name);
+				var s2v2 = s2.Get(section2Var2Name);
+
+				Assert.IsNotNull(s1v1);
+				Assert.IsNotNull(s1v2);
+				Assert.IsNotNull(s2v1);
+				Assert.IsNotNull(s2v2);
+
+				Assert.AreEqual(s1var1valueEscaped, s1v1.EscapedValue);
+				Assert.AreEqual(s1var2valueFormatted, s1v2.Value);
+				Assert.AreEqual(s2var1valueEscaped, s2v1.EscapedValue);
+				Assert.AreEqual(s2var2valueEscaped, s2v2.EscapedValue);
+
+				data = config.GetLines(); // re-write config
+			}
+		}
 	}
 }
