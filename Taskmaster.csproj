@@ -128,7 +128,7 @@
     <Compile Include="AudioManager.cs" />
     <Compile Include="AudioSession.cs" />
     <Compile Include="Cause.cs" />
-    <Compile Include="ConfigManager.cs" />
+    <Compile Include="Config\Manager.cs" />
     <Compile Include="Config\Ini.cs" />
     <Compile Include="Enums\ForegroundMode.cs" />
     <Compile Include="Events\AudioDevice.cs" />
@@ -247,7 +247,7 @@
     <Compile Include="UI\Config\WatchlistRuleGeneratorWindow.cs">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Include="Wrappers\SharpConfigWrapper.cs" />
+    <Compile Include="Config\File.cs" />
   </ItemGroup>
   <ItemGroup>
     <BootstrapperPackage Include=".NETFramework,Version=v4.7.1">

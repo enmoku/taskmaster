@@ -1,5 +1,5 @@
 ﻿//
-// ConfigManager.cs
+// Config.Manager.cs
 //
 // Author:
 //       M.A. (https://github.com/mkahvi)
@@ -28,18 +28,18 @@ using System;
 using System.Collections.Generic;
 using Serilog;
 
-namespace Taskmaster
+namespace Taskmaster.Config
 {
-	public class ConfigManager : IDisposable
+	public class Manager : IDisposable
 	{
 		readonly string datapath = string.Empty;
 
-		public ConfigManager(string path) => datapath = path;
+		public Manager(string path) => datapath = path;
 
 		readonly object config_lock = new object();
-		readonly HashSet<ConfigWrapper> Loaded = new HashSet<ConfigWrapper>();
+		readonly HashSet<File> Loaded = new HashSet<File>();
 
-		public ConfigWrapper Load(string filename)
+		public File Load(string filename)
 		{
 			try
 			{
@@ -48,7 +48,7 @@ namespace Taskmaster
 					// TODO: Hash filenames
 					foreach (var oldcfg in Loaded)
 					{
-						if (oldcfg.File.Equals(filename, StringComparison.InvariantCultureIgnoreCase))
+						if (oldcfg.Filename.Equals(filename, StringComparison.InvariantCultureIgnoreCase))
 							return oldcfg;
 					}
 
@@ -66,11 +66,11 @@ namespace Taskmaster
 						System.IO.Directory.CreateDirectory(datapath);
 					}
 
-					var config = new ConfigWrapper(mcfg, filename);
+					var config = new File(mcfg, filename);
 					Loaded.Add(config);
 
-					config.onUnload += (cfg, ea) => Loaded.Remove((ConfigWrapper)cfg);
-					config.onSave += (cfg, ea) => Save((ConfigWrapper)cfg);
+					config.onUnload += (cfg, ea) => Loaded.Remove((File)cfg);
+					config.onSave += (cfg, ea) => Save((File)cfg);
 
 					return config;
 				}
@@ -83,13 +83,13 @@ namespace Taskmaster
 			}
 		}
 
-		void Save(ConfigWrapper cfg)
+		void Save(File cfg)
 		{
 			try
 			{
 				lock (config_lock)
 				{
-					var fullpath = System.IO.Path.Combine(datapath, cfg.File);
+					var fullpath = System.IO.Path.Combine(datapath, cfg.Filename);
 					cfg.Config.SaveToFile(fullpath, new System.Text.UTF8Encoding(false));
 				}
 			}
@@ -99,7 +99,7 @@ namespace Taskmaster
 			}
 		}
 
-		public void Unload(ConfigWrapper config)
+		public void Unload(File config)
 		{
 			lock (config_lock)
 			{

@@ -1,5 +1,5 @@
 ﻿//
-// ConfigManager.cs
+// Config.File.cs
 //
 // Author:
 //       M.A. (https://github.com/mkahvi)
@@ -27,12 +27,12 @@
 using System;
 using Ini = MKAh.Ini;
 
-namespace Taskmaster
+namespace Taskmaster.Config
 {
-	public class ConfigWrapper : IDisposable
+	public class File : IDisposable
 	{
 		public Ini.Config Config { get; private set; } = null;
-		public string File { get; private set; } = null;
+		public string Filename { get; private set; } = null;
 		string Path { get; set; } = null;
 
 		bool Dirty { get; set; } = false;
@@ -40,10 +40,10 @@ namespace Taskmaster
 		public event EventHandler onUnload;
 		public event EventHandler onSave;
 
-		public ConfigWrapper(Ini.Config config, string filename)
+		public File(Ini.Config config, string filename)
 		{
 			Config = config;
-			File = filename;
+			Filename = filename;
 		}
 
 		public void MarkDirty()

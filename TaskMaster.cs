@@ -50,7 +50,7 @@ namespace Taskmaster
 		public static string datapath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "MKAh", "Taskmaster");
 		public static string logpath = Path.Combine(datapath, "Logs");
 
-		public static ConfigManager Config = null;
+		public static Config.Manager Config = null;
 
 		public static MicManager micmonitor = null;
 		public static UI.MainWindow mainwindow = null;
@@ -1318,7 +1318,7 @@ namespace Taskmaster
 						System.Runtime.ProfileOptimization.StartProfile("jit.profile");
 					}
 
-					Config = new ConfigManager(datapath);
+					Config = new Config.Manager(datapath);
 
 					LicenseBoiler();
 
