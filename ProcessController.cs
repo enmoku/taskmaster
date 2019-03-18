@@ -381,7 +381,7 @@ namespace Taskmaster
 			}
 		}
 
-		public void SetName(string newName, Wrapper cfg = null)
+		public void SetName(string newName, Config.File cfg = null)
 		{
 			if (cfg == null) cfg = Taskmaster.Config.Load(ProcessManager.WatchlistFile); ;
 			Ini.Section section= cfg.Config.Get(FriendlyName);
@@ -393,7 +393,7 @@ namespace Taskmaster
 			FriendlyName = newName;
 		}
 
-		public void DeleteConfig(Wrapper cfg = null)
+		public void DeleteConfig(Config.File cfg = null)
 		{
 			if (cfg == null) cfg = Taskmaster.Config.Load(ProcessManager.WatchlistFile);
 
