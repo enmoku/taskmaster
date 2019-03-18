@@ -3,6 +3,10 @@ Comprehensive changes can be found in Git change history:
 	https://github.com/mkahvi/taskmaster/commits/master
 
 ## [0.13...]
+### 2019-03-18
+	Internal: Restructuring. Should not affecting end-users.
+### 2019-03-16
+	Internal: Some small changes. Minor end-user effects that should not be very noticeable.
 ### 2019-03-15
 	Changed: Maximum powerdown delay changed from 1 minute to 5 minutes.
 	Changed: NVM warnings should be now more sane and uniform in presentation
