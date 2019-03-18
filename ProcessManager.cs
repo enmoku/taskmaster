@@ -1742,7 +1742,11 @@ namespace Taskmaster
 							if (Taskmaster.DebugProcesses) Log.Debug($"<Exclusive> [{info.Controller.FriendlyName}] {info.Name} (#{info.Id.ToString()}) starting");
 							info.Process.EnableRaisingEvents = true;
 							info.Process.Exited += EndExclusiveMode;
-							ExclusiveStart();
+
+							ExclusiveEnabled = true;
+
+							foreach (var service in Services)
+								service.Stop(service.FullDisable);
 
 							ensureExit = true;
 						}
@@ -1807,32 +1811,19 @@ namespace Taskmaster
 			}
 		}
 
-		readonly ServiceWrapper WindowsUpdate = new ServiceWrapper("wuaserv");
-		readonly ServiceWrapper SearchIndexer = new ServiceWrapper("wsearch");
+		readonly List<ServiceWrapper> Services = new List<ServiceWrapper>(new ServiceWrapper[] {
+			new ServiceWrapper("wuaserv") { FullDisable = true }, // Windows Update
+			new ServiceWrapper("wsearch") { FullDisable = true }, // Windows Search
+		});
 
 		bool ExclusiveEnabled = false;
 
-		void ExclusiveStart()
-		{
-			if (DisposedOrDisposing) throw new ObjectDisposedException("ExclusiveStart called when ProcessManager was already disposed"); ;
-
-            lock (Exclusive_lock)
-			{
-				ExclusiveEnabled = true;
-				WindowsUpdate.Stop();
-				SearchIndexer.Stop();
-			}
-		}
-
 		void ExclusiveEnd()
 		{
-			lock (Exclusive_lock)
-			{
-				if (!ExclusiveEnabled) return;
+			if (!ExclusiveEnabled) return;
 
-				WindowsUpdate.Start();
-				SearchIndexer.Start();
-			}
+			foreach (var service in Services)
+				service.Start(service.FullDisable);
 		}
 
 		int Handling { get; set; } = 0; // this isn't used for much...
@@ -2288,11 +2279,16 @@ namespace Taskmaster
 				CancelPowerWait();
 				WaitForExitList.Clear();
 
-				WindowsUpdate.Dispose();
-				SearchIndexer.Dispose();
+				foreach (var service in Services)
+					service.Dispose();
+				Services.Clear();
 
 				ExclusiveList?.Clear();
-				MKAh.Utility.DiscardExceptions(() => ExclusiveEnd());
+				MKAh.Utility.DiscardExceptions(
+					() =>
+					{
+						lock (Exclusive_lock) ExclusiveEnd();
+					});
 			}
 		}
 	}

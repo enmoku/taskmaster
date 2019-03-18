@@ -25,6 +25,8 @@
 // THE SOFTWARE.
 
 using System;
+using System.Diagnostics;
+using System.Management;
 using System.ServiceProcess;
 using Serilog;
 
@@ -34,23 +36,76 @@ namespace Taskmaster
 	{
 		readonly string ServiceName;
 
+		/// <summary>
+		/// If true, stopping causes the service to be also disabled.
+		/// </summary>
+		public bool FullDisable = false;
+
+		readonly Lazy<ServiceController> Service;
+		readonly Lazy<ManagementObject> WMI;
+
 		public ServiceWrapper(string service)
 		{
 			ServiceName = service;
 
 			Service = new Lazy<ServiceController>(() => new ServiceController(ServiceName));
+			WMI = new Lazy<ManagementObject>(() => new ManagementObject(@"\\.\root\CIMV2", $"Win32_Service.Name='{ServiceName}'", null));
 		}
 
 		bool Running => Service.Value.Status == ServiceControllerStatus.Running;
 
 		public bool NeedsRestart { get; private set; } = false;
 
-		public void Start()
+		bool NeedsEnable = false;
+
+		public void Disable()
+		{
+			try
+			{
+				var mode = WMI.Value.GetPropertyValue("StarMode") as string;
+
+				if (string.IsNullOrEmpty(mode) || mode.Equals("disabled", StringComparison.InvariantCultureIgnoreCase))
+					return;
+
+				Debug.WriteLine($"SERVICE [{ServiceName}] DISABLE");
+
+				WMI.Value.SetPropertyValue("StartMode", "Disabled");
+
+				NeedsEnable = true;
+			}
+			catch (Exception ex)
+			{
+				Logging.Stacktrace(ex);
+			}
+		}
+
+		public void Enable()
+		{
+			if (DisposedOrDisposing || !NeedsEnable || !WMI.IsValueCreated) return;
+
+			try
+			{
+				Debug.WriteLine($"SERVICE [{ServiceName}] ENABLE");
+
+				WMI.Value.SetPropertyValue("StartMode", "Automatic");
+				WMI.Value.SetPropertyValue("DelayedAutoStart", true);
+
+				NeedsEnable = false;
+			}
+			catch (Exception ex)
+			{
+				Logging.Stacktrace(ex);
+			}
+		}
+
+		public void Start(bool enable=false)
 		{
 			if (DisposedOrDisposing || !NeedsRestart || !Service.IsValueCreated) return;
 
 			try
 			{
+				if (enable) Enable();
+
 				Service.Value.Refresh();
 
 				// TODO:
@@ -81,7 +136,7 @@ namespace Taskmaster
 			catch (Exception ex) when (ex is NullReferenceException || ex is OutOfMemoryException) { throw; }
 		}
 
-		public void Stop()
+		public void Stop(bool disable=false)
 		{
 			if (DisposedOrDisposing) return;
 
@@ -91,6 +146,8 @@ namespace Taskmaster
 
 			try
 			{
+				if (disable) Disable();
+
 				Service.Value.Refresh();
 
 				switch (Service.Value.Status)
@@ -124,8 +181,6 @@ namespace Taskmaster
 				Logging.Stacktrace(ex);
 			}
 		}
-
-		readonly Lazy<ServiceController> Service;
 
 		#region IDisposable Support
 		~ServiceWrapper() => Dispose(false);
