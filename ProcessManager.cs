@@ -195,9 +195,9 @@ namespace Taskmaster
 
 		string freememoryignore = null;
 
-        ConcurrentDictionary<int, int> ignorePids = new ConcurrentDictionary<int, int>();
+		ConcurrentDictionary<int, int> ignorePids = new ConcurrentDictionary<int, int>();
 
-        public void Ignore(int pid) => ignorePids.TryAdd(pid, 0);
+		public void Ignore(int pid) => ignorePids.TryAdd(pid, 0);
 
 		public void Unignore(int pid) => ignorePids.TryRemove(pid, out _);
 
@@ -298,11 +298,11 @@ namespace Taskmaster
 		{
 			if (DisposedOrDisposing) return; // HACK: dumb timers be dumb
 
-            try
-            {
+			try
+			{
 				if (Taskmaster.Trace) Log.Verbose("Rescan requested.");
 
-                await Task.Delay(0).ConfigureAwait(false); // asyncify
+				await Task.Delay(0).ConfigureAwait(false); // asyncify
 				if (cts.IsCancellationRequested) return;
 
 				Scan();
@@ -509,7 +509,7 @@ namespace Taskmaster
 							{
 								info.Process.Refresh();
 								if (info.Process.HasExited) continue;
- 								NativeMethods.EmptyWorkingSet(info.Process.Handle); // process.Handle may throw which we don't care about
+								NativeMethods.EmptyWorkingSet(info.Process.Handle); // process.Handle may throw which we don't care about
 							}
 							catch { }
 						}
@@ -926,7 +926,7 @@ namespace Taskmaster
 					continue;
 				}
 
-				var aff = ruleAff?.IntValue ?? -1;
+				var aff = (ruleAff?.IntValue ?? -1);
 				if (aff > AllCPUsMask || aff < -1)
 				{
 					Log.Warning($"<Watchlist:{ruleAff.Line}> [{section.Name}] Affinity({aff}) is malconfigured. Skipping.");
@@ -965,9 +965,6 @@ namespace Taskmaster
 					affStrat = (ProcessAffinityStrategy)affinityStrat;
 				}
 
-				float volume = section.Get("Volume")?.FloatValue.Constrain(0.0f, 1.0f) ?? 0.5f;
-				AudioVolumeStrategy volumestrategy = (AudioVolumeStrategy)(section.Get("Volume strategy")?.IntValue.Constrain(0, 5) ?? 0);
-
 				int baff = section.Get("Background affinity")?.IntValue ?? -1;
 				ProcessPriorityClass? bprio = null;
 				int bpriot = section.Get("Background priority")?.IntValue ?? -1;
@@ -987,13 +984,13 @@ namespace Taskmaster
 
 				var prc = new ProcessController(section.Name, prioR, aff)
 				{
-					Enabled = section.Get(HumanReadable.Generic.Enabled)?.BoolValue ?? true,
-					Executable = ruleExec?.Value ?? null,
-					Description = section.Get(HumanReadable.Generic.Description)?.Value ?? null,
+					Enabled = (section.Get(HumanReadable.Generic.Enabled)?.BoolValue ?? true),
+					Executable = (ruleExec?.Value ?? null),
+					Description = (section.Get(HumanReadable.Generic.Description)?.Value ?? null),
 					// friendly name is filled automatically
 					PriorityStrategy = priostrat,
 					AffinityStrategy = affStrat,
-					Path = (section.Get(HumanReadable.System.Process.Path)?.Value ?? null),
+					Path = (rulePath?.Value ?? null),
 					ModifyDelay = (section.Get("Modify delay")?.IntValue ?? 0),
 					//BackgroundIO = (section.TryGet("Background I/O")?.BoolValue ?? false), // Doesn't work
 					Recheck = (section.Get("Recheck")?.IntValue ?? 0).Constrain(0, 300),
@@ -1004,15 +1001,16 @@ namespace Taskmaster
 					IgnoreList = tignorelist,
 					AllowPaging = (section.Get("Allow paging")?.BoolValue ?? false),
 					Analyze = (section.Get("Analyze")?.BoolValue ?? false),
+					ExclusiveMode = (section.Get("Exclusive")?.BoolValue ?? false),
+					OrderPreference = (section.Get("Preference")?.IntValue.Constrain(0, 100) ?? 10),
+					IOPriority = (section.Get("IO priority")?.IntValue.Constrain(0, 2) ?? -1), // 0-1 background, 2 = normal, anything else seems to have no effect
+					LogAdjusts = (section.Get("Logging")?.BoolValue ?? true),
+					Volume = (section.Get("Volume")?.FloatValue.Constrain(0.0f, 1.0f) ?? 0.5f),
+					VolumeStrategy = (AudioVolumeStrategy)(section.Get("Volume strategy")?.IntValue.Constrain(0, 5) ?? 0),
 				};
 
-				prc.ExclusiveMode = section.Get("Exclusive")?.BoolValue ?? false;
+				//prc.MMPriority = section.TryGet("MEM priority")?.IntValue ?? int.MinValue; // unused
 
-				prc.OrderPreference = section.Get("Preference")?.IntValue.Constrain(0, 100) ?? prc.OrderPreference;
-
-				prc.IOPriority = section.Get("IO priority")?.IntValue.Constrain(0, 2) ?? -1; // 0-1 background, 2 = normal, anything else seems to have no effect
-																										  //prc.MMPriority = section.TryGet("MEM priority")?.IntValue ?? int.MinValue; // unused
-				// UPGRADE
 				int? foregroundMode = section.Get("Foreground mode")?.IntValue;
 				if (foregroundMode.HasValue)
 					prc.SetForegroundMode((ForegroundMode)foregroundMode.Value.Constrain(-1, 2));
@@ -1029,11 +1027,6 @@ namespace Taskmaster
 						prc.AffinityIdeal = -1;
 					}
 				}
-
-				prc.LogAdjusts = section.Get("Logging")?.BoolValue ?? true;
-
-				prc.Volume = volume.Constrain(0f, 1f);
-				prc.VolumeStrategy = volumestrategy;
 
 				// TODO: Blurp about following configuration errors
 				if (prc.AffinityMask < 0) prc.AffinityStrategy = ProcessAffinityStrategy.None;
