@@ -906,6 +906,12 @@ namespace MKAh
 
 			public bool UnescapeValue(string value, out string nvalue, bool trim = false)
 			{
+				if (string.IsNullOrEmpty(value) || value.Length == 0)
+				{
+					nvalue = null;
+					return false;
+				}
+
 				if (trim) value = value.Trim();
 
 				bool NeedsUnEscaping = value.IndexOf(Constant.EscapeChar) >= 0;
