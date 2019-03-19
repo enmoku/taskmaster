@@ -60,7 +60,7 @@ namespace MKAh
 
 				#region Indexers
 				T this[int index] { get; set; }
-				T this[string key] { get;set; }
+				T this[string key] { get; set; }
 				#endregion
 
 				bool TryGet(string name, out T value);
@@ -423,7 +423,7 @@ namespace MKAh
 				{
 					//Offset++;
 
-					if (CommentStart == -1) throw new FormatException("Malformed line: no key=value pair nor comment\n"+source);
+					if (CommentStart == -1) throw new FormatException("Malformed line: no key=value pair nor comment\n" + source);
 
 					value = new Setting { Comment = source.Substring(CommentStart + 1).Trim() };
 				}
@@ -764,11 +764,10 @@ namespace MKAh
 
 			public int[] IntArray
 			{
-				set => Set(value);
+				set => SetArray(value);
 				get
 				{
-					if (Array == null || Array.Length == 0)
-						throw new ArgumentNullException("No array set.");
+					if (Array == null || Array.Length == 0) return null;
 
 					int[] cache = new int[Array.Length];
 
@@ -781,11 +780,10 @@ namespace MKAh
 
 			public float[] FloatArray
 			{
-				set => Set(value);
+				set => SetArray(value);
 				get
 				{
-					if (Array == null || Array.Length == 0)
-						throw new ArgumentNullException("No array set.");
+					if (Array == null || Array.Length == 0) return null;
 
 					float[] cache = new float[Array.Length];
 
@@ -798,11 +796,10 @@ namespace MKAh
 
 			public double[] DoubleArray
 			{
-				set => Set(value);
+				set => SetArray(value);
 				get
 				{
-					if (Array == null || Array.Length == 0)
-						throw new ArgumentNullException("No array set.");
+					if (Array == null || Array.Length == 0) return null;
 
 					double[] cache = new double[Array.Length];
 
@@ -839,7 +836,7 @@ namespace MKAh
 					_array = null;
 					_value = null;
 
-					_array  = (string[])value.Clone(); // is this enough?
+					_array = (string[])value.Clone(); // is this enough?
 					ResetEscapedCache();
 
 					//Debug.WriteLine("BaseArray = " + string.Join(", ", value));
@@ -940,7 +937,7 @@ namespace MKAh
 
 				for (int i = 0; i < values.Length; i++)
 				{
-					if (UnescapeValue(values[i], out string nsv, trim:true))
+					if (UnescapeValue(values[i], out string nsv, trim: true))
 						nv[i] = nsv;
 					else
 						nv[i] = values[i];
@@ -951,33 +948,35 @@ namespace MKAh
 				return nv;
 			}
 
+			public void SetArray(string[] array) => Array = array;
 			public void Set(string value) => Value = value;
-			public void Set(string[] array) => Array = array;
-			public void Set(bool[] values) => Array = Converter<bool>.Convert(values);
+			public void SetArray(bool[] values) => Array = Converter<bool>.Convert(values);
 			public void Set(bool value) => Value = Converter<bool>.Convert(value);
-			public void Set(int[] values) => Array = Converter<int>.Convert(values);
+			public void SetArray(int[] values) => Array = Converter<int>.Convert(values);
 			public void Set(int value) => Value = Converter<int>.Convert(value);
-			public void Set(uint[] values) => Array = Converter<uint>.Convert(values);
+			public void SetArray(uint[] values) => Array = Converter<uint>.Convert(values);
 			public void Set(uint value) => Value = Converter<uint>.Convert(value);
-			public void Set(long[] values) => Array = Converter<long>.Convert(values);
+			public void SetArray(long[] values) => Array = Converter<long>.Convert(values);
 			public void Set(long value) => Value = Converter<long>.Convert(value);
-			public void Set(ulong[] values) => Array = Converter<ulong>.Convert(values);
+			public void SetArray(ulong[] values) => Array = Converter<ulong>.Convert(values);
 			public void Set(ulong value) => Value = Converter<ulong>.Convert(value);
-			public void Set(float[] values) => Array = Converter<float>.Convert(values);
+			public void SetArray(float[] values) => Array = Converter<float>.Convert(values);
 			public void Set(float value) => Value = Converter<float>.Convert(value);
-			public void Set(double[] values) => Array = Converter<double>.Convert(values);
+			public void SetArray(double[] values) => Array = Converter<double>.Convert(values);
 			public void Set(double value) => Value = Converter<double>.Convert(value);
-			public void Set(decimal[] values) => Array = Converter<decimal>.Convert(values);
+			public void SetArray(decimal[] values) => Array = Converter<decimal>.Convert(values);
 			public void Set(decimal value) => Value = Converter<decimal>.Convert(value);
 		}
 
 		static class Converter<T>
 		{
-			public static string[] Convert(T[] array)
-			{
-				string[] output = new string[array.Length];
+			public static string[] Convert(string[] array) => array;
 
-				for (int i = 0; i < array.Length; i++)
+			public static string[] Convert(IList<T> array)
+			{
+				string[] output = new string[array.Count];
+
+				for (int i = 0; i < array.Count; i++)
 				{
 					output[i] = Convert(array[i]).Trim();
 					// TODO: UNESCAPE
@@ -1114,7 +1113,7 @@ namespace MKAh
 					section.Add(rv);
 				}
 
-				rv.Set(Ini.Converter<T[]>.Convert(fallback));
+				rv.SetArray(Ini.Converter<T>.Convert(fallback));
 				defaulted = true;
 			}
 

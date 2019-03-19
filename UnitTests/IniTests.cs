@@ -4,14 +4,14 @@ using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-
 using NUnit;
 using NUnit.Framework;
 
-using Ini = MKAh.Ini;
-
 namespace IniFile
 {
+	using MKAh;
+	using Ini = MKAh.Ini;
+
 	[TestFixture]
 	public class Reading
 	{
@@ -62,17 +62,17 @@ namespace IniFile
 				Assert.AreEqual("0.5", key1.Value);
 
 				var intarray = new Ini.Setting { Name = "IntArray", Comment = "ints" };
-				intarray.Set(new[] { 1, 2f, 3 });
+				intarray.SetArray(new[] { 1, 2f, 3 });
 				Debug.WriteLine(intarray.EscapedValue);
 				Assert.AreEqual("{ 1, 2, 3 }", intarray.EscapedValue);
 
 				var strarray = new Ini.Setting { Name = "StringArray", Comment = "strings" };
-				strarray.Set(new[] { "abc", "xyz" });
+				strarray.SetArray(new[] { "abc", "xyz" });
 				Debug.WriteLine(strarray.EscapedValue);
 				Assert.AreEqual("{ abc, xyz }", strarray.EscapedValue);
 
 				var badarray = new Ini.Setting { Name = "BadArray", Comment = "bad strings" };
-				badarray.Set(new[] { "a#b#c", "x\"y\"z", "\"doop\"#", "good", "  spaced", "#bad", "#\"test\"" });
+				badarray.SetArray(new[] { "a#b#c", "x\"y\"z", "\"doop\"#", "good", "  spaced", "#bad", "#\"test\"" });
 				Debug.WriteLine(badarray.EscapedValue);
 
 				Assert.AreEqual("{ \"a#b#c\", \"x\\\"y\\\"z\", \"\\\"doop\\\"#\", good, \"  spaced\", \"#bad\", \"#\\\"test\\\"\" }", badarray.EscapedValue);
@@ -225,6 +225,64 @@ namespace IniFile
 
 				data = config.GetLines(); // re-write config
 			}
+		}
+
+		[Test]
+		public void GetSetDefaultDoesSet()
+		{
+			var config = new Ini.Config();
+
+			var section = new Ini.Section("Test");
+			config.Add(section);
+
+			int newVal = 5;
+
+			var setVal = section.GetOrSet("NotSet", newVal, out bool defaulted);
+
+			Assert.AreEqual(true, defaulted);
+			Assert.AreEqual(newVal, setVal.IntValue);
+
+			var setVal2 = section.GetOrSet("NotSetArray", new int[] { 1, 2, 3 }, out defaulted);
+
+			Assert.AreEqual(true, defaulted);
+			var array = setVal2.IntArray;
+			Assert.AreEqual(1, array[0]);
+			Assert.AreEqual(2, array[1]);
+			Assert.AreEqual(3, array[2]);
+			Assert.AreEqual("{ 1, 2, 3 }", setVal2.EscapedValue);
+		}
+
+		[Test]
+		public void GetSetDefaultGetOnly()
+		{
+			var config = new Ini.Config();
+
+			var section = new Ini.Section("Test");
+			config.Add(section);
+
+			string SettingName = "Preset";
+			string SettingName2 = "ArrayPreset";
+
+			int oldVal = 5;
+			int newVal = 7;
+
+			section[SettingName].IntValue = oldVal;
+
+			var setting = section.GetOrSet(SettingName, newVal, out bool defaulted);
+
+			Assert.AreEqual(false, defaulted);
+			Assert.AreEqual(oldVal, setting.IntValue);
+
+			section[SettingName2].IntArray = new int[] { 1, 2, 3 };
+
+			var setting2 = section.GetOrSet(SettingName2, new int[] { 7, 8, 9 }, out defaulted);
+
+			Assert.AreEqual(false, defaulted);
+			var array = setting2.IntArray;
+			Assert.AreEqual(1, array[0]);
+			Assert.AreEqual(2, array[1]);
+			Assert.AreEqual(3, array[2]);
+			Assert.AreEqual("{ 1, 2, 3 }", setting2.EscapedValue);
 		}
 	}
 }
