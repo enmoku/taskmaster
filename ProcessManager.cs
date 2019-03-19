@@ -971,7 +971,7 @@ namespace Taskmaster
 				if (bpriot >= 0) bprio = ProcessHelpers.IntToPriority(bpriot);
 
 				PathVisibilityOptions pvis = PathVisibilityOptions.Process;
-				pvis = (PathVisibilityOptions)(section.Get("Path visibility")?.IntValue.Constrain(-1, 3) ?? 0);
+				pvis = (PathVisibilityOptions)(section.Get("Path visibility")?.IntValue.Constrain(-1, 3) ?? -1);
 
 				string[] tignorelist = (section.Get(HumanReadable.Generic.Ignore)?.Array ?? null);
 				if (tignorelist != null && tignorelist.Length > 0)

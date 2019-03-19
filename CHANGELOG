@@ -5,6 +5,7 @@ Comprehensive changes can be found in Git change history:
 ## [0.13...]
 ### 2019-03-19
 	Fixed: System32 ignore warning was flipped.
+	Changed: Default path visibility changed from invalid to process.
 ### 2019-03-18
 	Internal: Restructuring. Should not affecting end-users.
 ### 2019-03-16
