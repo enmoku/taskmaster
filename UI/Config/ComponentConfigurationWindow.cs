@@ -145,7 +145,6 @@ namespace Taskmaster.UI.Config
 			{
 				DropDownStyle = ComboBoxStyle.DropDownList,
 				Items = { "Scanning", "WMI polling", "Both" },
-				SelectedIndex = 2,
 				Width = 80,
 			};
 			layout.Controls.Add(ScanOrWMI);
@@ -203,7 +202,7 @@ namespace Taskmaster.UI.Config
 				}
 			};
 
-			ScanOrWMI.SelectedIndex = initial ? 0 : ((WMIPolling && scan) ? 2 : (WMIPolling ? 1 : 0));
+			ScanOrWMI.SelectedIndex = initial ? 2 : ((WMIPolling && scan) ? 2 : (WMIPolling ? 1 : 0));
 
 			var powmon = new CheckBox()
 			{
