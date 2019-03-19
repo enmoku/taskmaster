@@ -1806,6 +1806,9 @@ namespace Taskmaster.UI
 			{
 				coresystems.Controls.Add(new Label() { Text = "Core", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left, Font = boldfont });
 				coresystems.Controls.Add(corepanel);
+			}
+			if (gpupanel != null)
+			{
 				coresystems.Controls.Add(new Label() { Text = "GPU", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left, Font = boldfont });
 				coresystems.Controls.Add(gpupanel);
 			}

@@ -7,6 +7,7 @@ Comprehensive changes can be found in Git change history:
 	Fixed: System32 ignore warning was flipped.
 	Changed: Default path visibility changed from invalid to process.
 	Fixed: Array handling that was breaking new installations.
+	Fixed: Main window lists GPU even if related component is disabled.
 ### 2019-03-18
 	Internal: Restructuring. Should not affecting end-users.
 ### 2019-03-16
