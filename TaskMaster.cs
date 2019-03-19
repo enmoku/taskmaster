@@ -1123,7 +1123,7 @@ namespace Taskmaster
 			}
 			else if (!File.Exists(Path.Combine(datapath, Taskmaster.coreconfig)))
 			{
-				if (SimpleMessageBox.ShowModal("Taskmaster setup", "Setup portable installation?", SimpleMessageBox.Buttons.AcceptCancel)
+				if (SimpleMessageBox.ShowModal("Taskmaster setup", "Set up PORTABLE installation?", SimpleMessageBox.Buttons.AcceptCancel)
 					== SimpleMessageBox.ResultType.OK)
 				{
 					datapath = portpath;
