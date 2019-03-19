@@ -145,7 +145,7 @@ namespace Taskmaster.UI.Config
 			{
 				DropDownStyle = ComboBoxStyle.DropDownList,
 				Items = { "Scanning", "WMI polling", "Both" },
-				SelectedIndex = 0,
+				SelectedIndex = 2,
 				Width = 80,
 			};
 			layout.Controls.Add(ScanOrWMI);
