@@ -258,7 +258,7 @@ namespace Taskmaster
 			bool modified = false, configdirty = false;
 
 			var gensec = cfg.Config["General"];
-			var settingFreqSetting = gensec.GetSetDefault("Frequency", 5, out modified);
+			var settingFreqSetting = gensec.GetOrSet("Frequency", 5, out modified);
 			Settings.Frequency = TimeSpan.FromMinutes(settingFreqSetting.IntValue.Constrain(1, 60 * 24));
 			if (modified) settingFreqSetting.Comment = "How often we check for anything. In minutes.";
 			configdirty |= modified;
@@ -266,24 +266,24 @@ namespace Taskmaster
 			var freememsec = cfg.Config["Free Memory"];
 			//freememsec.Comment = "Attempt to free memory when available memory goes below a threshold.";
 
-			var memLevelSetting = freememsec.GetSetDefault("Threshold", 1000, out modified);
+			var memLevelSetting = freememsec.GetOrSet("Threshold", 1000, out modified);
 			Settings.MemLevel = (ulong)memLevelSetting.IntValue;
 			// MemLevel = MemLevel > 0 ? MemLevel.Constrain(1, 2000) : 0;
 			if (modified) memLevelSetting.Comment = "When memory goes down to this level, we act.";
 			configdirty |= modified;
 			if (Settings.MemLevel > 0)
 			{
-				var memIgnFocusSetting = freememsec.GetSetDefault("Ignore foreground", true, out modified);
+				var memIgnFocusSetting = freememsec.GetOrSet("Ignore foreground", true, out modified);
 				Settings.MemIgnoreFocus = memIgnFocusSetting.BoolValue;
 				if (modified) memIgnFocusSetting.Comment = "Foreground app is not touched, regardless of anything.";
 				configdirty |= modified;
 
-				var ignListSetting = freememsec.GetSetDefault("Ignore list", new string[] { }, out modified);
+				var ignListSetting = freememsec.GetOrSet("Ignore list", new string[] { }, out modified);
 				Settings.IgnoreList = ignListSetting.Array;
 				if (modified) ignListSetting.Comment = "List of apps that we don't touch regardless of anything.";
 				configdirty |= modified;
 
-				var memCooldownSetting = freememsec.GetSetDefault("Cooldown", 60, out modified);
+				var memCooldownSetting = freememsec.GetOrSet("Cooldown", 60, out modified);
 				Settings.MemCooldown = memCooldownSetting.IntValue.Constrain(1, 180);
 				if (modified) memCooldownSetting.Comment = "Don't do this again for this many minutes.";
 				configdirty |= modified;
@@ -291,19 +291,19 @@ namespace Taskmaster
 
 			// SELF-MONITORING
 			var selfsec = cfg.Config["Self"];
-			var fatalErrThSetting = selfsec.GetSetDefault("Fatal error threshold", 10, out modified);
+			var fatalErrThSetting = selfsec.GetOrSet("Fatal error threshold", 10, out modified);
 			Settings.FatalErrorThreshold = fatalErrThSetting.IntValue.Constrain(1, 30);
 			if (modified) fatalErrThSetting.Comment = "Auto-exit once number of fatal errors reaches this. 10 is very generous default.";
 			configdirty |= modified;
 
-			var fatalLogSetting = selfsec.GetSetDefault("Fatal log size threshold", 10, out modified);
+			var fatalLogSetting = selfsec.GetOrSet("Fatal log size threshold", 10, out modified);
 			Settings.FatalLogSizeThreshold = fatalLogSetting.IntValue.Constrain(1, 500);
 			if (modified) fatalLogSetting.Comment = "Auto-exit if total log file size exceeds this. In megabytes.";
 			configdirty |= modified;
 
 			// NVM
 			var nvmsec = cfg.Config["Non-Volatile Memory"];
-			var lowDriveSetting = nvmsec.GetSetDefault("Low space threshold", 150, out modified);
+			var lowDriveSetting = nvmsec.GetOrSet("Low space threshold", 150, out modified);
 			Settings.LowDriveSpaceThreshold = lowDriveSetting.IntValue.Constrain(0, 60000);
 			if (modified) lowDriveSetting.Comment = "Warn about free space going below this. In megabytes. From 0 to 60000.";
 			configdirty |= modified;

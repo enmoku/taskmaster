@@ -1100,7 +1100,7 @@ namespace MKAh
 
 	public static class HelperExtensions
 	{
-		public static Ini.Setting GetSetDefault<T>(this Ini.Section section, string setting, T[] fallback, out bool defaulted)
+		public static Ini.Setting GetOrSet<T>(this Ini.Section section, string setting, T[] fallback, out bool defaulted)
 		{
 			Ini.Setting rv = null;
 
@@ -1121,7 +1121,7 @@ namespace MKAh
 			return rv;
 		}
 
-		public static Ini.Setting GetSetDefault<T>(this Ini.Section section, string setting, T fallback, out bool defaulted)
+		public static Ini.Setting GetOrSet<T>(this Ini.Section section, string setting, T fallback, out bool defaulted)
 		{
 			Debug.Assert(section != null);
 			Debug.Assert(!string.IsNullOrEmpty(setting));

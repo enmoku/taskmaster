@@ -79,21 +79,21 @@ namespace Taskmaster
 			var dirtyconf = false;
 
 			var monsec = cfg.Config["Monitor"];
-			dnstestaddress = monsec.GetSetDefault("DNS test", "www.google.com", out dirty).Value;
+			dnstestaddress = monsec.GetOrSet("DNS test", "www.google.com", out dirty).Value;
 			dirtyconf |= dirty;
 
 			var devsec = cfg.Config["Devices"];
-			DeviceTimerInterval = devsec.GetSetDefault("Check frequency", 15, out dirty).IntValue.Constrain(1, 30) * 60;
+			DeviceTimerInterval = devsec.GetOrSet("Check frequency", 15, out dirty).IntValue.Constrain(1, 30) * 60;
 			devsec["Check frequency"].Comment = "Minutes";
 			dirtyconf |= dirty;
 
 			var pktsec = cfg.Config["Traffic"];
-			PacketStatTimerInterval = pktsec.GetSetDefault("Sample rate", 15, out dirty).IntValue.Constrain(1, 60);
+			PacketStatTimerInterval = pktsec.GetOrSet("Sample rate", 15, out dirty).IntValue.Constrain(1, 60);
 			pktsec["Sample rate"].Comment = "Seconds";
 			PacketWarning.Peak = PacketStatTimerInterval;
 			dirtyconf |= dirty;
 
-			ErrorReportLimit = pktsec.GetSetDefault("Error report limit", 5, out dirty).IntValue.Constrain(1, 60);
+			ErrorReportLimit = pktsec.GetOrSet("Error report limit", 5, out dirty).IntValue.Constrain(1, 60);
 			ErrorReports.Peak = ErrorReportLimit;
 			dirtyconf |= dirty;
 

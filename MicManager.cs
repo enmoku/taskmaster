@@ -109,9 +109,9 @@ namespace Taskmaster
 			var mediasec = corecfg.Config["Media"];
 
 			bool dirty = false, modified = false;
-			Control = mediasec.GetSetDefault(mcontrol, false, out modified).BoolValue;
+			Control = mediasec.GetOrSet(mcontrol, false, out modified).BoolValue;
 			dirty |= modified;
-			DefaultVolume = mediasec.GetSetDefault(mvol, 100.0d, out modified).DoubleValue.Constrain(0.0d, 100.0d);
+			DefaultVolume = mediasec.GetOrSet(mvol, 100.0d, out modified).DoubleValue.Constrain(0.0d, 100.0d);
 			dirty |= modified;
 
 			if (dirty) corecfg.MarkDirty();
@@ -277,11 +277,11 @@ namespace Taskmaster
 
 				bool dirty = false, modified = false;
 
-				var devvol = devsec.GetSetDefault(vname, DefaultVolume, out modified).DoubleValue;
+				var devvol = devsec.GetOrSet(vname, DefaultVolume, out modified).DoubleValue;
 				dirty |= modified;
-				bool devcontrol = devsec.GetSetDefault(cname, false, out modified).BoolValue;
+				bool devcontrol = devsec.GetOrSet(cname, false, out modified).BoolValue;
 				dirty |= modified;
-				devsec.GetSetDefault("Name", RecordingDevice.Name, out modified);
+				devsec.GetOrSet("Name", RecordingDevice.Name, out modified);
 				dirty |= modified;
 
 				if (dirty) devcfg.MarkDirty();
@@ -325,9 +325,9 @@ namespace Taskmaster
 					{
 						string guid = AudioManager.AudioDeviceIdToGuid(dev.ID);
 						var devsec = devcfg.Config[guid];
-						devsec.GetSetDefault("Name", dev.DeviceFriendlyName, out modified);
+						devsec.GetOrSet("Name", dev.DeviceFriendlyName, out modified);
 						dirty |= modified;
-						bool control = devsec.GetSetDefault("Control", false, out modified).BoolValue;
+						bool control = devsec.GetOrSet("Control", false, out modified).BoolValue;
 						dirty |= modified;
 						float target = devsec.Get("Volume")?.FloatValue ?? float.NaN;
 

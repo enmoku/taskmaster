@@ -780,7 +780,7 @@ namespace Taskmaster
 			// ControlChildren = coreperf.GetSetDefault("Child processes", false, out tdirty).BoolValue;
 			// dirtyconfig |= tdirty;
 
-			var ignRecentlyModifiedSetting = perfsec.GetSetDefault("Ignore recently modified", 30, out modified);
+			var ignRecentlyModifiedSetting = perfsec.GetOrSet("Ignore recently modified", 30, out modified);
 			int ignRecentlyModified = ignRecentlyModifiedSetting.IntValue.Constrain(0, 24 * 60);
 			if (ignRecentlyModified > 0)
 				IgnoreRecentlyModified = TimeSpan.FromMinutes(ignRecentlyModified);
@@ -788,7 +788,7 @@ namespace Taskmaster
 				IgnoreRecentlyModified = null;
 			ignRecentlyModifiedSetting.Comment = "Performance optimization. More notably this enables granting self-determination to apps that actually think they know better.";
 
-			var tscanSetting = perfsec.GetSetDefault("Scan frequency", 15, out modified);
+			var tscanSetting = perfsec.GetOrSet("Scan frequency", 15, out modified);
 			var tscan = tscanSetting.IntValue.Constrain(0, 360);
 			if (tscan > 0) ScanFrequency = TimeSpan.FromSeconds(tscan.Constrain(5, 360));
 			else ScanFrequency = null;
@@ -800,11 +800,11 @@ namespace Taskmaster
 
 			// --------------------------------------------------------------------------------------------------------
 
-			var wmipollingSetting = perfsec.GetSetDefault("WMI event watcher", false, out modified);
+			var wmipollingSetting = perfsec.GetOrSet("WMI event watcher", false, out modified);
 			WMIPolling = wmipollingSetting.BoolValue;
 			if (modified) wmipollingSetting.Comment = "Use WMI to be notified of new processes starting. If disabled, only rescanning everything will cause processes to be noticed.";
 			dirtyconfig |= modified;
-			var wmipolldelaySetting = perfsec.GetSetDefault("WMI poll delay", 5, out modified);
+			var wmipolldelaySetting = perfsec.GetOrSet("WMI poll delay", 5, out modified);
 			WMIPollDelay = wmipolldelaySetting.IntValue.Constrain(1, 30);
 			if (modified) wmipolldelaySetting.Comment = "WMI process watcher delay (in seconds).  Smaller gives better results but can inrease CPU usage. Accepted values: 1 to 30.";
 			dirtyconfig |= modified;
@@ -817,7 +817,7 @@ namespace Taskmaster
 			var fgpausesec = corecfg.Config["Foreground Focus Lost"];
 			// RestoreOriginal = fgpausesec.GetSetDefault("Restore original", false, out modified).BoolValue;
 			// dirtyconfig |= modified;
-			var defbgprioSetting = fgpausesec.GetSetDefault("Default priority", 2, out modified);
+			var defbgprioSetting = fgpausesec.GetOrSet("Default priority", 2, out modified);
 			DefaultBackgroundPriority = defbgprioSetting.IntValue.Constrain(0, 4);
 			if (modified) defbgprioSetting.Comment = "Default is normal to avoid excessive loading times while user is alt-tabbed.";
 			dirtyconfig |= modified;
@@ -826,14 +826,14 @@ namespace Taskmaster
 			// OffFocusPowerCancel = fgpausesec.GetSetDefault("Power mode cancel", true, out modified).BoolValue;
 			// dirtyconfig |= modified;
 
-			DefaultBackgroundAffinity = fgpausesec.GetSetDefault("Default affinity", 14, out modified).IntValue.Constrain(0, AllCPUsMask);
+			DefaultBackgroundAffinity = fgpausesec.GetOrSet("Default affinity", 14, out modified).IntValue.Constrain(0, AllCPUsMask);
 			dirtyconfig |= modified;
 
 			// --------------------------------------------------------------------------------------------------------
 
 			// Taskmaster.cfg["Applications"]["Ignored"].StringArray = IgnoreList;
 			var ignsetting = corecfg.Config["Applications"];
-			var ignlistSetting = ignsetting.GetSetDefault(HumanReadable.Generic.Ignore, IgnoreList, out modified);
+			var ignlistSetting = ignsetting.GetOrSet(HumanReadable.Generic.Ignore, IgnoreList, out modified);
 			string[] newIgnoreList = ignlistSetting.Array;
 			if (modified) ignlistSetting.Comment = "Special hardcoded protection applied to: consent, winlogon, wininit, and csrss. These are vital system services and messing with them can cause severe system malfunctioning. Mess with the ignore list at your own peril.";
 
@@ -852,7 +852,7 @@ namespace Taskmaster
 			}
 			if (Taskmaster.DebugProcesses) Log.Debug("<Process> Ignore list: " + string.Join(", ", IgnoreList));
 
-			var ignSys32Setting = ignsetting.GetSetDefault("Ignore System32", true, out modified);
+			var ignSys32Setting = ignsetting.GetOrSet("Ignore System32", true, out modified);
 			IgnoreSystem32Path = ignSys32Setting.BoolValue;
 			if (modified) ignSys32Setting.Comment = "Ignore programs in %SYSTEMROOT%/System32 folder.";
 			dirtyconfig |= modified;

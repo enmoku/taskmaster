@@ -92,12 +92,12 @@ namespace Taskmaster
 			// SAMPLING
 			// this really should be elsewhere
 			var hwsec = corecfg.Config[HumanReadable.Hardware.Section];
-			var sampleIntervalSetting = hwsec.GetSetDefault(HumanReadable.Hardware.CPU.Settings.SampleInterval, 2, out modified);
+			var sampleIntervalSetting = hwsec.GetOrSet(HumanReadable.Hardware.CPU.Settings.SampleInterval, 2, out modified);
 			SampleInterval = TimeSpan.FromSeconds(sampleIntervalSetting.IntValue.Constrain(1, 15));
 			if (modified) sampleIntervalSetting.Comment = "1 to 15, in seconds. Frequency at which CPU usage is sampled. Recommended value: 1 to 5 seconds.";
 			dirtyconfig |= modified;
 
-			var sampleCountSetting = hwsec.GetSetDefault(HumanReadable.Hardware.CPU.Settings.SampleCount, 5, out modified);
+			var sampleCountSetting = hwsec.GetOrSet(HumanReadable.Hardware.CPU.Settings.SampleCount, 5, out modified);
 			SampleCount = sampleCountSetting.IntValue.Constrain(3, 30);
 			if (modified) sampleCountSetting.Comment = "3 to 30. Number of CPU samples to keep. Recommended value is: Count * Interval <= 30 seconds";
 			dirtyconfig |= modified;

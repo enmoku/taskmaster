@@ -1695,9 +1695,9 @@ namespace Taskmaster.UI
 
 			var cfg = Taskmaster.Config.Load(Taskmaster.coreconfig);
 			bool modified, tdirty = false;
-			MaxLogSize = cfg.Config["Logging"].GetSetDefault("UI max items", 200, out modified).IntValue;
+			MaxLogSize = cfg.Config["Logging"].GetOrSet("UI max items", 200, out modified).IntValue;
 			tdirty |= modified;
-			UItimer.Interval = cfg.Config["User Interface"].GetSetDefault("Update frequency", 2000, out modified).IntValue.Constrain(100, 5000);
+			UItimer.Interval = cfg.Config["User Interface"].GetOrSet("Update frequency", 2000, out modified).IntValue.Constrain(100, 5000);
 			tdirty |= modified;
 			if (tdirty)
 			{
@@ -2076,12 +2076,12 @@ namespace Taskmaster.UI
 			opentab = uicfg.Config["Tabs"].Get("Open")?.IntValue ?? 0;
 			appwidths = null;
 			var appwidthsDefault = new int[] { 20, 120, 140, 82, 60, 76, 46, 160 };
-			appwidths = colcfg.GetSetDefault("Apps", appwidthsDefault, out modified).IntArray;
+			appwidths = colcfg.GetOrSet("Apps", appwidthsDefault, out modified).IntArray;
 			if (appwidths.Length != appwidthsDefault.Length) appwidths = appwidthsDefault;
 			dirty |= modified;
 
 			var appOrderDefault = new int[] { 0, 1, 2, 3, 4, 5, 6, 7 };
-			apporder = colcfg.GetSetDefault("App order", appOrderDefault, out modified).IntArray;
+			apporder = colcfg.GetOrSet("App order", appOrderDefault, out modified).IntArray;
 			var unqorder = new HashSet<int>(appOrderDefault.Length);
 			foreach (var i in apporder) unqorder.Add(i);
 			if (unqorder.Count != appOrderDefault.Length || unqorder.Max() != 7 || unqorder.Min() != 0) apporder = appOrderDefault;
@@ -2091,7 +2091,7 @@ namespace Taskmaster.UI
 			if (Taskmaster.MicrophoneManagerEnabled)
 			{
 				int[] micwidthsDefault = new int[] { 200, 220, 60, 60, 60, 120 };
-				micwidths = colcfg.GetSetDefault("Mics", micwidthsDefault, out modified).IntArray;
+				micwidths = colcfg.GetOrSet("Mics", micwidthsDefault, out modified).IntArray;
 				if (micwidths.Length != micwidthsDefault.Length) micwidths = micwidthsDefault;
 				dirty |= modified;
 			}
@@ -2100,13 +2100,12 @@ namespace Taskmaster.UI
 			if (Taskmaster.NetworkMonitorEnabled)
 			{
 				int[] ifacewidthsDefault = new int[] { 110, 60, 50, 70, 90, 192, 60, 60, 40 };
-				ifacewidths = colcfg.GetSetDefault("Interfaces", ifacewidthsDefault, out modified).IntArray;
+				ifacewidths = colcfg.GetOrSet("Interfaces", ifacewidthsDefault, out modified).IntArray;
 				if (ifacewidths.Length != ifacewidthsDefault.Length) ifacewidths = ifacewidthsDefault;
 				dirty |= modified;
 			}
 
-			var winpos = wincfg["Main"].IntArray;
-
+			int[] winpos = wincfg.Get("Main")?.IntArray ?? null;
 			if (winpos != null && winpos.Length == 4)
 			{
 				var rectangle = new System.Drawing.Rectangle(winpos[0], winpos[1], winpos[2], winpos[3]);
@@ -2129,11 +2128,11 @@ namespace Taskmaster.UI
 			//GrayText = System.Drawing.Color.FromArgb(130, 130, 130); // ignores user styles
 			//AlterColor = System.Drawing.Color.FromArgb(245, 245, 245); // ignores user styles
 
-			AlternateRowColorsDevices = gencfg.GetSetDefault("Alternate device row colors", false, out modified).BoolValue;
+			AlternateRowColorsDevices = gencfg.GetOrSet("Alternate device row colors", false, out modified).BoolValue;
 			dirty |= modified;
-			AlternateRowColorsWatchlist = gencfg.GetSetDefault("Alternate watchlist row colors", true, out modified).BoolValue;
+			AlternateRowColorsWatchlist = gencfg.GetOrSet("Alternate watchlist row colors", true, out modified).BoolValue;
 			dirty |= modified;
-			AlternateRowColorsLog = gencfg.GetSetDefault("Alternate log row colors", true, out modified).BoolValue;
+			AlternateRowColorsLog = gencfg.GetOrSet("Alternate log row colors", true, out modified).BoolValue;
 			dirty |= modified;
 
 			if (dirty) uicfg.MarkDirty();
