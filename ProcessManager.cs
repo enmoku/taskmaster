@@ -857,7 +857,7 @@ namespace Taskmaster
 			if (modified) ignSys32Setting.Comment = "Ignore programs in %SYSTEMROOT%/System32 folder.";
 			dirtyconfig |= modified;
 
-			if (IgnoreSystem32Path) Log.Warning($"<Process> System32 ignore disabled.");
+			if (!IgnoreSystem32Path) Log.Warning($"<Process> System32 ignore disabled.");
 
 			if (dirtyconfig) corecfg.MarkDirty();
 
