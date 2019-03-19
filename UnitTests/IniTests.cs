@@ -284,5 +284,25 @@ namespace IniFile
 			Assert.AreEqual(3, array[2]);
 			Assert.AreEqual("{ 1, 2, 3 }", setting2.EscapedValue);
 		}
+
+		[Test]
+		public void EmptyArray()
+		{
+			var config = new Ini.Config();
+			var section = new Ini.Section("Test");
+
+			string intSettingName = "IntArray";
+			string stringSettingName = "StringArray";
+			string nullSettingName = "NullArray";
+
+			section[intSettingName].IntArray = new int[] { };
+			section[stringSettingName].Array = new string[] { };
+
+			var intArray = section[intSettingName].IntArray;
+			var stringArray = section[stringSettingName].Value;
+
+			Assert.AreEqual(null, intArray?.Length ?? null);
+			Assert.AreEqual(null, stringArray?.Length ?? null);
+		}
 	}
 }
