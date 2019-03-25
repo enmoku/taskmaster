@@ -452,6 +452,8 @@ namespace Taskmaster.UI
 		{
 			try
 			{
+				RefreshIcon();
+
 				KnownExplorerInstances.TryRemove(processId, out _);
 
 				if (KnownExplorerInstances.Count > 0)
@@ -699,7 +701,7 @@ namespace Taskmaster.UI
 
 			try
 			{
-				ProcessStartInfo info = new ProcessStartInfo(schexe)
+				var info = new ProcessStartInfo(schexe)
 				{
 					WindowStyle = ProcessWindowStyle.Hidden
 				};

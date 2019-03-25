@@ -1481,6 +1481,20 @@ namespace Taskmaster
 			Log.Information($"<Stat> Processes modified: {Statistics.TouchCount.ToString()}; Ignored for remodification: {Statistics.TouchIgnore.ToString()}");
 		}
 
+		public static void Refresh()
+		{
+			if (State != Runstate.Normal) return;
+
+			try
+			{
+				trayaccess?.EnsureVisible();
+			}
+			catch (Exception ex)
+			{
+				Logging.Stacktrace(ex, crashsafe: true);
+			}
+		}
+
 		static void Restart()
 		{
 

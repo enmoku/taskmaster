@@ -90,6 +90,8 @@ namespace Taskmaster
 
 				Taskmaster.processmanager?.Cleanup();
 
+				Taskmaster.Refresh();
+
 				Taskmaster.Config.Flush();
 			}
 			catch (Exception ex)
