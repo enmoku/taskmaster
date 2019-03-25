@@ -452,8 +452,6 @@ namespace Taskmaster.UI
 		{
 			try
 			{
-				RefreshIcon();
-
 				KnownExplorerInstances.TryRemove(processId, out _);
 
 				if (KnownExplorerInstances.Count > 0)
