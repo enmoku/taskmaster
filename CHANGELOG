@@ -3,6 +3,8 @@ Comprehensive changes can be found in Git change history:
 	https://github.com/mkahvi/taskmaster/commits/master
 
 ## [0.13...]
+### 2019-03-25
+	Fixed: IPC does not work.
 ### 2019-03-19
 	Fixed: System32 ignore warning was flipped.
 	Changed: Default path visibility changed from invalid to process.

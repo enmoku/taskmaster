@@ -1140,8 +1140,9 @@ namespace Taskmaster
 
 		static void PipeCleaner(IAsyncResult result)
 		{
+			Debug.WriteLine("<IPC> Activity");
+
 			if (pipe == null) return;
-			if (result.IsCompleted) return; // for some reason empty completion appears on exit
 
 			try
 			{
@@ -1153,37 +1154,28 @@ namespace Taskmaster
 				if (!pipe.IsConnected) return;
 				if (!pipe.IsMessageComplete) return;
 
-				byte[] buffer = new byte[16];
-
-				lp.ReadAsync(buffer, 0, 16).ContinueWith(delegate
+				using (var sr = new StreamReader(lp))
 				{
-					try
+					var line = sr.ReadLine();
+					if (line.StartsWith(PipeRestart))
 					{
-						var str = System.Text.UTF8Encoding.UTF8.GetString(buffer, 0, 16);
-						if (str.StartsWith(PipeRestart))
-						{
-							Log.Warning("<IPC> Restart request received.");
-							UnifiedExit(restart: true);
-						}
-						else if (str.StartsWith(PipeTerm))
-						{
-							Log.Warning("<IPC> Termination request received.");
-							UnifiedExit(restart: false);
-						}
+						Log.Warning("<IPC> Restart request received.");
+						UnifiedExit(restart: true);
+						return;
+					}
+					else if (line.StartsWith(PipeTerm))
+					{
+						Log.Warning("<IPC> Termination request received.");
+						UnifiedExit(restart: false);
+						return;
+					}
+					else
+					{
+						Log.Error("<IPC> Unknown message: " + line);
+					}
+				}
 
-						lp.Disconnect();
-						lp.BeginWaitForConnection(PipeCleaner, EventArgs.Empty);
-					}
-					catch (Exception ex)
-					{
-						Logging.Stacktrace(ex);
-						if (ex is NullReferenceException) throw;
-					}
-					finally
-					{
-						//PipeDream(); // restart listening pipe
-					}
-				});
+				if (lp.CanRead) lp?.BeginWaitForConnection(PipeCleaner, null);
 			}
 			catch (ObjectDisposedException) { Statistics.DisposedAccesses++; }
 			catch (Exception ex)
@@ -1206,13 +1198,13 @@ namespace Taskmaster
 
 				//DisposalChute.Push(pipe);
 
-				pipe.BeginWaitForConnection(PipeCleaner, EventArgs.Empty);
+				pipe.BeginWaitForConnection(PipeCleaner, null);
 
 				return pipe;
 			}
 			catch (IOException) // no pipes available?
 			{
-
+				Debug.WriteLine("Failed to set up pipe server.");
 			}
 
 			return null;
@@ -1225,18 +1217,23 @@ namespace Taskmaster
 			try
 			{
 				using (var pe = new System.IO.Pipes.NamedPipeClientStream(".", PipeName, System.IO.Pipes.PipeAccessRights.Write, System.IO.Pipes.PipeOptions.WriteThrough, System.Security.Principal.TokenImpersonationLevel.Impersonation, HandleInheritability.None))
+				using (var sw = new StreamWriter(pe))
 				{
-					pe.Connect(5_000);
+					if (!pe.IsConnected) pe.Connect(5_000);
+
 					if (pe.IsConnected && pe.CanWrite)
 					{
-						byte[] buffer = System.Text.UTF8Encoding.UTF8.GetBytes(restart ? PipeRestart : PipeTerm);
-						//pe.WriteTimeout = 5_000;
-						pe.Write(buffer, 0, buffer.Length);
-						pe.WaitForPipeDrain();
+						var buffer = restart ? PipeRestart : PipeTerm;
+						sw.WriteLine(buffer);
+						sw.Flush();
 					}
-					//System.Threading.Thread.Sleep(100); // HACK: async pipes don't like things happening too fast.
-					pe.Close();
+
+					System.Threading.Thread.Sleep(100); // HACK: async pipes don't like things happening too fast.
 				}
+			}
+			catch (IOException ex)
+			{
+				MessageBox.Show("Timeout communicating with existing Taskmaster instance.");
 			}
 			catch (Exception ex)
 			{

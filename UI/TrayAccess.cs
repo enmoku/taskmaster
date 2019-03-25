@@ -207,7 +207,7 @@ namespace Taskmaster.UI
 
 		void UnregisterGlobalHotkeys()
 		{
-			Debug.Assert(Taskmaster.IsMainThread(), "UnregisterGlobalHotkeys must be called from main thread");
+			//Debug.Assert(Taskmaster.IsMainThread(), "UnregisterGlobalHotkeys must be called from main thread");
 
 			if (HotkeysRegistered)
 			{
@@ -601,6 +601,8 @@ namespace Taskmaster.UI
 				// Free any other managed objects here.
 				//
 			}
+
+			base.Dispose(disposing);
 		}
 
 		public event EventHandler TrayTooltipClicked;
