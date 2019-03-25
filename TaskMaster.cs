@@ -1136,6 +1136,7 @@ namespace Taskmaster
 		const string PipeName = @"\\.\MKAh\Taskmaster\Pipe";
 		const string PipeRestart = "TM...RESTART";
 		const string PipeTerm = "TM...TERMINATE";
+		const string PipeRefresh = "TM...REFRESH";
 		static System.IO.Pipes.NamedPipeServerStream pipe = null;
 
 		static void PipeCleaner(IAsyncResult result)
@@ -1167,6 +1168,12 @@ namespace Taskmaster
 					{
 						Log.Warning("<IPC> Termination request received.");
 						UnifiedExit(restart: false);
+						return;
+					}
+					else if (line.StartsWith(PipeRefresh))
+					{
+						Log.Information("<IPC> Refresh.");
+						Refresh();
 						return;
 					}
 					else
@@ -1210,7 +1217,7 @@ namespace Taskmaster
 			return null;
 		}
 
-		static void PipeExplorer(bool restart=true)
+		static void PipeExplorer(string message)
 		{
 			Debug.WriteLine("Attempting to communicate with running instance of TM.");
 
@@ -1223,8 +1230,7 @@ namespace Taskmaster
 
 					if (pe.IsConnected && pe.CanWrite)
 					{
-						var buffer = restart ? PipeRestart : PipeTerm;
-						sw.WriteLine(buffer);
+						sw.WriteLine(message);
 						sw.Flush();
 					}
 
@@ -1282,7 +1288,7 @@ namespace Taskmaster
 
 						// already running, signal original process
 						using (var msg = new SimpleMessageBox("Taskmaster!",
-							"Already operational.\n\nRetry to try to recover [restart] running instance.\nEnd to kill running instance and exit this.\nCancel to exit this.",
+							"Already operational.\n\nRetry to try to recover [restart] running instance.\nEnd to kill running instance and exit this.\nCancel to simply request refresh.",
 							SimpleMessageBox.Buttons.RetryEndCancel))
 						{
 							msg.ShowDialog();
@@ -1292,12 +1298,13 @@ namespace Taskmaster
 						switch (rv)
 						{
 							case SimpleMessageBox.ResultType.Retry:
-								PipeExplorer(restart: true);
+								PipeExplorer(PipeRestart);
 								break;
 							case SimpleMessageBox.ResultType.End:
-								PipeExplorer(restart: false);
+								PipeExplorer(PipeTerm);
 								break;
 							case SimpleMessageBox.ResultType.Cancel:
+								PipeExplorer(PipeRefresh);
 								break;
 						}
 

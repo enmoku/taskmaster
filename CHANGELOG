@@ -5,6 +5,7 @@ Comprehensive changes can be found in Git change history:
 ## [0.13...]
 ### 2019-03-25
 	Fixed: IPC does not work.
+	Added: Secondary TM process dialog cancellation now calls for refresh instead of nothing.
 ### 2019-03-19
 	Fixed: System32 ignore warning was flipped.
 	Changed: Default path visibility changed from invalid to process.
