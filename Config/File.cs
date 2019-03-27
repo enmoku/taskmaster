@@ -92,7 +92,7 @@ namespace Taskmaster.Configuration
 
 		internal void ScopeReturn()
 		{
-			if (--Shared == 0) Unload();
+			if (--Shared == 0 && UnloadRequested) Unload();
 		}
 
 		#region IDisposable Support
