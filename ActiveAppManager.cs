@@ -31,6 +31,8 @@ using Serilog;
 
 namespace Taskmaster
 {
+	using static Taskmaster;
+
 	sealed public class WindowChangedArgs : EventArgs
 	{
 		public IntPtr hWnd { get; set; }
@@ -41,7 +43,7 @@ namespace Taskmaster
 		public string Executable { get; set; }
 	}
 
-	sealed public class ActiveAppManager : IDisposable
+	sealed public class ActiveAppManager : IComponent, IDisposable
 	{
 		public event EventHandler<WindowChangedArgs> ActiveChanged;
 
@@ -61,30 +63,33 @@ namespace Taskmaster
 			NativeMethods.GetWindowThreadProcessId(hwnd, out int pid);
 			Foreground = pid;
 
-			var corecfg = Taskmaster.Config.Load(Taskmaster.coreconfig);
+			using (var corecfg = Config.Load(CoreConfigFilename).BlockUnload())
+			{
+				bool dirty = false, modified = false;
+				var perfsec = corecfg.Config["Performance"];
+				var hysterisisSetting = perfsec.GetOrSet("Foreground hysterisis", 1500, out modified);
+				Hysterisis = TimeSpan.FromMilliseconds(hysterisisSetting.IntValue.Constrain(200, 30000));
+				if (modified) hysterisisSetting.Comment = "In milliseconds, from 500 to 30000. Delay before we inspect foreground app, in case user rapidly swaps apps.";
+				dirty |= modified;
 
-			bool dirty = false, modified = false;
-			var perfsec = corecfg.Config["Performance"];
-			var hysterisisSetting = perfsec.GetOrSet("Foreground hysterisis", 1500, out modified);
-			Hysterisis = TimeSpan.FromMilliseconds(hysterisisSetting.IntValue.Constrain(200, 30000));
-			if (modified) hysterisisSetting.Comment = "In milliseconds, from 500 to 30000. Delay before we inspect foreground app, in case user rapidly swaps apps.";
-			dirty |= modified;
+				var emsec = corecfg.Config["Emergency"];
+				var hangKillTickSetting = emsec.GetOrSet("Kill hung", 180 * 5, out modified);
+				HangKillTick = hangKillTickSetting.IntValue.Constrain(0, 60 * 60 * 4);
+				if (modified) hangKillTickSetting.Comment = "Kill the application after this many seconds. 0 disables. Minimum actual kill time is minimize/reduce time + 60.";
+				dirty |= modified;
 
-			var emsec = corecfg.Config["Emergency"];
-			var hangKillTickSetting = emsec.GetOrSet("Kill hung", 180 * 5, out modified);
-			HangKillTick = hangKillTickSetting.IntValue.Constrain(0, 60 * 60 * 4);
-			if (modified) hangKillTickSetting.Comment = "Kill the application after this many seconds. 0 disables. Minimum actual kill time is minimize/reduce time + 60.";
-			dirty |= modified;
+				var hangMinTickSetting = emsec.GetOrSet("Hung minimize time", 180, out modified);
+				HangMinimizeTick = hangMinTickSetting.IntValue.Constrain(0, 60 * 60 * 2);
+				if (modified) hangMinTickSetting.Comment = "Try to minimize hung app after this many seconds.";
+				dirty |= modified;
 
-			var hangMinTickSetting = emsec.GetOrSet("Hung minimize time", 180, out modified);
-			HangMinimizeTick = hangMinTickSetting.IntValue.Constrain(0, 60 * 60 * 2);
-			if (modified) hangMinTickSetting.Comment = "Try to minimize hung app after this many seconds.";
-			dirty |= modified;
+				var hangReduceTickSetting = emsec.GetOrSet("Hung reduce time", 300, out modified);
+				HangReduceTick = hangReduceTickSetting.IntValue.Constrain(0, 60 * 60 * 2);
+				if (modified) hangReduceTickSetting.Comment = "Reduce affinity and priority of hung app after this many seconds.";
+				dirty |= modified;
 
-			var hangReduceTickSetting = emsec.GetOrSet("Hung reduce time", 300, out modified);
-			HangReduceTick = hangReduceTickSetting.IntValue.Constrain(0, 60 * 60 * 2);
-			if (modified) hangReduceTickSetting.Comment = "Reduce affinity and priority of hung app after this many seconds.";
-			dirty |= modified;
+				if (dirty) corecfg.MarkDirty();
+			}
 
 			int killtickmin = (Math.Max(HangReduceTick, HangMinimizeTick)) + 60;
 			if (HangKillTick > 0 && HangKillTick < killtickmin)
@@ -111,15 +116,13 @@ namespace Taskmaster
 				Log.Information(sbs.ToString());
 			}
 
-			if (dirty) corecfg.MarkDirty();
-
 			HangTimer = new System.Timers.Timer(60_000);
 			HangTimer.Elapsed += HangDetector;
 			HangTimer.Start();
 
-			if (Taskmaster.DebugForeground) Log.Information("<Foreground> Component loaded.");
+			if (DebugForeground) Log.Information("<Foreground> Component loaded.");
 
-			Taskmaster.DisposalChute.Push(this);
+			DisposalChute.Push(this);
 		}
 
 		public TimeSpan Hysterisis { get; set; } = TimeSpan.FromSeconds(0.5d);
@@ -148,7 +151,7 @@ namespace Taskmaster
 				return false;
 			}
 
-			if (Taskmaster.Trace) Log.Information("<Foreground> Event hook initialized.");
+			if (Trace) Log.Information("<Foreground> Event hook initialized.");
 			return true;
 		}
 
@@ -302,9 +305,9 @@ namespace Taskmaster
 						Reduced = false;
 						Minimized = false;
 
-						Taskmaster.processmanager.Unignore(IgnoreHung);
+						processmanager.Unignore(IgnoreHung);
 						IgnoreHung = pid;
-						Taskmaster.processmanager.Ignore(IgnoreHung);
+						processmanager.Ignore(IgnoreHung);
 					}
 
 					HangTick++;
@@ -316,7 +319,7 @@ namespace Taskmaster
 			catch (ArgumentException) { } // NOP, already exited
 			catch (Exception ex)
 			{
-				Taskmaster.processmanager.Unignore(IgnoreHung);
+				processmanager.Unignore(IgnoreHung);
 
 				Logging.Stacktrace(ex);
 				return;
@@ -326,7 +329,7 @@ namespace Taskmaster
 				Atomic.Unlock(ref hangdetector_lock);
 			}
 
-			Taskmaster.processmanager.Unignore(IgnoreHung);
+			processmanager.Unignore(IgnoreHung);
 			IgnoreHung = -1;
 
 			HangTick = 0;
@@ -339,6 +342,8 @@ namespace Taskmaster
 		}
 
 		#region IDisposable
+		public event EventHandler OnDisposed;
+
 		~ActiveAppManager() => Dispose(false);
 
 		public void Dispose()
@@ -354,8 +359,7 @@ namespace Taskmaster
 
 			if (disposing)
 			{
-				if (Taskmaster.Trace)
-					Log.Verbose("Disposing FG monitor...");
+				if (Trace) Log.Verbose("Disposing FG monitor...");
 
 				ActiveChanged = null;
 				HangTimer?.Dispose();
@@ -364,6 +368,9 @@ namespace Taskmaster
 			NativeMethods.UnhookWinEvent(windowseventhook); // Automatic
 
 			DisposedOrDisposing = true;
+
+			OnDisposed?.Invoke(this, EventArgs.Empty);
+			OnDisposed = null;
 		}
 		#endregion
 
@@ -477,7 +484,7 @@ namespace Taskmaster
 						return;
 					}
 
-					if (Taskmaster.DebugForeground && Taskmaster.ShowInaction)
+					if (DebugForeground && ShowInaction)
 						Log.Debug("<Foreground> Active #" + activewindowev.Id + ": " + activewindowev.Title);
 				}
 				else

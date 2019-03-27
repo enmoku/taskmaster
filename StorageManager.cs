@@ -33,27 +33,31 @@ using Serilog;
 
 namespace Taskmaster
 {
+	using static Taskmaster;
+
 	/// <summary>
 	/// Manager for non-volatile memory (NVM).
 	/// </summary>
-	sealed public class StorageManager : IDisposable
+	sealed public class StorageManager : IComponent, IDisposable
 	{
-		static readonly string systemTemp = System.IO.Path.Combine(System.Environment.GetFolderPath(Environment.SpecialFolder.Windows), "Temp");
-		static string userTemp => System.IO.Path.GetTempPath();
+		bool Verbose = false;
 
-		readonly System.IO.FileSystemWatcher userWatcher;
-		readonly System.IO.FileSystemWatcher sysWatcher;
+		static readonly string systemTemp = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows), "Temp");
+		static string userTemp => Path.GetTempPath();
+
+		readonly FileSystemWatcher userWatcher;
+		readonly FileSystemWatcher sysWatcher;
 
 		readonly System.Timers.Timer TempScanTimer = null;
 		TimeSpan TimerDue = TimeSpan.FromHours(24);
 
 		public StorageManager()
 		{
-			if (Taskmaster.TempMonitorEnabled)
+			if (TempMonitorEnabled)
 			{
-				userWatcher = new System.IO.FileSystemWatcher(userTemp)
+				userWatcher = new FileSystemWatcher(userTemp)
 				{
-					NotifyFilter = System.IO.NotifyFilters.Size,
+					NotifyFilter = NotifyFilters.Size,
 					IncludeSubdirectories = true
 				};
 				userWatcher.Deleted += ModifyTemp;
@@ -61,9 +65,9 @@ namespace Taskmaster
 				userWatcher.Created += ModifyTemp;
 				if (systemTemp != userTemp)
 				{
-					sysWatcher = new System.IO.FileSystemWatcher(systemTemp)
+					sysWatcher = new FileSystemWatcher(systemTemp)
 					{
-						NotifyFilter = System.IO.NotifyFilters.Size,
+						NotifyFilter = NotifyFilters.Size,
 						IncludeSubdirectories = true
 					};
 					sysWatcher.Deleted += ModifyTemp;
@@ -82,9 +86,15 @@ namespace Taskmaster
 				onBurden += ReScanTemp;
 			}
 
-			if (Taskmaster.DebugStorage) Log.Information("<Maintenance> Component loaded.");
+			using (var corecfg = Config.Load(CoreConfigFilename).BlockUnload())
+			{
+				var dbgsec = corecfg.Config["Debug"];
+				Verbose = dbgsec.Get("Storage")?.BoolValue ?? false;
+			}
 
-			Taskmaster.DisposalChute.Push(this);
+			if (Verbose) Log.Information("<Maintenance> Component loaded.");
+
+			DisposalChute.Push(this);
 		}
 
 		async void OnStart(object sender, EventArgs ea)
@@ -142,7 +152,7 @@ namespace Taskmaster
 			public long Dirs;
 		}
 
-		void DirectorySize(System.IO.DirectoryInfo dinfo, ref DirectoryStats stats)
+		void DirectorySize(DirectoryInfo dinfo, ref DirectoryStats stats)
 		{
 			if (DisposedOrDisposing) throw new ObjectDisposedException("DirectorySize called after StorageManager was disposed.");
 
@@ -150,7 +160,7 @@ namespace Taskmaster
 			var dea = new StorageEventArgs { State = ScanState.Segment, Stats = stats };
 			try
 			{
-				foreach (System.IO.FileInfo fi in dinfo.GetFiles())
+				foreach (FileInfo fi in dinfo.GetFiles())
 				{
 					stats.Size += fi.Length;
 					stats.Files += 1;
@@ -217,6 +227,9 @@ namespace Taskmaster
 
 		public event EventHandler<StorageEventArgs> onTempScan;
 
+		#region IDisposable Support
+		public event EventHandler OnDisposed;
+
 		public void Dispose() => Dispose(true);
 
 		bool DisposedOrDisposing = false;
@@ -227,8 +240,7 @@ namespace Taskmaster
 
 			if (disposing)
 			{
-				if (Taskmaster.Trace)
-					Log.Verbose("Disposing storage manager...");
+				if (Trace) Log.Verbose("Disposing storage manager...");
 
 				onTempScan = null;
 
@@ -236,7 +248,11 @@ namespace Taskmaster
 				userWatcher?.Dispose();
 				TempScanTimer?.Dispose();
 			}
+
+			OnDisposed?.Invoke(this, EventArgs.Empty);
+			OnDisposed = null;
 		}
+		#endregion
 	}
 
 	sealed public class StorageEventArgs : EventArgs

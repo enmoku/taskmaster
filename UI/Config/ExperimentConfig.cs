@@ -109,24 +109,26 @@ namespace Taskmaster.UI.Config
 
 				// Record for restarts
 
-				var corecfg = Taskmaster.Config.Load(Taskmaster.coreconfig);
-				var cfg = corecfg.Config;
+				using (var corecfg = Taskmaster.Config.Load(Taskmaster.CoreConfigFilename).BlockUnload())
+				{
+					var cfg = corecfg.Config;
 
-				var exsec = cfg["Experimental"];
-				if (RecordAnalysisDelay.Value != decimal.Zero)
-					exsec["Record analysis"].IntValue = Convert.ToInt32(RecordAnalysisDelay.Value);
-				else
-					exsec.TryRemove("Record analysis");
+					var exsec = cfg["Experimental"];
+					if (RecordAnalysisDelay.Value != decimal.Zero)
+						exsec["Record analysis"].IntValue = Convert.ToInt32(RecordAnalysisDelay.Value);
+					else
+						exsec.TryRemove("Record analysis");
 
-				if (iopriority.Checked)
-					exsec["IO Priority"].BoolValue = true;
-				else
-					exsec.TryRemove("IO Priority");
+					if (iopriority.Checked)
+						exsec["IO Priority"].BoolValue = true;
+					else
+						exsec.TryRemove("IO Priority");
 
-				var compsec = cfg["Components"];
-				compsec[HumanReadable.Hardware.Section].BoolValue = hwmon.Checked;
+					var compsec = cfg["Components"];
+					compsec[HumanReadable.Hardware.Section].BoolValue = hwmon.Checked;
 
-				corecfg.MarkDirty();
+					corecfg.MarkDirty();
+				}
 
 				DialogResult = DialogResult.OK;
 				Close();

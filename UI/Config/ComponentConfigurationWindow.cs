@@ -30,6 +30,8 @@ using System.Windows.Forms;
 
 namespace Taskmaster.UI.Config
 {
+	using static Taskmaster;
+
 	sealed public class ComponentConfigurationWindow : UniForm
 	{
 		public ComponentConfigurationWindow(bool initial = true, bool center = false)
@@ -52,20 +54,22 @@ namespace Taskmaster.UI.Config
 			int ScanFrequency = 180;
 			bool scan = true;
 
-			if (Taskmaster.processmanager == null)
+			if (processmanager == null)
 			{
-				var corecfg = Taskmaster.Config.Load(Taskmaster.coreconfig);
-				var perfsec = corecfg.Config["Performance"];
-				WMIPolling = perfsec.Get("WMI event watcher")?.BoolValue ?? true;
-				WMIPollDelay = perfsec.Get("WMI poll delay")?.IntValue ?? 2;
-				ScanFrequency = perfsec.Get("Scan frequency")?.IntValue ?? 180;
+				using (var corecfg = Config.Load(CoreConfigFilename).BlockUnload())
+				{
+					var perfsec = corecfg.Config["Performance"];
+					WMIPolling = perfsec.Get("WMI event watcher")?.BoolValue ?? true;
+					WMIPollDelay = perfsec.Get("WMI poll delay")?.IntValue ?? 2;
+					ScanFrequency = perfsec.Get("Scan frequency")?.IntValue ?? 180;
+				}
 			}
 			else
 			{
-				WMIPolling = Taskmaster.processmanager.WMIPolling;
-				WMIPollDelay = Taskmaster.processmanager.WMIPollDelay;
-				if (Taskmaster.processmanager.ScanFrequency.HasValue)
-					ScanFrequency = Convert.ToInt32(Taskmaster.processmanager.ScanFrequency.Value.TotalSeconds);
+				WMIPolling = processmanager.WMIPolling;
+				WMIPollDelay = processmanager.WMIPollDelay;
+				if (processmanager.ScanFrequency.HasValue)
+					ScanFrequency = Convert.ToInt32(processmanager.ScanFrequency.Value.TotalSeconds);
 				else
 					scan = false;
 			}
@@ -87,7 +91,7 @@ namespace Taskmaster.UI.Config
 			{
 				AutoSize = true,
 				Dock = DockStyle.Left,
-				Checked = initial ? false : Taskmaster.AudioManagerEnabled,
+				Checked = initial ? false : AudioManagerEnabled,
 			};
 			tooltip.SetToolTip(audioman, "Automatically set application mixer volume.");
 
@@ -99,7 +103,7 @@ namespace Taskmaster.UI.Config
 				AutoSize = true,
 				//BackColor = System.Drawing.Color.Azure,
 				Dock = DockStyle.Left,
-				Checked = initial ? false : Taskmaster.MicrophoneManagerEnabled,
+				Checked = initial ? false : MicrophoneManagerEnabled,
 			};
 			tooltip.SetToolTip(micmon, "Monitor default communications device and keep its volume.\nRequires audio manager to be enabled.");
 
@@ -123,7 +127,7 @@ namespace Taskmaster.UI.Config
 			tooltip.SetToolTip(netmon, "Monitor network interface status and report online status.");
 			layout.Controls.Add(new Label { Text = "Network monitor", AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, Padding = BigPadding, Dock = DockStyle.Left });
 			layout.Controls.Add(netmon);
-			netmon.Checked = initial ? true : Taskmaster.NetworkMonitorEnabled;
+			netmon.Checked = initial ? true : NetworkMonitorEnabled;
 			netmon.Click += (_, _ea) =>
 			{
 			};
@@ -138,7 +142,7 @@ namespace Taskmaster.UI.Config
 			layout.Controls.Add(new Label { Text = "Process manager", AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, Padding = BigPadding, Dock = DockStyle.Left });
 			layout.Controls.Add(procmon);
 			procmon.Enabled = false;
-			procmon.Checked = initial ? true : Taskmaster.ProcessMonitorEnabled;
+			procmon.Checked = initial ? true : ProcessMonitorEnabled;
 
 			layout.Controls.Add(new Label() { Text = "Process detection", AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, Padding = BigPadding, Dock = DockStyle.Left });
 			var ScanOrWMI = new ComboBox()
@@ -210,7 +214,7 @@ namespace Taskmaster.UI.Config
 				//BackColor = System.Drawing.Color.Azure,
 				Dock = DockStyle.Left,
 				Enabled = true,
-				Checked = initial ? false : Taskmaster.PowerManagerEnabled,
+				Checked = initial ? false : PowerManagerEnabled,
 			};
 			tooltip.SetToolTip(powmon, "Manage power mode.\nNot recommended if you already have a power manager.");
 
@@ -225,7 +229,7 @@ namespace Taskmaster.UI.Config
 			};
 
 			powbehaviour.Enabled = powmon.Checked;
-			switch (Taskmaster.powermanager?.LaunchBehaviour ?? PowerManager.PowerBehaviour.RuleBased)
+			switch (powermanager?.LaunchBehaviour ?? PowerManager.PowerBehaviour.RuleBased)
 			{
 				case PowerManager.PowerBehaviour.Auto:
 					powbehaviour.SelectedIndex = 0;
@@ -252,7 +256,7 @@ namespace Taskmaster.UI.Config
 				//BackColor = System.Drawing.Color.Azure,
 				Dock = DockStyle.Left
 			};
-			fgmon.Checked = initial ? true : Taskmaster.ActiveAppMonitorEnabled;
+			fgmon.Checked = initial ? true : ActiveAppMonitorEnabled;
 			tooltip.SetToolTip(fgmon, "Allow processes and power mode to be managed based on if a process is in the foreground.\nPOWER MODE SWITCHING NOT IMPLEMENTED.");
 			layout.Controls.Add(new Label { Text = "Foreground manager", AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, Padding = BigPadding, Dock = DockStyle.Left });
 			layout.Controls.Add(fgmon);
@@ -262,7 +266,7 @@ namespace Taskmaster.UI.Config
 			{
 				AutoSize = true,
 				Dock = DockStyle.Left,
-				Checked = initial ? false : Taskmaster.StorageMonitorEnabled,
+				Checked = initial ? false : StorageMonitorEnabled,
 				Enabled = false,
 			};
 			tooltip.SetToolTip(nvmmon, "Monitor non-volatile memory (HDDs, SSDs, etc.)");
@@ -280,7 +284,7 @@ namespace Taskmaster.UI.Config
 			layout.Controls.Add(new Label { Text = "TEMP monitor", AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, Padding = BigPadding, Dock = DockStyle.Left });
 			layout.Controls.Add(tempmon);
 			tempmon.Enabled = false;
-			tempmon.Checked = initial ? false : Taskmaster.MaintenanceMonitorEnabled;
+			tempmon.Checked = initial ? false : MaintenanceMonitorEnabled;
 
 			// PAGING
 			var paging = new CheckBox()
@@ -292,14 +296,14 @@ namespace Taskmaster.UI.Config
 			tooltip.SetToolTip(tempmon, "Allow paging RAM to page/swap file.\nNOT YET FULLY IMPLEMENTED.");
 			layout.Controls.Add(new Label { Text = "Allow paging", AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, Padding = BigPadding, Dock = DockStyle.Left });
 			layout.Controls.Add(paging);
-			paging.Checked = initial ? false : Taskmaster.PagingEnabled;
+			paging.Checked = initial ? false : PagingEnabled;
 
 			// REGISTER GLOBAL HOTKEYS
 			var hotkeys = new CheckBox()
 			{
 				AutoSize = true,
 				Dock = DockStyle.Left,
-				Checked = Taskmaster.GlobalHotkeys,
+				Checked = GlobalHotkeys,
 			};
 			tooltip.SetToolTip(hotkeys, "Register globally accessible hotkeys for certain actions.");
 			layout.Controls.Add(new Label { Text = "Global hotkeys", AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, Padding = BigPadding, Dock = DockStyle.Left });
@@ -322,14 +326,14 @@ namespace Taskmaster.UI.Config
 				Dock = DockStyle.Left
 			});
 			layout.Controls.Add(showonstart);
-			showonstart.Checked = initial ? false : Taskmaster.ShowOnStart;
+			showonstart.Checked = initial ? false : ShowOnStart;
 
 			var autodoc = new CheckBox()
 			{
 				AutoSize = true,
 				//BackColor = System.Drawing.Color.Azure,
 				Dock = DockStyle.Left,
-				Checked = initial ? false : Taskmaster.HealthMonitorEnabled,
+				Checked = initial ? false : HealthMonitorEnabled,
 			};
 			layout.Controls.Add(new Label()
 			{
@@ -355,42 +359,44 @@ namespace Taskmaster.UI.Config
 			// l.Controls.Add(savebutton);
 			savebutton.Click += (_, _ea) =>
 			{
-				var cfg = Taskmaster.Config.Load(Taskmaster.coreconfig);
-				var mainsec = cfg.Config["Core"];
-				var opt = mainsec["Version"];
-				opt.Value = Taskmaster.ConfigVersion;
-				opt.Comment = "Magical";
+				using (var cfg = Config.Load(CoreConfigFilename).BlockUnload())
+				{
+					var mainsec = cfg.Config["Core"];
+					var opt = mainsec["Version"];
+					opt.Value = ConfigVersion;
+					opt.Comment = "Magical";
 
-				var compsec = cfg.Config["Components"];
-				compsec[HumanReadable.System.Process.Section].BoolValue = procmon.Checked;
-				compsec[HumanReadable.Hardware.Audio.Section].BoolValue = audioman.Checked;
-				compsec["Microphone"].BoolValue = micmon.Checked;
-				// compsec["Media"].BoolValue = mediamon.Checked;
-				compsec[HumanReadable.System.Process.Foreground].BoolValue = fgmon.Checked;
-				compsec["Network"].BoolValue = netmon.Checked;
-				compsec[HumanReadable.Hardware.Power.Section].BoolValue = powmon.Checked;
-				compsec["Paging"].BoolValue = paging.Checked;
-				compsec["Maintenance"].BoolValue = tempmon.Checked;
-				compsec["Health"].BoolValue = autodoc.Checked;
+					var compsec = cfg.Config["Components"];
+					compsec[HumanReadable.System.Process.Section].BoolValue = procmon.Checked;
+					compsec[HumanReadable.Hardware.Audio.Section].BoolValue = audioman.Checked;
+					compsec["Microphone"].BoolValue = micmon.Checked;
+					// compsec["Media"].BoolValue = mediamon.Checked;
+					compsec[HumanReadable.System.Process.Foreground].BoolValue = fgmon.Checked;
+					compsec["Network"].BoolValue = netmon.Checked;
+					compsec[HumanReadable.Hardware.Power.Section].BoolValue = powmon.Checked;
+					compsec["Paging"].BoolValue = paging.Checked;
+					compsec["Maintenance"].BoolValue = tempmon.Checked;
+					compsec["Health"].BoolValue = autodoc.Checked;
 
-				var powsec = cfg.Config[HumanReadable.Hardware.Power.Section];
-				if (powmon.Checked) powsec["Behaviour"].Value = powbehaviour.Text.ToLower();
+					var powsec = cfg.Config[HumanReadable.Hardware.Power.Section];
+					if (powmon.Checked) powsec["Behaviour"].Value = powbehaviour.Text.ToLower();
 
-				var optsec = cfg.Config["Options"];
-				optsec["Show on start"].BoolValue = showonstart.Checked;
+					var optsec = cfg.Config["Options"];
+					optsec["Show on start"].BoolValue = showonstart.Checked;
 
-				var perf = cfg.Config["Performance"];
-				var freq = (int)scanfrequency.Value;
-				if (freq < 5 && freq != 0) freq = 5;
-				perf["Scan frequency"].IntValue = (ScanOrWMI.SelectedIndex == 1 ? 0 : freq);
-				perf["WMI event watcher"].BoolValue = (ScanOrWMI.SelectedIndex != 0);
-				perf["WMI poll delay"].IntValue = ((int)wmipolling.Value);
-				perf["WMI queries"].BoolValue = (ScanOrWMI.SelectedIndex != 0);
+					var perf = cfg.Config["Performance"];
+					var freq = (int)scanfrequency.Value;
+					if (freq < 5 && freq != 0) freq = 5;
+					perf["Scan frequency"].IntValue = (ScanOrWMI.SelectedIndex == 1 ? 0 : freq);
+					perf["WMI event watcher"].BoolValue = (ScanOrWMI.SelectedIndex != 0);
+					perf["WMI poll delay"].IntValue = ((int)wmipolling.Value);
+					perf["WMI queries"].BoolValue = (ScanOrWMI.SelectedIndex != 0);
 
-				var qol = cfg.Config["Quality of Life"];
-				qol["Register global hotkeys"].BoolValue = hotkeys.Checked;
+					var qol = cfg.Config["Quality of Life"];
+					qol["Register global hotkeys"].BoolValue = hotkeys.Checked;
 
-				cfg.Save(force:true);
+					cfg.File.Save(force: true);
+				}
 
 				DialogResult = DialogResult.OK;
 
@@ -445,7 +451,7 @@ namespace Taskmaster.UI.Config
 						if (SimpleMessageBox.ShowModal("Restart needed", "TM needs to be restarted for changes to take effect.\n\nCancel to do so manually later.", SimpleMessageBox.Buttons.AcceptCancel) == SimpleMessageBox.ResultType.OK)
 						{
 							Log.Information("<UI> Restart request");
-							Taskmaster.UnifiedExit(restart: true);
+							UnifiedExit(restart: true);
 						}
 					}
 				}

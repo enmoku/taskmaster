@@ -29,7 +29,7 @@ using System.Collections.Generic;
 
 namespace Taskmaster
 {
-	public class AlertManager : IDisposable
+	public class AlertManager : IComponent, IDisposable
 	{
 		public event EventHandler onNewAlert;
 		public event EventHandler onAlertCancel;
@@ -85,6 +85,8 @@ namespace Taskmaster
 		}
 
 		#region IDisposable Support
+		public event EventHandler OnDisposed;
+
 		bool disposed = false; // To detect redundant calls
 
 		protected virtual void Dispose(bool disposing)
@@ -104,6 +106,9 @@ namespace Taskmaster
 
 				disposed = true;
 			}
+
+			OnDisposed?.Invoke(this, EventArgs.Empty);
+			OnDisposed = null;
 		}
 
 		public void Dispose() => Dispose(true);

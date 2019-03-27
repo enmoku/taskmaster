@@ -30,6 +30,8 @@ using Serilog;
 
 namespace Taskmaster
 {
+	using static Taskmaster;
+
 	public class SelfMaintenance : IDisposable
 	{
 		public SelfMaintenance()
@@ -55,12 +57,22 @@ namespace Taskmaster
 				throw;
 			}
 
-			if (Taskmaster.Trace) Log.Information("<Self-Maintenance> Initialized.");
+			if (Trace) Log.Information("<Self-Maintenance> Initialized.");
 
-			Taskmaster.DisposalChute.Push(this);
+			DisposalChute.Push(this);
 		}
 
 		readonly System.Timers.Timer timer = null;
+
+		ProcessManager processmanager = null;
+		void Hook(ProcessManager procman)
+		{
+			processmanager = procman;
+			processmanager.OnDisposed += ProcessManager_OnDisposed;
+		}
+
+		private void ProcessManager_OnDisposed(object sender, EventArgs e)
+			=> processmanager = null;
 
 		int CallbackLimiter = 0;
 		async void MaintenanceTick(object _, EventArgs _ea)
@@ -83,16 +95,16 @@ namespace Taskmaster
 
 				Log.Debug("<Self-Maintenance> Done, saved " + ((oldmem - newmem) / 1_000) + " kB.");
 
-				if (Taskmaster.Trace) Log.Verbose("Running periodic cleanup");
+				if (Trace) Log.Verbose("Running periodic cleanup");
 
 				// TODO: This starts getting weird if cleanup interval is smaller than total delay of testing all items.
 				// (15*60) / 2 = item limit, and -1 or -2 for safety margin. Unlikely, but should probably be covered anyway.
 
-				Taskmaster.processmanager?.Cleanup();
+				processmanager?.Cleanup();
 
-				Taskmaster.Refresh();
+				Refresh();
 
-				Taskmaster.Config.Flush();
+				Config.Flush();
 			}
 			catch (Exception ex)
 			{

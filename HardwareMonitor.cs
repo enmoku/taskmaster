@@ -30,6 +30,8 @@ using Serilog;
 
 namespace Taskmaster
 {
+	using static Taskmaster;
+
 	public struct GPUSensors
 	{
 		public float Load;
@@ -64,7 +66,7 @@ namespace Taskmaster
 		public float Load;
 	}
 
-	public class HardwareMonitor : IDisposable
+	public class HardwareMonitor : IComponent, IDisposable
 	{
 		OpenHardwareMonitor.Hardware.IHardware gpu = null;
 		OpenHardwareMonitor.Hardware.ISensor gpuFan = null; // Fan speed
@@ -103,10 +105,9 @@ namespace Taskmaster
 			}
 
 			Taskmaster.OnStart += OnStart;
+			DisposalChute.Push(this);
 
 			Log.Verbose("<Hardware> Component loaded.");
-
-			Taskmaster.DisposalChute.Push(this);
 		}
 
 		bool Initialized = false;
@@ -308,6 +309,8 @@ namespace Taskmaster
 		}
 
 		#region IDisposable Support
+		public event EventHandler OnDisposed;
+
 		bool DisposedOrDisposing = false; // To detect redundant calls
 
 		protected virtual void Dispose(bool disposing)
@@ -324,6 +327,9 @@ namespace Taskmaster
 
 			computer?.Close();
 			computer = null;
+
+			OnDisposed?.Invoke(this, EventArgs.Empty);
+			OnDisposed = null;
 		}
 
 		~HardwareMonitor() => Dispose(false);

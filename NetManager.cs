@@ -37,6 +37,8 @@ using Serilog;
 
 namespace Taskmaster
 {
+	using static Taskmaster;
+
 	public sealed class NetTrafficDelta
 	{
 		public float Input = float.NaN;
@@ -49,8 +51,10 @@ namespace Taskmaster
 		public NetTrafficDelta Delta = null;
 	}
 
-	sealed public class NetManager : IDisposable
+	sealed public class NetManager : IComponent, IDisposable
 	{
+		public static bool ShowNetworkErrors { get; set; } = false;
+
 		public event EventHandler<InternetStatus> InternetStatusChange;
 		public event EventHandler IPChanged;
 		public event EventHandler<NetworkStatus> NetworkStatusChange;
@@ -71,33 +75,48 @@ namespace Taskmaster
 
 		public event EventHandler<NetDeviceTrafficEventArgs> onSampling;
 
+		const string NetConfigFilename = "Net.ini";
+
 		void LoadConfig()
 		{
-			var cfg = Taskmaster.Config.Load("Net.ini");
-
 			var dirty = false;
 			var dirtyconf = false;
 
-			var monsec = cfg.Config["Monitor"];
-			dnstestaddress = monsec.GetOrSet("DNS test", "www.google.com", out dirty).Value;
-			dirtyconf |= dirty;
+			using (var netcfg = Config.Load(NetConfigFilename).BlockUnload())
+			{
+				var monsec = netcfg.Config["Monitor"];
+				dnstestaddress = monsec.GetOrSet("DNS test", "www.google.com", out dirty).Value;
+				dirtyconf |= dirty;
 
-			var devsec = cfg.Config["Devices"];
-			DeviceTimerInterval = devsec.GetOrSet("Check frequency", 15, out dirty).IntValue.Constrain(1, 30) * 60;
-			devsec["Check frequency"].Comment = "Minutes";
-			dirtyconf |= dirty;
+				var devsec = netcfg.Config["Devices"];
+				DeviceTimerInterval = devsec.GetOrSet("Check frequency", 15, out dirty).IntValue.Constrain(1, 30) * 60;
+				devsec["Check frequency"].Comment = "Minutes";
+				dirtyconf |= dirty;
 
-			var pktsec = cfg.Config["Traffic"];
-			PacketStatTimerInterval = pktsec.GetOrSet("Sample rate", 15, out dirty).IntValue.Constrain(1, 60);
-			pktsec["Sample rate"].Comment = "Seconds";
-			PacketWarning.Peak = PacketStatTimerInterval;
-			dirtyconf |= dirty;
+				var pktsec = netcfg.Config["Traffic"];
+				PacketStatTimerInterval = pktsec.GetOrSet("Sample rate", 15, out dirty).IntValue.Constrain(1, 60);
+				pktsec["Sample rate"].Comment = "Seconds";
+				PacketWarning.Peak = PacketStatTimerInterval;
+				dirtyconf |= dirty;
 
-			ErrorReportLimit = pktsec.GetOrSet("Error report limit", 5, out dirty).IntValue.Constrain(1, 60);
-			ErrorReports.Peak = ErrorReportLimit;
-			dirtyconf |= dirty;
+				ErrorReportLimit = pktsec.GetOrSet("Error report limit", 5, out dirty).IntValue.Constrain(1, 60);
+				ErrorReports.Peak = ErrorReportLimit;
+				dirtyconf |= dirty;
 
-			if (dirtyconf) cfg.MarkDirty();
+				if (dirtyconf) netcfg.MarkDirty();
+			}
+
+			dirtyconf = false;
+
+			using (var corecfg = Config.Load(CoreConfigFilename).BlockUnload())
+			{
+				var logsec = corecfg.Config["Logging"];
+				ShowNetworkErrors = logsec.GetOrSet("Show network errors", true, out dirty).BoolValue;
+				logsec["Show network errors"].Comment = "Show network errors on each sampling.";
+				dirtyconf |= dirty;
+
+				if (dirtyconf) corecfg.MarkDirty();
+			}
 
 			Log.Information("<Network> Traffic sample frequency: " + PacketStatTimerInterval + "s");
 		}
@@ -144,9 +163,9 @@ namespace Taskmaster
 
 			lastErrorReport = DateTimeOffset.UtcNow; // crude
 
-			if (Taskmaster.DebugNet) Log.Information("<Network> Component loaded.");
+			if (DebugNet) Log.Information("<Network> Component loaded.");
 
-			Taskmaster.DisposalChute.Push(this);
+			DisposalChute.Push(this);
 		}
 
 		public NetTrafficDelta GetTraffic
@@ -212,7 +231,7 @@ namespace Taskmaster
 
 				if (oldifaces.Count != ifaces.Count)
 				{
-					if (Taskmaster.DebugNet) Log.Warning("<Network> Interface count mismatch (" + oldifaces.Count + " vs " + ifaces.Count + "), skipping analysis.");
+					if (DebugNet) Log.Warning("<Network> Interface count mismatch (" + oldifaces.Count + " vs " + ifaces.Count + "), skipping analysis.");
 					return;
 				}
 
@@ -244,7 +263,7 @@ namespace Taskmaster
 
 					//Debug.WriteLine($"NETWORK - Errors: +{errorsInSample}, NotPeaked: {!ErrorReports.Peaked}, Level: {ErrorReports.Level}/{ErrorReports.Peak}");
 
-					if (Taskmaster.ShowNetworkErrors // user wants to see this
+					if (ShowNetworkErrors // user wants to see this
 						&& errorsInSample > 0 // only if errors
 						&& !ErrorReports.Peaked // we're not waiting for report counter to go down
 						&& ErrorReports.Pump(errorsInSample)) // error reporting not full
@@ -484,7 +503,7 @@ namespace Taskmaster
 
 			if (Atomic.Lock(ref InetCheckLimiter))
 			{
-				if (Taskmaster.Trace) Log.Verbose("<Network> Checking internet connectivity...");
+				if (Trace) Log.Verbose("<Network> Checking internet connectivity...");
 
 				try
 				{
@@ -536,7 +555,7 @@ namespace Taskmaster
 					else
 						InternetAvailable = false;
 
-					if (Taskmaster.Trace) RecordUptimeState(InternetAvailable, address_changed);
+					if (Trace) RecordUptimeState(InternetAvailable, address_changed);
 
 					if (oldInetAvailable != InternetAvailable)
 					{
@@ -559,7 +578,7 @@ namespace Taskmaster
 							Notified = dnsfail || interrupt;
 						}
 
-						if (Taskmaster.Trace) Log.Verbose("<Network> Connectivity unchanged.");
+						if (Trace) Log.Verbose("<Network> Connectivity unchanged.");
 					}
 				}
 				finally
@@ -631,7 +650,7 @@ namespace Taskmaster
 
 			try
 			{
-				if (Taskmaster.DebugNet) Log.Verbose("<Network> Enumerating network interfaces...");
+				if (DebugNet) Log.Verbose("<Network> Enumerating network interfaces...");
 
 				var ifacelistt = new List<NetDevice>();
 				// var ifacelist = new List<string[]>();
@@ -682,7 +701,7 @@ namespace Taskmaster
 					// devi.PrintStats();
 					ifacelistt.Add(devi);
 
-					if (Taskmaster.DebugNet) Log.Verbose("<Network> Interface: " + dev.Name);
+					if (DebugNet) Log.Verbose("<Network> Interface: " + dev.Name);
 				}
 
 				lock (interfaces_lock) CurrentInterfaceList = ifacelistt;
@@ -876,9 +895,12 @@ namespace Taskmaster
 			}
 			else
 			{
-				if (Taskmaster.DebugNet) Log.Debug("<Net> Network changed but still as available as before.");
+				if (DebugNet) Log.Debug("<Net> Network changed but still as available as before.");
 			}
 		}
+
+		#region IDisposable Support
+		public event EventHandler OnDisposed;
 
 		public void Dispose() => Dispose(true);
 
@@ -892,7 +914,7 @@ namespace Taskmaster
 
 			if (disposing)
 			{
-				if (Taskmaster.Trace) Log.Verbose("Disposing network monitor...");
+				if (Trace) Log.Verbose("Disposing network monitor...");
 
 				onSampling = null;
 				InternetStatusChange = null;
@@ -903,6 +925,10 @@ namespace Taskmaster
 
 				SampleTimer?.Dispose();
 			}
+
+			OnDisposed?.Invoke(this, EventArgs.Empty);
+			OnDisposed = null;
 		}
+		#endregion
 	}
 }

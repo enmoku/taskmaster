@@ -37,6 +37,8 @@ using Taskmaster.Events;
 
 namespace Taskmaster.UI
 {
+	using static Taskmaster;
+
 	// public class MainWindow : System.Windows.Window; // TODO: WPF
 	sealed public class MainWindow : UniForm
 	{
@@ -51,12 +53,50 @@ namespace Taskmaster.UI
 		bool AlternateRowColorsWatchlist { get; set; } = true;
 		bool AlternateRowColorsDevices { get; set; } = true;
 
+		bool AutoOpenMenus { get; set; } = true;
+
 		// constructor
 		public MainWindow()
 			: base()
 		{
 			// InitializeComponent(); // TODO: WPF
 			FormClosing += WindowClose;
+
+			ShowInTaskbar = true;
+
+			#region Load Configuration
+			// DEPRECATED
+			using (var corecfg = Taskmaster.Config.Load(CoreConfigFilename).BlockUnload())
+			{
+				if (corecfg.Config.TryGet(HumanReadable.Generic.QualityOfLife, out var qolsec))
+				{
+					if (qolsec.TryGet("Show in taskbar", out var sitb))
+					{
+						ShowInTaskbar = sitb.BoolValue;
+						qolsec.Remove(sitb);
+						corecfg.MarkDirty();
+					}
+					if (qolsec.TryGet("Auto-open menus", out var aomn))
+					{
+						AutoOpenMenus = aomn.BoolValue;
+						qolsec.Remove(aomn);
+						corecfg.MarkDirty();
+					}
+				}
+			}
+
+			using (var uicfg = Taskmaster.Config.Load(UIConfigFilename).BlockUnload())
+			{
+				var qol = uicfg.Config[HumanReadable.Generic.QualityOfLife];
+				bool dirty = false;
+				ShowInTaskbar = qol.GetOrSet("Show in taskbar", ShowInTaskbar, out bool modified).BoolValue;
+				dirty |= modified;
+				AutoOpenMenus = qol.GetOrSet("Auto-open menus", true, out modified).BoolValue;
+				dirty |= modified;
+
+				if (dirty) uicfg.MarkDirty();
+			}
+			#endregion // Load Configuration
 
 			BuildUI();
 
@@ -90,11 +130,9 @@ namespace Taskmaster.UI
 
 			MinimumSize = new System.Drawing.Size(780, MinimumHeight);
 
-			ShowInTaskbar = Taskmaster.ShowInTaskbar;
-
 			// FormBorderStyle = FormBorderStyle.FixedDialog; // no min/max buttons as wanted
 
-			if (!Taskmaster.ShowOnStart)
+			if (!ShowOnStart)
 				Hide();
 
 			// CenterToScreen();
@@ -106,15 +144,14 @@ namespace Taskmaster.UI
 			System.Windows.Shell.JumpList jumplist = System.Windows.Shell.JumpList.GetJumpList(System.Windows.Application.Current);
 			//System.Windows.Shell.JumpTask task = new System.Windows.Shell.JumpTask();
 			System.Windows.Shell.JumpPath jpath = new System.Windows.Shell.JumpPath();
-			jpath.Path = Taskmaster.cfgpath;
+			jpath.Path = cfgpath;
 			jumplist.JumpItems.Add(jpath);
 			jumplist.Apply();
 			*/
 
 			FillLog();
 
-			if (Taskmaster.Trace)
-				Log.Verbose("MainWindow constructed");
+			if (Trace) Log.Verbose("MainWindow constructed");
 		}
 
 		void onShown(object _, EventArgs _ea)
@@ -132,7 +169,7 @@ namespace Taskmaster.UI
 		{
 			try
 			{
-				Taskmaster.ConfirmExit(restart: false);
+				ConfirmExit(restart: false);
 			}
 			catch (Exception ex) { Logging.Stacktrace(ex); }
 		}
@@ -143,7 +180,7 @@ namespace Taskmaster.UI
 			{
 				SaveUIState();
 
-				if (!Taskmaster.Trace) return;
+				if (!Trace) return;
 
 				Debug.WriteLine("WindowClose = " + ea.CloseReason.ToString());
 				switch (ea.CloseReason)
@@ -175,7 +212,7 @@ namespace Taskmaster.UI
 		/// </summary>
 		public void UnloseWindowRequest(object _, EventArgs e)
 		{
-			if (Taskmaster.Trace) Log.Verbose("Making sure main window is not lost.");
+			if (Trace) Log.Verbose("Making sure main window is not lost.");
 
 			if (!IsHandleCreated || DisposedOrDisposing) return;
 
@@ -329,7 +366,7 @@ namespace Taskmaster.UI
 			{
 				micmon = micmonitor;
 
-				if (Taskmaster.Trace) Log.Verbose("Hooking microphone monitor.");
+				if (Trace) Log.Verbose("Hooking microphone monitor.");
 
 				BeginInvoke(new Action(() =>
 				{
@@ -410,7 +447,7 @@ namespace Taskmaster.UI
 
 		ConcurrentDictionary<string, ListViewItem> MicGuidToAudioInputs = new ConcurrentDictionary<string, ListViewItem>();
 
-		void AudioDeviceStateChanged(object sender, Events.AudioDeviceStateEventArgs ea)
+		void AudioDeviceStateChanged(object sender, AudioDeviceStateEventArgs ea)
 		{
 			if (IsDisposed || !IsHandleCreated) return;
 
@@ -464,7 +501,7 @@ namespace Taskmaster.UI
 				}
 				catch (Exception ex) { Logging.Stacktrace(ex); }
 
-				if (Taskmaster.LastModifiedList)
+				if (LastModifiedList)
 				{
 					lastmodifylist.BeginUpdate();
 
@@ -523,7 +560,7 @@ namespace Taskmaster.UI
 
 			processmanager.HandlingCounter += ProcessNewInstanceCount;
 			processmanager.ProcessStateChange += ExitWaitListHandler;
-			if (Taskmaster.DebugCache) PathCacheUpdate(null, EventArgs.Empty);
+			if (DebugCache) PathCacheUpdate(null, EventArgs.Empty);
 
 			ProcessNewInstanceCount(this, new ProcessingCountEventArgs(0, 0));
 
@@ -588,7 +625,7 @@ namespace Taskmaster.UI
 
 		void RestartRequestEvent(object sender, EventArgs _ea)
 		{
-			Taskmaster.ConfirmExit(restart: true, admin: sender == menu_action_restartadmin);
+			ConfirmExit(restart: true, admin: sender == menu_action_restartadmin);
 		}
 
 		void ProcessNewInstanceCount(object _, ProcessingCountEventArgs e)
@@ -652,12 +689,13 @@ namespace Taskmaster.UI
 				ct = uicts.Token;
 			}
 
-			if (Taskmaster.Trace) Debug.WriteLine("COLORING LINES");
+			if (Trace) Debug.WriteLine("COLORING LINES");
+
 			int i = 0;
 			foreach (var item in WatchlistMap)
 			{
 				if (ct.IsCancellationRequested) return;
-				if (Taskmaster.Trace) Debug.WriteLine($"{i++:00} --- {item.Value.Index:00} : {(item.Value.Index+1) % 2 == 0} --- {item.Key.FriendlyName}");
+				if (Trace) Debug.WriteLine($"{i++:00} --- {item.Value.Index:00} : {(item.Value.Index+1) % 2 == 0} --- {item.Key.FriendlyName}");
 				WatchlistItemColor(item.Value, item.Key);
 			}
 		}
@@ -667,7 +705,7 @@ namespace Taskmaster.UI
 			string aff = string.Empty;
 			if (prc.AffinityMask > 0)
 			{
-				if (Taskmaster.AffinityStyle == 0)
+				if (AffinityStyle == 0)
 					aff = HumanInterface.BitMask(prc.AffinityMask, ProcessManager.CPUCount);
 				else
 					aff = prc.AffinityMask.ToString();
@@ -718,7 +756,7 @@ namespace Taskmaster.UI
 				{
 					if (prc.AffinityMask == ProcessManager.AllCPUsMask || prc.AffinityMask == 0)
 						aff = "Full/OS";
-					else if (Taskmaster.AffinityStyle == 0)
+					else if (AffinityStyle == 0)
 						aff = HumanInterface.BitMask(prc.AffinityMask, ProcessManager.CPUCount);
 					else
 						aff = prc.AffinityMask.ToString();
@@ -786,7 +824,7 @@ namespace Taskmaster.UI
 		{
 			if (!IsHandleCreated || DisposedOrDisposing) return;
 
-			Debug.Assert(Taskmaster.DebugCache);
+			Debug.Assert(DebugCache);
 
 			if (PathCacheUpdateSkips++ == 4)
 				PathCacheUpdateSkips = 0;
@@ -1049,16 +1087,16 @@ namespace Taskmaster.UI
 			// Sub Items
 			var menu_action_rescan = new ToolStripMenuItem(HumanReadable.System.Process.Rescan, null, RescanRequestEvent)
 			{
-				Enabled = Taskmaster.ProcessMonitorEnabled,
+				Enabled = ProcessMonitorEnabled,
 			};
 			var menu_action_memoryfocus = new ToolStripMenuItem("Free memory for...", null, FreeMemoryRequest)
 			{
-				Enabled = Taskmaster.PagingEnabled,
+				Enabled = PagingEnabled,
 			};
 			menu_action_restart = new ToolStripMenuItem("Restart", null, RestartRequestEvent);
 			menu_action_restartadmin = new ToolStripMenuItem("Restart as admin", null, RestartRequestEvent)
 			{
-				Enabled = !MKAh.OperatingSystem.IsAdministrator()
+				Enabled = !MKAh.Execution.IsAdministrator()
 			};
 
 			var menu_action_exit = new ToolStripMenuItem("Exit", null, ExitRequest);
@@ -1074,7 +1112,7 @@ namespace Taskmaster.UI
 			var menu_view = new ToolStripMenuItem("View");
 			var menu_view_volume = new ToolStripMenuItem("Volume", null, ShowVolumeBox)
 			{
-				Enabled = Taskmaster.AudioManagerEnabled,
+				Enabled = AudioManagerEnabled,
 			};
 
 			menu_view.DropDownItems.Add(menu_view_volume);
@@ -1093,44 +1131,50 @@ namespace Taskmaster.UI
 			// Sub Sub Items
 			var menu_config_behaviour_autoopen = new ToolStripMenuItem("Auto-open menus")
 			{
-				Checked = Taskmaster.AutoOpenMenus,
+				Checked = AutoOpenMenus,
 				CheckOnClick = true,
 			};
 			menu_config_behaviour_autoopen.Click += (_, _ea) =>
 			{
-				Taskmaster.AutoOpenMenus = menu_config_behaviour_autoopen.Checked;
+				AutoOpenMenus = menu_config_behaviour_autoopen.Checked;
 
-				var corecfg = Taskmaster.Config.Load(Taskmaster.coreconfig);
-				corecfg.Config[HumanReadable.Generic.QualityOfLife]["Auto-open menus"].BoolValue = Taskmaster.AutoOpenMenus;
-				corecfg.MarkDirty();
+				using (var corecfg = Taskmaster.Config.Load(CoreConfigFilename).BlockUnload())
+				{
+					corecfg.Config[HumanReadable.Generic.QualityOfLife]["Auto-open menus"].BoolValue = AutoOpenMenus;
+					corecfg.MarkDirty();
+				}
 			};
 
 			var menu_config_behaviour_taskbar = new ToolStripMenuItem("Show in taskbar")
 			{
-				Checked = Taskmaster.ShowInTaskbar,
+				Checked = ShowInTaskbar,
 				CheckOnClick = true,
 			};
 			menu_config_behaviour_taskbar.Click += (_, _ea) =>
 			{
-				Taskmaster.ShowInTaskbar = ShowInTaskbar = menu_config_behaviour_taskbar.Checked;
+				ShowInTaskbar = menu_config_behaviour_taskbar.Checked;
 
-				var corecfg = Taskmaster.Config.Load(Taskmaster.coreconfig);
-				corecfg.Config[HumanReadable.Generic.QualityOfLife]["Show in taskbar"].BoolValue = Taskmaster.ShowInTaskbar;
-				corecfg.MarkDirty();
+				using (var corecfg = Taskmaster.Config.Load(CoreConfigFilename).BlockUnload())
+				{
+					corecfg.Config[HumanReadable.Generic.QualityOfLife]["Show in taskbar"].BoolValue = ShowInTaskbar;
+					corecfg.MarkDirty();
+				}
 			};
 
 			var menu_config_behaviour_exitconfirm = new ToolStripMenuItem("Exit confirmation")
 			{
-				Checked = Taskmaster.ExitConfirmation,
+				Checked = ExitConfirmation,
 				CheckOnClick = true,
 			};
 			menu_config_behaviour_exitconfirm.Click += (_, _ea) =>
 			{
-				Taskmaster.ExitConfirmation = menu_config_behaviour_exitconfirm.Checked;
+				ExitConfirmation = menu_config_behaviour_exitconfirm.Checked;
 
-				var corecfg = Taskmaster.Config.Load(Taskmaster.coreconfig);
-				corecfg.Config[HumanReadable.Generic.QualityOfLife]["Exit confirmation"].BoolValue = Taskmaster.ExitConfirmation;
-				corecfg.MarkDirty();
+				using (var corecfg = Taskmaster.Config.Load(CoreConfigFilename).BlockUnload())
+				{
+					corecfg.Config[HumanReadable.Generic.QualityOfLife]["Exit confirmation"].BoolValue = ExitConfirmation;
+					corecfg.MarkDirty();
+				}
 			};
 
 			menu_config_behaviour.DropDownItems.Add(menu_config_behaviour_autoopen);
@@ -1164,9 +1208,11 @@ namespace Taskmaster.UI
 			{
 				AlternateRowColorsLog = menu_config_visuals_rowalternate_log.Checked;
 
-				var uicfg = Taskmaster.Config.Load(UIConfig);
-				uicfg.Config["Visuals"]["Alternate log row colors"].BoolValue = AlternateRowColorsLog;
-				uicfg.MarkDirty();
+				using (var uicfg = Taskmaster.Config.Load(UIConfigFilename).BlockUnload())
+				{
+					uicfg.Config["Visuals"]["Alternate log row colors"].BoolValue = AlternateRowColorsLog;
+					uicfg.MarkDirty();
+				}
 
 				if (LogList!=null)
 					AlternateListviewRowColors(LogList, AlternateRowColorsLog);
@@ -1174,9 +1220,11 @@ namespace Taskmaster.UI
 			menu_config_visuals_rowalternate_watchlist.Click += (_, _ea) =>
 			{
 				AlternateRowColorsWatchlist = menu_config_visuals_rowalternate_watchlist.Checked;
-				var uicfg = Taskmaster.Config.Load(UIConfig);
-				uicfg.Config["Visuals"]["Alternate watchlist row colors"].BoolValue = AlternateRowColorsWatchlist;
-				uicfg.MarkDirty();
+				using (var uicfg = Taskmaster.Config.Load(UIConfigFilename).BlockUnload())
+				{
+					uicfg.Config["Visuals"]["Alternate watchlist row colors"].BoolValue = AlternateRowColorsWatchlist;
+					uicfg.MarkDirty();
+				}
 
 				WatchlistColor();
 			};
@@ -1184,9 +1232,11 @@ namespace Taskmaster.UI
 			{
 				AlternateRowColorsDevices = menu_config_visuals_rowalternate_devices.Checked;
 
-				var uicfg = Taskmaster.Config.Load(UIConfig);
-				uicfg.Config["Visuals"]["Alternate device row colors"].BoolValue = AlternateRowColorsDevices;
-				uicfg.MarkDirty();
+				using (var uicfg = Taskmaster.Config.Load(UIConfigFilename).BlockUnload())
+				{
+					uicfg.Config["Visuals"]["Alternate device row colors"].BoolValue = AlternateRowColorsDevices;
+					uicfg.MarkDirty();
+				}
 
 				if (AudioInputs != null)
 					AlternateListviewRowColors(AudioInputs, AlternateRowColorsDevices);
@@ -1199,7 +1249,6 @@ namespace Taskmaster.UI
 			//
 			var menu_config_visuals_topmost = new ToolStripMenuItem("Stay on top");
 
-
 			var menu_config_visuals_topmost_volume = new ToolStripMenuItem("Volume meter")
 			{
 				Checked = false,
@@ -1207,14 +1256,16 @@ namespace Taskmaster.UI
 			};
 			menu_config_visuals_topmost_volume.Click += (_, _ea) =>
 			{
-				var corecfg = Taskmaster.Config.Load(Taskmaster.coreconfig);
-				var volsec = corecfg.Config["Volume Meter"];
+				using (var corecfg = Taskmaster.Config.Load(CoreConfigFilename).BlockUnload())
+				{
+					var volsec = corecfg.Config["Volume Meter"];
 
-				volsec["Topmost"].BoolValue = menu_config_visuals_topmost_volume.Checked;
-				corecfg.MarkDirty();
+					volsec["Topmost"].BoolValue = menu_config_visuals_topmost_volume.Checked;
+					corecfg.MarkDirty();
+				}
 
-				if (Taskmaster.volumemeter != null)
-					Taskmaster.volumemeter.TopMost = menu_config_visuals_topmost_volume.Checked;
+				if (volumemeter != null)
+					volumemeter.TopMost = menu_config_visuals_topmost_volume.Checked;
 			};
 			/*
 			var menu_config_visuals_topmost_main = new ToolStripMenuItem("Main window")
@@ -1231,104 +1282,115 @@ namespace Taskmaster.UI
 			// CONFIG -> LOGGING
 			var menu_config_logging_adjusts = new ToolStripMenuItem("Process adjusts")
 			{
-				Checked = Taskmaster.ShowProcessAdjusts,
+				Checked = ShowProcessAdjusts,
 				CheckOnClick = true,
 			};
 			menu_config_logging_adjusts.Click += (_, _ea) =>
 			{
-				Taskmaster.ShowProcessAdjusts = menu_config_logging_adjusts.Checked;
+				ShowProcessAdjusts = menu_config_logging_adjusts.Checked;
 
-				var corecfg = Taskmaster.Config.Load(Taskmaster.coreconfig);
-				corecfg.Config["Logging"]["Show process adjusts"].BoolValue = Taskmaster.ShowProcessAdjusts;
-				corecfg.MarkDirty();
+				using (var corecfg = Taskmaster.Config.Load(CoreConfigFilename).BlockUnload())
+				{
+					corecfg.Config["Logging"]["Show process adjusts"].BoolValue = ShowProcessAdjusts;
+					corecfg.MarkDirty();
+				}
 			};
 
 			var menu_config_logging_session = new ToolStripMenuItem("Session actions")
 			{
-				Checked = Taskmaster.ShowSessionActions,
+				Checked = ShowSessionActions,
 				CheckOnClick = true,
 			};
 			menu_config_logging_session.Click += (_, _ea) =>
 			{
-				Taskmaster.ShowSessionActions = menu_config_logging_session.Checked;
+				ShowSessionActions = menu_config_logging_session.Checked;
 
-				var corecfg = Taskmaster.Config.Load(Taskmaster.coreconfig);
-				corecfg.Config["Logging"]["Show session actions"].BoolValue = Taskmaster.ShowSessionActions;
-				corecfg.MarkDirty();
+				using (var corecfg = Taskmaster.Config.Load(CoreConfigFilename).BlockUnload())
+				{
+					corecfg.Config["Logging"]["Show session actions"].BoolValue = ShowSessionActions;
+					corecfg.MarkDirty();
+				}
 			};
 
 			var menu_config_logging_showunmodified = new ToolStripMenuItem("Show unmodified portions")
 			{
-				Checked = Taskmaster.ShowUnmodifiedPortions,
+				Checked = ProcessManager.ShowUnmodifiedPortions,
 				CheckOnClick = true,
 			};
 			menu_config_logging_showunmodified.Click += (_, _ea) =>
 			{
-				Taskmaster.ShowUnmodifiedPortions = menu_config_logging_showunmodified.Checked;
-				var corecfg = Taskmaster.Config.Load(Taskmaster.coreconfig);
-				corecfg.Config["Logging"]["Show unmodified portions"].BoolValue = menu_config_logging_showunmodified.Checked;
-				corecfg.MarkDirty();
+				ProcessManager.ShowUnmodifiedPortions = menu_config_logging_showunmodified.Checked;
+
+				using (var corecfg = Taskmaster.Config.Load(CoreConfigFilename).BlockUnload())
+				{
+					corecfg.Config["Logging"]["Show unmodified portions"].BoolValue = ProcessManager.ShowUnmodifiedPortions;
+					corecfg.MarkDirty();
+				}
 			};
 
 			var menu_config_logging_showonlyfinal = new ToolStripMenuItem("Show only final state")
 			{
-				Checked = Taskmaster.ShowOnlyFinalState,
+				Checked = ProcessManager.ShowOnlyFinalState,
 				CheckOnClick = true,
 			};
 			menu_config_logging_showonlyfinal.Click += (_, _ea) =>
 			{
-				Taskmaster.ShowOnlyFinalState = menu_config_logging_showonlyfinal.Checked;
-				var corecfg = Taskmaster.Config.Load(Taskmaster.coreconfig);
-				corecfg.Config["Logging"]["Show only final state"].BoolValue = menu_config_logging_showonlyfinal.Checked;
-				corecfg.MarkDirty();
+				ProcessManager.ShowOnlyFinalState = menu_config_logging_showonlyfinal.Checked;
+				using (var corecfg = Taskmaster.Config.Load(CoreConfigFilename).BlockUnload())
+				{
+					corecfg.Config["Logging"]["Show only final state"].BoolValue = ProcessManager.ShowOnlyFinalState;
+					corecfg.MarkDirty();
+				}
 			};
 
 			var menu_config_logging_neterrors = new ToolStripMenuItem("Network errors")
 			{
-				Checked = Taskmaster.ShowNetworkErrors,
+				Checked = NetManager.ShowNetworkErrors,
 				CheckOnClick = true,
 			};
 			menu_config_logging_neterrors.Click += (_, _ea) =>
 			{
-				Taskmaster.ShowNetworkErrors = menu_config_logging_neterrors.Checked;
+				NetManager.ShowNetworkErrors = menu_config_logging_neterrors.Checked;
 
-				var corecfg = Taskmaster.Config.Load(Taskmaster.coreconfig);
-				corecfg.Config["Logging"]["Show network errors"].BoolValue = Taskmaster.ShowNetworkErrors;
-				corecfg.MarkDirty();
+				using (var corecfg = Taskmaster.Config.Load(CoreConfigFilename).BlockUnload())
+				{
+					corecfg.Config["Logging"]["Show network errors"].BoolValue = NetManager.ShowNetworkErrors;
+					corecfg.MarkDirty();
+				}
 			};
 
 			var menu_config_logging_info = new ToolStripMenuItem("Information")
 			{
-				Checked = Taskmaster.loglevelswitch.MinimumLevel == Serilog.Events.LogEventLevel.Information,
+				Checked = loglevelswitch.MinimumLevel == Serilog.Events.LogEventLevel.Information,
 				CheckOnClick = true,
 			};
 			var menu_config_logging_debug = new ToolStripMenuItem("Debug")
 			{
-				Checked = Taskmaster.loglevelswitch.MinimumLevel == Serilog.Events.LogEventLevel.Debug,
+				Checked = loglevelswitch.MinimumLevel == Serilog.Events.LogEventLevel.Debug,
 				CheckOnClick = true,
 			};
 			var menu_config_logging_trace = new ToolStripMenuItem("Trace")
 			{
-				Checked = Taskmaster.loglevelswitch.MinimumLevel == Serilog.Events.LogEventLevel.Verbose,
+				Checked = loglevelswitch.MinimumLevel == Serilog.Events.LogEventLevel.Verbose,
 				CheckOnClick = true,
 			};
 			menu_config_logging_info.Click += (_, _ea) =>
 			{
 				menu_config_logging_debug.Checked = false;
 				menu_config_logging_trace.Checked = false;
-				Taskmaster.loglevelswitch.MinimumLevel = Serilog.Events.LogEventLevel.Information;
+				loglevelswitch.MinimumLevel = Serilog.Events.LogEventLevel.Information;
 			};
 			menu_config_logging_debug.Click += (_, _ea) =>
 			{
 				menu_config_logging_info.Checked = false;
 				menu_config_logging_trace.Checked = false;
-				Taskmaster.loglevelswitch.MinimumLevel = Serilog.Events.LogEventLevel.Debug;
+				loglevelswitch.MinimumLevel = Serilog.Events.LogEventLevel.Debug;
 			};
 			menu_config_logging_trace.Click += (_, _ea) =>
 			{
 				menu_config_logging_info.Checked = false;
 				menu_config_logging_debug.Checked = false;
-				Taskmaster.loglevelswitch.MinimumLevel = Serilog.Events.LogEventLevel.Verbose;
+				loglevelswitch.MinimumLevel = Serilog.Events.LogEventLevel.Verbose;
 			};
 
 			menu_config_logging.DropDownItems.Add(menu_config_logging_adjusts);
@@ -1345,33 +1407,37 @@ namespace Taskmaster.UI
 
 			var menu_config_bitmaskstyle_bitmask = new ToolStripMenuItem("Bitmask")
 			{
-				Checked = Taskmaster.AffinityStyle == 0,
+				Checked = AffinityStyle == 0,
 			};
 			var menu_config_bitmaskstyle_decimal = new ToolStripMenuItem("Decimal")
 			{
-				Checked = Taskmaster.AffinityStyle == 1,
+				Checked = (AffinityStyle == 1),
 			};
 			menu_config_bitmaskstyle_bitmask.Click += (_, _ea) =>
 			{
-				Taskmaster.AffinityStyle = 0;
+				AffinityStyle = 0;
 				menu_config_bitmaskstyle_bitmask.Checked = true;
 				menu_config_bitmaskstyle_decimal.Checked = false;
 				// TODO: re-render watchlistRules
 
-				var corecfg = Taskmaster.Config.Load(Taskmaster.coreconfig);
-				corecfg.Config[HumanReadable.Generic.QualityOfLife][HumanReadable.Hardware.CPU.Settings.AffinityStyle].IntValue = 0;
-				corecfg.MarkDirty();
+				using (var corecfg = Taskmaster.Config.Load(CoreConfigFilename).BlockUnload())
+				{
+					corecfg.Config[HumanReadable.Generic.QualityOfLife][HumanReadable.Hardware.CPU.Settings.AffinityStyle].IntValue = 0;
+					corecfg.MarkDirty();
+				}
 			};
 			menu_config_bitmaskstyle_decimal.Click += (_, _ea) =>
 			{
-				Taskmaster.AffinityStyle = 1;
+				AffinityStyle = 1;
 				menu_config_bitmaskstyle_bitmask.Checked = false;
 				menu_config_bitmaskstyle_decimal.Checked = true;
 				// TODO: re-render watchlistRules
 
-				var corecfg = Taskmaster.Config.Load(Taskmaster.coreconfig);
-				corecfg.Config[HumanReadable.Generic.QualityOfLife][HumanReadable.Hardware.CPU.Settings.AffinityStyle].IntValue = 1;
-				corecfg.MarkDirty();
+				using (var corecfg = Taskmaster.Config.Load(CoreConfigFilename).BlockUnload())
+				{
+					corecfg.Config[HumanReadable.Generic.QualityOfLife][HumanReadable.Hardware.CPU.Settings.AffinityStyle].IntValue = 1;
+					corecfg.MarkDirty();
+				}
 			};
 			//var menu_config_bitmaskstyle_both = new ToolStripMenuItem("Decimal [Bitmask]");
 
@@ -1393,7 +1459,7 @@ namespace Taskmaster.UI
 			var menu_config_components = new ToolStripMenuItem("Components", null, (_,_ea) => Config.ComponentConfigurationWindow.Reveal()); // MODAL
 			var menu_config_experiments = new ToolStripMenuItem("Experiments", null, (_,_ea) => Config.ExperimentConfig.Reveal()); // MODAL
 
-			var menu_config_folder = new ToolStripMenuItem("Open in file manager", null, (_, _ea) => Process.Start(Taskmaster.datapath));
+			var menu_config_folder = new ToolStripMenuItem("Open in file manager", null, (_, _ea) => Process.Start(DataPath));
 			// menu_config.DropDownItems.Add(menu_config_log);
 			menu_config.DropDownItems.Add(menu_config_behaviour);
 			menu_config.DropDownItems.Add(menu_config_visual);
@@ -1421,7 +1487,7 @@ namespace Taskmaster.UI
 			(_, _ea) =>
 			{
 				LogIncludeLevel.MinimumLevel = Serilog.Events.LogEventLevel.Information;
-				Taskmaster.Trace = false;
+				Trace = false;
 				UpdateLogLevelSelection();
 			})
 			{
@@ -1432,7 +1498,7 @@ namespace Taskmaster.UI
 			(_, _ea) =>
 			{
 				LogIncludeLevel.MinimumLevel = Serilog.Events.LogEventLevel.Debug;
-				Taskmaster.Trace = false;
+				Trace = false;
 				UpdateLogLevelSelection();
 			})
 			{
@@ -1444,7 +1510,7 @@ namespace Taskmaster.UI
 			(_, _ea) =>
 			{
 				LogIncludeLevel.MinimumLevel = Serilog.Events.LogEventLevel.Verbose;
-				Taskmaster.Trace = true;
+				Trace = true;
 				UpdateLogLevelSelection();
 				Log.Warning("Trace events enabled. UI may become unresponsive due to their volume.");
 			})
@@ -1461,46 +1527,46 @@ namespace Taskmaster.UI
 
 			UpdateLogLevelSelection();
 
-			var menu_debug_inaction = new ToolStripMenuItem("Show inaction") { Checked = Taskmaster.ShowInaction, CheckOnClick = true };
-			menu_debug_inaction.Click += (_, _ea) => Taskmaster.ShowInaction = menu_debug_inaction.Checked;
-			var menu_debug_agency = new ToolStripMenuItem("Show agency") { Checked = Taskmaster.ShowAgency, CheckOnClick = true };
-			menu_debug_agency.Click += (_, _ea) => Taskmaster.ShowAgency = menu_debug_agency.Checked;
+			var menu_debug_inaction = new ToolStripMenuItem("Show inaction") { Checked = ShowInaction, CheckOnClick = true };
+			menu_debug_inaction.Click += (_, _ea) => ShowInaction = menu_debug_inaction.Checked;
+			var menu_debug_agency = new ToolStripMenuItem("Show agency") { Checked = ShowAgency, CheckOnClick = true };
+			menu_debug_agency.Click += (_, _ea) => ShowAgency = menu_debug_agency.Checked;
 			var menu_debug_scanning = new ToolStripMenuItem("Scanning")
 			{
-				Checked = Taskmaster.DebugFullScan,
+				Checked = ProcessManager.DebugScan,
 				CheckOnClick = true,
-				Enabled = Taskmaster.ProcessMonitorEnabled,
+				Enabled = ProcessMonitorEnabled,
 			};
 			menu_debug_scanning.Click += (_, _ea) =>
 			{
-				Taskmaster.DebugFullScan = menu_debug_scanning.Checked;
-				if (Taskmaster.DebugFullScan) EnsureVerbosityLevel();
+				ProcessManager.DebugScan = menu_debug_scanning.Checked;
+				if (ProcessManager.DebugScan) EnsureVerbosityLevel();
 			};
 
 			var menu_debug_procs = new ToolStripMenuItem("Processes")
 			{
-				Checked = Taskmaster.DebugProcesses,
+				Checked = ProcessManager.DebugProcesses,
 				CheckOnClick = true,
-				Enabled = Taskmaster.ProcessMonitorEnabled,
+				Enabled = ProcessMonitorEnabled,
 			};
 			menu_debug_procs.Click += (_, _ea) =>
 			{
-				Taskmaster.DebugProcesses = menu_debug_procs.Checked;
-				if (Taskmaster.DebugProcesses)
+				ProcessManager.DebugProcesses = menu_debug_procs.Checked;
+				if (ProcessManager.DebugProcesses)
 					StartProcessDebug();
 				else
 					StopProcessDebug();
 			};
 			var menu_debug_foreground = new ToolStripMenuItem(HumanReadable.System.Process.Foreground)
 			{
-				Checked = Taskmaster.DebugForeground,
+				Checked = DebugForeground,
 				CheckOnClick = true,
-				Enabled = Taskmaster.ActiveAppMonitorEnabled,
+				Enabled = ActiveAppMonitorEnabled,
 			};
 			menu_debug_foreground.Click += (_, _ea) =>
 			{
-				Taskmaster.DebugForeground = menu_debug_foreground.Checked;
-				if (Taskmaster.DebugForeground)
+				DebugForeground = menu_debug_foreground.Checked;
+				if (DebugForeground)
 					StartProcessDebug();
 				else
 					StopProcessDebug();
@@ -1508,24 +1574,24 @@ namespace Taskmaster.UI
 
 			var menu_debug_paths = new ToolStripMenuItem("Paths")
 			{
-				Checked = Taskmaster.DebugPaths,
+				Checked = ProcessManager.DebugPaths,
 				CheckOnClick = true,
 			};
 			menu_debug_paths.Click += (_, _ea) =>
 			{
-				Taskmaster.DebugPaths = menu_debug_paths.Checked;
-				if (Taskmaster.DebugPaths) EnsureVerbosityLevel();
+				ProcessManager.DebugPaths = menu_debug_paths.Checked;
+				if (ProcessManager.DebugPaths) EnsureVerbosityLevel();
 			};
 			var menu_debug_power = new ToolStripMenuItem(HumanReadable.Hardware.Power.Section)
 			{
-				Checked = Taskmaster.DebugPower,
+				Checked = DebugPower,
 				CheckOnClick = true,
-				Enabled = Taskmaster.PowerManagerEnabled,
+				Enabled = PowerManagerEnabled,
 			};
 			menu_debug_power.Click += (_, _ea) =>
 			{
-				Taskmaster.DebugPower = menu_debug_power.Checked;
-				if (Taskmaster.DebugPower)
+				DebugPower = menu_debug_power.Checked;
+				if (DebugPower)
 				{
 					var pev = new PowerModeEventArgs(powermanager.CurrentMode);
 					PowerPlanDebugEvent(this, pev); // populates powerbalancer_plan
@@ -1548,37 +1614,37 @@ namespace Taskmaster.UI
 
 			var menu_debug_session = new ToolStripMenuItem("Session")
 			{
-				Checked = Taskmaster.DebugSession,
+				Checked = DebugSession,
 				CheckOnClick = true,
-				Enabled = Taskmaster.PowerManagerEnabled,
+				Enabled = PowerManagerEnabled,
 			};
 			menu_debug_session.Click += (_, _ea) =>
 			{
-				Taskmaster.DebugSession = menu_debug_session.Checked;
-				if (Taskmaster.DebugSession) EnsureVerbosityLevel();
+				DebugSession = menu_debug_session.Checked;
+				if (DebugSession) EnsureVerbosityLevel();
 			};
 			var menu_debug_monitor = new ToolStripMenuItem(HumanReadable.Hardware.Monitor.Section)
 			{
-				Checked = Taskmaster.DebugMonitor,
+				Checked = DebugMonitor,
 				CheckOnClick = true,
-				Enabled = Taskmaster.PowerManagerEnabled,
+				Enabled = PowerManagerEnabled,
 			};
 			menu_debug_monitor.Click += (_, _ea) =>
 			{
-				Taskmaster.DebugMonitor = menu_debug_monitor.Checked;
-				if (Taskmaster.DebugMonitor) EnsureVerbosityLevel();
+				DebugMonitor = menu_debug_monitor.Checked;
+				if (DebugMonitor) EnsureVerbosityLevel();
 			};
 
 			var menu_debug_audio = new ToolStripMenuItem(HumanReadable.Hardware.Audio.Section)
 			{
-				Checked = Taskmaster.DebugAudio,
+				Checked = DebugAudio,
 				CheckOnClick = true,
-				Enabled = Taskmaster.AudioManagerEnabled,
+				Enabled = AudioManagerEnabled,
 			};
 			menu_debug_audio.Click += (_, _ea) =>
 			{
-				Taskmaster.DebugAudio = menu_debug_audio.Checked;
-				if (Taskmaster.DebugAudio) EnsureVerbosityLevel();
+				DebugAudio = menu_debug_audio.Checked;
+				if (DebugAudio) EnsureVerbosityLevel();
 			};
 
 			var menu_debug_clear = new ToolStripMenuItem("Clear UI log", null, (_, _ea) => ClearLog());
@@ -1606,8 +1672,8 @@ namespace Taskmaster.UI
 			var menu_info = new ToolStripMenuItem("Info");
 			// Sub Items
 
-			menu_info.DropDownItems.Add(new ToolStripMenuItem("Github", null, (_, _ea) => Process.Start(Taskmaster.GitURL)));
-			menu_info.DropDownItems.Add(new ToolStripMenuItem("Itch.io", null, (_, _ea) => Process.Start(Taskmaster.ItchURL)));
+			menu_info.DropDownItems.Add(new ToolStripMenuItem("Github", null, (_, _ea) => Process.Start(GitURL)));
+			menu_info.DropDownItems.Add(new ToolStripMenuItem("Itch.io", null, (_, _ea) => Process.Start(ItchURL)));
 			menu_info.DropDownItems.Add(new ToolStripSeparator());
 			menu_info.DropDownItems.Add(new ToolStripMenuItem("License", null, (_, _ea) => OpenLicenseDialog()));
 			menu_info.DropDownItems.Add(new ToolStripSeparator());
@@ -1648,11 +1714,11 @@ namespace Taskmaster.UI
 
 			LoadUIConfiguration(out int opentab, out int[] appwidths, out int[] apporder, out int[] micwidths, out int[] ifacewidths);
 
-			if (Taskmaster.MicrophoneManagerEnabled) BuildMicrophonePanel(micwidths);
+			if (MicrophoneManagerEnabled) BuildMicrophonePanel(micwidths);
 
 			// Main Window row 4-5, internet status
 			TableLayoutPanel netstatus = null;
-			if (Taskmaster.NetworkMonitorEnabled) netstatus = BuildNetworkStatusUI(infopanel, ifacewidths);
+			if (NetworkMonitorEnabled) netstatus = BuildNetworkStatusUI(infopanel, ifacewidths);
 			// End: Inet status
 
 			GotFocus += StartUIUpdates;
@@ -1693,29 +1759,32 @@ namespace Taskmaster.UI
 			loglistms.Items.Add(logcopy);
 			LogList.ContextMenuStrip = loglistms;
 
-			var cfg = Taskmaster.Config.Load(Taskmaster.coreconfig);
 			bool modified, tdirty = false;
-			MaxLogSize = cfg.Config["Logging"].GetOrSet("UI max items", 200, out modified).IntValue;
-			tdirty |= modified;
-			UItimer.Interval = cfg.Config["User Interface"].GetOrSet("Update frequency", 2000, out modified).IntValue.Constrain(100, 5000);
-			tdirty |= modified;
-			if (tdirty)
+
+			using (var cfg = Taskmaster.Config.Load(CoreConfigFilename).BlockUnload())
 			{
-				cfg.Config["Logging"]["UI max items"].Comment = "Maximum number of items/lines to retain on UI level.";
-				cfg.Config["User Interface"]["Update frequency"].Comment = "In milliseconds. Frequency of controlled UI updates. Affects visual accuracy of timers and such. Valid range: 100 to 5000.";
-				cfg.MarkDirty();
+				MaxLogSize = cfg.Config["Logging"].GetOrSet("UI max items", 200, out modified).IntValue;
+				tdirty |= modified;
+				UItimer.Interval = cfg.Config["User Interface"].GetOrSet("Update frequency", 2000, out modified).IntValue.Constrain(100, 5000);
+				tdirty |= modified;
+				if (tdirty)
+				{
+					cfg.Config["Logging"]["UI max items"].Comment = "Maximum number of items/lines to retain on UI level.";
+					cfg.Config["User Interface"]["Update frequency"].Comment = "In milliseconds. Frequency of controlled UI updates. Affects visual accuracy of timers and such. Valid range: 100 to 5000.";
+					cfg.MarkDirty();
+				}
+
+				if (AudioManagerEnabled)
+				{
+					menu_config_visuals_topmost_volume.Checked = cfg.Config.Get("Volume Meter")?.Get("Topmost")?.BoolValue ?? true;
+				}
 			}
 
-			if (Taskmaster.AudioManagerEnabled)
-			{
-				menu_config_visuals_topmost_volume.Checked = cfg.Config.Get("Volume Meter")?.Get("Topmost")?.BoolValue ?? true;
-			}
+			TableLayoutPanel cachePanel = DebugCache ? BuildCachePanel() : null;
 
-			TableLayoutPanel cachePanel = Taskmaster.DebugCache ? BuildCachePanel() : null;
+			TableLayoutPanel tempmonitorpanel = TempMonitorEnabled ? BuildTempMonitorPanel() : null;
 
-			TableLayoutPanel tempmonitorpanel = Taskmaster.TempMonitorEnabled ? BuildTempMonitorPanel() : null;
-
-			TableLayoutPanel corepanel = new TableLayoutPanel()
+			var corepanel = new TableLayoutPanel()
 			{
 				ColumnCount = 2,
 				AutoSize = true,
@@ -1724,7 +1793,7 @@ namespace Taskmaster.UI
 				Dock = DockStyle.Fill,
 			};
 
-			if (Taskmaster.PowerManagerEnabled)
+			if (PowerManagerEnabled)
 			{
 				corepanel.Controls.Add(new Label() { Text = "CPU", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left });
 				cpuload = new Label() { Text = HumanReadable.Generic.Uninitialized, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left };
@@ -1737,7 +1806,7 @@ namespace Taskmaster.UI
 			corepanel.Controls.Add(ramload);
 
 			TableLayoutPanel gpupanel = null;
-			if (Taskmaster.HardwareMonitorEnabled)
+			if (HardwareMonitorEnabled)
 			{
 				gpupanel = new TableLayoutPanel()
 				{
@@ -1766,13 +1835,13 @@ namespace Taskmaster.UI
 			}
 
 			TableLayoutPanel nvmpanel = null;
-			if (Taskmaster.HealthMonitorEnabled) BuildNVMPanel(out nvmpanel);
+			if (HealthMonitorEnabled) BuildNVMPanel(out nvmpanel);
 
 			TableLayoutPanel powerpanel = null;
-			if (Taskmaster.PowerManagerEnabled) BuildPowerPanel(out powerpanel);
+			if (PowerManagerEnabled) BuildPowerPanel(out powerpanel);
 
 			TableLayoutPanel lastmodifypanel = null;
-			if (Taskmaster.LastModifiedList) lastmodifypanel = BuildLastModifiedPanel(appwidths);
+			if (LastModifiedList) lastmodifypanel = BuildLastModifiedPanel(appwidths);
 
 			var coresystems = new FlowLayoutPanel()
 			{
@@ -1841,11 +1910,11 @@ namespace Taskmaster.UI
 
 			// POWER DEBUG TAB
 
-			if (Taskmaster.DebugPower) BuildPowerDebugPanel();
+			if (DebugPower) BuildPowerDebugPanel();
 
 			// -------------------------------------------------------------------------------------------------------
 
-			if (Taskmaster.DebugProcesses || Taskmaster.DebugForeground)
+			if (ProcessManager.DebugProcesses || DebugForeground)
 				BuildProcessDebug();
 
 			// End Process Debug
@@ -1858,7 +1927,7 @@ namespace Taskmaster.UI
 			GotFocus += UpdateMemoryStats;
 			UpdateMemoryStats(this, EventArgs.Empty);
 
-			if (Taskmaster.DebugCache && Taskmaster.PathCacheLimit > 0)
+			if (DebugCache && PathCacheLimit > 0)
 			{
 				UItimer.Tick += PathCacheUpdate;
 				GotFocus += PathCacheUpdate;
@@ -1866,15 +1935,12 @@ namespace Taskmaster.UI
 			}
 		}
 
-		void ShowVolumeBox(object sender, EventArgs e)
-		{
-			Taskmaster.BuildVolumeMeter();
-		}
+		void ShowVolumeBox(object sender, EventArgs e) => BuildVolumeMeter();
 
 		void ToolStripMenuAutoOpen(object sender, EventArgs _)
 		{
 			var mi = sender as ToolStripMenuItem;
-			if (!ContainsFocus || !Taskmaster.AutoOpenMenus) return;
+			if (!ContainsFocus || !AutoOpenMenus) return;
 			mi?.ShowDropDown();
 		}
 
@@ -1909,7 +1975,7 @@ namespace Taskmaster.UI
 				Dock = DockStyle.Fill,
 			};
 
-			if (Taskmaster.ActiveAppMonitorEnabled)
+			if (ActiveAppMonitorEnabled)
 			{
 				var foregroundapppanel = new FlowLayoutPanel
 				{
@@ -2069,76 +2135,78 @@ namespace Taskmaster.UI
 
 		void LoadUIConfiguration(out int opentab, out int[] appwidths, out int[] apporder, out int[] micwidths, out int[] ifacewidths)
 		{
-			var uicfg = Taskmaster.Config.Load(UIConfig);
-			var wincfg = uicfg.Config["Windows"];
-			var colcfg = uicfg.Config["Columns"];
-			var gencfg = uicfg.Config["Visual"];
-
-			bool modified = false, dirty = false;
-
-			opentab = uicfg.Config["Tabs"].Get("Open")?.IntValue ?? 0;
-			appwidths = null;
-			var appwidthsDefault = new int[] { 20, 120, 140, 82, 60, 76, 46, 160 };
-			appwidths = colcfg.GetOrSet("Apps", appwidthsDefault, out modified).IntArray;
-			if (appwidths.Length != appwidthsDefault.Length) appwidths = appwidthsDefault;
-			dirty |= modified;
-
-			var appOrderDefault = new int[] { 0, 1, 2, 3, 4, 5, 6, 7 };
-			apporder = colcfg.GetOrSet("App order", appOrderDefault, out modified).IntArray;
-			var unqorder = new HashSet<int>(appOrderDefault.Length);
-			foreach (var i in apporder) unqorder.Add(i);
-			if (unqorder.Count != appOrderDefault.Length || unqorder.Max() != 7 || unqorder.Min() != 0) apporder = appOrderDefault;
-			dirty |= modified;
-
-			micwidths = null;
-			if (Taskmaster.MicrophoneManagerEnabled)
+			using (var uicfg = Taskmaster.Config.Load(UIConfigFilename).BlockUnload())
 			{
-				int[] micwidthsDefault = new int[] { 200, 220, 60, 60, 60, 120 };
-				micwidths = colcfg.GetOrSet("Mics", micwidthsDefault, out modified).IntArray;
-				if (micwidths.Length != micwidthsDefault.Length) micwidths = micwidthsDefault;
+				var wincfg = uicfg.Config["Windows"];
+				var colcfg = uicfg.Config["Columns"];
+				var gencfg = uicfg.Config["Visuals"];
+
+				bool modified = false, dirty = false;
+
+				opentab = uicfg.Config["Tabs"].Get("Open")?.IntValue ?? 0;
+				appwidths = null;
+				var appwidthsDefault = new int[] { 20, 120, 140, 82, 60, 76, 46, 160 };
+				appwidths = colcfg.GetOrSet("Apps", appwidthsDefault, out modified).IntArray;
+				if (appwidths.Length != appwidthsDefault.Length) appwidths = appwidthsDefault;
 				dirty |= modified;
-			}
 
-			ifacewidths = null;
-			if (Taskmaster.NetworkMonitorEnabled)
-			{
-				int[] ifacewidthsDefault = new int[] { 110, 60, 50, 70, 90, 192, 60, 60, 40 };
-				ifacewidths = colcfg.GetOrSet("Interfaces", ifacewidthsDefault, out modified).IntArray;
-				if (ifacewidths.Length != ifacewidthsDefault.Length) ifacewidths = ifacewidthsDefault;
+				var appOrderDefault = new int[] { 0, 1, 2, 3, 4, 5, 6, 7 };
+				apporder = colcfg.GetOrSet("App order", appOrderDefault, out modified).IntArray;
+				var unqorder = new HashSet<int>(appOrderDefault.Length);
+				foreach (var i in apporder) unqorder.Add(i);
+				if (unqorder.Count != appOrderDefault.Length || unqorder.Max() != 7 || unqorder.Min() != 0) apporder = appOrderDefault;
 				dirty |= modified;
-			}
 
-			int[] winpos = wincfg.Get("Main")?.IntArray ?? null;
-			if (winpos != null && winpos.Length == 4)
-			{
-				var rectangle = new System.Drawing.Rectangle(winpos[0], winpos[1], winpos[2], winpos[3]);
-				if (Screen.AllScreens.Any(ø => ø.Bounds.IntersectsWith(Bounds))) // https://stackoverflow.com/q/495380
+				micwidths = null;
+				if (MicrophoneManagerEnabled)
 				{
-					StartPosition = FormStartPosition.Manual;
-					Location = new System.Drawing.Point(rectangle.Left, rectangle.Top);
-					Bounds = rectangle;
+					int[] micwidthsDefault = new int[] { 200, 220, 60, 60, 60, 120 };
+					micwidths = colcfg.GetOrSet("Mics", micwidthsDefault, out modified).IntArray;
+					if (micwidths.Length != micwidthsDefault.Length) micwidths = micwidthsDefault;
+					dirty |= modified;
 				}
+
+				ifacewidths = null;
+				if (NetworkMonitorEnabled)
+				{
+					int[] ifacewidthsDefault = new int[] { 110, 60, 50, 70, 90, 192, 60, 60, 40 };
+					ifacewidths = colcfg.GetOrSet("Interfaces", ifacewidthsDefault, out modified).IntArray;
+					if (ifacewidths.Length != ifacewidthsDefault.Length) ifacewidths = ifacewidthsDefault;
+					dirty |= modified;
+				}
+
+				int[] winpos = wincfg.Get("Main")?.IntArray ?? null;
+				if (winpos != null && winpos.Length == 4)
+				{
+					var rectangle = new System.Drawing.Rectangle(winpos[0], winpos[1], winpos[2], winpos[3]);
+					if (Screen.AllScreens.Any(ø => ø.Bounds.IntersectsWith(Bounds))) // https://stackoverflow.com/q/495380
+					{
+						StartPosition = FormStartPosition.Manual;
+						Location = new System.Drawing.Point(rectangle.Left, rectangle.Top);
+						Bounds = rectangle;
+					}
+				}
+
+				//var alternateRowColor = gencfg.GetSetDefault("Alternate row color", new[] { 1 }, out modified).IntArray;
+
+				DefaultLIBGColor = new ListViewItem().BackColor; // HACK; gets current color scheme default color
+
+				AutocalcAlterColor();
+
+				WarningColor = System.Drawing.Color.Red; // no decent way to autocalculate good warning color in case it blends with background
+
+				//GrayText = System.Drawing.Color.FromArgb(130, 130, 130); // ignores user styles
+				//AlterColor = System.Drawing.Color.FromArgb(245, 245, 245); // ignores user styles
+
+				AlternateRowColorsDevices = gencfg.GetOrSet("Alternate device row colors", false, out modified).BoolValue;
+				dirty |= modified;
+				AlternateRowColorsWatchlist = gencfg.GetOrSet("Alternate watchlist row colors", true, out modified).BoolValue;
+				dirty |= modified;
+				AlternateRowColorsLog = gencfg.GetOrSet("Alternate log row colors", true, out modified).BoolValue;
+				dirty |= modified;
+
+				if (dirty) uicfg.MarkDirty();
 			}
-
-			//var alternateRowColor = gencfg.GetSetDefault("Alternate row color", new[] { 1 }, out modified).IntArray;
-
-			DefaultLIBGColor = new ListViewItem().BackColor; // HACK; gets current color scheme default color
-
-			AutocalcAlterColor();
-
-			WarningColor = System.Drawing.Color.Red; // no decent way to autocalculate good warning color in case it blends with background
-
-			//GrayText = System.Drawing.Color.FromArgb(130, 130, 130); // ignores user styles
-			//AlterColor = System.Drawing.Color.FromArgb(245, 245, 245); // ignores user styles
-
-			AlternateRowColorsDevices = gencfg.GetOrSet("Alternate device row colors", false, out modified).BoolValue;
-			dirty |= modified;
-			AlternateRowColorsWatchlist = gencfg.GetOrSet("Alternate watchlist row colors", true, out modified).BoolValue;
-			dirty |= modified;
-			AlternateRowColorsLog = gencfg.GetOrSet("Alternate log row colors", true, out modified).BoolValue;
-			dirty |= modified;
-
-			if (dirty) uicfg.MarkDirty();
 		}
 
 		void AutocalcAlterColor()
@@ -2618,7 +2686,7 @@ namespace Taskmaster.UI
 
 		void ShowAboutDialog(object sender, EventArgs ea)
 		{
-			var builddate = Taskmaster.BuildDate();
+			var builddate = BuildDate();
 
 			var now = DateTime.Now;
 			var age = (now - builddate).TotalDays;
@@ -2628,8 +2696,8 @@ namespace Taskmaster.UI
 					"\nVersion: " + Application.ProductVersion +
 					"\nBuilt: " + $"{builddate.ToString("yyyy/MM/dd HH:mm")} [{age:N0} days old]" +
 					"\n\nCreated by M.A., 2016–2019" +
-					"\n\nAt Github: " + Taskmaster.GitURL +
-					"\nAt Itch.io: " + Taskmaster.ItchURL +
+					"\n\nAt Github: " + GitURL +
+					"\nAt Itch.io: " + ItchURL +
 					"\n\nFree system maintenance and de-obnoxifying app.\n\nAvailable under MIT license.",
 					SimpleMessageBox.Buttons.OK);
 		}
@@ -2637,6 +2705,7 @@ namespace Taskmaster.UI
 		Stopwatch WatchlistSearchInputTimer = new Stopwatch();
 		readonly System.Windows.Forms.Timer WatchlistSearchTimer = new System.Windows.Forms.Timer();
 		string SearchString = string.Empty;
+
 		void WatchlistRulesKeyboardSearch(object _, KeyPressEventArgs ea)
 		{
 			bool ctrlchar = char.IsControl(ea.KeyChar);
@@ -2650,10 +2719,12 @@ namespace Taskmaster.UI
 
 			WatchlistSearchInputTimer.Restart();
 
-			if (Taskmaster.Trace) Debug.WriteLine($"INPUT: {((int)ea.KeyChar):X}");
+			if (Trace) Debug.WriteLine($"INPUT: {((int)ea.KeyChar):X}");
+
 			if (char.IsControl(ea.KeyChar))
 			{
-				if (Taskmaster.Trace) Debug.WriteLine("CONTROL CHARACTER!");
+				if (Trace) Debug.WriteLine("CONTROL CHARACTER!");
+
 				if (ea.KeyChar == (char)Keys.Back && SearchString.Length > 0) // BACKSPACE
 					SearchString = SearchString.Remove(SearchString.Length - 1); // ugly and probably slow
 				else if (ea.KeyChar == 0x7F && SearchString.Length > 0) // 0x7F is ctrl-backspace (delete)
@@ -2783,15 +2854,15 @@ namespace Taskmaster.UI
 
 		void StartProcessDebug()
 		{
-			bool enabled = Taskmaster.DebugProcesses || Taskmaster.DebugForeground;
+			bool enabled = ProcessManager.DebugProcesses || DebugForeground;
 			if (!enabled) return;
 
-			if (Taskmaster.DebugProcesses) processmanager.HandlingStateChange += ProcessHandlingStateChangeEvent;
+			if (ProcessManager.DebugProcesses) processmanager.HandlingStateChange += ProcessHandlingStateChangeEvent;
 
 			if (enabled && ProcessDebugTab == null)
 				BuildProcessDebug();
 
-			if (activeappmonitor != null && Taskmaster.DebugForeground)
+			if (activeappmonitor != null && DebugForeground)
 				activeappmonitor.ActiveChanged += OnActiveWindowChanged;
 
 			EnsureVerbosityLevel();
@@ -2806,7 +2877,7 @@ namespace Taskmaster.UI
 		{
 			if (!IsHandleCreated || DisposedOrDisposing) return;
 
-			if (!Taskmaster.DebugProcesses && !Taskmaster.DebugForeground) return;
+			if (!ProcessManager.DebugProcesses && !DebugForeground) return;
 
 			try
 			{
@@ -2873,13 +2944,13 @@ namespace Taskmaster.UI
 
 		void StopProcessDebug()
 		{
-			if (!Taskmaster.DebugForeground && activeappmonitor != null) activeappmonitor.ActiveChanged -= OnActiveWindowChanged;
-			if (!Taskmaster.DebugProcesses) processmanager.HandlingStateChange -= ProcessHandlingStateChangeEvent;
+			if (!DebugForeground && activeappmonitor != null) activeappmonitor.ActiveChanged -= OnActiveWindowChanged;
+			if (!ProcessManager.DebugProcesses) processmanager.HandlingStateChange -= ProcessHandlingStateChangeEvent;
 
-			bool enabled = Taskmaster.DebugProcesses || Taskmaster.DebugForeground;
+			bool enabled = ProcessManager.DebugProcesses || DebugForeground;
 			if (enabled) return;
 
-			if (activeappmonitor != null && Taskmaster.DebugForeground)
+			if (activeappmonitor != null && DebugForeground)
 				activeappmonitor.ActiveChanged -= OnActiveWindowChanged;
 
 			bool refocus = tabLayout.SelectedTab.Equals(ProcessDebugTab);
@@ -2939,7 +3010,7 @@ namespace Taskmaster.UI
 				{
 					if (exsel.ShowDialog(this) == DialogResult.OK)
 					{
-						await Taskmaster.processmanager?.FreeMemory(exsel.Info.Name);
+						await processmanager?.FreeMemory(exsel.Info.Name);
 					}
 				}
 			}
@@ -2966,7 +3037,8 @@ namespace Taskmaster.UI
 						else
 							li.SubItems[2].Text = "ACTIVE";
 
-						if (Taskmaster.Trace && Taskmaster.DebugForeground) Log.Debug("WaitlistHandler: " + ea.Info.Name + " = " + ea.Info.State.ToString());
+						if (Trace && DebugForeground) Log.Debug("WaitlistHandler: " + ea.Info.Name + " = " + ea.Info.State.ToString());
+
 						switch (ea.Info.State)
 						{
 							case ProcessHandlingState.Paused:
@@ -3009,16 +3081,16 @@ namespace Taskmaster.UI
 			if (!IsHandleCreated || DisposedOrDisposing) return;
 			if (!ramload.Visible) return;
 
-			MemoryManager.Update(); // TODO: this is kinda dumb way to do things
-			double freegb = (double)MemoryManager.FreeBytes / 1_073_741_824d;
-			double totalgb = (double)MemoryManager.Total / 1_073_741_824d;
+			Memory.Update(); // TODO: this is kinda dumb way to do things
+			double freegb = (double)Memory.FreeBytes / 1_073_741_824d;
+			double totalgb = (double)Memory.Total / 1_073_741_824d;
 			double usage = 1 - (freegb / totalgb);
 			//ramload.Text = $"{freegb:N2} of {totalgb:N1} GiB free ({usage * 100d:N1} % usage), {MemoryManager.Pressure * 100:N1} % pressure";
-			ramload.Text = $"{freegb:N2} GiB free ({usage * 100d:N1} % usage), {MemoryManager.Pressure * 100:N1} % pressure";
+			ramload.Text = $"{freegb:N2} GiB free ({usage * 100d:N1} % usage), {Memory.Pressure * 100:N1} % pressure";
 
 			// TODO: Print warning if MemoryManager.Pressure > 100%
 
-			//vramload.Text = $"{Taskmaster.healthmonitor.VRAM()/1_048_576:N0} MB"; // this returns total, not free or used
+			//vramload.Text = $"{healthmonitor.VRAM()/1_048_576:N0} MB"; // this returns total, not free or used
 		}
 
 		// called by cpumonitor, not in UI thread by default
@@ -3107,7 +3179,7 @@ namespace Taskmaster.UI
 				if (oneitem)
 				{
 					var li = WatchlistRules.SelectedItems[0];
-					var prc = Taskmaster.processmanager.GetControllerByName(li.SubItems[NameColumn].Text);
+					var prc = processmanager.GetControllerByName(li.SubItems[NameColumn].Text);
 					if (prc != null)
 					{
 						watchlistenable.Enabled = true;
@@ -3130,7 +3202,7 @@ namespace Taskmaster.UI
 					WatchlistRules.BeginUpdate();
 
 					var li = WatchlistRules.SelectedItems[0];
-					var prc = Taskmaster.processmanager.GetControllerByName(li.SubItems[NameColumn].Text);
+					var prc = processmanager.GetControllerByName(li.SubItems[NameColumn].Text);
 					if (prc != null)
 					{
 						watchlistenable.Enabled = true;
@@ -3163,7 +3235,7 @@ namespace Taskmaster.UI
 				{
 					var li = WatchlistRules.SelectedItems[0];
 					var name = li.SubItems[NameColumn].Text;
-					var prc = Taskmaster.processmanager.GetControllerByName(name);
+					var prc = processmanager.GetControllerByName(name);
 
 					using (var editdialog = new Config.WatchlistEditWindow(prc)) // 1 = executable
 					{
@@ -3213,7 +3285,7 @@ namespace Taskmaster.UI
 				{
 					var li = WatchlistRules.SelectedItems[0];
 
-					var prc = Taskmaster.processmanager.GetControllerByName(li.SubItems[NameColumn].Text);
+					var prc = processmanager.GetControllerByName(li.SubItems[NameColumn].Text);
 					if (prc != null)
 					{
 
@@ -3389,22 +3461,26 @@ namespace Taskmaster.UI
 		{
 			if (aamon == null) return;
 
-			if (Taskmaster.Trace) Log.Verbose("Hooking active app manager.");
+			if (Trace) Log.Verbose("Hooking active app manager.");
 
 			activeappmonitor = aamon;
+			activeappmonitor.OnDisposed += ActiveAppMonitor_OnDisposed;
 
-			if (Taskmaster.DebugForeground || Taskmaster.DebugProcesses)
+			if (DebugForeground || ProcessManager.DebugProcesses)
 				StartProcessDebug();
 		}
+
+		private void ActiveAppMonitor_OnDisposed(object sender, EventArgs e)
+			=> activeappmonitor = null;
 
 		public void Hook(PowerManager pman)
 		{
 			if (pman == null) return;
 
-			if (Taskmaster.Trace) Log.Verbose("Hooking power manager.");
+			if (Trace) Log.Verbose("Hooking power manager.");
 
 			powermanager = pman;
-			if (Taskmaster.DebugPower)
+			if (DebugPower)
 				powermanager.onAutoAdjustAttempt += PowerLoadHandler;
 
 			powermanager.onBehaviourChange += PowerBehaviourDebugEvent;
@@ -3418,7 +3494,7 @@ namespace Taskmaster.UI
 			var pev = new PowerModeEventArgs(powermanager.CurrentMode);
 			PowerPlanEvent(this, pev); // populates pwplan and pwcause
 
-			if (Taskmaster.DebugPower)
+			if (DebugPower)
 			{
 				PowerPlanDebugEvent(this, pev); // populates powerbalancer_plan
 				powermanager.onPlanChange += PowerPlanDebugEvent;
@@ -3593,7 +3669,7 @@ namespace Taskmaster.UI
 		{
 			if (!IsHandleCreated || DisposedOrDisposing) return;
 
-			if (!Taskmaster.DebugPower) return;
+			if (!DebugPower) return;
 
 			BeginInvoke(new Action(() =>
 			{
@@ -3607,7 +3683,7 @@ namespace Taskmaster.UI
 		{
 			if (!IsHandleCreated || DisposedOrDisposing) return;
 
-			if (!Taskmaster.DebugPower) return;
+			if (!DebugPower) return;
 
 			BeginInvoke(new Action(() =>
 			{
@@ -3664,7 +3740,7 @@ namespace Taskmaster.UI
 		{
 			if (net == null) return; // disabled
 
-			if (Taskmaster.Trace) Log.Verbose("Hooking network monitor.");
+			if (Trace) Log.Verbose("Hooking network monitor.");
 
 			netmonitor = net;
 
@@ -3802,7 +3878,7 @@ namespace Taskmaster.UI
 			li.EnsureVisible();
 		}
 
-		public const string UIConfig = "UI.ini";
+		public const string UIConfigFilename = "UI.ini";
 
 		void SaveUIState()
 		{
@@ -3814,43 +3890,45 @@ namespace Taskmaster.UI
 				{
 					if (WatchlistRules.Columns.Count == 0) return;
 
-					var cfg = Taskmaster.Config.Load(UIConfig);
-					var cols = cfg.Config["Columns"];
-
-					var appWidths = new List<int>(WatchlistRules.Columns.Count);
-					var apporder = new List<int>(WatchlistRules.Columns.Count);
-					for (int i = 0; i < WatchlistRules.Columns.Count; i++)
+					using (var cfg = Taskmaster.Config.Load(UIConfigFilename).BlockUnload())
 					{
-						appWidths.Add(WatchlistRules.Columns[i].Width);
-						apporder.Add(WatchlistRules.Columns[i].DisplayIndex);
+						var cols = cfg.Config["Columns"];
+
+						var appWidths = new List<int>(WatchlistRules.Columns.Count);
+						var apporder = new List<int>(WatchlistRules.Columns.Count);
+						for (int i = 0; i < WatchlistRules.Columns.Count; i++)
+						{
+							appWidths.Add(WatchlistRules.Columns[i].Width);
+							apporder.Add(WatchlistRules.Columns[i].DisplayIndex);
+						}
+
+						cols["Apps"].IntArray = appWidths.ToArray();
+						cols["App order"].IntArray = apporder.ToArray();
+
+						if (NetworkMonitorEnabled)
+						{
+							var ifaceWidths = new List<int>(NetworkDevices.Columns.Count);
+							for (int i = 0; i < NetworkDevices.Columns.Count; i++)
+								ifaceWidths.Add(NetworkDevices.Columns[i].Width);
+							cols["Interfaces"].IntArray = ifaceWidths.ToArray();
+						}
+
+						if (MicrophoneManagerEnabled)
+						{
+							var micWidths = new List<int>(AudioInputs.Columns.Count);
+							for (int i = 0; i < AudioInputs.Columns.Count; i++)
+								micWidths.Add(AudioInputs.Columns[i].Width);
+							cols["Mics"].IntArray = micWidths.ToArray();
+						}
+
+						var uistate = cfg.Config["Tabs"];
+						uistate["Open"].IntValue = tabLayout.SelectedIndex;
+
+						var windows = cfg.Config["Windows"];
+						windows["Main"].IntArray = new int[] { Bounds.Left, Bounds.Top, Bounds.Width, Bounds.Height };
+
+						cfg.MarkDirty();
 					}
-
-					cols["Apps"].IntArray = appWidths.ToArray();
-					cols["App order"].IntArray = apporder.ToArray();
-
-					if (Taskmaster.NetworkMonitorEnabled)
-					{
-						List<int> ifaceWidths = new List<int>(NetworkDevices.Columns.Count);
-						for (int i = 0; i < NetworkDevices.Columns.Count; i++)
-							ifaceWidths.Add(NetworkDevices.Columns[i].Width);
-						cols["Interfaces"].IntArray = ifaceWidths.ToArray();
-					}
-
-					if (Taskmaster.MicrophoneManagerEnabled)
-					{
-						List<int> micWidths = new List<int>(AudioInputs.Columns.Count);
-						for (int i = 0; i < AudioInputs.Columns.Count; i++)
-							micWidths.Add(AudioInputs.Columns[i].Width);
-						cols["Mics"].IntArray = micWidths.ToArray();
-					}
-
-					var uistate = cfg.Config["Tabs"];
-					uistate["Open"].IntValue = tabLayout.SelectedIndex;
-
-					var windows = cfg.Config["Windows"];
-					windows["Main"].IntArray = new int[] { Bounds.Left, Bounds.Top, Bounds.Width, Bounds.Height };
-
-					cfg.MarkDirty();
 				}
 				catch (Exception ex)
 				{
@@ -3871,7 +3949,7 @@ namespace Taskmaster.UI
 			{
 				DisposedOrDisposing = true;
 
-				if (Taskmaster.Trace) Log.Verbose("Disposing main window...");
+				if (Trace) Log.Verbose("Disposing main window...");
 
 				if (MemoryLog.MemorySink != null)
 					MemoryLog.MemorySink.onNewEvent -= NewLogReceived; // unnecessary?

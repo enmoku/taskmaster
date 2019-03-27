@@ -1,10 +1,10 @@
 ﻿//
-// MKAh.OperatingSystem.cs
+// Configuration.IFile.cs
 //
 // Author:
 //       M.A. (https://github.com/mkahvi)
 //
-// Copyright (c) 2018–2019 M.A.
+// Copyright (c) 2019 M.A.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -24,28 +24,14 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-using System;
+using Ini = MKAh.Ini;
 
-namespace MKAh
+namespace Taskmaster.Configuration
 {
-	public static class OperatingSystem
+	public interface IFile
 	{
-		static bool? isAdmin = null;
-		public static bool IsAdministrator()
-		{
-			if (isAdmin.HasValue) return isAdmin.Value;
+		void MarkDirty();
 
-			// https://stackoverflow.com/a/10905713
-			var identity = System.Security.Principal.WindowsIdentity.GetCurrent();
-			var principal = new System.Security.Principal.WindowsPrincipal(identity);
-			isAdmin = principal.IsInRole(System.Security.Principal.WindowsBuiltInRole.Administrator);
-
-			return isAdmin.Value;
-		}
-
-		/// <summary>
-		/// Returns true if OS version is 6.1 and platform is NT.
-		/// </summary>
-		public static bool IsWin7 => (System.Environment.OSVersion.Platform == PlatformID.Win32NT && System.Environment.OSVersion.Version.Major == 6 && System.Environment.OSVersion.Version.Minor == 1);
+		Ini.Config Config { get; }
 	}
 }

@@ -71,7 +71,7 @@ namespace Taskmaster
 			if (DisposingOrDisposed) return;
 			DisposingOrDisposed = true;
 
-			if (Taskmaster.IsMainThread())
+			if (MKAh.Execution.IsMainThread)
 			{
 				MMDevice?.Dispose();  // HACK: must happen in same thread as created
 				MMDevice = null;

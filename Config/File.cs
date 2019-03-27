@@ -1,5 +1,5 @@
 ﻿//
-// Config.File.cs
+// Configuration.File.cs
 //
 // Author:
 //       M.A. (https://github.com/mkahvi)
@@ -27,18 +27,19 @@
 using System;
 using Ini = MKAh.Ini;
 
-namespace Taskmaster.Config
+namespace Taskmaster.Configuration
 {
-	public class File : IDisposable
+	public class File : IFile, IDisposable
 	{
 		public Ini.Config Config { get; private set; } = null;
 		public string Filename { get; private set; } = null;
 		string Path { get; set; } = null;
 
+		public int Shared { get; internal set; } = 0;
 		bool Dirty { get; set; } = false;
 
-		public event EventHandler onUnload;
-		public event EventHandler onSave;
+		public event EventHandler<FileEvent> OnUnload;
+		public event EventHandler<FileEvent> OnSave;
 
 		public File(Ini.Config config, string filename)
 		{
@@ -61,40 +62,90 @@ namespace Taskmaster.Config
 
 			if (!Dirty) return;
 
-			onSave?.Invoke(this, EventArgs.Empty);
+			OnSave?.Invoke(this, new FileEvent(this));
 
 			Dirty = false;
 		}
 
+		bool UnloadRequested = false;
+
 		public void Unload()
 		{
+			if (Disposed) throw new ObjectDisposedException("Configuration.File.Unload after Dispose()");
+
 			System.Diagnostics.Debug.Assert(Config != null);
+
+			if (Shared > 0) UnloadRequested = true;
 
 			if (Dirty) Save();
 
-			onUnload?.Invoke(this, EventArgs.Empty);
+			OnUnload?.Invoke(this, new FileEvent(this));
 
 			Config = null;
 		}
 
+		public ScopedFile BlockUnload()
+		{
+			Shared++;
+			return new ScopedFile(this);
+		}
+
+		internal void ScopeReturn()
+		{
+			if (--Shared == 0) Unload();
+		}
+
 		#region IDisposable Support
-		private bool disposed = false;
+		private bool Disposed = false;
 
 		protected virtual void Dispose(bool disposing)
 		{
-			if (!disposed)
-			{
-				if (disposing)
-				{
-					if (Dirty) Save();
-					Unload();
-				}
+			if (Disposed) return;
 
-				disposed = true;
+			if (disposing)
+			{
+				if (Dirty) Save();
+				Unload();
 			}
+
+			Disposed = true;
 		}
 
 		public void Dispose() => Dispose(true);
+		#endregion
+	}
+
+	public class ScopedFile : IFile, IDisposable
+	{
+		public File File { get; private set; } = null;
+
+		public Ini.Config Config => File.Config;
+		public void MarkDirty() => File.MarkDirty();
+
+		internal ScopedFile(File file) => File = file;
+
+		#region IDisposable Support
+		private bool Disposed = false;
+
+		protected virtual void Dispose(bool disposing)
+		{
+			if (Disposed) return;
+
+			if (disposing)
+			{
+				File.ScopeReturn();
+			}
+
+			Disposed = true;
+		}
+
+		~ScopedFile() => Dispose(false);
+
+		public void Dispose()
+		{
+			Dispose(true);
+			GC.SuppressFinalize(this);
+		}
 		#endregion
 	}
 }

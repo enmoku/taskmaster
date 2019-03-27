@@ -35,14 +35,14 @@ using Taskmaster.Events;
 
 namespace Taskmaster
 {
-	sealed public class MicManager : IDisposable
+	sealed public class MicManager : IComponent, IDisposable
 	{
 		readonly System.Threading.Thread Context = null;
 
 		public event EventHandler<VolumeChangedEventArgs> VolumeChanged;
-		public event EventHandler<Events.AudioDefaultDeviceEventArgs> DefaultChanged;
+		public event EventHandler<AudioDefaultDeviceEventArgs> DefaultChanged;
 
-		const string deviceFilename = "Microphone.Devices.ini";
+		const string DeviceFilename = "Microphone.Devices.ini";
 
 		public bool Control { get; private set; } = false;
 
@@ -98,23 +98,24 @@ namespace Taskmaster
 		/// <exception cref="InitFailure">When initialization fails in a way that can not be continued from.</exception>
 		public MicManager()
 		{
-			Debug.Assert(Taskmaster.IsMainThread(), "Requires main thread");
+			Debug.Assert(MKAh.Execution.IsMainThread, "Requires main thread");
 			Context = System.Threading.Thread.CurrentThread;
 
 			var mvol = "Default recording volume";
 			var mcontrol = "Recording volume control";
 
-			var corecfg = Taskmaster.Config.Load(Taskmaster.coreconfig);
+			using (var corecfg = Taskmaster.Config.Load(Taskmaster.CoreConfigFilename).BlockUnload())
+			{
+				var mediasec = corecfg.Config["Media"];
 
-			var mediasec = corecfg.Config["Media"];
+				bool dirty = false, modified = false;
+				Control = mediasec.GetOrSet(mcontrol, false, out modified).BoolValue;
+				dirty |= modified;
+				DefaultVolume = mediasec.GetOrSet(mvol, 100.0d, out modified).DoubleValue.Constrain(0.0d, 100.0d);
+				dirty |= modified;
 
-			bool dirty = false, modified = false;
-			Control = mediasec.GetOrSet(mcontrol, false, out modified).BoolValue;
-			dirty |= modified;
-			DefaultVolume = mediasec.GetOrSet(mvol, 100.0d, out modified).DoubleValue.Constrain(0.0d, 100.0d);
-			dirty |= modified;
-
-			if (dirty) corecfg.MarkDirty();
+				if (dirty) corecfg.MarkDirty();
+			}
 
 			if (Taskmaster.DebugMic) Log.Information("<Microphone> Component loaded.");
 
@@ -272,19 +273,24 @@ namespace Taskmaster
 				var vname = "Volume";
 				var cname = "Control";
 
-				var devcfg = Taskmaster.Config.Load(deviceFilename);
-				var devsec = devcfg.Config[RecordingDevice.GUID];
+				double devvol = double.NaN;
+				bool devcontrol = false;
 
-				bool dirty = false, modified = false;
+				using (var devcfg = Taskmaster.Config.Load(DeviceFilename).BlockUnload())
+				{
+					var devsec = devcfg.Config[RecordingDevice.GUID];
 
-				var devvol = devsec.GetOrSet(vname, DefaultVolume, out modified).DoubleValue;
-				dirty |= modified;
-				bool devcontrol = devsec.GetOrSet(cname, false, out modified).BoolValue;
-				dirty |= modified;
-				devsec.GetOrSet("Name", RecordingDevice.Name, out modified);
-				dirty |= modified;
+					bool dirty = false, modified = false;
 
-				if (dirty) devcfg.MarkDirty();
+					devvol = devsec.GetOrSet(vname, DefaultVolume, out modified).DoubleValue;
+					dirty |= modified;
+					devcontrol = devsec.GetOrSet(cname, false, out modified).BoolValue;
+					dirty |= modified;
+					devsec.GetOrSet("Name", RecordingDevice.Name, out modified);
+					dirty |= modified;
+
+					if (dirty) devcfg.MarkDirty();
+				}
 
 				if (Control && !devcontrol) Control = false; // disable general control if device control is disabled
 
@@ -315,41 +321,42 @@ namespace Taskmaster
 				bool modified = false;
 				bool dirty = false;
 
-				var devcfg = Taskmaster.Config.Load(deviceFilename);
-
-				var devs = audiomanager.Enumerator?.EnumerateAudioEndPoints(NAudio.CoreAudioApi.DataFlow.Capture, NAudio.CoreAudioApi.DeviceState.Active) ?? null;
-				if (devs == null) throw new InvalidOperationException("Enumerator not available, Audio Manager is dead");
-				foreach (var dev in devs)
+				using (var devcfg = Taskmaster.Config.Load(DeviceFilename).BlockUnload())
 				{
-					try
+					var devs = audiomanager.Enumerator?.EnumerateAudioEndPoints(NAudio.CoreAudioApi.DataFlow.Capture, NAudio.CoreAudioApi.DeviceState.Active) ?? null;
+					if (devs == null) throw new InvalidOperationException("Enumerator not available, Audio Manager is dead");
+					foreach (var dev in devs)
 					{
-						string guid = AudioManager.AudioDeviceIdToGuid(dev.ID);
-						var devsec = devcfg.Config[guid];
-						devsec.GetOrSet("Name", dev.DeviceFriendlyName, out modified);
-						dirty |= modified;
-						bool control = devsec.GetOrSet("Control", false, out modified).BoolValue;
-						dirty |= modified;
-						float target = devsec.Get("Volume")?.FloatValue ?? float.NaN;
-
-						var mdev = new AudioDevice(dev)
+						try
 						{
-							VolumeControl = control,
-							Target = target,
-							Volume = dev.AudioSessionManager.SimpleAudioVolume.Volume * 100d, // simpleaudiovolume is 0.0 to 1.0 instead of 0.0 to 100.0
-						};
+							string guid = AudioManager.AudioDeviceIdToGuid(dev.ID);
+							var devsec = devcfg.Config[guid];
+							devsec.GetOrSet("Name", dev.DeviceFriendlyName, out modified);
+							dirty |= modified;
+							bool control = devsec.GetOrSet("Control", false, out modified).BoolValue;
+							dirty |= modified;
+							float target = devsec.Get("Volume")?.FloatValue ?? float.NaN;
 
-						devices.Add(mdev);
+							var mdev = new AudioDevice(dev)
+							{
+								VolumeControl = control,
+								Target = target,
+								Volume = dev.AudioSessionManager.SimpleAudioVolume.Volume * 100d, // simpleaudiovolume is 0.0 to 1.0 instead of 0.0 to 100.0
+							};
 
-						if (Taskmaster.Trace) Log.Verbose("<Microphone> Device: " + mdev.Name + " [GUID: " + mdev.GUID + "]");
+							devices.Add(mdev);
+
+							if (Taskmaster.Trace) Log.Verbose("<Microphone> Device: " + mdev.Name + " [GUID: " + mdev.GUID + "]");
+						}
+						catch (OutOfMemoryException) { throw; }
+						catch (Exception ex)
+						{
+							Logging.Stacktrace(ex);
+						}
 					}
-					catch (OutOfMemoryException) { throw; }
-					catch (Exception ex)
-					{
-						Logging.Stacktrace(ex);
-					}
+
+					if (dirty) devcfg.MarkDirty();
 				}
-
-				if (dirty) devcfg.MarkDirty();
 
 				if (Taskmaster.Trace) Log.Verbose("<Microphone> " + KnownDevices.Count + " microphone(s)");
 			}
@@ -435,6 +442,9 @@ namespace Taskmaster
 			}
 		}
 
+		#region IDisposable Support
+		public event EventHandler OnDisposed;
+
 		bool DisposedOrDisposing = false;
 
 		public void Dispose() => Dispose(true);
@@ -454,5 +464,6 @@ namespace Taskmaster
 				RecordingDevice = null;
 			}
 		}
+		#endregion
 	}
 }

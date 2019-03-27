@@ -28,8 +28,10 @@ using System;
 using System.Collections.Generic;
 using Serilog;
 
-namespace Taskmaster.Config
+namespace Taskmaster.Configuration
 {
+	using static Taskmaster;
+
 	public class Manager : IDisposable
 	{
 		readonly string datapath = string.Empty;
@@ -69,8 +71,8 @@ namespace Taskmaster.Config
 					var config = new File(mcfg, filename);
 					Loaded.Add(config);
 
-					config.onUnload += (cfg, ea) => Loaded.Remove((File)cfg);
-					config.onSave += (cfg, ea) => Save((File)cfg);
+					config.OnUnload += (_, ea) => Loaded.Remove(ea.File);
+					config.OnSave += (_, ea) => Save(ea.File);
 
 					return config;
 				}
@@ -108,6 +110,9 @@ namespace Taskmaster.Config
 			}
 		}
 
+		/// <summary>
+		/// Save dirty configurations to disk and clear out loaded.
+		/// </summary>
 		public void Flush()
 		{
 			lock (config_lock)
@@ -128,7 +133,7 @@ namespace Taskmaster.Config
 
 			if (disposing)
 			{
-				if (Taskmaster.Trace) Log.Verbose("Disposing config manager...");
+				if (Trace) Log.Verbose("Disposing config manager...");
 
 				Flush();
 			}

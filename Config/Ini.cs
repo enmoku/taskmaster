@@ -1145,6 +1145,8 @@ namespace MKAh
 
 				rv.Set(Ini.Converter<T>.Convert(fallback));
 
+				// TODO: signal owning config that this has been changed
+
 				defaulted = true;
 			}
 

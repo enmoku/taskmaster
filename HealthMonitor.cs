@@ -35,6 +35,8 @@ using Serilog;
 
 namespace Taskmaster
 {
+	using static Taskmaster;
+
 	public sealed class HealthReport
 	{
 		// Counters
@@ -53,7 +55,7 @@ namespace Taskmaster
 	/// <summary>
 	/// Monitors for variety of problems and reports on them.
 	/// </summary>
-	sealed public class HealthMonitor : IDisposable // Auto-Doc
+	sealed public class HealthMonitor : IComponent, IDisposable // Auto-Doc
 	{
 		//Dictionary<int, Problem> activeProblems = new Dictionary<int, Problem>();
 		readonly Settings.HealthMonitor Settings = new Settings.HealthMonitor();
@@ -171,7 +173,7 @@ namespace Taskmaster
 			{
 			}
 
-			if (Settings.MemLevel > 0 && Taskmaster.PagingEnabled)
+			if (Settings.MemLevel > 0 && PagingEnabled)
 				Log.Information($"<Auto-Doc> Memory auto-paging level: {Settings.MemLevel.ToString()} MB");
 
 			if (Settings.LowDriveSpaceThreshold > 0)
@@ -184,9 +186,9 @@ namespace Taskmaster
 			EmergencyTimer = new System.Timers.Timer(500);
 			EmergencyTimer.Elapsed += EmergencyTick;
 
-			if (Taskmaster.DebugHealth) Log.Information("<Auto-Doc> Component loaded");
+			if (DebugHealth) Log.Information("<Auto-Doc> Component loaded");
 
-			Taskmaster.DisposalChute.Push(this);
+			DisposalChute.Push(this);
 		}
 
 		int EmergencyTick_lock = 0;
@@ -200,7 +202,7 @@ namespace Taskmaster
 			{
 				if (!Atomic.Lock(ref EmergencyTick_lock)) return;
 
-				double pressure = MemoryManager.Pressure;
+				double pressure = Memory.Pressure;
 				if (pressure > 1.10d) // 110%
 				{
 					if (EmergencyPressure < 0)
@@ -252,63 +254,67 @@ namespace Taskmaster
 
 		DateTimeOffset MemFreeLast = DateTimeOffset.MinValue;
 
+		const string HealthConfigFilename = "Health.ini";
+
 		void LoadConfig()
 		{
-			var cfg = Taskmaster.Config.Load("Health.ini");
-			bool modified = false, configdirty = false;
-
-			var gensec = cfg.Config["General"];
-			var settingFreqSetting = gensec.GetOrSet("Frequency", 5, out modified);
-			Settings.Frequency = TimeSpan.FromMinutes(settingFreqSetting.IntValue.Constrain(1, 60 * 24));
-			if (modified) settingFreqSetting.Comment = "How often we check for anything. In minutes.";
-			configdirty |= modified;
-
-			var freememsec = cfg.Config["Free Memory"];
-			//freememsec.Comment = "Attempt to free memory when available memory goes below a threshold.";
-
-			var memLevelSetting = freememsec.GetOrSet("Threshold", 1000, out modified);
-			Settings.MemLevel = (ulong)memLevelSetting.IntValue;
-			// MemLevel = MemLevel > 0 ? MemLevel.Constrain(1, 2000) : 0;
-			if (modified) memLevelSetting.Comment = "When memory goes down to this level, we act.";
-			configdirty |= modified;
-			if (Settings.MemLevel > 0)
+			using (var cfg = Config.Load(HealthConfigFilename).BlockUnload())
 			{
-				var memIgnFocusSetting = freememsec.GetOrSet("Ignore foreground", true, out modified);
-				Settings.MemIgnoreFocus = memIgnFocusSetting.BoolValue;
-				if (modified) memIgnFocusSetting.Comment = "Foreground app is not touched, regardless of anything.";
+				bool modified = false, configdirty = false;
+
+				var gensec = cfg.Config["General"];
+				var settingFreqSetting = gensec.GetOrSet("Frequency", 5, out modified);
+				Settings.Frequency = TimeSpan.FromMinutes(settingFreqSetting.IntValue.Constrain(1, 60 * 24));
+				if (modified) settingFreqSetting.Comment = "How often we check for anything. In minutes.";
 				configdirty |= modified;
 
-				var ignListSetting = freememsec.GetOrSet("Ignore list", new string[] { }, out modified);
-				Settings.IgnoreList = ignListSetting.Array;
-				if (modified) ignListSetting.Comment = "List of apps that we don't touch regardless of anything.";
+				var freememsec = cfg.Config["Free Memory"];
+				//freememsec.Comment = "Attempt to free memory when available memory goes below a threshold.";
+
+				var memLevelSetting = freememsec.GetOrSet("Threshold", 1000, out modified);
+				Settings.MemLevel = (ulong)memLevelSetting.IntValue;
+				// MemLevel = MemLevel > 0 ? MemLevel.Constrain(1, 2000) : 0;
+				if (modified) memLevelSetting.Comment = "When memory goes down to this level, we act.";
+				configdirty |= modified;
+				if (Settings.MemLevel > 0)
+				{
+					var memIgnFocusSetting = freememsec.GetOrSet("Ignore foreground", true, out modified);
+					Settings.MemIgnoreFocus = memIgnFocusSetting.BoolValue;
+					if (modified) memIgnFocusSetting.Comment = "Foreground app is not touched, regardless of anything.";
+					configdirty |= modified;
+
+					var ignListSetting = freememsec.GetOrSet("Ignore list", new string[] { }, out modified);
+					Settings.IgnoreList = ignListSetting.Array;
+					if (modified) ignListSetting.Comment = "List of apps that we don't touch regardless of anything.";
+					configdirty |= modified;
+
+					var memCooldownSetting = freememsec.GetOrSet("Cooldown", 60, out modified);
+					Settings.MemCooldown = memCooldownSetting.IntValue.Constrain(1, 180);
+					if (modified) memCooldownSetting.Comment = "Don't do this again for this many minutes.";
+					configdirty |= modified;
+				}
+
+				// SELF-MONITORING
+				var selfsec = cfg.Config["Self"];
+				var fatalErrThSetting = selfsec.GetOrSet("Fatal error threshold", 10, out modified);
+				Settings.FatalErrorThreshold = fatalErrThSetting.IntValue.Constrain(1, 30);
+				if (modified) fatalErrThSetting.Comment = "Auto-exit once number of fatal errors reaches this. 10 is very generous default.";
 				configdirty |= modified;
 
-				var memCooldownSetting = freememsec.GetOrSet("Cooldown", 60, out modified);
-				Settings.MemCooldown = memCooldownSetting.IntValue.Constrain(1, 180);
-				if (modified) memCooldownSetting.Comment = "Don't do this again for this many minutes.";
+				var fatalLogSetting = selfsec.GetOrSet("Fatal log size threshold", 10, out modified);
+				Settings.FatalLogSizeThreshold = fatalLogSetting.IntValue.Constrain(1, 500);
+				if (modified) fatalLogSetting.Comment = "Auto-exit if total log file size exceeds this. In megabytes.";
 				configdirty |= modified;
+
+				// NVM
+				var nvmsec = cfg.Config["Non-Volatile Memory"];
+				var lowDriveSetting = nvmsec.GetOrSet("Low space threshold", 150, out modified);
+				Settings.LowDriveSpaceThreshold = lowDriveSetting.IntValue.Constrain(0, 60000);
+				if (modified) lowDriveSetting.Comment = "Warn about free space going below this. In megabytes. From 0 to 60000.";
+				configdirty |= modified;
+
+				if (configdirty) cfg.MarkDirty();
 			}
-
-			// SELF-MONITORING
-			var selfsec = cfg.Config["Self"];
-			var fatalErrThSetting = selfsec.GetOrSet("Fatal error threshold", 10, out modified);
-			Settings.FatalErrorThreshold = fatalErrThSetting.IntValue.Constrain(1, 30);
-			if (modified) fatalErrThSetting.Comment = "Auto-exit once number of fatal errors reaches this. 10 is very generous default.";
-			configdirty |= modified;
-
-			var fatalLogSetting = selfsec.GetOrSet("Fatal log size threshold", 10, out modified);
-			Settings.FatalLogSizeThreshold = fatalLogSetting.IntValue.Constrain(1, 500);
-			if (modified) fatalLogSetting.Comment = "Auto-exit if total log file size exceeds this. In megabytes.";
-			configdirty |= modified;
-
-			// NVM
-			var nvmsec = cfg.Config["Non-Volatile Memory"];
-			var lowDriveSetting = nvmsec.GetOrSet("Low space threshold", 150, out modified);
-			Settings.LowDriveSpaceThreshold = lowDriveSetting.IntValue.Constrain(0, 60000);
-			if (modified) lowDriveSetting.Comment = "Warn about free space going below this. In megabytes. From 0 to 60000.";
-			configdirty |= modified;
-
-			if (configdirty) cfg.MarkDirty();
 		}
 
 		int HealthCheck_lock = 0;
@@ -367,7 +373,7 @@ namespace Taskmaster
 			if (Statistics.FatalErrors >= Settings.FatalErrorThreshold)
 			{
 				Log.Fatal("<Auto-Doc> Fatal error count too high, exiting.");
-				Taskmaster.UnifiedExit();
+				UnifiedExit();
 			}
 		}
 
@@ -379,17 +385,17 @@ namespace Taskmaster
 
 			long size = 0;
 
-			var files = System.IO.Directory.GetFiles(Taskmaster.logpath, "*", System.IO.SearchOption.AllDirectories);
+			var files = System.IO.Directory.GetFiles(LogPath, "*", System.IO.SearchOption.AllDirectories);
 			foreach (var filename in files)
 			{
-				var fi = new System.IO.FileInfo(System.IO.Path.Combine(Taskmaster.logpath, filename));
+				var fi = new System.IO.FileInfo(System.IO.Path.Combine(LogPath, filename));
 				size += fi.Length;
 			}
 
 			if (size >= Settings.FatalLogSizeThreshold * 1_000_000)
 			{
 				Log.Fatal("<Auto-Doc> Log files exceeding allowed size, exiting.");
-				Taskmaster.UnifiedExit();
+				UnifiedExit();
 			}
 		}
 
@@ -458,25 +464,25 @@ namespace Taskmaster
 			{
 				if (Settings.MemLevel > 0)
 				{
-					MemoryManager.Update();
-					var memfreemb = MemoryManager.FreeBytes;
+					Memory.Update();
+					var memfreemb = Memory.FreeBytes;
 
 					if (memfreemb <= Settings.MemLevel)
 					{
 						var cooldown = now.TimeSince(MemFreeLast).TotalMinutes;
 						MemFreeLast = now;
 
-						if (cooldown >= Settings.MemCooldown && Taskmaster.PagingEnabled)
+						if (cooldown >= Settings.MemCooldown && PagingEnabled)
 						{
 							// The following should just call something in ProcessManager
 							int ignorepid = -1;
 
-							if (Settings.MemIgnoreFocus && Taskmaster.activeappmonitor != null)
+							if (Settings.MemIgnoreFocus && activeappmonitor != null)
 							{
 								var idle = User.IdleTime();
 								if (idle.TotalMinutes <= 3d)
 								{
-									ignorepid = Taskmaster.activeappmonitor.Foreground;
+									ignorepid = activeappmonitor.Foreground;
 									Log.Verbose("<Auto-Doc> Protecting foreground app (#" + ignorepid + ")");
 								}
 							}
@@ -490,10 +496,10 @@ namespace Taskmaster
 
 							Log.Warning(sbs.ToString());
 
-							Taskmaster.processmanager?.FreeMemory(null, quiet: true, ignorePid: ignorepid);
+							processmanager?.FreeMemory(null, quiet: true, ignorePid: ignorepid);
 						}
 
-						if (MemoryManager.Pressure > 1.05d) // 105%
+						if (Memory.Pressure > 1.05d) // 105%
 							EmergencyTimer.Enabled = true;
 					}
 					else if ((memfreemb * MemoryWarningThreshold) <= Settings.MemLevel)
@@ -509,7 +515,7 @@ namespace Taskmaster
 					else
 						WarnedAboutLowMemory = false;
 
-					double pressure = MemoryManager.Pressure;
+					double pressure = Memory.Pressure;
 					if (pressure > 1d)
 					{
 						LastPressureEvent = now;
@@ -517,8 +523,8 @@ namespace Taskmaster
 
 						if (!WarnedAboutMemoryPressure && now.TimeSince(LastPressureWarning).TotalSeconds > MemoryWarningCooldown)
 						{
-							double actualgoal = ((MemoryManager.Total * (pressure - 1d)) / 1_048_576);
-							double freegoal = actualgoal + Math.Max(512d, MemoryManager.Total * 0.02 / 1_048_576); // 512 MB or 2% extra to give space for disk cache
+							double actualgoal = ((Memory.Total * (pressure - 1d)) / 1_048_576);
+							double freegoal = actualgoal + Math.Max(512d, Memory.Total * 0.02 / 1_048_576); // 512 MB or 2% extra to give space for disk cache
 							Debug.WriteLine("Pressure:    " + $"{pressure * 100:N1} %");
 							Debug.WriteLine("Actual goal: " + $"{actualgoal:N2}");
 							Debug.WriteLine("Stated goal: " + $"{freegoal:N2}");
@@ -562,7 +568,11 @@ namespace Taskmaster
 		DateTimeOffset LastMemoryWarning = DateTimeOffset.MinValue;
 		long MemoryWarningCooldown = 30;
 
-		bool DisposedOrDisposing; // = false;
+		#region IDisposable Support
+		public event EventHandler OnDisposed;
+
+		bool DisposedOrDisposing = false;
+
 		public void Dispose() => Dispose(true);
 
 		void Dispose(bool disposing)
@@ -573,7 +583,7 @@ namespace Taskmaster
 			{
 				DisposedOrDisposing = true;
 
-				if (Taskmaster.Trace) Log.Verbose("Disposing health monitor...");
+				if (Trace) Log.Verbose("Disposing health monitor...");
 
 				cancellationSource.Cancel();
 
@@ -588,6 +598,7 @@ namespace Taskmaster
 				//commitpercentile = null;
 			}
 		}
+		#endregion
 	}
 
 	/*

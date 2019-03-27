@@ -57,7 +57,7 @@ namespace Taskmaster
 				case OriginType.Session:
 					return "Session " + Detail;
 				case OriginType.AutoAdjust:
-					return Taskmaster.powermanager.Behaviour.ToString() + ": " + Detail; // ugly, but...
+					return "Auto-adjust: " + Detail; // ugly, but...
 				case OriginType.Watchlist:
 					return "Watchlist: " + Detail;
 				case OriginType.Internal:

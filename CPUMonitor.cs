@@ -32,7 +32,9 @@ using Serilog;
 
 namespace Taskmaster
 {
-	public class CPUMonitor : IDisposable
+	using static Taskmaster;
+
+	public class CPUMonitor : IComponent, IDisposable
 	{
 		// Experimental feature
 		public bool CPULoaderMonitoring { get; set; } = false;
@@ -80,49 +82,51 @@ namespace Taskmaster
 				CPUSampleTimer?.Dispose();
 			}
 
-			Taskmaster.DisposalChute.Push(this);
+			DisposalChute.Push(this);
 		}
 
 		public void LoadConfig()
 		{
-			var corecfg = Taskmaster.Config.Load(Taskmaster.coreconfig);
+			using (var corecfg = Config.Load(CoreConfigFilename).BlockUnload())
+			{
+				bool dirtyconfig = false, modified = false;
 
-			bool dirtyconfig = false, modified = false;
+				// SAMPLING
+				// this really should be elsewhere
+				var hwsec = corecfg.Config[HumanReadable.Hardware.Section];
+				var sampleIntervalSetting = hwsec.GetOrSet(HumanReadable.Hardware.CPU.Settings.SampleInterval, 2, out modified);
+				SampleInterval = TimeSpan.FromSeconds(sampleIntervalSetting.IntValue.Constrain(1, 15));
+				if (modified) sampleIntervalSetting.Comment = "1 to 15, in seconds. Frequency at which CPU usage is sampled. Recommended value: 1 to 5 seconds.";
+				dirtyconfig |= modified;
 
-			// SAMPLING
-			// this really should be elsewhere
-			var hwsec = corecfg.Config[HumanReadable.Hardware.Section];
-			var sampleIntervalSetting = hwsec.GetOrSet(HumanReadable.Hardware.CPU.Settings.SampleInterval, 2, out modified);
-			SampleInterval = TimeSpan.FromSeconds(sampleIntervalSetting.IntValue.Constrain(1, 15));
-			if (modified) sampleIntervalSetting.Comment = "1 to 15, in seconds. Frequency at which CPU usage is sampled. Recommended value: 1 to 5 seconds.";
-			dirtyconfig |= modified;
+				var sampleCountSetting = hwsec.GetOrSet(HumanReadable.Hardware.CPU.Settings.SampleCount, 5, out modified);
+				SampleCount = sampleCountSetting.IntValue.Constrain(3, 30);
+				if (modified) sampleCountSetting.Comment = "3 to 30. Number of CPU samples to keep. Recommended value is: Count * Interval <= 30 seconds";
+				dirtyconfig |= modified;
 
-			var sampleCountSetting = hwsec.GetOrSet(HumanReadable.Hardware.CPU.Settings.SampleCount, 5, out modified);
-			SampleCount = sampleCountSetting.IntValue.Constrain(3, 30);
-			if (modified) sampleCountSetting.Comment = "3 to 30. Number of CPU samples to keep. Recommended value is: Count * Interval <= 30 seconds";
-			dirtyconfig |= modified;
+				var exsec = corecfg.Config["Experimental"];
+				CPULoaderMonitoring = exsec.Get("CPU loaders")?.BoolValue ?? false;
 
-			var exsec = corecfg.Config["Experimental"];
-			CPULoaderMonitoring = exsec.Get("CPU loaders")?.BoolValue ?? false;
+				Log.Information("<CPU> Sampler: " + $"{ SampleInterval.TotalSeconds:N0}" + "s × " + SampleCount +
+					" = " + $"{SampleCount * SampleInterval.TotalSeconds:N0}s" + " observation period");
 
-			Log.Information("<CPU> Sampler: " + $"{ SampleInterval.TotalSeconds:N0}" + "s × " + SampleCount +
-				" = " + $"{SampleCount * SampleInterval.TotalSeconds:N0}s" + " observation period");
-
-			if (dirtyconfig) corecfg.MarkDirty();
+				if (dirtyconfig) corecfg.MarkDirty();
+			}
 		}
 
 		public void SaveConfig()
 		{
 			return; // these are not modified at runtime YET
 
-			var corecfg = Taskmaster.Config.Load(Taskmaster.coreconfig);
+			using (var corecfg = Config.Load(CoreConfigFilename).BlockUnload())
+			{
+				// SAMPLING
+				var hwsec = corecfg.Config[HumanReadable.Hardware.Section];
+				hwsec[HumanReadable.Hardware.CPU.Settings.SampleInterval].IntValue = Convert.ToInt32(SampleInterval.TotalSeconds);
+				hwsec[HumanReadable.Hardware.CPU.Settings.SampleCount].IntValue = SampleCount;
 
-			// SAMPLING
-			var hwsec = corecfg.Config[HumanReadable.Hardware.Section];
-			hwsec[HumanReadable.Hardware.CPU.Settings.SampleInterval].IntValue = Convert.ToInt32(SampleInterval.TotalSeconds);
-			hwsec[HumanReadable.Hardware.CPU.Settings.SampleCount].IntValue = SampleCount;
-
-			corecfg.MarkDirty();
+				corecfg.MarkDirty();
+			}
 		}
 
 		int sampler_lock = 0;
@@ -284,6 +288,8 @@ namespace Taskmaster
 		*/
 
 		#region IDisposable Support
+		public event EventHandler OnDisposed;
+
 		bool DisposedOrDisposing = false; // To detect redundant calls
 
 		protected virtual void Dispose(bool disposing)
@@ -308,6 +314,9 @@ namespace Taskmaster
 
 				SaveConfig();
 			}
+
+			OnDisposed?.Invoke(this, EventArgs.Empty);
+			OnDisposed = null;
 		}
 
 		public void Dispose() => Dispose(true);

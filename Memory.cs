@@ -1,5 +1,5 @@
 ﻿//
-// MemoryManager.cs
+// Memory.cs
 //
 // Author:
 //       M.A. (https://github.com/mkahvi)
@@ -30,7 +30,9 @@ using System.Runtime.InteropServices;
 
 namespace Taskmaster
 {
-	static class MemoryManager
+	using static Taskmaster;
+
+	static class Memory
 	{
 		/// <summary>
 		/// Total physical system memory in bytes.
@@ -69,7 +71,7 @@ namespace Taskmaster
 		static PerformanceCounterWrapper pfcfree = new PerformanceCounterWrapper("Memory", "Available MBytes", null);
 
 		// ctor
-		static MemoryManager()
+		static Memory()
 		{
 			Update();
 
@@ -100,7 +102,7 @@ namespace Taskmaster
 			Total = mem.ullTotalPhys;
 			FreeBytes = mem.ullAvailPhys;
 			Used = Total - mem.ullAvailPhys;
-			if (Taskmaster.Trace && Taskmaster.DebugMemory) Debug.WriteLine($"MEMORY - Total: {Total.ToString()}, Free: {FreeBytes.ToString()}, Used: {Used.ToString()}");
+			if (Trace && DebugMemory) Debug.WriteLine($"MEMORY - Total: {Total.ToString()}, Free: {FreeBytes.ToString()}, Used: {Used.ToString()}");
 		}
 
 		// weird hack

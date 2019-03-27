@@ -62,7 +62,7 @@ namespace Taskmaster
 			catch (Exception ex)
 			{
 				Logging.Stacktrace(ex);
-				// NOP, don't care 
+				// NOP, don't care
 			}
 
 			if (string.IsNullOrEmpty(path))
@@ -130,7 +130,8 @@ namespace Taskmaster
 		{
 			int newAffinityMask = target;
 			StringBuilder sbs = null;
-			if (Taskmaster.DebugProcesses)
+
+			if (ProcessManager.DebugProcesses)
 			{
 				sbs = new StringBuilder();
 				sbs.Append("Affinity Strategy(").Append(Convert.ToString(source, 2)).Append(", ").Append(strategy.ToString()).Append(")");

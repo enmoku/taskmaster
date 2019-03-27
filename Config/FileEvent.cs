@@ -1,10 +1,10 @@
 ﻿//
-// HiddenWindow.cs
+// FileEvent.cs
 //
 // Author:
 //       M.A. (https://github.com/mkahvi)
 //
-// Copyright (c) 2018 M.A.
+// Copyright (c) 2019 M.A.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -24,18 +24,14 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-using System.Diagnostics;
+using System;
 
-namespace Taskmaster.OS
+namespace Taskmaster.Configuration
 {
-	using static Taskmaster;
-
-	public class HiddenWindow : UI.UniForm
+	public class FileEvent : EventArgs
 	{
-		public HiddenWindow()
-		{
-			DisposalChute.Push(this);
-			if (Trace) Debug.WriteLine("HiddenWindow initialized");
-		}
+		public Configuration.File File;
+
+		public FileEvent(Configuration.File file) => File = file;
 	}
 }

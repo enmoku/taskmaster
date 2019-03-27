@@ -38,6 +38,8 @@ using Serilog;
 
 namespace Taskmaster
 {
+	using static Taskmaster;
+
 	/// <summary>
 	/// Process controller.
 	/// </summary>
@@ -227,7 +229,7 @@ namespace Taskmaster
 			{
 				if (info.PowerWait)
 				{
-					Taskmaster.powermanager?.Release(info.Id);
+					powermanager?.Release(info);
 					info.PowerWait = false;
 				}
 			}
@@ -381,24 +383,26 @@ namespace Taskmaster
 			}
 		}
 
-		public void SetName(string newName, Config.File cfg = null)
+		public void SetName(string newName)
 		{
-			if (cfg == null) cfg = Taskmaster.Config.Load(ProcessManager.WatchlistFile); ;
-			Ini.Section section= cfg.Config.Get(FriendlyName);
-			if (section != null)
+			using (var cfg = Config.Load(ProcessManager.WatchlistFile).BlockUnload())
 			{
-				section.Name = newName;
-				cfg.MarkDirty();
+				if (cfg.Config.TryGet(FriendlyName, out var section))
+				{
+					section.Name = newName;
+					cfg.MarkDirty();
+				}
+				FriendlyName = newName;
 			}
-			FriendlyName = newName;
 		}
 
-		public void DeleteConfig(Config.File cfg = null)
+		public void DeleteConfig()
 		{
-			if (cfg == null) cfg = Taskmaster.Config.Load(ProcessManager.WatchlistFile);
-
-			cfg.Config.TryRemove(FriendlyName); // remove the section, removes the items in the section
-			cfg.MarkDirty();
+			using (var cfg = Config.Load(ProcessManager.WatchlistFile).BlockUnload())
+			{
+				cfg.Config.TryRemove(FriendlyName); // remove the section, removes the items in the section
+				cfg.MarkDirty();
+			}
 		}
 
 		void ProcessExitEvent(object sender, EventArgs _ea)
@@ -430,8 +434,7 @@ namespace Taskmaster
 		/// </summary>
 		public void Refresh()
 		{
-			if (Taskmaster.DebugPower || Taskmaster.DebugProcesses)
-				Log.Debug($"[{FriendlyName}] Refresh");
+			if (DebugPower || ProcessManager.DebugProcesses) Log.Debug($"[{FriendlyName}] Refresh");
 
 			ClearActive();
 			ClearPower();
@@ -457,12 +460,19 @@ namespace Taskmaster
 			RecentlyModified.Clear();
 		}
 
-		public void SaveConfig(Config.File cfg = null, Ini.Section app = null)
+		public void SaveConfig()
+		{
+			using (var cfg = Config.Load(ProcessManager.WatchlistFile).BlockUnload())
+			{
+				SaveConfig(cfg.File);
+			}
+		}
+
+		public void SaveConfig(Configuration.File cfg, Ini.Section app = null)
 		{
 			// TODO: Check if anything actually was changed?
 
-			if (cfg == null)
-				cfg = Taskmaster.Config.Load(ProcessManager.WatchlistFile);
+			Debug.Assert(cfg != null);
 
 			if (app == null)
 				app = cfg.Config[FriendlyName];
@@ -650,8 +660,8 @@ namespace Taskmaster
 
 			if (info.Paused) return; // already paused
 
-			if (Taskmaster.DebugForeground && Taskmaster.Trace)
-				Log.Debug("[" + FriendlyName + "] Quelling " + info.Name + " (#" + info.Id + ")");
+			if (DebugForeground && Trace)
+				Log.Debug($"[{FriendlyName}] Quelling {info.Name} (#{info.Id})");
 
 			// PausedState.Affinity = Affinity;
 			// PausedState.Priority = Priority;
@@ -692,27 +702,24 @@ namespace Taskmaster
 			catch { }
 			// info.Process.ProcessorAffinity = OriginalState.Affinity;
 
-			if (Taskmaster.PowerManagerEnabled)
+			if (PowerManagerEnabled && PowerPlan != PowerInfo.PowerMode.Undefined)
 			{
-				if (PowerPlan != PowerInfo.PowerMode.Undefined)
+				if (BackgroundPowerdown)
 				{
-					if (BackgroundPowerdown)
-					{
-						if (Taskmaster.DebugPower)
-							Log.Debug("[" + FriendlyName + "] " + info.Name + " (#" + info.Id + ") power down");
+					if (DebugPower)
+						Log.Debug($"[{FriendlyName}] {info.Name} (#{info.Id}) power down");
 
-						UndoPower(info);
-					}
-					else
-					{
-						SetPower(info); // kinda hackish to call this here, but...
-					}
+					UndoPower(info);
+				}
+				else
+				{
+					SetPower(info); // kinda hackish to call this here, but...
 				}
 			}
 
 			info.State = ProcessHandlingState.Paused;
 
-			if (Taskmaster.ShowProcessAdjusts && firsttime)
+			if (ShowProcessAdjusts && firsttime)
 			{
 				var ev = new ProcessModificationEventArgs(info)
 				{
@@ -736,13 +743,13 @@ namespace Taskmaster
 		{
 			if (!LogAdjusts) return;
 
-			bool onlyFinal = Taskmaster.ShowOnlyFinalState;
+			bool onlyFinal = ProcessManager.ShowOnlyFinalState;
 
-			var sbs = new System.Text.StringBuilder();
+			var sbs = new StringBuilder();
 			sbs.Append("[").Append(FriendlyName).Append("] ").Append(FormatPathName(ev.Info))
 				.Append(" (#").Append(ev.Info.Id).Append(")");
 
-			if (Taskmaster.ShowUnmodifiedPortions || ev.PriorityNew.HasValue)
+			if (ProcessManager.ShowUnmodifiedPortions || ev.PriorityNew.HasValue)
 			{
 				sbs.Append("; Priority: ");
 				if (ev.PriorityOld.HasValue)
@@ -765,7 +772,7 @@ namespace Taskmaster
 				if (ev.Protected) sbs.Append(" [Protected]");
 			}
 
-			if (Taskmaster.ShowUnmodifiedPortions || ev.AffinityNew >= 0)
+			if (ProcessManager.ShowUnmodifiedPortions || ev.AffinityNew >= 0)
 			{
 				sbs.Append("; Affinity: ");
 				if (ev.AffinityOld >= 0)
@@ -787,21 +794,21 @@ namespace Taskmaster
 				if (ev.AffinityFail) sbs.Append(" [Failed]");
 			}
 
-			if (Taskmaster.DebugProcesses) sbs.Append(" [").Append(AffinityStrategy.ToString()).Append("]");
+			if (ProcessManager.DebugProcesses) sbs.Append(" [").Append(AffinityStrategy.ToString()).Append("]");
 
 			if (ev.NewIO >= 0)
 				sbs.Append(" – I/O: ").Append(IONames[ev.NewIO]);
 
 			if (ev.User != null) sbs.Append(ev.User);
 
-            if (Taskmaster.DebugAdjustDelay)
+            if (ProcessManager.DebugAdjustDelay)
             {
                 sbs.Append(" – ").Append($"{ev.Info.Timer.ElapsedMilliseconds:N0} ms");
                 if (ev.Info.WMIDelay > 0) sbs.Append(" + ").Append(ev.Info.WMIDelay).Append(" ms watcher delay");
             }
 
 			// TODO: Add option to logging to file but still show in UI
-			if (!(Taskmaster.ShowInaction && Taskmaster.DebugProcesses)) Log.Information(sbs.ToString());
+			if (!(ShowInaction && ProcessManager.DebugProcesses)) Log.Information(sbs.ToString());
 			else Log.Debug(sbs.ToString());
 
 			ev.User?.Clear();
@@ -825,8 +832,8 @@ namespace Taskmaster
 
 			if (!info.Paused)
 			{
-				if (Taskmaster.DebugForeground)
-					Log.Debug("<Foreground> " + FormatPathName(info) + " (#" + info.Id + ") not paused; not resuming.");
+				if (DebugForeground)
+					Log.Debug($"<Foreground> {FormatPathName(info)} (#{info.Id}) not paused; not resuming.");
 				return; // can't resume unpaused item
 			}
 
@@ -849,7 +856,7 @@ namespace Taskmaster
 					}
 				}
 
-				if (Taskmaster.IOPriorityEnabled)
+				if (IOPriorityEnabled)
 					nIO = SetIO(info, DefaultForegroundIOPriority); // force these to always have normal I/O priority
 
 				if (AffinityIdeal >= 0) ApplyAffinityIdeal(info);
@@ -875,11 +882,11 @@ namespace Taskmaster
 			// PausedState.Priority = Priority;
 			// PausedState.PowerMode = PowerPlan;
 
-			if (Taskmaster.PowerManagerEnabled)
+			if (PowerManagerEnabled)
 			{
 				if (PowerPlan != PowerInfo.PowerMode.Undefined && BackgroundPowerdown)
 				{
-					if (Taskmaster.DebugPower || Taskmaster.DebugForeground)
+					if (DebugPower || DebugForeground)
 						Log.Debug("[" + FriendlyName + "] " + info.Name + " (#" + info.Id + ") foreground power on");
 
 					SetPower(info);
@@ -890,7 +897,7 @@ namespace Taskmaster
 
 			info.State = ProcessHandlingState.Resumed;
 
-			if (Taskmaster.DebugForeground && Taskmaster.ShowProcessAdjusts)
+			if (DebugForeground && ShowProcessAdjusts)
 			{
 				var ev = new ProcessModificationEventArgs(info)
 				{
@@ -940,7 +947,7 @@ namespace Taskmaster
 
 		bool SetPower(ProcessEx info)
 		{
-			Debug.Assert(Taskmaster.PowerManagerEnabled, "SetPower called despite power manager being disabled");
+			Debug.Assert(PowerManagerEnabled, "SetPower called despite power manager being disabled");
 			Debug.Assert(PowerPlan != PowerInfo.PowerMode.Undefined, "Powerplan is undefined");
 			Debug.Assert(info.Controller != null, "No controller attached");
 
@@ -949,13 +956,13 @@ namespace Taskmaster
 			try
 			{
 				info.PowerWait = true;
-				rv = Taskmaster.powermanager.Force(PowerPlan, info.Id);
+				rv = powermanager.Force(PowerPlan, info.Id);
 
 				WaitForExit(info);
 
 				WaitingExit?.Invoke(this, new ProcessModificationEventArgs(info));
 
-				if (Taskmaster.DebugPower) Log.Debug($"[{FriendlyName}] {FormatPathName(info)} (#{info.Id.ToString()}) power exit wait set");
+				if (DebugPower) Log.Debug($"[{FriendlyName}] {FormatPathName(info)} (#{info.Id.ToString()}) power exit wait set");
 			}
 			catch (Exception ex)
 			{
@@ -968,7 +975,7 @@ namespace Taskmaster
 
 		void UndoPower(ProcessEx info)
 		{
-			if (info.PowerWait) Taskmaster.powermanager?.Release(info.Id);
+			if (info.PowerWait) powermanager?.Release(info);
 		}
 
 		static string[] UnwantedPathBits = new string[] { "x64", "x86", "bin", "debug", "release", "win32", "win64", "common", "binaries" };
@@ -988,7 +995,7 @@ namespace Taskmaster
 					case PathVisibilityOptions.Partial:
 						if (PathElements > 0)
 						{
-							List<string> parts = new List<string>(info.Path.Split(System.IO.Path.DirectorySeparatorChar, System.IO.Path.AltDirectorySeparatorChar));
+							var parts = new List<string>(info.Path.Split(System.IO.Path.DirectorySeparatorChar, System.IO.Path.AltDirectorySeparatorChar));
 							// replace Path
 							parts.RemoveRange(0, PathElements);
 							parts.Insert(0, HumanReadable.Generic.Ellipsis);
@@ -999,7 +1006,7 @@ namespace Taskmaster
 					case PathVisibilityOptions.Smart:
 						{
 							// TODO: Cut off bin, x86, x64, win64, win32 or similar generic folder parts
-							List<string> parts = new List<string>(info.Path.Split(System.IO.Path.DirectorySeparatorChar, System.IO.Path.AltDirectorySeparatorChar));
+							var parts = new List<string>(info.Path.Split(System.IO.Path.DirectorySeparatorChar, System.IO.Path.AltDirectorySeparatorChar));
 							if (PathElements > 0)
 							{
 								// cut Path from the output
@@ -1079,7 +1086,7 @@ namespace Taskmaster
 		}
 
 		[System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
-		bool InForeground(int pid) => Foreground != ForegroundMode.Ignore ? Taskmaster.activeappmonitor?.Foreground.Equals(pid) ?? true : true;
+		bool InForeground(int pid) => Foreground != ForegroundMode.Ignore ? activeappmonitor?.Foreground.Equals(pid) ?? true : true;
 
 		bool WaitForExit(ProcessEx info)
 		{
@@ -1119,7 +1126,7 @@ namespace Taskmaster
 			{
 				if (Foreground != ForegroundMode.Ignore && info.Paused)
 				{
-					if (Taskmaster.Trace && Taskmaster.DebugForeground)
+					if (Trace && DebugForeground)
 						Log.Debug("<Foreground> " + FormatPathName(info) + " (#" + info.Id + ") in background, ignoring.");
 					info.State = ProcessHandlingState.Paused;
 					return; // don't touch paused item
@@ -1148,7 +1155,7 @@ namespace Taskmaster
 
 					if (info.Process.HasExited)
 					{
-						if (Taskmaster.DebugProcesses)
+						if (ProcessManager.DebugProcesses)
 							Log.Debug("[" + FriendlyName + "] " + info.Name + " (#" + info.Id + ") has already exited.");
 						info.State = ProcessHandlingState.Exited;
 						return; // return ProcessState.Invalid;
@@ -1188,7 +1195,7 @@ namespace Taskmaster
 					{
 						if (ormt.FreeWill)
 						{
-							if (Taskmaster.ShowInaction && Taskmaster.DebugProcesses)
+							if (ShowInaction && ProcessManager.DebugProcesses)
 								Log.Debug($"[{FriendlyName}] {FormatPathName(info)} (#{info.Id.ToString()}) has been granted agency, ignoring.");
 							info.State = ProcessHandlingState.Abandoned;
 							return;
@@ -1212,7 +1219,7 @@ namespace Taskmaster
 						if (ormt.LastIgnored.TimeTo(now) < ProcessManager.IgnoreRecentlyModified ||
 							ormt.LastModified.TimeTo(now) < ProcessManager.IgnoreRecentlyModified)
 						{
-							if (Taskmaster.DebugProcesses) Log.Debug($"[{FriendlyName}] #{info.Id} ignored due to recent modification. {(expected ? $" Expected: {ormt.ExpectedState} :)" : $" Unexpected: {ormt.ExpectedState} :(")}");
+							if (ProcessManager.DebugProcesses) Log.Debug($"[{FriendlyName}] #{info.Id} ignored due to recent modification. {(expected ? $" Expected: {ormt.ExpectedState} :)" : $" Unexpected: {ormt.ExpectedState} :(")}");
 
 							if (ormt.ExpectedState == -2) // 2-3 seems good number
 							{
@@ -1220,7 +1227,7 @@ namespace Taskmaster
 
 								Debug.WriteLine($"[{FriendlyName}] {FormatPathName(info)} (#{info.Id.ToString()}) agency granted");
 
-								if (Taskmaster.ShowAgency)
+								if (ShowAgency)
 									Log.Debug($"[{FriendlyName}] {FormatPathName(info)} (#{info.Id.ToString()}) is resisting being modified: Agency granted.");
 
 								ormt.Info.Process.Exited += ProcessExitEvent;
@@ -1247,18 +1254,18 @@ namespace Taskmaster
 					}
 					else
 					{
-						if (Taskmaster.DebugProcesses) Log.Debug($"[{FriendlyName}] #{info.Id.ToString()} passed because name does not match; new: {info.Name}, old: {ormt.Info.Name}");
+						if (ProcessManager.DebugProcesses) Log.Debug($"[{FriendlyName}] #{info.Id.ToString()} passed because name does not match; new: {info.Name}, old: {ormt.Info.Name}");
 
 						RecentlyModified.TryRemove(info.Id, out _); // id does not match name
 					}
 					//RecentlyModified.TryRemove(info.Id, out _);
 				}
 
-				if (Taskmaster.Trace) Log.Verbose($"[{FriendlyName}] Touching: {info.Name} (#{info.Id.ToString()})");
+				if (Trace) Log.Verbose($"[{FriendlyName}] Touching: {info.Name} (#{info.Id.ToString()})");
 
 				if (IgnoreList != null && IgnoreList.Any(item => item.Equals(info.Name, StringComparison.InvariantCultureIgnoreCase)))
 				{
-					if (Taskmaster.ShowInaction && Taskmaster.DebugProcesses)
+					if (ShowInaction && ProcessManager.DebugProcesses)
 						Log.Debug($"[{FriendlyName}] {info.Name} (#{info.Id.ToString()}) ignored due to user defined rule.");
 					info.State = ProcessHandlingState.Abandoned;
 					return; // return ProcessState.Ignored;
@@ -1269,8 +1276,8 @@ namespace Taskmaster
 				bool isProtectedFile = ProcessManager.ProtectedProcessName(info.Name);
 				// TODO: IgnoreSystem32Path
 
-				if (isProtectedFile && Taskmaster.ShowInaction && Taskmaster.DebugProcesses)
-					Log.Debug("[" + FriendlyName + "] " + info.Name + " (#" + info.Id.ToString() + ") in protected list, limiting tampering.");
+				if (isProtectedFile && ShowInaction && ProcessManager.DebugProcesses)
+					Log.Debug($"[{FriendlyName}] {info.Name} (#{info.Id.ToString()}) in protected list, limiting tampering.");
 
 				ProcessPriorityClass? newPriority = null;
 				IntPtr? newAffinity = null;
@@ -1296,8 +1303,8 @@ namespace Taskmaster
 
 						if (!foreground)
 						{
-							if (Taskmaster.DebugForeground || Taskmaster.ShowInaction)
-								Log.Debug("[" + FriendlyName + "] " + info.Name + " (#" + info.Id + ") not in foreground, not prioritizing.");
+							if (DebugForeground || ShowInaction)
+								Log.Debug($"[{FriendlyName}] {info.Name} (#{info.Id}) not in foreground, not prioritizing.");
 
 							Pause(info, FirstTimeSeenForForeground);
 							// info.State = ProcessHandlingState.Paused; // Pause() sets this
@@ -1307,8 +1314,8 @@ namespace Taskmaster
 				}
 				else
 				{
-					if (Taskmaster.ShowInaction && Taskmaster.DebugProcesses)
-						Log.Verbose("[" + FriendlyName + "] " + info.Name + " (#" + info.Id + ") PROTECTED");
+					if (ShowInaction && ProcessManager.DebugProcesses)
+						Log.Verbose($"[{FriendlyName}] {info.Name} (#{info.Id}) PROTECTED");
 				}
 
 				// APPLY CHANGES HERE
@@ -1325,7 +1332,7 @@ namespace Taskmaster
 					catch (OutOfMemoryException) { throw; }
 					catch { fPriority = true; } // ignore errors, this is all we care of them
 
-					if (Taskmaster.IOPriorityEnabled && IOPriority >= 0)
+					if (IOPriorityEnabled && IOPriority >= 0)
 						nIO = SetIO(info);
 				}
 
@@ -1384,7 +1391,7 @@ namespace Taskmaster
 				}
 				else
 				{
-					if (Taskmaster.DebugProcesses) Debug.WriteLine($"{FormatPathName(info)} #{info.Id.ToString()} --- affinity not touched");
+					if (ProcessManager.DebugProcesses) Debug.WriteLine($"{FormatPathName(info)} #{info.Id.ToString()} --- affinity not touched");
 				}
 
 				if (AffinityIdeal >= 0)
@@ -1405,12 +1412,12 @@ namespace Taskmaster
 				*/
 
 				//var oldPP = PowerInfo.PowerMode.Undefined;
-				if (Taskmaster.PowerManagerEnabled && PowerPlan != PowerInfo.PowerMode.Undefined)
+				if (PowerManagerEnabled && PowerPlan != PowerInfo.PowerMode.Undefined)
 				{
 					if (!foreground && BackgroundPowerdown)
 					{
-						if (Taskmaster.DebugForeground)
-							Log.Debug(info.Name + " (#" + info.Id + ") not in foreground, not powering up.");
+						if (DebugForeground)
+							Log.Debug($"{info.Name} (#{info.Id}) not in foreground, not powering up.");
 					}
 					else
 					{
@@ -1433,20 +1440,20 @@ namespace Taskmaster
 
 				if (Priority.HasValue)
 				{
-					if (fPriority && Taskmaster.ShowInaction && Taskmaster.DebugProcesses)
-						Log.Warning("[" + FriendlyName + "] " + info.Name + " (#" + info.Id + ") failed to set process priority.");
+					if (fPriority && ShowInaction && ProcessManager.DebugProcesses)
+						Log.Warning($"[{FriendlyName}] {info.Name} (#{info.Id}) failed to set process priority.");
 				}
 				if (AffinityMask >= 0)
 				{
-					if (fAffinity && Taskmaster.ShowInaction && Taskmaster.DebugProcesses)
-						Log.Warning("[" + FriendlyName + "] " + info.Name + " (#" + info.Id + ") failed to set process affinity.");
+					if (fAffinity && ShowInaction && ProcessManager.DebugProcesses)
+						Log.Warning($"[{FriendlyName}] {info.Name} (#{info.Id}) failed to set process affinity.");
 				}
 
 				bool logevent = false;
 
-				if (modified) logevent = Taskmaster.ShowProcessAdjusts && !(Foreground != ForegroundMode.Ignore && !Taskmaster.ShowForegroundTransitions);
+				if (modified) logevent = ShowProcessAdjusts && !(Foreground != ForegroundMode.Ignore && !ShowForegroundTransitions);
 				logevent |= (FirstTimeSeenForForeground && Foreground != ForegroundMode.Ignore);
-				logevent |= (Taskmaster.ShowInaction && Taskmaster.DebugProcesses);
+				logevent |= (ShowInaction && ProcessManager.DebugProcesses);
 
 				var ev = new ProcessModificationEventArgs(info)
 				{
@@ -1466,7 +1473,7 @@ namespace Taskmaster
 
 					if (mPower) sbs.Append(" [Power Mode: ").Append(PowerManager.GetModeName(PowerPlan)).Append("]");
 
-					if (!modified && (Taskmaster.ShowInaction && Taskmaster.DebugProcesses)) sbs.Append(" – looks OK, not touched.");
+					if (!modified && (ShowInaction && ProcessManager.DebugProcesses)) sbs.Append(" – looks OK, not touched.");
 
 					ev.User = sbs;
 
@@ -1529,22 +1536,22 @@ namespace Taskmaster
 
 				if (original < 0)
 				{
-					if (Taskmaster.DebugProcesses && Taskmaster.Trace)
+					if (ProcessManager.DebugProcesses && Trace)
 						Log.Debug($"[{FriendlyName}] {info.Name} (#{info.Id}) – I/O priority access error");
 				}
 				else if (original == target)
 				{
-					if (Taskmaster.Trace && Taskmaster.DebugProcesses && Taskmaster.ShowInaction)
+					if (Trace && ProcessManager.DebugProcesses && ShowInaction)
 						Log.Debug($"[{FriendlyName}] {info.Name} (#{info.Id}) – I/O priority ALREADY set to {original}, target: {target}");
 					nIO = -1;
 				}
 				else
 				{
-					if (Taskmaster.DebugProcesses && Taskmaster.Trace)
+					if (ProcessManager.DebugProcesses && Trace)
 					{
 						if (nIO >= 0 && nIO != original)
 							Log.Debug($"[{FriendlyName}] {info.Name} (#{info.Id}) – I/O priority set from {original} to {nIO}, target: {target}");
-						else if (Taskmaster.ShowInaction)
+						else if (ShowInaction)
 							Log.Debug($"[{FriendlyName}] {info.Name} (#{info.Id}) – I/O priority NOT set from {original} to {target}");
 					}
 				}
@@ -1552,12 +1559,12 @@ namespace Taskmaster
 			catch (OutOfMemoryException) { throw;  }
 			catch (ArgumentException)
 			{
-				if (Taskmaster.DebugProcesses && Taskmaster.ShowInaction && Taskmaster.Trace)
+				if (ProcessManager.DebugProcesses && ShowInaction && Trace)
 					Log.Debug($"[{FriendlyName}] {info.Name} (#{info.Id}) – I/O priority not set, failed to open process.");
 			}
 			catch (InvalidOperationException)
 			{
-				if (Taskmaster.DebugProcesses && Taskmaster.Trace)
+				if (ProcessManager.DebugProcesses && Trace)
 					Log.Debug($"[{FriendlyName}] {info.Name} (#{info.Id}) – I/O priority access error");
 			}
 
@@ -1634,11 +1641,11 @@ namespace Taskmaster
 			{
 				if (ActiveWait.TryGetValue(info.Id, out var oinfo) && oinfo.Resize)
 				{
-					if (Taskmaster.DebugResize) Log.Debug($"<Resize> Already monitoring {info.Name} (#{info.Id.ToString()})");
+					if (DebugResize) Log.Debug($"<Resize> Already monitoring {info.Name} (#{info.Id.ToString()})");
 					return;
 				}
 
-				NativeMethods.RECT rect = new NativeMethods.RECT();
+				var rect = new NativeMethods.RECT();
 
 				IntPtr hwnd = info.Process.MainWindowHandle;
 				if (NativeMethods.GetWindowRect(hwnd, ref rect))
@@ -1669,7 +1676,7 @@ namespace Taskmaster
 				}
 
 				StringBuilder sbs = null;
-				if (Taskmaster.DebugResize)
+				if (DebugResize)
 				{
 					sbs = new StringBuilder();
 					sbs.Append("<Resize> ").Append(info.Name).Append(" (#").Append(info.Id).Append(")");
@@ -1688,7 +1695,7 @@ namespace Taskmaster
 
 				if (ResizeStrategy == WindowResizeStrategy.None)
 				{
-					if (Taskmaster.DebugResize)
+					if (DebugResize)
 					{
 						sbs.Append("; remembering size or pos not enabled.");
 						Log.Debug(sbs.ToString());
@@ -1697,21 +1704,21 @@ namespace Taskmaster
 				}
 				else
 				{
-					if (Taskmaster.DebugResize) Log.Debug(sbs.ToString());
+					if (DebugResize) Log.Debug(sbs.ToString());
 				}
 
 				info.Resize = true;
 				ActiveWait.TryAdd(info.Id, info);
 
-				System.Threading.ManualResetEvent re = new System.Threading.ManualResetEvent(false);
+				var re = new System.Threading.ManualResetEvent(false);
 				Task.Run(() =>
 				{
-					if (Taskmaster.DebugResize) Log.Debug($"<Resize> Starting monitoring {info.Name} (#{info.Id.ToString()})");
+					if (DebugResize) Log.Debug($"<Resize> Starting monitoring {info.Name} (#{info.Id.ToString()})");
 					try
 					{
 						while (!re.WaitOne(60_000))
 						{
-							if (Taskmaster.DebugResize) Log.Debug($"<Resize> Recording size and position for {info.Name} (#{info.Id.ToString()})");
+							if (DebugResize) Log.Debug($"<Resize> Recording size and position for {info.Name} (#{info.Id.ToString()})");
 
 							NativeMethods.GetWindowRect(hwnd, ref rect);
 
@@ -1731,7 +1738,8 @@ namespace Taskmaster
 					{
 						Logging.Stacktrace(ex);
 					}
-					if (Taskmaster.DebugResize) Log.Debug($"<Resize> Stopping monitoring {info.Name} (#{info.Id.ToString()})");
+
+					if (DebugResize) Log.Debug($"<Resize> Stopping monitoring {info.Name} (#{info.Id.ToString()})");
 				}).ConfigureAwait(false);
 
 				if (WaitForExit(info))
@@ -1750,7 +1758,7 @@ namespace Taskmaster
 			catch (OutOfMemoryException) { throw; }
 			catch (Exception ex)
 			{
-				if (Taskmaster.DebugResize) Log.Debug($"<Resize> Attempt failed for {info.Name} (#{info.Id.ToString()})");
+				if (DebugResize) Log.Debug($"<Resize> Attempt failed for {info.Name} (#{info.Id.ToString()})");
 
 				Logging.Stacktrace(ex);
 				info.Resize = false;
@@ -1776,9 +1784,7 @@ namespace Taskmaster
 					|| (Bit.IsSet(((int)ResizeStrategy), (int)WindowResizeStrategy.Position)
 					&& (oldrect.Left != Resize.Value.Left || oldrect.Top != Resize.Value.Top)))
 				{
-					if (Taskmaster.DebugResize)
-						Log.Debug("Saving " + info.Name + " (#" + info.Id + ") size to " +
-							Resize.Value.Width + "×" + Resize.Value.Height);
+					if (DebugResize) Log.Debug($"Saving {info.Name} (#{info.Id}) size to {Resize.Value.Width}×{Resize.Value.Height}");
 
 					NeedsSaving = true;
 				}
@@ -1808,8 +1814,7 @@ namespace Taskmaster
 		{
 			await Task.Delay(Math.Max(Recheck, 5) * 1_000).ConfigureAwait(false);
 
-			if (Taskmaster.DebugProcesses)
-				Log.Debug("[" + FriendlyName + "] " + info.Name + " (#" + info.Id + ") rechecking");
+			if (ProcessManager.DebugProcesses) Log.Debug($"[{FriendlyName}] {info.Name} (#{info.Id}) rechecking");
 
 			try
 			{
@@ -1817,7 +1822,7 @@ namespace Taskmaster
 				if (info.Process.HasExited)
 				{
 					info.State = ProcessHandlingState.Exited;
-					if (Taskmaster.Trace) Log.Verbose("[" + FriendlyName + "] " + info.Name + " (#" + info.Id + ") is gone yo.");
+					if (Trace) Log.Verbose($"[{FriendlyName}] {info.Name} (#{info.Id}) is gone yo.");
 					return;
 				}
 
@@ -1834,7 +1839,7 @@ namespace Taskmaster
 			catch (OutOfMemoryException) { throw; }
 			catch (Exception ex)
 			{
-				Log.Warning("[" + FriendlyName + "] " + info.Name + " (#" + info.Id + ") – something bad happened.");
+				Log.Warning($"[{FriendlyName}] {info.Name} (#{info.Id}) – something bad happened.");
 				Logging.Stacktrace(ex);
                 info.State = ProcessHandlingState.Abandoned;
 				return; //throw; // would throw but this is async function
@@ -1851,7 +1856,7 @@ namespace Taskmaster
 
 			if (disposing)
 			{
-				if (Taskmaster.Trace) Log.Verbose("Disposing process controller [" + FriendlyName + "]");
+				if (Trace) Log.Verbose("Disposing process controller [" + FriendlyName + "]");
 
 				// clear event handlers
 				Modified = null;

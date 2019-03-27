@@ -40,6 +40,8 @@ using Taskmaster.PowerInfo;
 
 namespace Taskmaster
 {
+	using static Taskmaster;
+
 	sealed public class PowerModeEventArgs : EventArgs
 	{
 		public PowerModeEventArgs(PowerMode newmode, PowerMode oldmode = PowerMode.Undefined, Cause cause = null)
@@ -74,8 +76,10 @@ namespace Taskmaster
 		public SessionLockEventArgs(bool locked = false) => Locked = locked;
 	}
 
-	sealed public class PowerManager : Form // form is required for receiving messages, no other reason
+	sealed public class PowerManager : Form, IComponent // form is required for receiving messages, no other reason
 	{
+		bool VerbosePowerRelease = false;
+
 		// static Guid GUID_POWERSCHEME_PERSONALITY = new Guid("245d8541-3943-4422-b025-13A7-84F679B7");
 		/// <summary>
 		/// Power mode notifications
@@ -88,6 +92,8 @@ namespace Taskmaster
 
 		public event EventHandler<SessionLockEventArgs> SessionLock;
 		public event EventHandler<MonitorPowerEventArgs> MonitorPower;
+
+		bool DebugAutoPower = false;
 
 		public PowerManager()
 		{
@@ -111,7 +117,7 @@ namespace Taskmaster
 				MonitorPower += MonitorPowerEvent;
 			}
 
-			Taskmaster.DisposalChute.Push(this);
+			DisposalChute.Push(this);
 		}
 
 		public int ForceCount => ForceModeSourcesMap.Count;
@@ -134,7 +140,7 @@ namespace Taskmaster
 				var OldPowerState = CurrentMonitorState;
 				CurrentMonitorState = ev.Mode;
 
-				if (Taskmaster.DebugMonitor)
+				if (DebugMonitor)
 				{
 					var idle = User.IdleTime();
 					double sidletime = Time.Simplify(idle, out Time.Timescale scale);
@@ -167,8 +173,7 @@ namespace Taskmaster
 					StartDisplayTimer();
 					MonitorOffLastLock?.Stop();
 
-					if (Taskmaster.DebugMonitor)
-						DebugMonitorWake();
+					if (DebugMonitor) DebugMonitorWake();
 				}
 				else if (ev.Mode == MonitorPowerMode.Off)
 				{
@@ -308,14 +313,14 @@ namespace Taskmaster
 					double sidletime = Time.Simplify(idle, out Time.Timescale scale);
 					var timename = Time.TimescaleString(scale, !sidletime.RoughlyEqual(1d));
 
-					if ((Taskmaster.ShowSessionActions && SleepGivenUp <= 1) || Taskmaster.DebugMonitor)
+					if ((ShowSessionActions && SleepGivenUp <= 1) || DebugMonitor)
 						Log.Information($"<Session:Lock> User idle ({sidletime:N1} {timename}); Monitor power down, attempt {SleepTickCount}...");
 
 					SetMonitorMode(MonitorPowerMode.Off);
 				}
 				else
 				{
-					if (Taskmaster.ShowSessionActions || Taskmaster.DebugMonitor)
+					if (ShowSessionActions || DebugMonitor)
 						Log.Information("<Session:Lock> User active too recently (" + $"{idle.TotalSeconds:N1}s" + " ago), delaying monitor power down...");
 
 					StartDisplayTimer(); // TODO: Make this happen sooner if user was not active recently
@@ -537,7 +542,7 @@ namespace Taskmaster
 					else // keep power at medium
 					{
 						//Debug.WriteLine("AUTO-ADJUST: Motive: Average - Steady");
-						if (Taskmaster.DebugAutoPower) Debug.WriteLine("Auto-adjust NOP");
+						if (DebugAutoPower) Debug.WriteLine("Auto-adjust NOP");
 
 						Reaction = PowerReaction.Average;
 						ev.Steady = true;
@@ -556,7 +561,7 @@ namespace Taskmaster
 
 				if (ReadyToAdjust && ev.Pressure >= 1f && ReactionaryPlan != CurrentMode)
 				{
-					if (Taskmaster.DebugPower) Log.Debug("<Power> Auto-adjust: " + Reaction.ToString());
+					if (DebugPower) Log.Debug("<Power> Auto-adjust: " + Reaction.ToString());
 
 					var sbs = new StringBuilder();
 					if (CurrentMode != PowerMode.Balanced && Reaction == PowerReaction.Average)
@@ -571,8 +576,7 @@ namespace Taskmaster
 					}
 					else
 					{
-						if (Taskmaster.DebugPower && Taskmaster.Trace)
-							Log.Warning("<Power> Failed to auto-adjust power.");
+						if (DebugPower && Trace) Log.Warning("<Power> Failed to auto-adjust power.");
 						// should reset
 					}
 
@@ -584,7 +588,7 @@ namespace Taskmaster
 				{
 					if (Forced)
 					{
-						if (Taskmaster.DebugPower && Taskmaster.ShowInaction && !WarnedForceMode)
+						if (DebugPower && ShowInaction && !WarnedForceMode)
 							Log.Debug("<Power> Can't override forced power mode.");
 						WarnedForceMode = true;
 					}
@@ -596,7 +600,7 @@ namespace Taskmaster
 						{
 							// This usually happens when auto-adjust is paused and pressure keeps building.
 							// Harmless and kind of expected.
-							if (Taskmaster.DebugPower) Log.Debug("<Power> Something went wrong. Resetting auto-adjust.");
+							if (DebugPower) Log.Debug("<Power> Something went wrong. Resetting auto-adjust.");
 
 							// Reset
 							ResetAutoadjust();
@@ -644,157 +648,164 @@ namespace Taskmaster
 
 		void LoadConfig()
 		{
-			var corecfg = Taskmaster.Config.Load(Taskmaster.coreconfig);
-
-			var power = corecfg.Config[HumanReadable.Hardware.Power.Section];
-			bool modified = false, dirtyconfig = false;
-
-			var behaviourstring = power.GetOrSet("Behaviour", HumanReadable.Hardware.Power.RuleBased, out modified).Value;
-			power["Behaviour"].Comment = "auto, manual, or rule-based";
-			if (behaviourstring.StartsWith("auto", StringComparison.InvariantCultureIgnoreCase))
-				LaunchBehaviour = PowerBehaviour.Auto;
-			else if (behaviourstring.StartsWith("manual", StringComparison.InvariantCultureIgnoreCase))
-				LaunchBehaviour = PowerBehaviour.Manual;
-			else
-				LaunchBehaviour = PowerBehaviour.RuleBased;
-			Behaviour = LaunchBehaviour;
-
-			var defaultmode = power.GetOrSet("Default mode", GetModeName(PowerMode.Balanced), out modified).Value;
-			power["Default mode"].Comment = "This is what power plan we fall back on when nothing else is considered.";
-			AutoAdjust.DefaultMode = GetModeByName(defaultmode);
-			if (AutoAdjust.DefaultMode == PowerMode.Undefined)
+			using (var corecfg = Config.Load(CoreConfigFilename).BlockUnload())
 			{
-				Log.Warning("<Power> Default mode malconfigured, defaulting to balanced.");
-				AutoAdjust.DefaultMode = PowerMode.Balanced;
-			}
-			dirtyconfig |= modified;
 
-			var restoremode = power.GetOrSet("Restore mode", "Default", out modified).Value;
-			power["Restore mode"].Comment = "Default, Original, Saved, or specific power mode. Power mode to restore with rule-based behaviour.";
-			dirtyconfig |= modified;
-			RestoreModeMethod newmodemethod = RestoreModeMethod.Default;
-			PowerMode newrestoremode = PowerMode.Undefined;
+				var power = corecfg.Config[HumanReadable.Hardware.Power.Section];
+				bool modified = false, dirtyconfig = false;
 
-			switch (restoremode.ToLowerInvariant())
-			{
-				case "original":
-					newmodemethod = RestoreModeMethod.Original;
-					newrestoremode = OriginalMode;
-					break;
-				case "default":
-					newmodemethod = RestoreModeMethod.Default;
-					newrestoremode = AutoAdjust.DefaultMode;
-					break;
-				case "saved":
-					newmodemethod = RestoreModeMethod.Saved;
-					newrestoremode = PowerMode.Undefined;
-					break;
-				default:
-					newmodemethod = RestoreModeMethod.Custom;
-					newrestoremode = GetModeByName(restoremode);
-					if (RestoreMode == PowerMode.Undefined)
-					{
-						// TODO: Complain about bad config
-						Log.Warning("<Power> Restore mode name unintelligible.");
+				var behaviourstring = power.GetOrSet("Behaviour", HumanReadable.Hardware.Power.RuleBased, out modified).Value;
+				power["Behaviour"].Comment = "auto, manual, or rule-based";
+				if (behaviourstring.StartsWith("auto", StringComparison.InvariantCultureIgnoreCase))
+					LaunchBehaviour = PowerBehaviour.Auto;
+				else if (behaviourstring.StartsWith("manual", StringComparison.InvariantCultureIgnoreCase))
+					LaunchBehaviour = PowerBehaviour.Manual;
+				else
+					LaunchBehaviour = PowerBehaviour.RuleBased;
+				Behaviour = LaunchBehaviour;
+
+				var defaultmode = power.GetOrSet("Default mode", GetModeName(PowerMode.Balanced), out modified).Value;
+				power["Default mode"].Comment = "This is what power plan we fall back on when nothing else is considered.";
+				AutoAdjust.DefaultMode = GetModeByName(defaultmode);
+				if (AutoAdjust.DefaultMode == PowerMode.Undefined)
+				{
+					Log.Warning("<Power> Default mode malconfigured, defaulting to balanced.");
+					AutoAdjust.DefaultMode = PowerMode.Balanced;
+				}
+				dirtyconfig |= modified;
+
+				var restoremode = power.GetOrSet("Restore mode", "Default", out modified).Value;
+				power["Restore mode"].Comment = "Default, Original, Saved, or specific power mode. Power mode to restore with rule-based behaviour.";
+				dirtyconfig |= modified;
+				RestoreModeMethod newmodemethod = RestoreModeMethod.Default;
+				PowerMode newrestoremode = PowerMode.Undefined;
+
+				switch (restoremode.ToLowerInvariant())
+				{
+					case "original":
+						newmodemethod = RestoreModeMethod.Original;
+						newrestoremode = OriginalMode;
+						break;
+					case "default":
+						newmodemethod = RestoreModeMethod.Default;
 						newrestoremode = AutoAdjust.DefaultMode;
-					}
-					break;
+						break;
+					case "saved":
+						newmodemethod = RestoreModeMethod.Saved;
+						newrestoremode = PowerMode.Undefined;
+						break;
+					default:
+						newmodemethod = RestoreModeMethod.Custom;
+						newrestoremode = GetModeByName(restoremode);
+						if (RestoreMode == PowerMode.Undefined)
+						{
+							// TODO: Complain about bad config
+							Log.Warning("<Power> Restore mode name unintelligible.");
+							newrestoremode = AutoAdjust.DefaultMode;
+						}
+						break;
+				}
+
+				SetRestoreMode(newmodemethod, newrestoremode);
+
+				var tdelay = power.GetOrSet("Watchlist powerdown delay", 0, out modified).IntValue.Constrain(0, 60 * 5);
+				power["Watchlist powerdown delay"].Comment = "Delay, in seconds (0 to 300, 0 disables), for when to wind down power mode set by watchlist.";
+				dirtyconfig |= modified;
+				if (tdelay > 0) PowerdownDelay = TimeSpan.FromSeconds(tdelay);
+				else PowerdownDelay = null;
+
+				var autopower = corecfg.Config["Power / Auto"];
+
+				// BACKOFF
+				AutoAdjust.Low.Backoff.Level = autopower.GetOrSet("Low backoff level", AutoAdjust.Low.Backoff.Level, out modified).IntValue.Constrain(0, 10);
+				autopower["Low backoff level"].Comment = "1 to 10. Consequent backoff reactions that is required before it actually triggers.";
+				dirtyconfig |= modified;
+				AutoAdjust.High.Backoff.Level = autopower.GetOrSet("High backoff level", AutoAdjust.High.Backoff.Level, out modified).IntValue.Constrain(0, 10);
+				autopower["High backoff level"].Comment = "1 to 10. Consequent backoff reactions that is required before it actually triggers.";
+				dirtyconfig |= modified;
+
+				// COMMIT
+				AutoAdjust.Low.Commit.Level = autopower.GetOrSet("Low commit level", AutoAdjust.Low.Commit.Level, out modified).IntValue.Constrain(1, 10);
+				autopower["Low commit level"].Comment = "1 to 10. Consequent commit reactions that is required before it actually triggers.";
+				dirtyconfig |= modified;
+				AutoAdjust.High.Commit.Level = autopower.GetOrSet("High commit level", AutoAdjust.High.Backoff.Level, out modified).IntValue.Constrain(1, 10);
+				autopower["High commit level"].Comment = "1 to 10. Consequent commit reactions that is required before it actually triggers.";
+				dirtyconfig |= modified;
+
+				// THRESHOLDS
+				AutoAdjust.High.Commit.Threshold = autopower.GetOrSet("High threshold", AutoAdjust.High.Commit.Threshold, out modified).FloatValue;
+				autopower["High threshold"].Comment = "If low CPU value keeps over this, we swap to high mode.";
+				dirtyconfig |= modified;
+				var hbtt = autopower.GetOrSet("High backoff thresholds", new float[] { AutoAdjust.High.Backoff.High, AutoAdjust.High.Backoff.Mean, AutoAdjust.High.Backoff.Low }, out modified).FloatArray;
+				if (hbtt != null && hbtt.Length == 3)
+				{
+					AutoAdjust.High.Backoff.Low = hbtt[2];
+					AutoAdjust.High.Backoff.Mean = hbtt[1];
+					AutoAdjust.High.Backoff.High = hbtt[0];
+				}
+
+				autopower["High backoff thresholds"].Comment = "High, Mean and Low CPU usage values, any of which is enough to break away from high power mode.";
+				dirtyconfig |= modified;
+
+				AutoAdjust.Low.Commit.Threshold = autopower.GetOrSet("Low threshold", 15, out modified).FloatValue;
+				autopower["Low threshold"].Comment = "If high CPU value keeps under this, we swap to low mode.";
+				dirtyconfig |= modified;
+				var lbtt = autopower.GetOrSet("Low backoff thresholds", new float[] { AutoAdjust.Low.Backoff.High, AutoAdjust.Low.Backoff.Mean, AutoAdjust.Low.Backoff.Low }, out modified).FloatArray;
+				if (lbtt != null && lbtt.Length == 3)
+				{
+					AutoAdjust.Low.Backoff.Low = lbtt[2];
+					AutoAdjust.Low.Backoff.Mean = lbtt[1];
+					AutoAdjust.Low.Backoff.High = lbtt[0];
+				}
+
+				autopower["Low backoff thresholds"].Comment = "High, Mean and Low CPU uage values, any of which is enough to break away from low mode.";
+				dirtyconfig |= modified;
+
+				// POWER MODES
+				var lowmode = power.GetOrSet("Low mode", GetModeName(PowerMode.PowerSaver), out modified).Value;
+				AutoAdjust.Low.Mode = GetModeByName(lowmode);
+				dirtyconfig |= modified;
+				var highmode = power.GetOrSet("High mode", GetModeName(PowerMode.HighPerformance), out modified).Value;
+				AutoAdjust.High.Mode = GetModeByName(highmode);
+				dirtyconfig |= modified;
+
+				// QUEUE BARRIERS
+				AutoAdjust.Queue.High = autopower.GetOrSet("High queue barrier", AutoAdjust.Queue.High, out modified).IntValue.Constrain(0, 50);
+				dirtyconfig |= modified;
+				AutoAdjust.Queue.Low = autopower.GetOrSet("Low queue barrier", AutoAdjust.Queue.Low, out modified).IntValue.Constrain(0, 20);
+				dirtyconfig |= modified;
+				if (AutoAdjust.Queue.Low >= AutoAdjust.Queue.High) AutoAdjust.Queue.Low = Math.Max(0, AutoAdjust.Queue.High - 1);
+
+				var saver = corecfg.Config["AFK Power"];
+				//saver.Comment = "All these options control when to enforce power save mode regardless of any other options.";
+
+				var sessionlockmodename = saver.GetOrSet("Session lock", GetModeName(PowerMode.PowerSaver), out modified).Value;
+				saver["Session lock"].Comment = "Power mode to set when session is locked, such as by pressing winkey+L. Unrecognizable values disable this.";
+				dirtyconfig |= modified;
+				SessionLockPowerMode = GetModeByName(sessionlockmodename);
+
+				// SaverOnMonitorSleep = saver.GetSetDefault("Monitor sleep", true, out modified).BoolValue;
+				// dirtyconfig |= modified;
+
+				// SaverOnUserAFK = saver.GetSetDefault("User idle", 30, out modified).IntValue;
+				// dirtyconfig |= modified;
+				// UserActiveCancel = saver.GetSetDefault("Cancel on activity", true, out modified).BoolValue;
+				// dirtyconfig |= modified;
+
+				int monoffidletime = saver.GetOrSet("Monitor power off idle timeout", 180, out modified).IntValue;
+				SessionLockPowerOffIdleTimeout = monoffidletime > 0 ? (TimeSpan?)TimeSpan.FromSeconds(monoffidletime.Constrain(30, 600)) : null;
+				saver["Monitor power off idle timeout"].Comment = "User needs to be this many seconds idle before we power down monitors when session is locked. 0 disables. Less than 30 is rounded up to 30.";
+				dirtyconfig |= modified;
+
+				SessionLockPowerOff = saver.GetOrSet("Monitor power off on lock", true, out modified).BoolValue;
+				saver["Monitor power off on lock"].Comment = "Power off monitor instantly on session lock.";
+				dirtyconfig |= modified;
+
+				var dbgsec = corecfg.Config["Debug"];
+				DebugAutoPower = dbgsec.Get(HumanReadable.Hardware.Power.AutoAdjust)?.BoolValue ?? false;
+
+				if (dirtyconfig) corecfg.MarkDirty();
 			}
-
-			SetRestoreMode(newmodemethod, newrestoremode);
-
-			var tdelay = power.GetOrSet("Watchlist powerdown delay", 0, out modified).IntValue.Constrain(0, 60 * 5);
-			power["Watchlist powerdown delay"].Comment = "Delay, in seconds (0 to 300, 0 disables), for when to wind down power mode set by watchlist.";
-			dirtyconfig |= modified;
-			if (tdelay > 0) PowerdownDelay = TimeSpan.FromSeconds(tdelay);
-			else PowerdownDelay = null;
-
-			var autopower = corecfg.Config["Power / Auto"];
-
-			// BACKOFF
-			AutoAdjust.Low.Backoff.Level = autopower.GetOrSet("Low backoff level", AutoAdjust.Low.Backoff.Level, out modified).IntValue.Constrain(0, 10);
-			autopower["Low backoff level"].Comment = "1 to 10. Consequent backoff reactions that is required before it actually triggers.";
-			dirtyconfig |= modified;
-			AutoAdjust.High.Backoff.Level = autopower.GetOrSet("High backoff level", AutoAdjust.High.Backoff.Level, out modified).IntValue.Constrain(0, 10);
-			autopower["High backoff level"].Comment = "1 to 10. Consequent backoff reactions that is required before it actually triggers.";
-			dirtyconfig |= modified;
-
-			// COMMIT
-			AutoAdjust.Low.Commit.Level = autopower.GetOrSet("Low commit level", AutoAdjust.Low.Commit.Level, out modified).IntValue.Constrain(1, 10);
-			autopower["Low commit level"].Comment = "1 to 10. Consequent commit reactions that is required before it actually triggers.";
-			dirtyconfig |= modified;
-			AutoAdjust.High.Commit.Level = autopower.GetOrSet("High commit level", AutoAdjust.High.Backoff.Level, out modified).IntValue.Constrain(1, 10);
-			autopower["High commit level"].Comment = "1 to 10. Consequent commit reactions that is required before it actually triggers.";
-			dirtyconfig |= modified;
-
-			// THRESHOLDS
-			AutoAdjust.High.Commit.Threshold = autopower.GetOrSet("High threshold", AutoAdjust.High.Commit.Threshold, out modified).FloatValue;
-			autopower["High threshold"].Comment = "If low CPU value keeps over this, we swap to high mode.";
-			dirtyconfig |= modified;
-			var hbtt = autopower.GetOrSet("High backoff thresholds", new float[] { AutoAdjust.High.Backoff.High, AutoAdjust.High.Backoff.Mean, AutoAdjust.High.Backoff.Low }, out modified).FloatArray;
-			if (hbtt != null && hbtt.Length == 3)
-			{
-				AutoAdjust.High.Backoff.Low = hbtt[2];
-				AutoAdjust.High.Backoff.Mean = hbtt[1];
-				AutoAdjust.High.Backoff.High = hbtt[0];
-			}
-
-			autopower["High backoff thresholds"].Comment = "High, Mean and Low CPU usage values, any of which is enough to break away from high power mode.";
-			dirtyconfig |= modified;
-
-			AutoAdjust.Low.Commit.Threshold = autopower.GetOrSet("Low threshold", 15, out modified).FloatValue;
-			autopower["Low threshold"].Comment = "If high CPU value keeps under this, we swap to low mode.";
-			dirtyconfig |= modified;
-			var lbtt = autopower.GetOrSet("Low backoff thresholds", new float[] { AutoAdjust.Low.Backoff.High, AutoAdjust.Low.Backoff.Mean, AutoAdjust.Low.Backoff.Low }, out modified).FloatArray;
-			if (lbtt != null && lbtt.Length == 3)
-			{
-				AutoAdjust.Low.Backoff.Low = lbtt[2];
-				AutoAdjust.Low.Backoff.Mean = lbtt[1];
-				AutoAdjust.Low.Backoff.High = lbtt[0];
-			}
-
-			autopower["Low backoff thresholds"].Comment = "High, Mean and Low CPU uage values, any of which is enough to break away from low mode.";
-			dirtyconfig |= modified;
-
-			// POWER MODES
-			var lowmode = power.GetOrSet("Low mode", GetModeName(PowerMode.PowerSaver), out modified).Value;
-			AutoAdjust.Low.Mode = GetModeByName(lowmode);
-			dirtyconfig |= modified;
-			var highmode = power.GetOrSet("High mode", GetModeName(PowerMode.HighPerformance), out modified).Value;
-			AutoAdjust.High.Mode = GetModeByName(highmode);
-			dirtyconfig |= modified;
-
-			// QUEUE BARRIERS
-			AutoAdjust.Queue.High = autopower.GetOrSet("High queue barrier", AutoAdjust.Queue.High, out modified).IntValue.Constrain(0, 50);
-			dirtyconfig |= modified;
-			AutoAdjust.Queue.Low = autopower.GetOrSet("Low queue barrier", AutoAdjust.Queue.Low, out modified).IntValue.Constrain(0, 20);
-			dirtyconfig |= modified;
-			if (AutoAdjust.Queue.Low >= AutoAdjust.Queue.High) AutoAdjust.Queue.Low = Math.Max(0, AutoAdjust.Queue.High - 1);
-
-			var saver = corecfg.Config["AFK Power"];
-			//saver.Comment = "All these options control when to enforce power save mode regardless of any other options.";
-
-			var sessionlockmodename = saver.GetOrSet("Session lock", GetModeName(PowerMode.PowerSaver), out modified).Value;
-			saver["Session lock"].Comment = "Power mode to set when session is locked, such as by pressing winkey+L. Unrecognizable values disable this.";
-			dirtyconfig |= modified;
-			SessionLockPowerMode = GetModeByName(sessionlockmodename);
-
-			// SaverOnMonitorSleep = saver.GetSetDefault("Monitor sleep", true, out modified).BoolValue;
-			// dirtyconfig |= modified;
-
-			// SaverOnUserAFK = saver.GetSetDefault("User idle", 30, out modified).IntValue;
-			// dirtyconfig |= modified;
-			// UserActiveCancel = saver.GetSetDefault("Cancel on activity", true, out modified).BoolValue;
-			// dirtyconfig |= modified;
-
-			int monoffidletime = saver.GetOrSet("Monitor power off idle timeout", 180, out modified).IntValue;
-			SessionLockPowerOffIdleTimeout = monoffidletime > 0 ? (TimeSpan?)TimeSpan.FromSeconds(monoffidletime.Constrain(30, 600)) : null;
-			saver["Monitor power off idle timeout"].Comment = "User needs to be this many seconds idle before we power down monitors when session is locked. 0 disables. Less than 30 is rounded up to 30.";
-			dirtyconfig |= modified;
-
-			SessionLockPowerOff = saver.GetOrSet("Monitor power off on lock", true, out modified).BoolValue;
-			saver["Monitor power off on lock"].Comment = "Power off monitor instantly on session lock.";
-			dirtyconfig |= modified;
 
 			// --------------------------------------------------------------------------------------------------------
 
@@ -810,76 +821,76 @@ namespace Taskmaster
 
 			Log.Information("<Session> User AFK timeout: " + (SessionLockPowerOffIdleTimeout.HasValue ? $"{SessionLockPowerOffIdleTimeout.Value.TotalSeconds:N0}s" : HumanReadable.Generic.Disabled));
 			Log.Information("<Session> Immediate power off on lock: " + (SessionLockPowerOff ? HumanReadable.Generic.Enabled : HumanReadable.Generic.Disabled));
-
-			if (dirtyconfig) corecfg.MarkDirty();
 		}
 
 		// TODO: Should detect if saving is ACTUALLY needed
 		public void SaveConfig()
 		{
-			var corecfg = Taskmaster.Config.Load(Taskmaster.coreconfig);
-
-			var power = corecfg.Config[HumanReadable.Hardware.Power.Section];
-
-			lock (autoadjust_lock)
+			using (var corecfg = Config.Load(CoreConfigFilename).BlockUnload())
 			{
-				lock (power_lock)
+				var power = corecfg.Config[HumanReadable.Hardware.Power.Section];
+
+				lock (autoadjust_lock)
 				{
-					string sbehaviour = HumanReadable.Hardware.Power.RuleBased.ToLower(); // default to rule-based
-					switch (LaunchBehaviour)
+					lock (power_lock)
 					{
-						case PowerBehaviour.Auto:
-							sbehaviour = HumanReadable.Hardware.Power.AutoAdjust.ToLower();
-							break;
-						case PowerBehaviour.Manual:
-							sbehaviour = HumanReadable.Hardware.Power.Manual.ToLower();
-							break;
-						default: break; // ignore
+						string sbehaviour = HumanReadable.Hardware.Power.RuleBased.ToLower(); // default to rule-based
+						switch (LaunchBehaviour)
+						{
+							case PowerBehaviour.Auto:
+								sbehaviour = HumanReadable.Hardware.Power.AutoAdjust.ToLower();
+								break;
+							case PowerBehaviour.Manual:
+								sbehaviour = HumanReadable.Hardware.Power.Manual.ToLower();
+								break;
+							default: break; // ignore
+						}
+						power["Behaviour"].Value = sbehaviour;
+
+						power["Default mode"].Value = AutoAdjust.DefaultMode.ToString();
+
+						power["Restore mode"].Value = (RestoreMethod == RestoreModeMethod.Custom ? RestoreMode.ToString() : RestoreMethod.ToString());
+						if (PowerdownDelay.HasValue)
+							power["Watchlist powerdown delay"].IntValue = Convert.ToInt32(PowerdownDelay.Value.TotalSeconds);
+						else
+							power.TryRemove("Watchlist powerdown delay");
+						var autopower = corecfg.Config["Power / Auto"];
+
+						// BACKOFF
+						autopower["Low backoff level"].IntValue = AutoAdjust.Low.Backoff.Level;
+						autopower["High backoff level"].IntValue = AutoAdjust.High.Backoff.Level;
+
+						// COMMIT
+						autopower["Low commit level"].IntValue = AutoAdjust.Low.Commit.Level;
+						autopower["High commit level"].IntValue = AutoAdjust.High.Commit.Level;
+
+						// THRESHOLDS
+						autopower["High threshold"].FloatValue = AutoAdjust.High.Commit.Threshold;
+						autopower["High backoff thresholds"].FloatArray = new float[] { AutoAdjust.High.Backoff.High, AutoAdjust.High.Backoff.Mean, AutoAdjust.High.Backoff.Low };
+
+						autopower["Low threshold"].FloatValue = AutoAdjust.Low.Commit.Threshold;
+						autopower["Low backoff thresholds"].FloatArray = new float[] { AutoAdjust.Low.Backoff.High, AutoAdjust.Low.Backoff.Mean, AutoAdjust.Low.Backoff.Low };
+
+						// QUEUE BARRIERS
+						autopower["High queue barrier"].IntValue = AutoAdjust.Queue.High;
+						autopower["Low queue barrier"].IntValue = AutoAdjust.Queue.Low;
+
+						// POWER MODES
+						power["Low mode"].Value = GetModeName(AutoAdjust.Low.Mode);
+						power["High mode"].Value = GetModeName(AutoAdjust.High.Mode);
+
+						var saver = corecfg.Config["AFK Power"];
+						saver["Session lock"].Value = GetModeName(SessionLockPowerMode);
+
+						saver["Monitor power off idle timeout"].IntValue = Convert.ToInt32(SessionLockPowerOffIdleTimeout.Value.TotalSeconds);
+						saver["Monitor power off on lock"].BoolValue = SessionLockPowerOff;
+
+						// --------------------------------------------------------------------------------------------------------
 					}
-					power["Behaviour"].Value = sbehaviour;
-
-					power["Default mode"].Value = AutoAdjust.DefaultMode.ToString();
-
-					power["Restore mode"].Value = (RestoreMethod == RestoreModeMethod.Custom ? RestoreMode.ToString() : RestoreMethod.ToString());
-					if (PowerdownDelay.HasValue)
-						power["Watchlist powerdown delay"].IntValue = Convert.ToInt32(PowerdownDelay.Value.TotalSeconds);
-					else
-						power.TryRemove("Watchlist powerdown delay");
-					var autopower = corecfg.Config["Power / Auto"];
-
-					// BACKOFF
-					autopower["Low backoff level"].IntValue = AutoAdjust.Low.Backoff.Level;
-					autopower["High backoff level"].IntValue = AutoAdjust.High.Backoff.Level;
-
-					// COMMIT
-					autopower["Low commit level"].IntValue = AutoAdjust.Low.Commit.Level;
-					autopower["High commit level"].IntValue = AutoAdjust.High.Commit.Level;
-
-					// THRESHOLDS
-					autopower["High threshold"].FloatValue = AutoAdjust.High.Commit.Threshold;
-					autopower["High backoff thresholds"].FloatArray = new float[] { AutoAdjust.High.Backoff.High, AutoAdjust.High.Backoff.Mean, AutoAdjust.High.Backoff.Low };
-
-					autopower["Low threshold"].FloatValue = AutoAdjust.Low.Commit.Threshold;
-					autopower["Low backoff thresholds"].FloatArray = new float[] { AutoAdjust.Low.Backoff.High, AutoAdjust.Low.Backoff.Mean, AutoAdjust.Low.Backoff.Low };
-
-					// QUEUE BARRIERS
-					autopower["High queue barrier"].IntValue = AutoAdjust.Queue.High;
-					autopower["Low queue barrier"].IntValue = AutoAdjust.Queue.Low;
-
-					// POWER MODES
-					power["Low mode"].Value = GetModeName(AutoAdjust.Low.Mode);
-					power["High mode"].Value = GetModeName(AutoAdjust.High.Mode);
-
-					var saver = corecfg.Config["AFK Power"];
-					saver["Session lock"].Value = GetModeName(SessionLockPowerMode);
-
-					saver["Monitor power off idle timeout"].IntValue = Convert.ToInt32(SessionLockPowerOffIdleTimeout.Value.TotalSeconds);
-					saver["Monitor power off on lock"].BoolValue = SessionLockPowerOff;
-
-					// --------------------------------------------------------------------------------------------------------
 				}
+
+				corecfg.MarkDirty();
 			}
-			corecfg.MarkDirty();
 		}
 
 		public void LogBehaviourState()
@@ -932,7 +943,7 @@ namespace Taskmaster
 			{
 				case SessionSwitchReason.SessionLogoff:
 					Log.Information("<Session> Logoff detected. Exiting.");
-					Taskmaster.UnifiedExit(restart:false);
+					UnifiedExit(restart:false);
 					return;
 				case SessionSwitchReason.SessionLock:
 					SessionLocked = true;
@@ -947,8 +958,7 @@ namespace Taskmaster
 					break;
 			}
 
-			if (Taskmaster.DebugSession)
-				Log.Debug("<Session> State: " + (SessionLocked ? "Locked" : "Unlocked"));
+			if (DebugSession) Log.Debug("<Session> State: " + (SessionLocked ? "Locked" : "Unlocked"));
 
 			await Task.Delay(0).ConfigureAwait(false); // async
 
@@ -958,14 +968,14 @@ namespace Taskmaster
 				{
 					if (SessionLockPowerOff)
 					{
-						if (Taskmaster.ShowSessionActions || Taskmaster.DebugSession || Taskmaster.DebugMonitor)
+						if (ShowSessionActions || DebugSession || DebugMonitor)
 							Log.Information("<Session:Lock> Instant monitor power off.");
 
 						SetMonitorMode(MonitorPowerMode.Off);
 					}
 					else
 					{
-						if (Taskmaster.ShowSessionActions || Taskmaster.DebugSession || Taskmaster.DebugMonitor)
+						if (ShowSessionActions || DebugSession || DebugMonitor)
 							Log.Information("<Session:Lock> Instant monitor power off disabled, waiting for user idle.");
 
 						StartDisplayTimer();
@@ -973,7 +983,7 @@ namespace Taskmaster
 				}
 				else
 				{
-					if (Taskmaster.ShowSessionActions || Taskmaster.DebugSession || Taskmaster.DebugMonitor)
+					if (ShowSessionActions || DebugSession || DebugMonitor)
 						Log.Information("<Session:Lock> Monitor already off, leaving it be.");
 				}
 			}
@@ -1010,8 +1020,7 @@ namespace Taskmaster
 					case SessionSwitchReason.SessionLock:
 						setpowersaver:
 						// SET POWER SAVER
-						if (Taskmaster.DebugSession)
-							Log.Debug("<Session:Lock> Enforcing power plan: " + SessionLockPowerMode.ToString());
+						if (DebugSession) Log.Debug("<Session:Lock> Enforcing power plan: " + SessionLockPowerMode.ToString());
 
 						if (SessionLockPowerMode != PowerMode.Undefined)
 						{
@@ -1025,7 +1034,7 @@ namespace Taskmaster
 					case SessionSwitchReason.SessionLogon:
 					case SessionSwitchReason.SessionUnlock:
 						// RESTORE POWER MODE
-						if (Taskmaster.DebugSession || Taskmaster.ShowSessionActions || Taskmaster.DebugPower)
+						if (DebugSession || ShowSessionActions || DebugPower)
 							Log.Information("<Session:Unlock> Restoring previous power configuration.");
 
 						SleepGivenUp = 0;
@@ -1135,7 +1144,7 @@ namespace Taskmaster
 					onPlanChange?.Invoke(this, new PowerModeEventArgs(CurrentMode, old, CurrentMode == ExpectedMode ? ExpectedCause : new Cause(OriginType.None, "External")));
 					ExpectedCause = null;
 
-					if (Taskmaster.DebugPower)
+					if (DebugPower)
 						Log.Information($"<Power/OS> Change detected: {CurrentMode.ToString()} ({newPersonality.ToString()})");
 
 					var now = DateTimeOffset.UtcNow;
@@ -1300,8 +1309,8 @@ namespace Taskmaster
 				case PowerBehaviour.RuleBased:
 					break;
 				case PowerBehaviour.Manual:
-					Taskmaster.processmanager.CancelPowerWait(); // need nicer way to do this
-					Release(-1);
+					processmanager.CancelPowerWait(); // need nicer way to do this
+					Release(null);
 					break;
 			}
 
@@ -1316,11 +1325,13 @@ namespace Taskmaster
 		/// Restores normal power mode and frees the associated source pid from holding it.
 		/// </summary>
 		/// <param name="sourcePid">0 releases all locks.</param>
-		public async Task Release(int sourcePid)
+		public async Task Release(ProcessEx info)
 		{
 			if (DisposedOrDisposing) throw new ObjectDisposedException("Release called after PowerManager was disposed.");
 
-			if (Taskmaster.DebugPower) Log.Debug($"<Power> Releasing {(sourcePid == -1 ? "all locks" : $"#{sourcePid.ToString()}")}");
+			int sourcePid = info == null ? -1 : info.Id;
+
+			if (DebugPower) Log.Debug($"<Power> Releasing {(sourcePid == -1 ? "all locks" : $"#{sourcePid.ToString()}")}");
 
 			Debug.Assert(sourcePid == -1 || !ProcessManager.SystemProcessId(sourcePid));
 
@@ -1334,26 +1345,30 @@ namespace Taskmaster
 					}
 					else if (ForceModeSourcesMap.TryRemove(sourcePid, out _))
 					{
-						if (Taskmaster.DebugPower && Taskmaster.Trace)
+						if (DebugPower && Trace)
 							Log.Debug("<Power> Force mode source freed, " + ForceModeSourcesMap.Count.ToString() + " remain.");
 					}
 					else if (ForceModeSourcesMap.Count > 0)
 					{
-						if (Taskmaster.DebugPower && Taskmaster.Trace)
+						if (DebugPower && Trace)
 							Log.Debug("<Power> Force mode release for unincluded ID, " + ForceModeSourcesMap.Count.ToString() + " remain.");
 					}
 					else
 					{
-						if (Taskmaster.DebugPower)
+						if (DebugPower)
 							Log.Debug("<Power> Restore mode called for object [" + sourcePid.ToString() + "] that has no forcing registered. Or waitlist was expunged.");
 					}
 
 					Forced = ForceModeSourcesMap.Count > 0;
 
 					if (!Forced)
+					{
 						ReleaseFinal(new Cause(OriginType.Watchlist, $"#{sourcePid} exited; " + (Behaviour == PowerBehaviour.Auto ? "auto-adjust resumed" : "restoring.")));
+						if (VerbosePowerRelease)
+							Log.Information($"<Power> {info.Name} (#{info.Id}) quit, power forcing released.");
+					}
 
-					if (Taskmaster.Trace && Taskmaster.DebugPower)
+					if (Trace && DebugPower)
 						Log.Debug($"<Power> Released {(sourcePid == -1 ? "All" : sourcePid.ToString())}");
 
 				}
@@ -1376,14 +1391,14 @@ namespace Taskmaster
 			{
 				// TODO: Restore Powerdown delay functionality here.
 
-				if (Taskmaster.Trace && Taskmaster.DebugPower) Log.Debug("<Power> No power locks left.");
+				if (Trace && DebugPower) Log.Debug("<Power> No power locks left.");
 
 				Restore(cause);
 				return;
 			}
 			else
 			{
-				if (Taskmaster.DebugPower)
+				if (DebugPower)
 					Log.Debug("<Power> Forced mode still requested by " + lockCount + " sources: " + string.Join(", ", ForceModeSourcesMap.Keys.ToArray()));
 			}
 		}
@@ -1392,7 +1407,7 @@ namespace Taskmaster
 		{
 			if (Behaviour == PowerBehaviour.Manual)
 			{
-				if (Taskmaster.DebugPower) Log.Debug("<Power> Power restoration cancelled due to manual control.");
+				if (DebugPower) Log.Debug("<Power> Power restoration cancelled due to manual control.");
 				return;
 			}
 
@@ -1411,14 +1426,14 @@ namespace Taskmaster
 				{
 					// if (Behaviour == PowerBehaviour.Auto) return; // this is very optimistic
 
-					if (Taskmaster.DebugPower) Log.Debug("<Power> Restoring power mode: " + SavedMode.ToString());
+					if (DebugPower) Log.Debug("<Power> Restoring power mode: " + SavedMode.ToString());
 
 					InternalSetMode(SavedMode, cause ?? new Cause(OriginType.None, "Restoration"), verbose:false);
 					SavedMode = PowerMode.Undefined;
 				}
 				else
 				{
-					if (Taskmaster.DebugPower) Log.Debug("<Power> Power restoration cancelled, target mode is same as current.");
+					if (DebugPower) Log.Debug("<Power> Power restoration cancelled, target mode is same as current.");
 				}
 			}
 		}
@@ -1484,7 +1499,7 @@ namespace Taskmaster
 
 			lock (power_lock)
 			{
-				if (Taskmaster.DebugPower) Log.Debug("<Power> Saving current power mode for later restoration: " + CurrentMode.ToString());
+				if (DebugPower) Log.Debug("<Power> Saving current power mode for later restoration: " + CurrentMode.ToString());
 
 				SavedMode = CurrentMode;
 
@@ -1494,12 +1509,12 @@ namespace Taskmaster
 
 				if (!ForceModeSourcesMap.TryAdd(sourcePid, mode))
 				{
-					if (Taskmaster.DebugPower && Taskmaster.ShowInaction)
+					if (DebugPower && ShowInaction)
 						Log.Debug("<Power> Forcing cancelled, source already in list.");
 					return false;
 				}
 
-				if (Taskmaster.DebugPower) Log.Debug($"<Power> Lock #{sourcePid.ToString()}");
+				if (DebugPower) Log.Debug($"<Power> Lock #{sourcePid.ToString()}");
 
 				Forced = true;
 
@@ -1511,7 +1526,7 @@ namespace Taskmaster
 				}
 				else
 				{
-					if (Taskmaster.Trace && Taskmaster.DebugPower) Log.Debug("<Power> Force power mode for mode that is already active. Ignoring.");
+					if (Trace && DebugPower) Log.Debug("<Power> Force power mode for mode that is already active. Ignoring.");
 				}
 			}
 
@@ -1544,7 +1559,7 @@ namespace Taskmaster
 					break;
 			}
 
-			if ((verbose && (CurrentMode != mode)) || Taskmaster.DebugPower)
+			if ((verbose && (CurrentMode != mode)) || DebugPower)
 			{
 				string extra = cause != null ? $" - Cause: {cause.ToString()}" : string.Empty;
 				Log.Information("<Power> Setting mode: " + GetModeName(mode) + extra);
@@ -1554,6 +1569,9 @@ namespace Taskmaster
 			ExpectedCause = cause;
 			NativeMethods.PowerSetActiveScheme((IntPtr)null, ref plan);
 		}
+
+		#region IDisposable Support
+		public event EventHandler OnDisposed;
 
 		bool DisposedOrDisposing = false;
 		protected override void Dispose(bool disposing)
@@ -1567,15 +1585,13 @@ namespace Taskmaster
 
 			if (disposing)
 			{
-				if (Taskmaster.Trace) Log.Verbose("Disposing power manager...");
+				if (Trace) Log.Verbose("Disposing power manager...");
 
 				SessionLock = null;
 				MonitorPower = null;
 
 				if (cpumonitor != null)
-				{
 					cpumonitor.onSampling -= CPULoadHandler;
-				}
 
 				MonitorPower = null;
 				MonitorSleepTimer?.Dispose();
@@ -1596,6 +1612,7 @@ namespace Taskmaster
 				SaveConfig();
 			}
 		}
+	#endregion
 
 		async void SetMonitorMode(MonitorPowerMode powermode)
 		{
@@ -1604,8 +1621,8 @@ namespace Taskmaster
 			Debug.Assert(powermode != MonitorPowerMode.Invalid);
 			long NewPowerMode = (int)powermode; // -1 = Powering On, 1 = Low Power (low backlight, etc.), 2 = Power Off
 
-			IntPtr Broadcast = new IntPtr(NativeMethods.HWND_BROADCAST); // unreliable
-			IntPtr Topmost = new IntPtr(NativeMethods.HWND_TOPMOST);
+			var Broadcast = new IntPtr(NativeMethods.HWND_BROADCAST); // unreliable
+			var Topmost = new IntPtr(NativeMethods.HWND_TOPMOST);
 
 			uint timeout = 200; // ms per window, we don't really care if they process them
 			var flags = NativeMethods.SendMessageTimeoutFlags.SMTO_ABORTIFHUNG|NativeMethods.SendMessageTimeoutFlags.SMTO_NORMAL|NativeMethods.SendMessageTimeoutFlags.SMTO_NOTIMEOUTIFNOTHUNG;

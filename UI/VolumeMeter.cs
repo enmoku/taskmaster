@@ -33,6 +33,8 @@ using System.Windows.Forms;
 
 namespace Taskmaster.UI
 {
+	using static Taskmaster;
+
 	public sealed class VolumeMeter : UniForm
 	{
 		ProgressBar OutputVolume = null;
@@ -50,31 +52,33 @@ namespace Taskmaster.UI
 		{
 			Text = "Volume Meter – Taskmaster!";
 
-			var cfg = Taskmaster.Config.Load(Taskmaster.coreconfig);
-			var volsec = cfg.Config["Volume Meter"];
+			using (var cfg = Taskmaster.Config.Load(CoreConfigFilename).BlockUnload())
+			{
+				var volsec = cfg.Config["Volume Meter"];
 
-			bool modified = false, dirty = false;
-			TopMost = volsec.GetOrSet("Topmost", true, out modified).BoolValue;
-			dirty |= modified;
-			Frequency = volsec.GetOrSet("Refresh", 100, out modified).IntValue.Constrain(10, 5000);
-			volsec["Refresh"].Comment = "Refresh delay. Lower is faster. Milliseconds from 10 to 5000.";
-			dirty |= modified;
-			int? upgradeOutCap = volsec.Get("Output")?.IntValue;
-			if (upgradeOutCap.HasValue) volsec["Output threshold"].IntValue = upgradeOutCap.Value;
-			VolumeOutputCap = volsec.GetOrSet("Output threshold", 100, out modified).IntValue.Constrain(20, 100) * 100;
-			dirty |= modified;
-			int? upgradeInCap = volsec.Get("Input")?.IntValue;
-			if (upgradeInCap.HasValue) volsec["Input threshold"].IntValue = upgradeInCap.Value;
-			VolumeInputCap = volsec.GetOrSet("Input threshold", 100, out modified).IntValue.Constrain(20, 100) * 100;
-			dirty |= modified;
+				bool modified = false, dirty = false;
+				TopMost = volsec.GetOrSet("Topmost", true, out modified).BoolValue;
+				dirty |= modified;
+				Frequency = volsec.GetOrSet("Refresh", 100, out modified).IntValue.Constrain(10, 5000);
+				volsec["Refresh"].Comment = "Refresh delay. Lower is faster. Milliseconds from 10 to 5000.";
+				dirty |= modified;
+				int? upgradeOutCap = volsec.Get("Output")?.IntValue;
+				if (upgradeOutCap.HasValue) volsec["Output threshold"].IntValue = upgradeOutCap.Value;
+				VolumeOutputCap = volsec.GetOrSet("Output threshold", 100, out modified).IntValue.Constrain(20, 100) * 100;
+				dirty |= modified;
+				int? upgradeInCap = volsec.Get("Input")?.IntValue;
+				if (upgradeInCap.HasValue) volsec["Input threshold"].IntValue = upgradeInCap.Value;
+				VolumeInputCap = volsec.GetOrSet("Input threshold", 100, out modified).IntValue.Constrain(20, 100) * 100;
+				dirty |= modified;
 
-			volsec.TryRemove("Cap");
-			volsec.TryRemove("Output");
-			volsec.TryRemove("Output cap");
-			volsec.TryRemove("Input");
-			volsec.TryRemove("Input cap");
+				volsec.TryRemove("Cap");
+				volsec.TryRemove("Output");
+				volsec.TryRemove("Output cap");
+				volsec.TryRemove("Input");
+				volsec.TryRemove("Input cap");
 
-			if (dirty) cfg.MarkDirty();
+				if (dirty) cfg.MarkDirty();
+			}
 
 			var layout = new TableLayoutPanel()
 			{
@@ -162,22 +166,23 @@ namespace Taskmaster.UI
 			updateTimer.Tick += UpdateVolumeTick;
 			updateTimer.Start();
 
-			var uicfg = Taskmaster.Config.Load(MainWindow.UIConfig);
-			var winsec = uicfg.Config["Windows"];
-
-			var winpos = winsec["Volume"].IntArray;
-
-			if (winpos != null && winpos.Length == 2)
+			using (var uicfg = Taskmaster.Config.Load(MainWindow.UIConfigFilename).BlockUnload())
 			{
-				var rectangle = new System.Drawing.Rectangle(winpos[0], winpos[1], Bounds.Width, Bounds.Height);
-				if (Screen.AllScreens.Any(ø => ø.Bounds.IntersectsWith(Bounds))) // https://stackoverflow.com/q/495380
+				var winsec = uicfg.Config["Windows"];
+				var winpos = winsec["Volume"].IntArray;
+
+				if (winpos != null && winpos.Length == 2)
 				{
-					StartPosition = FormStartPosition.Manual;
-					Location = new System.Drawing.Point(rectangle.Left, rectangle.Top);
-					Bounds = rectangle;
+					var rectangle = new System.Drawing.Rectangle(winpos[0], winpos[1], Bounds.Width, Bounds.Height);
+					if (Screen.AllScreens.Any(ø => ø.Bounds.IntersectsWith(Bounds))) // https://stackoverflow.com/q/495380
+					{
+						StartPosition = FormStartPosition.Manual;
+						Location = new System.Drawing.Point(rectangle.Left, rectangle.Top);
+						Bounds = rectangle;
+					}
+					else
+						CenterToParent();
 				}
-				else
-					CenterToParent();
 			}
 
 			Show();
@@ -198,8 +203,7 @@ namespace Taskmaster.UI
 				var output = audiomanager.MultimediaDevice.MMDevice.AudioMeterInformation.MasterPeakValue;
 				var input = audiomanager.RecordingDevice.MMDevice.AudioMeterInformation.MasterPeakValue;
 
-				if (Taskmaster.DebugAudio && Taskmaster.Trace)
-					Debug.WriteLine($"Volume --- Output: {output:N2} --- Input: {input:N2}");
+				if (DebugAudio && Trace) Debug.WriteLine($"Volume --- Output: {output:N2} --- Input: {input:N2}");
 
 				OutputVolume.Value = Convert.ToInt32(output * 10000f).Constrain(0, OutputVolume.Maximum);
 				OutputVolumeLabel.Text = $"{output * 100f:N2} %";
@@ -250,6 +254,8 @@ namespace Taskmaster.UI
 		}
 
 		#region IDispose
+		public event EventHandler OnDisposed;
+
 		bool DisposedOrDisposing = false;
 		protected override void Dispose(bool disposing)
 		{
@@ -261,19 +267,21 @@ namespace Taskmaster.UI
 			{
 				DisposedOrDisposing = true;
 
-				if (Taskmaster.Trace) Log.Verbose("Disposing volume meter box...");
+				if (Trace) Log.Verbose("Disposing volume meter box...");
 
 				updateTimer.Dispose();
 
-				var cfg = Taskmaster.Config.Load(MainWindow.UIConfig);
-				var winsec = cfg.Config["Windows"];
+				using (var cfg = Taskmaster.Config.Load(MainWindow.UIConfigFilename).BlockUnload())
+				{
+					var winsec = cfg.Config["Windows"];
 
-				winsec["Volume"].IntArray = new int[] { Bounds.Left, Bounds.Top };
+					winsec["Volume"].IntArray = new int[] { Bounds.Left, Bounds.Top };
 
-				cfg.MarkDirty();
+					cfg.MarkDirty();
+				}
 			}
 
-			Taskmaster.volumemeter = null; // HACK
+			OnDisposed?.Invoke(this, EventArgs.Empty);
 		}
 		#endregion Dispose
 	}

@@ -93,7 +93,7 @@ namespace Taskmaster.UI
 			menu_configuration.DropDownItems.Add(new ToolStripSeparator());
 			menu_configuration.DropDownItems.Add(menu_runatstart_sch);
 			menu_configuration.DropDownItems.Add(new ToolStripSeparator());
-			menu_configuration.DropDownItems.Add(new ToolStripMenuItem("Open in file manager", null, (_, _ea) => Process.Start(Taskmaster.datapath)));
+			menu_configuration.DropDownItems.Add(new ToolStripMenuItem("Open in file manager", null, (_, _ea) => Process.Start(Taskmaster.DataPath)));
 
 			var menu_restart = new ToolStripMenuItem("Restart", null, (_s, _ea) => Taskmaster.ConfirmExit(restart: true));
 			var menu_exit = new ToolStripMenuItem("Exit", null, (_s, _ea) => Taskmaster.ConfirmExit(restart: false));
@@ -130,11 +130,14 @@ namespace Taskmaster.UI
 
 			if (Taskmaster.Trace) Log.Verbose("Tray menu ready");
 
-			var cfg = Taskmaster.Config.Load(Taskmaster.coreconfig);
-			var exsec = cfg.Config["Experimental"];
-			int exdelay = exsec.Get("Explorer Restart")?.IntValue ?? 0;
-			if (exdelay > 0) ExplorerRestartHelpDelay = TimeSpan.FromSeconds(exdelay.Min(5));
-			else ExplorerRestartHelpDelay = null;
+			using (var cfg = Taskmaster.Config.Load(Taskmaster.CoreConfigFilename).BlockUnload())
+			{
+				var exsec = cfg.Config["Experimental"];
+				int exdelay = exsec.Get("Explorer Restart")?.IntValue ?? 0;
+				if (exdelay > 0) ExplorerRestartHelpDelay = TimeSpan.FromSeconds(exdelay.Min(5));
+				else ExplorerRestartHelpDelay = null;
+			}
+
 			RegisterExplorerExit();
 
 			// Tray.Click += RestoreMainWindow;
@@ -183,7 +186,7 @@ namespace Taskmaster.UI
 		// TODO: Move this off elsewhere
 		public void RegisterGlobalHotkeys()
 		{
-			Debug.Assert(Taskmaster.IsMainThread(), "RegisterGlobalHotkeys must be called from main thread");
+			Debug.Assert(MKAh.Execution.IsMainThread, "RegisterGlobalHotkeys must be called from main thread");
 
 			if (HotkeysRegistered) return;
 
@@ -661,7 +664,7 @@ namespace Taskmaster.UI
 			{
 				try
 				{
-					if (!MKAh.OperatingSystem.IsAdministrator())
+					if (!MKAh.Execution.IsAdministrator())
 					{
 						SimpleMessageBox.ShowModal("Taskmaster! – run at login", "Scheduler can not be modified without admin rights.", SimpleMessageBox.Buttons.OK);
 						return;

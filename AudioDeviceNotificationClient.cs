@@ -30,6 +30,8 @@ using Serilog;
 
 namespace Taskmaster
 {
+	using static Taskmaster;
+
 	class AudioDeviceNotificationClient : NAudio.CoreAudioApi.Interfaces.IMMNotificationClient
 	{
 		/// <summary>
@@ -51,7 +53,7 @@ namespace Taskmaster
 			{
 				var guid = HaveDefaultDevice ? AudioManager.AudioDeviceIdToGuid(defaultDeviceId) : string.Empty;
 
-				if (Taskmaster.DebugAudio && Taskmaster.Trace)
+				if (DebugAudio && Trace)
 					Log.Verbose($"<Audio> Default device changed for {role.ToString()} ({flow.ToString()}): {(HaveDefaultDevice ? guid : HumanReadable.Generic.NotAvailable)}");
 
 				DefaultDevice?.Invoke(this, new Events.AudioDefaultDeviceEventArgs(guid, defaultDeviceId, role, flow));
@@ -71,7 +73,7 @@ namespace Taskmaster
 			{
 				string guid = AudioManager.AudioDeviceIdToGuid(pwstrDeviceId);
 
-				if (!Taskmaster.DebugAudio) Log.Debug("<Audio> Device added: " + guid);
+				if (!DebugAudio) Log.Debug("<Audio> Device added: " + guid);
 
 				Added?.Invoke(this, new Events.AudioDeviceEventArgs(guid, pwstrDeviceId));
 			}
@@ -88,7 +90,7 @@ namespace Taskmaster
 			{
 				string guid = AudioManager.AudioDeviceIdToGuid(deviceId);
 
-				if (!Taskmaster.DebugAudio) Log.Debug("<Audio> Device removed: " + guid);
+				if (!DebugAudio) Log.Debug("<Audio> Device removed: " + guid);
 
 				Removed?.Invoke(this, new Events.AudioDeviceEventArgs(guid, deviceId));
 			}
@@ -119,7 +121,7 @@ namespace Taskmaster
 
 				var guid = AudioManager.AudioDeviceIdToGuid(deviceId);
 
-				if (Taskmaster.DebugAudio) Log.Debug("<Audio> Device (" + guid + ") state: " + newState.ToString());
+				if (DebugAudio) Log.Debug("<Audio> Device (" + guid + ") state: " + newState.ToString());
 
 				StateChanged?.Invoke(this, new Events.AudioDeviceStateEventArgs(guid, deviceId, newState));
 			}
@@ -132,7 +134,7 @@ namespace Taskmaster
 
 		public void OnPropertyValueChanged(string pwstrDeviceId, PropertyKey key)
 		{
-			if (!Taskmaster.DebugAudio) return;
+			if (!DebugAudio) return;
 
 			try
 			{

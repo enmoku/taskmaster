@@ -196,7 +196,7 @@ namespace Taskmaster.UI.Config
 
 			if (ignorelist.Items.Count > 0 && execName.Text.Length == 0)
 			{
-				List<string> ignlist = new List<string>();
+				var ignlist = new List<string>();
 				foreach (ListViewItem item in ignorelist.Items)
 					ignlist.Add(item.Text);
 

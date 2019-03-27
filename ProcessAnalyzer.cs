@@ -38,16 +38,18 @@ using System.Linq;
 
 namespace Taskmaster
 {
+	using static Taskmaster;
+
 	sealed public class ProcessAnalyzer
 	{
 		public ProcessAnalyzer()
 		{
-			var modulepath = Path.Combine(Taskmaster.datapath, ModuleFile);
-			if (!File.Exists(modulepath) || new FileInfo(modulepath).LastWriteTimeUtc < Taskmaster.BuildDate())
+			var modulepath = Path.Combine(DataPath, ModuleFile);
+			if (!File.Exists(modulepath) || new FileInfo(modulepath).LastWriteTimeUtc < BuildDate())
 				File.WriteAllText(modulepath, Properties.Resources.KnownModules, Encoding.UTF8);
 			Load(ModuleFile);
 
-			var usermodulepath = Path.Combine(Taskmaster.datapath, UserModuleFile);
+			var usermodulepath = Path.Combine(DataPath, UserModuleFile);
 			if (File.Exists(usermodulepath))
 				Load(UserModuleFile);
 		}
@@ -57,7 +59,6 @@ namespace Taskmaster
 		public async Task Analyze(ProcessEx info)
 		{
 			if (string.IsNullOrEmpty(info.Path)) return;
-			if (!Taskmaster.RecordAnalysis.HasValue) return;
 
 			var crypt = new System.Security.Cryptography.SHA512Cng();
 			byte[] hash = crypt.ComputeHash(Encoding.UTF8.GetBytes(info.Path.ToLowerInvariant()));
@@ -65,9 +66,6 @@ namespace Taskmaster
 			// TODO: Prevent bloating somehow.
 			if (!cache.TryAdd(hash, 0)) return; // already there
 
-			bool record = Taskmaster.RecordAnalysis.HasValue;
-
-			TimeSpan delay = record ? Taskmaster.RecordAnalysis.Value : TimeSpan.FromSeconds(30);
 			Log.Debug($"<Analysis> {info.Name} (#{info.Id}) scheduled");
 
 			var AllLinkedModules = new ConcurrentDictionary<string, ModuleInfo>();
@@ -85,7 +83,7 @@ namespace Taskmaster
 
 			try
 			{
-				await Task.Delay(delay);
+				await Task.Delay(RecordAnalysis.Value);
 
 				//var pa = new ProcessAnalysis();
 				//pa.bla = true;
@@ -98,7 +96,7 @@ namespace Taskmaster
 					return;
 				}
 
-				if (Taskmaster.Trace) Debug.WriteLine("Analyzing:" + $"{info.Name} (#{info.Id})");
+				if (Trace) Debug.WriteLine("Analyzing:" + $"{info.Name} (#{info.Id})");
 
 				modFile = info.Process.MainModule.FileName;
 				version = info.Process.MainModule.FileVersionInfo;
@@ -128,7 +126,7 @@ namespace Taskmaster
 				{
 					for (int index = 0; index < totalModules; index++)
 					{
-						StringBuilder modulePath = new StringBuilder(1024);
+						var modulePath = new StringBuilder(1024);
 						NativeMethods.GetModuleFileNameEx(handle, modulePtrs[index], modulePath, (uint)(modulePath.Capacity));
 
 						string moduleName = Path.GetFileName(modulePath.ToString());
@@ -195,7 +193,7 @@ namespace Taskmaster
 
 				var sbs = new StringBuilder();
 				sbs.Append("<Analysis> ").Append(info.Name).Append($" (#{info.Id})").Append(" facts: ");
-				List<string> components = new List<string>();
+				var components = new List<string>();
 
 				if (x64) components.Add("64-bit");
 				else components.Add("32-bit");
@@ -248,38 +246,35 @@ namespace Taskmaster
 
 				// RECORD analysis
 
-				if (record)
+				var file = $"{DateTime.Now.ToString("yyyyMMdd-HHmmss-fff")}-{info.Name}.analysis.yml";
+				var path = Path.Combine(DataPath, "Analysis");
+				var endpath = Path.Combine(path, file);
+				var di = Directory.CreateDirectory(path);
+
+				var contents = new StringBuilder();
+				contents.Append("Analysis:").AppendLine()
+					.Append("  ").Append("Process: ").Append(info.Name).AppendLine()
+					.Append("  ").Append("Version: ").Append(version.FileVersion?.ToString() ?? string.Empty).AppendLine()
+					.Append("  ").Append("Product: ").Append(version.ProductName?.ToString() ?? string.Empty).AppendLine()
+					.Append("  ").Append("Company: ").Append(version.CompanyName?.ToString() ?? string.Empty).AppendLine()
+					.Append("  ").Append("64-bit : ").Append(x64 ? "Yes" : "No").AppendLine()
+					.Append("  ").Append("Path   : ").Append(info.Path).AppendLine()
+					.Append("  ").Append("Threads: ").Append(threadCount).AppendLine()
+					.Append("  ").Append("Memory : ").AppendLine()
+					.Append("    ").Append("Private : ").Append(privMem).AppendLine()
+					.Append("    ").Append("Working : ").Append(workingSet).AppendLine()
+					.Append("    ").Append("Virtual : ").Append(virtualMem).AppendLine()
+					.Append("  ").Append("Modules: ").AppendLine();
+
+				foreach (var mod in AllLinkedModules.Values)
 				{
-					var file = $"{DateTime.Now.ToString("yyyyMMdd-HHmmss-fff")}-{info.Name}.analysis.yml";
-					var path = Path.Combine(Taskmaster.datapath, "Analysis");
-					var endpath = Path.Combine(path, file);
-					var di = Directory.CreateDirectory(path);
-
-					var contents = new StringBuilder();
-					contents.Append("Analysis:").AppendLine()
-						.Append("  ").Append("Process: ").Append(info.Name).AppendLine()
-						.Append("  ").Append("Version: ").Append(version.FileVersion?.ToString() ?? string.Empty).AppendLine()
-						.Append("  ").Append("Product: ").Append(version.ProductName?.ToString() ?? string.Empty).AppendLine()
-						.Append("  ").Append("Company: ").Append(version.CompanyName?.ToString() ?? string.Empty).AppendLine()
-						.Append("  ").Append("64-bit : ").Append(x64 ? "Yes" : "No").AppendLine()
-						.Append("  ").Append("Path   : ").Append(info.Path).AppendLine()
-						.Append("  ").Append("Threads: ").Append(threadCount).AppendLine()
-						.Append("  ").Append("Memory : ").AppendLine()
-						.Append("    ").Append("Private : ").Append(privMem).AppendLine()
-						.Append("    ").Append("Working : ").Append(workingSet).AppendLine()
-						.Append("    ").Append("Virtual : ").Append(virtualMem).AppendLine()
-						.Append("  ").Append("Modules: ").AppendLine();
-
-					foreach (var mod in AllLinkedModules.Values)
-					{
-						contents.Append("    ").Append(mod.Identity).Append(":").AppendLine();
-						if (mod.Type != ModuleType.Unknown)
-							contents.Append("      Type: ").Append(mod.Type.ToString()).AppendLine();
-						contents.Append("      Files: [ " + string.Join(", ", mod.Detected) + " ]").AppendLine();
-					}
-
-					File.WriteAllText(endpath, contents.ToString());
+					contents.Append("    ").Append(mod.Identity).Append(":").AppendLine();
+					if (mod.Type != ModuleType.Unknown)
+						contents.Append("      Type: ").Append(mod.Type.ToString()).AppendLine();
+					contents.Append("      Files: [ " + string.Join(", ", mod.Detected) + " ]").AppendLine();
 				}
+
+				File.WriteAllText(endpath, contents.ToString());
 			}
 			catch (OutOfMemoryException) { throw; }
 			catch (Exception ex)
@@ -337,68 +332,69 @@ namespace Taskmaster
 			{ "system", ModuleType.System },
 		};
 
-		public void Load(string file)
+		public void Load(string moduleFilename)
 		{
 			try
 			{
-				var modulepath = Path.Combine(Taskmaster.datapath, file);
+				var modulepath = Path.Combine(DataPath, moduleFilename);
 
-				var cfg = Taskmaster.Config.Load(modulepath);
-
-				foreach (var section in cfg.Config)
+				using (var cfg = Config.Load(modulepath).BlockUnload())
 				{
-					try
+					foreach (var section in cfg.Config)
 					{
-						string name = section.Name;
-						if (KnownModules.ContainsKey(name)) continue;
-
-						var files = section.Get("files")?.Array ?? null;
-
-						if (files == null || files.Length == 0) continue;
-
-						bool listed = yesvalues.Contains(section.Get("listed")?.Value.ToLowerInvariant() ?? "no");
-						//string upgrade = section.TryGet("upgrade")?.Value ?? null;
-						//bool open = yesvalues.Contains(section.TryGet("open")?.Value.ToLowerInvariant() ?? "no");
-						//bool prop = yesvalues.Contains(section.TryGet("proprietary")?.Value.ToLowerInvariant() ?? "no");
-						bool ext = yesvalues.Contains(section.Get("extension")?.Value.ToLowerInvariant() ?? "no");
-						string ttype = section.Get("type")?.Value.ToLowerInvariant() ?? "unknown"; // TODO
-						//string trec = section.TryGet("recommendation")?.Value.ToLowerInvariant() ?? null;
-						//string notes = section.TryGet("notes")?.Value ?? null;
-						long value = section.Get("value")?.IntValue ?? 0;
-						/*
-						ModuleRecommendation rec = ModuleRecommendation.Undefined;
-						if (!RecMap.TryGetValue(trec, out rec))
-							rec = ModuleRecommendation.Undefined;
-						*/
-						ModuleType type = ModuleType.Unknown;
-						if (!TypeMap.TryGetValue(ttype, out type))
-							type = ModuleType.Unknown;
-
-						string identity = section.Name;
-
-						var mi = new ModuleInfo
+						try
 						{
-							Identity = identity,
-							Type = type,
-							Files = files,
-							Listed = listed,
-							//Upgrade = upgrade,
-							//Open = open,
-							//Extension = ext,
-							//Proprietary = prop,
-							//Recommendation = rec,
-							Value = value,
-						};
+							string name = section.Name;
+							if (KnownModules.ContainsKey(name)) continue;
 
-						if (KnownModules.TryAdd(identity, mi))
-						{
-							foreach (var kfile in files)
-								KnownFiles.TryAdd(kfile, mi);
+							var files = section.Get("files")?.Array ?? null;
+
+							if (files == null || files.Length == 0) continue;
+
+							bool listed = yesvalues.Contains(section.Get("listed")?.Value.ToLowerInvariant() ?? "no");
+							//string upgrade = section.TryGet("upgrade")?.Value ?? null;
+							//bool open = yesvalues.Contains(section.TryGet("open")?.Value.ToLowerInvariant() ?? "no");
+							//bool prop = yesvalues.Contains(section.TryGet("proprietary")?.Value.ToLowerInvariant() ?? "no");
+							bool ext = yesvalues.Contains(section.Get("extension")?.Value.ToLowerInvariant() ?? "no");
+							string ttype = section.Get("type")?.Value.ToLowerInvariant() ?? "unknown"; // TODO
+																									   //string trec = section.TryGet("recommendation")?.Value.ToLowerInvariant() ?? null;
+																									   //string notes = section.TryGet("notes")?.Value ?? null;
+							long value = section.Get("value")?.IntValue ?? 0;
+							/*
+							ModuleRecommendation rec = ModuleRecommendation.Undefined;
+							if (!RecMap.TryGetValue(trec, out rec))
+								rec = ModuleRecommendation.Undefined;
+							*/
+							ModuleType type = ModuleType.Unknown;
+							if (!TypeMap.TryGetValue(ttype, out type))
+								type = ModuleType.Unknown;
+
+							string identity = section.Name;
+
+							var mi = new ModuleInfo
+							{
+								Identity = identity,
+								Type = type,
+								Files = files,
+								Listed = listed,
+								//Upgrade = upgrade,
+								//Open = open,
+								//Extension = ext,
+								//Proprietary = prop,
+								//Recommendation = rec,
+								Value = value,
+							};
+
+							if (KnownModules.TryAdd(identity, mi))
+							{
+								foreach (var kfile in files)
+									KnownFiles.TryAdd(kfile, mi);
+							}
 						}
-					}
-					catch (Exception ex)
-					{
-						Logging.Stacktrace(ex);
+						catch (Exception ex)
+						{
+							Logging.Stacktrace(ex);
+						}
 					}
 				}
 

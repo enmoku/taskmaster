@@ -33,18 +33,20 @@ using Taskmaster.Events;
 
 namespace Taskmaster
 {
+	using static Taskmaster;
+
 	/// <summary>
 	/// Must be created on persistent thread, such as the main thread.
 	/// </summary>
-	public class AudioManager : IDisposable
+	public class AudioManager : IComponent, IDisposable
 	{
 		readonly System.Threading.Thread Context = null;
 
-		public event EventHandler<Events.AudioDeviceStateEventArgs> StateChanged;
-		public event EventHandler<Events.AudioDefaultDeviceEventArgs> DefaultChanged;
+		public event EventHandler<AudioDeviceStateEventArgs> StateChanged;
+		public event EventHandler<AudioDefaultDeviceEventArgs> DefaultChanged;
 
-		public event EventHandler<Events.AudioDeviceEventArgs> Added;
-		public event EventHandler<Events.AudioDeviceEventArgs> Removed;
+		public event EventHandler<AudioDeviceEventArgs> Added;
+		public event EventHandler<AudioDeviceEventArgs> Removed;
 
 		public NAudio.CoreAudioApi.MMDeviceEnumerator Enumerator = null;
 
@@ -76,7 +78,7 @@ namespace Taskmaster
 		/// <exception cref="InitFailure">If audio device can not be found.</exception>
 		public AudioManager()
 		{
-			Debug.Assert(Taskmaster.IsMainThread(), "Requires main thread");
+			Debug.Assert(MKAh.Execution.IsMainThread, "Requires main thread");
 			Context = System.Threading.Thread.CurrentThread;
 
 			Enumerator = new NAudio.CoreAudioApi.MMDeviceEnumerator();
@@ -92,7 +94,7 @@ namespace Taskmaster
 			Enumerator.RegisterEndpointNotificationCallback(notificationClient);
 
 			/*
-			var cfg = Taskmaster.Config.Load(configfile);
+			var cfg = Configuration.Load(configfile);
 
 			foreach (var section in cfg)
 			{
@@ -102,7 +104,7 @@ namespace Taskmaster
 
 			volumeTimer.Elapsed += VolumeTimer_Elapsed;
 
-			Taskmaster.DisposalChute.Push(this);
+			DisposalChute.Push(this);
 		}
 
 		void VolumeTimer_Elapsed(object sender, System.Timers.ElapsedEventArgs e)
@@ -120,7 +122,7 @@ namespace Taskmaster
 		{
 			if (DisposingOrDisposed) return;
 
-			if (Taskmaster.DebugAudio)
+			if (DebugAudio)
 			{
 				string name = null;
 				if (Devices.TryGetValue(ea.GUID, out var device))
@@ -211,10 +213,7 @@ namespace Taskmaster
 		}
 
 		ProcessManager processmanager = null;
-		public void Hook(ProcessManager procman)
-		{
-			processmanager = procman;
-		}
+		public void Hook(ProcessManager procman) => processmanager = procman;
 
 		async void OnSessionCreated(object _, NAudio.CoreAudioApi.Interfaces.IAudioSessionControl ea)
 		{
@@ -286,13 +285,13 @@ namespace Taskmaster
 						}
 						else
 						{
-							if (Taskmaster.ShowInaction && Taskmaster.DebugAudio)
+							if (ShowInaction && DebugAudio)
 								Log.Debug($"<Audio> {info.Name} (#{pid}) Volume: {volume * 100f:N1} % – Already correct (Plan: {prc.VolumeStrategy.ToString()})");
 						}
 					}
 					else
 					{
-						if (Taskmaster.ShowInaction && Taskmaster.DebugAudio)
+						if (ShowInaction && DebugAudio)
 							Log.Debug($"<Audio> {info.Name} (#{pid}) Volume: {(volume * 100f):N1} % – not watched: {info.Path}");
 					}
 				}
@@ -309,6 +308,8 @@ namespace Taskmaster
 		}
 
 		#region IDisposable Support
+		public event EventHandler OnDisposed;
+
 		bool DisposingOrDisposed = false;
 
 		protected virtual void Dispose(bool disposing)
@@ -333,6 +334,9 @@ namespace Taskmaster
 						dev.Dispose();
 				}
 			}
+
+			OnDisposed?.Invoke(this, EventArgs.Empty);
+			OnDisposed = null;
 		}
 
 		public void Dispose() => Dispose(true);
@@ -341,10 +345,7 @@ namespace Taskmaster
 		/// <summary>
 		/// Takes Device ID in form of {a.b.c.dddddddd}.{aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee} and retuurns GUID part only.
 		/// </summary>
-		public static string AudioDeviceIdToGuid(string deviceId)
-		{
-			return (deviceId.Split('}'))[1].Substring(2);
-		}
+		public static string AudioDeviceIdToGuid(string deviceId) => (deviceId.Split('}'))[1].Substring(2);
 	}
 
 	public enum AudioVolumeStrategy
