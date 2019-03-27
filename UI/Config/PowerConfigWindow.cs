@@ -30,13 +30,12 @@ using MKAh;
 using Serilog;
 using Taskmaster.PowerInfo;
 
-namespace Taskmaster.UI
+namespace Taskmaster.UI.Config
 {
 	sealed public class PowerConfigWindow : UniForm
 	{
 		public AutoAdjustSettings oldAutoAdjust = null;
 		public AutoAdjustSettings newAutoAdjust = null;
-		PowerManager power = null;
 
 		public PowerManager.PowerBehaviour NewLaunchBehaviour = PowerManager.PowerBehaviour.Undefined;
 		public PowerManager.RestoreModeMethod NewRestoreMethod = PowerManager.RestoreModeMethod.Default;
@@ -57,13 +56,16 @@ namespace Taskmaster.UI
 		ComboBox monitoroffmode = null;
 		CheckBox monitorofftoggle = null;
 
-		public PowerConfigWindow(bool center = false)
+		PowerManager manager = null;
+
+		public PowerConfigWindow(PowerManager powerManager, bool center = false)
 			: base(center)
 		{
+			manager = powerManager;
+
 			Text = "Power Configuration";
 
-			var AutoAdjust = oldAutoAdjust = Taskmaster.powermanager.AutoAdjust;
-			power = Taskmaster.powermanager;
+			var AutoAdjust = oldAutoAdjust = manager.AutoAdjust;
 
 			FormBorderStyle = FormBorderStyle.FixedDialog;
 
@@ -197,7 +199,7 @@ namespace Taskmaster.UI
 
 			tooltip.SetToolTip(monitoroffmode, "Power mode to set when monitor is off.");
 
-			MonitorPowerOff = power.SessionLockPowerOff;
+			MonitorPowerOff = manager.SessionLockPowerOff;
 			monitorofftoggle = new CheckBox()
 			{
 				Dock = DockStyle.Left,
@@ -407,16 +409,16 @@ namespace Taskmaster.UI
 
 			MonitorPowerOff = monitorofftoggle.Checked;
 
-			power.SetAutoAdjust(newAutoAdjust);
+			manager.SetAutoAdjust(newAutoAdjust);
 
-			power.LaunchBehaviour = NewLaunchBehaviour;
+			manager.LaunchBehaviour = NewLaunchBehaviour;
 
-			power.SessionLockPowerOff = MonitorPowerOff;
-			power.SessionLockPowerMode = NewLockMode;
+			manager.SessionLockPowerOff = MonitorPowerOff;
+			manager.SessionLockPowerMode = NewLockMode;
 
-			power.SetRestoreMode(NewRestoreMethod, NewRestoreMode);
+			manager.SetRestoreMode(NewRestoreMethod, NewRestoreMode);
 
-			power.SaveConfig();
+			manager.SaveConfig();
 
 			Log.Information("<<UI>> Power config changed.");
 
@@ -437,8 +439,8 @@ namespace Taskmaster.UI
 
 		void FillAutoAdjust(AutoAdjustSettings AutoAdjust)
 		{
-			NewLaunchBehaviour = power.LaunchBehaviour;
-			switch (power.LaunchBehaviour)
+			NewLaunchBehaviour = manager.LaunchBehaviour;
+			switch (manager.LaunchBehaviour)
 			{
 				case PowerManager.PowerBehaviour.Auto:
 				default:
@@ -452,8 +454,8 @@ namespace Taskmaster.UI
 					break;
 			}
 
-			NewRestoreMethod = power.RestoreMethod;
-			NewRestoreMode = power.RestoreMode;
+			NewRestoreMethod = manager.RestoreMethod;
+			NewRestoreMode = manager.RestoreMode;
 			switch (NewRestoreMethod)
 			{
 				default:
@@ -474,8 +476,8 @@ namespace Taskmaster.UI
 					break;
 				case PowerManager.RestoreModeMethod.Custom:
 					NewRestoreMethod = PowerManager.RestoreModeMethod.Custom;
-					NewRestoreMode = power.RestoreMode;
-					switch (power.RestoreMode)
+					NewRestoreMode = manager.RestoreMode;
+					switch (manager.RestoreMode)
 					{
 						case PowerMode.HighPerformance:
 							restore.SelectedIndex = 3;
@@ -491,7 +493,7 @@ namespace Taskmaster.UI
 					break;
 			}
 
-			var SessionLockPowerMode = power.SessionLockPowerMode;
+			var SessionLockPowerMode = manager.SessionLockPowerMode;
 			switch (SessionLockPowerMode)
 			{
 				default:
@@ -530,11 +532,11 @@ namespace Taskmaster.UI
 			loQueue.Value = Convert.ToDecimal(AutoAdjust.Queue.Low).Constrain(0, 100);
 		}
 
-		public static void Reveal(bool centerOnScreen=false)
+		public static void Reveal(PowerManager powerManager, bool centerOnScreen=false)
 		{
 			try
 			{
-				using (var pcw = new PowerConfigWindow(centerOnScreen))
+				using (var pcw = new PowerConfigWindow(powerManager, centerOnScreen))
 				{
 					var res = pcw.ShowDialog();
 					if (pcw.DialogResult == DialogResult.OK)

@@ -85,7 +85,7 @@ namespace Taskmaster.UI
 			menu_runatstart_sch.Checked = runatstartsch;
 			Log.Information("<Core> Run-at-start scheduler: " + (runatstartsch ? "Found" : "Missing"));
 
-			menu_configuration.DropDownItems.Add(new ToolStripMenuItem("Power", null, (_, _ea) => PowerConfigWindow.Reveal(centerOnScreen:true)));
+			menu_configuration.DropDownItems.Add(new ToolStripMenuItem("Power", null, (_, _ea) => Config.PowerConfigWindow.Reveal(powermanager, centerOnScreen:true)));
 			menu_configuration.DropDownItems.Add(new ToolStripMenuItem("Advanced", null, (_, _ea) => Config.AdvancedConfig.Reveal(centerOnScreen:true))); // FIXME: MODAL
 			menu_configuration.DropDownItems.Add(new ToolStripMenuItem("Components", null, (_, _ea) => Config.ComponentConfigurationWindow.Reveal(centerOnScreen:true))); // FIXME: MODAL
 			menu_configuration.DropDownItems.Add(new ToolStripSeparator());
