@@ -650,7 +650,6 @@ namespace Taskmaster
 		{
 			using (var corecfg = Config.Load(CoreConfigFilename).BlockUnload())
 			{
-
 				var power = corecfg.Config[HumanReadable.Hardware.Power.Section];
 				bool modified = false, dirtyconfig = false;
 

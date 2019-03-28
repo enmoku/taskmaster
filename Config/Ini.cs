@@ -54,7 +54,7 @@ namespace MKAh
 				}
 			}
 
-			public interface Container<T>
+			public interface IContainer<T>
 			{
 				int ItemCount { get; }
 
@@ -74,7 +74,7 @@ namespace MKAh
 			}
 		}
 
-		public class Config : Interface.Container<Section>, IEnumerable<Section>
+		public class Config : Interface.IContainer<Section>, IEnumerable<Section>
 		{
 			public static readonly char[] ReservedCharacters
 				= new[] { Constant.Quote, Constant.StandardComment, Constant.AlternateComment, Constant.KeyValueSeparator,
@@ -206,6 +206,7 @@ namespace MKAh
 			void HandleLine(string line, int lineNumber, ref Section section)
 			{
 				Debug.WriteLine($"INI [{lineNumber:000}]: {line}");
+
 				if (string.IsNullOrWhiteSpace(line))
 				{
 					if (StripEmptyLines) return;
@@ -1002,7 +1003,7 @@ namespace MKAh
 			}
 		}
 
-		public class Section : Interface.Value, Interface.Container<Setting>, IEnumerable<Setting>
+		public class Section : Interface.Value, Interface.IContainer<Setting>, IEnumerable<Setting>
 		{
 			public List<Setting> Items { get; private set; } = new List<Setting>();
 			public int ItemCount => Items.Count;
