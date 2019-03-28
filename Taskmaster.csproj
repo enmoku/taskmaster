@@ -184,6 +184,7 @@
     </Compile>
     <Compile Include="UI\WatchlistSorter.cs" />
     <Compile Include="Utility\Execution.cs" />
+    <Compile Include="Utility\LockScoping.cs" />
     <Compile Include="Utility\StructuralEqualityComparer.cs" />
     <Compile Include="Utility\HumanReadable.cs" />
     <Compile Include="UI\TextInputBox.cs">

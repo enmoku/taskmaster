@@ -422,8 +422,7 @@ namespace Taskmaster
 			return full;
 		}
 
-		int foreground_counter = 0;
-		object foregroundswap_lock = new object();
+		MKAh.Lock.Monitor ScopedLock = new MKAh.Lock.Monitor();
 
 		/// <summary>
 		/// SetWinEventHook sends messages to this. Don't call it on your own.
@@ -434,80 +433,69 @@ namespace Taskmaster
 		{
 			if (eventType != NativeMethods.EVENT_SYSTEM_FOREGROUND) return; // does this ever trigger?
 
-			foreground_counter++;
-
 			await System.Threading.Tasks.Task.Delay(Hysterisis); // asyncify
 			if (DisposedOrDisposing) return;
 
-			lock (foregroundswap_lock)
+			using (var sl = ScopedLock.ScopedLock())
 			{
-				if (foreground_counter > 1) // if we've swapped in this time, we won't bother checking anything about it.
+				if (sl.Waiting) return;
+
+				// IntPtr handle = IntPtr.Zero; // hwnd arg already has this
+				// handle = GetForegroundWindow();
+
+				try
 				{
-					foreground_counter--;
-					// Log.Verbose("<Foreground> {0} apps in foreground, we're late to the party.", old);
-					return;
-				}
-			}
+					LastSwap = DateTimeOffset.UtcNow;
 
-			// IntPtr handle = IntPtr.Zero; // hwnd arg already has this
-			// handle = GetForegroundWindow();
-
-			try
-			{
-				var activewindowev = new WindowChangedArgs()
-				{
-					hWnd = hwnd,
-					Title = string.Empty,
-					Fullscreen = Trinary.Nonce,
-				};
-
-				NativeMethods.GetWindowThreadProcessId(hwnd, out int pid);
-
-				bool fs = Fullscreen(hwnd);
-				activewindowev.Fullscreen = fs ? Trinary.True : Trinary.False;
-
-				Foreground = activewindowev.Id = pid;
-				HangTick = 0;
-
-				if (!ProcessManager.SystemProcessId(pid))
-				{
-
-					try
+					var activewindowev = new WindowChangedArgs()
 					{
-						var proc = Process.GetProcessById(activewindowev.Id);
-						activewindowev.Process = proc;
-						activewindowev.Executable = proc.ProcessName;
-					}
-					catch (ArgumentException)
+						hWnd = hwnd,
+						Title = string.Empty,
+						Fullscreen = Trinary.Nonce,
+					};
+
+					NativeMethods.GetWindowThreadProcessId(hwnd, out int pid);
+
+					bool fs = Fullscreen(hwnd);
+					activewindowev.Fullscreen = fs ? Trinary.True : Trinary.False;
+
+					Foreground = activewindowev.Id = pid;
+					HangTick = 0;
+
+					if (!ProcessManager.SystemProcessId(pid))
 					{
-						// Process already gone
-						return;
+
+						try
+						{
+							var proc = Process.GetProcessById(activewindowev.Id);
+							activewindowev.Process = proc;
+							activewindowev.Executable = proc.ProcessName;
+						}
+						catch (ArgumentException)
+						{
+							// Process already gone
+							return;
+						}
+
+						if (DebugForeground && ShowInaction)
+							Log.Debug("<Foreground> Active #" + activewindowev.Id + ": " + activewindowev.Title);
+					}
+					else
+					{
+						// shouldn't happen, but who knows?
+						activewindowev.Process = null;
+						activewindowev.Executable = string.Empty;
 					}
 
-					if (DebugForeground && ShowInaction)
-						Log.Debug("<Foreground> Active #" + activewindowev.Id + ": " + activewindowev.Title);
-				}
-				else
-				{
-					// shouldn't happen, but who knows?
-					activewindowev.Process = null;
-					activewindowev.Executable = string.Empty;
-				}
+					if (sl.Waiting) return;
 
-				LastSwap = DateTimeOffset.UtcNow;
-				ActiveChanged?.Invoke(this, activewindowev);
-			}
-			catch (ObjectDisposedException) { Statistics.DisposedAccesses++; } // NOP
-			catch (Exception ex)
-			{
-				Logging.Stacktrace(ex);
-				return; // HACK, WndProc probably shouldn't throw
-			}
-			finally
-			{
-				lock (foregroundswap_lock)
+					ActiveChanged?.Invoke(this, activewindowev);
+				}
+				catch (ObjectDisposedException) { Statistics.DisposedAccesses++; } // NOP
+				catch (Exception ex)
 				{
-					foreground_counter--;
+					Logging.Stacktrace(ex);
+					return; // HACK, WndProc probably shouldn't throw
 				}
 			}
 		}
