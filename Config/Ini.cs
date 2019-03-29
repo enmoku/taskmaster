@@ -29,7 +29,6 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
-using MKAh.Ini.Interface;
 
 namespace MKAh
 {
@@ -239,7 +238,7 @@ namespace MKAh
 					Setting value = null;
 					try
 					{
-						value = GetIniValue(line);
+						value = ParseValue(line);
 						section.Add(value);
 					}
 					catch (FormatException ex)
@@ -260,7 +259,7 @@ namespace MKAh
 			public Section this[int index]
 			{
 				get => Items[index];
-				set => Items[index] = value;
+				set => Insert(index, value);
 			}
 
 			public Section this[string name]
@@ -292,19 +291,6 @@ namespace MKAh
 				}
 			}
 			#endregion
-
-			public bool TryRemove(int i)
-			{
-				try
-				{
-					Items.RemoveAt(i);
-					return true;
-				}
-				catch
-				{
-					return false;
-				}
-			}
 
 			public bool TryRemove(string name)
 			{
@@ -339,7 +325,10 @@ namespace MKAh
 				return (value != null);
 			}
 
-			Setting GetIniValue(string source)
+			/// <summary>
+			/// Parse .INI line other than section.
+			/// </summary>
+			Setting ParseValue(string source)
 			{
 				int CommentStart = source.IndexOfAny(CommentChars);
 				int KeyValueSeparator = source.IndexOf(Constant.KeyValueSeparator);
@@ -711,6 +700,8 @@ namespace MKAh
 		{
 			public SettingType Type { get; private set; } = SettingType.Generic;
 
+			public int Index { get; internal set; } = 0;
+
 			public Setting(SettingType type = SettingType.Generic)
 			{
 				ResetEscapedCache();
@@ -1005,12 +996,17 @@ namespace MKAh
 
 		public class Section : Interface.Value, Interface.IContainer<Setting>, IEnumerable<Setting>
 		{
+			public Section(string name, int index = 0)
+			{
+				Name = name;
+				Index = index;
+			}
 			public List<Setting> Items { get; private set; } = new List<Setting>();
 			public int ItemCount => Items.Count;
 
 			HashSet<string> hUniqueKeys = null;
 
-			public int Index { get; private set; } = 0;
+			public int Index { get; internal set; } = 0;
 
 			bool _uniqueKeys = false;
 			public bool UniqueKeys
@@ -1027,17 +1023,11 @@ namespace MKAh
 				}
 			}
 
-			public Section(string name, int index = 0)
-			{
-				Name = name;
-				Index = index;
-			}
-
 			#region Indexers
 			public Setting this[int index]
 			{
 				get => Items[index];
-				set => Items.Insert(index, value);
+				set => Insert(index, value);
 			}
 
 			public Setting this[string key]
@@ -1062,9 +1052,7 @@ namespace MKAh
 						if (UniqueKeys) Remove(result);
 					}
 					else
-					{
 						Add(value);
-					}
 				}
 			}
 			#endregion
@@ -1085,9 +1073,14 @@ namespace MKAh
 			public bool Contains(string key) => TryGet(key, out _);
 
 			public void Add(Setting value) => Items.Add(value);
-			public void Insert(int index, Setting value) => Items.Insert(index, value);
+			public void Insert(int index, Setting value)
+			{
+				value.Index = index;
+				Items.Insert(index, value);
+			}
 			public bool Remove(Setting value) => Items.Remove(value);
 			public void RemoveAt(int index) => Items.RemoveAt(index);
+
 			public bool TryRemove(string key)
 			{
 				if (TryGet(key, out var value))

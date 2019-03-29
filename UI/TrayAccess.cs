@@ -26,6 +26,8 @@
 
 using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
+using System.Collections.Specialized;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
@@ -35,6 +37,8 @@ using Serilog;
 
 namespace Taskmaster.UI
 {
+	using static Taskmaster;
+
 	sealed public class TrayShownEventArgs : EventArgs
 	{
 		public bool Visible = false;
@@ -60,21 +64,25 @@ namespace Taskmaster.UI
 			: base()
 		{
 			// BUILD UI
-			Tray = new NotifyIcon
-			{
-				Text = System.Windows.Forms.Application.ProductName + "!", // Tooltip so people know WTF I am.
-				Icon = System.Drawing.Icon.ExtractAssociatedIcon(System.Reflection.Assembly.GetExecutingAssembly().Location) // is this really the best way?
-			};
+			IconCache = System.Drawing.Icon.ExtractAssociatedIcon(System.Reflection.Assembly.GetExecutingAssembly().Location);
+
+			Tray = new NotifyIcon {
+				Text = $"{System.Windows.Forms.Application.ProductName}!",
+				Icon = IconCache,
+			}; // Tooltip so people know WTF I am.
+
+			IconCacheMap.Add(0, IconCache);
+
 			Tray.BalloonTipText = Tray.Text;
 			Tray.Disposed += (_, _ea) => Tray = null;
 
-			if (Taskmaster.Trace) Log.Verbose("Generating tray icon.");
+			if (Trace) Log.Verbose("Generating tray icon.");
 
 			var ms = new ContextMenuStrip();
-			var menu_windowopen = new ToolStripMenuItem("Open main window", null, (_, _ea) => Taskmaster.ShowMainWindow());
-			var menu_volumeopen = new ToolStripMenuItem("Open volume meter", null, (_, _ea) => Taskmaster.BuildVolumeMeter())
+			var menu_windowopen = new ToolStripMenuItem("Open main window", null, (_, _ea) => ShowMainWindow());
+			var menu_volumeopen = new ToolStripMenuItem("Open volume meter", null, (_, _ea) => BuildVolumeMeter())
 			{
-				Enabled = Taskmaster.AudioManagerEnabled,
+				Enabled = AudioManagerEnabled,
 			};
 			var menu_rescan = new ToolStripMenuItem(HumanReadable.System.Process.Rescan, null, (o, s) => RescanRequest?.Invoke(this, EventArgs.Empty));
 			var menu_configuration = new ToolStripMenuItem("Configuration");
@@ -83,6 +91,7 @@ namespace Taskmaster.UI
 
 			bool runatstartsch = RunAtStartScheduler(enabled: false, dryrun: true);
 			menu_runatstart_sch.Checked = runatstartsch;
+
 			Log.Information("<Core> Run-at-start scheduler: " + (runatstartsch ? "Found" : "Missing"));
 
 			menu_configuration.DropDownItems.Add(new ToolStripMenuItem("Power", null, (_, _ea) => Config.PowerConfigWindow.Reveal(powermanager, centerOnScreen:true)));
@@ -93,10 +102,10 @@ namespace Taskmaster.UI
 			menu_configuration.DropDownItems.Add(new ToolStripSeparator());
 			menu_configuration.DropDownItems.Add(menu_runatstart_sch);
 			menu_configuration.DropDownItems.Add(new ToolStripSeparator());
-			menu_configuration.DropDownItems.Add(new ToolStripMenuItem("Open in file manager", null, (_, _ea) => Process.Start(Taskmaster.DataPath)));
+			menu_configuration.DropDownItems.Add(new ToolStripMenuItem("Open in file manager", null, (_, _ea) => Process.Start(DataPath)));
 
-			var menu_restart = new ToolStripMenuItem("Restart", null, (_s, _ea) => Taskmaster.ConfirmExit(restart: true));
-			var menu_exit = new ToolStripMenuItem("Exit", null, (_s, _ea) => Taskmaster.ConfirmExit(restart: false));
+			var menu_restart = new ToolStripMenuItem("Restart", null, (_s, _ea) => ConfirmExit(restart: true));
+			var menu_exit = new ToolStripMenuItem("Exit", null, (_s, _ea) => ConfirmExit(restart: false));
 
 			ms.Items.Add(menu_windowopen);
 			ms.Items.Add(menu_volumeopen);
@@ -105,7 +114,7 @@ namespace Taskmaster.UI
 			ms.Items.Add(new ToolStripSeparator());
 			ms.Items.Add(menu_configuration);
 
-			if (Taskmaster.PowerManagerEnabled)
+			if (PowerManagerEnabled)
 			{
 				power_auto = new ToolStripMenuItem(HumanReadable.Hardware.Power.AutoAdjust, null, SetAutoPower) { Checked = false, CheckOnClick = true, Enabled = false };
 
@@ -128,14 +137,12 @@ namespace Taskmaster.UI
 			ms.Items.Add(menu_exit);
 			Tray.ContextMenuStrip = ms;
 
-			if (Taskmaster.Trace) Log.Verbose("Tray menu ready");
+			if (Trace) Log.Verbose("Tray menu ready");
 
-			using (var cfg = Taskmaster.Config.Load(Taskmaster.CoreConfigFilename).BlockUnload())
+			using (var cfg = Taskmaster.Config.Load(CoreConfigFilename).BlockUnload())
 			{
-				var exsec = cfg.Config["Experimental"];
-				int exdelay = exsec.Get("Explorer Restart")?.IntValue ?? 0;
-				if (exdelay > 0) ExplorerRestartHelpDelay = TimeSpan.FromSeconds(exdelay.Min(5));
-				else ExplorerRestartHelpDelay = null;
+				int exdelay = cfg.Config["Experimental"].Get("Explorer Restart")?.IntValue ?? 0;
+				ExplorerRestartHelpDelay = exdelay > 0 ? (TimeSpan?)TimeSpan.FromSeconds(exdelay.Min(5)) : null;
 			}
 
 			RegisterExplorerExit();
@@ -157,17 +164,45 @@ namespace Taskmaster.UI
 
 			ms.VisibleChanged += MenuVisibilityChangedEvent;
 
-			if (Taskmaster.Trace) Log.Verbose("<Tray> Initialized");
+			if (Trace) Log.Verbose("<Tray> Initialized");
 
-			Taskmaster.DisposalChute.Push(this);
+			DisposalChute.Push(this);
+		}
+
+		System.Drawing.Icon IconCache = null;
+		System.Drawing.Font IconFont = new System.Drawing.Font("Terminal", 8);
+		System.Drawing.SolidBrush IconBursh = new System.Drawing.SolidBrush(System.Drawing.Color.White);
+
+		OrderedDictionary IconCacheMap = new OrderedDictionary();
+
+		void UpdateIcon(int count = 0)
+		{
+			System.Drawing.Icon nicon = null;
+
+			nicon = IconCacheMap[count] as System.Drawing.Icon;
+			if (nicon == null)
+			{
+				using (var bmp = new System.Drawing.Bitmap(32, 32))
+				using (var graphics = System.Drawing.Graphics.FromImage(bmp))
+				{
+					graphics.DrawIcon(IconCache, 0, 0);
+					graphics.DrawString(count.ToString(), IconFont, IconBursh, 1, 2);
+
+					nicon = System.Drawing.Icon.FromHandle(bmp.GetHicon());
+
+					IconCacheMap.Add(count, nicon);
+
+					// TODO: Remove items based on least recently used with use count weight
+				}
+			}
+
+			Tray.Icon = nicon;
 		}
 
 		void MenuVisibilityChangedEvent(object sender, EventArgs _ea)
 		{
 			if (sender is ContextMenuStrip ms)
-			{
 				TrayMenuShown?.Invoke(null, new TrayShownEventArgs() { Visible = ms.Visible });
-			}
 		}
 
 		void SessionEndingEvent(object _, Microsoft.Win32.SessionEndingEventArgs ea)
@@ -176,8 +211,8 @@ namespace Taskmaster.UI
 			// is this safe?
 			Log.Information("<OS> Session end signal received.");
 
-			Taskmaster.ExitCleanup();
-			Taskmaster.UnifiedExit();
+			ExitCleanup();
+			UnifiedExit();
 		}
 
 		int hotkeymodifiers = (int)NativeMethods.KeyModifier.Control | (int)NativeMethods.KeyModifier.Shift | (int)NativeMethods.KeyModifier.Alt;
@@ -228,27 +263,27 @@ namespace Taskmaster.UI
 			{
 				Keys key = (Keys)(((int)m.LParam >> 16) & 0xFFFF);
 				//NativeMethods.KeyModifier modifiers = (NativeMethods.KeyModifier)((int)m.LParam & 0xFFFF);
-				int modifiers =(int)m.LParam & 0xFFFF;
-				int id = m.WParam.ToInt32(); // registered hotkey id
+				//int modifiers =(int)m.LParam & 0xFFFF;
+				int hotkeyId = m.WParam.ToInt32();
 
-				if (modifiers != hotkeymodifiers)
-					Log.Debug("<Global> Received unexpected modifier keys: " + modifiers + " instead of " + hotkeymodifiers);
+				//if (modifiers != hotkeymodifiers)
+					//Log.Debug($"<Global> Received unexpected modifier keys: {modifiers} instead of {hotkeymodifiers}");
 
-				switch (key)
+				switch (hotkeyId)
 				{
-					case Keys.M:
-						if (Taskmaster.Trace) Log.Verbose("<Global> Hotkey ctrl-alt-shift-m detected!!!");
+					case 0:
+						if (Trace) Log.Verbose("<Global> Hotkey ctrl-alt-shift-m detected!!!");
 						Task.Run(new Action(async () =>
 						{
-							int ignorepid = Taskmaster.activeappmonitor?.Foreground ?? -1;
+							int ignorepid = activeappmonitor?.Foreground ?? -1;
 							Log.Information("<Global> Hotkey detected; Freeing memory while ignoring foreground"+
 								(ignorepid > 4 ? $" (#{ignorepid})" : string.Empty) + " if possible.");
 							await processmanager.FreeMemory(ignorePid: ignorepid).ConfigureAwait(false);
 						})).ConfigureAwait(false);
 						m.Result = IntPtr.Zero;
 						break;
-					case Keys.R:
-						if (Taskmaster.Trace) Log.Verbose("<Global> Hotkey ctrl-alt-shift-r detected!!!");
+					case 1:
+						if (Trace) Log.Verbose("<Global> Hotkey ctrl-alt-shift-r detected!!!");
 						Log.Information("<Global> Hotkey detected; Hastening next scan.");
 						processmanager?.HastenScan(5);
 						m.Result = IntPtr.Zero;
@@ -273,7 +308,7 @@ namespace Taskmaster.UI
 				Task.Run(() => {
 					try
 					{
-						Taskmaster.ExitCleanup();
+						ExitCleanup();
 					}
 					finally
 					{
@@ -283,7 +318,7 @@ namespace Taskmaster.UI
 						}
 						finally
 						{
-							Taskmaster.UnifiedExit();
+							UnifiedExit();
 						}
 					}
 				});
@@ -366,15 +401,14 @@ namespace Taskmaster.UI
 		{
 			try
 			{
-				if (Taskmaster.DebugPower)
-					Log.Debug("<Power> Setting behaviour to manual.");
+				if (DebugPower) Log.Debug("<Power> Setting behaviour to manual.");
 
 				powermanager.SetBehaviour(PowerManager.PowerBehaviour.Manual);
 
 				power_manual.Checked = true;
 				power_auto.Checked = false;
 
-				if (Taskmaster.DebugPower) Log.Debug("<Power> Setting manual mode: " + mode.ToString());
+				if (DebugPower) Log.Debug("<Power> Setting manual mode: " + mode.ToString());
 
 				// powermanager.Restore(0).Wait(); // already called by setBehaviour as necessary
 				powermanager?.SetMode(mode, new Cause(OriginType.User));
@@ -390,19 +424,17 @@ namespace Taskmaster.UI
 
 		void ShowWindow(object _, MouseEventArgs e)
 		{
-			if (Taskmaster.Trace) Log.Verbose("Tray Click");
+			if (Trace) Log.Verbose("Tray Click");
 
 			if (e.Button == MouseButtons.Left)
-			{
-				Taskmaster.ShowMainWindow();
-			}
+				ShowMainWindow();
 		}
 
 		void UnloseWindow(object _, MouseEventArgs e)
 		{
 			if (e.Button == MouseButtons.Left)
 			{
-				Taskmaster.ShowMainWindow();
+				ShowMainWindow();
 
 				try
 				{
@@ -459,11 +491,11 @@ namespace Taskmaster.UI
 
 				if (KnownExplorerInstances.Count > 0)
 				{
-					if (Taskmaster.Trace) Log.Verbose("<Tray> Explorer (#" + processId + ") exited but is not the last known explorer instance.");
+					if (Trace) Log.Verbose($"<Tray> Explorer (#{processId}) exited but is not the last known explorer instance.");
 					return;
 				}
 
-				Log.Warning("<Tray> Explorer (#" + processId + ") crash detected!");
+				Log.Warning($"<Tray> Explorer (#{processId}) crash detected!");
 
 				Log.Information("<Tray> Giving explorer some time to recover on its own...");
 
@@ -521,7 +553,7 @@ namespace Taskmaster.UI
 		{
 			try
 			{
-				if (Taskmaster.Trace) Log.Verbose("<Tray> Registering Explorer crash monitor.");
+				if (Trace) Log.Verbose("<Tray> Registering Explorer crash monitor.");
 				// this is for dealing with notify icon disappearing on explorer.exe crash/restart
 
 				if (procs == null || procs.Length == 0) procs = ExplorerInstances;
@@ -538,7 +570,7 @@ namespace Taskmaster.UI
 						{
 							if (!info.Path.StartsWith(Environment.GetFolderPath(Environment.SpecialFolder.Windows), StringComparison.InvariantCultureIgnoreCase))
 							{
-								if (Taskmaster.Trace) Log.Verbose("<Tray> Explorer (#" + info.Id + ") not in system root.");
+								if (Taskmaster.Trace) Log.Verbose($"<Tray> Explorer (#{info.Id}) not in system root.");
 								continue;
 							}
 						}
@@ -583,7 +615,7 @@ namespace Taskmaster.UI
 			{
 				DisposingOrDisposed = true;
 
-				if (Taskmaster.Trace) Log.Verbose("Disposing tray...");
+				if (Trace) Log.Verbose("Disposing tray...");
 
 				UnregisterGlobalHotkeys();
 
@@ -644,7 +676,7 @@ namespace Taskmaster.UI
 					if (++attempts >= 5)
 					{
 						Log.Fatal("<Tray> Failure to become visible after 5 attempts. Exiting to avoid ghost status.");
-						Taskmaster.UnifiedExit();
+						UnifiedExit();
 					}
 				}
 			}
@@ -716,22 +748,19 @@ namespace Taskmaster.UI
 					rvq = procfind.WaitForExit(30_000);
 
 					procfind.Refresh(); // unnecessary?
-					if (!procfind.HasExited)
+					if (procfind.HasExited) break;
+
+					if (!warned)
 					{
-						if (!warned)
-						{
-							Log.Debug("<Tray> Task Scheduler is taking long time to respond.");
-							warned = true;
-						}
+						Log.Debug("<Tray> Task Scheduler is taking long time to respond.");
+						warned = true;
 					}
-					else
-						break;
 				}
 
 				if (rvq && procfind.ExitCode == 0) found = true;
 				else if (!procfind.HasExited) procfind.Kill();
 
-				if (Taskmaster.Trace) Log.Debug("<Tray> Scheduled task " + (found ? "" : "NOT ") + "found.");
+				if (Trace) Log.Debug($"<Tray> Scheduled task " + (found ? "" : "NOT ") + "found.");
 
 				if (dryrun) return found; // this is bad, but fits the following logic
 

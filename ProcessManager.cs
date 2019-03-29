@@ -80,6 +80,7 @@ namespace Taskmaster
 		public static bool DebugProcesses { get; set; } = false;
 		public static bool ShowUnmodifiedPortions { get; set; } = true;
 		public static bool ShowOnlyFinalState { get; set; } = false;
+		public static bool ShowForegroundTransitions { get; set; } = false;
 
 		/// <summary>
 		/// Watch rules
@@ -145,13 +146,15 @@ namespace Taskmaster
 		}
 
 		// TODO: Need an ID mapping
-		public ProcessController GetControllerByName(string friendlyname)
+		public bool GetControllerByName(string friendlyname, out ProcessController controller)
 		{
-			return (from prc
+			controller = (from prc
 					in Watchlist.Keys
 					where prc.FriendlyName.Equals(friendlyname, StringComparison.InvariantCultureIgnoreCase)
 					select prc)
 					.FirstOrDefault();
+
+			return controller != null;
 		}
 
 		/// <summary>
@@ -202,8 +205,6 @@ namespace Taskmaster
 			powermanager.onBehaviourChange += PowerBehaviourEvent;
 		}
 
-		string freememoryignore = null;
-
 		ConcurrentDictionary<int, int> ignorePids = new ConcurrentDictionary<int, int>();
 
 		public void Ignore(int pid) => ignorePids.TryAdd(pid, 0);
@@ -252,9 +253,7 @@ namespace Taskmaster
 
 				//await Task.Delay(0).ConfigureAwait(false);
 
-				freememoryignore = executable;
-				FreeMemoryInternal(ignorePid);
-				freememoryignore = string.Empty;
+				FreeMemoryInternal(ignorePid, executable);
 			}
 			catch (Exception ex) when (ex is NullReferenceException || ex is OutOfMemoryException) { throw; }
 			catch (Exception ex)
@@ -267,7 +266,7 @@ namespace Taskmaster
 			}
 		}
 
-		void FreeMemoryInternal(int ignorePid = -1)
+		void FreeMemoryInternal(int ignorePid = -1, string ignoreExe=null)
 		{
 			if (DisposedOrDisposing) throw new ObjectDisposedException("FreeMemoryInterval called when ProcessManager was already disposed");
 
@@ -280,7 +279,7 @@ namespace Taskmaster
 				ScanTimer?.Stop();
 				// TODO: Pause Scan until we're done
 
-				Scan(ignorePid, PageToDisk: true); // TODO: Call for this to happen otherwise
+				Scan(ignorePid, ignoreExe, PageToDisk: true); // TODO: Call for this to happen otherwise
 				if (cts.IsCancellationRequested) return;
 
 				// TODO: Wait a little longer to allow OS to Actually page stuff. Might not matter?
@@ -391,7 +390,7 @@ namespace Taskmaster
 		int ScanFoundProcs = 0;
 
 		int scan_lock = 0;
-		bool Scan(int ignorePid = -1, bool PageToDisk = false)
+		bool Scan(int ignorePid = -1, string ignoreExe=null, bool PageToDisk = false)
 		{
 			if (DisposedOrDisposing) throw new ObjectDisposedException("Scan called when ProcessManager was already disposed");
 			if (cts.IsCancellationRequested) return false;
@@ -418,93 +417,7 @@ namespace Taskmaster
 				List<ProcessEx> pageList = PageToDisk ? new List<ProcessEx>() : null;
 
 				foreach (var process in procs)
-				{
-					cts.Token.ThrowIfCancellationRequested();
-
-					string name = string.Empty;
-					int pid = -1;
-
-					try
-					{
-						name = process.ProcessName;
-						pid = process.Id;
-
-						if (ScanBlockList.TryGetValue(pid, out var found))
-						{
-							if (found.TimeTo(DateTimeOffset.UtcNow).TotalSeconds < 5d)
-								continue;
-							ScanBlockList.TryRemove(pid, out _);
-						}
-
-						if (IgnoreProcessID(pid) || IgnoreProcessName(name) || pid == SelfPID)
-						{
-							if (ShowInaction && DebugScan)
-								Log.Debug($"<Process/Scan> Ignoring {name} (#{pid})");
-							continue;
-						}
-
-						if (DebugScan) Log.Verbose($"<Process> Checking: {name} (#{pid})");
-
-						ProcessEx info = null;
-
-						if (WaitForExitList.TryGetValue(pid, out info))
-						{
-							if (Trace && DebugProcesses)
-								Debug.WriteLine($"Re-using old ProcessEx: {info.Name} (#{info.Id})");
-							info.Process.Refresh();
-							if (info.Process.HasExited) // Stale, for some reason still kept
-							{
-								if (Trace && DebugProcesses)
-									Debug.WriteLine("Re-using old ProcessEx - except not, stale");
-								WaitForExitList.TryRemove(pid, out _);
-								info = null;
-							}
-							else
-								info.State = ProcessHandlingState.Triage; // still valid
-						}
-
-						if (info != null || ProcessUtility.GetInfo(pid, out info, process, null, name, null, getPath: true))
-						{
-							info.Timer = Stopwatch.StartNew();
-
-							ProcessTriage(info);
-
-							if (PageToDisk && (info.Controller?.AllowPaging ?? true))
-							{
-								try
-								{
-									if (!string.IsNullOrEmpty(freememoryignore) && info.Name.Equals(freememoryignore, StringComparison.InvariantCultureIgnoreCase))
-										continue;
-
-									if (DebugMemory) Log.Debug($"<Process> Paging: {info.Name} (#{info.Id})");
-
-									pageList?.Add(info);
-								}
-								catch { } //  ignore
-							}
-
-							HandlingStateChange?.Invoke(this, new HandlingStateChangeEventArgs(info));
-
-							//if (!info.Exited) loaderOffload.Add(info);
-						}
-					}
-					catch (Exception ex) when (ex is NullReferenceException || ex is OutOfMemoryException) { throw; }
-					catch (OperationCanceledException) { throw; }
-					catch (InvalidOperationException)
-					{
-						if (ShowInaction && DebugScan)
-							Log.Debug($"<Process/Scan> Failed to retrieve info for process: {name} (#{pid})");
-					}
-					catch (AggregateException ex)
-					{
-						System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(ex.InnerException ?? ex).Throw();
-						throw;
-					}
-					catch (Exception ex)
-					{
-						Logging.Stacktrace(ex);
-					}
-				}
+					ScanTriage(process, PageToDisk);
 
 				//SystemLoaderAnalysis(loaderOffload);
 
@@ -553,7 +466,7 @@ namespace Taskmaster
 			return true;
 		}
 
-		private void ScanTriage(Process process, bool freememory)
+		private void ScanTriage(Process process, bool PageToDisk=false)
 		{
 			cts.Token.ThrowIfCancellationRequested();
 
@@ -567,15 +480,13 @@ namespace Taskmaster
 
 				if (ScanBlockList.TryGetValue(pid, out var found))
 				{
-					if (found.TimeTo(DateTimeOffset.UtcNow).TotalSeconds < 5d)
-						return;
+					if (found.TimeTo(DateTimeOffset.UtcNow).TotalSeconds < 5d) return;
 					ScanBlockList.TryRemove(pid, out _);
 				}
 
 				if (IgnoreProcessID(pid) || IgnoreProcessName(name) || pid == SelfPID)
 				{
-					if (ShowInaction && DebugScan)
-						Log.Debug($"<Process/Scan> Ignoring {name} (#{pid})");
+					if (ShowInaction && DebugScan) Log.Debug($"<Process/Scan> Ignoring {name} (#{pid})");
 					return;
 				}
 
@@ -585,13 +496,11 @@ namespace Taskmaster
 
 				if (WaitForExitList.TryGetValue(pid, out info))
 				{
-					if (Trace && DebugProcesses)
-						Debug.WriteLine($"Re-using old ProcessEx: {info.Name} (#{info.Id})");
+					if (Trace && DebugProcesses) Debug.WriteLine($"Re-using old ProcessEx: {info.Name} (#{info.Id})");
 					info.Process.Refresh();
 					if (info.Process.HasExited) // Stale, for some reason still kept
 					{
-						if (Trace && DebugProcesses)
-							Debug.WriteLine("Re-using old ProcessEx - except not, stale");
+						if (Trace && DebugProcesses) Debug.WriteLine("Re-using old ProcessEx - except not, stale");
 						WaitForExitList.TryRemove(pid, out _);
 						info = null;
 					}
@@ -605,17 +514,15 @@ namespace Taskmaster
 
 					ProcessTriage(info);
 
-					if (freememory)
+					if (PageToDisk)
 					{
-						MKAh.Utility.DiscardExceptions(() =>
+						try
 						{
-							if (!string.IsNullOrEmpty(freememoryignore) && info.Name.Equals(freememoryignore, StringComparison.InvariantCultureIgnoreCase))
-								return;
-
 							if (DebugMemory) Log.Debug($"<Process> Paging: {info.Name} (#{info.Id})");
 
 							NativeMethods.EmptyWorkingSet(info.Process.Handle); // process.Handle may throw which we don't care about
-						});
+						}
+						catch { } // don't care
 					}
 
 					HandlingStateChange?.Invoke(this, new HandlingStateChangeEventArgs(info));
@@ -874,9 +781,11 @@ namespace Taskmaster
 				DebugProcesses = dbgsec.Get("Processes")?.BoolValue ?? false;
 
 				var logsec = corecfg.Config["Logging"];
-				ShowUnmodifiedPortions = logsec.GetOrSet("Show unmodified portions", false, out modified).BoolValue;
+				ShowUnmodifiedPortions = logsec.GetOrSet("Show unmodified portions", ShowUnmodifiedPortions, out modified).BoolValue;
 				dirtyconfig |= modified;
-				ShowOnlyFinalState = logsec.GetOrSet("Show only final state", false, out modified).BoolValue;
+				ShowOnlyFinalState = logsec.GetOrSet("Show only final state", ShowOnlyFinalState, out modified).BoolValue;
+				dirtyconfig |= modified;
+				ShowForegroundTransitions = logsec.GetOrSet("Foreground transitions", ShowForegroundTransitions, out modified).BoolValue;
 				dirtyconfig |= modified;
 
 				if (!IgnoreSystem32Path) Log.Warning($"<Process> System32 ignore disabled.");
@@ -1153,10 +1062,7 @@ namespace Taskmaster
 			}
 		}
 
-		void ProcessModifiedProxy(object sender, ProcessModificationEventArgs ea)
-		{
-			ProcessModified?.Invoke(sender, ea);
-		}
+		void ProcessModifiedProxy(object sender, ProcessModificationEventArgs ea) => ProcessModified?.Invoke(sender, ea);
 
 		void ProcessWaitingExitProxy(object _, ProcessModificationEventArgs ea)
 		{
@@ -1326,8 +1232,7 @@ namespace Taskmaster
 			Process process = ev.Process;
 			try
 			{
-				if (DebugForeground)
-					Log.Verbose("<Process> Foreground Received: #" + ev.Id);
+				if (DebugForeground) Log.Verbose("<Process> Foreground Received: #" + ev.Id);
 
 				if (PreviousForegroundInfo != null)
 				{
@@ -1356,8 +1261,7 @@ namespace Taskmaster
 					if (info.ForegroundWait)
 					{
 						var prc = info.Controller;
-						if (Trace && DebugForeground)
-							Log.Debug($"[{prc.FriendlyName}] {info.Name} (#{info.Id}) on foreground!");
+						if (Trace && DebugForeground) Log.Debug($"[{prc.FriendlyName}] {info.Name} (#{info.Id}) on foreground!");
 
 						if (prc.Foreground != ForegroundMode.Ignore) prc.Resume(info);
 
@@ -1370,8 +1274,7 @@ namespace Taskmaster
 					}
 				}
 
-				if (DebugForeground && Trace)
-					Log.Debug("<Process> NULLING PREVIOUS FOREGRDOUND");
+				if (DebugForeground && Trace) Log.Debug("<Process> NULLING PREVIOUS FOREGRDOUND");
 
 				PreviousForegroundInfo = null;
 				PreviousForegroundController = null;
@@ -1412,8 +1315,7 @@ namespace Taskmaster
 				if (info.Process.HasExited) // can throw
 				{
 					info.State = ProcessHandlingState.Exited;
-					if (ShowInaction && DebugProcesses)
-						Log.Verbose(info.Name + " (#" + info.Id + ") has already exited.");
+					if (ShowInaction && DebugProcesses) Log.Verbose(info.Name + " (#" + info.Id + ") has already exited.");
 					return false; // return ProcessState.Invalid;
 				}
 			}
@@ -1435,8 +1337,7 @@ namespace Taskmaster
 
 			if (IgnoreSystem32Path && info.Path.StartsWith(Environment.GetFolderPath(Environment.SpecialFolder.System)))
 			{
-				if (ShowInaction && DebugProcesses)
-					Log.Debug("<Process/Path> " + info.Name + " (#" + info.Id + ") in System32, ignoring");
+				if (ShowInaction && DebugProcesses) Log.Debug("<Process/Path> " + info.Name + " (#" + info.Id + ") in System32, ignoring");
 				return false;
 			}
 
@@ -1862,10 +1763,7 @@ namespace Taskmaster
 
 				pid = Convert.ToInt32(targetInstance.Properties["Handle"].Value as string);
 
-				if (pid > 4)
-				{
-					ScanBlockList.TryRemove(pid, out _);
-				}
+				if (pid > 4) ScanBlockList.TryRemove(pid, out _);
 			}
 			catch (Exception ex)
 			{

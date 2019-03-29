@@ -37,6 +37,7 @@ using Taskmaster.Events;
 
 namespace Taskmaster.UI
 {
+	using System.Text;
 	using static Taskmaster;
 
 	// public class MainWindow : System.Windows.Window; // TODO: WPF
@@ -327,12 +328,12 @@ namespace Taskmaster.UI
 		void UpdateAudioInputs()
 		{
 			AudioInputs.BeginUpdate();
+
 			// TODO: mark default device in list
 			AudioInputs.Items.Clear();
+
 			foreach (var dev in micmon.Devices)
-			{
 				AddAudioInput(dev);
-			}
 
 			AlternateListviewRowColors(AudioInputs, AlternateRowColorsDevices);
 
@@ -952,41 +953,25 @@ namespace Taskmaster.UI
 		void CopyIPv6AddressToClipboard(object _, EventArgs _ea)
 		{
 			if (NetworkDevices.SelectedItems.Count == 1)
-			{
-				try
-				{
-					var li = NetworkDevices.SelectedItems[0];
-					var ipv6addr = "[" + li.SubItems[IPv6Column].Text + "]";
-					Clipboard.SetText(ipv6addr, TextDataFormat.UnicodeText);
-				}
-				catch (Exception ex) { Logging.Stacktrace(ex); }
-			}
+				Clipboard.SetText($"[{NetworkDevices.SelectedItems[0].SubItems[IPv6Column].Text}]", TextDataFormat.UnicodeText);
 		}
 
 		void CopyIfaceToClipboard(object _, EventArgs _ea)
 		{
 			if (NetworkDevices.SelectedItems.Count == 1)
-			{
-				string data = netmonitor.GetDeviceData(NetworkDevices.SelectedItems[0].SubItems[0].Text);
-				Clipboard.SetText(data, TextDataFormat.UnicodeText);
-			}
+				Clipboard.SetText(netmonitor.GetDeviceData(NetworkDevices.SelectedItems[0].SubItems[0].Text), TextDataFormat.UnicodeText);
 		}
 
 		void CopyLogToClipboard(object _, EventArgs _ea)
 		{
-			try
-			{
-				var sbs = new System.Text.StringBuilder(256);
+			if (LogList.SelectedItems.Count == 0) return;
 
-				foreach (ListViewItem item in LogList.SelectedItems)
-					sbs.Append(item.SubItems[0].Text);
+			var sbs = new System.Text.StringBuilder(256);
 
-				if (sbs.Length > 0)
-				{
-					Clipboard.SetText(sbs.ToString(), TextDataFormat.UnicodeText);
-				}
-			}
-			catch (Exception ex) { Logging.Stacktrace(ex); }
+			foreach (ListViewItem item in LogList.SelectedItems)
+				sbs.Append(item.SubItems[0].Text);
+
+			Clipboard.SetText(sbs.ToString(), TextDataFormat.UnicodeText);
 		}
 
 		TabControl tabLayout = null;
@@ -2691,15 +2676,21 @@ namespace Taskmaster.UI
 			var now = DateTime.Now;
 			var age = (now - builddate).TotalDays;
 
-			SimpleMessageBox.ShowModal("About Taskmaster!",
-					Application.ProductName +
-					"\nVersion: " + Application.ProductVersion +
-					"\nBuilt: " + $"{builddate.ToString("yyyy/MM/dd HH:mm")} [{age:N0} days old]" +
-					"\n\nCreated by M.A., 2016–2019" +
-					"\n\nAt Github: " + GitURL +
-					"\nAt Itch.io: " + ItchURL +
-					"\n\nFree system maintenance and de-obnoxifying app.\n\nAvailable under MIT license.",
-					SimpleMessageBox.Buttons.OK);
+			var sbs = new StringBuilder()
+				.AppendLine(Application.ProductName)
+				.Append("Version: ").Append(Application.ProductVersion).AppendLine()
+				.Append("Built: ").Append($"{builddate.ToString("yyyy/MM/dd HH:mm")}").Append(" [").Append($"{age:N0}").Append(" days old]").AppendLine()
+				.AppendLine()
+				.AppendLine("Created by M.A., 2016–2019")
+				.AppendLine()
+				.Append("At Github: ").Append(GitURL).AppendLine()
+				.Append("At Itch.io: ").Append(ItchURL).AppendLine()
+				.AppendLine()
+				.AppendLine("Free system maintenance and de-obnoxifying app.")
+				.AppendLine()
+				.AppendLine("Available under MIT license.");
+
+			SimpleMessageBox.ShowModal("About Taskmaster!", sbs.ToString(), SimpleMessageBox.Buttons.OK);
 		}
 
 		Stopwatch WatchlistSearchInputTimer = new Stopwatch();
@@ -3030,14 +3021,13 @@ namespace Taskmaster.UI
 					bool fg = (ea.Info.Id == (activeappmonitor?.Foreground ?? ea.Info.Id));
 
 					ListViewItem li = null;
+					string text = fgonly ? (fg ? HumanReadable.System.Process.Foreground : HumanReadable.System.Process.Background) : "ACTIVE";
+
 					if (ExitWaitlistMap?.TryGetValue(ea.Info.Id, out li) ?? false)
 					{
-						if (fgonly)
-							li.SubItems[2].Text = fg ? HumanReadable.System.Process.Foreground : HumanReadable.System.Process.Background;
-						else
-							li.SubItems[2].Text = "ACTIVE";
+						li.SubItems[2].Text = text;
 
-						if (Trace && DebugForeground) Log.Debug("WaitlistHandler: " + ea.Info.Name + " = " + ea.Info.State.ToString());
+						if (Trace && DebugForeground) Log.Debug($"WaitlistHandler: {ea.Info.Name} = {ea.Info.State.ToString()}");
 
 						switch (ea.Info.State)
 						{
@@ -3062,7 +3052,7 @@ namespace Taskmaster.UI
 						li = new ListViewItem(new string[] {
 							ea.Info.Id.ToString(),
 							ea.Info.Name,
-							(fgonly ? (fg ? HumanReadable.System.Process.Foreground : HumanReadable.System.Process.Background) : "ACTIVE"),
+							text,
 							(ea.Info.PowerWait ? "FORCED" : HumanReadable.Generic.NotAvailable)
 						});
 
@@ -3107,6 +3097,10 @@ namespace Taskmaster.UI
 			}));
 		}
 
+		readonly System.Drawing.Color Reddish = System.Drawing.Color.FromArgb(255, 230, 230);
+		readonly System.Drawing.Color Greenish = System.Drawing.Color.FromArgb(240, 255, 230);
+		readonly System.Drawing.Color Orangeish = System.Drawing.Color.FromArgb(255, 250, 230);
+
 		public async void PowerLoadHandler(object _, AutoAdjustReactionEventArgs ea)
 		{
 			if (!IsHandleCreated || DisposedOrDisposing) return;
@@ -3139,14 +3133,11 @@ namespace Taskmaster.UI
 					}
 
 					if (ea.Mode == PowerInfo.PowerMode.HighPerformance)
-						li.SubItems[3].BackColor = System.Drawing.Color.FromArgb(255, 230, 230);
+						li.SubItems[3].BackColor = Reddish;
 					else if (ea.Mode == PowerInfo.PowerMode.PowerSaver)
-						li.SubItems[2].BackColor = System.Drawing.Color.FromArgb(240, 255, 230);
+						li.SubItems[2].BackColor = Greenish;
 					else
-					{
-						li.SubItems[3].BackColor = System.Drawing.Color.FromArgb(255, 250, 230);
-						li.SubItems[2].BackColor = System.Drawing.Color.FromArgb(255, 250, 230);
-					}
+						li.SubItems[3].BackColor = li.SubItems[2].BackColor = Orangeish;
 
 					// this tends to throw if this event is being handled while the window is being closed
 					if (powerbalancerlog.Items.Count > 7)
@@ -3178,9 +3169,7 @@ namespace Taskmaster.UI
 
 				if (oneitem)
 				{
-					var li = WatchlistRules.SelectedItems[0];
-					var prc = processmanager.GetControllerByName(li.SubItems[NameColumn].Text);
-					if (prc != null)
+					if (processmanager.GetControllerByName(WatchlistRules.SelectedItems[0].SubItems[NameColumn].Text, out var prc))
 					{
 						watchlistenable.Enabled = true;
 						watchlistenable.Checked = prc.Enabled;
@@ -3196,14 +3185,12 @@ namespace Taskmaster.UI
 		{
 			try
 			{
-				var oneitem = WatchlistRules.SelectedItems.Count == 1;
-				if (oneitem)
+				if (WatchlistRules.SelectedItems.Count == 1)
 				{
 					WatchlistRules.BeginUpdate();
 
 					var li = WatchlistRules.SelectedItems[0];
-					var prc = processmanager.GetControllerByName(li.SubItems[NameColumn].Text);
-					if (prc != null)
+					if (processmanager.GetControllerByName(li.SubItems[NameColumn].Text, out var prc))
 					{
 						watchlistenable.Enabled = true;
 						watchlistenable.Checked = prc.Enabled = !watchlistenable.Checked;
@@ -3233,16 +3220,11 @@ namespace Taskmaster.UI
 			{
 				try
 				{
-					var li = WatchlistRules.SelectedItems[0];
-					var name = li.SubItems[NameColumn].Text;
-					var prc = processmanager.GetControllerByName(name);
+					processmanager.GetControllerByName(WatchlistRules.SelectedItems[0].SubItems[NameColumn].Text, out var prc);
 
 					using (var editdialog = new Config.WatchlistEditWindow(prc)) // 1 = executable
 					{
-						var rv = editdialog.ShowDialog();
-						// WatchlistEditLock = 0;
-
-						if (rv == DialogResult.OK)
+						if (editdialog.ShowDialog() == DialogResult.OK)
 						{
 							UpdateWatchlistRule(prc);
 							processmanager?.HastenScan(60, sort:true);
@@ -3285,8 +3267,7 @@ namespace Taskmaster.UI
 				{
 					var li = WatchlistRules.SelectedItems[0];
 
-					var prc = processmanager.GetControllerByName(li.SubItems[NameColumn].Text);
-					if (prc != null)
+					if (processmanager.GetControllerByName(li.SubItems[NameColumn].Text, out var prc))
 					{
 
 						if (SimpleMessageBox.ShowModal("Remove watchlist item", $"Really remove '{prc.FriendlyName}'", SimpleMessageBox.Buttons.AcceptCancel)
@@ -3318,9 +3299,7 @@ namespace Taskmaster.UI
 					var name = li.SubItems[NameColumn].Text;
 					ProcessController prc = null;
 
-					prc = processmanager.GetControllerByName(name);
-
-					if (prc == null)
+					if (!processmanager.GetControllerByName(name, out prc))
 					{
 						Log.Error("[" + name + "] Not found. Something's terribly wrong.");
 						return;

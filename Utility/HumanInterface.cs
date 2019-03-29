@@ -46,36 +46,36 @@ namespace Taskmaster
 		{
 			if (time.TotalMilliseconds <= 0) return HumanReadable.Generic.NotAvailable;
 
-			var s = new StringBuilder();
+			var sbs = new StringBuilder();
 
 			var days = false;
 			if (time.Days > 0)
 			{
-				s.Append(time.Days);
-				if (time.Days == 1) s.Append(" day");
-				else s.Append(" days");
+				sbs.Append(time.Days);
+				if (time.Days == 1) sbs.Append(" day");
+				else sbs.Append(" days");
 				days = true;
 			}
 
 			var hours = false;
 			if (time.Hours > 0)
 			{
-				if (days) s.Append(", ");
-				s.Append(time.Hours);
-				if (time.Hours == 1) s.Append(" hour");
-				else s.Append(" hours");
+				if (days) sbs.Append(", ");
+				sbs.Append(time.Hours);
+				if (time.Hours == 1) sbs.Append(" hour");
+				else sbs.Append(" hours");
 				hours = true;
 			}
 
 			if (hours || days)
-				s.Append(", ");
+				sbs.Append(", ");
 
 			var min = time.Minutes + (time.Seconds / 60.0);
-			s.Append($"{min:N1}")
+			sbs.Append($"{min:N1}")
 				.Append(" minute");
-			if (min > 1 || min < 1) s.Append("s");
+			if (min > 1 || min < 1) sbs.Append("s");
 
-			return s.ToString();
+			return sbs.ToString();
 		}
 
 		const float SizeThreshold = 1.2f;

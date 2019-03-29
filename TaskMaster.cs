@@ -516,7 +516,6 @@ namespace Taskmaster
 		}
 
 		public static bool ShowProcessAdjusts { get; set; } = true;
-		public static bool ShowForegroundTransitions { get; set; } = false;
 		public static bool ShowSessionActions { get; set; } = true;
 
 		public static bool DebugAudio { get; set; } = false;
@@ -708,13 +707,10 @@ namespace Taskmaster
 				logsec["Show process adjusts"].Comment = "Show blurbs about adjusted processes.";
 				dirtyconfig |= modified;
 
-				ShowForegroundTransitions = logsec.GetOrSet("Foreground transitions", false, out modified).BoolValue;
-				dirtyconfig |= modified;
-
 				ShowSessionActions = logsec.GetOrSet("Show session actions", true, out modified).BoolValue;
 				logsec["Show session actions"].Comment = "Show blurbs about actions taken relating to sessions.";
 
-				if (optsec.TryGet("Show on start", out var sosv))
+				if (optsec.TryGet("Show on start", out var sosv)) // REPRECATED
 				{
 					ShowOnStart = sosv.BoolValue;
 					optsec.Remove(sosv);
@@ -743,9 +739,9 @@ namespace Taskmaster
 				perfsec["Background I/O mode"].Comment = "Sets own priority exceptionally low. Warning: This can make TM's UI and functionality quite unresponsive.";
 				dirtyconfig |= modified;
 
-				if (perfsec.Contains("WMI queries"))
+				if (perfsec.TryGet("WMI queries", out var wmiqsetting))
 				{
-					perfsec.TryRemove("WMI queries");
+					perfsec.Remove(wmiqsetting);
 					dirtyconfig = true;
 				}
 
@@ -1349,7 +1345,7 @@ namespace Taskmaster
 
 					Config.Flush(); // early save of configs
 
-					if (RestartCounter > 0) Log.Information("<Core> Restarted " + RestartCounter.ToString() + " time(s)");
+					if (RestartCounter > 0) Log.Information($"<Core> Restarted {RestartCounter.ToString()} time(s)");
 					startTimer.Stop();
 					Log.Information($"<Core> Initialization complete ({startTimer.ElapsedMilliseconds} ms)...");
 					startTimer = null;

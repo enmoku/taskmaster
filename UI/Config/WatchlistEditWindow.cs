@@ -35,6 +35,8 @@ using Serilog;
 
 namespace Taskmaster.UI.Config
 {
+	using static Taskmaster;
+
 	sealed public class WatchlistEditWindow : UI.UniForm
 	{
 		public ProcessController Controller;
@@ -47,10 +49,7 @@ namespace Taskmaster.UI.Config
 		{
 			DialogResult = DialogResult.Abort;
 
-			Controller = new ProcessController("Unnamed")
-			{
-				Enabled = true,
-			};
+			Controller = new ProcessController("Unnamed") { Enabled = true };
 
 			newPrc = true;
 
@@ -109,8 +108,7 @@ namespace Taskmaster.UI.Config
 
 			string newfriendlyname = friendlyName.Text.Trim();
 
-			var dprc = Taskmaster.processmanager.GetControllerByName(newfriendlyname);
-			if (dprc != null && dprc != Controller)
+			if (processmanager.GetControllerByName(newfriendlyname, out var dprc) && dprc != Controller)
 			{
 				SimpleMessageBox.ShowModal("Configuration error", "Friendly Name conflict.", SimpleMessageBox.Buttons.OK);
 				return;
@@ -208,7 +206,7 @@ namespace Taskmaster.UI.Config
 			if (desc.Text.Length > 0)
 				Controller.Description = desc.Text;
 
-			if (Taskmaster.AudioManagerEnabled && volumeMethod.SelectedIndex != 5)
+			if (AudioManagerEnabled && volumeMethod.SelectedIndex != 5)
 			{
 				switch (volumeMethod.SelectedIndex)
 				{
@@ -225,7 +223,7 @@ namespace Taskmaster.UI.Config
 
 			Controller.AffinityIdeal = Convert.ToInt32(idealAffinity.Value) - 1;
 
-			if (Taskmaster.IOPriorityEnabled)
+			if (IOPriorityEnabled)
 				Controller.IOPriority = (ioPriority?.SelectedIndex ?? 0) - 1;
 
 			Controller.LogAdjusts = logAdjusts.Checked;
@@ -465,10 +463,7 @@ namespace Taskmaster.UI.Config
 			ignorelist.Columns.Add(HumanReadable.System.Process.Executable, ignorelist.Width - 24); // arbitrary -24 to eliminate horizontal scrollbar
 
 			tooltip.SetToolTip(ignorelist, "Executables to ignore for matching with this rule.\nOnly exact matches work.\n\nRequires path to be defined.\nHas no effect if executable is defined.");
-			execName.TextChanged += (_, _ea) =>
-			{
-				ignorelist.Enabled = (execName.Text.Length == 0);
-			};
+			execName.TextChanged += (_, _ea) => ignorelist.Enabled = (execName.Text.Length == 0);
 
 			if (Controller.IgnoreList != null)
 			{
@@ -485,9 +480,7 @@ namespace Taskmaster.UI.Config
 					using (var rs = new TextInputBox("Filename:", "Ignore executable"))
 					{
 						if (rs.ShowDialog() == DialogResult.OK)
-						{
 							ignorelist.Items.Add(rs.Value);
-						}
 					}
 				}
 				catch (Exception ex)
@@ -516,10 +509,8 @@ namespace Taskmaster.UI.Config
 				Width = 180,
 			};
 			priorityClass.Items.AddRange(priorities);
-			priorityClass.SelectedIndex = 2;
-
-			priorityClass.Width = 180;
 			priorityClass.SelectedIndex = Controller.Priority?.ToInt32() ?? 5;
+
 			tooltip.SetToolTip(priorityClass, "CPU priority for the application.\nIf both increase and decrease are disabled, this has no effect.");
 
 			priorityClassMethod = new ComboBox
@@ -582,19 +573,11 @@ namespace Taskmaster.UI.Config
 
 			// ---------------------------------------------------------------------------------------------------------
 
-			var afflayout = new TableLayoutPanel()
-			{
-				ColumnCount = 1,
-				AutoSize = true,
-			};
+			var afflayout = new TableLayoutPanel() { ColumnCount = 1, AutoSize = true };
 
 			afflayout.Controls.Add(affinityMask);
 
-			var corelayout = new TableLayoutPanel()
-			{
-				ColumnCount = 8,
-				AutoSize = true,
-			};
+			var corelayout = new TableLayoutPanel() { ColumnCount = 8, AutoSize = true };
 
 			cpumask = Controller.AffinityMask;
 			for (int bit = 0; bit < ProcessManager.CPUCount; bit++)
@@ -602,8 +585,8 @@ namespace Taskmaster.UI.Config
 				int lbit = bit;
 				var box = new CheckBox
 				{
+					Checked = ((Math.Max(0, cpumask) & (1 << lbit)) != 0),
 					AutoSize = true,
-					Checked = ((Math.Max(0, cpumask) & (1 << lbit)) != 0)
 				};
 				box.CheckedChanged += (sender, e) =>
 				{
@@ -633,11 +616,7 @@ namespace Taskmaster.UI.Config
 
 			afflayout.Controls.Add(corelayout);
 
-			var affbuttonpanel = new TableLayoutPanel()
-			{
-				ColumnCount = 1,
-				AutoSize = true,
-			};
+			var affbuttonpanel = new TableLayoutPanel() { ColumnCount = 1, AutoSize = true };
 			clearbutton = new Button() { Text = "None" };
 			clearbutton.Click += (sender, e) =>
 			{
@@ -686,7 +665,7 @@ namespace Taskmaster.UI.Config
 			lt.Controls.Add(idealAffinity);
 			lt.Controls.Add(new Label() { Text = "EXPERIMENTAL", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, ForeColor = System.Drawing.Color.Red });
 
-			if (Taskmaster.IOPriorityEnabled)
+			if (IOPriorityEnabled)
 			{
 				ioPriority = new ComboBox()
 				{
@@ -821,10 +800,7 @@ namespace Taskmaster.UI.Config
 
 			// PAGING
 			lt.Controls.Add(new Label { Text = "Allow paging", TextAlign = System.Drawing.ContentAlignment.MiddleLeft });
-			allowPaging = new CheckBox()
-			{
-				Checked = Controller.AllowPaging,
-			};
+			allowPaging = new CheckBox() { Checked = Controller.AllowPaging };
 			tooltip.SetToolTip(allowPaging, "Allow this application to be paged when it is requested.\nNOT FULLY IMPLEMENTED.");
 			lt.Controls.Add(allowPaging);
 			lt.Controls.Add(new Label()); // empty
@@ -862,7 +838,7 @@ namespace Taskmaster.UI.Config
 			lt.Controls.Add(volume);
 			lt.Controls.Add(new Label());
 
-			if (!Taskmaster.AudioManagerEnabled)
+			if (!AudioManagerEnabled)
 			{
 				volume.Enabled = false;
 				volumeMethod.Enabled = false;
@@ -888,17 +864,11 @@ namespace Taskmaster.UI.Config
 				};
 			}
 
-			if (!Taskmaster.PowerManagerEnabled)
-			{
-				powerPlan.Enabled = false;
-			}
+			if (!PowerManagerEnabled) powerPlan.Enabled = false;
 
 			// LOG ADJUSTS
 
-			logAdjusts = new CheckBox()
-			{
-				Checked = Controller.LogAdjusts,
-			};
+			logAdjusts = new CheckBox() { Checked = Controller.LogAdjusts };
 			tooltip.SetToolTip(logAdjusts, "You can disable logging adjust events for this specific rule, from both UI and disk.\nUse Configuration > Logging > Process adjusts for all.");
 
 			lt.Controls.Add(new Label() { Text = "Log adjusts", TextAlign = System.Drawing.ContentAlignment.MiddleLeft });
@@ -974,11 +944,8 @@ namespace Taskmaster.UI.Config
 
 		void ValidatePathname(object sender, CancelEventArgs e)
 		{
-			if (sender is TextBox box)
-			{
-				if (box.Text.Length > 0) // ignore empty box
-					e.Cancel = !ValidateName(box, System.IO.Path.GetInvalidPathChars());
-			}
+			if (sender is TextBox box && box.Text.Length > 0)
+				e.Cancel = !ValidateName(box, System.IO.Path.GetInvalidPathChars());
 		}
 
 		void ValidateFilename(object sender, CancelEventArgs e)
@@ -986,14 +953,11 @@ namespace Taskmaster.UI.Config
 			if (sender is TextBox box)
 			{
 				e.Cancel = !ValidateName(box, System.IO.Path.GetInvalidFileNameChars());
-				if (box == execName)
+				if (box == execName && !box.Text.Contains("."))
 				{
-					if (!box.Text.Contains("."))
-					{
-						box.SelectionStart = box.TextLength;
-						e.Cancel = true;
-						FlashTextBox(box);
-					}
+					box.SelectionStart = box.TextLength;
+					e.Cancel = true;
+					FlashTextBox(box);
 				}
 			}
 		}
@@ -1009,7 +973,7 @@ namespace Taskmaster.UI.Config
 			{
 				var friendlyexe = System.IO.Path.GetFileNameWithoutExtension(execName.Text);
 				var procs = Process.GetProcessesByName(friendlyexe);
-				if (procs.Length > 0) exfound = true;
+				exfound |= (procs.Length > 0);
 			}
 
 			string pfound = "No";
@@ -1046,11 +1010,7 @@ namespace Taskmaster.UI.Config
 			sbs.Append("Name: ").Append(fnlen ? "OK" : "Fail").AppendLine();
 
 			var samesection = Controller.FriendlyName.Equals(friendlyName.Text);
-			if (!samesection)
-			{
-				var dprc = Taskmaster.processmanager.GetControllerByName(friendlyName.Text);
-				if (dprc != null) sbs.Append("Friendly name conflict!");
-			}
+			if (!samesection && processmanager.GetControllerByName(friendlyName.Text, out var dprc)) sbs.Append("Friendly name conflict!");
 
 			if (execName.Text.Length > 0)
 			{
@@ -1065,7 +1025,7 @@ namespace Taskmaster.UI.Config
 			if (pathName.Text.Length > 0)
 			{
 				sbs.Append("Path: ").Append(path ? "OK" : "Fail").Append(" - Found: ").Append(pfound).AppendLine();
-				if (Taskmaster.processmanager.IgnoreSystem32Path && pathName.Text.StartsWith(Environment.GetFolderPath(Environment.SpecialFolder.System), StringComparison.InvariantCultureIgnoreCase))
+				if (processmanager.IgnoreSystem32Path && pathName.Text.StartsWith(Environment.GetFolderPath(Environment.SpecialFolder.System), StringComparison.InvariantCultureIgnoreCase))
 					sbs.Append("Path points to System32 even though core config denies it.").AppendLine();
 			}
 
@@ -1096,9 +1056,7 @@ namespace Taskmaster.UI.Config
 			if (affinityMask.Value >= 0 && idealAffinity.Value > 0)
 			{
 				if (!MKAh.Bit.IsSet(Convert.ToInt32(affinityMask.Value).Replace(0, ProcessManager.AllCPUsMask), Convert.ToInt32(idealAffinity.Value) - 1))
-				{
 					sbs.Append("Affinity ideal is not within defined affinity.").AppendLine();
-				}
 			}
 
 			if (ioPriority != null && ioPriority.SelectedIndex != 0)

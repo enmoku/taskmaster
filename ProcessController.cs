@@ -274,8 +274,9 @@ namespace Taskmaster
 						BackgroundPriority = null;
 						BackgroundPriorityFixed = true;
 					}
-					if (BackgroundPowerdown == true)
-						Log.Warning($"[{FriendlyName}] Background powerdown:  true → false");
+
+					if (BackgroundPowerdown) Log.Warning($"[{FriendlyName}] Background powerdown:  true → false");
+
 					BackgroundPowerdown = false;
 					break;
 				case ForegroundMode.Standard:
@@ -1451,7 +1452,7 @@ namespace Taskmaster
 
 				bool logevent = false;
 
-				if (modified) logevent = ShowProcessAdjusts && !(Foreground != ForegroundMode.Ignore && !ShowForegroundTransitions);
+				if (modified) logevent = ShowProcessAdjusts && !(Foreground != ForegroundMode.Ignore && !ProcessManager.ShowForegroundTransitions);
 				logevent |= (FirstTimeSeenForForeground && Foreground != ForegroundMode.Ignore);
 				logevent |= (ShowInaction && ProcessManager.DebugProcesses);
 
@@ -1691,27 +1692,19 @@ namespace Taskmaster
 						if (gotCurrentSize) sbs.Append(" from ").Append(oldrect.Width).Append("×").Append(oldrect.Height);
 						sbs.Append(" to ").Append(newsize.Width).Append("×").Append(newsize.Height);
 					}
+
+					if (ResizeStrategy == WindowResizeStrategy.None)
+						sbs.Append("; remembering size or pos not enabled.");
+					Log.Debug(sbs.ToString());
 				}
 
-				if (ResizeStrategy == WindowResizeStrategy.None)
-				{
-					if (DebugResize)
-					{
-						sbs.Append("; remembering size or pos not enabled.");
-						Log.Debug(sbs.ToString());
-					}
-					return;
-				}
-				else
-				{
-					if (DebugResize) Log.Debug(sbs.ToString());
-				}
+				if (ResizeStrategy == WindowResizeStrategy.None) return;
 
 				info.Resize = true;
 				ActiveWait.TryAdd(info.Id, info);
 
 				var re = new System.Threading.ManualResetEvent(false);
-				Task.Run(() =>
+				await Task.Run(() =>
 				{
 					if (DebugResize) Log.Debug($"<Resize> Starting monitoring {info.Name} (#{info.Id.ToString()})");
 					try
