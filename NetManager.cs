@@ -781,10 +781,7 @@ namespace Taskmaster
 					//Tray.TrayTooltipClicked += (s, e) => { /* something */ };
 				}
 
-				if (ipv6changed || ipv6changed)
-				{
-					IPChanged?.Invoke(this, EventArgs.Empty);
-				}
+				if (ipv4changed || ipv6changed) IPChanged?.Invoke(this, EventArgs.Empty);
 			}
 			else
 			{
