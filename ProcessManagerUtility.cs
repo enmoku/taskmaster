@@ -158,6 +158,8 @@ namespace Taskmaster
 			}
 			else if (strategy == ProcessAffinityStrategy.Scatter)
 			{
+				throw new NotImplementedException("Affinitry scatter strategy not implemented.");
+
 				// NOT IMPLEMENTED
 				/*
 				for (; ScatterOffset < ProcessManager.CPUCount; ScatterOffset++)
