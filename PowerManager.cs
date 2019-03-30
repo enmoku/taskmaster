@@ -1003,7 +1003,7 @@ namespace Taskmaster
 					var total = SessionLockCounter?.Elapsed ?? TimeSpan.Zero;
 					double percentage = off.TotalMinutes / total.TotalMinutes;
 
-					Log.Information("<Session:Unlock> Monitor off time: " + $"{off.TotalMinutes:N1} / {total.TotalMinutes:N1} minutess ({percentage * 100d:N1} %)");
+					Log.Information("<Session:Unlock> Monitor off time: " + $"{off.TotalMinutes:N1} / {total.TotalMinutes:N1} minutes ({percentage * 100d:N1} %)");
 				}
 			}
 
