@@ -217,10 +217,7 @@ namespace Taskmaster
 		void ClearActive()
 		{
 			foreach (var info in ActiveWait.Values)
-			{
-				info.Paused = false;
-				info.ForegroundWait = false;
-			}
+				info.ForegroundWait = info.Paused = false;
 		}
 
 		void ClearPower()
@@ -408,8 +405,8 @@ namespace Taskmaster
 
 		void ProcessExitEvent(object sender, EventArgs _ea)
 		{
-			var process = (Process)sender;
-			RecentlyModified.TryRemove(process.Id, out _);
+			if (sender is Process process)
+				RecentlyModified.TryRemove(process.Id, out _);
 		}
 
 		/// <summary>
@@ -661,8 +658,7 @@ namespace Taskmaster
 
 			if (info.Paused) return; // already paused
 
-			if (DebugForeground && Trace)
-				Log.Debug($"[{FriendlyName}] Quelling {info.Name} (#{info.Id})");
+			if (DebugForeground && Trace) Log.Debug($"[{FriendlyName}] Quelling {info.Name} (#{info.Id})");
 
 			// PausedState.Affinity = Affinity;
 			// PausedState.Priority = Priority;
@@ -675,13 +671,10 @@ namespace Taskmaster
 			try
 			{
 				oldPriority = info.Process.PriorityClass;
-				if (BackgroundPriority.HasValue)
+				if (BackgroundPriority.HasValue && oldPriority != BackgroundPriority.Value)
 				{
-					if (oldPriority != BackgroundPriority.Value)
-					{
-						info.Process.PriorityClass = BackgroundPriority.Value;
-						mPriority = true;
-					}
+					info.Process.PriorityClass = BackgroundPriority.Value;
+					mPriority = true;
 				}
 
 				oldAffinity = info.Process.ProcessorAffinity.ToInt32();
@@ -707,15 +700,12 @@ namespace Taskmaster
 			{
 				if (BackgroundPowerdown)
 				{
-					if (DebugPower)
-						Log.Debug($"[{FriendlyName}] {info.Name} (#{info.Id}) power down");
+					if (DebugPower) Log.Debug($"[{FriendlyName}] {info.Name} (#{info.Id}) power down");
 
 					UndoPower(info);
 				}
 				else
-				{
 					SetPower(info); // kinda hackish to call this here, but...
-				}
 			}
 
 			info.State = ProcessHandlingState.Paused;
@@ -730,95 +720,17 @@ namespace Taskmaster
 					AffinityOld = oldAffinity,
 				};
 
-				ev.User = new System.Text.StringBuilder();
+				ev.User = new StringBuilder();
 
 				ev.User.Append(" – Background Mode");
 
-				LogAdjust(ev);
+				OnAdjust?.Invoke(this, ev);
 			}
 
 			Paused?.Invoke(this, new ProcessModificationEventArgs(info));
 		}
 
-		void LogAdjust(ProcessModificationEventArgs ev)
-		{
-			if (!LogAdjusts) return;
-
-			bool onlyFinal = ProcessManager.ShowOnlyFinalState;
-
-			var sbs = new StringBuilder();
-			sbs.Append("[").Append(FriendlyName).Append("] ").Append(FormatPathName(ev.Info))
-				.Append(" (#").Append(ev.Info.Id).Append(")");
-
-			if (ProcessManager.ShowUnmodifiedPortions || ev.PriorityNew.HasValue)
-			{
-				sbs.Append("; Priority: ");
-				if (ev.PriorityOld.HasValue)
-				{
-					if (!onlyFinal || !ev.PriorityNew.HasValue) sbs.Append(Readable.ProcessPriority(ev.PriorityOld.Value));
-
-					if (ev.PriorityNew.HasValue)
-					{
-						if (!onlyFinal) sbs.Append(" → ");
-						sbs.Append(Readable.ProcessPriority(ev.PriorityNew.Value));
-					}
-
-					if (Priority.HasValue && ev.Info.State == ProcessHandlingState.Paused && Priority != ev.PriorityNew)
-						sbs.Append($" [{ProcessHelpers.PriorityToInt(Priority.Value)}]");
-				}
-				else
-					sbs.Append(HumanReadable.Generic.NotAvailable);
-
-				if (ev.PriorityFail) sbs.Append(" [Failed]");
-				if (ev.Protected) sbs.Append(" [Protected]");
-			}
-
-			if (ProcessManager.ShowUnmodifiedPortions || ev.AffinityNew >= 0)
-			{
-				sbs.Append("; Affinity: ");
-				if (ev.AffinityOld >= 0)
-				{
-					if (!onlyFinal || ev.AffinityNew < 0) sbs.Append(ev.AffinityOld);
-
-					if (ev.AffinityNew >= 0)
-					{
-						if (!onlyFinal) sbs.Append(" → ");
-						sbs.Append(ev.AffinityNew);
-					}
-
-					if (AffinityMask >= 0 && ev.Info.State == ProcessHandlingState.Paused && AffinityMask != ev.AffinityNew)
-						sbs.Append($" [{AffinityMask}]");
-				}
-				else
-					sbs.Append(HumanReadable.Generic.NotAvailable);
-
-				if (ev.AffinityFail) sbs.Append(" [Failed]");
-			}
-
-			if (ProcessManager.DebugProcesses) sbs.Append(" [").Append(AffinityStrategy.ToString()).Append("]");
-
-			if (ev.NewIO >= 0)
-				sbs.Append(" – I/O: ").Append(IONames[ev.NewIO]);
-
-			if (ev.User != null) sbs.Append(ev.User);
-
-            if (ProcessManager.DebugAdjustDelay)
-            {
-                sbs.Append(" – ").Append($"{ev.Info.Timer.ElapsedMilliseconds:N0} ms");
-                if (ev.Info.WMIDelay > 0) sbs.Append(" + ").Append(ev.Info.WMIDelay).Append(" ms watcher delay");
-            }
-
-			// TODO: Add option to logging to file but still show in UI
-			if (!(ShowInaction && ProcessManager.DebugProcesses)) Log.Information(sbs.ToString());
-			else Log.Debug(sbs.ToString());
-
-			ev.User?.Clear();
-			ev.User = null;
-			sbs.Clear();
-			sbs = null;
-		}
-
-		readonly string[] IONames = new[] { "Background", "Low", "Normal" };
+		public event EventHandler<ProcessModificationEventArgs> OnAdjust;
 
 		public void Resume(ProcessEx info)
 		{
@@ -833,8 +745,7 @@ namespace Taskmaster
 
 			if (!info.Paused)
 			{
-				if (DebugForeground)
-					Log.Debug($"<Foreground> {FormatPathName(info)} (#{info.Id}) not paused; not resuming.");
+				if (DebugForeground) Log.Debug($"<Foreground> {FormatPathName(info)} (#{info.Id}) not paused; not resuming.");
 				return; // can't resume unpaused item
 			}
 
@@ -848,13 +759,10 @@ namespace Taskmaster
 				}
 
 				oldAffinity = info.Process.ProcessorAffinity.ToInt32();
-				if (AffinityMask >= 0)
+				if (AffinityMask >= 0 && EstablishNewAffinity(oldAffinity, out newAffinity))
 				{
-					if (EstablishNewAffinity(oldAffinity, out newAffinity))
-					{
-						info.Process.ProcessorAffinity = new IntPtr(newAffinity.Replace(0, ProcessManager.AllCPUsMask));
-						mAffinity = true;
-					}
+					info.Process.ProcessorAffinity = new IntPtr(newAffinity.Replace(0, ProcessManager.AllCPUsMask));
+					mAffinity = true;
 				}
 
 				if (IOPriorityEnabled)
@@ -883,16 +791,8 @@ namespace Taskmaster
 			// PausedState.Priority = Priority;
 			// PausedState.PowerMode = PowerPlan;
 
-			if (PowerManagerEnabled)
-			{
-				if (PowerPlan != PowerInfo.PowerMode.Undefined && BackgroundPowerdown)
-				{
-					if (DebugPower || DebugForeground)
-						Log.Debug("[" + FriendlyName + "] " + info.Name + " (#" + info.Id + ") foreground power on");
-
-					SetPower(info);
-				}
-			}
+			if (PowerManagerEnabled && PowerPlan != PowerInfo.PowerMode.Undefined && BackgroundPowerdown)
+				SetPower(info);
 
 			info.Paused = false;
 
@@ -909,11 +809,11 @@ namespace Taskmaster
 					NewIO = nIO,
 				};
 
-				ev.User = new System.Text.StringBuilder();
+				ev.User = new StringBuilder();
 
 				ev.User.Append(" – Foreground Mode");
 
-				LogAdjust(ev);
+				OnAdjust?.Invoke(this, ev);
 			}
 
 			Resumed?.Invoke(this, new ProcessModificationEventArgs(info));
@@ -952,11 +852,15 @@ namespace Taskmaster
 			Debug.Assert(PowerPlan != PowerInfo.PowerMode.Undefined, "Powerplan is undefined");
 			Debug.Assert(info.Controller != null, "No controller attached");
 
+			if (DebugPower || DebugForeground)
+				Log.Debug("[" + FriendlyName + "] " + info.Name + " (#" + info.Id + ") foreground power on");
+
 			bool rv = false;
 
 			try
 			{
 				info.PowerWait = true;
+
 				rv = powermanager.Force(PowerPlan, info.Id);
 
 				WaitForExit(info);
@@ -982,7 +886,7 @@ namespace Taskmaster
 		static string[] UnwantedPathBits = new string[] { "x64", "x86", "bin", "debug", "release", "win32", "win64", "common", "binaries" };
 		static string[] SpecialCasePathBits = new string[] { "steamapps" };
 
-		string FormatPathName(ProcessEx info)
+		public string FormatPathName(ProcessEx info)
 		{
 			if (!string.IsNullOrEmpty(info.FormattedPath)) return info.FormattedPath;
 
@@ -1102,17 +1006,17 @@ namespace Taskmaster
 				if (info.Process.HasExited)
 				{
 					End(info.Process, EventArgs.Empty);
-					return false;
+					return true;
 				}
 			}
 			catch
 			{
 				End(info.Process, EventArgs.Empty);
 				throw;
-				return false;
+				return true;
 			}
 
-			return true;
+			return false;
 		}
 
 		// TODO: Simplify this
@@ -1470,7 +1374,7 @@ namespace Taskmaster
 
 				if (logevent)
 				{
-					var sbs = new System.Text.StringBuilder();
+					var sbs = new StringBuilder();
 
 					if (mPower) sbs.Append(" [Power Mode: ").Append(PowerManager.GetModeName(PowerPlan)).Append("]");
 
@@ -1478,7 +1382,7 @@ namespace Taskmaster
 
 					ev.User = sbs;
 
-					LogAdjust(ev);
+					OnAdjust?.Invoke(this, ev);
 				}
 
 				if (modified)
@@ -1735,7 +1639,7 @@ namespace Taskmaster
 					if (DebugResize) Log.Debug($"<Resize> Stopping monitoring {info.Name} (#{info.Id.ToString()})");
 				}).ConfigureAwait(false);
 
-				if (WaitForExit(info))
+				if (!WaitForExit(info))
 				{
 					info.Process.EnableRaisingEvents = true;
 					info.Process.Exited += (_, _ea) => ProcessEndResize(info, oldrect, re);
@@ -1821,15 +1725,11 @@ namespace Taskmaster
 
 				await Touch(info, refresh: true).ConfigureAwait(false);
 			}
-			catch (Win32Exception) // access denied
-			{
-				return;
-			}
-			catch (InvalidOperationException) // exited
-			{
-				return;
-			}
 			catch (OutOfMemoryException) { throw; }
+			catch (Exception ex) when (ex is Win32Exception || ex is InvalidOperationException) // access denied or exited
+			{
+				return;
+			}
 			catch (Exception ex)
 			{
 				Log.Warning($"[{FriendlyName}] {info.Name} (#{info.Id}) – something bad happened.");

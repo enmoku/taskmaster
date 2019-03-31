@@ -197,15 +197,11 @@ namespace Taskmaster
 	/// <summary>
 	/// Credit goes to Mark Hurd at http://stackoverflow.com/a/16756808/6761963
 	/// </summary>
-	/// 
+	///
 	public static partial class ProcessExtensions
 	{
 		/// <exception cref="Win32Exception">If system snapshot does not return anything.</exception>
-		public static int ParentProcessId(this Process process)
-		{
-			Debug.Assert(process != null);
-			return ParentProcessId(process.Id);
-		}
+		public static int ParentProcessId(this Process process) => ParentProcessId(process.Id);
 
 		/// <exception cref="Win32Exception">If system snapshot does not return anything.</exception>
 		public static int ParentProcessId(int Id)

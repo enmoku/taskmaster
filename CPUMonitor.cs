@@ -185,10 +185,11 @@ namespace Taskmaster
 		}
 
 
-		ProcessManager prcman = null;
-		public void Hook(ProcessManager processmanager)
+		ProcessManager processmanager = null;
+		public void Hook(ProcessManager manager)
 		{
-			prcman = processmanager;
+			processmanager = manager;
+			processmanager.OnDisposed += (_, _ea) => processmanager = null;
 
 			if (CPULoaderMonitoring)
 			{
@@ -306,10 +307,10 @@ namespace Taskmaster
 				CPUload?.Dispose();
 				CPUload = null;
 
-				if (prcman != null)
+				if (processmanager != null)
 				{
 					//prcman.ProcessDetectedEvent -= ProcessDetectedEvent;
-					prcman = null;
+					processmanager = null;
 				}
 
 				SaveConfig();

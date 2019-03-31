@@ -292,13 +292,7 @@ namespace MKAh
 			}
 			#endregion
 
-			public bool TryRemove(string name)
-			{
-				if (TryGet(name, out var section))
-					return Remove(section);
-
-				return false;
-			}
+			public bool TryRemove(string name) => TryGet(name, out var section) ? Remove(section) : false;
 
 			public bool Remove(Section section) => Items.Remove(section);
 			public void RemoveAt(int index) => Items.RemoveAt(index);
@@ -316,14 +310,10 @@ namespace MKAh
 			public bool Contains(string name) => TryGet(name, out _);
 
 			public bool TryGet(string name, out Section value)
-			{
-				value = (from val in Items
+				=> (value = (from val in Items
 						 where !string.IsNullOrEmpty(val.Name)
 						 where val.Name.Equals(name, StringComparison.InvariantCultureIgnoreCase)
-						 select val).FirstOrDefault();
-
-				return (value != null);
-			}
+						 select val).FirstOrDefault()) != null;
 
 			/// <summary>
 			/// Parse .INI line other than section.
@@ -562,11 +552,7 @@ namespace MKAh
 					totallines--;
 				}
 
-				if (Header.ItemCount > 0)
-				{
-					totallines += Header.ItemCount;
-					if (PadSections) totallines++;
-				}
+				if (Header.ItemCount > 0) totallines += Header.ItemCount + (PadSections ? 1 : 0);
 
 				foreach (var section in this)
 					totallines += section.Items.Count;
@@ -759,7 +745,7 @@ namespace MKAh
 				set => SetArray(value);
 				get
 				{
-					if (Array == null || Array.Length == 0) return null;
+					if ((Array?.Length ?? 0) == 0) return null;
 
 					int[] cache = new int[Array.Length];
 
@@ -775,7 +761,7 @@ namespace MKAh
 				set => SetArray(value);
 				get
 				{
-					if (Array == null || Array.Length == 0) return null;
+					if ((Array?.Length ?? 0) == 0) return null;
 
 					float[] cache = new float[Array.Length];
 
@@ -791,7 +777,7 @@ namespace MKAh
 				set => SetArray(value);
 				get
 				{
-					if (Array == null || Array.Length == 0) return null;
+					if ((Array?.Length ?? 0) == 0) return null;
 
 					double[] cache = new double[Array.Length];
 
@@ -802,6 +788,7 @@ namespace MKAh
 				}
 			}
 
+			object[] ArrayCache = null;
 			Lazy<string> escapedValueCache = null;
 
 			public string EscapedValue => escapedValueCache.Value;
@@ -810,15 +797,13 @@ namespace MKAh
 			public string Comment
 			{
 				get => _comment;
-				set
-				{
-					_comment = value.Replace("\n", " ");
-				}
+				set => _comment = value.Replace("\n", " ");
 			}
 
 			public bool CommentOnly => string.IsNullOrEmpty(Name);
 
-			public bool IsArray => Array != null;
+			public bool IsArray => (Array?.Length ?? 0) > 0;
+
 			string[] _array = null;
 			public string[] Array
 			{
@@ -828,8 +813,8 @@ namespace MKAh
 					_array = null;
 					_value = null;
 
-					_array = (string[])value.Clone(); // is this enough?
 					ResetEscapedCache();
+					_array = (string[])value.Clone(); // is this enough?
 
 					//Debug.WriteLine("BaseArray = " + string.Join(", ", value));
 				}
@@ -839,10 +824,7 @@ namespace MKAh
 
 			string CreateEscapedCache()
 			{
-				if (Array == null && string.IsNullOrEmpty(Value))
-					return string.Empty;
-
-				if (Array != null)
+				if ((Array?.Length ?? 0) > 0)
 				{
 					string[] cache = new string[Array.Length];
 
@@ -854,17 +836,12 @@ namespace MKAh
 							cache[i] = Array[i];
 					}
 
-					//Debug.WriteLine("EscapedArray: \"" + string.Join("\", \"", cache) + "\"");
-
 					return $"{Constant.ArrayStart} " + string.Join(", ", cache) + $" {Constant.ArrayEnd}";
 				}
+				else if (!string.IsNullOrEmpty(Value))
+					return EscapeValue(Value, out string nv) ? nv : Value;
 				else
-				{
-					string cache = Value;
-					if (EscapeValue(cache, out string nv))
-						cache = nv;
-					return cache;
-				}
+					return string.Empty;
 			}
 
 			public bool EscapeValue(string value, out string nvalue)
@@ -934,12 +911,7 @@ namespace MKAh
 				//Debug.WriteLine("UnescapingArray: \"" + string.Join("\", \"", values) + "\"");
 
 				for (int i = 0; i < values.Length; i++)
-				{
-					if (UnescapeValue(values[i], out string nsv, trim: true))
-						nv[i] = nsv;
-					else
-						nv[i] = values[i];
-				}
+					nv[i] = UnescapeValue(values[i], out string nsv, trim: true) ? nsv : values[i];
 
 				//Debug.WriteLine("UnescapedArray:  \"" + string.Join("\", \"", nv) + "\"");
 
@@ -975,23 +947,13 @@ namespace MKAh
 				string[] output = new string[array.Count];
 
 				for (int i = 0; i < array.Count; i++)
-				{
-					output[i] = Convert(array[i]).Trim();
-					// TODO: UNESCAPE
-				}
+					output[i] = Convert(array[i]).Trim(); // TODO: UNESCAPE
 
 				return output;
 			}
 
 			public static string Convert(T value)
-			{
-				string cache;
-				if (value is IFormattable fvalue)
-					cache = fvalue.ToString(null, System.Globalization.CultureInfo.InvariantCulture);
-				else
-					cache = value?.ToString();
-				return cache;
-			}
+				=> (value is IFormattable fvalue) ? fvalue.ToString(null, System.Globalization.CultureInfo.InvariantCulture) : value?.ToString();
 		}
 
 		public class Section : Interface.Value, Interface.IContainer<Setting>, IEnumerable<Setting>
@@ -1001,6 +963,7 @@ namespace MKAh
 				Name = name;
 				Index = index;
 			}
+
 			public List<Setting> Items { get; private set; } = new List<Setting>();
 			public int ItemCount => Items.Count;
 
@@ -1012,15 +975,7 @@ namespace MKAh
 			public bool UniqueKeys
 			{
 				get => _uniqueKeys;
-				set
-				{
-					_uniqueKeys = value;
-
-					if (_uniqueKeys)
-						hUniqueKeys = new HashSet<string>();
-					else
-						hUniqueKeys = null;
-				}
+				set => hUniqueKeys = (_uniqueKeys = value) ? new HashSet<string>() : null;
 			}
 
 			#region Indexers
@@ -1036,10 +991,7 @@ namespace MKAh
 				{
 					Setting value = null;
 					if (!TryGet(key, out value))
-					{
-						value = new Setting() { Name = key };
-						Items.Add(value);
-					}
+						Items.Add(value = new Setting() { Name = key });
 
 					return value;
 				}
@@ -1060,24 +1012,16 @@ namespace MKAh
 			public Setting Get(string key) => TryGet(key, out var value) ? value : null;
 
 			public bool TryGet(string name, out Setting value)
-			{
-				value = (from val in Items
+				=> (value = (from val in Items
 						 where val.Type == SettingType.Generic
 						 where !string.IsNullOrEmpty(val.Name)
 						 where val.Name.Equals(name, StringComparison.InvariantCultureIgnoreCase)
-						 select val).FirstOrDefault();
-
-				return (value != null);
-			}
+						 select val).FirstOrDefault()) != null;
 
 			public bool Contains(string key) => TryGet(key, out _);
 
 			public void Add(Setting value) => Items.Add(value);
-			public void Insert(int index, Setting value)
-			{
-				value.Index = index;
-				Items.Insert(index, value);
-			}
+			public void Insert(int index, Setting value) => Items.Insert(value.Index = index, value);
 			public bool Remove(Setting value) => Items.Remove(value);
 			public void RemoveAt(int index) => Items.RemoveAt(index);
 
@@ -1107,11 +1051,7 @@ namespace MKAh
 				defaulted = false;
 			else
 			{
-				if (rv == null)
-				{
-					rv = new Ini.Setting() { Name = setting };
-					section.Add(rv);
-				}
+				if (rv == null) section.Add(rv = new Ini.Setting() { Name = setting });
 
 				rv.SetArray(Ini.Converter<T>.Convert(fallback));
 				defaulted = true;
@@ -1131,11 +1071,7 @@ namespace MKAh
 				defaulted = false;
 			else
 			{
-				if (rv == null)
-				{
-					rv = new Ini.Setting() { Name = setting };
-					section.Add(rv);
-				}
+				if (rv == null) section.Add(rv = new Ini.Setting() { Name = setting });
 
 				rv.Set(Ini.Converter<T>.Convert(fallback));
 

@@ -44,8 +44,7 @@ namespace Taskmaster
 				//var nextmidnightms = Convert.ToInt64(nextmidnight.TotalMilliseconds);
 				DateTime lnext = next.UtcDateTime;
 
-				Log.Information("<Self-Maintenance> Next maintenance: " +
-					lnext.ToLongDateString() + " " + lnext.ToLongTimeString() + " [in " + HumanInterface.PureTimeString(nextmidnight)+"]");
+				Log.Information($"<Self-Maintenance> Next maintenance: {lnext.ToLongDateString()} {lnext.ToLongTimeString()} [in {HumanInterface.PureTimeString(nextmidnight)}]");
 
 				timer = new System.Timers.Timer(86_400_000); // once a day
 				timer.Elapsed += MaintenanceTick;
@@ -68,11 +67,8 @@ namespace Taskmaster
 		void Hook(ProcessManager procman)
 		{
 			processmanager = procman;
-			processmanager.OnDisposed += ProcessManager_OnDisposed;
+			processmanager.OnDisposed += (_, _ea) => processmanager = null;
 		}
-
-		private void ProcessManager_OnDisposed(object sender, EventArgs e)
-			=> processmanager = null;
 
 		int CallbackLimiter = 0;
 		async void MaintenanceTick(object _, EventArgs _ea)
@@ -118,7 +114,7 @@ namespace Taskmaster
 				Statistics.MaintenanceCount++;
 				Statistics.MaintenanceTime += time.Elapsed.TotalSeconds;
 
-				if (Taskmaster.Trace) Log.Verbose("Maintenance took: " + $"{time.Elapsed.TotalSeconds:N2}s");
+				if (Trace) Log.Verbose($"Maintenance took: {time.Elapsed.TotalSeconds:N2}s");
 
 				Atomic.Unlock(ref CallbackLimiter);
 			}
@@ -129,15 +125,14 @@ namespace Taskmaster
 
 		protected virtual void Dispose(bool disposing)
 		{
-			if (!DisposedOrDisposing)
-			{
-				DisposedOrDisposing = true;
+			if (DisposedOrDisposing) return;
 
-				if (disposing)
-				{
-					timer?.Dispose();
-				}
+			if (disposing)
+			{
+				timer?.Dispose();
 			}
+
+			DisposedOrDisposing = true;
 		}
 
 		public void Dispose() => Dispose(true);

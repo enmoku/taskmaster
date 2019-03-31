@@ -3,6 +3,11 @@ Comprehensive changes can be found in Git change history:
 	https://github.com/mkahvi/taskmaster/commits/master
 
 ## [0.13...]
+### 2019-03-30
+	Changed: Paging is no longer misleadingly enabled in [Component] section and is instead in [Options].
+	Fixed: Small typos.
+	Fixed: IPv4 changes were not reacted to properly due to a typo.
+	Internal: Variety of minor non-specific improvements.
 ### 2019-03-27
 	Internal: Some major internal overhauling.
 ### 2019-03-25

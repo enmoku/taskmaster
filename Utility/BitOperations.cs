@@ -55,7 +55,7 @@ namespace MKAh
 
 		// This looks really slow
 		/// <summary>
-		/// 
+		///
 		/// </summary>
 		/// <param name="num"></param>
 		/// <param name="mask"></param>
@@ -67,13 +67,10 @@ namespace MKAh
 
 			for (int i = 0; i < 32; i++)
 			{
-				if (IsSet(mask, i))
+				if (IsSet(mask, i) && !IsSet(num, i))
 				{
-					if (!IsSet(num, i))
-					{
-						num = Set(num, i);
-						bits++;
-					}
+					num = Set(num, i);
+					bits++;
 				}
 			}
 

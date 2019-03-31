@@ -77,10 +77,13 @@ namespace Taskmaster
 		public static bool DebugScan { get; set; } = false;
 		public static bool DebugPaths { get; set; } = false;
 		public static bool DebugAdjustDelay { get; set; } = false;
+		public static bool DebugPaging { get; set; } = false;
 		public static bool DebugProcesses { get; set; } = false;
 		public static bool ShowUnmodifiedPortions { get; set; } = true;
 		public static bool ShowOnlyFinalState { get; set; } = false;
 		public static bool ShowForegroundTransitions { get; set; } = false;
+
+		bool WindowResizeEnabled { get; set; } = false;
 
 		/// <summary>
 		/// Watch rules
@@ -89,7 +92,8 @@ namespace Taskmaster
 
 		ConcurrentDictionary<int, DateTimeOffset> ScanBlockList = new ConcurrentDictionary<int, DateTimeOffset>();
 
-		List<ProcessController> WatchlistCache = new List<ProcessController>();
+		Lazy<List<ProcessController>> WatchlistCache;
+
 		readonly object watchlist_lock = new object();
 
 		public bool WMIPolling { get; private set; } = true;
@@ -136,26 +140,17 @@ namespace Taskmaster
 		}
 
 		async void OnStart(object sender, EventArgs ea)
-		{
-			Task.Run(() => Scan(), cts.Token).ContinueWith((_) => StartScanTimer(), cts.Token).ConfigureAwait(false);
-		}
+			=> Task.Run(() => Scan(), cts.Token).ContinueWith((_) => StartScanTimer(), cts.Token).ConfigureAwait(false);
 
-		public ProcessController[] getWatchlist()
-		{
-			return Watchlist.Keys.ToArray();
-		}
+		public ProcessController[] getWatchlist() => Watchlist.Keys.ToArray();
 
 		// TODO: Need an ID mapping
 		public bool GetControllerByName(string friendlyname, out ProcessController controller)
-		{
-			controller = (from prc
+			=> (controller = (from prc
 					in Watchlist.Keys
 					where prc.FriendlyName.Equals(friendlyname, StringComparison.InvariantCultureIgnoreCase)
 					select prc)
-					.FirstOrDefault();
-
-			return controller != null;
-		}
+					.FirstOrDefault()) != null;
 
 		/// <summary>
 		/// Number of watchlist items with path restrictions.
@@ -192,17 +187,19 @@ namespace Taskmaster
 		public int DefaultBackgroundAffinity = 0;
 
 		ActiveAppManager activeappmonitor = null;
-		public void Hook(ActiveAppManager aamon)
+		public void Hook(ActiveAppManager manager)
 		{
-			activeappmonitor = aamon;
+			activeappmonitor = manager;
 			activeappmonitor.ActiveChanged += ForegroundAppChangedEvent;
+			activeappmonitor.OnDisposed += (_, _ea) => activeappmonitor = null;
 		}
 
 		PowerManager powermanager = null;
-		public void Hook(PowerManager power)
+		public void Hook(PowerManager manager)
 		{
-			powermanager = power;
+			powermanager = manager;
 			powermanager.onBehaviourChange += PowerBehaviourEvent;
+			powermanager.OnDisposed += (_, _ea) => powermanager = null;
 		}
 
 		ConcurrentDictionary<int, int> ignorePids = new ConcurrentDictionary<int, int>();
@@ -222,8 +219,7 @@ namespace Taskmaster
 			{
 				if (string.IsNullOrEmpty(executable))
 				{
-					if (DebugPaging && !quiet)
-						Log.Debug("<Process> Paging applications to free memory...");
+					if (DebugPaging && !quiet) Log.Debug("<Process> Paging applications to free memory...");
 				}
 				else
 				{
@@ -236,19 +232,14 @@ namespace Taskmaster
 
 					foreach (var prc in procs)
 					{
-						try
+						if (executable.Equals(prc.ProcessName, StringComparison.InvariantCultureIgnoreCase))
 						{
-							if (executable.Equals(prc.ProcessName, StringComparison.InvariantCultureIgnoreCase))
-							{
-								ignorePid = prc.Id;
-								break;
-							}
+							ignorePid = prc.Id;
+							break;
 						}
-						catch { } // ignore
 					}
 
-					if (DebugPaging && !quiet)
-						Log.Debug("<Process> Paging applications to free memory for: " + executable);
+					if (DebugPaging && !quiet) Log.Debug("<Process> Paging applications to free memory for: " + executable);
 				}
 
 				//await Task.Delay(0).ConfigureAwait(false);
@@ -518,7 +509,7 @@ namespace Taskmaster
 					{
 						try
 						{
-							if (DebugMemory) Log.Debug($"<Process> Paging: {info.Name} (#{info.Id})");
+							if (DebugPaging) Log.Debug($"<Process> Paging: {info.Name} (#{info.Id})");
 
 							NativeMethods.EmptyWorkingSet(info.Process.Handle); // process.Handle may throw which we don't care about
 						}
@@ -659,14 +650,10 @@ namespace Taskmaster
 			return rv;
 		}
 
-		bool RecacheNeeded = true;
-
 		void SaveController(ProcessController prc)
 		{
 			if (string.IsNullOrEmpty(prc.Executable))
-			{
 				WatchlistWithPath += 1;
-			}
 			else
 			{
 				ExeToController.TryAdd(prc.ExecutableFriendlyName.ToLowerInvariant(), prc);
@@ -676,7 +663,7 @@ namespace Taskmaster
 			}
 
 			Watchlist.TryAdd(prc, 0);
-			lock (watchlist_lock) RecacheNeeded = true;
+			lock (watchlist_lock) WatchlistCache = null;
 
 			if (Trace) Log.Verbose("[" + prc.FriendlyName + "] Match: " + (prc.Executable ?? prc.Path) + ", " +
 				(prc.Priority.HasValue ? Readable.ProcessPriority(prc.Priority.Value) : HumanReadable.Generic.NotAvailable) +
@@ -706,8 +693,9 @@ namespace Taskmaster
 
 				var tscanSetting = perfsec.GetOrSet("Scan frequency", 15, out modified);
 				var tscan = tscanSetting.IntValue.Constrain(0, 360);
-				if (tscan > 0) ScanFrequency = TimeSpan.FromSeconds(tscan.Constrain(5, 360));
-				else ScanFrequency = null;
+
+				ScanFrequency = (tscan > 0) ? (TimeSpan?)TimeSpan.FromSeconds(tscan.Constrain(5, 360)) : null;
+
 				if (modified) tscanSetting.Comment = "Frequency (in seconds) at which we scan for processes. 0 disables.";
 				dirtyconfig |= modified;
 
@@ -779,6 +767,7 @@ namespace Taskmaster
 				DebugPaths = dbgsec.Get("Paths")?.BoolValue ?? false;
 				DebugAdjustDelay = dbgsec.Get("Adjust Delay")?.BoolValue ?? false;
 				DebugProcesses = dbgsec.Get("Processes")?.BoolValue ?? false;
+				DebugPaging = dbgsec.Get("Paging")?.BoolValue ?? false;
 
 				var logsec = corecfg.Config["Logging"];
 				ShowUnmodifiedPortions = logsec.GetOrSet("Show unmodified portions", ShowUnmodifiedPortions, out modified).BoolValue;
@@ -789,6 +778,9 @@ namespace Taskmaster
 				dirtyconfig |= modified;
 
 				if (!IgnoreSystem32Path) Log.Warning($"<Process> System32 ignore disabled.");
+
+				var exsec = corecfg.Config["Experimental"];
+				WindowResizeEnabled = exsec.Get("Window Resize")?.BoolValue ?? false;
 
 				if (dirtyconfig) corecfg.MarkDirty();
 			}
@@ -868,8 +860,7 @@ namespace Taskmaster
 						aff = -1; // ignore
 					}
 					var prio = rulePrio?.IntValue ?? -1;
-					ProcessPriorityClass? prioR = null;
-					if (prio >= 0) prioR = ProcessHelpers.IntToPriority(prio);
+					ProcessPriorityClass? prioR = (prio >= 0) ? (ProcessPriorityClass?)ProcessHelpers.IntToPriority(prio) : null;
 
 					var pmodes = rulePow?.Value ?? null;
 					var pmode = PowerManager.GetModeByName(pmodes);
@@ -890,20 +881,15 @@ namespace Taskmaster
 							prioR = null; // invalid data
 					}
 
-					ProcessAffinityStrategy affStrat = ProcessAffinityStrategy.None;
-					if (aff >= 0)
-					{
-						int affinityStrat = section.Get(HumanReadable.System.Process.AffinityStrategy)?.IntValue.Constrain(0, 3) ?? 2;
-						affStrat = (ProcessAffinityStrategy)affinityStrat;
-					}
+					ProcessAffinityStrategy affStrat = (aff >= 0)
+						? (ProcessAffinityStrategy)(section.Get(HumanReadable.System.Process.AffinityStrategy)?.IntValue.Constrain(0, 3) ?? 2)
+						: ProcessAffinityStrategy.None;
 
 					int baff = section.Get("Background affinity")?.IntValue ?? -1;
-					ProcessPriorityClass? bprio = null;
 					int bpriot = section.Get("Background priority")?.IntValue ?? -1;
-					if (bpriot >= 0) bprio = ProcessHelpers.IntToPriority(bpriot);
+					ProcessPriorityClass? bprio = (bpriot >= 0) ? (ProcessPriorityClass?)ProcessHelpers.IntToPriority(bpriot) : null;
 
-					PathVisibilityOptions pvis = PathVisibilityOptions.Process;
-					pvis = (PathVisibilityOptions)(section.Get("Path visibility")?.IntValue.Constrain(-1, 3) ?? -1);
+					var pvis = (PathVisibilityOptions)(section.Get("Path visibility")?.IntValue.Constrain(-1, 3) ?? -1);
 
 					string[] tignorelist = (section.Get(HumanReadable.Generic.Ignore)?.Array ?? null);
 					if (tignorelist != null && tignorelist.Length > 0)
@@ -951,13 +937,10 @@ namespace Taskmaster
 
 					var ruleIdeal = section.Get("Affinity ideal");
 					prc.AffinityIdeal = ruleIdeal?.IntValue.Constrain(-1, CPUCount - 1) ?? -1;
-					if (prc.AffinityIdeal >= 0)
+					if (prc.AffinityIdeal >= 0 && !Bit.IsSet(prc.AffinityMask, prc.AffinityIdeal))
 					{
-						if (!Bit.IsSet(prc.AffinityMask, prc.AffinityIdeal))
-						{
-							Log.Debug($"<Watchlist:{ruleIdeal.Line}> [{prc.FriendlyName}] Affinity ideal to mask mismatch: {HumanInterface.BitMask(prc.AffinityMask, CPUCount)}, ideal core: {prc.AffinityIdeal}");
-							prc.AffinityIdeal = -1;
-						}
+						Log.Debug($"<Watchlist:{ruleIdeal.Line}> [{prc.FriendlyName}] Affinity ideal to mask mismatch: {HumanInterface.BitMask(prc.AffinityMask, CPUCount)}, ideal core: {prc.AffinityIdeal}");
+						prc.AffinityIdeal = -1;
 					}
 
 					// TODO: Blurp about following configuration errors
@@ -991,8 +974,8 @@ namespace Taskmaster
 				if (dirtyconfig) sappcfg.MarkDirty();
 			}
 
-			RecacheNeeded = true;
-			RecacheWatchlist();
+			RenewWatchlistCache();
+
 			SortWatchlist();
 
 			// --------------------------------------------------------------------------------------------------------
@@ -1002,17 +985,89 @@ namespace Taskmaster
 			Log.Information("<Process> Hybrid watchlist: " + WatchlistWithHybrid + " items");
 		}
 
-		void RecacheWatchlist()
+		public static readonly string[] IONames = new[] { "Background", "Low", "Normal" };
+
+		void OnControllerAdjust(object sender, ProcessModificationEventArgs ea)
 		{
-			lock (watchlist_lock)
+			if (sender is ProcessController prc)
 			{
-				if (RecacheNeeded)
+				if (!prc.LogAdjusts) return;
+
+				bool onlyFinal = ShowOnlyFinalState;
+
+				var sbs = new StringBuilder()
+					.Append("[").Append(prc.FriendlyName).Append("] ").Append(prc.FormatPathName(ea.Info))
+					.Append(" (#").Append(ea.Info.Id).Append(")");
+
+				if (ShowUnmodifiedPortions || ea.PriorityNew.HasValue)
 				{
-					WatchlistCache = Watchlist.Keys.ToList();
-					RecacheNeeded = false;
+					sbs.Append("; Priority: ");
+					if (ea.PriorityOld.HasValue)
+					{
+						if (!onlyFinal || !ea.PriorityNew.HasValue) sbs.Append(Readable.ProcessPriority(ea.PriorityOld.Value));
+
+						if (ea.PriorityNew.HasValue)
+						{
+							if (!onlyFinal) sbs.Append(" → ");
+							sbs.Append(Readable.ProcessPriority(ea.PriorityNew.Value));
+						}
+
+						if (prc.Priority.HasValue && ea.Info.State == ProcessHandlingState.Paused && prc.Priority != ea.PriorityNew)
+							sbs.Append($" [{ProcessHelpers.PriorityToInt(prc.Priority.Value)}]");
+					}
+					else
+						sbs.Append(HumanReadable.Generic.NotAvailable);
+
+					if (ea.PriorityFail) sbs.Append(" [Failed]");
+					if (ea.Protected) sbs.Append(" [Protected]");
 				}
+
+				if (ShowUnmodifiedPortions || ea.AffinityNew >= 0)
+				{
+					sbs.Append("; Affinity: ");
+					if (ea.AffinityOld >= 0)
+					{
+						if (!onlyFinal || ea.AffinityNew < 0) sbs.Append(ea.AffinityOld);
+
+						if (ea.AffinityNew >= 0)
+						{
+							if (!onlyFinal) sbs.Append(" → ");
+							sbs.Append(ea.AffinityNew);
+						}
+
+						if (prc.AffinityMask >= 0 && ea.Info.State == ProcessHandlingState.Paused && prc.AffinityMask != ea.AffinityNew)
+							sbs.Append($" [{prc.AffinityMask}]");
+					}
+					else
+						sbs.Append(HumanReadable.Generic.NotAvailable);
+
+					if (ea.AffinityFail) sbs.Append(" [Failed]");
+				}
+
+				if (DebugProcesses) sbs.Append(" [").Append(prc.AffinityStrategy.ToString()).Append("]");
+
+				if (ea.NewIO >= 0) sbs.Append(" – I/O: ").Append(IONames[ea.NewIO]);
+
+				if (ea.User != null) sbs.Append(ea.User);
+
+				if (DebugAdjustDelay)
+				{
+					sbs.Append(" – ").Append($"{ea.Info.Timer.ElapsedMilliseconds:N0} ms");
+					if (ea.Info.WMIDelay > 0) sbs.Append(" + ").Append(ea.Info.WMIDelay).Append(" ms watcher delay");
+				}
+
+				// TODO: Add option to logging to file but still show in UI
+				if (!(ShowInaction && DebugProcesses)) Log.Information(sbs.ToString());
+				else Log.Debug(sbs.ToString());
+
+				ea.User?.Clear();
+				ea.User = null;
 			}
 		}
+
+		void RenewWatchlistCache() => WatchlistCache = new Lazy<List<ProcessController>>(LazyRecacheWatchlist);
+
+		List<ProcessController> LazyRecacheWatchlist() => Watchlist.Keys.ToList();
 
 		public void SortWatchlist()
 		{
@@ -1020,10 +1075,10 @@ namespace Taskmaster
 			{
 				if (Trace) Debug.WriteLine("SORTING PROCESS MANAGER WATCHLIST");
 
-				WatchlistCache.Sort(WatchlistSorter);
+				WatchlistCache.Value.Sort(WatchlistSorter);
 
 				int order = 0;
-				foreach (var prc in WatchlistCache)
+				foreach (var prc in WatchlistCache.Value)
 					prc.ActualOrder = order++;
 			}
 
@@ -1059,6 +1114,8 @@ namespace Taskmaster
 				prc.WaitingExit += ProcessWaitingExitProxy;
 
 				SaveController(prc);
+
+				prc.OnAdjust += OnControllerAdjust;
 			}
 		}
 
@@ -1094,7 +1151,7 @@ namespace Taskmaster
 			if (!string.IsNullOrEmpty(prc.ExecutableFriendlyName))
 				ExeToController.TryRemove(prc.ExecutableFriendlyName.ToLowerInvariant(), out _);
 
-			lock (watchlist_lock) RecacheNeeded = true;
+			lock (watchlist_lock) WatchlistCache = null;
 
 			prc.Modified -= ProcessModified;
 			prc.Paused -= ProcessPausedProxy;
@@ -1343,11 +1400,13 @@ namespace Taskmaster
 
 			lock (watchlist_lock)
 			{
-				RecacheWatchlist();
+				RenewWatchlistCache();
+
+				LazyRecacheWatchlist();
 
 				// TODO: This needs to be FASTER
 				// Can't parallelize...
-				foreach (var lprc in WatchlistCache)
+				foreach (var lprc in WatchlistCache.Value)
 				{
 					if (!lprc.Enabled) continue;
 
@@ -1535,13 +1594,7 @@ namespace Taskmaster
 			WaitForExit(info);
 
 			if (Trace && DebugForeground)
-			{
-				var sbs = new StringBuilder();
-				sbs.Append("[").Append(prc.FriendlyName).Append("] ").Append(info.Name).Append(" (#").Append(info.Id).Append(") ")
-					.Append(!keyadded ? "already in" : "added to").Append(" foreground watchlist.");
-
-				Log.Debug(sbs.ToString());
-			}
+				Log.Debug($"[{prc.FriendlyName}] {info.Name} (#{info.Id}) {(!keyadded ? "already in" : "added to")} foreground watchlist.");
 
 			ProcessStateChange?.Invoke(this, new ProcessModificationEventArgs(info));
 		}
@@ -1645,7 +1698,7 @@ namespace Taskmaster
 		async Task ExclusiveMode(ProcessEx info)
 		{
 			if (DisposedOrDisposing) throw new ObjectDisposedException("ExclusiveMode called when ProcessManager was already disposed"); ;
-			if (!MKAh.Execution.IsAdministrator()) return; // sadly stopping services requires admin rights
+			if (!MKAh.Execution.IsAdministrator) return; // sadly stopping services requires admin rights
 
 			if (DebugProcesses) Log.Debug($"[{info.Controller.FriendlyName}] {info.Name} (#{info.Id}) Exclusive mode initiating.");
 
@@ -1742,7 +1795,16 @@ namespace Taskmaster
 			if (!ExclusiveEnabled) return;
 
 			foreach (var service in Services)
-				service.Start(service.FullDisable);
+			{
+				try
+				{
+					service.Start(service.FullDisable);
+				}
+				catch (Exception ex) when (!(ex is InvalidOperationException))
+				{
+					Logging.Stacktrace(ex);
+				}
+			}
 		}
 
 		int Handling { get; set; } = 0; // this isn't used for much...
@@ -2063,8 +2125,7 @@ namespace Taskmaster
 
 			if (!Atomic.Lock(ref cleanup_lock)) return; // already in progress
 
-			if (DebugPower || DebugProcesses)
-				Log.Debug("<Process> Periodic cleanup");
+			if (DebugPower || DebugProcesses) Log.Debug("<Process> Periodic cleanup");
 
 			// TODO: Verify that this is actually useful?
 
@@ -2215,7 +2276,8 @@ namespace Taskmaster
 
 					Watchlist?.Clear();
 					Watchlist = null;
-					WatchlistCache?.Clear();
+
+					if (WatchlistCache.IsValueCreated) WatchlistCache.Value.Clear();
 					WatchlistCache = null;
 				}
 				catch (Exception ex)
@@ -2232,11 +2294,7 @@ namespace Taskmaster
 				Services.Clear();
 
 				ExclusiveList?.Clear();
-				MKAh.Utility.DiscardExceptions(
-					() =>
-					{
-						lock (Exclusive_lock) ExclusiveEnd();
-					});
+				lock (Exclusive_lock) MKAh.Utility.DiscardExceptions(() => ExclusiveEnd());
 			}
 
 			OnDisposed?.Invoke(this, EventArgs.Empty);

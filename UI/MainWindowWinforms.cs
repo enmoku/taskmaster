@@ -166,14 +166,7 @@ namespace Taskmaster.UI
 			}
 		}
 
-		public void ExitRequest(object _, EventArgs _ea)
-		{
-			try
-			{
-				ConfirmExit(restart: false);
-			}
-			catch (Exception ex) { Logging.Stacktrace(ex); }
-		}
+		public void ExitRequest(object _, EventArgs _ea) => ConfirmExit(restart: false);
 
 		void WindowClose(object _, FormClosingEventArgs ea)
 		{
@@ -242,7 +235,7 @@ namespace Taskmaster.UI
 		}
 
 		// HOOKS
-		MicManager micmon = null;
+		MicManager micmanager = null;
 		StorageManager storagemanager = null;
 		ProcessManager processmanager = null;
 		ActiveAppManager activeappmonitor = null;
@@ -260,19 +253,19 @@ namespace Taskmaster.UI
 			{
 				try
 				{
-					var devname = micmon.DeviceName;
+					var devname = micmanager.DeviceName;
 
-					AudioInputGUID = micmon.DeviceGuid;
+					AudioInputGUID = micmanager.DeviceGuid;
 
 					AudioInputDevice.Text = !string.IsNullOrEmpty(devname) ? devname : HumanReadable.Generic.NotAvailable;
 
-					corCountLabel.Text = micmon.Corrections.ToString();
+					corCountLabel.Text = micmanager.Corrections.ToString();
 
 					AudioInputVolume.Maximum = Convert.ToDecimal(MicManager.Maximum);
 					AudioInputVolume.Minimum = Convert.ToDecimal(MicManager.Minimum);
-					AudioInputVolume.Value = Convert.ToInt32(micmon.Volume);
+					AudioInputVolume.Value = Convert.ToInt32(micmanager.Volume);
 
-					AudioInputEnable.SelectedIndex = micmon.Control ? 0 : 1;
+					AudioInputEnable.SelectedIndex = micmanager.Control ? 0 : 1;
 				}
 				catch (OutOfMemoryException) { throw; }
 				catch (Exception ex)
@@ -289,7 +282,7 @@ namespace Taskmaster.UI
 				var li = new ListViewItem(new string[] {
 					device.Name,
 					device.GUID,
-					$"{device.Volume:N1} %",
+					$"{device.Volume * 100d:N1} %",
 					$"{device.Target:N1} %",
 					(device.VolumeControl ? HumanReadable.Generic.Enabled : HumanReadable.Generic.Disabled),
 					device.State.ToString(),
@@ -332,7 +325,7 @@ namespace Taskmaster.UI
 			// TODO: mark default device in list
 			AudioInputs.Items.Clear();
 
-			foreach (var dev in micmon.Devices)
+			foreach (var dev in micmanager.Devices)
 				AddAudioInput(dev);
 
 			AlternateListviewRowColors(AudioInputs, AlternateRowColorsDevices);
@@ -351,6 +344,7 @@ namespace Taskmaster.UI
 				audiomanager.StateChanged += AudioDeviceStateChanged;
 				audiomanager.Removed += AudioDeviceRemoved;
 				audiomanager.Added += AudioDeviceAdded;
+				audiomanager.OnDisposed += (_, _ea) => audiomanager = null;
 			}
 			catch (OutOfMemoryException) { throw; }
 			catch (Exception ex)
@@ -360,12 +354,14 @@ namespace Taskmaster.UI
 			}
 		}
 
-		public void Hook(MicManager micmonitor)
+		public void Hook(MicManager manager)
 		{
-			Debug.Assert(micmonitor != null);
+			Debug.Assert(manager != null);
+
 			try
 			{
-				micmon = micmonitor;
+				micmanager = manager;
+				micmanager.OnDisposed += (_, _ea) => micmanager = null;
 
 				if (Trace) Log.Verbose("Hooking microphone monitor.");
 
@@ -386,10 +382,10 @@ namespace Taskmaster.UI
 				}));
 
 				// TODO: Hook all device changes
-				micmon.VolumeChanged += VolumeChangeDetected;
-				micmon.DefaultChanged += MicrophoneDefaultChanged;
+				micmanager.VolumeChanged += VolumeChangeDetected;
+				micmanager.DefaultChanged += MicrophoneDefaultChanged;
 
-				FormClosing += (_, _ea) => micmon.VolumeChanged -= VolumeChangeDetected;
+				FormClosing += (_, _ea) => micmanager.VolumeChanged -= VolumeChangeDetected;
 			}
 			catch (OutOfMemoryException) { throw; }
 			catch (Exception ex)
@@ -547,17 +543,19 @@ namespace Taskmaster.UI
 
 		public event EventHandler rescanRequest;
 
-		public void Hook(StorageManager nvmman)
+		public void Hook(StorageManager manager)
 		{
-			storagemanager = nvmman;
+			storagemanager = manager;
 			storagemanager.onTempScan += TempScanStats;
+			storagemanager.OnDisposed += (_, _ea) => storagemanager = null;
 		}
 
-		public void Hook(ProcessManager control)
+		public void Hook(ProcessManager manager)
 		{
-			Debug.Assert(control != null);
+			Debug.Assert(manager != null);
 
-			processmanager = control;
+			processmanager = manager;
+			processmanager.OnDisposed += (_, _ea) => processmanager = null;
 
 			processmanager.HandlingCounter += ProcessNewInstanceCount;
 			processmanager.ProcessStateChange += ExitWaitListHandler;
@@ -578,7 +576,7 @@ namespace Taskmaster.UI
 				WatchlistRules.EndUpdate();
 			}));
 
-			if (control.ScanFrequency.HasValue)
+			if (manager.ScanFrequency.HasValue)
 			{
 				UItimer.Tick += UpdateRescanCountdown;
 				GotFocus += UpdateRescanCountdown;
@@ -619,15 +617,9 @@ namespace Taskmaster.UI
 			}));
 		}
 
-		void RescanRequestEvent(object _, EventArgs _ea)
-		{
-			processmanager?.HastenScan(0);
-		}
+		void RescanRequestEvent(object _, EventArgs _ea) => processmanager?.HastenScan(0);
 
-		void RestartRequestEvent(object sender, EventArgs _ea)
-		{
-			ConfirmExit(restart: true, admin: sender == menu_action_restartadmin);
-		}
+		void RestartRequestEvent(object sender, EventArgs _ea) => ConfirmExit(restart: true, admin: sender == menu_action_restartadmin);
 
 		void ProcessNewInstanceCount(object _, ProcessingCountEventArgs e)
 		{
@@ -966,7 +958,7 @@ namespace Taskmaster.UI
 		{
 			if (LogList.SelectedItems.Count == 0) return;
 
-			var sbs = new System.Text.StringBuilder(256);
+			var sbs = new StringBuilder(256);
 
 			foreach (ListViewItem item in LogList.SelectedItems)
 				sbs.Append(item.SubItems[0].Text);
@@ -1081,7 +1073,7 @@ namespace Taskmaster.UI
 			menu_action_restart = new ToolStripMenuItem("Restart", null, RestartRequestEvent);
 			menu_action_restartadmin = new ToolStripMenuItem("Restart as admin", null, RestartRequestEvent)
 			{
-				Enabled = !MKAh.Execution.IsAdministrator()
+				Enabled = !MKAh.Execution.IsAdministrator
 			};
 
 			var menu_action_exit = new ToolStripMenuItem("Exit", null, ExitRequest);
@@ -2812,7 +2804,7 @@ namespace Taskmaster.UI
 		{
 			try
 			{
-				var sensors = hw.GPUSensorData();
+				var sensors = hardwaremonitor.GPUSensorData();
 				GPUSensorUpdate(sensors);
 			}
 			catch (OutOfMemoryException) { throw; }
@@ -3305,19 +3297,13 @@ namespace Taskmaster.UI
 						return;
 					}
 
-					var sbs = new System.Text.StringBuilder();
+					var sbs = new StringBuilder().Append("[").Append(prc.FriendlyName).Append("]").AppendLine();
 
-					sbs.Append("[").Append(prc.FriendlyName).Append("]").AppendLine();
-					if (!string.IsNullOrEmpty(prc.Executable))
-						sbs.Append("Image = ").Append(prc.Executable).AppendLine();
-					if (!string.IsNullOrEmpty(prc.Path))
-						sbs.Append("Path = ").Append(prc.Path).AppendLine();
+					if (!string.IsNullOrEmpty(prc.Executable)) sbs.Append("Image = ").Append(prc.Executable).AppendLine();
+					if (!string.IsNullOrEmpty(prc.Path)) sbs.Append("Path = ").Append(prc.Path).AppendLine();
+					if (!string.IsNullOrEmpty(prc.Description)) sbs.Append("Description = " + prc.Description);
+					if (prc.IgnoreList != null) sbs.Append("Ignore = { ").Append(string.Join(", ", prc.IgnoreList)).Append(" }").AppendLine();
 
-					if (!string.IsNullOrEmpty(prc.Description))
-						sbs.Append("Description = " + prc.Description);
-
-					if (prc.IgnoreList != null)
-						sbs.Append("Ignore = { ").Append(string.Join(", ", prc.IgnoreList)).Append(" }").AppendLine();
 					if (prc.Priority.HasValue)
 					{
 						sbs.Append(HumanReadable.System.Process.Priority).Append(" = ").Append(prc.Priority.Value.ToInt32()).AppendLine();
@@ -3329,18 +3315,15 @@ namespace Taskmaster.UI
 						sbs.Append(HumanReadable.System.Process.AffinityStrategy).Append(" = ").Append((int)prc.AffinityStrategy).AppendLine();
 					}
 
-					if (prc.AffinityIdeal >= 0)
-						sbs.Append("Affinity ideal = ").Append(prc.AffinityIdeal).AppendLine();
+					if (prc.AffinityIdeal >= 0) sbs.Append("Affinity ideal = ").Append(prc.AffinityIdeal).AppendLine();
 
-					if (prc.IOPriority >= 0)
-						sbs.Append("IO priority = ").Append(prc.IOPriority).AppendLine();
+					if (prc.IOPriority >= 0) sbs.Append("IO priority = ").Append(prc.IOPriority).AppendLine();
 
 					if (prc.PowerPlan != PowerInfo.PowerMode.Undefined)
 						sbs.Append(HumanReadable.Hardware.Power.Plan).Append(" = ").Append(PowerManager.GetModeName(prc.PowerPlan)).AppendLine();
-					if (prc.Recheck > 0)
-						sbs.Append("Recheck = ").Append(prc.Recheck).AppendLine();
-					if (prc.AllowPaging)
-						sbs.Append("Allow paging = ").Append(prc.AllowPaging).AppendLine();
+					if (prc.Recheck > 0) sbs.Append("Recheck = ").Append(prc.Recheck).AppendLine();
+					if (prc.AllowPaging) sbs.Append("Allow paging = ").Append(prc.AllowPaging).AppendLine();
+
 					if (prc.Foreground != ForegroundMode.Ignore)
 					{
 						sbs.Append("Foreground mode = ").Append((int)prc.Foreground).AppendLine();
@@ -3350,8 +3333,7 @@ namespace Taskmaster.UI
 							sbs.Append("Background affinity = ").Append(prc.BackgroundAffinity).AppendLine();
 					}
 
-					if (prc.ModifyDelay > 0)
-						sbs.Append("Modify delay = ").Append(prc.ModifyDelay).AppendLine();
+					if (prc.ModifyDelay > 0) sbs.Append("Modify delay = ").Append(prc.ModifyDelay).AppendLine();
 
 					if (prc.PathVisibility != PathVisibilityOptions.Invalid)
 						sbs.Append("Path visibility = ").Append((int)prc.PathVisibility).AppendLine();
@@ -3364,11 +3346,8 @@ namespace Taskmaster.UI
 
 					sbs.Append("Preference = ").Append(prc.OrderPreference).AppendLine();
 
-					if (!prc.LogAdjusts)
-						sbs.Append("Logging = false").AppendLine();
-
-					if (!prc.Enabled)
-						sbs.Append("Enabled = false").AppendLine();
+					if (!prc.LogAdjusts) sbs.Append("Logging = false").AppendLine();
+					if (!prc.Enabled) sbs.Append("Enabled = false").AppendLine();
 
 					// TODO: Add Resize and Modify Delay
 
@@ -3436,38 +3415,36 @@ namespace Taskmaster.UI
 			ResizeLogList(this, EventArgs.Empty);
 		}
 
-		public void Hook(ActiveAppManager aamon)
+		public void Hook(ActiveAppManager manager)
 		{
-			if (aamon == null) return;
+			if (manager == null) return;
 
 			if (Trace) Log.Verbose("Hooking active app manager.");
 
-			activeappmonitor = aamon;
-			activeappmonitor.OnDisposed += ActiveAppMonitor_OnDisposed;
+			activeappmonitor = manager;
+			activeappmonitor.OnDisposed += (_, _ea) => activeappmonitor = null;
 
 			if (DebugForeground || ProcessManager.DebugProcesses)
 				StartProcessDebug();
 		}
 
-		private void ActiveAppMonitor_OnDisposed(object sender, EventArgs e)
-			=> activeappmonitor = null;
-
-		public void Hook(PowerManager pman)
+		public void Hook(PowerManager manager)
 		{
-			if (pman == null) return;
+			if (manager == null) return;
 
 			if (Trace) Log.Verbose("Hooking power manager.");
 
-			powermanager = pman;
-			if (DebugPower)
-				powermanager.onAutoAdjustAttempt += PowerLoadHandler;
+			powermanager = manager;
+			powermanager.OnDisposed += (_, _ea) => powermanager = null;
+
+			if (DebugPower) powermanager.onAutoAdjustAttempt += PowerLoadHandler;
 
 			powermanager.onBehaviourChange += PowerBehaviourDebugEvent;
 
 			powermanager.onPlanChange += PowerPlanEvent;
 			powermanager.onBehaviourChange += PowerBehaviourEvent;
 
-			var bev = new PowerManager.PowerBehaviourEventArgs { Behaviour = powermanager.Behaviour };
+			var bev = new PowerManager.PowerBehaviourEventArgs(powermanager.Behaviour);
 			PowerBehaviourDebugEvent(this, bev); // populates powerbalancer_behaviourr
 			PowerBehaviourEvent(this, bev); // populates pwbehaviour
 			var pev = new PowerModeEventArgs(powermanager.CurrentMode);
@@ -3503,10 +3480,12 @@ namespace Taskmaster.UI
 			}));
 		}
 
-		HardwareMonitor hw = null;
-		public void Hook(HardwareMonitor hardware)
+		HardwareMonitor hardwaremonitor = null;
+		public void Hook(HardwareMonitor monitor)
 		{
-			hw = hardware;
+			hardwaremonitor = monitor;
+			hardwaremonitor.OnDisposed += (_, _ea) => hardwaremonitor = null;
+
 			//hw.GPUPolling += GPULoadEvent;
 			UItimer.Tick += GPULoadPoller;
 		}
@@ -3515,12 +3494,14 @@ namespace Taskmaster.UI
 		{
 			cpumonitor = monitor;
 			cpumonitor.onSampling += CPULoadHandler;
+			cpumonitor.OnDisposed += (_, _ea) => cpumonitor = null;
 		}
 
 		HealthMonitor healthmonitor = null;
-		public void Hook(HealthMonitor hmon)
+		public void Hook(HealthMonitor monitor)
 		{
-			healthmonitor = hmon;
+			healthmonitor = monitor;
+			healthmonitor.OnDisposed += (_, _ea) => healthmonitor = null;
 
 			oldHealthReport = healthmonitor.Poll;
 
@@ -3715,13 +3696,14 @@ namespace Taskmaster.UI
 			// Tray?.Tooltip(2000, "Internet " + (net.InternetAvailable ? "available" : "unavailable"), "Taskmaster", net.InternetAvailable ? ToolTipIcon.Info : ToolTipIcon.Warning);
 		}
 
-		public void Hook(NetManager net)
+		public void Hook(NetManager manager)
 		{
-			if (net == null) return; // disabled
+			if (manager == null) return; // disabled
 
 			if (Trace) Log.Verbose("Hooking network monitor.");
 
-			netmonitor = net;
+			netmonitor = manager;
+			netmonitor.OnDisposed += (_, _ea) => netmonitor = null;
 
 			UpdateNetworkDevices(this, EventArgs.Empty);
 
@@ -3959,10 +3941,10 @@ namespace Taskmaster.UI
 
 				try
 				{
-					if (hw != null)
+					if (hardwaremonitor != null)
 					{
-						hw.GPUPolling -= GPULoadEvent;
-						hw = null;
+						hardwaremonitor.GPUPolling -= GPULoadEvent;
+						hardwaremonitor = null;
 					}
 				}
 				catch { }
@@ -4015,10 +3997,10 @@ namespace Taskmaster.UI
 
 				try
 				{
-					if (micmon != null)
+					if (micmanager != null)
 					{
-						micmon.VolumeChanged -= VolumeChangeDetected;
-						micmon = null;
+						micmanager.VolumeChanged -= VolumeChangeDetected;
+						micmanager = null;
 					}
 				}
 				catch { }

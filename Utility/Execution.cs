@@ -33,22 +33,31 @@ namespace MKAh
 	public static partial class Execution
 	{
 		static bool? isAdmin = null;
-		public static bool IsAdministrator()
+		public static bool IsAdministrator
 		{
-			if (isAdmin.HasValue) return isAdmin.Value;
+			get
+			{
+				if (!isAdmin.HasValue)
+				{
+					// https://stackoverflow.com/a/10905713
+					var identity = System.Security.Principal.WindowsIdentity.GetCurrent();
+					var principal = new System.Security.Principal.WindowsPrincipal(identity);
+					isAdmin = principal.IsInRole(System.Security.Principal.WindowsBuiltInRole.Administrator);
+				}
 
-			// https://stackoverflow.com/a/10905713
-			var identity = System.Security.Principal.WindowsIdentity.GetCurrent();
-			var principal = new System.Security.Principal.WindowsPrincipal(identity);
-			isAdmin = principal.IsInRole(System.Security.Principal.WindowsBuiltInRole.Administrator);
-
-			return isAdmin.Value;
+				return isAdmin.Value;
+			}
 		}
 
 		/// <summary>
 		/// Returns true if OS version is 6.1 and platform is NT.
 		/// </summary>
 		public static bool IsWin7 => (System.Environment.OSVersion.Platform == PlatformID.Win32NT && System.Environment.OSVersion.Version.Major == 6 && System.Environment.OSVersion.Version.Minor == 1);
+
+		public static bool IsWin8OrBetter
+			=> (System.Environment.OSVersion.Platform == PlatformID.Win32NT
+			&& System.Environment.OSVersion.Version.Major > 6
+			|| (System.Environment.OSVersion.Version.Major == 6 && System.Environment.OSVersion.Version.Minor == 2));
 
 		public static bool IsMainThread => Thread.CurrentThread.IsThreadPoolThread == false && Thread.CurrentThread.ManagedThreadId == 1;
 

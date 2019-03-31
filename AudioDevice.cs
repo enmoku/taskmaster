@@ -25,12 +25,10 @@
 // THE SOFTWARE.
 
 using System;
-using System.Diagnostics;
-using System.Threading;
 
 namespace Taskmaster
 {
-	sealed public class AudioDevice : System.IDisposable
+	sealed public class AudioDevice : IDisposable
 	{
 		public AudioDevice(NAudio.CoreAudioApi.MMDevice device)
 			: this(AudioManager.AudioDeviceIdToGuid(device.ID), device.FriendlyName, device.DataFlow, device.State, device)
@@ -51,8 +49,8 @@ namespace Taskmaster
 		public string GUID { get; private set; }
 
 		public bool VolumeControl { get; set; }
-		public double Volume { get; set; }
-		public double Target { get; set; }
+		public float Volume { get; set; }
+		public float Target { get; set; }
 
 		public NAudio.CoreAudioApi.DeviceState State { get; set; }
 		public NAudio.CoreAudioApi.DataFlow Flow { get; set; }

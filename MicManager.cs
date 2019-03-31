@@ -35,12 +35,16 @@ using Taskmaster.Events;
 
 namespace Taskmaster
 {
+	using static Taskmaster;
+
 	sealed public class MicManager : IComponent, IDisposable
 	{
 		readonly System.Threading.Thread Context = null;
 
 		public event EventHandler<VolumeChangedEventArgs> VolumeChanged;
 		public event EventHandler<AudioDefaultDeviceEventArgs> DefaultChanged;
+
+		bool DebugMic { get; set; } = false;
 
 		const string DeviceFilename = "Microphone.Devices.ini";
 
@@ -80,8 +84,7 @@ namespace Taskmaster
 			{
 				VolumeControl.Percent = _volume = value;
 
-				if (Taskmaster.DebugMic)
-					Log.Debug($"<Microphone> DEBUG Volume = {value:N1} % (actual: {VolumeControl.Percent:N1} %)");
+				if (DebugMic) Log.Debug($"<Microphone> DEBUG Volume = {value:N1} % (actual: {VolumeControl.Percent:N1} %)");
 			}
 		}
 
@@ -104,7 +107,7 @@ namespace Taskmaster
 			var mvol = "Default recording volume";
 			var mcontrol = "Recording volume control";
 
-			using (var corecfg = Taskmaster.Config.Load(Taskmaster.CoreConfigFilename).BlockUnload())
+			using (var corecfg = Config.Load(CoreConfigFilename).BlockUnload())
 			{
 				var mediasec = corecfg.Config["Media"];
 
@@ -114,12 +117,15 @@ namespace Taskmaster
 				DefaultVolume = mediasec.GetOrSet(mvol, 100.0d, out modified).DoubleValue.Constrain(0.0d, 100.0d);
 				dirty |= modified;
 
+				var dbgsec = corecfg.Config["Debug"];
+				DebugMic = dbgsec.Get("Microphone")?.BoolValue ?? false;
+
 				if (dirty) corecfg.MarkDirty();
 			}
 
-			if (Taskmaster.DebugMic) Log.Information("<Microphone> Component loaded.");
+			if (DebugMic) Log.Information("<Microphone> Component loaded.");
 
-			Taskmaster.DisposalChute.Push(this);
+			DisposalChute.Push(this);
 		}
 
 		AudioManager audiomanager = null;
@@ -133,6 +139,7 @@ namespace Taskmaster
 				audiomanager.Added += DeviceAdded;
 				audiomanager.Removed += DeviceRemoved;
 				audiomanager.DefaultChanged += ChangeDefaultDevice;
+				audiomanager.OnDisposed += (_, _ea) => audiomanager = null;
 
 				EnumerateDevices();
 
@@ -276,7 +283,7 @@ namespace Taskmaster
 				double devvol = double.NaN;
 				bool devcontrol = false;
 
-				using (var devcfg = Taskmaster.Config.Load(DeviceFilename).BlockUnload())
+				using (var devcfg = Config.Load(DeviceFilename).BlockUnload())
 				{
 					var devsec = devcfg.Config[RecordingDevice.GUID];
 
@@ -312,7 +319,7 @@ namespace Taskmaster
 		{
 			if (DisposedOrDisposing) throw new ObjectDisposedException("EnumerateDevices called after MicManager was disposed.");
 
-			if (Taskmaster.Trace) Log.Verbose("<Microphone> Enumerating devices...");
+			if (Trace) Log.Verbose("<Microphone> Enumerating devices...");
 
 			var devices = new List<AudioDevice>();
 
@@ -321,7 +328,7 @@ namespace Taskmaster
 				bool modified = false;
 				bool dirty = false;
 
-				using (var devcfg = Taskmaster.Config.Load(DeviceFilename).BlockUnload())
+				using (var devcfg = Config.Load(DeviceFilename).BlockUnload())
 				{
 					var devs = audiomanager.Enumerator?.EnumerateAudioEndPoints(NAudio.CoreAudioApi.DataFlow.Capture, NAudio.CoreAudioApi.DeviceState.Active) ?? null;
 					if (devs == null) throw new InvalidOperationException("Enumerator not available, Audio Manager is dead");
@@ -341,12 +348,12 @@ namespace Taskmaster
 							{
 								VolumeControl = control,
 								Target = target,
-								Volume = dev.AudioSessionManager.SimpleAudioVolume.Volume * 100d, // simpleaudiovolume is 0.0 to 1.0 instead of 0.0 to 100.0
+								Volume = dev.AudioSessionManager.SimpleAudioVolume.Volume,
 							};
 
 							devices.Add(mdev);
 
-							if (Taskmaster.Trace) Log.Verbose("<Microphone> Device: " + mdev.Name + " [GUID: " + mdev.GUID + "]");
+							if (Trace) Log.Verbose("<Microphone> Device: " + mdev.Name + " [GUID: " + mdev.GUID + "]");
 						}
 						catch (OutOfMemoryException) { throw; }
 						catch (Exception ex)
@@ -358,7 +365,7 @@ namespace Taskmaster
 					if (dirty) devcfg.MarkDirty();
 				}
 
-				if (Taskmaster.Trace) Log.Verbose("<Microphone> " + KnownDevices.Count + " microphone(s)");
+				if (Trace) Log.Verbose("<Microphone> " + KnownDevices.Count + " microphone(s)");
 			}
 			catch (OutOfMemoryException) { throw; }
 			catch (Exception ex)
@@ -391,12 +398,12 @@ namespace Taskmaster
 
 			if (Math.Abs(newVol - Target) <= SmallVolumeHysterisis)
 			{
-				if (Taskmaster.ShowInaction && Taskmaster.DebugMic)
+				if (ShowInaction && DebugMic)
 					Log.Verbose($"<Microphone> Volume change too small ({Math.Abs(newVol - Target):N1} %) to act on.");
 				return;
 			}
 
-			if (Taskmaster.Trace) Log.Verbose($"<Microphone> Volume changed from {oldVol:N1} % to {newVol:N1} %");
+			if (Trace) Log.Verbose($"<Microphone> Volume changed from {oldVol:N1} % to {newVol:N1} %");
 
 			// This is a light HYSTERISIS limiter in case someone is sliding a volume bar around,
 			// we act on it only once every [AdjustDelay] ms.
@@ -405,8 +412,7 @@ namespace Taskmaster
 			// TODO: Delay this even more if volume is changed ~2 seconds before we try to do so.
 			if (Math.Abs(newVol - Target) >= VolumeHysterisis) // Volume != Target for double
 			{
-				if (Taskmaster.Trace)
-					Log.Verbose($"<Microphone> DEBUG: Volume changed = [{oldVol:N1} → {newVol:N1}], Off.Target: {Math.Abs(newVol - Target):N1}");
+				if (Trace) Log.Verbose($"<Microphone> DEBUG: Volume changed = [{oldVol:N1} → {newVol:N1}], Off.Target: {Math.Abs(newVol - Target):N1}");
 
 				if (Atomic.Lock(ref correcting_lock))
 				{
@@ -433,12 +439,12 @@ namespace Taskmaster
 				}
 				else
 				{
-					if (Taskmaster.Trace) Log.Verbose("<Microphone> DEBUG CorrectionAlreadyQueued");
+					if (Trace) Log.Verbose("<Microphone> DEBUG CorrectionAlreadyQueued");
 				}
 			}
 			else
 			{
-				if (Taskmaster.Trace) Log.Verbose("<Microphone> DEBUG NotCorrected");
+				if (Trace) Log.Verbose("<Microphone> DEBUG NotCorrected");
 			}
 		}
 
@@ -456,7 +462,7 @@ namespace Taskmaster
 
 			if (disposing)
 			{
-				if (Taskmaster.Trace) Log.Verbose("Disposing microphone monitor...");
+				if (Trace) Log.Verbose("Disposing microphone monitor...");
 
 				VolumeChanged = null;
 

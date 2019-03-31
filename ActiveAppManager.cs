@@ -31,6 +31,7 @@ using Serilog;
 
 namespace Taskmaster
 {
+	using System.Text;
 	using static Taskmaster;
 
 	sealed public class WindowChangedArgs : EventArgs
@@ -97,8 +98,7 @@ namespace Taskmaster
 
 			if (HangKillTick > 0 || HangReduceTick > 0 || HangMinimizeTick > 0)
 			{
-				var sbs = new System.Text.StringBuilder();
-				sbs.Append("<Foreground> Hang action timers: ");
+				var sbs = new StringBuilder().Append("<Foreground> Hang action timers: ");
 
 				if (HangMinimizeTick > 0)
 				{
@@ -110,8 +110,7 @@ namespace Taskmaster
 					sbs.Append("Reduce: ").Append(HangReduceTick).Append("s");
 					if (HangKillTick > 0) sbs.Append(", ");
 				}
-				if (HangKillTick > 0)
-					sbs.Append("Kill: ").Append(HangKillTick).Append("s");
+				if (HangKillTick > 0) sbs.Append("Kill: ").Append(HangKillTick).Append("s");
 
 				Log.Information(sbs.ToString());
 			}
@@ -211,8 +210,8 @@ namespace Taskmaster
 						if (ProcessManager.SystemProcessId(pid)) name = "<OS>"; // this might also signify the desktop, for some reason
 					}
 
-					var sbs = new System.Text.StringBuilder();
-					sbs.Append("<Foreground> ");
+					var sbs = new StringBuilder().Append("<Foreground> ");
+
 					if (!string.IsNullOrEmpty(name))
 						sbs.Append(name).Append(" (#").Append(pid).Append(")");
 					else
@@ -379,7 +378,7 @@ namespace Taskmaster
 		{
 			const int nChars = 256;
 			IntPtr handle = IntPtr.Zero;
-			System.Text.StringBuilder Buff = new System.Text.StringBuilder(nChars);
+			StringBuilder Buff = new StringBuilder(nChars);
 			handle = GetForegroundWindow();
 
 			if (GetWindowText(handle, Buff, nChars) > 0)
@@ -392,7 +391,7 @@ namespace Taskmaster
 		string GetWindowTitle(IntPtr hwnd)
 		{
 			const int nChars = 256; // Why this limit?
-			var buff = new System.Text.StringBuilder(nChars);
+			var buff = new StringBuilder(nChars);
 
 			// Window title, we don't care tbh.
 			if (NativeMethods.GetWindowText(hwnd, buff, nChars) > 0) // get title? not really useful for most things

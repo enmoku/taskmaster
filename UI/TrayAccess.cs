@@ -259,6 +259,8 @@ namespace Taskmaster.UI
 
 		protected override void WndProc(ref Message m)
 		{
+			if (DisposingOrDisposed) return;
+
 			if (m.Msg == NativeMethods.WM_HOTKEY)
 			{
 				Keys key = (Keys)(((int)m.LParam >> 16) & 0xFFFF);
@@ -334,7 +336,7 @@ namespace Taskmaster.UI
 		public void Hook(ProcessManager pman)
 		{
 			processmanager = pman;
-			RescanRequest += (_,_ea) => processmanager.HastenScan();
+			RescanRequest += (_,_ea) => processmanager?.HastenScan();
 		}
 
 		PowerManager powermanager = null;
@@ -696,7 +698,7 @@ namespace Taskmaster.UI
 			{
 				try
 				{
-					if (!MKAh.Execution.IsAdministrator())
+					if (!MKAh.Execution.IsAdministrator)
 					{
 						SimpleMessageBox.ShowModal("Taskmaster! – run at login", "Scheduler can not be modified without admin rights.", SimpleMessageBox.Buttons.OK);
 						return;

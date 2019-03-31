@@ -55,6 +55,8 @@ namespace Taskmaster
 	{
 		public static bool ShowNetworkErrors { get; set; } = false;
 
+		bool DebugNet { get; set; } = false;
+
 		public event EventHandler<InternetStatus> InternetStatusChange;
 		public event EventHandler IPChanged;
 		public event EventHandler<NetworkStatus> NetworkStatusChange;
@@ -115,6 +117,9 @@ namespace Taskmaster
 				logsec["Show network errors"].Comment = "Show network errors on each sampling.";
 				dirtyconf |= dirty;
 
+				var dbgsec = corecfg.Config["Debug"];
+				DebugNet = dbgsec.Get("Network")?.BoolValue ?? false;
+
 				if (dirtyconf) corecfg.MarkDirty();
 			}
 
@@ -125,14 +130,14 @@ namespace Taskmaster
 		{
 			var now = DateTimeOffset.UtcNow;
 
+			InvalidateInterfaceList();
+
 			UptimeRecordStart = now;
 			LastUptimeStart = now;
 
 			LoadConfig();
 
 			InterfaceInitialization();
-
-			UpdateInterfaces(); // initialize
 
 			SampleTimer = new System.Timers.Timer(PacketStatTimerInterval * 1_000);
 			SampleTimer.Elapsed += AnalyzeTrafficBehaviour;
@@ -189,7 +194,7 @@ namespace Taskmaster
 		{
 			if (DisposedOrDisposing) throw new ObjectDisposedException("GetDeviceData called after NetManager was disposed.");
 
-			foreach (var device in CurrentInterfaceList)
+			foreach (var device in CurrentInterfaceList.Value)
 			{
 				if (device.Name.Equals(devicename))
 				{
@@ -205,7 +210,7 @@ namespace Taskmaster
 		LinearMeter PacketWarning = new LinearMeter(15); // UNUSED
 		LinearMeter ErrorReports = new LinearMeter(5, 4);
 
-		List<NetDevice> CurrentInterfaceList = new List<NetDevice>(2);
+		Lazy<List<NetDevice>> CurrentInterfaceList = null;
 
 		int TrafficAnalysisLimiter = 0;
 		NetTrafficData outgoing, incoming, oldoutgoing, oldincoming;
@@ -217,17 +222,15 @@ namespace Taskmaster
 		{
 			if (DisposedOrDisposing) return;
 
- 			Debug.Assert(CurrentInterfaceList != null);
-
 			if (!Atomic.Lock(ref TrafficAnalysisLimiter)) return;
 
 			try
 			{
 				//PacketWarning.Drain();
 
-				var oldifaces = CurrentInterfaceList;
-				UpdateInterfaces(); // force refresh
-				var ifaces = CurrentInterfaceList;
+				var oldifaces = CurrentInterfaceList.Value;
+				InvalidateInterfaceList(); // force refresh
+				var ifaces = CurrentInterfaceList.Value;
 
 				if (oldifaces.Count != ifaces.Count)
 				{
@@ -244,12 +247,12 @@ namespace Taskmaster
 					oldoutgoing = oldifaces[index].Outgoing;
 					oldincoming = oldifaces[index].Incoming;
 
-					long totalerrors = outgoing.Errors + incoming.Errors;
-					long totaldiscards = outgoing.Errors + incoming.Errors;
-					long totalunicast = outgoing.Errors + incoming.Errors;
-					long errorsInSample = (incoming.Errors - oldincoming.Errors) + (outgoing.Errors - oldoutgoing.Errors);
-					long discards = (incoming.Discards - oldincoming.Discards) + (outgoing.Discards - oldoutgoing.Discards);
-					long packets = (incoming.Unicast - oldincoming.Unicast) + (outgoing.Unicast - oldoutgoing.Unicast);
+					long totalerrors = outgoing.Errors + incoming.Errors,
+						totaldiscards = outgoing.Errors + incoming.Errors,
+						totalunicast = outgoing.Errors + incoming.Errors,
+						errorsInSample = (incoming.Errors - oldincoming.Errors) + (outgoing.Errors - oldoutgoing.Errors),
+						discards = (incoming.Discards - oldincoming.Discards) + (outgoing.Discards - oldoutgoing.Discards),
+						packets = (incoming.Unicast - oldincoming.Unicast) + (outgoing.Unicast - oldoutgoing.Unicast);
 
 					errorsSinceLastReport += errorsInSample;
 
@@ -283,14 +286,13 @@ namespace Taskmaster
 
 					if (reportErrors)
 					{
-						var sbs = new StringBuilder();
-						sbs.Append(ifaces[index].Name).Append(" is suffering from traffic errors! (");
+						var sbs = new StringBuilder().Append(ifaces[index].Name).Append(" is suffering from traffic errors! (");
 
 						bool longProblem = (errorsSinceLastReport > errorsInSample);
-						if (longProblem)
-							sbs.Append("+").Append(errorsSinceLastReport).Append(" errors, ").Append(errorsInSample).Append(" in last sample");
-						else
-							sbs.Append("+").Append(errorsInSample).Append(" errors in last sample");
+
+						if (longProblem) sbs.Append("+").Append(errorsSinceLastReport).Append(" errors, ").Append(errorsInSample).Append(" in last sample");
+						else sbs.Append("+").Append(errorsInSample).Append(" errors in last sample");
+
 						if (!double.IsNaN(pmins)) sbs.Append($"; {pmins:N1}").Append(" minutes since last report");
 						sbs.Append(")");
 
@@ -355,13 +357,7 @@ namespace Taskmaster
 		/// <value>The uptime.</value>
 		public TimeSpan Uptime
 		{
-			get
-			{
-				if (InternetAvailable)
-					return (DateTimeOffset.UtcNow - LastUptimeStart);
-
-				return TimeSpan.Zero;
-			}
+			get => InternetAvailable ? (DateTimeOffset.UtcNow - LastUptimeStart) : TimeSpan.Zero;
 		}
 
 		/// <summary>
@@ -388,14 +384,11 @@ namespace Taskmaster
 				if (InternetAvailable)
 				{
 					Downtime?.Stop();
-					var sbs = new StringBuilder();
-					sbs.Append("<Network> Internet available.");
-					if (Downtime != null)
-					{
-						sbs.Append($"{Downtime.Elapsed.TotalMinutes:N1}").Append(" minutes downtime.");
-						Downtime = null;
-					}
-					Log.Information(sbs.ToString());
+
+					double downtime = Downtime?.Elapsed.TotalMinutes ?? double.NaN;
+					Downtime = null;
+
+					Log.Information("<Network> Internet available." + (double.IsNaN(downtime) ? "" : $"{downtime:N1} minutes downtime."));
 				}
 				else
 				{
@@ -409,9 +402,8 @@ namespace Taskmaster
 
 		void ReportUptime()
 		{
-			var sbs = new System.Text.StringBuilder();
+			var sbs = new StringBuilder().Append("<Network> Average uptime: ");
 
-			sbs.Append("<Network> Average uptime: ");
 			lock (uptime_lock)
 			{
 				var currentUptime = DateTimeOffset.UtcNow.TimeSince(LastUptimeStart).TotalMinutes;
@@ -559,7 +551,7 @@ namespace Taskmaster
 
 					if (oldInetAvailable != InternetAvailable)
 					{
-						needUpdate = true;
+						InvalidateInterfaceList();
 						ReportNetAvailability();
 					}
 					else
@@ -638,21 +630,19 @@ namespace Taskmaster
 
 		readonly object interfaces_lock = new object();
 		int InterfaceUpdateLimiter = 0;
-		bool needUpdate = true;
 
-		public void UpdateInterfaces()
+		void InvalidateInterfaceList() => CurrentInterfaceList = new Lazy<List<NetDevice>>(RecreateInterfaceList);
+
+		List<NetDevice> RecreateInterfaceList()
 		{
 			if (DisposedOrDisposing) throw new ObjectDisposedException("UpdateInterfaces called after NetManager was disposed.");
 
-			if (!Atomic.Lock(ref InterfaceUpdateLimiter)) return;
-
-			needUpdate = false;
+			var ifacelistt = new List<NetDevice>();
 
 			try
 			{
 				if (DebugNet) Log.Verbose("<Network> Enumerating network interfaces...");
 
-				var ifacelistt = new List<NetDevice>();
 				// var ifacelist = new List<string[]>();
 
 				var index = 0;
@@ -703,24 +693,21 @@ namespace Taskmaster
 
 					if (DebugNet) Log.Verbose("<Network> Interface: " + dev.Name);
 				}
-
-				lock (interfaces_lock) CurrentInterfaceList = ifacelistt;
 			}
 			finally
 			{
-				Atomic.Unlock(ref InterfaceUpdateLimiter);
+
 			}
+
+			return ifacelistt;
 		}
 
 		public List<NetDevice> GetInterfaces()
 		{
 			if (DisposedOrDisposing) throw new ObjectDisposedException("GetInterfaces called after NetManager was disposed.");
 
-			lock (interfaces_lock)
-			{
-				if (needUpdate) UpdateInterfaces();
-				return CurrentInterfaceList;
-			}
+			InvalidateInterfaceList();
+			return CurrentInterfaceList.Value;
 		}
 
 		async void NetAddrChanged(object _, EventArgs _ea)
@@ -743,45 +730,40 @@ namespace Taskmaster
 
 				InterfaceInitialization(); // Update IPv4Address & IPv6Address
 
-				bool ipv4changed = false, ipv6changed = false;
-				ipv4changed = !oldV4Address.Equals(IPv4Address);
+				bool ipv4changed = false, ipv6changed = false, ipchanged = false;
+				ipchanged |= ipv4changed = !oldV4Address.Equals(IPv4Address);
 
-				var sbs = new System.Text.StringBuilder();
+				var sbs = new StringBuilder();
 
 				if (AvailabilityChanged)
 				{
+					sbs.AppendLine("Internet restored.");
 					Log.Information("<Network> Internet connection restored.");
-					sbs.Append("Internet connection restored!").AppendLine();
 				}
 
-				if (ipv4changed)
-				{
-					var outstr4 = new System.Text.StringBuilder();
-					outstr4.Append("<Network> IPv4 address changed: ").Append(oldV4Address).Append(" → ").Append(IPv4Address);
-					Log.Information(outstr4.ToString());
-					sbs.Append(outstr4).AppendLine();
-				}
+				ipchanged |= ipv6changed = !oldV6Address.Equals(IPv6Address);
 
-				ipv6changed = !oldV6Address.Equals(IPv6Address);
-
-				if (ipv6changed)
+				if (ipchanged)
 				{
-					var outstr6 = new System.Text.StringBuilder();
-					outstr6.Append("<Network> IPv6 address changed: ").Append(oldV6Address).Append(" → ").Append(IPv6Address);
-					Log.Information(outstr6.ToString());
-					sbs.Append(outstr6).AppendLine();
-				}
+					if (ipv4changed)
+					{
+						sbs.AppendLine("IPv4 address changed.").AppendLine(IPv4Address.ToString());
+						Log.Information($"<Network> IPv4 address changed: {oldV4Address} → {IPv4Address}");
+					}
+					if (ipv6changed)
+					{
+						sbs.AppendLine("IPv6 address changed.").AppendLine(IPv6Address.ToString());
+						Log.Information($"<Network> IPv6 address changed: {oldV6Address} → {IPv6Address}");
+					}
 
-				if (sbs.Length > 0)
-				{
-					Tray.Tooltip(4000, sbs.ToString(), "Taskmaster",
-						System.Windows.Forms.ToolTipIcon.Warning);
+					Tray.Tooltip(4000, sbs.ToString(), "Taskmaster", System.Windows.Forms.ToolTipIcon.Warning);
 
 					// bad since if it's not clicked, we react to other tooltip clicks, too
+					// TODO: Need replaceable callback or something.
 					//Tray.TrayTooltipClicked += (s, e) => { /* something */ };
-				}
 
-				if (ipv4changed || ipv6changed) IPChanged?.Invoke(this, EventArgs.Empty);
+					IPChanged?.Invoke(this, EventArgs.Empty);
+				}
 			}
 			else
 			{
@@ -814,12 +796,11 @@ namespace Taskmaster
 		{
 			if (DisposedOrDisposing) throw new ObjectDisposedException("ReportNetAvailability called after NetManager was disposed.");
 
-			var sbs = new System.Text.StringBuilder();
-
 			bool changed = (LastReportedInetAvailable != InternetAvailable) || (LastReportedNetAvailable != NetworkAvailable);
 			if (!changed) return; // bail out if nothing has changed
 
-			sbs.Append("<Network> Status: ")
+			var sbs = new StringBuilder()
+				.Append("<Network> Status: ")
 				.Append(NetworkAvailable ? HumanReadable.Hardware.Network.Connected : HumanReadable.Hardware.Network.Disconnected)
 				.Append(", Internet: ")
 				.Append(InternetAvailable ? HumanReadable.Hardware.Network.Connected : HumanReadable.Hardware.Network.Disconnected)

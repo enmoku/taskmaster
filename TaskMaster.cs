@@ -25,12 +25,10 @@
 // THE SOFTWARE.
 
 using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Text;
-using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using MKAh;
@@ -64,15 +62,17 @@ namespace Taskmaster
 		public static AudioManager audiomanager = null;
 		public static CPUMonitor cpumonitor = null;
 		public static HardwareMonitor hardware = null;
+		public static AlertManager alerts = null;
 
 		/// <summary>
 		/// For making sure disposal happens and that it does so in main thread.
 		/// </summary>
-		public static Stack<IDisposable> DisposalChute = new Stack<IDisposable>();
+		internal static Stack<IDisposable> DisposalChute = new Stack<IDisposable>();
 
-		public static OS.HiddenWindow hiddenwindow; // depends on chute
+		public static OS.HiddenWindow hiddenwindow;
 
 		static Runstate State = Runstate.Normal;
+
 		static bool RestartElevated { get; set; } = false;
 		static int RestartCounter { get; set; } = 0;
 		static int AdminCounter { get; set; } = 0;
@@ -234,42 +234,18 @@ namespace Taskmaster
 				trayaccess.Hook(mainwindow);
 
 				// .GotFocus and .LostFocus are apparently unreliable as per the API
-				mainwindow.Activated += WindowActivatedEvent;
-				mainwindow.Deactivate += WindowDeactivatedEvent;
+				mainwindow.Activated += (_,_ea) => OptimizeResponsiviness(true);
+				mainwindow.Deactivate += (_, _ea) => OptimizeResponsiviness(false);
 			}
 
 			if (reveal) mainwindow?.Reveal();
 		}
 
-		static bool MainWindowFocus = false;
-		static bool TrayShown = false;
-
-		static void WindowActivatedEvent(object _, EventArgs _ea)
-		{
-			MainWindowFocus = true;
-
-			OptimizeResponsiviness();
-		}
-
-		static void WindowDeactivatedEvent(object _, EventArgs _ea)
-		{
-			MainWindowFocus = false;
-
-			OptimizeResponsiviness();
-		}
-
-		static void TrayMenuShownEvent(object _, UI.TrayShownEventArgs e)
-		{
-			TrayShown = e.Visible;
-
-			OptimizeResponsiviness();
-		}
-
-		static void OptimizeResponsiviness()
+		static void OptimizeResponsiviness(bool shown=false)
 		{
 			var self = Process.GetCurrentProcess();
 
-			if (MainWindowFocus || TrayShown)
+			if (shown)
 			{
 				if (SelfOptimizeBGIO)
 					MKAh.Utility.DiscardExceptions(() => ProcessUtility.UnsetBackground(self));
@@ -281,7 +257,7 @@ namespace Taskmaster
 				self.PriorityClass = SelfPriority;
 
 				if (SelfOptimizeBGIO)
-					MKAh.Utility.DiscardExceptions(() => ProcessUtility.SafeSetBackground(self));
+					MKAh.Utility.DiscardExceptions(() => ProcessUtility.SetBackground(self));
 			}
 
 		}
@@ -312,30 +288,29 @@ namespace Taskmaster
 
 			var timer = Stopwatch.StartNew();
 
+			var cts = new System.Threading.CancellationTokenSource();
+
 			ProcessUtility.InitializeCache();
 
-			Task PowMan = Task.CompletedTask,
-				CpuMon = Task.CompletedTask,
-				ProcMon = Task.CompletedTask,
-				FgMon = Task.CompletedTask,
-				NetMon = Task.CompletedTask,
-				StorMon = Task.CompletedTask,
-				HpMon = Task.CompletedTask,
-				HwMon = Task.CompletedTask;
+			Task PowMan, CpuMon, ProcMon, FgMon, NetMon, StorMon, HpMon, HwMon, AlMan;
 
 			// Parallel loading, cuts down startup time some.
 			// This is really bad if something fails
 			Task[] init =
 			{
-				PowerManagerEnabled ? (PowMan = Task.Run(() => powermanager = new PowerManager())) : Task.CompletedTask,
-				PowerManagerEnabled ? (CpuMon = Task.Run(()=> cpumonitor = new CPUMonitor())) : Task.CompletedTask,
-				ProcessMonitorEnabled ? (ProcMon = Task.Run(() => processmanager = new ProcessManager())) : Task.CompletedTask,
-				(ActiveAppMonitorEnabled && ProcessMonitorEnabled) ? (FgMon = Task.Run(()=> activeappmonitor = new ActiveAppManager(eventhook:false))) : Task.CompletedTask,
-				NetworkMonitorEnabled ? (NetMon = Task.Run(() => netmonitor = new NetManager())) : Task.CompletedTask,
-				StorageMonitorEnabled ? (StorMon = Task.Run(() => storagemanager = new StorageManager())) : Task.CompletedTask,
-				HealthMonitorEnabled ? (HpMon = Task.Run(() => healthmonitor = new HealthMonitor())) : Task.CompletedTask,
-				HardwareMonitorEnabled ? (HwMon = Task.Run(() => hardware = new HardwareMonitor())) : Task.CompletedTask,
+				(PowMan = PowerManagerEnabled ? Task.Run(() => powermanager = new PowerManager(), cts.Token) : Task.CompletedTask),
+				(CpuMon = PowerManagerEnabled ? Task.Run(()=> cpumonitor = new CPUMonitor(), cts.Token) : Task.CompletedTask),
+				(ProcMon = ProcessMonitorEnabled ? Task.Run(() => processmanager = new ProcessManager(), cts.Token) : Task.CompletedTask),
+				(FgMon = ActiveAppMonitorEnabled ? Task.Run(()=> activeappmonitor = new ActiveAppManager(eventhook:false), cts.Token) : Task.CompletedTask),
+				(NetMon = NetworkMonitorEnabled ? Task.Run(() => netmonitor = new NetManager(), cts.Token) : Task.CompletedTask),
+				(StorMon = StorageMonitorEnabled ? Task.Run(() => storagemanager = new StorageManager(), cts.Token) : Task.CompletedTask),
+				(HpMon = HealthMonitorEnabled ? Task.Run(() => healthmonitor = new HealthMonitor(), cts.Token) : Task.CompletedTask),
+				(HwMon = HardwareMonitorEnabled ? Task.Run(() => hardware = new HardwareMonitor(), cts.Token) : Task.CompletedTask),
+				(AlMan = AlertManagerEnabled ? Task.Run(() => alerts = new AlertManager(), cts.Token) : Task.CompletedTask),
 			};
+
+			Task SelfMaint = Task.Run(() => selfmaintenance = new SelfMaintenance());
+			SelfMaint.ConfigureAwait(false);
 
 			// MMDEV requires main thread
 			try
@@ -363,33 +338,29 @@ namespace Taskmaster
 
 			// WinForms makes the following components not load nicely if not done here.
 			trayaccess = new UI.TrayAccess();
-			trayaccess.TrayMenuShown += TrayMenuShownEvent;
+			trayaccess.TrayMenuShown += (_, ea) => OptimizeResponsiviness(ea.Visible);
 
 			if (PowerManagerEnabled)
 			{
-				Task.WhenAll(new Task[] { PowMan, CpuMon }).ContinueWith((_) => {
+				Task.WhenAll(new Task[] { PowMan, CpuMon, ProcMon }).ContinueWith((_) => {
 					if (powermanager == null) throw new InitFailure("Power Manager has failed to initialize");
 					if (cpumonitor == null) throw new InitFailure("CPU Monitor has failed to initialize");
+					if (processmanager == null) throw new InitFailure("Process Manager has failed to initialize");
+
+					cpumonitor?.Hook(processmanager);
+
 					trayaccess.Hook(powermanager);
 					powermanager.onBatteryResume += RestartRequest; // HACK
 					powermanager.Hook(cpumonitor);
 				});
 			}
 
-			Task.WhenAll(ProcMon).ContinueWith(
-				(x) => trayaccess?.Hook(processmanager));
-
-			Task.WhenAll(CpuMon).ContinueWith(
-			(x) =>
-			{
-				if (powermanager != null)
-					cpumonitor?.Hook(processmanager);
-			});
+			ProcMon.ContinueWith((x) => trayaccess?.Hook(processmanager));
 
 			//if (HardwareMonitorEnabled)
 			//	Task.WhenAll(HwMon).ContinueWith((x) => hardware.Start()); // this is slow
 
-			Task.WhenAll(NetMon).ContinueWith((x) =>
+			NetMon.ContinueWith((x) =>
 			{
 				if (netmonitor != null)
 				{
@@ -398,11 +369,7 @@ namespace Taskmaster
 				}
 			});
 
-			if (AudioManagerEnabled)
-			{
-				Task.WhenAll(ProcMon).ContinueWith(
-					(x) => audiomanager?.Hook(processmanager));
-			}
+			if (AudioManagerEnabled) ProcMon.ContinueWith((x) => audiomanager?.Hook(processmanager));
 
 			bool warned = false;
 			try
@@ -447,31 +414,22 @@ namespace Taskmaster
 
 			Log.Information($"<Core> Components loaded ({timer.ElapsedMilliseconds} ms); Hooking event handlers.");
 
-			if (ActiveAppMonitorEnabled)
-				processmanager?.Hook(activeappmonitor);
+			if (activeappmonitor != null)
+			{
+				processmanager.Hook(activeappmonitor);
+				activeappmonitor.SetupEventHook();
+			}
 
-			activeappmonitor?.SetupEventHook();
-
-			powermanager?.SetupEventHook();
-			if (PowerManagerEnabled)
+			if (powermanager != null)
+			{
+				powermanager.SetupEventHook();
 				processmanager?.Hook(powermanager);
+			}
 
 			if (GlobalHotkeys)
 				trayaccess.RegisterGlobalHotkeys();
 
 			// UI
-
-			var secInit = new Task[] { PowMan, CpuMon, ProcMon, FgMon, NetMon, StorMon, HpMon, HwMon };
-			if (!Task.WaitAll(secInit, 5_000))
-			{
-				Log.Warning("<Core> Component secondary loading still in progress.");
-				if (!Task.WaitAll(secInit, 25_000))
-					throw new InitFailure("Component secondary initialization taking excessively long, aborting.");
-			}
-
-			secInit = null;
-			init = null;
-
 			if (State == Runstate.Normal)
 			{
 				if (ShowOnStart) BuildMainWindow(reveal:true);
@@ -503,8 +461,6 @@ namespace Taskmaster
 
 				self.ProcessorAffinity = new IntPtr(selfAffMask); // this should never throw an exception
 				self.PriorityClass = SelfPriority;
-
-				selfmaintenance = new SelfMaintenance();
 			}
 
 			if (Trace) Log.Verbose("Displaying Tray Icon");
@@ -529,12 +485,6 @@ namespace Taskmaster
 		public static bool DebugResize { get; set; } = false;
 
 		public static bool DebugMemory { get; set; } = false;
-		public static bool DebugPaging { get; set; } = false;
-
-		public static bool DebugHealth { get; set; } = false;
-
-		public static bool DebugNet { get; set; } = false;
-		public static bool DebugMic { get; set; } = false;
 
 		public static bool Trace { get; set; } = false;
 		public static bool UniqueCrashLogs { get; set; } = false;
@@ -553,11 +503,11 @@ namespace Taskmaster
 		public static bool HealthMonitorEnabled { get; private set; } = true;
 		public static bool AudioManagerEnabled { get; private set; } = true;
 		public static bool HardwareMonitorEnabled { get; private set; } = false;
+		public static bool AlertManagerEnabled { get; private set; } = false;
 
 		// EXPERIMENTAL FEATURES
 		public static bool TempMonitorEnabled { get; private set; } = false;
 		public static bool LastModifiedList { get; private set; } = false;
-		public static bool WindowResizeEnabled { get; private set; } = false;
 		public static TimeSpan? RecordAnalysis { get; set; } = null;
 		public static bool IOPriorityEnabled { get; private set; } = false;
 
@@ -618,6 +568,12 @@ namespace Taskmaster
 				compsec[HumanReadable.System.Process.Section].Comment = "Monitor starting processes based on their name. Configure in Apps.ini";
 				dirtyconfig |= modified;
 
+				if (!ProcessMonitorEnabled)
+				{
+					Log.Warning("<Core> Process monitor disabled: state not supported, forcing enabled.");
+					ProcessMonitorEnabled = true;
+				}
+
 				AudioManagerEnabled = compsec.GetOrSet(HumanReadable.Hardware.Audio.Section, true, out modified).BoolValue;
 				compsec[HumanReadable.Hardware.Audio.Section].Comment = "Monitor audio sessions and set their volume as per user configuration.";
 				dirtyconfig |= modified;
@@ -625,7 +581,11 @@ namespace Taskmaster
 				compsec["Microphone"].Comment = "Monitor and force-keep microphone volume.";
 				dirtyconfig |= modified;
 
-				if (!AudioManagerEnabled && MicrophoneManagerEnabled) MicrophoneManagerEnabled = false;
+				if (!AudioManagerEnabled && MicrophoneManagerEnabled)
+				{
+					Log.Warning("<Core> Audio manager disabled, disabling microphone manager.");
+					MicrophoneManagerEnabled = false;
+				}
 
 				// MediaMonitorEnabled = compsec.GetSetDefault("Media", true, out modified).BoolValue;
 				// compsec["Media"].Comment = "Unused";
@@ -639,9 +599,13 @@ namespace Taskmaster
 				PowerManagerEnabled = compsec.GetOrSet(HumanReadable.Hardware.Power.Section, true, out modified).BoolValue;
 				compsec[HumanReadable.Hardware.Power.Section].Comment = "Enable power plan management.";
 				dirtyconfig |= modified;
-				PagingEnabled = compsec.GetOrSet("Paging", true, out modified).BoolValue;
-				compsec["Paging"].Comment = "Enable paging of apps as per their configuration.";
-				dirtyconfig |= modified;
+
+				if (compsec.TryGet("Paging", out var pagingsetting))
+				{
+					compsec.Remove(pagingsetting);
+					dirtyconfig = true;
+				}
+
 				StorageMonitorEnabled = compsec.GetOrSet("Storage", false, out modified).BoolValue;
 				compsec["Storage"].Comment = "Enable NVM storage monitoring functionality.";
 				dirtyconfig |= modified;
@@ -710,12 +674,6 @@ namespace Taskmaster
 				ShowSessionActions = logsec.GetOrSet("Show session actions", true, out modified).BoolValue;
 				logsec["Show session actions"].Comment = "Show blurbs about actions taken relating to sessions.";
 
-				if (optsec.TryGet("Show on start", out var sosv)) // REPRECATED
-				{
-					ShowOnStart = sosv.BoolValue;
-					optsec.Remove(sosv);
-				}
-
 				var winsec = cfg["Show on start"];
 				ShowOnStart = winsec.GetOrSet("Show on start", ShowOnStart, out modified).BoolValue;
 				dirtyconfig |= modified;
@@ -763,6 +721,18 @@ namespace Taskmaster
 				perfsec["Path cache max age"].Comment = "Maximum age, in minutes, of cached objects. Min: 1 (1min), Max: 1440 (1day). These will be removed even if the cache is appropriate size.";
 				dirtyconfig |= modified;
 
+				// OPTIONS
+				if (optsec.TryGet("Show on start", out var sosv)) // REPRECATED
+				{
+					ShowOnStart = sosv.BoolValue;
+					optsec.Remove(sosv);
+					dirtyconfig = true;
+				}
+
+				PagingEnabled = optsec.GetOrSet("Paging", true, out modified).BoolValue;
+				optsec["Paging"].Comment = "Enable paging of apps as per their configuration.";
+				dirtyconfig |= modified;
+
 				//
 				var maintsec = cfg["Maintenance"];
 				maintsec.TryRemove("Cleanup interval"); // DEPRECATRED
@@ -775,7 +745,7 @@ namespace Taskmaster
 				Log.Information("<Core> Self-optimize: " + (SelfOptimize ? HumanReadable.Generic.Enabled : HumanReadable.Generic.Disabled));
 
 				// PROTECT USERS FROM TOO HIGH PERMISSIONS
-				isadmin = MKAh.Execution.IsAdministrator();
+				isadmin = MKAh.Execution.IsAdministrator;
 				var adminwarning = ((cfg["Core"].Get("Hell")?.Value ?? null) != "No");
 				if (isadmin && adminwarning)
 				{
@@ -811,13 +781,8 @@ namespace Taskmaster
 				DebugResize = dbgsec.Get("Resize")?.BoolValue ?? false;
 
 				DebugMemory = dbgsec.Get("Memory")?.BoolValue ?? false;
-				DebugPaging = dbgsec.Get("Paging")?.BoolValue ?? true;
-
-				DebugNet = dbgsec.Get("Network")?.BoolValue ?? false;
-				DebugMic = dbgsec.Get("Microphone")?.BoolValue ?? false;
 
 				var exsec = cfg["Experimental"];
-				WindowResizeEnabled = exsec.Get("Window Resize")?.BoolValue ?? false;
 				LastModifiedList = exsec.Get("Last Modified")?.BoolValue ?? false;
 				TempMonitorEnabled = exsec.Get("Temp Monitor")?.BoolValue ?? false;
 				int trecanalysis = exsec.Get("Record analysis")?.IntValue ?? 0;
@@ -957,9 +922,6 @@ namespace Taskmaster
 
 		static void ParseArguments(string[] args)
 		{
-			var StartDelay = 0;
-			var uptime = TimeSpan.Zero;
-
 			for (int i = 0; i < args.Length; i++)
 			{
 				if (!args[i].StartsWith("--"))
@@ -972,18 +934,7 @@ namespace Taskmaster
 				{
 					case RestartArg:
 						if (args.Length > i+1 && !args[i+1].StartsWith("--"))
-						{
-							try
-							{
-								RestartCounter =  Convert.ToInt32(args[++i]);
-							}
-							catch (Exception ex) when (ex is NullReferenceException || ex is OutOfMemoryException) { throw; }
-							catch (Exception ex)
-							{
-								Logging.Stacktrace(ex, crashsafe:true);
-							}
-						}
-
+							RestartCounter =  Convert.ToInt32(args[++i]);
 						break;
 					case AdminArg:
 						if (args.Length > i+1 && !args[i+1].StartsWith("--"))
@@ -1001,7 +952,7 @@ namespace Taskmaster
 
 						if (AdminCounter <= 1)
 						{
-							if (!MKAh.Execution.IsAdministrator())
+							if (!MKAh.Execution.IsAdministrator)
 							{
 								Log.Information("Restarting with elevated privileges.");
 								try
@@ -1030,18 +981,6 @@ namespace Taskmaster
 						break;
 					default:
 						break;
-				}
-			}
-
-			if (StartDelay > 0 && uptime.TotalSeconds < 300)
-			{
-				Debug.WriteLine($"Delaying proper startup for {uptime.TotalSeconds:N1} seconds.");
-
-				var remainingdelay = StartDelay - uptime.TotalSeconds;
-				if (remainingdelay > 5)
-				{
-					Log.Information($"Delaying start by {remainingdelay:N0} seconds");
-					System.Threading.Thread.Sleep(TimeSpan.FromSeconds(remainingdelay));
 				}
 			}
 		}
@@ -1237,129 +1176,122 @@ namespace Taskmaster
 
 			try
 			{
-				try
+				var startTimer = Stopwatch.StartNew();
+
+				//Debug.Listeners.Add(new TextWriterTraceListener(System.Console.Out));
+
+				NativeMethods.SetErrorMode(NativeMethods.SetErrorMode(NativeMethods.ErrorModes.SEM_SYSTEMDEFAULT) | NativeMethods.ErrorModes.SEM_NOGPFAULTERRORBOX | NativeMethods.ErrorModes.SEM_FAILCRITICALERRORS);
+
+				System.Windows.Forms.Application.SetUnhandledExceptionMode(UnhandledExceptionMode.Automatic);
+				System.Windows.Forms.Application.ThreadException += UnhandledUIException;
+				System.Windows.Forms.Application.EnableVisualStyles(); // required by shortcuts and high dpi-awareness
+				System.Windows.Forms.Application.SetCompatibleTextRenderingDefault(false); // required by high dpi-awareness
+
+				AppDomain.CurrentDomain.UnhandledException += UnhandledException;
+
+				//hiddenwindow = new OS.HiddenWindow();
+
+				TryPortableMode();
+				LogPath = Path.Combine(DataPath, "Logs");
+
+				// Singleton
+				singleton = new System.Threading.Mutex(true, SingletonID, out bool mutexgained);
+				if (!mutexgained)
 				{
-					var startTimer = Stopwatch.StartNew();
+					SimpleMessageBox.ResultType rv = SimpleMessageBox.ResultType.Cancel;
 
-					//Debug.Listeners.Add(new TextWriterTraceListener(System.Console.Out));
-
-					NativeMethods.SetErrorMode(NativeMethods.SetErrorMode(NativeMethods.ErrorModes.SEM_SYSTEMDEFAULT) | NativeMethods.ErrorModes.SEM_NOGPFAULTERRORBOX | NativeMethods.ErrorModes.SEM_FAILCRITICALERRORS);
-
-					System.Windows.Forms.Application.SetUnhandledExceptionMode(UnhandledExceptionMode.Automatic);
-					System.Windows.Forms.Application.ThreadException += UnhandledUIException;
-					System.Windows.Forms.Application.EnableVisualStyles(); // required by shortcuts and high dpi-awareness
-					System.Windows.Forms.Application.SetCompatibleTextRenderingDefault(false); // required by high dpi-awareness
-
-					AppDomain.CurrentDomain.UnhandledException += UnhandledException;
-
-					//hiddenwindow = new OS.HiddenWindow();
-
-					TryPortableMode();
-					LogPath = Path.Combine(DataPath, "Logs");
-
-					// Singleton
-					singleton = new System.Threading.Mutex(true, SingletonID, out bool mutexgained);
-					if (!mutexgained)
+					// already running, signal original process
+					using (var msg = new SimpleMessageBox("Taskmaster!",
+						"Already operational.\n\nRetry to try to recover [restart] running instance.\nEnd to kill running instance and exit this.\nCancel to simply request refresh.",
+						SimpleMessageBox.Buttons.RetryEndCancel))
 					{
-						SimpleMessageBox.ResultType rv = SimpleMessageBox.ResultType.Cancel;
-
-						// already running, signal original process
-						using (var msg = new SimpleMessageBox("Taskmaster!",
-							"Already operational.\n\nRetry to try to recover [restart] running instance.\nEnd to kill running instance and exit this.\nCancel to simply request refresh.",
-							SimpleMessageBox.Buttons.RetryEndCancel))
-						{
-							msg.ShowDialog();
-							rv = msg.Result;
-						}
-
-						switch (rv)
-						{
-							case SimpleMessageBox.ResultType.Retry:
-								PipeExplorer(PipeRestart);
-								break;
-							case SimpleMessageBox.ResultType.End:
-								PipeExplorer(PipeTerm);
-								break;
-							case SimpleMessageBox.ResultType.Cancel:
-								PipeExplorer(PipeRefresh);
-								break;
-						}
-
-						return -1;
+						msg.ShowDialog();
+						rv = msg.Result;
 					}
 
-					pipe = PipeDream(); // IPC with other instances of TM
-
-					// Multi-core JIT
-					// https://docs.microsoft.com/en-us/dotnet/api/system.runtime.profileoptimization
+					switch (rv)
 					{
-						var cachepath = System.IO.Path.Combine(DataPath, "Cache");
-						if (!System.IO.Directory.Exists(cachepath)) System.IO.Directory.CreateDirectory(cachepath);
-						System.Runtime.ProfileOptimization.SetProfileRoot(cachepath);
-						System.Runtime.ProfileOptimization.StartProfile("jit.profile");
+						case SimpleMessageBox.ResultType.Retry:
+							PipeExplorer(PipeRestart);
+							break;
+						case SimpleMessageBox.ResultType.End:
+							PipeExplorer(PipeTerm);
+							break;
+						case SimpleMessageBox.ResultType.Cancel:
+							PipeExplorer(PipeRefresh);
+							break;
 					}
 
-					Config = new Configuration.Manager(DataPath);
+					return -1;
+				}
 
-					LicenseBoiler();
+				pipe = PipeDream(); // IPC with other instances of TM
 
-					// INIT LOGGER
-					var logswitch = new LoggingLevelSwitch(LogEventLevel.Information);
+				// Multi-core JIT
+				// https://docs.microsoft.com/en-us/dotnet/api/system.runtime.profileoptimization
+				{
+					var cachepath = System.IO.Path.Combine(DataPath, "Cache");
+					if (!System.IO.Directory.Exists(cachepath)) System.IO.Directory.CreateDirectory(cachepath);
+					System.Runtime.ProfileOptimization.SetProfileRoot(cachepath);
+					System.Runtime.ProfileOptimization.StartProfile("jit.profile");
+				}
+
+				Config = new Configuration.Manager(DataPath);
+
+				LicenseBoiler();
+
+				// INIT LOGGER
+				var logswitch = new LoggingLevelSwitch(LogEventLevel.Information);
 
 #if DEBUG
-					loglevelswitch.MinimumLevel = LogEventLevel.Debug;
-					if (Trace) loglevelswitch.MinimumLevel = LogEventLevel.Verbose;
+				loglevelswitch.MinimumLevel = LogEventLevel.Debug;
+				if (Trace) loglevelswitch.MinimumLevel = LogEventLevel.Verbose;
 #endif
 
-					var logpathtemplate = System.IO.Path.Combine(LogPath, "taskmaster-{Date}.log");
-					Serilog.Log.Logger = new Serilog.LoggerConfiguration()
-						.MinimumLevel.ControlledBy(loglevelswitch)
-						.WriteTo.Console(levelSwitch: new LoggingLevelSwitch(LogEventLevel.Verbose))
-						.WriteTo.RollingFile(logpathtemplate, outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}",
-							levelSwitch: new LoggingLevelSwitch(Serilog.Events.LogEventLevel.Debug), retainedFileCountLimit: 3)
-						.WriteTo.MemorySink(levelSwitch: logswitch)
-						.CreateLogger();
+				var logpathtemplate = System.IO.Path.Combine(LogPath, "taskmaster-{Date}.log");
+				Serilog.Log.Logger = new Serilog.LoggerConfiguration()
+					.MinimumLevel.ControlledBy(loglevelswitch)
+					.WriteTo.Console(levelSwitch: new LoggingLevelSwitch(LogEventLevel.Verbose))
+					.WriteTo.RollingFile(logpathtemplate, outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}",
+						levelSwitch: new LoggingLevelSwitch(Serilog.Events.LogEventLevel.Debug), retainedFileCountLimit: 3)
+					.WriteTo.MemorySink(levelSwitch: logswitch)
+					.CreateLogger();
 
-					// COMMAND-LINE ARGUMENTS
-					ParseArguments(args);
+				// COMMAND-LINE ARGUMENTS
+				ParseArguments(args);
 
-					// STARTUP
+				// STARTUP
 
-					var builddate = BuildDate();
+				var builddate = BuildDate();
 
-					var now = DateTime.Now;
-					var age = (now - builddate).TotalDays;
+				var now = DateTime.Now;
+				var age = (now - builddate).TotalDays;
 
-					var sbs = new StringBuilder();
-					sbs.Append("Taskmaster! (#").Append(Process.GetCurrentProcess().Id).Append(")")
-						.Append(MKAh.Execution.IsAdministrator() ? " [ADMIN]" : "").Append(Portable ? " [PORTABLE]" : "")
-						.Append(" – Version: ").Append(System.Reflection.Assembly.GetExecutingAssembly().GetName().Version)
-						.Append(" – Built: ").Append(builddate.ToString("yyyy/MM/dd HH:mm")).Append($" [{age:N0} days old]");
-					Log.Information(sbs.ToString());
+				var sbs = new StringBuilder()
+					.Append("Taskmaster! (#").Append(Process.GetCurrentProcess().Id).Append(")")
+					.Append(MKAh.Execution.IsAdministrator ? " [ADMIN]" : "").Append(Portable ? " [PORTABLE]" : "")
+					.Append(" – Version: ").Append(System.Reflection.Assembly.GetExecutingAssembly().GetName().Version)
+					.Append(" – Built: ").Append(builddate.ToString("yyyy/MM/dd HH:mm")).Append($" [{age:N0} days old]");
+				Log.Information(sbs.ToString());
 
-					//PreallocLastLog();
+				//PreallocLastLog();
 
-					InitialConfiguration();
-					LoadCoreConfig();
-					InitializeComponents();
+				InitialConfiguration();
+				LoadCoreConfig();
+				InitializeComponents();
 
-					Config.Flush(); // early save of configs
+				Config.Flush(); // early save of configs
 
-					if (RestartCounter > 0) Log.Information($"<Core> Restarted {RestartCounter.ToString()} time(s)");
-					startTimer.Stop();
-					Log.Information($"<Core> Initialization complete ({startTimer.ElapsedMilliseconds} ms)...");
-					startTimer = null;
+				if (RestartCounter > 0) Log.Information($"<Core> Restarted {RestartCounter.ToString()} time(s)");
+				startTimer.Stop();
+				Log.Information($"<Core> Initialization complete ({startTimer.ElapsedMilliseconds} ms)...");
+				startTimer = null;
 
-					if (Debug.Listeners.Count > 0)
-					{
-						Debug.WriteLine("Embedded Resources");
-						foreach (var name in System.Reflection.Assembly.GetExecutingAssembly().GetManifestResourceNames())
-							Debug.WriteLine(" - " + name);
-					}
-				}
-				finally
+				if (Debug.Listeners.Count > 0)
 				{
-
+					Debug.WriteLine("Embedded Resources");
+					foreach (var name in System.Reflection.Assembly.GetExecutingAssembly().GetManifestResourceNames())
+						Debug.WriteLine(" - " + name);
 				}
 
 				if (State == Runstate.Normal)
@@ -1377,7 +1309,7 @@ namespace Taskmaster
 					var self = Process.GetCurrentProcess();
 					self.PriorityClass = ProcessPriorityClass.AboveNormal;
 					if (SelfOptimizeBGIO)
-						MKAh.Utility.DiscardExceptions(() => ProcessUtility.SafeSetBackground(self));
+						MKAh.Utility.DiscardExceptions(() => ProcessUtility.SetBackground(self));
 				}
 
 				Log.Information("Exiting...");
@@ -1409,7 +1341,7 @@ namespace Taskmaster
 				switch (ex.State)
 				{
 					case Runstate.CriticalFailure:
-						Logging.Stacktrace(ex.InnerException ?? ex, crashsafe:true);
+						Logging.Stacktrace(ex.InnerException ?? ex, crashsafe: true);
 						System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(ex.InnerException ?? ex).Throw();
 						throw;
 					case Runstate.Normal:
@@ -1453,11 +1385,10 @@ namespace Taskmaster
 			Log.Information($"<Stat> WMI polling: {Statistics.WMIPollTime:N2}s [{Statistics.WMIPolling.ToString()}]");
 			Log.Information($"<Stat> Self-maintenance: {Statistics.MaintenanceTime:N2}s [{Statistics.MaintenanceCount.ToString()}]");
 			Log.Information($"<Stat> Path cache: {Statistics.PathCacheHits.ToString()} hits, {Statistics.PathCacheMisses.ToString()} misses");
-			var sbs = new StringBuilder();
-			sbs.Append("<Stat> Path finding: ").Append(Statistics.PathFindAttempts).Append(" total attempts; ")
+			var sbs = new StringBuilder()
+				.Append("<Stat> Path finding: ").Append(Statistics.PathFindAttempts).Append(" total attempts; ")
 				.Append(Statistics.PathFindViaModule).Append(" via module info, ")
 				.Append(Statistics.PathFindViaC).Append(" via C call, ")
-				.Append(Statistics.PathFindViaWMI).Append(" via WMI, ")
 				.Append(Statistics.PathNotFound).Append(" not found");
 			Log.Information(sbs.ToString());
 			Log.Information($"<Stat> Processes modified: {Statistics.TouchCount.ToString()}; Ignored for remodification: {Statistics.TouchIgnore.ToString()}");

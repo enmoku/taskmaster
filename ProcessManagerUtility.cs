@@ -55,10 +55,7 @@ namespace Taskmaster
 				// already gone
 				return false;
 			}
-			catch (Win32Exception)
-			{
-				// Access denied problems of varying sorts
-			}
+			catch (Win32Exception) { } // Access denied problems of varying sorts
 			catch (Exception ex)
 			{
 				Logging.Stacktrace(ex);
@@ -110,10 +107,7 @@ namespace Taskmaster
 				// NOP
 				Debug.WriteLine("GetModuleFileNameEx - Access Denied - " + $"{info.Name} (#{info.Id})");
 			}
-			catch (InvalidOperationException)
-			{
-				// Already exited
-			}
+			catch (InvalidOperationException) { }// Already exited
 			catch (Exception ex)
 			{
 				Logging.Stacktrace(ex);
@@ -133,14 +127,14 @@ namespace Taskmaster
 
 			if (ProcessManager.DebugProcesses)
 			{
-				sbs = new StringBuilder();
-				sbs.Append("Affinity Strategy(").Append(Convert.ToString(source, 2)).Append(", ").Append(strategy.ToString()).Append(")");
+				sbs = new StringBuilder()
+					.Append("Affinity Strategy(").Append(Convert.ToString(source, 2)).Append(", ").Append(strategy.ToString()).Append(")");
 			}
 
 			// Don't increase the number of cores
 			if (strategy == ProcessAffinityStrategy.Limit)
 			{
-				if (sbs != null) sbs.Append(" Cores(").Append(Bit.Count(source)).Append("->").Append(Bit.Count(target)).Append(")");
+				sbs?.Append(" Cores(").Append(Bit.Count(source)).Append("->").Append(Bit.Count(target)).Append(")");
 
 				int excesscores = Bit.Count(target) - Bit.Count(source);
 				if (excesscores > 0)
@@ -150,7 +144,7 @@ namespace Taskmaster
 						if (Bit.IsSet(newAffinityMask, i))
 						{
 							newAffinityMask = Bit.Unset(newAffinityMask, i);
-							if (sbs != null) sbs.Append(" -> ").Append(Convert.ToString(newAffinityMask, 2));
+							sbs?.Append(" -> ").Append(Convert.ToString(newAffinityMask, 2));
 							if (--excesscores <= 0) break;
 						}
 					}

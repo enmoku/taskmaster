@@ -82,14 +82,11 @@ namespace Taskmaster
 				Taskmaster.OnStart += OnStart;
 
 				Log.Information("<Maintenance> Temp folder scanner will be performed once per day.");
-
-				onBurden += ReScanTemp;
 			}
 
 			using (var corecfg = Config.Load(CoreConfigFilename).BlockUnload())
 			{
-				var dbgsec = corecfg.Config["Debug"];
-				Verbose = dbgsec.Get("Storage")?.BoolValue ?? false;
+				Verbose = corecfg.Config["Debug"].Get("Storage")?.BoolValue ?? false;
 			}
 
 			if (Verbose) Log.Information("<Maintenance> Component loaded.");
@@ -98,9 +95,7 @@ namespace Taskmaster
 		}
 
 		async void OnStart(object sender, EventArgs ea)
-		{
-			Task.Run(() => ScanTemp(this, EventArgs.Empty)).ConfigureAwait(false);
-		}
+			=>Task.Run(() => ScanTemp(this, EventArgs.Empty)).ConfigureAwait(false);
 
 		static long ReScanBurden = 0;
 
@@ -113,14 +108,13 @@ namespace Taskmaster
 				Debug.WriteLine("TEMP modified (" + ev.ChangeType.ToString() + "): " + ev.FullPath);
 
 				if (ReScanBurden % 100 == 0)
-				{
 					Log.Debug("<Maintenance> Significant amount of changes have occurred to temp folders");
-				}
 
 				if (ReScanBurden % 1000 == 0)
 				{
 					Log.Warning("<Maintenance> Number of changes to temp folders exceeding tolerance.");
-					onBurden?.Invoke(this, EventArgs.Empty);
+
+					ReScanTemp();
 				}
 			}
 			catch (OutOfMemoryException) { throw; }
@@ -131,7 +125,7 @@ namespace Taskmaster
 		}
 
 		DateTimeOffset LastTempScan = DateTimeOffset.MinValue;
-		void ReScanTemp(object _, EventArgs _ea)
+		async void ReScanTemp()
 		{
 			if (DisposedOrDisposing) return;
 
@@ -140,10 +134,8 @@ namespace Taskmaster
 			LastTempScan = now;
 
 			TempScanTimer?.Stop();
-			Task.Run(() => Task.Delay(5_000).ContinueWith((_x) => ScanTemp(this, EventArgs.Empty)));
+			await Task.Run(() => Task.Delay(5_000).ContinueWith((_x) => ScanTemp(this, EventArgs.Empty)));
 		}
-
-		event EventHandler onBurden;
 
 		public struct DirectoryStats
 		{

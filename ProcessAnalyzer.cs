@@ -191,8 +191,8 @@ namespace Taskmaster
 				bool memHigh = privMem > 1200; // more than 1200 MB
 				bool memExtreme = privMem > 2600; // more than 2600 MB
 
-				var sbs = new StringBuilder();
-				sbs.Append("<Analysis> ").Append(info.Name).Append($" (#{info.Id})").Append(" facts: ");
+				var sbs = new StringBuilder().Append("<Analysis> ").Append(info.Name).Append($" (#{info.Id})").Append(" facts: ");
+
 				var components = new List<string>();
 
 				if (x64) components.Add("64-bit");
@@ -251,8 +251,8 @@ namespace Taskmaster
 				var endpath = Path.Combine(path, file);
 				var di = Directory.CreateDirectory(path);
 
-				var contents = new StringBuilder();
-				contents.Append("Analysis:").AppendLine()
+				var contents = new StringBuilder()
+					.Append("Analysis:").AppendLine()
 					.Append("  ").Append("Process: ").Append(info.Name).AppendLine()
 					.Append("  ").Append("Version: ").Append(version.FileVersion?.ToString() ?? string.Empty).AppendLine()
 					.Append("  ").Append("Product: ").Append(version.ProductName?.ToString() ?? string.Empty).AppendLine()

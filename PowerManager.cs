@@ -56,6 +56,18 @@ namespace Taskmaster
 		public Cause Cause { get; set; } = null;
 	}
 
+	sealed public class PowerRequestEventArgs : EventArgs
+	{
+		public PowerMode Mode { get; set; } = PowerMode.Undefined;
+		public ProcessEx Info { get; set; } = null;
+
+		public PowerRequestEventArgs(PowerMode mode, ProcessEx info)
+		{
+			Mode = mode;
+			Info = info;
+		}
+	}
+
 	public enum MonitorPowerMode
 	{
 		On = -1,
@@ -128,6 +140,7 @@ namespace Taskmaster
 		public void Hook(CPUMonitor monitor)
 		{
 			cpumonitor = monitor;
+			cpumonitor.OnDisposed += (_, _ea) => cpumonitor = null;
 			cpumonitor.onSampling += CPULoadHandler;
 		}
 
@@ -321,7 +334,7 @@ namespace Taskmaster
 				else
 				{
 					if (ShowSessionActions || DebugMonitor)
-						Log.Information("<Session:Lock> User active too recently (" + $"{idle.TotalSeconds:N1}s" + " ago), delaying monitor power down...");
+						Log.Information($"<Session:Lock> User active too recently ({idle.TotalSeconds:N1}s ago), delaying monitor power down...");
 
 					StartDisplayTimer(); // TODO: Make this happen sooner if user was not active recently
 				}
@@ -563,13 +576,13 @@ namespace Taskmaster
 				{
 					if (DebugPower) Log.Debug("<Power> Auto-adjust: " + Reaction.ToString());
 
-					var sbs = new StringBuilder();
+					string explanation = string.Empty;
 					if (CurrentMode != PowerMode.Balanced && Reaction == PowerReaction.Average)
-						sbs.Append($"Backing off from {PreviousReaction}");
+						explanation = $"Backing off from {PreviousReaction}";
 					else
-						sbs.Append($"Committing to {Reaction}");
+						explanation = $"Committing to {Reaction}";
 
-					if (AutoAdjustSetMode(ReactionaryPlan, new Cause(OriginType.AutoAdjust, sbs.ToString())))
+					if (AutoAdjustSetMode(ReactionaryPlan, new Cause(OriginType.AutoAdjust, explanation)))
 					{
 						AutoAdjustCounter++;
 						ev.Enacted = true;
@@ -673,9 +686,11 @@ namespace Taskmaster
 				}
 				dirtyconfig |= modified;
 
-				var restoremode = power.GetOrSet("Restore mode", "Default", out modified).Value;
-				power["Restore mode"].Comment = "Default, Original, Saved, or specific power mode. Power mode to restore with rule-based behaviour.";
+				var s_restoremode = power.GetOrSet("Restore mode", "Default", out modified);
+				if (modified) s_restoremode.Comment = "Default, Original, Saved, or specific power mode. Power mode to restore with rule-based behaviour.";
 				dirtyconfig |= modified;
+
+				var restoremode = s_restoremode.Value;
 				RestoreModeMethod newmodemethod = RestoreModeMethod.Default;
 				PowerMode newrestoremode = PowerMode.Undefined;
 
@@ -937,6 +952,9 @@ namespace Taskmaster
 		{
 			if (DisposedOrDisposing) return;
 
+			bool loudMonitor = (ShowSessionActions || DebugSession || DebugMonitor),
+				loudPower = (ShowSessionActions || DebugSession || DebugPower);
+
 			// BUG: ODD BEHAVIOUR ON ACCOUNT SWAP
 			switch (ev.Reason)
 			{
@@ -967,23 +985,20 @@ namespace Taskmaster
 				{
 					if (SessionLockPowerOff)
 					{
-						if (ShowSessionActions || DebugSession || DebugMonitor)
-							Log.Information("<Session:Lock> Instant monitor power off.");
+						if (loudMonitor) Log.Information("<Session:Lock> Instant monitor power off.");
 
 						SetMonitorMode(MonitorPowerMode.Off);
 					}
 					else
 					{
-						if (ShowSessionActions || DebugSession || DebugMonitor)
-							Log.Information("<Session:Lock> Instant monitor power off disabled, waiting for user idle.");
+						if (loudMonitor) Log.Information("<Session:Lock> Instant monitor power off disabled, waiting for user idle.");
 
 						StartDisplayTimer();
 					}
 				}
 				else
 				{
-					if (ShowSessionActions || DebugSession || DebugMonitor)
-						Log.Information("<Session:Lock> Monitor already off, leaving it be.");
+					if (loudMonitor) Log.Information("<Session:Lock> Monitor already off, leaving it be.");
 				}
 			}
 			else
@@ -1033,8 +1048,7 @@ namespace Taskmaster
 					case SessionSwitchReason.SessionLogon:
 					case SessionSwitchReason.SessionUnlock:
 						// RESTORE POWER MODE
-						if (DebugSession || ShowSessionActions || DebugPower)
-							Log.Information("<Session:Unlock> Restoring previous power configuration.");
+						if (loudPower) Log.Information("<Session:Unlock> Restoring previous power configuration.");
 
 						SleepGivenUp = 0;
 
@@ -1143,8 +1157,7 @@ namespace Taskmaster
 					onPlanChange?.Invoke(this, new PowerModeEventArgs(CurrentMode, old, CurrentMode == ExpectedMode ? ExpectedCause : new Cause(OriginType.None, "External")));
 					ExpectedCause = null;
 
-					if (DebugPower)
-						Log.Information($"<Power/OS> Change detected: {CurrentMode.ToString()} ({newPersonality.ToString()})");
+					if (DebugPower) Log.Information($"<Power/OS> Change detected: {CurrentMode.ToString()} ({newPersonality.ToString()})");
 
 					var now = DateTimeOffset.UtcNow;
 					if (CurrentMode != ExpectedMode && Behaviour == PowerBehaviour.Auto && LastExternalWarning.TimeTo(now).TotalSeconds > 30)
@@ -1259,6 +1272,11 @@ namespace Taskmaster
 		sealed public class PowerBehaviourEventArgs : EventArgs
 		{
 			public PowerBehaviour Behaviour = PowerBehaviour.Undefined;
+
+			public PowerBehaviourEventArgs(PowerBehaviour behaviour)
+			{
+				Behaviour = behaviour;
+			}
 		}
 
 		public void SetRestoreMode(RestoreModeMethod method, PowerMode mode)
@@ -1315,7 +1333,7 @@ namespace Taskmaster
 
 			if (reset) Behaviour = PowerBehaviour.RuleBased;
 
-			onBehaviourChange?.Invoke(this, new PowerBehaviourEventArgs { Behaviour = Behaviour });
+			onBehaviourChange?.Invoke(this, new PowerBehaviourEventArgs(Behaviour));
 
 			return Behaviour;
 		}
@@ -1344,18 +1362,15 @@ namespace Taskmaster
 					}
 					else if (ForceModeSourcesMap.TryRemove(sourcePid, out _))
 					{
-						if (DebugPower && Trace)
-							Log.Debug("<Power> Force mode source freed, " + ForceModeSourcesMap.Count.ToString() + " remain.");
+						if (DebugPower && Trace) Log.Debug("<Power> Force mode source freed, " + ForceModeSourcesMap.Count.ToString() + " remain.");
 					}
 					else if (ForceModeSourcesMap.Count > 0)
 					{
-						if (DebugPower && Trace)
-							Log.Debug("<Power> Force mode release for unincluded ID, " + ForceModeSourcesMap.Count.ToString() + " remain.");
+						if (DebugPower && Trace) Log.Debug("<Power> Force mode release for unincluded ID, " + ForceModeSourcesMap.Count.ToString() + " remain.");
 					}
 					else
 					{
-						if (DebugPower)
-							Log.Debug("<Power> Restore mode called for object [" + sourcePid.ToString() + "] that has no forcing registered. Or waitlist was expunged.");
+						if (DebugPower) Log.Debug("<Power> Restore mode called for object [" + sourcePid.ToString() + "] that has no forcing registered. Or waitlist was expunged.");
 					}
 
 					Forced = ForceModeSourcesMap.Count > 0;
@@ -1363,13 +1378,11 @@ namespace Taskmaster
 					if (!Forced)
 					{
 						ReleaseFinal(new Cause(OriginType.Watchlist, $"#{sourcePid} exited; " + (Behaviour == PowerBehaviour.Auto ? "auto-adjust resumed" : "restoring.")));
-						if (VerbosePowerRelease)
+						if (VerbosePowerRelease && info != null)
 							Log.Information($"<Power> {info.Name} (#{info.Id}) quit, power forcing released.");
 					}
 
-					if (Trace && DebugPower)
-						Log.Debug($"<Power> Released {(sourcePid == -1 ? "All" : sourcePid.ToString())}");
-
+					if (Trace && DebugPower) Log.Debug($"<Power> Released {(sourcePid == -1 ? "All" : sourcePid.ToString())}");
 				}
 				catch (Exception ex)
 				{
@@ -1508,12 +1521,11 @@ namespace Taskmaster
 
 				if (!ForceModeSourcesMap.TryAdd(sourcePid, mode))
 				{
-					if (DebugPower && ShowInaction)
-						Log.Debug("<Power> Forcing cancelled, source already in list.");
+					if (DebugPower && ShowInaction) Log.Debug("<Power> Forcing cancelled, source already in list.");
 					return false;
 				}
 
-				if (DebugPower) Log.Debug($"<Power> Lock #{sourcePid.ToString()}");
+				if (DebugPower) Log.Debug("<Power> Lock #" + sourcePid);
 
 				Forced = true;
 

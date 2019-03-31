@@ -124,9 +124,7 @@ namespace Taskmaster
 
 			if (DebugAudio)
 			{
-				string name = null;
-				if (Devices.TryGetValue(ea.GUID, out var device))
-					name = device.Name;
+				string name = Devices.TryGetValue(ea.GUID, out var device) ? device.Name : null;
 
 				Log.Debug($"<Audio> Device {name ?? ea.GUID} state changed to {ea.State.ToString()}");
 			}
@@ -177,12 +175,7 @@ namespace Taskmaster
 		ConcurrentDictionary<string, AudioDevice> Devices = new ConcurrentDictionary<string, AudioDevice>();
 
 		public AudioDevice GetDevice(string guid)
-		{
-			if (Devices.TryGetValue(guid, out var dev))
-				return dev;
-
-			return null;
-		}
+			=> Devices.TryGetValue(guid, out var dev) ? dev : null;
 
 		void GetDefaultDevice()
 		{
@@ -213,7 +206,11 @@ namespace Taskmaster
 		}
 
 		ProcessManager processmanager = null;
-		public void Hook(ProcessManager procman) => processmanager = procman;
+		public void Hook(ProcessManager procman)
+		{
+			processmanager = procman;
+			processmanager.OnDisposed += (_, _ea) => processmanager = null;
+		}
 
 		async void OnSessionCreated(object _, NAudio.CoreAudioApi.Interfaces.IAudioSessionControl ea)
 		{

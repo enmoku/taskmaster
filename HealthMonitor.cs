@@ -35,6 +35,7 @@ using Serilog;
 
 namespace Taskmaster
 {
+	using System.Text;
 	using static Taskmaster;
 
 	public sealed class HealthReport
@@ -57,6 +58,8 @@ namespace Taskmaster
 	/// </summary>
 	sealed public class HealthMonitor : IComponent, IDisposable // Auto-Doc
 	{
+		bool DebugHealth = false;
+
 		//Dictionary<int, Problem> activeProblems = new Dictionary<int, Problem>();
 		readonly Settings.HealthMonitor Settings = new Settings.HealthMonitor();
 
@@ -315,6 +318,11 @@ namespace Taskmaster
 
 				if (configdirty) cfg.MarkDirty();
 			}
+
+			using (var corecfg = Config.Load(CoreConfigFilename).BlockUnload())
+			{
+				DebugHealth = corecfg.Config["Debug"].Get("Health")?.BoolValue ?? false;
+			}
 		}
 
 		int HealthCheck_lock = 0;
@@ -487,8 +495,8 @@ namespace Taskmaster
 								}
 							}
 
-							var sbs = new System.Text.StringBuilder();
-							sbs.Append("<<Auto-Doc>> Free memory low [")
+							var sbs = new StringBuilder()
+								.Append("<<Auto-Doc>> Free memory low [")
 								.Append(HumanInterface.ByteString((long)memfreemb * 1_048_576, iec:true))
 								.Append("], attempting to improve situation.");
 							if (!ProcessManager.SystemProcessId(ignorepid))

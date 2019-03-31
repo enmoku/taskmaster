@@ -95,15 +95,11 @@ namespace Taskmaster
 		}
 
 		// Windows doesn't allow setting this for other processes
-		public static bool SafeSetBackground(Process process)
-		{
-			return SafeSetIOPriority(process, PriorityTypes.PROCESS_MODE_BACKGROUND_BEGIN);
-		}
+		public static bool SetBackground(Process process)
+			=> SafeSetIOPriority(process, PriorityTypes.PROCESS_MODE_BACKGROUND_BEGIN);
 
 		public static bool UnsetBackground(Process process)
-		{
-			return SafeSetIOPriority(process, PriorityTypes.PROCESS_MODE_BACKGROUND_END);
-		}
+			=> SafeSetIOPriority(process, PriorityTypes.PROCESS_MODE_BACKGROUND_END);
 
 		/// <summary>
 		/// Set disk I/O priority. Works only for setting own process priority.
@@ -127,10 +123,7 @@ namespace Taskmaster
 
 		static Cache<int, string, string> pathCache = null;
 		public static void InitializeCache()
-		{
-			// this is really dumb
-			pathCache = new Cache<int, string, string>(Taskmaster.PathCacheMaxAge, (uint)Taskmaster.PathCacheLimit, (uint)(Taskmaster.PathCacheLimit / 10).Constrain(20, 60));
-		}
+			=> pathCache = new Cache<int, string, string>(Taskmaster.PathCacheMaxAge, (uint)Taskmaster.PathCacheLimit, (uint)(Taskmaster.PathCacheLimit / 10).Constrain(20, 60));
 
 		public static bool GetInfo(int ProcessID, out ProcessEx info, Process process = null, ProcessController controller = null, string name = null, string path = null, bool getPath = false)
 		{
@@ -177,9 +170,7 @@ namespace Taskmaster
 					info.Path = cpath;
 				}
 				else
-				{
 					pathCache.Drop(info.Id);
-				}
 			}
 
 			// Try harder
@@ -201,10 +192,8 @@ namespace Taskmaster
 
 		[Conditional("DEBUG")]
 		public static void PathCacheStats()
-		{
-			Log.Debug("Path cache state: " + Statistics.PathCacheCurrent + " items (Hits: " + Statistics.PathCacheHits +
+			=> Log.Debug("Path cache state: " + Statistics.PathCacheCurrent + " items (Hits: " + Statistics.PathCacheHits +
 				", Misses: " + Statistics.PathCacheMisses +
 				", Ratio: " + $"{(Statistics.PathCacheMisses > 0 ? (Statistics.PathCacheHits / Statistics.PathCacheMisses) : 1):N2})");
-		}
 	}
 }
