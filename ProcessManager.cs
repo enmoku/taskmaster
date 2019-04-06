@@ -1075,11 +1075,8 @@ namespace Taskmaster
 
 		void RenewWatchlistCache()
 		{
-			lock (watchlist_lock)
-			{
-				WatchlistCache = new Lazy<List<ProcessController>>(LazyRecacheWatchlist);
-				ResetWatchlistCancellation();
-			}
+			WatchlistCache = new Lazy<List<ProcessController>>(LazyRecacheWatchlist);
+			ResetWatchlistCancellation();
 		}
 
 		List<ProcessController> LazyRecacheWatchlist() => Watchlist.Keys.ToList();
@@ -1185,7 +1182,7 @@ namespace Taskmaster
 			if (!string.IsNullOrEmpty(prc.ExecutableFriendlyName))
 				ExeToController.TryRemove(prc.ExecutableFriendlyName.ToLowerInvariant(), out _);
 
-			RenewWatchlistCache();
+			lock (watchlist_lock) RenewWatchlistCache();
 
 			prc.Modified -= ProcessModified;
 			prc.Paused -= ProcessPausedProxy;
@@ -1435,8 +1432,6 @@ namespace Taskmaster
 			lock (watchlist_lock)
 			{
 				RenewWatchlistCache();
-
-				LazyRecacheWatchlist();
 
 				// TODO: This needs to be FASTER
 				// Can't parallelize...
