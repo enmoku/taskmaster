@@ -342,7 +342,7 @@ namespace Taskmaster
 				{
 					NextScan = DateTimeOffset.UtcNow;
 					ScanTimer?.Stop();
-					if (sort) SortWatchlist();
+					if (sort) lock (watchlist_lock) SortWatchlist();
 					if (cts.IsCancellationRequested) return;
 
 					await Task.Run(() => Scan(), cts.Token).ContinueWith((_) => StartScanTimer(), cts.Token).ConfigureAwait(false);
@@ -652,18 +652,22 @@ namespace Taskmaster
 
 		void SaveController(ProcessController prc)
 		{
-			if (string.IsNullOrEmpty(prc.Executable))
-				WatchlistWithPath += 1;
-			else
+			lock (watchlist_lock)
 			{
-				ExeToController.TryAdd(prc.ExecutableFriendlyName.ToLowerInvariant(), prc);
+				if (string.IsNullOrEmpty(prc.Executable))
+					WatchlistWithPath += 1;
+				else
+				{
+					ExeToController.TryAdd(prc.ExecutableFriendlyName.ToLowerInvariant(), prc);
 
-				if (!string.IsNullOrEmpty(prc.Path))
-					WatchlistWithHybrid += 1;
+					if (!string.IsNullOrEmpty(prc.Path))
+						WatchlistWithHybrid += 1;
+				}
+
+				Watchlist.TryAdd(prc, 0);
+				WatchlistCache = null;
+				ResetWatchlistCancellation();
 			}
-
-			Watchlist.TryAdd(prc, 0);
-			lock (watchlist_lock) WatchlistCache = null;
 
 			if (Trace) Log.Verbose("[" + prc.FriendlyName + "] Match: " + (prc.Executable ?? prc.Path) + ", " +
 				(prc.Priority.HasValue ? Readable.ProcessPriority(prc.Priority.Value) : HumanReadable.Generic.NotAvailable) +
@@ -974,9 +978,12 @@ namespace Taskmaster
 				if (dirtyconfig) sappcfg.MarkDirty();
 			}
 
-			RenewWatchlistCache();
+			lock (watchlist_lock)
+			{
+				RenewWatchlistCache();
 
-			SortWatchlist();
+				SortWatchlist();
+			}
 
 			// --------------------------------------------------------------------------------------------------------
 
@@ -1065,25 +1072,52 @@ namespace Taskmaster
 			}
 		}
 
-		void RenewWatchlistCache() => WatchlistCache = new Lazy<List<ProcessController>>(LazyRecacheWatchlist);
-
-		List<ProcessController> LazyRecacheWatchlist() => Watchlist.Keys.ToList();
-
-		public void SortWatchlist()
+		void RenewWatchlistCache()
 		{
 			lock (watchlist_lock)
 			{
-				if (Trace) Debug.WriteLine("SORTING PROCESS MANAGER WATCHLIST");
-
-				WatchlistCache.Value.Sort(WatchlistSorter);
-
-				int order = 0;
-				foreach (var prc in WatchlistCache.Value)
-					prc.ActualOrder = order++;
+				WatchlistCache = new Lazy<List<ProcessController>>(LazyRecacheWatchlist);
+				ResetWatchlistCancellation();
 			}
+		}
 
-			// TODO: Signal UI the actual order may have changed
-			WatchlistSorted?.Invoke(this, EventArgs.Empty);
+		List<ProcessController> LazyRecacheWatchlist() => Watchlist.Keys.ToList();
+		CancellationTokenSource watchlist_cts = new CancellationTokenSource();
+
+		void ResetWatchlistCancellation()
+		{
+			watchlist_cts.Cancel();
+			watchlist_cts = new CancellationTokenSource();
+		}
+
+		public void SortWatchlist()
+		{
+			try
+			{
+				lock (watchlist_lock)
+				{
+					var token = watchlist_cts.Token;
+
+					if (Trace) Debug.WriteLine("SORTING PROCESS MANAGER WATCHLIST");
+					var local = WatchlistCache.Value;
+					local.Sort(WatchlistSorter);
+
+					if (token.IsCancellationRequested) return; // redo?
+
+					int order = 0;
+					foreach (var prc in local)
+						prc.ActualOrder = order++;
+
+					if (token.IsCancellationRequested) return; // redo?
+				}
+
+				// TODO: Signal UI the actual order may have changed
+				WatchlistSorted?.Invoke(this, EventArgs.Empty);
+			}
+			catch (Exception ex)
+			{
+				Logging.Stacktrace(ex);
+			}
 		}
 
 		int WatchlistSorter(ProcessController x, ProcessController y)
@@ -1151,7 +1185,8 @@ namespace Taskmaster
 			if (!string.IsNullOrEmpty(prc.ExecutableFriendlyName))
 				ExeToController.TryRemove(prc.ExecutableFriendlyName.ToLowerInvariant(), out _);
 
-			lock (watchlist_lock) WatchlistCache = null;
+			WatchlistCache = null;
+			ResetWatchlistCancellation();
 
 			prc.Modified -= ProcessModified;
 			prc.Paused -= ProcessPausedProxy;
@@ -1406,7 +1441,8 @@ namespace Taskmaster
 
 				// TODO: This needs to be FASTER
 				// Can't parallelize...
-				foreach (var lprc in WatchlistCache.Value)
+				var lcache = WatchlistCache.Value;
+				foreach (var lprc in lcache)
 				{
 					if (!lprc.Enabled) continue;
 
@@ -2102,7 +2138,7 @@ namespace Taskmaster
 
 			Cleanup();
 
-			SortWatchlist();
+			lock (watchlist_lock) SortWatchlist();
 
 			var now = DateTimeOffset.UtcNow;
 			foreach (var item in ScanBlockList)
@@ -2274,11 +2310,14 @@ namespace Taskmaster
 						}
 					}
 
-					Watchlist?.Clear();
-					Watchlist = null;
+					lock (watchlist_lock)
+					{
+						Watchlist?.Clear();
+						Watchlist = null;
 
-					if (WatchlistCache.IsValueCreated) WatchlistCache.Value.Clear();
-					WatchlistCache = null;
+						if (WatchlistCache.IsValueCreated) WatchlistCache.Value.Clear();
+						WatchlistCache = null;
+					}
 				}
 				catch (Exception ex)
 				{
