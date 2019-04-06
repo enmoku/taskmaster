@@ -92,7 +92,7 @@ namespace Taskmaster
 
 		ConcurrentDictionary<int, DateTimeOffset> ScanBlockList = new ConcurrentDictionary<int, DateTimeOffset>();
 
-		Lazy<List<ProcessController>> WatchlistCache;
+		Lazy<List<ProcessController>> WatchlistCache = null;
 
 		readonly object watchlist_lock = new object();
 
@@ -104,6 +104,8 @@ namespace Taskmaster
 		// ctor, constructor
 		public ProcessManager()
 		{
+			RenewWatchlistCache();
+
 			AllCPUsMask = Convert.ToInt32(Math.Pow(2, CPUCount) - 1 + double.Epsilon);
 
 			if (RecordAnalysis.HasValue) analyzer = new ProcessAnalyzer();
@@ -665,8 +667,7 @@ namespace Taskmaster
 				}
 
 				Watchlist.TryAdd(prc, 0);
-				WatchlistCache = null;
-				ResetWatchlistCancellation();
+				RenewWatchlistCache();
 			}
 
 			if (Trace) Log.Verbose("[" + prc.FriendlyName + "] Match: " + (prc.Executable ?? prc.Path) + ", " +
@@ -1099,13 +1100,12 @@ namespace Taskmaster
 					var token = watchlist_cts.Token;
 
 					if (Trace) Debug.WriteLine("SORTING PROCESS MANAGER WATCHLIST");
-					var local = WatchlistCache.Value;
-					local.Sort(WatchlistSorter);
+					WatchlistCache.Value.Sort(WatchlistSorter);
 
 					if (token.IsCancellationRequested) return; // redo?
 
 					int order = 0;
-					foreach (var prc in local)
+					foreach (var prc in WatchlistCache.Value)
 						prc.ActualOrder = order++;
 
 					if (token.IsCancellationRequested) return; // redo?
@@ -1185,8 +1185,7 @@ namespace Taskmaster
 			if (!string.IsNullOrEmpty(prc.ExecutableFriendlyName))
 				ExeToController.TryRemove(prc.ExecutableFriendlyName.ToLowerInvariant(), out _);
 
-			WatchlistCache = null;
-			ResetWatchlistCancellation();
+			RenewWatchlistCache();
 
 			prc.Modified -= ProcessModified;
 			prc.Paused -= ProcessPausedProxy;
@@ -1441,8 +1440,7 @@ namespace Taskmaster
 
 				// TODO: This needs to be FASTER
 				// Can't parallelize...
-				var lcache = WatchlistCache.Value;
-				foreach (var lprc in lcache)
+				foreach (var lprc in WatchlistCache.Value)
 				{
 					if (!lprc.Enabled) continue;
 
