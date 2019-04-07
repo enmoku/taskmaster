@@ -3,6 +3,8 @@ Comprehensive changes can be found in Git change history:
 	https://github.com/mkahvi/taskmaster/commits/master
 
 ## [0.13...]
+### 2019-04-07
+	Added: Better logging of session end auto-exit.
 ### 2019-04-06
 	Fixed: Null reference error in relation to watchlist. The internal cache was not treated correctly.
 ### 2019-03-30

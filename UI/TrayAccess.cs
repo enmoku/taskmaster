@@ -307,6 +307,9 @@ namespace Taskmaster.UI
 			else if (m.Msg == WM_QUERYENDSESSION || m.Msg == WM_ENDSESSION)
 			{
 				ShutdownBlockReasonCreate(Handle, "Cleaning up");
+
+				Log.Information("<OS> Session end signal received.");
+
 				Task.Run(() => {
 					try
 					{
