@@ -77,7 +77,11 @@ namespace Taskmaster
 		static int RestartCounter { get; set; } = 0;
 		static int AdminCounter { get; set; } = 0;
 
-		public static void RestartRequest(object _, EventArgs _ea) => UnifiedExit(restart: true);
+		public static void PowerSuspendEnd(object _, EventArgs _ea)
+		{
+			Log.Information("<Power> Suspend/hibernate ended. Restarting to avoid problems.");
+			UnifiedExit(restart: true);
+		}
 
 		public static void ConfirmExit(bool restart = false, bool admin = false, string message = null, bool alwaysconfirm=false)
 		{
@@ -350,7 +354,7 @@ namespace Taskmaster
 					cpumonitor?.Hook(processmanager);
 
 					trayaccess.Hook(powermanager);
-					powermanager.onBatteryResume += RestartRequest; // HACK
+					powermanager.onSuspendResume += PowerSuspendEnd; // HACK
 					powermanager.Hook(cpumonitor);
 				});
 			}

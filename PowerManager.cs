@@ -397,7 +397,7 @@ namespace Taskmaster
 		public event EventHandler<AutoAdjustReactionEventArgs> onAutoAdjustAttempt;
 		public event EventHandler<PowerModeEventArgs> onPlanChange;
 		public event EventHandler<PowerBehaviourEventArgs> onBehaviourChange;
-		public event EventHandler onBatteryResume;
+		public event EventHandler onSuspendResume;
 
 		public enum PowerReaction
 		{
@@ -1124,7 +1124,7 @@ namespace Taskmaster
 					break;
 				case Microsoft.Win32.PowerModes.Resume:
 					Log.Information("Hibernation/Suspend end detected.");
-					onBatteryResume?.Invoke(this, EventArgs.Empty);
+					onSuspendResume?.Invoke(this, EventArgs.Empty);
 					// Invoke whatever is necessary to restore functionality after suspend breaking shit.
 					break;
 			}
@@ -1611,7 +1611,7 @@ namespace Taskmaster
 				onAutoAdjustAttempt = null;
 				onPlanChange = null;
 				onBehaviourChange = null;
-				onBatteryResume = null;
+				onSuspendResume = null;
 
 				ForceModeSourcesMap?.Clear();
 				Forced = false;
