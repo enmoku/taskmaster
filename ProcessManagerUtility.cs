@@ -29,7 +29,7 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.Management;
 using System.Text;
-using MKAh;
+using MKAh.Logic;
 using Serilog;
 
 namespace Taskmaster

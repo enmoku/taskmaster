@@ -28,6 +28,7 @@ using System;
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using MKAh;
+using Windows = MKAh.Wrapper.Windows;
 using Serilog;
 
 namespace Taskmaster
@@ -46,10 +47,10 @@ namespace Taskmaster
 		/// </summary>
 		public TimeSpan SampleInterval { get; set; } = TimeSpan.FromSeconds(5);
 		public int SampleCount { get; set; } = 5;
-		PerformanceCounterWrapper CPUload = new PerformanceCounterWrapper("Processor", "% Processor Time", "_Total");
-		PerformanceCounterWrapper CPUqueue = new PerformanceCounterWrapper("System", "Processor Queue Length", null);
+		Windows.PerformanceCounter CPUload = new Windows.PerformanceCounter("Processor", "% Processor Time", "_Total");
+		Windows.PerformanceCounter CPUqueue = new Windows.PerformanceCounter("System", "Processor Queue Length", null);
 
-		//PerformanceCounterWrapper CPUIRQ = new PerformanceCounterWrapper("Processor", "% Interrupt Time", "_Total");
+		//Windows.PerformanceCounter CPUIRQ = new Windows.PerformanceCounter("Processor", "% Interrupt Time", "_Total");
 
 		System.Timers.Timer CPUSampleTimer = null;
 
@@ -238,8 +239,8 @@ namespace Taskmaster
 					}
 					else
 					{
-						var cpucounter = new PerformanceCounterWrapper("Processor", "% Processor Time", info.Name);
-						var memcounter = new PerformanceCounterWrapper("Process", "Working Set", info.Name);
+						var cpucounter = new Windows.PerformanceCounter("Processor", "% Processor Time", info.Name);
+						var memcounter = new Windows.PerformanceCounter("Process", "Working Set", info.Name);
 
 						counterchunk = new CounterChunk()
 						{
@@ -326,8 +327,8 @@ namespace Taskmaster
 
 	internal sealed class CounterChunk
 	{
-		internal PerformanceCounterWrapper CPUCounter = null;
-		internal PerformanceCounterWrapper MEMCounter = null;
+		internal Windows.PerformanceCounter CPUCounter = null;
+		internal Windows.PerformanceCounter MEMCounter = null;
 		internal uint References = 0;
 		internal string Name = string.Empty;
 		internal ConcurrentDictionary<int, ProcessEx> Processes = new ConcurrentDictionary<int, ProcessEx>();

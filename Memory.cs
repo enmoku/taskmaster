@@ -28,6 +28,8 @@ using System;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 
+using Windows = MKAh.Wrapper.Windows;
+
 namespace Taskmaster
 {
 	using static Taskmaster;
@@ -66,9 +68,9 @@ namespace Taskmaster
 		/// </summary>
 		public static ulong FreeBytes { get; private set; } = 0;
 
-		static PerformanceCounterWrapper pfcprivate = new PerformanceCounterWrapper("Process", "Private Bytes", "_Total");
-		static PerformanceCounterWrapper pfccommit = new PerformanceCounterWrapper("Memory", "% Committed Bytes In Use", null);
-		static PerformanceCounterWrapper pfcfree = new PerformanceCounterWrapper("Memory", "Available MBytes", null);
+		static Windows.PerformanceCounter pfcprivate = new Windows.PerformanceCounter("Process", "Private Bytes", "_Total");
+		static Windows.PerformanceCounter pfccommit = new Windows.PerformanceCounter("Memory", "% Committed Bytes In Use", null);
+		static Windows.PerformanceCounter pfcfree = new Windows.PerformanceCounter("Memory", "Available MBytes", null);
 
 		// ctor
 		static Memory()

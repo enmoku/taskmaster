@@ -33,6 +33,7 @@ using System.Net.NetworkInformation;
 using System.Text;
 using System.Threading.Tasks;
 using MKAh;
+using Windows = MKAh.Wrapper.Windows;
 using Serilog;
 
 namespace Taskmaster
@@ -63,9 +64,9 @@ namespace Taskmaster
 
 		public event EventHandler<NetTrafficEventArgs> NetworkTraffic;
 
-		PerformanceCounterWrapper NetInTrans = null;
-		PerformanceCounterWrapper NetOutTrans = null;
-		PerformanceCounterWrapper NetQueue = null;
+		Windows.PerformanceCounter NetInTrans = null;
+		Windows.PerformanceCounter NetOutTrans = null;
+		Windows.PerformanceCounter NetQueue = null;
 
 		string dnstestaddress = "google.com"; // should be fine, www is omitted to avoid deeper DNS queries
 
@@ -162,9 +163,9 @@ namespace Taskmaster
 
 			// TODO: SUPPORT MULTIPLE NICS
 			var firstnic = new PerformanceCounterCategory("Network Interface").GetInstanceNames()[1]; // 0 = loopback
-			NetInTrans = new PerformanceCounterWrapper("Network Interface", "Bytes Received/sec", firstnic);
-			NetOutTrans = new PerformanceCounterWrapper("Network Interface", "Bytes Sent/sec", firstnic);
-			NetQueue = new PerformanceCounterWrapper("Network Interface", "Output Queue Length", firstnic);
+			NetInTrans = new Windows.PerformanceCounter("Network Interface", "Bytes Received/sec", firstnic);
+			NetOutTrans = new Windows.PerformanceCounter("Network Interface", "Bytes Sent/sec", firstnic);
+			NetQueue = new Windows.PerformanceCounter("Network Interface", "Output Queue Length", firstnic);
 
 			lastErrorReport = DateTimeOffset.UtcNow; // crude
 

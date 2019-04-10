@@ -132,7 +132,6 @@
     <Compile Include="Config\IFile.cs" />
     <Compile Include="IComponent.cs" />
     <Compile Include="Config\Manager.cs" />
-    <Compile Include="Config\Ini.cs" />
     <Compile Include="Enums\ForegroundMode.cs" />
     <Compile Include="Events\AudioDevice.cs" />
     <Compile Include="Events\AudioDeviceState.cs" />
@@ -143,6 +142,17 @@
     <Compile Include="Events\ProcessModification.cs" />
     <Compile Include="Events\ProcessorLoad.cs" />
     <Compile Include="Events\VolumeChanged.cs" />
+    <Compile Include="MKAh\Atomic\Lock.cs" />
+    <Compile Include="MKAh\Execution\User.cs" />
+    <Compile Include="MKAh\Execution\UserActivity.cs" />
+    <Compile Include="MKAh\Extensions\CoreExtensions.cs" />
+    <Compile Include="MKAh\File\Ini\Ini.cs" />
+    <Compile Include="MKAh\Handling\DiscardException.cs" />
+    <Compile Include="MKAh\Human\Readable\Time.cs" />
+    <Compile Include="MKAh\Logic\BitOperations.cs" />
+    <Compile Include="MKAh\Native\Basic.cs" />
+    <Compile Include="MKAh\Program\NativeImage.cs" />
+    <Compile Include="MKAh\Wrapper\Windows\PerformanceCounter.cs" />
     <Compile Include="NativeMethods.Process.cs" />
     <Compile Include="ServiceWrapper.cs" />
     <Compile Include="Settings\HealthMonitor.cs" />
@@ -183,7 +193,6 @@
       <SubType>Form</SubType>
     </Compile>
     <Compile Include="UI\WatchlistSorter.cs" />
-    <Compile Include="Utility\Execution.cs" />
     <Compile Include="Utility\LockScoping.cs" />
     <Compile Include="Utility\StructuralEqualityComparer.cs" />
     <Compile Include="Utility\HumanReadable.cs" />
@@ -199,13 +208,9 @@
     <Compile Include="UI\UniForm.cs">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Include="Utility\AtomicLock.cs" />
-    <Compile Include="Utility\BitOperations.cs" />
     <Compile Include="Utility\DiscardException.cs" />
-    <Compile Include="Utility\HumanTime.cs" />
     <Compile Include="Utility\LogAndDiscardException.cs" />
     <Compile Include="Utility\ProcessPriorityClass.cs" />
-    <Compile Include="Utility\UserActivity.cs" />
     <Compile Include="UI\Config\WatchlistEditWindow.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -238,12 +243,10 @@
     <Compile Include="UI\TrayAccess.cs" />
     <Compile Include="Utility.cs" />
     <Compile Include="Extensions\ProcessExtensions.cs" />
-    <Compile Include="Extensions\TypeExtensions.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="HealthMonitor.cs" />
     <Compile Include="ProcessManagerUtility.cs" />
     <Compile Include="PowerInfo.cs" />
-    <Compile Include="Wrappers\PerformanceCounterWrapper.cs" />
     <Compile Include="UI\Config\HealthMonitorConfig.cs">
       <SubType>Form</SubType>
     </Compile>

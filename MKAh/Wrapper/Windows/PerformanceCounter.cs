@@ -1,5 +1,5 @@
 ﻿//
-// PerformanceCounter.cs
+// Wrapper.Windows.PerformanceCounter.cs
 //
 // Author:
 //       M.A. (https://github.com/mkahvi)

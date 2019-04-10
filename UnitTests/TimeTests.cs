@@ -13,7 +13,7 @@ namespace Timing
 		public void AffinityBitCountTests()
 		{
 			uint eticks = (uint)Environment.TickCount;
-			uint pticks = NativeMethods.GetTickCount();
+			uint pticks = MKAh.Native.GetTickCount();
 
 			Console.WriteLine("C# Env:   " + eticks);
 			Console.WriteLine("P/Invoke: " + pticks);

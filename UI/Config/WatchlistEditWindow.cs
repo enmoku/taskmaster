@@ -25,6 +25,7 @@
 // THE SOFTWARE.
 
 using MKAh;
+using MKAh.Logic;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -1055,7 +1056,7 @@ namespace Taskmaster.UI.Config
 
 			if (affinityMask.Value >= 0 && idealAffinity.Value > 0)
 			{
-				if (!MKAh.Bit.IsSet(Convert.ToInt32(affinityMask.Value).Replace(0, ProcessManager.AllCPUsMask), Convert.ToInt32(idealAffinity.Value) - 1))
+				if (!Bit.IsSet(Convert.ToInt32(affinityMask.Value).Replace(0, ProcessManager.AllCPUsMask), Convert.ToInt32(idealAffinity.Value) - 1))
 					sbs.Append("Affinity ideal is not within defined affinity.").AppendLine();
 			}
 

@@ -31,6 +31,7 @@ using System.Management;
 using System.Threading;
 using System.Threading.Tasks;
 using MKAh;
+using Windows = MKAh.Wrapper.Windows;
 using Serilog;
 
 namespace Taskmaster
@@ -67,21 +68,21 @@ namespace Taskmaster
 		readonly CancellationToken ct;
 
 		// Hard Page Faults
-		//PerformanceCounterWrapper PageFaults = new PerformanceCounterWrapper("Memory", "Page Faults/sec", null);
-		PerformanceCounterWrapper PageInputs = null;
+		//Windows.PerformanceCounter PageFaults = new Windows.PerformanceCounter("Memory", "Page Faults/sec", null);
+		Windows.PerformanceCounter PageInputs = null;
 
 		// NVM
-		PerformanceCounterWrapper SplitIO = new PerformanceCounterWrapper("LogicalDisk", "Split IO/sec", "_Total");
-		PerformanceCounterWrapper NVMTransfers = new PerformanceCounterWrapper("LogicalDisk", "Disk Transfers/sec", "_Total");
-		PerformanceCounterWrapper NVMQueue = new PerformanceCounterWrapper("PhysicalDisk", "Current Disk Queue Length", "_Total");
+		Windows.PerformanceCounter SplitIO = new Windows.PerformanceCounter("LogicalDisk", "Split IO/sec", "_Total");
+		Windows.PerformanceCounter NVMTransfers = new Windows.PerformanceCounter("LogicalDisk", "Disk Transfers/sec", "_Total");
+		Windows.PerformanceCounter NVMQueue = new Windows.PerformanceCounter("PhysicalDisk", "Current Disk Queue Length", "_Total");
 
-		PerformanceCounterWrapper NVMReadDelay = new PerformanceCounterWrapper("LogicalDisk", "Avg. Disk Sec/Read", "_Total");
-		PerformanceCounterWrapper NVMWriteDelay = new PerformanceCounterWrapper("LogicalDisk", "Avg. Disk Sec/Write", "_Total");
+		Windows.PerformanceCounter NVMReadDelay = new Windows.PerformanceCounter("LogicalDisk", "Avg. Disk Sec/Read", "_Total");
+		Windows.PerformanceCounter NVMWriteDelay = new Windows.PerformanceCounter("LogicalDisk", "Avg. Disk Sec/Write", "_Total");
 
 		/*
-		PerformanceCounterWrapper NetRetransmit = new PerformanceCounterWrapper("TCP", "Segments Retransmitted/sec", "_Total");
-		PerformanceCounterWrapper NetConnFails = new PerformanceCounterWrapper("TCP", "Connection Failures", "_Total");
-		PerformanceCounterWrapper NetConnReset = new PerformanceCounterWrapper("TCP", "Connections Reset", "_Total");
+		Windows.PerformanceCounter NetRetransmit = new Windows.PerformanceCounter("TCP", "Segments Retransmitted/sec", "_Total");
+		Windows.PerformanceCounter NetConnFails = new Windows.PerformanceCounter("TCP", "Connection Failures", "_Total");
+		Windows.PerformanceCounter NetConnReset = new Windows.PerformanceCounter("TCP", "Connections Reset", "_Total");
 		*/
 
 		public HealthReport Poll
@@ -170,7 +171,7 @@ namespace Taskmaster
 
 			try
 			{
-				//PageInputs = new PerformanceCounterWrapper("Memory", "Page Inputs/sec", null);
+				//PageInputs = new Windows.PerformanceCounter("Memory", "Page Inputs/sec", null);
 			}
 			catch (InvalidOperationException) // counter not found... admin only?
 			{
@@ -363,7 +364,7 @@ namespace Taskmaster
 
 			await Task.Delay(0).ConfigureAwait(false);
 
-			uint ntick = NativeMethods.GetTickCount();
+			uint ntick = MKAh.Native.GetTickCount();
 
 			if (LastTick > ntick)
 				Log.Warning("<Health> kernel32.dll/GetTickCount() has wrapped around.");
@@ -417,7 +418,7 @@ namespace Taskmaster
 
 			await Task.Delay(0).ConfigureAwait(false);
 
-			// TODO: Add defrag suggestion based on PerformanceCounterWrapper("LogicalDisk", "Split IO/sec", "_Total");
+			// TODO: Add defrag suggestion based on Windows.PerformanceCounter("LogicalDisk", "Split IO/sec", "_Total");
 
 			var now = DateTimeOffset.UtcNow;
 			if (now.TimeSince(LastDriveWarning).TotalHours >= 24)

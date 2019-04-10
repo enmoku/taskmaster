@@ -31,18 +31,6 @@ namespace Taskmaster
 {
 	public static partial class NativeMethods
 	{
-		/// <summary>
-		/// Tick count as ulong. Actually milliseconds.
-		/// </summary>
-		[DllImport("kernel32.dll")]
-		public static extern ulong GetTickCount64();
-
-		/// <summary>
-		/// Tick count as uint. Actually milliseconds.
-		/// </summary>
-		[DllImport("kernel32.dll")]
-		public static extern uint GetTickCount();
-
 		// for ActiveAppManager.cs
 
 		/// <summary>
@@ -194,9 +182,9 @@ namespace Taskmaster
 
 		//     No dialog box confirming the deletion of the objects will be displayed.
 		public const int SHERB_NOCONFIRMATION = 0x00000001;
-		//     No dialog box indicating the progress will be displayed. 
+		//     No dialog box indicating the progress will be displayed.
 		public const int SHERB_NOPROGRESSUI = 0x00000002;
-		//     No sound will be played when the operation is complete. 
+		//     No sound will be played when the operation is complete.
 		public const int SHERB_NOSOUND = 0x00000004;
 
 		/// <summary>
@@ -252,7 +240,7 @@ namespace Taskmaster
 			SEM_SYSTEMDEFAULT = 0x0,
 			/// <summary>
 			/// The system does not display the critical-error-handler message box. Instead, the system sends the error to the calling process.
-			/// 
+			///
 			/// Best practice is that all applications call the process-wide SetErrorMode function with a parameter of SEM_FAILCRITICALERRORS at startup. This is to prevent error mode dialogs from hanging the application.
 			/// </summary>
 			SEM_FAILCRITICALERRORS = 0x0001,
