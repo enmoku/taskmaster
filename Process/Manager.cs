@@ -197,8 +197,8 @@ namespace Taskmaster
 			activeappmonitor.OnDisposed += (_, _ea) => activeappmonitor = null;
 		}
 
-		PowerManager powermanager = null;
-		public void Hook(PowerManager manager)
+		Power.Manager powermanager = null;
+		public void Hook(Power.Manager manager)
 		{
 			powermanager = manager;
 			powermanager.onBehaviourChange += PowerBehaviourEvent;
@@ -869,11 +869,11 @@ namespace Taskmaster
 					ProcessPriorityClass? prioR = (prio >= 0) ? (ProcessPriorityClass?)ProcessHelpers.IntToPriority(prio) : null;
 
 					var pmodes = rulePow?.Value ?? null;
-					var pmode = PowerManager.GetModeByName(pmodes);
-					if (pmode == PowerInfo.PowerMode.Custom)
+					var pmode = Power.Manager.GetModeByName(pmodes);
+					if (pmode == Power.Mode.Custom)
 					{
 						Log.Warning($"<Watchlist:{rulePow.Line}> [{section.Name}] Unrecognized power plan: {pmodes}");
-						pmode = PowerInfo.PowerMode.Undefined;
+						pmode = Power.Mode.Undefined;
 					}
 
 					ProcessPriorityStrategy priostrat = ProcessPriorityStrategy.None;
@@ -1218,13 +1218,13 @@ namespace Taskmaster
 			}
 		}
 
-		void PowerBehaviourEvent(object _, PowerManager.PowerBehaviourEventArgs ea)
+		void PowerBehaviourEvent(object _, Power.Manager.PowerBehaviourEventArgs ea)
 		{
 			if (DisposedOrDisposing) return;
 
 			try
 			{
-				if (ea.Behaviour == PowerManager.PowerBehaviour.Manual)
+				if (ea.Behaviour == Power.Manager.PowerBehaviour.Manual)
 					CancelPowerWait();
 			}
 			catch (Exception ex)

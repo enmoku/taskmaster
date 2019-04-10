@@ -38,7 +38,7 @@ namespace Taskmaster
 		public SortOrder Order { get; set; } = SortOrder.Ascending;
 		public bool Number { get; set; } = false;
 		public bool Priority { get; set; } = false;
-		public bool Power { get; set; } = false;
+		public bool SortPower { get; set; } = false;
 
 		readonly CaseInsensitiveComparer Comparer = new CaseInsensitiveComparer();
 
@@ -64,7 +64,7 @@ namespace Taskmaster
 
 			Number = NumberColumns.Any(item => item == Column);
 			Priority = PriorityColumn == Column;
-			Power = PowerColumn == Column;
+			SortPower = PowerColumn == Column;
 
 			if (Priority)
 			{
@@ -72,10 +72,10 @@ namespace Taskmaster
 				int liyp = liy.SubItems[Column].Text.Length > 0 ? MKAh.Utility.ProcessPriority(liy.SubItems[Column].Text).ToInt32() : -1;
 				result = Comparer.Compare(lixp, liyp);
 			}
-			else if (Power)
+			else if (SortPower)
 			{
-				int lixp = lix.SubItems[Column].Text.Length > 0 ? (int)PowerManager.GetModeByName(lix.SubItems[Column].Text) : (int)PowerInfo.PowerMode.Undefined;
-				int liyp = liy.SubItems[Column].Text.Length > 0 ? (int)PowerManager.GetModeByName(liy.SubItems[Column].Text) : (int)PowerInfo.PowerMode.Undefined;
+				int lixp = lix.SubItems[Column].Text.Length > 0 ? (int)Power.Manager.GetModeByName(lix.SubItems[Column].Text) : (int)Power.Mode.Undefined;
+				int liyp = liy.SubItems[Column].Text.Length > 0 ? (int)Power.Manager.GetModeByName(liy.SubItems[Column].Text) : (int)Power.Mode.Undefined;
 				result = Comparer.Compare(lixp, liyp);
 			}
 			else if (Number)

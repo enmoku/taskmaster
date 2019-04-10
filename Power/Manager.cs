@@ -1,5 +1,5 @@
 ﻿//
-// PowerManager.cs
+// Power.Manager.cs
 //
 // Author:
 //       M.A. (https://github.com/mkahvi)
@@ -37,32 +37,31 @@ using MKAh;
 using MKAh.Human.Readable;
 using Ini = MKAh.Ini;
 using Serilog;
-using Taskmaster.PowerInfo;
 
-namespace Taskmaster
+namespace Taskmaster.Power
 {
 	using static Taskmaster;
 
-	sealed public class PowerModeEventArgs : EventArgs
+	sealed public class ModeEventArgs : EventArgs
 	{
-		public PowerModeEventArgs(PowerMode newmode, PowerMode oldmode = PowerMode.Undefined, Cause cause = null)
+		public ModeEventArgs(Mode newmode, Mode oldmode = Mode.Undefined, Cause cause = null)
 		{
 			NewMode = newmode;
 			OldMode = oldmode;
 			Cause = cause;
 		}
 
-		public PowerMode OldMode { get; set; } = PowerMode.Undefined;
-		public PowerMode NewMode { get; set; } = PowerMode.Undefined;
+		public Mode OldMode { get; set; } = Mode.Undefined;
+		public Mode NewMode { get; set; } = Mode.Undefined;
 		public Cause Cause { get; set; } = null;
 	}
 
 	sealed public class PowerRequestEventArgs : EventArgs
 	{
-		public PowerMode Mode { get; set; } = PowerMode.Undefined;
+		public Mode Mode { get; set; } = Mode.Undefined;
 		public ProcessEx Info { get; set; } = null;
 
-		public PowerRequestEventArgs(PowerMode mode, ProcessEx info)
+		public PowerRequestEventArgs(Mode mode, ProcessEx info)
 		{
 			Mode = mode;
 			Info = info;
@@ -89,7 +88,7 @@ namespace Taskmaster
 		public SessionLockEventArgs(bool locked = false) => Locked = locked;
 	}
 
-	sealed public class PowerManager : Form, IComponent // form is required for receiving messages, no other reason
+	sealed public class Manager : Form, IComponent // form is required for receiving messages, no other reason
 	{
 		bool VerbosePowerRelease = false;
 
@@ -108,7 +107,7 @@ namespace Taskmaster
 
 		bool DebugAutoPower = false;
 
-		public PowerManager()
+		public Manager()
 		{
 			ExpectedMode = OriginalMode = getPowerMode();
 
@@ -134,7 +133,7 @@ namespace Taskmaster
 		}
 
 		public int ForceCount => ForceModeSourcesMap.Count;
-		ConcurrentDictionary<int, PowerMode> ForceModeSourcesMap = new ConcurrentDictionary<int, PowerMode>();
+		ConcurrentDictionary<int, Mode> ForceModeSourcesMap = new ConcurrentDictionary<int, Mode>();
 
 		CPUMonitor cpumonitor = null;
 
@@ -175,12 +174,12 @@ namespace Taskmaster
 
 				if (ev.Mode == MonitorPowerMode.On && SessionLocked)
 				{
-					if (SessionLockPowerMode != PowerMode.Undefined)
+					if (SessionLockPowerMode != Mode.Undefined)
 					{
 						lock (power_lock)
 						{
 							if (CurrentMode == SessionLockPowerMode)
-								InternalSetMode(PowerMode.Balanced, new Cause(OriginType.Session, "User activity"), verbose: false);
+								InternalSetMode(Mode.Balanced, new Cause(OriginType.Session, "User activity"), verbose: false);
 						}
 					}
 
@@ -288,7 +287,7 @@ namespace Taskmaster
 
 			var idle = User.IdleTime();
 
-			if (SessionLockPowerMode != PowerMode.Undefined)
+			if (SessionLockPowerMode != Mode.Undefined)
 			{
 				lock (power_lock)
 				{
@@ -368,7 +367,7 @@ namespace Taskmaster
 		/// <summary>
 		/// Session lock power mode
 		/// </summary>
-		public PowerMode SessionLockPowerMode { get; set; } = PowerMode.PowerSaver;
+		public Mode SessionLockPowerMode { get; set; } = Mode.PowerSaver;
 		/// <summary>
 		/// Power saver on log off
 		/// </summary>
@@ -396,11 +395,11 @@ namespace Taskmaster
 		public bool SessionLockPowerOff { get; set; } = true;
 
 		public event EventHandler<AutoAdjustReactionEventArgs> onAutoAdjustAttempt;
-		public event EventHandler<PowerModeEventArgs> onPlanChange;
+		public event EventHandler<ModeEventArgs> onPlanChange;
 		public event EventHandler<PowerBehaviourEventArgs> onBehaviourChange;
 		public event EventHandler onSuspendResume;
 
-		public enum PowerReaction
+		public enum Reaction
 		{
 			High = 1,
 			Average = 0,
@@ -436,7 +435,7 @@ namespace Taskmaster
 		int HighPressure = 0;
 		int LowPressure = 0;
 		float queuePressureAdjust = 0f;
-		PowerReaction PreviousReaction = PowerReaction.Average;
+		Reaction PreviousReaction = Reaction.Average;
 
 		// TODO: Simplify this mess
 		public void CPULoadHandler(object _, ProcessorLoadEventArgs pev)
@@ -449,7 +448,7 @@ namespace Taskmaster
 
 			lock (autoadjust_lock)
 			{
-				var Reaction = PowerReaction.Average;
+				var Reaction = Power.Manager.Reaction.Average;
 
 				var Ready = false;
 
@@ -458,7 +457,7 @@ namespace Taskmaster
 
 				//Debug.WriteLine("AUTO-ADJUST: Previous Reaction: " + PreviousReaction.ToString());
 				//Debug.WriteLine("AUTO-ADJUST: Queue Length: " + ev.Queue.ToString());
-				if (PreviousReaction == PowerReaction.High)
+				if (PreviousReaction == Reaction.High)
 				{
 					// Backoff from High to Medium power level
 					if (ev.Queue <= AutoAdjust.Queue.High
@@ -467,7 +466,7 @@ namespace Taskmaster
 						|| ev.Low <= AutoAdjust.High.Backoff.Low))
 					{
 						//Debug.WriteLine("AUTO-ADJUST: Motive: High to Average");
-						Reaction = PowerReaction.Average;
+						Reaction = Reaction.Average;
 
 						BackoffCounter++;
 
@@ -482,11 +481,11 @@ namespace Taskmaster
 					else
 					{
 						//Debug.WriteLine("AUTO-ADJUST: Motive: High - Steady");
-						Reaction = PowerReaction.High;
+						Reaction = Reaction.High;
 						ev.Steady = true;
 					}
 				}
-				else if (PreviousReaction == PowerReaction.Low)
+				else if (PreviousReaction == Reaction.Low)
 				{
 					// Backoff from Low to Medium power level
 					if (ev.Queue >= AutoAdjust.Queue.Low
@@ -495,7 +494,7 @@ namespace Taskmaster
 						|| ev.Low >= AutoAdjust.Low.Backoff.Low)
 					{
 						//Debug.WriteLine("AUTO-ADJUST: Motive: Low to Average");
-						Reaction = PowerReaction.Average;
+						Reaction = Reaction.Average;
 
 						BackoffCounter++;
 
@@ -510,7 +509,7 @@ namespace Taskmaster
 					else
 					{
 						//Debug.WriteLine("AUTO-ADJUST: Motive: Low - Steady");
-						Reaction = PowerReaction.Low;
+						Reaction = Reaction.Low;
 						ev.Steady = true;
 					}
 				}
@@ -521,7 +520,7 @@ namespace Taskmaster
 					{
 						//Debug.WriteLine("AUTO-ADJUST: Motive: Average to High");
 						// Commit to High power level
-						Reaction = PowerReaction.High;
+						Reaction = Reaction.High;
 
 						LowPressure = 0; // reset
 						HighPressure++;
@@ -540,7 +539,7 @@ namespace Taskmaster
 					{
 						//Debug.WriteLine("AUTO-ADJUST: Motive: Average to Low");
 						// Commit to Low power level
-						Reaction = PowerReaction.Low;
+						Reaction = Reaction.Low;
 
 						HighPressure = 0; // reset
 						LowPressure++;
@@ -558,7 +557,7 @@ namespace Taskmaster
 						//Debug.WriteLine("AUTO-ADJUST: Motive: Average - Steady");
 						if (DebugAutoPower) Debug.WriteLine("Auto-adjust NOP");
 
-						Reaction = PowerReaction.Average;
+						Reaction = Reaction.Average;
 						ev.Steady = true;
 
 						ResetAutoadjust();
@@ -578,7 +577,7 @@ namespace Taskmaster
 					if (DebugPower) Log.Debug("<Power> Auto-adjust: " + Reaction.ToString());
 
 					string explanation = string.Empty;
-					if (CurrentMode != PowerMode.Balanced && Reaction == PowerReaction.Average)
+					if (CurrentMode != Mode.Balanced && Reaction == Reaction.Average)
 						explanation = $"Backing off from {PreviousReaction}";
 					else
 						explanation = $"Committing to {Reaction}";
@@ -630,19 +629,19 @@ namespace Taskmaster
 			onAutoAdjustAttempt?.Invoke(this, ev);
 		}
 
-		PowerMode ReactionToMode(PowerReaction reaction)
+		Mode ReactionToMode(Reaction reaction)
 		{
-			PowerMode mode = PowerMode.Undefined;
+			Mode mode = Mode.Undefined;
 			switch (reaction)
 			{
-				case PowerReaction.High:
+				case Reaction.High:
 					mode = AutoAdjust.High.Mode;
 					break;
 				default:
-				case PowerReaction.Average:
+				case Reaction.Average:
 					mode = AutoAdjust.DefaultMode;
 					break;
-				case PowerReaction.Low:
+				case Reaction.Low:
 					mode = AutoAdjust.Low.Mode;
 					break;
 			}
@@ -654,7 +653,7 @@ namespace Taskmaster
 		void ResetAutoadjust()
 		{
 			BackoffCounter = HighPressure = LowPressure = 0;
-			PreviousReaction = PowerReaction.Average;
+			PreviousReaction = Reaction.Average;
 			WarnedForceMode = false;
 		}
 
@@ -677,13 +676,13 @@ namespace Taskmaster
 					LaunchBehaviour = PowerBehaviour.RuleBased;
 				Behaviour = LaunchBehaviour;
 
-				var defaultmode = power.GetOrSet("Default mode", GetModeName(PowerMode.Balanced), out modified).Value;
+				var defaultmode = power.GetOrSet("Default mode", GetModeName(Mode.Balanced), out modified).Value;
 				power["Default mode"].Comment = "This is what power plan we fall back on when nothing else is considered.";
 				AutoAdjust.DefaultMode = GetModeByName(defaultmode);
-				if (AutoAdjust.DefaultMode == PowerMode.Undefined)
+				if (AutoAdjust.DefaultMode == Mode.Undefined)
 				{
 					Log.Warning("<Power> Default mode malconfigured, defaulting to balanced.");
-					AutoAdjust.DefaultMode = PowerMode.Balanced;
+					AutoAdjust.DefaultMode = Mode.Balanced;
 				}
 				dirtyconfig |= modified;
 
@@ -693,7 +692,7 @@ namespace Taskmaster
 
 				var restoremode = s_restoremode.Value;
 				RestoreModeMethod newmodemethod = RestoreModeMethod.Default;
-				PowerMode newrestoremode = PowerMode.Undefined;
+				Mode newrestoremode = Mode.Undefined;
 
 				switch (restoremode.ToLowerInvariant())
 				{
@@ -707,12 +706,12 @@ namespace Taskmaster
 						break;
 					case "saved":
 						newmodemethod = RestoreModeMethod.Saved;
-						newrestoremode = PowerMode.Undefined;
+						newrestoremode = Mode.Undefined;
 						break;
 					default:
 						newmodemethod = RestoreModeMethod.Custom;
 						newrestoremode = GetModeByName(restoremode);
-						if (RestoreMode == PowerMode.Undefined)
+						if (RestoreMode == Mode.Undefined)
 						{
 							// TODO: Complain about bad config
 							Log.Warning("<Power> Restore mode name unintelligible.");
@@ -777,10 +776,10 @@ namespace Taskmaster
 				dirtyconfig |= modified;
 
 				// POWER MODES
-				var lowmode = power.GetOrSet("Low mode", GetModeName(PowerMode.PowerSaver), out modified).Value;
+				var lowmode = power.GetOrSet("Low mode", GetModeName(Mode.PowerSaver), out modified).Value;
 				AutoAdjust.Low.Mode = GetModeByName(lowmode);
 				dirtyconfig |= modified;
-				var highmode = power.GetOrSet("High mode", GetModeName(PowerMode.HighPerformance), out modified).Value;
+				var highmode = power.GetOrSet("High mode", GetModeName(Mode.HighPerformance), out modified).Value;
 				AutoAdjust.High.Mode = GetModeByName(highmode);
 				dirtyconfig |= modified;
 
@@ -794,7 +793,7 @@ namespace Taskmaster
 				var saver = corecfg.Config["AFK Power"];
 				//saver.Comment = "All these options control when to enforce power save mode regardless of any other options.";
 
-				var sessionlockmodename = saver.GetOrSet("Session lock", GetModeName(PowerMode.PowerSaver), out modified).Value;
+				var sessionlockmodename = saver.GetOrSet("Session lock", GetModeName(Mode.PowerSaver), out modified).Value;
 				saver["Session lock"].Comment = "Power mode to set when session is locked, such as by pressing winkey+L. Unrecognizable values disable this.";
 				dirtyconfig |= modified;
 				SessionLockPowerMode = GetModeByName(sessionlockmodename);
@@ -831,7 +830,7 @@ namespace Taskmaster
 
 			LogBehaviourState();
 
-			Log.Information("<Power> Session lock: " + (SessionLockPowerMode == PowerMode.Undefined ? HumanReadable.Generic.Ignore : SessionLockPowerMode.ToString()));
+			Log.Information("<Power> Session lock: " + (SessionLockPowerMode == Mode.Undefined ? HumanReadable.Generic.Ignore : SessionLockPowerMode.ToString()));
 			Log.Information("<Power> Restore mode: " + RestoreMethod.ToString() + " [" + RestoreMode.ToString() + "]");
 
 			Log.Information("<Session> User AFK timeout: " + (SessionLockPowerOffIdleTimeout.HasValue ? $"{SessionLockPowerOffIdleTimeout.Value.TotalSeconds:N0}s" : HumanReadable.Generic.Disabled));
@@ -943,7 +942,7 @@ namespace Taskmaster
 		};
 
 		public RestoreModeMethod RestoreMethod { get; private set; } = RestoreModeMethod.Default;
-		public PowerMode RestoreMode { get; private set; } = PowerMode.Balanced;
+		public Mode RestoreMode { get; private set; } = Mode.Balanced;
 
 		Stopwatch SessionLockCounter = null;
 		Stopwatch MonitorOffLastLock = null;
@@ -1023,7 +1022,7 @@ namespace Taskmaster
 				}
 			}
 
-			if (SessionLockPowerMode == PowerMode.Undefined) return;
+			if (SessionLockPowerMode == Mode.Undefined) return;
 
 			try
 			{
@@ -1037,7 +1036,7 @@ namespace Taskmaster
 						// SET POWER SAVER
 						if (DebugSession) Log.Debug("<Session:Lock> Enforcing power plan: " + SessionLockPowerMode.ToString());
 
-						if (SessionLockPowerMode != PowerMode.Undefined)
+						if (SessionLockPowerMode != Mode.Undefined)
 						{
 							lock (power_lock)
 							{
@@ -1078,29 +1077,29 @@ namespace Taskmaster
 
 		void ResetPower(Cause cause = null, bool verbose = false)
 		{
-			PowerMode mode = RestoreMode;
+			Mode mode = RestoreMode;
 			lock (power_lock)
 			{
 				if (Forced)
 				{
-					mode = PowerMode.PowerSaver;
+					mode = Mode.PowerSaver;
 					foreach (var pow in ForceModeSourcesMap)
 					{
-						if (pow.Value == PowerMode.HighPerformance)
+						if (pow.Value == Mode.HighPerformance)
 						{
 							mode = pow.Value;
 							break;
 						}
-						else if (pow.Value == PowerMode.Balanced)
-							mode = PowerMode.Balanced;
+						else if (pow.Value == Mode.Balanced)
+							mode = Mode.Balanced;
 					}
 				}
 				else
 				{
-					if (mode == PowerMode.Undefined && SavedMode != PowerMode.Undefined)
+					if (mode == Mode.Undefined && SavedMode != Mode.Undefined)
 						mode = SavedMode;
 					else
-						mode = PowerMode.Balanced;
+						mode = Mode.Balanced;
 				}
 
 				InternalSetMode(mode, cause, verbose: verbose);
@@ -1132,7 +1131,7 @@ namespace Taskmaster
 		}
 
 		Cause ExpectedCause = new Cause(OriginType.None);
-		PowerMode ExpectedMode = PowerMode.Undefined;
+		Mode ExpectedMode = Mode.Undefined;
 		MonitorPowerMode ExpectedMonitorPower = MonitorPowerMode.On;
 		DateTimeOffset LastExternalWarning = DateTimeOffset.MinValue;
 
@@ -1150,12 +1149,12 @@ namespace Taskmaster
 					var pData = (IntPtr)(m.LParam.ToInt32() + Marshal.SizeOf(ps) - 4); // -4 is to align to the ps.Data
 					var newPersonality = (Guid)Marshal.PtrToStructure(pData, typeof(Guid));
 					var old = CurrentMode;
-					if (newPersonality == Balanced) { CurrentMode = PowerMode.Balanced; }
-					else if (newPersonality == HighPerformance) { CurrentMode = PowerMode.HighPerformance; }
-					else if (newPersonality == PowerSaver) { CurrentMode = PowerMode.PowerSaver; }
-					else { CurrentMode = PowerMode.Undefined; }
+					if (newPersonality == Balanced) { CurrentMode = Mode.Balanced; }
+					else if (newPersonality == HighPerformance) { CurrentMode = Mode.HighPerformance; }
+					else if (newPersonality == PowerSaver) { CurrentMode = Mode.PowerSaver; }
+					else { CurrentMode = Mode.Undefined; }
 
-					onPlanChange?.Invoke(this, new PowerModeEventArgs(CurrentMode, old, CurrentMode == ExpectedMode ? ExpectedCause : new Cause(OriginType.None, "External")));
+					onPlanChange?.Invoke(this, new ModeEventArgs(CurrentMode, old, CurrentMode == ExpectedMode ? ExpectedCause : new Cause(OriginType.None, "External")));
 					ExpectedCause = null;
 
 					if (DebugPower) Log.Information($"<Power/OS> Change detected: {CurrentMode.ToString()} ({newPersonality.ToString()})");
@@ -1212,50 +1211,50 @@ namespace Taskmaster
 			}
 		}
 
-		public static string GetModeName(PowerMode mode)
+		public static string GetModeName(Mode mode)
 		{
 			switch (mode)
 			{
-				case PowerMode.Balanced:
+				case Mode.Balanced:
 					return "Balanced";
-				case PowerMode.HighPerformance:
+				case Mode.HighPerformance:
 					return "High Performance";
-				case PowerMode.PowerSaver:
+				case Mode.PowerSaver:
 					return "Power Saver";
-				case PowerMode.Custom:
+				case Mode.Custom:
 					return "Custom";
 				default:
 					return "Undefined";
 			}
 		}
 
-		public static PowerMode GetModeByName(string name)
+		public static Mode GetModeByName(string name)
 		{
-			if (string.IsNullOrEmpty(name)) return PowerMode.Undefined;
+			if (string.IsNullOrEmpty(name)) return Mode.Undefined;
 
 			switch (name.ToLowerInvariant())
 			{
 				case "low":
 				case "powersaver":
 				case "power saver":
-					return PowerMode.PowerSaver;
+					return Mode.PowerSaver;
 				case "average":
 				case "medium":
 				case "balanced":
-					return PowerMode.Balanced;
+					return Mode.Balanced;
 				case "high":
 				case "highperformance":
 				case "high performance":
-					return PowerMode.HighPerformance;
+					return Mode.HighPerformance;
 				default:
-					return PowerMode.Undefined;
+					return Mode.Undefined;
 			}
 		}
 
-		public PowerMode OriginalMode { get; private set; } = PowerMode.Balanced;
-		public PowerMode CurrentMode { get; private set; } = PowerMode.Balanced;
+		public Mode OriginalMode { get; private set; } = Mode.Balanced;
+		public Mode CurrentMode { get; private set; } = Mode.Balanced;
 
-		PowerMode SavedMode = PowerMode.Undefined;
+		Mode SavedMode = Mode.Undefined;
 
 		static readonly Guid HighPerformance = new Guid("8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c"); // SCHEME_MIN
 		static readonly Guid Balanced = new Guid("381b4222-f694-41f0-9685-ff5bb260df2e"); // SCHEME_BALANCED
@@ -1280,7 +1279,7 @@ namespace Taskmaster
 			}
 		}
 
-		public void SetRestoreMode(RestoreModeMethod method, PowerMode mode)
+		public void SetRestoreMode(RestoreModeMethod method, Mode mode)
 		{
 			RestoreMethod = method;
 			switch (method)
@@ -1292,7 +1291,7 @@ namespace Taskmaster
 					RestoreMode = OriginalMode;
 					break;
 				case RestoreModeMethod.Saved:
-					RestoreMode = PowerMode.Undefined;
+					RestoreMode = Mode.Undefined;
 					break;
 				case RestoreModeMethod.Custom:
 					RestoreMode = mode;
@@ -1430,19 +1429,19 @@ namespace Taskmaster
 
 				if (RestoreMethod == RestoreModeMethod.Saved)
 				{
-					if (SavedMode == PowerMode.Undefined) SavedMode = RestoreMode;
+					if (SavedMode == Mode.Undefined) SavedMode = RestoreMode;
 				}
 				else
 					SavedMode = RestoreMode;
 
-				if (SavedMode != CurrentMode && SavedMode != PowerMode.Undefined)
+				if (SavedMode != CurrentMode && SavedMode != Mode.Undefined)
 				{
 					// if (Behaviour == PowerBehaviour.Auto) return; // this is very optimistic
 
 					if (DebugPower) Log.Debug("<Power> Restoring power mode: " + SavedMode.ToString());
 
 					InternalSetMode(SavedMode, cause ?? new Cause(OriginType.None, "Restoration"), verbose:false);
-					SavedMode = PowerMode.Undefined;
+					SavedMode = Mode.Undefined;
 				}
 				else
 				{
@@ -1451,7 +1450,7 @@ namespace Taskmaster
 			}
 		}
 
-		PowerMode getPowerMode()
+		Mode getPowerMode()
 		{
 			Guid plan;
 			var ptr = Marshal.AllocHGlobal(Marshal.SizeOf(typeof(IntPtr))); // is this actually necessary?
@@ -1462,10 +1461,10 @@ namespace Taskmaster
 				{
 					plan = (Guid)Marshal.PtrToStructure(ptr, typeof(Guid));
 					Marshal.FreeHGlobal(ptr);
-					if (plan.Equals(Balanced)) { CurrentMode = PowerMode.Balanced; }
-					else if (plan.Equals(PowerSaver)) { CurrentMode = PowerMode.PowerSaver; }
-					else if (plan.Equals(HighPerformance)) { CurrentMode = PowerMode.HighPerformance; }
-					else { CurrentMode = PowerMode.Undefined; }
+					if (plan.Equals(Balanced)) { CurrentMode = Mode.Balanced; }
+					else if (plan.Equals(PowerSaver)) { CurrentMode = Mode.PowerSaver; }
+					else if (plan.Equals(HighPerformance)) { CurrentMode = Mode.HighPerformance; }
+					else { CurrentMode = Mode.Undefined; }
 
 					Log.Information($"<Power> Current: {CurrentMode.ToString()}");
 				}
@@ -1479,7 +1478,7 @@ namespace Taskmaster
 		public PowerBehaviour LaunchBehaviour { get; set; } = PowerBehaviour.RuleBased;
 		public PowerBehaviour Behaviour { get; private set; } = PowerBehaviour.RuleBased;
 
-		bool AutoAdjustSetMode(PowerMode mode, Cause cause)
+		bool AutoAdjustSetMode(Mode mode, Cause cause)
 		{
 			if (DisposedOrDisposing) throw new ObjectDisposedException("AutoAdjustSetMode called after PowerManager was disposed.");
 
@@ -1501,7 +1500,7 @@ namespace Taskmaster
 		/// Set power mode and lock it, preventing changes outside of manual control.
 		/// </summary>
 		// BUG: If user forces disparate modes, only last forcing takes effect.
-		public bool Force(PowerMode mode, int sourcePid)
+		public bool Force(Mode mode, int sourcePid)
 		{
 			if (DisposedOrDisposing) throw new ObjectDisposedException("Force called after PowerManager was disposed.");
 
@@ -1516,7 +1515,7 @@ namespace Taskmaster
 
 				SavedMode = CurrentMode;
 
-				if (SavedMode == PowerMode.Undefined) Log.Warning("<Power> Failed to get current mode for later restoration.");
+				if (SavedMode == Mode.Undefined) Log.Warning("<Power> Failed to get current mode for later restoration.");
 
 				// ----
 
@@ -1545,7 +1544,7 @@ namespace Taskmaster
 			return rv;
 		}
 
-		public void SetMode(PowerMode mode, Cause cause=null, bool verbose = true)
+		public void SetMode(Mode mode, Cause cause=null, bool verbose = true)
 		{
 			lock (power_lock)
 			{
@@ -1554,19 +1553,19 @@ namespace Taskmaster
 		}
 
 		// BUG: ?? There might be odd behaviour if this is called while Paused==true
-		void InternalSetMode(PowerMode mode, Cause cause=null, bool verbose = true)
+		void InternalSetMode(Mode mode, Cause cause=null, bool verbose = true)
 		{
 			var plan = Guid.Empty;
 			switch (mode)
 			{
 				default:
-				case PowerMode.Balanced:
+				case Mode.Balanced:
 					plan = Balanced;
 					break;
-				case PowerMode.HighPerformance:
+				case Mode.HighPerformance:
 					plan = HighPerformance;
 					break;
-				case PowerMode.PowerSaver:
+				case Mode.PowerSaver:
 					plan = PowerSaver;
 					break;
 			}

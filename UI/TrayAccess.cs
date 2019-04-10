@@ -118,9 +118,9 @@ namespace Taskmaster.UI
 			{
 				power_auto = new ToolStripMenuItem(HumanReadable.Hardware.Power.AutoAdjust, null, SetAutoPower) { Checked = false, CheckOnClick = true, Enabled = false };
 
-				power_highperf = new ToolStripMenuItem(PowerManager.GetModeName(PowerInfo.PowerMode.HighPerformance), null, (s, e) => SetPower(PowerInfo.PowerMode.HighPerformance));
-				power_balanced = new ToolStripMenuItem(PowerManager.GetModeName(PowerInfo.PowerMode.Balanced), null, (s, e) => SetPower(PowerInfo.PowerMode.Balanced));
-				power_saving = new ToolStripMenuItem(PowerManager.GetModeName(PowerInfo.PowerMode.PowerSaver), null, (s, e) => SetPower(PowerInfo.PowerMode.PowerSaver));
+				power_highperf = new ToolStripMenuItem(Power.Manager.GetModeName(Power.Mode.HighPerformance), null, (s, e) => SetPower(Power.Mode.HighPerformance));
+				power_balanced = new ToolStripMenuItem(Power.Manager.GetModeName(Power.Mode.Balanced), null, (s, e) => SetPower(Power.Mode.Balanced));
+				power_saving = new ToolStripMenuItem(Power.Manager.GetModeName(Power.Mode.PowerSaver), null, (s, e) => SetPower(Power.Mode.PowerSaver));
 				power_manual = new ToolStripMenuItem("Manual override", null, SetManualPower) { CheckOnClick = true };
 
 				ms.Items.Add(new ToolStripSeparator());
@@ -342,14 +342,14 @@ namespace Taskmaster.UI
 			RescanRequest += (_,_ea) => processmanager?.HastenScan();
 		}
 
-		PowerManager powermanager = null;
-		public void Hook(PowerManager pman)
+		Power.Manager powermanager = null;
+		public void Hook(Power.Manager pman)
 		{
 			powermanager = pman;
 			powermanager.onPlanChange += HighlightPowerModeEvent;
 
-			power_auto.Checked = powermanager.Behaviour == PowerManager.PowerBehaviour.Auto;
-			power_manual.Checked = powermanager.Behaviour == PowerManager.PowerBehaviour.Manual;
+			power_auto.Checked = powermanager.Behaviour == Power.Manager.PowerBehaviour.Auto;
+			power_manual.Checked = powermanager.Behaviour == Power.Manager.PowerBehaviour.Manual;
 			power_auto.Enabled = true;
 			HighlightPowerMode();
 		}
@@ -358,12 +358,12 @@ namespace Taskmaster.UI
 		{
 			if (power_auto.Checked)
 			{
-				powermanager.SetBehaviour(PowerManager.PowerBehaviour.Auto);
+				powermanager.SetBehaviour(Power.Manager.PowerBehaviour.Auto);
 				power_manual.Checked = false;
 			}
 			else
 			{
-				powermanager.SetBehaviour(PowerManager.PowerBehaviour.RuleBased);
+				powermanager.SetBehaviour(Power.Manager.PowerBehaviour.RuleBased);
 			}
 		}
 
@@ -371,30 +371,30 @@ namespace Taskmaster.UI
 		{
 			if (power_manual.Checked)
 			{
-				powermanager.SetBehaviour(PowerManager.PowerBehaviour.Manual);
+				powermanager.SetBehaviour(Power.Manager.PowerBehaviour.Manual);
 				power_auto.Checked = false;
 			}
 			else
-				powermanager.SetBehaviour(PowerManager.PowerBehaviour.RuleBased);
+				powermanager.SetBehaviour(Power.Manager.PowerBehaviour.RuleBased);
 		}
 
-		void HighlightPowerModeEvent(object _, PowerModeEventArgs _ea) => HighlightPowerMode();
+		void HighlightPowerModeEvent(object _, Power.ModeEventArgs _ea) => HighlightPowerMode();
 
 		void HighlightPowerMode()
 		{
 			switch (powermanager.CurrentMode)
 			{
-				case PowerInfo.PowerMode.Balanced:
+				case Power.Mode.Balanced:
 					power_saving.Checked = false;
 					power_balanced.Checked = true;
 					power_highperf.Checked = false;
 					break;
-				case PowerInfo.PowerMode.HighPerformance:
+				case Power.Mode.HighPerformance:
 					power_saving.Checked = false;
 					power_balanced.Checked = false;
 					power_highperf.Checked = true;
 					break;
-				case PowerInfo.PowerMode.PowerSaver:
+				case Power.Mode.PowerSaver:
 					power_saving.Checked = true;
 					power_balanced.Checked = false;
 					power_highperf.Checked = false;
@@ -402,13 +402,13 @@ namespace Taskmaster.UI
 			}
 		}
 
-		void SetPower(PowerInfo.PowerMode mode)
+		void SetPower(Power.Mode mode)
 		{
 			try
 			{
 				if (DebugPower) Log.Debug("<Power> Setting behaviour to manual.");
 
-				powermanager.SetBehaviour(PowerManager.PowerBehaviour.Manual);
+				powermanager.SetBehaviour(Power.Manager.PowerBehaviour.Manual);
 
 				power_manual.Checked = true;
 				power_auto.Checked = false;

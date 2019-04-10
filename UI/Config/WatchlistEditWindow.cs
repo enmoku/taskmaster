@@ -179,7 +179,7 @@ namespace Taskmaster.UI.Config
 			}
 
 			Controller.ModifyDelay = (int)(modifyDelay.Value * 1_000);
-			Controller.PowerPlan = PowerManager.GetModeByName(powerPlan.Text);
+			Controller.PowerPlan = Power.Manager.GetModeByName(powerPlan.Text);
 			Controller.AllowPaging = allowPaging.Checked;
 			Controller.SetForegroundMode((ForegroundMode)(ForegroundModeSelect.SelectedIndex - 1));
 
@@ -767,17 +767,17 @@ namespace Taskmaster.UI.Config
 				Width = 180,
 			};
 			powerPlan.Items.AddRange(new string[] {
-				PowerManager.GetModeName(PowerInfo.PowerMode.HighPerformance),
-				PowerManager.GetModeName(PowerInfo.PowerMode.Balanced),
-				PowerManager.GetModeName(PowerInfo.PowerMode.PowerSaver),
-				PowerManager.GetModeName(PowerInfo.PowerMode.Undefined)
+				Power.Manager.GetModeName(Power.Mode.HighPerformance),
+				Power.Manager.GetModeName(Power.Mode.Balanced),
+				Power.Manager.GetModeName(Power.Mode.PowerSaver),
+				Power.Manager.GetModeName(Power.Mode.Undefined)
 			});
 			int ppi = 3;
 			switch (Controller.PowerPlan)
 			{
-				case PowerInfo.PowerMode.HighPerformance: ppi = 0; break;
-				case PowerInfo.PowerMode.Balanced: ppi = 1; break;
-				case PowerInfo.PowerMode.PowerSaver: ppi = 2; break;
+				case Power.Mode.HighPerformance: ppi = 0; break;
+				case Power.Mode.Balanced: ppi = 1; break;
+				case Power.Mode.PowerSaver: ppi = 2; break;
 				default: ppi = 3; break;
 			}
 			powerPlan.SelectedIndex = ppi;

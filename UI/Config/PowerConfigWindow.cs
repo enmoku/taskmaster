@@ -28,7 +28,7 @@ using System;
 using System.Windows.Forms;
 using MKAh;
 using Serilog;
-using Taskmaster.PowerInfo;
+using Taskmaster.Power;
 
 namespace Taskmaster.UI.Config
 {
@@ -37,10 +37,10 @@ namespace Taskmaster.UI.Config
 		public AutoAdjustSettings oldAutoAdjust = null;
 		public AutoAdjustSettings newAutoAdjust = null;
 
-		public PowerManager.PowerBehaviour NewLaunchBehaviour = PowerManager.PowerBehaviour.Undefined;
-		public PowerManager.RestoreModeMethod NewRestoreMethod = PowerManager.RestoreModeMethod.Default;
-		public PowerMode NewRestoreMode = PowerMode.Undefined;
-		public PowerMode NewLockMode = PowerMode.Undefined;
+		public Power.Manager.PowerBehaviour NewLaunchBehaviour = Power.Manager.PowerBehaviour.Undefined;
+		public Power.Manager.RestoreModeMethod NewRestoreMethod = Power.Manager.RestoreModeMethod.Default;
+		public Mode NewRestoreMode = Mode.Undefined;
+		public Mode NewLockMode = Mode.Undefined;
 
 		ComboBox behaviour = null, restore = null;
 
@@ -56,9 +56,9 @@ namespace Taskmaster.UI.Config
 		ComboBox monitoroffmode = null;
 		CheckBox monitorofftoggle = null;
 
-		PowerManager manager = null;
+		Power.Manager manager = null;
 
-		public PowerConfigWindow(PowerManager powerManager, bool center = false)
+		public PowerConfigWindow(Power.Manager powerManager, bool center = false)
 			: base(center)
 		{
 			manager = powerManager;
@@ -76,7 +76,7 @@ namespace Taskmaster.UI.Config
 			var tooltip = new ToolTip();
 
 			string[] powermodes = new string[] {
-				PowerManager.GetModeName(PowerMode.HighPerformance), PowerManager.GetModeName(PowerMode.Balanced), PowerManager.GetModeName(PowerMode.PowerSaver)
+				Power.Manager.GetModeName(Mode.HighPerformance), Power.Manager.GetModeName(Mode.Balanced), Power.Manager.GetModeName(Mode.PowerSaver)
 			};
 
 			var layout = new TableLayoutPanel()
@@ -111,14 +111,14 @@ namespace Taskmaster.UI.Config
 				switch (behaviour.SelectedIndex)
 				{
 					case 0:
-						NewLaunchBehaviour = PowerManager.PowerBehaviour.Auto;
+						NewLaunchBehaviour = Power.Manager.PowerBehaviour.Auto;
 						break;
 					default:
 					case 1:
-						NewLaunchBehaviour = PowerManager.PowerBehaviour.RuleBased;
+						NewLaunchBehaviour = Power.Manager.PowerBehaviour.RuleBased;
 						break;
 					case 2:
-						NewLaunchBehaviour = PowerManager.PowerBehaviour.Manual;
+						NewLaunchBehaviour = Power.Manager.PowerBehaviour.Manual;
 						break;
 				}
 			};
@@ -147,29 +147,29 @@ namespace Taskmaster.UI.Config
 				switch (restore.SelectedIndex)
 				{
 					case 0:
-						NewRestoreMethod = PowerManager.RestoreModeMethod.Original;
-						NewRestoreMode = PowerMode.Undefined;
+						NewRestoreMethod = Power.Manager.RestoreModeMethod.Original;
+						NewRestoreMode = Mode.Undefined;
 						break;
 					default:
 					case 1:
-						NewRestoreMethod = PowerManager.RestoreModeMethod.Default;
-						NewRestoreMode = PowerMode.Undefined;
+						NewRestoreMethod = Power.Manager.RestoreModeMethod.Default;
+						NewRestoreMode = Mode.Undefined;
 						break;
 					case 2:
-						NewRestoreMethod = PowerManager.RestoreModeMethod.Saved;
-						NewRestoreMode = PowerMode.Undefined;
+						NewRestoreMethod = Power.Manager.RestoreModeMethod.Saved;
+						NewRestoreMode = Mode.Undefined;
 						break;
 					case 3:
-						NewRestoreMethod = PowerManager.RestoreModeMethod.Custom;
-						NewRestoreMode = PowerMode.HighPerformance;
+						NewRestoreMethod = Power.Manager.RestoreModeMethod.Custom;
+						NewRestoreMode = Mode.HighPerformance;
 						break;
 					case 4:
-						NewRestoreMethod = PowerManager.RestoreModeMethod.Custom;
-						NewRestoreMode = PowerMode.Balanced;
+						NewRestoreMethod = Power.Manager.RestoreModeMethod.Custom;
+						NewRestoreMode = Mode.Balanced;
 						break;
 					case 5:
-						NewRestoreMethod = PowerManager.RestoreModeMethod.Custom;
-						NewRestoreMode = PowerMode.PowerSaver;
+						NewRestoreMethod = Power.Manager.RestoreModeMethod.Custom;
+						NewRestoreMode = Mode.PowerSaver;
 						break;
 				}
 			};
@@ -349,10 +349,10 @@ namespace Taskmaster.UI.Config
 
 			newAutoAdjust = new AutoAdjustSettings
 			{
-				DefaultMode = PowerManager.GetModeByName(defaultmode.Text),
+				DefaultMode = Power.Manager.GetModeByName(defaultmode.Text),
 				Low =
 					{
-						Mode = PowerManager.GetModeByName(lowmode.Text),
+						Mode = Power.Manager.GetModeByName(lowmode.Text),
 						Commit =
 						{
 							Level = Convert.ToInt32(lowcommitlevel.Value),
@@ -368,7 +368,7 @@ namespace Taskmaster.UI.Config
 					},
 				High =
 					{
-						Mode = PowerManager.GetModeByName(highmode.Text),
+						Mode = Power.Manager.GetModeByName(highmode.Text),
 						Commit =
 						{
 							Level =Convert.ToInt32(highcommitlevel.Value),
@@ -394,16 +394,16 @@ namespace Taskmaster.UI.Config
 			switch (monitoroffmode.SelectedIndex)
 			{
 				case 0: // ignore
-					NewLockMode = PowerMode.Undefined;
+					NewLockMode = Mode.Undefined;
 					break;
 				case 1: // high
-					NewLockMode = PowerMode.HighPerformance;
+					NewLockMode = Mode.HighPerformance;
 					break;
 				case 2: // balanced
-					NewLockMode = PowerMode.Balanced;
+					NewLockMode = Mode.Balanced;
 					break;
 				case 3: // saver
-					NewLockMode = PowerMode.PowerSaver;
+					NewLockMode = Mode.PowerSaver;
 					break;
 			}
 
@@ -427,9 +427,9 @@ namespace Taskmaster.UI.Config
 
 		void Reset(object _, EventArgs _ea)
 		{
-			NewLaunchBehaviour = PowerManager.PowerBehaviour.RuleBased;
-			NewRestoreMethod = PowerManager.RestoreModeMethod.Default;
-			NewRestoreMode = PowerMode.Balanced;
+			NewLaunchBehaviour = Power.Manager.PowerBehaviour.RuleBased;
+			NewRestoreMethod = Power.Manager.RestoreModeMethod.Default;
+			NewRestoreMode = Mode.Balanced;
 			monitorofftoggle.Checked = true;
 			monitoroffmode.SelectedIndex = 3; // power saver
 
@@ -442,14 +442,14 @@ namespace Taskmaster.UI.Config
 			NewLaunchBehaviour = manager.LaunchBehaviour;
 			switch (manager.LaunchBehaviour)
 			{
-				case PowerManager.PowerBehaviour.Auto:
+				case Power.Manager.PowerBehaviour.Auto:
 				default:
 					behaviour.SelectedIndex = 0;
 					break;
-				case PowerManager.PowerBehaviour.RuleBased:
+				case Power.Manager.PowerBehaviour.RuleBased:
 					behaviour.SelectedIndex = 1;
 					break;
-				case PowerManager.PowerBehaviour.Manual:
+				case Power.Manager.PowerBehaviour.Manual:
 					behaviour.SelectedIndex = 2;
 					break;
 			}
@@ -459,34 +459,34 @@ namespace Taskmaster.UI.Config
 			switch (NewRestoreMethod)
 			{
 				default:
-				case PowerManager.RestoreModeMethod.Default:
-					NewRestoreMethod = PowerManager.RestoreModeMethod.Default;
-					NewRestoreMode = PowerMode.Undefined;
+				case Power.Manager.RestoreModeMethod.Default:
+					NewRestoreMethod = Power.Manager.RestoreModeMethod.Default;
+					NewRestoreMode = Mode.Undefined;
 					restore.SelectedIndex = 1;
 					break;
-				case PowerManager.RestoreModeMethod.Original:
-					NewRestoreMethod = PowerManager.RestoreModeMethod.Original;
-					NewRestoreMode = PowerMode.Undefined;
+				case Power.Manager.RestoreModeMethod.Original:
+					NewRestoreMethod = Power.Manager.RestoreModeMethod.Original;
+					NewRestoreMode = Mode.Undefined;
 					restore.SelectedIndex = 0;
 					break;
-				case PowerManager.RestoreModeMethod.Saved:
-					NewRestoreMethod = PowerManager.RestoreModeMethod.Saved;
-					NewRestoreMode = PowerMode.Undefined;
+				case Power.Manager.RestoreModeMethod.Saved:
+					NewRestoreMethod = Power.Manager.RestoreModeMethod.Saved;
+					NewRestoreMode = Mode.Undefined;
 					restore.SelectedIndex = 2;
 					break;
-				case PowerManager.RestoreModeMethod.Custom:
-					NewRestoreMethod = PowerManager.RestoreModeMethod.Custom;
+				case Power.Manager.RestoreModeMethod.Custom:
+					NewRestoreMethod = Power.Manager.RestoreModeMethod.Custom;
 					NewRestoreMode = manager.RestoreMode;
 					switch (manager.RestoreMode)
 					{
-						case PowerMode.HighPerformance:
+						case Mode.HighPerformance:
 							restore.SelectedIndex = 3;
 							break;
 						default:
-						case PowerMode.Balanced:
+						case Mode.Balanced:
 							restore.SelectedIndex = 4;
 							break;
-						case PowerMode.PowerSaver:
+						case Mode.PowerSaver:
 							restore.SelectedIndex = 5;
 							break;
 					}
@@ -499,21 +499,21 @@ namespace Taskmaster.UI.Config
 				default:
 					monitoroffmode.SelectedIndex = 0;
 					break;
-				case PowerMode.HighPerformance:
+				case Mode.HighPerformance:
 					monitoroffmode.SelectedIndex = 1;
 					break;
-				case PowerMode.Balanced:
+				case Mode.Balanced:
 					monitoroffmode.SelectedIndex = 2;
 					break;
-				case PowerMode.PowerSaver:
+				case Mode.PowerSaver:
 					monitoroffmode.SelectedIndex = 3;
 					break;
 			}
 			monitorofftoggle.Checked = MonitorPowerOff;
 
-			defaultmode.SelectedIndex = AutoAdjust.DefaultMode == PowerMode.Balanced ? 1 : AutoAdjust.DefaultMode == PowerMode.PowerSaver ? 2 : 0;
+			defaultmode.SelectedIndex = AutoAdjust.DefaultMode == Mode.Balanced ? 1 : AutoAdjust.DefaultMode == Mode.PowerSaver ? 2 : 0;
 
-			highmode.SelectedIndex = AutoAdjust.High.Mode == PowerMode.Balanced ? 1 : AutoAdjust.High.Mode == PowerMode.PowerSaver ? 2 : 0;
+			highmode.SelectedIndex = AutoAdjust.High.Mode == Mode.Balanced ? 1 : AutoAdjust.High.Mode == Mode.PowerSaver ? 2 : 0;
 			highcommitthreshold.Value = Convert.ToDecimal(AutoAdjust.High.Commit.Threshold).Constrain(5, 95);
 			highcommitlevel.Value = AutoAdjust.High.Commit.Level.Constrain(0, 15);
 			highbackoffhigh.Value = Convert.ToDecimal(AutoAdjust.High.Backoff.High).Constrain(5, 95);
@@ -522,7 +522,7 @@ namespace Taskmaster.UI.Config
 			highbackofflevel.Value = Convert.ToDecimal(AutoAdjust.High.Backoff.Level).Constrain(1, 100);
 			hiQueue.Value = Convert.ToDecimal(AutoAdjust.Queue.High).Constrain(0, 100);
 
-			lowmode.SelectedIndex = AutoAdjust.Low.Mode == PowerMode.Balanced ? 1 : AutoAdjust.Low.Mode == PowerMode.PowerSaver ? 2 : 0;
+			lowmode.SelectedIndex = AutoAdjust.Low.Mode == Mode.Balanced ? 1 : AutoAdjust.Low.Mode == Mode.PowerSaver ? 2 : 0;
 			lowcommitthreshold.Value = Convert.ToDecimal(AutoAdjust.Low.Commit.Threshold).Constrain(5, 95);
 			lowcommitlevel.Value = AutoAdjust.Low.Commit.Level.Constrain(0, 15);
 			lowbackoffhigh.Value = Convert.ToDecimal(AutoAdjust.Low.Backoff.High).Constrain(5, 95);
@@ -532,7 +532,7 @@ namespace Taskmaster.UI.Config
 			loQueue.Value = Convert.ToDecimal(AutoAdjust.Queue.Low).Constrain(0, 100);
 		}
 
-		public static void Reveal(PowerManager powerManager, bool centerOnScreen=false)
+		public static void Reveal(Power.Manager powerManager, bool centerOnScreen=false)
 		{
 			try
 			{

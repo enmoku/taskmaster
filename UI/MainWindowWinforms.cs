@@ -239,9 +239,9 @@ namespace Taskmaster.UI
 		StorageManager storagemanager = null;
 		ProcessManager processmanager = null;
 		ActiveAppManager activeappmonitor = null;
-		PowerManager powermanager = null;
+		Power.Manager powermanager = null;
 		CPUMonitor cpumonitor = null;
-		NetManager netmonitor = null;
+		Network.Manager netmonitor = null;
 
 		#region Microphone control code
 
@@ -657,7 +657,7 @@ namespace Taskmaster.UI
 					li.SubItems[PrioColumn].ForeColor = System.Drawing.SystemColors.GrayText;
 				if (string.IsNullOrEmpty(prc.Path))
 					li.SubItems[PathColumn].ForeColor = System.Drawing.SystemColors.GrayText;
-				if (prc.PowerPlan == PowerInfo.PowerMode.Undefined)
+				if (prc.PowerPlan == Power.Mode.Undefined)
 					li.SubItems[PowerColumn].ForeColor = System.Drawing.SystemColors.GrayText;
 				if (prc.AffinityMask < 0)
 					li.SubItems[AffColumn].ForeColor = System.Drawing.SystemColors.GrayText;
@@ -755,7 +755,7 @@ namespace Taskmaster.UI
 						aff = prc.AffinityMask.ToString();
 				}
 				litem.SubItems[AffColumn].Text = aff;
-				litem.SubItems[PowerColumn].Text = (prc.PowerPlan != PowerInfo.PowerMode.Undefined ? PowerManager.GetModeName(prc.PowerPlan) : string.Empty);
+				litem.SubItems[PowerColumn].Text = (prc.PowerPlan != Power.Mode.Undefined ? Power.Manager.GetModeName(prc.PowerPlan) : string.Empty);
 				litem.SubItems[PathColumn].Text = (string.IsNullOrEmpty(prc.Path) ? string.Empty : prc.Path);
 
 				WatchlistRules.EndUpdate();
@@ -1322,16 +1322,16 @@ namespace Taskmaster.UI
 
 			var menu_config_logging_neterrors = new ToolStripMenuItem("Network errors")
 			{
-				Checked = NetManager.ShowNetworkErrors,
+				Checked = Network.Manager.ShowNetworkErrors,
 				CheckOnClick = true,
 			};
 			menu_config_logging_neterrors.Click += (_, _ea) =>
 			{
-				NetManager.ShowNetworkErrors = menu_config_logging_neterrors.Checked;
+				Network.Manager.ShowNetworkErrors = menu_config_logging_neterrors.Checked;
 
 				using (var corecfg = Taskmaster.Config.Load(CoreConfigFilename).BlockUnload())
 				{
-					corecfg.Config["Logging"]["Show network errors"].BoolValue = NetManager.ShowNetworkErrors;
+					corecfg.Config["Logging"]["Show network errors"].BoolValue = Network.Manager.ShowNetworkErrors;
 					corecfg.MarkDirty();
 				}
 			};
@@ -1570,7 +1570,7 @@ namespace Taskmaster.UI
 				DebugPower = menu_debug_power.Checked;
 				if (DebugPower)
 				{
-					var pev = new PowerModeEventArgs(powermanager.CurrentMode);
+					var pev = new Power.ModeEventArgs(powermanager.CurrentMode);
 					PowerPlanDebugEvent(this, pev); // populates powerbalancer_plan
 					powermanager.onPlanChange += PowerPlanDebugEvent;
 					powermanager.onAutoAdjustAttempt += PowerLoadHandler;
@@ -2977,7 +2977,7 @@ namespace Taskmaster.UI
 			//statusbar.Items.Add(verbositylevel);
 
 			statusbar.Items.Add(new ToolStripStatusLabel("Power plan:") { Alignment = ToolStripItemAlignment.Right});
-			powermodestatusbar = new ToolStripStatusLabel(PowerManager.GetModeName(powermanager?.CurrentMode ?? PowerInfo.PowerMode.Undefined)) { Alignment = ToolStripItemAlignment.Right };
+			powermodestatusbar = new ToolStripStatusLabel(Power.Manager.GetModeName(powermanager?.CurrentMode ?? Power.Mode.Undefined)) { Alignment = ToolStripItemAlignment.Right };
 			statusbar.Items.Add(powermodestatusbar);
 		}
 
@@ -3093,7 +3093,7 @@ namespace Taskmaster.UI
 		readonly System.Drawing.Color Greenish = System.Drawing.Color.FromArgb(240, 255, 230);
 		readonly System.Drawing.Color Orangeish = System.Drawing.Color.FromArgb(255, 250, 230);
 
-		public async void PowerLoadHandler(object _, AutoAdjustReactionEventArgs ea)
+		public async void PowerLoadHandler(object _, Power.AutoAdjustReactionEventArgs ea)
 		{
 			if (!IsHandleCreated || DisposedOrDisposing) return;
 
@@ -3109,7 +3109,7 @@ namespace Taskmaster.UI
 						$"{ea.High:N2} %",
 						$"{ea.Low:N2} %",
 						ea.Reaction.ToString(),
-						PowerManager.GetModeName(ea.Mode),
+						Power.Manager.GetModeName(ea.Mode),
 						ea.Enacted.ToString(),
 						$"{ea.Pressure * 100f:N1} %"
 					})
@@ -3124,9 +3124,9 @@ namespace Taskmaster.UI
 							li.SubItems[6].BackColor = System.Drawing.SystemColors.ActiveCaption;
 					}
 
-					if (ea.Mode == PowerInfo.PowerMode.HighPerformance)
+					if (ea.Mode == Power.Mode.HighPerformance)
 						li.SubItems[3].BackColor = Reddish;
-					else if (ea.Mode == PowerInfo.PowerMode.PowerSaver)
+					else if (ea.Mode == Power.Mode.PowerSaver)
 						li.SubItems[2].BackColor = Greenish;
 					else
 						li.SubItems[3].BackColor = li.SubItems[2].BackColor = Orangeish;
@@ -3322,8 +3322,8 @@ namespace Taskmaster.UI
 
 					if (prc.IOPriority >= 0) sbs.Append("IO priority = ").Append(prc.IOPriority).AppendLine();
 
-					if (prc.PowerPlan != PowerInfo.PowerMode.Undefined)
-						sbs.Append(HumanReadable.Hardware.Power.Plan).Append(" = ").Append(PowerManager.GetModeName(prc.PowerPlan)).AppendLine();
+					if (prc.PowerPlan != Power.Mode.Undefined)
+						sbs.Append(HumanReadable.Hardware.Power.Plan).Append(" = ").Append(Power.Manager.GetModeName(prc.PowerPlan)).AppendLine();
 					if (prc.Recheck > 0) sbs.Append("Recheck = ").Append(prc.Recheck).AppendLine();
 					if (prc.AllowPaging) sbs.Append("Allow paging = ").Append(prc.AllowPaging).AppendLine();
 
@@ -3431,7 +3431,7 @@ namespace Taskmaster.UI
 				StartProcessDebug();
 		}
 
-		public void Hook(PowerManager manager)
+		public void Hook(Power.Manager manager)
 		{
 			if (manager == null) return;
 
@@ -3447,10 +3447,10 @@ namespace Taskmaster.UI
 			powermanager.onPlanChange += PowerPlanEvent;
 			powermanager.onBehaviourChange += PowerBehaviourEvent;
 
-			var bev = new PowerManager.PowerBehaviourEventArgs(powermanager.Behaviour);
+			var bev = new Power.Manager.PowerBehaviourEventArgs(powermanager.Behaviour);
 			PowerBehaviourDebugEvent(this, bev); // populates powerbalancer_behaviourr
 			PowerBehaviourEvent(this, bev); // populates pwbehaviour
-			var pev = new PowerModeEventArgs(powermanager.CurrentMode);
+			var pev = new Power.ModeEventArgs(powermanager.CurrentMode);
 			PowerPlanEvent(this, pev); // populates pwplan and pwcause
 
 			if (DebugPower)
@@ -3460,24 +3460,24 @@ namespace Taskmaster.UI
 			}
 		}
 
-		async void PowerBehaviourEvent(object sender, PowerManager.PowerBehaviourEventArgs e)
+		async void PowerBehaviourEvent(object sender, Power.Manager.PowerBehaviourEventArgs e)
 		{
 			if (!IsHandleCreated || DisposedOrDisposing) return;
 
 			BeginInvoke(new Action(() =>
 			{
-				pwbehaviour.Text = PowerManager.GetBehaviourName(e.Behaviour);
+				pwbehaviour.Text = Power.Manager.GetBehaviourName(e.Behaviour);
 			}));
 		}
 
 		DateTimeOffset LastCauseTime = DateTimeOffset.MinValue;
-		void PowerPlanEvent(object sender, PowerModeEventArgs e)
+		void PowerPlanEvent(object sender, Power.ModeEventArgs e)
 		{
 			if (!IsHandleCreated || DisposedOrDisposing) return;
 
 			BeginInvoke(new Action(() =>
 			{
-				powermodestatusbar.Text = pwmode.Text = PowerManager.GetModeName(e.NewMode);
+				powermodestatusbar.Text = pwmode.Text = Power.Manager.GetModeName(e.NewMode);
 				pwcause.Text = e.Cause != null ? e.Cause.ToString() : HumanReadable.Generic.Undefined;
 				LastCauseTime = DateTimeOffset.UtcNow;
 			}));
@@ -3628,7 +3628,7 @@ namespace Taskmaster.UI
 				return string.Empty;
 		}
 
-		public async void PowerBehaviourDebugEvent(object _, PowerManager.PowerBehaviourEventArgs ea)
+		public async void PowerBehaviourDebugEvent(object _, Power.Manager.PowerBehaviourEventArgs ea)
 		{
 			if (!IsHandleCreated || DisposedOrDisposing) return;
 
@@ -3636,13 +3636,13 @@ namespace Taskmaster.UI
 
 			BeginInvoke(new Action(() =>
 			{
-				powerbalancer_behaviour.Text = PowerManager.GetBehaviourName(ea.Behaviour);
-				if (ea.Behaviour != PowerManager.PowerBehaviour.Auto)
+				powerbalancer_behaviour.Text = Power.Manager.GetBehaviourName(ea.Behaviour);
+				if (ea.Behaviour != Power.Manager.PowerBehaviour.Auto)
 					powerbalancerlog.Items.Clear();
 			}));
 		}
 
-		public async void PowerPlanDebugEvent(object _, PowerModeEventArgs ea)
+		public async void PowerPlanDebugEvent(object _, Power.ModeEventArgs ea)
 		{
 			if (!IsHandleCreated || DisposedOrDisposing) return;
 
@@ -3650,7 +3650,7 @@ namespace Taskmaster.UI
 
 			BeginInvoke(new Action(() =>
 			{
-				powerbalancer_plan.Text = PowerManager.GetModeName(ea.NewMode);
+				powerbalancer_plan.Text = Power.Manager.GetModeName(ea.NewMode);
 			}));
 		}
 
@@ -3659,7 +3659,7 @@ namespace Taskmaster.UI
 			if (!IsHandleCreated || DisposedOrDisposing) return;
 
 			InetStatusLabel(netmonitor.InternetAvailable);
-			NetStatusLabel(netmonitor.NetworkAvailable);
+			NetStatusLabelUpdate(netmonitor.NetworkAvailable);
 
 			BeginInvoke(new Action(() =>
 			{
@@ -3699,7 +3699,7 @@ namespace Taskmaster.UI
 			// Tray?.Tooltip(2000, "Internet " + (net.InternetAvailable ? "available" : "unavailable"), "Taskmaster", net.InternetAvailable ? ToolTipIcon.Info : ToolTipIcon.Warning);
 		}
 
-		public void Hook(NetManager manager)
+		public void Hook(Network.Manager manager)
 		{
 			if (manager == null) return; // disabled
 
@@ -3710,9 +3710,9 @@ namespace Taskmaster.UI
 
 			UpdateNetworkDevices(this, EventArgs.Empty);
 
-			netmonitor.InternetStatusChange += InetStatus;
+			netmonitor.InternetStatusChange += InetStatusChangeEvent;
 			netmonitor.IPChanged += UpdateNetworkDevices;
-			netmonitor.NetworkStatusChange += NetStatus;
+			netmonitor.NetworkStatusChange += NetStatusChangeEvent;
 			netmonitor.onSampling += NetSampleHandler;
 
 			UItimer.Tick += UpdateNetwork;
@@ -3721,7 +3721,7 @@ namespace Taskmaster.UI
 			UpdateNetwork(this, EventArgs.Empty);
 		}
 
-		void NetSampleHandler(object _, NetDeviceTrafficEventArgs ea)
+		void NetSampleHandler(object _, Network.DeviceTrafficEventArgs ea)
 		{
 			if (!IsHandleCreated || DisposedOrDisposing) return;
 
@@ -3765,7 +3765,7 @@ namespace Taskmaster.UI
 			}));
 		}
 
-		public async void InetStatus(object _, InternetStatus ea)
+		public async void InetStatusChangeEvent(object _, Network.InternetStatus ea)
 		{
 			InetStatusLabel(ea.Available);
 		}
@@ -3775,7 +3775,7 @@ namespace Taskmaster.UI
 
 		}
 
-		async void NetStatusLabel(bool available)
+		async void NetStatusLabelUpdate(bool available)
 		{
 			if (!IsHandleCreated || DisposedOrDisposing) return;
 
@@ -3787,9 +3787,9 @@ namespace Taskmaster.UI
 			}));
 		}
 
-		public async void NetStatus(object _, NetworkStatus ea)
+		public async void NetStatusChangeEvent(object _, Network.Status ea)
 		{
-			NetStatusLabel(ea.Available);
+			NetStatusLabelUpdate(ea.Available);
 		}
 
 		// BUG: DO NOT LOG INSIDE THIS FOR FUCKS SAKE
@@ -3989,8 +3989,8 @@ namespace Taskmaster.UI
 				{
 					if (netmonitor != null)
 					{
-						netmonitor.InternetStatusChange -= InetStatus;
-						netmonitor.NetworkStatusChange -= NetStatus;
+						netmonitor.InternetStatusChange -= InetStatusChangeEvent;
+						netmonitor.NetworkStatusChange -= NetStatusChangeEvent;
 						netmonitor.IPChanged -= UpdateNetworkDevices;
 						netmonitor.onSampling -= NetSampleHandler;
 						netmonitor = null;

@@ -24,12 +24,12 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-namespace Taskmaster
+namespace Taskmaster.Power
 {
 	sealed public class AutoAdjustReactionEventArgs : ProcessorLoadEventArgs
 	{
-		public PowerInfo.PowerMode Mode = PowerInfo.PowerMode.Undefined;
-		public PowerManager.PowerReaction Reaction = PowerManager.PowerReaction.Average;
+		public Mode Mode = Mode.Undefined;
+		public Manager.Reaction Reaction = Manager.Reaction.Average;
 		public bool Steady = false;
 
 		/// <summary>

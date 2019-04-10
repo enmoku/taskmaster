@@ -229,16 +229,16 @@ namespace Taskmaster.UI.Config
 			};
 
 			powbehaviour.Enabled = powmon.Checked;
-			switch (powermanager?.LaunchBehaviour ?? PowerManager.PowerBehaviour.RuleBased)
+			switch (powermanager?.LaunchBehaviour ?? Power.Manager.PowerBehaviour.RuleBased)
 			{
-				case PowerManager.PowerBehaviour.Auto:
+				case Power.Manager.PowerBehaviour.Auto:
 					powbehaviour.SelectedIndex = 0;
 					break;
 				default:
-				case PowerManager.PowerBehaviour.RuleBased:
+				case Power.Manager.PowerBehaviour.RuleBased:
 					powbehaviour.SelectedIndex = 1;
 					break;
-				case PowerManager.PowerBehaviour.Manual:
+				case Power.Manager.PowerBehaviour.Manual:
 					powbehaviour.SelectedIndex = 2;
 					break;
 			}

@@ -26,9 +26,9 @@
 
 using System;
 
-namespace Taskmaster
+namespace Taskmaster.Network
 {
-	public class NetworkStatus : EventArgs
+	public class Status : EventArgs
 	{
 		public bool Available = false;
 		public DateTimeOffset Start = DateTimeOffset.MinValue;

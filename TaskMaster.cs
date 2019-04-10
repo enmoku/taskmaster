@@ -53,9 +53,9 @@ namespace Taskmaster
 		public static UI.VolumeMeter volumemeter = null;
 		public static ProcessManager processmanager = null;
 		public static UI.TrayAccess trayaccess = null;
-		public static NetManager netmonitor = null;
+		public static Network.Manager netmonitor = null;
 		public static StorageManager storagemanager = null;
-		public static PowerManager powermanager = null;
+		public static Power.Manager powermanager = null;
 		public static ActiveAppManager activeappmonitor = null;
 		public static HealthMonitor healthmonitor = null;
 		public static SelfMaintenance selfmaintenance = null;
@@ -302,11 +302,11 @@ namespace Taskmaster
 			// This is really bad if something fails
 			Task[] init =
 			{
-				(PowMan = PowerManagerEnabled ? Task.Run(() => powermanager = new PowerManager(), cts.Token) : Task.CompletedTask),
+				(PowMan = PowerManagerEnabled ? Task.Run(() => powermanager = new Power.Manager(), cts.Token) : Task.CompletedTask),
 				(CpuMon = PowerManagerEnabled ? Task.Run(()=> cpumonitor = new CPUMonitor(), cts.Token) : Task.CompletedTask),
 				(ProcMon = ProcessMonitorEnabled ? Task.Run(() => processmanager = new ProcessManager(), cts.Token) : Task.CompletedTask),
 				(FgMon = ActiveAppMonitorEnabled ? Task.Run(()=> activeappmonitor = new ActiveAppManager(eventhook:false), cts.Token) : Task.CompletedTask),
-				(NetMon = NetworkMonitorEnabled ? Task.Run(() => netmonitor = new NetManager(), cts.Token) : Task.CompletedTask),
+				(NetMon = NetworkMonitorEnabled ? Task.Run(() => netmonitor = new Network.Manager(), cts.Token) : Task.CompletedTask),
 				(StorMon = StorageMonitorEnabled ? Task.Run(() => storagemanager = new StorageManager(), cts.Token) : Task.CompletedTask),
 				(HpMon = HealthMonitorEnabled ? Task.Run(() => healthmonitor = new HealthMonitor(), cts.Token) : Task.CompletedTask),
 				(HwMon = HardwareMonitorEnabled ? Task.Run(() => hardware = new HardwareMonitor(), cts.Token) : Task.CompletedTask),

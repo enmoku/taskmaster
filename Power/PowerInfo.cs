@@ -26,9 +26,9 @@
 
 namespace Taskmaster
 {
-	namespace PowerInfo
+	namespace Power
 	{
-		public enum PowerMode : int
+		public enum Mode : int
 		{
 			PowerSaver = 0,
 			Balanced = 1,
@@ -42,16 +42,16 @@ namespace Taskmaster
 			/// <summary>
 			/// Low mode control
 			/// </summary>
-			public PowerLevels Low;
+			public AutoAdjustLevels Low;
 			/// <summary>
 			/// High mode control
 			/// </summary>
-			public PowerLevels High;
+			public AutoAdjustLevels High;
 
 			/// <summary>
 			/// Default mode when neither low or high is in effect
 			/// </summary>
-			public PowerMode DefaultMode = PowerMode.Balanced;
+			public Mode DefaultMode = Mode.Balanced;
 
 			/// <summary>
 			/// CPU queue adjustment
@@ -59,11 +59,11 @@ namespace Taskmaster
 			public QueueBarriers Queue;
 		}
 
-		public struct PowerLevels
+		public struct AutoAdjustLevels
 		{
 			public BackoffThresholds Backoff;
 			public CommitThreshold Commit;
-			public PowerMode Mode;
+			public Mode Mode;
 		}
 
 		public struct BackoffThresholds

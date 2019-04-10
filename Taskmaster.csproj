@@ -122,26 +122,26 @@
     <None Include="Resources\Watchlist.ini" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="ActiveAppManager.cs" />
+    <Compile Include="Process\ActiveAppManager.cs" />
     <Compile Include="AlertManager.cs" />
-    <Compile Include="AudioDeviceNotificationClient.cs" />
-    <Compile Include="AudioManager.cs" />
-    <Compile Include="AudioSession.cs" />
+    <Compile Include="Audio\AudioDeviceNotificationClient.cs" />
+    <Compile Include="Audio\AudioManager.cs" />
+    <Compile Include="Audio\AudioSession.cs" />
     <Compile Include="Cause.cs" />
     <Compile Include="Config\FileEvent.cs" />
     <Compile Include="Config\IFile.cs" />
     <Compile Include="IComponent.cs" />
     <Compile Include="Config\Manager.cs" />
     <Compile Include="Enums\ForegroundMode.cs" />
-    <Compile Include="Events\AudioDevice.cs" />
-    <Compile Include="Events\AudioDeviceState.cs" />
-    <Compile Include="Events\AudioDefaultDevice.cs" />
-    <Compile Include="Events\InternetStatus.cs" />
-    <Compile Include="Events\NetworkStatus.cs" />
-    <Compile Include="Events\AutoAdjustReaction.cs" />
-    <Compile Include="Events\ProcessModification.cs" />
-    <Compile Include="Events\ProcessorLoad.cs" />
-    <Compile Include="Events\VolumeChanged.cs" />
+    <Compile Include="Audio\AudioDeviceEventArgs.cs" />
+    <Compile Include="Audio\AudioDeviceState.cs" />
+    <Compile Include="Audio\AudioDefaultDevice.cs" />
+    <Compile Include="Network\InternetStatus.cs" />
+    <Compile Include="Network\NetworkStatus.cs" />
+    <Compile Include="Power\AutoAdjustReaction.cs" />
+    <Compile Include="Process\ModificationEventArgs.cs" />
+    <Compile Include="Hardware\ProcessorLoad.cs" />
+    <Compile Include="Audio\VolumeChanged.cs" />
     <Compile Include="MKAh\Atomic\Lock.cs" />
     <Compile Include="MKAh\Execution\User.cs" />
     <Compile Include="MKAh\Execution\UserActivity.cs" />
@@ -153,7 +153,7 @@
     <Compile Include="MKAh\Native\Basic.cs" />
     <Compile Include="MKAh\Program\NativeImage.cs" />
     <Compile Include="MKAh\Wrapper\Windows\PerformanceCounter.cs" />
-    <Compile Include="NativeMethods.Process.cs" />
+    <Compile Include="Process\NativeMethods.cs" />
     <Compile Include="ServiceWrapper.cs" />
     <Compile Include="Settings\HealthMonitor.cs" />
     <Compile Include="UI\Config\AdvancedConfig.cs">
@@ -162,8 +162,8 @@
     <Compile Include="UI\Extensions\NumericUpDownEx.cs">
       <SubType>Component</SubType>
     </Compile>
-    <Compile Include="CPUMonitor.cs" />
-    <Compile Include="HardwareMonitor.cs" />
+    <Compile Include="Hardware\CPUMonitor.cs" />
+    <Compile Include="Hardware\HardwareMonitor.cs" />
     <Compile Include="UI\Config\ExperimentConfig.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -176,9 +176,9 @@
       <SubType>Form</SubType>
     </Compile>
     <Compile Include="Config\Presets\PowerPresets.cs" />
-    <Compile Include="ProcessEx.cs" />
-    <Compile Include="ProcessUtility.cs" />
-    <Compile Include="ProcessTypes.cs" />
+    <Compile Include="Process\ProcessEx.cs" />
+    <Compile Include="Process\Utility.cs" />
+    <Compile Include="Process\Types.cs" />
     <Compile Include="Properties\Resources.Designer.cs">
       <AutoGen>True</AutoGen>
       <DesignTime>True</DesignTime>
@@ -215,7 +215,7 @@
       <SubType>Form</SubType>
     </Compile>
     <Compile Include="Utility\Cache.cs" />
-    <Compile Include="StorageManager.cs" />
+    <Compile Include="Hardware\StorageManager.cs" />
     <Compile Include="Utility\HumanInterface.cs" />
     <Compile Include="Events\InitFailure.cs" />
     <Compile Include="UI\Config\ComponentConfigurationWindow.cs">
@@ -225,16 +225,16 @@
       <SubType>Form</SubType>
     </Compile>
     <Compile Include="MemoryLog.cs" />
-    <Compile Include="Memory.cs" />
-    <Compile Include="AudioDevice.cs" />
-    <Compile Include="MicManager.cs" />
-    <Compile Include="NetDevice.cs" />
-    <Compile Include="NetManager.cs" />
-    <Compile Include="PowerManager.cs" />
-    <Compile Include="ProcessAnalyzer.cs" />
-    <Compile Include="ProcessController.cs" />
-    <Compile Include="ProcessHelpers.cs" />
-    <Compile Include="ProcessManager.cs" />
+    <Compile Include="Hardware\Memory.cs" />
+    <Compile Include="Audio\AudioDevice.cs" />
+    <Compile Include="Audio\MicManager.cs" />
+    <Compile Include="Network\Device.cs" />
+    <Compile Include="Network\Manager.cs" />
+    <Compile Include="Power\Manager.cs" />
+    <Compile Include="Process\Analyzer.cs" />
+    <Compile Include="Process\Controller.cs" />
+    <Compile Include="Process\Helpers.cs" />
+    <Compile Include="Process\Manager.cs" />
     <Compile Include="UI\ProcessSelectDialog.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -245,8 +245,8 @@
     <Compile Include="Extensions\ProcessExtensions.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="HealthMonitor.cs" />
-    <Compile Include="ProcessManagerUtility.cs" />
-    <Compile Include="PowerInfo.cs" />
+    <Compile Include="Process\ManagerUtility.cs" />
+    <Compile Include="Power\PowerInfo.cs" />
     <Compile Include="UI\Config\HealthMonitorConfig.cs">
       <SubType>Form</SubType>
     </Compile>

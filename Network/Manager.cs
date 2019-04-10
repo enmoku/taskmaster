@@ -1,5 +1,5 @@
 //
-// NetManager.cs
+// Network.Manager.cs
 //
 // Author:
 //       M.A. (https://github.com/mkahvi)
@@ -36,23 +36,23 @@ using MKAh;
 using Windows = MKAh.Wrapper.Windows;
 using Serilog;
 
-namespace Taskmaster
+namespace Taskmaster.Network
 {
 	using static Taskmaster;
 
-	public sealed class NetTrafficDelta
+	public sealed class TrafficDelta
 	{
 		public float Input = float.NaN;
 		public float Output = float.NaN;
 		public float Queue = float.NaN;
 	}
 
-	public sealed class NetTrafficEventArgs : EventArgs
+	public sealed class TrafficEventArgs : EventArgs
 	{
-		public NetTrafficDelta Delta = null;
+		public TrafficDelta Delta = null;
 	}
 
-	sealed public class NetManager : IComponent, IDisposable
+	sealed public class Manager : IComponent, IDisposable
 	{
 		public static bool ShowNetworkErrors { get; set; } = false;
 
@@ -60,9 +60,9 @@ namespace Taskmaster
 
 		public event EventHandler<InternetStatus> InternetStatusChange;
 		public event EventHandler IPChanged;
-		public event EventHandler<NetworkStatus> NetworkStatusChange;
+		public event EventHandler<Status> NetworkStatusChange;
 
-		public event EventHandler<NetTrafficEventArgs> NetworkTraffic;
+		public event EventHandler<TrafficEventArgs> NetworkTraffic;
 
 		Windows.PerformanceCounter NetInTrans = null;
 		Windows.PerformanceCounter NetOutTrans = null;
@@ -76,7 +76,7 @@ namespace Taskmaster
 
 		System.Timers.Timer SampleTimer;
 
-		public event EventHandler<NetDeviceTrafficEventArgs> onSampling;
+		public event EventHandler<Network.DeviceTrafficEventArgs> onSampling;
 
 		const string NetConfigFilename = "Net.ini";
 
@@ -127,7 +127,7 @@ namespace Taskmaster
 			Log.Information("<Network> Traffic sample frequency: " + PacketStatTimerInterval + "s");
 		}
 
-		public NetManager()
+		public Manager()
 		{
 			var now = DateTimeOffset.UtcNow;
 
@@ -174,9 +174,9 @@ namespace Taskmaster
 			DisposalChute.Push(this);
 		}
 
-		public NetTrafficDelta GetTraffic
+		public TrafficDelta GetTraffic
 		{
-			get => new NetTrafficDelta()
+			get => new TrafficDelta()
 			{
 				Input = NetInTrans?.Value ?? float.NaN,
 				Output = NetOutTrans?.Value ?? float.NaN,
@@ -211,10 +211,10 @@ namespace Taskmaster
 		LinearMeter PacketWarning = new LinearMeter(15); // UNUSED
 		LinearMeter ErrorReports = new LinearMeter(5, 4);
 
-		Lazy<List<NetDevice>> CurrentInterfaceList = null;
+		Lazy<List<Device>> CurrentInterfaceList = null;
 
 		int TrafficAnalysisLimiter = 0;
-		NetTrafficData outgoing, incoming, oldoutgoing, oldincoming;
+		TrafficData outgoing, incoming, oldoutgoing, oldincoming;
 
 		long errorsSinceLastReport = 0;
 		DateTimeOffset lastErrorReport = DateTimeOffset.MinValue;
@@ -319,14 +319,14 @@ namespace Taskmaster
 						}
 					}
 
-					onSampling?.Invoke(this, new NetDeviceTrafficEventArgs
+					onSampling?.Invoke(this, new DeviceTrafficEventArgs
 					{
 						Traffic =
-						new NetDeviceTraffic
+						new DeviceTraffic
 						{
 							Index = index,
-							Delta = new NetTrafficData { Unicast = packets, Errors = errorsInSample, Discards = discards },
-							Total = new NetTrafficData { Unicast = totalunicast, Errors = totalerrors, Discards = totaldiscards, Bytes = incoming.Bytes + outgoing.Bytes },
+							Delta = new TrafficData { Unicast = packets, Errors = errorsInSample, Discards = discards },
+							Total = new TrafficData { Unicast = totalunicast, Errors = totalerrors, Discards = totaldiscards, Bytes = incoming.Bytes + outgoing.Bytes },
 						}
 					});
 				}
@@ -632,13 +632,13 @@ namespace Taskmaster
 		readonly object interfaces_lock = new object();
 		int InterfaceUpdateLimiter = 0;
 
-		void InvalidateInterfaceList() => CurrentInterfaceList = new Lazy<List<NetDevice>>(RecreateInterfaceList);
+		void InvalidateInterfaceList() => CurrentInterfaceList = new Lazy<List<Device>>(RecreateInterfaceList);
 
-		List<NetDevice> RecreateInterfaceList()
+		List<Device> RecreateInterfaceList()
 		{
 			if (DisposedOrDisposing) throw new ObjectDisposedException("UpdateInterfaces called after NetManager was disposed.");
 
-			var ifacelistt = new List<NetDevice>();
+			var ifacelistt = new List<Device>();
 
 			try
 			{
@@ -675,7 +675,7 @@ namespace Taskmaster
 						if (found4 && found6) break; // kinda bad, but meh
 					}
 
-					var devi = new NetDevice
+					var devi = new Device
 					{
 						Index = ti,
 						Id = Guid.Parse(dev.Id),
@@ -703,7 +703,7 @@ namespace Taskmaster
 			return ifacelistt;
 		}
 
-		public List<NetDevice> GetInterfaces()
+		public List<Device> GetInterfaces()
 		{
 			if (DisposedOrDisposing) throw new ObjectDisposedException("GetInterfaces called after NetManager was disposed.");
 
@@ -841,7 +841,7 @@ namespace Taskmaster
 
 			NetworkChangeCounter++;
 
-			NetworkStatusChange?.Invoke(this, new NetworkStatus { Available = available });
+			NetworkStatusChange?.Invoke(this, new Status { Available = available });
 
 			// do stuff only if this is different from last time
 			if (oldNetAvailable != available)

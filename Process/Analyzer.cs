@@ -1,5 +1,5 @@
 ﻿//
-// ProcessAnalyzer.cs
+// Process.Analyzer.cs
 //
 // Author:
 //       M.A. (https://github.com/mkahvi)

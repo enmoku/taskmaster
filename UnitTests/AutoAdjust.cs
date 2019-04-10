@@ -16,7 +16,7 @@ namespace Power
 
 			power.onAutoAdjustAttempt += (_, ea) =>
 			{
-				Assert.AreEqual(ea.Reaction, Taskmaster.PowerManager.PowerReaction.Low, "Reaction: " + ea.Reaction.ToString());
+				Assert.AreEqual(ea.Reaction, Taskmaster.Power.Manager.Reaction.Low, "Reaction: " + ea.Reaction.ToString());
 			};
 
 			power.CPULoadHandler(null, new Taskmaster.ProcessorLoadEventArgs()

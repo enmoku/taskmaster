@@ -29,7 +29,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using Taskmaster.PowerInfo;
+using Taskmaster.Power;
 
 namespace Taskmaster
 {
@@ -39,9 +39,9 @@ namespace Taskmaster
 		{
 			return new AutoAdjustSettings()
 			{
-				DefaultMode = PowerMode.Balanced,
+				DefaultMode = Mode.Balanced,
 				High = {
-					Mode = PowerMode.HighPerformance,
+					Mode = Mode.HighPerformance,
 					Backoff = {
 						High = 60,
 						Mean = 40,
@@ -54,7 +54,7 @@ namespace Taskmaster
 					}
 				},
 				Low = {
-					Mode = PowerMode.PowerSaver,
+					Mode = Mode.PowerSaver,
 					Backoff = {
 						High = 50,
 						Mean = 35,

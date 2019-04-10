@@ -157,7 +157,7 @@ namespace Taskmaster
 		/// <summary>
 		/// The power plan.
 		/// </summary>
-		public PowerInfo.PowerMode PowerPlan = PowerInfo.PowerMode.Undefined;
+		public Power.Mode PowerPlan = Power.Mode.Undefined;
 
 		public int Recheck { get; set; } = 0;
 
@@ -280,7 +280,7 @@ namespace Taskmaster
 				case ForegroundMode.Standard:
 					break;
 				case ForegroundMode.Full:
-					if (PowerPlan == PowerInfo.PowerMode.Undefined)
+					if (PowerPlan == Power.Mode.Undefined)
 					{
 						Log.Warning($"[{FriendlyName}] Powerplan undefined: Foreground mode from Full to Standard");
 						Foreground = ForegroundMode.Standard;
@@ -288,7 +288,7 @@ namespace Taskmaster
 					}
 					break;
 				case ForegroundMode.PowerOnly:
-					if (PowerPlan == PowerInfo.PowerMode.Undefined)
+					if (PowerPlan == Power.Mode.Undefined)
 					{
 						Log.Warning($"[{FriendlyName}] Powerplan undefined: Foreground mode from Power Only to Ignore");
 						Foreground = ForegroundMode.Ignore;
@@ -423,7 +423,7 @@ namespace Taskmaster
 				info.Paused = false; // IRRELEVANT
 				info.ForegroundWait = false; // IRRELEVANT
 
-				if (info.PowerWait && PowerPlan != PowerInfo.PowerMode.Undefined) UndoPower(info);
+				if (info.PowerWait && PowerPlan != Power.Mode.Undefined) UndoPower(info);
 				info.PowerWait = false;
 			}
 		}
@@ -524,9 +524,9 @@ namespace Taskmaster
 			else
 				app.TryRemove("IO priority");
 
-			var pmode = PowerManager.GetModeName(PowerPlan);
-			if (PowerPlan != PowerInfo.PowerMode.Undefined)
-				app[HumanReadable.Hardware.Power.Mode].Value = PowerManager.GetModeName(PowerPlan);
+			var pmode = Power.Manager.GetModeName(PowerPlan);
+			if (PowerPlan != Power.Mode.Undefined)
+				app[HumanReadable.Hardware.Power.Mode].Value = Power.Manager.GetModeName(PowerPlan);
 			else
 				app.TryRemove(HumanReadable.Hardware.Power.Mode);
 
@@ -697,7 +697,7 @@ namespace Taskmaster
 			catch { }
 			// info.Process.ProcessorAffinity = OriginalState.Affinity;
 
-			if (PowerManagerEnabled && PowerPlan != PowerInfo.PowerMode.Undefined)
+			if (PowerManagerEnabled && PowerPlan != Power.Mode.Undefined)
 			{
 				if (BackgroundPowerdown)
 				{
@@ -792,7 +792,7 @@ namespace Taskmaster
 			// PausedState.Priority = Priority;
 			// PausedState.PowerMode = PowerPlan;
 
-			if (PowerManagerEnabled && PowerPlan != PowerInfo.PowerMode.Undefined && BackgroundPowerdown)
+			if (PowerManagerEnabled && PowerPlan != Power.Mode.Undefined && BackgroundPowerdown)
 				SetPower(info);
 
 			info.Paused = false;
@@ -850,7 +850,7 @@ namespace Taskmaster
 		bool SetPower(ProcessEx info)
 		{
 			Debug.Assert(PowerManagerEnabled, "SetPower called despite power manager being disabled");
-			Debug.Assert(PowerPlan != PowerInfo.PowerMode.Undefined, "Powerplan is undefined");
+			Debug.Assert(PowerPlan != Power.Mode.Undefined, "Powerplan is undefined");
 			Debug.Assert(info.Controller != null, "No controller attached");
 
 			if (DebugPower || DebugForeground)
@@ -1038,7 +1038,7 @@ namespace Taskmaster
 					return; // don't touch paused item
 				}
 
-				info.PowerWait = (PowerPlan != PowerInfo.PowerMode.Undefined);
+				info.PowerWait = (PowerPlan != Power.Mode.Undefined);
 				info.ForegroundWait = Foreground != ForegroundMode.Ignore;
 
 				bool responding = true;
@@ -1046,7 +1046,7 @@ namespace Taskmaster
 				IntPtr? oldAffinity = null;
 
 				int oldAffinityMask = 0;
-				var oldPower = PowerInfo.PowerMode.Undefined;
+				var oldPower = Power.Mode.Undefined;
 
 
                 await Task.Delay(refresh ? 0 : ModifyDelay).ConfigureAwait(false);
@@ -1318,7 +1318,7 @@ namespace Taskmaster
 				*/
 
 				//var oldPP = PowerInfo.PowerMode.Undefined;
-				if (PowerManagerEnabled && PowerPlan != PowerInfo.PowerMode.Undefined)
+				if (PowerManagerEnabled && PowerPlan != Power.Mode.Undefined)
 				{
 					if (!foreground && BackgroundPowerdown)
 					{
@@ -1377,7 +1377,7 @@ namespace Taskmaster
 				{
 					var sbs = new StringBuilder();
 
-					if (mPower) sbs.Append(" [Power Mode: ").Append(PowerManager.GetModeName(PowerPlan)).Append("]");
+					if (mPower) sbs.Append(" [Power Mode: ").Append(Power.Manager.GetModeName(PowerPlan)).Append("]");
 
 					if (!modified && (ShowInaction && ProcessManager.DebugProcesses)) sbs.Append(" – looks OK, not touched.");
 

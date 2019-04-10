@@ -1,5 +1,5 @@
 ﻿//
-// NetDevice.cs
+// Network.Device.cs
 //
 // Author:
 //       M.A. (https://github.com/mkahvi)
@@ -28,21 +28,21 @@ using System;
 using System.Net;
 using System.Net.NetworkInformation;
 
-namespace Taskmaster
+namespace Taskmaster.Network
 {
-	public struct NetDeviceTraffic
+	public struct DeviceTraffic
 	{
 		public int Index { get; set; }
-		public NetTrafficData Delta { get; set; }
-		public NetTrafficData Total { get; set; }
+		public TrafficData Delta { get; set; }
+		public TrafficData Total { get; set; }
 	}
 
-	public sealed class NetDeviceTrafficEventArgs : EventArgs
+	public sealed class DeviceTrafficEventArgs : EventArgs
 	{
-		public NetDeviceTraffic Traffic;
+		public DeviceTraffic Traffic;
 	}
 
-	public struct NetTrafficData
+	public struct TrafficData
 	{
 		/// <summary>
 		/// Unicast packets
@@ -85,7 +85,7 @@ namespace Taskmaster
 		}
 	}
 
-	sealed public class NetDevice
+	sealed public class Device
 	{
 		public int Index { get; set; }
 		public Guid Id { get; set; }
@@ -98,7 +98,7 @@ namespace Taskmaster
 		public IPAddress IPv6Address { get; set; } = null;
 
 		// Stats
-		public NetTrafficData Outgoing;
-		public NetTrafficData Incoming;
+		public TrafficData Outgoing;
+		public TrafficData Incoming;
 	}
 }
