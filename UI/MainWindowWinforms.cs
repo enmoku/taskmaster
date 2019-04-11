@@ -904,7 +904,7 @@ namespace Taskmaster.UI
 
 			var delta = netmonitor.GetTraffic;
 			float netTotal = delta.Input + delta.Output;
-			netTransmit.Text = $"{delta.Input/1000:N1} kB In, {delta.Output/1000:N1} kB Out [{delta.Queue:N0} queued]";
+			netTransmit.Text = $"{delta.Input/1000:N1} kB In, {delta.Output/1000:N1} kB Out [{delta.Packets:N0} packets; {delta.Queue:N0} queued]";
 		}
 
 		ListView NetworkDevices;
@@ -3731,14 +3731,15 @@ namespace Taskmaster.UI
 
 				try
 				{
-					NetworkDevices.Items[ea.Traffic.Index].SubItems[PacketDeltaColumn].Text = "+" + ea.Traffic.Delta.Unicast;
-					NetworkDevices.Items[ea.Traffic.Index].SubItems[ErrorDeltaColumn].Text = "+" + ea.Traffic.Delta.Errors;
+					var item = NetworkDevices.Items[ea.Traffic.Index];
+					item.SubItems[PacketDeltaColumn].Text = "+" + ea.Traffic.Delta.Unicast;
+					item.SubItems[ErrorDeltaColumn].Text = "+" + ea.Traffic.Delta.Errors;
 					if (ea.Traffic.Delta.Errors > 0)
-						NetworkDevices.Items[ea.Traffic.Index].SubItems[ErrorDeltaColumn].ForeColor = System.Drawing.Color.OrangeRed;
+						item.SubItems[ErrorDeltaColumn].ForeColor = System.Drawing.Color.OrangeRed;
 					else
-						NetworkDevices.Items[ea.Traffic.Index].SubItems[ErrorDeltaColumn].ForeColor = System.Drawing.SystemColors.ControlText;
+						item.SubItems[ErrorDeltaColumn].ForeColor = System.Drawing.SystemColors.ControlText;
 
-					NetworkDevices.Items[ea.Traffic.Index].SubItems[ErrorTotalColumn].Text = ea.Traffic.Total.Errors.ToString();
+					item.SubItems[ErrorTotalColumn].Text = ea.Traffic.Total.Errors.ToString();
 				}
 				catch (Exception ex)
 				{

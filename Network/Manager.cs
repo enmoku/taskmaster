@@ -45,6 +45,7 @@ namespace Taskmaster.Network
 		public float Input = float.NaN;
 		public float Output = float.NaN;
 		public float Queue = float.NaN;
+		public float Packets = float.NaN;
 	}
 
 	public sealed class TrafficEventArgs : EventArgs
@@ -66,6 +67,7 @@ namespace Taskmaster.Network
 
 		Windows.PerformanceCounter NetInTrans = null;
 		Windows.PerformanceCounter NetOutTrans = null;
+		Windows.PerformanceCounter NetPackets = null;
 		Windows.PerformanceCounter NetQueue = null;
 
 		string dnstestaddress = "google.com"; // should be fine, www is omitted to avoid deeper DNS queries
@@ -166,6 +168,7 @@ namespace Taskmaster.Network
 			NetInTrans = new Windows.PerformanceCounter("Network Interface", "Bytes Received/sec", firstnic);
 			NetOutTrans = new Windows.PerformanceCounter("Network Interface", "Bytes Sent/sec", firstnic);
 			NetQueue = new Windows.PerformanceCounter("Network Interface", "Output Queue Length", firstnic);
+			NetPackets = new Windows.PerformanceCounter("Network Interface", "Packets/sec", firstnic);
 
 			lastErrorReport = DateTimeOffset.UtcNow; // crude
 
@@ -181,6 +184,7 @@ namespace Taskmaster.Network
 				Input = NetInTrans?.Value ?? float.NaN,
 				Output = NetOutTrans?.Value ?? float.NaN,
 				Queue = NetQueue?.Value ?? float.NaN,
+				Packets = NetPackets?.Value ?? float.NaN,
 			};
 		}
 
