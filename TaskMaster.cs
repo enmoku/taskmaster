@@ -97,9 +97,7 @@ namespace Taskmaster
 			}
 			if (rv != SimpleMessageBox.ResultType.OK) return;
 
-			RestartElevated = admin;
-
-			UnifiedExit(restart);
+			UnifiedExit(restart, elevate:admin);
 		}
 
 		static bool CleanedUp = false;
@@ -138,9 +136,11 @@ namespace Taskmaster
 			}
 		}
 
-		public static void UnifiedExit(bool restart = false)
+
+		public static void UnifiedExit(bool restart = false, bool elevate = false)
 		{
 			State = restart ? Runstate.Restart : Runstate.Exit;
+			if (elevate && restart) RestartElevated = true;
 
 			//if (System.Windows.Forms.Application.MessageLoop) // fails if called from another thread
 			Application.Exit();
