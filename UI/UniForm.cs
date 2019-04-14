@@ -86,5 +86,7 @@ namespace Taskmaster.UI
 
 			base.Dispose(disposing);
 		}
+
+		public bool DialogOK => DialogResult == DialogResult.OK;
 	}
 }

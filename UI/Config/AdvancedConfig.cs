@@ -315,7 +315,7 @@ namespace Taskmaster.UI.Config
 				using (var acw = new AdvancedConfig(centerOnScreen))
 				{
 					var res = acw.ShowDialog();
-					if (acw.DialogResult == DialogResult.OK)
+					if (acw.DialogOK)
 					{
 						// NOP
 					}

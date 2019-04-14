@@ -922,7 +922,7 @@ namespace Taskmaster
 			using (var license = new LicenseDialog())
 			{
 				license.ShowDialog();
-				if (license.DialogResult != DialogResult.Yes)
+				if (!license.DialogOK)
 				{
 					UnifiedExit();
 					throw new RunstateException("License not accepted.", Runstate.QuickExit);

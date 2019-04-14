@@ -101,13 +101,13 @@ namespace Taskmaster
 
 			buttonAccept.Click += (s, e) =>
 			{
-				DialogResult = DialogResult.Yes;
+				DialogResult = DialogResult.OK;
 				Close();
 			};
 
 			buttonRefuse.Click += (s, e) =>
 			{
-				DialogResult = DialogResult.No;
+				DialogResult = DialogResult.Cancel;
 				Close();
 			};
 

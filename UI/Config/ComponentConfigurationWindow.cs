@@ -446,7 +446,7 @@ namespace Taskmaster.UI.Config
 				using (var comps = new Config.ComponentConfigurationWindow(initial: false, center: centerOnScreen))
 				{
 					comps.ShowDialog();
-					if (comps.DialogResult == DialogResult.OK)
+					if (comps.DialogOK)
 					{
 						if (SimpleMessageBox.ShowModal("Restart needed", "TM needs to be restarted for changes to take effect.\n\nCancel to do so manually later.", SimpleMessageBox.Buttons.AcceptCancel) == SimpleMessageBox.ResultType.OK)
 						{

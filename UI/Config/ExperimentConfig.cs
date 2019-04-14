@@ -152,7 +152,7 @@ namespace Taskmaster.UI.Config
 				using (var n = new Config.ExperimentConfig(centerOnScreen))
 				{
 					n.ShowDialog();
-					if (n.DialogResult == DialogResult.OK)
+					if (n.DialogOK)
 					{
 						Log.Information("<Experiments> Settings changed");
 
