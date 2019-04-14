@@ -168,18 +168,6 @@ namespace Taskmaster
 		[DllImport("kernel32.dll", CharSet = CharSet.Auto)] // SetLastError = true
 		public static extern bool SetPriorityClass(IntPtr handle, uint priorityClass);
 
-		[DllImport("Kernel32.dll", CharSet = CharSet.Auto)] // SetLastError = true
-		public static extern bool DeviceIoControl(
-			Microsoft.Win32.SafeHandles.SafeFileHandle hDevice,
-			int dwIoControlCode,
-			IntPtr InBuffer,
-			int nInBufferSize,
-			IntPtr OutBuffer,
-			int nOutBufferSize,
-			ref int pBytesReturned,
-			[In] ref System.Threading.NativeOverlapped lpOverlapped
-		);
-
 		//     No dialog box confirming the deletion of the objects will be displayed.
 		public const int SHERB_NOCONFIRMATION = 0x00000001;
 		//     No dialog box indicating the progress will be displayed.
