@@ -1,7 +1,7 @@
 using System.Runtime.InteropServices;
 using System.Reflection;
 
-// Information about this assembly is defined by the following attributes. 
+// Information about this assembly is defined by the following attributes.
 // Change them to the values specific to your project.
 using System.Resources;
 
@@ -10,7 +10,7 @@ using System.Resources;
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("")]
 [assembly: AssemblyProduct("Taskmaster!")]
-[assembly: AssemblyCopyright("M.A., 2016-2018")]
+[assembly: AssemblyCopyright("M.A., 2016–2019")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 
@@ -23,7 +23,7 @@ using System.Resources;
 [assembly: NeutralResourcesLanguage("en")]
 [assembly: Guid("088f7210-51b2-4e06-9bd4-93c27a973874")] // this is pointless, yes?
 
-// The following attributes are used to specify the signing key for the assembly, 
+// The following attributes are used to specify the signing key for the assembly,
 // if desired. See the Mono documentation for more information about signing.
 
 //[assembly: AssemblyDelaySign(false)]
