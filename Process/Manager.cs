@@ -1883,10 +1883,10 @@ namespace Taskmaster
 			string name = string.Empty;
 			string path = string.Empty;
 			ProcessEx info = null;
-            DateTime creation = DateTime.MinValue;
-            TimeSpan wmidelay = TimeSpan.Zero;
+			DateTime creation = DateTime.MinValue;
+			TimeSpan wmidelay = TimeSpan.Zero;
 
-            ProcessHandlingState state = ProcessHandlingState.Invalid;
+			ProcessHandlingState state = ProcessHandlingState.Invalid;
 
 			await Task.Delay(0).ConfigureAwait(false);
 			if (cts.IsCancellationRequested) return;
@@ -1907,7 +1907,7 @@ namespace Taskmaster
 
 					var iname = targetInstance.Properties["Name"].Value as string;
 					path = targetInstance.Properties["ExecutablePath"].Value as string;
-                    creation = ManagementDateTimeConverter.ToDateTime(targetInstance.Properties["CreationDate"].Value as string);
+					creation = ManagementDateTimeConverter.ToDateTime(targetInstance.Properties["CreationDate"].Value as string);
 					name = System.IO.Path.GetFileNameWithoutExtension(iname);
 					if (string.IsNullOrEmpty(path))
 					{
@@ -1946,8 +1946,8 @@ namespace Taskmaster
 					Statistics.WMIPolling += 1;
 				}
 
-                wmidelay = new DateTimeOffset(creation.ToUniversalTime()).TimeTo(now);
-                if (Trace) Debug.WriteLine($"WMI delay (#{pid}): {wmidelay.TotalMilliseconds:N0} ms");
+				wmidelay = new DateTimeOffset(creation.ToUniversalTime()).TimeTo(now);
+				if (Trace) Debug.WriteLine($"WMI delay (#{pid}): {wmidelay.TotalMilliseconds:N0} ms");
 
 				if (IgnoreProcessID(pid)) return; // We just don't care
 
@@ -1994,12 +1994,12 @@ namespace Taskmaster
 			}
 			finally
 			{
-                if (info == null)
-                {
-                    info = new ProcessEx { Id = pid, Timer = timer, State = state};
-                    info.WMIDelay = Convert.ToInt32(wmidelay.TotalMilliseconds);
-                }
-                HandlingStateChange?.Invoke(this, new HandlingStateChangeEventArgs(info));
+				if (info == null)
+				{
+					info = new ProcessEx { Id = pid, Timer = timer, State = state};
+					info.WMIDelay = Convert.ToInt32(wmidelay.TotalMilliseconds);
+				}
+				HandlingStateChange?.Invoke(this, new HandlingStateChangeEventArgs(info));
 
 				SignalProcessHandled(-1); // done with it
 			}

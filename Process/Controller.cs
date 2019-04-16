@@ -172,17 +172,17 @@ namespace Taskmaster
 		/// </summary>
 		public bool LogAdjusts { get; set; } = true;
 
-		/// <summary>
-		/// Delay in milliseconds before we attempt to alter the process.
-		/// For example, to allow a process to function at default settings for a while, or to work around undesirable settings
-		/// the process sets for itself.
-		/// </summary>
-		public int ModifyDelay { get; set; } = 0;
         /// <summary>
         /// Log start and exit of the process.
         /// </summary>
         public bool LogStartAndExit { get; set; } = false;
 
+        /// <summary>
+        /// Delay in milliseconds before we attempt to alter the process.
+        /// For example, to allow a process to function at default settings for a while, or to work around undesirable settings
+        /// the process sets for itself.
+        /// </summary>
+        public int ModifyDelay { get; set; } = 0;
 
 		public ProcessController(string name, ProcessPriorityClass? priority = null, int affinity = -1)
 		{

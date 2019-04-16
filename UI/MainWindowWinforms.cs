@@ -3349,9 +3349,9 @@ namespace Taskmaster.UI
 
 					sbs.Append("Preference = ").Append(prc.OrderPreference).AppendLine();
 
-					if (!prc.LogAdjusts) sbs.Append("Logging = false").AppendLine();
-					if (!prc.Enabled) sbs.Append("Enabled = false").AppendLine();
+					if (!prc.LogAdjusts) sbs.AppendLine("Logging = false");
                     if (prc.LogStartAndExit) sbs.AppendLine("Log start and exit = true");
+					if (!prc.Enabled) sbs.AppendLine("Enabled = false");
 
 					// TODO: Add Resize and Modify Delay
 

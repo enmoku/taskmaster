@@ -251,27 +251,29 @@ namespace Taskmaster
 				var endpath = Path.Combine(path, file);
 				var di = Directory.CreateDirectory(path);
 
+				const string ymlIndent = "  ";
+
 				var contents = new StringBuilder()
-					.Append("Analysis:").AppendLine()
-					.Append("  ").Append("Process: ").Append(info.Name).AppendLine()
-					.Append("  ").Append("Version: ").Append(version.FileVersion?.ToString() ?? string.Empty).AppendLine()
-					.Append("  ").Append("Product: ").Append(version.ProductName?.ToString() ?? string.Empty).AppendLine()
-					.Append("  ").Append("Company: ").Append(version.CompanyName?.ToString() ?? string.Empty).AppendLine()
-					.Append("  ").Append("64-bit : ").Append(x64 ? "Yes" : "No").AppendLine()
-					.Append("  ").Append("Path   : ").Append(info.Path).AppendLine()
-					.Append("  ").Append("Threads: ").Append(threadCount).AppendLine()
-					.Append("  ").Append("Memory : ").AppendLine()
-					.Append("    ").Append("Private : ").Append(privMem).AppendLine()
-					.Append("    ").Append("Working : ").Append(workingSet).AppendLine()
-					.Append("    ").Append("Virtual : ").Append(virtualMem).AppendLine()
-					.Append("  ").Append("Modules: ").AppendLine();
+					.AppendLine("Analysis:")
+					.Append(ymlIndent).Append("Process: ").Append(info.Name).AppendLine()
+					.Append(ymlIndent).Append("Version: ").Append(version.FileVersion?.ToString() ?? string.Empty).AppendLine()
+					.Append(ymlIndent).Append("Product: ").Append(version.ProductName?.ToString() ?? string.Empty).AppendLine()
+					.Append(ymlIndent).Append("Company: ").Append(version.CompanyName?.ToString() ?? string.Empty).AppendLine()
+					.Append(ymlIndent).Append("64-bit : ").Append(x64 ? "Yes" : "No").AppendLine()
+					.Append(ymlIndent).Append("Path   : ").Append(info.Path).AppendLine()
+					.Append(ymlIndent).Append("Threads: ").Append(threadCount).AppendLine()
+					.Append(ymlIndent).Append("Memory : ").AppendLine()
+					.Append(ymlIndent).Append(ymlIndent).Append("Private : ").Append(privMem).AppendLine()
+					.Append(ymlIndent).Append(ymlIndent).Append("Working : ").Append(workingSet).AppendLine()
+					.Append(ymlIndent).Append(ymlIndent).Append("Virtual : ").Append(virtualMem).AppendLine()
+					.Append(ymlIndent).Append("Modules: ").AppendLine();
 
 				foreach (var mod in AllLinkedModules.Values)
 				{
-					contents.Append("    ").Append(mod.Identity).Append(":").AppendLine();
+					contents.Append(ymlIndent).Append(ymlIndent).Append(mod.Identity).Append(":").AppendLine();
 					if (mod.Type != ModuleType.Unknown)
-						contents.Append("      Type: ").Append(mod.Type.ToString()).AppendLine();
-					contents.Append("      Files: [ " + string.Join(", ", mod.Detected) + " ]").AppendLine();
+						contents.Append(ymlIndent).Append(ymlIndent).Append(ymlIndent).Append("Type: ").Append(mod.Type.ToString()).AppendLine();
+					contents.Append(ymlIndent).Append(ymlIndent).Append(ymlIndent).Append("Files: [ ").Append(string.Join(", ", mod.Detected)).Append(" ]").AppendLine();
 				}
 
 				File.WriteAllText(endpath, contents.ToString());
@@ -296,7 +298,7 @@ namespace Taskmaster
 			return "Unknown";
 		}
 
-		static string[] yesvalues = { "yes", "true" };
+		static readonly string[] yesvalues = { "yes", "true" };
 
 		const string ModuleFile = "Modules.Known.ini";
 		const string UserModuleFile = "Modules.User.ini";

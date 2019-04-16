@@ -122,6 +122,7 @@
     <None Include="Resources\Watchlist.ini" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Settings.Global.cs" />
     <Compile Include="Process\ActiveAppManager.cs" />
     <Compile Include="AlertManager.cs" />
     <Compile Include="Audio\AudioDeviceNotificationClient.cs" />
@@ -156,6 +157,9 @@
     <Compile Include="Process\NativeMethods.cs" />
     <Compile Include="ServiceWrapper.cs" />
     <Compile Include="Settings\HealthMonitor.cs" />
+    <Compile Include="CommandLine.cs" />
+    <Compile Include="Initialization.cs" />
+    <Compile Include="IPC.cs" />
     <Compile Include="UI\Config\AdvancedConfig.cs">
       <SubType>Form</SubType>
     </Compile>
