@@ -1772,14 +1772,14 @@ namespace Taskmaster.UI
 
 			if (PowerManagerEnabled)
 			{
-				corepanel.Controls.Add(new Label() { Text = "CPU", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left });
-				cpuload = new Label() { Text = HumanReadable.Generic.Uninitialized, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left };
+				corepanel.Controls.Add(new AlignedLabel() { Text = "CPU" });
+				cpuload = new AlignedLabel() { Text = HumanReadable.Generic.Uninitialized };
 				corepanel.Controls.Add(cpuload);
 			}
 			// TODO: Add high, low and average
 
-			corepanel.Controls.Add(new Label() { Text = "RAM", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left });
-			ramload = new Label() { Text = HumanReadable.Generic.Uninitialized, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left };
+			corepanel.Controls.Add(new AlignedLabel() { Text = "RAM" });
+			ramload = new AlignedLabel() { Text = HumanReadable.Generic.Uninitialized };
 			corepanel.Controls.Add(ramload);
 
 			TableLayoutPanel gpupanel = null;
@@ -1794,20 +1794,20 @@ namespace Taskmaster.UI
 					Dock = DockStyle.Fill,
 				};
 
-				gpupanel.Controls.Add(new Label() { Text = "VRAM", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left });
-				gpuvram = new Label() { Text = HumanReadable.Generic.Uninitialized, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left };
+				gpupanel.Controls.Add(new AlignedLabel() { Text = "VRAM" });
+				gpuvram = new AlignedLabel() { Text = HumanReadable.Generic.Uninitialized };
 				gpupanel.Controls.Add(gpuvram);
 
-				gpupanel.Controls.Add(new Label() { Text = "Load", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left });
-				gpuload = new Label() { Text = HumanReadable.Generic.Uninitialized, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left };
+				gpupanel.Controls.Add(new AlignedLabel() { Text = "Load" });
+				gpuload = new AlignedLabel() { Text = HumanReadable.Generic.Uninitialized };
 				gpupanel.Controls.Add(gpuload);
 
-				gpupanel.Controls.Add(new Label() { Text = "Temp", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left });
-				gputemp = new Label() { Text = HumanReadable.Generic.Uninitialized, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left };
+				gpupanel.Controls.Add(new AlignedLabel() { Text = "Temp" });
+				gputemp = new AlignedLabel() { Text = HumanReadable.Generic.Uninitialized };
 				gpupanel.Controls.Add(gputemp);
 
-				gpupanel.Controls.Add(new Label() { Text = "Fan", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left });
-				gpufan = new Label() { Text = HumanReadable.Generic.Uninitialized, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left };
+				gpupanel.Controls.Add(new AlignedLabel() { Text = "Fan" });
+				gpufan = new AlignedLabel() { Text = HumanReadable.Generic.Uninitialized };
 				gpupanel.Controls.Add(gpufan);
 			}
 
@@ -1850,22 +1850,22 @@ namespace Taskmaster.UI
 			// Insert info panel/tab contents
 			if (corepanel != null)
 			{
-				coresystems.Controls.Add(new Label() { Text = "Core", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left, Font = boldfont });
+				coresystems.Controls.Add(new AlignedLabel() { Text = "Core", Font = boldfont });
 				coresystems.Controls.Add(corepanel);
 			}
 			if (gpupanel != null)
 			{
-				coresystems.Controls.Add(new Label() { Text = "GPU", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left, Font = boldfont });
+				coresystems.Controls.Add(new AlignedLabel() { Text = "GPU", Font = boldfont });
 				coresystems.Controls.Add(gpupanel);
 			}
 			if (powerpanel != null)
 			{
-				additionalsystems.Controls.Add(new Label { Text = HumanReadable.Hardware.Power.Section, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left, Font = boldfont });
+				additionalsystems.Controls.Add(new AlignedLabel { Text = HumanReadable.Hardware.Power.Section, Font = boldfont });
 				additionalsystems.Controls.Add(powerpanel);
 			}
 			if (nvmpanel != null)
 			{
-				additionalsystems.Controls.Add(new Label { Text = "Non-Volatile Memory", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left, Font = boldfont });
+				additionalsystems.Controls.Add(new AlignedLabel { Text = "Non-Volatile Memory", Font = boldfont });
 				additionalsystems.Controls.Add(nvmpanel);
 			}
 			systemlayout.Controls.Add(coresystems);
@@ -1963,47 +1963,25 @@ namespace Taskmaster.UI
 					//Width = tabLayout.Width - 3,
 				};
 
-				activeLabel = new Label()
-				{
-					AutoSize = true,
-					Dock = DockStyle.Left,
-					Text = "no active window found",
-					TextAlign = System.Drawing.ContentAlignment.MiddleLeft,
-					AutoEllipsis = true,
-				};
-				activeExec = new Label() { Text = HumanReadable.Generic.Uninitialized, Width = 100, TextAlign = System.Drawing.ContentAlignment.MiddleLeft };
-				activeFullscreen = new Label() { Text = HumanReadable.Generic.Uninitialized, Width = 60, TextAlign = System.Drawing.ContentAlignment.MiddleCenter };
-				activePID = new Label() { Text = HumanReadable.Generic.Uninitialized, Width = 60, TextAlign = System.Drawing.ContentAlignment.MiddleCenter };
+				activeLabel = new AlignedLabel() { Text = "no active window found", AutoEllipsis = true };
+				activeExec = new AlignedLabel() { Text = HumanReadable.Generic.Uninitialized, Width = 100 };
+				activeFullscreen = new AlignedLabel() { Text = HumanReadable.Generic.Uninitialized, Width = 60 };
+				activePID = new AlignedLabel() { Text = HumanReadable.Generic.Uninitialized, Width = 60 };
 
-				foregroundapppanel.Controls.Add(new Label() { Text = "Active window:", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, Width = 80 });
+				foregroundapppanel.Controls.Add(new AlignedLabel() { Text = "Active window:", Width = 80 });
 				foregroundapppanel.Controls.Add(activeLabel);
 				foregroundapppanel.Controls.Add(activeExec);
 				foregroundapppanel.Controls.Add(activeFullscreen);
-				foregroundapppanel.Controls.Add(new Label { Text = "Id:", Width = 20, TextAlign = System.Drawing.ContentAlignment.MiddleLeft });
+				foregroundapppanel.Controls.Add(new AlignedLabel { Text = "Id:", Width = 20 });
 				foregroundapppanel.Controls.Add(activePID);
 
 				processlayout.Controls.Add(foregroundapppanel);
 			}
 
-			processlayout.Controls.Add(new Label()
-			{
-				AutoSize = true,
-				Text = "Exit wait list...",
-				TextAlign = System.Drawing.ContentAlignment.MiddleLeft,
-				Dock = DockStyle.Left,
-				Padding = BigPadding
-			});
-
+			processlayout.Controls.Add(new AlignedLabel() { Text = "Exit wait list...", Padding = BigPadding });
 			processlayout.Controls.Add(exitwaitlist);
 
-			processlayout.Controls.Add(new Label()
-			{
-				AutoSize = true,
-				Text = "Processing list",
-				TextAlign = System.Drawing.ContentAlignment.MiddleLeft,
-				Dock = DockStyle.Left,
-				//Padding = new Padding(3),
-			});
+			processlayout.Controls.Add(new AlignedLabel() { Text = "Processing list" });
 
 			processinglist = new Extensions.ListViewEx()
 			{
@@ -2225,7 +2203,7 @@ namespace Taskmaster.UI
 			};
 			micpanel.RowStyles.Add(new RowStyle(SizeType.Absolute, 20)); // this is dumb
 
-			AudioInputDevice = new Label { Text = HumanReadable.Generic.Uninitialized, Dock = DockStyle.Left, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, AutoEllipsis = true };
+			AudioInputDevice = new AlignedLabel { Text = HumanReadable.Generic.Uninitialized, AutoEllipsis = true };
 			var micNameRow = new TableLayoutPanel
 			{
 				RowCount = 1,
@@ -2233,7 +2211,7 @@ namespace Taskmaster.UI
 				Dock = DockStyle.Top,
 				//AutoSize = true // why not?
 			};
-			micNameRow.Controls.Add(new Label { Text = "Default communications device:", Dock = DockStyle.Left, /*Width = 180,*/ TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true });
+			micNameRow.Controls.Add(new AlignedLabel { Text = "Default communications device:" });
 			micNameRow.Controls.Add(AudioInputDevice);
 
 			var miccntrl = new TableLayoutPanel()
@@ -2257,12 +2235,12 @@ namespace Taskmaster.UI
 			};
 			AudioInputVolume.ValueChanged += UserMicVol;
 
-			miccntrl.Controls.Add(new Label { Text = "Volume", Dock = DockStyle.Left, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true });
+			miccntrl.Controls.Add(new AlignedLabel { Text = "Volume" });
 			miccntrl.Controls.Add(AudioInputVolume);
 
-			corCountLabel = new Label { Text = "0", Dock = DockStyle.Left, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, };
+			corCountLabel = new AlignedLabel { Text = "0" };
 
-			miccntrl.Controls.Add(new Label { Text = "Correction count:", Dock = DockStyle.Left, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true });
+			miccntrl.Controls.Add(new AlignedLabel { Text = "Correction count:" });
 			miccntrl.Controls.Add(corCountLabel);
 
 			AudioInputEnable = new ComboBox()
@@ -2273,7 +2251,7 @@ namespace Taskmaster.UI
 				Enabled = false,
 			};
 
-			miccntrl.Controls.Add(new Label { Text = "Control:", Dock = DockStyle.Left, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, });
+			miccntrl.Controls.Add(new AlignedLabel { Text = "Control:" });
 			miccntrl.Controls.Add(AudioInputEnable);
 
 			// End: Volume control
@@ -2312,21 +2290,9 @@ namespace Taskmaster.UI
 		TableLayoutPanel BuildTempMonitorPanel()
 		{
 			TableLayoutPanel tempmonitorpanel;
-			tempObjectCount = new Label()
-			{
-				Width = 40,
-				//Dock = DockStyle.Left,
-				Text = HumanReadable.Generic.Uninitialized,
-				TextAlign = System.Drawing.ContentAlignment.MiddleLeft,
-			};
+			tempObjectCount = new AlignedLabel() { Width = 40, Text = HumanReadable.Generic.Uninitialized };
 
-			tempObjectSize = new Label()
-			{
-				Width = 40,
-				//Dock = DockStyle.Left,
-				Text = HumanReadable.Generic.Uninitialized,
-				TextAlign = System.Drawing.ContentAlignment.MiddleLeft,
-			};
+			tempObjectSize = new AlignedLabel() { Width = 40, Text = HumanReadable.Generic.Uninitialized };
 
 			tempmonitorpanel = new TableLayoutPanel
 			{
@@ -2336,28 +2302,10 @@ namespace Taskmaster.UI
 				Height = 40,
 				AutoSize = true
 			};
-			tempmonitorpanel.Controls.Add(new Label
-			{
-				Text = "Temp",
-				Dock = DockStyle.Left,
-				TextAlign = System.Drawing.ContentAlignment.MiddleRight,
-				AutoSize = true
-			});
-			tempmonitorpanel.Controls.Add(new Label
-			{
-				Text = "Objects",
-				Dock = DockStyle.Left,
-				TextAlign = System.Drawing.ContentAlignment.MiddleRight,
-				AutoSize = true
-			});
+			tempmonitorpanel.Controls.Add(new AlignedLabel { Text = "Temp" });
+			tempmonitorpanel.Controls.Add(new AlignedLabel { Text = "Objects" });
 			tempmonitorpanel.Controls.Add(tempObjectCount);
-			tempmonitorpanel.Controls.Add(new Label
-			{
-				Text = "Size (MB)",
-				Dock = DockStyle.Left,
-				TextAlign = System.Drawing.ContentAlignment.MiddleRight,
-				AutoSize = true
-			});
+			tempmonitorpanel.Controls.Add(new AlignedLabel { Text = "Size (MB)" });
 			tempmonitorpanel.Controls.Add(tempObjectSize);
 			return tempmonitorpanel;
 		}
@@ -2370,39 +2318,12 @@ namespace Taskmaster.UI
 				AutoSize = true,
 				Dock = DockStyle.Fill,
 			};
-			cachePanel.Controls.Add(new Label()
-			{
-				Text = "Path cache:",
-				TextAlign = System.Drawing.ContentAlignment.MiddleLeft,
-				AutoSize = true
-			});
-			cachePanel.Controls.Add(new Label()
-			{
-				Text = "Objects",
-				TextAlign = System.Drawing.ContentAlignment.MiddleLeft,
-				AutoSize = true
-			});
-			cacheObjects = new Label()
-			{
-				AutoSize = true,
-				Width = 40,
-				Text = HumanReadable.Generic.Uninitialized,
-				TextAlign = System.Drawing.ContentAlignment.MiddleLeft
-			};
+			cachePanel.Controls.Add(new AlignedLabel() { Text = "Path cache:" });
+			cachePanel.Controls.Add(new AlignedLabel() { Text = "Objects" });
+			cacheObjects = new AlignedLabel() { Width = 40, Text = HumanReadable.Generic.Uninitialized };
 			cachePanel.Controls.Add(cacheObjects);
-			cachePanel.Controls.Add(new Label()
-			{
-				Text = "Ratio",
-				TextAlign = System.Drawing.ContentAlignment.MiddleLeft,
-				AutoSize = true
-			});
-			cacheRatio = new Label()
-			{
-				AutoSize = true,
-				Width = 40,
-				Text = HumanReadable.Generic.Uninitialized,
-				TextAlign = System.Drawing.ContentAlignment.MiddleLeft
-			};
+			cachePanel.Controls.Add(new AlignedLabel() { Text = "Ratio" });
+			cacheRatio = new AlignedLabel() { Width = 40, Text = HumanReadable.Generic.Uninitialized };
 			cachePanel.Controls.Add(cacheRatio);
 			return cachePanel;
 		}
@@ -2415,14 +2336,7 @@ namespace Taskmaster.UI
 				AutoSize = true,
 				Dock = DockStyle.Fill
 			};
-			powerlayout.Controls.Add(new Label()
-			{
-				Text = "Power mode autobalancing tracker...",
-				TextAlign = System.Drawing.ContentAlignment.MiddleLeft,
-				AutoSize = true,
-				Dock = DockStyle.Left,
-				Padding = BigPadding,
-			});
+			powerlayout.Controls.Add(new AlignedLabel() { Text = "Power mode autobalancing tracker...", Padding = BigPadding });
 
 			powerbalancerlog = new Extensions.ListViewEx()
 			{
@@ -2453,14 +2367,14 @@ namespace Taskmaster.UI
 				AutoSize = true,
 				Dock = DockStyle.Top
 			};
-			powerbalancerstatus.Controls.Add(new Label() { Text = "Behaviour:", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true });
-			powerbalancer_behaviour = new Label() { Text = HumanReadable.Generic.Uninitialized, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true };
+			powerbalancerstatus.Controls.Add(new AlignedLabel() { Text = "Behaviour:" });
+			powerbalancer_behaviour = new AlignedLabel() { Text = HumanReadable.Generic.Uninitialized };
 			powerbalancerstatus.Controls.Add(powerbalancer_behaviour);
-			powerbalancerstatus.Controls.Add(new Label() { Text = "| Plan:", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true });
-			powerbalancer_plan = new Label() { Text = HumanReadable.Generic.Uninitialized, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true };
+			powerbalancerstatus.Controls.Add(new AlignedLabel() { Text = "| Plan:" });
+			powerbalancer_plan = new AlignedLabel() { Text = HumanReadable.Generic.Uninitialized };
 			powerbalancerstatus.Controls.Add(powerbalancer_plan);
-			powerbalancerstatus.Controls.Add(new Label() { Text = "Forced by:", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true });
-			powerbalancer_forcedcount = new Label() { Text = HumanReadable.Generic.Uninitialized, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true };
+			powerbalancerstatus.Controls.Add(new AlignedLabel() { Text = "Forced by:" });
+			powerbalancer_forcedcount = new AlignedLabel() { Text = HumanReadable.Generic.Uninitialized };
 			powerbalancerstatus.Controls.Add(powerbalancer_forcedcount);
 
 			powerlayout.Controls.Add(powerbalancerstatus);
@@ -2479,7 +2393,7 @@ namespace Taskmaster.UI
 				Height = 40,
 				AutoSize = true
 			};
-			lastmodifypanel.Controls.Add(new Label() { Text = "Last process modifications", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left });
+			lastmodifypanel.Controls.Add(new AlignedLabel() { Text = "Last process modifications" });
 			lastmodifylist = new Extensions.ListViewEx()
 			{
 				Parent = this,
@@ -2530,14 +2444,14 @@ namespace Taskmaster.UI
 				Dock = DockStyle.Fill,
 			};
 
-			pwmode = new Label { Text = HumanReadable.Generic.Uninitialized, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left };
-			pwcause = new Label { Text = HumanReadable.Generic.Uninitialized, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left };
-			pwbehaviour = new Label { Text = HumanReadable.Generic.Uninitialized, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left };
-			powerpanel.Controls.Add(new Label { Text = "Behaviour:", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left });
+			pwmode = new AlignedLabel { Text = HumanReadable.Generic.Uninitialized };
+			pwcause = new AlignedLabel { Text = HumanReadable.Generic.Uninitialized };
+			pwbehaviour = new AlignedLabel { Text = HumanReadable.Generic.Uninitialized };
+			powerpanel.Controls.Add(new AlignedLabel { Text = "Behaviour:" });
 			powerpanel.Controls.Add(pwbehaviour);
-			powerpanel.Controls.Add(new Label { Text = "Mode:", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left });
+			powerpanel.Controls.Add(new AlignedLabel { Text = "Mode:" });
 			powerpanel.Controls.Add(pwmode);
-			powerpanel.Controls.Add(new Label { Text = "Cause:", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left });
+			powerpanel.Controls.Add(new AlignedLabel { Text = "Cause:" });
 			powerpanel.Controls.Add(pwcause);
 		}
 
@@ -2551,19 +2465,19 @@ namespace Taskmaster.UI
 				Dock = DockStyle.Fill,
 			};
 
-			nvmtransfers = new Label { Text = HumanReadable.Generic.Uninitialized, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Top };
-			nvmsplitio = new Label { Text = HumanReadable.Generic.Uninitialized, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Top };
-			nvmdelay = new Label { Text = HumanReadable.Generic.Uninitialized, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Top };
-			nvmqueued = new Label { Text = HumanReadable.Generic.Uninitialized, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Top };
+			nvmtransfers = new AlignedLabel { Text = HumanReadable.Generic.Uninitialized };
+			nvmsplitio = new AlignedLabel { Text = HumanReadable.Generic.Uninitialized };
+			nvmdelay = new AlignedLabel { Text = HumanReadable.Generic.Uninitialized };
+			nvmqueued = new AlignedLabel { Text = HumanReadable.Generic.Uninitialized };
 			//hardfaults = new Label { Text = HumanReadable.Generic.Uninitialized, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left };
 
-			nvmpanel.Controls.Add(new Label { Text = "Transfers", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left });
+			nvmpanel.Controls.Add(new AlignedLabel { Text = "Transfers" });
 			nvmpanel.Controls.Add(nvmtransfers);
-			nvmpanel.Controls.Add(new Label { Text = "Split I/O", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left });
+			nvmpanel.Controls.Add(new AlignedLabel { Text = "Split I/O" });
 			nvmpanel.Controls.Add(nvmsplitio);
-			nvmpanel.Controls.Add(new Label { Text = "Delay", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left });
+			nvmpanel.Controls.Add(new AlignedLabel { Text = "Delay" });
 			nvmpanel.Controls.Add(nvmdelay);
-			nvmpanel.Controls.Add(new Label { Text = "Queued", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left });
+			nvmpanel.Controls.Add(new AlignedLabel { Text = "Queued" });
 			nvmpanel.Controls.Add(nvmqueued);
 			//nvmpanel.Controls.Add(new Label { Text = "Hard faults", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left });
 			//nvmpanel.Controls.Add(hardfaults);
@@ -2572,18 +2486,12 @@ namespace Taskmaster.UI
 		TableLayoutPanel BuildNetworkStatusUI(FlowLayoutPanel infopanel, int[] ifacewidths)
 		{
 			TableLayoutPanel netstatus;
-			netstatuslabel = new Label() { Dock = DockStyle.Left, Text = HumanReadable.Generic.Uninitialized, AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft };
-			inetstatuslabel = new Label() { Dock = DockStyle.Left, Text = HumanReadable.Generic.Uninitialized, AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft };
-			uptimeMeanLabel = new Label() { Dock = DockStyle.Left, Text = HumanReadable.Generic.Uninitialized, AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft };
-			netTransmit = new Label() { Dock = DockStyle.Left, Text = HumanReadable.Generic.Uninitialized, AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft };
-			netQueue = new Label() { Dock = DockStyle.Left, Text = HumanReadable.Generic.Uninitialized, AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft };
-			uptimestatuslabel = new Label
-			{
-				Dock = DockStyle.Left,
-				Text = HumanReadable.Generic.Uninitialized,
-				AutoSize = true,
-				TextAlign = System.Drawing.ContentAlignment.MiddleLeft
-			};
+			netstatuslabel = new AlignedLabel() { Text = HumanReadable.Generic.Uninitialized };
+			inetstatuslabel = new AlignedLabel() { Text = HumanReadable.Generic.Uninitialized };
+			uptimeMeanLabel = new AlignedLabel() { Text = HumanReadable.Generic.Uninitialized };
+			netTransmit = new AlignedLabel() { Text = HumanReadable.Generic.Uninitialized };
+			netQueue = new AlignedLabel() { Text = HumanReadable.Generic.Uninitialized };
+			uptimestatuslabel = new AlignedLabel { Text = HumanReadable.Generic.Uninitialized };
 
 			netstatus = new TableLayoutPanel
 			{
@@ -2594,20 +2502,20 @@ namespace Taskmaster.UI
 			};
 
 			// first row
-			netstatus.Controls.Add(new Label() { Text = "Network", Dock = DockStyle.Left, AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft });
+			netstatus.Controls.Add(new AlignedLabel() { Text = "Network" });
 			netstatus.Controls.Add(netstatuslabel);
 
-			netstatus.Controls.Add(new Label() { Text = "Uptime", Dock = DockStyle.Left, AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft });
+			netstatus.Controls.Add(new AlignedLabel() { Text = "Uptime" });
 			netstatus.Controls.Add(uptimestatuslabel);
 
-			netstatus.Controls.Add(new Label() { Text = "Transmission", Dock = DockStyle.Left, AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft });
+			netstatus.Controls.Add(new AlignedLabel() { Text = "Transmission" });
 			netstatus.Controls.Add(netTransmit);
 
 			// second row
-			netstatus.Controls.Add(new Label() { Text = "Internet", Dock = DockStyle.Left, AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft });
+			netstatus.Controls.Add(new AlignedLabel() { Text = "Internet" });
 			netstatus.Controls.Add(inetstatuslabel);
 
-			netstatus.Controls.Add(new Label { Text = "Average", Dock = DockStyle.Left, AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft });
+			netstatus.Controls.Add(new AlignedLabel { Text = "Average" });
 			netstatus.Controls.Add(uptimeMeanLabel);
 
 			//netstatus.Controls.Add(new Label() { Text = "??", Dock = DockStyle.Left, AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft });
@@ -3350,7 +3258,7 @@ namespace Taskmaster.UI
 					sbs.Append("Preference = ").Append(prc.OrderPreference).AppendLine();
 
 					if (!prc.LogAdjusts) sbs.AppendLine("Logging = false");
-                    if (prc.LogStartAndExit) sbs.AppendLine("Log start and exit = true");
+					if (prc.LogStartAndExit) sbs.AppendLine("Log start and exit = true");
 					if (!prc.Enabled) sbs.AppendLine("Enabled = false");
 
 					// TODO: Add Resize and Modify Delay

@@ -77,7 +77,7 @@ namespace Taskmaster
 
 			if (!string.IsNullOrEmpty(message))
 			{
-				layout.Controls.Add(new Label() { Text = message, AutoSize = true, Dock = DockStyle.Fill, Padding = BigPadding });
+				layout.Controls.Add(new UI.AlignedLabel() { Text = message, AutoSize = true, Dock = DockStyle.Fill, Padding = BigPadding });
 			}
 
 			layout.Controls.Add(selection);

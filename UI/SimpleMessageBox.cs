@@ -105,7 +105,7 @@ namespace Taskmaster
 			{
 				case Buttons.OK:
 					okbutton.Anchor = AnchorStyles.Top;
-					buttonlayout.Controls.Add(new Label()); // empty
+					buttonlayout.Controls.Add(new UI.EmptySpace());
 					buttonlayout.Controls.Add(okbutton);
 					okbutton.NotifyDefault(true);
 					break;
@@ -113,7 +113,7 @@ namespace Taskmaster
 					okbutton.Text = "Accept";
 					okbutton.Anchor = AnchorStyles.Right;
 					buttonlayout.Controls.Add(okbutton);
-					buttonlayout.Controls.Add(new Label()); // empty
+					buttonlayout.Controls.Add(new UI.EmptySpace());
 					buttonlayout.Controls.Add(cancelbutton);
 					okbutton.NotifyDefault(true);
 					break;

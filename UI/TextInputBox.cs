@@ -59,7 +59,7 @@ namespace Taskmaster
 
 			textbox.Text = input ?? string.Empty;
 
-			layout.Controls.Add(new Label() { Text = message, TextAlign = System.Drawing.ContentAlignment.MiddleLeft });
+			layout.Controls.Add(new UI.AlignedLabel() { Text = message });
 			layout.Controls.Add(textbox);
 
 			var buttons = new TableLayoutPanel()

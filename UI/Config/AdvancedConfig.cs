@@ -40,6 +40,10 @@ namespace Taskmaster.UI.Config
 		{
 			Text = "Advanced Configuration";
 
+			var pad = Padding;
+			pad.Right = 6;
+			Padding = pad;
+
 			using (var corecfg = Config.Load(CoreConfigFilename).BlockUnload())
 			{
 				AutoSizeMode = AutoSizeMode.GrowAndShrink;
@@ -68,8 +72,8 @@ namespace Taskmaster.UI.Config
 				cancelbutton.Click += Cancelbutton_Click;
 
 				// USER INTERFACE
-				layout.Controls.Add(new Label { Text = "User Interface", Font = boldfont, Padding = BigPadding, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true });
-				layout.Controls.Add(new Label()); // empty
+				layout.Controls.Add(new AlignedLabel { Text = "User Interface", Font = boldfont, Padding = BigPadding });
+				layout.Controls.Add(new EmptySpace());
 
 				var UIUpdateFrequency = new Extensions.NumericUpDownEx()
 				{
@@ -84,17 +88,17 @@ namespace Taskmaster.UI.Config
 
 				UIUpdateFrequency.Value = mainwindow.UIUpdateFrequency;
 
-				layout.Controls.Add(new Label { Text = "Refresh frequency", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Padding = LeftSubPadding });
+				layout.Controls.Add(new AlignedLabel { Text = "Refresh frequency", Padding = LeftSubPadding });
 				layout.Controls.Add(UIUpdateFrequency);
 
 				// FOREGROUND
 
-				layout.Controls.Add(new Label { Text = "Foreground", Font = boldfont, Padding = BigPadding, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true });
+				layout.Controls.Add(new AlignedLabel { Text = "Foreground", Font = boldfont, Padding = BigPadding });
 
 				if (ActiveAppMonitorEnabled)
-					layout.Controls.Add(new Label()); // empty
+					layout.Controls.Add(new EmptySpace());
 				else
-					layout.Controls.Add(new Label() { Text = "Disabled", Font = boldfont, Padding = BigPadding, ForeColor = System.Drawing.Color.Red, TextAlign = System.Drawing.ContentAlignment.MiddleLeft });
+					layout.Controls.Add(new AlignedLabel() { Text = "Disabled", Font = boldfont, Padding = BigPadding, ForeColor = System.Drawing.Color.Red });
 
 				var fgHysterisis = new Extensions.NumericUpDownEx()
 				{
@@ -118,13 +122,13 @@ namespace Taskmaster.UI.Config
 					}
 				}
 
-				layout.Controls.Add(new Label { Text = "Foreground hysterisis", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Padding = LeftSubPadding });
+				layout.Controls.Add(new AlignedLabel { Text = "Foreground hysterisis", Padding = LeftSubPadding });
 				layout.Controls.Add(fgHysterisis);
 
 				// PROCESS MANAGEMENT
 
-				layout.Controls.Add(new Label { Text = "Process management", Font = boldfont, Padding = BigPadding, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true });
-				layout.Controls.Add(new Label()); // empty
+				layout.Controls.Add(new AlignedLabel { Text = "Process management", Font = boldfont, Padding = BigPadding });
+				layout.Controls.Add(new EmptySpace());
 
 				var IgnoreRecentlyModifiedCooldown = new Extensions.NumericUpDownEx()
 				{
@@ -134,7 +138,7 @@ namespace Taskmaster.UI.Config
 					Value = Convert.ToDecimal(ProcessManager.IgnoreRecentlyModified.Value.TotalMinutes),
 				};
 
-				layout.Controls.Add(new Label { Text = "Ignore recently modified", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Padding = LeftSubPadding });
+				layout.Controls.Add(new AlignedLabel { Text = "Ignore recently modified", Padding = LeftSubPadding });
 				layout.Controls.Add(IgnoreRecentlyModifiedCooldown);
 
 				var watchlistPowerdown = new Extensions.NumericUpDownEx()
@@ -152,17 +156,17 @@ namespace Taskmaster.UI.Config
 				if (PowerManagerEnabled)
 					watchlistPowerdown.Value = Convert.ToDecimal(powermanager.PowerdownDelay.HasValue ? powermanager.PowerdownDelay.Value.TotalSeconds : 0);
 
-				layout.Controls.Add(new Label { Text = "Powerdown delay", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Padding = LeftSubPadding });
+				layout.Controls.Add(new AlignedLabel { Text = "Powerdown delay", Padding = LeftSubPadding });
 				layout.Controls.Add(watchlistPowerdown);
 
 				// VOLUME METER
 
-				layout.Controls.Add(new Label { Text = "Volume meter", Font = boldfont, Padding = BigPadding, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true });
+				layout.Controls.Add(new AlignedLabel { Text = "Volume meter", Font = boldfont, Padding = BigPadding });
 
 				if (AudioManagerEnabled)
-					layout.Controls.Add(new Label()); // empty
+					layout.Controls.Add(new EmptySpace());
 				else
-					layout.Controls.Add(new Label() { Text = "Disabled", Font = boldfont, Padding = BigPadding, ForeColor = System.Drawing.Color.Red, TextAlign = System.Drawing.ContentAlignment.MiddleLeft });
+					layout.Controls.Add(new AlignedLabel() { Text = "Disabled", Font = boldfont, Padding = BigPadding, ForeColor = System.Drawing.Color.Red });
 
 				var volmeter_topmost = new CheckBox();
 				var volmeter_show = new CheckBox();
@@ -205,26 +209,50 @@ namespace Taskmaster.UI.Config
 				volmeter_capin.Value = t_volmeter_capinmax;
 				volmeter_show.Checked = t_volmeter_show;
 
-				layout.Controls.Add(new Label { Text = "Refresh", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Padding = LeftSubPadding });
+				layout.Controls.Add(new AlignedLabel { Text = "Refresh", Padding = LeftSubPadding });
 				layout.Controls.Add(volmeter_frequency);
 				tooltip.SetToolTip(volmeter_frequency, "Update frequency for the volume bars. Lower is faster.");
 
-				layout.Controls.Add(new Label { Text = "Output cap", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Padding = LeftSubPadding });
+				layout.Controls.Add(new AlignedLabel { Text = "Output cap", Padding = LeftSubPadding });
 				layout.Controls.Add(volmeter_capout);
 				tooltip.SetToolTip(volmeter_capout, "Maximum volume for the bars. Helps make the bars more descriptive in case your software volume is very low.");
-				layout.Controls.Add(new Label { Text = "Input cap", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Padding = LeftSubPadding });
+				layout.Controls.Add(new AlignedLabel { Text = "Input cap", Padding = LeftSubPadding });
 				layout.Controls.Add(volmeter_capin);
 				tooltip.SetToolTip(volmeter_capin, "Maximum volume for the bars. Helps make the bars more descriptive in case your software volume is very low.");
 
-				layout.Controls.Add(new Label { Text = "Topmost", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Padding = LeftSubPadding });
+				layout.Controls.Add(new AlignedLabel { Text = "Topmost", Padding = LeftSubPadding });
 				layout.Controls.Add(volmeter_topmost);
 				tooltip.SetToolTip(volmeter_topmost, "Keeps the volume meter over other windows.");
 
-				layout.Controls.Add(new Label { Text = "Show on start", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Padding = LeftSubPadding });
+				layout.Controls.Add(new AlignedLabel { Text = "Show on start", Padding = LeftSubPadding });
 				layout.Controls.Add(volmeter_show);
 				tooltip.SetToolTip(volmeter_show, "Show volume meter on start.");
 
-				// ----
+				// Network
+
+				/*
+				layout.Controls.Add(new Label { Text = "Network", Font = boldfont, Padding = BigPadding, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true });
+
+				if (NetworkMonitorEnabled)
+					layout.Controls.Add(new Label()); // empty
+				else
+					layout.Controls.Add(new Label() { Text = "Disabled", Font = boldfont, Padding = BigPadding, ForeColor = System.Drawing.Color.Red, TextAlign = System.Drawing.ContentAlignment.MiddleLeft });
+
+				var netpoll_frequency = new Extensions.NumericUpDownEx()
+				{
+					Unit = "s",
+					Increment = 1,
+					Minimum = 1,
+					Maximum = 15,
+					Value = 15,
+				};
+
+				layout.Controls.Add(new Label { Text = "Poll interval", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Padding = LeftSubPadding });
+				layout.Controls.Add(netpoll_frequency);
+				tooltip.SetToolTip(netpoll_frequency, "Update frequency network device list.");
+				*/
+
+				// ---- SAVE --------------------------------------------------------------------------------------------------------
 
 				savebutton.Click += (_, _ea) =>
 				{

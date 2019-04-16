@@ -86,11 +86,10 @@ namespace Taskmaster
 
 			if (initial) buttonlayout.Controls.Add(buttonRefuse);
 
-			var required = new Label()
+			var required = new UI.AlignedLabel()
 			{
 				Text = "You must accept the following license to use this application.",
 				AutoSize = true,
-				TextAlign = System.Drawing.ContentAlignment.MiddleLeft,
 				Padding = BigPadding,
 				Font = new System.Drawing.Font(System.Drawing.FontFamily.GenericSansSerif, DefaultFont.Size * 1.2f),
 			};

@@ -328,123 +328,129 @@ namespace Taskmaster
 		{
 			System.Threading.Mutex singleton = null;
 
-			bool ni = MKAh.Program.NativeImage.Exists();
-
 			try
 			{
-				var startTimer = Stopwatch.StartNew();
-
-				//Debug.Listeners.Add(new TextWriterTraceListener(System.Console.Out));
-
-				NativeMethods.SetErrorMode(NativeMethods.SetErrorMode(NativeMethods.ErrorModes.SEM_SYSTEMDEFAULT) | NativeMethods.ErrorModes.SEM_NOGPFAULTERRORBOX | NativeMethods.ErrorModes.SEM_FAILCRITICALERRORS);
-
-				System.Windows.Forms.Application.SetUnhandledExceptionMode(UnhandledExceptionMode.Automatic);
-				System.Windows.Forms.Application.ThreadException += UnhandledUIException;
-				System.Windows.Forms.Application.EnableVisualStyles(); // required by shortcuts and high dpi-awareness
-				System.Windows.Forms.Application.SetCompatibleTextRenderingDefault(false); // required by high dpi-awareness
-
-				AppDomain.CurrentDomain.UnhandledException += UnhandledException;
-
-				//hiddenwindow = new OS.HiddenWindow();
-
-				TryPortableMode();
-				LogPath = Path.Combine(DataPath, "Logs");
-
-				// Singleton
-				singleton = new System.Threading.Mutex(true, SingletonID, out bool mutexgained);
-				if (!mutexgained)
 				{
-					SimpleMessageBox.ResultType rv = SimpleMessageBox.ResultType.Cancel;
+					var startTimer = Stopwatch.StartNew();
 
-					// already running, signal original process
-					using (var msg = new SimpleMessageBox("Taskmaster!",
-						"Already operational.\n\nRetry to try to recover [restart] running instance.\nEnd to kill running instance and exit this.\nCancel to simply request refresh.",
-						SimpleMessageBox.Buttons.RetryEndCancel))
+					bool ni = MKAh.Program.NativeImage.Exists();
+
+					//Debug.Listeners.Add(new TextWriterTraceListener(System.Console.Out));
+
+					NativeMethods.SetErrorMode(NativeMethods.SetErrorMode(NativeMethods.ErrorModes.SEM_SYSTEMDEFAULT) | NativeMethods.ErrorModes.SEM_NOGPFAULTERRORBOX | NativeMethods.ErrorModes.SEM_FAILCRITICALERRORS);
+
+					System.Windows.Forms.Application.SetUnhandledExceptionMode(UnhandledExceptionMode.Automatic);
+					System.Windows.Forms.Application.ThreadException += UnhandledUIException;
+					System.Windows.Forms.Application.EnableVisualStyles(); // required by shortcuts and high dpi-awareness
+					System.Windows.Forms.Application.SetCompatibleTextRenderingDefault(false); // required by high dpi-awareness
+
+					AppDomain.CurrentDomain.UnhandledException += UnhandledException;
+
+					//hiddenwindow = new OS.HiddenWindow();
+
+					TryPortableMode();
+					LogPath = Path.Combine(DataPath, "Logs");
+
+					// Singleton
+					singleton = new System.Threading.Mutex(true, SingletonID, out bool mutexgained);
+					if (!mutexgained)
 					{
-						msg.ShowDialog();
-						rv = msg.Result;
+						SimpleMessageBox.ResultType rv = SimpleMessageBox.ResultType.Cancel;
+
+						// already running, signal original process
+						using (var msg = new SimpleMessageBox("Taskmaster!",
+							"Already operational.\n\nRetry to try to recover [restart] running instance.\nEnd to kill running instance and exit this.\nCancel to simply request refresh.",
+							SimpleMessageBox.Buttons.RetryEndCancel))
+						{
+							msg.ShowDialog();
+							rv = msg.Result;
+						}
+
+						switch (rv)
+						{
+							case SimpleMessageBox.ResultType.Retry:
+								PipeExplorer(PipeRestart);
+								break;
+							case SimpleMessageBox.ResultType.End:
+								PipeExplorer(PipeTerm);
+								break;
+							case SimpleMessageBox.ResultType.Cancel:
+								PipeExplorer(PipeRefresh);
+								break;
+						}
+
+						return -1;
 					}
 
-					switch (rv)
+					pipe = PipeDream(); // IPC with other instances of TM
+
+					// Multi-core JIT
+					// https://docs.microsoft.com/en-us/dotnet/api/system.runtime.profileoptimization
 					{
-						case SimpleMessageBox.ResultType.Retry:
-							PipeExplorer(PipeRestart);
-							break;
-						case SimpleMessageBox.ResultType.End:
-							PipeExplorer(PipeTerm);
-							break;
-						case SimpleMessageBox.ResultType.Cancel:
-							PipeExplorer(PipeRefresh);
-							break;
+						var cachepath = System.IO.Path.Combine(DataPath, "Cache");
+						if (!System.IO.Directory.Exists(cachepath)) System.IO.Directory.CreateDirectory(cachepath);
+						System.Runtime.ProfileOptimization.SetProfileRoot(cachepath);
+						System.Runtime.ProfileOptimization.StartProfile("jit.profile");
 					}
 
-					return -1;
-				}
+					Config = new Configuration.Manager(DataPath);
 
-				pipe = PipeDream(); // IPC with other instances of TM
+					LicenseBoiler();
 
-				// Multi-core JIT
-				// https://docs.microsoft.com/en-us/dotnet/api/system.runtime.profileoptimization
-				{
-					var cachepath = System.IO.Path.Combine(DataPath, "Cache");
-					if (!System.IO.Directory.Exists(cachepath)) System.IO.Directory.CreateDirectory(cachepath);
-					System.Runtime.ProfileOptimization.SetProfileRoot(cachepath);
-					System.Runtime.ProfileOptimization.StartProfile("jit.profile");
-				}
-
-				Config = new Configuration.Manager(DataPath);
-
-				LicenseBoiler();
-
-				// INIT LOGGER
-				var logswitch = new LoggingLevelSwitch(LogEventLevel.Information);
+					// INIT LOGGER
+					{
+						var logswitch = new LoggingLevelSwitch(LogEventLevel.Information);
 
 #if DEBUG
-				loglevelswitch.MinimumLevel = LogEventLevel.Debug;
-				if (Trace) loglevelswitch.MinimumLevel = LogEventLevel.Verbose;
+						loglevelswitch.MinimumLevel = LogEventLevel.Debug;
+						if (Trace) loglevelswitch.MinimumLevel = LogEventLevel.Verbose;
 #endif
 
-				var logpathtemplate = System.IO.Path.Combine(LogPath, "taskmaster-{Date}.log");
-				Serilog.Log.Logger = new Serilog.LoggerConfiguration()
-					.MinimumLevel.ControlledBy(loglevelswitch)
-					.WriteTo.Console(levelSwitch: new LoggingLevelSwitch(LogEventLevel.Verbose))
-					.WriteTo.RollingFile(logpathtemplate, outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}",
-						levelSwitch: new LoggingLevelSwitch(Serilog.Events.LogEventLevel.Debug), retainedFileCountLimit: 3)
-					.WriteTo.MemorySink(levelSwitch: logswitch)
-					.CreateLogger();
+						var logpathtemplate = System.IO.Path.Combine(LogPath, "taskmaster-{Date}.log");
+						Serilog.Log.Logger = new Serilog.LoggerConfiguration()
+							.MinimumLevel.ControlledBy(loglevelswitch)
+							.WriteTo.Console(levelSwitch: new LoggingLevelSwitch(LogEventLevel.Verbose))
+							.WriteTo.RollingFile(logpathtemplate, outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}",
+								levelSwitch: new LoggingLevelSwitch(Serilog.Events.LogEventLevel.Debug), retainedFileCountLimit: 3)
+							.WriteTo.MemorySink(levelSwitch: logswitch)
+							.CreateLogger();
+					}
 
-				// COMMAND-LINE ARGUMENTS
-				ParseArguments(args);
-				args = null; // silly
+					// COMMAND-LINE ARGUMENTS
+					ParseArguments(args);
+					args = null; // silly
 
-				// STARTUP
+					// STARTUP
 
-				var builddate = BuildDate();
+					{
+						var builddate = BuildDate();
 
-				var now = DateTime.Now;
-				var age = (now - builddate).TotalDays;
+						var now = DateTime.Now;
+						var age = (now - builddate).TotalDays;
 
-				var sbs = new StringBuilder()
-					.Append("Taskmaster! (#").Append(Process.GetCurrentProcess().Id).Append(")")
-					.Append(MKAh.Execution.IsAdministrator ? " [ADMIN]" : "").Append(Portable ? " [PORTABLE]" : "")
-					.Append(" – Version: ").Append(System.Reflection.Assembly.GetExecutingAssembly().GetName().Version)
-					.Append(" – Built: ").Append(builddate.ToString("yyyy/MM/dd HH:mm")).Append($" [{age:N0} days old]");
-				Log.Information(sbs.ToString());
+						var sbs = new StringBuilder()
+							.Append("Taskmaster! (#").Append(Process.GetCurrentProcess().Id).Append(")")
+							.Append(MKAh.Execution.IsAdministrator ? " [ADMIN]" : "").Append(Portable ? " [PORTABLE]" : "")
+							.Append(" – Version: ").Append(System.Reflection.Assembly.GetExecutingAssembly().GetName().Version)
+							.Append(" – Built: ").Append(builddate.ToString("yyyy/MM/dd HH:mm")).Append($" [{age:N0} days old]");
+						Log.Information(sbs.ToString());
+					}
 
-				Log.Information("<NGen> Native Image: " + (ni ? "Yes :D" : "No :("));
+					Log.Information("<NGen> Native Image: " + (ni ? "Yes :D" : "No :("));
 
-				//PreallocLastLog();
+					//PreallocLastLog();
 
-				InitialConfiguration();
-				LoadCoreConfig();
-				InitializeComponents();
+					InitialConfiguration();
+					LoadCoreConfig();
+					InitializeComponents();
 
-				Config.Flush(); // early save of configs
+					Config.Flush(); // early save of configs
 
-				if (RestartCounter > 0) Log.Information($"<Core> Restarted {RestartCounter.ToString()} time(s)");
-				startTimer.Stop();
-				Log.Information($"<Core> Initialization complete ({startTimer.ElapsedMilliseconds} ms)...");
-				startTimer = null;
+					if (RestartCounter > 0) Log.Information($"<Core> Restarted {RestartCounter.ToString()} time(s)");
+					startTimer.Stop();
+					Log.Information($"<Core> Initialization complete ({startTimer.ElapsedMilliseconds} ms)...");
+					startTimer = null;
+				}
 
 				if (Debug.Listeners.Count > 0)
 				{

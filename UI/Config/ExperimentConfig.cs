@@ -49,19 +49,13 @@ namespace Taskmaster.UI.Config
 				Parent = this,
 			};
 
-			layout.Controls.Add(new Label { Text = "EXPERIMENTAL", Font = boldfont, ForeColor = System.Drawing.Color.Maroon, Padding = BigPadding, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true });
-			layout.Controls.Add(new Label { Text = "You've been warned", Font = boldfont, ForeColor=System.Drawing.Color.Maroon, Padding = BigPadding, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true });
+			layout.Controls.Add(new AlignedLabel { Text = "EXPERIMENTAL", AutoSize = true, Font = boldfont, ForeColor = System.Drawing.Color.Maroon, Padding = BigPadding });
+			layout.Controls.Add(new AlignedLabel { Text = "You've been warned", AutoSize = true, Font = boldfont, ForeColor = System.Drawing.Color.Maroon, Padding = BigPadding });
 
-			var savebutton = new Button()
-			{
-				Text = "Save",
-			};
+			var savebutton = new Button() { Text = "Save", };
 			savebutton.NotifyDefault(true);
 
-			var cancelbutton = new Button()
-			{
-				Text = "Cancel",
-			};
+			var cancelbutton = new Button() { Text = "Cancel", };
 			cancelbutton.Click += Cancelbutton_Click;
 
 			// EXPERIMENTS
@@ -71,35 +65,40 @@ namespace Taskmaster.UI.Config
 				Minimum = 0,
 				Maximum = 300,
 				Unit = "secs",
+				Width = 80,
+				DecimalPlaces = 0,
 				Value = Convert.ToDecimal(Taskmaster.RecordAnalysis.HasValue ? Taskmaster.RecordAnalysis.Value.TotalSeconds : 0),
+				//Anchor = AnchorStyles.Left
 			};
 			tooltip.SetToolTip(RecordAnalysisDelay, "Values higher than 0 enable process analysis\nThis needs to be enabled per watchlist rule to function");
 
-			layout.Controls.Add(new Label { Text = "Record analysis delay", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true });
+			layout.Controls.Add(new AlignedLabel { Text = "Record analysis delay" });
 			layout.Controls.Add(RecordAnalysisDelay);
 
 			var hwmon = new CheckBox()
 			{
 				Checked = Taskmaster.HardwareMonitorEnabled,
+				//Anchor = AnchorStyles.Left,
 			};
 			tooltip.SetToolTip(hwmon, "Enables hardware (such as GPU) monitoring\nLimited usability currently.");
 
-			layout.Controls.Add(new Label { Text = "Hardware monitor", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true });
+			layout.Controls.Add(new AlignedLabel { Text = "Hardware monitor" });
 			layout.Controls.Add(hwmon);
 
 			var iopriority = new CheckBox()
 			{
 				Checked = Taskmaster.IOPriorityEnabled,
+				//Anchor = AnchorStyles.Left,
 			};
 			tooltip.SetToolTip(iopriority, "Enable I/O priority adjstment\nWARNING: This can be REALLY BAD\nTake care what you do.");
 
-			layout.Controls.Add(new Label { Text = "I/O priority", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true });
+			layout.Controls.Add(new AlignedLabel { Text = "I/O priority" });
 			layout.Controls.Add(iopriority);
 
 			// FILL IN BOTTOM
 
-			layout.Controls.Add(new Label { Text = "Restart required", Font = boldfont, ForeColor = System.Drawing.Color.Maroon, Padding = BigPadding, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true });
-			layout.Controls.Add(new Label()); // empty
+			layout.Controls.Add(new AlignedLabel { Text = "Restart required", AutoSize=true, Font = boldfont, ForeColor = System.Drawing.Color.Maroon, Padding = BigPadding });
+			layout.Controls.Add(new EmptySpace());
 
 			savebutton.Click += (_, _ea) =>
 			{
