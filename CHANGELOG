@@ -5,6 +5,7 @@ Comprehensive changes can be found in Git change history:
 ## [0.13...]
 ### 2019-04-16
 	Added: Process start & exit logging. Configured per rule and disabled by default. (requested by Chairkicker Nick)
+	Internal: More re-organizing. Should have no impact on users.
 ### 2019-04-11
 	Added: Network packet counter. Testing where and what would be best.
 ### 2019-04-07
