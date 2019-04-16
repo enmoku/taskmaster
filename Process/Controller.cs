@@ -178,6 +178,11 @@ namespace Taskmaster
 		/// the process sets for itself.
 		/// </summary>
 		public int ModifyDelay { get; set; } = 0;
+        /// <summary>
+        /// Log start and exit of the process.
+        /// </summary>
+        public bool LogStartAndExit { get; set; } = false;
+
 
 		public ProcessController(string name, ProcessPriorityClass? priority = null, int affinity = -1)
 		{
@@ -629,6 +634,11 @@ namespace Taskmaster
 			}
 
 			app["Logging"].BoolValue = LogAdjusts;
+
+            if (LogStartAndExit)
+                app["Log start and exit"].BoolValue = true;
+            else
+                app.TryRemove("Log start and exit");
 
 			// pass to config manager
 			NeedsSaving = false;

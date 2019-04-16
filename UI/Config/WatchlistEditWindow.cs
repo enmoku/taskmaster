@@ -228,6 +228,7 @@ namespace Taskmaster.UI.Config
 				Controller.IOPriority = (ioPriority?.SelectedIndex ?? 0) - 1;
 
 			Controller.LogAdjusts = logAdjusts.Checked;
+			Controller.LogStartAndExit = logStartNExit.Checked;
 
 			Controller.OrderPreference = Convert.ToInt32(preforder.Value).Constrain(0, 100);
 
@@ -275,7 +276,7 @@ namespace Taskmaster.UI.Config
 		ListView ignorelist = null;
 		NumericUpDown preforder = null;
 
-		CheckBox logAdjusts = null;
+		CheckBox logAdjusts = null, logStartNExit=null;
 
 		int cpumask = 0;
 
@@ -874,6 +875,13 @@ namespace Taskmaster.UI.Config
 
 			lt.Controls.Add(new Label() { Text = "Log adjusts", TextAlign = System.Drawing.ContentAlignment.MiddleLeft });
 			lt.Controls.Add(logAdjusts);
+			lt.Controls.Add(new Label());
+
+			logStartNExit = new CheckBox() { Checked = Controller.LogStartAndExit };
+			tooltip.SetToolTip(logStartNExit, "You can disable logging adjust events for this specific rule, from both UI and disk.\nUse Configuration > Logging > Process adjusts for all.");
+
+			lt.Controls.Add(new Label() { Text = "Log start && exit", TextAlign = System.Drawing.ContentAlignment.MiddleLeft });
+			lt.Controls.Add(logStartNExit);
 			lt.Controls.Add(new Label());
 
 			preforder = new NumericUpDown()

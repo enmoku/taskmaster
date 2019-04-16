@@ -506,7 +506,7 @@ namespace Taskmaster
 				{
 					info.Timer = Stopwatch.StartNew();
 
-					ProcessTriage(info);
+					ProcessTriage(info, old:true);
 
 					if (PageToDisk)
 					{
@@ -929,6 +929,7 @@ namespace Taskmaster
 						OrderPreference = (section.Get("Preference")?.IntValue.Constrain(0, 100) ?? 10),
 						IOPriority = (section.Get("IO priority")?.IntValue.Constrain(0, 2) ?? -1), // 0-1 background, 2 = normal, anything else seems to have no effect
 						LogAdjusts = (section.Get("Logging")?.BoolValue ?? true),
+						LogStartAndExit = (section.Get("Log start and exit")?.BoolValue ?? false),
 						Volume = (section.Get("Volume")?.FloatValue.Constrain(0.0f, 1.0f) ?? 0.5f),
 						VolumeStrategy = (AudioVolumeStrategy)(section.Get("Volume strategy")?.IntValue.Constrain(0, 5) ?? 0),
 					};
@@ -1630,7 +1631,7 @@ namespace Taskmaster
 		}
 
 		// TODO: This should probably be pushed into ProcessController somehow.
-		async void ProcessTriage(ProcessEx info)
+		async void ProcessTriage(ProcessEx info, bool old=false)
 		{
 			if (DisposedOrDisposing) throw new ObjectDisposedException("ProcessTriage called when ProcessManager was already disposed");
 
@@ -1667,6 +1668,14 @@ namespace Taskmaster
 
 					await Task.Delay(0, cts.Token).ConfigureAwait(false); // asyncify again
 					if (cts.IsCancellationRequested) return;
+
+					if (!old && prc.LogStartAndExit)
+					{
+						Log.Information($"<Process> {info.Name} #{info.Id} started.");
+						info.Process.Exited += (_, _ea) => Log.Information($"<Process> {info.Name} #{info.Id} exited.");
+						info.Process.EnableRaisingEvents = true;
+						// TOOD: What if the process exited just before we enabled raising for the events?
+					}
 
 					try
 					{
