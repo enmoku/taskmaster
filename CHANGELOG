@@ -3,11 +3,14 @@ Comprehensive changes can be found in Git change history:
 	https://github.com/mkahvi/taskmaster/commits/master
 
 ## [0.13...]
+### 2019-04-17
+	Changed: A lot of start-up output was removed or bundled up into fewer lines.
 ### 2019-04-16
 	Added: Process start & exit logging. Configured per rule and disabled by default. (requested by Chairkicker Nick)
 	Internal: More re-organizing. Should have no impact on users.
 	Internal: UI building. Should have no impact on users.
 	Internal: Better scoping of variables so they don't linger forever.
+	Changed: Filename and pathname validation is relaxed. It will now allow some invalid input but at least it shouldn't get stuck on user just clicking about.
 ### 2019-04-11
 	Added: Network packet counter. Testing where and what would be best.
 ### 2019-04-07
