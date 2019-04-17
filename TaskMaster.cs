@@ -446,17 +446,11 @@ namespace Taskmaster
 
 					Config.Flush(); // early save of configs
 
-					if (RestartCounter > 0) Log.Information($"<Core> Restarted {RestartCounter.ToString()} time(s)");
+					if (RestartCounter > 0 && Trace) Log.Debug($"<Core> Restarted {RestartCounter.ToString()} time(s)");
 					startTimer.Stop();
+
 					Log.Information($"<Core> Initialization complete ({startTimer.ElapsedMilliseconds} ms)...");
 					startTimer = null;
-				}
-
-				if (Debug.Listeners.Count > 0)
-				{
-					Debug.WriteLine("Embedded Resources");
-					foreach (var name in System.Reflection.Assembly.GetExecutingAssembly().GetManifestResourceNames())
-						Debug.WriteLine(" - " + name);
 				}
 
 				if (State == Runstate.Normal)

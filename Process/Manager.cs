@@ -115,7 +115,7 @@ namespace Taskmaster
 			//for (int i = 0; i < CPUCount - 1; i++)
 			//	allCPUsMask = (allCPUsMask << 1) | 1;
 
-			Log.Information($"<CPU> Logical cores: {CPUCount}, full mask: {Convert.ToString(AllCPUsMask, 2)} ({AllCPUsMask} = OS control)");
+			if (DebugProcesses) Log.Debug($"<CPU> Logical cores: {CPUCount}, full mask: {Convert.ToString(AllCPUsMask, 2)} ({AllCPUsMask} = OS control)");
 
 			LoadConfig();
 
@@ -154,12 +154,6 @@ namespace Taskmaster
 					where prc.FriendlyName.Equals(friendlyname, StringComparison.InvariantCultureIgnoreCase)
 					select prc)
 					.FirstOrDefault()) != null;
-
-		/// <summary>
-		/// Number of watchlist items with path restrictions.
-		/// </summary>
-		int WatchlistWithPath = 0;
-		int WatchlistWithHybrid = 0;
 
 		/// <summary>
 		/// Executable name to ProcessControl mapping.
@@ -657,15 +651,11 @@ namespace Taskmaster
 		{
 			lock (watchlist_lock)
 			{
-				if (string.IsNullOrEmpty(prc.Executable))
-					WatchlistWithPath += 1;
-				else
-				{
+				if (!string.IsNullOrEmpty(prc.Executable))
 					ExeToController.TryAdd(prc.ExecutableFriendlyName.ToLowerInvariant(), prc);
 
-					if (!string.IsNullOrEmpty(prc.Path))
-						WatchlistWithHybrid += 1;
-				}
+				if (!string.IsNullOrEmpty(prc.Path))
+					WatchlistWithPath++;
 
 				Watchlist.TryAdd(prc, 0);
 				RenewWatchlistCache();
@@ -705,9 +695,6 @@ namespace Taskmaster
 				if (modified) tscanSetting.Comment = "Frequency (in seconds) at which we scan for processes. 0 disables.";
 				dirtyconfig |= modified;
 
-				if (ScanFrequency.HasValue)
-					Log.Information("<Process> Scan every " + $"{ScanFrequency.Value.TotalSeconds:N0}" + " seconds.");
-
 				// --------------------------------------------------------------------------------------------------------
 
 				var wmipollingSetting = perfsec.GetOrSet("WMI event watcher", false, out modified);
@@ -718,9 +705,6 @@ namespace Taskmaster
 				WMIPollDelay = wmipolldelaySetting.IntValue.Constrain(1, 30);
 				if (modified) wmipolldelaySetting.Comment = "WMI process watcher delay (in seconds).  Smaller gives better results but can inrease CPU usage. Accepted values: 1 to 30.";
 				dirtyconfig |= modified;
-
-				Log.Information("<Process> New instance event watcher: " + (WMIPolling ? HumanReadable.Generic.Enabled : HumanReadable.Generic.Disabled));
-				if (WMIPolling) Log.Information("<Process> New instance poll delay: " + $"{WMIPollDelay}s");
 
 				// --------------------------------------------------------------------------------------------------------
 
@@ -791,9 +775,28 @@ namespace Taskmaster
 				if (dirtyconfig) corecfg.MarkDirty();
 			}
 
+
+			var sbs = new StringBuilder();
+			sbs.Append("<Process> ");
+
+			if (ScanFrequency.HasValue)
+				sbs.Append($"Scan frequency: {ScanFrequency.Value.TotalSeconds:N0}s");
+
+			sbs.Append("; ");
+
+			if (WMIPolling)
+				sbs.Append("New instance watcher poll delay " + WMIPollDelay + "s");
+			else
+				sbs.Append("New instance watcher disabled");
+
+			sbs.Append("; ");
+
 			if (IgnoreRecentlyModified.HasValue)
-				Log.Information($"<Process> Ignore recently modified: {IgnoreRecentlyModified.Value.TotalMinutes:N1} minute cooldown");
-			Log.Information($"<Process> Self-determination: {(IgnoreRecentlyModified.HasValue ? "Possible" : "Impossible")}");
+				sbs.Append($"Recently modified ignored for {IgnoreRecentlyModified.Value.TotalMinutes:N1} mins");
+			else
+				sbs.Append("Recently modified not ignored");
+
+			Log.Information(sbs.ToString());
 		}
 
 		void LoadWatchlist()
@@ -803,6 +806,8 @@ namespace Taskmaster
 			var appcfg = Config.Load(WatchlistFile);
 
 			bool dirtyconfig = false;
+
+			int WatchlistWithHybrid = 0;
 
 			if (appcfg.Config.ItemCount == 0)
 			{
@@ -972,6 +977,9 @@ namespace Taskmaster
 
 					AddController(prc);
 
+					if (!string.IsNullOrEmpty(prc.Executable) && !string.IsNullOrEmpty(prc.Path))
+						WatchlistWithHybrid += 1;
+
 					// cnt.Children &= ControlChildren;
 
 					// cnt.delay = section.Contains("delay") ? section["delay"].IntValue : 30; // TODO: Add centralized default delay
@@ -990,9 +998,7 @@ namespace Taskmaster
 
 			// --------------------------------------------------------------------------------------------------------
 
-			Log.Information("<Process> Name-based watchlist: " + (ExeToController.Count - WatchlistWithHybrid) + " items");
-			Log.Information("<Process> Path-based watchlist: " + WatchlistWithPath + " items");
-			Log.Information("<Process> Hybrid watchlist: " + WatchlistWithHybrid + " items");
+			Log.Information($"<Process> Watchlist items – Name-based: {(Watchlist.Count - WatchlistWithPath)}; Path-based: {WatchlistWithPath - WatchlistWithHybrid}; Hybrid: {WatchlistWithHybrid} – Total: {Watchlist.Count}");
 		}
 
 		public static readonly string[] IONames = new[] { "Background", "Low", "Normal" };
@@ -1392,6 +1398,11 @@ namespace Taskmaster
 		}
 
 		// TODO: ADD CACHE: pid -> process name, path, process
+
+		/// <summary>
+		/// Number of watchlist items with path restrictions.
+		/// </summary>
+		int WatchlistWithPath = 0;
 
 		bool GetPathController(ProcessEx info, out ProcessController prc)
 		{

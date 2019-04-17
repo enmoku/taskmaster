@@ -125,8 +125,8 @@ namespace Taskmaster.Network
 
 				if (dirtyconf) corecfg.MarkDirty();
 			}
-
-			Log.Information("<Network> Traffic sample frequency: " + PacketStatTimerInterval + "s");
+			
+			if (Trace) Log.Debug("<Network> Traffic sample frequency: " + PacketStatTimerInterval + "s");
 		}
 
 		public Manager()

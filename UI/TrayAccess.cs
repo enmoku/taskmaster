@@ -225,15 +225,15 @@ namespace Taskmaster.UI
 
 			if (HotkeysRegistered) return;
 
+			bool regM = false, regR = false;
+
 			try
 			{
 				NativeMethods.RegisterHotKey(Handle, 0, hotkeymodifiers, Keys.M.GetHashCode());
-
-				Log.Information("<Global> Registered hotkey: ctrl-alt-shift-m = free memory [ignore foreground]");
+				regM = true;
 
 				NativeMethods.RegisterHotKey(Handle, 1, hotkeymodifiers, Keys.R.GetHashCode());
-
-				Log.Information("<Global> Registered hotkey: ctrl-alt-shift-r = scan");
+				regR = true;
 
 				HotkeysRegistered = true;
 			}
@@ -241,6 +241,13 @@ namespace Taskmaster.UI
 			{
 				Logging.Stacktrace(ex);
 			}
+
+			var sbs = new System.Text.StringBuilder();
+			sbs.Append("<Global> Registerd hotkeys: ");
+			if (regM) sbs.Append("ctrl-alt-shift-m = free memory [foreground ignored]");
+			if (regM && regR) sbs.Append(", ");
+			if (regR) sbs.Append("ctrl-alt-shift-r = scan");
+			Log.Information(sbs.ToString());
 		}
 
 		void UnregisterGlobalHotkeys()

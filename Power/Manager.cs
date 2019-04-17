@@ -823,18 +823,16 @@ namespace Taskmaster.Power
 
 			// --------------------------------------------------------------------------------------------------------
 
+			// --------------------------------------------------------------------------------------------------------
+
+			Log.Information("<Power> Behaviour: " + GetBehaviourName(Behaviour) + "; Restore mode: " + RestoreMethod.ToString() + " [" + RestoreMode.ToString() + "]");
+
 			Log.Information("<Power> Watchlist powerdown delay: " +
 				(PowerdownDelay.HasValue ? $"{PowerdownDelay.Value.TotalSeconds:N0} s" : HumanReadable.Generic.Disabled));
 
-			// --------------------------------------------------------------------------------------------------------
-
-			LogBehaviourState();
-
-			Log.Information("<Power> Session lock: " + (SessionLockPowerMode == Mode.Undefined ? HumanReadable.Generic.Ignore : SessionLockPowerMode.ToString()));
-			Log.Information("<Power> Restore mode: " + RestoreMethod.ToString() + " [" + RestoreMode.ToString() + "]");
-
-			Log.Information("<Session> User AFK timeout: " + (SessionLockPowerOffIdleTimeout.HasValue ? $"{SessionLockPowerOffIdleTimeout.Value.TotalSeconds:N0}s" : HumanReadable.Generic.Disabled));
-			Log.Information("<Session> Immediate power off on lock: " + (SessionLockPowerOff ? HumanReadable.Generic.Enabled : HumanReadable.Generic.Disabled));
+			Log.Information("<Session> On session lock – User AFK timeout: " + (SessionLockPowerOffIdleTimeout.HasValue ? $"{SessionLockPowerOffIdleTimeout.Value.TotalSeconds:N0}s" : HumanReadable.Generic.Disabled)
+				+ "; Monitor power off: " + (SessionLockPowerOff ? "Immediate" : "Delayed")
+				+ "; Power mode: " + (SessionLockPowerMode == Mode.Undefined ? HumanReadable.Generic.Ignore : SessionLockPowerMode.ToString()));
 		}
 
 		// TODO: Should detect if saving is ACTUALLY needed
@@ -868,6 +866,7 @@ namespace Taskmaster.Power
 							power["Watchlist powerdown delay"].IntValue = Convert.ToInt32(PowerdownDelay.Value.TotalSeconds);
 						else
 							power.TryRemove("Watchlist powerdown delay");
+
 						var autopower = corecfg.Config["Power / Auto"];
 
 						// BACKOFF
@@ -911,24 +910,7 @@ namespace Taskmaster.Power
 		{
 			if (DisposedOrDisposing) throw new ObjectDisposedException("LogBehaviourState called after PowerManager was disposed.");
 
-			string mode = string.Empty;
-			switch (Behaviour)
-			{
-				case PowerBehaviour.Auto:
-					mode = HumanReadable.Hardware.Power.AutoAdjust;
-					break;
-				case PowerBehaviour.RuleBased:
-					mode = HumanReadable.Hardware.Power.RuleBased;
-					break;
-				case PowerBehaviour.Manual:
-					mode = HumanReadable.Hardware.Power.Manual;
-					break;
-				default:
-					mode = HumanReadable.Generic.Undefined;
-					break;
-			}
-
-			Log.Information("<Power> Behaviour: " + mode);
+			Log.Information("<Power> Behaviour: " + GetBehaviourName(Behaviour));
 		}
 
 		int BackoffCounter { get; set; } = 0;
@@ -1307,6 +1289,7 @@ namespace Taskmaster.Power
 			bool reset = false;
 
 			Behaviour = pb;
+
 			LogBehaviourState();
 
 			Restore(new Cause(OriginType.User));
@@ -1466,7 +1449,7 @@ namespace Taskmaster.Power
 					else if (plan.Equals(HighPerformance)) { CurrentMode = Mode.HighPerformance; }
 					else { CurrentMode = Mode.Undefined; }
 
-					Log.Information($"<Power> Current: {CurrentMode.ToString()}");
+					if (DebugPower) Log.Debug($"<Power> Current: {CurrentMode.ToString()}");
 				}
 			}
 

@@ -56,7 +56,7 @@ namespace Taskmaster
 
 		static void LoadCoreConfig()
 		{
-			Log.Information("<Core> Loading configuration...");
+			if (Trace) Log.Debug("<Core> Loading configuration...");
 
 			bool isadmin = false;
 
@@ -259,7 +259,8 @@ namespace Taskmaster
 				MonitorCleanShutdown();
 
 				Log.Information("<Core> Verbosity: " + MemoryLog.MemorySink.LevelSwitch.MinimumLevel.ToString());
-				Log.Information("<Core> Self-optimize: " + (SelfOptimize ? HumanReadable.Generic.Enabled : HumanReadable.Generic.Disabled));
+
+				if (Trace) Log.Debug("<Core> Self-optimize: " + (SelfOptimize ? HumanReadable.Generic.Enabled : HumanReadable.Generic.Disabled));
 
 				// PROTECT USERS FROM TOO HIGH PERMISSIONS
 				isadmin = MKAh.Execution.IsAdministrator;
@@ -318,18 +319,19 @@ namespace Taskmaster
 
 			// END DEBUG
 
-			Log.Information($"<Core> Privilege level: {(isadmin ? "Admin" : "User")}");
-
-			Log.Information($"<Core> Path cache: {(PathCacheLimit == 0 ? HumanReadable.Generic.Disabled : PathCacheLimit.ToString())} items");
-
-			Log.Information($"<Core> Paging: {(PagingEnabled ? HumanReadable.Generic.Enabled : HumanReadable.Generic.Disabled)}");
+			if (Trace)
+			{
+				Log.Debug($"<Core> Privilege level: {(isadmin ? "Admin" : "User")}");
+				Log.Debug($"<Core> Path cache: {(PathCacheLimit == 0 ? HumanReadable.Generic.Disabled : PathCacheLimit.ToString())} items");
+				Log.Debug($"<Core> Paging: {(PagingEnabled ? HumanReadable.Generic.Enabled : HumanReadable.Generic.Disabled)}");
+			}
 
 			return;
 		}
 
 		static void InitializeComponents()
 		{
-			Log.Information("<Core> Loading components...");
+			if (Trace) Log.Debug("<Core> Loading components...");
 
 			var timer = System.Diagnostics.Stopwatch.StartNew();
 
@@ -502,7 +504,7 @@ namespace Taskmaster
 				*/
 
 				int selfAffMask = SelfAffinity.Replace(0, ProcessManager.AllCPUsMask);
-				Log.Information($"<Core> Self-optimizing, priority: {SelfPriority.ToString()}, affinity: {HumanInterface.BitMask(selfAffMask, ProcessManager.CPUCount)}");
+				Log.Information($"<Core> Self-optimizing – Priority: {SelfPriority.ToString()}; Affinity: {HumanInterface.BitMask(selfAffMask, ProcessManager.CPUCount)}");
 
 				self.ProcessorAffinity = new IntPtr(selfAffMask); // this should never throw an exception
 				self.PriorityClass = SelfPriority;
