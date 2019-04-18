@@ -66,8 +66,9 @@ namespace Taskmaster.UI
 			// BUILD UI
 			IconCache = System.Drawing.Icon.ExtractAssociatedIcon(System.Reflection.Assembly.GetExecutingAssembly().Location);
 
-			Tray = new NotifyIcon {
-				Text = $"{System.Windows.Forms.Application.ProductName}!",
+			Tray = new NotifyIcon
+			{
+				Text = Taskmaster.Name + "!",
 				Icon = IconCache,
 			}; // Tooltip so people know WTF I am.
 
@@ -94,7 +95,7 @@ namespace Taskmaster.UI
 
 			Log.Information("<Core> Run-at-start scheduler: " + (runatstartsch ? "Found" : "Missing"));
 
-			menu_configuration.DropDownItems.Add(new ToolStripMenuItem("Power", null, (_, _ea) => Config.PowerConfigWindow.Reveal(powermanager, centerOnScreen:true)));
+			menu_configuration.DropDownItems.Add(new ToolStripMenuItem(HumanReadable.Hardware.Power.Section, null, (_, _ea) => Config.PowerConfigWindow.Reveal(powermanager, centerOnScreen:true)));
 			menu_configuration.DropDownItems.Add(new ToolStripMenuItem("Advanced", null, (_, _ea) => Config.AdvancedConfig.Reveal(centerOnScreen:true))); // FIXME: MODAL
 			menu_configuration.DropDownItems.Add(new ToolStripMenuItem("Components", null, (_, _ea) => Config.ComponentConfigurationWindow.Reveal(centerOnScreen:true))); // FIXME: MODAL
 			menu_configuration.DropDownItems.Add(new ToolStripSeparator());
@@ -104,8 +105,8 @@ namespace Taskmaster.UI
 			menu_configuration.DropDownItems.Add(new ToolStripSeparator());
 			menu_configuration.DropDownItems.Add(new ToolStripMenuItem("Open in file manager", null, (_, _ea) => Process.Start(DataPath)));
 
-			var menu_restart = new ToolStripMenuItem("Restart", null, (_s, _ea) => ConfirmExit(restart: true));
-			var menu_exit = new ToolStripMenuItem("Exit", null, (_s, _ea) => ConfirmExit(restart: false));
+			var menu_restart = new ToolStripMenuItem(HumanReadable.System.Process.Restart, null, (_s, _ea) => ConfirmExit(restart: true));
+			var menu_exit = new ToolStripMenuItem(HumanReadable.System.Process.Exit, null, (_s, _ea) => ConfirmExit(restart: false));
 
 			ms.Items.Add(menu_windowopen);
 			ms.Items.Add(menu_volumeopen);
@@ -141,7 +142,7 @@ namespace Taskmaster.UI
 
 			using (var cfg = Taskmaster.Config.Load(CoreConfigFilename).BlockUnload())
 			{
-				int exdelay = cfg.Config["Experimental"].Get("Explorer Restart")?.IntValue ?? 0;
+				int exdelay = cfg.Config[Constants.Experimental].Get("Explorer Restart")?.IntValue ?? 0;
 				ExplorerRestartHelpDelay = exdelay > 0 ? (TimeSpan?)TimeSpan.FromSeconds(exdelay.Min(5)) : null;
 			}
 
@@ -710,13 +711,13 @@ namespace Taskmaster.UI
 				{
 					if (!MKAh.Execution.IsAdministrator)
 					{
-						SimpleMessageBox.ShowModal("Taskmaster! – run at login", "Scheduler can not be modified without admin rights.", SimpleMessageBox.Buttons.OK);
+						SimpleMessageBox.ShowModal(Taskmaster.Name+"! – run at login", "Scheduler can not be modified without admin rights.", SimpleMessageBox.Buttons.OK);
 						return;
 					}
 
 					if (!menu_runatstart_sch.Checked)
 					{
-						if (SimpleMessageBox.ShowModal("Taskmaster! – run at login", "This will add on-login scheduler to run TM as admin, is this right?", SimpleMessageBox.Buttons.AcceptCancel)
+						if (SimpleMessageBox.ShowModal(Taskmaster.Name+"! – run at login", "This will add on-login scheduler to run TM as admin, is this right?", SimpleMessageBox.Buttons.AcceptCancel)
 							== SimpleMessageBox.ResultType.Cancel) return;
 					}
 					// can't be disabled without admin rights?

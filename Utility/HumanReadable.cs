@@ -70,6 +70,7 @@ namespace Taskmaster
 				public const string AffinityStrategy = Affinity + " strategy";
 
 				public const string Restart = "Restart";
+				public const string Exit = "Exit";
 				public const string Rescan = "Rescan";
 			}
 		}
@@ -102,6 +103,8 @@ namespace Taskmaster
 			public static class Audio
 			{
 				public const string Section = "Audio";
+
+				public const string Volume = "Volume";
 			}
 
 			public static class Monitor

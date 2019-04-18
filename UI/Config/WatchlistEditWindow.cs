@@ -288,7 +288,7 @@ namespace Taskmaster.UI.Config
 			AutoSizeMode = AutoSizeMode.GrowOnly;
 			AutoSize = true;
 
-			Text = Controller.FriendlyName + " (" + (Controller.Executable ?? Controller.Path) + ") – " + Application.ProductName;
+			Text = Controller.FriendlyName + " (" + (Controller.Executable ?? Controller.Path) + ") – " + Taskmaster.Name;
 
 			Padding = new Padding(12);
 

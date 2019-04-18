@@ -276,7 +276,6 @@ namespace Taskmaster.Audio
 
 				//
 
-				var vname = "Volume";
 				var cname = "Control";
 
 				double devvol = double.NaN;
@@ -288,7 +287,7 @@ namespace Taskmaster.Audio
 
 					bool dirty = false, modified = false;
 
-					devvol = devsec.GetOrSet(vname, DefaultVolume, out modified).DoubleValue;
+					devvol = devsec.GetOrSet(HumanReadable.Hardware.Audio.Volume, DefaultVolume, out modified).DoubleValue;
 					dirty |= modified;
 					devcontrol = devsec.GetOrSet(cname, false, out modified).BoolValue;
 					dirty |= modified;
@@ -341,7 +340,7 @@ namespace Taskmaster.Audio
 							dirty |= modified;
 							bool control = devsec.GetOrSet("Control", false, out modified).BoolValue;
 							dirty |= modified;
-							float target = devsec.Get("Volume")?.FloatValue ?? float.NaN;
+							float target = devsec.Get(HumanReadable.Hardware.Audio.Volume)?.FloatValue ?? float.NaN;
 
 							var mdev = new Device(dev)
 							{

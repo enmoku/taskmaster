@@ -762,7 +762,7 @@ namespace Taskmaster.Network
 						Log.Information($"<Network> IPv6 address changed: {oldV6Address} → {IPv6Address}");
 					}
 
-					Tray.Tooltip(4000, sbs.ToString(), "Taskmaster", System.Windows.Forms.ToolTipIcon.Warning);
+					Tray.Tooltip(4000, sbs.ToString(), Name, System.Windows.Forms.ToolTipIcon.Warning);
 
 					// bad since if it's not clicked, we react to other tooltip clicks, too
 					// TODO: Need replaceable callback or something.
@@ -777,7 +777,7 @@ namespace Taskmaster.Network
 				{
 					//Log.Warning("<Network> Unstable connectivity detected.");
 
-					Tray.Tooltip(2000, "Unstable internet connection detected!", "Taskmaster",
+					Tray.Tooltip(2000, "Unstable internet connection detected!", Name,
 						System.Windows.Forms.ToolTipIcon.Warning);
 				}
 			}

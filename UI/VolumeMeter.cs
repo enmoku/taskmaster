@@ -171,7 +171,7 @@ namespace Taskmaster.UI
 			using (var uicfg = Taskmaster.Config.Load(MainWindow.UIConfigFilename).BlockUnload())
 			{
 				var winsec = uicfg.Config["Windows"];
-				var winpos = winsec["Volume"].IntArray;
+				var winpos = winsec[HumanReadable.Hardware.Audio.Volume].IntArray;
 
 				if (winpos != null && winpos.Length == 2)
 				{
@@ -271,8 +271,8 @@ namespace Taskmaster.UI
 				using (var cfg = Taskmaster.Config.Load(MainWindow.UIConfigFilename).BlockUnload())
 				{
 					var winsec = cfg.Config["Windows"];
-
-					winsec["Volume"].IntArray = new int[] { Bounds.Left, Bounds.Top };
+					
+					winsec[HumanReadable.Hardware.Audio.Volume].IntArray = new int[] { Bounds.Left, Bounds.Top };
 
 					cfg.MarkDirty();
 				}

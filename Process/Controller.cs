@@ -624,12 +624,12 @@ namespace Taskmaster
 
 			if (VolumeStrategy != Audio.VolumeStrategy.Ignore)
 			{
-				app["Volume"].FloatValue = Volume;
+				app[HumanReadable.Hardware.Audio.Volume].FloatValue = Volume;
 				app["Volume strategy"].IntValue = (int)VolumeStrategy;
 			}
 			else
 			{
-				app.TryRemove("Volume");
+				app.TryRemove(HumanReadable.Hardware.Audio.Volume);
 				app.TryRemove("Volume strategy");
 			}
 

@@ -71,13 +71,16 @@ namespace Taskmaster
 		//Windows.PerformanceCounter PageFaults = new Windows.PerformanceCounter("Memory", "Page Faults/sec", null);
 		Windows.PerformanceCounter PageInputs = null;
 
-		// NVM
-		Windows.PerformanceCounter SplitIO = new Windows.PerformanceCounter("LogicalDisk", "Split IO/sec", "_Total");
-		Windows.PerformanceCounter NVMTransfers = new Windows.PerformanceCounter("LogicalDisk", "Disk Transfers/sec", "_Total");
-		Windows.PerformanceCounter NVMQueue = new Windows.PerformanceCounter("PhysicalDisk", "Current Disk Queue Length", "_Total");
+		const string LogicalDiskName = "LogicalDisk";
+		const string AllInstancesName = "_Total";
 
-		Windows.PerformanceCounter NVMReadDelay = new Windows.PerformanceCounter("LogicalDisk", "Avg. Disk Sec/Read", "_Total");
-		Windows.PerformanceCounter NVMWriteDelay = new Windows.PerformanceCounter("LogicalDisk", "Avg. Disk Sec/Write", "_Total");
+		// NVM
+		Windows.PerformanceCounter SplitIO = new Windows.PerformanceCounter(LogicalDiskName, "Split IO/sec", AllInstancesName);
+		Windows.PerformanceCounter NVMTransfers = new Windows.PerformanceCounter(LogicalDiskName, "Disk Transfers/sec", AllInstancesName);
+		Windows.PerformanceCounter NVMQueue = new Windows.PerformanceCounter("PhysicalDisk", "Current Disk Queue Length", AllInstancesName);
+
+		Windows.PerformanceCounter NVMReadDelay = new Windows.PerformanceCounter(LogicalDiskName, "Avg. Disk Sec/Read", AllInstancesName);
+		Windows.PerformanceCounter NVMWriteDelay = new Windows.PerformanceCounter(LogicalDiskName, "Avg. Disk Sec/Write", AllInstancesName);
 
 		/*
 		Windows.PerformanceCounter NetRetransmit = new Windows.PerformanceCounter("TCP", "Segments Retransmitted/sec", "_Total");
@@ -397,8 +400,7 @@ namespace Taskmaster
 			var files = System.IO.Directory.GetFiles(LogPath, "*", System.IO.SearchOption.AllDirectories);
 			foreach (var filename in files)
 			{
-				var fi = new System.IO.FileInfo(System.IO.Path.Combine(LogPath, filename));
-				size += fi.Length;
+				size += (new System.IO.FileInfo(System.IO.Path.Combine(LogPath, filename))).Length;
 			}
 
 			if (size >= Settings.FatalLogSizeThreshold * 1_000_000)
@@ -486,14 +488,10 @@ namespace Taskmaster
 							// The following should just call something in ProcessManager
 							int ignorepid = -1;
 
-							if (Settings.MemIgnoreFocus && activeappmonitor != null)
+							if (Settings.MemIgnoreFocus && activeappmonitor != null && User.IdleTime().TotalMinutes <= 3d)
 							{
-								var idle = User.IdleTime();
-								if (idle.TotalMinutes <= 3d)
-								{
-									ignorepid = activeappmonitor.Foreground;
-									Log.Verbose("<Auto-Doc> Protecting foreground app (#" + ignorepid + ")");
-								}
+								ignorepid = activeappmonitor.Foreground;
+								Log.Verbose("<Auto-Doc> Protecting foreground app (#" + ignorepid + ")");
 							}
 
 							var sbs = new StringBuilder()
@@ -534,9 +532,10 @@ namespace Taskmaster
 						{
 							double actualgoal = ((Memory.Total * (pressure - 1d)) / 1_048_576);
 							double freegoal = actualgoal + Math.Max(512d, Memory.Total * 0.02 / 1_048_576); // 512 MB or 2% extra to give space for disk cache
-							Debug.WriteLine("Pressure:    " + $"{pressure * 100:N1} %");
-							Debug.WriteLine("Actual goal: " + $"{actualgoal:N2}");
-							Debug.WriteLine("Stated goal: " + $"{freegoal:N2}");
+							Debug.WriteLine(
+								"Pressure:    " + $"{pressure * 100:N1} %" + Environment.NewLine +
+								"Actual goal: " + $"{actualgoal:N2}" + Environment.NewLine +
+								"Stated goal: " + $"{freegoal:N2}");
 							Log.Warning($"<Memory> High pressure ({pressure * 100:N1} %), please close applications to improve performance (suggested minimum goal: {freegoal:N0}" + " MiB).");
 							// TODO: Could list like ~5 apps that are using most memory here
 							WarnedAboutMemoryPressure = true;

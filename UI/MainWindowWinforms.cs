@@ -1015,10 +1015,16 @@ namespace Taskmaster.UI
 
 		ToolStripMenuItem menu_action_restart = null;
 		ToolStripMenuItem menu_action_restartadmin = null;
+		const string UpdateFrequencyName = "Update frequency";
+		const string TopmostName = "Topmost";
+		const string InfoName = "Info";
+		const string TraceName = "Trace";
+		const string ShowUnmodifiedPortionsName = "Show unmodified portions";
+		const string WatchlistName = "Watchlist";
 
 		void BuildUI()
 		{
-			Text = $"{Application.ProductName} ({Application.ProductVersion})"
+			Text = Taskmaster.Name + " " + Version
 #if DEBUG
 				+ " DEBUG"
 #endif
@@ -1069,7 +1075,7 @@ namespace Taskmaster.UI
 			{
 				Enabled = PagingEnabled,
 			};
-			menu_action_restart = new ToolStripMenuItem("Restart", null, RestartRequestEvent);
+			menu_action_restart = new ToolStripMenuItem(HumanReadable.System.Process.Restart, null, RestartRequestEvent);
 			menu_action_restartadmin = new ToolStripMenuItem("Restart as admin", null, RestartRequestEvent)
 			{
 				Enabled = !MKAh.Execution.IsAdministrator
@@ -1086,7 +1092,7 @@ namespace Taskmaster.UI
 
 			#region Miscellaneous toolstrip menu
 			var menu_view = new ToolStripMenuItem("View");
-			var menu_view_volume = new ToolStripMenuItem("Volume", null, ShowVolumeBox)
+			var menu_view_volume = new ToolStripMenuItem(HumanReadable.Hardware.Audio.Volume, null, ShowVolumeBox)
 			{
 				Enabled = AudioManagerEnabled,
 			};
@@ -1100,7 +1106,7 @@ namespace Taskmaster.UI
 			// Sub Items
 			var menu_config_behaviour = new ToolStripMenuItem("Behaviour");
 			var menu_config_visual = new ToolStripMenuItem("Visuals");
-			var menu_config_logging = new ToolStripMenuItem("Logging");
+			var menu_config_logging = new ToolStripMenuItem(HumanReadable.Generic.Logging);
 			var menu_config_bitmaskstyle = new ToolStripMenuItem("Bitmask style");
 			//var menu_config_power = new ToolStripMenuItem("Power");// this submenu is no longer used
 
@@ -1165,7 +1171,7 @@ namespace Taskmaster.UI
 				Checked = AlternateRowColorsLog,
 				CheckOnClick = true,
 			};
-			var menu_config_visuals_rowalternate_watchlist = new ToolStripMenuItem("Watchlist")
+			var menu_config_visuals_rowalternate_watchlist = new ToolStripMenuItem(WatchlistName)
 			{
 				Checked = AlternateRowColorsWatchlist,
 				CheckOnClick = true,
@@ -1186,7 +1192,7 @@ namespace Taskmaster.UI
 
 				using (var uicfg = Taskmaster.Config.Load(UIConfigFilename).BlockUnload())
 				{
-					uicfg.Config["Visuals"]["Alternate log row colors"].BoolValue = AlternateRowColorsLog;
+					uicfg.Config[Constants.Visuals]["Alternate log row colors"].BoolValue = AlternateRowColorsLog;
 					uicfg.MarkDirty();
 				}
 
@@ -1198,7 +1204,7 @@ namespace Taskmaster.UI
 				AlternateRowColorsWatchlist = menu_config_visuals_rowalternate_watchlist.Checked;
 				using (var uicfg = Taskmaster.Config.Load(UIConfigFilename).BlockUnload())
 				{
-					uicfg.Config["Visuals"]["Alternate watchlist row colors"].BoolValue = AlternateRowColorsWatchlist;
+					uicfg.Config[Constants.Visuals]["Alternate watchlist row colors"].BoolValue = AlternateRowColorsWatchlist;
 					uicfg.MarkDirty();
 				}
 
@@ -1210,7 +1216,7 @@ namespace Taskmaster.UI
 
 				using (var uicfg = Taskmaster.Config.Load(UIConfigFilename).BlockUnload())
 				{
-					uicfg.Config["Visuals"]["Alternate device row colors"].BoolValue = AlternateRowColorsDevices;
+					uicfg.Config[Constants.Visuals]["Alternate device row colors"].BoolValue = AlternateRowColorsDevices;
 					uicfg.MarkDirty();
 				}
 
@@ -1223,9 +1229,9 @@ namespace Taskmaster.UI
 			menu_config_visual.DropDownItems.Add(menu_config_visuals_rowalternate);
 
 			//
-			var menu_config_visuals_topmost = new ToolStripMenuItem("Stay on top");
+			var menu_config_visuals_topmost = new ToolStripMenuItem(Constants.StayOnTop);
 
-			var menu_config_visuals_topmost_volume = new ToolStripMenuItem("Volume meter")
+			var menu_config_visuals_topmost_volume = new ToolStripMenuItem(Constants.VolumeMeter)
 			{
 				Checked = false,
 				CheckOnClick = true,
@@ -1234,9 +1240,9 @@ namespace Taskmaster.UI
 			{
 				using (var corecfg = Taskmaster.Config.Load(CoreConfigFilename).BlockUnload())
 				{
-					var volsec = corecfg.Config["Volume Meter"];
+					var volsec = corecfg.Config[Constants.VolumeMeter];
 
-					volsec["Topmost"].BoolValue = menu_config_visuals_topmost_volume.Checked;
+					volsec[TopmostName].BoolValue = menu_config_visuals_topmost_volume.Checked;
 					corecfg.MarkDirty();
 				}
 
@@ -1267,7 +1273,7 @@ namespace Taskmaster.UI
 
 				using (var corecfg = Taskmaster.Config.Load(CoreConfigFilename).BlockUnload())
 				{
-					corecfg.Config["Logging"]["Show process adjusts"].BoolValue = ShowProcessAdjusts;
+					corecfg.Config[HumanReadable.Generic.Logging]["Show process adjusts"].BoolValue = ShowProcessAdjusts;
 					corecfg.MarkDirty();
 				}
 			};
@@ -1283,12 +1289,12 @@ namespace Taskmaster.UI
 
 				using (var corecfg = Taskmaster.Config.Load(CoreConfigFilename).BlockUnload())
 				{
-					corecfg.Config["Logging"]["Show session actions"].BoolValue = ShowSessionActions;
+					corecfg.Config[HumanReadable.Generic.Logging]["Show session actions"].BoolValue = ShowSessionActions;
 					corecfg.MarkDirty();
 				}
 			};
 
-			var menu_config_logging_showunmodified = new ToolStripMenuItem("Show unmodified portions")
+			var menu_config_logging_showunmodified = new ToolStripMenuItem(ShowUnmodifiedPortionsName)
 			{
 				Checked = ProcessManager.ShowUnmodifiedPortions,
 				CheckOnClick = true,
@@ -1299,7 +1305,7 @@ namespace Taskmaster.UI
 
 				using (var corecfg = Taskmaster.Config.Load(CoreConfigFilename).BlockUnload())
 				{
-					corecfg.Config["Logging"]["Show unmodified portions"].BoolValue = ProcessManager.ShowUnmodifiedPortions;
+					corecfg.Config[HumanReadable.Generic.Logging][ShowUnmodifiedPortionsName].BoolValue = ProcessManager.ShowUnmodifiedPortions;
 					corecfg.MarkDirty();
 				}
 			};
@@ -1314,7 +1320,7 @@ namespace Taskmaster.UI
 				ProcessManager.ShowOnlyFinalState = menu_config_logging_showonlyfinal.Checked;
 				using (var corecfg = Taskmaster.Config.Load(CoreConfigFilename).BlockUnload())
 				{
-					corecfg.Config["Logging"]["Show only final state"].BoolValue = ProcessManager.ShowOnlyFinalState;
+					corecfg.Config[HumanReadable.Generic.Logging]["Show only final state"].BoolValue = ProcessManager.ShowOnlyFinalState;
 					corecfg.MarkDirty();
 				}
 			};
@@ -1330,7 +1336,7 @@ namespace Taskmaster.UI
 
 				using (var corecfg = Taskmaster.Config.Load(CoreConfigFilename).BlockUnload())
 				{
-					corecfg.Config["Logging"]["Show network errors"].BoolValue = Network.Manager.ShowNetworkErrors;
+					corecfg.Config[HumanReadable.Generic.Logging]["Show network errors"].BoolValue = Network.Manager.ShowNetworkErrors;
 					corecfg.MarkDirty();
 				}
 			};
@@ -1345,7 +1351,7 @@ namespace Taskmaster.UI
 				Checked = loglevelswitch.MinimumLevel == Serilog.Events.LogEventLevel.Debug,
 				CheckOnClick = true,
 			};
-			var menu_config_logging_trace = new ToolStripMenuItem("Trace")
+			var menu_config_logging_trace = new ToolStripMenuItem(TraceName)
 			{
 				Checked = loglevelswitch.MinimumLevel == Serilog.Events.LogEventLevel.Verbose,
 				CheckOnClick = true,
@@ -1428,7 +1434,7 @@ namespace Taskmaster.UI
 
 			//
 
-			var menu_config_log = new ToolStripMenuItem("Logging");
+			var menu_config_log = new ToolStripMenuItem(HumanReadable.Generic.Logging);
 			var menu_config_log_power = new ToolStripMenuItem("Power mode changes", null, (_, _ea) => { });
 			menu_config_log.DropDownItems.Add(menu_config_log_power);
 
@@ -1459,7 +1465,7 @@ namespace Taskmaster.UI
 
 			LogIncludeLevel = MemoryLog.MemorySink.LevelSwitch; // HACK
 
-			menu_debug_loglevel_info = new ToolStripMenuItem("Info", null,
+			menu_debug_loglevel_info = new ToolStripMenuItem(InfoName, null,
 			(_, _ea) =>
 			{
 				LogIncludeLevel.MinimumLevel = Serilog.Events.LogEventLevel.Information;
@@ -1482,7 +1488,7 @@ namespace Taskmaster.UI
 				Checked = (LogIncludeLevel.MinimumLevel == Serilog.Events.LogEventLevel.Debug),
 			};
 #if DEBUG
-			menu_debug_loglevel_trace = new ToolStripMenuItem("Trace", null,
+			menu_debug_loglevel_trace = new ToolStripMenuItem(TraceName, null,
 			(_, _ea) =>
 			{
 				LogIncludeLevel.MinimumLevel = Serilog.Events.LogEventLevel.Verbose;
@@ -1645,13 +1651,13 @@ namespace Taskmaster.UI
 
 			// INFO menu
 			#region Info toolstrip menu
-			var menu_info = new ToolStripMenuItem("Info");
+			var menu_info = new ToolStripMenuItem(InfoName);
 			// Sub Items
 
 			menu_info.DropDownItems.Add(new ToolStripMenuItem("Github", null, (_, _ea) => Process.Start(GitURL)));
 			menu_info.DropDownItems.Add(new ToolStripMenuItem("Itch.io", null, (_, _ea) => Process.Start(ItchURL)));
 			menu_info.DropDownItems.Add(new ToolStripSeparator());
-			menu_info.DropDownItems.Add(new ToolStripMenuItem("License", null, (_, _ea) => OpenLicenseDialog()));
+			menu_info.DropDownItems.Add(new ToolStripMenuItem(Constants.License, null, (_, _ea) => OpenLicenseDialog()));
 			menu_info.DropDownItems.Add(new ToolStripSeparator());
 			menu_info.DropDownItems.Add(new ToolStripMenuItem("About", null, ShowAboutDialog));
 			#endregion
@@ -1672,10 +1678,10 @@ namespace Taskmaster.UI
 			menu_debug.DropDown.AutoClose = true;
 			menu_info.DropDown.AutoClose = true;
 
-			infoTab = new TabPage("Info") { Padding = BigPadding };
+			infoTab = new TabPage(InfoName) { Padding = BigPadding };
 			tabLayout.Controls.Add(infoTab);
 
-			watchTab = new TabPage("Watchlist") { Padding = BigPadding };
+			watchTab = new TabPage(WatchlistName) { Padding = BigPadding };
 			tabLayout.Controls.Add(watchTab);
 
 			var infopanel = new FlowLayoutPanel
@@ -1739,20 +1745,22 @@ namespace Taskmaster.UI
 
 			using (var cfg = Taskmaster.Config.Load(CoreConfigFilename).BlockUnload())
 			{
-				MaxLogSize = cfg.Config["Logging"].GetOrSet("UI max items", 200, out modified).IntValue;
+				var maxlogsize_t = cfg.Config[HumanReadable.Generic.Logging].GetOrSet("UI max items", 200, out modified);
+				MaxLogSize = maxlogsize_t.IntValue;
 				tdirty |= modified;
-				UItimer.Interval = cfg.Config["User Interface"].GetOrSet("Update frequency", 2000, out modified).IntValue.Constrain(100, 5000);
+				var uitimerinterval_t = cfg.Config[Constants.UserInterface].GetOrSet(UpdateFrequencyName, 2000, out modified);
+				UItimer.Interval = uitimerinterval_t.IntValue.Constrain(100, 5000);
 				tdirty |= modified;
 				if (tdirty)
 				{
-					cfg.Config["Logging"]["UI max items"].Comment = "Maximum number of items/lines to retain on UI level.";
-					cfg.Config["User Interface"]["Update frequency"].Comment = "In milliseconds. Frequency of controlled UI updates. Affects visual accuracy of timers and such. Valid range: 100 to 5000.";
+					maxlogsize_t.Comment = "Maximum number of items/lines to retain on UI level.";
+					uitimerinterval_t.Comment = "In milliseconds. Frequency of controlled UI updates. Affects visual accuracy of timers and such. Valid range: 100 to 5000.";
 					cfg.MarkDirty();
 				}
 
 				if (AudioManagerEnabled)
 				{
-					menu_config_visuals_topmost_volume.Checked = cfg.Config.Get("Volume Meter")?.Get("Topmost")?.BoolValue ?? true;
+					menu_config_visuals_topmost_volume.Checked = cfg.Config.Get(Constants.VolumeMeter)?.Get(TopmostName)?.BoolValue ?? true;
 				}
 			}
 
@@ -1849,7 +1857,7 @@ namespace Taskmaster.UI
 			// Insert info panel/tab contents
 			if (corepanel != null)
 			{
-				coresystems.Controls.Add(new AlignedLabel() { Text = "Core", Font = boldfont });
+				coresystems.Controls.Add(new AlignedLabel() { Text = Constants.Core, Font = boldfont });
 				coresystems.Controls.Add(corepanel);
 			}
 			if (gpupanel != null)
@@ -2091,16 +2099,16 @@ namespace Taskmaster.UI
 		{
 			using (var uicfg = Taskmaster.Config.Load(UIConfigFilename).BlockUnload())
 			{
-				var wincfg = uicfg.Config["Windows"];
-				var colcfg = uicfg.Config["Columns"];
-				var gencfg = uicfg.Config["Visuals"];
+				var wincfg = uicfg.Config[Constants.Windows];
+				var colcfg = uicfg.Config[Constants.Columns];
+				var gencfg = uicfg.Config[Constants.Visuals];
 
 				bool modified = false, dirty = false;
 
-				opentab = uicfg.Config["Tabs"].Get("Open")?.IntValue ?? 0;
+				opentab = uicfg.Config[Constants.Tabs].Get("Open")?.IntValue ?? 0;
 				appwidths = null;
 				var appwidthsDefault = new int[] { 20, 120, 140, 82, 60, 76, 46, 160 };
-				appwidths = colcfg.GetOrSet("Apps", appwidthsDefault, out modified).IntArray;
+				appwidths = colcfg.GetOrSet(Constants.Apps, appwidthsDefault, out modified).IntArray;
 				if (appwidths.Length != appwidthsDefault.Length) appwidths = appwidthsDefault;
 				dirty |= modified;
 
@@ -2576,8 +2584,8 @@ namespace Taskmaster.UI
 			var age = (now - builddate).TotalDays;
 
 			var sbs = new StringBuilder()
-				.AppendLine(Application.ProductName)
-				.Append("Version: ").Append(Application.ProductVersion).AppendLine()
+				.AppendLine(Taskmaster.Name)
+				.Append("Version: ").Append(Version).AppendLine()
 				.Append("Built: ").Append($"{builddate.ToString("yyyy/MM/dd HH:mm")}").Append(" [").Append($"{age:N0}").Append(" days old]").AppendLine()
 				.AppendLine()
 				.AppendLine("Created by M.A., 2016–2019")
@@ -2589,7 +2597,7 @@ namespace Taskmaster.UI
 				.AppendLine()
 				.AppendLine("Available under MIT license.");
 
-			SimpleMessageBox.ShowModal("About Taskmaster!", sbs.ToString(), SimpleMessageBox.Buttons.OK);
+			SimpleMessageBox.ShowModal("About " + Taskmaster.Name + "!", sbs.ToString(), SimpleMessageBox.Buttons.OK);
 		}
 
 		Stopwatch WatchlistSearchInputTimer = new Stopwatch();
@@ -3765,7 +3773,7 @@ namespace Taskmaster.UI
 
 					using (var cfg = Taskmaster.Config.Load(UIConfigFilename).BlockUnload())
 					{
-						var cols = cfg.Config["Columns"];
+						var cols = cfg.Config[Constants.Columns];
 
 						var appWidths = new List<int>(WatchlistRules.Columns.Count);
 						var apporder = new List<int>(WatchlistRules.Columns.Count);
@@ -3775,7 +3783,7 @@ namespace Taskmaster.UI
 							apporder.Add(WatchlistRules.Columns[i].DisplayIndex);
 						}
 
-						cols["Apps"].IntArray = appWidths.ToArray();
+						cols[Constants.Apps].IntArray = appWidths.ToArray();
 						cols["App order"].IntArray = apporder.ToArray();
 
 						if (NetworkMonitorEnabled)
@@ -3794,10 +3802,10 @@ namespace Taskmaster.UI
 							cols["Mics"].IntArray = micWidths.ToArray();
 						}
 
-						var uistate = cfg.Config["Tabs"];
+						var uistate = cfg.Config[Constants.Tabs];
 						uistate["Open"].IntValue = tabLayout.SelectedIndex;
 
-						var windows = cfg.Config["Windows"];
+						var windows = cfg.Config[Constants.Windows];
 						windows["Main"].IntArray = new int[] { Bounds.Left, Bounds.Top, Bounds.Width, Bounds.Height };
 
 						cfg.MarkDirty();

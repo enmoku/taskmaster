@@ -123,6 +123,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Audio\Utility.cs" />
+    <Compile Include="Constants.cs" />
     <Compile Include="Settings.Global.cs" />
     <Compile Include="Process\ActiveAppManager.cs" />
     <Compile Include="AlertManager.cs" />

@@ -161,7 +161,7 @@ namespace Taskmaster.UI.Config
 
 				// VOLUME METER
 
-				layout.Controls.Add(new AlignedLabel { Text = "Volume meter", Font = boldfont, Padding = BigPadding });
+				layout.Controls.Add(new AlignedLabel { Text = Constants.VolumeMeter, Font = boldfont, Padding = BigPadding });
 
 				if (AudioManagerEnabled)
 					layout.Controls.Add(new EmptySpace());
@@ -196,12 +196,12 @@ namespace Taskmaster.UI.Config
 					Value = 100,
 				};
 
-				var volsec = corecfg.Config["Volume Meter"];
+				var volsec = corecfg.Config[Constants.VolumeMeter];
 				bool t_volmeter_topmost = volsec.Get("Topmost")?.BoolValue ?? true;
 				int t_volmeter_frequency = volsec.Get("Refresh")?.IntValue.Constrain(10, 5000) ?? 100;
 				int t_volmeter_capoutmax = volsec.Get("Output threshold")?.IntValue.Constrain(20, 100) ?? 100;
 				int t_volmeter_capinmax = volsec.Get("Input threshold")?.IntValue.Constrain(20, 100) ?? 100;
-				bool t_volmeter_show = volsec.Get("Show on start")?.BoolValue ?? false;
+				bool t_volmeter_show = volsec.Get(Constants.ShowOnStart)?.BoolValue ?? false;
 
 				volmeter_topmost.Checked = t_volmeter_topmost;
 				volmeter_frequency.Value = t_volmeter_frequency;
@@ -224,7 +224,7 @@ namespace Taskmaster.UI.Config
 				layout.Controls.Add(volmeter_topmost);
 				tooltip.SetToolTip(volmeter_topmost, "Keeps the volume meter over other windows.");
 
-				layout.Controls.Add(new AlignedLabel { Text = "Show on start", Padding = LeftSubPadding });
+				layout.Controls.Add(new AlignedLabel { Text = Constants.ShowOnStart, Padding = LeftSubPadding });
 				layout.Controls.Add(volmeter_show);
 				tooltip.SetToolTip(volmeter_show, "Show volume meter on start.");
 
@@ -313,7 +313,7 @@ namespace Taskmaster.UI.Config
 
 					volsec["Refresh"].IntValue = Convert.ToInt32(volmeter_frequency.Value);
 
-					volsec["Show on start"].BoolValue = volmeter_show.Checked;
+					volsec[Constants.ShowOnStart].BoolValue = volmeter_show.Checked;
 
 					corecfg.MarkDirty();
 

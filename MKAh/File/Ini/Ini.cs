@@ -1011,6 +1011,14 @@ namespace MKAh
 
 			public Setting Get(string key) => TryGet(key, out var value) ? value : null;
 
+			public Setting AddOrGet(string key, out bool added)
+			{
+				if (added = !TryGet(key, out var setting))
+					return this[key];
+				else
+					return setting;
+			}
+
 			public bool TryGet(string name, out Setting value)
 				=> (value = (from val in Items
 						 where val.Type == SettingType.Generic
@@ -1058,6 +1066,14 @@ namespace MKAh
 			}
 
 			return rv;
+		}
+
+		public static Ini.Setting Initialize<T>(this Ini.Setting setting, T fallback, out bool modified)
+		{
+			if (modified = (setting.Value == null))
+				setting.Set(Ini.Converter<T>.Convert(fallback));
+
+			return setting;
 		}
 
 		public static Ini.Setting GetOrSet<T>(this Ini.Section section, string setting, T fallback, out bool defaulted)

@@ -94,7 +94,7 @@ namespace Taskmaster
 						}
 						else
 						{
-							SimpleMessageBox.ShowModal("Taskmaster launch error", "Failure to elevate privileges, resuming as normal.", SimpleMessageBox.Buttons.OK);
+							SimpleMessageBox.ShowModal(Name+" launch error", "Failure to elevate privileges, resuming as normal.", SimpleMessageBox.Buttons.OK);
 						}
 
 						break;

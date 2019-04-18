@@ -42,8 +42,12 @@ namespace Taskmaster
 		public static string GitURL => "https://github.com/mkahvi/taskmaster";
 		public static string ItchURL => "https://mkah.itch.io/taskmaster";
 
-		public static string DataPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "MKAh", "Taskmaster");
-		public static string LogPath = Path.Combine(DataPath, "Logs");
+		public static readonly string Name = (System.Reflection.Assembly.GetExecutingAssembly()).GetName().Name;
+		public static readonly string Version = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version.ToString();
+
+		public static string DataPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "MKAh", Name);
+		const string LogFolder = "Logs";
+		public static string LogPath = Path.Combine(DataPath, LogFolder);
 
 		public static string ConfigVersion = "alpha.3";
 
@@ -71,9 +75,9 @@ namespace Taskmaster
 			if (alwaysconfirm || ExitConfirmation)
 			{
 				rv = SimpleMessageBox.ShowModal(
-					(restart ? "Restart" : "Exit") + Application.ProductName + " ???",
+					(restart ? HumanReadable.System.Process.Restart : HumanReadable.System.Process.Exit) + Name + " ???",
 					(string.IsNullOrEmpty(message) ? "" : message + "\n\n") +
-					"Are you sure you want to " + (restart ? "restart" : "exit") + " Taskmaster?",
+					"Are you sure?",
 					SimpleMessageBox.Buttons.AcceptCancel);
 			}
 			if (rv != SimpleMessageBox.ResultType.OK) return;
@@ -283,7 +287,7 @@ namespace Taskmaster
 		{
 			using (var cfg = Config.Load(CoreConfigFilename).BlockUnload())
 			{
-				if (cfg.Config.Get("Core")?.Get("License")?.Value.Equals("Accepted") ?? false) return;
+				if (cfg.Config.Get(Constants.Core)?.Get(Constants.License)?.Value.Equals(Constants.Accepted) ?? false) return;
 			}
 
 			using (var license = new LicenseDialog())
@@ -300,7 +304,7 @@ namespace Taskmaster
 		public static bool Portable { get; internal set; } = false;
 		static void TryPortableMode()
 		{
-			string portpath = Path.Combine(Path.GetDirectoryName(Environment.GetCommandLineArgs()[0]), "Config");
+			string portpath = Path.Combine(Path.GetDirectoryName(Environment.GetCommandLineArgs()[0]), Constants.Config);
 			if (Directory.Exists(portpath))
 			{
 				DataPath = portpath;
@@ -308,7 +312,7 @@ namespace Taskmaster
 			}
 			else if (!File.Exists(Path.Combine(DataPath, CoreConfigFilename)))
 			{
-				if (SimpleMessageBox.ShowModal("Taskmaster setup", "Set up PORTABLE installation?", SimpleMessageBox.Buttons.AcceptCancel)
+				if (SimpleMessageBox.ShowModal(Name + " setup", "Set up PORTABLE installation?", SimpleMessageBox.Buttons.AcceptCancel)
 					== SimpleMessageBox.ResultType.OK)
 				{
 					DataPath = portpath;
@@ -349,7 +353,7 @@ namespace Taskmaster
 					//hiddenwindow = new OS.HiddenWindow();
 
 					TryPortableMode();
-					LogPath = Path.Combine(DataPath, "Logs");
+					LogPath = Path.Combine(DataPath, LogFolder);
 
 					// Singleton
 					singleton = new System.Threading.Mutex(true, SingletonID, out bool mutexgained);
@@ -358,7 +362,7 @@ namespace Taskmaster
 						SimpleMessageBox.ResultType rv = SimpleMessageBox.ResultType.Cancel;
 
 						// already running, signal original process
-						using (var msg = new SimpleMessageBox("Taskmaster!",
+						using (var msg = new SimpleMessageBox(Name+"!",
 							"Already operational.\n\nRetry to try to recover [restart] running instance.\nEnd to kill running instance and exit this.\nCancel to simply request refresh.",
 							SimpleMessageBox.Buttons.RetryEndCancel))
 						{
@@ -406,7 +410,7 @@ namespace Taskmaster
 						if (Trace) loglevelswitch.MinimumLevel = LogEventLevel.Verbose;
 #endif
 
-						var logpathtemplate = System.IO.Path.Combine(LogPath, "taskmaster-{Date}.log");
+						var logpathtemplate = System.IO.Path.Combine(LogPath, Name+"-{Date}.log");
 						Serilog.Log.Logger = new Serilog.LoggerConfiguration()
 							.MinimumLevel.ControlledBy(loglevelswitch)
 							.WriteTo.Console(levelSwitch: new LoggingLevelSwitch(LogEventLevel.Verbose))
@@ -427,11 +431,11 @@ namespace Taskmaster
 
 						var now = DateTime.Now;
 						var age = (now - builddate).TotalDays;
-
+						
 						var sbs = new StringBuilder()
-							.Append("Taskmaster! (#").Append(Process.GetCurrentProcess().Id).Append(")")
+							.Append(Name).Append("! (#").Append(Process.GetCurrentProcess().Id).Append(")")
 							.Append(MKAh.Execution.IsAdministrator ? " [ADMIN]" : "").Append(Portable ? " [PORTABLE]" : "")
-							.Append(" – Version: ").Append(System.Reflection.Assembly.GetExecutingAssembly().GetName().Version)
+							.Append(" – Version: ").Append(Version)
 							.Append(" – Built: ").Append(builddate.ToString("yyyy/MM/dd HH:mm")).Append($" [{age:N0} days old]");
 						Log.Information(sbs.ToString());
 					}
@@ -481,7 +485,7 @@ namespace Taskmaster
 
 				Utility.Dispose(ref Config);
 
-				Log.Information($"Taskmaster! (#{Process.GetCurrentProcess().Id.ToString()}) END! [Clean]");
+				Log.Information(Name + "! (#" + Process.GetCurrentProcess().Id + ") END! [Clean]");
 
 				if (State == Runstate.Restart) // happens only on power resume (waking from hibernation) or when manually set
 				{

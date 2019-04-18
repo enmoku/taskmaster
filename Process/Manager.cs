@@ -935,7 +935,7 @@ namespace Taskmaster
 						IOPriority = (section.Get("IO priority")?.IntValue.Constrain(0, 2) ?? -1), // 0-1 background, 2 = normal, anything else seems to have no effect
 						LogAdjusts = (section.Get("Logging")?.BoolValue ?? true),
 						LogStartAndExit = (section.Get("Log start and exit")?.BoolValue ?? false),
-						Volume = (section.Get("Volume")?.FloatValue.Constrain(0.0f, 1.0f) ?? 0.5f),
+						Volume = (section.Get(HumanReadable.Hardware.Audio.Volume)?.FloatValue.Constrain(0.0f, 1.0f) ?? 0.5f),
 						VolumeStrategy = (Audio.VolumeStrategy)(section.Get("Volume strategy")?.IntValue.Constrain(0, 5) ?? 0),
 					};
 

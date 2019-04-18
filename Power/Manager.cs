@@ -90,23 +90,24 @@ namespace Taskmaster.Power
 
 	sealed public class Manager : Form, IComponent // form is required for receiving messages, no other reason
 	{
-		private const string BehaviourSettingName = "Behaviour";
-		private const string DefaultModeSettingName = "Default mode";
-		private const string RestoreModeSettingName = "Restore mode";
-		private const string LowBackOffLevelName = "Low backoff level";
-		private const string HighBackoffLevelName = "High backoff level";
-		private const string LowCommitLevelName = "Low commit level";
-		private const string HighCommitLevelName = "High commit level";
-		private const string HighThresholdName = "High threshold";
-		private const string HighBackoffThresholdsName = "High backoff thresholds";
-		private const string LowThresholdName = "Low threshold";
-		private const string LowBackoffThresholdsName = "Low backoff thresholds";
-		private const string LowModeName = "Low mode";
-		private const string HighModeName = "High mode";
-		private const string HighQueueBarrierName = "High queue barrier";
-		private const string LowQueueBarrierName = "Low queue barrier";
-		private const string SessionLockName = "Session lock";
-		private const string AFKPowerName = "AFK Power";
+		const string BehaviourSettingName = "Behaviour";
+		const string DefaultModeSettingName = "Default mode";
+		const string RestoreModeSettingName = "Restore mode";
+		const string LowBackOffLevelName = "Low backoff level";
+		const string HighBackoffLevelName = "High backoff level";
+		const string LowCommitLevelName = "Low commit level";
+		const string HighCommitLevelName = "High commit level";
+		const string HighThresholdName = "High threshold";
+		const string HighBackoffThresholdsName = "High backoff thresholds";
+		const string LowThresholdName = "Low threshold";
+		const string LowBackoffThresholdsName = "Low backoff thresholds";
+		const string LowModeName = "Low mode";
+		const string HighModeName = "High mode";
+		const string HighQueueBarrierName = "High queue barrier";
+		const string LowQueueBarrierName = "Low queue barrier";
+		const string SessionLockName = "Session lock";
+		const string AFKPowerName = "AFK Power";
+		const string InitialName = "Initial";
 
 		bool VerbosePowerRelease = false;
 
@@ -136,7 +137,7 @@ namespace Taskmaster.Power
 			// SystemEvents.PowerModeChanged += BatteryChargingEvent; // Without laptop testing this feature is difficult
 
 			if (Behaviour == PowerBehaviour.RuleBased && !Forced)
-				Restore(new Cause(OriginType.Internal, "Initial"));
+				Restore(new Cause(OriginType.Internal, InitialName));
 
 			if (SessionLockPowerOffIdleTimeout.HasValue)
 			{

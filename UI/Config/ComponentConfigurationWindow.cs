@@ -58,7 +58,7 @@ namespace Taskmaster.UI.Config
 			{
 				using (var corecfg = Config.Load(CoreConfigFilename).BlockUnload())
 				{
-					var perfsec = corecfg.Config["Performance"];
+					var perfsec = corecfg.Config[Constants.Performance];
 					WMIPolling = perfsec.Get("WMI event watcher")?.BoolValue ?? true;
 					WMIPollDelay = perfsec.Get("WMI poll delay")?.IntValue ?? 2;
 					ScanFrequency = perfsec.Get("Scan frequency")?.IntValue ?? 180;
@@ -317,7 +317,7 @@ namespace Taskmaster.UI.Config
 				Dock = DockStyle.Left
 			};
 			tooltip.SetToolTip(showonstart, "Show main window on start.");
-			layout.Controls.Add(new AlignedLabel { Text = "Show on start", Padding = BigPadding });
+			layout.Controls.Add(new AlignedLabel { Text = Constants.ShowOnStart, Padding = BigPadding });
 			layout.Controls.Add(showonstart);
 			showonstart.Checked = initial ? false : ShowOnStart;
 
@@ -347,30 +347,30 @@ namespace Taskmaster.UI.Config
 			{
 				using (var cfg = Config.Load(CoreConfigFilename).BlockUnload())
 				{
-					var mainsec = cfg.Config["Core"];
-					var opt = mainsec["Version"];
+					var mainsec = cfg.Config[Constants.Core];
+					var opt = mainsec[Constants.Version];
 					opt.Value = ConfigVersion;
 					opt.Comment = "Magical";
 
-					var compsec = cfg.Config["Components"];
+					var compsec = cfg.Config[Constants.Components];
 					compsec[HumanReadable.System.Process.Section].BoolValue = procmon.Checked;
 					compsec[HumanReadable.Hardware.Audio.Section].BoolValue = audioman.Checked;
-					compsec["Microphone"].BoolValue = micmon.Checked;
+					compsec[Constants.Microphone].BoolValue = micmon.Checked;
 					// compsec["Media"].BoolValue = mediamon.Checked;
 					compsec[HumanReadable.System.Process.Foreground].BoolValue = fgmon.Checked;
-					compsec["Network"].BoolValue = netmon.Checked;
+					compsec[Constants.Network].BoolValue = netmon.Checked;
 					compsec[HumanReadable.Hardware.Power.Section].BoolValue = powmon.Checked;
-					compsec["Paging"].BoolValue = paging.Checked;
-					compsec["Maintenance"].BoolValue = tempmon.Checked;
-					compsec["Health"].BoolValue = autodoc.Checked;
+					compsec[Constants.Paging].BoolValue = paging.Checked;
+					compsec[Constants.Maintenance].BoolValue = tempmon.Checked;
+					compsec[Constants.Health].BoolValue = autodoc.Checked;
 
 					var powsec = cfg.Config[HumanReadable.Hardware.Power.Section];
-					if (powmon.Checked) powsec["Behaviour"].Value = powbehaviour.Text.ToLower();
-
-					var optsec = cfg.Config["Options"];
-					optsec["Show on start"].BoolValue = showonstart.Checked;
-
-					var perf = cfg.Config["Performance"];
+					if (powmon.Checked) powsec[Constants.Behaviour].Value = powbehaviour.Text.ToLower();
+					
+					var uisec = cfg.Config[Constants.UserInterface];
+					uisec[Constants.ShowOnStart].BoolValue = showonstart.Checked;
+					
+					var perf = cfg.Config[Constants.Performance];
 					var freq = (int)scanfrequency.Value;
 					if (freq < 5 && freq != 0) freq = 5;
 					perf["Scan frequency"].IntValue = (ScanOrWMI.SelectedIndex == 1 ? 0 : freq);
@@ -378,7 +378,7 @@ namespace Taskmaster.UI.Config
 					perf["WMI poll delay"].IntValue = ((int)wmipolling.Value);
 					perf["WMI queries"].BoolValue = (ScanOrWMI.SelectedIndex != 0);
 
-					var qol = cfg.Config["Quality of Life"];
+					var qol = cfg.Config[Constants.QualityOfLife];
 					qol["Register global hotkeys"].BoolValue = hotkeys.Checked;
 
 					cfg.File.Save(force: true);

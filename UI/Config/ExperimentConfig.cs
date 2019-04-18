@@ -112,7 +112,7 @@ namespace Taskmaster.UI.Config
 				{
 					var cfg = corecfg.Config;
 
-					var exsec = cfg["Experimental"];
+					var exsec = cfg[Constants.Experimental];
 					if (RecordAnalysisDelay.Value != decimal.Zero)
 						exsec["Record analysis"].IntValue = Convert.ToInt32(RecordAnalysisDelay.Value);
 					else
@@ -123,7 +123,7 @@ namespace Taskmaster.UI.Config
 					else
 						exsec.TryRemove("IO Priority");
 
-					var compsec = cfg["Components"];
+					var compsec = cfg[Constants.Components];
 					compsec[HumanReadable.Hardware.Section].BoolValue = hwmon.Checked;
 
 					corecfg.MarkDirty();
