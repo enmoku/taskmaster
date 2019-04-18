@@ -112,7 +112,7 @@ namespace Taskmaster
 		public string Description { get; set; } = string.Empty; // TODO: somehow unload this from memory
 
 		public float Volume { get; set; } = 0.5f;
-		public AudioVolumeStrategy VolumeStrategy { get; set; } = AudioVolumeStrategy.Ignore;
+		public Audio.VolumeStrategy VolumeStrategy { get; set; } = Audio.VolumeStrategy.Ignore;
 
 		public string[] IgnoreList { get; set; } = null;
 
@@ -172,17 +172,17 @@ namespace Taskmaster
 		/// </summary>
 		public bool LogAdjusts { get; set; } = true;
 
-        /// <summary>
-        /// Log start and exit of the process.
-        /// </summary>
-        public bool LogStartAndExit { get; set; } = false;
+		/// <summary>
+		/// Log start and exit of the process.
+		/// </summary>
+		public bool LogStartAndExit { get; set; } = false;
 
-        /// <summary>
-        /// Delay in milliseconds before we attempt to alter the process.
-        /// For example, to allow a process to function at default settings for a while, or to work around undesirable settings
-        /// the process sets for itself.
-        /// </summary>
-        public int ModifyDelay { get; set; } = 0;
+		/// <summary>
+		/// Delay in milliseconds before we attempt to alter the process.
+		/// For example, to allow a process to function at default settings for a while, or to work around undesirable settings
+		/// the process sets for itself.
+		/// </summary>
+		public int ModifyDelay { get; set; } = 0;
 
 		public ProcessController(string name, ProcessPriorityClass? priority = null, int affinity = -1)
 		{
@@ -349,7 +349,7 @@ namespace Taskmaster
 				}
 			}
 
-			if (VolumeStrategy == AudioVolumeStrategy.Ignore)
+			if (VolumeStrategy == Audio.VolumeStrategy.Ignore)
 				Volume = 0.5f;
 
 			if (PathVisibility == PathVisibilityOptions.Invalid)
@@ -622,7 +622,7 @@ namespace Taskmaster
 				app.TryRemove("Resize");
 			}
 
-			if (VolumeStrategy != AudioVolumeStrategy.Ignore)
+			if (VolumeStrategy != Audio.VolumeStrategy.Ignore)
 			{
 				app["Volume"].FloatValue = Volume;
 				app["Volume strategy"].IntValue = (int)VolumeStrategy;
@@ -635,10 +635,10 @@ namespace Taskmaster
 
 			app["Logging"].BoolValue = LogAdjusts;
 
-            if (LogStartAndExit)
-                app["Log start and exit"].BoolValue = true;
-            else
-                app.TryRemove("Log start and exit");
+			if (LogStartAndExit)
+				app["Log start and exit"].BoolValue = true;
+			else
+				app.TryRemove("Log start and exit");
 
 			// pass to config manager
 			NeedsSaving = false;
@@ -1059,7 +1059,7 @@ namespace Taskmaster
 				var oldPower = Power.Mode.Undefined;
 
 
-                await Task.Delay(refresh ? 0 : ModifyDelay).ConfigureAwait(false);
+				await Task.Delay(refresh ? 0 : ModifyDelay).ConfigureAwait(false);
 
 				// EXTRACT INFORMATION
 
@@ -1341,7 +1341,7 @@ namespace Taskmaster
 					}
 				}
 
-                info.Timer.Stop();
+				info.Timer.Stop();
 
 				if (modified)
 				{
@@ -1745,7 +1745,7 @@ namespace Taskmaster
 			{
 				Log.Warning($"[{FriendlyName}] {info.Name} (#{info.Id}) – something bad happened.");
 				Logging.Stacktrace(ex);
-                info.State = ProcessHandlingState.Abandoned;
+				info.State = ProcessHandlingState.Abandoned;
 				return; //throw; // would throw but this is async function
 			}
 		}

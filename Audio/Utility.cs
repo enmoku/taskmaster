@@ -1,5 +1,5 @@
 ﻿//
-// UI.Stubs.EmptySpace.cs
+// Audio.Utility.cs
 //
 // Author:
 //       M.A. (https://github.com/mkahvi)
@@ -24,10 +24,19 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-namespace Taskmaster.UI
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace Taskmaster.Audio
 {
-	public sealed class EmptySpace : System.Windows.Forms.Control
+	public static class Utility
 	{
-		public EmptySpace() : base() => Dock = System.Windows.Forms.DockStyle.Fill;
+		/// <summary>
+		/// Takes Device ID in form of {a.b.c.dddddddd}.{aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee} and retuurns GUID part only.
+		/// </summary>
+		public static string DeviceIdToGuid(string deviceId) => (deviceId.Split('}'))[1].Substring(2);
 	}
 }

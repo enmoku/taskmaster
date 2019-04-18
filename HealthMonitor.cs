@@ -322,7 +322,7 @@ namespace Taskmaster
 
 			using (var corecfg = Config.Load(CoreConfigFilename).BlockUnload())
 			{
-				DebugHealth = corecfg.Config["Debug"].Get("Health")?.BoolValue ?? false;
+				DebugHealth = corecfg.Config[HumanReadable.Generic.Debug].Get("Health")?.BoolValue ?? false;
 			}
 		}
 

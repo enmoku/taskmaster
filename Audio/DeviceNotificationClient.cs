@@ -1,5 +1,5 @@
 ﻿//
-// AudioDeviceNotificationClient.cs
+// Audio.DeviceNotificationClient.cs
 //
 // Author:
 //       M.A. (https://github.com/mkahvi)
@@ -28,21 +28,21 @@ using System;
 using NAudio.CoreAudioApi;
 using Serilog;
 
-namespace Taskmaster
+namespace Taskmaster.Audio
 {
 	using static Taskmaster;
 
-	class AudioDeviceNotificationClient : NAudio.CoreAudioApi.Interfaces.IMMNotificationClient
+	class DeviceNotificationClient : NAudio.CoreAudioApi.Interfaces.IMMNotificationClient
 	{
 		/// <summary>
 		/// Default device GUID, Role, and Flow.
 		/// GUID is null if there's no default.
 		/// </summary>
-		public event EventHandler<Events.AudioDefaultDeviceEventArgs> DefaultDevice;
+		public event EventHandler<DefaultDeviceEventArgs> DefaultDevice;
 		public event EventHandler Changed;
-		public event EventHandler<Events.AudioDeviceEventArgs> Added;
-		public event EventHandler<Events.AudioDeviceEventArgs> Removed;
-		public event EventHandler<Events.AudioDeviceStateEventArgs> StateChanged;
+		public event EventHandler<DeviceEventArgs> Added;
+		public event EventHandler<DeviceEventArgs> Removed;
+		public event EventHandler<DeviceStateEventArgs> StateChanged;
 		public event EventHandler PropertyChanged;
 
 		public void OnDefaultDeviceChanged(DataFlow flow, Role role, string defaultDeviceId)
@@ -51,12 +51,12 @@ namespace Taskmaster
 
 			try
 			{
-				var guid = HaveDefaultDevice ? AudioManager.AudioDeviceIdToGuid(defaultDeviceId) : string.Empty;
+				var guid = HaveDefaultDevice ? Utility.DeviceIdToGuid(defaultDeviceId) : string.Empty;
 
 				if (DebugAudio && Trace)
 					Log.Verbose($"<Audio> Default device changed for {role.ToString()} ({flow.ToString()}): {(HaveDefaultDevice ? guid : HumanReadable.Generic.NotAvailable)}");
 
-				DefaultDevice?.Invoke(this, new Events.AudioDefaultDeviceEventArgs(guid, defaultDeviceId, role, flow));
+				DefaultDevice?.Invoke(this, new DefaultDeviceEventArgs(guid, defaultDeviceId, role, flow));
 			}
 			catch (OutOfMemoryException) { throw; }
 			catch (Exception ex)
@@ -71,11 +71,11 @@ namespace Taskmaster
 		{
 			try
 			{
-				string guid = AudioManager.AudioDeviceIdToGuid(pwstrDeviceId);
+				string guid = Utility.DeviceIdToGuid(pwstrDeviceId);
 
 				if (!DebugAudio) Log.Debug("<Audio> Device added: " + guid);
 
-				Added?.Invoke(this, new Events.AudioDeviceEventArgs(guid, pwstrDeviceId));
+				Added?.Invoke(this, new DeviceEventArgs(guid, pwstrDeviceId));
 			}
 			catch (OutOfMemoryException) { throw; }
 			catch (Exception ex)
@@ -88,11 +88,11 @@ namespace Taskmaster
 		{
 			try
 			{
-				string guid = AudioManager.AudioDeviceIdToGuid(deviceId);
+				string guid = Utility.DeviceIdToGuid(deviceId);
 
 				if (!DebugAudio) Log.Debug("<Audio> Device removed: " + guid);
 
-				Removed?.Invoke(this, new Events.AudioDeviceEventArgs(guid, deviceId));
+				Removed?.Invoke(this, new DeviceEventArgs(guid, deviceId));
 			}
 			catch (OutOfMemoryException) { throw; }
 			catch (Exception ex)
@@ -119,11 +119,11 @@ namespace Taskmaster
 						break;
 				}
 
-				var guid = AudioManager.AudioDeviceIdToGuid(deviceId);
+				var guid = Utility.DeviceIdToGuid(deviceId);
 
 				if (DebugAudio) Log.Debug("<Audio> Device (" + guid + ") state: " + newState.ToString());
 
-				StateChanged?.Invoke(this, new Events.AudioDeviceStateEventArgs(guid, deviceId, newState));
+				StateChanged?.Invoke(this, new DeviceStateEventArgs(guid, deviceId, newState));
 			}
 			catch (OutOfMemoryException) { throw; }
 			catch (Exception ex)
@@ -138,7 +138,7 @@ namespace Taskmaster
 
 			try
 			{
-				string guid = AudioManager.AudioDeviceIdToGuid(pwstrDeviceId);
+				string guid = Utility.DeviceIdToGuid(pwstrDeviceId);
 
 				Log.Debug("<Audio> Device (" + guid + ") property changed: " + key.formatId.ToString() + " / " + key.propertyId);
 

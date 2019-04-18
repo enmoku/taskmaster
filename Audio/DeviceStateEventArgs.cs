@@ -1,5 +1,5 @@
 ﻿//
-// Events.AudioDevice.cs
+// Events.AudioDeviceState.cs
 //
 // Author:
 //       M.A. (https://github.com/mkahvi)
@@ -24,19 +24,12 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-namespace Taskmaster.Events
+namespace Taskmaster.Audio
 {
-	public class AudioDeviceEventArgs
+	public sealed class DeviceStateEventArgs : DeviceEventArgs
 	{
-		public AudioDeviceEventArgs(string guid, string id)
-		{
-			GUID = guid;
-			ID = id;
-		}
+		public DeviceStateEventArgs(string guid, string id, NAudio.CoreAudioApi.DeviceState state) : base(guid, id) => State = state;
 
-		public string GUID { get; private set; }
-		public string ID { get; private set; }
-
-		public AudioDevice Device { get; set; } = null;
+		public NAudio.CoreAudioApi.DeviceState State { get; private set; }
 	}
 }

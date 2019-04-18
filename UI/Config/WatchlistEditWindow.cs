@@ -211,12 +211,12 @@ namespace Taskmaster.UI.Config
 			{
 				switch (volumeMethod.SelectedIndex)
 				{
-					case 0: Controller.VolumeStrategy = AudioVolumeStrategy.Increase; break;
-					case 1: Controller.VolumeStrategy = AudioVolumeStrategy.Decrease; break;
-					case 2: Controller.VolumeStrategy = AudioVolumeStrategy.IncreaseFromMute; break;
-					case 3: Controller.VolumeStrategy = AudioVolumeStrategy.DecreaseFromFull; break;
-					case 4: Controller.VolumeStrategy = AudioVolumeStrategy.Force; break;
-					default: Controller.VolumeStrategy = AudioVolumeStrategy.Ignore; break;
+					case 0: Controller.VolumeStrategy = Audio.VolumeStrategy.Increase; break;
+					case 1: Controller.VolumeStrategy = Audio.VolumeStrategy.Decrease; break;
+					case 2: Controller.VolumeStrategy = Audio.VolumeStrategy.IncreaseFromMute; break;
+					case 3: Controller.VolumeStrategy = Audio.VolumeStrategy.DecreaseFromFull; break;
+					case 4: Controller.VolumeStrategy = Audio.VolumeStrategy.Force; break;
+					default: Controller.VolumeStrategy = Audio.VolumeStrategy.Ignore; break;
 				}
 
 				Controller.Volume = Convert.ToSingle(volume.Value) / 100f;
@@ -854,13 +854,13 @@ namespace Taskmaster.UI.Config
 			{
 				switch (Controller.VolumeStrategy)
 				{
-					case AudioVolumeStrategy.Increase: volumeMethod.SelectedIndex = 0; break;
-					case AudioVolumeStrategy.Decrease: volumeMethod.SelectedIndex = 1; break;
-					case AudioVolumeStrategy.IncreaseFromMute: volumeMethod.SelectedIndex = 2; break;
-					case AudioVolumeStrategy.DecreaseFromFull: volumeMethod.SelectedIndex = 3; break;
-					case AudioVolumeStrategy.Force: volumeMethod.SelectedIndex = 4; break;
+					case Audio.VolumeStrategy.Increase: volumeMethod.SelectedIndex = 0; break;
+					case Audio.VolumeStrategy.Decrease: volumeMethod.SelectedIndex = 1; break;
+					case Audio.VolumeStrategy.IncreaseFromMute: volumeMethod.SelectedIndex = 2; break;
+					case Audio.VolumeStrategy.DecreaseFromFull: volumeMethod.SelectedIndex = 3; break;
+					case Audio.VolumeStrategy.Force: volumeMethod.SelectedIndex = 4; break;
 					default:
-					case AudioVolumeStrategy.Ignore: volumeMethod.SelectedIndex = 5; break;
+					case Audio.VolumeStrategy.Ignore: volumeMethod.SelectedIndex = 5; break;
 				}
 
 				// disable volume control if method is to ignore it

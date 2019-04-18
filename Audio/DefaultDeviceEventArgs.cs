@@ -1,5 +1,5 @@
 ﻿//
-// Events.AudioDeviceState.cs
+// Audio.DefaultDeviceEventArgs.cs
 //
 // Author:
 //       M.A. (https://github.com/mkahvi)
@@ -24,16 +24,24 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-namespace Taskmaster.Events
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace Taskmaster.Audio
 {
-	public sealed class AudioDeviceStateEventArgs : AudioDeviceEventArgs
+	public sealed class DefaultDeviceEventArgs : DeviceEventArgs
 	{
-		public AudioDeviceStateEventArgs(string guid, string id, NAudio.CoreAudioApi.DeviceState state)
+		public DefaultDeviceEventArgs(string guid, string id, NAudio.CoreAudioApi.Role role, NAudio.CoreAudioApi.DataFlow flow)
 			: base(guid, id)
 		{
-			State = state;
+			Flow = flow;
+			Role = role;
 		}
 
-		public NAudio.CoreAudioApi.DeviceState State { get; private set; }
+		public NAudio.CoreAudioApi.DataFlow Flow { get; private set; }
+		public NAudio.CoreAudioApi.Role Role { get; private set; }
 	}
 }

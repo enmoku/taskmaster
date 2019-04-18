@@ -287,7 +287,7 @@ namespace Taskmaster
 				// STOP IT
 
 				// DEBUG
-				var dbgsec = cfg["Debug"];
+				var dbgsec = cfg[HumanReadable.Generic.Debug];
 				DebugAudio = dbgsec.Get(HumanReadable.Hardware.Audio.Section)?.BoolValue ?? false;
 
 				DebugForeground = dbgsec.Get(HumanReadable.System.Process.Foreground)?.BoolValue ?? false;
@@ -298,7 +298,7 @@ namespace Taskmaster
 				DebugSession = dbgsec.Get("Session")?.BoolValue ?? false;
 				DebugResize = dbgsec.Get("Resize")?.BoolValue ?? false;
 
-				DebugMemory = dbgsec.Get("Memory")?.BoolValue ?? false;
+				DebugMemory = dbgsec.Get(HumanReadable.Hardware.Memory)?.BoolValue ?? false;
 
 				var exsec = cfg["Experimental"];
 				LastModifiedList = exsec.Get("Last Modified")?.BoolValue ?? false;
@@ -364,12 +364,12 @@ namespace Taskmaster
 			{
 				if (AudioManagerEnabled)
 				{
-					audiomanager = new AudioManager();
+					audiomanager = new Audio.Manager();
 					audiomanager.OnDisposed += (_, _ea) => audiomanager = null;
 
 					if (MicrophoneManagerEnabled)
 					{
-						micmonitor = new MicManager();
+						micmonitor = new Audio.MicManager();
 						micmonitor.Hook(audiomanager);
 						micmonitor.OnDisposed += (_, _ea) => micmonitor = null;
 					}

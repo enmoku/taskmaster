@@ -47,9 +47,13 @@ namespace Taskmaster.UI
 		int VolumeInputCap = 100;
 		int Frequency = 100;
 
-		public VolumeMeter()
+		Audio.Manager audiomanager = null;
+
+		public VolumeMeter(Audio.Manager manager)
 			: base()
 		{
+			audiomanager = manager;
+
 			Text = "Volume Meter – Taskmaster!";
 
 			using (var cfg = Taskmaster.Config.Load(CoreConfigFilename).BlockUnload())
@@ -160,8 +164,6 @@ namespace Taskmaster.UI
 			AutoSizeMode = AutoSizeMode.GrowAndShrink;
 			AutoSize = true;
 
-			audiomanager = Taskmaster.audiomanager; // such hack
-
 			updateTimer.Interval = Frequency;
 			updateTimer.Tick += UpdateVolumeTick;
 			updateTimer.Start();
@@ -197,6 +199,7 @@ namespace Taskmaster.UI
 		void UpdateVolumeTick(object sender, EventArgs e)
 		{
 			if (DisposedOrDisposing) return;
+			if (audiomanager == null) throw new NullReferenceException(nameof(audiomanager));
 
 			try
 			{
@@ -246,12 +249,6 @@ namespace Taskmaster.UI
 		}
 
 		readonly Timer updateTimer = new Timer();
-
-		AudioManager audiomanager = null;
-		void Hook(AudioManager manager)
-		{
-			audiomanager = manager;
-		}
 
 		#region IDispose
 		public event EventHandler OnDisposed;

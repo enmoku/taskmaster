@@ -31,9 +31,8 @@ using System.Linq;
 using MKAh;
 using NAudio.CoreAudioApi;
 using Serilog;
-using Taskmaster.Events;
 
-namespace Taskmaster
+namespace Taskmaster.Audio
 {
 	using static Taskmaster;
 
@@ -42,7 +41,7 @@ namespace Taskmaster
 		readonly System.Threading.Thread Context = null;
 
 		public event EventHandler<VolumeChangedEventArgs> VolumeChanged;
-		public event EventHandler<AudioDefaultDeviceEventArgs> DefaultChanged;
+		public event EventHandler<DefaultDeviceEventArgs> DefaultChanged;
 
 		bool DebugMic { get; set; } = false;
 
@@ -88,7 +87,7 @@ namespace Taskmaster
 			}
 		}
 
-		AudioDevice RecordingDevice = null;
+		Device RecordingDevice = null;
 
 		public string DeviceName => RecordingDevice?.Name ?? string.Empty;
 		public string DeviceGuid => RecordingDevice?.GUID ?? string.Empty;
@@ -117,7 +116,7 @@ namespace Taskmaster
 				DefaultVolume = mediasec.GetOrSet(mvol, 100.0d, out modified).DoubleValue.Constrain(0.0d, 100.0d);
 				dirty |= modified;
 
-				var dbgsec = corecfg.Config["Debug"];
+				var dbgsec = corecfg.Config[HumanReadable.Generic.Debug];
 				DebugMic = dbgsec.Get("Microphone")?.BoolValue ?? false;
 
 				if (dirty) corecfg.MarkDirty();
@@ -128,8 +127,8 @@ namespace Taskmaster
 			DisposalChute.Push(this);
 		}
 
-		AudioManager audiomanager = null;
-		public void Hook(AudioManager manager)
+		Manager audiomanager = null;
+		public void Hook(Manager manager)
 		{
 			Debug.Assert(manager != null, "AudioManager must not be null");
 
@@ -152,7 +151,7 @@ namespace Taskmaster
 			}
 		}
 
-		public void DeviceAdded(object sender, AudioDeviceEventArgs ea)
+		public void DeviceAdded(object sender, DeviceEventArgs ea)
 		{
 			if (DisposedOrDisposing) return;
 			try
@@ -167,7 +166,7 @@ namespace Taskmaster
 			}
 		}
 
-		public void DeviceRemoved(object sender, AudioDeviceEventArgs ea)
+		public void DeviceRemoved(object sender, DeviceEventArgs ea)
 		{
 			if (DisposedOrDisposing) return;
 
@@ -183,7 +182,7 @@ namespace Taskmaster
 			}
 		}
 
-		void ChangeDefaultDevice(object sender, AudioDefaultDeviceEventArgs ea)
+		void ChangeDefaultDevice(object sender, DefaultDeviceEventArgs ea)
 		{
 			if (DisposedOrDisposing) return;
 
@@ -313,7 +312,7 @@ namespace Taskmaster
 			}
 		}
 
-		List<AudioDevice> KnownDevices = new List<AudioDevice>();
+		List<Device> KnownDevices = new List<Device>();
 
 		void EnumerateDevices()
 		{
@@ -321,7 +320,7 @@ namespace Taskmaster
 
 			if (Trace) Log.Verbose("<Microphone> Enumerating devices...");
 
-			var devices = new List<AudioDevice>();
+			var devices = new List<Device>();
 
 			try
 			{
@@ -336,7 +335,7 @@ namespace Taskmaster
 					{
 						try
 						{
-							string guid = AudioManager.AudioDeviceIdToGuid(dev.ID);
+							string guid = Utility.DeviceIdToGuid(dev.ID);
 							var devsec = devcfg.Config[guid];
 							devsec.GetOrSet("Name", dev.DeviceFriendlyName, out modified);
 							dirty |= modified;
@@ -344,7 +343,7 @@ namespace Taskmaster
 							dirty |= modified;
 							float target = devsec.Get("Volume")?.FloatValue ?? float.NaN;
 
-							var mdev = new AudioDevice(dev)
+							var mdev = new Device(dev)
 							{
 								VolumeControl = control,
 								Target = target,
@@ -380,7 +379,7 @@ namespace Taskmaster
 		/// Enumerate this instance.
 		/// </summary>
 		/// <returns>Enumeration of audio input devices as GUID/FriendlyName string pair.</returns>
-		public List<AudioDevice> Devices => new List<AudioDevice>(KnownDevices);
+		public List<Device> Devices => new List<Device>(KnownDevices);
 
 		// TODO: Add device enumeration
 		// TODO: Add device selection

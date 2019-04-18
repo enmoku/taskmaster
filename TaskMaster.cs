@@ -159,7 +159,7 @@ namespace Taskmaster
 
 			if (volumemeter == null)
 			{
-				volumemeter = new UI.VolumeMeter();
+				volumemeter = new UI.VolumeMeter(audiomanager);
 				volumemeter.OnDisposed += (_, _ea) => volumemeter = null;
 			}
 		}

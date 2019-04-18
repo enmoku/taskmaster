@@ -33,7 +33,6 @@ using System.Threading.Tasks;
 using System.Windows.Forms;
 using MKAh;
 using Serilog;
-using Taskmaster.Events;
 
 namespace Taskmaster.UI
 {
@@ -235,7 +234,7 @@ namespace Taskmaster.UI
 		}
 
 		// HOOKS
-		MicManager micmanager = null;
+		Audio.MicManager micmanager = null;
 		StorageManager storagemanager = null;
 		ProcessManager processmanager = null;
 		ActiveAppManager activeappmonitor = null;
@@ -261,8 +260,8 @@ namespace Taskmaster.UI
 
 					corCountLabel.Text = micmanager.Corrections.ToString();
 
-					AudioInputVolume.Maximum = Convert.ToDecimal(MicManager.Maximum);
-					AudioInputVolume.Minimum = Convert.ToDecimal(MicManager.Minimum);
+					AudioInputVolume.Maximum = Convert.ToDecimal(Audio.MicManager.Maximum);
+					AudioInputVolume.Minimum = Convert.ToDecimal(Audio.MicManager.Minimum);
 					AudioInputVolume.Value = Convert.ToInt32(micmanager.Volume);
 
 					AudioInputEnable.SelectedIndex = micmanager.Control ? 0 : 1;
@@ -275,7 +274,7 @@ namespace Taskmaster.UI
 			}));
 		}
 
-		void AddAudioInput(AudioDevice device)
+		void AddAudioInput(Audio.Device device)
 		{
 			try
 			{
@@ -333,8 +332,8 @@ namespace Taskmaster.UI
 			AudioInputs.EndUpdate();
 		}
 
-		AudioManager audiomanager = null;
-		public void Hook(AudioManager manager)
+		Audio.Manager audiomanager = null;
+		public void Hook(Audio.Manager manager)
 		{
 			Debug.Assert(manager != null);
 
@@ -354,7 +353,7 @@ namespace Taskmaster.UI
 			}
 		}
 
-		public void Hook(MicManager manager)
+		public void Hook(Audio.MicManager manager)
 		{
 			Debug.Assert(manager != null);
 
@@ -395,19 +394,19 @@ namespace Taskmaster.UI
 			}
 		}
 
-		void AudioDeviceAdded(object sender, AudioDeviceEventArgs ea)
+		void AudioDeviceAdded(object sender, Audio.DeviceEventArgs ea)
 		{
 			AddAudioInput(ea.Device);
 			AlternateListviewRowColors(AudioInputs, AlternateRowColorsDevices);
 		}
 
-		void AudioDeviceRemoved(object sender, AudioDeviceEventArgs ea)
+		void AudioDeviceRemoved(object sender, Audio.DeviceEventArgs ea)
 		{
 			RemoveAudioInput(ea.GUID);
 			AlternateListviewRowColors(AudioInputs, AlternateRowColorsDevices);
 		}
 
-		void MicrophoneDefaultChanged(object sender, AudioDefaultDeviceEventArgs ea)
+		void MicrophoneDefaultChanged(object sender, Audio.DefaultDeviceEventArgs ea)
 		{
 			if (IsDisposed || !IsHandleCreated) return;
 
@@ -444,7 +443,7 @@ namespace Taskmaster.UI
 
 		ConcurrentDictionary<string, ListViewItem> MicGuidToAudioInputs = new ConcurrentDictionary<string, ListViewItem>();
 
-		void AudioDeviceStateChanged(object sender, AudioDeviceStateEventArgs ea)
+		void AudioDeviceStateChanged(object sender, Audio.DeviceStateEventArgs ea)
 		{
 			if (IsDisposed || !IsHandleCreated) return;
 
@@ -1341,7 +1340,7 @@ namespace Taskmaster.UI
 				Checked = loglevelswitch.MinimumLevel == Serilog.Events.LogEventLevel.Information,
 				CheckOnClick = true,
 			};
-			var menu_config_logging_debug = new ToolStripMenuItem("Debug")
+			var menu_config_logging_debug = new ToolStripMenuItem(HumanReadable.Generic.Debug)
 			{
 				Checked = loglevelswitch.MinimumLevel == Serilog.Events.LogEventLevel.Debug,
 				CheckOnClick = true,
@@ -1454,7 +1453,7 @@ namespace Taskmaster.UI
 
 			// DEBUG menu item
 			#region Debug toolstrip menu
-			var menu_debug = new ToolStripMenuItem("Debug");
+			var menu_debug = new ToolStripMenuItem(HumanReadable.Generic.Debug);
 			// Sub Items
 			var menu_debug_loglevel = new ToolStripMenuItem("UI log level");
 
@@ -1471,7 +1470,7 @@ namespace Taskmaster.UI
 				CheckOnClick = true,
 				Checked = (LogIncludeLevel.MinimumLevel == Serilog.Events.LogEventLevel.Information),
 			};
-			menu_debug_loglevel_debug = new ToolStripMenuItem("Debug", null,
+			menu_debug_loglevel_debug = new ToolStripMenuItem(HumanReadable.Generic.Debug, null,
 			(_, _ea) =>
 			{
 				LogIncludeLevel.MinimumLevel = Serilog.Events.LogEventLevel.Debug;
@@ -3249,7 +3248,7 @@ namespace Taskmaster.UI
 					if (prc.PathVisibility != PathVisibilityOptions.Invalid)
 						sbs.Append("Path visibility = ").Append((int)prc.PathVisibility).AppendLine();
 
-					if (prc.VolumeStrategy != AudioVolumeStrategy.Ignore)
+					if (prc.VolumeStrategy != Audio.VolumeStrategy.Ignore)
 					{
 						sbs.Append("Volume = ").Append($"{prc.Volume:N2}").AppendLine();
 						sbs.Append("Volume strategy = ").Append((int)prc.VolumeStrategy).AppendLine();

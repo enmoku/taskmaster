@@ -31,7 +31,7 @@ namespace Taskmaster
 {
     public static partial class Taskmaster
     {
-        public static MicManager micmonitor = null;
+        public static Audio.MicManager micmonitor = null;
         public static UI.MainWindow mainwindow = null;
         public static UI.VolumeMeter volumemeter = null;
         public static ProcessManager processmanager = null;
@@ -42,7 +42,7 @@ namespace Taskmaster
         public static ActiveAppManager activeappmonitor = null;
         public static HealthMonitor healthmonitor = null;
         public static SelfMaintenance selfmaintenance = null;
-        public static AudioManager audiomanager = null;
+        public static Audio.Manager audiomanager = null;
         public static CPUMonitor cpumonitor = null;
         public static HardwareMonitor hardware = null;
         public static AlertManager alerts = null;

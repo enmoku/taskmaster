@@ -751,7 +751,7 @@ namespace Taskmaster
 				if (modified) ignSys32Setting.Comment = "Ignore programs in %SYSTEMROOT%/System32 folder.";
 				dirtyconfig |= modified;
 
-				var dbgsec = corecfg.Config["Debug"];
+				var dbgsec = corecfg.Config[HumanReadable.Generic.Debug];
 				DebugWMI = dbgsec.Get("WMI")?.BoolValue ?? false;
 				DebugScan = dbgsec.Get("Full scan")?.BoolValue ?? false;
 				DebugPaths = dbgsec.Get("Paths")?.BoolValue ?? false;
@@ -936,7 +936,7 @@ namespace Taskmaster
 						LogAdjusts = (section.Get("Logging")?.BoolValue ?? true),
 						LogStartAndExit = (section.Get("Log start and exit")?.BoolValue ?? false),
 						Volume = (section.Get("Volume")?.FloatValue.Constrain(0.0f, 1.0f) ?? 0.5f),
-						VolumeStrategy = (AudioVolumeStrategy)(section.Get("Volume strategy")?.IntValue.Constrain(0, 5) ?? 0),
+						VolumeStrategy = (Audio.VolumeStrategy)(section.Get("Volume strategy")?.IntValue.Constrain(0, 5) ?? 0),
 					};
 
 					//prc.MMPriority = section.TryGet("MEM priority")?.IntValue ?? int.MinValue; // unused

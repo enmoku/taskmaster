@@ -90,21 +90,25 @@ namespace Taskmaster.Network
 			using (var netcfg = Config.Load(NetConfigFilename).BlockUnload())
 			{
 				var monsec = netcfg.Config["Monitor"];
-				dnstestaddress = monsec.GetOrSet("DNS test", "www.google.com", out dirty).Value;
+				var dnstestaddress_t = monsec.GetOrSet("DNS test", "www.google.com", out dirty);
+				dnstestaddress = dnstestaddress_t.Value;
 				dirtyconf |= dirty;
 
 				var devsec = netcfg.Config["Devices"];
-				DeviceTimerInterval = devsec.GetOrSet("Check frequency", 15, out dirty).IntValue.Constrain(1, 30) * 60;
-				devsec["Check frequency"].Comment = "Minutes";
+				var devicetimerinterval_t = devsec.GetOrSet("Check frequency", 15, out dirty);
+				DeviceTimerInterval = devicetimerinterval_t.IntValue.Constrain(1, 30) * 60;
+				if (dirty) devicetimerinterval_t.Comment = "Minutes";
 				dirtyconf |= dirty;
 
 				var pktsec = netcfg.Config["Traffic"];
-				PacketStatTimerInterval = pktsec.GetOrSet("Sample rate", 15, out dirty).IntValue.Constrain(1, 60);
-				pktsec["Sample rate"].Comment = "Seconds";
+				var packetstattimerinterval_t = pktsec.GetOrSet("Sample rate", 15, out dirty);
+				PacketStatTimerInterval = packetstattimerinterval_t.IntValue.Constrain(1, 60);
+				if (dirty) packetstattimerinterval_t.Comment = "Seconds";
 				PacketWarning.Peak = PacketStatTimerInterval;
 				dirtyconf |= dirty;
 
-				ErrorReportLimit = pktsec.GetOrSet("Error report limit", 5, out dirty).IntValue.Constrain(1, 60);
+				var errorreportlimit_t = pktsec.GetOrSet("Error report limit", 5, out dirty);
+				ErrorReportLimit = errorreportlimit_t.IntValue.Constrain(1, 60);
 				ErrorReports.Peak = ErrorReportLimit;
 				dirtyconf |= dirty;
 
@@ -116,11 +120,12 @@ namespace Taskmaster.Network
 			using (var corecfg = Config.Load(CoreConfigFilename).BlockUnload())
 			{
 				var logsec = corecfg.Config["Logging"];
-				ShowNetworkErrors = logsec.GetOrSet("Show network errors", true, out dirty).BoolValue;
-				logsec["Show network errors"].Comment = "Show network errors on each sampling.";
+				MKAh.Ini.Setting shownetworkerrors_t = logsec.GetOrSet("Show network errors", true, out dirty);
+				ShowNetworkErrors = shownetworkerrors_t.BoolValue;
+				if (dirty) shownetworkerrors_t.Comment = "Show network errors on each sampling.";
 				dirtyconf |= dirty;
 
-				var dbgsec = corecfg.Config["Debug"];
+				var dbgsec = corecfg.Config[HumanReadable.Generic.Debug];
 				DebugNet = dbgsec.Get("Network")?.BoolValue ?? false;
 
 				if (dirtyconf) corecfg.MarkDirty();
@@ -164,11 +169,12 @@ namespace Taskmaster.Network
 			*/
 
 			// TODO: SUPPORT MULTIPLE NICS
-			var firstnic = new PerformanceCounterCategory("Network Interface").GetInstanceNames()[1]; // 0 = loopback
-			NetInTrans = new Windows.PerformanceCounter("Network Interface", "Bytes Received/sec", firstnic);
-			NetOutTrans = new Windows.PerformanceCounter("Network Interface", "Bytes Sent/sec", firstnic);
-			NetQueue = new Windows.PerformanceCounter("Network Interface", "Output Queue Length", firstnic);
-			NetPackets = new Windows.PerformanceCounter("Network Interface", "Packets/sec", firstnic);
+			const string CategoryName = "Network Interface";
+			var firstnic = new PerformanceCounterCategory(CategoryName).GetInstanceNames()[1]; // 0 = loopback
+			NetInTrans = new Windows.PerformanceCounter(CategoryName, "Bytes Received/sec", firstnic);
+			NetOutTrans = new Windows.PerformanceCounter(CategoryName, "Bytes Sent/sec", firstnic);
+			NetQueue = new Windows.PerformanceCounter(CategoryName, "Output Queue Length", firstnic);
+			NetPackets = new Windows.PerformanceCounter(CategoryName, "Packets/sec", firstnic);
 
 			lastErrorReport = DateTimeOffset.UtcNow; // crude
 
@@ -178,15 +184,13 @@ namespace Taskmaster.Network
 		}
 
 		public TrafficDelta GetTraffic
-		{
-			get => new TrafficDelta()
+			=> new TrafficDelta()
 			{
 				Input = NetInTrans?.Value ?? float.NaN,
 				Output = NetOutTrans?.Value ?? float.NaN,
 				Queue = NetQueue?.Value ?? float.NaN,
 				Packets = NetPackets?.Value ?? float.NaN,
 			};
-		}
 
 		void DeviceSampler(object sender, System.Timers.ElapsedEventArgs e)
 		{
@@ -360,10 +364,7 @@ namespace Taskmaster.Network
 		/// Current uptime in minutes.
 		/// </summary>
 		/// <value>The uptime.</value>
-		public TimeSpan Uptime
-		{
-			get => InternetAvailable ? (DateTimeOffset.UtcNow - LastUptimeStart) : TimeSpan.Zero;
-		}
+		public TimeSpan Uptime => InternetAvailable ? (DateTimeOffset.UtcNow - LastUptimeStart) : TimeSpan.Zero;
 
 		/// <summary>
 		/// Returns uptime in minutes or positive infinite if no average is known

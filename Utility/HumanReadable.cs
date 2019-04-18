@@ -47,6 +47,9 @@ namespace Taskmaster
 			public const string Ellipsis = "…";
 			public const string NotAvailable = "n/a";
 			public const string Uninitialized = "Uninitialized";
+
+			public const string Debug = "Debug";
+			public const string Logging = "Logging";
 		}
 
 		public static class System
@@ -74,6 +77,8 @@ namespace Taskmaster
 		public static class Hardware
 		{
 			public const string Section = "Hardware";
+
+			public const string Memory = "Memory";
 
 			public static class CPU
 			{

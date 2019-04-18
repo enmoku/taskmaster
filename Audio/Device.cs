@@ -1,5 +1,5 @@
 ﻿//
-// AudioDevice.cs
+// Audio.Device.cs
 //
 // Author:
 //       M.A. (https://github.com/mkahvi)
@@ -26,17 +26,17 @@
 
 using System;
 
-namespace Taskmaster
+namespace Taskmaster.Audio
 {
-	sealed public class AudioDevice : IDisposable
+	sealed public class Device : IDisposable
 	{
-		public AudioDevice(NAudio.CoreAudioApi.MMDevice device)
-			: this(AudioManager.AudioDeviceIdToGuid(device.ID), device.FriendlyName, device.DataFlow, device.State, device)
+		public Device(NAudio.CoreAudioApi.MMDevice device)
+			: this(Manager.AudioDeviceIdToGuid(device.ID), device.FriendlyName, device.DataFlow, device.State, device)
 		{
 			// nop
 		}
 
-		public AudioDevice(string guid, string name, NAudio.CoreAudioApi.DataFlow flow, NAudio.CoreAudioApi.DeviceState state, NAudio.CoreAudioApi.MMDevice device)
+		public Device(string guid, string name, NAudio.CoreAudioApi.DataFlow flow, NAudio.CoreAudioApi.DeviceState state, NAudio.CoreAudioApi.MMDevice device)
 		{
 			GUID = guid;
 			Name = name;
@@ -62,7 +62,7 @@ namespace Taskmaster
 		#region IDisposable Support
 		bool DisposingOrDisposed = false; // To detect redundant calls
 
-		~AudioDevice() => Dispose(false);
+		~Device() => Dispose(false);
 
 		void Dispose(bool disposing)
 		{

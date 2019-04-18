@@ -1,5 +1,5 @@
 ﻿//
-// AudioManager.cs
+// Audio.Manager.cs
 //
 // Author:
 //       M.A. (https://github.com/mkahvi)
@@ -29,24 +29,23 @@ using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Threading.Tasks;
 using Serilog;
-using Taskmaster.Events;
 
-namespace Taskmaster
+namespace Taskmaster.Audio
 {
 	using static Taskmaster;
 
 	/// <summary>
 	/// Must be created on persistent thread, such as the main thread.
 	/// </summary>
-	public class AudioManager : IComponent, IDisposable
+	public class Manager : IComponent, IDisposable
 	{
 		readonly System.Threading.Thread Context = null;
 
-		public event EventHandler<AudioDeviceStateEventArgs> StateChanged;
-		public event EventHandler<AudioDefaultDeviceEventArgs> DefaultChanged;
+		public event EventHandler<DeviceStateEventArgs> StateChanged;
+		public event EventHandler<DefaultDeviceEventArgs> DefaultChanged;
 
-		public event EventHandler<AudioDeviceEventArgs> Added;
-		public event EventHandler<AudioDeviceEventArgs> Removed;
+		public event EventHandler<DeviceEventArgs> Added;
+		public event EventHandler<DeviceEventArgs> Removed;
 
 		public NAudio.CoreAudioApi.MMDeviceEnumerator Enumerator = null;
 
@@ -56,17 +55,17 @@ namespace Taskmaster
 		/// <summary>
 		/// Games, voice communication, etc.
 		/// </summary>
-		public AudioDevice ConsoleDevice { get; private set; } = null;
+		public Device ConsoleDevice { get; private set; } = null;
 		/// <summary>
 		/// Multimedia, Movies, etc.
 		/// </summary>
-		public AudioDevice MultimediaDevice { get; private set; } = null;
+		public Device MultimediaDevice { get; private set; } = null;
 		/// <summary>
 		/// Voice capture.
 		/// </summary>
-		public AudioDevice RecordingDevice { get; private set; } = null;
+		public Device RecordingDevice { get; private set; } = null;
 
-		readonly AudioDeviceNotificationClient notificationClient = null;
+		readonly DeviceNotificationClient notificationClient = null;
 
 		//public event EventHandler<ProcessEx> OnNewSession;
 
@@ -76,7 +75,7 @@ namespace Taskmaster
 		/// Not thread safe
 		/// </summary>
 		/// <exception cref="InitFailure">If audio device can not be found.</exception>
-		public AudioManager()
+		public Manager()
 		{
 			Debug.Assert(MKAh.Execution.IsMainThread, "Requires main thread");
 			Context = System.Threading.Thread.CurrentThread;
@@ -85,7 +84,7 @@ namespace Taskmaster
 
 			GetDefaultDevice();
 
-			notificationClient = new AudioDeviceNotificationClient();
+			notificationClient = new DeviceNotificationClient();
 			notificationClient.StateChanged += StateChangeProxy;
 			notificationClient.DefaultDevice += DefaultDeviceProxy;
 			notificationClient.Added += DeviceAddedProxy;
@@ -118,7 +117,7 @@ namespace Taskmaster
 		public void StartVolumePolling() => volumeTimer.Start();
 		public void StopVolumePolling() => volumeTimer.Stop();
 
-		void StateChangeProxy(object sender, Events.AudioDeviceStateEventArgs ea)
+		void StateChangeProxy(object sender, DeviceStateEventArgs ea)
 		{
 			if (DisposingOrDisposed) return;
 
@@ -132,23 +131,23 @@ namespace Taskmaster
 			StateChanged?.Invoke(this, ea);
 		}
 
-		void DefaultDeviceProxy(object sender, AudioDefaultDeviceEventArgs ea)
+		void DefaultDeviceProxy(object sender, DefaultDeviceEventArgs ea)
 		{
 			if (DisposingOrDisposed) return;
 
 			DefaultChanged?.Invoke(sender, ea);
 		}
 
-		void DeviceAddedProxy(object sender, AudioDeviceEventArgs ea)
+		void DeviceAddedProxy(object sender, DeviceEventArgs ea)
 		{
 			if (DisposingOrDisposed) return;
 
 			var dev = Enumerator.GetDevice(ea.ID);
 			if (dev != null)
 			{
-				var adev = new AudioDevice(dev);
+				var adev = new Device(dev);
 
-				Devices.TryAdd(ea.GUID, new AudioDevice(dev));
+				Devices.TryAdd(ea.GUID, new Device(dev));
 
 				ea.Device = adev;
 
@@ -156,7 +155,7 @@ namespace Taskmaster
 			}
 		}
 
-		void DeviceRemovedProxy(object sender, AudioDeviceEventArgs ea)
+		void DeviceRemovedProxy(object sender, DeviceEventArgs ea)
 		{
 			if (DisposingOrDisposed) return;
 
@@ -172,9 +171,9 @@ namespace Taskmaster
 			Removed?.Invoke(sender, ea);
 		}
 
-		ConcurrentDictionary<string, AudioDevice> Devices = new ConcurrentDictionary<string, AudioDevice>();
+		ConcurrentDictionary<string, Device> Devices = new ConcurrentDictionary<string, Device>();
 
-		public AudioDevice GetDevice(string guid)
+		public Device GetDevice(string guid)
 			=> Devices.TryGetValue(guid, out var dev) ? dev : null;
 
 		void GetDefaultDevice()
@@ -187,9 +186,9 @@ namespace Taskmaster
 				var mmdevconsole = Enumerator.GetDefaultAudioEndpoint(NAudio.CoreAudioApi.DataFlow.Render, NAudio.CoreAudioApi.Role.Console);
 				var mmdevinput = Enumerator.GetDefaultAudioEndpoint(NAudio.CoreAudioApi.DataFlow.Capture, NAudio.CoreAudioApi.Role.Communications);
 
-				MultimediaDevice = new AudioDevice(mmdevmultimedia);
-				ConsoleDevice = new AudioDevice(mmdevconsole);
-				RecordingDevice = new AudioDevice(mmdevinput);
+				MultimediaDevice = new Device(mmdevmultimedia);
+				ConsoleDevice = new Device(mmdevconsole);
+				RecordingDevice = new Device(mmdevinput);
 
 				Log.Information("<Audio> Default movie/music device: " + MultimediaDevice.Name);
 				Log.Information("<Audio> Default game/voip device: " + ConsoleDevice.Name);
@@ -240,34 +239,34 @@ namespace Taskmaster
 						switch (prc.VolumeStrategy)
 						{
 							default:
-							case AudioVolumeStrategy.Ignore:
+							case VolumeStrategy.Ignore:
 								break;
-							case AudioVolumeStrategy.Force:
+							case VolumeStrategy.Force:
 								session.SimpleAudioVolume.Volume = prc.Volume;
 								volAdjusted = true;
 								break;
-							case AudioVolumeStrategy.Decrease:
+							case VolumeStrategy.Decrease:
 								if (oldvolume > prc.Volume)
 								{
 									session.SimpleAudioVolume.Volume = prc.Volume;
 									volAdjusted = true;
 								}
 								break;
-							case AudioVolumeStrategy.Increase:
+							case VolumeStrategy.Increase:
 								if (oldvolume < prc.Volume)
 								{
 									session.SimpleAudioVolume.Volume = prc.Volume;
 									volAdjusted = true;
 								}
 								break;
-							case AudioVolumeStrategy.DecreaseFromFull:
+							case VolumeStrategy.DecreaseFromFull:
 								if (oldvolume > prc.Volume && oldvolume >= 0.99f)
 								{
 									session.SimpleAudioVolume.Volume = prc.Volume;
 									volAdjusted = true;
 								}
 								break;
-							case AudioVolumeStrategy.IncreaseFromMute:
+							case VolumeStrategy.IncreaseFromMute:
 								if (oldvolume < prc.Volume && oldvolume <= 0.01f)
 								{
 									session.SimpleAudioVolume.Volume = prc.Volume;
@@ -338,14 +337,9 @@ namespace Taskmaster
 
 		public void Dispose() => Dispose(true);
 		#endregion
-
-		/// <summary>
-		/// Takes Device ID in form of {a.b.c.dddddddd}.{aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee} and retuurns GUID part only.
-		/// </summary>
-		public static string AudioDeviceIdToGuid(string deviceId) => (deviceId.Split('}'))[1].Substring(2);
 	}
 
-	public enum AudioVolumeStrategy
+	public enum VolumeStrategy
 	{
 		Ignore = 0,
 		Decrease = 1,
