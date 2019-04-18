@@ -36,6 +36,7 @@ using Serilog;
 
 namespace Taskmaster
 {
+	using MKAh.Ini;
 	using System.Text;
 	using static Taskmaster;
 
@@ -265,7 +266,7 @@ namespace Taskmaster
 
 		void LoadConfig()
 		{
-			using (var cfg = Config.Load(HealthConfigFilename).BlockUnload())
+			using (var cfg = Taskmaster.Config.Load(HealthConfigFilename).BlockUnload())
 			{
 				bool modified = false, modified2=false, configdirty = false;
 
@@ -324,7 +325,7 @@ namespace Taskmaster
 				if (configdirty) cfg.MarkDirty();
 			}
 
-			using (var corecfg = Config.Load(CoreConfigFilename).BlockUnload())
+			using (var corecfg = Taskmaster.Config.Load(CoreConfigFilename).BlockUnload())
 			{
 				DebugHealth = corecfg.Config[HumanReadable.Generic.Debug].Get("Health")?.BoolValue ?? false;
 			}

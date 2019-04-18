@@ -31,6 +31,7 @@ using Serilog;
 
 namespace Taskmaster
 {
+	using MKAh.Ini;
 	using System.Text;
 	using static Taskmaster;
 
@@ -64,7 +65,7 @@ namespace Taskmaster
 			NativeMethods.GetWindowThreadProcessId(hwnd, out int pid);
 			Foreground = pid;
 
-			using (var corecfg = Config.Load(CoreConfigFilename).BlockUnload())
+			using (var corecfg = Taskmaster.Config.Load(CoreConfigFilename).BlockUnload())
 			{
 				bool dirty = false, modified = false, modified2 = false;
 				var perfsec = corecfg.Config["Performance"];
