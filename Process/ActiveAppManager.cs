@@ -66,28 +66,29 @@ namespace Taskmaster
 
 			using (var corecfg = Config.Load(CoreConfigFilename).BlockUnload())
 			{
-				bool dirty = false, modified = false;
+				bool dirty = false, modified = false, modified2 = false;
 				var perfsec = corecfg.Config["Performance"];
-				var hysterisisSetting = perfsec.GetOrSet("Foreground hysterisis", 1500, out modified);
-				Hysterisis = TimeSpan.FromMilliseconds(hysterisisSetting.IntValue.Constrain(200, 30000));
-				if (modified) hysterisisSetting.Comment = "In milliseconds, from 500 to 30000. Delay before we inspect foreground app, in case user rapidly swaps apps.";
-				dirty |= modified;
+				var hysterisisSetting = perfsec.GetOrSet("Foreground hysterisis", 1500, out modified)
+					.InitComment("In milliseconds, from 500 to 30000. Delay before we inspect foreground app, in case user rapidly swaps apps.", out modified2)
+					.IntValue.Constrain(200, 30000);
+				Hysterisis = TimeSpan.FromMilliseconds(hysterisisSetting);
+				dirty |= modified || modified2;
 
 				var emsec = corecfg.Config["Emergency"];
-				var hangKillTickSetting = emsec.GetOrSet("Kill hung", 180 * 5, out modified);
-				HangKillTick = hangKillTickSetting.IntValue.Constrain(0, 60 * 60 * 4);
-				if (modified) hangKillTickSetting.Comment = "Kill the application after this many seconds. 0 disables. Minimum actual kill time is minimize/reduce time + 60.";
-				dirty |= modified;
+				HangKillTick = emsec.GetOrSet("Kill hung", 180 * 5, out modified)
+					.InitComment("Kill the application after this many seconds. 0 disables. Minimum actual kill time is minimize/reduce time + 60.", out modified2)
+					.IntValue.Constrain(0, 60 * 60 * 4);
+				dirty |= modified || modified2;
 
-				var hangMinTickSetting = emsec.GetOrSet("Hung minimize time", 180, out modified);
-				HangMinimizeTick = hangMinTickSetting.IntValue.Constrain(0, 60 * 60 * 2);
-				if (modified) hangMinTickSetting.Comment = "Try to minimize hung app after this many seconds.";
-				dirty |= modified;
+				HangMinimizeTick = emsec.GetOrSet("Hung minimize time", 180, out modified)
+					.InitComment("Try to minimize hung app after this many seconds.", out modified2)
+					.IntValue.Constrain(0, 60 * 60 * 2);
+				dirty |= modified || modified2;
 
-				var hangReduceTickSetting = emsec.GetOrSet("Hung reduce time", 300, out modified);
-				HangReduceTick = hangReduceTickSetting.IntValue.Constrain(0, 60 * 60 * 2);
-				if (modified) hangReduceTickSetting.Comment = "Reduce affinity and priority of hung app after this many seconds.";
-				dirty |= modified;
+				HangReduceTick = emsec.GetOrSet("Hung reduce time", 300, out modified)
+					.InitComment("Reduce affinity and priority of hung app after this many seconds.", out modified2)
+					.IntValue.Constrain(0, 60 * 60 * 2);
+				dirty |= modified || modified2;
 
 				if (dirty) corecfg.MarkDirty();
 			}

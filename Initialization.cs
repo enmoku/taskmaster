@@ -78,15 +78,15 @@ namespace Taskmaster
 				var optsec = cfg[Constants.Options];
 				var perfsec = cfg[Constants.Performance];
 
-				bool modified = false, dirtyconfig = false;
+				bool modified = false, modified2=false, dirtyconfig = false;
 				cfg[Constants.Core].GetOrSet(Constants.License, Constants.Refused, out modified).Value = Constants.Accepted;
 				dirtyconfig |= modified;
 
 				// [Components]
-				var processmonitorenabled_t = compsec.GetOrSet(HumanReadable.System.Process.Section, true, out modified);
-				ProcessMonitorEnabled = processmonitorenabled_t.BoolValue;
-				processmonitorenabled_t.Comment = "Monitor starting processes based on their name. Configure in Apps.ini";
-				dirtyconfig |= modified;
+				ProcessMonitorEnabled = compsec.GetOrSet(HumanReadable.System.Process.Section, true, out modified)
+					.InitComment("Monitor starting processes based on their name. Configure in Apps.ini", out modified2)
+					.BoolValue;
+				dirtyconfig |= modified || modified2;
 
 				if (!ProcessMonitorEnabled)
 				{
@@ -94,13 +94,15 @@ namespace Taskmaster
 					ProcessMonitorEnabled = true;
 				}
 
-				var audiomanagerenabled_t = compsec.GetOrSet(HumanReadable.Hardware.Audio.Section, true, out modified);
-				AudioManagerEnabled = audiomanagerenabled_t.BoolValue;
-				audiomanagerenabled_t.Comment = "Monitor audio sessions and set their volume as per user configuration.";
-				dirtyconfig |= modified;
-				MicrophoneManagerEnabled = compsec.GetOrSet("Microphone", false, out modified).BoolValue;
-				compsec[Constants.Microphone].Comment = "Monitor and force-keep microphone volume.";
-				dirtyconfig |= modified;
+				AudioManagerEnabled = compsec.GetOrSet(HumanReadable.Hardware.Audio.Section, true, out modified)
+					.InitComment("Monitor audio sessions and set their volume as per user configuration.", out modified2)
+					.BoolValue;
+				dirtyconfig |= modified || modified2;
+
+				MicrophoneManagerEnabled = compsec.GetOrSet("Microphone", false, out modified)
+					.InitComment("Monitor and force-keep microphone volume.", out modified2)
+					.BoolValue;
+				dirtyconfig |= modified || modified2;
 
 				if (!AudioManagerEnabled && MicrophoneManagerEnabled)
 				{
@@ -111,36 +113,43 @@ namespace Taskmaster
 				// MediaMonitorEnabled = compsec.GetSetDefault("Media", true, out modified).BoolValue;
 				// compsec["Media"].Comment = "Unused";
 				// dirtyconfig |= modified;
-				ActiveAppMonitorEnabled = compsec.GetOrSet(HumanReadable.System.Process.Foreground, true, out modified).BoolValue;
-				compsec[HumanReadable.System.Process.Foreground].Comment = "Game/Foreground app monitoring and adjustment.";
-				dirtyconfig |= modified;
-				NetworkMonitorEnabled = compsec.GetOrSet("Network", true, out modified).BoolValue;
-				compsec[Constants.Network].Comment = "Monitor network uptime and current IP addresses.";
-				dirtyconfig |= modified;
-				PowerManagerEnabled = compsec.GetOrSet(HumanReadable.Hardware.Power.Section, true, out modified).BoolValue;
-				compsec[HumanReadable.Hardware.Power.Section].Comment = "Enable power plan management.";
+				ActiveAppMonitorEnabled = compsec.GetOrSet(HumanReadable.System.Process.Foreground, true, out modified)
+					.InitComment("Game/Foreground app monitoring and adjustment.", out modified2).BoolValue;
+				dirtyconfig |= modified  || modified2;
+
+				NetworkMonitorEnabled = compsec.GetOrSet(Constants.Network, true, out modified).InitComment("Monitor network uptime and current IP addresses.", out modified2)
+					.BoolValue;
 				dirtyconfig |= modified;
 
-				if (compsec.TryGet("Paging", out var pagingsetting))
+				PowerManagerEnabled = compsec.GetOrSet(HumanReadable.Hardware.Power.Section, true, out modified)
+					.InitComment("Enable power plan management.", out modified2)
+					.BoolValue;
+				dirtyconfig |= modified || modified2;
+
+				if (compsec.TryGet(Constants.Paging, out var pagingsetting))
 				{
 					compsec.Remove(pagingsetting);
 					dirtyconfig = true;
 				}
 
-				StorageMonitorEnabled = compsec.GetOrSet(Constants.Storage, false, out modified).BoolValue;
-				compsec[Constants.Storage].Comment = "Enable NVM storage monitoring functionality.";
-				dirtyconfig |= modified;
-				MaintenanceMonitorEnabled = compsec.GetOrSet(Constants.Maintenance, false, out modified).BoolValue;
-				compsec[Constants.Maintenance].Comment = "Enable basic maintenance monitoring functionality.";
-				dirtyconfig |= modified;
+				StorageMonitorEnabled = compsec.GetOrSet(Constants.Storage, false, out modified)
+					.InitComment("Enable NVM storage monitoring functionality.", out modified2)
+					.BoolValue;
+				dirtyconfig |= modified || modified2;
+				MaintenanceMonitorEnabled = compsec.GetOrSet(Constants.Maintenance, false, out modified)
+					.InitComment("Enable basic maintenance monitoring functionality.", out modified2)
+					.BoolValue;
+				dirtyconfig |= modified||modified2;
 
-				HealthMonitorEnabled = compsec.GetOrSet(Constants.Health, false, out modified).BoolValue;
-				compsec[Constants.Health].Comment = "General system health monitoring suite.";
-				dirtyconfig |= modified;
+				HealthMonitorEnabled = compsec.GetOrSet(Constants.Health, false, out modified)
+					.InitComment("General system health monitoring suite.", out modified2)
+					.BoolValue;
+				dirtyconfig |= modified || modified2;
 
-				HardwareMonitorEnabled = compsec.GetOrSet(HumanReadable.Hardware.Section, false, out modified).BoolValue;
-				compsec[HumanReadable.Hardware.Section].Comment = "Temperature, fan, etc. monitoring via OpenHardwareMonitor.";
-				dirtyconfig |= modified;
+				HardwareMonitorEnabled = compsec.GetOrSet(HumanReadable.Hardware.Section, false, out modified)
+					.InitComment("Temperature, fan, etc. monitoring via OpenHardwareMonitor.", out modified2)
+					.BoolValue;
+				dirtyconfig |= modified || modified2;
 
 				var qol = cfg[HumanReadable.Generic.QualityOfLife];
 				ExitConfirmation = qol.GetOrSet("Exit confirmation", true, out modified).BoolValue;
@@ -151,8 +160,9 @@ namespace Taskmaster
 				dirtyconfig |= modified;
 
 				var logsec = cfg[HumanReadable.Generic.Logging];
-				var Verbosity = logsec.GetOrSet(Constants.Verbosity, 0, out modified).IntValue;
-				logsec[Constants.Verbosity].Comment = "0 = Information, 1 = Debug, 2 = Verbose/Trace, 3 = Excessive; 2 and higher are available on debug builds only";
+				var Verbosity = logsec.GetOrSet(Constants.Verbosity, 0, out modified)
+					.InitComment("0 = Information, 1 = Debug, 2 = Verbose/Trace, 3 = Excessive; 2 and higher are available on debug builds only", out modified2)
+					.IntValue;
 				switch (Verbosity)
 				{
 					default:
@@ -174,31 +184,32 @@ namespace Taskmaster
 						loglevelswitch.MinimumLevel = LogEventLevel.Debug;
 						break;
 				}
-				dirtyconfig |= modified;
+				dirtyconfig |= modified||modified2;
 
-				var uniquecrashlogs_t = logsec.GetOrSet("Unique crash logs", false, out modified);
-				UniqueCrashLogs = uniquecrashlogs_t.BoolValue;
-				uniquecrashlogs_t.Comment = "On crash instead of creating crash.log in Logs, create crash-YYYYMMDD-HHMMSS-FFF.log instead. These are not cleaned out automatically!";
-				dirtyconfig |= modified;
+				UniqueCrashLogs = logsec.GetOrSet("Unique crash logs", false, out modified)
+					.InitComment("On crash instead of creating crash.log in Logs, create crash-YYYYMMDD-HHMMSS-FFF.log instead. These are not cleaned out automatically!", out modified2)
+					.BoolValue;
+				dirtyconfig |= modified || modified2;
 
-				var showinaction_t = logsec.GetOrSet("Show inaction", false, out modified);
-				ShowInaction = showinaction_t.BoolValue;
-				showinaction_t.Comment = "Log lack of action taken on processes.";
-				dirtyconfig |= modified;
+				ShowInaction = logsec.GetOrSet("Show inaction", false, out modified)
+					.InitComment("Log lack of action taken on processes.", out modified2)
+					.BoolValue;
+				dirtyconfig |= modified || modified2;
 
-				var showagency_t = logsec.GetOrSet("Show agency", false, out modified);
-				ShowAgency = showagency_t.BoolValue;
-				showagency_t.Comment = "Log changes in agency, such as processes being left to decide their own fate.";
-				dirtyconfig |= modified;
+				var showagency_t = logsec.GetOrSet("Show agency", false, out modified)
+					.InitComment("Log changes in agency, such as processes being left to decide their own fate.", out modified2)
+					.BoolValue;
+				dirtyconfig |= modified || modified2;
 
-				var showprocessadjusts_t = logsec.GetOrSet("Show process adjusts", true, out modified);
-				ShowProcessAdjusts = showprocessadjusts_t.BoolValue;
-				showprocessadjusts_t.Comment = "Show blurbs about adjusted processes.";
-				dirtyconfig |= modified;
+				ShowProcessAdjusts = logsec.GetOrSet("Show process adjusts", true, out modified)
+					.InitComment("Show blurbs about adjusted processes.", out modified2)
+					.BoolValue;
+				dirtyconfig |= modified || modified2;
 
-				var showasessionactions_t = logsec.GetOrSet("Show session actions", true, out modified);
-				ShowSessionActions = showasessionactions_t.BoolValue;
-				showasessionactions_t.Comment = "Show blurbs about actions taken relating to sessions.";
+				ShowSessionActions = logsec.GetOrSet("Show session actions", true, out modified)
+					.InitComment("Show blurbs about actions taken relating to sessions.", out modified2)
+					.BoolValue;
+				dirtyconfig |= modified || modified2;
 
 				var uisec = cfg[Constants.UserInterface];
 				ShowOnStart = uisec.GetOrSet(Constants.ShowOnStart, ShowOnStart, out modified).BoolValue;
@@ -211,20 +222,24 @@ namespace Taskmaster
 				// [Performance]
 				SelfOptimize = perfsec.GetOrSet("Self-optimize", true, out modified).BoolValue;
 				dirtyconfig |= modified;
-				var selfpriority_t = perfsec.GetOrSet("Self-priority", 1, out modified);
-				SelfPriority = ProcessHelpers.IntToPriority(selfpriority_t.IntValue.Constrain(0, 2));
-				selfpriority_t.Comment = "Process priority to set for TM itself. Restricted to 0 (Low) to 2 (Normal).";
-				dirtyconfig |= modified;
-				var selfaffinity_t = perfsec.GetOrSet("Self-affinity", 0, out modified);
-				SelfAffinity = selfaffinity_t.IntValue.Constrain(0, ProcessManager.AllCPUsMask);
-				selfaffinity_t.Comment = "Core mask as integer. 0 is for default OS control.";
-				dirtyconfig |= modified;
+
+				var selfpriority_t = perfsec.GetOrSet("Self-priority", 1, out modified)
+					.InitComment("Process priority to set for TM itself. Restricted to 0 (Low) to 2 (Normal).", out modified2)
+					.IntValue.Constrain(0, 2);
+				SelfPriority = ProcessHelpers.IntToPriority(selfpriority_t);
+				dirtyconfig |= modified || modified2;
+
+				SelfAffinity = perfsec.GetOrSet("Self-affinity", 0, out modified)
+					.InitComment("Core mask as integer. 0 is for default OS control.", out modified2)
+					.IntValue.Constrain(0, ProcessManager.AllCPUsMask);
+				dirtyconfig |= modified || modified2;
+
 				if (SelfAffinity > Convert.ToInt32(Math.Pow(2, Environment.ProcessorCount) - 1 + double.Epsilon)) SelfAffinity = 0;
 
-				var selfoptimizebgio_t = perfsec.GetOrSet("Background I/O mode", false, out modified);
-				SelfOptimizeBGIO = selfoptimizebgio_t.BoolValue;
-				selfoptimizebgio_t.Comment = "Sets own priority exceptionally low. Warning: This can make TM's UI and functionality quite unresponsive.";
-				dirtyconfig |= modified;
+				SelfOptimizeBGIO = perfsec.GetOrSet("Background I/O mode", false, out modified)
+					.InitComment("Sets own priority exceptionally low. Warning: This can make TM's UI and functionality quite unresponsive.", out modified2)
+					.BoolValue;
+				dirtyconfig |= modified || modified2;
 
 				if (perfsec.TryGet("WMI queries", out var wmiqsetting))
 				{
@@ -235,24 +250,26 @@ namespace Taskmaster
 				//perfsec.GetSetDefault("Child processes", false, out modified); // unused here
 				//perfsec["Child processes"].Comment = "Enables controlling process priority based on parent process if nothing else matches. This is slow and unreliable.";
 				//dirtyconfig |= modified;
-				var temprescanthreshold_t = perfsec.GetOrSet("Temp rescan threshold", 1000, out modified);
-				TempRescanThreshold = temprescanthreshold_t.IntValue;
-				temprescanthreshold_t.Comment = "How many changes we wait to temp folder before expediting rescanning it.";
-				dirtyconfig |= modified;
-				var temprescandelay_t = perfsec.GetOrSet("Temp rescan delay", 60, out modified);
-				TempRescanDelay = temprescandelay_t.IntValue * 60_000;
-				temprescandelay_t.Comment = "How many minutes to wait before rescanning temp after crossing the threshold.";
-				dirtyconfig |= modified;
+				TempRescanThreshold = perfsec.GetOrSet("Temp rescan threshold", 1000, out modified)
+					.InitComment("How many changes we wait to temp folder before expediting rescanning it.", out modified2)
+					.IntValue;
+				dirtyconfig |= modified || modified2;
 
-				var pathcachelimit_t = perfsec.GetOrSet("Path cache", 60, out modified);
-				PathCacheLimit = pathcachelimit_t.IntValue.Constrain(20, 200);
-				pathcachelimit_t.Comment = "Path searching is very heavy process; this configures how many processes to remember paths for. The cache is allowed to occasionally overflow for half as much.";
-				dirtyconfig |= modified;
+				TempRescanDelay = perfsec.GetOrSet("Temp rescan delay", 60, out modified)
+					.InitComment("How many minutes to wait before rescanning temp after crossing the threshold.", out modified2)
+					.IntValue * 60_000;
+				dirtyconfig |= modified || modified2;
 
-				var pathcachemaxage_t = perfsec.GetOrSet("Path cache max age", 15, out modified);
-				PathCacheMaxAge = new TimeSpan(0, pathcachemaxage_t.IntValue.Constrain(1, 1440), 0);
-				pathcachemaxage_t.Comment = "Maximum age, in minutes, of cached objects. Min: 1 (1min), Max: 1440 (1day). These will be removed even if the cache is appropriate size.";
-				dirtyconfig |= modified;
+				PathCacheLimit = perfsec.GetOrSet("Path cache", 60, out modified)
+					.InitComment("Path searching is very heavy process; this configures how many processes to remember paths for. The cache is allowed to occasionally overflow for half as much.", out modified2)
+					.IntValue.Constrain(20, 200);
+				dirtyconfig |= modified || modified2;
+
+				var pathcachemaxage_t = perfsec.GetOrSet("Path cache max age", 15, out modified)
+					.InitComment("Maximum age, in minutes, of cached objects. Min: 1 (1min), Max: 1440 (1day). These will be removed even if the cache is appropriate size.", out modified2)
+					.IntValue;
+				PathCacheMaxAge = new TimeSpan(0, pathcachemaxage_t.Constrain(1, 1440), 0);
+				dirtyconfig |= modified || modified2;
 
 				// OPTIONS
 				if (optsec.TryGet(Constants.ShowOnStart, out var sosv)) // REPRECATED
@@ -262,10 +279,10 @@ namespace Taskmaster
 					dirtyconfig = true;
 				}
 
-				var pagingenabled_t = optsec.GetOrSet("Paging", true, out modified);
-				PagingEnabled = pagingenabled_t.BoolValue;
-				pagingenabled_t.Comment = "Enable paging of apps as per their configuration.";
-				dirtyconfig |= modified;
+				PagingEnabled = optsec.GetOrSet("Paging", true, out modified)
+					.InitComment("Enable paging of apps as per their configuration.", out modified2)
+					.BoolValue;
+				dirtyconfig |= modified || modified2;
 
 				//
 				cfg.Get(Constants.Maintenance)?.TryRemove("Cleanup interval"); // DEPRECATRED

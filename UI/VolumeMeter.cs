@@ -63,8 +63,9 @@ namespace Taskmaster.UI
 				bool modified = false, dirty = false;
 				TopMost = volsec.GetOrSet("Topmost", true, out modified).BoolValue;
 				dirty |= modified;
-				Frequency = volsec.GetOrSet("Refresh", 100, out modified).IntValue.Constrain(10, 5000);
-				volsec["Refresh"].Comment = "Refresh delay. Lower is faster. Milliseconds from 10 to 5000.";
+				Frequency = volsec.GetOrSet("Refresh", 100, out modified)
+					.InitComment("Refresh delay. Lower is faster. Milliseconds from 10 to 5000.", out _)
+					.IntValue.Constrain(10, 5000);
 				dirty |= modified;
 				int? upgradeOutCap = volsec.Get("Output")?.IntValue;
 				if (upgradeOutCap.HasValue) volsec["Output threshold"].IntValue = upgradeOutCap.Value;
@@ -75,6 +76,7 @@ namespace Taskmaster.UI
 				VolumeInputCap = volsec.GetOrSet("Input threshold", 100, out modified).IntValue.Constrain(20, 100) * 100;
 				dirty |= modified;
 
+				// DEPRECATED
 				volsec.TryRemove("Cap");
 				volsec.TryRemove("Output");
 				volsec.TryRemove("Output cap");

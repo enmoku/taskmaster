@@ -8,10 +8,10 @@
 // </auto-generated>
 //------------------------------------------------------------------------------
 
-namespace IniFile.Properties {
+namespace Unit_Tests.Properties {
     using System;
-
-
+    
+    
     /// <summary>
     ///   A strongly-typed resource class, for looking up localized strings, etc.
     /// </summary>
@@ -19,19 +19,19 @@ namespace IniFile.Properties {
     // class via a tool like ResGen or Visual Studio.
     // To add or remove a member, edit your .ResX file then rerun ResGen
     // with the /str option, or rebuild your VS project.
-    [global::System.CodeDom.Compiler.GeneratedCodeAttribute("System.Resources.Tools.StronglyTypedResourceBuilder", "15.0.0.0")]
+    [global::System.CodeDom.Compiler.GeneratedCodeAttribute("System.Resources.Tools.StronglyTypedResourceBuilder", "16.0.0.0")]
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
     [global::System.Runtime.CompilerServices.CompilerGeneratedAttribute()]
     internal class Resources {
-
+        
         private static global::System.Resources.ResourceManager resourceMan;
-
+        
         private static global::System.Globalization.CultureInfo resourceCulture;
-
+        
         [global::System.Diagnostics.CodeAnalysis.SuppressMessageAttribute("Microsoft.Performance", "CA1811:AvoidUncalledPrivateCode")]
         internal Resources() {
         }
-
+        
         /// <summary>
         ///   Returns the cached ResourceManager instance used by this class.
         /// </summary>
@@ -45,7 +45,7 @@ namespace IniFile.Properties {
                 return resourceMan;
             }
         }
-
+        
         /// <summary>
         ///   Overrides the current thread's CurrentUICulture property for all
         ///   resource lookups using this strongly typed resource class.
@@ -57,34 +57,6 @@ namespace IniFile.Properties {
             }
             set {
                 resourceCulture = value;
-            }
-        }
-
-        /// <summary>
-        ///   Looks up a localized string similar to #no section here = haha
-        ///[ test]
-        ///  value     =    hohohoohoho
-        /// val = &quot;bloop&quot;
-        ///test    =    &quot;kakka\&quot;bob\&quot;&quot;  # haha
-        ///testtteee = &quot;&quot; # hoho
-        ///#more test = &quot;&quot;&quot;&quot; # breaking
-        ///IntArray = {1,1,2,3} # blop { &quot;# }
-        ///StringArray = {1,2,&quot;koo&quot;,blop} # ha
-        ///MalformedArray = {7} di # error
-        ///quote test = &quot;#&quot; # bloop
-        ///
-        ///[Test] # bloo
-        ///Break=yes#bla
-        ///#ger
-        ///#  lgerlg0e
-        ///              # test
-        ///#explode
-        ///
-        ///.
-        /// </summary>
-        internal static string TestIni {
-            get {
-                return ResourceManager.GetString("TestIni", resourceCulture);
             }
         }
     }

@@ -1741,22 +1741,21 @@ namespace Taskmaster.UI
 			loglistms.Items.Add(logcopy);
 			LogList.ContextMenuStrip = loglistms;
 
-			bool modified, tdirty = false;
+			bool modified=false, modified2=false, tdirty = false;
 
 			using (var cfg = Taskmaster.Config.Load(CoreConfigFilename).BlockUnload())
 			{
-				var maxlogsize_t = cfg.Config[HumanReadable.Generic.Logging].GetOrSet("UI max items", 200, out modified);
-				MaxLogSize = maxlogsize_t.IntValue;
-				tdirty |= modified;
-				var uitimerinterval_t = cfg.Config[Constants.UserInterface].GetOrSet(UpdateFrequencyName, 2000, out modified);
-				UItimer.Interval = uitimerinterval_t.IntValue.Constrain(100, 5000);
-				tdirty |= modified;
-				if (tdirty)
-				{
-					maxlogsize_t.Comment = "Maximum number of items/lines to retain on UI level.";
-					uitimerinterval_t.Comment = "In milliseconds. Frequency of controlled UI updates. Affects visual accuracy of timers and such. Valid range: 100 to 5000.";
-					cfg.MarkDirty();
-				}
+				MaxLogSize = cfg.Config[HumanReadable.Generic.Logging].GetOrSet("UI max items", 200, out modified)
+					.InitComment("Maximum number of items/lines to retain on UI level.", out modified2)
+					.IntValue;
+				tdirty |= modified || modified2;
+
+				UItimer.Interval = cfg.Config[Constants.UserInterface].GetOrSet(UpdateFrequencyName, 2000, out modified)
+					.InitComment("In milliseconds. Frequency of controlled UI updates. Affects visual accuracy of timers and such. Valid range: 100 to 5000.", out modified2)
+					.IntValue.Constrain(100, 5000);
+				tdirty |= modified || modified2;
+
+				if (tdirty) cfg.MarkDirty();
 
 				if (AudioManagerEnabled)
 				{

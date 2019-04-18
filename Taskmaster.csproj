@@ -41,6 +41,7 @@
     <PlatformTarget>x64</PlatformTarget>
     <RunCodeAnalysis>false</RunCodeAnalysis>
     <PostSharpOptimizationMode>OptimizeForSize</PostSharpOptimizationMode>
+    <LangVersion>preview</LangVersion>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|x86' ">
     <Optimize>true</Optimize>
@@ -48,6 +49,7 @@
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
     <PlatformTarget>x64</PlatformTarget>
+    <LangVersion>preview</LangVersion>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|x64'">
     <PlatformTarget>x64</PlatformTarget>
@@ -55,6 +57,7 @@
     <OutputPath>bin\Debug\</OutputPath>
     <DefineConstants>DEBUG</DefineConstants>
     <GenerateSerializationAssemblies>Off</GenerateSerializationAssemblies>
+    <LangVersion>8.0</LangVersion>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|x64'">
     <PlatformTarget>x64</PlatformTarget>
@@ -115,15 +118,36 @@
     </Content>
     <None Include="packages.config" />
     <None Include="README.md" />
+    <EmbeddedResource Include="Properties\Language.en.resx">
+      <Generator>ResXFileCodeGenerator</Generator>
+      <LastGenOutput>Language.en.Designer.cs</LastGenOutput>
+      <CustomToolNamespace>Taskmaster.Language</CustomToolNamespace>
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
     <EmbeddedResource Include="Properties\Resources.resx">
       <Generator>ResXFileCodeGenerator</Generator>
       <LastGenOutput>Resources.Designer.cs</LastGenOutput>
+      <SubType>Designer</SubType>
     </EmbeddedResource>
     <None Include="Resources\Watchlist.ini" />
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Audio\Utility.cs" />
     <Compile Include="Constants.cs" />
+    <Compile Include="MKAh\File\Ini\Constant.cs" />
+    <Compile Include="MKAh\File\Ini\Converter.cs" />
+    <Compile Include="MKAh\File\Ini\Interface\IContainer.cs" />
+    <Compile Include="MKAh\File\Ini\Interface\Value.cs" />
+    <Compile Include="MKAh\File\Ini\Section.cs" />
+    <Compile Include="MKAh\File\Ini\Section.Extensions.cs" />
+    <Compile Include="MKAh\File\Ini\Setting.cs" />
+    <Compile Include="MKAh\File\Ini\Setting.Extensions.cs" />
+    <Compile Include="MKAh\File\Ini\SettingType.cs" />
+    <Compile Include="Properties\Language.en.Designer.cs">
+      <AutoGen>True</AutoGen>
+      <DesignTime>True</DesignTime>
+      <DependentUpon>Language.en.resx</DependentUpon>
+    </Compile>
     <Compile Include="Settings.Global.cs" />
     <Compile Include="Process\ActiveAppManager.cs" />
     <Compile Include="AlertManager.cs" />

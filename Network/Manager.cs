@@ -84,32 +84,29 @@ namespace Taskmaster.Network
 
 		void LoadConfig()
 		{
-			var dirty = false;
+			bool dirty = false, modified2 = false;
 			var dirtyconf = false;
 
 			using (var netcfg = Config.Load(NetConfigFilename).BlockUnload())
 			{
 				var monsec = netcfg.Config["Monitor"];
-				var dnstestaddress_t = monsec.GetOrSet("DNS test", "www.google.com", out dirty);
-				dnstestaddress = dnstestaddress_t.Value;
+				dnstestaddress = monsec.GetOrSet("DNS test", "www.google.com", out dirty).Value;
 				dirtyconf |= dirty;
 
 				var devsec = netcfg.Config["Devices"];
-				var devicetimerinterval_t = devsec.GetOrSet("Check frequency", 15, out dirty);
-				DeviceTimerInterval = devicetimerinterval_t.IntValue.Constrain(1, 30) * 60;
-				if (dirty) devicetimerinterval_t.Comment = "Minutes";
-				dirtyconf |= dirty;
+				DeviceTimerInterval = devsec.GetOrSet("Check frequency", 15, out dirty)
+					.InitComment("Minutes", out modified2)
+					.IntValue.Constrain(1, 30) * 60;
+				dirtyconf |= dirty || modified2;
 
 				var pktsec = netcfg.Config["Traffic"];
-				var packetstattimerinterval_t = pktsec.GetOrSet("Sample rate", 15, out dirty);
-				PacketStatTimerInterval = packetstattimerinterval_t.IntValue.Constrain(1, 60);
-				if (dirty) packetstattimerinterval_t.Comment = "Seconds";
+				PacketStatTimerInterval = pktsec.GetOrSet("Sample rate", 15, out dirty)
+					.InitComment("Seconds", out modified2)
+					.IntValue.Constrain(1, 60);
 				PacketWarning.Peak = PacketStatTimerInterval;
-				dirtyconf |= dirty;
+				dirtyconf |= dirty || modified2;
 
-				var errorreportlimit_t = pktsec.GetOrSet("Error report limit", 5, out dirty);
-				ErrorReportLimit = errorreportlimit_t.IntValue.Constrain(1, 60);
-				ErrorReports.Peak = ErrorReportLimit;
+				ErrorReports.Peak = ErrorReportLimit = pktsec.GetOrSet("Error report limit", 5, out dirty).IntValue.Constrain(1, 60);
 				dirtyconf |= dirty;
 
 				if (dirtyconf) netcfg.MarkDirty();
@@ -119,11 +116,11 @@ namespace Taskmaster.Network
 
 			using (var corecfg = Config.Load(CoreConfigFilename).BlockUnload())
 			{
-				var logsec = corecfg.Config["Logging"];
-				MKAh.Ini.Setting shownetworkerrors_t = logsec.GetOrSet("Show network errors", true, out dirty);
-				ShowNetworkErrors = shownetworkerrors_t.BoolValue;
-				if (dirty) shownetworkerrors_t.Comment = "Show network errors on each sampling.";
-				dirtyconf |= dirty;
+				var logsec = corecfg.Config[HumanReadable.Generic.Logging];
+				ShowNetworkErrors = logsec.GetOrSet("Show network errors", true, out dirty)
+					.InitComment("Show network errors on each sampling.", out modified2)
+					.BoolValue;
+				dirtyconf |= dirty || modified2;
 
 				var dbgsec = corecfg.Config[HumanReadable.Generic.Debug];
 				DebugNet = dbgsec.Get("Network")?.BoolValue ?? false;

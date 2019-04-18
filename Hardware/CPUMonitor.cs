@@ -90,22 +90,24 @@ namespace Taskmaster
 		{
 			using (var corecfg = Config.Load(CoreConfigFilename).BlockUnload())
 			{
-				bool dirtyconfig = false, modified = false;
+				bool dirtyconfig = false, modified = false, modified2= false;
 
 				// SAMPLING
 				// this really should be elsewhere
 				var hwsec = corecfg.Config[HumanReadable.Hardware.Section];
-				var sampleIntervalSetting = hwsec.GetOrSet(HumanReadable.Hardware.CPU.Settings.SampleInterval, 2, out modified);
-				SampleInterval = TimeSpan.FromSeconds(sampleIntervalSetting.IntValue.Constrain(1, 15));
-				if (modified) sampleIntervalSetting.Comment = "1 to 15, in seconds. Frequency at which CPU usage is sampled. Recommended value: 1 to 5 seconds.";
-				dirtyconfig |= modified;
 
-				var sampleCountSetting = hwsec.GetOrSet(HumanReadable.Hardware.CPU.Settings.SampleCount, 5, out modified);
-				SampleCount = sampleCountSetting.IntValue.Constrain(3, 30);
-				if (modified) sampleCountSetting.Comment = "3 to 30. Number of CPU samples to keep. Recommended value is: Count * Interval <= 30 seconds";
-				dirtyconfig |= modified;
+				var sampleinterval_t = hwsec.GetOrSet(HumanReadable.Hardware.CPU.Settings.SampleInterval, 2, out modified)
+					.InitComment("1 to 15, in seconds. Frequency at which CPU usage is sampled. Recommended value: 1 to 5 seconds.", out modified2)
+					.IntValue.Constrain(1, 15);
+				SampleInterval = TimeSpan.FromSeconds(sampleinterval_t);
+				dirtyconfig |= modified || modified2;
 
-				var exsec = corecfg.Config["Experimental"];
+				SampleCount = hwsec.GetOrSet(HumanReadable.Hardware.CPU.Settings.SampleCount, 5, out modified)
+					.InitComment("3 to 30. Number of CPU samples to keep. Recommended value is: Count * Interval <= 30 seconds", out modified2)
+					.IntValue.Constrain(3, 30);
+				dirtyconfig |= modified || modified2;
+
+				var exsec = corecfg.Config[Constants.Experimental];
 				CPULoaderMonitoring = exsec.Get("CPU loaders")?.BoolValue ?? false;
 
 				Log.Information("<CPU> Sampler: " + $"{ SampleInterval.TotalSeconds:N0}" + "s × " + SampleCount +
