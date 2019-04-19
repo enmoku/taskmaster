@@ -134,6 +134,7 @@
   <ItemGroup>
     <Compile Include="Audio\Utility.cs" />
     <Compile Include="Constants.cs" />
+    <Compile Include="MKAh\File\Ini\Config.cs" />
     <Compile Include="MKAh\File\Ini\Constant.cs" />
     <Compile Include="MKAh\File\Ini\Converter.cs" />
     <Compile Include="MKAh\File\Ini\Interface\IContainer.cs" />
@@ -173,7 +174,6 @@
     <Compile Include="MKAh\Execution\User.cs" />
     <Compile Include="MKAh\Execution\UserActivity.cs" />
     <Compile Include="MKAh\Extensions\CoreExtensions.cs" />
-    <Compile Include="MKAh\File\Ini\Ini.cs" />
     <Compile Include="MKAh\Handling\DiscardException.cs" />
     <Compile Include="MKAh\Human\Readable\Time.cs" />
     <Compile Include="MKAh\Logic\BitOperations.cs" />
