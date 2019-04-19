@@ -67,31 +67,24 @@ namespace Taskmaster
 
 			using (var corecfg = Taskmaster.Config.Load(CoreConfigFilename).BlockUnload())
 			{
-				bool dirty = false, modified = false, modified2 = false;
 				var perfsec = corecfg.Config["Performance"];
-				var hysterisisSetting = perfsec.GetOrSet("Foreground hysterisis", 1500, out modified)
-					.InitComment("In milliseconds, from 500 to 30000. Delay before we inspect foreground app, in case user rapidly swaps apps.", out modified2)
+				var hysterisisSetting = perfsec.GetOrSet("Foreground hysterisis", 1500)
+					.InitComment("In milliseconds, from 500 to 30000. Delay before we inspect foreground app, in case user rapidly swaps apps.")
 					.IntValue.Constrain(200, 30000);
 				Hysterisis = TimeSpan.FromMilliseconds(hysterisisSetting);
-				dirty |= modified || modified2;
 
 				var emsec = corecfg.Config["Emergency"];
-				HangKillTick = emsec.GetOrSet("Kill hung", 180 * 5, out modified)
-					.InitComment("Kill the application after this many seconds. 0 disables. Minimum actual kill time is minimize/reduce time + 60.", out modified2)
+				HangKillTick = emsec.GetOrSet("Kill hung", 180 * 5)
+					.InitComment("Kill the application after this many seconds. 0 disables. Minimum actual kill time is minimize/reduce time + 60.")
 					.IntValue.Constrain(0, 60 * 60 * 4);
-				dirty |= modified || modified2;
 
-				HangMinimizeTick = emsec.GetOrSet("Hung minimize time", 180, out modified)
-					.InitComment("Try to minimize hung app after this many seconds.", out modified2)
+				HangMinimizeTick = emsec.GetOrSet("Hung minimize time", 180)
+					.InitComment("Try to minimize hung app after this many seconds.")
 					.IntValue.Constrain(0, 60 * 60 * 2);
-				dirty |= modified || modified2;
 
-				HangReduceTick = emsec.GetOrSet("Hung reduce time", 300, out modified)
-					.InitComment("Reduce affinity and priority of hung app after this many seconds.", out modified2)
+				HangReduceTick = emsec.GetOrSet("Hung reduce time", 300)
+					.InitComment("Reduce affinity and priority of hung app after this many seconds.")
 					.IntValue.Constrain(0, 60 * 60 * 2);
-				dirty |= modified || modified2;
-
-				if (dirty) corecfg.MarkDirty();
 			}
 
 			int killtickmin = (Math.Max(HangReduceTick, HangMinimizeTick)) + 60;

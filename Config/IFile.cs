@@ -24,14 +24,10 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-using Ini = MKAh.Ini;
-
 namespace Taskmaster.Configuration
 {
 	public interface IFile
 	{
-		void MarkDirty();
-
-		Ini.Config Config { get; }
+		MKAh.Ini.Config Config { get; }
 	}
 }

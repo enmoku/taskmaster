@@ -3,6 +3,8 @@ Comprehensive changes can be found in Git change history:
 	https://github.com/mkahvi/taskmaster/commits/master
 
 ## [0.13...]
+### 2019-04-19
+	Internal: Lots of quality of life changes to internal code, especially to configuration changes.
 ### 2019-04-17
 	Changed: A lot of start-up output was removed or bundled up into fewer lines.
 ### 2019-04-16

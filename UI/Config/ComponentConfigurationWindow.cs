@@ -59,9 +59,9 @@ namespace Taskmaster.UI.Config
 				using (var corecfg = Config.Load(CoreConfigFilename).BlockUnload())
 				{
 					var perfsec = corecfg.Config[Constants.Performance];
-					WMIPolling = perfsec.Get("WMI event watcher")?.BoolValue ?? true;
-					WMIPollDelay = perfsec.Get("WMI poll delay")?.IntValue ?? 2;
-					ScanFrequency = perfsec.Get("Scan frequency")?.IntValue ?? 180;
+					WMIPolling = perfsec.Get(Constants.WMIWatcher)?.BoolValue ?? true;
+					WMIPollDelay = perfsec.Get(Constants.WMIDelay)?.IntValue ?? 2;
+					ScanFrequency = perfsec.Get(Constants.ScanFrequency)?.IntValue ?? 180;
 				}
 			}
 			else
@@ -373,10 +373,10 @@ namespace Taskmaster.UI.Config
 					var perf = cfg.Config[Constants.Performance];
 					var freq = (int)scanfrequency.Value;
 					if (freq < 5 && freq != 0) freq = 5;
-					perf["Scan frequency"].IntValue = (ScanOrWMI.SelectedIndex == 1 ? 0 : freq);
-					perf["WMI event watcher"].BoolValue = (ScanOrWMI.SelectedIndex != 0);
-					perf["WMI poll delay"].IntValue = ((int)wmipolling.Value);
-					perf["WMI queries"].BoolValue = (ScanOrWMI.SelectedIndex != 0);
+					perf[Constants.ScanFrequency].IntValue = (ScanOrWMI.SelectedIndex == 1 ? 0 : freq);
+					perf[Constants.WMIWatcher].BoolValue = (ScanOrWMI.SelectedIndex != 0);
+					perf[Constants.WMIDelay].IntValue = ((int)wmipolling.Value);
+					perf.TryRemove("WMI queries"); // deprecated long ago
 
 					var qol = cfg.Config[Constants.QualityOfLife];
 					qol["Register global hotkeys"].BoolValue = hotkeys.Checked;

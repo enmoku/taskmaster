@@ -315,8 +315,6 @@ namespace Taskmaster.UI.Config
 
 					volsec[Constants.ShowOnStart].BoolValue = volmeter_show.Checked;
 
-					corecfg.MarkDirty();
-
 					DialogResult = DialogResult.OK;
 					Close();
 				};

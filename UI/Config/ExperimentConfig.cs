@@ -123,10 +123,7 @@ namespace Taskmaster.UI.Config
 					else
 						exsec.TryRemove("IO Priority");
 
-					var compsec = cfg[Constants.Components];
-					compsec[HumanReadable.Hardware.Section].BoolValue = hwmon.Checked;
-
-					corecfg.MarkDirty();
+					cfg[Constants.Components][HumanReadable.Hardware.Section].BoolValue = hwmon.Checked;
 				}
 
 				DialogResult = DialogResult.OK;

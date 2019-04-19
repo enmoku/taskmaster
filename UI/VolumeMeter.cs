@@ -61,21 +61,19 @@ namespace Taskmaster.UI
 			{
 				var volsec = cfg.Config["Volume Meter"];
 
-				bool modified = false, dirty = false;
-				TopMost = volsec.GetOrSet("Topmost", true, out modified).BoolValue;
-				dirty |= modified;
-				Frequency = volsec.GetOrSet("Refresh", 100, out modified)
-					.InitComment("Refresh delay. Lower is faster. Milliseconds from 10 to 5000.", out _)
+				TopMost = volsec.GetOrSet("Topmost", true).BoolValue;
+
+				Frequency = volsec.GetOrSet("Refresh", 100)
+					.InitComment("Refresh delay. Lower is faster. Milliseconds from 10 to 5000.")
 					.IntValue.Constrain(10, 5000);
-				dirty |= modified;
+
 				int? upgradeOutCap = volsec.Get("Output")?.IntValue;
 				if (upgradeOutCap.HasValue) volsec["Output threshold"].IntValue = upgradeOutCap.Value;
-				VolumeOutputCap = volsec.GetOrSet("Output threshold", 100, out modified).IntValue.Constrain(20, 100) * 100;
-				dirty |= modified;
+				VolumeOutputCap = volsec.GetOrSet("Output threshold", 100).IntValue.Constrain(20, 100) * 100;
+
 				int? upgradeInCap = volsec.Get("Input")?.IntValue;
 				if (upgradeInCap.HasValue) volsec["Input threshold"].IntValue = upgradeInCap.Value;
-				VolumeInputCap = volsec.GetOrSet("Input threshold", 100, out modified).IntValue.Constrain(20, 100) * 100;
-				dirty |= modified;
+				VolumeInputCap = volsec.GetOrSet("Input threshold", 100).IntValue.Constrain(20, 100) * 100;
 
 				// DEPRECATED
 				volsec.TryRemove("Cap");
@@ -83,8 +81,6 @@ namespace Taskmaster.UI
 				volsec.TryRemove("Output cap");
 				volsec.TryRemove("Input");
 				volsec.TryRemove("Input cap");
-
-				if (dirty) cfg.MarkDirty();
 			}
 
 			var layout = new TableLayoutPanel()
@@ -272,13 +268,7 @@ namespace Taskmaster.UI
 				updateTimer.Dispose();
 
 				using (var cfg = Taskmaster.Config.Load(MainWindow.UIConfigFilename).BlockUnload())
-				{
-					var winsec = cfg.Config["Windows"];
-					
-					winsec[HumanReadable.Hardware.Audio.Volume].IntArray = new int[] { Bounds.Left, Bounds.Top };
-
-					cfg.MarkDirty();
-				}
+				cfg.Config["Windows"][HumanReadable.Hardware.Audio.Volume].IntArray = new int[] { Bounds.Left, Bounds.Top };
 			}
 
 			OnDisposed?.Invoke(this, EventArgs.Empty);

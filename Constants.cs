@@ -71,5 +71,9 @@ namespace Taskmaster
 		public const string StayOnTop = "Stay on top";
 
 		public const string Trace = "Trace";
+
+		public const string ScanFrequency = "Scan frequency";
+		public const string WMIWatcher = "WMI event watcher";
+		public const string WMIDelay= "WMI poll delay";
 	}
 }

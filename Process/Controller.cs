@@ -392,10 +392,7 @@ namespace Taskmaster
 			using (var cfg = Config.Load(ProcessManager.WatchlistFile).BlockUnload())
 			{
 				if (cfg.Config.TryGet(FriendlyName, out var section))
-				{
 					section.Name = newName;
-					cfg.MarkDirty();
-				}
 				FriendlyName = newName;
 			}
 		}
@@ -403,10 +400,7 @@ namespace Taskmaster
 		public void DeleteConfig()
 		{
 			using (var cfg = Config.Load(ProcessManager.WatchlistFile).BlockUnload())
-			{
 				cfg.Config.TryRemove(FriendlyName); // remove the section, removes the items in the section
-				cfg.MarkDirty();
-			}
 		}
 
 		void ProcessExitEvent(object sender, EventArgs _ea)
@@ -633,7 +627,7 @@ namespace Taskmaster
 				app.TryRemove("Volume strategy");
 			}
 
-			app["Logging"].BoolValue = LogAdjusts;
+			app[HumanReadable.Generic.Logging].BoolValue = LogAdjusts;
 
 			if (LogStartAndExit)
 				app["Log start and exit"].BoolValue = true;
@@ -642,7 +636,6 @@ namespace Taskmaster
 
 			// pass to config manager
 			NeedsSaving = false;
-			cfg.MarkDirty();
 		}
 
 		// The following should be combined somehow?

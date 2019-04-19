@@ -268,61 +268,50 @@ namespace Taskmaster
 		{
 			using (var cfg = Taskmaster.Config.Load(HealthConfigFilename).BlockUnload())
 			{
-				bool modified = false, modified2=false, configdirty = false;
-
 				var gensec = cfg.Config["General"];
-				var settingFreqSetting = gensec.GetOrSet("Frequency", 5, out modified)
-					.InitComment("How often we check for anything. In minutes.", out modified2)
+				var settingFreqSetting = gensec.GetOrSet("Frequency", 5)
+					.InitComment("How often we check for anything. In minutes.")
 					.IntValue.Constrain(1, 60 * 24);
 				Settings.Frequency = TimeSpan.FromMinutes(settingFreqSetting);
-				configdirty |= modified || modified2;
 
 				var freememsec = cfg.Config["Free Memory"];
 				//freememsec.Comment = "Attempt to free memory when available memory goes below a threshold.";
 
-				Settings.MemLevel = (ulong)freememsec.GetOrSet("Threshold", 1000, out modified)
-					.InitComment("When memory goes down to this level, we act.", out modified2)
+				Settings.MemLevel = (ulong)freememsec.GetOrSet("Threshold", 1000)
+					.InitComment("When memory goes down to this level, we act.")
 					.IntValue;
 				// MemLevel = MemLevel > 0 ? MemLevel.Constrain(1, 2000) : 0;
-				configdirty |= modified || modified2;
+
 				if (Settings.MemLevel > 0)
 				{
-					Settings.MemIgnoreFocus = freememsec.GetOrSet("Ignore foreground", true, out modified)
-						.InitComment("Foreground app is not touched, regardless of anything.", out modified2)
+					Settings.MemIgnoreFocus = freememsec.GetOrSet("Ignore foreground", true)
+						.InitComment("Foreground app is not touched, regardless of anything.")
 						.BoolValue;
-					configdirty |= modified || modified2;
 
-					Settings.IgnoreList = freememsec.GetOrSet("Ignore list", new string[] { }, out modified)
-						.InitComment("List of apps that we don't touch regardless of anything.", out modified2)
+					Settings.IgnoreList = freememsec.GetOrSet("Ignore list", new string[] { })
+						.InitComment("List of apps that we don't touch regardless of anything.")
 						.Array;
-					configdirty |= modified || modified2;
 
-					Settings.MemCooldown = freememsec.GetOrSet("Cooldown", 60, out modified)
-						.InitComment("Don't do this again for this many minutes.", out modified2)
+					Settings.MemCooldown = freememsec.GetOrSet("Cooldown", 60)
+						.InitComment("Don't do this again for this many minutes.")
 						.IntValue.Constrain(1, 180);
-					configdirty |= modified || modified2;
 				}
 
 				// SELF-MONITORING
 				var selfsec = cfg.Config["Self"];
-				Settings.FatalErrorThreshold = selfsec.GetOrSet("Fatal error threshold", 10, out modified)
-					.InitComment("Auto-exit once number of fatal errors reaches this. 10 is very generous default.", out modified2)
+				Settings.FatalErrorThreshold = selfsec.GetOrSet("Fatal error threshold", 10)
+					.InitComment("Auto-exit once number of fatal errors reaches this. 10 is very generous default.")
 					.IntValue.Constrain(1, 30);
-				configdirty |= modified || modified2;
 
-				Settings.FatalLogSizeThreshold = selfsec.GetOrSet("Fatal log size threshold", 10, out modified)
-					.InitComment("Auto-exit if total log file size exceeds this. In megabytes.", out modified2)
+				Settings.FatalLogSizeThreshold = selfsec.GetOrSet("Fatal log size threshold", 10)
+					.InitComment("Auto-exit if total log file size exceeds this. In megabytes.")
 					.IntValue.Constrain(1, 500);
-				configdirty |= modified || modified2;
 
 				// NVM
 				var nvmsec = cfg.Config["Non-Volatile Memory"];
-				Settings.LowDriveSpaceThreshold = nvmsec.GetOrSet("Low space threshold", 150, out modified)
-					.InitComment("Warn about free space going below this. In megabytes. From 0 to 60000.", out modified2)
+				Settings.LowDriveSpaceThreshold = nvmsec.GetOrSet("Low space threshold", 150)
+					.InitComment("Warn about free space going below this. In megabytes. From 0 to 60000.")
 					.IntValue.Constrain(0, 60000);
-				configdirty |= modified || modified2;
-
-				if (configdirty) cfg.MarkDirty();
 			}
 
 			using (var corecfg = Taskmaster.Config.Load(CoreConfigFilename).BlockUnload())

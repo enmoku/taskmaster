@@ -45,26 +45,19 @@ namespace Taskmaster.Configuration
 		{
 			Config = config;
 			Filename = filename;
-		}
-
-		public void MarkDirty()
-		{
-			System.Diagnostics.Debug.Assert(Config != null);
-
-			Dirty = true;
+			config.ResetChangeCount();
 		}
 
 		public void Save(bool force = false)
 		{
 			System.Diagnostics.Debug.Assert(Config != null);
 
-			if (force) Dirty = true;
-
-			if (!Dirty) return;
+			if (force || Config.Changes > 0) Dirty = true;
+			else if (!Dirty) return;
 
 			OnSave?.Invoke(this, new FileEvent(this));
 
-			Dirty = false;
+			Config.ResetChangeCount();
 		}
 
 		bool UnloadRequested = false;
@@ -77,7 +70,7 @@ namespace Taskmaster.Configuration
 
 			if (Shared > 0) UnloadRequested = true;
 
-			if (Dirty) Save();
+			if (Config.Changes > 0) Save();
 
 			OnUnload?.Invoke(this, new FileEvent(this));
 
@@ -104,7 +97,7 @@ namespace Taskmaster.Configuration
 
 			if (disposing)
 			{
-				if (Dirty) Save();
+				if (Config.Changes > 0) Save();
 				Unload();
 			}
 
@@ -120,7 +113,6 @@ namespace Taskmaster.Configuration
 		public File File { get; private set; } = null;
 
 		public Ini.Config Config => File.Config;
-		public void MarkDirty() => File.MarkDirty();
 
 		internal ScopedFile(File file) => File = file;
 

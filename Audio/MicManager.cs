@@ -111,16 +111,11 @@ namespace Taskmaster.Audio
 			{
 				var mediasec = corecfg.Config["Media"];
 
-				bool dirty = false, modified = false;
-				Control = mediasec.GetOrSet(mcontrol, false, out modified).BoolValue;
-				dirty |= modified;
-				DefaultVolume = mediasec.GetOrSet(mvol, 100.0d, out modified).DoubleValue.Constrain(0.0d, 100.0d);
-				dirty |= modified;
+				Control = mediasec.GetOrSet(mcontrol, false).BoolValue;
+				DefaultVolume = mediasec.GetOrSet(mvol, 100.0d).DoubleValue.Constrain(0.0d, 100.0d);
 
 				var dbgsec = corecfg.Config[HumanReadable.Generic.Debug];
 				DebugMic = dbgsec.Get("Microphone")?.BoolValue ?? false;
-
-				if (dirty) corecfg.MarkDirty();
 			}
 
 			if (DebugMic) Log.Information("<Microphone> Component loaded.");
@@ -286,16 +281,9 @@ namespace Taskmaster.Audio
 				{
 					var devsec = devcfg.Config[RecordingDevice.GUID];
 
-					bool dirty = false, modified = false;
-
-					devvol = devsec.GetOrSet(HumanReadable.Hardware.Audio.Volume, DefaultVolume, out modified).DoubleValue;
-					dirty |= modified;
-					devcontrol = devsec.GetOrSet(cname, false, out modified).BoolValue;
-					dirty |= modified;
-					devsec.GetOrSet("Name", RecordingDevice.Name, out modified);
-					dirty |= modified;
-
-					if (dirty) devcfg.MarkDirty();
+					devvol = devsec.GetOrSet(HumanReadable.Hardware.Audio.Volume, DefaultVolume).DoubleValue;
+					devcontrol = devsec.GetOrSet(cname, false).BoolValue;
+					devsec.GetOrSet("Name", RecordingDevice.Name);
 				}
 
 				if (Control && !devcontrol) Control = false; // disable general control if device control is disabled
@@ -324,9 +312,6 @@ namespace Taskmaster.Audio
 
 			try
 			{
-				bool modified = false;
-				bool dirty = false;
-
 				using (var devcfg = Config.Load(DeviceFilename).BlockUnload())
 				{
 					var devs = audiomanager.Enumerator?.EnumerateAudioEndPoints(NAudio.CoreAudioApi.DataFlow.Capture, NAudio.CoreAudioApi.DeviceState.Active) ?? null;
@@ -337,10 +322,8 @@ namespace Taskmaster.Audio
 						{
 							string guid = Utility.DeviceIdToGuid(dev.ID);
 							var devsec = devcfg.Config[guid];
-							devsec.GetOrSet("Name", dev.DeviceFriendlyName, out modified);
-							dirty |= modified;
-							bool control = devsec.GetOrSet("Control", false, out modified).BoolValue;
-							dirty |= modified;
+							devsec.GetOrSet("Name", dev.DeviceFriendlyName);
+							bool control = devsec.GetOrSet("Control", false).BoolValue;
 							float target = devsec.Get(HumanReadable.Hardware.Audio.Volume)?.FloatValue ?? float.NaN;
 
 							var mdev = new Device(dev)
@@ -360,8 +343,6 @@ namespace Taskmaster.Audio
 							Logging.Stacktrace(ex);
 						}
 					}
-
-					if (dirty) devcfg.MarkDirty();
 				}
 
 				if (Trace) Log.Verbose("<Microphone> " + KnownDevices.Count + " microphone(s)");

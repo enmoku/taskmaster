@@ -85,48 +85,34 @@ namespace Taskmaster.Network
 
 		void LoadConfig()
 		{
-			bool dirty = false, modified2 = false;
-			var dirtyconf = false;
-
 			using (var netcfg = Config.Load(NetConfigFilename).BlockUnload())
 			{
 				var monsec = netcfg.Config["Monitor"];
-				dnstestaddress = monsec.GetOrSet("DNS test", "www.google.com", out dirty).Value;
-				dirtyconf |= dirty;
+				dnstestaddress = monsec.GetOrSet("DNS test", "www.google.com").Value;
 
 				var devsec = netcfg.Config["Devices"];
-				DeviceTimerInterval = devsec.GetOrSet("Check frequency", 15, out dirty)
-					.InitComment("Minutes", out modified2)
+				DeviceTimerInterval = devsec.GetOrSet("Check frequency", 15)
+					.InitComment("Minutes")
 					.IntValue.Constrain(1, 30) * 60;
-				dirtyconf |= dirty || modified2;
 
 				var pktsec = netcfg.Config["Traffic"];
-				PacketStatTimerInterval = pktsec.GetOrSet("Sample rate", 15, out dirty)
-					.InitComment("Seconds", out modified2)
+				PacketStatTimerInterval = pktsec.GetOrSet("Sample rate", 15)
+					.InitComment("Seconds")
 					.IntValue.Constrain(1, 60);
 				PacketWarning.Peak = PacketStatTimerInterval;
-				dirtyconf |= dirty || modified2;
 
-				ErrorReports.Peak = ErrorReportLimit = pktsec.GetOrSet("Error report limit", 5, out dirty).IntValue.Constrain(1, 60);
-				dirtyconf |= dirty;
-
-				if (dirtyconf) netcfg.MarkDirty();
+				ErrorReports.Peak = ErrorReportLimit = pktsec.GetOrSet("Error report limit", 5).IntValue.Constrain(1, 60);
 			}
-
-			dirtyconf = false;
 
 			using (var corecfg = Config.Load(CoreConfigFilename).BlockUnload())
 			{
 				var logsec = corecfg.Config[HumanReadable.Generic.Logging];
-				ShowNetworkErrors = logsec.GetOrSet("Show network errors", true, out dirty)
-					.InitComment("Show network errors on each sampling.", out modified2)
+				ShowNetworkErrors = logsec.GetOrSet("Show network errors", true)
+					.InitComment("Show network errors on each sampling.")
 					.BoolValue;
-				dirtyconf |= dirty || modified2;
 
 				var dbgsec = corecfg.Config[HumanReadable.Generic.Debug];
 				DebugNet = dbgsec.Get("Network")?.BoolValue ?? false;
-
-				if (dirtyconf) corecfg.MarkDirty();
 			}
 			
 			if (Trace) Log.Debug("<Network> Traffic sample frequency: " + PacketStatTimerInterval + "s");

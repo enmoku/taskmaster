@@ -676,56 +676,51 @@ namespace Taskmaster
 			{
 				var perfsec = corecfg.Config["Performance"];
 
-				bool dirtyconfig = false, modified = false, modified2 = false;
 				// ControlChildren = coreperf.GetSetDefault("Child processes", false, out tdirty).BoolValue;
 				// dirtyconfig |= tdirty;
 
-				int ignRecentlyModified = perfsec.GetOrSet("Ignore recently modified", 30, out modified)
-					.InitComment("Performance optimization. More notably this enables granting self-determination to apps that actually think they know better.", out modified2)
+				int ignRecentlyModified = perfsec.GetOrSet("Ignore recently modified", 30)
+					.InitComment("Performance optimization. More notably this enables granting self-determination to apps that actually think they know better.")
 					.IntValue.Constrain(0, 24 * 60);
 				IgnoreRecentlyModified = ignRecentlyModified > 0 ? (TimeSpan?)TimeSpan.FromMinutes(ignRecentlyModified) : null;
-				dirtyconfig |= modified || modified2;
 
-				var tscan = perfsec.GetOrSet("Scan frequency", 15, out modified)
-					.InitComment("Frequency (in seconds) at which we scan for processes. 0 disables.", out modified2)
+				var tscan = perfsec.GetOrSet("Scan frequency", 15)
+					.InitComment("Frequency (in seconds) at which we scan for processes. 0 disables.")
 					.IntValue.Constrain(0, 360);
 				ScanFrequency = (tscan > 0) ? (TimeSpan?)TimeSpan.FromSeconds(tscan.Constrain(5, 360)) : null;
-				dirtyconfig |= modified || modified2;
 
 				// --------------------------------------------------------------------------------------------------------
 
-				WMIPolling = perfsec.GetOrSet("WMI event watcher", false, out modified)
-					.InitComment("Use WMI to be notified of new processes starting. If disabled, only rescanning everything will cause processes to be noticed.", out modified2)
+				WMIPolling = perfsec.GetOrSet("WMI event watcher", false)
+					.InitComment("Use WMI to be notified of new processes starting. If disabled, only rescanning everything will cause processes to be noticed.")
 					.BoolValue;
-				dirtyconfig |= modified || modified2;
-				WMIPollDelay = perfsec.GetOrSet("WMI poll delay", 5, out modified)
-					.InitComment("WMI process watcher delay (in seconds).  Smaller gives better results but can inrease CPU usage. Accepted values: 1 to 30.", out modified2)
+
+				WMIPollDelay = perfsec.GetOrSet("WMI poll delay", 5)
+					.InitComment("WMI process watcher delay (in seconds).  Smaller gives better results but can inrease CPU usage. Accepted values: 1 to 30.")
 					.IntValue.Constrain(1, 30);
-				dirtyconfig |= modified || modified2;
 
 				// --------------------------------------------------------------------------------------------------------
 
 				var fgpausesec = corecfg.Config["Foreground Focus Lost"];
 				// RestoreOriginal = fgpausesec.GetSetDefault("Restore original", false, out modified).BoolValue;
 				// dirtyconfig |= modified;
-				DefaultBackgroundPriority = fgpausesec.GetOrSet("Default priority", 2, out modified)
-					.InitComment("Default is normal to avoid excessive loading times while user is alt-tabbed.", out modified2)
+				DefaultBackgroundPriority = fgpausesec.GetOrSet("Default priority", 2)
+					.InitComment("Default is normal to avoid excessive loading times while user is alt-tabbed.")
 					.IntValue.Constrain(0, 4);
-				dirtyconfig |= modified || modified2;
+
 				// OffFocusAffinity = fgpausesec.GetSetDefault("Affinity", 0, out modified).IntValue;
 				// dirtyconfig |= modified;
 				// OffFocusPowerCancel = fgpausesec.GetSetDefault("Power mode cancel", true, out modified).BoolValue;
 				// dirtyconfig |= modified;
 
-				DefaultBackgroundAffinity = fgpausesec.GetOrSet("Default affinity", 14, out modified).IntValue.Constrain(0, AllCPUsMask);
-				dirtyconfig |= modified;
+				DefaultBackgroundAffinity = fgpausesec.GetOrSet("Default affinity", 14).IntValue.Constrain(0, AllCPUsMask);
 
 				// --------------------------------------------------------------------------------------------------------
 
 				// Taskmaster.cfg["Applications"]["Ignored"].StringArray = IgnoreList;
 				var ignsetting = corecfg.Config["Applications"];
-				string[] newIgnoreList = ignsetting.GetOrSet(HumanReadable.Generic.Ignore, IgnoreList, out modified)
-					.InitComment("Special hardcoded protection applied to: consent, winlogon, wininit, and csrss. These are vital system services and messing with them can cause severe system malfunctioning. Mess with the ignore list at your own peril.", out modified2)
+				string[] newIgnoreList = ignsetting.GetOrSet(HumanReadable.Generic.Ignore, IgnoreList)
+					.InitComment("Special hardcoded protection applied to: consent, winlogon, wininit, and csrss. These are vital system services and messing with them can cause severe system malfunctioning. Mess with the ignore list at your own peril.")
 					.Array;
 
 				if ((newIgnoreList?.Length ?? 0) > 0)
@@ -739,14 +734,12 @@ namespace Taskmaster
 						Log.Information("<Process> Custom ignore list loaded.");
 
 					IgnoreList = newIgnoreList;
-					dirtyconfig |= modified;
 				}
 				if (DebugProcesses) Log.Debug("<Process> Ignore list: " + string.Join(", ", IgnoreList));
 
-				IgnoreSystem32Path = ignsetting.GetOrSet("Ignore System32", true, out modified)
-					.InitComment("Ignore programs in %SYSTEMROOT%/System32 folder.", out modified2)
+				IgnoreSystem32Path = ignsetting.GetOrSet("Ignore System32", true)
+					.InitComment("Ignore programs in %SYSTEMROOT%/System32 folder.")
 					.BoolValue;
-				dirtyconfig |= modified;
 
 				var dbgsec = corecfg.Config[HumanReadable.Generic.Debug];
 				DebugWMI = dbgsec.Get("WMI")?.BoolValue ?? false;
@@ -757,19 +750,14 @@ namespace Taskmaster
 				DebugPaging = dbgsec.Get("Paging")?.BoolValue ?? false;
 
 				var logsec = corecfg.Config["Logging"];
-				ShowUnmodifiedPortions = logsec.GetOrSet("Show unmodified portions", ShowUnmodifiedPortions, out modified).BoolValue;
-				dirtyconfig |= modified;
-				ShowOnlyFinalState = logsec.GetOrSet("Show only final state", ShowOnlyFinalState, out modified).BoolValue;
-				dirtyconfig |= modified;
-				ShowForegroundTransitions = logsec.GetOrSet("Foreground transitions", ShowForegroundTransitions, out modified).BoolValue;
-				dirtyconfig |= modified;
+				ShowUnmodifiedPortions = logsec.GetOrSet("Show unmodified portions", ShowUnmodifiedPortions).BoolValue;
+				ShowOnlyFinalState = logsec.GetOrSet("Show only final state", ShowOnlyFinalState).BoolValue;
+				ShowForegroundTransitions = logsec.GetOrSet("Foreground transitions", ShowForegroundTransitions).BoolValue;
 
 				if (!IgnoreSystem32Path) Log.Warning($"<Process> System32 ignore disabled.");
 
 				var exsec = corecfg.Config["Experimental"];
 				WindowResizeEnabled = exsec.Get("Window Resize")?.BoolValue ?? false;
-
-				if (dirtyconfig) corecfg.MarkDirty();
 			}
 
 
@@ -801,8 +789,6 @@ namespace Taskmaster
 			Log.Information("<Process> Loading watchlist...");
 
 			var appcfg = Config.Load(WatchlistFile);
-
-			bool dirtyconfig = false;
 
 			int WatchlistWithHybrid = 0;
 
@@ -982,8 +968,6 @@ namespace Taskmaster
 					// cnt.delay = section.Contains("delay") ? section["delay"].IntValue : 30; // TODO: Add centralized default delay
 					// cnt.delayIncrement = section.Contains("delay increment") ? section["delay increment"].IntValue : 15; // TODO: Add centralized default increment
 				}
-
-				if (dirtyconfig) sappcfg.MarkDirty();
 			}
 
 			lock (watchlist_lock)

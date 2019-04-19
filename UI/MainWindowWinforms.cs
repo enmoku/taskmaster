@@ -75,13 +75,11 @@ namespace Taskmaster.UI
 					{
 						ShowInTaskbar = sitb.BoolValue;
 						qolsec.Remove(sitb);
-						corecfg.MarkDirty();
 					}
 					if (qolsec.TryGet("Auto-open menus", out var aomn))
 					{
 						AutoOpenMenus = aomn.BoolValue;
 						qolsec.Remove(aomn);
-						corecfg.MarkDirty();
 					}
 				}
 			}
@@ -89,13 +87,8 @@ namespace Taskmaster.UI
 			using (var uicfg = Taskmaster.Config.Load(UIConfigFilename).BlockUnload())
 			{
 				var qol = uicfg.Config[HumanReadable.Generic.QualityOfLife];
-				bool dirty = false;
-				ShowInTaskbar = qol.GetOrSet("Show in taskbar", ShowInTaskbar, out bool modified).BoolValue;
-				dirty |= modified;
-				AutoOpenMenus = qol.GetOrSet("Auto-open menus", true, out modified).BoolValue;
-				dirty |= modified;
-
-				if (dirty) uicfg.MarkDirty();
+				ShowInTaskbar = qol.GetOrSet("Show in taskbar", ShowInTaskbar).BoolValue;
+				AutoOpenMenus = qol.GetOrSet("Auto-open menus", true).BoolValue;
 			}
 			#endregion // Load Configuration
 
@@ -1122,10 +1115,7 @@ namespace Taskmaster.UI
 				AutoOpenMenus = menu_config_behaviour_autoopen.Checked;
 
 				using (var corecfg = Taskmaster.Config.Load(CoreConfigFilename).BlockUnload())
-				{
-					corecfg.Config[HumanReadable.Generic.QualityOfLife]["Auto-open menus"].BoolValue = AutoOpenMenus;
-					corecfg.MarkDirty();
-				}
+				corecfg.Config[HumanReadable.Generic.QualityOfLife]["Auto-open menus"].BoolValue = AutoOpenMenus;
 			};
 
 			var menu_config_behaviour_taskbar = new ToolStripMenuItem("Show in taskbar")
@@ -1138,10 +1128,7 @@ namespace Taskmaster.UI
 				ShowInTaskbar = menu_config_behaviour_taskbar.Checked;
 
 				using (var corecfg = Taskmaster.Config.Load(CoreConfigFilename).BlockUnload())
-				{
-					corecfg.Config[HumanReadable.Generic.QualityOfLife]["Show in taskbar"].BoolValue = ShowInTaskbar;
-					corecfg.MarkDirty();
-				}
+				corecfg.Config[HumanReadable.Generic.QualityOfLife]["Show in taskbar"].BoolValue = ShowInTaskbar;
 			};
 
 			var menu_config_behaviour_exitconfirm = new ToolStripMenuItem("Exit confirmation")
@@ -1154,10 +1141,7 @@ namespace Taskmaster.UI
 				ExitConfirmation = menu_config_behaviour_exitconfirm.Checked;
 
 				using (var corecfg = Taskmaster.Config.Load(CoreConfigFilename).BlockUnload())
-				{
-					corecfg.Config[HumanReadable.Generic.QualityOfLife]["Exit confirmation"].BoolValue = ExitConfirmation;
-					corecfg.MarkDirty();
-				}
+				corecfg.Config[HumanReadable.Generic.QualityOfLife]["Exit confirmation"].BoolValue = ExitConfirmation;
 			};
 
 			menu_config_behaviour.DropDownItems.Add(menu_config_behaviour_autoopen);
@@ -1192,10 +1176,7 @@ namespace Taskmaster.UI
 				AlternateRowColorsLog = menu_config_visuals_rowalternate_log.Checked;
 
 				using (var uicfg = Taskmaster.Config.Load(UIConfigFilename).BlockUnload())
-				{
-					uicfg.Config[Constants.Visuals]["Alternate log row colors"].BoolValue = AlternateRowColorsLog;
-					uicfg.MarkDirty();
-				}
+				uicfg.Config[Constants.Visuals]["Alternate log row colors"].BoolValue = AlternateRowColorsLog;
 
 				if (LogList!=null)
 					AlternateListviewRowColors(LogList, AlternateRowColorsLog);
@@ -1203,11 +1184,9 @@ namespace Taskmaster.UI
 			menu_config_visuals_rowalternate_watchlist.Click += (_, _ea) =>
 			{
 				AlternateRowColorsWatchlist = menu_config_visuals_rowalternate_watchlist.Checked;
+
 				using (var uicfg = Taskmaster.Config.Load(UIConfigFilename).BlockUnload())
-				{
-					uicfg.Config[Constants.Visuals]["Alternate watchlist row colors"].BoolValue = AlternateRowColorsWatchlist;
-					uicfg.MarkDirty();
-				}
+				uicfg.Config[Constants.Visuals]["Alternate watchlist row colors"].BoolValue = AlternateRowColorsWatchlist;
 
 				WatchlistColor();
 			};
@@ -1216,10 +1195,7 @@ namespace Taskmaster.UI
 				AlternateRowColorsDevices = menu_config_visuals_rowalternate_devices.Checked;
 
 				using (var uicfg = Taskmaster.Config.Load(UIConfigFilename).BlockUnload())
-				{
-					uicfg.Config[Constants.Visuals]["Alternate device row colors"].BoolValue = AlternateRowColorsDevices;
-					uicfg.MarkDirty();
-				}
+				uicfg.Config[Constants.Visuals]["Alternate device row colors"].BoolValue = AlternateRowColorsDevices;
 
 				if (AudioInputs != null)
 					AlternateListviewRowColors(AudioInputs, AlternateRowColorsDevices);
@@ -1240,12 +1216,7 @@ namespace Taskmaster.UI
 			menu_config_visuals_topmost_volume.Click += (_, _ea) =>
 			{
 				using (var corecfg = Taskmaster.Config.Load(CoreConfigFilename).BlockUnload())
-				{
-					var volsec = corecfg.Config[Constants.VolumeMeter];
-
-					volsec[TopmostName].BoolValue = menu_config_visuals_topmost_volume.Checked;
-					corecfg.MarkDirty();
-				}
+				corecfg.Config[Constants.VolumeMeter][TopmostName].BoolValue = menu_config_visuals_topmost_volume.Checked;
 
 				if (volumemeter != null)
 					volumemeter.TopMost = menu_config_visuals_topmost_volume.Checked;
@@ -1273,10 +1244,7 @@ namespace Taskmaster.UI
 				ShowProcessAdjusts = menu_config_logging_adjusts.Checked;
 
 				using (var corecfg = Taskmaster.Config.Load(CoreConfigFilename).BlockUnload())
-				{
-					corecfg.Config[HumanReadable.Generic.Logging]["Show process adjusts"].BoolValue = ShowProcessAdjusts;
-					corecfg.MarkDirty();
-				}
+				corecfg.Config[HumanReadable.Generic.Logging]["Show process adjusts"].BoolValue = ShowProcessAdjusts;
 			};
 
 			var menu_config_logging_session = new ToolStripMenuItem("Session actions")
@@ -1289,10 +1257,7 @@ namespace Taskmaster.UI
 				ShowSessionActions = menu_config_logging_session.Checked;
 
 				using (var corecfg = Taskmaster.Config.Load(CoreConfigFilename).BlockUnload())
-				{
-					corecfg.Config[HumanReadable.Generic.Logging]["Show session actions"].BoolValue = ShowSessionActions;
-					corecfg.MarkDirty();
-				}
+				corecfg.Config[HumanReadable.Generic.Logging]["Show session actions"].BoolValue = ShowSessionActions;
 			};
 
 			var menu_config_logging_showunmodified = new ToolStripMenuItem(ShowUnmodifiedPortionsName)
@@ -1305,10 +1270,7 @@ namespace Taskmaster.UI
 				ProcessManager.ShowUnmodifiedPortions = menu_config_logging_showunmodified.Checked;
 
 				using (var corecfg = Taskmaster.Config.Load(CoreConfigFilename).BlockUnload())
-				{
-					corecfg.Config[HumanReadable.Generic.Logging][ShowUnmodifiedPortionsName].BoolValue = ProcessManager.ShowUnmodifiedPortions;
-					corecfg.MarkDirty();
-				}
+				corecfg.Config[HumanReadable.Generic.Logging][ShowUnmodifiedPortionsName].BoolValue = ProcessManager.ShowUnmodifiedPortions;
 			};
 
 			var menu_config_logging_showonlyfinal = new ToolStripMenuItem("Show only final state")
@@ -1320,10 +1282,7 @@ namespace Taskmaster.UI
 			{
 				ProcessManager.ShowOnlyFinalState = menu_config_logging_showonlyfinal.Checked;
 				using (var corecfg = Taskmaster.Config.Load(CoreConfigFilename).BlockUnload())
-				{
-					corecfg.Config[HumanReadable.Generic.Logging]["Show only final state"].BoolValue = ProcessManager.ShowOnlyFinalState;
-					corecfg.MarkDirty();
-				}
+				corecfg.Config[HumanReadable.Generic.Logging]["Show only final state"].BoolValue = ProcessManager.ShowOnlyFinalState;
 			};
 
 			var menu_config_logging_neterrors = new ToolStripMenuItem("Network errors")
@@ -1336,10 +1295,7 @@ namespace Taskmaster.UI
 				Network.Manager.ShowNetworkErrors = menu_config_logging_neterrors.Checked;
 
 				using (var corecfg = Taskmaster.Config.Load(CoreConfigFilename).BlockUnload())
-				{
-					corecfg.Config[HumanReadable.Generic.Logging]["Show network errors"].BoolValue = Network.Manager.ShowNetworkErrors;
-					corecfg.MarkDirty();
-				}
+				corecfg.Config[HumanReadable.Generic.Logging]["Show network errors"].BoolValue = Network.Manager.ShowNetworkErrors;
 			};
 
 			var menu_config_logging_info = new ToolStripMenuItem("Information")
@@ -1404,10 +1360,7 @@ namespace Taskmaster.UI
 				// TODO: re-render watchlistRules
 
 				using (var corecfg = Taskmaster.Config.Load(CoreConfigFilename).BlockUnload())
-				{
-					corecfg.Config[HumanReadable.Generic.QualityOfLife][HumanReadable.Hardware.CPU.Settings.AffinityStyle].IntValue = 0;
-					corecfg.MarkDirty();
-				}
+				corecfg.Config[HumanReadable.Generic.QualityOfLife][HumanReadable.Hardware.CPU.Settings.AffinityStyle].IntValue = 0;
 			};
 			menu_config_bitmaskstyle_decimal.Click += (_, _ea) =>
 			{
@@ -1417,10 +1370,7 @@ namespace Taskmaster.UI
 				// TODO: re-render watchlistRules
 
 				using (var corecfg = Taskmaster.Config.Load(CoreConfigFilename).BlockUnload())
-				{
-					corecfg.Config[HumanReadable.Generic.QualityOfLife][HumanReadable.Hardware.CPU.Settings.AffinityStyle].IntValue = 1;
-					corecfg.MarkDirty();
-				}
+				corecfg.Config[HumanReadable.Generic.QualityOfLife][HumanReadable.Hardware.CPU.Settings.AffinityStyle].IntValue = 1;
 			};
 			//var menu_config_bitmaskstyle_both = new ToolStripMenuItem("Decimal [Bitmask]");
 
@@ -1742,21 +1692,15 @@ namespace Taskmaster.UI
 			loglistms.Items.Add(logcopy);
 			LogList.ContextMenuStrip = loglistms;
 
-			bool modified=false, modified2=false, tdirty = false;
-
 			using (var cfg = Taskmaster.Config.Load(CoreConfigFilename).BlockUnload())
 			{
-				MaxLogSize = cfg.Config[HumanReadable.Generic.Logging].GetOrSet("UI max items", 200, out modified)
-					.InitComment("Maximum number of items/lines to retain on UI level.", out modified2)
+				MaxLogSize = cfg.Config[HumanReadable.Generic.Logging].GetOrSet("UI max items", 200)
+					.InitComment("Maximum number of items/lines to retain on UI level.")
 					.IntValue;
-				tdirty |= modified || modified2;
 
-				UItimer.Interval = cfg.Config[Constants.UserInterface].GetOrSet(UpdateFrequencyName, 2000, out modified)
-					.InitComment("In milliseconds. Frequency of controlled UI updates. Affects visual accuracy of timers and such. Valid range: 100 to 5000.", out modified2)
+				UItimer.Interval = cfg.Config[Constants.UserInterface].GetOrSet(UpdateFrequencyName, 2000)
+					.InitComment("In milliseconds. Frequency of controlled UI updates. Affects visual accuracy of timers and such. Valid range: 100 to 5000.")
 					.IntValue.Constrain(100, 5000);
-				tdirty |= modified || modified2;
-
-				if (tdirty) cfg.MarkDirty();
 
 				if (AudioManagerEnabled)
 				{
@@ -2103,38 +2047,32 @@ namespace Taskmaster.UI
 				var colcfg = uicfg.Config[Constants.Columns];
 				var gencfg = uicfg.Config[Constants.Visuals];
 
-				bool modified = false, dirty = false;
-
 				opentab = uicfg.Config[Constants.Tabs].Get("Open")?.IntValue ?? 0;
 				appwidths = null;
 				var appwidthsDefault = new int[] { 20, 120, 140, 82, 60, 76, 46, 160 };
-				appwidths = colcfg.GetOrSet(Constants.Apps, appwidthsDefault, out modified).IntArray;
+				appwidths = colcfg.GetOrSet(Constants.Apps, appwidthsDefault).IntArray;
 				if (appwidths.Length != appwidthsDefault.Length) appwidths = appwidthsDefault;
-				dirty |= modified;
 
 				var appOrderDefault = new int[] { 0, 1, 2, 3, 4, 5, 6, 7 };
-				apporder = colcfg.GetOrSet("App order", appOrderDefault, out modified).IntArray;
+				apporder = colcfg.GetOrSet("App order", appOrderDefault).IntArray;
 				var unqorder = new HashSet<int>(appOrderDefault.Length);
 				foreach (var i in apporder) unqorder.Add(i);
 				if (unqorder.Count != appOrderDefault.Length || unqorder.Max() != 7 || unqorder.Min() != 0) apporder = appOrderDefault;
-				dirty |= modified;
 
 				micwidths = null;
 				if (MicrophoneManagerEnabled)
 				{
 					int[] micwidthsDefault = new int[] { 200, 220, 60, 60, 60, 120 };
-					micwidths = colcfg.GetOrSet("Mics", micwidthsDefault, out modified).IntArray;
+					micwidths = colcfg.GetOrSet("Mics", micwidthsDefault).IntArray;
 					if (micwidths.Length != micwidthsDefault.Length) micwidths = micwidthsDefault;
-					dirty |= modified;
 				}
 
 				ifacewidths = null;
 				if (NetworkMonitorEnabled)
 				{
 					int[] ifacewidthsDefault = new int[] { 110, 60, 50, 70, 90, 192, 60, 60, 40 };
-					ifacewidths = colcfg.GetOrSet("Interfaces", ifacewidthsDefault, out modified).IntArray;
+					ifacewidths = colcfg.GetOrSet("Interfaces", ifacewidthsDefault).IntArray;
 					if (ifacewidths.Length != ifacewidthsDefault.Length) ifacewidths = ifacewidthsDefault;
-					dirty |= modified;
 				}
 
 				int[] winpos = wincfg.Get("Main")?.IntArray ?? null;
@@ -2160,14 +2098,9 @@ namespace Taskmaster.UI
 				//GrayText = System.Drawing.Color.FromArgb(130, 130, 130); // ignores user styles
 				//AlterColor = System.Drawing.Color.FromArgb(245, 245, 245); // ignores user styles
 
-				AlternateRowColorsDevices = gencfg.GetOrSet("Alternate device row colors", false, out modified).BoolValue;
-				dirty |= modified;
-				AlternateRowColorsWatchlist = gencfg.GetOrSet("Alternate watchlist row colors", true, out modified).BoolValue;
-				dirty |= modified;
-				AlternateRowColorsLog = gencfg.GetOrSet("Alternate log row colors", true, out modified).BoolValue;
-				dirty |= modified;
-
-				if (dirty) uicfg.MarkDirty();
+				AlternateRowColorsDevices = gencfg.GetOrSet("Alternate device row colors", false).BoolValue;
+				AlternateRowColorsWatchlist = gencfg.GetOrSet("Alternate watchlist row colors", true).BoolValue;
+				AlternateRowColorsLog = gencfg.GetOrSet("Alternate log row colors", true).BoolValue;
 			}
 		}
 
@@ -3807,8 +3740,6 @@ namespace Taskmaster.UI
 
 						var windows = cfg.Config[Constants.Windows];
 						windows["Main"].IntArray = new int[] { Bounds.Left, Bounds.Top, Bounds.Width, Bounds.Height };
-
-						cfg.MarkDirty();
 					}
 				}
 				catch (Exception ex)
