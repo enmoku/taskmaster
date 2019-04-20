@@ -10,8 +10,8 @@
 
 namespace Taskmaster.Properties {
     using System;
-
-
+    
+    
     /// <summary>
     ///   A strongly-typed resource class, for looking up localized strings, etc.
     /// </summary>
@@ -19,19 +19,19 @@ namespace Taskmaster.Properties {
     // class via a tool like ResGen or Visual Studio.
     // To add or remove a member, edit your .ResX file then rerun ResGen
     // with the /str option, or rebuild your VS project.
-    [System.CodeDom.Compiler.GeneratedCodeAttribute("System.Resources.Tools.StronglyTypedResourceBuilder", "15.0.0.0")]
+    [System.CodeDom.Compiler.GeneratedCodeAttribute("System.Resources.Tools.StronglyTypedResourceBuilder", "16.0.0.0")]
     [System.Diagnostics.DebuggerNonUserCodeAttribute()]
     [System.Runtime.CompilerServices.CompilerGeneratedAttribute()]
     internal class Resources {
-
-        static System.Resources.ResourceManager resourceMan;
-
-        static System.Globalization.CultureInfo resourceCulture;
-
+        
+        private static System.Resources.ResourceManager resourceMan;
+        
+        private static System.Globalization.CultureInfo resourceCulture;
+        
         [System.Diagnostics.CodeAnalysis.SuppressMessageAttribute("Microsoft.Performance", "CA1811:AvoidUncalledPrivateCode")]
         internal Resources() {
         }
-
+        
         /// <summary>
         ///   Returns the cached ResourceManager instance used by this class.
         /// </summary>
@@ -45,7 +45,7 @@ namespace Taskmaster.Properties {
                 return resourceMan;
             }
         }
-
+        
         /// <summary>
         ///   Overrides the current thread's CurrentUICulture property for all
         ///   resource lookups using this strongly typed resource class.
@@ -59,35 +59,25 @@ namespace Taskmaster.Properties {
                 resourceCulture = value;
             }
         }
-
+        
         /// <summary>
-        ///   Looks up a localized string similar to 2019/01/12 09:54:19 Z
-        ///.
+        ///   Looks up a localized string similar to 2019/04/20 07:35:32 Z 
         /// </summary>
         internal static string BuildDate {
             get {
                 return ResourceManager.GetString("BuildDate", resourceCulture);
             }
         }
-
+        
+        /// <summary>
+        /// </summary>
         internal static string KnownModules {
             get {
                 return ResourceManager.GetString("KnownModules", resourceCulture);
             }
         }
-
+        
         /// <summary>
-        ///   Looks up a localized string similar to The MIT License (MIT)
-        ///
-        ///Author:
-        ///		M.A. (https://github.com/mkahvi)
-        ///
-        ///Copyright (c) 2016-2018 M.A.
-        ///
-        ///Permission is hereby granted, free of charge, to any person obtaining a copy
-        ///of this software and associated documentation files (the &quot;Software&quot;), to deal
-        ///in the Software without restriction, including without limitation the rights
-        ///to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
         ///copies of the Software, and to permit persons to whom the Software is
         ///furnished to do so, subject [rest of string was truncated]&quot;;.
         /// </summary>
@@ -123,9 +113,6 @@ namespace Taskmaster.Properties {
         ///Priority strategy = 2
         ///#Rescan=30
         ///Allow paging=false
-        ///
-        ///[Google Chrome]
-        ///I [rest of string was truncated]&quot;;.
         /// </summary>
         internal static string Watchlist {
             get {
