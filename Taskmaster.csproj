@@ -314,6 +314,7 @@
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>
     <PreBuildEvent>echo $(BuildDate) &gt; "$(ProjectDir)\Resources\BuildDate.restext"
+
 echo $(ProjectDir) &gt; "$(ProjectDir)\Resources\ProjectDirectory.restext"</PreBuildEvent>
   </PropertyGroup>
 </Project>
