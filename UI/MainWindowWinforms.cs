@@ -1482,6 +1482,7 @@ namespace Taskmaster.UI
 				CheckOnClick = true,
 				Enabled = ProcessMonitorEnabled,
 			};
+
 			menu_debug_procs.Click += (_, _ea) =>
 			{
 				ProcessManager.DebugProcesses = menu_debug_procs.Checked;
@@ -1490,6 +1491,18 @@ namespace Taskmaster.UI
 				else
 					StopProcessDebug();
 			};
+
+			var menu_debug_adjustdelay = new ToolStripMenuItem("Adjust delay")
+			{
+				Checked = ProcessManager.DebugAdjustDelay,
+				CheckOnClick = true,
+				Enabled = ProcessMonitorEnabled,
+			};
+			menu_debug_adjustdelay.Click += (_, _ea) =>
+			{
+				ProcessManager.DebugAdjustDelay = menu_debug_adjustdelay.Checked;
+			};
+
 			var menu_debug_foreground = new ToolStripMenuItem(HumanReadable.System.Process.Foreground)
 			{
 				Checked = DebugForeground,
@@ -1590,6 +1603,7 @@ namespace Taskmaster.UI
 			menu_debug.DropDownItems.Add(new ToolStripSeparator());
 			//menu_debug.DropDownItems.Add(menu_debug_scanning);
 			menu_debug.DropDownItems.Add(menu_debug_procs);
+			menu_debug.DropDownItems.Add(menu_debug_adjustdelay);
 			menu_debug.DropDownItems.Add(menu_debug_foreground);
 			//menu_debug.DropDownItems.Add(menu_debug_paths);
 			menu_debug.DropDownItems.Add(menu_debug_power);

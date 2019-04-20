@@ -1063,7 +1063,7 @@ namespace Taskmaster
 				if (DebugAdjustDelay)
 				{
 					sbs.Append(" – ").Append($"{ea.Info.Timer.ElapsedMilliseconds:N0} ms");
-					if (ea.Info.WMIDelay > 0) sbs.Append(" + ").Append(ea.Info.WMIDelay).Append(" ms watcher delay");
+					if (ea.Info.WMIDelay > 0d) sbs.Append(" + ").Append($"{ea.Info.WMIDelay:N0}").Append(" ms watcher delay");
 				}
 
 				// TODO: Add option to logging to file but still show in UI
@@ -1885,6 +1885,39 @@ namespace Taskmaster
 			}
 		}
 
+		private void StartTraceTriage(object sender, EventArrivedEventArgs e)
+		{
+			var now = DateTimeOffset.UtcNow;
+			var timer = Stopwatch.StartNew();
+
+			var targetInstance = e.NewEvent;
+			int pid = 0;
+			int ppid = 0;
+			string name = string.Empty;
+
+			ProcessHandlingState state = ProcessHandlingState.Invalid;
+
+			try
+			{
+				pid = Convert.ToInt32(targetInstance.Properties["ProcessID"].Value as string);
+				ppid = Convert.ToInt32(targetInstance.Properties["ParentProcessID"].Value as string);
+				name = targetInstance.Properties["ProcessName"].Value as string;
+			}
+			catch (Exception ex)
+			{
+				Logging.Stacktrace(ex);
+				state = ProcessHandlingState.Invalid;
+				return;
+			}
+			finally
+			{
+				Statistics.WMIPollTime += timer.Elapsed.TotalSeconds;
+				Statistics.WMIPolling += 1;
+			}
+
+			Log.Debug($"<Process> {name} (#{pid}; parent #{ppid})");
+		}
+
 		// This needs to return faster
 		async void NewInstanceTriage(object _, EventArrivedEventArgs ea)
 		{
@@ -1892,8 +1925,7 @@ namespace Taskmaster
 			var timer = Stopwatch.StartNew();
 
 			int pid = -1;
-			string name = string.Empty;
-			string path = string.Empty;
+			string name = string.Empty, path = string.Empty;
 			ProcessEx info = null;
 			DateTime creation = DateTime.MinValue;
 			TimeSpan wmidelay = TimeSpan.Zero;
@@ -1911,39 +1943,40 @@ namespace Taskmaster
 				// TODO: Instance groups?
 				try
 				{
-					var targetInstance = ea.NewEvent.Properties["TargetInstance"].Value as ManagementBaseObject;
-					//var tpid = targetInstance.Properties["Handle"].Value as int?; // doesn't work for some reason
-					pid = Convert.ToInt32(targetInstance.Properties["Handle"].Value as string);
+					string iname=string.Empty, cmdl=string.Empty;
+					using (var targetInstance = ea.NewEvent.Properties["TargetInstance"].Value as ManagementBaseObject)
+					{
+						//var tpid = targetInstance.Properties["Handle"].Value as int?; // doesn't work for some reason
+						pid = Convert.ToInt32(targetInstance.Properties["Handle"].Value as string);
+
+						iname = targetInstance.Properties["Name"].Value as string;
+						path = targetInstance.Properties["ExecutablePath"].Value as string;
+						if (DebugAdjustDelay) creation = ManagementDateTimeConverter.ToDateTime(targetInstance.Properties["CreationDate"].Value as string);
+						if (string.IsNullOrEmpty(path))
+							cmdl = targetInstance.Properties["CommandLine"].Value as string; // CommandLine sometimes has the path when executablepath does not
+					}
 
 					ScanBlockList.TryAdd(pid, DateTimeOffset.UtcNow);
 
-					var iname = targetInstance.Properties["Name"].Value as string;
-					path = targetInstance.Properties["ExecutablePath"].Value as string;
-					creation = ManagementDateTimeConverter.ToDateTime(targetInstance.Properties["CreationDate"].Value as string);
 					name = System.IO.Path.GetFileNameWithoutExtension(iname);
-					if (string.IsNullOrEmpty(path))
+					if (!string.IsNullOrEmpty(cmdl))
 					{
-						// CommandLine sometimes has the path when executablepath does not
-						var cmdl = targetInstance.Properties["CommandLine"].Value as string;
-						if (!string.IsNullOrEmpty(cmdl))
+						int off = 0;
+						string npath = "";
+						if (cmdl[0] == '"')
 						{
-							int off = 0;
-							string npath = "";
-							if (cmdl[0] == '"')
-							{
-								off = cmdl.IndexOf('"', 1);
-								npath = cmdl.Substring(1, off - 1);
-							}
-							else
-							{
-								off = cmdl.IndexOf(' ', 1);
-								// off < 1 = no arguments
-								npath = off <= 1 ? cmdl : cmdl.Substring(0, off);
-							}
-
-							if (npath.IndexOf('"', 0) >= 0) Log.Fatal("WMI.TargetInstance.CommandLine still had invalid characters: " + npath);
-							path = npath;
+							off = cmdl.IndexOf('"', 1);
+							npath = cmdl.Substring(1, off - 1);
 						}
+						else
+						{
+							off = cmdl.IndexOf(' ', 1);
+							// off < 1 = no arguments
+							npath = off <= 1 ? cmdl : cmdl.Substring(0, off);
+						}
+
+						if (npath.IndexOf('"', 0) >= 0) Log.Fatal("WMI.TargetInstance.CommandLine still had invalid characters: " + npath);
+						path = npath;
 					}
 				}
 				catch (Exception ex)
@@ -1958,8 +1991,11 @@ namespace Taskmaster
 					Statistics.WMIPolling += 1;
 				}
 
-				wmidelay = new DateTimeOffset(creation.ToUniversalTime()).TimeTo(now);
-				if (Trace) Debug.WriteLine($"WMI delay (#{pid}): {wmidelay.TotalMilliseconds:N0} ms");
+				if (DebugAdjustDelay)
+				{
+					wmidelay = new DateTimeOffset(creation.ToUniversalTime()).TimeTo(now);
+					if (Trace) Debug.WriteLine($"WMI delay (#{pid}): {wmidelay.TotalMilliseconds:N0} ms");
+				}
 
 				if (IgnoreProcessID(pid)) return; // We just don't care
 
@@ -1986,7 +2022,7 @@ namespace Taskmaster
 				if (ProcessUtility.GetInfo(pid, out info, path: path, getPath: true, name: name))
 				{
 					info.Timer = timer;
-					info.WMIDelay = Convert.ToInt32(wmidelay.TotalMilliseconds);
+					info.WMIDelay = wmidelay.TotalMilliseconds;
 					NewInstanceTriagePhaseTwo(info, out state);
 				}
 				else
@@ -2009,7 +2045,7 @@ namespace Taskmaster
 				if (info == null)
 				{
 					info = new ProcessEx { Id = pid, Timer = timer, State = state};
-					info.WMIDelay = Convert.ToInt32(wmidelay.TotalMilliseconds);
+					info.WMIDelay = wmidelay.TotalMilliseconds;
 				}
 				HandlingStateChange?.Invoke(this, new HandlingStateChangeEventArgs(info));
 
@@ -2080,8 +2116,16 @@ namespace Taskmaster
 			}
 		}
 
+		/*
+		Lazy<System.Collections.Specialized.StringCollection> startTraceItems = new Lazy<System.Collections.Specialized.StringCollection>(MakeTraceItemList);
+		System.Collections.Specialized.StringCollection MakeTraceItemList()
+			=> new System.Collections.Specialized.StringCollection { "TargetInstance.SourceName", "ProcessID", "ParentProcessID", "ProcessName" };
+		*/
+
 		ManagementEventWatcher NewProcessWatcher = null;
 		ManagementEventWatcher ProcessEndWatcher = null;
+
+		public const string WMIEventNamespace = @"\\.\root\CIMV2";
 
 		void InitWMIEventWatcher()
 		{
@@ -2094,36 +2138,44 @@ namespace Taskmaster
 				// https://msdn.microsoft.com/en-us/library/windows/desktop/aa393014(v=vs.85).aspx
 
 				/*
-				// Win32_ProcessStartTrace requires Admin rights
-
-				if (IsAdministrator())
+				// Win32_ProcessStartTrace  works poorly for some reason
+				try
 				{
-					ManagementEventWatcher w = null;
-					WqlEventQuery q = new WqlEventQuery();
-					q.EventClassName = "Win32_ProcessStartTrace";
-					var w = new ManagementEventWatcher(scope, q);
-					w.EventArrived += NewInstanceTriage2;
-					w.Start();
+					// Win32_ProcessStartTrace requires Admin rights
+					if (MKAh.Execution.IsAdministrator)
+					{
+						var query = new EventQuery("SELECT ProcessID,ParentProcessID,ProcessName FROM Win32_ProcessStartTrace WITHIN " + WMIPollDelay);
+						//query.Condition = "TargetInstance ISA 'Win32_Process'";
+						//query.WithinInterval = TimeSpan.FromSeconds(WMIPollDelay);
+						NewProcessWatcher = new ManagementEventWatcher(new ManagementScope(WMIEventNamespace), query);
+						NewProcessWatcher.EventArrived += StartTraceTriage;
+					}
+				}
+				catch (Exception ex)
+				{
+					NewProcessWatcher = null;
+					Logging.Stacktrace(ex);
 				}
 				*/
 
-				// var tracequery = new System.Management.EventQuery("SELECT * FROM Win32_ProcessStartTrace");
+				if (NewProcessWatcher is null)
+				{
+					// 'TargetInstance.Handle','TargetInstance.Name','TargetInstance.ExecutablePath','TargetInstance.CommandLine'
+					var query = new EventQuery("SELECT TargetInstance FROM __InstanceCreationEvent WITHIN " + WMIPollDelay + " WHERE TargetInstance ISA 'Win32_Process'");
 
-				// var query = new System.Management.EventQuery("SELECT TargetInstance FROM __InstanceCreationEvent WITHIN 5 WHERE TargetInstance ISA 'Win32_Process'");
-				NewProcessWatcher = new ManagementEventWatcher(
-					new ManagementScope(@"\\.\root\CIMV2"),
-					new EventQuery("SELECT * FROM __InstanceCreationEvent WITHIN " + WMIPollDelay + " WHERE TargetInstance ISA 'Win32_Process'")
-					); // Avast cybersecurity causes this to throw an exception
+					// Avast cybersecurity causes this to throw an exception
+					NewProcessWatcher = new ManagementEventWatcher(new ManagementScope(WMIEventNamespace), query);
 
-				/*
-				ProcessEndWatcher = new ManagementEventWatcher(
-					new ManagementScope(@"\\.\root\CIMV2"),
-					new EventQuery("SELECT * FROM __InstanceDeletionEvent WITHIN 10 WHERE TargetInstance ISA 'Win32_Process'")
-					);
-				*/
+					/*
+					ProcessEndWatcher = new ManagementEventWatcher(
+						new ManagementScope(@"\\.\root\CIMV2"),
+						new EventQuery("SELECT * FROM __InstanceDeletionEvent WITHIN 10 WHERE TargetInstance ISA 'Win32_Process'")
+						);
+					*/
 
-				NewProcessWatcher.EventArrived += NewInstanceTriage;
-				//ProcessEndWatcher.EventArrived += ProcessEndTriage;
+					NewProcessWatcher.EventArrived += NewInstanceTriage;
+					//ProcessEndWatcher.EventArrived += ProcessEndTriage;
+				}
 
 				NewProcessWatcher.Start();
 				//ProcessEndWatcher.Start();

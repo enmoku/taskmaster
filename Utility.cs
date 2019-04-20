@@ -100,13 +100,13 @@ namespace Taskmaster
 				.Append(trace).AppendLine();
 		}
 
-		public static void Stacktrace(Exception ex, bool crashsafe = false, [CallerMemberName] string method = "", [CallerLineNumber] int line=-1)
+		public static void Stacktrace(Exception ex, bool crashsafe = false)
 		{
 			if (!crashsafe)
 			{
 				var projectdir = Properties.Resources.ProjectDirectory.Trim();
 				var trace = ex.StackTrace.Replace(projectdir, HumanReadable.Generic.Ellipsis + System.IO.Path.DirectorySeparatorChar);
-				Serilog.Log.Fatal($"Exception: {ex.GetType().Name} : {ex.Message} – Reported at {method}:{line}\n{trace}");
+				Serilog.Log.Fatal($"Exception: {ex.GetType().Name} : {ex.Message}\n{trace}");
 			}
 			else
 			{

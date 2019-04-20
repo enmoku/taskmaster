@@ -44,12 +44,12 @@ namespace Taskmaster
 		readonly Lazy<ServiceController> Service;
 		readonly Lazy<ManagementObject> WMI;
 
-		public ServiceWrapper(string service)
+		public ServiceWrapper(string service, string scope = @"\\.\root\CIMV2")
 		{
 			ServiceName = service;
 
 			Service = new Lazy<ServiceController>(() => new ServiceController(ServiceName));
-			WMI = new Lazy<ManagementObject>(() => new ManagementObject(@"\\.\root\CIMV2", $"Win32_Service.Name='{ServiceName}'", null));
+			WMI = new Lazy<ManagementObject>(() => new ManagementObject(scope, $"Win32_Service.Name='{ServiceName}'", null));
 		}
 
 		bool Running => Service.Value.Status == ServiceControllerStatus.Running;

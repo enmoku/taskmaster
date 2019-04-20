@@ -48,7 +48,7 @@ namespace Taskmaster
 		public string FormattedPath { get; set; } = null;
 
         public Stopwatch Timer = null;
-        public int WMIDelay = 0;
+        public double WMIDelay = 0;
 
 		/// <summary>
 		/// Process Id.
