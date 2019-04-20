@@ -6,6 +6,8 @@ Comprehensive changes can be found in Git change history:
 ### 2019-04-20
 	Internal: Improve exit cleanup.
 	Internal: Various async code changes.
+	Changed: "Show only final state" is now "Final state only" in [Logging].
+	Changed: "Show unmodified portions" is now "Unmodified portions" in [Logging].
 ### 2019-04-19
 	Internal: Lots of quality of life changes to internal code, especially to configuration changes.
 ### 2019-04-17

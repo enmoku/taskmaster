@@ -1013,7 +1013,7 @@ namespace Taskmaster.UI
 		const string TopmostName = "Topmost";
 		const string InfoName = "Info";
 		const string TraceName = "Trace";
-		const string ShowUnmodifiedPortionsName = "Show unmodified portions";
+		const string ShowUnmodifiedPortionsName = "Unmodified portions";
 		const string WatchlistName = "Watchlist";
 
 		void BuildUI()
@@ -1273,7 +1273,7 @@ namespace Taskmaster.UI
 				corecfg.Config[HumanReadable.Generic.Logging][ShowUnmodifiedPortionsName].BoolValue = ProcessManager.ShowUnmodifiedPortions;
 			};
 
-			var menu_config_logging_showonlyfinal = new ToolStripMenuItem("Show only final state")
+			var menu_config_logging_showonlyfinal = new ToolStripMenuItem("Final state only")
 			{
 				Checked = ProcessManager.ShowOnlyFinalState,
 				CheckOnClick = true,
@@ -1282,7 +1282,7 @@ namespace Taskmaster.UI
 			{
 				ProcessManager.ShowOnlyFinalState = menu_config_logging_showonlyfinal.Checked;
 				using (var corecfg = Taskmaster.Config.Load(CoreConfigFilename).BlockUnload())
-				corecfg.Config[HumanReadable.Generic.Logging]["Show only final state"].BoolValue = ProcessManager.ShowOnlyFinalState;
+				corecfg.Config[HumanReadable.Generic.Logging]["Final state only"].BoolValue = ProcessManager.ShowOnlyFinalState;
 			};
 
 			var menu_config_logging_neterrors = new ToolStripMenuItem("Network errors")

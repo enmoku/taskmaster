@@ -753,8 +753,18 @@ namespace Taskmaster
 				DebugPaging = dbgsec.Get("Paging")?.BoolValue ?? false;
 
 				var logsec = corecfg.Config["Logging"];
-				ShowUnmodifiedPortions = logsec.GetOrSet("Show unmodified portions", ShowUnmodifiedPortions).BoolValue;
-				ShowOnlyFinalState = logsec.GetOrSet("Show only final state", ShowOnlyFinalState).BoolValue;
+				if (logsec.TryGet("Show unmodified portions", out var dumodport))
+				{
+					ShowUnmodifiedPortions = dumodport.BoolValue;
+					logsec.Remove(dumodport); // DEPRECATED
+				}
+				ShowUnmodifiedPortions = logsec.GetOrSet("Unmodified portions", ShowUnmodifiedPortions).BoolValue;
+				if (logsec.TryGet("Show only final state", out var donfinal))
+				{
+					ShowOnlyFinalState = donfinal.BoolValue;
+					logsec.Remove(donfinal); // DEPRECATED
+				}
+				ShowOnlyFinalState = logsec.GetOrSet("Final state only", ShowOnlyFinalState).BoolValue;
 				ShowForegroundTransitions = logsec.GetOrSet("Foreground transitions", ShowForegroundTransitions).BoolValue;
 
 				if (!IgnoreSystem32Path) Log.Warning($"<Process> System32 ignore disabled.");
