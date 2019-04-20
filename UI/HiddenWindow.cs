@@ -28,14 +28,23 @@ using System.Diagnostics;
 
 namespace Taskmaster.OS
 {
+	using System;
 	using static Taskmaster;
 
-	public class HiddenWindow : UI.UniForm
+	public class HiddenWindow : UI.UniForm, IDisposal
 	{
 		public HiddenWindow()
 		{
+			RegisterForExit(this);
 			DisposalChute.Push(this);
 			if (Trace) Debug.WriteLine("HiddenWindow initialized");
+		}
+
+		public event EventHandler<DisposedEventArgs> OnDisposed;
+
+		public void ShutdownEvent(object sender, EventArgs ea)
+		{
+			// NOP
 		}
 	}
 }

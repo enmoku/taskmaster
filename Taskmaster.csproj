@@ -158,7 +158,7 @@
     <Compile Include="Cause.cs" />
     <Compile Include="Config\FileEvent.cs" />
     <Compile Include="Config\IFile.cs" />
-    <Compile Include="IComponent.cs" />
+    <Compile Include="IDisposal.cs" />
     <Compile Include="Config\Manager.cs" />
     <Compile Include="Enums\ForegroundMode.cs" />
     <Compile Include="Audio\DeviceEventArgs.cs" />

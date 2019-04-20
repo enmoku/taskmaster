@@ -36,7 +36,7 @@ namespace Taskmaster
 {
 	using static Taskmaster;
 
-	public class CPUMonitor : IComponent, IDisposable
+	public class CPUMonitor : IDisposal, IDisposable
 	{
 		// Experimental feature
 		public bool CPULoaderMonitoring { get; set; } = false;
@@ -84,6 +84,7 @@ namespace Taskmaster
 				CPUSampleTimer?.Dispose();
 			}
 
+			RegisterForExit(this);
 			DisposalChute.Push(this);
 		}
 
@@ -285,7 +286,7 @@ namespace Taskmaster
 		*/
 
 		#region IDisposable Support
-		public event EventHandler OnDisposed;
+		public event EventHandler<DisposedEventArgs> OnDisposed;
 
 		bool DisposedOrDisposing = false; // To detect redundant calls
 
@@ -312,11 +313,16 @@ namespace Taskmaster
 				SaveConfig();
 			}
 
-			OnDisposed?.Invoke(this, EventArgs.Empty);
+			OnDisposed?.Invoke(this, DisposedEventArgs.Empty);
 			OnDisposed = null;
 		}
 
 		public void Dispose() => Dispose(true);
+
+		public void ShutdownEvent(object sender, EventArgs ea)
+		{
+			CPUSampleTimer?.Stop();
+		}
 		#endregion
 	}
 

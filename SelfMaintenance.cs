@@ -25,6 +25,7 @@
 // THE SOFTWARE.
 
 using System;
+using System.Threading.Tasks;
 using MKAh;
 using Serilog;
 
@@ -32,7 +33,7 @@ namespace Taskmaster
 {
 	using static Taskmaster;
 
-	public class SelfMaintenance : IDisposable
+	public class SelfMaintenance : IDisposable, IDisposal
 	{
 		public SelfMaintenance()
 		{
@@ -58,6 +59,7 @@ namespace Taskmaster
 
 			if (Trace) Log.Information("<Self-Maintenance> Initialized.");
 
+			RegisterForExit(this);
 			DisposalChute.Push(this);
 		}
 
@@ -76,6 +78,8 @@ namespace Taskmaster
 			if (DisposedOrDisposing) return;
 
 			if (!Atomic.Lock(ref CallbackLimiter)) return;
+
+			await Task.Delay(0).ConfigureAwait(false);
 
 			var time = System.Diagnostics.Stopwatch.StartNew();
 
@@ -123,6 +127,8 @@ namespace Taskmaster
 		#region IDisposable Support
 		private bool DisposedOrDisposing = false; // To detect redundant calls
 
+		public event EventHandler<DisposedEventArgs> OnDisposed;
+
 		protected virtual void Dispose(bool disposing)
 		{
 			if (DisposedOrDisposing) return;
@@ -132,10 +138,18 @@ namespace Taskmaster
 				timer?.Dispose();
 			}
 
+			OnDisposed?.Invoke(this, DisposedEventArgs.Empty);
+			OnDisposed = null;
+
 			DisposedOrDisposing = true;
 		}
 
 		public void Dispose() => Dispose(true);
+
+		public void ShutdownEvent(object sender, EventArgs ea)
+		{
+			timer?.Stop();
+		}
 		#endregion
 	}
 }

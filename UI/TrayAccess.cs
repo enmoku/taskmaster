@@ -48,10 +48,11 @@ namespace Taskmaster.UI
 	///
 	/// </summary>
 	// Form is used for catching some system events
-	sealed public class TrayAccess : UI.UniForm //, IDisposable
+	sealed public class TrayAccess : UI.UniForm, IDisposable, IDisposal
 	{
 		NotifyIcon Tray;
 
+		public event EventHandler<DisposedEventArgs> OnDisposed;
 		public event EventHandler<TrayShownEventArgs> TrayMenuShown;
 
 		ToolStripMenuItem power_auto;
@@ -60,8 +61,7 @@ namespace Taskmaster.UI
 		ToolStripMenuItem power_saving;
 		ToolStripMenuItem power_manual;
 
-		public TrayAccess()
-			: base()
+		public TrayAccess() : base()
 		{
 			// BUILD UI
 			IconCache = System.Drawing.Icon.ExtractAssociatedIcon(System.Reflection.Assembly.GetExecutingAssembly().Location);
@@ -165,8 +165,11 @@ namespace Taskmaster.UI
 
 			ms.VisibleChanged += MenuVisibilityChangedEvent;
 
+			Tray.MouseDoubleClick += UnloseWindow;
+
 			if (Trace) Log.Verbose("<Tray> Initialized");
 
+			RegisterForExit(this);
 			DisposalChute.Push(this);
 		}
 
@@ -470,8 +473,6 @@ namespace Taskmaster.UI
 					return;
 			}
 
-			Tray.MouseDoubleClick -= UnloseWindow;
-
 			mainwindow = null;
 		}
 
@@ -482,8 +483,6 @@ namespace Taskmaster.UI
 
 			mainwindow = window;
 
-			Tray.MouseDoubleClick += UnloseWindow;
-
 			window.FormClosing += WindowClosed;
 		}
 
@@ -492,7 +491,7 @@ namespace Taskmaster.UI
 		async void ExplorerCrashEvent(object sender, EventArgs _ea)
 		{
 			var proc = (Process)sender;
-			ExplorerCrashHandler(proc.Id);
+			await ExplorerCrashHandler(proc.Id).ConfigureAwait(false);
 		}
 
 		Process[] Explorer;
@@ -615,42 +614,6 @@ namespace Taskmaster.UI
 				Logging.Stacktrace(ex);
 				throw;
 			}
-		}
-
-		bool DisposingOrDisposed = false;
-		protected override void Dispose(bool disposing)
-		{
-			if (DisposingOrDisposed) return;
-
-			Microsoft.Win32.SystemEvents.SessionEnding -= SessionEndingEvent; // leaks if not disposed
-
-			if (disposing)
-			{
-				DisposingOrDisposed = true;
-
-				if (Trace) Log.Verbose("Disposing tray...");
-
-				UnregisterGlobalHotkeys();
-
-				RescanRequest = null;
-
-				if (powermanager != null)
-				{
-					powermanager.onPlanChange -= HighlightPowerModeEvent;
-					powermanager = null;
-				}
-
-				if (Tray != null)
-				{
-					Tray.Visible = false;
-					Utility.Dispose(ref Tray);
-				}
-
-				// Free any other managed objects here.
-				//
-			}
-
-			base.Dispose(disposing);
 		}
 
 		public event EventHandler TrayTooltipClicked;
@@ -844,5 +807,48 @@ namespace Taskmaster.UI
 		// Vista or later required
 		[DllImport("user32.dll")]
 		internal extern static bool ShutdownBlockReasonDestroy(IntPtr hWnd);
+
+		#region IDisposable Support
+		bool DisposingOrDisposed = false;
+		protected override void Dispose(bool disposing)
+		{
+			if (DisposingOrDisposed) return;
+
+			Microsoft.Win32.SystemEvents.SessionEnding -= SessionEndingEvent; // leaks if not disposed
+
+			if (disposing)
+			{
+				DisposingOrDisposed = true;
+
+				if (Trace) Log.Verbose("Disposing tray...");
+
+				UnregisterGlobalHotkeys();
+
+				RescanRequest = null;
+
+				if (powermanager != null)
+				{
+					powermanager.onPlanChange -= HighlightPowerModeEvent;
+					powermanager = null;
+				}
+
+				if (Tray != null)
+				{
+					Tray.Visible = false;
+					Utility.Dispose(ref Tray);
+				}
+
+				// Free any other managed objects here.
+				//
+			}
+
+			base.Dispose(disposing);
+		}
+		#endregion
+
+		public void ShutdownEvent(object sender, EventArgs ea)
+		{
+			// NOP
+		}
 	}
 }

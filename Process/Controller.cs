@@ -990,8 +990,8 @@ namespace Taskmaster
 
 		public async Task Modify(ProcessEx info)
 		{
-			await Touch(info);
-			if (Recheck > 0) TouchReapply(info); // this can go do its thing
+			await Touch(info).ConfigureAwait(false);
+			if (Recheck > 0) await TouchReapply(info).ConfigureAwait(false); // this can go do its thing
 		}
 
 		[System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
@@ -1050,7 +1050,6 @@ namespace Taskmaster
 
 				int oldAffinityMask = 0;
 				var oldPower = Power.Mode.Undefined;
-
 
 				await Task.Delay(refresh ? 0 : ModifyDelay).ConfigureAwait(false);
 
@@ -1418,7 +1417,8 @@ namespace Taskmaster
 							return nrmt;
 						});
 					}
-					InternalRefresh(now);
+
+					await InternalRefresh(now).ConfigureAwait(false);
 				}
 				else
 					info.State = ProcessHandlingState.Finished;

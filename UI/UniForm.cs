@@ -41,7 +41,7 @@ namespace Taskmaster.UI
 
 		protected System.Drawing.Font boldfont = null;
 
-		public UniForm(bool centerOnScreen=false)
+		public UniForm(bool centerOnScreen = false)
 		{
 			var handle = this.Handle; // unused; forces handle creation
 
@@ -69,6 +69,7 @@ namespace Taskmaster.UI
 		}
 
 		bool disposed = false;
+
 		protected override void Dispose(bool disposing)
 		{
 			if (disposed) return;

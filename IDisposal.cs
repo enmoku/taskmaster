@@ -1,5 +1,5 @@
 ﻿//
-// IComponent.cs
+// IDisposal.cs
 //
 // Author:
 //       M.A. (https://github.com/mkahvi)
@@ -28,8 +28,17 @@ using System;
 
 namespace Taskmaster
 {
-	public interface IComponent
+	public interface IDisposal
 	{
-		event EventHandler OnDisposed;
+		event EventHandler<DisposedEventArgs> OnDisposed;
+
+		void Dispose();
+
+		void ShutdownEvent(object sender, EventArgs ea);
+	}
+
+	public class DisposedEventArgs : EventArgs
+	{
+		public new static DisposedEventArgs Empty => new DisposedEventArgs();
 	}
 }

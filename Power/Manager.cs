@@ -89,7 +89,7 @@ namespace Taskmaster.Power
 		public SessionLockEventArgs(bool locked = false) => Locked = locked;
 	}
 
-	sealed public class Manager : Form, IComponent // form is required for receiving messages, no other reason
+	sealed public class Manager : Form, IDisposal // form is required for receiving messages, no other reason
 	{
 		const string DefaultModeSettingName = "Default mode";
 		const string RestoreModeSettingName = "Restore mode";
@@ -148,6 +148,7 @@ namespace Taskmaster.Power
 				MonitorPower += MonitorPowerEvent;
 			}
 
+			RegisterForExit(this);
 			DisposalChute.Push(this);
 		}
 
@@ -163,7 +164,7 @@ namespace Taskmaster.Power
 			cpumonitor.onSampling += CPULoadHandler;
 		}
 
-		async void MonitorPowerEvent(object _, MonitorPowerEventArgs ev)
+		void MonitorPowerEvent(object _, MonitorPowerEventArgs ev)
 		{
 			if (DisposedOrDisposing) return;
 
@@ -205,7 +206,7 @@ namespace Taskmaster.Power
 					StartDisplayTimer();
 					MonitorOffLastLock?.Stop();
 
-					if (DebugMonitor) DebugMonitorWake();
+					if (DebugMonitor) DebugMonitorWake().ConfigureAwait(false);
 				}
 				else if (ev.Mode == MonitorPowerMode.Off)
 				{
@@ -300,7 +301,7 @@ namespace Taskmaster.Power
 		int SleepTickCount = -1;
 		int SleepGivenUp = 0;
 		int monitorsleeptimer_lock = 0;
-		async void MonitorSleepTimerTick(object _, EventArgs _ea)
+		void MonitorSleepTimerTick(object _, EventArgs _ea)
 		{
 			if (DisposedOrDisposing) return;
 
@@ -1317,7 +1318,7 @@ namespace Taskmaster.Power
 					break;
 				case PowerBehaviour.Manual:
 					processmanager.CancelPowerWait(); // need nicer way to do this
-					Release(null);
+					Release(null).ConfigureAwait(false);
 					break;
 			}
 
@@ -1341,6 +1342,8 @@ namespace Taskmaster.Power
 			if (DebugPower) Log.Debug($"<Power> Releasing {(sourcePid == -1 ? "all locks" : $"#{sourcePid.ToString()}")}");
 
 			Debug.Assert(sourcePid == -1 || !ProcessManager.SystemProcessId(sourcePid));
+
+			await Task.Delay(0).ConfigureAwait(false);
 
 			lock (power_lock)
 			{
@@ -1367,7 +1370,8 @@ namespace Taskmaster.Power
 
 					if (!Forced)
 					{
-						ReleaseFinal(new Cause(OriginType.Watchlist, $"#{sourcePid} exited; " + (Behaviour == PowerBehaviour.Auto ? "auto-adjust resumed" : "restoring.")));
+						ReleaseFinal(new Cause(OriginType.Watchlist, $"#{sourcePid} exited; " + (Behaviour == PowerBehaviour.Auto ? "auto-adjust resumed" : "restoring.")))
+							.ConfigureAwait(false);
 						if (VerbosePowerRelease && info != null)
 							Log.Information($"<Power> {info.Name} (#{info.Id}) quit, power forcing released.");
 					}
@@ -1571,8 +1575,32 @@ namespace Taskmaster.Power
 			NativeMethods.PowerSetActiveScheme((IntPtr)null, ref plan);
 		}
 
+		async void SetMonitorMode(MonitorPowerMode powermode)
+		{
+			if (DisposedOrDisposing) throw new ObjectDisposedException("SetMonitorMode called after PowerManager was disposed.");
+
+			Debug.Assert(powermode != MonitorPowerMode.Invalid);
+			long NewPowerMode = (int)powermode; // -1 = Powering On, 1 = Low Power (low backlight, etc.), 2 = Power Off
+
+			var Broadcast = new IntPtr(NativeMethods.HWND_BROADCAST); // unreliable
+			var Topmost = new IntPtr(NativeMethods.HWND_TOPMOST);
+
+			uint timeout = 200; // ms per window, we don't really care if they process them
+			var flags = NativeMethods.SendMessageTimeoutFlags.SMTO_ABORTIFHUNG | NativeMethods.SendMessageTimeoutFlags.SMTO_NORMAL | NativeMethods.SendMessageTimeoutFlags.SMTO_NOTIMEOUTIFNOTHUNG;
+
+			//IntPtr hWnd = Handle; // send to self works for this? seems even more unreliable
+			// there's a lot of discussion on what is the correct way to do this, and many agree broadcast is not good choice even if it works
+			// NEVER send it via SendMessage(), only via SendMessageTimeout()
+			// PostMessage() is also valid.
+
+			await Task.Delay(0).ConfigureAwait(false);
+
+			ExpectedMonitorPower = powermode;
+			NativeMethods.SendMessageTimeout(Broadcast, NativeMethods.WM_SYSCOMMAND, NativeMethods.SC_MONITORPOWER, NewPowerMode, flags, timeout, out _);
+		}
+
 		#region IDisposable Support
-		public event EventHandler OnDisposed;
+		public event EventHandler<DisposedEventArgs> OnDisposed;
 
 		bool DisposedOrDisposing = false;
 		protected override void Dispose(bool disposing)
@@ -1613,30 +1641,11 @@ namespace Taskmaster.Power
 				SaveConfig();
 			}
 		}
-	#endregion
+		#endregion
 
-		async void SetMonitorMode(MonitorPowerMode powermode)
+		public void ShutdownEvent(object sender, EventArgs ea)
 		{
-			if (DisposedOrDisposing) throw new ObjectDisposedException("SetMonitorMode called after PowerManager was disposed.");
-
-			Debug.Assert(powermode != MonitorPowerMode.Invalid);
-			long NewPowerMode = (int)powermode; // -1 = Powering On, 1 = Low Power (low backlight, etc.), 2 = Power Off
-
-			var Broadcast = new IntPtr(NativeMethods.HWND_BROADCAST); // unreliable
-			var Topmost = new IntPtr(NativeMethods.HWND_TOPMOST);
-
-			uint timeout = 200; // ms per window, we don't really care if they process them
-			var flags = NativeMethods.SendMessageTimeoutFlags.SMTO_ABORTIFHUNG|NativeMethods.SendMessageTimeoutFlags.SMTO_NORMAL|NativeMethods.SendMessageTimeoutFlags.SMTO_NOTIMEOUTIFNOTHUNG;
-
-			//IntPtr hWnd = Handle; // send to self works for this? seems even more unreliable
-			// there's a lot of discussion on what is the correct way to do this, and many agree broadcast is not good choice even if it works
-			// NEVER send it via SendMessage(), only via SendMessageTimeout()
-			// PostMessage() is also valid.
-
-			await Task.Delay(0).ConfigureAwait(false);
-
-			ExpectedMonitorPower = powermode;
-			NativeMethods.SendMessageTimeout(Broadcast, NativeMethods.WM_SYSCOMMAND, NativeMethods.SC_MONITORPOWER, NewPowerMode, flags, timeout, out _);
+			StopDisplayTimer();
 		}
 	}
 }

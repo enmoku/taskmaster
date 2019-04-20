@@ -72,7 +72,7 @@ namespace Taskmaster
 		}
 	}
 
-	sealed public class ProcessManager : IComponent, IDisposable
+	sealed public class ProcessManager : IDisposal, IDisposable
 	{
 		ProcessAnalyzer analyzer = null;
 
@@ -140,11 +140,12 @@ namespace Taskmaster
 
 			if (DebugProcesses) Log.Information("<Process> Component Loaded.");
 
+			RegisterForExit(this);
 			DisposalChute.Push(this);
 		}
 
 		async void OnStart(object sender, EventArgs ea)
-			=> Task.Run(() => Scan(), cts.Token).ContinueWith((_) => StartScanTimer(), cts.Token).ConfigureAwait(false);
+			=> await Task.Run(() => Scan(), cts.Token).ContinueWith((_) => StartScanTimer(), cts.Token).ConfigureAwait(false);
 
 		public ProcessController[] getWatchlist() => Watchlist.Keys.ToArray();
 
@@ -212,6 +213,8 @@ namespace Taskmaster
 			if (!PagingEnabled) return;
 
 			if (!Atomic.Lock(ref freemem_lock)) return;
+
+			await Task.Delay(0).ConfigureAwait(false);
 
 			try
 			{
@@ -501,7 +504,7 @@ namespace Taskmaster
 				{
 					info.Timer = Stopwatch.StartNew();
 
-					ProcessTriage(info, old:true);
+					ProcessTriage(info, old:true).ConfigureAwait(false);
 
 					if (PageToDisk)
 					{
@@ -1608,6 +1611,8 @@ namespace Taskmaster
 
 			var prc = info.Controller;
 
+			await Task.Delay(0).ConfigureAwait(false);
+
 			Debug.Assert(prc.Foreground != ForegroundMode.Ignore);
 
 			bool keyadded = false;
@@ -1623,7 +1628,7 @@ namespace Taskmaster
 		}
 
 		// TODO: This should probably be pushed into ProcessController somehow.
-		async void ProcessTriage(ProcessEx info, bool old=false)
+		async Task ProcessTriage(ProcessEx info, bool old=false)
 		{
 			if (DisposedOrDisposing) throw new ObjectDisposedException("ProcessTriage called when ProcessManager was already disposed");
 
@@ -1675,15 +1680,15 @@ namespace Taskmaster
 
 						await info.Controller.Modify(info);
 
-						if (prc.Foreground != ForegroundMode.Ignore) ForegroundWatch(info);
+						if (prc.Foreground != ForegroundMode.Ignore) ForegroundWatch(info).ConfigureAwait(false);
 
-						if (prc.ExclusiveMode) ExclusiveMode(info);
+						if (prc.ExclusiveMode) ExclusiveMode(info).ConfigureAwait(false);
 
 						if (RecordAnalysis.HasValue && info.Controller.Analyze && info.Valid && info.State != ProcessHandlingState.Abandoned)
-							analyzer.Analyze(info);
+							analyzer.Analyze(info).ConfigureAwait(false);
 
 						if (WindowResizeEnabled && prc.Resize.HasValue)
-							prc.TryResize(info);
+							prc.TryResize(info).ConfigureAwait(false);
 
 						if (info.State == ProcessHandlingState.Processing)
 						{
@@ -1732,6 +1737,8 @@ namespace Taskmaster
 			if (!MKAh.Execution.IsAdministrator) return; // sadly stopping services requires admin rights
 
 			if (DebugProcesses) Log.Debug($"[{info.Controller.FriendlyName}] {info.Name} (#{info.Id}) Exclusive mode initiating.");
+
+			await Task.Delay(0).ConfigureAwait(false);
 
 			try
 			{
@@ -1846,6 +1853,9 @@ namespace Taskmaster
 			HandlingCounter?.Invoke(this, new ProcessingCountEventArgs(adjust, Handling));
 		}
 
+		/// <summary>
+		/// Triage process exit events.
+		/// </summary>
 		async void ProcessEndTriage(object sender, EventArrivedEventArgs ea)
 		{
 			int pid = -1;
@@ -2047,7 +2057,7 @@ namespace Taskmaster
 
 				state = info.State = ProcessHandlingState.Triage;
 
-				ProcessTriage(info);
+				ProcessTriage(info).ConfigureAwait(false);
 			}
 			catch (Exception ex)
 			{
@@ -2130,6 +2140,8 @@ namespace Taskmaster
 		async void CleanupTick(object _sender, EventArgs _ea)
 		{
 			if (DisposedOrDisposing) throw new ObjectDisposedException("CleanupTick called when ProcessManager was already disposed");
+
+			await Task.Delay(0).ConfigureAwait(false);
 
 			Cleanup();
 
@@ -2239,7 +2251,7 @@ namespace Taskmaster
 		}
 
 		#region IDisposable Support
-		public event EventHandler OnDisposed;
+		public event EventHandler<DisposedEventArgs> OnDisposed;
 
 		public void Dispose() => Dispose(true);
 
@@ -2331,8 +2343,15 @@ namespace Taskmaster
 				lock (Exclusive_lock) MKAh.Utility.DiscardExceptions(() => ExclusiveEnd());
 			}
 
-			OnDisposed?.Invoke(this, EventArgs.Empty);
+			OnDisposed?.Invoke(this, DisposedEventArgs.Empty);
 			OnDisposed = null;
+		}
+
+		public void ShutdownEvent(object sender, EventArgs ea)
+		{
+			NewProcessWatcher?.Stop();
+			ScanTimer?.Stop();
+			MaintenanceTimer?.Stop();
 		}
 		#endregion
 	}

@@ -38,7 +38,7 @@ namespace Taskmaster
 	/// <summary>
 	/// Manager for non-volatile memory (NVM).
 	/// </summary>
-	sealed public class StorageManager : IComponent, IDisposable
+	sealed public class StorageManager : IDisposal, IDisposable
 	{
 		bool Verbose = false;
 
@@ -91,15 +91,16 @@ namespace Taskmaster
 
 			if (Verbose) Log.Information("<Maintenance> Component loaded.");
 
+			RegisterForExit(this);
 			DisposalChute.Push(this);
 		}
 
 		async void OnStart(object sender, EventArgs ea)
-			=>Task.Run(() => ScanTemp(this, EventArgs.Empty)).ConfigureAwait(false);
+			=> await Task.Run(() => ScanTemp(this, EventArgs.Empty)).ConfigureAwait(false);
 
 		static long ReScanBurden = 0;
 
-		async void ModifyTemp(object _, FileSystemEventArgs ev)
+		void ModifyTemp(object _, FileSystemEventArgs ev)
 		{
 			if (DisposedOrDisposing) return;
 
@@ -134,7 +135,7 @@ namespace Taskmaster
 			LastTempScan = now;
 
 			TempScanTimer?.Stop();
-			await Task.Run(() => Task.Delay(5_000).ContinueWith((_x) => ScanTemp(this, EventArgs.Empty)));
+			await Task.Run(() => Task.Delay(5_000).ContinueWith((_x) => ScanTemp(this, EventArgs.Empty))).ConfigureAwait(false);
 		}
 
 		public struct DirectoryStats
@@ -220,7 +221,7 @@ namespace Taskmaster
 		public event EventHandler<StorageEventArgs> onTempScan;
 
 		#region IDisposable Support
-		public event EventHandler OnDisposed;
+		public event EventHandler<DisposedEventArgs> OnDisposed;
 
 		public void Dispose() => Dispose(true);
 
@@ -241,8 +242,15 @@ namespace Taskmaster
 				TempScanTimer?.Dispose();
 			}
 
-			OnDisposed?.Invoke(this, EventArgs.Empty);
+			OnDisposed?.Invoke(this, DisposedEventArgs.Empty);
 			OnDisposed = null;
+		}
+
+		public void ShutdownEvent(object sender, EventArgs ea)
+		{
+			TempScanTimer?.Dispose();
+			sysWatcher?.Dispose();
+			userWatcher?.Dispose();
 		}
 		#endregion
 	}

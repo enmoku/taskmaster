@@ -37,7 +37,7 @@ namespace Taskmaster.Audio
 {
 	using static Taskmaster;
 
-	sealed public class MicManager : IComponent, IDisposable
+	sealed public class MicManager : IDisposal, IDisposable
 	{
 		readonly System.Threading.Thread Context = null;
 
@@ -120,6 +120,7 @@ namespace Taskmaster.Audio
 
 			if (DebugMic) Log.Information("<Microphone> Component loaded.");
 
+			RegisterForExit(this);
 			DisposalChute.Push(this);
 		}
 
@@ -429,7 +430,7 @@ namespace Taskmaster.Audio
 		}
 
 		#region IDisposable Support
-		public event EventHandler OnDisposed;
+		public event EventHandler<DisposedEventArgs> OnDisposed;
 
 		bool DisposedOrDisposing = false;
 
@@ -449,6 +450,14 @@ namespace Taskmaster.Audio
 				RecordingDevice?.Dispose();
 				RecordingDevice = null;
 			}
+
+			OnDisposed?.Invoke(this, DisposedEventArgs.Empty);
+			OnDisposed = null;
+		}
+
+		public void ShutdownEvent(object sender, EventArgs ea)
+		{
+			// NOP
 		}
 		#endregion
 	}

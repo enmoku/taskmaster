@@ -66,7 +66,7 @@ namespace Taskmaster
 		public float Load;
 	}
 
-	public class HardwareMonitor : IComponent, IDisposable
+	public class HardwareMonitor : IDisposal, IDisposable
 	{
 		OpenHardwareMonitor.Hardware.IHardware gpu = null;
 		OpenHardwareMonitor.Hardware.ISensor gpuFan = null; // Fan speed
@@ -105,6 +105,8 @@ namespace Taskmaster
 			}
 
 			Taskmaster.OnStart += OnStart;
+
+			RegisterForExit(this);
 			DisposalChute.Push(this);
 
 			Log.Verbose("<Hardware> Component loaded.");
@@ -309,11 +311,11 @@ namespace Taskmaster
 		}
 
 		#region IDisposable Support
-		public event EventHandler OnDisposed;
+		public event EventHandler<DisposedEventArgs> OnDisposed;
 
 		bool DisposedOrDisposing = false; // To detect redundant calls
 
-		protected virtual void Dispose(bool disposing)
+		protected void Dispose(bool disposing)
 		{
 			if (DisposedOrDisposing) return;
 			DisposedOrDisposing = true;
@@ -328,13 +330,18 @@ namespace Taskmaster
 			computer?.Close();
 			computer = null;
 
-			OnDisposed?.Invoke(this, EventArgs.Empty);
+			OnDisposed?.Invoke(this, DisposedEventArgs.Empty);
 			OnDisposed = null;
 		}
 
 		~HardwareMonitor() => Dispose(false);
 
 		public void Dispose() => Dispose(true);
+
+		public void ShutdownEvent(object sender, EventArgs ea)
+		{
+			Stop();
+		}
 		#endregion
 	}
 }

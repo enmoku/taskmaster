@@ -250,7 +250,7 @@ namespace Taskmaster.UI
 		readonly Timer updateTimer = new Timer();
 
 		#region IDispose
-		public event EventHandler OnDisposed;
+		public event EventHandler<DisposedEventArgs> OnDisposed;
 
 		bool DisposedOrDisposing = false;
 		protected override void Dispose(bool disposing)
@@ -271,7 +271,8 @@ namespace Taskmaster.UI
 				cfg.Config["Windows"][HumanReadable.Hardware.Audio.Volume].IntArray = new int[] { Bounds.Left, Bounds.Top };
 			}
 
-			OnDisposed?.Invoke(this, EventArgs.Empty);
+			OnDisposed?.Invoke(this, DisposedEventArgs.Empty);
+			OnDisposed = null;
 		}
 		#endregion Dispose
 	}

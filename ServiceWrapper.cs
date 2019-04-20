@@ -142,8 +142,6 @@ namespace Taskmaster
 
 			if (!NeedsRestart) return;
 
-			bool cRunning = false;
-
 			try
 			{
 				if (disable) Disable();

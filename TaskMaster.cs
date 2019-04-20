@@ -121,11 +121,21 @@ namespace Taskmaster
 			}
 		}
 
+		public sealed class ShutDownEventArgs : EventArgs { }
+
+		static event EventHandler<ShutDownEventArgs> ShuttingDown;
+
+		public static void RegisterForExit(IDisposal disposable)
+		{
+			ShuttingDown += disposable.ShutdownEvent;
+		}
 
 		public static void UnifiedExit(bool restart = false, bool elevate = false)
 		{
 			State = restart ? Runstate.Restart : Runstate.Exit;
 			if (elevate && restart) RestartElevated = true;
+
+			ShuttingDown?.Invoke(null, new ShutDownEventArgs());
 
 			//if (System.Windows.Forms.Application.MessageLoop) // fails if called from another thread
 			Application.Exit();
@@ -179,7 +189,12 @@ namespace Taskmaster
 				if (mainwindow != null) return;
 
 				mainwindow = new UI.MainWindow();
-				mainwindow.FormClosed += (_, _ea) => mainwindow = null;
+				mainwindow.FormClosed += (_, _ea) =>
+				{
+					ShuttingDown -= mainwindow.ShutdownEvent;
+					mainwindow = null;
+				};
+				ShuttingDown += mainwindow.ShutdownEvent;
 
 				try
 				{

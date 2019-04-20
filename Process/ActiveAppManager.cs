@@ -45,7 +45,7 @@ namespace Taskmaster
 		public string Executable { get; set; }
 	}
 
-	sealed public class ActiveAppManager : IComponent, IDisposable
+	sealed public class ActiveAppManager : IDisposal, IDisposable
 	{
 		public event EventHandler<WindowChangedArgs> ActiveChanged;
 
@@ -116,6 +116,7 @@ namespace Taskmaster
 
 			if (DebugForeground) Log.Information("<Foreground> Component loaded.");
 
+			RegisterForExit(this);
 			DisposalChute.Push(this);
 		}
 
@@ -335,39 +336,6 @@ namespace Taskmaster
 			// SetupEventHook();
 		}
 
-		#region IDisposable
-		public event EventHandler OnDisposed;
-
-		~ActiveAppManager() => Dispose(false);
-
-		public void Dispose()
-		{
-			Dispose(true);
-			GC.SuppressFinalize(this);
-		}
-
-		bool DisposedOrDisposing = false;
-		void Dispose(bool disposing)
-		{
-			if (DisposedOrDisposing) return;
-
-			if (disposing)
-			{
-				if (Trace) Log.Verbose("Disposing FG monitor...");
-
-				ActiveChanged = null;
-				HangTimer?.Dispose();
-			}
-
-			NativeMethods.UnhookWinEvent(windowseventhook); // Automatic
-
-			DisposedOrDisposing = true;
-
-			OnDisposed?.Invoke(this, EventArgs.Empty);
-			OnDisposed = null;
-		}
-		#endregion
-
 		/*
 		public static string GetActiveWindowTitle()
 		{
@@ -492,6 +460,46 @@ namespace Taskmaster
 					return; // HACK, WndProc probably shouldn't throw
 				}
 			}
+		}
+
+
+		#region IDisposable
+		public event EventHandler<DisposedEventArgs> OnDisposed;
+
+		~ActiveAppManager() => Dispose(false);
+
+		public void Dispose()
+		{
+			Dispose(true);
+			GC.SuppressFinalize(this);
+		}
+
+		bool DisposedOrDisposing = false;
+		void Dispose(bool disposing)
+		{
+			if (DisposedOrDisposing) return;
+
+			NativeMethods.UnhookWinEvent(windowseventhook); // Automatic
+
+			if (disposing)
+			{
+				if (Trace) Log.Verbose("Disposing FG monitor...");
+
+				ActiveChanged = null;
+				HangTimer?.Dispose();
+			}
+
+			DisposedOrDisposing = true;
+
+			OnDisposed?.Invoke(this, DisposedEventArgs.Empty);
+			OnDisposed = null;
+		}
+		#endregion
+
+		public void ShutdownEvent(object sender, EventArgs ea)
+		{
+			NativeMethods.UnhookWinEvent(windowseventhook); // Automatic
+			HangTimer?.Stop();
 		}
 	}
 }

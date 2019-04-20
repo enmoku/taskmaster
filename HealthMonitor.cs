@@ -58,7 +58,7 @@ namespace Taskmaster
 	/// <summary>
 	/// Monitors for variety of problems and reports on them.
 	/// </summary>
-	sealed public class HealthMonitor : IComponent, IDisposable // Auto-Doc
+	sealed public class HealthMonitor : IDisposal, IDisposable // Auto-Doc
 	{
 		bool DebugHealth = false;
 
@@ -196,6 +196,7 @@ namespace Taskmaster
 
 			if (DebugHealth) Log.Information("<Auto-Doc> Component loaded");
 
+			RegisterForExit(this);
 			DisposalChute.Push(this);
 		}
 
@@ -329,6 +330,8 @@ namespace Taskmaster
 			// skip if already running...
 			// happens sometimes when the timer keeps running but not the code here
 			if (!Atomic.Lock(ref HealthCheck_lock)) return;
+
+			await Task.Delay(0).ConfigureAwait(false);
 
 			try
 			{
@@ -568,7 +571,7 @@ namespace Taskmaster
 		long MemoryWarningCooldown = 30;
 
 		#region IDisposable Support
-		public event EventHandler OnDisposed;
+		public event EventHandler<DisposedEventArgs> OnDisposed;
 
 		bool DisposedOrDisposing = false;
 
@@ -596,6 +599,16 @@ namespace Taskmaster
 				//commitpercentile?.Dispose();
 				//commitpercentile = null;
 			}
+
+			OnDisposed?.Invoke(this, DisposedEventArgs.Empty);
+			OnDisposed = null;
+		}
+
+		public void ShutdownEvent(object sender, EventArgs ea)
+		{
+			cancellationSource.Cancel();
+			HealthTimer?.Stop();
+			EmergencyTimer?.Stop();
 		}
 		#endregion
 	}

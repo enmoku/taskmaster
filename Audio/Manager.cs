@@ -37,7 +37,7 @@ namespace Taskmaster.Audio
 	/// <summary>
 	/// Must be created on persistent thread, such as the main thread.
 	/// </summary>
-	public class Manager : IComponent, IDisposable
+	public class Manager : IDisposal, IDisposable
 	{
 		readonly System.Threading.Thread Context = null;
 
@@ -103,6 +103,7 @@ namespace Taskmaster.Audio
 
 			volumeTimer.Elapsed += VolumeTimer_Elapsed;
 
+			RegisterForExit(this);
 			DisposalChute.Push(this);
 		}
 
@@ -304,7 +305,7 @@ namespace Taskmaster.Audio
 		}
 
 		#region IDisposable Support
-		public event EventHandler OnDisposed;
+		public event EventHandler<DisposedEventArgs> OnDisposed;
 
 		bool DisposingOrDisposed = false;
 
@@ -316,6 +317,9 @@ namespace Taskmaster.Audio
 
 				if (disposing)
 				{
+					volumeTimer?.Dispose();
+					volumeTimer = null;
+
 					Enumerator?.UnregisterEndpointNotificationCallback(notificationClient);  // unnecessary? definitely hangs if any mmdevice has been disposed
 					Enumerator?.Dispose();
 					Enumerator = null;
@@ -331,11 +335,16 @@ namespace Taskmaster.Audio
 				}
 			}
 
-			OnDisposed?.Invoke(this, EventArgs.Empty);
+			OnDisposed?.Invoke(this, DisposedEventArgs.Empty);
 			OnDisposed = null;
 		}
 
 		public void Dispose() => Dispose(true);
+
+		public void ShutdownEvent(object sender, EventArgs ea)
+		{
+			volumeTimer?.Stop();
+		}
 		#endregion
 	}
 

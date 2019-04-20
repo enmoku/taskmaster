@@ -378,6 +378,7 @@ namespace Taskmaster
 
 			// WinForms makes the following components not load nicely if not done here.
 			trayaccess = new UI.TrayAccess();
+			ShuttingDown += trayaccess.ShutdownEvent;
 			trayaccess.TrayMenuShown += (_, ea) => OptimizeResponsiviness(ea.Visible);
 
 			if (PowerManagerEnabled)
@@ -411,13 +412,11 @@ namespace Taskmaster
 
 			if (AudioManagerEnabled) ProcMon.ContinueWith((x) => audiomanager?.Hook(processmanager));
 
-			bool warned = false;
 			try
 			{
 				// WAIT for component initialization
 				if (!Task.WaitAll(init, 5_000))
 				{
-					warned = true;
 					Log.Warning($"<Core> Components still loading ({timer.ElapsedMilliseconds} ms and ongoing)");
 					if (!Task.WaitAll(init, 115_000)) // total wait time of 120 seconds
 						throw new InitFailure($"Component initialization taking excessively long ({timer.ElapsedMilliseconds} ms), aborting.");

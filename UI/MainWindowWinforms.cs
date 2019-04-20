@@ -470,7 +470,7 @@ namespace Taskmaster.UI
 		}
 		#endregion // Microphone control code
 
-		public async void ProcessTouchEvent(object _, ProcessModificationEventArgs ea)
+		public void ProcessTouchEvent(object _, ProcessModificationEventArgs ea)
 		{
 			if (!IsHandleCreated || DisposedOrDisposing) return;
 
@@ -517,7 +517,7 @@ namespace Taskmaster.UI
 			}));
 		}
 
-		public async void OnActiveWindowChanged(object _, WindowChangedArgs windowchangeev)
+		public void OnActiveWindowChanged(object _, WindowChangedArgs windowchangeev)
 		{
 			if (!IsHandleCreated || DisposedOrDisposing) return;
 			if (windowchangeev.Process == null) return;
@@ -2704,7 +2704,7 @@ namespace Taskmaster.UI
 		/// </summary>
 		ConcurrentDictionary<int, ListViewItem> ProcessEventMap = new ConcurrentDictionary<int, ListViewItem>();
 
-		async void ProcessHandlingStateChangeEvent(object _, HandlingStateChangeEventArgs ea)
+		void ProcessHandlingStateChangeEvent(object _, HandlingStateChangeEventArgs ea)
 		{
 			if (!IsHandleCreated || DisposedOrDisposing) return;
 
@@ -2756,12 +2756,12 @@ namespace Taskmaster.UI
 			}
 		}
 
-		async Task RemoveOldProcessingEntry(int key)
+		void RemoveOldProcessingEntry(int key)
 		{
-			await Task.Delay(TimeSpan.FromSeconds(15)).ConfigureAwait(false);
-
-			BeginInvoke(new Action(() =>
+			BeginInvoke(new Action(async () =>
 			{
+				await Task.Delay(TimeSpan.FromSeconds(15)).ConfigureAwait(true);
+
 				if (!IsHandleCreated) return;
 
 				try
@@ -2848,7 +2848,7 @@ namespace Taskmaster.UI
 			catch (Exception ex) { Logging.Stacktrace(ex); }
 		}
 
-		public async void ExitWaitListHandler(object _discard, ProcessModificationEventArgs ea)
+		public void ExitWaitListHandler(object _discard, ProcessModificationEventArgs ea)
 		{
 			if (activeappmonitor == null) return;
 			if (!IsHandleCreated) return;
@@ -2906,7 +2906,7 @@ namespace Taskmaster.UI
 		}
 
 		// Called by UI update timer, should be UI thread by default
-		async void UpdateMemoryStats(object _, EventArgs _ea)
+		void UpdateMemoryStats(object _, EventArgs _ea)
 		{
 			if (!IsHandleCreated || DisposedOrDisposing) return;
 			if (!ramload.Visible) return;
@@ -2925,7 +2925,7 @@ namespace Taskmaster.UI
 
 		// called by cpumonitor, not in UI thread by default
 		// TODO: Reverse this design, make the UI poll instead
-		public async void CPULoadHandler(object _, ProcessorLoadEventArgs ea)
+		void CPULoadHandler(object _, ProcessorLoadEventArgs ea)
 		{
 			if (!IsHandleCreated || DisposedOrDisposing) return;
 			if (!cpuload.Visible) return;
@@ -2941,7 +2941,7 @@ namespace Taskmaster.UI
 		readonly System.Drawing.Color Greenish = System.Drawing.Color.FromArgb(240, 255, 230);
 		readonly System.Drawing.Color Orangeish = System.Drawing.Color.FromArgb(255, 250, 230);
 
-		public async void PowerLoadHandler(object _, Power.AutoAdjustReactionEventArgs ea)
+		public void PowerLoadHandler(object _, Power.AutoAdjustReactionEventArgs ea)
 		{
 			if (!IsHandleCreated || DisposedOrDisposing) return;
 
@@ -3239,7 +3239,7 @@ namespace Taskmaster.UI
 		Label gputemp = null;
 		Label gpufan = null;
 
-		public async void TempScanStats(object _, StorageEventArgs ea)
+		public void TempScanStats(object _, StorageEventArgs ea)
 		{
 			if (!IsHandleCreated) return;
 			BeginInvoke(new Action(() =>
@@ -3309,7 +3309,7 @@ namespace Taskmaster.UI
 			}
 		}
 
-		async void PowerBehaviourEvent(object sender, Power.Manager.PowerBehaviourEventArgs e)
+		void PowerBehaviourEvent(object sender, Power.Manager.PowerBehaviourEventArgs e)
 		{
 			if (!IsHandleCreated || DisposedOrDisposing) return;
 
@@ -3477,7 +3477,7 @@ namespace Taskmaster.UI
 				return string.Empty;
 		}
 
-		public async void PowerBehaviourDebugEvent(object _, Power.Manager.PowerBehaviourEventArgs ea)
+		public void PowerBehaviourDebugEvent(object _, Power.Manager.PowerBehaviourEventArgs ea)
 		{
 			if (!IsHandleCreated || DisposedOrDisposing) return;
 
@@ -3491,7 +3491,7 @@ namespace Taskmaster.UI
 			}));
 		}
 
-		public async void PowerPlanDebugEvent(object _, Power.ModeEventArgs ea)
+		public void PowerPlanDebugEvent(object _, Power.ModeEventArgs ea)
 		{
 			if (!IsHandleCreated || DisposedOrDisposing) return;
 
@@ -3615,17 +3615,17 @@ namespace Taskmaster.UI
 			}));
 		}
 
-		public async void InetStatusChangeEvent(object _, Network.InternetStatus ea)
+		public void InetStatusChangeEvent(object _, Network.InternetStatus ea)
 		{
 			InetStatusLabel(ea.Available);
 		}
 
-		public async void IPChange(object _, EventArgs ea)
+		public void IPChange(object _, EventArgs ea)
 		{
 
 		}
 
-		async void NetStatusLabelUpdate(bool available)
+		void NetStatusLabelUpdate(bool available)
 		{
 			if (!IsHandleCreated || DisposedOrDisposing) return;
 
@@ -3637,7 +3637,7 @@ namespace Taskmaster.UI
 			}));
 		}
 
-		public async void NetStatusChangeEvent(object _, Network.Status ea)
+		void NetStatusChangeEvent(object _, Network.Status ea)
 		{
 			NetStatusLabelUpdate(ea.Available);
 		}
@@ -3655,13 +3655,12 @@ namespace Taskmaster.UI
 			LogList.EndUpdate();
 		}
 
-		async void NewLogReceived(object _, LogEventArgs ea)
+		void NewLogReceived(object _, LogEventArgs ea)
 		{
 			if (!IsHandleCreated || DisposedOrDisposing) return;
 
 			if (LogIncludeLevel.MinimumLevel > ea.Level) return;
 
-			if (!IsHandleCreated) return;
 			BeginInvoke(new Action(() =>
 			{
 				LogList.BeginUpdate();
@@ -3863,5 +3862,9 @@ namespace Taskmaster.UI
 			}
 		}
 		#endregion Dispose
+		public void ShutdownEvent(object sender, EventArgs ea)
+		{
+			UItimer?.Stop();
+		}
 	}
 }

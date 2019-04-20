@@ -54,7 +54,7 @@ namespace Taskmaster.Network
 		public TrafficDelta Delta = null;
 	}
 
-	sealed public class Manager : IComponent, IDisposable
+	sealed public class Manager : IDisposal, IDisposable
 	{
 		public static bool ShowNetworkErrors { get; set; } = false;
 
@@ -164,6 +164,7 @@ namespace Taskmaster.Network
 
 			if (DebugNet) Log.Information("<Network> Component loaded.");
 
+			RegisterForExit(this);
 			DisposalChute.Push(this);
 		}
 
@@ -211,7 +212,7 @@ namespace Taskmaster.Network
 		long errorsSinceLastReport = 0;
 		DateTimeOffset lastErrorReport = DateTimeOffset.MinValue;
 
-		async void AnalyzeTrafficBehaviour(object _, EventArgs _ea)
+		void AnalyzeTrafficBehaviour(object _, EventArgs _ea)
 		{
 			if (DisposedOrDisposing) return;
 
@@ -417,7 +418,7 @@ namespace Taskmaster.Network
 
 		DateTimeOffset LastUptimeSample = DateTimeOffset.MinValue;
 
-		async void RecordUptimeState(bool online_state, bool address_changed)
+		void RecordUptimeState(bool online_state, bool address_changed)
 		{
 			if (DisposedOrDisposing) throw new ObjectDisposedException("RecordUptimeState called after NetManager was disposed.");
 
@@ -868,7 +869,7 @@ namespace Taskmaster.Network
 		}
 
 		#region IDisposable Support
-		public event EventHandler OnDisposed;
+		public event EventHandler<DisposedEventArgs> OnDisposed;
 
 		public void Dispose() => Dispose(true);
 
@@ -894,8 +895,13 @@ namespace Taskmaster.Network
 				SampleTimer?.Dispose();
 			}
 
-			OnDisposed?.Invoke(this, EventArgs.Empty);
+			OnDisposed?.Invoke(this, DisposedEventArgs.Empty);
 			OnDisposed = null;
+		}
+
+		public void ShutdownEvent(object sender, EventArgs ea)
+		{
+			SampleTimer?.Stop();
 		}
 		#endregion
 	}

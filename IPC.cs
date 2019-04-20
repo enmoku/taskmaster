@@ -137,7 +137,7 @@ namespace Taskmaster
 					System.Threading.Thread.Sleep(100); // HACK: async pipes don't like things happening too fast.
 				}
 			}
-			catch (IOException ex)
+			catch (IOException)
 			{
 				System.Windows.Forms.MessageBox.Show("Timeout communicating with existing Taskmaster instance.");
 			}
