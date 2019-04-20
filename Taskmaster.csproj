@@ -110,8 +110,9 @@
     <None Include="app.manifest">
       <SubType>Designer</SubType>
     </None>
+    <None Include="Resources\BuildDate.restext" />
     <None Include="Resources\KnownModules.ini" />
-    <None Include="Resources\ProjectDirectory.txt" />
+    <None Include="Resources\ProjectDirectory.restext" />
     <Content Include="taskmaster-hammer.ico" />
     <Content Include="LICENSE">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
@@ -309,13 +310,10 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
   </ItemGroup>
-  <ItemGroup>
-    <None Include="Resources\BuildDate.txt" />
-  </ItemGroup>
   <ItemGroup />
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>
-    <PreBuildEvent>echo $(BuildDate) &gt; "$(ProjectDir)\Resources\BuildDate.txt"
-echo $(ProjectDir) &gt; $(ProjectDir)\Resources\ProjectDirectory.txt</PreBuildEvent>
+    <PreBuildEvent>echo $(BuildDate) &gt; "$(ProjectDir)\Resources\BuildDate.restext"
+echo $(ProjectDir) &gt; "$(ProjectDir)\Resources\ProjectDirectory.restext"</PreBuildEvent>
   </PropertyGroup>
 </Project>

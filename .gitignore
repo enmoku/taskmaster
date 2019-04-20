@@ -216,5 +216,5 @@ pip-log.txt
 .mr.developer.cfg
 TaskMaster.sln
 TaskMaster.userprefs
-Resources/BuildDate.txt
-Resources/ProjectDirectory.txt
+Resources/BuildDate.restext
+Resources/ProjectDirectory.restext
