@@ -118,7 +118,7 @@ namespace Taskmaster.UI.Config
 					using (var cfg = Config.Load(CoreConfigFilename).BlockUnload())
 					{
 						var perfsec = cfg.Config["Performance"];
-						fgHysterisis.Value = perfsec.Get("Foreground hysterisis")?.IntValue.Constrain(200, 30000) ?? 1500;
+						fgHysterisis.Value = perfsec.Get("Foreground hysterisis")?.Int.Constrain(200, 30000) ?? 1500;
 					}
 				}
 
@@ -197,11 +197,11 @@ namespace Taskmaster.UI.Config
 				};
 
 				var volsec = corecfg.Config[Constants.VolumeMeter];
-				bool t_volmeter_topmost = volsec.Get("Topmost")?.BoolValue ?? true;
-				int t_volmeter_frequency = volsec.Get("Refresh")?.IntValue.Constrain(10, 5000) ?? 100;
-				int t_volmeter_capoutmax = volsec.Get("Output threshold")?.IntValue.Constrain(20, 100) ?? 100;
-				int t_volmeter_capinmax = volsec.Get("Input threshold")?.IntValue.Constrain(20, 100) ?? 100;
-				bool t_volmeter_show = volsec.Get(Constants.ShowOnStart)?.BoolValue ?? false;
+				bool t_volmeter_topmost = volsec.Get("Topmost")?.Bool ?? true;
+				int t_volmeter_frequency = volsec.Get("Refresh")?.Int.Constrain(10, 5000) ?? 100;
+				int t_volmeter_capoutmax = volsec.Get("Output threshold")?.Int.Constrain(20, 100) ?? 100;
+				int t_volmeter_capinmax = volsec.Get("Input threshold")?.Int.Constrain(20, 100) ?? 100;
+				bool t_volmeter_show = volsec.Get(Constants.ShowOnStart)?.Bool ?? false;
 
 				volmeter_topmost.Checked = t_volmeter_topmost;
 				volmeter_frequency.Value = t_volmeter_frequency;
@@ -262,7 +262,7 @@ namespace Taskmaster.UI.Config
 
 					var uisec = cfg["User Interface"];
 					int uiupdatems = Convert.ToInt32(UIUpdateFrequency.Value).Constrain(100, 5000);
-					uisec["Update frequency"].IntValue = uiupdatems;
+					uisec["Update frequency"].Int = uiupdatems;
 					mainwindow.UIUpdateFrequency = uiupdatems;
 
 					var powsec = cfg[HumanReadable.Hardware.Power.Section];
@@ -272,7 +272,7 @@ namespace Taskmaster.UI.Config
 						int powdelay = Convert.ToInt32(watchlistPowerdown.Value);
 						if (PowerManagerEnabled)
 							powermanager.PowerdownDelay = TimeSpan.FromSeconds(powdelay);
-						powsec["Watchlist powerdown delay"].IntValue = powdelay;
+						powsec["Watchlist powerdown delay"].Int = powdelay;
 					}
 					else
 					{
@@ -286,7 +286,7 @@ namespace Taskmaster.UI.Config
 					if (IgnoreRecentlyModifiedCooldown.Value > 0M)
 					{
 						ProcessManager.IgnoreRecentlyModified = TimeSpan.FromMinutes(Convert.ToDouble(IgnoreRecentlyModifiedCooldown.Value));
-						perfsec["Ignore recently modified"].IntValue = Convert.ToInt32(ProcessManager.IgnoreRecentlyModified.Value.TotalMinutes);
+						perfsec["Ignore recently modified"].Int = Convert.ToInt32(ProcessManager.IgnoreRecentlyModified.Value.TotalMinutes);
 					}
 					else
 					{
@@ -295,25 +295,25 @@ namespace Taskmaster.UI.Config
 					}
 
 					int fghys = Convert.ToInt32(fgHysterisis.Value);
-					perfsec["Foreground hysterisis"].IntValue = fghys;
+					perfsec["Foreground hysterisis"].Int = fghys;
 					if (ActiveAppMonitorEnabled)
 						activeappmonitor.Hysterisis = TimeSpan.FromMilliseconds(fghys);
 
-					volsec["Topmost"].BoolValue = volmeter_topmost.Checked;
+					volsec["Topmost"].Bool = volmeter_topmost.Checked;
 
 					if (volmeter_capout.Value < 100)
-						volsec["Output threshold"].IntValue = Convert.ToInt32(volmeter_capout.Value);
+						volsec["Output threshold"].Int = Convert.ToInt32(volmeter_capout.Value);
 					else
 						volsec.TryRemove("Output threshold");
 
 					if (volmeter_capin.Value < 100)
-						volsec["Input threshold"].IntValue = Convert.ToInt32(volmeter_capin.Value);
+						volsec["Input threshold"].Int = Convert.ToInt32(volmeter_capin.Value);
 					else
 						volsec.TryRemove("Input threshold");
 
-					volsec["Refresh"].IntValue = Convert.ToInt32(volmeter_frequency.Value);
+					volsec["Refresh"].Int = Convert.ToInt32(volmeter_frequency.Value);
 
-					volsec[Constants.ShowOnStart].BoolValue = volmeter_show.Checked;
+					volsec[Constants.ShowOnStart].Bool = volmeter_show.Checked;
 
 					DialogResult = DialogResult.OK;
 					Close();

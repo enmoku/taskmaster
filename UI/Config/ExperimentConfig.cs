@@ -114,16 +114,16 @@ namespace Taskmaster.UI.Config
 
 					var exsec = cfg[Constants.Experimental];
 					if (RecordAnalysisDelay.Value != decimal.Zero)
-						exsec["Record analysis"].IntValue = Convert.ToInt32(RecordAnalysisDelay.Value);
+						exsec["Record analysis"].Int = Convert.ToInt32(RecordAnalysisDelay.Value);
 					else
 						exsec.TryRemove("Record analysis");
 
 					if (iopriority.Checked)
-						exsec["IO Priority"].BoolValue = true;
+						exsec["IO Priority"].Bool = true;
 					else
 						exsec.TryRemove("IO Priority");
 
-					cfg[Constants.Components][HumanReadable.Hardware.Section].BoolValue = hwmon.Checked;
+					cfg[Constants.Components][HumanReadable.Hardware.Section].Bool = hwmon.Checked;
 				}
 
 				DialogResult = DialogResult.OK;

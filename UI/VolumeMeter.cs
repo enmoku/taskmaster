@@ -61,19 +61,19 @@ namespace Taskmaster.UI
 			{
 				var volsec = cfg.Config["Volume Meter"];
 
-				TopMost = volsec.GetOrSet("Topmost", true).BoolValue;
+				TopMost = volsec.GetOrSet("Topmost", true).Bool;
 
 				Frequency = volsec.GetOrSet("Refresh", 100)
 					.InitComment("Refresh delay. Lower is faster. Milliseconds from 10 to 5000.")
-					.IntValue.Constrain(10, 5000);
+					.Int.Constrain(10, 5000);
 
-				int? upgradeOutCap = volsec.Get("Output")?.IntValue;
-				if (upgradeOutCap.HasValue) volsec["Output threshold"].IntValue = upgradeOutCap.Value;
-				VolumeOutputCap = volsec.GetOrSet("Output threshold", 100).IntValue.Constrain(20, 100) * 100;
+				int? upgradeOutCap = volsec.Get("Output")?.Int;
+				if (upgradeOutCap.HasValue) volsec["Output threshold"].Int = upgradeOutCap.Value;
+				VolumeOutputCap = volsec.GetOrSet("Output threshold", 100).Int.Constrain(20, 100) * 100;
 
-				int? upgradeInCap = volsec.Get("Input")?.IntValue;
-				if (upgradeInCap.HasValue) volsec["Input threshold"].IntValue = upgradeInCap.Value;
-				VolumeInputCap = volsec.GetOrSet("Input threshold", 100).IntValue.Constrain(20, 100) * 100;
+				int? upgradeInCap = volsec.Get("Input")?.Int;
+				if (upgradeInCap.HasValue) volsec["Input threshold"].Int = upgradeInCap.Value;
+				VolumeInputCap = volsec.GetOrSet("Input threshold", 100).Int.Constrain(20, 100) * 100;
 
 				// DEPRECATED
 				volsec.TryRemove("Cap");

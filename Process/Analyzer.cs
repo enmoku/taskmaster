@@ -359,9 +359,11 @@ namespace Taskmaster
 							//bool prop = yesvalues.Contains(section.TryGet("proprietary")?.Value.ToLowerInvariant() ?? "no");
 							bool ext = yesvalues.Contains(section.Get("extension")?.Value.ToLowerInvariant() ?? "no");
 							string ttype = section.Get("type")?.Value.ToLowerInvariant() ?? "unknown"; // TODO
-																									   //string trec = section.TryGet("recommendation")?.Value.ToLowerInvariant() ?? null;
-																									   //string notes = section.TryGet("notes")?.Value ?? null;
-							long value = section.Get("value")?.IntValue ?? 0;
+
+							//string trec = section.TryGet("recommendation")?.Value.ToLowerInvariant() ?? null;
+							//string notes = section.TryGet("notes")?.Value ?? null;
+
+							long value = section.Get("value")?.Int ?? 0;
 							/*
 							ModuleRecommendation rec = ModuleRecommendation.Undefined;
 							if (!RecMap.TryGetValue(trec, out rec))

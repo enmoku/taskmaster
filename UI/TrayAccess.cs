@@ -142,7 +142,7 @@ namespace Taskmaster.UI
 
 			using (var cfg = Taskmaster.Config.Load(CoreConfigFilename).BlockUnload())
 			{
-				int exdelay = cfg.Config[Constants.Experimental].Get("Explorer Restart")?.IntValue ?? 0;
+				int exdelay = cfg.Config[Constants.Experimental].Get("Explorer Restart")?.Int ?? 0;
 				ExplorerRestartHelpDelay = exdelay > 0 ? (TimeSpan?)TimeSpan.FromSeconds(exdelay.Min(5)) : null;
 			}
 

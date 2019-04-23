@@ -98,15 +98,15 @@ namespace Taskmaster
 
 				var sampleinterval_t = hwsec.GetOrSet(HumanReadable.Hardware.CPU.Settings.SampleInterval, 2)
 					.InitComment("1 to 15, in seconds. Frequency at which CPU usage is sampled. Recommended value: 1 to 5 seconds.")
-					.IntValue.Constrain(1, 15);
+					.Int.Constrain(1, 15);
 				SampleInterval = TimeSpan.FromSeconds(sampleinterval_t);
 
 				SampleCount = hwsec.GetOrSet(HumanReadable.Hardware.CPU.Settings.SampleCount, 5)
 					.InitComment("3 to 30. Number of CPU samples to keep. Recommended value is: Count * Interval <= 30 seconds")
-					.IntValue.Constrain(3, 30);
+					.Int.Constrain(3, 30);
 
 				var exsec = corecfg.Config[Constants.Experimental];
-				CPULoaderMonitoring = exsec.Get("CPU loaders")?.BoolValue ?? false;
+				CPULoaderMonitoring = exsec.Get("CPU loaders")?.Bool ?? false;
 
 				Log.Information("<CPU> Sampler: " + $"{ SampleInterval.TotalSeconds:N0}" + "s × " + SampleCount +
 					" = " + $"{SampleCount * SampleInterval.TotalSeconds:N0}s" + " observation period");
@@ -121,8 +121,8 @@ namespace Taskmaster
 			{
 				// SAMPLING
 				var hwsec = corecfg.Config[HumanReadable.Hardware.Section];
-				hwsec[HumanReadable.Hardware.CPU.Settings.SampleInterval].IntValue = Convert.ToInt32(SampleInterval.TotalSeconds);
-				hwsec[HumanReadable.Hardware.CPU.Settings.SampleCount].IntValue = SampleCount;
+				hwsec[HumanReadable.Hardware.CPU.Settings.SampleInterval].Int = Convert.ToInt32(SampleInterval.TotalSeconds);
+				hwsec[HumanReadable.Hardware.CPU.Settings.SampleCount].Int = SampleCount;
 			}
 		}
 

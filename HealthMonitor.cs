@@ -272,7 +272,7 @@ namespace Taskmaster
 				var gensec = cfg.Config["General"];
 				var settingFreqSetting = gensec.GetOrSet("Frequency", 5)
 					.InitComment("How often we check for anything. In minutes.")
-					.IntValue.Constrain(1, 60 * 24);
+					.Int.Constrain(1, 60 * 24);
 				Settings.Frequency = TimeSpan.FromMinutes(settingFreqSetting);
 
 				var freememsec = cfg.Config["Free Memory"];
@@ -280,14 +280,14 @@ namespace Taskmaster
 
 				Settings.MemLevel = (ulong)freememsec.GetOrSet("Threshold", 1000)
 					.InitComment("When memory goes down to this level, we act.")
-					.IntValue;
+					.Int;
 				// MemLevel = MemLevel > 0 ? MemLevel.Constrain(1, 2000) : 0;
 
 				if (Settings.MemLevel > 0)
 				{
 					Settings.MemIgnoreFocus = freememsec.GetOrSet("Ignore foreground", true)
 						.InitComment("Foreground app is not touched, regardless of anything.")
-						.BoolValue;
+						.Bool;
 
 					Settings.IgnoreList = freememsec.GetOrSet("Ignore list", new string[] { })
 						.InitComment("List of apps that we don't touch regardless of anything.")
@@ -295,29 +295,29 @@ namespace Taskmaster
 
 					Settings.MemCooldown = freememsec.GetOrSet("Cooldown", 60)
 						.InitComment("Don't do this again for this many minutes.")
-						.IntValue.Constrain(1, 180);
+						.Int.Constrain(1, 180);
 				}
 
 				// SELF-MONITORING
 				var selfsec = cfg.Config["Self"];
 				Settings.FatalErrorThreshold = selfsec.GetOrSet("Fatal error threshold", 10)
 					.InitComment("Auto-exit once number of fatal errors reaches this. 10 is very generous default.")
-					.IntValue.Constrain(1, 30);
+					.Int.Constrain(1, 30);
 
 				Settings.FatalLogSizeThreshold = selfsec.GetOrSet("Fatal log size threshold", 10)
 					.InitComment("Auto-exit if total log file size exceeds this. In megabytes.")
-					.IntValue.Constrain(1, 500);
+					.Int.Constrain(1, 500);
 
 				// NVM
 				var nvmsec = cfg.Config["Non-Volatile Memory"];
 				Settings.LowDriveSpaceThreshold = nvmsec.GetOrSet("Low space threshold", 150)
 					.InitComment("Warn about free space going below this. In megabytes. From 0 to 60000.")
-					.IntValue.Constrain(0, 60000);
+					.Int.Constrain(0, 60000);
 			}
 
 			using (var corecfg = Taskmaster.Config.Load(CoreConfigFilename).BlockUnload())
 			{
-				DebugHealth = corecfg.Config[HumanReadable.Generic.Debug].Get("Health")?.BoolValue ?? false;
+				DebugHealth = corecfg.Config[HumanReadable.Generic.Debug].Get("Health")?.Bool ?? false;
 			}
 		}
 

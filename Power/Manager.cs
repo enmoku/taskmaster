@@ -743,7 +743,7 @@ namespace Taskmaster.Power
 
 				var tdelay = power.GetOrSet("Watchlist powerdown delay", 0)
 					.InitComment("Delay, in seconds (0 to 300, 0 disables), for when to wind down power mode set by watchlist.")
-					.IntValue.Constrain(0, 60 * 5);
+					.Int.Constrain(0, 60 * 5);
 				if (tdelay > 0) PowerdownDelay = TimeSpan.FromSeconds(tdelay);
 				else PowerdownDelay = null;
 
@@ -752,25 +752,25 @@ namespace Taskmaster.Power
 				// BACKOFF
 				AutoAdjust.Low.Backoff.Level = autopower.GetOrSet(LowBackOffLevelName, AutoAdjust.Low.Backoff.Level)
 					.InitComment("1 to 10. Consequent backoff reactions that is required before it actually triggers.")
-					.IntValue.Constrain(0, 10);
+					.Int.Constrain(0, 10);
 
 				AutoAdjust.High.Backoff.Level = autopower.GetOrSet(HighBackoffLevelName, AutoAdjust.High.Backoff.Level)
 					.InitComment("1 to 10. Consequent backoff reactions that is required before it actually triggers.")
-					.IntValue.Constrain(0, 10);
+					.Int.Constrain(0, 10);
 
 				// COMMIT
 				AutoAdjust.Low.Commit.Level = autopower.GetOrSet(LowCommitLevelName, AutoAdjust.Low.Commit.Level)
 					.InitComment("1 to 10. Consequent commit reactions that is required before it actually triggers.")
-					.IntValue.Constrain(1, 10);
+					.Int.Constrain(1, 10);
 
 				AutoAdjust.High.Commit.Level = autopower.GetOrSet(HighCommitLevelName, AutoAdjust.High.Backoff.Level)
 					.InitComment("1 to 10. Consequent commit reactions that is required before it actually triggers.")
-					.IntValue.Constrain(1, 10);
+					.Int.Constrain(1, 10);
 
 				// THRESHOLDS
 				AutoAdjust.High.Commit.Threshold = autopower.GetOrSet(HighThresholdName, AutoAdjust.High.Commit.Threshold)
 					.InitComment("If low CPU value keeps over this, we swap to high mode.")
-					.FloatValue;
+					.Float;
 
 				var hbtt = autopower.GetOrSet(HighBackoffThresholdsName, new float[] { AutoAdjust.High.Backoff.High, AutoAdjust.High.Backoff.Mean, AutoAdjust.High.Backoff.Low })
 					.InitComment("High, Mean and Low CPU usage values, any of which is enough to break away from high power mode.")
@@ -784,7 +784,7 @@ namespace Taskmaster.Power
 
 				AutoAdjust.Low.Commit.Threshold = autopower.GetOrSet(LowThresholdName, 15)
 					.InitComment("If high CPU value keeps under this, we swap to low mode.")
-					.FloatValue;
+					.Float;
 
 				var lbtt = autopower.GetOrSet(LowBackoffThresholdsName, new float[] { AutoAdjust.Low.Backoff.High, AutoAdjust.Low.Backoff.Mean, AutoAdjust.Low.Backoff.Low })
 					.InitComment("High, Mean and Low CPU uage values, any of which is enough to break away from low mode.")
@@ -801,8 +801,8 @@ namespace Taskmaster.Power
 				AutoAdjust.High.Mode = GetModeByName(power.GetOrSet(HighModeName, GetModeName(Mode.HighPerformance)).Value);
 
 				// QUEUE BARRIERS
-				AutoAdjust.Queue.High = autopower.GetOrSet(HighQueueBarrierName, AutoAdjust.Queue.High).IntValue.Constrain(0, 50);
-				AutoAdjust.Queue.Low = autopower.GetOrSet(LowQueueBarrierName, AutoAdjust.Queue.Low).IntValue.Constrain(0, 20);
+				AutoAdjust.Queue.High = autopower.GetOrSet(HighQueueBarrierName, AutoAdjust.Queue.High).Int.Constrain(0, 50);
+				AutoAdjust.Queue.Low = autopower.GetOrSet(LowQueueBarrierName, AutoAdjust.Queue.Low).Int.Constrain(0, 20);
 				if (AutoAdjust.Queue.Low >= AutoAdjust.Queue.High) AutoAdjust.Queue.Low = Math.Max(0, AutoAdjust.Queue.High - 1);
 
 				var saver = corecfg.Config[AFKPowerName];
@@ -813,25 +813,25 @@ namespace Taskmaster.Power
 					.Value;
 				SessionLockPowerMode = GetModeByName(sessionlockmodename);
 
-				// SaverOnMonitorSleep = saver.GetSetDefault("Monitor sleep", true, out modified).BoolValue;
+				// SaverOnMonitorSleep = saver.GetSetDefault("Monitor sleep", true, out modified).Bool;
 				// dirtyconfig |= modified;
 
-				// SaverOnUserAFK = saver.GetSetDefault("User idle", 30, out modified).IntValue;
+				// SaverOnUserAFK = saver.GetSetDefault("User idle", 30, out modified).Int;
 				// dirtyconfig |= modified;
-				// UserActiveCancel = saver.GetSetDefault("Cancel on activity", true, out modified).BoolValue;
+				// UserActiveCancel = saver.GetSetDefault("Cancel on activity", true, out modified).Bool;
 				// dirtyconfig |= modified;
 
 				int monoffidletime = saver.GetOrSet("Monitor power off idle timeout", 180)
 					.InitComment("User needs to be this many seconds idle before we power down monitors when session is locked. 0 disables. Less than 30 is rounded up to 30.")
-					.IntValue;
+					.Int;
 				SessionLockPowerOffIdleTimeout = monoffidletime > 0 ? (TimeSpan?)TimeSpan.FromSeconds(monoffidletime.Constrain(30, 600)) : null;
 
 				SessionLockPowerOff = saver.GetOrSet("Monitor power off on lock", true)
 					.InitComment("Power off monitor instantly on session lock.")
-					.BoolValue;
+					.Bool;
 
 				var dbgsec = corecfg.Config[HumanReadable.Generic.Debug];
-				DebugAutoPower = dbgsec.Get(HumanReadable.Hardware.Power.AutoAdjust)?.BoolValue ?? false;
+				DebugAutoPower = dbgsec.Get(HumanReadable.Hardware.Power.AutoAdjust)?.Bool ?? false;
 			}
 
 			// --------------------------------------------------------------------------------------------------------
@@ -876,30 +876,30 @@ namespace Taskmaster.Power
 
 						power[RestoreModeSettingName].Value = (RestoreMethod == RestoreModeMethod.Custom ? RestoreMode.ToString() : RestoreMethod.ToString());
 						if (PowerdownDelay.HasValue)
-							power["Watchlist powerdown delay"].IntValue = Convert.ToInt32(PowerdownDelay.Value.TotalSeconds);
+							power["Watchlist powerdown delay"].Int = Convert.ToInt32(PowerdownDelay.Value.TotalSeconds);
 						else
 							power.TryRemove("Watchlist powerdown delay");
 
 						var autopower = corecfg.Config["Power / Auto"];
 
 						// BACKOFF
-						autopower[LowBackOffLevelName].IntValue = AutoAdjust.Low.Backoff.Level;
-						autopower[HighBackoffLevelName].IntValue = AutoAdjust.High.Backoff.Level;
+						autopower[LowBackOffLevelName].Int = AutoAdjust.Low.Backoff.Level;
+						autopower[HighBackoffLevelName].Int = AutoAdjust.High.Backoff.Level;
 
 						// COMMIT
-						autopower[LowCommitLevelName].IntValue = AutoAdjust.Low.Commit.Level;
-						autopower[HighCommitLevelName].IntValue = AutoAdjust.High.Commit.Level;
+						autopower[LowCommitLevelName].Int = AutoAdjust.Low.Commit.Level;
+						autopower[HighCommitLevelName].Int = AutoAdjust.High.Commit.Level;
 
 						// THRESHOLDS
-						autopower[HighThresholdName].FloatValue = AutoAdjust.High.Commit.Threshold;
+						autopower[HighThresholdName].Float = AutoAdjust.High.Commit.Threshold;
 						autopower[HighBackoffThresholdsName].FloatArray = new float[] { AutoAdjust.High.Backoff.High, AutoAdjust.High.Backoff.Mean, AutoAdjust.High.Backoff.Low };
 
-						autopower[LowThresholdName].FloatValue = AutoAdjust.Low.Commit.Threshold;
+						autopower[LowThresholdName].Float = AutoAdjust.Low.Commit.Threshold;
 						autopower[LowBackoffThresholdsName].FloatArray = new float[] { AutoAdjust.Low.Backoff.High, AutoAdjust.Low.Backoff.Mean, AutoAdjust.Low.Backoff.Low };
 
 						// QUEUE BARRIERS
-						autopower[HighQueueBarrierName].IntValue = AutoAdjust.Queue.High;
-						autopower[LowQueueBarrierName].IntValue = AutoAdjust.Queue.Low;
+						autopower[HighQueueBarrierName].Int = AutoAdjust.Queue.High;
+						autopower[LowQueueBarrierName].Int = AutoAdjust.Queue.Low;
 
 						// POWER MODES
 						power[LowModeName].Value = GetModeName(AutoAdjust.Low.Mode);
@@ -908,8 +908,8 @@ namespace Taskmaster.Power
 						var saver = corecfg.Config[AFKPowerName];
 						saver[SessionLockName].Value = GetModeName(SessionLockPowerMode);
 
-						saver["Monitor power off idle timeout"].IntValue = Convert.ToInt32(SessionLockPowerOffIdleTimeout.Value.TotalSeconds);
-						saver["Monitor power off on lock"].BoolValue = SessionLockPowerOff;
+						saver["Monitor power off idle timeout"].Int = Convert.ToInt32(SessionLockPowerOffIdleTimeout.Value.TotalSeconds);
+						saver["Monitor power off on lock"].Bool = SessionLockPowerOff;
 
 						// --------------------------------------------------------------------------------------------------------
 					}

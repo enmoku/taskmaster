@@ -59,9 +59,9 @@ namespace Taskmaster.UI.Config
 				using (var corecfg = Config.Load(CoreConfigFilename).BlockUnload())
 				{
 					var perfsec = corecfg.Config[Constants.Performance];
-					WMIPolling = perfsec.Get(Constants.WMIWatcher)?.BoolValue ?? true;
-					WMIPollDelay = perfsec.Get(Constants.WMIDelay)?.IntValue ?? 2;
-					ScanFrequency = perfsec.Get(Constants.ScanFrequency)?.IntValue ?? 180;
+					WMIPolling = perfsec.Get(Constants.WMIWatcher)?.Bool ?? true;
+					WMIPollDelay = perfsec.Get(Constants.WMIDelay)?.Int ?? 2;
+					ScanFrequency = perfsec.Get(Constants.ScanFrequency)?.Int ?? 180;
 				}
 			}
 			else
@@ -353,33 +353,33 @@ namespace Taskmaster.UI.Config
 					opt.Comment = "Magical";
 
 					var compsec = cfg.Config[Constants.Components];
-					compsec[HumanReadable.System.Process.Section].BoolValue = procmon.Checked;
-					compsec[HumanReadable.Hardware.Audio.Section].BoolValue = audioman.Checked;
-					compsec[Constants.Microphone].BoolValue = micmon.Checked;
-					// compsec["Media"].BoolValue = mediamon.Checked;
-					compsec[HumanReadable.System.Process.Foreground].BoolValue = fgmon.Checked;
-					compsec[Constants.Network].BoolValue = netmon.Checked;
-					compsec[HumanReadable.Hardware.Power.Section].BoolValue = powmon.Checked;
-					compsec[Constants.Paging].BoolValue = paging.Checked;
-					compsec[Constants.Maintenance].BoolValue = tempmon.Checked;
-					compsec[Constants.Health].BoolValue = autodoc.Checked;
+					compsec[HumanReadable.System.Process.Section].Bool = procmon.Checked;
+					compsec[HumanReadable.Hardware.Audio.Section].Bool = audioman.Checked;
+					compsec[Constants.Microphone].Bool = micmon.Checked;
+					// compsec["Media"].Bool = mediamon.Checked;
+					compsec[HumanReadable.System.Process.Foreground].Bool = fgmon.Checked;
+					compsec[Constants.Network].Bool = netmon.Checked;
+					compsec[HumanReadable.Hardware.Power.Section].Bool = powmon.Checked;
+					compsec[Constants.Paging].Bool = paging.Checked;
+					compsec[Constants.Maintenance].Bool = tempmon.Checked;
+					compsec[Constants.Health].Bool = autodoc.Checked;
 
 					var powsec = cfg.Config[HumanReadable.Hardware.Power.Section];
 					if (powmon.Checked) powsec[Constants.Behaviour].Value = powbehaviour.Text.ToLower();
 					
 					var uisec = cfg.Config[Constants.UserInterface];
-					uisec[Constants.ShowOnStart].BoolValue = showonstart.Checked;
+					uisec[Constants.ShowOnStart].Bool = showonstart.Checked;
 					
 					var perf = cfg.Config[Constants.Performance];
 					var freq = (int)scanfrequency.Value;
 					if (freq < 5 && freq != 0) freq = 5;
-					perf[Constants.ScanFrequency].IntValue = (ScanOrWMI.SelectedIndex == 1 ? 0 : freq);
-					perf[Constants.WMIWatcher].BoolValue = (ScanOrWMI.SelectedIndex != 0);
-					perf[Constants.WMIDelay].IntValue = ((int)wmipolling.Value);
+					perf[Constants.ScanFrequency].Int = (ScanOrWMI.SelectedIndex == 1 ? 0 : freq);
+					perf[Constants.WMIWatcher].Bool = (ScanOrWMI.SelectedIndex != 0);
+					perf[Constants.WMIDelay].Int = ((int)wmipolling.Value);
 					perf.TryRemove("WMI queries"); // deprecated long ago
 
 					var qol = cfg.Config[Constants.QualityOfLife];
-					qol["Register global hotkeys"].BoolValue = hotkeys.Checked;
+					qol["Register global hotkeys"].Bool = hotkeys.Checked;
 
 					cfg.File.Save(force: true);
 				}

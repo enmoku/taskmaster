@@ -70,21 +70,21 @@ namespace Taskmaster
 				var perfsec = corecfg.Config["Performance"];
 				var hysterisisSetting = perfsec.GetOrSet("Foreground hysterisis", 1500)
 					.InitComment("In milliseconds, from 500 to 30000. Delay before we inspect foreground app, in case user rapidly swaps apps.")
-					.IntValue.Constrain(200, 30000);
+					.Int.Constrain(200, 30000);
 				Hysterisis = TimeSpan.FromMilliseconds(hysterisisSetting);
 
 				var emsec = corecfg.Config["Emergency"];
 				HangKillTick = emsec.GetOrSet("Kill hung", 180 * 5)
 					.InitComment("Kill the application after this many seconds. 0 disables. Minimum actual kill time is minimize/reduce time + 60.")
-					.IntValue.Constrain(0, 60 * 60 * 4);
+					.Int.Constrain(0, 60 * 60 * 4);
 
 				HangMinimizeTick = emsec.GetOrSet("Hung minimize time", 180)
 					.InitComment("Try to minimize hung app after this many seconds.")
-					.IntValue.Constrain(0, 60 * 60 * 2);
+					.Int.Constrain(0, 60 * 60 * 2);
 
 				HangReduceTick = emsec.GetOrSet("Hung reduce time", 300)
 					.InitComment("Reduce affinity and priority of hung app after this many seconds.")
-					.IntValue.Constrain(0, 60 * 60 * 2);
+					.Int.Constrain(0, 60 * 60 * 2);
 			}
 
 			int killtickmin = (Math.Max(HangReduceTick, HangMinimizeTick)) + 60;

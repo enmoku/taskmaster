@@ -93,15 +93,15 @@ namespace Taskmaster.Network
 				var devsec = netcfg.Config["Devices"];
 				DeviceTimerInterval = devsec.GetOrSet("Check frequency", 15)
 					.InitComment("Minutes")
-					.IntValue.Constrain(1, 30) * 60;
+					.Int.Constrain(1, 30) * 60;
 
 				var pktsec = netcfg.Config["Traffic"];
 				PacketStatTimerInterval = pktsec.GetOrSet("Sample rate", 15)
 					.InitComment("Seconds")
-					.IntValue.Constrain(1, 60);
+					.Int.Constrain(1, 60);
 				PacketWarning.Peak = PacketStatTimerInterval;
 
-				ErrorReports.Peak = ErrorReportLimit = pktsec.GetOrSet("Error report limit", 5).IntValue.Constrain(1, 60);
+				ErrorReports.Peak = ErrorReportLimit = pktsec.GetOrSet("Error report limit", 5).Int.Constrain(1, 60);
 			}
 
 			using (var corecfg = Config.Load(CoreConfigFilename).BlockUnload())
@@ -109,10 +109,10 @@ namespace Taskmaster.Network
 				var logsec = corecfg.Config[HumanReadable.Generic.Logging];
 				ShowNetworkErrors = logsec.GetOrSet("Show network errors", true)
 					.InitComment("Show network errors on each sampling.")
-					.BoolValue;
+					.Bool;
 
 				var dbgsec = corecfg.Config[HumanReadable.Generic.Debug];
-				DebugNet = dbgsec.Get("Network")?.BoolValue ?? false;
+				DebugNet = dbgsec.Get("Network")?.Bool ?? false;
 			}
 			
 			if (Trace) Log.Debug("<Network> Traffic sample frequency: " + PacketStatTimerInterval + "s");

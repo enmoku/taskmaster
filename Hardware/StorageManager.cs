@@ -86,7 +86,7 @@ namespace Taskmaster
 
 			using (var corecfg = Config.Load(CoreConfigFilename).BlockUnload())
 			{
-				Verbose = corecfg.Config[HumanReadable.Generic.Debug].Get("Storage")?.BoolValue ?? false;
+				Verbose = corecfg.Config[HumanReadable.Generic.Debug].Get("Storage")?.Bool ?? false;
 			}
 
 			if (Verbose) Log.Information("<Maintenance> Component loaded.");

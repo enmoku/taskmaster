@@ -491,8 +491,8 @@ namespace Taskmaster
 
 			if (Priority.HasValue)
 			{
-				app[HumanReadable.System.Process.Priority].IntValue = ProcessHelpers.PriorityToInt(Priority.Value);
-				app[HumanReadable.System.Process.PriorityStrategy].IntValue = (int)PriorityStrategy;
+				app[HumanReadable.System.Process.Priority].Int = ProcessHelpers.PriorityToInt(Priority.Value);
+				app[HumanReadable.System.Process.PriorityStrategy].Int = (int)PriorityStrategy;
 			}
 			else
 			{
@@ -504,8 +504,8 @@ namespace Taskmaster
 			{
 				//if (affinity == ProcessManager.allCPUsMask) affinity = 0; // convert back
 
-				app[HumanReadable.System.Process.Affinity].IntValue = AffinityMask;
-				app[HumanReadable.System.Process.AffinityStrategy].IntValue = (int)AffinityStrategy;
+				app[HumanReadable.System.Process.Affinity].Int = AffinityMask;
+				app[HumanReadable.System.Process.AffinityStrategy].Int = (int)AffinityStrategy;
 			}
 			else
 			{
@@ -514,12 +514,12 @@ namespace Taskmaster
 			}
 
 			if (AffinityIdeal >= 0)
-				app["Affinity ideal"].IntValue = AffinityIdeal;
+				app["Affinity ideal"].Int = AffinityIdeal;
 			else
 				app.TryRemove("Affinity ideal");
 
 			if (IOPriority >= 0)
-				app["IO priority"].IntValue = IOPriority;
+				app["IO priority"].Int = IOPriority;
 			else
 				app.TryRemove("IO priority");
 
@@ -542,13 +542,13 @@ namespace Taskmaster
 				case ForegroundMode.Standard:
 					app.TryRemove("Background powerdown");
 					saveFgMode:
-					app["Foreground mode"].IntValue = (int)Foreground;
+					app["Foreground mode"].Int = (int)Foreground;
 					if (BackgroundPriority.HasValue)
-						app["Background priority"].IntValue = ProcessHelpers.PriorityToInt(BackgroundPriority.Value);
+						app["Background priority"].Int = ProcessHelpers.PriorityToInt(BackgroundPriority.Value);
 					else
 						app.TryRemove("Background priority");
 					if (BackgroundAffinity >= 0)
-						app["Background affinity"].IntValue = BackgroundAffinity;
+						app["Background affinity"].Int = BackgroundAffinity;
 					else
 						app.TryRemove("Background affinity");
 					break;
@@ -559,25 +559,25 @@ namespace Taskmaster
 			}
 
 			if (AllowPaging)
-				app["Allow paging"].BoolValue = AllowPaging;
+				app["Allow paging"].Bool = AllowPaging;
 			else
 				app.TryRemove("Allow paging");
 
 			if (PathVisibility != PathVisibilityOptions.Invalid)
-				app["Path visibility"].IntValue = (int)PathVisibility;
+				app["Path visibility"].Int = (int)PathVisibility;
 			else
 				app.TryRemove("Path visibility");
 
 			if (!string.IsNullOrEmpty(Executable))
 			{
-				if (Recheck > 0) app["Recheck"].IntValue = Recheck;
+				if (Recheck > 0) app["Recheck"].Int = Recheck;
 				else app.TryRemove("Recheck");
 			}
 
-			if (!Enabled) app[HumanReadable.Generic.Enabled].BoolValue = Enabled;
+			if (!Enabled) app[HumanReadable.Generic.Enabled].Bool = Enabled;
 			else app.TryRemove(HumanReadable.Generic.Enabled);
 
-			app["Preference"].IntValue = OrderPreference;
+			app["Preference"].Int = OrderPreference;
 
 			if (IgnoreList != null && IgnoreList.Length > 0)
 				app[HumanReadable.Generic.Ignore].Array = IgnoreList;
@@ -585,7 +585,7 @@ namespace Taskmaster
 				app.TryRemove(HumanReadable.Generic.Ignore);
 
 			if (ModifyDelay > 0)
-				app["Modify delay"].IntValue = ModifyDelay;
+				app["Modify delay"].Int = ModifyDelay;
 			else
 				app.TryRemove("Modify delay");
 
@@ -608,7 +608,7 @@ namespace Taskmaster
 
 				app["Resize"].IntArray = res;
 
-				app["Resize strategy"].IntValue = (int)ResizeStrategy;
+				app["Resize strategy"].Int = (int)ResizeStrategy;
 			}
 			else
 			{
@@ -618,8 +618,8 @@ namespace Taskmaster
 
 			if (VolumeStrategy != Audio.VolumeStrategy.Ignore)
 			{
-				app[HumanReadable.Hardware.Audio.Volume].FloatValue = Volume;
-				app["Volume strategy"].IntValue = (int)VolumeStrategy;
+				app[HumanReadable.Hardware.Audio.Volume].Float = Volume;
+				app["Volume strategy"].Int = (int)VolumeStrategy;
 			}
 			else
 			{
@@ -627,10 +627,10 @@ namespace Taskmaster
 				app.TryRemove("Volume strategy");
 			}
 
-			app[HumanReadable.Generic.Logging].BoolValue = LogAdjusts;
+			app[HumanReadable.Generic.Logging].Bool = LogAdjusts;
 
 			if (LogStartAndExit)
-				app["Log start and exit"].BoolValue = true;
+				app["Log start and exit"].Bool = true;
 			else
 				app.TryRemove("Log start and exit");
 

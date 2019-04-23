@@ -111,11 +111,11 @@ namespace Taskmaster.Audio
 			{
 				var mediasec = corecfg.Config["Media"];
 
-				Control = mediasec.GetOrSet(mcontrol, false).BoolValue;
-				DefaultVolume = mediasec.GetOrSet(mvol, 100.0d).DoubleValue.Constrain(0.0d, 100.0d);
+				Control = mediasec.GetOrSet(mcontrol, false).Bool;
+				DefaultVolume = mediasec.GetOrSet(mvol, 100.0d).Double.Constrain(0.0d, 100.0d);
 
 				var dbgsec = corecfg.Config[HumanReadable.Generic.Debug];
-				DebugMic = dbgsec.Get("Microphone")?.BoolValue ?? false;
+				DebugMic = dbgsec.Get("Microphone")?.Bool ?? false;
 			}
 
 			if (DebugMic) Log.Information("<Microphone> Component loaded.");
@@ -282,8 +282,8 @@ namespace Taskmaster.Audio
 				{
 					var devsec = devcfg.Config[RecordingDevice.GUID];
 
-					devvol = devsec.GetOrSet(HumanReadable.Hardware.Audio.Volume, DefaultVolume).DoubleValue;
-					devcontrol = devsec.GetOrSet(cname, false).BoolValue;
+					devvol = devsec.GetOrSet(HumanReadable.Hardware.Audio.Volume, DefaultVolume).Double;
+					devcontrol = devsec.GetOrSet(cname, false).Bool;
 					devsec.GetOrSet("Name", RecordingDevice.Name);
 				}
 
@@ -324,8 +324,8 @@ namespace Taskmaster.Audio
 							string guid = Utility.DeviceIdToGuid(dev.ID);
 							var devsec = devcfg.Config[guid];
 							devsec.GetOrSet("Name", dev.DeviceFriendlyName);
-							bool control = devsec.GetOrSet("Control", false).BoolValue;
-							float target = devsec.Get(HumanReadable.Hardware.Audio.Volume)?.FloatValue ?? float.NaN;
+							bool control = devsec.GetOrSet("Control", false).Bool;
+							float target = devsec.Get(HumanReadable.Hardware.Audio.Volume)?.Float ?? float.NaN;
 
 							var mdev = new Device(dev)
 							{

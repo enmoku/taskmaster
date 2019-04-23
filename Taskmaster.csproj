@@ -136,9 +136,7 @@
     <Compile Include="MKAh\File\Ini\Interface\IContainer.cs" />
     <Compile Include="MKAh\File\Ini\Interface\Value.cs" />
     <Compile Include="MKAh\File\Ini\Section.cs" />
-    <Compile Include="MKAh\File\Ini\Section.Extensions.cs" />
     <Compile Include="MKAh\File\Ini\Setting.cs" />
-    <Compile Include="MKAh\File\Ini\Setting.Extensions.cs" />
     <Compile Include="MKAh\File\Ini\SettingType.cs" />
     <Compile Include="Settings.Global.cs" />
     <Compile Include="Process\ActiveAppManager.cs" />
