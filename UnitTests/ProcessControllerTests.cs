@@ -10,6 +10,7 @@ namespace Processes
 	public class ProcessController
 	{
 		[Test]
+		[TestOf(nameof(Bit.Count))]
 		public void AffinityBitCountTests()
 		{
 			int testSource = 192;
@@ -25,6 +26,7 @@ namespace Processes
 		}
 
 		[Test]
+		[TestOf(nameof(Bit.Unset))]
 		public void AffinityBitManipTests()
 		{
 			int mask = 0b11110000; // 240
@@ -37,6 +39,7 @@ namespace Processes
 		}
 
 		[Test]
+		[TestOf(nameof(Bit.Count))]
 		public void CPUMaskTests()
 		{
 			int fakecpucount = 8;
@@ -46,6 +49,7 @@ namespace Processes
 		}
 
 		[Test]
+		[TestOf(nameof(ProcessManagerUtility.ApplyAffinityStrategy))]
 		public void AffinityStrategyTests()
 		{
 			int testSource = 192;

@@ -9,6 +9,7 @@ namespace Power
 		public TestContext TestContext { get; set; }
 
 		[Test]
+		[TestOf(nameof(Taskmaster.Power.Manager))]
 		public void CPULoadHandlerTests()
 		{
 			/*
