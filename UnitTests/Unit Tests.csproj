@@ -80,7 +80,6 @@
       <DesignTime>True</DesignTime>
       <DependentUpon>Resources.resx</DependentUpon>
     </Compile>
-    <Compile Include="TimeTests.cs" />
     <Compile Include="AutoAdjust.cs" />
   </ItemGroup>
   <ItemGroup>
