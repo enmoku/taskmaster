@@ -3,6 +3,8 @@ Comprehensive changes can be found in Git change history:
 	https://github.com/mkahvi/taskmaster/commits/master
 
 ## [0.13...]
+### 2019-04-24
+	Fixed: Watchlist changes outside of creating new rules was not being saved properly.
 ### 2019-04-23
 	Internal: Small improvements.
 ### 2019-04-20
