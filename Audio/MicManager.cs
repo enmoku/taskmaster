@@ -236,18 +236,16 @@ namespace Taskmaster.Audio
 				// get default communications device
 				try
 				{
-					RecordingDevice = audiomanager.RecordingDevice;
+					if ((RecordingDevice = audiomanager.RecordingDevice) is null)
+					{
+						Log.Error("<Microphone> No communications device found!");
+						return;
+					}
 				}
 				catch (System.Runtime.InteropServices.COMException ex)
 				{
 					Logging.Stacktrace(ex);
 					// NOP
-				}
-
-				if (RecordingDevice == null)
-				{
-					Log.Error("<Microphone> No communications device found!");
-					return;
 				}
 
 				NAudio.Mixer.MixerLine mixerLine = null;
@@ -316,7 +314,7 @@ namespace Taskmaster.Audio
 				using (var devcfg = Config.Load(DeviceFilename).BlockUnload())
 				{
 					var devs = audiomanager.Enumerator?.EnumerateAudioEndPoints(NAudio.CoreAudioApi.DataFlow.Capture, NAudio.CoreAudioApi.DeviceState.Active) ?? null;
-					if (devs == null) throw new InvalidOperationException("Enumerator not available, Audio Manager is dead");
+					if (devs is null) throw new InvalidOperationException("Enumerator not available, Audio Manager is dead");
 					foreach (var dev in devs)
 					{
 						try

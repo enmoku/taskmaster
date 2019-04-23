@@ -839,25 +839,34 @@ namespace Taskmaster
 					var ruleExec = section.Get("Image");
 					var rulePath = section.Get(HumanReadable.System.Process.Path);
 
-					if (ruleExec == null && rulePath == null)
+					if (ruleExec is null && rulePath is null)
 					{
 						// TODO: Deal with incorrect configuration lacking image
 						Log.Warning($"<Watchlist:{section.Line}> [" + section.Name + "] No image nor path; Skipping.");
 						continue;
 					}
 
+					ProcessPriorityClass? prioR = null;
+
+					int prio;
+					int aff;
+					Power.Mode pmode = Power.Mode.Undefined;
+
 					var rulePrio = section.Get(HumanReadable.System.Process.Priority);
 					var ruleAff = section.Get(HumanReadable.System.Process.Affinity);
 					var rulePow = section.Get(HumanReadable.Hardware.Power.Mode);
 
-					if (rulePrio == null && ruleAff == null && rulePow == null)
+					if (rulePrio is null && ruleAff is null && rulePow is null)
 					{
 						// TODO: Deal with incorrect configuration lacking these things
 						Log.Warning($"<Watchlist:{section.Line}> [{section.Name}] No priority, affinity, nor power plan; Skipping.");
 						continue;
 					}
 
-					var aff = (ruleAff?.Int ?? -1);
+					prio = rulePrio?.Int ?? -1;
+					aff = (ruleAff?.Int ?? -1);
+					var pmode_t = rulePow?.String;
+
 					if (aff > AllCPUsMask || aff < -1)
 					{
 						Log.Warning($"<Watchlist:{ruleAff.Line}> [{section.Name}] Affinity({aff}) is malconfigured. Skipping.");
@@ -866,26 +875,20 @@ namespace Taskmaster
 						//		Shift bits to allowed range. Assume at least one core must be assigned, and in case of holes at least one core must be unassigned.
 						aff = -1; // ignore
 					}
-					var prio = rulePrio?.Int ?? -1;
-					ProcessPriorityClass? prioR = (prio >= 0) ? (ProcessPriorityClass?)ProcessHelpers.IntToPriority(prio) : null;
 
-					var pmodes = rulePow?.Value ?? null;
-					var pmode = Power.Manager.GetModeByName(pmodes);
+					pmode = Power.Manager.GetModeByName(pmode_t);
 					if (pmode == Power.Mode.Custom)
 					{
-						Log.Warning($"<Watchlist:{rulePow.Line}> [{section.Name}] Unrecognized power plan: {pmodes}");
+						Log.Warning($"<Watchlist:{rulePow.Line}> [{section.Name}] Unrecognized power plan: {pmode_t}");
 						pmode = Power.Mode.Undefined;
 					}
 
+					prioR = ProcessHelpers.IntToNullablePriority(prio);
 					ProcessPriorityStrategy priostrat = ProcessPriorityStrategy.None;
-					if (prioR != null)
+					if (prioR.HasValue)
 					{
-						var priorityStrat = section.Get(HumanReadable.System.Process.PriorityStrategy)?.Int.Constrain(0, 3) ?? -1;
-
-						if (priorityStrat > 0)
-							priostrat = (ProcessPriorityStrategy)priorityStrat;
-						else // 0
-							prioR = null; // invalid data
+						priostrat = (ProcessPriorityStrategy)(section.Get(HumanReadable.System.Process.PriorityStrategy)?.Int.Constrain(0, 3) ?? 0);
+						if (priostrat == ProcessPriorityStrategy.None) prioR = null; // invalid data
 					}
 
 					ProcessAffinityStrategy affStrat = (aff >= 0)
@@ -959,7 +962,7 @@ namespace Taskmaster
 					else if (prc.PriorityStrategy == ProcessPriorityStrategy.None) prc.Priority = null;
 
 					int[] resize = section.Get("Resize")?.IntArray ?? null; // width,height
-					if (resize != null && resize.Length == 4)
+					if (resize?.Length == 4)
 					{
 						int resstrat = section.Get("Resize strategy")?.Int.Constrain(0, 3) ?? -1;
 						if (resstrat < 0) resstrat = 0;
@@ -1381,7 +1384,7 @@ namespace Taskmaster
 				{
 					try
 					{
-						if (process == null) process = Process.GetProcessById(ev.Id);
+						if (process is null) process = Process.GetProcessById(ev.Id);
 						ProcessUtility.SetIO(process, 2, out _, decrease: false); // set foreground app I/O to highest possible
 					}
 					catch (Exception ex) when (ex is NullReferenceException || ex is OutOfMemoryException) { throw; }
@@ -2042,11 +2045,7 @@ namespace Taskmaster
 			}
 			finally
 			{
-				if (info == null)
-				{
-					info = new ProcessEx { Id = pid, Timer = timer, State = state};
-					info.WMIDelay = wmidelay.TotalMilliseconds;
-				}
+				if (info is null) info = new ProcessEx { Id = pid, Timer = timer, State = state, WMIDelay = wmidelay.TotalMilliseconds };
 				HandlingStateChange?.Invoke(this, new HandlingStateChangeEventArgs(info));
 
 				SignalProcessHandled(-1); // done with it

@@ -217,7 +217,7 @@ namespace Taskmaster.Audio
 			Debug.Assert(System.Threading.Thread.CurrentThread != Context, "Must be called in same thread.");
 
 			if (DisposingOrDisposed) return;
-			if (processmanager == null) return;
+			if (processmanager is null) return; // TODO: Maybe delay briefly to see if the manager gets hooked?
 
 			await Task.Delay(0).ConfigureAwait(false);
 

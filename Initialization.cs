@@ -43,14 +43,13 @@ namespace Taskmaster
 			using (var tcfg = Config.Load(CoreConfigFilename).BlockUnload())
 			{
 				var sec = tcfg.Config.Get(Constants.Core)?.Get(Constants.Version)?.Value ?? null;
-				if (sec == null || sec != ConfigVersion)
+				if (sec?.Equals(ConfigVersion) ?? false) return;
+
+				using (var initialconfig = new UI.Config.ComponentConfigurationWindow())
 				{
-					using (var initialconfig = new UI.Config.ComponentConfigurationWindow())
-					{
-						initialconfig.ShowDialog();
-						if (!initialconfig.DialogOK)
-							throw new InitFailure("Component configuration cancelled");
-					}
+					initialconfig.ShowDialog();
+					if (!initialconfig.DialogOK)
+						throw new InitFailure("Component configuration cancelled");
 				}
 			}
 		}
@@ -381,36 +380,34 @@ namespace Taskmaster
 			ShuttingDown += trayaccess.ShutdownEvent;
 			trayaccess.TrayMenuShown += (_, ea) => OptimizeResponsiviness(ea.Visible);
 
+			ProcMon.ContinueWith((x) => trayaccess?.Hook(processmanager), TaskContinuationOptions.OnlyOnRanToCompletion);
+
 			if (PowerManagerEnabled)
 			{
 				Task.WhenAll(new Task[] { PowMan, CpuMon, ProcMon }).ContinueWith((_) => {
-					if (powermanager == null) throw new InitFailure("Power Manager has failed to initialize");
-					if (cpumonitor == null) throw new InitFailure("CPU Monitor has failed to initialize");
-					if (processmanager == null) throw new InitFailure("Process Manager has failed to initialize");
+					if (powermanager is null || cpumonitor is null || processmanager is null) return;
 
 					cpumonitor?.Hook(processmanager);
 
 					trayaccess.Hook(powermanager);
 					powermanager.onSuspendResume += PowerSuspendEnd; // HACK
 					powermanager.Hook(cpumonitor);
-				});
-			}
+				}, cts.Token);
 
-			ProcMon.ContinueWith((x) => trayaccess?.Hook(processmanager));
+				var tr = Task.WhenAny(init);
+				if (tr.IsFaulted) cts.Cancel(true);
+			}
 
 			//if (HardwareMonitorEnabled)
 			//	Task.WhenAll(HwMon).ContinueWith((x) => hardware.Start()); // this is slow
 
 			NetMon.ContinueWith((x) =>
 			{
-				if (netmonitor != null)
-				{
-					netmonitor.SetupEventHooks();
-					netmonitor.Tray = trayaccess;
-				}
-			});
+				netmonitor.SetupEventHooks();
+				netmonitor.Tray = trayaccess;
+			}, TaskContinuationOptions.OnlyOnRanToCompletion);
 
-			if (AudioManagerEnabled) ProcMon.ContinueWith((x) => audiomanager?.Hook(processmanager));
+			if (AudioManagerEnabled) ProcMon.ContinueWith((x) => audiomanager?.Hook(processmanager), TaskContinuationOptions.OnlyOnRanToCompletion);
 
 			try
 			{

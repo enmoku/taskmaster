@@ -462,6 +462,7 @@ namespace Taskmaster
 		{
 			using (var cfg = Config.Load(ProcessManager.WatchlistFile).BlockUnload())
 			{
+				Debug.WriteLine("Saving: " + FriendlyName);
 				SaveConfig(cfg.File);
 			}
 		}
@@ -633,6 +634,8 @@ namespace Taskmaster
 				app["Log start and exit"].Bool = true;
 			else
 				app.TryRemove("Log start and exit");
+
+			Debug.WriteLine(cfg.Filename + " has gained " + cfg.Config.Changes + " total changes.");
 
 			// pass to config manager
 			NeedsSaving = false;

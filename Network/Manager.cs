@@ -226,13 +226,13 @@ namespace Taskmaster.Network
 				InvalidateInterfaceList(); // force refresh
 				var ifaces = CurrentInterfaceList.Value;
 
-				if (oldifaces.Count != ifaces.Count)
+				if (oldifaces.Count.Equals(ifaces.Count))
 				{
 					if (DebugNet) Log.Warning("<Network> Interface count mismatch (" + oldifaces.Count + " vs " + ifaces.Count + "), skipping analysis.");
 					return;
 				}
 
-				if (ifaces == null) return; // no interfaces, just quit
+				if ((ifaces?.Count ?? 0) == 0) return; // no interfaces, just quit
 
 				for (int index = 0; index < ifaces.Count; index++)
 				{

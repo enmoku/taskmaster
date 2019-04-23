@@ -25,6 +25,7 @@
 // THE SOFTWARE.
 
 using System;
+using System.Diagnostics;
 using Ini = MKAh.Ini;
 
 namespace Taskmaster.Configuration
@@ -51,6 +52,8 @@ namespace Taskmaster.Configuration
 		public void Save(bool force = false)
 		{
 			System.Diagnostics.Debug.Assert(Config != null);
+
+			Debug.WriteLine("ConfigFile.Save(" + Filename + ") - Forced: " + force + ", Changes: " + Config.Changes);
 
 			if (force || Config.Changes > 0) Dirty = true;
 			else if (!Dirty) return;

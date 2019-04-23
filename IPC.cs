@@ -43,7 +43,7 @@ namespace Taskmaster
 		{
 			Debug.WriteLine("<IPC> Activity");
 
-			if (pipe == null) return;
+			if (pipe is null) return;
 
 			try
 			{
