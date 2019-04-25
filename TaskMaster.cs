@@ -108,7 +108,7 @@ namespace Taskmaster
 					}
 				}
 
-				pipe = null; // disposing the pipe seems to just cause problems
+				IPC.Close();
 			}
 			catch (Exception ex)
 			{
@@ -388,20 +388,20 @@ namespace Taskmaster
 						switch (rv)
 						{
 							case SimpleMessageBox.ResultType.Retry:
-								PipeExplorer(PipeRestart);
+								IPC.Transmit(IPC.RestartMessage);
 								break;
 							case SimpleMessageBox.ResultType.End:
-								PipeExplorer(PipeTerm);
+								IPC.Transmit(IPC.TerminationMessage);
 								break;
 							case SimpleMessageBox.ResultType.Cancel:
-								PipeExplorer(PipeRefresh);
+								IPC.Transmit(IPC.RefreshMessage);
 								break;
 						}
 
 						return -1;
 					}
 
-					pipe = PipeDream(); // IPC with other instances of TM
+					IPC.Listen();
 
 					// Multi-core JIT
 					// https://docs.microsoft.com/en-us/dotnet/api/system.runtime.profileoptimization

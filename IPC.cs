@@ -31,15 +31,18 @@ using System.IO;
 
 namespace Taskmaster
 {
-	public static partial class Taskmaster
+	using static Taskmaster;
+
+	internal static class IPC
 	{
-		const string PipeName = @"\\.\MKAh\Taskmaster\Pipe";
-		const string PipeRestart = "TM...RESTART";
-		const string PipeTerm = "TM...TERMINATE";
-		const string PipeRefresh = "TM...REFRESH";
+		internal const string PipeName = @"\\.\MKAh\Taskmaster\Pipe";
+		internal const string RestartMessage = "TM...RESTART";
+		internal const string TerminationMessage = "TM...TERMINATE";
+		internal const string RefreshMessage = "TM...REFRESH";
+
 		static System.IO.Pipes.NamedPipeServerStream pipe = null;
 
-		static void PipeCleaner(IAsyncResult result)
+		internal static void Receive(IAsyncResult result)
 		{
 			Debug.WriteLine("<IPC> Activity");
 
@@ -58,19 +61,19 @@ namespace Taskmaster
 				using (var sr = new StreamReader(lp))
 				{
 					var line = sr.ReadLine();
-					if (line.StartsWith(PipeRestart))
+					if (line.StartsWith(RestartMessage))
 					{
-						Log.Warning("<IPC> Restart request received.");
+						Log.Information("<IPC> Restart request received.");
 						UnifiedExit(restart: true);
 						return;
 					}
-					else if (line.StartsWith(PipeTerm))
+					else if (line.StartsWith(TerminationMessage))
 					{
-						Log.Warning("<IPC> Termination request received.");
+						Log.Information("<IPC> Termination request received.");
 						UnifiedExit(restart: false);
 						return;
 					}
-					else if (line.StartsWith(PipeRefresh))
+					else if (line.StartsWith(RefreshMessage))
 					{
 						Log.Information("<IPC> Refresh.");
 						Refresh();
@@ -82,7 +85,7 @@ namespace Taskmaster
 					}
 				}
 
-				if (lp.CanRead) lp?.BeginWaitForConnection(PipeCleaner, null);
+				if (lp.CanRead) lp?.BeginWaitForConnection(Receive, null);
 			}
 			catch (ObjectDisposedException) { Statistics.DisposedAccesses++; }
 			catch (Exception ex)
@@ -92,7 +95,7 @@ namespace Taskmaster
 			}
 		}
 
-		static System.IO.Pipes.NamedPipeServerStream PipeDream()
+		internal static System.IO.Pipes.NamedPipeServerStream Listen()
 		{
 			try
 			{
@@ -105,7 +108,7 @@ namespace Taskmaster
 
 				//DisposalChute.Push(pipe);
 
-				pipe.BeginWaitForConnection(PipeCleaner, null);
+				pipe.BeginWaitForConnection(Receive, null);
 
 				return pipe;
 			}
@@ -117,7 +120,12 @@ namespace Taskmaster
 			return null;
 		}
 
-		static void PipeExplorer(string message)
+		/// <summary>
+		/// 
+		/// </summary>
+		/// <exception cref="IOException">Communication timeout</exception>
+		/// <exception cref="UnauthorizedAccessException">Running process has elevated privileges compared to our own.</exception>
+		internal static void Transmit(string message)
 		{
 			Debug.WriteLine("Attempting to communicate with running instance of TM.");
 
@@ -147,7 +155,8 @@ namespace Taskmaster
 			}
 			catch (IOException)
 			{
-				System.Windows.Forms.MessageBox.Show("Timeout communicating with existing Taskmaster instance.");
+				System.Windows.Forms.MessageBox.Show("Timeout communicating with existing instance.");
+				throw;
 			}
 			catch (Exception ex)
 			{
@@ -159,5 +168,18 @@ namespace Taskmaster
 				try { pe?.Dispose(); } catch { } // this can throw useless things if the connection never happened
 			}
 		}
+
+		internal static void Close()
+		{
+			try { pipe?.Dispose(); } catch { }
+			pipe = null;
+		}
+
+		private static readonly Finalizer finalizer = new Finalizer();
+		private sealed class Finalizer
+		{
+			~Finalizer() => Close();
+		}
+
 	}
 }
