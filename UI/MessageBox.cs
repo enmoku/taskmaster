@@ -1,5 +1,5 @@
 ﻿//
-// SimpleMessageBox.cs
+// UI.MessageBox.cs
 //
 // Author:
 //       M.A. (https://github.com/mkahvi)
@@ -24,11 +24,12 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
+using System.Diagnostics;
 using System.Windows.Forms;
 
 namespace Taskmaster
 {
-	public class SimpleMessageBox : UI.UniForm
+	public class MessageBox : UI.UniForm
 	{
 		public enum Buttons : int
 		{
@@ -47,20 +48,24 @@ namespace Taskmaster
 
 		public ResultType Result { get; private set; } = ResultType.Cancel;
 
-		public static ResultType ShowModal(string title, string message, Buttons buttons, Control parent=null)
+		public static ResultType ShowModal(string title, string message, Buttons buttons, bool rich=false, Control parent=null)
 		{
-			using (var msg = new SimpleMessageBox(title, message, buttons, parent))
+			using (var msg = new MessageBox(title, message, buttons, rich, parent))
 			{
+				msg.CenterToParent();
 				msg.ShowDialog();
-
+				
 				return msg.Result;
 			}
 		}
 
-		public SimpleMessageBox(string title, string message, Buttons buttons, Control parent = null)
+		Label Message = null;
+		RichTextBox RichMessage = null;
+
+		public MessageBox(string title, string message, Buttons buttons, bool rich=false, Control parent = null)
 			: base()
 		{
-			Parent = parent;
+			//if (!(parent is null)) Parent = parent;
 
 			Text = title;
 
@@ -127,7 +132,16 @@ namespace Taskmaster
 					break;
 			}
 
-			layout.Controls.Add(new Label() { Text = message, AutoSize = true, Dock = DockStyle.Fill, TextAlign = System.Drawing.ContentAlignment.TopLeft, Padding = BigPadding });
+			if (rich)
+			{
+				RichMessage = new RichTextBox() { Rtf = message, ReadOnly = true, Dock = DockStyle.Fill, Width = 600, Height = 400 };
+				layout.Controls.Add(RichMessage);
+			}
+			else
+			{
+				Message = new Label() { Text = message, AutoSize = true, Dock = DockStyle.Fill, TextAlign = System.Drawing.ContentAlignment.TopLeft, Padding = BigPadding };
+				layout.Controls.Add(Message);
+			}
 			layout.Controls.Add(buttonlayout);
 
 			StartPosition = parent != null ? FormStartPosition.CenterParent : FormStartPosition.CenterScreen;

@@ -673,14 +673,14 @@ namespace Taskmaster.UI
 				{
 					if (!MKAh.Execution.IsAdministrator)
 					{
-						SimpleMessageBox.ShowModal(Taskmaster.Name+"! – run at login", "Scheduler can not be modified without admin rights.", SimpleMessageBox.Buttons.OK);
+						MessageBox.ShowModal(Taskmaster.Name+"! – run at login", "Scheduler can not be modified without admin rights.", MessageBox.Buttons.OK);
 						return;
 					}
 
 					if (!menu_runatstart_sch.Checked)
 					{
-						if (SimpleMessageBox.ShowModal(Taskmaster.Name+"! – run at login", "This will add on-login scheduler to run TM as admin, is this right?", SimpleMessageBox.Buttons.AcceptCancel)
-							== SimpleMessageBox.ResultType.Cancel) return;
+						if (MessageBox.ShowModal(Taskmaster.Name+"! – run at login", "This will add on-login scheduler to run TM as admin, is this right?", MessageBox.Buttons.AcceptCancel)
+							== MessageBox.ResultType.Cancel) return;
 					}
 					// can't be disabled without admin rights?
 

@@ -209,7 +209,7 @@
     </Compile>
     <Compile Include="Events\RunstateException.cs" />
     <Compile Include="SelfMaintenance.cs" />
-    <Compile Include="UI\SimpleMessageBox.cs">
+    <Compile Include="UI\MessageBox.cs">
       <SubType>Form</SubType>
     </Compile>
     <Compile Include="UI\Stubs\EmptySpace.cs">

@@ -150,7 +150,7 @@ namespace Taskmaster
 			catch (UnauthorizedAccessException)
 			{
 				bool admin = MKAh.Execution.IsAdministrator;
-				SimpleMessageBox.ShowModal(Name, "Unauthorized access.\n\n" + (admin ? "No recommendations." : "Existing process may be running at higher privilege level.\nPlease retry with admin rights."), SimpleMessageBox.Buttons.OK);
+				MessageBox.ShowModal(Name, "Unauthorized access.\n\n" + (admin ? "No recommendations." : "Existing process may be running at higher privilege level.\nPlease retry with admin rights."), MessageBox.Buttons.OK);
 				throw;
 			}
 			catch (IOException)

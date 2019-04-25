@@ -434,7 +434,7 @@ namespace Taskmaster.UI.Config
 					comps.ShowDialog();
 					if (comps.DialogOK)
 					{
-						if (SimpleMessageBox.ShowModal("Restart needed", "TM needs to be restarted for changes to take effect.\n\nCancel to do so manually later.", SimpleMessageBox.Buttons.AcceptCancel) == SimpleMessageBox.ResultType.OK)
+						if (MessageBox.ShowModal("Restart needed", "TM needs to be restarted for changes to take effect.\n\nCancel to do so manually later.", MessageBox.Buttons.AcceptCancel) == MessageBox.ResultType.OK)
 						{
 							Log.Information("<UI> Restart request");
 							UnifiedExit(restart: true);

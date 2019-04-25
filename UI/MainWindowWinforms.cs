@@ -2544,7 +2544,7 @@ namespace Taskmaster.UI
 				.AppendLine()
 				.AppendLine("Available under MIT license.");
 
-			SimpleMessageBox.ShowModal("About " + Taskmaster.Name + "!", sbs.ToString(), SimpleMessageBox.Buttons.OK);
+			MessageBox.ShowModal("About " + Taskmaster.Name + "!", sbs.ToString(), MessageBox.Buttons.OK, parent:this);
 		}
 
 		Stopwatch WatchlistSearchInputTimer = new Stopwatch();
@@ -3124,8 +3124,8 @@ namespace Taskmaster.UI
 					if (processmanager.GetControllerByName(li.SubItems[NameColumn].Text, out var prc))
 					{
 
-						if (SimpleMessageBox.ShowModal("Remove watchlist item", $"Really remove '{prc.FriendlyName}'", SimpleMessageBox.Buttons.AcceptCancel)
-							== SimpleMessageBox.ResultType.OK)
+						if (MessageBox.ShowModal("Remove watchlist item", $"Really remove '{prc.FriendlyName}'", MessageBox.Buttons.AcceptCancel, parent: this)
+							== MessageBox.ResultType.OK)
 						{
 							lock (watchlistcolor_lock)
 							{

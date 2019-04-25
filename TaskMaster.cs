@@ -70,17 +70,17 @@ namespace Taskmaster
 
 		public static void ConfirmExit(bool restart = false, bool admin = false, string message = null, bool alwaysconfirm=false)
 		{
-			var rv = SimpleMessageBox.ResultType.OK;
+			var rv = MessageBox.ResultType.OK;
 
 			if (alwaysconfirm || ExitConfirmation)
 			{
-				rv = SimpleMessageBox.ShowModal(
+				rv = MessageBox.ShowModal(
 					(restart ? HumanReadable.System.Process.Restart : HumanReadable.System.Process.Exit) + Name + " ???",
 					(string.IsNullOrEmpty(message) ? "" : message + "\n\n") +
 					"Are you sure?",
-					SimpleMessageBox.Buttons.AcceptCancel);
+					MessageBox.Buttons.AcceptCancel);
 			}
-			if (rv != SimpleMessageBox.ResultType.OK) return;
+			if (rv != MessageBox.ResultType.OK) return;
 
 			UnifiedExit(restart, elevate:admin);
 		}
@@ -327,8 +327,8 @@ namespace Taskmaster
 			}
 			else if (!File.Exists(Path.Combine(DataPath, CoreConfigFilename)))
 			{
-				if (SimpleMessageBox.ShowModal(Name + " setup", "Set up PORTABLE installation?", SimpleMessageBox.Buttons.AcceptCancel)
-					== SimpleMessageBox.ResultType.OK)
+				if (MessageBox.ShowModal(Name + " setup", "Set up PORTABLE installation?", MessageBox.Buttons.AcceptCancel)
+					== MessageBox.ResultType.OK)
 				{
 					DataPath = portpath;
 					Portable = true;
@@ -374,12 +374,12 @@ namespace Taskmaster
 					singleton = new System.Threading.Mutex(true, SingletonID, out bool mutexgained);
 					if (!mutexgained)
 					{
-						SimpleMessageBox.ResultType rv = SimpleMessageBox.ResultType.Cancel;
+						MessageBox.ResultType rv = MessageBox.ResultType.Cancel;
 
 						// already running, signal original process
-						using (var msg = new SimpleMessageBox(Name+"!",
+						using (var msg = new MessageBox(Name+"!",
 							"Already operational.\n\nRetry to try to recover [restart] running instance.\nEnd to kill running instance and exit this.\nCancel to simply request refresh.",
-							SimpleMessageBox.Buttons.RetryEndCancel))
+							MessageBox.Buttons.RetryEndCancel))
 						{
 							msg.ShowDialog();
 							rv = msg.Result;
@@ -387,13 +387,13 @@ namespace Taskmaster
 
 						switch (rv)
 						{
-							case SimpleMessageBox.ResultType.Retry:
+							case MessageBox.ResultType.Retry:
 								IPC.Transmit(IPC.RestartMessage);
 								break;
-							case SimpleMessageBox.ResultType.End:
+							case MessageBox.ResultType.End:
 								IPC.Transmit(IPC.TerminationMessage);
 								break;
-							case SimpleMessageBox.ResultType.Cancel:
+							case MessageBox.ResultType.Cancel:
 								IPC.Transmit(IPC.RefreshMessage);
 								break;
 						}

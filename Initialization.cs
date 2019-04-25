@@ -260,12 +260,12 @@ namespace Taskmaster
 				var adminwarning = ((cfg[Constants.Core].Get(Hell)?.Value ?? null) != Constants.No);
 				if (isadmin && adminwarning)
 				{
-					var rv = SimpleMessageBox.ShowModal(
+					var rv = MessageBox.ShowModal(
 						Name+"! – admin access!!??",
 						"You're starting TM with admin rights, is this right?\n\nYou can cause bad system operation, such as complete system hang, if you configure or configured TM incorrectly.",
-						SimpleMessageBox.Buttons.AcceptCancel);
+						MessageBox.Buttons.AcceptCancel);
 
-					if (rv == SimpleMessageBox.ResultType.OK)
+					if (rv == MessageBox.ResultType.OK)
 					{
 						cfg[Constants.Core][Hell].Value = Constants.No;
 					}

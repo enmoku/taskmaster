@@ -97,13 +97,13 @@ namespace Taskmaster.UI.Config
 
 			if (!fnlen || friendlyName.Text.Contains("]") || friendlyName.Text.Contains("["))
 			{
-				SimpleMessageBox.ShowModal("Malconfigured friendly name", "Friendly name is missing or includes illegal characters (such as square brackets).", SimpleMessageBox.Buttons.OK);
+				MessageBox.ShowModal("Malconfigured friendly name", "Friendly name is missing or includes illegal characters (such as square brackets).", MessageBox.Buttons.OK, parent:this);
 				return;
 			}
 
 			if (!path && !exnam)
 			{
-				SimpleMessageBox.ShowModal("Configuration error", "No path nor executable defined.", SimpleMessageBox.Buttons.OK);
+				MessageBox.ShowModal("Configuration error", "No path nor executable defined.", MessageBox.Buttons.OK, parent: this);
 				return;
 			}
 
@@ -111,7 +111,7 @@ namespace Taskmaster.UI.Config
 
 			if (processmanager.GetControllerByName(newfriendlyname, out var dprc) && dprc != Controller)
 			{
-				SimpleMessageBox.ShowModal("Configuration error", "Friendly Name conflict.", SimpleMessageBox.Buttons.OK);
+				MessageBox.ShowModal("Configuration error", "Friendly Name conflict.", MessageBox.Buttons.OK, parent: this);
 				return;
 			}
 
@@ -121,7 +121,7 @@ namespace Taskmaster.UI.Config
 
 			if (!hasPrio && !hasAff && !hasPow)
 			{
-				SimpleMessageBox.ShowModal("Configuration error", "No priority, affinity, nor power plan defined.", SimpleMessageBox.Buttons.OK);
+				MessageBox.ShowModal("Configuration error", "No priority, affinity, nor power plan defined.", MessageBox.Buttons.OK, parent: this);
 				return;
 			}
 
@@ -1095,7 +1095,7 @@ namespace Taskmaster.UI.Config
 					sbs.Append("\tUnsupported I/O mode selected. Behaviour may be unexpected.").AppendLine();
 			}
 
-			SimpleMessageBox.ShowModal("Validation results", sbs.ToString(), SimpleMessageBox.Buttons.OK);
+			MessageBox.ShowModal("Validation results", sbs.ToString(), MessageBox.Buttons.OK, parent: this);
 		}
 	}
 }
