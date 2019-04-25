@@ -121,9 +121,11 @@ namespace Taskmaster
 		{
 			Debug.WriteLine("Attempting to communicate with running instance of TM.");
 
+			System.IO.Pipes.NamedPipeClientStream pe = null;
+
 			try
 			{
-				using (var pe = new System.IO.Pipes.NamedPipeClientStream(".", PipeName, System.IO.Pipes.PipeAccessRights.Write, System.IO.Pipes.PipeOptions.WriteThrough, System.Security.Principal.TokenImpersonationLevel.Impersonation, HandleInheritability.None))
+				pe = new System.IO.Pipes.NamedPipeClientStream(".", PipeName, System.IO.Pipes.PipeAccessRights.Write, System.IO.Pipes.PipeOptions.WriteThrough, System.Security.Principal.TokenImpersonationLevel.Impersonation, HandleInheritability.None);
 				using (var sw = new StreamWriter(pe))
 				{
 					if (!pe.IsConnected) pe.Connect(5_000);
@@ -151,6 +153,10 @@ namespace Taskmaster
 			{
 				Logging.Stacktrace(ex, crashsafe: true);
 				if (ex is NullReferenceException) throw;
+			}
+			finally
+			{
+				try { pe?.Dispose(); } catch { } // this can throw useless things if the connection never happened
 			}
 		}
 	}
