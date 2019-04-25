@@ -65,8 +65,8 @@ namespace Taskmaster
 
 		readonly System.Timers.Timer timer = null;
 
-		ProcessManager processmanager = null;
-		void Hook(ProcessManager procman)
+		Process.Manager processmanager = null;
+		void Hook(Process.Manager procman)
 		{
 			processmanager = procman;
 			processmanager.OnDisposed += (_, _ea) => processmanager = null;

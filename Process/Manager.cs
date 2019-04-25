@@ -1,5 +1,5 @@
 ﻿//
-// ProcessManager.cs
+// Process.Manager.cs
 //
 // Author:
 //       M.A. (https://github.com/mkahvi)
@@ -37,9 +37,8 @@ using MKAh;
 using MKAh.Logic;
 using Ini = MKAh.Ini;
 using Serilog;
-using MKAh.Ini;
 
-namespace Taskmaster
+namespace Taskmaster.Process
 {
 	using static Taskmaster;
 
@@ -72,9 +71,9 @@ namespace Taskmaster
 		}
 	}
 
-	sealed public class ProcessManager : IDisposal, IDisposable
+	sealed public class Manager : IDisposal, IDisposable
 	{
-		ProcessAnalyzer analyzer = null;
+		Analyzer analyzer = null;
 
 		public static bool DebugScan { get; set; } = false;
 		public static bool DebugPaths { get; set; } = false;
@@ -90,11 +89,11 @@ namespace Taskmaster
 		/// <summary>
 		/// Watch rules
 		/// </summary>
-		ConcurrentDictionary<ProcessController, int> Watchlist = new ConcurrentDictionary<ProcessController, int>();
+		ConcurrentDictionary<Controller, int> Watchlist = new ConcurrentDictionary<Controller, int>();
 
 		ConcurrentDictionary<int, DateTimeOffset> ScanBlockList = new ConcurrentDictionary<int, DateTimeOffset>();
 
-		Lazy<List<ProcessController>> WatchlistCache = null;
+		Lazy<List<Controller>> WatchlistCache = null;
 
 		readonly object watchlist_lock = new object();
 
@@ -104,13 +103,13 @@ namespace Taskmaster
 		public static TimeSpan? IgnoreRecentlyModified { get; set; } = TimeSpan.FromMinutes(30);
 
 		// ctor, constructor
-		public ProcessManager()
+		public Manager()
 		{
 			RenewWatchlistCache();
 
 			AllCPUsMask = Convert.ToInt32(Math.Pow(2, CPUCount) - 1 + double.Epsilon);
 
-			if (RecordAnalysis.HasValue) analyzer = new ProcessAnalyzer();
+			if (RecordAnalysis.HasValue) analyzer = new Analyzer();
 
 			//allCPUsMask = 1;
 			//for (int i = 0; i < CPUCount - 1; i++)
@@ -147,10 +146,10 @@ namespace Taskmaster
 		async void OnStart(object sender, EventArgs ea)
 			=> await Task.Run(() => Scan(), cts.Token).ContinueWith((_) => StartScanTimer(), cts.Token).ConfigureAwait(false);
 
-		public ProcessController[] getWatchlist() => Watchlist.Keys.ToArray();
+		public Controller[] getWatchlist() => Watchlist.Keys.ToArray();
 
 		// TODO: Need an ID mapping
-		public bool GetControllerByName(string friendlyname, out ProcessController controller)
+		public bool GetControllerByName(string friendlyname, out Controller controller)
 			=> (controller = (from prc
 					in Watchlist.Keys
 					where prc.FriendlyName.Equals(friendlyname, StringComparison.InvariantCultureIgnoreCase)
@@ -160,9 +159,9 @@ namespace Taskmaster
 		/// <summary>
 		/// Executable name to ProcessControl mapping.
 		/// </summary>
-		ConcurrentDictionary<string, ProcessController> ExeToController = new ConcurrentDictionary<string, ProcessController>();
+		ConcurrentDictionary<string, Controller> ExeToController = new ConcurrentDictionary<string, Controller>();
 
-		public bool GetController(ProcessEx info, out ProcessController prc)
+		public bool GetController(ProcessEx info, out Controller prc)
 		{
 			if (info.Controller != null)
 			{
@@ -185,8 +184,8 @@ namespace Taskmaster
 		public int DefaultBackgroundPriority = 1;
 		public int DefaultBackgroundAffinity = 0;
 
-		ActiveAppManager activeappmonitor = null;
-		public void Hook(ActiveAppManager manager)
+		ForegroundManager activeappmonitor = null;
+		public void Hook(ForegroundManager manager)
 		{
 			activeappmonitor = manager;
 			activeappmonitor.ActiveChanged += ForegroundAppChangedEvent;
@@ -224,7 +223,7 @@ namespace Taskmaster
 				}
 				else
 				{
-					var procs = Process.GetProcessesByName(executable); // unnecessary maybe?
+					var procs = System.Diagnostics.Process.GetProcessesByName(executable); // unnecessary maybe?
 					if (procs.Length == 0)
 					{
 						Log.Error(executable + " not found, not freeing memory for it.");
@@ -377,7 +376,7 @@ namespace Taskmaster
 			catch (ObjectDisposedException) { Statistics.DisposedAccesses++; }
 		}
 
-		readonly int SelfPID = Process.GetCurrentProcess().Id;
+		readonly int SelfPID = System.Diagnostics.Process.GetCurrentProcess().Id;
 
 		int ScanFoundProcs = 0;
 
@@ -399,7 +398,7 @@ namespace Taskmaster
 
 				if (!SystemProcessId(ignorePid)) Ignore(ignorePid);
 
-				var procs = Process.GetProcesses();
+				var procs = System.Diagnostics.Process.GetProcesses();
 				ScanFoundProcs = procs.Length - 2; // -2 for Idle&System
 				Debug.Assert(ScanFoundProcs > 0, "System has no running processes"); // should be impossible to fail
 				SignalProcessHandled(ScanFoundProcs); // scan start
@@ -458,7 +457,7 @@ namespace Taskmaster
 			return true;
 		}
 
-		private void ScanTriage(Process process, bool PageToDisk=false)
+		private void ScanTriage(System.Diagnostics.Process process, bool PageToDisk=false)
 		{
 			cts.Token.ThrowIfCancellationRequested();
 
@@ -615,7 +614,7 @@ namespace Taskmaster
 		readonly System.Timers.Timer MaintenanceTimer = null;
 
 		// move all this to prc.Validate() or prc.SanityCheck();
-		bool ValidateController(ProcessController prc)
+		bool ValidateController(Controller prc)
 		{
 			var rv = true;
 
@@ -651,7 +650,7 @@ namespace Taskmaster
 			return rv;
 		}
 
-		void SaveController(ProcessController prc)
+		void SaveController(Controller prc)
 		{
 			lock (watchlist_lock)
 			{
@@ -910,7 +909,7 @@ namespace Taskmaster
 					else
 						tignorelist = null;
 
-					var prc = new ProcessController(section.Name, prioR, aff)
+					var prc = new Controller(section.Name, prioR, aff)
 					{
 						Enabled = (section.Get(HumanReadable.Generic.Enabled)?.Bool ?? true),
 						Executable = (ruleExec?.Value ?? null),
@@ -1002,7 +1001,7 @@ namespace Taskmaster
 
 		void OnControllerAdjust(object sender, ProcessModificationEventArgs ea)
 		{
-			if (sender is ProcessController prc)
+			if (sender is Controller prc)
 			{
 				if (!prc.LogAdjusts) return;
 
@@ -1080,11 +1079,11 @@ namespace Taskmaster
 
 		void RenewWatchlistCache()
 		{
-			WatchlistCache = new Lazy<List<ProcessController>>(LazyRecacheWatchlist);
+			WatchlistCache = new Lazy<List<Controller>>(LazyRecacheWatchlist);
 			ResetWatchlistCancellation();
 		}
 
-		List<ProcessController> LazyRecacheWatchlist() => Watchlist.Keys.ToList();
+		List<Controller> LazyRecacheWatchlist() => Watchlist.Keys.ToList();
 		CancellationTokenSource watchlist_cts = new CancellationTokenSource();
 
 		void ResetWatchlistCancellation()
@@ -1122,7 +1121,7 @@ namespace Taskmaster
 			}
 		}
 
-		int WatchlistSorter(ProcessController x, ProcessController y)
+		int WatchlistSorter(Controller x, Controller y)
 		{
 			if (x.Enabled && !y.Enabled) return -1;
 			else if (!x.Enabled && y.Enabled) return 1;
@@ -1137,7 +1136,7 @@ namespace Taskmaster
 
 		public event EventHandler WatchlistSorted;
 
-		public void AddController(ProcessController prc)
+		public void AddController(Controller prc)
 		{
 			if (DisposedOrDisposing) throw new ObjectDisposedException("AddController called when ProcessManager was already disposed");
 
@@ -1182,7 +1181,7 @@ namespace Taskmaster
 			throw new NotImplementedException();
 		}
 
-		public void RemoveController(ProcessController prc)
+		public void RemoveController(Controller prc)
 		{
 			if (!string.IsNullOrEmpty(prc.ExecutableFriendlyName))
 				ExeToController.TryRemove(prc.ExecutableFriendlyName.ToLowerInvariant(), out _);
@@ -1315,14 +1314,14 @@ namespace Taskmaster
 
 		public ProcessEx[] getExitWaitList() => WaitForExitList.Values.ToArray(); // copy is good here
 
-		ProcessController PreviousForegroundController = null;
+		Controller PreviousForegroundController = null;
 		ProcessEx PreviousForegroundInfo;
 
 		void ForegroundAppChangedEvent(object _sender, WindowChangedArgs ev)
 		{
 			if (DisposedOrDisposing) return;
 
-			Process process = ev.Process;
+			System.Diagnostics.Process process = ev.Process;
 			try
 			{
 				if (DebugForeground) Log.Verbose("<Process> Foreground Received: #" + ev.Id);
@@ -1384,7 +1383,7 @@ namespace Taskmaster
 				{
 					try
 					{
-						if (process is null) process = Process.GetProcessById(ev.Id);
+						if (process is null) process = System.Diagnostics.Process.GetProcessById(ev.Id);
 						ProcessUtility.SetIO(process, 2, out _, decrease: false); // set foreground app I/O to highest possible
 					}
 					catch (Exception ex) when (ex is NullReferenceException || ex is OutOfMemoryException) { throw; }
@@ -1401,7 +1400,7 @@ namespace Taskmaster
 		/// </summary>
 		int WatchlistWithPath = 0;
 
-		bool GetPathController(ProcessEx info, out ProcessController prc)
+		bool GetPathController(ProcessEx info, out Controller prc)
 		{
 			prc = null;
 
@@ -1661,7 +1660,7 @@ namespace Taskmaster
 					return; // ProcessState.AccessDenied;
 				}
 
-				ProcessController prc = null;
+				Controller prc = null;
 				if (ExeToController.TryGetValue(info.Name.ToLowerInvariant(), out prc))
 					info.Controller = prc; // fill
 
@@ -1805,7 +1804,7 @@ namespace Taskmaster
 			{
 				lock (Exclusive_lock)
 				{
-					if (sender is Process process && ExclusiveList.TryRemove(process.Id, out var info))
+					if (sender is System.Diagnostics.Process process && ExclusiveList.TryRemove(process.Id, out var info))
 					{
 						if (DebugProcesses) Log.Debug($"<Exclusive> [{info.Controller.FriendlyName}] {info.Name} (#{info.Id.ToString()}) ending");
 						if (ExclusiveList.Count == 0)
@@ -2063,7 +2062,7 @@ namespace Taskmaster
 			{
 				try
 				{
-					info.Process = Process.GetProcessById(info.Id);
+					info.Process = System.Diagnostics.Process.GetProcessById(info.Id);
 				}
 				catch (ArgumentException)
 				{

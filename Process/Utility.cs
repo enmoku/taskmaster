@@ -37,7 +37,7 @@ namespace Taskmaster
 		/// Throws: InvalidOperationException, ArgumentException
 		/// </summary>
 		/// <param name="target">0 = Background, 1 = Low, 2 = Normal, 3 = Elevated, 4 = High</param>
-		public static int SetIO(Process process, int target, out int newIO, bool decrease=true)
+		public static int SetIO(System.Diagnostics.Process process, int target, out int newIO, bool decrease=true)
 		{
 			int handle = 0;
 			int original = -1;
@@ -95,10 +95,10 @@ namespace Taskmaster
 		}
 
 		// Windows doesn't allow setting this for other processes
-		public static bool SetBackground(Process process)
+		public static bool SetBackground(System.Diagnostics.Process process)
 			=> SafeSetIOPriority(process, PriorityTypes.PROCESS_MODE_BACKGROUND_BEGIN);
 
-		public static bool UnsetBackground(Process process)
+		public static bool UnsetBackground(System.Diagnostics.Process process)
 			=> SafeSetIOPriority(process, PriorityTypes.PROCESS_MODE_BACKGROUND_END);
 
 		/// <summary>
@@ -106,7 +106,7 @@ namespace Taskmaster
 		/// Would require invasive injecting to other process to affect them.
 		/// </summary>
 		/// <exception>None</exception>
-		internal static bool SafeSetIOPriority(Process process, PriorityTypes priority)
+		internal static bool SafeSetIOPriority(System.Diagnostics.Process process, PriorityTypes priority)
 		{
 			try
 			{
@@ -125,11 +125,11 @@ namespace Taskmaster
 		public static void InitializeCache()
 			=> pathCache = new Cache<int, string, string>(Taskmaster.PathCacheMaxAge, (uint)Taskmaster.PathCacheLimit, (uint)(Taskmaster.PathCacheLimit / 10).Constrain(20, 60));
 
-		public static bool GetInfo(int ProcessID, out ProcessEx info, Process process = null, ProcessController controller = null, string name = null, string path = null, bool getPath = false)
+		public static bool GetInfo(int ProcessID, out ProcessEx info, System.Diagnostics.Process process = null, Process.Controller controller = null, string name = null, string path = null, bool getPath = false)
 		{
 			try
 			{
-				if (process == null) process = Process.GetProcessById(ProcessID);
+				if (process == null) process = System.Diagnostics.Process.GetProcessById(ProcessID);
 
 				info = new ProcessEx()
 				{

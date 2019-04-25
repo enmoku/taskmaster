@@ -247,7 +247,7 @@ namespace Taskmaster
 
 		static void OptimizeResponsiviness(bool shown=false)
 		{
-			var self = Process.GetCurrentProcess();
+			var self = System.Diagnostics.Process.GetCurrentProcess();
 
 			if (shown)
 			{
@@ -436,7 +436,7 @@ namespace Taskmaster
 					}
 
 					// COMMAND-LINE ARGUMENTS
-					ParseArguments(args);
+					CommandLine.ParseArguments(args);
 					args = null; // silly
 
 					// STARTUP
@@ -448,7 +448,7 @@ namespace Taskmaster
 						var age = (now - builddate).TotalDays;
 						
 						var sbs = new StringBuilder()
-							.Append(Name).Append("! (#").Append(Process.GetCurrentProcess().Id).Append(")")
+							.Append(Name).Append("! (#").Append(System.Diagnostics.Process.GetCurrentProcess().Id).Append(")")
 							.Append(MKAh.Execution.IsAdministrator ? " [ADMIN]" : "").Append(Portable ? " [PORTABLE]" : "")
 							.Append(" – Version: ").Append(Version)
 							.Append(" – Built: ").Append(builddate.ToString("yyyy/MM/dd HH:mm")).Append($" [{age:N0} days old]");
@@ -484,7 +484,7 @@ namespace Taskmaster
 
 				if (SelfOptimize) // return decent processing speed to quickly exit
 				{
-					var self = Process.GetCurrentProcess();
+					var self = System.Diagnostics.Process.GetCurrentProcess();
 					self.PriorityClass = ProcessPriorityClass.AboveNormal;
 					if (SelfOptimizeBGIO)
 						MKAh.Utility.DiscardExceptions(() => ProcessUtility.SetBackground(self));
@@ -500,7 +500,7 @@ namespace Taskmaster
 
 				Utility.Dispose(ref Config);
 
-				Log.Information(Name + "! (#" + Process.GetCurrentProcess().Id + ") END! [Clean]");
+				Log.Information(Name + "! (#" + System.Diagnostics.Process.GetCurrentProcess().Id + ") END! [Clean]");
 
 				if (State == Runstate.Restart) // happens only on power resume (waking from hibernation) or when manually set
 				{
@@ -596,24 +596,11 @@ namespace Taskmaster
 				if (!System.IO.File.Exists(Application.ExecutablePath))
 					Log.Fatal("Executable missing: " + Application.ExecutablePath); // this should be "impossible"
 
-				var info = Process.GetCurrentProcess().StartInfo;
-				//info.FileName = Process.GetCurrentProcess().ProcessName;
-				info.WorkingDirectory = System.IO.Path.GetDirectoryName(Application.ExecutablePath);
-				info.FileName = System.IO.Path.GetFileName(Application.ExecutablePath);
-
-				var nargs = new List<string> { RestartArg, (++RestartCounter).ToString() };  // has no real effect
-				if (RestartElevated)
-				{
-					nargs.Add(AdminArg);
-					nargs.Add((++AdminCounter).ToString());
-					info.Verb = "runas"; // elevate privileges
-				}
-
-				info.Arguments = string.Join(" ", nargs);
+				CommandLine.NewProcessInfo(out var info, RestartElevated);
 
 				Log.CloseAndFlush();
 
-				Process.Start(info);
+				System.Diagnostics.Process.Start(info);
 			}
 			catch (Exception ex)
 			{

@@ -182,8 +182,8 @@ namespace Taskmaster
 		}
 
 
-		ProcessManager processmanager = null;
-		public void Hook(ProcessManager manager)
+		Process.Manager processmanager = null;
+		public void Hook(Process.Manager manager)
 		{
 			processmanager = manager;
 			processmanager.OnDisposed += (_, _ea) => processmanager = null;

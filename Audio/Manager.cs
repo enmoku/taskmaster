@@ -205,8 +205,8 @@ namespace Taskmaster.Audio
 			}
 		}
 
-		ProcessManager processmanager = null;
-		public void Hook(ProcessManager procman)
+		Process.Manager processmanager = null;
+		public void Hook(Process.Manager procman)
 		{
 			processmanager = procman;
 			processmanager.OnDisposed += (_, _ea) => processmanager = null;

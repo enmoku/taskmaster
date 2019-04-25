@@ -166,9 +166,9 @@ namespace Taskmaster
 						int pid = proc.Id;
 						string name = proc.ProcessName;
 
-						if (ProcessManager.SystemProcessId(pid)) continue;
-						if (ProcessManager.ProtectedProcessName(name)) continue;
-						if (ProcessManager.IgnoreProcessName(name)) continue;
+						if (Process.Manager.SystemProcessId(pid)) continue;
+						if (Process.Manager.ProtectedProcessName(name)) continue;
+						if (Process.Manager.IgnoreProcessName(name)) continue;
 
 						if (ProcessUtility.GetInfo(pid, out var info, proc, name: proc.ProcessName, getPath: true))
 							InfoList.Add(info);

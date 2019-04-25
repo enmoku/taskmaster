@@ -29,85 +29,88 @@ using System.Diagnostics;
 
 namespace Taskmaster
 {
-    public static partial class Taskmaster
-    {
-        public static Audio.MicManager micmonitor = null;
-        public static UI.MainWindow mainwindow = null;
-        public static UI.VolumeMeter volumemeter = null;
-        public static ProcessManager processmanager = null;
-        public static UI.TrayAccess trayaccess = null;
-        public static Network.Manager netmonitor = null;
-        public static StorageManager storagemanager = null;
-        public static Power.Manager powermanager = null;
-        public static ActiveAppManager activeappmonitor = null;
-        public static HealthMonitor healthmonitor = null;
-        public static SelfMaintenance selfmaintenance = null;
-        public static Audio.Manager audiomanager = null;
-        public static CPUMonitor cpumonitor = null;
-        public static HardwareMonitor hardware = null;
-        public static AlertManager alerts = null;
+	public static partial class Taskmaster
+	{
+		public static Audio.MicManager micmonitor = null;
+		public static UI.MainWindow mainwindow = null;
+		public static UI.VolumeMeter volumemeter = null;
+		public static Process.Manager processmanager = null;
+		public static UI.TrayAccess trayaccess = null;
+		public static Network.Manager netmonitor = null;
+		public static StorageManager storagemanager = null;
+		public static Power.Manager powermanager = null;
+		public static Process.ForegroundManager activeappmonitor = null;
+		public static HealthMonitor healthmonitor = null;
+		public static SelfMaintenance selfmaintenance = null;
+		public static Audio.Manager audiomanager = null;
+		public static CPUMonitor cpumonitor = null;
+		public static HardwareMonitor hardware = null;
+		public static AlertManager alerts = null;
 
-        public static bool ShowProcessAdjusts { get; set; } = true;
-        public static bool ShowSessionActions { get; set; } = true;
+		public static bool ShowProcessAdjusts { get; set; } = true;
+		public static bool ShowSessionActions { get; set; } = true;
 
-        public static bool DebugAudio { get; set; } = false;
+		public static bool DebugAudio { get; set; } = false;
 
-        public static bool DebugForeground { get; set; } = false;
+		public static bool DebugForeground { get; set; } = false;
 
-        public static bool DebugPower { get; set; } = false;
-        public static bool DebugMonitor { get; set; } = false;
+		public static bool DebugPower { get; set; } = false;
+		public static bool DebugMonitor { get; set; } = false;
 
-        public static bool DebugSession { get; set; } = false;
-        public static bool DebugResize { get; set; } = false;
+		public static bool DebugSession { get; set; } = false;
+		public static bool DebugResize { get; set; } = false;
 
-        public static bool DebugMemory { get; set; } = false;
+		public static bool DebugMemory { get; set; } = false;
 
-        public static bool Trace { get; set; } = false;
-        public static bool UniqueCrashLogs { get; set; } = false;
-        public static bool ShowInaction { get; set; } = false;
-        public static bool ShowAgency { get; set; } = false;
+		public static bool Trace { get; set; } = false;
+		public static bool UniqueCrashLogs { get; set; } = false;
+		public static bool ShowInaction { get; set; } = false;
+		public static bool ShowAgency { get; set; } = false;
 
-        public static bool ProcessMonitorEnabled { get; private set; } = true;
-        public static bool MicrophoneManagerEnabled { get; private set; } = false;
-        // public static bool MediaMonitorEnabled { get; private set; } = true;
-        public static bool NetworkMonitorEnabled { get; private set; } = true;
-        public static bool PagingEnabled { get; private set; } = true;
-        public static bool ActiveAppMonitorEnabled { get; private set; } = true;
-        public static bool PowerManagerEnabled { get; private set; } = true;
-        public static bool MaintenanceMonitorEnabled { get; private set; } = true;
-        public static bool StorageMonitorEnabled { get; private set; } = true;
-        public static bool HealthMonitorEnabled { get; private set; } = true;
-        public static bool AudioManagerEnabled { get; private set; } = true;
-        public static bool HardwareMonitorEnabled { get; private set; } = false;
-        public static bool AlertManagerEnabled { get; private set; } = false;
+		public static bool ProcessMonitorEnabled { get; private set; } = true;
+		public static bool MicrophoneManagerEnabled { get; private set; } = false;
+		// public static bool MediaMonitorEnabled { get; private set; } = true;
+		public static bool NetworkMonitorEnabled { get; private set; } = true;
+		public static bool PagingEnabled { get; private set; } = true;
+		public static bool ActiveAppMonitorEnabled { get; private set; } = true;
+		public static bool PowerManagerEnabled { get; private set; } = true;
+		public static bool MaintenanceMonitorEnabled { get; private set; } = true;
+		public static bool StorageMonitorEnabled { get; private set; } = true;
+		public static bool HealthMonitorEnabled { get; private set; } = true;
+		public static bool AudioManagerEnabled { get; private set; } = true;
+		public static bool HardwareMonitorEnabled { get; private set; } = false;
+		public static bool AlertManagerEnabled { get; private set; } = false;
 
-        // EXPERIMENTAL FEATURES
-        public static bool TempMonitorEnabled { get; private set; } = false;
-        public static bool LastModifiedList { get; private set; } = false;
-        public static TimeSpan? RecordAnalysis { get; set; } = null;
-        public static bool IOPriorityEnabled { get; private set; } = false;
+		// EXPERIMENTAL FEATURES
+		public static bool TempMonitorEnabled { get; private set; } = false;
+		public static bool LastModifiedList { get; private set; } = false;
+		public static TimeSpan? RecordAnalysis { get; set; } = null;
+		public static bool IOPriorityEnabled { get; private set; } = false;
 
-        // DEBUG INFO
-        public static bool DebugCache { get; private set; } = false;
+		// DEBUG INFO
+		public static bool DebugCache { get; private set; } = false;
 
-        public static bool ShowOnStart { get; private set; } = true;
-        public static bool ShowVolOnStart { get; private set; } = false;
+		public static bool ShowOnStart { get; private set; } = true;
+		public static bool ShowVolOnStart { get; private set; } = false;
 
-        public static bool SelfOptimize { get; private set; } = true;
-        public static ProcessPriorityClass SelfPriority { get; private set; } = ProcessPriorityClass.BelowNormal;
-        public static bool SelfOptimizeBGIO { get; private set; } = false;
-        public static int SelfAffinity { get; private set; } = 0;
+		public static bool SelfOptimize { get; private set; } = true;
+		public static ProcessPriorityClass SelfPriority { get; private set; } = ProcessPriorityClass.BelowNormal;
+		public static bool SelfOptimizeBGIO { get; private set; } = false;
+		public static int SelfAffinity { get; private set; } = 0;
 
-        // public static bool LowMemory { get; private set; } = true; // low memory mode; figure out way to auto-enable this when system is low on memory
+		// public static bool LowMemory { get; private set; } = true; // low memory mode; figure out way to auto-enable this when system is low on memory
 
-        public static int TempRescanDelay { get; set; } = 60 * 60_000; // 60 minutes
-        public static int TempRescanThreshold { get; set; } = 1000;
+		public static int TempRescanDelay { get; set; } = 60 * 60_000; // 60 minutes
+		public static int TempRescanThreshold { get; set; } = 1000;
 
-        public static int PathCacheLimit { get; set; } = 200;
-        public static TimeSpan PathCacheMaxAge { get; set; } = new TimeSpan(30, 0, 0);
+		public static int PathCacheLimit { get; set; } = 200;
+		public static TimeSpan PathCacheMaxAge { get; set; } = new TimeSpan(30, 0, 0);
 
-        public static bool ExitConfirmation { get; set; } = true;
-        public static int AffinityStyle { get; set; } = 0;
-        public static bool GlobalHotkeys { get; set; } = false;
-    }
+		public static bool ExitConfirmation { get; set; } = true;
+		public static int AffinityStyle { get; set; } = 0;
+		public static bool GlobalHotkeys { get; set; } = false;
+
+		internal static bool RestartElevated { get; set; } = false;
+		internal static int RestartCounter { get; set; } = 0;
+	}
 }

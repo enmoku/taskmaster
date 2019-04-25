@@ -62,52 +62,6 @@ namespace Taskmaster
 		[DllImport("user32.dll", CharSet = CharSet.Unicode, ThrowOnUnmappableChar = true)]
 		public static extern int GetWindowText(IntPtr hWnd, System.Text.StringBuilder text, int count);
 
-		[StructLayout(LayoutKind.Sequential)]
-		public struct RECT
-		{
-			public int Left;
-			public int Top;
-			public int Right;
-			public int Bottom;
-		}
-
-		[DllImport("user32.dll")]
-		[return: MarshalAs(UnmanagedType.Bool)]
-		public static extern bool GetWindowRect(IntPtr hWnd, [In, Out] ref RECT rect);
-
-		// for ProcessManager.cs
-
-		/// <summary>
-		/// Empties the working set.
-		/// </summary>
-		/// <returns>Uhh?</returns>
-		/// <param name="hwProc">Process handle.</param>
-		[DllImport("psapi.dll")]
-		public static extern int EmptyWorkingSet(IntPtr hwProc);
-
-		// for PowerManager.cs
-
-		// UserPowerKey is reserved for future functionality and must always be null
-		[DllImport("powrprof.dll", EntryPoint = "PowerSetActiveScheme")]
-		public static extern uint PowerSetActiveScheme(IntPtr UserPowerKey, ref Guid PowerPlanGuid);
-
-		[DllImport("powrprof.dll", EntryPoint = "PowerGetActiveScheme")]
-		public static extern uint PowerGetActiveScheme(IntPtr UserPowerKey, out IntPtr PowerPlanGuid);
-
-		public const int DEVICE_NOTIFY_WINDOW_HANDLE = 0x00000000; // DWORD
-
-		// SetLastError
-		[DllImport("user32.dll", EntryPoint = "RegisterPowerSettingNotification", CallingConvention = CallingConvention.StdCall)]
-		public static extern IntPtr RegisterPowerSettingNotification(IntPtr hRecipient, ref Guid PowerSettingGuid, int Flags);
-
-		[StructLayout(LayoutKind.Sequential, Pack = 4)]
-		public struct POWERBROADCAST_SETTING
-		{
-			public Guid PowerSetting;
-			public uint DataLength;
-			public byte Data;
-		}
-
 		// uMsg = uint, but Windows.Forms.Message.Msg is int
 		// lParam = int or long
 		// wParam = uint or ulong
@@ -115,10 +69,6 @@ namespace Taskmaster
 		public const int WM_HOTKEY = 0x0312; // uMsg
 		public const int WM_COMPACTING = 0x0041; // uMsg
 		public const int WM_SYSCOMMAND = 0x0112; // uMsg
-		public const int WM_POWERBROADCAST = 0x218; // uMsg
-
-		public const long SC_MONITORPOWER = 0xF170; // wParam
-		public const long PBT_POWERSETTINGCHANGE = 0x8013; // wParam
 
 		public const int HWND_BROADCAST = 0xFFFF; // hWnd
 		public const int HWND_TOPMOST = -1; // hWnd
@@ -153,20 +103,9 @@ namespace Taskmaster
 			IntPtr hWnd, int Msg, ulong wParam, long lParam,
 			SendMessageTimeoutFlags flags, uint timeout, out IntPtr result);
 
-		/// <summary>
-		/// The process must have PROCESS_QUERY_INFORMATION and PROCESS_VM_READ access rights.
-		/// </summary>
-		[DllImport("psapi.dll", SetLastError = true, CharSet = CharSet.Unicode, BestFitMapping = false, ThrowOnUnmappableChar = true)]
-		public static extern uint GetModuleFileNameEx(IntPtr hProcess, IntPtr hModule, [Out] System.Text.StringBuilder lpBaseName, [In] [MarshalAs(UnmanagedType.U4)] uint nSize);
-
 		[DllImport("kernel32.dll")] // SetLastError = true
 		[return: MarshalAs(UnmanagedType.Bool)]
 		public static extern bool CloseHandle(int Handle);
-
-		// for ProcessController.cs
-
-		[DllImport("kernel32.dll", CharSet = CharSet.Auto)] // SetLastError = true
-		public static extern bool SetPriorityClass(IntPtr handle, uint priorityClass);
 
 		//     No dialog box confirming the deletion of the objects will be displayed.
 		public const int SHERB_NOCONFIRMATION = 0x00000001;

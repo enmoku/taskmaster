@@ -207,7 +207,7 @@ namespace Taskmaster
 	public static partial class ProcessExtensions
 	{
 		/// <exception cref="Win32Exception">If system snapshot does not return anything.</exception>
-		public static int ParentProcessId(this Process process) => ParentProcessId(process.Id);
+		public static int ParentProcessId(this System.Diagnostics.Process process) => ParentProcessId(process.Id);
 
 		/// <exception cref="Win32Exception">If system snapshot does not return anything.</exception>
 		public static int ParentProcessId(int Id)

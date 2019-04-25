@@ -40,8 +40,8 @@ namespace Taskmaster.UI.Config
 
 	sealed public class WatchlistEditWindow : UI.UniForm
 	{
-		public ProcessController Controller;
-
+		public Process.Controller Controller;
+		
 		readonly bool newPrc = false;
 
 		// Adding
@@ -50,7 +50,7 @@ namespace Taskmaster.UI.Config
 		{
 			DialogResult = DialogResult.Abort;
 
-			Controller = new ProcessController("Unnamed") { Enabled = true };
+			Controller = new Process.Controller("Unnamed") { Enabled = true };
 
 			newPrc = true;
 
@@ -61,7 +61,7 @@ namespace Taskmaster.UI.Config
 		}
 
 		// Editingg
-		public WatchlistEditWindow(ProcessController controller)
+		public WatchlistEditWindow(Process.Controller controller)
 		{
 			DialogResult = DialogResult.Abort;
 
@@ -573,9 +573,9 @@ namespace Taskmaster.UI.Config
 			affinityMask = new NumericUpDown()
 			{
 				Width = 80,
-				Maximum = ProcessManager.AllCPUsMask,
+				Maximum = Process.Manager.AllCPUsMask,
 				Minimum = -1,
-				Value = Controller.AffinityMask.Constrain(-1, ProcessManager.AllCPUsMask),
+				Value = Controller.AffinityMask.Constrain(-1, Process.Manager.AllCPUsMask),
 			};
 
 			tooltip.SetToolTip(affinityMask, "CPU core afffinity as integer mask.\nEnter 0 to let OS manage this as normal.\nFull affinity is same as 0, there's no difference.\nExamples:\n14 = all but first core on quadcore.\n254 = all but first core on octocore.\n-1 = Ignored");
@@ -589,7 +589,7 @@ namespace Taskmaster.UI.Config
 			var corelayout = new TableLayoutPanel() { ColumnCount = 8, AutoSize = true };
 
 			cpumask = Controller.AffinityMask;
-			for (int bit = 0; bit < ProcessManager.CPUCount; bit++)
+			for (int bit = 0; bit < Process.Manager.CPUCount; bit++)
 			{
 				int lbit = bit;
 				var box = new CheckBox
@@ -658,9 +658,9 @@ namespace Taskmaster.UI.Config
 			idealAffinity = new NumericUpDown()
 			{
 				Width = 80,
-				Maximum = ProcessManager.CPUCount,
+				Maximum = Process.Manager.CPUCount,
 				Minimum = 0,
-				Value = (Controller.AffinityIdeal + 1).Constrain(0, ProcessManager.CPUCount),
+				Value = (Controller.AffinityIdeal + 1).Constrain(0, Process.Manager.CPUCount),
 			};
 			tooltip.SetToolTip(idealAffinity, "EXPERIMENTAL\nTell the OS to favor this particular core for the primary thread.\nMay not have any perceivable effect.\n0 disables this feature.");
 
@@ -732,7 +732,7 @@ namespace Taskmaster.UI.Config
 			bgAffinityMask = new NumericUpDown()
 			{
 				Width = 80,
-				Maximum = ProcessManager.AllCPUsMask,
+				Maximum = Process.Manager.AllCPUsMask,
 				Minimum = -1,
 				Value = Controller.BackgroundAffinity,
 			};
@@ -1001,7 +1001,7 @@ namespace Taskmaster.UI.Config
 			if (exnam)
 			{
 				var friendlyexe = System.IO.Path.GetFileNameWithoutExtension(execName.Text);
-				var procs = Process.GetProcessesByName(friendlyexe);
+				var procs = System.Diagnostics.Process.GetProcessesByName(friendlyexe);
 				exfound |= (procs.Length > 0);
 			}
 
@@ -1045,10 +1045,10 @@ namespace Taskmaster.UI.Config
 			{
 				sbs.Append(HumanReadable.System.Process.Executable).Append(": ").Append(exnam ? "OK" : "Fail").Append(" – Found: ").Append(exfound).AppendLine();
 				string lowname = System.IO.Path.GetFileNameWithoutExtension(execName.Text);
-				if (ProcessManager.ProtectedProcessName(lowname.ToLowerInvariant()))
+				if (Process.Manager.ProtectedProcessName(lowname.ToLowerInvariant()))
 					sbs.Append("Defined executable is in core protected executables list. Priority adjustment denied.").AppendLine();
 
-				if (ProcessManager.IgnoreProcessName(lowname))
+				if (Process.Manager.IgnoreProcessName(lowname))
 					sbs.Append("Defined executable is in core ignore list. All changes denied.").AppendLine();
 			}
 			if (pathName.Text.Length > 0)
@@ -1084,7 +1084,7 @@ namespace Taskmaster.UI.Config
 
 			if (affinityMask.Value >= 0 && idealAffinity.Value > 0)
 			{
-				if (!Bit.IsSet(Convert.ToInt32(affinityMask.Value).Replace(0, ProcessManager.AllCPUsMask), Convert.ToInt32(idealAffinity.Value) - 1))
+				if (!Bit.IsSet(Convert.ToInt32(affinityMask.Value).Replace(0, Process.Manager.AllCPUsMask), Convert.ToInt32(idealAffinity.Value) - 1))
 					sbs.Append("Affinity ideal is not within defined affinity.").AppendLine();
 			}
 

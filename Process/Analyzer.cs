@@ -36,13 +36,13 @@ using Serilog;
 using System.Collections.Concurrent;
 using System.Linq;
 
-namespace Taskmaster
+namespace Taskmaster.Process
 {
 	using static Taskmaster;
 
-	sealed public class ProcessAnalyzer
+	sealed public class Analyzer
 	{
-		public ProcessAnalyzer()
+		public Analyzer()
 		{
 			var modulepath = Path.Combine(DataPath, ModuleFile);
 			if (!File.Exists(modulepath) || new FileInfo(modulepath).LastWriteTimeUtc < BuildDate())
@@ -496,7 +496,10 @@ namespace Taskmaster
 		Disable,
 		Change,
 	}
+}
 
+namespace Taskmaster
+{
 	static partial class NativeMethods
 	{
 		[StructLayout(LayoutKind.Sequential)]

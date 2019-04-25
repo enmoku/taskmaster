@@ -1,5 +1,5 @@
 ﻿//
-// NativeMethods.Process.cs
+// Process.NativeMethods.cs
 //
 // Author:
 //       M.A. (https://github.com/mkahvi)
@@ -25,14 +25,23 @@
 // THE SOFTWARE.
 
 using System;
-using System.Diagnostics;
 using System.Runtime.InteropServices;
 
 namespace Taskmaster
 {
 	public static partial class NativeMethods
 	{
-		public static int OpenProcessFully(Process process)
+		[DllImport("kernel32.dll", CharSet = CharSet.Auto)] // SetLastError = true
+		public static extern bool SetPriorityClass(IntPtr handle, uint priorityClass);
+
+		/// <summary>
+		/// The process must have PROCESS_QUERY_INFORMATION and PROCESS_VM_READ access rights.
+		/// </summary>
+		[DllImport("psapi.dll", SetLastError = true, CharSet = CharSet.Unicode, BestFitMapping = false, ThrowOnUnmappableChar = true)]
+		public static extern uint GetModuleFileNameEx(IntPtr hProcess, IntPtr hModule, [Out] System.Text.StringBuilder lpBaseName, [In] [MarshalAs(UnmanagedType.U4)] uint nSize);
+
+
+		public static int OpenProcessFully(System.Diagnostics.Process process)
 		{
 			try
 			{
@@ -216,5 +225,26 @@ namespace Taskmaster
 		/// </summary>
 		[DllImport("kernel32.dll", SetLastError = true)]
 		public static extern int OpenProcess(PROCESS_RIGHTS dwDesiredAccess, bool bInheritHandle, int dwProcessId);
+
+		[StructLayout(LayoutKind.Sequential)]
+		public struct RECT
+		{
+			public int Left;
+			public int Top;
+			public int Right;
+			public int Bottom;
+		}
+
+		[DllImport("user32.dll")]
+		[return: MarshalAs(UnmanagedType.Bool)]
+		public static extern bool GetWindowRect(IntPtr hWnd, [In, Out] ref RECT rect);
+
+		/// <summary>
+		/// Empties the working set.
+		/// </summary>
+		/// <returns>Uhh?</returns>
+		/// <param name="hwProc">Process handle.</param>
+		[DllImport("psapi.dll")]
+		public static extern int EmptyWorkingSet(IntPtr hwProc);
 	}
 }

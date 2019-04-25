@@ -1,5 +1,5 @@
 //
-// ProcessController.cs
+// Process.Controller.cs
 //
 // Author:
 //       M.A. (https://github.com/mkahvi)
@@ -37,14 +37,14 @@ using MKAh.Logic;
 using Ini = MKAh.Ini;
 using Serilog;
 
-namespace Taskmaster
+namespace Taskmaster.Process
 {
 	using static Taskmaster;
 
 	/// <summary>
 	/// Process controller.
 	/// </summary>
-	sealed public class ProcessController : IDisposable
+	sealed public class Controller : IDisposable
 	{
 		// EVENTS
 		public event EventHandler<ProcessModificationEventArgs> Modified;
@@ -103,6 +103,50 @@ namespace Taskmaster
 		public bool ExclusiveMode { get; set; } = false;
 
 		public string Path { get; set; } = string.Empty;
+
+		Lazy<System.Text.RegularExpressions.Regex> FastMatchExp = null;
+		void ResetFastMatch() => FastMatchExp = new Lazy<System.Text.RegularExpressions.Regex>(GenerateRegex);
+		public bool FastMatch(string match) => FastMatchExp.Value.IsMatch(match);
+
+		public bool CanFastMatch => FastMatchExp.IsValueCreated;
+
+		const string FilePathPadding = @"(.*)?\\";
+		const string FilePathPaddingForSlash = @"[(.*)((.*)?\\)?]";
+
+		System.Text.RegularExpressions.Regex GenerateRegex()
+		{
+			string path = string.Empty;
+			string exe = string.Empty;
+			bool hPath = false, hFile = false, endsWithSlash=false;
+			if (!string.IsNullOrEmpty(Path))
+			{
+				path = "^" + System.Text.RegularExpressions.Regex.Escape(Path);
+				endsWithSlash = !(Path[-1] is '\\');
+				hPath = true;
+			}
+			if (!string.IsNullOrEmpty(Executable))
+			{
+				exe = System.Text.RegularExpressions.Regex.Escape(Executable) + "$";
+				hFile = true;
+			}
+
+			bool both = hFile && hPath;
+
+			//
+			//
+			// c:\ (.*)?\\ exe = c:\a\exe
+			// c: .*\\ exe = c:\exe
+			// c:\ [(.*)((.*)?\\)?] exe = both of the above
+			// \\ exe
+			// c:\
+
+			var res = path + (both ? (endsWithSlash ? FilePathPaddingForSlash : FilePathPadding) : (hFile ? @"\\" : string.Empty)) + exe;
+			Debug.WriteLine("Process.Controller.GenerateRegex = " + res);
+
+			var regex = new System.Text.RegularExpressions.Regex(res,
+			System.Text.RegularExpressions.RegexOptions.Singleline | System.Text.RegularExpressions.RegexOptions.Compiled | System.Text.RegularExpressions.RegexOptions.ExplicitCapture);
+			return regex;
+		}
 
 		int PathElements { get; set; }  = 0;
 
@@ -184,8 +228,11 @@ namespace Taskmaster
 		/// </summary>
 		public int ModifyDelay { get; set; } = 0;
 
-		public ProcessController(string name, ProcessPriorityClass? priority = null, int affinity = -1)
+		public Controller(string name, ProcessPriorityClass? priority = null, int affinity = -1)
 		{
+			ResetFastMatch();
+			
+
 			FriendlyName = name;
 			// Executable = executable;
 
@@ -389,7 +436,7 @@ namespace Taskmaster
 
 		public void SetName(string newName)
 		{
-			using (var cfg = Config.Load(ProcessManager.WatchlistFile).BlockUnload())
+			using (var cfg = Config.Load(Manager.WatchlistFile).BlockUnload())
 			{
 				if (cfg.Config.TryGet(FriendlyName, out var section))
 					section.Name = newName;
@@ -399,13 +446,13 @@ namespace Taskmaster
 
 		public void DeleteConfig()
 		{
-			using (var cfg = Config.Load(ProcessManager.WatchlistFile).BlockUnload())
+			using (var cfg = Config.Load(Manager.WatchlistFile).BlockUnload())
 				cfg.Config.TryRemove(FriendlyName); // remove the section, removes the items in the section
 		}
 
 		void ProcessExitEvent(object sender, EventArgs _ea)
 		{
-			if (sender is Process process)
+			if (sender is System.Diagnostics.Process process)
 				RecentlyModified.TryRemove(process.Id, out _);
 		}
 
@@ -414,7 +461,7 @@ namespace Taskmaster
 		/// </summary>
 		public void End(object sender, EventArgs _ea)
 		{
-			var process = (Process)sender;
+			var process = sender as System.Diagnostics.Process;
 
 			if (ActiveWait.TryGetValue(process.Id, out var info))
 			{
@@ -432,7 +479,7 @@ namespace Taskmaster
 		/// </summary>
 		public void Refresh()
 		{
-			if (DebugPower || ProcessManager.DebugProcesses) Log.Debug($"[{FriendlyName}] Refresh");
+			if (DebugPower || Manager.DebugProcesses) Log.Debug($"[{FriendlyName}] Refresh");
 
 			ClearActive();
 			ClearPower();
@@ -460,7 +507,7 @@ namespace Taskmaster
 
 		public void SaveConfig()
 		{
-			using (var cfg = Config.Load(ProcessManager.WatchlistFile).BlockUnload())
+			using (var cfg = Config.Load(Manager.WatchlistFile).BlockUnload())
 			{
 				Debug.WriteLine("Saving: " + FriendlyName);
 				SaveConfig(cfg.File);
@@ -689,13 +736,13 @@ namespace Taskmaster
 				{
 					if (oldAffinity != BackgroundAffinity)
 					{
-						info.Process.ProcessorAffinity = new IntPtr(BackgroundAffinity.Replace(0, ProcessManager.AllCPUsMask));
+						info.Process.ProcessorAffinity = new IntPtr(BackgroundAffinity.Replace(0, Manager.AllCPUsMask));
 						mAffinity = true;
 					}
 				}
 				else if (AffinityMask >= 0 && EstablishNewAffinity(oldAffinity, out int newAffinityMask)) // set foreground affinity otherwise
 				{
-					info.Process.ProcessorAffinity = new IntPtr(BackgroundAffinity.Replace(0, ProcessManager.AllCPUsMask));
+					info.Process.ProcessorAffinity = new IntPtr(BackgroundAffinity.Replace(0, Manager.AllCPUsMask));
 					mAffinity = true;
 				}
 			}
@@ -768,7 +815,7 @@ namespace Taskmaster
 				oldAffinity = info.Process.ProcessorAffinity.ToInt32();
 				if (AffinityMask >= 0 && EstablishNewAffinity(oldAffinity, out newAffinity))
 				{
-					info.Process.ProcessorAffinity = new IntPtr(newAffinity.Replace(0, ProcessManager.AllCPUsMask));
+					info.Process.ProcessorAffinity = new IntPtr(newAffinity.Replace(0, Manager.AllCPUsMask));
 					mAffinity = true;
 				}
 
@@ -1030,7 +1077,7 @@ namespace Taskmaster
 		async Task Touch(ProcessEx info, bool refresh = false)
 		{
 			Debug.Assert(info.Process != null, "ProcessController.Touch given null process.");
-			Debug.Assert(!ProcessManager.SystemProcessId(info.Id), "ProcessController.Touch given invalid process ID");
+			Debug.Assert(!Manager.SystemProcessId(info.Id), "ProcessController.Touch given invalid process ID");
 			Debug.Assert(!string.IsNullOrEmpty(info.Name), "ProcessController.Touch given empty process name.");
 			Debug.Assert(info.Controller != null, "No controller attached");
 
@@ -1066,7 +1113,7 @@ namespace Taskmaster
 
 					if (info.Process.HasExited)
 					{
-						if (ProcessManager.DebugProcesses)
+						if (Manager.DebugProcesses)
 							Log.Debug("[" + FriendlyName + "] " + info.Name + " (#" + info.Id + ") has already exited.");
 						info.State = ProcessHandlingState.Exited;
 						return; // return ProcessState.Invalid;
@@ -1074,7 +1121,7 @@ namespace Taskmaster
 
 					oldAffinity = info.Process.ProcessorAffinity;
 					oldPriority = info.Process.PriorityClass;
-					oldAffinityMask = oldAffinity.Value.ToInt32().Replace(0, ProcessManager.AllCPUsMask);
+					oldAffinityMask = oldAffinity.Value.ToInt32().Replace(0, Manager.AllCPUsMask);
 				}
 				catch (InvalidOperationException) // Already exited
 				{
@@ -1106,7 +1153,7 @@ namespace Taskmaster
 					{
 						if (ormt.FreeWill)
 						{
-							if (ShowInaction && ProcessManager.DebugProcesses)
+							if (ShowInaction && Manager.DebugProcesses)
 								Log.Debug($"[{FriendlyName}] {FormatPathName(info)} (#{info.Id.ToString()}) has been granted agency, ignoring.");
 							info.State = ProcessHandlingState.Abandoned;
 							return;
@@ -1127,10 +1174,10 @@ namespace Taskmaster
 							expected = true;
 						}
 
-						if (ormt.LastIgnored.TimeTo(now) < ProcessManager.IgnoreRecentlyModified ||
-							ormt.LastModified.TimeTo(now) < ProcessManager.IgnoreRecentlyModified)
+						if (ormt.LastIgnored.TimeTo(now) < Manager.IgnoreRecentlyModified ||
+							ormt.LastModified.TimeTo(now) < Manager.IgnoreRecentlyModified)
 						{
-							if (ProcessManager.DebugProcesses) Log.Debug($"[{FriendlyName}] #{info.Id} ignored due to recent modification. {(expected ? $" Expected: {ormt.ExpectedState} :)" : $" Unexpected: {ormt.ExpectedState} :(")}");
+							if (Manager.DebugProcesses) Log.Debug($"[{FriendlyName}] #{info.Id} ignored due to recent modification. {(expected ? $" Expected: {ormt.ExpectedState} :)" : $" Unexpected: {ormt.ExpectedState} :(")}");
 
 							if (ormt.ExpectedState == -2) // 2-3 seems good number
 							{
@@ -1165,7 +1212,7 @@ namespace Taskmaster
 					}
 					else
 					{
-						if (ProcessManager.DebugProcesses) Log.Debug($"[{FriendlyName}] #{info.Id.ToString()} passed because name does not match; new: {info.Name}, old: {ormt.Info.Name}");
+						if (Manager.DebugProcesses) Log.Debug($"[{FriendlyName}] #{info.Id.ToString()} passed because name does not match; new: {info.Name}, old: {ormt.Info.Name}");
 
 						RecentlyModified.TryRemove(info.Id, out _); // id does not match name
 					}
@@ -1176,7 +1223,7 @@ namespace Taskmaster
 
 				if (IgnoreList != null && IgnoreList.Any(item => item.Equals(info.Name, StringComparison.InvariantCultureIgnoreCase)))
 				{
-					if (ShowInaction && ProcessManager.DebugProcesses)
+					if (ShowInaction && Manager.DebugProcesses)
 						Log.Debug($"[{FriendlyName}] {info.Name} (#{info.Id.ToString()}) ignored due to user defined rule.");
 					info.State = ProcessHandlingState.Abandoned;
 					return; // return ProcessState.Ignored;
@@ -1184,10 +1231,10 @@ namespace Taskmaster
 
 				info.Valid = true;
 
-				bool isProtectedFile = ProcessManager.ProtectedProcessName(info.Name);
+				bool isProtectedFile = Manager.ProtectedProcessName(info.Name);
 				// TODO: IgnoreSystem32Path
 
-				if (isProtectedFile && ShowInaction && ProcessManager.DebugProcesses)
+				if (isProtectedFile && ShowInaction && Manager.DebugProcesses)
 					Log.Debug($"[{FriendlyName}] {info.Name} (#{info.Id.ToString()}) in protected list, limiting tampering.");
 
 				ProcessPriorityClass? newPriority = null;
@@ -1225,7 +1272,7 @@ namespace Taskmaster
 				}
 				else
 				{
-					if (ShowInaction && ProcessManager.DebugProcesses)
+					if (ShowInaction && Manager.DebugProcesses)
 						Log.Verbose($"[{FriendlyName}] {info.Name} (#{info.Id}) PROTECTED");
 				}
 
@@ -1251,11 +1298,11 @@ namespace Taskmaster
 
 				if (AffinityMask >= 0)
 				{
-					newAffinityMask = AffinityMask.Replace(0, ProcessManager.AllCPUsMask);
+					newAffinityMask = AffinityMask.Replace(0, Manager.AllCPUsMask);
 
 					if (EstablishNewAffinity(oldAffinityMask, out newAffinityMask))
 					{
-						newAffinity = new IntPtr(newAffinityMask.Replace(0, ProcessManager.AllCPUsMask));
+						newAffinity = new IntPtr(newAffinityMask.Replace(0, Manager.AllCPUsMask));
 						try
 						{
 							info.Process.ProcessorAffinity = newAffinity.Value;
@@ -1302,7 +1349,7 @@ namespace Taskmaster
 				}
 				else
 				{
-					if (ProcessManager.DebugProcesses) Debug.WriteLine($"{FormatPathName(info)} #{info.Id.ToString()} --- affinity not touched");
+					if (Manager.DebugProcesses) Debug.WriteLine($"{FormatPathName(info)} #{info.Id.ToString()} --- affinity not touched");
 				}
 
 				if (AffinityIdeal >= 0)
@@ -1351,20 +1398,20 @@ namespace Taskmaster
 
 				if (Priority.HasValue)
 				{
-					if (fPriority && ShowInaction && ProcessManager.DebugProcesses)
+					if (fPriority && ShowInaction && Manager.DebugProcesses)
 						Log.Warning($"[{FriendlyName}] {info.Name} (#{info.Id}) failed to set process priority.");
 				}
 				if (AffinityMask >= 0)
 				{
-					if (fAffinity && ShowInaction && ProcessManager.DebugProcesses)
+					if (fAffinity && ShowInaction && Manager.DebugProcesses)
 						Log.Warning($"[{FriendlyName}] {info.Name} (#{info.Id}) failed to set process affinity.");
 				}
 
 				bool logevent = false;
 
-				if (modified) logevent = ShowProcessAdjusts && !(Foreground != ForegroundMode.Ignore && !ProcessManager.ShowForegroundTransitions);
+				if (modified) logevent = ShowProcessAdjusts && !(Foreground != ForegroundMode.Ignore && !Manager.ShowForegroundTransitions);
 				logevent |= (FirstTimeSeenForForeground && Foreground != ForegroundMode.Ignore);
-				logevent |= (ShowInaction && ProcessManager.DebugProcesses);
+				logevent |= (ShowInaction && Manager.DebugProcesses);
 
 				var ev = new ProcessModificationEventArgs(info)
 				{
@@ -1384,7 +1431,7 @@ namespace Taskmaster
 
 					if (mPower) sbs.Append(" [Power Mode: ").Append(Power.Manager.GetModeName(PowerPlan)).Append("]");
 
-					if (!modified && (ShowInaction && ProcessManager.DebugProcesses)) sbs.Append(" – looks OK, not touched.");
+					if (!modified && (ShowInaction && Manager.DebugProcesses)) sbs.Append(" – looks OK, not touched.");
 
 					ev.User = sbs;
 
@@ -1396,7 +1443,7 @@ namespace Taskmaster
 					info.State = ProcessHandlingState.Modified;
 					Modified?.Invoke(this, ev);
 
-					if (ProcessManager.IgnoreRecentlyModified.HasValue)
+					if (Manager.IgnoreRecentlyModified.HasValue)
 					{
 						var rmt = new RecentlyModifiedInfo()
 						{
@@ -1448,18 +1495,18 @@ namespace Taskmaster
 
 				if (original < 0)
 				{
-					if (ProcessManager.DebugProcesses && Trace)
+					if (Manager.DebugProcesses && Trace)
 						Log.Debug($"[{FriendlyName}] {info.Name} (#{info.Id}) – I/O priority access error");
 				}
 				else if (original == target)
 				{
-					if (Trace && ProcessManager.DebugProcesses && ShowInaction)
+					if (Trace && Manager.DebugProcesses && ShowInaction)
 						Log.Debug($"[{FriendlyName}] {info.Name} (#{info.Id}) – I/O priority ALREADY set to {original}, target: {target}");
 					nIO = -1;
 				}
 				else
 				{
-					if (ProcessManager.DebugProcesses && Trace)
+					if (Manager.DebugProcesses && Trace)
 					{
 						if (nIO >= 0 && nIO != original)
 							Log.Debug($"[{FriendlyName}] {info.Name} (#{info.Id}) – I/O priority set from {original} to {nIO}, target: {target}");
@@ -1471,12 +1518,12 @@ namespace Taskmaster
 			catch (OutOfMemoryException) { throw;  }
 			catch (ArgumentException)
 			{
-				if (ProcessManager.DebugProcesses && ShowInaction && Trace)
+				if (Manager.DebugProcesses && ShowInaction && Trace)
 					Log.Debug($"[{FriendlyName}] {info.Name} (#{info.Id}) – I/O priority not set, failed to open process.");
 			}
 			catch (InvalidOperationException)
 			{
-				if (ProcessManager.DebugProcesses && Trace)
+				if (Manager.DebugProcesses && Trace)
 					Log.Debug($"[{FriendlyName}] {info.Name} (#{info.Id}) – I/O priority access error");
 			}
 
@@ -1529,8 +1576,8 @@ namespace Taskmaster
 				{
 					foreach (var r in RecentlyModified)
 					{
-						if ((r.Value.LastIgnored.TimeTo(now) > ProcessManager.IgnoreRecentlyModified)
-							|| (r.Value.LastModified.TimeTo(now) > ProcessManager.IgnoreRecentlyModified))
+						if ((r.Value.LastIgnored.TimeTo(now) > Manager.IgnoreRecentlyModified)
+							|| (r.Value.LastModified.TimeTo(now) > Manager.IgnoreRecentlyModified))
 							RecentlyModified.TryRemove(r.Key, out _);
 					}
 				}
@@ -1718,7 +1765,7 @@ namespace Taskmaster
 		{
 			await Task.Delay(Math.Max(Recheck, 5) * 1_000).ConfigureAwait(false);
 
-			if (ProcessManager.DebugProcesses) Log.Debug($"[{FriendlyName}] {info.Name} (#{info.Id}) rechecking");
+			if (Manager.DebugProcesses) Log.Debug($"[{FriendlyName}] {info.Name} (#{info.Id}) rechecking");
 
 			try
 			{

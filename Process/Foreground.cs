@@ -1,5 +1,5 @@
 ﻿//
-// ActiveAppManager.cs
+// Process.Foreground.cs
 //
 // Author:
 //       M.A. (https://github.com/mkahvi)
@@ -29,9 +29,8 @@ using System.Diagnostics;
 using MKAh;
 using Serilog;
 
-namespace Taskmaster
+namespace Taskmaster.Process
 {
-	using MKAh.Ini;
 	using System.Text;
 	using static Taskmaster;
 
@@ -39,18 +38,18 @@ namespace Taskmaster
 	{
 		public IntPtr hWnd { get; set; }
 		public int Id { get; set; }
-		public Process Process { get; set; }
+		public System.Diagnostics.Process Process { get; set; }
 		public string Title { get; set; }
 		public Trinary Fullscreen { get; set; }
 		public string Executable { get; set; }
 	}
 
-	sealed public class ActiveAppManager : IDisposal, IDisposable
+	sealed public class ForegroundManager : IDisposal, IDisposable
 	{
 		public event EventHandler<WindowChangedArgs> ActiveChanged;
 
 		/// <exception cref="InitFailure">Event hook creation failed.</exception>
-		public ActiveAppManager(bool eventhook = true)
+		public ForegroundManager(bool eventhook = true)
 		{
 			ForegroundEventDelegate = new NativeMethods.WinEventDelegate(WinEventProc);
 
@@ -159,7 +158,7 @@ namespace Taskmaster
 		int HangReduceTick = 240;
 		int HangKillTick = 300;
 
-		Process fg = null;
+		System.Diagnostics.Process fg = null;
 
 		bool Minimized = false;
 		bool Reduced = false;
@@ -188,7 +187,7 @@ namespace Taskmaster
 				if (PreviousFG != pid)
 				{
 					// foreground changed
-					fg = Process.GetProcessById(pid);
+					fg = System.Diagnostics.Process.GetProcessById(pid);
 					HangTick = 0;
 				}
 
@@ -203,7 +202,7 @@ namespace Taskmaster
 					catch
 					{
 						// probably gone?
-						if (ProcessManager.SystemProcessId(pid)) name = "<OS>"; // this might also signify the desktop, for some reason
+						if (Manager.SystemProcessId(pid)) name = "<OS>"; // this might also signify the desktop, for some reason
 					}
 
 					var sbs = new StringBuilder().Append("<Foreground> ");
@@ -224,7 +223,7 @@ namespace Taskmaster
 
 						sbs.Append(" hung!");
 
-						if (ProcessManager.SystemProcessId(pid))
+						if (Manager.SystemProcessId(pid))
 						{
 							Log.Warning(sbs.ToString());
 							return; // Ignore system processes. We can do nothing useful for them.
@@ -424,12 +423,12 @@ namespace Taskmaster
 					Foreground = activewindowev.Id = pid;
 					HangTick = 0;
 
-					if (!ProcessManager.SystemProcessId(pid))
+					if (!Manager.SystemProcessId(pid))
 					{
 
 						try
 						{
-							var proc = Process.GetProcessById(activewindowev.Id);
+							var proc = System.Diagnostics.Process.GetProcessById(activewindowev.Id);
 							activewindowev.Process = proc;
 							activewindowev.Executable = proc.ProcessName;
 						}
@@ -466,7 +465,7 @@ namespace Taskmaster
 		#region IDisposable
 		public event EventHandler<DisposedEventArgs> OnDisposed;
 
-		~ActiveAppManager() => Dispose(false);
+		~ForegroundManager() => Dispose(false);
 
 		public void Dispose()
 		{

@@ -125,7 +125,7 @@ namespace Taskmaster
 			int newAffinityMask = target;
 			StringBuilder sbs = null;
 
-			if (ProcessManager.DebugProcesses)
+			if (Process.Manager.DebugProcesses)
 			{
 				sbs = new StringBuilder()
 					.Append("Affinity Strategy(").Append(Convert.ToString(source, 2)).Append(", ").Append(strategy.ToString()).Append(")");
@@ -139,7 +139,7 @@ namespace Taskmaster
 				int excesscores = Bit.Count(target) - Bit.Count(source);
 				if (excesscores > 0)
 				{
-					for (int i = 0; i < ProcessManager.CPUCount; i++)
+					for (int i = 0; i < Process.Manager.CPUCount; i++)
 					{
 						if (Bit.IsSet(newAffinityMask, i))
 						{

@@ -138,8 +138,9 @@
     <Compile Include="MKAh\File\Ini\Section.cs" />
     <Compile Include="MKAh\File\Ini\Setting.cs" />
     <Compile Include="MKAh\File\Ini\SettingType.cs" />
+    <Compile Include="Power\NativeMethods.cs" />
     <Compile Include="Settings.Global.cs" />
-    <Compile Include="Process\ActiveAppManager.cs" />
+    <Compile Include="Process\Foreground.cs" />
     <Compile Include="AlertManager.cs" />
     <Compile Include="Audio\DeviceNotificationClient.cs" />
     <Compile Include="Audio\Manager.cs" />

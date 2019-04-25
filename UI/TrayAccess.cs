@@ -103,7 +103,7 @@ namespace Taskmaster.UI
 			menu_configuration.DropDownItems.Add(new ToolStripSeparator());
 			menu_configuration.DropDownItems.Add(menu_runatstart_sch);
 			menu_configuration.DropDownItems.Add(new ToolStripSeparator());
-			menu_configuration.DropDownItems.Add(new ToolStripMenuItem("Open in file manager", null, (_, _ea) => Process.Start(DataPath)));
+			menu_configuration.DropDownItems.Add(new ToolStripMenuItem("Open in file manager", null, (_, _ea) => System.Diagnostics.Process.Start(DataPath)));
 
 			var menu_restart = new ToolStripMenuItem(HumanReadable.System.Process.Restart, null, (_s, _ea) => ConfirmExit(restart: true));
 			var menu_exit = new ToolStripMenuItem(HumanReadable.System.Process.Exit, null, (_s, _ea) => ConfirmExit(restart: false));
@@ -346,8 +346,8 @@ namespace Taskmaster.UI
 
 		public event EventHandler RescanRequest;
 
-		ProcessManager processmanager = null;
-		public void Hook(ProcessManager pman)
+		Process.Manager processmanager = null;
+		public void Hook(Process.Manager pman)
 		{
 			processmanager = pman;
 			RescanRequest += (_,_ea) => processmanager?.HastenScan();
@@ -490,11 +490,10 @@ namespace Taskmaster.UI
 
 		async void ExplorerCrashEvent(object sender, EventArgs _ea)
 		{
-			var proc = (Process)sender;
-			await ExplorerCrashHandler(proc.Id).ConfigureAwait(false);
+			await ExplorerCrashHandler((sender as System.Diagnostics.Process).Id).ConfigureAwait(false);
 		}
 
-		Process[] Explorer;
+		System.Diagnostics.Process[] Explorer;
 		async Task ExplorerCrashHandler(int processId)
 		{
 			try
@@ -515,7 +514,7 @@ namespace Taskmaster.UI
 
 				var ExplorerRestartTimer = Stopwatch.StartNew();
 				bool startAttempt = true;
-				Process[] procs;
+				System.Diagnostics.Process[] procs;
 				do
 				{
 					if (ExplorerRestartTimer.Elapsed.TotalHours >= 24)
@@ -527,7 +526,7 @@ namespace Taskmaster.UI
 					{
 						// TODO: This shouldn't happen if the session is exiting.
 						Log.Information("<Tray> Restarting explorer as per user configured timer.");
-						Process.Start(new ProcessStartInfo
+						System.Diagnostics.Process.Start(new ProcessStartInfo
 						{
 							FileName = System.IO.Path.Combine(System.Environment.GetFolderPath(System.Environment.SpecialFolder.Windows), "explorer.exe"),
 							UseShellExecute = true
@@ -559,9 +558,9 @@ namespace Taskmaster.UI
 		}
 
 		ConcurrentDictionary<int, int> KnownExplorerInstances = new ConcurrentDictionary<int, int>();
-		Process[] ExplorerInstances => Process.GetProcessesByName("explorer");
+		System.Diagnostics.Process[] ExplorerInstances => System.Diagnostics.Process.GetProcessesByName("explorer");
 
-		bool RegisterExplorerExit(Process[] procs = null)
+		bool RegisterExplorerExit(System.Diagnostics.Process[] procs = null)
 		{
 			try
 			{
@@ -716,7 +715,7 @@ namespace Taskmaster.UI
 				};
 				info.Arguments = argsq;
 
-				var procfind = Process.Start(info);
+				var procfind = System.Diagnostics.Process.Start(info);
 				bool rvq = false;
 				bool warned = false;
 				for (int i = 0; i < 3; i++)
@@ -744,7 +743,7 @@ namespace Taskmaster.UI
 				{
 					string argstoggle = "/change /TN MKAh-Taskmaster /" + (enabled ? "ENABLE" : "DISABLE");
 					info.Arguments = argstoggle;
-					var proctoggle = Process.Start(info);
+					var proctoggle = System.Diagnostics.Process.Start(info);
 					toggled = proctoggle.WaitForExit(3000); // this will succeed as long as the task is there
 					if (toggled && proctoggle.ExitCode == 0) Log.Information("<Tray> Scheduled task found and enabled");
 					else Log.Error("<Tray> Scheduled task NOT toggled.");
@@ -759,7 +758,7 @@ namespace Taskmaster.UI
 					var runtime = Environment.GetCommandLineArgs()[0];
 					string argscreate = "/Create /tn MKAh-Taskmaster /tr \"\\\"" + runtime + "\\\"\" /sc onlogon /it /RL HIGHEST";
 					info.Arguments = argscreate;
-					var procnew = Process.Start(info);
+					var procnew = System.Diagnostics.Process.Start(info);
 					created = procnew.WaitForExit(3000);
 
 					if (created && procnew.ExitCode == 0) Log.Information("<Tray> Scheduled task created.");
@@ -772,7 +771,7 @@ namespace Taskmaster.UI
 					string argsdelete = "/Delete /TN MKAh-Taskmaster /F";
 					info.Arguments = argsdelete;
 
-					var procdel = Process.Start(info);
+					var procdel = System.Diagnostics.Process.Start(info);
 					deleted = procdel.WaitForExit(3000);
 
 					if (deleted && procdel.ExitCode == 0) Log.Information("<Tray> Scheduled task deleted.");

@@ -239,7 +239,7 @@ namespace Taskmaster.Power
 				RedirectStandardOutput = true,
 				UseShellExecute = false
 			};
-			using (var proc = Process.Start(info))
+			using (var proc = System.Diagnostics.Process.Start(info))
 			{
 				Debug.WriteLine($"{info.FileName} {info.Arguments}");
 				while (!proc.StandardOutput.EndOfStream)
@@ -255,7 +255,7 @@ namespace Taskmaster.Power
 				RedirectStandardOutput = true,
 				UseShellExecute = false
 			};
-			using (var proc = Process.Start(info))
+			using (var proc = System.Diagnostics.Process.Start(info))
 			{
 				Debug.WriteLine($"{info.FileName} {info.Arguments}");
 				while (!proc.StandardOutput.EndOfStream)
@@ -271,7 +271,7 @@ namespace Taskmaster.Power
 				RedirectStandardOutput = true,
 				UseShellExecute = false
 			};
-			using (var proc = Process.Start(info))
+			using (var proc = System.Diagnostics.Process.Start(info))
 			{
 				Debug.WriteLine($"{info.FileName} {info.Arguments}");
 				while (!proc.StandardOutput.EndOfStream)
@@ -1341,7 +1341,7 @@ namespace Taskmaster.Power
 
 			if (DebugPower) Log.Debug($"<Power> Releasing {(sourcePid == -1 ? "all locks" : $"#{sourcePid.ToString()}")}");
 
-			Debug.Assert(sourcePid == -1 || !ProcessManager.SystemProcessId(sourcePid));
+			Debug.Assert(sourcePid == -1 || !Process.Manager.SystemProcessId(sourcePid));
 
 			await Task.Delay(0).ConfigureAwait(false);
 

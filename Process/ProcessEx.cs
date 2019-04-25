@@ -47,8 +47,8 @@ namespace Taskmaster
 		/// </summary>
 		public string FormattedPath { get; set; } = null;
 
-        public Stopwatch Timer = null;
-        public double WMIDelay = 0;
+		public Stopwatch Timer = null;
+		public double WMIDelay = 0;
 
 		/// <summary>
 		/// Process Id.
@@ -58,12 +58,12 @@ namespace Taskmaster
 		/// <summary>
 		/// Process reference.
 		/// </summary>
-		public Process Process { get; set; } = null;
+		public System.Diagnostics.Process Process { get; set; } = null;
 
 		/// <summary>
 		/// Controller associated with this process.
 		/// </summary>
-		public ProcessController Controller { get; set; } = null;
+		public Process.Controller Controller { get; set; } = null;
 
 		/// <summary>
 		/// Monitoring power plan.
@@ -95,18 +95,18 @@ namespace Taskmaster
 				{
 					case ProcessHandlingState.Exited:
 						Exited = true;
-                        goto handled;
+						goto handled;
 					case ProcessHandlingState.Modified:
 						Modified = DateTimeOffset.UtcNow;
 						goto handled;
 					case ProcessHandlingState.Unmodified:
-                    case ProcessHandlingState.AccessDenied:
-                    case ProcessHandlingState.Finished:
+					case ProcessHandlingState.AccessDenied:
+					case ProcessHandlingState.Finished:
 					case ProcessHandlingState.Abandoned:
 					case ProcessHandlingState.Invalid:
-                    handled:
-                        Handled = true;
-                        Timer?.Stop();
+					handled:
+						Handled = true;
+						Timer?.Stop();
 						break;
 				}
 			}

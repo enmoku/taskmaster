@@ -230,8 +230,8 @@ namespace Taskmaster.UI
 		// HOOKS
 		Audio.MicManager micmanager = null;
 		StorageManager storagemanager = null;
-		ProcessManager processmanager = null;
-		ActiveAppManager activeappmonitor = null;
+		Process.Manager processmanager = null;
+		Process.ForegroundManager activeappmonitor = null;
 		Power.Manager powermanager = null;
 		CPUMonitor cpumonitor = null;
 		Network.Manager netmonitor = null;
@@ -502,7 +502,7 @@ namespace Taskmaster.UI
 							ea.Info.Name,
 							prc.FriendlyName,
 							(ea.PriorityNew.HasValue ? MKAh.Readable.ProcessPriority(ea.PriorityNew.Value) : HumanReadable.Generic.NotAvailable),
-							(ea.AffinityNew >= 0 ? HumanInterface.BitMask(ea.AffinityNew, ProcessManager.CPUCount) : HumanReadable.Generic.NotAvailable),
+							(ea.AffinityNew >= 0 ? HumanInterface.BitMask(ea.AffinityNew, Process.Manager.CPUCount) : HumanReadable.Generic.NotAvailable),
 							ea.Info.Path
 						});
 						lastmodifylist.Items.Add(mi);
@@ -517,7 +517,7 @@ namespace Taskmaster.UI
 			}));
 		}
 
-		public void OnActiveWindowChanged(object _, WindowChangedArgs windowchangeev)
+		public void OnActiveWindowChanged(object _, Process.WindowChangedArgs windowchangeev)
 		{
 			if (!IsHandleCreated || DisposedOrDisposing) return;
 			if (windowchangeev.Process == null) return;
@@ -543,7 +543,7 @@ namespace Taskmaster.UI
 			storagemanager.OnDisposed += (_, _ea) => storagemanager = null;
 		}
 
-		public void Hook(ProcessManager manager)
+		public void Hook(Process.Manager manager)
 		{
 			Debug.Assert(manager != null);
 
@@ -554,7 +554,7 @@ namespace Taskmaster.UI
 			processmanager.ProcessStateChange += ExitWaitListHandler;
 			if (DebugCache) PathCacheUpdate(null, EventArgs.Empty);
 
-			ProcessNewInstanceCount(this, new ProcessingCountEventArgs(0, 0));
+			ProcessNewInstanceCount(this, new Process.ProcessingCountEventArgs(0, 0));
 
 			WatchlistRules.VisibleChanged += (_, _ea) => { if (WatchlistRules.Visible) WatchlistColor(); };
 
@@ -614,7 +614,7 @@ namespace Taskmaster.UI
 
 		void RestartRequestEvent(object sender, EventArgs _ea) => ConfirmExit(restart: true, admin: sender == menu_action_restartadmin);
 
-		void ProcessNewInstanceCount(object _, ProcessingCountEventArgs e)
+		void ProcessNewInstanceCount(object _, Process.ProcessingCountEventArgs e)
 		{
 			if (!IsHandleCreated || DisposedOrDisposing) return;
 
@@ -628,7 +628,7 @@ namespace Taskmaster.UI
 		///
 		/// </summary>
 		/// <remarks>No locks</remarks>
-		void WatchlistItemColor(ListViewItem li, ProcessController prc)
+		void WatchlistItemColor(ListViewItem li, Process.Controller prc)
 		{
 			var alter = AlternateRowColorsWatchlist ? ((li.Index + 1) % 2 == 0) : false; // every even line
 
@@ -686,13 +686,13 @@ namespace Taskmaster.UI
 			}
 		}
 
-		void AddToWatchlistList(ProcessController prc)
+		void AddToWatchlistList(Process.Controller prc)
 		{
 			string aff = string.Empty;
 			if (prc.AffinityMask > 0)
 			{
 				if (AffinityStyle == 0)
-					aff = HumanInterface.BitMask(prc.AffinityMask, ProcessManager.CPUCount);
+					aff = HumanInterface.BitMask(prc.AffinityMask, Process.Manager.CPUCount);
 				else
 					aff = prc.AffinityMask.ToString();
 			}
@@ -719,7 +719,7 @@ namespace Taskmaster.UI
 			WatchlistRules.EndUpdate();
 		}
 
-		void FormatWatchlist(ListViewItem litem, ProcessController prc)
+		void FormatWatchlist(ListViewItem litem, Process.Controller prc)
 		{
 			// 0 = ID
 			// 1 = Friendly Name
@@ -740,10 +740,10 @@ namespace Taskmaster.UI
 				string aff = string.Empty;
 				if (prc.AffinityMask >= 0)
 				{
-					if (prc.AffinityMask == ProcessManager.AllCPUsMask || prc.AffinityMask == 0)
+					if (prc.AffinityMask == Process.Manager.AllCPUsMask || prc.AffinityMask == 0)
 						aff = "Full/OS";
 					else if (AffinityStyle == 0)
-						aff = HumanInterface.BitMask(prc.AffinityMask, ProcessManager.CPUCount);
+						aff = HumanInterface.BitMask(prc.AffinityMask, Process.Manager.CPUCount);
 					else
 						aff = prc.AffinityMask.ToString();
 				}
@@ -755,7 +755,7 @@ namespace Taskmaster.UI
 			}));
 		}
 
-		public void UpdateWatchlistRule(ProcessController prc)
+		public void UpdateWatchlistRule(Process.Controller prc)
 		{
 			if (WatchlistMap.TryGetValue(prc, out ListViewItem litem))
 			{
@@ -776,7 +776,7 @@ namespace Taskmaster.UI
 		ListView AudioInputs = null;
 		ListView WatchlistRules = null;
 
-		ConcurrentDictionary<ProcessController, ListViewItem> WatchlistMap = new ConcurrentDictionary<ProcessController, ListViewItem>();
+		ConcurrentDictionary<Process.Controller, ListViewItem> WatchlistMap = new ConcurrentDictionary<Process.Controller, ListViewItem>();
 
 		Label corCountLabel = null;
 		ComboBox AudioInputEnable = null;
@@ -1262,27 +1262,27 @@ namespace Taskmaster.UI
 
 			var menu_config_logging_showunmodified = new ToolStripMenuItem(ShowUnmodifiedPortionsName)
 			{
-				Checked = ProcessManager.ShowUnmodifiedPortions,
+				Checked = Process.Manager.ShowUnmodifiedPortions,
 				CheckOnClick = true,
 			};
 			menu_config_logging_showunmodified.Click += (_, _ea) =>
 			{
-				ProcessManager.ShowUnmodifiedPortions = menu_config_logging_showunmodified.Checked;
+				Process.Manager.ShowUnmodifiedPortions = menu_config_logging_showunmodified.Checked;
 
 				using (var corecfg = Taskmaster.Config.Load(CoreConfigFilename).BlockUnload())
-				corecfg.Config[HumanReadable.Generic.Logging][ShowUnmodifiedPortionsName].Bool = ProcessManager.ShowUnmodifiedPortions;
+				corecfg.Config[HumanReadable.Generic.Logging][ShowUnmodifiedPortionsName].Bool = Process.Manager.ShowUnmodifiedPortions;
 			};
 
 			var menu_config_logging_showonlyfinal = new ToolStripMenuItem("Final state only")
 			{
-				Checked = ProcessManager.ShowOnlyFinalState,
+				Checked = Process.Manager.ShowOnlyFinalState,
 				CheckOnClick = true,
 			};
 			menu_config_logging_showonlyfinal.Click += (_, _ea) =>
 			{
-				ProcessManager.ShowOnlyFinalState = menu_config_logging_showonlyfinal.Checked;
+				Process.Manager.ShowOnlyFinalState = menu_config_logging_showonlyfinal.Checked;
 				using (var corecfg = Taskmaster.Config.Load(CoreConfigFilename).BlockUnload())
-				corecfg.Config[HumanReadable.Generic.Logging]["Final state only"].Bool = ProcessManager.ShowOnlyFinalState;
+				corecfg.Config[HumanReadable.Generic.Logging]["Final state only"].Bool = Process.Manager.ShowOnlyFinalState;
 			};
 
 			var menu_config_logging_neterrors = new ToolStripMenuItem("Network errors")
@@ -1392,7 +1392,7 @@ namespace Taskmaster.UI
 			var menu_config_components = new ToolStripMenuItem("Components", null, (_,_ea) => Config.ComponentConfigurationWindow.Reveal()); // MODAL
 			var menu_config_experiments = new ToolStripMenuItem("Experiments", null, (_,_ea) => Config.ExperimentConfig.Reveal()); // MODAL
 
-			var menu_config_folder = new ToolStripMenuItem("Open in file manager", null, (_, _ea) => Process.Start(DataPath));
+			var menu_config_folder = new ToolStripMenuItem("Open in file manager", null, (_, _ea) => System.Diagnostics.Process.Start(DataPath));
 			// menu_config.DropDownItems.Add(menu_config_log);
 			menu_config.DropDownItems.Add(menu_config_behaviour);
 			menu_config.DropDownItems.Add(menu_config_visual);
@@ -1466,27 +1466,27 @@ namespace Taskmaster.UI
 			menu_debug_agency.Click += (_, _ea) => ShowAgency = menu_debug_agency.Checked;
 			var menu_debug_scanning = new ToolStripMenuItem("Scanning")
 			{
-				Checked = ProcessManager.DebugScan,
+				Checked = Process.Manager.DebugScan,
 				CheckOnClick = true,
 				Enabled = ProcessMonitorEnabled,
 			};
 			menu_debug_scanning.Click += (_, _ea) =>
 			{
-				ProcessManager.DebugScan = menu_debug_scanning.Checked;
-				if (ProcessManager.DebugScan) EnsureVerbosityLevel();
+				Process.Manager.DebugScan = menu_debug_scanning.Checked;
+				if (Process.Manager.DebugScan) EnsureVerbosityLevel();
 			};
 
 			var menu_debug_procs = new ToolStripMenuItem("Processes")
 			{
-				Checked = ProcessManager.DebugProcesses,
+				Checked = Process.Manager.DebugProcesses,
 				CheckOnClick = true,
 				Enabled = ProcessMonitorEnabled,
 			};
 
 			menu_debug_procs.Click += (_, _ea) =>
 			{
-				ProcessManager.DebugProcesses = menu_debug_procs.Checked;
-				if (ProcessManager.DebugProcesses)
+				Process.Manager.DebugProcesses = menu_debug_procs.Checked;
+				if (Process.Manager.DebugProcesses)
 					StartProcessDebug();
 				else
 					StopProcessDebug();
@@ -1494,13 +1494,13 @@ namespace Taskmaster.UI
 
 			var menu_debug_adjustdelay = new ToolStripMenuItem("Adjust delay")
 			{
-				Checked = ProcessManager.DebugAdjustDelay,
+				Checked = Process.Manager.DebugAdjustDelay,
 				CheckOnClick = true,
 				Enabled = ProcessMonitorEnabled,
 			};
 			menu_debug_adjustdelay.Click += (_, _ea) =>
 			{
-				ProcessManager.DebugAdjustDelay = menu_debug_adjustdelay.Checked;
+				Process.Manager.DebugAdjustDelay = menu_debug_adjustdelay.Checked;
 			};
 
 			var menu_debug_foreground = new ToolStripMenuItem(HumanReadable.System.Process.Foreground)
@@ -1520,13 +1520,13 @@ namespace Taskmaster.UI
 
 			var menu_debug_paths = new ToolStripMenuItem("Paths")
 			{
-				Checked = ProcessManager.DebugPaths,
+				Checked = Process.Manager.DebugPaths,
 				CheckOnClick = true,
 			};
 			menu_debug_paths.Click += (_, _ea) =>
 			{
-				ProcessManager.DebugPaths = menu_debug_paths.Checked;
-				if (ProcessManager.DebugPaths) EnsureVerbosityLevel();
+				Process.Manager.DebugPaths = menu_debug_paths.Checked;
+				if (Process.Manager.DebugPaths) EnsureVerbosityLevel();
 			};
 			var menu_debug_power = new ToolStripMenuItem(HumanReadable.Hardware.Power.Section)
 			{
@@ -1619,8 +1619,8 @@ namespace Taskmaster.UI
 			var menu_info = new ToolStripMenuItem(InfoName);
 			// Sub Items
 
-			menu_info.DropDownItems.Add(new ToolStripMenuItem("Github", null, (_, _ea) => Process.Start(GitURL)));
-			menu_info.DropDownItems.Add(new ToolStripMenuItem("Itch.io", null, (_, _ea) => Process.Start(ItchURL)));
+			menu_info.DropDownItems.Add(new ToolStripMenuItem("Github", null, (_, _ea) => System.Diagnostics.Process.Start(GitURL)));
+			menu_info.DropDownItems.Add(new ToolStripMenuItem("Itch.io", null, (_, _ea) => System.Diagnostics.Process.Start(ItchURL)));
 			menu_info.DropDownItems.Add(new ToolStripSeparator());
 			menu_info.DropDownItems.Add(new ToolStripMenuItem(Constants.License, null, (_, _ea) => OpenLicenseDialog()));
 			menu_info.DropDownItems.Add(new ToolStripSeparator());
@@ -1856,7 +1856,7 @@ namespace Taskmaster.UI
 
 			// -------------------------------------------------------------------------------------------------------
 
-			if (ProcessManager.DebugProcesses || DebugForeground)
+			if (Process.Manager.DebugProcesses || DebugForeground)
 				BuildProcessDebug();
 
 			// End Process Debug
@@ -2699,10 +2699,10 @@ namespace Taskmaster.UI
 
 		void StartProcessDebug()
 		{
-			bool enabled = ProcessManager.DebugProcesses || DebugForeground;
+			bool enabled = Process.Manager.DebugProcesses || DebugForeground;
 			if (!enabled) return;
 
-			if (ProcessManager.DebugProcesses) processmanager.HandlingStateChange += ProcessHandlingStateChangeEvent;
+			if (Process.Manager.DebugProcesses) processmanager.HandlingStateChange += ProcessHandlingStateChangeEvent;
 
 			if (enabled && ProcessDebugTab == null)
 				BuildProcessDebug();
@@ -2718,11 +2718,11 @@ namespace Taskmaster.UI
 		/// </summary>
 		ConcurrentDictionary<int, ListViewItem> ProcessEventMap = new ConcurrentDictionary<int, ListViewItem>();
 
-		void ProcessHandlingStateChangeEvent(object _, HandlingStateChangeEventArgs ea)
+		void ProcessHandlingStateChangeEvent(object _, Process.HandlingStateChangeEventArgs ea)
 		{
 			if (!IsHandleCreated || DisposedOrDisposing) return;
 
-			if (!ProcessManager.DebugProcesses && !DebugForeground) return;
+			if (!Process.Manager.DebugProcesses && !DebugForeground) return;
 
 			try
 			{
@@ -2790,9 +2790,9 @@ namespace Taskmaster.UI
 		void StopProcessDebug()
 		{
 			if (!DebugForeground && activeappmonitor != null) activeappmonitor.ActiveChanged -= OnActiveWindowChanged;
-			if (!ProcessManager.DebugProcesses) processmanager.HandlingStateChange -= ProcessHandlingStateChangeEvent;
+			if (!Process.Manager.DebugProcesses) processmanager.HandlingStateChange -= ProcessHandlingStateChangeEvent;
 
-			bool enabled = ProcessManager.DebugProcesses || DebugForeground;
+			bool enabled = Process.Manager.DebugProcesses || DebugForeground;
 			if (enabled) return;
 
 			if (activeappmonitor != null && DebugForeground)
@@ -3154,7 +3154,7 @@ namespace Taskmaster.UI
 				{
 					var li = WatchlistRules.SelectedItems[0];
 					var name = li.SubItems[NameColumn].Text;
-					ProcessController prc = null;
+					Process.Controller prc = null;
 
 					if (!processmanager.GetControllerByName(name, out prc))
 					{
@@ -3281,7 +3281,7 @@ namespace Taskmaster.UI
 			ResizeLogList(this, EventArgs.Empty);
 		}
 
-		public void Hook(ActiveAppManager manager)
+		public void Hook(Process.ForegroundManager manager)
 		{
 			if (manager == null) return;
 
@@ -3290,7 +3290,7 @@ namespace Taskmaster.UI
 			activeappmonitor = manager;
 			activeappmonitor.OnDisposed += (_, _ea) => activeappmonitor = null;
 
-			if (DebugForeground || ProcessManager.DebugProcesses)
+			if (DebugForeground || Process.Manager.DebugProcesses)
 				StartProcessDebug();
 		}
 

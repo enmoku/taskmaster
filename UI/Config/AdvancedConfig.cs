@@ -135,7 +135,7 @@ namespace Taskmaster.UI.Config
 					Minimum = 0,
 					Maximum = 60,
 					Unit = "mins",
-					Value = Convert.ToDecimal(ProcessManager.IgnoreRecentlyModified.Value.TotalMinutes),
+					Value = Convert.ToDecimal(Process.Manager.IgnoreRecentlyModified.Value.TotalMinutes),
 				};
 
 				layout.Controls.Add(new AlignedLabel { Text = "Ignore recently modified", Padding = LeftSubPadding });
@@ -285,12 +285,12 @@ namespace Taskmaster.UI.Config
 
 					if (IgnoreRecentlyModifiedCooldown.Value > 0M)
 					{
-						ProcessManager.IgnoreRecentlyModified = TimeSpan.FromMinutes(Convert.ToDouble(IgnoreRecentlyModifiedCooldown.Value));
-						perfsec["Ignore recently modified"].Int = Convert.ToInt32(ProcessManager.IgnoreRecentlyModified.Value.TotalMinutes);
+						Process.Manager.IgnoreRecentlyModified = TimeSpan.FromMinutes(Convert.ToDouble(IgnoreRecentlyModifiedCooldown.Value));
+						perfsec["Ignore recently modified"].Int = Convert.ToInt32(Process.Manager.IgnoreRecentlyModified.Value.TotalMinutes);
 					}
 					else
 					{
-						ProcessManager.IgnoreRecentlyModified = null;
+						Process.Manager.IgnoreRecentlyModified = null;
 						perfsec.TryRemove("Ignore recently modified");
 					}
 

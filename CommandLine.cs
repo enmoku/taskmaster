@@ -27,19 +27,20 @@
 using Serilog;
 using System;
 using System.Diagnostics;
+using System.Windows.Forms;
 
 namespace Taskmaster
 {
-	public static partial class Taskmaster
+	using static Taskmaster;
+
+	public static partial class CommandLine
 	{
-		static bool RestartElevated { get; set; } = false;
-		static int RestartCounter { get; set; } = 0;
-		static int AdminCounter { get; set; } = 0;
+		internal static int AdminCounter { get; set; } = 0;
 
 		public const string AdminArg = "--admin";
 		public const string RestartArg = "--restart";
 
-		static void ParseArguments(string[] args)
+		internal static void ParseArguments(string[] args)
 		{
 			for (int i = 0; i < args.Length; i++)
 			{
@@ -56,6 +57,7 @@ namespace Taskmaster
 							RestartCounter = Convert.ToInt32(args[++i]);
 						break;
 					case AdminArg:
+						// AdminCounter protects from restart loop from attempting to gain admin rights and constantly failing
 						if (args.Length > i + 1 && !args[i + 1].StartsWith("--"))
 						{
 							try
@@ -76,12 +78,12 @@ namespace Taskmaster
 								Log.Information("Restarting with elevated privileges.");
 								try
 								{
-									var info = Process.GetCurrentProcess().StartInfo;
-									info.FileName = Process.GetCurrentProcess().ProcessName;
+									var info = System.Diagnostics.Process.GetCurrentProcess().StartInfo;
+									info.FileName = System.Diagnostics.Process.GetCurrentProcess().ProcessName;
 									info.Arguments = $"{AdminArg} {(++AdminCounter).ToString()}";
 									info.Verb = "runas"; // elevate privileges
 									Log.CloseAndFlush();
-									var proc = Process.Start(info);
+									var proc = System.Diagnostics.Process.Start(info);
 								}
 								catch (Exception ex) when (ex is NullReferenceException || ex is OutOfMemoryException) { throw; }
 								catch { } // without finally block might not execute
@@ -102,6 +104,26 @@ namespace Taskmaster
 						break;
 				}
 			}
+		}
+
+		internal static void NewProcessInfo(out ProcessStartInfo info, bool admin=false)
+		{
+			var ti = System.Diagnostics.Process.GetCurrentProcess().StartInfo;
+			//info.FileName = Process.GetCurrentProcess().ProcessName;
+			ti.WorkingDirectory = System.IO.Path.GetDirectoryName(Application.ExecutablePath);
+			ti.FileName = System.IO.Path.GetFileName(Application.ExecutablePath);
+
+			var nargs = new System.Collections.Generic.List<string> { RestartArg, (++RestartCounter).ToString() };
+			if (admin)
+			{
+				nargs.Add(AdminArg);
+				nargs.Add((++AdminCounter).ToString());
+				ti.Verb = "runas"; // elevate privileges
+			}
+
+			ti.Arguments = string.Join(" ", nargs);
+
+			info = ti;
 		}
 	}
 }

@@ -203,7 +203,7 @@ namespace Taskmaster
 
 				SelfAffinity = perfsec.GetOrSet("Self-affinity", 0)
 					.InitComment("Core mask as integer. 0 is for default OS control.")
-					.Int.Constrain(0, ProcessManager.AllCPUsMask);
+					.Int.Constrain(0, Process.Manager.AllCPUsMask);
 
 				if (SelfAffinity > Convert.ToInt32(Math.Pow(2, Environment.ProcessorCount) - 1 + double.Epsilon)) SelfAffinity = 0;
 
@@ -339,8 +339,8 @@ namespace Taskmaster
 			{
 				(PowMan = PowerManagerEnabled ? Task.Run(() => powermanager = new Power.Manager(), cts.Token) : Task.CompletedTask),
 				(CpuMon = PowerManagerEnabled ? Task.Run(()=> cpumonitor = new CPUMonitor(), cts.Token) : Task.CompletedTask),
-				(ProcMon = ProcessMonitorEnabled ? Task.Run(() => processmanager = new ProcessManager(), cts.Token) : Task.CompletedTask),
-				(FgMon = ActiveAppMonitorEnabled ? Task.Run(()=> activeappmonitor = new ActiveAppManager(eventhook:false), cts.Token) : Task.CompletedTask),
+				(ProcMon = ProcessMonitorEnabled ? Task.Run(() => processmanager = new Process.Manager(), cts.Token) : Task.CompletedTask),
+				(FgMon = ActiveAppMonitorEnabled ? Task.Run(()=> activeappmonitor = new Process.ForegroundManager(eventhook:false), cts.Token) : Task.CompletedTask),
 				(NetMon = NetworkMonitorEnabled ? Task.Run(() => netmonitor = new Network.Manager(), cts.Token) : Task.CompletedTask),
 				(StorMon = StorageMonitorEnabled ? Task.Run(() => storagemanager = new StorageManager(), cts.Token) : Task.CompletedTask),
 				(HpMon = HealthMonitorEnabled ? Task.Run(() => healthmonitor = new HealthMonitor(), cts.Token) : Task.CompletedTask),
@@ -492,8 +492,8 @@ namespace Taskmaster
 				}
 				*/
 
-				int selfAffMask = SelfAffinity.Replace(0, ProcessManager.AllCPUsMask);
-				Log.Information($"<Core> Self-optimizing – Priority: {SelfPriority.ToString()}; Affinity: {HumanInterface.BitMask(selfAffMask, ProcessManager.CPUCount)}");
+				int selfAffMask = SelfAffinity.Replace(0, Process.Manager.AllCPUsMask);
+				Log.Information($"<Core> Self-optimizing – Priority: {SelfPriority.ToString()}; Affinity: {HumanInterface.BitMask(selfAffMask, Process.Manager.CPUCount)}");
 
 				self.ProcessorAffinity = new IntPtr(selfAffMask); // this should never throw an exception
 				self.PriorityClass = SelfPriority;
