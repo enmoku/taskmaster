@@ -137,6 +137,12 @@ namespace Taskmaster
 					System.Threading.Thread.Sleep(100); // HACK: async pipes don't like things happening too fast.
 				}
 			}
+			catch (UnauthorizedAccessException)
+			{
+				bool admin = MKAh.Execution.IsAdministrator;
+				SimpleMessageBox.ShowModal(Name, "Unauthorized access.\n\n" + (admin ? "No recommendations." : "Existing process may be running at higher privilege level.\nPlease retry with admin rights."), SimpleMessageBox.Buttons.OK);
+				throw;
+			}
 			catch (IOException)
 			{
 				System.Windows.Forms.MessageBox.Show("Timeout communicating with existing Taskmaster instance.");
