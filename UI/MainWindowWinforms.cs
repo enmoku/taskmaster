@@ -1623,6 +1623,7 @@ namespace Taskmaster.UI
 			menu_info.DropDownItems.Add(new ToolStripMenuItem("Itch.io", null, (_, _ea) => System.Diagnostics.Process.Start(ItchURL)));
 			menu_info.DropDownItems.Add(new ToolStripSeparator());
 			menu_info.DropDownItems.Add(new ToolStripMenuItem(Constants.License, null, (_, _ea) => OpenLicenseDialog()));
+			menu_info.DropDownItems.Add(new ToolStripMenuItem("3rd party licenses", null, ShowExternalLicenses));
 			menu_info.DropDownItems.Add(new ToolStripSeparator());
 			menu_info.DropDownItems.Add(new ToolStripMenuItem("About", null, ShowAboutDialog));
 			#endregion
@@ -1875,6 +1876,11 @@ namespace Taskmaster.UI
 				GotFocus += PathCacheUpdate;
 				PathCacheUpdate(this, EventArgs.Empty);
 			}
+		}
+
+		private void ShowExternalLicenses(object sender, EventArgs e)
+		{
+			MessageBox.ShowModal("Third Party Licenses for " + Taskmaster.Name, Properties.Resources.ExternalLicenses, MessageBox.Buttons.OK, rich:true, this);
 		}
 
 		void ShowVolumeBox(object sender, EventArgs e) => BuildVolumeMeter();

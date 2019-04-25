@@ -112,6 +112,7 @@
       <SubType>Designer</SubType>
     </None>
     <None Include="Resources\BuildDate.restext" />
+    <None Include="Resources\ExternalLicenses.rtf" />
     <None Include="Resources\KnownModules.ini" />
     <None Include="Resources\ProjectDirectory.restext" />
     <Content Include="taskmaster-hammer.ico" />
