@@ -1273,16 +1273,16 @@ namespace Taskmaster.Process
 				Log.Information("Cancelled power mode wait on " + cancelled + " process(es).");
 		}
 
-		void WaitForExit(ProcessEx info)
+		bool WaitForExit(ProcessEx info)
 		{
 			Debug.Assert(info.Controller != null, "No controller attached");
+
+			bool exithooked = false;
 
 			if (DisposedOrDisposing) throw new ObjectDisposedException("WaitForExit called when ProcessManager was already disposed");
 
 			if (WaitForExitList.TryAdd(info.Id, info))
 			{
-				bool exithooked = false;
-
 				try
 				{
 					info.Process.EnableRaisingEvents = true;
@@ -1310,6 +1310,8 @@ namespace Taskmaster.Process
 
 				if (exithooked) ProcessStateChange?.Invoke(this, new ProcessModificationEventArgs(info));
 			}
+
+			return exithooked;
 		}
 
 		public ProcessEx[] getExitWaitList() => WaitForExitList.Values.ToArray(); // copy is good here
@@ -1627,11 +1629,9 @@ namespace Taskmaster.Process
 
 			Debug.Assert(prc.Foreground != ForegroundMode.Ignore);
 
-			bool keyadded = false;
-
 			info.ForegroundWait = true;
 
-			WaitForExit(info);
+			bool keyadded = WaitForExit(info);
 
 			if (Trace && DebugForeground)
 				Log.Debug($"[{prc.FriendlyName}] {info.Name} (#{info.Id}) {(!keyadded ? "already in" : "added to")} foreground watchlist.");
