@@ -3,6 +3,8 @@ Comprehensive changes can be found in Git change history:
 	https://github.com/mkahvi/taskmaster/commits/master
 
 ## [0.13...]
+### 2019-04-27
+	Added: Power menu in main window so power changes are available outside of the tray context menu.
 ### 2019-04-25
 	Added: IPC component warns about insufficient permissions.
 	Fixed: Using statement was hiding an exception because NamedPipe dispose was throwing a new one under some circumstances.
