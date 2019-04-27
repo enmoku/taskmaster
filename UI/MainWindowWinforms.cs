@@ -1016,6 +1016,12 @@ namespace Taskmaster.UI
 		const string ShowUnmodifiedPortionsName = "Unmodified portions";
 		const string WatchlistName = "Watchlist";
 
+		ToolStripMenuItem power_auto;
+		ToolStripMenuItem power_highperf;
+		ToolStripMenuItem power_balanced;
+		ToolStripMenuItem power_saving;
+		ToolStripMenuItem power_manual;
+
 		void BuildUI()
 		{
 			Text = Taskmaster.Name + " " + Version
@@ -1093,6 +1099,30 @@ namespace Taskmaster.UI
 
 			menu_view.DropDownItems.Add(menu_view_volume);
 			#endregion
+
+			// POWER menu item
+
+			var menu_power = new ToolStripMenuItem("Power")
+			{
+				Enabled = PowerManagerEnabled,
+			};
+
+			if (PowerManagerEnabled)
+			{
+				power_auto = new ToolStripMenuItem(HumanReadable.Hardware.Power.AutoAdjust, null, SetAutoPower) { Checked = false, CheckOnClick = true, Enabled = false };
+				power_highperf = new ToolStripMenuItem(Power.Manager.GetModeName(Power.Mode.HighPerformance), null, (s, e) => SetPower(Power.Mode.HighPerformance));
+				power_balanced = new ToolStripMenuItem(Power.Manager.GetModeName(Power.Mode.Balanced), null, (s, e) => SetPower(Power.Mode.Balanced));
+				power_saving = new ToolStripMenuItem(Power.Manager.GetModeName(Power.Mode.PowerSaver), null, (s, e) => SetPower(Power.Mode.PowerSaver));
+				power_manual = new ToolStripMenuItem("Manual override", null, SetManualPower) { CheckOnClick = true };
+
+				menu_power.DropDownItems.Add(power_auto);
+				menu_power.DropDownItems.Add(new ToolStripSeparator());
+				menu_power.DropDownItems.Add(power_highperf);
+				menu_power.DropDownItems.Add(power_balanced);
+				menu_power.DropDownItems.Add(power_saving);
+				menu_power.DropDownItems.Add(new ToolStripSeparator());
+				menu_power.DropDownItems.Add(power_manual);
+			}
 
 			// CONFIG menu item
 			#region Config toolstrip menu
@@ -1542,7 +1572,7 @@ namespace Taskmaster.UI
 					var pev = new Power.ModeEventArgs(powermanager.CurrentMode);
 					PowerPlanDebugEvent(this, pev); // populates powerbalancer_plan
 					powermanager.onPlanChange += PowerPlanDebugEvent;
-					powermanager.onAutoAdjustAttempt += PowerLoadHandler;
+					powermanager.onAutoAdjustAttempt += PowerLoadDebugHandler;
 
 					if (powerDebugTab is null) BuildPowerDebugPanel();
 					else tabLayout.Controls.Add(powerDebugTab);
@@ -1550,8 +1580,9 @@ namespace Taskmaster.UI
 				}
 				else
 				{
+					powermanager.onAutoAdjustAttempt -= PowerLoadDebugHandler;
 					powermanager.onPlanChange -= PowerPlanDebugEvent;
-					powermanager.onAutoAdjustAttempt -= PowerLoadHandler;
+					//powermanager.onAutoAdjustAttempt -= PowerLoadHandler;
 					bool refocus = tabLayout.SelectedTab.Equals(powerDebugTab);
 					tabLayout.Controls.Remove(powerDebugTab);
 					if (refocus) tabLayout.SelectedIndex = 1; // watchlist
@@ -1628,7 +1659,7 @@ namespace Taskmaster.UI
 			menu_info.DropDownItems.Add(new ToolStripMenuItem("About", null, ShowAboutDialog));
 			#endregion
 
-			menu.Items.AddRange(new[] { menu_action, menu_view, menu_config, menu_debug, menu_info });
+			menu.Items.AddRange(new[] { menu_action, menu_view, menu_power, menu_config, menu_debug, menu_info });
 
 			// no simpler way?
 
@@ -1875,6 +1906,66 @@ namespace Taskmaster.UI
 				UItimer.Tick += PathCacheUpdate;
 				GotFocus += PathCacheUpdate;
 				PathCacheUpdate(this, EventArgs.Empty);
+			}
+		}
+
+		void SetAutoPower(object _, EventArgs _ea)
+		{
+			if (powermanager.Behaviour != Power.Manager.PowerBehaviour.Auto)
+				powermanager.SetBehaviour(Power.Manager.PowerBehaviour.Auto);
+			else
+				powermanager.SetBehaviour(Power.Manager.PowerBehaviour.RuleBased);
+		}
+
+		void SetManualPower(object _, EventArgs _ea)
+		{
+			if (powermanager.Behaviour != Power.Manager.PowerBehaviour.Manual)
+				powermanager.SetBehaviour(Power.Manager.PowerBehaviour.Manual);
+			else
+				powermanager.SetBehaviour(Power.Manager.PowerBehaviour.RuleBased);
+		}
+
+		void HighlightPowerMode()
+		{
+			switch (powermanager.CurrentMode)
+			{
+				case Power.Mode.Balanced:
+					power_saving.Checked = false;
+					power_balanced.Checked = true;
+					power_highperf.Checked = false;
+					break;
+				case Power.Mode.HighPerformance:
+					power_saving.Checked = false;
+					power_balanced.Checked = false;
+					power_highperf.Checked = true;
+					break;
+				case Power.Mode.PowerSaver:
+					power_saving.Checked = true;
+					power_balanced.Checked = false;
+					power_highperf.Checked = false;
+					break;
+			}
+		}
+
+		private void SetPower(Power.Mode mode)
+		{
+			try
+			{
+				if (DebugPower) Log.Debug("<Power> Setting behaviour to manual.");
+
+				powermanager.SetBehaviour(Power.Manager.PowerBehaviour.Manual);
+
+				if (DebugPower) Log.Debug("<Power> Setting manual mode: " + mode.ToString());
+
+				// powermanager.Restore(0).Wait(); // already called by setBehaviour as necessary
+				powermanager?.SetMode(mode, new Cause(OriginType.User));
+
+				// powermanager.RequestMode(mode);
+				HighlightPowerMode();
+			}
+			catch (Exception ex)
+			{
+				Logging.Stacktrace(ex);
 			}
 		}
 
@@ -3309,29 +3400,48 @@ namespace Taskmaster.UI
 			powermanager = manager;
 			powermanager.OnDisposed += (_, _ea) => powermanager = null;
 
-			if (DebugPower) powermanager.onAutoAdjustAttempt += PowerLoadHandler;
-
-			powermanager.onBehaviourChange += PowerBehaviourDebugEvent;
-
-			powermanager.onPlanChange += PowerPlanEvent;
 			powermanager.onBehaviourChange += PowerBehaviourEvent;
+			powermanager.onPlanChange += PowerPlanEvent;
 
 			var bev = new Power.Manager.PowerBehaviourEventArgs(powermanager.Behaviour);
-			PowerBehaviourDebugEvent(this, bev); // populates powerbalancer_behaviourr
 			PowerBehaviourEvent(this, bev); // populates pwbehaviour
 			var pev = new Power.ModeEventArgs(powermanager.CurrentMode);
 			PowerPlanEvent(this, pev); // populates pwplan and pwcause
 
 			if (DebugPower)
 			{
+				PowerBehaviourDebugEvent(this, bev); // populates powerbalancer_behaviour
 				PowerPlanDebugEvent(this, pev); // populates powerbalancer_plan
 				powermanager.onPlanChange += PowerPlanDebugEvent;
+				powermanager.onBehaviourChange += PowerBehaviourDebugEvent;
+				powermanager.onAutoAdjustAttempt += PowerLoadDebugHandler;
 			}
+
+			power_auto.Checked = powermanager.Behaviour == Power.Manager.PowerBehaviour.Auto;
+			power_manual.Checked = powermanager.Behaviour == Power.Manager.PowerBehaviour.Manual;
+			power_auto.Enabled = true;
+			HighlightPowerMode();
 		}
 
 		void PowerBehaviourEvent(object sender, Power.Manager.PowerBehaviourEventArgs e)
 		{
 			if (!IsHandleCreated || DisposedOrDisposing) return;
+
+			switch (powermanager.Behaviour)
+			{
+				case Power.Manager.PowerBehaviour.Manual:
+					power_auto.Checked = false;
+					power_manual.Checked = true;
+					break;
+				case Power.Manager.PowerBehaviour.Auto:
+					power_auto.Checked = true;
+					power_manual.Checked = false;
+					break;
+				default:
+					power_auto.Checked = false;
+					power_manual.Checked = false;
+					break;
+			}
 
 			BeginInvoke(new Action(() =>
 			{
@@ -3346,6 +3456,8 @@ namespace Taskmaster.UI
 
 			BeginInvoke(new Action(() =>
 			{
+				HighlightPowerMode();
+
 				powermodestatusbar.Text = pwmode.Text = Power.Manager.GetModeName(e.NewMode);
 				pwcause.Text = e.Cause != null ? e.Cause.ToString() : HumanReadable.Generic.Undefined;
 				LastCauseTime = DateTimeOffset.UtcNow;
@@ -3791,9 +3903,14 @@ namespace Taskmaster.UI
 				{
 					if (powermanager != null)
 					{
-						powermanager.onAutoAdjustAttempt -= PowerLoadHandler;
+						powermanager.onBehaviourChange -= PowerBehaviourEvent;
+						powermanager.onPlanChange -= PowerPlanEvent;
+
+						powermanager.onAutoAdjustAttempt -= PowerLoadDebugHandler;
+
 						powermanager.onBehaviourChange -= PowerBehaviourDebugEvent;
 						powermanager.onPlanChange -= PowerPlanDebugEvent;
+
 						powermanager = null;
 					}
 				}

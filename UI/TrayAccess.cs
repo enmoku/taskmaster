@@ -355,39 +355,55 @@ namespace Taskmaster.UI
 		public void Hook(Power.Manager pman)
 		{
 			powermanager = pman;
+
+			PowerBehaviourEvent(this, new Power.Manager.PowerBehaviourEventArgs(powermanager.Behaviour));
+
 			powermanager.onPlanChange += HighlightPowerModeEvent;
+			powermanager.onBehaviourChange += PowerBehaviourEvent;
 
 			power_auto.Checked = powermanager.Behaviour == Power.Manager.PowerBehaviour.Auto;
 			power_manual.Checked = powermanager.Behaviour == Power.Manager.PowerBehaviour.Manual;
 			power_auto.Enabled = true;
+
 			HighlightPowerMode();
 		}
 
 		void SetAutoPower(object _, EventArgs _ea)
 		{
-			if (power_auto.Checked)
-			{
+			if (powermanager.Behaviour != Power.Manager.PowerBehaviour.Auto)
 				powermanager.SetBehaviour(Power.Manager.PowerBehaviour.Auto);
-				power_manual.Checked = false;
-			}
 			else
-			{
 				powermanager.SetBehaviour(Power.Manager.PowerBehaviour.RuleBased);
-			}
 		}
 
 		void SetManualPower(object _, EventArgs _ea)
 		{
-			if (power_manual.Checked)
-			{
+			if (powermanager.Behaviour != Power.Manager.PowerBehaviour.Manual)
 				powermanager.SetBehaviour(Power.Manager.PowerBehaviour.Manual);
-				power_auto.Checked = false;
-			}
 			else
 				powermanager.SetBehaviour(Power.Manager.PowerBehaviour.RuleBased);
 		}
 
 		void HighlightPowerModeEvent(object _, Power.ModeEventArgs _ea) => HighlightPowerMode();
+
+		void PowerBehaviourEvent(object sender, Power.Manager.PowerBehaviourEventArgs ea)
+		{
+			switch (ea.Behaviour)
+			{
+				case Power.Manager.PowerBehaviour.Auto:
+					power_auto.Checked = true;
+					power_manual.Checked = false;
+					break;
+				case Power.Manager.PowerBehaviour.Manual:
+					power_auto.Checked = false;
+					power_manual.Checked = true;
+					break;
+				default:
+					power_auto.Checked = false;
+					power_manual.Checked = false;
+					break;
+			}
+		}
 
 		void HighlightPowerMode()
 		{
@@ -418,9 +434,6 @@ namespace Taskmaster.UI
 				if (DebugPower) Log.Debug("<Power> Setting behaviour to manual.");
 
 				powermanager.SetBehaviour(Power.Manager.PowerBehaviour.Manual);
-
-				power_manual.Checked = true;
-				power_auto.Checked = false;
 
 				if (DebugPower) Log.Debug("<Power> Setting manual mode: " + mode.ToString());
 
