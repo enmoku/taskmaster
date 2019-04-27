@@ -202,7 +202,7 @@ namespace Taskmaster.Process
 					catch
 					{
 						// probably gone?
-						if (Manager.SystemProcessId(pid)) name = "<OS>"; // this might also signify the desktop, for some reason
+						if (Utility.SystemProcessId(pid)) name = "<OS>"; // this might also signify the desktop, for some reason
 					}
 
 					var sbs = new StringBuilder().Append("<Foreground> ");
@@ -223,7 +223,7 @@ namespace Taskmaster.Process
 
 						sbs.Append(" hung!");
 
-						if (Manager.SystemProcessId(pid))
+						if (Utility.SystemProcessId(pid))
 						{
 							Log.Warning(sbs.ToString());
 							return; // Ignore system processes. We can do nothing useful for them.
@@ -423,7 +423,7 @@ namespace Taskmaster.Process
 					Foreground = activewindowev.Id = pid;
 					HangTick = 0;
 
-					if (!Manager.SystemProcessId(pid))
+					if (!Utility.SystemProcessId(pid))
 					{
 
 						try

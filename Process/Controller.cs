@@ -1101,7 +1101,7 @@ namespace Taskmaster.Process
 		async Task Touch(ProcessEx info, bool refresh = false)
 		{
 			Debug.Assert(info.Process != null, "ProcessController.Touch given null process.");
-			Debug.Assert(!Manager.SystemProcessId(info.Id), "ProcessController.Touch given invalid process ID");
+			Debug.Assert(!Utility.SystemProcessId(info.Id), "ProcessController.Touch given invalid process ID");
 			Debug.Assert(!string.IsNullOrEmpty(info.Name), "ProcessController.Touch given empty process name.");
 			Debug.Assert(info.Controller != null, "No controller attached");
 

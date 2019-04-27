@@ -1046,10 +1046,10 @@ namespace Taskmaster.UI.Config
 			{
 				sbs.Append(HumanReadable.System.Process.Executable).Append(": ").Append(exnam ? "OK" : "Fail").Append(" – Found: ").Append(exfound).AppendLine();
 				string lowname = System.IO.Path.GetFileNameWithoutExtension(execName.Text);
-				if (Process.Manager.ProtectedProcessName(lowname.ToLowerInvariant()))
+				if (processmanager.ProtectedProcessName(lowname.ToLowerInvariant()))
 					sbs.Append("Defined executable is in core protected executables list. Priority adjustment denied.").AppendLine();
 
-				if (Process.Manager.IgnoreProcessName(lowname))
+				if (processmanager.IgnoreProcessName(lowname))
 					sbs.Append("Defined executable is in core ignore list. All changes denied.").AppendLine();
 			}
 			if (pathName.Text.Length > 0)

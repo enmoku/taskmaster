@@ -492,7 +492,7 @@ namespace Taskmaster
 								.Append("<<Auto-Doc>> Free memory low [")
 								.Append(HumanInterface.ByteString((long)memfreemb * 1_048_576, iec:true))
 								.Append("], attempting to improve situation.");
-							if (!Process.Manager.SystemProcessId(ignorepid))
+							if (!Process.Utility.SystemProcessId(ignorepid))
 								sbs.Append(" Ignoring foreground (#").Append(ignorepid).Append(").");
 
 							Log.Warning(sbs.ToString());

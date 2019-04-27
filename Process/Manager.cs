@@ -396,7 +396,7 @@ namespace Taskmaster.Process
 
 				//ScanStartEvent?.Invoke(this, EventArgs.Empty);
 
-				if (!SystemProcessId(ignorePid)) Ignore(ignorePid);
+				if (!Utility.SystemProcessId(ignorePid)) Ignore(ignorePid);
 
 				var procs = System.Diagnostics.Process.GetProcesses();
 				ScanFoundProcs = procs.Length - 2; // -2 for Idle&System
@@ -437,7 +437,7 @@ namespace Taskmaster.Process
 
 				//ScanEndEvent?.Invoke(this, EventArgs.Empty);
 
-				if (!SystemProcessId(ignorePid)) Unignore(ignorePid);
+				if (!Utility.SystemProcessId(ignorePid)) Unignore(ignorePid);
 			}
 			catch (Exception ex) when (ex is NullReferenceException || ex is OutOfMemoryException || ex is OperationCanceledException) { throw; }
 			catch (AggregateException ex)
@@ -1198,7 +1198,7 @@ namespace Taskmaster.Process
 		void WaitForExitTriggered(ProcessEx info)
 		{
 			Debug.Assert(info.Controller != null, "ProcessController not defined");
-			Debug.Assert(!SystemProcessId(info.Id), "WaitForExitTriggered for system process");
+			Debug.Assert(!Utility.SystemProcessId(info.Id), "WaitForExitTriggered for system process");
 
 			info.State = ProcessHandlingState.Exited;
 

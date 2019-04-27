@@ -1341,7 +1341,7 @@ namespace Taskmaster.Power
 
 			if (DebugPower) Log.Debug($"<Power> Releasing {(sourcePid == -1 ? "all locks" : $"#{sourcePid.ToString()}")}");
 
-			Debug.Assert(sourcePid == -1 || !Process.Manager.SystemProcessId(sourcePid));
+			Debug.Assert(sourcePid == -1 || !Process.Utility.SystemProcessId(sourcePid));
 
 			await Task.Delay(0).ConfigureAwait(false);
 

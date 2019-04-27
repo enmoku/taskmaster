@@ -37,6 +37,13 @@ namespace Taskmaster.Process
 	public static class Utility
 	{
 		/// <summary>
+		/// Tests if the process ID is core system process (0[idle] or 4[system]) that can never be valid program.
+		/// </summary>
+		/// <returns>true if the pid should not be used</returns>
+		[System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
+		public static bool SystemProcessId(int pid) => pid <= 4;
+
+		/// <summary>
 		/// Use FindPath() instead. This is called by it.
 		/// </summary>
 		public static bool FindPathExtended(ProcessEx info)
