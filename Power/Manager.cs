@@ -1307,7 +1307,7 @@ namespace Taskmaster.Power
 				case PowerBehaviour.Auto:
 					ResetAutoadjust();
 
-					if (cpumonitor == null)
+					if (cpumonitor is null)
 					{
 						reset = true;
 						Log.Error("<Power> CPU monitor disabled, auto-adjust not possible. Resetting to rule-based behaviour.");
@@ -1337,7 +1337,7 @@ namespace Taskmaster.Power
 		{
 			if (DisposedOrDisposing) throw new ObjectDisposedException("Release called after PowerManager was disposed.");
 
-			int sourcePid = info == null ? -1 : info.Id;
+			int sourcePid = info?.Id ?? -1;
 
 			if (DebugPower) Log.Debug($"<Power> Releasing {(sourcePid == -1 ? "all locks" : $"#{sourcePid.ToString()}")}");
 

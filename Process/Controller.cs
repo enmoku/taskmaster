@@ -41,6 +41,30 @@ namespace Taskmaster.Process
 {
 	using static Taskmaster;
 
+	public enum PathVisibilityOptions : int
+	{
+		/// <summary>
+		/// Process name. Usually executable name without extension.
+		/// </summary>
+		Process = -1,
+		/// <summary>
+		/// Partial path removes some basic elements that seem redundant.
+		/// </summary>
+		Partial = 1,
+		/// <summary>
+		/// Smart reduction of full path. Not always as smart as desirable.
+		/// </summary>
+		Smart = 2,
+		/// <summary>
+		/// Complete path.
+		/// </summary>
+		Full = 3,
+		/// <summary>
+		/// Invalid.
+		/// </summary>
+		Invalid = 0,
+	}
+
 	/// <summary>
 	/// Process controller.
 	/// </summary>
@@ -207,7 +231,7 @@ namespace Taskmaster.Process
 
 		public bool AllowPaging { get; set; } = false;
 
-		public PathVisibilityOptions PathVisibility { get; set; } = PathVisibilityOptions.Process;
+		public Process.PathVisibilityOptions PathVisibility { get; set; } = Process.PathVisibilityOptions.Process;
 
 		string PathMask { get; set; } = string.Empty; // UNUSED
 
@@ -520,7 +544,7 @@ namespace Taskmaster.Process
 
 			Debug.Assert(cfg != null);
 
-			if (app == null)
+			if (app is null)
 				app = cfg.Config[FriendlyName];
 
 			if (!string.IsNullOrEmpty(Executable))
@@ -640,7 +664,7 @@ namespace Taskmaster.Process
 			if (Resize.HasValue)
 			{
 				int[] res = app.Get("Resize")?.IntArray ?? null;
-				if (res == null || res.Length != 4) res = new int[] { 0, 0, 0, 0 };
+				if ((res?.Length ?? 0) != 4) res = new int[] { 0, 0, 0, 0 };
 
 				if (Bit.IsSet((int)ResizeStrategy, (int)WindowResizeStrategy.Position))
 				{
@@ -1491,7 +1515,7 @@ namespace Taskmaster.Process
 
 			try
 			{
-				int original = ProcessUtility.SetIO(info.Process, target, out nIO);
+				int original = Utility.SetIO(info.Process, target, out nIO);
 
 				if (original < 0)
 				{
@@ -1536,13 +1560,8 @@ namespace Taskmaster.Process
 		bool EstablishNewAffinity(int oldmask, out int newmask)
 		{
 			// TODO: Apply affinity strategy
-			newmask = ProcessManagerUtility.ApplyAffinityStrategy(oldmask, AffinityMask, AffinityStrategy);
+			newmask = Utility.ApplyAffinityStrategy(oldmask, AffinityMask, AffinityStrategy);
 			return (newmask != oldmask);
-		}
-
-		void ApplyAffinity(ProcessEx info)
-		{
-
 		}
 
 		void ApplyAffinityIdeal(ProcessEx info)

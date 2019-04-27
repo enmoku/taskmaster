@@ -49,7 +49,7 @@ namespace Processes
 		}
 
 		[Test]
-		[TestOf(nameof(ProcessManagerUtility.ApplyAffinityStrategy))]
+		[TestOf(nameof(Taskmaster.Process.Utility.ApplyAffinityStrategy))]
 		public void AffinityStrategyTests()
 		{
 			int testSource = 192;
@@ -68,7 +68,7 @@ namespace Processes
 			Console.WriteLine("Source: " + testSource);
 			Console.WriteLine("Target: " + testTarget);
 
-			int testProduct = ProcessManagerUtility.ApplyAffinityStrategy(
+			int testProduct = Taskmaster.Process.Utility.ApplyAffinityStrategy(
 				testSource, testTarget, ProcessAffinityStrategy.Limit);
 
 			Assert.AreEqual(Bit.Count(testSource), Bit.Count(testProduct));

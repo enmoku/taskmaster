@@ -115,6 +115,7 @@
     <None Include="Resources\ExternalLicenses.rtf" />
     <None Include="Resources\KnownModules.ini" />
     <None Include="Resources\ProjectDirectory.restext" />
+    <Content Include="Licenses\NAudio.txt" />
     <Content Include="taskmaster-hammer.ico" />
     <Content Include="LICENSE">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
@@ -216,6 +217,7 @@
     <Compile Include="UI\Stubs\EmptySpace.cs">
       <SubType>Component</SubType>
     </Compile>
+    <Compile Include="UI\Utility.cs" />
     <Compile Include="UI\VolumeMeter.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -272,7 +274,6 @@
     <Compile Include="Extensions\ProcessExtensions.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="HealthMonitor.cs" />
-    <Compile Include="Process\ManagerUtility.cs" />
     <Compile Include="Power\PowerInfo.cs" />
     <Compile Include="UI\Config\HealthMonitorConfig.cs">
       <SubType>Form</SubType>

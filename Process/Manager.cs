@@ -499,7 +499,7 @@ namespace Taskmaster.Process
 						info.State = ProcessHandlingState.Triage; // still valid
 				}
 
-				if (info != null || ProcessUtility.GetInfo(pid, out info, process, null, name, null, getPath: true))
+				if (info != null || Utility.GetInfo(pid, out info, process, null, name, null, getPath: true))
 				{
 					info.Timer = Stopwatch.StartNew();
 
@@ -1384,7 +1384,7 @@ namespace Taskmaster.Process
 					try
 					{
 						if (process is null) process = System.Diagnostics.Process.GetProcessById(ev.Id);
-						ProcessUtility.SetIO(process, 2, out _, decrease: false); // set foreground app I/O to highest possible
+						Utility.SetIO(process, 2, out _, decrease: false); // set foreground app I/O to highest possible
 					}
 					catch (Exception ex) when (ex is NullReferenceException || ex is OutOfMemoryException) { throw; }
 					catch (ArgumentException) { }
@@ -1429,7 +1429,7 @@ namespace Taskmaster.Process
 				return false; // return ProcessState.AccessDenied; // we don't care wwhat this error is
 			}
 
-			if (string.IsNullOrEmpty(info.Path) && !ProcessUtility.FindPath(info))
+			if (string.IsNullOrEmpty(info.Path) && !Utility.FindPath(info))
 				return false; // return ProcessState.Error;
 
 			if (IgnoreSystem32Path && info.Path.StartsWith(Environment.GetFolderPath(Environment.SpecialFolder.System)))
@@ -2021,7 +2021,7 @@ namespace Taskmaster.Process
 					return;
 				}
 
-				if (ProcessUtility.GetInfo(pid, out info, path: path, getPath: true, name: name))
+				if (Utility.GetInfo(pid, out info, path: path, getPath: true, name: name))
 				{
 					info.Timer = timer;
 					info.WMIDelay = wmidelay.TotalMilliseconds;
@@ -2346,7 +2346,8 @@ namespace Taskmaster.Process
 				try
 				{
 					//watcher.EventArrived -= NewInstanceTriage;
-					Utility.Dispose(ref NewProcessWatcher);
+					NewProcessWatcher?.Dispose();
+					NewProcessWatcher = null;
 
 					if (activeappmonitor != null)
 					{

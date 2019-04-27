@@ -520,7 +520,7 @@ namespace Taskmaster.UI
 		public void OnActiveWindowChanged(object _, Process.WindowChangedArgs windowchangeev)
 		{
 			if (!IsHandleCreated || DisposedOrDisposing) return;
-			if (windowchangeev.Process == null) return;
+			if (windowchangeev.Process is null) return;
 
 			BeginInvoke(new Action(() =>
 			{
@@ -874,7 +874,7 @@ namespace Taskmaster.UI
 		void UpdateRescanCountdown(object _, EventArgs _ea)
 		{
 			if (!IsHandleCreated) return;
-			if (processmanager == null) return; // not yet assigned
+			if (processmanager is null) return; // not yet assigned
 
 			// Rescan Countdown
 			if (processmanager.ScanFrequency.HasValue)
@@ -886,7 +886,7 @@ namespace Taskmaster.UI
 		void UpdateNetwork(object _, EventArgs _ea)
 		{
 			if (!IsHandleCreated) return;
-			if (netmonitor == null) return;
+			if (netmonitor is null) return;
 
 			uptimestatuslabel.Text = HumanInterface.TimeString(netmonitor.Uptime);
 			var mean = netmonitor.UptimeMean;
@@ -1544,7 +1544,7 @@ namespace Taskmaster.UI
 					powermanager.onPlanChange += PowerPlanDebugEvent;
 					powermanager.onAutoAdjustAttempt += PowerLoadHandler;
 
-					if (powerDebugTab == null) BuildPowerDebugPanel();
+					if (powerDebugTab is null) BuildPowerDebugPanel();
 					else tabLayout.Controls.Add(powerDebugTab);
 					EnsureVerbosityLevel();
 				}
@@ -2710,7 +2710,7 @@ namespace Taskmaster.UI
 
 			if (Process.Manager.DebugProcesses) processmanager.HandlingStateChange += ProcessHandlingStateChangeEvent;
 
-			if (enabled && ProcessDebugTab == null)
+			if (enabled && ProcessDebugTab is null)
 				BuildProcessDebug();
 
 			if (activeappmonitor != null && DebugForeground)
@@ -2870,7 +2870,7 @@ namespace Taskmaster.UI
 
 		public void ExitWaitListHandler(object _discard, ProcessModificationEventArgs ea)
 		{
-			if (activeappmonitor == null) return;
+			if (activeappmonitor is null) return;
 			if (!IsHandleCreated) return;
 
 			BeginInvoke(new Action(() =>
@@ -2961,7 +2961,7 @@ namespace Taskmaster.UI
 		readonly System.Drawing.Color Greenish = System.Drawing.Color.FromArgb(240, 255, 230);
 		readonly System.Drawing.Color Orangeish = System.Drawing.Color.FromArgb(255, 250, 230);
 
-		public void PowerLoadHandler(object _, Power.AutoAdjustReactionEventArgs ea)
+		public void PowerLoadDebugHandler(object _, Power.AutoAdjustReactionEventArgs ea)
 		{
 			if (!IsHandleCreated || DisposedOrDisposing) return;
 
@@ -3206,7 +3206,7 @@ namespace Taskmaster.UI
 
 					if (prc.ModifyDelay > 0) sbs.Append("Modify delay = ").Append(prc.ModifyDelay).AppendLine();
 
-					if (prc.PathVisibility != PathVisibilityOptions.Invalid)
+					if (prc.PathVisibility != Process.PathVisibilityOptions.Invalid)
 						sbs.Append("Path visibility = ").Append((int)prc.PathVisibility).AppendLine();
 
 					if (prc.VolumeStrategy != Audio.VolumeStrategy.Ignore)
@@ -3289,7 +3289,7 @@ namespace Taskmaster.UI
 
 		public void Hook(Process.ForegroundManager manager)
 		{
-			if (manager == null) return;
+			if (manager is null) return;
 
 			if (Trace) Log.Verbose("Hooking active app manager.");
 
@@ -3302,7 +3302,7 @@ namespace Taskmaster.UI
 
 		public void Hook(Power.Manager manager)
 		{
-			if (manager == null) return;
+			if (manager is null) return;
 
 			if (Trace) Log.Verbose("Hooking power manager.");
 
@@ -3393,7 +3393,7 @@ namespace Taskmaster.UI
 		async void UpdateHealthMon(object sender, EventArgs e)
 		{
 			if (!IsHandleCreated || DisposedOrDisposing) return;
-			if (healthmonitor == null) return;
+			if (healthmonitor is null) return;
 			if (!nvmtransfers.Visible) return;
 			if (powermanager?.SessionLocked ?? false) return;
 
@@ -3570,7 +3570,7 @@ namespace Taskmaster.UI
 
 		public void Hook(Network.Manager manager)
 		{
-			if (manager == null) return; // disabled
+			if (manager is null) return; // disabled
 
 			if (Trace) Log.Verbose("Hooking network monitor.");
 

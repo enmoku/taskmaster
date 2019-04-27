@@ -230,7 +230,7 @@ namespace Taskmaster.Audio
 
 				float volume = session.SimpleAudioVolume.Volume;
 
-				if (ProcessUtility.GetInfo(pid, out var info, getPath: true, name: name))
+				if (Process.Utility.GetInfo(pid, out var info, getPath: true, name: name))
 				{
 					//OnNewSession?.Invoke(this, info);
 					if (processmanager.GetController(info, out var prc))

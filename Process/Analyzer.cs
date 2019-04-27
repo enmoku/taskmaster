@@ -351,7 +351,7 @@ namespace Taskmaster.Process
 
 							var files = section.Get("files")?.Array ?? null;
 
-							if (files == null || files.Length == 0) continue;
+							if ((files?.Length ?? 0) == 0) continue;
 
 							bool listed = yesvalues.Contains(section.Get("listed")?.Value.ToLowerInvariant() ?? "no");
 							//string upgrade = section.TryGet("upgrade")?.Value ?? null;

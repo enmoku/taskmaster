@@ -153,7 +153,7 @@ namespace Taskmaster.UI
 
 			// TODO: Toast Notifications. Apparently not supported by Win7, so nevermind.
 
-			if (Tray.Icon == null)
+			if (Tray.Icon is null)
 			{
 				Log.Fatal("<Tray> Icon missing, setting system default.");
 				Tray.Icon = System.Drawing.SystemIcons.Application;
@@ -181,10 +181,8 @@ namespace Taskmaster.UI
 
 		void UpdateIcon(int count = 0)
 		{
-			System.Drawing.Icon nicon = null;
-
-			nicon = IconCacheMap[count] as System.Drawing.Icon;
-			if (nicon == null)
+			System.Drawing.Icon nicon = IconCacheMap[count] as System.Drawing.Icon;
+			if (nicon is null)
 			{
 				using (var bmp = new System.Drawing.Bitmap(32, 32))
 				using (var graphics = System.Drawing.Graphics.FromImage(bmp))
@@ -567,7 +565,7 @@ namespace Taskmaster.UI
 				if (Trace) Log.Verbose("<Tray> Registering Explorer crash monitor.");
 				// this is for dealing with notify icon disappearing on explorer.exe crash/restart
 
-				if (procs == null || procs.Length == 0) procs = ExplorerInstances;
+				if ((procs?.Length ?? 0) == 0) procs = ExplorerInstances;
 
 				if (procs.Length > 0)
 				{
@@ -575,7 +573,7 @@ namespace Taskmaster.UI
 					foreach (var proc in procs)
 					{
 
-						if (!ProcessUtility.GetInfo(proc.Id, out var info, process: proc, name: "explorer", getPath: true)) continue; // things failed, move on
+						if (!Process.Utility.GetInfo(proc.Id, out var info, process: proc, name: "explorer", getPath: true)) continue; // things failed, move on
 
 						if (!string.IsNullOrEmpty(info.Path))
 						{
@@ -834,7 +832,8 @@ namespace Taskmaster.UI
 				if (Tray != null)
 				{
 					Tray.Visible = false;
-					Utility.Dispose(ref Tray);
+					Tray?.Dispose();
+					Tray = null;
 				}
 
 				// Free any other managed objects here.

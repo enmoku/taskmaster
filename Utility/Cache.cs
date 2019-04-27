@@ -264,7 +264,8 @@ namespace Taskmaster
 
 			if (disposing)
 			{
-				Utility.Dispose(ref PruneTimer);
+				PruneTimer?.Dispose();
+				PruneTimer = null;
 				Items?.Clear();
 			}
 

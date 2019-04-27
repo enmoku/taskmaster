@@ -1,5 +1,5 @@
 ﻿//
-// ProcessUtility.cs
+// Process.Utility.cs
 //
 // Author:
 //       M.A. (https://github.com/mkahvi)
@@ -28,16 +28,159 @@ using MKAh;
 using System;
 using System.Diagnostics;
 using Serilog;
+using System.ComponentModel;
+using System.Text;
+using MKAh.Logic;
 
-namespace Taskmaster
+namespace Taskmaster.Process
 {
-	public static class ProcessUtility
+	public static class Utility
 	{
+		/// <summary>
+		/// Use FindPath() instead. This is called by it.
+		/// </summary>
+		public static bool FindPathExtended(ProcessEx info)
+		{
+			Debug.Assert(info != null, "FindPathExtended received null");
+			Debug.Assert(string.IsNullOrEmpty(info.Path), "FindPathExtended called even though path known.");
+
+			Statistics.PathFindAttempts++;
+
+			string path = string.Empty;
+			try
+			{
+				path = info.Process?.MainModule?.FileName ?? string.Empty; // this will cause win32exception of various types, we don't Really care which error it is
+			}
+			catch (InvalidOperationException)
+			{
+				// already gone
+				return false;
+			}
+			catch (Win32Exception) { } // Access denied problems of varying sorts
+			catch (Exception ex)
+			{
+				Logging.Stacktrace(ex);
+				// NOP, don't care
+			}
+
+			if (string.IsNullOrEmpty(path))
+			{
+				if (!GetPathViaC(info, out path))
+				{
+					Statistics.PathNotFound++;
+					return false;
+				}
+				else
+					Statistics.PathFindViaC++;
+			}
+			else
+				Statistics.PathFindViaModule++;
+
+			info.Path = path;
+
+			return true;
+		}
+
+		// https://stackoverflow.com/a/34991822
+		public static bool GetPathViaC(ProcessEx info, out string path)
+		{
+			path = string.Empty;
+			int handle = 0;
+
+			try
+			{
+				handle = NativeMethods.OpenProcess(NativeMethods.PROCESS_RIGHTS.PROCESS_QUERY_INFORMATION | NativeMethods.PROCESS_RIGHTS.PROCESS_VM_READ, false, info.Id);
+				if (handle == 0) return false; // failed to open process
+
+				const int lengthSb = 32768; // this is the maximum path length NTFS supports
+
+				var sb = new System.Text.StringBuilder(lengthSb);
+
+				if (NativeMethods.GetModuleFileNameEx(info.Process.Handle, IntPtr.Zero, sb, lengthSb) > 0)
+				{
+					// result = Path.GetFileName(sb.ToString());
+					path = sb.ToString();
+					return true;
+				}
+			}
+			catch (Win32Exception) // Access Denied
+			{
+				// NOP
+				Debug.WriteLine("GetModuleFileNameEx - Access Denied - " + $"{info.Name} (#{info.Id})");
+			}
+			catch (InvalidOperationException) { }// Already exited
+			catch (Exception ex)
+			{
+				Logging.Stacktrace(ex);
+			}
+			finally
+			{
+				NativeMethods.CloseHandle(handle);
+			}
+
+			return false;
+		}
+
+		public static int ApplyAffinityStrategy(int source, int target, ProcessAffinityStrategy strategy)
+		{
+			int newAffinityMask = target;
+			StringBuilder sbs = null;
+
+			if (Process.Manager.DebugProcesses)
+			{
+				sbs = new StringBuilder()
+					.Append("Affinity Strategy(").Append(Convert.ToString(source, 2)).Append(", ").Append(strategy.ToString()).Append(")");
+			}
+
+			// Don't increase the number of cores
+			if (strategy == ProcessAffinityStrategy.Limit)
+			{
+				sbs?.Append(" Cores(").Append(Bit.Count(source)).Append("->").Append(Bit.Count(target)).Append(")");
+
+				int excesscores = Bit.Count(target) - Bit.Count(source);
+				if (excesscores > 0)
+				{
+					for (int i = 0; i < Process.Manager.CPUCount; i++)
+					{
+						if (Bit.IsSet(newAffinityMask, i))
+						{
+							newAffinityMask = Bit.Unset(newAffinityMask, i);
+							sbs?.Append(" -> ").Append(Convert.ToString(newAffinityMask, 2));
+							if (--excesscores <= 0) break;
+						}
+					}
+				}
+			}
+			else if (strategy == ProcessAffinityStrategy.Scatter)
+			{
+				throw new NotImplementedException("Affinitry scatter strategy not implemented.");
+
+				// NOT IMPLEMENTED
+				/*
+				for (; ScatterOffset < ProcessManager.CPUCount; ScatterOffset++)
+				{
+					if (Bit.IsSet(newAffinityMask, ScatterOffset))
+					{
+
+					}
+				}
+				*/
+			}
+
+			if (sbs != null)
+			{
+				sbs.Append(" = ").Append(Convert.ToString(newAffinityMask, 2));
+				Debug.WriteLine(sbs.ToString());
+			}
+
+			return newAffinityMask;
+		}
+
 		/// <summary>
 		/// Throws: InvalidOperationException, ArgumentException
 		/// </summary>
 		/// <param name="target">0 = Background, 1 = Low, 2 = Normal, 3 = Elevated, 4 = High</param>
-		public static int SetIO(System.Diagnostics.Process process, int target, out int newIO, bool decrease=true)
+		public static int SetIO(System.Diagnostics.Process process, int target, out int newIO, bool decrease = true)
 		{
 			int handle = 0;
 			int original = -1;
@@ -81,7 +224,6 @@ namespace Taskmaster
 			return original;
 		}
 
-
 		internal enum PriorityTypes
 		{
 			ABOVE_NORMAL_PRIORITY_CLASS = 0x00008000,
@@ -122,14 +264,14 @@ namespace Taskmaster
 		}
 
 		static Cache<int, string, string> pathCache = null;
-		public static void InitializeCache()
+		internal static void InitializeCache()
 			=> pathCache = new Cache<int, string, string>(Taskmaster.PathCacheMaxAge, (uint)Taskmaster.PathCacheLimit, (uint)(Taskmaster.PathCacheLimit / 10).Constrain(20, 60));
 
 		public static bool GetInfo(int ProcessID, out ProcessEx info, System.Diagnostics.Process process = null, Process.Controller controller = null, string name = null, string path = null, bool getPath = false)
 		{
 			try
 			{
-				if (process == null) process = System.Diagnostics.Process.GetProcessById(ProcessID);
+				if (process is null) process = System.Diagnostics.Process.GetProcessById(ProcessID);
 
 				info = new ProcessEx()
 				{
@@ -174,7 +316,7 @@ namespace Taskmaster
 			}
 
 			// Try harder
-			if (string.IsNullOrEmpty(info.Path) && !ProcessManagerUtility.FindPathExtended(info)) return false;
+			if (string.IsNullOrEmpty(info.Path) && !FindPathExtended(info)) return false;
 
 			// Add to path cache
 			if (!cacheGet)

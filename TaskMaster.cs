@@ -171,7 +171,7 @@ namespace Taskmaster
 		{
 			if (!AudioManagerEnabled) return;
 
-			if (volumemeter == null)
+			if (volumemeter is null)
 			{
 				volumemeter = new UI.VolumeMeter(audiomanager);
 				volumemeter.OnDisposed += (_, _ea) => volumemeter = null;
@@ -252,7 +252,7 @@ namespace Taskmaster
 			if (shown)
 			{
 				if (SelfOptimizeBGIO)
-					MKAh.Utility.DiscardExceptions(() => ProcessUtility.UnsetBackground(self));
+					MKAh.Utility.DiscardExceptions(() => Process.Utility.UnsetBackground(self));
 
 				self.PriorityClass = ProcessPriorityClass.AboveNormal;
 			}
@@ -261,7 +261,7 @@ namespace Taskmaster
 				self.PriorityClass = SelfPriority;
 
 				if (SelfOptimizeBGIO)
-					MKAh.Utility.DiscardExceptions(() => ProcessUtility.SetBackground(self));
+					MKAh.Utility.DiscardExceptions(() => Process.Utility.SetBackground(self));
 			}
 
 		}
@@ -487,7 +487,7 @@ namespace Taskmaster
 					var self = System.Diagnostics.Process.GetCurrentProcess();
 					self.PriorityClass = ProcessPriorityClass.AboveNormal;
 					if (SelfOptimizeBGIO)
-						MKAh.Utility.DiscardExceptions(() => ProcessUtility.SetBackground(self));
+						MKAh.Utility.DiscardExceptions(() => Process.Utility.SetBackground(self));
 				}
 
 				Log.Information("Exiting...");
@@ -498,7 +498,8 @@ namespace Taskmaster
 
 				CleanShutdown();
 
-				Utility.Dispose(ref Config);
+				Config?.Dispose();
+				Config = null;
 
 				Log.Information(Name + "! (#" + System.Diagnostics.Process.GetCurrentProcess().Id + ") END! [Clean]");
 

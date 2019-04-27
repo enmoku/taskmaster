@@ -170,7 +170,7 @@ namespace Taskmaster
 						if (Process.Manager.ProtectedProcessName(name)) continue;
 						if (Process.Manager.IgnoreProcessName(name)) continue;
 
-						if (ProcessUtility.GetInfo(pid, out var info, proc, name: proc.ProcessName, getPath: true))
+						if (Process.Utility.GetInfo(pid, out var info, proc, name: proc.ProcessName, getPath: true))
 							InfoList.Add(info);
 					}
 					catch (InvalidOperationException)

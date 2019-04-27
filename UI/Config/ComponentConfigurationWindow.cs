@@ -54,7 +54,7 @@ namespace Taskmaster.UI.Config
 			int ScanFrequency = 180;
 			bool scan = true;
 
-			if (processmanager == null)
+			if (processmanager is null)
 			{
 				using (var corecfg = Config.Load(CoreConfigFilename).BlockUnload())
 				{

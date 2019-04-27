@@ -329,7 +329,7 @@ namespace Taskmaster
 
 			var cts = new System.Threading.CancellationTokenSource();
 
-			ProcessUtility.InitializeCache();
+			Process.Utility.InitializeCache();
 
 			Task PowMan, CpuMon, ProcMon, FgMon, NetMon, StorMon, HpMon, HwMon, AlMan;
 

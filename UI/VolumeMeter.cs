@@ -190,7 +190,6 @@ namespace Taskmaster.UI
 		}
 
 		float PreviousOut = 0.0f;
-
 		float PreviousIn = 0.0f;
 		int SuspicionIn = 0;
 		int SuspicionOut = 0;
@@ -198,7 +197,7 @@ namespace Taskmaster.UI
 		void UpdateVolumeTick(object sender, EventArgs e)
 		{
 			if (DisposedOrDisposing) return;
-			if (audiomanager == null) throw new NullReferenceException(nameof(audiomanager));
+			if (audiomanager is null) throw new NullReferenceException(nameof(audiomanager));
 
 			try
 			{

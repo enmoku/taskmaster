@@ -33,6 +33,7 @@ using System.Diagnostics;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using Serilog;
+using Taskmaster;
 
 namespace Taskmaster.UI.Config
 {
@@ -69,7 +70,7 @@ namespace Taskmaster.UI.Config
 
 			StartPosition = FormStartPosition.CenterParent;
 
-			if (Controller == null) throw new ArgumentException(Controller.FriendlyName + " not found in watchlist.");
+			if (Controller is null) throw new ArgumentException(Controller.FriendlyName + " not found in watchlist.");
 
 			WindowState = FormWindowState.Normal;
 			FormBorderStyle = FormBorderStyle.FixedDialog; // no min/max buttons as wanted
@@ -149,15 +150,15 @@ namespace Taskmaster.UI.Config
 				}
 			}
 
-			PathVisibilityOptions pvis = PathVisibilityOptions.Invalid;
+			Process.PathVisibilityOptions pvis = Process.PathVisibilityOptions.Invalid;
 			switch (pathVisibility.SelectedIndex)
 			{
 				default:
-				case 0: pvis = PathVisibilityOptions.Invalid; break;
-				case 1: pvis = PathVisibilityOptions.Process; break;
-				case 2: pvis = PathVisibilityOptions.Partial; break;
-				case 3: pvis = PathVisibilityOptions.Full; break;
-				case 4: pvis = PathVisibilityOptions.Smart; break;
+				case 0: pvis = Process.PathVisibilityOptions.Invalid; break;
+				case 1: pvis = Process.PathVisibilityOptions.Process; break;
+				case 2: pvis = Process.PathVisibilityOptions.Partial; break;
+				case 3: pvis = Process.PathVisibilityOptions.Full; break;
+				case 4: pvis = Process.PathVisibilityOptions.Smart; break;
 			}
 			Controller.PathVisibility = pvis;
 
@@ -427,11 +428,11 @@ namespace Taskmaster.UI.Config
 			switch (Controller.PathVisibility)
 			{
 				default:
-				case PathVisibilityOptions.Invalid: pathVisibility.SelectedIndex = 0; break;
-				case PathVisibilityOptions.Process: pathVisibility.SelectedIndex = 1; break;
-				case PathVisibilityOptions.Partial: pathVisibility.SelectedIndex = 2; break;
-				case PathVisibilityOptions.Full: pathVisibility.SelectedIndex = 3; break;
-				case PathVisibilityOptions.Smart: pathVisibility.SelectedIndex = 4; break;
+				case Process.PathVisibilityOptions.Invalid: pathVisibility.SelectedIndex = 0; break;
+				case Process.PathVisibilityOptions.Process: pathVisibility.SelectedIndex = 1; break;
+				case Process.PathVisibilityOptions.Partial: pathVisibility.SelectedIndex = 2; break;
+				case Process.PathVisibilityOptions.Full: pathVisibility.SelectedIndex = 3; break;
+				case Process.PathVisibilityOptions.Smart: pathVisibility.SelectedIndex = 4; break;
 			}
 			lt.Controls.Add(new AlignedLabel { Text = "Path visibility" });
 			lt.Controls.Add(pathVisibility);
