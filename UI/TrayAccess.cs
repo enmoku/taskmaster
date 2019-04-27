@@ -585,7 +585,6 @@ namespace Taskmaster.UI
 					Explorer = procs;
 					foreach (var proc in procs)
 					{
-
 						if (!Process.Utility.GetInfo(proc.Id, out var info, process: proc, name: "explorer", getPath: true)) continue; // things failed, move on
 
 						if (!string.IsNullOrEmpty(info.Path))

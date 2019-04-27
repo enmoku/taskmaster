@@ -65,6 +65,8 @@ namespace Taskmaster
 		/// </summary>
 		public Process.Controller Controller { get; set; } = null;
 
+		public bool Protected { get; set; } = false;
+
 		/// <summary>
 		/// Monitoring power plan.
 		/// </summary>

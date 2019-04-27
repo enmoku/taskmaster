@@ -19,27 +19,27 @@ namespace Taskmaster.Properties {
     // class via a tool like ResGen or Visual Studio.
     // To add or remove a member, edit your .ResX file then rerun ResGen
     // with the /str option, or rebuild your VS project.
-    [System.CodeDom.Compiler.GeneratedCodeAttribute("System.Resources.Tools.StronglyTypedResourceBuilder", "16.0.0.0")]
-    [System.Diagnostics.DebuggerNonUserCodeAttribute()]
-    [System.Runtime.CompilerServices.CompilerGeneratedAttribute()]
+    [global::System.CodeDom.Compiler.GeneratedCodeAttribute("System.Resources.Tools.StronglyTypedResourceBuilder", "16.0.0.0")]
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+    [global::System.Runtime.CompilerServices.CompilerGeneratedAttribute()]
     internal class Resources {
         
-        private static System.Resources.ResourceManager resourceMan;
+        private static global::System.Resources.ResourceManager resourceMan;
         
-        private static System.Globalization.CultureInfo resourceCulture;
+        private static global::System.Globalization.CultureInfo resourceCulture;
         
-        [System.Diagnostics.CodeAnalysis.SuppressMessageAttribute("Microsoft.Performance", "CA1811:AvoidUncalledPrivateCode")]
+        [global::System.Diagnostics.CodeAnalysis.SuppressMessageAttribute("Microsoft.Performance", "CA1811:AvoidUncalledPrivateCode")]
         internal Resources() {
         }
         
         /// <summary>
         ///   Returns the cached ResourceManager instance used by this class.
         /// </summary>
-        [System.ComponentModel.EditorBrowsableAttribute(System.ComponentModel.EditorBrowsableState.Advanced)]
-        internal static System.Resources.ResourceManager ResourceManager {
+        [global::System.ComponentModel.EditorBrowsableAttribute(global::System.ComponentModel.EditorBrowsableState.Advanced)]
+        internal static global::System.Resources.ResourceManager ResourceManager {
             get {
                 if (object.ReferenceEquals(resourceMan, null)) {
-                    System.Resources.ResourceManager temp = new System.Resources.ResourceManager("Taskmaster.Properties.Resources", typeof(Resources).Assembly);
+                    global::System.Resources.ResourceManager temp = new global::System.Resources.ResourceManager("Taskmaster.Properties.Resources", typeof(Resources).Assembly);
                     resourceMan = temp;
                 }
                 return resourceMan;
@@ -50,8 +50,8 @@ namespace Taskmaster.Properties {
         ///   Overrides the current thread's CurrentUICulture property for all
         ///   resource lookups using this strongly typed resource class.
         /// </summary>
-        [System.ComponentModel.EditorBrowsableAttribute(System.ComponentModel.EditorBrowsableState.Advanced)]
-        internal static System.Globalization.CultureInfo Culture {
+        [global::System.ComponentModel.EditorBrowsableAttribute(global::System.ComponentModel.EditorBrowsableState.Advanced)]
+        internal static global::System.Globalization.CultureInfo Culture {
             get {
                 return resourceCulture;
             }
@@ -61,7 +61,8 @@ namespace Taskmaster.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to 2019/04/20 07:35:32 Z 
+        ///   Looks up a localized string similar to 2019/04/27 16:26:03 Z 
+        ///.
         /// </summary>
         internal static string BuildDate {
             get {
@@ -70,6 +71,61 @@ namespace Taskmaster.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to {\rtf1\ansi\ansicpg1252\deff0\deflang2057{\fonttbl{\f0\fnil\fcharset0 Consolas;}{\f1\fnil Consolas;}{\f2\fnil\fcharset0 Courier New;}}
+        ///{\colortbl ;\red0\green0\blue0;}
+        ///{\*\generator Msftedit 5.41.21.2510;}\viewkind4\uc1\pard\cf1\lang1035\f0\fs32 Third party licenses used by Taskmaster\fs28\par
+        ///\f1\par
+        ///NAudio by Mark Heath (Ms-PL)\par
+        ///\fs19\par
+        ///\pard\li720 Microsoft Public License (Ms-PL)\par
+        ///This license governs use of the accompanying software. If you use the software, you accept this license. If yo [rest of string was truncated]&quot;;.
+        /// </summary>
+        internal static string ExternalLicenses {
+            get {
+                return ResourceManager.GetString("ExternalLicenses", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to # DO NOT MODIFY THIS FILE
+        ///# Add custom modules to Modules.User.ini
+        ///#
+        ///#[Unknown] # Reserved identity
+        ///#
+        ///
+        ///[WxWidgets]
+        ///files = {wxmsw}
+        ///type = Interface
+        ///open = yes
+        ///
+        ///[DirectSound]
+        ///files = {dsound.dll}
+        ///type = Audio
+        ///listed = yes
+        ///upgrade = XAudio
+        ///
+        ///[XAudio]
+        ///files = {XAudio}
+        ///type = Audio
+        ///listed = yes
+        ///
+        ///[PhysX]
+        ///files = {physx}
+        ///type = Physics
+        ///listed = yes
+        ///proprietary = yes
+        ///recommendation = change
+        ///upgrade = any
+        ///
+        ///[XInput]
+        ///files = {xinput}
+        ///type = Controller
+        ///listed = yes
+        ///
+        ///[DirectInput]
+        ///files = {dinput}
+        ///type = Controller
+        ///list [rest of string was truncated]&quot;;.
         /// </summary>
         internal static string KnownModules {
             get {
@@ -78,6 +134,17 @@ namespace Taskmaster.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to The MIT License (MIT)
+        ///
+        ///Author:
+        ///		M.A. (https://github.com/mkahvi)
+        ///
+        ///Copyright (c) 2016-2019 M.A.
+        ///
+        ///Permission is hereby granted, free of charge, to any person obtaining a copy
+        ///of this software and associated documentation files (the &quot;Software&quot;), to deal
+        ///in the Software without restriction, including without limitation the rights
+        ///to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
         ///copies of the Software, and to permit persons to whom the Software is
         ///furnished to do so, subject [rest of string was truncated]&quot;;.
         /// </summary>
@@ -86,9 +153,9 @@ namespace Taskmaster.Properties {
                 return ResourceManager.GetString("LICENSE", resourceCulture);
             }
         }
-
+        
         /// <summary>
-        ///   Looks up a localized string similar to C:\Users\Mayflower\Documents\Projects\TaskMaster\Taskmaster\
+        ///   Looks up a localized string similar to C:\Users\Mayflower\Documents\Projects\TaskMaster\Taskmaster\ 
         ///.
         /// </summary>
         internal static string ProjectDirectory {
@@ -96,23 +163,17 @@ namespace Taskmaster.Properties {
                 return ResourceManager.GetString("ProjectDirectory", resourceCulture);
             }
         }
-
+        
         /// <summary>
         ///   Looks up a localized string similar to # Default Configuration
         ///
         ///#[Human-readable Unique Name]
         ///#Image=executable.exe
+        ///#Path = Partially matched full path, like G:\Games would match G:\Games\Game1\Game.exe and G:\GamesOnline\Game2\game.exe but not G:\More\Games...
+        ///#Ignore = { launcher } # process names without extension to be ignored if Path is defined and no image is
         ///#Priority=2 # Process priority, 0 [low] to 4 [high], 2 = normal/Default
         ///#Priority strategy = 2 # 0 = Ignore/Unset, 1 = Increase only, 2 = Decrease only, 3 = Force/bidirectional
-        ///#Rescan=30 # After how many minutes should the process be checked again
-        ///#Allow paging=false # Allow TM to push the process into swap file
-        ///
-        ///[Internet Explorer]
-        ///Image=iexlore.exe
-        ///Priority=1
-        ///Priority strategy = 2
-        ///#Rescan=30
-        ///Allow paging=false
+        ///#Allow [rest of string was truncated]&quot;;.
         /// </summary>
         internal static string Watchlist {
             get {

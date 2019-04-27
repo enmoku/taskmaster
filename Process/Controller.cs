@@ -1255,10 +1255,9 @@ namespace Taskmaster.Process
 
 				info.Valid = true;
 
-				bool isProtectedFile = Manager.ProtectedProcessName(info.Name);
 				// TODO: IgnoreSystem32Path
 
-				if (isProtectedFile && ShowInaction && Manager.DebugProcesses)
+				if (info.Protected && ShowInaction && Manager.DebugProcesses)
 					Log.Debug($"[{FriendlyName}] {info.Name} (#{info.Id.ToString()}) in protected list, limiting tampering.");
 
 				ProcessPriorityClass? newPriority = null;
@@ -1271,7 +1270,7 @@ namespace Taskmaster.Process
 				bool foreground = InForeground(info.Id);
 
 				bool FirstTimeSeenForForeground = true;
-				if (!isProtectedFile)
+				if (!info.Protected)
 				{
 					if (Foreground != ForegroundMode.Ignore)
 					{
@@ -1301,7 +1300,7 @@ namespace Taskmaster.Process
 				}
 
 				// APPLY CHANGES HERE
-				if (!isProtectedFile)
+				if (!info.Protected)
 				{
 					try
 					{
@@ -1445,7 +1444,6 @@ namespace Taskmaster.Process
 					AffinityOld = oldAffinityMask,
 					PriorityFail = Priority.HasValue && fPriority,
 					AffinityFail = AffinityMask >= 0 && fAffinity,
-					Protected = isProtectedFile,
 					NewIO = nIO,
 				};
 

@@ -1122,6 +1122,9 @@ namespace Taskmaster.UI
 				menu_power.DropDownItems.Add(power_saving);
 				menu_power.DropDownItems.Add(new ToolStripSeparator());
 				menu_power.DropDownItems.Add(power_manual);
+
+				if (powermanager != null)
+					UpdatePowerBehaviourHighlight(powermanager.Behaviour);
 			}
 
 			// CONFIG menu item
@@ -3417,17 +3420,14 @@ namespace Taskmaster.UI
 				powermanager.onAutoAdjustAttempt += PowerLoadDebugHandler;
 			}
 
-			power_auto.Checked = powermanager.Behaviour == Power.Manager.PowerBehaviour.Auto;
-			power_manual.Checked = powermanager.Behaviour == Power.Manager.PowerBehaviour.Manual;
 			power_auto.Enabled = true;
+			UpdatePowerBehaviourHighlight(powermanager.Behaviour);
 			HighlightPowerMode();
 		}
 
-		void PowerBehaviourEvent(object sender, Power.Manager.PowerBehaviourEventArgs e)
+		void UpdatePowerBehaviourHighlight(Power.Manager.PowerBehaviour behaviour)
 		{
-			if (!IsHandleCreated || DisposedOrDisposing) return;
-
-			switch (powermanager.Behaviour)
+			switch (behaviour)
 			{
 				case Power.Manager.PowerBehaviour.Manual:
 					power_auto.Checked = false;
@@ -3442,6 +3442,13 @@ namespace Taskmaster.UI
 					power_manual.Checked = false;
 					break;
 			}
+		}
+
+		void PowerBehaviourEvent(object sender, Power.Manager.PowerBehaviourEventArgs e)
+		{
+			if (!IsHandleCreated || DisposedOrDisposing) return;
+
+			UpdatePowerBehaviourHighlight(e.Behaviour);
 
 			BeginInvoke(new Action(() =>
 			{

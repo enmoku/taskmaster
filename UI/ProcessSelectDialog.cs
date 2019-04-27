@@ -166,12 +166,14 @@ namespace Taskmaster
 						int pid = proc.Id;
 						string name = proc.ProcessName;
 
-						if (Process.Manager.ProtectedProcessName(name)) continue;
-						if (Process.Manager.IgnoreProcessName(name)) continue;
 						if (Process.Utility.SystemProcessId(pid)) continue;
+						if (processmanager.IgnoreProcessName(name)) continue;
 
 						if (Process.Utility.GetInfo(pid, out var info, proc, name: proc.ProcessName, getPath: true))
+						{
+							info.Protected = processmanager.ProtectedProcessName(info.Name);
 							InfoList.Add(info);
+						}
 					}
 					catch (InvalidOperationException)
 					{

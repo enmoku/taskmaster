@@ -502,6 +502,7 @@ namespace Taskmaster.Process
 				if (info != null || Utility.GetInfo(pid, out info, process, null, name, null, getPath: true))
 				{
 					info.Timer = Stopwatch.StartNew();
+					info.Protected = ProtectedProcessName(info.Name);
 
 					ProcessTriage(info, old:true).ConfigureAwait(false);
 
@@ -1031,7 +1032,7 @@ namespace Taskmaster.Process
 						sbs.Append(HumanReadable.Generic.NotAvailable);
 
 					if (ea.PriorityFail) sbs.Append(" [Failed]");
-					if (ea.Protected) sbs.Append(" [Protected]");
+					if (ea.Info.Protected) sbs.Append(" [Protected]");
 				}
 
 				if (ShowUnmodifiedPortions || ea.AffinityNew >= 0)
@@ -1481,7 +1482,7 @@ namespace Taskmaster.Process
 			return prc != null;
 		}
 
-		static string[] ProtectList { get; set; } = {
+		public string[] ProtectList { get; private set; } = {
 			"consent", // UAC, user account control prompt
 			"winlogon", // core system
 			"wininit", // core system
@@ -1492,7 +1493,7 @@ namespace Taskmaster.Process
 			"services", // service control manager
 		};
 
-		static string[] IgnoreList { get; set; } = {
+		public string[] IgnoreList { get; private set; } = {
 			"svchost", // service host
 			"taskeng", // task scheduler
 			"consent", // UAC, user account control prompt
@@ -1515,21 +1516,14 @@ namespace Taskmaster.Process
 
 		bool DebugWMI = false;
 
-		/// <summary>
-		/// Tests if the process ID is core system process (0[idle] or 4[system]) that can never be valid program.
-		/// </summary>
-		/// <returns>true if the pid should not be used</returns>
 		[System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
-		public static bool SystemProcessId(int pid) => pid <= 4;
+		public bool IgnoreProcessID(int pid) => Utility.SystemProcessId(pid) || ignorePids.ContainsKey(pid);
 
 		[System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
-		public bool IgnoreProcessID(int pid) => SystemProcessId(pid) || ignorePids.ContainsKey(pid);
+		public bool IgnoreProcessName(string name) => IgnoreList.Any(item => item.Equals(name, StringComparison.InvariantCultureIgnoreCase));
 
 		[System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
-		public static bool IgnoreProcessName(string name) => IgnoreList.Any(item => item.Equals(name, StringComparison.InvariantCultureIgnoreCase));
-
-		[System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
-		public static bool ProtectedProcessName(string name) => ProtectList.Any(item => item.Equals(name, StringComparison.InvariantCultureIgnoreCase));
+		public bool ProtectedProcessName(string name) => ProtectList.Any(item => item.Equals(name, StringComparison.InvariantCultureIgnoreCase));
 		// %SYSTEMROOT%
 
 		/*
@@ -2024,7 +2018,10 @@ namespace Taskmaster.Process
 				if (Utility.GetInfo(pid, out info, path: path, getPath: true, name: name))
 				{
 					info.Timer = timer;
+					info.Protected = ProtectedProcessName(info.Name);
+
 					info.WMIDelay = wmidelay.TotalMilliseconds;
+
 					NewInstanceTriagePhaseTwo(info, out state);
 				}
 				else

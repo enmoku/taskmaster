@@ -1480,9 +1480,7 @@ namespace Taskmaster.Power
 
 			lock (power_lock)
 			{
-				if (SessionLocked) return false;
-
-				if (mode == CurrentMode || Forced)
+				if (SessionLocked || mode == CurrentMode || Forced)
 					return false;
 
 				InternalSetMode(mode, cause, verbose: false);
@@ -1498,8 +1496,7 @@ namespace Taskmaster.Power
 		{
 			if (DisposedOrDisposing) throw new ObjectDisposedException("Force called after PowerManager was disposed.");
 
-			if (Behaviour == PowerBehaviour.Manual) return false;
-			if (SessionLocked) return false;
+			if (Behaviour == PowerBehaviour.Manual || SessionLocked) return false;
 
 			var rv = false;
 
@@ -1643,9 +1640,6 @@ namespace Taskmaster.Power
 		}
 		#endregion
 
-		public void ShutdownEvent(object sender, EventArgs ea)
-		{
-			StopDisplayTimer();
-		}
+		public void ShutdownEvent(object sender, EventArgs ea) => StopDisplayTimer();
 	}
 }

@@ -71,6 +71,20 @@ namespace Taskmaster.UI.Config
 				};
 				cancelbutton.Click += Cancelbutton_Click;
 
+				// IGNORE list
+				layout.Controls.Add(new AlignedLabel { Text = "Ignore list", Font = boldfont, Padding = BigPadding });
+
+				var ignoreList = new ListBox();
+				ignoreList.Items.AddRange(processmanager.IgnoreList);
+				tooltip.SetToolTip(ignoreList, "These process names are flat out ignored if encoutnered to protect the system.");
+				layout.Controls.Add(ignoreList);
+
+				layout.Controls.Add(new AlignedLabel { Text = "Protected list", Font = boldfont, Padding = BigPadding });
+				var protectList = new ListBox();
+				protectList.Items.AddRange(processmanager.ProtectList);
+				tooltip.SetToolTip(protectList, "These process names are denied full control over to protect the system.");
+				layout.Controls.Add(protectList);
+
 				// USER INTERFACE
 				layout.Controls.Add(new AlignedLabel { Text = "User Interface", Font = boldfont, Padding = BigPadding });
 				layout.Controls.Add(new EmptySpace());

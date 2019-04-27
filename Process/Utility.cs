@@ -287,7 +287,7 @@ namespace Taskmaster.Process
 					Controller = controller,
 					Name = string.IsNullOrEmpty(name) ? process.ProcessName : name,
 					State = ProcessHandlingState.Triage,
-					Path = path,
+					Path = path
 				};
 
 				if (getPath && string.IsNullOrEmpty(path)) FindPath(info);

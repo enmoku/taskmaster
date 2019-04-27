@@ -40,7 +40,6 @@ namespace Taskmaster
 		public int AffinityNew = -1;
 		public int AffinityOld = -1;
 
-		public bool Protected = false;
 		public bool AffinityFail = false;
 		public bool PriorityFail = false;
 
