@@ -100,13 +100,13 @@ namespace Taskmaster
 				.Append(trace).AppendLine();
 		}
 
-		public static void Stacktrace(Exception ex, bool crashsafe = false)
+		public static void Stacktrace(Exception ex, bool crashsafe = false, [CallerMemberName] string method="", [CallerLineNumber] int lineNo=-1)
 		{
 			if (!crashsafe)
 			{
 				var projectdir = Properties.Resources.ProjectDirectory.Trim();
 				var trace = ex.StackTrace.Replace(projectdir, HumanReadable.Generic.Ellipsis + System.IO.Path.DirectorySeparatorChar);
-				Serilog.Log.Fatal($"Exception: {ex.GetType().Name} : {ex.Message}\n{trace}");
+				Serilog.Log.Fatal($"Exception [{method}:{lineNo}]: {ex.GetType().Name} : {ex.Message}\n{trace}");
 			}
 			else
 			{
@@ -121,6 +121,7 @@ namespace Taskmaster
 
 					var sbs = new StringBuilder();
 					sbs.Append("Datetime:     ").Append(now.ToLongDateString()).Append(" ").Append(now.ToLongTimeString()).AppendLine()
+						.Append("Caught at: ").Append(method).Append(":").Append(lineNo).AppendLine()
 						.AppendLine()
 						.Append("Command line: ").Append(Environment.CommandLine).AppendLine();
 
