@@ -3,6 +3,9 @@ Comprehensive changes can be found in Git change history:
 	https://github.com/mkahvi/taskmaster/commits/master
 
 ## [0.13...]
+### 2019-04-28
+	Added: Advanced configuration now temporarily hosts ignore and protected lists.
+		No configuration is allowed in the UI for these as they're purely informative. These will be moved elsewhere in later update.
 ### 2019-04-27
 	Added: Power menu in main window so power changes are available outside of the tray context menu.
 ### 2019-04-25
