@@ -152,8 +152,8 @@ namespace Taskmaster.Process
 		public bool GetControllerByName(string friendlyname, out Controller controller)
 			=> (controller = (from prc
 					in Watchlist.Keys
-					where prc.FriendlyName.Equals(friendlyname, StringComparison.InvariantCultureIgnoreCase)
-					select prc)
+							  where prc.FriendlyName.Equals(friendlyname, StringComparison.InvariantCultureIgnoreCase)
+							  select prc)
 					.FirstOrDefault()) != null;
 
 		/// <summary>
@@ -257,7 +257,7 @@ namespace Taskmaster.Process
 			}
 		}
 
-		void FreeMemoryInternal(int ignorePid = -1, string ignoreExe=null)
+		void FreeMemoryInternal(int ignorePid = -1, string ignoreExe = null)
 		{
 			if (DisposedOrDisposing) throw new ObjectDisposedException("FreeMemoryInterval called when ProcessManager was already disposed");
 
@@ -381,7 +381,7 @@ namespace Taskmaster.Process
 		int ScanFoundProcs = 0;
 
 		int scan_lock = 0;
-		bool Scan(int ignorePid = -1, string ignoreExe=null, bool PageToDisk = false)
+		bool Scan(int ignorePid = -1, string ignoreExe = null, bool PageToDisk = false)
 		{
 			if (DisposedOrDisposing) throw new ObjectDisposedException("Scan called when ProcessManager was already disposed");
 			if (cts.IsCancellationRequested) return false;
@@ -457,7 +457,7 @@ namespace Taskmaster.Process
 			return true;
 		}
 
-		private void ScanTriage(System.Diagnostics.Process process, bool PageToDisk=false)
+		private void ScanTriage(System.Diagnostics.Process process, bool PageToDisk = false)
 		{
 			cts.Token.ThrowIfCancellationRequested();
 
@@ -504,7 +504,7 @@ namespace Taskmaster.Process
 					info.Timer = Stopwatch.StartNew();
 					info.Protected = ProtectedProcessName(info.Name);
 
-					ProcessTriage(info, old:true).ConfigureAwait(false);
+					ProcessTriage(info, old: true).ConfigureAwait(false);
 
 					if (PageToDisk)
 					{

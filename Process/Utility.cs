@@ -48,7 +48,7 @@ namespace Taskmaster.Process
 		/// </summary>
 		public static bool FindPathExtended(ProcessEx info)
 		{
-			Debug.Assert(info != null, "FindPathExtended received null");
+			Debug.Assert(!(info is null), "FindPathExtended received null");
 			Debug.Assert(string.IsNullOrEmpty(info.Path), "FindPathExtended called even though path known.");
 
 			Statistics.PathFindAttempts++;

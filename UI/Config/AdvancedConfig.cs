@@ -73,17 +73,24 @@ namespace Taskmaster.UI.Config
 
 				// IGNORE list
 				layout.Controls.Add(new AlignedLabel { Text = "Ignore list", Font = boldfont, Padding = BigPadding });
+				layout.Controls.Add(new EmptySpace());
 
-				var ignoreList = new ListBox();
-				ignoreList.Items.AddRange(processmanager.IgnoreList);
+				var ignoreList = new TextBox() { ReadOnly = true, Multiline = true, Dock = DockStyle.Top, Padding = LeftSubPadding, Anchor = AnchorStyles.Top | AnchorStyles.Left, ScrollBars= ScrollBars.Vertical, Height = Font.Height * 4 };
+				ignoreList.Text = string.Join(", ", processmanager.IgnoreList);
 				tooltip.SetToolTip(ignoreList, "These process names are flat out ignored if encoutnered to protect the system.");
 				layout.Controls.Add(ignoreList);
+				layout.SetColumnSpan(ignoreList, 2);
+				ignoreList.Font = Font;
 
+				// PROTECT list
 				layout.Controls.Add(new AlignedLabel { Text = "Protected list", Font = boldfont, Padding = BigPadding });
-				var protectList = new ListBox();
-				protectList.Items.AddRange(processmanager.ProtectList);
+				layout.Controls.Add(new EmptySpace());
+
+				var protectList = new TextBox() { ReadOnly = true, Multiline = true, Dock = DockStyle.Top, Padding = LeftSubPadding, Anchor = AnchorStyles.Top | AnchorStyles.Left, ScrollBars = ScrollBars.Vertical, Height = Font.Height * 4 };
+				protectList.Text = string.Join(", ", processmanager.ProtectList);
 				tooltip.SetToolTip(protectList, "These process names are denied full control over to protect the system.");
 				layout.Controls.Add(protectList);
+				layout.SetColumnSpan(protectList, 2);
 
 				// USER INTERFACE
 				layout.Controls.Add(new AlignedLabel { Text = "User Interface", Font = boldfont, Padding = BigPadding });
@@ -119,7 +126,7 @@ namespace Taskmaster.UI.Config
 					Minimum = 200m,
 					Maximum = 30000m,
 					Unit = "ms",
-					DecimalPlaces = 2,
+					DecimalPlaces = 0,
 					Increment = 100m,
 					Value = 1500m,
 				};

@@ -245,7 +245,7 @@ namespace Taskmaster.UI
 			}
 
 			var sbs = new System.Text.StringBuilder();
-			sbs.Append("<Global> Registerd hotkeys: ");
+			sbs.Append("<Global> Registered hotkeys: ");
 			if (regM) sbs.Append("ctrl-alt-shift-m = free memory [foreground ignored]");
 			if (regM && regR) sbs.Append(", ");
 			if (regR) sbs.Append("ctrl-alt-shift-r = scan");
