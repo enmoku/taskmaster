@@ -126,6 +126,8 @@ namespace Taskmaster.Process
 
 		public bool ExclusiveMode { get; set; } = false;
 
+		public bool DeclareParent { get; set; } = false;
+
 		public string Path { get; set; } = string.Empty;
 
 		Lazy<System.Text.RegularExpressions.Regex> FastMatchExp = null;
@@ -705,6 +707,17 @@ namespace Taskmaster.Process
 				app["Log start and exit"].Bool = true;
 			else
 				app.TryRemove("Log start and exit");
+
+
+			if (ExclusiveMode)
+				app["Exclusive"].Bool = true;
+			else
+				app.TryRemove("Exclusive");
+
+			if (DeclareParent)
+				app["Declare parent"].Bool = true;
+			else
+				app.TryRemove("Declare parent");
 
 			Debug.WriteLine(cfg.Filename + " has gained " + cfg.Config.Changes + " total changes.");
 

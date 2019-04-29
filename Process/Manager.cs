@@ -767,6 +767,8 @@ namespace Taskmaster.Process
 				ShowOnlyFinalState = logsec.GetOrSet("Final state only", ShowOnlyFinalState).Bool;
 				ShowForegroundTransitions = logsec.GetOrSet("Foreground transitions", ShowForegroundTransitions).Bool;
 
+				EnableParentFinding = logsec.GetOrSet("Enable parent finding", EnableParentFinding).Bool;
+
 				if (!IgnoreSystem32Path) Log.Warning($"<Process> System32 ignore disabled.");
 
 				var exsec = corecfg.Config["Experimental"];
@@ -930,6 +932,7 @@ namespace Taskmaster.Process
 						AllowPaging = (section.Get("Allow paging")?.Bool ?? false),
 						Analyze = (section.Get("Analyze")?.Bool ?? false),
 						ExclusiveMode = (section.Get("Exclusive")?.Bool ?? false),
+						DeclareParent = (section.Get("Declare parent")?.Bool ?? false),
 						OrderPreference = (section.Get("Preference")?.Int.Constrain(0, 100) ?? 10),
 						IOPriority = (section.Get("IO priority")?.Int.Constrain(0, 2) ?? -1), // 0-1 background, 2 = normal, anything else seems to have no effect
 						LogAdjusts = (section.Get("Logging")?.Bool ?? true),
@@ -1067,6 +1070,16 @@ namespace Taskmaster.Process
 				{
 					sbs.Append(" – ").Append($"{ea.Info.Timer.ElapsedMilliseconds:N0} ms");
 					if (ea.Info.WMIDelay > 0d) sbs.Append(" + ").Append($"{ea.Info.WMIDelay:N0}").Append(" ms watcher delay");
+				}
+
+				if (EnableParentFinding && prc.DeclareParent)
+				{
+					var parent = Utility.GetParentProcess(ea.Info);
+					sbs.Append(" – Parent: ");
+					if (parent != null)
+						sbs.Append(parent.Name).Append(" (#").Append(parent.Id).Append(")");
+					else
+						sbs.Append("n/a");
 				}
 
 				// TODO: Add option to logging to file but still show in UI
@@ -1481,6 +1494,8 @@ namespace Taskmaster.Process
 
 			return prc != null;
 		}
+
+		public bool EnableParentFinding { get; private set; } = false;
 
 		public string[] ProtectList { get; private set; } = {
 			"consent", // UAC, user account control prompt

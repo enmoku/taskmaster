@@ -266,6 +266,15 @@ namespace Taskmaster.UI.Config
 				tooltip.SetToolTip(netpoll_frequency, "Update frequency network device list.");
 				*/
 
+				layout.Controls.Add(new AlignedLabel { Text = "Extra features", Font = boldfont, Padding = BigPadding });
+				layout.Controls.Add(new EmptySpace());
+
+				var parentoption = new CheckBox() { Checked = processmanager.EnableParentFinding, };
+
+				layout.Controls.Add(new AlignedLabel { Text = "Enable parent declaration", Padding = LeftSubPadding });
+				layout.Controls.Add(parentoption);
+				tooltip.SetToolTip(parentoption, "Allows parent process declaration in logs. Enabled per-rule.\nThis slows down logging noticeably.");
+
 				// ---- SAVE --------------------------------------------------------------------------------------------------------
 
 				savebutton.Click += (_, _ea) =>
@@ -328,6 +337,9 @@ namespace Taskmaster.UI.Config
 					volsec["Refresh"].Int = Convert.ToInt32(volmeter_frequency.Value);
 
 					volsec[Constants.ShowOnStart].Bool = volmeter_show.Checked;
+
+					var logsec = corecfg.Config[HumanReadable.Generic.Logging];
+					logsec["Enable parent finding"].Bool = parentoption.Checked;
 
 					DialogResult = DialogResult.OK;
 					Close();

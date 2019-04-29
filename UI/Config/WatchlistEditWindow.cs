@@ -231,6 +231,8 @@ namespace Taskmaster.UI.Config
 			Controller.LogAdjusts = logAdjusts.Checked;
 			Controller.LogStartAndExit = logStartNExit.Checked;
 
+			Controller.DeclareParent = declareParent.Checked;
+
 			Controller.OrderPreference = Convert.ToInt32(preforder.Value).Constrain(0, 100);
 
 			Controller.Enabled = newPrc ? true : enOrig;
@@ -277,7 +279,7 @@ namespace Taskmaster.UI.Config
 		ListView ignorelist = null;
 		NumericUpDown preforder = null;
 
-		CheckBox logAdjusts = null, logStartNExit=null;
+		CheckBox logAdjusts = null, logStartNExit=null, declareParent=null;
 
 		int cpumask = 0;
 
@@ -889,6 +891,15 @@ namespace Taskmaster.UI.Config
 			lt.Controls.Add(new AlignedLabel() { Text = "Log start && exit" });
 			lt.Controls.Add(logStartNExit);
 			lt.Controls.Add(new EmptySpace());
+
+			declareParent = new CheckBox() { Checked = Controller.DeclareParent };
+			lt.Controls.Add(new AlignedLabel() { Text = "Log parent" });
+			lt.Controls.Add(declareParent);
+			if (processmanager.EnableParentFinding)
+				lt.Controls.Add(new EmptySpace());
+			else
+				lt.Controls.Add(new AlignedLabel() { Text = "Disabled" });
+			tooltip.SetToolTip(declareParent, "Parent process logging slows log procedure significantly.\nMust be enabled in advanced settings also.");
 
 			preforder = new NumericUpDown()
 			{

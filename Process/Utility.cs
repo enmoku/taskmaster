@@ -305,6 +305,24 @@ namespace Taskmaster.Process
 			return false;
 		}
 
+		public static ProcessEx GetParentProcess(ProcessEx info)
+		{
+			int ppid = -1;
+
+			try
+			{
+				ppid = info.Process.ParentProcessId();
+				if (Utility.GetInfo(ppid, out var parent, null, null, null, null, true))
+					return parent;
+			}
+			catch
+			{
+
+			}
+
+			return null;
+		}
+
 		public static bool FindPath(ProcessEx info)
 		{
 			var cacheGet = false;
