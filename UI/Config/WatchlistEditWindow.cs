@@ -122,8 +122,9 @@ namespace Taskmaster.UI.Config
 
 			if (!hasPrio && !hasAff && !hasPow)
 			{
-				MessageBox.ShowModal("Configuration error", "No priority, affinity, nor power plan defined.", MessageBox.Buttons.OK, parent: this);
-				return;
+				var rv = MessageBox.ShowModal("Configuration error", "No priority, affinity, nor power plan defined.\nThis will cause matching items to be essentially ignored.", MessageBox.Buttons.AcceptCancel, parent: this);
+				if (rv != MessageBox.ResultType.OK)
+					return;
 			}
 
 			// -----------------------------------------------

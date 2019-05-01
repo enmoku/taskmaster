@@ -860,9 +860,8 @@ namespace Taskmaster.Process
 
 					if (rulePrio is null && ruleAff is null && rulePow is null)
 					{
-						// TODO: Deal with incorrect configuration lacking these things
-						Log.Warning($"<Watchlist:{section.Line}> [{section.Name}] No priority, affinity, nor power plan; Skipping.");
-						continue;
+						Log.Warning($"<Watchlist:{section.Line}> [{section.Name}] No priority, affinity, nor power plan.");
+						// This kind of rule is essentially more detailed ignore rule.
 					}
 
 					prio = rulePrio?.Int ?? -1;

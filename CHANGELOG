@@ -3,6 +3,8 @@ Comprehensive changes can be found in Git change history:
 	https://github.com/mkahvi/taskmaster/commits/master
 
 ## [0.13...]
+### 2019-05-01
+	Changed: Rules with no priority, affinity, or power plan are not considered valid. Responsibility is on the user.
 ### 2019-04-30
 	Added: Parent finding. Enabled per-rule and in general in advanced options.
 ### 2019-04-28
