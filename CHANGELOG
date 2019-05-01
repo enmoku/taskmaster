@@ -5,6 +5,7 @@ Comprehensive changes can be found in Git change history:
 ## [0.13...]
 ### 2019-05-01
 	Changed: Rules with no priority, affinity, or power plan are not considered valid. Responsibility is on the user.
+	Changed: Updated from .NET 4.7.2 to 4.8
 	Added: Support for multiple executables per watchlist rule.
 	Disabled: Filename validation as it does not play well with the multiple executables implementation.
 ### 2019-04-30
