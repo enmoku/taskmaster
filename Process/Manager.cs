@@ -159,24 +159,7 @@ namespace Taskmaster.Process
 		/// <summary>
 		/// Executable name to ProcessControl mapping.
 		/// </summary>
-		ConcurrentDictionary<string, Controller> ExeToController = new ConcurrentDictionary<string, Controller>();
-
-		public bool GetController(ProcessEx info, out Controller prc)
-		{
-			if (info.Controller != null)
-			{
-				prc = info.Controller;
-				return true;
-			}
-
-			if (ExeToController.TryGetValue(info.Name.ToLowerInvariant(), out prc))
-				return true;
-
-			if (!string.IsNullOrEmpty(info.Path) && GetPathController(info, out prc))
-				return true;
-
-			return false;
-		}
+		ConcurrentDictionary<string, List<Controller>> ExeToController = new ConcurrentDictionary<string, List<Controller>>();
 
 		public static int CPUCount = Environment.ProcessorCount;
 		public static int AllCPUsMask = Convert.ToInt32(Math.Pow(2, CPUCount) - 1 + double.Epsilon);
@@ -625,26 +608,31 @@ namespace Taskmaster.Process
 				Log.Warning("[" + prc.FriendlyName + "] Background priority equal or higher than foreground priority, ignoring.");
 			}
 
-			if (string.IsNullOrEmpty(prc.Executable) && string.IsNullOrEmpty(prc.Path))
+			if (prc.Executables?.Length == 0 && string.IsNullOrEmpty(prc.Path))
 			{
 				Log.Warning("[" + prc.FriendlyName + "] Executable and Path missing; ignoring.");
 				rv = false;
 			}
 
 			// SANITY CHECKING
-			if (!string.IsNullOrEmpty(prc.ExecutableFriendlyName))
+			if ((prc.ExecutableFriendlyName?.Length ?? 0) > 0)
 			{
-				if (IgnoreProcessName(prc.ExecutableFriendlyName))
-				{
-					if (ShowInaction && DebugProcesses)
-						Log.Warning(prc.Executable ?? prc.ExecutableFriendlyName + " in ignore list; all changes denied.");
+				// TODO: MULTIEXE
 
-					// rv = false; // We'll leave the config in.
-				}
-				else if (ProtectedProcessName(prc.ExecutableFriendlyName))
+				foreach (var exe in prc.ExecutableFriendlyName)
 				{
-					if (ShowInaction && DebugProcesses)
-						Log.Warning(prc.Executable ?? prc.ExecutableFriendlyName + " in protected list; priority changing denied.");
+					if (IgnoreProcessName(exe))
+					{
+						if (ShowInaction && DebugProcesses)
+							Log.Warning(exe + " in ignore list; all changes denied.");
+
+						// rv = false; // We'll leave the config in.
+					}
+					else if (ProtectedProcessName(exe))
+					{
+						if (ShowInaction && DebugProcesses)
+							Log.Warning(exe + " in protected list; priority changing denied.");
+					}
 				}
 			}
 
@@ -655,9 +643,6 @@ namespace Taskmaster.Process
 		{
 			lock (watchlist_lock)
 			{
-				if (!string.IsNullOrEmpty(prc.Executable))
-					ExeToController.TryAdd(prc.ExecutableFriendlyName.ToLowerInvariant(), prc);
-
 				if (!string.IsNullOrEmpty(prc.Path))
 					WatchlistWithPath++;
 
@@ -665,10 +650,13 @@ namespace Taskmaster.Process
 				RenewWatchlistCache();
 			}
 
-			if (Trace) Log.Verbose("[" + prc.FriendlyName + "] Match: " + (prc.Executable ?? prc.Path) + ", " +
+			// TODO: MULTIEXE
+			/*
+			if (Trace) Log.Verbose("[" + prc.FriendlyName + "] Match: " + (prc.Executables ?? prc.Path) + ", " +
 				(prc.Priority.HasValue ? Readable.ProcessPriority(prc.Priority.Value) : HumanReadable.Generic.NotAvailable) +
 				", Mask:" + (prc.AffinityMask >= 0 ? prc.AffinityMask.ToString() : HumanReadable.Generic.NotAvailable) +
 				", Recheck: " + prc.Recheck + "s, Foreground: " + prc.Foreground.ToString());
+			*/
 		}
 
 		void LoadConfig()
@@ -838,8 +826,17 @@ namespace Taskmaster.Process
 						continue;
 					}
 
-					var ruleExec = section.Get("Image");
 					var rulePath = section.Get(HumanReadable.System.Process.Path);
+
+					Ini.Setting ruleExec = null;
+					if (section.TryGet("Image", out var image)) // DEPRECATED; UPGRADE TO MULTIEXE
+					{
+						ruleExec = section["Executables"];
+						ruleExec.StringArray = new string[] { image.String };
+						section.Remove(image);
+					}
+					else
+						ruleExec = section.Get("Executables");
 
 					if (ruleExec is null && rulePath is null)
 					{
@@ -914,7 +911,7 @@ namespace Taskmaster.Process
 					var prc = new Controller(section.Name, prioR, aff)
 					{
 						Enabled = (section.Get(HumanReadable.Generic.Enabled)?.Bool ?? true),
-						Executable = (ruleExec?.Value ?? null),
+						Executables = (ruleExec?.StringArray ?? null),
 						Description = (section.Get(HumanReadable.Generic.Description)?.Value ?? null),
 						// friendly name is filled automatically
 						PriorityStrategy = priostrat,
@@ -978,7 +975,7 @@ namespace Taskmaster.Process
 
 					AddController(prc);
 
-					if (!string.IsNullOrEmpty(prc.Executable) && !string.IsNullOrEmpty(prc.Path))
+					if (prc.Executables?.Length > 0 && !string.IsNullOrEmpty(prc.Path))
 						WatchlistWithHybrid += 1;
 
 					// cnt.Children &= ControlChildren;
@@ -1092,6 +1089,7 @@ namespace Taskmaster.Process
 
 		void RenewWatchlistCache()
 		{
+			// TODO: Add limiter
 			WatchlistCache = new Lazy<List<Controller>>(LazyRecacheWatchlist);
 			ResetWatchlistCancellation();
 		}
@@ -1196,8 +1194,12 @@ namespace Taskmaster.Process
 
 		public void RemoveController(Controller prc)
 		{
-			if (!string.IsNullOrEmpty(prc.ExecutableFriendlyName))
-				ExeToController.TryRemove(prc.ExecutableFriendlyName.ToLowerInvariant(), out _);
+			if ((prc.Executables?.Length ?? 0) > 0)
+			{
+				// TODO: MULTIEXE ; What to do when multiple rules have same exe name?
+				foreach (var exe in prc.ExecutableFriendlyName)
+					ExeToController.TryRemove(exe, out _);
+			}
 
 			lock (watchlist_lock) RenewWatchlistCache();
 
@@ -1415,11 +1417,10 @@ namespace Taskmaster.Process
 		/// </summary>
 		int WatchlistWithPath = 0;
 
-		bool GetPathController(ProcessEx info, out Controller prc)
+		public bool GetController(ProcessEx info, out Controller prc)
 		{
-			prc = null;
-
-			if (WatchlistWithPath <= 0) return false;
+			if (info.Controller != null)
+				return (prc = info.Controller) != null;
 
 			try
 			{
@@ -1428,6 +1429,7 @@ namespace Taskmaster.Process
 				{
 					info.State = ProcessHandlingState.Exited;
 					if (ShowInaction && DebugProcesses) Log.Verbose(info.Name + " (#" + info.Id + ") has already exited.");
+					prc = null;
 					return false; // return ProcessState.Invalid;
 				}
 			}
@@ -1435,63 +1437,62 @@ namespace Taskmaster.Process
 			{
 				Log.Fatal("INVALID ACCESS to Process");
 				Logging.Stacktrace(ex);
+				prc = null;
 				return false; // return ProcessState.AccessDenied; //throw; // no point throwing
 			}
 			catch (System.ComponentModel.Win32Exception ex)
 			{
 				if (ex.NativeErrorCode != 5) // what was this?
 					Log.Warning("Access error: " + info.Name + " (#" + info.Id + ")");
+				prc = null;
 				return false; // return ProcessState.AccessDenied; // we don't care wwhat this error is
 			}
 
-			if (string.IsNullOrEmpty(info.Path) && !Utility.FindPath(info))
-				return false; // return ProcessState.Error;
+			bool hasPath = !string.IsNullOrEmpty(info.Path);
 
-			if (IgnoreSystem32Path && info.Path.StartsWith(Environment.GetFolderPath(Environment.SpecialFolder.System)))
+			if (!hasPath) hasPath = Utility.FindPath(info);
+
+			if (hasPath && IgnoreSystem32Path && info.Path.StartsWith(Environment.GetFolderPath(Environment.SpecialFolder.System)))
 			{
 				if (ShowInaction && DebugProcesses) Log.Debug("<Process/Path> " + info.Name + " (#" + info.Id + ") in System32, ignoring");
+				prc = null;
 				return false;
 			}
 
+			List<Controller> lcache = null;
+
 			lock (watchlist_lock)
 			{
-				RenewWatchlistCache();
+				//RenewWatchlistCache(); // this doesn't need to be done every time
+				lcache = WatchlistCache.Value;
+			}
 
-				// TODO: This needs to be FASTER
-				// Can't parallelize...
-				foreach (var lprc in WatchlistCache.Value)
+			// TODO: This needs to be FASTER
+			// Can't parallelize...
+			foreach (var lprc in lcache)
+			{
+				if (!lprc.Enabled) continue;
+
+				if (string.IsNullOrEmpty(lprc.Path)) continue;
+				if (lprc.Executables?.Length > 0) continue;
+
+				bool pathMatch = true, exeMatch = true;
+
+				if (hasPath)
+					pathMatch = info.Path.StartsWith(lprc.Path, StringComparison.InvariantCultureIgnoreCase);
+
+				if (lprc.ExecutableFriendlyName?.Length > 0)
+					exeMatch = lprc.ExecutableFriendlyName.Contains(info.Name);
+
+				if (pathMatch && exeMatch)
 				{
-					if (!lprc.Enabled) continue;
-
-					if (string.IsNullOrEmpty(lprc.Path)) continue;
-					if (!string.IsNullOrEmpty(lprc.Executable)) continue;
-
-					/*
-					if (!string.IsNullOrEmpty(lprc.Executable))
-					{
-						if (lprc.ExecutableFriendlyName.Equals(info.Name, StringComparison.InvariantCultureIgnoreCase))
-						{
-							if (DebugPaths)
-								Log.Debug("[" + lprc.FriendlyName + "] Path+Exe matched.");
-						}
-						else
-							continue;
-					}
-					*/
-
-					if (info.Path.StartsWith(lprc.Path, StringComparison.InvariantCultureIgnoreCase))
-					{
-						if (DebugPaths) Log.Verbose($"[{lprc.FriendlyName}] (CheckPathWatch) Matched at: {info.Path}");
-
-						prc = lprc;
-						break;
-					}
+					info.Controller = prc = lprc;
+					return true;
 				}
 			}
 
-			info.Controller = prc;
-
-			return prc != null;
+			prc = null;
+			return false;
 		}
 
 		public bool EnableParentFinding { get; private set; } = false;
@@ -1668,11 +1669,7 @@ namespace Taskmaster.Process
 					return; // ProcessState.AccessDenied;
 				}
 
-				Controller prc = null;
-				if (ExeToController.TryGetValue(info.Name.ToLowerInvariant(), out prc))
-					info.Controller = prc; // fill
-
-				if (prc != null || GetPathController(info, out prc))
+				if (GetController(info, out var prc))
 				{
 					if (!info.Controller.Enabled)
 					{

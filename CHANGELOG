@@ -5,6 +5,8 @@ Comprehensive changes can be found in Git change history:
 ## [0.13...]
 ### 2019-05-01
 	Changed: Rules with no priority, affinity, or power plan are not considered valid. Responsibility is on the user.
+	Added: Support for multiple executables per watchlist rule.
+	Disabled: Filename validation as it does not play well with the multiple executables implementation.
 ### 2019-04-30
 	Added: Parent finding. Enabled per-rule and in general in advanced options.
 ### 2019-04-28

@@ -131,7 +131,17 @@ namespace Taskmaster.UI.Config
 
 			Controller.SetName(newfriendlyname);
 
-			Controller.Executable = execName.Text.Length > 0 ? execName.Text.Trim() : null;
+			if (execName.Text.Length > 0)
+			{
+				var t_executables = execName.Text.Split(new[] { '|' }, StringSplitOptions.RemoveEmptyEntries);
+				var f_exes = new string[t_executables.Length];
+				for (int i = 0; i < t_executables.Length; i++)
+					f_exes[i] = t_executables[i].Trim();
+				Controller.Executables = (f_exes?.Length > 0) ? f_exes : null;
+			}
+			else
+				Controller.Executables = null;
+
 			Controller.Path = pathName.Text.Length > 0 ? pathName.Text.Trim() : null;
 			if (priorityClass.SelectedIndex == 5) // ignored
 			{
@@ -292,7 +302,7 @@ namespace Taskmaster.UI.Config
 			AutoSizeMode = AutoSizeMode.GrowOnly;
 			AutoSize = true;
 
-			Text = Controller.FriendlyName + " (" + (Controller.Executable ?? Controller.Path) + ") – " + Taskmaster.Name;
+			Text = Controller.FriendlyName + " – " + Taskmaster.Name;
 
 			Padding = new Padding(12);
 
@@ -330,11 +340,11 @@ namespace Taskmaster.UI.Config
 			execName = new TextBox()
 			{
 				ShortcutsEnabled = true,
-				Text = Controller.Executable,
+				Text = string.Join("|", Controller.Executables),
 				Width = 180,
 			};
 			execName.Validating += ValidateFilename;
-			tooltip.SetToolTip(execName, "Executable name, used to recognize these applications.\nFull filename, including extension if any.");
+			tooltip.SetToolTip(execName, "Executable name, used to recognize these applications.\nFull filename, including extension if any.\nSeparate executables with pipe (|).");
 			var findexecbutton = new Button()
 			{
 				Text = "Running",
@@ -353,7 +363,7 @@ namespace Taskmaster.UI.Config
 						{
 							var info = exselectdialog.Info;
 							// SANITY CHECK: exselectdialog.Selection;
-							execName.Text = info.Name;
+							execName.Text = info.Name; // Append?
 							if (!string.IsNullOrEmpty(info.Path))
 							{
 								if (string.IsNullOrEmpty(pathName.Text))
@@ -981,7 +991,7 @@ namespace Taskmaster.UI.Config
 			{
 				if (execName.TextLength == 0 && pathName.TextLength == 0) return;
 
-				e.Cancel = !ValidateName(box, System.IO.Path.GetInvalidFileNameChars());
+				//e.Cancel = !ValidateName(box, System.IO.Path.GetInvalidFileNameChars());
 				if (box == execName)
 				{
 					if (box.TextLength > 0)

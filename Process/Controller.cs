@@ -108,21 +108,37 @@ namespace Taskmaster.Process
 		/// </summary>
 		public string FriendlyName { get; private set; } = null;
 
-		internal string p_Executable = null;
+		internal string[] p_Executable = null;
 		/// <summary>
 		/// Executable filename related to this, with extension.
 		/// </summary>
-		public string Executable
+		public string[] Executables
 		{
 			get => p_Executable;
-			set => ExecutableFriendlyName = System.IO.Path.GetFileNameWithoutExtension(p_Executable = value);
+			set
+			{
+				if (value is null)
+				{
+					p_Executable = null;
+					ExecutableFriendlyName = null;
+				}
+				else
+				{
+					var t_exe = new string[value.Length];
+					var t_friendly = new string[value.Length];
+					for (int i = 0; i < value.Length; i++)
+						t_friendly[i] = System.IO.Path.GetFileNameWithoutExtension(t_exe[i] = value[i]).ToLowerInvariant();
+					p_Executable = t_exe;
+					ExecutableFriendlyName = t_friendly;
+				}
+			}
 		}
 
 		/// <summary>
 		/// Frienly executable name as required by various System.Process functions.
 		/// Same as <see cref="T:Taskmaster.ProcessControl.Executable"/> but with the extension missing.
 		/// </summary>
-		public string ExecutableFriendlyName { get; internal set; } = null;
+		public string[] ExecutableFriendlyName { get; internal set; } = null;
 
 		public bool ExclusiveMode { get; set; } = false;
 
@@ -130,6 +146,7 @@ namespace Taskmaster.Process
 
 		public string Path { get; set; } = string.Empty;
 
+		/*
 		Lazy<System.Text.RegularExpressions.Regex> FastMatchExp = null;
 		void ResetFastMatch() => FastMatchExp = new Lazy<System.Text.RegularExpressions.Regex>(GenerateRegex);
 		public bool FastMatch(string match) => FastMatchExp.Value.IsMatch(match);
@@ -173,6 +190,7 @@ namespace Taskmaster.Process
 			System.Text.RegularExpressions.RegexOptions.Singleline | System.Text.RegularExpressions.RegexOptions.Compiled | System.Text.RegularExpressions.RegexOptions.ExplicitCapture);
 			return regex;
 		}
+		*/
 
 		int PathElements { get; set; }  = 0;
 
@@ -256,8 +274,7 @@ namespace Taskmaster.Process
 
 		public Controller(string name, ProcessPriorityClass? priority = null, int affinity = -1)
 		{
-			ResetFastMatch();
-			
+			//ResetFastMatch(); // RegExp
 
 			FriendlyName = name;
 			// Executable = executable;
@@ -427,7 +444,7 @@ namespace Taskmaster.Process
 
 			if (PathVisibility == PathVisibilityOptions.Invalid)
 			{
-				bool haveExe = !string.IsNullOrEmpty(Executable);
+				bool haveExe = Executables?.Length > 0;
 				bool havePath = !string.IsNullOrEmpty(Path);
 				if (haveExe && havePath) PathVisibility = PathVisibilityOptions.Process;
 				else if (havePath) PathVisibility = PathVisibilityOptions.Partial;
@@ -549,10 +566,11 @@ namespace Taskmaster.Process
 			if (app is null)
 				app = cfg.Config[FriendlyName];
 
-			if (!string.IsNullOrEmpty(Executable))
-				app["Image"].Value = Executable;
+			if (Executables?.Length > 0)
+				app["Executables"].StringArray = Executables;
 			else
-				app.TryRemove("Image");
+				app.TryRemove("Executables");
+
 			if (!string.IsNullOrEmpty(Path))
 				app[HumanReadable.System.Process.Path].Value = Path;
 			else
@@ -642,11 +660,10 @@ namespace Taskmaster.Process
 			else
 				app.TryRemove("Path visibility");
 
-			if (!string.IsNullOrEmpty(Executable))
-			{
-				if (Recheck > 0) app["Recheck"].Int = Recheck;
-				else app.TryRemove("Recheck");
-			}
+			if (Executables?.Length > 0 && Recheck > 0)
+				app["Recheck"].Int = Recheck;
+			else
+				app.TryRemove("Recheck");
 
 			if (!Enabled) app[HumanReadable.Generic.Enabled].Bool = Enabled;
 			else app.TryRemove(HumanReadable.Generic.Enabled);
