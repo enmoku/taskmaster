@@ -643,9 +643,6 @@ namespace Taskmaster.Process
 		{
 			lock (watchlist_lock)
 			{
-				if (!string.IsNullOrEmpty(prc.Path))
-					WatchlistWithPath++;
-
 				Watchlist.TryAdd(prc, 0);
 				RenewWatchlistCache();
 			}
@@ -791,9 +788,9 @@ namespace Taskmaster.Process
 		{
 			Log.Information("<Process> Loading watchlist...");
 
-			var appcfg = Config.Load(WatchlistFile);
+			int withPath=0, hybrids=0;
 
-			int WatchlistWithHybrid = 0;
+			var appcfg = Config.Load(WatchlistFile);
 
 			if (appcfg.Config.ItemCount == 0)
 			{
@@ -973,10 +970,16 @@ namespace Taskmaster.Process
 
 					prc.Repair();
 
-					AddController(prc);
+					if (AddController(prc))
+					{
+						if (!string.IsNullOrEmpty(prc.Path))
+						{
+							withPath++;
 
-					if (prc.Executables?.Length > 0 && !string.IsNullOrEmpty(prc.Path))
-						WatchlistWithHybrid += 1;
+							if (prc.Executables?.Length > 0)
+								hybrids++;
+						}
+					}
 
 					// cnt.Children &= ControlChildren;
 
@@ -994,7 +997,7 @@ namespace Taskmaster.Process
 
 			// --------------------------------------------------------------------------------------------------------
 
-			Log.Information($"<Process> Watchlist items – Name-based: {(Watchlist.Count - WatchlistWithPath)}; Path-based: {WatchlistWithPath - WatchlistWithHybrid}; Hybrid: {WatchlistWithHybrid} – Total: {Watchlist.Count}");
+			Log.Information($"<Process> Watchlist items – Name-based: {(Watchlist.Count - withPath)}; Path-based: {withPath - hybrids}; Hybrid: {hybrids} – Total: {Watchlist.Count}");
 		}
 
 		public static readonly string[] IONames = new[] { "Background", "Low", "Normal" };
@@ -1147,7 +1150,7 @@ namespace Taskmaster.Process
 
 		public event EventHandler WatchlistSorted;
 
-		public void AddController(Controller prc)
+		public bool AddController(Controller prc)
 		{
 			if (DisposedOrDisposing) throw new ObjectDisposedException("AddController called when ProcessManager was already disposed");
 
@@ -1162,7 +1165,11 @@ namespace Taskmaster.Process
 				SaveController(prc);
 
 				prc.OnAdjust += OnControllerAdjust;
+
+				return true;
 			}
+
+			return false;
 		}
 
 		void ProcessModifiedProxy(object sender, ProcessModificationEventArgs ea) => ProcessModified?.Invoke(sender, ea);
@@ -1411,11 +1418,6 @@ namespace Taskmaster.Process
 		}
 
 		// TODO: ADD CACHE: pid -> process name, path, process
-
-		/// <summary>
-		/// Number of watchlist items with path restrictions.
-		/// </summary>
-		int WatchlistWithPath = 0;
 
 		public bool GetController(ProcessEx info, out Controller prc)
 		{
