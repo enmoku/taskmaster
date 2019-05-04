@@ -213,7 +213,9 @@ namespace Taskmaster.UI
 			Show();
 			// shuffle to top in the most hackish way possible, these are all unreliable
 			BringToFront(); // does nothing without show(), unreliable even with it
+			TopLevel = true;
 			TopMost = true;
+			TopLevel = false;
 			TopMost = false;
 			Show();
 			Activate();
