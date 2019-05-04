@@ -340,7 +340,7 @@ namespace Taskmaster.UI.Config
 			execName = new TextBox()
 			{
 				ShortcutsEnabled = true,
-				Text = string.Join("|", Controller.Executables),
+				Text =  Controller.Executables?.Length > 0 ? string.Join("|", Controller.Executables) : string.Empty,
 				Width = 180,
 			};
 			execName.Validating += ValidateFilename;
