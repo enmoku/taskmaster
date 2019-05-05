@@ -209,16 +209,20 @@ namespace Taskmaster.UI
 
 		public void Reveal()
 		{
-			WindowState = FormWindowState.Normal;
-			Show();
-			// shuffle to top in the most hackish way possible, these are all unreliable
-			BringToFront(); // does nothing without show(), unreliable even with it
-			TopLevel = true;
-			TopMost = true;
-			TopLevel = false;
-			TopMost = false;
-			Show();
-			Activate();
+			try
+			{
+				WindowState = FormWindowState.Normal;
+				// shuffle to top in the most hackish way possible, these are all unreliable
+				// does nothing without show(), unreliable even with it
+				TopMost = true;
+				TopMost = false;
+				Show();
+				Activate();
+			}
+			catch (Exception ex)
+			{
+				Logging.Stacktrace(ex);
+			}
 		}
 
 		public void ShowLastLog()
