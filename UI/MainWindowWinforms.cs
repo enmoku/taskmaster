@@ -984,8 +984,6 @@ namespace Taskmaster.UI
 		TabPage powerDebugTab = null;
 		TabPage ProcessDebugTab = null;
 
-		EventHandler ResizeLogList;
-
 		ToolStripMenuItem menu_debug_loglevel_info = null;
 		ToolStripMenuItem menu_debug_loglevel_debug = null;
 #if DEBUG
@@ -1722,20 +1720,7 @@ namespace Taskmaster.UI
 			// UI Log
 			// -1 = contents, -2 = heading
 			LogList.Columns.Add("Event Log", -2, HorizontalAlignment.Left); // 2
-			ResizeLogList = delegate
-			{
-				LogList.BeginUpdate();
-				LogList.Columns[0].Width = -2;
 
-				// HACK: Enable visual styles causes horizontal bar to always be present without the following.
-				LogList.Columns[0].Width = LogList.Columns[0].Width - 2;
-
-				//loglist.Height = -2;
-				//loglist.Width = -2;
-				LogList.Height = ClientSize.Height - tabLayout.Height - statusbar.Height - menu.Height;
-				ShowLastLog();
-				LogList.EndUpdate();
-			};
 			//ResizeEnd += ResizeLogList;
 			//Resize += ResizeLogList;
 
@@ -1916,6 +1901,21 @@ namespace Taskmaster.UI
 				GotFocus += PathCacheUpdate;
 				PathCacheUpdate(this, EventArgs.Empty);
 			}
+		}
+
+		void ResizeLogList(object sender, EventArgs ev)
+		{
+			LogList.BeginUpdate();
+			LogList.Columns[0].Width = -2;
+
+			// HACK: Enable visual styles causes horizontal bar to always be present without the following.
+			LogList.Columns[0].Width = LogList.Columns[0].Width - 2;
+
+			//loglist.Height = -2;
+			//loglist.Width = -2;
+			LogList.Height = ClientSize.Height - tabLayout.Height - statusbar.Height - menu.Height;
+			ShowLastLog();
+			LogList.EndUpdate();
 		}
 
 		void SetAutoPower(object _, EventArgs _ea)
