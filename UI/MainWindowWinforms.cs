@@ -127,7 +127,10 @@ namespace Taskmaster.UI
 			// FormBorderStyle = FormBorderStyle.FixedDialog; // no min/max buttons as wanted
 
 			if (!ShowOnStart)
+			{
+				Debug.WriteLine("<Main Window> Show on start disabled, hiding.");
 				Hide();
+			}
 
 			// CenterToScreen();
 
@@ -150,6 +153,8 @@ namespace Taskmaster.UI
 
 		void onShown(object _, EventArgs _ea)
 		{
+			Debug.WriteLine("<Main Window> Showing");
+
 			if (!IsHandleCreated) return;
 
 			if (LogList.Items.Count > 0) // needed in case of bugs or clearlog
@@ -297,7 +302,7 @@ namespace Taskmaster.UI
 			}
 		}
 
-		void AlternateListviewRowColors(ListView lv, bool alternate=false)
+		void AlternateListviewRowColors(ListView lv, bool alternate = false)
 		{
 			bool alter = true;
 			foreach (ListViewItem li in lv.Items)
@@ -434,7 +439,7 @@ namespace Taskmaster.UI
 					UpdateAudioInputs();
 				}
 				catch (OutOfMemoryException) { throw; }
-				catch(Exception ex)
+				catch (Exception ex)
 				{
 					Logging.Stacktrace(ex);
 				}
@@ -564,7 +569,8 @@ namespace Taskmaster.UI
 
 			WatchlistRules.VisibleChanged += (_, _ea) => { if (WatchlistRules.Visible) WatchlistColor(); };
 
-			BeginInvoke(new Action(() => {
+			BeginInvoke(new Action(() =>
+			{
 				WatchlistRules.BeginUpdate();
 
 				foreach (var prc in processmanager.getWatchlist())
@@ -687,7 +693,7 @@ namespace Taskmaster.UI
 			foreach (var item in WatchlistMap)
 			{
 				if (ct.IsCancellationRequested) return;
-				if (Trace) Debug.WriteLine($"{i++:00} --- {item.Value.Index:00} : {(item.Value.Index+1) % 2 == 0} --- {item.Key.FriendlyName}");
+				if (Trace) Debug.WriteLine($"{i++:00} --- {item.Value.Index:00} : {(item.Value.Index + 1) % 2 == 0} --- {item.Key.FriendlyName}");
 				WatchlistItemColor(item.Value, item.Key);
 			}
 		}
@@ -903,7 +909,7 @@ namespace Taskmaster.UI
 
 			var delta = netmonitor.GetTraffic;
 			float netTotal = delta.Input + delta.Output;
-			netTransmit.Text = $"{delta.Input/1000:N1} kB In, {delta.Output/1000:N1} kB Out [{delta.Packets:N0} packets; {delta.Queue:N0} queued]";
+			netTransmit.Text = $"{delta.Input / 1000:N1} kB In, {delta.Output / 1000:N1} kB Out [{delta.Packets:N0} packets; {delta.Queue:N0} queued]";
 		}
 
 		ListView NetworkDevices;
@@ -1152,7 +1158,7 @@ namespace Taskmaster.UI
 				AutoOpenMenus = menu_config_behaviour_autoopen.Checked;
 
 				using (var corecfg = Taskmaster.Config.Load(CoreConfigFilename).BlockUnload())
-				corecfg.Config[HumanReadable.Generic.QualityOfLife]["Auto-open menus"].Bool = AutoOpenMenus;
+					corecfg.Config[HumanReadable.Generic.QualityOfLife]["Auto-open menus"].Bool = AutoOpenMenus;
 			};
 
 			var menu_config_behaviour_taskbar = new ToolStripMenuItem("Show in taskbar")
@@ -1165,7 +1171,7 @@ namespace Taskmaster.UI
 				ShowInTaskbar = menu_config_behaviour_taskbar.Checked;
 
 				using (var corecfg = Taskmaster.Config.Load(CoreConfigFilename).BlockUnload())
-				corecfg.Config[HumanReadable.Generic.QualityOfLife]["Show in taskbar"].Bool = ShowInTaskbar;
+					corecfg.Config[HumanReadable.Generic.QualityOfLife]["Show in taskbar"].Bool = ShowInTaskbar;
 			};
 
 			var menu_config_behaviour_exitconfirm = new ToolStripMenuItem("Exit confirmation")
@@ -1178,7 +1184,7 @@ namespace Taskmaster.UI
 				ExitConfirmation = menu_config_behaviour_exitconfirm.Checked;
 
 				using (var corecfg = Taskmaster.Config.Load(CoreConfigFilename).BlockUnload())
-				corecfg.Config[HumanReadable.Generic.QualityOfLife]["Exit confirmation"].Bool = ExitConfirmation;
+					corecfg.Config[HumanReadable.Generic.QualityOfLife]["Exit confirmation"].Bool = ExitConfirmation;
 			};
 
 			menu_config_behaviour.DropDownItems.Add(menu_config_behaviour_autoopen);
@@ -1213,9 +1219,9 @@ namespace Taskmaster.UI
 				AlternateRowColorsLog = menu_config_visuals_rowalternate_log.Checked;
 
 				using (var uicfg = Taskmaster.Config.Load(UIConfigFilename).BlockUnload())
-				uicfg.Config[Constants.Visuals]["Alternate log row colors"].Bool = AlternateRowColorsLog;
+					uicfg.Config[Constants.Visuals]["Alternate log row colors"].Bool = AlternateRowColorsLog;
 
-				if (LogList!=null)
+				if (LogList != null)
 					AlternateListviewRowColors(LogList, AlternateRowColorsLog);
 			};
 			menu_config_visuals_rowalternate_watchlist.Click += (_, _ea) =>
@@ -1223,7 +1229,7 @@ namespace Taskmaster.UI
 				AlternateRowColorsWatchlist = menu_config_visuals_rowalternate_watchlist.Checked;
 
 				using (var uicfg = Taskmaster.Config.Load(UIConfigFilename).BlockUnload())
-				uicfg.Config[Constants.Visuals]["Alternate watchlist row colors"].Bool = AlternateRowColorsWatchlist;
+					uicfg.Config[Constants.Visuals]["Alternate watchlist row colors"].Bool = AlternateRowColorsWatchlist;
 
 				WatchlistColor();
 			};
@@ -1232,7 +1238,7 @@ namespace Taskmaster.UI
 				AlternateRowColorsDevices = menu_config_visuals_rowalternate_devices.Checked;
 
 				using (var uicfg = Taskmaster.Config.Load(UIConfigFilename).BlockUnload())
-				uicfg.Config[Constants.Visuals]["Alternate device row colors"].Bool = AlternateRowColorsDevices;
+					uicfg.Config[Constants.Visuals]["Alternate device row colors"].Bool = AlternateRowColorsDevices;
 
 				if (AudioInputs != null)
 					AlternateListviewRowColors(AudioInputs, AlternateRowColorsDevices);
@@ -1253,7 +1259,7 @@ namespace Taskmaster.UI
 			menu_config_visuals_topmost_volume.Click += (_, _ea) =>
 			{
 				using (var corecfg = Taskmaster.Config.Load(CoreConfigFilename).BlockUnload())
-				corecfg.Config[Constants.VolumeMeter][TopmostName].Bool = menu_config_visuals_topmost_volume.Checked;
+					corecfg.Config[Constants.VolumeMeter][TopmostName].Bool = menu_config_visuals_topmost_volume.Checked;
 
 				if (volumemeter != null)
 					volumemeter.TopMost = menu_config_visuals_topmost_volume.Checked;
@@ -1281,7 +1287,7 @@ namespace Taskmaster.UI
 				ShowProcessAdjusts = menu_config_logging_adjusts.Checked;
 
 				using (var corecfg = Taskmaster.Config.Load(CoreConfigFilename).BlockUnload())
-				corecfg.Config[HumanReadable.Generic.Logging]["Show process adjusts"].Bool = ShowProcessAdjusts;
+					corecfg.Config[HumanReadable.Generic.Logging]["Show process adjusts"].Bool = ShowProcessAdjusts;
 			};
 
 			var menu_config_logging_session = new ToolStripMenuItem("Session actions")
@@ -1294,7 +1300,7 @@ namespace Taskmaster.UI
 				ShowSessionActions = menu_config_logging_session.Checked;
 
 				using (var corecfg = Taskmaster.Config.Load(CoreConfigFilename).BlockUnload())
-				corecfg.Config[HumanReadable.Generic.Logging]["Show session actions"].Bool = ShowSessionActions;
+					corecfg.Config[HumanReadable.Generic.Logging]["Show session actions"].Bool = ShowSessionActions;
 			};
 
 			var menu_config_logging_showunmodified = new ToolStripMenuItem(ShowUnmodifiedPortionsName)
@@ -1307,7 +1313,7 @@ namespace Taskmaster.UI
 				Process.Manager.ShowUnmodifiedPortions = menu_config_logging_showunmodified.Checked;
 
 				using (var corecfg = Taskmaster.Config.Load(CoreConfigFilename).BlockUnload())
-				corecfg.Config[HumanReadable.Generic.Logging][ShowUnmodifiedPortionsName].Bool = Process.Manager.ShowUnmodifiedPortions;
+					corecfg.Config[HumanReadable.Generic.Logging][ShowUnmodifiedPortionsName].Bool = Process.Manager.ShowUnmodifiedPortions;
 			};
 
 			var menu_config_logging_showonlyfinal = new ToolStripMenuItem("Final state only")
@@ -1319,7 +1325,7 @@ namespace Taskmaster.UI
 			{
 				Process.Manager.ShowOnlyFinalState = menu_config_logging_showonlyfinal.Checked;
 				using (var corecfg = Taskmaster.Config.Load(CoreConfigFilename).BlockUnload())
-				corecfg.Config[HumanReadable.Generic.Logging]["Final state only"].Bool = Process.Manager.ShowOnlyFinalState;
+					corecfg.Config[HumanReadable.Generic.Logging]["Final state only"].Bool = Process.Manager.ShowOnlyFinalState;
 			};
 
 			var menu_config_logging_neterrors = new ToolStripMenuItem("Network errors")
@@ -1332,7 +1338,7 @@ namespace Taskmaster.UI
 				Network.Manager.ShowNetworkErrors = menu_config_logging_neterrors.Checked;
 
 				using (var corecfg = Taskmaster.Config.Load(CoreConfigFilename).BlockUnload())
-				corecfg.Config[HumanReadable.Generic.Logging]["Show network errors"].Bool = Network.Manager.ShowNetworkErrors;
+					corecfg.Config[HumanReadable.Generic.Logging]["Show network errors"].Bool = Network.Manager.ShowNetworkErrors;
 			};
 
 			var menu_config_logging_info = new ToolStripMenuItem("Information")
@@ -1397,7 +1403,7 @@ namespace Taskmaster.UI
 				// TODO: re-render watchlistRules
 
 				using (var corecfg = Taskmaster.Config.Load(CoreConfigFilename).BlockUnload())
-				corecfg.Config[HumanReadable.Generic.QualityOfLife][HumanReadable.Hardware.CPU.Settings.AffinityStyle].Int = 0;
+					corecfg.Config[HumanReadable.Generic.QualityOfLife][HumanReadable.Hardware.CPU.Settings.AffinityStyle].Int = 0;
 			};
 			menu_config_bitmaskstyle_decimal.Click += (_, _ea) =>
 			{
@@ -1407,7 +1413,7 @@ namespace Taskmaster.UI
 				// TODO: re-render watchlistRules
 
 				using (var corecfg = Taskmaster.Config.Load(CoreConfigFilename).BlockUnload())
-				corecfg.Config[HumanReadable.Generic.QualityOfLife][HumanReadable.Hardware.CPU.Settings.AffinityStyle].Int = 1;
+					corecfg.Config[HumanReadable.Generic.QualityOfLife][HumanReadable.Hardware.CPU.Settings.AffinityStyle].Int = 1;
 			};
 			//var menu_config_bitmaskstyle_both = new ToolStripMenuItem("Decimal [Bitmask]");
 
@@ -1415,9 +1421,9 @@ namespace Taskmaster.UI
 			menu_config_bitmaskstyle.DropDownItems.Add(menu_config_bitmaskstyle_decimal);
 			//menu_config_bitmaskstyle.DropDownItems.Add(menu_config_bitmaskstyle_both);
 
-			var menu_config_advanced = new ToolStripMenuItem("Advanced", null, (_,_ea) => Config.AdvancedConfig.Reveal());
+			var menu_config_advanced = new ToolStripMenuItem("Advanced", null, (_, _ea) => Config.AdvancedConfig.Reveal());
 
-			var menu_config_powermanagement = new ToolStripMenuItem("Power management", null, (_,_ea) => Config.PowerConfigWindow.Reveal(powermanager));
+			var menu_config_powermanagement = new ToolStripMenuItem("Power management", null, (_, _ea) => Config.PowerConfigWindow.Reveal(powermanager));
 			//menu_config_power.DropDownItems.Add(menu_config_power_autoadjust); // sub-menu removed
 
 			//
@@ -1426,8 +1432,8 @@ namespace Taskmaster.UI
 			var menu_config_log_power = new ToolStripMenuItem("Power mode changes", null, (_, _ea) => { });
 			menu_config_log.DropDownItems.Add(menu_config_log_power);
 
-			var menu_config_components = new ToolStripMenuItem("Components", null, (_,_ea) => Config.ComponentConfigurationWindow.Reveal()); // MODAL
-			var menu_config_experiments = new ToolStripMenuItem("Experiments", null, (_,_ea) => Config.ExperimentConfig.Reveal()); // MODAL
+			var menu_config_components = new ToolStripMenuItem("Components", null, (_, _ea) => Config.ComponentConfigurationWindow.Reveal()); // MODAL
+			var menu_config_experiments = new ToolStripMenuItem("Experiments", null, (_, _ea) => Config.ExperimentConfig.Reveal()); // MODAL
 
 			var menu_config_folder = new ToolStripMenuItem("Open in file manager", null, (_, _ea) => System.Diagnostics.Process.Start(DataPath));
 			// menu_config.DropDownItems.Add(menu_config_log);
@@ -1657,6 +1663,8 @@ namespace Taskmaster.UI
 			var menu_info = new ToolStripMenuItem(InfoName);
 			// Sub Items
 
+			//menu_info.DropDownItems.Add(new ToolStripMenuItem("Changelog", null, OpenChangelog));
+			//menu_info.DropDownItems.Add(new ToolStripSeparator());
 			menu_info.DropDownItems.Add(new ToolStripMenuItem("Github", null, (_, _ea) => System.Diagnostics.Process.Start(GitURL)));
 			menu_info.DropDownItems.Add(new ToolStripMenuItem("Itch.io", null, (_, _ea) => System.Diagnostics.Process.Start(ItchURL)));
 			menu_info.DropDownItems.Add(new ToolStripSeparator());
@@ -1918,6 +1926,22 @@ namespace Taskmaster.UI
 			LogList.EndUpdate();
 		}
 
+		ChangeLog changelog = null;
+		void OpenChangelog(object sender, EventArgs e)
+		{
+			if (changelog is null)
+			{
+				(changelog = new ChangeLog("test"))
+					.FormClosing += (_, _ea) => changelog = null;
+			}
+			else
+			{
+				// push window to top
+				changelog.Show();
+				// TODO: flash and make sure the window is actually not outside of display bounds?
+			}
+		}
+
 		void SetAutoPower(object _, EventArgs _ea)
 		{
 			if (powermanager.Behaviour != Power.Manager.PowerBehaviour.Auto)
@@ -1980,7 +2004,7 @@ namespace Taskmaster.UI
 
 		private void ShowExternalLicenses(object sender, EventArgs e)
 		{
-			MessageBox.ShowModal("Third Party Licenses for " + Taskmaster.Name, Properties.Resources.ExternalLicenses, MessageBox.Buttons.OK, rich:true, this);
+			MessageBox.ShowModal("Third Party Licenses for " + Taskmaster.Name, Properties.Resources.ExternalLicenses, MessageBox.Buttons.OK, rich: true, this);
 		}
 
 		void ShowVolumeBox(object sender, EventArgs e) => BuildVolumeMeter();
@@ -2148,7 +2172,7 @@ namespace Taskmaster.UI
 			WatchlistRules.Columns.Add("Adjusts", appwidths[6]);
 			WatchlistRules.Columns.Add(HumanReadable.System.Process.Path, appwidths[7]);
 
-			for (int i  = 0; i < 8; i++)
+			for (int i = 0; i < 8; i++)
 				WatchlistRules.Columns[i].DisplayIndex = apporder[i];
 
 			WatchlistRules.Scrollable = true;
@@ -2650,7 +2674,7 @@ namespace Taskmaster.UI
 				.AppendLine()
 				.AppendLine("Available under MIT license.");
 
-			MessageBox.ShowModal("About " + Taskmaster.Name + "!", sbs.ToString(), MessageBox.Buttons.OK, parent:this);
+			MessageBox.ShowModal("About " + Taskmaster.Name + "!", sbs.ToString(), MessageBox.Buttons.OK, parent: this);
 		}
 
 		Stopwatch WatchlistSearchInputTimer = new Stopwatch();
@@ -2698,7 +2722,7 @@ namespace Taskmaster.UI
 			ea.Handled = true;
 
 			tooltip.Show("Searching: " + SearchString, WatchlistRules,
-				WatchlistRules.ClientSize.Width/3, WatchlistRules.ClientSize.Height,
+				WatchlistRules.ClientSize.Width / 3, WatchlistRules.ClientSize.Height,
 				string.IsNullOrEmpty(SearchString) ? 500 : 2_500);
 		}
 
@@ -2838,7 +2862,7 @@ namespace Taskmaster.UI
 				bool newitem = false;
 				if (!ProcessEventMap.TryGetValue(key, out item))
 				{
-					item = new ListViewItem(new string[] { key.ToString(), ea.Info.Name, string.Empty, string.Empty});
+					item = new ListViewItem(new string[] { key.ToString(), ea.Info.Name, string.Empty, string.Empty });
 					newitem = true;
 					ProcessEventMap.TryAdd(key, item);
 				}
@@ -2935,16 +2959,16 @@ namespace Taskmaster.UI
 			};
 
 			statusbar.Items.Add("Processing:");
-			processingcount = new ToolStripStatusLabel("["+ HumanReadable.Generic.Uninitialized + "]") { AutoSize=false };
+			processingcount = new ToolStripStatusLabel("[" + HumanReadable.Generic.Uninitialized + "]") { AutoSize = false };
 			statusbar.Items.Add(processingcount); // not truly useful for anything but debug to show if processing is hanging Somewhere
 			statusbar.Items.Add("Next scan in:");
-			processingtimer = new ToolStripStatusLabel("["+ HumanReadable.Generic.Uninitialized + "]") { AutoSize = false };
+			processingtimer = new ToolStripStatusLabel("[" + HumanReadable.Generic.Uninitialized + "]") { AutoSize = false };
 			statusbar.Items.Add(processingtimer);
 			statusbar.Items.Add(new ToolStripStatusLabel() { Alignment = ToolStripItemAlignment.Right, Width = -2, Spring = true });
 			//verbositylevel = new ToolStripStatusLabel(HumanReadable.Generic.Uninitialized);
 			//statusbar.Items.Add(verbositylevel);
 
-			statusbar.Items.Add(new ToolStripStatusLabel("Power plan:") { Alignment = ToolStripItemAlignment.Right});
+			statusbar.Items.Add(new ToolStripStatusLabel("Power plan:") { Alignment = ToolStripItemAlignment.Right });
 			powermodestatusbar = new ToolStripStatusLabel(Power.Manager.GetModeName(powermanager?.CurrentMode ?? Power.Mode.Undefined)) { Alignment = ToolStripItemAlignment.Right };
 			statusbar.Items.Add(powermodestatusbar);
 		}
@@ -2954,9 +2978,9 @@ namespace Taskmaster.UI
 			try
 			{
 				using (var exsel = new ProcessSelectDialog(
-					"WARNING: This Can be a Bad idea."+
-					"\nAll application memory is pushed to page file. This will temporarily increase available RAM,"+
-					"\nbut increases NVM usage significantly until apps have paged back the memory they actively need."+
+					"WARNING: This Can be a Bad idea." +
+					"\nAll application memory is pushed to page file. This will temporarily increase available RAM," +
+					"\nbut increases NVM usage significantly until apps have paged back the memory they actively need." +
 					"\n\nSelection omits chosen app from paging. Select nothing to try free memory in general."))
 				{
 					if (exsel.ShowDialog(this) == DialogResult.OK)
@@ -3187,7 +3211,7 @@ namespace Taskmaster.UI
 						if (editdialog.ShowDialog() == DialogResult.OK)
 						{
 							UpdateWatchlistRule(prc);
-							processmanager?.HastenScan(60, sort:true);
+							processmanager?.HastenScan(60, sort: true);
 							prc.Refresh();
 						}
 					}
@@ -3213,7 +3237,7 @@ namespace Taskmaster.UI
 
 					WatchlistRules.EndUpdate();
 
-					processmanager?.HastenScan(60, sort:true);
+					processmanager?.HastenScan(60, sort: true);
 				}
 			}
 			catch (Exception ex) { Logging.Stacktrace(ex); }

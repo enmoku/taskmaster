@@ -608,14 +608,14 @@ namespace Taskmaster.Process
 				Log.Warning("[" + prc.FriendlyName + "] Background priority equal or higher than foreground priority, ignoring.");
 			}
 
-			if (prc.Executables?.Length == 0 && string.IsNullOrEmpty(prc.Path))
+			if (!(prc.Executables?.Length > 0) && string.IsNullOrEmpty(prc.Path))
 			{
 				Log.Warning("[" + prc.FriendlyName + "] Executable and Path missing; ignoring.");
 				rv = false;
 			}
 
 			// SANITY CHECKING
-			if ((prc.ExecutableFriendlyName?.Length ?? 0) > 0)
+			if (prc.ExecutableFriendlyName?.Length > 0)
 			{
 				// TODO: MULTIEXE
 
@@ -711,7 +711,7 @@ namespace Taskmaster.Process
 					.InitComment("Special hardcoded protection applied to: consent, winlogon, wininit, and csrss. These are vital system services and messing with them can cause severe system malfunctioning. Mess with the ignore list at your own peril.")
 					.Array;
 
-				if ((newIgnoreList?.Length ?? 0) > 0)
+				if (newIgnoreList?.Length > 0)
 				{
 					var ignoreOmitted = IgnoreList.Except(newIgnoreList);
 					var qlist = ignoreOmitted.ToList();
@@ -1201,7 +1201,7 @@ namespace Taskmaster.Process
 
 		public void RemoveController(Controller prc)
 		{
-			if ((prc.Executables?.Length ?? 0) > 0)
+			if (prc.Executables?.Length > 0)
 			{
 				// TODO: MULTIEXE ; What to do when multiple rules have same exe name?
 				foreach (var exe in prc.ExecutableFriendlyName)

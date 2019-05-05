@@ -42,6 +42,40 @@ namespace Taskmaster.Process
 		/// <returns>true if the pid should not be used</returns>
 		[System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
 		public static bool SystemProcessId(int pid) => pid <= 4;
+		
+		public static bool FindPath(ProcessEx info)
+		{
+			var cacheGet = false;
+
+			// Try to get the path from cache
+			if (pathCache.Get(info.Id, out string cpath, info.Name) != null)
+			{
+				if (!string.IsNullOrEmpty(cpath))
+				{
+					Statistics.PathCacheHits++;
+					cacheGet = true;
+					info.Path = cpath;
+				}
+				else
+					pathCache.Drop(info.Id);
+			}
+
+			// Try harder
+			if (string.IsNullOrEmpty(info.Path) && !FindPathExtended(info)) return false;
+
+			// Add to path cache
+			if (!cacheGet)
+			{
+				pathCache.Add(info.Id, info.Name, info.Path);
+				Statistics.PathCacheMisses++; // adding new entry is as bad a miss
+
+				if (Statistics.PathCacheCurrent > Statistics.PathCachePeak) Statistics.PathCachePeak = Statistics.PathCacheCurrent;
+			}
+
+			Statistics.PathCacheCurrent = pathCache.Count;
+
+			return true;
+		}
 
 		/// <summary>
 		/// Use FindPath() instead. This is called by it.
@@ -56,7 +90,10 @@ namespace Taskmaster.Process
 			string path = string.Empty;
 			try
 			{
-				path = info.Process?.MainModule?.FileName ?? string.Empty; // this will cause win32exception of various types, we don't Really care which error it is
+				path = info
+					.Process?
+					.MainModule?
+					.FileName ?? string.Empty; // this will cause win32exception of various types, we don't Really care which error it is
 			}
 			catch (InvalidOperationException)
 			{
@@ -321,40 +358,6 @@ namespace Taskmaster.Process
 			}
 
 			return null;
-		}
-
-		public static bool FindPath(ProcessEx info)
-		{
-			var cacheGet = false;
-
-			// Try to get the path from cache
-			if (pathCache.Get(info.Id, out string cpath, info.Name) != null)
-			{
-				if (!string.IsNullOrEmpty(cpath))
-				{
-					Statistics.PathCacheHits++;
-					cacheGet = true;
-					info.Path = cpath;
-				}
-				else
-					pathCache.Drop(info.Id);
-			}
-
-			// Try harder
-			if (string.IsNullOrEmpty(info.Path) && !FindPathExtended(info)) return false;
-
-			// Add to path cache
-			if (!cacheGet)
-			{
-				pathCache.Add(info.Id, info.Name, info.Path);
-				Statistics.PathCacheMisses++; // adding new entry is as bad a miss
-
-				if (Statistics.PathCacheCurrent > Statistics.PathCachePeak) Statistics.PathCachePeak = Statistics.PathCacheCurrent;
-			}
-
-			Statistics.PathCacheCurrent = pathCache.Count;
-
-			return true;
 		}
 
 		[Conditional("DEBUG")]
