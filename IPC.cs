@@ -44,8 +44,6 @@ namespace Taskmaster
 
 		internal static void Receive(IAsyncResult result)
 		{
-			Debug.WriteLine("<IPC> Activity");
-
 			if (pipe is null) return;
 
 			try
@@ -53,6 +51,8 @@ namespace Taskmaster
 				var lp = pipe;
 				//pipe = null;
 				lp.EndWaitForConnection(result);
+
+				Debug.WriteLine("<IPC> Activity");
 
 				if (!result.IsCompleted) return;
 				if (!pipe.IsConnected) return;
