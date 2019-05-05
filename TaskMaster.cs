@@ -153,8 +153,7 @@ namespace Taskmaster
 			try
 			{
 				// Log.Debug("Bringing to front");
-				BuildMainWindow();
-				mainwindow?.Reveal();
+				BuildMainWindow(reveal:true);
 			}
 			catch (Exception ex)
 			{
@@ -184,65 +183,82 @@ namespace Taskmaster
 		/// </summary>
 		public static void BuildMainWindow(bool reveal=false)
 		{
-			lock (mainwindow_creation_lock)
+			Debug.WriteLine("<Main Window> Building: " + !(mainwindow is null));
+
+			try
 			{
-				if (mainwindow != null) return;
-
-				mainwindow = new UI.MainWindow();
-				mainwindow.FormClosed += (_, _ea) =>
+				lock (mainwindow_creation_lock)
 				{
-					ShuttingDown -= mainwindow.ShutdownEvent;
-					mainwindow = null;
-				};
-				ShuttingDown += mainwindow.ShutdownEvent;
-
-				try
-				{
-					if (storagemanager != null)
-						mainwindow.Hook(storagemanager);
-
-					if (processmanager != null)
-						mainwindow.Hook(processmanager);
-
-					if (audiomanager != null)
+					if (mainwindow != null)
 					{
-						mainwindow.Hook(audiomanager);
-						if (micmonitor != null)
-							mainwindow.Hook(micmonitor);
+						mainwindow?.Reveal();
+						return;
 					}
 
-					if (netmonitor != null)
-						mainwindow.Hook(netmonitor);
+					mainwindow = new UI.MainWindow();
+					mainwindow.FormClosed += (_, _ea) =>
+					{
+						ShuttingDown -= mainwindow.ShutdownEvent;
+						mainwindow = null;
+					};
+					ShuttingDown += mainwindow.ShutdownEvent;
 
-					if (activeappmonitor != null)
-						mainwindow.Hook(activeappmonitor);
+					try
+					{
+						if (storagemanager != null)
+							mainwindow.Hook(storagemanager);
 
-					if (powermanager != null)
-						mainwindow.Hook(powermanager);
+						if (processmanager != null)
+							mainwindow.Hook(processmanager);
 
-					if (cpumonitor != null)
-						mainwindow.Hook(cpumonitor);
+						if (audiomanager != null)
+						{
+							mainwindow.Hook(audiomanager);
+							if (micmonitor != null)
+								mainwindow.Hook(micmonitor);
+						}
 
-					if (hardware != null)
-						mainwindow.Hook(hardware);
+						if (netmonitor != null)
+							mainwindow.Hook(netmonitor);
 
-					if (healthmonitor != null)
-						mainwindow.Hook(healthmonitor);
+						if (activeappmonitor != null)
+							mainwindow.Hook(activeappmonitor);
+
+						if (powermanager != null)
+							mainwindow.Hook(powermanager);
+
+						if (cpumonitor != null)
+							mainwindow.Hook(cpumonitor);
+
+						if (hardware != null)
+							mainwindow.Hook(hardware);
+
+						if (healthmonitor != null)
+							mainwindow.Hook(healthmonitor);
+
+						trayaccess.Hook(mainwindow);
+
+						// .GotFocus and .LostFocus are apparently unreliable as per the API
+						mainwindow.Activated += (_, _ea) => OptimizeResponsiviness(true);
+						mainwindow.Deactivate += (_, _ea) => OptimizeResponsiviness(false);
+
+						mainwindow.FormClosing += (_, ea) => Debug.WriteLine($"Main Window Closing: {ea.CloseReason.ToString()}");
+					}
+					catch (Exception ex)
+					{
+						Logging.Stacktrace(ex);
+						if (ex is NullReferenceException) throw;
+					}
 				}
-				catch (Exception ex)
-				{
-					Logging.Stacktrace(ex);
-					if (ex is NullReferenceException) throw;
-				}
-
-				trayaccess.Hook(mainwindow);
-
-				// .GotFocus and .LostFocus are apparently unreliable as per the API
-				mainwindow.Activated += (_,_ea) => OptimizeResponsiviness(true);
-				mainwindow.Deactivate += (_, _ea) => OptimizeResponsiviness(false);
 			}
-
-			if (reveal) mainwindow?.Reveal();
+			catch (Exception ex)
+			{
+				Logging.Stacktrace(ex);
+			}
+			finally
+			{
+				if (reveal) mainwindow?.Reveal();
+			}
 		}
 
 		static void OptimizeResponsiviness(bool shown=false)
