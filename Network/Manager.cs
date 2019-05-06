@@ -186,7 +186,7 @@ namespace Taskmaster.Network
 
 		public string GetDeviceData(string devicename)
 		{
-			if (DisposedOrDisposing) throw new ObjectDisposedException("GetDeviceData called after NetManager was disposed.");
+			if (DisposedOrDisposing) throw new ObjectDisposedException(nameof(Manager), "GetDeviceData called after NetManager was disposed.");
 
 			foreach (var device in CurrentInterfaceList.Value)
 			{
@@ -419,7 +419,7 @@ namespace Taskmaster.Network
 
 		void RecordUptimeState(bool online_state, bool address_changed)
 		{
-			if (DisposedOrDisposing) throw new ObjectDisposedException("RecordUptimeState called after NetManager was disposed.");
+			if (DisposedOrDisposing) throw new ObjectDisposedException(nameof(Manager), "RecordUptimeState called after NetManager was disposed.");
 
 			if (!Atomic.Lock(ref DeviceStateRecordLimiter)) return;
 
@@ -481,7 +481,7 @@ namespace Taskmaster.Network
 		// TODO: Fix internet status checking.
 		bool CheckInet(bool address_changed = false)
 		{
-			if (DisposedOrDisposing) throw new ObjectDisposedException("CheckInet called after NetManager was disposed.");
+			if (DisposedOrDisposing) throw new ObjectDisposedException(nameof(Manager), "CheckInet called after NetManager was disposed.");
 
 			// TODO: Figure out how to get Actual start time of internet connectivity.
 			// Probably impossible.
@@ -586,7 +586,7 @@ namespace Taskmaster.Network
 
 		void InterfaceInitialization()
 		{
-			if (DisposedOrDisposing) throw new ObjectDisposedException("InterfaceInitialization called after NetManager was disposed.");
+			if (DisposedOrDisposing) throw new ObjectDisposedException(nameof(Manager), "InterfaceInitialization called after NetManager was disposed.");
 
 			bool ipv4 = false, ipv6 = false;
 			NetworkInterface[] adapters = NetworkInterface.GetAllNetworkInterfaces();
@@ -632,7 +632,7 @@ namespace Taskmaster.Network
 
 		List<Device> RecreateInterfaceList()
 		{
-			if (DisposedOrDisposing) throw new ObjectDisposedException("UpdateInterfaces called after NetManager was disposed.");
+			if (DisposedOrDisposing) throw new ObjectDisposedException(nameof(Manager), "UpdateInterfaces called after NetManager was disposed.");
 
 			var ifacelistt = new List<Device>();
 
@@ -701,7 +701,7 @@ namespace Taskmaster.Network
 
 		public List<Device> GetInterfaces()
 		{
-			if (DisposedOrDisposing) throw new ObjectDisposedException("GetInterfaces called after NetManager was disposed.");
+			if (DisposedOrDisposing) throw new ObjectDisposedException(nameof(Manager), "GetInterfaces called after NetManager was disposed.");
 
 			InvalidateInterfaceList();
 			return CurrentInterfaceList.Value;
@@ -791,7 +791,7 @@ namespace Taskmaster.Network
 
 		void ReportNetAvailability()
 		{
-			if (DisposedOrDisposing) throw new ObjectDisposedException("ReportNetAvailability called after NetManager was disposed.");
+			if (DisposedOrDisposing) throw new ObjectDisposedException(nameof(Manager), "ReportNetAvailability called after NetManager was disposed.");
 
 			bool changed = (LastReportedInetAvailable != InternetAvailable) || (LastReportedNetAvailable != NetworkAvailable);
 			if (!changed) return; // bail out if nothing has changed

@@ -47,7 +47,7 @@ namespace MKAh.Lock
 			{
 				Queue++;
 				System.Threading.Monitor.Enter(_Lock);
-				if (Disposed) throw new ObjectDisposedException("Lock entered after dispose");
+				if (Disposed) throw new ObjectDisposedException(nameof(Monitor), "Lock entered after dispose");
 				return Queue;
 			}
 			catch
@@ -65,7 +65,7 @@ namespace MKAh.Lock
 
 		public void Unlock()
 		{
-			if (Disposed) throw new ObjectDisposedException("Lock exited after dispose");
+			if (Disposed) throw new ObjectDisposedException(nameof(Monitor), "Lock exited after dispose");
 
 			try
 			{

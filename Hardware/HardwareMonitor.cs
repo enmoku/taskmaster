@@ -235,15 +235,15 @@ namespace Taskmaster
 		{
 			get
 			{
-				if (DisposedOrDisposing) throw new ObjectDisposedException("CPULoad accessed after HardwareMonitor was disposed.");
+				if (DisposedOrDisposing) throw new ObjectDisposedException(nameof(HardwareMonitor), "CPULoad accessed after HardwareMonitor was disposed.");
 				return cpuLoad.Value ?? float.NaN;
 			}
 		}
 
 		public GPUSensors GPUSensorData()
 		{
-			if (DisposedOrDisposing) throw new ObjectDisposedException("GPUSensorData accessed after HardwareMonitor was disposed.");
-			if (!Initialized) throw new InvalidOperationException("GPUSensorData accesssed before HardwareMonitor was initialized");
+			if (DisposedOrDisposing) throw new ObjectDisposedException(nameof(HardwareMonitor), "GPUSensorData accessed after HardwareMonitor was disposed.");
+			if (!Initialized) throw new InvalidOperationException(nameof(HardwareMonitor), "GPUSensorData accesssed before HardwareMonitor was initialized");
 
 			try
 			{
@@ -274,7 +274,7 @@ namespace Taskmaster
 		public void Start()
 		{
 			if (SensorPoller != null) return;
-			if (DisposedOrDisposing) throw new ObjectDisposedException("Start accessed after HardwareMonitor was disposed.");
+			if (DisposedOrDisposing) throw new ObjectDisposedException(nameof(HardwareMonitor), "Start accessed after HardwareMonitor was disposed.");
 
 			SensorPoller = new System.Timers.Timer(5000);
 			SensorPoller.Elapsed += EmitGPU;

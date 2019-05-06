@@ -366,7 +366,7 @@ namespace Taskmaster.Process
 		NativeMethods.RECT screenrect;
 		bool Fullscreen(IntPtr hwnd)
 		{
-			if (DisposedOrDisposing) throw new ObjectDisposedException("Fullscreen called after ActiveAppManager was disposed");
+			if (DisposedOrDisposing) throw new ObjectDisposedException(nameof(ForegroundManager), "Fullscreen called after ActiveAppManager was disposed");
 
 			// TODO: Is it possible to cache screen? multimonitor setup may make it hard... would that save anything?
 			var screen = System.Windows.Forms.Screen.FromHandle(hwnd); // passes

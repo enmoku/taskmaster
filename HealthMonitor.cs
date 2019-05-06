@@ -93,7 +93,7 @@ namespace Taskmaster
 		{
 			get
 			{
-				if (DisposedOrDisposing) throw new ObjectDisposedException("Poll called after HealthManager is disposed.");
+				if (DisposedOrDisposing) throw new ObjectDisposedException(nameof(HealthMonitor), "Poll called after HealthManager is disposed.");
 
 				return new HealthReport()
 				{
@@ -357,7 +357,7 @@ namespace Taskmaster
 		uint LastTick = uint.MinValue;
 		async Task CheckSystem()
 		{
-			if (DisposedOrDisposing) throw new ObjectDisposedException("CheckSystem called after HealthMonitor was disposed.");
+			if (DisposedOrDisposing) throw new ObjectDisposedException(nameof(HealthMonitor), "CheckSystem called after HealthMonitor was disposed.");
 
 			await Task.Delay(0).ConfigureAwait(false);
 
@@ -371,7 +371,7 @@ namespace Taskmaster
 
 		async Task CheckErrors()
 		{
-			if (DisposedOrDisposing) throw new ObjectDisposedException("CheckErrors called after HealthMonitor was disposed.");
+			if (DisposedOrDisposing) throw new ObjectDisposedException(nameof(HealthMonitor), "CheckErrors called after HealthMonitor was disposed.");
 
 			await Task.Delay(0).ConfigureAwait(false);
 
@@ -385,7 +385,7 @@ namespace Taskmaster
 
 		async Task CheckLogs()
 		{
-			if (DisposedOrDisposing) throw new ObjectDisposedException("CheckErrors called after HealthMonitor was disposed.");
+			if (DisposedOrDisposing) throw new ObjectDisposedException(nameof(HealthMonitor), "CheckErrors called after HealthMonitor was disposed.");
 
 			await Task.Delay(0).ConfigureAwait(false);
 
@@ -410,7 +410,7 @@ namespace Taskmaster
 
 		async Task CheckNVM()
 		{
-			if (DisposedOrDisposing) throw new ObjectDisposedException("CheckErrors called after HealthMonitor was disposed.");
+			if (DisposedOrDisposing) throw new ObjectDisposedException(nameof(HealthMonitor), "CheckErrors called after HealthMonitor was disposed.");
 
 			await Task.Delay(0).ConfigureAwait(false);
 
@@ -457,7 +457,7 @@ namespace Taskmaster
 
 		async Task CheckMemory()
 		{
-			if (DisposedOrDisposing) throw new ObjectDisposedException("CheckErrors called after HealthMonitor was disposed.");
+			if (DisposedOrDisposing) throw new ObjectDisposedException(nameof(HealthMonitor), "CheckErrors called after HealthMonitor was disposed.");
 
 			await Task.Delay(0).ConfigureAwait(false);
 

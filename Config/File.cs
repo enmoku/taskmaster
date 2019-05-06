@@ -67,7 +67,7 @@ namespace Taskmaster.Configuration
 
 		public void Unload()
 		{
-			if (Disposed) throw new ObjectDisposedException("Configuration.File.Unload after Dispose()");
+			if (Disposed) throw new ObjectDisposedException(nameof(File), "Configuration.File.Unload after Dispose()");
 
 			System.Diagnostics.Debug.Assert(Config != null);
 

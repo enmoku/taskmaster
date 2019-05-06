@@ -207,7 +207,7 @@ namespace Taskmaster.Audio
 
 		void UnregisterDefaultDevice()
 		{
-			if (DisposedOrDisposing) throw new ObjectDisposedException("UnregisterDefaultDevice called after MicManager was disposed.");
+			if (DisposedOrDisposing) throw new ObjectDisposedException(nameof(MicManager), "UnregisterDefaultDevice called after MicManager was disposed.");
 
 			try
 			{
@@ -227,7 +227,7 @@ namespace Taskmaster.Audio
 
 		void RegisterDefaultDevice()
 		{
-			if (DisposedOrDisposing) throw new ObjectDisposedException("RegisterDefaultDevice called after MicManager was disposed.");
+			if (DisposedOrDisposing) throw new ObjectDisposedException(nameof(MicManager), "RegisterDefaultDevice called after MicManager was disposed.");
 
 			try
 			{
@@ -304,7 +304,7 @@ namespace Taskmaster.Audio
 
 		void EnumerateDevices()
 		{
-			if (DisposedOrDisposing) throw new ObjectDisposedException("EnumerateDevices called after MicManager was disposed.");
+			if (DisposedOrDisposing) throw new ObjectDisposedException(nameof(MicManager), "EnumerateDevices called after MicManager was disposed.");
 
 			if (Trace) Log.Verbose("<Microphone> Enumerating devices...");
 

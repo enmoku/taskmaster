@@ -147,7 +147,7 @@ namespace Taskmaster
 
 		void DirectorySize(DirectoryInfo dinfo, ref DirectoryStats stats)
 		{
-			if (DisposedOrDisposing) throw new ObjectDisposedException("DirectorySize called after StorageManager was disposed.");
+			if (DisposedOrDisposing) throw new ObjectDisposedException(nameof(StorageManager), "DirectorySize called after StorageManager was disposed.");
 
 			var i = 1;
 			var dea = new StorageEventArgs { State = ScanState.Segment, Stats = stats };
