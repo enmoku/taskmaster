@@ -462,6 +462,8 @@ namespace Taskmaster
 				processmanager?.Hook(powermanager);
 			}
 
+			if (AudioManagerEnabled) audiomanager?.EventHooks();
+
 			if (GlobalHotkeys)
 				trayaccess.RegisterGlobalHotkeys();
 

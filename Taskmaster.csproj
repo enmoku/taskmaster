@@ -137,6 +137,7 @@
     <Compile Include="MKAh\File\Ini\Converter.cs" />
     <Compile Include="MKAh\File\Ini\Interface\IContainer.cs" />
     <Compile Include="MKAh\File\Ini\Interface\Value.cs" />
+    <Compile Include="MKAh\File\Ini\ParseException.cs" />
     <Compile Include="MKAh\File\Ini\Section.cs" />
     <Compile Include="MKAh\File\Ini\Setting.cs" />
     <Compile Include="MKAh\File\Ini\SettingType.cs" />

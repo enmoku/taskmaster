@@ -194,15 +194,18 @@ namespace Taskmaster.Audio
 				Log.Information("<Audio> Default movie/music device: " + MultimediaDevice.Name);
 				Log.Information("<Audio> Default game/voip device: " + ConsoleDevice.Name);
 				Log.Information("<Audio> Default communications device: " + RecordingDevice.Name);
-
-				MultimediaDevice.MMDevice.AudioSessionManager.OnSessionCreated += OnSessionCreated;
-				ConsoleDevice.MMDevice.AudioSessionManager.OnSessionCreated += OnSessionCreated;
 			}
 			catch (OutOfMemoryException) { throw; }
 			catch (Exception ex)
 			{
 				Logging.Stacktrace(ex);
 			}
+		}
+
+		public void EventHooks()
+		{
+			MultimediaDevice.MMDevice.AudioSessionManager.OnSessionCreated += OnSessionCreated;
+			ConsoleDevice.MMDevice.AudioSessionManager.OnSessionCreated += OnSessionCreated;
 		}
 
 		Process.Manager processmanager = null;
@@ -217,7 +220,6 @@ namespace Taskmaster.Audio
 			Debug.Assert(System.Threading.Thread.CurrentThread != Context, "Must be called in same thread.");
 
 			if (DisposingOrDisposed) return;
-			if (processmanager is null) return; // TODO: Maybe delay briefly to see if the manager gets hooked?
 
 			await Task.Delay(0).ConfigureAwait(false);
 
