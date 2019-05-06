@@ -243,7 +243,7 @@ namespace Taskmaster
 		public GPUSensors GPUSensorData()
 		{
 			if (DisposedOrDisposing) throw new ObjectDisposedException(nameof(HardwareMonitor), "GPUSensorData accessed after HardwareMonitor was disposed.");
-			if (!Initialized) throw new InvalidOperationException(nameof(HardwareMonitor), "GPUSensorData accesssed before HardwareMonitor was initialized");
+			if (!Initialized) throw new InvalidOperationException("GPUSensorData accesssed before HardwareMonitor was initialized");
 
 			try
 			{
