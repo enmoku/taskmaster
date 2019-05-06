@@ -144,7 +144,16 @@ namespace Taskmaster.Process
 		}
 
 		async void OnStart(object sender, EventArgs ea)
-			=> await Task.Run(() => Scan(), cts.Token).ContinueWith((_) => StartScanTimer(), cts.Token).ConfigureAwait(false);
+		{
+			try
+			{
+				await Task.Run(() => Scan(), cts.Token).ContinueWith((_) => StartScanTimer(), cts.Token).ConfigureAwait(false);
+			}
+			catch (TaskCanceledException)
+			{
+
+			}
+		}
 
 		public Controller[] getWatchlist() => Watchlist.Keys.ToArray();
 

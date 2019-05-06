@@ -5,6 +5,7 @@ Comprehensive changes can be found in Git change history:
 ## [0.13...]
 ### 2019-05-06
 	Fix: Audio hooking could sometimes silently fail for a time.
+	Fix: Exiting too quickly causes an exception as tasks are cancelled.
 ### 2019-05-04
 	Fixed: ArgumentNullException when trying to open a rule with no executables defined.
 ### 2019-05-02
