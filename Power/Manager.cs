@@ -333,8 +333,7 @@ namespace Taskmaster.Power
 						Log.Warning("<Session:Lock> Repeated failure to put monitor to sleep. Other apps may be interfering");
 					else if (SleepGivenUp == 1)
 						Log.Warning("<Session:Lock> Monitor sleep failures persist, stopping logging.");
-					// TODO: Detect other apps that have used SetThreadExecutionState(ES_CONTINUOUS) to prevent monitor sleep
-					// ... this is supposedly not possible.
+					// TODO: Detect other apps that have used SetThreadExecutionState(ES_CONTINUOUS) to prevent monitor sleep... this is supposedly not possible.
 					SleepGivenUp++;
 
 					//StopDisplayTimer(reset: true); // stop sleep attempts
@@ -449,7 +448,7 @@ namespace Taskmaster.Power
 				if (RestoreMethod == RestoreModeMethod.Default)
 					SetRestoreMode(RestoreMethod, RestoreMode);
 			}
-			// TODO: Call reset on power manager?
+			// TODO: Reset power?
 		}
 
 		int HighPressure = 0;
@@ -521,7 +520,7 @@ namespace Taskmaster.Power
 						if (BackoffCounter >= AutoAdjust.Low.Backoff.Level)
 							Ready = true;
 
-						queuePressureAdjust = (AutoAdjust.Queue.Low > 0 ? ev.Queue / AutoAdjust.Queue.Low : 0);
+						queuePressureAdjust = (AutoAdjust.Queue.Low > 0 ? ev.Queue / AutoAdjust.Queue.Low : 0f);
 						//Debug.WriteLine("AUTO-ADJUST: Queue pressure adjust: " + $"{queuePressureAdjust:N1}");
 						ev.Pressure = ((float)BackoffCounter) / ((float)AutoAdjust.Low.Backoff.Level) + queuePressureAdjust;
 						//Debug.WriteLine("AUTO-ADJUST: Final pressure: " + $"{ev.Pressure:N1}");

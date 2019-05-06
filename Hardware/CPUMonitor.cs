@@ -148,7 +148,7 @@ namespace Taskmaster
 		void Sampler(object _, EventArgs _ea)
 		{
 			if (!Atomic.Lock(ref sampler_lock)) return; // uhhh... probably should ping warning if this return is triggered
-			if (DisposedOrDisposing) return; // HACK: dumbness with timers
+			if (DisposedOrDisposing) return; // Dumbness with timers
 
 			try
 			{

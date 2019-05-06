@@ -295,7 +295,6 @@ namespace Taskmaster.Network
 						errorsSinceLastReport = 0;
 						lastErrorReport = now;
 
-
 						// TODO: Slow down reports if they're excessively frequent
 
 						if (pmins < 1) ErrorReports.Peak += 5; // this slows down some reporting, but not in a good way
@@ -478,11 +477,14 @@ namespace Taskmaster.Network
 		bool Notified = false;
 
 		int InetCheckLimiter; // = 0;
+
+		// TODO: Fix internet status checking.
 		bool CheckInet(bool address_changed = false)
 		{
 			if (DisposedOrDisposing) throw new ObjectDisposedException("CheckInet called after NetManager was disposed.");
 
 			// TODO: Figure out how to get Actual start time of internet connectivity.
+			// Probably impossible.
 
 			if (Atomic.Lock(ref InetCheckLimiter))
 			{
@@ -593,7 +595,7 @@ namespace Taskmaster.Network
 				if (n.NetworkInterfaceType == NetworkInterfaceType.Loopback || n.NetworkInterfaceType == NetworkInterfaceType.Tunnel)
 					continue;
 
-				// TODO: Implement early exit and smarter looping
+				// TODO: Implement smarter looping; Currently allows getting address across NICs.
 
 				IPAddress[] ipa = n.GetAddresses();
 				foreach (IPAddress ip in ipa)
@@ -613,10 +615,14 @@ namespace Taskmaster.Network
 							// PublicInterfaceList.Add(n);
 							break;
 					}
+
+					if (ipv4 && ipv6) goto FoundAddresses;
 				}
 
 				if (ipv4 && ipv6) break;
 			}
+
+		FoundAddresses:;
 		}
 
 		readonly object interfaces_lock = new object();

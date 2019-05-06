@@ -325,7 +325,7 @@ namespace Taskmaster
 		//async void TimerCheck(object state)
 		async void TimerCheck(object _, EventArgs _ea)
 		{
-			if (DisposedOrDisposing) return; // HACK: dumbness with timers
+			if (DisposedOrDisposing) return; // Dumbness with timers
 
 			// skip if already running...
 			// happens sometimes when the timer keeps running but not the code here
