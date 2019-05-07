@@ -53,12 +53,6 @@ namespace Taskmaster.Process
 		{
 			ForegroundEventDelegate = new NativeMethods.WinEventDelegate(WinEventProc);
 
-			if (eventhook)
-			{
-				if (!SetupEventHook())
-					throw new InitFailure("Failed to initialize active app manager.");
-			}
-
 			// get current window, just in case it's something we're monitoring
 			var hwnd = NativeMethods.GetForegroundWindow();
 			NativeMethods.GetWindowThreadProcessId(hwnd, out int pid);
