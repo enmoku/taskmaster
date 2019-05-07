@@ -3,6 +3,8 @@ Comprehensive changes can be found in Git change history:
 	https://github.com/mkahvi/taskmaster/commits/master
 
 ## [0.13...]
+### 2019-05-08
+	Fix: Weird NullRefrenceException.
 ### 2019-05-07
 	Changed: Loading is slightly altered to accommodate following changes.
 	Changed: Main window display is changed. It no longer should be topmost at launch. Only when user manually has requested the window.

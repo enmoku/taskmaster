@@ -90,10 +90,12 @@ namespace Taskmaster.Process
 			string path = string.Empty;
 			try
 			{
-				path = info
-					.Process?
-					.MainModule?
-					.FileName ?? string.Empty; // this will cause win32exception of various types, we don't Really care which error it is
+				// this will cause win32exception of various types, we don't Really care which error it is
+				path = info.Process?.MainModule?.FileName ?? string.Empty;
+			}
+			catch (NullReferenceException) // .filename sometimes throws this even when mainmodule is not null
+			{
+				// ignore?
 			}
 			catch (InvalidOperationException)
 			{
