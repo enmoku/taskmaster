@@ -80,7 +80,7 @@ namespace Taskmaster.UI
 			if (Trace) Log.Verbose("Generating tray icon.");
 
 			var ms = new ContextMenuStrip();
-			var menu_windowopen = new ToolStripMenuItem("Open main window", null, (_, _ea) => ShowMainWindow());
+			var menu_windowopen = new ToolStripMenuItem("Open main window", null, (_, _ea) => BuildMainWindow(reveal:true, top:true));
 			var menu_volumeopen = new ToolStripMenuItem("Open volume meter", null, (_, _ea) => BuildVolumeMeter())
 			{
 				Enabled = AudioManagerEnabled,
@@ -171,6 +171,8 @@ namespace Taskmaster.UI
 
 			RegisterForExit(this);
 			DisposalChute.Push(this);
+
+			SetTopLevel(true);
 		}
 
 		System.Drawing.Icon IconCache = null;
@@ -454,14 +456,14 @@ namespace Taskmaster.UI
 			if (Trace) Log.Verbose("Tray Click");
 
 			if (e.Button == MouseButtons.Left)
-				ShowMainWindow();
+				BuildMainWindow(reveal: true, top: true);
 		}
 
 		void UnloseWindow(object _, MouseEventArgs e)
 		{
 			if (e.Button == MouseButtons.Left)
 			{
-				ShowMainWindow();
+				BuildMainWindow(reveal: true, top: true);
 
 				try
 				{

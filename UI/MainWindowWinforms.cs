@@ -208,21 +208,24 @@ namespace Taskmaster.UI
 
 			if (!IsHandleCreated || DisposedOrDisposing) return;
 
+			Reveal(activate:true);
 			CenterToScreen();
-			Reveal();
 		}
 
-		public void Reveal()
+		public void Reveal(bool activate=false)
 		{
 			try
 			{
 				WindowState = FormWindowState.Normal;
 				// shuffle to top in the most hackish way possible, these are all unreliable
 				// does nothing without show(), unreliable even with it
-				TopMost = true;
-				TopMost = false;
+				if (activate)
+				{
+					TopMost = true;
+					TopMost = false;
+					Activate();
+				}
 				Show();
-				Activate();
 			}
 			catch (Exception ex)
 			{

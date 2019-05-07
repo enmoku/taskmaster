@@ -143,29 +143,6 @@ namespace Taskmaster
 			// nothing else should be needed.
 		}
 
-		static int restoremainwindow_lock = 0;
-		public static void ShowMainWindow()
-		{
-			//await Task.Delay(0);
-
-			if (!Atomic.Lock(ref restoremainwindow_lock)) return; // already being done
-
-			try
-			{
-				// Log.Debug("Bringing to front");
-				BuildMainWindow(reveal:true);
-			}
-			catch (Exception ex)
-			{
-				Logging.Stacktrace(ex);
-				if (ex is NullReferenceException) throw;
-			}
-			finally
-			{
-				Atomic.Unlock(ref restoremainwindow_lock);
-			}
-		}
-
 		public static void BuildVolumeMeter()
 		{
 			if (!AudioManagerEnabled) return;
@@ -181,7 +158,7 @@ namespace Taskmaster
 		/// <summary>
 		/// Constructs and hooks the main window
 		/// </summary>
-		public static void BuildMainWindow(bool reveal=false)
+		public static void BuildMainWindow(bool reveal=false, bool top=false)
 		{
 			Debug.WriteLine("<Main Window> Building: " + !(mainwindow is null));
 
@@ -189,11 +166,7 @@ namespace Taskmaster
 			{
 				lock (mainwindow_creation_lock)
 				{
-					if (mainwindow != null)
-					{
-						mainwindow?.Reveal();
-						return;
-					}
+					if (mainwindow != null) return;
 
 					mainwindow = new UI.MainWindow();
 					mainwindow.FormClosed += (_, _ea) =>
@@ -257,7 +230,7 @@ namespace Taskmaster
 			}
 			finally
 			{
-				if (reveal) mainwindow?.Reveal();
+				if (reveal) mainwindow?.Reveal(activate:top);
 			}
 		}
 

@@ -467,12 +467,6 @@ namespace Taskmaster
 			if (GlobalHotkeys)
 				trayaccess.RegisterGlobalHotkeys();
 
-			// UI
-			if (State == Runstate.Normal)
-			{
-				if (ShowOnStart) BuildMainWindow(reveal: true);
-				if (ShowVolOnStart) BuildVolumeMeter();
-			}
 
 			// Self-optimization
 			if (SelfOptimize)
@@ -503,6 +497,12 @@ namespace Taskmaster
 
 			if (Trace) Log.Verbose("Displaying Tray Icon");
 
+			// UI
+			if (State == Runstate.Normal)
+			{
+				if (ShowOnStart) BuildMainWindow(reveal: true, top:false);
+				if (ShowVolOnStart) BuildVolumeMeter();
+			}
 			trayaccess?.RefreshVisibility();
 
 			timer.Stop();
