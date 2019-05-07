@@ -116,11 +116,11 @@ namespace Taskmaster.UI
 			MaximizeBox = true;
 			MinimizeBox = true;
 
-			MinimumHeight += tabLayout.MinimumSize.Height;
-			MinimumHeight += LogList.MinimumSize.Height;
-			MinimumHeight += menu.Height;
-			MinimumHeight += statusbar.Height;
-			MinimumHeight += 40; // why is this required? window deco?
+			MinimumHeight += tabLayout.MinimumSize.Height
+				+ LogList.MinimumSize.Height
+				+ menu.Height
+				+ statusbar.Height
+				+ 40; // why is this required? window deco?
 
 			MinimumSize = new System.Drawing.Size(780, MinimumHeight);
 
@@ -157,9 +157,10 @@ namespace Taskmaster.UI
 
 			if (!IsHandleCreated) return;
 
-			if (LogList.Items.Count > 0) // needed in case of bugs or clearlog
+			int count = LogList.Items.Count;
+			if (count > 0) // needed in case of bugs or clearlog
 			{
-				LogList.TopItem = LogList.Items[LogList.Items.Count - 1];
+				LogList.TopItem = LogList.Items[count - 1];
 				ShowLastLog();
 			}
 		}
@@ -235,10 +236,8 @@ namespace Taskmaster.UI
 
 		public void ShowLastLog()
 		{
-			if (LogList.Items.Count > 0)
-			{
-				LogList.EnsureVisible(LogList.Items.Count - 1);
-			}
+			int count = LogList.Items.Count;
+			if (count > 0) LogList.EnsureVisible(count - 1);
 		}
 
 		// HOOKS
@@ -1224,8 +1223,7 @@ namespace Taskmaster.UI
 				using (var uicfg = Taskmaster.Config.Load(UIConfigFilename).BlockUnload())
 					uicfg.Config[Constants.Visuals]["Alternate log row colors"].Bool = AlternateRowColorsLog;
 
-				if (LogList != null)
-					AlternateListviewRowColors(LogList, AlternateRowColorsLog);
+				AlternateListviewRowColors(LogList, AlternateRowColorsLog);
 			};
 			menu_config_visuals_rowalternate_watchlist.Click += (_, _ea) =>
 			{
@@ -1918,9 +1916,8 @@ namespace Taskmaster.UI
 		{
 			LogList.BeginUpdate();
 			LogList.Columns[0].Width = -2;
-
 			// HACK: Enable visual styles causes horizontal bar to always be present without the following.
-			LogList.Columns[0].Width = LogList.Columns[0].Width - 2;
+			LogList.Columns[0].Width -= 2;
 
 			//loglist.Height = -2;
 			//loglist.Width = -2;
@@ -3820,18 +3817,15 @@ namespace Taskmaster.UI
 
 		void ClearLog()
 		{
-			LogList.BeginUpdate();
 			//loglist.Clear();
 			LogList.Items.Clear();
 			MemoryLog.MemorySink.Clear();
-			LogList.EndUpdate();
 		}
 
 		void NewLogReceived(object _, LogEventArgs ea)
 		{
-			if (!IsHandleCreated || DisposedOrDisposing) return;
-
-			if (LogIncludeLevel.MinimumLevel > ea.Level) return;
+			if (!IsHandleCreated || DisposedOrDisposing
+				|| (LogIncludeLevel.MinimumLevel > ea.Level)) return;
 
 			BeginInvoke(new Action(() =>
 			{
@@ -3851,6 +3845,7 @@ namespace Taskmaster.UI
 		void AddLog(LogEventArgs ea)
 		{
 			var li = LogList.Items.Add(ea.Message);
+			//LogList.Columns[0].Width = -2;
 
 			// color errors and worse red
 			if ((int)ea.Level >= (int)Serilog.Events.LogEventLevel.Error)

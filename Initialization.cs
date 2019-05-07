@@ -52,6 +52,8 @@ namespace Taskmaster
 						throw new InitFailure("Component configuration cancelled");
 				}
 			}
+
+			LoadEvent?.Invoke(null, new LoadEventArgs("Initial configuration confirmed.", LoadEventType.Loaded));
 		}
 
 		static void LoadCoreConfig()
@@ -318,6 +320,8 @@ namespace Taskmaster
 				Log.Debug($"<Core> Paging: {(PagingEnabled ? HumanReadable.Generic.Enabled : HumanReadable.Generic.Disabled)}");
 			}
 
+			LoadEvent?.Invoke(null, new LoadEventArgs("Core configuration loaded.", LoadEventType.Loaded));
+
 			return;
 		}
 
@@ -327,29 +331,43 @@ namespace Taskmaster
 
 			var timer = System.Diagnostics.Stopwatch.StartNew();
 
+			LoadEvent?.Invoke(null, new LoadEventArgs("Component loading starting.", LoadEventType.Info, 0, 11));
+
+			int componentsToLoad = 11;
+			int loaded = 0;
+
 			var cts = new System.Threading.CancellationTokenSource();
 
 			Process.Utility.InitializeCache();
+			LoadEvent?.Invoke(null, new LoadEventArgs("Cache loaded.", LoadEventType.SubLoaded));
 
-			Task PowMan, CpuMon, ProcMon, FgMon, NetMon, StorMon, HpMon, HwMon, AlMan;
+			Task PowMan, CpuMon, ProcMon, FgMon, NetMon, StorMon, HpMon, HwMon, AlMan, SelfMaint;
 
 			// Parallel loading, cuts down startup time some.
 			// This is really bad if something fails
 			Task[] init =
 			{
-				(PowMan = PowerManagerEnabled ? Task.Run(() => powermanager = new Power.Manager(), cts.Token) : Task.CompletedTask),
-				(CpuMon = PowerManagerEnabled ? Task.Run(()=> cpumonitor = new CPUMonitor(), cts.Token) : Task.CompletedTask),
-				(ProcMon = ProcessMonitorEnabled ? Task.Run(() => processmanager = new Process.Manager(), cts.Token) : Task.CompletedTask),
-				(FgMon = ActiveAppMonitorEnabled ? Task.Run(()=> activeappmonitor = new Process.ForegroundManager(eventhook:false), cts.Token) : Task.CompletedTask),
-				(NetMon = NetworkMonitorEnabled ? Task.Run(() => netmonitor = new Network.Manager(), cts.Token) : Task.CompletedTask),
-				(StorMon = StorageMonitorEnabled ? Task.Run(() => storagemanager = new StorageManager(), cts.Token) : Task.CompletedTask),
-				(HpMon = HealthMonitorEnabled ? Task.Run(() => healthmonitor = new HealthMonitor(), cts.Token) : Task.CompletedTask),
-				(HwMon = HardwareMonitorEnabled ? Task.Run(() => hardware = new HardwareMonitor(), cts.Token) : Task.CompletedTask),
-				(AlMan = AlertManagerEnabled ? Task.Run(() => alerts = new AlertManager(), cts.Token) : Task.CompletedTask),
+				(PowMan = PowerManagerEnabled ? Task.Run(() => {powermanager = new Power.Manager(); }, cts.Token) : Task.CompletedTask)
+					.ContinueWith((_) => LoadEvent?.Invoke(null, new LoadEventArgs("Power manager processed.", LoadEventType.SubLoaded))),
+				(CpuMon = PowerManagerEnabled ? Task.Run(()=> {cpumonitor = new CPUMonitor(); }, cts.Token) : Task.CompletedTask)
+					.ContinueWith((_) => LoadEvent?.Invoke(null, new LoadEventArgs("CPU monitor processed.", LoadEventType.SubLoaded))),
+				(ProcMon = ProcessMonitorEnabled ? Task.Run(() => {processmanager = new Process.Manager(); }, cts.Token) : Task.CompletedTask)
+					.ContinueWith((_) => LoadEvent?.Invoke(null, new LoadEventArgs("Process manager processed.", LoadEventType.SubLoaded))),
+				(FgMon = ActiveAppMonitorEnabled ? Task.Run(()=> {activeappmonitor = new Process.ForegroundManager(); }, cts.Token) : Task.CompletedTask)
+					.ContinueWith((_) => LoadEvent?.Invoke(null, new LoadEventArgs("Foreground manager processed.", LoadEventType.SubLoaded))),
+				(NetMon = NetworkMonitorEnabled ? Task.Run(() => {netmonitor = new Network.Manager();}, cts.Token) : Task.CompletedTask)
+					.ContinueWith((_) => LoadEvent?.Invoke(null, new LoadEventArgs("Network monitor processed.", LoadEventType.SubLoaded))),
+				(StorMon = StorageMonitorEnabled ? Task.Run(() => {storagemanager = new StorageManager(); }, cts.Token) : Task.CompletedTask)
+					.ContinueWith((_) => LoadEvent?.Invoke(null, new LoadEventArgs("Storage monitor processed.", LoadEventType.SubLoaded))),
+				(HpMon = HealthMonitorEnabled ? Task.Run(() => {healthmonitor = new HealthMonitor(); }, cts.Token) : Task.CompletedTask)
+					.ContinueWith((_) => LoadEvent?.Invoke(null, new LoadEventArgs("Health monitor processed.", LoadEventType.SubLoaded))),
+				(HwMon = HardwareMonitorEnabled ? Task.Run(() => {hardware = new HardwareMonitor(); }, cts.Token) : Task.CompletedTask)
+					.ContinueWith((_) => LoadEvent?.Invoke(null, new LoadEventArgs("Hardware monitor processed.", LoadEventType.SubLoaded))),
+				(AlMan = AlertManagerEnabled ? Task.Run(() => {alerts = new AlertManager(); }, cts.Token) : Task.CompletedTask)
+					.ContinueWith((_) => LoadEvent?.Invoke(null, new LoadEventArgs("Alert manager processed.", LoadEventType.SubLoaded))),
+				(SelfMaint = Task.Run(() => selfmaintenance = new SelfMaintenance()))
+					.ContinueWith((_) => LoadEvent?.Invoke(null, new LoadEventArgs("Self-maintenance manager processed.", LoadEventType.SubLoaded)))
 			};
-
-			Task SelfMaint = Task.Run(() => selfmaintenance = new SelfMaintenance());
-			SelfMaint.ConfigureAwait(false);
 
 			// MMDEV requires main thread
 			try
@@ -428,6 +446,8 @@ namespace Taskmaster
 				throw; // because compiler is dumb and doesn't understand the above
 			}
 
+			LoadEvent?.Invoke(null, new LoadEventArgs("Components loaded.", LoadEventType.Loaded));
+
 			if (processmanager != null)
 				processmanager.OnDisposed += (_, _ea) => processmanager = null;
 			if (activeappmonitor != null)
@@ -467,6 +487,7 @@ namespace Taskmaster
 			if (GlobalHotkeys)
 				trayaccess.RegisterGlobalHotkeys();
 
+			LoadEvent?.Invoke(null, new LoadEventArgs("Events hooked.", LoadEventType.Loaded));
 
 			// Self-optimization
 			if (SelfOptimize)
@@ -506,6 +527,9 @@ namespace Taskmaster
 			trayaccess?.RefreshVisibility();
 
 			timer.Stop();
+
+			LoadEvent?.Invoke(null, new LoadEventArgs("UI loaded.", LoadEventType.Loaded));
+
 			Log.Information($"<Core> Component loading finished ({timer.ElapsedMilliseconds} ms). {DisposalChute.Count.ToString()} initialized.");
 		}
 	}

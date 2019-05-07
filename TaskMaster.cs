@@ -68,7 +68,7 @@ namespace Taskmaster
 			UnifiedExit(restart: true);
 		}
 
-		public static void ConfirmExit(bool restart = false, bool admin = false, string message = null, bool alwaysconfirm=false)
+		public static void ConfirmExit(bool restart = false, bool admin = false, string message = null, bool alwaysconfirm = false)
 		{
 			var rv = MessageBox.ResultType.OK;
 
@@ -82,7 +82,7 @@ namespace Taskmaster
 			}
 			if (rv != MessageBox.ResultType.OK) return;
 
-			UnifiedExit(restart, elevate:admin);
+			UnifiedExit(restart, elevate: admin);
 		}
 
 		static bool CleanedUp = false;
@@ -158,7 +158,7 @@ namespace Taskmaster
 		/// <summary>
 		/// Constructs and hooks the main window
 		/// </summary>
-		public static void BuildMainWindow(bool reveal=false, bool top=false)
+		public static void BuildMainWindow(bool reveal = false, bool top = false)
 		{
 			Debug.WriteLine("<Main Window> Building: " + !(mainwindow is null));
 
@@ -230,11 +230,11 @@ namespace Taskmaster
 			}
 			finally
 			{
-				if (reveal) mainwindow?.Reveal(activate:top);
+				if (reveal) mainwindow?.Reveal(activate: top);
 			}
 		}
 
-		static void OptimizeResponsiviness(bool shown=false)
+		static void OptimizeResponsiviness(bool shown = false)
 		{
 			var self = System.Diagnostics.Process.GetCurrentProcess();
 
@@ -330,6 +330,8 @@ namespace Taskmaster
 
 		public static LoggingLevelSwitch loglevelswitch = new LoggingLevelSwitch(LogEventLevel.Information);
 
+		static internal event EventHandler<LoadEventArgs> LoadEvent;
+
 		// entry point to the application
 		[STAThread] // supposedly needed to avoid shit happening with the WinForms GUI and other GUI toolkits
 		static public int Main(string[] args)
@@ -405,6 +407,10 @@ namespace Taskmaster
 
 					LicenseBoiler();
 
+					var splash = new UI.Splash(6); // splash screen
+					LoadEvent += splash.LoadEvent;
+					splash.Show();
+
 					// INIT LOGGER
 					{
 						var logswitch = new LoggingLevelSwitch(LogEventLevel.Information);
@@ -422,6 +428,8 @@ namespace Taskmaster
 								levelSwitch: new LoggingLevelSwitch(Serilog.Events.LogEventLevel.Debug), retainedFileCountLimit: 3)
 							.WriteTo.MemorySink(levelSwitch: logswitch)
 							.CreateLogger();
+
+						LoadEvent?.Invoke(null, new LoadEventArgs("Logger initialized.", LoadEventType.Loaded));
 					}
 
 					// COMMAND-LINE ARGUMENTS
@@ -449,7 +457,9 @@ namespace Taskmaster
 					//PreallocLastLog();
 
 					InitialConfiguration();
+
 					LoadCoreConfig();
+
 					InitializeComponents();
 
 					Config.Flush(); // early save of configs
@@ -459,6 +469,10 @@ namespace Taskmaster
 
 					Log.Information($"<Core> Initialization complete ({startTimer.ElapsedMilliseconds} ms)...");
 					startTimer = null;
+
+					LoadEvent?.Invoke(null, new LoadEventArgs("Core loading finished", LoadEventType.Loaded));
+
+					LoadEvent = null;
 				}
 
 				if (State == Runstate.Normal)
@@ -466,6 +480,7 @@ namespace Taskmaster
 					OnStart?.Invoke(null, EventArgs.Empty);
 					OnStart = null;
 
+					// UI
 					System.Windows.Forms.Application.Run(); // WinForms
 
 					// System.Windows.Application.Current.Run(); // WPF

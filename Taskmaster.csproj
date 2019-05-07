@@ -215,6 +215,9 @@
     <Compile Include="UI\MessageBox.cs">
       <SubType>Form</SubType>
     </Compile>
+    <Compile Include="UI\Splash.cs">
+      <SubType>Form</SubType>
+    </Compile>
     <Compile Include="UI\Stubs\EmptySpace.cs">
       <SubType>Component</SubType>
     </Compile>
