@@ -29,6 +29,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Text;
+using System.Threading.Tasks;
 using System.Windows.Forms;
 using MKAh;
 using Serilog;
@@ -169,6 +170,8 @@ namespace Taskmaster
 					if (mainwindow != null) return;
 
 					mainwindow = new UI.MainWindow();
+					//mainwindow = new UI.MainWindow();
+
 					mainwindow.FormClosed += (_, _ea) =>
 					{
 						ShuttingDown -= mainwindow.ShutdownEvent;
@@ -332,6 +335,8 @@ namespace Taskmaster
 
 		static internal event EventHandler<LoadEventArgs> LoadEvent;
 
+		readonly static System.Threading.ManualResetEvent UIWaiter = new System.Threading.ManualResetEvent(false);
+
 		// entry point to the application
 		[STAThread] // supposedly needed to avoid shit happening with the WinForms GUI and other GUI toolkits
 		static public int Main(string[] args)
@@ -407,9 +412,23 @@ namespace Taskmaster
 
 					LicenseBoiler();
 
-					var splash = new UI.Splash(6); // splash screen
-					LoadEvent += splash.LoadEvent;
-					splash.Show();
+					UI.Splash splash = null;
+
+					/*
+					Task.Run(() => {
+						{
+							splash = new UI.Splash(6); // splash screen
+							LoadEvent += splash.LoadEvent;
+							UIWaiter.Set();
+						}
+
+						Application.Run();
+						UIWaiter.Set();
+					});
+
+					UIWaiter.WaitOne();
+					UIWaiter.Reset();
+					*/
 
 					// INIT LOGGER
 					{
@@ -460,6 +479,8 @@ namespace Taskmaster
 
 					LoadCoreConfig();
 
+					//if (ShowSplash) splash.Invoke(new Action(() => splash.Show()));
+
 					InitializeComponents();
 
 					Config.Flush(); // early save of configs
@@ -471,8 +492,9 @@ namespace Taskmaster
 					startTimer = null;
 
 					LoadEvent?.Invoke(null, new LoadEventArgs("Core loading finished", LoadEventType.Loaded));
-
 					LoadEvent = null;
+					splash?.Invoke(new Action(() => splash.Dispose()));
+					splash = null;
 				}
 
 				if (State == Runstate.Normal)
@@ -481,6 +503,8 @@ namespace Taskmaster
 					OnStart = null;
 
 					// UI
+					trayaccess?.RefreshVisibility();
+					//UIWaiter.WaitOne();
 					System.Windows.Forms.Application.Run(); // WinForms
 
 					// System.Windows.Application.Current.Run(); // WPF

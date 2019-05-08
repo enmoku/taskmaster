@@ -215,23 +215,26 @@ namespace Taskmaster.UI
 
 		public void Reveal(bool activate=false)
 		{
-			try
+			BeginInvoke(new Action(() =>
 			{
-				WindowState = FormWindowState.Normal;
-				// shuffle to top in the most hackish way possible, these are all unreliable
-				// does nothing without show(), unreliable even with it
-				if (activate)
+				try
 				{
-					TopMost = true;
-					TopMost = false;
-					Activate();
+					WindowState = FormWindowState.Normal;
+					// shuffle to top in the most hackish way possible, these are all unreliable
+					// does nothing without show(), unreliable even with it
+					if (activate)
+					{
+						TopMost = true;
+						TopMost = false;
+						Activate();
+					}
+					Show();
 				}
-				Show();
-			}
-			catch (Exception ex)
-			{
-				Logging.Stacktrace(ex);
-			}
+				catch (Exception ex)
+				{
+					Logging.Stacktrace(ex);
+				}
+			}));
 		}
 
 		public void ShowLastLog()

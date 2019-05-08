@@ -395,6 +395,7 @@ namespace Taskmaster
 
 			// WinForms makes the following components not load nicely if not done here.
 			trayaccess = new UI.TrayAccess();
+
 			ShuttingDown += trayaccess.ShutdownEvent;
 			trayaccess.TrayMenuShown += (_, ea) => OptimizeResponsiviness(ea.Visible);
 
@@ -524,7 +525,6 @@ namespace Taskmaster
 				if (ShowOnStart) BuildMainWindow(reveal: true, top:false);
 				if (ShowVolOnStart) BuildVolumeMeter();
 			}
-			trayaccess?.RefreshVisibility();
 
 			timer.Stop();
 

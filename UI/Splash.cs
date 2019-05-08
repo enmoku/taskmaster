@@ -127,8 +127,6 @@ namespace Taskmaster.UI
 			layout.SetColumnSpan(LoadEventLog, 2);
 
 			Controls.Add(layout);
-
-			Debug.WriteLine("Splash loaded");
 		}
 
 		void ExitButton_Click(object sender, EventArgs e)
@@ -145,17 +143,6 @@ namespace Taskmaster.UI
 
 			if (ea.MaxSubProgress > 0) MaxSubLoad = ea.MaxSubProgress;
 
-			if (!string.IsNullOrEmpty(ea.Message))
-			{
-				BeginInvoke(new Action(() =>
-				{
-					var now = DateTime.Now;
-					LoadEventLog.Items.Add($"[{now.Hour:00}:{now.Minute:00}:{now.Second:00}.{now.Millisecond:N000}] {ea.Message}");
-					LoadEventLog.Columns[0].Width = -2;
-					LoadEventLog.EnsureVisible(LoadEventLog.Items.Count - 1);
-				}));
-			}
-
 			switch (ea.Type)
 			{
 				case LoadEventType.Loaded:
@@ -165,6 +152,7 @@ namespace Taskmaster.UI
 						if (DisposedOrDisposing) return;
 
 						coreProgress.Value = Loaded;
+						PushLog(ea.Message);
 
 						if (AutoClose && Loaded >= MaxLoad)
 						{
@@ -179,6 +167,8 @@ namespace Taskmaster.UI
 								Close();
 							}));
 						}
+
+						coreProgress.Invalidate();
 					}));
 					break;
 				case LoadEventType.SubLoaded:
@@ -188,6 +178,8 @@ namespace Taskmaster.UI
 						if (DisposedOrDisposing) return;
 
 						subProgress.Value = SubLoaded;
+						PushLog(ea.Message);
+						subProgress.Invalidate();
 					}));
 					break;
 				case LoadEventType.Info:
@@ -198,6 +190,9 @@ namespace Taskmaster.UI
 						loadMessage.Text = ea.Message;
 						coreProgress.Maximum = MaxLoad;
 						subProgress.Maximum = MaxSubLoad;
+						coreProgress.Invalidate();
+						subProgress.Invalidate();
+						PushLog(ea.Message);
 					}));
 					break;
 				case LoadEventType.Reset:
@@ -209,9 +204,19 @@ namespace Taskmaster.UI
 
 						subProgress.Value = 0;
 						subProgress.Maximum = MaxSubLoad;
+						subProgress.Invalidate();
+						PushLog(ea.Message);
 					}));
 					break;
 			}
+		}
+
+		void PushLog(string message)
+		{
+			var now = DateTime.Now;
+			LoadEventLog.Items.Add($"[{now.Hour:00}:{now.Minute:00}:{now.Second:00}.{now.Millisecond:N000}] {message}");
+			LoadEventLog.Columns[0].Width = -2;
+			LoadEventLog.EnsureVisible(LoadEventLog.Items.Count - 1);
 		}
 
 		internal void Reveal()
