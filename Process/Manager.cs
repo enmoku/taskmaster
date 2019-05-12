@@ -2056,9 +2056,7 @@ namespace Taskmaster.Process
 			{
 				Logging.Stacktrace(ex);
 				Log.Error("Unregistering new instance triage");
-				if (NewProcessWatcher != null) NewProcessWatcher.EventArrived -= NewInstanceTriage;
-				NewProcessWatcher?.Dispose();
-				NewProcessWatcher = null;
+				StopWMIEventWatcher();
 				timer?.Stop();
 			}
 			finally
@@ -2208,10 +2206,27 @@ namespace Taskmaster.Process
 
 		void StopWMIEventWatcher()
 		{
-			NewProcessWatcher?.Dispose();
-			NewProcessWatcher = null;
-			ProcessEndWatcher?.Dispose();
-			ProcessEndWatcher = null;
+			if (NewProcessWatcher != null) NewProcessWatcher.EventArrived -= NewInstanceTriage;
+
+			try
+			{
+				NewProcessWatcher?.Dispose(); // throws if WMI service is acting up
+			}
+			catch { } // // ignore rare COMException
+			finally
+			{
+				NewProcessWatcher = null;
+			}
+
+			try
+			{
+				ProcessEndWatcher?.Dispose();
+			}
+			catch { } // ignore
+			finally
+			{
+				ProcessEndWatcher = null;
+			}
 		}
 
 		public const string WatchlistFile = "Watchlist.ini";
@@ -2365,8 +2380,7 @@ namespace Taskmaster.Process
 				try
 				{
 					//watcher.EventArrived -= NewInstanceTriage;
-					NewProcessWatcher?.Dispose();
-					NewProcessWatcher = null;
+					StopWMIEventWatcher();
 
 					if (activeappmonitor != null)
 					{
@@ -2429,7 +2443,7 @@ namespace Taskmaster.Process
 
 		public void ShutdownEvent(object sender, EventArgs ea)
 		{
-			NewProcessWatcher?.Stop();
+			StopWMIEventWatcher();
 			ScanTimer?.Stop();
 			MaintenanceTimer?.Stop();
 		}
