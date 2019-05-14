@@ -132,15 +132,17 @@
   <ItemGroup>
     <Compile Include="Audio\Utility.cs" />
     <Compile Include="Constants.cs" />
-    <Compile Include="MKAh\File\Ini\Config.cs" />
-    <Compile Include="MKAh\File\Ini\Constant.cs" />
-    <Compile Include="MKAh\File\Ini\Converter.cs" />
-    <Compile Include="MKAh\File\Ini\Interface\IContainer.cs" />
-    <Compile Include="MKAh\File\Ini\Interface\Value.cs" />
-    <Compile Include="MKAh\File\Ini\ParseException.cs" />
-    <Compile Include="MKAh\File\Ini\Section.cs" />
-    <Compile Include="MKAh\File\Ini\Setting.cs" />
-    <Compile Include="MKAh\File\Ini\SettingType.cs" />
+    <Compile Include="MKAh\File\Allocation.cs" />
+    <Compile Include="MKAh\Data\Ini\Config.cs" />
+    <Compile Include="MKAh\Data\Ini\Constant.cs" />
+    <Compile Include="MKAh\Data\Ini\Converter.cs" />
+    <Compile Include="MKAh\Data\Ini\Interface\IContainer.cs" />
+    <Compile Include="MKAh\Data\Ini\Interface\Value.cs" />
+    <Compile Include="MKAh\Data\Ini\ParseException.cs" />
+    <Compile Include="MKAh\Data\Ini\Section.cs" />
+    <Compile Include="MKAh\Data\Ini\Setting.cs" />
+    <Compile Include="MKAh\Data\Ini\SettingType.cs" />
+    <Compile Include="MKAh\File\NativeMethods.cs" />
     <Compile Include="Power\NativeMethods.cs" />
     <Compile Include="Settings.Global.cs" />
     <Compile Include="Process\Foreground.cs" />
@@ -179,9 +181,13 @@
     <Compile Include="CommandLine.cs" />
     <Compile Include="Initialization.cs" />
     <Compile Include="IPC.cs" />
+    <Compile Include="UI\ChangeLog.cs">
+      <SubType>Form</SubType>
+    </Compile>
     <Compile Include="UI\Config\AdvancedConfig.cs">
       <SubType>Form</SubType>
     </Compile>
+    <Compile Include="UI\DiagnosticDialog.cs" />
     <Compile Include="UI\Extensions\AlignedLabel.cs">
       <SubType>Component</SubType>
     </Compile>
