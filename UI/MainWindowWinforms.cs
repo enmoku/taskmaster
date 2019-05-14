@@ -215,26 +215,35 @@ namespace Taskmaster.UI
 
 		public void Reveal(bool activate=false)
 		{
-			BeginInvoke(new Action(() =>
+			if (!IsHandleCreated || DisposedOrDisposing) return;
+
+			if (InvokeRequired)
+				BeginInvoke(new Action(() => Reveal_Invoke(activate)));
+			else
+				Reveal_Invoke(activate);
+		}
+
+		void Reveal_Invoke(bool activate)
+		{
+			if (!IsHandleCreated || DisposedOrDisposing) return;
+
+			try
 			{
-				try
+				WindowState = FormWindowState.Normal;
+				// shuffle to top in the most hackish way possible, these are all unreliable
+				// does nothing without show(), unreliable even with it
+				if (activate)
 				{
-					WindowState = FormWindowState.Normal;
-					// shuffle to top in the most hackish way possible, these are all unreliable
-					// does nothing without show(), unreliable even with it
-					if (activate)
-					{
-						TopMost = true;
-						TopMost = false;
-						Activate();
-					}
-					Show();
+					TopMost = true;
+					TopMost = false;
+					Activate();
 				}
-				catch (Exception ex)
-				{
-					Logging.Stacktrace(ex);
-				}
-			}));
+				Show();
+			}
+			catch (Exception ex)
+			{
+				Logging.Stacktrace(ex);
+			}
 		}
 
 		public void ShowLastLog()
@@ -258,30 +267,39 @@ namespace Taskmaster.UI
 
 		void SetDefaultCommDevice()
 		{
-			BeginInvoke(new Action(() =>
+			if (!IsHandleCreated || DisposedOrDisposing) return;
+
+			if (InvokeRequired)
+				BeginInvoke(new Action(SetDefaultCommDevice_Invoke));
+			else
+				SetDefaultCommDevice_Invoke();
+		}
+
+		void SetDefaultCommDevice_Invoke()
+		{
+			if (!IsHandleCreated || DisposedOrDisposing) return;
+
+			try
 			{
-				try
-				{
-					var devname = micmanager.DeviceName;
+				var devname = micmanager.DeviceName;
 
-					AudioInputGUID = micmanager.DeviceGuid;
+				AudioInputGUID = micmanager.DeviceGuid;
 
-					AudioInputDevice.Text = !string.IsNullOrEmpty(devname) ? devname : HumanReadable.Generic.NotAvailable;
+				AudioInputDevice.Text = !string.IsNullOrEmpty(devname) ? devname : HumanReadable.Generic.NotAvailable;
 
-					corCountLabel.Text = micmanager.Corrections.ToString();
+				corCountLabel.Text = micmanager.Corrections.ToString();
 
-					AudioInputVolume.Maximum = Convert.ToDecimal(Audio.MicManager.Maximum);
-					AudioInputVolume.Minimum = Convert.ToDecimal(Audio.MicManager.Minimum);
-					AudioInputVolume.Value = Convert.ToInt32(micmanager.Volume);
+				AudioInputVolume.Maximum = Convert.ToDecimal(Audio.MicManager.Maximum);
+				AudioInputVolume.Minimum = Convert.ToDecimal(Audio.MicManager.Minimum);
+				AudioInputVolume.Value = Convert.ToInt32(micmanager.Volume);
 
-					AudioInputEnable.SelectedIndex = micmanager.Control ? 0 : 1;
-				}
-				catch (OutOfMemoryException) { throw; }
-				catch (Exception ex)
-				{
-					Logging.Stacktrace(ex);
-				}
-			}));
+				AudioInputEnable.SelectedIndex = micmanager.Control ? 0 : 1;
+			}
+			catch (OutOfMemoryException) { throw; }
+			catch (Exception ex)
+			{
+				Logging.Stacktrace(ex);
+			}
 		}
 
 		void AddAudioInput(Audio.Device device)
@@ -422,33 +440,38 @@ namespace Taskmaster.UI
 
 			AudioInputGUID = ea.GUID;
 
-			BeginInvoke(new Action(() =>
+			if (InvokeRequired)
+				BeginInvoke(new Action(MicrophoneDefaultChanged_Update));
+			else
+				MicrophoneDefaultChanged_Update();
+		}
+
+		void MicrophoneDefaultChanged_Update()
+		{
+			if (IsDisposed || !IsHandleCreated) return;
+
+			try
 			{
-				if (IsDisposed || !IsHandleCreated) return;
-
-				try
+				if (string.IsNullOrEmpty(AudioInputGUID))
 				{
-					if (string.IsNullOrEmpty(AudioInputGUID))
-					{
-						AudioInputEnable.Text = HumanReadable.Generic.Uninitialized;
-						AudioInputDevice.Text = HumanReadable.Generic.Uninitialized;
-					}
-					else
-					{
-						//AudioInputEnable.SelectedIndex = micmon.Control ? 0 : 1;
-						//AudioInputEnable.Text = HumanReadable.Generic.Ellipsis;
-						//AudioInputDevice.Text = HumanReadable.Generic.Ellipsis;
-						SetDefaultCommDevice();
-					}
-
-					UpdateAudioInputs();
+					AudioInputEnable.Text = HumanReadable.Generic.Uninitialized;
+					AudioInputDevice.Text = HumanReadable.Generic.Uninitialized;
 				}
-				catch (OutOfMemoryException) { throw; }
-				catch (Exception ex)
+				else
 				{
-					Logging.Stacktrace(ex);
+					//AudioInputEnable.SelectedIndex = micmon.Control ? 0 : 1;
+					//AudioInputEnable.Text = HumanReadable.Generic.Ellipsis;
+					//AudioInputDevice.Text = HumanReadable.Generic.Ellipsis;
+					SetDefaultCommDevice();
 				}
-			}));
+
+				UpdateAudioInputs();
+			}
+			catch (OutOfMemoryException) { throw; }
+			catch (Exception ex)
+			{
+				Logging.Stacktrace(ex);
+			}
 		}
 
 		ConcurrentDictionary<string, ListViewItem> MicGuidToAudioInputs = new ConcurrentDictionary<string, ListViewItem>();
@@ -457,15 +480,18 @@ namespace Taskmaster.UI
 		{
 			if (IsDisposed || !IsHandleCreated) return;
 
-			BeginInvoke(new Action(() =>
-			{
-				if (IsDisposed || !IsHandleCreated) return;
+			if (InvokeRequired)
+				BeginInvoke(new Action(() => AudioDeviceStateChanged_Update(ea)));
+			else
+				AudioDeviceStateChanged_Update(ea);
+		}
 
-				if (MicGuidToAudioInputs.TryGetValue(ea.GUID, out ListViewItem li))
-				{
-					li.SubItems[5].Text = ea.State.ToString();
-				}
-			}));
+		void AudioDeviceStateChanged_Update(Audio.DeviceStateEventArgs ea)
+		{
+			if (IsDisposed || !IsHandleCreated) return;
+
+			if (MicGuidToAudioInputs.TryGetValue(ea.GUID, out ListViewItem li))
+				li.SubItems[5].Text = ea.State.ToString();
 		}
 
 		void UserMicVol(object _, EventArgs _ea)
@@ -478,11 +504,18 @@ namespace Taskmaster.UI
 		{
 			if (!IsHandleCreated || DisposedOrDisposing) return;
 
-			BeginInvoke(new Action(() =>
-			{
-				AudioInputVolume.Value = Convert.ToInt32(ea.New); // this could throw ArgumentOutOfRangeException, but we trust the source
-				corCountLabel.Text = ea.Corrections.ToString();
-			}));
+			if (InvokeRequired)
+				BeginInvoke(new Action(() => VolumeChangeDetected_Update(ea)));
+			else
+				VolumeChangeDetected_Update(ea);
+		}
+
+		void VolumeChangeDetected_Update(VolumeChangedEventArgs ea)
+		{
+			if (!IsHandleCreated || DisposedOrDisposing) return;
+
+			AudioInputVolume.Value = Convert.ToInt32(ea.New); // this could throw ArgumentOutOfRangeException, but we trust the source
+			corCountLabel.Text = ea.Corrections.ToString();
 		}
 		#endregion // Microphone control code
 
@@ -490,30 +523,39 @@ namespace Taskmaster.UI
 		{
 			if (!IsHandleCreated || DisposedOrDisposing) return;
 
+			if (InvokeRequired)
+				BeginInvoke(new Action(() => ProcessTouchEvent_Update(ea)));
+			else
+				ProcessTouchEvent_Update(ea);
+		}
+
+		void ProcessTouchEvent_Update(ProcessModificationEventArgs ea)
+		{
+			if (!IsHandleCreated || DisposedOrDisposing) return;
+
+			//adjustcounter.Text = Statistics.TouchCount.ToString();
+
 			var prc = ea.Info.Controller; // cache
-			BeginInvoke(new Action(() =>
+
+			try
 			{
-				//adjustcounter.Text = Statistics.TouchCount.ToString();
+				if (WatchlistMap.TryGetValue(prc, out ListViewItem item))
+				{
+					item.SubItems[AdjustColumn].Text = prc.Adjusts.ToString();
+					// item.SubItems[SeenColumn].Text = prc.LastSeen.ToLocalTime().ToString();
+				}
+				else
+					Log.Error(prc.FriendlyName + " not found in UI watchlist list.");
+			}
+			catch (Exception ex) { Logging.Stacktrace(ex); }
+
+			if (LastModifiedList)
+			{
+				lastmodifylist.BeginUpdate();
 
 				try
 				{
-					if (WatchlistMap.TryGetValue(prc, out ListViewItem item))
-					{
-						item.SubItems[AdjustColumn].Text = prc.Adjusts.ToString();
-						// item.SubItems[SeenColumn].Text = prc.LastSeen.ToLocalTime().ToString();
-					}
-					else
-						Log.Error(prc.FriendlyName + " not found in UI watchlist list.");
-				}
-				catch (Exception ex) { Logging.Stacktrace(ex); }
-
-				if (LastModifiedList)
-				{
-					lastmodifylist.BeginUpdate();
-
-					try
-					{
-						var mi = new ListViewItem(new string[] {
+					var mi = new ListViewItem(new string[] {
 							DateTime.Now.ToLongTimeString(),
 							ea.Info.Name,
 							prc.FriendlyName,
@@ -521,16 +563,15 @@ namespace Taskmaster.UI
 							(ea.AffinityNew >= 0 ? HumanInterface.BitMask(ea.AffinityNew, Process.Manager.CPUCount) : HumanReadable.Generic.NotAvailable),
 							ea.Info.Path
 						});
-						lastmodifylist.Items.Add(mi);
-						if (lastmodifylist.Items.Count > 5) lastmodifylist.Items.RemoveAt(0);
-					}
-					catch (Exception ex) { Logging.Stacktrace(ex); }
-					finally
-					{
-						lastmodifylist.EndUpdate();
-					}
+					lastmodifylist.Items.Add(mi);
+					if (lastmodifylist.Items.Count > 5) lastmodifylist.Items.RemoveAt(0);
 				}
-			}));
+				catch (Exception ex) { Logging.Stacktrace(ex); }
+				finally
+				{
+					lastmodifylist.EndUpdate();
+				}
+			}
 		}
 
 		public void OnActiveWindowChanged(object _, Process.WindowChangedArgs windowchangeev)
@@ -538,16 +579,21 @@ namespace Taskmaster.UI
 			if (!IsHandleCreated || DisposedOrDisposing) return;
 			if (windowchangeev.Process is null) return;
 
-			BeginInvoke(new Action(() =>
-			{
-				// int maxlength = 70;
-				// string cutstring = e.Title.Substring(0, Math.Min(maxlength, e.Title.Length)) + (e.Title.Length > maxlength ? "..." : "");
-				// activeLabel.Text = cutstring;
-				activeLabel.Text = windowchangeev.Title;
-				activeExec.Text = windowchangeev.Executable;
-				activeFullscreen.Text = windowchangeev.Fullscreen.True() ? "Full" : windowchangeev.Fullscreen.False() ? "Window" : "Unknown";
-				activePID.Text = windowchangeev.Id.ToString();
-			}));
+			if (InvokeRequired)
+				BeginInvoke(new Action(() => OnActiveWindowChanged_Update(windowchangeev)));
+			else
+				OnActiveWindowChanged_Update(windowchangeev);
+		}
+
+		void OnActiveWindowChanged_Update(Process.WindowChangedArgs windowchangeev)
+		{
+			// int maxlength = 70;
+			// string cutstring = e.Title.Substring(0, Math.Min(maxlength, e.Title.Length)) + (e.Title.Length > maxlength ? "..." : "");
+			// activeLabel.Text = cutstring;
+			activeLabel.Text = windowchangeev.Title;
+			activeExec.Text = windowchangeev.Executable;
+			activeFullscreen.Text = windowchangeev.Fullscreen.True() ? "Full" : windowchangeev.Fullscreen.False() ? "Window" : "Unknown";
+			activePID.Text = windowchangeev.Id.ToString();
 		}
 
 		public event EventHandler rescanRequest;
@@ -605,26 +651,29 @@ namespace Taskmaster.UI
 
 		void UpdateWatchlist(object _, EventArgs _ea)
 		{
-			if (!IsHandleCreated) return;
-			if (DisposedOrDisposing) return;
+			if (!IsHandleCreated || DisposedOrDisposing) return;
 
-			BeginInvoke(new Action(() =>
+			if (InvokeRequired)
+				BeginInvoke(new Action(UpdateWatchlist_Invoke));
+			else
+				UpdateWatchlist_Invoke();
+		}
+
+		void UpdateWatchlist_Invoke()
+		{
+			if (!IsHandleCreated || DisposedOrDisposing) return;
+
+			WatchlistRules.BeginUpdate();
+
+			foreach (var li in WatchlistMap)
 			{
-				if (!IsHandleCreated) return;
-				if (DisposedOrDisposing) return;
+				li.Value.SubItems[0].Text = (li.Key.ActualOrder + 1).ToString();
+				WatchlistItemColor(li.Value, li.Key);
+			}
 
-				WatchlistRules.BeginUpdate();
+			// re-sort if user is not interacting?
 
-				foreach (var li in WatchlistMap)
-				{
-					li.Value.SubItems[0].Text = (li.Key.ActualOrder + 1).ToString();
-					WatchlistItemColor(li.Value, li.Key);
-				}
-
-				// re-sort if user is not interacting?
-
-				WatchlistRules.EndUpdate();
-			}));
+			WatchlistRules.EndUpdate();
 		}
 
 		void RescanRequestEvent(object _, EventArgs _ea) => processmanager?.HastenScan(0);
@@ -635,10 +684,17 @@ namespace Taskmaster.UI
 		{
 			if (!IsHandleCreated || DisposedOrDisposing) return;
 
-			BeginInvoke(new Action(() =>
-			{
-				processingcount.Text = e.Total.ToString();
-			}));
+			if (InvokeRequired)
+				BeginInvoke(new Action(() => ProcessNewInstanceCount_Invoke(e)));
+			else
+				ProcessNewInstanceCount_Invoke(e);
+		}
+
+		void ProcessNewInstanceCount_Invoke(Process.ProcessingCountEventArgs e)
+		{
+			if (!IsHandleCreated || DisposedOrDisposing) return;
+
+			processingcount.Text = e.Total.ToString();
 		}
 
 		/// <summary>
@@ -738,6 +794,18 @@ namespace Taskmaster.UI
 
 		void FormatWatchlist(ListViewItem litem, Process.Controller prc)
 		{
+			if (!IsHandleCreated || DisposedOrDisposing) return;
+
+			if (InvokeRequired)
+				BeginInvoke(new Action(() => FormatWatchlist_Invoke(litem, prc)));
+			else
+				FormatWatchlist_Invoke(litem, prc);
+		}
+
+		void FormatWatchlist_Invoke(ListViewItem litem, Process.Controller prc)
+		{
+			if (!IsHandleCreated || DisposedOrDisposing) return;
+
 			// 0 = ID
 			// 1 = Friendly Name
 			// 2 = Executable
@@ -747,45 +815,51 @@ namespace Taskmaster.UI
 			// 6 = Adjusts
 			// 7 = Path
 
-			BeginInvoke(new Action(() =>
+			WatchlistRules.BeginUpdate();
+
+			litem.SubItems[NameColumn].Text = prc.FriendlyName;
+			litem.SubItems[ExeColumn].Text = (prc.Executables?.Length > 0) ? string.Join(", ", prc.Executables) : string.Empty;
+			litem.SubItems[PrioColumn].Text = prc.Priority.HasValue ? MKAh.Readable.ProcessPriority(prc.Priority.Value) : string.Empty;
+			string aff = string.Empty;
+			if (prc.AffinityMask >= 0)
 			{
-				WatchlistRules.BeginUpdate();
+				if (prc.AffinityMask == Process.Manager.AllCPUsMask || prc.AffinityMask == 0)
+					aff = "Full/OS";
+				else if (AffinityStyle == 0)
+					aff = HumanInterface.BitMask(prc.AffinityMask, Process.Manager.CPUCount);
+				else
+					aff = prc.AffinityMask.ToString();
+			}
+			litem.SubItems[AffColumn].Text = aff;
+			litem.SubItems[PowerColumn].Text = (prc.PowerPlan != Power.Mode.Undefined ? Power.Manager.GetModeName(prc.PowerPlan) : string.Empty);
+			litem.SubItems[PathColumn].Text = (string.IsNullOrEmpty(prc.Path) ? string.Empty : prc.Path);
 
-				litem.SubItems[NameColumn].Text = prc.FriendlyName;
-				litem.SubItems[ExeColumn].Text = (prc.Executables?.Length > 0) ? string.Join(", ", prc.Executables) : string.Empty;
-				litem.SubItems[PrioColumn].Text = prc.Priority.HasValue ? MKAh.Readable.ProcessPriority(prc.Priority.Value) : string.Empty;
-				string aff = string.Empty;
-				if (prc.AffinityMask >= 0)
-				{
-					if (prc.AffinityMask == Process.Manager.AllCPUsMask || prc.AffinityMask == 0)
-						aff = "Full/OS";
-					else if (AffinityStyle == 0)
-						aff = HumanInterface.BitMask(prc.AffinityMask, Process.Manager.CPUCount);
-					else
-						aff = prc.AffinityMask.ToString();
-				}
-				litem.SubItems[AffColumn].Text = aff;
-				litem.SubItems[PowerColumn].Text = (prc.PowerPlan != Power.Mode.Undefined ? Power.Manager.GetModeName(prc.PowerPlan) : string.Empty);
-				litem.SubItems[PathColumn].Text = (string.IsNullOrEmpty(prc.Path) ? string.Empty : prc.Path);
-
-				WatchlistRules.EndUpdate();
-			}));
+			WatchlistRules.EndUpdate();
 		}
 
 		public void UpdateWatchlistRule(Process.Controller prc)
 		{
+			if (!IsHandleCreated || DisposedOrDisposing) return;
+
 			if (WatchlistMap.TryGetValue(prc, out ListViewItem litem))
 			{
-				BeginInvoke(new Action(() =>
-				{
-					WatchlistRules.BeginUpdate();
-
-					FormatWatchlist(litem, prc);
-					WatchlistItemColor(litem, prc);
-
-					WatchlistRules.EndUpdate();
-				}));
+				if (InvokeRequired)
+					BeginInvoke(new Action(() => UpdateWatchlistRule_Invoke(litem, prc)));
+				else
+					UpdateWatchlistRule_Invoke(litem, prc);
 			}
+		}
+
+		void UpdateWatchlistRule_Invoke(ListViewItem litem, Process.Controller prc)
+		{
+			if (!IsHandleCreated || DisposedOrDisposing) return;
+
+			WatchlistRules.BeginUpdate();
+
+			FormatWatchlist(litem, prc);
+			WatchlistItemColor(litem, prc);
+
+			WatchlistRules.EndUpdate();
 		}
 
 		Label AudioInputDevice = null;
@@ -2779,20 +2853,27 @@ namespace Taskmaster.UI
 
 		public void GPULoadEvent(object _, GPUSensorEventArgs ea)
 		{
-			if (!IsHandleCreated) return;
+			if (!IsHandleCreated || DisposedOrDisposing) return;
 
-			BeginInvoke(new Action(() =>
+			if (InvokeRequired)
+				BeginInvoke(new Action(() => GPULoadEvent_Invoke(ea)));
+			else
+				GPULoadEvent_Invoke(ea);
+		}
+
+		void GPULoadEvent_Invoke(GPUSensorEventArgs ea)
+		{
+			if (!IsHandleCreated || DisposedOrDisposing) return;
+
+			try
 			{
-				try
-				{
-					GPUSensorUpdate(ea.Data);
-				}
-				catch (OutOfMemoryException) { throw; }
-				catch (Exception ex)
-				{
-					Logging.Stacktrace(ex);
-				}
-			}));
+				GPUSensorUpdate(ea.Data);
+			}
+			catch (OutOfMemoryException) { throw; }
+			catch (Exception ex)
+			{
+				Logging.Stacktrace(ex);
+			}
 		}
 
 		void GPULoadPoller(object sender, EventArgs e)
@@ -2870,32 +2951,41 @@ namespace Taskmaster.UI
 					ProcessEventMap.TryAdd(key, item);
 				}
 
-				BeginInvoke(new Action(() =>
-				{
-					try
-					{
-						processinglist.BeginUpdate();
+				if (InvokeRequired)
+					BeginInvoke(new Action(() => ProcessHandlingStateChangeEvent_Invoke(ea, item, newitem)));
+				else
+					ProcessHandlingStateChangeEvent_Invoke(ea, item, newitem);
+			}
+			catch (Exception ex)
+			{
+				Logging.Stacktrace(ex);
+			}
+		}
 
-						// 0 = Id, 1 = Name, 2 = State
-						item.SubItems[0].Text = ea.Info.Id.ToString();
-						item.SubItems[2].Text = ea.Info.State.ToString();
-						item.SubItems[3].Text = DateTime.Now.ToLongTimeString();
+		void ProcessHandlingStateChangeEvent_Invoke(Process.HandlingStateChangeEventArgs ea, ListViewItem item, bool newitem=false)
+		{
+			if (!IsHandleCreated || DisposedOrDisposing) return;
 
-						if (newitem) processinglist.Items.Insert(0, item);
+			int key = ea.Info.Id;
 
-						if (ea.Info.Handled) RemoveOldProcessingEntry(key);
+			try
+			{
+				processinglist.BeginUpdate();
 
-						processinglist.EndUpdate();
-					}
-					catch (System.ObjectDisposedException)
-					{
-						// bah
-					}
-					catch (Exception ex)
-					{
-						Logging.Stacktrace(ex);
-					}
-				}));
+				// 0 = Id, 1 = Name, 2 = State
+				item.SubItems[0].Text = ea.Info.Id.ToString();
+				item.SubItems[2].Text = ea.Info.State.ToString();
+				item.SubItems[3].Text = DateTime.Now.ToLongTimeString();
+
+				if (newitem) processinglist.Items.Insert(0, item);
+
+				if (ea.Info.Handled) RemoveOldProcessingEntry(key);
+
+				processinglist.EndUpdate();
+			}
+			catch (System.ObjectDisposedException)
+			{
+				// bah
 			}
 			catch (Exception ex)
 			{
@@ -2905,19 +2995,26 @@ namespace Taskmaster.UI
 
 		void RemoveOldProcessingEntry(int key)
 		{
-			BeginInvoke(new Action(async () =>
+			if (!IsHandleCreated || DisposedOrDisposing) return;
+
+			if (InvokeRequired)
+				BeginInvoke(new Action(async () => RemoveOldProcessingEntry_Invoke(key).ConfigureAwait(true)));
+			else
+				RemoveOldProcessingEntry_Invoke(key).ConfigureAwait(true);
+		}
+
+		async Task RemoveOldProcessingEntry_Invoke(int key)
+		{
+			await Task.Delay(TimeSpan.FromSeconds(15)).ConfigureAwait(true);
+
+			if (!IsHandleCreated || DisposedOrDisposing) return;
+
+			try
 			{
-				await Task.Delay(TimeSpan.FromSeconds(15)).ConfigureAwait(true);
-
-				if (!IsHandleCreated) return;
-
-				try
-				{
-					if (ProcessEventMap.TryRemove(key, out ListViewItem item))
-						processinglist.Items.Remove(item);
-				}
-				catch { }
-			}));
+				if (ProcessEventMap.TryRemove(key, out ListViewItem item))
+					processinglist.Items.Remove(item);
+			}
+			catch { }
 		}
 
 		void StopProcessDebug()
@@ -2998,58 +3095,65 @@ namespace Taskmaster.UI
 		public void ExitWaitListHandler(object _discard, ProcessModificationEventArgs ea)
 		{
 			if (activeappmonitor is null) return;
-			if (!IsHandleCreated) return;
+			if (!IsHandleCreated || DisposedOrDisposing) return;
 
-			BeginInvoke(new Action(() =>
+			if (InvokeRequired)
+				BeginInvoke(new Action(() => ExitWaitListHandler_Invoke(ea)));
+			else
+				ExitWaitListHandler_Invoke(ea);
+		}
+
+		void ExitWaitListHandler_Invoke(ProcessModificationEventArgs ea)
+		{
+			if (!IsHandleCreated || DisposedOrDisposing) return;
+
+			try
 			{
-				try
+				bool fgonly = ea.Info.Controller.Foreground != ForegroundMode.Ignore;
+				bool fg = (ea.Info.Id == (activeappmonitor?.Foreground ?? ea.Info.Id));
+
+				ListViewItem li = null;
+				string text = fgonly ? (fg ? HumanReadable.System.Process.Foreground : HumanReadable.System.Process.Background) : "ACTIVE";
+
+				if (ExitWaitlistMap?.TryGetValue(ea.Info.Id, out li) ?? false)
 				{
-					bool fgonly = ea.Info.Controller.Foreground != ForegroundMode.Ignore;
-					bool fg = (ea.Info.Id == (activeappmonitor?.Foreground ?? ea.Info.Id));
+					li.SubItems[2].Text = text;
 
-					ListViewItem li = null;
-					string text = fgonly ? (fg ? HumanReadable.System.Process.Foreground : HumanReadable.System.Process.Background) : "ACTIVE";
+					if (Trace && DebugForeground) Log.Debug($"WaitlistHandler: {ea.Info.Name} = {ea.Info.State.ToString()}");
 
-					if (ExitWaitlistMap?.TryGetValue(ea.Info.Id, out li) ?? false)
+					switch (ea.Info.State)
 					{
-						li.SubItems[2].Text = text;
-
-						if (Trace && DebugForeground) Log.Debug($"WaitlistHandler: {ea.Info.Name} = {ea.Info.State.ToString()}");
-
-						switch (ea.Info.State)
-						{
-							case ProcessHandlingState.Paused:
-								break;
-							case ProcessHandlingState.Resumed:
-								// move item to top
-								//exitwaitlist.Items.Remove(li);
-								//exitwaitlist.Items.Insert(0, li);
-								//li.EnsureVisible();
-								break;
-							case ProcessHandlingState.Exited:
-								exitwaitlist?.Items.Remove(li);
-								ExitWaitlistMap?.TryRemove(ea.Info.Id, out _);
-								break;
-							default:
-								break;
-						}
+						case ProcessHandlingState.Paused:
+							break;
+						case ProcessHandlingState.Resumed:
+							// move item to top
+							//exitwaitlist.Items.Remove(li);
+							//exitwaitlist.Items.Insert(0, li);
+							//li.EnsureVisible();
+							break;
+						case ProcessHandlingState.Exited:
+							exitwaitlist?.Items.Remove(li);
+							ExitWaitlistMap?.TryRemove(ea.Info.Id, out _);
+							break;
+						default:
+							break;
 					}
-					else
-					{
-						li = new ListViewItem(new string[] {
+				}
+				else
+				{
+					li = new ListViewItem(new string[] {
 							ea.Info.Id.ToString(),
 							ea.Info.Name,
 							text,
 							(ea.Info.PowerWait ? "FORCED" : HumanReadable.Generic.NotAvailable)
 						});
 
-						ExitWaitlistMap?.TryAdd(ea.Info.Id, li);
-						exitwaitlist?.Items.Insert(0, li);
-						li.EnsureVisible();
-					}
+					ExitWaitlistMap?.TryAdd(ea.Info.Id, li);
+					exitwaitlist?.Items.Insert(0, li);
+					li.EnsureVisible();
 				}
-				catch (Exception ex) { Logging.Stacktrace(ex); }
-			}));
+			}
+			catch (Exception ex) { Logging.Stacktrace(ex); }
 		}
 
 		// Called by UI update timer, should be UI thread by default
@@ -3077,11 +3181,18 @@ namespace Taskmaster.UI
 			if (!IsHandleCreated || DisposedOrDisposing) return;
 			if (!cpuload.Visible) return;
 
-			BeginInvoke(new Action(() =>
-			{
-				cpuload.Text = $"{ea.Current:N1} %, Low: {ea.Low:N1} %, Mean: {ea.Mean:N1} %, High: {ea.High:N1} %; Queue: {ea.Queue:N0}";
-				// 50 %, Low: 33.2 %, Mean: 52.1 %, High: 72.8 %, Queue: 1
-			}));
+			if (InvokeRequired)
+				BeginInvoke(new Action(() => CPULoadHandler_Invoke(ea)));
+			else
+				CPULoadHandler_Invoke(ea);
+		}
+
+		void CPULoadHandler_Invoke(ProcessorLoadEventArgs ea)
+		{
+			if (!IsHandleCreated || DisposedOrDisposing) return;
+
+			cpuload.Text = $"{ea.Current:N1} %, Low: {ea.Low:N1} %, Mean: {ea.Mean:N1} %, High: {ea.High:N1} %; Queue: {ea.Queue:N0}";
+			// 50 %, Low: 33.2 %, Mean: 52.1 %, High: 72.8 %, Queue: 1
 		}
 
 		readonly System.Drawing.Color Reddish = System.Drawing.Color.FromArgb(255, 230, 230);
@@ -3092,13 +3203,21 @@ namespace Taskmaster.UI
 		{
 			if (!IsHandleCreated || DisposedOrDisposing) return;
 
-			BeginInvoke(new Action(() =>
-			{
-				powerbalancerlog.BeginUpdate();
+			if (InvokeRequired)
+				BeginInvoke(new Action(() => PowerLoadDebugHandler_Invoke(ea)));
+			else
+				PowerLoadDebugHandler_Invoke(ea);
+		}
 
-				try
-				{
-					var li = new ListViewItem(new string[] {
+		void PowerLoadDebugHandler_Invoke(Power.AutoAdjustReactionEventArgs ea)
+		{
+			if (!IsHandleCreated || DisposedOrDisposing) return;
+
+			powerbalancerlog.BeginUpdate();
+
+			try
+			{
+				var li = new ListViewItem(new string[] {
 						$"{ea.Current:N2} %",
 						$"{ea.Mean:N2} %",
 						$"{ea.High:N2} %",
@@ -3108,37 +3227,36 @@ namespace Taskmaster.UI
 						ea.Enacted.ToString(),
 						$"{ea.Pressure * 100f:N1} %"
 					})
-					{
-						UseItemStyleForSubItems = false
-					};
-
-					if (ea.Enacted)
-					{
-						li.SubItems[4].BackColor =
-							li.SubItems[5].BackColor =
-							li.SubItems[6].BackColor = System.Drawing.SystemColors.ActiveCaption;
-					}
-
-					if (ea.Mode == Power.Mode.HighPerformance)
-						li.SubItems[3].BackColor = Reddish;
-					else if (ea.Mode == Power.Mode.PowerSaver)
-						li.SubItems[2].BackColor = Greenish;
-					else
-						li.SubItems[3].BackColor = li.SubItems[2].BackColor = Orangeish;
-
-					// this tends to throw if this event is being handled while the window is being closed
-					if (powerbalancerlog.Items.Count > 7)
-						powerbalancerlog.Items.RemoveAt(0);
-					powerbalancerlog.Items.Add(li);
-
-					powerbalancer_forcedcount.Text = powermanager.ForceCount.ToString();
-				}
-				catch (Exception ex) { Logging.Stacktrace(ex); }
-				finally
 				{
-					powerbalancerlog.EndUpdate();
+					UseItemStyleForSubItems = false
+				};
+
+				if (ea.Enacted)
+				{
+					li.SubItems[4].BackColor =
+						li.SubItems[5].BackColor =
+						li.SubItems[6].BackColor = System.Drawing.SystemColors.ActiveCaption;
 				}
-			}));
+
+				if (ea.Mode == Power.Mode.HighPerformance)
+					li.SubItems[3].BackColor = Reddish;
+				else if (ea.Mode == Power.Mode.PowerSaver)
+					li.SubItems[2].BackColor = Greenish;
+				else
+					li.SubItems[3].BackColor = li.SubItems[2].BackColor = Orangeish;
+
+				// this tends to throw if this event is being handled while the window is being closed
+				if (powerbalancerlog.Items.Count > 7)
+					powerbalancerlog.Items.RemoveAt(0);
+				powerbalancerlog.Items.Add(li);
+
+				powerbalancer_forcedcount.Text = powermanager.ForceCount.ToString();
+			}
+			catch (Exception ex) { Logging.Stacktrace(ex); }
+			finally
+			{
+				powerbalancerlog.EndUpdate();
+			}
 		}
 
 		void WatchlistContextMenuOpen(object _, EventArgs _ea)
@@ -3388,12 +3506,20 @@ namespace Taskmaster.UI
 
 		public void TempScanStats(object _, StorageEventArgs ea)
 		{
-			if (!IsHandleCreated) return;
-			BeginInvoke(new Action(() =>
-			{
-				tempObjectSize.Text = (ea.Stats.Size / 1_000_000).ToString();
-				tempObjectCount.Text = (ea.Stats.Dirs + ea.Stats.Files).ToString();
-			}));
+			if (!IsHandleCreated || DisposedOrDisposing) return;
+
+			if (InvokeRequired)
+				BeginInvoke(new Action(() => TempScanStats_Invoke(ea)));
+			else
+				TempScanStats_Invoke(ea);
+		}
+
+		void TempScanStats_Invoke(StorageEventArgs ea)
+		{
+			if (!IsHandleCreated || DisposedOrDisposing) return;
+
+			tempObjectSize.Text = (ea.Stats.Size / 1_000_000).ToString();
+			tempObjectCount.Text = (ea.Stats.Dirs + ea.Stats.Files).ToString();
 		}
 
 		ListView LogList = null;
@@ -3481,12 +3607,18 @@ namespace Taskmaster.UI
 		{
 			if (!IsHandleCreated || DisposedOrDisposing) return;
 
-			UpdatePowerBehaviourHighlight(e.Behaviour);
+			if (InvokeRequired)
+				BeginInvoke(new Action(() => PowerBehaviourEvent_Invoke(e)));
+			else
+				PowerBehaviourEvent_Invoke(e);
+		}
 
-			BeginInvoke(new Action(() =>
-			{
-				pwbehaviour.Text = Power.Manager.GetBehaviourName(e.Behaviour);
-			}));
+		void PowerBehaviourEvent_Invoke(Power.Manager.PowerBehaviourEventArgs e)
+		{
+			if (!IsHandleCreated || DisposedOrDisposing) return;
+
+			UpdatePowerBehaviourHighlight(e.Behaviour);
+			pwbehaviour.Text = Power.Manager.GetBehaviourName(e.Behaviour);
 		}
 
 		DateTimeOffset LastCauseTime = DateTimeOffset.MinValue;
@@ -3494,14 +3626,21 @@ namespace Taskmaster.UI
 		{
 			if (!IsHandleCreated || DisposedOrDisposing) return;
 
-			BeginInvoke(new Action(() =>
-			{
-				HighlightPowerMode();
+			if (InvokeRequired)
+				BeginInvoke(new Action(() => PowerPlanEvent_Invoke(e)));
+			else
+				PowerPlanEvent_Invoke(e);
+		}
 
-				powermodestatusbar.Text = pwmode.Text = Power.Manager.GetModeName(e.NewMode);
-				pwcause.Text = e.Cause != null ? e.Cause.ToString() : HumanReadable.Generic.Undefined;
-				LastCauseTime = DateTimeOffset.UtcNow;
-			}));
+		void PowerPlanEvent_Invoke(Power.ModeEventArgs e)
+		{
+			if (!IsHandleCreated || DisposedOrDisposing) return;
+
+			HighlightPowerMode();
+
+			powermodestatusbar.Text = pwmode.Text = Power.Manager.GetModeName(e.NewMode);
+			pwcause.Text = e.Cause != null ? e.Cause.ToString() : HumanReadable.Generic.Undefined;
+			LastCauseTime = DateTimeOffset.UtcNow;
 		}
 
 		HardwareMonitor hardwaremonitor = null;
@@ -3655,12 +3794,19 @@ namespace Taskmaster.UI
 
 			if (!DebugPower) return;
 
-			BeginInvoke(new Action(() =>
-			{
-				powerbalancer_behaviour.Text = Power.Manager.GetBehaviourName(ea.Behaviour);
-				if (ea.Behaviour != Power.Manager.PowerBehaviour.Auto)
-					powerbalancerlog.Items.Clear();
-			}));
+			if (InvokeRequired)
+				BeginInvoke(new Action(() => PowerBehaviourDebugEvent_Invoke(ea)));
+			else
+				PowerBehaviourDebugEvent_Invoke(ea);
+		}
+
+		void PowerBehaviourDebugEvent_Invoke(Power.Manager.PowerBehaviourEventArgs ea)
+		{
+			if (!IsHandleCreated || DisposedOrDisposing) return;
+
+			powerbalancer_behaviour.Text = Power.Manager.GetBehaviourName(ea.Behaviour);
+			if (ea.Behaviour != Power.Manager.PowerBehaviour.Auto)
+				powerbalancerlog.Items.Clear();
 		}
 
 		public void PowerPlanDebugEvent(object _, Power.ModeEventArgs ea)
@@ -3669,30 +3815,47 @@ namespace Taskmaster.UI
 
 			if (!DebugPower) return;
 
-			BeginInvoke(new Action(() =>
-			{
-				powerbalancer_plan.Text = Power.Manager.GetModeName(ea.NewMode);
-			}));
+			if (InvokeRequired)
+				BeginInvoke(new Action(() => PowerPlanDebugEvent_Invoke(ea)));
+			else
+				PowerPlanDebugEvent_Invoke(ea);
+		}
+
+		void PowerPlanDebugEvent_Invoke(Power.ModeEventArgs ea)
+		{
+			if (!IsHandleCreated || DisposedOrDisposing) return;
+
+			powerbalancer_plan.Text = Power.Manager.GetModeName(ea.NewMode);
 		}
 
 		public void UpdateNetworkDevices(object _, EventArgs _ea)
 		{
 			if (!IsHandleCreated || DisposedOrDisposing) return;
 
+			if (InvokeRequired)
+				BeginInvoke(new Action(UpdateNetworkDevices_Invoke));
+			else
+				UpdateNetworkDevices_Invoke();
+
+			// Tray?.Tooltip(2000, "Internet " + (net.InternetAvailable ? "available" : "unavailable"), "Taskmaster", net.InternetAvailable ? ToolTipIcon.Info : ToolTipIcon.Warning);
+		}
+
+		void UpdateNetworkDevices_Invoke()
+		{
+			if (!IsHandleCreated || DisposedOrDisposing) return;
+
 			InetStatusLabel(netmonitor.InternetAvailable);
 			NetStatusLabelUpdate(netmonitor.NetworkAvailable);
 
-			BeginInvoke(new Action(() =>
+			try
 			{
-				try
+				NetworkDevices.BeginUpdate();
+
+				NetworkDevices.Items.Clear();
+
+				foreach (var dev in netmonitor.GetInterfaces())
 				{
-					NetworkDevices.BeginUpdate();
-
-					NetworkDevices.Items.Clear();
-
-					foreach (var dev in netmonitor.GetInterfaces())
-					{
-						var li = new ListViewItem(new string[] {
+					var li = new ListViewItem(new string[] {
 							dev.Name,
 							dev.Type.ToString(),
 							dev.Status.ToString(),
@@ -3703,21 +3866,18 @@ namespace Taskmaster.UI
 							HumanReadable.Generic.NotAvailable, // error delta
 							HumanReadable.Generic.NotAvailable, // total errors
 						})
-						{
-							UseItemStyleForSubItems = false
-						};
-						NetworkDevices.Items.Add(li);
-					}
-
-					AlternateListviewRowColors(NetworkDevices, AlternateRowColorsDevices);
+					{
+						UseItemStyleForSubItems = false
+					};
+					NetworkDevices.Items.Add(li);
 				}
-				finally
-				{
-					NetworkDevices.EndUpdate();
-				}
-			}));
 
-			// Tray?.Tooltip(2000, "Internet " + (net.InternetAvailable ? "available" : "unavailable"), "Taskmaster", net.InternetAvailable ? ToolTipIcon.Info : ToolTipIcon.Warning);
+				AlternateListviewRowColors(NetworkDevices, AlternateRowColorsDevices);
+			}
+			finally
+			{
+				NetworkDevices.EndUpdate();
+			}
 		}
 
 		public void Hook(Network.Manager manager)
@@ -3746,29 +3906,36 @@ namespace Taskmaster.UI
 		{
 			if (!IsHandleCreated || DisposedOrDisposing) return;
 
-			BeginInvoke(new Action(() =>
+			if (InvokeRequired)
+				BeginInvoke(new Action(() => NetSampleHandler_Invoke(ea)));
+			else
+				NetSampleHandler_Invoke(ea);
+		}
+
+		void NetSampleHandler_Invoke(Network.DeviceTrafficEventArgs ea)
+		{
+			if (!IsHandleCreated || DisposedOrDisposing) return;
+
+			NetworkDevices.BeginUpdate();
+
+			try
 			{
-				NetworkDevices.BeginUpdate();
+				var item = NetworkDevices.Items[ea.Traffic.Index];
+				item.SubItems[PacketDeltaColumn].Text = "+" + ea.Traffic.Delta.Unicast;
+				item.SubItems[ErrorDeltaColumn].Text = "+" + ea.Traffic.Delta.Errors;
+				if (ea.Traffic.Delta.Errors > 0)
+					item.SubItems[ErrorDeltaColumn].ForeColor = System.Drawing.Color.OrangeRed;
+				else
+					item.SubItems[ErrorDeltaColumn].ForeColor = System.Drawing.SystemColors.ControlText;
 
-				try
-				{
-					var item = NetworkDevices.Items[ea.Traffic.Index];
-					item.SubItems[PacketDeltaColumn].Text = "+" + ea.Traffic.Delta.Unicast;
-					item.SubItems[ErrorDeltaColumn].Text = "+" + ea.Traffic.Delta.Errors;
-					if (ea.Traffic.Delta.Errors > 0)
-						item.SubItems[ErrorDeltaColumn].ForeColor = System.Drawing.Color.OrangeRed;
-					else
-						item.SubItems[ErrorDeltaColumn].ForeColor = System.Drawing.SystemColors.ControlText;
+				item.SubItems[ErrorTotalColumn].Text = ea.Traffic.Total.Errors.ToString();
+			}
+			catch (Exception ex)
+			{
+				Logging.Stacktrace(ex);
+			}
 
-					item.SubItems[ErrorTotalColumn].Text = ea.Traffic.Total.Errors.ToString();
-				}
-				catch (Exception ex)
-				{
-					Logging.Stacktrace(ex);
-				}
-
-				NetworkDevices.EndUpdate();
-			}));
+			NetworkDevices.EndUpdate();
 		}
 
 		int PacketDeltaColumn = 6;
@@ -3779,12 +3946,19 @@ namespace Taskmaster.UI
 		{
 			if (!IsHandleCreated || DisposedOrDisposing) return;
 
-			BeginInvoke(new Action(() =>
-			{
-				inetstatuslabel.Text = available ? HumanReadable.Hardware.Network.Connected : HumanReadable.Hardware.Network.Disconnected;
-				// inetstatuslabel.BackColor = available ? System.Drawing.Color.LightGoldenrodYellow : System.Drawing.Color.Red;
-				//inetstatuslabel.BackColor = available ? System.Drawing.SystemColors.Menu : System.Drawing.Color.Red;
-			}));
+			if (InvokeRequired)
+				BeginInvoke(new Action(() => InetStatusLabel_Invoke(available)));
+			else
+				InetStatusLabel_Invoke(available);
+		}
+
+		void InetStatusLabel_Invoke(bool available)
+		{
+			if (!IsHandleCreated || DisposedOrDisposing) return;
+
+			inetstatuslabel.Text = available ? HumanReadable.Hardware.Network.Connected : HumanReadable.Hardware.Network.Disconnected;
+			// inetstatuslabel.BackColor = available ? System.Drawing.Color.LightGoldenrodYellow : System.Drawing.Color.Red;
+			//inetstatuslabel.BackColor = available ? System.Drawing.SystemColors.Menu : System.Drawing.Color.Red;
 		}
 
 		public void InetStatusChangeEvent(object _, Network.InternetStatus ea)
@@ -3801,12 +3975,19 @@ namespace Taskmaster.UI
 		{
 			if (!IsHandleCreated || DisposedOrDisposing) return;
 
-			BeginInvoke(new Action(() =>
-			{
-				netstatuslabel.Text = available ? HumanReadable.Hardware.Network.Connected : HumanReadable.Hardware.Network.Disconnected;
-				// netstatuslabel.BackColor = available ? System.Drawing.Color.LightGoldenrodYellow : System.Drawing.Color.Red;
-				//netstatuslabel.BackColor = available ? System.Drawing.SystemColors.Menu : System.Drawing.Color.Red;
-			}));
+			if (InvokeRequired)
+				BeginInvoke(new Action(() => NetStatusLabelUpdate_Invoke(available)));
+			else
+				NetStatusLabelUpdate_Invoke(available);
+		}
+
+		void NetStatusLabelUpdate_Invoke(bool available)
+		{
+			if (!IsHandleCreated || DisposedOrDisposing) return;
+
+			netstatuslabel.Text = available ? HumanReadable.Hardware.Network.Connected : HumanReadable.Hardware.Network.Disconnected;
+			// netstatuslabel.BackColor = available ? System.Drawing.Color.LightGoldenrodYellow : System.Drawing.Color.Red;
+			//netstatuslabel.BackColor = available ? System.Drawing.SystemColors.Menu : System.Drawing.Color.Red;
 		}
 
 		void NetStatusChangeEvent(object _, Network.Status ea)
@@ -3830,18 +4011,25 @@ namespace Taskmaster.UI
 			if (!IsHandleCreated || DisposedOrDisposing
 				|| (LogIncludeLevel.MinimumLevel > ea.Level)) return;
 
-			BeginInvoke(new Action(() =>
-			{
-				LogList.BeginUpdate();
+			if (InvokeRequired)
+				BeginInvoke(new Action(() => NewLogReceived_Invoke(ea)));
+			else
+				NewLogReceived_Invoke(ea);
+		}
 
-				var excessitems = Math.Max(0, (LogList.Items.Count - MaxLogSize));
-				while (excessitems-- > 0)
-					LogList.Items.RemoveAt(0);
+		void NewLogReceived_Invoke(LogEventArgs ea)
+		{
+			if (!IsHandleCreated || DisposedOrDisposing) return;
 
-				AddLog(ea);
+			LogList.BeginUpdate();
 
-				LogList.EndUpdate();
-			}));
+			var excessitems = Math.Max(0, (LogList.Items.Count - MaxLogSize));
+			while (excessitems-- > 0)
+				LogList.Items.RemoveAt(0);
+
+			AddLog(ea);
+
+			LogList.EndUpdate();
 		}
 
 		bool alterStep = true;
