@@ -27,7 +27,6 @@
 using Serilog;
 using System;
 using System.Diagnostics;
-using System.Windows.Forms;
 
 namespace Taskmaster
 {
@@ -110,8 +109,9 @@ namespace Taskmaster
 		{
 			var ti = System.Diagnostics.Process.GetCurrentProcess().StartInfo;
 			//info.FileName = Process.GetCurrentProcess().ProcessName;
-			ti.WorkingDirectory = System.IO.Path.GetDirectoryName(Application.ExecutablePath);
-			ti.FileName = System.IO.Path.GetFileName(Application.ExecutablePath);
+			var cwd = System.Diagnostics.Process.GetCurrentProcess().MainModule.FileName;
+			ti.WorkingDirectory = System.IO.Path.GetDirectoryName(cwd);
+			ti.FileName = System.IO.Path.GetFileName(cwd);
 
 			var nargs = new System.Collections.Generic.List<string> { RestartArg, (++RestartCounter).ToString() };
 			if (admin)
