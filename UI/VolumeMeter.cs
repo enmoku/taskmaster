@@ -125,7 +125,7 @@ namespace Taskmaster.UI
 			InputVolume = new ProgressBar()
 			{
 				Minimum = 0,
-				Maximum = VolumeOutputCap,
+				Maximum = VolumeInputCap,
 				Height = 20,
 				Width = 200,
 				Style = ProgressBarStyle.Continuous,
