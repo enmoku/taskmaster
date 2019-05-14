@@ -27,11 +27,7 @@
 using System;
 using System.ComponentModel; // Win32Exception
 using System.Diagnostics; // Process
-using System.Runtime.ConstrainedExecution; // attributes
 using System.Runtime.InteropServices; // Marshal
-using System.Security; // SuppressUnmanagedCodeSecurity
-using System.Security.Permissions; // HostProtection
-using Microsoft.Win32.SafeHandles; // SafeHandleMinusOneIsInvalid
 
 namespace Taskmaster
 {

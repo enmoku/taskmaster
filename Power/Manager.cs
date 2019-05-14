@@ -29,15 +29,12 @@ using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Linq;
 using System.Runtime.InteropServices;
-using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using Microsoft.Win32;
 using MKAh;
 using MKAh.Human.Readable;
-using Ini = MKAh.Ini;
 using Serilog;
-using MKAh.Ini;
 
 namespace Taskmaster.Power
 {

@@ -26,11 +26,9 @@
 
 using System;
 using System.Collections.Concurrent;
-using System.Diagnostics;
 using MKAh;
 using Windows = MKAh.Wrapper.Windows;
 using Serilog;
-using MKAh.Ini;
 
 namespace Taskmaster
 {

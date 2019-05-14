@@ -27,7 +27,6 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Management;
 using System.Threading;
 using System.Threading.Tasks;
 using MKAh;
