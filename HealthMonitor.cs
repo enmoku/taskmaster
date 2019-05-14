@@ -548,7 +548,7 @@ namespace Taskmaster
 
 							if (!PressureAlleviatedBlurp && pressure <= 0.95d)
 							{
-								Log.Information("<Memory> Pressure alleviated (" + $"{pressure * 100:N1} %" + ").");
+								Log.Information($"<Memory> Pressure alleviated (remaining: {pressure * 100:N1} %) – {memfreemb} MB free.");
 								PressureAlleviatedBlurp = true;
 							}
 						}
