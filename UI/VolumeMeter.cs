@@ -41,12 +41,15 @@ namespace Taskmaster.UI
 		ProgressBar OutputVolume = null;
 		ProgressBar InputVolume = null;
 
-		Label OutputVolumeLabel = null;
-		Label InputVolumeLabel = null;
+		AlignedLabel OutputVolumeLabel = new AlignedLabel() { Text = "0.0 %", AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleRight, Dock = DockStyle.Right, };
+		AlignedLabel InputVolumeLabel = new AlignedLabel() { Text = "0.0 %", AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleRight, Dock = DockStyle.Right, };
 
-		int VolumeOutputCap = 100;
-		int VolumeInputCap = 100;
-		int Frequency = 100;
+		int _volumeoutputcap = 10_000;
+		public int VolumeOutputCap { get => _volumeoutputcap; set => _volumeoutputcap = value.Constrain(20, 100) * 100; }
+
+		int _volumeinputcap = 10_000;
+		public int VolumeInputCap { get => _volumeinputcap; set => _volumeinputcap = value.Constrain(20, 100) * 100; }
+		public int Frequency { get; set; } = 100;
 
 		Audio.Manager audiomanager = null;
 
@@ -70,11 +73,11 @@ namespace Taskmaster.UI
 
 				int? upgradeOutCap = volsec.Get("Output")?.Int;
 				if (upgradeOutCap.HasValue) volsec["Output threshold"].Int = upgradeOutCap.Value;
-				VolumeOutputCap = volsec.GetOrSet("Output threshold", 100).Int.Constrain(20, 100) * 100;
+				VolumeOutputCap = volsec.GetOrSet("Output threshold", 100).Int;
 
 				int? upgradeInCap = volsec.Get("Input")?.Int;
 				if (upgradeInCap.HasValue) volsec["Input threshold"].Int = upgradeInCap.Value;
-				VolumeInputCap = volsec.GetOrSet("Input threshold", 100).Int.Constrain(20, 100) * 100;
+				VolumeInputCap = volsec.GetOrSet("Input threshold", 100).Int;
 
 				// DEPRECATED
 				volsec.TryRemove("Cap");
@@ -133,26 +136,11 @@ namespace Taskmaster.UI
 				ForeColor = System.Drawing.Color.LightGoldenrodYellow,
 			};
 
-			OutputVolumeLabel = new Label()
-			{
-				Text = "0.0 %",
-				AutoSize = true,
-				TextAlign = System.Drawing.ContentAlignment.MiddleRight,
-				Dock = DockStyle.Right,
-			};
-			InputVolumeLabel = new Label()
-			{
-				Text = "0.0 %",
-				AutoSize = true,
-				TextAlign = System.Drawing.ContentAlignment.MiddleRight,
-				Dock = DockStyle.Right,
-			};
-
-			barlayout.Controls.Add(new Label() { Text = "Output", TextAlign = System.Drawing.ContentAlignment.MiddleRight, AutoSize = true, Dock = DockStyle.Right });
+			barlayout.Controls.Add(new AlignedLabel() { Text = "Output", TextAlign = System.Drawing.ContentAlignment.MiddleRight, AutoSize = true, Dock = DockStyle.Right });
 			barlayout.Controls.Add(OutputVolume);
 			barlayout.Controls.Add(OutputVolumeLabel);
 
-			barlayout.Controls.Add(new Label() { Text = "Input", TextAlign = System.Drawing.ContentAlignment.MiddleRight, AutoSize = true, Dock = DockStyle.Right });
+			barlayout.Controls.Add(new AlignedLabel() { Text = "Input", TextAlign = System.Drawing.ContentAlignment.MiddleRight, AutoSize = true, Dock = DockStyle.Right });
 			barlayout.Controls.Add(InputVolume);
 			barlayout.Controls.Add(InputVolumeLabel);
 

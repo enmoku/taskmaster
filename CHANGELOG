@@ -5,7 +5,7 @@ Comprehensive changes can be found in Git change history:
 ## [0.13...]
 ### 2019-05-14
 	Fixed: Changelog typo on date 2019-05-01. Now instead of not. (reported by Chairkicker Nick)
-	Fixed: Volume meter input cap was incorrectly using output cap.
+	Fixed: Various volume meter options were not being put to use from advanced options at runtime and old option was shown in some instances.
 ### 2019-05-13
 	Fix: Error when shutting down if WMI service is acting up.
 ### 2019-05-08

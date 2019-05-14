@@ -113,7 +113,8 @@ namespace Taskmaster.Process
 			DisposalChute.Push(this);
 		}
 
-		public TimeSpan Hysterisis { get; set; } = TimeSpan.FromSeconds(0.5d);
+		public TimeSpan Hysterisis { get; private set; } = TimeSpan.FromSeconds(0.5d);
+		public void SetHysterisis(TimeSpan time) => Hysterisis = time;
 
 		readonly NativeMethods.WinEventDelegate ForegroundEventDelegate;
 		IntPtr windowseventhook = IntPtr.Zero;

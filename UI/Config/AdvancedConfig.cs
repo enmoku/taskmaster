@@ -326,27 +326,37 @@ namespace Taskmaster.UI.Config
 
 					int fghys = Convert.ToInt32(fgHysterisis.Value);
 					perfsec["Foreground hysterisis"].Int = fghys;
-					if (ActiveAppMonitorEnabled)
-						activeappmonitor.Hysterisis = TimeSpan.FromMilliseconds(fghys);
+					activeappmonitor?.SetHysterisis(TimeSpan.FromMilliseconds(fghys));
 
 					volsec["Topmost"].Bool = volmeter_topmost.Checked;
 
-					if (volmeter_capout.Value < 100)
-						volsec["Output threshold"].Int = Convert.ToInt32(volmeter_capout.Value);
+					int voloutcap_t = Convert.ToInt32(volmeter_capout.Value);
+					if (voloutcap_t < 100)
+						volsec["Output threshold"].Int = voloutcap_t;
 					else
 						volsec.TryRemove("Output threshold");
 
-					if (volmeter_capin.Value < 100)
-						volsec["Input threshold"].Int = Convert.ToInt32(volmeter_capin.Value);
+					int volincap_t = Convert.ToInt32(volmeter_capin.Value);
+					if (volincap_t < 100)
+						volsec["Input threshold"].Int = volincap_t;
 					else
 						volsec.TryRemove("Input threshold");
 
-					volsec["Refresh"].Int = Convert.ToInt32(volmeter_frequency.Value);
+					var volfreq_t = Convert.ToInt32(volmeter_frequency.Value);
+					volsec["Refresh"].Int = volfreq_t;
+					if (volumemeter != null)
+					{
+						volumemeter.Frequency = volfreq_t;
+						volumemeter.TopMost = volmeter_topmost.Checked;
+						volumemeter.VolumeOutputCap = voloutcap_t;
+						volumemeter.VolumeInputCap = volincap_t;
+					}
 
 					volsec[Constants.ShowOnStart].Bool = volmeter_show.Checked;
 
 					var logsec = corecfg.Config[HumanReadable.Generic.Logging];
 					logsec["Enable parent finding"].Bool = parentoption.Checked;
+					processmanager.EnableParentFinding = parentoption.Checked;
 
 					DialogResult = DialogResult.OK;
 					Close();
