@@ -132,13 +132,15 @@
   <ItemGroup>
     <Compile Include="Audio\Utility.cs" />
     <Compile Include="Constants.cs" />
+    <Compile Include="MKAh\Data\Generic\Constants.cs" />
+    <Compile Include="MKAh\Data\Generic\String.cs" />
     <Compile Include="MKAh\File\Allocation.cs" />
     <Compile Include="MKAh\Data\Ini\Config.cs" />
     <Compile Include="MKAh\Data\Ini\Constant.cs" />
     <Compile Include="MKAh\Data\Ini\Converter.cs" />
     <Compile Include="MKAh\Data\Ini\Interface\IContainer.cs" />
     <Compile Include="MKAh\Data\Ini\Interface\Value.cs" />
-    <Compile Include="MKAh\Data\Ini\ParseException.cs" />
+    <Compile Include="MKAh\Data\Exceptions\ParseException.cs" />
     <Compile Include="MKAh\Data\Ini\Section.cs" />
     <Compile Include="MKAh\Data\Ini\Setting.cs" />
     <Compile Include="MKAh\Data\Ini\SettingType.cs" />
