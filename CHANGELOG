@@ -3,6 +3,8 @@ Comprehensive changes can be found in Git change history:
 	https://github.com/mkahvi/taskmaster/commits/master
 
 ## [0.13...]
+### 2019-05-14
+	Fixed: Changelog typo on date 2019-05-01. Now instead of not. (reported by Chairkicker Nick)
 ### 2019-05-13
 	Fix: Error when shutting down if WMI service is acting up.
 ### 2019-05-08
@@ -19,7 +21,7 @@ Comprehensive changes can be found in Git change history:
 ### 2019-05-02
 	Fixed: Warnings about misconfigured INI files now report correct line number instead of -1.
 ### 2019-05-01
-	Changed: Rules with no priority, affinity, or power plan are not considered valid. Responsibility is on the user.
+	Changed: Rules with no priority, affinity, or power plan are now considered valid. Responsibility is on the user.
 	Changed: Updated from .NET 4.7.2 to 4.8
 	Added: Support for multiple executables per watchlist rule.
 	Disabled: Filename validation as it does not play well with the multiple executables implementation.
