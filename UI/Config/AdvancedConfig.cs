@@ -300,15 +300,13 @@ namespace Taskmaster.UI.Config
 					if (watchlistPowerdown.Value > 0m)
 					{
 						int powdelay = Convert.ToInt32(watchlistPowerdown.Value);
-						if (PowerManagerEnabled)
-							powermanager.PowerdownDelay = TimeSpan.FromSeconds(powdelay);
+						powermanager?.SetPowerdownDelay(TimeSpan.FromSeconds(powdelay));
 						powsec["Watchlist powerdown delay"].Int = powdelay;
 					}
 					else
 					{
 						powsec.TryRemove("Watchlist powerdown delay");
-						if (PowerManagerEnabled)
-							powermanager.PowerdownDelay = null;
+						powermanager?.SetPowerdownDelay(null);
 					}
 
 					var perfsec = cfg["Performance"];

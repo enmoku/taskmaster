@@ -676,7 +676,8 @@ namespace Taskmaster.Power
 			WarnedForceMode = false;
 		}
 
-		public TimeSpan? PowerdownDelay { get; set; } = null;
+		public TimeSpan? PowerdownDelay { get; private set; } = null;
+		public void SetPowerdownDelay(TimeSpan? time) => PowerdownDelay = time;
 
 		void LoadConfig()
 		{

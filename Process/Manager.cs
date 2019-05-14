@@ -1506,7 +1506,7 @@ namespace Taskmaster.Process
 			return false;
 		}
 
-		public bool EnableParentFinding { get; private set; } = false;
+		public bool EnableParentFinding { get; set; } = false;
 
 		public string[] ProtectList { get; private set; } = {
 			"consent", // UAC, user account control prompt
