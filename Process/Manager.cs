@@ -94,6 +94,7 @@ namespace Taskmaster.Process
 		ConcurrentDictionary<int, DateTimeOffset> ScanBlockList = new ConcurrentDictionary<int, DateTimeOffset>();
 
 		Lazy<List<Controller>> WatchlistCache = null;
+		bool NeedSort = true;
 
 		readonly object watchlist_lock = new object();
 
@@ -1106,7 +1107,12 @@ namespace Taskmaster.Process
 			ResetWatchlistCancellation();
 		}
 
-		List<Controller> LazyRecacheWatchlist() => Watchlist.Keys.ToList();
+		List<Controller> LazyRecacheWatchlist()
+		{
+			NeedSort = true;
+			return Watchlist.Keys.ToList();
+		}
+
 		CancellationTokenSource watchlist_cts = new CancellationTokenSource();
 
 		void ResetWatchlistCancellation()
@@ -1119,21 +1125,18 @@ namespace Taskmaster.Process
 		{
 			try
 			{
-				lock (watchlist_lock)
-				{
-					var token = watchlist_cts.Token;
+				var token = watchlist_cts.Token;
 
-					if (Trace) Debug.WriteLine("SORTING PROCESS MANAGER WATCHLIST");
-					WatchlistCache.Value.Sort(WatchlistSorter);
+				if (Trace) Debug.WriteLine("SORTING PROCESS MANAGER WATCHLIST");
+				WatchlistCache.Value.Sort(WatchlistSorter);
 
-					if (token.IsCancellationRequested) return; // redo?
+				if (token.IsCancellationRequested) return; // redo?
 
-					int order = 0;
-					foreach (var prc in WatchlistCache.Value)
-						prc.ActualOrder = order++;
+				int order = 0;
+				foreach (var prc in WatchlistCache.Value)
+					prc.ActualOrder = order++;
 
-					if (token.IsCancellationRequested) return; // redo?
-				}
+				NeedSort = false;
 
 				// TODO: Signal UI the actual order may have changed
 				WatchlistSorted?.Invoke(this, EventArgs.Empty);
@@ -1476,6 +1479,7 @@ namespace Taskmaster.Process
 			{
 				//RenewWatchlistCache(); // this doesn't need to be done every time
 				lcache = WatchlistCache.Value;
+				if (NeedSort) SortWatchlist();
 			}
 
 			// TODO: This needs to be FASTER
