@@ -319,7 +319,7 @@ namespace Taskmaster.Process
 		public event EventHandler<HandlingStateChangeEventArgs> HandlingStateChange;
 
 		int hastenscan = 0;
-		public async void HastenScan(int delay = 15, bool sort = false)
+		public async void HastenScan(int delay = 15, bool forceSort = false)
 		{
 			// delay is unused but should be used somehow
 
@@ -334,7 +334,7 @@ namespace Taskmaster.Process
 				{
 					NextScan = DateTimeOffset.UtcNow;
 					ScanTimer?.Stop();
-					if (sort) lock (watchlist_lock) SortWatchlist();
+					if (forceSort) lock (watchlist_lock) SortWatchlist();
 					if (cts.IsCancellationRequested) return;
 
 					await Task.Run(() => Scan(), cts.Token).ContinueWith((_) => StartScanTimer(), cts.Token).ConfigureAwait(false);

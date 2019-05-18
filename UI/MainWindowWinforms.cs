@@ -3332,7 +3332,7 @@ namespace Taskmaster.UI
 						if (editdialog.ShowDialog() == DialogResult.OK)
 						{
 							UpdateWatchlistRule(prc);
-							processmanager?.HastenScan(60, sort: true);
+							processmanager?.HastenScan(60, forceSort: true);
 							prc.Refresh();
 						}
 					}
@@ -3358,7 +3358,7 @@ namespace Taskmaster.UI
 
 					WatchlistRules.EndUpdate();
 
-					processmanager?.HastenScan(60, sort: true);
+					processmanager?.HastenScan(60, forceSort: true);
 				}
 			}
 			catch (Exception ex) { Logging.Stacktrace(ex); }
