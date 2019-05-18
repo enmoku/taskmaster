@@ -353,11 +353,11 @@ namespace Taskmaster.Process
 
 							if ((files?.Length ?? 0) == 0) continue;
 
-							bool listed = yesvalues.Contains(section.Get("listed")?.Value.ToLowerInvariant() ?? "no");
+							bool listed = yesvalues.Any((x) => x.Equals(section.Get("listed")?.Value.ToLowerInvariant() ?? "no"));
 							//string upgrade = section.TryGet("upgrade")?.Value ?? null;
 							//bool open = yesvalues.Contains(section.TryGet("open")?.Value.ToLowerInvariant() ?? "no");
 							//bool prop = yesvalues.Contains(section.TryGet("proprietary")?.Value.ToLowerInvariant() ?? "no");
-							bool ext = yesvalues.Contains(section.Get("extension")?.Value.ToLowerInvariant() ?? "no");
+							bool ext = yesvalues.Any((x) => x.Equals(section.Get("extension")?.Value.ToLowerInvariant() ?? "no"));
 							string ttype = section.Get("type")?.Value.ToLowerInvariant() ?? "unknown"; // TODO
 
 							//string trec = section.TryGet("recommendation")?.Value.ToLowerInvariant() ?? null;

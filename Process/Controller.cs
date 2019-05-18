@@ -1042,15 +1042,15 @@ namespace Taskmaster.Process
 									for (int i = 0; i < parts.Count-1; i++)
 									{
 										string cur = parts[i].ToLowerInvariant();
-										if (SpecialCasePathBits.Contains(cur)) // steamapps
+										if (SpecialCasePathBits.Any((x) => x.Equals(cur))) // steamapps
 										{
 											parts[i] = HumanReadable.Generic.Ellipsis;
 											parts.RemoveAt(++i); // common, i at app name, rolled over with loop
 											replaced = false;
 										}
 										else if ((i > 2 && i < parts.Count - 3) // remove midpoint
-											|| UnwantedPathBits.Contains(cur) // flat out unwanted
-											|| (info.Name.Length > 5 && cur.Contains(info.Name.ToLowerInvariant()))) // folder contains exe name
+											|| UnwantedPathBits.Any((x) => x.Equals(cur)) // flat out unwanted
+											|| (info.Name.Length > 5 && cur.Any((x) => x.Equals(info.Name.ToLowerInvariant())))) // folder contains exe name
 										{
 											if (replaced)
 												parts.RemoveAt(i--); // remove current and roll back loop
