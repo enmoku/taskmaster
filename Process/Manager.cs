@@ -1484,22 +1484,20 @@ namespace Taskmaster.Process
 			{
 				if (!lprc.Enabled) continue;
 
-				if (string.IsNullOrEmpty(lprc.Path)) continue;
-				if (lprc.Executables?.Length > 0) continue;
-
-				bool pathMatch = true, exeMatch = true;
-
-				if (hasPath)
-					pathMatch = info.Path.StartsWith(lprc.Path, StringComparison.InvariantCultureIgnoreCase);
-
 				if (lprc.ExecutableFriendlyName?.Length > 0)
-					exeMatch = lprc.ExecutableFriendlyName.Contains(info.Name);
-
-				if (pathMatch && exeMatch)
 				{
-					info.Controller = prc = lprc;
-					return true;
+					if (!lprc.ExecutableFriendlyName.Any((x) => x.Equals(info.Name, StringComparison.InvariantCultureIgnoreCase)))
+						continue;
 				}
+
+				if (lprc.Path?.Length > 0)
+				{
+					if (!hasPath || !info.Path.StartsWith(lprc.Path, StringComparison.InvariantCultureIgnoreCase))
+						continue;
+				}
+
+				info.Controller = prc = lprc;
+				return true;
 			}
 
 			prc = null;
