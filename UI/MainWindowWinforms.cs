@@ -347,8 +347,6 @@ namespace Taskmaster.UI
 
 		void UpdateAudioInputs()
 		{
-			AudioInputs.BeginUpdate();
-
 			// TODO: mark default device in list
 			AudioInputs.Items.Clear();
 
@@ -356,8 +354,6 @@ namespace Taskmaster.UI
 				AddAudioInput(dev);
 
 			AlternateListviewRowColors(AudioInputs, AlternateRowColorsDevices);
-
-			AudioInputs.EndUpdate();
 		}
 
 		Audio.Manager audiomanager = null;
@@ -551,8 +547,6 @@ namespace Taskmaster.UI
 
 			if (LastModifiedList)
 			{
-				lastmodifylist.BeginUpdate();
-
 				try
 				{
 					var mi = new ListViewItem(new string[] {
@@ -567,10 +561,6 @@ namespace Taskmaster.UI
 					if (lastmodifylist.Items.Count > 5) lastmodifylist.Items.RemoveAt(0);
 				}
 				catch (Exception ex) { Logging.Stacktrace(ex); }
-				finally
-				{
-					lastmodifylist.EndUpdate();
-				}
 			}
 		}
 
@@ -622,14 +612,10 @@ namespace Taskmaster.UI
 
 			BeginInvoke(new Action(() =>
 			{
-				WatchlistRules.BeginUpdate();
-
 				foreach (var prc in processmanager.getWatchlist())
 					AddToWatchlistList(prc);
 
 				WatchlistColor();
-
-				WatchlistRules.EndUpdate();
 			}));
 
 			if (manager.ScanFrequency.HasValue)
@@ -663,8 +649,6 @@ namespace Taskmaster.UI
 		{
 			if (!IsHandleCreated || DisposedOrDisposing) return;
 
-			WatchlistRules.BeginUpdate();
-
 			foreach (var li in WatchlistMap)
 			{
 				li.Value.SubItems[0].Text = (li.Key.ActualOrder + 1).ToString();
@@ -672,8 +656,6 @@ namespace Taskmaster.UI
 			}
 
 			// re-sort if user is not interacting?
-
-			WatchlistRules.EndUpdate();
 		}
 
 		void RescanRequestEvent(object _, EventArgs _ea) => processmanager?.HastenScan(0);
@@ -734,28 +716,31 @@ namespace Taskmaster.UI
 			}
 		}
 
-		object watchlistcolor_lock = new object();
-		System.Threading.CancellationTokenSource uicts = new System.Threading.CancellationTokenSource();
+		int watchlistcolor_i = 0;
 
 		void WatchlistColor()
 		{
-			System.Threading.CancellationToken ct = System.Threading.CancellationToken.None;
-
-			lock (watchlistcolor_lock)
-			{
-				uicts.Cancel();
-				uicts = new System.Threading.CancellationTokenSource();
-				ct = uicts.Token;
-			}
-
 			if (Trace) Debug.WriteLine("COLORING LINES");
 
-			int i = 0;
-			foreach (var item in WatchlistMap)
+			System.Threading.Interlocked.Increment(ref watchlistcolor_i);
+
+			lock (watchlist_lock)
 			{
-				if (ct.IsCancellationRequested) return;
-				if (Trace) Debug.WriteLine($"{i++:00} --- {item.Value.Index:00} : {(item.Value.Index + 1) % 2 == 0} --- {item.Key.FriendlyName}");
-				WatchlistItemColor(item.Value, item.Key);
+				try
+				{
+					int i = 0;
+					foreach (var item in WatchlistMap)
+					{
+						if (watchlistcolor_i > 1) return;
+
+						if (Trace) Debug.WriteLine($"{i++:00} --- {item.Value.Index:00} : {(item.Value.Index + 1) % 2 == 0} --- {item.Key.FriendlyName}");
+						WatchlistItemColor(item.Value, item.Key);
+					}
+				}
+				finally
+				{
+					System.Threading.Interlocked.Decrement(ref watchlistcolor_i);
+				}
 			}
 		}
 
@@ -781,15 +766,11 @@ namespace Taskmaster.UI
 				string.Empty
 			});
 
-			WatchlistRules.BeginUpdate();
-
 			WatchlistRules.Items.Add(litem);
 			WatchlistMap.TryAdd(prc, litem);
 
 			FormatWatchlist(litem, prc);
 			WatchlistItemColor(litem, prc);
-
-			WatchlistRules.EndUpdate();
 		}
 
 		void FormatWatchlist(ListViewItem litem, Process.Controller prc)
@@ -814,8 +795,6 @@ namespace Taskmaster.UI
 			// 5 = Power
 			// 6 = Adjusts
 			// 7 = Path
-
-			WatchlistRules.BeginUpdate();
 
 			litem.SubItems[NameColumn].Text = prc.FriendlyName;
 			litem.SubItems[ExeColumn].Text = (prc.Executables?.Length > 0) ? string.Join(", ", prc.Executables) : string.Empty;
@@ -854,12 +833,8 @@ namespace Taskmaster.UI
 		{
 			if (!IsHandleCreated || DisposedOrDisposing) return;
 
-			WatchlistRules.BeginUpdate();
-
 			FormatWatchlist(litem, prc);
 			WatchlistItemColor(litem, prc);
-
-			WatchlistRules.EndUpdate();
 		}
 
 		Label AudioInputDevice = null;
@@ -868,6 +843,7 @@ namespace Taskmaster.UI
 		ListView WatchlistRules = null;
 
 		ConcurrentDictionary<Process.Controller, ListViewItem> WatchlistMap = new ConcurrentDictionary<Process.Controller, ListViewItem>();
+		object watchlist_lock = new object();
 
 		Label corCountLabel = null;
 		ComboBox AudioInputEnable = null;
@@ -1991,7 +1967,6 @@ namespace Taskmaster.UI
 
 		void ResizeLogList(object sender, EventArgs ev)
 		{
-			LogList.BeginUpdate();
 			LogList.Columns[0].Width = -2;
 			// HACK: Enable visual styles causes horizontal bar to always be present without the following.
 			LogList.Columns[0].Width -= 2;
@@ -2000,7 +1975,6 @@ namespace Taskmaster.UI
 			//loglist.Width = -2;
 			LogList.Height = ClientSize.Height - tabLayout.Height - statusbar.Height - menu.Height;
 			ShowLastLog();
-			LogList.EndUpdate();
 		}
 
 		ChangeLog changelog = null;
@@ -2216,10 +2190,8 @@ namespace Taskmaster.UI
 				}
 
 				// deadlock if locked while adding
-				WatchlistRules.BeginUpdate();
 				WatchlistRules.Sort();
 				WatchlistColor();
-				WatchlistRules.EndUpdate();
 			};
 
 			watchlistms = new ContextMenuStrip();
@@ -2970,8 +2942,6 @@ namespace Taskmaster.UI
 
 			try
 			{
-				processinglist.BeginUpdate();
-
 				// 0 = Id, 1 = Name, 2 = State
 				item.SubItems[0].Text = ea.Info.Id.ToString();
 				item.SubItems[2].Text = ea.Info.State.ToString();
@@ -2980,8 +2950,6 @@ namespace Taskmaster.UI
 				if (newitem) processinglist.Items.Insert(0, item);
 
 				if (ea.Info.Handled) RemoveOldProcessingEntry(key);
-
-				processinglist.EndUpdate();
 			}
 			catch (System.ObjectDisposedException)
 			{
@@ -3213,20 +3181,18 @@ namespace Taskmaster.UI
 		{
 			if (!IsHandleCreated || DisposedOrDisposing) return;
 
-			powerbalancerlog.BeginUpdate();
-
 			try
 			{
 				var li = new ListViewItem(new string[] {
-						$"{ea.Current:N2} %",
-						$"{ea.Mean:N2} %",
-						$"{ea.High:N2} %",
-						$"{ea.Low:N2} %",
-						ea.Reaction.ToString(),
-						Power.Utility.GetModeName(ea.Mode),
-						ea.Enacted.ToString(),
-						$"{ea.Pressure * 100f:N1} %"
-					})
+					$"{ea.Current:N2} %",
+					$"{ea.Mean:N2} %",
+					$"{ea.High:N2} %",
+					$"{ea.Low:N2} %",
+					ea.Reaction.ToString(),
+					Power.Utility.GetModeName(ea.Mode),
+					ea.Enacted.ToString(),
+					$"{ea.Pressure * 100f:N1} %"
+				})
 				{
 					UseItemStyleForSubItems = false
 				};
@@ -3253,10 +3219,6 @@ namespace Taskmaster.UI
 				powerbalancer_forcedcount.Text = powermanager.ForceCount.ToString();
 			}
 			catch (Exception ex) { Logging.Stacktrace(ex); }
-			finally
-			{
-				powerbalancerlog.EndUpdate();
-			}
 		}
 
 		void WatchlistContextMenuOpen(object _, EventArgs _ea)
@@ -3292,8 +3254,6 @@ namespace Taskmaster.UI
 			{
 				if (WatchlistRules.SelectedItems.Count == 1)
 				{
-					WatchlistRules.BeginUpdate();
-
 					var li = WatchlistRules.SelectedItems[0];
 					if (processmanager.GetControllerByName(li.SubItems[NameColumn].Text, out var prc))
 					{
@@ -3310,8 +3270,6 @@ namespace Taskmaster.UI
 
 						processmanager?.HastenScan(20);
 					}
-
-					WatchlistRules.EndUpdate();
 				}
 				else
 					watchlistenable.Enabled = false;
@@ -3351,12 +3309,8 @@ namespace Taskmaster.UI
 				{
 					var prc = ew.Controller;
 
-					WatchlistRules.BeginUpdate();
-
 					processmanager.AddController(prc);
 					AddToWatchlistList(prc);
-
-					WatchlistRules.EndUpdate();
 
 					processmanager?.HastenScan(60, forceSort: true);
 				}
@@ -3378,7 +3332,7 @@ namespace Taskmaster.UI
 						if (MessageBox.ShowModal("Remove watchlist item", $"Really remove '{prc.FriendlyName}'", MessageBox.Buttons.AcceptCancel, parent: this)
 							== MessageBox.ResultType.OK)
 						{
-							lock (watchlistcolor_lock)
+							lock (watchlist_lock)
 							{
 								processmanager.RemoveController(prc);
 
@@ -3530,10 +3484,8 @@ namespace Taskmaster.UI
 			MemoryLog.MemorySink.onNewEvent += NewLogReceived;
 
 			// Log.Verbose("Filling GUI log.");
-			LogList.BeginUpdate();
 			foreach (var evmsg in MemoryLog.MemorySink.ToArray())
 				AddLog(evmsg);
-			LogList.EndUpdate();
 
 			ShowLastLog();
 
@@ -3847,37 +3799,33 @@ namespace Taskmaster.UI
 			InetStatusLabel(netmonitor.InternetAvailable);
 			NetStatusLabelUpdate(netmonitor.NetworkAvailable);
 
-			try
+			NetworkDevices.Items.Clear();
+
+			var niclist = new List<ListViewItem>();
+
+			foreach (var dev in netmonitor.GetInterfaces())
 			{
-				NetworkDevices.BeginUpdate();
-
-				NetworkDevices.Items.Clear();
-
-				foreach (var dev in netmonitor.GetInterfaces())
+				var li = new ListViewItem(new string[] {
+					dev.Name,
+					dev.Type.ToString(),
+					dev.Status.ToString(),
+					HumanInterface.ByteString(dev.Speed),
+					dev.IPv4Address?.ToString() ?? HumanReadable.Generic.NotAvailable,
+					dev.IPv6Address?.ToString() ?? HumanReadable.Generic.NotAvailable,
+					HumanReadable.Generic.NotAvailable, // traffic delta
+					HumanReadable.Generic.NotAvailable, // error delta
+					HumanReadable.Generic.NotAvailable, // total errors
+				})
 				{
-					var li = new ListViewItem(new string[] {
-							dev.Name,
-							dev.Type.ToString(),
-							dev.Status.ToString(),
-							HumanInterface.ByteString(dev.Speed),
-							dev.IPv4Address?.ToString() ?? HumanReadable.Generic.NotAvailable,
-							dev.IPv6Address?.ToString() ?? HumanReadable.Generic.NotAvailable,
-							HumanReadable.Generic.NotAvailable, // traffic delta
-							HumanReadable.Generic.NotAvailable, // error delta
-							HumanReadable.Generic.NotAvailable, // total errors
-						})
-					{
-						UseItemStyleForSubItems = false
-					};
-					NetworkDevices.Items.Add(li);
-				}
+					UseItemStyleForSubItems = false
+				};
 
-				AlternateListviewRowColors(NetworkDevices, AlternateRowColorsDevices);
+				niclist.Add(li);
 			}
-			finally
-			{
-				NetworkDevices.EndUpdate();
-			}
+
+			NetworkDevices.Items.AddRange(niclist.ToArray());
+
+			AlternateListviewRowColors(NetworkDevices, AlternateRowColorsDevices);
 		}
 
 		public void Hook(Network.Manager manager)
@@ -3916,8 +3864,6 @@ namespace Taskmaster.UI
 		{
 			if (!IsHandleCreated || DisposedOrDisposing) return;
 
-			NetworkDevices.BeginUpdate();
-
 			try
 			{
 				var item = NetworkDevices.Items[ea.Traffic.Index];
@@ -3934,8 +3880,6 @@ namespace Taskmaster.UI
 			{
 				Logging.Stacktrace(ex);
 			}
-
-			NetworkDevices.EndUpdate();
 		}
 
 		int PacketDeltaColumn = 6;
@@ -4021,15 +3965,11 @@ namespace Taskmaster.UI
 		{
 			if (!IsHandleCreated || DisposedOrDisposing) return;
 
-			LogList.BeginUpdate();
-
 			var excessitems = Math.Max(0, (LogList.Items.Count - MaxLogSize));
 			while (excessitems-- > 0)
 				LogList.Items.RemoveAt(0);
 
 			AddLog(ea);
-
-			LogList.EndUpdate();
 		}
 
 		bool alterStep = true;
