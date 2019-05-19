@@ -1886,7 +1886,7 @@ namespace Taskmaster.Process
 		/// <summary>
 		/// Triage process exit events.
 		/// </summary>
-		async void ProcessEndTriage(object sender, EventArrivedEventArgs ea)
+		void ProcessEndTriage(object sender, EventArrivedEventArgs ea)
 		{
 			int pid = -1;
 			try
