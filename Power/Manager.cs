@@ -926,7 +926,7 @@ namespace Taskmaster.Power
 			{
 				case SessionSwitchReason.SessionLogoff:
 					Log.Information("<Session> Logoff detected. Exiting.");
-					UnifiedExit(restart:false);
+					UnifiedExit(restart: false);
 					return;
 				case SessionSwitchReason.SessionLock:
 					SessionLocked = true;
@@ -969,7 +969,7 @@ namespace Taskmaster.Power
 			}
 			else
 			{
-				StopDisplayTimer(reset:true);
+				StopDisplayTimer(reset: true);
 
 				// should be unnecessary, but...
 				if (CurrentMonitorState != MonitorPowerMode.On) // session unlocked but monitor still off?
@@ -998,7 +998,7 @@ namespace Taskmaster.Power
 						if (!SaverOnLogOff) return;
 						goto setpowersaver;
 					case SessionSwitchReason.SessionLock:
-						setpowersaver:
+					setpowersaver:
 						// SET POWER SAVER
 						if (DebugSession) Log.Debug("<Session:Lock> Enforcing power plan: " + SessionLockPowerMode.ToString());
 
@@ -1287,7 +1287,7 @@ namespace Taskmaster.Power
 			}
 		}
 
-		async Task ReleaseFinal(Cause cause=null)
+		async Task ReleaseFinal(Cause cause = null)
 		{
 			await Task.Delay(0).ConfigureAwait(false);
 
@@ -1311,7 +1311,7 @@ namespace Taskmaster.Power
 			}
 		}
 
-		void Restore(Cause cause=null)
+		void Restore(Cause cause = null)
 		{
 			if (Behaviour == PowerBehaviour.Manual)
 			{
@@ -1336,7 +1336,7 @@ namespace Taskmaster.Power
 
 					if (DebugPower) Log.Debug("<Power> Restoring power mode: " + SavedMode.ToString());
 
-					InternalSetMode(SavedMode, cause ?? new Cause(OriginType.None, "Restoration"), verbose:false);
+					InternalSetMode(SavedMode, cause ?? new Cause(OriginType.None, "Restoration"), verbose: false);
 					SavedMode = Mode.Undefined;
 				}
 				else
@@ -1437,16 +1437,16 @@ namespace Taskmaster.Power
 			return rv;
 		}
 
-		public void SetMode(Mode mode, Cause cause=null, bool verbose = true)
+		public void SetMode(Mode mode, Cause cause = null, bool verbose = true)
 		{
 			lock (power_lock)
 			{
-				InternalSetMode(mode, cause, verbose:verbose);
+				InternalSetMode(mode, cause, verbose: verbose);
 			}
 		}
 
 		// BUG: ?? There might be odd behaviour if this is called while Paused==true
-		void InternalSetMode(Mode mode, Cause cause=null, bool verbose = true)
+		void InternalSetMode(Mode mode, Cause cause = null, bool verbose = true)
 		{
 			var plan = Guid.Empty;
 			switch (mode)
