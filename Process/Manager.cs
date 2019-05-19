@@ -1896,7 +1896,7 @@ namespace Taskmaster.Process
 
 				pid = Convert.ToInt32(targetInstance.Properties["Handle"].Value as string);
 
-				if (pid > 4) ScanBlockList.TryRemove(pid, out _);
+				if (!Utility.SystemProcessId(pid)) ScanBlockList.TryRemove(pid, out _);
 			}
 			catch (Exception ex)
 			{
