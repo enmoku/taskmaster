@@ -189,7 +189,7 @@ namespace Taskmaster.UI.Config
 			}
 
 			Controller.ModifyDelay = (int)(modifyDelay.Value * 1_000);
-			Controller.PowerPlan = Power.Manager.GetModeByName(powerPlan.Text);
+			Controller.PowerPlan = Power.Utility.GetModeByName(powerPlan.Text);
 			Controller.AllowPaging = allowPaging.Checked;
 			Controller.SetForegroundMode((ForegroundMode)(ForegroundModeSelect.SelectedIndex - 1));
 
@@ -784,10 +784,10 @@ namespace Taskmaster.UI.Config
 				Width = 180,
 			};
 			powerPlan.Items.AddRange(new string[] {
-				Power.Manager.GetModeName(Power.Mode.HighPerformance),
-				Power.Manager.GetModeName(Power.Mode.Balanced),
-				Power.Manager.GetModeName(Power.Mode.PowerSaver),
-				Power.Manager.GetModeName(Power.Mode.Undefined)
+				Power.Utility.GetModeName(Power.Mode.HighPerformance),
+				Power.Utility.GetModeName(Power.Mode.Balanced),
+				Power.Utility.GetModeName(Power.Mode.PowerSaver),
+				Power.Utility.GetModeName(Power.Mode.Undefined)
 			});
 			int ppi = 3;
 			switch (Controller.PowerPlan)

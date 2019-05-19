@@ -146,6 +146,7 @@
     <Compile Include="MKAh\Data\Ini\SettingType.cs" />
     <Compile Include="MKAh\File\NativeMethods.cs" />
     <Compile Include="Power\NativeMethods.cs" />
+    <Compile Include="Power\Utility.cs" />
     <Compile Include="Settings.Global.cs" />
     <Compile Include="Process\Foreground.cs" />
     <Compile Include="AlertManager.cs" />

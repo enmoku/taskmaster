@@ -615,9 +615,9 @@ namespace Taskmaster.Process
 			else
 				app.TryRemove("IO priority");
 
-			var pmode = Power.Manager.GetModeName(PowerPlan);
+			var pmode = Power.Utility.GetModeName(PowerPlan);
 			if (PowerPlan != Power.Mode.Undefined)
-				app[HumanReadable.Hardware.Power.Mode].Value = Power.Manager.GetModeName(PowerPlan);
+				app[HumanReadable.Hardware.Power.Mode].Value = Power.Utility.GetModeName(PowerPlan);
 			else
 				app.TryRemove(HumanReadable.Hardware.Power.Mode);
 
@@ -1481,7 +1481,7 @@ namespace Taskmaster.Process
 				{
 					var sbs = new StringBuilder();
 
-					if (mPower) sbs.Append(" [Power Mode: ").Append(Power.Manager.GetModeName(PowerPlan)).Append("]");
+					if (mPower) sbs.Append(" [Power Mode: ").Append(Power.Utility.GetModeName(PowerPlan)).Append("]");
 
 					if (!modified && (ShowInaction && Manager.DebugProcesses)) sbs.Append(" – looks OK, not touched.");
 

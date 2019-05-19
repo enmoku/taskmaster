@@ -55,5 +55,15 @@ namespace Taskmaster
 			public uint DataLength;
 			public byte Data;
 		}
+
+		// static Guid GUID_POWERSCHEME_PERSONALITY = new Guid("245d8541-3943-4422-b025-13A7-84F679B7");
+		/// <summary>
+		/// Power mode notifications
+		/// </summary>
+		public static readonly Guid GUID_POWERSCHEME_PERSONALITY = new Guid(0x245D8541, 0x3943, 0x4422, 0xB0, 0x25, 0x13, 0xA7, 0x84, 0xF6, 0x79, 0xB7);
+		/// <summary>
+		/// Monitor state notifications
+		/// </summary>
+		public static readonly Guid GUID_CONSOLE_DISPLAY_STATE = new Guid(0x6fe69556, 0x704a, 0x47a0, 0x8f, 0x24, 0xc2, 0x8d, 0x93, 0x6f, 0xda, 0x47);
 	}
 }

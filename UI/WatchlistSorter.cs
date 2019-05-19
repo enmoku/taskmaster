@@ -74,8 +74,8 @@ namespace Taskmaster
 			}
 			else if (SortPower)
 			{
-				int lixp = lix.SubItems[Column].Text.Length > 0 ? (int)Power.Manager.GetModeByName(lix.SubItems[Column].Text) : (int)Power.Mode.Undefined;
-				int liyp = liy.SubItems[Column].Text.Length > 0 ? (int)Power.Manager.GetModeByName(liy.SubItems[Column].Text) : (int)Power.Mode.Undefined;
+				int lixp = lix.SubItems[Column].Text.Length > 0 ? (int)Power.Utility.GetModeByName(lix.SubItems[Column].Text) : (int)Power.Mode.Undefined;
+				int liyp = liy.SubItems[Column].Text.Length > 0 ? (int)Power.Utility.GetModeByName(liy.SubItems[Column].Text) : (int)Power.Mode.Undefined;
 				result = Comparer.Compare(lixp, liyp);
 			}
 			else if (Number)

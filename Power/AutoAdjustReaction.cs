@@ -29,7 +29,7 @@ namespace Taskmaster.Power
 	sealed public class AutoAdjustReactionEventArgs : ProcessorLoadEventArgs
 	{
 		public Mode Mode = Mode.Undefined;
-		public Manager.Reaction Reaction = Manager.Reaction.Average;
+		public Reaction Reaction = Reaction.Average;
 		public bool Steady = false;
 
 		/// <summary>

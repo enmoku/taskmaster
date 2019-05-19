@@ -118,9 +118,9 @@ namespace Taskmaster.UI
 			{
 				power_auto = new ToolStripMenuItem(HumanReadable.Hardware.Power.AutoAdjust, null, SetAutoPower) { Checked = false, CheckOnClick = true, Enabled = false };
 
-				power_highperf = new ToolStripMenuItem(Power.Manager.GetModeName(Power.Mode.HighPerformance), null, (s, e) => SetPower(Power.Mode.HighPerformance));
-				power_balanced = new ToolStripMenuItem(Power.Manager.GetModeName(Power.Mode.Balanced), null, (s, e) => SetPower(Power.Mode.Balanced));
-				power_saving = new ToolStripMenuItem(Power.Manager.GetModeName(Power.Mode.PowerSaver), null, (s, e) => SetPower(Power.Mode.PowerSaver));
+				power_highperf = new ToolStripMenuItem(Power.Utility.GetModeName(Power.Mode.HighPerformance), null, (s, e) => SetPower(Power.Mode.HighPerformance));
+				power_balanced = new ToolStripMenuItem(Power.Utility.GetModeName(Power.Mode.Balanced), null, (s, e) => SetPower(Power.Mode.Balanced));
+				power_saving = new ToolStripMenuItem(Power.Utility.GetModeName(Power.Mode.PowerSaver), null, (s, e) => SetPower(Power.Mode.PowerSaver));
 				power_manual = new ToolStripMenuItem("Manual override", null, SetManualPower) { CheckOnClick = true };
 
 				ms.Items.Add(new ToolStripSeparator());
@@ -357,13 +357,13 @@ namespace Taskmaster.UI
 		{
 			powermanager = pman;
 
-			PowerBehaviourEvent(this, new Power.Manager.PowerBehaviourEventArgs(powermanager.Behaviour));
+			PowerBehaviourEvent(this, new Power.PowerBehaviourEventArgs(powermanager.Behaviour));
 
 			powermanager.onPlanChange += HighlightPowerModeEvent;
 			powermanager.onBehaviourChange += PowerBehaviourEvent;
 
-			power_auto.Checked = powermanager.Behaviour == Power.Manager.PowerBehaviour.Auto;
-			power_manual.Checked = powermanager.Behaviour == Power.Manager.PowerBehaviour.Manual;
+			power_auto.Checked = powermanager.Behaviour == Power.PowerBehaviour.Auto;
+			power_manual.Checked = powermanager.Behaviour == Power.PowerBehaviour.Manual;
 			power_auto.Enabled = true;
 
 			HighlightPowerMode();
@@ -371,31 +371,31 @@ namespace Taskmaster.UI
 
 		void SetAutoPower(object _, EventArgs _ea)
 		{
-			if (powermanager.Behaviour != Power.Manager.PowerBehaviour.Auto)
-				powermanager.SetBehaviour(Power.Manager.PowerBehaviour.Auto);
+			if (powermanager.Behaviour != Power.PowerBehaviour.Auto)
+				powermanager.SetBehaviour(Power.PowerBehaviour.Auto);
 			else
-				powermanager.SetBehaviour(Power.Manager.PowerBehaviour.RuleBased);
+				powermanager.SetBehaviour(Power.PowerBehaviour.RuleBased);
 		}
 
 		void SetManualPower(object _, EventArgs _ea)
 		{
-			if (powermanager.Behaviour != Power.Manager.PowerBehaviour.Manual)
-				powermanager.SetBehaviour(Power.Manager.PowerBehaviour.Manual);
+			if (powermanager.Behaviour != Power.PowerBehaviour.Manual)
+				powermanager.SetBehaviour(Power.PowerBehaviour.Manual);
 			else
-				powermanager.SetBehaviour(Power.Manager.PowerBehaviour.RuleBased);
+				powermanager.SetBehaviour(Power.PowerBehaviour.RuleBased);
 		}
 
 		void HighlightPowerModeEvent(object _, Power.ModeEventArgs _ea) => HighlightPowerMode();
 
-		void PowerBehaviourEvent(object sender, Power.Manager.PowerBehaviourEventArgs ea)
+		void PowerBehaviourEvent(object sender, Power.PowerBehaviourEventArgs ea)
 		{
 			switch (ea.Behaviour)
 			{
-				case Power.Manager.PowerBehaviour.Auto:
+				case Power.PowerBehaviour.Auto:
 					power_auto.Checked = true;
 					power_manual.Checked = false;
 					break;
-				case Power.Manager.PowerBehaviour.Manual:
+				case Power.PowerBehaviour.Manual:
 					power_auto.Checked = false;
 					power_manual.Checked = true;
 					break;
@@ -434,7 +434,7 @@ namespace Taskmaster.UI
 			{
 				if (DebugPower) Log.Debug("<Power> Setting behaviour to manual.");
 
-				powermanager.SetBehaviour(Power.Manager.PowerBehaviour.Manual);
+				powermanager.SetBehaviour(Power.PowerBehaviour.Manual);
 
 				if (DebugPower) Log.Debug("<Power> Setting manual mode: " + mode.ToString());
 

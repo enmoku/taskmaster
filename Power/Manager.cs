@@ -86,6 +86,7 @@ namespace Taskmaster.Power
 		public SessionLockEventArgs(bool locked = false) => Locked = locked;
 	}
 
+	// TODO: Decouple Form from Manager
 	sealed public class Manager : Form, IDisposal // form is required for receiving messages, no other reason
 	{
 		const string DefaultModeSettingName = "Default mode";
@@ -107,16 +108,6 @@ namespace Taskmaster.Power
 		const string InitialName = "Initial";
 
 		bool VerbosePowerRelease = false;
-
-		// static Guid GUID_POWERSCHEME_PERSONALITY = new Guid("245d8541-3943-4422-b025-13A7-84F679B7");
-		/// <summary>
-		/// Power mode notifications
-		/// </summary>
-		static Guid GUID_POWERSCHEME_PERSONALITY = new Guid(0x245D8541, 0x3943, 0x4422, 0xB0, 0x25, 0x13, 0xA7, 0x84, 0xF6, 0x79, 0xB7);
-		/// <summary>
-		/// Monitor state notifications
-		/// </summary>
-		static Guid GUID_CONSOLE_DISPLAY_STATE = new Guid(0x6fe69556, 0x704a, 0x47a0, 0x8f, 0x24, 0xc2, 0x8d, 0x93, 0x6f, 0xda, 0x47);
 
 		public event EventHandler<SessionLockEventArgs> SessionLock;
 		public event EventHandler<MonitorPowerEventArgs> MonitorPower;
@@ -368,12 +359,15 @@ namespace Taskmaster.Power
 		/// </summary>
 		public void SetupEventHook()
 		{
-			NativeMethods.RegisterPowerSettingNotification(
-				Handle, ref GUID_POWERSCHEME_PERSONALITY, NativeMethods.DEVICE_NOTIFY_WINDOW_HANDLE);
-			NativeMethods.RegisterPowerSettingNotification(
-				Handle, ref GUID_CONSOLE_DISPLAY_STATE, NativeMethods.DEVICE_NOTIFY_WINDOW_HANDLE);
+			var lpersonality = NativeMethods.GUID_POWERSCHEME_PERSONALITY;
+			var displaystate = NativeMethods.GUID_CONSOLE_DISPLAY_STATE;
+
+			NativeMethods.RegisterPowerSettingNotification(Handle, ref lpersonality, NativeMethods.DEVICE_NOTIFY_WINDOW_HANDLE);
+			NativeMethods.RegisterPowerSettingNotification(Handle, ref displaystate, NativeMethods.DEVICE_NOTIFY_WINDOW_HANDLE);
 
 			SystemEvents.SessionSwitch += SessionLockEvent; // BUG: this is wrong, TM should pause to not interfere with other users
+
+			// TODO: Check for session lock
 		}
 
 		/// <summary>
@@ -414,13 +408,6 @@ namespace Taskmaster.Power
 		public event EventHandler<ModeEventArgs> onPlanChange;
 		public event EventHandler<PowerBehaviourEventArgs> onBehaviourChange;
 		public event EventHandler onSuspendResume;
-
-		public enum Reaction
-		{
-			High = 1,
-			Average = 0,
-			Low = -1,
-		}
 
 		bool Paused = false;
 		public bool SessionLocked { get; private set; } = false;
@@ -464,7 +451,7 @@ namespace Taskmaster.Power
 
 			lock (autoadjust_lock)
 			{
-				var Reaction = Power.Manager.Reaction.Average;
+				var Reaction = Power.Reaction.Average;
 
 				var Ready = false;
 
@@ -694,7 +681,7 @@ namespace Taskmaster.Power
 					LaunchBehaviour = PowerBehaviour.RuleBased;
 				Behaviour = LaunchBehaviour;
 
-				AutoAdjust.DefaultMode = GetModeByName(power.GetOrSet(DefaultModeSettingName, GetModeName(Mode.Balanced))
+				AutoAdjust.DefaultMode = Utility.GetModeByName(power.GetOrSet(DefaultModeSettingName, Utility.GetModeName(Mode.Balanced))
 					.InitComment("This is what power plan we fall back on when nothing else is considered.")
 					.Value);
 				if (AutoAdjust.DefaultMode == Mode.Undefined)
@@ -726,7 +713,7 @@ namespace Taskmaster.Power
 						break;
 					default:
 						newmodemethod = RestoreModeMethod.Custom;
-						newrestoremode = GetModeByName(restoremode);
+						newrestoremode = Utility.GetModeByName(restoremode);
 						if (RestoreMode == Mode.Undefined)
 						{
 							// TODO: Complain about bad config
@@ -794,8 +781,8 @@ namespace Taskmaster.Power
 				}
 
 				// POWER MODES
-				AutoAdjust.Low.Mode = GetModeByName(power.GetOrSet(LowModeName, GetModeName(Mode.PowerSaver)).Value);
-				AutoAdjust.High.Mode = GetModeByName(power.GetOrSet(HighModeName, GetModeName(Mode.HighPerformance)).Value);
+				AutoAdjust.Low.Mode = Utility.GetModeByName(power.GetOrSet(LowModeName, Utility.GetModeName(Mode.PowerSaver)).Value);
+				AutoAdjust.High.Mode = Utility.GetModeByName(power.GetOrSet(HighModeName, Utility.GetModeName(Mode.HighPerformance)).Value);
 
 				// QUEUE BARRIERS
 				AutoAdjust.Queue.High = autopower.GetOrSet(HighQueueBarrierName, AutoAdjust.Queue.High).Int.Constrain(0, 50);
@@ -805,10 +792,10 @@ namespace Taskmaster.Power
 				var saver = corecfg.Config[AFKPowerName];
 				//saver.Comment = "All these options control when to enforce power save mode regardless of any other options.";
 
-				var sessionlockmodename = saver.GetOrSet(SessionLockName, GetModeName(Mode.PowerSaver))
+				var sessionlockmodename = saver.GetOrSet(SessionLockName, Utility.GetModeName(Mode.PowerSaver))
 					.InitComment("Power mode to set when session is locked, such as by pressing winkey+L. Unrecognizable values disable this.")
 					.Value;
-				SessionLockPowerMode = GetModeByName(sessionlockmodename);
+				SessionLockPowerMode = Utility.GetModeByName(sessionlockmodename);
 
 				// SaverOnMonitorSleep = saver.GetSetDefault("Monitor sleep", true, out modified).Bool;
 				// dirtyconfig |= modified;
@@ -835,7 +822,7 @@ namespace Taskmaster.Power
 
 			// --------------------------------------------------------------------------------------------------------
 
-			Log.Information("<Power> Behaviour: " + GetBehaviourName(Behaviour) + "; Restore mode: " + RestoreMethod.ToString() + " [" + RestoreMode.ToString() + "]");
+			Log.Information("<Power> Behaviour: " + Utility.GetBehaviourName(Behaviour) + "; Restore mode: " + RestoreMethod.ToString() + " [" + RestoreMode.ToString() + "]");
 
 			Log.Information("<Power> Watchlist powerdown delay: " +
 				(PowerdownDelay.HasValue ? $"{PowerdownDelay.Value.TotalSeconds:N0} s" : HumanReadable.Generic.Disabled));
@@ -899,11 +886,11 @@ namespace Taskmaster.Power
 						autopower[LowQueueBarrierName].Int = AutoAdjust.Queue.Low;
 
 						// POWER MODES
-						power[LowModeName].Value = GetModeName(AutoAdjust.Low.Mode);
-						power[HighModeName].Value = GetModeName(AutoAdjust.High.Mode);
+						power[LowModeName].Value = Utility.GetModeName(AutoAdjust.Low.Mode);
+						power[HighModeName].Value = Utility.GetModeName(AutoAdjust.High.Mode);
 
 						var saver = corecfg.Config[AFKPowerName];
-						saver[SessionLockName].Value = GetModeName(SessionLockPowerMode);
+						saver[SessionLockName].Value = Utility.GetModeName(SessionLockPowerMode);
 
 						saver["Monitor power off idle timeout"].Int = Convert.ToInt32(SessionLockPowerOffIdleTimeout.Value.TotalSeconds);
 						saver["Monitor power off on lock"].Bool = SessionLockPowerOff;
@@ -918,18 +905,10 @@ namespace Taskmaster.Power
 		{
 			if (DisposedOrDisposing) throw new ObjectDisposedException(nameof(Manager), "LogBehaviourState called after PowerManager was disposed.");
 
-			Log.Information("<Power> Behaviour: " + GetBehaviourName(Behaviour));
+			Log.Information("<Power> Behaviour: " + Utility.GetBehaviourName(Behaviour));
 		}
 
 		int BackoffCounter { get; set; } = 0;
-
-		public enum RestoreModeMethod
-		{
-			Original,
-			Saved,
-			Default,
-			Custom
-		};
 
 		public RestoreModeMethod RestoreMethod { get; private set; } = RestoreModeMethod.Default;
 		public Mode RestoreMode { get; private set; } = Mode.Balanced;
@@ -1134,7 +1113,7 @@ namespace Taskmaster.Power
 			{
 				var ps = (NativeMethods.POWERBROADCAST_SETTING)Marshal.PtrToStructure(m.LParam, typeof(NativeMethods.POWERBROADCAST_SETTING));
 
-				if (ps.PowerSetting == GUID_POWERSCHEME_PERSONALITY && ps.DataLength == Marshal.SizeOf(typeof(Guid)))
+				if (ps.PowerSetting == NativeMethods.GUID_POWERSCHEME_PERSONALITY && ps.DataLength == Marshal.SizeOf(typeof(Guid)))
 				{
 					var pData = (IntPtr)(m.LParam.ToInt32() + Marshal.SizeOf(ps) - 4); // -4 is to align to the ps.Data
 					var newPersonality = (Guid)Marshal.PtrToStructure(pData, typeof(Guid));
@@ -1153,12 +1132,12 @@ namespace Taskmaster.Power
 					if (CurrentMode != ExpectedMode && Behaviour == PowerBehaviour.Auto && LastExternalWarning.TimeTo(now).TotalSeconds > 30)
 					{
 						LastExternalWarning = now;
-						Log.Warning("<Power/OS> Unexpected power mode change detected (" + GetModeName(CurrentMode) + ") while auto-adjust is enabled.");
+						Log.Warning("<Power/OS> Unexpected power mode change detected (" + Utility.GetModeName(CurrentMode) + ") while auto-adjust is enabled.");
 					}
 
 					m.Result = IntPtr.Zero;
 				}
-				else if (ps.PowerSetting == GUID_CONSOLE_DISPLAY_STATE)
+				else if (ps.PowerSetting == NativeMethods.GUID_CONSOLE_DISPLAY_STATE)
 				{
 					MonitorPowerMode mode = MonitorPowerMode.Invalid;
 
@@ -1186,61 +1165,6 @@ namespace Taskmaster.Power
 			base.WndProc(ref m); // is this necessary?
 		}
 
-		public static string GetBehaviourName(PowerBehaviour behaviour)
-		{
-			switch (behaviour)
-			{
-				case PowerBehaviour.Auto:
-					return HumanReadable.Hardware.Power.AutoAdjust;
-				case PowerBehaviour.Manual:
-					return HumanReadable.Hardware.Power.Manual;
-				case PowerBehaviour.RuleBased:
-					return HumanReadable.Hardware.Power.RuleBased;
-				default:
-					return HumanReadable.Generic.Undefined;
-			}
-		}
-
-		public static string GetModeName(Mode mode)
-		{
-			switch (mode)
-			{
-				case Mode.Balanced:
-					return "Balanced";
-				case Mode.HighPerformance:
-					return "High Performance";
-				case Mode.PowerSaver:
-					return "Power Saver";
-				case Mode.Custom:
-					return "Custom";
-				default:
-					return "Undefined";
-			}
-		}
-
-		public static Mode GetModeByName(string name)
-		{
-			if (string.IsNullOrEmpty(name)) return Mode.Undefined;
-
-			switch (name.ToLowerInvariant())
-			{
-				case "low":
-				case "powersaver":
-				case "power saver":
-					return Mode.PowerSaver;
-				case "average":
-				case "medium":
-				case "balanced":
-					return Mode.Balanced;
-				case "high":
-				case "highperformance":
-				case "high performance":
-					return Mode.HighPerformance;
-				default:
-					return Mode.Undefined;
-			}
-		}
-
 		public Mode OriginalMode { get; private set; } = Mode.Balanced;
 		public Mode CurrentMode { get; private set; } = Mode.Balanced;
 
@@ -1249,22 +1173,6 @@ namespace Taskmaster.Power
 		static readonly Guid HighPerformance = new Guid("8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c"); // SCHEME_MIN
 		static readonly Guid Balanced = new Guid("381b4222-f694-41f0-9685-ff5bb260df2e"); // SCHEME_BALANCED
 		static readonly Guid PowerSaver = new Guid("a1841308-3541-4fab-bc81-f71556f20b4a"); // SCHEME_MAX
-
-		public enum PowerBehaviour
-		{
-			Auto,
-			RuleBased,
-			Manual,
-			Internal,
-			Undefined
-		}
-
-		sealed public class PowerBehaviourEventArgs : EventArgs
-		{
-			public PowerBehaviour Behaviour = PowerBehaviour.Undefined;
-
-			public PowerBehaviourEventArgs(PowerBehaviour behaviour) => Behaviour = behaviour;
-		}
 
 		public void SetRestoreMode(RestoreModeMethod method, Mode mode)
 		{
@@ -1561,7 +1469,7 @@ namespace Taskmaster.Power
 			if ((verbose && (CurrentMode != mode)) || DebugPower)
 			{
 				string extra = cause != null ? $" - Cause: {cause.ToString()}" : string.Empty;
-				Log.Information("<Power> Setting mode: " + GetModeName(mode) + extra);
+				Log.Information("<Power> Setting mode: " + Utility.GetModeName(mode) + extra);
 			}
 
 			ExpectedMode = CurrentMode = mode;
@@ -1638,5 +1546,36 @@ namespace Taskmaster.Power
 		#endregion
 
 		public void ShutdownEvent(object sender, EventArgs ea) => StopDisplayTimer();
+	}
+
+	public enum Reaction
+	{
+		High = 1,
+		Average = 0,
+		Low = -1,
+	}
+
+	public class PowerBehaviourEventArgs : EventArgs
+	{
+		public PowerBehaviour Behaviour = PowerBehaviour.Undefined;
+
+		public PowerBehaviourEventArgs(PowerBehaviour behaviour) => Behaviour = behaviour;
+	}
+
+	public enum PowerBehaviour
+	{
+		Auto,
+		RuleBased,
+		Manual,
+		Internal,
+		Undefined
+	}
+
+	public enum RestoreModeMethod
+	{
+		Original,
+		Saved,
+		Default,
+		Custom
 	}
 }

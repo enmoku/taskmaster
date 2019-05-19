@@ -881,7 +881,7 @@ namespace Taskmaster.Process
 						aff = -1; // ignore
 					}
 
-					pmode = Power.Manager.GetModeByName(pmode_t);
+					pmode = Power.Utility.GetModeByName(pmode_t);
 					if (pmode == Power.Mode.Custom)
 					{
 						Log.Warning($"<Watchlist:{rulePow.Line}> [{section.Name}] Unrecognized power plan: {pmode_t}");
@@ -1255,13 +1255,13 @@ namespace Taskmaster.Process
 			}
 		}
 
-		void PowerBehaviourEvent(object _, Power.Manager.PowerBehaviourEventArgs ea)
+		void PowerBehaviourEvent(object _, Power.PowerBehaviourEventArgs ea)
 		{
 			if (DisposedOrDisposing) return;
 
 			try
 			{
-				if (ea.Behaviour == Power.Manager.PowerBehaviour.Manual)
+				if (ea.Behaviour == Power.PowerBehaviour.Manual)
 					CancelPowerWait();
 			}
 			catch (Exception ex)

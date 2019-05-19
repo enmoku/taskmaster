@@ -831,7 +831,7 @@ namespace Taskmaster.UI
 					aff = prc.AffinityMask.ToString();
 			}
 			litem.SubItems[AffColumn].Text = aff;
-			litem.SubItems[PowerColumn].Text = (prc.PowerPlan != Power.Mode.Undefined ? Power.Manager.GetModeName(prc.PowerPlan) : string.Empty);
+			litem.SubItems[PowerColumn].Text = (prc.PowerPlan != Power.Mode.Undefined ? Power.Utility.GetModeName(prc.PowerPlan) : string.Empty);
 			litem.SubItems[PathColumn].Text = (string.IsNullOrEmpty(prc.Path) ? string.Empty : prc.Path);
 
 			WatchlistRules.EndUpdate();
@@ -1199,9 +1199,9 @@ namespace Taskmaster.UI
 			if (PowerManagerEnabled)
 			{
 				power_auto = new ToolStripMenuItem(HumanReadable.Hardware.Power.AutoAdjust, null, SetAutoPower) { Checked = false, CheckOnClick = true, Enabled = false };
-				power_highperf = new ToolStripMenuItem(Power.Manager.GetModeName(Power.Mode.HighPerformance), null, (s, e) => SetPower(Power.Mode.HighPerformance));
-				power_balanced = new ToolStripMenuItem(Power.Manager.GetModeName(Power.Mode.Balanced), null, (s, e) => SetPower(Power.Mode.Balanced));
-				power_saving = new ToolStripMenuItem(Power.Manager.GetModeName(Power.Mode.PowerSaver), null, (s, e) => SetPower(Power.Mode.PowerSaver));
+				power_highperf = new ToolStripMenuItem(Power.Utility.GetModeName(Power.Mode.HighPerformance), null, (s, e) => SetPower(Power.Mode.HighPerformance));
+				power_balanced = new ToolStripMenuItem(Power.Utility.GetModeName(Power.Mode.Balanced), null, (s, e) => SetPower(Power.Mode.Balanced));
+				power_saving = new ToolStripMenuItem(Power.Utility.GetModeName(Power.Mode.PowerSaver), null, (s, e) => SetPower(Power.Mode.PowerSaver));
 				power_manual = new ToolStripMenuItem("Manual override", null, SetManualPower) { CheckOnClick = true };
 
 				menu_power.DropDownItems.Add(power_auto);
@@ -2021,18 +2021,18 @@ namespace Taskmaster.UI
 
 		void SetAutoPower(object _, EventArgs _ea)
 		{
-			if (powermanager.Behaviour != Power.Manager.PowerBehaviour.Auto)
-				powermanager.SetBehaviour(Power.Manager.PowerBehaviour.Auto);
+			if (powermanager.Behaviour != Power.PowerBehaviour.Auto)
+				powermanager.SetBehaviour(Power.PowerBehaviour.Auto);
 			else
-				powermanager.SetBehaviour(Power.Manager.PowerBehaviour.RuleBased);
+				powermanager.SetBehaviour(Power.PowerBehaviour.RuleBased);
 		}
 
 		void SetManualPower(object _, EventArgs _ea)
 		{
-			if (powermanager.Behaviour != Power.Manager.PowerBehaviour.Manual)
-				powermanager.SetBehaviour(Power.Manager.PowerBehaviour.Manual);
+			if (powermanager.Behaviour != Power.PowerBehaviour.Manual)
+				powermanager.SetBehaviour(Power.PowerBehaviour.Manual);
 			else
-				powermanager.SetBehaviour(Power.Manager.PowerBehaviour.RuleBased);
+				powermanager.SetBehaviour(Power.PowerBehaviour.RuleBased);
 		}
 
 		void HighlightPowerMode()
@@ -2063,7 +2063,7 @@ namespace Taskmaster.UI
 			{
 				if (DebugPower) Log.Debug("<Power> Setting behaviour to manual.");
 
-				powermanager.SetBehaviour(Power.Manager.PowerBehaviour.Manual);
+				powermanager.SetBehaviour(Power.PowerBehaviour.Manual);
 
 				if (DebugPower) Log.Debug("<Power> Setting manual mode: " + mode.ToString());
 
@@ -3069,7 +3069,7 @@ namespace Taskmaster.UI
 			//statusbar.Items.Add(verbositylevel);
 
 			statusbar.Items.Add(new ToolStripStatusLabel("Power plan:") { Alignment = ToolStripItemAlignment.Right });
-			powermodestatusbar = new ToolStripStatusLabel(Power.Manager.GetModeName(powermanager?.CurrentMode ?? Power.Mode.Undefined)) { Alignment = ToolStripItemAlignment.Right };
+			powermodestatusbar = new ToolStripStatusLabel(Power.Utility.GetModeName(powermanager?.CurrentMode ?? Power.Mode.Undefined)) { Alignment = ToolStripItemAlignment.Right };
 			statusbar.Items.Add(powermodestatusbar);
 		}
 
@@ -3223,7 +3223,7 @@ namespace Taskmaster.UI
 						$"{ea.High:N2} %",
 						$"{ea.Low:N2} %",
 						ea.Reaction.ToString(),
-						Power.Manager.GetModeName(ea.Mode),
+						Power.Utility.GetModeName(ea.Mode),
 						ea.Enacted.ToString(),
 						$"{ea.Pressure * 100f:N1} %"
 					})
@@ -3436,7 +3436,7 @@ namespace Taskmaster.UI
 					if (prc.IOPriority >= 0) sbs.Append("IO priority = ").Append(prc.IOPriority).AppendLine();
 
 					if (prc.PowerPlan != Power.Mode.Undefined)
-						sbs.Append(HumanReadable.Hardware.Power.Plan).Append(" = ").Append(Power.Manager.GetModeName(prc.PowerPlan)).AppendLine();
+						sbs.Append(HumanReadable.Hardware.Power.Plan).Append(" = ").Append(Power.Utility.GetModeName(prc.PowerPlan)).AppendLine();
 					if (prc.Recheck > 0) sbs.Append("Recheck = ").Append(prc.Recheck).AppendLine();
 					if (prc.AllowPaging) sbs.Append("Allow paging = ").Append(prc.AllowPaging).AppendLine();
 
@@ -3565,7 +3565,7 @@ namespace Taskmaster.UI
 			powermanager.onBehaviourChange += PowerBehaviourEvent;
 			powermanager.onPlanChange += PowerPlanEvent;
 
-			var bev = new Power.Manager.PowerBehaviourEventArgs(powermanager.Behaviour);
+			var bev = new Power.PowerBehaviourEventArgs(powermanager.Behaviour);
 			PowerBehaviourEvent(this, bev); // populates pwbehaviour
 			var pev = new Power.ModeEventArgs(powermanager.CurrentMode);
 			PowerPlanEvent(this, pev); // populates pwplan and pwcause
@@ -3584,15 +3584,15 @@ namespace Taskmaster.UI
 			HighlightPowerMode();
 		}
 
-		void UpdatePowerBehaviourHighlight(Power.Manager.PowerBehaviour behaviour)
+		void UpdatePowerBehaviourHighlight(Power.PowerBehaviour behaviour)
 		{
 			switch (behaviour)
 			{
-				case Power.Manager.PowerBehaviour.Manual:
+				case Power.PowerBehaviour.Manual:
 					power_auto.Checked = false;
 					power_manual.Checked = true;
 					break;
-				case Power.Manager.PowerBehaviour.Auto:
+				case Power.PowerBehaviour.Auto:
 					power_auto.Checked = true;
 					power_manual.Checked = false;
 					break;
@@ -3603,7 +3603,7 @@ namespace Taskmaster.UI
 			}
 		}
 
-		void PowerBehaviourEvent(object sender, Power.Manager.PowerBehaviourEventArgs e)
+		void PowerBehaviourEvent(object sender, Power.PowerBehaviourEventArgs e)
 		{
 			if (!IsHandleCreated || DisposedOrDisposing) return;
 
@@ -3613,12 +3613,12 @@ namespace Taskmaster.UI
 				PowerBehaviourEvent_Invoke(e);
 		}
 
-		void PowerBehaviourEvent_Invoke(Power.Manager.PowerBehaviourEventArgs e)
+		void PowerBehaviourEvent_Invoke(Power.PowerBehaviourEventArgs e)
 		{
 			if (!IsHandleCreated || DisposedOrDisposing) return;
 
 			UpdatePowerBehaviourHighlight(e.Behaviour);
-			pwbehaviour.Text = Power.Manager.GetBehaviourName(e.Behaviour);
+			pwbehaviour.Text = Power.Utility.GetBehaviourName(e.Behaviour);
 		}
 
 		DateTimeOffset LastCauseTime = DateTimeOffset.MinValue;
@@ -3638,7 +3638,7 @@ namespace Taskmaster.UI
 
 			HighlightPowerMode();
 
-			powermodestatusbar.Text = pwmode.Text = Power.Manager.GetModeName(e.NewMode);
+			powermodestatusbar.Text = pwmode.Text = Power.Utility.GetModeName(e.NewMode);
 			pwcause.Text = e.Cause != null ? e.Cause.ToString() : HumanReadable.Generic.Undefined;
 			LastCauseTime = DateTimeOffset.UtcNow;
 		}
@@ -3788,7 +3788,7 @@ namespace Taskmaster.UI
 				return string.Empty;
 		}
 
-		public void PowerBehaviourDebugEvent(object _, Power.Manager.PowerBehaviourEventArgs ea)
+		public void PowerBehaviourDebugEvent(object _, Power.PowerBehaviourEventArgs ea)
 		{
 			if (!IsHandleCreated || DisposedOrDisposing) return;
 
@@ -3800,12 +3800,12 @@ namespace Taskmaster.UI
 				PowerBehaviourDebugEvent_Invoke(ea);
 		}
 
-		void PowerBehaviourDebugEvent_Invoke(Power.Manager.PowerBehaviourEventArgs ea)
+		void PowerBehaviourDebugEvent_Invoke(Power.PowerBehaviourEventArgs ea)
 		{
 			if (!IsHandleCreated || DisposedOrDisposing) return;
 
-			powerbalancer_behaviour.Text = Power.Manager.GetBehaviourName(ea.Behaviour);
-			if (ea.Behaviour != Power.Manager.PowerBehaviour.Auto)
+			powerbalancer_behaviour.Text = Power.Utility.GetBehaviourName(ea.Behaviour);
+			if (ea.Behaviour != Power.PowerBehaviour.Auto)
 				powerbalancerlog.Items.Clear();
 		}
 
@@ -3825,7 +3825,7 @@ namespace Taskmaster.UI
 		{
 			if (!IsHandleCreated || DisposedOrDisposing) return;
 
-			powerbalancer_plan.Text = Power.Manager.GetModeName(ea.NewMode);
+			powerbalancer_plan.Text = Power.Utility.GetModeName(ea.NewMode);
 		}
 
 		public void UpdateNetworkDevices(object _, EventArgs _ea)
