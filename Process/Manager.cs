@@ -953,7 +953,7 @@ namespace Taskmaster.Process
 					//prc.SetForegroundMode((ForegroundMode)(section.TryGet("Foreground mode")?.Int.Constrain(-1, 2) ?? -1)); // NEW
 
 					var ruleIdeal = section.Get("Affinity ideal");
-					prc.AffinityIdeal = ruleIdeal?.Int.Constrain(-1, CPUCount - 1) ?? -1;
+					prc.AffinityIdeal = ruleIdeal?.Int ?? -1;
 					if (prc.AffinityIdeal >= 0 && !Bit.IsSet(prc.AffinityMask, prc.AffinityIdeal))
 					{
 						Log.Debug($"<Watchlist:{ruleIdeal.Line}> [{prc.FriendlyName}] Affinity ideal to mask mismatch: {HumanInterface.BitMask(prc.AffinityMask, CPUCount)}, ideal core: {prc.AffinityIdeal}");

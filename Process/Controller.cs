@@ -240,7 +240,15 @@ namespace Taskmaster.Process
 		int ScatterOffset = 0;
 		int ScatterChunk = 1; // should default to Cores/4 or Range/2 at max, 1 at minimum.
 
-		public int AffinityIdeal = -1; // EXPERIMENTAL
+		int _affinityIdeal = -1;
+		public int AffinityIdeal // EXPERIMENTAL
+		{
+			get => _affinityIdeal;
+			set
+			{
+				_affinityIdeal = value.Constrain(-1, Utility.CPUCount);
+			}
+		}
 
 		/// <summary>
 		/// The power plan.
