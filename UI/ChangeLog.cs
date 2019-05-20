@@ -46,7 +46,7 @@ namespace Taskmaster.UI
 		{
 			LogData = logdata;
 
-			TopMost = true;
+			//TopMost = true;
 
 			Text = "Changelog for " + Taskmaster.Name;
 

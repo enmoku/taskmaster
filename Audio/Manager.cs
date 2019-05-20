@@ -263,14 +263,14 @@ namespace Taskmaster.Audio
 								}
 								break;
 							case VolumeStrategy.DecreaseFromFull:
-								if (oldvolume > prc.Volume && oldvolume >= 0.99f)
+								if (oldvolume > prc.Volume && oldvolume > 0.99f)
 								{
 									session.SimpleAudioVolume.Volume = prc.Volume;
 									volAdjusted = true;
 								}
 								break;
 							case VolumeStrategy.IncreaseFromMute:
-								if (oldvolume < prc.Volume && oldvolume <= 0.01f)
+								if (oldvolume < prc.Volume && oldvolume < 0.01f)
 								{
 									session.SimpleAudioVolume.Volume = prc.Volume;
 									volAdjusted = true;

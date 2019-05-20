@@ -229,13 +229,13 @@ namespace Taskmaster.UI.Config
 					default: Controller.VolumeStrategy = Audio.VolumeStrategy.Ignore; break;
 				}
 
-				Controller.Volume = Convert.ToSingle(volume.Value) / 100f;
+				Controller.Volume = Convert.ToSingle(volume.Value / 100M);
 			}
 
 			Controller.AffinityIdeal = Convert.ToInt32(idealAffinity.Value) - 1;
 
 			if (IOPriorityEnabled)
-				Controller.IOPriority = (ioPriority?.SelectedIndex ?? 0) - 1;
+				Controller.IOPriority = (Process.IOPriority)((ioPriority?.SelectedIndex ?? 0) - 1);
 
 			Controller.LogAdjusts = logAdjusts.Checked;
 			Controller.LogStartAndExit = logStartNExit.Checked;
@@ -686,7 +686,7 @@ namespace Taskmaster.UI.Config
 				{
 					DropDownStyle = ComboBoxStyle.DropDownList,
 					Items = { "Ignore", "Background", "Low", "Normal" },
-					SelectedIndex = Controller.IOPriority + 1,
+					SelectedIndex = (int)Controller.IOPriority + 1,
 					AutoSize = true,
 					Dock = DockStyle.Fill,
 				};
@@ -851,7 +851,7 @@ namespace Taskmaster.UI.Config
 				Maximum = 100.0M,
 				Minimum = 0.0M,
 				Width = 80,
-				Value = Convert.ToDecimal(Controller.Volume * 100f),
+				Value = (Convert.ToDecimal(Controller.Volume) * 100M).Constrain(0M, 100M),
 			};
 			tooltip.SetToolTip(volume, "Percentage of device maximum volume.");
 			lt.Controls.Add(volume);

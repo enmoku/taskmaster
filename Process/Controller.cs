@@ -41,30 +41,6 @@ namespace Taskmaster.Process
 {
 	using static Taskmaster;
 
-	public enum PathVisibilityOptions : int
-	{
-		/// <summary>
-		/// Process name. Usually executable name without extension.
-		/// </summary>
-		Process = -1,
-		/// <summary>
-		/// Partial path removes some basic elements that seem redundant.
-		/// </summary>
-		Partial = 1,
-		/// <summary>
-		/// Smart reduction of full path. Not always as smart as desirable.
-		/// </summary>
-		Smart = 2,
-		/// <summary>
-		/// Complete path.
-		/// </summary>
-		Full = 3,
-		/// <summary>
-		/// Invalid.
-		/// </summary>
-		Invalid = 0,
-	}
-
 	/// <summary>
 	/// Process controller.
 	/// </summary>
@@ -199,7 +175,11 @@ namespace Taskmaster.Process
 		/// </summary>
 		public string Description { get; set; } = string.Empty; // TODO: somehow unload this from memory
 
-		public float Volume { get; set; } = 0.5f;
+		float _volume = 0.5f;
+		/// <summary>
+		/// Volume as 0.0 to 1.0 
+		/// </summary>
+		public float Volume { get => _volume; set => _volume = value.Constrain(0.0f, 1.0f); }
 		public Audio.VolumeStrategy VolumeStrategy { get; set; } = Audio.VolumeStrategy.Ignore;
 
 		public string[] IgnoreList { get; set; } = null;
@@ -227,7 +207,7 @@ namespace Taskmaster.Process
 		/// </summary>
 		public System.Diagnostics.ProcessPriorityClass? Priority { get; set; } = null;
 
-		public int IOPriority { get; set; } = -1; // Win7 only?
+		public IOPriority IOPriority; // Win7 only?
 
 		public ProcessPriorityStrategy PriorityStrategy { get; set; } = ProcessPriorityStrategy.None;
 
@@ -258,7 +238,7 @@ namespace Taskmaster.Process
 		public int Recheck { get; set; } = 0;
 
 		public bool AllowPaging { get; set; } = false;
-
+		
 		public Process.PathVisibilityOptions PathVisibility { get; set; } = Process.PathVisibilityOptions.Process;
 
 		string PathMask { get; set; } = string.Empty; // UNUSED
@@ -618,8 +598,8 @@ namespace Taskmaster.Process
 			else
 				app.TryRemove("Affinity ideal");
 
-			if (IOPriority >= 0)
-				app["IO priority"].Int = IOPriority;
+			if (IOPriority != IOPriority.Ignore)
+				app["IO priority"].Int = (int)IOPriority;
 			else
 				app.TryRemove("IO priority");
 
@@ -882,7 +862,7 @@ namespace Taskmaster.Process
 				}
 
 				if (IOPriorityEnabled)
-					nIO = SetIO(info, DefaultForegroundIOPriority); // force these to always have normal I/O priority
+					nIO = SetIO(info, (IOPriority)DefaultForegroundIOPriority); // force these to always have normal I/O priority
 
 				if (AffinityIdeal >= 0) ApplyAffinityIdeal(info);
 			}
@@ -1253,7 +1233,7 @@ namespace Taskmaster.Process
 								ormt.Info.Process.Exited += ProcessExitEvent;
 
 								// Agency granted, restore I/O priority to normal
-								if (IOPriority >= 0 && IOPriority < DefaultForegroundIOPriority) SetIO(info, DefaultForegroundIOPriority); // restore normal I/O for these in case we messed around with it
+								if (IOPriority != IOPriority.Ignore && (int)IOPriority < DefaultForegroundIOPriority) SetIO(info, (IOPriority)DefaultForegroundIOPriority); // restore normal I/O for these in case we messed around with it
 							}
 
 							ormt.LastIgnored = now;
@@ -1351,7 +1331,7 @@ namespace Taskmaster.Process
 					catch (OutOfMemoryException) { throw; }
 					catch { fPriority = true; } // ignore errors, this is all we care of them
 
-					if (IOPriorityEnabled && IOPriority >= 0)
+					if (IOPriorityEnabled && IOPriority != IOPriority.Ignore)
 						nIO = SetIO(info);
 				}
 
@@ -1543,9 +1523,9 @@ namespace Taskmaster.Process
 
 		int DefaultForegroundIOPriority = 2;
 
-		int SetIO(ProcessEx info, int overridePriority=-1)
+		int SetIO(ProcessEx info, IOPriority overridePriority = IOPriority.Ignore)
 		{
-			int target = overridePriority < 0 ? IOPriority : overridePriority;
+			int target = overridePriority == IOPriority.Ignore ? (int)IOPriority : (int)overridePriority;
 
 			int nIO = -1;
 
@@ -1846,6 +1826,73 @@ namespace Taskmaster.Process
 				info.State = ProcessHandlingState.Abandoned;
 				return; //throw; // would throw but this is async function
 			}
+		}
+
+		public string ToDetailedString()
+		{
+			var sbs = new StringBuilder();
+
+			sbs.Append("[ ").Append(FriendlyName).AppendLine(" ]");
+			if (Description?.Length > 0)
+				sbs.Append("Description: ").AppendLine(Description).AppendLine();
+
+			sbs.Append("Order preference: ").Append(OrderPreference.ToString()).Append(" – actual: ").AppendLine(ActualOrder.ToString());
+
+			if (Executables?.Length > 0)
+				sbs.Append("Executable").Append(Executables.Length == 1 ? string.Empty : "s").Append(": ").AppendLine(string.Join(", ", Executables));
+
+			if (Path?.Length > 0)
+				sbs.Append("Path: ").AppendLine(Path);
+
+			sbs.AppendLine();
+
+			if (ModifyDelay > 0)
+				sbs.Append("Modify delay: ").Append(ModifyDelay).AppendLine(" ms");
+			if (Recheck > 0)
+				sbs.Append("Recheck: ").Append(Recheck).AppendLine(" ms");
+			
+			if (Priority.HasValue)
+			{
+				sbs.Append("Priority: ").Append(MKAh.Readable.ProcessPriority(Priority.Value))
+					.Append(" – strategy: ").AppendLine(PriorityStrategy.ToString());
+			}
+
+			if (AffinityMask >= 0)
+			{
+				sbs.Append("Affinity: ").Append(HumanInterface.BitMask(AffinityMask, Utility.CPUCount)).Append(" [").Append(AffinityMask.ToString()).Append("]");
+				if (AffinityIdeal >= 0)
+					sbs.Append(" – ideal core: ").Append(AffinityIdeal);
+				sbs.Append(" – strategy: ").AppendLine(AffinityStrategy.ToString());
+			}
+
+			if (PowerPlan != Power.Mode.Undefined)
+				sbs.Append("Power plan: ").AppendLine(Power.Utility.GetModeName(PowerPlan));
+
+			if (IOPriority != IOPriority.Ignore)
+				sbs.Append("I/O priority: ").AppendLine(IOPriority.ToString());
+
+			if (IgnoreList?.Length > 0)
+				sbs.Append("Ignore: ").AppendLine(string.Join(", ", IgnoreList));
+
+			sbs.AppendLine();
+			if (VolumeStrategy != Audio.VolumeStrategy.Ignore)
+				sbs.Append("Mixer volume: ").Append($"{Volume * 100f:N0} %").Append(" – strategy: ").AppendLine(VolumeStrategy.ToString());
+
+			sbs.Append("Log adjusts: ").Append(LogAdjusts ? "Enabled" : "Disabled")
+				.Append(" – start & exit").Append(LogStartAndExit ? "Enabled" : "Disabled")
+				.AppendLine();
+			sbs.Append("Path visibility: ").Append(PathVisibility.ToString());
+
+			if (DeclareParent)
+				sbs.AppendLine("[DeclareParent]");
+
+			if (ExclusiveMode)
+				sbs.AppendLine("[Exclusive]");
+
+			if (AllowPaging)
+				sbs.AppendLine("[AllowPaging]");
+
+			return sbs.ToString();
 		}
 
 		#region IDisposable Support

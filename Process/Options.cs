@@ -1,10 +1,10 @@
 ﻿//
-// ProcessTypes.cs
+// Process.Options.cs
 //
 // Author:
 //       M.A. (https://github.com/mkahvi)
 //
-// Copyright (c) 2018–2019 M.A.
+// Copyright (c) 2019 M.A.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -24,43 +24,43 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
 namespace Taskmaster.Process
 {
-	public enum ProcessType
+	public enum PathVisibilityOptions : int
 	{
 		/// <summary>
-		/// Unspecified type of process.
+		/// Process name. Usually executable name without extension.
 		/// </summary>
-		Generic,
+		Process = -1,
 		/// <summary>
-		/// Video game.
-		/// e.g. Undertale
+		/// Partial path removes some basic elements that seem redundant.
 		/// </summary>
-		Game,
+		Partial = 1,
 		/// <summary>
-		/// Tiny utility process, not needing much resources.
-		/// e.g. calc
+		/// Smart reduction of full path. Not always as smart as desirable.
 		/// </summary>
-		Utility,
+		Smart = 2,
 		/// <summary>
-		/// High priority work oriented process.
-		/// e.g. Blender, Sai, Photoshop, etc.
+		/// Complete path.
 		/// </summary>
-		Productivity,
+		Full = 3,
 		/// <summary>
-		/// Low priority service.
-		/// e.g. Windows Search
+		/// Invalid.
 		/// </summary>
-		LoService,
-		/// <summary>
-		/// High priority service.
-		/// e.g. audiodg
-		/// </summary>
-		HiService,
-		/// <summary>
-		/// System process. These should not be touched.
-		/// e.g. dwm, csrss, winlogon, wininit
-		/// </summary>
-		System
-	};
+		Invalid = 0,
+	}
+
+	public enum IOPriority : int
+	{
+		Ignore = -1,
+		Background = 0,
+		Low = 1,
+		Normal = 2,
+	}
 }

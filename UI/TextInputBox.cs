@@ -44,6 +44,7 @@ namespace Taskmaster
 			AutoSizeMode = AutoSizeMode.GrowAndShrink;
 
 			TopMost = true;
+			Activate();
 			BringToFront();
 
 			var layout = new TableLayoutPanel()

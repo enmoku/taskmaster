@@ -220,6 +220,7 @@ namespace Taskmaster.UI
 		{
 			TopMost = true;
 			Show();
+			Activate();
 		}
 
 		#region IDispose

@@ -64,7 +64,12 @@ namespace Taskmaster.UI
 				var volsec = cfg.Config["Volume Meter"];
 
 				TopMost = volsec.GetOrSet("Topmost", true).Bool;
-				if (TopMost) Show();
+				if (TopMost)
+				{
+					Show();
+					BringToFront();
+					//Activate();
+				}
 
 				Frequency = volsec.GetOrSet("Refresh", 100)
 					.InitComment("Refresh delay. Lower is faster. Milliseconds from 10 to 5000.")

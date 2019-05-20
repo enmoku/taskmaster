@@ -234,8 +234,8 @@ namespace Taskmaster.UI
 				// does nothing without show(), unreliable even with it
 				if (activate)
 				{
-					TopMost = true;
-					TopMost = false;
+					//TopMost = true;
+					//TopMost = false;
 					Activate();
 				}
 				Show();
@@ -771,12 +771,14 @@ namespace Taskmaster.UI
 			WatchlistMap.TryAdd(prc, litem);
 
 			FormatWatchlist(litem, prc);
+			WatchlistUpdateTooltip(litem, prc);
 			WatchlistItemColor(litem, prc);
 		}
 
 		void WatchlistUpdateTooltip(ListViewItem li, Process.Controller prc)
 		{
-			li.ToolTipText = prc.ToIniString();
+			// BUG: Doens't work for some reason. Gets set but is never shown.
+			//li.ToolTipText = prc.ToDetailedString();
 		}
 
 		void FormatWatchlist(ListViewItem litem, Process.Controller prc)
@@ -3389,7 +3391,7 @@ namespace Taskmaster.UI
 
 					if (prc.AffinityIdeal >= 0) sbs.Append("Affinity ideal = ").Append(prc.AffinityIdeal).AppendLine();
 
-					if (prc.IOPriority >= 0) sbs.Append("IO priority = ").Append(prc.IOPriority).AppendLine();
+					if (prc.IOPriority != Process.IOPriority.Ignore) sbs.Append("IO priority = ").Append((int)prc.IOPriority).AppendLine();
 
 					if (prc.PowerPlan != Power.Mode.Undefined)
 						sbs.Append(HumanReadable.Hardware.Power.Plan).Append(" = ").Append(Power.Utility.GetModeName(prc.PowerPlan)).AppendLine();

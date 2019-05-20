@@ -132,6 +132,7 @@
   <ItemGroup>
     <Compile Include="Audio\Utility.cs" />
     <Compile Include="Constants.cs" />
+    <Compile Include="Interface\ISetting.cs" />
     <Compile Include="MKAh\Data\Generic\Constants.cs" />
     <Compile Include="MKAh\Data\Generic\String.cs" />
     <Compile Include="MKAh\File\Allocation.cs" />
@@ -147,6 +148,7 @@
     <Compile Include="MKAh\File\NativeMethods.cs" />
     <Compile Include="Power\NativeMethods.cs" />
     <Compile Include="Power\Utility.cs" />
+    <Compile Include="Process\Options.cs" />
     <Compile Include="Settings.Global.cs" />
     <Compile Include="Process\Foreground.cs" />
     <Compile Include="AlertManager.cs" />

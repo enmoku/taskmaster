@@ -51,9 +51,7 @@ namespace Taskmaster
 			var days = false;
 			if (time.Days > 0)
 			{
-				sbs.Append(time.Days);
-				if (time.Days == 1) sbs.Append(" day");
-				else sbs.Append(" days");
+				sbs.Append(time.Days).Append(time.Days == 1 ? " day" : " days");
 				days = true;
 			}
 
@@ -61,9 +59,7 @@ namespace Taskmaster
 			if (time.Hours > 0)
 			{
 				if (days) sbs.Append(", ");
-				sbs.Append(time.Hours);
-				if (time.Hours == 1) sbs.Append(" hour");
-				else sbs.Append(" hours");
+				sbs.Append(time.Hours).Append(time.Hours == 1 ? " hour" : " hours");
 				hours = true;
 			}
 
@@ -71,8 +67,7 @@ namespace Taskmaster
 				sbs.Append(", ");
 
 			var min = time.Minutes + (time.Seconds / 60.0);
-			sbs.Append($"{min:N1}")
-				.Append(" minute");
+			sbs.Append($"{min:N1}").Append(" minute");
 			if (min > 1 || min < 1) sbs.Append("s");
 
 			return sbs.ToString();
@@ -88,41 +83,37 @@ namespace Taskmaster
 		readonly static string[] ByteLetterSI = { "B", "kB", "MB", "GB" };
 		readonly static string[] ByteLetterIEC = { "B", "KiB", "MiB", "GiB" };
 
+		/// <summary>
+		/// Turns bytes into more human readable values. E.g. 17534252 into 17.53 MiB.
+		/// </summary>
+		/// <param name="bytes"></param>
+		/// <param name="positivesign"></param>
+		/// <param name="iec"></param>
+		/// <returns></returns>
 		public static string ByteString(long bytes, bool positivesign = false, bool iec = false)
 		{
 			double div = 1;
-			int letter = 0;
+			int scale = Byte;
 
 			var multiplier = iec ? MultiplierIEC : MultiplierSI;
 			var byteletter = iec ? ByteLetterIEC : ByteLetterSI;
 
 			if (Math.Abs(bytes) > (multiplier[Giga] * SizeThreshold))
-			{
-				div = multiplier[Giga];
-				letter = Giga;
-			}
+				scale = Giga;
 			else if (Math.Abs(bytes) > (multiplier[Mega] * SizeThreshold))
-			{
-				div = multiplier[Mega];
-				letter = Mega;
-			}
-			else if (Math.Abs(bytes) > (Kilo * SizeThreshold))
-			{
-				div = multiplier[Kilo];
-				letter = Kilo;
-			}
-			else
-			{
-				div = 1;
-				letter = Byte;
-			}
+				scale = Mega;
+			else if (Math.Abs(bytes) > (multiplier[Kilo] * SizeThreshold))
+				scale = Kilo;
+			// else = Byte/Default
+
+			div = multiplier[scale];
 
 			double num = bytes / div;
 
 			return string.Format(
 				new System.Globalization.NumberFormatInfo() { NumberDecimalDigits = div == 1 ? 0 : ((num < 10) ? 3 : ((num > 100) ? 1 : 2)) },
 				"{0}{1:N} {2}",
-				((positivesign && bytes > 0) ? "+" : ""), num, byteletter[letter]);
+				((positivesign && bytes > 0) ? "+" : ""), num, byteletter[scale]);
 		}
 	}
 }

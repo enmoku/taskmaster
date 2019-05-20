@@ -932,10 +932,10 @@ namespace Taskmaster.Process
 						ExclusiveMode = (section.Get("Exclusive")?.Bool ?? false),
 						DeclareParent = (section.Get("Declare parent")?.Bool ?? false),
 						OrderPreference = (section.Get("Preference")?.Int.Constrain(0, 100) ?? 10),
-						IOPriority = (section.Get("IO priority")?.Int.Constrain(0, 2) ?? -1), // 0-1 background, 2 = normal, anything else seems to have no effect
+						IOPriority = (IOPriority)(section.Get("IO priority")?.Int.Constrain(-1, 2) ?? -1), // 0-1 background, 2 = normal, anything else seems to have no effect
 						LogAdjusts = (section.Get("Logging")?.Bool ?? true),
 						LogStartAndExit = (section.Get("Log start and exit")?.Bool ?? false),
-						Volume = (section.Get(HumanReadable.Hardware.Audio.Volume)?.Float.Constrain(0.0f, 1.0f) ?? 0.5f),
+						Volume = (section.Get(HumanReadable.Hardware.Audio.Volume)?.Float ?? 0.5f),
 						VolumeStrategy = (Audio.VolumeStrategy)(section.Get("Volume strategy")?.Int.Constrain(0, 5) ?? 0),
 					};
 
