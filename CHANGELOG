@@ -3,6 +3,8 @@ Comprehensive changes can be found in Git change history:
 	https://github.com/mkahvi/taskmaster/commits/master
 
 ## [0.13...]
+### 2019-05-20
+	Added: Preference order column added to watchlist.
 ### 2019-05-19
 	Fixed: Executable matching was not working correctly since multi-exe support was added.
 ### 2019-05-14
