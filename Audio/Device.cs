@@ -45,22 +45,22 @@ namespace Taskmaster.Audio
 			MMDevice = device;
 		}
 
-		public string Name { get; private set; }
-		public string GUID { get; private set; }
+		public string Name { get; private set; } = string.Empty;
+		public string GUID { get; private set; } = string.Empty;
+		 
+		public bool VolumeControl { get; set; } = false;
+		public float Volume { get; set; } = float.NaN;
+		public float Target { get; set; } = float.NaN;
 
-		public bool VolumeControl { get; set; }
-		public float Volume { get; set; }
-		public float Target { get; set; }
-
-		public NAudio.CoreAudioApi.DeviceState State { get; set; }
-		public NAudio.CoreAudioApi.DataFlow Flow { get; set; }
-
+		public NAudio.CoreAudioApi.DeviceState State { get; set; } = NAudio.CoreAudioApi.DeviceState.NotPresent;
+		public NAudio.CoreAudioApi.DataFlow Flow { get; set; } = NAudio.CoreAudioApi.DataFlow.All;
+		
 		public NAudio.CoreAudioApi.MMDevice MMDevice { get; private set; } = null;
 
 		public override string ToString() => $"{Name ?? "n/a"} {{{GUID ?? "n/a"}}}";
 
 		#region IDisposable Support
-		bool DisposingOrDisposed = false; // To detect redundant calls
+		bool DisposingOrDisposed { get; set; } = false; // To detect redundant calls
 
 		~Device() => Dispose(false);
 

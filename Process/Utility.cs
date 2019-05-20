@@ -36,6 +36,9 @@ namespace Taskmaster.Process
 {
 	public static class Utility
 	{
+		public static int CPUCount => Environment.ProcessorCount; // pointless
+		public static int FullCPUMask => (1 << CPUCount) - 1;
+
 		/// <summary>
 		/// Tests if the process ID is core system process (0[idle] or 4[system]) that can never be valid program.
 		/// </summary>
@@ -186,7 +189,7 @@ namespace Taskmaster.Process
 				int excesscores = Bit.Count(target) - Bit.Count(source);
 				if (excesscores > 0)
 				{
-					for (int i = 0; i < Process.Manager.CPUCount; i++)
+					for (int i = 0; i < Process.Utility.CPUCount; i++)
 					{
 						if (Bit.IsSet(newAffinityMask, i))
 						{
@@ -351,7 +354,7 @@ namespace Taskmaster.Process
 			try
 			{
 				ppid = info.Process.ParentProcessId();
-				if (Utility.GetInfo(ppid, out var parent, null, null, null, null, true))
+				if (GetInfo(ppid, out var parent, null, null, null, null, true))
 					return parent;
 			}
 			catch

@@ -554,7 +554,7 @@ namespace Taskmaster.UI
 							ea.Info.Name,
 							prc.FriendlyName,
 							(ea.PriorityNew.HasValue ? MKAh.Readable.ProcessPriority(ea.PriorityNew.Value) : HumanReadable.Generic.NotAvailable),
-							(ea.AffinityNew >= 0 ? HumanInterface.BitMask(ea.AffinityNew, Process.Manager.CPUCount) : HumanReadable.Generic.NotAvailable),
+							(ea.AffinityNew >= 0 ? HumanInterface.BitMask(ea.AffinityNew, Process.Utility.CPUCount) : HumanReadable.Generic.NotAvailable),
 							ea.Info.Path
 						});
 					lastmodifylist.Items.Add(mi);
@@ -750,13 +750,14 @@ namespace Taskmaster.UI
 			if (prc.AffinityMask > 0)
 			{
 				if (AffinityStyle == 0)
-					aff = HumanInterface.BitMask(prc.AffinityMask, Process.Manager.CPUCount);
+					aff = HumanInterface.BitMask(prc.AffinityMask, Process.Utility.CPUCount);
 				else
 					aff = prc.AffinityMask.ToString();
 			}
 
 			var litem = new ListViewItem(new string[] {
 				(prc.ActualOrder+1).ToString(),
+				prc.OrderPreference.ToString(),
 				prc.FriendlyName,
 				prc.Executables?.Length > 0 ? string.Join(", ", prc.Executables) : string.Empty,
 				string.Empty,
@@ -773,6 +774,11 @@ namespace Taskmaster.UI
 			WatchlistItemColor(litem, prc);
 		}
 
+		void WatchlistUpdateTooltip(ListViewItem li, Process.Controller prc)
+		{
+			li.ToolTipText = prc.ToIniString();
+		}
+
 		void FormatWatchlist(ListViewItem litem, Process.Controller prc)
 		{
 			if (!IsHandleCreated || DisposedOrDisposing) return;
@@ -787,33 +793,23 @@ namespace Taskmaster.UI
 		{
 			if (!IsHandleCreated || DisposedOrDisposing) return;
 
-			// 0 = ID
-			// 1 = Friendly Name
-			// 2 = Executable
-			// 3 = Priority
-			// 4 = Affinity
-			// 5 = Power
-			// 6 = Adjusts
-			// 7 = Path
-
+			litem.SubItems[PrefColumn].Text = prc.OrderPreference.ToString();
 			litem.SubItems[NameColumn].Text = prc.FriendlyName;
 			litem.SubItems[ExeColumn].Text = (prc.Executables?.Length > 0) ? string.Join(", ", prc.Executables) : string.Empty;
 			litem.SubItems[PrioColumn].Text = prc.Priority.HasValue ? MKAh.Readable.ProcessPriority(prc.Priority.Value) : string.Empty;
 			string aff = string.Empty;
 			if (prc.AffinityMask >= 0)
 			{
-				if (prc.AffinityMask == Process.Manager.AllCPUsMask || prc.AffinityMask == 0)
+				if (prc.AffinityMask == Process.Utility.FullCPUMask || prc.AffinityMask == 0)
 					aff = "Full/OS";
 				else if (AffinityStyle == 0)
-					aff = HumanInterface.BitMask(prc.AffinityMask, Process.Manager.CPUCount);
+					aff = HumanInterface.BitMask(prc.AffinityMask, Process.Utility.CPUCount);
 				else
 					aff = prc.AffinityMask.ToString();
 			}
 			litem.SubItems[AffColumn].Text = aff;
 			litem.SubItems[PowerColumn].Text = (prc.PowerPlan != Power.Mode.Undefined ? Power.Utility.GetModeName(prc.PowerPlan) : string.Empty);
 			litem.SubItems[PathColumn].Text = (string.IsNullOrEmpty(prc.Path) ? string.Empty : prc.Path);
-
-			WatchlistRules.EndUpdate();
 		}
 
 		public void UpdateWatchlistRule(Process.Controller prc)
@@ -834,6 +830,9 @@ namespace Taskmaster.UI
 			if (!IsHandleCreated || DisposedOrDisposing) return;
 
 			FormatWatchlist(litem, prc);
+
+			WatchlistUpdateTooltip(litem, prc);
+
 			WatchlistItemColor(litem, prc);
 		}
 
@@ -1030,13 +1029,14 @@ namespace Taskmaster.UI
 
 		// TODO: Easier column access somehow than this?
 		//int OrderColumn = 0;
-		int NameColumn = 1;
-		int ExeColumn = 2;
-		int PrioColumn = 3;
-		int AffColumn = 4;
-		int PowerColumn = 5;
-		int AdjustColumn = 6;
-		int PathColumn = 7;
+		int PrefColumn = 1;
+		int NameColumn = 2;
+		int ExeColumn = 3;
+		int PrioColumn = 4;
+		int AffColumn = 5;
+		int PowerColumn = 6;
+		int AdjustColumn = 7;
+		int PathColumn = 8;
 
 		TabPage infoTab = null;
 		TabPage watchTab = null;
@@ -2167,6 +2167,7 @@ namespace Taskmaster.UI
 				FullRowSelect = true,
 				MinimumSize = new System.Drawing.Size(-2, -2),
 				AllowColumnReorder = true,
+				ShowItemToolTips = true,
 			};
 
 			WatchlistRules.KeyPress += WatchlistRulesKeyboardSearch;
@@ -2213,13 +2214,14 @@ namespace Taskmaster.UI
 			WatchlistRules.ContextMenuStrip = watchlistms;
 
 			WatchlistRules.Columns.Add("#", appwidths[0]);
-			WatchlistRules.Columns.Add("Name", appwidths[1]);
-			WatchlistRules.Columns.Add(HumanReadable.System.Process.Executable, appwidths[2]);
-			WatchlistRules.Columns.Add(HumanReadable.System.Process.Priority, appwidths[3]);
-			WatchlistRules.Columns.Add(HumanReadable.System.Process.Affinity, appwidths[4]);
-			WatchlistRules.Columns.Add(HumanReadable.Hardware.Power.Plan, appwidths[5]);
-			WatchlistRules.Columns.Add("Adjusts", appwidths[6]);
-			WatchlistRules.Columns.Add(HumanReadable.System.Process.Path, appwidths[7]);
+			WatchlistRules.Columns.Add("Pref.", appwidths[PrefColumn]);
+			WatchlistRules.Columns.Add("Name", appwidths[NameColumn]);
+			WatchlistRules.Columns.Add(HumanReadable.System.Process.Executable, appwidths[ExeColumn]);
+			WatchlistRules.Columns.Add(HumanReadable.System.Process.Priority, appwidths[PrioColumn]);
+			WatchlistRules.Columns.Add(HumanReadable.System.Process.Affinity, appwidths[AffColumn]);
+			WatchlistRules.Columns.Add(HumanReadable.Hardware.Power.Plan, appwidths[PowerColumn]);
+			WatchlistRules.Columns.Add("Adjusts", appwidths[AdjustColumn]);
+			WatchlistRules.Columns.Add(HumanReadable.System.Process.Path, appwidths[PathColumn]);
 
 			for (int i = 0; i < 8; i++)
 				WatchlistRules.Columns[i].DisplayIndex = apporder[i];
@@ -2242,11 +2244,11 @@ namespace Taskmaster.UI
 
 				opentab = uicfg.Config[Constants.Tabs].Get("Open")?.Int ?? 0;
 				appwidths = null;
-				var appwidthsDefault = new int[] { 20, 120, 140, 82, 60, 76, 46, 160 };
+				var appwidthsDefault = new int[] { 20, 20, 120, 140, 82, 60, 76, 46, 160 };
 				appwidths = colcfg.GetOrSet(Constants.Apps, appwidthsDefault).IntArray;
 				if (appwidths.Length != appwidthsDefault.Length) appwidths = appwidthsDefault;
 
-				var appOrderDefault = new int[] { 0, 1, 2, 3, 4, 5, 6, 7 };
+				var appOrderDefault = new int[] { 0, 1, 2, 3, 4, 5, 6, 7, 8 };
 				apporder = colcfg.GetOrSet("App order", appOrderDefault).IntArray;
 				var unqorder = new HashSet<int>(appOrderDefault.Length);
 				foreach (var i in apporder) unqorder.Add(i);

@@ -55,7 +55,7 @@ namespace Processes
 			int testSource = 192;
 			int testTarget = 240;
 
-			switch (Taskmaster.Process.Manager.CPUCount)
+			switch (Taskmaster.Process.Utility.CPUCount)
 			{
 				case 4:
 					testSource = 0b0100;

@@ -205,9 +205,9 @@ namespace Taskmaster
 
 				SelfAffinity = perfsec.GetOrSet("Self-affinity", 0)
 					.InitComment("Core mask as integer. 0 is for default OS control.")
-					.Int.Constrain(0, Process.Manager.AllCPUsMask);
+					.Int.Constrain(0, Process.Utility.FullCPUMask);
 
-				if (SelfAffinity > Convert.ToInt32(Math.Pow(2, Environment.ProcessorCount) - 1 + double.Epsilon)) SelfAffinity = 0;
+				if (SelfAffinity > Process.Utility.FullCPUMask) SelfAffinity = 0;
 
 				SelfOptimizeBGIO = perfsec.GetOrSet("Background I/O mode", false)
 					.InitComment("Sets own priority exceptionally low. Warning: This can make TM's UI and functionality quite unresponsive.")
@@ -331,10 +331,10 @@ namespace Taskmaster
 
 			var timer = System.Diagnostics.Stopwatch.StartNew();
 
-			LoadEvent?.Invoke(null, new LoadEventArgs("Component loading starting.", LoadEventType.Info, 0, 11));
-
-			int componentsToLoad = 11;
+			int componentsToLoad = 11; // how to make this automatic?
 			int loaded = 0;
+
+			LoadEvent?.Invoke(null, new LoadEventArgs("Component loading starting.", LoadEventType.Info, 0, componentsToLoad));
 
 			var cts = new System.Threading.CancellationTokenSource();
 
@@ -510,8 +510,8 @@ namespace Taskmaster
 				}
 				*/
 
-				int selfAffMask = SelfAffinity.Replace(0, Process.Manager.AllCPUsMask);
-				Log.Information($"<Core> Self-optimizing – Priority: {SelfPriority.ToString()}; Affinity: {HumanInterface.BitMask(selfAffMask, Process.Manager.CPUCount)}");
+				int selfAffMask = SelfAffinity.Replace(0, Process.Utility.FullCPUMask);
+				Log.Information($"<Core> Self-optimizing – Priority: {SelfPriority.ToString()}; Affinity: {HumanInterface.BitMask(selfAffMask, Process.Utility.CPUCount)}");
 
 				self.ProcessorAffinity = new IntPtr(selfAffMask); // this should never throw an exception
 				self.PriorityClass = SelfPriority;

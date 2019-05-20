@@ -108,15 +108,13 @@ namespace Taskmaster.Process
 		{
 			RenewWatchlistCache();
 
-			AllCPUsMask = Convert.ToInt32(Math.Pow(2, CPUCount) - 1 + double.Epsilon);
-
 			if (RecordAnalysis.HasValue) analyzer = new Analyzer();
 
 			//allCPUsMask = 1;
 			//for (int i = 0; i < CPUCount - 1; i++)
 			//	allCPUsMask = (allCPUsMask << 1) | 1;
 
-			if (DebugProcesses) Log.Debug($"<CPU> Logical cores: {CPUCount}, full mask: {Convert.ToString(AllCPUsMask, 2)} ({AllCPUsMask} = OS control)");
+			if (DebugProcesses) Log.Debug($"<CPU> Logical cores: {Utility.CPUCount}, full mask: {Convert.ToString(Utility.FullCPUMask, 2)} ({Utility.FullCPUMask} = OS control)");
 
 			LoadConfig();
 
@@ -170,9 +168,6 @@ namespace Taskmaster.Process
 		/// Executable name to ProcessControl mapping.
 		/// </summary>
 		ConcurrentDictionary<string, List<Controller>> ExeToController = new ConcurrentDictionary<string, List<Controller>>();
-
-		public static int CPUCount = Environment.ProcessorCount;
-		public static int AllCPUsMask = Convert.ToInt32(Math.Pow(2, CPUCount) - 1 + double.Epsilon);
 
 		public int DefaultBackgroundPriority = 1;
 		public int DefaultBackgroundAffinity = 0;
@@ -711,7 +706,7 @@ namespace Taskmaster.Process
 				// OffFocusPowerCancel = fgpausesec.GetSetDefault("Power mode cancel", true, out modified).Bool;
 				// dirtyconfig |= modified;
 
-				DefaultBackgroundAffinity = fgpausesec.GetOrSet("Default affinity", 14).Int.Constrain(0, AllCPUsMask);
+				DefaultBackgroundAffinity = fgpausesec.GetOrSet("Default affinity", 14).Int.Constrain(0, Utility.FullCPUMask);
 
 				// --------------------------------------------------------------------------------------------------------
 
@@ -798,7 +793,7 @@ namespace Taskmaster.Process
 		{
 			Log.Information("<Process> Loading watchlist...");
 
-			int withPath=0, hybrids=0;
+			int withPath = 0, hybrids = 0;
 
 			var appcfg = Config.Load(WatchlistFile);
 
@@ -872,7 +867,7 @@ namespace Taskmaster.Process
 					aff = (ruleAff?.Int ?? -1);
 					var pmode_t = rulePow?.String;
 
-					if (aff > AllCPUsMask || aff < -1)
+					if (aff > Utility.FullCPUMask || aff < -1)
 					{
 						Log.Warning($"<Watchlist:{ruleAff.Line}> [{section.Name}] Affinity({aff}) is malconfigured. Skipping.");
 						//aff = Bit.And(aff, allCPUsMask); // at worst case results in 1 core used
@@ -956,7 +951,7 @@ namespace Taskmaster.Process
 					prc.AffinityIdeal = ruleIdeal?.Int ?? -1;
 					if (prc.AffinityIdeal >= 0 && !Bit.IsSet(prc.AffinityMask, prc.AffinityIdeal))
 					{
-						Log.Debug($"<Watchlist:{ruleIdeal.Line}> [{prc.FriendlyName}] Affinity ideal to mask mismatch: {HumanInterface.BitMask(prc.AffinityMask, CPUCount)}, ideal core: {prc.AffinityIdeal}");
+						Log.Debug($"<Watchlist:{ruleIdeal.Line}> [{prc.FriendlyName}] Affinity ideal to mask mismatch: {HumanInterface.BitMask(prc.AffinityMask, Utility.CPUCount)}, ideal core: {prc.AffinityIdeal}");
 						prc.AffinityIdeal = -1;
 					}
 
@@ -1662,7 +1657,7 @@ namespace Taskmaster.Process
 		}
 
 		// TODO: This should probably be pushed into ProcessController somehow.
-		async Task ProcessTriage(ProcessEx info, bool old=false)
+		async Task ProcessTriage(ProcessEx info, bool old = false)
 		{
 			if (DisposedOrDisposing) throw new ObjectDisposedException(nameof(Manager), "ProcessTriage called when ProcessManager was already disposed");
 
@@ -1963,7 +1958,7 @@ namespace Taskmaster.Process
 				// TODO: Instance groups?
 				try
 				{
-					string iname=string.Empty, cmdl=string.Empty;
+					string iname = string.Empty, cmdl = string.Empty;
 					using (var targetInstance = ea.NewEvent.Properties["TargetInstance"].Value as ManagementBaseObject)
 					{
 						//var tpid = targetInstance.Properties["Handle"].Value as int?; // doesn't work for some reason

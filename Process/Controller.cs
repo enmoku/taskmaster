@@ -798,13 +798,13 @@ namespace Taskmaster.Process
 				{
 					if (oldAffinity != BackgroundAffinity)
 					{
-						info.Process.ProcessorAffinity = new IntPtr(BackgroundAffinity.Replace(0, Manager.AllCPUsMask));
+						info.Process.ProcessorAffinity = new IntPtr(BackgroundAffinity.Replace(0, Utility.FullCPUMask));
 						mAffinity = true;
 					}
 				}
 				else if (AffinityMask >= 0 && EstablishNewAffinity(oldAffinity, out int newAffinityMask)) // set foreground affinity otherwise
 				{
-					info.Process.ProcessorAffinity = new IntPtr(BackgroundAffinity.Replace(0, Manager.AllCPUsMask));
+					info.Process.ProcessorAffinity = new IntPtr(BackgroundAffinity.Replace(0, Utility.FullCPUMask));
 					mAffinity = true;
 				}
 			}
@@ -877,7 +877,7 @@ namespace Taskmaster.Process
 				oldAffinity = info.Process.ProcessorAffinity.ToInt32();
 				if (AffinityMask >= 0 && EstablishNewAffinity(oldAffinity, out newAffinity))
 				{
-					info.Process.ProcessorAffinity = new IntPtr(newAffinity.Replace(0, Manager.AllCPUsMask));
+					info.Process.ProcessorAffinity = new IntPtr(newAffinity.Replace(0, Utility.FullCPUMask));
 					mAffinity = true;
 				}
 
@@ -1183,7 +1183,7 @@ namespace Taskmaster.Process
 
 					oldAffinity = info.Process.ProcessorAffinity;
 					oldPriority = info.Process.PriorityClass;
-					oldAffinityMask = oldAffinity.Value.ToInt32().Replace(0, Manager.AllCPUsMask);
+					oldAffinityMask = oldAffinity.Value.ToInt32().Replace(0, Utility.FullCPUMask);
 				}
 				catch (InvalidOperationException) // Already exited
 				{
@@ -1359,11 +1359,11 @@ namespace Taskmaster.Process
 
 				if (AffinityMask >= 0)
 				{
-					newAffinityMask = AffinityMask.Replace(0, Manager.AllCPUsMask);
+					newAffinityMask = AffinityMask.Replace(0, Utility.FullCPUMask);
 
 					if (EstablishNewAffinity(oldAffinityMask, out newAffinityMask))
 					{
-						newAffinity = new IntPtr(newAffinityMask.Replace(0, Manager.AllCPUsMask));
+						newAffinity = new IntPtr(newAffinityMask.Replace(0, Utility.FullCPUMask));
 						try
 						{
 							info.Process.ProcessorAffinity = newAffinity.Value;
@@ -1752,7 +1752,7 @@ namespace Taskmaster.Process
 				{
 					info.Process.EnableRaisingEvents = true;
 					info.Process.Exited += (_, _ea) => ProcessEndResize(info, oldrect, re);
-					// TODO:
+					// TODO: ??? forgot to fill this in
 					info.Process.Refresh();
 					if (info.Process.HasExited && info.Resize)
 					{

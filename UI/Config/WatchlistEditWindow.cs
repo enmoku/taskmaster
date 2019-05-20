@@ -585,9 +585,9 @@ namespace Taskmaster.UI.Config
 			affinityMask = new NumericUpDown()
 			{
 				Width = 80,
-				Maximum = Process.Manager.AllCPUsMask,
+				Maximum = Process.Utility.FullCPUMask,
 				Minimum = -1,
-				Value = Controller.AffinityMask.Constrain(-1, Process.Manager.AllCPUsMask),
+				Value = Controller.AffinityMask.Constrain(-1, Process.Utility.FullCPUMask),
 			};
 
 			tooltip.SetToolTip(affinityMask, "CPU core afffinity as integer mask.\nEnter 0 to let OS manage this as normal.\nFull affinity is same as 0, there's no difference.\nExamples:\n14 = all but first core on quadcore.\n254 = all but first core on octocore.\n-1 = Ignored");
@@ -601,7 +601,7 @@ namespace Taskmaster.UI.Config
 			var corelayout = new TableLayoutPanel() { ColumnCount = 8, AutoSize = true };
 
 			cpumask = Controller.AffinityMask;
-			for (int bit = 0; bit < Process.Manager.CPUCount; bit++)
+			for (int bit = 0; bit < Process.Utility.CPUCount; bit++)
 			{
 				int lbit = bit;
 				var box = new CheckBox
@@ -670,9 +670,9 @@ namespace Taskmaster.UI.Config
 			idealAffinity = new NumericUpDown()
 			{
 				Width = 80,
-				Maximum = Process.Manager.CPUCount,
+				Maximum = Process.Utility.CPUCount,
 				Minimum = 0,
-				Value = (Controller.AffinityIdeal + 1).Constrain(0, Process.Manager.CPUCount),
+				Value = (Controller.AffinityIdeal + 1).Constrain(0, Process.Utility.CPUCount),
 			};
 			tooltip.SetToolTip(idealAffinity, "EXPERIMENTAL\nTell the OS to favor this particular core for the primary thread.\nMay not have any perceivable effect.\n0 disables this feature.");
 
@@ -744,7 +744,7 @@ namespace Taskmaster.UI.Config
 			bgAffinityMask = new NumericUpDown()
 			{
 				Width = 80,
-				Maximum = Process.Manager.AllCPUsMask,
+				Maximum = Process.Utility.FullCPUMask,
 				Minimum = -1,
 				Value = Controller.BackgroundAffinity,
 			};
@@ -1105,7 +1105,7 @@ namespace Taskmaster.UI.Config
 
 			if (affinityMask.Value >= 0 && idealAffinity.Value > 0)
 			{
-				if (!Bit.IsSet(Convert.ToInt32(affinityMask.Value).Replace(0, Process.Manager.AllCPUsMask), Convert.ToInt32(idealAffinity.Value) - 1))
+				if (!Bit.IsSet(Convert.ToInt32(affinityMask.Value).Replace(0, Process.Utility.FullCPUMask), Convert.ToInt32(idealAffinity.Value) - 1))
 					sbs.Append("Affinity ideal is not within defined affinity.").AppendLine();
 			}
 

@@ -129,10 +129,10 @@ namespace Taskmaster.UI
 		void ExitButton_Click(object sender, EventArgs e)
 			=> UnifiedExit();
 
-		internal void Load(string message, LoadEventType type, int subItemsDone=-1, int subItemsTotal=-1)
-			=> LoadEvent(null, new LoadEventArgs(message, type, subItemsDone, subItemsTotal));
-
 		internal bool AutoClose { get; set; } = true;
+
+		internal void LoadEvent(string message, LoadEventType type, int subItemsDone=-1, int subItemsTotal=-1)
+			=> LoadEvent(null, new LoadEventArgs(message, type, subItemsDone, subItemsTotal));
 
 		internal void LoadEvent(object sender, LoadEventArgs ea)
 		{

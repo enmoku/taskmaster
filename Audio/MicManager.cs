@@ -103,8 +103,8 @@ namespace Taskmaster.Audio
 			Debug.Assert(MKAh.Execution.IsMainThread, "Requires main thread");
 			Context = System.Threading.Thread.CurrentThread;
 
-			var mvol = "Default recording volume";
-			var mcontrol = "Recording volume control";
+			const string mvol = "Default recording volume";
+			const string mcontrol = "Recording volume control";
 
 			using (var corecfg = Config.Load(CoreConfigFilename).BlockUnload())
 			{
@@ -366,6 +366,7 @@ namespace Taskmaster.Audio
 
 		public int Corrections { get; private set; } = 0;
 
+		int correcting_counter = 0;
 		int correcting_lock; // = 0;
 		async void VolumeChangedHandler(NAudio.CoreAudioApi.AudioVolumeNotificationData data)
 		{
@@ -374,6 +375,7 @@ namespace Taskmaster.Audio
 			var oldVol = Volume;
 			double newVol = data.MasterVolume * 100;
 
+			// BUG: This will allow tiny 
 			if (Math.Abs(newVol - Target) <= SmallVolumeHysterisis)
 			{
 				if (ShowInaction && DebugMic)
@@ -388,6 +390,7 @@ namespace Taskmaster.Audio
 			// HOPEFULLY there are no edge cases with this triggering just before last adjustment
 			// and the notification for the last adjustment coming slightly before. Seems super unlikely tho.
 			// TODO: Delay this even more if volume is changed ~2 seconds before we try to do so.
+
 			if (Math.Abs(newVol - Target) >= VolumeHysterisis) // Volume != Target for double
 			{
 				if (Trace) Log.Verbose($"<Microphone> DEBUG: Volume changed = [{oldVol:N1} → {newVol:N1}], Off.Target: {Math.Abs(newVol - Target):N1}");
