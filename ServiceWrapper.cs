@@ -48,8 +48,8 @@ namespace Taskmaster
 		{
 			ServiceName = service;
 
-			Service = new Lazy<ServiceController>(() => new ServiceController(ServiceName));
-			WMI = new Lazy<ManagementObject>(() => new ManagementObject(scope, $"Win32_Service.Name='{ServiceName}'", null));
+			Service = new Lazy<ServiceController>(() => new ServiceController(ServiceName), false);
+			WMI = new Lazy<ManagementObject>(() => new ManagementObject(scope, $"Win32_Service.Name='{ServiceName}'", null), false);
 		}
 
 		bool Running => Service.Value.Status == ServiceControllerStatus.Running;

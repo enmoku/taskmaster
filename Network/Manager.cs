@@ -627,7 +627,7 @@ namespace Taskmaster.Network
 		readonly object interfaces_lock = new object();
 		int InterfaceUpdateLimiter = 0;
 
-		void InvalidateInterfaceList() => CurrentInterfaceList = new Lazy<List<Device>>(RecreateInterfaceList);
+		void InvalidateInterfaceList() => CurrentInterfaceList = new Lazy<List<Device>>(RecreateInterfaceList, false);
 
 		List<Device> RecreateInterfaceList()
 		{

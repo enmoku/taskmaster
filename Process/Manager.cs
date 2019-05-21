@@ -1098,7 +1098,7 @@ namespace Taskmaster.Process
 		void RenewWatchlistCache()
 		{
 			// TODO: Add limiter
-			WatchlistCache = new Lazy<List<Controller>>(LazyRecacheWatchlist);
+			WatchlistCache = new Lazy<List<Controller>>(LazyRecacheWatchlist, false);
 			ResetWatchlistCancellation();
 		}
 
