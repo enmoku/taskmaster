@@ -39,21 +39,14 @@ namespace Taskmaster
 		{
 			try
 			{
-				var now = DateTimeOffset.UtcNow;
-				var next = now.AddDays(1);
-				var nextmidnight = now.TimeTo(next);
-				//var nextmidnightms = Convert.ToInt64(nextmidnight.TotalMilliseconds);
-				DateTime lnext = next.UtcDateTime;
-
-				Log.Information($"<Self-Maintenance> Next maintenance: {lnext.ToLongDateString()} {lnext.ToLongTimeString()} [in {HumanInterface.PureTimeString(nextmidnight)}]");
-
 				timer = new System.Timers.Timer(86_400_000); // once a day
+				timer.AutoReset = false;
 				timer.Elapsed += MaintenanceTick;
-				timer.Start();
+				TimerReset();
 			}
 			catch (Exception ex)
 			{
-				Logging.Stacktrace(ex, true);
+				Logging.Stacktrace(ex);
 				throw;
 			}
 
@@ -61,6 +54,22 @@ namespace Taskmaster
 
 			RegisterForExit(this);
 			DisposalChute.Push(this);
+		}
+
+		void TimerReset()
+		{
+			var now = DateTimeOffset.Now;
+			int skip = 24 - now.Hour;
+			var next = now.AddHours(skip).AddDays(skip < 1 ? 1 : 0);
+			var nextmidnight = now.TimeTo(next);
+			//var nextmidnightms = Convert.ToInt64(nextmidnight.TotalMilliseconds);
+			DateTime lnext = next.DateTime;
+
+			// TODO: Use human readable time for nextmidnight
+			Log.Information($"<Self-Maintenance> Next maintenance: {lnext.ToLongDateString()} {lnext.ToLongTimeString()} [in: {nextmidnight:c}]");
+
+			timer.Interval = nextmidnight.TotalMilliseconds;
+			timer.Start();
 		}
 
 		readonly System.Timers.Timer timer = null;
@@ -119,6 +128,8 @@ namespace Taskmaster
 				Statistics.MaintenanceTime += time.Elapsed.TotalSeconds;
 
 				if (Trace) Log.Verbose($"Maintenance took: {time.Elapsed.TotalSeconds:N2}s");
+
+				TimerReset();
 
 				Atomic.Unlock(ref CallbackLimiter);
 			}
