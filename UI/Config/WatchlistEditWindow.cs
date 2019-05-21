@@ -686,7 +686,7 @@ namespace Taskmaster.UI.Config
 				{
 					DropDownStyle = ComboBoxStyle.DropDownList,
 					Items = { "Ignore", "Background", "Low", "Normal" },
-					SelectedIndex = (int)Controller.IOPriority + 1,
+					SelectedIndex = ((int)Controller.IOPriority) + 1,
 					AutoSize = true,
 					Dock = DockStyle.Fill,
 				};
