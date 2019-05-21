@@ -175,6 +175,7 @@ namespace Taskmaster
 			pipe = null;
 		}
 
+		// Static Finalizer
 		private static readonly Finalizer finalizer = new Finalizer();
 		private sealed class Finalizer
 		{

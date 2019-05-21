@@ -43,7 +43,7 @@ namespace Taskmaster.UI
 	// public class MainWindow : System.Windows.Window; // TODO: WPF
 	sealed public class MainWindow : UniForm
 	{
-		ToolTip tooltip = new ToolTip();
+		readonly ToolTip tooltip = new ToolTip();
 
 		System.Drawing.Color WarningColor = System.Drawing.Color.Red;
 		System.Drawing.Color AlterColor = System.Drawing.Color.FromArgb(245, 245, 245); // ignores user styles
@@ -470,7 +470,7 @@ namespace Taskmaster.UI
 			}
 		}
 
-		ConcurrentDictionary<string, ListViewItem> MicGuidToAudioInputs = new ConcurrentDictionary<string, ListViewItem>();
+		readonly ConcurrentDictionary<string, ListViewItem> MicGuidToAudioInputs = new ConcurrentDictionary<string, ListViewItem>();
 
 		void AudioDeviceStateChanged(object sender, Audio.DeviceStateEventArgs ea)
 		{
@@ -591,7 +591,7 @@ namespace Taskmaster.UI
 		public void Hook(StorageManager manager)
 		{
 			storagemanager = manager;
-			storagemanager.onTempScan += TempScanStats;
+			storagemanager.TempScan += TempScanStats;
 			storagemanager.OnDisposed += (_, _ea) => storagemanager = null;
 		}
 
@@ -612,7 +612,7 @@ namespace Taskmaster.UI
 
 			BeginInvoke(new Action(() =>
 			{
-				foreach (var prc in processmanager.getWatchlist())
+				foreach (var prc in processmanager.GetWatchlist())
 					AddToWatchlistList(prc);
 
 				WatchlistColor();
@@ -631,7 +631,7 @@ namespace Taskmaster.UI
 
 			processmanager.ProcessModified += ProcessTouchEvent;
 
-			foreach (var info in processmanager.getExitWaitList())
+			foreach (var info in processmanager.GetExitWaitList())
 				ExitWaitListHandler(this, new ProcessModificationEventArgs(info));
 		}
 
@@ -843,8 +843,8 @@ namespace Taskmaster.UI
 		ListView AudioInputs = null;
 		ListView WatchlistRules = null;
 
-		ConcurrentDictionary<Process.Controller, ListViewItem> WatchlistMap = new ConcurrentDictionary<Process.Controller, ListViewItem>();
-		object watchlist_lock = new object();
+		readonly ConcurrentDictionary<Process.Controller, ListViewItem> WatchlistMap = new ConcurrentDictionary<Process.Controller, ListViewItem>();
+		readonly object watchlist_lock = new object();
 
 		Label corCountLabel = null;
 		ComboBox AudioInputEnable = null;
@@ -1031,14 +1031,14 @@ namespace Taskmaster.UI
 
 		// TODO: Easier column access somehow than this?
 		//int OrderColumn = 0;
-		int PrefColumn = 1;
-		int NameColumn = 2;
-		int ExeColumn = 3;
-		int PrioColumn = 4;
-		int AffColumn = 5;
-		int PowerColumn = 6;
-		int AdjustColumn = 7;
-		int PathColumn = 8;
+		const int PrefColumn = 1;
+		const int NameColumn = 2;
+		const int ExeColumn = 3;
+		const int PrioColumn = 4;
+		const int AffColumn = 5;
+		const int PowerColumn = 6;
+		const int AdjustColumn = 7;
+		const int PathColumn = 8;
 
 		TabPage infoTab = null;
 		TabPage watchTab = null;
@@ -1640,8 +1640,8 @@ namespace Taskmaster.UI
 				{
 					var pev = new Power.ModeEventArgs(powermanager.CurrentMode);
 					PowerPlanDebugEvent(this, pev); // populates powerbalancer_plan
-					powermanager.onPlanChange += PowerPlanDebugEvent;
-					powermanager.onAutoAdjustAttempt += PowerLoadDebugHandler;
+					powermanager.PlanChange += PowerPlanDebugEvent;
+					powermanager.AutoAdjustAttempt += PowerLoadDebugHandler;
 
 					if (powerDebugTab is null) BuildPowerDebugPanel();
 					else tabLayout.Controls.Add(powerDebugTab);
@@ -1649,8 +1649,8 @@ namespace Taskmaster.UI
 				}
 				else
 				{
-					powermanager.onAutoAdjustAttempt -= PowerLoadDebugHandler;
-					powermanager.onPlanChange -= PowerPlanDebugEvent;
+					powermanager.AutoAdjustAttempt -= PowerLoadDebugHandler;
+					powermanager.PlanChange -= PowerPlanDebugEvent;
 					//powermanager.onAutoAdjustAttempt -= PowerLoadHandler;
 					bool refocus = tabLayout.SelectedTab.Equals(powerDebugTab);
 					tabLayout.Controls.Remove(powerDebugTab);
@@ -2307,8 +2307,8 @@ namespace Taskmaster.UI
 
 			int red = defcolor.R, green = defcolor.G, blue = defcolor.B;
 
-			int totalRGB = blue + green + red;
-			int highest = Math.Max(Math.Max(blue, green), red);
+			//int totalRGB = blue + green + red;
+			//int highest = Math.Max(Math.Max(blue, green), red);
 			int lowest = Math.Min(Math.Min(blue, green), red);
 
 			if (lowest > 200) // bright = darken
@@ -2730,7 +2730,7 @@ namespace Taskmaster.UI
 			MessageBox.ShowModal("About " + Taskmaster.Name + "!", sbs.ToString(), MessageBox.Buttons.OK, parent: this);
 		}
 
-		Stopwatch WatchlistSearchInputTimer = new Stopwatch();
+		readonly Stopwatch WatchlistSearchInputTimer = new Stopwatch();
 		readonly System.Windows.Forms.Timer WatchlistSearchTimer = new System.Windows.Forms.Timer();
 		string SearchString = string.Empty;
 
@@ -2906,7 +2906,7 @@ namespace Taskmaster.UI
 		/// <summary>
 		/// Process ID to processinglist mapping.
 		/// </summary>
-		ConcurrentDictionary<int, ListViewItem> ProcessEventMap = new ConcurrentDictionary<int, ListViewItem>();
+		readonly ConcurrentDictionary<int, ListViewItem> ProcessEventMap = new ConcurrentDictionary<int, ListViewItem>();
 
 		void ProcessHandlingStateChangeEvent(object _, Process.HandlingStateChangeEventArgs ea)
 		{
@@ -3227,8 +3227,7 @@ namespace Taskmaster.UI
 
 		void WatchlistContextMenuOpen(object _, EventArgs _ea)
 		{
-			bool oneitem = true;
-			oneitem = WatchlistRules.SelectedItems.Count == 1;
+			bool oneitem = (WatchlistRules.SelectedItems.Count == 1);
 
 			try
 			{
@@ -3518,8 +3517,8 @@ namespace Taskmaster.UI
 			powermanager = manager;
 			powermanager.OnDisposed += (_, _ea) => powermanager = null;
 
-			powermanager.onBehaviourChange += PowerBehaviourEvent;
-			powermanager.onPlanChange += PowerPlanEvent;
+			powermanager.BehaviourChange += PowerBehaviourEvent;
+			powermanager.PlanChange += PowerPlanEvent;
 
 			var bev = new Power.PowerBehaviourEventArgs(powermanager.Behaviour);
 			PowerBehaviourEvent(this, bev); // populates pwbehaviour
@@ -3530,9 +3529,9 @@ namespace Taskmaster.UI
 			{
 				PowerBehaviourDebugEvent(this, bev); // populates powerbalancer_behaviour
 				PowerPlanDebugEvent(this, pev); // populates powerbalancer_plan
-				powermanager.onPlanChange += PowerPlanDebugEvent;
-				powermanager.onBehaviourChange += PowerBehaviourDebugEvent;
-				powermanager.onAutoAdjustAttempt += PowerLoadDebugHandler;
+				powermanager.PlanChange += PowerPlanDebugEvent;
+				powermanager.BehaviourChange += PowerBehaviourDebugEvent;
+				powermanager.AutoAdjustAttempt += PowerLoadDebugHandler;
 			}
 
 			power_auto.Enabled = true;
@@ -3612,7 +3611,7 @@ namespace Taskmaster.UI
 		public void Hook(CPUMonitor monitor)
 		{
 			cpumonitor = monitor;
-			cpumonitor.onSampling += CPULoadHandler;
+			cpumonitor.Sampling += CPULoadHandler;
 			cpumonitor.OnDisposed += (_, _ea) => cpumonitor = null;
 		}
 
@@ -4073,13 +4072,13 @@ namespace Taskmaster.UI
 				{
 					if (powermanager != null)
 					{
-						powermanager.onBehaviourChange -= PowerBehaviourEvent;
-						powermanager.onPlanChange -= PowerPlanEvent;
+						powermanager.BehaviourChange -= PowerBehaviourEvent;
+						powermanager.PlanChange -= PowerPlanEvent;
 
-						powermanager.onAutoAdjustAttempt -= PowerLoadDebugHandler;
+						powermanager.AutoAdjustAttempt -= PowerLoadDebugHandler;
 
-						powermanager.onBehaviourChange -= PowerBehaviourDebugEvent;
-						powermanager.onPlanChange -= PowerPlanDebugEvent;
+						powermanager.BehaviourChange -= PowerBehaviourDebugEvent;
+						powermanager.PlanChange -= PowerPlanDebugEvent;
 
 						powermanager = null;
 					}
@@ -4090,7 +4089,7 @@ namespace Taskmaster.UI
 				{
 					if (cpumonitor != null)
 					{
-						cpumonitor.onSampling -= CPULoadHandler;
+						cpumonitor.Sampling -= CPULoadHandler;
 						cpumonitor = null;
 					}
 				}
@@ -4120,7 +4119,7 @@ namespace Taskmaster.UI
 				{
 					if (storagemanager != null)
 					{
-						storagemanager.onTempScan -= TempScanStats;
+						storagemanager.TempScan -= TempScanStats;
 						storagemanager = null;
 					}
 				}

@@ -116,7 +116,7 @@ namespace Taskmaster.Power
 
 		public Manager()
 		{
-			ExpectedMode = OriginalMode = getPowerMode();
+			ExpectedMode = OriginalMode = GetPowerMode();
 
 			AutoAdjust = PowerAutoadjustPresets.Default();
 
@@ -141,7 +141,7 @@ namespace Taskmaster.Power
 		}
 
 		public int ForceCount => ForceModeSourcesMap.Count;
-		ConcurrentDictionary<int, Mode> ForceModeSourcesMap = new ConcurrentDictionary<int, Mode>();
+		readonly ConcurrentDictionary<int, Mode> ForceModeSourcesMap = new ConcurrentDictionary<int, Mode>();
 
 		CPUMonitor cpumonitor = null;
 
@@ -149,7 +149,7 @@ namespace Taskmaster.Power
 		{
 			cpumonitor = monitor;
 			cpumonitor.OnDisposed += (_, _ea) => cpumonitor = null;
-			cpumonitor.onSampling += CPULoadHandler;
+			cpumonitor.Sampling += CPULoadHandler;
 		}
 
 		void MonitorPowerEvent(object _, MonitorPowerEventArgs ev)
@@ -219,14 +219,13 @@ namespace Taskmaster.Power
 
 			var timer = Stopwatch.StartNew();
 
-			ProcessStartInfo info = null;
-
-			info = new ProcessStartInfo(pcfg, "-lastwake")
+			var info = new ProcessStartInfo(pcfg, "-lastwake")
 			{
 				CreateNoWindow = true,
 				RedirectStandardOutput = true,
 				UseShellExecute = false
 			};
+
 			using (var proc = System.Diagnostics.Process.Start(info))
 			{
 				Debug.WriteLine($"{info.FileName} {info.Arguments}");
@@ -284,7 +283,7 @@ namespace Taskmaster.Power
 			MonitorSleepTimer?.Start();
 		}
 
-		System.Timers.Timer MonitorSleepTimer = null;
+		readonly System.Timers.Timer MonitorSleepTimer = null;
 
 		int SleepTickCount = -1;
 		int SleepGivenUp = 0;
@@ -404,10 +403,10 @@ namespace Taskmaster.Power
 		/// </summary>
 		public bool SessionLockPowerOff { get; set; } = true;
 
-		public event EventHandler<AutoAdjustReactionEventArgs> onAutoAdjustAttempt;
-		public event EventHandler<ModeEventArgs> onPlanChange;
-		public event EventHandler<PowerBehaviourEventArgs> onBehaviourChange;
-		public event EventHandler onSuspendResume;
+		public event EventHandler<AutoAdjustReactionEventArgs> AutoAdjustAttempt;
+		public event EventHandler<ModeEventArgs> PlanChange;
+		public event EventHandler<PowerBehaviourEventArgs> BehaviourChange;
+		public event EventHandler SuspendResume;
 
 		bool Paused = false;
 		public bool SessionLocked { get; private set; } = false;
@@ -419,7 +418,6 @@ namespace Taskmaster.Power
 		long AutoAdjustCounter = 0;
 
 		public AutoAdjustSettings AutoAdjust { get; private set; } = new AutoAdjustSettings();
-		readonly object autoadjust_lock = new object();
 
 		public void SetAutoAdjust(AutoAdjustSettings settings)
 		{
@@ -448,7 +446,7 @@ namespace Taskmaster.Power
 
 			var aa = AutoAdjust; // local copy to avoid a lock
 
-			var Reaction = Power.Reaction.Average;
+			Power.Reaction Reaction;
 
 			var Ready = false;
 
@@ -576,7 +574,7 @@ namespace Taskmaster.Power
 			{
 				if (DebugPower) Log.Debug("<Power> Auto-adjust: " + Reaction.ToString());
 
-				string explanation = string.Empty;
+				string explanation;
 				if (CurrentMode != Mode.Balanced && Reaction == Reaction.Average)
 					explanation = $"Backing off from {PreviousReaction}";
 				else
@@ -625,27 +623,22 @@ namespace Taskmaster.Power
 			ev.Reaction = Reaction;
 			ev.Mode = ReactionaryPlan;
 
-			onAutoAdjustAttempt?.Invoke(this, ev);
+			AutoAdjustAttempt?.Invoke(this, ev);
 		}
 
 		Mode ReactionToMode(Reaction reaction)
 		{
 			var aa = AutoAdjust;
-			Mode mode = Mode.Undefined;
 			switch (reaction)
 			{
 				case Reaction.High:
-					mode = aa.High.Mode;
-					break;
+					return aa.High.Mode;
 				default:
 				case Reaction.Average:
-					mode = aa.DefaultMode;
-					break;
+					return aa.DefaultMode;
 				case Reaction.Low:
-					mode = aa.Low.Mode;
-					break;
+					return aa.Low.Mode;
 			}
-			return mode;
 		}
 
 		bool WarnedForceMode = false;
@@ -912,7 +905,7 @@ namespace Taskmaster.Power
 
 		Stopwatch SessionLockCounter = null;
 		Stopwatch MonitorOffLastLock = null;
-		Stopwatch MonitorPowerOffCounter = new Stopwatch(); // unused?
+		readonly Stopwatch MonitorPowerOffCounter = new Stopwatch(); // unused?
 
 		async void SessionLockEvent(object _, SessionSwitchEventArgs ev)
 		{
@@ -1090,7 +1083,7 @@ namespace Taskmaster.Power
 					break;
 				case Microsoft.Win32.PowerModes.Resume:
 					Log.Information("Hibernation/Suspend end detected.");
-					onSuspendResume?.Invoke(this, EventArgs.Empty);
+					SuspendResume?.Invoke(this, EventArgs.Empty);
 					// Invoke whatever is necessary to restore functionality after suspend breaking shit.
 					break;
 			}
@@ -1120,7 +1113,7 @@ namespace Taskmaster.Power
 					else if (newPersonality == PowerSaver) { CurrentMode = Mode.PowerSaver; }
 					else { CurrentMode = Mode.Undefined; }
 
-					onPlanChange?.Invoke(this, new ModeEventArgs(CurrentMode, old, CurrentMode == ExpectedMode ? ExpectedCause : new Cause(OriginType.None, "External")));
+					PlanChange?.Invoke(this, new ModeEventArgs(CurrentMode, old, CurrentMode == ExpectedMode ? ExpectedCause : new Cause(OriginType.None, "External")));
 					ExpectedCause = null;
 
 					if (DebugPower) Log.Information($"<Power/OS> Change detected: {CurrentMode.ToString()} ({newPersonality.ToString()})");
@@ -1226,7 +1219,7 @@ namespace Taskmaster.Power
 
 			if (reset) Behaviour = PowerBehaviour.RuleBased;
 
-			onBehaviourChange?.Invoke(this, new PowerBehaviourEventArgs(Behaviour));
+			BehaviourChange?.Invoke(this, new PowerBehaviourEventArgs(Behaviour));
 
 			return Behaviour;
 		}
@@ -1346,7 +1339,7 @@ namespace Taskmaster.Power
 			}
 		}
 
-		Mode getPowerMode()
+		Mode GetPowerMode()
 		{
 			Guid plan;
 			var ptr = Marshal.AllocHGlobal(Marshal.SizeOf(typeof(IntPtr))); // is this actually necessary?
@@ -1448,7 +1441,7 @@ namespace Taskmaster.Power
 		// BUG: ?? There might be odd behaviour if this is called while Paused==true
 		void InternalSetMode(Mode mode, Cause cause = null, bool verbose = true)
 		{
-			var plan = Guid.Empty;
+			Guid plan;
 			switch (mode)
 			{
 				default:
@@ -1482,7 +1475,7 @@ namespace Taskmaster.Power
 			long NewPowerMode = (int)powermode; // -1 = Powering On, 1 = Low Power (low backlight, etc.), 2 = Power Off
 
 			var Broadcast = new IntPtr(NativeMethods.HWND_BROADCAST); // unreliable
-			var Topmost = new IntPtr(NativeMethods.HWND_TOPMOST);
+			//var Topmost = new IntPtr(NativeMethods.HWND_TOPMOST);
 
 			uint timeout = 200; // ms per window, we don't really care if they process them
 			var flags = NativeMethods.SendMessageTimeoutFlags.SMTO_ABORTIFHUNG | NativeMethods.SendMessageTimeoutFlags.SMTO_NORMAL | NativeMethods.SendMessageTimeoutFlags.SMTO_NOTIMEOUTIFNOTHUNG;
@@ -1519,16 +1512,16 @@ namespace Taskmaster.Power
 				MonitorPower = null;
 
 				if (cpumonitor != null)
-					cpumonitor.onSampling -= CPULoadHandler;
+					cpumonitor.Sampling -= CPULoadHandler;
 
 				MonitorPower = null;
 				MonitorSleepTimer?.Dispose();
 
 				SessionLock = null;
-				onAutoAdjustAttempt = null;
-				onPlanChange = null;
-				onBehaviourChange = null;
-				onSuspendResume = null;
+				AutoAdjustAttempt = null;
+				PlanChange = null;
+				BehaviourChange = null;
+				SuspendResume = null;
 
 				ForceModeSourcesMap?.Clear();
 				Forced = false;

@@ -69,18 +69,18 @@ namespace Taskmaster
 
 		// Hard Page Faults
 		//Windows.PerformanceCounter PageFaults = new Windows.PerformanceCounter("Memory", "Page Faults/sec", null);
-		Windows.PerformanceCounter PageInputs = null;
+		readonly Windows.PerformanceCounter PageInputs = null;
 
 		const string LogicalDiskName = "LogicalDisk";
 		const string AllInstancesName = "_Total";
 
 		// NVM
-		Windows.PerformanceCounter SplitIO = new Windows.PerformanceCounter(LogicalDiskName, "Split IO/sec", AllInstancesName);
-		Windows.PerformanceCounter NVMTransfers = new Windows.PerformanceCounter(LogicalDiskName, "Disk Transfers/sec", AllInstancesName);
-		Windows.PerformanceCounter NVMQueue = new Windows.PerformanceCounter("PhysicalDisk", "Current Disk Queue Length", AllInstancesName);
+		readonly Windows.PerformanceCounter SplitIO = new Windows.PerformanceCounter(LogicalDiskName, "Split IO/sec", AllInstancesName);
+		readonly Windows.PerformanceCounter NVMTransfers = new Windows.PerformanceCounter(LogicalDiskName, "Disk Transfers/sec", AllInstancesName);
+		readonly Windows.PerformanceCounter NVMQueue = new Windows.PerformanceCounter("PhysicalDisk", "Current Disk Queue Length", AllInstancesName);
 
-		Windows.PerformanceCounter NVMReadDelay = new Windows.PerformanceCounter(LogicalDiskName, "Avg. Disk Sec/Read", AllInstancesName);
-		Windows.PerformanceCounter NVMWriteDelay = new Windows.PerformanceCounter(LogicalDiskName, "Avg. Disk Sec/Write", AllInstancesName);
+		readonly Windows.PerformanceCounter NVMReadDelay = new Windows.PerformanceCounter(LogicalDiskName, "Avg. Disk Sec/Read", AllInstancesName);
+		readonly Windows.PerformanceCounter NVMWriteDelay = new Windows.PerformanceCounter(LogicalDiskName, "Avg. Disk Sec/Write", AllInstancesName);
 
 		/*
 		Windows.PerformanceCounter NetRetransmit = new Windows.PerformanceCounter("TCP", "Segments Retransmitted/sec", "_Total");
@@ -403,7 +403,7 @@ namespace Taskmaster
 			}
 		}
 
-		List<string> warnedDrives = new List<string>();
+		readonly List<string> WarnedDrives = new List<string>();
 
 		DateTimeOffset LastDriveWarning = DateTimeOffset.MinValue;
 
@@ -417,7 +417,7 @@ namespace Taskmaster
 
 			var now = DateTimeOffset.UtcNow;
 			if (now.TimeSince(LastDriveWarning).TotalHours >= 24)
-				warnedDrives.Clear();
+				WarnedDrives.Clear();
 
 			foreach (var drive in System.IO.DriveInfo.GetDrives())
 			{
@@ -425,7 +425,7 @@ namespace Taskmaster
 				{
 					if ((drive.AvailableFreeSpace / 1_000_000) < Settings.LowDriveSpaceThreshold)
 					{
-						if (warnedDrives.Contains(drive.Name)) continue;
+						if (WarnedDrives.Contains(drive.Name)) continue;
 
 						var sqrbi = new NativeMethods.SHQUERYRBINFO
 						{
@@ -439,12 +439,12 @@ namespace Taskmaster
 						Log.Warning("<Auto-Doc> Low free space on " + drive.Name
 							+ " (" + HumanInterface.ByteString(drive.AvailableFreeSpace) + "); recycle bin has: " + HumanInterface.ByteString(rbsize));
 
-						warnedDrives.Add(drive.Name);
+						WarnedDrives.Add(drive.Name);
 						LastDriveWarning = now;
 					}
 					else
 					{
-						warnedDrives.Remove(drive.Name);
+						WarnedDrives.Remove(drive.Name);
 					}
 				}
 			}

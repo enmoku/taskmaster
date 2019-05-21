@@ -54,11 +54,11 @@ namespace Taskmaster.UI
 		public event EventHandler<DisposedEventArgs> OnDisposed;
 		public event EventHandler<TrayShownEventArgs> TrayMenuShown;
 
-		ToolStripMenuItem power_auto;
-		ToolStripMenuItem power_highperf;
-		ToolStripMenuItem power_balanced;
-		ToolStripMenuItem power_saving;
-		ToolStripMenuItem power_manual;
+		readonly ToolStripMenuItem power_auto;
+		readonly ToolStripMenuItem power_highperf;
+		readonly ToolStripMenuItem power_balanced;
+		readonly ToolStripMenuItem power_saving;
+		readonly ToolStripMenuItem power_manual;
 
 		public TrayAccess() : base()
 		{
@@ -178,7 +178,7 @@ namespace Taskmaster.UI
 		System.Drawing.Font IconFont = new System.Drawing.Font("Terminal", 8);
 		System.Drawing.SolidBrush IconBursh = new System.Drawing.SolidBrush(System.Drawing.Color.White);
 
-		OrderedDictionary IconCacheMap = new OrderedDictionary();
+		readonly OrderedDictionary IconCacheMap = new OrderedDictionary();
 
 		void UpdateIcon(int count = 0)
 		{
@@ -359,8 +359,8 @@ namespace Taskmaster.UI
 
 			PowerBehaviourEvent(this, new Power.PowerBehaviourEventArgs(powermanager.Behaviour));
 
-			powermanager.onPlanChange += HighlightPowerModeEvent;
-			powermanager.onBehaviourChange += PowerBehaviourEvent;
+			powermanager.PlanChange += HighlightPowerModeEvent;
+			powermanager.BehaviourChange += PowerBehaviourEvent;
 
 			power_auto.Checked = powermanager.Behaviour == Power.PowerBehaviour.Auto;
 			power_manual.Checked = powermanager.Behaviour == Power.PowerBehaviour.Manual;
@@ -505,7 +505,6 @@ namespace Taskmaster.UI
 			await ExplorerCrashHandler((sender as System.Diagnostics.Process).Id).ConfigureAwait(false);
 		}
 
-		System.Diagnostics.Process[] Explorer;
 		async Task ExplorerCrashHandler(int processId)
 		{
 			try
@@ -569,7 +568,7 @@ namespace Taskmaster.UI
 			}
 		}
 
-		ConcurrentDictionary<int, int> KnownExplorerInstances = new ConcurrentDictionary<int, int>();
+		readonly ConcurrentDictionary<int, int> KnownExplorerInstances = new ConcurrentDictionary<int, int>();
 		System.Diagnostics.Process[] ExplorerInstances => System.Diagnostics.Process.GetProcessesByName("explorer");
 
 		bool RegisterExplorerExit(System.Diagnostics.Process[] procs = null)
@@ -583,7 +582,6 @@ namespace Taskmaster.UI
 
 				if (procs.Length > 0)
 				{
-					Explorer = procs;
 					foreach (var proc in procs)
 					{
 						if (!Process.Utility.GetInfo(proc.Id, out var info, process: proc, name: "explorer", getPath: true)) continue; // things failed, move on
@@ -710,9 +708,6 @@ namespace Taskmaster.UI
 		bool RunAtStartScheduler(bool enabled, bool dryrun = false)
 		{
 			bool found = false;
-			bool created = false;
-			bool deleted = false;
-			bool toggled = false;
 
 			const string schexe = "schtasks";
 
@@ -755,7 +750,7 @@ namespace Taskmaster.UI
 					string argstoggle = "/change /TN MKAh-Taskmaster /" + (enabled ? "ENABLE" : "DISABLE");
 					info.Arguments = argstoggle;
 					var proctoggle = System.Diagnostics.Process.Start(info);
-					toggled = proctoggle.WaitForExit(3000); // this will succeed as long as the task is there
+					bool toggled = proctoggle.WaitForExit(3000); // this will succeed as long as the task is there
 					if (toggled && proctoggle.ExitCode == 0) Log.Information("<Tray> Scheduled task found and enabled");
 					else Log.Error("<Tray> Scheduled task NOT toggled.");
 					if (!proctoggle.HasExited) proctoggle.Kill();
@@ -770,7 +765,7 @@ namespace Taskmaster.UI
 					string argscreate = "/Create /tn MKAh-Taskmaster /tr \"\\\"" + runtime + "\\\"\" /sc onlogon /it /RL HIGHEST";
 					info.Arguments = argscreate;
 					var procnew = System.Diagnostics.Process.Start(info);
-					created = procnew.WaitForExit(3000);
+					bool created = procnew.WaitForExit(3000);
 
 					if (created && procnew.ExitCode == 0) Log.Information("<Tray> Scheduled task created.");
 					else Log.Error("<Tray> Scheduled task NOT created.");
@@ -783,7 +778,7 @@ namespace Taskmaster.UI
 					info.Arguments = argsdelete;
 
 					var procdel = System.Diagnostics.Process.Start(info);
-					deleted = procdel.WaitForExit(3000);
+					bool deleted = procdel.WaitForExit(3000);
 
 					if (deleted && procdel.ExitCode == 0) Log.Information("<Tray> Scheduled task deleted.");
 					else Log.Error("<Tray> Scheduled task NOT deleted.");
@@ -838,7 +833,7 @@ namespace Taskmaster.UI
 
 				if (powermanager != null)
 				{
-					powermanager.onPlanChange -= HighlightPowerModeEvent;
+					powermanager.PlanChange -= HighlightPowerModeEvent;
 					powermanager = null;
 				}
 

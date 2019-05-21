@@ -35,7 +35,7 @@ namespace Taskmaster.UI.Extensions
 	/// </summary>
 	class NumericUpDownEx : NumericUpDown
 	{
-		NumberFormatInfo FormatInfo = new NumberFormatInfo();
+		readonly NumberFormatInfo FormatInfo = new NumberFormatInfo();
 
 		public NumericUpDownEx() : base()
 		{

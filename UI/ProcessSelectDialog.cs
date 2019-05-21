@@ -37,8 +37,8 @@ namespace Taskmaster
 	{
 		public ProcessEx Info { get; private set; } = null;
 
-		ComboBox selection = null;
-		Button selectbutton = null, cancelbutton = null, refreshbutton = null;
+		readonly ComboBox selection = null;
+		readonly Button selectbutton = null, cancelbutton = null, refreshbutton = null;
 
 		List<ProcessEx> InfoList = new List<ProcessEx>();
 

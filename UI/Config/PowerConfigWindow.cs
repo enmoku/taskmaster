@@ -42,21 +42,21 @@ namespace Taskmaster.UI.Config
 		public Mode NewRestoreMode = Mode.Undefined;
 		public Mode NewLockMode = Mode.Undefined;
 
-		ComboBox behaviour = null, restore = null;
+		readonly ComboBox behaviour = null, restore = null;
 
-		ComboBox defaultmode = null, highmode = null, lowmode = null;
-		Extensions.NumericUpDownEx highcommitthreshold = null, highbackoffhigh = null, highbackoffmean = null, highbackofflow = null;
-		NumericUpDown highcommitlevel = null, highbackofflevel = null;
-		Extensions.NumericUpDownEx lowcommitthreshold = null, lowbackoffhigh = null, lowbackoffmean = null, lowbackofflow = null;
-		NumericUpDown lowcommitlevel = null, lowbackofflevel = null;
+		readonly ComboBox defaultmode = null, highmode = null, lowmode = null;
+		readonly Extensions.NumericUpDownEx highcommitthreshold = null, highbackoffhigh = null, highbackoffmean = null, highbackofflow = null;
+		readonly NumericUpDown highcommitlevel = null, highbackofflevel = null;
+		readonly Extensions.NumericUpDownEx lowcommitthreshold = null, lowbackoffhigh = null, lowbackoffmean = null, lowbackofflow = null;
+		readonly NumericUpDown lowcommitlevel = null, lowbackofflevel = null;
 
-		NumericUpDown loQueue = null, hiQueue = null;
+		readonly NumericUpDown loQueue = null, hiQueue = null;
 
 		bool MonitorPowerOff = false;
-		ComboBox monitoroffmode = null;
-		CheckBox monitorofftoggle = null;
+		readonly ComboBox monitoroffmode = null;
+		readonly CheckBox monitorofftoggle = null;
 
-		Power.Manager manager = null;
+		readonly Power.Manager manager = null;
 
 		public PowerConfigWindow(Power.Manager powerManager, bool center = false)
 			: base(center)

@@ -409,7 +409,7 @@ namespace Taskmaster
 					cpumonitor?.Hook(processmanager);
 
 					trayaccess.Hook(powermanager);
-					powermanager.onSuspendResume += PowerSuspendEnd; // HACK: No idea how the code behaves on power resume.
+					powermanager.SuspendResume += PowerSuspendEnd; // HACK: No idea how the code behaves on power resume.
 					powermanager.Hook(cpumonitor);
 				}, cts.Token);
 

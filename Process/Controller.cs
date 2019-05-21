@@ -603,7 +603,6 @@ namespace Taskmaster.Process
 			else
 				app.TryRemove("IO priority");
 
-			var pmode = Power.Utility.GetModeName(PowerPlan);
 			if (PowerPlan != Power.Mode.Undefined)
 				app[HumanReadable.Hardware.Power.Mode].Value = Power.Utility.GetModeName(PowerPlan);
 			else
@@ -731,9 +730,9 @@ namespace Taskmaster.Process
 		}
 
 		// The following should be combined somehow?
-		ConcurrentDictionary<int, ProcessEx> ActiveWait = new ConcurrentDictionary<int, ProcessEx>();
+		readonly ConcurrentDictionary<int, ProcessEx> ActiveWait = new ConcurrentDictionary<int, ProcessEx>();
 
-		ConcurrentDictionary<int, RecentlyModifiedInfo> RecentlyModified = new ConcurrentDictionary<int, RecentlyModifiedInfo>();
+		readonly ConcurrentDictionary<int, RecentlyModifiedInfo> RecentlyModified = new ConcurrentDictionary<int, RecentlyModifiedInfo>();
 
 		/// <summary>
 		/// Caching from Foreground
@@ -834,8 +833,8 @@ namespace Taskmaster.Process
 			Debug.Assert(info.Controller != null, "No controller attached");
 
 			bool mAffinity = false, mPriority = false;
-			ProcessPriorityClass oldPriority = ProcessPriorityClass.RealTime;
-			int oldAffinity = -1, newAffinity = -1;
+			ProcessPriorityClass oldPriority;
+			int oldAffinity, newAffinity;
 
 			int nIO = -1;
 
@@ -860,6 +859,8 @@ namespace Taskmaster.Process
 					info.Process.ProcessorAffinity = new IntPtr(newAffinity.Replace(0, Utility.FullCPUMask));
 					mAffinity = true;
 				}
+				else
+					newAffinity = -1;
 
 				if (IOPriorityEnabled)
 					nIO = SetIO(info, (IOPriority)DefaultForegroundIOPriority); // force these to always have normal I/O priority

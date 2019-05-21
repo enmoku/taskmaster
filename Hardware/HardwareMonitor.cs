@@ -78,10 +78,10 @@ namespace Taskmaster
 		OpenHardwareMonitor.Hardware.ISensor gpuLoad = null; // Core % load
 		OpenHardwareMonitor.Hardware.ISensor gpuMemCtrl = null; // Memory Controller
 
-		OpenHardwareMonitor.Hardware.IHardware cpu = null;
+		//OpenHardwareMonitor.Hardware.IHardware cpu = null;
 		OpenHardwareMonitor.Hardware.ISensor cpuLoad = null;
-		OpenHardwareMonitor.Hardware.ISensor cpuFan = null;
-		OpenHardwareMonitor.Hardware.ISensor cpuTmp = null;
+		//OpenHardwareMonitor.Hardware.ISensor cpuFan = null;
+		//OpenHardwareMonitor.Hardware.ISensor cpuTmp = null;
 
 		OpenHardwareMonitor.Hardware.Computer computer = null;
 
@@ -202,7 +202,7 @@ namespace Taskmaster
 							}
 							break;
 						case OpenHardwareMonitor.Hardware.HardwareType.CPU:
-							cpu = hw;
+							//cpu = hw;
 							foreach (var sensor in hw.Sensors)
 							{
 								Output(sensor);

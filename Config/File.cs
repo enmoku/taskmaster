@@ -37,7 +37,6 @@ namespace Taskmaster.Configuration
 		string Path { get; set; } = null;
 
 		public int Shared { get; internal set; } = 0;
-		bool Dirty { get; set; } = false;
 
 		public event EventHandler<FileEvent> OnUnload;
 		public event EventHandler<FileEvent> OnSave;
@@ -55,12 +54,12 @@ namespace Taskmaster.Configuration
 
 			Debug.WriteLine("ConfigFile.Save(" + Filename + ") - Forced: " + force + ", Changes: " + Config.Changes);
 
-			if (force || Config.Changes > 0) Dirty = true;
-			else if (!Dirty) return;
+			if (force || Config.Changes > 0)
+			{
+				OnSave?.Invoke(this, new FileEvent(this));
 
-			OnSave?.Invoke(this, new FileEvent(this));
-
-			Config.ResetChangeCount();
+				Config.ResetChangeCount();
+			}
 		}
 
 		bool UnloadRequested = false;

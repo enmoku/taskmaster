@@ -58,8 +58,8 @@ namespace Taskmaster
 			}
 		}
 
-		Label Message = null;
-		RichTextBox RichMessage = null;
+		readonly Label Message = null;
+		readonly RichTextBox RichMessage = null;
 
 		public MessageBox(string title, string message, Buttons buttons, bool rich=false, Control parent = null)
 			: base()

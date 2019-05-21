@@ -275,6 +275,7 @@ namespace Taskmaster
 				Log.Warning("Unclean shutdown.");
 		}
 
+		// static finalizer
 		static readonly Finalizer finalizer = new Finalizer();
 		sealed class Finalizer
 		{
@@ -335,7 +336,7 @@ namespace Taskmaster
 
 		static internal event EventHandler<LoadEventArgs> LoadEvent;
 
-		readonly static System.Threading.ManualResetEvent UIWaiter = new System.Threading.ManualResetEvent(false);
+		//readonly static System.Threading.ManualResetEvent UIWaiter = new System.Threading.ManualResetEvent(false); // for splash
 
 		// entry point to the application
 		[STAThread] // supposedly needed to avoid shit happening with the WinForms GUI and other GUI toolkits

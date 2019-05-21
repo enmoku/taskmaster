@@ -172,7 +172,7 @@ namespace Taskmaster.Audio
 			Removed?.Invoke(sender, ea);
 		}
 
-		ConcurrentDictionary<string, Device> Devices = new ConcurrentDictionary<string, Device>();
+		readonly ConcurrentDictionary<string, Device> Devices = new ConcurrentDictionary<string, Device>();
 
 		public Device GetDevice(string guid)
 			=> Devices.TryGetValue(guid, out var dev) ? dev : null;

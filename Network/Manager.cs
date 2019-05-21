@@ -65,10 +65,10 @@ namespace Taskmaster.Network
 
 		public event EventHandler<TrafficEventArgs> NetworkTraffic;
 
-		Windows.PerformanceCounter NetInTrans = null;
-		Windows.PerformanceCounter NetOutTrans = null;
-		Windows.PerformanceCounter NetPackets = null;
-		Windows.PerformanceCounter NetQueue = null;
+		readonly Windows.PerformanceCounter NetInTrans = null;
+		readonly Windows.PerformanceCounter NetOutTrans = null;
+		readonly Windows.PerformanceCounter NetPackets = null;
+		readonly Windows.PerformanceCounter NetQueue = null;
 
 		string dnstestaddress = "google.com"; // should be fine, www is omitted to avoid deeper DNS queries
 
@@ -76,7 +76,7 @@ namespace Taskmaster.Network
 		int PacketStatTimerInterval = 15; // second
 		int ErrorReportLimit = 5;
 
-		System.Timers.Timer SampleTimer;
+		readonly System.Timers.Timer SampleTimer;
 
 		public event EventHandler<Network.DeviceTrafficEventArgs> onSampling;
 
@@ -200,8 +200,8 @@ namespace Taskmaster.Network
 			return null;
 		}
 
-		LinearMeter PacketWarning = new LinearMeter(15); // UNUSED
-		LinearMeter ErrorReports = new LinearMeter(5, 4);
+		readonly LinearMeter PacketWarning = new LinearMeter(15); // UNUSED
+		readonly LinearMeter ErrorReports = new LinearMeter(5, 4);
 
 		Lazy<List<Device>> CurrentInterfaceList = null;
 
@@ -338,7 +338,7 @@ namespace Taskmaster.Network
 		public bool InternetAvailable { get; private set; } = false;
 
 		readonly int MaxSamples = 20;
-		List<double> UptimeSamples = new List<double>(20);
+		readonly List<double> UptimeSamples = new List<double>(20);
 		DateTimeOffset UptimeRecordStart; // since we started recording anything
 		DateTimeOffset LastUptimeStart; // since we last knew internet to be initialized
 		readonly object uptime_lock = new object();
@@ -576,7 +576,7 @@ namespace Taskmaster.Network
 			return InternetAvailable;
 		}
 
-		List<IPAddress> AddressList = new List<IPAddress>(2);
+		readonly List<IPAddress> AddressList = new List<IPAddress>(2);
 		// List<NetworkInterface> PublicInterfaceList = new List<NetworkInterface>(2);
 		IPAddress IPv4Address = IPAddress.None;
 		NetworkInterface IPv4Interface;
@@ -726,7 +726,7 @@ namespace Taskmaster.Network
 
 				InterfaceInitialization(); // Update IPv4Address & IPv6Address
 
-				bool ipv4changed = false, ipv6changed = false, ipchanged = false;
+				bool ipv4changed, ipv6changed, ipchanged = false;
 				ipchanged |= ipv4changed = !oldV4Address.Equals(IPv4Address);
 
 				var sbs = new StringBuilder();

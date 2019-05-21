@@ -65,7 +65,7 @@ namespace Taskmaster
 			try
 			{
 				obj?.Dispose();
-				obj = default(T);
+				obj = default;
 			}
 			catch (Exception ex)
 			{

@@ -37,11 +37,11 @@ namespace Taskmaster.UI
 
 	public sealed class VolumeMeter : UniForm
 	{
-		ProgressBar OutputVolume = null;
-		ProgressBar InputVolume = null;
+		readonly ProgressBar OutputVolume = null;
+		readonly ProgressBar InputVolume = null;
 
-		AlignedLabel OutputVolumeLabel = new AlignedLabel() { Text = "0.0 %", AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleRight, Dock = DockStyle.Right, };
-		AlignedLabel InputVolumeLabel = new AlignedLabel() { Text = "0.0 %", AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleRight, Dock = DockStyle.Right, };
+		readonly AlignedLabel OutputVolumeLabel = new AlignedLabel() { Text = "0.0 %", AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleRight, Dock = DockStyle.Right, };
+		readonly AlignedLabel InputVolumeLabel = new AlignedLabel() { Text = "0.0 %", AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleRight, Dock = DockStyle.Right, };
 
 		int _volumeoutputcap = 10_000;
 		public int VolumeOutputCap { get => _volumeoutputcap; set => _volumeoutputcap = value.Constrain(20, 100) * 100; }
@@ -50,7 +50,7 @@ namespace Taskmaster.UI
 		public int VolumeInputCap { get => _volumeinputcap; set => _volumeinputcap = value.Constrain(20, 100) * 100; }
 		public int Frequency { get; set; } = 100;
 
-		Audio.Manager audiomanager = null;
+		readonly Audio.Manager audiomanager = null;
 
 		public VolumeMeter(Audio.Manager manager)
 			: base()

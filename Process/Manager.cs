@@ -89,9 +89,9 @@ namespace Taskmaster.Process
 		/// <summary>
 		/// Watch rules
 		/// </summary>
-		ConcurrentDictionary<Controller, int> Watchlist = new ConcurrentDictionary<Controller, int>();
+		readonly ConcurrentDictionary<Controller, int> Watchlist = new ConcurrentDictionary<Controller, int>();
 
-		ConcurrentDictionary<int, DateTimeOffset> ScanBlockList = new ConcurrentDictionary<int, DateTimeOffset>();
+		readonly ConcurrentDictionary<int, DateTimeOffset> ScanBlockList = new ConcurrentDictionary<int, DateTimeOffset>();
 
 		Lazy<List<Controller>> WatchlistCache = null;
 		bool NeedSort = true;
@@ -154,7 +154,7 @@ namespace Taskmaster.Process
 			}
 		}
 
-		public Controller[] getWatchlist() => Watchlist.Keys.ToArray();
+		public Controller[] GetWatchlist() => Watchlist.Keys.ToArray();
 
 		// TODO: Need an ID mapping
 		public bool GetControllerByName(string friendlyname, out Controller controller)
@@ -184,15 +184,15 @@ namespace Taskmaster.Process
 		public void Hook(Power.Manager manager)
 		{
 			powermanager = manager;
-			powermanager.onBehaviourChange += PowerBehaviourEvent;
+			powermanager.BehaviourChange += PowerBehaviourEvent;
 			powermanager.OnDisposed += (_, _ea) => powermanager = null;
 		}
 
-		ConcurrentDictionary<int, int> ignorePids = new ConcurrentDictionary<int, int>();
+		readonly ConcurrentDictionary<int, int> IgnorePids = new ConcurrentDictionary<int, int>();
 
-		public void Ignore(int pid) => ignorePids.TryAdd(pid, 0);
+		public void Ignore(int pid) => IgnorePids.TryAdd(pid, 0);
 
-		public void Unignore(int pid) => ignorePids.TryRemove(pid, out _);
+		public void Unignore(int pid) => IgnorePids.TryRemove(pid, out _);
 
 		int freemem_lock = 0;
 		public async Task FreeMemory(string executable = null, bool quiet = false, int ignorePid = -1)
@@ -1222,7 +1222,7 @@ namespace Taskmaster.Process
 			prc.Resumed -= ProcessResumedProxy;
 		}
 
-		ConcurrentDictionary<int, ProcessEx> WaitForExitList = new ConcurrentDictionary<int, ProcessEx>();
+		readonly ConcurrentDictionary<int, ProcessEx> WaitForExitList = new ConcurrentDictionary<int, ProcessEx>();
 
 		void WaitForExitTriggered(ProcessEx info)
 		{
@@ -1263,7 +1263,7 @@ namespace Taskmaster.Process
 			{
 				Logging.Stacktrace(ex);
 				Log.Error("Unregistering power behaviour event");
-				powermanager.onBehaviourChange -= PowerBehaviourEvent;
+				powermanager.BehaviourChange -= PowerBehaviourEvent;
 			}
 		}
 
@@ -1271,11 +1271,9 @@ namespace Taskmaster.Process
 		{
 			var cancelled = 0;
 
-			Stack<ProcessEx> clearList = null;
-
 			if (WaitForExitList.Count == 0) return;
 
-			clearList = new Stack<ProcessEx>();
+			var clearList = new Stack<ProcessEx>();
 			foreach (var info in WaitForExitList.Values)
 			{
 				if (info.PowerWait)
@@ -1343,7 +1341,7 @@ namespace Taskmaster.Process
 			return exithooked;
 		}
 
-		public ProcessEx[] getExitWaitList() => WaitForExitList.Values.ToArray(); // copy is good here
+		public ProcessEx[] GetExitWaitList() => WaitForExitList.Values.ToArray(); // copy is good here
 
 		Controller PreviousForegroundController = null;
 		ProcessEx PreviousForegroundInfo;
@@ -1540,7 +1538,7 @@ namespace Taskmaster.Process
 		bool DebugWMI = false;
 
 		[System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
-		public bool IgnoreProcessID(int pid) => Utility.SystemProcessId(pid) || ignorePids.ContainsKey(pid);
+		public bool IgnoreProcessID(int pid) => Utility.SystemProcessId(pid) || IgnorePids.ContainsKey(pid);
 
 		[System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
 		public bool IgnoreProcessName(string name) => IgnoreList.Any(item => item.Equals(name, StringComparison.InvariantCultureIgnoreCase));
@@ -1754,7 +1752,7 @@ namespace Taskmaster.Process
 		}
 
 		object Exclusive_lock = new object();
-		ConcurrentDictionary<int, ProcessEx> ExclusiveList = new ConcurrentDictionary<int, ProcessEx>();
+		readonly ConcurrentDictionary<int, ProcessEx> ExclusiveList = new ConcurrentDictionary<int, ProcessEx>();
 
 		async Task ExclusiveMode(ProcessEx info)
 		{
@@ -1883,13 +1881,12 @@ namespace Taskmaster.Process
 		/// </summary>
 		void ProcessEndTriage(object sender, EventArrivedEventArgs ea)
 		{
-			int pid = -1;
 			try
 			{
 				var targetInstance = ea.NewEvent.Properties["TargetInstance"].Value as ManagementBaseObject;
 				//var tpid = targetInstance.Properties["Handle"].Value as int?; // doesn't work for some reason
 
-				pid = Convert.ToInt32(targetInstance.Properties["Handle"].Value as string);
+				int pid = Convert.ToInt32(targetInstance.Properties["Handle"].Value as string);
 
 				if (!Utility.SystemProcessId(pid)) ScanBlockList.TryRemove(pid, out _);
 			}
@@ -1902,7 +1899,7 @@ namespace Taskmaster.Process
 
 		private void StartTraceTriage(object sender, EventArrivedEventArgs e)
 		{
-			var now = DateTimeOffset.UtcNow;
+			//var now = DateTimeOffset.UtcNow;
 			var timer = Stopwatch.StartNew();
 
 			var targetInstance = e.NewEvent;
@@ -1910,7 +1907,7 @@ namespace Taskmaster.Process
 			int ppid = 0;
 			string name = string.Empty;
 
-			ProcessHandlingState state = ProcessHandlingState.Invalid;
+			var state = ProcessHandlingState.Invalid;
 
 			try
 			{
@@ -2370,7 +2367,7 @@ namespace Taskmaster.Process
 
 				if (powermanager != null && powermanager.IsDisposed)
 				{
-					powermanager.onBehaviourChange -= PowerBehaviourEvent;
+					powermanager.BehaviourChange -= PowerBehaviourEvent;
 					powermanager = null;
 				}
 
@@ -2411,7 +2408,6 @@ namespace Taskmaster.Process
 					lock (watchlist_lock)
 					{
 						Watchlist?.Clear();
-						Watchlist = null;
 
 						if (WatchlistCache.IsValueCreated) WatchlistCache.Value.Clear();
 						WatchlistCache = null;

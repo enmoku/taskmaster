@@ -39,15 +39,16 @@ namespace Taskmaster
 		// Experimental feature
 		public bool CPULoaderMonitoring { get; set; } = false;
 
-		public event EventHandler<ProcessorLoadEventArgs> onSampling;
+		public event EventHandler<ProcessorLoadEventArgs> Sampling;
 
 		/// <summary>
 		/// Sample Interval.
 		/// </summary>
 		public TimeSpan SampleInterval { get; set; } = TimeSpan.FromSeconds(5);
 		public int SampleCount { get; set; } = 5;
-		Windows.PerformanceCounter CPUload = new Windows.PerformanceCounter("Processor", "% Processor Time", "_Total");
-		Windows.PerformanceCounter CPUqueue = new Windows.PerformanceCounter("System", "Processor Queue Length", null);
+
+		readonly Windows.PerformanceCounter CPUload = new Windows.PerformanceCounter("Processor", "% Processor Time", "_Total");
+		readonly Windows.PerformanceCounter CPUqueue = new Windows.PerformanceCounter("System", "Processor Queue Length", null);
 
 		//Windows.PerformanceCounter CPUIRQ = new Windows.PerformanceCounter("Processor", "% Interrupt Time", "_Total");
 
@@ -158,7 +159,7 @@ namespace Taskmaster
 
 				Calculate();
 
-				onSampling?.Invoke(this, new ProcessorLoadEventArgs()
+				Sampling?.Invoke(this, new ProcessorLoadEventArgs()
 				{
 					Current = sample,
 					Mean = Mean,
@@ -300,7 +301,6 @@ namespace Taskmaster
 				CPUSampleTimer = null;
 
 				CPUload?.Dispose();
-				CPUload = null;
 
 				if (processmanager != null)
 				{

@@ -92,7 +92,6 @@ namespace Taskmaster
 		/// <returns></returns>
 		public static string ByteString(long bytes, bool positivesign = false, bool iec = false)
 		{
-			double div = 1;
 			int scale = Byte;
 
 			var multiplier = iec ? MultiplierIEC : MultiplierSI;
@@ -106,7 +105,7 @@ namespace Taskmaster
 				scale = Kilo;
 			// else = Byte/Default
 
-			div = multiplier[scale];
+			double div = multiplier[scale];
 
 			double num = bytes / div;
 

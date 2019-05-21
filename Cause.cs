@@ -49,7 +49,6 @@ namespace Taskmaster
 
 		public override string ToString()
 		{
-			string str = string.Empty;
 			switch (Origin)
 			{
 				case OriginType.User:

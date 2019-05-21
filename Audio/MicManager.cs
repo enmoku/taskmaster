@@ -92,8 +92,6 @@ namespace Taskmaster.Audio
 		public string DeviceName => RecordingDevice?.Name ?? string.Empty;
 		public string DeviceGuid => RecordingDevice?.GUID ?? string.Empty;
 
-		NAudio.CoreAudioApi.MMDeviceEnumerator mm_enum = null;
-
 		double DefaultVolume { get; set; } = 100d;
 
 		// ctor, constructor

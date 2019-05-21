@@ -54,7 +54,7 @@ namespace Taskmaster.Process
 				Load(UserModuleFile);
 		}
 
-		ConcurrentDictionary<byte[], int> cache = new ConcurrentDictionary<byte[], int>(new StructuralEqualityComparer<byte[]>());
+		readonly ConcurrentDictionary<byte[], int> cache = new ConcurrentDictionary<byte[], int>(new StructuralEqualityComparer<byte[]>());
 
 		public async Task Analyze(ProcessEx info)
 		{
@@ -113,10 +113,9 @@ namespace Taskmaster.Process
 				}
 
 				IntPtr[] modulePtrs = new IntPtr[0];
-				int bytesNeeded = 0;
 
 				// Determine number of modules
-				if (!NativeMethods.EnumProcessModulesEx(info.Process.Handle, modulePtrs, 0, out bytesNeeded, (uint)NativeMethods.ModuleFilter.ListModulesAll))
+				if (!NativeMethods.EnumProcessModulesEx(info.Process.Handle, modulePtrs, 0, out int bytesNeeded, (uint)NativeMethods.ModuleFilter.ListModulesAll))
 					return;
 
 				int totalModules = bytesNeeded / IntPtr.Size;
@@ -306,11 +305,11 @@ namespace Taskmaster.Process
 		/// <summary>
 		/// Identity to Module
 		/// </summary>
-		ConcurrentDictionary<string, ModuleInfo> KnownModules = new ConcurrentDictionary<string, ModuleInfo>();
+		readonly ConcurrentDictionary<string, ModuleInfo> KnownModules = new ConcurrentDictionary<string, ModuleInfo>();
 		/// <summary>
 		/// File matching to Module
 		/// </summary>
-		ConcurrentDictionary<string, ModuleInfo> KnownFiles = new ConcurrentDictionary<string, ModuleInfo>();
+		readonly ConcurrentDictionary<string, ModuleInfo> KnownFiles = new ConcurrentDictionary<string, ModuleInfo>();
 
 		readonly Dictionary<string, ModuleRecommendation> RecMap = new Dictionary<string, ModuleRecommendation>()
 		{

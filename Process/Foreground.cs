@@ -49,7 +49,7 @@ namespace Taskmaster.Process
 		public event EventHandler<WindowChangedArgs> ActiveChanged;
 
 		/// <exception cref="InitFailure">Event hook creation failed.</exception>
-		public ForegroundManager(bool eventhook = true)
+		public ForegroundManager()
 		{
 			ForegroundEventDelegate = new NativeMethods.WinEventDelegate(WinEventProc);
 

@@ -39,8 +39,10 @@ namespace Taskmaster
 		{
 			try
 			{
-				timer = new System.Timers.Timer(86_400_000); // once a day
-				timer.AutoReset = false;
+				timer = new System.Timers.Timer(86_400_000) // once a day
+				{
+					AutoReset = false
+				};
 				timer.Elapsed += MaintenanceTick;
 				TimerReset();
 			}

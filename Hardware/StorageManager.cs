@@ -43,10 +43,10 @@ namespace Taskmaster
 		bool Verbose = false;
 
 		static readonly string systemTemp = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows), "Temp");
-		static string userTemp => Path.GetTempPath();
+		static string UserTemp => Path.GetTempPath();
 
-		readonly FileSystemWatcher userWatcher;
-		readonly FileSystemWatcher sysWatcher;
+		readonly FileSystemWatcher UserWatcher;
+		readonly FileSystemWatcher SysWatcher;
 
 		readonly System.Timers.Timer TempScanTimer = null;
 		TimeSpan TimerDue = TimeSpan.FromHours(24);
@@ -55,24 +55,24 @@ namespace Taskmaster
 		{
 			if (TempMonitorEnabled)
 			{
-				userWatcher = new FileSystemWatcher(userTemp)
+				UserWatcher = new FileSystemWatcher(UserTemp)
 				{
 					NotifyFilter = NotifyFilters.Size,
 					IncludeSubdirectories = true
 				};
-				userWatcher.Deleted += ModifyTemp;
-				userWatcher.Changed += ModifyTemp;
-				userWatcher.Created += ModifyTemp;
-				if (systemTemp != userTemp)
+				UserWatcher.Deleted += ModifyTemp;
+				UserWatcher.Changed += ModifyTemp;
+				UserWatcher.Created += ModifyTemp;
+				if (systemTemp != UserTemp)
 				{
-					sysWatcher = new FileSystemWatcher(systemTemp)
+					SysWatcher = new FileSystemWatcher(systemTemp)
 					{
 						NotifyFilter = NotifyFilters.Size,
 						IncludeSubdirectories = true
 					};
-					sysWatcher.Deleted += ModifyTemp;
-					sysWatcher.Changed += ModifyTemp;
-					sysWatcher.Created += ModifyTemp;
+					SysWatcher.Deleted += ModifyTemp;
+					SysWatcher.Changed += ModifyTemp;
+					SysWatcher.Created += ModifyTemp;
 				}
 
 				TempScanTimer = new System.Timers.Timer(TimerDue.TotalMilliseconds);
@@ -157,7 +157,7 @@ namespace Taskmaster
 				{
 					stats.Size += fi.Length;
 					stats.Files += 1;
-					if (i++ % 100 == 0) onTempScan?.Invoke(null, dea);
+					if (i++ % 100 == 0) TempScan?.Invoke(null, dea);
 				}
 
 				foreach (System.IO.DirectoryInfo di in dinfo.GetDirectories())
@@ -165,7 +165,7 @@ namespace Taskmaster
 					DirectorySize(di, ref stats);
 					stats.Dirs += 1;
 
-					if (i++ % 100 == 0) onTempScan?.Invoke(null, dea);
+					if (i++ % 100 == 0) TempScan?.Invoke(null, dea);
 				}
 			}
 			catch (OutOfMemoryException) { throw; }
@@ -192,15 +192,15 @@ namespace Taskmaster
 				ReScanBurden = 0;
 
 				Log.Information("Temp folders scanning initiated...");
-				onTempScan?.Invoke(null, new StorageEventArgs { State = ScanState.Start, Stats = dst });
+				TempScan?.Invoke(null, new StorageEventArgs { State = ScanState.Start, Stats = dst });
 				DirectorySize(new System.IO.DirectoryInfo(systemTemp), ref dst);
-				if (systemTemp != userTemp)
+				if (systemTemp != UserTemp)
 				{
-					onTempScan?.Invoke(null, new StorageEventArgs { State = ScanState.Segment, Stats = dst });
-					DirectorySize(new System.IO.DirectoryInfo(userTemp), ref dst);
+					TempScan?.Invoke(null, new StorageEventArgs { State = ScanState.Segment, Stats = dst });
+					DirectorySize(new System.IO.DirectoryInfo(UserTemp), ref dst);
 				}
 
-				onTempScan?.Invoke(null, new StorageEventArgs { State = ScanState.End, Stats = dst });
+				TempScan?.Invoke(null, new StorageEventArgs { State = ScanState.End, Stats = dst });
 				Log.Information("Temp contents: " + dst.Files + " files, " + dst.Dirs + " dirs, " + $"{(dst.Size / 1_000_000f):N2} MBs");
 			}
 			finally
@@ -218,7 +218,7 @@ namespace Taskmaster
 			End
 		};
 
-		public event EventHandler<StorageEventArgs> onTempScan;
+		public event EventHandler<StorageEventArgs> TempScan;
 
 		#region IDisposable Support
 		public event EventHandler<DisposedEventArgs> OnDisposed;
@@ -235,10 +235,10 @@ namespace Taskmaster
 			{
 				if (Trace) Log.Verbose("Disposing storage manager...");
 
-				onTempScan = null;
+				TempScan = null;
 
-				sysWatcher?.Dispose();
-				userWatcher?.Dispose();
+				SysWatcher?.Dispose();
+				UserWatcher?.Dispose();
 				TempScanTimer?.Dispose();
 			}
 
@@ -249,8 +249,8 @@ namespace Taskmaster
 		public void ShutdownEvent(object sender, EventArgs ea)
 		{
 			TempScanTimer?.Dispose();
-			sysWatcher?.Dispose();
-			userWatcher?.Dispose();
+			SysWatcher?.Dispose();
+			UserWatcher?.Dispose();
 		}
 		#endregion
 	}

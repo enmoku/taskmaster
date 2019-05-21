@@ -67,6 +67,7 @@ namespace Taskmaster.Audio
 		void Dispose(bool disposing)
 		{
 			if (DisposingOrDisposed) return;
+
 			DisposingOrDisposed = true;
 
 			if (MKAh.Execution.IsMainThread)

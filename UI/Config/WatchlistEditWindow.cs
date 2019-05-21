@@ -43,28 +43,15 @@ namespace Taskmaster.UI.Config
 		
 		readonly bool newPrc = false;
 
-		// Adding
-		public WatchlistEditWindow()
+		// Editingg
+		public WatchlistEditWindow(Process.Controller controller = null)
 			: base()
 		{
 			DialogResult = DialogResult.Abort;
 
-			Controller = new Process.Controller("Unnamed") { Enabled = true };
+			newPrc = controller is null;
 
-			newPrc = true;
-
-			WindowState = FormWindowState.Normal;
-			FormBorderStyle = FormBorderStyle.FixedDialog; // no min/max buttons as wanted
-
-			BuildUI();
-		}
-
-		// Editingg
-		public WatchlistEditWindow(Process.Controller controller)
-		{
-			DialogResult = DialogResult.Abort;
-
-			Controller = controller;
+			Controller = controller ?? new Process.Controller("Unnamed") { Enabled = true };
 
 			StartPosition = FormStartPosition.CenterParent;
 
@@ -72,230 +59,11 @@ namespace Taskmaster.UI.Config
 
 			WindowState = FormWindowState.Normal;
 			FormBorderStyle = FormBorderStyle.FixedDialog; // no min/max buttons as wanted
+
 			MinimizeBox = false;
 			MaximizeBox = false;
 
-			BuildUI();
-		}
-
-		void SaveInfo(object _, System.EventArgs _ea)
-		{
-			var enOrig = Controller.Enabled;
-			Controller.Enabled = false;
-
-			if (!newPrc) Controller.Refresh(); // make sure we don't cling to things
-
-			// TODO: VALIDATE FOR GRIMMY'S SAKE!
-
-			// -----------------------------------------------
-			// VALIDATE
-
-			bool fnlen = (friendlyName.Text.Length > 0);
-			bool exnam = (execName.Text.Length > 0);
-			bool path = (pathName.Text.Length > 0);
-
-			if (!fnlen || friendlyName.Text.Contains("]") || friendlyName.Text.Contains("["))
-			{
-				MessageBox.ShowModal("Malconfigured friendly name", "Friendly name is missing or includes illegal characters (such as square brackets).", MessageBox.Buttons.OK, parent:this);
-				return;
-			}
-
-			if (!path && !exnam)
-			{
-				MessageBox.ShowModal("Configuration error", "No path nor executable defined.", MessageBox.Buttons.OK, parent: this);
-				return;
-			}
-
-			string newfriendlyname = friendlyName.Text.Trim();
-
-			if (processmanager.GetControllerByName(newfriendlyname, out var dprc) && dprc != Controller)
-			{
-				MessageBox.ShowModal("Configuration error", "Friendly Name conflict.", MessageBox.Buttons.OK, parent: this);
-				return;
-			}
-
-			bool hasPrio = priorityClass.SelectedIndex != 5;
-			bool hasAff = affinityMask.Value != -1;
-			bool hasPow = powerPlan.SelectedIndex != 3;
-
-			if (!hasPrio && !hasAff && !hasPow)
-			{
-				var rv = MessageBox.ShowModal("Configuration error", "No priority, affinity, nor power plan defined.\nThis will cause matching items to be essentially ignored.", MessageBox.Buttons.AcceptCancel, parent: this);
-				if (rv != MessageBox.ResultType.OK)
-					return;
-			}
-
-			// -----------------------------------------------
-
-			Controller.SetName(newfriendlyname);
-
-			if (execName.Text.Length > 0)
-			{
-				var t_executables = execName.Text.Split(new[] { '|' }, StringSplitOptions.RemoveEmptyEntries);
-				var f_exes = new string[t_executables.Length];
-				for (int i = 0; i < t_executables.Length; i++)
-					f_exes[i] = t_executables[i].Trim();
-				Controller.Executables = (f_exes?.Length > 0) ? f_exes : null;
-			}
-			else
-				Controller.Executables = null;
-
-			Controller.Path = pathName.Text.Length > 0 ? pathName.Text.Trim() : null;
-			if (priorityClass.SelectedIndex == 5) // ignored
-			{
-				Controller.Priority = null;
-				Controller.PriorityStrategy = ProcessPriorityStrategy.None;
-			}
-			else
-			{
-				Controller.Priority = ProcessHelpers.IntToPriority(priorityClass.SelectedIndex); // is this right?
-				Controller.PriorityStrategy = ProcessPriorityStrategy.None;
-				switch (priorityClassMethod.SelectedIndex)
-				{
-					case 0: Controller.PriorityStrategy = ProcessPriorityStrategy.Increase; break;
-					case 1: Controller.PriorityStrategy = ProcessPriorityStrategy.Decrease; break;
-					default:
-					case 2: Controller.PriorityStrategy = ProcessPriorityStrategy.Force; break;
-				}
-			}
-
-			Process.PathVisibilityOptions pvis = Process.PathVisibilityOptions.Invalid;
-			switch (pathVisibility.SelectedIndex)
-			{
-				default:
-				case 0: pvis = Process.PathVisibilityOptions.Invalid; break;
-				case 1: pvis = Process.PathVisibilityOptions.Process; break;
-				case 2: pvis = Process.PathVisibilityOptions.Partial; break;
-				case 3: pvis = Process.PathVisibilityOptions.Full; break;
-				case 4: pvis = Process.PathVisibilityOptions.Smart; break;
-			}
-			Controller.PathVisibility = pvis;
-
-			if (affstrategy.SelectedIndex != 0)
-			{
-				if (cpumask == -1)
-					Controller.AffinityMask = -1;
-				else
-				{
-					Controller.AffinityMask = cpumask;
-					Controller.AffinityStrategy = affstrategy.SelectedIndex == 1 ? ProcessAffinityStrategy.Limit : ProcessAffinityStrategy.Force;
-				}
-			}
-			else
-			{
-				// strategy = ignore
-				Controller.AffinityMask = -1;
-				Controller.AffinityStrategy = ProcessAffinityStrategy.None;
-			}
-
-			Controller.ModifyDelay = (int)(modifyDelay.Value * 1_000);
-			Controller.PowerPlan = Power.Utility.GetModeByName(powerPlan.Text);
-			Controller.AllowPaging = allowPaging.Checked;
-			Controller.SetForegroundMode((ForegroundMode)(ForegroundModeSelect.SelectedIndex - 1));
-
-			if (bgPriorityClass.SelectedIndex != 5)
-				Controller.BackgroundPriority = ProcessHelpers.IntToPriority(bgPriorityClass.SelectedIndex);
-			else
-				Controller.BackgroundPriority = null;
-
-			if (bgAffinityMask.Value >= 0)
-				Controller.BackgroundAffinity = Convert.ToInt32(bgAffinityMask.Value);
-			else
-				Controller.BackgroundAffinity = -1;
-
-			if (ignorelist.Items.Count > 0 && execName.Text.Length == 0)
-			{
-				var ignlist = new List<string>();
-				foreach (ListViewItem item in ignorelist.Items)
-					ignlist.Add(item.Text);
-
-				Controller.IgnoreList = ignlist.ToArray();
-			}
-			else
-				Controller.IgnoreList = null;
-
-			if (desc.Text.Length > 0)
-				Controller.Description = desc.Text;
-
-			if (AudioManagerEnabled && volumeMethod.SelectedIndex != 5)
-			{
-				switch (volumeMethod.SelectedIndex)
-				{
-					case 0: Controller.VolumeStrategy = Audio.VolumeStrategy.Increase; break;
-					case 1: Controller.VolumeStrategy = Audio.VolumeStrategy.Decrease; break;
-					case 2: Controller.VolumeStrategy = Audio.VolumeStrategy.IncreaseFromMute; break;
-					case 3: Controller.VolumeStrategy = Audio.VolumeStrategy.DecreaseFromFull; break;
-					case 4: Controller.VolumeStrategy = Audio.VolumeStrategy.Force; break;
-					default: Controller.VolumeStrategy = Audio.VolumeStrategy.Ignore; break;
-				}
-
-				Controller.Volume = Convert.ToSingle(volume.Value / 100M);
-			}
-
-			Controller.AffinityIdeal = Convert.ToInt32(idealAffinity.Value) - 1;
-
-			if (IOPriorityEnabled)
-				Controller.IOPriority = (Process.IOPriority)((ioPriority?.SelectedIndex ?? 0) - 1);
-
-			Controller.LogAdjusts = logAdjusts.Checked;
-			Controller.LogStartAndExit = logStartNExit.Checked;
-
-			Controller.DeclareParent = declareParent.Checked;
-
-			Controller.OrderPreference = Convert.ToInt32(preforder.Value).Constrain(0, 100);
-
-			Controller.Enabled = newPrc ? true : enOrig;
-
-			Controller.Repair();
-
-			Controller.SaveConfig();
-
-			Log.Information("[" + Controller.FriendlyName + "] " + (newPrc ? "Created" : "Modified"));
-
-			DialogResult = DialogResult.OK;
-
-			Controller.Refresh();
-
-			Close();
-		}
-
-		TextBox friendlyName = null;
-		TextBox execName = null;
-		TextBox pathName = null;
-		ComboBox pathVisibility = null;
-		TextBox desc = null;
-
-		ComboBox priorityClass = null;
-		ComboBox priorityClassMethod = null;
-		ComboBox bgPriorityClass = null;
-
-		ComboBox affstrategy = null;
-		NumericUpDown affinityMask = null;
-		NumericUpDown bgAffinityMask = null;
-		NumericUpDown idealAffinity = null;
-		ComboBox ioPriority = null;
-
-		ComboBox volumeMethod = null;
-		Extensions.NumericUpDownEx volume = null;
-
-		Button allbutton = null;
-		Button clearbutton = null;
-		Extensions.NumericUpDownEx modifyDelay = null;
-		CheckBox allowPaging = null;
-		ComboBox powerPlan = null;
-		ComboBox ForegroundModeSelect = null;
-		ComboBox FullscreenMode = null;
-		ListView ignorelist = null;
-		NumericUpDown preforder = null;
-
-		CheckBox logAdjusts = null, logStartNExit=null, declareParent=null;
-
-		int cpumask = 0;
-
-		static char[] InvalidCharacters = new[] { ']', '#', ';' };
-
-		void BuildUI()
-		{
+			#region BuildUI
 			// Size = new System.Drawing.Size(340, 480); // width, height
 			AutoSizeMode = AutoSizeMode.GrowOnly;
 			AutoSize = true;
@@ -338,7 +106,7 @@ namespace Taskmaster.UI.Config
 			execName = new TextBox()
 			{
 				ShortcutsEnabled = true,
-				Text =  Controller.Executables?.Length > 0 ? string.Join("|", Controller.Executables) : string.Empty,
+				Text = Controller.Executables?.Length > 0 ? string.Join("|", Controller.Executables) : string.Empty,
 				Width = 180,
 			};
 			execName.Validating += ValidateFilename;
@@ -946,7 +714,222 @@ namespace Taskmaster.UI.Config
 			lt.Controls.Add(finalizebuttons);
 
 			// ---
+			#endregion // BuildUI
 		}
+
+		void SaveInfo(object _, System.EventArgs _ea)
+		{
+			var enOrig = Controller.Enabled;
+			Controller.Enabled = false;
+
+			if (!newPrc) Controller.Refresh(); // make sure we don't cling to things
+
+			// TODO: VALIDATE FOR GRIMMY'S SAKE!
+
+			// -----------------------------------------------
+			// VALIDATE
+
+			bool fnlen = (friendlyName.Text.Length > 0);
+			bool exnam = (execName.Text.Length > 0);
+			bool path = (pathName.Text.Length > 0);
+
+			if (!fnlen || friendlyName.Text.Contains("]") || friendlyName.Text.Contains("["))
+			{
+				MessageBox.ShowModal("Malconfigured friendly name", "Friendly name is missing or includes illegal characters (such as square brackets).", MessageBox.Buttons.OK, parent:this);
+				return;
+			}
+
+			if (!path && !exnam)
+			{
+				MessageBox.ShowModal("Configuration error", "No path nor executable defined.", MessageBox.Buttons.OK, parent: this);
+				return;
+			}
+
+			string newfriendlyname = friendlyName.Text.Trim();
+
+			if (processmanager.GetControllerByName(newfriendlyname, out var dprc) && dprc != Controller)
+			{
+				MessageBox.ShowModal("Configuration error", "Friendly Name conflict.", MessageBox.Buttons.OK, parent: this);
+				return;
+			}
+
+			bool hasPrio = priorityClass.SelectedIndex != 5;
+			bool hasAff = affinityMask.Value != -1;
+			bool hasPow = powerPlan.SelectedIndex != 3;
+
+			if (!hasPrio && !hasAff && !hasPow)
+			{
+				var rv = MessageBox.ShowModal("Configuration error", "No priority, affinity, nor power plan defined.\nThis will cause matching items to be essentially ignored.", MessageBox.Buttons.AcceptCancel, parent: this);
+				if (rv != MessageBox.ResultType.OK)
+					return;
+			}
+
+			// -----------------------------------------------
+
+			Controller.SetName(newfriendlyname);
+
+			if (execName.Text.Length > 0)
+			{
+				var t_executables = execName.Text.Split(new[] { '|' }, StringSplitOptions.RemoveEmptyEntries);
+				var f_exes = new string[t_executables.Length];
+				for (int i = 0; i < t_executables.Length; i++)
+					f_exes[i] = t_executables[i].Trim();
+				Controller.Executables = (f_exes?.Length > 0) ? f_exes : null;
+			}
+			else
+				Controller.Executables = null;
+
+			Controller.Path = pathName.Text.Length > 0 ? pathName.Text.Trim() : null;
+			if (priorityClass.SelectedIndex == 5) // ignored
+			{
+				Controller.Priority = null;
+				Controller.PriorityStrategy = ProcessPriorityStrategy.None;
+			}
+			else
+			{
+				Controller.Priority = ProcessHelpers.IntToPriority(priorityClass.SelectedIndex); // is this right?
+				Controller.PriorityStrategy = ProcessPriorityStrategy.None;
+				switch (priorityClassMethod.SelectedIndex)
+				{
+					case 0: Controller.PriorityStrategy = ProcessPriorityStrategy.Increase; break;
+					case 1: Controller.PriorityStrategy = ProcessPriorityStrategy.Decrease; break;
+					default:
+					case 2: Controller.PriorityStrategy = ProcessPriorityStrategy.Force; break;
+				}
+			}
+
+			switch (pathVisibility.SelectedIndex)
+			{
+				default:
+				case 0: Controller.PathVisibility = Process.PathVisibilityOptions.Invalid; break;
+				case 1: Controller.PathVisibility = Process.PathVisibilityOptions.Process; break;
+				case 2: Controller.PathVisibility = Process.PathVisibilityOptions.Partial; break;
+				case 3: Controller.PathVisibility = Process.PathVisibilityOptions.Full; break;
+				case 4: Controller.PathVisibility = Process.PathVisibilityOptions.Smart; break;
+			}
+
+			if (affstrategy.SelectedIndex != 0)
+			{
+				if (cpumask == -1)
+					Controller.AffinityMask = -1;
+				else
+				{
+					Controller.AffinityMask = cpumask;
+					Controller.AffinityStrategy = affstrategy.SelectedIndex == 1 ? ProcessAffinityStrategy.Limit : ProcessAffinityStrategy.Force;
+				}
+			}
+			else
+			{
+				// strategy = ignore
+				Controller.AffinityMask = -1;
+				Controller.AffinityStrategy = ProcessAffinityStrategy.None;
+			}
+
+			Controller.ModifyDelay = (int)(modifyDelay.Value * 1_000);
+			Controller.PowerPlan = Power.Utility.GetModeByName(powerPlan.Text);
+			Controller.AllowPaging = allowPaging.Checked;
+			Controller.SetForegroundMode((ForegroundMode)(ForegroundModeSelect.SelectedIndex - 1));
+
+			if (bgPriorityClass.SelectedIndex != 5)
+				Controller.BackgroundPriority = ProcessHelpers.IntToPriority(bgPriorityClass.SelectedIndex);
+			else
+				Controller.BackgroundPriority = null;
+
+			if (bgAffinityMask.Value >= 0)
+				Controller.BackgroundAffinity = Convert.ToInt32(bgAffinityMask.Value);
+			else
+				Controller.BackgroundAffinity = -1;
+
+			if (ignorelist.Items.Count > 0 && execName.Text.Length == 0)
+			{
+				var ignlist = new List<string>();
+				foreach (ListViewItem item in ignorelist.Items)
+					ignlist.Add(item.Text);
+
+				Controller.IgnoreList = ignlist.ToArray();
+			}
+			else
+				Controller.IgnoreList = null;
+
+			if (desc.Text.Length > 0)
+				Controller.Description = desc.Text;
+
+			if (AudioManagerEnabled && volumeMethod.SelectedIndex != 5)
+			{
+				switch (volumeMethod.SelectedIndex)
+				{
+					case 0: Controller.VolumeStrategy = Audio.VolumeStrategy.Increase; break;
+					case 1: Controller.VolumeStrategy = Audio.VolumeStrategy.Decrease; break;
+					case 2: Controller.VolumeStrategy = Audio.VolumeStrategy.IncreaseFromMute; break;
+					case 3: Controller.VolumeStrategy = Audio.VolumeStrategy.DecreaseFromFull; break;
+					case 4: Controller.VolumeStrategy = Audio.VolumeStrategy.Force; break;
+					default: Controller.VolumeStrategy = Audio.VolumeStrategy.Ignore; break;
+				}
+
+				Controller.Volume = Convert.ToSingle(volume.Value / 100M);
+			}
+
+			Controller.AffinityIdeal = Convert.ToInt32(idealAffinity.Value) - 1;
+
+			if (IOPriorityEnabled)
+				Controller.IOPriority = (Process.IOPriority)((ioPriority?.SelectedIndex ?? 0) - 1);
+
+			Controller.LogAdjusts = logAdjusts.Checked;
+			Controller.LogStartAndExit = logStartNExit.Checked;
+
+			Controller.DeclareParent = declareParent.Checked;
+
+			Controller.OrderPreference = Convert.ToInt32(preforder.Value).Constrain(0, 100);
+
+			Controller.Enabled = newPrc ? true : enOrig;
+
+			Controller.Repair();
+
+			Controller.SaveConfig();
+
+			Log.Information("[" + Controller.FriendlyName + "] " + (newPrc ? "Created" : "Modified"));
+
+			DialogResult = DialogResult.OK;
+
+			Controller.Refresh();
+
+			Close();
+		}
+
+		readonly TextBox friendlyName = null;
+		readonly TextBox execName = null;
+		readonly TextBox pathName = null;
+		readonly ComboBox pathVisibility = null;
+		readonly TextBox desc = null;
+
+		readonly ComboBox priorityClass = null;
+		readonly ComboBox priorityClassMethod = null;
+		readonly ComboBox bgPriorityClass = null;
+
+		readonly ComboBox affstrategy = null;
+		readonly NumericUpDown affinityMask = null;
+		readonly NumericUpDown bgAffinityMask = null;
+		readonly NumericUpDown idealAffinity = null;
+		readonly ComboBox ioPriority = null;
+
+		readonly ComboBox volumeMethod = null;
+		readonly Extensions.NumericUpDownEx volume = null;
+
+		readonly Button allbutton = null;
+		readonly Button clearbutton = null;
+		readonly Extensions.NumericUpDownEx modifyDelay = null;
+		readonly CheckBox allowPaging = null;
+		readonly ComboBox powerPlan = null;
+		readonly ComboBox ForegroundModeSelect = null;
+		readonly ComboBox FullscreenMode = null;
+		readonly ListView ignorelist = null;
+		readonly NumericUpDown preforder = null;
+
+		readonly CheckBox logAdjusts = null, logStartNExit=null, declareParent=null;
+
+		int cpumask = 0;
+
+		readonly static char[] InvalidCharacters = new[] { ']', '#', ';' };
 
 		bool ValidateName(TextBox box, char[] invalidChars)
 		{

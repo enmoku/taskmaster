@@ -54,7 +54,7 @@ namespace Taskmaster
 		{
 			uint pid = session.GetProcessID;
 			//string process = session.GetSessionIdentifier;
-			string instance = session.GetSessionInstanceIdentifier;
+			//string instance = session.GetSessionInstanceIdentifier;
 			string name = session.DisplayName;
 
 			// Don't care really
@@ -84,7 +84,7 @@ namespace Taskmaster
 		public void OnStateChanged(NAudio.CoreAudioApi.Interfaces.AudioSessionState state)
 		{
 			uint pid = session.GetProcessID;
-			string instance = session.GetSessionInstanceIdentifier;
+			//string instance = session.GetSessionInstanceIdentifier;
 			string name = session.DisplayName;
 
 			var sbs = new StringBuilder();

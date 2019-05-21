@@ -35,13 +35,13 @@ namespace Taskmaster.UI
 
 	internal class Splash : UniForm
 	{
-		ProgressBar coreProgress = null;
-		ProgressBar subProgress = null;
-		AlignedLabel loadMessage = null;
+		readonly ProgressBar coreProgress = null;
+		readonly ProgressBar subProgress = null;
+		readonly AlignedLabel loadMessage = null;
 
-		ListView LoadEventLog = null;
+		readonly ListView LoadEventLog = null;
 
-		Button exitButton = null;
+		readonly Button exitButton = null;
 
 		int Loaded = 0;
 		int MaxLoad = 1;

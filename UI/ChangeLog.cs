@@ -33,14 +33,13 @@ namespace Taskmaster.UI
 
 	public class ChangeLog : UniForm
 	{
-		Button ShowFullLogButton = new Button() { Text = "Full log" };
-		Button OKButton = new Button() { Text = "OK" };
-		TextBox LogBox = new TextBox() { Dock = DockStyle.Fill };
+		readonly Button ShowFullLogButton = new Button() { Text = "Full log" };
+		readonly Button OKButton = new Button() { Text = "OK" };
+		readonly TextBox LogBox = new TextBox() { Dock = DockStyle.Fill };
 
+		readonly string LogData = null;
 
-		string LogData = null;
-
-		AlignedLabel Title = null;
+		readonly AlignedLabel Title = null;
 
 		public ChangeLog(string logdata)
 		{

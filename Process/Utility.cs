@@ -349,11 +349,9 @@ namespace Taskmaster.Process
 
 		public static ProcessEx GetParentProcess(ProcessEx info)
 		{
-			int ppid = -1;
-
 			try
 			{
-				ppid = info.Process.ParentProcessId();
+				int ppid = info.Process.ParentProcessId();
 				if (GetInfo(ppid, out var parent, null, null, null, null, true))
 					return parent;
 			}
