@@ -653,6 +653,21 @@ namespace Taskmaster
 			}
 		}
 
+		internal static void ExecuteOnMainThread(Action action) // HACK: Why is there no simpler way to do this?
+		{
+			try
+			{
+				if (trayaccess?.InvokeRequired ?? false)
+					trayaccess?.BeginInvoke(action);
+				else
+					action();
+			}
+			catch (Exception ex)
+			{
+				Logging.Stacktrace(ex);
+			}
+		}
+
 		public static DateTime BuildDate() => DateTime.ParseExact(Properties.Resources.BuildDate.Trim(), "yyyy/MM/dd HH:mm:ss K", null, System.Globalization.DateTimeStyles.None);
 
 		/// <summary>
