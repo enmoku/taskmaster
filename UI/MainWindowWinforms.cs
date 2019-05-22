@@ -329,12 +329,7 @@ namespace Taskmaster.UI
 		{
 			bool alter = true;
 			foreach (ListViewItem li in lv.Items)
-			{
-				if (alternate && (alter = !alter))
-					li.BackColor = AlterColor;
-				else
-					li.BackColor = DefaultLIBGColor;
-			}
+				li.BackColor = (alternate && (alter = !alter)) ? AlterColor : DefaultLIBGColor;
 		}
 
 		void RemoveAudioInput(string GUID)
