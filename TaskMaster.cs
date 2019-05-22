@@ -506,6 +506,7 @@ namespace Taskmaster
 					// UI
 					trayaccess?.RefreshVisibility();
 					//UIWaiter.WaitOne();
+
 					System.Windows.Forms.Application.Run(); // WinForms
 
 					// System.Windows.Application.Current.Run(); // WPF
