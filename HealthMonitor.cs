@@ -346,6 +346,10 @@ namespace Taskmaster
 				}
 				catch (Exception ex) { Logging.Stacktrace(ex); }
 			}
+			catch (OperationCanceledException)
+			{
+				HealthTimer?.Stop();
+			}
 			catch { throw; }
 			finally
 			{
