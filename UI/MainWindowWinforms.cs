@@ -304,6 +304,8 @@ namespace Taskmaster.UI
 
 		void AddAudioInput(Audio.Device device)
 		{
+			if (micmanager is null) return;
+
 			try
 			{
 				var li = new ListViewItem(new string[] {
@@ -334,15 +336,17 @@ namespace Taskmaster.UI
 
 		void RemoveAudioInput(string GUID)
 		{
+			if (micmanager is null) return;
+
 			if (MicGuidToAudioInputs.TryRemove(GUID, out var li))
-			{
 				AudioInputs.Items.Remove(li);
-			}
 		}
 
 		void UpdateAudioInputs()
 		{
 			if (!IsHandleCreated || DisposedOrDisposing) return;
+
+			if (micmanager is null) return;
 
 			// TODO: mark default device in list
 			AudioInputs.Items.Clear();
@@ -419,13 +423,23 @@ namespace Taskmaster.UI
 		{
 			if (IsDisposed || !IsHandleCreated) return;
 
-			AddAudioInput(ea.Device);
-			AlternateListviewRowColors(AudioInputs, AlternateRowColorsDevices);
+			switch (ea.Device.Flow)
+			{
+				case NAudio.CoreAudioApi.DataFlow.Capture:
+					if (micmanager is null) return;
+					AddAudioInput(ea.Device);
+					AlternateListviewRowColors(AudioInputs, AlternateRowColorsDevices);
+					break;
+				case NAudio.CoreAudioApi.DataFlow.Render:
+					break;
+			}
 		}
 
 		void AudioDeviceRemoved(object sender, Audio.DeviceEventArgs ea)
 		{
 			if (IsDisposed || !IsHandleCreated) return;
+
+			if (micmanager is null) return;
 
 			RemoveAudioInput(ea.GUID);
 			AlternateListviewRowColors(AudioInputs, AlternateRowColorsDevices);
