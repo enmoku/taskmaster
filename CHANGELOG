@@ -3,6 +3,8 @@ Comprehensive changes can be found in Git change history:
 	https://github.com/mkahvi/taskmaster/commits/master
 
 ## [0.13...]
+### 2019-05-22
+	Fixed: Various issues related to audio service dying or audio devices being lost causing a crash or mass of errors.
 ### 2019-05-21
 	Fixed: Bad I/O priority default.
 ### 2019-05-20
