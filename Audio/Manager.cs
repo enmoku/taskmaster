@@ -65,7 +65,7 @@ namespace Taskmaster.Audio
 		/// </summary>
 		public Device RecordingDevice { get; private set; } = null;
 
-		readonly DeviceNotificationClient notificationClient = null;
+		DeviceNotificationClient notificationClient = null;
 
 		//public event EventHandler<ProcessEx> OnNewSession;
 
@@ -122,37 +122,61 @@ namespace Taskmaster.Audio
 		{
 			if (DisposingOrDisposed) return;
 
-			if (DebugAudio)
+			try
 			{
-				string name = Devices.TryGetValue(ea.GUID, out var device) ? device.Name : null;
+				if (DebugAudio)
+				{
+					string name = Devices.TryGetValue(ea.GUID, out var device) ? device.Name : null;
 
-				Log.Debug($"<Audio> Device {name ?? ea.GUID} state changed to {ea.State.ToString()}");
+					Log.Debug($"<Audio> Device {name ?? ea.GUID} state changed to {ea.State.ToString()}");
+				}
+
+				StateChanged?.Invoke(this, ea);
 			}
-
-			StateChanged?.Invoke(this, ea);
+			catch (Exception ex)
+			{
+				Logging.Stacktrace(ex);
+				CloseNotificationClient();
+			}
 		}
 
 		void DefaultDeviceProxy(object sender, DefaultDeviceEventArgs ea)
 		{
 			if (DisposingOrDisposed) return;
 
-			DefaultChanged?.Invoke(sender, ea);
+			try
+			{
+				DefaultChanged?.Invoke(sender, ea);
+			}
+			catch (Exception ex)
+			{
+				Logging.Stacktrace(ex);
+				CloseNotificationClient();
+			}
 		}
 
 		void DeviceAddedProxy(object sender, DeviceEventArgs ea)
 		{
 			if (DisposingOrDisposed) return;
 
-			var dev = Enumerator.GetDevice(ea.ID);
-			if (dev != null)
+			try
 			{
-				var adev = new Device(dev);
+				var dev = Enumerator.GetDevice(ea.ID);
+				if (dev != null)
+				{
+					var adev = new Device(dev);
 
-				Devices.TryAdd(ea.GUID, new Device(dev));
+					Devices.TryAdd(ea.GUID, new Device(dev));
 
-				ea.Device = adev;
+					ea.Device = adev;
 
-				Added?.Invoke(sender, ea);
+					Added?.Invoke(sender, ea);
+				}
+			}
+			catch (Exception ex)
+			{
+				Logging.Stacktrace(ex);
+				CloseNotificationClient();
 			}
 		}
 
@@ -160,16 +184,51 @@ namespace Taskmaster.Audio
 		{
 			if (DisposingOrDisposed) return;
 
-			if (ea.GUID.Equals(MultimediaDevice.GUID, StringComparison.OrdinalIgnoreCase))
-				MultimediaDevice = null;
+			try
+			{
+				if (MultimediaDevice != null && ea.GUID.Equals(MultimediaDevice.GUID, StringComparison.OrdinalIgnoreCase))
+				{
+					UnregisterDevice(MultimediaDevice);
+					MultimediaDevice = null;
+				}
 
-			if (ea.GUID.Equals(ConsoleDevice.GUID, StringComparison.OrdinalIgnoreCase))
-				ConsoleDevice = null;
+				if (ConsoleDevice != null && ea.GUID.Equals(ConsoleDevice.GUID, StringComparison.OrdinalIgnoreCase))
+				{
+					UnregisterDevice(ConsoleDevice);
+					ConsoleDevice = null;
+				}
 
-			if (Devices.TryRemove(ea.GUID, out var dev))
-				dev.Dispose();
+			}
+			catch (Exception ex)
+			{
+				Logging.Stacktrace(ex);
+				CloseNotificationClient();
+			}
+			finally
+			{
+				if (Devices.TryRemove(ea.GUID, out var dev))
+					dev.Dispose();
 
-			Removed?.Invoke(sender, ea);
+				Removed?.Invoke(sender, ea);
+			}
+		}
+
+		void CloseNotificationClient()
+		{
+			Debug.WriteLine("CloseNotificationClient");
+
+			if (notificationClient is null) return;
+
+			ExecuteOnMainThread(new Action(() =>
+			{
+				Enumerator?.UnregisterEndpointNotificationCallback(notificationClient);
+				notificationClient = null;
+			}));
+		}
+
+		void UnregisterDevice(Device device)
+		{
+			device.MMDevice.AudioSessionManager.OnSessionCreated -= OnSessionCreated;
 		}
 
 		readonly ConcurrentDictionary<string, Device> Devices = new ConcurrentDictionary<string, Device>();
@@ -322,12 +381,14 @@ namespace Taskmaster.Audio
 					volumeTimer?.Dispose();
 					volumeTimer = null;
 
-					Enumerator?.UnregisterEndpointNotificationCallback(notificationClient);  // unnecessary? definitely hangs if any mmdevice has been disposed
+					CloseNotificationClient(); // unnecessary? definitely hangs if any mmdevice has been disposed
 					Enumerator?.Dispose();
 					Enumerator = null;
 
-					MultimediaDevice.MMDevice.AudioSessionManager.OnSessionCreated -= OnSessionCreated;
-					ConsoleDevice.MMDevice.AudioSessionManager.OnSessionCreated -= OnSessionCreated;
+					if (MultimediaDevice != null)
+						MultimediaDevice.MMDevice.AudioSessionManager.OnSessionCreated -= OnSessionCreated;
+					if (ConsoleDevice != null)
+						ConsoleDevice.MMDevice.AudioSessionManager.OnSessionCreated -= OnSessionCreated;
 
 					MultimediaDevice?.Dispose();
 					ConsoleDevice?.Dispose();
