@@ -347,6 +347,8 @@ namespace Taskmaster.UI
 
 		void UpdateAudioInputs()
 		{
+			if (!IsHandleCreated || DisposedOrDisposing) return;
+
 			// TODO: mark default device in list
 			AudioInputs.Items.Clear();
 
@@ -420,12 +422,16 @@ namespace Taskmaster.UI
 
 		void AudioDeviceAdded(object sender, Audio.DeviceEventArgs ea)
 		{
+			if (IsDisposed || !IsHandleCreated) return;
+
 			AddAudioInput(ea.Device);
 			AlternateListviewRowColors(AudioInputs, AlternateRowColorsDevices);
 		}
 
 		void AudioDeviceRemoved(object sender, Audio.DeviceEventArgs ea)
 		{
+			if (IsDisposed || !IsHandleCreated) return;
+
 			RemoveAudioInput(ea.GUID);
 			AlternateListviewRowColors(AudioInputs, AlternateRowColorsDevices);
 		}
