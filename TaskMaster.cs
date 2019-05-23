@@ -163,7 +163,7 @@ namespace Taskmaster
 		/// </summary>
 		public static void BuildMainWindow(bool reveal = false, bool top = false)
 		{
-			DebugMsg("<Main Window> Building: " + !(mainwindow is null));
+			Logging.DebugMsg("<Main Window> Building: " + !(mainwindow is null));
 
 			try
 			{
@@ -220,7 +220,7 @@ namespace Taskmaster
 						mainwindow.Activated += (_, _ea) => OptimizeResponsiviness(true);
 						mainwindow.Deactivate += (_, _ea) => OptimizeResponsiviness(false);
 
-						mainwindow.FormClosing += (_, ea) => DebugMsg($"Main Window Closing: {ea.CloseReason.ToString()}");
+						mainwindow.FormClosing += (_, ea) => Logging.DebugMsg($"Main Window Closing: {ea.CloseReason.ToString()}");
 					}
 					catch (Exception ex)
 					{

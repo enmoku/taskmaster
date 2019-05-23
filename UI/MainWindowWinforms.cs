@@ -735,7 +735,7 @@ namespace Taskmaster.UI
 
 		void WatchlistColor()
 		{
-			if (Trace) DebugMsg("COLORING LINES");
+			if (Trace) Logging.DebugMsg("COLORING LINES");
 
 			System.Threading.Interlocked.Increment(ref watchlistcolor_i);
 

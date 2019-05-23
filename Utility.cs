@@ -100,7 +100,6 @@ namespace Taskmaster
 				.Append(trace).AppendLine();
 		}
 
-
 		[Conditional("DEBUG")]
 		public static void DebugMsg(string message)
 			=> System.Diagnostics.Debug.WriteLine("[" + DateTime.Now.ToShortTimeString() + "] " + message);
