@@ -125,8 +125,8 @@ namespace Taskmaster.UI
 				Height = 20,
 				Width = 200,
 				Style = ProgressBarStyle.Continuous,
-				MarqueeAnimationSpeed = 30_000, // ignored by continuous
-				ForeColor = System.Drawing.Color.DodgerBlue,
+				//MarqueeAnimationSpeed = 0, // ignored by continuous
+				//ForeColor = System.Drawing.Color.DodgerBlue,
 			};
 
 			InputVolume = new ProgressBar()
@@ -136,8 +136,8 @@ namespace Taskmaster.UI
 				Height = 20,
 				Width = 200,
 				Style = ProgressBarStyle.Continuous,
-				MarqueeAnimationSpeed = 30_000,
-				ForeColor = System.Drawing.Color.LightGoldenrodYellow,
+				//MarqueeAnimationSpeed = 0,
+				//ForeColor = System.Drawing.Color.LightGoldenrodYellow,
 			};
 
 			barlayout.Controls.Add(new AlignedLabel() { Text = "Output", TextAlign = System.Drawing.ContentAlignment.MiddleRight, AutoSize = true, Dock = DockStyle.Right });
@@ -160,9 +160,9 @@ namespace Taskmaster.UI
 			updateTimer.Tick += UpdateVolumeTick;
 			updateTimer.Start();
 
-			using (var uicfg = Taskmaster.Config.Load(MainWindow.UIConfigFilename).BlockUnload())
+			using (var uicfg = Taskmaster.Config.Load(UIConfigFilename).BlockUnload())
 			{
-				var winsec = uicfg.Config["Windows"];
+				var winsec = uicfg.Config[Constants.Windows];
 				var winpos = winsec[HumanReadable.Hardware.Audio.Volume].IntArray;
 
 				if (winpos != null && winpos.Length == 2)
@@ -259,8 +259,8 @@ namespace Taskmaster.UI
 
 				updateTimer.Dispose();
 
-				using (var cfg = Taskmaster.Config.Load(MainWindow.UIConfigFilename).BlockUnload())
-				cfg.Config["Windows"][HumanReadable.Hardware.Audio.Volume].IntArray = new int[] { Bounds.Left, Bounds.Top };
+				using (var cfg = Taskmaster.Config.Load(UIConfigFilename).BlockUnload())
+				cfg.Config[Constants.Windows][HumanReadable.Hardware.Audio.Volume].IntArray = new int[] { Bounds.Left, Bounds.Top };
 			}
 
 			OnDisposed?.Invoke(this, DisposedEventArgs.Empty);

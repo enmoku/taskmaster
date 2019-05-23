@@ -264,7 +264,7 @@ namespace Taskmaster
 				if (isadmin && adminwarning)
 				{
 					var rv = MessageBox.ShowModal(
-						Name+"! – admin access!!??",
+						Name + "! – admin access!!??",
 						"You're starting TM with admin rights, is this right?\n\nYou can cause bad system operation, such as complete system hang, if you configure or configured TM incorrectly.",
 						MessageBox.Buttons.AcceptCancel);
 
@@ -327,8 +327,6 @@ namespace Taskmaster
 			}
 
 			LoadEvent?.Invoke(null, new LoadEventArgs("Core configuration loaded.", LoadEventType.Loaded));
-
-			return;
 		}
 
 		static void InitializeComponents()

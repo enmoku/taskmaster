@@ -209,11 +209,11 @@ namespace Taskmaster.UI
 
 			if (!IsHandleCreated || DisposedOrDisposing) return;
 
-			Reveal(activate:true);
+			Reveal(activate: true);
 			CenterToScreen();
 		}
 
-		public void Reveal(bool activate=false)
+		public void Reveal(bool activate = false)
 		{
 			if (!IsHandleCreated || DisposedOrDisposing) return;
 
@@ -2967,9 +2967,9 @@ namespace Taskmaster.UI
 			}
 		}
 
-		void ProcessHandlingStateChangeEvent_Invoke(Process.HandlingStateChangeEventArgs ea, ListViewItem item, bool newitem=false)
+		void ProcessHandlingStateChangeEvent_Invoke(Process.HandlingStateChangeEventArgs ea, ListViewItem item, bool newitem = false)
 		{
-			if (!IsHandleCreated || DisposedOrDisposing) return;
+			if (!IsHandleCreated || DisposedOrDisposing) return;
 
 			int key = ea.Info.Id;
 
