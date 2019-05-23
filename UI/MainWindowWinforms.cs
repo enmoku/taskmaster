@@ -4013,55 +4013,52 @@ namespace Taskmaster.UI
 		{
 			if (!IsHandleCreated) return;
 
-			Invoke(new Action(() =>
+			try
 			{
-				try
-				{
-					if (WatchlistRules.Columns.Count == 0) return;
+				if (WatchlistRules.Columns.Count == 0) return;
 
-					using (var cfg = Taskmaster.Config.Load(UIConfigFilename).BlockUnload())
+				using (var cfg = Taskmaster.Config.Load(UIConfigFilename).BlockUnload())
+				{
+					var cols = cfg.Config[Constants.Columns];
+
+					var appWidths = new List<int>(WatchlistRules.Columns.Count);
+					var apporder = new List<int>(WatchlistRules.Columns.Count);
+					for (int i = 0; i < WatchlistRules.Columns.Count; i++)
 					{
-						var cols = cfg.Config[Constants.Columns];
-
-						var appWidths = new List<int>(WatchlistRules.Columns.Count);
-						var apporder = new List<int>(WatchlistRules.Columns.Count);
-						for (int i = 0; i < WatchlistRules.Columns.Count; i++)
-						{
-							appWidths.Add(WatchlistRules.Columns[i].Width);
-							apporder.Add(WatchlistRules.Columns[i].DisplayIndex);
-						}
-
-						cols[Constants.Apps].IntArray = appWidths.ToArray();
-						cols["App order"].IntArray = apporder.ToArray();
-
-						if (NetworkMonitorEnabled)
-						{
-							var ifaceWidths = new List<int>(NetworkDevices.Columns.Count);
-							for (int i = 0; i < NetworkDevices.Columns.Count; i++)
-								ifaceWidths.Add(NetworkDevices.Columns[i].Width);
-							cols["Interfaces"].IntArray = ifaceWidths.ToArray();
-						}
-
-						if (MicrophoneManagerEnabled)
-						{
-							var micWidths = new List<int>(AudioInputs.Columns.Count);
-							for (int i = 0; i < AudioInputs.Columns.Count; i++)
-								micWidths.Add(AudioInputs.Columns[i].Width);
-							cols["Mics"].IntArray = micWidths.ToArray();
-						}
-
-						var uistate = cfg.Config[Constants.Tabs];
-						uistate["Open"].Int = tabLayout.SelectedIndex;
-
-						var windows = cfg.Config[Constants.Windows];
-						windows["Main"].IntArray = new int[] { Bounds.Left, Bounds.Top, Bounds.Width, Bounds.Height };
+						appWidths.Add(WatchlistRules.Columns[i].Width);
+						apporder.Add(WatchlistRules.Columns[i].DisplayIndex);
 					}
+
+					cols[Constants.Apps].IntArray = appWidths.ToArray();
+					cols["App order"].IntArray = apporder.ToArray();
+
+					if (NetworkMonitorEnabled)
+					{
+						var ifaceWidths = new List<int>(NetworkDevices.Columns.Count);
+						for (int i = 0; i < NetworkDevices.Columns.Count; i++)
+							ifaceWidths.Add(NetworkDevices.Columns[i].Width);
+						cols["Interfaces"].IntArray = ifaceWidths.ToArray();
+					}
+
+					if (MicrophoneManagerEnabled)
+					{
+						var micWidths = new List<int>(AudioInputs.Columns.Count);
+						for (int i = 0; i < AudioInputs.Columns.Count; i++)
+							micWidths.Add(AudioInputs.Columns[i].Width);
+						cols["Mics"].IntArray = micWidths.ToArray();
+					}
+
+					var uistate = cfg.Config[Constants.Tabs];
+					uistate["Open"].Int = tabLayout.SelectedIndex;
+
+					var windows = cfg.Config[Constants.Windows];
+					windows["Main"].IntArray = new int[] { Bounds.Left, Bounds.Top, Bounds.Width, Bounds.Height };
 				}
-				catch (Exception ex)
-				{
-					Logging.Stacktrace(ex);
-				}
-			}));
+			}
+			catch (Exception ex)
+			{
+				Logging.Stacktrace(ex);
+			}
 		}
 
 		#region IDispose
