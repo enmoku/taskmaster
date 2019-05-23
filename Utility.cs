@@ -100,6 +100,11 @@ namespace Taskmaster
 				.Append(trace).AppendLine();
 		}
 
+
+		[Conditional("DEBUG")]
+		public static void DebugMsg(string message)
+			=> System.Diagnostics.Debug.WriteLine("[" + DateTime.Now.ToShortTimeString() + "] " + message);
+
 		public static void Stacktrace(Exception ex, bool crashsafe = false, [CallerMemberName] string method="", [CallerLineNumber] int lineNo=-1)
 		{
 			if (!crashsafe)
@@ -134,7 +139,7 @@ namespace Taskmaster
 					}
 
 					System.IO.File.WriteAllText(logfile, sbs.ToString(), Encoding.Unicode);
-					Debug.WriteLine("Crash log written to " + logfile);
+					DebugMsg("Crash log written to " + logfile);
 				}
 				catch (OutOfMemoryException) { throw; }
 				catch

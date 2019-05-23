@@ -475,11 +475,11 @@ namespace Taskmaster.Process
 
 				if (WaitForExitList.TryGetValue(pid, out info))
 				{
-					if (Trace && DebugProcesses) Debug.WriteLine($"Re-using old ProcessEx: {info.Name} (#{info.Id})");
+					if (Trace && DebugProcesses) Logging.DebugMsg($"Re-using old ProcessEx: {info.Name} (#{info.Id})");
 					info.Process.Refresh();
 					if (info.Process.HasExited) // Stale, for some reason still kept
 					{
-						if (Trace && DebugProcesses) Debug.WriteLine("Re-using old ProcessEx - except not, stale");
+						if (Trace && DebugProcesses) Logging.DebugMsg("Re-using old ProcessEx - except not, stale");
 						WaitForExitList.TryRemove(pid, out _);
 						info = null;
 					}
@@ -1122,7 +1122,7 @@ namespace Taskmaster.Process
 			{
 				var token = watchlist_cts.Token;
 
-				if (Trace) Debug.WriteLine("SORTING PROCESS MANAGER WATCHLIST");
+				if (Trace) Logging.DebugMsg("SORTING PROCESS MANAGER WATCHLIST");
 				WatchlistCache.Value.Sort(WatchlistSorter);
 
 				if (token.IsCancellationRequested) return; // redo?
@@ -1699,7 +1699,7 @@ namespace Taskmaster.Process
 
 					try
 					{
-						if (Trace && DebugProcesses) Debug.WriteLine($"Trying to modify: {info.Name} (#{info.Id})");
+						if (Trace && DebugProcesses) Logging.DebugMsg($"Trying to modify: {info.Name} (#{info.Id})");
 
 						await info.Controller.Modify(info);
 
@@ -1715,7 +1715,7 @@ namespace Taskmaster.Process
 
 						if (info.State == ProcessHandlingState.Processing)
 						{
-							Debug.WriteLine($"[{info.Controller.FriendlyName}] {info.Name} (#{info.Id}) correcting state to Finished");
+							Logging.DebugMsg($"[{info.Controller.FriendlyName}] {info.Name} (#{info.Id}) correcting state to Finished");
 							info.State = ProcessHandlingState.Finished;
 						}
 					}
@@ -1732,7 +1732,7 @@ namespace Taskmaster.Process
 				else
 				{
 					info.State = ProcessHandlingState.Abandoned;
-					if (Trace && DebugProcesses) Debug.WriteLine($"ProcessTriage no matching rule for: {info.Name} (#{info.Id})");
+					if (Trace && DebugProcesses) Logging.DebugMsg($"ProcessTriage no matching rule for: {info.Name} (#{info.Id})");
 				}
 
 				/*
@@ -2006,7 +2006,7 @@ namespace Taskmaster.Process
 				if (DebugAdjustDelay)
 				{
 					wmidelay = new DateTimeOffset(creation.ToUniversalTime()).TimeTo(now);
-					if (Trace) Debug.WriteLine($"WMI delay (#{pid}): {wmidelay.TotalMilliseconds:N0} ms");
+					if (Trace) Logging.DebugMsg($"WMI delay (#{pid}): {wmidelay.TotalMilliseconds:N0} ms");
 				}
 
 				if (IgnoreProcessID(pid)) return; // We just don't care
@@ -2022,7 +2022,7 @@ namespace Taskmaster.Process
 					return;
 				}
 
-				if (Trace) Debug.WriteLine($"NewInstanceTriage: {name} (#{pid})");
+				if (Trace) Logging.DebugMsg($"NewInstanceTriage: {name} (#{pid})");
 
 				if (IgnoreProcessName(name))
 				{

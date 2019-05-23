@@ -68,7 +68,7 @@ namespace Taskmaster
 					int rv = NtSetInformationProcess(Handle, PROCESS_INFORMATION_CLASS_WIN7.ProcessIoPriority, ref ioPrio, 4);
 
 					int error = Marshal.GetLastWin32Error();
-					//Debug.WriteLine($"SetInformationProcess error code: {error} --- return value: {rv:X}");
+					//Logging.DebugMsg($"SetInformationProcess error code: {error} --- return value: {rv:X}");
 
 					return error == 0;
 				}
@@ -93,7 +93,7 @@ namespace Taskmaster
 					int rv = NtQueryInformationProcess(Handle, PROCESS_INFORMATION_CLASS_WIN7.ProcessIoPriority, ref ioPrio, 4, ref resLen);
 
 					int error = Marshal.GetLastWin32Error();
-					//Debug.WriteLine($"QueryInformationProcess error code: {error} --- return value: {rv:X}");
+					//Logging.DebugMsg($"QueryInformationProcess error code: {error} --- return value: {rv:X}");
 
 					return error == 0 ? ioPrio.ToInt32() : -1;
 				}

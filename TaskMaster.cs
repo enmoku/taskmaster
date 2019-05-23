@@ -38,6 +38,8 @@ using Serilog.Events;
 
 namespace Taskmaster
 {
+	using static Taskmaster;
+
 	public static partial class Taskmaster
 	{
 		public static string GitURL => "https://github.com/mkahvi/taskmaster";
@@ -161,7 +163,7 @@ namespace Taskmaster
 		/// </summary>
 		public static void BuildMainWindow(bool reveal = false, bool top = false)
 		{
-			Debug.WriteLine("<Main Window> Building: " + !(mainwindow is null));
+			DebugMsg("<Main Window> Building: " + !(mainwindow is null));
 
 			try
 			{
@@ -218,7 +220,7 @@ namespace Taskmaster
 						mainwindow.Activated += (_, _ea) => OptimizeResponsiviness(true);
 						mainwindow.Deactivate += (_, _ea) => OptimizeResponsiviness(false);
 
-						mainwindow.FormClosing += (_, ea) => Debug.WriteLine($"Main Window Closing: {ea.CloseReason.ToString()}");
+						mainwindow.FormClosing += (_, ea) => DebugMsg($"Main Window Closing: {ea.CloseReason.ToString()}");
 					}
 					catch (Exception ex)
 					{
@@ -281,7 +283,7 @@ namespace Taskmaster
 		{
 			~Finalizer()
 			{
-				// Debug.WriteLine("Core static finalization");
+				// Logging.DebugMsg("Core static finalization");
 			}
 		}
 

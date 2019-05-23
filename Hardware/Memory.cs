@@ -77,8 +77,8 @@ namespace Taskmaster
 		{
 			Update();
 
-			Debug.WriteLine("Total memory:  " + Total);
-			Debug.WriteLine("Private bytes: " + Private);
+			Logging.DebugMsg("Total memory:  " + Total);
+			Logging.DebugMsg("Private bytes: " + Private);
 
 			/*
 			// Win32_ComputerSystem -> TotalPhysicalMemory maps to MEMORYSTATUSEX.ullTotalPhys
@@ -104,7 +104,7 @@ namespace Taskmaster
 			Total = mem.ullTotalPhys;
 			FreeBytes = mem.ullAvailPhys;
 			Used = Total - mem.ullAvailPhys;
-			if (Trace && DebugMemory) Debug.WriteLine($"MEMORY - Total: {Total.ToString()}, Free: {FreeBytes.ToString()}, Used: {Used.ToString()}");
+			if (Trace && DebugMemory) Logging.DebugMsg($"MEMORY - Total: {Total.ToString()}, Free: {FreeBytes.ToString()}, Used: {Used.ToString()}");
 		}
 
 		// weird hack
@@ -113,7 +113,7 @@ namespace Taskmaster
 		{
 			~Finalizer()
 			{
-				Debug.WriteLine("MemoryManager static finalization");
+				Logging.DebugMsg("MemoryManager static finalization");
 				pfcprivate?.Dispose();
 				pfcprivate = null;
 				pfccommit?.Dispose();

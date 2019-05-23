@@ -52,7 +52,7 @@ namespace Taskmaster.Configuration
 		{
 			System.Diagnostics.Debug.Assert(Config != null);
 
-			Debug.WriteLine("ConfigFile.Save(" + Filename + ") - Forced: " + force + ", Changes: " + Config.Changes);
+			Logging.DebugMsg("ConfigFile.Save(" + Filename + ") - Forced: " + force + ", Changes: " + Config.Changes);
 
 			if (force || Config.Changes > 0)
 			{

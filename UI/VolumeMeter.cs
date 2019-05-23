@@ -197,7 +197,7 @@ namespace Taskmaster.UI
 				var output = audiomanager.MultimediaDevice.MMDevice.AudioMeterInformation.MasterPeakValue;
 				var input = audiomanager.RecordingDevice.MMDevice.AudioMeterInformation.MasterPeakValue;
 
-				if (DebugAudio && Trace) Debug.WriteLine($"Volume --- Output: {output:N2} --- Input: {input:N2}");
+				if (DebugAudio && Trace) Logging.DebugMsg($"Volume --- Output: {output:N2} --- Input: {input:N2}");
 
 				OutputVolume.Value = Convert.ToInt32(output * 10000f).Constrain(0, OutputVolume.Maximum);
 				OutputVolumeLabel.Text = $"{output * 100f:N2} %";

@@ -106,7 +106,7 @@ namespace Taskmaster
 
 			try
 			{
-				Debug.WriteLine("TEMP modified (" + ev.ChangeType.ToString() + "): " + ev.FullPath);
+				Logging.DebugMsg("TEMP modified (" + ev.ChangeType.ToString() + "): " + ev.FullPath);
 
 				if (ReScanBurden % 100 == 0)
 					Log.Debug("<Maintenance> Significant amount of changes have occurred to temp folders");

@@ -136,7 +136,7 @@ namespace Taskmaster.UI
 
 		internal void LoadEvent(object sender, LoadEventArgs ea)
 		{
-			Debug.WriteLine("[" + Loaded + "/" + MaxLoad + "] " + ea.Message);
+			Logging.DebugMsg("[" + Loaded + "/" + MaxLoad + "] " + ea.Message);
 
 			if (ea.MaxSubProgress > 0) MaxSubLoad = ea.MaxSubProgress;
 

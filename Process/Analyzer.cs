@@ -96,7 +96,7 @@ namespace Taskmaster.Process
 					return;
 				}
 
-				if (Trace) Debug.WriteLine("Analyzing:" + $"{info.Name} (#{info.Id})");
+				if (Trace) Logging.DebugMsg("Analyzing:" + $"{info.Name} (#{info.Id})");
 
 				modFile = info.Process.MainModule.FileName;
 				version = info.Process.MainModule.FileVersionInfo;
@@ -133,7 +133,7 @@ namespace Taskmaster.Process
 						//GetModuleInformation(handle, modulePtrs[index], out moduleInformation, (uint)(IntPtr.Size * (modulePtrs.Length)));
 
 						//linkedModules.Add(moduleName.ToLowerInvariant());
-						//Debug.WriteLine(" - " + moduleName);
+						//Logging.DebugMsg(" - " + moduleName);
 
 						var file = moduleName.Trim();
 						var identity = IdentifyModule(file);

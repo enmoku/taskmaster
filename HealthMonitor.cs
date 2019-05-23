@@ -464,7 +464,7 @@ namespace Taskmaster
 
 			await Task.Delay(0).ConfigureAwait(false);
 
-			Debug.WriteLine("<<Auto-Doc>> Checking...");
+			Logging.DebugMsg("<<Auto-Doc>> Checking...");
 
 			var now = DateTimeOffset.UtcNow;
 
@@ -529,7 +529,7 @@ namespace Taskmaster
 						{
 							double actualgoal = ((Memory.Total * (pressure - 1d)) / 1_048_576);
 							double freegoal = actualgoal + Math.Max(512d, Memory.Total * 0.02 / 1_048_576); // 512 MB or 2% extra to give space for disk cache
-							Debug.WriteLine(
+							Logging.DebugMsg(
 								"Pressure:    " + $"{pressure * 100:N1} %" + Environment.NewLine +
 								"Actual goal: " + $"{actualgoal:N2}" + Environment.NewLine +
 								"Stated goal: " + $"{freegoal:N2}");

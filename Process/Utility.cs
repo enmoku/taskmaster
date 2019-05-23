@@ -155,7 +155,7 @@ namespace Taskmaster.Process
 			catch (Win32Exception) // Access Denied
 			{
 				// NOP
-				Debug.WriteLine("GetModuleFileNameEx - Access Denied - " + $"{info.Name} (#{info.Id})");
+				Logging.DebugMsg("GetModuleFileNameEx - Access Denied - " + $"{info.Name} (#{info.Id})");
 			}
 			catch (InvalidOperationException) { }// Already exited
 			catch (Exception ex)
@@ -219,7 +219,7 @@ namespace Taskmaster.Process
 			if (sbs != null)
 			{
 				sbs.Append(" = ").Append(Convert.ToString(newAffinityMask, 2));
-				Debug.WriteLine(sbs.ToString());
+				Logging.DebugMsg(sbs.ToString());
 			}
 
 			return newAffinityMask;
@@ -253,7 +253,7 @@ namespace Taskmaster.Process
 						{
 							newIO = NativeMethods.GetIOPriority(handle);
 							if (newIO != target)
-								Debug.WriteLine($"{process.ProcessName} (#{process.Id}) - I/O not set correctly: {newIO} instead of {target}");
+								Logging.DebugMsg($"{process.ProcessName} (#{process.Id}) - I/O not set correctly: {newIO} instead of {target}");
 						}
 						else
 							throw new InvalidOperationException("Failed to modify process I/O priority");

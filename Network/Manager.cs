@@ -257,7 +257,7 @@ namespace Taskmaster.Network
 					// - Show errors in increasing rarity
 					// - Reset the increased rarity once it becomes too rare
 
-					//Debug.WriteLine($"NETWORK - Errors: +{errorsInSample}, NotPeaked: {!ErrorReports.Peaked}, Level: {ErrorReports.Level}/{ErrorReports.Peak}");
+					//Logging.DebugMsg($"NETWORK - Errors: +{errorsInSample}, NotPeaked: {!ErrorReports.Peaked}, Level: {ErrorReports.Level}/{ErrorReports.Peak}");
 
 					if (ShowNetworkErrors // user wants to see this
 						&& errorsInSample > 0 // only if errors

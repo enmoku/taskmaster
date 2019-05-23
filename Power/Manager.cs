@@ -228,11 +228,11 @@ namespace Taskmaster.Power
 
 			using (var proc = System.Diagnostics.Process.Start(info))
 			{
-				Debug.WriteLine($"{info.FileName} {info.Arguments}");
+				Logging.DebugMsg($"{info.FileName} {info.Arguments}");
 				while (!proc.StandardOutput.EndOfStream)
 				{
 					if (timer.ElapsedMilliseconds > 30_000) return;
-					Debug.WriteLine(proc.StandardOutput.ReadLine());
+					Logging.DebugMsg(proc.StandardOutput.ReadLine());
 				}
 			}
 
@@ -244,11 +244,11 @@ namespace Taskmaster.Power
 			};
 			using (var proc = System.Diagnostics.Process.Start(info))
 			{
-				Debug.WriteLine($"{info.FileName} {info.Arguments}");
+				Logging.DebugMsg($"{info.FileName} {info.Arguments}");
 				while (!proc.StandardOutput.EndOfStream)
 				{
 					if (timer.ElapsedMilliseconds > 30_000) return;
-					Debug.WriteLine(proc.StandardOutput.ReadLine());
+					Logging.DebugMsg(proc.StandardOutput.ReadLine());
 				}
 			}
 
@@ -260,11 +260,11 @@ namespace Taskmaster.Power
 			};
 			using (var proc = System.Diagnostics.Process.Start(info))
 			{
-				Debug.WriteLine($"{info.FileName} {info.Arguments}");
+				Logging.DebugMsg($"{info.FileName} {info.Arguments}");
 				while (!proc.StandardOutput.EndOfStream)
 				{
 					if (timer.ElapsedMilliseconds > 30_000) return;
-					Debug.WriteLine(proc.StandardOutput.ReadLine());
+					Logging.DebugMsg(proc.StandardOutput.ReadLine());
 				}
 			}
 		}
@@ -453,8 +453,8 @@ namespace Taskmaster.Power
 			ev.Pressure = 0;
 			ev.Enacted = false;
 
-			//Debug.WriteLine("AUTO-ADJUST: Previous Reaction: " + PreviousReaction.ToString());
-			//Debug.WriteLine("AUTO-ADJUST: Queue Length: " + ev.Queue.ToString());
+			//Logging.DebugMsg("AUTO-ADJUST: Previous Reaction: " + PreviousReaction.ToString());
+			//Logging.DebugMsg("AUTO-ADJUST: Queue Length: " + ev.Queue.ToString());
 			if (PreviousReaction == Reaction.High)
 			{
 				// Backoff from High to Medium power level
@@ -463,7 +463,7 @@ namespace Taskmaster.Power
 					|| ev.Mean <= aa.High.Backoff.Mean
 					|| ev.Low <= aa.High.Backoff.Low))
 				{
-					//Debug.WriteLine("AUTO-ADJUST: Motive: High to Average");
+					//Logging.DebugMsg("AUTO-ADJUST: Motive: High to Average");
 					Reaction = Reaction.Average;
 
 					BackoffCounter++;
@@ -472,13 +472,13 @@ namespace Taskmaster.Power
 						Ready = true;
 
 					queuePressureAdjust = (aa.Queue.High > 0 ? ev.Queue / aa.Queue.High : 0f);
-					//Debug.WriteLine("AUTO-ADJUST: Queue pressure adjust: " + $"{queuePressureAdjust:N1}");
+					//Logging.DebugMsg("AUTO-ADJUST: Queue pressure adjust: " + $"{queuePressureAdjust:N1}");
 					ev.Pressure = ((float)BackoffCounter) / ((float)aa.High.Backoff.Level) - queuePressureAdjust;
-					//Debug.WriteLine("AUTO-ADJUST: Final pressure: " + $"{ev.Pressure:N1}");
+					//Logging.DebugMsg("AUTO-ADJUST: Final pressure: " + $"{ev.Pressure:N1}");
 				}
 				else
 				{
-					//Debug.WriteLine("AUTO-ADJUST: Motive: High - Steady");
+					//Logging.DebugMsg("AUTO-ADJUST: Motive: High - Steady");
 					Reaction = Reaction.High;
 					ev.Steady = true;
 				}
@@ -491,7 +491,7 @@ namespace Taskmaster.Power
 					|| ev.Mean >= aa.Low.Backoff.Mean
 					|| ev.Low >= aa.Low.Backoff.Low)
 				{
-					//Debug.WriteLine("AUTO-ADJUST: Motive: Low to Average");
+					//Logging.DebugMsg("AUTO-ADJUST: Motive: Low to Average");
 					Reaction = Reaction.Average;
 
 					BackoffCounter++;
@@ -500,13 +500,13 @@ namespace Taskmaster.Power
 						Ready = true;
 
 					queuePressureAdjust = (aa.Queue.Low > 0 ? ev.Queue / aa.Queue.Low : 0f);
-					//Debug.WriteLine("AUTO-ADJUST: Queue pressure adjust: " + $"{queuePressureAdjust:N1}");
+					//Logging.DebugMsg("AUTO-ADJUST: Queue pressure adjust: " + $"{queuePressureAdjust:N1}");
 					ev.Pressure = ((float)BackoffCounter) / ((float)aa.Low.Backoff.Level) + queuePressureAdjust;
-					//Debug.WriteLine("AUTO-ADJUST: Final pressure: " + $"{ev.Pressure:N1}");
+					//Logging.DebugMsg("AUTO-ADJUST: Final pressure: " + $"{ev.Pressure:N1}");
 				}
 				else
 				{
-					//Debug.WriteLine("AUTO-ADJUST: Motive: Low - Steady");
+					//Logging.DebugMsg("AUTO-ADJUST: Motive: Low - Steady");
 					Reaction = Reaction.Low;
 					ev.Steady = true;
 				}
@@ -516,7 +516,7 @@ namespace Taskmaster.Power
 				if (ev.Low > aa.High.Commit.Threshold // Low CPU is above threshold for High mode
 					&& aa.High.Mode != CurrentMode)
 				{
-					//Debug.WriteLine("AUTO-ADJUST: Motive: Average to High");
+					//Logging.DebugMsg("AUTO-ADJUST: Motive: Average to High");
 					// Commit to High power level
 					Reaction = Reaction.High;
 
@@ -527,15 +527,16 @@ namespace Taskmaster.Power
 						Ready = true;
 
 					queuePressureAdjust = (aa.Queue.High > 0 ? ev.Queue / 5 : 0); // 20% per queued thread
-																				  //Debug.WriteLine("AUTO-ADJUST: Queue pressure adjust: " + $"{queuePressureAdjust:N1}");
+
+					//Logging.DebugMsg("AUTO-ADJUST: Queue pressure adjust: " + $"{queuePressureAdjust:N1}");
 					ev.Pressure = ((float)HighPressure) / ((float)aa.High.Commit.Level) + queuePressureAdjust;
-					//Debug.WriteLine("AUTO-ADJUST: Final pressure: " + $"{ev.Pressure:N1}");
+					//Logging.DebugMsg("AUTO-ADJUST: Final pressure: " + $"{ev.Pressure:N1}");
 				}
 				else if (ev.Queue < aa.Queue.Low
 					&& ev.High < aa.Low.Commit.Threshold // High CPU is below threshold for Low mode
 					&& aa.Low.Mode != CurrentMode)
 				{
-					//Debug.WriteLine("AUTO-ADJUST: Motive: Average to Low");
+					//Logging.DebugMsg("AUTO-ADJUST: Motive: Average to Low");
 					// Commit to Low power level
 					Reaction = Reaction.Low;
 
@@ -546,14 +547,15 @@ namespace Taskmaster.Power
 						Ready = true;
 
 					queuePressureAdjust = (aa.Queue.High > 0 ? ev.Queue / aa.Queue.High : 0);
-					//Debug.WriteLine("AUTO-ADJUST: Queue pressure adjust: " + $"{queuePressureAdjust:N1}");
+
+					//Logging.DebugMsg("AUTO-ADJUST: Queue pressure adjust: " + $"{queuePressureAdjust:N1}");
 					ev.Pressure = ((float)LowPressure) / ((float)aa.Low.Commit.Level) + queuePressureAdjust;
-					//Debug.WriteLine("AUTO-ADJUST: Final pressure: " + $"{ev.Pressure:N1}");
+					//Logging.DebugMsg("AUTO-ADJUST: Final pressure: " + $"{ev.Pressure:N1}");
 				}
 				else // keep power at medium
 				{
-					//Debug.WriteLine("AUTO-ADJUST: Motive: Average - Steady");
-					if (DebugAutoPower) Debug.WriteLine("Auto-adjust NOP");
+					//Logging.DebugMsg("AUTO-ADJUST: Motive: Average - Steady");
+					if (DebugAutoPower) Logging.DebugMsg("Auto-adjust NOP");
 
 					Reaction = Reaction.Average;
 					ev.Steady = true;

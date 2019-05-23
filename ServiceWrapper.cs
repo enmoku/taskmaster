@@ -67,7 +67,7 @@ namespace Taskmaster
 				if (string.IsNullOrEmpty(mode) || mode.Equals("disabled", StringComparison.InvariantCultureIgnoreCase))
 					return;
 
-				Debug.WriteLine($"SERVICE [{ServiceName}] DISABLE");
+				Logging.DebugMsg($"SERVICE [{ServiceName}] DISABLE");
 
 				WMI.Value.SetPropertyValue("StartMode", "Disabled");
 
@@ -85,7 +85,7 @@ namespace Taskmaster
 
 			try
 			{
-				Debug.WriteLine($"SERVICE [{ServiceName}] ENABLE");
+				Logging.DebugMsg($"SERVICE [{ServiceName}] ENABLE");
 
 				WMI.Value.SetPropertyValue("StartMode", "Automatic");
 				WMI.Value.SetPropertyValue("DelayedAutoStart", true);

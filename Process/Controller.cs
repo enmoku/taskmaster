@@ -160,7 +160,7 @@ namespace Taskmaster.Process
 			// c:\
 
 			var res = path + (both ? (endsWithSlash ? FilePathPaddingForSlash : FilePathPadding) : (hFile ? @"\\" : string.Empty)) + exe;
-			Debug.WriteLine("Process.Controller.GenerateRegex = " + res);
+			Logging.DebugMsg("Process.Controller.GenerateRegex = " + res);
 
 			var regex = new System.Text.RegularExpressions.Regex(res,
 			System.Text.RegularExpressions.RegexOptions.Singleline | System.Text.RegularExpressions.RegexOptions.Compiled | System.Text.RegularExpressions.RegexOptions.ExplicitCapture);
@@ -540,7 +540,7 @@ namespace Taskmaster.Process
 		{
 			using (var cfg = Config.Load(Manager.WatchlistFile).BlockUnload())
 			{
-				Debug.WriteLine("Saving: " + FriendlyName);
+				Logging.DebugMsg("Saving: " + FriendlyName);
 				SaveConfig(cfg.File);
 			}
 		}
@@ -723,7 +723,7 @@ namespace Taskmaster.Process
 			else
 				app.TryRemove("Declare parent");
 
-			Debug.WriteLine(cfg.Filename + " has gained " + cfg.Config.Changes + " total changes.");
+			Logging.DebugMsg(cfg.Filename + " has gained " + cfg.Config.Changes + " total changes.");
 
 			// pass to config manager
 			NeedsSaving = false;
@@ -1207,13 +1207,13 @@ namespace Taskmaster.Process
 							(AffinityMask >= 0 && info.Process.ProcessorAffinity.ToInt32() != AffinityMask))
 						{
 							ormt.ExpectedState--;
-							Debug.WriteLine($"[{FriendlyName}] {FormatPathName(info)} (#{info.Id.ToString()}) Recently Modified ({ormt.ExpectedState}) ---");
+							Logging.DebugMsg($"[{FriendlyName}] {FormatPathName(info)} (#{info.Id.ToString()}) Recently Modified ({ormt.ExpectedState}) ---");
 						}
 						else
 						{
 							ormt.ExpectedState++;
 							// TODO: allow modification in case this happens too much?
-							Debug.WriteLine($"[{FriendlyName}] {FormatPathName(info)} (#{info.Id.ToString()}) Recently Modified ({ormt.ExpectedState}) +++");
+							Logging.DebugMsg($"[{FriendlyName}] {FormatPathName(info)} (#{info.Id.ToString()}) Recently Modified ({ormt.ExpectedState}) +++");
 							expected = true;
 						}
 
@@ -1226,7 +1226,7 @@ namespace Taskmaster.Process
 							{
 								ormt.FreeWill = true;
 
-								Debug.WriteLine($"[{FriendlyName}] {FormatPathName(info)} (#{info.Id.ToString()}) agency granted");
+								Logging.DebugMsg($"[{FriendlyName}] {FormatPathName(info)} (#{info.Id.ToString()}) agency granted");
 
 								if (ShowAgency)
 									Log.Debug($"[{FriendlyName}] {FormatPathName(info)} (#{info.Id.ToString()}) is resisting being modified: Agency granted.");
@@ -1251,7 +1251,7 @@ namespace Taskmaster.Process
 							return;
 						}
 
-						Debug.WriteLine($"[{FriendlyName}] {FormatPathName(info)} (#{info.Id.ToString()}) pass through");
+						Logging.DebugMsg($"[{FriendlyName}] {FormatPathName(info)} (#{info.Id.ToString()}) pass through");
 					}
 					else
 					{
@@ -1391,7 +1391,7 @@ namespace Taskmaster.Process
 				}
 				else
 				{
-					if (Manager.DebugProcesses) Debug.WriteLine($"{FormatPathName(info)} #{info.Id.ToString()} --- affinity not touched");
+					if (Manager.DebugProcesses) Logging.DebugMsg($"{FormatPathName(info)} #{info.Id.ToString()} --- affinity not touched");
 				}
 
 				if (AffinityIdeal >= 0)

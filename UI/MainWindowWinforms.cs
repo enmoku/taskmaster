@@ -128,7 +128,7 @@ namespace Taskmaster.UI
 
 			if (!ShowOnStart)
 			{
-				Debug.WriteLine("<Main Window> Show on start disabled, hiding.");
+				Logging.DebugMsg("<Main Window> Show on start disabled, hiding.");
 				Hide();
 			}
 
@@ -153,7 +153,7 @@ namespace Taskmaster.UI
 
 		void onShown(object _, EventArgs _ea)
 		{
-			Debug.WriteLine("<Main Window> Showing");
+			Logging.DebugMsg("<Main Window> Showing");
 
 			if (!IsHandleCreated) return;
 
@@ -175,7 +175,7 @@ namespace Taskmaster.UI
 
 				if (!Trace) return;
 
-				Debug.WriteLine("WindowClose = " + ea.CloseReason.ToString());
+				Logging.DebugMsg("WindowClose = " + ea.CloseReason.ToString());
 				switch (ea.CloseReason)
 				{
 					case CloseReason.UserClosing:
@@ -194,7 +194,7 @@ namespace Taskmaster.UI
 						Log.Debug("Exit: Unidentified close reason: " + ea.CloseReason.ToString());
 						break;
 				}
-				Debug.WriteLine("WindowClose.Handled");
+				Logging.DebugMsg("WindowClose.Handled");
 			}
 			catch (Exception ex) { Logging.Stacktrace(ex); }
 		}
@@ -735,7 +735,7 @@ namespace Taskmaster.UI
 
 		void WatchlistColor()
 		{
-			if (Trace) Debug.WriteLine("COLORING LINES");
+			if (Trace) DebugMsg("COLORING LINES");
 
 			System.Threading.Interlocked.Increment(ref watchlistcolor_i);
 
@@ -748,7 +748,7 @@ namespace Taskmaster.UI
 					{
 						if (watchlistcolor_i > 1) return;
 
-						if (Trace) Debug.WriteLine($"{i++:00} --- {item.Value.Index:00} : {(item.Value.Index + 1) % 2 == 0} --- {item.Key.FriendlyName}");
+						if (Trace) Logging.DebugMsg($"{i++:00} --- {item.Value.Index:00} : {(item.Value.Index + 1) % 2 == 0} --- {item.Key.FriendlyName}");
 						WatchlistItemColor(item.Value, item.Key);
 					}
 				}
@@ -2341,7 +2341,7 @@ namespace Taskmaster.UI
 				AlterColor = System.Drawing.Color.FromArgb(red, green, blue);
 			}
 
-			Debug.WriteLine($"ALTER COLOR: {AlterColor.R}, {AlterColor.G}, {AlterColor.B}");
+			Logging.DebugMsg($"ALTER COLOR: {AlterColor.R}, {AlterColor.G}, {AlterColor.B}");
 		}
 
 		void BuildMicrophonePanel(int[] micwidths)
@@ -2762,11 +2762,11 @@ namespace Taskmaster.UI
 
 			WatchlistSearchInputTimer.Restart();
 
-			if (Trace) Debug.WriteLine($"INPUT: {((int)ea.KeyChar):X}");
+			if (Trace) Logging.DebugMsg($"INPUT: {((int)ea.KeyChar):X}");
 
 			if (char.IsControl(ea.KeyChar))
 			{
-				if (Trace) Debug.WriteLine("CONTROL CHARACTER!");
+				if (Trace) Logging.DebugMsg("CONTROL CHARACTER!");
 
 				if (ea.KeyChar == (char)Keys.Back && SearchString.Length > 0) // BACKSPACE
 					SearchString = SearchString.Remove(SearchString.Length - 1); // ugly and probably slow

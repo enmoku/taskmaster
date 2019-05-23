@@ -37,7 +37,7 @@ namespace Taskmaster.OS
 		{
 			RegisterForExit(this);
 			DisposalChute.Push(this);
-			if (Trace) Debug.WriteLine("HiddenWindow initialized");
+			if (Trace) Logging.DebugMsg("HiddenWindow initialized");
 		}
 
 		public event EventHandler<DisposedEventArgs> OnDisposed;

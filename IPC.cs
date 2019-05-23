@@ -52,7 +52,7 @@ namespace Taskmaster
 				//pipe = null;
 				lp.EndWaitForConnection(result);
 
-				Debug.WriteLine("<IPC> Activity");
+				Logging.DebugMsg("<IPC> Activity");
 
 				if (!result.IsCompleted) return;
 				if (!pipe.IsConnected) return;
@@ -114,7 +114,7 @@ namespace Taskmaster
 			}
 			catch (IOException) // no pipes available?
 			{
-				Debug.WriteLine("Failed to set up pipe server.");
+				Logging.DebugMsg("Failed to set up pipe server.");
 			}
 
 			return null;
@@ -127,7 +127,7 @@ namespace Taskmaster
 		/// <exception cref="UnauthorizedAccessException">Running process has elevated privileges compared to our own.</exception>
 		internal static void Transmit(string message)
 		{
-			Debug.WriteLine("Attempting to communicate with running instance of TM.");
+			Logging.DebugMsg("Attempting to communicate with running instance of TM.");
 
 			System.IO.Pipes.NamedPipeClientStream pe = null;
 

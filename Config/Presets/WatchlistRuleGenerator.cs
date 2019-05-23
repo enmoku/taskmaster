@@ -49,7 +49,7 @@ namespace Taskmaster
 				{
 					if (path.Contains("/steamapps/common/") || path.Contains(SteamIdentifier.Replace("/", @"\")))
 					{
-						Debug.WriteLine("Steam games install path found");
+						Logging.DebugMsg("Steam games install path found");
 						var off = path.IndexOf("steamapps") + SteamIdentifier.Length;
 						paths.Add(path.Substring(0, off));
 					}

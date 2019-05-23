@@ -215,7 +215,7 @@ namespace Taskmaster.Audio
 
 		void CloseNotificationClient()
 		{
-			Debug.WriteLine("CloseNotificationClient");
+			DebugMsg("CloseNotificationClient");
 
 			if (notificationClient is null) return;
 
