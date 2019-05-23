@@ -34,7 +34,7 @@ namespace Taskmaster
 	sealed class LicenseDialog : UI.UniForm
 	{
 		public LicenseDialog(bool initial = true, bool center=false)
-			: base(initial || center)
+			: base(centerOnScreen: initial || center)
 		{
 			Text = Taskmaster.Name +" License";
 			AutoSizeMode = AutoSizeMode.GrowAndShrink;

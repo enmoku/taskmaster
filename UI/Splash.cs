@@ -49,7 +49,8 @@ namespace Taskmaster.UI
 		int SubLoaded = 0;
 		int MaxSubLoad = 1;
 
-		public Splash(int itemsToLoad) : base(true)
+		public Splash(int itemsToLoad)
+			: base(centerOnScreen: true)
 		{
 			StartPosition = FormStartPosition.CenterScreen;
 

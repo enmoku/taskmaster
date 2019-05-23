@@ -35,7 +35,7 @@ namespace Taskmaster.UI.Config
 	sealed public class ComponentConfigurationWindow : UniForm
 	{
 		public ComponentConfigurationWindow(bool initial = true, bool center = false)
-			: base(initial || center)
+			: base(centerOnScreen: initial || center)
 		{
 			// Size = new System.Drawing.Size(220, 360); // width, height
 

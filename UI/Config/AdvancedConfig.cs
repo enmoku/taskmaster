@@ -36,7 +36,7 @@ namespace Taskmaster.UI.Config
 	public sealed class AdvancedConfig : UI.UniForm
 	{
 		public AdvancedConfig(bool center = false)
-			: base(center)
+			: base(centerOnScreen: center)
 		{
 			Text = "Advanced Configuration";
 

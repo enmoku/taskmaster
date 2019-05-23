@@ -59,7 +59,7 @@ namespace Taskmaster.UI.Config
 		readonly Power.Manager manager = null;
 
 		public PowerConfigWindow(Power.Manager powerManager, bool center = false)
-			: base(center)
+			: base(centerOnScreen: center)
 		{
 			manager = powerManager;
 

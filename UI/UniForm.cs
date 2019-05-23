@@ -34,7 +34,7 @@ namespace Taskmaster.UI
 		readonly protected Padding SmallPadding = new Padding(3);
 		readonly protected Padding LeftSubPadding = new Padding(12, 3, 3, 3);
 
-		protected System.Drawing.Font boldfont = null;
+		readonly protected System.Drawing.Font boldfont;
 
 		public UniForm(bool centerOnScreen = false)
 		{
@@ -75,7 +75,6 @@ namespace Taskmaster.UI
 				Icon = null;
 
 				boldfont?.Dispose();
-				boldfont = null;
 
 				disposed = true;
 			}

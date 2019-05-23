@@ -33,7 +33,7 @@ namespace Taskmaster.UI.Config
 	public sealed class ExperimentConfig : UniForm
 	{
 		public ExperimentConfig(bool center=false)
-			: base(center)
+			: base(centerOnScreen: center)
 		{
 			Text = "Experiment Configuration";
 			AutoSizeMode = AutoSizeMode.GrowAndShrink;
