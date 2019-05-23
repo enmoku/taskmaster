@@ -1317,8 +1317,6 @@ namespace Taskmaster.UI
 					AlternateListviewRowColors(NetworkDevices, AlternateRowColorsDevices);
 			};
 
-			menu_config_visual.DropDownItems.Add(menu_config_visuals_rowalternate);
-
 			//
 			var menu_config_visuals_topmost = new ToolStripMenuItem(Constants.StayOnTop);
 
@@ -1345,6 +1343,22 @@ namespace Taskmaster.UI
 
 			menu_config_visuals_topmost.DropDownItems.Add(menu_config_visuals_topmost_volume);
 
+			var menu_config_visuals_styling = new ToolStripMenuItem("Styling")
+			{
+				Checked = VisualStyling,
+				CheckOnClick = true,
+			};
+			menu_config_visuals_styling.Click += (_, _ea) =>
+			{
+				using (var uicfg = Taskmaster.Config.Load(UIConfigFilename).BlockUnload())
+					uicfg.Config[Constants.Windows]["Styling"].Bool = menu_config_visuals_styling.Checked;
+
+				VisualStyling = menu_config_visuals_styling.Checked;
+				UpdateStyling();
+			};
+
+			menu_config_visual.DropDownItems.Add(menu_config_visuals_styling);
+			menu_config_visual.DropDownItems.Add(menu_config_visuals_rowalternate);
 			menu_config_visual.DropDownItems.Add(menu_config_visuals_topmost);
 
 			// CONFIG -> LOGGING
@@ -4006,8 +4020,6 @@ namespace Taskmaster.UI
 
 			li.EnsureVisible();
 		}
-
-		public const string UIConfigFilename = "UI.ini";
 
 		void SaveUIState()
 		{

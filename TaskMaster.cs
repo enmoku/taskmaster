@@ -482,6 +482,8 @@ namespace Taskmaster
 
 					LoadCoreConfig();
 
+					UpdateStyling();
+
 					//if (ShowSplash) splash.Invoke(new Action(() => splash.Show()));
 
 					InitializeComponents();
@@ -672,6 +674,11 @@ namespace Taskmaster
 		}
 
 		public static DateTime BuildDate() => DateTime.ParseExact(Properties.Resources.BuildDate.Trim(), "yyyy/MM/dd HH:mm:ss K", null, System.Globalization.DateTimeStyles.None);
+
+		internal static void UpdateStyling()
+		{
+			System.Windows.Forms.Application.VisualStyleState = VisualStyling ? System.Windows.Forms.VisualStyles.VisualStyleState.ClientAndNonClientAreasEnabled : System.Windows.Forms.VisualStyles.VisualStyleState.NoneEnabled;
+		}
 
 		/// <summary>
 		/// Process unhandled WinForms exceptions.

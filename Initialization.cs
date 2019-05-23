@@ -36,6 +36,7 @@ namespace Taskmaster
 	public static partial class Taskmaster
 	{
 		public const string CoreConfigFilename = "Core.ini";
+		public const string UIConfigFilename = "UI.ini";
 
 		static void InitialConfiguration()
 		{
@@ -309,6 +310,11 @@ namespace Taskmaster
 #if DEBUG
 				Trace = dbgsec.Get(Constants.Trace)?.Bool ?? false;
 #endif
+			}
+
+			using (var uicfg = Config.Load(UIConfigFilename).BlockUnload())
+			{
+				VisualStyling = uicfg.Config[Constants.Windows].GetOrSet("Styling", true).Bool;
 			}
 
 			// END DEBUG

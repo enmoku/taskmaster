@@ -49,6 +49,8 @@ namespace Taskmaster
 
 		public static bool ShowSplash { get; set; } = true;
 
+		public static bool VisualStyling { get; set; } = true;
+
 		public static bool ShowProcessAdjusts { get; set; } = true;
 		public static bool ShowSessionActions { get; set; } = true;
 
