@@ -73,12 +73,15 @@ namespace Taskmaster.Network
 		string dnstestaddress = "google.com"; // should be fine, www is omitted to avoid deeper DNS queries
 
 		int DeviceTimerInterval = 15 * 60;
-		int PacketStatTimerInterval = 15; // second
+		/// <summary>
+		/// Seconds.
+		/// </summary>
+		int PacketStatTimerInterval = 2; // second
 		int ErrorReportLimit = 5;
 
 		readonly System.Timers.Timer SampleTimer;
 
-		public event EventHandler<Network.DeviceTrafficEventArgs> onSampling;
+		public event EventHandler<Network.DeviceTrafficEventArgs> DeviceSampling;
 
 		const string NetConfigFilename = "Net.ini";
 
@@ -206,7 +209,7 @@ namespace Taskmaster.Network
 		Lazy<List<Device>> CurrentInterfaceList = null;
 
 		int TrafficAnalysisLimiter = 0;
-		TrafficData outgoing, incoming, oldoutgoing, oldincoming;
+		TrafficData nout, nin, oldout, oldin;
 
 		long errorsSinceLastReport = 0;
 		DateTimeOffset lastErrorReport = DateTimeOffset.MinValue;
@@ -235,17 +238,17 @@ namespace Taskmaster.Network
 
 				for (int index = 0; index < ifaces.Count; index++)
 				{
-					outgoing = ifaces[index].Outgoing;
-					incoming = ifaces[index].Incoming;
-					oldoutgoing = oldifaces[index].Outgoing;
-					oldincoming = oldifaces[index].Incoming;
+					nout = ifaces[index].Outgoing;
+					nin = ifaces[index].Incoming;
+					oldout = oldifaces[index].Outgoing;
+					oldin = oldifaces[index].Incoming;
 
-					long totalerrors = outgoing.Errors + incoming.Errors,
-						totaldiscards = outgoing.Errors + incoming.Errors,
-						totalunicast = outgoing.Errors + incoming.Errors,
-						errorsInSample = (incoming.Errors - oldincoming.Errors) + (outgoing.Errors - oldoutgoing.Errors),
-						discards = (incoming.Discards - oldincoming.Discards) + (outgoing.Discards - oldoutgoing.Discards),
-						packets = (incoming.Unicast - oldincoming.Unicast) + (outgoing.Unicast - oldoutgoing.Unicast);
+					long totalerrors = nout.Errors + nin.Errors,
+						totaldiscards = nout.Errors + nin.Errors,
+						totalunicast = nout.Errors + nin.Errors,
+						errorsInSample = (nin.Errors - oldin.Errors) + (nout.Errors - oldout.Errors),
+						discards = (nin.Discards - oldin.Discards) + (nout.Discards - oldout.Discards),
+						packets = (nin.Unicast - oldin.Unicast) + (nout.Unicast - oldout.Unicast);
 
 					errorsSinceLastReport += errorsInSample;
 
@@ -310,14 +313,14 @@ namespace Taskmaster.Network
 						}
 					}
 
-					onSampling?.Invoke(this, new DeviceTrafficEventArgs
+					DeviceSampling?.Invoke(this, new DeviceTrafficEventArgs
 					{
 						Traffic =
 						new DeviceTraffic
 						{
 							Index = index,
 							Delta = new TrafficData { Unicast = packets, Errors = errorsInSample, Discards = discards },
-							Total = new TrafficData { Unicast = totalunicast, Errors = totalerrors, Discards = totaldiscards, Bytes = incoming.Bytes + outgoing.Bytes },
+							Total = new TrafficData { Unicast = totalunicast, Errors = totalerrors, Discards = totaldiscards, Bytes = nin.Bytes + nout.Bytes },
 						}
 					});
 				}
@@ -331,6 +334,9 @@ namespace Taskmaster.Network
 				Atomic.Unlock(ref TrafficAnalysisLimiter);
 			}
 		}
+
+		DeviceTraffic LastTraffic = new DeviceTraffic();
+		public DeviceTraffic GetCurrentTraffic => LastTraffic;
 
 		public UI.TrayAccess Tray { get; set; } = null; // bad design
 
@@ -890,7 +896,7 @@ namespace Taskmaster.Network
 			{
 				if (Trace) Log.Verbose("Disposing network monitor...");
 
-				onSampling = null;
+				DeviceSampling = null;
 				InternetStatusChange = null;
 				IPChanged = null;
 				NetworkStatusChange = null;

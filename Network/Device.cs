@@ -30,38 +30,46 @@ using System.Net.NetworkInformation;
 
 namespace Taskmaster.Network
 {
-	public struct DeviceTraffic
+	public class DeviceTraffic
 	{
-		public int Index { get; set; }
-		public TrafficData Delta { get; set; }
-		public TrafficData Total { get; set; }
+		public int Index { get; set; } = 0;
+		public TrafficData Delta { get; set; } = new TrafficData();
+		public TrafficData Total { get; set; } = new TrafficData();
+
+		public DeviceTraffic() { }
+		public DeviceTraffic(DeviceTraffic old)
+		{
+			Index = old.Index;
+			Delta = new TrafficData(old.Delta);
+			Total = new TrafficData(old.Total);
+		}
 	}
 
 	public sealed class DeviceTrafficEventArgs : EventArgs
 	{
-		public DeviceTraffic Traffic;
+		public DeviceTraffic Traffic = new DeviceTraffic();
 	}
 
-	public struct TrafficData
+	public class TrafficData
 	{
 		/// <summary>
 		/// Unicast packets
 		/// </summary>
-		public long Unicast { get; set; }
+		public long Unicast { get; set; } = 0;
 		/// <summary>
 		/// Broadcast and Multicast packets
 		/// </summary>
-		public long NonUnicast { get; set; }
+		public long NonUnicast { get; set; } = 0;
 
-		public long Discards { get; set; }
-		public long Errors { get; set; }
+		public long Discards { get; set; } = 0;
+		public long Errors { get; set; } = 0;
 
-		public long Bytes { get; set; }
+		public long Bytes { get; set; } = 0;
 
 		/// <summary>
 		/// Unknown packets, only for incoming data.
 		/// </summary>
-		public long Unknown { get; set; }
+		public long Unknown { get; set; } = 0;
 
 		public void From(IPInterfaceStatistics stats, bool incoming = true)
 		{
@@ -83,6 +91,18 @@ namespace Taskmaster.Network
 				Bytes = stats.BytesSent;
 			}
 		}
+
+		public TrafficData() { }
+		public TrafficData(TrafficData old)
+		{
+
+			Unicast = old.Unicast;
+			NonUnicast = old.NonUnicast;
+			Discards = old.Discards;
+			Errors = old.Errors;
+			Bytes = old.Bytes;
+			Unknown = old.Unknown;
+		}
 	}
 
 	sealed public class Device
@@ -98,7 +118,7 @@ namespace Taskmaster.Network
 		public IPAddress IPv6Address { get; set; } = null;
 
 		// Stats
-		public TrafficData Outgoing;
-		public TrafficData Incoming;
+		public TrafficData Outgoing = new TrafficData();
+		public TrafficData Incoming = new TrafficData();
 	}
 }

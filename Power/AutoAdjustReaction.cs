@@ -46,12 +46,15 @@ namespace Taskmaster.Power
 		{
 			return new AutoAdjustReactionEventArgs
 			{
-				Current = ea.Current,
-				Mean = ea.Mean,
-				High = ea.High,
-				Low = ea.Low,
-				Period = ea.Period,
-				Queue = ea.Queue,
+				Load = new ProcessorLoad
+				{
+					Current = ea.Load.Current,
+					Mean = ea.Load.Mean,
+					High = ea.Load.High,
+					Low = ea.Load.Low,
+					Period = ea.Load.Period,
+					Queue = ea.Load.Queue,
+				}
 			};
 		}
 	}

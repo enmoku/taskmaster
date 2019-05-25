@@ -443,6 +443,7 @@ namespace Taskmaster.Power
 			if (Behaviour != PowerBehaviour.Auto) return;
 
 			var ev = AutoAdjustReactionEventArgs.From(pev);
+			var load = ev.Load;
 
 			var aa = AutoAdjust; // local copy to avoid a lock
 
@@ -458,10 +459,10 @@ namespace Taskmaster.Power
 			if (PreviousReaction == Reaction.High)
 			{
 				// Backoff from High to Medium power level
-				if (ev.Queue <= aa.Queue.High
-					&& (ev.High <= aa.High.Backoff.High
-					|| ev.Mean <= aa.High.Backoff.Mean
-					|| ev.Low <= aa.High.Backoff.Low))
+				if (load.Queue <= aa.Queue.High
+					&& (load.High <= aa.High.Backoff.High
+					|| load.Mean <= aa.High.Backoff.Mean
+					|| load.Low <= aa.High.Backoff.Low))
 				{
 					//Logging.DebugMsg("AUTO-ADJUST: Motive: High to Average");
 					Reaction = Reaction.Average;
@@ -471,7 +472,7 @@ namespace Taskmaster.Power
 					if (BackoffCounter >= aa.High.Backoff.Level)
 						Ready = true;
 
-					queuePressureAdjust = (aa.Queue.High > 0 ? ev.Queue / aa.Queue.High : 0f);
+					queuePressureAdjust = (aa.Queue.High > 0 ? load.Queue / aa.Queue.High : 0f);
 					//Logging.DebugMsg("AUTO-ADJUST: Queue pressure adjust: " + $"{queuePressureAdjust:N1}");
 					ev.Pressure = ((float)BackoffCounter) / ((float)aa.High.Backoff.Level) - queuePressureAdjust;
 					//Logging.DebugMsg("AUTO-ADJUST: Final pressure: " + $"{ev.Pressure:N1}");
@@ -486,10 +487,10 @@ namespace Taskmaster.Power
 			else if (PreviousReaction == Reaction.Low)
 			{
 				// Backoff from Low to Medium power level
-				if (ev.Queue >= aa.Queue.Low
-					|| ev.High >= aa.Low.Backoff.High
-					|| ev.Mean >= aa.Low.Backoff.Mean
-					|| ev.Low >= aa.Low.Backoff.Low)
+				if (load.Queue >= aa.Queue.Low
+					|| load.High >= aa.Low.Backoff.High
+					|| load.Mean >= aa.Low.Backoff.Mean
+					|| load.Low >= aa.Low.Backoff.Low)
 				{
 					//Logging.DebugMsg("AUTO-ADJUST: Motive: Low to Average");
 					Reaction = Reaction.Average;
@@ -499,7 +500,7 @@ namespace Taskmaster.Power
 					if (BackoffCounter >= aa.Low.Backoff.Level)
 						Ready = true;
 
-					queuePressureAdjust = (aa.Queue.Low > 0 ? ev.Queue / aa.Queue.Low : 0f);
+					queuePressureAdjust = (aa.Queue.Low > 0 ? load.Queue / aa.Queue.Low : 0f);
 					//Logging.DebugMsg("AUTO-ADJUST: Queue pressure adjust: " + $"{queuePressureAdjust:N1}");
 					ev.Pressure = ((float)BackoffCounter) / ((float)aa.Low.Backoff.Level) + queuePressureAdjust;
 					//Logging.DebugMsg("AUTO-ADJUST: Final pressure: " + $"{ev.Pressure:N1}");
@@ -513,7 +514,7 @@ namespace Taskmaster.Power
 			}
 			else // Currently at medium power
 			{
-				if (ev.Low > aa.High.Commit.Threshold // Low CPU is above threshold for High mode
+				if (load.Low > aa.High.Commit.Threshold // Low CPU is above threshold for High mode
 					&& aa.High.Mode != CurrentMode)
 				{
 					//Logging.DebugMsg("AUTO-ADJUST: Motive: Average to High");
@@ -526,14 +527,14 @@ namespace Taskmaster.Power
 					if (HighPressure >= aa.High.Commit.Level)
 						Ready = true;
 
-					queuePressureAdjust = (aa.Queue.High > 0 ? ev.Queue / 5 : 0); // 20% per queued thread
+					queuePressureAdjust = (aa.Queue.High > 0 ? load.Queue / 5 : 0); // 20% per queued thread
 
 					//Logging.DebugMsg("AUTO-ADJUST: Queue pressure adjust: " + $"{queuePressureAdjust:N1}");
 					ev.Pressure = ((float)HighPressure) / ((float)aa.High.Commit.Level) + queuePressureAdjust;
 					//Logging.DebugMsg("AUTO-ADJUST: Final pressure: " + $"{ev.Pressure:N1}");
 				}
-				else if (ev.Queue < aa.Queue.Low
-					&& ev.High < aa.Low.Commit.Threshold // High CPU is below threshold for Low mode
+				else if (load.Queue < aa.Queue.Low
+					&& load.High < aa.Low.Commit.Threshold // High CPU is below threshold for Low mode
 					&& aa.Low.Mode != CurrentMode)
 				{
 					//Logging.DebugMsg("AUTO-ADJUST: Motive: Average to Low");
@@ -546,7 +547,7 @@ namespace Taskmaster.Power
 					if (LowPressure >= aa.Low.Commit.Level)
 						Ready = true;
 
-					queuePressureAdjust = (aa.Queue.High > 0 ? ev.Queue / aa.Queue.High : 0);
+					queuePressureAdjust = (aa.Queue.High > 0 ? load.Queue / aa.Queue.High : 0);
 
 					//Logging.DebugMsg("AUTO-ADJUST: Queue pressure adjust: " + $"{queuePressureAdjust:N1}");
 					ev.Pressure = ((float)LowPressure) / ((float)aa.Low.Commit.Level) + queuePressureAdjust;

@@ -159,7 +159,7 @@ namespace Taskmaster
 
 				Calculate();
 
-				Sampling?.Invoke(this, new ProcessorLoadEventArgs()
+				GetLoad = new ProcessorLoad()
 				{
 					Current = sample,
 					Mean = Mean,
@@ -167,7 +167,8 @@ namespace Taskmaster
 					Low = Low,
 					Period = SampleInterval,
 					Queue = queue
-				});
+				};
+				Sampling?.Invoke(this, new ProcessorLoadEventArgs() { Load = GetLoad });
 			}
 			catch (OutOfMemoryException) { throw; }
 			catch (Exception ex)
@@ -180,6 +181,7 @@ namespace Taskmaster
 			}
 		}
 
+		public ProcessorLoad GetLoad { get; private set; } = new ProcessorLoad();
 
 		Process.Manager processmanager = null;
 		public void Hook(Process.Manager manager)

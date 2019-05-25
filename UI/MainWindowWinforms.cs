@@ -3192,7 +3192,9 @@ namespace Taskmaster.UI
 		{
 			if (!IsHandleCreated || DisposedOrDisposing) return;
 
-			cpuload.Text = $"{ea.Current:N1} %, Low: {ea.Low:N1} %, Mean: {ea.Mean:N1} %, High: {ea.High:N1} %; Queue: {ea.Queue:N0}";
+			var load = ea.Load;
+
+			cpuload.Text = $"{load.Current:N1} %, Low: {load.Low:N1} %, Mean: {load.Mean:N1} %, High: {load.High:N1} %; Queue: {load.Queue:N0}";
 			// 50 %, Low: 33.2 %, Mean: 52.1 %, High: 72.8 %, Queue: 1
 		}
 
@@ -3216,11 +3218,13 @@ namespace Taskmaster.UI
 
 			try
 			{
+				var load = ea.Load;
+
 				var li = new ListViewItem(new string[] {
-					$"{ea.Current:N2} %",
-					$"{ea.Mean:N2} %",
-					$"{ea.High:N2} %",
-					$"{ea.Low:N2} %",
+					$"{load.Current:N2} %",
+					$"{load.Mean:N2} %",
+					$"{load.High:N2} %",
+					$"{load.Low:N2} %",
 					ea.Reaction.ToString(),
 					Power.Utility.GetModeName(ea.Mode),
 					ea.Enacted.ToString(),
@@ -3635,6 +3639,8 @@ namespace Taskmaster.UI
 
 			//hw.GPUPolling += GPULoadEvent;
 			UItimer.Tick += GPULoadPoller;
+
+			GPULoadPoller(this, EventArgs.Empty);
 		}
 
 		public void Hook(CPUMonitor monitor)
@@ -3642,6 +3648,8 @@ namespace Taskmaster.UI
 			cpumonitor = monitor;
 			cpumonitor.Sampling += CPULoadHandler;
 			cpumonitor.OnDisposed += (_, _ea) => cpumonitor = null;
+
+			CPULoadHandler(this, new ProcessorLoadEventArgs() { Load = cpumonitor.GetLoad });
 		}
 
 		HealthMonitor healthmonitor = null;
@@ -3655,6 +3663,8 @@ namespace Taskmaster.UI
 			UpdateMemoryStats(this, EventArgs.Empty);
 			UItimer.Tick += UpdateHealthMon;
 			GotFocus += UpdateHealthMon;
+
+			UpdateHealthMon(this, EventArgs.Empty);
 		}
 
 		HealthReport oldHealthReport = null;
@@ -3874,7 +3884,10 @@ namespace Taskmaster.UI
 			netmonitor.InternetStatusChange += InetStatusChangeEvent;
 			netmonitor.IPChanged += UpdateNetworkDevices;
 			netmonitor.NetworkStatusChange += NetStatusChangeEvent;
-			netmonitor.onSampling += NetSampleHandler;
+			netmonitor.DeviceSampling += NetSampleHandler;
+
+			NetSampleHandler(this, new Network.DeviceTrafficEventArgs() { Traffic = new Network.DeviceTraffic(netmonitor.GetCurrentTraffic) });
+			NetStatusChangeEvent(this, new Network.Status() { Available = netmonitor.NetworkAvailable });
 
 			UItimer.Tick += UpdateNetwork;
 			GotFocus += UpdateNetwork;
@@ -4169,7 +4182,7 @@ namespace Taskmaster.UI
 						netmonitor.InternetStatusChange -= InetStatusChangeEvent;
 						netmonitor.NetworkStatusChange -= NetStatusChangeEvent;
 						netmonitor.IPChanged -= UpdateNetworkDevices;
-						netmonitor.onSampling -= NetSampleHandler;
+						netmonitor.DeviceSampling -= NetSampleHandler;
 						netmonitor = null;
 					}
 				}

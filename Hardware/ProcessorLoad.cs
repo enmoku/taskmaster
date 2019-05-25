@@ -28,11 +28,7 @@ using System;
 
 namespace Taskmaster
 {
-	/// <summary>
-	/// Processor load event.
-	/// Values are in percentages from 0.0f to 100.0f
-	/// </summary>
-	public class ProcessorLoadEventArgs : EventArgs
+	public class ProcessorLoad
 	{
 		/// <summary>
 		/// Current load, from 0.0f to 100.0f.
@@ -60,5 +56,14 @@ namespace Taskmaster
 		/// Thread queue length
 		/// </summary>
 		public float Queue { get; set; } = float.NaN;
+	}
+
+	/// <summary>
+	/// Processor load event.
+	/// Values are in percentages from 0.0f to 100.0f
+	/// </summary>
+	public class ProcessorLoadEventArgs : EventArgs
+	{
+		public ProcessorLoad Load { get; set; } = new ProcessorLoad();
 	}
 }
