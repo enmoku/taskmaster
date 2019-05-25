@@ -225,7 +225,7 @@ namespace Taskmaster.Network
 				InvalidateInterfaceList(); // force refresh
 				var ifaces = CurrentInterfaceList.Value;
 
-				if (oldifaces.Count.Equals(ifaces.Count))
+				if (!oldifaces.Count.Equals(ifaces.Count))
 				{
 					if (DebugNet) Log.Warning("<Network> Interface count mismatch (" + oldifaces.Count + " vs " + ifaces.Count + "), skipping analysis.");
 					return;
