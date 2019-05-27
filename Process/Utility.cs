@@ -48,42 +48,52 @@ namespace Taskmaster.Process
 		[System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
 		public static bool SystemProcessId(int pid) => pid <= 4;
 
-		static MKAh.Cache.SimpleCache<int, string, string> PathCache = null;
+		internal class PathCacheObject
+		{
+			internal string Name;
+			internal string Path;
+		}
+
+		static MKAh.Cache.SimpleCache<int, PathCacheObject> PathCache = null;
 		internal static void InitializeCache()
-			=> PathCache = new MKAh.Cache.SimpleCache<int, string, string>((uint)PathCacheLimit, (uint)(PathCacheLimit / 10).Constrain(10, 100), PathCacheMaxAge);
+			=> PathCache = new MKAh.Cache.SimpleCache<int, PathCacheObject>((uint)PathCacheLimit, (uint)(PathCacheLimit / 10).Constrain(10, 100), PathCacheMaxAge);
 
 		public static bool FindPath(ProcessEx info)
 		{
-			if (info.PathSearched) return !string.IsNullOrEmpty(info.Path);
-
-			var cacheGet = false;
-
-			// Try to get the path from cache
-			if (PathCache.Get(info.Id, out string cpath, info.Name) != null)
+			if (info.PathSearched)
 			{
-				if (!string.IsNullOrEmpty(cpath))
+				Statistics.PathSearchMisfire++;
+				return !string.IsNullOrEmpty(info.Path);
+			}
+
+			info.PathSearched = true; // mark early
+
+			if (PathCache.Get(info.Id, out var cob))
+			{
+				if (!cob.Name.Equals(info.Name, StringComparison.InvariantCultureIgnoreCase))
 				{
-					Statistics.PathCacheHits++;
-					cacheGet = true;
-					info.Path = cpath;
+					PathCache.Drop(info.Id);
+					cob = null;
 				}
 				else
-					PathCache.Drop(info.Id);
+					Statistics.PathCacheHits++;
 			}
 
-			// Try harder
-			if (string.IsNullOrEmpty(info.Path) && !FindPathExtended(info)) return false;
-
-			// Add to path cache
-			if (!cacheGet)
+			if (cob is null)
 			{
-				PathCache.Add(info.Id, info.Name, info.Path);
-				Statistics.PathCacheMisses++; // adding new entry is as bad a miss
+				Statistics.PathCacheMisses++;
+
+				if (!FindPathExtended(info)) return false;
+
+				PathCache.Add(info.Id, new PathCacheObject() { Name = info.Name, Path = info.Path });
 
 				if (Statistics.PathCacheCurrent > Statistics.PathCachePeak) Statistics.PathCachePeak = Statistics.PathCacheCurrent;
+				Statistics.PathCacheCurrent = PathCache.Count;
 			}
-
-			Statistics.PathCacheCurrent = PathCache.Count;
+			else
+			{
+				info.Path = cob.Path;
+			}
 
 			return true;
 		}
