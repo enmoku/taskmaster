@@ -168,10 +168,8 @@ namespace Taskmaster.UI
 
 			if (Trace) Log.Verbose("<Tray> Initialized");
 
-			AppDomain.CurrentDomain.ProcessExit += ShutdownEvent; // to make sure icon is disposed
+			DisposalChute.Push(this); // nothing else seems to work for removing the tray icon
 		}
-
-		void ShutdownEvent(object sender, EventArgs e) => Tray?.Dispose();
 
 		System.Drawing.Icon IconCache = null;
 		System.Drawing.Font IconFont = new System.Drawing.Font("Terminal", 8);
