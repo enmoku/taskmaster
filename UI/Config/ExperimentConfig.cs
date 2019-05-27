@@ -88,9 +88,10 @@ namespace Taskmaster.UI.Config
 			var iopriority = new CheckBox()
 			{
 				Checked = Taskmaster.IOPriorityEnabled,
+				Enabled = MKAh.Execution.IsWin7,
 				//Anchor = AnchorStyles.Left,
 			};
-			tooltip.SetToolTip(iopriority, "Enable I/O priority adjstment\nWARNING: This can be REALLY BAD\nTake care what you do.");
+			tooltip.SetToolTip(iopriority, "Enable I/O priority adjstment\nWARNING: This can be REALLY BAD\nTake care what you do.\nOnly supported on Windows 7.");
 
 			layout.Controls.Add(new AlignedLabel { Text = "I/O priority" });
 			layout.Controls.Add(iopriority);
@@ -118,7 +119,7 @@ namespace Taskmaster.UI.Config
 					else
 						exsec.TryRemove("Record analysis");
 
-					if (iopriority.Checked)
+					if (iopriority.Checked && MKAh.Execution.IsWin7)
 						exsec["IO Priority"].Bool = true;
 					else
 						exsec.TryRemove("IO Priority");
