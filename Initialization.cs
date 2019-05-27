@@ -398,9 +398,10 @@ namespace Taskmaster
 			}
 
 			// WinForms makes the following components not load nicely if not done here.
-			trayaccess = new UI.TrayAccess();
-
-			ShuttingDown += trayaccess.ShutdownEvent;
+			trayaccess = new UI.TrayAccess
+			{
+				TopLevel = true // for now
+			};
 			trayaccess.TrayMenuShown += (_, ea) => OptimizeResponsiviness(ea.Visible);
 
 			ProcMon.ContinueWith((x) => trayaccess?.Hook(processmanager), TaskContinuationOptions.OnlyOnRanToCompletion);

@@ -174,12 +174,7 @@ namespace Taskmaster
 					mainwindow = new UI.MainWindow();
 					//mainwindow = new UI.MainWindow();
 
-					mainwindow.FormClosed += (_, _ea) =>
-					{
-						ShuttingDown -= mainwindow.ShutdownEvent;
-						mainwindow = null;
-					};
-					ShuttingDown += mainwindow.ShutdownEvent;
+					mainwindow.FormClosed += (_, _ea) => mainwindow = null;
 
 					try
 					{
@@ -450,6 +445,8 @@ namespace Taskmaster
 								levelSwitch: new LoggingLevelSwitch(Serilog.Events.LogEventLevel.Debug), retainedFileCountLimit: 3)
 							.WriteTo.MemorySink(levelSwitch: logswitch)
 							.CreateLogger();
+
+						AppDomain.CurrentDomain.ProcessExit += (_, _ea) => Log.CloseAndFlush();
 
 						LoadEvent?.Invoke(null, new LoadEventArgs("Logger initialized.", LoadEventType.Loaded));
 					}

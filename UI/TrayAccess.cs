@@ -47,7 +47,7 @@ namespace Taskmaster.UI
 	///
 	/// </summary>
 	// Form is used for catching some system events
-	sealed public class TrayAccess : UI.UniForm, IDisposable, IDisposal
+	sealed public class TrayAccess : UI.UniForm, IDisposable
 	{
 		NotifyIcon Tray;
 
@@ -168,11 +168,10 @@ namespace Taskmaster.UI
 
 			if (Trace) Log.Verbose("<Tray> Initialized");
 
-			RegisterForExit(this);
-			DisposalChute.Push(this);
-
-			SetTopLevel(true);
+			AppDomain.CurrentDomain.ProcessExit += ShutdownEvent; // to make sure icon is disposed
 		}
+
+		void ShutdownEvent(object sender, EventArgs e) => Tray?.Dispose();
 
 		System.Drawing.Icon IconCache = null;
 		System.Drawing.Font IconFont = new System.Drawing.Font("Terminal", 8);
@@ -851,10 +850,5 @@ namespace Taskmaster.UI
 			base.Dispose(disposing);
 		}
 		#endregion
-
-		public void ShutdownEvent(object sender, EventArgs ea)
-		{
-			// NOP
-		}
 	}
 }

@@ -29,7 +29,7 @@ using System.Collections.Generic;
 
 namespace Taskmaster
 {
-	public class AlertManager : IDisposal, IDisposable
+	public class AlertManager : IDisposable
 	{
 		public event EventHandler onNewAlert;
 		public event EventHandler onAlertCancel;
@@ -112,11 +112,6 @@ namespace Taskmaster
 		}
 
 		public void Dispose() => Dispose(true);
-
-		public void ShutdownEvent(object sender, EventArgs ea)
-		{
-			// NOP
-		}
 		#endregion
 	}
 

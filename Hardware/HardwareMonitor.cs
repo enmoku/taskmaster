@@ -338,10 +338,7 @@ namespace Taskmaster
 
 		public void Dispose() => Dispose(true);
 
-		public void ShutdownEvent(object sender, EventArgs ea)
-		{
-			Stop();
-		}
+		public void ShutdownEvent(object sender, EventArgs ea) => Stop();
 		#endregion
 	}
 }

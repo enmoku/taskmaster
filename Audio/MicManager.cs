@@ -455,7 +455,10 @@ namespace Taskmaster.Audio
 
 		public void ShutdownEvent(object sender, EventArgs ea)
 		{
-			// NOP
+			ExecuteOnMainThread(new Action(() =>
+			{
+				RecordingDevice?.Dispose();
+			}));
 		}
 		#endregion
 	}
