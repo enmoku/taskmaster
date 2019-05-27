@@ -77,12 +77,14 @@ namespace Taskmaster
 		/// </summary>
 		public bool ForegroundWait { get; set; } = false;
 
+		public bool ExcluiveWait { get; set; } = false;
+
 		public bool Resize { get; set; } = false;
 
 		/// <summary>
 		/// Currently in background.
 		/// </summary>
-		public bool Paused { get; set; } = false;
+		public bool InBackground { get; set; } = false;
 
 		public DateTimeOffset Modified { get; set; } = DateTimeOffset.MinValue;
 		internal ProcessHandlingState _state = ProcessHandlingState.Invalid;
@@ -117,5 +119,8 @@ namespace Taskmaster
 		public bool Valid { get; set; } = false;
 		public bool Handled { get; set; } = false;
 		public bool Exited { get; set; } = false;
+
+		public bool PathCacheExitLinked { get; set; } = false;
+		public bool PathSearched { get; set; } = false;
 	}
 }

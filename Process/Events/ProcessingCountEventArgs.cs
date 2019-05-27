@@ -1,10 +1,10 @@
 ﻿//
-// ProcessModification.cs
+// ProcessingCountEventArgs.cs
 //
 // Author:
 //       M.A. (https://github.com/mkahvi)
 //
-// Copyright (c) 2018–2019 M.A.
+// Copyright (c) 2019 M.A.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -25,29 +25,24 @@
 // THE SOFTWARE.
 
 using System;
-using System.Diagnostics;
 
-namespace Taskmaster
+namespace Taskmaster.Process
 {
-	sealed public class ProcessModificationEventArgs : EventArgs
+	sealed public class ProcessingCountEventArgs : EventArgs
 	{
-		public ProcessModificationEventArgs(ProcessEx info) => Info = info;
-
-		public ProcessEx Info = null;
-
-		public ProcessPriorityClass? PriorityNew = null;
-		public ProcessPriorityClass? PriorityOld = null;
-		public int AffinityNew = -1;
-		public int AffinityOld = -1;
-
-		public bool AffinityFail = false;
-		public bool PriorityFail = false;
-
-		public int NewIO = -1;
-
 		/// <summary>
-		/// Text for end-users.
+		/// Adjustment to previous total.
 		/// </summary>
-		public System.Text.StringBuilder User = null;
+		public int Delta { get; set; } = 0;
+		/// <summary>
+		/// Total items being processed.
+		/// </summary>
+		public int Total { get; set; } = 0;
+
+		public ProcessingCountEventArgs(int delta, int total)
+		{
+			Delta = delta;
+			Total = total;
+		}
 	}
 }

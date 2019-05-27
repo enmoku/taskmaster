@@ -301,7 +301,7 @@ namespace Taskmaster.Process
 		void ClearActive()
 		{
 			foreach (var info in ActiveWait.Values)
-				info.ForegroundWait = info.Paused = false;
+				info.ForegroundWait = info.InBackground = false;
 		}
 
 		void ClearPower()
@@ -497,7 +497,7 @@ namespace Taskmaster.Process
 			if (ActiveWait.TryGetValue(process.Id, out var info))
 			{
 				info.State = ProcessHandlingState.Exited;
-				info.Paused = false; // IRRELEVANT
+				info.InBackground = false; // IRRELEVANT
 				info.ForegroundWait = false; // IRRELEVANT
 
 				if (info.PowerWait && PowerPlan != Power.Mode.Undefined) UndoPower(info);
@@ -519,7 +519,7 @@ namespace Taskmaster.Process
 				info.Process.Refresh();
 				if (!info.Process.HasExited)
 				{
-					info.Paused = false;
+					info.InBackground = false;
 					info.ForegroundWait = false;
 					info.PowerWait = false;
 					if (!Resize.HasValue)
@@ -744,14 +744,14 @@ namespace Taskmaster.Process
 		/// <summary>
 		/// Pause the specified foreground process.
 		/// </summary>
-		public void Pause(ProcessEx info, bool firsttime = false)
+		public void SetBackground(ProcessEx info, bool firsttime = false)
 		{
 			Debug.Assert(Foreground != ForegroundMode.Ignore, "Pause called for non-foreground only rule");
 			Debug.Assert(info.Controller != null, "No controller attached");
 
 			//Debug.Assert(!PausedIds.ContainsKey(info.Id));
 
-			if (info.Paused) return; // already paused
+			if (info.InBackground) return; // already paused
 
 			if (DebugForeground && Trace) Log.Debug($"[{FriendlyName}] Quelling {info.Name} (#{info.Id})");
 
@@ -827,7 +827,7 @@ namespace Taskmaster.Process
 
 		public event EventHandler<ProcessModificationEventArgs> OnAdjust;
 
-		public void Resume(ProcessEx info)
+		public void SetForeground(ProcessEx info)
 		{
 			Debug.Assert(Foreground != ForegroundMode.Ignore, "Resume called for non-foreground rule");
 			Debug.Assert(info.Controller != null, "No controller attached");
@@ -838,7 +838,7 @@ namespace Taskmaster.Process
 
 			int nIO = -1;
 
-			if (!info.Paused)
+			if (!info.InBackground)
 			{
 				if (DebugForeground) Log.Debug($"<Foreground> {FormatPathName(info)} (#{info.Id}) not paused; not resuming.");
 				return; // can't resume unpaused item
@@ -869,19 +869,19 @@ namespace Taskmaster.Process
 			}
 			catch (InvalidOperationException) // ID not available, probably exited
 			{
-				info.Paused = false;
+				info.InBackground = false;
 				return;
 			}
 			catch (Win32Exception) // access error
 			{
-				info.Paused = false;
+				info.InBackground = false;
 				return;
 			}
 			catch (OutOfMemoryException) { throw; }
 			catch (Exception ex)
 			{
 				Logging.Stacktrace(ex);
-				info.Paused = false;
+				info.InBackground = false;
 				return;
 			}
 
@@ -891,7 +891,7 @@ namespace Taskmaster.Process
 			if (PowerManagerEnabled && PowerPlan != Power.Mode.Undefined && BackgroundPowerdown)
 				SetPower(info);
 
-			info.Paused = false;
+			info.InBackground = false;
 
 			info.State = ProcessHandlingState.Resumed;
 
@@ -1088,7 +1088,7 @@ namespace Taskmaster.Process
 		}
 
 		[System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
-		bool InForeground(int pid) => Foreground != ForegroundMode.Ignore ? activeappmonitor?.Foreground.Equals(pid) ?? true : true;
+		bool IsForeground(int pid) => Foreground != ForegroundMode.Ignore ? activeappmonitor?.Foreground.Equals(pid) ?? true : true;
 
 		bool WaitForExit(ProcessEx info)
 		{
@@ -1126,7 +1126,7 @@ namespace Taskmaster.Process
 
 			try
 			{
-				if (Foreground != ForegroundMode.Ignore && info.Paused)
+				if (Foreground != ForegroundMode.Ignore && info.InBackground)
 				{
 					if (Trace && DebugForeground)
 						Log.Debug("<Foreground> " + FormatPathName(info) + " (#" + info.Id + ") in background, ignoring.");
@@ -1286,7 +1286,7 @@ namespace Taskmaster.Process
 
 				int nIO = -1;
 
-				bool foreground = InForeground(info.Id);
+				bool foreground = IsForeground(info.Id);
 
 				bool FirstTimeSeenForForeground = true;
 				if (!info.Protected)
@@ -1306,7 +1306,7 @@ namespace Taskmaster.Process
 							if (DebugForeground || ShowInaction)
 								Log.Debug($"[{FriendlyName}] {info.Name} (#{info.Id}) not in foreground, not prioritizing.");
 
-							Pause(info, FirstTimeSeenForForeground);
+							SetBackground(info, FirstTimeSeenForForeground);
 							// info.State = ProcessHandlingState.Paused; // Pause() sets this
 							return;
 						}

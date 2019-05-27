@@ -42,38 +42,13 @@ namespace Taskmaster.Process
 {
 	using static Taskmaster;
 
-	sealed public class ProcessingCountEventArgs : EventArgs
-	{
-		/// <summary>
-		/// Adjustment to previous total.
-		/// </summary>
-		public int Adjust { get; set; } = 0;
-		/// <summary>
-		/// Total items being processed.
-		/// </summary>
-		public int Total { get; set; } = 0;
-
-		public ProcessingCountEventArgs(int count, int total)
-		{
-			Adjust = count;
-			Total = total;
-		}
-	}
-
-	sealed public class HandlingStateChangeEventArgs : EventArgs
-	{
-		public ProcessEx Info { get; set; } = null;
-
-		public HandlingStateChangeEventArgs(ProcessEx info)
-		{
-			Debug.Assert(info != null, "ProcessEx is not assigned");
-			Info = info;
-		}
-	}
-
 	sealed public class Manager : IDisposal, IDisposable
 	{
 		Analyzer analyzer = null;
+
+		readonly ConcurrentDictionary<int, ProcessEx> WaitForExitList = new ConcurrentDictionary<int, ProcessEx>();
+		public ProcessEx[] GetExitWaitList() => WaitForExitList.Values.ToArray(); // copy is good here
+		readonly ConcurrentDictionary<int, ProcessEx> ExclusiveList = new ConcurrentDictionary<int, ProcessEx>();
 
 		public static bool DebugScan { get; set; } = false;
 		public static bool DebugPaths { get; set; } = false;
@@ -1005,8 +980,6 @@ namespace Taskmaster.Process
 			Log.Information($"<Process> Watchlist items – Name-based: {(Watchlist.Count - withPath)}; Path-based: {withPath - hybrids}; Hybrid: {hybrids} – Total: {Watchlist.Count}");
 		}
 
-		public static readonly string[] IONames = new[] { "Background", "Low", "Normal" };
-
 		void OnControllerAdjust(object sender, ProcessModificationEventArgs ea)
 		{
 			if (sender is Controller prc)
@@ -1066,7 +1039,7 @@ namespace Taskmaster.Process
 
 				if (DebugProcesses) sbs.Append(" [").Append(prc.AffinityStrategy.ToString()).Append("]");
 
-				if (ea.NewIO >= 0) sbs.Append(" – I/O: ").Append(IONames[ea.NewIO]);
+				if (ea.NewIO >= 0) sbs.Append(" – I/O: ").Append(ea.NewIO.ToString());
 
 				if (ea.User != null) sbs.Append(ea.User);
 
@@ -1222,8 +1195,6 @@ namespace Taskmaster.Process
 			prc.Resumed -= ProcessResumedProxy;
 		}
 
-		readonly ConcurrentDictionary<int, ProcessEx> WaitForExitList = new ConcurrentDictionary<int, ProcessEx>();
-
 		void WaitForExitTriggered(ProcessEx info)
 		{
 			Debug.Assert(info.Controller != null, "ProcessController not defined");
@@ -1341,8 +1312,6 @@ namespace Taskmaster.Process
 			return exithooked;
 		}
 
-		public ProcessEx[] GetExitWaitList() => WaitForExitList.Values.ToArray(); // copy is good here
-
 		Controller PreviousForegroundController = null;
 		ProcessEx PreviousForegroundInfo;
 
@@ -1363,7 +1332,7 @@ namespace Taskmaster.Process
 						{
 							//Log.Debug("PUTTING PREVIOUS FOREGROUND APP to BACKGROUND");
 							if (PreviousForegroundController.Foreground != ForegroundMode.Ignore)
-								PreviousForegroundController.Pause(PreviousForegroundInfo);
+								PreviousForegroundController.SetBackground(PreviousForegroundInfo);
 
 							ProcessStateChange?.Invoke(this, new ProcessModificationEventArgs(PreviousForegroundInfo));
 						}
@@ -1384,7 +1353,7 @@ namespace Taskmaster.Process
 						var prc = info.Controller;
 						if (Trace && DebugForeground) Log.Debug($"[{prc.FriendlyName}] {info.Name} (#{info.Id}) on foreground!");
 
-						if (prc.Foreground != ForegroundMode.Ignore) prc.Resume(info);
+						if (prc.Foreground != ForegroundMode.Ignore) prc.SetForeground(info);
 
 						ProcessStateChange?.Invoke(this, new ProcessModificationEventArgs(info));
 
@@ -1752,7 +1721,6 @@ namespace Taskmaster.Process
 		}
 
 		object Exclusive_lock = new object();
-		readonly ConcurrentDictionary<int, ProcessEx> ExclusiveList = new ConcurrentDictionary<int, ProcessEx>();
 
 		async Task ExclusiveMode(ProcessEx info)
 		{
@@ -1873,7 +1841,7 @@ namespace Taskmaster.Process
 		void SignalProcessHandled(int adjust)
 		{
 			Handling += adjust;
-			HandlingCounter?.Invoke(this, new ProcessingCountEventArgs(adjust, Handling));
+			HandlingCounter?.Invoke(this, new ProcessingCountEventArgs(delta: adjust, total: Handling));
 		}
 
 		/// <summary>
