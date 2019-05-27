@@ -341,6 +341,8 @@ namespace Taskmaster
 		{
 			System.Threading.Mutex singleton = null;
 
+			AppDomain.CurrentDomain.ProcessExit += (_,_ea) => ExitCleanup();
+
 			try
 			{
 				{
