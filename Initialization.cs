@@ -295,6 +295,8 @@ namespace Taskmaster
 
 				DebugMemory = dbgsec.Get(HumanReadable.Hardware.Memory)?.Bool ?? false;
 
+				DebugCache = dbgsec.Get("Cache")?.Bool ?? false;
+
 				var exsec = cfg[Constants.Experimental];
 				LastModifiedList = exsec.Get("Last Modified")?.Bool ?? false;
 				TempMonitorEnabled = exsec.Get("Temp Monitor")?.Bool ?? false;

@@ -895,11 +895,6 @@ namespace Taskmaster.UI
 
 			Debug.Assert(DebugCache);
 
-			if (PathCacheUpdateSkips++ == 4)
-				PathCacheUpdateSkips = 0;
-			else
-				return;
-
 			cacheObjects.Text = Statistics.PathCacheCurrent.ToString();
 			var ratio = (Statistics.PathCacheMisses > 0 ? (Statistics.PathCacheHits / Statistics.PathCacheMisses) : 1);
 			cacheRatio.Text = ratio <= 99.99f ? $"{ratio:N2}" : ">99.99"; // let's just not overflow the UI
