@@ -133,8 +133,13 @@
     <Compile Include="Audio\Utility.cs" />
     <Compile Include="Constants.cs" />
     <Compile Include="Interface\ISetting.cs" />
+    <Compile Include="MKAh\Data\Cache\CacheEventArgs.cs" />
+    <Compile Include="MKAh\Data\Cache\CacheItem.cs" />
+    <Compile Include="MKAh\Data\Cache\EvictStrategy.cs" />
     <Compile Include="MKAh\Data\Generic\Constants.cs" />
     <Compile Include="MKAh\Data\Generic\String.cs" />
+    <Compile Include="MKAh\Data\Cache\SimpleCache.cs" />
+    <Compile Include="MKAh\Data\Cache\StoreStrategy.cs" />
     <Compile Include="MKAh\File\Allocation.cs" />
     <Compile Include="MKAh\Data\Ini\Config.cs" />
     <Compile Include="MKAh\Data\Ini\Constant.cs" />
@@ -258,7 +263,6 @@
     <Compile Include="UI\Config\WatchlistEditWindow.cs">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Include="Utility\Cache.cs" />
     <Compile Include="Hardware\StorageManager.cs" />
     <Compile Include="Utility\HumanInterface.cs" />
     <Compile Include="Events\InitFailure.cs" />

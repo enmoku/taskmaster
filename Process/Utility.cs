@@ -34,6 +34,8 @@ using MKAh.Logic;
 
 namespace Taskmaster.Process
 {
+	using static Taskmaster;
+
 	public static class Utility
 	{
 		public static int CPUCount => Environment.ProcessorCount; // pointless
@@ -45,13 +47,19 @@ namespace Taskmaster.Process
 		/// <returns>true if the pid should not be used</returns>
 		[System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
 		public static bool SystemProcessId(int pid) => pid <= 4;
-		
+
+		static MKAh.Cache.SimpleCache<int, string, string> PathCache = null;
+		internal static void InitializeCache()
+			=> PathCache = new MKAh.Cache.SimpleCache<int, string, string>((uint)PathCacheLimit, (uint)(PathCacheLimit / 10).Constrain(10, 100), PathCacheMaxAge);
+
 		public static bool FindPath(ProcessEx info)
 		{
+			if (info.PathSearched) return !string.IsNullOrEmpty(info.Path);
+
 			var cacheGet = false;
 
 			// Try to get the path from cache
-			if (pathCache.Get(info.Id, out string cpath, info.Name) != null)
+			if (PathCache.Get(info.Id, out string cpath, info.Name) != null)
 			{
 				if (!string.IsNullOrEmpty(cpath))
 				{
@@ -60,7 +68,7 @@ namespace Taskmaster.Process
 					info.Path = cpath;
 				}
 				else
-					pathCache.Drop(info.Id);
+					PathCache.Drop(info.Id);
 			}
 
 			// Try harder
@@ -69,13 +77,13 @@ namespace Taskmaster.Process
 			// Add to path cache
 			if (!cacheGet)
 			{
-				pathCache.Add(info.Id, info.Name, info.Path);
+				PathCache.Add(info.Id, info.Name, info.Path);
 				Statistics.PathCacheMisses++; // adding new entry is as bad a miss
 
 				if (Statistics.PathCacheCurrent > Statistics.PathCachePeak) Statistics.PathCachePeak = Statistics.PathCacheCurrent;
 			}
 
-			Statistics.PathCacheCurrent = pathCache.Count;
+			Statistics.PathCacheCurrent = PathCache.Count;
 
 			return true;
 		}
@@ -311,10 +319,6 @@ namespace Taskmaster.Process
 
 			return false;
 		}
-
-		static Cache<int, string, string> pathCache = null;
-		internal static void InitializeCache()
-			=> pathCache = new Cache<int, string, string>(Taskmaster.PathCacheMaxAge, (uint)Taskmaster.PathCacheLimit, (uint)(Taskmaster.PathCacheLimit / 10).Constrain(20, 60));
 
 		public static bool GetInfo(int ProcessID, out ProcessEx info, System.Diagnostics.Process process = null, Process.Controller controller = null, string name = null, string path = null, bool getPath = false)
 		{
