@@ -887,16 +887,33 @@ namespace Taskmaster.UI
 		Label cacheRatio = null;
 		#endregion
 
-		int PathCacheUpdateSkips = 3;
+		int PathCacheUpdate_Lock = 0;
 
-		public void PathCacheUpdate(object _, EventArgs _ea)
+		public async void PathCacheUpdate(object _, EventArgs _ea)
 		{
 			if (!IsHandleCreated || DisposedOrDisposing) return;
 
-			Debug.Assert(DebugCache);
+			if (!Atomic.Lock(ref PathCacheUpdate_Lock)) return;
 
+			try
+			{
+				await Task.Delay(5_000).ConfigureAwait(false);
+
+				if (InvokeRequired)
+					BeginInvoke(new Action(PathCacheUpdate_Invoke));
+				else
+					PathCacheUpdate_Invoke();
+			}
+			finally
+			{
+				Atomic.Unlock(ref PathCacheUpdate_Lock);
+			}
+		}
+
+		void PathCacheUpdate_Invoke()
+		{
 			cacheObjects.Text = Statistics.PathCacheCurrent.ToString();
-			var ratio = (Statistics.PathCacheMisses > 0 ? (Statistics.PathCacheHits / Statistics.PathCacheMisses) : 1);
+			double ratio = (Statistics.PathCacheMisses > 0 ? ((double)Statistics.PathCacheHits / (double)Statistics.PathCacheMisses) : 1d);
 			cacheRatio.Text = ratio <= 99.99f ? $"{ratio:N2}" : ">99.99"; // let's just not overflow the UI
 		}
 
