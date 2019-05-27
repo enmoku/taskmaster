@@ -153,7 +153,9 @@
     <Compile Include="MKAh\File\NativeMethods.cs" />
     <Compile Include="Power\NativeMethods.cs" />
     <Compile Include="Power\Utility.cs" />
+    <Compile Include="Process\Events\HandlingStateChangeEventArgs.cs" />
     <Compile Include="Process\Options.cs" />
+    <Compile Include="Process\Events\ProcessingCountEventArgs.cs" />
     <Compile Include="Settings.Global.cs" />
     <Compile Include="Process\Foreground.cs" />
     <Compile Include="AlertManager.cs" />
@@ -172,7 +174,7 @@
     <Compile Include="Network\InternetStatus.cs" />
     <Compile Include="Network\NetworkStatus.cs" />
     <Compile Include="Power\AutoAdjustReaction.cs" />
-    <Compile Include="Process\ModificationEventArgs.cs" />
+    <Compile Include="Process\Events\ModificationEventArgs.cs" />
     <Compile Include="Hardware\ProcessorLoad.cs" />
     <Compile Include="Audio\VolumeChanged.cs" />
     <Compile Include="MKAh\Atomic\Lock.cs" />

@@ -25,7 +25,6 @@
 // THE SOFTWARE.
 
 using System;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Text;
@@ -49,41 +48,6 @@ namespace Taskmaster
 
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static bool Nonce(this Trinary tri) => (tri == Trinary.Nonce);
-	}
-
-	public static class Utility
-	{
-		public static void Swap<T>(ref T a, ref T b)
-		{
-			var temp = a;
-			a = b;
-			b = temp;
-		}
-
-		public static void Dispose<T>(ref T obj) where T : IDisposable
-		{
-			try
-			{
-				obj?.Dispose();
-				obj = default;
-			}
-			catch (Exception ex)
-			{
-				Logging.Stacktrace(ex);
-			}
-		}
-
-		public static void LogAndDiscardException(Action action)
-		{
-			try
-			{
-				action();
-			}
-			catch (Exception ex)
-			{
-				Logging.Stacktrace(ex);
-			}
-		}
 	}
 
 	public static class Logging

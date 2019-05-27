@@ -40,7 +40,7 @@ namespace Taskmaster.UI
 
 	sealed public class TrayShownEventArgs : EventArgs
 	{
-		public bool Visible = false;
+		public bool Visible { get; set; } = false;
 	}
 
 	/// <summary>
