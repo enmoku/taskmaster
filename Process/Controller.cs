@@ -1088,7 +1088,7 @@ namespace Taskmaster.Process
 		}
 
 		[System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
-		bool IsForeground(int pid) => Foreground != ForegroundMode.Ignore ? activeappmonitor?.Foreground.Equals(pid) ?? true : true;
+		bool IsForeground(int pid) => Foreground != ForegroundMode.Ignore ? activeappmonitor?.ForegroundId.Equals(pid) ?? true : true;
 
 		bool WaitForExit(ProcessEx info)
 		{
