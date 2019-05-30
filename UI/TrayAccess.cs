@@ -539,12 +539,13 @@ namespace Taskmaster.UI
 					{
 						// TODO: This shouldn't happen if the session is exiting.
 						Log.Information("<Tray> Restarting explorer as per user configured timer.");
-						System.Diagnostics.Process.Start(new ProcessStartInfo
+						var proc = System.Diagnostics.Process.Start(new ProcessStartInfo
 						{
 							FileName = System.IO.Path.Combine(System.Environment.GetFolderPath(System.Environment.SpecialFolder.Windows), "explorer.exe"),
 							UseShellExecute = true
 						});
 						startAttempt = false;
+						proc?.Dispose(); // running process should be unaffected
 					}
 
 					await Task.Delay(TimeSpan.FromMinutes(5)).ConfigureAwait(false); // wait 5 minutes
@@ -742,6 +743,7 @@ namespace Taskmaster.UI
 
 				if (rvq && procfind.ExitCode == 0) found = true;
 				else if (!procfind.HasExited) procfind.Kill();
+				procfind?.Dispose();
 
 				if (Trace) Log.Debug($"<Tray> Scheduled task " + (found ? "" : "NOT ") + "found.");
 
@@ -756,6 +758,7 @@ namespace Taskmaster.UI
 					if (toggled && proctoggle.ExitCode == 0) Log.Information("<Tray> Scheduled task found and enabled");
 					else Log.Error("<Tray> Scheduled task NOT toggled.");
 					if (!proctoggle.HasExited) proctoggle.Kill();
+					proctoggle?.Dispose();
 
 					return true;
 				}
@@ -773,6 +776,7 @@ namespace Taskmaster.UI
 					else Log.Error("<Tray> Scheduled task NOT created.");
 
 					if (!procnew.HasExited) procnew.Kill();
+					procnew?.Dispose();
 				}
 				else
 				{
@@ -786,6 +790,7 @@ namespace Taskmaster.UI
 					else Log.Error("<Tray> Scheduled task NOT deleted.");
 
 					if (!procdel.HasExited) procdel.Kill();
+					procdel?.Dispose();
 				}
 
 				//if (toggled) Log.Debug("<Tray> Scheduled task toggled.");
