@@ -2014,8 +2014,16 @@ namespace Taskmaster.Process
 						Log.Debug($"<Process> {name} (#{pid}) could not be mined for info.");
 				}
 			}
+			catch (ArgumentException)
+			{
+				state = info.State = ProcessHandlingState.Exited;
+				if (ShowInaction && DebugProcesses)
+					Log.Verbose("Caught #" + info.Id + " but it vanished.");
+				return;
+			}
 			catch (Exception ex)
 			{
+				state = info.State = ProcessHandlingState.Invalid;
 				Logging.Stacktrace(ex);
 				Log.Error("Unregistering new instance triage");
 				StopWMIEventWatcher();
@@ -2039,24 +2047,6 @@ namespace Taskmaster.Process
 
 			try
 			{
-				try
-				{
-					info.Process = System.Diagnostics.Process.GetProcessById(info.Id);
-				}
-				catch (ArgumentException)
-				{
-					state = info.State = ProcessHandlingState.Exited;
-					if (ShowInaction && DebugProcesses)
-						Log.Verbose("Caught #" + info.Id + " but it vanished.");
-					return;
-				}
-				catch (Exception ex)
-				{
-					Logging.Stacktrace(ex);
-					state = info.State = ProcessHandlingState.Invalid;
-					return;
-				}
-
 				if (string.IsNullOrEmpty(info.Name))
 				{
 					try
