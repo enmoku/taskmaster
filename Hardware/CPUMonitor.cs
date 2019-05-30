@@ -332,6 +332,6 @@ namespace Taskmaster
 		internal Windows.PerformanceCounter MEMCounter = null;
 		internal uint References = 0;
 		internal string Name = string.Empty;
-		internal ConcurrentDictionary<int, ProcessEx> Processes = new ConcurrentDictionary<int, ProcessEx>();
+		internal ConcurrentDictionary<int, Process.ProcessEx> Processes = new ConcurrentDictionary<int, Process.ProcessEx>();
 	}
 }
