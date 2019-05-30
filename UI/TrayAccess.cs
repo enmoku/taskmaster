@@ -163,7 +163,7 @@ namespace Taskmaster.UI
 			// Tray.Click += RestoreMainWindow;
 			Tray.MouseClick += ShowWindow;
 
-			Microsoft.Win32.SystemEvents.SessionEnding += SessionEndingEvent; // depends on messagepump
+			//Microsoft.Win32.SystemEvents.SessionEnding += SessionEndingEvent; // depends on messagepump
 
 			ms.VisibleChanged += MenuVisibilityChangedEvent;
 
@@ -214,8 +214,7 @@ namespace Taskmaster.UI
 		{
 			ea.Cancel = true;
 			// is this safe?
-			Log.Information("<OS> Session end signal received.");
-
+			Log.Information("<OS> Session end signal received; Reason: " + ea.Reason.ToString());
 			ExitCleanup();
 			UnifiedExit();
 		}
@@ -269,6 +268,10 @@ namespace Taskmaster.UI
 		const int WM_QUERYENDSESSION = 0x0011;
 		const int WM_ENDSESSION = 0x0016;
 
+		const int ENDSESSION_CRITICAL = 0x40000000;
+		const int ENDSESSION_LOGOFF = unchecked((int)0x80000000);
+		const int ENDSESSION_CLOSEAPP = 0x1;
+
 		protected override void WndProc(ref Message m)
 		{
 			if (DisposingOrDisposed) return;
@@ -316,12 +319,22 @@ namespace Taskmaster.UI
 				GC.Collect(GC.MaxGeneration, GCCollectionMode.Forced, false, true);
 				m.Result = IntPtr.Zero;
 			}
-			else if (m.Msg == WM_QUERYENDSESSION || m.Msg == WM_ENDSESSION)
+			else if (m.Msg == WM_QUERYENDSESSION)
 			{
+				string detail = "Unknown";
+
+				int lparam = m.LParam.ToInt32();
+				if (MKAh.Logic.Bit.IsSet(lparam, ENDSESSION_LOGOFF))
+					detail = "User Logoff";
+				if (MKAh.Logic.Bit.IsSet(lparam, ENDSESSION_CLOSEAPP))
+					detail = "System Servicing";
+				if (MKAh.Logic.Bit.IsSet(lparam, ENDSESSION_CRITICAL))
+					detail = "System Critical";
+
+				Log.Information("<OS> Session end signal received; Reason: " + detail);
+
+				/*
 				ShutdownBlockReasonCreate(Handle, "Cleaning up");
-
-				Log.Information("<OS> Session end signal received.");
-
 				Task.Run(() => {
 					try
 					{
@@ -339,7 +352,34 @@ namespace Taskmaster.UI
 						}
 					}
 				});
-				return; // block
+
+				// block exit
+				m.Result = new IntPtr(0);
+				return;
+				*/
+			}
+			else if (m.Msg == WM_ENDSESSION)
+			{
+				if (m.WParam.ToInt32() == 1L) // == true; session is actually ending
+				{
+					string detail = "Unknown";
+
+					int lparam = m.LParam.ToInt32();
+					if (MKAh.Logic.Bit.IsSet(lparam, ENDSESSION_LOGOFF))
+						detail = "User Logoff";
+					if (MKAh.Logic.Bit.IsSet(lparam, ENDSESSION_CLOSEAPP))
+						detail = "System Servicing";
+					if (MKAh.Logic.Bit.IsSet(lparam, ENDSESSION_CRITICAL))
+						detail = "System Critical";
+
+					Log.Information("<OS> Session end signal confirmed; Reason: " + detail);
+
+					UnifiedExit();
+				}
+				else
+				{
+					Log.Information("<OS> Session end cancellation received.");
+				}
 			}
 
 			base.WndProc(ref m); // is this necessary?
@@ -826,7 +866,7 @@ namespace Taskmaster.UI
 		{
 			if (DisposingOrDisposed) return;
 
-			Microsoft.Win32.SystemEvents.SessionEnding -= SessionEndingEvent; // leaks if not disposed
+			//Microsoft.Win32.SystemEvents.SessionEnding -= SessionEndingEvent; // leaks if not disposed
 
 			if (disposing)
 			{
