@@ -1784,6 +1784,7 @@ namespace Taskmaster.Process
 			finally
 			{
 				ResizeWaitList.TryRemove(info.Id, out _);
+				re?.Dispose();
 			}
 		}
 

@@ -342,17 +342,18 @@ namespace Taskmaster
 
 			LoadEvent?.Invoke(null, new LoadEventArgs("Component loading starting.", LoadEventType.Info, 0, componentsToLoad));
 
-			var cts = new System.Threading.CancellationTokenSource();
-
-			Process.Utility.InitializeCache();
-			LoadEvent?.Invoke(null, new LoadEventArgs("Cache loaded.", LoadEventType.SubLoaded));
-
 			Task PowMan, CpuMon, ProcMon, FgMon, NetMon, StorMon, HpMon, HwMon, AlMan, SelfMaint;
+			Task[] init;
 
-			// Parallel loading, cuts down startup time some.
-			// This is really bad if something fails
-			Task[] init =
+			using (var cts = new System.Threading.CancellationTokenSource())
 			{
+				Process.Utility.InitializeCache();
+				LoadEvent?.Invoke(null, new LoadEventArgs("Cache loaded.", LoadEventType.SubLoaded));
+
+				// Parallel loading, cuts down startup time some.
+				// This is really bad if something fails
+				init = new []
+				{
 				(PowMan = PowerManagerEnabled ? Task.Run(() => {powermanager = new Power.Manager(); }, cts.Token) : Task.CompletedTask)
 					.ContinueWith((_) => LoadEvent?.Invoke(null, new LoadEventArgs("Power manager processed.", LoadEventType.SubLoaded))),
 				(CpuMon = PowerManagerEnabled ? Task.Run(()=> {cpumonitor = new CPUMonitor(); }, cts.Token) : Task.CompletedTask)
@@ -375,53 +376,55 @@ namespace Taskmaster
 					.ContinueWith((_) => LoadEvent?.Invoke(null, new LoadEventArgs("Self-maintenance manager processed.", LoadEventType.SubLoaded)))
 			};
 
-			// MMDEV requires main thread
-			try
-			{
-				if (AudioManagerEnabled)
+				// MMDEV requires main thread
+				try
 				{
-					audiomanager = new Audio.Manager();
-					audiomanager.OnDisposed += (_, _ea) => audiomanager = null;
-
-					if (MicrophoneManagerEnabled)
+					if (AudioManagerEnabled)
 					{
-						micmonitor = new Audio.MicManager();
-						micmonitor.Hook(audiomanager);
-						micmonitor.OnDisposed += (_, _ea) => micmonitor = null;
+						audiomanager = new Audio.Manager();
+						audiomanager.OnDisposed += (_, _ea) => audiomanager = null;
+
+						if (MicrophoneManagerEnabled)
+						{
+							micmonitor = new Audio.MicManager();
+							micmonitor.Hook(audiomanager);
+							micmonitor.OnDisposed += (_, _ea) => micmonitor = null;
+						}
 					}
 				}
-			}
-			catch (InitFailure)
-			{
-				micmonitor?.Dispose();
-				micmonitor = null;
-				audiomanager?.Dispose();
-				audiomanager = null;
-			}
+				catch (InitFailure)
+				{
+					micmonitor?.Dispose();
+					micmonitor = null;
+					audiomanager?.Dispose();
+					audiomanager = null;
+				}
 
-			// WinForms makes the following components not load nicely if not done here.
-			trayaccess = new UI.TrayAccess
-			{
-				TopLevel = true // for now
-			};
-			trayaccess.TrayMenuShown += (_, ea) => OptimizeResponsiviness(ea.Visible);
+				// WinForms makes the following components not load nicely if not done here.
+				trayaccess = new UI.TrayAccess
+				{
+					TopLevel = true // for now
+				};
+				trayaccess.TrayMenuShown += (_, ea) => OptimizeResponsiviness(ea.Visible);
 
-			ProcMon.ContinueWith((x) => trayaccess?.Hook(processmanager), TaskContinuationOptions.OnlyOnRanToCompletion);
+				ProcMon.ContinueWith((x) => trayaccess?.Hook(processmanager), TaskContinuationOptions.OnlyOnRanToCompletion);
 
-			if (PowerManagerEnabled)
-			{
-				Task.WhenAll(new Task[] { PowMan, CpuMon, ProcMon }).ContinueWith((_) => {
-					if (powermanager is null || cpumonitor is null || processmanager is null) return;
+				if (PowerManagerEnabled)
+				{
+					Task.WhenAll(new Task[] { PowMan, CpuMon, ProcMon }).ContinueWith((_) =>
+					{
+						if (powermanager is null || cpumonitor is null || processmanager is null) return;
 
-					cpumonitor?.Hook(processmanager);
+						cpumonitor?.Hook(processmanager);
 
-					trayaccess.Hook(powermanager);
-					powermanager.SuspendResume += PowerSuspendEnd; // HACK: No idea how the code behaves on power resume.
-					powermanager.Hook(cpumonitor);
-				}, cts.Token);
+						trayaccess.Hook(powermanager);
+						powermanager.SuspendResume += PowerSuspendEnd; // HACK: No idea how the code behaves on power resume.
+						powermanager.Hook(cpumonitor);
+					}, cts.Token);
 
-				var tr = Task.WhenAny(init);
-				if (tr.IsFaulted) cts.Cancel(true);
+					var tr = Task.WhenAny(init);
+					if (tr.IsFaulted) cts.Cancel(true);
+				}
 			}
 
 			//if (HardwareMonitorEnabled)

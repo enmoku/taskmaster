@@ -60,8 +60,9 @@ namespace Taskmaster.Process
 		{
 			if (string.IsNullOrEmpty(info.Path)) return;
 
-			var crypt = new System.Security.Cryptography.SHA512Cng();
-			byte[] hash = crypt.ComputeHash(Encoding.UTF8.GetBytes(info.Path.ToLowerInvariant()));
+			byte[] hash;
+			using (var crypt = new System.Security.Cryptography.SHA512Cng())
+				hash = crypt.ComputeHash(Encoding.UTF8.GetBytes(info.Path.ToLowerInvariant()));
 
 			// TODO: Prevent bloating somehow.
 			if (!cache.TryAdd(hash, 0)) return; // already there

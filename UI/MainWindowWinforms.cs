@@ -3357,10 +3357,14 @@ namespace Taskmaster.UI
 				{
 					var prc = ew.Controller;
 
-					processmanager.AddController(prc);
-					AddToWatchlistList(prc);
+					if (processmanager.AddController(prc))
+					{
+						AddToWatchlistList(prc);
 
-					processmanager?.HastenScan(60, forceSort: true);
+						processmanager?.HastenScan(60, forceSort: true);
+					}
+					else
+						prc.Dispose();
 				}
 			}
 			catch (Exception ex) { Logging.Stacktrace(ex); }

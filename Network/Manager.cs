@@ -904,6 +904,11 @@ namespace Taskmaster.Network
 				ReportUptime();
 
 				SampleTimer?.Dispose();
+
+				NetInTrans?.Dispose();
+				NetOutTrans?.Dispose();
+				NetPackets?.Dispose();
+				NetQueue?.Dispose();
 			}
 
 			OnDisposed?.Invoke(this, DisposedEventArgs.Empty);

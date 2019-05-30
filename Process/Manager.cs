@@ -775,6 +775,7 @@ namespace Taskmaster.Process
 			if (appcfg.Config.ItemCount == 0)
 			{
 				Config.Unload(appcfg);
+				appcfg?.Dispose();
 
 				Log.Warning("<Process> Watchlist empty; writing example list.");
 
@@ -960,6 +961,8 @@ namespace Taskmaster.Process
 								hybrids++;
 						}
 					}
+					else
+						prc.Dispose();
 
 					// cnt.Children &= ControlChildren;
 
@@ -1379,14 +1382,24 @@ namespace Taskmaster.Process
 			{
 				if (IOPriorityEnabled)
 				{
+					bool disposeLocal = false;
+
 					try
 					{
-						if (process is null) process = System.Diagnostics.Process.GetProcessById(ev.Id);
+						if (process is null)
+						{
+							process = System.Diagnostics.Process.GetProcessById(ev.Id);
+							disposeLocal = true;
+						}
 						Utility.SetIO(process, 2, out _, decrease: false); // set foreground app I/O to highest possible
 					}
 					catch (Exception ex) when (ex is NullReferenceException || ex is OutOfMemoryException) { throw; }
 					catch (ArgumentException) { }
 					catch (InvalidOperationException) { }
+					finally
+					{
+						if (disposeLocal) process?.Dispose();
+					}
 				}
 			}
 		}
@@ -1979,6 +1992,7 @@ namespace Taskmaster.Process
 
 				if (IgnoreProcessID(pid)) return; // We just don't care
 
+				System.Diagnostics.Process proc = null;
 				if (string.IsNullOrEmpty(name))
 				{
 					if (!string.IsNullOrEmpty(path))
@@ -1987,16 +2001,17 @@ namespace Taskmaster.Process
 					{
 						try
 						{
+							proc = System.Diagnostics.Process.GetProcessById(pid);
 							// This happens only when encountering a process with elevated privileges, e.g. admin
 							// TODO: Mark as admin process?
-							info.Name = info.Process.ProcessName;
-
+							name = proc.ProcessName;
 						}
 						catch (OutOfMemoryException) { throw; }
 						catch
 						{
-							Log.Error("Failed to retrieve name of process #" + info.Id);
-							state = info.State = ProcessHandlingState.Invalid;
+							Log.Error("Failed to retrieve name of process #" + pid);
+							state = ProcessHandlingState.Invalid;
+							proc?.Dispose();
 							return;
 						}
 					}
@@ -2011,7 +2026,7 @@ namespace Taskmaster.Process
 					return;
 				}
 
-				if (Utility.GetInfo(pid, out info, path: path, getPath: true, name: name))
+				if (Utility.GetInfo(pid, out info, process: proc, path: path, getPath: true, name: name))
 				{
 					info.Timer = timer;
 					info.Protected = ProtectedProcessName(info.Name);

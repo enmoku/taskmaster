@@ -303,6 +303,7 @@ namespace Taskmaster
 				CPUSampleTimer = null;
 
 				CPUload?.Dispose();
+				CPUqueue?.Dispose();
 
 				if (processmanager != null)
 				{

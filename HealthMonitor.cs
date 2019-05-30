@@ -591,9 +591,17 @@ namespace Taskmaster
 				if (Trace) Log.Verbose("Disposing health monitor...");
 
 				cancellationSource.Cancel();
+				cancellationSource?.Dispose();
 
 				HealthTimer?.Dispose();
 				EmergencyTimer?.Dispose();
+
+				// kinda pointless
+				NVMQueue?.Dispose();
+				NVMReadDelay?.Dispose();
+				NVMTransfers?.Dispose();
+				NVMWriteDelay?.Dispose();
+				SplitIO?.Dispose();
 
 				//commitbytes?.Dispose();
 				//commitbytes = null;
