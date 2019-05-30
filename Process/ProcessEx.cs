@@ -27,7 +27,7 @@
 using System;
 using System.Diagnostics;
 
-namespace Taskmaster
+namespace Taskmaster.Process
 {
 	sealed public class ProcessEx
 	{

@@ -57,9 +57,9 @@ namespace Taskmaster.Power
 	sealed public class PowerRequestEventArgs : EventArgs
 	{
 		public Mode Mode { get; set; } = Mode.Undefined;
-		public ProcessEx Info { get; set; } = null;
+		public Process.ProcessEx Info { get; set; } = null;
 
-		public PowerRequestEventArgs(Mode mode, ProcessEx info)
+		public PowerRequestEventArgs(Mode mode, Process.ProcessEx info)
 		{
 			Mode = mode;
 			Info = info;
@@ -1231,7 +1231,7 @@ namespace Taskmaster.Power
 		/// Restores normal power mode and frees the associated source pid from holding it.
 		/// </summary>
 		/// <param name="sourcePid">0 releases all locks.</param>
-		public async Task Release(ProcessEx info)
+		public async Task Release(Process.ProcessEx info)
 		{
 			if (DisposedOrDisposing) throw new ObjectDisposedException(nameof(Manager), "Release called after PowerManager was disposed.");
 
