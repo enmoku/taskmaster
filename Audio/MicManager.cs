@@ -458,6 +458,7 @@ namespace Taskmaster.Audio
 			ExecuteOnMainThread(new Action(() =>
 			{
 				RecordingDevice?.Dispose();
+				RecordingDevice = null;
 			}));
 		}
 		#endregion
