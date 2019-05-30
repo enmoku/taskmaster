@@ -26,7 +26,7 @@
 
 using System.Diagnostics;
 
-namespace Taskmaster.OS
+namespace Taskmaster
 {
 	using System;
 	using static Taskmaster;
@@ -34,6 +34,7 @@ namespace Taskmaster.OS
 	public class HiddenWindow : UI.UniForm, IDisposal
 	{
 		public HiddenWindow()
+			: base()
 		{
 			RegisterForExit(this);
 			DisposalChute.Push(this);

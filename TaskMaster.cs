@@ -61,7 +61,7 @@ namespace Taskmaster
 		/// </summary>
 		internal static Stack<IDisposable> DisposalChute = new Stack<IDisposable>();
 
-		public static OS.HiddenWindow hiddenwindow;
+		public static HiddenWindow hiddenwindow;
 
 		static Runstate State = Runstate.Normal;
 
