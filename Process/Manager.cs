@@ -2018,7 +2018,8 @@ namespace Taskmaster.Process
 						catch (OutOfMemoryException) { throw; }
 						catch
 						{
-							Log.Error("Failed to retrieve name of process #" + pid);
+							// already exited?
+							if (DebugProcesses) Log.Error("<Process> Failed to retrieve name of process #" + pid + "; Process likely already gone.");
 							state = ProcessHandlingState.Invalid;
 							proc?.Dispose();
 							return;
