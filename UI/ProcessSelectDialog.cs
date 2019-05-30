@@ -29,11 +29,12 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using Taskmaster.Process;
 
 namespace Taskmaster
 {
 	using static Taskmaster;
-	sealed public class ProcessSelectDialog : UI.UniForm
+	public class ProcessSelectDialog : UI.UniForm
 	{
 		public ProcessEx Info { get; private set; } = null;
 
@@ -42,9 +43,11 @@ namespace Taskmaster
 
 		List<ProcessEx> InfoList = new List<ProcessEx>();
 
-		public ProcessSelectDialog(string message = "", string title=null)
+		public ProcessSelectDialog(string message = "", string title = null)
 			: base()
 		{
+			SuspendLayout();
+
 			WindowState = FormWindowState.Normal;
 			FormBorderStyle = FormBorderStyle.FixedDialog; // no min/max buttons as wanted
 
@@ -58,6 +61,7 @@ namespace Taskmaster
 			else
 				Text = title;
 
+			#region Build UI
 			var layout = new TableLayoutPanel()
 			{
 				ColumnCount = 1,
@@ -95,7 +99,7 @@ namespace Taskmaster
 				Text = "Select",
 				AutoSize = true,
 				Dock = DockStyle.Top,
-				Enabled	= false,
+				Enabled = false,
 			};
 			selectbutton.Click += SaveSelection;
 			selection.KeyDown += (sender, e) =>
@@ -132,6 +136,8 @@ namespace Taskmaster
 
 				Populate().ConfigureAwait(false);
 			};
+			selection.Text = "[[ Scanning ]]";
+			selection.Enabled = false;
 
 			buttonlayout.Controls.Add(selectbutton);
 			buttonlayout.Controls.Add(refreshbutton);
@@ -143,11 +149,11 @@ namespace Taskmaster
 			layout.Controls.Add(buttonlayout);
 
 			Controls.Add(layout);
-
-			selection.Text = "[[ Scanning ]]";
-			selection.Enabled = false;
+			#endregion // Build UI
 
 			Shown += (_, _ea) => Populate().ConfigureAwait(false);
+
+			ResumeLayout();
 		}
 
 		async Task Populate()

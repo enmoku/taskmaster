@@ -60,6 +60,8 @@ namespace Taskmaster.UI
 		public MainWindow()
 			: base()
 		{
+			SuspendLayout();
+
 			// InitializeComponent(); // TODO: WPF
 			FormClosing += WindowClose;
 
@@ -92,7 +94,9 @@ namespace Taskmaster.UI
 			}
 			#endregion // Load Configuration
 
+			#region Build UI
 			BuildUI();
+			#endregion
 
 			tooltip.IsBalloon = true;
 			tooltip.InitialDelay = 2000;
@@ -149,6 +153,8 @@ namespace Taskmaster.UI
 			FillLog();
 
 			if (Trace) Log.Verbose("MainWindow constructed");
+
+			ResumeLayout();
 		}
 
 		void onShown(object _, EventArgs _ea)

@@ -55,6 +55,8 @@ namespace Taskmaster.UI
 		public VolumeMeter(Audio.Manager manager)
 			: base()
 		{
+			SuspendLayout();
+
 			audiomanager = manager;
 
 			Text = "Volume Meter – Taskmaster!";
@@ -90,6 +92,11 @@ namespace Taskmaster.UI
 				volsec.TryRemove("Input");
 				volsec.TryRemove("Input cap");
 			}
+
+			#region Build UI
+			FormBorderStyle = FormBorderStyle.FixedDialog;
+			AutoSizeMode = AutoSizeMode.GrowAndShrink;
+			AutoSize = true;
 
 			var layout = new TableLayoutPanel()
 			{
@@ -151,10 +158,7 @@ namespace Taskmaster.UI
 			layout.Controls.Add(barlayout);
 
 			Controls.Add(layout);
-
-			FormBorderStyle = FormBorderStyle.FixedDialog;
-			AutoSizeMode = AutoSizeMode.GrowAndShrink;
-			AutoSize = true;
+			#endregion // Build UI
 
 			updateTimer.Interval = Frequency;
 			updateTimer.Tick += UpdateVolumeTick;
@@ -178,6 +182,8 @@ namespace Taskmaster.UI
 						CenterToParent();
 				}
 			}
+
+			SuspendLayout();
 
 			Show();
 		}

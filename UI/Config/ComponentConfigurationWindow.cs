@@ -37,6 +37,8 @@ namespace Taskmaster.UI.Config
 		public ComponentConfigurationWindow(bool initial = true, bool center = false)
 			: base(centerOnScreen: initial || center)
 		{
+			SuspendLayout();
+
 			// Size = new System.Drawing.Size(220, 360); // width, height
 
 			Text = "Component configuration";
@@ -417,6 +419,8 @@ namespace Taskmaster.UI.Config
 
 			// fgmon.Enabled is bound to procmon.Checked, procmon however is always in use and checkbox disabled so this doesn't matter
 			//fgmon.DataBindings.Add("Enabled", procmon, "Checked", false, DataSourceUpdateMode.Never);
+
+			ResumeLayout();
 		}
 
 		void EndButtonClick(object _, EventArgs _ea)

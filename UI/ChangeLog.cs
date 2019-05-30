@@ -42,7 +42,10 @@ namespace Taskmaster.UI
 		readonly AlignedLabel Title = null;
 
 		public ChangeLog(string logdata)
+			: base(false)
 		{
+			SuspendLayout();
+
 			LogData = logdata;
 
 			//TopMost = true;
@@ -74,6 +77,8 @@ namespace Taskmaster.UI
 			layout.Controls.Add(OKButton);
 
 			Controls.Add(layout);
+
+			ResumeLayout();
 		}
 
 		private void OKButton_Click(object sender, EventArgs e)

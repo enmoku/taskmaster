@@ -35,6 +35,8 @@ namespace Taskmaster.UI.Config
 		public ExperimentConfig(bool center=false)
 			: base(centerOnScreen: center)
 		{
+			SuspendLayout();
+
 			Text = "Experiment Configuration";
 			AutoSizeMode = AutoSizeMode.GrowAndShrink;
 			AutoSize = true;
@@ -134,6 +136,10 @@ namespace Taskmaster.UI.Config
 			savebutton.Anchor = AnchorStyles.Right;
 			layout.Controls.Add(savebutton);
 			layout.Controls.Add(cancelbutton);
+
+			Controls.Add(layout);
+
+			ResumeLayout();
 		}
 
 		void Cancelbutton_Click(object sender, EventArgs e)

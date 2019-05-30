@@ -36,11 +36,15 @@ namespace Taskmaster
 		public LicenseDialog(bool initial = true, bool center=false)
 			: base(centerOnScreen: initial || center)
 		{
+			SuspendLayout();
+
 			Text = Taskmaster.Name +" License";
 			AutoSizeMode = AutoSizeMode.GrowAndShrink;
 			FormBorderStyle = FormBorderStyle.FixedDialog;
 			if (initial)
 				StartPosition = FormStartPosition.CenterScreen;
+
+			#region Build UI
 
 			var layout = new FlowLayoutPanel()
 			{
@@ -115,6 +119,9 @@ namespace Taskmaster
 			buttonRefuse.Focus();
 
 			Controls.Add(layout);
+			#endregion // Build UI
+
+			ResumeLayout();
 		}
 	}
 }

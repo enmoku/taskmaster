@@ -47,6 +47,8 @@ namespace Taskmaster.UI.Config
 		public WatchlistEditWindow(Process.Controller controller = null)
 			: base()
 		{
+			SuspendLayout();
+
 			DialogResult = DialogResult.Abort;
 
 			newPrc = controller is null;
@@ -715,6 +717,8 @@ namespace Taskmaster.UI.Config
 
 			// ---
 			#endregion // BuildUI
+
+			ResumeLayout();
 		}
 
 		void SaveInfo(object _, System.EventArgs _ea)

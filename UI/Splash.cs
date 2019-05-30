@@ -52,6 +52,8 @@ namespace Taskmaster.UI
 		public Splash(int itemsToLoad)
 			: base(centerOnScreen: true)
 		{
+			SuspendLayout();
+
 			StartPosition = FormStartPosition.CenterScreen;
 
 			MaxLoad = itemsToLoad;
@@ -62,6 +64,7 @@ namespace Taskmaster.UI
 
 			Text = "Loading " + Taskmaster.Name + "!!";
 
+			#region Build UI
 			var layout = new TableLayoutPanel()
 			{
 				Dock = DockStyle.Fill,
@@ -125,6 +128,9 @@ namespace Taskmaster.UI
 			layout.SetColumnSpan(LoadEventLog, 2);
 
 			Controls.Add(layout);
+			#endregion // Build UI
+
+			ResumeLayout();
 		}
 
 		void ExitButton_Click(object sender, EventArgs e)

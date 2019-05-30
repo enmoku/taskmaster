@@ -62,7 +62,9 @@ namespace Taskmaster.UI
 
 		public TrayAccess() : base()
 		{
-			// BUILD UI
+			SuspendLayout();
+
+			#region Build UI
 			IconCache = System.Drawing.Icon.ExtractAssociatedIcon(System.Reflection.Assembly.GetExecutingAssembly().Location);
 
 			Tray = new NotifyIcon
@@ -139,6 +141,17 @@ namespace Taskmaster.UI
 
 			if (Trace) Log.Verbose("Tray menu ready");
 
+			// TODO: Toast Notifications. Apparently not supported by Win7, so nevermind.
+
+			if (Tray.Icon is null)
+			{
+				Log.Fatal("<Tray> Icon missing, setting system default.");
+				Tray.Icon = System.Drawing.SystemIcons.Application;
+			}
+
+			EnsureVisible();
+			#endregion // Build UI
+
 			using (var cfg = Taskmaster.Config.Load(CoreConfigFilename).BlockUnload())
 			{
 				int exdelay = cfg.Config[Constants.Experimental].Get("Explorer Restart")?.Int ?? 0;
@@ -150,17 +163,7 @@ namespace Taskmaster.UI
 			// Tray.Click += RestoreMainWindow;
 			Tray.MouseClick += ShowWindow;
 
-			// TODO: Toast Notifications. Apparently not supported by Win7, so nevermind.
-
-			if (Tray.Icon is null)
-			{
-				Log.Fatal("<Tray> Icon missing, setting system default.");
-				Tray.Icon = System.Drawing.SystemIcons.Application;
-			}
-
 			Microsoft.Win32.SystemEvents.SessionEnding += SessionEndingEvent; // depends on messagepump
-
-			EnsureVisible();
 
 			ms.VisibleChanged += MenuVisibilityChangedEvent;
 
@@ -169,6 +172,8 @@ namespace Taskmaster.UI
 			if (Trace) Log.Verbose("<Tray> Initialized");
 
 			DisposalChute.Push(this); // nothing else seems to work for removing the tray icon
+
+			ResumeLayout();
 		}
 
 		System.Drawing.Icon IconCache = null;

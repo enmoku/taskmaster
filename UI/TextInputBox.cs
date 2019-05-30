@@ -35,6 +35,8 @@ namespace Taskmaster
 		public TextInputBox(string message, string title, string input = null)
 			: base()
 		{
+			SuspendLayout();
+
 			Text = title;
 
 			DialogResult = DialogResult.Abort;
@@ -47,6 +49,7 @@ namespace Taskmaster
 			Activate();
 			BringToFront();
 
+			#region Build UI
 			var layout = new TableLayoutPanel()
 			{
 				ColumnCount = 1,
@@ -101,6 +104,9 @@ namespace Taskmaster
 			textbox.Width = layout.Width;
 
 			Controls.Add(layout);
+			#endregion // Build UI
+
+			ResumeLayout();
 		}
 	}
 }

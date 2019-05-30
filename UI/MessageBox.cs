@@ -64,6 +64,8 @@ namespace Taskmaster
 		public MessageBox(string title, string message, Buttons buttons, bool rich=false, Control parent = null)
 			: base()
 		{
+			SuspendLayout();
+
 			//if (!(parent is null)) Parent = parent;
 
 			Text = title;
@@ -144,6 +146,8 @@ namespace Taskmaster
 			layout.Controls.Add(buttonlayout);
 
 			StartPosition = parent != null ? FormStartPosition.CenterParent : FormStartPosition.CenterScreen;
+
+			ResumeLayout();
 		}
 	}
 }

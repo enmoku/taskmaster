@@ -61,6 +61,8 @@ namespace Taskmaster.UI.Config
 		public PowerConfigWindow(Power.Manager powerManager, bool center = false)
 			: base(centerOnScreen: center)
 		{
+			SuspendLayout();
+
 			manager = powerManager;
 
 			Text = "Power Configuration";
@@ -336,6 +338,8 @@ namespace Taskmaster.UI.Config
 			// Width = layout.Width;
 
 			FillAutoAdjust(AutoAdjust);
+
+			ResumeLayout();
 		}
 
 		void Cancel(object _, EventArgs _ea)

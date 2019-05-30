@@ -46,12 +46,14 @@ namespace Taskmaster.UI
 		readonly DiagnosticSystem System = null;
 
 		public DiagnosticDialog(DiagnosticSystem system)
+			: base(centerOnScreen: false)
 		{
+			SuspendLayout();
+
 			if (system == null) system = new DiagnosticSystem();
 			System = system;
 
 			var layout = new TableLayoutPanel() { Dock = DockStyle.Fill, ColumnCount = 2, AutoSize = true, };
-			Controls.Add(layout);
 
 			layout.Controls.Add(new AlignedLabel() { Text = "Status:", Font = boldfont });
 			layout.Controls.Add(Status);
@@ -59,7 +61,11 @@ namespace Taskmaster.UI
 			layout.Controls.Add(MessageList);
 			layout.SetColumnSpan(MessageList, 2);
 
+			Controls.Add(layout);
+
 			FormClosing += DialogClosing;
+
+			ResumeLayout();
 		}
 
 		private void DialogClosing(object sender, FormClosingEventArgs e)

@@ -31,12 +31,17 @@ namespace Taskmaster
 	sealed public class HealthMonitorConfig : UI.UniForm
 	{
 		public HealthMonitorConfig()
+			: base()
 		{
+			SuspendLayout();
+
 			Text = "Auto-Doc config";
 
 			var layout = new TableLayoutPanel()
 			{
 			};
+
+			ResumeLayout();
 		}
 	}
 }

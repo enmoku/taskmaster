@@ -38,6 +38,8 @@ namespace Taskmaster.UI.Config
 		public AdvancedConfig(bool center = false)
 			: base(centerOnScreen: center)
 		{
+			SuspendLayout();
+
 			Text = "Advanced Configuration";
 
 			var pad = Padding;
@@ -364,6 +366,8 @@ namespace Taskmaster.UI.Config
 				layout.Controls.Add(savebutton);
 				layout.Controls.Add(cancelbutton);
 			}
+
+			ResumeLayout();
 		}
 
 		void Cancelbutton_Click(object sender, EventArgs e)
