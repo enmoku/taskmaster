@@ -3,6 +3,11 @@ Comprehensive changes can be found in Git change history:
 	https://github.com/mkahvi/taskmaster/commits/master
 
 ## [0.13...]
+### 2019-05-30
+	Internal: Various tweakings to process triage, should be tiny bit faster. Something may have broken.
+	Changed: No longer block logoff and accept dirty shutdown.
+### 2019-05-27
+	Changed: I/O priority disabled in expriment config for non-Win7.
 ### 2019-05-25
 	Fixed: NIC traffic and error deltas and total errors were not being updated.
 ### 2019-05-23
