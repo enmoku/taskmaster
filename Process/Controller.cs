@@ -254,6 +254,11 @@ namespace Taskmaster.Process
 		public bool LogStartAndExit { get; set; } = false;
 
 		/// <summary>
+		/// Log process description as seen on task manager description column.
+		/// </summary>
+		public bool LogDescription { get; set; } = false;
+
+		/// <summary>
 		/// Delay in milliseconds before we attempt to alter the process.
 		/// For example, to allow a process to function at default settings for a while, or to work around undesirable settings
 		/// the process sets for itself.
@@ -712,6 +717,10 @@ namespace Taskmaster.Process
 			else
 				app.TryRemove("Log start and exit");
 
+			if (LogDescription)
+				app["Log description"].Bool = true;
+			else
+				app.TryRemove("Log description");
 
 			if (ExclusiveMode)
 				app["Exclusive"].Bool = true;

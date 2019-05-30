@@ -1671,6 +1671,15 @@ namespace Taskmaster.Process
 					await Task.Delay(0, cts.Token).ConfigureAwait(false); // asyncify again
 					if (cts.IsCancellationRequested) return;
 
+					if (prc.LogDescription)
+					{
+						try
+						{
+							info.Description = info.Process.MainModule.FileVersionInfo.FileDescription;
+						}
+						catch { } // ignore
+					}
+
 					if (!old && prc.LogStartAndExit)
 					{
 						Log.Information($"<Process> {info.Name} #{info.Id} started.");

@@ -47,6 +47,11 @@ namespace Taskmaster.Process
 		/// </summary>
 		public string FormattedPath { get; set; } = null;
 
+		/// <summary>
+		/// As seen in task manager.
+		/// </summary>
+		public string Description { get; set; } = null;
+
 		public Stopwatch Timer = null;
 		public double WMIDelay = 0;
 
