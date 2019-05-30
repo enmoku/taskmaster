@@ -1979,15 +1979,27 @@ namespace Taskmaster.Process
 
 				if (IgnoreProcessID(pid)) return; // We just don't care
 
-				if (string.IsNullOrEmpty(name) && !string.IsNullOrEmpty(path))
-					name = System.IO.Path.GetFileNameWithoutExtension(path);
-
-				if (string.IsNullOrEmpty(name) && pid < 0)
+				if (string.IsNullOrEmpty(name))
 				{
-					// likely process exited too fast
-					if (DebugProcesses && ShowInaction) Log.Debug("<<WMI>> Failed to acquire neither process name nor process Id");
-					state = ProcessHandlingState.AccessDenied;
-					return;
+					if (!string.IsNullOrEmpty(path))
+						name = System.IO.Path.GetFileNameWithoutExtension(path);
+					else
+					{
+						try
+						{
+							// This happens only when encountering a process with elevated privileges, e.g. admin
+							// TODO: Mark as admin process?
+							info.Name = info.Process.ProcessName;
+
+						}
+						catch (OutOfMemoryException) { throw; }
+						catch
+						{
+							Log.Error("Failed to retrieve name of process #" + info.Id);
+							state = info.State = ProcessHandlingState.Invalid;
+							return;
+						}
+					}
 				}
 
 				if (Trace) Logging.DebugMsg($"NewInstanceTriage: {name} (#{pid})");
@@ -2006,7 +2018,13 @@ namespace Taskmaster.Process
 
 					info.WMIDelay = wmidelay.TotalMilliseconds;
 
-					NewInstanceTriagePhaseTwo(info, out state);
+					if (cts.IsCancellationRequested) throw new ObjectDisposedException(nameof(Manager), "NewInstanceTriagePhaseTwo called when ProcessManager was already disposed");
+
+					if (Trace) Log.Verbose($"Caught: {info.Name} (#{info.Id}) at: {info.Path}");
+
+					state = info.State = ProcessHandlingState.Triage;
+
+					await ProcessTriage(info).ConfigureAwait(false);
 				}
 				else
 				{
@@ -2035,51 +2053,6 @@ namespace Taskmaster.Process
 				HandlingStateChange?.Invoke(this, new HandlingStateChangeEventArgs(info));
 
 				SignalProcessHandled(-1); // done with it
-			}
-		}
-
-		void NewInstanceTriagePhaseTwo(ProcessEx info, out ProcessHandlingState state)
-		{
-			//await Task.Delay(0).ConfigureAwait(false);
-			info.State = ProcessHandlingState.Invalid;
-
-			if (cts.IsCancellationRequested) throw new ObjectDisposedException(nameof(Manager), "NewInstanceTriagePhaseTwo called when ProcessManager was already disposed");
-
-			try
-			{
-				if (string.IsNullOrEmpty(info.Name))
-				{
-					try
-					{
-						// This happens only when encountering a process with elevated privileges, e.g. admin
-						// TODO: Mark as admin process?
-						info.Name = info.Process.ProcessName;
-					}
-					catch (Exception ex) when (ex is NullReferenceException || ex is OutOfMemoryException) { throw; }
-					catch
-					{
-						Log.Error("Failed to retrieve name of process #" + info.Id);
-						state = info.State = ProcessHandlingState.Invalid;
-						return;
-					}
-				}
-
-				if (Trace) Log.Verbose($"Caught: {info.Name} (#{info.Id}) at: {info.Path}");
-
-				// info.Process.StartTime; // Only present if we started it
-
-				state = info.State = ProcessHandlingState.Triage;
-
-				ProcessTriage(info).ConfigureAwait(false);
-			}
-			catch (Exception ex)
-			{
-				Logging.Stacktrace(ex);
-				state = info.State = ProcessHandlingState.Invalid;
-			}
-			finally
-			{
-				HandlingStateChange?.Invoke(this, new HandlingStateChangeEventArgs(info));
 			}
 		}
 
