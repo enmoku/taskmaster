@@ -1659,9 +1659,9 @@ namespace Taskmaster.Process
 
 				if (GetController(info, out var prc))
 				{
-					if (!info.Controller.Enabled)
+					if (!prc.Enabled)
 					{
-						if (DebugProcesses) Log.Debug("[" + info.Controller.FriendlyName + "] Matched, but rule disabled; ignoring.");
+						if (DebugProcesses) Log.Debug("[" + prc.FriendlyName + "] Matched, but rule disabled; ignoring.");
 						info.State = ProcessHandlingState.Abandoned;
 						return;
 					}
@@ -1692,7 +1692,7 @@ namespace Taskmaster.Process
 					{
 						if (Trace && DebugProcesses) Logging.DebugMsg($"Trying to modify: {info.Name} (#{info.Id})");
 
-						await info.Controller.Modify(info);
+						await prc.Modify(info);
 
 						if (prc.Foreground != ForegroundMode.Ignore) ForegroundWatch(info).ConfigureAwait(false);
 
