@@ -284,7 +284,7 @@ namespace Taskmaster.UI
 						if (Trace) Log.Verbose("<Global> Hotkey ctrl-alt-shift-m detected!!!");
 						Task.Run(new Action(async () =>
 						{
-							int ignorepid = activeappmonitor?.Foreground ?? -1;
+							int ignorepid = activeappmonitor?.ForegroundId ?? -1;
 							Log.Information("<Global> Hotkey detected; Freeing memory while ignoring foreground"+
 								(ignorepid > 4 ? $" (#{ignorepid})" : string.Empty) + " if possible.");
 							await processmanager.FreeMemory(ignorePid: ignorepid).ConfigureAwait(false);

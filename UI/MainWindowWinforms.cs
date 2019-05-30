@@ -3123,7 +3123,7 @@ namespace Taskmaster.UI
 			try
 			{
 				bool fgonly = ea.Info.Controller.Foreground != ForegroundMode.Ignore;
-				bool fg = (ea.Info.Id == (activeappmonitor?.Foreground ?? ea.Info.Id));
+				bool fg = (ea.Info.Id == (activeappmonitor?.ForegroundId ?? ea.Info.Id));
 
 				ListViewItem li = null;
 				string text = fgonly ? (fg ? HumanReadable.System.Process.Foreground : HumanReadable.System.Process.Background) : "ACTIVE";

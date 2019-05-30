@@ -56,7 +56,11 @@ namespace Taskmaster.Process
 			// get current window, just in case it's something we're monitoring
 			var hwnd = NativeMethods.GetForegroundWindow();
 			NativeMethods.GetWindowThreadProcessId(hwnd, out int pid);
-			Foreground = pid;
+			lock (FGLock)
+			{
+				PreviousFG = -1;
+				ForegroundId = pid;
+			}
 
 			using (var corecfg = Taskmaster.Config.Load(CoreConfigFilename).BlockUnload())
 			{
@@ -119,7 +123,7 @@ namespace Taskmaster.Process
 		readonly NativeMethods.WinEventDelegate ForegroundEventDelegate;
 		IntPtr windowseventhook = IntPtr.Zero;
 
-		public int Foreground { get; private set; } = -1;
+		public int ForegroundId { get; private set; } = -1;
 
 		DateTimeOffset LastSwap = DateTimeOffset.MinValue;
 
@@ -147,19 +151,23 @@ namespace Taskmaster.Process
 		readonly System.Timers.Timer HangTimer = null;
 		DateTimeOffset HangTime = DateTimeOffset.MaxValue;
 
+		readonly object FGLock = new object();
+
 		int PreviousFG = 0;
 		int HangTick = 0;
 		int HangMinimizeTick = 180;
 		int HangReduceTick = 240;
 		int HangKillTick = 300;
 
-		System.Diagnostics.Process fg = null;
+		System.Diagnostics.Process Foreground = null;
 
 		bool Minimized = false;
 		bool Reduced = false;
 		int IgnoreHung = -1;
 
 		int hangdetector_lock = 0;
+
+		int PreviouslyHung = -1;
 
 		/// <summary>
 		/// Timer callback to occasionally detect if the foreground app is hung.
@@ -173,39 +181,42 @@ namespace Taskmaster.Process
 
 			try
 			{
-				int pid = Foreground;
+				int lfgpid, previoushang;
+				System.Diagnostics.Process fgproc;
+				lock (FGLock)
+				{
+					lfgpid = ForegroundId;
+					previoushang = PreviouslyHung;
+					fgproc = Foreground;
+				}
 
 				DateTimeOffset now = DateTimeOffset.UtcNow;
 				TimeSpan since = now.TimeSince(LastSwap); // since app was last changed
 				if (since.TotalSeconds < 5) return;
 
-				if (PreviousFG != pid)
-				{
-					// foreground changed
-					fg = System.Diagnostics.Process.GetProcessById(pid);
+				if (!previoushang.Equals(lfgpid)) // foreground changed since last test
 					HangTick = 0;
-				}
 
-				if (fg != null && !fg.Responding)
+				if (fgproc != null && !fgproc.Responding)
 				{
 					string name = string.Empty;
 					try
 					{
-						name = fg.ProcessName;
+						name = fgproc.ProcessName;
 					}
 					catch (OutOfMemoryException) { throw; }
 					catch
 					{
 						// probably gone?
-						if (Utility.SystemProcessId(pid)) name = "<OS>"; // this might also signify the desktop, for some reason
+						if (Utility.SystemProcessId(lfgpid)) name = "<OS>"; // this might also signify the desktop, for some reason
 					}
 
 					var sbs = new StringBuilder().Append("<Foreground> ");
 
 					if (!string.IsNullOrEmpty(name))
-						sbs.Append(name).Append(" (#").Append(pid).Append(")");
+						sbs.Append(name).Append(" (#").Append(lfgpid).Append(")");
 					else
-						sbs.Append("#").Append(pid);
+						sbs.Append("#").Append(lfgpid);
 
 					if (HangTick == 1)
 					{
@@ -218,7 +229,7 @@ namespace Taskmaster.Process
 
 						sbs.Append(" hung!");
 
-						if (Utility.SystemProcessId(pid))
+						if (Utility.SystemProcessId(lfgpid))
 						{
 							Log.Warning(sbs.ToString());
 							return; // Ignore system processes. We can do nothing useful for them.
@@ -228,7 +239,7 @@ namespace Taskmaster.Process
 						bool acted = false;
 						if (HangMinimizeTick > 0 && hung > HangMinimizeTick && !Minimized)
 						{
-							bool rv = NativeMethods.ShowWindow(fg.Handle, 11); // 6 = minimize, 11 = force minimize
+							bool rv = NativeMethods.ShowWindow(fgproc.Handle, 11); // 6 = minimize, 11 = force minimize
 							if (rv)
 							{
 								sbs.Append("Minimized");
@@ -243,7 +254,7 @@ namespace Taskmaster.Process
 							bool aff = false, prio = false;
 							try
 							{
-								fg.ProcessorAffinity = new IntPtr(1); // TODO: set this to something else than the first core
+								fgproc.ProcessorAffinity = new IntPtr(1); // TODO: set this to something else than the first core
 								if (acted) sbs.Append(", ");
 								sbs.Append("Affinity reduced");
 								aff = true;
@@ -257,7 +268,7 @@ namespace Taskmaster.Process
 							acted = true;
 							try
 							{
-								fg.PriorityClass = ProcessPriorityClass.Idle;
+								fgproc.PriorityClass = ProcessPriorityClass.Idle;
 								sbs.Append(", Priority reduced");
 								prio = true;
 							}
@@ -273,7 +284,14 @@ namespace Taskmaster.Process
 						{
 							try
 							{
-								fg.Kill();
+								lock (FGLock)
+								{
+									fgproc.Kill();
+									fgproc?.Dispose();
+									if (fgproc == Foreground)
+										Foreground = null;
+									fgproc = null;
+								}
 								if (acted) sbs.Append(", ");
 								sbs.Append("Terminated");
 							}
@@ -294,14 +312,24 @@ namespace Taskmaster.Process
 						Reduced = false;
 						Minimized = false;
 
+						// TODO: There has to be better way to do this
+						// Prevent changes to hung app by other 
 						processmanager.Unignore(IgnoreHung);
-						IgnoreHung = pid;
+						IgnoreHung = lfgpid;
 						processmanager.Ignore(IgnoreHung);
 					}
 
 					HangTick++;
 
 					return;
+				}
+				else
+				{
+					processmanager.Unignore(IgnoreHung);
+					IgnoreHung = -1;
+
+					HangTick = 0;
+					HangTime = DateTimeOffset.MaxValue;
 				}
 			}
 			catch (InvalidOperationException) { } // NOP, already exited
@@ -317,12 +345,6 @@ namespace Taskmaster.Process
 			{
 				Atomic.Unlock(ref hangdetector_lock);
 			}
-
-			processmanager.Unignore(IgnoreHung);
-			IgnoreHung = -1;
-
-			HangTick = 0;
-			HangTime = DateTimeOffset.MaxValue;
 		}
 
 		public void SetupEventHookEvent(object _, ProcessModificationEventArgs _ea)
@@ -415,7 +437,8 @@ namespace Taskmaster.Process
 					bool fs = Fullscreen(hwnd);
 					activewindowev.Fullscreen = fs ? Trinary.True : Trinary.False;
 
-					Foreground = activewindowev.Id = pid;
+					PreviousFG = ForegroundId;
+					ForegroundId = activewindowev.Id = pid;
 					HangTick = 0;
 
 					if (!Utility.SystemProcessId(pid))
@@ -423,9 +446,14 @@ namespace Taskmaster.Process
 
 						try
 						{
-							var proc = System.Diagnostics.Process.GetProcessById(activewindowev.Id);
-							activewindowev.Process = proc;
-							activewindowev.Executable = proc.ProcessName;
+							lock (FGLock)
+							{
+								Foreground?.Dispose(); // pointless?
+								Foreground = System.Diagnostics.Process.GetProcessById(pid);
+								ForegroundId = pid;
+								activewindowev.Process = Foreground;
+								activewindowev.Executable = Foreground.ProcessName;
+							}
 						}
 						catch (ArgumentException)
 						{
@@ -438,6 +466,12 @@ namespace Taskmaster.Process
 					}
 					else
 					{
+						lock (FGLock)
+						{
+							Foreground = null;
+							ForegroundId = -1;
+						}
+
 						// shouldn't happen, but who knows?
 						activewindowev.Process = null;
 						activewindowev.Executable = string.Empty;

@@ -487,7 +487,7 @@ namespace Taskmaster
 
 							if (Settings.MemIgnoreFocus && activeappmonitor != null && User.IdleTime().TotalMinutes <= 3d)
 							{
-								ignorepid = activeappmonitor.Foreground;
+								ignorepid = activeappmonitor.ForegroundId;
 								Log.Verbose("<Auto-Doc> Protecting foreground app (#" + ignorepid + ")");
 							}
 
