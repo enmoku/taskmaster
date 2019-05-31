@@ -43,7 +43,7 @@ namespace Taskmaster
 		public bool AffinityFail = false;
 		public bool PriorityFail = false;
 
-		public int NewIO = -1;
+		public Process.IOPriority NewIO = Process.IOPriority.Ignore;
 
 		/// <summary>
 		/// Text for end-users.

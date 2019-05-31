@@ -845,7 +845,7 @@ namespace Taskmaster.Process
 			ProcessPriorityClass oldPriority;
 			int oldAffinity, newAffinity;
 
-			int nIO = -1;
+			IOPriority nIO = IOPriority.Ignore;
 
 			if (!info.InBackground)
 			{
@@ -872,7 +872,7 @@ namespace Taskmaster.Process
 					newAffinity = -1;
 
 				if (IOPriorityEnabled)
-					nIO = SetIO(info, (IOPriority)DefaultForegroundIOPriority); // force these to always have normal I/O priority
+					nIO = (IOPriority)SetIO(info, (IOPriority)DefaultForegroundIOPriority); // force these to always have normal I/O priority
 
 				if (AffinityIdeal >= 0) ApplyAffinityIdeal(info);
 			}
@@ -1293,7 +1293,7 @@ namespace Taskmaster.Process
 
 				bool mAffinity = false, mPriority = false, mPower = false, modified = false, fAffinity = false, fPriority = false;
 
-				int nIO = -1;
+				IOPriority nIO = IOPriority.Ignore;
 
 				bool foreground = IsForeground(info.Id);
 
@@ -1342,7 +1342,7 @@ namespace Taskmaster.Process
 					catch { fPriority = true; } // ignore errors, this is all we care of them
 
 					if (IOPriorityEnabled && IOPriority != IOPriority.Ignore)
-						nIO = SetIO(info);
+						nIO = (IOPriority)SetIO(info);
 				}
 
 				int newAffinityMask = -1;
