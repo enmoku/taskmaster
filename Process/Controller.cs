@@ -1403,6 +1403,7 @@ namespace Taskmaster.Process
 					if (Manager.DebugProcesses) Logging.DebugMsg($"{FormatPathName(info)} #{info.Id.ToString()} --- affinity not touched");
 				}
 
+				// TODO: Make sure the ideal matches set mask
 				if (AffinityIdeal >= 0)
 					ApplyAffinityIdeal(info);
 
