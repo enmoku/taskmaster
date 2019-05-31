@@ -1285,7 +1285,7 @@ namespace Taskmaster.Process
 
 				// TODO: IgnoreSystem32Path
 
-				if (info.Protected && ShowInaction && Manager.DebugProcesses)
+				if (Manager.DebugProcesses && info.PriorityProtected && ShowInaction)
 					Log.Debug($"[{FriendlyName}] {info.Name} (#{info.Id.ToString()}) in protected list, limiting tampering.");
 
 				ProcessPriorityClass? newPriority = null;
@@ -1298,7 +1298,7 @@ namespace Taskmaster.Process
 				bool foreground = IsForeground(info.Id);
 
 				bool FirstTimeSeenForForeground = true;
-				if (!info.Protected)
+				if (!info.PriorityProtected)
 				{
 					if (Foreground != ForegroundMode.Ignore)
 					{
@@ -1328,7 +1328,7 @@ namespace Taskmaster.Process
 				}
 
 				// APPLY CHANGES HERE
-				if (!info.Protected)
+				if (!info.PriorityProtected)
 				{
 					try
 					{
@@ -1347,7 +1347,7 @@ namespace Taskmaster.Process
 
 				int newAffinityMask = -1;
 
-				if (AffinityMask >= 0)
+				if (AffinityMask >= 0 && !info.AffinityProtected)
 				{
 					newAffinityMask = AffinityMask.Replace(0, Utility.FullCPUMask);
 

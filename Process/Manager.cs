@@ -465,7 +465,8 @@ namespace Taskmaster.Process
 				if (info != null || Utility.GetInfo(pid, out info, process, null, name, null, getPath: true))
 				{
 					info.Timer = Stopwatch.StartNew();
-					info.Protected = ProtectedProcessName(info.Name);
+					info.PriorityProtected = ProtectedProcessName(info.Name);
+					info.AffinityProtected = (info.PriorityProtected && ProtectionLevel >= 2);
 
 					ProcessTriage(info, old: true).ConfigureAwait(false);
 
@@ -708,6 +709,10 @@ namespace Taskmaster.Process
 				IgnoreSystem32Path = ignsetting.GetOrSet("Ignore System32", true)
 					.InitComment("Ignore programs in %SYSTEMROOT%/System32 folder.")
 					.Bool;
+
+				ProtectionLevel = ignsetting.GetOrSet("Protection level", 2)
+					.InitComment("Amount of core system shielding to do. 1 = Affinity tuning allowed. 2 = Full protection.")
+					.Int;
 
 				var dbgsec = corecfg.Config[HumanReadable.Generic.Debug];
 				DebugWMI = dbgsec.Get("WMI")?.Bool ?? false;
@@ -1015,7 +1020,7 @@ namespace Taskmaster.Process
 						sbs.Append(HumanReadable.Generic.NotAvailable);
 
 					if (ea.PriorityFail) sbs.Append(" [Failed]");
-					if (ea.Info.Protected) sbs.Append(" [Protected]");
+					if (ea.Info.PriorityProtected) sbs.Append(" [Protected]");
 				}
 
 				if (ShowUnmodifiedPortions || ea.AffinityNew >= 0)
@@ -1038,6 +1043,7 @@ namespace Taskmaster.Process
 						sbs.Append(HumanReadable.Generic.NotAvailable);
 
 					if (ea.AffinityFail) sbs.Append(" [Failed]");
+					if (ea.Info.AffinityProtected) sbs.Append(" [Protected]");
 				}
 
 				if (DebugProcesses) sbs.Append(" [").Append(prc.AffinityStrategy.ToString()).Append("]");
@@ -1516,6 +1522,13 @@ namespace Taskmaster.Process
 
 		// %SYSTEMROOT%\System32 (Environment.SpecialFolder.System)
 		public bool IgnoreSystem32Path { get; private set; } = true;
+
+		/// <summary>
+		/// Amount of protection to do.
+		/// 1 = Priority denied.
+		/// 2 = Affinity & Priority denied.
+		/// </summary>
+		public int ProtectionLevel { get; private set; } = 2;
 
 		bool DebugWMI = false;
 
@@ -2039,7 +2052,8 @@ namespace Taskmaster.Process
 				if (Utility.GetInfo(pid, out info, process: proc, path: path, getPath: true, name: name))
 				{
 					info.Timer = timer;
-					info.Protected = ProtectedProcessName(info.Name);
+					info.PriorityProtected = ProtectedProcessName(info.Name);
+					info.AffinityProtected = (info.PriorityProtected && ProtectionLevel >= 2);
 
 					info.WMIDelay = wmidelay.TotalMilliseconds;
 

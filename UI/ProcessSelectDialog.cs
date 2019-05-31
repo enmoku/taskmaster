@@ -176,7 +176,8 @@ namespace Taskmaster
 
 						if (Process.Utility.GetInfo(pid, out var info, proc, name: proc.ProcessName, getPath: true))
 						{
-							info.Protected = processmanager.ProtectedProcessName(info.Name);
+							info.PriorityProtected = processmanager.ProtectedProcessName(info.Name);
+							info.AffinityProtected = (info.PriorityProtected && processmanager.ProtectionLevel >= 2);
 							InfoList.Add(info);
 						}
 					}
@@ -193,7 +194,7 @@ namespace Taskmaster
 				}
 
 				InfoList = InfoList.OrderBy(inam => inam.Name).ThenBy(iid => iid.Id).ToList();
-				var output = InfoList.ConvertAll(x => $"{System.IO.Path.GetFileName(x.Path ?? x.Name)} #{x.Id}");
+				var output = InfoList.ConvertAll(x => $"{System.IO.Path.GetFileName(x.Path ?? x.Name)} #{x.Id}{(Info.PriorityProtected?" [Protected]":"")}");
 
 				if (IsDisposed) return;
 

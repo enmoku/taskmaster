@@ -70,7 +70,8 @@ namespace Taskmaster.Process
 		/// </summary>
 		public Process.Controller Controller { get; set; } = null;
 
-		public bool Protected { get; set; } = false;
+		public bool PriorityProtected { get; set; } = false;
+		public bool AffinityProtected { get; set; } = false;
 
 		/// <summary>
 		/// Monitoring power plan.
