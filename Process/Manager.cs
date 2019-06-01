@@ -465,7 +465,9 @@ namespace Taskmaster.Process
 				if (info != null || Utility.GetInfo(pid, out info, process, null, name, null, getPath: true))
 				{
 					info.Timer = Stopwatch.StartNew();
-					info.PriorityProtected = ProtectedProcessName(info.Name);
+
+					// Protected files, expensive but necessary.
+					info.PriorityProtected = ProtectedProcess(info.Name, info.Path);
 					info.AffinityProtected = (info.PriorityProtected && ProtectionLevel >= 2);
 
 					ProcessTriage(info, old: true).ConfigureAwait(false);
@@ -988,92 +990,101 @@ namespace Taskmaster.Process
 			Log.Information($"<Process> Watchlist items – Name-based: {(Watchlist.Count - withPath)}; Path-based: {withPath - hybrids}; Hybrid: {hybrids} – Total: {Watchlist.Count}");
 		}
 
-		void OnControllerAdjust(object sender, ProcessModificationEventArgs ea)
+		async void OnControllerAdjust(object sender, ProcessModificationEventArgs ea)
 		{
-			if (sender is Controller prc)
+			try
 			{
-				if (!prc.LogAdjusts) return;
-
-				bool onlyFinal = ShowOnlyFinalState;
-
-				var sbs = new StringBuilder()
-					.Append("[").Append(prc.FriendlyName).Append("] ").Append(prc.FormatPathName(ea.Info))
-					.Append(" (#").Append(ea.Info.Id).Append(")");
-
-				if (ShowUnmodifiedPortions || ea.PriorityNew.HasValue)
+				if (sender is Controller prc)
 				{
-					sbs.Append("; Priority: ");
-					if (ea.PriorityOld.HasValue)
+					if (!prc.LogAdjusts) return;
+
+					await Task.Delay(0).ConfigureAwait(false); // probably not necessary
+
+					bool onlyFinal = ShowOnlyFinalState;
+
+					var sbs = new StringBuilder()
+						.Append("[").Append(prc.FriendlyName).Append("] ").Append(prc.FormatPathName(ea.Info))
+						.Append(" (#").Append(ea.Info.Id).Append(")");
+
+					if (ShowUnmodifiedPortions || ea.PriorityNew.HasValue)
 					{
-						if (!onlyFinal || !ea.PriorityNew.HasValue) sbs.Append(Readable.ProcessPriority(ea.PriorityOld.Value));
-
-						if (ea.PriorityNew.HasValue)
+						sbs.Append("; Priority: ");
+						if (ea.PriorityOld.HasValue)
 						{
-							if (!onlyFinal) sbs.Append(" → ");
-							sbs.Append(Readable.ProcessPriority(ea.PriorityNew.Value));
+							if (!onlyFinal || !ea.PriorityNew.HasValue) sbs.Append(Readable.ProcessPriority(ea.PriorityOld.Value));
+
+							if (ea.PriorityNew.HasValue)
+							{
+								if (!onlyFinal) sbs.Append(" → ");
+								sbs.Append(Readable.ProcessPriority(ea.PriorityNew.Value));
+							}
+
+							if (prc.Priority.HasValue && ea.Info.State == ProcessHandlingState.Paused && prc.Priority != ea.PriorityNew)
+								sbs.Append($" [{ProcessHelpers.PriorityToInt(prc.Priority.Value)}]");
 						}
+						else
+							sbs.Append(HumanReadable.Generic.NotAvailable);
 
-						if (prc.Priority.HasValue && ea.Info.State == ProcessHandlingState.Paused && prc.Priority != ea.PriorityNew)
-							sbs.Append($" [{ProcessHelpers.PriorityToInt(prc.Priority.Value)}]");
+						if (ea.PriorityFail) sbs.Append(" [Failed]");
+						if (ea.Info.PriorityProtected) sbs.Append(" [Protected]");
 					}
-					else
-						sbs.Append(HumanReadable.Generic.NotAvailable);
 
-					if (ea.PriorityFail) sbs.Append(" [Failed]");
-					if (ea.Info.PriorityProtected) sbs.Append(" [Protected]");
-				}
-
-				if (ShowUnmodifiedPortions || ea.AffinityNew >= 0)
-				{
-					sbs.Append("; Affinity: ");
-					if (ea.AffinityOld >= 0)
+					if (ShowUnmodifiedPortions || ea.AffinityNew >= 0)
 					{
-						if (!onlyFinal || ea.AffinityNew < 0) sbs.Append(ea.AffinityOld);
-
-						if (ea.AffinityNew >= 0)
+						sbs.Append("; Affinity: ");
+						if (ea.AffinityOld >= 0)
 						{
-							if (!onlyFinal) sbs.Append(" → ");
-							sbs.Append(ea.AffinityNew);
+							if (!onlyFinal || ea.AffinityNew < 0) sbs.Append(ea.AffinityOld);
+
+							if (ea.AffinityNew >= 0)
+							{
+								if (!onlyFinal) sbs.Append(" → ");
+								sbs.Append(ea.AffinityNew);
+							}
+
+							if (prc.AffinityMask >= 0 && ea.Info.State == ProcessHandlingState.Paused && prc.AffinityMask != ea.AffinityNew)
+								sbs.Append($" [{prc.AffinityMask}]");
 						}
+						else
+							sbs.Append(HumanReadable.Generic.NotAvailable);
 
-						if (prc.AffinityMask >= 0 && ea.Info.State == ProcessHandlingState.Paused && prc.AffinityMask != ea.AffinityNew)
-							sbs.Append($" [{prc.AffinityMask}]");
+						if (ea.AffinityFail) sbs.Append(" [Failed]");
+						if (ea.Info.AffinityProtected) sbs.Append(" [Protected]");
 					}
-					else
-						sbs.Append(HumanReadable.Generic.NotAvailable);
 
-					if (ea.AffinityFail) sbs.Append(" [Failed]");
-					if (ea.Info.AffinityProtected) sbs.Append(" [Protected]");
+					if (DebugProcesses) sbs.Append(" [").Append(prc.AffinityStrategy.ToString()).Append("]");
+
+					if (ea.NewIO >= 0) sbs.Append(" – I/O: ").Append(ea.NewIO.ToString());
+
+					if (ea.User != null) sbs.Append(ea.User);
+
+					if (DebugAdjustDelay)
+					{
+						sbs.Append(" – ").Append($"{ea.Info.Timer.ElapsedMilliseconds:N0} ms");
+						if (ea.Info.WMIDelay > 0d) sbs.Append(" + ").Append($"{ea.Info.WMIDelay:N0}").Append(" ms watcher delay");
+					}
+
+					if (EnableParentFinding && prc.DeclareParent)
+					{
+						var parent = Utility.GetParentProcess(ea.Info);
+						sbs.Append(" – Parent: ");
+						if (parent != null)
+							sbs.Append(parent.Name).Append(" (#").Append(parent.Id).Append(")");
+						else
+							sbs.Append("n/a");
+					}
+
+					// TODO: Add option to logging to file but still show in UI
+					if (!(ShowInaction && DebugProcesses)) Log.Information(sbs.ToString());
+					else Log.Debug(sbs.ToString());
+
+					ea.User?.Clear();
+					ea.User = null;
 				}
-
-				if (DebugProcesses) sbs.Append(" [").Append(prc.AffinityStrategy.ToString()).Append("]");
-
-				if (ea.NewIO >= 0) sbs.Append(" – I/O: ").Append(ea.NewIO.ToString());
-
-				if (ea.User != null) sbs.Append(ea.User);
-
-				if (DebugAdjustDelay)
-				{
-					sbs.Append(" – ").Append($"{ea.Info.Timer.ElapsedMilliseconds:N0} ms");
-					if (ea.Info.WMIDelay > 0d) sbs.Append(" + ").Append($"{ea.Info.WMIDelay:N0}").Append(" ms watcher delay");
-				}
-
-				if (EnableParentFinding && prc.DeclareParent)
-				{
-					var parent = Utility.GetParentProcess(ea.Info);
-					sbs.Append(" – Parent: ");
-					if (parent != null)
-						sbs.Append(parent.Name).Append(" (#").Append(parent.Id).Append(")");
-					else
-						sbs.Append("n/a");
-				}
-
-				// TODO: Add option to logging to file but still show in UI
-				if (!(ShowInaction && DebugProcesses)) Log.Information(sbs.ToString());
-				else Log.Debug(sbs.ToString());
-
-				ea.User?.Clear();
-				ea.User = null;
+			}
+			catch (Exception ex)
+			{
+				Logging.Stacktrace(ex);
 			}
 		}
 
@@ -1535,12 +1546,22 @@ namespace Taskmaster.Process
 		[System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
 		public bool IgnoreProcessID(int pid) => Utility.SystemProcessId(pid) || IgnorePids.ContainsKey(pid);
 
+		// BUG: Flat process name matching is not great.
 		[System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
 		public bool IgnoreProcessName(string name) => IgnoreList.Any(item => item.Equals(name, StringComparison.InvariantCultureIgnoreCase));
 
+		// BUG: Flat process name matching is not great.
 		[System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
 		public bool ProtectedProcessName(string name) => ProtectList.Any(item => item.Equals(name, StringComparison.InvariantCultureIgnoreCase));
 		// %SYSTEMROOT%
+
+		public bool ProtectedProcess(string name, string path)
+		{
+			// Assume lack of path means it belongs in systemroot. Not great assumption, but we probably can't touch it anyway.
+			if (path?.StartsWith(Environment.GetFolderPath(Environment.SpecialFolder.Windows), StringComparison.InvariantCultureIgnoreCase) ?? true)
+				return ProtectedProcessName(name);
+			return false;
+		}
 
 		/*
 		void ChildController(ProcessEx ci)
@@ -2052,7 +2073,7 @@ namespace Taskmaster.Process
 				if (Utility.GetInfo(pid, out info, process: proc, path: path, getPath: true, name: name))
 				{
 					info.Timer = timer;
-					info.PriorityProtected = ProtectedProcessName(info.Name);
+					info.PriorityProtected = ProtectedProcess(info.Name, info.Path);
 					info.AffinityProtected = (info.PriorityProtected && ProtectionLevel >= 2);
 
 					info.WMIDelay = wmidelay.TotalMilliseconds;

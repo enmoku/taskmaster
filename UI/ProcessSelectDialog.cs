@@ -176,7 +176,7 @@ namespace Taskmaster
 
 						if (Process.Utility.GetInfo(pid, out var info, proc, name: proc.ProcessName, getPath: true))
 						{
-							info.PriorityProtected = processmanager.ProtectedProcessName(info.Name);
+							info.PriorityProtected = processmanager.ProtectedProcess(info.Name, info.Path);
 							info.AffinityProtected = (info.PriorityProtected && processmanager.ProtectionLevel >= 2);
 							InfoList.Add(info);
 						}
