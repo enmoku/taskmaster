@@ -603,7 +603,7 @@ namespace Taskmaster.UI
 			// activeLabel.Text = cutstring;
 			activeLabel.Text = windowchangeev.Title;
 			activeExec.Text = windowchangeev.Executable;
-			activeFullscreen.Text = windowchangeev.Fullscreen.True() ? "Full" : windowchangeev.Fullscreen.False() ? "Window" : "Unknown";
+			activeFullscreen.Text = windowchangeev.Fullscreen ? "Full" : "Window";
 			activePID.Text = windowchangeev.Id.ToString();
 		}
 

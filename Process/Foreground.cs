@@ -40,7 +40,7 @@ namespace Taskmaster.Process
 		public int Id { get; set; }
 		public System.Diagnostics.Process Process { get; set; }
 		public string Title { get; set; }
-		public Trinary Fullscreen { get; set; }
+		public bool Fullscreen { get; set; }
 		public string Executable { get; set; }
 	}
 
@@ -425,17 +425,17 @@ namespace Taskmaster.Process
 				{
 					LastSwap = DateTimeOffset.UtcNow;
 
-					var activewindowev = new WindowChangedArgs()
-					{
-						hWnd = hwnd,
-						Title = string.Empty,
-						Fullscreen = Trinary.Nonce,
-					};
 
 					NativeMethods.GetWindowThreadProcessId(hwnd, out int pid);
 
 					bool fs = Fullscreen(hwnd);
-					activewindowev.Fullscreen = fs ? Trinary.True : Trinary.False;
+
+					var activewindowev = new WindowChangedArgs()
+					{
+						hWnd = hwnd,
+						Title = string.Empty,
+						Fullscreen = fs,
+					};
 
 					PreviousFG = ForegroundId;
 					ForegroundId = activewindowev.Id = pid;

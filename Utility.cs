@@ -31,25 +31,6 @@ using System.Text;
 
 namespace Taskmaster
 {
-	public enum Trinary
-	{
-		False = 0,
-		True = 1,
-		Nonce = -1,
-	}
-
-	public static class TrinaryExtensions
-	{
-		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		public static bool True(this Trinary tri) => (tri == Trinary.True);
-
-		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		public static bool False(this Trinary tri) => (tri == Trinary.False);
-
-		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		public static bool Nonce(this Trinary tri) => (tri == Trinary.Nonce);
-	}
-
 	public static class Logging
 	{
 		static void AppendStacktace(Exception ex, ref StringBuilder output)
