@@ -57,31 +57,29 @@ namespace Taskmaster
 				if (!pipe.IsConnected) return;
 				if (!pipe.IsMessageComplete) return;
 
-				using (var sr = new StreamReader(lp))
+				using var sr = new StreamReader(lp);
+				var line = sr.ReadLine();
+				if (line.StartsWith(RestartMessage))
 				{
-					var line = sr.ReadLine();
-					if (line.StartsWith(RestartMessage))
-					{
-						Log.Information("<IPC> Restart request received.");
-						UnifiedExit(restart: true);
-						return;
-					}
-					else if (line.StartsWith(TerminationMessage))
-					{
-						Log.Information("<IPC> Termination request received.");
-						UnifiedExit(restart: false);
-						return;
-					}
-					else if (line.StartsWith(RefreshMessage))
-					{
-						Log.Information("<IPC> Refresh.");
-						Refresh();
-						return;
-					}
-					else
-					{
-						Log.Error("<IPC> Unknown message: " + line);
-					}
+					Log.Information("<IPC> Restart request received.");
+					UnifiedExit(restart: true);
+					return;
+				}
+				else if (line.StartsWith(TerminationMessage))
+				{
+					Log.Information("<IPC> Termination request received.");
+					UnifiedExit(restart: false);
+					return;
+				}
+				else if (line.StartsWith(RefreshMessage))
+				{
+					Log.Information("<IPC> Refresh.");
+					Refresh();
+					return;
+				}
+				else
+				{
+					Log.Error("<IPC> Unknown message: " + line);
 				}
 
 				if (lp.CanRead) lp?.BeginWaitForConnection(Receive, null);
@@ -100,8 +98,8 @@ namespace Taskmaster
 			{
 				var ps = new System.IO.Pipes.PipeSecurity();
 				ps.AddAccessRule(new System.IO.Pipes.PipeAccessRule("Users", System.IO.Pipes.PipeAccessRights.Write, System.Security.AccessControl.AccessControlType.Allow));
-				using (var id = System.Security.Principal.WindowsIdentity.GetCurrent())
-					ps.AddAccessRule(new System.IO.Pipes.PipeAccessRule(id.Name, System.IO.Pipes.PipeAccessRights.FullControl, System.Security.AccessControl.AccessControlType.Allow));
+				using var id = System.Security.Principal.WindowsIdentity.GetCurrent();
+				ps.AddAccessRule(new System.IO.Pipes.PipeAccessRule(id.Name, System.IO.Pipes.PipeAccessRights.FullControl, System.Security.AccessControl.AccessControlType.Allow));
 				ps.AddAccessRule(new System.IO.Pipes.PipeAccessRule("SYSTEM", System.IO.Pipes.PipeAccessRights.FullControl, System.Security.AccessControl.AccessControlType.Allow));
 
 				pipe = new System.IO.Pipes.NamedPipeServerStream(PipeName, System.IO.Pipes.PipeDirection.In, 1, System.IO.Pipes.PipeTransmissionMode.Message, System.IO.Pipes.PipeOptions.Asynchronous, 16, 8);
@@ -134,18 +132,16 @@ namespace Taskmaster
 			try
 			{
 				pe = new System.IO.Pipes.NamedPipeClientStream(".", PipeName, System.IO.Pipes.PipeAccessRights.Write, System.IO.Pipes.PipeOptions.WriteThrough, System.Security.Principal.TokenImpersonationLevel.Impersonation, HandleInheritability.None);
-				using (var sw = new StreamWriter(pe))
+				using var sw = new StreamWriter(pe);
+				if (!pe.IsConnected) pe.Connect(5_000);
+
+				if (pe.IsConnected && pe.CanWrite)
 				{
-					if (!pe.IsConnected) pe.Connect(5_000);
-
-					if (pe.IsConnected && pe.CanWrite)
-					{
-						sw.WriteLine(message);
-						sw.Flush();
-					}
-
-					System.Threading.Thread.Sleep(100); // HACK: async pipes don't like things happening too fast.
+					sw.WriteLine(message);
+					sw.Flush();
 				}
+
+				System.Threading.Thread.Sleep(100); // HACK: async pipes don't like things happening too fast.
 			}
 			catch (UnauthorizedAccessException)
 			{

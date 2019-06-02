@@ -226,14 +226,12 @@ namespace Taskmaster.Power
 				UseShellExecute = false
 			};
 
-			using (var proc = System.Diagnostics.Process.Start(info))
+			using var proclastwake = System.Diagnostics.Process.Start(info);
+			Logging.DebugMsg($"{info.FileName} {info.Arguments}");
+			while (!proclastwake.StandardOutput.EndOfStream)
 			{
-				Logging.DebugMsg($"{info.FileName} {info.Arguments}");
-				while (!proc.StandardOutput.EndOfStream)
-				{
-					if (timer.ElapsedMilliseconds > 30_000) return;
-					Logging.DebugMsg(proc.StandardOutput.ReadLine());
-				}
+				if (timer.ElapsedMilliseconds > 30_000) return;
+				Logging.DebugMsg(proclastwake.StandardOutput.ReadLine());
 			}
 
 			info = new ProcessStartInfo(pcfg, "-RequestsOverride")
@@ -242,14 +240,12 @@ namespace Taskmaster.Power
 				RedirectStandardOutput = true,
 				UseShellExecute = false
 			};
-			using (var proc = System.Diagnostics.Process.Start(info))
+			using var procoverrides = System.Diagnostics.Process.Start(info);
+			Logging.DebugMsg($"{info.FileName} {info.Arguments}");
+			while (!procoverrides.StandardOutput.EndOfStream)
 			{
-				Logging.DebugMsg($"{info.FileName} {info.Arguments}");
-				while (!proc.StandardOutput.EndOfStream)
-				{
-					if (timer.ElapsedMilliseconds > 30_000) return;
-					Logging.DebugMsg(proc.StandardOutput.ReadLine());
-				}
+				if (timer.ElapsedMilliseconds > 30_000) return;
+				Logging.DebugMsg(procoverrides.StandardOutput.ReadLine());
 			}
 
 			info = new ProcessStartInfo(pcfg, "-Requests")
@@ -258,14 +254,12 @@ namespace Taskmaster.Power
 				RedirectStandardOutput = true,
 				UseShellExecute = false
 			};
-			using (var proc = System.Diagnostics.Process.Start(info))
+			using var procrequests = System.Diagnostics.Process.Start(info);
+			Logging.DebugMsg($"{info.FileName} {info.Arguments}");
+			while (!procrequests.StandardOutput.EndOfStream)
 			{
-				Logging.DebugMsg($"{info.FileName} {info.Arguments}");
-				while (!proc.StandardOutput.EndOfStream)
-				{
-					if (timer.ElapsedMilliseconds > 30_000) return;
-					Logging.DebugMsg(proc.StandardOutput.ReadLine());
-				}
+				if (timer.ElapsedMilliseconds > 30_000) return;
+				Logging.DebugMsg(procrequests.StandardOutput.ReadLine());
 			}
 		}
 
@@ -658,158 +652,156 @@ namespace Taskmaster.Power
 
 		void LoadConfig()
 		{
-			using (var corecfg = Config.Load(CoreConfigFilename).BlockUnload())
+			using var corecfg = Config.Load(CoreConfigFilename).BlockUnload();
+			var power = corecfg.Config[HumanReadable.Hardware.Power.Section];
+
+			var behaviourstring = power.GetOrSet(Constants.Behaviour, HumanReadable.Hardware.Power.RuleBased)
+				.InitComment("auto, manual, or rule-based")
+				.Value;
+
+			if (behaviourstring.StartsWith("auto", StringComparison.InvariantCultureIgnoreCase))
+				LaunchBehaviour = PowerBehaviour.Auto;
+			else if (behaviourstring.StartsWith("manual", StringComparison.InvariantCultureIgnoreCase))
+				LaunchBehaviour = PowerBehaviour.Manual;
+			else
+				LaunchBehaviour = PowerBehaviour.RuleBased;
+			Behaviour = LaunchBehaviour;
+
+			AutoAdjust.DefaultMode = Utility.GetModeByName(power.GetOrSet(DefaultModeSettingName, Utility.GetModeName(Mode.Balanced))
+				.InitComment("This is what power plan we fall back on when nothing else is considered.")
+				.Value);
+			if (AutoAdjust.DefaultMode == Mode.Undefined)
 			{
-				var power = corecfg.Config[HumanReadable.Hardware.Power.Section];
-
-				var behaviourstring = power.GetOrSet(Constants.Behaviour, HumanReadable.Hardware.Power.RuleBased)
-					.InitComment("auto, manual, or rule-based")
-					.Value;
-
-				if (behaviourstring.StartsWith("auto", StringComparison.InvariantCultureIgnoreCase))
-					LaunchBehaviour = PowerBehaviour.Auto;
-				else if (behaviourstring.StartsWith("manual", StringComparison.InvariantCultureIgnoreCase))
-					LaunchBehaviour = PowerBehaviour.Manual;
-				else
-					LaunchBehaviour = PowerBehaviour.RuleBased;
-				Behaviour = LaunchBehaviour;
-
-				AutoAdjust.DefaultMode = Utility.GetModeByName(power.GetOrSet(DefaultModeSettingName, Utility.GetModeName(Mode.Balanced))
-					.InitComment("This is what power plan we fall back on when nothing else is considered.")
-					.Value);
-				if (AutoAdjust.DefaultMode == Mode.Undefined)
-				{
-					Log.Warning("<Power> Default mode malconfigured, defaulting to balanced.");
-					AutoAdjust.DefaultMode = Mode.Balanced;
-				}
-
-				var restoremode = power.GetOrSet(RestoreModeSettingName, "Default")
-					.InitComment("Default, Original, Saved, or specific power mode. Power mode to restore with rule-based behaviour.")
-					.Value.ToLowerInvariant();
-
-				RestoreModeMethod newmodemethod = RestoreModeMethod.Default;
-				Mode newrestoremode = Mode.Undefined;
-
-				switch (restoremode)
-				{
-					case "original":
-						newmodemethod = RestoreModeMethod.Original;
-						newrestoremode = OriginalMode;
-						break;
-					case "default":
-						newmodemethod = RestoreModeMethod.Default;
-						newrestoremode = AutoAdjust.DefaultMode;
-						break;
-					case "saved":
-						newmodemethod = RestoreModeMethod.Saved;
-						newrestoremode = Mode.Undefined;
-						break;
-					default:
-						newmodemethod = RestoreModeMethod.Custom;
-						newrestoremode = Utility.GetModeByName(restoremode);
-						if (RestoreMode == Mode.Undefined)
-						{
-							// TODO: Complain about bad config
-							Log.Warning("<Power> Restore mode name unintelligible.");
-							newrestoremode = AutoAdjust.DefaultMode;
-						}
-						break;
-				}
-
-				SetRestoreMode(newmodemethod, newrestoremode);
-
-				var tdelay = power.GetOrSet("Watchlist powerdown delay", 0)
-					.InitComment("Delay, in seconds (0 to 300, 0 disables), for when to wind down power mode set by watchlist.")
-					.Int.Constrain(0, 60 * 5);
-				if (tdelay > 0) PowerdownDelay = TimeSpan.FromSeconds(tdelay);
-				else PowerdownDelay = null;
-
-				var autopower = corecfg.Config["Power / Auto"];
-
-				// BACKOFF
-				AutoAdjust.Low.Backoff.Level = autopower.GetOrSet(LowBackOffLevelName, AutoAdjust.Low.Backoff.Level)
-					.InitComment("1 to 10. Consequent backoff reactions that is required before it actually triggers.")
-					.Int.Constrain(0, 10);
-
-				AutoAdjust.High.Backoff.Level = autopower.GetOrSet(HighBackoffLevelName, AutoAdjust.High.Backoff.Level)
-					.InitComment("1 to 10. Consequent backoff reactions that is required before it actually triggers.")
-					.Int.Constrain(0, 10);
-
-				// COMMIT
-				AutoAdjust.Low.Commit.Level = autopower.GetOrSet(LowCommitLevelName, AutoAdjust.Low.Commit.Level)
-					.InitComment("1 to 10. Consequent commit reactions that is required before it actually triggers.")
-					.Int.Constrain(1, 10);
-
-				AutoAdjust.High.Commit.Level = autopower.GetOrSet(HighCommitLevelName, AutoAdjust.High.Backoff.Level)
-					.InitComment("1 to 10. Consequent commit reactions that is required before it actually triggers.")
-					.Int.Constrain(1, 10);
-
-				// THRESHOLDS
-				AutoAdjust.High.Commit.Threshold = autopower.GetOrSet(HighThresholdName, AutoAdjust.High.Commit.Threshold)
-					.InitComment("If low CPU value keeps over this, we swap to high mode.")
-					.Float;
-
-				var hbtt = autopower.GetOrSet(HighBackoffThresholdsName, new float[] { AutoAdjust.High.Backoff.High, AutoAdjust.High.Backoff.Mean, AutoAdjust.High.Backoff.Low })
-					.InitComment("High, Mean and Low CPU usage values, any of which is enough to break away from high power mode.")
-					.FloatArray;
-				if (hbtt != null && hbtt.Length == 3)
-				{
-					AutoAdjust.High.Backoff.Low = hbtt[2];
-					AutoAdjust.High.Backoff.Mean = hbtt[1];
-					AutoAdjust.High.Backoff.High = hbtt[0];
-				}
-
-				AutoAdjust.Low.Commit.Threshold = autopower.GetOrSet(LowThresholdName, 15)
-					.InitComment("If high CPU value keeps under this, we swap to low mode.")
-					.Float;
-
-				var lbtt = autopower.GetOrSet(LowBackoffThresholdsName, new float[] { AutoAdjust.Low.Backoff.High, AutoAdjust.Low.Backoff.Mean, AutoAdjust.Low.Backoff.Low })
-					.InitComment("High, Mean and Low CPU uage values, any of which is enough to break away from low mode.")
-					.FloatArray;
-				if (lbtt != null && lbtt.Length == 3)
-				{
-					AutoAdjust.Low.Backoff.Low = lbtt[2];
-					AutoAdjust.Low.Backoff.Mean = lbtt[1];
-					AutoAdjust.Low.Backoff.High = lbtt[0];
-				}
-
-				// POWER MODES
-				AutoAdjust.Low.Mode = Utility.GetModeByName(power.GetOrSet(LowModeName, Utility.GetModeName(Mode.PowerSaver)).Value);
-				AutoAdjust.High.Mode = Utility.GetModeByName(power.GetOrSet(HighModeName, Utility.GetModeName(Mode.HighPerformance)).Value);
-
-				// QUEUE BARRIERS
-				AutoAdjust.Queue.High = autopower.GetOrSet(HighQueueBarrierName, AutoAdjust.Queue.High).Int.Constrain(0, 50);
-				AutoAdjust.Queue.Low = autopower.GetOrSet(LowQueueBarrierName, AutoAdjust.Queue.Low).Int.Constrain(0, 20);
-				if (AutoAdjust.Queue.Low >= AutoAdjust.Queue.High) AutoAdjust.Queue.Low = Math.Max(0, AutoAdjust.Queue.High - 1);
-
-				var saver = corecfg.Config[AFKPowerName];
-				//saver.Comment = "All these options control when to enforce power save mode regardless of any other options.";
-
-				var sessionlockmodename = saver.GetOrSet(SessionLockName, Utility.GetModeName(Mode.PowerSaver))
-					.InitComment("Power mode to set when session is locked, such as by pressing winkey+L. Unrecognizable values disable this.")
-					.Value;
-				SessionLockPowerMode = Utility.GetModeByName(sessionlockmodename);
-
-				// SaverOnMonitorSleep = saver.GetSetDefault("Monitor sleep", true, out modified).Bool;
-				// dirtyconfig |= modified;
-
-				// SaverOnUserAFK = saver.GetSetDefault("User idle", 30, out modified).Int;
-				// dirtyconfig |= modified;
-				// UserActiveCancel = saver.GetSetDefault("Cancel on activity", true, out modified).Bool;
-				// dirtyconfig |= modified;
-
-				int monoffidletime = saver.GetOrSet("Monitor power off idle timeout", 180)
-					.InitComment("User needs to be this many seconds idle before we power down monitors when session is locked. 0 disables. Less than 30 is rounded up to 30.")
-					.Int;
-				SessionLockPowerOffIdleTimeout = monoffidletime > 0 ? (TimeSpan?)TimeSpan.FromSeconds(monoffidletime.Constrain(30, 600)) : null;
-
-				SessionLockPowerOff = saver.GetOrSet("Monitor power off on lock", true)
-					.InitComment("Power off monitor instantly on session lock.")
-					.Bool;
-
-				var dbgsec = corecfg.Config[HumanReadable.Generic.Debug];
-				DebugAutoPower = dbgsec.Get(HumanReadable.Hardware.Power.AutoAdjust)?.Bool ?? false;
+				Log.Warning("<Power> Default mode malconfigured, defaulting to balanced.");
+				AutoAdjust.DefaultMode = Mode.Balanced;
 			}
+
+			var restoremode = power.GetOrSet(RestoreModeSettingName, "Default")
+				.InitComment("Default, Original, Saved, or specific power mode. Power mode to restore with rule-based behaviour.")
+				.Value.ToLowerInvariant();
+
+			RestoreModeMethod newmodemethod = RestoreModeMethod.Default;
+			Mode newrestoremode = Mode.Undefined;
+
+			switch (restoremode)
+			{
+				case "original":
+					newmodemethod = RestoreModeMethod.Original;
+					newrestoremode = OriginalMode;
+					break;
+				case "default":
+					newmodemethod = RestoreModeMethod.Default;
+					newrestoremode = AutoAdjust.DefaultMode;
+					break;
+				case "saved":
+					newmodemethod = RestoreModeMethod.Saved;
+					newrestoremode = Mode.Undefined;
+					break;
+				default:
+					newmodemethod = RestoreModeMethod.Custom;
+					newrestoremode = Utility.GetModeByName(restoremode);
+					if (RestoreMode == Mode.Undefined)
+					{
+						// TODO: Complain about bad config
+						Log.Warning("<Power> Restore mode name unintelligible.");
+						newrestoremode = AutoAdjust.DefaultMode;
+					}
+					break;
+			}
+
+			SetRestoreMode(newmodemethod, newrestoremode);
+
+			var tdelay = power.GetOrSet("Watchlist powerdown delay", 0)
+				.InitComment("Delay, in seconds (0 to 300, 0 disables), for when to wind down power mode set by watchlist.")
+				.Int.Constrain(0, 60 * 5);
+			if (tdelay > 0) PowerdownDelay = TimeSpan.FromSeconds(tdelay);
+			else PowerdownDelay = null;
+
+			var autopower = corecfg.Config["Power / Auto"];
+
+			// BACKOFF
+			AutoAdjust.Low.Backoff.Level = autopower.GetOrSet(LowBackOffLevelName, AutoAdjust.Low.Backoff.Level)
+				.InitComment("1 to 10. Consequent backoff reactions that is required before it actually triggers.")
+				.Int.Constrain(0, 10);
+
+			AutoAdjust.High.Backoff.Level = autopower.GetOrSet(HighBackoffLevelName, AutoAdjust.High.Backoff.Level)
+				.InitComment("1 to 10. Consequent backoff reactions that is required before it actually triggers.")
+				.Int.Constrain(0, 10);
+
+			// COMMIT
+			AutoAdjust.Low.Commit.Level = autopower.GetOrSet(LowCommitLevelName, AutoAdjust.Low.Commit.Level)
+				.InitComment("1 to 10. Consequent commit reactions that is required before it actually triggers.")
+				.Int.Constrain(1, 10);
+
+			AutoAdjust.High.Commit.Level = autopower.GetOrSet(HighCommitLevelName, AutoAdjust.High.Backoff.Level)
+				.InitComment("1 to 10. Consequent commit reactions that is required before it actually triggers.")
+				.Int.Constrain(1, 10);
+
+			// THRESHOLDS
+			AutoAdjust.High.Commit.Threshold = autopower.GetOrSet(HighThresholdName, AutoAdjust.High.Commit.Threshold)
+				.InitComment("If low CPU value keeps over this, we swap to high mode.")
+				.Float;
+
+			var hbtt = autopower.GetOrSet(HighBackoffThresholdsName, new float[] { AutoAdjust.High.Backoff.High, AutoAdjust.High.Backoff.Mean, AutoAdjust.High.Backoff.Low })
+				.InitComment("High, Mean and Low CPU usage values, any of which is enough to break away from high power mode.")
+				.FloatArray;
+			if (hbtt != null && hbtt.Length == 3)
+			{
+				AutoAdjust.High.Backoff.Low = hbtt[2];
+				AutoAdjust.High.Backoff.Mean = hbtt[1];
+				AutoAdjust.High.Backoff.High = hbtt[0];
+			}
+
+			AutoAdjust.Low.Commit.Threshold = autopower.GetOrSet(LowThresholdName, 15)
+				.InitComment("If high CPU value keeps under this, we swap to low mode.")
+				.Float;
+
+			var lbtt = autopower.GetOrSet(LowBackoffThresholdsName, new float[] { AutoAdjust.Low.Backoff.High, AutoAdjust.Low.Backoff.Mean, AutoAdjust.Low.Backoff.Low })
+				.InitComment("High, Mean and Low CPU uage values, any of which is enough to break away from low mode.")
+				.FloatArray;
+			if (lbtt != null && lbtt.Length == 3)
+			{
+				AutoAdjust.Low.Backoff.Low = lbtt[2];
+				AutoAdjust.Low.Backoff.Mean = lbtt[1];
+				AutoAdjust.Low.Backoff.High = lbtt[0];
+			}
+
+			// POWER MODES
+			AutoAdjust.Low.Mode = Utility.GetModeByName(power.GetOrSet(LowModeName, Utility.GetModeName(Mode.PowerSaver)).Value);
+			AutoAdjust.High.Mode = Utility.GetModeByName(power.GetOrSet(HighModeName, Utility.GetModeName(Mode.HighPerformance)).Value);
+
+			// QUEUE BARRIERS
+			AutoAdjust.Queue.High = autopower.GetOrSet(HighQueueBarrierName, AutoAdjust.Queue.High).Int.Constrain(0, 50);
+			AutoAdjust.Queue.Low = autopower.GetOrSet(LowQueueBarrierName, AutoAdjust.Queue.Low).Int.Constrain(0, 20);
+			if (AutoAdjust.Queue.Low >= AutoAdjust.Queue.High) AutoAdjust.Queue.Low = Math.Max(0, AutoAdjust.Queue.High - 1);
+
+			var saver = corecfg.Config[AFKPowerName];
+			//saver.Comment = "All these options control when to enforce power save mode regardless of any other options.";
+
+			var sessionlockmodename = saver.GetOrSet(SessionLockName, Utility.GetModeName(Mode.PowerSaver))
+				.InitComment("Power mode to set when session is locked, such as by pressing winkey+L. Unrecognizable values disable this.")
+				.Value;
+			SessionLockPowerMode = Utility.GetModeByName(sessionlockmodename);
+
+			// SaverOnMonitorSleep = saver.GetSetDefault("Monitor sleep", true, out modified).Bool;
+			// dirtyconfig |= modified;
+
+			// SaverOnUserAFK = saver.GetSetDefault("User idle", 30, out modified).Int;
+			// dirtyconfig |= modified;
+			// UserActiveCancel = saver.GetSetDefault("Cancel on activity", true, out modified).Bool;
+			// dirtyconfig |= modified;
+
+			int monoffidletime = saver.GetOrSet("Monitor power off idle timeout", 180)
+				.InitComment("User needs to be this many seconds idle before we power down monitors when session is locked. 0 disables. Less than 30 is rounded up to 30.")
+				.Int;
+			SessionLockPowerOffIdleTimeout = monoffidletime > 0 ? (TimeSpan?)TimeSpan.FromSeconds(monoffidletime.Constrain(30, 600)) : null;
+
+			SessionLockPowerOff = saver.GetOrSet("Monitor power off on lock", true)
+				.InitComment("Power off monitor instantly on session lock.")
+				.Bool;
+
+			var dbgsec = corecfg.Config[HumanReadable.Generic.Debug];
+			DebugAutoPower = dbgsec.Get(HumanReadable.Hardware.Power.AutoAdjust)?.Bool ?? false;
 
 			// --------------------------------------------------------------------------------------------------------
 
@@ -828,69 +820,67 @@ namespace Taskmaster.Power
 		// TODO: Should detect if saving is ACTUALLY needed
 		public void SaveConfig()
 		{
-			using (var corecfg = Config.Load(CoreConfigFilename).BlockUnload())
+			using var corecfg = Config.Load(CoreConfigFilename).BlockUnload();
+			var power = corecfg.Config[HumanReadable.Hardware.Power.Section];
+
+			var aa = AutoAdjust;
+
+			// TODO: Remove double lock
+			lock (power_lock)
 			{
-				var power = corecfg.Config[HumanReadable.Hardware.Power.Section];
-
-				var aa = AutoAdjust;
-
-				// TODO: Remove double lock
-				lock (power_lock)
+				string sbehaviour = HumanReadable.Hardware.Power.RuleBased.ToLower(); // default to rule-based
+				switch (LaunchBehaviour)
 				{
-					string sbehaviour = HumanReadable.Hardware.Power.RuleBased.ToLower(); // default to rule-based
-					switch (LaunchBehaviour)
-					{
-						case PowerBehaviour.Auto:
-							sbehaviour = HumanReadable.Hardware.Power.AutoAdjust.ToLower();
-							break;
-						case PowerBehaviour.Manual:
-							sbehaviour = HumanReadable.Hardware.Power.Manual.ToLower();
-							break;
-						default: break; // ignore
-					}
-					power[Constants.Behaviour].Value = sbehaviour;
-
-					power[DefaultModeSettingName].Value = aa.DefaultMode.ToString();
-
-					power[RestoreModeSettingName].Value = (RestoreMethod == RestoreModeMethod.Custom ? RestoreMode.ToString() : RestoreMethod.ToString());
-					if (PowerdownDelay.HasValue)
-						power["Watchlist powerdown delay"].Int = Convert.ToInt32(PowerdownDelay.Value.TotalSeconds);
-					else
-						power.TryRemove("Watchlist powerdown delay");
-
-					var autopower = corecfg.Config["Power / Auto"];
-
-					// BACKOFF
-					autopower[LowBackOffLevelName].Int = aa.Low.Backoff.Level;
-					autopower[HighBackoffLevelName].Int = aa.High.Backoff.Level;
-
-					// COMMIT
-					autopower[LowCommitLevelName].Int = aa.Low.Commit.Level;
-					autopower[HighCommitLevelName].Int = aa.High.Commit.Level;
-
-					// THRESHOLDS
-					autopower[HighThresholdName].Float = aa.High.Commit.Threshold;
-					autopower[HighBackoffThresholdsName].FloatArray = new float[] { aa.High.Backoff.High, aa.High.Backoff.Mean, aa.High.Backoff.Low };
-
-					autopower[LowThresholdName].Float = aa.Low.Commit.Threshold;
-					autopower[LowBackoffThresholdsName].FloatArray = new float[] { aa.Low.Backoff.High, aa.Low.Backoff.Mean, aa.Low.Backoff.Low };
-
-					// QUEUE BARRIERS
-					autopower[HighQueueBarrierName].Int = aa.Queue.High;
-					autopower[LowQueueBarrierName].Int = aa.Queue.Low;
-
-					// POWER MODES
-					power[LowModeName].Value = Utility.GetModeName(aa.Low.Mode);
-					power[HighModeName].Value = Utility.GetModeName(aa.High.Mode);
-
-					var saver = corecfg.Config[AFKPowerName];
-					saver[SessionLockName].Value = Utility.GetModeName(SessionLockPowerMode);
-
-					saver["Monitor power off idle timeout"].Int = Convert.ToInt32(SessionLockPowerOffIdleTimeout.Value.TotalSeconds);
-					saver["Monitor power off on lock"].Bool = SessionLockPowerOff;
-
-					// --------------------------------------------------------------------------------------------------------
+					case PowerBehaviour.Auto:
+						sbehaviour = HumanReadable.Hardware.Power.AutoAdjust.ToLower();
+						break;
+					case PowerBehaviour.Manual:
+						sbehaviour = HumanReadable.Hardware.Power.Manual.ToLower();
+						break;
+					default: break; // ignore
 				}
+				power[Constants.Behaviour].Value = sbehaviour;
+
+				power[DefaultModeSettingName].Value = aa.DefaultMode.ToString();
+
+				power[RestoreModeSettingName].Value = (RestoreMethod == RestoreModeMethod.Custom ? RestoreMode.ToString() : RestoreMethod.ToString());
+				if (PowerdownDelay.HasValue)
+					power["Watchlist powerdown delay"].Int = Convert.ToInt32(PowerdownDelay.Value.TotalSeconds);
+				else
+					power.TryRemove("Watchlist powerdown delay");
+
+				var autopower = corecfg.Config["Power / Auto"];
+
+				// BACKOFF
+				autopower[LowBackOffLevelName].Int = aa.Low.Backoff.Level;
+				autopower[HighBackoffLevelName].Int = aa.High.Backoff.Level;
+
+				// COMMIT
+				autopower[LowCommitLevelName].Int = aa.Low.Commit.Level;
+				autopower[HighCommitLevelName].Int = aa.High.Commit.Level;
+
+				// THRESHOLDS
+				autopower[HighThresholdName].Float = aa.High.Commit.Threshold;
+				autopower[HighBackoffThresholdsName].FloatArray = new float[] { aa.High.Backoff.High, aa.High.Backoff.Mean, aa.High.Backoff.Low };
+
+				autopower[LowThresholdName].Float = aa.Low.Commit.Threshold;
+				autopower[LowBackoffThresholdsName].FloatArray = new float[] { aa.Low.Backoff.High, aa.Low.Backoff.Mean, aa.Low.Backoff.Low };
+
+				// QUEUE BARRIERS
+				autopower[HighQueueBarrierName].Int = aa.Queue.High;
+				autopower[LowQueueBarrierName].Int = aa.Queue.Low;
+
+				// POWER MODES
+				power[LowModeName].Value = Utility.GetModeName(aa.Low.Mode);
+				power[HighModeName].Value = Utility.GetModeName(aa.High.Mode);
+
+				var saver = corecfg.Config[AFKPowerName];
+				saver[SessionLockName].Value = Utility.GetModeName(SessionLockPowerMode);
+
+				saver["Monitor power off idle timeout"].Int = Convert.ToInt32(SessionLockPowerOffIdleTimeout.Value.TotalSeconds);
+				saver["Monitor power off on lock"].Bool = SessionLockPowerOff;
+
+				// --------------------------------------------------------------------------------------------------------
 			}
 		}
 
@@ -1478,6 +1468,7 @@ namespace Taskmaster.Power
 			long NewPowerMode = (int)powermode; // -1 = Powering On, 1 = Low Power (low backlight, etc.), 2 = Power Off
 
 			var Broadcast = new IntPtr(NativeMethods.HWND_BROADCAST); // unreliable
+
 			//var Topmost = new IntPtr(NativeMethods.HWND_TOPMOST);
 
 			uint timeout = 200; // ms per window, we don't really care if they process them

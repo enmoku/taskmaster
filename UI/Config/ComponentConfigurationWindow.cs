@@ -58,13 +58,11 @@ namespace Taskmaster.UI.Config
 
 			if (processmanager is null)
 			{
-				using (var corecfg = Config.Load(CoreConfigFilename).BlockUnload())
-				{
-					var perfsec = corecfg.Config[Constants.Performance];
-					WMIPolling = perfsec.Get(Constants.WMIWatcher)?.Bool ?? true;
-					WMIPollDelay = perfsec.Get(Constants.WMIDelay)?.Int ?? 2;
-					ScanFrequency = perfsec.Get(Constants.ScanFrequency)?.Int ?? 180;
-				}
+				using var corecfg = Config.Load(CoreConfigFilename).BlockUnload();
+				var perfsec = corecfg.Config[Constants.Performance];
+				WMIPolling = perfsec.Get(Constants.WMIWatcher)?.Bool ?? true;
+				WMIPollDelay = perfsec.Get(Constants.WMIDelay)?.Int ?? 2;
+				ScanFrequency = perfsec.Get(Constants.ScanFrequency)?.Int ?? 180;
 			}
 			else
 			{
@@ -347,44 +345,42 @@ namespace Taskmaster.UI.Config
 			// l.Controls.Add(savebutton);
 			savebutton.Click += (_, _ea) =>
 			{
-				using (var cfg = Config.Load(CoreConfigFilename).BlockUnload())
-				{
-					var mainsec = cfg.Config[Constants.Core];
-					var opt = mainsec[Constants.Version];
-					opt.Value = ConfigVersion;
-					opt.Comment = "Magical";
+				using var cfg = Config.Load(CoreConfigFilename).BlockUnload();
+				var mainsec = cfg.Config[Constants.Core];
+				var opt = mainsec[Constants.Version];
+				opt.Value = ConfigVersion;
+				opt.Comment = "Magical";
 
-					var compsec = cfg.Config[Constants.Components];
-					compsec[HumanReadable.System.Process.Section].Bool = procmon.Checked;
-					compsec[HumanReadable.Hardware.Audio.Section].Bool = audioman.Checked;
-					compsec[Constants.Microphone].Bool = micmon.Checked;
-					// compsec["Media"].Bool = mediamon.Checked;
-					compsec[HumanReadable.System.Process.Foreground].Bool = fgmon.Checked;
-					compsec[Constants.Network].Bool = netmon.Checked;
-					compsec[HumanReadable.Hardware.Power.Section].Bool = powmon.Checked;
-					compsec[Constants.Paging].Bool = paging.Checked;
-					compsec[Constants.Maintenance].Bool = tempmon.Checked;
-					compsec[Constants.Health].Bool = autodoc.Checked;
+				var compsec = cfg.Config[Constants.Components];
+				compsec[HumanReadable.System.Process.Section].Bool = procmon.Checked;
+				compsec[HumanReadable.Hardware.Audio.Section].Bool = audioman.Checked;
+				compsec[Constants.Microphone].Bool = micmon.Checked;
+				// compsec["Media"].Bool = mediamon.Checked;
+				compsec[HumanReadable.System.Process.Foreground].Bool = fgmon.Checked;
+				compsec[Constants.Network].Bool = netmon.Checked;
+				compsec[HumanReadable.Hardware.Power.Section].Bool = powmon.Checked;
+				compsec[Constants.Paging].Bool = paging.Checked;
+				compsec[Constants.Maintenance].Bool = tempmon.Checked;
+				compsec[Constants.Health].Bool = autodoc.Checked;
 
-					var powsec = cfg.Config[HumanReadable.Hardware.Power.Section];
-					if (powmon.Checked) powsec[Constants.Behaviour].Value = powbehaviour.Text.ToLower();
+				var powsec = cfg.Config[HumanReadable.Hardware.Power.Section];
+				if (powmon.Checked) powsec[Constants.Behaviour].Value = powbehaviour.Text.ToLower();
 
-					var uisec = cfg.Config[Constants.UserInterface];
-					uisec[Constants.ShowOnStart].Bool = showonstart.Checked;
+				var uisec = cfg.Config[Constants.UserInterface];
+				uisec[Constants.ShowOnStart].Bool = showonstart.Checked;
 
-					var perf = cfg.Config[Constants.Performance];
-					var freq = (int)scanfrequency.Value;
-					if (freq < 5 && freq != 0) freq = 5;
-					perf[Constants.ScanFrequency].Int = (ScanOrWMI.SelectedIndex == 1 ? 0 : freq);
-					perf[Constants.WMIWatcher].Bool = (ScanOrWMI.SelectedIndex != 0);
-					perf[Constants.WMIDelay].Int = ((int)wmipolling.Value);
-					perf.TryRemove("WMI queries"); // deprecated long ago
+				var perf = cfg.Config[Constants.Performance];
+				var freq = (int)scanfrequency.Value;
+				if (freq < 5 && freq != 0) freq = 5;
+				perf[Constants.ScanFrequency].Int = (ScanOrWMI.SelectedIndex == 1 ? 0 : freq);
+				perf[Constants.WMIWatcher].Bool = (ScanOrWMI.SelectedIndex != 0);
+				perf[Constants.WMIDelay].Int = ((int)wmipolling.Value);
+				perf.TryRemove("WMI queries"); // deprecated long ago
 
-					var qol = cfg.Config[Constants.QualityOfLife];
-					qol["Register global hotkeys"].Bool = hotkeys.Checked;
+				var qol = cfg.Config[Constants.QualityOfLife];
+				qol["Register global hotkeys"].Bool = hotkeys.Checked;
 
-					cfg.File.Save(force: true);
-				}
+				cfg.File.Save(force: true);
 
 				DialogResult = DialogResult.OK;
 
@@ -433,16 +429,14 @@ namespace Taskmaster.UI.Config
 		{
 			try
 			{
-				using (var comps = new Config.ComponentConfigurationWindow(initial: false, center: centerOnScreen))
+				using var comps = new Config.ComponentConfigurationWindow(initial: false, center: centerOnScreen);
+				comps.ShowDialog();
+				if (comps.DialogOK)
 				{
-					comps.ShowDialog();
-					if (comps.DialogOK)
+					if (MessageBox.ShowModal("Restart needed", "TM needs to be restarted for changes to take effect.\n\nCancel to do so manually later.", MessageBox.Buttons.AcceptCancel) == MessageBox.ResultType.OK)
 					{
-						if (MessageBox.ShowModal("Restart needed", "TM needs to be restarted for changes to take effect.\n\nCancel to do so manually later.", MessageBox.Buttons.AcceptCancel) == MessageBox.ResultType.OK)
-						{
-							Log.Information("<UI> Restart request");
-							UnifiedExit(restart: true);
-						}
+						Log.Information("<UI> Restart request");
+						UnifiedExit(restart: true);
 					}
 				}
 			}

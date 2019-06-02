@@ -104,16 +104,14 @@ namespace Taskmaster.Audio
 			const string mvol = "Default recording volume";
 			const string mcontrol = "Recording volume control";
 
-			using (var corecfg = Config.Load(CoreConfigFilename).BlockUnload())
-			{
-				var mediasec = corecfg.Config["Media"];
+			using var corecfg = Config.Load(CoreConfigFilename).BlockUnload();
+			var mediasec = corecfg.Config["Media"];
 
-				Control = mediasec.GetOrSet(mcontrol, false).Bool;
-				DefaultVolume = mediasec.GetOrSet(mvol, 100.0d).Double.Constrain(0.0d, 100.0d);
+			Control = mediasec.GetOrSet(mcontrol, false).Bool;
+			DefaultVolume = mediasec.GetOrSet(mvol, 100.0d).Double.Constrain(0.0d, 100.0d);
 
-				var dbgsec = corecfg.Config[HumanReadable.Generic.Debug];
-				DebugMic = dbgsec.Get("Microphone")?.Bool ?? false;
-			}
+			var dbgsec = corecfg.Config[HumanReadable.Generic.Debug];
+			DebugMic = dbgsec.Get("Microphone")?.Bool ?? false;
 
 			if (DebugMic) Log.Information("<Microphone> Component loaded.");
 
@@ -273,14 +271,12 @@ namespace Taskmaster.Audio
 				double devvol = double.NaN;
 				bool devcontrol = false;
 
-				using (var devcfg = Config.Load(DeviceFilename).BlockUnload())
-				{
-					var devsec = devcfg.Config[RecordingDevice.GUID];
+				using var devcfg = Config.Load(DeviceFilename).BlockUnload();
+				var devsec = devcfg.Config[RecordingDevice.GUID];
 
-					devvol = devsec.GetOrSet(HumanReadable.Hardware.Audio.Volume, DefaultVolume).Double;
-					devcontrol = devsec.GetOrSet(cname, false).Bool;
-					devsec.GetOrSet("Name", RecordingDevice.Name);
-				}
+				devvol = devsec.GetOrSet(HumanReadable.Hardware.Audio.Volume, DefaultVolume).Double;
+				devcontrol = devsec.GetOrSet(cname, false).Bool;
+				devsec.GetOrSet("Name", RecordingDevice.Name);
 
 				if (Control && !devcontrol) Control = false; // disable general control if device control is disabled
 
@@ -308,36 +304,34 @@ namespace Taskmaster.Audio
 
 			try
 			{
-				using (var devcfg = Config.Load(DeviceFilename).BlockUnload())
+				using var devcfg = Config.Load(DeviceFilename).BlockUnload();
+				var devs = audiomanager.Enumerator?.EnumerateAudioEndPoints(NAudio.CoreAudioApi.DataFlow.Capture, NAudio.CoreAudioApi.DeviceState.Active) ?? null;
+				if (devs is null) throw new InvalidOperationException("Enumerator not available, Audio Manager is dead");
+				foreach (var dev in devs)
 				{
-					var devs = audiomanager.Enumerator?.EnumerateAudioEndPoints(NAudio.CoreAudioApi.DataFlow.Capture, NAudio.CoreAudioApi.DeviceState.Active) ?? null;
-					if (devs is null) throw new InvalidOperationException("Enumerator not available, Audio Manager is dead");
-					foreach (var dev in devs)
+					try
 					{
-						try
+						string guid = Utility.DeviceIdToGuid(dev.ID);
+						var devsec = devcfg.Config[guid];
+						devsec.GetOrSet("Name", dev.DeviceFriendlyName);
+						bool control = devsec.GetOrSet("Control", false).Bool;
+						float target = devsec.Get(HumanReadable.Hardware.Audio.Volume)?.Float ?? float.NaN;
+
+						var mdev = new Device(dev)
 						{
-							string guid = Utility.DeviceIdToGuid(dev.ID);
-							var devsec = devcfg.Config[guid];
-							devsec.GetOrSet("Name", dev.DeviceFriendlyName);
-							bool control = devsec.GetOrSet("Control", false).Bool;
-							float target = devsec.Get(HumanReadable.Hardware.Audio.Volume)?.Float ?? float.NaN;
+							VolumeControl = control,
+							Target = target,
+							Volume = dev.AudioSessionManager.SimpleAudioVolume.Volume,
+						};
 
-							var mdev = new Device(dev)
-							{
-								VolumeControl = control,
-								Target = target,
-								Volume = dev.AudioSessionManager.SimpleAudioVolume.Volume,
-							};
+						devices.Add(mdev);
 
-							devices.Add(mdev);
-
-							if (Trace) Log.Verbose("<Microphone> Device: " + mdev.Name + " [GUID: " + mdev.GUID + "]");
-						}
-						catch (OutOfMemoryException) { throw; }
-						catch (Exception ex)
-						{
-							Logging.Stacktrace(ex);
-						}
+						if (Trace) Log.Verbose("<Microphone> Device: " + mdev.Name + " [GUID: " + mdev.GUID + "]");
+					}
+					catch (OutOfMemoryException) { throw; }
+					catch (Exception ex)
+					{
+						Logging.Stacktrace(ex);
 					}
 				}
 

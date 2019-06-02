@@ -284,79 +284,77 @@ namespace Taskmaster.Audio
 
 			try
 			{
-				using (var session = new NAudio.CoreAudioApi.AudioSessionControl(ea))
+				using var session = new NAudio.CoreAudioApi.AudioSessionControl(ea);
+				int pid = (int)session.GetProcessID;
+				string name = session.DisplayName;
+
+				float volume = session.SimpleAudioVolume.Volume;
+
+				if (Process.Utility.GetInfo(pid, out var info, getPath: true, name: name))
 				{
-					int pid = (int)session.GetProcessID;
-					string name = session.DisplayName;
-
-					float volume = session.SimpleAudioVolume.Volume;
-
-					if (Process.Utility.GetInfo(pid, out var info, getPath: true, name: name))
+					//OnNewSession?.Invoke(this, info);
+					if (processmanager.GetController(info, out var prc))
 					{
-						//OnNewSession?.Invoke(this, info);
-						if (processmanager.GetController(info, out var prc))
+						bool volAdjusted = false;
+						float oldvolume = session.SimpleAudioVolume.Volume;
+						switch (prc.VolumeStrategy)
 						{
-							bool volAdjusted = false;
-							float oldvolume = session.SimpleAudioVolume.Volume;
-							switch (prc.VolumeStrategy)
-							{
-								default:
-								case VolumeStrategy.Ignore:
-									break;
-								case VolumeStrategy.Force:
+							default:
+							case VolumeStrategy.Ignore:
+								break;
+							case VolumeStrategy.Force:
+								session.SimpleAudioVolume.Volume = prc.Volume;
+								volAdjusted = true;
+								break;
+							case VolumeStrategy.Decrease:
+								if (oldvolume > prc.Volume)
+								{
 									session.SimpleAudioVolume.Volume = prc.Volume;
 									volAdjusted = true;
-									break;
-								case VolumeStrategy.Decrease:
-									if (oldvolume > prc.Volume)
-									{
-										session.SimpleAudioVolume.Volume = prc.Volume;
-										volAdjusted = true;
-									}
-									break;
-								case VolumeStrategy.Increase:
-									if (oldvolume < prc.Volume)
-									{
-										session.SimpleAudioVolume.Volume = prc.Volume;
-										volAdjusted = true;
-									}
-									break;
-								case VolumeStrategy.DecreaseFromFull:
-									if (oldvolume > prc.Volume && oldvolume > 0.99f)
-									{
-										session.SimpleAudioVolume.Volume = prc.Volume;
-										volAdjusted = true;
-									}
-									break;
-								case VolumeStrategy.IncreaseFromMute:
-									if (oldvolume < prc.Volume && oldvolume < 0.01f)
-									{
-										session.SimpleAudioVolume.Volume = prc.Volume;
-										volAdjusted = true;
-									}
-									break;
-							}
+								}
+								break;
+							case VolumeStrategy.Increase:
+								if (oldvolume < prc.Volume)
+								{
+									session.SimpleAudioVolume.Volume = prc.Volume;
+									volAdjusted = true;
+								}
+								break;
+							case VolumeStrategy.DecreaseFromFull:
+								if (oldvolume > prc.Volume && oldvolume > 0.99f)
+								{
+									session.SimpleAudioVolume.Volume = prc.Volume;
+									volAdjusted = true;
+								}
+								break;
+							case VolumeStrategy.IncreaseFromMute:
+								if (oldvolume < prc.Volume && oldvolume < 0.01f)
+								{
+									session.SimpleAudioVolume.Volume = prc.Volume;
+									volAdjusted = true;
+								}
+								break;
+						}
 
-							if (volAdjusted)
-							{
-								Log.Information($"<Audio> {info.Name} (#{info.Id}) volume changed from {oldvolume * 100f:N1} % to {prc.Volume * 100f:N1} %");
-							}
-							else
-							{
-								if (ShowInaction && DebugAudio)
-									Log.Debug($"<Audio> {info.Name} (#{pid}) Volume: {volume * 100f:N1} % – Already correct (Plan: {prc.VolumeStrategy.ToString()})");
-							}
+						if (volAdjusted)
+						{
+							Log.Information($"<Audio> {info.Name} (#{info.Id}) volume changed from {oldvolume * 100f:N1} % to {prc.Volume * 100f:N1} %");
 						}
 						else
 						{
 							if (ShowInaction && DebugAudio)
-								Log.Debug($"<Audio> {info.Name} (#{pid}) Volume: {(volume * 100f):N1} % – not watched: {info.Path}");
+								Log.Debug($"<Audio> {info.Name} (#{pid}) Volume: {volume * 100f:N1} % – Already correct (Plan: {prc.VolumeStrategy.ToString()})");
 						}
 					}
 					else
 					{
-						Log.Debug($"<Audio> Failed to get info for session (#{pid})");
+						if (ShowInaction && DebugAudio)
+							Log.Debug($"<Audio> {info.Name} (#{pid}) Volume: {(volume * 100f):N1} % – not watched: {info.Path}");
 					}
+				}
+				else
+				{
+					Log.Debug($"<Audio> Failed to get info for session (#{pid})");
 				}
 			}
 			catch (OutOfMemoryException) { throw; }

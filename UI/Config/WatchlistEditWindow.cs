@@ -123,27 +123,25 @@ namespace Taskmaster.UI.Config
 			};
 			findexecbutton.Click += (sender, e) =>
 			{
-				using (var exselectdialog = new ProcessSelectDialog())
+				using var exselectdialog = new ProcessSelectDialog();
+				try
 				{
-					try
+					if (exselectdialog.ShowDialog(this) == DialogResult.OK)
 					{
-						if (exselectdialog.ShowDialog(this) == DialogResult.OK)
+						var info = exselectdialog.Info;
+						// SANITY CHECK: exselectdialog.Selection;
+						execName.Text = info.Name; // Append?
+						if (!string.IsNullOrEmpty(info.Path))
 						{
-							var info = exselectdialog.Info;
-							// SANITY CHECK: exselectdialog.Selection;
-							execName.Text = info.Name; // Append?
-							if (!string.IsNullOrEmpty(info.Path))
-							{
-								if (string.IsNullOrEmpty(pathName.Text))
-									pathName.Text = System.IO.Path.GetDirectoryName(info.Path);
-								execName.Text = System.IO.Path.GetFileName(info.Path);
-							}
+							if (string.IsNullOrEmpty(pathName.Text))
+								pathName.Text = System.IO.Path.GetDirectoryName(info.Path);
+							execName.Text = System.IO.Path.GetFileName(info.Path);
 						}
 					}
-					catch (Exception ex)
-					{
-						Log.Fatal(ex.GetType().Name + " : " + ex.Message);
-					}
+				}
+				catch (Exception ex)
+				{
+					Log.Fatal(ex.GetType().Name + " : " + ex.Message);
 				}
 			};
 			lt.Controls.Add(execName);
@@ -172,15 +170,11 @@ namespace Taskmaster.UI.Config
 				try
 				{
 					// WinForms does not support positioning this
-					using (var folderdialog = new FolderBrowserDialog())
-					{
-						folderdialog.ShowNewFolderButton = false;
-						folderdialog.RootFolder = Environment.SpecialFolder.MyComputer;
-						if (folderdialog.ShowDialog(this) == DialogResult.OK && !string.IsNullOrEmpty(folderdialog.SelectedPath))
-						{
-							pathName.Text = folderdialog.SelectedPath;
-						}
-					}
+					using var folderdialog = new FolderBrowserDialog();
+					folderdialog.ShowNewFolderButton = false;
+					folderdialog.RootFolder = Environment.SpecialFolder.MyComputer;
+					if (folderdialog.ShowDialog(this) == DialogResult.OK && !string.IsNullOrEmpty(folderdialog.SelectedPath))
+						pathName.Text = folderdialog.SelectedPath;
 				}
 				catch (Exception ex)
 				{
@@ -265,11 +259,9 @@ namespace Taskmaster.UI.Config
 			{
 				try
 				{
-					using (var rs = new TextInputBox("Filename:", "Ignore executable"))
-					{
-						if (rs.ShowDialog() == DialogResult.OK)
-							ignorelist.Items.Add(rs.Value);
-					}
+					using var rs = new TextInputBox("Filename:", "Ignore executable");
+					if (rs.ShowDialog() == DialogResult.OK)
+						ignorelist.Items.Add(rs.Value);
 				}
 				catch (Exception ex)
 				{

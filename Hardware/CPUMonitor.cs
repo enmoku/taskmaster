@@ -89,8 +89,7 @@ namespace Taskmaster
 
 		public void LoadConfig()
 		{
-			using (var corecfg = Config.Load(CoreConfigFilename).BlockUnload())
-			{
+			using var corecfg = Config.Load(CoreConfigFilename).BlockUnload();
 				// SAMPLING
 				// this really should be elsewhere
 				var hwsec = corecfg.Config[HumanReadable.Hardware.Section];
@@ -109,20 +108,17 @@ namespace Taskmaster
 
 				Log.Information("<CPU> Sampler: " + $"{ SampleInterval.TotalSeconds:N0}" + "s × " + SampleCount +
 					" = " + $"{SampleCount * SampleInterval.TotalSeconds:N0}s" + " observation period");
-			}
 		}
 
 		public void SaveConfig()
 		{
 			return; // these are not modified at runtime YET
 
-			using (var corecfg = Config.Load(CoreConfigFilename).BlockUnload())
-			{
-				// SAMPLING
-				var hwsec = corecfg.Config[HumanReadable.Hardware.Section];
-				hwsec[HumanReadable.Hardware.CPU.Settings.SampleInterval].Int = Convert.ToInt32(SampleInterval.TotalSeconds);
-				hwsec[HumanReadable.Hardware.CPU.Settings.SampleCount].Int = SampleCount;
-			}
+			using var corecfg = Config.Load(CoreConfigFilename).BlockUnload();
+			// SAMPLING
+			var hwsec = corecfg.Config[HumanReadable.Hardware.Section];
+			hwsec[HumanReadable.Hardware.CPU.Settings.SampleInterval].Int = Convert.ToInt32(SampleInterval.TotalSeconds);
+			hwsec[HumanReadable.Hardware.CPU.Settings.SampleCount].Int = SampleCount;
 		}
 
 		int sampler_lock = 0;

@@ -40,18 +40,14 @@ namespace Taskmaster
 		static void InitialConfiguration()
 		{
 			// INITIAL CONFIGURATIONN
-			using (var tcfg = Config.Load(CoreConfigFilename).BlockUnload())
-			{
-				var sec = tcfg.Config.Get(Constants.Core)?.Get(Constants.Version)?.Value ?? null;
-				if (sec?.Equals(ConfigVersion) ?? false) return;
+			using var tcfg = Config.Load(CoreConfigFilename).BlockUnload();
+			var sec = tcfg.Config.Get(Constants.Core)?.Get(Constants.Version)?.Value ?? null;
+			if (sec?.Equals(ConfigVersion) ?? false) return;
 
-				using (var initialconfig = new UI.Config.ComponentConfigurationWindow())
-				{
-					initialconfig.ShowDialog();
-					if (!initialconfig.DialogOK)
-						throw new InitFailure("Component configuration cancelled");
-				}
-			}
+			using var initialconfig = new UI.Config.ComponentConfigurationWindow();
+			initialconfig.ShowDialog();
+			if (!initialconfig.DialogOK)
+				throw new InitFailure("Component configuration cancelled");
 
 			LoadEvent?.Invoke(null, new LoadEventArgs("Initial configuration confirmed.", LoadEventType.Loaded));
 		}
@@ -62,261 +58,257 @@ namespace Taskmaster
 
 			bool isadmin = false;
 
-			using (var corecfg = Config.Load(CoreConfigFilename).BlockUnload())
+			using var corecfg = Config.Load(CoreConfigFilename).BlockUnload();
+			var cfg = corecfg.Config;
+
+			const string Hello = "Hello", Hi = "Hi";
+
+			if (cfg.TryGet(Constants.Core, out var core) && core.TryGet(Hello, out var hello) && hello.Value.Equals(Hi))
+			{ }
+			else
+				cfg[Constants.Core][Hello].Value = Hi;
+
+			var compsec = cfg[Constants.Components];
+			var optsec = cfg[Constants.Options];
+			var perfsec = cfg[Constants.Performance];
+
+			cfg[Constants.Core].GetOrSet(Constants.License, Constants.Refused).Value = Constants.Accepted;
+
+			// [Components]
+			ProcessMonitorEnabled = compsec.GetOrSet(HumanReadable.System.Process.Section, true)
+				.InitComment("Monitor starting processes based on their name. Configure in Apps.ini")
+				.Bool;
+
+			if (!ProcessMonitorEnabled)
 			{
-				var cfg = corecfg.Config;
+				Log.Warning("<Core> Process monitor disabled: state not supported, forcing enabled.");
+				ProcessMonitorEnabled = true;
+			}
 
-				const string Hello = "Hello", Hi = "Hi";
+			AudioManagerEnabled = compsec.GetOrSet(HumanReadable.Hardware.Audio.Section, true)
+				.InitComment("Monitor audio sessions and set their volume as per user configuration.")
+				.Bool;
 
-				if (cfg.TryGet(Constants.Core, out var core) && core.TryGet(Hello, out var hello) && hello.Value.Equals(Hi))
-				{ }
+			MicrophoneManagerEnabled = compsec.GetOrSet("Microphone", false)
+				.InitComment("Monitor and force-keep microphone volume.")
+				.Bool;
+
+			if (!AudioManagerEnabled && MicrophoneManagerEnabled)
+			{
+				Log.Warning("<Core> Audio manager disabled, disabling microphone manager.");
+				MicrophoneManagerEnabled = false;
+			}
+
+			// MediaMonitorEnabled = compsec.GetSetDefault("Media", true, out modified).Bool;
+			// compsec["Media"].Comment = "Unused";
+			// dirtyconfig |= modified;
+			ActiveAppMonitorEnabled = compsec.GetOrSet(HumanReadable.System.Process.Foreground, true)
+				.InitComment("Game/Foreground app monitoring and adjustment.")
+				.Bool;
+
+			NetworkMonitorEnabled = compsec.GetOrSet(Constants.Network, true)
+				.InitComment("Monitor network uptime and current IP addresses.")
+				.Bool;
+
+			PowerManagerEnabled = compsec.GetOrSet(HumanReadable.Hardware.Power.Section, true)
+				.InitComment("Enable power plan management.")
+				.Bool;
+
+			if (compsec.TryGet(Constants.Paging, out var pagingsetting))
+				compsec.Remove(pagingsetting);
+
+			StorageMonitorEnabled = compsec.GetOrSet(Constants.Storage, false)
+				.InitComment("Enable NVM storage monitoring functionality.")
+				.Bool;
+
+			MaintenanceMonitorEnabled = compsec.GetOrSet(Constants.Maintenance, false)
+				.InitComment("Enable basic maintenance monitoring functionality.")
+				.Bool;
+
+			HealthMonitorEnabled = compsec.GetOrSet(Constants.Health, false)
+				.InitComment("General system health monitoring suite.")
+				.Bool;
+
+			HardwareMonitorEnabled = compsec.GetOrSet(HumanReadable.Hardware.Section, false)
+				.InitComment("Temperature, fan, etc. monitoring via OpenHardwareMonitor.")
+				.Bool;
+
+			var qol = cfg[HumanReadable.Generic.QualityOfLife];
+			ExitConfirmation = qol.GetOrSet("Exit confirmation", true).Bool;
+			GlobalHotkeys = qol.GetOrSet("Register global hotkeys", false).Bool;
+			AffinityStyle = qol.GetOrSet(HumanReadable.Hardware.CPU.Settings.AffinityStyle, 0).Int.Constrain(0, 1);
+
+			var logsec = cfg[HumanReadable.Generic.Logging];
+			var Verbosity = logsec.GetOrSet(Constants.Verbosity, 0)
+				.InitComment("0 = Information, 1 = Debug, 2 = Verbose/Trace, 3 = Excessive; 2 and higher are available on debug builds only.")
+				.Int;
+			switch (Verbosity)
+			{
+				default:
+				case 0:
+					loglevelswitch.MinimumLevel = LogEventLevel.Information;
+					break;
+				case 2:
+#if DEBUG
+					loglevelswitch.MinimumLevel = LogEventLevel.Verbose;
+					break;
+#endif
+				case 3:
+#if DEBUG
+					loglevelswitch.MinimumLevel = LogEventLevel.Verbose;
+					Trace = true;
+					break;
+#endif
+				case 1:
+					loglevelswitch.MinimumLevel = LogEventLevel.Debug;
+					break;
+			}
+
+			UniqueCrashLogs = logsec.GetOrSet("Unique crash logs", false)
+				.InitComment("On crash instead of creating crash.log in Logs, create crash-YYYYMMDD-HHMMSS-FFF.log instead. These are not cleaned out automatically!")
+				.Bool;
+
+			ShowInaction = logsec.GetOrSet("Show inaction", false)
+				.InitComment("Log lack of action taken on processes.")
+				.Bool;
+
+			var showagency_t = logsec.GetOrSet("Show agency", false)
+				.InitComment("Log changes in agency, such as processes being left to decide their own fate.")
+				.Bool;
+
+			ShowProcessAdjusts = logsec.GetOrSet("Show process adjusts", true)
+				.InitComment("Show blurbs about adjusted processes.")
+				.Bool;
+
+			ShowSessionActions = logsec.GetOrSet("Show session actions", true)
+				.InitComment("Show blurbs about actions taken relating to sessions.")
+				.Bool;
+
+			var uisec = cfg[Constants.UserInterface];
+			ShowOnStart = uisec.GetOrSet(Constants.ShowOnStart, ShowOnStart).Bool;
+
+			var volsec = cfg[Constants.VolumeMeter];
+			ShowVolOnStart = volsec.GetOrSet(Constants.ShowOnStart, ShowVolOnStart).Bool;
+
+			// [Performance]
+			SelfOptimize = perfsec.GetOrSet("Self-optimize", true).Bool;
+
+			var selfpriority_t = perfsec.GetOrSet("Self-priority", 1)
+				.InitComment("Process priority to set for TM itself. Restricted to 0 (Low) to 2 (Normal).")
+				.Int.Constrain(0, 2);
+			SelfPriority = ProcessHelpers.IntToPriority(selfpriority_t);
+
+			SelfAffinity = perfsec.GetOrSet("Self-affinity", 0)
+				.InitComment("Core mask as integer. 0 is for default OS control.")
+				.Int.Constrain(0, Process.Utility.FullCPUMask);
+
+			if (SelfAffinity > Process.Utility.FullCPUMask) SelfAffinity = 0;
+
+			SelfOptimizeBGIO = perfsec.GetOrSet("Background I/O mode", false)
+				.InitComment("Sets own priority exceptionally low. Warning: This can make TM's UI and functionality quite unresponsive.")
+				.Bool;
+
+			if (perfsec.TryGet("WMI queries", out var wmiqsetting))
+				perfsec.Remove(wmiqsetting);
+
+			//perfsec.GetSetDefault("Child processes", false, out modified); // unused here
+			//perfsec["Child processes"].Comment = "Enables controlling process priority based on parent process if nothing else matches. This is slow and unreliable.";
+			//dirtyconfig |= modified;
+			TempRescanThreshold = perfsec.GetOrSet("Temp rescan threshold", 1000)
+				.InitComment("How many changes we wait to temp folder before expediting rescanning it.")
+				.Int;
+
+			TempRescanDelay = perfsec.GetOrSet("Temp rescan delay", 60)
+				.InitComment("How many minutes to wait before rescanning temp after crossing the threshold.")
+				.Int * 60_000;
+
+			PathCacheLimit = perfsec.GetOrSet("Path cache", 60)
+				.InitComment("Path searching is very heavy process; this configures how many processes to remember paths for. The cache is allowed to occasionally overflow for half as much.")
+				.Int.Constrain(20, 200);
+
+			var pathcachemaxage_t = perfsec.GetOrSet("Path cache max age", 15)
+				.InitComment("Maximum age, in minutes, of cached objects. Min: 1 (1min), Max: 1440 (1day). These will be removed even if the cache is appropriate size.")
+				.Int;
+			PathCacheMaxAge = new TimeSpan(0, pathcachemaxage_t.Constrain(1, 1440), 0);
+
+			// OPTIONS
+			if (optsec.TryGet(Constants.ShowOnStart, out var sosv)) // REPRECATED
+			{
+				ShowOnStart = sosv.Bool;
+				optsec.Remove(sosv);
+			}
+
+			PagingEnabled = optsec.GetOrSet("Paging", true)
+				.InitComment("Enable paging of apps as per their configuration.")
+				.Bool;
+
+			//
+			cfg.Get(Constants.Maintenance)?.TryRemove("Cleanup interval"); // DEPRECATRED
+
+			MonitorCleanShutdown();
+
+			Log.Information("<Core> Verbosity: " + MemoryLog.MemorySink.LevelSwitch.MinimumLevel.ToString());
+
+			if (Trace) Log.Debug("<Core> Self-optimize: " + (SelfOptimize ? HumanReadable.Generic.Enabled : HumanReadable.Generic.Disabled));
+
+			// PROTECT USERS FROM TOO HIGH PERMISSIONS
+			isadmin = MKAh.Execution.IsAdministrator;
+			const string Hell = "Hell";
+			var adminwarning = ((cfg[Constants.Core].Get(Hell)?.Value ?? null) != Constants.No);
+			if (isadmin && adminwarning)
+			{
+				var rv = MessageBox.ShowModal(
+					Name + "! – admin access!!??",
+					"You're starting TM with admin rights, is this right?\n\nYou can cause bad system operation, such as complete system hang, if you configure or configured TM incorrectly.",
+					MessageBox.Buttons.AcceptCancel);
+
+				if (rv == MessageBox.ResultType.OK)
+				{
+					cfg[Constants.Core][Hell].Value = Constants.No;
+				}
 				else
-					cfg[Constants.Core][Hello].Value = Hi;
-
-				var compsec = cfg[Constants.Components];
-				var optsec = cfg[Constants.Options];
-				var perfsec = cfg[Constants.Performance];
-
-				cfg[Constants.Core].GetOrSet(Constants.License, Constants.Refused).Value = Constants.Accepted;
-
-				// [Components]
-				ProcessMonitorEnabled = compsec.GetOrSet(HumanReadable.System.Process.Section, true)
-					.InitComment("Monitor starting processes based on their name. Configure in Apps.ini")
-					.Bool;
-
-				if (!ProcessMonitorEnabled)
 				{
-					Log.Warning("<Core> Process monitor disabled: state not supported, forcing enabled.");
-					ProcessMonitorEnabled = true;
+					Log.Warning("<Core> Admin rights detected, user rejected proceeding.");
+					UnifiedExit();
+					throw new RunstateException("Admin rights rejected", Runstate.QuickExit);
 				}
-
-				AudioManagerEnabled = compsec.GetOrSet(HumanReadable.Hardware.Audio.Section, true)
-					.InitComment("Monitor audio sessions and set their volume as per user configuration.")
-					.Bool;
-
-				MicrophoneManagerEnabled = compsec.GetOrSet("Microphone", false)
-					.InitComment("Monitor and force-keep microphone volume.")
-					.Bool;
-
-				if (!AudioManagerEnabled && MicrophoneManagerEnabled)
-				{
-					Log.Warning("<Core> Audio manager disabled, disabling microphone manager.");
-					MicrophoneManagerEnabled = false;
-				}
-
-				// MediaMonitorEnabled = compsec.GetSetDefault("Media", true, out modified).Bool;
-				// compsec["Media"].Comment = "Unused";
-				// dirtyconfig |= modified;
-				ActiveAppMonitorEnabled = compsec.GetOrSet(HumanReadable.System.Process.Foreground, true)
-					.InitComment("Game/Foreground app monitoring and adjustment.")
-					.Bool;
-
-				NetworkMonitorEnabled = compsec.GetOrSet(Constants.Network, true)
-					.InitComment("Monitor network uptime and current IP addresses.")
-					.Bool;
-
-				PowerManagerEnabled = compsec.GetOrSet(HumanReadable.Hardware.Power.Section, true)
-					.InitComment("Enable power plan management.")
-					.Bool;
-
-				if (compsec.TryGet(Constants.Paging, out var pagingsetting))
-					compsec.Remove(pagingsetting);
-
-				StorageMonitorEnabled = compsec.GetOrSet(Constants.Storage, false)
-					.InitComment("Enable NVM storage monitoring functionality.")
-					.Bool;
-
-				MaintenanceMonitorEnabled = compsec.GetOrSet(Constants.Maintenance, false)
-					.InitComment("Enable basic maintenance monitoring functionality.")
-					.Bool;
-
-				HealthMonitorEnabled = compsec.GetOrSet(Constants.Health, false)
-					.InitComment("General system health monitoring suite.")
-					.Bool;
-
-				HardwareMonitorEnabled = compsec.GetOrSet(HumanReadable.Hardware.Section, false)
-					.InitComment("Temperature, fan, etc. monitoring via OpenHardwareMonitor.")
-					.Bool;
-
-				var qol = cfg[HumanReadable.Generic.QualityOfLife];
-				ExitConfirmation = qol.GetOrSet("Exit confirmation", true).Bool;
-				GlobalHotkeys = qol.GetOrSet("Register global hotkeys", false).Bool;
-				AffinityStyle = qol.GetOrSet(HumanReadable.Hardware.CPU.Settings.AffinityStyle, 0).Int.Constrain(0, 1);
-
-				var logsec = cfg[HumanReadable.Generic.Logging];
-				var Verbosity = logsec.GetOrSet(Constants.Verbosity, 0)
-					.InitComment("0 = Information, 1 = Debug, 2 = Verbose/Trace, 3 = Excessive; 2 and higher are available on debug builds only.")
-					.Int;
-				switch (Verbosity)
-				{
-					default:
-					case 0:
-						loglevelswitch.MinimumLevel = LogEventLevel.Information;
-						break;
-					case 2:
-#if DEBUG
-						loglevelswitch.MinimumLevel = LogEventLevel.Verbose;
-						break;
-#endif
-					case 3:
-#if DEBUG
-						loglevelswitch.MinimumLevel = LogEventLevel.Verbose;
-						Trace = true;
-						break;
-#endif
-					case 1:
-						loglevelswitch.MinimumLevel = LogEventLevel.Debug;
-						break;
-				}
-
-				UniqueCrashLogs = logsec.GetOrSet("Unique crash logs", false)
-					.InitComment("On crash instead of creating crash.log in Logs, create crash-YYYYMMDD-HHMMSS-FFF.log instead. These are not cleaned out automatically!")
-					.Bool;
-
-				ShowInaction = logsec.GetOrSet("Show inaction", false)
-					.InitComment("Log lack of action taken on processes.")
-					.Bool;
-
-				var showagency_t = logsec.GetOrSet("Show agency", false)
-					.InitComment("Log changes in agency, such as processes being left to decide their own fate.")
-					.Bool;
-
-				ShowProcessAdjusts = logsec.GetOrSet("Show process adjusts", true)
-					.InitComment("Show blurbs about adjusted processes.")
-					.Bool;
-
-				ShowSessionActions = logsec.GetOrSet("Show session actions", true)
-					.InitComment("Show blurbs about actions taken relating to sessions.")
-					.Bool;
-
-				var uisec = cfg[Constants.UserInterface];
-				ShowOnStart = uisec.GetOrSet(Constants.ShowOnStart, ShowOnStart).Bool;
-
-				var volsec = cfg[Constants.VolumeMeter];
-				ShowVolOnStart = volsec.GetOrSet(Constants.ShowOnStart, ShowVolOnStart).Bool;
-
-				// [Performance]
-				SelfOptimize = perfsec.GetOrSet("Self-optimize", true).Bool;
-
-				var selfpriority_t = perfsec.GetOrSet("Self-priority", 1)
-					.InitComment("Process priority to set for TM itself. Restricted to 0 (Low) to 2 (Normal).")
-					.Int.Constrain(0, 2);
-				SelfPriority = ProcessHelpers.IntToPriority(selfpriority_t);
-
-				SelfAffinity = perfsec.GetOrSet("Self-affinity", 0)
-					.InitComment("Core mask as integer. 0 is for default OS control.")
-					.Int.Constrain(0, Process.Utility.FullCPUMask);
-
-				if (SelfAffinity > Process.Utility.FullCPUMask) SelfAffinity = 0;
-
-				SelfOptimizeBGIO = perfsec.GetOrSet("Background I/O mode", false)
-					.InitComment("Sets own priority exceptionally low. Warning: This can make TM's UI and functionality quite unresponsive.")
-					.Bool;
-
-				if (perfsec.TryGet("WMI queries", out var wmiqsetting))
-					perfsec.Remove(wmiqsetting);
-
-				//perfsec.GetSetDefault("Child processes", false, out modified); // unused here
-				//perfsec["Child processes"].Comment = "Enables controlling process priority based on parent process if nothing else matches. This is slow and unreliable.";
-				//dirtyconfig |= modified;
-				TempRescanThreshold = perfsec.GetOrSet("Temp rescan threshold", 1000)
-					.InitComment("How many changes we wait to temp folder before expediting rescanning it.")
-					.Int;
-
-				TempRescanDelay = perfsec.GetOrSet("Temp rescan delay", 60)
-					.InitComment("How many minutes to wait before rescanning temp after crossing the threshold.")
-					.Int * 60_000;
-
-				PathCacheLimit = perfsec.GetOrSet("Path cache", 60)
-					.InitComment("Path searching is very heavy process; this configures how many processes to remember paths for. The cache is allowed to occasionally overflow for half as much.")
-					.Int.Constrain(20, 200);
-
-				var pathcachemaxage_t = perfsec.GetOrSet("Path cache max age", 15)
-					.InitComment("Maximum age, in minutes, of cached objects. Min: 1 (1min), Max: 1440 (1day). These will be removed even if the cache is appropriate size.")
-					.Int;
-				PathCacheMaxAge = new TimeSpan(0, pathcachemaxage_t.Constrain(1, 1440), 0);
-
-				// OPTIONS
-				if (optsec.TryGet(Constants.ShowOnStart, out var sosv)) // REPRECATED
-				{
-					ShowOnStart = sosv.Bool;
-					optsec.Remove(sosv);
-				}
-
-				PagingEnabled = optsec.GetOrSet("Paging", true)
-					.InitComment("Enable paging of apps as per their configuration.")
-					.Bool;
-
-				//
-				cfg.Get(Constants.Maintenance)?.TryRemove("Cleanup interval"); // DEPRECATRED
-
-				MonitorCleanShutdown();
-
-				Log.Information("<Core> Verbosity: " + MemoryLog.MemorySink.LevelSwitch.MinimumLevel.ToString());
-
-				if (Trace) Log.Debug("<Core> Self-optimize: " + (SelfOptimize ? HumanReadable.Generic.Enabled : HumanReadable.Generic.Disabled));
-
-				// PROTECT USERS FROM TOO HIGH PERMISSIONS
-				isadmin = MKAh.Execution.IsAdministrator;
-				const string Hell = "Hell";
-				var adminwarning = ((cfg[Constants.Core].Get(Hell)?.Value ?? null) != Constants.No);
-				if (isadmin && adminwarning)
-				{
-					var rv = MessageBox.ShowModal(
-						Name + "! – admin access!!??",
-						"You're starting TM with admin rights, is this right?\n\nYou can cause bad system operation, such as complete system hang, if you configure or configured TM incorrectly.",
-						MessageBox.Buttons.AcceptCancel);
-
-					if (rv == MessageBox.ResultType.OK)
-					{
-						cfg[Constants.Core][Hell].Value = Constants.No;
-					}
-					else
-					{
-						Log.Warning("<Core> Admin rights detected, user rejected proceeding.");
-						UnifiedExit();
-						throw new RunstateException("Admin rights rejected", Runstate.QuickExit);
-					}
-				}
-				// STOP IT
-
-				// DEBUG
-				var dbgsec = cfg[HumanReadable.Generic.Debug];
-				DebugAudio = dbgsec.Get(HumanReadable.Hardware.Audio.Section)?.Bool ?? false;
-
-				DebugForeground = dbgsec.Get(HumanReadable.System.Process.Foreground)?.Bool ?? false;
-
-				DebugPower = dbgsec.Get(HumanReadable.Hardware.Power.Section)?.Bool ?? false;
-				DebugMonitor = dbgsec.Get(HumanReadable.Hardware.Monitor.Section)?.Bool ?? false;
-
-				DebugSession = dbgsec.Get("Session")?.Bool ?? false;
-				DebugResize = dbgsec.Get("Resize")?.Bool ?? false;
-
-				DebugMemory = dbgsec.Get(HumanReadable.Hardware.Memory)?.Bool ?? false;
-
-				DebugCache = dbgsec.Get("Cache")?.Bool ?? false;
-
-				var exsec = cfg[Constants.Experimental];
-				LastModifiedList = exsec.Get("Last Modified")?.Bool ?? false;
-				TempMonitorEnabled = exsec.Get("Temp Monitor")?.Bool ?? false;
-				int trecanalysis = exsec.Get("Record analysis")?.Int ?? 0;
-				RecordAnalysis = trecanalysis > 0 ? (TimeSpan?)TimeSpan.FromSeconds(trecanalysis.Constrain(0, 180)) : null;
-				IOPriorityEnabled = exsec.Get("IO Priority")?.Bool ?? false;
-				if (!MKAh.Execution.IsWin7)
-				{
-					Log.Warning("<Core> I/O priority was enabled. Requires Win7 which you don't appear to be running.");
-					IOPriorityEnabled = false;
-				}
-
-#if DEBUG
-				Trace = dbgsec.Get(Constants.Trace)?.Bool ?? false;
-#endif
 			}
+			// STOP IT
 
-			using (var uicfg = Config.Load(UIConfigFilename).BlockUnload())
+			// DEBUG
+			var dbgsec = cfg[HumanReadable.Generic.Debug];
+			DebugAudio = dbgsec.Get(HumanReadable.Hardware.Audio.Section)?.Bool ?? false;
+
+			DebugForeground = dbgsec.Get(HumanReadable.System.Process.Foreground)?.Bool ?? false;
+
+			DebugPower = dbgsec.Get(HumanReadable.Hardware.Power.Section)?.Bool ?? false;
+			DebugMonitor = dbgsec.Get(HumanReadable.Hardware.Monitor.Section)?.Bool ?? false;
+
+			DebugSession = dbgsec.Get("Session")?.Bool ?? false;
+			DebugResize = dbgsec.Get("Resize")?.Bool ?? false;
+
+			DebugMemory = dbgsec.Get(HumanReadable.Hardware.Memory)?.Bool ?? false;
+
+			DebugCache = dbgsec.Get("Cache")?.Bool ?? false;
+
+			var exsec = cfg[Constants.Experimental];
+			LastModifiedList = exsec.Get("Last Modified")?.Bool ?? false;
+			TempMonitorEnabled = exsec.Get("Temp Monitor")?.Bool ?? false;
+			int trecanalysis = exsec.Get("Record analysis")?.Int ?? 0;
+			RecordAnalysis = trecanalysis > 0 ? (TimeSpan?)TimeSpan.FromSeconds(trecanalysis.Constrain(0, 180)) : null;
+			IOPriorityEnabled = exsec.Get("IO Priority")?.Bool ?? false;
+			if (!MKAh.Execution.IsWin7)
 			{
-				VisualStyling = uicfg.Config[Constants.Windows].GetOrSet("Styling", true).Bool;
+				Log.Warning("<Core> I/O priority was enabled. Requires Win7 which you don't appear to be running.");
+				IOPriorityEnabled = false;
 			}
+
+#if DEBUG
+			Trace = dbgsec.Get(Constants.Trace)?.Bool ?? false;
+#endif
+
+			using var uicfg = Config.Load(UIConfigFilename).BlockUnload();
+			VisualStyling = uicfg.Config[Constants.Windows].GetOrSet("Styling", true).Bool;
 
 			// END DEBUG
 
@@ -344,8 +336,7 @@ namespace Taskmaster
 			Task PowMan, CpuMon, ProcMon, FgMon, NetMon, StorMon, HpMon, HwMon, AlMan, SelfMaint;
 			Task[] init;
 
-			using (var cts = new System.Threading.CancellationTokenSource())
-			{
+			using var cts = new System.Threading.CancellationTokenSource();
 				Process.Utility.InitializeCache();
 				LoadEvent?.Invoke(null, new LoadEventArgs("Cache loaded.", LoadEventType.SubLoaded));
 
@@ -408,22 +399,21 @@ namespace Taskmaster
 
 				ProcMon.ContinueWith((x) => trayaccess?.Hook(processmanager), TaskContinuationOptions.OnlyOnRanToCompletion);
 
-				if (PowerManagerEnabled)
+			if (PowerManagerEnabled)
+			{
+				Task.WhenAll(new Task[] { PowMan, CpuMon, ProcMon }).ContinueWith((_) =>
 				{
-					Task.WhenAll(new Task[] { PowMan, CpuMon, ProcMon }).ContinueWith((_) =>
-					{
-						if (powermanager is null || cpumonitor is null || processmanager is null) return;
+					if (powermanager is null || cpumonitor is null || processmanager is null) return;
 
-						cpumonitor?.Hook(processmanager);
+					cpumonitor?.Hook(processmanager);
 
-						trayaccess.Hook(powermanager);
-						powermanager.SuspendResume += PowerSuspendEnd; // HACK: No idea how the code behaves on power resume.
+					trayaccess.Hook(powermanager);
+					powermanager.SuspendResume += PowerSuspendEnd; // HACK: No idea how the code behaves on power resume.
 						powermanager.Hook(cpumonitor);
-					}, cts.Token);
+				}, cts.Token);
 
-					var tr = Task.WhenAny(init);
-					if (tr.IsFaulted) cts.Cancel(true);
-				}
+				var tr = Task.WhenAny(init);
+				if (tr.IsFaulted) cts.Cancel(true);
 			}
 
 			//if (HardwareMonitorEnabled)

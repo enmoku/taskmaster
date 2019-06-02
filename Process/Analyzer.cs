@@ -61,8 +61,8 @@ namespace Taskmaster.Process
 			if (string.IsNullOrEmpty(info.Path)) return;
 
 			byte[] hash;
-			using (var crypt = new System.Security.Cryptography.SHA512Cng())
-				hash = crypt.ComputeHash(Encoding.UTF8.GetBytes(info.Path.ToLowerInvariant()));
+			using var crypt = new System.Security.Cryptography.SHA512Cng();
+			hash = crypt.ComputeHash(Encoding.UTF8.GetBytes(info.Path.ToLowerInvariant()));
 
 			// TODO: Prevent bloating somehow.
 			if (!cache.TryAdd(hash, 0)) return; // already there
@@ -339,8 +339,7 @@ namespace Taskmaster.Process
 			{
 				var modulepath = Path.Combine(DataPath, moduleFilename);
 
-				using (var cfg = Config.Load(modulepath).BlockUnload())
-				{
+				using var cfg = Config.Load(modulepath).BlockUnload();
 					foreach (var section in cfg.Config)
 					{
 						try
@@ -399,7 +398,6 @@ namespace Taskmaster.Process
 							Logging.Stacktrace(ex);
 						}
 					}
-				}
 
 				Log.Information($"<Analysis> Modules known: {KnownModules.Count.ToString()}");
 			}

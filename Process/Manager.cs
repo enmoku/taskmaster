@@ -642,109 +642,107 @@ namespace Taskmaster.Process
 		{
 			if (DebugProcesses) Log.Information("<Process> Loading configuration...");
 
-			using (var corecfg = Config.Load(CoreConfigFilename).BlockUnload())
+			using var corecfg = Config.Load(CoreConfigFilename).BlockUnload();
+			var perfsec = corecfg.Config["Performance"];
+
+			// ControlChildren = coreperf.GetSetDefault("Child processes", false, out tdirty).Bool;
+			// dirtyconfig |= tdirty;
+
+			int ignRecentlyModified = perfsec.GetOrSet("Ignore recently modified", 30)
+				.InitComment("Performance optimization. More notably this enables granting self-determination to apps that actually think they know better.")
+				.Int.Constrain(0, 24 * 60);
+			IgnoreRecentlyModified = ignRecentlyModified > 0 ? (TimeSpan?)TimeSpan.FromMinutes(ignRecentlyModified) : null;
+
+			var tscan = perfsec.GetOrSet("Scan frequency", 15)
+				.InitComment("Frequency (in seconds) at which we scan for processes. 0 disables.")
+				.Int.Constrain(0, 360);
+			ScanFrequency = (tscan > 0) ? (TimeSpan?)TimeSpan.FromSeconds(tscan.Constrain(5, 360)) : null;
+
+			// --------------------------------------------------------------------------------------------------------
+
+			WMIPolling = perfsec.GetOrSet("WMI event watcher", false)
+				.InitComment("Use WMI to be notified of new processes starting. If disabled, only rescanning everything will cause processes to be noticed.")
+				.Bool;
+
+			WMIPollDelay = perfsec.GetOrSet("WMI poll delay", 5)
+				.InitComment("WMI process watcher delay (in seconds).  Smaller gives better results but can inrease CPU usage. Accepted values: 1 to 30.")
+				.Int.Constrain(1, 30);
+
+			// --------------------------------------------------------------------------------------------------------
+
+			var fgpausesec = corecfg.Config["Foreground Focus Lost"];
+			// RestoreOriginal = fgpausesec.GetSetDefault("Restore original", false, out modified).Bool;
+			// dirtyconfig |= modified;
+			DefaultBackgroundPriority = fgpausesec.GetOrSet("Default priority", 2)
+				.InitComment("Default is normal to avoid excessive loading times while user is alt-tabbed.")
+				.Int.Constrain(0, 4);
+
+			// OffFocusAffinity = fgpausesec.GetSetDefault("Affinity", 0, out modified).Int;
+			// dirtyconfig |= modified;
+			// OffFocusPowerCancel = fgpausesec.GetSetDefault("Power mode cancel", true, out modified).Bool;
+			// dirtyconfig |= modified;
+
+			DefaultBackgroundAffinity = fgpausesec.GetOrSet("Default affinity", 14).Int.Constrain(0, Utility.FullCPUMask);
+
+			// --------------------------------------------------------------------------------------------------------
+
+			// Taskmaster.cfg["Applications"]["Ignored"].StringArray = IgnoreList;
+			var ignsetting = corecfg.Config["Applications"];
+			string[] newIgnoreList = ignsetting.GetOrSet(HumanReadable.Generic.Ignore, IgnoreList)
+				.InitComment("Special hardcoded protection applied to: consent, winlogon, wininit, and csrss. These are vital system services and messing with them can cause severe system malfunctioning. Mess with the ignore list at your own peril.")
+				.Array;
+
+			if (newIgnoreList?.Length > 0)
 			{
-				var perfsec = corecfg.Config["Performance"];
+				var ignoreOmitted = IgnoreList.Except(newIgnoreList);
+				var qlist = ignoreOmitted.ToList();
 
-				// ControlChildren = coreperf.GetSetDefault("Child processes", false, out tdirty).Bool;
-				// dirtyconfig |= tdirty;
+				if (qlist.Count > 0)
+					Log.Warning("<Process> Custom ignore list loaded; omissions from default: " + string.Join(", ", qlist));
+				else
+					Log.Information("<Process> Custom ignore list loaded.");
 
-				int ignRecentlyModified = perfsec.GetOrSet("Ignore recently modified", 30)
-					.InitComment("Performance optimization. More notably this enables granting self-determination to apps that actually think they know better.")
-					.Int.Constrain(0, 24 * 60);
-				IgnoreRecentlyModified = ignRecentlyModified > 0 ? (TimeSpan?)TimeSpan.FromMinutes(ignRecentlyModified) : null;
-
-				var tscan = perfsec.GetOrSet("Scan frequency", 15)
-					.InitComment("Frequency (in seconds) at which we scan for processes. 0 disables.")
-					.Int.Constrain(0, 360);
-				ScanFrequency = (tscan > 0) ? (TimeSpan?)TimeSpan.FromSeconds(tscan.Constrain(5, 360)) : null;
-
-				// --------------------------------------------------------------------------------------------------------
-
-				WMIPolling = perfsec.GetOrSet("WMI event watcher", false)
-					.InitComment("Use WMI to be notified of new processes starting. If disabled, only rescanning everything will cause processes to be noticed.")
-					.Bool;
-
-				WMIPollDelay = perfsec.GetOrSet("WMI poll delay", 5)
-					.InitComment("WMI process watcher delay (in seconds).  Smaller gives better results but can inrease CPU usage. Accepted values: 1 to 30.")
-					.Int.Constrain(1, 30);
-
-				// --------------------------------------------------------------------------------------------------------
-
-				var fgpausesec = corecfg.Config["Foreground Focus Lost"];
-				// RestoreOriginal = fgpausesec.GetSetDefault("Restore original", false, out modified).Bool;
-				// dirtyconfig |= modified;
-				DefaultBackgroundPriority = fgpausesec.GetOrSet("Default priority", 2)
-					.InitComment("Default is normal to avoid excessive loading times while user is alt-tabbed.")
-					.Int.Constrain(0, 4);
-
-				// OffFocusAffinity = fgpausesec.GetSetDefault("Affinity", 0, out modified).Int;
-				// dirtyconfig |= modified;
-				// OffFocusPowerCancel = fgpausesec.GetSetDefault("Power mode cancel", true, out modified).Bool;
-				// dirtyconfig |= modified;
-
-				DefaultBackgroundAffinity = fgpausesec.GetOrSet("Default affinity", 14).Int.Constrain(0, Utility.FullCPUMask);
-
-				// --------------------------------------------------------------------------------------------------------
-
-				// Taskmaster.cfg["Applications"]["Ignored"].StringArray = IgnoreList;
-				var ignsetting = corecfg.Config["Applications"];
-				string[] newIgnoreList = ignsetting.GetOrSet(HumanReadable.Generic.Ignore, IgnoreList)
-					.InitComment("Special hardcoded protection applied to: consent, winlogon, wininit, and csrss. These are vital system services and messing with them can cause severe system malfunctioning. Mess with the ignore list at your own peril.")
-					.Array;
-
-				if (newIgnoreList?.Length > 0)
-				{
-					var ignoreOmitted = IgnoreList.Except(newIgnoreList);
-					var qlist = ignoreOmitted.ToList();
-
-					if (qlist.Count > 0)
-						Log.Warning("<Process> Custom ignore list loaded; omissions from default: " + string.Join(", ", qlist));
-					else
-						Log.Information("<Process> Custom ignore list loaded.");
-
-					IgnoreList = newIgnoreList;
-				}
-				if (DebugProcesses) Log.Debug("<Process> Ignore list: " + string.Join(", ", IgnoreList));
-
-				IgnoreSystem32Path = ignsetting.GetOrSet("Ignore System32", true)
-					.InitComment("Ignore programs in %SYSTEMROOT%/System32 folder.")
-					.Bool;
-
-				ProtectionLevel = ignsetting.GetOrSet("Protection level", 2)
-					.InitComment("Amount of core system shielding to do. 1 = Affinity tuning allowed. 2 = Full protection.")
-					.Int;
-
-				var dbgsec = corecfg.Config[HumanReadable.Generic.Debug];
-				DebugWMI = dbgsec.Get("WMI")?.Bool ?? false;
-				DebugScan = dbgsec.Get("Full scan")?.Bool ?? false;
-				DebugPaths = dbgsec.Get("Paths")?.Bool ?? false;
-				DebugAdjustDelay = dbgsec.Get("Adjust Delay")?.Bool ?? false;
-				DebugProcesses = dbgsec.Get("Processes")?.Bool ?? false;
-				DebugPaging = dbgsec.Get("Paging")?.Bool ?? false;
-
-				var logsec = corecfg.Config["Logging"];
-				if (logsec.TryGet("Show unmodified portions", out var dumodport))
-				{
-					ShowUnmodifiedPortions = dumodport.Bool;
-					logsec.Remove(dumodport); // DEPRECATED
-				}
-				ShowUnmodifiedPortions = logsec.GetOrSet("Unmodified portions", ShowUnmodifiedPortions).Bool;
-				if (logsec.TryGet("Show only final state", out var donfinal))
-				{
-					ShowOnlyFinalState = donfinal.Bool;
-					logsec.Remove(donfinal); // DEPRECATED
-				}
-				ShowOnlyFinalState = logsec.GetOrSet("Final state only", ShowOnlyFinalState).Bool;
-				ShowForegroundTransitions = logsec.GetOrSet("Foreground transitions", ShowForegroundTransitions).Bool;
-
-				EnableParentFinding = logsec.GetOrSet("Enable parent finding", EnableParentFinding).Bool;
-
-				if (!IgnoreSystem32Path) Log.Warning($"<Process> System32 ignore disabled.");
-
-				var exsec = corecfg.Config["Experimental"];
-				WindowResizeEnabled = exsec.Get("Window Resize")?.Bool ?? false;
+				IgnoreList = newIgnoreList;
 			}
+			if (DebugProcesses) Log.Debug("<Process> Ignore list: " + string.Join(", ", IgnoreList));
+
+			IgnoreSystem32Path = ignsetting.GetOrSet("Ignore System32", true)
+				.InitComment("Ignore programs in %SYSTEMROOT%/System32 folder.")
+				.Bool;
+
+			ProtectionLevel = ignsetting.GetOrSet("Protection level", 2)
+				.InitComment("Amount of core system shielding to do. 1 = Affinity tuning allowed. 2 = Full protection.")
+				.Int;
+
+			var dbgsec = corecfg.Config[HumanReadable.Generic.Debug];
+			DebugWMI = dbgsec.Get("WMI")?.Bool ?? false;
+			DebugScan = dbgsec.Get("Full scan")?.Bool ?? false;
+			DebugPaths = dbgsec.Get("Paths")?.Bool ?? false;
+			DebugAdjustDelay = dbgsec.Get("Adjust Delay")?.Bool ?? false;
+			DebugProcesses = dbgsec.Get("Processes")?.Bool ?? false;
+			DebugPaging = dbgsec.Get("Paging")?.Bool ?? false;
+
+			var logsec = corecfg.Config["Logging"];
+			if (logsec.TryGet("Show unmodified portions", out var dumodport))
+			{
+				ShowUnmodifiedPortions = dumodport.Bool;
+				logsec.Remove(dumodport); // DEPRECATED
+			}
+			ShowUnmodifiedPortions = logsec.GetOrSet("Unmodified portions", ShowUnmodifiedPortions).Bool;
+			if (logsec.TryGet("Show only final state", out var donfinal))
+			{
+				ShowOnlyFinalState = donfinal.Bool;
+				logsec.Remove(donfinal); // DEPRECATED
+			}
+			ShowOnlyFinalState = logsec.GetOrSet("Final state only", ShowOnlyFinalState).Bool;
+			ShowForegroundTransitions = logsec.GetOrSet("Foreground transitions", ShowForegroundTransitions).Bool;
+
+			EnableParentFinding = logsec.GetOrSet("Enable parent finding", EnableParentFinding).Bool;
+
+			if (!IgnoreSystem32Path) Log.Warning($"<Process> System32 ignore disabled.");
+
+			var exsec = corecfg.Config["Experimental"];
+			WindowResizeEnabled = exsec.Get("Window Resize")?.Bool ?? false;
 
 
 			var sbs = new StringBuilder();
@@ -800,181 +798,179 @@ namespace Taskmaster.Process
 				appcfg = Config.Load(WatchlistFile);
 			}
 
-			using (var sappcfg = appcfg.BlockUnload())
+			using var sappcfg = appcfg.BlockUnload();
+			foreach (Ini.Section section in sappcfg.Config)
 			{
-				foreach (Ini.Section section in sappcfg.Config)
+				if (string.IsNullOrEmpty(section.Name))
 				{
-					if (string.IsNullOrEmpty(section.Name))
-					{
-						Log.Warning($"<Watchlist:{section.Line}> Nameless section; Skipping.");
-						continue;
-					}
-
-					var rulePath = section.Get(HumanReadable.System.Process.Path);
-
-					Ini.Setting ruleExec = null;
-					if (section.TryGet("Image", out var image)) // DEPRECATED; UPGRADE TO MULTIEXE
-					{
-						ruleExec = section["Executables"];
-						ruleExec.StringArray = new string[] { image.String };
-						section.Remove(image);
-					}
-					else
-						ruleExec = section.Get("Executables");
-
-					if (ruleExec is null && rulePath is null)
-					{
-						// TODO: Deal with incorrect configuration lacking image
-						Log.Warning($"<Watchlist:{section.Line}> [" + section.Name + "] No image nor path; Skipping.");
-						continue;
-					}
-
-					ProcessPriorityClass? prioR = null;
-
-					int prio;
-					int aff;
-					Power.Mode pmode = Power.Mode.Undefined;
-
-					var rulePrio = section.Get(HumanReadable.System.Process.Priority);
-					var ruleAff = section.Get(HumanReadable.System.Process.Affinity);
-					var rulePow = section.Get(HumanReadable.Hardware.Power.Mode);
-
-					if (rulePrio is null && ruleAff is null && rulePow is null)
-					{
-						Log.Warning($"<Watchlist:{section.Line}> [{section.Name}] No priority, affinity, nor power plan.");
-						// This kind of rule is essentially more detailed ignore rule.
-					}
-
-					prio = rulePrio?.Int ?? -1;
-					aff = (ruleAff?.Int ?? -1);
-					var pmode_t = rulePow?.String;
-
-					if (aff > Utility.FullCPUMask || aff < -1)
-					{
-						Log.Warning($"<Watchlist:{ruleAff.Line}> [{section.Name}] Affinity({aff}) is malconfigured. Skipping.");
-						//aff = Bit.And(aff, allCPUsMask); // at worst case results in 1 core used
-						// TODO: Count bits, make 2^# assumption about intended cores but scale it to current core count.
-						//		Shift bits to allowed range. Assume at least one core must be assigned, and in case of holes at least one core must be unassigned.
-						aff = -1; // ignore
-					}
-
-					pmode = Power.Utility.GetModeByName(pmode_t);
-					if (pmode == Power.Mode.Custom)
-					{
-						Log.Warning($"<Watchlist:{rulePow.Line}> [{section.Name}] Unrecognized power plan: {pmode_t}");
-						pmode = Power.Mode.Undefined;
-					}
-
-					prioR = ProcessHelpers.IntToNullablePriority(prio);
-					ProcessPriorityStrategy priostrat = ProcessPriorityStrategy.None;
-					if (prioR.HasValue)
-					{
-						priostrat = (ProcessPriorityStrategy)(section.Get(HumanReadable.System.Process.PriorityStrategy)?.Int.Constrain(0, 3) ?? 0);
-						if (priostrat == ProcessPriorityStrategy.None) prioR = null; // invalid data
-					}
-
-					ProcessAffinityStrategy affStrat = (aff >= 0)
-						? (ProcessAffinityStrategy)(section.Get(HumanReadable.System.Process.AffinityStrategy)?.Int.Constrain(0, 3) ?? 2)
-						: ProcessAffinityStrategy.None;
-
-					int baff = section.Get("Background affinity")?.Int ?? -1;
-					int bpriot = section.Get("Background priority")?.Int ?? -1;
-					ProcessPriorityClass? bprio = (bpriot >= 0) ? (ProcessPriorityClass?)ProcessHelpers.IntToPriority(bpriot) : null;
-
-					var pvis = (PathVisibilityOptions)(section.Get("Path visibility")?.Int.Constrain(-1, 3) ?? -1);
-
-					string[] tignorelist = (section.Get(HumanReadable.Generic.Ignore)?.Array ?? null);
-					if (tignorelist != null && tignorelist.Length > 0)
-					{
-						for (int i = 0; i < tignorelist.Length; i++)
-							tignorelist[i] = tignorelist[i].ToLowerInvariant();
-					}
-					else
-						tignorelist = null;
-
-					var prc = new Controller(section.Name, prioR, aff)
-					{
-						Enabled = (section.Get(HumanReadable.Generic.Enabled)?.Bool ?? true),
-						Executables = (ruleExec?.StringArray ?? null),
-						Description = (section.Get(HumanReadable.Generic.Description)?.Value ?? null),
-						// friendly name is filled automatically
-						PriorityStrategy = priostrat,
-						AffinityStrategy = affStrat,
-						Path = (rulePath?.Value ?? null),
-						ModifyDelay = (section.Get("Modify delay")?.Int ?? 0),
-						//BackgroundIO = (section.TryGet("Background I/O")?.Bool ?? false), // Doesn't work
-						Recheck = (section.Get("Recheck")?.Int ?? 0).Constrain(0, 300),
-						PowerPlan = pmode,
-						PathVisibility = pvis,
-						BackgroundPriority = bprio,
-						BackgroundAffinity = baff,
-						IgnoreList = tignorelist,
-						AllowPaging = (section.Get("Allow paging")?.Bool ?? false),
-						Analyze = (section.Get("Analyze")?.Bool ?? false),
-						ExclusiveMode = (section.Get("Exclusive")?.Bool ?? false),
-						DeclareParent = (section.Get("Declare parent")?.Bool ?? false),
-						OrderPreference = (section.Get("Preference")?.Int.Constrain(0, 100) ?? 10),
-						IOPriority = (IOPriority)(section.Get("IO priority")?.Int.Constrain(-1, 2) ?? -1), // 0-1 background, 2 = normal, anything else seems to have no effect
-						LogAdjusts = (section.Get("Logging")?.Bool ?? true),
-						LogStartAndExit = (section.Get("Log start and exit")?.Bool ?? false),
-						Volume = (section.Get(HumanReadable.Hardware.Audio.Volume)?.Float ?? 0.5f),
-						VolumeStrategy = (Audio.VolumeStrategy)(section.Get("Volume strategy")?.Int.Constrain(0, 5) ?? 0),
-					};
-
-					//prc.MMPriority = section.TryGet("MEM priority")?.Int ?? int.MinValue; // unused
-
-					int? foregroundMode = section.Get("Foreground mode")?.Int;
-					if (foregroundMode.HasValue)
-						prc.SetForegroundMode((ForegroundMode)foregroundMode.Value.Constrain(-1, 2));
-
-					//prc.SetForegroundMode((ForegroundMode)(section.TryGet("Foreground mode")?.Int.Constrain(-1, 2) ?? -1)); // NEW
-
-					var ruleIdeal = section.Get("Affinity ideal");
-					prc.AffinityIdeal = ruleIdeal?.Int ?? -1;
-					if (prc.AffinityIdeal >= 0 && !Bit.IsSet(prc.AffinityMask, prc.AffinityIdeal))
-					{
-						Log.Debug($"<Watchlist:{ruleIdeal.Line}> [{prc.FriendlyName}] Affinity ideal to mask mismatch: {HumanInterface.BitMask(prc.AffinityMask, Utility.CPUCount)}, ideal core: {prc.AffinityIdeal}");
-						prc.AffinityIdeal = -1;
-					}
-
-					// TODO: Blurp about following configuration errors
-					if (prc.AffinityMask < 0) prc.AffinityStrategy = ProcessAffinityStrategy.None;
-					else if (prc.AffinityStrategy == ProcessAffinityStrategy.None) prc.AffinityMask = -1;
-
-					if (!prc.Priority.HasValue) prc.PriorityStrategy = ProcessPriorityStrategy.None;
-					else if (prc.PriorityStrategy == ProcessPriorityStrategy.None) prc.Priority = null;
-
-					int[] resize = section.Get("Resize")?.IntArray ?? null; // width,height
-					if (resize?.Length == 4)
-					{
-						int resstrat = section.Get("Resize strategy")?.Int.Constrain(0, 3) ?? -1;
-						if (resstrat < 0) resstrat = 0;
-
-						prc.ResizeStrategy = (WindowResizeStrategy)resstrat;
-
-						prc.Resize = new System.Drawing.Rectangle(resize[0], resize[1], resize[2], resize[3]);
-					}
-
-					prc.Repair();
-
-					if (AddController(prc))
-					{
-						if (!string.IsNullOrEmpty(prc.Path))
-						{
-							withPath++;
-
-							if (prc.Executables?.Length > 0)
-								hybrids++;
-						}
-					}
-					else
-						prc.Dispose();
-
-					// cnt.Children &= ControlChildren;
-
-					// cnt.delay = section.Contains("delay") ? section["delay"].Int : 30; // TODO: Add centralized default delay
-					// cnt.delayIncrement = section.Contains("delay increment") ? section["delay increment"].Int : 15; // TODO: Add centralized default increment
+					Log.Warning($"<Watchlist:{section.Line}> Nameless section; Skipping.");
+					continue;
 				}
+
+				var rulePath = section.Get(HumanReadable.System.Process.Path);
+
+				Ini.Setting ruleExec = null;
+				if (section.TryGet("Image", out var image)) // DEPRECATED; UPGRADE TO MULTIEXE
+				{
+					ruleExec = section["Executables"];
+					ruleExec.StringArray = new string[] { image.String };
+					section.Remove(image);
+				}
+				else
+					ruleExec = section.Get("Executables");
+
+				if (ruleExec is null && rulePath is null)
+				{
+					// TODO: Deal with incorrect configuration lacking image
+					Log.Warning($"<Watchlist:{section.Line}> [" + section.Name + "] No image nor path; Skipping.");
+					continue;
+				}
+
+				ProcessPriorityClass? prioR = null;
+
+				int prio;
+				int aff;
+				Power.Mode pmode = Power.Mode.Undefined;
+
+				var rulePrio = section.Get(HumanReadable.System.Process.Priority);
+				var ruleAff = section.Get(HumanReadable.System.Process.Affinity);
+				var rulePow = section.Get(HumanReadable.Hardware.Power.Mode);
+
+				if (rulePrio is null && ruleAff is null && rulePow is null)
+				{
+					Log.Warning($"<Watchlist:{section.Line}> [{section.Name}] No priority, affinity, nor power plan.");
+					// This kind of rule is essentially more detailed ignore rule.
+				}
+
+				prio = rulePrio?.Int ?? -1;
+				aff = (ruleAff?.Int ?? -1);
+				var pmode_t = rulePow?.String;
+
+				if (aff > Utility.FullCPUMask || aff < -1)
+				{
+					Log.Warning($"<Watchlist:{ruleAff.Line}> [{section.Name}] Affinity({aff}) is malconfigured. Skipping.");
+					//aff = Bit.And(aff, allCPUsMask); // at worst case results in 1 core used
+					// TODO: Count bits, make 2^# assumption about intended cores but scale it to current core count.
+					//		Shift bits to allowed range. Assume at least one core must be assigned, and in case of holes at least one core must be unassigned.
+					aff = -1; // ignore
+				}
+
+				pmode = Power.Utility.GetModeByName(pmode_t);
+				if (pmode == Power.Mode.Custom)
+				{
+					Log.Warning($"<Watchlist:{rulePow.Line}> [{section.Name}] Unrecognized power plan: {pmode_t}");
+					pmode = Power.Mode.Undefined;
+				}
+
+				prioR = ProcessHelpers.IntToNullablePriority(prio);
+				ProcessPriorityStrategy priostrat = ProcessPriorityStrategy.None;
+				if (prioR.HasValue)
+				{
+					priostrat = (ProcessPriorityStrategy)(section.Get(HumanReadable.System.Process.PriorityStrategy)?.Int.Constrain(0, 3) ?? 0);
+					if (priostrat == ProcessPriorityStrategy.None) prioR = null; // invalid data
+				}
+
+				ProcessAffinityStrategy affStrat = (aff >= 0)
+					? (ProcessAffinityStrategy)(section.Get(HumanReadable.System.Process.AffinityStrategy)?.Int.Constrain(0, 3) ?? 2)
+					: ProcessAffinityStrategy.None;
+
+				int baff = section.Get("Background affinity")?.Int ?? -1;
+				int bpriot = section.Get("Background priority")?.Int ?? -1;
+				ProcessPriorityClass? bprio = (bpriot >= 0) ? (ProcessPriorityClass?)ProcessHelpers.IntToPriority(bpriot) : null;
+
+				var pvis = (PathVisibilityOptions)(section.Get("Path visibility")?.Int.Constrain(-1, 3) ?? -1);
+
+				string[] tignorelist = (section.Get(HumanReadable.Generic.Ignore)?.Array ?? null);
+				if (tignorelist != null && tignorelist.Length > 0)
+				{
+					for (int i = 0; i < tignorelist.Length; i++)
+						tignorelist[i] = tignorelist[i].ToLowerInvariant();
+				}
+				else
+					tignorelist = null;
+
+				var prc = new Controller(section.Name, prioR, aff)
+				{
+					Enabled = (section.Get(HumanReadable.Generic.Enabled)?.Bool ?? true),
+					Executables = (ruleExec?.StringArray ?? null),
+					Description = (section.Get(HumanReadable.Generic.Description)?.Value ?? null),
+					// friendly name is filled automatically
+					PriorityStrategy = priostrat,
+					AffinityStrategy = affStrat,
+					Path = (rulePath?.Value ?? null),
+					ModifyDelay = (section.Get("Modify delay")?.Int ?? 0),
+					//BackgroundIO = (section.TryGet("Background I/O")?.Bool ?? false), // Doesn't work
+					Recheck = (section.Get("Recheck")?.Int ?? 0).Constrain(0, 300),
+					PowerPlan = pmode,
+					PathVisibility = pvis,
+					BackgroundPriority = bprio,
+					BackgroundAffinity = baff,
+					IgnoreList = tignorelist,
+					AllowPaging = (section.Get("Allow paging")?.Bool ?? false),
+					Analyze = (section.Get("Analyze")?.Bool ?? false),
+					ExclusiveMode = (section.Get("Exclusive")?.Bool ?? false),
+					DeclareParent = (section.Get("Declare parent")?.Bool ?? false),
+					OrderPreference = (section.Get("Preference")?.Int.Constrain(0, 100) ?? 10),
+					IOPriority = (IOPriority)(section.Get("IO priority")?.Int.Constrain(-1, 2) ?? -1), // 0-1 background, 2 = normal, anything else seems to have no effect
+					LogAdjusts = (section.Get("Logging")?.Bool ?? true),
+					LogStartAndExit = (section.Get("Log start and exit")?.Bool ?? false),
+					Volume = (section.Get(HumanReadable.Hardware.Audio.Volume)?.Float ?? 0.5f),
+					VolumeStrategy = (Audio.VolumeStrategy)(section.Get("Volume strategy")?.Int.Constrain(0, 5) ?? 0),
+				};
+
+				//prc.MMPriority = section.TryGet("MEM priority")?.Int ?? int.MinValue; // unused
+
+				int? foregroundMode = section.Get("Foreground mode")?.Int;
+				if (foregroundMode.HasValue)
+					prc.SetForegroundMode((ForegroundMode)foregroundMode.Value.Constrain(-1, 2));
+
+				//prc.SetForegroundMode((ForegroundMode)(section.TryGet("Foreground mode")?.Int.Constrain(-1, 2) ?? -1)); // NEW
+
+				var ruleIdeal = section.Get("Affinity ideal");
+				prc.AffinityIdeal = ruleIdeal?.Int ?? -1;
+				if (prc.AffinityIdeal >= 0 && !Bit.IsSet(prc.AffinityMask, prc.AffinityIdeal))
+				{
+					Log.Debug($"<Watchlist:{ruleIdeal.Line}> [{prc.FriendlyName}] Affinity ideal to mask mismatch: {HumanInterface.BitMask(prc.AffinityMask, Utility.CPUCount)}, ideal core: {prc.AffinityIdeal}");
+					prc.AffinityIdeal = -1;
+				}
+
+				// TODO: Blurp about following configuration errors
+				if (prc.AffinityMask < 0) prc.AffinityStrategy = ProcessAffinityStrategy.None;
+				else if (prc.AffinityStrategy == ProcessAffinityStrategy.None) prc.AffinityMask = -1;
+
+				if (!prc.Priority.HasValue) prc.PriorityStrategy = ProcessPriorityStrategy.None;
+				else if (prc.PriorityStrategy == ProcessPriorityStrategy.None) prc.Priority = null;
+
+				int[] resize = section.Get("Resize")?.IntArray ?? null; // width,height
+				if (resize?.Length == 4)
+				{
+					int resstrat = section.Get("Resize strategy")?.Int.Constrain(0, 3) ?? -1;
+					if (resstrat < 0) resstrat = 0;
+
+					prc.ResizeStrategy = (WindowResizeStrategy)resstrat;
+
+					prc.Resize = new System.Drawing.Rectangle(resize[0], resize[1], resize[2], resize[3]);
+				}
+
+				prc.Repair();
+
+				if (AddController(prc))
+				{
+					if (!string.IsNullOrEmpty(prc.Path))
+					{
+						withPath++;
+
+						if (prc.Executables?.Length > 0)
+							hybrids++;
+					}
+				}
+				else
+					prc.Dispose();
+
+				// cnt.Children &= ControlChildren;
+
+				// cnt.delay = section.Contains("delay") ? section["delay"].Int : 30; // TODO: Add centralized default delay
+				// cnt.delayIncrement = section.Contains("delay increment") ? section["delay increment"].Int : 15; // TODO: Add centralized default increment
 			}
 
 			lock (watchlist_lock)
@@ -1979,17 +1975,15 @@ namespace Taskmaster.Process
 				try
 				{
 					string iname = string.Empty, cmdl = string.Empty;
-					using (var targetInstance = ea.NewEvent.Properties["TargetInstance"].Value as ManagementBaseObject)
-					{
-						//var tpid = targetInstance.Properties["Handle"].Value as int?; // doesn't work for some reason
-						pid = Convert.ToInt32(targetInstance.Properties["Handle"].Value as string);
+					using var targetInstance = ea.NewEvent.Properties["TargetInstance"].Value as ManagementBaseObject;
+					//var tpid = targetInstance.Properties["Handle"].Value as int?; // doesn't work for some reason
+					pid = Convert.ToInt32(targetInstance.Properties["Handle"].Value as string);
 
-						iname = targetInstance.Properties["Name"].Value as string;
-						path = targetInstance.Properties["ExecutablePath"].Value as string;
-						if (DebugAdjustDelay) creation = ManagementDateTimeConverter.ToDateTime(targetInstance.Properties["CreationDate"].Value as string);
-						if (string.IsNullOrEmpty(path))
-							cmdl = targetInstance.Properties["CommandLine"].Value as string; // CommandLine sometimes has the path when executablepath does not
-					}
+					iname = targetInstance.Properties["Name"].Value as string;
+					path = targetInstance.Properties["ExecutablePath"].Value as string;
+					if (DebugAdjustDelay) creation = ManagementDateTimeConverter.ToDateTime(targetInstance.Properties["CreationDate"].Value as string);
+					if (string.IsNullOrEmpty(path))
+						cmdl = targetInstance.Properties["CommandLine"].Value as string; // CommandLine sometimes has the path when executablepath does not
 
 					ScanBlockList.TryAdd(pid, DateTimeOffset.UtcNow);
 
@@ -2386,13 +2380,11 @@ namespace Taskmaster.Process
 					ExeToController?.Clear();
 					ExeToController = null;
 
-					using (var wcfg = Config.Load(WatchlistFile).BlockUnload())
+					using var wcfg = Config.Load(WatchlistFile).BlockUnload();
+					foreach (var prc in Watchlist.Keys)
 					{
-						foreach (var prc in Watchlist.Keys)
-						{
-							if (prc.NeedsSaving) prc.SaveConfig(wcfg.File);
-							prc.Dispose();
-						}
+						if (prc.NeedsSaving) prc.SaveConfig(wcfg.File);
+						prc.Dispose();
 					}
 
 					lock (watchlist_lock)

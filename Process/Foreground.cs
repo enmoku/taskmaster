@@ -62,27 +62,25 @@ namespace Taskmaster.Process
 				ForegroundId = pid;
 			}
 
-			using (var corecfg = Taskmaster.Config.Load(CoreConfigFilename).BlockUnload())
-			{
-				var perfsec = corecfg.Config["Performance"];
-				var hysterisisSetting = perfsec.GetOrSet("Foreground hysterisis", 1500)
-					.InitComment("In milliseconds, from 500 to 30000. Delay before we inspect foreground app, in case user rapidly swaps apps.")
-					.Int.Constrain(200, 30000);
-				Hysterisis = TimeSpan.FromMilliseconds(hysterisisSetting);
+			using var corecfg = Taskmaster.Config.Load(CoreConfigFilename).BlockUnload();
+			var perfsec = corecfg.Config["Performance"];
+			var hysterisisSetting = perfsec.GetOrSet("Foreground hysterisis", 1500)
+				.InitComment("In milliseconds, from 500 to 30000. Delay before we inspect foreground app, in case user rapidly swaps apps.")
+				.Int.Constrain(200, 30000);
+			Hysterisis = TimeSpan.FromMilliseconds(hysterisisSetting);
 
-				var emsec = corecfg.Config["Emergency"];
-				HangKillTick = emsec.GetOrSet("Kill hung", 180 * 5)
-					.InitComment("Kill the application after this many seconds. 0 disables. Minimum actual kill time is minimize/reduce time + 60.")
-					.Int.Constrain(0, 60 * 60 * 4);
+			var emsec = corecfg.Config["Emergency"];
+			HangKillTick = emsec.GetOrSet("Kill hung", 180 * 5)
+				.InitComment("Kill the application after this many seconds. 0 disables. Minimum actual kill time is minimize/reduce time + 60.")
+				.Int.Constrain(0, 60 * 60 * 4);
 
-				HangMinimizeTick = emsec.GetOrSet("Hung minimize time", 180)
-					.InitComment("Try to minimize hung app after this many seconds.")
-					.Int.Constrain(0, 60 * 60 * 2);
+			HangMinimizeTick = emsec.GetOrSet("Hung minimize time", 180)
+				.InitComment("Try to minimize hung app after this many seconds.")
+				.Int.Constrain(0, 60 * 60 * 2);
 
-				HangReduceTick = emsec.GetOrSet("Hung reduce time", 300)
-					.InitComment("Reduce affinity and priority of hung app after this many seconds.")
-					.Int.Constrain(0, 60 * 60 * 2);
-			}
+			HangReduceTick = emsec.GetOrSet("Hung reduce time", 300)
+				.InitComment("Reduce affinity and priority of hung app after this many seconds.")
+				.Int.Constrain(0, 60 * 60 * 2);
 
 			int killtickmin = (Math.Max(HangReduceTick, HangMinimizeTick)) + 60;
 			if (HangKillTick > 0 && HangKillTick < killtickmin)
@@ -414,79 +412,77 @@ namespace Taskmaster.Process
 			await System.Threading.Tasks.Task.Delay(Hysterisis); // asyncify
 			if (DisposedOrDisposing) return;
 
-			using (var sl = ScopedLock.ScopedLock())
+			using var sl = ScopedLock.ScopedLock();
+			if (sl.Waiting) return;
+
+			// IntPtr handle = IntPtr.Zero; // hwnd arg already has this
+			// handle = GetForegroundWindow();
+
+			try
 			{
-				if (sl.Waiting) return;
+				LastSwap = DateTimeOffset.UtcNow;
 
-				// IntPtr handle = IntPtr.Zero; // hwnd arg already has this
-				// handle = GetForegroundWindow();
 
-				try
+				NativeMethods.GetWindowThreadProcessId(hwnd, out int pid);
+
+				bool fs = Fullscreen(hwnd);
+
+				var activewindowev = new WindowChangedArgs()
 				{
-					LastSwap = DateTimeOffset.UtcNow;
+					hWnd = hwnd,
+					Title = string.Empty,
+					Fullscreen = fs,
+				};
 
+				PreviousFG = ForegroundId;
+				ForegroundId = activewindowev.Id = pid;
+				HangTick = 0;
 
-					NativeMethods.GetWindowThreadProcessId(hwnd, out int pid);
+				if (!Utility.SystemProcessId(pid))
+				{
 
-					bool fs = Fullscreen(hwnd);
-
-					var activewindowev = new WindowChangedArgs()
-					{
-						hWnd = hwnd,
-						Title = string.Empty,
-						Fullscreen = fs,
-					};
-
-					PreviousFG = ForegroundId;
-					ForegroundId = activewindowev.Id = pid;
-					HangTick = 0;
-
-					if (!Utility.SystemProcessId(pid))
-					{
-
-						try
-						{
-							lock (FGLock)
-							{
-								Foreground?.Dispose(); // pointless?
-								Foreground = System.Diagnostics.Process.GetProcessById(pid);
-								ForegroundId = pid;
-								activewindowev.Process = Foreground;
-								activewindowev.Executable = Foreground.ProcessName;
-							}
-						}
-						catch (ArgumentException)
-						{
-							// Process already gone
-							return;
-						}
-
-						if (DebugForeground && ShowInaction)
-							Log.Debug("<Foreground> Active #" + activewindowev.Id + ": " + activewindowev.Title);
-					}
-					else
+					try
 					{
 						lock (FGLock)
 						{
-							Foreground = null;
-							ForegroundId = -1;
+							Foreground?.Dispose(); // pointless?
+							Foreground = System.Diagnostics.Process.GetProcessById(pid);
+							ForegroundId = pid;
+							activewindowev.Process = Foreground;
+							activewindowev.Executable = Foreground.ProcessName;
 						}
-
-						// shouldn't happen, but who knows?
-						activewindowev.Process = null;
-						activewindowev.Executable = string.Empty;
+					}
+					catch (ArgumentException)
+					{
+						// Process already gone
+						return;
 					}
 
-					if (sl.Waiting) return;
-
-					ActiveChanged?.Invoke(this, activewindowev);
+					if (DebugForeground && ShowInaction)
+						Log.Debug("<Foreground> Active #" + activewindowev.Id + ": " + activewindowev.Title);
 				}
-				catch (ObjectDisposedException) { Statistics.DisposedAccesses++; } // NOP
-				catch (Exception ex)
+				else
 				{
-					Logging.Stacktrace(ex);
-					return; // HACK, WndProc probably shouldn't throw
+					lock (FGLock)
+					{
+						Foreground = null;
+						ForegroundId = -1;
+					}
+
+					// shouldn't happen, but who knows?
+					activewindowev.Process = null;
+					activewindowev.Executable = string.Empty;
 				}
+
+				if (sl.Waiting) return;
+
+				ActiveChanged?.Invoke(this, activewindowev);
+			}
+			catch (ObjectDisposedException) { Statistics.DisposedAccesses++; } // NOP
+			catch (Exception ex)
+			{
+				Logging.Stacktrace(ex);
+				return; // HACK, WndProc probably shouldn't throw
 			}
 		}
 

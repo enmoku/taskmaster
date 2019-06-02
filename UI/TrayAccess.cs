@@ -152,11 +152,9 @@ namespace Taskmaster.UI
 			EnsureVisible();
 			#endregion // Build UI
 
-			using (var cfg = Taskmaster.Config.Load(CoreConfigFilename).BlockUnload())
-			{
-				int exdelay = cfg.Config[Constants.Experimental].Get("Explorer Restart")?.Int ?? 0;
-				ExplorerRestartHelpDelay = exdelay > 0 ? (TimeSpan?)TimeSpan.FromSeconds(exdelay.Min(5)) : null;
-			}
+			using var cfg = Taskmaster.Config.Load(CoreConfigFilename).BlockUnload();
+			int exdelay = cfg.Config[Constants.Experimental].Get("Explorer Restart")?.Int ?? 0;
+			ExplorerRestartHelpDelay = exdelay > 0 ? (TimeSpan?)TimeSpan.FromSeconds(exdelay.Min(5)) : null;
 
 			RegisterExplorerExit();
 
@@ -187,18 +185,16 @@ namespace Taskmaster.UI
 			System.Drawing.Icon nicon = IconCacheMap[count] as System.Drawing.Icon;
 			if (nicon is null)
 			{
-				using (var bmp = new System.Drawing.Bitmap(32, 32))
-				using (var graphics = System.Drawing.Graphics.FromImage(bmp))
-				{
-					graphics.DrawIcon(IconCache, 0, 0);
-					graphics.DrawString(count.ToString(), IconFont, IconBursh, 1, 2);
+				using var bmp = new System.Drawing.Bitmap(32, 32);
+				using var graphics = System.Drawing.Graphics.FromImage(bmp);
+				graphics.DrawIcon(IconCache, 0, 0);
+				graphics.DrawString(count.ToString(), IconFont, IconBursh, 1, 2);
 
-					nicon = System.Drawing.Icon.FromHandle(bmp.GetHicon());
+				nicon = System.Drawing.Icon.FromHandle(bmp.GetHicon());
 
-					IconCacheMap.Add(count, nicon);
+				IconCacheMap.Add(count, nicon);
 
-					// TODO: Remove items based on least recently used with use count weight
-				}
+				// TODO: Remove items based on least recently used with use count weight
 			}
 
 			Tray.Icon = nicon;

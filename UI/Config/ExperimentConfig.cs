@@ -111,23 +111,21 @@ namespace Taskmaster.UI.Config
 
 				// Record for restarts
 
-				using (var corecfg = Taskmaster.Config.Load(Taskmaster.CoreConfigFilename).BlockUnload())
-				{
-					var cfg = corecfg.Config;
+				using var corecfg = Taskmaster.Config.Load(Taskmaster.CoreConfigFilename).BlockUnload();
+				var cfg = corecfg.Config;
 
-					var exsec = cfg[Constants.Experimental];
-					if (RecordAnalysisDelay.Value != decimal.Zero)
-						exsec["Record analysis"].Int = Convert.ToInt32(RecordAnalysisDelay.Value);
-					else
-						exsec.TryRemove("Record analysis");
+				var exsec = cfg[Constants.Experimental];
+				if (RecordAnalysisDelay.Value != decimal.Zero)
+					exsec["Record analysis"].Int = Convert.ToInt32(RecordAnalysisDelay.Value);
+				else
+					exsec.TryRemove("Record analysis");
 
-					if (iopriority.Checked && MKAh.Execution.IsWin7)
-						exsec["IO Priority"].Bool = true;
-					else
-						exsec.TryRemove("IO Priority");
+				if (iopriority.Checked && MKAh.Execution.IsWin7)
+					exsec["IO Priority"].Bool = true;
+				else
+					exsec.TryRemove("IO Priority");
 
-					cfg[Constants.Components][HumanReadable.Hardware.Section].Bool = hwmon.Checked;
-				}
+				cfg[Constants.Components][HumanReadable.Hardware.Section].Bool = hwmon.Checked;
 
 				DialogResult = DialogResult.OK;
 				Close();
@@ -152,15 +150,13 @@ namespace Taskmaster.UI.Config
 		{
 			try
 			{
-				using (var n = new Config.ExperimentConfig(centerOnScreen))
+				using var n = new Config.ExperimentConfig(centerOnScreen);
+				n.ShowDialog();
+				if (n.DialogOK)
 				{
-					n.ShowDialog();
-					if (n.DialogOK)
-					{
-						Log.Information("<Experiments> Settings changed");
+					Log.Information("<Experiments> Settings changed");
 
-						Taskmaster.ConfirmExit(restart: true, message: "Restart required for experimental settings to take effect.", alwaysconfirm: true);
-					}
+					Taskmaster.ConfirmExit(restart: true, message: "Restart required for experimental settings to take effect.", alwaysconfirm: true);
 				}
 			}
 			catch (OutOfMemoryException) { throw; }

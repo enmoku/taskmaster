@@ -543,17 +543,15 @@ namespace Taskmaster.UI.Config
 		{
 			try
 			{
-				using (var pcw = new PowerConfigWindow(powerManager, centerOnScreen))
+				using var pcw = new PowerConfigWindow(powerManager, centerOnScreen);
+				var res = pcw.ShowDialog();
+				if (pcw.DialogOK)
 				{
-					var res = pcw.ShowDialog();
-					if (pcw.DialogOK)
-					{
-						// NOP
-					}
-					else
-					{
-						if (Taskmaster.Trace) Log.Verbose("<<UI>> Power config cancelled.");
-					}
+					// NOP
+				}
+				else
+				{
+					if (Taskmaster.Trace) Log.Verbose("<<UI>> Power config cancelled.");
 				}
 			}
 			catch (OutOfMemoryException) { throw; }

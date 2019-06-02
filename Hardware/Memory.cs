@@ -81,15 +81,13 @@ namespace Taskmaster
 
 			/*
 			// Win32_ComputerSystem -> TotalPhysicalMemory maps to MEMORYSTATUSEX.ullTotalPhys
-			using (ManagementClass mc = new ManagementClass("Win32_ComputerSystem"))
-			using (var res = mc.GetInstances())
-			{
+			using ManagementClass mc = new ManagementClass("Win32_ComputerSystem");
+			using var res = mc.GetInstances();
 				foreach (var item in res)
 				{
 					Total = Convert.ToUInt64(item.Properties["TotalPhysicalMemory"].Value);
 					break;
 				}
-			}
 			*/
 		}
 

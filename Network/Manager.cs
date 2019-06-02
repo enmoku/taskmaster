@@ -87,35 +87,31 @@ namespace Taskmaster.Network
 
 		void LoadConfig()
 		{
-			using (var netcfg = Config.Load(NetConfigFilename).BlockUnload())
-			{
-				var monsec = netcfg.Config["Monitor"];
-				dnstestaddress = monsec.GetOrSet("DNS test", "www.google.com").Value;
+			using var netcfg = Config.Load(NetConfigFilename).BlockUnload();
+			var monsec = netcfg.Config["Monitor"];
+			dnstestaddress = monsec.GetOrSet("DNS test", "www.google.com").Value;
 
-				var devsec = netcfg.Config["Devices"];
-				DeviceTimerInterval = devsec.GetOrSet("Check frequency", 15)
-					.InitComment("Minutes")
-					.Int.Constrain(1, 30) * 60;
+			var devsec = netcfg.Config["Devices"];
+			DeviceTimerInterval = devsec.GetOrSet("Check frequency", 15)
+				.InitComment("Minutes")
+				.Int.Constrain(1, 30) * 60;
 
-				var pktsec = netcfg.Config["Traffic"];
-				PacketStatTimerInterval = pktsec.GetOrSet("Sample rate", 15)
-					.InitComment("Seconds")
-					.Int.Constrain(1, 60);
-				PacketWarning.Peak = PacketStatTimerInterval;
+			var pktsec = netcfg.Config["Traffic"];
+			PacketStatTimerInterval = pktsec.GetOrSet("Sample rate", 15)
+				.InitComment("Seconds")
+				.Int.Constrain(1, 60);
+			PacketWarning.Peak = PacketStatTimerInterval;
 
-				ErrorReports.Peak = ErrorReportLimit = pktsec.GetOrSet("Error report limit", 5).Int.Constrain(1, 60);
-			}
+			ErrorReports.Peak = ErrorReportLimit = pktsec.GetOrSet("Error report limit", 5).Int.Constrain(1, 60);
 
-			using (var corecfg = Config.Load(CoreConfigFilename).BlockUnload())
-			{
-				var logsec = corecfg.Config[HumanReadable.Generic.Logging];
-				ShowNetworkErrors = logsec.GetOrSet("Show network errors", true)
-					.InitComment("Show network errors on each sampling.")
-					.Bool;
+			using var corecfg = Config.Load(CoreConfigFilename).BlockUnload();
+			var logsec = corecfg.Config[HumanReadable.Generic.Logging];
+			ShowNetworkErrors = logsec.GetOrSet("Show network errors", true)
+				.InitComment("Show network errors on each sampling.")
+				.Bool;
 
-				var dbgsec = corecfg.Config[HumanReadable.Generic.Debug];
-				DebugNet = dbgsec.Get("Network")?.Bool ?? false;
-			}
+			var dbgsec = corecfg.Config[HumanReadable.Generic.Debug];
+			DebugNet = dbgsec.Get("Network")?.Bool ?? false;
 
 			if (Trace) Log.Debug("<Network> Traffic sample frequency: " + PacketStatTimerInterval + "s");
 		}
@@ -143,15 +139,13 @@ namespace Taskmaster.Network
 			/*
 			// Reset time could be used for initial internet start time as it is the only even remotely relevant one
 			// ... but it's not honestly truly indicative of it.
-			using (ManagementObjectSearcher searcher = new ManagementObjectSearcher("SELECT DeviceID,TimeOfLastReset FROM Win32_NetworkAdapter"))
-			{
+			using ManagementObjectSearcher searcher = new ManagementObjectSearcher("SELECT DeviceID,TimeOfLastReset FROM Win32_NetworkAdapter");
 				foreach (ManagementObject mo in searcher.Get())
 				{
 					string netreset = mo["TimeOfLastReset"] as string;
 					var reset = ManagementDateTimeConverter.ToDateTime(netreset);
 					Console.WriteLine("NET RESET: " + reset);
 				}
-			}
 			*/
 
 			// TODO: SUPPORT MULTIPLE NICS

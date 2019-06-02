@@ -40,18 +40,16 @@ namespace Taskmaster
 			// Locate Steam install folders
 			// There can be multiple.
 
-			HashSet<string> paths = new HashSet<string>();
-			using (var key = Registry.CurrentUser.OpenSubKey(MuiCachePath, writable: true))
+			var paths = new HashSet<string>();
+			using var key = Registry.CurrentUser.OpenSubKey(MuiCachePath, writable: true);
+			var values = key.GetValueNames();
+			foreach (var path in values)
 			{
-				var values = key.GetValueNames();
-				foreach (var path in values)
+				if (path.Contains("/steamapps/common/") || path.Contains(SteamIdentifier.Replace("/", @"\")))
 				{
-					if (path.Contains("/steamapps/common/") || path.Contains(SteamIdentifier.Replace("/", @"\")))
-					{
-						Logging.DebugMsg("Steam games install path found");
-						var off = path.IndexOf("steamapps") + SteamIdentifier.Length;
-						paths.Add(path.Substring(0, off));
-					}
+					Logging.DebugMsg("Steam games install path found");
+					var off = path.IndexOf("steamapps") + SteamIdentifier.Length;
+					paths.Add(path.Substring(0, off));
 				}
 			}
 

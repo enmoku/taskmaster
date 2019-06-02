@@ -286,19 +286,15 @@ namespace Taskmaster
 
 		static void LicenseBoiler()
 		{
-			using (var cfg = Config.Load(CoreConfigFilename).BlockUnload())
-			{
-				if (cfg.Config.Get(Constants.Core)?.Get(Constants.License)?.Value.Equals(Constants.Accepted) ?? false) return;
-			}
+			using var cfg = Config.Load(CoreConfigFilename).BlockUnload();
+			if (cfg.Config.Get(Constants.Core)?.Get(Constants.License)?.Value.Equals(Constants.Accepted) ?? false) return;
 
-			using (var license = new LicenseDialog())
+			using var license = new LicenseDialog();
+			license.ShowDialog();
+			if (!license.DialogOK)
 			{
-				license.ShowDialog();
-				if (!license.DialogOK)
-				{
-					UnifiedExit();
-					throw new RunstateException("License not accepted.", Runstate.QuickExit);
-				}
+				UnifiedExit();
+				throw new RunstateException("License not accepted.", Runstate.QuickExit);
 			}
 		}
 
@@ -366,16 +362,10 @@ namespace Taskmaster
 					singleton = new System.Threading.Mutex(true, SingletonID, out bool mutexgained);
 					if (!mutexgained)
 					{
-						MessageBox.ResultType rv = MessageBox.ResultType.Cancel;
-
 						// already running, signal original process
-						using (var msg = new MessageBox(Name + "!",
+						MessageBox.ResultType rv = MessageBox.ShowModal(Name + "!",
 							"Already operational.\n\nRetry to try to recover [restart] running instance.\nEnd to kill running instance and exit this.\nCancel to simply request refresh.",
-							MessageBox.Buttons.RetryEndCancel))
-						{
-							msg.ShowDialog();
-							rv = msg.Result;
-						}
+							MessageBox.Buttons.RetryEndCancel);
 
 						switch (rv)
 						{

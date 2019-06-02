@@ -60,37 +60,35 @@ namespace Taskmaster.UI
 
 			Text = "Volume Meter – Taskmaster!";
 
-			using (var cfg = Taskmaster.Config.Load(CoreConfigFilename).BlockUnload())
+			using var cfg = Taskmaster.Config.Load(CoreConfigFilename).BlockUnload();
+			var volsec = cfg.Config["Volume Meter"];
+
+			TopMost = volsec.GetOrSet("Topmost", true).Bool;
+			if (TopMost)
 			{
-				var volsec = cfg.Config["Volume Meter"];
-
-				TopMost = volsec.GetOrSet("Topmost", true).Bool;
-				if (TopMost)
-				{
-					Show();
-					BringToFront();
-					//Activate();
-				}
-
-				Frequency = volsec.GetOrSet("Refresh", 100)
-					.InitComment("Refresh delay. Lower is faster. Milliseconds from 10 to 5000.")
-					.Int.Constrain(10, 5000);
-
-				int? upgradeOutCap = volsec.Get("Output")?.Int;
-				if (upgradeOutCap.HasValue) volsec["Output threshold"].Int = upgradeOutCap.Value;
-				VolumeOutputCap = volsec.GetOrSet("Output threshold", 100).Int;
-
-				int? upgradeInCap = volsec.Get("Input")?.Int;
-				if (upgradeInCap.HasValue) volsec["Input threshold"].Int = upgradeInCap.Value;
-				VolumeInputCap = volsec.GetOrSet("Input threshold", 100).Int;
-
-				// DEPRECATED
-				volsec.TryRemove("Cap");
-				volsec.TryRemove("Output");
-				volsec.TryRemove("Output cap");
-				volsec.TryRemove("Input");
-				volsec.TryRemove("Input cap");
+				Show();
+				BringToFront();
+				//Activate();
 			}
+
+			Frequency = volsec.GetOrSet("Refresh", 100)
+				.InitComment("Refresh delay. Lower is faster. Milliseconds from 10 to 5000.")
+				.Int.Constrain(10, 5000);
+
+			int? upgradeOutCap = volsec.Get("Output")?.Int;
+			if (upgradeOutCap.HasValue) volsec["Output threshold"].Int = upgradeOutCap.Value;
+			VolumeOutputCap = volsec.GetOrSet("Output threshold", 100).Int;
+
+			int? upgradeInCap = volsec.Get("Input")?.Int;
+			if (upgradeInCap.HasValue) volsec["Input threshold"].Int = upgradeInCap.Value;
+			VolumeInputCap = volsec.GetOrSet("Input threshold", 100).Int;
+
+			// DEPRECATED
+			volsec.TryRemove("Cap");
+			volsec.TryRemove("Output");
+			volsec.TryRemove("Output cap");
+			volsec.TryRemove("Input");
+			volsec.TryRemove("Input cap");
 
 			#region Build UI
 			FormBorderStyle = FormBorderStyle.FixedDialog;
@@ -163,23 +161,21 @@ namespace Taskmaster.UI
 			updateTimer.Tick += UpdateVolumeTick;
 			updateTimer.Start();
 
-			using (var uicfg = Taskmaster.Config.Load(UIConfigFilename).BlockUnload())
-			{
-				var winsec = uicfg.Config[Constants.Windows];
-				var winpos = winsec[HumanReadable.Hardware.Audio.Volume].IntArray;
+			using var uicfg = Taskmaster.Config.Load(UIConfigFilename).BlockUnload();
+			var winsec = uicfg.Config[Constants.Windows];
+			var winpos = winsec[HumanReadable.Hardware.Audio.Volume].IntArray;
 
-				if (winpos != null && winpos.Length == 2)
+			if (winpos != null && winpos.Length == 2)
+			{
+				var rectangle = new System.Drawing.Rectangle(winpos[0], winpos[1], Bounds.Width, Bounds.Height);
+				if (Screen.AllScreens.Any(ø => ø.Bounds.IntersectsWith(Bounds))) // https://stackoverflow.com/q/495380
 				{
-					var rectangle = new System.Drawing.Rectangle(winpos[0], winpos[1], Bounds.Width, Bounds.Height);
-					if (Screen.AllScreens.Any(ø => ø.Bounds.IntersectsWith(Bounds))) // https://stackoverflow.com/q/495380
-					{
-						StartPosition = FormStartPosition.Manual;
-						Location = new System.Drawing.Point(rectangle.Left, rectangle.Top);
-						Bounds = rectangle;
-					}
-					else
-						CenterToParent();
+					StartPosition = FormStartPosition.Manual;
+					Location = new System.Drawing.Point(rectangle.Left, rectangle.Top);
+					Bounds = rectangle;
 				}
+				else
+					CenterToParent();
 			}
 
 			SuspendLayout();
@@ -264,8 +260,8 @@ namespace Taskmaster.UI
 
 				updateTimer.Dispose();
 
-				using (var cfg = Taskmaster.Config.Load(UIConfigFilename).BlockUnload())
-					cfg.Config[Constants.Windows][HumanReadable.Hardware.Audio.Volume].IntArray = new int[] { Bounds.Left, Bounds.Top };
+				using var cfg = Taskmaster.Config.Load(UIConfigFilename).BlockUnload();
+				cfg.Config[Constants.Windows][HumanReadable.Hardware.Audio.Volume].IntArray = new int[] { Bounds.Left, Bounds.Top };
 			}
 
 			OnDisposed?.Invoke(this, DisposedEventArgs.Empty);
