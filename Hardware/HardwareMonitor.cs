@@ -51,6 +51,8 @@ namespace Taskmaster
 	public class GPUSensorEventArgs : EventArgs
 	{
 		public GPUSensors Data;
+
+		public GPUSensorEventArgs(GPUSensors data) => Data = data;
 	}
 
 	public struct CPUSensors
@@ -64,6 +66,8 @@ namespace Taskmaster
 	public class CPUSensorEventArgs : EventArgs
 	{
 		public float Load;
+
+		public CPUSensorEventArgs(float load) => Load = load;
 	}
 
 	public class HardwareMonitor : IDisposal, IDisposable
@@ -248,7 +252,7 @@ namespace Taskmaster
 			try
 			{
 				gpu.Update();
-				return new GPUSensors()
+				return new GPUSensors
 				{
 					Clock = gpuClock.Value ?? float.NaN,
 					FanLoad = gpuFanControl.Value ?? float.NaN,
@@ -291,13 +295,13 @@ namespace Taskmaster
 		void EmitGPU(object _, EventArgs _ea)
 		{
 			if (DisposedOrDisposing) return;
-			GPUPolling?.Invoke(this, new GPUSensorEventArgs() { Data = GPUSensorData() });
+			GPUPolling?.Invoke(this, new GPUSensorEventArgs(GPUSensorData()));
 		}
 
 		void EmitCPU(object _, EventArgs _ea)
 		{
 			if (DisposedOrDisposing) return;
-			CPUPolling?.Invoke(this, new CPUSensorEventArgs() { Load = CPULoad });
+			CPUPolling?.Invoke(this, new CPUSensorEventArgs(CPULoad));
 		}
 
 		public string GPUName { get; private set; } = string.Empty;
