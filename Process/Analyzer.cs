@@ -339,7 +339,7 @@ namespace Taskmaster.Process
 			{
 				var modulepath = Path.Combine(DataPath, moduleFilename);
 
-				using var cfg = Config.Load(modulepath).BlockUnload();
+				using var cfg = Config.Load(modulepath).ScopedUnload();
 					foreach (var section in cfg.Config)
 					{
 						try

@@ -40,7 +40,7 @@ namespace Taskmaster
 		static void InitialConfiguration()
 		{
 			// INITIAL CONFIGURATIONN
-			using var tcfg = Config.Load(CoreConfigFilename).BlockUnload();
+			using var tcfg = Config.Load(CoreConfigFilename).ScopedUnload();
 			var sec = tcfg.Config.Get(Constants.Core)?.Get(Constants.Version)?.Value ?? null;
 			if (sec?.Equals(ConfigVersion) ?? false) return;
 
@@ -58,7 +58,7 @@ namespace Taskmaster
 
 			bool isadmin = false;
 
-			using var corecfg = Config.Load(CoreConfigFilename).BlockUnload();
+			using var corecfg = Config.Load(CoreConfigFilename).ScopedUnload();
 			var cfg = corecfg.Config;
 
 			const string Hello = "Hello", Hi = "Hi";
@@ -307,7 +307,7 @@ namespace Taskmaster
 			Trace = dbgsec.Get(Constants.Trace)?.Bool ?? false;
 #endif
 
-			using var uicfg = Config.Load(UIConfigFilename).BlockUnload();
+			using var uicfg = Config.Load(UIConfigFilename).ScopedUnload();
 			VisualStyling = uicfg.Config[Constants.Windows].GetOrSet("Styling", true).Bool;
 
 			// END DEBUG

@@ -46,7 +46,7 @@ namespace Taskmaster.UI.Config
 			pad.Right = 6;
 			Padding = pad;
 
-			using var corecfg = Config.Load(CoreConfigFilename).BlockUnload();
+			using var corecfg = Config.Load(CoreConfigFilename).ScopedUnload();
 			AutoSizeMode = AutoSizeMode.GrowAndShrink;
 			AutoSize = true;
 
@@ -137,7 +137,7 @@ namespace Taskmaster.UI.Config
 				fgHysterisis.Value = Convert.ToDecimal(activeappmonitor.Hysterisis.TotalMilliseconds);
 			else
 			{
-				using var cfg = Config.Load(CoreConfigFilename).BlockUnload();
+				using var cfg = Config.Load(CoreConfigFilename).ScopedUnload();
 				var perfsec = cfg.Config["Performance"];
 				fgHysterisis.Value = perfsec.Get("Foreground hysterisis")?.Int.Constrain(200, 30000) ?? 1500;
 			}

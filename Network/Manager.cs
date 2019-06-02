@@ -87,7 +87,7 @@ namespace Taskmaster.Network
 
 		void LoadConfig()
 		{
-			using var netcfg = Config.Load(NetConfigFilename).BlockUnload();
+			using var netcfg = Config.Load(NetConfigFilename).ScopedUnload();
 			var monsec = netcfg.Config["Monitor"];
 			dnstestaddress = monsec.GetOrSet("DNS test", "www.google.com").Value;
 
@@ -104,7 +104,7 @@ namespace Taskmaster.Network
 
 			ErrorReports.Peak = ErrorReportLimit = pktsec.GetOrSet("Error report limit", 5).Int.Constrain(1, 60);
 
-			using var corecfg = Config.Load(CoreConfigFilename).BlockUnload();
+			using var corecfg = Config.Load(CoreConfigFilename).ScopedUnload();
 			var logsec = corecfg.Config[HumanReadable.Generic.Logging];
 			ShowNetworkErrors = logsec.GetOrSet("Show network errors", true)
 				.InitComment("Show network errors on each sampling.")

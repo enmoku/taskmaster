@@ -472,7 +472,7 @@ namespace Taskmaster.Process
 
 		public void SetName(string newName)
 		{
-			using var cfg = Config.Load(Manager.WatchlistFile).BlockUnload();
+			using var cfg = Config.Load(Manager.WatchlistFile).ScopedUnload();
 			if (cfg.Config.TryGet(FriendlyName, out var section))
 				section.Name = newName;
 			FriendlyName = newName;
@@ -480,7 +480,7 @@ namespace Taskmaster.Process
 
 		public void DeleteConfig()
 		{
-			using var cfg = Config.Load(Manager.WatchlistFile).BlockUnload();
+			using var cfg = Config.Load(Manager.WatchlistFile).ScopedUnload();
 			cfg.Config.TryRemove(FriendlyName); // remove the section, removes the items in the section
 		}
 
@@ -541,7 +541,7 @@ namespace Taskmaster.Process
 
 		public void SaveConfig()
 		{
-			using var cfg = Config.Load(Manager.WatchlistFile).BlockUnload();
+			using var cfg = Config.Load(Manager.WatchlistFile).ScopedUnload();
 			Logging.DebugMsg("Saving: " + FriendlyName);
 			SaveConfig(cfg.File);
 		}

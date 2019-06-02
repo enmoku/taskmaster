@@ -89,7 +89,7 @@ namespace Taskmaster
 
 		public void LoadConfig()
 		{
-			using var corecfg = Config.Load(CoreConfigFilename).BlockUnload();
+			using var corecfg = Config.Load(CoreConfigFilename).ScopedUnload();
 				// SAMPLING
 				// this really should be elsewhere
 				var hwsec = corecfg.Config[HumanReadable.Hardware.Section];
@@ -114,7 +114,7 @@ namespace Taskmaster
 		{
 			return; // these are not modified at runtime YET
 
-			using var corecfg = Config.Load(CoreConfigFilename).BlockUnload();
+			using var corecfg = Config.Load(CoreConfigFilename).ScopedUnload();
 			// SAMPLING
 			var hwsec = corecfg.Config[HumanReadable.Hardware.Section];
 			hwsec[HumanReadable.Hardware.CPU.Settings.SampleInterval].Int = Convert.ToInt32(SampleInterval.TotalSeconds);

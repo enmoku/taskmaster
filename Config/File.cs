@@ -78,7 +78,7 @@ namespace Taskmaster.Configuration
 			Config = null;
 		}
 
-		public ScopedFile BlockUnload()
+		public ScopedFile ScopedUnload()
 		{
 			Shared++;
 			return new ScopedFile(this);

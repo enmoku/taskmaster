@@ -645,7 +645,7 @@ namespace Taskmaster.Power
 
 		void LoadConfig()
 		{
-			using var corecfg = Config.Load(CoreConfigFilename).BlockUnload();
+			using var corecfg = Config.Load(CoreConfigFilename).ScopedUnload();
 			var power = corecfg.Config[HumanReadable.Hardware.Power.Section];
 
 			var behaviourstring = power.GetOrSet(Constants.Behaviour, HumanReadable.Hardware.Power.RuleBased)
@@ -813,7 +813,7 @@ namespace Taskmaster.Power
 		// TODO: Should detect if saving is ACTUALLY needed
 		public void SaveConfig()
 		{
-			using var corecfg = Config.Load(CoreConfigFilename).BlockUnload();
+			using var corecfg = Config.Load(CoreConfigFilename).ScopedUnload();
 			var power = corecfg.Config[HumanReadable.Hardware.Power.Section];
 
 			var aa = AutoAdjust;

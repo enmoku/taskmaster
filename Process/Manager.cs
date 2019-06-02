@@ -642,7 +642,7 @@ namespace Taskmaster.Process
 		{
 			if (DebugProcesses) Log.Information("<Process> Loading configuration...");
 
-			using var corecfg = Config.Load(CoreConfigFilename).BlockUnload();
+			using var corecfg = Config.Load(CoreConfigFilename).ScopedUnload();
 			var perfsec = corecfg.Config["Performance"];
 
 			// ControlChildren = coreperf.GetSetDefault("Child processes", false, out tdirty).Bool;
@@ -798,7 +798,7 @@ namespace Taskmaster.Process
 				appcfg = Config.Load(WatchlistFile);
 			}
 
-			using var sappcfg = appcfg.BlockUnload();
+			using var sappcfg = appcfg.ScopedUnload();
 			foreach (Ini.Section section in sappcfg.Config)
 			{
 				if (string.IsNullOrEmpty(section.Name))
@@ -2380,7 +2380,7 @@ namespace Taskmaster.Process
 					ExeToController?.Clear();
 					ExeToController = null;
 
-					using var wcfg = Config.Load(WatchlistFile).BlockUnload();
+					using var wcfg = Config.Load(WatchlistFile).ScopedUnload();
 					foreach (var prc in Watchlist.Keys)
 					{
 						if (prc.NeedsSaving) prc.SaveConfig(wcfg.File);

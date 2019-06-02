@@ -152,7 +152,7 @@ namespace Taskmaster.UI
 			EnsureVisible();
 			#endregion // Build UI
 
-			using var cfg = Taskmaster.Config.Load(CoreConfigFilename).BlockUnload();
+			using var cfg = Taskmaster.Config.Load(CoreConfigFilename).ScopedUnload();
 			int exdelay = cfg.Config[Constants.Experimental].Get("Explorer Restart")?.Int ?? 0;
 			ExplorerRestartHelpDelay = exdelay > 0 ? (TimeSpan?)TimeSpan.FromSeconds(exdelay.Min(5)) : null;
 

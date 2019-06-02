@@ -60,7 +60,7 @@ namespace Taskmaster.UI
 
 			Text = "Volume Meter – Taskmaster!";
 
-			using var cfg = Taskmaster.Config.Load(CoreConfigFilename).BlockUnload();
+			using var cfg = Taskmaster.Config.Load(CoreConfigFilename).ScopedUnload();
 			var volsec = cfg.Config["Volume Meter"];
 
 			TopMost = volsec.GetOrSet("Topmost", true).Bool;
@@ -161,7 +161,7 @@ namespace Taskmaster.UI
 			updateTimer.Tick += UpdateVolumeTick;
 			updateTimer.Start();
 
-			using var uicfg = Taskmaster.Config.Load(UIConfigFilename).BlockUnload();
+			using var uicfg = Taskmaster.Config.Load(UIConfigFilename).ScopedUnload();
 			var winsec = uicfg.Config[Constants.Windows];
 			var winpos = winsec[HumanReadable.Hardware.Audio.Volume].IntArray;
 
@@ -260,7 +260,7 @@ namespace Taskmaster.UI
 
 				updateTimer.Dispose();
 
-				using var cfg = Taskmaster.Config.Load(UIConfigFilename).BlockUnload();
+				using var cfg = Taskmaster.Config.Load(UIConfigFilename).ScopedUnload();
 				cfg.Config[Constants.Windows][HumanReadable.Hardware.Audio.Volume].IntArray = new int[] { Bounds.Left, Bounds.Top };
 			}
 

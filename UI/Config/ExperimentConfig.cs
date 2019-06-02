@@ -111,7 +111,7 @@ namespace Taskmaster.UI.Config
 
 				// Record for restarts
 
-				using var corecfg = Taskmaster.Config.Load(Taskmaster.CoreConfigFilename).BlockUnload();
+				using var corecfg = Taskmaster.Config.Load(Taskmaster.CoreConfigFilename).ScopedUnload();
 				var cfg = corecfg.Config;
 
 				var exsec = cfg[Constants.Experimental];
