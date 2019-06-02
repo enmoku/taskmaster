@@ -29,17 +29,13 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Text;
-using System.Threading.Tasks;
 using System.Windows.Forms;
-using MKAh;
 using Serilog;
 using Serilog.Core;
 using Serilog.Events;
 
 namespace Taskmaster
 {
-	using static Taskmaster;
-
 	public static partial class Taskmaster
 	{
 		public static string GitURL => "https://github.com/mkahvi/taskmaster";
@@ -341,7 +337,7 @@ namespace Taskmaster
 		{
 			System.Threading.Mutex singleton = null;
 
-			AppDomain.CurrentDomain.ProcessExit += (_,_ea) => ExitCleanup();
+			AppDomain.CurrentDomain.ProcessExit += (_, _ea) => ExitCleanup();
 
 			try
 			{
@@ -373,7 +369,7 @@ namespace Taskmaster
 						MessageBox.ResultType rv = MessageBox.ResultType.Cancel;
 
 						// already running, signal original process
-						using (var msg = new MessageBox(Name+"!",
+						using (var msg = new MessageBox(Name + "!",
 							"Already operational.\n\nRetry to try to recover [restart] running instance.\nEnd to kill running instance and exit this.\nCancel to simply request refresh.",
 							MessageBox.Buttons.RetryEndCancel))
 						{
@@ -439,7 +435,7 @@ namespace Taskmaster
 						if (Trace) loglevelswitch.MinimumLevel = LogEventLevel.Verbose;
 #endif
 
-						var logpathtemplate = System.IO.Path.Combine(LogPath, Name+"-{Date}.log");
+						var logpathtemplate = System.IO.Path.Combine(LogPath, Name + "-{Date}.log");
 						Serilog.Log.Logger = new Serilog.LoggerConfiguration()
 							.MinimumLevel.ControlledBy(loglevelswitch)
 							.WriteTo.Console(levelSwitch: new LoggingLevelSwitch(LogEventLevel.Verbose))
@@ -464,7 +460,7 @@ namespace Taskmaster
 
 						var now = DateTime.Now;
 						var age = (now - builddate).TotalDays;
-						
+
 						var sbs = new StringBuilder()
 							.Append(Name).Append("! (#").Append(System.Diagnostics.Process.GetCurrentProcess().Id).Append(")")
 							.Append(MKAh.Execution.IsAdministrator ? " [ADMIN]" : "").Append(Portable ? " [PORTABLE]" : "")
@@ -647,7 +643,7 @@ namespace Taskmaster
 		{
 			var ex = (Exception)ea.ExceptionObject;
 			Log.Fatal(ex, "Unhandled exception!!! Writing to crash log.");
-			Logging.Stacktrace(ex, crashsafe:true);
+			Logging.Stacktrace(ex, crashsafe: true);
 
 			if (ea.IsTerminating)
 			{

@@ -81,7 +81,7 @@ namespace Taskmaster.UI
 			if (Trace) Log.Verbose("Generating tray icon.");
 
 			var ms = new ContextMenuStrip();
-			var menu_windowopen = new ToolStripMenuItem("Open main window", null, (_, _ea) => BuildMainWindow(reveal:true, top:true));
+			var menu_windowopen = new ToolStripMenuItem("Open main window", null, (_, _ea) => BuildMainWindow(reveal: true, top: true));
 			var menu_volumeopen = new ToolStripMenuItem("Open volume meter", null, (_, _ea) => BuildVolumeMeter())
 			{
 				Enabled = AudioManagerEnabled,
@@ -96,11 +96,11 @@ namespace Taskmaster.UI
 
 			Log.Information("<Core> Run-at-start scheduler: " + (runatstartsch ? "Found" : "Missing"));
 
-			menu_configuration.DropDownItems.Add(new ToolStripMenuItem(HumanReadable.Hardware.Power.Section, null, (_, _ea) => Config.PowerConfigWindow.Reveal(powermanager, centerOnScreen:true)));
-			menu_configuration.DropDownItems.Add(new ToolStripMenuItem("Advanced", null, (_, _ea) => Config.AdvancedConfig.Reveal(centerOnScreen:true))); // FIXME: MODAL
-			menu_configuration.DropDownItems.Add(new ToolStripMenuItem("Components", null, (_, _ea) => Config.ComponentConfigurationWindow.Reveal(centerOnScreen:true))); // FIXME: MODAL
+			menu_configuration.DropDownItems.Add(new ToolStripMenuItem(HumanReadable.Hardware.Power.Section, null, (_, _ea) => Config.PowerConfigWindow.Reveal(powermanager, centerOnScreen: true)));
+			menu_configuration.DropDownItems.Add(new ToolStripMenuItem("Advanced", null, (_, _ea) => Config.AdvancedConfig.Reveal(centerOnScreen: true))); // FIXME: MODAL
+			menu_configuration.DropDownItems.Add(new ToolStripMenuItem("Components", null, (_, _ea) => Config.ComponentConfigurationWindow.Reveal(centerOnScreen: true))); // FIXME: MODAL
 			menu_configuration.DropDownItems.Add(new ToolStripSeparator());
-			menu_configuration.DropDownItems.Add(new ToolStripMenuItem("Experiments", null, (_,_ea) => Config.ExperimentConfig.Reveal(centerOnScreen:true))); // FIXME: MODAL
+			menu_configuration.DropDownItems.Add(new ToolStripMenuItem("Experiments", null, (_, _ea) => Config.ExperimentConfig.Reveal(centerOnScreen: true))); // FIXME: MODAL
 			menu_configuration.DropDownItems.Add(new ToolStripSeparator());
 			menu_configuration.DropDownItems.Add(menu_runatstart_sch);
 			menu_configuration.DropDownItems.Add(new ToolStripSeparator());
@@ -284,7 +284,7 @@ namespace Taskmaster.UI
 				int hotkeyId = m.WParam.ToInt32();
 
 				//if (modifiers != hotkeymodifiers)
-					//Log.Debug($"<Global> Received unexpected modifier keys: {modifiers} instead of {hotkeymodifiers}");
+				//Log.Debug($"<Global> Received unexpected modifier keys: {modifiers} instead of {hotkeymodifiers}");
 
 				switch (hotkeyId)
 				{
@@ -293,7 +293,7 @@ namespace Taskmaster.UI
 						Task.Run(new Action(async () =>
 						{
 							int ignorepid = activeappmonitor?.ForegroundId ?? -1;
-							Log.Information("<Global> Hotkey detected; Freeing memory while ignoring foreground"+
+							Log.Information("<Global> Hotkey detected; Freeing memory while ignoring foreground" +
 								(ignorepid > 4 ? $" (#{ignorepid})" : string.Empty) + " if possible.");
 							await processmanager.FreeMemory(ignorePid: ignorepid).ConfigureAwait(false);
 						})).ConfigureAwait(false);
@@ -391,7 +391,7 @@ namespace Taskmaster.UI
 		public void Hook(Process.Manager pman)
 		{
 			processmanager = pman;
-			RescanRequest += (_,_ea) => processmanager?.HastenScan();
+			RescanRequest += (_, _ea) => processmanager?.HastenScan();
 		}
 
 		Power.Manager powermanager = null;
@@ -725,13 +725,13 @@ namespace Taskmaster.UI
 				{
 					if (!MKAh.Execution.IsAdministrator)
 					{
-						MessageBox.ShowModal(Taskmaster.Name+"! – run at login", "Scheduler can not be modified without admin rights.", MessageBox.Buttons.OK);
+						MessageBox.ShowModal(Taskmaster.Name + "! – run at login", "Scheduler can not be modified without admin rights.", MessageBox.Buttons.OK);
 						return;
 					}
 
 					if (!menu_runatstart_sch.Checked)
 					{
-						if (MessageBox.ShowModal(Taskmaster.Name+"! – run at login", "This will add on-login scheduler to run TM as admin, is this right?", MessageBox.Buttons.AcceptCancel)
+						if (MessageBox.ShowModal(Taskmaster.Name + "! – run at login", "This will add on-login scheduler to run TM as admin, is this right?", MessageBox.Buttons.AcceptCancel)
 							== MessageBox.ResultType.Cancel) return;
 					}
 					// can't be disabled without admin rights?

@@ -24,9 +24,9 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-using Serilog;
 using System;
 using System.Windows.Forms;
+using Serilog;
 
 namespace Taskmaster.UI.Config
 {
@@ -109,7 +109,7 @@ namespace Taskmaster.UI.Config
 			};
 			tooltip.SetToolTip(micmon, "Monitor default communications device and keep its volume.\nRequires audio manager to be enabled.");
 
-			audioman.CheckedChanged += (s,e) =>
+			audioman.CheckedChanged += (s, e) =>
 			{
 				micmon.Enabled = audioman.Checked;
 			};
@@ -246,8 +246,8 @@ namespace Taskmaster.UI.Config
 			}
 
 			tooltip.SetToolTip(powbehaviour,
-				"Auto-adjust = Automatically adjust power mode based on system load or by watchlist rules\n"+
-				"Rule-based = Watchlist rules can affect it\n"+
+				"Auto-adjust = Automatically adjust power mode based on system load or by watchlist rules\n" +
+				"Rule-based = Watchlist rules can affect it\n" +
 				"Manual = User control only");
 			layout.Controls.Add(new AlignedLabel { Text = "Power behaviour", Padding = BigPadding });
 			layout.Controls.Add(powbehaviour);
@@ -368,10 +368,10 @@ namespace Taskmaster.UI.Config
 
 					var powsec = cfg.Config[HumanReadable.Hardware.Power.Section];
 					if (powmon.Checked) powsec[Constants.Behaviour].Value = powbehaviour.Text.ToLower();
-					
+
 					var uisec = cfg.Config[Constants.UserInterface];
 					uisec[Constants.ShowOnStart].Bool = showonstart.Checked;
-					
+
 					var perf = cfg.Config[Constants.Performance];
 					var freq = (int)scanfrequency.Value;
 					if (freq < 5 && freq != 0) freq = 5;
@@ -429,7 +429,7 @@ namespace Taskmaster.UI.Config
 			Close();
 		}
 
-		public static void Reveal(bool centerOnScreen=false)
+		public static void Reveal(bool centerOnScreen = false)
 		{
 			try
 			{

@@ -49,7 +49,7 @@ namespace Taskmaster
 				int Handle = OpenProcess(PROCESS_RIGHTS.PROCESS_ALL_ACCESS, false, pid);
 				return Handle;
 			}
-			catch (Exception ex	)
+			catch (Exception ex)
 			{
 				Logging.Stacktrace(ex);
 			}

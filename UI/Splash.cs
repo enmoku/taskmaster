@@ -25,7 +25,6 @@
 // THE SOFTWARE.
 
 using System;
-using System.Diagnostics;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 
@@ -138,7 +137,7 @@ namespace Taskmaster.UI
 
 		internal bool AutoClose { get; set; } = true;
 
-		internal void LoadEvent(string message, LoadEventType type, int subItemsDone=-1, int subItemsTotal=-1)
+		internal void LoadEvent(string message, LoadEventType type, int subItemsDone = -1, int subItemsTotal = -1)
 			=> LoadEvent(null, new LoadEventArgs(message, type, subItemsDone, subItemsTotal));
 
 		internal void LoadEvent(object sender, LoadEventArgs ea)
@@ -268,7 +267,7 @@ namespace Taskmaster
 		internal int SubProgress = 0;
 		internal int MaxSubProgress = -1;
 
-		internal LoadEventArgs(string message, LoadEventType type, int subItemsProgress=-1, int maxSubItems=-1)
+		internal LoadEventArgs(string message, LoadEventType type, int subItemsProgress = -1, int maxSubItems = -1)
 		{
 			Type = type;
 			Message = message;

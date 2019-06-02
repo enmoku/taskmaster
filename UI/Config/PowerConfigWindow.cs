@@ -253,7 +253,7 @@ namespace Taskmaster.UI.Config
 
 			layout.Controls.Add(new AlignedLabel() { Text = "Commit CPU% threshold" });
 			highcommitthreshold = new Extensions.NumericUpDownEx() { Unit = "%", Maximum = 95, Minimum = 5, Value = 50 };
-			tooltip.SetToolTip(highcommitthreshold,"Low CPU use % that must be maintained for this operation mode to be enacted.");
+			tooltip.SetToolTip(highcommitthreshold, "Low CPU use % that must be maintained for this operation mode to be enacted.");
 			layout.Controls.Add(highcommitthreshold);
 			layout.Controls.Add(new AlignedLabel() { Text = "Commit level" });
 			highcommitlevel = new NumericUpDown() { Maximum = 15, Minimum = 0, Value = 3 };
@@ -288,7 +288,7 @@ namespace Taskmaster.UI.Config
 			};
 			lowmode.Items.AddRange(powermodes);
 
-			layout.Controls.Add(new AlignedLabel() { Text = "Low mode", Font=boldfont });
+			layout.Controls.Add(new AlignedLabel() { Text = "Low mode", Font = boldfont });
 			layout.Controls.Add(lowmode);
 			layout.Controls.Add(new AlignedLabel() { Text = "Commit CPU% threshold" });
 			lowcommitthreshold = new Extensions.NumericUpDownEx() { Unit = "%", Maximum = 95, Minimum = 5, Value = 50 };
@@ -539,7 +539,7 @@ namespace Taskmaster.UI.Config
 			loQueue.Value = Convert.ToDecimal(AutoAdjust.Queue.Low).Constrain(0, 100);
 		}
 
-		public static void Reveal(Power.Manager powerManager, bool centerOnScreen=false)
+		public static void Reveal(Power.Manager powerManager, bool centerOnScreen = false)
 		{
 			try
 			{

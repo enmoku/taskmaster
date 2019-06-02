@@ -27,8 +27,8 @@
 using System;
 using System.Collections.Concurrent;
 using MKAh;
-using Windows = MKAh.Wrapper.Windows;
 using Serilog;
+using Windows = MKAh.Wrapper.Windows;
 
 namespace Taskmaster
 {

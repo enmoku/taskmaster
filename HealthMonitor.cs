@@ -26,16 +26,14 @@
 
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 using MKAh;
-using Windows = MKAh.Wrapper.Windows;
 using Serilog;
+using Windows = MKAh.Wrapper.Windows;
 
 namespace Taskmaster
 {
-	using MKAh.Ini;
 	using System.Text;
 	using static Taskmaster;
 
@@ -493,7 +491,7 @@ namespace Taskmaster
 
 							var sbs = new StringBuilder()
 								.Append("<<Auto-Doc>> Free memory low [")
-								.Append(HumanInterface.ByteString((long)memfreemb * 1_048_576, iec:true))
+								.Append(HumanInterface.ByteString((long)memfreemb * 1_048_576, iec: true))
 								.Append("], attempting to improve situation.");
 							if (!Process.Utility.SystemProcessId(ignorepid))
 								sbs.Append(" Ignoring foreground (#").Append(ignorepid).Append(").");
@@ -513,7 +511,7 @@ namespace Taskmaster
 							WarnedAboutLowMemory = true;
 							LastMemoryWarning = now;
 
-							Log.Warning("<Memory> Free memory fairly low: " + HumanInterface.ByteString((long)memfreemb * 1_048_576, iec:true));
+							Log.Warning("<Memory> Free memory fairly low: " + HumanInterface.ByteString((long)memfreemb * 1_048_576, iec: true));
 						}
 					}
 					else

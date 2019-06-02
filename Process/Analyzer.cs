@@ -25,16 +25,16 @@
 // THE SOFTWARE.
 
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 using Serilog;
-using System.Collections.Concurrent;
-using System.Linq;
 
 namespace Taskmaster.Process
 {
@@ -139,9 +139,8 @@ namespace Taskmaster.Process
 						var file = moduleName.Trim();
 						var identity = IdentifyModule(file);
 
-						ModuleInfo mi = null;
-						if (AllLinkedModules.TryGetValue(identity, out mi))
-							{ /* NOP */ }
+						if (AllLinkedModules.TryGetValue(identity, out ModuleInfo mi))
+						{ /* NOP */ }
 						else if (KnownModules.TryGetValue(identity, out var lmi))
 							mi = lmi.Clone();
 						else

@@ -33,8 +33,8 @@ using System.Net.NetworkInformation;
 using System.Text;
 using System.Threading.Tasks;
 using MKAh;
-using Windows = MKAh.Wrapper.Windows;
 using Serilog;
+using Windows = MKAh.Wrapper.Windows;
 
 namespace Taskmaster.Network
 {
@@ -116,7 +116,7 @@ namespace Taskmaster.Network
 				var dbgsec = corecfg.Config[HumanReadable.Generic.Debug];
 				DebugNet = dbgsec.Get("Network")?.Bool ?? false;
 			}
-			
+
 			if (Trace) Log.Debug("<Network> Traffic sample frequency: " + PacketStatTimerInterval + "s");
 		}
 
@@ -407,7 +407,7 @@ namespace Taskmaster.Network
 				sbs.Append($"{(UptimeSamples.Sum() + currentUptime) / (cnt + 1):N1}").Append(" minutes");
 
 				if (cnt >= 3)
-					sbs.Append(" (").Append($"{(UptimeSamples.GetRange(cnt-3, 3).Sum() / 3f):N1}").Append(" minutes for last 3 samples");
+					sbs.Append(" (").Append($"{(UptimeSamples.GetRange(cnt - 3, 3).Sum() / 3f):N1}").Append(" minutes for last 3 samples");
 			}
 
 			sbs.Append(" since: ").Append(UptimeRecordStart)

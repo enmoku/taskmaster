@@ -24,12 +24,11 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-using MKAh;
-using MKAh.Ini;
-using Serilog;
-using Serilog.Events;
 using System;
 using System.Threading.Tasks;
+using MKAh;
+using Serilog;
+using Serilog.Events;
 
 namespace Taskmaster
 {
@@ -352,7 +351,7 @@ namespace Taskmaster
 
 				// Parallel loading, cuts down startup time some.
 				// This is really bad if something fails
-				init = new []
+				init = new[]
 				{
 				(PowMan = PowerManagerEnabled ? Task.Run(() => {powermanager = new Power.Manager(); }, cts.Token) : Task.CompletedTask)
 					.ContinueWith((_) => LoadEvent?.Invoke(null, new LoadEventArgs("Power manager processed.", LoadEventType.SubLoaded))),
@@ -532,7 +531,7 @@ namespace Taskmaster
 			// UI
 			if (State == Runstate.Normal)
 			{
-				if (ShowOnStart) BuildMainWindow(reveal: true, top:false);
+				if (ShowOnStart) BuildMainWindow(reveal: true, top: false);
 				if (ShowVolOnStart) BuildVolumeMeter();
 			}
 

@@ -49,7 +49,7 @@ namespace Taskmaster
 		public static void DebugMsg(string message)
 			=> System.Diagnostics.Debug.WriteLine("[" + DateTime.Now.ToString("HH:mm:ss.fff") + "] " + message);
 
-		public static void Stacktrace(Exception ex, bool crashsafe = false, [CallerMemberName] string method="", [CallerLineNumber] int lineNo=-1)
+		public static void Stacktrace(Exception ex, bool crashsafe = false, [CallerMemberName] string method = "", [CallerLineNumber] int lineNo = -1)
 		{
 			if (!crashsafe)
 			{

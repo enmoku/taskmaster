@@ -24,11 +24,11 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-using MKAh;
 using System;
 using System.Collections;
 using System.Linq;
 using System.Windows.Forms;
+using MKAh;
 
 namespace Taskmaster
 {
@@ -46,7 +46,7 @@ namespace Taskmaster
 		readonly int PriorityColumn = -1;
 		readonly int PowerColumn = -1;
 
-		public WatchlistSorter(int[] numberColumns = null, int priorityColumn=-1, int powerColumn=-1)
+		public WatchlistSorter(int[] numberColumns = null, int priorityColumn = -1, int powerColumn = -1)
 		{
 			if (numberColumns != null)
 				NumberColumns = numberColumns;

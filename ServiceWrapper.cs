@@ -25,7 +25,6 @@
 // THE SOFTWARE.
 
 using System;
-using System.Diagnostics;
 using System.Management;
 using System.ServiceProcess;
 using Serilog;
@@ -98,7 +97,7 @@ namespace Taskmaster
 			}
 		}
 
-		public void Start(bool enable=false)
+		public void Start(bool enable = false)
 		{
 			if (DisposedOrDisposing || !NeedsRestart || !Service.IsValueCreated) return;
 
@@ -136,7 +135,7 @@ namespace Taskmaster
 			catch (Exception ex) when (ex is NullReferenceException || ex is OutOfMemoryException) { throw; }
 		}
 
-		public void Stop(bool disable=false)
+		public void Stop(bool disable = false)
 		{
 			if (DisposedOrDisposing) return;
 

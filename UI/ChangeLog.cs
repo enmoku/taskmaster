@@ -29,8 +29,6 @@ using System.Windows.Forms;
 
 namespace Taskmaster.UI
 {
-	using static Taskmaster;
-
 	public class ChangeLog : UniForm
 	{
 		readonly Button ShowFullLogButton = new Button() { Text = "Full log" };
@@ -59,7 +57,7 @@ namespace Taskmaster.UI
 				AutoSize = true,
 			};
 
-			Title = new AlignedLabel() { Text = "Changes since "  };
+			Title = new AlignedLabel() { Text = "Changes since " };
 
 			layout.Controls.Add(Title);
 			layout.SetColumnSpan(Title, 2);

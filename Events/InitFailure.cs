@@ -30,7 +30,7 @@ namespace Taskmaster
 {
 	public sealed class InitFailure : Exception
 	{
-		public InitFailure(string description, Exception innerException=null) : base(description, innerException)
+		public InitFailure(string description, Exception innerException = null) : base(description, innerException)
 		{
 		}
 	}

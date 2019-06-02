@@ -29,16 +29,14 @@ using System.Windows.Forms;
 
 namespace Taskmaster
 {
-	using static Taskmaster;
-
 	sealed class LicenseDialog : UI.UniForm
 	{
-		public LicenseDialog(bool initial = true, bool center=false)
+		public LicenseDialog(bool initial = true, bool center = false)
 			: base(centerOnScreen: initial || center)
 		{
 			SuspendLayout();
 
-			Text = Taskmaster.Name +" License";
+			Text = Taskmaster.Name + " License";
 			AutoSizeMode = AutoSizeMode.GrowAndShrink;
 			FormBorderStyle = FormBorderStyle.FixedDialog;
 			if (initial)

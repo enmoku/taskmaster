@@ -47,13 +47,13 @@ namespace Taskmaster
 
 		public ResultType Result { get; private set; } = ResultType.Cancel;
 
-		public static ResultType ShowModal(string title, string message, Buttons buttons, bool rich=false, Control parent=null)
+		public static ResultType ShowModal(string title, string message, Buttons buttons, bool rich = false, Control parent = null)
 		{
 			using (var msg = new MessageBox(title, message, buttons, rich, parent))
 			{
 				msg.CenterToParent();
 				msg.ShowDialog();
-				
+
 				return msg.Result;
 			}
 		}
@@ -61,7 +61,7 @@ namespace Taskmaster
 		readonly Label Message = null;
 		readonly RichTextBox RichMessage = null;
 
-		public MessageBox(string title, string message, Buttons buttons, bool rich=false, Control parent = null)
+		public MessageBox(string title, string message, Buttons buttons, bool rich = false, Control parent = null)
 			: base()
 		{
 			SuspendLayout();
@@ -96,10 +96,10 @@ namespace Taskmaster
 			buttonlayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 33f));
 
 			var okbutton = new Button() { Text = "OK", Margin = BigPadding };
-			okbutton.Click += (_, _ea) => { Result = ResultType.OK; Close();  };
+			okbutton.Click += (_, _ea) => { Result = ResultType.OK; Close(); };
 
 			var cancelbutton = new Button() { Text = "Cancel", Margin = BigPadding };
-			cancelbutton.Click += (_, _ea) => { Result = ResultType.Cancel; Close();  };
+			cancelbutton.Click += (_, _ea) => { Result = ResultType.Cancel; Close(); };
 
 			var retrybutton = new Button() { Text = "Retry", Margin = BigPadding };
 			retrybutton.Click += (_, _ea) => { Result = ResultType.Retry; Close(); };

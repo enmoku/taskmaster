@@ -419,7 +419,7 @@ namespace Taskmaster.Audio
 		Decrease = 1,
 		Increase = 2,
 		Force = 3,
-		DecreaseFromFull=4,
-		IncreaseFromMute=5
+		DecreaseFromFull = 4,
+		IncreaseFromMute = 5
 	}
 }

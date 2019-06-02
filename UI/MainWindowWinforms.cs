@@ -36,7 +36,6 @@ using Serilog;
 
 namespace Taskmaster.UI
 {
-	using MKAh.Ini;
 	using System.Text;
 	using static Taskmaster;
 
@@ -2963,11 +2962,10 @@ namespace Taskmaster.UI
 
 			try
 			{
-				ListViewItem item = null;
 
 				int key = ea.Info.Id;
 				bool newitem = false;
-				if (!ProcessEventMap.TryGetValue(key, out item))
+				if (!ProcessEventMap.TryGetValue(key, out ListViewItem item))
 				{
 					item = new ListViewItem(new string[] { key.ToString(), ea.Info.Name, string.Empty, string.Empty });
 					newitem = true;
@@ -3417,9 +3415,8 @@ namespace Taskmaster.UI
 				{
 					var li = WatchlistRules.SelectedItems[0];
 					var name = li.SubItems[NameColumn].Text;
-					Process.Controller prc = null;
 
-					if (!processmanager.GetControllerByName(name, out prc))
+					if (!processmanager.GetControllerByName(name, out Process.Controller prc))
 					{
 						Log.Error("[" + name + "] Not found. Something's terribly wrong.");
 						return;

@@ -24,13 +24,13 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-using MKAh;
-using MKAh.Logic;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using MKAh;
+using MKAh.Logic;
 using Serilog;
 
 namespace Taskmaster.UI.Config
@@ -40,7 +40,7 @@ namespace Taskmaster.UI.Config
 	sealed public class WatchlistEditWindow : UI.UniForm
 	{
 		public Process.Controller Controller;
-		
+
 		readonly bool newPrc = false;
 
 		// Editingg
@@ -739,7 +739,7 @@ namespace Taskmaster.UI.Config
 
 			if (!fnlen || friendlyName.Text.Contains("]") || friendlyName.Text.Contains("["))
 			{
-				MessageBox.ShowModal("Malconfigured friendly name", "Friendly name is missing or includes illegal characters (such as square brackets).", MessageBox.Buttons.OK, parent:this);
+				MessageBox.ShowModal("Malconfigured friendly name", "Friendly name is missing or includes illegal characters (such as square brackets).", MessageBox.Buttons.OK, parent: this);
 				return;
 			}
 
@@ -929,7 +929,7 @@ namespace Taskmaster.UI.Config
 		readonly ListView ignorelist = null;
 		readonly NumericUpDown preforder = null;
 
-		readonly CheckBox logAdjusts = null, logStartNExit=null, declareParent=null;
+		readonly CheckBox logAdjusts = null, logStartNExit = null, declareParent = null;
 
 		int cpumask = 0;
 
@@ -1028,7 +1028,7 @@ namespace Taskmaster.UI.Config
 						var di = System.IO.Directory.GetParent(pathName.Text);
 						if (di != null && !string.IsNullOrEmpty(search))
 						{
-							var dirs = System.IO.Directory.EnumerateDirectories(di.FullName, search+"*", System.IO.SearchOption.TopDirectoryOnly);
+							var dirs = System.IO.Directory.EnumerateDirectories(di.FullName, search + "*", System.IO.SearchOption.TopDirectoryOnly);
 							foreach (var dir in dirs)
 							{
 								pfound = "Partial Match";

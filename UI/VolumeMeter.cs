@@ -24,12 +24,11 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-using MKAh;
-using Serilog;
 using System;
-using System.Diagnostics;
 using System.Linq;
 using System.Windows.Forms;
+using MKAh;
+using Serilog;
 
 namespace Taskmaster.UI
 {
@@ -266,7 +265,7 @@ namespace Taskmaster.UI
 				updateTimer.Dispose();
 
 				using (var cfg = Taskmaster.Config.Load(UIConfigFilename).BlockUnload())
-				cfg.Config[Constants.Windows][HumanReadable.Hardware.Audio.Volume].IntArray = new int[] { Bounds.Left, Bounds.Top };
+					cfg.Config[Constants.Windows][HumanReadable.Hardware.Audio.Volume].IntArray = new int[] { Bounds.Left, Bounds.Top };
 			}
 
 			OnDisposed?.Invoke(this, DisposedEventArgs.Empty);

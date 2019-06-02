@@ -24,9 +24,9 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-using Serilog;
 using System;
 using System.Diagnostics;
+using Serilog;
 
 namespace Taskmaster
 {
@@ -95,7 +95,7 @@ namespace Taskmaster
 						}
 						else
 						{
-							MessageBox.ShowModal(Name+" launch error", "Failure to elevate privileges, resuming as normal.", MessageBox.Buttons.OK);
+							MessageBox.ShowModal(Name + " launch error", "Failure to elevate privileges, resuming as normal.", MessageBox.Buttons.OK);
 						}
 
 						break;
@@ -105,7 +105,7 @@ namespace Taskmaster
 			}
 		}
 
-		internal static void NewProcessInfo(out ProcessStartInfo info, bool admin=false)
+		internal static void NewProcessInfo(out ProcessStartInfo info, bool admin = false)
 		{
 			var ti = System.Diagnostics.Process.GetCurrentProcess().StartInfo;
 			//info.FileName = Process.GetCurrentProcess().ProcessName;

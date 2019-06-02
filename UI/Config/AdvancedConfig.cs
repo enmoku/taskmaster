@@ -24,10 +24,10 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-using MKAh;
-using Serilog;
 using System;
 using System.Windows.Forms;
+using MKAh;
+using Serilog;
 
 namespace Taskmaster.UI.Config
 {
@@ -77,7 +77,7 @@ namespace Taskmaster.UI.Config
 				layout.Controls.Add(new AlignedLabel { Text = "Ignore list", Font = boldfont, Padding = BigPadding });
 				layout.Controls.Add(new EmptySpace());
 
-				var ignoreList = new TextBox() { ReadOnly = true, Multiline = true, Dock = DockStyle.Top, Padding = LeftSubPadding, Anchor = AnchorStyles.Top | AnchorStyles.Left, ScrollBars= ScrollBars.Vertical, Height = Font.Height * 4 };
+				var ignoreList = new TextBox() { ReadOnly = true, Multiline = true, Dock = DockStyle.Top, Padding = LeftSubPadding, Anchor = AnchorStyles.Top | AnchorStyles.Left, ScrollBars = ScrollBars.Vertical, Height = Font.Height * 4 };
 				ignoreList.Text = string.Join(", ", processmanager.IgnoreList);
 				tooltip.SetToolTip(ignoreList, "These process names are flat out ignored if encoutnered to protect the system.");
 				layout.Controls.Add(ignoreList);
@@ -376,7 +376,7 @@ namespace Taskmaster.UI.Config
 			Close();
 		}
 
-		public static void Reveal(bool centerOnScreen=false)
+		public static void Reveal(bool centerOnScreen = false)
 		{
 			try
 			{

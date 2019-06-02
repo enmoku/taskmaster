@@ -25,7 +25,6 @@
 // THE SOFTWARE.
 
 using System.Collections.Generic;
-using System.Diagnostics;
 using Microsoft.Win32;
 
 namespace Taskmaster

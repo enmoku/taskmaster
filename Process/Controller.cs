@@ -34,8 +34,8 @@ using System.Text;
 using System.Threading.Tasks;
 using MKAh;
 using MKAh.Logic;
-using Ini = MKAh.Ini;
 using Serilog;
+using Ini = MKAh.Ini;
 
 namespace Taskmaster.Process
 {
@@ -168,7 +168,7 @@ namespace Taskmaster.Process
 		}
 		*/
 
-		int PathElements { get; set; }  = 0;
+		int PathElements { get; set; } = 0;
 
 		/// <summary>
 		/// User description for the rule.
@@ -238,7 +238,7 @@ namespace Taskmaster.Process
 		public int Recheck { get; set; } = 0;
 
 		public bool AllowPaging { get; set; } = false;
-		
+
 		public Process.PathVisibilityOptions PathVisibility { get; set; } = Process.PathVisibilityOptions.Process;
 
 		string PathMask { get; set; } = string.Empty; // UNUSED
@@ -340,7 +340,7 @@ namespace Taskmaster.Process
 		{
 			Prepare();
 
-			bool FixedSomething=false, ForegroundFixed = false, BackgroundAffinityFixed = false, BackgroundPriorityFixed = false, PathVisibilityFixed = false;
+			bool FixedSomething = false, ForegroundFixed = false, BackgroundAffinityFixed = false, BackgroundPriorityFixed = false, PathVisibilityFixed = false;
 			bool AffinityMismatchFixed = false, PriorityMismatchFixed = false;
 
 			switch (Foreground)
@@ -617,7 +617,7 @@ namespace Taskmaster.Process
 			{
 				case ForegroundMode.Ignore:
 					app.TryRemove("Background powerdown");
-					clearNonPower:
+				clearNonPower:
 					app.TryRemove("Foreground only");
 					app.TryRemove("Foreground mode");
 					app.TryRemove("Background priority");
@@ -625,7 +625,7 @@ namespace Taskmaster.Process
 					break;
 				case ForegroundMode.Standard:
 					app.TryRemove("Background powerdown");
-					saveFgMode:
+				saveFgMode:
 					app["Foreground mode"].Int = (int)Foreground;
 					if (BackgroundPriority.HasValue)
 						app["Background priority"].Int = ProcessHelpers.PriorityToInt(BackgroundPriority.Value);
@@ -1037,7 +1037,7 @@ namespace Taskmaster.Process
 
 									bool replaced = false;
 									// remove unwanted bits
-									for (int i = 0; i < parts.Count-1; i++)
+									for (int i = 0; i < parts.Count - 1; i++)
 									{
 										string cur = parts[i].ToLowerInvariant();
 										if (SpecialCasePathBits.Any((x) => x.Equals(cur))) // steamapps
@@ -1505,7 +1505,8 @@ namespace Taskmaster.Process
 							ExpectedState = 0,
 						};
 
-						RecentlyModified.AddOrUpdate(info.Id, rmt, (int key, RecentlyModifiedInfo nrmt)=> {
+						RecentlyModified.AddOrUpdate(info.Id, rmt, (int key, RecentlyModifiedInfo nrmt) =>
+						{
 							if (!nrmt.Info.Name.Equals(info.Name))
 							{
 								// REPLACE. THIS SEEMS WRONG
@@ -1566,7 +1567,7 @@ namespace Taskmaster.Process
 					}
 				}
 			}
-			catch (OutOfMemoryException) { throw;  }
+			catch (OutOfMemoryException) { throw; }
 			catch (ArgumentException)
 			{
 				if (Manager.DebugProcesses && ShowInaction && Trace)
@@ -1862,7 +1863,7 @@ namespace Taskmaster.Process
 				sbs.Append("Modify delay: ").Append(ModifyDelay).AppendLine(" ms");
 			if (Recheck > 0)
 				sbs.Append("Recheck: ").Append(Recheck).AppendLine(" ms");
-			
+
 			if (Priority.HasValue)
 			{
 				sbs.Append("Priority: ").Append(MKAh.Readable.ProcessPriority(Priority.Value))

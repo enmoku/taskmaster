@@ -35,8 +35,8 @@ using System.Threading;
 using System.Threading.Tasks;
 using MKAh;
 using MKAh.Logic;
-using Ini = MKAh.Ini;
 using Serilog;
+using Ini = MKAh.Ini;
 
 namespace Taskmaster.Process
 {
@@ -446,9 +446,8 @@ namespace Taskmaster.Process
 
 				if (DebugScan) Log.Verbose($"<Process> Checking: {name} (#{pid})");
 
-				ProcessEx info = null;
 
-				if (WaitForExitList.TryGetValue(pid, out info))
+				if (WaitForExitList.TryGetValue(pid, out ProcessEx info))
 				{
 					if (Trace && DebugProcesses) Logging.DebugMsg($"Re-using old ProcessEx: {info.Name} (#{info.Id})");
 					info.Process.Refresh();

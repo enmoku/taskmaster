@@ -58,7 +58,7 @@ namespace MKAh
 				case "normal": return ProcessPriorityClass.Normal;
 				case "below normal": return ProcessPriorityClass.BelowNormal;
 				case "idle":
-				case "low":return ProcessPriorityClass.Idle;
+				case "low": return ProcessPriorityClass.Idle;
 			}
 		}
 	}

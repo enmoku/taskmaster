@@ -24,10 +24,9 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-using Serilog;
 using System;
-using System.Diagnostics;
 using System.IO;
+using Serilog;
 
 namespace Taskmaster
 {
@@ -102,7 +101,7 @@ namespace Taskmaster
 				var ps = new System.IO.Pipes.PipeSecurity();
 				ps.AddAccessRule(new System.IO.Pipes.PipeAccessRule("Users", System.IO.Pipes.PipeAccessRights.Write, System.Security.AccessControl.AccessControlType.Allow));
 				using (var id = System.Security.Principal.WindowsIdentity.GetCurrent())
-				ps.AddAccessRule(new System.IO.Pipes.PipeAccessRule(id.Name, System.IO.Pipes.PipeAccessRights.FullControl, System.Security.AccessControl.AccessControlType.Allow));
+					ps.AddAccessRule(new System.IO.Pipes.PipeAccessRule(id.Name, System.IO.Pipes.PipeAccessRights.FullControl, System.Security.AccessControl.AccessControlType.Allow));
 				ps.AddAccessRule(new System.IO.Pipes.PipeAccessRule("SYSTEM", System.IO.Pipes.PipeAccessRights.FullControl, System.Security.AccessControl.AccessControlType.Allow));
 
 				pipe = new System.IO.Pipes.NamedPipeServerStream(PipeName, System.IO.Pipes.PipeDirection.In, 1, System.IO.Pipes.PipeTransmissionMode.Message, System.IO.Pipes.PipeOptions.Asynchronous, 16, 8);

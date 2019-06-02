@@ -53,7 +53,7 @@ namespace Taskmaster
 		public const string Paging = "Paging";
 
 		public const string Maintenance = "Maintenance";
-		public const string Health  = "Health";
+		public const string Health = "Health";
 
 		public const string Behaviour = "Behaviour";
 		public const string Options = "Options";
@@ -74,6 +74,6 @@ namespace Taskmaster
 
 		public const string ScanFrequency = "Scan frequency";
 		public const string WMIWatcher = "WMI event watcher";
-		public const string WMIDelay= "WMI poll delay";
+		public const string WMIDelay = "WMI poll delay";
 	}
 }

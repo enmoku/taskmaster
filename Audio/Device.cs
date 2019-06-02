@@ -47,14 +47,14 @@ namespace Taskmaster.Audio
 
 		public string Name { get; private set; } = string.Empty;
 		public string GUID { get; private set; } = string.Empty;
-		 
+
 		public bool VolumeControl { get; set; } = false;
 		public float Volume { get; set; } = float.NaN;
 		public float Target { get; set; } = float.NaN;
 
 		public NAudio.CoreAudioApi.DeviceState State { get; set; } = NAudio.CoreAudioApi.DeviceState.NotPresent;
 		public NAudio.CoreAudioApi.DataFlow Flow { get; set; } = NAudio.CoreAudioApi.DataFlow.All;
-		
+
 		public NAudio.CoreAudioApi.MMDevice MMDevice { get; private set; } = null;
 
 		public override string ToString() => $"{Name ?? "n/a"} {{{GUID ?? "n/a"}}}";

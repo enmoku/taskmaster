@@ -24,15 +24,15 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-using Serilog;
 using System;
 using System.Windows.Forms;
+using Serilog;
 
 namespace Taskmaster.UI.Config
 {
 	public sealed class ExperimentConfig : UniForm
 	{
-		public ExperimentConfig(bool center=false)
+		public ExperimentConfig(bool center = false)
 			: base(centerOnScreen: center)
 		{
 			SuspendLayout();
@@ -100,7 +100,7 @@ namespace Taskmaster.UI.Config
 
 			// FILL IN BOTTOM
 
-			layout.Controls.Add(new AlignedLabel { Text = "Restart required", AutoSize=true, Font = boldfont, ForeColor = System.Drawing.Color.Maroon, Padding = BigPadding });
+			layout.Controls.Add(new AlignedLabel { Text = "Restart required", AutoSize = true, Font = boldfont, ForeColor = System.Drawing.Color.Maroon, Padding = BigPadding });
 			layout.Controls.Add(new EmptySpace());
 
 			savebutton.Click += (_, _ea) =>
@@ -148,7 +148,7 @@ namespace Taskmaster.UI.Config
 			Close();
 		}
 
-		public static void Reveal(bool centerOnScreen=false)
+		public static void Reveal(bool centerOnScreen = false)
 		{
 			try
 			{
