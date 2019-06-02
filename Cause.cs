@@ -48,21 +48,14 @@ namespace Taskmaster
 		readonly public string Detail = string.Empty;
 
 		public override string ToString()
-		{
-			switch (Origin)
+			=> Origin switch
 			{
-				case OriginType.User:
-					return "User Action";
-				case OriginType.Session:
-					return "Session " + Detail;
-				case OriginType.AutoAdjust:
-					return "Auto-adjust: " + Detail; // ugly, but...
-				case OriginType.Watchlist:
-					return "Watchlist: " + Detail;
-				case OriginType.Internal:
-				default:
-					return string.IsNullOrEmpty(Detail) ? HumanReadable.Generic.Undefined : Detail;
-			}
-		}
+				OriginType.User => "User Action",
+				OriginType.Session => "Session " + Detail,
+				OriginType.AutoAdjust => "Auto-adjust: " + Detail, // ugly, but...
+				OriginType.Watchlist => "Watchlist: " + Detail,
+				//OriginType.Internal => 
+				_ => string.IsNullOrEmpty(Detail) ? HumanReadable.Generic.Undefined : Detail
+			};
 	}
 }

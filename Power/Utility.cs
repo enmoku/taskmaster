@@ -52,35 +52,22 @@ namespace Taskmaster.Power
 		}
 
 		public static string GetModeName(Mode mode)
-		{
-			switch (mode)
+			=> mode switch
 			{
-				case Mode.Balanced:
-					return "Balanced";
-				case Mode.HighPerformance:
-					return "High Performance";
-				case Mode.PowerSaver:
-					return "Power Saver";
-				case Mode.Custom:
-					return "Custom";
-				default:
-					return "Undefined";
-			}
-		}
+				Mode.Balanced => "Balanced",
+				Mode.HighPerformance => "High Performance",
+				Mode.PowerSaver => "Power Saver",
+				Mode.Custom => "Custom",
+				_ => "Undefined",
+			};
 
 		public static string GetBehaviourName(PowerBehaviour behaviour)
-		{
-			switch (behaviour)
+			=> behaviour switch
 			{
-				case PowerBehaviour.Auto:
-					return HumanReadable.Hardware.Power.AutoAdjust;
-				case PowerBehaviour.Manual:
-					return HumanReadable.Hardware.Power.Manual;
-				case PowerBehaviour.RuleBased:
-					return HumanReadable.Hardware.Power.RuleBased;
-				default:
-					return HumanReadable.Generic.Undefined;
-			}
-		}
+				PowerBehaviour.Auto => HumanReadable.Hardware.Power.AutoAdjust,
+				PowerBehaviour.Manual => HumanReadable.Hardware.Power.Manual,
+				PowerBehaviour.RuleBased => HumanReadable.Hardware.Power.RuleBased,
+				_ => HumanReadable.Generic.Undefined,
+			};
 	}
 }

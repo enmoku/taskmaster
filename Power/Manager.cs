@@ -624,19 +624,12 @@ namespace Taskmaster.Power
 		}
 
 		Mode ReactionToMode(Reaction reaction)
-		{
-			var aa = AutoAdjust;
-			switch (reaction)
+			=> reaction switch
 			{
-				case Reaction.High:
-					return aa.High.Mode;
-				default:
-				case Reaction.Average:
-					return aa.DefaultMode;
-				case Reaction.Low:
-					return aa.Low.Mode;
-			}
-		}
+				Reaction.High => AutoAdjust.High.Mode,
+				Reaction.Low => AutoAdjust.Low.Mode,
+				_ => AutoAdjust.DefaultMode,
+			};
 
 		bool WarnedForceMode = false;
 

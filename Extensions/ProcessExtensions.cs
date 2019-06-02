@@ -63,20 +63,13 @@ namespace Taskmaster
 		}
 
 		public static ThreadPriority ToThreadPriority(this ProcessPriorityClass priority)
-		{
-			switch (priority)
+			=> priority switch
 			{
-				case ProcessPriorityClass.AboveNormal:
-					return ThreadPriority.AboveNormal;
-				case ProcessPriorityClass.BelowNormal:
-					return ThreadPriority.BelowNormal;
-				case ProcessPriorityClass.High:
-					return ThreadPriority.Highest;
-				case ProcessPriorityClass.Idle:
-					return ThreadPriority.Lowest;
-				default:
-					return ThreadPriority.Normal;
-			}
-		}
+				ProcessPriorityClass.AboveNormal => ThreadPriority.AboveNormal,
+				ProcessPriorityClass.BelowNormal => ThreadPriority.BelowNormal,
+				ProcessPriorityClass.High => ThreadPriority.Highest,
+				ProcessPriorityClass.Idle => ThreadPriority.Lowest,
+				_ => ThreadPriority.Normal,
+			};
 	}
 }
