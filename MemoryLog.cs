@@ -80,7 +80,7 @@ namespace Taskmaster
 		}
 
 		public int Max = 50;
-		static readonly object LogLock = new object();
+		readonly object LogLock = new object();
 		public System.Collections.Generic.List<LogEventArgs> Logs = null;
 
 		//public LoggingLevelSwitch LevelSwitch;

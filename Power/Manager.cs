@@ -1355,7 +1355,7 @@ namespace Taskmaster.Power
 			return CurrentMode;
 		}
 
-		static readonly object power_lock = new object();
+		readonly object power_lock = new object();
 
 		public PowerBehaviour LaunchBehaviour { get; set; } = PowerBehaviour.RuleBased;
 		public PowerBehaviour Behaviour { get; private set; } = PowerBehaviour.RuleBased;

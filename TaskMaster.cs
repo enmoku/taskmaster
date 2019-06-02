@@ -153,7 +153,7 @@ namespace Taskmaster
 			}
 		}
 
-		public static object mainwindow_creation_lock = new object();
+		static readonly object mainwindow_creation_lock = new object();
 		/// <summary>
 		/// Constructs and hooks the main window
 		/// </summary>

@@ -30,7 +30,7 @@ namespace MKAh.Lock
 {
 	public class Monitor
 	{
-		object _Lock = new object();
+		readonly object _Lock = new object();
 
 		public Monitor()
 		{

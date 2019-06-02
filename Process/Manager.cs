@@ -1771,7 +1771,7 @@ namespace Taskmaster.Process
 			}
 		}
 
-		object Exclusive_lock = new object();
+		readonly object Exclusive_lock = new object();
 
 		async Task ExclusiveMode(ProcessEx info)
 		{
