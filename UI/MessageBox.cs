@@ -24,17 +24,25 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
+using System;
 using System.Windows.Forms;
 
 namespace Taskmaster
 {
-	public class MessageBox : UI.UniForm
+	public class MessageBox : UI.UniForm, IDisposable
 	{
 		public enum Buttons : int
 		{
 			OK,
 			AcceptCancel,
 			RetryEndCancel,
+		};
+
+		public enum Type
+		{
+			Auto,
+			Plain,
+			Rich
 		};
 
 		public enum ResultType
@@ -47,21 +55,19 @@ namespace Taskmaster
 
 		public ResultType Result { get; private set; } = ResultType.Cancel;
 
-		public static ResultType ShowModal(string title, string message, Buttons buttons, bool rich = false, Control parent = null)
+		public static ResultType ShowModal(string title, string message, Buttons buttons, Type type = Type.Auto, Control parent = null)
 		{
-			using (var msg = new MessageBox(title, message, buttons, rich, parent))
-			{
-				msg.CenterToParent();
-				msg.ShowDialog();
+			using var msg = new MessageBox(title, message, buttons, type, parent);
+			msg.CenterToParent();
+			msg.ShowDialog();
 
-				return msg.Result;
-			}
+			return msg.Result;
 		}
 
 		readonly Label Message = null;
 		readonly RichTextBox RichMessage = null;
 
-		public MessageBox(string title, string message, Buttons buttons, bool rich = false, Control parent = null)
+		public MessageBox(string title, string message, Buttons buttons, Type type = Type.Auto, Control parent = null)
 			: base()
 		{
 			SuspendLayout();
@@ -133,7 +139,9 @@ namespace Taskmaster
 					break;
 			}
 
-			if (rich)
+			if (type == Type.Auto && message.StartsWith(@"{\rtf1")) type = Type.Rich;
+
+			if (type == Type.Rich)
 			{
 				RichMessage = new RichTextBox() { Rtf = message, ReadOnly = true, Dock = DockStyle.Fill, Width = 600, Height = 400 };
 				layout.Controls.Add(RichMessage);
@@ -148,6 +156,23 @@ namespace Taskmaster
 			StartPosition = parent != null ? FormStartPosition.CenterParent : FormStartPosition.CenterScreen;
 
 			ResumeLayout();
+		}
+
+		bool disposed = false;
+
+		new void Dispose(bool disposing)
+		{
+			lock (this)
+			{
+				if (disposed) return;
+
+				RichMessage?.Dispose();
+				Message?.Dispose();
+
+				base.Dispose(disposing);
+
+				disposed = true;
+			}
 		}
 	}
 }
