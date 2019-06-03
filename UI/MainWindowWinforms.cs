@@ -1153,6 +1153,12 @@ namespace Taskmaster.UI
 				//MinimumSize = new System.Drawing.Size(-2, -2), // doesn't work
 			};
 
+			var imglist = new ImageList();
+			imglist.Images.Add(Properties.Resources.OkayIcon);
+			imglist.Images.Add(Properties.Resources.InfoIcon);
+			imglist.Images.Add(Properties.Resources.ErrorIcon);
+			LogList.SmallImageList = imglist;
+
 			menu = new MenuStrip() { Dock = DockStyle.Top, Parent = this };
 
 			BuildStatusbar();
@@ -4033,18 +4039,35 @@ namespace Taskmaster.UI
 		bool alterStep = true;
 		void AddLog(LogEventArgs ea)
 		{
-			var li = LogList.Items.Add(ea.Message);
+			var msg = new ListViewItem(ea.Message);
+			switch (ea.Level)
+			{
+				case Serilog.Events.LogEventLevel.Verbose:
+				case Serilog.Events.LogEventLevel.Information:
+					msg.ImageIndex = 0;
+					break;
+				case Serilog.Events.LogEventLevel.Debug:
+				case Serilog.Events.LogEventLevel.Warning:
+					msg.ImageIndex = 1;
+					break;
+				case Serilog.Events.LogEventLevel.Error:
+				case Serilog.Events.LogEventLevel.Fatal:
+					msg.ImageIndex = 2;
+					break;
+			}
+
+			LogList.Items.Add(msg);
 			//LogList.Columns[0].Width = -2;
 
 			// color errors and worse red
 			if ((int)ea.Level >= (int)Serilog.Events.LogEventLevel.Error)
-				li.ForeColor = System.Drawing.Color.Red;
+				msg.ForeColor = System.Drawing.Color.Red;
 
 			// alternate back color
 			if (AlternateRowColorsLog && (alterStep = !alterStep))
-				li.BackColor = AlterColor;
+				msg.BackColor = AlterColor;
 
-			li.EnsureVisible();
+			msg.EnsureVisible();
 		}
 
 		void SaveUIState()

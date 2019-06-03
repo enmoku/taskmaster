@@ -71,18 +71,38 @@ namespace Taskmaster.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to {\rtf1\ansi\ansicpg1252\deff0\deflang2057{\fonttbl{\f0\fnil\fcharset0 Consolas;}{\f1\fnil Consolas;}{\f2\fnil\fcharset0 Courier New;}}
-        ///{\colortbl ;\red0\green0\blue0;}
+        ///   Looks up a localized resource of type System.Drawing.Bitmap.
+        /// </summary>
+        internal static System.Drawing.Bitmap ErrorIcon {
+            get {
+                object obj = ResourceManager.GetObject("ErrorIcon", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to {\rtf1\ansi\ansicpg1252\deff0\deflang2057{\fonttbl{\f0\fnil\fcharset0 Consolas;}}
+        ///{\colortbl ;\red0\green0\blue0;\red0\green0\blue255;}
         ///{\*\generator Msftedit 5.41.21.2510;}\viewkind4\uc1\pard\cf1\lang1035\f0\fs32 Third party licenses used by Taskmaster\fs28\par
-        ///\f1\par
+        ///\par
         ///NAudio by Mark Heath (Ms-PL)\par
         ///\fs19\par
         ///\pard\li720 Microsoft Public License (Ms-PL)\par
-        ///This license governs use of the accompanying software. If you use the software, you accept this license. If yo [rest of string was truncated]&quot;;.
+        ///This license governs use of the accompanying software. If you use the software, you accept this license. If you do not accept the license, do not [rest of string was truncated]&quot;;.
         /// </summary>
         internal static string ExternalLicenses {
             get {
                 return ResourceManager.GetString("ExternalLicenses", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Drawing.Bitmap.
+        /// </summary>
+        internal static System.Drawing.Bitmap InfoIcon {
+            get {
+                object obj = ResourceManager.GetObject("InfoIcon", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
             }
         }
         
@@ -151,6 +171,16 @@ namespace Taskmaster.Properties {
         internal static string LICENSE {
             get {
                 return ResourceManager.GetString("LICENSE", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Drawing.Bitmap.
+        /// </summary>
+        internal static System.Drawing.Bitmap OkayIcon {
+            get {
+                object obj = ResourceManager.GetObject("OkayIcon", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
             }
         }
         

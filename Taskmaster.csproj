@@ -116,6 +116,9 @@
     <None Include="Resources\KnownModules.ini" />
     <None Include="Resources\ProjectDirectory.restext" />
     <Content Include="Licenses\NAudio.txt" />
+    <Content Include="Resources\cancel.png" />
+    <Content Include="Resources\checked.png" />
+    <Content Include="Resources\information.png" />
     <Content Include="taskmaster-hammer.ico" />
     <Content Include="LICENSE">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>

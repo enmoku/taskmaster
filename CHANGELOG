@@ -4,6 +4,9 @@ Comprehensive changes can be found in Git change history:
 
 ## [0.13...]
 ### 2019-06-02
+	Added: Event log now has 3 icons to correspond to various messages to make it easier to notice warnings and errors.
+	Updated: Third party licenses.
+### 2019-06-02
 	Internal: Logic changes, should have no end user effect.
 ### 2019-06-01
 	Changed: Protected executables are now done so only if they're in %SystemRoot% or if the path is inaccessible.
