@@ -231,7 +231,7 @@ namespace Taskmaster.Power
 			while (!proclastwake.StandardOutput.EndOfStream)
 			{
 				if (timer.ElapsedMilliseconds > 30_000) return;
-				Logging.DebugMsg(proclastwake.StandardOutput.ReadLine());
+				Logging.DebugMsg(await proclastwake.StandardOutput.ReadLineAsync());
 			}
 
 			info = new ProcessStartInfo(pcfg, "-RequestsOverride")
@@ -245,7 +245,7 @@ namespace Taskmaster.Power
 			while (!procoverrides.StandardOutput.EndOfStream)
 			{
 				if (timer.ElapsedMilliseconds > 30_000) return;
-				Logging.DebugMsg(procoverrides.StandardOutput.ReadLine());
+				Logging.DebugMsg(await procoverrides.StandardOutput.ReadLineAsync());
 			}
 
 			info = new ProcessStartInfo(pcfg, "-Requests")
@@ -259,7 +259,7 @@ namespace Taskmaster.Power
 			while (!procrequests.StandardOutput.EndOfStream)
 			{
 				if (timer.ElapsedMilliseconds > 30_000) return;
-				Logging.DebugMsg(procrequests.StandardOutput.ReadLine());
+				Logging.DebugMsg(await procrequests.StandardOutput.ReadLineAsync());
 			}
 		}
 

@@ -3020,7 +3020,7 @@ namespace Taskmaster.UI
 			if (!IsHandleCreated || DisposedOrDisposing) return;
 
 			if (InvokeRequired)
-				BeginInvoke(new Action(async () => RemoveOldProcessingEntry_Invoke(key).ConfigureAwait(true)));
+				BeginInvoke(new Action(async () => await RemoveOldProcessingEntry_Invoke(key).ConfigureAwait(true)));
 			else
 				RemoveOldProcessingEntry_Invoke(key).ConfigureAwait(true);
 		}
