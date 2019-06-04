@@ -1719,6 +1719,13 @@ namespace Taskmaster.Process
 
 					try
 					{
+						if (prc.Ignored(info))
+						{
+							if (ShowInaction && Manager.DebugProcesses)
+								Log.Debug($"[{prc.FriendlyName}] {info.Name} (#{info.Id.ToString()}) ignored due to user defined rule.");
+							return;
+						}
+
 						if (Trace && DebugProcesses) Logging.DebugMsg($"Trying to modify: {info.Name} (#{info.Id})");
 
 						await prc.Modify(info);

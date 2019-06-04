@@ -1118,8 +1118,19 @@ namespace Taskmaster.Process
 			return false;
 		}
 
-		// TODO: Simplify this
-		async Task Touch(ProcessEx info, bool refresh = false)
+		public bool Ignored(ProcessEx info)
+		{
+			if (IgnoreList != null && IgnoreList.Any(item => item.Equals(info.Name, StringComparison.InvariantCultureIgnoreCase)))
+			{
+				info.State = ProcessHandlingState.Abandoned;
+				return true; // return ProcessState.Ignored;
+			}
+
+			return false;
+		}
+
+	// TODO: Simplify this
+	async Task Touch(ProcessEx info, bool refresh = false)
 		{
 			Debug.Assert(info.Process != null, "ProcessController.Touch given null process.");
 			Debug.Assert(!Utility.SystemProcessId(info.Id), "ProcessController.Touch given invalid process ID");
@@ -1265,14 +1276,6 @@ namespace Taskmaster.Process
 				}
 
 				if (Trace) Log.Verbose($"[{FriendlyName}] Touching: {info.Name} (#{info.Id.ToString()})");
-
-				if (IgnoreList != null && IgnoreList.Any(item => item.Equals(info.Name, StringComparison.InvariantCultureIgnoreCase)))
-				{
-					if (ShowInaction && Manager.DebugProcesses)
-						Log.Debug($"[{FriendlyName}] {info.Name} (#{info.Id.ToString()}) ignored due to user defined rule.");
-					info.State = ProcessHandlingState.Abandoned;
-					return; // return ProcessState.Ignored;
-				}
 
 				info.Valid = true;
 
