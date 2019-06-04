@@ -3,6 +3,9 @@ Comprehensive changes can be found in Git change history:
 	https://github.com/mkahvi/taskmaster/commits/master
 
 ## [0.13...]
+### 2019-06-05
+	Changed: Exclusive mode was being a little eager.
+	Changed: Ignore list is checked earlier for matches.
 ### 2019-06-03
 	Added: Event log now has 3 icons to correspond to various messages to make it easier to notice warnings and errors.
 	Updated: Third party licenses.
