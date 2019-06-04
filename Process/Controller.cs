@@ -224,10 +224,7 @@ namespace Taskmaster.Process
 		public int AffinityIdeal // EXPERIMENTAL
 		{
 			get => _affinityIdeal;
-			set
-			{
-				_affinityIdeal = value.Constrain(-1, Utility.CPUCount);
-			}
+			set => _affinityIdeal = value.Constrain(-1, Utility.CPUCount);
 		}
 
 		/// <summary>
