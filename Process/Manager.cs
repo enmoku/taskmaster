@@ -1785,6 +1785,8 @@ namespace Taskmaster.Process
 			if (DisposedOrDisposing) throw new ObjectDisposedException(nameof(Manager), "ExclusiveMode called when ProcessManager was already disposed");
 			if (!MKAh.Execution.IsAdministrator) return; // sadly stopping services requires admin rights
 
+			if (info.ExcluiveWait) return;
+
 			if (DebugProcesses) Log.Debug($"[{info.Controller.FriendlyName}] {info.Name} (#{info.Id}) Exclusive mode initiating.");
 
 			await Task.Delay(0).ConfigureAwait(false);
@@ -1799,8 +1801,9 @@ namespace Taskmaster.Process
 						if (ExclusiveList.TryAdd(info.Id, info))
 						{
 							if (DebugProcesses) Log.Debug($"<Exclusive> [{info.Controller.FriendlyName}] {info.Name} (#{info.Id.ToString()}) starting");
+							info.ExcluiveWait = true;
 							info.Process.EnableRaisingEvents = true;
-							info.Process.Exited += EndExclusiveMode;
+							info.Process.Exited += (_,_ea) => EndExclusiveMode(info);
 
 							ExclusiveEnabled = true;
 
@@ -1822,7 +1825,7 @@ namespace Taskmaster.Process
 					if (info.Process.HasExited)
 					{
 						info.State = ProcessHandlingState.Exited;
-						EndExclusiveMode(info.Process, EventArgs.Empty);
+						EndExclusiveMode(info);
 					}
 				}
 			}
@@ -1833,16 +1836,20 @@ namespace Taskmaster.Process
 			}
 		}
 
-		void EndExclusiveMode(object sender, EventArgs ea)
+		void EndExclusiveMode(ProcessEx info)
 		{
 			if (DisposedOrDisposing) return;
+
+			if (!info.ExcluiveWait) return;
 
 			try
 			{
 				lock (Exclusive_lock)
 				{
-					if (sender is System.Diagnostics.Process process && ExclusiveList.TryRemove(process.Id, out var info))
+					if (ExclusiveList.TryRemove(info.Id, out _))
 					{
+						info.ExcluiveWait = false;
+
 						if (DebugProcesses) Log.Debug($"<Exclusive> [{info.Controller.FriendlyName}] {info.Name} (#{info.Id.ToString()}) ending");
 						if (ExclusiveList.Count == 0)
 						{
@@ -2311,7 +2318,7 @@ namespace Taskmaster.Process
 							if (info.Process.HasExited)
 							{
 								info.State = ProcessHandlingState.Exited;
-								EndExclusiveMode(info.Process, EventArgs.Empty);
+								EndExclusiveMode(info);
 							}
 						}
 						catch { }
