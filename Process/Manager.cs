@@ -1730,15 +1730,15 @@ namespace Taskmaster.Process
 
 						await prc.Modify(info);
 
-						if (prc.Foreground != ForegroundMode.Ignore) ForegroundWatch(info).ConfigureAwait(false);
+						if (prc.Foreground != ForegroundMode.Ignore) await ForegroundWatch(info).ConfigureAwait(false);
 
-						if (prc.ExclusiveMode) ExclusiveMode(info).ConfigureAwait(false);
+						if (prc.ExclusiveMode) await ExclusiveMode(info).ConfigureAwait(false);
 
 						if (RecordAnalysis.HasValue && info.Controller.Analyze && info.Valid && info.State != ProcessHandlingState.Abandoned)
-							analyzer.Analyze(info).ConfigureAwait(false);
+							await analyzer.Analyze(info).ConfigureAwait(false);
 
 						if (WindowResizeEnabled && prc.Resize.HasValue)
-							prc.TryResize(info).ConfigureAwait(false);
+							await prc.TryResize(info).ConfigureAwait(false);
 
 						if (info.State == ProcessHandlingState.Processing)
 						{
