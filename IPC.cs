@@ -41,7 +41,7 @@ namespace Taskmaster
 
 		static System.IO.Pipes.NamedPipeServerStream pipe = null;
 
-		internal static void Receive(IAsyncResult result)
+		internal static async void Receive(IAsyncResult result)
 		{
 			if (pipe is null) return;
 
@@ -58,7 +58,7 @@ namespace Taskmaster
 				if (!pipe.IsMessageComplete) return;
 
 				using var sr = new StreamReader(lp);
-				var line = sr.ReadLine();
+				var line = await sr.ReadLineAsync();
 				if (line.StartsWith(RestartMessage))
 				{
 					Log.Information("<IPC> Restart request received.");
@@ -123,7 +123,7 @@ namespace Taskmaster
 		/// </summary>
 		/// <exception cref="IOException">Communication timeout</exception>
 		/// <exception cref="UnauthorizedAccessException">Running process has elevated privileges compared to our own.</exception>
-		internal static void Transmit(string message)
+		internal static async void Transmit(string message)
 		{
 			Logging.DebugMsg("Attempting to communicate with running instance of TM.");
 
@@ -133,12 +133,12 @@ namespace Taskmaster
 			{
 				pe = new System.IO.Pipes.NamedPipeClientStream(".", PipeName, System.IO.Pipes.PipeAccessRights.Write, System.IO.Pipes.PipeOptions.WriteThrough, System.Security.Principal.TokenImpersonationLevel.Impersonation, HandleInheritability.None);
 				using var sw = new StreamWriter(pe);
-				if (!pe.IsConnected) pe.Connect(5_000);
+				if (!pe.IsConnected) await pe.ConnectAsync(5_000);
 
 				if (pe.IsConnected && pe.CanWrite)
 				{
-					sw.WriteLine(message);
-					sw.Flush();
+					await sw.WriteLineAsync(message);
+					await sw.FlushAsync();
 				}
 
 				System.Threading.Thread.Sleep(100); // HACK: async pipes don't like things happening too fast.
