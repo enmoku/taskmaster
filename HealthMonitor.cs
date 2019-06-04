@@ -63,7 +63,6 @@ namespace Taskmaster
 		readonly Settings.HealthMonitor Settings = new Settings.HealthMonitor();
 
 		readonly CancellationTokenSource cancellationSource = new CancellationTokenSource();
-		readonly CancellationToken ct;
 
 		// Hard Page Faults
 		//Windows.PerformanceCounter PageFaults = new Windows.PerformanceCounter("Memory", "Page Faults/sec", null);
@@ -109,8 +108,6 @@ namespace Taskmaster
 
 		public HealthMonitor()
 		{
-			ct = cancellationSource.Token;
-
 			// TODO: Add different problems to monitor for
 
 			// --------------------------------------------------------------------------------------------------------
@@ -328,23 +325,21 @@ namespace Taskmaster
 
 			try
 			{
-				try
-				{
-					Task.WaitAll(new[] {
-						CheckSystem(),
-						CheckErrors(),
-						CheckLogs(),
-						CheckMemory(),
-						CheckNVM()
-					}, ct);
-				}
-				catch (Exception ex) { Logging.Stacktrace(ex); }
+				if (cancellationSource.IsCancellationRequested) return;
+
+				Task.WaitAll(new[] {
+					CheckSystem(),
+					CheckErrors(),
+					CheckLogs(),
+					CheckMemory(),
+					CheckNVM()
+				}, cancellationSource.Token);
 			}
 			catch (OperationCanceledException)
 			{
 				HealthTimer?.Stop();
 			}
-			catch { throw; }
+			catch (Exception ex) { Logging.Stacktrace(ex); }
 			finally
 			{
 				Atomic.Unlock(ref HealthCheck_lock);
