@@ -1785,7 +1785,7 @@ namespace Taskmaster.Process
 			if (DisposedOrDisposing) throw new ObjectDisposedException(nameof(Manager), "ExclusiveMode called when ProcessManager was already disposed");
 			if (!MKAh.Execution.IsAdministrator) return; // sadly stopping services requires admin rights
 
-			if (info.ExcluiveWait) return;
+			lock (info) if (info.Exclusive) return;
 
 			if (DebugProcesses) Log.Debug($"[{info.Controller.FriendlyName}] {info.Name} (#{info.Id}) Exclusive mode initiating.");
 
@@ -1801,7 +1801,7 @@ namespace Taskmaster.Process
 						if (ExclusiveList.TryAdd(info.Id, info))
 						{
 							if (DebugProcesses) Log.Debug($"<Exclusive> [{info.Controller.FriendlyName}] {info.Name} (#{info.Id.ToString()}) starting");
-							info.ExcluiveWait = true;
+							lock (info) info.Exclusive = true;
 							info.Process.EnableRaisingEvents = true;
 							info.Process.Exited += (_,_ea) => EndExclusiveMode(info);
 
@@ -1840,7 +1840,7 @@ namespace Taskmaster.Process
 		{
 			if (DisposedOrDisposing) return;
 
-			if (!info.ExcluiveWait) return;
+			lock (info) if (!info.Exclusive) return;
 
 			try
 			{
@@ -1848,7 +1848,7 @@ namespace Taskmaster.Process
 				{
 					if (ExclusiveList.TryRemove(info.Id, out _))
 					{
-						info.ExcluiveWait = false;
+						lock (info) info.Exclusive = false;
 
 						if (DebugProcesses) Log.Debug($"<Exclusive> [{info.Controller.FriendlyName}] {info.Name} (#{info.Id.ToString()}) ending");
 						if (ExclusiveList.Count == 0)

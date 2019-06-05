@@ -74,7 +74,7 @@ namespace Taskmaster.Process
 		public bool AffinityProtected { get; set; } = false;
 
 		/// <summary>
-		/// Monitoring power plan.
+		/// Power plan forced, waiting for exit to restore it.
 		/// </summary>
 		public bool PowerWait { get; set; } = false;
 
@@ -83,8 +83,14 @@ namespace Taskmaster.Process
 		/// </summary>
 		public bool ForegroundWait { get; set; } = false;
 
-		public bool ExcluiveWait { get; set; } = false;
+		/// <summary>
+		/// Has exlusive mode enabled and waiting for exit.
+		/// </summary>
+		public bool Exclusive { get; set; } = false;
 
+		/// <summary>
+		/// Resized, monitoring for exit.
+		/// </summary>
 		public bool Resize { get; set; } = false;
 
 		/// <summary>
