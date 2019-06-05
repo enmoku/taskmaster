@@ -1233,7 +1233,7 @@ namespace Taskmaster.Process
 						if (ormt.LastIgnored.TimeTo(now) < Manager.IgnoreRecentlyModified ||
 							ormt.LastModified.TimeTo(now) < Manager.IgnoreRecentlyModified)
 						{
-							if (Manager.DebugProcesses) Log.Debug($"[{FriendlyName}] #{info.Id} ignored due to recent modification. {(expected ? $" Expected: {ormt.ExpectedState} :)" : $" Unexpected: {ormt.ExpectedState} :(")}");
+							if (Manager.DebugProcesses && Taskmaster.ShowInaction) Log.Debug($"[{FriendlyName}] {info.Name} (#{info.Id}) ignored due to recent modification. {(expected ? $"State unchanged ×{ormt.ExpectedState}" : $"State changed ×{ormt.ExpectedState}")}");
 
 							if (ormt.ExpectedState == -2) // 2-3 seems good number
 							{
