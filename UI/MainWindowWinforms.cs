@@ -872,8 +872,8 @@ namespace Taskmaster.UI
 		Label powerbalancer_plan = null;
 		Label powerbalancer_forcedcount = null;
 
-		ListView exitwaitlist = null;
-		ListView processinglist = null;
+		ListView ExitWaitList = null;
+		ListView ProcessingList = null;
 		ConcurrentDictionary<int, ListViewItem> ExitWaitlistMap = null;
 
 		#region Foreground Monitor
@@ -2129,7 +2129,9 @@ namespace Taskmaster.UI
 
 		void BuildProcessDebug()
 		{
-			exitwaitlist = new Extensions.ListViewEx()
+			ExitWaitlistMap = new ConcurrentDictionary<int, ListViewItem>();
+
+			ExitWaitList = new Extensions.ListViewEx()
 			{
 				AutoSize = true,
 				//Height = 180,
@@ -2140,10 +2142,15 @@ namespace Taskmaster.UI
 				Dock = DockStyle.Fill,
 			};
 
-			exitwaitlist.Columns.Add("Id", 50);
-			exitwaitlist.Columns.Add(HumanReadable.System.Process.Executable, 280);
-			exitwaitlist.Columns.Add("State", 160);
-			exitwaitlist.Columns.Add(HumanReadable.Hardware.Power.Section, 80);
+			ExitWaitList.Columns.Add("Id", 50);
+			ExitWaitList.Columns.Add(HumanReadable.System.Process.Executable, 280);
+			ExitWaitList.Columns.Add("State", 160);
+			ExitWaitList.Columns.Add(HumanReadable.Hardware.Power.Section, 80);
+
+			var waitlist = processmanager?.GetExitWaitList();
+			if ((waitlist?.Length ?? 0) > 0)
+				foreach (var info in waitlist)
+					ExitWaitListHandler(null, new ProcessModificationEventArgs(info));
 
 			var processlayout = new TableLayoutPanel()
 			{
@@ -2179,11 +2186,11 @@ namespace Taskmaster.UI
 			}
 
 			processlayout.Controls.Add(new AlignedLabel() { Text = "Exit wait list...", Padding = BigPadding });
-			processlayout.Controls.Add(exitwaitlist);
+			processlayout.Controls.Add(ExitWaitList);
 
 			processlayout.Controls.Add(new AlignedLabel() { Text = "Processing list" });
 
-			processinglist = new Extensions.ListViewEx()
+			ProcessingList = new Extensions.ListViewEx()
 			{
 				AutoSize = true,
 				FullRowSelect = true,
@@ -2192,14 +2199,12 @@ namespace Taskmaster.UI
 				Dock = DockStyle.Fill,
 			};
 
-			processinglist.Columns.Add("Id", 50);
-			processinglist.Columns.Add(HumanReadable.System.Process.Executable, 280);
-			processinglist.Columns.Add("State", 160);
-			processinglist.Columns.Add("Time", 80);
+			ProcessingList.Columns.Add("Id", 50);
+			ProcessingList.Columns.Add(HumanReadable.System.Process.Executable, 280);
+			ProcessingList.Columns.Add("State", 160);
+			ProcessingList.Columns.Add("Time", 80);
 
-			processlayout.Controls.Add(processinglist);
-
-			ExitWaitlistMap = new ConcurrentDictionary<int, ListViewItem>();
+			processlayout.Controls.Add(ProcessingList);
 
 			ProcessDebugTab = new TabPage("Process Debug") { Padding = BigPadding };
 
@@ -3001,7 +3006,7 @@ namespace Taskmaster.UI
 				item.SubItems[2].Text = ea.Info.State.ToString();
 				item.SubItems[3].Text = DateTime.Now.ToLongTimeString();
 
-				if (newitem) processinglist.Items.Insert(0, item);
+				if (newitem) ProcessingList.Items.Insert(0, item);
 
 				if (ea.Info.Handled) RemoveOldProcessingEntry(key);
 			}
@@ -3034,7 +3039,7 @@ namespace Taskmaster.UI
 			try
 			{
 				if (ProcessEventMap.TryRemove(key, out ListViewItem item))
-					processinglist.Items.Remove(item);
+					ProcessingList.Items.Remove(item);
 			}
 			catch { }
 		}
@@ -3058,8 +3063,8 @@ namespace Taskmaster.UI
 				activeFullscreen.Text = HumanReadable.Generic.Undefined;
 
 				tabLayout.Controls.Remove(ProcessDebugTab);
-				processinglist.Items.Clear();
-				exitwaitlist.Items.Clear();
+				ProcessingList.Items.Clear();
+				ExitWaitList.Items.Clear();
 			}
 
 			// TODO: unlink events
@@ -3151,7 +3156,7 @@ namespace Taskmaster.UI
 							//li.EnsureVisible();
 							break;
 						case ProcessHandlingState.Exited:
-							exitwaitlist?.Items.Remove(li);
+							ExitWaitList?.Items.Remove(li);
 							ExitWaitlistMap?.TryRemove(ea.Info.Id, out _);
 							break;
 						default:
@@ -3168,7 +3173,7 @@ namespace Taskmaster.UI
 						});
 
 					ExitWaitlistMap?.TryAdd(ea.Info.Id, li);
-					exitwaitlist?.Items.Insert(0, li);
+					ExitWaitList?.Items.Insert(0, li);
 					li.EnsureVisible();
 				}
 			}
@@ -4235,7 +4240,7 @@ namespace Taskmaster.UI
 
 				WatchlistSearchTimer.Dispose();
 				UItimer.Dispose();
-				exitwaitlist?.Dispose();
+				ExitWaitList?.Dispose();
 				ExitWaitlistMap?.Clear();
 			}
 		}
