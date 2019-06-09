@@ -331,161 +331,11 @@ namespace Taskmaster
 		[STAThread] // supposedly needed to avoid shit happening with the WinForms GUI and other GUI toolkits
 		static public int Main(string[] args)
 		{
-			System.Threading.Mutex singleton = null;
-
 			AppDomain.CurrentDomain.ProcessExit += (_, _ea) => ExitCleanup();
 
 			try
 			{
-				{
-					var startTimer = Stopwatch.StartNew();
-
-					bool ni = MKAh.Program.NativeImage.Exists();
-
-					//Debug.Listeners.Add(new TextWriterTraceListener(System.Console.Out));
-
-					NativeMethods.SetErrorMode(NativeMethods.SetErrorMode(NativeMethods.ErrorModes.SEM_SYSTEMDEFAULT) | NativeMethods.ErrorModes.SEM_NOGPFAULTERRORBOX | NativeMethods.ErrorModes.SEM_FAILCRITICALERRORS);
-
-					System.Windows.Forms.Application.SetUnhandledExceptionMode(UnhandledExceptionMode.Automatic);
-					System.Windows.Forms.Application.ThreadException += UnhandledUIException;
-					System.Windows.Forms.Application.EnableVisualStyles(); // required by shortcuts and high dpi-awareness
-					System.Windows.Forms.Application.SetCompatibleTextRenderingDefault(false); // required by high dpi-awareness
-
-					AppDomain.CurrentDomain.UnhandledException += UnhandledException;
-
-					//hiddenwindow = new OS.HiddenWindow();
-
-					TryPortableMode();
-					LogPath = Path.Combine(DataPath, LogFolder);
-
-					// Singleton
-					singleton = new System.Threading.Mutex(true, SingletonID, out bool mutexgained);
-					if (!mutexgained)
-					{
-						// already running, signal original process
-						MessageBox.ResultType rv = MessageBox.ShowModal(Name + "!",
-							"Already operational.\n\nRetry to try to recover [restart] running instance.\nEnd to kill running instance and exit this.\nCancel to simply request refresh.",
-							MessageBox.Buttons.RetryEndCancel);
-
-						switch (rv)
-						{
-							case MessageBox.ResultType.Retry:
-								IPC.Transmit(IPC.RestartMessage);
-								break;
-							case MessageBox.ResultType.End:
-								IPC.Transmit(IPC.TerminationMessage);
-								break;
-							case MessageBox.ResultType.Cancel:
-								IPC.Transmit(IPC.RefreshMessage);
-								break;
-						}
-
-						return -1;
-					}
-
-					IPC.Listen();
-
-					// Multi-core JIT
-					// https://docs.microsoft.com/en-us/dotnet/api/system.runtime.profileoptimization
-					{
-						var cachepath = System.IO.Path.Combine(DataPath, "Cache");
-						if (!System.IO.Directory.Exists(cachepath)) System.IO.Directory.CreateDirectory(cachepath);
-						System.Runtime.ProfileOptimization.SetProfileRoot(cachepath);
-						System.Runtime.ProfileOptimization.StartProfile("jit.profile");
-					}
-
-					Config = new Configuration.Manager(DataPath);
-
-					LicenseBoiler();
-
-					UI.Splash splash = null;
-
-					/*
-					Task.Run(() => {
-						{
-							splash = new UI.Splash(6); // splash screen
-							LoadEvent += splash.LoadEvent;
-							UIWaiter.Set();
-						}
-
-						Application.Run();
-						UIWaiter.Set();
-					});
-
-					UIWaiter.WaitOne();
-					UIWaiter.Reset();
-					*/
-
-					// INIT LOGGER
-					{
-						var logswitch = new LoggingLevelSwitch(LogEventLevel.Information);
-
-#if DEBUG
-						loglevelswitch.MinimumLevel = LogEventLevel.Debug;
-						if (Trace) loglevelswitch.MinimumLevel = LogEventLevel.Verbose;
-#endif
-
-						var logpathtemplate = System.IO.Path.Combine(LogPath, Name + "-{Date}.log");
-						Serilog.Log.Logger = new Serilog.LoggerConfiguration()
-							.MinimumLevel.ControlledBy(loglevelswitch)
-							.WriteTo.Console(levelSwitch: new LoggingLevelSwitch(LogEventLevel.Verbose))
-							.WriteTo.RollingFile(logpathtemplate, outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}",
-								levelSwitch: new LoggingLevelSwitch(Serilog.Events.LogEventLevel.Debug), retainedFileCountLimit: 3)
-							.WriteTo.MemorySink(levelSwitch: logswitch)
-							.CreateLogger();
-
-						AppDomain.CurrentDomain.ProcessExit += (_, _ea) => Log.CloseAndFlush();
-
-						LoadEvent?.Invoke(null, new LoadEventArgs("Logger initialized.", LoadEventType.Loaded));
-					}
-
-					// COMMAND-LINE ARGUMENTS
-					CommandLine.ParseArguments(args);
-					args = null; // silly
-
-					// STARTUP
-
-					{
-						var builddate = BuildDate();
-
-						var now = DateTime.Now;
-						var age = (now - builddate).TotalDays;
-
-						var sbs = new StringBuilder()
-							.Append(Name).Append("! (#").Append(System.Diagnostics.Process.GetCurrentProcess().Id).Append(")")
-							.Append(MKAh.Execution.IsAdministrator ? " [ADMIN]" : "").Append(Portable ? " [PORTABLE]" : "")
-							.Append(" – Version: ").Append(Version)
-							.Append(" – Built: ").Append(builddate.ToString("yyyy/MM/dd HH:mm")).Append($" [{age:N0} days old]");
-						Log.Information(sbs.ToString());
-					}
-
-					Log.Information("<NGen> Native Image: " + (ni ? "Yes :D" : "No :("));
-
-					//PreallocLastLog();
-
-					InitialConfiguration();
-
-					LoadCoreConfig();
-
-					UpdateStyling();
-
-					//if (ShowSplash) splash.Invoke(new Action(() => splash.Show()));
-
-					InitializeComponents();
-
-					Config.Flush(); // early save of configs
-
-					if (RestartCounter > 0 && Trace) Log.Debug($"<Core> Restarted {RestartCounter.ToString()} time(s)");
-					startTimer.Stop();
-
-					Log.Information($"<Core> Initialization complete ({startTimer.ElapsedMilliseconds} ms)...");
-					startTimer = null;
-
-					LoadEvent?.Invoke(null, new LoadEventArgs("Core loading finished", LoadEventType.Loaded));
-					LoadEvent = null;
-					splash?.Invoke(new Action(() => splash.Dispose()));
-					splash = null;
-				}
+				using var singleton = Initialize(ref args);
 
 				if (State == Runstate.Normal)
 				{
@@ -564,7 +414,6 @@ namespace Taskmaster
 					ExitCleanup();
 
 					Config?.Dispose();
-					singleton?.Dispose();
 
 					Log.CloseAndFlush();
 				}
