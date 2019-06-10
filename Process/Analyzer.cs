@@ -339,65 +339,65 @@ namespace Taskmaster.Process
 			{
 				var modulepath = Path.Combine(DataPath, moduleFilename);
 
-					foreach (var section in cfg.Config)
 				using var cfg = Config.Load(modulepath);
+				foreach (var section in cfg.Config)
+				{
+					try
 					{
-						try
+						string name = section.Name;
+						if (KnownModules.ContainsKey(name)) continue;
+
+						var files = section.Get("files")?.Array ?? null;
+
+						if ((files?.Length ?? 0) == 0) continue;
+
+						bool listed = yesvalues.Any((x) => x.Equals(section.Get("listed")?.Value.ToLowerInvariant() ?? "no"));
+						//string upgrade = section.TryGet("upgrade")?.Value ?? null;
+						//bool open = yesvalues.Contains(section.TryGet("open")?.Value.ToLowerInvariant() ?? "no");
+						//bool prop = yesvalues.Contains(section.TryGet("proprietary")?.Value.ToLowerInvariant() ?? "no");
+						bool ext = yesvalues.Any((x) => x.Equals(section.Get("extension")?.Value.ToLowerInvariant() ?? "no"));
+						string ttype = section.Get("type")?.Value.ToLowerInvariant() ?? "unknown"; // TODO
+
+						//string trec = section.TryGet("recommendation")?.Value.ToLowerInvariant() ?? null;
+						//string notes = section.TryGet("notes")?.Value ?? null;
+
+						long value = section.Get("value")?.Int ?? 0;
+						/*
+						ModuleRecommendation rec = ModuleRecommendation.Undefined;
+						if (!RecMap.TryGetValue(trec, out rec))
+							rec = ModuleRecommendation.Undefined;
+						*/
+						ModuleType type = ModuleType.Unknown;
+						if (!TypeMap.TryGetValue(ttype, out type))
+							type = ModuleType.Unknown;
+
+						string identity = section.Name;
+
+						var mi = new ModuleInfo
 						{
-							string name = section.Name;
-							if (KnownModules.ContainsKey(name)) continue;
+							Identity = identity,
+							Type = type,
+							Files = files,
+							Listed = listed,
+							//Upgrade = upgrade,
+							//Open = open,
+							//Extension = ext,
+							//Proprietary = prop,
+							//Recommendation = rec,
+							Value = value,
+						};
 
-							var files = section.Get("files")?.Array ?? null;
-
-							if ((files?.Length ?? 0) == 0) continue;
-
-							bool listed = yesvalues.Any((x) => x.Equals(section.Get("listed")?.Value.ToLowerInvariant() ?? "no"));
-							//string upgrade = section.TryGet("upgrade")?.Value ?? null;
-							//bool open = yesvalues.Contains(section.TryGet("open")?.Value.ToLowerInvariant() ?? "no");
-							//bool prop = yesvalues.Contains(section.TryGet("proprietary")?.Value.ToLowerInvariant() ?? "no");
-							bool ext = yesvalues.Any((x) => x.Equals(section.Get("extension")?.Value.ToLowerInvariant() ?? "no"));
-							string ttype = section.Get("type")?.Value.ToLowerInvariant() ?? "unknown"; // TODO
-
-							//string trec = section.TryGet("recommendation")?.Value.ToLowerInvariant() ?? null;
-							//string notes = section.TryGet("notes")?.Value ?? null;
-
-							long value = section.Get("value")?.Int ?? 0;
-							/*
-							ModuleRecommendation rec = ModuleRecommendation.Undefined;
-							if (!RecMap.TryGetValue(trec, out rec))
-								rec = ModuleRecommendation.Undefined;
-							*/
-							ModuleType type = ModuleType.Unknown;
-							if (!TypeMap.TryGetValue(ttype, out type))
-								type = ModuleType.Unknown;
-
-							string identity = section.Name;
-
-							var mi = new ModuleInfo
-							{
-								Identity = identity,
-								Type = type,
-								Files = files,
-								Listed = listed,
-								//Upgrade = upgrade,
-								//Open = open,
-								//Extension = ext,
-								//Proprietary = prop,
-								//Recommendation = rec,
-								Value = value,
-							};
-
-							if (KnownModules.TryAdd(identity, mi))
-							{
-								foreach (var kfile in files)
-									KnownFiles.TryAdd(kfile, mi);
-							}
-						}
-						catch (Exception ex)
+						if (KnownModules.TryAdd(identity, mi))
 						{
-							Logging.Stacktrace(ex);
+							foreach (var kfile in files)
+								KnownFiles.TryAdd(kfile, mi);
 						}
 					}
+					catch (Exception ex)
+					{
+						Logging.Stacktrace(ex);
+					}
+				}
 
 				Log.Information($"<Analysis> Modules known: {KnownModules.Count.ToString()}");
 			}

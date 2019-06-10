@@ -1108,10 +1108,10 @@ namespace Taskmaster.Process
 					return true;
 				}
 			}
-			catch
+			catch (Exception ex)
 			{
+				Logging.Stacktrace(ex);
 				End(info.Process, EventArgs.Empty);
-				throw;
 				return true;
 			}
 
@@ -1155,7 +1155,6 @@ namespace Taskmaster.Process
 				IntPtr? oldAffinity = null;
 
 				int oldAffinityMask = 0;
-				var oldPower = Power.Mode.Undefined;
 
 				await Task.Delay(refresh ? 0 : ModifyDelay).ConfigureAwait(false);
 
