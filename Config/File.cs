@@ -25,6 +25,7 @@
 // THE SOFTWARE.
 
 using System;
+using System.Diagnostics;
 using Ini = MKAh.Ini;
 
 namespace Taskmaster.Configuration
@@ -78,7 +79,11 @@ namespace Taskmaster.Configuration
 			Config = null;
 		}
 
-		public ScopedFile ScopedUnload()
+		/// <summary>
+		/// Get disposable version of the config file.
+		/// </summary>
+		/// <returns></returns>
+		public ScopedFile AutoUnloader()
 		{
 			Shared++;
 			return new ScopedFile(this);
@@ -87,6 +92,20 @@ namespace Taskmaster.Configuration
 		internal void ScopeReturn()
 		{
 			if (--Shared == 0 && UnloadRequested) Unload();
+		}
+
+		internal void Stagnate()
+		{
+			Debug.WriteLine("Configuration.File.Stagnate(" + Filename + ")");
+			Config.Stagnate();
+		}
+
+		/// <summary>
+		/// Replace internal configuration.
+		/// </summary>
+		public void Replace(Ini.Config config)
+		{
+			Config = config;
 		}
 
 		#region IDisposable Support
