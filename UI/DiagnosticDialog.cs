@@ -55,7 +55,7 @@ namespace Taskmaster.UI
 
 			var layout = new TableLayoutPanel() { Dock = DockStyle.Fill, ColumnCount = 2, AutoSize = true, };
 
-			layout.Controls.Add(new AlignedLabel() { Text = "Status:", Font = boldfont });
+			layout.Controls.Add(new AlignedLabel() { Text = "Status:", Font = BoldFont });
 			layout.Controls.Add(Status);
 
 			layout.Controls.Add(MessageList);

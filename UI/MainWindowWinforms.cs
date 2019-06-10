@@ -1951,22 +1951,22 @@ namespace Taskmaster.UI
 			// Insert info panel/tab contents
 			if (corepanel != null)
 			{
-				coresystems.Controls.Add(new AlignedLabel() { Text = Constants.Core, Font = boldfont });
+				coresystems.Controls.Add(new AlignedLabel() { Text = Constants.Core, Font = BoldFont });
 				coresystems.Controls.Add(corepanel);
 			}
 			if (gpupanel != null)
 			{
-				coresystems.Controls.Add(new AlignedLabel() { Text = "GPU", Font = boldfont });
+				coresystems.Controls.Add(new AlignedLabel() { Text = "GPU", Font = BoldFont });
 				coresystems.Controls.Add(gpupanel);
 			}
 			if (powerpanel != null)
 			{
-				additionalsystems.Controls.Add(new AlignedLabel { Text = HumanReadable.Hardware.Power.Section, Font = boldfont });
+				additionalsystems.Controls.Add(new AlignedLabel { Text = HumanReadable.Hardware.Power.Section, Font = BoldFont });
 				additionalsystems.Controls.Add(powerpanel);
 			}
 			if (nvmpanel != null)
 			{
-				additionalsystems.Controls.Add(new AlignedLabel { Text = "Non-Volatile Memory", Font = boldfont });
+				additionalsystems.Controls.Add(new AlignedLabel { Text = "Non-Volatile Memory", Font = BoldFont });
 				additionalsystems.Controls.Add(nvmpanel);
 			}
 			systemlayout.Controls.Add(coresystems);

@@ -95,7 +95,7 @@ namespace Taskmaster.UI.Config
 
 			// NORMAL POWER SETTINGS
 
-			layout.Controls.Add(new AlignedLabel() { Text = "Basic Settings", Font = boldfont, Dock = DockStyle.Fill });
+			layout.Controls.Add(new AlignedLabel() { Text = "Basic Settings", Font = BoldFont, Dock = DockStyle.Fill });
 			layout.Controls.Add(new EmptySpace());
 
 			behaviour = new ComboBox()
@@ -184,7 +184,7 @@ namespace Taskmaster.UI.Config
 
 			// SESSION / MONITOR stuff
 
-			layout.Controls.Add(new AlignedLabel() { Text = "Monitor off", Font = boldfont });
+			layout.Controls.Add(new AlignedLabel() { Text = "Monitor off", Font = BoldFont });
 			layout.Controls.Add(new EmptySpace());
 
 			monitoroffmode = new ComboBox()
@@ -228,7 +228,7 @@ namespace Taskmaster.UI.Config
 
 			defaultmode.Items.AddRange(powermodes);
 
-			layout.Controls.Add(new AlignedLabel() { Text = HumanReadable.Hardware.Power.AutoAdjust, Font = boldfont });
+			layout.Controls.Add(new AlignedLabel() { Text = HumanReadable.Hardware.Power.AutoAdjust, Font = BoldFont });
 			layout.Controls.Add(new EmptySpace());
 
 			layout.Controls.Add(new AlignedLabel() { Text = "Sample frequency (sec)" });
@@ -248,7 +248,7 @@ namespace Taskmaster.UI.Config
 			};
 			highmode.Items.AddRange(powermodes);
 
-			layout.Controls.Add(new AlignedLabel() { Text = "High mode", Font = boldfont });
+			layout.Controls.Add(new AlignedLabel() { Text = "High mode", Font = BoldFont });
 			layout.Controls.Add(highmode);
 
 			layout.Controls.Add(new AlignedLabel() { Text = "Commit CPU% threshold" });
@@ -288,7 +288,7 @@ namespace Taskmaster.UI.Config
 			};
 			lowmode.Items.AddRange(powermodes);
 
-			layout.Controls.Add(new AlignedLabel() { Text = "Low mode", Font = boldfont });
+			layout.Controls.Add(new AlignedLabel() { Text = "Low mode", Font = BoldFont });
 			layout.Controls.Add(lowmode);
 			layout.Controls.Add(new AlignedLabel() { Text = "Commit CPU% threshold" });
 			lowcommitthreshold = new Extensions.NumericUpDownEx() { Unit = "%", Maximum = 95, Minimum = 5, Value = 50 };

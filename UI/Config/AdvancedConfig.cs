@@ -73,7 +73,7 @@ namespace Taskmaster.UI.Config
 			cancelbutton.Click += Cancelbutton_Click;
 
 			// IGNORE list
-			layout.Controls.Add(new AlignedLabel { Text = "Ignore list", Font = boldfont, Padding = BigPadding });
+			layout.Controls.Add(new AlignedLabel { Text = "Ignore list", Font = BoldFont, Padding = BigPadding });
 			layout.Controls.Add(new EmptySpace());
 
 			var ignoreList = new TextBox() { ReadOnly = true, Multiline = true, Dock = DockStyle.Top, Padding = LeftSubPadding, Anchor = AnchorStyles.Top | AnchorStyles.Left, ScrollBars = ScrollBars.Vertical, Height = Font.Height * 4 };
@@ -84,7 +84,7 @@ namespace Taskmaster.UI.Config
 			ignoreList.Font = Font;
 
 			// PROTECT list
-			layout.Controls.Add(new AlignedLabel { Text = "Protected list", Font = boldfont, Padding = BigPadding });
+			layout.Controls.Add(new AlignedLabel { Text = "Protected list", Font = BoldFont, Padding = BigPadding });
 			layout.Controls.Add(new EmptySpace());
 
 			var protectList = new TextBox() { ReadOnly = true, Multiline = true, Dock = DockStyle.Top, Padding = LeftSubPadding, Anchor = AnchorStyles.Top | AnchorStyles.Left, ScrollBars = ScrollBars.Vertical, Height = Font.Height * 4 };
@@ -94,7 +94,7 @@ namespace Taskmaster.UI.Config
 			layout.SetColumnSpan(protectList, 2);
 
 			// USER INTERFACE
-			layout.Controls.Add(new AlignedLabel { Text = "User Interface", Font = boldfont, Padding = BigPadding });
+			layout.Controls.Add(new AlignedLabel { Text = "User Interface", Font = BoldFont, Padding = BigPadding });
 			layout.Controls.Add(new EmptySpace());
 
 			var UIUpdateFrequency = new Extensions.NumericUpDownEx()
@@ -115,12 +115,12 @@ namespace Taskmaster.UI.Config
 
 			// FOREGROUND
 
-			layout.Controls.Add(new AlignedLabel { Text = "Foreground", Font = boldfont, Padding = BigPadding });
+			layout.Controls.Add(new AlignedLabel { Text = "Foreground", Font = BoldFont, Padding = BigPadding });
 
 			if (ActiveAppMonitorEnabled)
 				layout.Controls.Add(new EmptySpace());
 			else
-				layout.Controls.Add(new AlignedLabel() { Text = "Disabled", Font = boldfont, Padding = BigPadding, ForeColor = System.Drawing.Color.Red });
+				layout.Controls.Add(new AlignedLabel() { Text = "Disabled", Font = BoldFont, Padding = BigPadding, ForeColor = System.Drawing.Color.Red });
 
 			var fgHysterisis = new Extensions.NumericUpDownEx()
 			{
@@ -147,7 +147,7 @@ namespace Taskmaster.UI.Config
 
 			// PROCESS MANAGEMENT
 
-			layout.Controls.Add(new AlignedLabel { Text = "Process management", Font = boldfont, Padding = BigPadding });
+			layout.Controls.Add(new AlignedLabel { Text = "Process management", Font = BoldFont, Padding = BigPadding });
 			layout.Controls.Add(new EmptySpace());
 
 			var IgnoreRecentlyModifiedCooldown = new Extensions.NumericUpDownEx()
@@ -181,12 +181,12 @@ namespace Taskmaster.UI.Config
 
 			// VOLUME METER
 
-			layout.Controls.Add(new AlignedLabel { Text = Constants.VolumeMeter, Font = boldfont, Padding = BigPadding });
+			layout.Controls.Add(new AlignedLabel { Text = Constants.VolumeMeter, Font = BoldFont, Padding = BigPadding });
 
 			if (AudioManagerEnabled)
 				layout.Controls.Add(new EmptySpace());
 			else
-				layout.Controls.Add(new AlignedLabel() { Text = "Disabled", Font = boldfont, Padding = BigPadding, ForeColor = System.Drawing.Color.Red });
+				layout.Controls.Add(new AlignedLabel() { Text = "Disabled", Font = BoldFont, Padding = BigPadding, ForeColor = System.Drawing.Color.Red });
 
 			var volmeter_topmost = new CheckBox();
 			var volmeter_show = new CheckBox();
@@ -272,7 +272,7 @@ namespace Taskmaster.UI.Config
 			tooltip.SetToolTip(netpoll_frequency, "Update frequency network device list.");
 			*/
 
-			layout.Controls.Add(new AlignedLabel { Text = "Extra features", Font = boldfont, Padding = BigPadding });
+			layout.Controls.Add(new AlignedLabel { Text = "Extra features", Font = BoldFont, Padding = BigPadding });
 			layout.Controls.Add(new EmptySpace());
 
 			var parentoption = new CheckBox() { Checked = processmanager.EnableParentFinding, };

@@ -24,6 +24,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
+using System;
 using System.Windows.Forms;
 
 namespace Taskmaster.UI
@@ -34,14 +35,13 @@ namespace Taskmaster.UI
 		readonly protected Padding SmallPadding = new Padding(3);
 		readonly protected Padding LeftSubPadding = new Padding(12, 3, 3, 3);
 
-		readonly protected System.Drawing.Font boldfont;
+		static readonly protected Lazy<System.Drawing.Font> _BoldFont = new Lazy<System.Drawing.Font>(() => new System.Drawing.Font(new Control().Font, System.Drawing.FontStyle.Bold), false);
+		static protected System.Drawing.Font BoldFont => _BoldFont.Value;
 
 		public UniForm(bool centerOnScreen = false)
 			: base()
 		{
 			_ = Handle; // forces handle creation
-
-			boldfont = new System.Drawing.Font(Font, System.Drawing.FontStyle.Bold);
 
 			AutoScaleMode = AutoScaleMode.Dpi;
 
@@ -75,8 +75,6 @@ namespace Taskmaster.UI
 				Icon?.Dispose();
 				Icon = null;
 
-				boldfont?.Dispose();
-
 				disposed = true;
 			}
 
@@ -84,5 +82,17 @@ namespace Taskmaster.UI
 		}
 
 		public bool DialogOK => DialogResult == DialogResult.OK;
+
+		// static finalizer
+		static readonly Finalizer finalizer = new Finalizer();
+		sealed class Finalizer
+		{
+			~Finalizer()
+			{
+				Logging.DebugMsg("UniForm static finalization");
+				if (_BoldFont.IsValueCreated)
+					_BoldFont.Value.Dispose(); // unnecessary
+			}
+		}
 	}
 }

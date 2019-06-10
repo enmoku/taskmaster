@@ -51,8 +51,8 @@ namespace Taskmaster.UI.Config
 				Parent = this,
 			};
 
-			layout.Controls.Add(new AlignedLabel { Text = "EXPERIMENTAL", AutoSize = true, Font = boldfont, ForeColor = System.Drawing.Color.Maroon, Padding = BigPadding });
-			layout.Controls.Add(new AlignedLabel { Text = "You've been warned", AutoSize = true, Font = boldfont, ForeColor = System.Drawing.Color.Maroon, Padding = BigPadding });
+			layout.Controls.Add(new AlignedLabel { Text = "EXPERIMENTAL", AutoSize = true, Font = BoldFont, ForeColor = System.Drawing.Color.Maroon, Padding = BigPadding });
+			layout.Controls.Add(new AlignedLabel { Text = "You've been warned", AutoSize = true, Font = BoldFont, ForeColor = System.Drawing.Color.Maroon, Padding = BigPadding });
 
 			var savebutton = new Button() { Text = "Save", };
 			savebutton.NotifyDefault(true);
@@ -100,7 +100,7 @@ namespace Taskmaster.UI.Config
 
 			// FILL IN BOTTOM
 
-			layout.Controls.Add(new AlignedLabel { Text = "Restart required", AutoSize = true, Font = boldfont, ForeColor = System.Drawing.Color.Maroon, Padding = BigPadding });
+			layout.Controls.Add(new AlignedLabel { Text = "Restart required", AutoSize = true, Font = BoldFont, ForeColor = System.Drawing.Color.Maroon, Padding = BigPadding });
 			layout.Controls.Add(new EmptySpace());
 
 			savebutton.Click += (_, _ea) =>
