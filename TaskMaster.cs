@@ -337,6 +337,30 @@ namespace Taskmaster
 			{
 				using var singleton = Initialize(ref args);
 
+				{
+					bool ni = MKAh.Program.NativeImage.Exists();
+					Log.Information("<NGen> Native Image: " + (ni ? "Yes :D" : "No :("));
+					if (!ni)
+					{
+						System.Threading.Tasks.Task.Run(new Action(() =>
+						{
+							bool ngen = Config.Load(CoreConfigFilename).Config[Constants.Experimental].Get("Auto-update native image")?.Bool ?? false;
+							if (ngen)
+							{
+								if (MKAh.Execution.IsAdministrator)
+								{
+									using var proc = MKAh.Program.NativeImage.InstallOrUpdateCurrent();
+									proc?.WaitForExit(15_000);
+									if (proc.ExitCode == 0)
+										Log.Warning("<NGen> Native Image re-generated; please restart.");
+								}
+								else
+									Log.Warning("<NGen> Native Image regeneation needed, unable to proceed without admin rights.");
+							}
+						})).ConfigureAwait(false);
+					}
+				}
+
 				if (State == Runstate.Normal)
 				{
 					OnStart?.Invoke(null, EventArgs.Empty);

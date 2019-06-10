@@ -32,6 +32,9 @@ namespace Taskmaster.UI.Config
 {
 	public sealed class ExperimentConfig : UniForm
 	{
+		Button uninstallButton, installButton;
+		AlignedLabel imageUptodateState;
+
 		public ExperimentConfig(bool center = false)
 			: base(centerOnScreen: center)
 		{
@@ -50,15 +53,9 @@ namespace Taskmaster.UI.Config
 				AutoSize = true,
 				Parent = this,
 			};
-
-			layout.Controls.Add(new AlignedLabel { Text = "EXPERIMENTAL", AutoSize = true, Font = BoldFont, ForeColor = System.Drawing.Color.Maroon, Padding = BigPadding });
-			layout.Controls.Add(new AlignedLabel { Text = "You've been warned", AutoSize = true, Font = BoldFont, ForeColor = System.Drawing.Color.Maroon, Padding = BigPadding });
-
-			var savebutton = new Button() { Text = "Save", };
-			savebutton.NotifyDefault(true);
-
-			var cancelbutton = new Button() { Text = "Cancel", };
-			cancelbutton.Click += Cancelbutton_Click;
+			var experimentWarning = new AlignedLabel { Text = "EXPERIMENTAL\nYou've been warned.", AutoSize = true, Font = BoldFont, ForeColor = System.Drawing.Color.Maroon, Padding = BigPadding };
+			layout.Controls.Add(experimentWarning);
+			layout.SetColumnSpan(experimentWarning, 2);
 
 			// EXPERIMENTS
 
@@ -77,12 +74,18 @@ namespace Taskmaster.UI.Config
 			layout.Controls.Add(new AlignedLabel { Text = "Record analysis delay" });
 			layout.Controls.Add(RecordAnalysisDelay);
 
+			bool hwMonLibPresent = System.IO.File.Exists(
+				System.IO.Path.Combine(
+					System.IO.Path.GetDirectoryName(System.Diagnostics.Process.GetCurrentProcess().MainModule.FileName),
+					"OpenHardwareMonitorLib.dll"));
+
 			var hwmon = new CheckBox()
 			{
 				Checked = Taskmaster.HardwareMonitorEnabled,
+				Enabled = hwMonLibPresent,
 				//Anchor = AnchorStyles.Left,
 			};
-			tooltip.SetToolTip(hwmon, "Enables hardware (such as GPU) monitoring\nLimited usability currently.");
+			tooltip.SetToolTip(hwmon, "Enables hardware (such as GPU) monitoring\nLimited usability currently.\nRequires OpenHardwareMonitorLib.dll to be present.");
 
 			layout.Controls.Add(new AlignedLabel { Text = "Hardware monitor" });
 			layout.Controls.Add(hwmon);
@@ -98,10 +101,126 @@ namespace Taskmaster.UI.Config
 			layout.Controls.Add(new AlignedLabel { Text = "I/O priority" });
 			layout.Controls.Add(iopriority);
 
-			// FILL IN BOTTOM
+			// NGEN Native Image
+			
+			var process = System.Diagnostics.Process.GetCurrentProcess();
+			bool nativeImageLoaded = MKAh.Program.NativeImage.Exists(process);
 
-			layout.Controls.Add(new AlignedLabel { Text = "Restart required", AutoSize = true, Font = BoldFont, ForeColor = System.Drawing.Color.Maroon, Padding = BigPadding });
-			layout.Controls.Add(new EmptySpace());
+			var ngenLabel = new AlignedLabel
+			{
+				Text = "Native Image (NI)",
+				Font = BoldFont,
+				Padding = BigPadding
+			};
+			layout.Controls.Add(ngenLabel);
+			var ngenLink = new LinkLabel
+			{
+				Text = "(What's this?)",
+				TextAlign = System.Drawing.ContentAlignment.MiddleLeft,
+				Anchor = System.Windows.Forms.AnchorStyles.Left,
+				LinkBehavior = LinkBehavior.HoverUnderline,
+			};
+			ngenLink.Links.Add(1, ngenLink.Text.Length - 2, @"https://docs.microsoft.com/en-us/dotnet/framework/tools/ngen-exe-native-image-generator");
+			ngenLink.LinkClicked += (_, ea) =>
+			{
+				try
+				{
+					if (ea.Link.LinkData is string link && link.StartsWith("http"))
+						System.Diagnostics.Process.Start(link)?.Dispose();
+				}
+				catch (Exception ex) when (ex is OutOfMemoryException)
+				{
+					throw;
+				}
+				catch (Exception ex)
+				{
+					Logging.Stacktrace(ex);
+				}
+			};
+			layout.Controls.Add(ngenLink);
+
+			if (!MKAh.Execution.IsAdministrator)
+			{
+				var adminWarning = new AlignedLabel
+				{
+					Text = "Admin rights required!",
+					Font = BoldFont,
+				};
+
+				layout.Controls.Add(adminWarning);
+				layout.SetColumnSpan(adminWarning, 2);
+			}
+
+			var imageUptodateLabel = new AlignedLabel
+			{
+				Text = "Image present && up-to-date",
+			};
+			layout.Controls.Add(imageUptodateLabel);
+
+			imageUptodateState = new AlignedLabel();
+			UpdateNGenState(nativeImageLoaded);
+			layout.Controls.Add(imageUptodateState);
+
+			installButton = new Button
+			{
+				Text = "Install/Update",
+				AutoSizeMode = AutoSizeMode.GrowOnly,
+				AutoSize = true,
+				Anchor = AnchorStyles.Right,
+				Enabled = !nativeImageLoaded,
+			};
+			installButton.Click += InstallButton_Click;
+
+			layout.Controls.Add(installButton);
+
+			uninstallButton = new Button
+			{
+				Text = "Uninstall",
+				AutoSizeMode = AutoSizeMode.GrowOnly,
+				AutoSize = true,
+				Enabled = nativeImageLoaded,
+			};
+			uninstallButton.Click += UninstallButton_Click;
+			layout.Controls.Add(uninstallButton);
+
+			var autoUpdateNgenLabel = new AlignedLabel
+			{
+				Text = "Auto-update native image",
+			};
+
+			using var corecfg = Taskmaster.Config.Load(Taskmaster.CoreConfigFilename);
+			var cfg = corecfg.Config;
+			var exsec = cfg[Constants.Experimental];
+			
+			var autoUpdateNgen = new CheckBox
+			{
+				Checked = exsec.Get("Auto-update native image")?.Bool ?? false,
+			};
+
+			layout.Controls.Add(autoUpdateNgenLabel);
+			layout.Controls.Add(autoUpdateNgen);
+
+			// FILL IN BOTTOM BUTTONS AND SUCH
+
+			var hzLine = new Label
+			{
+				Height = 2,
+				BorderStyle = BorderStyle.Fixed3D,
+				Width = ClientRectangle.Width,
+				AutoSize = false,
+			};
+			layout.Controls.Add(hzLine);
+			layout.SetColumnSpan(hzLine, 2);
+
+			var restartWarning = new AlignedLabel { Text = "Experimental features require restart.", AutoSize = true, Font = BoldFont, ForeColor = System.Drawing.Color.Maroon, Padding = BigPadding };
+			layout.Controls.Add(restartWarning);
+			layout.SetColumnSpan(restartWarning, 2);
+
+			var savebutton = new Button() { Text = "Save", Anchor = AnchorStyles.Right };
+			savebutton.NotifyDefault(true);
+
+			var cancelbutton = new Button() { Text = "Cancel", };
+			cancelbutton.Click += Cancelbutton_Click;
 
 			savebutton.Click += (_, _ea) =>
 			{
@@ -125,19 +244,73 @@ namespace Taskmaster.UI.Config
 				else
 					exsec.TryRemove("IO Priority");
 
+				if (autoUpdateNgen.Checked)
+					exsec["Auto-update native image"].Bool = true;
+				else
+					exsec.TryRemove("Auto-update native image");
+
 				cfg[Constants.Components][HumanReadable.Hardware.Section].Bool = hwmon.Checked;
 
 				DialogResult = DialogResult.OK;
 				Close();
 			};
 
-			savebutton.Anchor = AnchorStyles.Right;
 			layout.Controls.Add(savebutton);
 			layout.Controls.Add(cancelbutton);
 
 			Controls.Add(layout);
 
 			ResumeLayout();
+		}
+
+		void InstallButton_Click(object sender, EventArgs e)
+		{
+			try
+			{
+				using var proc = MKAh.Program.NativeImage.InstallOrUpdateCurrent(withWindow: true);
+				installButton.Enabled = false;
+				uninstallButton.Enabled = false;
+				proc.WaitForExit(15_000);
+				if (proc.HasExited)
+				{
+					if (proc.ExitCode == 0)
+						uninstallButton.Enabled = true;
+					else
+						installButton.Enabled = true;
+
+					UpdateNGenState(proc.ExitCode == 0);
+				}
+			}
+			catch (Exception ex)
+			{
+				Logging.Stacktrace(ex);
+			}
+		}
+
+		void UpdateNGenState(bool installed) => imageUptodateState.Text = installed ? "Installed" : "Not present";
+
+		void UninstallButton_Click(object sender, EventArgs e)
+		{
+			try
+			{
+				using var proc = MKAh.Program.NativeImage.RemoveCurrent(withWindow: true);
+				installButton.Enabled = false;
+				uninstallButton.Enabled = false;
+				proc?.WaitForExit(15_000);
+				if (proc?.HasExited ?? false)
+				{
+					if (proc.ExitCode == 0)
+						installButton.Enabled = true;
+					else
+						uninstallButton.Enabled = true;
+
+					UpdateNGenState(!(proc.ExitCode == 0));
+				}
+			}
+			catch (Exception ex)
+			{
+				Logging.Stacktrace(ex);
+			}
 		}
 
 		void Cancelbutton_Click(object sender, EventArgs e)

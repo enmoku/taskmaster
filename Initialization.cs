@@ -43,8 +43,6 @@ namespace Taskmaster
 		{
 			var startTimer = Stopwatch.StartNew();
 
-			bool ni = MKAh.Program.NativeImage.Exists();
-
 			//Debug.Listeners.Add(new TextWriterTraceListener(System.Console.Out));
 
 			NativeMethods.SetErrorMode(NativeMethods.SetErrorMode(NativeMethods.ErrorModes.SEM_SYSTEMDEFAULT) | NativeMethods.ErrorModes.SEM_NOGPFAULTERRORBOX | NativeMethods.ErrorModes.SEM_FAILCRITICALERRORS);
@@ -160,8 +158,6 @@ namespace Taskmaster
 				.Append(" – Built: ").Append(builddate.ToString("yyyy/MM/dd HH:mm")).Append($" [{age:N0} days old]");
 			Log.Information(sbs.ToString());
 
-			Log.Information("<NGen> Native Image: " + (ni ? "Yes :D" : "No :("));
-
 			//PreallocLastLog();
 
 			InitialConfiguration();
@@ -184,6 +180,7 @@ namespace Taskmaster
 
 			LoadEvent?.Invoke(null, new LoadEventArgs("Core loading finished", LoadEventType.Loaded));
 			LoadEvent = null;
+
 			splash?.Invoke(new Action(() => splash.Dispose()));
 			splash = null;
 
