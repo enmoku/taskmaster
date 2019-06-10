@@ -261,7 +261,7 @@ namespace Taskmaster
 
 		void LoadConfig()
 		{
-			using var cfg = Taskmaster.Config.Load(HealthConfigFilename).ScopedUnload();
+			using var cfg = Taskmaster.Config.Load(HealthConfigFilename);
 			var gensec = cfg.Config["General"];
 			var settingFreqSetting = gensec.GetOrSet("Frequency", 5)
 				.InitComment("How often we check for anything. In minutes.")
@@ -307,7 +307,7 @@ namespace Taskmaster
 				.InitComment("Warn about free space going below this. In megabytes. From 0 to 60000.")
 				.Int.Constrain(0, 60000);
 
-			using var corecfg = Taskmaster.Config.Load(CoreConfigFilename).ScopedUnload();
+			using var corecfg = Taskmaster.Config.Load(CoreConfigFilename);
 			DebugHealth = corecfg.Config[HumanReadable.Generic.Debug].Get("Health")?.Bool ?? false;
 		}
 

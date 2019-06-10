@@ -83,7 +83,7 @@ namespace Taskmaster
 				Log.Information("<Maintenance> Temp folder scanner will be performed once per day.");
 			}
 
-			using var corecfg = Config.Load(CoreConfigFilename).ScopedUnload();
+			using var corecfg = Config.Load(CoreConfigFilename);
 			Verbose = corecfg.Config[HumanReadable.Generic.Debug].Get("Storage")?.Bool ?? false;
 
 			if (Verbose) Log.Information("<Maintenance> Component loaded.");

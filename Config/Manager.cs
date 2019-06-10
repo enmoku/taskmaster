@@ -41,7 +41,7 @@ namespace Taskmaster.Configuration
 		readonly object config_lock = new object();
 		readonly HashSet<File> Loaded = new HashSet<File>();
 
-		public File Load(string filename)
+		public ScopedFile Load(string filename)
 		{
 			try
 			{
@@ -51,7 +51,7 @@ namespace Taskmaster.Configuration
 					foreach (var oldcfg in Loaded)
 					{
 						if (oldcfg.Filename.Equals(filename, StringComparison.InvariantCultureIgnoreCase))
-							return oldcfg;
+							return oldcfg.AutoUnloader();
 					}
 
 					MKAh.Ini.Config mcfg = null;
@@ -65,7 +65,6 @@ namespace Taskmaster.Configuration
 					{
 						Log.Warning("Not found: " + fullpath);
 						mcfg = new MKAh.Ini.Config();
-						System.IO.Directory.CreateDirectory(datapath);
 					}
 
 					var config = new File(mcfg, filename);
@@ -74,7 +73,7 @@ namespace Taskmaster.Configuration
 					config.OnUnload += (_, ea) => Loaded.Remove(ea.File);
 					config.OnSave += (_, ea) => Save(ea.File);
 
-					return config;
+					return config.AutoUnloader();
 				}
 			}
 			catch (OutOfMemoryException) { throw; }
@@ -91,6 +90,7 @@ namespace Taskmaster.Configuration
 			{
 				lock (config_lock)
 				{
+					System.IO.Directory.CreateDirectory(datapath);
 					var fullpath = System.IO.Path.Combine(datapath, cfg.Filename);
 					cfg.Config.SaveToFile(fullpath, new System.Text.UTF8Encoding(false));
 				}
@@ -101,11 +101,12 @@ namespace Taskmaster.Configuration
 			}
 		}
 
-		public void Unload(File config)
+		public void Unload(File config, bool save=true)
 		{
 			lock (config_lock)
 			{
 				Loaded.Remove(config);
+				if (!save) config.Stagnate();
 				config.Dispose();
 			}
 		}

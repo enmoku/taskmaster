@@ -68,7 +68,7 @@ namespace Taskmaster.UI
 
 			#region Load Configuration
 			// DEPRECATED
-			using var corecfg = Taskmaster.Config.Load(CoreConfigFilename).ScopedUnload();
+			using var corecfg = Taskmaster.Config.Load(CoreConfigFilename);
 			if (corecfg.Config.TryGet(HumanReadable.Generic.QualityOfLife, out var qolsec))
 			{
 				if (qolsec.TryGet("Show in taskbar", out var sitb))
@@ -83,7 +83,7 @@ namespace Taskmaster.UI
 				}
 			}
 
-			using var uicfg = Taskmaster.Config.Load(UIConfigFilename).ScopedUnload();
+			using var uicfg = Taskmaster.Config.Load(UIConfigFilename);
 			var qol = uicfg.Config[HumanReadable.Generic.QualityOfLife];
 			ShowInTaskbar = qol.GetOrSet("Show in taskbar", ShowInTaskbar).Bool;
 			AutoOpenMenus = qol.GetOrSet("Auto-open menus", true).Bool;
@@ -1248,7 +1248,7 @@ namespace Taskmaster.UI
 			{
 				AutoOpenMenus = menu_config_behaviour_autoopen.Checked;
 
-				using var corecfg = Taskmaster.Config.Load(CoreConfigFilename).ScopedUnload();
+				using var corecfg = Taskmaster.Config.Load(CoreConfigFilename);
 				corecfg.Config[HumanReadable.Generic.QualityOfLife]["Auto-open menus"].Bool = AutoOpenMenus;
 			};
 
@@ -1261,7 +1261,7 @@ namespace Taskmaster.UI
 			{
 				ShowInTaskbar = menu_config_behaviour_taskbar.Checked;
 
-				using var corecfg = Taskmaster.Config.Load(CoreConfigFilename).ScopedUnload();
+				using var corecfg = Taskmaster.Config.Load(CoreConfigFilename);
 				corecfg.Config[HumanReadable.Generic.QualityOfLife]["Show in taskbar"].Bool = ShowInTaskbar;
 			};
 
@@ -1274,7 +1274,7 @@ namespace Taskmaster.UI
 			{
 				ExitConfirmation = menu_config_behaviour_exitconfirm.Checked;
 
-				using var corecfg = Taskmaster.Config.Load(CoreConfigFilename).ScopedUnload();
+				using var corecfg = Taskmaster.Config.Load(CoreConfigFilename);
 				corecfg.Config[HumanReadable.Generic.QualityOfLife]["Exit confirmation"].Bool = ExitConfirmation;
 			};
 
@@ -1309,7 +1309,7 @@ namespace Taskmaster.UI
 			{
 				AlternateRowColorsLog = menu_config_visuals_rowalternate_log.Checked;
 
-				using var uicfg = Taskmaster.Config.Load(UIConfigFilename).ScopedUnload();
+				using var uicfg = Taskmaster.Config.Load(UIConfigFilename);
 				uicfg.Config[Constants.Visuals]["Alternate log row colors"].Bool = AlternateRowColorsLog;
 
 				AlternateListviewRowColors(LogList, AlternateRowColorsLog);
@@ -1318,7 +1318,7 @@ namespace Taskmaster.UI
 			{
 				AlternateRowColorsWatchlist = menu_config_visuals_rowalternate_watchlist.Checked;
 
-				using var uicfg = Taskmaster.Config.Load(UIConfigFilename).ScopedUnload();
+				using var uicfg = Taskmaster.Config.Load(UIConfigFilename);
 				uicfg.Config[Constants.Visuals]["Alternate watchlist row colors"].Bool = AlternateRowColorsWatchlist;
 
 				WatchlistColor();
@@ -1327,7 +1327,7 @@ namespace Taskmaster.UI
 			{
 				AlternateRowColorsDevices = menu_config_visuals_rowalternate_devices.Checked;
 
-				using var uicfg = Taskmaster.Config.Load(UIConfigFilename).ScopedUnload();
+				using var uicfg = Taskmaster.Config.Load(UIConfigFilename);
 				uicfg.Config[Constants.Visuals]["Alternate device row colors"].Bool = AlternateRowColorsDevices;
 
 				if (AudioInputs != null)
@@ -1346,7 +1346,7 @@ namespace Taskmaster.UI
 			};
 			menu_config_visuals_topmost_volume.Click += (_, _ea) =>
 			{
-				using var corecfg = Taskmaster.Config.Load(CoreConfigFilename).ScopedUnload();
+				using var corecfg = Taskmaster.Config.Load(CoreConfigFilename);
 				corecfg.Config[Constants.VolumeMeter][TopmostName].Bool = menu_config_visuals_topmost_volume.Checked;
 
 				if (volumemeter != null)
@@ -1369,7 +1369,7 @@ namespace Taskmaster.UI
 			};
 			menu_config_visuals_styling.Click += (_, _ea) =>
 			{
-				using var uicfg = Taskmaster.Config.Load(UIConfigFilename).ScopedUnload();
+				using var uicfg = Taskmaster.Config.Load(UIConfigFilename);
 				uicfg.Config[Constants.Windows]["Styling"].Bool = menu_config_visuals_styling.Checked;
 
 				VisualStyling = menu_config_visuals_styling.Checked;
@@ -1390,7 +1390,7 @@ namespace Taskmaster.UI
 			{
 				ShowProcessAdjusts = menu_config_logging_adjusts.Checked;
 
-				using var corecfg = Taskmaster.Config.Load(CoreConfigFilename).ScopedUnload();
+				using var corecfg = Taskmaster.Config.Load(CoreConfigFilename);
 				corecfg.Config[HumanReadable.Generic.Logging]["Show process adjusts"].Bool = ShowProcessAdjusts;
 			};
 
@@ -1403,7 +1403,7 @@ namespace Taskmaster.UI
 			{
 				ShowSessionActions = menu_config_logging_session.Checked;
 
-				using var corecfg = Taskmaster.Config.Load(CoreConfigFilename).ScopedUnload();
+				using var corecfg = Taskmaster.Config.Load(CoreConfigFilename);
 				corecfg.Config[HumanReadable.Generic.Logging]["Show session actions"].Bool = ShowSessionActions;
 			};
 
@@ -1416,7 +1416,7 @@ namespace Taskmaster.UI
 			{
 				Process.Manager.ShowUnmodifiedPortions = menu_config_logging_showunmodified.Checked;
 
-				using var corecfg = Taskmaster.Config.Load(CoreConfigFilename).ScopedUnload();
+				using var corecfg = Taskmaster.Config.Load(CoreConfigFilename);
 				corecfg.Config[HumanReadable.Generic.Logging][ShowUnmodifiedPortionsName].Bool = Process.Manager.ShowUnmodifiedPortions;
 			};
 
@@ -1428,7 +1428,7 @@ namespace Taskmaster.UI
 			menu_config_logging_showonlyfinal.Click += (_, _ea) =>
 			{
 				Process.Manager.ShowOnlyFinalState = menu_config_logging_showonlyfinal.Checked;
-				using var corecfg = Taskmaster.Config.Load(CoreConfigFilename).ScopedUnload();
+				using var corecfg = Taskmaster.Config.Load(CoreConfigFilename);
 				corecfg.Config[HumanReadable.Generic.Logging]["Final state only"].Bool = Process.Manager.ShowOnlyFinalState;
 			};
 
@@ -1441,7 +1441,7 @@ namespace Taskmaster.UI
 			{
 				Network.Manager.ShowNetworkErrors = menu_config_logging_neterrors.Checked;
 
-				using var corecfg = Taskmaster.Config.Load(CoreConfigFilename).ScopedUnload();
+				using var corecfg = Taskmaster.Config.Load(CoreConfigFilename);
 				corecfg.Config[HumanReadable.Generic.Logging]["Show network errors"].Bool = Network.Manager.ShowNetworkErrors;
 			};
 
@@ -1506,7 +1506,7 @@ namespace Taskmaster.UI
 				menu_config_bitmaskstyle_decimal.Checked = false;
 				// TODO: re-render watchlistRules
 
-				using var corecfg = Taskmaster.Config.Load(CoreConfigFilename).ScopedUnload();
+				using var corecfg = Taskmaster.Config.Load(CoreConfigFilename);
 				corecfg.Config[HumanReadable.Generic.QualityOfLife][HumanReadable.Hardware.CPU.Settings.AffinityStyle].Int = 0;
 			};
 			menu_config_bitmaskstyle_decimal.Click += (_, _ea) =>
@@ -1516,7 +1516,7 @@ namespace Taskmaster.UI
 				menu_config_bitmaskstyle_decimal.Checked = true;
 				// TODO: re-render watchlistRules
 
-				using var corecfg = Taskmaster.Config.Load(CoreConfigFilename).ScopedUnload();
+				using var corecfg = Taskmaster.Config.Load(CoreConfigFilename);
 				corecfg.Config[HumanReadable.Generic.QualityOfLife][HumanReadable.Hardware.CPU.Settings.AffinityStyle].Int = 1;
 			};
 			//var menu_config_bitmaskstyle_both = new ToolStripMenuItem("Decimal [Bitmask]");
@@ -1844,7 +1844,7 @@ namespace Taskmaster.UI
 			loglistms.Items.Add(logcopy);
 			LogList.ContextMenuStrip = loglistms;
 
-			using var cfg = Taskmaster.Config.Load(CoreConfigFilename).ScopedUnload();
+			using var cfg = Taskmaster.Config.Load(CoreConfigFilename);
 			MaxLogSize = cfg.Config[HumanReadable.Generic.Logging].GetOrSet("UI max items", 200)
 				.InitComment("Maximum number of items/lines to retain on UI level.")
 				.Int;
@@ -2295,7 +2295,7 @@ namespace Taskmaster.UI
 
 		void LoadUIConfiguration(out int opentab, out int[] appwidths, out int[] apporder, out int[] micwidths, out int[] ifacewidths)
 		{
-			using var uicfg = Taskmaster.Config.Load(UIConfigFilename).ScopedUnload();
+			using var uicfg = Taskmaster.Config.Load(UIConfigFilename);
 
 			var wincfg = uicfg.Config[Constants.Windows];
 			var colcfg = uicfg.Config[Constants.Columns];
@@ -4083,7 +4083,7 @@ namespace Taskmaster.UI
 			{
 				if (WatchlistRules.Columns.Count == 0) return;
 
-				using var cfg = Taskmaster.Config.Load(UIConfigFilename).ScopedUnload();
+				using var cfg = Taskmaster.Config.Load(UIConfigFilename);
 
 				var cols = cfg.Config[Constants.Columns];
 

@@ -642,7 +642,7 @@ namespace Taskmaster.Process
 		{
 			if (DebugProcesses) Log.Information("<Process> Loading configuration...");
 
-			using var corecfg = Config.Load(CoreConfigFilename).ScopedUnload();
+			using var corecfg = Config.Load(CoreConfigFilename);
 			var perfsec = corecfg.Config["Performance"];
 
 			// ControlChildren = coreperf.GetSetDefault("Child processes", false, out tdirty).Bool;
@@ -774,32 +774,17 @@ namespace Taskmaster.Process
 
 			int withPath = 0, hybrids = 0;
 
-			var appcfg = Config.Load(WatchlistFile);
+			using var appcfg = Config.Load(WatchlistFile);
 
 			if (appcfg.Config.ItemCount == 0)
 			{
-				Config.Unload(appcfg);
-				appcfg?.Dispose();
-
-				Log.Warning("<Process> Watchlist empty; writing example list.");
+				Log.Warning("<Process> Watchlist empty; loading example list.");
 
 				// DEFAULT CONFIGURATION
-				var tpath = System.IO.Path.Combine(DataPath, WatchlistFile);
-				try
-				{
-					System.IO.File.WriteAllText(tpath, Properties.Resources.Watchlist);
-				}
-				catch (Exception ex)
-				{
-					Logging.Stacktrace(ex);
-					throw;
-				}
-
-				appcfg = Config.Load(WatchlistFile);
+				appcfg.File.Replace(Ini.Config.FromData(Properties.Resources.Watchlist.Split(new string[] { appcfg.Config.LineEnd }, StringSplitOptions.None)));
 			}
 
-			using var sappcfg = appcfg.ScopedUnload();
-			foreach (Ini.Section section in sappcfg.Config)
+			foreach (Ini.Section section in appcfg.Config)
 			{
 				if (string.IsNullOrEmpty(section.Name))
 				{
@@ -2393,7 +2378,7 @@ namespace Taskmaster.Process
 					ExeToController?.Clear();
 					ExeToController = null;
 
-					using var wcfg = Config.Load(WatchlistFile).ScopedUnload();
+					using var wcfg = Config.Load(WatchlistFile);
 					foreach (var prc in Watchlist.Keys)
 					{
 						if (prc.NeedsSaving) prc.SaveConfig(wcfg.File);

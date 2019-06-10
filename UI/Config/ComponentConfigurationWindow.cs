@@ -58,7 +58,7 @@ namespace Taskmaster.UI.Config
 
 			if (processmanager is null)
 			{
-				using var corecfg = Config.Load(CoreConfigFilename).ScopedUnload();
+				using var corecfg = Config.Load(CoreConfigFilename);
 				var perfsec = corecfg.Config[Constants.Performance];
 				WMIPolling = perfsec.Get(Constants.WMIWatcher)?.Bool ?? true;
 				WMIPollDelay = perfsec.Get(Constants.WMIDelay)?.Int ?? 2;
@@ -345,7 +345,7 @@ namespace Taskmaster.UI.Config
 			// l.Controls.Add(savebutton);
 			savebutton.Click += (_, _ea) =>
 			{
-				using var cfg = Config.Load(CoreConfigFilename).ScopedUnload();
+				using var cfg = Config.Load(CoreConfigFilename);
 				var mainsec = cfg.Config[Constants.Core];
 				var opt = mainsec[Constants.Version];
 				opt.Value = ConfigVersion;

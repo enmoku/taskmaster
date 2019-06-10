@@ -193,7 +193,7 @@ namespace Taskmaster
 		static void InitialConfiguration()
 		{
 			// INITIAL CONFIGURATIONN
-			using var tcfg = Config.Load(CoreConfigFilename).ScopedUnload();
+			using var tcfg = Config.Load(CoreConfigFilename);
 			var sec = tcfg.Config.Get(Constants.Core)?.Get(Constants.Version)?.Value ?? null;
 			if (sec?.Equals(ConfigVersion) ?? false) return;
 
@@ -211,7 +211,7 @@ namespace Taskmaster
 
 			bool isadmin = false;
 
-			using var corecfg = Config.Load(CoreConfigFilename).ScopedUnload();
+			using var corecfg = Config.Load(CoreConfigFilename);
 			var cfg = corecfg.Config;
 
 			const string Hello = "Hello", Hi = "Hi";
@@ -460,7 +460,7 @@ namespace Taskmaster
 			Trace = dbgsec.Get(Constants.Trace)?.Bool ?? false;
 #endif
 
-			using var uicfg = Config.Load(UIConfigFilename).ScopedUnload();
+			using var uicfg = Config.Load(UIConfigFilename);
 			VisualStyling = uicfg.Config[Constants.Windows].GetOrSet("Styling", true).Bool;
 
 			// END DEBUG
@@ -482,7 +482,6 @@ namespace Taskmaster
 			var timer = System.Diagnostics.Stopwatch.StartNew();
 
 			int componentsToLoad = 11; // how to make this automatic?
-			int loaded = 0;
 
 			LoadEvent?.Invoke(null, new LoadEventArgs("Component loading starting.", LoadEventType.Info, 0, componentsToLoad));
 

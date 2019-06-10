@@ -104,7 +104,7 @@ namespace Taskmaster.Audio
 			const string mvol = "Default recording volume";
 			const string mcontrol = "Recording volume control";
 
-			using var corecfg = Config.Load(CoreConfigFilename).ScopedUnload();
+			using var corecfg = Config.Load(CoreConfigFilename);
 			var mediasec = corecfg.Config["Media"];
 
 			Control = mediasec.GetOrSet(mcontrol, false).Bool;
@@ -271,7 +271,7 @@ namespace Taskmaster.Audio
 				double devvol = double.NaN;
 				bool devcontrol = false;
 
-				using var devcfg = Config.Load(DeviceFilename).ScopedUnload();
+				using var devcfg = Config.Load(DeviceFilename);
 				var devsec = devcfg.Config[RecordingDevice.GUID];
 
 				devvol = devsec.GetOrSet(HumanReadable.Hardware.Audio.Volume, DefaultVolume).Double;
@@ -304,7 +304,7 @@ namespace Taskmaster.Audio
 
 			try
 			{
-				using var devcfg = Config.Load(DeviceFilename).ScopedUnload();
+				using var devcfg = Config.Load(DeviceFilename);
 				var devs = audiomanager.Enumerator?.EnumerateAudioEndPoints(NAudio.CoreAudioApi.DataFlow.Capture, NAudio.CoreAudioApi.DeviceState.Active) ?? null;
 				if (devs is null) throw new InvalidOperationException("Enumerator not available, Audio Manager is dead");
 				foreach (var dev in devs)

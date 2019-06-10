@@ -62,7 +62,7 @@ namespace Taskmaster.Process
 				ForegroundId = pid;
 			}
 
-			using var corecfg = Taskmaster.Config.Load(CoreConfigFilename).ScopedUnload();
+			using var corecfg = Taskmaster.Config.Load(CoreConfigFilename);
 			var perfsec = corecfg.Config["Performance"];
 			var hysterisisSetting = perfsec.GetOrSet("Foreground hysterisis", 1500)
 				.InitComment("In milliseconds, from 500 to 30000. Delay before we inspect foreground app, in case user rapidly swaps apps.")
