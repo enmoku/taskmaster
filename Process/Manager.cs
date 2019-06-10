@@ -42,7 +42,7 @@ namespace Taskmaster.Process
 {
 	using static Taskmaster;
 
-	sealed public class Manager : IDisposal, IDisposable
+	sealed public class Manager : Component, IDisposal, IDisposable
 	{
 		Analyzer analyzer = null;
 
@@ -222,7 +222,7 @@ namespace Taskmaster.Process
 
 		void FreeMemoryInternal(int ignorePid = -1, string ignoreExe = null)
 		{
-			if (DisposedOrDisposing) throw new ObjectDisposedException(nameof(Manager), "FreeMemoryInterval called when ProcessManager was already disposed");
+			if (disposed) throw new ObjectDisposedException(nameof(Manager), "FreeMemoryInterval called when ProcessManager was already disposed");
 
 			Memory.Update();
 			ulong b1 = Memory.FreeBytes;
@@ -258,7 +258,7 @@ namespace Taskmaster.Process
 		/// </summary>
 		async void TimedScan(object _, EventArgs _ea)
 		{
-			if (DisposedOrDisposing) return; // HACK: dumb timers be dumb
+			if (disposed) return; // HACK: dumb timers be dumb
 
 			try
 			{
@@ -325,7 +325,7 @@ namespace Taskmaster.Process
 
 		void StartScanTimer()
 		{
-			if (DisposedOrDisposing) throw new ObjectDisposedException(nameof(Manager), "StartScanTimer called when ProcessManager was already disposed");
+			if (disposed) throw new ObjectDisposedException(nameof(Manager), "StartScanTimer called when ProcessManager was already disposed");
 
 			if (!ScanFrequency.HasValue) return; // dumb hack
 
@@ -346,7 +346,7 @@ namespace Taskmaster.Process
 		int scan_lock = 0;
 		bool Scan(int ignorePid = -1, string ignoreExe = null, bool PageToDisk = false)
 		{
-			if (DisposedOrDisposing) throw new ObjectDisposedException(nameof(Manager), "Scan called when ProcessManager was already disposed");
+			if (disposed) throw new ObjectDisposedException(nameof(Manager), "Scan called when ProcessManager was already disposed");
 			if (cts.IsCancellationRequested) return false;
 
 			if (!Atomic.Lock(ref scan_lock)) return false;
@@ -1147,7 +1147,7 @@ namespace Taskmaster.Process
 
 		public bool AddController(Controller prc)
 		{
-			if (DisposedOrDisposing) throw new ObjectDisposedException(nameof(Manager), "AddController called when ProcessManager was already disposed");
+			if (disposed) throw new ObjectDisposedException(nameof(Manager), "AddController called when ProcessManager was already disposed");
 
 			if (ValidateController(prc))
 			{
@@ -1238,7 +1238,7 @@ namespace Taskmaster.Process
 
 		void PowerBehaviourEvent(object _, Power.PowerBehaviourEventArgs ea)
 		{
-			if (DisposedOrDisposing) return;
+			if (disposed) return;
 
 			try
 			{
@@ -1292,7 +1292,7 @@ namespace Taskmaster.Process
 
 			bool exithooked = false;
 
-			if (DisposedOrDisposing) throw new ObjectDisposedException(nameof(Manager), "WaitForExit called when ProcessManager was already disposed");
+			if (disposed) throw new ObjectDisposedException(nameof(Manager), "WaitForExit called when ProcessManager was already disposed");
 
 			if (WaitForExitList.TryAdd(info.Id, info))
 			{
@@ -1332,7 +1332,7 @@ namespace Taskmaster.Process
 
 		void ForegroundAppChangedEvent(object _sender, WindowChangedArgs ev)
 		{
-			if (DisposedOrDisposing) return;
+			if (disposed) return;
 
 			System.Diagnostics.Process process = ev.Process;
 			try
@@ -1647,7 +1647,7 @@ namespace Taskmaster.Process
 		/// </summary>
 		async Task ForegroundWatch(ProcessEx info)
 		{
-			if (DisposedOrDisposing) throw new ObjectDisposedException(nameof(Manager), "ForegroundWatch called when ProcessManager was already disposed"); ;
+			if (disposed) throw new ObjectDisposedException(nameof(Manager), "ForegroundWatch called when ProcessManager was already disposed"); ;
 
 			var prc = info.Controller;
 
@@ -1668,7 +1668,7 @@ namespace Taskmaster.Process
 		// TODO: This should probably be pushed into ProcessController somehow.
 		async Task ProcessTriage(ProcessEx info, bool old = false)
 		{
-			if (DisposedOrDisposing) throw new ObjectDisposedException(nameof(Manager), "ProcessTriage called when ProcessManager was already disposed");
+			if (disposed) throw new ObjectDisposedException(nameof(Manager), "ProcessTriage called when ProcessManager was already disposed");
 
 			await Task.Delay(0, cts.Token).ConfigureAwait(false); // asyncify
 			if (cts.IsCancellationRequested) return;
@@ -1782,7 +1782,7 @@ namespace Taskmaster.Process
 
 		async Task ExclusiveMode(ProcessEx info)
 		{
-			if (DisposedOrDisposing) throw new ObjectDisposedException(nameof(Manager), "ExclusiveMode called when ProcessManager was already disposed");
+			if (disposed) throw new ObjectDisposedException(nameof(Manager), "ExclusiveMode called when ProcessManager was already disposed");
 			if (!MKAh.Execution.IsAdministrator) return; // sadly stopping services requires admin rights
 
 			lock (info) if (info.Exclusive) return;
@@ -1838,7 +1838,7 @@ namespace Taskmaster.Process
 
 		void EndExclusiveMode(ProcessEx info)
 		{
-			if (DisposedOrDisposing) return;
+			if (disposed) return;
 
 			lock (info) if (!info.Exclusive) return;
 
@@ -2225,7 +2225,7 @@ namespace Taskmaster.Process
 
 		async void CleanupTick(object _sender, EventArgs _ea)
 		{
-			if (DisposedOrDisposing) throw new ObjectDisposedException(nameof(Manager), "CleanupTick called when ProcessManager was already disposed");
+			if (disposed) throw new ObjectDisposedException(nameof(Manager), "CleanupTick called when ProcessManager was already disposed");
 
 			await Task.Delay(0).ConfigureAwait(false);
 
@@ -2250,7 +2250,7 @@ namespace Taskmaster.Process
 		/// </remarks>
 		public async void Cleanup()
 		{
-			if (DisposedOrDisposing) throw new ObjectDisposedException(nameof(Manager), "Cleanup called when ProcessManager was already disposed"); ;
+			if (disposed) throw new ObjectDisposedException(nameof(Manager), "Cleanup called when ProcessManager was already disposed"); ;
 
 			if (!Atomic.Lock(ref cleanup_lock)) return; // already in progress
 
@@ -2339,18 +2339,17 @@ namespace Taskmaster.Process
 		#region IDisposable Support
 		public event EventHandler<DisposedEventArgs> OnDisposed;
 
-		public void Dispose() => Dispose(true);
-
 		readonly CancellationTokenSource cts = new CancellationTokenSource();
 
-		bool DisposedOrDisposing = false;
-		void Dispose(bool disposing)
+		bool disposed = false;
+
+		protected override void Dispose(bool disposing)
 		{
-			if (DisposedOrDisposing) return;
+			if (disposed) return;
 
 			if (disposing)
 			{
-				DisposedOrDisposing = true;
+				disposed = true;
 
 				if (Trace) Log.Verbose("Disposing process manager...");
 

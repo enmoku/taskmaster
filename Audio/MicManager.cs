@@ -36,7 +36,7 @@ namespace Taskmaster.Audio
 {
 	using static Taskmaster;
 
-	sealed public class MicManager : IDisposal, IDisposable
+	sealed public class MicManager : Component, IDisposal, IDisposable
 	{
 		readonly System.Threading.Thread Context = null;
 
@@ -426,9 +426,7 @@ namespace Taskmaster.Audio
 
 		bool DisposedOrDisposing = false;
 
-		public void Dispose() => Dispose(true);
-
-		void Dispose(bool disposing)
+		protected override void Dispose(bool disposing)
 		{
 			if (DisposedOrDisposing) return;
 			DisposedOrDisposing = true;

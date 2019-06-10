@@ -33,7 +33,7 @@ namespace Taskmaster
 {
 	using static Taskmaster;
 
-	public class SelfMaintenance : IDisposable, IDisposal
+	public class SelfMaintenance : Component, IDisposable, IDisposal
 	{
 		public SelfMaintenance()
 		{
@@ -86,7 +86,7 @@ namespace Taskmaster
 		int CallbackLimiter = 0;
 		async void MaintenanceTick(object _, EventArgs _ea)
 		{
-			if (DisposedOrDisposing) return;
+			if (disposed) return;
 
 			if (!Atomic.Lock(ref CallbackLimiter)) return;
 
@@ -138,13 +138,13 @@ namespace Taskmaster
 		}
 
 		#region IDisposable Support
-		private bool DisposedOrDisposing = false; // To detect redundant calls
+		private bool disposed = false; // To detect redundant calls
 
 		public event EventHandler<DisposedEventArgs> OnDisposed;
 
-		protected virtual void Dispose(bool disposing)
+		protected override void Dispose(bool disposing)
 		{
-			if (DisposedOrDisposing) return;
+			if (disposed) return;
 
 			if (disposing)
 			{
@@ -154,10 +154,8 @@ namespace Taskmaster
 			OnDisposed?.Invoke(this, DisposedEventArgs.Empty);
 			OnDisposed = null;
 
-			DisposedOrDisposing = true;
+			disposed = true;
 		}
-
-		public void Dispose() => Dispose(true);
 
 		public void ShutdownEvent(object sender, EventArgs ea)
 		{

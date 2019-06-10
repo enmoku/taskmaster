@@ -55,7 +55,7 @@ namespace Taskmaster
 	/// <summary>
 	/// Monitors for variety of problems and reports on them.
 	/// </summary>
-	sealed public class HealthMonitor : IDisposal, IDisposable // Auto-Doc
+	sealed public class HealthMonitor : Component, IDisposal, IDisposable // Auto-Doc
 	{
 		bool DebugHealth = false;
 
@@ -567,9 +567,7 @@ namespace Taskmaster
 
 		bool DisposedOrDisposing = false;
 
-		public void Dispose() => Dispose(true);
-
-		void Dispose(bool disposing)
+		protected override void Dispose(bool disposing)
 		{
 			if (DisposedOrDisposing) return;
 

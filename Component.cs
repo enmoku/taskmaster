@@ -1,5 +1,5 @@
 ﻿//
-// IDisposal.cs
+// Component.cs
 //
 // Author:
 //       M.A. (https://github.com/mkahvi)
@@ -25,18 +25,19 @@
 // THE SOFTWARE.
 
 using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
 
 namespace Taskmaster
 {
-	public interface IDisposal : IDisposable
+	public abstract class Component : IDisposable
 	{
-		event EventHandler<DisposedEventArgs> OnDisposed;
+		public int ComponentId;
 
-		void ShutdownEvent(object sender, EventArgs ea);
-	}
+		public void Dispose() => Dispose(true);
 
-	public class DisposedEventArgs : EventArgs
-	{
-		public new static DisposedEventArgs Empty => new DisposedEventArgs();
+		protected abstract void Dispose(bool disposing);
 	}
 }

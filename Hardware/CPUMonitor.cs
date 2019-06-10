@@ -34,7 +34,7 @@ namespace Taskmaster
 {
 	using static Taskmaster;
 
-	public class CPUMonitor : IDisposal, IDisposable
+	public class CPUMonitor : Component, IDisposal, IDisposable
 	{
 		// Experimental feature
 		public bool CPULoaderMonitoring { get; set; } = false;
@@ -143,7 +143,7 @@ namespace Taskmaster
 		void Sampler(object _, EventArgs _ea)
 		{
 			if (!Atomic.Lock(ref sampler_lock)) return; // uhhh... probably should ping warning if this return is triggered
-			if (DisposedOrDisposing) return; // Dumbness with timers
+			if (disposed) return; // Dumbness with timers
 
 			try
 			{
@@ -285,15 +285,15 @@ namespace Taskmaster
 		#region IDisposable Support
 		public event EventHandler<DisposedEventArgs> OnDisposed;
 
-		bool DisposedOrDisposing = false; // To detect redundant calls
+		bool disposed = false; // To detect redundant calls
 
-		protected virtual void Dispose(bool disposing)
+		protected override void Dispose(bool disposing)
 		{
-			if (DisposedOrDisposing) return;
+			if (disposed) return;
 
 			if (disposing)
 			{
-				DisposedOrDisposing = true;
+				disposed = true;
 
 				CPUSampleTimer?.Dispose();
 				CPUSampleTimer = null;
@@ -313,8 +313,6 @@ namespace Taskmaster
 			OnDisposed?.Invoke(this, DisposedEventArgs.Empty);
 			OnDisposed = null;
 		}
-
-		public void Dispose() => Dispose(true);
 
 		public void ShutdownEvent(object sender, EventArgs ea)
 		{

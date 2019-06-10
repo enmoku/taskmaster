@@ -37,7 +37,7 @@ namespace Taskmaster
 	/// <summary>
 	/// Manager for non-volatile memory (NVM).
 	/// </summary>
-	sealed public class StorageManager : IDisposal, IDisposable
+	sealed public class StorageManager : Component, IDisposal, IDisposable
 	{
 		bool Verbose = false;
 
@@ -220,10 +220,8 @@ namespace Taskmaster
 		#region IDisposable Support
 		public event EventHandler<DisposedEventArgs> OnDisposed;
 
-		public void Dispose() => Dispose(true);
-
 		bool DisposedOrDisposing = false;
-		void Dispose(bool disposing)
+		protected override void Dispose(bool disposing)
 		{
 			if (DisposedOrDisposing) return;
 			DisposedOrDisposing = true;

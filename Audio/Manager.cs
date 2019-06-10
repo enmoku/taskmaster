@@ -37,7 +37,7 @@ namespace Taskmaster.Audio
 	/// <summary>
 	/// Must be created on persistent thread, such as the main thread.
 	/// </summary>
-	public class Manager : IDisposal, IDisposable
+	public class Manager : Component, IDisposal, IDisposable
 	{
 		readonly System.Threading.Thread Context = null;
 
@@ -369,7 +369,7 @@ namespace Taskmaster.Audio
 
 		bool DisposingOrDisposed = false;
 
-		protected virtual void Dispose(bool disposing)
+		protected override void Dispose(bool disposing)
 		{
 			if (!DisposingOrDisposed)
 			{
@@ -401,8 +401,6 @@ namespace Taskmaster.Audio
 			OnDisposed?.Invoke(this, DisposedEventArgs.Empty);
 			OnDisposed = null;
 		}
-
-		public void Dispose() => Dispose(true);
 
 		public void ShutdownEvent(object sender, EventArgs ea)
 		{

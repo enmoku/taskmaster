@@ -70,7 +70,7 @@ namespace Taskmaster
 		public CPUSensorEventArgs(float load) => Load = load;
 	}
 
-	public class HardwareMonitor : IDisposal, IDisposable
+	public class HardwareMonitor : Component, IDisposal, IDisposable
 	{
 		OpenHardwareMonitor.Hardware.IHardware gpu = null;
 		OpenHardwareMonitor.Hardware.ISensor gpuFan = null; // Fan speed
@@ -319,7 +319,7 @@ namespace Taskmaster
 
 		bool DisposedOrDisposing = false; // To detect redundant calls
 
-		protected void Dispose(bool disposing)
+		protected override void Dispose(bool disposing)
 		{
 			if (DisposedOrDisposing) return;
 			DisposedOrDisposing = true;
@@ -339,9 +339,7 @@ namespace Taskmaster
 		}
 
 		~HardwareMonitor() => Dispose(false);
-
-		public void Dispose() => Dispose(true);
-
+		
 		public void ShutdownEvent(object sender, EventArgs ea) => Stop();
 		#endregion
 	}
