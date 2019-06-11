@@ -54,6 +54,7 @@ namespace Taskmaster.UI
 		public VolumeMeter(Audio.Manager manager)
 			: base()
 		{
+			Visible = false;
 			SuspendLayout();
 
 			audiomanager = manager;
@@ -64,12 +65,6 @@ namespace Taskmaster.UI
 			var volsec = cfg.Config["Volume Meter"];
 
 			TopMost = volsec.GetOrSet("Topmost", true).Bool;
-			if (TopMost)
-			{
-				Show();
-				BringToFront();
-				//Activate();
-			}
 
 			Frequency = volsec.GetOrSet("Refresh", 100)
 				.InitComment("Refresh delay. Lower is faster. Milliseconds from 10 to 5000.")
@@ -165,6 +160,9 @@ namespace Taskmaster.UI
 			var winsec = uicfg.Config[Constants.Windows];
 			var winpos = winsec[HumanReadable.Hardware.Audio.Volume].IntArray;
 
+			ResumeLayout();
+			Visible = true;
+
 			if (winpos != null && winpos.Length == 2)
 			{
 				var rectangle = new System.Drawing.Rectangle(winpos[0], winpos[1], Bounds.Width, Bounds.Height);
@@ -178,9 +176,13 @@ namespace Taskmaster.UI
 					CenterToParent();
 			}
 
-			SuspendLayout();
-
 			Show();
+
+			if (TopMost)
+			{
+				BringToFront();
+				//Activate();
+			}
 		}
 
 		float PreviousOut = 0.0f;

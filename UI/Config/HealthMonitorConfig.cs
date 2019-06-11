@@ -33,6 +33,7 @@ namespace Taskmaster
 		public HealthMonitorConfig()
 			: base()
 		{
+			Visible = false;
 			SuspendLayout();
 
 			Text = "Auto-Doc config";
@@ -42,6 +43,7 @@ namespace Taskmaster
 			};
 
 			ResumeLayout();
+			Visible = true;
 		}
 	}
 }

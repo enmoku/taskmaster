@@ -34,7 +34,7 @@ namespace Taskmaster.UI.Config
 
 	sealed public class ComponentConfigurationWindow : UniForm
 	{
-		public ComponentConfigurationWindow(bool initial = true, bool center = false)
+		internal ComponentConfigurationWindow(bool initial = true, bool center = false)
 			: base(centerOnScreen: initial || center)
 		{
 			SuspendLayout();

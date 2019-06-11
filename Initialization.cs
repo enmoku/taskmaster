@@ -539,11 +539,8 @@ namespace Taskmaster
 					audiomanager = null;
 				}
 
-				// WinForms makes the following components not load nicely if not done here.
-				trayaccess = new UI.TrayAccess
-				{
-					TopLevel = true // for now
-				};
+				// WinForms makes the following components not load nicely if not done here (main thread).
+				trayaccess = new UI.TrayAccess();
 				trayaccess.TrayMenuShown += (_, ea) => OptimizeResponsiviness(ea.Visible);
 
 				ProcMon.ContinueWith((x) => trayaccess?.Hook(processmanager), TaskContinuationOptions.OnlyOnRanToCompletion);

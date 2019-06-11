@@ -35,7 +35,7 @@ namespace Taskmaster.UI.Config
 
 	public sealed class AdvancedConfig : UI.UniForm
 	{
-		public AdvancedConfig(bool center = false)
+		AdvancedConfig(bool center = false)
 			: base(centerOnScreen: center)
 		{
 			SuspendLayout();

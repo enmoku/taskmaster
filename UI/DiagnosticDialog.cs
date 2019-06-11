@@ -48,6 +48,7 @@ namespace Taskmaster.UI
 		public DiagnosticDialog(DiagnosticSystem system)
 			: base(centerOnScreen: false)
 		{
+			Visible = false;
 			SuspendLayout();
 
 			if (system == null) system = new DiagnosticSystem();
@@ -66,6 +67,7 @@ namespace Taskmaster.UI
 			FormClosing += DialogClosing;
 
 			ResumeLayout();
+			Visible = true;
 		}
 
 		private void DialogClosing(object sender, FormClosingEventArgs e)

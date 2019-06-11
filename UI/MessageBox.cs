@@ -58,8 +58,8 @@ namespace Taskmaster
 		public static ResultType ShowModal(string title, string message, Buttons buttons, Type type = Type.Auto, Control parent = null)
 		{
 			using var msg = new MessageBox(title, message, buttons, type, parent);
-			msg.CenterToParent();
-			msg.ShowDialog();
+			//msg.CenterToParent();
+			msg.ShowDialog(parent);
 
 			return msg.Result;
 		}
@@ -70,6 +70,7 @@ namespace Taskmaster
 		public MessageBox(string title, string message, Buttons buttons, Type type = Type.Auto, Control parent = null)
 			: base()
 		{
+			Visible = false;
 			SuspendLayout();
 
 			//if (!(parent is null)) Parent = parent;
@@ -156,6 +157,7 @@ namespace Taskmaster
 			StartPosition = parent != null ? FormStartPosition.CenterParent : FormStartPosition.CenterScreen;
 
 			ResumeLayout();
+			Visible = true;
 		}
 
 		bool disposed = false;

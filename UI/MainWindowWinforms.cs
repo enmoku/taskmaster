@@ -59,6 +59,7 @@ namespace Taskmaster.UI
 		public MainWindow()
 			: base()
 		{
+			Visible = false;
 			SuspendLayout();
 
 			// InitializeComponent(); // TODO: WPF
@@ -150,6 +151,7 @@ namespace Taskmaster.UI
 			if (Trace) Log.Verbose("MainWindow constructed");
 
 			ResumeLayout();
+			Visible = true;
 		}
 
 		void onShown(object _, EventArgs _ea)

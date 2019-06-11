@@ -42,6 +42,7 @@ namespace Taskmaster.UI
 		public ChangeLog(string logdata)
 			: base(false)
 		{
+			Visible = false;
 			SuspendLayout();
 
 			LogData = logdata;
@@ -77,6 +78,7 @@ namespace Taskmaster.UI
 			Controls.Add(layout);
 
 			ResumeLayout();
+			Visible = true;
 		}
 
 		private void OKButton_Click(object sender, EventArgs e)

@@ -92,7 +92,7 @@ namespace Taskmaster
 			try
 			{
 				if (!mainwindow?.IsDisposed ?? false) mainwindow.Enabled = false;
-				if (!trayaccess?.IsDisposed ?? false) trayaccess.Enabled = false;
+				if (!trayaccess?.IsDisposed ?? false) trayaccess.Close();
 
 				while (DisposalChute.Count > 0)
 				{
@@ -146,14 +146,17 @@ namespace Taskmaster
 		{
 			if (!AudioManagerEnabled) return;
 
-			if (volumemeter is null)
+			lock (window_creation_lock)
 			{
-				volumemeter = new UI.VolumeMeter(audiomanager);
-				volumemeter.OnDisposed += (_, _ea) => volumemeter = null;
+				if (volumemeter is null)
+				{
+					volumemeter = new UI.VolumeMeter(audiomanager);
+					volumemeter.OnDisposed += (_, _ea) => volumemeter = null;
+				}
 			}
 		}
 
-		static readonly object mainwindow_creation_lock = new object();
+		static readonly object window_creation_lock = new object();
 		/// <summary>
 		/// Constructs and hooks the main window
 		/// </summary>
@@ -163,7 +166,7 @@ namespace Taskmaster
 
 			try
 			{
-				lock (mainwindow_creation_lock)
+				lock (window_creation_lock)
 				{
 					if (mainwindow != null) return;
 
@@ -520,8 +523,8 @@ namespace Taskmaster
 		{
 			try
 			{
-				if (trayaccess?.InvokeRequired ?? false)
-					trayaccess?.BeginInvoke(action);
+				if (hiddenwindow?.InvokeRequired ?? false)
+					hiddenwindow?.BeginInvoke(action);
 				else
 					action();
 			}

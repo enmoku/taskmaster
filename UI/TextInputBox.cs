@@ -45,9 +45,6 @@ namespace Taskmaster
 
 			AutoSizeMode = AutoSizeMode.GrowAndShrink;
 
-			TopMost = true;
-			Activate();
-			BringToFront();
 
 			#region Build UI
 			var layout = new TableLayoutPanel()
@@ -107,6 +104,12 @@ namespace Taskmaster
 			#endregion // Build UI
 
 			ResumeLayout();
+
+			/*
+			TopMost = true;
+			Activate();
+			BringToFront();
+			*/
 		}
 	}
 }

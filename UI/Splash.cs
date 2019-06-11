@@ -51,7 +51,10 @@ namespace Taskmaster.UI
 		public Splash(int itemsToLoad)
 			: base(centerOnScreen: true)
 		{
+			Visible = false;
 			SuspendLayout();
+
+			Text = "Loading " + Taskmaster.Name + "!!";
 
 			StartPosition = FormStartPosition.CenterScreen;
 
@@ -60,8 +63,6 @@ namespace Taskmaster.UI
 			Padding = new Padding(6);
 
 			AutoSize = true;
-
-			Text = "Loading " + Taskmaster.Name + "!!";
 
 			#region Build UI
 			var layout = new TableLayoutPanel()
@@ -130,6 +131,7 @@ namespace Taskmaster.UI
 			#endregion // Build UI
 
 			ResumeLayout();
+			Visible = true;
 		}
 
 		void ExitButton_Click(object sender, EventArgs e)
