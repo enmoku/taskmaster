@@ -940,6 +940,8 @@ namespace Taskmaster.UI
 			}
 		}
 
+		public void SetUIUpdateFrequency(int freq) => UIUpdateFrequency = freq;
+
 		readonly System.Windows.Forms.Timer UItimer = new System.Windows.Forms.Timer();
 
 		void StartUIUpdates(object sender, EventArgs _ea)

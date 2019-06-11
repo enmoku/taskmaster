@@ -108,7 +108,12 @@ namespace Taskmaster.UI.Config
 			};
 			tooltip.SetToolTip(UIUpdateFrequency, "How frequently main UI update happens\nLower values increase CPU usage while UI is visible.");
 
-			UIUpdateFrequency.Value = mainwindow.UIUpdateFrequency;
+			int uiupdatems;
+			if (mainwindow is null)
+				uiupdatems = corecfg.Config["User Interface"].Get("Update frequency")?.Int.Constrain(100, 5000) ?? 2000;
+			else
+				uiupdatems = mainwindow?.UIUpdateFrequency ?? 2000;
+			UIUpdateFrequency.Value = uiupdatems;
 
 			layout.Controls.Add(new AlignedLabel { Text = "Refresh frequency", Padding = LeftSubPadding });
 			layout.Controls.Add(UIUpdateFrequency);
@@ -286,13 +291,13 @@ namespace Taskmaster.UI.Config
 			savebutton.Click += (_, _ea) =>
 			{
 				// Record for restarts
-
+				using var corecfg = Config.Load(CoreConfigFilename);
 				var cfg = corecfg.Config;
 
 				var uisec = cfg["User Interface"];
 				int uiupdatems = Convert.ToInt32(UIUpdateFrequency.Value).Constrain(100, 5000);
 				uisec["Update frequency"].Int = uiupdatems;
-				mainwindow.UIUpdateFrequency = uiupdatems;
+				mainwindow?.SetUIUpdateFrequency(uiupdatems);
 
 				var powsec = cfg[HumanReadable.Hardware.Power.Section];
 
