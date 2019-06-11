@@ -155,8 +155,14 @@
     <Compile Include="MKAh\Data\Ini\Setting.cs" />
     <Compile Include="MKAh\Data\Ini\SettingType.cs" />
     <Compile Include="MKAh\File\NativeMethods.cs" />
+    <Compile Include="Power\Events\ModeEventArgs.cs" />
+    <Compile Include="Power\Events\MonitorPowerEventArgs.cs" />
+    <Compile Include="Power\Enums.cs" />
     <Compile Include="Power\NativeMethods.cs" />
+    <Compile Include="Power\Events\RequestEventArgs.cs" />
+    <Compile Include="Power\Events\SessionLockEventArgs.cs" />
     <Compile Include="Power\Utility.cs" />
+    <Compile Include="Power\WndProcProxy.cs" />
     <Compile Include="Process\Events\HandlingStateChangeEventArgs.cs" />
     <Compile Include="Process\Options.cs" />
     <Compile Include="Process\Events\ProcessingCountEventArgs.cs" />

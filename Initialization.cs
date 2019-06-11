@@ -624,7 +624,7 @@ namespace Taskmaster
 
 			if (powermanager != null)
 			{
-				powermanager.SetupEventHook();
+				powermanager.SetupEventHooks();
 				processmanager?.Hook(powermanager);
 			}
 

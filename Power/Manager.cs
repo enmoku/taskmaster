@@ -30,7 +30,6 @@ using System.Diagnostics;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
-using System.Windows.Forms;
 using Microsoft.Win32;
 using MKAh;
 using MKAh.Human.Readable;
@@ -40,55 +39,12 @@ namespace Taskmaster.Power
 {
 	using static Taskmaster;
 
-	sealed public class ModeEventArgs : EventArgs
-	{
-		public ModeEventArgs(Mode newmode, Mode oldmode = Mode.Undefined, Cause cause = null)
-		{
-			NewMode = newmode;
-			OldMode = oldmode;
-			Cause = cause;
-		}
-
-		public Mode OldMode { get; set; } = Mode.Undefined;
-		public Mode NewMode { get; set; } = Mode.Undefined;
-		public Cause Cause { get; set; } = null;
-	}
-
-	sealed public class PowerRequestEventArgs : EventArgs
-	{
-		public Mode Mode { get; set; } = Mode.Undefined;
-		public Process.ProcessEx Info { get; set; } = null;
-
-		public PowerRequestEventArgs(Mode mode, Process.ProcessEx info)
-		{
-			Mode = mode;
-			Info = info;
-		}
-	}
-
-	public enum MonitorPowerMode
-	{
-		On = -1,
-		Off = 2,
-		Standby = 1,
-		Invalid = 0
-	}
-
-	public class MonitorPowerEventArgs : EventArgs
-	{
-		public MonitorPowerMode Mode;
-		public MonitorPowerEventArgs(MonitorPowerMode mode) => Mode = mode;
-	}
-
-	public class SessionLockEventArgs : EventArgs
-	{
-		public bool Locked = false;
-		public SessionLockEventArgs(bool locked = false) => Locked = locked;
-	}
-
 	// TODO: Decouple Form from Manager
-	sealed public class Manager : Form, IDisposal // form is required for receiving messages, no other reason
+	sealed public class Manager : IDisposable, IDisposal // form is required for receiving messages, no other reason
 	{
+		WndProcProxy WndProcProxy;
+
+		// TODO: Move these to language resource.
 		const string DefaultModeSettingName = "Default mode";
 		const string RestoreModeSettingName = "Restore mode";
 		const string LowBackOffLevelName = "Low backoff level";
@@ -140,6 +96,75 @@ namespace Taskmaster.Power
 			DisposalChute.Push(this);
 		}
 
+		/// <summary>
+		/// Requires main thread?
+		/// </summary>
+		public void SetupEventHooks()
+		{
+			WndProcProxy = new WndProcProxy();
+			WndProcProxy?.RegisterEventHooks();
+			WndProcProxy.MonitorPowerChange += WndProcProxy_MonitorPowerChange;
+			WndProcProxy.PowerModeChanged += WndProcProxy_PowerModeChanged;
+
+			SystemEvents.SessionSwitch += SessionLockEvent; // BUG: this is wrong, TM should pause to not interfere with other users
+
+			// TODO: Check for session lock
+		}
+
+		async void WndProcProxy_PowerModeChanged(object sender, PowerModeEventArgs ea)
+		{
+			try
+			{
+				var old = CurrentMode;
+				if (ea.Mode.Equals(Balanced)) { CurrentMode = Mode.Balanced; }
+				else if (ea.Mode.Equals(HighPerformance)) { CurrentMode = Mode.HighPerformance; }
+				else if (ea.Mode.Equals(PowerSaver)) { CurrentMode = Mode.PowerSaver; }
+				else { CurrentMode = Mode.Undefined; }
+
+				PlanChange?.Invoke(this, new ModeEventArgs(CurrentMode, old, CurrentMode == ExpectedMode ? ExpectedCause : new Cause(OriginType.None, "External")));
+				ExpectedCause = null;
+
+				if (DebugPower) Log.Information($"<Power/OS> Change detected: {CurrentMode.ToString()} ({ea.Mode.ToString()})");
+
+				var now = DateTimeOffset.UtcNow;
+				if (CurrentMode != ExpectedMode && Behaviour == PowerBehaviour.Auto && LastExternalWarning.TimeTo(now).TotalSeconds > 30)
+				{
+					LastExternalWarning = now;
+					Log.Warning("<Power/OS> Unexpected power mode change detected (" + Utility.GetModeName(CurrentMode) + ") while auto-adjust is enabled.");
+				}
+			}
+			catch (Exception ex)
+			{
+				Logging.Stacktrace(ex);
+			}
+		}
+
+		async void WndProcProxy_MonitorPowerChange(object sender, MonitorPowerEventArgs ea)
+		{
+			try
+			{
+				switch (ea.Mode)
+				{
+					case MonitorPowerMode.Off:
+						if (ea.Mode == ExpectedMonitorPower)
+							MonitorPowerOffCounter.Start(); // only start the counter if we caused it
+						break;
+					case MonitorPowerMode.On:
+						MonitorPowerOffCounter.Stop();
+						break;
+					case MonitorPowerMode.Standby:
+						break;
+					default: break;
+				}
+
+				MonitorPower?.Invoke(this, ea);
+			}
+			catch (Exception ex)
+			{
+				Logging.Stacktrace(ex);
+			}
+		}
+
 		public int ForceCount => ForceModeSourcesMap.Count;
 		readonly ConcurrentDictionary<int, Mode> ForceModeSourcesMap = new ConcurrentDictionary<int, Mode>();
 
@@ -154,7 +179,7 @@ namespace Taskmaster.Power
 
 		void MonitorPowerEvent(object _, MonitorPowerEventArgs ev)
 		{
-			if (DisposedOrDisposing) return;
+			if (IsDisposed) return;
 
 			try
 			{
@@ -211,7 +236,7 @@ namespace Taskmaster.Power
 
 		async Task DebugMonitorWake()
 		{
-			if (DisposedOrDisposing) throw new ObjectDisposedException(nameof(Manager), "DebugMonitorWake called after PowerManager was disposed.");
+			if (IsDisposed) throw new ObjectDisposedException(nameof(Manager), "DebugMonitorWake called after PowerManager was disposed.");
 
 			await Task.Delay(0).ConfigureAwait(false);
 
@@ -271,7 +296,7 @@ namespace Taskmaster.Power
 
 		void StartDisplayTimer()
 		{
-			if (DisposedOrDisposing) throw new ObjectDisposedException(nameof(Manager), "StartDisplayTimer called after PowerManager was disposed.");
+			if (IsDisposed) throw new ObjectDisposedException(nameof(Manager), "StartDisplayTimer called after PowerManager was disposed.");
 
 			if (SleepTickCount < 0) SleepTickCount = 0; // reset
 			MonitorSleepTimer?.Start();
@@ -284,7 +309,7 @@ namespace Taskmaster.Power
 		int monitorsleeptimer_lock = 0;
 		void MonitorSleepTimerTick(object _, EventArgs _ea)
 		{
-			if (DisposedOrDisposing) return;
+			if (IsDisposed) return;
 
 			var idle = User.IdleTime();
 
@@ -348,22 +373,6 @@ namespace Taskmaster.Power
 		MonitorPowerMode CurrentMonitorState = MonitorPowerMode.Invalid;
 
 		/// <summary>
-		/// Requires main thread?
-		/// </summary>
-		public void SetupEventHook()
-		{
-			var lpersonality = NativeMethods.GUID_POWERSCHEME_PERSONALITY;
-			var displaystate = NativeMethods.GUID_CONSOLE_DISPLAY_STATE;
-
-			NativeMethods.RegisterPowerSettingNotification(Handle, ref lpersonality, NativeMethods.DEVICE_NOTIFY_WINDOW_HANDLE);
-			NativeMethods.RegisterPowerSettingNotification(Handle, ref displaystate, NativeMethods.DEVICE_NOTIFY_WINDOW_HANDLE);
-
-			SystemEvents.SessionSwitch += SessionLockEvent; // BUG: this is wrong, TM should pause to not interfere with other users
-
-			// TODO: Check for session lock
-		}
-
-		/// <summary>
 		/// Power saver on monitor sleep
 		/// </summary>
 		bool SaverOnMonitorSleep = false;
@@ -415,7 +424,7 @@ namespace Taskmaster.Power
 
 		public void SetAutoAdjust(AutoAdjustSettings settings)
 		{
-			if (DisposedOrDisposing) throw new ObjectDisposedException(nameof(Manager), "SetAutoAdjust called after PowerManager was disposed.");
+			if (IsDisposed) throw new ObjectDisposedException(nameof(Manager), "SetAutoAdjust called after PowerManager was disposed.");
 
 			AutoAdjust = settings;
 
@@ -432,7 +441,7 @@ namespace Taskmaster.Power
 		// TODO: Simplify this mess
 		public void CPULoadHandler(object _, ProcessorLoadEventArgs pev)
 		{
-			if (DisposedOrDisposing) return;
+			if (IsDisposed) return;
 
 			if (Behaviour != PowerBehaviour.Auto) return;
 
@@ -879,7 +888,7 @@ namespace Taskmaster.Power
 
 		public void LogBehaviourState()
 		{
-			if (DisposedOrDisposing) throw new ObjectDisposedException(nameof(Manager), "LogBehaviourState called after PowerManager was disposed.");
+			if (IsDisposed) throw new ObjectDisposedException(nameof(Manager), "LogBehaviourState called after PowerManager was disposed.");
 
 			Log.Information("<Power> Behaviour: " + Utility.GetBehaviourName(Behaviour));
 		}
@@ -895,7 +904,7 @@ namespace Taskmaster.Power
 
 		async void SessionLockEvent(object _, SessionSwitchEventArgs ev)
 		{
-			if (DisposedOrDisposing) return;
+			if (IsDisposed) return;
 
 			bool loudMonitor = (ShowSessionActions || DebugSession || DebugMonitor),
 				loudPower = (ShowSessionActions || DebugSession || DebugPower);
@@ -1055,7 +1064,7 @@ namespace Taskmaster.Power
 
 		void BatteryChargingEvent(object _, PowerModeChangedEventArgs ev)
 		{
-			if (DisposedOrDisposing) return;
+			if (IsDisposed) return;
 
 			switch (ev.Mode)
 			{
@@ -1079,67 +1088,6 @@ namespace Taskmaster.Power
 		Mode ExpectedMode = Mode.Undefined;
 		MonitorPowerMode ExpectedMonitorPower = MonitorPowerMode.On;
 		DateTimeOffset LastExternalWarning = DateTimeOffset.MinValue;
-
-		protected override void WndProc(ref Message m)
-		{
-			if (DisposedOrDisposing) return;
-
-			if (m.Msg == NativeMethods.WM_POWERBROADCAST &&
-				m.WParam.ToInt32() == NativeMethods.PBT_POWERSETTINGCHANGE)
-			{
-				var ps = (NativeMethods.POWERBROADCAST_SETTING)Marshal.PtrToStructure(m.LParam, typeof(NativeMethods.POWERBROADCAST_SETTING));
-
-				if (ps.PowerSetting == NativeMethods.GUID_POWERSCHEME_PERSONALITY && ps.DataLength == Marshal.SizeOf(typeof(Guid)))
-				{
-					var pData = (IntPtr)(m.LParam.ToInt32() + Marshal.SizeOf(ps) - 4); // -4 is to align to the ps.Data
-					var newPersonality = (Guid)Marshal.PtrToStructure(pData, typeof(Guid));
-					var old = CurrentMode;
-					if (newPersonality == Balanced) { CurrentMode = Mode.Balanced; }
-					else if (newPersonality == HighPerformance) { CurrentMode = Mode.HighPerformance; }
-					else if (newPersonality == PowerSaver) { CurrentMode = Mode.PowerSaver; }
-					else { CurrentMode = Mode.Undefined; }
-
-					PlanChange?.Invoke(this, new ModeEventArgs(CurrentMode, old, CurrentMode == ExpectedMode ? ExpectedCause : new Cause(OriginType.None, "External")));
-					ExpectedCause = null;
-
-					if (DebugPower) Log.Information($"<Power/OS> Change detected: {CurrentMode.ToString()} ({newPersonality.ToString()})");
-
-					var now = DateTimeOffset.UtcNow;
-					if (CurrentMode != ExpectedMode && Behaviour == PowerBehaviour.Auto && LastExternalWarning.TimeTo(now).TotalSeconds > 30)
-					{
-						LastExternalWarning = now;
-						Log.Warning("<Power/OS> Unexpected power mode change detected (" + Utility.GetModeName(CurrentMode) + ") while auto-adjust is enabled.");
-					}
-
-					m.Result = IntPtr.Zero;
-				}
-				else if (ps.PowerSetting == NativeMethods.GUID_CONSOLE_DISPLAY_STATE)
-				{
-					MonitorPowerMode mode = MonitorPowerMode.Invalid;
-
-					switch (ps.Data)
-					{
-						case 0x0:
-							mode = MonitorPowerMode.Off;
-							if (mode == ExpectedMonitorPower)
-								MonitorPowerOffCounter.Start(); // only start the counter if we caused it
-							break;
-						case 0x1:
-							mode = MonitorPowerMode.On;
-							MonitorPowerOffCounter.Stop();
-							break;
-						case 0x2: mode = MonitorPowerMode.Standby; break;
-						default: break;
-					}
-
-					m.Result = IntPtr.Zero;
-
-					MonitorPower?.Invoke(this, new MonitorPowerEventArgs(mode));
-				}
-			}
-
-			base.WndProc(ref m); // is this necessary?
-		}
 
 		public Mode OriginalMode { get; private set; } = Mode.Balanced;
 		public Mode CurrentMode { get; private set; } = Mode.Balanced;
@@ -1216,7 +1164,7 @@ namespace Taskmaster.Power
 		/// <param name="sourcePid">0 releases all locks.</param>
 		public async Task Release(Process.ProcessEx info)
 		{
-			if (DisposedOrDisposing) throw new ObjectDisposedException(nameof(Manager), "Release called after PowerManager was disposed.");
+			if (IsDisposed) throw new ObjectDisposedException(nameof(Manager), "Release called after PowerManager was disposed.");
 
 			int sourcePid = info?.Id ?? -1;
 
@@ -1355,7 +1303,7 @@ namespace Taskmaster.Power
 
 		bool AutoAdjustSetMode(Mode mode, Cause cause)
 		{
-			if (DisposedOrDisposing) throw new ObjectDisposedException(nameof(Manager), "AutoAdjustSetMode called after PowerManager was disposed.");
+			if (IsDisposed) throw new ObjectDisposedException(nameof(Manager), "AutoAdjustSetMode called after PowerManager was disposed.");
 
 			Debug.Assert(Behaviour == PowerBehaviour.Auto, "This is for auto adjusting only.");
 
@@ -1375,7 +1323,7 @@ namespace Taskmaster.Power
 		// BUG: If user forces disparate modes, only last forcing takes effect.
 		public bool Force(Mode mode, int sourcePid)
 		{
-			if (DisposedOrDisposing) throw new ObjectDisposedException(nameof(Manager), "Force called after PowerManager was disposed.");
+			if (IsDisposed) throw new ObjectDisposedException(nameof(Manager), "Force called after PowerManager was disposed.");
 
 			if (Behaviour == PowerBehaviour.Manual || SessionLocked) return false;
 
@@ -1455,7 +1403,7 @@ namespace Taskmaster.Power
 
 		async void SetMonitorMode(MonitorPowerMode powermode)
 		{
-			if (DisposedOrDisposing) throw new ObjectDisposedException(nameof(Manager), "SetMonitorMode called after PowerManager was disposed.");
+			if (IsDisposed) throw new ObjectDisposedException(nameof(Manager), "SetMonitorMode called after PowerManager was disposed.");
 
 			Debug.Assert(powermode != MonitorPowerMode.Invalid);
 			long NewPowerMode = (int)powermode; // -1 = Powering On, 1 = Low Power (low backlight, etc.), 2 = Power Off
@@ -1481,11 +1429,12 @@ namespace Taskmaster.Power
 		#region IDisposable Support
 		public event EventHandler<DisposedEventArgs> OnDisposed;
 
-		bool DisposedOrDisposing = false;
-		protected override void Dispose(bool disposing)
+		public bool IsDisposed { get; private set; } = false;
+
+		void Dispose(bool disposing)
 		{
-			if (DisposedOrDisposing) return;
-			DisposedOrDisposing = true;
+			if (IsDisposed) return;
+			IsDisposed = true;
 
 			Behaviour = PowerBehaviour.Internal;
 
@@ -1494,6 +1443,9 @@ namespace Taskmaster.Power
 			if (disposing)
 			{
 				if (Trace) Log.Verbose("Disposing power manager...");
+
+				WndProcProxy?.Dispose();
+				WndProcProxy = null;
 
 				SessionLock = null;
 				MonitorPower = null;
@@ -1518,18 +1470,15 @@ namespace Taskmaster.Power
 				Log.Information("<Power> Auto-adjusted " + AutoAdjustCounter + " time(s).");
 
 				SaveConfig();
+
+				OnDisposed?.Invoke(this, new DisposedEventArgs());
 			}
 		}
+
+		public void Dispose() => Dispose(true);
 		#endregion
 
 		public void ShutdownEvent(object sender, EventArgs ea) => StopDisplayTimer();
-	}
-
-	public enum Reaction
-	{
-		High = 1,
-		Average = 0,
-		Low = -1,
 	}
 
 	public class PowerBehaviourEventArgs : EventArgs
@@ -1537,22 +1486,5 @@ namespace Taskmaster.Power
 		public PowerBehaviour Behaviour = PowerBehaviour.Undefined;
 
 		public PowerBehaviourEventArgs(PowerBehaviour behaviour) => Behaviour = behaviour;
-	}
-
-	public enum PowerBehaviour
-	{
-		Auto,
-		RuleBased,
-		Manual,
-		Internal,
-		Undefined
-	}
-
-	public enum RestoreModeMethod
-	{
-		Original,
-		Saved,
-		Default,
-		Custom
 	}
 }
