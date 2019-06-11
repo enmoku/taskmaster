@@ -47,9 +47,10 @@ namespace Taskmaster.UI
 	///
 	/// </summary>
 	// Form is used for catching some system events
-	sealed public class TrayAccess : UI.UniForm, IDisposable
+	sealed public class TrayAccess : IDisposable
 	{
 		NotifyIcon Tray;
+		TrayWndProcProxy WndProcEventProxy;
 
 		public event EventHandler<DisposedEventArgs> OnDisposed;
 		public event EventHandler<TrayShownEventArgs> TrayMenuShown;
@@ -62,8 +63,6 @@ namespace Taskmaster.UI
 
 		public TrayAccess() : base()
 		{
-			SuspendLayout();
-
 			#region Build UI
 			IconCache = System.Drawing.Icon.ExtractAssociatedIcon(System.Reflection.Assembly.GetExecutingAssembly().Location);
 
@@ -169,9 +168,22 @@ namespace Taskmaster.UI
 
 			if (Trace) Log.Verbose("<Tray> Initialized");
 
-			DisposalChute.Push(this); // nothing else seems to work for removing the tray icon
+			WndProcEventProxy = new TrayWndProcProxy();
 
-			ResumeLayout();
+			DisposalChute.Push(this); // nothing else seems to work for removing the tray icon
+		}
+
+		internal void Close()
+		{
+			try
+			{
+				Tray.ContextMenuStrip?.Close();
+				Tray.ContextMenuStrip = null;
+			}
+			catch (Exception ex)
+			{
+				Logging.Stacktrace(ex);
+			}
 		}
 
 		System.Drawing.Icon IconCache = null;
@@ -213,172 +225,6 @@ namespace Taskmaster.UI
 			Log.Information("<OS> Session end signal received; Reason: " + ea.Reason.ToString());
 			ExitCleanup();
 			UnifiedExit();
-		}
-
-		int hotkeymodifiers = (int)NativeMethods.KeyModifier.Control | (int)NativeMethods.KeyModifier.Shift | (int)NativeMethods.KeyModifier.Alt;
-
-		bool HotkeysRegistered = false;
-		// TODO: Move this off elsewhere
-		public void RegisterGlobalHotkeys()
-		{
-			Debug.Assert(MKAh.Execution.IsMainThread, "RegisterGlobalHotkeys must be called from main thread");
-
-			if (HotkeysRegistered) return;
-
-			bool regM = false, regR = false;
-
-			try
-			{
-				NativeMethods.RegisterHotKey(Handle, 0, hotkeymodifiers, Keys.M.GetHashCode());
-				regM = true;
-
-				NativeMethods.RegisterHotKey(Handle, 1, hotkeymodifiers, Keys.R.GetHashCode());
-				regR = true;
-
-				HotkeysRegistered = true;
-			}
-			catch (Exception ex)
-			{
-				Logging.Stacktrace(ex);
-			}
-
-			var sbs = new System.Text.StringBuilder();
-			sbs.Append("<Global> Registered hotkeys: ");
-			if (regM) sbs.Append("ctrl-alt-shift-m = free memory [foreground ignored]");
-			if (regM && regR) sbs.Append(", ");
-			if (regR) sbs.Append("ctrl-alt-shift-r = scan");
-			Log.Information(sbs.ToString());
-		}
-
-		void UnregisterGlobalHotkeys()
-		{
-			//Debug.Assert(Taskmaster.IsMainThread(), "UnregisterGlobalHotkeys must be called from main thread");
-
-			if (HotkeysRegistered)
-			{
-				NativeMethods.UnregisterHotKey(Handle, 0);
-				NativeMethods.UnregisterHotKey(Handle, 1);
-			}
-		}
-
-		const int WM_QUERYENDSESSION = 0x0011;
-		const int WM_ENDSESSION = 0x0016;
-
-		const int ENDSESSION_CRITICAL = 0x40000000;
-		const int ENDSESSION_LOGOFF = unchecked((int)0x80000000);
-		const int ENDSESSION_CLOSEAPP = 0x1;
-
-		protected override void WndProc(ref Message m)
-		{
-			if (DisposingOrDisposed) return;
-
-			if (m.Msg == NativeMethods.WM_HOTKEY)
-			{
-				Keys key = (Keys)(((int)m.LParam >> 16) & 0xFFFF);
-				//NativeMethods.KeyModifier modifiers = (NativeMethods.KeyModifier)((int)m.LParam & 0xFFFF);
-				//int modifiers =(int)m.LParam & 0xFFFF;
-				int hotkeyId = m.WParam.ToInt32();
-
-				//if (modifiers != hotkeymodifiers)
-				//Log.Debug($"<Global> Received unexpected modifier keys: {modifiers} instead of {hotkeymodifiers}");
-
-				switch (hotkeyId)
-				{
-					case 0:
-						if (Trace) Log.Verbose("<Global> Hotkey ctrl-alt-shift-m detected!!!");
-						Task.Run(new Action(async () =>
-						{
-							int ignorepid = activeappmonitor?.ForegroundId ?? -1;
-							Log.Information("<Global> Hotkey detected; Freeing memory while ignoring foreground" +
-								(ignorepid > 4 ? $" (#{ignorepid})" : string.Empty) + " if possible.");
-							await processmanager.FreeMemory(ignorePid: ignorepid).ConfigureAwait(false);
-						})).ConfigureAwait(false);
-						m.Result = IntPtr.Zero;
-						break;
-					case 1:
-						if (Trace) Log.Verbose("<Global> Hotkey ctrl-alt-shift-r detected!!!");
-						Log.Information("<Global> Hotkey detected; Hastening next scan.");
-						processmanager?.HastenScan(5);
-						m.Result = IntPtr.Zero;
-						break;
-					default:
-						Log.Debug("<Global> Received unexpected key event: " + key.ToString());
-						break;
-				}
-			}
-			else if (m.Msg == NativeMethods.WM_COMPACTING)
-			{
-				Log.Debug("<System> WM_COMPACTING received");
-				// wParam = The ratio of central processing unit(CPU) time currently spent by the system compacting memory to CPU time currently spent by the system performing other operations.For example, 0x8000 represents 50 percent of CPU time spent compacting memory.
-				// lParam = This parameter is not used.
-				System.Runtime.GCSettings.LargeObjectHeapCompactionMode = System.Runtime.GCLargeObjectHeapCompactionMode.CompactOnce;
-				GC.Collect(GC.MaxGeneration, GCCollectionMode.Forced, false, true);
-				m.Result = IntPtr.Zero;
-			}
-			else if (m.Msg == WM_QUERYENDSESSION)
-			{
-				string detail = "Unknown";
-
-				int lparam = m.LParam.ToInt32();
-				if (MKAh.Logic.Bit.IsSet(lparam, ENDSESSION_LOGOFF))
-					detail = "User Logoff";
-				if (MKAh.Logic.Bit.IsSet(lparam, ENDSESSION_CLOSEAPP))
-					detail = "System Servicing";
-				if (MKAh.Logic.Bit.IsSet(lparam, ENDSESSION_CRITICAL))
-					detail = "System Critical";
-
-				Log.Information("<OS> Session end signal received; Reason: " + detail);
-
-				/*
-				ShutdownBlockReasonCreate(Handle, "Cleaning up");
-				Task.Run(() => {
-					try
-					{
-						ExitCleanup();
-					}
-					finally
-					{
-						try
-						{
-							ShutdownBlockReasonDestroy(Handle);
-						}
-						finally
-						{
-							UnifiedExit();
-						}
-					}
-				});
-
-				// block exit
-				m.Result = new IntPtr(0);
-				return;
-				*/
-			}
-			else if (m.Msg == WM_ENDSESSION)
-			{
-				if (m.WParam.ToInt32() == 1L) // == true; session is actually ending
-				{
-					string detail = "Unknown";
-
-					int lparam = m.LParam.ToInt32();
-					if (MKAh.Logic.Bit.IsSet(lparam, ENDSESSION_LOGOFF))
-						detail = "User Logoff";
-					if (MKAh.Logic.Bit.IsSet(lparam, ENDSESSION_CLOSEAPP))
-						detail = "System Servicing";
-					if (MKAh.Logic.Bit.IsSet(lparam, ENDSESSION_CRITICAL))
-						detail = "System Critical";
-
-					Log.Information("<OS> Session end signal confirmed; Reason: " + detail);
-
-					UnifiedExit();
-				}
-				else
-				{
-					Log.Information("<OS> Session end cancellation received.");
-				}
-			}
-
-			base.WndProc(ref m); // is this necessary?
 		}
 
 		public event EventHandler RescanRequest;
@@ -843,7 +689,7 @@ namespace Taskmaster.UI
 
 		~TrayAccess()
 		{
-			if (!DisposingOrDisposed && Tray != null) Tray.Visible = false;
+			if (!disposed && Tray != null) Tray.Visible = false;
 			Tray?.Dispose();
 			Tray = null;
 		}
@@ -857,20 +703,24 @@ namespace Taskmaster.UI
 		internal extern static bool ShutdownBlockReasonDestroy(IntPtr hWnd);
 
 		#region IDisposable Support
-		bool DisposingOrDisposed = false;
-		protected override void Dispose(bool disposing)
+		public bool IsDisposed => disposed;
+
+		bool disposed = false;
+
+		void Dispose(bool disposing)
 		{
-			if (DisposingOrDisposed) return;
+			if (disposed) return;
 
 			//Microsoft.Win32.SystemEvents.SessionEnding -= SessionEndingEvent; // leaks if not disposed
 
 			if (disposing)
 			{
-				DisposingOrDisposed = true;
+				disposed = true;
 
 				if (Trace) Log.Verbose("Disposing tray...");
 
-				UnregisterGlobalHotkeys();
+				WndProcEventProxy?.Dispose();
+				WndProcEventProxy = null;
 
 				RescanRequest = null;
 
@@ -890,9 +740,11 @@ namespace Taskmaster.UI
 				// Free any other managed objects here.
 				//
 			}
-
-			base.Dispose(disposing);
 		}
+
+		public void Dispose() => Dispose(true);
+
+		internal void RegisterGlobalHotkeys() => WndProcEventProxy?.RegisterGlobalHotkeys();
 		#endregion
 	}
 }
