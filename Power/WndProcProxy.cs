@@ -41,6 +41,7 @@ namespace Taskmaster.Power
 		public PowerModeEventArgs(Guid guid) => Mode = guid;
 	}
 
+	// TODO: Merge all WndProc proxies, or make them partial definitions, make it extensible, or something.
 	class WndProcProxy : Form, IDisposable
 	{
 		public event EventHandler<PowerModeEventArgs> PowerModeChanged;
