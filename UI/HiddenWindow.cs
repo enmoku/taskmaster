@@ -1,5 +1,5 @@
 ﻿//
-// HiddenWindow.cs
+// UI.HiddenWindow.cs
 //
 // Author:
 //       M.A. (https://github.com/mkahvi)

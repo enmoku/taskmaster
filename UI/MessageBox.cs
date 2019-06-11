@@ -160,7 +160,7 @@ namespace Taskmaster
 
 		bool disposed = false;
 
-		new void Dispose(bool disposing)
+		void Dispose(bool disposing)
 		{
 			lock (this)
 			{

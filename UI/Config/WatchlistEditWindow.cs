@@ -65,7 +65,7 @@ namespace Taskmaster.UI.Config
 			MinimizeBox = false;
 			MaximizeBox = false;
 
-			#region BuildUI
+			#region Build UI
 			// Size = new System.Drawing.Size(340, 480); // width, height
 			AutoSizeMode = AutoSizeMode.GrowOnly;
 			AutoSize = true;
