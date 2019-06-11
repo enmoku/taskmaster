@@ -70,7 +70,6 @@ namespace Taskmaster
 		public MessageBox(string title, string message, Buttons buttons, Type type = Type.Auto, Control parent = null)
 			: base()
 		{
-			Visible = false;
 			SuspendLayout();
 
 			//if (!(parent is null)) Parent = parent;
@@ -157,7 +156,6 @@ namespace Taskmaster
 			StartPosition = parent != null ? FormStartPosition.CenterParent : FormStartPosition.CenterScreen;
 
 			ResumeLayout();
-			Visible = true;
 		}
 
 		bool disposed = false;

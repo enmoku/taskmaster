@@ -46,7 +46,6 @@ namespace Taskmaster
 		public ProcessSelectDialog(string message = "", string title = null)
 			: base()
 		{
-			Visible = false;
 			SuspendLayout();
 
 			WindowState = FormWindowState.Normal;
@@ -155,7 +154,6 @@ namespace Taskmaster
 			Shown += (_, _ea) => Populate().ConfigureAwait(false);
 
 			ResumeLayout();
-			Visible = true;
 		}
 
 		async Task Populate()
