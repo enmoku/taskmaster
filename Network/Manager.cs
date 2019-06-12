@@ -53,7 +53,8 @@ namespace Taskmaster.Network
 		public TrafficDelta Delta = null;
 	}
 
-	sealed public class Manager : Component, IDisposal, IDisposable
+	[Component(RequireMainThread = false)]
+	public class Manager : Component, IDisposal, IDisposable
 	{
 		public static bool ShowNetworkErrors { get; set; } = false;
 

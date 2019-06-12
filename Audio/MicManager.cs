@@ -36,7 +36,9 @@ namespace Taskmaster.Audio
 {
 	using static Taskmaster;
 
-	sealed public class MicManager : Component, IDisposal, IDisposable
+	[Component(RequireMainThread = true)]
+	[Dependency(typeof(Audio.Manager))]
+	public class MicManager : Component, IDisposal, IDisposable
 	{
 		readonly System.Threading.Thread Context = null;
 

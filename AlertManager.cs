@@ -29,6 +29,7 @@ using System.Collections.Generic;
 
 namespace Taskmaster
 {
+	[Component(RequireMainThread = false)]
 	public class AlertManager : Component, IDisposable
 	{
 		public event EventHandler onNewAlert;

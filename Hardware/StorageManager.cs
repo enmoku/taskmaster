@@ -37,7 +37,8 @@ namespace Taskmaster
 	/// <summary>
 	/// Manager for non-volatile memory (NVM).
 	/// </summary>
-	sealed public class StorageManager : Component, IDisposal, IDisposable
+	[Component(RequireMainThread = false)]
+	public class StorageManager : Component, IDisposal, IDisposable
 	{
 		bool Verbose = false;
 

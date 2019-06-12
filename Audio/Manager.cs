@@ -37,6 +37,7 @@ namespace Taskmaster.Audio
 	/// <summary>
 	/// Must be created on persistent thread, such as the main thread.
 	/// </summary>
+	[Component(RequireMainThread = true)]
 	public class Manager : Component, IDisposal, IDisposable
 	{
 		readonly System.Threading.Thread Context = null;

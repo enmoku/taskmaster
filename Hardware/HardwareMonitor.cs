@@ -70,6 +70,7 @@ namespace Taskmaster
 		public CPUSensorEventArgs(float load) => Load = load;
 	}
 
+	[Component(RequireMainThread = false)]
 	public class HardwareMonitor : Component, IDisposal, IDisposable
 	{
 		OpenHardwareMonitor.Hardware.IHardware gpu = null;

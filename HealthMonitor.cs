@@ -55,7 +55,8 @@ namespace Taskmaster
 	/// <summary>
 	/// Monitors for variety of problems and reports on them.
 	/// </summary>
-	sealed public class HealthMonitor : Component, IDisposal, IDisposable // Auto-Doc
+	[Component(RequireMainThread = false)]
+	public class HealthMonitor : Component, IDisposal, IDisposable // Auto-Doc
 	{
 		bool DebugHealth = false;
 

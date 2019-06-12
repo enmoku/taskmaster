@@ -42,7 +42,8 @@ namespace Taskmaster.Process
 {
 	using static Taskmaster;
 
-	sealed public class Manager : Component, IDisposal, IDisposable
+	[Component(RequireMainThread = false)]
+	public class Manager : Component, IDisposal, IDisposable
 	{
 		Analyzer analyzer = null;
 

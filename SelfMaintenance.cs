@@ -33,6 +33,7 @@ namespace Taskmaster
 {
 	using static Taskmaster;
 
+	[Component(RequireMainThread = false)]
 	public class SelfMaintenance : Component, IDisposable, IDisposal
 	{
 		public SelfMaintenance()

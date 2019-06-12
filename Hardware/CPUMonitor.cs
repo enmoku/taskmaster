@@ -34,6 +34,7 @@ namespace Taskmaster
 {
 	using static Taskmaster;
 
+	[Component(RequireMainThread = false)]
 	public class CPUMonitor : Component, IDisposal, IDisposable
 	{
 		// Experimental feature

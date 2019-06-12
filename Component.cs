@@ -25,19 +25,35 @@
 // THE SOFTWARE.
 
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using System.Runtime.InteropServices;
 
 namespace Taskmaster
 {
 	public abstract class Component : IDisposable
 	{
+		public Component()
+		{
+			if (this.GetType().GetCustomAttributes(typeof(ComponentAttribute), false).Length == 0)
+				throw new NotImplementedException(this.GetType().ToString());
+		}
+
 		public int ComponentId;
 
 		public void Dispose() => Dispose(true);
 
 		protected abstract void Dispose(bool disposing);
+	}
+
+	[System.AttributeUsage(AttributeTargets.Class, AllowMultiple = false, Inherited = true)]
+	public class ComponentAttribute : Attribute
+	{
+		public bool RequireMainThread { get; set; }
+	}
+
+	public class DependencyAttribute : Attribute
+	{
+		public Type Dependency { get; private set; }
+
+		public DependencyAttribute(Type type) => Dependency = type;
 	}
 }
