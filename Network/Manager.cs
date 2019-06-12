@@ -158,6 +158,8 @@ namespace Taskmaster.Network
 
 			lastErrorReport = DateTimeOffset.UtcNow; // crude
 
+			StopUpdateNetworkState(); // initialize
+
 			if (DebugNet) Log.Information("<Network> Component loaded.");
 
 			RegisterForExit(this);
@@ -172,13 +174,6 @@ namespace Taskmaster.Network
 				Queue = NetQueue?.Value ?? float.NaN,
 				Packets = NetPackets?.Value ?? float.NaN,
 			};
-
-		void DeviceSampler(object sender, System.Timers.ElapsedEventArgs e)
-		{
-			if (disposed) return;
-
-			RecordUptimeState(InternetAvailable, false);
-		}
 
 		public string GetDeviceData(string devicename)
 		{
@@ -332,7 +327,7 @@ namespace Taskmaster.Network
 		DeviceTraffic LastTraffic = new DeviceTraffic();
 		public DeviceTraffic GetCurrentTraffic => LastTraffic;
 
-		public UI.TrayAccess Tray { get; set; } = null; // bad design
+		public UI.TrayAccess Tray { get; set; } = null; // HACK: bad design
 
 		public bool NetworkAvailable { get; private set; } = false;
 		public bool InternetAvailable { get; private set; } = false;
@@ -340,7 +335,9 @@ namespace Taskmaster.Network
 		readonly int MaxSamples = 20;
 		readonly List<double> UptimeSamples = new List<double>(20);
 		DateTimeOffset UptimeRecordStart; // since we started recording anything
-		DateTimeOffset LastUptimeStart; // since we last knew internet to be initialized
+		DateTimeOffset LastUptimeStart, // since we last knew internet to be initialized
+			LastDowntimeStart;  // since we last knew internet to go down
+		
 		readonly object uptime_lock = new object();
 
 		/// <summary>
@@ -366,28 +363,6 @@ namespace Taskmaster.Network
 		bool InternetAvailableLast = false;
 
 		Stopwatch Downtime = null;
-		void ReportCurrentUpstate()
-		{
-			if (InternetAvailable != InternetAvailableLast) // prevent spamming available message
-			{
-				if (InternetAvailable)
-				{
-					Downtime?.Stop();
-
-					double downtime = Downtime?.Elapsed.TotalMinutes ?? double.NaN;
-					Downtime = null;
-
-					Log.Information("<Network> Internet available." + (double.IsNaN(downtime) ? "" : $"{downtime:N1} minutes downtime."));
-				}
-				else
-				{
-					Log.Warning("<Network> Internet unavailable.");
-					Downtime = Stopwatch.StartNew();
-				}
-
-				InternetAvailableLast = InternetAvailable;
-			}
-		}
 
 		void ReportUptime()
 		{
@@ -435,9 +410,7 @@ namespace Taskmaster.Network
 
 					if (online_state)
 					{
-						LastUptimeStart = now;
 
-						Task.Delay(TimeSpan.FromMinutes(5)).ContinueWith(x => ReportCurrentUpstate());
 					}
 					else // went offline
 					{
@@ -539,13 +512,17 @@ namespace Taskmaster.Network
 					else
 						InternetAvailable = false;
 
-					if (Trace) RecordUptimeState(InternetAvailable, address_changed);
+					if (InternetAvailable) LastUptimeStart = DateTimeOffset.UtcNow;
+					else LastDowntimeStart = DateTimeOffset.UtcNow;
+
+					if (!InternetAvailable)
+					{
+						// TODO: Schedule another test.
+						CheckInet();
+					}
 
 					if (oldInetAvailable != InternetAvailable)
-					{
 						InvalidateInterfaceList();
-						ReportNetAvailability();
-					}
 					else
 					{
 						if (timeout)
@@ -624,9 +601,9 @@ namespace Taskmaster.Network
 		FoundAddresses:;
 		}
 
-		readonly object interfaces_lock = new object();
-		int InterfaceUpdateLimiter = 0;
-
+		/// <summary>
+		/// Resets <see cref="CurrentInterfaceList"/>.
+		/// </summary>
 		void InvalidateInterfaceList() => CurrentInterfaceList = new Lazy<List<Device>>(RecreateInterfaceList, false);
 
 		List<Device> RecreateInterfaceList()
@@ -706,6 +683,7 @@ namespace Taskmaster.Network
 			return CurrentInterfaceList.Value;
 		}
 
+		// 
 		async void NetAddrChanged(object _, EventArgs _ea)
 		{
 			if (disposed) return;
@@ -778,11 +756,10 @@ namespace Taskmaster.Network
 		public void SetupEventHooks()
 		{
 			NetworkChanged(this, EventArgs.Empty); // initialize event handler's initial values
+			CheckInet(); // initialize
 
 			NetworkChange.NetworkAvailabilityChanged += NetworkChanged;
 			NetworkChange.NetworkAddressChanged += NetAddrChanged;
-
-			// CheckInet().Wait(); // unnecessary?
 		}
 
 		bool LastReportedNetAvailable = false;
@@ -792,8 +769,11 @@ namespace Taskmaster.Network
 		{
 			if (disposed) throw new ObjectDisposedException(nameof(Manager), "ReportNetAvailability called after NetManager was disposed.");
 
-			bool changed = (LastReportedInetAvailable != InternetAvailable) || (LastReportedNetAvailable != NetworkAvailable);
-			if (!changed) return; // bail out if nothing has changed
+			if (!((LastReportedInetAvailable != InternetAvailable) || (LastReportedNetAvailable != NetworkAvailable)))
+				return; // bail out if nothing has changed since last report
+
+			LastReportedInetAvailable = InternetAvailable;
+			LastReportedNetAvailable = NetworkAvailable;
 
 			var sbs = new StringBuilder()
 				.Append("<Network> Status: ")
@@ -802,37 +782,107 @@ namespace Taskmaster.Network
 				.Append(InternetAvailable ? HumanReadable.Hardware.Network.Connected : HumanReadable.Hardware.Network.Disconnected)
 				.Append(" - ");
 
-			if (NetworkAvailable && !InternetAvailable) sbs.Append("Route problems");
-			else if (!NetworkAvailable) sbs.Append("Cable unplugged or router/modem down");
-			else sbs.Append("All OK");
+			if (NetworkAvailable && !InternetAvailable)
+			{
+				sbs.Append("Route problems");
+				if (LastUptimeStart != DateTimeOffset.MinValue)
+					sbs.Append("– Downtime: ").Append(LastDowntimeStart.TimeTo(LastUptimeStart).ToString());
+			}
+			else if (!NetworkAvailable)
+			{
+				sbs.Append("Cable unplugged or router/modem down");
+				if (LastUptimeStart != DateTimeOffset.MinValue)
+					sbs.Append("– Downtime: ").Append(LastDowntimeStart.TimeTo(LastUptimeStart).ToString());
+			}
+			else
+			{
+				sbs.Append("All OK");
+				if (LastDowntimeStart != DateTimeOffset.MinValue)
+					sbs.Append("– Downtime: ").Append(LastDowntimeStart.TimeTo(LastUptimeStart).ToString());
+			}
 
 			if (!NetworkAvailable || !InternetAvailable) Log.Warning(sbs.ToString());
 			else Log.Information(sbs.ToString());
-
-			LastReportedInetAvailable = InternetAvailable;
-			LastReportedNetAvailable = NetworkAvailable;
 		}
 
-		/// <summary>
-		/// Non-blocking lock for NetworkChanged event output
-		/// </summary>
-		int NetworkChangeAntiFlickerLock = 0;
 		/// <summary>
 		/// For tracking how many times NetworkChanged is triggered
 		/// </summary>
 		int NetworkChangeCounter = 4; // 4 to force fast inet check on start
+
 		/// <summary>
 		/// Last time NetworkChanged was triggered
 		/// </summary>
 		DateTimeOffset LastNetworkChange = DateTimeOffset.MinValue;
-		async void NetworkChanged(object _, EventArgs _ea)
+
+		object NetworkStatus_lock = new object();
+		System.Threading.Timer NetworkStatusReport = null;
+
+		TimeSpan NetworkReportDelay = TimeSpan.FromSeconds(2.2d);
+		DateTimeOffset LastNetworkReport = DateTimeOffset.MinValue;
+
+		bool ReportOngoing = false;
+
+		void UpdateNetworkState(object state)
 		{
 			if (disposed) return;
 
-			var oldNetAvailable = NetworkAvailable;
-			bool available = NetworkAvailable = NetworkInterface.GetIsNetworkAvailable();
+			try
+			{
+				var now = DateTimeOffset.UtcNow;
+
+
+				lock (NetworkStatus_lock)
+					if (LastNetworkReport.TimeTo(now).TotalSeconds < 5d) IncreaseReportDelay();
+
+				ReportOngoing = true;
+				LastNetworkReport = now;
+				ReportNetAvailability();
+			}
+			catch (Exception ex)
+			{
+				Logging.Stacktrace(ex);
+			}
+			finally
+			{
+				ReportOngoing = false;
+			}
+		}
+
+		/// <summary>
+		/// Don't use without <a cref="NetworkStatus_lock">locking</a>.
+		/// </summary>
+		void IncreaseReportDelay() => NetworkReportDelay = NetworkReportDelay.Add(TimeSpan.FromMilliseconds(220));
+
+		void StartUpdateNetworkState()
+		{
+			if (disposed) return;
+
+			lock (NetworkStatus_lock)
+			{
+				if (ReportOngoing) IncreaseReportDelay();
+
+				NetworkStatusReport?.Change(NetworkReportDelay, System.Threading.Timeout.InfiniteTimeSpan);
+			}
+		}
+
+		void StopUpdateNetworkState()
+		{
+			lock (NetworkStatus_lock)
+			{
+				NetworkStatusReport = new System.Threading.Timer(UpdateNetworkState, null, System.Threading.Timeout.Infinite, System.Threading.Timeout.Infinite);
+			}
+		}
+
+		// TODO: Make network status reporting more centralized
+		void NetworkChanged(object _, EventArgs _ea)
+		{
+			if (disposed) return;
 
 			LastNetworkChange = DateTimeOffset.UtcNow;
+
+			var oldNetAvailable = NetworkAvailable;
+			bool available = NetworkAvailable = NetworkInterface.GetIsNetworkAvailable();
 
 			NetworkChangeCounter++;
 
@@ -840,37 +890,9 @@ namespace Taskmaster.Network
 
 			// do stuff only if this is different from last time
 			if (oldNetAvailable != available)
-			{
-				if (Atomic.Lock(ref NetworkChangeAntiFlickerLock))
-				{
-					try
-					{
-						await Task.Delay(0).ConfigureAwait(false);
-
-						int loopbreakoff = 0;
-						while (LastNetworkChange.TimeTo(DateTimeOffset.UtcNow).TotalSeconds < 5)
-						{
-							if (loopbreakoff++ >= 3) break; // arbitrary end based on double reconnect behaviour of some routers
-							if (NetworkChangeCounter >= 4) break; // break off in case NetworkChanged event is received often enough
-							await Task.Delay(TimeSpan.FromSeconds(2)).ConfigureAwait(true);
-						}
-
-						CheckInet();
-						NetworkChangeCounter = 0;
-						ReportNetAvailability();
-					}
-					finally
-					{
-						Atomic.Unlock(ref NetworkChangeAntiFlickerLock);
-					}
-				}
-
-				ReportNetAvailability();
-			}
-			else
-			{
-				if (DebugNet) Log.Debug("<Net> Network changed but still as available as before.");
-			}
+				StartUpdateNetworkState();
+			else if (DebugNet)
+				Log.Debug("<Net> Network changed but still as available as before.");
 		}
 
 		#region IDisposable Support
