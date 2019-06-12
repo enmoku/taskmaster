@@ -160,19 +160,16 @@ namespace Taskmaster
 
 		bool disposed = false;
 
-		void Dispose(bool disposing)
+		protected override void Dispose(bool disposing)
 		{
-			lock (this)
-			{
-				if (disposed) return;
+			if (disposed) return;
 
-				RichMessage?.Dispose();
-				Message?.Dispose();
+			RichMessage?.Dispose();
+			Message?.Dispose();
 
-				base.Dispose(disposing);
+			base.Dispose(disposing);
 
-				disposed = true;
-			}
+			disposed = true;
 		}
 	}
 }

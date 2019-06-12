@@ -111,7 +111,7 @@ namespace Taskmaster.Power
 			// TODO: Check for session lock
 		}
 
-		async void WndProcProxy_PowerModeChanged(object sender, PowerModeEventArgs ea)
+		void WndProcProxy_PowerModeChanged(object sender, PowerModeEventArgs ea)
 		{
 			try
 			{
@@ -139,7 +139,7 @@ namespace Taskmaster.Power
 			}
 		}
 
-		async void WndProcProxy_MonitorPowerChange(object sender, MonitorPowerEventArgs ea)
+		void WndProcProxy_MonitorPowerChange(object sender, MonitorPowerEventArgs ea)
 		{
 			try
 			{

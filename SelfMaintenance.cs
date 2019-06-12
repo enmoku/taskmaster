@@ -69,7 +69,7 @@ namespace Taskmaster
 			DateTime lnext = next.DateTime;
 
 			// TODO: Use human readable time for nextmidnight
-			Log.Information($"<Self-Maintenance> Next maintenance: {lnext.ToLongDateString()} {lnext.ToLongTimeString()} [in: {nextmidnight:c}]");
+			Log.Information($"<Self-Maintenance> Next maintenance: {lnext.ToLongDateString()} {lnext.ToLongTimeString()} [in: {nextmidnight:g}]");
 
 			timer.Interval = nextmidnight.TotalMilliseconds;
 			timer.Start();
