@@ -486,95 +486,101 @@ namespace Taskmaster
 			Task[] init;
 
 			using var cts = new System.Threading.CancellationTokenSource();
-				Process.Utility.InitializeCache();
-				LoadEvent?.Invoke(null, new LoadEventArgs("Cache loaded.", LoadEventType.SubLoaded));
+			Process.Utility.InitializeCache(); // TODO: Cache initialization needs to be better and more contextual
+			LoadEvent?.Invoke(null, new LoadEventArgs("Cache loaded.", LoadEventType.SubLoaded));
 
-				// Parallel loading, cuts down startup time some.
-				// This is really bad if something fails
-				init = new[]
-				{
-				(PowMan = PowerManagerEnabled ? Task.Run(() => {powermanager = new Power.Manager(); }, cts.Token) : Task.CompletedTask)
-					.ContinueWith((_) => LoadEvent?.Invoke(null, new LoadEventArgs("Power manager processed.", LoadEventType.SubLoaded))),
-				(CpuMon = PowerManagerEnabled ? Task.Run(()=> {cpumonitor = new CPUMonitor(); }, cts.Token) : Task.CompletedTask)
-					.ContinueWith((_) => LoadEvent?.Invoke(null, new LoadEventArgs("CPU monitor processed.", LoadEventType.SubLoaded))),
-				(ProcMon = ProcessMonitorEnabled ? Task.Run(() => {processmanager = new Process.Manager(); }, cts.Token) : Task.CompletedTask)
-					.ContinueWith((_) => LoadEvent?.Invoke(null, new LoadEventArgs("Process manager processed.", LoadEventType.SubLoaded))),
-				(FgMon = ActiveAppMonitorEnabled ? Task.Run(()=> {activeappmonitor = new Process.ForegroundManager(); }, cts.Token) : Task.CompletedTask)
-					.ContinueWith((_) => LoadEvent?.Invoke(null, new LoadEventArgs("Foreground manager processed.", LoadEventType.SubLoaded))),
-				(NetMon = NetworkMonitorEnabled ? Task.Run(() => {netmonitor = new Network.Manager();}, cts.Token) : Task.CompletedTask)
-					.ContinueWith((_) => LoadEvent?.Invoke(null, new LoadEventArgs("Network monitor processed.", LoadEventType.SubLoaded))),
-				(StorMon = StorageMonitorEnabled ? Task.Run(() => {storagemanager = new StorageManager(); }, cts.Token) : Task.CompletedTask)
-					.ContinueWith((_) => LoadEvent?.Invoke(null, new LoadEventArgs("Storage monitor processed.", LoadEventType.SubLoaded))),
-				(HpMon = HealthMonitorEnabled ? Task.Run(() => {healthmonitor = new HealthMonitor(); }, cts.Token) : Task.CompletedTask)
-					.ContinueWith((_) => LoadEvent?.Invoke(null, new LoadEventArgs("Health monitor processed.", LoadEventType.SubLoaded))),
-				(HwMon = HardwareMonitorEnabled ? Task.Run(() => {hardware = new HardwareMonitor(); }, cts.Token) : Task.CompletedTask)
-					.ContinueWith((_) => LoadEvent?.Invoke(null, new LoadEventArgs("Hardware monitor processed.", LoadEventType.SubLoaded))),
-				(AlMan = AlertManagerEnabled ? Task.Run(() => {alerts = new AlertManager(); }, cts.Token) : Task.CompletedTask)
-					.ContinueWith((_) => LoadEvent?.Invoke(null, new LoadEventArgs("Alert manager processed.", LoadEventType.SubLoaded))),
-				(SelfMaint = Task.Run(() => selfmaintenance = new SelfMaintenance()))
-					.ContinueWith((_) => LoadEvent?.Invoke(null, new LoadEventArgs("Self-maintenance manager processed.", LoadEventType.SubLoaded)))
+			// Parallel loading, cuts down startup time some. C# ensures parallelism is not enforced.
+			// This is really bad if something fails
+			init = new[]
+			{
+				(PowMan = PowerManagerEnabled ? Task.Run(() => powermanager = new Power.Manager(), cts.Token) : Task.CompletedTask)
+					.ContinueWith(_ => LoadEvent?.Invoke(null, new LoadEventArgs("Power manager processed.", LoadEventType.SubLoaded))),
+				(CpuMon = PowerManagerEnabled ? Task.Run(()=> cpumonitor = new CPUMonitor(), cts.Token) : Task.CompletedTask)
+					.ContinueWith(_ => LoadEvent?.Invoke(null, new LoadEventArgs("CPU monitor processed.", LoadEventType.SubLoaded))),
+				(ProcMon = ProcessMonitorEnabled ? Task.Run(() => processmanager = new Process.Manager(), cts.Token) : Task.CompletedTask)
+					.ContinueWith(_ => LoadEvent?.Invoke(null, new LoadEventArgs("Process manager processed.", LoadEventType.SubLoaded))),
+				(FgMon = ActiveAppMonitorEnabled ? Task.Run(()=> activeappmonitor = new Process.ForegroundManager(), cts.Token) : Task.CompletedTask)
+					.ContinueWith(_ => LoadEvent?.Invoke(null, new LoadEventArgs("Foreground manager processed.", LoadEventType.SubLoaded))),
+				(NetMon = NetworkMonitorEnabled ? Task.Run(() => netmonitor = new Network.Manager(), cts.Token) : Task.CompletedTask)
+					.ContinueWith(_ => LoadEvent?.Invoke(null, new LoadEventArgs("Network monitor processed.", LoadEventType.SubLoaded))),
+				(StorMon = StorageMonitorEnabled ? Task.Run(() => storagemanager = new StorageManager(), cts.Token) : Task.CompletedTask)
+					.ContinueWith(_ => LoadEvent?.Invoke(null, new LoadEventArgs("Storage monitor processed.", LoadEventType.SubLoaded))),
+				(HpMon = HealthMonitorEnabled ? Task.Run(() => healthmonitor = new HealthMonitor(), cts.Token) : Task.CompletedTask)
+					.ContinueWith(_ => LoadEvent?.Invoke(null, new LoadEventArgs("Health monitor processed.", LoadEventType.SubLoaded))),
+				(HwMon = HardwareMonitorEnabled ? Task.Run(() => hardware = new HardwareMonitor(), cts.Token) : Task.CompletedTask)
+					.ContinueWith(_ => LoadEvent?.Invoke(null, new LoadEventArgs("Hardware monitor processed.", LoadEventType.SubLoaded))),
+				(AlMan = AlertManagerEnabled ? Task.Run(() => alerts = new AlertManager(), cts.Token) : Task.CompletedTask)
+					.ContinueWith(_ => LoadEvent?.Invoke(null, new LoadEventArgs("Alert manager processed.", LoadEventType.SubLoaded))),
+				(SelfMaint = Task.Run(() => selfmaintenance = new SelfMaintenance(), cts.Token))
+					.ContinueWith(_ => LoadEvent?.Invoke(null, new LoadEventArgs("Self-maintenance manager processed.", LoadEventType.SubLoaded)))
 			};
 
-				// MMDEV requires main thread
-				try
+			// MMDEV requires main thread
+			try
+			{
+				if (AudioManagerEnabled)
 				{
-					if (AudioManagerEnabled)
-					{
-						audiomanager = new Audio.Manager();
-						audiomanager.OnDisposed += (_, _ea) => audiomanager = null;
+					audiomanager = new Audio.Manager();
+					audiomanager.OnDisposed += (_, _ea) => audiomanager = null;
 
-						if (MicrophoneManagerEnabled)
-						{
-							micmonitor = new Audio.MicManager();
-							micmonitor.Hook(audiomanager);
-							micmonitor.OnDisposed += (_, _ea) => micmonitor = null;
-						}
+					if (MicrophoneManagerEnabled)
+					{
+						micmonitor = new Audio.MicManager();
+						micmonitor.Hook(audiomanager);
+						micmonitor.OnDisposed += (_, _ea) => micmonitor = null;
 					}
 				}
-				catch (InitFailure)
-				{
-					micmonitor?.Dispose();
-					micmonitor = null;
-					audiomanager?.Dispose();
-					audiomanager = null;
-				}
-
-				// WinForms makes the following components not load nicely if not done here (main thread).
-				trayaccess = new UI.TrayAccess();
-				trayaccess.TrayMenuShown += (_, ea) => OptimizeResponsiviness(ea.Visible);
-
-				ProcMon.ContinueWith((x) => trayaccess?.Hook(processmanager), TaskContinuationOptions.OnlyOnRanToCompletion);
-
-			if (PowerManagerEnabled)
+			}
+			catch (InitFailure)
 			{
-				Task.WhenAll(new Task[] { PowMan, CpuMon, ProcMon }).ContinueWith((_) =>
-				{
-					if (powermanager is null || cpumonitor is null || processmanager is null) return;
-
-					cpumonitor?.Hook(processmanager);
-
-					trayaccess.Hook(powermanager);
-					powermanager.SuspendResume += PowerSuspendEnd; // HACK: No idea how the code behaves on power resume.
-						powermanager.Hook(cpumonitor);
-				}, cts.Token);
-
-				var tr = Task.WhenAny(init);
-				if (tr.IsFaulted) cts.Cancel(true);
+				micmonitor?.Dispose();
+				micmonitor = null;
+				audiomanager?.Dispose();
+				audiomanager = null;
 			}
 
-			//if (HardwareMonitorEnabled)
-			//	Task.WhenAll(HwMon).ContinueWith((x) => hardware.Start()); // this is slow
+			// WinForms makes the following components not load nicely if not done here (main thread).
+			trayaccess = new UI.TrayAccess();
+			trayaccess.TrayMenuShown += (_, ea) => OptimizeResponsiviness(ea.Visible);
 
-			NetMon.ContinueWith((x) =>
-			{
-				netmonitor.SetupEventHooks();
-				netmonitor.Tray = trayaccess;
-			}, TaskContinuationOptions.OnlyOnRanToCompletion);
+			ProcMon.ContinueWith(_ => trayaccess?.Hook(processmanager), TaskContinuationOptions.OnlyOnRanToCompletion);
 
-			if (AudioManagerEnabled) ProcMon.ContinueWith((x) => audiomanager?.Hook(processmanager), TaskContinuationOptions.OnlyOnRanToCompletion);
+			Task.WhenAll(new[] { ProcMon, FgMon }).ContinueWith(_ => activeappmonitor?.Hook(processmanager), TaskContinuationOptions.OnlyOnRanToCompletion);
 
 			try
 			{
+
+				if (PowerManagerEnabled)
+				{
+					Task.WhenAll(new Task[] { PowMan, CpuMon, ProcMon }).ContinueWith((_) =>
+					{
+						if (processmanager is null) throw new TaskCanceledException();
+
+						if (cpumonitor != null)
+						{
+							cpumonitor.Hook(processmanager);
+							powermanager?.Hook(cpumonitor);
+						}
+
+						if (powermanager != null)
+						{
+							trayaccess.Hook(powermanager);
+							processmanager.Hook(powermanager);
+							powermanager.SuspendResume += PowerSuspendEnd; // HACK: No idea how the code behaves on power resume (untested).
+						}
+					}, cts.Token);
+
+					var tr = Task.WhenAny(init);
+					if (tr.IsFaulted) cts.Cancel(true);
+				}
+
+				//if (HardwareMonitorEnabled)
+				//	Task.WhenAll(HwMon).ContinueWith((x) => hardware.Start()); // this is slow
+
+				NetMon.ContinueWith(_ => netmonitor.Tray = trayaccess, TaskContinuationOptions.OnlyOnRanToCompletion);
+
+				if (AudioManagerEnabled) ProcMon.ContinueWith(_ => audiomanager?.Hook(processmanager), TaskContinuationOptions.OnlyOnRanToCompletion);
+
 				// WAIT for component initialization
 				if (!Task.WaitAll(init, 5_000))
 				{
@@ -616,22 +622,12 @@ namespace Taskmaster
 
 			Log.Information($"<Core> Components loaded ({timer.ElapsedMilliseconds} ms); Hooking event handlers.");
 
-			if (activeappmonitor != null)
-			{
-				processmanager.Hook(activeappmonitor);
-				activeappmonitor.SetupEventHook();
-			}
+			activeappmonitor?.SetupEventHooks();
+			powermanager?.SetupEventHooks();
+			audiomanager?.SetupEventHooks();
+			netmonitor?.SetupEventHooks();
 
-			if (powermanager != null)
-			{
-				powermanager.SetupEventHooks();
-				processmanager?.Hook(powermanager);
-			}
-
-			if (AudioManagerEnabled) audiomanager?.EventHooks();
-
-			if (GlobalHotkeys)
-				trayaccess.RegisterGlobalHotkeys();
+			if (GlobalHotkeys) trayaccess.RegisterGlobalHotkeys();
 
 			LoadEvent?.Invoke(null, new LoadEventArgs("Events hooked.", LoadEventType.Loaded));
 

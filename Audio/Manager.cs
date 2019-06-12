@@ -261,7 +261,7 @@ namespace Taskmaster.Audio
 			}
 		}
 
-		public void EventHooks()
+		public void SetupEventHooks()
 		{
 			MultimediaDevice.MMDevice.AudioSessionManager.OnSessionCreated += OnSessionCreated;
 			ConsoleDevice.MMDevice.AudioSessionManager.OnSessionCreated += OnSessionCreated;

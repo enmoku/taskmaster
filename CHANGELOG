@@ -5,6 +5,7 @@ Comprehensive changes can be found in Git change history:
 ## [0.13...]
 ### 2019-06-12
 	Fixed: Advanced config could not be opened from tray context menu if main window was closed.
+	Changed: Initialization should now be more reliable.
 ### 2019-06-10
 	Added: Native Image generation experiment.
 ### 2019-06-05

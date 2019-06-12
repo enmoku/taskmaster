@@ -107,12 +107,17 @@ namespace Taskmaster.Process
 
 			HangTimer = new System.Timers.Timer(60_000);
 			HangTimer.Elapsed += HangDetector;
-			HangTimer.Start();
 
 			if (DebugForeground) Log.Information("<Foreground> Component loaded.");
-
 			RegisterForExit(this);
 			DisposalChute.Push(this);
+		}
+
+		Process.Manager processmanager = null;
+		public void Hook(Process.Manager procman)
+		{
+			processmanager = procman;
+			HangTimer.Start();
 		}
 
 		public TimeSpan Hysterisis { get; private set; } = TimeSpan.FromSeconds(0.5d);
@@ -129,7 +134,7 @@ namespace Taskmaster.Process
 		/// Calls SetWinEventHook, which delivers messages to the _thread_ that called it.
 		/// As such fails if it's set up in transitory thread.
 		/// </summary>
-		public bool SetupEventHook()
+		public bool SetupEventHooks()
 		{
 			uint flags = NativeMethods.WINEVENT_OUTOFCONTEXT; // NativeMethods.WINEVENT_SKIPOWNPROCESS
 			windowseventhook = NativeMethods.SetWinEventHook(
