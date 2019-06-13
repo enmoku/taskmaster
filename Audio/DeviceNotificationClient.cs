@@ -116,7 +116,6 @@ namespace Taskmaster.Audio
 				}
 
 				var ea = new DeviceStateEventArgs(deviceId, newState);
-				if (DebugAudio) Log.Debug("<Audio> Device " + (ea.Device?.Name ?? ea.GUID.ToString()) + " state: " + newState.ToString());
 				StateChanged?.Invoke(this, ea);
 			}
 			catch (OutOfMemoryException) { throw; }
