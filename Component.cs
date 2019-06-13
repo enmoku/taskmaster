@@ -25,13 +25,20 @@
 // THE SOFTWARE.
 
 using System;
-using System.Runtime.InteropServices;
+using System.Diagnostics;
 
 namespace Taskmaster
 {
+	[Dependency(typeof(ComponentAttribute))]
 	public abstract class Component : IDisposable
 	{
 		public Component()
+		{
+			RequireAttribute();
+		}
+
+		[Conditional("DEBUG")]
+		void RequireAttribute()
 		{
 			if (this.GetType().GetCustomAttributes(typeof(ComponentAttribute), false).Length == 0)
 				throw new NotImplementedException(this.GetType().ToString());
