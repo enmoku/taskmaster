@@ -71,11 +71,9 @@ namespace Taskmaster.Audio
 		{
 			try
 			{
-				Guid guid = Utility.DeviceIdToGuid(pwstrDeviceId);
-
-				if (!DebugAudio) Log.Debug("<Audio> Device added: " + guid);
-
-				Added?.Invoke(this, new DeviceEventArgs(guid, pwstrDeviceId));
+				var ea = new DeviceEventArgs(pwstrDeviceId);
+				if (!DebugAudio) Logging.DebugMsg("Audio.DeviceNotificationClient.OnDeviceAdded: " + ea.ID);
+				Added?.Invoke(this, ea);
 			}
 			catch (OutOfMemoryException) { throw; }
 			catch (Exception ex)
@@ -88,11 +86,9 @@ namespace Taskmaster.Audio
 		{
 			try
 			{
-				Guid guid = Utility.DeviceIdToGuid(deviceId);
-
-				if (!DebugAudio) Log.Debug("<Audio> Device removed: " + guid);
-
-				Removed?.Invoke(this, new DeviceEventArgs(guid, deviceId));
+				var ea = new DeviceEventArgs(deviceId);
+				if (!DebugAudio) Logging.DebugMsg("Audio.DeviceNotificationClient.OnDeviceRemoved: " + ea.ID);
+				Removed?.Invoke(this, ea);
 			}
 			catch (OutOfMemoryException) { throw; }
 			catch (Exception ex)
@@ -119,11 +115,9 @@ namespace Taskmaster.Audio
 						break;
 				}
 
-				var guid = Utility.DeviceIdToGuid(deviceId);
-
-				if (DebugAudio) Log.Debug("<Audio> Device (" + guid + ") state: " + newState.ToString());
-
-				StateChanged?.Invoke(this, new DeviceStateEventArgs(guid, deviceId, newState));
+				var ea = new DeviceStateEventArgs(deviceId, newState);
+				if (DebugAudio) Log.Debug("<Audio> Device " + (ea.Device?.Name ?? ea.GUID.ToString()) + " state: " + newState.ToString());
+				StateChanged?.Invoke(this, ea);
 			}
 			catch (OutOfMemoryException) { throw; }
 			catch (Exception ex)
@@ -134,15 +128,16 @@ namespace Taskmaster.Audio
 
 		public void OnPropertyValueChanged(string pwstrDeviceId, PropertyKey key)
 		{
-			if (!DebugAudio) return;
-
 			try
 			{
-				Guid guid = Utility.DeviceIdToGuid(pwstrDeviceId);
+				if (DebugAudio)
+				{
+					var guid = Utility.DeviceIdToGuid(pwstrDeviceId);
 
-				Device device = audiomanager?.GetDevice(guid);
+					var device = audiomanager?.GetDevice(guid);
 
-				Log.Debug("<Audio> Device (" + (device?.Name ?? guid.ToString()) + ") property changed: " + key.formatId.ToString() + " / " + key.propertyId);
+					Log.Debug("<Audio> Device " + (device?.Name ?? guid.ToString()) + " property changed: " + key.formatId.ToString() + " [" + key.propertyId + "]");
+				}
 
 				//PropertyChanged?.Invoke(this, null);
 			}

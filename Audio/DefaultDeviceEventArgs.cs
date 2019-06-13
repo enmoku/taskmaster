@@ -31,7 +31,7 @@ namespace Taskmaster.Audio
 	public sealed class DefaultDeviceEventArgs : DeviceEventArgs
 	{
 		public DefaultDeviceEventArgs(Guid guid, string id, NAudio.CoreAudioApi.Role role, NAudio.CoreAudioApi.DataFlow flow)
-			: base(guid, id)
+			: base(id, guid)
 		{
 			Flow = flow;
 			Role = role;

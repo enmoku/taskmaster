@@ -83,13 +83,13 @@ namespace Taskmaster.Audio
 
 			Enumerator = new NAudio.CoreAudioApi.MMDeviceEnumerator();
 
-			GetDefaultDevice();
-
 			notificationClient = new DeviceNotificationClient();
 			notificationClient.StateChanged += StateChangeProxy;
 			notificationClient.DefaultDevice += DefaultDeviceProxy;
 			notificationClient.Added += DeviceAddedProxy;
 			notificationClient.Removed += DeviceRemovedProxy;
+
+			GetDefaultDevice();
 
 			Enumerator.RegisterEndpointNotificationCallback(notificationClient);
 
@@ -166,6 +166,7 @@ namespace Taskmaster.Audio
 				if (dev != null)
 				{
 					var adev = new Device(dev);
+					if (!DebugAudio) Log.Debug("<Audio> Device added: " + (ea.Device?.Name ?? ea.GUID.ToString()));
 
 					Devices.TryAdd(ea.GUID, adev);
 
@@ -187,6 +188,8 @@ namespace Taskmaster.Audio
 
 			try
 			{
+				if (!DebugAudio) Log.Debug("<Audio> Device removed: " + (ea.Device?.Name ?? ea.GUID.ToString()));
+
 				if (MultimediaDevice != null && ea.GUID == MultimediaDevice.GUID)
 				{
 					UnregisterDevice(MultimediaDevice);
