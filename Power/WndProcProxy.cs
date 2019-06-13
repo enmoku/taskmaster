@@ -43,10 +43,7 @@ namespace Taskmaster.Power
 		public event EventHandler<PowerModeEventArgs> PowerModeChanged;
 		public event EventHandler<MonitorPowerEventArgs> MonitorPowerChange;
 
-		public WndProcProxy()
-		{
-			_ = Handle; // HACK
-		}
+		public WndProcProxy() => _ = Handle; // HACK
 
 		public void RegisterEventHooks()
 		{

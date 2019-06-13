@@ -26,6 +26,7 @@
 
 using System;
 using System.IO;
+using System.Threading.Tasks;
 using Serilog;
 
 namespace Taskmaster
@@ -141,7 +142,7 @@ namespace Taskmaster
 					await sw.FlushAsync();
 				}
 
-				System.Threading.Thread.Sleep(100); // HACK: async pipes don't like things happening too fast.
+				await Task.Delay(100).ConfigureAwait(true); // HACK: async pipes don't like things happening too fast.
 			}
 			catch (UnauthorizedAccessException)
 			{

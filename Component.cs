@@ -32,10 +32,7 @@ namespace Taskmaster
 	[Dependency(typeof(ComponentAttribute))]
 	public abstract class Component : IDisposable
 	{
-		public Component()
-		{
-			RequireAttribute();
-		}
+		public Component() => RequireAttribute();
 
 		[Conditional("DEBUG")]
 		void RequireAttribute()

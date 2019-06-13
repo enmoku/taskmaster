@@ -451,8 +451,8 @@ namespace Taskmaster.Network
 
 		int InetCheckLimiter; // = 0;
 
-		// TODO: Fix internet status checking.
-		bool CheckInet(bool address_changed = false)
+		// TODO: Needs to call itself in case of failure but network connected to detect when internet works.
+		async Task<bool> CheckInet(bool address_changed = false)
 		{
 			if (disposed) throw new ObjectDisposedException(nameof(Manager), "CheckInet called after NetManager was disposed.");
 
@@ -473,7 +473,8 @@ namespace Taskmaster.Network
 					{
 						try
 						{
-							Dns.GetHostEntry(dnstestaddress); // FIXME: There should be some other method than DNS testing
+							// FIXME: There should be some other method than DNS testing
+							await Dns.GetHostEntryAsync(dnstestaddress).ConfigureAwait(false);
 							InternetAvailable = true;
 							Notified = false;
 							// TODO: Don't rely on DNS?
@@ -519,7 +520,7 @@ namespace Taskmaster.Network
 					if (!InternetAvailable)
 					{
 						// TODO: Schedule another test.
-						CheckInet();
+						await CheckInet();
 					}
 
 					if (oldInetAvailable != InternetAvailable)
@@ -695,7 +696,7 @@ namespace Taskmaster.Network
 
 			await Task.Delay(0).ConfigureAwait(false); // asyncify
 
-			CheckInet(address_changed: true);
+			await CheckInet(address_changed: true);
 			AvailabilityChanged = AvailabilityChanged != InternetAvailable;
 
 			if (InternetAvailable)
@@ -757,7 +758,7 @@ namespace Taskmaster.Network
 		public void SetupEventHooks()
 		{
 			NetworkChanged(this, EventArgs.Empty); // initialize event handler's initial values
-			CheckInet(); // initialize
+			CheckInet().ConfigureAwait(false); // initialize
 
 			NetworkChange.NetworkAvailabilityChanged += NetworkChanged;
 			NetworkChange.NetworkAddressChanged += NetAddrChanged;
