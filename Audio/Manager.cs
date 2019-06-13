@@ -127,9 +127,9 @@ namespace Taskmaster.Audio
 			{
 				if (DebugAudio)
 				{
-					string name = Devices.TryGetValue(ea.GUID, out var device) ? device.Name : null;
+					string name = Devices.TryGetValue(ea.GUID, out var device) ? device.Name : ea.GUID.ToString();
 
-					Log.Debug($"<Audio> Device {name ?? ea.GUID} state changed to {ea.State.ToString()}");
+					Log.Debug($"<Audio> Device {name} state changed to {ea.State.ToString()}");
 				}
 
 				StateChanged?.Invoke(this, ea);
@@ -187,13 +187,13 @@ namespace Taskmaster.Audio
 
 			try
 			{
-				if (MultimediaDevice != null && ea.GUID.Equals(MultimediaDevice.GUID, StringComparison.OrdinalIgnoreCase))
+				if (MultimediaDevice != null && ea.GUID == MultimediaDevice.GUID)
 				{
 					UnregisterDevice(MultimediaDevice);
 					MultimediaDevice = null;
 				}
 
-				if (ConsoleDevice != null && ea.GUID.Equals(ConsoleDevice.GUID, StringComparison.OrdinalIgnoreCase))
+				if (ConsoleDevice != null && ea.GUID == ConsoleDevice.GUID)
 				{
 					UnregisterDevice(ConsoleDevice);
 					ConsoleDevice = null;
@@ -232,9 +232,9 @@ namespace Taskmaster.Audio
 			device.MMDevice.AudioSessionManager.OnSessionCreated -= OnSessionCreated;
 		}
 
-		readonly ConcurrentDictionary<string, Device> Devices = new ConcurrentDictionary<string, Device>();
+		readonly ConcurrentDictionary<Guid, Device> Devices = new ConcurrentDictionary<Guid, Device>();
 
-		public Device GetDevice(string guid)
+		public Device GetDevice(Guid guid)
 			=> Devices.TryGetValue(guid, out var dev) ? dev : null;
 
 		void GetDefaultDevice()

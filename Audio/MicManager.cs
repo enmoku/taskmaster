@@ -68,6 +68,9 @@ namespace Taskmaster.Audio
 		NAudio.Mixer.UnsignedMixerControl VolumeControl = null;
 
 		double _volume;
+		/// <summary>
+		/// Current volume.
+		/// </summary>
 		public double Volume
 		{
 			/// <summary>
@@ -89,12 +92,17 @@ namespace Taskmaster.Audio
 			}
 		}
 
-		Device RecordingDevice = null;
+		public Device Device { get; private set; } = null;
 
-		public string DeviceName => RecordingDevice?.Name ?? string.Empty;
-		public string DeviceGuid => RecordingDevice?.GUID ?? string.Empty;
-
-		double DefaultVolume { get; set; } = 100d;
+		/// <summary>
+		/// Default device volume. From 0.0d to 100.0d
+		/// </summary>
+		double DefaultVolume
+		{
+			get => _defaultvolume;
+			set => _defaultvolume = value.Constrain(0.0d, 100.0d);
+		}
+		double _defaultvolume = 100d;
 
 		// ctor, constructor
 		/// <exception cref="InitFailure">When initialization fails in a way that can not be continued from.</exception>
@@ -110,7 +118,7 @@ namespace Taskmaster.Audio
 			var mediasec = corecfg.Config["Media"];
 
 			Control = mediasec.GetOrSet(mcontrol, false).Bool;
-			DefaultVolume = mediasec.GetOrSet(mvol, 100.0d).Double.Constrain(0.0d, 100.0d);
+			DefaultVolume = mediasec.GetOrSet(mvol, 100.0d).Double;
 
 			var dbgsec = corecfg.Config[HumanReadable.Generic.Debug];
 			DebugMic = dbgsec.Get("Microphone")?.Bool ?? false;
@@ -166,7 +174,7 @@ namespace Taskmaster.Audio
 
 			try
 			{
-				var dev = (from idev in KnownDevices where idev.GUID.Equals(ea.GUID, StringComparison.OrdinalIgnoreCase) select idev).FirstOrDefault();
+				var dev = (from idev in KnownDevices where idev.GUID == ea.GUID select idev).FirstOrDefault();
 				if (dev != null) KnownDevices.Remove(dev);
 			}
 			catch (OutOfMemoryException) { throw; }
@@ -186,7 +194,7 @@ namespace Taskmaster.Audio
 				{
 					UnregisterDefaultDevice();
 
-					if (!string.IsNullOrEmpty(ea.GUID))
+					if (ea.GUID != Guid.Empty)
 						RegisterDefaultDevice();
 					else // no default
 						Log.Warning("<Microphone> No communications device found!");
@@ -207,7 +215,7 @@ namespace Taskmaster.Audio
 
 			try
 			{
-				RecordingDevice?.Dispose();
+				Device?.Dispose();
 			}
 			catch (OutOfMemoryException) { throw; }
 			catch (Exception ex)
@@ -217,7 +225,7 @@ namespace Taskmaster.Audio
 			finally
 			{
 				VolumeControl = null;
-				RecordingDevice = null;
+				Device = null;
 			}
 		}
 
@@ -233,7 +241,7 @@ namespace Taskmaster.Audio
 				// get default communications device
 				try
 				{
-					if ((RecordingDevice = audiomanager.RecordingDevice) is null)
+					if ((Device = audiomanager.RecordingDevice) is null)
 					{
 						Log.Error("<Microphone> No communications device found!");
 						return;
@@ -253,8 +261,8 @@ namespace Taskmaster.Audio
 				catch (NAudio.MmException)
 				{
 					Log.Error("<Microphone> Default device not found.");
-					RecordingDevice?.Dispose();
-					RecordingDevice = null;
+					Device?.Dispose();
+					Device = null;
 					return;
 				}
 
@@ -264,7 +272,7 @@ namespace Taskmaster.Audio
 
 				_volume = (VolumeControl != null ? VolumeControl.Percent : double.NaN); // kinda hackish
 
-				RecordingDevice.MMDevice.AudioEndpointVolume.OnVolumeNotification += VolumeChangedHandler;
+				Device.MMDevice.AudioEndpointVolume.OnVolumeNotification += VolumeChangedHandler;
 
 				//
 
@@ -274,16 +282,16 @@ namespace Taskmaster.Audio
 				bool devcontrol = false;
 
 				using var devcfg = Config.Load(DeviceFilename);
-				var devsec = devcfg.Config[RecordingDevice.GUID];
+				var devsec = devcfg.Config[Device.GUID.ToString()];
 
 				devvol = devsec.GetOrSet(HumanReadable.Hardware.Audio.Volume, DefaultVolume).Double;
 				devcontrol = devsec.GetOrSet(cname, false).Bool;
-				devsec.GetOrSet("Name", RecordingDevice.Name);
+				devsec.GetOrSet("Name", Device.Name);
 
 				if (Control && !devcontrol) Control = false; // disable general control if device control is disabled
 
 				Target = devvol.Constrain(0.0d, 100.0d);
-				Log.Information($"<Microphone> Default device: {RecordingDevice.Name} (volume: {Target:N1} %) – Control: {(Control ? HumanReadable.Generic.Enabled : HumanReadable.Generic.Disabled)}");
+				Log.Information($"<Microphone> Default device: {Device.Name} (volume: {Target:N1} %) – Control: {(Control ? HumanReadable.Generic.Enabled : HumanReadable.Generic.Disabled)}");
 
 				if (Control) Volume = Target;
 			}
@@ -313,8 +321,8 @@ namespace Taskmaster.Audio
 				{
 					try
 					{
-						string guid = Utility.DeviceIdToGuid(dev.ID);
-						var devsec = devcfg.Config[guid];
+						Guid guid = Utility.DeviceIdToGuid(dev.ID);
+						var devsec = devcfg.Config[guid.ToString()];
 						devsec.GetOrSet("Name", dev.DeviceFriendlyName);
 						bool control = devsec.GetOrSet("Control", false).Bool;
 						float target = devsec.Get(HumanReadable.Hardware.Audio.Volume)?.Float ?? float.NaN;
@@ -439,8 +447,8 @@ namespace Taskmaster.Audio
 
 				VolumeChanged = null;
 
-				RecordingDevice?.Dispose();
-				RecordingDevice = null;
+				Device?.Dispose();
+				Device = null;
 			}
 
 			OnDisposed?.Invoke(this, DisposedEventArgs.Empty);
@@ -451,8 +459,8 @@ namespace Taskmaster.Audio
 		{
 			ExecuteOnMainThread(new Action(() =>
 			{
-				RecordingDevice?.Dispose();
-				RecordingDevice = null;
+				Device?.Dispose();
+				Device = null;
 			}));
 		}
 		#endregion

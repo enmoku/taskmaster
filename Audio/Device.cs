@@ -36,7 +36,7 @@ namespace Taskmaster.Audio
 			// nop
 		}
 
-		public Device(string guid, string name, NAudio.CoreAudioApi.DataFlow flow, NAudio.CoreAudioApi.DeviceState state, NAudio.CoreAudioApi.MMDevice device)
+		public Device(Guid guid, string name, NAudio.CoreAudioApi.DataFlow flow, NAudio.CoreAudioApi.DeviceState state, NAudio.CoreAudioApi.MMDevice device)
 		{
 			GUID = guid;
 			Name = name;
@@ -46,7 +46,7 @@ namespace Taskmaster.Audio
 		}
 
 		public string Name { get; private set; } = string.Empty;
-		public string GUID { get; private set; } = string.Empty;
+		public Guid GUID { get; private set; } = Guid.Empty;
 
 		public bool VolumeControl { get; set; } = false;
 		public float Volume { get; set; } = float.NaN;
@@ -57,7 +57,7 @@ namespace Taskmaster.Audio
 
 		public NAudio.CoreAudioApi.MMDevice MMDevice { get; private set; } = null;
 
-		public override string ToString() => $"{Name ?? "n/a"} {{{GUID ?? "n/a"}}}";
+		public override string ToString() => $"{Name ?? "n/a"} {{{GUID}}}";
 
 		#region IDisposable Support
 		bool DisposingOrDisposed { get; set; } = false; // To detect redundant calls

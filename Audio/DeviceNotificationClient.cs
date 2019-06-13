@@ -51,10 +51,10 @@ namespace Taskmaster.Audio
 
 			try
 			{
-				var guid = HaveDefaultDevice ? Utility.DeviceIdToGuid(defaultDeviceId) : string.Empty;
+				var guid = HaveDefaultDevice ? Utility.DeviceIdToGuid(defaultDeviceId) : Guid.Empty;
 
 				if (DebugAudio && Trace)
-					Log.Verbose($"<Audio> Default device changed for {role.ToString()} ({flow.ToString()}): {(HaveDefaultDevice ? guid : HumanReadable.Generic.NotAvailable)}");
+					Log.Verbose($"<Audio> Default device changed for {role.ToString()} ({flow.ToString()}): {(HaveDefaultDevice ? guid.ToString() : HumanReadable.Generic.NotAvailable)}");
 
 				DefaultDevice?.Invoke(this, new DefaultDeviceEventArgs(guid, defaultDeviceId, role, flow));
 			}
@@ -71,7 +71,7 @@ namespace Taskmaster.Audio
 		{
 			try
 			{
-				string guid = Utility.DeviceIdToGuid(pwstrDeviceId);
+				Guid guid = Utility.DeviceIdToGuid(pwstrDeviceId);
 
 				if (!DebugAudio) Log.Debug("<Audio> Device added: " + guid);
 
@@ -88,7 +88,7 @@ namespace Taskmaster.Audio
 		{
 			try
 			{
-				string guid = Utility.DeviceIdToGuid(deviceId);
+				Guid guid = Utility.DeviceIdToGuid(deviceId);
 
 				if (!DebugAudio) Log.Debug("<Audio> Device removed: " + guid);
 
@@ -138,9 +138,11 @@ namespace Taskmaster.Audio
 
 			try
 			{
-				string guid = Utility.DeviceIdToGuid(pwstrDeviceId);
+				Guid guid = Utility.DeviceIdToGuid(pwstrDeviceId);
 
-				Log.Debug("<Audio> Device (" + guid + ") property changed: " + key.formatId.ToString() + " / " + key.propertyId);
+				Device device = audiomanager?.GetDevice(guid);
+
+				Log.Debug("<Audio> Device (" + (device?.Name ?? guid.ToString()) + ") property changed: " + key.formatId.ToString() + " / " + key.propertyId);
 
 				//PropertyChanged?.Invoke(this, null);
 			}

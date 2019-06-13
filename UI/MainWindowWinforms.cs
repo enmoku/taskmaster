@@ -265,8 +265,7 @@ namespace Taskmaster.UI
 		Network.Manager netmonitor = null;
 
 		#region Microphone control code
-
-		string AudioInputGUID = string.Empty;
+		Audio.Device DefaultAudioInput = null;
 
 		void SetDefaultCommDevice()
 		{
@@ -284,9 +283,9 @@ namespace Taskmaster.UI
 
 			try
 			{
-				var devname = micmanager.DeviceName;
+				// TODO: less direct access to mic manager
 
-				AudioInputGUID = micmanager.DeviceGuid;
+				var devname = micmanager.Device.Name;
 
 				AudioInputDevice.Text = !string.IsNullOrEmpty(devname) ? devname : HumanReadable.Generic.NotAvailable;
 
@@ -313,7 +312,7 @@ namespace Taskmaster.UI
 			{
 				var li = new ListViewItem(new string[] {
 					device.Name,
-					device.GUID,
+					device.GUID.ToString(),
 					$"{device.Volume * 100d:N1} %",
 					$"{device.Target:N1} %",
 					(device.VolumeControl ? HumanReadable.Generic.Enabled : HumanReadable.Generic.Disabled),
@@ -337,11 +336,11 @@ namespace Taskmaster.UI
 				li.BackColor = (alternate && (alter = !alter)) ? AlterColor : DefaultLIBGColor;
 		}
 
-		void RemoveAudioInput(string GUID)
+		void RemoveAudioInput(Guid guid)
 		{
 			if (micmanager is null) return;
 
-			if (MicGuidToAudioInputs.TryRemove(GUID, out var li))
+			if (MicGuidToAudioInputs.TryRemove(guid, out var li))
 				AudioInputs.Items.Remove(li);
 		}
 
@@ -452,7 +451,7 @@ namespace Taskmaster.UI
 		{
 			if (IsDisposed || !IsHandleCreated) return;
 
-			AudioInputGUID = ea.GUID;
+			DefaultAudioInput = ea.Device;
 
 			if (InvokeRequired)
 				BeginInvoke(new Action(MicrophoneDefaultChanged_Update));
@@ -466,7 +465,7 @@ namespace Taskmaster.UI
 
 			try
 			{
-				if (string.IsNullOrEmpty(AudioInputGUID))
+				if (DefaultAudioInput is null)
 				{
 					AudioInputEnable.Text = HumanReadable.Generic.Uninitialized;
 					AudioInputDevice.Text = HumanReadable.Generic.Uninitialized;
@@ -488,7 +487,7 @@ namespace Taskmaster.UI
 			}
 		}
 
-		readonly ConcurrentDictionary<string, ListViewItem> MicGuidToAudioInputs = new ConcurrentDictionary<string, ListViewItem>();
+		readonly ConcurrentDictionary<Guid, ListViewItem> MicGuidToAudioInputs = new ConcurrentDictionary<Guid, ListViewItem>();
 
 		void AudioDeviceStateChanged(object sender, Audio.DeviceStateEventArgs ea)
 		{

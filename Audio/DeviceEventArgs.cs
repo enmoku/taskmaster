@@ -24,17 +24,26 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
+using System;
+
 namespace Taskmaster.Audio
 {
 	public class DeviceEventArgs
 	{
-		public DeviceEventArgs(string guid, string id)
+		public DeviceEventArgs(Guid guid, string id)
 		{
 			GUID = guid;
 			ID = id;
 		}
 
-		public string GUID { get; private set; }
+		public DeviceEventArgs(string guid, string id)
+		{
+			GUID = new Guid(guid);
+			ID = id;
+		}
+
+		public Guid GUID { get; private set; }
+		//public string GUID { get; private set; }
 		public string ID { get; private set; }
 
 		public Device Device { get; set; } = null;

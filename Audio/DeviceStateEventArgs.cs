@@ -24,11 +24,14 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
+using System;
+
 namespace Taskmaster.Audio
 {
 	public sealed class DeviceStateEventArgs : DeviceEventArgs
 	{
-		public DeviceStateEventArgs(string guid, string id, NAudio.CoreAudioApi.DeviceState state) : base(guid, id) => State = state;
+		public DeviceStateEventArgs(Guid guid, string id, NAudio.CoreAudioApi.DeviceState state)
+			: base(guid, id) => State = state;
 
 		public NAudio.CoreAudioApi.DeviceState State { get; private set; }
 	}

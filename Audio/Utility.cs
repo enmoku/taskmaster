@@ -24,6 +24,8 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
+using System;
+
 namespace Taskmaster.Audio
 {
 	public static class Utility
@@ -31,6 +33,6 @@ namespace Taskmaster.Audio
 		/// <summary>
 		/// Takes Device ID in form of {a.b.c.dddddddd}.{aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee} and retuurns GUID part only.
 		/// </summary>
-		public static string DeviceIdToGuid(string deviceId) => (deviceId.Split('}'))[1].Substring(2);
+		public static Guid DeviceIdToGuid(string deviceId) => new Guid((deviceId.Split('}'))[1].Substring(2));
 	}
 }
