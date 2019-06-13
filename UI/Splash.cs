@@ -51,6 +51,8 @@ namespace Taskmaster.UI
 		public Splash(int itemsToLoad)
 			: base(centerOnScreen: true)
 		{
+			_ = Handle; // HACK
+
 			Visible = false;
 			SuspendLayout();
 

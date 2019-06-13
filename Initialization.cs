@@ -54,7 +54,7 @@ namespace Taskmaster
 
 			AppDomain.CurrentDomain.UnhandledException += UnhandledException;
 
-			//hiddenwindow = new OS.HiddenWindow();
+			hiddenwindow = new HiddenWindow();
 
 			TryPortableMode();
 			LogPath = System.IO.Path.Combine(DataPath, LogFolder);

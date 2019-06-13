@@ -41,7 +41,7 @@ namespace Taskmaster.UI
 		public UniForm(bool centerOnScreen = false)
 			: base()
 		{
-			_ = Handle; // forces handle creation
+			//_ = Handle; // forces handle creation
 
 			AutoScaleMode = AutoScaleMode.Dpi;
 

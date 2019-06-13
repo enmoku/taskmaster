@@ -45,7 +45,7 @@ namespace Taskmaster.Power
 
 		public WndProcProxy()
 		{
-			_ = Handle;
+			_ = Handle; // HACK
 		}
 
 		public void RegisterEventHooks()

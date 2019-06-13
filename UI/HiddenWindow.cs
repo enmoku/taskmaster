@@ -24,26 +24,38 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
+using System.Diagnostics;
+
 namespace Taskmaster
 {
-	using System;
-	using static Taskmaster;
+    using static Taskmaster;
 
-	public class HiddenWindow : UI.UniForm, IDisposal
+	/// <summary>
+	/// Core window for TM.
+	/// </summary>
+	public class HiddenWindow : System.Windows.Forms.Form
 	{
 		public HiddenWindow()
 			: base()
 		{
-			RegisterForExit(this);
-			DisposalChute.Push(this);
-			if (Trace) Logging.DebugMsg("HiddenWindow initialized");
+			_ = Handle; // HACK
+			TopLevel = true;
+
+			//Text = $"<{{[ {Taskmaster.Name} ]}}>";
+
+			Logging.DebugMsg("HiddenWindow initialized");
 		}
 
-		public event EventHandler<DisposedEventArgs> OnDisposed;
+		private static Finalizer finalizer = new Finalizer();
 
-		public void ShutdownEvent(object sender, EventArgs ea)
+		private sealed class Finalizer
 		{
-			// NOP
-		}
+			~Finalizer()
+			{
+				Logging.DebugMsg("HiddenWindow static finalizer");
+				hiddenwindow?.Dispose();
+				hiddenwindow = null;
+			}
+		};
 	}
 }

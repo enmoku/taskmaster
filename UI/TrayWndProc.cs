@@ -39,11 +39,6 @@ namespace Taskmaster.UI
 
 	public class TrayWndProcProxy : Form
 	{
-		public TrayWndProcProxy()
-		{
-			TopLevel = true; // hack
-		}
-
 		const int WM_QUERYENDSESSION = 0x0011;
 		const int WM_ENDSESSION = 0x0016;
 

@@ -59,6 +59,8 @@ namespace Taskmaster.UI
 		public MainWindow()
 			: base()
 		{
+			_ = Handle; // HACK
+
 			Visible = false;
 			SuspendLayout();
 
