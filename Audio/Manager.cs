@@ -90,6 +90,7 @@ namespace Taskmaster.Audio
 			notificationClient.Removed += DeviceRemovedProxy;
 
 			GetDefaultDevice();
+			EnumerateDevices();
 
 			Enumerator.RegisterEndpointNotificationCallback(notificationClient);
 
@@ -106,6 +107,14 @@ namespace Taskmaster.Audio
 
 			RegisterForExit(this);
 			DisposalChute.Push(this);
+		}
+
+		void EnumerateDevices()
+		{
+			foreach (var dev in Enumerator.EnumerateAudioEndPoints(NAudio.CoreAudioApi.DataFlow.All, NAudio.CoreAudioApi.DeviceState.All))
+			{
+				DeviceAddedProxy(this, new DeviceEventArgs(dev.ID));
+			}
 		}
 
 		void VolumeTimer_Elapsed(object sender, System.Timers.ElapsedEventArgs e)
