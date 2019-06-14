@@ -193,8 +193,8 @@ namespace Taskmaster
 					}
 				}
 
-				InfoList = InfoList.OrderBy(inam => inam.Name).ThenBy(iid => iid.Id).ToList();
-				var output = InfoList.ConvertAll(x => $"{System.IO.Path.GetFileName(x.Path ?? x.Name)} #{x.Id}{(Info.PriorityProtected ? " [Protected]" : "")}");
+				InfoList = InfoList.OrderBy(info => info.Name).ThenBy(info => info.Id).ToList();
+				var output = InfoList.ConvertAll(info => $"{System.IO.Path.GetFileName(info.Path ?? info.Name)} #{info.Id}{(info.PriorityProtected ? " [Protected]" : "")}");
 
 				if (IsDisposed) return;
 

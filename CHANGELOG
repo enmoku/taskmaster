@@ -3,6 +3,8 @@ Comprehensive changes can be found in Git change history:
 	https://github.com/mkahvi/taskmaster/commits/master
 
 ## [0.13...]
+### 2019-06-15
+	Fixed: Error in process select dialog while scanning for existing processes.
 ### 2019-06-12
 	Fixed: Advanced config could not be opened from tray context menu if main window was closed.
 	Changed: Initialization should now be more reliable.
