@@ -199,7 +199,7 @@ namespace Taskmaster
 				}
 
 				TempScan?.Invoke(null, new StorageEventArgs { State = ScanState.End, Stats = dst });
-				Log.Information("Temp contents: " + dst.Files + " files, " + dst.Dirs + " dirs, " + $"{(dst.Size / 1_000_000f):N2} MBs");
+				Log.Information($"Temp contents: {dst.Files} files, {dst.Dirs} dirs, {(dst.Size / 1_000_000f):N2} MBs");
 			}
 			finally
 			{
