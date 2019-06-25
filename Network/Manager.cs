@@ -86,6 +86,16 @@ namespace Taskmaster.Network
 
 		const string NetConfigFilename = "Net.ini";
 
+		bool DynamicDNS = false;
+		bool DynamicDNSForcedUpdate = false;
+
+		Uri DynamicDNSHost = null; // BUG: Insecure. Contains secrets.
+		TimeSpan DynamicDNSFrequency = TimeSpan.FromMinutes(15d);
+		DateTimeOffset DynamicDNSLastUpdate = DateTimeOffset.MinValue;
+		IPAddress DynamicDNSLastIP = IPAddress.Loopback;
+
+		readonly System.Threading.CancellationTokenSource cts = new System.Threading.CancellationTokenSource();
+
 		void LoadConfig()
 		{
 			using var netcfg = Config.Load(NetConfigFilename);
@@ -104,6 +114,39 @@ namespace Taskmaster.Network
 			PacketWarning.Peak = PacketStatTimerInterval;
 
 			ErrorReports.Peak = ErrorReportLimit = pktsec.GetOrSet("Error report limit", 5).Int.Constrain(1, 60);
+
+			var dnssec = netcfg.Config["DNS Updating"];
+			DynamicDNS = dnssec.GetOrSet("Enabled", false).InitComment("Only Afraid.org is supported currently.")
+				.Bool;
+			DynamicDNSFrequency = TimeSpan.FromMinutes(Convert.ToDouble(dnssec.GetOrSet("Frequency", 600)
+				.InitComment("In minutes.")
+				.Int.Min(15)));
+			DynamicDNSForcedUpdate = dnssec.GetOrSet("Force", false)
+				.InitComment("Force performing the update even if no IP update is detected.")
+				.Bool;
+
+			if (DynamicDNS)
+			{
+				string host = dnssec.Get("Host").String;
+				bool https = host?.StartsWith("https://") ?? false;
+				bool afraidorg = (host?.IndexOf("sync.afraid.org/", StringComparison.InvariantCultureIgnoreCase) ?? -1) > 0;
+				if ((host?.Length ?? 0) < 10
+					|| !https // only HTTPS
+					|| !afraidorg)
+				{
+					string extra = !https ? "Not HTTPS" : (!afraidorg ? "Unsupported service" : "Unknown");
+					Log.Warning("<Net:DynDNS> Host string unsupported or malformed. " + extra);
+					DynamicDNS = false;
+					DynamicDNSHost = null;
+				}
+				else
+				{
+					DynamicDNSHost = new Uri(host, UriKind.Absolute);
+					Log.Information("<Net:DynDNS> Enabled.");
+				}
+			}
+			else
+				Log.Information("<Net:DynDNS> Disabled");
 
 			using var corecfg = Config.Load(CoreConfigFilename);
 			var logsec = corecfg.Config[HumanReadable.Generic.Logging];
@@ -161,10 +204,140 @@ namespace Taskmaster.Network
 
 			StopUpdateNetworkState(); // initialize
 
+			StartDynDNSUpdates();
+
 			if (DebugNet) Log.Information("<Network> Component loaded.");
 
 			RegisterForExit(this);
 			DisposalChute.Push(this);
+		}
+
+		System.Threading.Timer DynDNSTimer = null;
+
+		async Task StartDynDNSUpdates()
+		{
+			if (!DynamicDNS) return;
+
+			using var netcfg = Config.Load(NetConfigFilename);
+			var dns = netcfg.Config["DNS Updating"];
+			if (!IPAddress.TryParse(dns.Get("Last known IPv4")?.String ?? string.Empty, out DNSOldIPv4))
+				DNSOldIPv4 = IPAddress.Any;
+			if (!IPAddress.TryParse(dns.Get("Last known IPv6")?.String ?? string.Empty, out DNSOldIPv6))
+				DNSOldIPv6 = IPAddress.Any;
+
+			DateTimeOffset lastUpdate = DateTimeOffset.MinValue;
+			if (DateTimeOffset.TryParse(dns.Get("Last attempt")?.String ?? string.Empty, out lastUpdate)
+				&& lastUpdate.TimeTo(DateTimeOffset.UtcNow).TotalMinutes > 15d)
+			{
+				Log.Debug("<Net:DynDNS> Delaying update timer.");
+				await Task.Delay(TimeSpan.FromMinutes(15)).ConfigureAwait(false);
+			}
+			else
+				Log.Debug("<Net:DynDNS> Starting update timer.");
+
+			DynDNSTimer = new System.Threading.Timer(DynDNSTimer_Elapsed, null, DynamicDNSFrequency, DynamicDNSFrequency);
+		}
+
+
+		int DynDNSFailures = 0;
+		IPAddress DNSOldIPv4 = IPAddress.Any, DNSOldIPv6 = IPAddress.Any;
+		async void DynDNSTimer_Elapsed(object _)
+		{
+			if (DynDNSTimer is null) return;
+
+			Log.Debug("<Net:DynDNS> Timer");
+
+			try
+			{
+				if (!DynamicDNSForcedUpdate)
+				{
+					if (!DNSOldIPv4.Equals(IPv4Address) || !DNSOldIPv6.Equals(IPv6Address))
+					{
+						DNSOldIPv4 = IPv4Address;
+						DNSOldIPv6 = IPv6Address;
+
+						using var netcfg = Config.Load(NetConfigFilename);
+						var dns = netcfg.Config["DNS Updating"];
+						try
+						{
+							dns["Last known IPv4"].String = IPv4Address.ToString();
+						}
+						catch { }
+						try
+						{
+							dns["Last known IPv6"].String = IPv6Address.ToString();
+						}
+						catch { }
+						dns["Last attempt"].String = DateTimeOffset.UtcNow.ToString("u");
+					}
+					else
+					{
+						Log.Debug("<Net:DynDNS> IP has not changed, forgoing update.");
+						return;
+					}
+				}
+
+				bool success = await DynamicDNSUpdate().ConfigureAwait(false);
+				if (success)
+					DynDNSFailures = 0;
+				else if (DynDNSFailures++ > 3)
+				{
+					Log.Error("<Net:DynDNS> Update failed too many times, stopping updates.");
+					DynDNSTimer?.Dispose();
+					DynDNSTimer = null;
+				}
+			}
+			catch (Exception ex)
+			{
+				Logging.Stacktrace(ex);
+			}
+		}
+
+		async Task<bool> DynamicDNSUpdate()
+		{
+			Log.Debug("<Net:DynDNS> Updating...");
+
+			try
+			{
+				var rq = System.Net.WebRequest.CreateHttp(DynamicDNSHost);
+				rq.Method = "GET";
+				rq.MaximumAutomaticRedirections = 1;
+				rq.ContentType = "json";
+				rq.UserAgent = "Taskmaster/DynDNS.alpha.1";
+				rq.Timeout = 30_000;
+				var rs = rq.GetResponse();
+				if (rs.ContentLength > 0)
+				{
+					var sbs = new StringBuilder();
+					using var dat = rs.GetResponseStream();
+					int len = Convert.ToInt32(rs.ContentLength);
+					byte[] buffer = new byte[len];
+					await dat.ReadAsync(buffer, 0, len);
+					Logging.DebugMsg(buffer.ToString());
+				}
+			}
+			catch (WebException ex)
+			{
+				Log.Debug($"<Net:DynDNS> Response: {ex.Status.ToString()}");
+				switch (ex.Status)
+				{
+					case WebExceptionStatus.Success:
+						// OK, rinse and repeat in case IP changes
+						return true;
+					case WebExceptionStatus.Timeout:
+						// TODO: Increase delay
+						break;
+					default:
+						// Assume user error
+						break;
+				}
+			}
+			catch (Exception ex)
+			{
+				Logging.Stacktrace(ex);
+			}
+
+			return false;
 		}
 
 		public TrafficDelta GetTraffic
