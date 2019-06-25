@@ -88,7 +88,7 @@ namespace Taskmaster
 		/// </summary>
 		/// <param name="bytes"></param>
 		/// <param name="positivesign"></param>
-		/// <param name="iec"></param>
+		/// <param name="iec">Use IEC's 1024 multiplier instead of SI's 1000.</param>
 		/// <returns></returns>
 		public static string ByteString(long bytes, bool positivesign = false, bool iec = false)
 		{
