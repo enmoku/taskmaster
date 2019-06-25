@@ -324,7 +324,8 @@ namespace Taskmaster
 
 		const string SingletonID = "088f7210-51b2-4e06-9bd4-93c27a973874.taskmaster"; // garbage
 
-		public static LoggingLevelSwitch loglevelswitch = new LoggingLevelSwitch(LogEventLevel.Information);
+		public static LoggingLevelSwitch loglevelswitch = new LoggingLevelSwitch(LogEventLevel.Information),
+			uiloglevelswitch = new LoggingLevelSwitch(LogEventLevel.Information);
 
 		static internal event EventHandler<LoadEventArgs> LoadEvent;
 

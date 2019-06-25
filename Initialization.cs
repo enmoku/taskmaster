@@ -118,11 +118,9 @@ namespace Taskmaster
 			*/
 
 			// INIT LOGGER
-			var logswitch = new Serilog.Core.LoggingLevelSwitch(LogEventLevel.Information);
-
 #if DEBUG
-			loglevelswitch.MinimumLevel = LogEventLevel.Debug;
-			if (Trace) loglevelswitch.MinimumLevel = LogEventLevel.Verbose;
+			uiloglevelswitch.MinimumLevel = loglevelswitch.MinimumLevel = LogEventLevel.Debug;
+			if (Trace) uiloglevelswitch.MinimumLevel = loglevelswitch.MinimumLevel = LogEventLevel.Verbose;
 #endif
 
 			var logpathtemplate = System.IO.Path.Combine(LogPath, Name + "-{Date}.log");
@@ -133,7 +131,7 @@ namespace Taskmaster
 #endif
 							.WriteTo.RollingFile(logpathtemplate, outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}",
 					levelSwitch: new Serilog.Core.LoggingLevelSwitch(Serilog.Events.LogEventLevel.Debug), retainedFileCountLimit: 3)
-				.WriteTo.MemorySink(levelSwitch: logswitch);
+				.WriteTo.MemorySink(levelSwitch: uiloglevelswitch);
 
 			Serilog.Log.Logger = logconf.CreateLogger();
 
@@ -296,21 +294,21 @@ namespace Taskmaster
 			{
 				default:
 				case 0:
-					loglevelswitch.MinimumLevel = LogEventLevel.Information;
+					uiloglevelswitch.MinimumLevel = loglevelswitch.MinimumLevel = LogEventLevel.Information;
 					break;
 				case 2:
 #if DEBUG
-					loglevelswitch.MinimumLevel = LogEventLevel.Verbose;
+					uiloglevelswitch.MinimumLevel = loglevelswitch.MinimumLevel = LogEventLevel.Verbose;
 					break;
 #endif
 				case 3:
 #if DEBUG
-					loglevelswitch.MinimumLevel = LogEventLevel.Verbose;
+					uiloglevelswitch.MinimumLevel = loglevelswitch.MinimumLevel = LogEventLevel.Verbose;
 					Trace = true;
 					break;
 #endif
 				case 1:
-					loglevelswitch.MinimumLevel = LogEventLevel.Debug;
+					uiloglevelswitch.MinimumLevel = loglevelswitch.MinimumLevel = LogEventLevel.Debug;
 					break;
 			}
 
