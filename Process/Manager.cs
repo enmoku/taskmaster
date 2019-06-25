@@ -226,7 +226,7 @@ namespace Taskmaster.Process
 			if (disposed) throw new ObjectDisposedException(nameof(Manager), "FreeMemoryInterval called when ProcessManager was already disposed");
 
 			Memory.Update();
-			ulong b1 = Memory.FreeBytes;
+			long b1 = Memory.FreeBytes;
 			//var b1 = MemoryManager.Free;
 
 			try
@@ -240,10 +240,10 @@ namespace Taskmaster.Process
 				// TODO: Wait a little longer to allow OS to Actually page stuff. Might not matter?
 				//var b2 = MemoryManager.Free;
 				Memory.Update();
-				ulong b2 = Memory.FreeBytes;
+				long b2 = Memory.FreeBytes;
 
 				Log.Information("<Memory> Paging complete, observed memory change: " +
-					HumanInterface.ByteString((long)(b2 - b1), true, iec: true));
+					HumanInterface.ByteString((b2 - b1), true, iec: true));
 			}
 			catch (Exception ex) when (ex is AggregateException || ex is OperationCanceledException) { throw; }
 			catch (Exception ex)
