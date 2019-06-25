@@ -59,7 +59,7 @@ namespace Taskmaster
 			throw new NotImplementedException();
 			throw new ArgumentException();
 
-			onNewAlert?.Invoke(sender, new EventArgs());
+			onNewAlert?.Invoke(sender, EventArgs.Empty);
 		}
 
 		List<object> AlertList = new List<object>();
@@ -74,7 +74,7 @@ namespace Taskmaster
 			throw new NotImplementedException();
 			throw new ArgumentException();
 
-			onAlertCancel?.Invoke(sender, new EventArgs());
+			onAlertCancel?.Invoke(sender, EventArgs.Empty);
 		}
 
 		/// <summary>
