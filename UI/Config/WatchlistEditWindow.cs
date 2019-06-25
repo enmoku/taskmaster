@@ -94,7 +94,7 @@ namespace Taskmaster.UI.Config
 				CausesValidation = true,
 			};
 
-			friendlyName.Validating += (_, e) =>
+			friendlyName.Validating += (_, _ea) =>
 			{
 				e.Cancel = !ValidateName(friendlyName, InvalidCharacters);
 			};
@@ -121,7 +121,7 @@ namespace Taskmaster.UI.Config
 				//Width = 46,
 				//Height = 20,
 			};
-			findexecbutton.Click += (sender, e) =>
+			findexecbutton.Click += (_, _ea) =>
 			{
 				using var exselectdialog = new ProcessSelectDialog();
 				try
@@ -165,7 +165,7 @@ namespace Taskmaster.UI.Config
 				//Width = 46,
 				//Height = 20,
 			};
-			findpathbutton.Click += (sender, e) =>
+			findpathbutton.Click += (_, _ea) =>
 			{
 				try
 				{
@@ -255,7 +255,7 @@ namespace Taskmaster.UI.Config
 
 			var ignorelistmenu = new ContextMenuStrip();
 			ignorelist.ContextMenuStrip = ignorelistmenu;
-			ignorelistmenu.Items.Add(new ToolStripMenuItem("Add", null, (s, ev) =>
+			ignorelistmenu.Items.Add(new ToolStripMenuItem("Add", null, (_, _ea) =>
 			{
 				try
 				{
@@ -268,7 +268,7 @@ namespace Taskmaster.UI.Config
 					Logging.Stacktrace(ex);
 				}
 			}));
-			ignorelistmenu.Items.Add(new ToolStripMenuItem("Remove", null, (s, ev) =>
+			ignorelistmenu.Items.Add(new ToolStripMenuItem("Remove", null, (_, _ea) =>
 			{
 				if (ignorelist.SelectedItems.Count == 1)
 					ignorelist.Items.Remove(ignorelist.SelectedItems[0]);
@@ -314,7 +314,7 @@ namespace Taskmaster.UI.Config
 			lt.Controls.Add(priorityClass);
 			lt.Controls.Add(priorityClassMethod);
 
-			priorityClass.SelectedIndexChanged += (s, e) => priorityClassMethod.Enabled = priorityClass.SelectedIndex != 5; // disable method selection
+			priorityClass.SelectedIndexChanged += (_, _ea) => priorityClassMethod.Enabled = priorityClass.SelectedIndex != 5; // disable method selection
 
 			// AFFINITY
 
@@ -330,7 +330,7 @@ namespace Taskmaster.UI.Config
 			};
 			affstrategy.Items.AddRange(new string[] { HumanReadable.Generic.Ignore, "Limit (Default)", "Force" });
 			tooltip.SetToolTip(affstrategy, "Limit constrains cores to the defined range but does not increase used cores beyond what the app is already using.\nForce sets the affinity mask to the defined regardless of anything.");
-			affstrategy.SelectedIndexChanged += (s, e) =>
+			affstrategy.SelectedIndexChanged += (_, _ea) =>
 			{
 				bool enabled = affstrategy.SelectedIndex != 0;
 				affinityMask.Enabled = enabled;
@@ -371,7 +371,7 @@ namespace Taskmaster.UI.Config
 					Checked = ((Math.Max(0, cpumask) & (1 << lbit)) != 0),
 					AutoSize = true,
 				};
-				box.CheckedChanged += (sender, e) =>
+				box.CheckedChanged += (_, _ea) =>
 				{
 					if (cpumask < 0) cpumask = 0;
 
@@ -395,19 +395,19 @@ namespace Taskmaster.UI.Config
 
 			var affbuttonpanel = new TableLayoutPanel() { ColumnCount = 1, AutoSize = true };
 			clearbutton = new Button() { Text = "None" };
-			clearbutton.Click += (sender, e) =>
+			clearbutton.Click += (_, _ea) =>
 			{
 				foreach (var litem in corelist) litem.Checked = false;
 			};
 			allbutton = new Button() { Text = "All" };
-			allbutton.Click += (sender, e) =>
+			allbutton.Click += (_, _ea) =>
 			{
 				foreach (var litem in corelist) litem.Checked = true;
 			};
 			affbuttonpanel.Controls.Add(allbutton);
 			affbuttonpanel.Controls.Add(clearbutton);
 
-			affinityMask.ValueChanged += (sender, e) =>
+			affinityMask.ValueChanged += (_, _ea) =>
 			{
 				var bitoff = 0;
 				try { cpumask = (int)affinityMask.Value; }
@@ -568,7 +568,7 @@ namespace Taskmaster.UI.Config
 			bool fge = ForegroundModeSelect.SelectedIndex != 0;
 			bool pwe = powerPlan.SelectedIndex != 3;
 
-			ForegroundModeSelect.SelectedIndexChanged += (s, e) =>
+			ForegroundModeSelect.SelectedIndexChanged += (_, _ea) =>
 			{
 				fge = ForegroundModeSelect.SelectedIndex != 0;
 				bgPriorityClass.Enabled = fge && ForegroundModeSelect.SelectedIndex != 3;
@@ -639,7 +639,7 @@ namespace Taskmaster.UI.Config
 
 				// disable volume control if method is to ignore it
 				volume.Enabled = !(volumeMethod.SelectedIndex == 5);
-				volumeMethod.SelectedIndexChanged += (s, e) =>
+				volumeMethod.SelectedIndexChanged += (_, _ea) =>
 				{
 					volume.Enabled = !(volumeMethod.SelectedIndex == 5);
 				};
@@ -692,7 +692,7 @@ namespace Taskmaster.UI.Config
 			finalizebuttons.Controls.Add(saveButton);
 			// lt.Controls.Add(saveButton);
 			var cancelButton = new Button() { Text = "Cancel" }; // CLOSE
-			cancelButton.Click += (sender, e) =>
+			cancelButton.Click += (_, _ea) =>
 			{
 				DialogResult = DialogResult.Cancel;
 				Close();

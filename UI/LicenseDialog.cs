@@ -102,13 +102,13 @@ namespace Taskmaster
 			layout.Controls.Add(licensebox);
 			layout.Controls.Add(buttonlayout);
 
-			buttonAccept.Click += (s, e) =>
+			buttonAccept.Click += (_, _ea) =>
 			{
 				DialogResult = DialogResult.OK;
 				Close();
 			};
 
-			buttonRefuse.Click += (s, e) =>
+			buttonRefuse.Click += (_, _ea) =>
 			{
 				DialogResult = DialogResult.Cancel;
 				Close();

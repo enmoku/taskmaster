@@ -102,10 +102,10 @@ namespace Taskmaster
 				Enabled = false,
 			};
 			selectbutton.Click += SaveSelection;
-			selection.KeyDown += (sender, e) =>
+			selection.KeyDown += (_, ea) =>
 			{
-				if (e.KeyCode == Keys.Enter)
-					SaveSelection(this, e);
+				if (ea.KeyCode == Keys.Enter)
+					SaveSelection(this, ea);
 			};
 			cancelbutton = new Button()
 			{
@@ -113,7 +113,7 @@ namespace Taskmaster
 				AutoSize = true,
 				Dock = DockStyle.Top,
 			};
-			cancelbutton.Click += (sender, e) =>
+			cancelbutton.Click += (_, _ea) =>
 			{
 				DialogResult = DialogResult.Abort;
 				Close();

@@ -909,7 +909,7 @@ namespace Taskmaster.Network
 
 					// bad since if it's not clicked, we react to other tooltip clicks, too
 					// TODO: Need replaceable callback or something.
-					//Tray.TrayTooltipClicked += (s, e) => { /* something */ };
+					//Tray.TrayTooltipClicked += (_, _ea) => { /* something */ };
 
 					IPChanged?.Invoke(this, EventArgs.Empty);
 				}

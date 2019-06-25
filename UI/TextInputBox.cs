@@ -74,7 +74,7 @@ namespace Taskmaster
 				Text = "OK",
 			};
 
-			okbutton.Click += (s, ev) =>
+			okbutton.Click += (_, _ea) =>
 			{
 				DialogResult = DialogResult.OK;
 				Value = textbox.Text;
@@ -86,7 +86,7 @@ namespace Taskmaster
 				Text = "Cancel",
 			};
 
-			cancelbutton.Click += (s, ev) =>
+			cancelbutton.Click += (_, _ea) =>
 			{
 				DialogResult = DialogResult.Cancel;
 				Value = null;
