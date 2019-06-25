@@ -94,9 +94,9 @@ namespace Taskmaster.UI.Config
 				CausesValidation = true,
 			};
 
-			friendlyName.Validating += (_, _ea) =>
+			friendlyName.Validating += (_, ea) =>
 			{
-				e.Cancel = !ValidateName(friendlyName, InvalidCharacters);
+				ea.Cancel = !ValidateName(friendlyName, InvalidCharacters);
 			};
 			tooltip.SetToolTip(friendlyName, "Human readable name, for user convenience.\nInvalid characters: ], #, and ;");
 			lt.Controls.Add(friendlyName);
