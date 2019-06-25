@@ -1648,8 +1648,9 @@ namespace Taskmaster.Process
 
 				var rect = new NativeMethods.RECT();
 
-				IntPtr hwnd = info.Process.MainWindowHandle;
-				if (NativeMethods.GetWindowRect(hwnd, ref rect))
+				if (info.Handle.Equals(IntPtr.Zero)) info.Handle = info.Process.MainWindowHandle;
+
+				if (NativeMethods.GetWindowRect(info.Handle, ref rect))
 					gotCurrentSize = true;
 
 				var oldrect = new System.Drawing.Rectangle(rect.Left, rect.Top, rect.Right - rect.Left, rect.Bottom - rect.Top);
@@ -1667,7 +1668,7 @@ namespace Taskmaster.Process
 
 					// TODO: Add option to monitor the app and save the new size so relaunching the app keeps the size.
 
-					NativeMethods.MoveWindow(hwnd, newsize.Left, newsize.Top, newsize.Width, newsize.Height, true);
+					NativeMethods.MoveWindow(info.Handle, newsize.Left, newsize.Top, newsize.Width, newsize.Height, true);
 
 					if (ResizeStrategy != WindowResizeStrategy.None)
 					{
@@ -1704,36 +1705,7 @@ namespace Taskmaster.Process
 				ActiveWait.TryAdd(info.Id, info);
 
 				var re = new System.Threading.ManualResetEvent(false);
-				await Task.Run(() =>
-				{
-					if (DebugResize) Log.Debug($"<Resize> Starting monitoring {info.Name} (#{info.Id.ToString()})");
-					try
-					{
-						while (!re.WaitOne(60_000))
-						{
-							if (DebugResize) Log.Debug($"<Resize> Recording size and position for {info.Name} (#{info.Id.ToString()})");
-
-							NativeMethods.GetWindowRect(hwnd, ref rect);
-
-							bool rpos = Bit.IsSet(((int)ResizeStrategy), (int)WindowResizeStrategy.Position);
-							bool rsiz = Bit.IsSet(((int)ResizeStrategy), (int)WindowResizeStrategy.Size);
-							newsize = new System.Drawing.Rectangle(
-								rpos ? rect.Left : Resize.Value.Left, rpos ? rect.Top : Resize.Value.Top,
-								rsiz ? rect.Right - rect.Left : Resize.Value.Left, rsiz ? rect.Bottom - rect.Top : Resize.Value.Top
-								);
-
-							Resize = newsize;
-							NeedsSaving = true;
-						}
-					}
-					catch (OutOfMemoryException) { throw; }
-					catch (Exception ex)
-					{
-						Logging.Stacktrace(ex);
-					}
-
-					if (DebugResize) Log.Debug($"<Resize> Stopping monitoring {info.Name} (#{info.Id.ToString()})");
-				}).ConfigureAwait(false);
+				MonitorWindowResize(info, rect, oldrect, re).ConfigureAwait(false);
 
 				if (!WaitForExit(info))
 				{
@@ -1756,6 +1728,36 @@ namespace Taskmaster.Process
 				Logging.Stacktrace(ex);
 				info.Resize = false;
 			}
+		}
+
+		async Task MonitorWindowResize(ProcessEx info, NativeMethods.RECT rect, System.Drawing.Rectangle oldrect, System.Threading.ManualResetEvent re)
+		{
+			if (DebugResize) Log.Debug($"<Resize> Starting monitoring {info.Name} (#{info.Id.ToString()})");
+			try
+			{
+				while (!re.WaitOne(60_000))
+				{
+					if (DebugResize) Log.Debug($"<Resize> Recording size and position for {info.Name} (#{info.Id.ToString()})");
+
+					NativeMethods.GetWindowRect(info.Handle, ref rect);
+
+					bool rpos = Bit.IsSet(((int)ResizeStrategy), (int)WindowResizeStrategy.Position);
+					bool rsiz = Bit.IsSet(((int)ResizeStrategy), (int)WindowResizeStrategy.Size);
+					Resize = new System.Drawing.Rectangle(
+						rpos ? rect.Left : Resize.Value.Left, rpos ? rect.Top : Resize.Value.Top,
+						rsiz ? rect.Right - rect.Left : Resize.Value.Left, rsiz ? rect.Bottom - rect.Top : Resize.Value.Top
+						);
+
+					NeedsSaving = true;
+				}
+			}
+			catch (OutOfMemoryException) { throw; }
+			catch (Exception ex)
+			{
+				Logging.Stacktrace(ex);
+			}
+
+			if (DebugResize) Log.Debug($"<Resize> Stopping monitoring {info.Name} (#{info.Id.ToString()})");
 		}
 
 		void ProcessEndResize(ProcessEx info, System.Drawing.Rectangle oldrect, System.Threading.ManualResetEvent re)

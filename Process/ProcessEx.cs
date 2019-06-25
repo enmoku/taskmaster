@@ -38,6 +38,11 @@ namespace Taskmaster.Process
 		public string Name { get; set; } = string.Empty;
 
 		/// <summary>
+		/// Cache for Hwnd.
+		/// </summary>
+		public IntPtr Handle { get; set; } = IntPtr.Zero;
+
+		/// <summary>
 		/// Process fullpath, including filename with extension
 		/// </summary>
 		public string Path { get; set; } = string.Empty;
