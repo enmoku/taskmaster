@@ -38,7 +38,7 @@ namespace Taskmaster.Settings
 		/// <summary>
 		/// Free megabytes.
 		/// </summary>
-		public ulong MemLevel { get; set; } = 1000;
+		public long MemLevel { get; set; } = 1000;
 
 		/// <summary>
 		/// Ignore foreground application.

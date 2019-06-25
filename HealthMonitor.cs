@@ -272,7 +272,7 @@ namespace Taskmaster
 			var freememsec = cfg.Config["Free Memory"];
 			//freememsec.Comment = "Attempt to free memory when available memory goes below a threshold.";
 
-			Settings.MemLevel = (ulong)freememsec.GetOrSet("Threshold", 1000)
+			Settings.MemLevel = freememsec.GetOrSet("Threshold", 1000)
 				.InitComment("When memory goes down to this level, we act.")
 				.Int;
 			// MemLevel = MemLevel > 0 ? MemLevel.Constrain(1, 2000) : 0;
@@ -463,7 +463,8 @@ namespace Taskmaster
 				if (Settings.MemLevel > 0)
 				{
 					Memory.Update();
-					var memfreemb = Memory.FreeBytes;
+					long memfreeb = Memory.FreeBytes;
+					var memfreemb = memfreeb / 1_048_576;
 
 					if (memfreemb <= Settings.MemLevel)
 					{
@@ -483,7 +484,7 @@ namespace Taskmaster
 
 							var sbs = new StringBuilder()
 								.Append("<<Auto-Doc>> Free memory low [")
-								.Append(HumanInterface.ByteString((long)memfreemb * 1_048_576, iec: true))
+								.Append(HumanInterface.ByteString(memfreeb, iec: true))
 								.Append("], attempting to improve situation.");
 							if (!Process.Utility.SystemProcessId(ignorepid))
 								sbs.Append(" Ignoring foreground (#").Append(ignorepid).Append(").");
@@ -503,7 +504,7 @@ namespace Taskmaster
 							WarnedAboutLowMemory = true;
 							LastMemoryWarning = now;
 
-							Log.Warning("<Memory> Free memory fairly low: " + HumanInterface.ByteString((long)memfreemb * 1_048_576, iec: true));
+							Log.Warning("<Memory> Free memory fairly low: " + HumanInterface.ByteString(memfreeb, iec: true));
 						}
 					}
 					else

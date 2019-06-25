@@ -65,7 +65,7 @@ namespace Taskmaster
 		/// Free memory in bytes.
 		/// Update() required to match current state.
 		/// </summary>
-		public static ulong FreeBytes { get; private set; } = 0;
+		public static long FreeBytes { get; private set; } = 0;
 
 		static Windows.PerformanceCounter pfcprivate = new Windows.PerformanceCounter("Process", "Private Bytes", "_Total");
 		static Windows.PerformanceCounter pfccommit = new Windows.PerformanceCounter("Memory", "% Committed Bytes In Use", null);
@@ -99,7 +99,7 @@ namespace Taskmaster
 			};
 			NativeMethods.GlobalMemoryStatusEx(ref mem);
 			Total = mem.ullTotalPhys;
-			FreeBytes = mem.ullAvailPhys;
+			FreeBytes = Convert.ToInt64(mem.ullAvailPhys);
 			Used = Total - mem.ullAvailPhys;
 			if (Trace && DebugMemory) Logging.DebugMsg($"MEMORY - Total: {Total.ToString()}, Free: {FreeBytes.ToString()}, Used: {Used.ToString()}");
 		}
