@@ -111,7 +111,7 @@ namespace Taskmaster.UI.Config
 				"Rule-based = Watchlist rules\n" +
 				"Manual = Fully user controlled");
 
-			behaviour.SelectedIndexChanged += (s, e) =>
+			behaviour.SelectedIndexChanged += (_, _ea) =>
 			{
 				switch (behaviour.SelectedIndex)
 				{
@@ -147,7 +147,7 @@ namespace Taskmaster.UI.Config
 				"Saved = as detected before new mode is set");
 
 			// "Original", "Default", "Saved", powermodes[0], powermodes[1], powermodes[2] },
-			restore.SelectedIndexChanged += (s, e) =>
+			restore.SelectedIndexChanged += (_, _ea) =>
 			{
 				switch (restore.SelectedIndex)
 				{
