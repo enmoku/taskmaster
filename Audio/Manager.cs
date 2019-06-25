@@ -175,7 +175,7 @@ namespace Taskmaster.Audio
 				if (dev != null)
 				{
 					var adev = new Device(dev);
-					if (!DebugAudio) Log.Debug("<Audio> Device added: " + (ea.Device?.Name ?? ea.GUID.ToString()));
+					if (DebugAudio) Log.Debug("<Audio> Device added: " + (ea.Device?.Name ?? ea.GUID.ToString()));
 
 					Devices.TryAdd(ea.GUID, adev);
 
