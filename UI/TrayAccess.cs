@@ -26,7 +26,7 @@
 
 using System;
 using System.Collections.Concurrent;
-using System.Collections.Specialized;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
@@ -190,7 +190,7 @@ namespace Taskmaster.UI
 		System.Drawing.Font IconFont = new System.Drawing.Font("Terminal", 8);
 		System.Drawing.SolidBrush IconBursh = new System.Drawing.SolidBrush(System.Drawing.Color.White);
 
-		readonly OrderedDictionary IconCacheMap = new OrderedDictionary();
+		readonly SortedDictionary<int,System.Drawing.Icon> IconCacheMap = new SortedDictionary<int, System.Drawing.Icon>();
 
 		void UpdateIcon(int count = 0)
 		{
