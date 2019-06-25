@@ -810,12 +810,19 @@ namespace Taskmaster.Network
 						switch (ip.Address.AddressFamily)
 						{
 							case System.Net.Sockets.AddressFamily.InterNetwork:
-								_ipv4 = ip.Address;
-								found4 = true;
+								var address = ip.Address.GetAddressBytes();
+								if (!(address[0] == 169 && address[1] == 254)) // ignore link-local
+								{
+									_ipv4 = ip.Address;
+									found4 = true;
+								}
 								break;
 							case System.Net.Sockets.AddressFamily.InterNetworkV6:
-								_ipv6 = ip.Address;
-								found6 = true;
+								if (!ip.Address.IsIPv6LinkLocal && !ip.Address.IsIPv6SiteLocal)
+								{
+									_ipv6 = ip.Address;
+									found6 = true;
+								}
 								break;
 						}
 
