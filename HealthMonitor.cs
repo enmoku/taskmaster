@@ -352,6 +352,8 @@ namespace Taskmaster
 		{
 			if (DisposedOrDisposing) throw new ObjectDisposedException(nameof(HealthMonitor), "CheckSystem called after HealthMonitor was disposed.");
 
+			Logging.DebugMsg("<<Auto-Doc:System>> Checking...");
+
 			await Task.Delay(0).ConfigureAwait(false);
 
 			uint ntick = MKAh.Native.GetTickCount();
@@ -365,6 +367,8 @@ namespace Taskmaster
 		async Task CheckErrors()
 		{
 			if (DisposedOrDisposing) throw new ObjectDisposedException(nameof(HealthMonitor), "CheckErrors called after HealthMonitor was disposed.");
+
+			Logging.DebugMsg("<<Auto-Doc:Errrors>> Checking...");
 
 			await Task.Delay(0).ConfigureAwait(false);
 
@@ -404,6 +408,8 @@ namespace Taskmaster
 		async Task CheckNVM()
 		{
 			if (DisposedOrDisposing) throw new ObjectDisposedException(nameof(HealthMonitor), "CheckErrors called after HealthMonitor was disposed.");
+
+			Logging.DebugMsg("<<Auto-Doc:NVM>> Checking...");
 
 			await Task.Delay(0).ConfigureAwait(false);
 
@@ -454,7 +460,7 @@ namespace Taskmaster
 
 			await Task.Delay(0).ConfigureAwait(false);
 
-			Logging.DebugMsg("<<Auto-Doc>> Checking...");
+			Logging.DebugMsg("<<Auto-Doc:Memory>> Checking...");
 
 			var now = DateTimeOffset.UtcNow;
 
