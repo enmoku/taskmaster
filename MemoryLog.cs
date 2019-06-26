@@ -85,7 +85,7 @@ namespace Taskmaster
 
 		//public LoggingLevelSwitch LevelSwitch;
 
-		public void Clear() { lock (LogLock) { Logs.Clear(); } }
+		public void Clear() { lock (LogLock) Logs.Clear(); }
 
 		public void ExcludeDebug() => LevelSwitch.MinimumLevel = LogEventLevel.Information;
 		public void ExcludeTrace() => LevelSwitch.MinimumLevel = LogEventLevel.Debug;
@@ -99,7 +99,7 @@ namespace Taskmaster
 
 			string formattedtext = string.Empty;
 
-			lock (sinklock) // is lock faster than repeated new?
+			lock (sinklock) // is lock faster than repeated new? Probably should try spinlock?
 			{
 				try
 				{
@@ -133,11 +133,7 @@ namespace Taskmaster
 
 		public LogEventArgs[] ToArray()
 		{
-			LogEventArgs[] logcopy = null;
-			lock (LogLock)
-				logcopy = Logs.ToArray();
-
-			return logcopy;
+			lock (LogLock) return Logs.ToArray();
 		}
 
 		public void Dispose() => Dispose(true);

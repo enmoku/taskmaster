@@ -3398,12 +3398,12 @@ namespace Taskmaster.UI
 						if (MessageBox.ShowModal("Remove watchlist item", $"Really remove '{prc.FriendlyName}'", MessageBox.Buttons.AcceptCancel, parent: this)
 							== MessageBox.ResultType.OK)
 						{
+							processmanager.RemoveController(prc);
+							prc.DeleteConfig();
+							Log.Information("[" + prc.FriendlyName + "] Rule removed");
+
 							lock (watchlist_lock)
 							{
-								processmanager.RemoveController(prc);
-
-								prc.DeleteConfig();
-								Log.Information("[" + prc.FriendlyName + "] Rule removed");
 								WatchlistMap.TryRemove(prc, out ListViewItem _);
 								WatchlistRules.Items.Remove(li);
 							}

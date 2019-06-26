@@ -5,6 +5,7 @@ Comprehensive changes can be found in Git change history:
 ## [0.13...]
 ### 2019-06-26
 	Fixed: Link-local network addresses were reported as public ones.
+	Fixed: Some deadlocks, mostly related to exclusive mode.
 ### 2019-06-25
 	Fixed: Health Monitor was using free memory bytes as megabytes.
 	Added: Basic DynDNS support test.

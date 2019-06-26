@@ -306,7 +306,7 @@ namespace Taskmaster.Process
 				{
 					NextScan = DateTimeOffset.UtcNow;
 					ScanTimer?.Stop();
-					if (forceSort) lock (watchlist_lock) SortWatchlist();
+					if (forceSort) SortWatchlist();
 					if (cts.IsCancellationRequested) return;
 
 					await Task.Run(() => Scan(), cts.Token).ContinueWith((_) => StartScanTimer(), cts.Token).ConfigureAwait(false);
@@ -959,12 +959,8 @@ namespace Taskmaster.Process
 				// cnt.delayIncrement = section.Contains("delay increment") ? section["delay increment"].Int : 15; // TODO: Add centralized default increment
 			}
 
-			lock (watchlist_lock)
-			{
-				RenewWatchlistCache();
-
-				SortWatchlist();
-			}
+			lock (watchlist_lock) RenewWatchlistCache();
+			SortWatchlist();
 
 			// --------------------------------------------------------------------------------------------------------
 
@@ -1069,16 +1065,12 @@ namespace Taskmaster.Process
 			}
 		}
 
-		void RenewWatchlistCache()
-		{
-			// TODO: Add limiter
-			WatchlistCache = new Lazy<List<Controller>>(LazyRecacheWatchlist, false);
-			ResetWatchlistCancellation();
-		}
+		void RenewWatchlistCache() => WatchlistCache = new Lazy<List<Controller>>(LazyRecacheWatchlist, false);
 
 		List<Controller> LazyRecacheWatchlist()
 		{
 			NeedSort = true;
+			ResetWatchlistCancellation();
 			return Watchlist.Keys.ToList();
 		}
 
@@ -1090,6 +1082,9 @@ namespace Taskmaster.Process
 			watchlist_cts = new CancellationTokenSource();
 		}
 
+		/// <summary>
+		/// Locks watchlist_lock
+		/// </summary>
 		public void SortWatchlist()
 		{
 			try
@@ -1097,15 +1092,18 @@ namespace Taskmaster.Process
 				var token = watchlist_cts.Token;
 
 				if (Trace) Logging.DebugMsg("SORTING PROCESS MANAGER WATCHLIST");
-				WatchlistCache.Value.Sort(WatchlistSorter);
+				lock (watchlist_lock)
+				{
+					WatchlistCache.Value.Sort(WatchlistSorter);
 
-				if (token.IsCancellationRequested) return; // redo?
+					if (token.IsCancellationRequested) return; // redo?
 
-				int order = 0;
-				foreach (var prc in WatchlistCache.Value)
-					prc.ActualOrder = order++;
+					int order = 0;
+					foreach (var prc in WatchlistCache.Value)
+						prc.ActualOrder = order++;
 
-				NeedSort = false;
+					NeedSort = false;
+				}
 
 				// TODO: Signal UI the actual order may have changed
 				WatchlistSorted?.Invoke(this, EventArgs.Empty);
@@ -1189,7 +1187,7 @@ namespace Taskmaster.Process
 					ExeToController.TryRemove(exe, out _);
 			}
 
-			lock (watchlist_lock) RenewWatchlistCache();
+			RenewWatchlistCache();
 
 			prc.Modified -= ProcessModified;
 			prc.Paused -= ProcessPausedProxy;
@@ -1448,12 +1446,11 @@ namespace Taskmaster.Process
 
 			List<Controller> lcache = null;
 
-			lock (watchlist_lock)
-			{
-				//RenewWatchlistCache(); // this doesn't need to be done every time
-				lcache = WatchlistCache.Value;
-				if (NeedSort) SortWatchlist();
-			}
+			lock (watchlist_lock) lcache = WatchlistCache.Value;
+
+			//RenewWatchlistCache(); // this doesn't need to be done every time
+			lcache = WatchlistCache.Value;
+			if (NeedSort) SortWatchlist();
 
 			// TODO: This needs to be FASTER
 			// Can't parallelize...
@@ -1822,11 +1819,13 @@ namespace Taskmaster.Process
 			}
 		}
 
-		void EndExclusiveMode(ProcessEx info)
+		async Task EndExclusiveMode(ProcessEx info)
 		{
 			if (disposed) return;
 
 			lock (info) if (!info.Exclusive) return;
+
+			await Task.Delay(0).ConfigureAwait(false);
 
 			try
 			{
@@ -2217,14 +2216,13 @@ namespace Taskmaster.Process
 
 			Cleanup();
 
-			lock (watchlist_lock) SortWatchlist();
+			SortWatchlist();
 
 			var now = DateTimeOffset.UtcNow;
-			foreach (var item in ScanBlockList)
-			{
-				if (item.Value.TimeTo(now).TotalSeconds > 5d)
-					ScanBlockList.TryRemove(item.Key, out _);
-			}
+			foreach (var item in from item in ScanBlockList
+								 where item.Value.TimeTo(now).TotalSeconds > 5d
+								 select item)
+				ScanBlockList.TryRemove(item.Key, out _);
 		}
 
 		int cleanup_lock = 0;
@@ -2408,7 +2406,7 @@ namespace Taskmaster.Process
 				Services.Clear();
 
 				ExclusiveList?.Clear();
-				lock (Exclusive_lock) MKAh.Utility.DiscardExceptions(() => ExclusiveEnd());
+				lock (Exclusive_lock) try { ExclusiveEnd(); } catch { }
 			}
 
 			OnDisposed?.Invoke(this, DisposedEventArgs.Empty);
