@@ -227,7 +227,7 @@ namespace Taskmaster.Network
 
 			DateTimeOffset lastUpdate = DateTimeOffset.MinValue;
 			if (DateTimeOffset.TryParse(dns.Get("Last attempt")?.String ?? string.Empty, out lastUpdate)
-				&& lastUpdate.TimeTo(DateTimeOffset.UtcNow).TotalMinutes > 15d)
+				&& lastUpdate.TimeTo(DateTimeOffset.UtcNow).TotalMinutes < 15d)
 			{
 				Log.Debug("<Net:DynDNS> Delaying update timer.");
 				await Task.Delay(TimeSpan.FromMinutes(15)).ConfigureAwait(false);
