@@ -171,7 +171,7 @@ namespace Taskmaster.Network
 
 			LoadConfig();
 
-			InterfaceInitialization();
+			var devs = CurrentInterfaceList.Value;
 
 			SampleTimer = new System.Timers.Timer(PacketStatTimerInterval * 1_000);
 			SampleTimer.Elapsed += AnalyzeTrafficBehaviour;
@@ -221,9 +221,9 @@ namespace Taskmaster.Network
 			using var netcfg = Config.Load(NetConfigFilename);
 			var dns = netcfg.Config["DNS Updating"];
 			if (!IPAddress.TryParse(dns.Get("Last known IPv4")?.String ?? string.Empty, out DNSOldIPv4))
-				DNSOldIPv4 = IPAddress.Any;
+				DNSOldIPv4 = IPAddress.None;
 			if (!IPAddress.TryParse(dns.Get("Last known IPv6")?.String ?? string.Empty, out DNSOldIPv6))
-				DNSOldIPv6 = IPAddress.Any;
+				DNSOldIPv6 = IPAddress.IPv6None;
 
 			DateTimeOffset lastUpdate = DateTimeOffset.MinValue;
 			if (DateTimeOffset.TryParse(dns.Get("Last attempt")?.String ?? string.Empty, out lastUpdate)
@@ -240,35 +240,33 @@ namespace Taskmaster.Network
 
 
 		int DynDNSFailures = 0;
-		IPAddress DNSOldIPv4 = IPAddress.Any, DNSOldIPv6 = IPAddress.Any;
+		IPAddress DNSOldIPv4 = IPAddress.None, DNSOldIPv6 = IPAddress.IPv6None;
 		async void DynDNSTimer_Elapsed(object _)
 		{
 			if (DynDNSTimer is null) return;
 
 			Log.Debug("<Net:DynDNS> Timer");
 
+			IPAddress curIPv4, curIPv6;
+			lock (address_lock)
+			{
+				curIPv4 = IPv4Address;
+				curIPv6 = IPv6Address;
+			}
+
 			try
 			{
+				using var netcfg = Config.Load(NetConfigFilename);
+				var dns = netcfg.Config["DNS Updating"];
+
+				bool updateIPs = false;
 				if (!DynamicDNSForcedUpdate)
 				{
-					if (!DNSOldIPv4.Equals(IPv4Address) || !DNSOldIPv6.Equals(IPv6Address))
+					if (!DNSOldIPv4.Equals(curIPv4) || !DNSOldIPv6.Equals(curIPv6))
 					{
-						DNSOldIPv4 = IPv4Address;
-						DNSOldIPv6 = IPv6Address;
-
-						using var netcfg = Config.Load(NetConfigFilename);
-						var dns = netcfg.Config["DNS Updating"];
-						try
-						{
-							dns["Last known IPv4"].String = IPv4Address.ToString();
-						}
-						catch { }
-						try
-						{
-							dns["Last known IPv6"].String = IPv6Address.ToString();
-						}
-						catch { }
-						dns["Last attempt"].String = DateTimeOffset.UtcNow.ToString("u");
+						updateIPs = true;
+						DNSOldIPv4 = curIPv4;
+						DNSOldIPv6 = curIPv6;
 					}
 					else
 					{
@@ -279,7 +277,16 @@ namespace Taskmaster.Network
 
 				bool success = await DynamicDNSUpdate().ConfigureAwait(false);
 				if (success)
+				{
 					DynDNSFailures = 0;
+					try
+					{
+						dns["Last attempt"].String = DateTimeOffset.UtcNow.ToString("u");
+						dns["Last IPv4"].String = curIPv4.ToString();
+						dns["Last IPv6"].String = curIPv6.ToString();
+					}
+					catch { }
+				}
 				else if (DynDNSFailures++ > 3)
 				{
 					Log.Error("<Net:DynDNS> Update failed too many times, stopping updates.");
@@ -527,10 +534,7 @@ namespace Taskmaster.Network
 		{
 			get
 			{
-				lock (uptime_lock)
-				{
-					return UptimeSamples.Count > 0 ? UptimeSamples.Average() : double.PositiveInfinity;
-				}
+				lock (uptime_lock) return UptimeSamples.Count > 0 ? UptimeSamples.Average() : double.PositiveInfinity;
 			}
 		}
 
@@ -730,56 +734,26 @@ namespace Taskmaster.Network
 
 		readonly List<IPAddress> AddressList = new List<IPAddress>(2);
 		// List<NetworkInterface> PublicInterfaceList = new List<NetworkInterface>(2);
+
+		readonly object address_lock = new object();
+
 		IPAddress IPv4Address = IPAddress.None;
 		NetworkInterface IPv4Interface;
 		IPAddress IPv6Address = IPAddress.IPv6None;
 		NetworkInterface IPv6Interface;
 
-		void InterfaceInitialization()
-		{
-			if (disposed) throw new ObjectDisposedException(nameof(Manager), "InterfaceInitialization called after NetManager was disposed.");
-
-			bool ipv4 = false, ipv6 = false;
-			NetworkInterface[] adapters = NetworkInterface.GetAllNetworkInterfaces();
-			foreach (NetworkInterface n in adapters)
-			{
-				if (n.NetworkInterfaceType == NetworkInterfaceType.Loopback || n.NetworkInterfaceType == NetworkInterfaceType.Tunnel)
-					continue;
-
-				// TODO: Implement smarter looping; Currently allows getting address across NICs.
-
-				IPAddress[] ipa = n.GetAddresses();
-				foreach (IPAddress ip in ipa)
-				{
-					switch (ip.AddressFamily)
-					{
-						case System.Net.Sockets.AddressFamily.InterNetwork:
-							IPv4Address = ip;
-							IPv4Interface = n;
-							ipv4 = true;
-							// PublicInterfaceList.Add(n);
-							break;
-						case System.Net.Sockets.AddressFamily.InterNetworkV6:
-							IPv6Address = ip;
-							IPv6Interface = n;
-							ipv6 = true;
-							// PublicInterfaceList.Add(n);
-							break;
-					}
-
-					if (ipv4 && ipv6) goto FoundAddresses;
-				}
-
-				if (ipv4 && ipv6) break;
-			}
-
-		FoundAddresses:;
-		}
-
 		/// <summary>
 		/// Resets <see cref="CurrentInterfaceList"/>.
 		/// </summary>
 		void InvalidateInterfaceList() => CurrentInterfaceList = new Lazy<List<Device>>(RecreateInterfaceList, false);
+
+		public List<Device> GetInterfaces()
+		{
+			if (disposed) throw new ObjectDisposedException(nameof(Manager), "GetInterfaces called after NetManager was disposed.");
+
+			InvalidateInterfaceList();
+			return CurrentInterfaceList.Value;
+		}
 
 		List<Device> RecreateInterfaceList()
 		{
@@ -793,60 +767,75 @@ namespace Taskmaster.Network
 
 				// var ifacelist = new List<string[]>();
 
-				var index = 0;
-				NetworkInterface[] adapters = NetworkInterface.GetAllNetworkInterfaces();
-				foreach (NetworkInterface dev in adapters)
+				lock (address_lock)
 				{
-					var ti = index++;
-					if (dev.NetworkInterfaceType == NetworkInterfaceType.Loopback || dev.NetworkInterfaceType == NetworkInterfaceType.Tunnel)
-						continue;
-
-					var stats = dev.GetIPStatistics();
-
-					bool found4 = false, found6 = false;
-					IPAddress _ipv4 = IPAddress.None, _ipv6 = IPAddress.None;
-					foreach (UnicastIPAddressInformation ip in dev.GetIPProperties().UnicastAddresses)
+					var index = 0;
+					var adapters = NetworkInterface.GetAllNetworkInterfaces();
+					foreach (NetworkInterface dev in adapters)
 					{
-						switch (ip.Address.AddressFamily)
+						var ti = index++;
+						if (dev.NetworkInterfaceType == NetworkInterfaceType.Loopback || dev.NetworkInterfaceType == NetworkInterfaceType.Tunnel)
+							continue;
+
+						var stats = dev.GetIPStatistics();
+
+						bool found4 = false, found6 = false;
+						IPAddress _ipv4 = IPAddress.None, _ipv6 = IPAddress.IPv6None;
+						foreach (UnicastIPAddressInformation ip in dev.GetIPProperties().UnicastAddresses)
 						{
-							case System.Net.Sockets.AddressFamily.InterNetwork:
-								var address = ip.Address.GetAddressBytes();
-								if (!(address[0] == 169 && address[1] == 254)) // ignore link-local
-								{
-									_ipv4 = ip.Address;
-									found4 = true;
-								}
-								break;
-							case System.Net.Sockets.AddressFamily.InterNetworkV6:
-								if (!ip.Address.IsIPv6LinkLocal && !ip.Address.IsIPv6SiteLocal)
-								{
-									_ipv6 = ip.Address;
-									found6 = true;
-								}
-								break;
+							switch (ip.Address.AddressFamily)
+							{
+								case System.Net.Sockets.AddressFamily.InterNetwork:
+									var address = ip.Address.GetAddressBytes();
+									if (!(address[0] == 169 && address[1] == 254)) // ignore link-local
+									{
+										_ipv4 = ip.Address;
+										found4 = true;
+									}
+									break;
+								case System.Net.Sockets.AddressFamily.InterNetworkV6:
+									if (!ip.Address.IsIPv6LinkLocal && !ip.Address.IsIPv6SiteLocal)
+									{
+										_ipv6 = ip.Address;
+										found6 = true;
+									}
+									break;
+							}
+
+							if (found4 && found6) break; // kinda bad, but meh
 						}
 
-						if (found4 && found6) break; // kinda bad, but meh
+						var devi = new Device
+						{
+							Index = ti,
+							Id = Guid.Parse(dev.Id),
+							Name = dev.Name,
+							Type = dev.NetworkInterfaceType,
+							Status = dev.OperationalStatus,
+							Speed = dev.Speed,
+							IPv4Address = _ipv4,
+							IPv6Address = _ipv6,
+						};
+
+						if (_ipv4 != IPAddress.None)
+						{
+							IPv4Address = _ipv4;
+							IPv4Interface = dev;
+						}
+
+						if (_ipv6 != IPAddress.IPv6None)
+						{
+							IPv6Address = _ipv6;
+							IPv6Interface = dev;
+						}
+
+						devi.Incoming.From(stats, true);
+						devi.Outgoing.From(stats, false);
+						// devi.PrintStats();
+						ifacelistt.Add(devi);
+
+						if (DebugNet) Log.Verbose("<Network> Interface: " + dev.Name);
 					}
-
-					var devi = new Device
-					{
-						Index = ti,
-						Id = Guid.Parse(dev.Id),
-						Name = dev.Name,
-						Type = dev.NetworkInterfaceType,
-						Status = dev.OperationalStatus,
-						Speed = dev.Speed,
-						IPv4Address = _ipv4,
-						IPv6Address = _ipv6,
-					};
-
-					devi.Incoming.From(stats, true);
-					devi.Outgoing.From(stats, false);
-					// devi.PrintStats();
-					ifacelistt.Add(devi);
-
-					if (DebugNet) Log.Verbose("<Network> Interface: " + dev.Name);
 				}
 			}
 			finally
@@ -855,14 +844,6 @@ namespace Taskmaster.Network
 			}
 
 			return ifacelistt;
-		}
-
-		public List<Device> GetInterfaces()
-		{
-			if (disposed) throw new ObjectDisposedException(nameof(Manager), "GetInterfaces called after NetManager was disposed.");
-
-			InvalidateInterfaceList();
-			return CurrentInterfaceList.Value;
 		}
 
 		// 
@@ -884,10 +865,11 @@ namespace Taskmaster.Network
 				IPAddress oldV6Address = IPv6Address;
 				IPAddress oldV4Address = IPv4Address;
 
-				InterfaceInitialization(); // Update IPv4Address & IPv6Address
+				var devs = GetInterfaces();
+				IPAddress newIPv4 = IPv4Address, newIPv6 = IPv6Address;
 
 				bool ipv4changed, ipv6changed, ipchanged = false;
-				ipchanged |= ipv4changed = !oldV4Address.Equals(IPv4Address);
+				ipchanged |= ipv4changed = !oldV4Address.Equals(newIPv4);
 
 				var sbs = new StringBuilder();
 
@@ -897,19 +879,19 @@ namespace Taskmaster.Network
 					Log.Information("<Network> Internet connection restored.");
 				}
 
-				ipchanged |= ipv6changed = !oldV6Address.Equals(IPv6Address);
+				ipchanged |= ipv6changed = !oldV6Address.Equals(newIPv6);
 
 				if (ipchanged)
 				{
 					if (ipv4changed)
 					{
-						sbs.AppendLine("IPv4 address changed.").AppendLine(IPv4Address.ToString());
-						Log.Information($"<Network> IPv4 address changed: {oldV4Address} → {IPv4Address}");
+						sbs.AppendLine("IPv4 address changed.").AppendLine(oldV4Address.ToString());
+						Log.Information($"<Network> IPv4 address changed: {oldV4Address} → {newIPv4}");
 					}
 					if (ipv6changed)
 					{
-						sbs.AppendLine("IPv6 address changed.").AppendLine(IPv6Address.ToString());
-						Log.Information($"<Network> IPv6 address changed: {oldV6Address} → {IPv6Address}");
+						sbs.AppendLine("IPv6 address changed.").AppendLine(oldV6Address .ToString());
+						Log.Information($"<Network> IPv6 address changed: {oldV6Address} → {newIPv6}");
 					}
 
 					Tray.Tooltip(4000, sbs.ToString(), Name, System.Windows.Forms.ToolTipIcon.Warning);
@@ -1051,9 +1033,7 @@ namespace Taskmaster.Network
 		void StopUpdateNetworkState()
 		{
 			lock (NetworkStatus_lock)
-			{
 				NetworkStatusReport = new System.Threading.Timer(UpdateNetworkState, null, System.Threading.Timeout.Infinite, System.Threading.Timeout.Infinite);
-			}
 		}
 
 		// TODO: Make network status reporting more centralized
