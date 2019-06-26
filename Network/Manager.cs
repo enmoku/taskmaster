@@ -142,7 +142,8 @@ namespace Taskmaster.Network
 				else
 				{
 					DynamicDNSHost = new Uri(host, UriKind.Absolute);
-					Log.Information("<Net:DynDNS> Enabled.");
+					Log.Information($"<Net:DynDNS> Enabled (frequency: {DynamicDNSFrequency:g})");
+					Logging.DebugMsg($"Dynamic DNS update frequency in minutes: {DynamicDNSFrequency.TotalMinutes:N1}");
 				}
 			}
 			else
@@ -225,17 +226,18 @@ namespace Taskmaster.Network
 			if (!IPAddress.TryParse(dns.Get("Last known IPv6")?.String ?? string.Empty, out DNSOldIPv6))
 				DNSOldIPv6 = IPAddress.IPv6None;
 
+			var TimerStartDelay = TimeSpan.FromSeconds(10d);
 			DateTimeOffset lastUpdate = DateTimeOffset.MinValue;
 			if (DateTimeOffset.TryParse(dns.Get("Last attempt")?.String ?? string.Empty, out lastUpdate)
 				&& lastUpdate.TimeTo(DateTimeOffset.UtcNow).TotalMinutes < 15d)
 			{
 				Log.Debug("<Net:DynDNS> Delaying update timer.");
-				await Task.Delay(TimeSpan.FromMinutes(15)).ConfigureAwait(false);
+				TimerStartDelay = TimeSpan.FromMinutes(15d);
 			}
 			else
 				Log.Debug("<Net:DynDNS> Starting update timer.");
 
-			DynDNSTimer = new System.Threading.Timer(DynDNSTimer_Elapsed, null, DynamicDNSFrequency, DynamicDNSFrequency);
+			DynDNSTimer = new System.Threading.Timer(DynDNSTimer_Elapsed, null, TimerStartDelay, DynamicDNSFrequency);
 		}
 
 
