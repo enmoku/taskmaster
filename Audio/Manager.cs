@@ -57,10 +57,12 @@ namespace Taskmaster.Audio
 		/// Games, voice communication, etc.
 		/// </summary>
 		public Device ConsoleDevice { get; private set; } = null;
+
 		/// <summary>
 		/// Multimedia, Movies, etc.
 		/// </summary>
 		public Device MultimediaDevice { get; private set; } = null;
+
 		/// <summary>
 		/// Voice capture.
 		/// </summary>
@@ -210,7 +212,6 @@ namespace Taskmaster.Audio
 					UnregisterDevice(ConsoleDevice);
 					ConsoleDevice = null;
 				}
-
 			}
 			catch (Exception ex)
 			{
@@ -281,6 +282,7 @@ namespace Taskmaster.Audio
 		}
 
 		Process.Manager processmanager = null;
+
 		public void Hook(Process.Manager procman)
 		{
 			processmanager = procman;

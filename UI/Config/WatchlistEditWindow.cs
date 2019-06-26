@@ -94,10 +94,7 @@ namespace Taskmaster.UI.Config
 				CausesValidation = true,
 			};
 
-			friendlyName.Validating += (_, ea) =>
-			{
-				ea.Cancel = !ValidateName(friendlyName, InvalidCharacters);
-			};
+			friendlyName.Validating += (_, ea) => ea.Cancel = !ValidateName(friendlyName, InvalidCharacters);
 			tooltip.SetToolTip(friendlyName, "Human readable name, for user convenience.\nInvalid characters: ], #, and ;");
 			lt.Controls.Add(friendlyName);
 
@@ -170,9 +167,11 @@ namespace Taskmaster.UI.Config
 				try
 				{
 					// WinForms does not support positioning this
-					using var folderdialog = new FolderBrowserDialog();
-					folderdialog.ShowNewFolderButton = false;
-					folderdialog.RootFolder = Environment.SpecialFolder.MyComputer;
+					using var folderdialog = new FolderBrowserDialog
+					{
+						ShowNewFolderButton = false,
+						RootFolder = Environment.SpecialFolder.MyComputer
+					};
 					if (folderdialog.ShowDialog(this) == DialogResult.OK && !string.IsNullOrEmpty(folderdialog.SelectedPath))
 						pathName.Text = folderdialog.SelectedPath;
 				}
@@ -638,11 +637,8 @@ namespace Taskmaster.UI.Config
 				}
 
 				// disable volume control if method is to ignore it
-				volume.Enabled = !(volumeMethod.SelectedIndex == 5);
-				volumeMethod.SelectedIndexChanged += (_, _ea) =>
-				{
-					volume.Enabled = !(volumeMethod.SelectedIndex == 5);
-				};
+				volume.Enabled = volumeMethod.SelectedIndex != 5;
+				volumeMethod.SelectedIndexChanged += (_, _ea) => volume.Enabled = volumeMethod.SelectedIndex != 5;
 			}
 
 			if (!PowerManagerEnabled) powerPlan.Enabled = false;
@@ -985,7 +981,7 @@ namespace Taskmaster.UI.Config
 				{
 					if (box.TextLength > 0)
 					{
-
+						// Uh?
 					}
 				}
 			}

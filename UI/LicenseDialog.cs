@@ -67,7 +67,7 @@ namespace Taskmaster
 
 			licensebox.Text = Properties.Resources.LICENSE.Replace("\t\t", "\t").TrimEnd('\n', ' ');
 
-			licensebox.Height = (licensebox.Lines.Count() * 16);
+			licensebox.Height = (licensebox.Lines.Length * 16);
 			licensebox.Width = 640;
 			licensebox.SelectionStart = 0;
 			licensebox.SelectionLength = 0;

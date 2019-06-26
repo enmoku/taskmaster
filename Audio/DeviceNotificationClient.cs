@@ -145,7 +145,6 @@ namespace Taskmaster.Audio
 			{
 				Logging.Stacktrace(ex);
 			}
-
 		}
 	}
 }

@@ -200,6 +200,7 @@ namespace Taskmaster
 
 		bool CriticalMemoryWarning = false;
 		DateTimeOffset EmergencyOffset = DateTimeOffset.MinValue;
+
 		private void EmergencyTick(object sender, System.Timers.ElapsedEventArgs e)
 		{
 			try
@@ -348,6 +349,7 @@ namespace Taskmaster
 		}
 
 		uint LastTick = uint.MinValue;
+
 		async Task CheckSystem()
 		{
 			if (DisposedOrDisposing) throw new ObjectDisposedException(nameof(HealthMonitor), "CheckSystem called after HealthMonitor was disposed.");

@@ -126,7 +126,7 @@ namespace Taskmaster.Process
 			}
 			catch (TaskCanceledException)
 			{
-
+				// NOP
 			}
 		}
 
@@ -149,6 +149,7 @@ namespace Taskmaster.Process
 		public int DefaultBackgroundAffinity = 0;
 
 		ForegroundManager activeappmonitor = null;
+
 		public void Hook(ForegroundManager manager)
 		{
 			activeappmonitor = manager;
@@ -157,6 +158,7 @@ namespace Taskmaster.Process
 		}
 
 		Power.Manager powermanager = null;
+
 		public void Hook(Power.Manager manager)
 		{
 			powermanager = manager;
@@ -171,6 +173,7 @@ namespace Taskmaster.Process
 		public void Unignore(int pid) => IgnorePids.TryRemove(pid, out _);
 
 		int freemem_lock = 0;
+
 		public async Task FreeMemory(string executable = null, bool quiet = false, int ignorePid = -1)
 		{
 			if (!PagingEnabled) return;
@@ -291,6 +294,7 @@ namespace Taskmaster.Process
 		public event EventHandler<HandlingStateChangeEventArgs> HandlingStateChange;
 
 		int hastenscan = 0;
+
 		public async void HastenScan(int delay = 15, bool forceSort = false)
 		{
 			// delay is unused but should be used somehow
@@ -345,6 +349,7 @@ namespace Taskmaster.Process
 		int ScanFoundProcs = 0;
 
 		int scan_lock = 0;
+
 		bool Scan(int ignorePid = -1, string ignoreExe = null, bool PageToDisk = false)
 		{
 			if (disposed) throw new ObjectDisposedException(nameof(Manager), "Scan called when ProcessManager was already disposed");
@@ -391,7 +396,6 @@ namespace Taskmaster.Process
 							catch { }
 						}
 						pageList.Clear();
-
 					}, cts.Token).ConfigureAwait(false);
 				}
 
@@ -446,7 +450,6 @@ namespace Taskmaster.Process
 				}
 
 				if (DebugScan) Log.Verbose($"<Process> Checking: {name} (#{pid})");
-
 
 				if (WaitForExitList.TryGetValue(pid, out ProcessEx info))
 				{
@@ -744,7 +747,6 @@ namespace Taskmaster.Process
 
 			var exsec = corecfg.Config["Experimental"];
 			WindowResizeEnabled = exsec.Get("Window Resize")?.Bool ?? false;
-
 
 			var sbs = new StringBuilder();
 			sbs.Append("<Process> ");
@@ -1630,7 +1632,7 @@ namespace Taskmaster.Process
 		/// </summary>
 		async Task ForegroundWatch(ProcessEx info)
 		{
-			if (disposed) throw new ObjectDisposedException(nameof(Manager), "ForegroundWatch called when ProcessManager was already disposed"); ;
+			if (disposed) throw new ObjectDisposedException(nameof(Manager), "ForegroundWatch called when ProcessManager was already disposed");
 
 			var prc = info.Controller;
 
@@ -1942,7 +1944,7 @@ namespace Taskmaster.Process
 			finally
 			{
 				Statistics.WMIPollTime += timer.Elapsed.TotalSeconds;
-				Statistics.WMIPolling += 1;
+				Statistics.WMIPolling++;
 			}
 
 			Log.Debug($"<Process> {name} (#{pid}; parent #{ppid})");
@@ -2016,7 +2018,7 @@ namespace Taskmaster.Process
 				finally
 				{
 					Statistics.WMIPollTime += timer.Elapsed.TotalSeconds;
-					Statistics.WMIPolling += 1;
+					Statistics.WMIPolling++;
 				}
 
 				if (DebugAdjustDelay)
@@ -2226,6 +2228,7 @@ namespace Taskmaster.Process
 		}
 
 		int cleanup_lock = 0;
+
 		/// <summary>
 		/// Cleanup.
 		/// </summary>
@@ -2234,7 +2237,7 @@ namespace Taskmaster.Process
 		/// </remarks>
 		public async void Cleanup()
 		{
-			if (disposed) throw new ObjectDisposedException(nameof(Manager), "Cleanup called when ProcessManager was already disposed"); ;
+			if (disposed) throw new ObjectDisposedException(nameof(Manager), "Cleanup called when ProcessManager was already disposed");
 
 			if (!Atomic.Lock(ref cleanup_lock)) return; // already in progress
 

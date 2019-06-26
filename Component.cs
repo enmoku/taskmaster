@@ -54,9 +54,10 @@ namespace Taskmaster
 		public bool RequireMainThread { get; set; }
 	}
 
+	[AttributeUsage(AttributeTargets.Class, AllowMultiple = true, Inherited = false)]
 	public class DependencyAttribute : Attribute
 	{
-		public Type Dependency { get; private set; }
+		public Type Dependency { get; }
 
 		public DependencyAttribute(Type type) => Dependency = type;
 	}

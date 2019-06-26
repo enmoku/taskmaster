@@ -181,6 +181,7 @@ namespace Taskmaster
 		public ProcessorLoad GetLoad { get; private set; } = new ProcessorLoad();
 
 		Process.Manager processmanager = null;
+
 		public void Hook(Process.Manager manager)
 		{
 			processmanager = manager;

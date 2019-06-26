@@ -124,6 +124,7 @@ namespace Taskmaster
 		}
 
 		DateTimeOffset LastTempScan = DateTimeOffset.MinValue;
+
 		async void ReScanTemp()
 		{
 			if (DisposedOrDisposing) return;
@@ -154,14 +155,14 @@ namespace Taskmaster
 				foreach (FileInfo fi in dinfo.GetFiles())
 				{
 					stats.Size += fi.Length;
-					stats.Files += 1;
+					stats.Files++;
 					if (i++ % 100 == 0) TempScan?.Invoke(null, dea);
 				}
 
 				foreach (System.IO.DirectoryInfo di in dinfo.GetDirectories())
 				{
 					DirectorySize(di, ref stats);
-					stats.Dirs += 1;
+					stats.Dirs++;
 
 					if (i++ % 100 == 0) TempScan?.Invoke(null, dea);
 				}
@@ -222,6 +223,7 @@ namespace Taskmaster
 		public event EventHandler<DisposedEventArgs> OnDisposed;
 
 		bool DisposedOrDisposing = false;
+
 		protected override void Dispose(bool disposing)
 		{
 			if (DisposedOrDisposing) return;

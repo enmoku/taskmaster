@@ -304,7 +304,7 @@ namespace Taskmaster.UI.Config
 					else
 						uninstallButton.Enabled = true;
 
-					UpdateNGenState(!(proc.ExitCode == 0));
+					UpdateNGenState(proc.ExitCode != 0);
 				}
 			}
 			catch (Exception ex)

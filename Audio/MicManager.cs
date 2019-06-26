@@ -336,7 +336,7 @@ namespace Taskmaster.Audio
 
 						devices.Add(mdev);
 
-						if (Trace) Log.Verbose("<Microphone> Device: " + mdev.Name + " [GUID: " + mdev.GUID + "]");
+						if (Trace) Log.Verbose($"<Microphone> Device: {mdev.Name} [GUID: {mdev.GUID.ToString()}]");
 					}
 					catch (OutOfMemoryException) { throw; }
 					catch (Exception ex)
@@ -345,7 +345,7 @@ namespace Taskmaster.Audio
 					}
 				}
 
-				if (Trace) Log.Verbose("<Microphone> " + KnownDevices.Count + " microphone(s)");
+				if (Trace) Log.Verbose("<Microphone> " + KnownDevices.Count.ToString() + " microphone(s)");
 			}
 			catch (OutOfMemoryException) { throw; }
 			catch (Exception ex)
@@ -407,7 +407,7 @@ namespace Taskmaster.Audio
 							oldVol = VolumeControl.Percent;
 							Log.Information($"<Microphone> Correcting volume from {oldVol:N1} to {Target:N1}");
 							Volume = Target;
-							Corrections += 1;
+							Corrections++;
 							VolumeChanged?.Invoke(this, new VolumeChangedEventArgs { Old = oldVol, New = Target, Corrections = Corrections });
 						}
 						else

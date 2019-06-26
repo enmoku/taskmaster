@@ -30,6 +30,7 @@ namespace Taskmaster
 	public class LinearMeter
 	{
 		long _peak = long.MaxValue;
+
 		public long Peak
 		{
 			get => _peak;
@@ -75,7 +76,7 @@ namespace Taskmaster
 
 		public bool IsPeaked => Level == Peak;
 		public bool IsEmpty => Level == 0;
-		public bool IsEmptyOrPeaked => (IsEmpty || IsPeaked);
+		public bool IsEmptyOrPeaked => IsEmpty || IsPeaked;
 
 		// pumps the internal value, returns if
 		/// <summary>

@@ -53,10 +53,12 @@ namespace Taskmaster.Process
 		/// Process gone to background
 		/// </summary>
 		public event EventHandler<ProcessModificationEventArgs> Paused;
+
 		/// <summary>
 		/// Process back on foreground.
 		/// </summary>
 		public event EventHandler<ProcessModificationEventArgs> Resumed;
+
 		/// <summary>
 		/// Process is waiting for exit.
 		/// </summary>
@@ -85,6 +87,7 @@ namespace Taskmaster.Process
 		public string FriendlyName { get; private set; } = null;
 
 		internal string[] p_Executable = null;
+
 		/// <summary>
 		/// Executable filename related to this, with extension.
 		/// </summary>
@@ -176,6 +179,7 @@ namespace Taskmaster.Process
 		public string Description { get; set; } = string.Empty; // TODO: somehow unload this from memory
 
 		float _volume = 0.5f;
+
 		/// <summary>
 		/// Volume as 0.0 to 1.0 
 		/// </summary>
@@ -221,6 +225,7 @@ namespace Taskmaster.Process
 		int ScatterChunk = 1; // should default to Cores/4 or Range/2 at max, 1 at minimum.
 
 		int _affinityIdeal = -1;
+
 		public int AffinityIdeal // EXPERIMENTAL
 		{
 			get => _affinityIdeal;
@@ -343,7 +348,7 @@ namespace Taskmaster.Process
 			switch (Foreground)
 			{
 				case ForegroundMode.Ignore:
-					if (BackgroundAffinity >= 0 || BackgroundPriority.HasValue || BackgroundPowerdown == true)
+					if (BackgroundAffinity >= 0 || BackgroundPriority.HasValue || BackgroundPowerdown)
 						FixedSomething = ForegroundFixed = true;
 					if (BackgroundAffinity >= 0)
 					{
@@ -922,10 +927,12 @@ namespace Taskmaster.Process
 		/// How many times we've touched associated processes.
 		/// </summary>
 		public int Adjusts { get; set; } = 0;
+
 		/// <summary>
 		/// Last seen any associated process.
 		/// </summary>
 		public DateTimeOffset LastSeen { get; set; } = DateTimeOffset.MinValue;
+
 		/// <summary>
 		/// Last modified any associated process.
 		/// </summary>
@@ -1069,7 +1076,7 @@ namespace Taskmaster.Process
 								// c:\programs\brand\app\v2.5\x256\bin\app.exe -> c:\programs\brand\app\...\app.exe
 
 								parts.RemoveRange(4, parts.Count - 5);
-								parts[0] = parts[0] + System.IO.Path.DirectorySeparatorChar; // Path.Combine handles drive letter weird
+								parts[0] += System.IO.Path.DirectorySeparatorChar; // Path.Combine handles drive letter weird
 								parts.Insert(parts.Count - 1, HumanReadable.Generic.Ellipsis);
 							}
 
@@ -1215,8 +1222,8 @@ namespace Taskmaster.Process
 						}
 
 						bool expected = false;
-						if ((Priority.HasValue && info.Process.PriorityClass != Priority.Value) ||
-							(AffinityMask >= 0 && info.Process.ProcessorAffinity.ToInt32() != AffinityMask))
+						if ((Priority.HasValue && info.Process.PriorityClass != Priority.Value)
+							|| (AffinityMask >= 0 && info.Process.ProcessorAffinity.ToInt32() != AffinityMask))
 						{
 							ormt.ExpectedState--;
 							Logging.DebugMsg($"[{FriendlyName}] {FormatPathName(info)} (#{info.Id.ToString()}) Recently Modified ({ormt.ExpectedState}) ---");
@@ -1229,8 +1236,8 @@ namespace Taskmaster.Process
 							expected = true;
 						}
 
-						if (ormt.LastIgnored.TimeTo(now) < Manager.IgnoreRecentlyModified ||
-							ormt.LastModified.TimeTo(now) < Manager.IgnoreRecentlyModified)
+						if (ormt.LastIgnored.TimeTo(now) < Manager.IgnoreRecentlyModified
+							|| ormt.LastModified.TimeTo(now) < Manager.IgnoreRecentlyModified)
 						{
 							if (Manager.DebugProcesses && Taskmaster.ShowInaction) Log.Debug($"[{FriendlyName}] {info.Name} (#{info.Id}) ignored due to recent modification. {(expected ? $"State unchanged ×{ormt.ExpectedState}" : $"State changed ×{ormt.ExpectedState}")}");
 
@@ -1437,7 +1444,7 @@ namespace Taskmaster.Process
 					if (mPriority || mAffinity)
 					{
 						Statistics.TouchCount++;
-						Adjusts += 1; // don't increment on power changes
+						Adjusts++; // don't increment on power changes
 					}
 
 					LastTouch = now;
@@ -1580,12 +1587,9 @@ namespace Taskmaster.Process
 		/// <summary>
 		/// Sets new affinity mask. Returns true if the new mask differs from old.
 		/// </summary>
+		// TODO: Apply affinity strategy
 		bool EstablishNewAffinity(int oldmask, out int newmask)
-		{
-			// TODO: Apply affinity strategy
-			newmask = Utility.ApplyAffinityStrategy(oldmask, AffinityMask, AffinityStrategy);
-			return (newmask != oldmask);
-		}
+			=> (newmask = Utility.ApplyAffinityStrategy(oldmask, AffinityMask, AffinityStrategy)) != oldmask;
 
 		void ApplyAffinityIdeal(ProcessEx info)
 		{
@@ -1606,6 +1610,7 @@ namespace Taskmaster.Process
 		}
 
 		int refresh_lock = 0;
+
 		async Task InternalRefresh(DateTimeOffset now)
 		{
 			if (!Atomic.Lock(ref refresh_lock)) return;
@@ -1741,8 +1746,8 @@ namespace Taskmaster.Process
 
 					NativeMethods.GetWindowRect(info.Handle, ref rect);
 
-					bool rpos = Bit.IsSet(((int)ResizeStrategy), (int)WindowResizeStrategy.Position);
-					bool rsiz = Bit.IsSet(((int)ResizeStrategy), (int)WindowResizeStrategy.Size);
+					bool rpos = Bit.IsSet((int)ResizeStrategy, (int)WindowResizeStrategy.Position);
+					bool rsiz = Bit.IsSet((int)ResizeStrategy, (int)WindowResizeStrategy.Size);
 					Resize = new System.Drawing.Rectangle(
 						rpos ? rect.Left : Resize.Value.Left, rpos ? rect.Top : Resize.Value.Top,
 						rsiz ? rect.Right - rect.Left : Resize.Value.Left, rsiz ? rect.Bottom - rect.Top : Resize.Value.Top
@@ -1774,9 +1779,9 @@ namespace Taskmaster.Process
 					//Log.Debug("Process Exit");
 				}
 
-				if ((Bit.IsSet(((int)ResizeStrategy), (int)WindowResizeStrategy.Size)
+				if ((Bit.IsSet((int)ResizeStrategy, (int)WindowResizeStrategy.Size)
 					&& (oldrect.Width != Resize.Value.Width || oldrect.Height != Resize.Value.Height))
-					|| (Bit.IsSet(((int)ResizeStrategy), (int)WindowResizeStrategy.Position)
+					|| (Bit.IsSet((int)ResizeStrategy, (int)WindowResizeStrategy.Position)
 					&& (oldrect.Left != Resize.Value.Left || oldrect.Top != Resize.Value.Top)))
 				{
 					if (DebugResize) Log.Debug($"Saving {info.Name} (#{info.Id}) size to {Resize.Value.Width}×{Resize.Value.Height}");
@@ -1909,6 +1914,7 @@ namespace Taskmaster.Process
 		public void Dispose() => Dispose(true);
 
 		bool DisposedOrDisposing; // = false;
+
 		void Dispose(bool disposing)
 		{
 			if (DisposedOrDisposing) return;

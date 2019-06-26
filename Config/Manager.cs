@@ -41,6 +41,15 @@ namespace Taskmaster.Configuration
 		readonly object config_lock = new object();
 		readonly HashSet<File> Loaded = new HashSet<File>();
 
+		/// <summary>
+		/// Loads disposable instance for the configuration file.
+		/// </summary>
+		/// <example>
+		/// Recommended usage:
+		/// <code>
+		/// using var cfg = Config.Load(file);
+		/// </coode>
+		/// </example>
 		public ScopedFile Load(string filename)
 		{
 			try

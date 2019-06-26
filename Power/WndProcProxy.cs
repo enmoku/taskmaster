@@ -58,8 +58,8 @@ namespace Taskmaster.Power
 		{
 			if (disposed || !IsHandleCreated) return;
 
-			if (m.Msg == NativeMethods.WM_POWERBROADCAST &&
-				m.WParam.ToInt32() == NativeMethods.PBT_POWERSETTINGCHANGE)
+			if (m.Msg == NativeMethods.WM_POWERBROADCAST
+				&& m.WParam.ToInt32() == NativeMethods.PBT_POWERSETTINGCHANGE)
 			{
 				var ps = (NativeMethods.POWERBROADCAST_SETTING)Marshal.PtrToStructure(m.LParam, typeof(NativeMethods.POWERBROADCAST_SETTING));
 

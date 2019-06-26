@@ -230,6 +230,7 @@ namespace Taskmaster.UI
 		public event EventHandler RescanRequest;
 
 		Process.Manager processmanager = null;
+
 		public void Hook(Process.Manager pman)
 		{
 			processmanager = pman;
@@ -237,6 +238,7 @@ namespace Taskmaster.UI
 		}
 
 		Power.Manager powermanager = null;
+
 		public void Hook(Power.Manager pman)
 		{
 			powermanager = pman;
@@ -373,6 +375,7 @@ namespace Taskmaster.UI
 		}
 
 		MainWindow mainwindow = null;
+
 		public void Hook(MainWindow window)
 		{
 			Debug.Assert(window != null, "Hooking null main window");
@@ -525,6 +528,7 @@ namespace Taskmaster.UI
 		}
 
 		int ensuringvisibility = 0;
+
 		public async void EnsureVisible()
 		{
 			if (!Atomic.Lock(ref ensuringvisibility)) return;

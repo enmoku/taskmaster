@@ -107,10 +107,7 @@ namespace Taskmaster.UI.Config
 			};
 			tooltip.SetToolTip(micmon, "Monitor default communications device and keep its volume.\nRequires audio manager to be enabled.");
 
-			audioman.CheckedChanged += (_, _ea) =>
-			{
-				micmon.Enabled = audioman.Checked;
-			};
+			audioman.CheckedChanged += (_, _ea) => micmon.Enabled = audioman.Checked;
 
 			layout.Controls.Add(new AlignedLabel { Text = "Microphone manager", Padding = BigPadding });
 			layout.Controls.Add(micmon);

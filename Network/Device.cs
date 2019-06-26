@@ -37,6 +37,7 @@ namespace Taskmaster.Network
 		public TrafficData Total { get; set; } = new TrafficData();
 
 		public DeviceTraffic() { }
+
 		public DeviceTraffic(DeviceTraffic old)
 		{
 			Index = old.Index;
@@ -56,12 +57,14 @@ namespace Taskmaster.Network
 		/// Unicast packets
 		/// </summary>
 		public long Unicast { get; set; } = 0;
+
 		/// <summary>
 		/// Broadcast and Multicast packets
 		/// </summary>
 		public long NonUnicast { get; set; } = 0;
 
 		public long Discards { get; set; } = 0;
+
 		public long Errors { get; set; } = 0;
 
 		public long Bytes { get; set; } = 0;
@@ -93,9 +96,9 @@ namespace Taskmaster.Network
 		}
 
 		public TrafficData() { }
+
 		public TrafficData(TrafficData old)
 		{
-
 			Unicast = old.Unicast;
 			NonUnicast = old.NonUnicast;
 			Discards = old.Discards;

@@ -213,7 +213,7 @@ namespace Taskmaster
 			{
 				Logging.Stacktrace(ex);
 				DialogResult = DialogResult.Abort;
-				BeginInvoke(new Action(() => { Close(); }));
+				BeginInvoke(new Action(() => Close()));
 			}
 		}
 

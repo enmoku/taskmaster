@@ -26,6 +26,7 @@
 
 using System;
 using System.Diagnostics;
+using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using MKAh;
@@ -476,7 +477,15 @@ namespace Taskmaster
 
 			var timer = System.Diagnostics.Stopwatch.StartNew();
 
-			int componentsToLoad = 11; // how to make this automatic?
+			// Reflection. Really silly way to find out how many components we have.
+			int componentsToLoad = (from asm in AppDomain.CurrentDomain.GetAssemblies().AsParallel()
+								 from t in asm.GetTypes()
+								 let len = t.GetCustomAttributes(typeof(ComponentAttribute), false).Length
+								 where len > 0
+								 select len).Sum();
+
+			componentsToLoad++; // cache
+			// above should result in 11
 
 			LoadEvent?.Invoke(null, new LoadEventArgs("Component loading starting.", LoadEventType.Info, 0, componentsToLoad));
 
@@ -547,7 +556,6 @@ namespace Taskmaster
 
 			try
 			{
-
 				if (PowerManagerEnabled)
 				{
 					Task.WhenAll(new Task[] { PowMan, CpuMon, ProcMon }).ContinueWith((_) =>

@@ -106,7 +106,7 @@ namespace Taskmaster
 		public void OnVolumeChanged(float volume, bool isMuted)
 		{
 			var sbs = new StringBuilder();
-			sbs.Append("<Audio> Volume: ").Append($"{volume:N2}").Append(", Muted: ").Append((isMuted ? "True" : "False"));
+			sbs.Append("<Audio> Volume: ").Append($"{volume:N2}").Append(", Muted: ").Append(isMuted ? "True" : "False");
 			Log.Debug(sbs.ToString());
 		}
 	}

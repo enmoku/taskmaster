@@ -362,6 +362,7 @@ namespace Taskmaster.UI
 		}
 
 		Audio.Manager audiomanager = null;
+
 		public void Hook(Audio.Manager manager)
 		{
 			Debug.Assert(manager != null);
@@ -1014,7 +1015,6 @@ namespace Taskmaster.UI
 			{
 				foreach (ToolStripItem msi in ifacems.Items)
 					msi.Enabled = (NetworkDevices.SelectedItems.Count == 1);
-
 			}
 			catch { } // discard
 		}
@@ -1650,10 +1650,7 @@ namespace Taskmaster.UI
 				CheckOnClick = true,
 				Enabled = ProcessMonitorEnabled,
 			};
-			menu_debug_adjustdelay.Click += (_, _ea) =>
-			{
-				Process.Manager.DebugAdjustDelay = menu_debug_adjustdelay.Checked;
-			};
+			menu_debug_adjustdelay.Click += (_, _ea) => Process.Manager.DebugAdjustDelay = menu_debug_adjustdelay.Checked;
 
 			var menu_debug_foreground = new ToolStripMenuItem(HumanReadable.System.Process.Foreground)
 			{
@@ -2031,6 +2028,7 @@ namespace Taskmaster.UI
 		}
 
 		ChangeLog changelog = null;
+
 		void OpenChangelog(object sender, EventArgs e)
 		{
 			if (changelog is null)
@@ -2977,7 +2975,6 @@ namespace Taskmaster.UI
 
 			try
 			{
-
 				int key = ea.Info.Id;
 				bool newitem = false;
 				if (!ProcessEventMap.TryGetValue(key, out ListViewItem item))
@@ -3394,7 +3391,6 @@ namespace Taskmaster.UI
 
 					if (processmanager.GetControllerByName(li.SubItems[NameColumn].Text, out var prc))
 					{
-
 						if (MessageBox.ShowModal("Remove watchlist item", $"Really remove '{prc.FriendlyName}'", MessageBox.Buttons.AcceptCancel, parent: this)
 							== MessageBox.ResultType.OK)
 						{
@@ -3639,6 +3635,7 @@ namespace Taskmaster.UI
 		}
 
 		DateTimeOffset LastCauseTime = DateTimeOffset.MinValue;
+
 		void PowerPlanEvent(object sender, Power.ModeEventArgs e)
 		{
 			if (!IsHandleCreated || DisposedOrDisposing) return;
@@ -3661,6 +3658,7 @@ namespace Taskmaster.UI
 		}
 
 		HardwareMonitor hardwaremonitor = null;
+
 		public void Hook(HardwareMonitor monitor)
 		{
 			hardwaremonitor = monitor;
@@ -3682,6 +3680,7 @@ namespace Taskmaster.UI
 		}
 
 		HealthMonitor healthmonitor = null;
+
 		public void Hook(HealthMonitor monitor)
 		{
 			healthmonitor = monitor;
@@ -3704,6 +3703,7 @@ namespace Taskmaster.UI
 		int skipQueues = 0;
 
 		int updatehealthmon_lock = 0;
+
 		async void UpdateHealthMon(object sender, EventArgs e)
 		{
 			if (!IsHandleCreated || DisposedOrDisposing) return;
@@ -3986,7 +3986,7 @@ namespace Taskmaster.UI
 
 		public void IPChange(object _, EventArgs ea)
 		{
-
+			// ??
 		}
 
 		void NetStatusLabelUpdate(bool available)
@@ -4047,6 +4047,7 @@ namespace Taskmaster.UI
 		}
 
 		bool alterStep = true;
+
 		void AddLog(LogEventArgs ea)
 		{
 			var msg = new ListViewItem(ea.Message);
@@ -4133,6 +4134,7 @@ namespace Taskmaster.UI
 
 		#region IDispose
 		bool DisposedOrDisposing = false;
+
 		protected override void Dispose(bool disposing)
 		{
 			if (DisposedOrDisposing) return;

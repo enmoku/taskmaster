@@ -74,6 +74,7 @@ namespace Taskmaster.Network
 		string dnstestaddress = "google.com"; // should be fine, www is omitted to avoid deeper DNS queries
 
 		int DeviceTimerInterval = 15 * 60;
+
 		/// <summary>
 		/// Seconds.
 		/// </summary>
@@ -240,9 +241,9 @@ namespace Taskmaster.Network
 			DynDNSTimer = new System.Threading.Timer(DynDNSTimer_Elapsed, null, TimerStartDelay, DynamicDNSFrequency);
 		}
 
-
 		int DynDNSFailures = 0;
 		IPAddress DNSOldIPv4 = IPAddress.None, DNSOldIPv6 = IPAddress.IPv6None;
+
 		async void DynDNSTimer_Elapsed(object _)
 		{
 			if (DynDNSTimer is null) return;
@@ -284,8 +285,11 @@ namespace Taskmaster.Network
 					try
 					{
 						dns["Last attempt"].String = DateTimeOffset.UtcNow.ToString("u");
-						dns["Last IPv4"].String = curIPv4.ToString();
-						dns["Last IPv6"].String = curIPv6.ToString();
+						if (updateIPs)
+						{
+							dns["Last IPv4"].String = curIPv4.ToString();
+							dns["Last IPv6"].String = curIPv6.ToString();
+						}
 					}
 					catch { }
 				}
@@ -507,8 +511,7 @@ namespace Taskmaster.Network
 			}
 		}
 
-		DeviceTraffic LastTraffic = new DeviceTraffic();
-		public DeviceTraffic GetCurrentTraffic => LastTraffic;
+		public DeviceTraffic GetCurrentTraffic { get; } = new DeviceTraffic();
 
 		public UI.TrayAccess Tray { get; set; } = null; // HACK: bad design
 
@@ -517,10 +520,12 @@ namespace Taskmaster.Network
 
 		readonly int MaxSamples = 20;
 		readonly List<double> UptimeSamples = new List<double>(20);
+
 		DateTimeOffset UptimeRecordStart; // since we started recording anything
+
 		DateTimeOffset LastUptimeStart, // since we last knew internet to be initialized
 			LastDowntimeStart;  // since we last knew internet to go down
-		
+
 		readonly object uptime_lock = new object();
 
 		/// <summary>
@@ -590,7 +595,7 @@ namespace Taskmaster.Network
 
 					if (online_state)
 					{
-
+						// NOP
 					}
 					else // went offline
 					{
@@ -840,9 +845,9 @@ namespace Taskmaster.Network
 					}
 				}
 			}
-			finally
+			catch (Exception ex)
 			{
-
+				Logging.Stacktrace(ex);
 			}
 
 			return ifacelistt;
@@ -996,7 +1001,6 @@ namespace Taskmaster.Network
 			try
 			{
 				var now = DateTimeOffset.UtcNow;
-
 
 				lock (NetworkStatus_lock)
 					if (LastNetworkReport.TimeTo(now).TotalSeconds < 5d) IncreaseReportDelay();

@@ -174,10 +174,10 @@ namespace Taskmaster
 
 		// Static Finalizer
 		private static readonly Finalizer finalizer = new Finalizer();
+
 		private sealed class Finalizer
 		{
 			~Finalizer() => Close();
 		}
-
 	}
 }
