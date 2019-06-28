@@ -245,10 +245,8 @@ namespace Taskmaster.Network
 
 			using var netcfg = Config.Load(NetConfigFilename);
 			var dns = netcfg.Config["DNS Updating"];
-			if (!IPAddress.TryParse(dns.Get("Last known IPv4")?.String ?? string.Empty, out DNSOldIPv4))
-				DNSOldIPv4 = IPAddress.None;
-			if (!IPAddress.TryParse(dns.Get("Last known IPv6")?.String ?? string.Empty, out DNSOldIPv6))
-				DNSOldIPv6 = IPAddress.IPv6None;
+			IPAddress.TryParse(dns.Get("Last known IPv4")?.String ?? string.Empty, out DNSOldIPv4);
+			IPAddress.TryParse(dns.Get("Last known IPv6")?.String ?? string.Empty, out DNSOldIPv6);
 
 			var TimerStartDelay = TimeSpan.FromSeconds(10d);
 			DateTimeOffset lastUpdate = DateTimeOffset.MinValue;
