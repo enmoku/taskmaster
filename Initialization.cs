@@ -522,6 +522,14 @@ namespace Taskmaster
 					.ContinueWith(_ => LoadEvent?.Invoke(null, new LoadEventArgs("Self-maintenance manager processed.", LoadEventType.SubLoaded)))
 			};
 
+			Exception cex=null;
+			if (cts.IsCancellationRequested) throw new InitFailure("Cancelled?", cex);
+			foreach (var t in init) t.ContinueWith(t => {
+				cex = t.Exception?.InnerExceptions[0] ?? null;
+				Logging.DebugMsg("Module loading failed");
+				cts.Cancel();
+			}, TaskContinuationOptions.OnlyOnFaulted);
+
 			// MMDEV requires main thread
 			try
 			{
@@ -544,48 +552,58 @@ namespace Taskmaster
 				micmonitor = null;
 				audiomanager?.Dispose();
 				audiomanager = null;
+				Logging.DebugMsg("AudioManager initialization failed");
+				cts.Cancel(throwOnFirstException: false);
+				throw;
 			}
 
+			if (cts.IsCancellationRequested) throw new InitFailure("Cancelled at 557", cex);
 			// WinForms makes the following components not load nicely if not done here (main thread).
 			trayaccess = new UI.TrayAccess();
 			trayaccess.TrayMenuShown += (_, ea) => OptimizeResponsiviness(ea.Visible);
 
-			ProcMon.ContinueWith(_ => trayaccess?.Hook(processmanager), TaskContinuationOptions.OnlyOnRanToCompletion);
+			ProcMon.ContinueWith((_, _discard) => trayaccess?.Hook(processmanager), TaskContinuationOptions.OnlyOnRanToCompletion, cts.Token);
 
 			Task.WhenAll(new[] { ProcMon, FgMon }).ContinueWith(_ => activeappmonitor?.Hook(processmanager), TaskContinuationOptions.OnlyOnRanToCompletion);
+			if (cts.IsCancellationRequested) throw new InitFailure("Cancelled at 565", cex);
 
 			try
 			{
 				if (PowerManagerEnabled)
 				{
-					Task.WhenAll(new Task[] { PowMan, CpuMon, ProcMon }).ContinueWith((_) =>
-					{
-						if (processmanager is null) throw new TaskCanceledException();
+					Task.WhenAll(new Task[] { PowMan, CpuMon, ProcMon }).ContinueWith((_, _discard) =>
+					  {
+						  if (processmanager is null) throw new TaskCanceledException();
 
-						if (cpumonitor != null)
-						{
-							cpumonitor.Hook(processmanager);
-							powermanager?.Hook(cpumonitor);
-						}
+						  if (cpumonitor != null)
+						  {
+							  cpumonitor.Hook(processmanager);
+							  powermanager?.Hook(cpumonitor);
+						  }
 
-						if (powermanager != null)
-						{
-							trayaccess.Hook(powermanager);
-							processmanager.Hook(powermanager);
-							powermanager.SuspendResume += PowerSuspendEnd; // HACK: No idea how the code behaves on power resume (untested).
-						}
-					}, cts.Token);
+						  if (powermanager != null)
+						  {
+							  trayaccess.Hook(powermanager);
+							  processmanager.Hook(powermanager);
+							  powermanager.SuspendResume += PowerSuspendEnd; // HACK: No idea how the code behaves on power resume (untested).
+						  }
+					  }, TaskContinuationOptions.OnlyOnRanToCompletion, cts.Token);
 
 					var tr = Task.WhenAny(init);
-					if (tr.IsFaulted) cts.Cancel(true);
+					if (tr.IsFaulted)
+					{
+						cex = tr.Exception?.InnerExceptions[0] ?? null;
+						Logging.DebugMsg("Unknown initialization failed");
+						cts.Cancel(true);
+					}
 				}
 
 				//if (HardwareMonitorEnabled)
 				//	Task.WhenAll(HwMon).ContinueWith((x) => hardware.Start()); // this is slow
 
-				NetMon.ContinueWith(_ => netmonitor.Tray = trayaccess, TaskContinuationOptions.OnlyOnRanToCompletion);
+				NetMon.ContinueWith((_, _discard) => netmonitor.Tray = trayaccess, TaskContinuationOptions.OnlyOnRanToCompletion, cts.Token);
 
-				if (AudioManagerEnabled) ProcMon.ContinueWith(_ => audiomanager?.Hook(processmanager), TaskContinuationOptions.OnlyOnRanToCompletion);
+				if (AudioManagerEnabled) ProcMon.ContinueWith((_,_discard) => audiomanager?.Hook(processmanager), TaskContinuationOptions.OnlyOnRanToCompletion, cts.Token);
 
 				// WAIT for component initialization
 				if (!Task.WaitAll(init, 5_000))
@@ -600,8 +618,9 @@ namespace Taskmaster
 				foreach (var iex in ex.InnerExceptions)
 					Logging.Stacktrace(iex);
 
-				System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(ex.InnerException).Throw();
-				throw; // because compiler is dumb and doesn't understand the above
+				throw new InitFailure("Initialization failure", ex.InnerException);
+				//System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(ex.InnerException).Throw();
+				//throw; // because compiler is dumb and doesn't understand the above
 			}
 
 			LoadEvent?.Invoke(null, new LoadEventArgs("Components loaded.", LoadEventType.Loaded));
