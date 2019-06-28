@@ -69,7 +69,7 @@ namespace Taskmaster
 
 		static Windows.PerformanceCounter pfcprivate = new Windows.PerformanceCounter("Process", "Private Bytes", "_Total");
 		static Windows.PerformanceCounter pfccommit = new Windows.PerformanceCounter("Memory", "% Committed Bytes In Use", null);
-		static Windows.PerformanceCounter pfcfree = new Windows.PerformanceCounter("Memory", "Available MBytes", null);
+		//static Windows.PerformanceCounter pfcfree = new Windows.PerformanceCounter("Memory", "Available MBytes", null);
 
 		// ctor
 		static Memory()
@@ -115,8 +115,8 @@ namespace Taskmaster
 				pfcprivate = null;
 				pfccommit?.Dispose();
 				pfccommit = null;
-				pfcfree?.Dispose();
-				pfcfree = null;
+				//pfcfree?.Dispose();
+				//pfcfree = null;
 			}
 		}
 	}
