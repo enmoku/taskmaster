@@ -268,6 +268,7 @@ namespace Taskmaster.Network
 		async void DynDNSTimer_Elapsed(object _)
 		{
 			if (DynDNSTimer is null) return;
+			if (!InternetAvailable) return;
 
 			IPAddress curIPv4, curIPv6;
 			lock (address_lock)
