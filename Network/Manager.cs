@@ -318,7 +318,7 @@ namespace Taskmaster.Network
 				rq.ContentType = "json";
 				rq.UserAgent = "Taskmaster/DynDNS.alpha.1";
 				rq.Timeout = 30_000;
-				var rs = rq.GetResponse();
+				using var rs = rq.GetResponse();
 				if (rs.ContentLength > 0)
 				{
 					var sbs = new StringBuilder();
@@ -328,6 +328,7 @@ namespace Taskmaster.Network
 					await dat.ReadAsync(buffer, 0, len);
 					Logging.DebugMsg(buffer.ToString());
 				}
+				rs.Close();
 			}
 			catch (WebException ex)
 			{
