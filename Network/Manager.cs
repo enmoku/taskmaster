@@ -60,6 +60,8 @@ namespace Taskmaster.Network
 
 		bool DebugNet { get; set; } = false;
 
+		bool DebugDNS { get; set; } = false;
+
 		public event EventHandler<InternetStatus> InternetStatusChange;
 		public event EventHandler IPChanged;
 		public event EventHandler<Status> NetworkStatusChange;
@@ -99,67 +101,88 @@ namespace Taskmaster.Network
 
 		void LoadConfig()
 		{
-			using var netcfg = Config.Load(NetConfigFilename);
-			var monsec = netcfg.Config["Monitor"];
-			dnstestaddress = monsec.GetOrSet("DNS test", "www.google.com").Value;
-
-			var devsec = netcfg.Config["Devices"];
-			DeviceTimerInterval = devsec.GetOrSet("Check frequency", 15)
-				.InitComment("Minutes")
-				.Int.Constrain(1, 30) * 60;
-
-			var pktsec = netcfg.Config["Traffic"];
-			PacketStatTimerInterval = pktsec.GetOrSet("Sample rate", 15)
-				.InitComment("Seconds")
-				.Int.Constrain(1, 60);
-			PacketWarning.Peak = PacketStatTimerInterval;
-
-			ErrorReports.Peak = ErrorReportLimit = pktsec.GetOrSet("Error report limit", 5).Int.Constrain(1, 60);
-
-			var dnssec = netcfg.Config["DNS Updating"];
-			DynamicDNS = dnssec.GetOrSet("Enabled", false).InitComment("Only Afraid.org is supported currently.")
-				.Bool;
-			DynamicDNSFrequency = TimeSpan.FromMinutes(Convert.ToDouble(dnssec.GetOrSet("Frequency", 600)
-				.InitComment("In minutes.")
-				.Int.Min(15)));
-			DynamicDNSForcedUpdate = dnssec.GetOrSet("Force", false)
-				.InitComment("Force performing the update even if no IP update is detected.")
-				.Bool;
-
-			if (DynamicDNS)
+			try
 			{
-				string host = dnssec.Get("Host").String;
-				bool https = host?.StartsWith("https://") ?? false;
-				bool afraidorg = (host?.IndexOf("sync.afraid.org/", StringComparison.InvariantCultureIgnoreCase) ?? -1) > 0;
-				if ((host?.Length ?? 0) < 10
-					|| !https // only HTTPS
-					|| !afraidorg)
+				using var netcfg = Config.Load(NetConfigFilename);
+				var monsec = netcfg.Config["Monitor"];
+				dnstestaddress = monsec.GetOrSet("DNS test", "www.google.com").Value;
+
+				var devsec = netcfg.Config["Devices"];
+				DeviceTimerInterval = devsec.GetOrSet("Check frequency", 15)
+					.InitComment("Minutes")
+					.Int.Constrain(1, 30) * 60;
+
+				var pktsec = netcfg.Config["Traffic"];
+				PacketStatTimerInterval = pktsec.GetOrSet("Sample rate", 15)
+					.InitComment("Seconds")
+					.Int.Constrain(1, 60);
+				PacketWarning.Peak = PacketStatTimerInterval;
+
+				ErrorReports.Peak = ErrorReportLimit = pktsec.GetOrSet("Error report limit", 5).Int.Constrain(1, 60);
+
+				var dnssec = netcfg.Config["DNS Updating"];
+				DynamicDNS = dnssec.GetOrSet("Enabled", false).InitComment("Only Afraid.org is supported currently.")
+					.Bool;
+				DynamicDNSFrequency = TimeSpan.FromMinutes(Convert.ToDouble(dnssec.GetOrSet("Frequency", 600)
+					.InitComment("In minutes.")
+					.Int.Min(15)));
+				DynamicDNSForcedUpdate = dnssec.GetOrSet("Force", false)
+					.InitComment("Force performing the update even if no IP update is detected.")
+					.Bool;
+
+				if (DynamicDNS)
 				{
-					string extra = !https ? "Not HTTPS" : (!afraidorg ? "Unsupported service" : "Unknown");
-					Log.Warning("<Net:DynDNS> Host string unsupported or malformed. " + extra);
-					DynamicDNS = false;
-					DynamicDNSHost = null;
+					string host = dnssec.Get("Host").String;
+					bool tooshort = (host?.Length ?? 0) < 10; // HACK: Arbitrary size limit
+					bool http = host?.StartsWith("http://") ?? false;
+					bool https = host?.StartsWith("https://") ?? false;
+					if (https) http = true;
+
+					//bool afraidorg = (host?.IndexOf("sync.afraid.org/", StringComparison.InvariantCultureIgnoreCase) ?? -1) > 0;
+					if (!https) Log.Warning("<Net:DynDNS> Host string does not use secure HTTP.");
+
+					if (!http)
+						Log.Error("<Net:DynDNS> Unrecognized protocol in host address.");
+					else if (tooshort)
+						Log.Error("<Net:DynDNS> Host URL too short.");
+
+					try
+					{
+						if (tooshort || !http) throw new UriFormatException("Base qualifications failed");
+						{
+							DynamicDNS = false;
+							DynamicDNSHost = null;
+						}
+						DynamicDNSHost = new Uri(host, UriKind.Absolute);
+						if (!https) Log.Warning("<Net:DynDNS> Host string does not use secure HTTP.");
+						Log.Information($"<Net:DynDNS> Enabled (frequency: {DynamicDNSFrequency:g})");
+					}
+					catch (Exception ex) when (ex is ArgumentException || ex is UriFormatException)
+					{
+						DynamicDNS = false;
+						DynamicDNSHost = null;
+					}
 				}
 				else
-				{
-					DynamicDNSHost = new Uri(host, UriKind.Absolute);
-					Log.Information($"<Net:DynDNS> Enabled (frequency: {DynamicDNSFrequency:g})");
-					Logging.DebugMsg($"Dynamic DNS update frequency in minutes: {DynamicDNSFrequency.TotalMinutes:N1}");
-				}
+					Log.Information("<Net:DynDNS> Disabled");
+
+				using var corecfg = Config.Load(CoreConfigFilename);
+				var logsec = corecfg.Config[HumanReadable.Generic.Logging];
+				ShowNetworkErrors = logsec.GetOrSet("Show network errors", true)
+					.InitComment("Show network errors on each sampling.")
+					.Bool;
+
+				var dbgsec = corecfg.Config[HumanReadable.Generic.Debug];
+				DebugNet = dbgsec.Get("Network")?.Bool ?? false;
+				DebugDNS = dbgsec.Get("Dynamic DNS")?.Bool ?? false;
+
+				if (Trace) Log.Debug("<Network> Traffic sample frequency: " + PacketStatTimerInterval + "s");
 			}
-			else
-				Log.Information("<Net:DynDNS> Disabled");
-
-			using var corecfg = Config.Load(CoreConfigFilename);
-			var logsec = corecfg.Config[HumanReadable.Generic.Logging];
-			ShowNetworkErrors = logsec.GetOrSet("Show network errors", true)
-				.InitComment("Show network errors on each sampling.")
-				.Bool;
-
-			var dbgsec = corecfg.Config[HumanReadable.Generic.Debug];
-			DebugNet = dbgsec.Get("Network")?.Bool ?? false;
-
-			if (Trace) Log.Debug("<Network> Traffic sample frequency: " + PacketStatTimerInterval + "s");
+			catch (Exception ex)
+			{
+				Logging.Stacktrace(ex);
+				throw;
+			}
 		}
 
 		public Manager()
@@ -236,7 +259,7 @@ namespace Taskmaster.Network
 				TimerStartDelay = TimeSpan.FromMinutes(15d);
 			}
 			else
-				Log.Debug("<Net:DynDNS> Starting update timer.");
+				if (DebugDNS) Log.Debug("<Net:DynDNS> Starting update timer.");
 
 			DynDNSTimer = new System.Threading.Timer(DynDNSTimer_Elapsed, null, TimerStartDelay, DynamicDNSFrequency);
 		}
@@ -247,8 +270,6 @@ namespace Taskmaster.Network
 		async void DynDNSTimer_Elapsed(object _)
 		{
 			if (DynDNSTimer is null) return;
-
-			Log.Debug("<Net:DynDNS> Timer");
 
 			IPAddress curIPv4, curIPv6;
 			lock (address_lock)
@@ -273,7 +294,7 @@ namespace Taskmaster.Network
 					}
 					else
 					{
-						Log.Debug("<Net:DynDNS> IP has not changed, forgoing update.");
+						if (DebugDNS) Log.Debug("<Net:DynDNS> IP has not changed, forgoing update.");
 						return;
 					}
 				}
@@ -312,6 +333,10 @@ namespace Taskmaster.Network
 
 			try
 			{
+				// Afraid.org dynamic DNS update v2 style query
+
+				// TODO: Load the host string only here and discard it after?
+
 				var rq = System.Net.WebRequest.CreateHttp(DynamicDNSHost);
 				rq.Method = "GET";
 				rq.MaximumAutomaticRedirections = 1;
