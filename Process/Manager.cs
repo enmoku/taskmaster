@@ -2176,6 +2176,10 @@ namespace Taskmaster.Process
 
 				if (DebugWMI) Log.Debug("<<WMI>> New instance watcher initialized.");
 			}
+			catch (UnauthorizedAccessException ex)
+			{
+				throw;
+			}
 			catch (Exception ex)
 			{
 				Logging.Stacktrace(ex);
