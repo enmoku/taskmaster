@@ -121,7 +121,7 @@ namespace Taskmaster.Network
 				ErrorReports.Peak = ErrorReportLimit = pktsec.GetOrSet("Error report limit", 5).Int.Constrain(1, 60);
 
 				var dnssec = netcfg.Config["DNS Updating"];
-				DynamicDNS = dnssec.GetOrSet("Enabled", false).InitComment("Only Afraid.org is supported currently.")
+				DynamicDNS = dnssec.GetOrSet("Enabled", false)
 					.Bool;
 				DynamicDNSFrequency = TimeSpan.FromMinutes(Convert.ToDouble(dnssec.GetOrSet("Frequency", 600)
 					.InitComment("In minutes.")
