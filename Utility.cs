@@ -49,11 +49,11 @@ namespace Taskmaster
 		public static void DebugMsg(string message)
 			=> System.Diagnostics.Debug.WriteLine("[" + DateTime.Now.ToString("HH:mm:ss.fff") + "] " + message);
 
-		public static void Stacktrace(Exception ex, bool crashsafe = false, [CallerMemberName] string method = "", [CallerLineNumber] int lineNo = -1)
+		public static void Stacktrace(Exception ex, bool crashsafe = false, [CallerMemberName] string method = "", [CallerLineNumber] int lineNo = -1, [CallerFilePath] string file = "")
 		{
+			var projectdir = Properties.Resources.ProjectDirectory.Trim();
 			if (!crashsafe)
 			{
-				var projectdir = Properties.Resources.ProjectDirectory.Trim();
 				var trace = ex.StackTrace.Replace(projectdir, HumanReadable.Generic.Ellipsis + System.IO.Path.DirectorySeparatorChar);
 				Serilog.Log.Fatal($"Exception [{method}:{lineNo}]: {ex.GetType().Name} : {ex.Message}\n{trace}");
 			}
@@ -68,22 +68,36 @@ namespace Taskmaster
 
 					var now = DateTime.Now;
 
+					file = file.Replace(projectdir, HumanReadable.Generic.Ellipsis + System.IO.Path.DirectorySeparatorChar);
+
 					var sbs = new StringBuilder();
 					sbs.Append("Datetime:     ").Append(now.ToLongDateString()).Append(" ").Append(now.ToLongTimeString()).AppendLine()
-						.Append("Caught at: ").Append(method).Append(":").Append(lineNo).AppendLine()
+						.Append("Caught at: ").Append(method).Append(":").Append(lineNo).Append(" [").Append(file).AppendLine("]")
 						.AppendLine()
 						.Append("Command line: ").Append(Environment.CommandLine).AppendLine();
 
+#if DEBUG
+					var exceptionsbs = new StringBuilder();
+#endif
 					AppendStacktace(ex, ref sbs);
-
+#if DEBUG
+					AppendStacktace(ex, ref exceptionsbs);
+#endif
 					if (ex.InnerException != null)
 					{
 						sbs.AppendLine().Append("--- Inner Exception ---").AppendLine();
 						AppendStacktace(ex.InnerException, ref sbs);
+#if DEBUG
+						AppendStacktace(ex.InnerException, ref exceptionsbs);
+#endif
 					}
 
 					System.IO.File.WriteAllText(logfile, sbs.ToString(), Encoding.Unicode);
 					DebugMsg("Crash log written to " + logfile);
+#if DEBUG
+					Debug.WriteLine(exceptionsbs.ToString());
+#endif
+
 				}
 				catch (OutOfMemoryException) { throw; }
 				catch
