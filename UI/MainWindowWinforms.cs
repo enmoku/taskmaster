@@ -1124,10 +1124,13 @@ namespace Taskmaster.UI
 
 		void BuildUI()
 		{
-			Text = Taskmaster.Name + " " + Version
+			Text = Taskmaster.Name
+				/*
+				+ " " + Version
 #if DEBUG
 				+ " DEBUG"
 #endif
+				*/
 				;
 
 			// Padding = new Padding(6);
