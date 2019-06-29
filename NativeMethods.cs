@@ -105,7 +105,7 @@ namespace Taskmaster
 
 		[DllImport("kernel32.dll")] // SetLastError = true
 		[return: MarshalAs(UnmanagedType.Bool)]
-		public static extern bool CloseHandle(int Handle);
+		public static extern bool CloseHandle(IntPtr Handle);
 
 		//     No dialog box confirming the deletion of the objects will be displayed.
 		public const int SHERB_NOCONFIRMATION = 0x00000001;
@@ -187,5 +187,24 @@ namespace Taskmaster
 
 		[DllImport("kernel32.dll")]
 		public static extern ErrorModes SetErrorMode(ErrorModes mode);
+
+		/// <summary>
+		/// "Safe" version of HANDLE.
+		/// </summary>
+		public class HANDLE : SafeHandle
+		{
+			protected HANDLE()
+				: base(new IntPtr(-1), true)
+			{
+
+			}
+
+			public override bool IsInvalid
+			{
+				get => handle.ToInt32() == -1;
+			}
+
+			protected override bool ReleaseHandle() => CloseHandle(handle);
+		}
 	}
 }

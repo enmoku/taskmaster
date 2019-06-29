@@ -152,12 +152,12 @@ namespace Taskmaster.Process
 		public static bool GetPathViaC(ProcessEx info, out string path)
 		{
 			path = string.Empty;
-			int handle = 0;
+			System.Runtime.InteropServices.SafeHandle handle = null;
 
 			try
 			{
 				handle = NativeMethods.OpenProcess(NativeMethods.PROCESS_RIGHTS.PROCESS_QUERY_INFORMATION | NativeMethods.PROCESS_RIGHTS.PROCESS_VM_READ, false, info.Id);
-				if (handle == 0) return false; // failed to open process
+				if (handle is null) return false; // failed to open process
 
 				const int lengthSb = 32768; // this is the maximum path length NTFS supports
 
@@ -182,7 +182,7 @@ namespace Taskmaster.Process
 			}
 			finally
 			{
-				NativeMethods.CloseHandle(handle);
+				handle?.Close();
 			}
 
 			return false;
@@ -249,7 +249,7 @@ namespace Taskmaster.Process
 		/// <param name="target">0 = Background, 1 = Low, 2 = Normal, 3 = Elevated, 4 = High</param>
 		public static int SetIO(System.Diagnostics.Process process, int target, out int newIO, bool decrease = true)
 		{
-			int handle = 0;
+			System.Runtime.InteropServices.SafeHandle handle = null;
 			int original = -1;
 			Debug.Assert(target >= 0 && target <= 2, "I/O target set to undefined value: " + target);
 
@@ -257,7 +257,7 @@ namespace Taskmaster.Process
 
 			try
 			{
-				if ((handle = NativeMethods.OpenProcessFully(process)) != 0)
+				if (!((handle = NativeMethods.OpenProcessFully(process)) is null))
 				{
 					original = NativeMethods.GetIOPriority(handle);
 
@@ -284,8 +284,7 @@ namespace Taskmaster.Process
 			}
 			finally
 			{
-				if (handle != 0)
-					NativeMethods.CloseHandle(handle);
+				handle?.Close();
 			}
 
 			return original;

@@ -41,31 +41,29 @@ namespace Taskmaster
 		public static extern uint GetModuleFileNameEx(IntPtr hProcess, IntPtr hModule, [Out] System.Text.StringBuilder lpBaseName, [In] [MarshalAs(UnmanagedType.U4)] uint nSize);
 
 
-		public static int OpenProcessFully(System.Diagnostics.Process process)
+		public static HANDLE OpenProcessFully(System.Diagnostics.Process process)
 		{
 			try
 			{
-				int pid = process.Id;
-				int Handle = OpenProcess(PROCESS_RIGHTS.PROCESS_ALL_ACCESS, false, pid);
-				return Handle;
+				return OpenProcess(PROCESS_ACCESS_RIGHTS.PROCESS_ALL_ACCESS, false, process.Id);
 			}
 			catch (Exception ex)
 			{
 				Logging.Stacktrace(ex);
 			}
 
-			return 0;
+			return null;
 		}
 
-		public static bool SetIOPriority(int Handle, int Priority)
+		public static bool SetIOPriority(SafeHandle handle, int priority)
 		{
 			// the functionality changed with Windows 8 drastically and likely does something else
 			if (MKAh.Execution.IsWin7)
 			{
 				try
 				{
-					var ioPrio = new IntPtr(Priority);
-					int rv = NtSetInformationProcess(Handle, PROCESS_INFORMATION_CLASS_WIN7.ProcessIoPriority, ref ioPrio, 4);
+					var ioPrio = new IntPtr(priority);
+					int rv = NtSetInformationProcess(handle, PROCESS_INFORMATION_CLASS_WIN7.ProcessIoPriority, ref ioPrio, 4);
 
 					int error = Marshal.GetLastWin32Error();
 					//Logging.DebugMsg($"SetInformationProcess error code: {error} --- return value: {rv:X}");
@@ -80,7 +78,7 @@ namespace Taskmaster
 			return false;
 		}
 
-		public static int GetIOPriority(int Handle)
+		public static int GetIOPriority(SafeHandle handle)
 		{
 			// the functionality changed with Windows 8 drastically and likely does something else
 			if (MKAh.Execution.IsWin7)
@@ -89,8 +87,8 @@ namespace Taskmaster
 				{
 					int resLen = 0;
 					var ioPrio = new IntPtr(0);
-					if (Handle == 0) return -1;
-					int rv = NtQueryInformationProcess(Handle, PROCESS_INFORMATION_CLASS_WIN7.ProcessIoPriority, ref ioPrio, 4, ref resLen);
+					if (handle is null) return -1;
+					int rv = NtQueryInformationProcess(handle, PROCESS_INFORMATION_CLASS_WIN7.ProcessIoPriority, ref ioPrio, 4, ref resLen);
 
 					int error = Marshal.GetLastWin32Error();
 					//Logging.DebugMsg($"QueryInformationProcess error code: {error} --- return value: {rv:X}");
@@ -106,10 +104,10 @@ namespace Taskmaster
 		}
 
 		[DllImport("ntdll.dll", SetLastError = true)]
-		public static extern int NtSetInformationProcess(int hProcess, PROCESS_INFORMATION_CLASS_WIN7 ProcessInformationClass, ref IntPtr ProcessInformation, uint ProcessInformationSize);
+		public static extern int NtSetInformationProcess(SafeHandle hProcess, PROCESS_INFORMATION_CLASS_WIN7 ProcessInformationClass, ref IntPtr ProcessInformation, uint ProcessInformationSize);
 
 		[DllImport("ntdll.dll", SetLastError = true)]
-		public static extern int NtQueryInformationProcess(int hProcess, PROCESS_INFORMATION_CLASS_WIN7 ProcessInformationClass, ref IntPtr ProcessInformation, uint ProcessInformationSize, ref int ReturnSize);
+		public static extern int NtQueryInformationProcess(SafeHandle hProcess, PROCESS_INFORMATION_CLASS_WIN7 ProcessInformationClass, ref IntPtr ProcessInformation, uint ProcessInformationSize, ref int ReturnSize);
 
 		// It seems the contents of this enum were changed with Windows 8
 		public enum PROCESS_INFORMATION_CLASS_WIN7 : int // PROCESS_INFORMATION_CLASS, for Win7
@@ -224,7 +222,7 @@ namespace Taskmaster
 		/// MUST CLOSE THE RETURNED HANDLE WITH CLOSEHANDLE!!!
 		/// </summary>
 		[DllImport("kernel32.dll", SetLastError = true)]
-		public static extern int OpenProcess(PROCESS_RIGHTS dwDesiredAccess, bool bInheritHandle, int dwProcessId);
+		public static extern HANDLE OpenProcess(PROCESS_ACCESS_RIGHTS dwDesiredAccess, bool bInheritHandle, int dwProcessId);
 
 		[StructLayout(LayoutKind.Sequential)]
 		public struct RECT
