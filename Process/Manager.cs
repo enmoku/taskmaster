@@ -1696,8 +1696,8 @@ namespace Taskmaster.Process
 
 					if (!old && prc.LogStartAndExit)
 					{
-						Log.Information($"<Process> {info.Name} #{info.Id} started.");
-						info.Process.Exited += (_, _ea) => Log.Information($"<Process> {info.Name} #{info.Id} exited.");
+						Log.Information($"[{prc.FriendlyName}] {info.Name} #{info.Id} started.");
+						info.Process.Exited += (_, _ea) => Log.Information($"[{info.Controller.FriendlyName}] {info.Name} #{info.Id} exited.");
 						info.Process.EnableRaisingEvents = true;
 						// TOOD: What if the process exited just before we enabled raising for the events?
 					}
