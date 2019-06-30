@@ -479,7 +479,14 @@ namespace Taskmaster.Process
 					{
 						try
 						{
-							if (DebugPaging) Log.Debug($"<Process> Paging: {info.Name} (#{info.Id})");
+							if (DebugPaging)
+							{
+								var sbs = new StringBuilder();
+								sbs.Append("<Process> Paging: ").Append(info.Name).Append(" (#").Append(info.Id.ToString()).Append(")");
+								if (info.Controller != null)
+									sbs.Append(" – Rule: ").Append(info.Controller.FriendlyName);
+								Log.Debug(sbs.ToString());
+							}
 
 							NativeMethods.EmptyWorkingSet(info.Process.Handle); // process.Handle may throw which we don't care about
 						}
@@ -751,8 +758,11 @@ namespace Taskmaster.Process
 			var sbs = new StringBuilder();
 			sbs.Append("<Process> ");
 
+			sbs.Append("Scan ");
 			if (ScanFrequency.HasValue)
-				sbs.Append($"Scan frequency: {ScanFrequency.Value.TotalSeconds:N0}s");
+				sbs.Append("frequency: ").Append($"{ScanFrequency.Value.TotalSeconds:N0}s");
+			else
+				sbs.Append("disabled");
 
 			sbs.Append("; ");
 
