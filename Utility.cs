@@ -54,8 +54,19 @@ namespace Taskmaster
 			var projectdir = Properties.Resources.ProjectDirectory.Trim();
 			if (!crashsafe)
 			{
-				var trace = ex.StackTrace.Replace(projectdir, HumanReadable.Generic.Ellipsis + System.IO.Path.DirectorySeparatorChar);
+				string trace = ex.StackTrace.Replace(projectdir, HumanReadable.Generic.Ellipsis + System.IO.Path.DirectorySeparatorChar);
 				Serilog.Log.Fatal($"Exception [{method}:{lineNo}]: {ex.GetType().Name} : {ex.Message}\n{trace}");
+				if (ex is InitFailure iex)
+				{
+					if ((iex.InnerExceptions?.Length ?? 0) > 1)
+					{
+						for (int i = 1; i < iex.InnerExceptions.Length; i++)
+						{
+							trace = iex.InnerExceptions[i].StackTrace.Replace(projectdir, HumanReadable.Generic.Ellipsis + System.IO.Path.DirectorySeparatorChar);
+							Serilog.Log.Fatal($"Exception: {iex.InnerExceptions[i].GetType().Name} : {iex.InnerExceptions[i].Message}\n{trace}");
+						}
+					}
+				}
 			}
 			else
 			{
@@ -90,6 +101,12 @@ namespace Taskmaster
 #if DEBUG
 						AppendStacktace(ex.InnerException, ref exceptionsbs);
 #endif
+					}
+
+					if (ex is InitFailure iex && (iex.InnerExceptions?.Length ?? 0) > 1)
+					{
+						for (int i = 1; i < iex.InnerExceptions.Length; i++)
+							AppendStacktace(iex.InnerExceptions[i], ref exceptionsbs);
 					}
 
 					System.IO.File.WriteAllText(logfile, sbs.ToString(), Encoding.Unicode);

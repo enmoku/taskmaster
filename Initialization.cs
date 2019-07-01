@@ -522,10 +522,10 @@ namespace Taskmaster
 					.ContinueWith(_ => LoadEvent?.Invoke(null, new LoadEventArgs("Self-maintenance manager processed.", LoadEventType.SubLoaded)))
 			};
 
-			Exception cex=null;
-			if (cts.IsCancellationRequested) throw new InitFailure("Cancelled?", cex);
+			Exception[] cex=null;
+			if (cts.IsCancellationRequested) throw new InitFailure("Cancelled?", (cex is null ? null : cex[0]), cex);
 			foreach (var t in init) t.ContinueWith(t => {
-				cex = t.Exception?.InnerExceptions[0] ?? null;
+				cex = t.Exception?.InnerExceptions.ToArray() ?? null;
 				Logging.DebugMsg("Module loading failed");
 				cts.Cancel();
 			}, TaskContinuationOptions.OnlyOnFaulted);
@@ -557,7 +557,7 @@ namespace Taskmaster
 				throw;
 			}
 
-			if (cts.IsCancellationRequested) throw new InitFailure("Cancelled at 557", cex);
+			if (cts.IsCancellationRequested) throw new InitFailure("Cancelled at 557", (cex is null ? null : cex[0]), cex);
 			// WinForms makes the following components not load nicely if not done here (main thread).
 			trayaccess = new UI.TrayAccess();
 			trayaccess.TrayMenuShown += (_, ea) => OptimizeResponsiviness(ea.Visible);
@@ -565,7 +565,7 @@ namespace Taskmaster
 			ProcMon.ContinueWith((_, _discard) => trayaccess?.Hook(processmanager), TaskContinuationOptions.OnlyOnRanToCompletion, cts.Token);
 
 			Task.WhenAll(new[] { ProcMon, FgMon }).ContinueWith(_ => activeappmonitor?.Hook(processmanager), TaskContinuationOptions.OnlyOnRanToCompletion);
-			if (cts.IsCancellationRequested) throw new InitFailure("Cancelled at 565", cex);
+			if (cts.IsCancellationRequested) throw new InitFailure("Cancelled at 565", (cex is null ? null : cex[0]), cex);
 
 			try
 			{
@@ -592,7 +592,7 @@ namespace Taskmaster
 					var tr = Task.WhenAny(init);
 					if (tr.IsFaulted)
 					{
-						cex = tr.Exception?.InnerExceptions[0] ?? null;
+						cex = tr.Exception?.InnerExceptions.ToArray() ?? null;
 						Logging.DebugMsg("Unknown initialization failed");
 						cts.Cancel(true);
 					}
@@ -616,9 +616,9 @@ namespace Taskmaster
 			catch (AggregateException ex)
 			{
 				foreach (var iex in ex.InnerExceptions)
-					Logging.Stacktrace(iex);
+					Logging.Stacktrace(iex, crashsafe: true);
 
-				throw new InitFailure("Initialization failure", ex.InnerException);
+				throw new InitFailure("Initialization failure", ex.InnerExceptions[0]);
 				//System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(ex.InnerException).Throw();
 				//throw; // because compiler is dumb and doesn't understand the above
 			}
