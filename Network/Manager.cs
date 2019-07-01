@@ -656,7 +656,7 @@ namespace Taskmaster.Network
 			}
 		}
 
-		bool Notified = false;
+		bool InternetChangeNotifyDone = false;
 
 		int InetCheckLimiter; // = 0;
 
@@ -685,7 +685,7 @@ namespace Taskmaster.Network
 							// FIXME: There should be some other method than DNS testing
 							await Dns.GetHostEntryAsync(dnstestaddress).ConfigureAwait(false);
 							InternetAvailable = true;
-							Notified = false;
+							InternetChangeNotifyDone = false;
 							// TODO: Don't rely on DNS?
 						}
 						catch (System.Net.Sockets.SocketException ex)
@@ -739,7 +739,7 @@ namespace Taskmaster.Network
 						if (timeout)
 							Log.Information("<Network> Internet availability test inconclusive, assuming connected.");
 
-						if (!Notified && NetworkAvailable)
+						if (!InternetChangeNotifyDone && NetworkAvailable)
 						{
 							if (interrupt)
 								Log.Warning("<Network> Internet check interrupted. Potential hardware/driver issues.");
@@ -747,7 +747,7 @@ namespace Taskmaster.Network
 							if (dnsfail)
 								Log.Warning("<Network> DNS test failed, test host unreachable. Test host may be down.");
 
-							Notified = dnsfail || interrupt;
+							InternetChangeNotifyDone = dnsfail || interrupt;
 						}
 
 						if (Trace) Log.Verbose("<Network> Connectivity unchanged.");
