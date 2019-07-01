@@ -1992,14 +1992,9 @@ namespace Taskmaster.Process
 
 					iname = targetInstance.Properties["Name"].Value as string;
 					path = targetInstance.Properties["ExecutablePath"].Value as string;
-					if (DebugAdjustDelay)
-					{
-						try
-						{
-							creation = ManagementDateTimeConverter.ToDateTime(targetInstance.Properties["CreationDate"].Value as string);
-						}
-						catch { } // probably insufficient permissions?
-					}
+					if (DebugAdjustDelay && targetInstance.Properties["CreationDate"].Value is string cdate && !string.IsNullOrEmpty(cdate))
+						creation = ManagementDateTimeConverter.ToDateTime(cdate);
+
 					if (string.IsNullOrEmpty(path))
 						cmdl = targetInstance.Properties["CommandLine"].Value as string; // CommandLine sometimes has the path when executablepath does not
 
@@ -2038,7 +2033,7 @@ namespace Taskmaster.Process
 					Statistics.WMIPolling++;
 				}
 
-				if (DebugAdjustDelay)
+				if (DebugAdjustDelay && creation != DateTime.MinValue)
 				{
 					wmidelay = new DateTimeOffset(creation.ToUniversalTime()).TimeTo(now);
 					if (Trace) Logging.DebugMsg($"WMI delay (#{pid}): {wmidelay.TotalMilliseconds:N0} ms");
@@ -2105,9 +2100,9 @@ namespace Taskmaster.Process
 			}
 			catch (ArgumentException)
 			{
-				state = info.State = ProcessHandlingState.Exited;
-				if (ShowInaction && DebugProcesses)
-					Log.Verbose("Caught #" + info.Id + " but it vanished.");
+				state = ProcessHandlingState.Exited;
+				if (info != null) info.State = state;
+				if (ShowInaction && DebugProcesses) Log.Verbose("Caught #" + pid + " but it vanished.");
 				return;
 			}
 			catch (Exception ex)
