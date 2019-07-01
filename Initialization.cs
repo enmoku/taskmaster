@@ -477,9 +477,21 @@ namespace Taskmaster
 
 			var timer = System.Diagnostics.Stopwatch.StartNew();
 
+			static Type[] GetTypes(System.Reflection.Assembly asm)
+			{
+				try
+				{
+					return asm.GetTypes();
+				}
+				catch (System.Reflection.ReflectionTypeLoadException ex)
+				{
+					return ex.Types.Where(t => t != null).ToArray();
+				}
+			}
+
 			// Reflection. Really silly way to find out how many components we have.
 			int componentsToLoad = (from asm in AppDomain.CurrentDomain.GetAssemblies().AsParallel()
-								 from t in asm.GetTypes()
+								 from t in GetTypes(asm)
 								 let len = t.GetCustomAttributes(typeof(ComponentAttribute), false).Length
 								 where len > 0
 								 select len).Sum();
