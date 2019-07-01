@@ -1992,7 +1992,14 @@ namespace Taskmaster.Process
 
 					iname = targetInstance.Properties["Name"].Value as string;
 					path = targetInstance.Properties["ExecutablePath"].Value as string;
-					if (DebugAdjustDelay) creation = ManagementDateTimeConverter.ToDateTime(targetInstance.Properties["CreationDate"].Value as string);
+					if (DebugAdjustDelay)
+					{
+						try
+						{
+							creation = ManagementDateTimeConverter.ToDateTime(targetInstance.Properties["CreationDate"].Value as string);
+						}
+						catch { } // probably insufficient permissions?
+					}
 					if (string.IsNullOrEmpty(path))
 						cmdl = targetInstance.Properties["CommandLine"].Value as string; // CommandLine sometimes has the path when executablepath does not
 

@@ -5,6 +5,7 @@ Comprehensive changes can be found in Git change history:
 ## [0.13...]
 ### 2019-07-01
 	Changed: Ensure multiple initialization failures all get logged.
+	Fixed: Dirty fix for adjust delay debugging printing errors when it encounters empty CreationDate in __InstanceCreationEvent.TargetInstance.
 ### 2019-06-30
 	Changed: Rule name is now included in process start&exit logging.
 ### 2019-06-29
