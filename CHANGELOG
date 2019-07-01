@@ -3,6 +3,19 @@ Comprehensive changes can be found in Git change history:
 	https://github.com/mkahvi/taskmaster/commits/master
 
 ## [0.13...]
+### 2019-07-01
+	Changed: Ensure multiple initialization failures all get logged.
+### 2019-06-30
+	Changed: Rule name is now included in process start&exit logging.
+### 2019-06-29
+	Changed: Crash log now includes filename of fault location.
+	Changed: Safer native calls.
+	Changed: App version is no longer stated in main window title bar.
+### 2019-06-28
+	Fixed: DynDNS update was not properly closed, potentially leaking an open connection (until it times out).
+	Changed: DynDNS setup no longer is limited to single service. Only one type of updates are supported still, however.
+	Changed: Disabled some unneeded features of .NET/C#, hopefully resulting in slightly faster start-up time.
+	Fixed: Initialization failure bleeds through and the app is launched "successfully".
 ### 2019-06-26
 	Changed: IP address handling.
 	Fixed: Link-local network addresses were reported as public ones.
