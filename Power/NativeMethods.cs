@@ -61,6 +61,7 @@ namespace Taskmaster
 		/// Power mode notifications
 		/// </summary>
 		public static readonly Guid GUID_POWERSCHEME_PERSONALITY = new Guid(0x245D8541, 0x3943, 0x4422, 0xB0, 0x25, 0x13, 0xA7, 0x84, 0xF6, 0x79, 0xB7);
+
 		/// <summary>
 		/// Monitor state notifications
 		/// </summary>

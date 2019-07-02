@@ -85,6 +85,7 @@ namespace Taskmaster
 		}
 
 		static bool CleanedUp = false;
+
 		public static void ExitCleanup()
 		{
 			if (CleanedUp) return;
@@ -157,6 +158,7 @@ namespace Taskmaster
 		}
 
 		static readonly object window_creation_lock = new object();
+
 		/// <summary>
 		/// Constructs and hooks the main window
 		/// </summary>
@@ -251,7 +253,6 @@ namespace Taskmaster
 				if (SelfOptimizeBGIO)
 					MKAh.Utility.DiscardExceptions(() => Process.Utility.SetBackground(self));
 			}
-
 		}
 
 		public static event EventHandler OnStart;
@@ -273,6 +274,7 @@ namespace Taskmaster
 
 		// static finalizer
 		static readonly Finalizer finalizer = new Finalizer();
+
 		sealed class Finalizer
 		{
 			~Finalizer()
@@ -302,6 +304,7 @@ namespace Taskmaster
 		}
 
 		public static bool Portable { get; internal set; } = false;
+
 		static void TryPortableMode()
 		{
 			string portpath = Path.Combine(Path.GetDirectoryName(Environment.GetCommandLineArgs()[0]), Constants.Config);
@@ -410,6 +413,7 @@ namespace Taskmaster
 			catch (InitFailure ex)
 			{
 				Logging.Stacktrace(ex, crashsafe: true);
+
 				return -1; // should trigger finally block
 			}
 			catch (RunstateException ex)

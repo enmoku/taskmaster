@@ -77,6 +77,7 @@ namespace Taskmaster.UI
 			Tray.BalloonTipText = Tray.Text;
 			Tray.Disposed += (_, _ea) => Tray = null;
 
+			#region Build UI
 			if (Trace) Log.Verbose("Generating tray icon.");
 
 			var ms = new ContextMenuStrip();
@@ -139,6 +140,7 @@ namespace Taskmaster.UI
 			Tray.ContextMenuStrip = ms;
 
 			if (Trace) Log.Verbose("Tray menu ready");
+			#endregion // Build UI
 
 			// TODO: Toast Notifications. Apparently not supported by Win7, so nevermind.
 
@@ -385,7 +387,7 @@ namespace Taskmaster.UI
 			window.FormClosing += WindowClosed;
 		}
 
-		TimeSpan? ExplorerRestartHelpDelay { get; set; } = null;
+		TimeSpan? ExplorerRestartHelpDelay { get; } = null;
 
 		async void ExplorerCrashEvent(object sender, EventArgs _ea)
 		{

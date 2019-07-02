@@ -32,31 +32,37 @@ namespace Taskmaster.Process
 		/// Unspecified type of process.
 		/// </summary>
 		Generic,
+
 		/// <summary>
 		/// Video game.
 		/// e.g. Undertale
 		/// </summary>
 		Game,
+
 		/// <summary>
 		/// Tiny utility process, not needing much resources.
 		/// e.g. calc
 		/// </summary>
 		Utility,
+
 		/// <summary>
 		/// High priority work oriented process.
 		/// e.g. Blender, Sai, Photoshop, etc.
 		/// </summary>
 		Productivity,
+
 		/// <summary>
 		/// Low priority service.
 		/// e.g. Windows Search
 		/// </summary>
 		LoService,
+
 		/// <summary>
 		/// High priority service.
 		/// e.g. audiodg
 		/// </summary>
 		HiService,
+
 		/// <summary>
 		/// System process. These should not be touched.
 		/// e.g. dwm, csrss, winlogon, wininit

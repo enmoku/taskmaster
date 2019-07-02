@@ -67,7 +67,7 @@ namespace Taskmaster
 				sbs.Append(", ");
 
 			var min = time.Minutes + (time.Seconds / 60.0);
-			sbs.Append($"{min:N1}").Append(" minute");
+			sbs.AppendFormat("{0:N1}", min).Append(" minute");
 			if (min > 1 || min < 1) sbs.Append("s");
 
 			return sbs.ToString();

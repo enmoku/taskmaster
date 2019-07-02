@@ -39,7 +39,7 @@ namespace Taskmaster
 
 	public class RunstateException : Exception
 	{
-		public Runstate State { get; private set; }
+		public Runstate State { get; }
 
 		public RunstateException(string message, Runstate state, Exception innerException = null)
 			: base(message, innerException)

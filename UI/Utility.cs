@@ -32,7 +32,7 @@ namespace Taskmaster.UI
 	{
 		public void BuildPowerMenu(ToolStripMenuItem menu)
 		{
-
+			// NOP
 		}
 	}
 }

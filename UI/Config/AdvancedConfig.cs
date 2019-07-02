@@ -110,7 +110,7 @@ namespace Taskmaster.UI.Config
 
 			int uiupdatems;
 			if (mainwindow is null)
-				uiupdatems = corecfg.Config["User Interface"].Get("Update frequency")?.Int.Constrain(100, 5000) ?? 2000;
+				uiupdatems = corecfg.Config["User Interface"].Get(Constants.UpdateFrequency)?.Int.Constrain(100, 5000) ?? 2000;
 			else
 				uiupdatems = mainwindow?.UIUpdateFrequency ?? 2000;
 			UIUpdateFrequency.Value = uiupdatems;
@@ -143,8 +143,8 @@ namespace Taskmaster.UI.Config
 			else
 			{
 				using var cfg = Config.Load(CoreConfigFilename);
-				var perfsec = cfg.Config["Performance"];
-				fgHysterisis.Value = perfsec.Get("Foreground hysterisis")?.Int.Constrain(200, 30000) ?? 1500;
+				var perfsec = cfg.Config[Constants.Performance];
+				fgHysterisis.Value = perfsec.Get(Process.Constants.ForegroundHysterisis)?.Int.Constrain(200, 30000) ?? 1500;
 			}
 
 			layout.Controls.Add(new AlignedLabel { Text = "Foreground hysterisis", Padding = LeftSubPadding });
@@ -224,8 +224,8 @@ namespace Taskmaster.UI.Config
 			var volsec = corecfg.Config[Constants.VolumeMeter];
 			bool t_volmeter_topmost = volsec.Get("Topmost")?.Bool ?? true;
 			int t_volmeter_frequency = volsec.Get("Refresh")?.Int.Constrain(10, 5000) ?? 100;
-			int t_volmeter_capoutmax = volsec.Get("Output threshold")?.Int.Constrain(20, 100) ?? 100;
-			int t_volmeter_capinmax = volsec.Get("Input threshold")?.Int.Constrain(20, 100) ?? 100;
+			int t_volmeter_capoutmax = volsec.Get(Audio.Constants.OutputThreshold)?.Int.Constrain(20, 100) ?? 100;
+			int t_volmeter_capinmax = volsec.Get(Audio.Constants.InputThreshold)?.Int.Constrain(20, 100) ?? 100;
 			bool t_volmeter_show = volsec.Get(Constants.ShowOnStart)?.Bool ?? false;
 
 			volmeter_topmost.Checked = t_volmeter_topmost;

@@ -13,8 +13,8 @@ namespace Processes
 		[TestOf(nameof(Bit.Count))]
 		public void AffinityBitCountTests()
 		{
-			int testSource = 192;
-			int testTarget = 240;
+			const int testSource = 192;
+			const int testTarget = 240;
 			Console.WriteLine("Source: " + testSource);
 			Console.WriteLine("Target: " + testTarget);
 
@@ -30,7 +30,7 @@ namespace Processes
 		public void AffinityBitManipTests()
 		{
 			int mask = 0b11110000; // 240
-			int expected = 0b110000; // 48
+			const int expected = 0b110000; // 48
 
 			mask = Bit.Unset(mask, 7);
 			mask = Bit.Unset(mask, 6);
@@ -42,8 +42,8 @@ namespace Processes
 		[TestOf(nameof(Bit.Count))]
 		public void CPUMaskTests()
 		{
-			int fakecpucount = 8;
-			int expectedoffset = 23; // 0 to 23, not 1 to 24
+			const int fakecpucount = 8;
+			const int expectedoffset = 23; // 0 to 23, not 1 to 24
 			int offset = Bit.Count(int.MaxValue) - fakecpucount;
 			Assert.AreEqual(expectedoffset, offset);
 		}
@@ -77,11 +77,11 @@ namespace Processes
 		[Test]
 		public void AffinityTests()
 		{
-			int target = 240;
-			int source = 192;
+			const int target = 240;
+			const int source = 192;
 			int testmask = target;
 
-			int testcpucount = 8;
+			const int testcpucount = 8;
 
 			int excesscores = Bit.Count(target) - Bit.Count(source);
 			TestContext.WriteLine("Excess: " + excesscores);

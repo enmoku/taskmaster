@@ -28,6 +28,6 @@ namespace Taskmaster
 {
 	class WatchlistRuleGeneratorWindow : UI.UniForm
 	{
-
+		// NOP
 	}
 }

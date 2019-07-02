@@ -59,7 +59,7 @@ namespace Taskmaster
 				if (!pipe.IsMessageComplete) return;
 
 				using var sr = new StreamReader(lp);
-				var line = await sr.ReadLineAsync();
+				var line = await sr.ReadLineAsync().ConfigureAwait(true);
 				if (line.StartsWith(RestartMessage))
 				{
 					Log.Information("<IPC> Restart request received.");
@@ -134,12 +134,12 @@ namespace Taskmaster
 			{
 				pe = new System.IO.Pipes.NamedPipeClientStream(".", PipeName, System.IO.Pipes.PipeAccessRights.Write, System.IO.Pipes.PipeOptions.WriteThrough, System.Security.Principal.TokenImpersonationLevel.Impersonation, HandleInheritability.None);
 				using var sw = new StreamWriter(pe);
-				if (!pe.IsConnected) await pe.ConnectAsync(5_000);
+				if (!pe.IsConnected) await pe.ConnectAsync(5_000).ConfigureAwait(true);
 
 				if (pe.IsConnected && pe.CanWrite)
 				{
-					await sw.WriteLineAsync(message);
-					await sw.FlushAsync();
+					await sw.WriteLineAsync(message).ConfigureAwait(true);
+					await sw.FlushAsync().ConfigureAwait(true);
 				}
 
 				await Task.Delay(100).ConfigureAwait(true); // HACK: async pipes don't like things happening too fast.

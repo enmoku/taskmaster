@@ -37,7 +37,7 @@ namespace Taskmaster.Audio
 			Role = role;
 		}
 
-		public NAudio.CoreAudioApi.DataFlow Flow { get; private set; }
-		public NAudio.CoreAudioApi.Role Role { get; private set; }
+		public NAudio.CoreAudioApi.DataFlow Flow { get; }
+		public NAudio.CoreAudioApi.Role Role { get; }
 	}
 }

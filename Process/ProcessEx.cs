@@ -104,7 +104,9 @@ namespace Taskmaster.Process
 		public bool InBackground { get; set; } = false;
 
 		public DateTimeOffset Modified { get; set; } = DateTimeOffset.MinValue;
+
 		internal ProcessHandlingState _state = ProcessHandlingState.Invalid;
+
 		public ProcessHandlingState State
 		{
 			get => _state;

@@ -33,8 +33,10 @@ namespace Taskmaster.Configuration
 	public class File : IFile, IDisposable
 	{
 		public Ini.Config Config { get; private set; } = null;
-		public string Filename { get; private set; } = null;
-		string Path { get; set; } = null;
+
+		public string Filename { get; } = null;
+
+		string Path { get; } = null;
 
 		public int Shared { get; internal set; } = 0;
 
@@ -130,7 +132,7 @@ namespace Taskmaster.Configuration
 
 	public class ScopedFile : IFile, IDisposable
 	{
-		public File File { get; private set; } = null;
+		public File File { get; } = null;
 
 		public Ini.Config Config => File.Config;
 

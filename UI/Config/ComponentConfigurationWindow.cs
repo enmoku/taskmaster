@@ -124,7 +124,7 @@ namespace Taskmaster.UI.Config
 			tooltip.SetToolTip(netmon, "Monitor network interface status and report online status.");
 			layout.Controls.Add(new AlignedLabel { Text = "Network monitor", Padding = BigPadding });
 			layout.Controls.Add(netmon);
-			netmon.Checked = initial ? true : NetworkMonitorEnabled;
+			netmon.Checked = initial || NetworkMonitorEnabled;
 			netmon.Click += (_, _ea) =>
 			{
 			};
@@ -139,7 +139,7 @@ namespace Taskmaster.UI.Config
 			layout.Controls.Add(new AlignedLabel { Text = "Process manager", Padding = BigPadding });
 			layout.Controls.Add(procmon);
 			procmon.Enabled = false;
-			procmon.Checked = initial ? true : ProcessMonitorEnabled;
+			procmon.Checked = initial || ProcessMonitorEnabled;
 
 			layout.Controls.Add(new AlignedLabel() { Text = "Process detection", Padding = BigPadding });
 			var ScanOrWMI = new ComboBox()
@@ -253,7 +253,7 @@ namespace Taskmaster.UI.Config
 				//BackColor = System.Drawing.Color.Azure,
 				Dock = DockStyle.Left
 			};
-			fgmon.Checked = initial ? true : ActiveAppMonitorEnabled;
+			fgmon.Checked = initial || ActiveAppMonitorEnabled;
 			tooltip.SetToolTip(fgmon, "Allow processes and power mode to be managed based on if a process is in the foreground.\nPOWER MODE SWITCHING NOT IMPLEMENTED.");
 			layout.Controls.Add(new AlignedLabel { Text = "Foreground manager", Padding = BigPadding });
 			layout.Controls.Add(fgmon);
@@ -351,10 +351,10 @@ namespace Taskmaster.UI.Config
 				var compsec = cfg.Config[Constants.Components];
 				compsec[HumanReadable.System.Process.Section].Bool = procmon.Checked;
 				compsec[HumanReadable.Hardware.Audio.Section].Bool = audioman.Checked;
-				compsec[Constants.Microphone].Bool = micmon.Checked;
+				compsec[Audio.Constants.Microphone].Bool = micmon.Checked;
 				// compsec["Media"].Bool = mediamon.Checked;
 				compsec[HumanReadable.System.Process.Foreground].Bool = fgmon.Checked;
-				compsec[Constants.Network].Bool = netmon.Checked;
+				compsec[Network.Constants.Network].Bool = netmon.Checked;
 				compsec[HumanReadable.Hardware.Power.Section].Bool = powmon.Checked;
 				compsec[Constants.Paging].Bool = paging.Checked;
 				compsec[Constants.Maintenance].Bool = tempmon.Checked;

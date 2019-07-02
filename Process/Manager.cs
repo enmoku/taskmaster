@@ -760,21 +760,21 @@ namespace Taskmaster.Process
 
 			sbs.Append("Scan ");
 			if (ScanFrequency.HasValue)
-				sbs.Append("frequency: ").Append($"{ScanFrequency.Value.TotalSeconds:N0}s");
+				sbs.Append("frequency: ").AppendFormat("{0:N0}", ScanFrequency.Value.TotalSeconds).Append('s');
 			else
 				sbs.Append("disabled");
 
 			sbs.Append("; ");
 
 			if (WMIPolling)
-				sbs.Append("New instance watcher poll delay " + WMIPollDelay + "s");
+				sbs.Append("New instance watcher poll delay ").Append(WMIPollDelay).Append('s');
 			else
 				sbs.Append("New instance watcher disabled");
 
 			sbs.Append("; ");
 
 			if (IgnoreRecentlyModified.HasValue)
-				sbs.Append($"Recently modified ignored for {IgnoreRecentlyModified.Value.TotalMinutes:N1} mins");
+				sbs.Append("Recently modified ignored for ").AppendFormat("{0:N1}", IgnoreRecentlyModified.Value.TotalMinutes).Append(" mins");
 			else
 				sbs.Append("Recently modified not ignored");
 
@@ -879,7 +879,7 @@ namespace Taskmaster.Process
 				var pvis = (PathVisibilityOptions)(section.Get("Path visibility")?.Int.Constrain(-1, 3) ?? -1);
 
 				string[] tignorelist = (section.Get(HumanReadable.Generic.Ignore)?.Array ?? null);
-				if (tignorelist != null && tignorelist.Length > 0)
+				if (tignorelist?.Length > 0)
 				{
 					for (int i = 0; i < tignorelist.Length; i++)
 						tignorelist[i] = tignorelist[i].ToLowerInvariant();
@@ -1009,7 +1009,7 @@ namespace Taskmaster.Process
 							}
 
 							if (prc.Priority.HasValue && ea.Info.State == ProcessHandlingState.Paused && prc.Priority != ea.PriorityNew)
-								sbs.Append($" [{ProcessHelpers.PriorityToInt(prc.Priority.Value)}]");
+								sbs.Append(" [").Append(ProcessHelpers.PriorityToInt(prc.Priority.Value)).Append(']');
 						}
 						else
 							sbs.Append(HumanReadable.Generic.NotAvailable);
@@ -1032,7 +1032,7 @@ namespace Taskmaster.Process
 							}
 
 							if (prc.AffinityMask >= 0 && ea.Info.State == ProcessHandlingState.Paused && prc.AffinityMask != ea.AffinityNew)
-								sbs.Append($" [{prc.AffinityMask}]");
+								sbs.Append(" [").Append(prc.AffinityMask).Append(']');
 						}
 						else
 							sbs.Append(HumanReadable.Generic.NotAvailable);
@@ -1049,8 +1049,8 @@ namespace Taskmaster.Process
 
 					if (DebugAdjustDelay)
 					{
-						sbs.Append(" – ").Append($"{ea.Info.Timer.ElapsedMilliseconds:N0} ms");
-						if (ea.Info.WMIDelay > 0d) sbs.Append(" + ").Append($"{ea.Info.WMIDelay:N0}").Append(" ms watcher delay");
+						sbs.Append(" – ").AppendFormat("{0:N0}", ea.Info.Timer.ElapsedMilliseconds).Append(" ms");
+						if (ea.Info.WMIDelay > 0d) sbs.Append(" + ").AppendFormat("{0:N0}", ea.Info.WMIDelay).Append(" ms watcher delay");
 					}
 
 					if (EnableParentFinding && prc.DeclareParent)
@@ -1492,7 +1492,7 @@ namespace Taskmaster.Process
 
 		public bool EnableParentFinding { get; set; } = false;
 
-		public string[] ProtectList { get; private set; } = {
+		public string[] ProtectList { get; } = {
 			"consent", // UAC, user account control prompt
 			"winlogon", // core system
 			"wininit", // core system
@@ -1723,7 +1723,7 @@ namespace Taskmaster.Process
 
 						if (Trace && DebugProcesses) Logging.DebugMsg($"Trying to modify: {info.Name} (#{info.Id})");
 
-						await prc.Modify(info);
+						await prc.Modify(info).ConfigureAwait(false);
 
 						if (prc.Foreground != ForegroundMode.Ignore) await ForegroundWatch(info).ConfigureAwait(false);
 
@@ -2188,10 +2188,7 @@ namespace Taskmaster.Process
 
 				if (DebugWMI) Log.Debug("<<WMI>> New instance watcher initialized.");
 			}
-			catch (UnauthorizedAccessException ex)
-			{
-				throw;
-			}
+			catch (UnauthorizedAccessException) { throw; }
 			catch (Exception ex)
 			{
 				Logging.Stacktrace(ex);
@@ -2365,7 +2362,7 @@ namespace Taskmaster.Process
 				ProcessStateChange = null;
 				HandlingStateChange = null;
 
-				if (powermanager != null && powermanager.IsDisposed)
+				if (powermanager?.IsDisposed == true)
 				{
 					powermanager.BehaviourChange -= PowerBehaviourEvent;
 					powermanager = null;

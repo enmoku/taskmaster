@@ -55,6 +55,7 @@ namespace Taskmaster.Process
 		}
 
 		static MKAh.Cache.SimpleCache<int, PathCacheObject> PathCache = null;
+
 		internal static void InitializeCache()
 			=> PathCache = new MKAh.Cache.SimpleCache<int, PathCacheObject>((uint)PathCacheLimit, (uint)(PathCacheLimit / 10).Constrain(10, 100), PathCacheMaxAge);
 
@@ -368,10 +369,7 @@ namespace Taskmaster.Process
 				if (GetInfo(ppid, out var parent, null, null, null, null, true))
 					return parent;
 			}
-			catch
-			{
-
-			}
+			catch { }
 
 			return null;
 		}

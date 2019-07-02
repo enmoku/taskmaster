@@ -34,6 +34,7 @@ namespace Taskmaster.Process
 		/// Adjustment to previous total.
 		/// </summary>
 		public int Delta { get; set; } = 0;
+
 		/// <summary>
 		/// Total items being processed.
 		/// </summary>

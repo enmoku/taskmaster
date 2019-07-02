@@ -37,9 +37,9 @@ namespace Taskmaster.Audio
 			Device = device;
 		}
 
-		public Guid GUID { get; private set; }
+		public Guid GUID { get; }
 		//public string GUID { get; private set; }
-		public string ID { get; private set; }
+		public string ID { get; }
 
 		public Device Device { get; set; } = null;
 	}

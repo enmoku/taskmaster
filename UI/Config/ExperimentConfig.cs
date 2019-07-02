@@ -120,7 +120,7 @@ namespace Taskmaster.UI.Config
 				Anchor = System.Windows.Forms.AnchorStyles.Left,
 				LinkBehavior = LinkBehavior.HoverUnderline,
 			};
-			ngenLink.Links.Add(1, ngenLink.Text.Length - 2, @"https://docs.microsoft.com/en-us/dotnet/framework/tools/ngen-exe-native-image-generator");
+			ngenLink.Links.Add(1, ngenLink.Text.Length - 2, "https://docs.microsoft.com/en-us/dotnet/framework/tools/ngen-exe-native-image-generator");
 			ngenLink.LinkClicked += (_, ea) =>
 			{
 				try

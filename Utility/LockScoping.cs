@@ -34,7 +34,7 @@ namespace MKAh.Lock
 
 		public Monitor()
 		{
-
+			// NOP
 		}
 
 		public int Queue { get; private set; } = -1;

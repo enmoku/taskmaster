@@ -705,7 +705,7 @@ namespace Taskmaster.UI
 		/// <remarks>No locks</remarks>
 		void WatchlistItemColor(ListViewItem li, Process.Controller prc)
 		{
-			var alter = AlternateRowColorsWatchlist ? ((li.Index + 1) % 2 == 0) : false; // every even line
+			var alter = AlternateRowColorsWatchlist && (li.Index + 1) % 2 == 0; // every even line
 
 			try
 			{
@@ -2336,7 +2336,7 @@ namespace Taskmaster.UI
 			}
 
 			int[] winpos = wincfg.Get("Main")?.IntArray ?? null;
-			if (winpos != null && winpos.Length == 4)
+			if (winpos?.Length == 4)
 			{
 				var rectangle = new System.Drawing.Rectangle(winpos[0], winpos[1], winpos[2], winpos[3]);
 				if (Screen.AllScreens.Any(ø => ø.Bounds.IntersectsWith(Bounds))) // https://stackoverflow.com/q/495380
@@ -2624,10 +2624,7 @@ namespace Taskmaster.UI
 						Clipboard.SetText(path, TextDataFormat.UnicodeText);
 				}
 			});
-			lastmodifyms.Opened += (_, _ea) =>
-			{
-				lastmodifycopy.Enabled = (lastmodifylist.SelectedItems.Count == 1);
-			};
+			lastmodifyms.Opened += (_, _ea) => lastmodifycopy.Enabled = (lastmodifylist.SelectedItems.Count == 1);
 			lastmodifyms.Items.Add(lastmodifycopy);
 			lastmodifylist.ContextMenuStrip = lastmodifyms;
 			return lastmodifypanel;
@@ -2777,13 +2774,13 @@ namespace Taskmaster.UI
 
 			var sbs = new StringBuilder()
 				.AppendLine(Taskmaster.Name)
-				.Append("Version: ").Append(Version).AppendLine()
-				.Append("Built: ").Append($"{builddate.ToString("yyyy/MM/dd HH:mm")}").Append(" [").Append($"{age:N0}").Append(" days old]").AppendLine()
+				.Append("Version: ").AppendLine(Version)
+				.Append("Built: ").Append(builddate.ToString("yyyy/MM/dd HH:mm")).Append(" [").AppendFormat("{0:N0}", age).AppendLine(" days old]")
 				.AppendLine()
 				.AppendLine("Created by M.A., 2016–2019")
 				.AppendLine()
-				.Append("At Github: ").Append(GitURL).AppendLine()
-				.Append("At Itch.io: ").Append(ItchURL).AppendLine()
+				.Append("At Github: ").AppendLine(GitURL)
+				.Append("At Itch.io: ").AppendLine(ItchURL)
 				.AppendLine()
 				.AppendLine("Free system maintenance and de-obnoxifying app.")
 				.AppendLine()
@@ -3431,12 +3428,12 @@ namespace Taskmaster.UI
 						return;
 					}
 
-					var sbs = new StringBuilder().Append("[").Append(prc.FriendlyName).Append("]").AppendLine();
+					var sbs = new StringBuilder().Append("[").Append(prc.FriendlyName).AppendLine("]");
 
 					if (prc.Executables?.Length > 0) sbs.Append("Executables = { ").Append(string.Join(", ", prc.Executables)).AppendLine(" }");
-					if (!string.IsNullOrEmpty(prc.Path)) sbs.Append("Path = ").Append(prc.Path).AppendLine();
-					if (!string.IsNullOrEmpty(prc.Description)) sbs.Append("Description = " + prc.Description);
-					if (prc.IgnoreList != null) sbs.Append("Ignore = { ").Append(string.Join(", ", prc.IgnoreList)).Append(" }").AppendLine();
+					if (!string.IsNullOrEmpty(prc.Path)) sbs.Append("Path = ").AppendLine(prc.Path);
+					if (!string.IsNullOrEmpty(prc.Description)) sbs.Append("Description = ").Append(prc.Description);
+					if (prc.IgnoreList != null) sbs.Append("Ignore = { ").Append(string.Join(", ", prc.IgnoreList)).AppendLine(" }");
 
 					if (prc.Priority.HasValue)
 					{
@@ -3454,7 +3451,7 @@ namespace Taskmaster.UI
 					if (prc.IOPriority != Process.IOPriority.Ignore) sbs.Append("IO priority = ").Append((int)prc.IOPriority).AppendLine();
 
 					if (prc.PowerPlan != Power.Mode.Undefined)
-						sbs.Append(HumanReadable.Hardware.Power.Plan).Append(" = ").Append(Power.Utility.GetModeName(prc.PowerPlan)).AppendLine();
+						sbs.Append(HumanReadable.Hardware.Power.Plan).Append(" = ").AppendLine(Power.Utility.GetModeName(prc.PowerPlan));
 					if (prc.Recheck > 0) sbs.Append("Recheck = ").Append(prc.Recheck).AppendLine();
 					if (prc.AllowPaging) sbs.Append("Allow paging = ").Append(prc.AllowPaging).AppendLine();
 
@@ -3474,7 +3471,7 @@ namespace Taskmaster.UI
 
 					if (prc.VolumeStrategy != Audio.VolumeStrategy.Ignore)
 					{
-						sbs.Append("Volume = ").Append($"{prc.Volume:N2}").AppendLine();
+						sbs.Append("Volume = ").AppendFormat("{0:N2}", prc.Volume).AppendLine();
 						sbs.Append("Volume strategy = ").Append((int)prc.VolumeStrategy).AppendLine();
 					}
 

@@ -256,7 +256,7 @@ namespace Taskmaster.Power
 			while (!proclastwake.StandardOutput.EndOfStream)
 			{
 				if (timer.ElapsedMilliseconds > 30_000) return;
-				Logging.DebugMsg(await proclastwake.StandardOutput.ReadLineAsync());
+				Logging.DebugMsg(await proclastwake.StandardOutput.ReadLineAsync().ConfigureAwait(false));
 			}
 
 			info = new ProcessStartInfo(pcfg, "-RequestsOverride")
@@ -270,7 +270,7 @@ namespace Taskmaster.Power
 			while (!procoverrides.StandardOutput.EndOfStream)
 			{
 				if (timer.ElapsedMilliseconds > 30_000) return;
-				Logging.DebugMsg(await procoverrides.StandardOutput.ReadLineAsync());
+				Logging.DebugMsg(await procoverrides.StandardOutput.ReadLineAsync().ConfigureAwait(false));
 			}
 
 			info = new ProcessStartInfo(pcfg, "-Requests")
@@ -284,7 +284,7 @@ namespace Taskmaster.Power
 			while (!procrequests.StandardOutput.EndOfStream)
 			{
 				if (timer.ElapsedMilliseconds > 30_000) return;
-				Logging.DebugMsg(await procrequests.StandardOutput.ReadLineAsync());
+				Logging.DebugMsg(await procrequests.StandardOutput.ReadLineAsync().ConfigureAwait(false));
 			}
 		}
 
@@ -376,22 +376,27 @@ namespace Taskmaster.Power
 		/// Power saver on monitor sleep
 		/// </summary>
 		bool SaverOnMonitorSleep = false;
+
 		/// <summary>
 		/// Session lock power mode
 		/// </summary>
 		public Mode SessionLockPowerMode { get; set; } = Mode.PowerSaver;
+
 		/// <summary>
 		/// Power saver on log off
 		/// </summary>
 		bool SaverOnLogOff = false;
+
 		/// <summary>
 		/// Power saver on screen saver
 		/// </summary>
 		bool SaverOnScreensaver = false;
+
 		/// <summary>
 		/// Cancel any power modes on user activity.
 		/// </summary>
 		bool UserActiveCancel = true;
+
 		/// <summary>
 		/// Power saver after user idle for # minutes.
 		/// </summary>
@@ -401,6 +406,7 @@ namespace Taskmaster.Power
 		/// User must be inactive for this many seconds.
 		/// </summary>
 		TimeSpan? SessionLockPowerOffIdleTimeout = TimeSpan.FromSeconds(120);
+
 		/// <summary>
 		/// Power off monitor directly on lock off.
 		/// </summary>
@@ -413,6 +419,7 @@ namespace Taskmaster.Power
 
 		bool Paused = false;
 		public bool SessionLocked { get; private set; } = false;
+
 		/// <summary>
 		/// Power mode is forced, auto-adjust and other automatic changes are disabled.
 		/// </summary>
@@ -477,7 +484,7 @@ namespace Taskmaster.Power
 
 					queuePressureAdjust = (aa.Queue.High > 0 ? load.Queue / aa.Queue.High : 0f);
 					//Logging.DebugMsg("AUTO-ADJUST: Queue pressure adjust: " + $"{queuePressureAdjust:N1}");
-					ev.Pressure = ((float)BackoffCounter) / ((float)aa.High.Backoff.Level) - queuePressureAdjust;
+					ev.Pressure = (((float)BackoffCounter) / ((float)aa.High.Backoff.Level)) - queuePressureAdjust;
 					//Logging.DebugMsg("AUTO-ADJUST: Final pressure: " + $"{ev.Pressure:N1}");
 				}
 				else
@@ -505,7 +512,7 @@ namespace Taskmaster.Power
 
 					queuePressureAdjust = (aa.Queue.Low > 0 ? load.Queue / aa.Queue.Low : 0f);
 					//Logging.DebugMsg("AUTO-ADJUST: Queue pressure adjust: " + $"{queuePressureAdjust:N1}");
-					ev.Pressure = ((float)BackoffCounter) / ((float)aa.Low.Backoff.Level) + queuePressureAdjust;
+					ev.Pressure = (((float)BackoffCounter) / ((float)aa.Low.Backoff.Level)) + queuePressureAdjust;
 					//Logging.DebugMsg("AUTO-ADJUST: Final pressure: " + $"{ev.Pressure:N1}");
 				}
 				else
@@ -533,7 +540,7 @@ namespace Taskmaster.Power
 					queuePressureAdjust = (aa.Queue.High > 0 ? load.Queue / 5 : 0); // 20% per queued thread
 
 					//Logging.DebugMsg("AUTO-ADJUST: Queue pressure adjust: " + $"{queuePressureAdjust:N1}");
-					ev.Pressure = ((float)HighPressure) / ((float)aa.High.Commit.Level) + queuePressureAdjust;
+					ev.Pressure = (((float)HighPressure) / ((float)aa.High.Commit.Level)) + queuePressureAdjust;
 					//Logging.DebugMsg("AUTO-ADJUST: Final pressure: " + $"{ev.Pressure:N1}");
 				}
 				else if (load.Queue < aa.Queue.Low
@@ -553,7 +560,7 @@ namespace Taskmaster.Power
 					queuePressureAdjust = (aa.Queue.High > 0 ? load.Queue / aa.Queue.High : 0);
 
 					//Logging.DebugMsg("AUTO-ADJUST: Queue pressure adjust: " + $"{queuePressureAdjust:N1}");
-					ev.Pressure = ((float)LowPressure) / ((float)aa.Low.Commit.Level) + queuePressureAdjust;
+					ev.Pressure = (((float)LowPressure) / ((float)aa.Low.Commit.Level)) + queuePressureAdjust;
 					//Logging.DebugMsg("AUTO-ADJUST: Final pressure: " + $"{ev.Pressure:N1}");
 				}
 				else // keep power at medium
@@ -747,7 +754,7 @@ namespace Taskmaster.Power
 			var hbtt = autopower.GetOrSet(HighBackoffThresholdsName, new float[] { AutoAdjust.High.Backoff.High, AutoAdjust.High.Backoff.Mean, AutoAdjust.High.Backoff.Low })
 				.InitComment("High, Mean and Low CPU usage values, any of which is enough to break away from high power mode.")
 				.FloatArray;
-			if (hbtt != null && hbtt.Length == 3)
+			if (hbtt?.Length == 3)
 			{
 				AutoAdjust.High.Backoff.Low = hbtt[2];
 				AutoAdjust.High.Backoff.Mean = hbtt[1];
@@ -761,7 +768,7 @@ namespace Taskmaster.Power
 			var lbtt = autopower.GetOrSet(LowBackoffThresholdsName, new float[] { AutoAdjust.Low.Backoff.High, AutoAdjust.Low.Backoff.Mean, AutoAdjust.Low.Backoff.Low })
 				.InitComment("High, Mean and Low CPU uage values, any of which is enough to break away from low mode.")
 				.FloatArray;
-			if (lbtt != null && lbtt.Length == 3)
+			if (lbtt?.Length == 3)
 			{
 				AutoAdjust.Low.Backoff.Low = lbtt[2];
 				AutoAdjust.Low.Backoff.Mean = lbtt[1];
@@ -1089,7 +1096,8 @@ namespace Taskmaster.Power
 		MonitorPowerMode ExpectedMonitorPower = MonitorPowerMode.On;
 		DateTimeOffset LastExternalWarning = DateTimeOffset.MinValue;
 
-		public Mode OriginalMode { get; private set; } = Mode.Balanced;
+		public Mode OriginalMode { get; } = Mode.Balanced;
+
 		public Mode CurrentMode { get; private set; } = Mode.Balanced;
 
 		Mode SavedMode = Mode.Undefined;
@@ -1392,7 +1400,7 @@ namespace Taskmaster.Power
 
 			if ((verbose && (CurrentMode != mode)) || DebugPower)
 			{
-				string extra = cause != null ? $" - Cause: {cause.ToString()}" : string.Empty;
+				string extra = cause != null ? $" - Cause: {cause}" : string.Empty;
 				Log.Information("<Power> Setting mode: " + Utility.GetModeName(mode) + extra);
 			}
 

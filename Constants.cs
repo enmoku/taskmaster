@@ -48,8 +48,6 @@ namespace Taskmaster
 
 		public const string Performance = "Performance";
 		public const string Components = "Components";
-		public const string Microphone = "Microphone";
-		public const string Network = "Network";
 		public const string Paging = "Paging";
 
 		public const string Maintenance = "Maintenance";
@@ -75,5 +73,9 @@ namespace Taskmaster
 		public const string ScanFrequency = "Scan frequency";
 		public const string WMIWatcher = "WMI event watcher";
 		public const string WMIDelay = "WMI poll delay";
+
+		public const string UpdateFrequency = "Update frequency";
+		public const string LastModified = "Last Modified";
+		public const string Cache = "Cache";
 	}
 }

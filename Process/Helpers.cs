@@ -57,6 +57,7 @@ namespace Taskmaster
 		/// Done modifying with some modifications enacted.
 		/// </summary>
 		Modified,
+
 		/// <summary>
 		/// Done modifying but nothing was done.
 		/// </summary>
@@ -71,22 +72,27 @@ namespace Taskmaster
 		/// Background transition
 		/// </summary>
 		Paused,
+
 		/// <summary>
 		/// Foreground transition
 		/// </summary>
 		Resumed,
+
 		/// <summary>
 		/// Done processing.
 		/// </summary>
 		Abandoned,
+
 		/// <summary>
 		/// Tin.
 		/// </summary>
 		Invalid,
+
 		/// <summary>
 		/// Failed to access process.
 		/// </summary>
 		AccessDenied,
+
 		/// <summary>
 		/// No longer running
 		/// </summary>
@@ -96,22 +102,27 @@ namespace Taskmaster
 	public enum ProcessAffinityStrategy
 	{
 		None = 0,
+
 		/// <summary>
 		/// Set affinity as is, ignoring everything.
 		/// </summary>
 		Force = 1,
+
 		/// <summary>
 		/// Move and constrain cores to allowed cores but don't increase if setting has more than original
 		/// </summary>
 		Limit = 2,
+
 		/// <summary>
 		/// Assign to cores 1 by 1 linearly.
 		/// </summary>
 		Scatter = 3,
+
 		/// <summary>
 		/// Set foreground process to dedicated core and scatter the rest.
 		/// </summary>
 		BackgroundScatter = 4,
+
 		/// <summary>
 		/// Use all but one of the defined cores for foreground and push all others to 1 remaining.
 		/// </summary>
@@ -123,6 +134,7 @@ namespace Taskmaster
 		None = 0,
 		Increase = 1,
 		Decrease = 2,
+
 		/// <summary>
 		/// Bi-directional
 		/// </summary>
@@ -268,6 +280,7 @@ namespace Taskmaster
 	[Flags]
 	internal enum SnapshotFlags : uint
 	{
+		None = 0,
 		HeapList = 0x00000001,
 		Process = 0x00000002,
 		Thread = 0x00000004,

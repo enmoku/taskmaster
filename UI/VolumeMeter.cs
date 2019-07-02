@@ -163,7 +163,7 @@ namespace Taskmaster.UI
 			ResumeLayout();
 			Visible = true;
 
-			if (winpos != null && winpos.Length == 2)
+			if (winpos?.Length == 2)
 			{
 				var rectangle = new System.Drawing.Rectangle(winpos[0], winpos[1], Bounds.Width, Bounds.Height);
 				if (Screen.AllScreens.Any(ø => ø.Bounds.IntersectsWith(Bounds))) // https://stackoverflow.com/q/495380
@@ -248,6 +248,7 @@ namespace Taskmaster.UI
 		public event EventHandler<DisposedEventArgs> OnDisposed;
 
 		bool DisposedOrDisposing = false;
+
 		protected override void Dispose(bool disposing)
 		{
 			if (DisposedOrDisposing) return;

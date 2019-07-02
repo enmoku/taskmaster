@@ -243,7 +243,7 @@ namespace Taskmaster.Process
 
 		public Process.PathVisibilityOptions PathVisibility { get; set; } = Process.PathVisibilityOptions.Process;
 
-		string PathMask { get; set; } = string.Empty; // UNUSED
+		string PathMask { get; } = string.Empty; // UNUSED
 
 		/// <summary>
 		/// Controls whether this particular controller allows itself to be logged.
@@ -660,19 +660,19 @@ namespace Taskmaster.Process
 
 			app["Preference"].Int = OrderPreference;
 
-			if (IgnoreList != null && IgnoreList.Length > 0)
+			if (IgnoreList?.Length > 0)
 				app[HumanReadable.Generic.Ignore].Array = IgnoreList;
 			else
 				app.TryRemove(HumanReadable.Generic.Ignore);
 
 			if (ModifyDelay > 0)
-				app["Modify delay"].Int = ModifyDelay;
+				app[Constants.ModifyDelay].Int = ModifyDelay;
 			else
-				app.TryRemove("Modify delay");
+				app.TryRemove(Constants.ModifyDelay);
 
 			if (Resize.HasValue)
 			{
-				int[] res = app.Get("Resize")?.IntArray ?? null;
+				int[] res = app.Get(Constants.Resize)?.IntArray ?? null;
 				if ((res?.Length ?? 0) != 4) res = new int[] { 0, 0, 0, 0 };
 
 				if (Bit.IsSet((int)ResizeStrategy, (int)WindowResizeStrategy.Position))
@@ -687,14 +687,14 @@ namespace Taskmaster.Process
 					res[3] = Resize.Value.Height;
 				}
 
-				app["Resize"].IntArray = res;
+				app[Constants.Resize].IntArray = res;
 
-				app["Resize strategy"].Int = (int)ResizeStrategy;
+				app[Constants.ResizeStrategy].Int = (int)ResizeStrategy;
 			}
 			else
 			{
-				app.TryRemove("Resize strategy");
-				app.TryRemove("Resize");
+				app.TryRemove(Constants.ResizeStrategy);
+				app.TryRemove(Constants.Resize);
 			}
 
 			if (VolumeStrategy != Audio.VolumeStrategy.Ignore)
@@ -1127,7 +1127,7 @@ namespace Taskmaster.Process
 
 		public bool Ignored(ProcessEx info)
 		{
-			if (IgnoreList != null && IgnoreList.Any(item => item.Equals(info.Name, StringComparison.InvariantCultureIgnoreCase)))
+			if (IgnoreList?.Any(item => item.Equals(info.Name, StringComparison.InvariantCultureIgnoreCase)) == true)
 			{
 				info.State = ProcessHandlingState.Abandoned;
 				return true; // return ProcessState.Ignored;
@@ -1891,11 +1891,11 @@ namespace Taskmaster.Process
 
 			sbs.AppendLine();
 			if (VolumeStrategy != Audio.VolumeStrategy.Ignore)
-				sbs.Append("Mixer volume: ").Append($"{Volume * 100f:N0} %").Append(" – strategy: ").AppendLine(VolumeStrategy.ToString());
+				sbs.Append("Mixer volume: ").AppendFormat("{0:N0}", Volume * 100f).Append(" %")
+					.Append(" – strategy: ").AppendLine(VolumeStrategy.ToString());
 
 			sbs.Append("Log adjusts: ").Append(LogAdjusts ? "Enabled" : "Disabled")
-				.Append(" – start & exit").Append(LogStartAndExit ? "Enabled" : "Disabled")
-				.AppendLine();
+				.Append(" – start & exit").AppendLine(LogStartAndExit ? "Enabled" : "Disabled");
 			sbs.Append("Path visibility: ").Append(PathVisibility.ToString());
 
 			if (DeclareParent)

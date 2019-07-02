@@ -154,7 +154,8 @@ namespace Taskmaster
 				.Append(Name).Append("! (#").Append(System.Diagnostics.Process.GetCurrentProcess().Id).Append(")")
 				.Append(MKAh.Execution.IsAdministrator ? " [ADMIN]" : "").Append(Portable ? " [PORTABLE]" : "")
 				.Append(" – Version: ").Append(Version)
-				.Append(" – Built: ").Append(builddate.ToString("yyyy/MM/dd HH:mm")).Append($" [{age:N0} days old]");
+				.Append(" – Built: ").Append(builddate.ToString("yyyy/MM/dd HH:mm"))
+				.Append(" [").AppendFormat("{0:N0}", age).Append(" days old]");
 			Log.Information(sbs.ToString());
 
 			//PreallocLastLog();
@@ -212,9 +213,7 @@ namespace Taskmaster
 
 			const string Hello = "Hello", Hi = "Hi";
 
-			if (cfg.TryGet(Constants.Core, out var core) && core.TryGet(Hello, out var hello) && hello.Value.Equals(Hi))
-			{ }
-			else
+			if (!cfg.TryGet(Constants.Core, out var core) || !core.TryGet(Hello, out var hello) || !hello.Value.Equals(Hi))
 				cfg[Constants.Core][Hello].Value = Hi;
 
 			var compsec = cfg[Constants.Components];
@@ -238,7 +237,7 @@ namespace Taskmaster
 				.InitComment("Monitor audio sessions and set their volume as per user configuration.")
 				.Bool;
 
-			MicrophoneManagerEnabled = compsec.GetOrSet("Microphone", false)
+			MicrophoneManagerEnabled = compsec.GetOrSet(Audio.Constants.Microphone, false)
 				.InitComment("Monitor and force-keep microphone volume.")
 				.Bool;
 
@@ -255,7 +254,7 @@ namespace Taskmaster
 				.InitComment("Game/Foreground app monitoring and adjustment.")
 				.Bool;
 
-			NetworkMonitorEnabled = compsec.GetOrSet(Constants.Network, true)
+			NetworkMonitorEnabled = compsec.GetOrSet(Network.Constants.Network, true)
 				.InitComment("Monitor network uptime and current IP addresses.")
 				.Bool;
 
@@ -434,18 +433,18 @@ namespace Taskmaster
 			DebugMonitor = dbgsec.Get(HumanReadable.Hardware.Monitor.Section)?.Bool ?? false;
 
 			DebugSession = dbgsec.Get("Session")?.Bool ?? false;
-			DebugResize = dbgsec.Get("Resize")?.Bool ?? false;
+			DebugResize = dbgsec.Get(Process.Constants.Resize)?.Bool ?? false;
 
 			DebugMemory = dbgsec.Get(HumanReadable.Hardware.Memory)?.Bool ?? false;
 
-			DebugCache = dbgsec.Get("Cache")?.Bool ?? false;
+			DebugCache = dbgsec.Get(Constants.Cache)?.Bool ?? false;
 
 			var exsec = cfg[Constants.Experimental];
-			LastModifiedList = exsec.Get("Last Modified")?.Bool ?? false;
+			LastModifiedList = exsec.Get(Constants.LastModified)?.Bool ?? false;
 			TempMonitorEnabled = exsec.Get("Temp Monitor")?.Bool ?? false;
 			int trecanalysis = exsec.Get("Record analysis")?.Int ?? 0;
 			RecordAnalysis = trecanalysis > 0 ? (TimeSpan?)TimeSpan.FromSeconds(trecanalysis.Constrain(0, 180)) : null;
-			IOPriorityEnabled = exsec.Get("IO Priority")?.Bool ?? false;
+			IOPriorityEnabled = exsec.Get(Process.Constants.IOPriority)?.Bool ?? false;
 			if (!MKAh.Execution.IsWin7)
 			{
 				Log.Warning("<Core> I/O priority was enabled. Requires Win7 which you don't appear to be running.");
@@ -535,7 +534,7 @@ namespace Taskmaster
 			};
 
 			Exception[] cex=null;
-			if (cts.IsCancellationRequested) throw new InitFailure("Cancelled?", (cex is null ? null : cex[0]), cex);
+			if (cts.IsCancellationRequested) throw new InitFailure("Cancelled?", (cex?[0]), cex);
 			foreach (var t in init) t.ContinueWith(t => {
 				cex = t.Exception?.InnerExceptions.ToArray() ?? null;
 				Logging.DebugMsg("Module loading failed");
@@ -569,7 +568,7 @@ namespace Taskmaster
 				throw;
 			}
 
-			if (cts.IsCancellationRequested) throw new InitFailure("Cancelled at 557", (cex is null ? null : cex[0]), cex);
+			if (cts.IsCancellationRequested) throw new InitFailure("Cancelled at 557", (cex?[0]), cex);
 			// WinForms makes the following components not load nicely if not done here (main thread).
 			trayaccess = new UI.TrayAccess();
 			trayaccess.TrayMenuShown += (_, ea) => OptimizeResponsiviness(ea.Visible);
@@ -577,7 +576,7 @@ namespace Taskmaster
 			ProcMon.ContinueWith((_, _discard) => trayaccess?.Hook(processmanager), TaskContinuationOptions.OnlyOnRanToCompletion, cts.Token);
 
 			Task.WhenAll(new[] { ProcMon, FgMon }).ContinueWith(_ => activeappmonitor?.Hook(processmanager), TaskContinuationOptions.OnlyOnRanToCompletion);
-			if (cts.IsCancellationRequested) throw new InitFailure("Cancelled at 565", (cex is null ? null : cex[0]), cex);
+			if (cts.IsCancellationRequested) throw new InitFailure("Cancelled at 565", (cex?[0]), cex);
 
 			try
 			{

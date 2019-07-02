@@ -80,18 +80,22 @@ namespace Taskmaster
 			/// The calling thread is not prevented from processing other requests while waiting for the function to return.
 			/// </summary>
 			SMTO_NORMAL = 0x0,
+
 			/// <summary>
 			/// Prevents the calling thread from processing any other requests until the function returns.
 			/// </summary>
 			SMTO_BLOCK = 0x1,
+
 			/// <summary>
 			/// The function returns without waiting for the time-out period to elapse if the receiving thread appears to not respond or "hangs."
 			/// </summary>
 			SMTO_ABORTIFHUNG = 0x2,
+
 			/// <summary>
 			/// The function does not enforce the time-out period as long as the receiving thread is processing messages.
 			/// </summary>
 			SMTO_NOTIMEOUTIFNOTHUNG = 0x8,
+
 			/// <summary>
 			/// The function should return 0 if the receiving window is destroyed or its owning thread dies while the message is being processed.
 			/// </summary>
@@ -136,6 +140,7 @@ namespace Taskmaster
 
 		[System.Runtime.InteropServices.DllImport("user32.dll")]
 		public static extern bool RegisterHotKey(IntPtr hWnd, int id, int fsModifiers, int vk);
+
 		[System.Runtime.InteropServices.DllImport("user32.dll")]
 		public static extern bool UnregisterHotKey(IntPtr hWnd, int id);
 
@@ -165,20 +170,23 @@ namespace Taskmaster
 			/// Use the system default, which is to display all error dialog boxes.
 			/// </summary>
 			SEM_SYSTEMDEFAULT = 0x0,
+
 			/// <summary>
-			/// The system does not display the critical-error-handler message box. Instead, the system sends the error to the calling process.
-			///
-			/// Best practice is that all applications call the process-wide SetErrorMode function with a parameter of SEM_FAILCRITICALERRORS at startup. This is to prevent error mode dialogs from hanging the application.
+			/// <para>The system does not display the critical-error-handler message box. Instead, the system sends the error to the calling process.</para>
+			/// <para>Best practice is that all applications call the process-wide SetErrorMode function with a parameter of SEM_FAILCRITICALERRORS at startup. This is to prevent error mode dialogs from hanging the application.</para>
 			/// </summary>
 			SEM_FAILCRITICALERRORS = 0x0001,
+
 			/// <summary>
 			/// Relevant only to Itanium processors.
 			/// </summary>
 			SEM_NOALIGNMENTFAULTEXCEPT = 0x0004,
+
 			/// <summary>
 			/// The system does not display the Windows Error Reporting dialog.
 			/// </summary>
 			SEM_NOGPFAULTERRORBOX = 0x0002,
+
 			/// <summary>
 			/// The OpenFile function does not display a message box when it fails to find a file. Instead, the error is returned to the caller. This error mode overrides the OF_PROMPT flag.
 			/// </summary>
@@ -196,7 +204,7 @@ namespace Taskmaster
 			protected HANDLE()
 				: base(new IntPtr(-1), true)
 			{
-
+				// NOP
 			}
 
 			public override bool IsInvalid

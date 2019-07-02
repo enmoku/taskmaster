@@ -40,7 +40,6 @@ namespace Taskmaster
 		[DllImport("psapi.dll", SetLastError = true, CharSet = CharSet.Unicode, BestFitMapping = false, ThrowOnUnmappableChar = true)]
 		public static extern uint GetModuleFileNameEx(IntPtr hProcess, IntPtr hModule, [Out] System.Text.StringBuilder lpBaseName, [In] [MarshalAs(UnmanagedType.U4)] uint nSize);
 
-
 		public static HANDLE OpenProcessFully(System.Diagnostics.Process process)
 		{
 			try

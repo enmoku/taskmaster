@@ -45,8 +45,8 @@ namespace Taskmaster.Audio
 			MMDevice = device;
 		}
 
-		public string Name { get; private set; } = string.Empty;
-		public Guid GUID { get; private set; } = Guid.Empty;
+		public string Name { get; } = string.Empty;
+		public Guid GUID { get; } = Guid.Empty;
 
 		public bool VolumeControl { get; set; } = false;
 		public float Volume { get; set; } = float.NaN;

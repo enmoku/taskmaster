@@ -78,6 +78,7 @@ namespace Taskmaster
 		readonly System.Timers.Timer timer = null;
 
 		Process.Manager processmanager = null;
+
 		void Hook(Process.Manager procman)
 		{
 			processmanager = procman;
@@ -85,6 +86,7 @@ namespace Taskmaster
 		}
 
 		int CallbackLimiter = 0;
+
 		async void MaintenanceTick(object _, EventArgs _ea)
 		{
 			if (disposed) return;

@@ -32,18 +32,22 @@ namespace Taskmaster.Process
 		/// Process name. Usually executable name without extension.
 		/// </summary>
 		Process = -1,
+
 		/// <summary>
 		/// Partial path removes some basic elements that seem redundant.
 		/// </summary>
 		Partial = 1,
+
 		/// <summary>
 		/// Smart reduction of full path. Not always as smart as desirable.
 		/// </summary>
 		Smart = 2,
+
 		/// <summary>
 		/// Complete path.
 		/// </summary>
 		Full = 3,
+
 		/// <summary>
 		/// Invalid.
 		/// </summary>

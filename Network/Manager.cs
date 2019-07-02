@@ -132,7 +132,7 @@ namespace Taskmaster.Network
 
 				if (DynamicDNS)
 				{
-					string host = dnssec.Get("Host").String;
+					string host = dnssec.Get(Constants.Host).String;
 					bool tooshort = (host?.Length ?? 0) < 10; // HACK: Arbitrary size limit
 					bool http = host?.StartsWith("http://") ?? false;
 					bool https = host?.StartsWith("https://") ?? false;
@@ -173,8 +173,8 @@ namespace Taskmaster.Network
 					.Bool;
 
 				var dbgsec = corecfg.Config[HumanReadable.Generic.Debug];
-				DebugNet = dbgsec.Get("Network")?.Bool ?? false;
-				DebugDNS = dbgsec.Get("Dynamic DNS")?.Bool ?? false;
+				DebugNet = dbgsec.Get(Network.Constants.Network)?.Bool ?? false;
+				DebugDNS = dbgsec.Get(Network.Constants.DynDNS)?.Bool ?? false;
 
 				if (Trace) Log.Debug("<Network> Traffic sample frequency: " + PacketStatTimerInterval + "s");
 			}
@@ -244,13 +244,13 @@ namespace Taskmaster.Network
 			if (!DynamicDNS) return;
 
 			using var netcfg = Config.Load(NetConfigFilename);
-			var dns = netcfg.Config["DNS Updating"];
-			IPAddress.TryParse(dns.Get("Last known IPv4")?.String ?? string.Empty, out DNSOldIPv4);
-			IPAddress.TryParse(dns.Get("Last known IPv6")?.String ?? string.Empty, out DNSOldIPv6);
+			var dns = netcfg.Config[Constants.DNSUpdating];
+			IPAddress.TryParse(dns.Get(Constants.LastKnownIPv4)?.String ?? string.Empty, out DNSOldIPv4);
+			IPAddress.TryParse(dns.Get(Constants.LastKnownIPv6)?.String ?? string.Empty, out DNSOldIPv6);
 
 			var TimerStartDelay = TimeSpan.FromSeconds(10d);
 			DateTimeOffset lastUpdate = DateTimeOffset.MinValue;
-			if (DateTimeOffset.TryParse(dns.Get("Last attempt")?.String ?? string.Empty, out lastUpdate)
+			if (DateTimeOffset.TryParse(dns.Get(Constants.LastAttempt)?.String ?? string.Empty, out lastUpdate)
 				&& lastUpdate.TimeTo(DateTimeOffset.UtcNow).TotalMinutes < 15d)
 			{
 				Log.Debug("<Net:DynDNS> Delaying update timer.");
@@ -349,7 +349,7 @@ namespace Taskmaster.Network
 					using var dat = rs.GetResponseStream();
 					int len = Convert.ToInt32(rs.ContentLength);
 					byte[] buffer = new byte[len];
-					await dat.ReadAsync(buffer, 0, len);
+					await dat.ReadAsync(buffer, 0, len).ConfigureAwait(false);
 					Logging.DebugMsg(buffer.ToString());
 				}
 				rs.Close();
@@ -490,7 +490,7 @@ namespace Taskmaster.Network
 						if (longProblem) sbs.Append("+").Append(errorsSinceLastReport).Append(" errors, ").Append(errorsInSample).Append(" in last sample");
 						else sbs.Append("+").Append(errorsInSample).Append(" errors in last sample");
 
-						if (!double.IsNaN(pmins)) sbs.Append($"; {pmins:N1}").Append(" minutes since last report");
+						if (!double.IsNaN(pmins)) sbs.Append("; ").AppendFormat("{0:N1}", pmins).Append(" minutes since last report");
 						sbs.Append(")");
 
 						Log.Warning(sbs.ToString());
@@ -570,8 +570,6 @@ namespace Taskmaster.Network
 			}
 		}
 
-		bool InternetAvailableLast = false;
-
 		Stopwatch Downtime = null;
 
 		void ReportUptime()
@@ -583,14 +581,14 @@ namespace Taskmaster.Network
 				var currentUptime = DateTimeOffset.UtcNow.TimeSince(LastUptimeStart).TotalMinutes;
 
 				int cnt = UptimeSamples.Count;
-				sbs.Append($"{(UptimeSamples.Sum() + currentUptime) / (cnt + 1):N1}").Append(" minutes");
+				sbs.AppendFormat("{0:N1}", (UptimeSamples.Sum() + currentUptime) / (cnt + 1)).Append(" minutes");
 
 				if (cnt >= 3)
-					sbs.Append(" (").Append($"{(UptimeSamples.GetRange(cnt - 3, 3).Sum() / 3f):N1}").Append(" minutes for last 3 samples");
+					sbs.Append(" (").AppendFormat("{0:N1}", UptimeSamples.GetRange(cnt - 3, 3).Sum() / 3f).Append(" minutes for last 3 samples");
 			}
 
 			sbs.Append(" since: ").Append(UptimeRecordStart)
-			   .Append(" (").Append($"{(DateTimeOffset.UtcNow - UptimeRecordStart).TotalHours:N2}").Append("h ago)")
+			   .Append(" (").AppendFormat("{0:N2}", (DateTimeOffset.UtcNow - UptimeRecordStart).TotalHours).Append("h ago)")
 			   .Append(".");
 
 			Log.Information(sbs.ToString());
@@ -729,7 +727,7 @@ namespace Taskmaster.Network
 					if (!InternetAvailable)
 					{
 						// TODO: Schedule another test.
-						await CheckInet();
+						await CheckInet().ConfigureAwait(false);
 					}
 
 					if (oldInetAvailable != InternetAvailable)
@@ -889,7 +887,7 @@ namespace Taskmaster.Network
 
 			await Task.Delay(0).ConfigureAwait(false); // asyncify
 
-			await CheckInet(address_changed: true);
+			await CheckInet(address_changed: true).ConfigureAwait(false);
 			AvailabilityChanged = AvailabilityChanged != InternetAvailable;
 
 			if (InternetAvailable)

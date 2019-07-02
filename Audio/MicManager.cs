@@ -45,7 +45,7 @@ namespace Taskmaster.Audio
 		public event EventHandler<VolumeChangedEventArgs> VolumeChanged;
 		public event EventHandler<DefaultDeviceEventArgs> DefaultChanged;
 
-		bool DebugMic { get; set; } = false;
+		bool DebugMic { get; } = false;
 
 		const string DeviceFilename = "Microphone.Devices.ini";
 
@@ -115,13 +115,13 @@ namespace Taskmaster.Audio
 			const string mcontrol = "Recording volume control";
 
 			using var corecfg = Config.Load(CoreConfigFilename);
-			var mediasec = corecfg.Config["Media"];
+			var mediasec = corecfg.Config[Constants.Media];
 
 			Control = mediasec.GetOrSet(mcontrol, false).Bool;
 			DefaultVolume = mediasec.GetOrSet(mvol, 100.0d).Double;
 
 			var dbgsec = corecfg.Config[HumanReadable.Generic.Debug];
-			DebugMic = dbgsec.Get("Microphone")?.Bool ?? false;
+			DebugMic = dbgsec.Get(Constants.Microphone)?.Bool ?? false;
 
 			if (DebugMic) Log.Information("<Microphone> Component loaded.");
 
@@ -401,7 +401,7 @@ namespace Taskmaster.Audio
 				{
 					try
 					{
-						await System.Threading.Tasks.Task.Delay(AdjustDelay); // actual hysterisis, this should be cancellable
+						await System.Threading.Tasks.Task.Delay(AdjustDelay).ConfigureAwait(false); // actual hysterisis, this should be cancellable
 						if (Control)
 						{
 							oldVol = VolumeControl.Percent;

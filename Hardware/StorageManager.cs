@@ -85,7 +85,7 @@ namespace Taskmaster
 			}
 
 			using var corecfg = Config.Load(CoreConfigFilename);
-			Verbose = corecfg.Config[HumanReadable.Generic.Debug].Get("Storage")?.Bool ?? false;
+			Verbose = corecfg.Config[HumanReadable.Generic.Debug].Get(Constants.Storage)?.Bool ?? false;
 
 			if (Verbose) Log.Information("<Maintenance> Component loaded.");
 
@@ -184,7 +184,7 @@ namespace Taskmaster
 
 			try
 			{
-				await Task.Delay(0);
+				await Task.Delay(0).ConfigureAwait(false);
 
 				var dst = new DirectoryStats { Files = 0, Dirs = 0, Size = 0 };
 

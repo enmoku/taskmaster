@@ -114,6 +114,7 @@ namespace Taskmaster.Process
 		}
 
 		Process.Manager processmanager = null;
+
 		public void Hook(Process.Manager procman)
 		{
 			processmanager = procman;
@@ -200,7 +201,7 @@ namespace Taskmaster.Process
 				if (!previoushang.Equals(lfgpid)) // foreground changed since last test
 					HangTick = 0;
 
-				if (fgproc != null && !fgproc.Responding)
+				if (fgproc?.Responding == false)
 				{
 					string name = string.Empty;
 					try
@@ -383,7 +384,9 @@ namespace Taskmaster.Process
 		}
 
 		System.Drawing.Rectangle windowrect;
+
 		NativeMethods.RECT screenrect;
+
 		bool Fullscreen(IntPtr hwnd)
 		{
 			if (DisposedOrDisposing) throw new ObjectDisposedException(nameof(ForegroundManager), "Fullscreen called after ActiveAppManager was disposed");
@@ -414,7 +417,7 @@ namespace Taskmaster.Process
 		{
 			if (eventType != NativeMethods.EVENT_SYSTEM_FOREGROUND) return; // does this ever trigger?
 
-			await System.Threading.Tasks.Task.Delay(Hysterisis); // asyncify
+			await System.Threading.Tasks.Task.Delay(Hysterisis).ConfigureAwait(false); // asyncify
 			if (DisposedOrDisposing) return;
 
 			using var sl = ScopedLock.ScopedLock();
@@ -426,7 +429,6 @@ namespace Taskmaster.Process
 			try
 			{
 				LastSwap = DateTimeOffset.UtcNow;
-
 
 				NativeMethods.GetWindowThreadProcessId(hwnd, out int pid);
 
@@ -445,7 +447,6 @@ namespace Taskmaster.Process
 
 				if (!Utility.SystemProcessId(pid))
 				{
-
 					try
 					{
 						lock (FGLock)
@@ -491,7 +492,6 @@ namespace Taskmaster.Process
 			}
 		}
 
-
 		#region IDisposable
 		public event EventHandler<DisposedEventArgs> OnDisposed;
 
@@ -504,6 +504,7 @@ namespace Taskmaster.Process
 		}
 
 		bool DisposedOrDisposing = false;
+
 		void Dispose(bool disposing)
 		{
 			if (DisposedOrDisposing) return;

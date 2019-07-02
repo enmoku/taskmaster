@@ -873,7 +873,7 @@ namespace Taskmaster.UI.Config
 
 			Controller.OrderPreference = Convert.ToInt32(preforder.Value).Constrain(0, 100);
 
-			Controller.Enabled = newPrc ? true : enOrig;
+			Controller.Enabled = newPrc || enOrig;
 
 			Controller.Repair();
 
@@ -1032,7 +1032,7 @@ namespace Taskmaster.UI.Config
 			}
 
 			var sbs = new System.Text.StringBuilder();
-			sbs.Append("Name: ").Append(fnlen ? "OK" : "Fail").AppendLine();
+			sbs.Append("Name: ").AppendLine(fnlen ? "OK" : "Fail");
 
 			var samesection = Controller.FriendlyName.Equals(friendlyName.Text);
 			if (!samesection && processmanager.GetControllerByName(friendlyName.Text, out var dprc)) sbs.Append("Friendly name conflict!");
@@ -1042,38 +1042,38 @@ namespace Taskmaster.UI.Config
 				sbs.Append(HumanReadable.System.Process.Executable).Append(": ").Append(exnam ? "OK" : "Fail").Append(" – Found: ").Append(exfound).AppendLine();
 				string lowname = System.IO.Path.GetFileNameWithoutExtension(execName.Text);
 				if (processmanager.ProtectedProcessName(lowname))
-					sbs.Append("Defined executable is in core protected executables list. Adjustment may be denied.").AppendLine();
+					sbs.AppendLine("Defined executable is in core protected executables list. Adjustment may be denied.");
 
 				if (processmanager.IgnoreProcessName(lowname))
-					sbs.Append("Defined executable is in core ignore list. All changes denied.").AppendLine();
+					sbs.AppendLine("Defined executable is in core ignore list. All changes denied.");
 			}
 			if (pathName.Text.Length > 0)
 			{
-				sbs.Append("Path: ").Append(path ? "OK" : "Fail").Append(" - Found: ").Append(pfound).AppendLine();
+				sbs.Append("Path: ").Append(path ? "OK" : "Fail").Append(" - Found: ").AppendLine(pfound);
 				if (processmanager.IgnoreSystem32Path && pathName.Text.StartsWith(Environment.GetFolderPath(Environment.SpecialFolder.System), StringComparison.InvariantCultureIgnoreCase))
-					sbs.Append("Path points to System32 even though core config denies it.").AppendLine();
+					sbs.AppendLine("Path points to System32 even though core config denies it.");
 			}
 
 			if (!exnam && !path)
-				sbs.Append("Both path and executable are missing!").AppendLine();
+				sbs.AppendLine("Both path and executable are missing!");
 
 			if (priorityClass.SelectedIndex == 5)
-				sbs.Append("Priority class is to be ignored.").AppendLine();
+				sbs.AppendLine("Priority class is to be ignored.");
 			if (cpumask == -1 || affstrategy.SelectedIndex == 0)
-				sbs.Append("Affinity is to be ignored.").AppendLine();
+				sbs.AppendLine("Affinity is to be ignored.");
 			if (ignorelist.Items.Count > 0 && execName.Text.Length > 0)
-				sbs.Append("Ignore list is meaningless with executable defined.").AppendLine();
+				sbs.AppendLine("Ignore list is meaningless with executable defined.");
 
 			foreach (ListViewItem item in ignorelist.Items)
 			{
 				if (execName.Text.Length > 0 && item.Text.Equals(System.IO.Path.GetFileNameWithoutExtension(execName.Text), StringComparison.InvariantCultureIgnoreCase))
 				{
-					sbs.Append("Ignore list contains the same executable as is being matched for. Stop that.").AppendLine();
+					sbs.AppendLine("Ignore list contains the same executable as is being matched for. Stop that.");
 					break;
 				}
 				else if (item.Text.EndsWith(".exe", StringComparison.InvariantCultureIgnoreCase))
 				{
-					sbs.Append("Ignore list items should not include extensions.").AppendLine();
+					sbs.AppendLine("Ignore list items should not include extensions.");
 					break;
 				}
 			}
@@ -1081,14 +1081,14 @@ namespace Taskmaster.UI.Config
 			if (affinityMask.Value >= 0 && idealAffinity.Value > 0)
 			{
 				if (!Bit.IsSet(Convert.ToInt32(affinityMask.Value).Replace(0, Process.Utility.FullCPUMask), Convert.ToInt32(idealAffinity.Value) - 1))
-					sbs.Append("Affinity ideal is not within defined affinity.").AppendLine();
+					sbs.AppendLine("Affinity ideal is not within defined affinity.");
 			}
 
 			if (ioPriority != null && ioPriority.SelectedIndex != 0)
 			{
-				sbs.Append("Warning: I/O priority set! Be certain of what you're doing!").AppendLine();
+				sbs.AppendLine("Warning: I/O priority set! Be certain of what you're doing!");
 				if (ioPriority.SelectedIndex == 2 && ioPriority.SelectedIndex > 3)
-					sbs.Append("\tUnsupported I/O mode selected. Behaviour may be unexpected.").AppendLine();
+					sbs.AppendLine("\tUnsupported I/O mode selected. Behaviour may be unexpected.");
 			}
 
 			MessageBox.ShowModal("Validation results", sbs.ToString(), MessageBox.Buttons.OK, parent: this);

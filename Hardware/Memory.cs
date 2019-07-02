@@ -39,10 +39,7 @@ namespace Taskmaster
 		/// Total physical system memory in bytes.
 		/// </summary>
 		public static ulong Total { get; private set; } = 0;
-		/// <summary>
-		///
-		/// </summary>
-		public static ulong Load { get; private set; } = 0;
+
 		/// <summary>
 		/// Memory used.
 		/// </summary>
@@ -52,6 +49,7 @@ namespace Taskmaster
 		/// Private bytes.
 		/// </summary>
 		public static ulong Private => Convert.ToUInt64(pfcprivate?.Value ?? 0);
+
 		/// <summary>
 		/// Memory pressure. 0.0 to 1.0 scale.
 		/// Queries a performance counter and may be slow as such.
@@ -76,8 +74,7 @@ namespace Taskmaster
 		{
 			Update();
 
-			Logging.DebugMsg("Total memory:  " + Total);
-			Logging.DebugMsg("Private bytes: " + Private);
+			Logging.DebugMsg("Memory\n--- Total:   " + Total + "\n--- Private: " + Private);
 
 			/*
 			// Win32_ComputerSystem -> TotalPhysicalMemory maps to MEMORYSTATUSEX.ullTotalPhys
@@ -106,6 +103,7 @@ namespace Taskmaster
 
 		// weird hack
 		static readonly Finalizer finalizer = new Finalizer();
+
 		sealed class Finalizer
 		{
 			~Finalizer()
@@ -173,9 +171,6 @@ namespace Taskmaster
 	}
 	*/
 
-	/// <summary>
-	///
-	/// </summary>
 	// http://www.pinvoke.net/default.aspx/Structures/MEMORYSTATUSEX.html
 	// https://docs.microsoft.com/en-us/windows/desktop/api/sysinfoapi/ns-sysinfoapi-_memorystatusex
 	[System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential, CharSet = System.Runtime.InteropServices.CharSet.Auto)]

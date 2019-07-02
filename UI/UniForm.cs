@@ -85,6 +85,7 @@ namespace Taskmaster.UI
 
 		// static finalizer
 		static readonly Finalizer finalizer = new Finalizer();
+
 		sealed class Finalizer
 		{
 			~Finalizer()

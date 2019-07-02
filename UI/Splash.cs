@@ -235,6 +235,7 @@ namespace Taskmaster.UI
 
 		#region IDispose
 		bool DisposedOrDisposing = false;
+
 		protected override void Dispose(bool disposing)
 		{
 			if (DisposedOrDisposing) return;

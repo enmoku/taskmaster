@@ -310,7 +310,7 @@ namespace Taskmaster
 				.Int.Constrain(0, 60000);
 
 			using var corecfg = Taskmaster.Config.Load(CoreConfigFilename);
-			DebugHealth = corecfg.Config[HumanReadable.Generic.Debug].Get("Health")?.Bool ?? false;
+			DebugHealth = corecfg.Config[HumanReadable.Generic.Debug].Get(Constants.Health)?.Bool ?? false;
 		}
 
 		int HealthCheck_lock = 0;

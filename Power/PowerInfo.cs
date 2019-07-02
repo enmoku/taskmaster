@@ -43,6 +43,7 @@ namespace Taskmaster
 			/// Low mode control
 			/// </summary>
 			public AutoAdjustLevels Low;
+
 			/// <summary>
 			/// High mode control
 			/// </summary>

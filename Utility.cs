@@ -36,13 +36,13 @@ namespace Taskmaster
 		static void AppendStacktace(Exception ex, ref StringBuilder output)
 		{
 			output.AppendLine()
-				.Append("Exception:    ").Append(ex.GetType().Name).AppendLine()
-				.Append("Message:      ").Append(ex.Message).AppendLine().AppendLine();
+				.Append("Exception:    ").AppendLine(ex.GetType().Name)
+				.Append("Message:      ").AppendLine(ex.Message).AppendLine();
 
 			var projectdir = Properties.Resources.ProjectDirectory.Trim();
 			var trace = ex.StackTrace.Replace(projectdir, HumanReadable.Generic.Ellipsis + System.IO.Path.DirectorySeparatorChar);
-			output.Append("----- Stacktrace -----").AppendLine()
-				.Append(trace).AppendLine();
+			output.AppendLine("----- Stacktrace -----")
+				.AppendLine(trace);
 		}
 
 		[Conditional("DEBUG")]
@@ -82,10 +82,10 @@ namespace Taskmaster
 					file = file.Replace(projectdir, HumanReadable.Generic.Ellipsis + System.IO.Path.DirectorySeparatorChar);
 
 					var sbs = new StringBuilder();
-					sbs.Append("Datetime:     ").Append(now.ToLongDateString()).Append(" ").Append(now.ToLongTimeString()).AppendLine()
+					sbs.Append("Datetime:     ").Append(now.ToLongDateString()).Append(" ").AppendLine(now.ToLongTimeString())
 						.Append("Caught at: ").Append(method).Append(":").Append(lineNo).Append(" [").Append(file).AppendLine("]")
 						.AppendLine()
-						.Append("Command line: ").Append(Environment.CommandLine).AppendLine();
+						.Append("Command line: ").AppendLine(Environment.CommandLine);
 
 #if DEBUG
 					var exceptionsbs = new StringBuilder();
@@ -96,7 +96,7 @@ namespace Taskmaster
 #endif
 					if (ex.InnerException != null)
 					{
-						sbs.AppendLine().Append("--- Inner Exception ---").AppendLine();
+						sbs.AppendLine().AppendLine("--- Inner Exception ---");
 						AppendStacktace(ex.InnerException, ref sbs);
 #if DEBUG
 						AppendStacktace(ex.InnerException, ref exceptionsbs);

@@ -33,6 +33,6 @@ namespace Taskmaster.Audio
 		public DeviceStateEventArgs(string id, NAudio.CoreAudioApi.DeviceState state, Guid? guid = null)
 			: base(id, guid) => State = state;
 
-		public NAudio.CoreAudioApi.DeviceState State { get; private set; }
+		public NAudio.CoreAudioApi.DeviceState State { get; }
 	}
 }
