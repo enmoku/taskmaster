@@ -84,7 +84,7 @@ namespace Taskmaster.Process
 
 			try
 			{
-				await Task.Delay(RecordAnalysis.Value);
+				await Task.Delay(RecordAnalysis.Value).ConfigureAwait(false);
 
 				//var pa = new ProcessAnalysis();
 				//pa.bla = true;
@@ -190,7 +190,8 @@ namespace Taskmaster.Process
 				bool memHigh = privMem > 1200; // more than 1200 MB
 				bool memExtreme = privMem > 2600; // more than 2600 MB
 
-				var sbs = new StringBuilder().Append("<Analysis> ").Append(info.Name).Append($" (#{info.Id})").Append(" facts: ");
+				var sbs = new StringBuilder().Append("<Analysis> ").Append(info.Name)
+					.Append(" (#").Append(info.Id).Append(')').Append(" facts: ");
 
 				var components = new List<string>();
 
@@ -238,7 +239,7 @@ namespace Taskmaster.Process
 				if (recommendations.Count > 0)
 				{
 					sbs.Clear();
-					sbs.Append("<Analysis> ").Append(info.Name).Append($" (#{info.Id})").Append(" recommendations: ");
+					sbs.Append("<Analysis> ").Append(info.Name).Append(" (#").Append(info.Id).Append(')').Append(" recommendations: ");
 					sbs.Append(string.Join(", ", recommendations));
 					Log.Information(sbs.ToString());
 				}
@@ -254,25 +255,27 @@ namespace Taskmaster.Process
 
 				var contents = new StringBuilder()
 					.AppendLine("Analysis:")
-					.Append(ymlIndent).Append("Process: ").Append(info.Name).AppendLine()
-					.Append(ymlIndent).Append("Version: ").Append(version.FileVersion?.ToString() ?? string.Empty).AppendLine()
-					.Append(ymlIndent).Append("Product: ").Append(version.ProductName?.ToString() ?? string.Empty).AppendLine()
-					.Append(ymlIndent).Append("Company: ").Append(version.CompanyName?.ToString() ?? string.Empty).AppendLine()
-					.Append(ymlIndent).Append("64-bit : ").Append(x64 ? "Yes" : "No").AppendLine()
-					.Append(ymlIndent).Append("Path   : ").Append(info.Path).AppendLine()
+					.Append(ymlIndent).Append("Process: ").AppendLine(info.Name)
+					.Append(ymlIndent).Append("Version: ").AppendLine(version.FileVersion?.ToString() ?? string.Empty)
+					.Append(ymlIndent).Append("Product: ").AppendLine(version.ProductName?.ToString() ?? string.Empty)
+					.Append(ymlIndent).Append("Company: ").AppendLine(version.CompanyName?.ToString() ?? string.Empty)
+					.Append(ymlIndent).Append("64-bit : ").AppendLine(x64 ? "Yes" : "No")
+					.Append(ymlIndent).Append("Path   : ").AppendLine(info.Path)
 					.Append(ymlIndent).Append("Threads: ").Append(threadCount).AppendLine()
-					.Append(ymlIndent).Append("Memory : ").AppendLine()
+					.Append(ymlIndent).AppendLine("Memory : ")
 					.Append(ymlIndent).Append(ymlIndent).Append("Private : ").Append(privMem).AppendLine()
 					.Append(ymlIndent).Append(ymlIndent).Append("Working : ").Append(workingSet).AppendLine()
 					.Append(ymlIndent).Append(ymlIndent).Append("Virtual : ").Append(virtualMem).AppendLine()
-					.Append(ymlIndent).Append("Modules: ").AppendLine();
+					.Append(ymlIndent).AppendLine("Modules: ");
 
 				foreach (var mod in AllLinkedModules.Values)
 				{
-					contents.Append(ymlIndent).Append(ymlIndent).Append(mod.Identity).Append(":").AppendLine();
+					contents.Append(ymlIndent).Append(ymlIndent).Append(mod.Identity).AppendLine(":");
 					if (mod.Type != ModuleType.Unknown)
-						contents.Append(ymlIndent).Append(ymlIndent).Append(ymlIndent).Append("Type: ").Append(mod.Type.ToString()).AppendLine();
-					contents.Append(ymlIndent).Append(ymlIndent).Append(ymlIndent).Append("Files: [ ").Append(string.Join(", ", mod.Detected)).Append(" ]").AppendLine();
+						contents.Append(ymlIndent).Append(ymlIndent).Append(ymlIndent)
+							.Append("Type: ").AppendLine(mod.Type.ToString());
+					contents.Append(ymlIndent).Append(ymlIndent).Append(ymlIndent)
+						.Append("Files: [ ").Append(string.Join(", ", mod.Detected)).AppendLine(" ]");
 				}
 
 				File.WriteAllText(endpath, contents.ToString());
@@ -306,6 +309,7 @@ namespace Taskmaster.Process
 		/// Identity to Module
 		/// </summary>
 		readonly ConcurrentDictionary<string, ModuleInfo> KnownModules = new ConcurrentDictionary<string, ModuleInfo>();
+
 		/// <summary>
 		/// File matching to Module
 		/// </summary>
@@ -405,7 +409,6 @@ namespace Taskmaster.Process
 			{
 				Logging.Stacktrace(ex);
 			}
-
 		}
 	}
 
@@ -425,20 +428,24 @@ namespace Taskmaster.Process
 		/// Recommended action to be taken when possible.
 		/// </summary>
 		public ModuleRecommendation Recommendation = ModuleRecommendation.Undefined;
+
 		//public string Explanation = string.Empty;
 
 		/// <summary>
 		/// Primary component.
 		/// </summary>
 		public bool Listed = false;
+
 		/// <summary>
 		/// Extension to some other component, not too interesting on its own.
 		/// </summary>
 		public bool Extension = false;
+
 		/// <summary>
 		/// Relates to proprietary hardware or software that requires special access to use.
 		/// </summary>
 		public bool Proprietary = false;
+
 		/// <summary>
 		/// Open standard.
 		/// </summary>
