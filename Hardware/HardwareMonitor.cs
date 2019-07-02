@@ -118,6 +118,7 @@ namespace Taskmaster
 		}
 
 		bool Initialized = false;
+
 		async void OnStart(object sender, EventArgs ea)
 		{
 			await Task.Delay(0).ConfigureAwait(false);
@@ -276,6 +277,7 @@ namespace Taskmaster
 		public event EventHandler<CPUSensorEventArgs> CPUPolling;
 
 		System.Timers.Timer SensorPoller = null;
+
 		public void Start()
 		{
 			if (SensorPoller != null) return;

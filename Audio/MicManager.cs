@@ -52,6 +52,7 @@ namespace Taskmaster.Audio
 		public bool Control { get; private set; } = false;
 
 		double _target = 50d;
+
 		public double Target
 		{
 			get => _target;
@@ -68,6 +69,7 @@ namespace Taskmaster.Audio
 		NAudio.Mixer.UnsignedMixerControl VolumeControl = null;
 
 		double _volume;
+
 		/// <summary>
 		/// Current volume.
 		/// </summary>
@@ -102,6 +104,7 @@ namespace Taskmaster.Audio
 			get => _defaultvolume;
 			set => _defaultvolume = value.Constrain(0.0d, 100.0d);
 		}
+
 		double _defaultvolume = 100d;
 
 		// ctor, constructor
@@ -130,6 +133,7 @@ namespace Taskmaster.Audio
 		}
 
 		Manager audiomanager = null;
+
 		public void Hook(Manager manager)
 		{
 			Debug.Assert(manager != null, "AudioManager must not be null");
@@ -370,6 +374,7 @@ namespace Taskmaster.Audio
 
 		int correcting_counter = 0;
 		int correcting_lock; // = 0;
+
 		async void VolumeChangedHandler(NAudio.CoreAudioApi.AudioVolumeNotificationData data)
 		{
 			if (DisposedOrDisposing) return;

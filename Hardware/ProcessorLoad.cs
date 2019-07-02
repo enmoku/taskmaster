@@ -34,14 +34,17 @@ namespace Taskmaster
 		/// Current load, from 0.0f to 100.0f.
 		/// </summary>
 		public float Current { get; set; } = float.NaN;
+
 		/// <summary>
 		/// Averageload, from 0.0f to 100.0f.
 		/// </summary>
 		public float Mean { get; set; } = float.NaN;
+
 		/// <summary>
 		/// Lowest load, from 0.0f to 100.0f.
 		/// </summary>
 		public float Low { get; set; } = float.NaN;
+
 		/// <summary>
 		/// Highest load, from 0.0f to 100.0f.
 		/// </summary>

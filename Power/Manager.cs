@@ -307,6 +307,7 @@ namespace Taskmaster.Power
 		int SleepTickCount = -1;
 		int SleepGivenUp = 0;
 		int monitorsleeptimer_lock = 0;
+
 		void MonitorSleepTimerTick(object _, EventArgs _ea)
 		{
 			if (IsDisposed) return;

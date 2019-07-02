@@ -32,14 +32,17 @@ namespace Taskmaster
 		/// Tin.
 		/// </summary>
 		Ignore = -1,
+
 		/// <summary>
 		/// Priority and affinity.
 		/// </summary>
 		Standard = 0,
+
 		/// <summary>
 		/// Priority, Affinity, and Power
 		/// </summary>
 		Full = 1,
+
 		/// <summary>
 		/// Power only
 		/// </summary>
