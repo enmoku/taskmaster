@@ -664,18 +664,18 @@ namespace Taskmaster.Process
 				.Int.Constrain(0, 24 * 60);
 			IgnoreRecentlyModified = ignRecentlyModified > 0 ? (TimeSpan?)TimeSpan.FromMinutes(ignRecentlyModified) : null;
 
-			var tscan = perfsec.GetOrSet("Scan frequency", 15)
+			var tscan = perfsec.GetOrSet(Constants.ScanFrequency, 15)
 				.InitComment("Frequency (in seconds) at which we scan for processes. 0 disables.")
 				.Int.Constrain(0, 360);
 			ScanFrequency = (tscan > 0) ? (TimeSpan?)TimeSpan.FromSeconds(tscan.Constrain(5, 360)) : null;
 
 			// --------------------------------------------------------------------------------------------------------
 
-			WMIPolling = perfsec.GetOrSet("WMI event watcher", false)
+			WMIPolling = perfsec.GetOrSet(Constants.WMIEventWatcher, false)
 				.InitComment("Use WMI to be notified of new processes starting. If disabled, only rescanning everything will cause processes to be noticed.")
 				.Bool;
 
-			WMIPollDelay = perfsec.GetOrSet("WMI poll delay", 5)
+			WMIPollDelay = perfsec.GetOrSet(Constants.WMIPollDelay, 5)
 				.InitComment("WMI process watcher delay (in seconds).  Smaller gives better results but can inrease CPU usage. Accepted values: 1 to 30.")
 				.Int.Constrain(1, 30);
 
@@ -684,7 +684,7 @@ namespace Taskmaster.Process
 			var fgpausesec = corecfg.Config["Foreground Focus Lost"];
 			// RestoreOriginal = fgpausesec.GetSetDefault("Restore original", false, out modified).Bool;
 			// dirtyconfig |= modified;
-			DefaultBackgroundPriority = fgpausesec.GetOrSet("Default priority", 2)
+			DefaultBackgroundPriority = fgpausesec.GetOrSet(Constants.DefaultPriority, 2)
 				.InitComment("Default is normal to avoid excessive loading times while user is alt-tabbed.")
 				.Int.Constrain(0, 4);
 
@@ -693,7 +693,7 @@ namespace Taskmaster.Process
 			// OffFocusPowerCancel = fgpausesec.GetSetDefault("Power mode cancel", true, out modified).Bool;
 			// dirtyconfig |= modified;
 
-			DefaultBackgroundAffinity = fgpausesec.GetOrSet("Default affinity", 14).Int.Constrain(0, Utility.FullCPUMask);
+			DefaultBackgroundAffinity = fgpausesec.GetOrSet(Constants.DefaultAffinity, 14).Int.Constrain(0, Utility.FullCPUMask);
 
 			// --------------------------------------------------------------------------------------------------------
 
@@ -733,7 +733,7 @@ namespace Taskmaster.Process
 			DebugProcesses = dbgsec.Get("Processes")?.Bool ?? false;
 			DebugPaging = dbgsec.Get("Paging")?.Bool ?? false;
 
-			var logsec = corecfg.Config["Logging"];
+			var logsec = corecfg.Config[Taskmaster.Constants.Logging];
 			if (logsec.TryGet("Show unmodified portions", out var dumodport))
 			{
 				ShowUnmodifiedPortions = dumodport.Bool;
@@ -752,8 +752,8 @@ namespace Taskmaster.Process
 
 			if (!IgnoreSystem32Path) Log.Warning($"<Process> System32 ignore disabled.");
 
-			var exsec = corecfg.Config["Experimental"];
-			WindowResizeEnabled = exsec.Get("Window Resize")?.Bool ?? false;
+			var exsec = corecfg.Config[Taskmaster.Constants.Experimental];
+			WindowResizeEnabled = exsec.Get(Taskmaster.Constants.WindowResize)?.Bool ?? false;
 
 			var sbs = new StringBuilder();
 			sbs.Append("<Process> ");
@@ -810,12 +810,12 @@ namespace Taskmaster.Process
 				Ini.Setting ruleExec = null;
 				if (section.TryGet("Image", out var image)) // DEPRECATED; UPGRADE TO MULTIEXE
 				{
-					ruleExec = section["Executables"];
+					ruleExec = section[Constants.Executables];
 					ruleExec.StringArray = new string[] { image.String };
 					section.Remove(image);
 				}
 				else
-					ruleExec = section.Get("Executables");
+					ruleExec = section.Get(Constants.Executables);
 
 				if (ruleExec is null && rulePath is null)
 				{
@@ -872,11 +872,11 @@ namespace Taskmaster.Process
 					? (ProcessAffinityStrategy)(section.Get(HumanReadable.System.Process.AffinityStrategy)?.Int.Constrain(0, 3) ?? 2)
 					: ProcessAffinityStrategy.None;
 
-				int baff = section.Get("Background affinity")?.Int ?? -1;
-				int bpriot = section.Get("Background priority")?.Int ?? -1;
+				int baff = section.Get(Constants.BackgroundAffinity)?.Int ?? -1;
+				int bpriot = section.Get(Constants.BackgroundPriority)?.Int ?? -1;
 				ProcessPriorityClass? bprio = (bpriot >= 0) ? (ProcessPriorityClass?)ProcessHelpers.IntToPriority(bpriot) : null;
 
-				var pvis = (PathVisibilityOptions)(section.Get("Path visibility")?.Int.Constrain(-1, 3) ?? -1);
+				var pvis = (PathVisibilityOptions)(section.Get(Constants.PathVisibility)?.Int.Constrain(-1, 3) ?? -1);
 
 				string[] tignorelist = (section.Get(HumanReadable.Generic.Ignore)?.Array ?? null);
 				if (tignorelist?.Length > 0)
@@ -896,35 +896,35 @@ namespace Taskmaster.Process
 					PriorityStrategy = priostrat,
 					AffinityStrategy = affStrat,
 					Path = (rulePath?.Value ?? null),
-					ModifyDelay = (section.Get("Modify delay")?.Int ?? 0),
+					ModifyDelay = (section.Get(Constants.ModifyDelay)?.Int ?? 0),
 					//BackgroundIO = (section.TryGet("Background I/O")?.Bool ?? false), // Doesn't work
-					Recheck = (section.Get("Recheck")?.Int ?? 0).Constrain(0, 300),
+					Recheck = (section.Get(Constants.Recheck)?.Int ?? 0).Constrain(0, 300),
 					PowerPlan = pmode,
 					PathVisibility = pvis,
 					BackgroundPriority = bprio,
 					BackgroundAffinity = baff,
 					IgnoreList = tignorelist,
-					AllowPaging = (section.Get("Allow paging")?.Bool ?? false),
-					Analyze = (section.Get("Analyze")?.Bool ?? false),
+					AllowPaging = (section.Get(Constants.AllowPaging)?.Bool ?? false),
+					Analyze = (section.Get(Constants.Analyze)?.Bool ?? false),
 					ExclusiveMode = (section.Get(Constants.Exclusive)?.Bool ?? false),
-					DeclareParent = (section.Get("Declare parent")?.Bool ?? false),
-					OrderPreference = (section.Get("Preference")?.Int.Constrain(0, 100) ?? 10),
-					IOPriority = (IOPriority)(section.Get("IO priority")?.Int.Constrain(-1, 2) ?? -1), // 0-1 background, 2 = normal, anything else seems to have no effect
-					LogAdjusts = (section.Get("Logging")?.Bool ?? true),
-					LogStartAndExit = (section.Get("Log start and exit")?.Bool ?? false),
+					DeclareParent = (section.Get(Constants.DeclareParent)?.Bool ?? false),
+					OrderPreference = (section.Get(Constants.Preference)?.Int.Constrain(0, 100) ?? 10),
+					IOPriority = (IOPriority)(section.Get(Constants.IOPriority)?.Int.Constrain(-1, 2) ?? -1), // 0-1 background, 2 = normal, anything else seems to have no effect
+					LogAdjusts = (section.Get(Taskmaster.Constants.Logging)?.Bool ?? true),
+					LogStartAndExit = (section.Get(Constants.LogStartAndExit)?.Bool ?? false),
 					Volume = (section.Get(HumanReadable.Hardware.Audio.Volume)?.Float ?? 0.5f),
 					VolumeStrategy = (Audio.VolumeStrategy)(section.Get(Constants.VolumeStrategy)?.Int.Constrain(0, 5) ?? 0),
 				};
 
 				//prc.MMPriority = section.TryGet("MEM priority")?.Int ?? int.MinValue; // unused
 
-				int? foregroundMode = section.Get("Foreground mode")?.Int;
+				int? foregroundMode = section.Get(Constants.ForegroundMode)?.Int;
 				if (foregroundMode.HasValue)
 					prc.SetForegroundMode((ForegroundMode)foregroundMode.Value.Constrain(-1, 2));
 
 				//prc.SetForegroundMode((ForegroundMode)(section.TryGet("Foreground mode")?.Int.Constrain(-1, 2) ?? -1)); // NEW
 
-				var ruleIdeal = section.Get("Affinity ideal");
+				var ruleIdeal = section.Get(Constants.AffinityIdeal);
 				prc.AffinityIdeal = ruleIdeal?.Int ?? -1;
 				if (prc.AffinityIdeal >= 0 && !Bit.IsSet(prc.AffinityMask, prc.AffinityIdeal))
 				{
@@ -1990,7 +1990,7 @@ namespace Taskmaster.Process
 					//var tpid = targetInstance.Properties["Handle"].Value as int?; // doesn't work for some reason
 					pid = Convert.ToInt32(targetInstance.Properties["Handle"].Value as string);
 
-					iname = targetInstance.Properties["Name"].Value as string;
+					iname = targetInstance.Properties[Taskmaster.Constants.Name].Value as string;
 					path = targetInstance.Properties["ExecutablePath"].Value as string;
 					if (DebugAdjustDelay && targetInstance.Properties["CreationDate"].Value is string cdate && !string.IsNullOrEmpty(cdate))
 						creation = ManagementDateTimeConverter.ToDateTime(cdate);

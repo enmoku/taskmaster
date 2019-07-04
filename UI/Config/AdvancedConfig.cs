@@ -334,15 +334,15 @@ namespace Taskmaster.UI.Config
 
 				int voloutcap_t = Convert.ToInt32(volmeter_capout.Value);
 				if (voloutcap_t < 100)
-					volsec["Output threshold"].Int = voloutcap_t;
+					volsec[Audio.Constants.OutputThreshold].Int = voloutcap_t;
 				else
-					volsec.TryRemove("Output threshold");
+					volsec.TryRemove(Audio.Constants.OutputThreshold);
 
 				int volincap_t = Convert.ToInt32(volmeter_capin.Value);
 				if (volincap_t < 100)
-					volsec["Input threshold"].Int = volincap_t;
+					volsec[Audio.Constants.InputThreshold].Int = volincap_t;
 				else
-					volsec.TryRemove("Input threshold");
+					volsec.TryRemove(Audio.Constants.InputThreshold);
 
 				var volfreq_t = Convert.ToInt32(volmeter_frequency.Value);
 				volsec["Refresh"].Int = volfreq_t;

@@ -70,13 +70,13 @@ namespace Taskmaster.UI
 				.InitComment("Refresh delay. Lower is faster. Milliseconds from 10 to 5000.")
 				.Int.Constrain(10, 5000);
 
-			int? upgradeOutCap = volsec.Get("Output")?.Int;
-			if (upgradeOutCap.HasValue) volsec["Output threshold"].Int = upgradeOutCap.Value;
-			VolumeOutputCap = volsec.GetOrSet("Output threshold", 100).Int;
+			int? upgradeOutCap = volsec.Get(Audio.Constants.Output)?.Int;
+			if (upgradeOutCap.HasValue) volsec[Audio.Constants.OutputThreshold].Int = upgradeOutCap.Value;
+			VolumeOutputCap = volsec.GetOrSet(Audio.Constants.OutputThreshold, 100).Int;
 
-			int? upgradeInCap = volsec.Get("Input")?.Int;
-			if (upgradeInCap.HasValue) volsec["Input threshold"].Int = upgradeInCap.Value;
-			VolumeInputCap = volsec.GetOrSet("Input threshold", 100).Int;
+			int? upgradeInCap = volsec.Get(Audio.Constants.Input)?.Int;
+			if (upgradeInCap.HasValue) volsec[Audio.Constants.InputThreshold].Int = upgradeInCap.Value;
+			VolumeInputCap = volsec.GetOrSet(Audio.Constants.InputThreshold, 100).Int;
 
 			// DEPRECATED
 			volsec.TryRemove("Cap");

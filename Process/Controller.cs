@@ -1868,7 +1868,7 @@ namespace Taskmaster.Process
 			sbs.AppendLine();
 
 			if (ModifyDelay > 0)
-				sbs.Append("Modify delay: ").Append(ModifyDelay).AppendLine(" ms");
+				sbs.Append(Constants.ModifyDelay).Append(": ").Append(ModifyDelay).AppendLine(" ms");
 			if (Recheck > 0)
 				sbs.Append("Recheck: ").Append(Recheck).AppendLine(" ms");
 

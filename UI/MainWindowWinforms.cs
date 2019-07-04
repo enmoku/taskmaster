@@ -2280,7 +2280,7 @@ namespace Taskmaster.UI
 
 			WatchlistRules.Columns.Add("#", appwidths[0]);
 			WatchlistRules.Columns.Add("Pref.", appwidths[PrefColumn]);
-			WatchlistRules.Columns.Add("Name", appwidths[NameColumn]);
+			WatchlistRules.Columns.Add(Taskmaster.Constants.Name, appwidths[NameColumn]);
 			WatchlistRules.Columns.Add(HumanReadable.System.Process.Executable, appwidths[ExeColumn]);
 			WatchlistRules.Columns.Add(HumanReadable.System.Process.Priority, appwidths[PrioColumn]);
 			WatchlistRules.Columns.Add(HumanReadable.System.Process.Affinity, appwidths[AffColumn]);
@@ -2307,14 +2307,14 @@ namespace Taskmaster.UI
 			var colcfg = uicfg.Config[Constants.Columns];
 			var gencfg = uicfg.Config[Constants.Visuals];
 
-			opentab = uicfg.Config[Constants.Tabs].Get("Open")?.Int ?? 0;
+			opentab = uicfg.Config[Constants.Tabs].Get(Constants.Open)?.Int ?? 0;
 			appwidths = null;
 			var appwidthsDefault = new int[] { 20, 20, 120, 140, 82, 60, 76, 46, 160 };
 			appwidths = colcfg.GetOrSet(Constants.Apps, appwidthsDefault).IntArray;
 			if (appwidths.Length != appwidthsDefault.Length) appwidths = appwidthsDefault;
 
 			var appOrderDefault = new int[] { 0, 1, 2, 3, 4, 5, 6, 7, 8 };
-			apporder = colcfg.GetOrSet("App order", appOrderDefault).IntArray;
+			apporder = colcfg.GetOrSet(Constants.AppOrder, appOrderDefault).IntArray;
 			var unqorder = new HashSet<int>(appOrderDefault.Length);
 			foreach (var i in apporder) unqorder.Add(i);
 			if (unqorder.Count != appOrderDefault.Length || unqorder.Max() != 7 || unqorder.Min() != 0) apporder = appOrderDefault;
@@ -2323,7 +2323,7 @@ namespace Taskmaster.UI
 			if (MicrophoneManagerEnabled)
 			{
 				int[] micwidthsDefault = new int[] { 200, 220, 60, 60, 60, 120 };
-				micwidths = colcfg.GetOrSet("Mics", micwidthsDefault).IntArray;
+				micwidths = colcfg.GetOrSet(Constants.Mics, micwidthsDefault).IntArray;
 				if (micwidths.Length != micwidthsDefault.Length) micwidths = micwidthsDefault;
 			}
 
@@ -2331,11 +2331,11 @@ namespace Taskmaster.UI
 			if (NetworkMonitorEnabled)
 			{
 				int[] ifacewidthsDefault = new int[] { 110, 60, 50, 70, 90, 192, 60, 60, 40 };
-				ifacewidths = colcfg.GetOrSet("Interfaces", ifacewidthsDefault).IntArray;
+				ifacewidths = colcfg.GetOrSet(Constants.Interfaces, ifacewidthsDefault).IntArray;
 				if (ifacewidths.Length != ifacewidthsDefault.Length) ifacewidths = ifacewidthsDefault;
 			}
 
-			int[] winpos = wincfg.Get("Main")?.IntArray ?? null;
+			int[] winpos = wincfg.Get(Constants.Main)?.IntArray ?? null;
 			if (winpos?.Length == 4)
 			{
 				var rectangle = new System.Drawing.Rectangle(winpos[0], winpos[1], winpos[2], winpos[3]);
@@ -2466,8 +2466,8 @@ namespace Taskmaster.UI
 				MinimumSize = new System.Drawing.Size(-2, -2),
 				FullRowSelect = true
 			};
-			AudioInputs.Columns.Add("Name", micwidths[0]);
-			AudioInputs.Columns.Add("GUID", micwidths[1]);
+			AudioInputs.Columns.Add(Constants.Name, micwidths[0]);
+			AudioInputs.Columns.Add(Constants.GUID, micwidths[1]);
 			AudioInputs.Columns.Add(HumanReadable.Hardware.Audio.Volume, micwidths[2]);
 			AudioInputs.Columns.Add("Target", micwidths[3]);
 			AudioInputs.Columns.Add("Control", micwidths[4]);
@@ -3464,7 +3464,7 @@ namespace Taskmaster.UI
 							sbs.Append("Background affinity = ").Append(prc.BackgroundAffinity).AppendLine();
 					}
 
-					if (prc.ModifyDelay > 0) sbs.Append("Modify delay = ").Append(prc.ModifyDelay).AppendLine();
+					if (prc.ModifyDelay > 0) sbs.Append(Process.Constants.ModifyDelay).Append(" = ").Append(prc.ModifyDelay).AppendLine();
 
 					if (prc.PathVisibility != Process.PathVisibilityOptions.Invalid)
 						sbs.Append("Path visibility = ").Append((int)prc.PathVisibility).AppendLine();
@@ -3477,7 +3477,7 @@ namespace Taskmaster.UI
 
 					sbs.Append("Preference = ").Append(prc.OrderPreference).AppendLine();
 
-					if (!prc.LogAdjusts) sbs.AppendLine("Logging = false");
+					if (!prc.LogAdjusts) sbs.Append(Constants.Logging).AppendLine(" = false");
 					if (prc.LogStartAndExit) sbs.AppendLine("Log start and exit = true");
 					if (!prc.Enabled) sbs.AppendLine("Enabled = false");
 
@@ -3943,11 +3943,7 @@ namespace Taskmaster.UI
 				var item = NetworkDevices.Items[ea.Traffic.Index];
 				item.SubItems[PacketDeltaColumn].Text = "+" + ea.Traffic.Delta.Unicast;
 				item.SubItems[ErrorDeltaColumn].Text = "+" + ea.Traffic.Delta.Errors;
-				if (ea.Traffic.Delta.Errors > 0)
-					item.SubItems[ErrorDeltaColumn].ForeColor = System.Drawing.Color.OrangeRed;
-				else
-					item.SubItems[ErrorDeltaColumn].ForeColor = System.Drawing.SystemColors.ControlText;
-
+				item.SubItems[ErrorDeltaColumn].ForeColor = ea.Traffic.Delta.Errors > 0 ? System.Drawing.Color.OrangeRed : System.Drawing.SystemColors.ControlText;
 				item.SubItems[ErrorTotalColumn].Text = ea.Traffic.Total.Errors.ToString();
 			}
 			catch (Exception ex)

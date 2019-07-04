@@ -190,11 +190,11 @@ namespace Taskmaster.UI.Config
 
 			using var corecfg = Taskmaster.Config.Load(Taskmaster.CoreConfigFilename);
 			var cfg = corecfg.Config;
-			var exsec = cfg[Constants.Experimental];
+			var exsec = cfg[Taskmaster.Constants.Experimental];
 			
 			var autoUpdateNgen = new CheckBox
 			{
-				Checked = exsec.Get("Auto-update native image")?.Bool ?? false,
+				Checked = exsec.Get(Taskmaster.Constants.AutoNGEN)?.Bool ?? false,
 			};
 
 			layout.Controls.Add(autoUpdateNgenLabel);
@@ -233,7 +233,7 @@ namespace Taskmaster.UI.Config
 				using var corecfg = Taskmaster.Config.Load(Taskmaster.CoreConfigFilename);
 				var cfg = corecfg.Config;
 
-				var exsec = cfg[Constants.Experimental];
+				var exsec = cfg[Taskmaster.Constants.Experimental];
 				if (RecordAnalysisDelay.Value != decimal.Zero)
 					exsec["Record analysis"].Int = Convert.ToInt32(RecordAnalysisDelay.Value);
 				else
@@ -245,11 +245,11 @@ namespace Taskmaster.UI.Config
 					exsec.TryRemove("IO Priority");
 
 				if (autoUpdateNgen.Checked)
-					exsec["Auto-update native image"].Bool = true;
+					exsec[Taskmaster.Constants.AutoNGEN].Bool = true;
 				else
-					exsec.TryRemove("Auto-update native image");
+					exsec.TryRemove(Taskmaster.Constants.AutoNGEN);
 
-				cfg[Constants.Components][HumanReadable.Hardware.Section].Bool = hwmon.Checked;
+				cfg[Taskmaster.Constants.Components][HumanReadable.Hardware.Section].Bool = hwmon.Checked;
 
 				DialogResult = DialogResult.OK;
 				Close();

@@ -277,6 +277,11 @@ namespace Taskmaster
 		static internal extern bool Process32Next(SafeHandle hSnapshot, ref PROCESSENTRY32 lppe);
 	}
 
+	static partial class NativeConstants
+	{
+		public const int MAX_PATH = 260;
+	}
+
 	[Flags]
 	internal enum SnapshotFlags : uint
 	{
@@ -295,16 +300,16 @@ namespace Taskmaster
 	internal struct PROCESSENTRY32
 	{
 		public uint dwSize;
-		public uint cntUsage;
+		public uint cntUsage; // UNUSED
 		public uint th32ProcessID;
-		public IntPtr th32DefaultHeapID;
-		public uint th32ModuleID;
+		public IntPtr th32DefaultHeapID; // UNUSED
+		public uint th32ModuleID; // UNUSED
 		public uint cntThreads;
 		public uint th32ParentProcessID;
 		public int pcPriClassBase;
-		public uint dwFlags;
+		public uint dwFlags; // UNUSED
 
-		[MarshalAs(UnmanagedType.ByValTStr, SizeConst = 260)]
+		[MarshalAs(UnmanagedType.ByValTStr, SizeConst = NativeConstants.MAX_PATH)]
 		public string szExeFile;
 	};
 }

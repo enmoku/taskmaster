@@ -280,8 +280,6 @@ namespace Taskmaster.Audio
 
 				//
 
-				var cname = "Control";
-
 				double devvol = double.NaN;
 				bool devcontrol = false;
 
@@ -289,8 +287,8 @@ namespace Taskmaster.Audio
 				var devsec = devcfg.Config[Device.GUID.ToString()];
 
 				devvol = devsec.GetOrSet(HumanReadable.Hardware.Audio.Volume, DefaultVolume).Double;
-				devcontrol = devsec.GetOrSet(cname, false).Bool;
-				devsec.GetOrSet("Name", Device.Name);
+				devcontrol = devsec.GetOrSet(Constants.Control, false).Bool;
+				devsec.GetOrSet(Taskmaster.Constants.Name, Device.Name);
 
 				if (Control && !devcontrol) Control = false; // disable general control if device control is disabled
 
@@ -327,8 +325,8 @@ namespace Taskmaster.Audio
 					{
 						Guid guid = Utility.DeviceIdToGuid(dev.ID);
 						var devsec = devcfg.Config[guid.ToString()];
-						devsec.GetOrSet("Name", dev.DeviceFriendlyName);
-						bool control = devsec.GetOrSet("Control", false).Bool;
+						devsec.GetOrSet(Taskmaster.Constants.Name, dev.DeviceFriendlyName);
+						bool control = devsec.GetOrSet(Constants.Control, false).Bool;
 						float target = devsec.Get(HumanReadable.Hardware.Audio.Volume)?.Float ?? float.NaN;
 
 						var mdev = new Device(dev)

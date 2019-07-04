@@ -26,56 +26,76 @@
 
 namespace Taskmaster
 {
-	public static class Constants
+	public static partial class Taskmaster
 	{
-		public const string No = "No";
-		public const string Yes = "Yes";
+		public static class Constants
+		{
+			public const string Name = "Name";
+			public const string GUID = "GUID";
 
-		public const string Core = "Core";
-		public const string Version = "Version";
-		public const string License = "License";
-		public const string Accepted = "Accepted";
-		public const string Refused = "Refused";
-		public const string Config = "Config";
+			public const string Session = "Session";
 
-		public const string Experimental = "Experimental";
+			public const string No = "No";
+			public const string Yes = "Yes";
 
-		public const string Visuals = "Visuals";
-		public const string Windows = "Windows";
-		public const string Columns = "Columns";
-		public const string Apps = "Apps";
-		public const string Tabs = "Tabs";
+			public const string Core = "Core";
+			public const string Version = "Version";
+			public const string License = "License";
+			public const string Accepted = "Accepted";
+			public const string Refused = "Refused";
+			public const string Config = "Config";
 
-		public const string Performance = "Performance";
-		public const string Components = "Components";
-		public const string Paging = "Paging";
+			public const string Experimental = "Experimental";
+			public const string WindowResize = "Window Resize";
+			public const string AutoNGEN = "Auto-update native image";
 
-		public const string Maintenance = "Maintenance";
-		public const string Health = "Health";
+			public const string Visuals = "Visuals";
+			public const string Windows = "Windows";
+			public const string Columns = "Columns";
+			public const string Apps = "Apps";
+			public const string Tabs = "Tabs";
 
-		public const string Behaviour = "Behaviour";
-		public const string Options = "Options";
-		public const string QualityOfLife = "Quality of Life";
+			public const string Open = "Open";
 
-		public const string Storage = "Storage";
+			public const string AppOrder = "App order";
+			public const string Mics = "Mics";
+			public const string Interfaces = "Interfaces";
+			public const string Main = "Main";
 
-		public const string Verbosity = "Verbosity";
+			public const string Performance = "Performance";
+			public const string Components = "Components";
+			public const string Paging = "Paging";
 
-		public const string ShowOnStart = "Show on start";
+			public const string Maintenance = "Maintenance";
+			public const string Health = "Health";
 
-		public const string UserInterface = "User Interface";
-		public const string VolumeMeter = "Volume Meter";
+			public const string Behaviour = "Behaviour";
+			public const string Options = "Options";
+			public const string QualityOfLife = "Quality of Life";
 
-		public const string StayOnTop = "Stay on top";
+			public const string Storage = "Storage";
 
-		public const string Trace = "Trace";
+			public const string Verbosity = "Verbosity";
 
-		public const string ScanFrequency = "Scan frequency";
-		public const string WMIWatcher = "WMI event watcher";
-		public const string WMIDelay = "WMI poll delay";
+			public const string ShowOnStart = "Show on start";
 
-		public const string UpdateFrequency = "Update frequency";
-		public const string LastModified = "Last Modified";
-		public const string Cache = "Cache";
+			public const string UserInterface = "User Interface";
+			public const string VolumeMeter = "Volume Meter";
+
+			public const string StayOnTop = "Stay on top";
+
+			public const string Trace = "Trace";
+
+			public const string ScanFrequency = "Scan frequency";
+
+			public const string WMIWatcher = "WMI event watcher";
+			public const string WMIDelay = "WMI poll delay";
+
+			public const string UpdateFrequency = "Update frequency";
+			public const string LastModified = "Last Modified";
+			public const string Cache = "Cache";
+
+			public const string Logging = "Logging";
+		}
 	}
 }

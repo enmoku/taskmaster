@@ -365,8 +365,7 @@ namespace Taskmaster.Process
 		{
 			try
 			{
-				int ppid = info.Process.ParentProcessId();
-				if (GetInfo(ppid, out var parent, null, null, null, null, true))
+				if (GetInfo(info.Process.ParentProcessId(), out var parent, null, null, null, null, true))
 					return parent;
 			}
 			catch { }

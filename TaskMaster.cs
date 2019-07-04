@@ -351,7 +351,7 @@ namespace Taskmaster
 					{
 						System.Threading.Tasks.Task.Run(new Action(() =>
 						{
-							bool ngen = Config.Load(CoreConfigFilename).Config[Constants.Experimental].Get("Auto-update native image")?.Bool ?? false;
+							bool ngen = Config.Load(CoreConfigFilename).Config[Constants.Experimental].Get(Constants.AutoNGEN)?.Bool ?? false;
 							if (ngen)
 							{
 								if (MKAh.Execution.IsAdministrator)
@@ -443,11 +443,7 @@ namespace Taskmaster
 			{
 				try
 				{
-					ExitCleanup();
-
-					Config?.Dispose();
-
-					Log.CloseAndFlush();
+					Finalize();
 				}
 				catch (Exception ex)
 				{
@@ -518,9 +514,25 @@ namespace Taskmaster
 
 			if (ea.IsTerminating)
 			{
+				try
+				{
+					Finalize();
+				}
+				catch { }
+			}
+		}
+
+		static void Finalize()
+		{
+			try
+			{
 				ExitCleanup();
 				Config?.Dispose();
 				Log.CloseAndFlush();
+			}
+			catch (Exception ex) when (!(ex is OutOfMemoryException))
+			{
+				Logging.Stacktrace(ex, crashsafe: true);
 			}
 		}
 
@@ -542,9 +554,7 @@ namespace Taskmaster
 		public static DateTime BuildDate() => DateTime.ParseExact(Properties.Resources.BuildDate.Trim(), "yyyy/MM/dd HH:mm:ss K", null, System.Globalization.DateTimeStyles.None);
 
 		internal static void UpdateStyling()
-		{
-			System.Windows.Forms.Application.VisualStyleState = VisualStyling ? System.Windows.Forms.VisualStyles.VisualStyleState.ClientAndNonClientAreasEnabled : System.Windows.Forms.VisualStyles.VisualStyleState.NoneEnabled;
-		}
+			=> System.Windows.Forms.Application.VisualStyleState = VisualStyling ? System.Windows.Forms.VisualStyles.VisualStyleState.ClientAndNonClientAreasEnabled : System.Windows.Forms.VisualStyles.VisualStyleState.NoneEnabled;
 
 		/// <summary>
 		/// Process unhandled WinForms exceptions.
