@@ -105,6 +105,9 @@ namespace Taskmaster
 				public const string Section = "Audio";
 
 				public const string Volume = "Volume";
+				public const string VolumeStrateg = Volume + " strategy";
+
+				public const string Microphone = "Microphone";
 			}
 
 			public static class Monitor

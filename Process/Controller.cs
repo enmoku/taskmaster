@@ -46,6 +46,12 @@ namespace Taskmaster.Process
 	/// </summary>
 	sealed public class Controller : IDisposable
 	{
+		/// <summary>
+		/// <para>Don't allow user to tamper.</para>
+		/// <para>Mostly for inbuilt rules that protect the system from bad configuration.</para>
+		/// </summary>
+		public bool Protected { get; set; } = false;
+
 		// EVENTS
 		public event EventHandler<ProcessModificationEventArgs> Modified;
 
@@ -700,12 +706,12 @@ namespace Taskmaster.Process
 			if (VolumeStrategy != Audio.VolumeStrategy.Ignore)
 			{
 				app[HumanReadable.Hardware.Audio.Volume].Float = Volume;
-				app["Volume strategy"].Int = (int)VolumeStrategy;
+				app[Constants.VolumeStrategy].Int = (int)VolumeStrategy;
 			}
 			else
 			{
 				app.TryRemove(HumanReadable.Hardware.Audio.Volume);
-				app.TryRemove("Volume strategy");
+				app.TryRemove(Constants.VolumeStrategy);
 			}
 
 			app[HumanReadable.Generic.Logging].Bool = LogAdjusts;
@@ -721,9 +727,9 @@ namespace Taskmaster.Process
 				app.TryRemove("Log description");
 
 			if (ExclusiveMode)
-				app["Exclusive"].Bool = true;
+				app[Constants.Exclusive].Bool = true;
 			else
-				app.TryRemove("Exclusive");
+				app.TryRemove(Constants.Exclusive);
 
 			if (DeclareParent)
 				app["Declare parent"].Bool = true;

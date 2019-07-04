@@ -906,14 +906,14 @@ namespace Taskmaster.Process
 					IgnoreList = tignorelist,
 					AllowPaging = (section.Get("Allow paging")?.Bool ?? false),
 					Analyze = (section.Get("Analyze")?.Bool ?? false),
-					ExclusiveMode = (section.Get("Exclusive")?.Bool ?? false),
+					ExclusiveMode = (section.Get(Constants.Exclusive)?.Bool ?? false),
 					DeclareParent = (section.Get("Declare parent")?.Bool ?? false),
 					OrderPreference = (section.Get("Preference")?.Int.Constrain(0, 100) ?? 10),
 					IOPriority = (IOPriority)(section.Get("IO priority")?.Int.Constrain(-1, 2) ?? -1), // 0-1 background, 2 = normal, anything else seems to have no effect
 					LogAdjusts = (section.Get("Logging")?.Bool ?? true),
 					LogStartAndExit = (section.Get("Log start and exit")?.Bool ?? false),
 					Volume = (section.Get(HumanReadable.Hardware.Audio.Volume)?.Float ?? 0.5f),
-					VolumeStrategy = (Audio.VolumeStrategy)(section.Get("Volume strategy")?.Int.Constrain(0, 5) ?? 0),
+					VolumeStrategy = (Audio.VolumeStrategy)(section.Get(Constants.VolumeStrategy)?.Int.Constrain(0, 5) ?? 0),
 				};
 
 				//prc.MMPriority = section.TryGet("MEM priority")?.Int ?? int.MinValue; // unused
@@ -939,10 +939,10 @@ namespace Taskmaster.Process
 				if (!prc.Priority.HasValue) prc.PriorityStrategy = ProcessPriorityStrategy.None;
 				else if (prc.PriorityStrategy == ProcessPriorityStrategy.None) prc.Priority = null;
 
-				int[] resize = section.Get("Resize")?.IntArray ?? null; // width,height
+				int[] resize = section.Get(Constants.Resize)?.IntArray ?? null; // width,height
 				if (resize?.Length == 4)
 				{
-					int resstrat = section.Get("Resize strategy")?.Int.Constrain(0, 3) ?? -1;
+					int resstrat = section.Get(Constants.ResizeStrategy)?.Int.Constrain(0, 3) ?? -1;
 					if (resstrat < 0) resstrat = 0;
 
 					prc.ResizeStrategy = (WindowResizeStrategy)resstrat;

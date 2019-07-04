@@ -237,7 +237,7 @@ namespace Taskmaster
 				.InitComment("Monitor audio sessions and set their volume as per user configuration.")
 				.Bool;
 
-			MicrophoneManagerEnabled = compsec.GetOrSet(Audio.Constants.Microphone, false)
+			MicrophoneManagerEnabled = compsec.GetOrSet(HumanReadable.Hardware.Audio.Microphone, false)
 				.InitComment("Monitor and force-keep microphone volume.")
 				.Bool;
 

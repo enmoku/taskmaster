@@ -2434,7 +2434,7 @@ namespace Taskmaster.UI
 			};
 			AudioInputVolume.ValueChanged += UserMicVol;
 
-			miccntrl.Controls.Add(new AlignedLabel { Text = "Volume" });
+			miccntrl.Controls.Add(new AlignedLabel { Text = HumanReadable.Hardware.Audio.Volume });
 			miccntrl.Controls.Add(AudioInputVolume);
 
 			corCountLabel = new AlignedLabel { Text = "0" };
@@ -2468,7 +2468,7 @@ namespace Taskmaster.UI
 			};
 			AudioInputs.Columns.Add("Name", micwidths[0]);
 			AudioInputs.Columns.Add("GUID", micwidths[1]);
-			AudioInputs.Columns.Add("Volume", micwidths[2]);
+			AudioInputs.Columns.Add(HumanReadable.Hardware.Audio.Volume, micwidths[2]);
 			AudioInputs.Columns.Add("Target", micwidths[3]);
 			AudioInputs.Columns.Add("Control", micwidths[4]);
 			AudioInputs.Columns.Add("State", micwidths[5]);
@@ -2479,7 +2479,7 @@ namespace Taskmaster.UI
 			micpanel.Controls.Add(miccntrl);
 			micpanel.Controls.Add(AudioInputs);
 
-			micTab = new TabPage("Microphone") { Padding = BigPadding };
+			micTab = new TabPage(HumanReadable.Hardware.Audio.Microphone) { Padding = BigPadding };
 
 			micTab.Controls.Add(micpanel);
 

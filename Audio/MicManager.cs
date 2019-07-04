@@ -124,7 +124,7 @@ namespace Taskmaster.Audio
 			DefaultVolume = mediasec.GetOrSet(mvol, 100.0d).Double;
 
 			var dbgsec = corecfg.Config[HumanReadable.Generic.Debug];
-			DebugMic = dbgsec.Get(Constants.Microphone)?.Bool ?? false;
+			DebugMic = dbgsec.Get(HumanReadable.Hardware.Audio.Microphone)?.Bool ?? false;
 
 			if (DebugMic) Log.Information("<Microphone> Component loaded.");
 

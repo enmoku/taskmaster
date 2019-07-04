@@ -351,7 +351,7 @@ namespace Taskmaster.UI.Config
 				var compsec = cfg.Config[Constants.Components];
 				compsec[HumanReadable.System.Process.Section].Bool = procmon.Checked;
 				compsec[HumanReadable.Hardware.Audio.Section].Bool = audioman.Checked;
-				compsec[Audio.Constants.Microphone].Bool = micmon.Checked;
+				compsec[HumanReadable.Hardware.Audio.Microphone].Bool = micmon.Checked;
 				// compsec["Media"].Bool = mediamon.Checked;
 				compsec[HumanReadable.System.Process.Foreground].Bool = fgmon.Checked;
 				compsec[Network.Constants.Network].Bool = netmon.Checked;
