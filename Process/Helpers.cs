@@ -255,25 +255,29 @@ namespace Taskmaster
 
 			return -1;
 		}
+
+		public static System.Diagnostics.Process ParentProcess(this System.Diagnostics.Process process) => ParentProcess(process.Id);
+
+		public static System.Diagnostics.Process ParentProcess(int pid) => System.Diagnostics.Process.GetProcessById(ParentProcessId(pid));
 	}
 
 	static partial class NativeMethods
 	{
 		internal const int ERROR_NO_MORE_FILES = 0x12;
 
-		[DllImport("kernel32.dll", SetLastError = true)]
+		[DllImport("kernel32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
 		static internal extern HANDLE CreateToolhelp32Snapshot(SnapshotFlags dwFlags, uint th32ProcessID);
 
 		/// <summary>
 		/// Retrieves information about the first process encountered in a system snapshot.
 		/// </summary>
-		[DllImport("kernel32.dll")]
+		[DllImport("kernel32.dll", CharSet = CharSet.Unicode)]
 		static internal extern bool Process32First(SafeHandle hSnapshot, ref PROCESSENTRY32 lppe);
 
 		/// <summary>
 		/// Retrieves information about the next process recorded in a system snapshot.
 		/// </summary>
-		[DllImport("kernel32.dll")]
+		[DllImport("kernel32.dll", CharSet = CharSet.Unicode)]
 		static internal extern bool Process32Next(SafeHandle hSnapshot, ref PROCESSENTRY32 lppe);
 	}
 
@@ -296,7 +300,7 @@ namespace Taskmaster
 		NoHeaps = 0x40000000
 	}
 
-	[StructLayout(LayoutKind.Sequential)]
+	[StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
 	internal struct PROCESSENTRY32
 	{
 		public uint dwSize;

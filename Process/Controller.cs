@@ -876,7 +876,7 @@ namespace Taskmaster.Process
 					newAffinity = -1;
 
 				if (IOPriorityEnabled)
-					nIO = (IOPriority)SetIO(info, (IOPriority)DefaultForegroundIOPriority); // force these to always have normal I/O priority
+					nIO = (IOPriority)SetIO(info, DefaultForegroundIOPriority); // force these to always have normal I/O priority
 
 				if (AffinityIdeal >= 0) ApplyAffinityIdeal(info);
 			}
@@ -995,105 +995,100 @@ namespace Taskmaster.Process
 			if (info.PowerWait) powermanager?.Release(info);
 		}
 
-		static string[] UnwantedPathBits = new string[] { "x64", "x86", "bin", "debug", "release", "win32", "win64", "common", "binaries" };
-		static string[] SpecialCasePathBits = new string[] { "steamapps" };
+		static readonly string[] UnwantedPathBits = new string[] { "x64", "x86", "bin", "debug", "release", "win32", "win64", "common", "binaries" };
+		static readonly string[] SpecialCasePathBits = new string[] { "steamapps" };
 
 		public string FormatPathName(ProcessEx info)
 		{
 			if (!string.IsNullOrEmpty(info.FormattedPath)) return info.FormattedPath;
 
-			if (!string.IsNullOrEmpty(info.Path))
+			if (string.IsNullOrEmpty(info.Path)) return info.Name;
+
+			switch (PathVisibility)
 			{
-				switch (PathVisibility)
-				{
-					default:
-					case PathVisibilityOptions.Process:
-						return info.Name;
-					case PathVisibilityOptions.Partial:
-						if (PathElements > 0)
-						{
-							var parts = new List<string>(info.Path.Split(System.IO.Path.DirectorySeparatorChar, System.IO.Path.AltDirectorySeparatorChar));
-							// replace Path
-							parts.RemoveRange(0, PathElements);
-							parts.Insert(0, HumanReadable.Generic.Ellipsis);
-							return info.FormattedPath = System.IO.Path.Combine(parts.ToArray());
-						}
-						else
-							return info.Path;
-					case PathVisibilityOptions.Smart:
-						{
-							// TODO: Cut off bin, x86, x64, win64, win32 or similar generic folder parts
-							var parts = new List<string>(info.Path.Split(System.IO.Path.DirectorySeparatorChar, System.IO.Path.AltDirectorySeparatorChar));
-							if (PathElements > 0)
-							{
-								// cut Path from the output
-								// following notes assume matching c:\program files
-
-								parts.RemoveRange(0, PathElements); // remove Path component
-
-								// replace
-								if (parts.Count > 4)
-								{
-									// TODO: Special cases for %APPDATA% and similar?
-
-									// c:\program files\brand\app\version\random\element\executable.exe
-									// ...\brand\app\...\executable.exe
-									//parts.RemoveRange(3, parts.Count - 4); // remove all but two first and last
-									//parts.Insert(3, HumanReadable.Generic.Ellipsis);
-
-									bool replaced = false;
-									// remove unwanted bits
-									for (int i = 0; i < parts.Count - 1; i++)
-									{
-										string cur = parts[i].ToLowerInvariant();
-										if (SpecialCasePathBits.Any((x) => x.Equals(cur))) // steamapps
-										{
-											parts[i] = HumanReadable.Generic.Ellipsis;
-											parts.RemoveAt(++i); // common, i at app name, rolled over with loop
-											replaced = false;
-										}
-										else if ((i > 2 && i < parts.Count - 3) // remove midpoint
-											|| UnwantedPathBits.Any((x) => x.Equals(cur)) // flat out unwanted
-											|| (info.Name.Length > 5 && cur.Any((x) => x.Equals(info.Name.ToLowerInvariant())))) // folder contains exe name
-										{
-											if (replaced)
-												parts.RemoveAt(i--); // remove current and roll back loop
-											else
-												parts[i] = HumanReadable.Generic.Ellipsis;
-
-											replaced = true;
-										}
-										else
-											replaced = false;
-									}
-								}
-
-								parts.Insert(0, HumanReadable.Generic.Ellipsis); // add starting ellipsis
-
-								// ...\brand\app\app.exe
-							}
-							else if (parts.Count <= 5) return info.Path; // as is
-							else
-							{
-								// Minimal structure
-								// drive A B C file
-								// 1 2 3 4 5
-								// c:\programs\brand\app\app.exe as is
-								// c:\programs\brand\app\v2.5\x256\bin\app.exe -> c:\programs\brand\app\...\app.exe
-
-								parts.RemoveRange(4, parts.Count - 5);
-								parts[0] += System.IO.Path.DirectorySeparatorChar; // Path.Combine handles drive letter weird
-								parts.Insert(parts.Count - 1, HumanReadable.Generic.Ellipsis);
-							}
-
-							return info.FormattedPath = System.IO.Path.Combine(parts.ToArray());
-						}
-					case PathVisibilityOptions.Full:
+				default:
+					//case PathVisibilityOptions.Process:
+					return info.Name;
+				case PathVisibilityOptions.Partial:
+					if (PathElements > 0)
+					{
+						var pparts = new List<string>(info.Path.Split(System.IO.Path.DirectorySeparatorChar, System.IO.Path.AltDirectorySeparatorChar));
+						// replace Path
+						pparts.RemoveRange(0, PathElements);
+						pparts.Insert(0, HumanReadable.Generic.Ellipsis);
+						return info.FormattedPath = System.IO.Path.Combine(pparts.ToArray());
+					}
+					else
 						return info.Path;
-				}
+				case PathVisibilityOptions.Smart:
+					// TODO: Cut off bin, x86, x64, win64, win32 or similar generic folder parts
+					var sparts = new List<string>(info.Path.Split(System.IO.Path.DirectorySeparatorChar, System.IO.Path.AltDirectorySeparatorChar));
+					if (PathElements > 0)
+					{
+						// cut Path from the output
+						// following notes assume matching c:\program files
+
+						sparts.RemoveRange(0, PathElements); // remove Path component
+
+						// replace
+						if (sparts.Count > 4)
+						{
+							// TODO: Special cases for %APPDATA% and similar?
+
+							// c:\program files\brand\app\version\random\element\executable.exe
+							// ...\brand\app\...\executable.exe
+							//parts.RemoveRange(3, parts.Count - 4); // remove all but two first and last
+							//parts.Insert(3, HumanReadable.Generic.Ellipsis);
+
+							bool replaced = false;
+							// remove unwanted bits
+							for (int i = 0; i < sparts.Count - 1; i++)
+							{
+								string cur = sparts[i].ToLowerInvariant();
+								if (SpecialCasePathBits.Any((x) => x.Equals(cur))) // steamapps
+								{
+									sparts[i] = HumanReadable.Generic.Ellipsis;
+									sparts.RemoveAt(++i); // common, i at app name, rolled over with loop
+									replaced = false;
+								}
+								else if ((i > 2 && i < sparts.Count - 3) // remove midpoint
+									|| UnwantedPathBits.Any((x) => x.Equals(cur)) // flat out unwanted
+									|| (info.Name.Length > 5 && cur.Any((x) => x.Equals(info.Name.ToLowerInvariant())))) // folder contains exe name
+								{
+									if (replaced)
+										sparts.RemoveAt(i--); // remove current and roll back loop
+									else
+										sparts[i] = HumanReadable.Generic.Ellipsis;
+
+									replaced = true;
+								}
+								else
+									replaced = false;
+							}
+						}
+
+						sparts.Insert(0, HumanReadable.Generic.Ellipsis); // add starting ellipsis
+
+						// ...\brand\app\app.exe
+					}
+					else if (sparts.Count <= 5) return info.Path; // as is
+					else
+					{
+						// Minimal structure
+						// drive A B C file
+						// 1 2 3 4 5
+						// c:\programs\brand\app\app.exe as is
+						// c:\programs\brand\app\v2.5\x256\bin\app.exe -> c:\programs\brand\app\...\app.exe
+
+						sparts.RemoveRange(4, sparts.Count - 5);
+						sparts[0] += System.IO.Path.DirectorySeparatorChar; // Path.Combine handles drive letter weird
+						sparts.Insert(sparts.Count - 1, HumanReadable.Generic.Ellipsis);
+					}
+
+					return info.FormattedPath = System.IO.Path.Combine(sparts.ToArray());
+				case PathVisibilityOptions.Full:
+					return info.Path;
 			}
-			else
-				return info.Name; // NAME
 		}
 
 		public async Task Modify(ProcessEx info)
@@ -1142,8 +1137,8 @@ namespace Taskmaster.Process
 			return false;
 		}
 
-	// TODO: Simplify this
-	async Task Touch(ProcessEx info, bool refresh = false)
+		// TODO: Simplify this
+		async Task Touch(ProcessEx info, bool refresh = false)
 		{
 			Debug.Assert(info.Process != null, "ProcessController.Touch given null process.");
 			Debug.Assert(!Utility.SystemProcessId(info.Id), "ProcessController.Touch given invalid process ID");
@@ -1259,7 +1254,8 @@ namespace Taskmaster.Process
 								ormt.Info.Process.Exited += ProcessExitEvent;
 
 								// Agency granted, restore I/O priority to normal
-								if (IOPriority != IOPriority.Ignore && (int)IOPriority < DefaultForegroundIOPriority) SetIO(info, (IOPriority)DefaultForegroundIOPriority); // restore normal I/O for these in case we messed around with it
+								if (IOPriority != IOPriority.Ignore && (int)IOPriority < (int)DefaultForegroundIOPriority)
+									SetIO(info, DefaultForegroundIOPriority); // restore normal I/O for these in case we messed around with it
 							}
 
 							ormt.LastIgnored = now;
@@ -1541,7 +1537,7 @@ namespace Taskmaster.Process
 			}
 		}
 
-		int DefaultForegroundIOPriority = 2;
+		const IOPriority DefaultForegroundIOPriority = IOPriority.Normal;
 
 		int SetIO(ProcessEx info, IOPriority overridePriority = IOPriority.Ignore)
 		{
@@ -1811,11 +1807,8 @@ namespace Taskmaster.Process
 
 		public WindowResizeStrategy ResizeStrategy = WindowResizeStrategy.None;
 
-		public bool RememberSize = false;
-		public bool RememberPos = false;
-		//public int[] Resize = null;
 		public System.Drawing.Rectangle? Resize = null;
-		ConcurrentDictionary<int, int> ResizeWaitList = new ConcurrentDictionary<int, int>();
+		readonly ConcurrentDictionary<int, int> ResizeWaitList = new ConcurrentDictionary<int, int>();
 
 		async Task TouchReapply(ProcessEx info)
 		{

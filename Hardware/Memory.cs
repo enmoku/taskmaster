@@ -25,6 +25,7 @@
 // THE SOFTWARE.
 
 using System;
+using System.Diagnostics;
 using System.Runtime.InteropServices;
 
 using Windows = MKAh.Wrapper.Windows;
@@ -55,10 +56,16 @@ namespace Taskmaster
 		/// Queries a performance counter and may be slow as such.
 		/// </summary>
 		public static double Pressure => (double)Private / (double)Total;
+
+		public static ulong Standby = 0;
+
+		/*
 		/// <summary>
 		/// Free memory, in megabytes.
 		/// </summary>
 		public static float Free => pfcfree?.Value ?? 0;
+		*/
+
 		/// <summary>
 		/// Free memory in bytes.
 		/// Update() required to match current state.
@@ -68,6 +75,8 @@ namespace Taskmaster
 		static Windows.PerformanceCounter pfcprivate = new Windows.PerformanceCounter("Process", "Private Bytes", "_Total");
 		static Windows.PerformanceCounter pfccommit = new Windows.PerformanceCounter("Memory", "% Committed Bytes In Use", null);
 		//static Windows.PerformanceCounter pfcfree = new Windows.PerformanceCounter("Memory", "Available MBytes", null);
+
+		const int PurgeStandbyList = 4;
 
 		// ctor
 		static Memory()
@@ -88,17 +97,64 @@ namespace Taskmaster
 			*/
 		}
 
+		public static void PurgeStandby()
+		{
+			int length = Marshal.SizeOf(PurgeStandbyList);
+			var handle = GCHandle.Alloc(PurgeStandbyList, GCHandleType.Pinned);
+			NativeMethods.NtSetSystemInformation(NativeMethods.SYSTEM_INFORMATION_CLASS.SystemMemoryListInformation, handle.AddrOfPinnedObject(), length);
+			handle.Free();
+		}
+
+		public static void UpdateAll()
+		{
+			IntPtr buffer = IntPtr.Zero;
+			NativeMethods.SYSTEM_MEMORY_LIST_INFORMATION info;
+			try
+			{
+				buffer = Marshal.AllocHGlobal(256);
+
+				uint size = 0; // Marshal.SizeOf(NativeMethods.SYSTEM_MEMORY_LIST_INFORMATION);
+
+				uint rv = NativeMethods.NtQuerySystemInformation(NativeMethods.SYSTEM_INFORMATION_CLASS.SystemMemoryListInformation, buffer, size, out uint length);
+				info = (NativeMethods.SYSTEM_MEMORY_LIST_INFORMATION)Marshal.PtrToStructure(buffer, typeof(NativeMethods.SYSTEM_MEMORY_LIST_INFORMATION));
+			}
+			catch (Exception ex)
+			{
+				Logging.Stacktrace(ex);
+				return;
+			}
+			finally
+			{
+				if (buffer != IntPtr.Zero) Marshal.FreeHGlobal(buffer);
+			}
+		}
+
+		public static void GetCache()
+		{
+			if (NativeMethods.GetSystemFileCacheSize(out uint minCache, out uint maxCache, out var flags))
+				Logging.DebugMsg("MEMORY CACHE - Min: " + minCache + ", Max: " + maxCache);
+			else
+				Logging.DebugMsg("MEMORY CACHE - information unavailable");
+		}
+
 		public static void Update()
 		{
-			var mem = new MEMORYSTATUSEX
+			try
 			{
-				dwLength = (uint)Marshal.SizeOf(typeof(MEMORYSTATUSEX))
-			};
-			NativeMethods.GlobalMemoryStatusEx(ref mem);
-			Total = mem.ullTotalPhys;
-			FreeBytes = Convert.ToInt64(mem.ullAvailPhys);
-			Used = Total - mem.ullAvailPhys;
-			if (Trace && DebugMemory) Logging.DebugMsg($"MEMORY - Total: {Total.ToString()}, Free: {FreeBytes.ToString()}, Used: {Used.ToString()}");
+				//GetCache();
+
+				var mem = new MEMORYSTATUSEX { dwLength = (uint)Marshal.SizeOf(typeof(MEMORYSTATUSEX)) };
+
+				NativeMethods.GlobalMemoryStatusEx(ref mem);
+				Total = mem.ullTotalPhys;
+				FreeBytes = Convert.ToInt64(mem.ullAvailPhys);
+				Used = Total - mem.ullAvailPhys;
+				if (Trace && DebugMemory) Logging.DebugMsg($"MEMORY - Total: {Total.ToString()}, Free: {FreeBytes.ToString()}, Used: {Used.ToString()}");
+			}
+			catch (Exception ex)
+			{
+				Logging.Stacktrace(ex);
+			}
 		}
 
 		// weird hack
@@ -123,7 +179,7 @@ namespace Taskmaster
 	{
 		// https://docs.microsoft.com/en-us/windows/desktop/api/sysinfoapi/nf-sysinfoapi-globalmemorystatusex
 		[return: System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.Bool)]
-		[System.Runtime.InteropServices.DllImport("kernel32.dll", CharSet = System.Runtime.InteropServices.CharSet.Auto, SetLastError = true)]
+		[System.Runtime.InteropServices.DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
 		static internal extern bool GlobalMemoryStatusEx(ref MEMORYSTATUSEX lpBuffer);
 	}
 
@@ -171,7 +227,6 @@ namespace Taskmaster
 	}
 	*/
 
-	// http://www.pinvoke.net/default.aspx/Structures/MEMORYSTATUSEX.html
 	// https://docs.microsoft.com/en-us/windows/desktop/api/sysinfoapi/ns-sysinfoapi-_memorystatusex
 	[System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential, CharSet = System.Runtime.InteropServices.CharSet.Auto)]
 	internal struct MEMORYSTATUSEX

@@ -157,7 +157,7 @@ namespace Taskmaster.Process
 
 			try
 			{
-				handle = NativeMethods.OpenProcess(NativeMethods.PROCESS_RIGHTS.PROCESS_QUERY_INFORMATION | NativeMethods.PROCESS_RIGHTS.PROCESS_VM_READ, false, info.Id);
+				handle = NativeMethods.OpenProcess(NativeMethods.PROCESS_ACCESS_RIGHTS.PROCESS_QUERY_INFORMATION | NativeMethods.PROCESS_ACCESS_RIGHTS.PROCESS_VM_READ, false, info.Id);
 				if (handle is null) return false; // failed to open process
 
 				const int lengthSb = 32768; // this is the maximum path length NTFS supports

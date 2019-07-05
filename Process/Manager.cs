@@ -2167,7 +2167,7 @@ namespace Taskmaster.Process
 				if (NewProcessWatcher is null)
 				{
 					// 'TargetInstance.Handle','TargetInstance.Name','TargetInstance.ExecutablePath','TargetInstance.CommandLine'
-					var query = new EventQuery("SELECT TargetInstance FROM __InstanceCreationEvent WITHIN " + WMIPollDelay + " WHERE TargetInstance ISA 'Win32_Process'");
+					var query = new EventQuery("SELECT TargetInstance,TIME_CREATED FROM __InstanceCreationEvent WITHIN " + WMIPollDelay + " WHERE TargetInstance ISA 'Win32_Process'");
 
 					// Avast cybersecurity causes this to throw an exception
 					NewProcessWatcher = new ManagementEventWatcher(new ManagementScope(WMIEventNamespace), query);
