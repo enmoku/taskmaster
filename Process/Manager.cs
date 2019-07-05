@@ -1784,7 +1784,7 @@ namespace Taskmaster.Process
 
 		public async Task RegisterColorReset(ProcessEx info)
 		{
-			System.Diagnostics.Contracts.Contract.Requires(ColorResetEnabled, "Trying to do color reset when it's disabled.");
+			Debug.Assert(ColorResetEnabled, "Trying to do color reset when it's disabled.");
 
 			await Task.Delay(0).ConfigureAwait(false); // asyncify
 
