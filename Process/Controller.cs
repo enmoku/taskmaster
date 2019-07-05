@@ -1805,6 +1805,8 @@ namespace Taskmaster.Process
 
 		public bool NeedsSaving = false;
 
+		public bool ColorReset { get; set; } = false;
+
 		public WindowResizeStrategy ResizeStrategy = WindowResizeStrategy.None;
 
 		public System.Drawing.Rectangle? Resize = null;

@@ -62,6 +62,8 @@ namespace Taskmaster.Process
 
 		bool WindowResizeEnabled { get; set; } = false;
 
+		bool ColorResetEnabled { get; set; } = false;
+
 		/// <summary>
 		/// Watch rules
 		/// </summary>
@@ -754,6 +756,7 @@ namespace Taskmaster.Process
 
 			var exsec = corecfg.Config[Taskmaster.Constants.Experimental];
 			WindowResizeEnabled = exsec.Get(Taskmaster.Constants.WindowResize)?.Bool ?? false;
+			ColorResetEnabled = exsec.Get(Taskmaster.Constants.ColorReset)?.Bool ?? false;
 
 			var sbs = new StringBuilder();
 			sbs.Append("<Process> ");
@@ -949,6 +952,9 @@ namespace Taskmaster.Process
 
 					prc.Resize = new System.Drawing.Rectangle(resize[0], resize[1], resize[2], resize[3]);
 				}
+
+				if (ColorResetEnabled)
+					prc.ColorReset = section.Get(Constants.ColorReset)?.Bool ?? false;
 
 				prc.Repair();
 
@@ -1735,6 +1741,9 @@ namespace Taskmaster.Process
 						if (WindowResizeEnabled && prc.Resize.HasValue)
 							await prc.TryResize(info).ConfigureAwait(false);
 
+						//if (ColorResetEnabled && prc.ColorReset)
+						//	await RegisterColorReset(info).ConfigureAwait(false);
+
 						if (info.State == ProcessHandlingState.Processing)
 						{
 							Logging.DebugMsg($"[{info.Controller.FriendlyName}] {info.Name} (#{info.Id}) correcting state to Finished");
@@ -1771,6 +1780,35 @@ namespace Taskmaster.Process
 			{
 				HandlingStateChange?.Invoke(this, new HandlingStateChangeEventArgs(info));
 			}
+		}
+
+		public async Task RegisterColorReset(ProcessEx info)
+		{
+			System.Diagnostics.Contracts.Contract.Requires(ColorResetEnabled, "Trying to do color reset when it's disabled.");
+
+			await Task.Delay(0).ConfigureAwait(false); // asyncify
+
+			if (!WaitForExit(info))
+			{
+				info.Process.EnableRaisingEvents = true;
+				info.Process.Exited += (_, _ea) => AttemptColorReset(info);
+				info.Process.Refresh();
+				if (info.Process.HasExited && info.ColorReset)
+					AttemptColorReset(info);
+			}
+		}
+
+		private async void AttemptColorReset(ProcessEx info)
+		{
+			await Task.Delay(0).ConfigureAwait(false);
+
+			Log.Information($"[{info.Controller.FriendlyName}] {info.Name} (#{info.Id}) exited, resetting color (NOT REALLY, SORRY!).");
+
+			var buffer = new StringBuilder(4096);
+
+			IntPtr hdc = IntPtr.Zero; // hardware device context
+
+			bool got = NativeMethods.GetICMProfile(hdc, Convert.ToUInt64(buffer.Capacity) + 1UL, buffer);
 		}
 
 		readonly object Exclusive_lock = new object();

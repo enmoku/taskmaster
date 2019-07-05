@@ -19,6 +19,8 @@ namespace Taskmaster.Process
 		public const string Resize = "Resize";
 		public const string ResizeStrategy = "Resize strategy";
 
+		public const string ColorReset = "Reset color";
+
 		public const string Volume = "Volume";
 		public const string VolumeStrategy = "Volume strategy";
 

@@ -99,6 +99,11 @@ namespace Taskmaster.Process
 		public bool Resize { get; set; } = false;
 
 		/// <summary>
+		/// Waiting for exit to reset color.
+		/// </summary>
+		public bool ColorReset { get; set; } = false;
+
+		/// <summary>
 		/// Currently in background.
 		/// </summary>
 		public bool InBackground { get; set; } = false;
