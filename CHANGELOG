@@ -3,6 +3,8 @@ Comprehensive changes can be found in Git change history:
 	https://github.com/mkahvi/taskmaster/commits/master
 
 ## [0.13...]
+### 2019-07-06
+	Added: --nolog command line argument to disable logging to disk.
 ### 2019-07-01
 	Changed: Ensure multiple initialization failures all get logged.
 	Fixed: Fix for adjust delay debugging printing errors when it encounters empty CreationDate in __InstanceCreationEvent.TargetInstance.
