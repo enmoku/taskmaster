@@ -46,7 +46,7 @@ namespace Taskmaster
 
 		public static string DataPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "MKAh", Name);
 		const string LogFolder = "Logs";
-		public static string LogPath = Path.Combine(DataPath, LogFolder);
+		public static string LogPath = string.Empty;
 
 		public static string ConfigVersion = "alpha.3";
 
