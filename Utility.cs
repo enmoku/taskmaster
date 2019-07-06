@@ -70,6 +70,8 @@ namespace Taskmaster
 			}
 			else
 			{
+				if (Taskmaster.NoLogging) return;
+
 				try
 				{
 					if (!System.IO.Directory.Exists(Taskmaster.LogPath)) System.IO.Directory.CreateDirectory(Taskmaster.LogPath);
