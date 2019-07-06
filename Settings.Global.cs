@@ -47,6 +47,8 @@ namespace Taskmaster
 		public static HardwareMonitor hardware = null;
 		public static AlertManager alerts = null;
 
+		public static bool NoLogging { get; set; } = false;
+
 		public static bool ShowSplash { get; set; } = true;
 
 		public static bool VisualStyling { get; set; } = true;

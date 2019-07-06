@@ -38,6 +38,7 @@ namespace Taskmaster
 
 		public const string AdminArg = "--admin";
 		public const string RestartArg = "--restart";
+		public const string NoLogArgs = "--nolog";
 
 		internal static void ParseArguments(string[] args)
 		{
@@ -45,12 +46,15 @@ namespace Taskmaster
 			{
 				if (!args[i].StartsWith("--"))
 				{
-					Log.Error("<Start> Unrecognized command-line parameter: " + args[i]);
+					Logging.DebugMsg("Unrecognized command-line parameter: " + args[i]);
 					continue;
 				}
 
 				switch (args[i])
 				{
+					case NoLogArgs:
+						NoLogging = true;
+						break;
 					case RestartArg:
 						if (args.Length > i + 1 && !args[i + 1].StartsWith("--"))
 							RestartCounter = Convert.ToInt32(args[++i]);
@@ -74,14 +78,13 @@ namespace Taskmaster
 						{
 							if (!MKAh.Execution.IsAdministrator)
 							{
-								Log.Information("Restarting with elevated privileges.");
+								Logging.DebugMsg("Restarting with elevated privileges.");
 								try
 								{
 									var info = System.Diagnostics.Process.GetCurrentProcess().StartInfo;
 									info.FileName = System.Diagnostics.Process.GetCurrentProcess().ProcessName;
 									info.Arguments = $"{AdminArg} {(++AdminCounter).ToString()}";
 									info.Verb = "runas"; // elevate privileges
-									Log.CloseAndFlush();
 									var proc = System.Diagnostics.Process.Start(info);
 								}
 								catch (Exception ex) when (ex is NullReferenceException || ex is OutOfMemoryException) { throw; }

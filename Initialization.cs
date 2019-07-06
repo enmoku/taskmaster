@@ -124,15 +124,20 @@ namespace Taskmaster
 			if (Trace) uiloglevelswitch.MinimumLevel = loglevelswitch.MinimumLevel = LogEventLevel.Verbose;
 #endif
 
+			// COMMAND-LINE ARGUMENTS
+			CommandLine.ParseArguments(args);
+
 			var logpathtemplate = System.IO.Path.Combine(LogPath, Name + "-{Date}.log");
 			var logconf = new Serilog.LoggerConfiguration()
 				.MinimumLevel.ControlledBy(loglevelswitch)
 #if DEBUG
-							.WriteTo.Console(levelSwitch: new Serilog.Core.LoggingLevelSwitch(LogEventLevel.Verbose))
+				.WriteTo.Console(levelSwitch: new Serilog.Core.LoggingLevelSwitch(LogEventLevel.Verbose))
 #endif
-							.WriteTo.RollingFile(logpathtemplate, outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}",
-					levelSwitch: new Serilog.Core.LoggingLevelSwitch(Serilog.Events.LogEventLevel.Debug), retainedFileCountLimit: 3)
 				.WriteTo.MemorySink(levelSwitch: uiloglevelswitch);
+
+			if (!NoLogging)
+				logconf = logconf.WriteTo.RollingFile(logpathtemplate, outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}",
+					levelSwitch: new Serilog.Core.LoggingLevelSwitch(Serilog.Events.LogEventLevel.Debug), retainedFileCountLimit: 3);
 
 			Serilog.Log.Logger = logconf.CreateLogger();
 
@@ -140,8 +145,6 @@ namespace Taskmaster
 
 			LoadEvent?.Invoke(null, new LoadEventArgs("Logger initialized.", LoadEventType.Loaded));
 
-			// COMMAND-LINE ARGUMENTS
-			CommandLine.ParseArguments(args);
 			args = null; // silly
 
 			// STARTUP
