@@ -311,7 +311,7 @@
     <Compile Include="TaskMaster.cs" />
     <Compile Include="UI\TrayAccess.cs" />
     <Compile Include="Utility.cs" />
-    <Compile Include="Extensions\ProcessExtensions.cs" />
+    <Compile Include="Process\Extensions.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="HealthMonitor.cs" />
     <Compile Include="Power\PowerInfo.cs" />

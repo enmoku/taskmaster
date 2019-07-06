@@ -1,5 +1,5 @@
 ﻿//
-// ProcessExtensions.cs
+// Process.Extensions.cs
 //
 // Author:
 //       M.A. (https://github.com/mkahvi)
