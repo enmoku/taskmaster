@@ -166,10 +166,7 @@ namespace Taskmaster
 			this LoggerSinkConfiguration logConf,
 			IFormatProvider formatProvider = null,
 			string outputTemplate = null,
-			LoggingLevelSwitch levelSwitch = null
-		)
-		{
-			return logConf.Sink(new MemorySink(formatProvider, outputTemplate, levelSwitch));
-		}
+			LoggingLevelSwitch levelSwitch = null)
+			=> logConf.Sink(new MemorySink(formatProvider, outputTemplate, levelSwitch));
 	}
 }
