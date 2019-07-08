@@ -60,6 +60,8 @@ namespace Taskmaster.Process
 		public Stopwatch Timer = null;
 		public double WMIDelay = 0;
 
+		public LegacyLevel Legacy { get; set; } = LegacyLevel.Undefined;
+
 		/// <summary>
 		/// Process Id.
 		/// </summary>

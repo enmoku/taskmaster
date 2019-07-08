@@ -140,6 +140,7 @@
     <Compile Include="Audio\Utility.cs" />
     <Compile Include="Constants.cs" />
     <Compile Include="Component.cs" />
+    <Compile Include="External\WinPEHeaderReader.cs" />
     <Compile Include="Interface\ISetting.cs" />
     <Compile Include="MKAh\Data\Cache\CacheEventArgs.cs" />
     <Compile Include="MKAh\Data\Cache\CacheItem.cs" />
@@ -170,6 +171,7 @@
     <Compile Include="Power\WndProcProxy.cs" />
     <Compile Include="Process\ConfigConstants.cs" />
     <Compile Include="Process\Events\HandlingStateChangeEventArgs.cs" />
+    <Compile Include="Process\Legacy.cs" />
     <Compile Include="Process\Options.cs" />
     <Compile Include="Process\Events\ProcessingCountEventArgs.cs" />
     <Compile Include="Settings.Global.cs" />

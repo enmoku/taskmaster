@@ -3,6 +3,8 @@ Comprehensive changes can be found in Git change history:
 	https://github.com/mkahvi/taskmaster/commits/master
 
 ## [0.13...]
+### 2019-07-09
+	Added: Legacy workaround option to force pre-Win2k apps to run on single core. No GUI config yet.
 ### 2019-07-06
 	Added: --nolog command line argument to disable logging to disk.
 ### 2019-07-01

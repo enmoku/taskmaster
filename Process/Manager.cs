@@ -921,6 +921,8 @@ namespace Taskmaster.Process
 
 				//prc.MMPriority = section.TryGet("MEM priority")?.Int ?? int.MinValue; // unused
 
+				prc.LegacyWorkaround = section.Get("Legacy workaround")?.Bool ?? false;
+
 				int? foregroundMode = section.Get(Constants.ForegroundMode)?.Int;
 				if (foregroundMode.HasValue)
 					prc.SetForegroundMode((ForegroundMode)foregroundMode.Value.Constrain(-1, 2));
@@ -1045,6 +1047,7 @@ namespace Taskmaster.Process
 
 						if (ea.AffinityFail) sbs.Append(" [Failed]");
 						if (ea.Info.AffinityProtected) sbs.Append(" [Protected]");
+						if (ea.Info.Legacy == LegacyLevel.Win95) sbs.Append(" [Legacy]");
 					}
 
 					if (DebugProcesses) sbs.Append(" [").Append(prc.AffinityStrategy.ToString()).Append("]");

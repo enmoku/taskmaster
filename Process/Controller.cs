@@ -878,7 +878,8 @@ namespace Taskmaster.Process
 				if (IOPriorityEnabled)
 					nIO = (IOPriority)SetIO(info, DefaultForegroundIOPriority); // force these to always have normal I/O priority
 
-				if (AffinityIdeal >= 0) ApplyAffinityIdeal(info);
+				if (AffinityIdeal >= 0 && info.Legacy == LegacyLevel.None)
+					ApplyAffinityIdeal(info);
 			}
 			catch (InvalidOperationException) // ID not available, probably exited
 			{
@@ -1207,6 +1208,23 @@ namespace Taskmaster.Process
 
 				var now = DateTimeOffset.UtcNow;
 
+				int lAffinityMask = AffinityMask;
+
+				if (LegacyWorkaround && !string.IsNullOrEmpty(info.Path))
+				{
+					// TODO: randomize core
+					// TODO: spread core
+					// TODO: smartly select least used core
+
+					if (info.Legacy == LegacyLevel.Undefined)
+						LegacyTest(info);
+
+					if (info.Legacy == LegacyLevel.Win95)
+						lAffinityMask = Bit.Fill(0, lAffinityMask, 1); // single core
+				}
+				else
+					info.Legacy = LegacyLevel.None;
+
 				// TEST FOR RECENTLY MODIFIED
 				if (RecentlyModified.TryGetValue(info.Id, out RecentlyModifiedInfo ormt))
 				{
@@ -1224,7 +1242,7 @@ namespace Taskmaster.Process
 
 						bool expected = false;
 						if ((Priority.HasValue && info.Process.PriorityClass != Priority.Value)
-							|| (AffinityMask >= 0 && info.Process.ProcessorAffinity.ToInt32() != AffinityMask))
+							|| (lAffinityMask >= 0 && info.Process.ProcessorAffinity.ToInt32() != lAffinityMask))
 						{
 							ormt.ExpectedState--;
 							Logging.DebugMsg($"[{FriendlyName}] {FormatPathName(info)} (#{info.Id.ToString()}) Recently Modified ({ormt.ExpectedState}) ---");
@@ -1240,7 +1258,7 @@ namespace Taskmaster.Process
 						if (ormt.LastIgnored.TimeTo(now) < Manager.IgnoreRecentlyModified
 							|| ormt.LastModified.TimeTo(now) < Manager.IgnoreRecentlyModified)
 						{
-							if (Manager.DebugProcesses && Taskmaster.ShowInaction) Log.Debug($"[{FriendlyName}] {info.Name} (#{info.Id}) ignored due to recent modification. {(expected ? $"State unchanged ×{ormt.ExpectedState}" : $"State changed ×{ormt.ExpectedState}")}");
+							if (Manager.DebugProcesses && ShowInaction) Log.Debug($"[{FriendlyName}] {info.Name} (#{info.Id}) ignored due to recent modification. {(expected ? $"State unchanged ×{ormt.ExpectedState}" : $"State changed ×{ormt.ExpectedState}")}");
 
 							if (ormt.ExpectedState == -2) // 2-3 seems good number
 							{
@@ -1351,9 +1369,9 @@ namespace Taskmaster.Process
 
 				int newAffinityMask = -1;
 
-				if (AffinityMask >= 0 && !info.AffinityProtected)
+				if (lAffinityMask >= 0 && !info.AffinityProtected)
 				{
-					newAffinityMask = AffinityMask.Replace(0, Utility.FullCPUMask);
+					newAffinityMask = lAffinityMask.Replace(0, Utility.FullCPUMask);
 
 					if (EstablishNewAffinity(oldAffinityMask, out newAffinityMask))
 					{
@@ -1408,7 +1426,7 @@ namespace Taskmaster.Process
 				}
 
 				// TODO: Make sure the ideal matches set mask
-				if (AffinityIdeal >= 0)
+				if (AffinityIdeal >= 0 && info.Legacy == LegacyLevel.None)
 					ApplyAffinityIdeal(info);
 
 				/*
@@ -1533,6 +1551,50 @@ namespace Taskmaster.Process
 			catch (Exception ex)
 			{
 				info.State = ProcessHandlingState.Invalid;
+				Logging.Stacktrace(ex);
+			}
+		}
+
+		void LegacyTest(ProcessEx info)
+		{
+			try
+			{
+				var pereader = new External.PeHeaderReader(info.Path);
+				if (pereader.Is32BitHeader)
+				{
+					//bool definiteLegacy = pereader.TimeStamp.Year < 1999; // pre w2k
+					//bool likelyLegacy = pereader.TimeStamp.Year < 2002; // late arrival
+					//var h32 = pereader.OptionalHeader32;
+					int OsMajorVer = pereader.OptionalHeader32.MajorOperatingSystemVersion;
+					//int OsMinorVer = h32.MinorOperatingSystemVersion;
+
+					if (OsMajorVer < 5) // pre w2k
+						info.Legacy = LegacyLevel.Win95;
+					/*
+					else if (osver < 6)
+						info.Legacy = LegacyLevel.Win2k;
+					else if (osver < 10)
+						info.Legacy = LegacyLevel.Win7;
+					else
+						info.Legacy = LegacyLevel.Win10
+					*/
+
+					//Log.Debug($"[{FriendlyName}] {info.Name} #{info.Id} – LEGACY – OS Version: {osver}.{osvers} – Timestamp: {pereader.TimeStamp:g}");
+
+				}
+				else // 64 bit ones are guaranteed to be new enough
+				{
+					info.Legacy = LegacyLevel.None;
+					/*
+					var h64 = pereader.OptionalHeader64;
+					int osver = h64.MajorOperatingSystemVersion;
+					int osvers = h64.MinorOperatingSystemVersion;
+					Log.Debug($"[{FriendlyName}] {info.Name} #{info.Id} – not-LEGACY (64bit) – OS Version: {osver}.{osvers} – Timestamp: {pereader.TimeStamp:g}");
+					*/
+				}
+			}
+			catch (Exception ex)
+			{
 				Logging.Stacktrace(ex);
 			}
 		}
@@ -1806,6 +1868,8 @@ namespace Taskmaster.Process
 		public bool NeedsSaving = false;
 
 		public bool ColorReset { get; set; } = false;
+
+		public bool LegacyWorkaround { get; set; } = false;
 
 		public WindowResizeStrategy ResizeStrategy = WindowResizeStrategy.None;
 
