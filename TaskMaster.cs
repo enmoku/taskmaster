@@ -529,7 +529,7 @@ namespace Taskmaster
 			}
 		}
 
-		public static DateTime BuildDate() => DateTime.ParseExact(Properties.Resources.BuildDate.Trim(), "yyyy/MM/dd HH:mm:ss K", null, System.Globalization.DateTimeStyles.None);
+		public static DateTime BuildDate() => DateTime.ParseExact(Properties.Resources.BuildDate.Trim(), "yyyy/MM/dd HH:mm:ss K", null, System.Globalization.DateTimeStyles.None).ToUniversalTime();
 
 		internal static void UpdateStyling()
 			=> System.Windows.Forms.Application.VisualStyleState = VisualStyling ? System.Windows.Forms.VisualStyles.VisualStyleState.ClientAndNonClientAreasEnabled : System.Windows.Forms.VisualStyles.VisualStyleState.NoneEnabled;

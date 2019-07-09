@@ -207,15 +207,17 @@ namespace Taskmaster
 			{
 				if (!Atomic.Lock(ref EmergencyTick_lock)) return;
 
+				var now = DateTimeOffset.UtcNow;
+
 				double pressure = Memory.Pressure;
 				if (pressure > 1.10d) // 110%
 				{
 					if (EmergencyPressure < 0)
 					{
 						EmergencyPressure = 1;
-						EmergencyOffset = DateTimeOffset.UtcNow;
+						EmergencyOffset = now;
 					}
-					else if (EmergencyOffset.To(DateTimeOffset.UtcNow).TotalSeconds >= 30)
+					else if (EmergencyOffset.To(now).TotalSeconds >= 30)
 					{
 						// TODO: Take action
 
@@ -232,9 +234,9 @@ namespace Taskmaster
 					if (EmergencyPressure > 0)
 					{
 						EmergencyPressure = -1;
-						EmergencyOffset = DateTimeOffset.UtcNow;
+						EmergencyOffset = now;
 					}
-					else if (EmergencyOffset.To(DateTimeOffset.UtcNow).TotalSeconds >= 15)
+					else if (EmergencyOffset.To(now).TotalSeconds >= 15)
 					{
 						EmergencyTimer.Stop();
 						CriticalMemoryWarning = false;

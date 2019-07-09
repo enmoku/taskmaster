@@ -109,7 +109,11 @@ namespace Taskmaster.Process
 
 			Statistics.PathFindAttempts++;
 
-			if (info.Restricted) return false;
+			if (info.Restricted)
+			{
+				Logging.DebugMsg($"<Process> {info.Name} #{info.Id} RESTRICTED - cancelling FindPathExtended");
+				return false;
+			}
 
 			string path = string.Empty;
 			try
@@ -160,7 +164,11 @@ namespace Taskmaster.Process
 			path = string.Empty;
 			System.Runtime.InteropServices.SafeHandle handle = null;
 
-			if (info.Restricted) return false;
+			if (info.Restricted)
+			{
+				Logging.DebugMsg($"<Process> {info.Name} #{info.Id} RESTRICTED - cancelling GetPathViaC");
+				return false;
+			}
 
 			try
 			{

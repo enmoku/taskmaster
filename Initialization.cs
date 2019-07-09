@@ -150,7 +150,7 @@ namespace Taskmaster
 			// STARTUP
 			var builddate = BuildDate();
 
-			var now = DateTime.Now;
+			var now = DateTime.UtcNow;
 			var age = (now - builddate).TotalDays;
 
 			var sbs = new StringBuilder()
