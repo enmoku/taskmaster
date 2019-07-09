@@ -1138,7 +1138,7 @@ namespace Taskmaster.UI
 
 			// CORE LAYOUT ITEMS
 
-			tabLayout = new TabControl()
+			tabLayout = new Extensions.TabControl()
 			{
 				Parent = this,
 				//Height = 300,
@@ -1799,10 +1799,10 @@ namespace Taskmaster.UI
 			menu_debug.DropDown.AutoClose = true;
 			menu_info.DropDown.AutoClose = true;
 
-			infoTab = new TabPage(InfoName) { Padding = BigPadding };
+			infoTab = new Extensions.TabPage(InfoName) { Padding = BigPadding };
 			tabLayout.Controls.Add(infoTab);
 
-			watchTab = new TabPage(WatchlistName) { Padding = BigPadding };
+			watchTab = new Extensions.TabPage(WatchlistName) { Padding = BigPadding };
 			tabLayout.Controls.Add(watchTab);
 
 			var infopanel = new FlowLayoutPanel
@@ -1867,7 +1867,7 @@ namespace Taskmaster.UI
 
 			TableLayoutPanel tempmonitorpanel = TempMonitorEnabled ? BuildTempMonitorPanel() : null;
 
-			var corepanel = new TableLayoutPanel()
+			var corepanel = new Extensions.TableLayoutPanel()
 			{
 				ColumnCount = 2,
 				AutoSize = true,
@@ -1891,7 +1891,7 @@ namespace Taskmaster.UI
 			TableLayoutPanel gpupanel = null;
 			if (HardwareMonitorEnabled)
 			{
-				gpupanel = new TableLayoutPanel()
+				gpupanel = new Extensions.TableLayoutPanel()
 				{
 					ColumnCount = 2,
 					AutoSize = true,
@@ -1944,7 +1944,7 @@ namespace Taskmaster.UI
 				AutoSize = true,
 			};
 
-			var systemlayout = new TableLayoutPanel()
+			var systemlayout = new Extensions.TableLayoutPanel()
 			{
 				ColumnCount = 2,
 				RowCount = 1,
@@ -2010,12 +2010,21 @@ namespace Taskmaster.UI
 			GotFocus += UpdateMemoryStats;
 			UpdateMemoryStats(this, EventArgs.Empty);
 
+			UItimer.Tick += UpdateTrackingCounter;
+			GotFocus += UpdateTrackingCounter;
+			UpdateTrackingCounter(this, EventArgs.Empty);
+
 			if (DebugCache && PathCacheLimit > 0)
 			{
 				UItimer.Tick += PathCacheUpdate;
 				GotFocus += PathCacheUpdate;
 				PathCacheUpdate(this, EventArgs.Empty);
 			}
+		}
+
+		void UpdateTrackingCounter(object sender, EventArgs e)
+		{
+			trackingcount.Text = processmanager?.RunningCount.ToString() ?? "n/a";
 		}
 
 		void ResizeLogList(object sender, EventArgs ev)
@@ -2158,7 +2167,7 @@ namespace Taskmaster.UI
 				foreach (var info in waitlist)
 					ExitWaitListHandler(null, new ProcessModificationEventArgs(info));
 
-			var processlayout = new TableLayoutPanel()
+			var processlayout = new Extensions.TableLayoutPanel()
 			{
 				ColumnCount = 1,
 				AutoSize = true,
@@ -2212,7 +2221,7 @@ namespace Taskmaster.UI
 
 			processlayout.Controls.Add(ProcessingList);
 
-			ProcessDebugTab = new TabPage("Process Debug") { Padding = BigPadding };
+			ProcessDebugTab = new Extensions.TabPage("Process Debug") { Padding = BigPadding };
 
 			ProcessDebugTab.Controls.Add(processlayout);
 
@@ -2393,7 +2402,7 @@ namespace Taskmaster.UI
 
 		void BuildMicrophonePanel(int[] micwidths)
 		{
-			var micpanel = new TableLayoutPanel
+			var micpanel = new Extensions.TableLayoutPanel
 			{
 				Dock = DockStyle.Fill,
 				ColumnCount = 1,
@@ -2403,7 +2412,7 @@ namespace Taskmaster.UI
 			micpanel.RowStyles.Add(new RowStyle(SizeType.Absolute, 20)); // this is dumb
 
 			AudioInputDevice = new AlignedLabel { Text = HumanReadable.Generic.Uninitialized, AutoEllipsis = true };
-			var micNameRow = new TableLayoutPanel
+			var micNameRow = new Extensions.TableLayoutPanel
 			{
 				RowCount = 1,
 				ColumnCount = 2,
@@ -2413,7 +2422,7 @@ namespace Taskmaster.UI
 			micNameRow.Controls.Add(new AlignedLabel { Text = "Default communications device:" });
 			micNameRow.Controls.Add(AudioInputDevice);
 
-			var miccntrl = new TableLayoutPanel()
+			var miccntrl = new Extensions.TableLayoutPanel()
 			{
 				RowCount = 1,
 				ColumnCount = 6,
@@ -2479,7 +2488,7 @@ namespace Taskmaster.UI
 			micpanel.Controls.Add(miccntrl);
 			micpanel.Controls.Add(AudioInputs);
 
-			micTab = new TabPage(HumanReadable.Hardware.Audio.Microphone) { Padding = BigPadding };
+			micTab = new Extensions.TabPage(HumanReadable.Hardware.Audio.Microphone) { Padding = BigPadding };
 
 			micTab.Controls.Add(micpanel);
 
@@ -2493,7 +2502,7 @@ namespace Taskmaster.UI
 
 			tempObjectSize = new AlignedLabel() { Width = 40, Text = HumanReadable.Generic.Uninitialized };
 
-			tempmonitorpanel = new TableLayoutPanel
+			tempmonitorpanel = new Extensions.TableLayoutPanel
 			{
 				Dock = DockStyle.Top,
 				RowCount = 1,
@@ -2511,7 +2520,7 @@ namespace Taskmaster.UI
 
 		TableLayoutPanel BuildCachePanel()
 		{
-			var cachePanel = new TableLayoutPanel()
+			var cachePanel = new Extensions.TableLayoutPanel()
 			{
 				ColumnCount = 5,
 				AutoSize = true,
@@ -2529,7 +2538,7 @@ namespace Taskmaster.UI
 
 		void BuildPowerDebugPanel()
 		{
-			var powerlayout = new TableLayoutPanel()
+			var powerlayout = new Extensions.TableLayoutPanel()
 			{
 				ColumnCount = 1,
 				AutoSize = true,
@@ -2578,14 +2587,14 @@ namespace Taskmaster.UI
 
 			powerlayout.Controls.Add(powerbalancerstatus);
 
-			powerDebugTab = new TabPage("Power Debug") { Padding = BigPadding };
+			powerDebugTab = new Extensions.TabPage("Power Debug") { Padding = BigPadding };
 			powerDebugTab.Controls.Add(powerlayout);
 			tabLayout.Controls.Add(powerDebugTab);
 		}
 
 		TableLayoutPanel BuildLastModifiedPanel(int[] appwidths)
 		{
-			var lastmodifypanel = new TableLayoutPanel
+			var lastmodifypanel = new Extensions.TableLayoutPanel
 			{
 				Dock = DockStyle.Top,
 				ColumnCount = 1,
@@ -2632,7 +2641,7 @@ namespace Taskmaster.UI
 
 		void BuildPowerPanel(out TableLayoutPanel powerpanel)
 		{
-			powerpanel = new TableLayoutPanel()
+			powerpanel = new Extensions.TableLayoutPanel()
 			{
 				ColumnCount = 2,
 				AutoSize = true,
@@ -2653,7 +2662,7 @@ namespace Taskmaster.UI
 
 		void BuildNVMPanel(out TableLayoutPanel nvmpanel)
 		{
-			nvmpanel = new TableLayoutPanel()
+			nvmpanel = new Extensions.TableLayoutPanel()
 			{
 				ColumnCount = 2,
 				AutoSize = true,
@@ -2689,7 +2698,7 @@ namespace Taskmaster.UI
 			netQueue = new AlignedLabel() { Text = HumanReadable.Generic.Uninitialized };
 			uptimestatuslabel = new AlignedLabel { Text = HumanReadable.Generic.Uninitialized };
 
-			netstatus = new TableLayoutPanel
+			netstatus = new Extensions.TableLayoutPanel
 			{
 				ColumnCount = 6,
 				RowCount = 1,
@@ -3074,10 +3083,7 @@ namespace Taskmaster.UI
 		}
 
 		StatusStrip statusbar;
-		ToolStripStatusLabel processingcount;
-		ToolStripStatusLabel processingtimer;
-		//ToolStripStatusLabel adjustcounter;
-		ToolStripStatusLabel powermodestatusbar;
+		ToolStripStatusLabel processingcount, trackingcount, processingtimer, powermodestatusbar;
 
 		void BuildStatusbar()
 		{
@@ -3093,6 +3099,11 @@ namespace Taskmaster.UI
 			statusbar.Items.Add("Next scan in:");
 			processingtimer = new ToolStripStatusLabel("[" + HumanReadable.Generic.Uninitialized + "]") { AutoSize = false };
 			statusbar.Items.Add(processingtimer);
+
+			statusbar.Items.Add("Tracking:");
+			trackingcount = new ToolStripStatusLabel("[" + HumanReadable.Generic.Uninitialized + "]") { AutoSize = false };
+			statusbar.Items.Add(trackingcount);
+
 			statusbar.Items.Add(new ToolStripStatusLabel() { Alignment = ToolStripItemAlignment.Right, Width = -2, Spring = true });
 			//verbositylevel = new ToolStripStatusLabel(HumanReadable.Generic.Uninitialized);
 			//statusbar.Items.Add(verbositylevel);

@@ -54,7 +54,7 @@ namespace Taskmaster.UI
 			if (system == null) system = new DiagnosticSystem();
 			System = system;
 
-			var layout = new TableLayoutPanel() { Dock = DockStyle.Fill, ColumnCount = 2, AutoSize = true, };
+			var layout = new Extensions.TableLayoutPanel() { Dock = DockStyle.Fill, ColumnCount = 2, AutoSize = true, };
 
 			layout.Controls.Add(new AlignedLabel() { Text = "Status:", Font = BoldFont });
 			layout.Controls.Add(Status);

@@ -74,7 +74,7 @@ namespace Taskmaster.UI.Config
 					scan = false;
 			}
 
-			var layout = new TableLayoutPanel()
+			var layout = new Extensions.TableLayoutPanel()
 			{
 				Parent = this,
 				ColumnCount = 2,
@@ -330,7 +330,7 @@ namespace Taskmaster.UI.Config
 			layout.Controls.Add(autodoc);
 
 			// BUTTONS
-			var savebutton = new Button()
+			var savebutton = new Extensions.Button()
 			{
 				Text = "Save",
 				//AutoSize = true,
@@ -386,7 +386,7 @@ namespace Taskmaster.UI.Config
 
 			// l.Controls.Add(new Label());
 
-			var endbutton = new Button()
+			var endbutton = new Extensions.Button()
 			{
 				Text = "Cancel",
 				//AutoSize = true,

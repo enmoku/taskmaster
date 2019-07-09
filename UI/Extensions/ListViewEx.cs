@@ -44,9 +44,11 @@ namespace Taskmaster.UI.Extensions
 			UpdateStyles();
 		}
 
+		const int WM_ERASEBKGND = 0x14;
+
 		protected override void OnNotifyMessage(Message m)
 		{
-			if (m.Msg != 0x14) base.OnNotifyMessage(m); // omit WM_ERASEBKGND:0x14
+			if (m.Msg != WM_ERASEBKGND) base.OnNotifyMessage(m);
 		}
 	}
 }

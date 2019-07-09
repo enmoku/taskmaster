@@ -221,6 +221,9 @@
     <Compile Include="UI\Extensions\AlignedLabel.cs">
       <SubType>Component</SubType>
     </Compile>
+    <Compile Include="UI\Extensions\Buffered.cs">
+      <SubType>Component</SubType>
+    </Compile>
     <Compile Include="UI\Extensions\NumericUpDownEx.cs">
       <SubType>Component</SubType>
     </Compile>

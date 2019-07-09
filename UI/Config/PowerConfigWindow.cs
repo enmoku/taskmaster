@@ -81,7 +81,7 @@ namespace Taskmaster.UI.Config
 				Power.Utility.GetModeName(Mode.HighPerformance), Power.Utility.GetModeName(Mode.Balanced), Power.Utility.GetModeName(Mode.PowerSaver)
 			};
 
-			var layout = new TableLayoutPanel()
+			var layout = new Extensions.TableLayoutPanel()
 			{
 				ColumnCount = 2,
 				AutoSize = true,
@@ -316,14 +316,14 @@ namespace Taskmaster.UI.Config
 			layout.Controls.Add(loQueue);
 			tooltip.SetToolTip(loQueue, "If there are at least this many queued threads, low mode is disallowed.");
 
-			var savebutton = new Button() { Text = "Save", Anchor = AnchorStyles.Right };
+			var savebutton = new Extensions.Button() { Text = "Save", Anchor = AnchorStyles.Right };
 			savebutton.Click += Save;
-			var cancelbutton = new Button() { Text = "Cancel", Anchor = AnchorStyles.Left };
+			var cancelbutton = new Extensions.Button() { Text = "Cancel", Anchor = AnchorStyles.Left };
 			cancelbutton.Click += Cancel;
 			savebutton.NotifyDefault(true);
 			cancelbutton.NotifyDefault(false);
 			UpdateDefaultButton();
-			var resetbutton = new Button() { Text = "Reset", Anchor = AnchorStyles.Right };
+			var resetbutton = new Extensions.Button() { Text = "Reset", Anchor = AnchorStyles.Right };
 			resetbutton.Click += Reset;
 
 			layout.Controls.Add(savebutton);

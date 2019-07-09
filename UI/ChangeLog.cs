@@ -31,9 +31,9 @@ namespace Taskmaster.UI
 {
 	public class ChangeLog : UniForm
 	{
-		readonly Button ShowFullLogButton = new Button() { Text = "Full log" };
-		readonly Button OKButton = new Button() { Text = "OK" };
-		readonly TextBox LogBox = new TextBox() { Dock = DockStyle.Fill };
+		readonly Button ShowFullLogButton = new Extensions.Button() { Text = "Full log" };
+		readonly Button OKButton = new Extensions.Button() { Text = "OK" };
+		readonly TextBox LogBox = new Extensions.TextBox() { Dock = DockStyle.Fill };
 
 		readonly string LogData = null;
 
@@ -51,7 +51,7 @@ namespace Taskmaster.UI
 
 			Text = "Changelog for " + Taskmaster.Name;
 
-			var layout = new TableLayoutPanel()
+			var layout = new Extensions.TableLayoutPanel()
 			{
 				ColumnCount = 2,
 				Dock = DockStyle.Fill,

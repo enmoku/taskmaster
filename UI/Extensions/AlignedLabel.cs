@@ -26,7 +26,7 @@
 
 namespace Taskmaster.UI
 {
-	public class AlignedLabel : System.Windows.Forms.Label
+	public class AlignedLabel : Extensions.Label
 	{
 		public AlignedLabel() : base()
 		{

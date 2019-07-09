@@ -67,7 +67,7 @@ namespace Taskmaster.UI
 			AutoSize = true;
 
 			#region Build UI
-			var layout = new TableLayoutPanel()
+			var layout = new Extensions.TableLayoutPanel()
 			{
 				Dock = DockStyle.Fill,
 				AutoSize = true,
@@ -97,7 +97,7 @@ namespace Taskmaster.UI
 				Dock = DockStyle.Top,
 			};
 
-			exitButton = new Button()
+			exitButton = new Extensions.Button()
 			{
 				//Text = "Cancel && Quit",
 				Text = "Cancel",

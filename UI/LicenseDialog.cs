@@ -57,7 +57,7 @@ namespace Taskmaster
 				AutoSize = true,
 			};
 
-			var licensebox = new TextBox()
+			var licensebox = new UI.Extensions.TextBox()
 			{
 				ReadOnly = true,
 				Text = "NO WARRANTY",
@@ -72,13 +72,13 @@ namespace Taskmaster
 			licensebox.SelectionStart = 0;
 			licensebox.SelectionLength = 0;
 
-			var buttonAccept = new Button()
+			var buttonAccept = new UI.Extensions.Button()
 			{
 				Text = "Accept",
 				Anchor = AnchorStyles.Right,
 			};
 
-			var buttonRefuse = new Button()
+			var buttonRefuse = new UI.Extensions.Button()
 			{
 				Text = "Refuse",
 				Anchor = AnchorStyles.Left,

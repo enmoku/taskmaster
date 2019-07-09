@@ -26,7 +26,7 @@
 
 using System.Windows.Forms;
 
-namespace Taskmaster
+namespace Taskmaster.UI
 {
 	sealed public class TextInputBox : UI.UniForm
 	{
@@ -35,9 +35,14 @@ namespace Taskmaster
 		public TextInputBox(string message, string title, string input = null)
 			: base()
 		{
-			SuspendLayout();
-
 			Text = title;
+
+			DoubleBuffered = true;
+
+			SetStyle(
+				ControlStyles.OptimizedDoubleBuffer | ControlStyles.AllPaintingInWmPaint | ControlStyles.EnableNotifyMessage,
+				true);
+			UpdateStyles();
 
 			DialogResult = DialogResult.Abort;
 
@@ -47,13 +52,13 @@ namespace Taskmaster
 
 
 			#region Build UI
-			var layout = new TableLayoutPanel()
+			var layout = new Extensions.TableLayoutPanel()
 			{
 				ColumnCount = 1,
 				AutoSize = true,
 			};
 
-			var textbox = new TextBox()
+			var textbox = new Extensions.TextBox()
 			{
 				ShortcutsEnabled = true,
 			};
@@ -63,13 +68,13 @@ namespace Taskmaster
 			layout.Controls.Add(new UI.AlignedLabel() { Text = message });
 			layout.Controls.Add(textbox);
 
-			var buttons = new TableLayoutPanel()
+			var buttons = new Extensions.TableLayoutPanel()
 			{
 				ColumnCount = 2,
 				AutoSize = true,
 			};
 
-			var okbutton = new Button()
+			var okbutton = new Extensions.Button()
 			{
 				Text = "OK",
 			};
@@ -81,7 +86,7 @@ namespace Taskmaster
 				Close();
 			};
 
-			var cancelbutton = new Button()
+			var cancelbutton = new Extensions.Button()
 			{
 				Text = "Cancel",
 			};
@@ -102,8 +107,6 @@ namespace Taskmaster
 
 			Controls.Add(layout);
 			#endregion // Build UI
-
-			ResumeLayout();
 
 			/*
 			TopMost = true;

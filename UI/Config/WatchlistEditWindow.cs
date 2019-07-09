@@ -76,7 +76,7 @@ namespace Taskmaster.UI.Config
 
 			var tooltip = new ToolTip();
 
-			var lt = new TableLayoutPanel
+			var lt = new Extensions.TableLayoutPanel
 			{
 				Parent = this,
 				ColumnCount = 3,
@@ -86,7 +86,7 @@ namespace Taskmaster.UI.Config
 			};
 
 			lt.Controls.Add(new AlignedLabel { Text = "Friendly name" });
-			friendlyName = new TextBox()
+			friendlyName = new Extensions.TextBox()
 			{
 				ShortcutsEnabled = true,
 				Text = Controller.FriendlyName,
@@ -102,7 +102,7 @@ namespace Taskmaster.UI.Config
 
 			// EXECUTABLE
 			lt.Controls.Add(new AlignedLabel { Text = HumanReadable.System.Process.Executable });
-			execName = new TextBox()
+			execName = new Extensions.TextBox()
 			{
 				ShortcutsEnabled = true,
 				Text = Controller.Executables?.Length > 0 ? string.Join("|", Controller.Executables) : string.Empty,
@@ -110,7 +110,7 @@ namespace Taskmaster.UI.Config
 			};
 			execName.Validating += ValidateFilename;
 			tooltip.SetToolTip(execName, "Executable name, used to recognize these applications.\nFull filename, including extension if any.\nSeparate executables with pipe (|).");
-			var findexecbutton = new Button()
+			var findexecbutton = new Extensions.Button()
 			{
 				Text = "Running",
 				AutoSize = true,
@@ -146,7 +146,7 @@ namespace Taskmaster.UI.Config
 
 			// PATH
 			lt.Controls.Add(new AlignedLabel { Text = HumanReadable.System.Process.Path });
-			pathName = new TextBox()
+			pathName = new Extensions.TextBox()
 			{
 				ShortcutsEnabled = true,
 				Text = Controller.Path,
@@ -154,7 +154,7 @@ namespace Taskmaster.UI.Config
 			};
 			pathName.Validating += ValidatePathname;
 			tooltip.SetToolTip(pathName, "Path name; rule will match only paths that include this, subfolders included.\nPartial matching is allowed.");
-			var findpathbutton = new Button()
+			var findpathbutton = new Extensions.Button()
 			{
 				Text = "Locate",
 				AutoSize = true,
@@ -215,7 +215,7 @@ namespace Taskmaster.UI.Config
 
 			// DESCRIPTION
 			lt.Controls.Add(new AlignedLabel() { Text = HumanReadable.Generic.Description });
-			desc = new TextBox()
+			desc = new Extensions.TextBox()
 			{
 				Multiline = false,
 				//Anchor = AnchorStyles.Left,
@@ -355,11 +355,11 @@ namespace Taskmaster.UI.Config
 
 			// ---------------------------------------------------------------------------------------------------------
 
-			var afflayout = new TableLayoutPanel() { ColumnCount = 1, AutoSize = true };
+			var afflayout = new Extensions.TableLayoutPanel() { ColumnCount = 1, AutoSize = true };
 
 			afflayout.Controls.Add(affinityMask);
 
-			var corelayout = new TableLayoutPanel() { ColumnCount = 8, AutoSize = true };
+			var corelayout = new Extensions.TableLayoutPanel() { ColumnCount = 8, AutoSize = true };
 
 			cpumask = Controller.AffinityMask;
 			for (int bit = 0; bit < Process.Utility.CPUCount; bit++)
@@ -392,13 +392,13 @@ namespace Taskmaster.UI.Config
 
 			afflayout.Controls.Add(corelayout);
 
-			var affbuttonpanel = new TableLayoutPanel() { ColumnCount = 1, AutoSize = true };
-			clearbutton = new Button() { Text = "None" };
+			var affbuttonpanel = new Extensions.TableLayoutPanel() { ColumnCount = 1, AutoSize = true };
+			clearbutton = new Extensions.Button() { Text = "None" };
 			clearbutton.Click += (_, _ea) =>
 			{
 				foreach (var litem in corelist) litem.Checked = false;
 			};
-			allbutton = new Button() { Text = "All" };
+			allbutton = new Extensions.Button() { Text = "All" };
 			allbutton.Click += (_, _ea) =>
 			{
 				foreach (var litem in corelist) litem.Checked = true;
@@ -682,12 +682,12 @@ namespace Taskmaster.UI.Config
 
 			// BUTTONS
 
-			var finalizebuttons = new TableLayoutPanel() { ColumnCount = 2, AutoSize = true };
-			var saveButton = new Button() { Text = "Save" }; // SAVE
+			var finalizebuttons = new Extensions.TableLayoutPanel() { ColumnCount = 2, AutoSize = true };
+			var saveButton = new Extensions.Button() { Text = "Save" }; // SAVE
 			saveButton.Click += SaveInfo;
 			finalizebuttons.Controls.Add(saveButton);
 			// lt.Controls.Add(saveButton);
-			var cancelButton = new Button() { Text = "Cancel" }; // CLOSE
+			var cancelButton = new Extensions.Button() { Text = "Cancel" }; // CLOSE
 			cancelButton.Click += (_, _ea) =>
 			{
 				DialogResult = DialogResult.Cancel;
@@ -695,7 +695,7 @@ namespace Taskmaster.UI.Config
 			};
 			finalizebuttons.Controls.Add(cancelButton);
 
-			var validatebutton = new Button() { Text = "Validate" };
+			var validatebutton = new Extensions.Button() { Text = "Validate" };
 			validatebutton.Click += ValidateWatchedItem;
 			validatebutton.Margin = BigPadding;
 

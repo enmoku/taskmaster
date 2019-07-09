@@ -52,7 +52,7 @@ namespace Taskmaster.UI.Config
 
 			var tooltip = new ToolTip();
 
-			var layout = new TableLayoutPanel()
+			var layout = new Extensions.TableLayoutPanel()
 			{
 				ColumnCount = 2,
 				Dock = DockStyle.Fill,
@@ -60,13 +60,13 @@ namespace Taskmaster.UI.Config
 				Parent = this,
 			};
 
-			var savebutton = new Button()
+			var savebutton = new Extensions.Button()
 			{
 				Text = "Save",
 			};
 			savebutton.NotifyDefault(true);
 
-			var cancelbutton = new Button()
+			var cancelbutton = new Extensions.Button()
 			{
 				Text = "Cancel",
 			};
@@ -76,7 +76,7 @@ namespace Taskmaster.UI.Config
 			layout.Controls.Add(new AlignedLabel { Text = "Ignore list", Font = BoldFont, Padding = BigPadding });
 			layout.Controls.Add(new EmptySpace());
 
-			var ignoreList = new TextBox() { ReadOnly = true, Multiline = true, Dock = DockStyle.Top, Padding = LeftSubPadding, Anchor = AnchorStyles.Top | AnchorStyles.Left, ScrollBars = ScrollBars.Vertical, Height = Font.Height * 4 };
+			var ignoreList = new Extensions.TextBox() { ReadOnly = true, Multiline = true, Dock = DockStyle.Top, Padding = LeftSubPadding, Anchor = AnchorStyles.Top | AnchorStyles.Left, ScrollBars = ScrollBars.Vertical, Height = Font.Height * 4 };
 			ignoreList.Text = string.Join(", ", processmanager.IgnoreList);
 			tooltip.SetToolTip(ignoreList, "These process names are flat out ignored if encoutnered to protect the system.");
 			layout.Controls.Add(ignoreList);
@@ -87,7 +87,7 @@ namespace Taskmaster.UI.Config
 			layout.Controls.Add(new AlignedLabel { Text = "Protected list", Font = BoldFont, Padding = BigPadding });
 			layout.Controls.Add(new EmptySpace());
 
-			var protectList = new TextBox() { ReadOnly = true, Multiline = true, Dock = DockStyle.Top, Padding = LeftSubPadding, Anchor = AnchorStyles.Top | AnchorStyles.Left, ScrollBars = ScrollBars.Vertical, Height = Font.Height * 4 };
+			var protectList = new Extensions.TextBox() { ReadOnly = true, Multiline = true, Dock = DockStyle.Top, Padding = LeftSubPadding, Anchor = AnchorStyles.Top | AnchorStyles.Left, ScrollBars = ScrollBars.Vertical, Height = Font.Height * 4 };
 			protectList.Text = string.Join(", ", processmanager.ProtectList);
 			tooltip.SetToolTip(protectList, "These process names are denied full control over to protect the system.");
 			layout.Controls.Add(protectList);

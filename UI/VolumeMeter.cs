@@ -90,7 +90,7 @@ namespace Taskmaster.UI
 			AutoSizeMode = AutoSizeMode.GrowAndShrink;
 			AutoSize = true;
 
-			var layout = new TableLayoutPanel()
+			var layout = new Extensions.TableLayoutPanel()
 			{
 				ColumnCount = 1,
 				RowCount = 1,
@@ -102,7 +102,7 @@ namespace Taskmaster.UI
 			layout.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
 			layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 
-			var barlayout = new TableLayoutPanel()
+			var barlayout = new Extensions.TableLayoutPanel()
 			{
 				ColumnCount = 3,
 				RowCount = 2,

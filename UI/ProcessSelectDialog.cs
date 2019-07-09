@@ -31,7 +31,7 @@ using System.Threading.Tasks;
 using System.Windows.Forms;
 using Taskmaster.Process;
 
-namespace Taskmaster
+namespace Taskmaster.UI
 {
 	using static Taskmaster;
 	public class ProcessSelectDialog : UI.UniForm
@@ -62,7 +62,7 @@ namespace Taskmaster
 				Text = title;
 
 			#region Build UI
-			var layout = new TableLayoutPanel()
+			var layout = new Extensions.TableLayoutPanel()
 			{
 				ColumnCount = 1,
 				AutoSize = true,
@@ -86,7 +86,7 @@ namespace Taskmaster
 
 			layout.Controls.Add(selection);
 
-			var buttonlayout = new TableLayoutPanel()
+			var buttonlayout = new Extensions.TableLayoutPanel()
 			{
 				ColumnCount = 3,
 				RowCount = 1,
@@ -94,7 +94,7 @@ namespace Taskmaster
 				Dock = DockStyle.Top,
 			};
 
-			selectbutton = new Button()
+			selectbutton = new Extensions.Button()
 			{
 				Text = "Select",
 				AutoSize = true,
@@ -107,7 +107,7 @@ namespace Taskmaster
 				if (ea.KeyCode == Keys.Enter)
 					SaveSelection(this, ea);
 			};
-			cancelbutton = new Button()
+			cancelbutton = new Extensions.Button()
 			{
 				Text = "Cancel",
 				AutoSize = true,
@@ -119,7 +119,7 @@ namespace Taskmaster
 				Close();
 			};
 
-			refreshbutton = new Button()
+			refreshbutton = new Extensions.Button()
 			{
 				Text = "Refresh",
 				AutoSize = true,

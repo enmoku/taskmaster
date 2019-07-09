@@ -38,7 +38,7 @@ namespace Taskmaster
 
 			Text = "Auto-Doc config";
 
-			var layout = new TableLayoutPanel();
+			var layout = new UI.Extensions.TableLayoutPanel();
 
 			ResumeLayout();
 			Visible = true;

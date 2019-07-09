@@ -46,7 +46,7 @@ namespace Taskmaster.UI.Config
 
 			var tooltip = new ToolTip();
 
-			var layout = new TableLayoutPanel()
+			var layout = new Extensions.TableLayoutPanel()
 			{
 				ColumnCount = 2,
 				Dock = DockStyle.Fill,
@@ -161,7 +161,7 @@ namespace Taskmaster.UI.Config
 			UpdateNGenState(nativeImageLoaded);
 			layout.Controls.Add(imageUptodateState);
 
-			installButton = new Button
+			installButton = new Extensions.Button
 			{
 				Text = "Install/Update",
 				AutoSizeMode = AutoSizeMode.GrowOnly,
@@ -173,7 +173,7 @@ namespace Taskmaster.UI.Config
 
 			layout.Controls.Add(installButton);
 
-			uninstallButton = new Button
+			uninstallButton = new Extensions.Button
 			{
 				Text = "Uninstall",
 				AutoSizeMode = AutoSizeMode.GrowOnly,
@@ -216,10 +216,10 @@ namespace Taskmaster.UI.Config
 			layout.Controls.Add(restartWarning);
 			layout.SetColumnSpan(restartWarning, 2);
 
-			var savebutton = new Button() { Text = "Save", Anchor = AnchorStyles.Right };
+			var savebutton = new Extensions.Button() { Text = "Save", Anchor = AnchorStyles.Right };
 			savebutton.NotifyDefault(true);
 
-			var cancelbutton = new Button() { Text = "Cancel", };
+			var cancelbutton = new Extensions.Button() { Text = "Cancel", };
 			cancelbutton.Click += Cancelbutton_Click;
 
 			savebutton.Click += (_, _ea) =>
