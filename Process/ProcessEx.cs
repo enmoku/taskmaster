@@ -82,6 +82,9 @@ namespace Taskmaster.Process
 		public bool PriorityProtected { get; set; } = false;
 		public bool AffinityProtected { get; set; } = false;
 
+
+		public bool ExitWait { get; set; } = false;
+
 		/// <summary>
 		/// Power plan forced, waiting for exit to restore it.
 		/// </summary>

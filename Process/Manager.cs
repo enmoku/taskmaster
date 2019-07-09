@@ -52,12 +52,32 @@ namespace Taskmaster.Process
 
 		public ProcessEx[] GetExitWaitList() => WaitForExitList.Values.ToArray(); // copy is good here
 
-		void AddRunning(ProcessEx info) => Running.TryAdd(info.Id, info);
-
-		void RemoveRunning(int pid)
+		void AddRunning(ProcessEx info)
 		{
-			Running.TryRemove(pid, out _);
-			WaitForExitList.TryRemove(pid, out _);
+			Running.TryAdd(info.Id, info);
+			info.Process.Exited += ProcessExit;
+			info.Process.EnableRaisingEvents = true;
+			info.ExitWait = true;
+
+			info.Process.Refresh();
+			if (info.Process.HasExited)
+				ProcessExit(info.Process, EventArgs.Empty);
+		}
+
+		void ProcessExit(object sender, EventArgs ea)
+		{
+			if (sender is System.Diagnostics.Process proc)
+			{
+				RemoveRunning(proc.Id, out var info);
+				info.State = ProcessHandlingState.Exited;
+				info.ExitWait = false;
+			}
+		}
+
+		void RemoveRunning(int pid, out ProcessEx removed)
+		{
+			Running.TryRemove(pid, out removed);
+			WaitForExitList.TryRemove(pid, out removed);
 		}
 
 		public int RunningCount => Running.Count;
@@ -491,7 +511,7 @@ namespace Taskmaster.Process
 
 					if (stale)
 					{
-						RemoveRunning(pid);
+						RemoveRunning(pid, out _);
 						info = null;
 					}
 				}
@@ -1264,7 +1284,7 @@ namespace Taskmaster.Process
 
 				info.ForegroundWait = false;
 
-				RemoveRunning(info.Id);
+				RemoveRunning(info.Id, out _);
 
 				info.Controller?.End(info.Process, EventArgs.Empty);
 
@@ -1336,12 +1356,13 @@ namespace Taskmaster.Process
 
 			if (WaitForExitList.TryAdd(info.Id, info))
 			{
-				AddRunning(info);
+				if (!info.ExitWait) AddRunning(info);
 
 				try
 				{
-					info.Process.EnableRaisingEvents = true;
 					info.Process.Exited += (_, _ea) => WaitForExitTriggered(info);
+					info.Process.EnableRaisingEvents = true;
+					info.ExitWait = true;
 
 					// TODO: Just in case check if it exited while we were doing this.
 					exithooked = true;
@@ -1720,6 +1741,8 @@ namespace Taskmaster.Process
 				var time = info.Process.StartTime.ToUniversalTime();
 				var ago = time.To(DateTime.UtcNow);
 				Logging.DebugMsg($"<Process> {info.Name} #{info.Id} – started: {info.Process.StartTime:g} ({ago:g} ago)");
+
+				if (!info.ExitWait && ago.TotalMinutes > 5) AddRunning(info);
 			}
 			catch // no access to startime
 			{
@@ -1768,6 +1791,7 @@ namespace Taskmaster.Process
 						Log.Information($"[{prc.FriendlyName}] {info.Name} #{info.Id} started.");
 						info.Process.Exited += (_, _ea) => Log.Information($"[{info.Controller.FriendlyName}] {info.Name} #{info.Id} exited.");
 						info.Process.EnableRaisingEvents = true;
+						info.ExitWait = true;
 						// TOOD: What if the process exited just before we enabled raising for the events?
 					}
 
@@ -1849,8 +1873,10 @@ namespace Taskmaster.Process
 
 			if (!WaitForExit(info))
 			{
-				info.Process.EnableRaisingEvents = true;
 				info.Process.Exited += (_, _ea) => AttemptColorReset(info);
+				info.Process.EnableRaisingEvents = true;
+				info.ExitWait = true;
+
 				info.Process.Refresh();
 				if (info.Process.HasExited && info.ColorReset)
 					AttemptColorReset(info);
@@ -1900,8 +1926,9 @@ namespace Taskmaster.Process
 
 								if (DebugProcesses) Log.Debug($"<Exclusive> [{info.Controller.FriendlyName}] {info.Name} (#{info.Id.ToString()}) starting");
 
-								info.Process.EnableRaisingEvents = true;
 								info.Process.Exited += (_, _ea) => EndExclusiveMode(info).ConfigureAwait(false);
+								info.Process.EnableRaisingEvents = true;
+								info.ExitWait = true;
 
 								ExclusiveEnabled = true;
 
