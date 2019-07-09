@@ -109,7 +109,7 @@ namespace Taskmaster.Process
 
 			Statistics.PathFindAttempts++;
 
-			if (info.Restricted) return;
+			if (info.Restricted) return false;
 
 			string path = string.Empty;
 			try
