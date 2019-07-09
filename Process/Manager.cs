@@ -83,7 +83,11 @@ namespace Taskmaster.Process
 
 		void RemoveRunning(int pid, out ProcessEx removed)
 		{
-			if (disposed) return;
+			if (disposed)
+			{
+				removed = null;
+				return;
+			}
 
 			Running.TryRemove(pid, out removed);
 			WaitForExitList.TryRemove(pid, out _);
