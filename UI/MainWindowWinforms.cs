@@ -47,7 +47,7 @@ namespace Taskmaster.UI
 		System.Drawing.Color WarningColor = System.Drawing.Color.Red;
 		System.Drawing.Color AlterColor = System.Drawing.Color.FromArgb(245, 245, 245); // ignores user styles
 
-		System.Drawing.Color DefaultLIBGColor = new ListViewItem().BackColor; // HACK
+		readonly System.Drawing.Color DefaultLIBGColor = new ListViewItem().BackColor; // HACK
 
 		bool AlternateRowColorsLog { get; set; } = true;
 		bool AlternateRowColorsWatchlist { get; set; } = true;
@@ -860,8 +860,7 @@ namespace Taskmaster.UI
 
 		Label AudioInputDevice = null;
 		Extensions.NumericUpDownEx AudioInputVolume = null;
-		ListView AudioInputs = null;
-		ListView WatchlistRules = null;
+		ListView AudioInputs = null, WatchlistRules = null;
 
 		readonly ConcurrentDictionary<Process.Controller, ListViewItem> WatchlistMap = new ConcurrentDictionary<Process.Controller, ListViewItem>();
 		readonly object watchlist_lock = new object();
@@ -869,15 +868,11 @@ namespace Taskmaster.UI
 		Label corCountLabel = null;
 		ComboBox AudioInputEnable = null;
 
-		ListView lastmodifylist = null;
-		ListView powerbalancerlog = null;
+		ListView lastmodifylist = null, powerbalancerlog = null;
 
-		Label powerbalancer_behaviour = null;
-		Label powerbalancer_plan = null;
-		Label powerbalancer_forcedcount = null;
+		Label powerbalancer_behaviour = null, powerbalancer_plan = null, powerbalancer_forcedcount = null;
 
-		ListView ExitWaitList = null;
-		ListView ProcessingList = null;
+		ListView ExitWaitList = null, ProcessingList = null;
 		ConcurrentDictionary<int, ListViewItem> ExitWaitlistMap = null;
 
 		#region Foreground Monitor
@@ -923,12 +918,7 @@ namespace Taskmaster.UI
 		}
 
 		// BackColor = System.Drawing.Color.LightGoldenrodYellow
-		Label netstatuslabel;
-		Label inetstatuslabel;
-		Label uptimestatuslabel;
-		Label uptimeMeanLabel;
-		Label netTransmit;
-		Label netQueue;
+		Label netstatuslabel, inetstatuslabel, uptimestatuslabel, uptimeMeanLabel, netTransmit, netQueue;
 
 		public static Serilog.Core.LoggingLevelSwitch LogIncludeLevel;
 
@@ -1004,9 +994,7 @@ namespace Taskmaster.UI
 
 		ListView NetworkDevices;
 
-		ContextMenuStrip ifacems;
-		ContextMenuStrip loglistms;
-		ContextMenuStrip watchlistms;
+		ContextMenuStrip ifacems, loglistms, watchlistms;
 		ToolStripMenuItem watchlistenable;
 
 		void InterfaceContextMenuOpen(object _, EventArgs _ea)
@@ -1019,8 +1007,7 @@ namespace Taskmaster.UI
 			catch { } // discard
 		}
 
-		int IPv4Column = 4;
-		int IPv6Column = 5;
+		int IPv4Column = 4, IPv6Column = 5;
 
 		void CopyIPv4AddressToClipboard(object _, EventArgs _ea)
 		{
@@ -1064,21 +1051,10 @@ namespace Taskmaster.UI
 
 		// TODO: Easier column access somehow than this?
 		//int OrderColumn = 0;
-		const int PrefColumn = 1;
-		const int NameColumn = 2;
-		const int ExeColumn = 3;
-		const int PrioColumn = 4;
-		const int AffColumn = 5;
-		const int PowerColumn = 6;
-		const int AdjustColumn = 7;
-		const int PathColumn = 8;
+		const int PrefColumn = 1, NameColumn = 2, ExeColumn = 3, PrioColumn = 4, AffColumn = 5, PowerColumn = 6, AdjustColumn = 7, PathColumn = 8;
 
-		TabPage infoTab = null;
-		TabPage watchTab = null;
-
-		TabPage micTab = null;
-		TabPage powerDebugTab = null;
-		TabPage ProcessDebugTab = null;
+		TabPage infoTab = null, watchTab = null, micTab = null;
+		TabPage powerDebugTab = null, ProcessDebugTab = null;
 
 		ToolStripMenuItem menu_debug_loglevel_info = null;
 		ToolStripMenuItem menu_debug_loglevel_debug = null;
@@ -1116,11 +1092,7 @@ namespace Taskmaster.UI
 		const string ShowUnmodifiedPortionsName = "Unmodified portions";
 		const string WatchlistName = "Watchlist";
 
-		ToolStripMenuItem power_auto;
-		ToolStripMenuItem power_highperf;
-		ToolStripMenuItem power_balanced;
-		ToolStripMenuItem power_saving;
-		ToolStripMenuItem power_manual;
+		ToolStripMenuItem power_auto, power_highperf, power_balanced, power_saving, power_manual;
 
 		void BuildUI()
 		{
@@ -2769,10 +2741,7 @@ namespace Taskmaster.UI
 			return netstatus;
 		}
 
-		void ShowExperimentConfig(object sender, EventArgs ea)
-		{
-			Config.ExperimentConfig.Reveal();
-		}
+		void ShowExperimentConfig(object sender, EventArgs ea) => Config.ExperimentConfig.Reveal();
 
 		void ShowAboutDialog(object sender, EventArgs ea)
 		{
@@ -3234,9 +3203,10 @@ namespace Taskmaster.UI
 			// 50 %, Low: 33.2 %, Mean: 52.1 %, High: 72.8 %, Queue: 1
 		}
 
-		readonly System.Drawing.Color Reddish = System.Drawing.Color.FromArgb(255, 230, 230);
-		readonly System.Drawing.Color Greenish = System.Drawing.Color.FromArgb(240, 255, 230);
-		readonly System.Drawing.Color Orangeish = System.Drawing.Color.FromArgb(255, 250, 230);
+		readonly System.Drawing.Color
+			Reddish = System.Drawing.Color.FromArgb(255, 230, 230),
+			Greenish = System.Drawing.Color.FromArgb(240, 255, 230),
+			Orangeish = System.Drawing.Color.FromArgb(255, 250, 230);
 
 		public void PowerLoadDebugHandler(object _, Power.AutoAdjustReactionEventArgs ea)
 		{
@@ -3509,26 +3479,11 @@ namespace Taskmaster.UI
 			}
 		}
 
-		Label tempObjectCount = null;
-		Label tempObjectSize = null;
-
-		Label cpuload = null;
-		Label ramload = null;
-
-		Label pwmode = null;
-		Label pwcause = null;
-		Label pwbehaviour = null;
-
-		Label nvmtransfers = null;
-		Label nvmsplitio = null;
-		Label nvmdelay = null;
-		Label nvmqueued = null;
-		Label hardfaults = null;
-
-		Label gpuvram = null;
-		Label gpuload = null;
-		Label gputemp = null;
-		Label gpufan = null;
+		Label tempObjectCount = null, tempObjectSize = null;
+		Label cpuload = null, ramload = null;
+		Label pwmode = null, pwcause = null, pwbehaviour = null;
+		Label nvmtransfers = null, nvmsplitio = null, nvmdelay = null, nvmqueued = null, hardfaults = null;
+		Label gpuvram = null, gpuload = null, gputemp = null, gpufan = null;
 
 		public void TempScanStats(object _, StorageEventArgs ea)
 		{
@@ -3708,10 +3663,7 @@ namespace Taskmaster.UI
 
 		HealthReport oldHealthReport = null;
 
-		int skipTransfers = 0;
-		int skipSplits = 0;
-		int skipDelays = 0;
-		int skipQueues = 0;
+		int skipTransfers = 0, skipSplits = 0, skipDelays = 0, skipQueues = 0;
 
 		int updatehealthmon_lock = 0;
 
@@ -3963,9 +3915,7 @@ namespace Taskmaster.UI
 			}
 		}
 
-		int PacketDeltaColumn = 6;
-		int ErrorDeltaColumn = 7;
-		int ErrorTotalColumn = 8;
+		int PacketDeltaColumn = 6, ErrorDeltaColumn = 7, ErrorTotalColumn = 8;
 
 		void InetStatusLabel(bool available)
 		{

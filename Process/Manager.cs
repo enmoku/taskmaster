@@ -1717,6 +1717,18 @@ namespace Taskmaster.Process
 
 			try
 			{
+				var time = info.Process.StartTime.ToUniversalTime();
+				var ago = time.To(DateTime.UtcNow);
+				Logging.DebugMsg($"<Process> {info.Name} #{info.Id} – started: {info.Process.StartTime:g} ({ago:g} ago)");
+			}
+			catch // no access to startime
+			{
+				info.Restricted = true;
+				Logging.DebugMsg($"<Process> {info.Name} #{info.Id} – NO ACCESS");
+			}
+
+			try
+			{
 				info.State = ProcessHandlingState.Triage;
 
 				HandlingStateChange?.Invoke(this, new HandlingStateChangeEventArgs(info));
@@ -1770,7 +1782,11 @@ namespace Taskmaster.Process
 
 						if (Trace && DebugProcesses) Logging.DebugMsg($"Trying to modify: {info.Name} (#{info.Id})");
 
-						if (info.Restricted) return;
+						if (info.Restricted)
+						{
+							Logging.DebugMsg($"<Process> {info.Name} #{info.Id} RESTRICTED - cancelling at ProcessTriage");
+							return;
+						}
 
 						await prc.Modify(info).ConfigureAwait(false);
 

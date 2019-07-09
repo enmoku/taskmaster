@@ -406,7 +406,7 @@ namespace Taskmaster.Process
 			return full;
 		}
 
-		MKAh.Lock.Monitor ScopedLock = new MKAh.Lock.Monitor();
+		MKAh.Lock.Monitor WinPrcLock = new MKAh.Lock.Monitor();
 
 		/// <summary>
 		/// SetWinEventHook sends messages to this. Don't call it on your own.
@@ -420,8 +420,8 @@ namespace Taskmaster.Process
 			await System.Threading.Tasks.Task.Delay(Hysterisis).ConfigureAwait(false); // asyncify
 			if (DisposedOrDisposing) return;
 
-			using var sl = ScopedLock.ScopedLock();
-			if (sl.Waiting) return;
+			using var sl = WinPrcLock.ScopedLock();
+			if (sl.Waiting) return; // unlikely, but....
 
 			// IntPtr handle = IntPtr.Zero; // hwnd arg already has this
 			// handle = GetForegroundWindow();

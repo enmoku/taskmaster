@@ -60,7 +60,11 @@ namespace Taskmaster.Process
 		{
 			if (string.IsNullOrEmpty(info.Path)) return;
 
-			if (info.Restricted) return;
+			if (info.Restricted)
+			{
+				Logging.DebugMsg($"<Process> {info.Name} #{info.Id} RESTRICTED - cancelling Analyze");
+				return;
+			}
 
 			byte[] hash;
 			using var crypt = new System.Security.Cryptography.SHA512Cng();

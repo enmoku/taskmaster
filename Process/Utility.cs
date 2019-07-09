@@ -39,6 +39,7 @@ namespace Taskmaster.Process
 	public static class Utility
 	{
 		public static int CPUCount => Environment.ProcessorCount; // pointless
+
 		public static int FullCPUMask => (1 << CPUCount) - 1;
 
 		/// <summary>

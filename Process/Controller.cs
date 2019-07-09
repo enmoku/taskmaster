@@ -845,7 +845,11 @@ namespace Taskmaster.Process
 			Debug.Assert(Foreground != ForegroundMode.Ignore, "Resume called for non-foreground rule");
 			Debug.Assert(info.Controller != null, "No controller attached");
 
-			if (info.Restricted) return;
+			if (info.Restricted)
+			{
+				Logging.DebugMsg($"<Process> {info.Name} #{info.Id} RESTRICTED - cancelling SetForeground");
+				return;
+			}
 
 			bool mAffinity = false, mPriority = false;
 			ProcessPriorityClass oldPriority;
@@ -1149,7 +1153,11 @@ namespace Taskmaster.Process
 			Debug.Assert(!string.IsNullOrEmpty(info.Name), "ProcessController.Touch given empty process name.");
 			Debug.Assert(info.Controller != null, "No controller attached");
 
-			if (info.Restricted) return;
+			if (info.Restricted)
+			{
+				Logging.DebugMsg($"<Process> {info.Name} #{info.Id} RESTRICTED - cancelling Touch");
+				return;
+			}
 
 			try
 			{
