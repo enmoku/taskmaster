@@ -112,7 +112,7 @@ namespace Taskmaster.Process
 
 		public DateTimeOffset Modified { get; set; } = DateTimeOffset.MinValue;
 
-		internal ProcessHandlingState _state = ProcessHandlingState.Invalid;
+		internal ProcessHandlingState _state { get; set; } = ProcessHandlingState.Invalid;
 
 		public ProcessHandlingState State
 		{
@@ -143,10 +143,15 @@ namespace Taskmaster.Process
 		}
 
 		public bool Valid { get; set; } = false;
+
 		public bool Handled { get; set; } = false;
+
 		public bool Exited { get; set; } = false;
 
-		public bool PathCacheExitLinked { get; set; } = false;
 		public bool PathSearched { get; set; } = false;
+
+		public DateTime Found { get; set; } = DateTime.UtcNow;
+
+		public MKAh.Wrapper.Windows.PerformanceCounter Counter { get; set; } = null;
 	}
 }

@@ -48,8 +48,21 @@ namespace Taskmaster.Process
 		Analyzer analyzer = null;
 
 		readonly ConcurrentDictionary<int, ProcessEx> WaitForExitList = new ConcurrentDictionary<int, ProcessEx>();
+		readonly ConcurrentDictionary<int, ProcessEx> Running = new ConcurrentDictionary<int, ProcessEx>(Environment.ProcessorCount, 300);
+
 		public ProcessEx[] GetExitWaitList() => WaitForExitList.Values.ToArray(); // copy is good here
-		readonly ConcurrentDictionary<int, ProcessEx> ExclusiveList = new ConcurrentDictionary<int, ProcessEx>();
+
+		void AddRunning(ProcessEx info) => Running.TryAdd(info.Id, info);
+
+		void RemoveRunning(int pid)
+		{
+			Running.TryRemove(pid, out _);
+			WaitForExitList.TryRemove(pid, out _);
+		}
+
+		public int RunningCount => Running.Count;
+
+		ProcessEx GetRunning(int pid) => Running.TryGetValue(pid, out var info) ? info : null;
 
 		public static bool DebugScan { get; set; } = false;
 		public static bool DebugPaths { get; set; } = false;
@@ -358,7 +371,7 @@ namespace Taskmaster.Process
 			if (cts.IsCancellationRequested) return false;
 
 			if (!ScanLock.TryLock()) return false;
-			
+
 			try
 			{
 				NextScan = (LastScan = DateTimeOffset.UtcNow).Add(ScanFrequency.Value);
@@ -379,9 +392,7 @@ namespace Taskmaster.Process
 				List<ProcessEx> pageList = PageToDisk ? new List<ProcessEx>() : null;
 
 				foreach (var process in procs)
-				{
 					ScanTriage(process, PageToDisk);
-				}
 
 				//SystemLoaderAnalysis(loaderOffload);
 
@@ -457,18 +468,32 @@ namespace Taskmaster.Process
 
 				if (DebugScan) Log.Verbose($"<Process> Checking: {name} (#{pid})");
 
-				if (WaitForExitList.TryGetValue(pid, out info))
+				if ((info = GetRunning(pid)) != null)
 				{
-					if (Trace && DebugProcesses) Logging.DebugMsg($"Re-using old ProcessEx: {info.Name} (#{info.Id})");
-					info.Process.Refresh();
-					if (info.Process.HasExited) // Stale, for some reason still kept
+					bool stale = false;
+
+					try
 					{
-						if (Trace && DebugProcesses) Logging.DebugMsg("Re-using old ProcessEx - except not, stale");
-						WaitForExitList.TryRemove(pid, out _);
+						if (Trace && DebugProcesses) Logging.DebugMsg($"Re-using old ProcessEx: {info.Name} (#{info.Id})");
+						info.Process.Refresh();
+						if (info.Process.HasExited) // Stale, for some reason still kept
+						{
+							if (Trace && DebugProcesses) Logging.DebugMsg("Re-using old ProcessEx - except not, stale");
+							stale = true;
+						}
+						else
+							info.State = ProcessHandlingState.Triage; // still valid
+					}
+					catch
+					{
+						stale = true;
+					}
+
+					if (stale)
+					{
+						RemoveRunning(pid);
 						info = null;
 					}
-					else
-						info.State = ProcessHandlingState.Triage; // still valid
 				}
 
 				if (info != null || Utility.GetInfo(pid, out info, process, null, name, null, getPath: true))
@@ -1239,7 +1264,7 @@ namespace Taskmaster.Process
 
 				info.ForegroundWait = false;
 
-				WaitForExitList.TryRemove(info.Id, out _);
+				RemoveRunning(info.Id);
 
 				info.Controller?.End(info.Process, EventArgs.Empty);
 
@@ -1311,6 +1336,8 @@ namespace Taskmaster.Process
 
 			if (WaitForExitList.TryAdd(info.Id, info))
 			{
+				AddRunning(info);
+
 				try
 				{
 					info.Process.EnableRaisingEvents = true;
@@ -1826,6 +1853,8 @@ namespace Taskmaster.Process
 
 		readonly object Exclusive_lock = new object();
 
+		int ExclusiveLocks = 0;
+
 		async Task ExclusiveMode(ProcessEx info)
 		{
 			if (disposed) throw new ObjectDisposedException(nameof(Manager), "ExclusiveMode called when ProcessManager was already disposed");
@@ -1842,19 +1871,24 @@ namespace Taskmaster.Process
 				bool ensureExit = false;
 				try
 				{
-					lock (Exclusive_lock)
+					lock (info)
 					{
-						if (ExclusiveList.TryAdd(info.Id, info))
+						if (!info.Exclusive)
 						{
-							if (DebugProcesses) Log.Debug($"<Exclusive> [{info.Controller.FriendlyName}] {info.Name} (#{info.Id.ToString()}) starting");
-							lock (info) info.Exclusive = true;
-							info.Process.EnableRaisingEvents = true;
-							info.Process.Exited += (_,_ea) => EndExclusiveMode(info);
+							lock (Exclusive_lock)
+							{
+								ExclusiveLocks++;
 
-							ExclusiveEnabled = true;
+								if (DebugProcesses) Log.Debug($"<Exclusive> [{info.Controller.FriendlyName}] {info.Name} (#{info.Id.ToString()}) starting");
 
-							foreach (var service in Services)
-								service.Stop(service.FullDisable);
+								info.Process.EnableRaisingEvents = true;
+								info.Process.Exited += (_, _ea) => EndExclusiveMode(info).ConfigureAwait(false);
+
+								ExclusiveEnabled = true;
+
+								foreach (var service in Services)
+									service.Stop(service.FullDisable);
+							}
 
 							ensureExit = true;
 						}
@@ -1886,42 +1920,42 @@ namespace Taskmaster.Process
 		{
 			if (disposed) return;
 
-			lock (info) if (!info.Exclusive) return;
-
 			await Task.Delay(0).ConfigureAwait(false);
 
-			try
+			bool exclusiveEnd = false;
+			lock (info)
+			{
+				if (!info.Exclusive) return;
+
+				info.Exclusive = false;
+				exclusiveEnd = true;
+			}
+
+			if (exclusiveEnd)
 			{
 				lock (Exclusive_lock)
 				{
-					if (ExclusiveList.TryRemove(info.Id, out _))
-					{
-						lock (info) info.Exclusive = false;
+					ExclusiveLocks--;
 
-						if (DebugProcesses) Log.Debug($"<Exclusive> [{info.Controller.FriendlyName}] {info.Name} (#{info.Id.ToString()}) ending");
-						if (ExclusiveList.Count == 0)
+					if (DebugProcesses) Log.Debug($"<Exclusive> [{info.Controller.FriendlyName}] {info.Name} (#{info.Id.ToString()}) ending");
+					if (ExclusiveLocks == 0)
+					{
+						if (DebugProcesses) Log.Debug("<Exclusive> Ended for all, restarting services.");
+						try
 						{
-							if (DebugProcesses) Log.Debug("<Exclusive> Ended for all, restarting services.");
-							try
-							{
-								ExclusiveEnd();
-							}
-							catch (InvalidOperationException)
-							{
-								Log.Warning($"<Exclusive> Failure to restart WUA after {info.Name} (#{info.Id}) exited.");
-							}
+							ExclusiveEnd();
 						}
-						else
+						catch (InvalidOperationException)
 						{
-							if (DebugProcesses) Log.Debug("<Exclusive> Still used by: #" + string.Join(", #", ExclusiveList.Keys));
+							Log.Warning($"<Exclusive> Failure to restart WUA after {info.Name} (#{info.Id}) exited.");
 						}
 					}
+					else
+					{
+						if (DebugProcesses)
+							Log.Debug("<Exclusive> Still used by " + ExclusiveLocks + " processes.");
+					}
 				}
-			}
-			catch (Exception ex) when (ex is NullReferenceException || ex is OutOfMemoryException) { throw; }
-			catch (Exception ex)
-			{
-				Logging.Stacktrace(ex);
 			}
 		}
 
@@ -1947,6 +1981,8 @@ namespace Taskmaster.Process
 					Logging.Stacktrace(ex);
 				}
 			}
+
+			ExclusiveEnabled = false;
 		}
 
 		int Handling { get; set; } = 0; // this isn't used for much...
@@ -2359,9 +2395,9 @@ namespace Taskmaster.Process
 						prc.Refresh();
 				}
 
-				lock (Exclusive_lock)
+				Parallel.ForEach(Running.Values, info =>
 				{
-					foreach (var info in ExclusiveList.Values)
+					if (info.Exclusive)
 					{
 						try
 						{
@@ -2374,7 +2410,7 @@ namespace Taskmaster.Process
 						}
 						catch { }
 					}
-				}
+				});
 			}
 			catch (Exception ex)
 			{
@@ -2473,7 +2509,6 @@ namespace Taskmaster.Process
 					service.Dispose();
 				Services.Clear();
 
-				ExclusiveList?.Clear();
 				lock (Exclusive_lock) try { ExclusiveEnd(); } catch { }
 			}
 
