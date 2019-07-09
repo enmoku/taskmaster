@@ -1148,7 +1148,7 @@ namespace Taskmaster.UI
 				SizeMode = TabSizeMode.Normal,
 			};
 
-			LogList = new ListView
+			LogList = new Extensions.ListViewEx
 			{
 				Parent = this,
 				Dock = DockStyle.Bottom,
@@ -2221,7 +2221,7 @@ namespace Taskmaster.UI
 
 		void BuildWatchlist(int[] appwidths, int[] apporder)
 		{
-			WatchlistRules = new ListView
+			WatchlistRules = new Extensions.ListViewEx
 			{
 				Parent = this,
 				View = View.Details,
@@ -2456,7 +2456,7 @@ namespace Taskmaster.UI
 			// End: Volume control
 
 			// Main Window row 3, microphone device enumeration
-			AudioInputs = new ListView
+			AudioInputs = new Extensions.ListViewEx
 			{
 				Dock = DockStyle.Top,
 				//Width = tabLayout.Width - 12, // FIXME: 3 for the bevel, but how to do this "right"?
@@ -2717,7 +2717,7 @@ namespace Taskmaster.UI
 			//netstatus.Controls.Add(new Label() { Text = "??", Dock = DockStyle.Left, AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft });
 			//netstatus.Controls.Add(netQueue);
 
-			NetworkDevices = new ListView
+			NetworkDevices = new Extensions.ListViewEx
 			{
 				AutoSize = true,
 				MinimumSize = new System.Drawing.Size(-2, 40),
