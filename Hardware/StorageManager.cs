@@ -130,7 +130,7 @@ namespace Taskmaster
 			if (DisposedOrDisposing) return;
 
 			var now = DateTimeOffset.UtcNow;
-			if (now.TimeSince(LastTempScan).TotalMinutes <= 15) return; // too soon
+			if (now.Since(LastTempScan).TotalMinutes <= 15) return; // too soon
 			LastTempScan = now;
 
 			TempScanTimer?.Stop();

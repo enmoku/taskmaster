@@ -64,7 +64,7 @@ namespace Taskmaster
 			var now = DateTimeOffset.Now;
 			int skip = 24 - now.Hour;
 			var next = now.AddHours(skip).AddDays(skip < 1 ? 1 : 0);
-			var nextmidnight = now.TimeTo(next);
+			var nextmidnight = now.To(next);
 			//var nextmidnightms = Convert.ToInt64(nextmidnight.TotalMilliseconds);
 			DateTime lnext = next.DateTime;
 

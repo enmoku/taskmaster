@@ -195,7 +195,7 @@ namespace Taskmaster.Process
 				}
 
 				DateTimeOffset now = DateTimeOffset.UtcNow;
-				TimeSpan since = now.TimeSince(LastSwap); // since app was last changed
+				TimeSpan since = now.Since(LastSwap); // since app was last changed
 				if (since.TotalSeconds < 5) return;
 
 				if (!previoushang.Equals(lfgpid)) // foreground changed since last test
@@ -229,7 +229,7 @@ namespace Taskmaster.Process
 					}
 					else if (HangTick > 1)
 					{
-						double hung = now.TimeSince(HangTime).TotalSeconds;
+						double hung = now.Since(HangTime).TotalSeconds;
 
 						sbs.Append(" hung!");
 

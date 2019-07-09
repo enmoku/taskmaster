@@ -215,7 +215,7 @@ namespace Taskmaster
 						EmergencyPressure = 1;
 						EmergencyOffset = DateTimeOffset.UtcNow;
 					}
-					else if (EmergencyOffset.TimeTo(DateTimeOffset.UtcNow).TotalSeconds >= 30)
+					else if (EmergencyOffset.To(DateTimeOffset.UtcNow).TotalSeconds >= 30)
 					{
 						// TODO: Take action
 
@@ -234,7 +234,7 @@ namespace Taskmaster
 						EmergencyPressure = -1;
 						EmergencyOffset = DateTimeOffset.UtcNow;
 					}
-					else if (EmergencyOffset.TimeTo(DateTimeOffset.UtcNow).TotalSeconds >= 15)
+					else if (EmergencyOffset.To(DateTimeOffset.UtcNow).TotalSeconds >= 15)
 					{
 						EmergencyTimer.Stop();
 						CriticalMemoryWarning = false;
@@ -418,7 +418,7 @@ namespace Taskmaster
 			// TODO: Add defrag suggestion based on Windows.PerformanceCounter("LogicalDisk", "Split IO/sec", "_Total");
 
 			var now = DateTimeOffset.UtcNow;
-			if (now.TimeSince(LastDriveWarning).TotalHours >= 24)
+			if (now.Since(LastDriveWarning).TotalHours >= 24)
 				WarnedDrives.Clear();
 
 			foreach (var drive in System.IO.DriveInfo.GetDrives())
@@ -476,7 +476,7 @@ namespace Taskmaster
 
 					if (memfreemb <= Settings.MemLevel)
 					{
-						var cooldown = now.TimeSince(MemFreeLast).TotalMinutes;
+						var cooldown = now.Since(MemFreeLast).TotalMinutes;
 						MemFreeLast = now;
 
 						if (cooldown >= Settings.MemCooldown && PagingEnabled)
@@ -507,7 +507,7 @@ namespace Taskmaster
 					}
 					else if ((memfreemb * MemoryWarningThreshold) <= Settings.MemLevel)
 					{
-						if (!WarnedAboutLowMemory && now.TimeSince(LastMemoryWarning).TotalSeconds > MemoryWarningCooldown)
+						if (!WarnedAboutLowMemory && now.Since(LastMemoryWarning).TotalSeconds > MemoryWarningCooldown)
 						{
 							WarnedAboutLowMemory = true;
 							LastMemoryWarning = now;
@@ -524,7 +524,7 @@ namespace Taskmaster
 						LastPressureEvent = now;
 						PressureAlleviatedBlurp = false;
 
-						if (!WarnedAboutMemoryPressure && now.TimeSince(LastPressureWarning).TotalSeconds > MemoryWarningCooldown)
+						if (!WarnedAboutMemoryPressure && now.Since(LastPressureWarning).TotalSeconds > MemoryWarningCooldown)
 						{
 							double actualgoal = ((Memory.Total * (pressure - 1d)) / 1_048_576);
 							double freegoal = actualgoal + Math.Max(512d, Memory.Total * 0.02 / 1_048_576); // 512 MB or 2% extra to give space for disk cache
@@ -541,7 +541,7 @@ namespace Taskmaster
 					}
 					else
 					{
-						if (LastPressureEvent.TimeTo(now).TotalMinutes > 3d)
+						if (LastPressureEvent.To(now).TotalMinutes > 3d)
 						{
 							WarnedAboutMemoryPressure = false;
 

@@ -1255,8 +1255,8 @@ namespace Taskmaster.Process
 							expected = true;
 						}
 
-						if (ormt.LastIgnored.TimeTo(now) < Manager.IgnoreRecentlyModified
-							|| ormt.LastModified.TimeTo(now) < Manager.IgnoreRecentlyModified)
+						if (ormt.LastIgnored.To(now) < Manager.IgnoreRecentlyModified
+							|| ormt.LastModified.To(now) < Manager.IgnoreRecentlyModified)
 						{
 							if (Manager.DebugProcesses && ShowInaction) Log.Debug($"[{FriendlyName}] {info.Name} (#{info.Id}) ignored due to recent modification. {(expected ? $"State unchanged ×{ormt.ExpectedState}" : $"State changed ×{ormt.ExpectedState}")}");
 
@@ -1687,8 +1687,8 @@ namespace Taskmaster.Process
 				{
 					foreach (var r in RecentlyModified)
 					{
-						if ((r.Value.LastIgnored.TimeTo(now) > Manager.IgnoreRecentlyModified)
-							|| (r.Value.LastModified.TimeTo(now) > Manager.IgnoreRecentlyModified))
+						if ((r.Value.LastIgnored.To(now) > Manager.IgnoreRecentlyModified)
+							|| (r.Value.LastModified.To(now) > Manager.IgnoreRecentlyModified))
 							RecentlyModified.TryRemove(r.Key, out _);
 					}
 				}

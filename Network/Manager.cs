@@ -251,7 +251,7 @@ namespace Taskmaster.Network
 			var TimerStartDelay = TimeSpan.FromSeconds(10d);
 			DateTimeOffset lastUpdate = DateTimeOffset.MinValue;
 			if (DateTimeOffset.TryParse(dns.Get(Constants.LastAttempt)?.String ?? string.Empty, out lastUpdate)
-				&& lastUpdate.TimeTo(DateTimeOffset.UtcNow).TotalMinutes < 15d)
+				&& lastUpdate.To(DateTimeOffset.UtcNow).TotalMinutes < 15d)
 			{
 				Log.Debug("<Net:DynDNS> Delaying update timer.");
 				TimerStartDelay = TimeSpan.FromMinutes(15d);
@@ -478,7 +478,7 @@ namespace Taskmaster.Network
 					}
 
 					var now = DateTimeOffset.UtcNow;
-					TimeSpan period = lastErrorReport.TimeTo(now);
+					TimeSpan period = lastErrorReport.To(now);
 					double pmins = period.TotalHours < 24 ? period.TotalMinutes : double.NaN; // NaN-ify too large periods
 
 					if (reportErrors)
@@ -578,7 +578,7 @@ namespace Taskmaster.Network
 
 			lock (uptime_lock)
 			{
-				var currentUptime = DateTimeOffset.UtcNow.TimeSince(LastUptimeStart).TotalMinutes;
+				var currentUptime = DateTimeOffset.UtcNow.Since(LastUptimeStart).TotalMinutes;
 
 				int cnt = UptimeSamples.Count;
 				sbs.AppendFormat("{0:N1}", (UptimeSamples.Sum() + currentUptime) / (cnt + 1)).Append(" minutes");
@@ -608,7 +608,7 @@ namespace Taskmaster.Network
 			try
 			{
 				var now = DateTimeOffset.UtcNow;
-				if (LastUptimeSample.TimeTo(now).TotalMinutes < DeviceTimerInterval)
+				if (LastUptimeSample.To(now).TotalMinutes < DeviceTimerInterval)
 					return;
 
 				LastUptimeSample = now;
@@ -980,19 +980,19 @@ namespace Taskmaster.Network
 			{
 				sbs.Append("Route problems");
 				if (LastUptimeStart != DateTimeOffset.MinValue)
-					sbs.Append("– Downtime: ").Append(LastDowntimeStart.TimeTo(LastUptimeStart).ToString());
+					sbs.Append("– Downtime: ").Append(LastDowntimeStart.To(LastUptimeStart).ToString());
 			}
 			else if (!NetworkAvailable)
 			{
 				sbs.Append("Cable unplugged or router/modem down");
 				if (LastUptimeStart != DateTimeOffset.MinValue)
-					sbs.Append("– Downtime: ").Append(LastDowntimeStart.TimeTo(LastUptimeStart).ToString());
+					sbs.Append("– Downtime: ").Append(LastDowntimeStart.To(LastUptimeStart).ToString());
 			}
 			else
 			{
 				sbs.Append("All OK");
 				if (LastDowntimeStart != DateTimeOffset.MinValue)
-					sbs.Append("– Downtime: ").Append(LastDowntimeStart.TimeTo(LastUptimeStart).ToString());
+					sbs.Append("– Downtime: ").Append(LastDowntimeStart.To(LastUptimeStart).ToString());
 			}
 
 			if (!NetworkAvailable || !InternetAvailable) Log.Warning(sbs.ToString());
@@ -1026,7 +1026,7 @@ namespace Taskmaster.Network
 				var now = DateTimeOffset.UtcNow;
 
 				lock (NetworkStatus_lock)
-					if (LastNetworkReport.TimeTo(now).TotalSeconds < 5d) IncreaseReportDelay();
+					if (LastNetworkReport.To(now).TotalSeconds < 5d) IncreaseReportDelay();
 
 				ReportOngoing = true;
 				LastNetworkReport = now;

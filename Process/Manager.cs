@@ -320,7 +320,7 @@ namespace Taskmaster.Process
 			{
 				await Task.Delay(0).ConfigureAwait(false); // asyncify
 
-				double nextscan = Math.Max(0, DateTimeOffset.UtcNow.TimeTo(NextScan).TotalSeconds);
+				double nextscan = Math.Max(0, DateTimeOffset.UtcNow.To(NextScan).TotalSeconds);
 				if (nextscan > 5) // skip if the next scan is to happen real soon
 				{
 					NextScan = DateTimeOffset.UtcNow;
@@ -456,7 +456,7 @@ namespace Taskmaster.Process
 
 				if (ScanBlockList.TryGetValue(pid, out var found))
 				{
-					if (found.TimeTo(DateTimeOffset.UtcNow).TotalSeconds < 5d) return null;
+					if (found.To(DateTimeOffset.UtcNow).TotalSeconds < 5d) return null;
 					ScanBlockList.TryRemove(pid, out _);
 				}
 
@@ -566,7 +566,7 @@ namespace Taskmaster.Process
 
 			try
 			{
-				if (LastLoaderAnalysis.TimeTo(now).TotalMinutes < 1d) return;
+				if (LastLoaderAnalysis.To(now).TotalMinutes < 1d) return;
 
 				await Task.Delay(5_000).ConfigureAwait(false);
 				if (cts.IsCancellationRequested) return;
@@ -2122,7 +2122,7 @@ namespace Taskmaster.Process
 
 				if (DebugAdjustDelay && creation != DateTime.MinValue)
 				{
-					wmidelay = new DateTimeOffset(creation.ToUniversalTime()).TimeTo(now);
+					wmidelay = new DateTimeOffset(creation.ToUniversalTime()).To(now);
 					if (Trace) Logging.DebugMsg($"WMI delay (#{pid}): {wmidelay.TotalMilliseconds:N0} ms");
 				}
 
@@ -2322,7 +2322,7 @@ namespace Taskmaster.Process
 
 			var now = DateTimeOffset.UtcNow;
 			foreach (var item in from item in ScanBlockList
-								 where item.Value.TimeTo(now).TotalSeconds > 5d
+								 where item.Value.To(now).TotalSeconds > 5d
 								 select item)
 				ScanBlockList.TryRemove(item.Key, out _);
 		}

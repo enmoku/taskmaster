@@ -967,7 +967,7 @@ namespace Taskmaster.UI
 		{
 			if (!IsHandleCreated) return;
 
-			if (LastCauseTime.TimeTo(DateTimeOffset.UtcNow).TotalMinutes >= 3d)
+			if (LastCauseTime.To(DateTimeOffset.UtcNow).TotalMinutes >= 3d)
 			{
 				pwcause.Text = HumanReadable.Generic.NotAvailable;
 			}
@@ -980,7 +980,7 @@ namespace Taskmaster.UI
 
 			// Rescan Countdown
 			if (processmanager.ScanFrequency.HasValue)
-				processingtimer.Text = $"{DateTimeOffset.UtcNow.TimeTo(processmanager.NextScan).TotalSeconds:N0}s";
+				processingtimer.Text = $"{DateTimeOffset.UtcNow.To(processmanager.NextScan).TotalSeconds:N0}s";
 			else
 				processingtimer.Text = HumanReadable.Generic.NotAvailable;
 		}

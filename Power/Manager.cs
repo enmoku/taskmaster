@@ -127,7 +127,7 @@ namespace Taskmaster.Power
 				if (DebugPower) Log.Information($"<Power/OS> Change detected: {CurrentMode.ToString()} ({ea.Mode.ToString()})");
 
 				var now = DateTimeOffset.UtcNow;
-				if (CurrentMode != ExpectedMode && Behaviour == PowerBehaviour.Auto && LastExternalWarning.TimeTo(now).TotalSeconds > 30)
+				if (CurrentMode != ExpectedMode && Behaviour == PowerBehaviour.Auto && LastExternalWarning.To(now).TotalSeconds > 30)
 				{
 					LastExternalWarning = now;
 					Log.Warning("<Power/OS> Unexpected power mode change detected (" + Utility.GetModeName(CurrentMode) + ") while auto-adjust is enabled.");
