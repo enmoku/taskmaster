@@ -31,6 +31,8 @@ namespace Taskmaster.Process
 {
 	sealed public class ProcessEx
 	{
+		public bool Restricted { get; set; } = false;
+
 		/// <summary>
 		/// Process filename without extension
 		/// Cached from Process.ProcessFilename

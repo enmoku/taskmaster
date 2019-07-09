@@ -60,6 +60,8 @@ namespace Taskmaster.Process
 		{
 			if (string.IsNullOrEmpty(info.Path)) return;
 
+			if (info.Restricted) return;
+
 			byte[] hash;
 			using var crypt = new System.Security.Cryptography.SHA512Cng();
 			hash = crypt.ComputeHash(Encoding.UTF8.GetBytes(info.Path.ToLowerInvariant()));
@@ -171,6 +173,7 @@ namespace Taskmaster.Process
 			}
 			catch (Win32Exception)
 			{
+				info.Restricted = true;
 				// access denied
 				cache.TryRemove(hash, out _);
 				Log.Debug($"[{info.Controller.FriendlyName}] {info.Name} (#{info.Id}) was denied access for analysis.");

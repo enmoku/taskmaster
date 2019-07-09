@@ -109,6 +109,8 @@ namespace Taskmaster.Process
 
 			Statistics.PathFindAttempts++;
 
+			if (info.Restricted) return;
+
 			string path = string.Empty;
 			try
 			{
@@ -124,7 +126,10 @@ namespace Taskmaster.Process
 				// already gone
 				return false;
 			}
-			catch (Win32Exception) { } // Access denied problems of varying sorts
+			catch (Win32Exception) // Access denied problems of varying sorts
+			{
+				info.Restricted = true;
+			}
 			catch (Exception ex)
 			{
 				Logging.Stacktrace(ex);
@@ -155,6 +160,8 @@ namespace Taskmaster.Process
 			path = string.Empty;
 			System.Runtime.InteropServices.SafeHandle handle = null;
 
+			if (info.Restricted) return false;
+
 			try
 			{
 				handle = NativeMethods.OpenProcess(NativeMethods.PROCESS_ACCESS_RIGHTS.PROCESS_QUERY_INFORMATION | NativeMethods.PROCESS_ACCESS_RIGHTS.PROCESS_VM_READ, false, info.Id);
@@ -173,8 +180,10 @@ namespace Taskmaster.Process
 			}
 			catch (Win32Exception) // Access Denied
 			{
-				// NOP
-				Logging.DebugMsg("GetModuleFileNameEx - Access Denied - " + $"{info.Name} (#{info.Id})");
+				info.Restricted = true;
+
+				if (Process.Manager.DebugProcesses)
+					Logging.DebugMsg("GetModuleFileNameEx - Access Denied - " + $"{info.Name} (#{info.Id})");
 			}
 			catch (InvalidOperationException) { }// Already exited
 			catch (Exception ex)

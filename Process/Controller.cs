@@ -845,6 +845,8 @@ namespace Taskmaster.Process
 			Debug.Assert(Foreground != ForegroundMode.Ignore, "Resume called for non-foreground rule");
 			Debug.Assert(info.Controller != null, "No controller attached");
 
+			if (info.Restricted) return;
+
 			bool mAffinity = false, mPriority = false;
 			ProcessPriorityClass oldPriority;
 			int oldAffinity, newAffinity;
@@ -889,6 +891,7 @@ namespace Taskmaster.Process
 			catch (Win32Exception) // access error
 			{
 				info.InBackground = false;
+				info.Restricted = true;
 				return;
 			}
 			catch (OutOfMemoryException) { throw; }
@@ -1146,6 +1149,8 @@ namespace Taskmaster.Process
 			Debug.Assert(!string.IsNullOrEmpty(info.Name), "ProcessController.Touch given empty process name.");
 			Debug.Assert(info.Controller != null, "No controller attached");
 
+			if (info.Restricted) return;
+
 			try
 			{
 				if (Foreground != ForegroundMode.Ignore && info.InBackground)
@@ -1196,6 +1201,7 @@ namespace Taskmaster.Process
 				{
 					// failure to retrieve exit code, this probably means we don't have sufficient rights. assume it is gone.
 					info.State = ProcessHandlingState.AccessDenied;
+					info.Restricted = true;
 					return;
 				}
 				catch (OutOfMemoryException) { throw; }
@@ -1666,7 +1672,10 @@ namespace Taskmaster.Process
 				// This is not guaranteed however.
 			}
 			catch (OutOfMemoryException) { throw; }
-			catch (Win32Exception) { } // NOP; Access denied or such. Possibly malconfigured ideal
+			catch (Win32Exception) // NOP; Access denied or such. Possibly malconfigured ideal
+			{
+				info.Restricted = true;
+			}
 			catch (Exception ex)
 			{
 				Logging.Stacktrace(ex);
@@ -1895,16 +1904,20 @@ namespace Taskmaster.Process
 				await Touch(info, refresh: true).ConfigureAwait(false);
 			}
 			catch (OutOfMemoryException) { throw; }
-			catch (Exception ex) when (ex is Win32Exception || ex is InvalidOperationException) // access denied or exited
+			catch (Win32Exception)
 			{
-				return;
+				info.Restricted = true;
+			}
+			catch (InvalidOperationException) // exited
+			{
+				info.State = ProcessHandlingState.Exited;
 			}
 			catch (Exception ex)
 			{
 				Log.Warning($"[{FriendlyName}] {info.Name} (#{info.Id}) – something bad happened.");
 				Logging.Stacktrace(ex);
 				info.State = ProcessHandlingState.Abandoned;
-				return; //throw; // would throw but this is async function
+				//throw; // would throw but this is async function
 			}
 		}
 

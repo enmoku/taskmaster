@@ -1485,6 +1485,7 @@ namespace Taskmaster.Process
 			}
 			catch (System.ComponentModel.Win32Exception ex)
 			{
+				info.Restricted = true;
 				if (ex.NativeErrorCode != 5) // what was this?
 					Log.Warning("Access error: " + info.Name + " (#" + info.Id + ")");
 				prc = null;
@@ -1768,6 +1769,8 @@ namespace Taskmaster.Process
 						}
 
 						if (Trace && DebugProcesses) Logging.DebugMsg($"Trying to modify: {info.Name} (#{info.Id})");
+
+						if (info.Restricted) return;
 
 						await prc.Modify(info).ConfigureAwait(false);
 
