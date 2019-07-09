@@ -56,6 +56,14 @@ namespace MKAh.Lock
 			return Queue;
 		}
 
+		/// <summary>
+		/// Wait for the lock to be released.
+		/// </summary>
+		public void Wait()
+		{
+			using var tlock = ScopedLock();
+		}
+
 		public MonitorScope ScopedLock()
 		{
 			Lock();

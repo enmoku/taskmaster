@@ -174,13 +174,13 @@ namespace Taskmaster.Process
 
 		public void Unignore(int pid) => IgnorePids.TryRemove(pid, out _);
 
-		int freemem_lock = 0;
+		readonly MKAh.Lock.Monitor FreeMemLock = new MKAh.Lock.Monitor();
 
 		public async Task FreeMemory(string executable = null, bool quiet = false, int ignorePid = -1)
 		{
 			if (!PagingEnabled) return;
 
-			if (!Atomic.Lock(ref freemem_lock)) return;
+			if (!FreeMemLock.TryLock()) return;
 
 			await Task.Delay(0).ConfigureAwait(false);
 
@@ -222,7 +222,7 @@ namespace Taskmaster.Process
 			}
 			finally
 			{
-				Atomic.Unlock(ref freemem_lock);
+				FreeMemLock.Unlock();
 			}
 		}
 
@@ -237,7 +237,8 @@ namespace Taskmaster.Process
 			try
 			{
 				ScanTimer?.Stop(); // Pause Scan until we're done
-				// TODO: Deal with currently running scan
+
+				ScanLock.Wait();
 
 				Scan(ignorePid, ignoreExe, PageToDisk: true); // TODO: Call for this to happen otherwise
 				if (cts.IsCancellationRequested) return;
@@ -357,7 +358,7 @@ namespace Taskmaster.Process
 			if (cts.IsCancellationRequested) return false;
 
 			if (!ScanLock.TryLock()) return false;
-
+			
 			try
 			{
 				NextScan = (LastScan = DateTimeOffset.UtcNow).Add(ScanFrequency.Value);
