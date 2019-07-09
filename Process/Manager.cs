@@ -236,8 +236,8 @@ namespace Taskmaster.Process
 
 			try
 			{
-				ScanTimer?.Stop();
-				// TODO: Pause Scan until we're done
+				ScanTimer?.Stop(); // Pause Scan until we're done
+				// TODO: Deal with currently running scan
 
 				Scan(ignorePid, ignoreExe, PageToDisk: true); // TODO: Call for this to happen otherwise
 				if (cts.IsCancellationRequested) return;
@@ -255,8 +255,10 @@ namespace Taskmaster.Process
 			{
 				Logging.Stacktrace(ex);
 			}
-
-			StartScanTimer();
+			finally
+			{
+				StartScanTimer();
+			}
 		}
 
 		/// <summary>
@@ -284,9 +286,6 @@ namespace Taskmaster.Process
 				ScanTimer?.Stop();
 			}
 		}
-
-		//public event EventHandler ScanStartEvent;
-		//public event EventHandler ScanEndEvent;
 
 		public event EventHandler<ProcessModificationEventArgs> ProcessModified;
 
@@ -348,16 +347,16 @@ namespace Taskmaster.Process
 
 		readonly int SelfPID = System.Diagnostics.Process.GetCurrentProcess().Id;
 
-		int ScanFoundProcs = 0;
+		readonly MKAh.Lock.Monitor ScanLock = new MKAh.Lock.Monitor();
 
-		int scan_lock = 0;
+		public event EventHandler ScanStart, ScanEnd;
 
 		bool Scan(int ignorePid = -1, string ignoreExe = null, bool PageToDisk = false)
 		{
 			if (disposed) throw new ObjectDisposedException(nameof(Manager), "Scan called when ProcessManager was already disposed");
 			if (cts.IsCancellationRequested) return false;
 
-			if (!Atomic.Lock(ref scan_lock)) return false;
+			if (!ScanLock.TryLock()) return false;
 
 			try
 			{
@@ -365,12 +364,12 @@ namespace Taskmaster.Process
 
 				if (DebugScan) Log.Debug("<Process> Full Scan: Start");
 
-				//ScanStartEvent?.Invoke(this, EventArgs.Empty);
+				ScanStart?.Invoke(this, EventArgs.Empty);
 
 				if (!Utility.SystemProcessId(ignorePid)) Ignore(ignorePid);
 
 				var procs = System.Diagnostics.Process.GetProcesses();
-				ScanFoundProcs = procs.Length - 2; // -2 for Idle&System
+				int ScanFoundProcs = procs.Length - 2; // -2 for Idle&System
 				Debug.Assert(ScanFoundProcs > 0, "System has no running processes"); // should be impossible to fail
 				SignalProcessHandled(ScanFoundProcs); // scan start
 
@@ -379,7 +378,9 @@ namespace Taskmaster.Process
 				List<ProcessEx> pageList = PageToDisk ? new List<ProcessEx>() : null;
 
 				foreach (var process in procs)
+				{
 					ScanTriage(process, PageToDisk);
+				}
 
 				//SystemLoaderAnalysis(loaderOffload);
 
@@ -405,7 +406,7 @@ namespace Taskmaster.Process
 
 				SignalProcessHandled(-ScanFoundProcs); // scan done
 
-				//ScanEndEvent?.Invoke(this, EventArgs.Empty);
+				ScanEnd?.Invoke(this, EventArgs.Empty);
 
 				if (!Utility.SystemProcessId(ignorePid)) Unignore(ignorePid);
 			}
@@ -421,18 +422,20 @@ namespace Taskmaster.Process
 			}
 			finally
 			{
-				Atomic.Unlock(ref scan_lock);
+				ScanLock.Unlock();
 			}
 
 			return true;
 		}
 
-		private void ScanTriage(System.Diagnostics.Process process, bool PageToDisk = false)
+		ProcessEx ScanTriage(System.Diagnostics.Process process, bool doPaging = false)
 		{
 			cts.Token.ThrowIfCancellationRequested();
 
 			string name = string.Empty;
 			int pid = -1;
+
+			ProcessEx info = null;
 
 			try
 			{
@@ -441,19 +444,19 @@ namespace Taskmaster.Process
 
 				if (ScanBlockList.TryGetValue(pid, out var found))
 				{
-					if (found.TimeTo(DateTimeOffset.UtcNow).TotalSeconds < 5d) return;
+					if (found.TimeTo(DateTimeOffset.UtcNow).TotalSeconds < 5d) return null;
 					ScanBlockList.TryRemove(pid, out _);
 				}
 
 				if (IgnoreProcessID(pid) || IgnoreProcessName(name) || pid == SelfPID)
 				{
 					if (ShowInaction && DebugScan) Log.Debug($"<Process/Scan> Ignoring {name} (#{pid})");
-					return;
+					return null;
 				}
 
 				if (DebugScan) Log.Verbose($"<Process> Checking: {name} (#{pid})");
 
-				if (WaitForExitList.TryGetValue(pid, out ProcessEx info))
+				if (WaitForExitList.TryGetValue(pid, out info))
 				{
 					if (Trace && DebugProcesses) Logging.DebugMsg($"Re-using old ProcessEx: {info.Name} (#{info.Id})");
 					info.Process.Refresh();
@@ -477,23 +480,7 @@ namespace Taskmaster.Process
 
 					ProcessTriage(info, old: true).ConfigureAwait(false);
 
-					if (PageToDisk)
-					{
-						try
-						{
-							if (DebugPaging)
-							{
-								var sbs = new StringBuilder();
-								sbs.Append("<Process> Paging: ").Append(info.Name).Append(" (#").Append(info.Id.ToString()).Append(")");
-								if (info.Controller != null)
-									sbs.Append(" – Rule: ").Append(info.Controller.FriendlyName);
-								Log.Debug(sbs.ToString());
-							}
-
-							NativeMethods.EmptyWorkingSet(info.Process.Handle); // process.Handle may throw which we don't care about
-						}
-						catch { } // don't care
-					}
+					if (doPaging) PageToDisk(info);
 
 					HandlingStateChange?.Invoke(this, new HandlingStateChangeEventArgs(info));
 
@@ -516,6 +503,28 @@ namespace Taskmaster.Process
 			{
 				Logging.Stacktrace(ex);
 			}
+
+			return info;
+		}
+
+		async Task PageToDisk(ProcessEx info)
+		{
+			await Task.Delay(1_500).ConfigureAwait(false);
+
+			try
+			{
+				if (DebugPaging)
+				{
+					var sbs = new StringBuilder();
+					sbs.Append("<Process> Paging: ").Append(info.Name).Append(" (#").Append(info.Id.ToString()).Append(")");
+					if (info.Controller != null)
+						sbs.Append(" – Rule: ").Append(info.Controller.FriendlyName);
+					Log.Debug(sbs.ToString());
+				}
+
+				NativeMethods.EmptyWorkingSet(info.Process.Handle); // process.Handle may throw which we don't care about
+			}
+			catch { } // don't care
 		}
 
 		int SystemLoader_lock = 0;
@@ -2396,8 +2405,9 @@ namespace Taskmaster.Process
 
 				cts.Cancel(true);
 
-				//ScanStartEvent = null;
-				//ScanEndEvent = null;
+				ScanStart = null;
+				ScanEnd = null;
+
 				ProcessModified = null;
 				HandlingCounter = null;
 				ProcessStateChange = null;

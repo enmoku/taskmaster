@@ -37,46 +37,45 @@ namespace MKAh.Lock
 			// NOP
 		}
 
-		public int Queue { get; private set; } = -1;
+		public int Queue { get; private set; } = 0;
 
 		public bool Waiting => Queue > 0;
 
+		public bool TryLock() => System.Threading.Monitor.TryEnter(_Lock);
+
+		/// <summary>
+		/// Acquire lock.
+		/// </summary>
+		/// <returns>Number of items waiting for the lock after this.</returns>
 		public int Lock()
 		{
-			try
-			{
-				Queue++;
-				System.Threading.Monitor.Enter(_Lock);
-				if (Disposed) throw new ObjectDisposedException(nameof(Monitor), "Lock entered after dispose");
-				return Queue;
-			}
-			catch
-			{
-				Queue--;
-				throw;
-			}
+			Queue++;
+			System.Threading.Monitor.Enter(_Lock);
+			Queue--;
+			if (Disposed) throw new ObjectDisposedException(nameof(Monitor), "Lock entered after dispose");
+			return Queue;
 		}
 
 		public MonitorScope ScopedLock()
 		{
 			Lock();
+
 			return new MonitorScope(this);
+		}
+
+		public MonitorScope TryScopedLock()
+		{
+			if (TryLock())
+				return new MonitorScope(this);
+
+			return null;
 		}
 
 		public void Unlock()
 		{
 			if (Disposed) throw new ObjectDisposedException(nameof(Monitor), "Lock exited after dispose");
 
-			try
-			{
-				Queue--;
-				System.Threading.Monitor.Exit(_Lock);
-			}
-			catch
-			{
-				Queue++;
-				throw;
-			}
+			System.Threading.Monitor.Exit(_Lock);
 		}
 
 		#region IDisposable Support
@@ -97,7 +96,7 @@ namespace MKAh.Lock
 
 	public sealed class MonitorScope : IDisposable
 	{
-		Monitor Monitor = null;
+		readonly Monitor Monitor;
 
 		public MonitorScope(Monitor monitor) => Monitor = monitor;
 
@@ -118,7 +117,8 @@ namespace MKAh.Lock
 		{
 			if (Disposed) return;
 
-			Monitor.Unlock();
+			if (disposing)
+				Monitor.Unlock();
 
 			Disposed = true;
 		}
