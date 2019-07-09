@@ -54,6 +54,8 @@ namespace Taskmaster.Process
 
 		void AddRunning(ProcessEx info)
 		{
+			if (disposed) return;
+
 			Running.TryAdd(info.Id, info);
 			info.Process.Exited += ProcessExit;
 			info.Process.EnableRaisingEvents = true;
@@ -66,18 +68,25 @@ namespace Taskmaster.Process
 
 		void ProcessExit(object sender, EventArgs ea)
 		{
+			if (disposed) return;
+
 			if (sender is System.Diagnostics.Process proc)
 			{
 				RemoveRunning(proc.Id, out var info);
-				info.State = ProcessHandlingState.Exited;
-				info.ExitWait = false;
+				if (info is ProcessEx)
+				{
+					info.State = ProcessHandlingState.Exited;
+					info.ExitWait = false;
+				}
 			}
 		}
 
 		void RemoveRunning(int pid, out ProcessEx removed)
 		{
+			if (disposed) return;
+
 			Running.TryRemove(pid, out removed);
-			WaitForExitList.TryRemove(pid, out removed);
+			WaitForExitList.TryRemove(pid, out _);
 		}
 
 		public int RunningCount => Running.Count;
