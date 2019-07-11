@@ -102,7 +102,7 @@ namespace MKAh.Lock
 		#endregion
 	}
 
-	public sealed class MonitorScope : IDisposable
+	public class MonitorScope : IDisposable
 	{
 		readonly Monitor Monitor;
 
@@ -119,7 +119,7 @@ namespace MKAh.Lock
 		public bool Waiting => Monitor.Waiting;
 
 		#region IDisposable Support
-		private bool Disposed = false; // To detect redundant calls
+		bool Disposed = false; // To detect redundant calls
 
 		void Dispose(bool disposing)
 		{

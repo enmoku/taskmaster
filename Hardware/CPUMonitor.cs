@@ -323,7 +323,7 @@ namespace Taskmaster
 		#endregion
 	}
 
-	internal sealed class CounterChunk
+	internal class CounterChunk
 	{
 		internal Windows.PerformanceCounter CPUCounter = null;
 		internal Windows.PerformanceCounter MEMCounter = null;

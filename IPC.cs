@@ -173,9 +173,9 @@ namespace Taskmaster
 		}
 
 		// Static Finalizer
-		private static readonly Finalizer finalizer = new Finalizer();
+		static readonly Finalizer finalizer = new Finalizer();
 
-		private sealed class Finalizer
+		sealed class Finalizer
 		{
 			~Finalizer() => Close();
 		}

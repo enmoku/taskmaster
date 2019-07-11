@@ -7,7 +7,7 @@ namespace Taskmaster
 	/// Because dictionary compares byte arrays for reference equality when determining if they're unique keys...
 	/// </summary>
 	// Credit: https://stackoverflow.com/a/5601068/6761963
-	public sealed class StructuralEqualityComparer<T> : IEqualityComparer<T>
+	public class StructuralEqualityComparer<T> : IEqualityComparer<T>
 	{
 		public bool Equals(T x, T y)
 			=> StructuralComparisons.StructuralEqualityComparer.Equals(x, y);

@@ -44,7 +44,7 @@ namespace Taskmaster.Process
 	/// <summary>
 	/// Process controller.
 	/// </summary>
-	sealed public class Controller : IDisposable
+	public class Controller : IDisposable
 	{
 		/// <summary>
 		/// <para>Don't allow user to tamper.</para>
@@ -2022,7 +2022,7 @@ namespace Taskmaster.Process
 		#endregion
 	}
 
-	sealed public class RecentlyModifiedInfo
+	public class RecentlyModifiedInfo
 	{
 		public ProcessEx Info { get; set; } = null;
 

@@ -29,7 +29,7 @@ using System.Diagnostics;
 
 namespace Taskmaster.Process
 {
-	sealed public class HandlingStateChangeEventArgs : EventArgs
+	public class HandlingStateChangeEventArgs : EventArgs
 	{
 		public ProcessEx Info { get; set; } = null;
 

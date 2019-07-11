@@ -184,7 +184,7 @@ namespace Taskmaster
 	}
 
 	/*
-	sealed class MemoryController
+	class MemoryController
 	{
 		readonly Process process;
 		readonly MemoryPriority priority;

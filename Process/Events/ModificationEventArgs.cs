@@ -29,7 +29,7 @@ using System.Diagnostics;
 
 namespace Taskmaster
 {
-	sealed public class ProcessModificationEventArgs : EventArgs
+	public class ProcessModificationEventArgs : EventArgs
 	{
 		public ProcessModificationEventArgs(Process.ProcessEx info) => Info = info;
 

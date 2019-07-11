@@ -29,7 +29,7 @@ using System.Diagnostics;
 
 namespace Taskmaster.Process
 {
-	sealed public class ProcessEx
+	public class ProcessEx
 	{
 		public bool Restricted { get; set; } = false;
 

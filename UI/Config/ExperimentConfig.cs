@@ -30,7 +30,7 @@ using Serilog;
 
 namespace Taskmaster.UI.Config
 {
-	public sealed class ExperimentConfig : UniForm
+	public class ExperimentConfig : UniForm
 	{
 		Button uninstallButton, installButton;
 		AlignedLabel imageUptodateState;

@@ -31,7 +31,7 @@ using Serilog;
 
 namespace Taskmaster
 {
-	public sealed class ServiceWrapper : IDisposable
+	public class ServiceWrapper : IDisposable
 	{
 		readonly string ServiceName;
 
@@ -184,7 +184,7 @@ namespace Taskmaster
 		#region IDisposable Support
 		~ServiceWrapper() => Dispose(false);
 
-		private bool DisposedOrDisposing = false; // To detect redundant calls
+		bool DisposedOrDisposing = false; // To detect redundant calls
 
 		void Dispose(bool disposing)
 		{

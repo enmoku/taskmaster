@@ -212,7 +212,7 @@ namespace Taskmaster.UI
 		}
 
 		#region IDisposable Support
-		private bool disposed = false;
+		bool disposed = false;
 
 		protected override void Dispose(bool disposing)
 		{

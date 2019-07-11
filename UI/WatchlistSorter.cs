@@ -32,7 +32,7 @@ using MKAh;
 
 namespace Taskmaster
 {
-	sealed public class WatchlistSorter : IComparer
+	public class WatchlistSorter : IComparer
 	{
 		public int Column { get; set; } = 0;
 		public SortOrder Order { get; set; } = SortOrder.Ascending;

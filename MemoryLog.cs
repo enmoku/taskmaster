@@ -34,7 +34,7 @@ using Serilog.Formatting;
 
 namespace Taskmaster
 {
-	sealed public class LogEventArgs : EventArgs
+	public class LogEventArgs : EventArgs
 	{
 		public readonly string Message;
 		public readonly LogEventLevel Level;
@@ -53,7 +53,7 @@ namespace Taskmaster
 		public static MemorySink MemorySink = null;
 	}
 
-	sealed class MemorySink : Serilog.Core.ILogEventSink, IDisposable
+	class MemorySink : Serilog.Core.ILogEventSink, IDisposable
 	{
 		public event EventHandler<LogEventArgs> onNewEvent;
 

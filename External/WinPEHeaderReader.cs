@@ -389,23 +389,23 @@ namespace External
 		/// <summary>
 		/// The DOS header
 		/// </summary>
-		private IMAGE_DOS_HEADER dosHeader;
+		IMAGE_DOS_HEADER dosHeader;
 		/// <summary>
 		/// The file header
 		/// </summary>
-		private IMAGE_FILE_HEADER fileHeader;
+		IMAGE_FILE_HEADER fileHeader;
 		/// <summary>
 		/// Optional 32 bit file header 
 		/// </summary>
-		private IMAGE_OPTIONAL_HEADER32 optionalHeader32;
+		IMAGE_OPTIONAL_HEADER32 optionalHeader32;
 		/// <summary>
 		/// Optional 64 bit file header 
 		/// </summary>
-		private IMAGE_OPTIONAL_HEADER64 optionalHeader64;
+		IMAGE_OPTIONAL_HEADER64 optionalHeader64;
 		/// <summary>
 		/// Image Section headers. Number of sections is in the file header.
 		/// </summary>
-		private IMAGE_SECTION_HEADER[] imageSectionHeaders;
+		IMAGE_SECTION_HEADER[] imageSectionHeaders;
 
 		#endregion Private Fields
 

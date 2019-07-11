@@ -34,7 +34,7 @@ namespace Taskmaster.UI
 {
 	using static Taskmaster;
 
-	public sealed class VolumeMeter : UniForm
+	public class VolumeMeter : UniForm
 	{
 		readonly ProgressBar OutputVolume = null;
 		readonly ProgressBar InputVolume = null;

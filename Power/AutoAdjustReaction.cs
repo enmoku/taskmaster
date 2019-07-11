@@ -26,7 +26,7 @@
 
 namespace Taskmaster.Power
 {
-	sealed public class AutoAdjustReactionEventArgs : ProcessorLoadEventArgs
+	public class AutoAdjustReactionEventArgs : ProcessorLoadEventArgs
 	{
 		public Mode Mode = Mode.Undefined;
 		public Reaction Reaction = Reaction.Average;

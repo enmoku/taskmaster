@@ -37,7 +37,7 @@ namespace Taskmaster
 			Undefined = 3
 		};
 
-		sealed public class AutoAdjustSettings
+		public class AutoAdjustSettings
 		{
 			/// <summary>
 			/// Low mode control

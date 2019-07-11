@@ -38,7 +38,7 @@ namespace Taskmaster.UI
 {
 	using static Taskmaster;
 
-	sealed public class TrayShownEventArgs : EventArgs
+	public class TrayShownEventArgs : EventArgs
 	{
 		public bool Visible { get; set; } = false;
 	}
@@ -47,7 +47,7 @@ namespace Taskmaster.UI
 	///
 	/// </summary>
 	// Form is used for catching some system events
-	sealed public class TrayAccess : IDisposable
+	public class TrayAccess : IDisposable
 	{
 		NotifyIcon Tray;
 		TrayWndProcProxy WndProcEventProxy;

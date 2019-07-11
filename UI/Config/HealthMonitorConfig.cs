@@ -28,7 +28,7 @@ using System.Windows.Forms;
 
 namespace Taskmaster
 {
-	sealed public class HealthMonitorConfig : UI.UniForm
+	public class HealthMonitorConfig : UI.UniForm
 	{
 		public HealthMonitorConfig()
 			: base()

@@ -28,7 +28,7 @@ using System;
 
 namespace Taskmaster.Process
 {
-	sealed public class ProcessingCountEventArgs : EventArgs
+	public class ProcessingCountEventArgs : EventArgs
 	{
 		/// <summary>
 		/// Adjustment to previous total.

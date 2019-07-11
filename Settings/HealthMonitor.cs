@@ -28,7 +28,7 @@ using System;
 
 namespace Taskmaster.Settings
 {
-	sealed class HealthMonitor
+	class HealthMonitor
 	{
 		/// <summary>
 		/// Scanning frequency.

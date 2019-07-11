@@ -28,7 +28,7 @@ using System;
 
 namespace Taskmaster.Power
 {
-	sealed public class RequestEventArgs : EventArgs
+	public class RequestEventArgs : EventArgs
 	{
 		public Mode Mode { get; set; } = Mode.Undefined;
 		public Process.ProcessEx Info { get; set; } = null;

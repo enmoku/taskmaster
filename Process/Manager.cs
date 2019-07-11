@@ -66,7 +66,7 @@ namespace Taskmaster.Process
 				ProcessExit(info.Process, EventArgs.Empty);
 		}
 
-		void ProcessExit(object sender, EventArgs ea)
+void ProcessExit(object sender, EventArgs ea)
 		{
 			if (disposed) return;
 
@@ -1896,7 +1896,7 @@ namespace Taskmaster.Process
 			}
 		}
 
-		private async void AttemptColorReset(ProcessEx info)
+		async void AttemptColorReset(ProcessEx info)
 		{
 			await Task.Delay(0).ConfigureAwait(false);
 
@@ -2073,7 +2073,7 @@ namespace Taskmaster.Process
 			}
 		}
 
-		private void StartTraceTriage(object sender, EventArrivedEventArgs e)
+		void StartTraceTriage(object sender, EventArrivedEventArgs e)
 		{
 			//var now = DateTimeOffset.UtcNow;
 			var timer = Stopwatch.StartNew();

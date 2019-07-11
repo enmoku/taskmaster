@@ -29,7 +29,7 @@ using System.Windows.Forms;
 
 namespace Taskmaster
 {
-	sealed class LicenseDialog : UI.UniForm
+	class LicenseDialog : UI.UniForm
 	{
 		internal LicenseDialog(bool initial = true, bool center = false)
 			: base(centerOnScreen: initial || center)

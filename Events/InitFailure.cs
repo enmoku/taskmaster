@@ -28,7 +28,7 @@ using System;
 
 namespace Taskmaster
 {
-	public sealed class InitFailure : Exception
+	public class InitFailure : Exception
 	{
 		public Exception[] InnerExceptions { get; } = null;
 

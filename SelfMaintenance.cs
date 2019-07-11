@@ -141,7 +141,7 @@ namespace Taskmaster
 		}
 
 		#region IDisposable Support
-		private bool disposed = false; // To detect redundant calls
+		bool disposed = false; // To detect redundant calls
 
 		public event EventHandler<DisposedEventArgs> OnDisposed;
 

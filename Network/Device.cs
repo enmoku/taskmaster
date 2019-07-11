@@ -46,7 +46,7 @@ namespace Taskmaster.Network
 		}
 	}
 
-	public sealed class DeviceTrafficEventArgs : EventArgs
+	public class DeviceTrafficEventArgs : EventArgs
 	{
 		public DeviceTraffic Traffic = new DeviceTraffic();
 	}
@@ -108,7 +108,7 @@ namespace Taskmaster.Network
 		}
 	}
 
-	sealed public class Device
+	public class Device
 	{
 		public int Index { get; set; }
 		public Guid Id { get; set; }

@@ -37,7 +37,7 @@ namespace Taskmaster.UI.Config
 {
 	using static Taskmaster;
 
-	sealed public class WatchlistEditWindow : UI.UniForm
+	public class WatchlistEditWindow : UI.UniForm
 	{
 		public Process.Controller Controller;
 

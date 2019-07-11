@@ -36,7 +36,7 @@ namespace Taskmaster
 		Session
 	}
 
-	public sealed class Cause
+	public class Cause
 	{
 		public Cause(OriginType origin = OriginType.None, string detail = "")
 		{

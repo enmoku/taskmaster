@@ -28,7 +28,7 @@ using System;
 
 namespace Taskmaster.Power
 {
-	sealed public class ModeEventArgs : EventArgs
+	public class ModeEventArgs : EventArgs
 	{
 		public ModeEventArgs(Mode newmode, Mode oldmode = Mode.Undefined, Cause cause = null)
 		{

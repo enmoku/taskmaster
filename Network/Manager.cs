@@ -40,7 +40,7 @@ namespace Taskmaster.Network
 {
 	using static Taskmaster;
 
-	public sealed class TrafficDelta
+	public class TrafficDelta
 	{
 		public float Input = float.NaN;
 		public float Output = float.NaN;
@@ -48,7 +48,7 @@ namespace Taskmaster.Network
 		public float Packets = float.NaN;
 	}
 
-	public sealed class TrafficEventArgs : EventArgs
+	public class TrafficEventArgs : EventArgs
 	{
 		public TrafficDelta Delta = null;
 	}

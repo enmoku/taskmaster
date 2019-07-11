@@ -40,7 +40,7 @@ namespace Taskmaster.Power
 	using static Taskmaster;
 
 	// TODO: Decouple Form from Manager
-	sealed public class Manager : IDisposable, IDisposal // form is required for receiving messages, no other reason
+	public class Manager : IDisposable, IDisposal // form is required for receiving messages, no other reason
 	{
 		WndProcProxy WndProcProxy;
 

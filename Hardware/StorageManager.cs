@@ -253,7 +253,7 @@ namespace Taskmaster
 		#endregion
 	}
 
-	sealed public class StorageEventArgs : EventArgs
+	public class StorageEventArgs : EventArgs
 	{
 		public StorageManager.ScanState State { get; set; }
 		public StorageManager.DirectoryStats Stats { get; set; }

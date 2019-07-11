@@ -111,7 +111,7 @@ namespace Taskmaster.Configuration
 		}
 
 		#region IDisposable Support
-		private bool Disposed = false;
+		bool Disposed = false;
 
 		protected virtual void Dispose(bool disposing)
 		{
@@ -139,7 +139,7 @@ namespace Taskmaster.Configuration
 		internal ScopedFile(File file) => File = file;
 
 		#region IDisposable Support
-		private bool Disposed = false;
+		bool Disposed = false;
 
 		protected virtual void Dispose(bool disposing)
 		{

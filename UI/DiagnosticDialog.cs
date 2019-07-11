@@ -70,7 +70,7 @@ namespace Taskmaster.UI
 			Visible = true;
 		}
 
-		private void DialogClosing(object sender, FormClosingEventArgs e)
+		void DialogClosing(object sender, FormClosingEventArgs e)
 		{
 			//System.DiagnosisUpdate -= DiagnosisUpdateEvent;
 		}

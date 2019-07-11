@@ -81,13 +81,13 @@ namespace Taskmaster.UI
 			Visible = true;
 		}
 
-		private void OKButton_Click(object sender, EventArgs e)
+		void OKButton_Click(object sender, EventArgs e)
 		{
 			// TODO: Mark last log
 			throw new NotImplementedException();
 		}
 
-		private void ShowFullLogButton_Click(object sender, EventArgs e)
+		void ShowFullLogButton_Click(object sender, EventArgs e)
 		{
 			LogBox.Text = LogData;
 		}

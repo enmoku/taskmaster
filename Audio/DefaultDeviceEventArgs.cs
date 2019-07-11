@@ -28,7 +28,7 @@ using System;
 
 namespace Taskmaster.Audio
 {
-	public sealed class DefaultDeviceEventArgs : DeviceEventArgs
+	public class DefaultDeviceEventArgs : DeviceEventArgs
 	{
 		public DefaultDeviceEventArgs(Guid guid, string id, NAudio.CoreAudioApi.Role role, NAudio.CoreAudioApi.DataFlow flow)
 			: base(id, guid)

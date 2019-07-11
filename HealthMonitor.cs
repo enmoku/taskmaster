@@ -37,7 +37,7 @@ namespace Taskmaster
 	using System.Text;
 	using static Taskmaster;
 
-	public sealed class HealthReport
+	public class HealthReport
 	{
 		// Counters
 		public float PageFaults = 0f;
@@ -201,7 +201,7 @@ namespace Taskmaster
 		bool CriticalMemoryWarning = false;
 		DateTimeOffset EmergencyOffset = DateTimeOffset.MinValue;
 
-		private void EmergencyTick(object sender, System.Timers.ElapsedEventArgs e)
+		void EmergencyTick(object sender, System.Timers.ElapsedEventArgs e)
 		{
 			try
 			{
@@ -629,7 +629,7 @@ namespace Taskmaster
 		Dismissed
 	}
 
-	sealed class Problem
+	class Problem
 	{
 		int Id;
 		string Description;
@@ -654,7 +654,7 @@ namespace Taskmaster
 
 	}
 
-	sealed class MemoryAutoDoc : AutoDoc
+	class MemoryAutoDoc : AutoDoc
 	{
 		public int Hooks() => 0;
 

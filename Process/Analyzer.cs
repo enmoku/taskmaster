@@ -40,7 +40,7 @@ namespace Taskmaster.Process
 {
 	using static Taskmaster;
 
-	sealed public class Analyzer
+	public class Analyzer
 	{
 		public Analyzer()
 		{
@@ -419,7 +419,7 @@ namespace Taskmaster.Process
 		}
 	}
 
-	sealed public class ModuleInfo
+	public class ModuleInfo
 	{
 		public string[] Files = null;
 		public List<string> Detected = new List<string>();

@@ -32,7 +32,7 @@ namespace Taskmaster.UI.Config
 {
 	using static Taskmaster;
 
-	sealed public class ComponentConfigurationWindow : UniForm
+	public class ComponentConfigurationWindow : UniForm
 	{
 		internal ComponentConfigurationWindow(bool initial = true, bool center = false)
 			: base(centerOnScreen: initial || center)

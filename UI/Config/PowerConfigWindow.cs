@@ -32,7 +32,7 @@ using Taskmaster.Power;
 
 namespace Taskmaster.UI.Config
 {
-	sealed public class PowerConfigWindow : UniForm
+	public class PowerConfigWindow : UniForm
 	{
 		public AutoAdjustSettings oldAutoAdjust = null;
 		public AutoAdjustSettings newAutoAdjust = null;

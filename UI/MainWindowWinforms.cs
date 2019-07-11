@@ -40,7 +40,7 @@ namespace Taskmaster.UI
 	using static Taskmaster;
 
 	// public class MainWindow : System.Windows.Window; // TODO: WPF
-	sealed public class MainWindow : UniForm
+	public class MainWindow : UniForm
 	{
 		readonly ToolTip tooltip = new ToolTip();
 
@@ -2066,7 +2066,7 @@ namespace Taskmaster.UI
 			}
 		}
 
-		private void SetPower(Power.Mode mode)
+		void SetPower(Power.Mode mode)
 		{
 			try
 			{
@@ -2088,7 +2088,7 @@ namespace Taskmaster.UI
 			}
 		}
 
-		private void ShowExternalLicenses(object sender, EventArgs e)
+		void ShowExternalLicenses(object sender, EventArgs e)
 		{
 			MessageBox.ShowModal("Third Party Licenses for " + Taskmaster.Name,
 				Properties.Resources.ExternalLicenses,

@@ -33,7 +33,7 @@ namespace Taskmaster.UI.Config
 {
 	using static Taskmaster;
 
-	public sealed class AdvancedConfig : UI.UniForm
+	public class AdvancedConfig : UI.UniForm
 	{
 		AdvancedConfig(bool center = false)
 			: base(centerOnScreen: center)

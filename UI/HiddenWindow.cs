@@ -46,9 +46,9 @@ namespace Taskmaster
 			Logging.DebugMsg("HiddenWindow initialized");
 		}
 
-		private static Finalizer finalizer = new Finalizer();
+		static Finalizer finalizer = new Finalizer();
 
-		private sealed class Finalizer
+		sealed class Finalizer
 		{
 			~Finalizer()
 			{

@@ -28,7 +28,7 @@ using System;
 
 namespace Taskmaster.Audio
 {
-	public sealed class DeviceStateEventArgs : DeviceEventArgs
+	public class DeviceStateEventArgs : DeviceEventArgs
 	{
 		public DeviceStateEventArgs(string id, NAudio.CoreAudioApi.DeviceState state, Guid? guid = null)
 			: base(id, guid) => State = state;

@@ -28,7 +28,7 @@ using System;
 
 namespace Taskmaster.Audio
 {
-	sealed public class Device : IDisposable
+	public class Device : IDisposable
 	{
 		public Device(NAudio.CoreAudioApi.MMDevice device)
 			: this(Utility.DeviceIdToGuid(device.ID), device.FriendlyName, device.DataFlow, device.State, device)

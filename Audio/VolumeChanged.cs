@@ -28,7 +28,7 @@ using System;
 
 namespace Taskmaster
 {
-	sealed public class VolumeChangedEventArgs : EventArgs
+	public class VolumeChangedEventArgs : EventArgs
 	{
 		public double Old { get; set; }
 		public double New { get; set; }

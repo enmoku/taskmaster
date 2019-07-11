@@ -34,7 +34,7 @@ namespace Taskmaster.Process
 	using System.Text;
 	using static Taskmaster;
 
-	sealed public class WindowChangedArgs : EventArgs
+	public class WindowChangedArgs : EventArgs
 	{
 		public IntPtr hWnd { get; set; }
 		public int Id { get; set; }
@@ -44,7 +44,7 @@ namespace Taskmaster.Process
 		public string Executable { get; set; }
 	}
 
-	sealed public class ForegroundManager : IDisposal, IDisposable
+	public class ForegroundManager : IDisposal, IDisposable
 	{
 		public event EventHandler<WindowChangedArgs> ActiveChanged;
 

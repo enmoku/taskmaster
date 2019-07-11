@@ -26,7 +26,7 @@
 
 namespace Taskmaster.Network
 {
-	sealed public class InternetStatus : Status
+	public class InternetStatus : Status
 	{
 		public bool IPChanged = false;
 	}

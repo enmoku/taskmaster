@@ -121,7 +121,7 @@ namespace Taskmaster
 			}
 		}
 
-		public sealed class ShutDownEventArgs : EventArgs { }
+		public class ShutDownEventArgs : EventArgs { }
 
 		static event EventHandler<ShutDownEventArgs> ShuttingDown;
 
