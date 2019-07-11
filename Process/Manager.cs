@@ -1741,6 +1741,11 @@ void ProcessExit(object sender, EventArgs ea)
 			ProcessStateChange?.Invoke(this, new ProcessModificationEventArgs(info));
 		}
 
+		/// <summary>
+		/// Seconds.
+		/// </summary>
+		double MinRunningTimeForTracking = 30d;
+
 		// TODO: This should probably be pushed into ProcessController somehow.
 		async Task ProcessTriage(ProcessEx info, bool old = false)
 		{
@@ -1755,7 +1760,8 @@ void ProcessExit(object sender, EventArgs ea)
 				var ago = time.To(DateTime.UtcNow);
 				Logging.DebugMsg($"<Process> {info.Name} #{info.Id} – started: {info.Process.StartTime:g} ({ago:g} ago)");
 
-				if (!info.ExitWait && ago.TotalMinutes > 5) AddRunning(info);
+				// Add to tracking if it's not already there, but only if it has been running for X minutes
+				if (!info.ExitWait && ago.TotalSeconds >= MinRunningTimeForTracking) AddRunning(info);
 			}
 			catch // no access to startime
 			{
