@@ -112,7 +112,7 @@ namespace Taskmaster.Process
 
 			if (info.Restricted)
 			{
-				Logging.DebugMsg($"<Process> {info.Name} #{info.Id} RESTRICTED - cancelling FindPathExtended");
+				if (Manager.DebugProcesses) Logging.DebugMsg($"<Process> {info.Name} #{info.Id} RESTRICTED - cancelling FindPathExtended");
 				return false;
 			}
 
@@ -167,7 +167,7 @@ namespace Taskmaster.Process
 
 			if (info.Restricted)
 			{
-				Logging.DebugMsg($"<Process> {info.Name} #{info.Id} RESTRICTED - cancelling GetPathViaC");
+				if (Manager.DebugProcesses) Logging.DebugMsg($"<Process> {info.Name} #{info.Id} RESTRICTED - cancelling GetPathViaC");
 				return false;
 			}
 

@@ -847,7 +847,7 @@ namespace Taskmaster.Process
 
 			if (info.Restricted)
 			{
-				Logging.DebugMsg($"<Process> {info.Name} #{info.Id} RESTRICTED - cancelling SetForeground");
+				if (Manager.DebugProcesses) Logging.DebugMsg($"<Process> {info.Name} #{info.Id} RESTRICTED - cancelling SetForeground");
 				return;
 			}
 
@@ -1155,7 +1155,7 @@ namespace Taskmaster.Process
 
 			if (info.Restricted)
 			{
-				Logging.DebugMsg($"<Process> {info.Name} #{info.Id} RESTRICTED - cancelling Touch");
+				if (Manager.DebugProcesses) Logging.DebugMsg($"<Process> {info.Name} #{info.Id} RESTRICTED - cancelling Touch");
 				return;
 			}
 

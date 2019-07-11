@@ -1758,7 +1758,7 @@ void ProcessExit(object sender, EventArgs ea)
 			{
 				var time = info.Process.StartTime.ToUniversalTime();
 				var ago = time.To(DateTime.UtcNow);
-				Logging.DebugMsg($"<Process> {info.Name} #{info.Id} – started: {info.Process.StartTime:g} ({ago:g} ago)");
+				if (Trace) Logging.DebugMsg($"<Process> {info.Name} #{info.Id} – started: {info.Process.StartTime:g} ({ago:g} ago)");
 
 				// Add to tracking if it's not already there, but only if it has been running for X minutes
 				if (!info.ExitWait && ago.TotalSeconds >= MinRunningTimeForTracking) AddRunning(info);
@@ -1766,7 +1766,7 @@ void ProcessExit(object sender, EventArgs ea)
 			catch // no access to startime
 			{
 				info.Restricted = true;
-				Logging.DebugMsg($"<Process> {info.Name} #{info.Id} – NO ACCESS");
+				if (DebugProcesses) Logging.DebugMsg($"<Process> {info.Name} #{info.Id} – NO ACCESS");
 			}
 
 			try
@@ -1827,7 +1827,7 @@ void ProcessExit(object sender, EventArgs ea)
 
 						if (info.Restricted)
 						{
-							Logging.DebugMsg($"<Process> {info.Name} #{info.Id} RESTRICTED - cancelling at ProcessTriage");
+							if (DebugProcesses) Logging.DebugMsg($"<Process> {info.Name} #{info.Id} RESTRICTED - cancelling at ProcessTriage");
 							return;
 						}
 

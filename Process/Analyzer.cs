@@ -62,7 +62,7 @@ namespace Taskmaster.Process
 
 			if (info.Restricted)
 			{
-				Logging.DebugMsg($"<Process> {info.Name} #{info.Id} RESTRICTED - cancelling Analyze");
+				if (Manager.DebugProcesses) Logging.DebugMsg($"<Process> {info.Name} #{info.Id} RESTRICTED - cancelling Analyze");
 				return;
 			}
 
