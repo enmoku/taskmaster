@@ -1473,7 +1473,7 @@ namespace Taskmaster.Process
 					ExeToController.TryRemove(exe, out _);
 			}
 
-			RenewWatchlistCache();
+			lock (watchlist_lock) RenewWatchlistCache();
 
 			prc.Modified -= ProcessModified;
 			prc.Paused -= ProcessPausedProxy;
@@ -1693,6 +1693,8 @@ namespace Taskmaster.Process
 
 		public bool GetController(ProcessEx info, out Controller prc)
 		{
+			if (disposed) return (prc = null) != null; // silly shorthand
+
 			if (info.Controller != null)
 				return (prc = info.Controller) != null;
 
@@ -1739,7 +1741,7 @@ namespace Taskmaster.Process
 			lock (watchlist_lock) lcache = WatchlistCache.Value;
 
 			//RenewWatchlistCache(); // this doesn't need to be done every time
-			lcache = WatchlistCache.Value;
+			//lcache = WatchlistCache.Value;
 			if (NeedSort) SortWatchlist();
 
 			// TODO: This needs to be FASTER
