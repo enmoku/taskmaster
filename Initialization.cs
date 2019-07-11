@@ -732,7 +732,7 @@ namespace Taskmaster
 								Log.Warning("<NGen> Native Image re-generated; please restart.");
 						}
 						else
-							Log.Warning("<NGen> Native Image regeneation needed, unable to proceed without admin rights.");
+							Log.Warning("<NGen> Native Image regeneration needed, unable to proceed without admin rights.");
 					}
 				})).ConfigureAwait(false);
 			}
