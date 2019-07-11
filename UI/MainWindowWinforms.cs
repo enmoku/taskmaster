@@ -2330,8 +2330,6 @@ namespace Taskmaster.UI
 
 			//var alternateRowColor = gencfg.GetSetDefault("Alternate row color", new[] { 1 }, out modified).IntArray;
 
-			DefaultLIBGColor = new ListViewItem().BackColor; // HACK; gets current color scheme default color
-
 			AutocalcAlterColor();
 
 			WarningColor = System.Drawing.Color.Red; // no decent way to autocalculate good warning color in case it blends with background
