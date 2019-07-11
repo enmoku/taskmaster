@@ -26,11 +26,17 @@
 
 using System;
 using System.Diagnostics;
+using System.Linq;
 
 namespace Taskmaster.Process
 {
 	public class ProcessEx
 	{
+		public ProcessEx()
+		{
+			Loaders = new Lazy<LoaderInfo>(() => new LoaderInfo(Id, Name));
+		}
+
 		public bool Restricted { get; set; } = false;
 
 		/// <summary>
@@ -157,6 +163,102 @@ namespace Taskmaster.Process
 
 		public DateTime Found { get; set; } = DateTime.UtcNow;
 
-		public MKAh.Wrapper.Windows.PerformanceCounter Counter { get; set; } = null;
+		public Lazy<LoaderInfo> Loaders;
+	}
+
+	public class LoaderInfo : IDisposable
+	{
+		MKAh.Wrapper.Windows.PerformanceCounter CPUCounter;
+		MKAh.Wrapper.Windows.PerformanceCounter IOCounter;
+
+		readonly string Instance = string.Empty;
+		readonly int Id = -1;
+		string PFCInstance;
+
+		public float CPU { get; private set; } = float.NaN;
+		public float IO { get; private set; } = float.NaN;
+
+		public LoaderInfo(int pid, string instance)
+		{
+			Instance = instance;
+			Id = pid;
+
+			GetInstanceName();
+			Refresh();
+		}
+
+		public bool Update(bool noRecovery=false)
+		{
+			try
+			{
+				CPU = CPUCounter?.Value ?? float.NaN;
+				IO = IOCounter?.Value ?? float.NaN;
+				return true;
+			}
+			catch (Exception)
+			{
+				if (!noRecovery)
+				{
+					Refresh();
+					return Update(noRecovery: true);
+				}
+			}
+
+			return false;
+		}
+
+		void Refresh()
+		{
+			Scrap();
+
+			CPUCounter = new MKAh.Wrapper.Windows.PerformanceCounter("Process", "% Processor Time", PFCInstance);
+			IOCounter = new MKAh.Wrapper.Windows.PerformanceCounter("Process", "IO Data Bytes/sec", PFCInstance);
+		}
+
+		bool GetInstanceName()
+		{
+			var processCategory = new PerformanceCounterCategory("Process");
+
+			char[] separator = { '#' };
+			string[] instances = processCategory.GetInstanceNames()
+				.Where(inst => inst.StartsWith(Instance, StringComparison.InvariantCultureIgnoreCase))
+				.ToArray();
+
+			foreach (var name in instances)
+			{
+				using var idpc = new MKAh.Wrapper.Windows.PerformanceCounter("Process", "ID Process", name, false);
+				if (Id == idpc.Raw)
+				{
+					PFCInstance = name;
+					return true;
+				}
+			}
+
+			return false;
+		}
+
+		#region IDisposable Support
+		bool disposed = false;
+
+		void Scrap()
+		{
+			CPUCounter?.Dispose();
+			CPUCounter = null;
+			IOCounter?.Dispose();
+			IOCounter = null;
+		}
+
+		protected virtual void Dispose(bool disposing)
+		{
+			if (disposed) return;
+			disposed = true;
+
+			if (disposing) Scrap();
+		}
+
+		~LoaderInfo() => Dispose();
+
+		public void Dispose() => Dispose(true);
+		#endregion
 	}
 }

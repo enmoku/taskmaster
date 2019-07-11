@@ -50,7 +50,27 @@ namespace Taskmaster.Process
 		readonly ConcurrentDictionary<int, ProcessEx> WaitForExitList = new ConcurrentDictionary<int, ProcessEx>();
 		readonly ConcurrentDictionary<int, ProcessEx> Running = new ConcurrentDictionary<int, ProcessEx>(Environment.ProcessorCount, 300);
 
+		readonly Dictionary<string, LoadInfo> Loaders = new Dictionary<string, LoadInfo>(40);
+		readonly object Loader_lock = new object();
+
 		public ProcessEx[] GetExitWaitList() => WaitForExitList.Values.ToArray(); // copy is good here
+
+		System.Threading.Timer LoadTimer = null;
+
+		void StartLoadAnalysis()
+		{
+			LoadLock.Lock();
+
+			try
+			{
+				if (LoadTimer is null)
+					LoadTimer = new Timer(InspectLoaders, null, TimeSpan.FromMinutes(1d), TimeSpan.FromMinutes(1d));
+			}
+			finally
+			{
+				LoadLock.Unlock();
+			}
+		}
 
 		void AddRunning(ProcessEx info)
 		{
@@ -64,9 +84,181 @@ namespace Taskmaster.Process
 			info.Process.Refresh();
 			if (info.Process.HasExited)
 				ProcessExit(info.Process, EventArgs.Empty);
+
+			if (SystemLoadAnalysis)
+				StartLoadAnalysis(info).ConfigureAwait(false);
 		}
 
-void ProcessExit(object sender, EventArgs ea)
+		async Task StartLoadAnalysis(ProcessEx info)
+		{
+			LoadInfo load = null;
+			try
+			{
+				// TODO: Do basic monitoring.
+				lock (Loader_lock)
+				{
+					if (!Loaders.TryGetValue(info.Name, out load))
+					{
+						load = new LoadInfo(info.Name, LoadType.All, info);
+						load.Update();
+						Loaders.Add(info.Name, load);
+					}
+					else
+						load.Add(info);
+				}
+			}
+			catch (Exception ex)
+			{
+				Logging.Stacktrace(ex);
+			}
+
+			if (LoadTimer is null) StartLoadAnalysis();
+		}
+
+		async Task EndLoadAnalysis(ProcessEx info)
+		{
+			LoadInfo load;
+			lock (Loader_lock)
+			{
+				if (!Loaders.TryGetValue(info.Name, out load))
+					return;
+
+				load.Remove(info);
+			}
+
+			await Task.Delay(30_000).ConfigureAwait(false);
+
+			try
+			{
+				lock (Loader_lock)
+				{
+					if (load.InstanceCount <= 0)
+						Loaders.Remove(info.Name);
+				}
+			}
+			catch (Exception ex)
+			{
+				Logging.Stacktrace(ex);
+			}
+		}
+
+
+		MKAh.Lock.Monitor LoadLock = new MKAh.Lock.Monitor();
+
+		void InspectLoaders(object _)
+		{
+			if (!LoadLock.TryLock()) return;
+
+			try
+			{
+				var heavyLoaders = new List<LoadInfo>();
+
+				int skipped = 0;
+
+				var loadlist = Loaders.Values.ToArray();
+				LoadInfo heaviest = loadlist[0];
+
+				foreach (var loader in loadlist)
+				{
+					if (loader.InstanceCount > 0)
+					{
+						loader.Update();
+
+						if (heaviest.Load < loader.Load)
+							heaviest = loader;
+						else if (loader.Load < heaviest.Load / 2f) // skip lightweights
+						{
+							skipped++;
+							continue;
+						}
+
+						if (loader.Samples > 0)
+							heavyLoaders.Add(loader);
+						else
+							skipped++;
+
+						if (loader.LastHeavy && loader.Heavy > 5)
+							Logging.DebugMsg($"LOADER [{loader.Load:N1}]: {loader.Instance} [×{loader.InstanceCount}] - CPU: {loader.CPULoad.Average:N1}, RAM: {loader.RAMLoad.Current:N3} GiB, IO: {loader.IOLoad.Average:N1} MB/s");
+					}
+					else
+						skipped++;
+				}
+
+				Logging.DebugMsg($"HEAVYWEIGHT [{heaviest.Load:N1}]: {heaviest.Instance} [×{heaviest.InstanceCount}] - CPU: {heaviest.CPULoad.Average:N1}, RAM: {heaviest.RAMLoad.Current:N3} GiB, IO: {heaviest.IOLoad.Average:N1} MB/s");
+
+				heavyLoaders.Sort(LoadInfoComparer);
+
+				int i = 0;
+				foreach (var loader in heavyLoaders)
+				{
+					if (i++ > 2) break;
+					Logging.DebugMsg($"LOADER [{loader.Load:N1}]: {loader.Instance} [×{loader.InstanceCount}] - CPU: {loader.CPULoad.Average:N1} %, RAM: {loader.RAMLoad.Current:N3} GiB, IO: {loader.IOLoad.Average:N1} MB/s");
+				}
+
+				/*
+				var searcher = new ManagementObjectSearcher("select * from Win32_PerfFormattedData_PerfOS_Processor");
+				var cpuTimes = searcher.Get()
+					.Cast<ManagementObject>()
+					.Select(mo => new
+					{
+						Name = mo["Name"],
+						Usage = mo["PercentProcessorTime"]
+					}
+					)
+					.ToList();
+				*/
+
+			}
+			finally
+			{
+				LoadLock.Unlock();
+			}
+		}
+
+		int LoadInfoComparer(LoadInfo x, LoadInfo y)
+		{
+			const int XDown = 1, YDown = -1;
+
+			if (x.LastHeavy && !y.LastHeavy)
+				return YDown;
+			else if (!x.LastHeavy && y.LastHeavy)
+				return XDown;
+
+			if (x.Load-.2f > y.Load)
+				return YDown;
+			if (x.Load < y.Load-.2f)
+				return XDown;
+
+			if (x.Heavy > y.Heavy)
+				return YDown;
+			else if (x.Heavy < y.Heavy)
+				return XDown;
+
+			return 0;
+
+			/*
+			int weight = 0;
+
+			if (x.RAMLoad.HeavyCount > y.RAMLoad.HeavyCount)
+				weight++;
+			else if (x.RAMLoad.HeavyCount < y.RAMLoad.HeavyCount)
+				weight--;
+
+			if (x.CPULoad.HeavyCount > y.CPULoad.HeavyCount)
+				weight++;
+			else if (x.CPULoad.HeavyCount < y.CPULoad.HeavyCount)
+				weight--;
+
+			if (x.IOLoad.HeavyCount > y.IOLoad.HeavyCount)
+				weight++;
+			else if (x.IOLoad.HeavyCount < y.IOLoad.HeavyCount)
+				weight--;
+
+			return weight;
+			*/
+		}
+
+		void ProcessExit(object sender, EventArgs ea)
 		{
 			if (disposed) return;
 
@@ -91,11 +283,15 @@ void ProcessExit(object sender, EventArgs ea)
 
 			Running.TryRemove(pid, out removed);
 			WaitForExitList.TryRemove(pid, out _);
+
+			EndLoadAnalysis(removed).ConfigureAwait(false);
 		}
 
 		public int RunningCount => Running.Count;
 
 		ProcessEx GetRunning(int pid) => Running.TryGetValue(pid, out var info) ? info : null;
+
+		bool SystemLoadAnalysis { get; set; } = false;
 
 		public static bool DebugScan { get; set; } = false;
 		public static bool DebugPaths { get; set; } = false;
@@ -825,6 +1021,7 @@ void ProcessExit(object sender, EventArgs ea)
 			var exsec = corecfg.Config[Taskmaster.Constants.Experimental];
 			WindowResizeEnabled = exsec.Get(Taskmaster.Constants.WindowResize)?.Bool ?? false;
 			ColorResetEnabled = exsec.Get(Taskmaster.Constants.ColorReset)?.Bool ?? false;
+			SystemLoadAnalysis = exsec.Get("System load analysis")?.Bool ?? false;
 
 			var sbs = new StringBuilder();
 			sbs.Append("<Process> ");

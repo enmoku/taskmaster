@@ -171,6 +171,7 @@
     <Compile Include="Process\ConfigConstants.cs" />
     <Compile Include="Process\Events\HandlingStateChangeEventArgs.cs" />
     <Compile Include="Process\Legacy.cs" />
+    <Compile Include="Process\LoadInfo.cs" />
     <Compile Include="Process\Options.cs" />
     <Compile Include="Process\Events\ProcessingCountEventArgs.cs" />
     <Compile Include="Settings.Global.cs" />
