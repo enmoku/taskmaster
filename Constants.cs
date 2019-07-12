@@ -98,6 +98,8 @@ namespace Taskmaster
 			public const string Cache = "Cache";
 
 			public const string Logging = "Logging";
+
+			public const string LoaderTracking = "Loader tracking";
 		}
 	}
 }

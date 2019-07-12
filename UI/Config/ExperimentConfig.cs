@@ -57,7 +57,21 @@ namespace Taskmaster.UI.Config
 			layout.Controls.Add(experimentWarning);
 			layout.SetColumnSpan(experimentWarning, 2);
 
+			// Load configuration
+
+			using var corecfg = Taskmaster.Config.Load(Taskmaster.CoreConfigFilename);
+			var cfg = corecfg.Config;
+			var exsec = cfg[Taskmaster.Constants.Experimental];
+
 			// EXPERIMENTS
+
+			bool loadertracking = exsec.Get(Taskmaster.Constants.LoaderTracking)?.Bool ?? false;
+
+			var toggleLoaderTracking = new CheckBox() { Checked = loadertracking, };
+
+			layout.Controls.Add(new AlignedLabel { Text = "Loader tracking" });
+			layout.Controls.Add(toggleLoaderTracking);
+			tooltip.SetToolTip(toggleLoaderTracking, "Try to track what processes are overloading the system.");
 
 			var RecordAnalysisDelay = new Extensions.NumericUpDownEx()
 			{
@@ -188,10 +202,6 @@ namespace Taskmaster.UI.Config
 				Text = "Auto-update native image",
 			};
 
-			using var corecfg = Taskmaster.Config.Load(Taskmaster.CoreConfigFilename);
-			var cfg = corecfg.Config;
-			var exsec = cfg[Taskmaster.Constants.Experimental];
-			
 			var autoUpdateNgen = new CheckBox
 			{
 				Checked = exsec.Get(Taskmaster.Constants.AutoNGEN)?.Bool ?? false,
@@ -232,8 +242,13 @@ namespace Taskmaster.UI.Config
 
 				using var corecfg = Taskmaster.Config.Load(Taskmaster.CoreConfigFilename);
 				var cfg = corecfg.Config;
-
 				var exsec = cfg[Taskmaster.Constants.Experimental];
+
+				if (toggleLoaderTracking.Checked)
+					exsec[Taskmaster.Constants.LoaderTracking].Bool = true;
+				else
+					exsec.TryRemove(Taskmaster.Constants.LoaderTracking);
+
 				if (RecordAnalysisDelay.Value != decimal.Zero)
 					exsec["Record analysis"].Int = Convert.ToInt32(RecordAnalysisDelay.Value);
 				else

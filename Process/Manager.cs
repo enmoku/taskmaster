@@ -85,7 +85,7 @@ namespace Taskmaster.Process
 			if (info.Process.HasExited)
 				ProcessExit(info.Process, EventArgs.Empty);
 
-			if (SystemLoadAnalysis)
+			if (LoaderTracking)
 				StartLoadAnalysis(info).ConfigureAwait(false);
 		}
 
@@ -291,7 +291,8 @@ namespace Taskmaster.Process
 
 		ProcessEx GetRunning(int pid) => Running.TryGetValue(pid, out var info) ? info : null;
 
-		bool SystemLoadAnalysis { get; set; } = false;
+		bool LoaderTracking { get; set; } = false;
+
 
 		public static bool DebugScan { get; set; } = false;
 		public static bool DebugPaths { get; set; } = false;
@@ -998,6 +999,7 @@ namespace Taskmaster.Process
 			DebugAdjustDelay = dbgsec.Get("Adjust Delay")?.Bool ?? false;
 			DebugProcesses = dbgsec.Get("Processes")?.Bool ?? false;
 			DebugPaging = dbgsec.Get("Paging")?.Bool ?? false;
+			DebugLoaders = dbgsec.Get("Loaders")?.Bool ?? false;
 
 			var logsec = corecfg.Config[Taskmaster.Constants.Logging];
 			if (logsec.TryGet("Show unmodified portions", out var dumodport))
@@ -1021,7 +1023,7 @@ namespace Taskmaster.Process
 			var exsec = corecfg.Config[Taskmaster.Constants.Experimental];
 			WindowResizeEnabled = exsec.Get(Taskmaster.Constants.WindowResize)?.Bool ?? false;
 			ColorResetEnabled = exsec.Get(Taskmaster.Constants.ColorReset)?.Bool ?? false;
-			SystemLoadAnalysis = exsec.Get("System load analysis")?.Bool ?? false;
+			LoaderTracking = exsec.Get(Taskmaster.Constants.LoaderTracking)?.Bool ?? false;
 
 			var sbs = new StringBuilder();
 			sbs.Append("<Process> ");
