@@ -57,7 +57,7 @@ namespace Taskmaster.Process
 
 		System.Threading.Timer LoadTimer = null;
 
-		void StartLoadAnalysis()
+		void StartLoadAnalysisTimer()
 		{
 			LoadLock.Lock();
 
@@ -112,7 +112,7 @@ namespace Taskmaster.Process
 				Logging.Stacktrace(ex);
 			}
 
-			if (LoadTimer is null) StartLoadAnalysis();
+			if (LoadTimer is null) StartLoadAnalysisTimer();
 		}
 
 		async Task EndLoadAnalysis(ProcessEx info)
@@ -293,14 +293,22 @@ namespace Taskmaster.Process
 
 		bool LoaderTracking { get; set; } = false;
 
+		public static bool DebugLoaders { get; set; } = false;
 
 		public static bool DebugScan { get; set; } = false;
+
 		public static bool DebugPaths { get; set; } = false;
+
 		public static bool DebugAdjustDelay { get; set; } = false;
+
 		public static bool DebugPaging { get; set; } = false;
+
 		public static bool DebugProcesses { get; set; } = false;
+
 		public static bool ShowUnmodifiedPortions { get; set; } = true;
+
 		public static bool ShowOnlyFinalState { get; set; } = false;
+
 		public static bool ShowForegroundTransitions { get; set; } = false;
 
 		bool WindowResizeEnabled { get; set; } = false;
@@ -993,6 +1001,7 @@ namespace Taskmaster.Process
 				.Int;
 
 			var dbgsec = corecfg.Config[HumanReadable.Generic.Debug];
+			// .Get to not add these in case they don't exist
 			DebugWMI = dbgsec.Get("WMI")?.Bool ?? false;
 			DebugScan = dbgsec.Get("Full scan")?.Bool ?? false;
 			DebugPaths = dbgsec.Get("Paths")?.Bool ?? false;

@@ -93,23 +93,13 @@ namespace Taskmaster.UI.Config
 					System.IO.Path.GetDirectoryName(System.Diagnostics.Process.GetCurrentProcess().MainModule.FileName),
 					"OpenHardwareMonitorLib.dll"));
 
-			var hwmon = new CheckBox()
-			{
-				Checked = Taskmaster.HardwareMonitorEnabled,
-				Enabled = hwMonLibPresent,
-				//Anchor = AnchorStyles.Left,
-			};
+			var hwmon = new CheckBox() { Checked = Taskmaster.HardwareMonitorEnabled, Enabled = hwMonLibPresent, };
 			tooltip.SetToolTip(hwmon, "Enables hardware (such as GPU) monitoring\nLimited usability currently.\nRequires OpenHardwareMonitorLib.dll to be present.");
 
 			layout.Controls.Add(new AlignedLabel { Text = "Hardware monitor" });
 			layout.Controls.Add(hwmon);
 
-			var iopriority = new CheckBox()
-			{
-				Checked = Taskmaster.IOPriorityEnabled,
-				Enabled = MKAh.Execution.IsWin7,
-				//Anchor = AnchorStyles.Left,
-			};
+			var iopriority = new CheckBox() { Checked = Taskmaster.IOPriorityEnabled, Enabled = MKAh.Execution.IsWin7, };
 			tooltip.SetToolTip(iopriority, "Enable I/O priority adjstment\nWARNING: This can be REALLY BAD\nTake care what you do.\nOnly supported on Windows 7.");
 
 			layout.Controls.Add(new AlignedLabel { Text = "I/O priority" });
@@ -155,20 +145,12 @@ namespace Taskmaster.UI.Config
 
 			if (!MKAh.Execution.IsAdministrator)
 			{
-				var adminWarning = new AlignedLabel
-				{
-					Text = "Admin rights required!",
-					Font = BoldFont,
-				};
-
+				var adminWarning = new AlignedLabel { Text = "Admin rights required!", Font = BoldFont, };
 				layout.Controls.Add(adminWarning);
 				layout.SetColumnSpan(adminWarning, 2);
 			}
 
-			var imageUptodateLabel = new AlignedLabel
-			{
-				Text = "Image present && up-to-date",
-			};
+			var imageUptodateLabel = new AlignedLabel { Text = "Image present && up-to-date", };
 			layout.Controls.Add(imageUptodateLabel);
 
 			imageUptodateState = new AlignedLabel();
@@ -197,15 +179,9 @@ namespace Taskmaster.UI.Config
 			uninstallButton.Click += UninstallButton_Click;
 			layout.Controls.Add(uninstallButton);
 
-			var autoUpdateNgenLabel = new AlignedLabel
-			{
-				Text = "Auto-update native image",
-			};
+			var autoUpdateNgenLabel = new AlignedLabel { Text = "Auto-update native image", };
 
-			var autoUpdateNgen = new CheckBox
-			{
-				Checked = exsec.Get(Taskmaster.Constants.AutoNGEN)?.Bool ?? false,
-			};
+			var autoUpdateNgen = new CheckBox { Checked = exsec.Get(Taskmaster.Constants.AutoNGEN)?.Bool ?? false, };
 
 			layout.Controls.Add(autoUpdateNgenLabel);
 			layout.Controls.Add(autoUpdateNgen);
@@ -283,17 +259,16 @@ namespace Taskmaster.UI.Config
 			try
 			{
 				using var proc = MKAh.Program.NativeImage.InstallOrUpdateCurrent(withWindow: true);
-				installButton.Enabled = false;
-				uninstallButton.Enabled = false;
+
+				installButton.Enabled = uninstallButton.Enabled = false;
 				proc.WaitForExit(15_000);
 				if (proc.HasExited)
 				{
-					if (proc.ExitCode == 0)
-						uninstallButton.Enabled = true;
-					else
-						installButton.Enabled = true;
+					bool goodExit = proc.ExitCode == 0;
 
-					UpdateNGenState(proc.ExitCode == 0);
+					(goodExit ? uninstallButton : installButton).Enabled = true;
+
+					UpdateNGenState(goodExit);
 				}
 			}
 			catch (Exception ex)
@@ -314,12 +289,11 @@ namespace Taskmaster.UI.Config
 				proc?.WaitForExit(15_000);
 				if (proc?.HasExited ?? false)
 				{
-					if (proc.ExitCode == 0)
-						installButton.Enabled = true;
-					else
-						uninstallButton.Enabled = true;
+					bool goodExit = proc.ExitCode == 0;
 
-					UpdateNGenState(proc.ExitCode != 0);
+					(!goodExit ? uninstallButton : installButton).Enabled = true;
+
+					UpdateNGenState(!goodExit);
 				}
 			}
 			catch (Exception ex)
