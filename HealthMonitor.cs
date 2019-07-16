@@ -489,7 +489,7 @@ namespace Taskmaster
 							if (Settings.MemIgnoreFocus && activeappmonitor != null && User.IdleTime().TotalMinutes <= 3d)
 							{
 								ignorepid = activeappmonitor.ForegroundId;
-								Log.Verbose("<Auto-Doc> Protecting foreground app (#" + ignorepid + ")");
+								Log.Verbose("<Auto-Doc> Protecting foreground app #" + ignorepid);
 							}
 
 							var sbs = new StringBuilder()
@@ -497,7 +497,7 @@ namespace Taskmaster
 								.Append(HumanInterface.ByteString(memfreeb, iec: true))
 								.Append("], attempting to improve situation.");
 							if (!Process.Utility.SystemProcessId(ignorepid))
-								sbs.Append(" Ignoring foreground (#").Append(ignorepid).Append(").");
+								sbs.Append(" Ignoring foreground #").Append(ignorepid).Append(".");
 
 							Log.Warning(sbs.ToString());
 

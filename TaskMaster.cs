@@ -379,7 +379,7 @@ namespace Taskmaster
 				Config?.Dispose();
 				Config = null;
 
-				Log.Information(Name + "! (#" + System.Diagnostics.Process.GetCurrentProcess().Id + ") END! [Clean]");
+				Log.Information(Name + "! #" + System.Diagnostics.Process.GetCurrentProcess().Id + " END! [Clean]");
 
 				if (State == Runstate.Restart) // happens only on power resume (waking from hibernation) or when manually set
 				{

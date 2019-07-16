@@ -1211,7 +1211,7 @@ namespace Taskmaster.Power
 						ReleaseFinal(new Cause(OriginType.Watchlist, $"#{sourcePid} exited; " + (Behaviour == PowerBehaviour.Auto ? "auto-adjust resumed" : "restoring.")))
 							.ConfigureAwait(false);
 						if (VerbosePowerRelease && info != null)
-							Log.Information($"<Power> {info.Name} (#{info.Id}) quit, power forcing released.");
+							Log.Information($"<Power> {info.Name} #{info.Id} quit, power forcing released.");
 					}
 
 					if (Trace && DebugPower) Log.Debug($"<Power> Released {(sourcePid == -1 ? "All" : sourcePid.ToString())}");

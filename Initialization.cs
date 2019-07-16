@@ -154,7 +154,7 @@ namespace Taskmaster
 			var age = (now - builddate).TotalDays;
 
 			var sbs = new StringBuilder()
-				.Append(Name).Append("! (#").Append(System.Diagnostics.Process.GetCurrentProcess().Id).Append(")")
+				.Append(Name).Append("! #").Append(System.Diagnostics.Process.GetCurrentProcess().Id)
 				.Append(MKAh.Execution.IsAdministrator ? " [ADMIN]" : "").Append(Portable ? " [PORTABLE]" : "")
 				.Append(" – Version: ").Append(Version)
 				.Append(" – Built: ").Append(builddate.ToString("yyyy/MM/dd HH:mm"))

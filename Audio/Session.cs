@@ -59,7 +59,7 @@ namespace Taskmaster
 
 			// Don't care really
 			var sbs = new StringBuilder();
-			sbs.Append("<Audio> ").Append(name).Append(" (#").Append(pid).Append(") Disconnected: ").Append(disconnectReason.ToString());
+			sbs.Append("<Audio> ").Append(name).Append(" #").Append(pid).Append(" Disconnected: ").Append(disconnectReason.ToString());
 			Log.Debug(sbs.ToString());
 
 			switch (disconnectReason)
@@ -88,7 +88,7 @@ namespace Taskmaster
 			string name = session.DisplayName;
 
 			var sbs = new StringBuilder();
-			sbs.Append("<Audio> ").Append(name).Append(" (#").Append(pid).Append(") State changed: ").Append(state.ToString());
+			sbs.Append("<Audio> ").Append(name).Append(" #").Append(pid).Append("; State changed: ").Append(state.ToString());
 			Log.Debug(sbs.ToString());
 
 			switch (state)

@@ -700,11 +700,11 @@ namespace Taskmaster.Process
 
 				if (IgnoreProcessID(pid) || IgnoreProcessName(name) || pid == SelfPID)
 				{
-					if (ShowInaction && DebugScan) Log.Debug($"<Process/Scan> Ignoring {name} (#{pid})");
+					if (ShowInaction && DebugScan) Log.Debug($"<Process/Scan> Ignoring {name} #{pid}");
 					return null;
 				}
 
-				if (DebugScan) Log.Verbose($"<Process> Checking: {name} (#{pid})");
+				if (DebugScan) Log.Verbose($"<Process> Checking: {name} #{pid}");
 
 				if ((info = GetRunning(pid)) != null)
 				{
@@ -712,7 +712,7 @@ namespace Taskmaster.Process
 
 					try
 					{
-						if (Trace && DebugProcesses) Logging.DebugMsg($"Re-using old ProcessEx: {info.Name} (#{info.Id})");
+						if (Trace && DebugProcesses) Logging.DebugMsg($"Re-using old ProcessEx: {info.Name} #{info.Id}");
 						info.Process.Refresh();
 						if (info.Process.HasExited) // Stale, for some reason still kept
 						{
@@ -756,7 +756,7 @@ namespace Taskmaster.Process
 			catch (InvalidOperationException)
 			{
 				if (ShowInaction && DebugScan)
-					Log.Debug($"<Process/Scan> Failed to retrieve info for process: {name} (#{pid})");
+					Log.Debug($"<Process/Scan> Failed to retrieve info for process: {name} #{pid}");
 			}
 			catch (AggregateException ex)
 			{
@@ -780,7 +780,7 @@ namespace Taskmaster.Process
 				if (DebugPaging)
 				{
 					var sbs = new StringBuilder();
-					sbs.Append("<Process> Paging: ").Append(info.Name).Append(" (#").Append(info.Id.ToString()).Append(")");
+					sbs.Append("<Process> Paging: ").Append(info.Name).Append(" #").Append(info.Id.ToString());
 					if (info.Controller != null)
 						sbs.Append(" – Rule: ").Append(info.Controller.FriendlyName);
 					Log.Debug(sbs.ToString());
@@ -1277,7 +1277,7 @@ namespace Taskmaster.Process
 
 					var sbs = new StringBuilder()
 						.Append("[").Append(prc.FriendlyName).Append("] ").Append(prc.FormatPathName(ea.Info))
-						.Append(" (#").Append(ea.Info.Id).Append(")");
+						.Append(" #").Append(ea.Info.Id);
 
 					if (ShowUnmodifiedPortions || ea.PriorityNew.HasValue)
 					{
@@ -1343,7 +1343,7 @@ namespace Taskmaster.Process
 						var parent = Utility.GetParentProcess(ea.Info);
 						sbs.Append(" – Parent: ");
 						if (parent != null)
-							sbs.Append(parent.Name).Append(" (#").Append(parent.Id).Append(")");
+							sbs.Append(parent.Name).Append(" #").Append(parent.Id);
 						else
 							sbs.Append("n/a");
 					}
@@ -1501,7 +1501,7 @@ namespace Taskmaster.Process
 			try
 			{
 				if (DebugForeground || DebugPower)
-					Log.Debug($"[{info.Controller.FriendlyName}] {info.Name} (#{info.Id}) exited [Power: {info.PowerWait}, Active: {info.ForegroundWait}]");
+					Log.Debug($"[{info.Controller.FriendlyName}] {info.Name} #{info.Id} exited [Power: {info.PowerWait}, Active: {info.ForegroundWait}]");
 
 				info.ForegroundWait = false;
 
@@ -1650,7 +1650,7 @@ namespace Taskmaster.Process
 					if (info.ForegroundWait)
 					{
 						var prc = info.Controller;
-						if (Trace && DebugForeground) Log.Debug($"[{prc.FriendlyName}] {info.Name} (#{info.Id}) on foreground!");
+						if (Trace && DebugForeground) Log.Debug($"[{prc.FriendlyName}] {info.Name} #{info.Id} on foreground!");
 
 						if (prc.Foreground != ForegroundMode.Ignore) prc.SetForeground(info);
 
@@ -1715,7 +1715,7 @@ namespace Taskmaster.Process
 				if (info.Process.HasExited) // can throw
 				{
 					info.State = ProcessHandlingState.Exited;
-					if (ShowInaction && DebugProcesses) Log.Verbose(info.Name + " (#" + info.Id + ") has already exited.");
+					if (ShowInaction && DebugProcesses) Log.Verbose(info.Name + " #" + info.Id + " has already exited.");
 					prc = null;
 					return false; // return ProcessState.Invalid;
 				}
@@ -1731,7 +1731,7 @@ namespace Taskmaster.Process
 			{
 				info.Restricted = true;
 				if (ex.NativeErrorCode != 5) // what was this?
-					Log.Warning("Access error: " + info.Name + " (#" + info.Id + ")");
+					Log.Warning("Access error: " + info.Name + " #" + info.Id);
 				prc = null;
 				return false; // return ProcessState.AccessDenied; // we don't care wwhat this error is
 			}
@@ -1742,7 +1742,7 @@ namespace Taskmaster.Process
 
 			if (hasPath && IgnoreSystem32Path && info.Path.StartsWith(Environment.GetFolderPath(Environment.SpecialFolder.System)))
 			{
-				if (ShowInaction && DebugProcesses) Log.Debug("<Process/Path> " + info.Name + " (#" + info.Id + ") in System32, ignoring");
+				if (ShowInaction && DebugProcesses) Log.Debug("<Process/Path> " + info.Name + " #" + info.Id + " in System32, ignoring");
 				prc = null;
 				return false;
 			}
@@ -1946,7 +1946,7 @@ namespace Taskmaster.Process
 			bool keyadded = WaitForExit(info);
 
 			if (Trace && DebugForeground)
-				Log.Debug($"[{prc.FriendlyName}] {info.Name} (#{info.Id}) {(!keyadded ? "already in" : "added to")} foreground watchlist.");
+				Log.Debug($"[{prc.FriendlyName}] {info.Name} #{info.Id} {(!keyadded ? "already in" : "added to")} foreground watchlist.");
 
 			ProcessStateChange?.Invoke(this, new ProcessModificationEventArgs(info));
 		}
@@ -2029,11 +2029,11 @@ namespace Taskmaster.Process
 						if (prc.Ignored(info))
 						{
 							if (ShowInaction && Manager.DebugProcesses)
-								Log.Debug($"[{prc.FriendlyName}] {info.Name} (#{info.Id.ToString()}) ignored due to user defined rule.");
+								Log.Debug($"[{prc.FriendlyName}] {info.Name} #{info.Id.ToString()} ignored due to user defined rule.");
 							return;
 						}
 
-						if (Trace && DebugProcesses) Logging.DebugMsg($"Trying to modify: {info.Name} (#{info.Id})");
+						if (Trace && DebugProcesses) Logging.DebugMsg($"Trying to modify: {info.Name} #{info.Id}");
 
 						if (info.Restricted)
 						{
@@ -2058,7 +2058,7 @@ namespace Taskmaster.Process
 
 						if (info.State == ProcessHandlingState.Processing)
 						{
-							Logging.DebugMsg($"[{info.Controller.FriendlyName}] {info.Name} (#{info.Id}) correcting state to Finished");
+							Logging.DebugMsg($"[{info.Controller.FriendlyName}] {info.Name} #{info.Id} correcting state to Finished");
 							info.State = ProcessHandlingState.Finished;
 						}
 					}
@@ -2075,7 +2075,7 @@ namespace Taskmaster.Process
 				else
 				{
 					info.State = ProcessHandlingState.Abandoned;
-					if (Trace && DebugProcesses) Logging.DebugMsg($"ProcessTriage no matching rule for: {info.Name} (#{info.Id})");
+					if (Trace && DebugProcesses) Logging.DebugMsg($"ProcessTriage no matching rule for: {info.Name} #{info.Id}");
 				}
 
 				/*
@@ -2116,7 +2116,7 @@ namespace Taskmaster.Process
 		{
 			await Task.Delay(0).ConfigureAwait(false);
 
-			Log.Information($"[{info.Controller.FriendlyName}] {info.Name} (#{info.Id}) exited, resetting color (NOT REALLY, SORRY!).");
+			Log.Information($"[{info.Controller.FriendlyName}] {info.Name} #{info.Id} exited, resetting color (NOT REALLY, SORRY!).");
 
 			var buffer = new StringBuilder(4096);
 
@@ -2136,7 +2136,7 @@ namespace Taskmaster.Process
 
 			lock (info) if (info.Exclusive) return;
 
-			if (DebugProcesses) Log.Debug($"[{info.Controller.FriendlyName}] {info.Name} (#{info.Id}) Exclusive mode initiating.");
+			if (DebugProcesses) Log.Debug($"[{info.Controller.FriendlyName}] {info.Name} #{info.Id} Exclusive mode initiating.");
 
 			await Task.Delay(0).ConfigureAwait(false);
 
@@ -2153,7 +2153,7 @@ namespace Taskmaster.Process
 							{
 								ExclusiveLocks++;
 
-								if (DebugProcesses) Log.Debug($"<Exclusive> [{info.Controller.FriendlyName}] {info.Name} (#{info.Id.ToString()}) starting");
+								if (DebugProcesses) Log.Debug($"<Exclusive> [{info.Controller.FriendlyName}] {info.Name} #{info.Id.ToString()} starting");
 
 								info.Process.Exited += (_, _ea) => EndExclusiveMode(info).ConfigureAwait(false);
 								info.Process.EnableRaisingEvents = true;
@@ -2212,7 +2212,7 @@ namespace Taskmaster.Process
 				{
 					ExclusiveLocks--;
 
-					if (DebugProcesses) Log.Debug($"<Exclusive> [{info.Controller.FriendlyName}] {info.Name} (#{info.Id.ToString()}) ending");
+					if (DebugProcesses) Log.Debug($"<Exclusive> [{info.Controller.FriendlyName}] {info.Name} #{info.Id.ToString()} ending");
 					if (ExclusiveLocks == 0)
 					{
 						if (DebugProcesses) Log.Debug("<Exclusive> Ended for all, restarting services.");
@@ -2222,7 +2222,7 @@ namespace Taskmaster.Process
 						}
 						catch (InvalidOperationException)
 						{
-							Log.Warning($"<Exclusive> Failure to restart WUA after {info.Name} (#{info.Id}) exited.");
+							Log.Warning($"<Exclusive> Failure to restart WUA after {info.Name} #{info.Id} exited.");
 						}
 					}
 					else
@@ -2319,7 +2319,7 @@ namespace Taskmaster.Process
 				Statistics.WMIPolling++;
 			}
 
-			Log.Debug($"<Process> {name} (#{pid}; parent #{ppid})");
+			Log.Debug($"<Process> {name} #{pid}; parent #{ppid}");
 		}
 
 		// This needs to return faster
@@ -2398,7 +2398,7 @@ namespace Taskmaster.Process
 				if (DebugAdjustDelay && creation != DateTime.MinValue)
 				{
 					wmidelay = new DateTimeOffset(creation.ToUniversalTime()).To(now);
-					if (Trace) Logging.DebugMsg($"WMI delay (#{pid}): {wmidelay.TotalMilliseconds:N0} ms");
+					if (Trace) Logging.DebugMsg($"WMI delay #{pid}: {wmidelay.TotalMilliseconds:N0} ms");
 				}
 
 				if (IgnoreProcessID(pid)) return; // We just don't care
@@ -2429,12 +2429,12 @@ namespace Taskmaster.Process
 					}
 				}
 
-				if (Trace) Logging.DebugMsg($"NewInstanceTriage: {name} (#{pid})");
+				if (Trace) Logging.DebugMsg($"NewInstanceTriage: {name} #{pid}");
 
 				if (IgnoreProcessName(name))
 				{
 					if (ShowInaction && DebugProcesses)
-						Log.Debug($"<Process> {name} (#{pid}) ignored due to its name.");
+						Log.Debug($"<Process> {name} #{pid} ignored due to its name.");
 					return;
 				}
 
@@ -2448,7 +2448,7 @@ namespace Taskmaster.Process
 
 					if (cts.IsCancellationRequested) throw new ObjectDisposedException(nameof(Manager), "NewInstanceTriagePhaseTwo called when ProcessManager was already disposed");
 
-					if (Trace) Log.Verbose($"Caught: {info.Name} (#{info.Id}) at: {info.Path}");
+					if (Trace) Log.Verbose($"Caught: {info.Name} #{info.Id} at: {info.Path}");
 
 					state = info.State = ProcessHandlingState.Triage;
 
@@ -2457,7 +2457,7 @@ namespace Taskmaster.Process
 				else
 				{
 					if (ShowInaction && DebugProcesses)
-						Log.Debug($"<Process> {name} (#{pid}) could not be mined for info.");
+						Log.Debug($"<Process> {name} #{pid} could not be mined for info.");
 				}
 			}
 			catch (ArgumentException)

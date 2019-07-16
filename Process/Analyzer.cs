@@ -73,7 +73,7 @@ namespace Taskmaster.Process
 			// TODO: Prevent bloating somehow.
 			if (!cache.TryAdd(hash, 0)) return; // already there
 
-			Log.Debug($"<Analysis> {info.Name} (#{info.Id}) scheduled");
+			Log.Debug($"<Analysis> {info.Name} #{info.Id} scheduled");
 
 			var AllLinkedModules = new ConcurrentDictionary<string, ModuleInfo>();
 			var ImportantModules = new ConcurrentDictionary<string, ModuleInfo>();
@@ -98,12 +98,12 @@ namespace Taskmaster.Process
 				if (info.Process.HasExited)
 				{
 					info.State = ProcessHandlingState.Exited;
-					Log.Debug($"<Analysis> {info.Name} (#{info.Id}) cancelled; already gone");
+					Log.Debug($"<Analysis> {info.Name} #{info.Id} cancelled; already gone");
 					cache.TryRemove(hash, out _);
 					return;
 				}
 
-				if (Trace) Logging.DebugMsg("Analyzing:" + $"{info.Name} (#{info.Id})");
+				if (Trace) Logging.DebugMsg("Analyzing:" + $"{info.Name} #{info.Id}");
 
 				modFile = info.Process.MainModule.FileName;
 				version = info.Process.MainModule.FileVersionInfo;
@@ -173,14 +173,14 @@ namespace Taskmaster.Process
 			{
 				// already exited
 				cache.TryRemove(hash, out _);
-				Log.Debug($"[{info.Controller.FriendlyName}] {info.Name} (#{info.Id}) exited before analysis could begin.");
+				Log.Debug($"[{info.Controller.FriendlyName}] {info.Name} #{info.Id} exited before analysis could begin.");
 			}
 			catch (Win32Exception)
 			{
 				info.Restricted = true;
 				// access denied
 				cache.TryRemove(hash, out _);
-				Log.Debug($"[{info.Controller.FriendlyName}] {info.Name} (#{info.Id}) was denied access for analysis.");
+				Log.Debug($"[{info.Controller.FriendlyName}] {info.Name} #{info.Id} was denied access for analysis.");
 			}
 			catch (OutOfMemoryException) { throw; }
 			catch (Exception ex)
@@ -198,7 +198,7 @@ namespace Taskmaster.Process
 				bool memExtreme = privMem > 2600; // more than 2600 MB
 
 				var sbs = new StringBuilder().Append("<Analysis> ").Append(info.Name)
-					.Append(" (#").Append(info.Id).Append(')').Append(" facts: ");
+					.Append(" #").Append(info.Id).Append(" facts: ");
 
 				var components = new List<string>();
 
@@ -246,7 +246,7 @@ namespace Taskmaster.Process
 				if (recommendations.Count > 0)
 				{
 					sbs.Clear();
-					sbs.Append("<Analysis> ").Append(info.Name).Append(" (#").Append(info.Id).Append(')').Append(" recommendations: ");
+					sbs.Append("<Analysis> ").Append(info.Name).Append(" #").Append(info.Id).Append(" recommendations: ");
 					sbs.Append(string.Join(", ", recommendations));
 					Log.Information(sbs.ToString());
 				}

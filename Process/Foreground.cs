@@ -218,7 +218,7 @@ namespace Taskmaster.Process
 					var sbs = new StringBuilder().Append("<Foreground> ");
 
 					if (!string.IsNullOrEmpty(name))
-						sbs.Append(name).Append(" (#").Append(lfgpid).Append(")");
+						sbs.Append(name).Append(" #").Append(lfgpid);
 					else
 						sbs.Append("#").Append(lfgpid);
 

@@ -192,7 +192,7 @@ namespace Taskmaster.Process
 				info.Restricted = true;
 
 				if (Process.Manager.DebugProcesses)
-					Logging.DebugMsg("GetModuleFileNameEx - Access Denied - " + $"{info.Name} (#{info.Id})");
+					Logging.DebugMsg("GetModuleFileNameEx - Access Denied - " + $"{info.Name} #{info.Id}");
 			}
 			catch (InvalidOperationException) { }// Already exited
 			catch (Exception ex)
@@ -290,7 +290,7 @@ namespace Taskmaster.Process
 						{
 							newIO = NativeMethods.GetIOPriority(handle);
 							if (newIO != target)
-								Logging.DebugMsg($"{process.ProcessName} (#{process.Id}) - I/O not set correctly: {newIO} instead of {target}");
+								Logging.DebugMsg($"{process.ProcessName} #{process.Id} - I/O not set correctly: {newIO} instead of {target}");
 						}
 						else
 							throw new InvalidOperationException("Failed to modify process I/O priority");

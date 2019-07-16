@@ -402,11 +402,11 @@ namespace Taskmaster.UI
 
 				if (KnownExplorerInstances.Count > 0)
 				{
-					if (Trace) Log.Verbose($"<Tray> Explorer (#{processId}) exited but is not the last known explorer instance.");
+					if (Trace) Log.Verbose($"<Tray> Explorer #{processId} exited but is not the last known explorer instance.");
 					return;
 				}
 
-				Log.Warning($"<Tray> Explorer (#{processId}) crash detected!");
+				Log.Warning($"<Tray> Explorer #{processId} crash detected!");
 
 				Log.Information("<Tray> Giving explorer some time to recover on its own...");
 
@@ -480,7 +480,7 @@ namespace Taskmaster.UI
 						{
 							if (!info.Path.StartsWith(Environment.GetFolderPath(Environment.SpecialFolder.Windows), StringComparison.InvariantCultureIgnoreCase))
 							{
-								if (Taskmaster.Trace) Log.Verbose($"<Tray> Explorer (#{info.Id}) not in system root.");
+								if (Taskmaster.Trace) Log.Verbose($"<Tray> Explorer #{info.Id} not in system root.");
 								continue;
 							}
 						}
