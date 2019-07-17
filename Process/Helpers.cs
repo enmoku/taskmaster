@@ -131,7 +131,8 @@ namespace Taskmaster.Process
 		BackgroundSideline = 5,
 	}
 
-	public enum PriorityStrategy
+	[Flags]
+	public enum PriorityStrategy : int
 	{
 		None = 0,
 		Increase = 1,
@@ -143,7 +144,8 @@ namespace Taskmaster.Process
 		Force = 3,
 	}
 
-	public enum WindowResizeStrategy
+	[Flags]
+	public enum WindowResizeStrategy : int
 	{
 		None = 0,
 		Size = 1,

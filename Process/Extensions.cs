@@ -38,23 +38,23 @@ namespace Taskmaster
 		/// </summary>
 		/// <exception cref="System.ComponentModel.Win32Exception">Access denied</exception>
 		/// <exception cref="System.InvalidOperationException">Process exited</exception>
-		public static bool SetLimitedPriority(this System.Diagnostics.Process process, ProcessPriorityClass target, ProcessPriorityStrategy strategy = ProcessPriorityStrategy.Decrease)
+		public static bool SetLimitedPriority(this System.Diagnostics.Process process, ProcessPriorityClass target, Process.PriorityStrategy strategy = Process.PriorityStrategy.Decrease)
 		{
 			switch (strategy)
 			{
-				case ProcessPriorityStrategy.Force:
+				case Process.PriorityStrategy.Force:
 					if (process.PriorityClass.ToInt32() == target.ToInt32())
 						return false;
 					break;
-				case ProcessPriorityStrategy.Increase:
+				case Process.PriorityStrategy.Increase:
 					if (process.PriorityClass.ToInt32() >= target.ToInt32())
 						return false;
 					break;
-				case ProcessPriorityStrategy.Decrease:
+				case Process.PriorityStrategy.Decrease:
 					if (process.PriorityClass.ToInt32() <= target.ToInt32())
 						return false;
 					break;
-				case ProcessPriorityStrategy.None:
+				case Process.PriorityStrategy.None:
 				default:
 					return false;
 			}
