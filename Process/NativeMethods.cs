@@ -27,8 +27,10 @@
 using System;
 using System.Runtime.InteropServices;
 
-namespace Taskmaster
+namespace Taskmaster.Process
 {
+	using static Taskmaster;
+
 	public static partial class NativeMethods
 	{
 		[DllImport("kernel32.dll", CharSet = CharSet.Auto)] // SetLastError = true
@@ -40,7 +42,7 @@ namespace Taskmaster
 		[DllImport("psapi.dll", SetLastError = true, CharSet = CharSet.Unicode, BestFitMapping = false, ThrowOnUnmappableChar = true)]
 		public static extern uint GetModuleFileNameEx(IntPtr hProcess, IntPtr hModule, [Out] System.Text.StringBuilder lpBaseName, [In] [MarshalAs(UnmanagedType.U4)] uint nSize);
 
-		public static HANDLE OpenProcessFully(System.Diagnostics.Process process)
+		public static global::Taskmaster.NativeMethods.HANDLE OpenProcessFully(System.Diagnostics.Process process)
 		{
 			try
 			{
@@ -252,7 +254,7 @@ namespace Taskmaster
 		/// MUST CLOSE THE RETURNED HANDLE WITH CLOSEHANDLE!!!
 		/// </summary>
 		[DllImport("kernel32.dll", SetLastError = true)]
-		public static extern HANDLE OpenProcess(PROCESS_ACCESS_RIGHTS dwDesiredAccess, bool bInheritHandle, int dwProcessId);
+		public static extern global::Taskmaster.NativeMethods.HANDLE OpenProcess(PROCESS_ACCESS_RIGHTS dwDesiredAccess, bool bInheritHandle, int dwProcessId);
 
 		[StructLayout(LayoutKind.Sequential)]
 		public struct RECT

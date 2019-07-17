@@ -267,7 +267,7 @@ namespace Taskmaster.Process
 				RemoveRunning(proc.Id, out var info);
 				if (info is ProcessEx)
 				{
-					info.State = ProcessHandlingState.Exited;
+					info.State = HandlingState.Exited;
 					info.ExitWait = false;
 				}
 			}
@@ -716,11 +716,11 @@ namespace Taskmaster.Process
 						info.Process.Refresh();
 						if (info.Process.HasExited) // Stale, for some reason still kept
 						{
-							if (Trace && DebugProcesses) Logging.DebugMsg("Re-using old ProcessEx - except not, stale");
+							if (Trace && DebugProcesses) Logging.DebugMsg("<Process:Scan> Re-using old ProcessEx - except not, stale");
 							stale = true;
 						}
 						else
-							info.State = ProcessHandlingState.Triage; // still valid
+							info.State = HandlingState.Triage; // still valid
 					}
 					catch
 					{
@@ -1140,16 +1140,16 @@ namespace Taskmaster.Process
 				}
 
 				prioR = ProcessHelpers.IntToNullablePriority(prio);
-				ProcessPriorityStrategy priostrat = ProcessPriorityStrategy.None;
+				PriorityStrategy priostrat = PriorityStrategy.None;
 				if (prioR.HasValue)
 				{
-					priostrat = (ProcessPriorityStrategy)(section.Get(HumanReadable.System.Process.PriorityStrategy)?.Int.Constrain(0, 3) ?? 0);
-					if (priostrat == ProcessPriorityStrategy.None) prioR = null; // invalid data
+					priostrat = (PriorityStrategy)(section.Get(HumanReadable.System.Process.PriorityStrategy)?.Int.Constrain(0, 3) ?? 0);
+					if (priostrat == PriorityStrategy.None) prioR = null; // invalid data
 				}
 
-				ProcessAffinityStrategy affStrat = (aff >= 0)
-					? (ProcessAffinityStrategy)(section.Get(HumanReadable.System.Process.AffinityStrategy)?.Int.Constrain(0, 3) ?? 2)
-					: ProcessAffinityStrategy.None;
+				AffinityStrategy affStrat = (aff >= 0)
+					? (AffinityStrategy)(section.Get(HumanReadable.System.Process.AffinityStrategy)?.Int.Constrain(0, 3) ?? 2)
+					: AffinityStrategy.None;
 
 				int baff = section.Get(Constants.BackgroundAffinity)?.Int ?? -1;
 				int bpriot = section.Get(Constants.BackgroundPriority)?.Int ?? -1;
@@ -1214,11 +1214,11 @@ namespace Taskmaster.Process
 				}
 
 				// TODO: Blurp about following configuration errors
-				if (prc.AffinityMask < 0) prc.AffinityStrategy = ProcessAffinityStrategy.None;
-				else if (prc.AffinityStrategy == ProcessAffinityStrategy.None) prc.AffinityMask = -1;
+				if (prc.AffinityMask < 0) prc.AffinityStrategy = AffinityStrategy.None;
+				else if (prc.AffinityStrategy == AffinityStrategy.None) prc.AffinityMask = -1;
 
-				if (!prc.Priority.HasValue) prc.PriorityStrategy = ProcessPriorityStrategy.None;
-				else if (prc.PriorityStrategy == ProcessPriorityStrategy.None) prc.Priority = null;
+				if (!prc.Priority.HasValue) prc.PriorityStrategy = PriorityStrategy.None;
+				else if (prc.PriorityStrategy == PriorityStrategy.None) prc.Priority = null;
 
 				int[] resize = section.Get(Constants.Resize)?.IntArray ?? null; // width,height
 				if (resize?.Length == 4)
@@ -1292,7 +1292,7 @@ namespace Taskmaster.Process
 								sbs.Append(Readable.ProcessPriority(ea.PriorityNew.Value));
 							}
 
-							if (prc.Priority.HasValue && ea.Info.State == ProcessHandlingState.Paused && prc.Priority != ea.PriorityNew)
+							if (prc.Priority.HasValue && ea.Info.State == HandlingState.Paused && prc.Priority != ea.PriorityNew)
 								sbs.Append(" [").Append(ProcessHelpers.PriorityToInt(prc.Priority.Value)).Append(']');
 						}
 						else
@@ -1315,7 +1315,7 @@ namespace Taskmaster.Process
 								sbs.Append(ea.AffinityNew);
 							}
 
-							if (prc.AffinityMask >= 0 && ea.Info.State == ProcessHandlingState.Paused && prc.AffinityMask != ea.AffinityNew)
+							if (prc.AffinityMask >= 0 && ea.Info.State == HandlingState.Paused && prc.AffinityMask != ea.AffinityNew)
 								sbs.Append(" [").Append(prc.AffinityMask).Append(']');
 						}
 						else
@@ -1496,7 +1496,7 @@ namespace Taskmaster.Process
 			Debug.Assert(info.Controller != null, "ProcessController not defined");
 			Debug.Assert(!Utility.SystemProcessId(info.Id), "WaitForExitTriggered for system process");
 
-			info.State = ProcessHandlingState.Exited;
+			info.State = HandlingState.Exited;
 
 			try
 			{
@@ -1591,7 +1591,7 @@ namespace Taskmaster.Process
 					info.Process.Refresh();
 					if (info.Process.HasExited)
 					{
-						info.State = ProcessHandlingState.Exited;
+						info.State = HandlingState.Exited;
 						throw new InvalidOperationException("Exited after we registered for it?");
 					}
 				}
@@ -1714,7 +1714,7 @@ namespace Taskmaster.Process
 				info.Process.Refresh();
 				if (info.Process.HasExited) // can throw
 				{
-					info.State = ProcessHandlingState.Exited;
+					info.State = HandlingState.Exited;
 					if (ShowInaction && DebugProcesses) Log.Verbose(info.Name + " #" + info.Id + " has already exited.");
 					prc = null;
 					return false; // return ProcessState.Invalid;
@@ -1981,14 +1981,14 @@ namespace Taskmaster.Process
 
 			try
 			{
-				info.State = ProcessHandlingState.Triage;
+				info.State = HandlingState.Triage;
 
 				HandlingStateChange?.Invoke(this, new HandlingStateChangeEventArgs(info));
 
 				if (string.IsNullOrEmpty(info.Name))
 				{
 					Log.Warning($"#{info.Id.ToString()} details unaccessible, ignored.");
-					info.State = ProcessHandlingState.AccessDenied;
+					info.State = HandlingState.AccessDenied;
 					return; // ProcessState.AccessDenied;
 				}
 
@@ -1997,11 +1997,11 @@ namespace Taskmaster.Process
 					if (!prc.Enabled)
 					{
 						if (DebugProcesses) Log.Debug("[" + prc.FriendlyName + "] Matched, but rule disabled; ignoring.");
-						info.State = ProcessHandlingState.Abandoned;
+						info.State = HandlingState.Abandoned;
 						return;
 					}
 
-					info.State = ProcessHandlingState.Processing;
+					info.State = HandlingState.Processing;
 
 					await Task.Delay(0, cts.Token).ConfigureAwait(false); // asyncify again
 					if (cts.IsCancellationRequested) return;
@@ -2047,7 +2047,7 @@ namespace Taskmaster.Process
 
 						if (prc.ExclusiveMode) await ExclusiveMode(info).ConfigureAwait(false);
 
-						if (RecordAnalysis.HasValue && info.Controller.Analyze && info.Valid && info.State != ProcessHandlingState.Abandoned)
+						if (RecordAnalysis.HasValue && info.Controller.Analyze && info.Valid && info.State != HandlingState.Abandoned)
 							await analyzer.Analyze(info).ConfigureAwait(false);
 
 						if (WindowResizeEnabled && prc.Resize.HasValue)
@@ -2056,10 +2056,10 @@ namespace Taskmaster.Process
 						//if (ColorResetEnabled && prc.ColorReset)
 						//	await RegisterColorReset(info).ConfigureAwait(false);
 
-						if (info.State == ProcessHandlingState.Processing)
+						if (info.State == HandlingState.Processing)
 						{
 							Logging.DebugMsg($"[{info.Controller.FriendlyName}] {info.Name} #{info.Id} correcting state to Finished");
-							info.State = ProcessHandlingState.Finished;
+							info.State = HandlingState.Finished;
 						}
 					}
 					catch (Exception ex) when (ex is NullReferenceException || ex is OutOfMemoryException) { throw; }
@@ -2074,8 +2074,8 @@ namespace Taskmaster.Process
 				}
 				else
 				{
-					info.State = ProcessHandlingState.Abandoned;
 					if (Trace && DebugProcesses) Logging.DebugMsg($"ProcessTriage no matching rule for: {info.Name} #{info.Id}");
+					info.State = HandlingState.Abandoned;
 				}
 
 				/*
@@ -2117,6 +2117,7 @@ namespace Taskmaster.Process
 			await Task.Delay(0).ConfigureAwait(false);
 
 			Log.Information($"[{info.Controller.FriendlyName}] {info.Name} #{info.Id} exited, resetting color (NOT REALLY, SORRY!).");
+			return;
 
 			var buffer = new StringBuilder(4096);
 
@@ -2153,8 +2154,6 @@ namespace Taskmaster.Process
 							{
 								ExclusiveLocks++;
 
-								if (DebugProcesses) Log.Debug($"<Exclusive> [{info.Controller.FriendlyName}] {info.Name} #{info.Id.ToString()} starting");
-
 								info.Process.Exited += (_, _ea) => EndExclusiveMode(info).ConfigureAwait(false);
 								info.Process.EnableRaisingEvents = true;
 								info.ExitWait = true;
@@ -2179,7 +2178,7 @@ namespace Taskmaster.Process
 					info.Process.Refresh();
 					if (info.Process.HasExited)
 					{
-						info.State = ProcessHandlingState.Exited;
+						info.State = HandlingState.Exited;
 						EndExclusiveMode(info);
 					}
 				}
@@ -2299,7 +2298,7 @@ namespace Taskmaster.Process
 			int ppid = 0;
 			string name = string.Empty;
 
-			var state = ProcessHandlingState.Invalid;
+			var state = HandlingState.Invalid;
 
 			try
 			{
@@ -2310,7 +2309,7 @@ namespace Taskmaster.Process
 			catch (Exception ex)
 			{
 				Logging.Stacktrace(ex);
-				state = ProcessHandlingState.Invalid;
+				state = HandlingState.Invalid;
 				return;
 			}
 			finally
@@ -2334,7 +2333,7 @@ namespace Taskmaster.Process
 			DateTime creation = DateTime.MinValue;
 			TimeSpan wmidelay = TimeSpan.Zero;
 
-			ProcessHandlingState state = ProcessHandlingState.Invalid;
+			HandlingState state = HandlingState.Invalid;
 
 			await Task.Delay(0).ConfigureAwait(false);
 			if (cts.IsCancellationRequested) return;
@@ -2386,7 +2385,7 @@ namespace Taskmaster.Process
 				catch (Exception ex)
 				{
 					Logging.Stacktrace(ex);
-					state = ProcessHandlingState.Invalid;
+					state = HandlingState.Invalid;
 					return;
 				}
 				finally
@@ -2422,7 +2421,7 @@ namespace Taskmaster.Process
 						{
 							// already exited?
 							if (DebugProcesses) Log.Error("<Process> Failed to retrieve name of process #" + pid + "; Process likely already gone.");
-							state = ProcessHandlingState.Invalid;
+							state = HandlingState.Invalid;
 							proc?.Dispose();
 							return;
 						}
@@ -2450,7 +2449,7 @@ namespace Taskmaster.Process
 
 					if (Trace) Log.Verbose($"Caught: {info.Name} #{info.Id} at: {info.Path}");
 
-					state = info.State = ProcessHandlingState.Triage;
+					state = info.State = HandlingState.Triage;
 
 					await ProcessTriage(info).ConfigureAwait(false);
 				}
@@ -2462,14 +2461,14 @@ namespace Taskmaster.Process
 			}
 			catch (ArgumentException)
 			{
-				state = ProcessHandlingState.Exited;
+				state = HandlingState.Exited;
 				if (info != null) info.State = state;
 				if (ShowInaction && DebugProcesses) Log.Verbose("Caught #" + pid + " but it vanished.");
 				return;
 			}
 			catch (Exception ex)
 			{
-				state = info.State = ProcessHandlingState.Invalid;
+				state = info.State = HandlingState.Invalid;
 				Logging.Stacktrace(ex);
 				Log.Error("Unregistering new instance triage");
 				StopWMIEventWatcher();
@@ -2646,7 +2645,7 @@ namespace Taskmaster.Process
 						info.Process.WaitForExit(20);
 						if (info.Process.HasExited)
 						{
-							info.State = ProcessHandlingState.Exited;
+							info.State = HandlingState.Exited;
 							triggerList.Push(info);
 						}
 					}
@@ -2679,7 +2678,7 @@ namespace Taskmaster.Process
 							info.Process.Refresh();
 							if (info.Process.HasExited)
 							{
-								info.State = ProcessHandlingState.Exited;
+								info.State = HandlingState.Exited;
 								EndExclusiveMode(info);
 							}
 						}

@@ -207,7 +207,7 @@ namespace Taskmaster.Process
 			return false;
 		}
 
-		public static int ApplyAffinityStrategy(int source, int target, ProcessAffinityStrategy strategy)
+		public static int ApplyAffinityStrategy(int source, int target, AffinityStrategy strategy)
 		{
 			int newAffinityMask = target;
 			StringBuilder sbs = null;
@@ -219,7 +219,7 @@ namespace Taskmaster.Process
 			}
 
 			// Don't increase the number of cores
-			if (strategy == ProcessAffinityStrategy.Limit)
+			if (strategy == AffinityStrategy.Limit)
 			{
 				sbs?.Append(" Cores(").Append(Bit.Count(source)).Append("->").Append(Bit.Count(target)).Append(")");
 
@@ -237,7 +237,7 @@ namespace Taskmaster.Process
 					}
 				}
 			}
-			else if (strategy == ProcessAffinityStrategy.Scatter)
+			else if (strategy == AffinityStrategy.Scatter)
 			{
 				throw new NotImplementedException("Affinitry scatter strategy not implemented.");
 
@@ -360,7 +360,7 @@ namespace Taskmaster.Process
 					Process = process,
 					Controller = controller,
 					Name = string.IsNullOrEmpty(name) ? process.ProcessName : name,
-					State = ProcessHandlingState.Triage,
+					State = HandlingState.Triage,
 					Path = path
 				};
 

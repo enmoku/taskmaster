@@ -25,6 +25,7 @@
 // THE SOFTWARE.
 
 using System.Diagnostics;
+using System.Text;
 using System.Threading;
 using MKAh;
 
@@ -71,5 +72,11 @@ namespace Taskmaster
 				ProcessPriorityClass.Idle => ThreadPriority.Lowest,
 				_ => ThreadPriority.Normal,
 			};
+	}
+
+	public static partial class TypeExtensions
+	{
+		public static StringBuilder Append(this StringBuilder sbs, Process.ProcessEx info)
+			=> sbs.Append(info.Name).Append(" #").Append(info.Id);
 	}
 }

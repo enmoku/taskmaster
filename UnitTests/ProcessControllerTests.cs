@@ -1,6 +1,4 @@
 ﻿using System;
-using Taskmaster;
-using MKAh;
 using MKAh.Logic;
 using NUnit.Framework;
 
@@ -69,7 +67,7 @@ namespace Processes
 			Console.WriteLine("Target: " + testTarget);
 
 			int testProduct = Taskmaster.Process.Utility.ApplyAffinityStrategy(
-				testSource, testTarget, ProcessAffinityStrategy.Limit);
+				testSource, testTarget, Taskmaster.Process.AffinityStrategy.Limit);
 
 			Assert.AreEqual(Bit.Count(testSource), Bit.Count(testProduct));
 		}

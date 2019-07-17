@@ -29,9 +29,11 @@ using System.ComponentModel; // Win32Exception
 using System.Diagnostics; // Process
 using System.Runtime.InteropServices; // Marshal
 
-namespace Taskmaster
+namespace Taskmaster.Process
 {
-	public enum ProcessHandlingState
+	using static Taskmaster;
+
+	public enum HandlingState
 	{
 		/// <summary>
 		/// New instance
@@ -99,7 +101,7 @@ namespace Taskmaster
 		Exited
 	}
 
-	public enum ProcessAffinityStrategy
+	public enum AffinityStrategy
 	{
 		None = 0,
 
@@ -129,7 +131,7 @@ namespace Taskmaster
 		BackgroundSideline = 5,
 	}
 
-	public enum ProcessPriorityStrategy
+	public enum PriorityStrategy
 	{
 		None = 0,
 		Increase = 1,
@@ -221,7 +223,7 @@ namespace Taskmaster
 		public static int ParentProcessId(int Id)
 		{
 			Debug.Assert(Id > -1);
-			NativeMethods.HANDLE ptr = null;
+			global::Taskmaster.NativeMethods.HANDLE ptr = null;
 			try
 			{
 				ptr = NativeMethods.CreateToolhelp32Snapshot(SnapshotFlags.Process, (uint)Id);
@@ -266,7 +268,7 @@ namespace Taskmaster
 		internal const int ERROR_NO_MORE_FILES = 0x12;
 
 		[DllImport("kernel32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
-		static internal extern HANDLE CreateToolhelp32Snapshot(SnapshotFlags dwFlags, uint th32ProcessID);
+		static internal extern global::Taskmaster.NativeMethods.HANDLE CreateToolhelp32Snapshot(SnapshotFlags dwFlags, uint th32ProcessID);
 
 		/// <summary>
 		/// Retrieves information about the first process encountered in a system snapshot.

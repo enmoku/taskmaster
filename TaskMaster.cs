@@ -421,7 +421,7 @@ namespace Taskmaster
 			{
 				try
 				{
-					Finalize();
+					Close();
 				}
 				catch (Exception ex)
 				{
@@ -494,13 +494,13 @@ namespace Taskmaster
 			{
 				try
 				{
-					Finalize();
+					Close();
 				}
 				catch { }
 			}
 		}
 
-		static void Finalize()
+		static void Close()
 		{
 			try
 			{

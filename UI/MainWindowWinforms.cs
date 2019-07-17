@@ -3127,15 +3127,15 @@ namespace Taskmaster.UI
 
 					switch (ea.Info.State)
 					{
-						case ProcessHandlingState.Paused:
+						case Process.HandlingState.Paused:
 							break;
-						case ProcessHandlingState.Resumed:
+						case Process.HandlingState.Resumed:
 							// move item to top
 							//exitwaitlist.Items.Remove(li);
 							//exitwaitlist.Items.Insert(0, li);
 							//li.EnsureVisible();
 							break;
-						case ProcessHandlingState.Exited:
+						case Process.HandlingState.Exited:
 							ExitWaitList?.Items.Remove(li);
 							ExitWaitlistMap?.TryRemove(ea.Info.Id, out _);
 							break;

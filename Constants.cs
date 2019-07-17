@@ -100,6 +100,8 @@ namespace Taskmaster
 			public const string Logging = "Logging";
 
 			public const string LoaderTracking = "Loader tracking";
+
+			public const string Loaders = "Loaders";
 		}
 	}
 }

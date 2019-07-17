@@ -219,14 +219,14 @@ namespace Taskmaster.Process
 
 		public IOPriority IOPriority = IOPriority.Ignore; // Win7 only?
 
-		public ProcessPriorityStrategy PriorityStrategy { get; set; } = ProcessPriorityStrategy.None;
+		public PriorityStrategy PriorityStrategy { get; set; } = PriorityStrategy.None;
 
 		/// <summary>
 		/// CPU core affinity.
 		/// </summary>
 		public int AffinityMask { get; set; } = -1;
 
-		public ProcessAffinityStrategy AffinityStrategy = ProcessAffinityStrategy.None;
+		public AffinityStrategy AffinityStrategy = AffinityStrategy.None;
 		int ScatterOffset = 0;
 		int ScatterChunk = 1; // should default to Cores/4 or Range/2 at max, 1 at minimum.
 
@@ -284,7 +284,7 @@ namespace Taskmaster.Process
 			if (affinity >= 0)
 			{
 				AffinityMask = affinity;
-				AffinityStrategy = ProcessAffinityStrategy.Limit;
+				AffinityStrategy = AffinityStrategy.Limit;
 			}
 		}
 
@@ -507,7 +507,7 @@ namespace Taskmaster.Process
 
 			if (ActiveWait.TryGetValue(process.Id, out var info))
 			{
-				info.State = ProcessHandlingState.Exited;
+				info.State = HandlingState.Exited;
 				info.InBackground = false; // IRRELEVANT
 				info.ForegroundWait = false; // IRRELEVANT
 
@@ -539,7 +539,7 @@ namespace Taskmaster.Process
 					// Re-apply the controller?
 				}
 				else
-					info.State = ProcessHandlingState.Exited;
+					info.State = HandlingState.Exited;
 			}
 
 			if (!Resize.HasValue) ActiveWait.Clear();
@@ -816,7 +816,7 @@ namespace Taskmaster.Process
 					SetPower(info); // kinda hackish to call this here, but...
 			}
 
-			info.State = ProcessHandlingState.Paused;
+			info.State = HandlingState.Paused;
 
 			if (ShowProcessAdjusts && firsttime)
 			{
@@ -914,7 +914,7 @@ namespace Taskmaster.Process
 
 			info.InBackground = false;
 
-			info.State = ProcessHandlingState.Resumed;
+			info.State = HandlingState.Resumed;
 
 			if (DebugForeground && ShowProcessAdjusts)
 			{
@@ -1138,7 +1138,7 @@ namespace Taskmaster.Process
 		{
 			if (IgnoreList?.Any(item => item.Equals(info.Name, StringComparison.InvariantCultureIgnoreCase)) == true)
 			{
-				info.State = ProcessHandlingState.Abandoned;
+				info.State = HandlingState.Abandoned;
 				return true; // return ProcessState.Ignored;
 			}
 
@@ -1165,7 +1165,7 @@ namespace Taskmaster.Process
 				{
 					if (Trace && DebugForeground)
 						Log.Debug("<Foreground> " + FormatPathName(info) + " #" + info.Id + " in background, ignoring.");
-					info.State = ProcessHandlingState.Paused;
+					info.State = HandlingState.Paused;
 					return; // don't touch paused item
 				}
 
@@ -1192,7 +1192,7 @@ namespace Taskmaster.Process
 					{
 						if (Manager.DebugProcesses)
 							Log.Debug("[" + FriendlyName + "] " + info.Name + " #" + info.Id + " has already exited.");
-						info.State = ProcessHandlingState.Exited;
+						info.State = HandlingState.Exited;
 						return; // return ProcessState.Invalid;
 					}
 
@@ -1202,13 +1202,13 @@ namespace Taskmaster.Process
 				}
 				catch (InvalidOperationException) // Already exited
 				{
-					info.State = ProcessHandlingState.Exited;
+					info.State = HandlingState.Exited;
 					return;
 				}
 				catch (Win32Exception) // denied
 				{
 					// failure to retrieve exit code, this probably means we don't have sufficient rights. assume it is gone.
-					info.State = ProcessHandlingState.AccessDenied;
+					info.State = HandlingState.AccessDenied;
 					info.Restricted = true;
 					return;
 				}
@@ -1216,7 +1216,7 @@ namespace Taskmaster.Process
 				catch (Exception ex) // invalidoperation or notsupported, neither should happen
 				{
 					Logging.Stacktrace(ex);
-					info.State = ProcessHandlingState.Invalid;
+					info.State = HandlingState.Invalid;
 					return;
 				}
 
@@ -1250,7 +1250,7 @@ namespace Taskmaster.Process
 						{
 							if (ShowInaction && Manager.DebugProcesses)
 								Log.Debug($"[{FriendlyName}] {FormatPathName(info)} #{info.Id.ToString()} has been granted agency, ignoring.");
-							info.State = ProcessHandlingState.Abandoned;
+							info.State = HandlingState.Abandoned;
 							return;
 						}
 
@@ -1294,13 +1294,13 @@ namespace Taskmaster.Process
 
 							Statistics.TouchIgnore++;
 
-							info.State = ProcessHandlingState.Unmodified;
+							info.State = HandlingState.Unmodified;
 							return;
 						}
 						else if (expected)
 						{
 							// this potentially ignores power modification
-							info.State = ProcessHandlingState.Unmodified;
+							info.State = HandlingState.Unmodified;
 							return;
 						}
 
@@ -1527,7 +1527,7 @@ namespace Taskmaster.Process
 
 				if (modified)
 				{
-					info.State = ProcessHandlingState.Modified;
+					info.State = HandlingState.Modified;
 					Modified?.Invoke(this, ev);
 
 					if (Manager.IgnoreRecentlyModified.HasValue)
@@ -1559,12 +1559,12 @@ namespace Taskmaster.Process
 					await InternalRefresh(now).ConfigureAwait(false);
 				}
 				else
-					info.State = ProcessHandlingState.Finished;
+					info.State = HandlingState.Finished;
 			}
-			catch (OutOfMemoryException) { info.State = ProcessHandlingState.Abandoned; throw; }
+			catch (OutOfMemoryException) { info.State = HandlingState.Abandoned; throw; }
 			catch (Exception ex)
 			{
-				info.State = ProcessHandlingState.Invalid;
+				info.State = HandlingState.Invalid;
 				Logging.Stacktrace(ex);
 			}
 		}
@@ -1754,7 +1754,7 @@ namespace Taskmaster.Process
 
 					// TODO: Add option to monitor the app and save the new size so relaunching the app keeps the size.
 
-					NativeMethods.MoveWindow(info.Handle, newsize.Left, newsize.Top, newsize.Width, newsize.Height, true);
+					global::Taskmaster.NativeMethods.MoveWindow(info.Handle, newsize.Left, newsize.Top, newsize.Width, newsize.Height, true);
 
 					if (ResizeStrategy != WindowResizeStrategy.None)
 					{
@@ -1801,7 +1801,7 @@ namespace Taskmaster.Process
 					info.Process.Refresh();
 					if (info.Process.HasExited && info.Resize)
 					{
-						info.State = ProcessHandlingState.Exited;
+						info.State = HandlingState.Exited;
 						ProcessEndResize(info, oldrect, re);
 					}
 				}
@@ -1904,8 +1904,8 @@ namespace Taskmaster.Process
 				info.Process.Refresh();
 				if (info.Process.HasExited)
 				{
-					info.State = ProcessHandlingState.Exited;
 					if (Trace) Log.Verbose($"[{FriendlyName}] {info.Name} #{info.Id} is gone yo.");
+					info.State = HandlingState.Exited;
 					return;
 				}
 
@@ -1918,13 +1918,13 @@ namespace Taskmaster.Process
 			}
 			catch (InvalidOperationException) // exited
 			{
-				info.State = ProcessHandlingState.Exited;
+				info.State = HandlingState.Exited;
 			}
 			catch (Exception ex)
 			{
 				Log.Warning($"[{FriendlyName}] {info.Name} #{info.Id} – something bad happened.");
 				Logging.Stacktrace(ex);
-				info.State = ProcessHandlingState.Abandoned;
+				info.State = HandlingState.Abandoned;
 				//throw; // would throw but this is async function
 			}
 		}

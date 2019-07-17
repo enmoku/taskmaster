@@ -27,6 +27,7 @@
 using System;
 using System.Diagnostics;
 using System.Linq;
+using System.Text;
 
 namespace Taskmaster.Process
 {
@@ -34,7 +35,7 @@ namespace Taskmaster.Process
 	{
 		public ProcessEx()
 		{
-			Loaders = new Lazy<LoaderInfo>(() => new LoaderInfo(Id, Name));
+			Loaders = new Lazy<LoaderInfo>(() => new LoaderInfo(Id, Name), false);
 		}
 
 		public bool Restricted { get; set; } = false;
@@ -88,7 +89,6 @@ namespace Taskmaster.Process
 		public bool PriorityProtected { get; set; } = false;
 		public bool AffinityProtected { get; set; } = false;
 
-
 		public bool ExitWait { get; set; } = false;
 
 		/// <summary>
@@ -123,9 +123,9 @@ namespace Taskmaster.Process
 
 		public DateTimeOffset Modified { get; set; } = DateTimeOffset.MinValue;
 
-		internal ProcessHandlingState _state { get; set; } = ProcessHandlingState.Invalid;
+		internal HandlingState _state { get; set; } = HandlingState.Invalid;
 
-		public ProcessHandlingState State
+		public HandlingState State
 		{
 			get => _state;
 			set
@@ -134,17 +134,17 @@ namespace Taskmaster.Process
 
 				switch (value)
 				{
-					case ProcessHandlingState.Exited:
+					case HandlingState.Exited:
 						Exited = true;
 						goto handled;
-					case ProcessHandlingState.Modified:
+					case HandlingState.Modified:
 						Modified = DateTimeOffset.UtcNow;
 						goto handled;
-					case ProcessHandlingState.Unmodified:
-					case ProcessHandlingState.AccessDenied:
-					case ProcessHandlingState.Finished:
-					case ProcessHandlingState.Abandoned:
-					case ProcessHandlingState.Invalid:
+					case HandlingState.Unmodified:
+					case HandlingState.AccessDenied:
+					case HandlingState.Finished:
+					case HandlingState.Abandoned:
+					case HandlingState.Invalid:
 					handled:
 						Handled = true;
 						Timer?.Stop();
@@ -164,6 +164,16 @@ namespace Taskmaster.Process
 		public DateTime Found { get; set; } = DateTime.UtcNow;
 
 		public Lazy<LoaderInfo> Loaders;
+
+		/// <summary>
+		/// Display: <code>Name #PID</code>
+		/// </summary>
+		public override string ToString() => Name + " #" + Id;
+
+		/// <summary>
+		/// Same as ToString() but prepends controller name.
+		/// </summary>
+		public string ToFullString() => "[" + Controller.FriendlyName + "]" + ToString();
 	}
 
 	public class LoaderInfo : IDisposable
@@ -176,6 +186,7 @@ namespace Taskmaster.Process
 		string PFCInstance;
 
 		public float CPU { get; private set; } = float.NaN;
+
 		public float IO { get; private set; } = float.NaN;
 
 		public LoaderInfo(int pid, string instance)
