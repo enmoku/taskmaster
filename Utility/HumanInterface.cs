@@ -117,6 +117,7 @@ namespace Taskmaster
 			double div = multiplier[scale];
 
 			double num = bytes / div;
+			int decimalSpot = div == 1 ? 0 : ((num < 10) ? 3 : ((num > 100) ? 1 : 2));
 
 			return string.Format(
 				DecimalFormatting[decimalSpot],
