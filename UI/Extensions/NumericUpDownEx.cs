@@ -51,6 +51,7 @@ namespace Taskmaster.UI.Extensions
 				Value = Math.Min(Math.Max(tval, Minimum), Maximum);
 			else
 			{
+				UpdateEditText(); // reset text
 				//throw new NotImplementedException();
 				// HACK: Just ignore... fuck if there's reasonable default for garbled user data
 			}
