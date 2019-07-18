@@ -62,7 +62,7 @@ namespace Taskmaster.Process
 
 			if (info.Restricted)
 			{
-				if (Manager.DebugProcesses) Logging.DebugMsg($"<Process> {info.Name} #{info.Id} RESTRICTED - cancelling Analyze");
+				if (Manager.DebugProcesses) Logging.DebugMsg($"<Process> {info} RESTRICTED - cancelling Analyze");
 				return;
 			}
 
@@ -73,7 +73,7 @@ namespace Taskmaster.Process
 			// TODO: Prevent bloating somehow.
 			if (!cache.TryAdd(hash, 0)) return; // already there
 
-			Log.Debug($"<Analysis> {info.Name} #{info.Id} scheduled");
+			Log.Debug($"<Analysis> {info} scheduled");
 
 			var AllLinkedModules = new ConcurrentDictionary<string, ModuleInfo>();
 			var ImportantModules = new ConcurrentDictionary<string, ModuleInfo>();
@@ -97,13 +97,13 @@ namespace Taskmaster.Process
 
 				if (info.Process.HasExited)
 				{
-					Log.Debug($"<Analysis> {info.Name} #{info.Id} cancelled; already gone");
 					info.State = HandlingState.Exited;
+					Log.Debug($"<Analysis> {info} cancelled; already gone");
 					cache.TryRemove(hash, out _);
 					return;
 				}
 
-				if (Trace) Logging.DebugMsg("Analyzing:" + $"{info.Name} #{info.Id}");
+				if (Trace) Logging.DebugMsg("Analyzing:" + info.ToString());
 
 				modFile = info.Process.MainModule.FileName;
 				version = info.Process.MainModule.FileVersionInfo;
@@ -173,14 +173,14 @@ namespace Taskmaster.Process
 			{
 				// already exited
 				cache.TryRemove(hash, out _);
-				Log.Debug($"[{info.Controller.FriendlyName}] {info.Name} #{info.Id} exited before analysis could begin.");
+				Log.Debug($"{info.ToFullString()} exited before analysis could begin.");
 			}
 			catch (Win32Exception)
 			{
 				info.Restricted = true;
 				// access denied
 				cache.TryRemove(hash, out _);
-				Log.Debug($"[{info.Controller.FriendlyName}] {info.Name} #{info.Id} was denied access for analysis.");
+				Log.Debug($"{info.ToFullString()} was denied access for analysis.");
 			}
 			catch (OutOfMemoryException) { throw; }
 			catch (Exception ex)

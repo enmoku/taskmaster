@@ -110,7 +110,7 @@ namespace Taskmaster.Process
 
 			if (info.Restricted)
 			{
-				if (Manager.DebugProcesses) Logging.DebugMsg($"<Process> {info.Name} #{info.Id} RESTRICTED - cancelling FindPathExtended");
+				if (Manager.DebugProcesses) Logging.DebugMsg($"<Process> {info} RESTRICTED - cancelling FindPathExtended");
 				return false;
 			}
 
@@ -165,7 +165,7 @@ namespace Taskmaster.Process
 
 			if (info.Restricted)
 			{
-				if (Manager.DebugProcesses) Logging.DebugMsg($"<Process> {info.Name} #{info.Id} RESTRICTED - cancelling GetPathViaC");
+				if (Manager.DebugProcesses) Logging.DebugMsg($"<Process> {info} RESTRICTED - cancelling GetPathViaC");
 				return false;
 			}
 
@@ -190,7 +190,7 @@ namespace Taskmaster.Process
 				info.Restricted = true;
 
 				if (Process.Manager.DebugProcesses)
-					Logging.DebugMsg("GetModuleFileNameEx - Access Denied - " + $"{info.Name} #{info.Id}");
+					Logging.DebugMsg("GetModuleFileNameEx - Access Denied - " + info.ToString());
 			}
 			catch (InvalidOperationException) { }// Already exited
 			catch (Exception ex)

@@ -715,7 +715,7 @@ namespace Taskmaster.Process
 
 					try
 					{
-						if (Trace && DebugProcesses) Logging.DebugMsg($"Re-using old ProcessEx: {info.Name} #{info.Id}");
+						if (Trace && DebugProcesses) Logging.DebugMsg("<Process:Scan> Re-using old ProcessEx: " + info);
 						info.Process.Refresh();
 						if (info.Process.HasExited) // Stale, for some reason still kept
 						{
@@ -1504,7 +1504,7 @@ namespace Taskmaster.Process
 			try
 			{
 				if (DebugForeground || DebugPower)
-					Log.Debug($"[{info.Controller.FriendlyName}] {info.Name} #{info.Id} exited [Power: {info.PowerWait}, Active: {info.ForegroundWait}]");
+					Log.Debug(info.ToFullString() + " exited [Power: " + info.PowerWait + ", Active: " + info.ForegroundWait + "]");
 
 				info.ForegroundWait = false;
 
@@ -1653,7 +1653,7 @@ namespace Taskmaster.Process
 					if (info.ForegroundWait)
 					{
 						var prc = info.Controller;
-						if (Trace && DebugForeground) Log.Debug($"[{prc.FriendlyName}] {info.Name} #{info.Id} on foreground!");
+						if (Trace && DebugForeground) Log.Debug(info.ToFullString() + " on foreground!");
 
 						if (prc.Foreground != ForegroundMode.Ignore) prc.SetForeground(info);
 
@@ -1949,7 +1949,7 @@ namespace Taskmaster.Process
 			bool keyadded = WaitForExit(info);
 
 			if (Trace && DebugForeground)
-				Log.Debug($"[{prc.FriendlyName}] {info.Name} #{info.Id} {(!keyadded ? "already in" : "added to")} foreground watchlist.");
+				Log.Debug(info.ToFullString() + " " + (!keyadded ? "already in" : "added to") + " foreground watchlist.");
 
 			ProcessStateChange?.Invoke(this, new ProcessModificationEventArgs(info));
 		}
@@ -1971,7 +1971,7 @@ namespace Taskmaster.Process
 			{
 				var time = info.Process.StartTime.ToUniversalTime();
 				var ago = time.To(DateTime.UtcNow);
-				if (Trace) Logging.DebugMsg($"<Process> {info.Name} #{info.Id} – started: {info.Process.StartTime:g} ({ago:g} ago)");
+				if (Trace) Logging.DebugMsg($"<Process:Triage> {info} – started: {info.Process.StartTime:g} ({ago:g} ago)");
 
 				// Add to tracking if it's not already there, but only if it has been running for X minutes
 				if (!info.ExitWait && ago.TotalSeconds >= MinRunningTimeForTracking) AddRunning(info);
@@ -1979,7 +1979,7 @@ namespace Taskmaster.Process
 			catch // no access to startime
 			{
 				info.Restricted = true;
-				if (DebugProcesses) Logging.DebugMsg($"<Process> {info.Name} #{info.Id} – NO ACCESS");
+				if (DebugProcesses) Logging.DebugMsg("<Process> " + info + " – NO ACCESS");
 			}
 
 			try
@@ -1990,7 +1990,7 @@ namespace Taskmaster.Process
 
 				if (string.IsNullOrEmpty(info.Name))
 				{
-					Log.Warning($"#{info.Id.ToString()} details unaccessible, ignored.");
+					Log.Warning($"<Process:Triage> #{info.Id.ToString()} details unaccessible, ignored.");
 					info.State = HandlingState.AccessDenied;
 					return; // ProcessState.AccessDenied;
 				}
@@ -2020,8 +2020,8 @@ namespace Taskmaster.Process
 
 					if (!old && prc.LogStartAndExit)
 					{
-						Log.Information($"[{prc.FriendlyName}] {info.Name} #{info.Id} started.");
-						info.Process.Exited += (_, _ea) => Log.Information($"[{info.Controller.FriendlyName}] {info.Name} #{info.Id} exited.");
+						Log.Information(info.ToFullString() + " started.");
+						info.Process.Exited += (_, _ea) => Log.Information(info.ToFullString() + " exited.");
 						info.Process.EnableRaisingEvents = true;
 						info.ExitWait = true;
 						// TOOD: What if the process exited just before we enabled raising for the events?
@@ -2032,17 +2032,17 @@ namespace Taskmaster.Process
 						if (prc.Ignored(info))
 						{
 							if (ShowInaction && Manager.DebugProcesses)
-								Log.Debug($"[{prc.FriendlyName}] {info.Name} #{info.Id.ToString()} ignored due to user defined rule.");
+								Log.Debug(info.ToFullString() + " ignored due to user defined rule.");
 							return;
 						}
-
-						if (Trace && DebugProcesses) Logging.DebugMsg($"Trying to modify: {info.Name} #{info.Id}");
 
 						if (info.Restricted)
 						{
-							if (DebugProcesses) Logging.DebugMsg($"<Process> {info.Name} #{info.Id} RESTRICTED - cancelling at ProcessTriage");
+							if (DebugProcesses) Logging.DebugMsg("<Process:Triage> " + info + " RESTRICTED; Cancelling");
 							return;
 						}
+
+						if (Trace && DebugProcesses) Logging.DebugMsg("<Process:Triage> Trying to modify: " + info);
 
 						await prc.Modify(info).ConfigureAwait(false);
 
@@ -2061,7 +2061,7 @@ namespace Taskmaster.Process
 
 						if (info.State == HandlingState.Processing)
 						{
-							Logging.DebugMsg($"[{info.Controller.FriendlyName}] {info.Name} #{info.Id} correcting state to Finished");
+							Logging.DebugMsg(info.ToFullString() + " correcting state to Finished");
 							info.State = HandlingState.Finished;
 						}
 					}
@@ -2077,8 +2077,8 @@ namespace Taskmaster.Process
 				}
 				else
 				{
-					if (Trace && DebugProcesses) Logging.DebugMsg($"ProcessTriage no matching rule for: {info.Name} #{info.Id}");
 					info.State = HandlingState.Abandoned;
+					if (Trace && DebugProcesses) Logging.DebugMsg("<Process:Triage> " + info + " has no matching rule.");
 				}
 
 				/*
@@ -2119,7 +2119,7 @@ namespace Taskmaster.Process
 		{
 			await Task.Delay(0).ConfigureAwait(false);
 
-			Log.Information($"[{info.Controller.FriendlyName}] {info.Name} #{info.Id} exited, resetting color (NOT REALLY, SORRY!).");
+			Log.Information(info.ToFullString() + " exited, resetting color (NOT REALLY, SORRY!).");
 			return;
 
 			var buffer = new StringBuilder(4096);
@@ -2140,7 +2140,7 @@ namespace Taskmaster.Process
 
 			lock (info) if (info.Exclusive) return;
 
-			if (DebugProcesses) Log.Debug($"[{info.Controller.FriendlyName}] {info.Name} #{info.Id} Exclusive mode initiating.");
+			if (DebugProcesses) Log.Debug(info.ToFullString() + " Exclusive mode initiating.");
 
 			await Task.Delay(0).ConfigureAwait(false);
 
@@ -2214,7 +2214,7 @@ namespace Taskmaster.Process
 				{
 					ExclusiveLocks--;
 
-					if (DebugProcesses) Log.Debug($"<Exclusive> [{info.Controller.FriendlyName}] {info.Name} #{info.Id.ToString()} ending");
+					if (DebugProcesses) Log.Debug(info.ToFullString() + " Exclusive mode ending.");
 					if (ExclusiveLocks == 0)
 					{
 						if (DebugProcesses) Log.Debug("<Exclusive> Ended for all, restarting services.");
@@ -2224,7 +2224,7 @@ namespace Taskmaster.Process
 						}
 						catch (InvalidOperationException)
 						{
-							Log.Warning($"<Exclusive> Failure to restart WUA after {info.Name} #{info.Id} exited.");
+							Log.Warning("<Exclusive> Failure to restart services after " + info + " exited.");
 						}
 					}
 					else
@@ -2450,7 +2450,7 @@ namespace Taskmaster.Process
 
 					if (cts.IsCancellationRequested) throw new ObjectDisposedException(nameof(Manager), "NewInstanceTriagePhaseTwo called when ProcessManager was already disposed");
 
-					if (Trace) Log.Verbose($"Caught: {info.Name} #{info.Id} at: {info.Path}");
+					if (Trace) Log.Verbose("Caught: " + info + " at: " + info.Path);
 
 					state = info.State = HandlingState.Triage;
 
