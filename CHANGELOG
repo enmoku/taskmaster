@@ -9,6 +9,7 @@ Comprehensive changes can be found in Git change history:
 	Changed: Processing counter is now only updated on UI update tick and not on every single change.
 		Should impact CPU usage of process scan events.
 	Fixed: NumericUpDown now resets value if given garbled data instead of ignoring it.
+	Added: Health monitor check frequency and memory free threshold now configurable in UI.
 ### 2019-07-12
 	Added: Experimental system loader analysis. No UI yet.
 	Fixed: Rare weirdness with watchlist.
