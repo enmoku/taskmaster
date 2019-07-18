@@ -91,6 +91,8 @@ namespace Taskmaster.Process
 
 		async Task StartLoadAnalysis(ProcessEx info)
 		{
+			await Task.Delay(0).ConfigureAwait(false);
+
 			LoadInfo load = null;
 			try
 			{
@@ -747,7 +749,7 @@ namespace Taskmaster.Process
 
 					ProcessTriage(info, old: true).ConfigureAwait(false);
 
-					if (doPaging) PageToDisk(info);
+					if (doPaging) PageToDisk(info).ConfigureAwait(false);
 
 					HandlingStateChange?.Invoke(this, new HandlingStateChangeEventArgs(info));
 
@@ -2165,7 +2167,7 @@ namespace Taskmaster.Process
 					if (info.Process.HasExited)
 					{
 						info.State = HandlingState.Exited;
-						EndExclusiveMode(info);
+						await EndExclusiveMode(info).ConfigureAwait(false);
 					}
 				}
 			}
@@ -2665,7 +2667,7 @@ namespace Taskmaster.Process
 							if (info.Process.HasExited)
 							{
 								info.State = HandlingState.Exited;
-								EndExclusiveMode(info);
+								EndExclusiveMode(info).ConfigureAwait(false);
 							}
 						}
 						catch { }

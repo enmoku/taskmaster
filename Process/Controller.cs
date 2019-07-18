@@ -1818,6 +1818,8 @@ namespace Taskmaster.Process
 
 		async Task MonitorWindowResize(ProcessEx info, NativeMethods.RECT rect, System.Drawing.Rectangle oldrect, System.Threading.ManualResetEvent re)
 		{
+			await Task.Delay(0).ConfigureAwait(false);
+
 			if (DebugResize) Log.Debug("<Resize> Starting monitoring " + info);
 			try
 			{
