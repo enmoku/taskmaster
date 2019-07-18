@@ -70,22 +70,6 @@ namespace Taskmaster.UI
 			ShowInTaskbar = true;
 
 			#region Load Configuration
-			// DEPRECATED
-			using var corecfg = Taskmaster.Config.Load(CoreConfigFilename);
-			if (corecfg.Config.TryGet(HumanReadable.Generic.QualityOfLife, out var qolsec))
-			{
-				if (qolsec.TryGet("Show in taskbar", out var sitb))
-				{
-					ShowInTaskbar = sitb.Bool;
-					qolsec.Remove(sitb);
-				}
-				if (qolsec.TryGet("Auto-open menus", out var aomn))
-				{
-					AutoOpenMenus = aomn.Bool;
-					qolsec.Remove(aomn);
-				}
-			}
-
 			using var uicfg = Taskmaster.Config.Load(UIConfigFilename);
 			var qol = uicfg.Config[HumanReadable.Generic.QualityOfLife];
 			ShowInTaskbar = qol.GetOrSet("Show in taskbar", ShowInTaskbar).Bool;

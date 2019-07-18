@@ -78,13 +78,6 @@ namespace Taskmaster.UI
 			if (upgradeInCap.HasValue) volsec[Audio.Constants.InputThreshold].Int = upgradeInCap.Value;
 			VolumeInputCap = volsec.GetOrSet(Audio.Constants.InputThreshold, 100).Int;
 
-			// DEPRECATED
-			volsec.TryRemove("Cap");
-			volsec.TryRemove("Output");
-			volsec.TryRemove("Output cap");
-			volsec.TryRemove("Input");
-			volsec.TryRemove("Input cap");
-
 			#region Build UI
 			FormBorderStyle = FormBorderStyle.FixedDialog;
 			AutoSizeMode = AutoSizeMode.GrowAndShrink;

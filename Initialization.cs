@@ -393,9 +393,6 @@ namespace Taskmaster
 				.InitComment("Enable paging of apps as per their configuration.")
 				.Bool;
 
-			//
-			cfg.Get(Constants.Maintenance)?.TryRemove("Cleanup interval"); // DEPRECATRED
-
 			MonitorCleanShutdown();
 
 			Log.Information("<Core> Verbosity: " + MemoryLog.MemorySink.LevelSwitch.MinimumLevel.ToString());

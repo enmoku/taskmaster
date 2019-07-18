@@ -372,7 +372,6 @@ namespace Taskmaster.UI.Config
 				perf[Constants.ScanFrequency].Int = (ScanOrWMI.SelectedIndex == 1 ? 0 : freq);
 				perf[Constants.WMIWatcher].Bool = (ScanOrWMI.SelectedIndex != 0);
 				perf[Constants.WMIDelay].Int = ((int)wmipolling.Value);
-				perf.TryRemove("WMI queries"); // deprecated long ago
 
 				var qol = cfg.Config[Constants.QualityOfLife];
 				qol["Register global hotkeys"].Bool = hotkeys.Checked;

@@ -1014,17 +1014,8 @@ namespace Taskmaster.Process
 			DebugLoaders = dbgsec.Get("Loaders")?.Bool ?? false;
 
 			var logsec = corecfg.Config[Taskmaster.Constants.Logging];
-			if (logsec.TryGet("Show unmodified portions", out var dumodport))
-			{
-				ShowUnmodifiedPortions = dumodport.Bool;
-				logsec.Remove(dumodport); // DEPRECATED
-			}
+
 			ShowUnmodifiedPortions = logsec.GetOrSet("Unmodified portions", ShowUnmodifiedPortions).Bool;
-			if (logsec.TryGet("Show only final state", out var donfinal))
-			{
-				ShowOnlyFinalState = donfinal.Bool;
-				logsec.Remove(donfinal); // DEPRECATED
-			}
 			ShowOnlyFinalState = logsec.GetOrSet("Final state only", ShowOnlyFinalState).Bool;
 			ShowForegroundTransitions = logsec.GetOrSet("Foreground transitions", ShowForegroundTransitions).Bool;
 
@@ -1089,15 +1080,7 @@ namespace Taskmaster.Process
 
 				var rulePath = section.Get(HumanReadable.System.Process.Path);
 
-				Ini.Setting ruleExec = null;
-				if (section.TryGet("Image", out var image)) // DEPRECATED; UPGRADE TO MULTIEXE
-				{
-					ruleExec = section[Constants.Executables];
-					ruleExec.StringArray = new string[] { image.String };
-					section.Remove(image);
-				}
-				else
-					ruleExec = section.Get(Constants.Executables);
+				Ini.Setting ruleExec = section.Get(Constants.Executables);
 
 				if (ruleExec is null && rulePath is null)
 				{
