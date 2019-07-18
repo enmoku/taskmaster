@@ -5,6 +5,8 @@ Comprehensive changes can be found in Git change history:
 ## [0.13...]
 ### 2019-07-18
 	Internal: Simplified/unified some parts of the code to reduce repeating.
+	Changed: Processing counter is now only updated on UI update tick and not on every single change.
+		Should impact CPU usage of process scan events.
 ### 2019-07-12
 	Added: Experimental system loader analysis. No UI yet.
 	Fixed: Rare weirdness with watchlist.

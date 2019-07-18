@@ -622,7 +622,7 @@ namespace Taskmaster.UI
 			processmanager = manager;
 			processmanager.OnDisposed += (_, _ea) => processmanager = null;
 
-			processmanager.HandlingCounter += ProcessNewInstanceCount;
+			//processmanager.HandlingCounter += ProcessNewInstanceCount;
 			processmanager.ProcessStateChange += ExitWaitListHandler;
 			if (DebugCache) PathCacheUpdate(null, EventArgs.Empty);
 
@@ -1996,6 +1996,7 @@ namespace Taskmaster.UI
 
 		void UpdateTrackingCounter(object sender, EventArgs e)
 		{
+			processingcount.Text = processmanager?.Handling.ToString() ?? "n/a";
 			trackingcount.Text = processmanager?.RunningCount.ToString() ?? "n/a";
 		}
 
@@ -4169,7 +4170,7 @@ namespace Taskmaster.UI
 					if (processmanager != null)
 					{
 						processmanager.ProcessModified -= ProcessTouchEvent;
-						processmanager.HandlingCounter -= ProcessNewInstanceCount;
+						//processmanager.HandlingCounter -= ProcessNewInstanceCount;
 						processmanager.ProcessStateChange -= ExitWaitListHandler;
 						processmanager.HandlingStateChange -= ProcessHandlingStateChangeEvent;
 						processmanager = null;
