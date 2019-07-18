@@ -2247,7 +2247,7 @@ namespace Taskmaster.Process
 			ExclusiveEnabled = false;
 		}
 
-		int Handling { get; set; } = 0; // this isn't used for much...
+		public int Handling { get; private set; } = 0; // this isn't used for much...
 
 		void SignalProcessHandled(int adjust)
 		{
