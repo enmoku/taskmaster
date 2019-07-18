@@ -48,6 +48,7 @@ namespace Taskmaster.Process
 	{
 		public event EventHandler<WindowChangedArgs> ActiveChanged;
 
+		/// <summary>Manager for foreground/active process specific events.</summary>
 		/// <exception cref="InitFailure">Event hook creation failed.</exception>
 		public ForegroundManager()
 		{

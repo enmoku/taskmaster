@@ -97,6 +97,7 @@ namespace Taskmaster
 			}
 		}
 
+		/// <summary>Start or unpause service.</summary>
 		/// <exception cref="System.ComponentModel.Win32Exception"></exception>
 		/// <exception cref="InvalidOperationException"></exception>
 		public void Start(bool enable = false)

@@ -221,6 +221,7 @@ namespace Taskmaster.Process
 		/// <exception cref="Win32Exception">If system snapshot does not return anything.</exception>
 		public static int ParentProcessId(this System.Diagnostics.Process process) => ParentProcessId(process.Id);
 
+		/// <summary>Retrieves the ID of the parent process.</summary>
 		/// <exception cref="Win32Exception">If system snapshot does not return anything.</exception>
 		public static int ParentProcessId(int Id)
 		{
@@ -241,10 +242,17 @@ namespace Taskmaster.Process
 					throw new Win32Exception(errno);
 				}
 
+				// Is the loop necessary here?
+				int i = 0;
+				uint pid = Convert.ToUInt32(Id);
 				do
 				{
-					if (pe32.th32ProcessID == (uint)Id)
-						return (int)pe32.th32ParentProcessID;
+					i++;
+					if (pe32.th32ProcessID == pid)
+					{
+						if (Trace) Logging.DebugMsg("<Process:Parent> Found after " + i + " iterations");
+						return Convert.ToInt32(pe32.th32ParentProcessID);
+					}
 				}
 				while (NativeMethods.Process32Next(ptr, ref pe32));
 			}

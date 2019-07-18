@@ -2255,6 +2255,7 @@ namespace Taskmaster.Process
 			HandlingCounter?.Invoke(this, new ProcessingCountEventArgs(delta: adjust, total: Handling));
 		}
 
+		/*
 		/// <summary>
 		/// Triage process exit events.
 		/// </summary>
@@ -2275,7 +2276,9 @@ namespace Taskmaster.Process
 				return;
 			}
 		}
+		*/
 
+		/*
 		void StartTraceTriage(object sender, EventArrivedEventArgs e)
 		{
 			//var now = DateTimeOffset.UtcNow;
@@ -2286,8 +2289,6 @@ namespace Taskmaster.Process
 			int ppid = 0;
 			string name = string.Empty;
 
-			var state = HandlingState.Invalid;
-
 			try
 			{
 				pid = Convert.ToInt32(targetInstance.Properties["ProcessID"].Value as string);
@@ -2297,7 +2298,6 @@ namespace Taskmaster.Process
 			catch (Exception ex)
 			{
 				Logging.Stacktrace(ex);
-				state = HandlingState.Invalid;
 				return;
 			}
 			finally
@@ -2306,8 +2306,9 @@ namespace Taskmaster.Process
 				Statistics.WMIPolling++;
 			}
 
-			Log.Debug($"<Process> {name} #{pid}; parent #{ppid}");
+			if (DebugProcesses) Log.Debug($"<Process> {name} #{pid}; parent #{ppid}");
 		}
+		*/
 
 		// This needs to return faster
 		async void NewInstanceTriage(object _, EventArrivedEventArgs ea)
@@ -2478,9 +2479,9 @@ namespace Taskmaster.Process
 		*/
 
 		ManagementEventWatcher NewProcessWatcher = null;
-		ManagementEventWatcher ProcessEndWatcher = null;
+		//ManagementEventWatcher ProcessEndWatcher = null;
 
-		public const string WMIEventNamespace = @"\\.\root\CIMV2";
+		const string WMIEventNamespace = @"\\.\root\CIMV2";
 
 		void InitWMIEventWatcher()
 		{
@@ -2559,6 +2560,7 @@ namespace Taskmaster.Process
 				NewProcessWatcher = null;
 			}
 
+			/*
 			try
 			{
 				ProcessEndWatcher?.Dispose();
@@ -2568,6 +2570,7 @@ namespace Taskmaster.Process
 			{
 				ProcessEndWatcher = null;
 			}
+			*/
 		}
 
 		public const string WatchlistFile = "Watchlist.ini";
