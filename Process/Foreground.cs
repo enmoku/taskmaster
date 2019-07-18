@@ -51,11 +51,11 @@ namespace Taskmaster.Process
 		/// <exception cref="InitFailure">Event hook creation failed.</exception>
 		public ForegroundManager()
 		{
-			ForegroundEventDelegate = new NativeMethods.WinEventDelegate(WinEventProc);
+			ForegroundEventDelegate = new global::Taskmaster.NativeMethods.WinEventDelegate(WinEventProc);
 
 			// get current window, just in case it's something we're monitoring
-			var hwnd = NativeMethods.GetForegroundWindow();
-			NativeMethods.GetWindowThreadProcessId(hwnd, out int pid);
+			var hwnd = global::Taskmaster.NativeMethods.GetForegroundWindow();
+			global::Taskmaster.NativeMethods.GetWindowThreadProcessId(hwnd, out int pid);
 			lock (FGLock)
 			{
 				PreviousFG = -1;
@@ -124,7 +124,7 @@ namespace Taskmaster.Process
 		public TimeSpan Hysterisis { get; private set; } = TimeSpan.FromSeconds(0.5d);
 		public void SetHysterisis(TimeSpan time) => Hysterisis = time;
 
-		readonly NativeMethods.WinEventDelegate ForegroundEventDelegate;
+		readonly global::Taskmaster.NativeMethods.WinEventDelegate ForegroundEventDelegate;
 		IntPtr windowseventhook = IntPtr.Zero;
 
 		public int ForegroundId { get; private set; } = -1;
@@ -138,7 +138,7 @@ namespace Taskmaster.Process
 		public bool SetupEventHooks()
 		{
 			uint flags = NativeMethods.WINEVENT_OUTOFCONTEXT; // NativeMethods.WINEVENT_SKIPOWNPROCESS
-			windowseventhook = NativeMethods.SetWinEventHook(
+			windowseventhook = global::Taskmaster.NativeMethods.SetWinEventHook(
 				NativeMethods.EVENT_SYSTEM_FOREGROUND, NativeMethods.EVENT_SYSTEM_FOREGROUND,
 				IntPtr.Zero, ForegroundEventDelegate, 0, 0, flags);
 			// FIXME: Seems to stop functioning really easily? Possibly from other events being caught.
@@ -243,7 +243,7 @@ namespace Taskmaster.Process
 						bool acted = false;
 						if (HangMinimizeTick > 0 && hung > HangMinimizeTick && !Minimized)
 						{
-							bool rv = NativeMethods.ShowWindow(fgproc.Handle, 11); // 6 = minimize, 11 = force minimize
+							bool rv = global::Taskmaster.NativeMethods.ShowWindow(fgproc.Handle, 11); // 6 = minimize, 11 = force minimize
 							if (rv)
 							{
 								sbs.Append("Minimized");
@@ -377,7 +377,7 @@ namespace Taskmaster.Process
 			var buff = new StringBuilder(nChars);
 
 			// Window title, we don't care tbh.
-			if (NativeMethods.GetWindowText(hwnd, buff, nChars) > 0) // get title? not really useful for most things
+			if (global::Taskmaster.NativeMethods.GetWindowText(hwnd, buff, nChars) > 0) // get title? not really useful for most things
 				return buff.ToString();
 
 			return string.Empty;
@@ -430,7 +430,7 @@ namespace Taskmaster.Process
 			{
 				LastSwap = DateTimeOffset.UtcNow;
 
-				NativeMethods.GetWindowThreadProcessId(hwnd, out int pid);
+				global::Taskmaster.NativeMethods.GetWindowThreadProcessId(hwnd, out int pid);
 
 				bool fs = Fullscreen(hwnd);
 
@@ -509,7 +509,7 @@ namespace Taskmaster.Process
 		{
 			if (DisposedOrDisposing) return;
 
-			NativeMethods.UnhookWinEvent(windowseventhook); // Automatic
+			global::Taskmaster.NativeMethods.UnhookWinEvent(windowseventhook); // Automatic
 
 			if (disposing)
 			{
@@ -528,7 +528,7 @@ namespace Taskmaster.Process
 
 		public void ShutdownEvent(object sender, EventArgs ea)
 		{
-			NativeMethods.UnhookWinEvent(windowseventhook); // Automatic
+			global::Taskmaster.NativeMethods.UnhookWinEvent(windowseventhook); // Automatic
 			HangTimer?.Stop();
 		}
 	}

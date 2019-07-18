@@ -36,7 +36,7 @@ namespace Taskmaster.Process
 {
 	using static Taskmaster;
 
-	public static class Utility
+	public static partial class Utility
 	{
 		public static int CPUCount => Environment.ProcessorCount; // pointless
 
@@ -93,9 +93,7 @@ namespace Taskmaster.Process
 				Statistics.PathCacheCurrent = PathCache.Count;
 			}
 			else
-			{
 				info.Path = cob.Path;
-			}
 
 			return true;
 		}

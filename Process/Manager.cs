@@ -393,6 +393,9 @@ namespace Taskmaster.Process
 							  select prc)
 					.FirstOrDefault()) != null;
 
+		public bool GetProcess(int pid, out ProcessEx info)
+			=> (info = GetRunning(pid)) != null;
+
 		/// <summary>
 		/// Executable name to ProcessControl mapping.
 		/// </summary>
@@ -482,7 +485,7 @@ namespace Taskmaster.Process
 			if (disposed) throw new ObjectDisposedException(nameof(Manager), "FreeMemoryInterval called when ProcessManager was already disposed");
 
 			Memory.Update();
-			long b1 = Memory.FreeBytes;
+			long memorybefore = Memory.FreeBytes;
 			//var b1 = MemoryManager.Free;
 
 			try
@@ -497,10 +500,10 @@ namespace Taskmaster.Process
 				// TODO: Wait a little longer to allow OS to Actually page stuff. Might not matter?
 				//var b2 = MemoryManager.Free;
 				Memory.Update();
-				long b2 = Memory.FreeBytes;
+				long memoryafter = Memory.FreeBytes;
 
 				Log.Information("<Memory> Paging complete, observed memory change: " +
-					HumanInterface.ByteString((b2 - b1), true, iec: true));
+					HumanInterface.ByteString(memorybefore - memoryafter, true, iec: true));
 			}
 			catch (Exception ex) when (ex is AggregateException || ex is OperationCanceledException) { throw; }
 			catch (Exception ex)
@@ -1139,7 +1142,7 @@ namespace Taskmaster.Process
 					pmode = Power.Mode.Undefined;
 				}
 
-				prioR = ProcessHelpers.IntToNullablePriority(prio);
+				prioR = Utility.IntToNullablePriority(prio);
 				PriorityStrategy priostrat = PriorityStrategy.None;
 				if (prioR.HasValue)
 				{
@@ -1153,7 +1156,7 @@ namespace Taskmaster.Process
 
 				int baff = section.Get(Constants.BackgroundAffinity)?.Int ?? -1;
 				int bpriot = section.Get(Constants.BackgroundPriority)?.Int ?? -1;
-				ProcessPriorityClass? bprio = (bpriot >= 0) ? (ProcessPriorityClass?)ProcessHelpers.IntToPriority(bpriot) : null;
+				ProcessPriorityClass? bprio = (bpriot >= 0) ? (ProcessPriorityClass?)Utility.IntToPriority(bpriot) : null;
 
 				var pvis = (PathVisibilityOptions)(section.Get(Constants.PathVisibility)?.Int.Constrain(-1, 3) ?? -1);
 
@@ -1293,7 +1296,7 @@ namespace Taskmaster.Process
 							}
 
 							if (prc.Priority.HasValue && ea.Info.State == HandlingState.Paused && prc.Priority != ea.PriorityNew)
-								sbs.Append(" [").Append(ProcessHelpers.PriorityToInt(prc.Priority.Value)).Append(']');
+								sbs.Append(" [").Append(Utility.PriorityToInt(prc.Priority.Value)).Append(']');
 						}
 						else
 							sbs.Append(HumanReadable.Generic.NotAvailable);
@@ -2123,7 +2126,7 @@ namespace Taskmaster.Process
 
 			IntPtr hdc = IntPtr.Zero; // hardware device context
 
-			bool got = NativeMethods.GetICMProfile(hdc, Convert.ToUInt64(buffer.Capacity) + 1UL, buffer);
+			bool got = global::Taskmaster.NativeMethods.GetICMProfile(hdc, Convert.ToUInt64(buffer.Capacity) + 1UL, buffer);
 		}
 
 		readonly object Exclusive_lock = new object();

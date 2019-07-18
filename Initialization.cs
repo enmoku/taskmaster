@@ -347,7 +347,7 @@ namespace Taskmaster
 			var selfpriority_t = perfsec.GetOrSet("Self-priority", 1)
 				.InitComment("Process priority to set for TM itself. Restricted to 0 (Low) to 2 (Normal).")
 				.Int.Constrain(0, 2);
-			SelfPriority = ProcessHelpers.IntToPriority(selfpriority_t);
+			SelfPriority = Process.Utility.IntToPriority(selfpriority_t);
 
 			SelfAffinity = perfsec.GetOrSet("Self-affinity", 0)
 				.InitComment("Core mask as integer. 0 is for default OS control.")

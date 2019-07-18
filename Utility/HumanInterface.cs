@@ -83,6 +83,13 @@ namespace Taskmaster
 		readonly static string[] ByteLetterSI = { "B", "kB", "MB", "GB" };
 		readonly static string[] ByteLetterIEC = { "B", "KiB", "MiB", "GiB" };
 
+		readonly static System.Globalization.NumberFormatInfo[] DecimalFormatting = {
+			new System.Globalization.NumberFormatInfo() { NumberDecimalDigits = 0 },
+			new System.Globalization.NumberFormatInfo() { NumberDecimalDigits = 1 },
+			new System.Globalization.NumberFormatInfo() { NumberDecimalDigits = 2 },
+			new System.Globalization.NumberFormatInfo() { NumberDecimalDigits = 3 },
+		};
+
 		/// <summary>
 		/// Turns bytes into more human readable values. E.g. 17534252 into 17.53 MiB.
 		/// </summary>
@@ -97,11 +104,13 @@ namespace Taskmaster
 			var multiplier = iec ? MultiplierIEC : MultiplierSI;
 			var byteletter = iec ? ByteLetterIEC : ByteLetterSI;
 
-			if (Math.Abs(bytes) > (multiplier[Giga] * SizeThreshold))
+			long absbytes = Math.Abs(bytes);
+
+			if (absbytes > (multiplier[Giga] * SizeThreshold))
 				scale = Giga;
-			else if (Math.Abs(bytes) > (multiplier[Mega] * SizeThreshold))
+			else if (absbytes > (multiplier[Mega] * SizeThreshold))
 				scale = Mega;
-			else if (Math.Abs(bytes) > (multiplier[Kilo] * SizeThreshold))
+			else if (absbytes > (multiplier[Kilo] * SizeThreshold))
 				scale = Kilo;
 			// else = Byte/Default
 
@@ -110,7 +119,7 @@ namespace Taskmaster
 			double num = bytes / div;
 
 			return string.Format(
-				new System.Globalization.NumberFormatInfo() { NumberDecimalDigits = div == 1 ? 0 : ((num < 10) ? 3 : ((num > 100) ? 1 : 2)) },
+				DecimalFormatting[decimalSpot],
 				"{0}{1:N} {2}",
 				((positivesign && bytes > 0) ? "+" : ""), num, byteletter[scale]);
 		}

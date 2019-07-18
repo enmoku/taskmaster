@@ -305,8 +305,8 @@ namespace Taskmaster.UI.Config
 
 			switch (Controller.PriorityStrategy)
 			{
-				case ProcessPriorityStrategy.Increase: priorityClassMethod.SelectedIndex = 0; break;
-				case ProcessPriorityStrategy.Decrease: priorityClassMethod.SelectedIndex = 1; break;
+				case Process.PriorityStrategy.Increase: priorityClassMethod.SelectedIndex = 0; break;
+				case Process.PriorityStrategy.Decrease: priorityClassMethod.SelectedIndex = 1; break;
 				default: priorityClassMethod.SelectedIndex = 2; break;
 			}
 
@@ -417,10 +417,10 @@ namespace Taskmaster.UI.Config
 
 			switch (Controller.AffinityStrategy)
 			{
-				case ProcessAffinityStrategy.Force: affstrategy.SelectedIndex = 2; break;
+				case Process.AffinityStrategy.Force: affstrategy.SelectedIndex = 2; break;
 				default:
-				case ProcessAffinityStrategy.Limit: affstrategy.SelectedIndex = 1; break;
-				case ProcessAffinityStrategy.None: affstrategy.SelectedIndex = 0; break;
+				case Process.AffinityStrategy.Limit: affstrategy.SelectedIndex = 1; break;
+				case Process.AffinityStrategy.None: affstrategy.SelectedIndex = 0; break;
 			}
 
 			lt.Controls.Add(afflayout);
@@ -775,18 +775,18 @@ namespace Taskmaster.UI.Config
 			if (priorityClass.SelectedIndex == 5) // ignored
 			{
 				Controller.Priority = null;
-				Controller.PriorityStrategy = ProcessPriorityStrategy.None;
+				Controller.PriorityStrategy = Process.PriorityStrategy.None;
 			}
 			else
 			{
-				Controller.Priority = ProcessHelpers.IntToPriority(priorityClass.SelectedIndex); // is this right?
-				Controller.PriorityStrategy = ProcessPriorityStrategy.None;
+				Controller.Priority = Process.Utility.IntToPriority(priorityClass.SelectedIndex); // is this right?
+				Controller.PriorityStrategy = Process.PriorityStrategy.None;
 				switch (priorityClassMethod.SelectedIndex)
 				{
-					case 0: Controller.PriorityStrategy = ProcessPriorityStrategy.Increase; break;
-					case 1: Controller.PriorityStrategy = ProcessPriorityStrategy.Decrease; break;
+					case 0: Controller.PriorityStrategy = Process.PriorityStrategy.Increase; break;
+					case 1: Controller.PriorityStrategy = Process.PriorityStrategy.Decrease; break;
 					default:
-					case 2: Controller.PriorityStrategy = ProcessPriorityStrategy.Force; break;
+					case 2: Controller.PriorityStrategy = Process.PriorityStrategy.Force; break;
 				}
 			}
 
@@ -807,14 +807,15 @@ namespace Taskmaster.UI.Config
 				else
 				{
 					Controller.AffinityMask = cpumask;
-					Controller.AffinityStrategy = affstrategy.SelectedIndex == 1 ? ProcessAffinityStrategy.Limit : ProcessAffinityStrategy.Force;
+					Controller.AffinityStrategy = affstrategy.SelectedIndex == 1
+						? Process.AffinityStrategy.Limit : Process.AffinityStrategy.Force;
 				}
 			}
 			else
 			{
 				// strategy = ignore
 				Controller.AffinityMask = -1;
-				Controller.AffinityStrategy = ProcessAffinityStrategy.None;
+				Controller.AffinityStrategy = Process.AffinityStrategy.None;
 			}
 
 			Controller.ModifyDelay = (int)(modifyDelay.Value * 1_000);
@@ -823,7 +824,7 @@ namespace Taskmaster.UI.Config
 			Controller.SetForegroundMode((ForegroundMode)(ForegroundModeSelect.SelectedIndex - 1));
 
 			if (bgPriorityClass.SelectedIndex != 5)
-				Controller.BackgroundPriority = ProcessHelpers.IntToPriority(bgPriorityClass.SelectedIndex);
+				Controller.BackgroundPriority = Process.Utility.IntToPriority(bgPriorityClass.SelectedIndex);
 			else
 				Controller.BackgroundPriority = null;
 

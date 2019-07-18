@@ -580,7 +580,7 @@ namespace Taskmaster.Process
 
 			if (Priority.HasValue)
 			{
-				app[HumanReadable.System.Process.Priority].Int = ProcessHelpers.PriorityToInt(Priority.Value);
+				app[HumanReadable.System.Process.Priority].Int = Utility.PriorityToInt(Priority.Value);
 				app[HumanReadable.System.Process.PriorityStrategy].Int = (int)PriorityStrategy;
 			}
 			else
@@ -632,7 +632,7 @@ namespace Taskmaster.Process
 				saveFgMode:
 					app["Foreground mode"].Int = (int)Foreground;
 					if (BackgroundPriority.HasValue)
-						app["Background priority"].Int = ProcessHelpers.PriorityToInt(BackgroundPriority.Value);
+						app["Background priority"].Int = Utility.PriorityToInt(BackgroundPriority.Value);
 					else
 						app.TryRemove("Background priority");
 					if (BackgroundAffinity >= 0)

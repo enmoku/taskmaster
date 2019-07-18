@@ -101,7 +101,8 @@ namespace Taskmaster
 		{
 			int length = Marshal.SizeOf(PurgeStandbyList);
 			var handle = GCHandle.Alloc(PurgeStandbyList, GCHandleType.Pinned);
-			NativeMethods.NtSetSystemInformation(NativeMethods.SYSTEM_INFORMATION_CLASS.SystemMemoryListInformation, handle.AddrOfPinnedObject(), length);
+			global::Taskmaster.NativeMethods.NtSetSystemInformation(
+				global::Taskmaster.NativeMethods.SYSTEM_INFORMATION_CLASS.SystemMemoryListInformation, handle.AddrOfPinnedObject(), length);
 			handle.Free();
 		}
 
@@ -131,7 +132,7 @@ namespace Taskmaster
 
 		public static void GetCache()
 		{
-			if (NativeMethods.GetSystemFileCacheSize(out uint minCache, out uint maxCache, out var flags))
+			if (global::Taskmaster.NativeMethods.GetSystemFileCacheSize(out uint minCache, out uint maxCache, out var flags))
 				Logging.DebugMsg("MEMORY CACHE - Min: " + minCache + ", Max: " + maxCache);
 			else
 				Logging.DebugMsg("MEMORY CACHE - information unavailable");

@@ -721,7 +721,7 @@ namespace Taskmaster.UI
 					else si.BackColor = DefaultLIBGColor;
 				}
 
-				if (prc.PriorityStrategy == ProcessPriorityStrategy.None)
+				if (prc.PriorityStrategy == Process.PriorityStrategy.None)
 					li.SubItems[PrioColumn].ForeColor = System.Drawing.SystemColors.GrayText;
 				if (string.IsNullOrEmpty(prc.Path))
 					li.SubItems[PathColumn].ForeColor = System.Drawing.SystemColors.GrayText;

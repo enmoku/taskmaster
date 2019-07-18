@@ -496,12 +496,19 @@ namespace Taskmaster
 								.Append("<<Auto-Doc>> Free memory low [")
 								.Append(HumanInterface.ByteString(memfreeb, iec: true))
 								.Append("], attempting to improve situation.");
+
 							if (!Process.Utility.SystemProcessId(ignorepid))
-								sbs.Append(" Ignoring foreground #").Append(ignorepid).Append(".");
+							{
+								sbs.Append(" Ignoring foreground process ");
+								if (processmanager.GetProcess(ignorepid, out var info))
+									sbs.Append(info);
+								else
+									sbs.Append("#").Append(ignorepid).Append(".");
+							}
 
 							Log.Warning(sbs.ToString());
 
-							processmanager?.FreeMemory(null, quiet: true, ignorePid: ignorepid);
+							await (processmanager?.FreeMemory(null, quiet: true, ignorePid: ignorepid) ?? Task.CompletedTask).ConfigureAwait(false);
 						}
 
 						if (Memory.Pressure > 1.05d) // 105%

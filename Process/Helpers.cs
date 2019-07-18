@@ -153,7 +153,7 @@ namespace Taskmaster.Process
 		Both = 3
 	}
 
-	public static class ProcessHelpers
+	public static partial class Utility
 	{
 		/// <summary>
 		/// Converts ProcessPriorityClass to ordered int for programmatic comparison.

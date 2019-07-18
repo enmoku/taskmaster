@@ -97,8 +97,8 @@ namespace Taskmaster.Process
 
 				if (info.Process.HasExited)
 				{
-					info.State = ProcessHandlingState.Exited;
 					Log.Debug($"<Analysis> {info.Name} #{info.Id} cancelled; already gone");
+					info.State = HandlingState.Exited;
 					cache.TryRemove(hash, out _);
 					return;
 				}
@@ -507,10 +507,7 @@ namespace Taskmaster.Process
 		Disable,
 		Change,
 	}
-}
 
-namespace Taskmaster
-{
 	static partial class NativeMethods
 	{
 		[StructLayout(LayoutKind.Sequential)]
