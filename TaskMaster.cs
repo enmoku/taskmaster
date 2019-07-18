@@ -335,6 +335,7 @@ namespace Taskmaster
 		//readonly static System.Threading.ManualResetEvent UIWaiter = new System.Threading.ManualResetEvent(false); // for splash
 
 		// entry point to the application
+		[LoaderOptimization(LoaderOptimization.SingleDomain)] // lol, what's the point of this anyway?
 		[STAThread] // supposedly needed to avoid shit happening with the WinForms GUI and other GUI toolkits
 		static public int Main(string[] args)
 		{
