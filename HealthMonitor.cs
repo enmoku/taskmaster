@@ -261,7 +261,7 @@ namespace Taskmaster
 
 		DateTimeOffset MemFreeLast = DateTimeOffset.MinValue;
 
-		const string HealthConfigFilename = "Health.ini";
+		public const string HealthConfigFilename = "Health.ini";
 
 		void LoadConfig()
 		{
@@ -456,6 +456,16 @@ namespace Taskmaster
 			// Empty Recycle Bin
 			//uint flags = NativeMethods.SHERB_NOCONFIRMATION | NativeMethods.SHERB_NOPROGRESSUI | NativeMethods.SHERB_NOSOUND;
 			//NativeMethods.SHEmptyRecycleBin(IntPtr.Zero, path, flags);
+		}
+
+		public void SetMemFreeThreshold(int value)
+			=> Settings.MemLevel = value;
+
+		internal void SetCheckInterval(int value)
+		{
+			Settings.Frequency = TimeSpan.FromMinutes(value);
+			HealthTimer.Interval = Settings.Frequency.TotalMilliseconds;
+			HealthTimer.Enabled = true; // make sure it's running
 		}
 
 		async Task CheckMemory()

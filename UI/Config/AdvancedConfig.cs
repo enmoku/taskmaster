@@ -277,8 +277,43 @@ namespace Taskmaster.UI.Config
 			tooltip.SetToolTip(netpoll_frequency, "Update frequency network device list.");
 			*/
 
-			layout.Controls.Add(new AlignedLabel { Text = "Extra features", Font = BoldFont, Padding = BigPadding });
-			layout.Controls.Add(new EmptySpace());
+			var healthmonitor = new AlignedLabel { Text = "Health monitor", Font = BoldFont, Padding = BigPadding };
+			layout.Controls.Add(healthmonitor);
+			layout.SetColumnSpan(healthmonitor, 2);
+
+			layout.Controls.Add(new AlignedLabel { Text = "Check frequency", Padding = LeftSubPadding });
+			var healthmonfrequency = new Extensions.NumericUpDownEx()
+			{
+				Minimum = 1M,
+				Maximum = 1440M,
+				Value = 5M,
+				Unit = "mins",
+				Enabled = HealthMonitorEnabled,
+			};
+			layout.Controls.Add(healthmonfrequency);
+			tooltip.SetToolTip(healthmonfrequency, "How often to check for system health.");
+
+			layout.Controls.Add(new AlignedLabel { Text = "Memory auto-page threshold", Padding = LeftSubPadding });
+			var memoryautopage = new Extensions.NumericUpDownEx()
+			{
+				Minimum = 0M,
+				Maximum = 8000M,
+				Value = 1500M,
+				Unit = "MB",
+				Enabled = PagingEnabled,
+			};
+			layout.Controls.Add(memoryautopage);
+			tooltip.SetToolTip(memoryautopage, "Automatically try to page non-active apps when free memory goes below this threshold.\n0 disables.");
+
+			using var hmcfg = Taskmaster.Config.Load(HealthMonitor.HealthConfigFilename);
+			var hmgensec = hmcfg.Config["General"];
+			healthmonfrequency.Value = hmgensec.Get("Frequency")?.Int.Constrain(1, 1440) ?? 5;
+			var freememsec = hmcfg.Config["Free Memory"];
+			memoryautopage.Value = freememsec.Get("Threshold")?.Int.Constrain(0, 8000) ?? 1000;
+
+			var extrafeatures = new AlignedLabel { Text = "Extra features", Font = BoldFont, Padding = BigPadding };
+			layout.Controls.Add(extrafeatures);
+			layout.SetColumnSpan(extrafeatures, 2);
 
 			var parentoption = new CheckBox() { Checked = processmanager.EnableParentFinding, };
 
@@ -330,6 +365,7 @@ namespace Taskmaster.UI.Config
 				perfsec["Foreground hysterisis"].Int = fghys;
 				activeappmonitor?.SetHysterisis(TimeSpan.FromMilliseconds(fghys));
 
+				// Volume Meter
 				volsec["Topmost"].Bool = volmeter_topmost.Checked;
 
 				int voloutcap_t = Convert.ToInt32(volmeter_capout.Value);
@@ -356,9 +392,20 @@ namespace Taskmaster.UI.Config
 
 				volsec[Constants.ShowOnStart].Bool = volmeter_show.Checked;
 
+				// Extra features
 				var logsec = corecfg.Config[HumanReadable.Generic.Logging];
 				logsec["Enable parent finding"].Bool = parentoption.Checked;
 				processmanager.EnableParentFinding = parentoption.Checked;
+
+				// Health Monitor
+				using var hmcfg = Taskmaster.Config.Load(HealthMonitor.HealthConfigFilename);
+				var hmgensec = hmcfg.Config["General"];
+				hmgensec["Frequency"].Int = Convert.ToInt32(healthmonfrequency.Value);
+				var freememsec = hmcfg.Config["Free Memory"];
+				freememsec["Threshold"].Int = Convert.ToInt32(memoryautopage.Value);
+
+				Taskmaster.healthmonitor?.SetCheckInterval(Convert.ToInt32(healthmonfrequency.Value));
+				Taskmaster.healthmonitor?.SetMemFreeThreshold(Convert.ToInt32(memoryautopage.Value));
 
 				DialogResult = DialogResult.OK;
 				Close();
