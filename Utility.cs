@@ -105,11 +105,13 @@ namespace Taskmaster
 #endif
 					}
 
+#if DEBUG
 					if (ex is InitFailure iex && (iex.InnerExceptions?.Length ?? 0) > 1)
 					{
 						for (int i = 1; i < iex.InnerExceptions.Length; i++)
 							AppendStacktace(iex.InnerExceptions[i], ref exceptionsbs);
 					}
+#endif
 
 					System.IO.File.WriteAllText(logfile, sbs.ToString(), Encoding.Unicode);
 					DebugMsg("Crash log written to " + logfile);
