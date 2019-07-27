@@ -40,22 +40,22 @@ namespace Taskmaster
 		/// <param name="lpdwProcessId">Process ID of the hwnd's creator.</param>
 		/// <returns>Thread ID of the hwnd's creator</returns>
 		[DllImport("user32.dll")] // SetLastError=true
-		public static extern uint GetWindowThreadProcessId(IntPtr hWnd, out int lpdwProcessId);
+		internal static extern uint GetWindowThreadProcessId(IntPtr hWnd, out int lpdwProcessId);
 
 		public delegate void WinEventDelegate(IntPtr hWinEventHook, uint eventType, IntPtr hwnd, int idObject, int idChild, uint dwEventThread, uint dwmsEventTime);
 
 		[DllImport("user32.dll")]
-		public static extern IntPtr SetWinEventHook(uint eventMin, uint eventMax, IntPtr hmodWinEventProc, WinEventDelegate lpfnWinEventProc, uint idProcess, uint idThread, uint dwFlags);
+		internal static extern IntPtr SetWinEventHook(uint eventMin, uint eventMax, IntPtr hmodWinEventProc, WinEventDelegate lpfnWinEventProc, uint idProcess, uint idThread, uint dwFlags);
 
 		[DllImport("user32.dll")]
 		[return: MarshalAs(UnmanagedType.Bool)]
-		public static extern bool UnhookWinEvent(IntPtr hWinEventHook); // automatic
+		internal static extern bool UnhookWinEvent(IntPtr hWinEventHook); // automatic
 
 		[DllImport("user32.dll")]
-		public static extern IntPtr GetForegroundWindow();
+		internal static extern IntPtr GetForegroundWindow();
 
 		[DllImport("user32.dll", CharSet = CharSet.Unicode, ThrowOnUnmappableChar = true)]
-		public static extern int GetWindowText(IntPtr hWnd, System.Text.StringBuilder text, int count);
+		internal static extern int GetWindowText(IntPtr hWnd, System.Text.StringBuilder text, int count);
 
 		// uMsg = uint, but Windows.Forms.Message.Msg is int
 		// lParam = int or long
@@ -98,13 +98,13 @@ namespace Taskmaster
 		}
 
 		[DllImport("user32.dll", CharSet = CharSet.Auto)] // SetLastError
-		public static extern IntPtr SendMessageTimeout(
+		internal static extern IntPtr SendMessageTimeout(
 			IntPtr hWnd, int Msg, ulong wParam, long lParam,
 			SendMessageTimeoutFlags flags, uint timeout, out IntPtr result);
 
 		[DllImport("kernel32.dll")] // SetLastError = true
 		[return: MarshalAs(UnmanagedType.Bool)]
-		public static extern bool CloseHandle(IntPtr Handle);
+		internal static extern bool CloseHandle(IntPtr Handle);
 
 		//     No dialog box confirming the deletion of the objects will be displayed.
 		public const int SHERB_NOCONFIRMATION = 0x00000001;
@@ -117,10 +117,10 @@ namespace Taskmaster
 		/// Empty recycle bin.
 		/// </summary>
 		[DllImport("shell32.dll", CharSet = CharSet.Unicode, BestFitMapping = false, ThrowOnUnmappableChar = true)]
-		public static extern int SHEmptyRecycleBin(IntPtr hWnd, string pszRootPath, uint dwFlags);
+		internal static extern int SHEmptyRecycleBin(IntPtr hWnd, string pszRootPath, uint dwFlags);
 
 		[StructLayout(LayoutKind.Sequential)] // , Pack = 4 causes shqueryrecyclebin to error with invalid args
-		public struct SHQUERYRBINFO
+		public struct ShQueryRecycleBinInfo
 		{
 			public int cbSize;
 			public long i64Size;
@@ -128,16 +128,16 @@ namespace Taskmaster
 		}
 
 		[DllImport("shell32.dll", CharSet = CharSet.Unicode)] // SetLastError = true
-		public static extern uint SHQueryRecycleBin(string pszRootPath, ref SHQUERYRBINFO pSHQueryRBInfo);
+		internal static extern uint SHQueryRecycleBin(string pszRootPath, ref ShQueryRecycleBinInfo pSHQueryRBInfo);
 
 		[DllImport("user32.dll")] // SetLastError = true
-		public static extern bool MoveWindow(IntPtr hWnd, int X, int Y, int nWidth, int nHeight, bool bRepaint);
+		internal static extern bool MoveWindow(IntPtr hWnd, int X, int Y, int nWidth, int nHeight, bool bRepaint);
 
 		[System.Runtime.InteropServices.DllImport("user32.dll")]
-		public static extern bool RegisterHotKey(IntPtr hWnd, int id, int fsModifiers, int vk);
+		internal static extern bool RegisterHotKey(IntPtr hWnd, int id, int fsModifiers, int vk);
 
 		[System.Runtime.InteropServices.DllImport("user32.dll")]
-		public static extern bool UnregisterHotKey(IntPtr hWnd, int id);
+		internal static extern bool UnregisterHotKey(IntPtr hWnd, int id);
 
 		[Flags]
 		public enum KeyModifier
@@ -150,14 +150,14 @@ namespace Taskmaster
 		}
 
 		[DllImport("user32.dll")]
-		public static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
+		internal static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
 
 		public const int SW_FORCEMINIMIZE = 11;
 		public const int SW_MINIMIZE = 6;
 
 		[DllImport("user32.dll")]
 		[return: MarshalAs(UnmanagedType.Bool)]
-		public static extern bool IsWindowVisible(IntPtr hWnd);
+		internal static extern bool IsWindowVisible(IntPtr hWnd);
 
 		[Flags]
 		public enum ErrorModes : uint
@@ -190,7 +190,7 @@ namespace Taskmaster
 		}
 
 		[DllImport("kernel32.dll")]
-		public static extern ErrorModes SetErrorMode(ErrorModes mode);
+		internal static extern ErrorModes SetErrorMode(ErrorModes mode);
 
 		/// <summary>
 		/// "Safe" version of HANDLE.
@@ -209,10 +209,10 @@ namespace Taskmaster
 		}
 
 		[DllImport("ntdll.dll")]
-		public static extern uint NtSetSystemInformation(SYSTEM_INFORMATION_CLASS InfoClass, IntPtr Info, int Length);
+		internal static extern uint NtSetSystemInformation(SYSTEM_INFORMATION_CLASS InfoClass, IntPtr Info, int Length);
 
 		[DllImport("ntdll.dll")]
-		public static extern uint NtQuerySystemInformation(SYSTEM_INFORMATION_CLASS InfoClass, IntPtr Info, uint Size, out uint Length);
+		internal static extern uint NtQuerySystemInformation(SYSTEM_INFORMATION_CLASS InfoClass, IntPtr Info, uint Size, out uint Length);
 
 		[Flags]
 		public enum FileCacheFlags : uint
@@ -226,7 +226,7 @@ namespace Taskmaster
 
 		[DllImport("kernel32.dll", SetLastError = true)]
 		[return: MarshalAs(UnmanagedType.Bool)]
-		public static extern bool GetSystemFileCacheSize(out uint lpMinimumFileCacheSize, out uint lpMaximumFileCacheSize, out FileCacheFlags Flags);
+		internal static extern bool GetSystemFileCacheSize(out uint lpMinimumFileCacheSize, out uint lpMaximumFileCacheSize, out FileCacheFlags Flags);
 
 		public enum SYSTEM_INFORMATION_CLASS
 		{
@@ -383,7 +383,7 @@ namespace Taskmaster
 		}
 
 		[StructLayout(LayoutKind.Sequential, Pack = 1)]
-		public struct SYSTEM_MEMORY_LIST_INFORMATION
+		public struct SystemMemoryListInformation
 		{
 			public uint ZeroPageCount; // Size=4 Offset=0
 
@@ -406,6 +406,6 @@ namespace Taskmaster
 
 		[DllImport("gdi32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
 		[return: MarshalAs(UnmanagedType.Bool)]
-		public static extern bool GetICMProfile([In] IntPtr hdc, ulong pBufSize, [Out, MarshalAs(UnmanagedType.LPWStr)] System.Text.StringBuilder pszFilename);
+		internal static extern bool GetICMProfile([In] IntPtr hdc, ulong pBufSize, [Out, MarshalAs(UnmanagedType.LPWStr)] System.Text.StringBuilder pszFilename);
 	}
 }

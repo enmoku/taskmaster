@@ -109,7 +109,7 @@ namespace Taskmaster
 		public static void UpdateAll()
 		{
 			IntPtr buffer = IntPtr.Zero;
-			NativeMethods.SYSTEM_MEMORY_LIST_INFORMATION info;
+			NativeMethods.SystemMemoryListInformation info;
 			try
 			{
 				buffer = Marshal.AllocHGlobal(256);
@@ -117,7 +117,7 @@ namespace Taskmaster
 				const uint size = 0; // Marshal.SizeOf(NativeMethods.SYSTEM_MEMORY_LIST_INFORMATION);
 
 				uint rv = NativeMethods.NtQuerySystemInformation(NativeMethods.SYSTEM_INFORMATION_CLASS.SystemMemoryListInformation, buffer, size, out uint length);
-				info = (NativeMethods.SYSTEM_MEMORY_LIST_INFORMATION)Marshal.PtrToStructure(buffer, typeof(NativeMethods.SYSTEM_MEMORY_LIST_INFORMATION));
+				info = (NativeMethods.SystemMemoryListInformation)Marshal.PtrToStructure(buffer, typeof(NativeMethods.SystemMemoryListInformation));
 			}
 			catch (Exception ex)
 			{
@@ -144,7 +144,7 @@ namespace Taskmaster
 			{
 				//GetCache();
 
-				var mem = new MEMORYSTATUSEX { dwLength = (uint)Marshal.SizeOf(typeof(MEMORYSTATUSEX)) };
+				var mem = new MemoryStatusEx { dwLength = (uint)Marshal.SizeOf(typeof(MemoryStatusEx)) };
 
 				NativeMethods.GlobalMemoryStatusEx(ref mem);
 				Total = mem.ullTotalPhys;
@@ -181,7 +181,7 @@ namespace Taskmaster
 		// https://docs.microsoft.com/en-us/windows/desktop/api/sysinfoapi/nf-sysinfoapi-globalmemorystatusex
 		[return: System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.Bool)]
 		[System.Runtime.InteropServices.DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
-		static internal extern bool GlobalMemoryStatusEx(ref MEMORYSTATUSEX lpBuffer);
+		static internal extern bool GlobalMemoryStatusEx(ref MemoryStatusEx lpBuffer);
 	}
 
 	/*
@@ -230,7 +230,7 @@ namespace Taskmaster
 
 	// https://docs.microsoft.com/en-us/windows/desktop/api/sysinfoapi/ns-sysinfoapi-_memorystatusex
 	[System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential, CharSet = System.Runtime.InteropServices.CharSet.Auto)]
-	internal struct MEMORYSTATUSEX
+	internal struct MemoryStatusEx
 	{
 		// size of the structure in bytes. Used by C functions
 		public uint dwLength;

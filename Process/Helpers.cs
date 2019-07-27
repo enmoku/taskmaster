@@ -213,7 +213,7 @@ namespace Taskmaster.Process
 				ptr = NativeMethods.CreateToolhelp32Snapshot(SnapshotFlags.Process, (uint)Id);
 				if (ptr is null) return -1;
 
-				var pe32 = new PROCESSENTRY32 { dwSize = (uint)Marshal.SizeOf(typeof(PROCESSENTRY32)) };
+				var pe32 = new ProcessEntry32 { dwSize = (uint)Marshal.SizeOf(typeof(ProcessEntry32)) };
 
 				if (!NativeMethods.Process32First(ptr, ref pe32))
 				{
@@ -265,13 +265,13 @@ namespace Taskmaster.Process
 		/// Retrieves information about the first process encountered in a system snapshot.
 		/// </summary>
 		[DllImport("kernel32.dll", CharSet = CharSet.Unicode)]
-		static internal extern bool Process32First(SafeHandle hSnapshot, ref PROCESSENTRY32 lppe);
+		static internal extern bool Process32First(SafeHandle hSnapshot, ref ProcessEntry32 lppe);
 
 		/// <summary>
 		/// Retrieves information about the next process recorded in a system snapshot.
 		/// </summary>
 		[DllImport("kernel32.dll", CharSet = CharSet.Unicode)]
-		static internal extern bool Process32Next(SafeHandle hSnapshot, ref PROCESSENTRY32 lppe);
+		static internal extern bool Process32Next(SafeHandle hSnapshot, ref ProcessEntry32 lppe);
 	}
 
 	static partial class NativeConstants
@@ -294,7 +294,7 @@ namespace Taskmaster.Process
 	}
 
 	[StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
-	internal struct PROCESSENTRY32
+	internal struct ProcessEntry32
 	{
 		public uint dwSize;
 		public uint cntUsage; // UNUSED

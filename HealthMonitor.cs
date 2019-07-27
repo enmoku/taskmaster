@@ -431,9 +431,9 @@ namespace Taskmaster
 					{
 						if (WarnedDrives.Contains(drive.Name)) continue;
 
-						var sqrbi = new NativeMethods.SHQUERYRBINFO
+						var sqrbi = new NativeMethods.ShQueryRecycleBinInfo
 						{
-							cbSize = System.Runtime.InteropServices.Marshal.SizeOf(typeof(NativeMethods.SHQUERYRBINFO))
+							cbSize = System.Runtime.InteropServices.Marshal.SizeOf(typeof(NativeMethods.ShQueryRecycleBinInfo))
 						};
 
 						uint hresult = NativeMethods.SHQueryRecycleBin(drive.Name, ref sqrbi);

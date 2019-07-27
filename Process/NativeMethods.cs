@@ -34,15 +34,15 @@ namespace Taskmaster.Process
 	public static partial class NativeMethods
 	{
 		[DllImport("kernel32.dll", CharSet = CharSet.Auto)] // SetLastError = true
-		public static extern bool SetPriorityClass(IntPtr handle, uint priorityClass);
+		internal static extern bool SetPriorityClass(IntPtr handle, uint priorityClass);
 
 		/// <summary>
 		/// The process must have PROCESS_QUERY_INFORMATION and PROCESS_VM_READ access rights.
 		/// </summary>
 		[DllImport("psapi.dll", SetLastError = true, CharSet = CharSet.Unicode, BestFitMapping = false, ThrowOnUnmappableChar = true)]
-		public static extern uint GetModuleFileNameEx(IntPtr hProcess, IntPtr hModule, [Out] System.Text.StringBuilder lpBaseName, [In] [MarshalAs(UnmanagedType.U4)] uint nSize);
+		internal static extern uint GetModuleFileNameEx(IntPtr hProcess, IntPtr hModule, [Out] System.Text.StringBuilder lpBaseName, [In] [MarshalAs(UnmanagedType.U4)] uint nSize);
 
-		public static global::Taskmaster.NativeMethods.HANDLE OpenProcessFully(System.Diagnostics.Process process)
+		internal static global::Taskmaster.NativeMethods.HANDLE OpenProcessFully(System.Diagnostics.Process process)
 		{
 			try
 			{
@@ -64,7 +64,7 @@ namespace Taskmaster.Process
 				try
 				{
 					var ioPrio = new IntPtr(priority);
-					int rv = NtSetInformationProcess(handle, PROCESS_INFORMATION_CLASS_WIN7.ProcessIoPriority, ref ioPrio, 4);
+					NtSetInformationProcess(handle, PROCESS_INFORMATION_CLASS_WIN7.ProcessIoPriority, ref ioPrio, 4);
 
 					int error = Marshal.GetLastWin32Error();
 					//Logging.DebugMsg($"SetInformationProcess error code: {error} --- return value: {rv:X}");
@@ -105,10 +105,10 @@ namespace Taskmaster.Process
 		}
 
 		[DllImport("ntdll.dll", SetLastError = true)]
-		public static extern int NtSetInformationProcess(SafeHandle hProcess, PROCESS_INFORMATION_CLASS_WIN7 ProcessInformationClass, ref IntPtr ProcessInformation, uint ProcessInformationSize);
+		internal static extern int NtSetInformationProcess(SafeHandle hProcess, PROCESS_INFORMATION_CLASS_WIN7 ProcessInformationClass, ref IntPtr ProcessInformation, uint ProcessInformationSize);
 
 		[DllImport("ntdll.dll", SetLastError = true)]
-		public static extern int NtQueryInformationProcess(SafeHandle hProcess, PROCESS_INFORMATION_CLASS_WIN7 ProcessInformationClass, ref IntPtr ProcessInformation, uint ProcessInformationSize, ref int ReturnSize);
+		internal static extern int NtQueryInformationProcess(SafeHandle hProcess, PROCESS_INFORMATION_CLASS_WIN7 ProcessInformationClass, ref IntPtr ProcessInformation, uint ProcessInformationSize, ref int ReturnSize);
 
 		const int SystemMemoryListInformation = 0x0050;
 
@@ -234,10 +234,10 @@ namespace Taskmaster.Process
 		/// MUST CLOSE THE RETURNED HANDLE WITH CLOSEHANDLE!!!
 		/// </summary>
 		[DllImport("kernel32.dll", SetLastError = true)]
-		public static extern global::Taskmaster.NativeMethods.HANDLE OpenProcess(PROCESS_ACCESS_RIGHTS dwDesiredAccess, bool bInheritHandle, int dwProcessId);
+		internal static extern global::Taskmaster.NativeMethods.HANDLE OpenProcess(PROCESS_ACCESS_RIGHTS dwDesiredAccess, bool bInheritHandle, int dwProcessId);
 
 		[StructLayout(LayoutKind.Sequential)]
-		public struct RECT
+		public struct Rectangle
 		{
 			public int Left;
 			public int Top;
@@ -247,7 +247,7 @@ namespace Taskmaster.Process
 
 		[DllImport("user32.dll")]
 		[return: MarshalAs(UnmanagedType.Bool)]
-		public static extern bool GetWindowRect(IntPtr hWnd, [In, Out] ref RECT rect);
+		internal static extern bool GetWindowRect(IntPtr hWnd, [In, Out] ref Rectangle rect);
 
 		/// <summary>
 		/// Empties the working set.
@@ -255,7 +255,7 @@ namespace Taskmaster.Process
 		/// <returns>Uhh?</returns>
 		/// <param name="hwProc">Process handle.</param>
 		[DllImport("psapi.dll")]
-		public static extern int EmptyWorkingSet(IntPtr hwProc);
+		internal static extern int EmptyWorkingSet(IntPtr hwProc);
 
 		public const uint WINEVENT_OUTOFCONTEXT = 0x0000; // async
 		public const uint WINEVENT_SKIPOWNPROCESS = 0x0002; // skip self

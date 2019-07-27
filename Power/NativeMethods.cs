@@ -37,19 +37,19 @@ namespace Taskmaster
 		public const long PBT_POWERSETTINGCHANGE = 0x8013; // wParam
 														   // UserPowerKey is reserved for future functionality and must always be null
 		[DllImport("powrprof.dll", EntryPoint = "PowerSetActiveScheme")]
-		public static extern uint PowerSetActiveScheme(IntPtr UserPowerKey, ref Guid PowerPlanGuid);
+		internal static extern uint PowerSetActiveScheme(IntPtr UserPowerKey, ref Guid PowerPlanGuid);
 
 		[DllImport("powrprof.dll", EntryPoint = "PowerGetActiveScheme")]
-		public static extern uint PowerGetActiveScheme(IntPtr UserPowerKey, out IntPtr PowerPlanGuid);
+		internal static extern uint PowerGetActiveScheme(IntPtr UserPowerKey, out IntPtr PowerPlanGuid);
 
 		public const int DEVICE_NOTIFY_WINDOW_HANDLE = 0x00000000; // DWORD
 
 		// SetLastError
 		[DllImport("user32.dll", EntryPoint = "RegisterPowerSettingNotification", CallingConvention = CallingConvention.StdCall)]
-		public static extern IntPtr RegisterPowerSettingNotification(IntPtr hRecipient, ref Guid PowerSettingGuid, int Flags);
+		internal static extern IntPtr RegisterPowerSettingNotification(IntPtr hRecipient, ref Guid PowerSettingGuid, int Flags);
 
 		[StructLayout(LayoutKind.Sequential, Pack = 4)]
-		public struct POWERBROADCAST_SETTING
+		public struct PowerBroadcastSetting
 		{
 			public Guid PowerSetting;
 			public uint DataLength;

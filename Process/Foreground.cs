@@ -388,7 +388,7 @@ namespace Taskmaster.Process
 
 		System.Drawing.Rectangle WindowRectangle;
 
-		NativeMethods.RECT ScreenRectangle;
+		NativeMethods.Rectangle ScreenRectangle;
 
 		bool Fullscreen(IntPtr hwnd)
 		{

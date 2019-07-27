@@ -1727,7 +1727,7 @@ namespace Taskmaster.Process
 					return;
 				}
 
-				var rect = new NativeMethods.RECT();
+				var rect = new NativeMethods.Rectangle();
 
 				if (info.Handle.Equals(IntPtr.Zero)) info.Handle = info.Process.MainWindowHandle;
 
@@ -1814,7 +1814,7 @@ namespace Taskmaster.Process
 			}
 		}
 
-		async Task MonitorWindowResize(ProcessEx info, NativeMethods.RECT rect, System.Threading.ManualResetEvent re)
+		async Task MonitorWindowResize(ProcessEx info, NativeMethods.Rectangle rect, System.Threading.ManualResetEvent re)
 		{
 			await Task.Delay(0).ConfigureAwait(false);
 

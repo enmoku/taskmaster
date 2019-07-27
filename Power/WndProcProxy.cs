@@ -61,7 +61,7 @@ namespace Taskmaster.Power
 			if (m.Msg == NativeMethods.WM_POWERBROADCAST
 				&& m.WParam.ToInt32() == NativeMethods.PBT_POWERSETTINGCHANGE)
 			{
-				var ps = (NativeMethods.POWERBROADCAST_SETTING)Marshal.PtrToStructure(m.LParam, typeof(NativeMethods.POWERBROADCAST_SETTING));
+				var ps = (NativeMethods.PowerBroadcastSetting)Marshal.PtrToStructure(m.LParam, typeof(NativeMethods.PowerBroadcastSetting));
 
 				if (ps.PowerSetting == NativeMethods.GUID_POWERSCHEME_PERSONALITY && ps.DataLength == Marshal.SizeOf(typeof(Guid)))
 				{
