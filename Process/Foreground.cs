@@ -193,6 +193,8 @@ namespace Taskmaster.Process
 					lfgpid = ForegroundId;
 					previoushang = PreviouslyHung;
 					fgproc = Foreground;
+
+					if (fgproc?.Responding == false) PreviouslyHung = fgproc.Id;
 				}
 
 				DateTimeOffset now = DateTimeOffset.UtcNow;
