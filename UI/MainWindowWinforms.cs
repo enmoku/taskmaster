@@ -55,6 +55,9 @@ namespace Taskmaster.UI
 
 		bool AutoOpenMenus { get; set; } = true;
 
+		// UI elements for non-lambda/constructor access.
+		ToolStripMenuItem menu_view_loaders = null;
+
 		// constructor
 		public MainWindow()
 			: base()
@@ -639,6 +642,9 @@ namespace Taskmaster.UI
 
 			foreach (var info in processmanager.GetExitWaitList())
 				ExitWaitListHandler(this, new ProcessModificationEventArgs(info));
+
+			// Enable UI features.
+			menu_view_loaders.Enabled = processmanager?.LoaderTracking ?? false;
 		}
 
 		void UpdateWatchlist(object _, EventArgs _ea)
@@ -1161,8 +1167,14 @@ namespace Taskmaster.UI
 			{
 				Enabled = AudioManagerEnabled,
 			};
+			menu_view_loaders = new ToolStripMenuItem(Constants.Loaders, null, ShowLoaderBox)
+			{
+				Enabled = processmanager?.LoaderTracking ?? false,
+			};
 
 			menu_view.DropDownItems.Add(menu_view_volume);
+			menu_view.DropDownItems.Add(new ToolStripSeparator());
+			menu_view.DropDownItems.Add(menu_view_loaders);
 			#endregion
 
 			// POWER menu item
@@ -2081,6 +2093,8 @@ namespace Taskmaster.UI
 		}
 
 		void ShowVolumeBox(object sender, EventArgs e) => BuildVolumeMeter();
+
+		void ShowLoaderBox(object sender, EventArgs e) => BuildLoaderBox();
 
 		void ToolStripMenuAutoOpen(object sender, EventArgs _)
 		{

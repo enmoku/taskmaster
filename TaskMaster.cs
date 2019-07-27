@@ -157,6 +157,21 @@ namespace Taskmaster
 			}
 		}
 
+		public static void BuildLoaderBox()
+		{
+			lock (window_creation_lock)
+			{
+
+				if (loaderdisplay is null)
+				{
+					loaderdisplay = new UI.LoaderDisplay(processmanager);
+					loaderdisplay.OnDisposed += (_, _ea) => loaderdisplay = null;
+
+					processmanager?.Analyze();
+				}
+			}
+		}
+
 		static readonly object window_creation_lock = new object();
 
 		/// <summary>

@@ -53,6 +53,8 @@ namespace Taskmaster.Process
 		readonly Dictionary<string, LoadInfo> Loaders = new Dictionary<string, LoadInfo>(40);
 		readonly object Loader_lock = new object();
 
+		public event EventHandler<LoaderEvent> LoaderDetection;
+
 		public ProcessEx[] GetExitWaitList() => WaitForExitList.Values.ToArray(); // copy is good here
 
 		System.Threading.Timer LoadTimer = null;
@@ -145,8 +147,22 @@ namespace Taskmaster.Process
 
 		MKAh.Lock.Monitor LoadLock = new MKAh.Lock.Monitor();
 
+		public bool LoaderAnalysis { get; private set; } = false;
+
+		public void SetLoaderAnalysis(bool toggle) => LoaderAnalysis = toggle;
+
+		public void Analyze() => InspectLoaders(null);
+
 		void InspectLoaders(object _)
 		{
+			if (LoaderDetection is null)
+			{
+				Logging.DebugMsg("<Process:Loaders> None subscribed.");
+				return; // don't process while no-one is subscribed
+			}
+			else
+				Logging.DebugMsg("<Process:Loaders> Inspecting.");
+
 			if (!LoadLock.TryLock()) return;
 
 			try
@@ -192,7 +208,9 @@ namespace Taskmaster.Process
 				foreach (var loader in heavyLoaders)
 				{
 					if (i++ > 2) break;
+					loader.Order = i;
 					Logging.DebugMsg($"LOADER [{loader.Load:N1}]: {loader.Instance} [×{loader.InstanceCount}] - CPU: {loader.CPULoad.Average:N1} %, RAM: {loader.RAMLoad.Current:N3} GiB, IO: {loader.IOLoad.Average:N1} MB/s");
+					LoaderDetection?.Invoke(this, new LoaderEvent(loader));
 				}
 
 				/*

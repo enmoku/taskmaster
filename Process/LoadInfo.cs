@@ -37,9 +37,15 @@ namespace Taskmaster.Process
 	{
 		public ConcurrentDictionary<int, ProcessEx> Processes = new ConcurrentDictionary<int, ProcessEx>();
 
+		public int Order { get; set; }
+
 		public string Instance { get; }
 
+		public int LastPid { get; private set; }
+
 		public int InstanceCount => Processes.Count;
+
+		public LoadType Heaviest { get; private set; } = LoadType.None;
 
 		public DateTimeOffset First { get; } = DateTimeOffset.UtcNow;
 
@@ -117,19 +123,52 @@ namespace Taskmaster.Process
 				cpuloadraw = 0f,
 				ioload = 0f;
 
+			float highRam = 0f, highCpu = 0f, highIo = 0f;
+			int highPid = 0;
+
+			var removeList = new System.Collections.Generic.List<ProcessEx>(2);
+
 			foreach (var info in Processes.Values)
 			{
 				try
 				{
-					ramload += Convert.ToSingle(info.Process.PrivateMemorySize64) / 1_073_741_824f; // GiB
-					var load = info.Loaders.Value;
+					if (info.Process.HasExited)
+					{
+						removeList.Add(info);
+						continue;
+					}
+
+					info.Loaders.Update();
+
+					float tram = Convert.ToSingle(info.Process.PrivateMemorySize64) / 1_073_741_824f;
+					ramload += tram;
+					var load = info.Loaders;
 					cpuloadraw += load.CPU;
 					ioload += load.IO;
+
+					if (tram > highRam)
+					{
+						highRam = tram;
+						highPid = info.Id;
+					}
+					if (load.CPU > highCpu)
+					{
+						highCpu = load.CPU;
+						highPid = info.Id;
+					}
+					if (load.IO > highIo)
+					{
+						highIo = load.IO;
+						highPid = info.Id;
+					}
 				}
 				catch { } // ignore
 
 				// TODO: Add fake load for each failed thing to mimic knowing it?
 			}
+
+			foreach (var info in removeList)
+				Remove(info);
 
 			CPULoad.Update(cpuloadraw);
 
@@ -140,6 +179,7 @@ namespace Taskmaster.Process
 			IOLoad.Update(ioload / 1_048_576f); // MiB/s
 
 			Load = cpuload + ramload + IOLoad.Average.Max(10f);
+			if (cpuload < 20f && ramload < 4f) Load -= ramload / 3f; // reduce effect of ramload on low cpu load
 
 			if (CPULoad.Average > 60f)
 			{
@@ -189,9 +229,19 @@ namespace Taskmaster.Process
 
 			LastHeavy = heavy;
 			LastLight = light;
+
+			Heaviest = (CPULoad.Heavy ? LoadType.CPU : LoadType.None)
+				| (RAMLoad.Heavy ? LoadType.RAM : LoadType.None)
+				| (IOLoad.Heavy ? LoadType.IO : LoadType.None);
+
+			LastPid = highPid;
 		}
 
-		public void Remove(ProcessEx info) => Processes.TryRemove(info.Id, out _);
+		public void Remove(ProcessEx info)
+		{
+			Processes.TryRemove(info.Id, out _);
+			info.Loaders = null;
+		}
 
 		public void Add(ProcessEx info)
 		{
@@ -199,7 +249,8 @@ namespace Taskmaster.Process
 			{
 				try
 				{
-					info.Loaders.Value.Update();
+					info.Loaders = new ProcessLoad(info.Id, info.Name);
+					info.Loaders.Update();
 				}
 				catch (Exception ex)
 				{

@@ -34,6 +34,7 @@ namespace Taskmaster
 		public static Audio.MicManager micmonitor = null;
 		public static UI.MainWindow mainwindow = null;
 		public static UI.VolumeMeter volumemeter = null;
+		public static UI.LoaderDisplay loaderdisplay = null;
 		public static Process.Manager processmanager = null;
 		public static UI.TrayAccess trayaccess = null;
 		public static Network.Manager netmonitor = null;
