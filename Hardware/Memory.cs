@@ -83,7 +83,7 @@ namespace Taskmaster
 		{
 			Update();
 
-			Logging.DebugMsg("Memory\n--- Total:   " + Total + "\n--- Private: " + Private);
+			Logging.DebugMsg("Memory\n--- Total:   " + Total.ToString() + "\n--- Private: " + Private.ToString());
 
 			/*
 			// Win32_ComputerSystem -> TotalPhysicalMemory maps to MEMORYSTATUSEX.ullTotalPhys
@@ -114,7 +114,7 @@ namespace Taskmaster
 			{
 				buffer = Marshal.AllocHGlobal(256);
 
-				uint size = 0; // Marshal.SizeOf(NativeMethods.SYSTEM_MEMORY_LIST_INFORMATION);
+				const uint size = 0; // Marshal.SizeOf(NativeMethods.SYSTEM_MEMORY_LIST_INFORMATION);
 
 				uint rv = NativeMethods.NtQuerySystemInformation(NativeMethods.SYSTEM_INFORMATION_CLASS.SystemMemoryListInformation, buffer, size, out uint length);
 				info = (NativeMethods.SYSTEM_MEMORY_LIST_INFORMATION)Marshal.PtrToStructure(buffer, typeof(NativeMethods.SYSTEM_MEMORY_LIST_INFORMATION));
@@ -132,8 +132,8 @@ namespace Taskmaster
 
 		public static void GetCache()
 		{
-			if (global::Taskmaster.NativeMethods.GetSystemFileCacheSize(out uint minCache, out uint maxCache, out var flags))
-				Logging.DebugMsg("MEMORY CACHE - Min: " + minCache + ", Max: " + maxCache);
+			if (global::Taskmaster.NativeMethods.GetSystemFileCacheSize(out uint minCache, out uint maxCache, out _))
+				Logging.DebugMsg("MEMORY CACHE - Min: " + minCache.ToString() + ", Max: " + maxCache.ToString());
 			else
 				Logging.DebugMsg("MEMORY CACHE - information unavailable");
 		}

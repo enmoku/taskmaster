@@ -67,7 +67,7 @@ namespace Taskmaster
 
 		// Hard Page Faults
 		//Windows.PerformanceCounter PageFaults = new Windows.PerformanceCounter("Memory", "Page Faults/sec", null);
-		readonly Windows.PerformanceCounter PageInputs = null;
+		//readonly Windows.PerformanceCounter PageInputs = null;
 
 		const string LogicalDiskName = "LogicalDisk";
 		const string AllInstancesName = "_Total";
@@ -286,7 +286,7 @@ namespace Taskmaster
 					.InitComment("Foreground app is not touched, regardless of anything.")
 					.Bool;
 
-				Settings.IgnoreList = freememsec.GetOrSet("Ignore list", new string[] { })
+				Settings.IgnoreList = freememsec.GetOrSet("Ignore list", Array.Empty<string>())
 					.InitComment("List of apps that we don't touch regardless of anything.")
 					.Array;
 
@@ -317,7 +317,7 @@ namespace Taskmaster
 
 		int HealthCheck_lock = 0;
 		//async void TimerCheck(object state)
-		async void TimerCheck(object _, EventArgs _ea)
+		async void TimerCheck(object _sender, System.Timers.ElapsedEventArgs _)
 		{
 			if (DisposedOrDisposing) return; // Dumbness with timers
 
@@ -499,10 +499,10 @@ namespace Taskmaster
 							if (Settings.MemIgnoreFocus && activeappmonitor != null && User.IdleTime().TotalMinutes <= 3d)
 							{
 								ignorepid = activeappmonitor.ForegroundId;
-								Log.Verbose("<Auto-Doc> Protecting foreground app #" + ignorepid);
+								Log.Verbose("<Auto-Doc> Protecting foreground app #" + ignorepid.ToString());
 							}
 
-							var sbs = new StringBuilder()
+							var sbs = new StringBuilder(256)
 								.Append("<<Auto-Doc>> Free memory low [")
 								.Append(HumanInterface.ByteString(memfreeb, iec: true))
 								.Append("], attempting to improve situation.");
@@ -513,7 +513,7 @@ namespace Taskmaster
 								if (processmanager.GetProcess(ignorepid, out var info))
 									sbs.Append(info);
 								else
-									sbs.Append("#").Append(ignorepid).Append(".");
+									sbs.Append('#').Append(ignorepid).Append('.');
 							}
 
 							Log.Warning(sbs.ToString());
@@ -546,7 +546,7 @@ namespace Taskmaster
 						if (!WarnedAboutMemoryPressure && now.Since(LastPressureWarning).TotalSeconds > MemoryWarningCooldown)
 						{
 							double actualgoal = ((Memory.Total * (pressure - 1d)) / 1_048_576);
-							double freegoal = actualgoal + Math.Max(512d, Memory.Total * 0.02 / 1_048_576); // 512 MB or 2% extra to give space for disk cache
+							double freegoal = actualgoal + Math.Max(512d, (Memory.Total * 0.02 / 1_048_576)); // 512 MB or 2% extra to give space for disk cache
 							Logging.DebugMsg($"Pressure:    {pressure * 100:N1} %{Environment.NewLine}Actual goal: {actualgoal:N2}{Environment.NewLine}Stated goal: {freegoal:N2}");
 							Log.Warning($"<Memory> High pressure ({pressure * 100:N1} %), please close applications to improve performance (suggested minimum goal: {freegoal:N0} MiB).");
 							// TODO: Could list like ~5 apps that are using most memory here

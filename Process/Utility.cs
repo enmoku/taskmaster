@@ -212,14 +212,14 @@ namespace Taskmaster.Process
 
 			if (Process.Manager.DebugProcesses)
 			{
-				sbs = new StringBuilder()
-					.Append("Affinity Strategy(").Append(Convert.ToString(source, 2)).Append(", ").Append(strategy.ToString()).Append(")");
+				sbs = new StringBuilder("Affinity Strategy(", 256)
+					.Append(Convert.ToString(source, 2)).Append(", ").Append(strategy.ToString()).Append(')');
 			}
 
 			// Don't increase the number of cores
 			if (strategy == AffinityStrategy.Limit)
 			{
-				sbs?.Append(" Cores(").Append(Bit.Count(source)).Append("->").Append(Bit.Count(target)).Append(")");
+				sbs?.Append(" Cores(").Append(Bit.Count(source)).Append("->").Append(Bit.Count(target)).Append(')');
 
 				int excesscores = Bit.Count(target) - Bit.Count(source);
 				if (excesscores > 0)
@@ -268,7 +268,7 @@ namespace Taskmaster.Process
 		{
 			System.Runtime.InteropServices.SafeHandle handle = null;
 			int original = -1;
-			Debug.Assert(target >= 0 && target <= 2, "I/O target set to undefined value: " + target);
+			Debug.Assert(target >= 0 && target <= 2, "I/O target set to undefined value: " + target.ToString());
 
 			target = target.Constrain(0, 2); // ensure no invalid data is used.
 
@@ -391,8 +391,8 @@ namespace Taskmaster.Process
 
 		[Conditional("DEBUG")]
 		public static void PathCacheStats()
-			=> Log.Debug("Path cache state: " + Statistics.PathCacheCurrent + " items (Hits: " + Statistics.PathCacheHits +
-				", Misses: " + Statistics.PathCacheMisses +
+			=> Log.Debug("Path cache state: " + Statistics.PathCacheCurrent.ToString() + " items (Hits: " + Statistics.PathCacheHits.ToString() +
+				", Misses: " + Statistics.PathCacheMisses.ToString() +
 				", Ratio: " + $"{(Statistics.PathCacheMisses > 0 ? (Statistics.PathCacheHits / Statistics.PathCacheMisses) : 1):N2})");
 	}
 }

@@ -46,7 +46,7 @@ namespace Taskmaster
 		{
 			if (time.TotalMilliseconds <= 0) return HumanReadable.Generic.NotAvailable;
 
-			var sbs = new StringBuilder();
+			var sbs = new StringBuilder(64);
 
 			var days = false;
 			if (time.Days > 0)
@@ -68,7 +68,7 @@ namespace Taskmaster
 
 			var min = time.Minutes + (time.Seconds / 60.0);
 			sbs.AppendFormat("{0:N1}", min).Append(" minute");
-			if (min > 1 || min < 1) sbs.Append("s");
+			if (min > 1 || min < 1) sbs.Append('s');
 
 			return sbs.ToString();
 		}

@@ -51,8 +51,8 @@ namespace Taskmaster.UI.Config
 			FormBorderStyle = FormBorderStyle.FixedDialog; // no min/max buttons as wanted
 			AutoSizeMode = AutoSizeMode.GrowAndShrink;
 
-			bool WMIPolling = false;
-			int WMIPollDelay = 5;
+			bool WMIPolling;
+			int WMIPollDelay;
 			int ScanFrequency = 180;
 			bool scan = true;
 
@@ -66,8 +66,8 @@ namespace Taskmaster.UI.Config
 			}
 			else
 			{
-				WMIPolling = processmanager.WMIPolling;
-				WMIPollDelay = processmanager.WMIPollDelay;
+				WMIPolling = processmanager?.WMIPolling ?? false;
+				WMIPollDelay = processmanager?.WMIPollDelay ?? 5;
 				if (processmanager.ScanFrequency.HasValue)
 					ScanFrequency = Convert.ToInt32(processmanager.ScanFrequency.Value.TotalSeconds);
 				else

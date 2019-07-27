@@ -180,37 +180,37 @@ namespace Taskmaster
 					try
 					{
 						if (storagemanager != null)
-							mainwindow.Hook(storagemanager);
+							mainwindow.Hook(storagemanager).ConfigureAwait(false);
 
 						if (processmanager != null)
-							mainwindow.Hook(processmanager);
+							mainwindow.Hook(processmanager).ConfigureAwait(false);
 
 						if (audiomanager != null)
 						{
-							mainwindow.Hook(audiomanager);
+							mainwindow.Hook(audiomanager).ConfigureAwait(false);
 							if (micmonitor != null)
-								mainwindow.Hook(micmonitor);
+								mainwindow.Hook(micmonitor).ConfigureAwait(false);
 						}
 
 						if (netmonitor != null)
-							mainwindow.Hook(netmonitor);
+							mainwindow.Hook(netmonitor).ConfigureAwait(false);
 
 						if (activeappmonitor != null)
-							mainwindow.Hook(activeappmonitor);
+							mainwindow.Hook(activeappmonitor).ConfigureAwait(false);
 
 						if (powermanager != null)
-							mainwindow.Hook(powermanager);
+							mainwindow.Hook(powermanager).ConfigureAwait(false);
 
 						if (cpumonitor != null)
-							mainwindow.Hook(cpumonitor);
+							mainwindow.Hook(cpumonitor).ConfigureAwait(false);
 
 						if (hardware != null)
-							mainwindow.Hook(hardware);
+							mainwindow.Hook(hardware).ConfigureAwait(false);
 
 						if (healthmonitor != null)
-							mainwindow.Hook(healthmonitor);
+							mainwindow.Hook(healthmonitor).ConfigureAwait(false);
 
-						trayaccess.Hook(mainwindow);
+						trayaccess.Hook(mainwindow).ConfigureAwait(false);
 
 						// .GotFocus and .LostFocus are apparently unreliable as per the API
 						mainwindow.Activated += (_, _ea) => OptimizeResponsiviness(true);
@@ -380,7 +380,7 @@ namespace Taskmaster
 				Config?.Dispose();
 				Config = null;
 
-				Log.Information(Name + "! #" + System.Diagnostics.Process.GetCurrentProcess().Id + " END! [Clean]");
+				Log.Information(Name + "! #" + System.Diagnostics.Process.GetCurrentProcess().Id.ToString() + " END! [Clean]");
 
 				if (State == Runstate.Restart) // happens only on power resume (waking from hibernation) or when manually set
 				{
@@ -439,8 +439,8 @@ namespace Taskmaster
 			Log.Information($"<Stat> WMI polling: {Statistics.WMIPollTime:N2}s [{Statistics.WMIPolling.ToString()}]");
 			Log.Information($"<Stat> Self-maintenance: {Statistics.MaintenanceTime:N2}s [{Statistics.MaintenanceCount.ToString()}]");
 			Log.Information($"<Stat> Path cache: {Statistics.PathCacheHits.ToString()} hits, {Statistics.PathCacheMisses.ToString()} misses");
-			var sbs = new StringBuilder()
-				.Append("<Stat> Path finding: ").Append(Statistics.PathFindAttempts).Append(" total attempts; ")
+			var sbs = new StringBuilder("<Stat> Path finding: ", 256)
+				.Append(Statistics.PathFindAttempts).Append(" total attempts; ")
 				.Append(Statistics.PathFindViaModule).Append(" via module info, ")
 				.Append(Statistics.PathFindViaC).Append(" via C call, ")
 				.Append(Statistics.PathNotFound).Append(" not found");

@@ -30,6 +30,7 @@ using System.Windows.Forms;
 
 namespace Taskmaster.UI
 {
+	/*
 	public class DiagnosticMessage
 	{
 		public int Id { get; set; } = -1;
@@ -101,4 +102,5 @@ namespace Taskmaster.UI
 
 		public event EventHandler DiagnosisUpdate;
 	}
+	*/
 }

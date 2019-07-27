@@ -58,10 +58,11 @@ namespace Taskmaster
 			string name = session.DisplayName;
 
 			// Don't care really
-			var sbs = new StringBuilder();
+			var sbs = new StringBuilder(128);
 			sbs.Append("<Audio> ").Append(name).Append(" #").Append(pid).Append(" Disconnected: ").Append(disconnectReason.ToString());
 			Log.Debug(sbs.ToString());
 
+			/*
 			switch (disconnectReason)
 			{
 				case NAudio.CoreAudioApi.Interfaces.AudioSessionDisconnectReason.DisconnectReasonDeviceRemoval:
@@ -77,6 +78,7 @@ namespace Taskmaster
 				case NAudio.CoreAudioApi.Interfaces.AudioSessionDisconnectReason.DisconnectReasonSessionLogoff:
 					break;
 			}
+			*/
 
 			session.UnRegisterEventClient(this); // unnecessary?
 		}
@@ -87,27 +89,24 @@ namespace Taskmaster
 			//string instance = session.GetSessionInstanceIdentifier;
 			string name = session.DisplayName;
 
-			var sbs = new StringBuilder();
+			var sbs = new StringBuilder(128);
 			sbs.Append("<Audio> ").Append(name).Append(" #").Append(pid).Append("; State changed: ").Append(state.ToString());
 			Log.Debug(sbs.ToString());
 
+			/*
 			switch (state)
 			{
 				case NAudio.CoreAudioApi.Interfaces.AudioSessionState.AudioSessionStateActive:
-
 					break;
 				case NAudio.CoreAudioApi.Interfaces.AudioSessionState.AudioSessionStateExpired:
 				case NAudio.CoreAudioApi.Interfaces.AudioSessionState.AudioSessionStateInactive: // e.g. pause
 					//session.UnRegisterEventClient(this); // unnecessary?
 					break;
 			}
+			*/
 		}
 
 		public void OnVolumeChanged(float volume, bool isMuted)
-		{
-			var sbs = new StringBuilder();
-			sbs.Append("<Audio> Volume: ").AppendFormat("{0:N2}", volume).Append(", Muted: ").Append(isMuted ? "True" : "False");
-			Log.Debug(sbs.ToString());
-		}
+			=> Log.Debug($"<Audio> Volume: {volume:N2}, Muted: {(isMuted ? "True" : "False")}");
 	}
 }

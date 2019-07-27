@@ -160,21 +160,14 @@ namespace Taskmaster.Process
 		/// </summary>
 		/// <returns>0 [Idle] to 4 [High]; defaultl: 2 [Normal]</returns>
 		public static int PriorityToInt(ProcessPriorityClass priority)
-		{
-			switch (priority)
+			=> priority switch
 			{
-				case ProcessPriorityClass.Idle:
-					return 0;
-				case ProcessPriorityClass.BelowNormal:
-					return 1;
-				default:
-					return 2; //ProcessPriorityClass.Normal, 2
-				case ProcessPriorityClass.AboveNormal:
-					return 3;
-				case ProcessPriorityClass.High:
-					return 4;
-			}
-		}
+				ProcessPriorityClass.Idle => 0,
+				ProcessPriorityClass.BelowNormal => 1,
+				ProcessPriorityClass.AboveNormal => 3,
+				ProcessPriorityClass.High => 4,
+				_ => 2, //ProcessPriorityClass.Normal, 2
+			};
 
 		/// <summary>
 		/// Converts int to ProcessPriorityClass.
@@ -182,29 +175,17 @@ namespace Taskmaster.Process
 		/// <returns>Idle [0] to High [4]; default: Normal [2]</returns>
 		/// <param name="priority">0 [Idle] to 4 [High]</param>
 		public static ProcessPriorityClass IntToPriority(int priority)
-		{
-			Debug.Assert(priority >= 0 && priority <= 4);
-
-			switch (priority)
+			=> priority switch
 			{
-				case 0:
-					return ProcessPriorityClass.Idle;
-				case 1:
-					return ProcessPriorityClass.BelowNormal;
-				default:
-					return ProcessPriorityClass.Normal;
-				case 3:
-					return ProcessPriorityClass.AboveNormal;
-				case 4:
-					return ProcessPriorityClass.High;
-			}
-		}
+				0 => ProcessPriorityClass.Idle,
+				1 => ProcessPriorityClass.BelowNormal,
+				3 => ProcessPriorityClass.AboveNormal,
+				4 => ProcessPriorityClass.High,
+				_ => ProcessPriorityClass.Normal,
+			};
 
 		public static ProcessPriorityClass? IntToNullablePriority(int priority)
-		{
-			if (priority < 0 || priority > 4) return null;
-			return IntToPriority(priority);
-		}
+			=> (priority < 0 || priority > 4) ? null : (ProcessPriorityClass?)IntToPriority(priority);
 
 		/*
 		[DllImport("psapi.dll")]
@@ -250,7 +231,7 @@ namespace Taskmaster.Process
 					i++;
 					if (pe32.th32ProcessID == pid)
 					{
-						if (Trace) Logging.DebugMsg("<Process:Parent> Found after " + i + " iterations");
+						if (Trace) Logging.DebugMsg("<Process:Parent> Found after " + i.ToString() + " iterations");
 						return Convert.ToInt32(pe32.th32ParentProcessID);
 					}
 				}

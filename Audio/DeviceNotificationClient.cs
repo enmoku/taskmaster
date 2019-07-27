@@ -101,6 +101,7 @@ namespace Taskmaster.Audio
 		{
 			try
 			{
+				/*
 				switch (newState)
 				{
 					case DeviceState.Active:
@@ -114,6 +115,7 @@ namespace Taskmaster.Audio
 					case DeviceState.All:
 						break;
 				}
+				*/
 
 				var ea = new DeviceStateEventArgs(deviceId, newState);
 				StateChanged?.Invoke(this, ea);
@@ -135,7 +137,7 @@ namespace Taskmaster.Audio
 
 					var device = audiomanager?.GetDevice(guid);
 
-					Log.Debug("<Audio> Device " + (device?.Name ?? guid.ToString()) + " property changed: " + key.formatId.ToString() + " [" + key.propertyId + "]");
+					Log.Debug("<Audio> Device " + (device?.Name ?? guid.ToString()) + " property changed: " + key.formatId.ToString() + " [" + key.propertyId.ToString() + "]");
 				}
 
 				//PropertyChanged?.Invoke(this, null);

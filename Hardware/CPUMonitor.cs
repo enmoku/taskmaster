@@ -26,6 +26,7 @@
 
 using System;
 using System.Collections.Concurrent;
+using System.Threading.Tasks;
 using MKAh;
 using Serilog;
 using Windows = MKAh.Wrapper.Windows;
@@ -82,6 +83,7 @@ namespace Taskmaster
 			{
 				Logging.Stacktrace(ex);
 				CPUSampleTimer?.Dispose();
+				throw;
 			}
 
 			RegisterForExit(this);
@@ -107,8 +109,7 @@ namespace Taskmaster
 				var exsec = corecfg.Config[Constants.Experimental];
 				CPULoaderMonitoring = exsec.Get("CPU loaders")?.Bool ?? false;
 
-				Log.Information("<CPU> Sampler: " + $"{ SampleInterval.TotalSeconds:N0}" + "s × " + SampleCount +
-					" = " + $"{SampleCount * SampleInterval.TotalSeconds:N0}s" + " observation period");
+				Log.Information($"<CPU> Sampler: { SampleInterval.TotalSeconds:N0}s × {SampleCount.ToString()} = {SampleCount * SampleInterval.TotalSeconds:N0}s observation period");
 		}
 
 		public void SaveConfig()
@@ -141,7 +142,7 @@ namespace Taskmaster
 			Mean = tAverage / SampleCount;
 		}
 
-		void Sampler(object _, EventArgs _ea)
+		void Sampler(object _sender, System.Timers.ElapsedEventArgs _)
 		{
 			if (!Atomic.Lock(ref sampler_lock)) return; // uhhh... probably should ping warning if this return is triggered
 			if (disposed) return; // Dumbness with timers
@@ -182,7 +183,7 @@ namespace Taskmaster
 
 		Process.Manager processmanager = null;
 
-		public void Hook(Process.Manager manager)
+		public async Task Hook(Process.Manager manager)
 		{
 			processmanager = manager;
 			processmanager.OnDisposed += (_, _ea) => processmanager = null;

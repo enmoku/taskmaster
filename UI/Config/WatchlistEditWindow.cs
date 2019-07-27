@@ -317,7 +317,7 @@ namespace Taskmaster.UI.Config
 
 			// AFFINITY
 
-			var corelist = new List<CheckBox>();
+			var corelist = new List<CheckBox>(Process.Utility.CPUCount);
 
 			lt.Controls.Add(new AlignedLabel { Text = HumanReadable.System.Process.Affinity });
 			affstrategy = new ComboBox()
@@ -386,7 +386,7 @@ namespace Taskmaster.UI.Config
 					}
 				};
 				corelist.Add(box);
-				corelayout.Controls.Add(new AlignedLabel { Text = (bit + 1) + ":" });
+				corelayout.Controls.Add(new AlignedLabel { Text = (bit + 1).ToString() + ":" });
 				corelayout.Controls.Add(box);
 			}
 
@@ -550,14 +550,13 @@ namespace Taskmaster.UI.Config
 				Power.Utility.GetModeName(Power.Mode.PowerSaver),
 				Power.Utility.GetModeName(Power.Mode.Undefined)
 			});
-			int ppi = 3;
-			switch (Controller.PowerPlan)
+			int ppi = Controller.PowerPlan switch
 			{
-				case Power.Mode.HighPerformance: ppi = 0; break;
-				case Power.Mode.Balanced: ppi = 1; break;
-				case Power.Mode.PowerSaver: ppi = 2; break;
-				default: ppi = 3; break;
-			}
+				Power.Mode.HighPerformance => 0,
+				Power.Mode.Balanced => 1,
+				Power.Mode.PowerSaver => 2,
+				_ => 3,
+			};
 			powerPlan.SelectedIndex = ppi;
 			tooltip.SetToolTip(powerPlan, "Power Mode to be used when this application is detected. Leaving this undefined disables it.");
 			lt.Controls.Add(powerPlan);
@@ -725,7 +724,7 @@ namespace Taskmaster.UI.Config
 			bool exnam = (execName.Text.Length > 0);
 			bool path = (pathName.Text.Length > 0);
 
-			if (!fnlen || friendlyName.Text.Contains("]") || friendlyName.Text.Contains("["))
+			if (!fnlen || friendlyName.Text.IndexOf(']') >= 0 || friendlyName.Text.IndexOf('[') >= 0)
 			{
 				MessageBox.ShowModal("Malconfigured friendly name", "Friendly name is missing or includes illegal characters (such as square brackets).", MessageBox.Buttons.OK, parent: this);
 				return;
@@ -835,7 +834,7 @@ namespace Taskmaster.UI.Config
 
 			if (ignorelist.Items.Count > 0 && execName.Text.Length == 0)
 			{
-				var ignlist = new List<string>();
+				var ignlist = new List<string>(ignorelist.Items.Count + 1);
 				foreach (ListViewItem item in ignorelist.Items)
 					ignlist.Add(item.Text);
 
@@ -889,33 +888,24 @@ namespace Taskmaster.UI.Config
 			Close();
 		}
 
-		readonly TextBox friendlyName = null;
-		readonly TextBox execName = null;
-		readonly TextBox pathName = null;
+		readonly Extensions.TextBox friendlyName = null, execName = null, pathName = null;
 		readonly ComboBox pathVisibility = null;
-		readonly TextBox desc = null;
+		readonly Extensions.TextBox desc = null;
 
-		readonly ComboBox priorityClass = null;
-		readonly ComboBox priorityClassMethod = null;
-		readonly ComboBox bgPriorityClass = null;
+		readonly ComboBox priorityClass = null, priorityClassMethod = null, bgPriorityClass = null;
 
 		readonly ComboBox affstrategy = null;
-		readonly NumericUpDown affinityMask = null;
-		readonly NumericUpDown bgAffinityMask = null;
-		readonly NumericUpDown idealAffinity = null;
+		readonly NumericUpDown affinityMask = null, bgAffinityMask = null, idealAffinity = null;
 		readonly ComboBox ioPriority = null;
 
 		readonly ComboBox volumeMethod = null;
 		readonly Extensions.NumericUpDownEx volume = null;
 
-		readonly Button allbutton = null;
-		readonly Button clearbutton = null;
+		readonly Extensions.Button allbutton = null, clearbutton = null;
 		readonly Extensions.NumericUpDownEx modifyDelay = null;
-		readonly CheckBox allowPaging = null;
-		readonly ComboBox powerPlan = null;
-		readonly ComboBox ForegroundModeSelect = null;
-		readonly ComboBox FullscreenMode = null;
-		readonly ListView ignorelist = null;
+		readonly CheckBox allowPaging = null, FullscreenMode = null;
+		readonly ComboBox powerPlan = null, ForegroundModeSelect = null;
+		readonly Extensions.ListViewEx ignorelist = null;
 		readonly NumericUpDown preforder = null;
 
 		readonly CheckBox logAdjusts = null, logStartNExit = null, declareParent = null;
@@ -927,7 +917,7 @@ namespace Taskmaster.UI.Config
 		bool ValidateName(TextBox box, char[] invalidChars)
 		{
 			bool rv = true;
-			int off = -1;
+			int off;
 			if ((off = box.Text.IndexOfAny(invalidChars)) >= 0)
 			{
 				rv = false;
@@ -970,7 +960,7 @@ namespace Taskmaster.UI.Config
 				{
 					if (box.TextLength > 0)
 					{
-						if (!box.Text.Contains("."))
+						if (!(box.Text.IndexOf('.') >= 0))
 						{
 							box.SelectionStart = box.TextLength;
 							e.Cancel = true;
@@ -988,7 +978,7 @@ namespace Taskmaster.UI.Config
 			}
 		}
 
-		void ValidateWatchedItem(object _, EventArgs _ea)
+		void ValidateWatchedItem(object _sender, EventArgs _ea)
 		{
 			var fnlen = (friendlyName.Text.Length > 0);
 			var exnam = (execName.Text.Length > 0);
@@ -1032,11 +1022,11 @@ namespace Taskmaster.UI.Config
 				}
 			}
 
-			var sbs = new System.Text.StringBuilder();
-			sbs.Append("Name: ").AppendLine(fnlen ? "OK" : "Fail");
+			var sbs = new System.Text.StringBuilder("Name: ", 256)
+				.AppendLine(fnlen ? "OK" : "Fail");
 
 			var samesection = Controller.FriendlyName.Equals(friendlyName.Text);
-			if (!samesection && processmanager.GetControllerByName(friendlyName.Text, out var dprc)) sbs.Append("Friendly name conflict!");
+			if (!samesection && processmanager.GetControllerByName(friendlyName.Text, out _)) sbs.Append("Friendly name conflict!");
 
 			if (execName.Text.Length > 0)
 			{

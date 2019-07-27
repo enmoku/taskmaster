@@ -73,7 +73,7 @@ namespace Taskmaster.UI
 				Logging.Stacktrace(ex);
 			}
 
-			var sbs = new System.Text.StringBuilder();
+			var sbs = new System.Text.StringBuilder(128);
 			sbs.Append("<Global> Registered hotkeys: ");
 			if (regM) sbs.Append("ctrl-alt-shift-m = free memory [foreground ignored]");
 			if (regM && regR) sbs.Append(", ");

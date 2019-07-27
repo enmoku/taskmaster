@@ -202,11 +202,6 @@ namespace External
 			public UInt16 NumberOfLinenumbers;
 			[FieldOffset(36)]
 			public DataSectionFlags Characteristics;
-
-			public string Section
-			{
-				get { return new string(Name); }
-			}
 		}
 
 		[Flags]
@@ -389,23 +384,27 @@ namespace External
 		/// <summary>
 		/// The DOS header
 		/// </summary>
-		IMAGE_DOS_HEADER dosHeader;
+		public IMAGE_DOS_HEADER DOSHeader { get; private set; }
+
 		/// <summary>
 		/// The file header
 		/// </summary>
-		IMAGE_FILE_HEADER fileHeader;
+		public IMAGE_FILE_HEADER FileHeader { get; private set; }
+
 		/// <summary>
 		/// Optional 32 bit file header 
 		/// </summary>
-		IMAGE_OPTIONAL_HEADER32 optionalHeader32;
+		public IMAGE_OPTIONAL_HEADER32 OptionalHeader32 { get; private set; }
+
 		/// <summary>
 		/// Optional 64 bit file header 
 		/// </summary>
-		IMAGE_OPTIONAL_HEADER64 optionalHeader64;
+		public IMAGE_OPTIONAL_HEADER64 OptionalHeader64 { get; private set; }
+
 		/// <summary>
 		/// Image Section headers. Number of sections is in the file header.
 		/// </summary>
-		IMAGE_SECTION_HEADER[] imageSectionHeaders;
+		public IMAGE_SECTION_HEADER[] ImageSectionHeaders { get; private set; }
 
 		#endregion Private Fields
 
@@ -417,23 +416,23 @@ namespace External
 			using var stream = new FileStream(filePath, System.IO.FileMode.Open, System.IO.FileAccess.Read);
 			using var reader = new BinaryReader(stream);
 
-			dosHeader = FromBinaryReader<IMAGE_DOS_HEADER>(reader);
+			DOSHeader = FromBinaryReader<IMAGE_DOS_HEADER>(reader);
 
 			// Add 4 bytes to the offset
-			stream.Seek(dosHeader.e_lfanew, SeekOrigin.Begin);
+			stream.Seek(DOSHeader.e_lfanew, SeekOrigin.Begin);
 
-			uint ntHeadersSignature = reader.ReadUInt32();
-			fileHeader = FromBinaryReader<IMAGE_FILE_HEADER>(reader);
+			reader.ReadUInt32(); // uint ntHeadersSignature
+			FileHeader = FromBinaryReader<IMAGE_FILE_HEADER>(reader);
 
 			if (Is32BitHeader)
-				optionalHeader32 = FromBinaryReader<IMAGE_OPTIONAL_HEADER32>(reader);
+				OptionalHeader32 = FromBinaryReader<IMAGE_OPTIONAL_HEADER32>(reader);
 			else
-				optionalHeader64 = FromBinaryReader<IMAGE_OPTIONAL_HEADER64>(reader);
+				OptionalHeader64 = FromBinaryReader<IMAGE_OPTIONAL_HEADER64>(reader);
 
-			imageSectionHeaders = new IMAGE_SECTION_HEADER[fileHeader.NumberOfSections];
+			ImageSectionHeaders = new IMAGE_SECTION_HEADER[FileHeader.NumberOfSections];
 
-			for (int headerNo = 0; headerNo < imageSectionHeaders.Length; ++headerNo)
-				imageSectionHeaders[headerNo] = FromBinaryReader<IMAGE_SECTION_HEADER>(reader);
+			for (int headerNo = 0; headerNo < ImageSectionHeaders.Length; ++headerNo)
+				ImageSectionHeaders[headerNo] = FromBinaryReader<IMAGE_SECTION_HEADER>(reader);
 		}
 
 		/// <summary>
@@ -496,38 +495,15 @@ namespace External
 		public bool Is32BitHeader => (IMAGE_FILE_32BIT_MACHINE & FileHeader.Characteristics) == IMAGE_FILE_32BIT_MACHINE;
 
 		/// <summary>
-		/// Gets the file header
-		/// </summary>
-		public IMAGE_FILE_HEADER FileHeader => fileHeader;
-
-		/// <summary>
-		/// Gets the optional header
-		/// </summary>
-		public IMAGE_OPTIONAL_HEADER32 OptionalHeader32 => optionalHeader32;
-
-		/// <summary>
-		/// Gets the optional header
-		/// </summary>
-		public IMAGE_OPTIONAL_HEADER64 OptionalHeader64 => optionalHeader64;
-
-		public IMAGE_SECTION_HEADER[] ImageSectionHeaders => imageSectionHeaders;
-
-		/// <summary>
 		/// Gets the timestamp from the file header
 		/// </summary>
 		public DateTime TimeStamp
 		{
 			get
 			{
-				// Timestamp is a date offset from 1970
-				DateTime returnValue = new DateTime(1970, 1, 1, 0, 0, 0);
-
-				// Add in the number of seconds since 1970/1/1
-				returnValue = returnValue.AddSeconds(fileHeader.TimeDateStamp);
-				// Adjust to local timezone
-				returnValue += TimeZone.CurrentTimeZone.GetUtcOffset(returnValue);
-
-				return returnValue;
+				var returnValue = new DateTime(1970, 1, 1, 0, 0, 0) // Timestamp is a date offset from 1970
+					.AddSeconds(FileHeader.TimeDateStamp); // Add in the number of seconds since 1970/1/1
+				return returnValue + TimeZone.CurrentTimeZone.GetUtcOffset(returnValue); // Adjust to local timezone
 			}
 		}
 

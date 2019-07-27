@@ -37,6 +37,7 @@ namespace Taskmaster
 		[Conditional("DEBUG")]
 		void RequireAttribute()
 		{
+			// This should happen at compile time or even before.
 			if (this.GetType().GetCustomAttributes(typeof(ComponentAttribute), false).Length == 0)
 				throw new NotImplementedException(this.GetType().ToString());
 		}

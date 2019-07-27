@@ -153,7 +153,7 @@ namespace Taskmaster
 			var now = DateTime.UtcNow;
 			var age = (now - builddate).TotalDays;
 
-			var sbs = new StringBuilder()
+			var sbs = new StringBuilder(512)
 				.Append(Name).Append("! #").Append(System.Diagnostics.Process.GetCurrentProcess().Id)
 				.Append(MKAh.Execution.IsAdministrator ? " [ADMIN]" : "").Append(Portable ? " [PORTABLE]" : "")
 				.Append(" – Version: ").Append(Version)
@@ -208,8 +208,6 @@ namespace Taskmaster
 		static void LoadCoreConfig()
 		{
 			if (Trace) Log.Debug("<Core> Loading configuration...");
-
-			bool isadmin = false;
 
 			using var corecfg = Config.Load(CoreConfigFilename);
 			var cfg = corecfg.Config;
@@ -400,7 +398,7 @@ namespace Taskmaster
 			if (Trace) Log.Debug("<Core> Self-optimize: " + (SelfOptimize ? HumanReadable.Generic.Enabled : HumanReadable.Generic.Disabled));
 
 			// PROTECT USERS FROM TOO HIGH PERMISSIONS
-			isadmin = MKAh.Execution.IsAdministrator;
+			bool isadmin = MKAh.Execution.IsAdministrator;
 			const string Hell = "Hell";
 			var adminwarning = ((cfg[Constants.Core].Get(Hell)?.Value ?? null) != Constants.No);
 			if (isadmin && adminwarning)

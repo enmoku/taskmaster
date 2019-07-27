@@ -28,6 +28,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Threading.Tasks;
 using MKAh;
 using NAudio.CoreAudioApi;
 using Serilog;
@@ -38,10 +39,8 @@ namespace Taskmaster.Audio
 
 	[Component(RequireMainThread = true)]
 	[Dependency(typeof(Audio.Manager))]
-	public class MicManager : Component, IDisposal, IDisposable
+	public class MicManager : Component, IDisposal
 	{
-		readonly System.Threading.Thread Context = null;
-
 		public event EventHandler<VolumeChangedEventArgs> VolumeChanged;
 		public event EventHandler<DefaultDeviceEventArgs> DefaultChanged;
 
@@ -112,7 +111,6 @@ namespace Taskmaster.Audio
 		public MicManager()
 		{
 			Debug.Assert(MKAh.Execution.IsMainThread, "Requires main thread");
-			Context = System.Threading.Thread.CurrentThread;
 
 			const string mvol = "Default recording volume";
 			const string mcontrol = "Recording volume control";
@@ -134,7 +132,7 @@ namespace Taskmaster.Audio
 
 		Manager audiomanager = null;
 
-		public void Hook(Manager manager)
+		public async Task Hook(Manager manager)
 		{
 			Debug.Assert(manager != null, "AudioManager must not be null");
 
@@ -178,7 +176,8 @@ namespace Taskmaster.Audio
 
 			try
 			{
-				var dev = (from idev in KnownDevices where idev.GUID == ea.GUID select idev).FirstOrDefault();
+				var guid = ea.GUID;
+				var dev = KnownDevices.FirstOrDefault(x => x.GUID == guid);
 				if (dev != null) KnownDevices.Remove(dev);
 			}
 			catch (OutOfMemoryException) { throw; }
@@ -245,7 +244,8 @@ namespace Taskmaster.Audio
 				// get default communications device
 				try
 				{
-					if ((Device = audiomanager.RecordingDevice) is null)
+					Device = audiomanager.RecordingDevice;
+					if (Device is null)
 					{
 						Log.Error("<Microphone> No communications device found!");
 						return;
@@ -279,15 +279,11 @@ namespace Taskmaster.Audio
 				Device.MMDevice.AudioEndpointVolume.OnVolumeNotification += VolumeChangedHandler;
 
 				//
-
-				double devvol = double.NaN;
-				bool devcontrol = false;
-
 				using var devcfg = Config.Load(DeviceFilename);
 				var devsec = devcfg.Config[Device.GUID.ToString()];
 
-				devvol = devsec.GetOrSet(HumanReadable.Hardware.Audio.Volume, DefaultVolume).Double;
-				devcontrol = devsec.GetOrSet(Constants.Control, false).Bool;
+				double devvol = devsec.GetOrSet(HumanReadable.Hardware.Audio.Volume, DefaultVolume).Double;
+				bool devcontrol = devsec.GetOrSet(Constants.Control, false).Bool;
 				devsec.GetOrSet(Taskmaster.Constants.Name, Device.Name);
 
 				if (Control && !devcontrol) Control = false; // disable general control if device control is disabled
@@ -312,7 +308,7 @@ namespace Taskmaster.Audio
 
 			if (Trace) Log.Verbose("<Microphone> Enumerating devices...");
 
-			var devices = new List<Device>();
+			var devices = new List<Device>(4);
 
 			try
 			{
@@ -370,15 +366,14 @@ namespace Taskmaster.Audio
 
 		public int Corrections { get; private set; } = 0;
 
-		int correcting_counter = 0;
-		int correcting_lock; // = 0;
+		int correcting_lock = Atomic.Unlocked;
 
 		async void VolumeChangedHandler(NAudio.CoreAudioApi.AudioVolumeNotificationData data)
 		{
 			if (DisposedOrDisposing) return;
 
 			var oldVol = Volume;
-			double newVol = data.MasterVolume * 100;
+			double newVol = data.MasterVolume * 100d;
 
 			// BUG: This will allow tiny 
 			if (Math.Abs(newVol - Target) <= SmallVolumeHysterisis)

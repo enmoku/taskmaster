@@ -63,7 +63,7 @@ namespace Taskmaster.Configuration
 							return oldcfg.AutoUnloader();
 					}
 
-					MKAh.Ini.Config mcfg = null;
+					MKAh.Ini.Config mcfg;
 
 					var fullpath = System.IO.Path.Combine(datapath, filename);
 					if (System.IO.File.Exists(fullpath))

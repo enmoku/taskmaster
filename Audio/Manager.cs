@@ -72,7 +72,7 @@ namespace Taskmaster.Audio
 
 		//public event EventHandler<ProcessEx> OnNewSession;
 
-		const string configfile = "Audio.ini";
+		//const string configfile = "Audio.ini";
 
 		/// <summary>
 		/// Not thread safe
@@ -283,7 +283,7 @@ namespace Taskmaster.Audio
 
 		Process.Manager processmanager = null;
 
-		public void Hook(Process.Manager procman)
+		public async Task Hook(Process.Manager procman)
 		{
 			processmanager = procman;
 			processmanager.OnDisposed += (_, _ea) => processmanager = null;
@@ -291,9 +291,9 @@ namespace Taskmaster.Audio
 
 		async void OnSessionCreated(object _, NAudio.CoreAudioApi.Interfaces.IAudioSessionControl ea)
 		{
-			Debug.Assert(System.Threading.Thread.CurrentThread != Context, "Must be called in same thread.");
-
 			if (DisposingOrDisposed) return;
+
+			Debug.Assert(System.Threading.Thread.CurrentThread != Context, "Must be called in same thread.");
 
 			await Task.Delay(0).ConfigureAwait(false);
 
@@ -303,10 +303,10 @@ namespace Taskmaster.Audio
 				int pid = (int)session.GetProcessID;
 				string name = session.DisplayName;
 
-				float volume = session.SimpleAudioVolume.Volume;
-
 				if (Process.Utility.GetInfo(pid, out var info, getPath: true, name: name))
 				{
+					float volume = session.SimpleAudioVolume.Volume;
+
 					//OnNewSession?.Invoke(this, info);
 					if (processmanager.GetController(info, out var prc))
 					{

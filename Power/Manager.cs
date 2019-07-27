@@ -170,7 +170,7 @@ namespace Taskmaster.Power
 
 		CPUMonitor cpumonitor = null;
 
-		public void Hook(CPUMonitor monitor)
+		public async Task Hook(CPUMonitor monitor)
 		{
 			cpumonitor = monitor;
 			cpumonitor.OnDisposed += (_, _ea) => cpumonitor = null;
@@ -240,7 +240,7 @@ namespace Taskmaster.Power
 
 			await Task.Delay(0).ConfigureAwait(false);
 
-			string pcfg = "PowerCfg";
+			const string pcfg = "PowerCfg";
 
 			var timer = Stopwatch.StartNew();
 
@@ -308,7 +308,7 @@ namespace Taskmaster.Power
 		int SleepGivenUp = 0;
 		int monitorsleeptimer_lock = 0;
 
-		void MonitorSleepTimerTick(object _, EventArgs _ea)
+		void MonitorSleepTimerTick(object _sender, System.Timers.ElapsedEventArgs _)
 		{
 			if (IsDisposed) return;
 
@@ -350,10 +350,12 @@ namespace Taskmaster.Power
 					SleepTickCount++;
 
 					double sidletime = Time.Simplify(idle, out Time.Timescale scale);
-					var timename = Time.TimescaleString(scale, !sidletime.RoughlyEqual(1d));
 
 					if ((ShowSessionActions && SleepGivenUp <= 1) || DebugMonitor)
+					{
+						var timename = Time.TimescaleString(scale, !sidletime.RoughlyEqual(1d));
 						Log.Information($"<Session:Lock> User idle ({sidletime:N1} {timename}); Monitor power down, attempt {SleepTickCount}...");
+					}
 
 					SetMonitorMode(MonitorPowerMode.Off);
 				}
@@ -690,8 +692,8 @@ namespace Taskmaster.Power
 				.InitComment("Default, Original, Saved, or specific power mode. Power mode to restore with rule-based behaviour.")
 				.Value.ToLowerInvariant();
 
-			RestoreModeMethod newmodemethod = RestoreModeMethod.Default;
-			Mode newrestoremode = Mode.Undefined;
+			RestoreModeMethod newmodemethod;
+			Mode newrestoremode;
 
 			switch (restoremode)
 			{
@@ -838,17 +840,13 @@ namespace Taskmaster.Power
 			// TODO: Remove double lock
 			lock (power_lock)
 			{
-				string sbehaviour = HumanReadable.Hardware.Power.RuleBased.ToLower(); // default to rule-based
-				switch (LaunchBehaviour)
+				string sbehaviour = LaunchBehaviour switch
 				{
-					case PowerBehaviour.Auto:
-						sbehaviour = HumanReadable.Hardware.Power.AutoAdjust.ToLower();
-						break;
-					case PowerBehaviour.Manual:
-						sbehaviour = HumanReadable.Hardware.Power.Manual.ToLower();
-						break;
-					default: break; // ignore
-				}
+					PowerBehaviour.Auto => HumanReadable.Hardware.Power.AutoAdjust.ToLower(),
+					PowerBehaviour.Manual => HumanReadable.Hardware.Power.Manual.ToLower(),
+					_ => HumanReadable.Hardware.Power.RuleBased.ToLower(), // default to rule-based
+				};
+
 				power[Constants.Behaviour].Value = sbehaviour;
 
 				power[DefaultModeSettingName].Value = aa.DefaultMode.ToString();
@@ -914,9 +912,6 @@ namespace Taskmaster.Power
 		{
 			if (IsDisposed) return;
 
-			bool loudMonitor = (ShowSessionActions || DebugSession || DebugMonitor),
-				loudPower = (ShowSessionActions || DebugSession || DebugPower);
-
 			// BUG: ODD BEHAVIOUR ON ACCOUNT SWAP
 			switch (ev.Reason)
 			{
@@ -943,6 +938,7 @@ namespace Taskmaster.Power
 
 			if (SessionLocked)
 			{
+				bool loudMonitor = (ShowSessionActions || DebugSession || DebugMonitor);
 				if (CurrentMonitorState != MonitorPowerMode.Off)
 				{
 					if (SessionLockPowerOff)
@@ -1010,6 +1006,7 @@ namespace Taskmaster.Power
 					case SessionSwitchReason.SessionLogon:
 					case SessionSwitchReason.SessionUnlock:
 						// RESTORE POWER MODE
+						bool loudPower = (ShowSessionActions || DebugSession || DebugPower);
 						if (loudPower) Log.Information("<Session:Unlock> Restoring previous power configuration.");
 
 						SleepGivenUp = 0;
@@ -1108,24 +1105,13 @@ namespace Taskmaster.Power
 		static readonly Guid PowerSaver = new Guid("a1841308-3541-4fab-bc81-f71556f20b4a"); // SCHEME_MAX
 
 		public void SetRestoreMode(RestoreModeMethod method, Mode mode)
-		{
-			RestoreMethod = method;
-			switch (method)
+			=> 	RestoreMode = (RestoreMethod = method) switch
 			{
-				case RestoreModeMethod.Default:
-					RestoreMode = AutoAdjust.DefaultMode;
-					break;
-				case RestoreModeMethod.Original:
-					RestoreMode = OriginalMode;
-					break;
-				case RestoreModeMethod.Saved:
-					RestoreMode = Mode.Undefined;
-					break;
-				case RestoreModeMethod.Custom:
-					RestoreMode = mode;
-					break;
-			}
-		}
+				RestoreModeMethod.Original => OriginalMode,
+				RestoreModeMethod.Saved => Mode.Undefined,
+				RestoreModeMethod.Custom => mode,
+				_ => AutoAdjust.DefaultMode, // RestoreModeMethod.Default 
+			};
 
 		public PowerBehaviour SetBehaviour(PowerBehaviour pb)
 		{
@@ -1243,7 +1229,7 @@ namespace Taskmaster.Power
 			else
 			{
 				if (DebugPower)
-					Log.Debug("<Power> Forced mode still requested by " + lockCount + " sources: " + string.Join(", ", ForceModeSourcesMap.Keys.ToArray()));
+					Log.Debug("<Power> Forced mode still requested by " + lockCount.ToString() + " sources: " + string.Join(", ", ForceModeSourcesMap.Keys.ToArray()));
 			}
 		}
 
@@ -1354,7 +1340,7 @@ namespace Taskmaster.Power
 					return false;
 				}
 
-				if (DebugPower) Log.Debug("<Power> Lock #" + sourcePid);
+				if (DebugPower) Log.Debug("<Power> Lock #" + sourcePid.ToString());
 
 				Forced = true;
 
@@ -1384,20 +1370,12 @@ namespace Taskmaster.Power
 		// BUG: ?? There might be odd behaviour if this is called while Paused==true
 		void InternalSetMode(Mode mode, Cause cause = null, bool verbose = true)
 		{
-			Guid plan;
-			switch (mode)
+			Guid plan = mode switch
 			{
-				default:
-				case Mode.Balanced:
-					plan = Balanced;
-					break;
-				case Mode.HighPerformance:
-					plan = HighPerformance;
-					break;
-				case Mode.PowerSaver:
-					plan = PowerSaver;
-					break;
-			}
+				Mode.HighPerformance => HighPerformance,
+				Mode.PowerSaver => PowerSaver,
+				_ => Balanced,
+			};
 
 			if ((verbose && (CurrentMode != mode)) || DebugPower)
 			{
@@ -1421,8 +1399,8 @@ namespace Taskmaster.Power
 
 			//var Topmost = new IntPtr(NativeMethods.HWND_TOPMOST);
 
-			uint timeout = 200; // ms per window, we don't really care if they process them
-			var flags = NativeMethods.SendMessageTimeoutFlags.SMTO_ABORTIFHUNG | NativeMethods.SendMessageTimeoutFlags.SMTO_NORMAL | NativeMethods.SendMessageTimeoutFlags.SMTO_NOTIMEOUTIFNOTHUNG;
+			const uint timeout = 200; // ms per window, we don't really care if they process them
+			const NativeMethods.SendMessageTimeoutFlags flags = NativeMethods.SendMessageTimeoutFlags.SMTO_ABORTIFHUNG | NativeMethods.SendMessageTimeoutFlags.SMTO_NORMAL | NativeMethods.SendMessageTimeoutFlags.SMTO_NOTIMEOUTIFNOTHUNG;
 
 			//IntPtr hWnd = Handle; // send to self works for this? seems even more unreliable
 			// there's a lot of discussion on what is the correct way to do this, and many agree broadcast is not good choice even if it works
@@ -1476,7 +1454,7 @@ namespace Taskmaster.Power
 
 				Restore(new Cause(OriginType.Internal, "Power Manager shutdown"));
 
-				Log.Information("<Power> Auto-adjusted " + AutoAdjustCounter + " time(s).");
+				Log.Information("<Power> Auto-adjusted " + AutoAdjustCounter.ToString() + " time(s).");
 
 				SaveConfig();
 

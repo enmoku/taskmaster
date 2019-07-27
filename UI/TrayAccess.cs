@@ -44,7 +44,7 @@ namespace Taskmaster.UI
 	}
 
 	/// <summary>
-	///
+	/// Tray icon and main app control interface.
 	/// </summary>
 	// Form is used for catching some system events
 	public class TrayAccess : IDisposable
@@ -220,20 +220,21 @@ namespace Taskmaster.UI
 				TrayMenuShown?.Invoke(null, new TrayShownEventArgs() { Visible = ms.Visible });
 		}
 
-		void SessionEndingEvent(object _, Microsoft.Win32.SessionEndingEventArgs ea)
+		static void SessionEndingEvent(object _, Microsoft.Win32.SessionEndingEventArgs ea)
 		{
 			ea.Cancel = true;
 			// is this safe?
 			Log.Information("<OS> Session end signal received; Reason: " + ea.Reason.ToString());
 			ExitCleanup();
 			UnifiedExit();
+			ea.Cancel = false;
 		}
 
 		public event EventHandler RescanRequest;
 
 		Process.Manager processmanager = null;
 
-		public void Hook(Process.Manager pman)
+		public async Task Hook(Process.Manager pman)
 		{
 			processmanager = pman;
 			RescanRequest += (_, _ea) => processmanager?.HastenScan();
@@ -241,7 +242,7 @@ namespace Taskmaster.UI
 
 		Power.Manager powermanager = null;
 
-		public void Hook(Power.Manager pman)
+		public async Task Hook(Power.Manager pman)
 		{
 			powermanager = pman;
 
@@ -378,7 +379,7 @@ namespace Taskmaster.UI
 
 		MainWindow mainwindow = null;
 
-		public void Hook(MainWindow window)
+		public async Task Hook(MainWindow window)
 		{
 			Debug.Assert(window != null, "Hooking null main window");
 
@@ -459,7 +460,7 @@ namespace Taskmaster.UI
 		}
 
 		readonly ConcurrentDictionary<int, int> KnownExplorerInstances = new ConcurrentDictionary<int, int>();
-		System.Diagnostics.Process[] ExplorerInstances => System.Diagnostics.Process.GetProcessesByName("explorer");
+		static System.Diagnostics.Process[] ExplorerInstances => System.Diagnostics.Process.GetProcessesByName("explorer");
 
 		bool RegisterExplorerExit(System.Diagnostics.Process[] procs = null)
 		{
@@ -596,13 +597,12 @@ namespace Taskmaster.UI
 		/// <summary>
 		/// This can run for a long time
 		/// </summary>
-		bool RunAtStartScheduler(bool enabled, bool dryrun = false)
+		static bool RunAtStartScheduler(bool enabled, bool dryrun = false)
 		{
 			bool found = false;
 
 			const string schexe = "schtasks";
-
-			string argsq = "/query /fo list /TN MKAh-Taskmaster";
+			const string argsq = "/query /fo list /TN MKAh-Taskmaster";
 
 			try
 			{
@@ -668,7 +668,7 @@ namespace Taskmaster.UI
 				}
 				else
 				{
-					string argsdelete = "/Delete /TN MKAh-Taskmaster /F";
+					const string argsdelete = "/Delete /TN MKAh-Taskmaster /F";
 					info.Arguments = argsdelete;
 
 					var procdel = System.Diagnostics.Process.Start(info);

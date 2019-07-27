@@ -93,13 +93,12 @@ namespace Taskmaster.Process
 		{
 			await Task.Delay(0).ConfigureAwait(false);
 
-			LoadInfo load = null;
 			try
 			{
 				// TODO: Do basic monitoring.
 				lock (Loader_lock)
 				{
-					if (!Loaders.TryGetValue(info.Name, out load))
+					if (!Loaders.TryGetValue(info.Name, out var load))
 					{
 						load = new LoadInfo(info.Name, LoadType.All, info);
 						load.Update();
@@ -144,7 +143,6 @@ namespace Taskmaster.Process
 			}
 		}
 
-
 		MKAh.Lock.Monitor LoadLock = new MKAh.Lock.Monitor();
 
 		void InspectLoaders(object _)
@@ -153,7 +151,7 @@ namespace Taskmaster.Process
 
 			try
 			{
-				var heavyLoaders = new List<LoadInfo>();
+				var heavyLoaders = new List<LoadInfo>(4);
 
 				int skipped = 0;
 
@@ -293,7 +291,7 @@ namespace Taskmaster.Process
 
 		ProcessEx GetRunning(int pid) => Running.TryGetValue(pid, out var info) ? info : null;
 
-		bool LoaderTracking { get; set; } = false;
+		public bool LoaderTracking { get; private set; } = false;
 
 		public static bool DebugLoaders { get; set; } = false;
 
@@ -389,11 +387,7 @@ namespace Taskmaster.Process
 
 		// TODO: Need an ID mapping
 		public bool GetControllerByName(string friendlyname, out Controller controller)
-			=> (controller = (from prc
-					in Watchlist.Keys
-							  where prc.FriendlyName.Equals(friendlyname, StringComparison.InvariantCultureIgnoreCase)
-							  select prc)
-					.FirstOrDefault()) != null;
+			=> (controller = Watchlist.Keys.FirstOrDefault(prc => prc.FriendlyName.Equals(friendlyname, StringComparison.InvariantCultureIgnoreCase))) != null;
 
 		public bool GetProcess(int pid, out ProcessEx info)
 			=> (info = GetRunning(pid)) != null;
@@ -408,7 +402,7 @@ namespace Taskmaster.Process
 
 		ForegroundManager activeappmonitor = null;
 
-		public void Hook(ForegroundManager manager)
+		public async Task Hook(ForegroundManager manager)
 		{
 			activeappmonitor = manager;
 			activeappmonitor.ActiveChanged += ForegroundAppChangedEvent;
@@ -417,7 +411,7 @@ namespace Taskmaster.Process
 
 		Power.Manager powermanager = null;
 
-		public void Hook(Power.Manager manager)
+		public async Task Hook(Power.Manager manager)
 		{
 			powermanager = manager;
 			powermanager.BehaviourChange += PowerBehaviourEvent;
@@ -521,7 +515,7 @@ namespace Taskmaster.Process
 		/// <summary>
 		/// Spawn separate thread to run program scanning.
 		/// </summary>
-		async void TimedScan(object _, EventArgs _ea)
+		async void TimedScan(object _sender, System.Timers.ElapsedEventArgs _)
 		{
 			if (disposed) return; // HACK: dumb timers be dumb
 
@@ -561,7 +555,7 @@ namespace Taskmaster.Process
 
 			try
 			{
-				await Task.Delay(0).ConfigureAwait(false); // asyncify
+				await Task.Delay(TimeSpan.FromSeconds(delay)).ConfigureAwait(false); // asyncify
 
 				double nextscan = Math.Max(0, DateTimeOffset.UtcNow.To(NextScan).TotalSeconds);
 				if (nextscan > 5) // skip if the next scan is to happen real soon
@@ -632,7 +626,7 @@ namespace Taskmaster.Process
 
 				//var loaderOffload = new List<ProcessEx>();
 
-				List<ProcessEx> pageList = PageToDisk ? new List<ProcessEx>() : null;
+				List<ProcessEx> pageList = PageToDisk ? new List<ProcessEx>(8) : null;
 
 				foreach (var process in procs)
 					ScanTriage(process, PageToDisk);
@@ -776,7 +770,7 @@ namespace Taskmaster.Process
 			return info;
 		}
 
-		async Task PageToDisk(ProcessEx info)
+		static async Task PageToDisk(ProcessEx info)
 		{
 			await Task.Delay(1_500).ConfigureAwait(false);
 
@@ -784,10 +778,8 @@ namespace Taskmaster.Process
 			{
 				if (DebugPaging)
 				{
-					var sbs = new StringBuilder();
-					sbs.Append("<Process> Paging: ").Append(info.Name).Append(" #").Append(info.Id.ToString());
-					if (info.Controller != null)
-						sbs.Append(" – Rule: ").Append(info.Controller.FriendlyName);
+					var sbs = new StringBuilder("<Process> Paging: ", 128).Append(info.Name).Append(" #").Append(info.Id.ToString());
+					if (info.Controller != null) sbs.Append(" – Rule: ").Append(info.Controller.FriendlyName);
 					Log.Debug(sbs.ToString());
 				}
 
@@ -862,7 +854,9 @@ namespace Taskmaster.Process
 		/// In seconds.
 		/// </summary>
 		public TimeSpan? ScanFrequency { get; private set; } = TimeSpan.FromSeconds(180);
+
 		DateTimeOffset LastScan { get; set; } = DateTimeOffset.MinValue; // UNUSED
+
 		public DateTimeOffset NextScan { get; set; } = DateTimeOffset.MinValue;
 
 		// static bool ControlChildren = false; // = false;
@@ -1030,10 +1024,8 @@ namespace Taskmaster.Process
 			ColorResetEnabled = exsec.Get(Taskmaster.Constants.ColorReset)?.Bool ?? false;
 			LoaderTracking = exsec.Get(Taskmaster.Constants.LoaderTracking)?.Bool ?? false;
 
-			var sbs = new StringBuilder();
-			sbs.Append("<Process> ");
+			var sbs = new StringBuilder("<Process> Scan ", 128);
 
-			sbs.Append("Scan ");
 			if (ScanFrequency.HasValue)
 				sbs.Append("frequency: ").AppendFormat("{0:N0}", ScanFrequency.Value.TotalSeconds).Append('s');
 			else
@@ -1091,12 +1083,6 @@ namespace Taskmaster.Process
 					continue;
 				}
 
-				ProcessPriorityClass? prioR = null;
-
-				int prio;
-				int aff;
-				Power.Mode pmode = Power.Mode.Undefined;
-
 				var rulePrio = section.Get(HumanReadable.System.Process.Priority);
 				var ruleAff = section.Get(HumanReadable.System.Process.Affinity);
 				var rulePow = section.Get(HumanReadable.Hardware.Power.Mode);
@@ -1107,8 +1093,8 @@ namespace Taskmaster.Process
 					// This kind of rule is essentially more detailed ignore rule.
 				}
 
-				prio = rulePrio?.Int ?? -1;
-				aff = (ruleAff?.Int ?? -1);
+				int prio = rulePrio?.Int ?? -1;
+				int aff = (ruleAff?.Int ?? -1);
 				var pmode_t = rulePow?.String;
 
 				if (aff > Utility.FullCPUMask || aff < -1)
@@ -1120,14 +1106,14 @@ namespace Taskmaster.Process
 					aff = -1; // ignore
 				}
 
-				pmode = Power.Utility.GetModeByName(pmode_t);
+				Power.Mode pmode = Power.Utility.GetModeByName(pmode_t);
 				if (pmode == Power.Mode.Custom)
 				{
 					Log.Warning($"<Watchlist:{rulePow.Line}> [{section.Name}] Unrecognized power plan: {pmode_t}");
 					pmode = Power.Mode.Undefined;
 				}
 
-				prioR = Utility.IntToNullablePriority(prio);
+				ProcessPriorityClass? prioR = Utility.IntToNullablePriority(prio);
 				PriorityStrategy priostrat = PriorityStrategy.None;
 				if (prioR.HasValue)
 				{
@@ -1149,7 +1135,11 @@ namespace Taskmaster.Process
 				if (tignorelist?.Length > 0)
 				{
 					for (int i = 0; i < tignorelist.Length; i++)
-						tignorelist[i] = tignorelist[i].ToLowerInvariant();
+					{
+						ref var tig = ref tignorelist[i];
+						tig = tig.ToLowerInvariant(); // does this work correctly?
+						//tignorelist[i] = tignorelist[i].ToLowerInvariant();
+					}
 				}
 				else
 					tignorelist = null;
@@ -1263,8 +1253,8 @@ namespace Taskmaster.Process
 
 					bool onlyFinal = ShowOnlyFinalState;
 
-					var sbs = new StringBuilder()
-						.Append("[").Append(prc.FriendlyName).Append("] ").Append(prc.FormatPathName(ea.Info))
+					var sbs = new StringBuilder(256)
+						.Append('[').Append(prc.FriendlyName).Append("] ").Append(prc.FormatPathName(ea.Info))
 						.Append(" #").Append(ea.Info.Id);
 
 					if (ShowUnmodifiedPortions || ea.PriorityNew.HasValue)
@@ -1314,7 +1304,7 @@ namespace Taskmaster.Process
 						if (ea.Info.Legacy == LegacyLevel.Win95) sbs.Append(" [Legacy]");
 					}
 
-					if (DebugProcesses) sbs.Append(" [").Append(prc.AffinityStrategy.ToString()).Append("]");
+					if (DebugProcesses) sbs.Append(" [").Append(prc.AffinityStrategy.ToString()).Append(']');
 
 					if (ea.NewIO >= 0) sbs.Append(" – I/O: ").Append(ea.NewIO.ToString());
 
@@ -1552,7 +1542,7 @@ namespace Taskmaster.Process
 				WaitForExitTriggered(clearList.Pop());
 
 			if (cancelled > 0)
-				Log.Information("Cancelled power mode wait on " + cancelled + " process(es).");
+				Log.Information("Cancelled power mode wait on " + cancelled.ToString() + " process(es).");
 		}
 
 		bool WaitForExit(ProcessEx info)
@@ -1609,7 +1599,7 @@ namespace Taskmaster.Process
 			System.Diagnostics.Process process = ev.Process;
 			try
 			{
-				if (DebugForeground) Log.Verbose("<Process> Foreground Received: #" + ev.Id);
+				if (DebugForeground) Log.Verbose("<Process> Foreground Received: #" + ev.Id.ToString());
 
 				if (PreviousForegroundInfo != null)
 				{
@@ -1703,7 +1693,7 @@ namespace Taskmaster.Process
 				if (info.Process.HasExited) // can throw
 				{
 					info.State = HandlingState.Exited;
-					if (ShowInaction && DebugProcesses) Log.Verbose(info.Name + " #" + info.Id + " has already exited.");
+					if (ShowInaction && DebugProcesses) Log.Verbose(info.Name + " #" + info.Id.ToString() + " has already exited.");
 					prc = null;
 					return false; // return ProcessState.Invalid;
 				}
@@ -1719,7 +1709,7 @@ namespace Taskmaster.Process
 			{
 				info.Restricted = true;
 				if (ex.NativeErrorCode != 5) // what was this?
-					Log.Warning("Access error: " + info.Name + " #" + info.Id);
+					Log.Warning("Access error: " + info);
 				prc = null;
 				return false; // return ProcessState.AccessDenied; // we don't care wwhat this error is
 			}
@@ -1730,7 +1720,7 @@ namespace Taskmaster.Process
 
 			if (hasPath && IgnoreSystem32Path && info.Path.StartsWith(Environment.GetFolderPath(Environment.SpecialFolder.System)))
 			{
-				if (ShowInaction && DebugProcesses) Log.Debug("<Process/Path> " + info.Name + " #" + info.Id + " in System32, ignoring");
+				if (ShowInaction && DebugProcesses) Log.Debug("<Process/Path> " + info + " in System32, ignoring");
 				prc = null;
 				return false;
 			}
@@ -1751,7 +1741,8 @@ namespace Taskmaster.Process
 
 				if (lprc.ExecutableFriendlyName?.Length > 0)
 				{
-					if (!lprc.ExecutableFriendlyName.Any((x) => x.Equals(info.Name, StringComparison.InvariantCultureIgnoreCase)))
+					string name = info.Name;
+					if (!lprc.ExecutableFriendlyName.Any((x) => x.Equals(name, StringComparison.InvariantCultureIgnoreCase)))
 						continue;
 				}
 
@@ -2215,7 +2206,7 @@ namespace Taskmaster.Process
 					else
 					{
 						if (DebugProcesses)
-							Log.Debug("<Exclusive> Still used by " + ExclusiveLocks + " processes.");
+							Log.Debug("<Exclusive> Still used by " + ExclusiveLocks.ToString() + " processes.");
 					}
 				}
 			}
@@ -2335,16 +2326,16 @@ namespace Taskmaster.Process
 				// TODO: Instance groups?
 				try
 				{
-					string iname = string.Empty, cmdl = string.Empty;
 					using var targetInstance = ea.NewEvent.Properties["TargetInstance"].Value as ManagementBaseObject;
 					//var tpid = targetInstance.Properties["Handle"].Value as int?; // doesn't work for some reason
 					pid = Convert.ToInt32(targetInstance.Properties["Handle"].Value as string);
 
-					iname = targetInstance.Properties[Taskmaster.Constants.Name].Value as string;
+					string iname = targetInstance.Properties[Taskmaster.Constants.Name].Value as string;
 					path = targetInstance.Properties["ExecutablePath"].Value as string;
 					if (DebugAdjustDelay && targetInstance.Properties["CreationDate"].Value is string cdate && !string.IsNullOrEmpty(cdate))
 						creation = ManagementDateTimeConverter.ToDateTime(cdate);
 
+					string cmdl = string.Empty;
 					if (string.IsNullOrEmpty(path))
 						cmdl = targetInstance.Properties["CommandLine"].Value as string; // CommandLine sometimes has the path when executablepath does not
 
@@ -2354,7 +2345,7 @@ namespace Taskmaster.Process
 					if (!string.IsNullOrEmpty(cmdl))
 					{
 						int off = 0;
-						string npath = "";
+						string npath;
 						if (cmdl[0] == '"')
 						{
 							off = cmdl.IndexOf('"', 1);
@@ -2409,7 +2400,7 @@ namespace Taskmaster.Process
 						catch
 						{
 							// already exited?
-							if (DebugProcesses) Log.Error("<Process> Failed to retrieve name of process #" + pid + "; Process likely already gone.");
+							if (DebugProcesses) Log.Error("<Process> Failed to retrieve name of process #" + pid.ToString() + "; Process likely already gone.");
 							state = HandlingState.Invalid;
 							proc?.Dispose();
 							return;
@@ -2452,7 +2443,7 @@ namespace Taskmaster.Process
 			{
 				state = HandlingState.Exited;
 				if (info != null) info.State = state;
-				if (ShowInaction && DebugProcesses) Log.Verbose("Caught #" + pid + " but it vanished.");
+				if (ShowInaction && DebugProcesses) Log.Verbose("Caught #" + pid.ToString() + " but it vanished.");
 				return;
 			}
 			catch (Exception ex)
@@ -2517,7 +2508,7 @@ namespace Taskmaster.Process
 				if (NewProcessWatcher is null)
 				{
 					// 'TargetInstance.Handle','TargetInstance.Name','TargetInstance.ExecutablePath','TargetInstance.CommandLine'
-					var query = new EventQuery("SELECT TargetInstance,TIME_CREATED FROM __InstanceCreationEvent WITHIN " + WMIPollDelay + " WHERE TargetInstance ISA 'Win32_Process'");
+					var query = new EventQuery("SELECT TargetInstance,TIME_CREATED FROM __InstanceCreationEvent WITHIN " + WMIPollDelay.ToString() + " WHERE TargetInstance ISA 'Win32_Process'");
 
 					// Avast cybersecurity causes this to throw an exception
 					NewProcessWatcher = new ManagementEventWatcher(new ManagementScope(WMIEventNamespace), query);
@@ -2575,7 +2566,7 @@ namespace Taskmaster.Process
 
 		public const string WatchlistFile = "Watchlist.ini";
 
-		async void CleanupTick(object _sender, EventArgs _ea)
+		async void CleanupTick(object _sender, System.Timers.ElapsedEventArgs _ea)
 		{
 			if (disposed) throw new ObjectDisposedException(nameof(Manager), "CleanupTick called when ProcessManager was already disposed");
 

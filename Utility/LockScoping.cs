@@ -61,7 +61,8 @@ namespace MKAh.Lock
 		/// </summary>
 		public void Wait()
 		{
-			using var tlock = ScopedLock();
+			Lock();
+			Unlock();
 		}
 
 		public MonitorScope ScopedLock()

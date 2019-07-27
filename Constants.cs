@@ -28,7 +28,7 @@ namespace Taskmaster
 {
 	public static partial class Taskmaster
 	{
-		public static class Constants
+		internal static class Constants
 		{
 			public const string Name = "Name";
 			public const string GUID = "GUID";

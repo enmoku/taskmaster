@@ -84,16 +84,13 @@ namespace Taskmaster.Process
 
 			bool x64 = true;
 
-			string modFile = string.Empty;
+			string modFile;
 			FileVersionInfo version = null;
-			long modMemory = 0;
+			long modMemory;
 
 			try
 			{
 				await Task.Delay(RecordAnalysis.Value).ConfigureAwait(false);
-
-				//var pa = new ProcessAnalysis();
-				//pa.bla = true;
 
 				if (info.Process.HasExited)
 				{
@@ -119,7 +116,7 @@ namespace Taskmaster.Process
 					}
 				}
 
-				IntPtr[] modulePtrs = new IntPtr[0];
+				IntPtr[] modulePtrs = Array.Empty<IntPtr>();
 
 				// Determine number of modules
 				if (!NativeMethods.EnumProcessModulesEx(info.Process.Handle, modulePtrs, 0, out int bytesNeeded, (uint)NativeMethods.ModuleFilter.ListModulesAll))
@@ -192,23 +189,18 @@ namespace Taskmaster.Process
 			try
 			{
 				// LOG analysis
-				bool memLow = privMem < 8; // less than 8MB private memory
-				bool memModerate = privMem > 400; // more than 400 MB
-				bool memHigh = privMem > 1200; // more than 1200 MB
-				bool memExtreme = privMem > 2600; // more than 2600 MB
-
-				var sbs = new StringBuilder().Append("<Analysis> ").Append(info.Name)
+				var sbs = new StringBuilder("<Analysis> ", 512).Append(info.Name)
 					.Append(" #").Append(info.Id).Append(" facts: ");
 
-				var components = new List<string>();
+				var components = new List<string>(16);
 
 				if (x64) components.Add("64-bit");
 				else components.Add("32-bit");
 
-				if (memLow) components.Add("Memory(Low)");
-				else if (memExtreme) components.Add("Memory(Extreme)");
-				else if (memHigh) components.Add("Memory(High)");
-				else if (memModerate) components.Add("Memory(Moderate)");
+				if (privMem < 8) components.Add("Memory(Low)"); // less than 8MB private memory
+				else if (privMem > 2600) components.Add("Memory(Extreme)");// more than 2600 MB
+				else if (privMem > 1200) components.Add("Memory(High)"); // more than 1200 MB
+				else if (privMem > 400) components.Add("Memory(Moderate)"); // more than 400 MB
 
 				long latestDX = 0, latestDXX = 0;
 				foreach (var modname in ImportantModules.Keys)
@@ -235,7 +227,7 @@ namespace Taskmaster.Process
 
 				// DUMP RECOMMENDATIONS
 
-				var recommendations = new List<string>();
+				var recommendations = new List<string>(8);
 
 				if (latestDXX > latestDX)
 					recommendations.Add($"force DX {(latestDX / 10).ToString()} rendering");
@@ -260,19 +252,19 @@ namespace Taskmaster.Process
 
 				const string ymlIndent = "  ";
 
-				var contents = new StringBuilder()
+				var contents = new StringBuilder(1024 * 4)
 					.AppendLine("Analysis:")
 					.Append(ymlIndent).Append("Process: ").AppendLine(info.Name)
-					.Append(ymlIndent).Append("Version: ").AppendLine(version.FileVersion?.ToString() ?? string.Empty)
-					.Append(ymlIndent).Append("Product: ").AppendLine(version.ProductName?.ToString() ?? string.Empty)
-					.Append(ymlIndent).Append("Company: ").AppendLine(version.CompanyName?.ToString() ?? string.Empty)
+					.Append(ymlIndent).Append("Version: ").AppendLine(version.FileVersion)
+					.Append(ymlIndent).Append("Product: ").AppendLine(version.ProductName)
+					.Append(ymlIndent).Append("Company: ").AppendLine(version.CompanyName)
 					.Append(ymlIndent).Append("64-bit : ").AppendLine(x64 ? "Yes" : "No")
 					.Append(ymlIndent).Append("Path   : ").AppendLine(info.Path)
-					.Append(ymlIndent).Append("Threads: ").Append(threadCount).AppendLine()
+					.Append(ymlIndent).Append("Threads: ").AppendLine(threadCount.ToString())
 					.Append(ymlIndent).AppendLine("Memory : ")
-					.Append(ymlIndent).Append(ymlIndent).Append("Private : ").Append(privMem).AppendLine()
-					.Append(ymlIndent).Append(ymlIndent).Append("Working : ").Append(workingSet).AppendLine()
-					.Append(ymlIndent).Append(ymlIndent).Append("Virtual : ").Append(virtualMem).AppendLine()
+					.Append(ymlIndent).Append(ymlIndent).Append("Private : ").AppendLine(privMem.ToString())
+					.Append(ymlIndent).Append(ymlIndent).Append("Working : ").AppendLine(workingSet.ToString())
+					.Append(ymlIndent).Append(ymlIndent).Append("Virtual : ").AppendLine(virtualMem.ToString())
 					.Append(ymlIndent).AppendLine("Modules: ");
 
 				foreach (var mod in AllLinkedModules.Values)
@@ -297,10 +289,9 @@ namespace Taskmaster.Process
 		// TODO: build external library of components that's loaded as a dictionary of sorts
 		public string IdentifyModule(string moduleName)
 		{
-			var name = moduleName.ToLowerInvariant();
 			foreach (var modfile in KnownFiles)
 			{
-				if (name.StartsWith(modfile.Key.ToLowerInvariant()))
+				if (moduleName.StartsWith(modfile.Key, StringComparison.InvariantCultureIgnoreCase))
 					return modfile.Value.Identity;
 			}
 
@@ -362,11 +353,13 @@ namespace Taskmaster.Process
 
 						if ((files?.Length ?? 0) == 0) continue;
 
-						bool listed = yesvalues.Any((x) => x.Equals(section.Get("listed")?.Value.ToLowerInvariant() ?? "no"));
+						string listeds = section.Get("listed")?.Value.ToLowerInvariant() ?? "no";
+						bool listed = yesvalues.Any((x) => x.Equals(listeds));
 						//string upgrade = section.TryGet("upgrade")?.Value ?? null;
 						//bool open = yesvalues.Contains(section.TryGet("open")?.Value.ToLowerInvariant() ?? "no");
 						//bool prop = yesvalues.Contains(section.TryGet("proprietary")?.Value.ToLowerInvariant() ?? "no");
-						bool ext = yesvalues.Any((x) => x.Equals(section.Get("extension")?.Value.ToLowerInvariant() ?? "no"));
+						string exts = section.Get("extension")?.Value.ToLowerInvariant() ?? "no";
+						bool ext = yesvalues.Any((x) => x.Equals(exts));
 						string ttype = section.Get("type")?.Value.ToLowerInvariant() ?? "unknown"; // TODO
 
 						//string trec = section.TryGet("recommendation")?.Value.ToLowerInvariant() ?? null;
@@ -378,8 +371,8 @@ namespace Taskmaster.Process
 						if (!RecMap.TryGetValue(trec, out rec))
 							rec = ModuleRecommendation.Undefined;
 						*/
-						ModuleType type = ModuleType.Unknown;
-						if (!TypeMap.TryGetValue(ttype, out type))
+
+						if (!TypeMap.TryGetValue(ttype, out var type))
 							type = ModuleType.Unknown;
 
 						string identity = section.Name;

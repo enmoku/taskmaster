@@ -34,9 +34,6 @@ namespace Taskmaster
 
 		public InitFailure(string description, Exception innerException = null, Exception[] innerExceptions=null)
 			: base(description, innerException)
-		{
-			InnerExceptions = innerExceptions;
-			//  NOP
-		}
+			=> InnerExceptions = innerExceptions;
 	}
 }

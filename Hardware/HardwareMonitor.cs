@@ -295,13 +295,13 @@ namespace Taskmaster
 			SensorPoller = null;
 		}
 
-		void EmitGPU(object _, EventArgs _ea)
+		void EmitGPU(object _sender, System.Timers.ElapsedEventArgs _)
 		{
 			if (DisposedOrDisposing) return;
 			GPUPolling?.Invoke(this, new GPUSensorEventArgs(GPUSensorData()));
 		}
 
-		void EmitCPU(object _, EventArgs _ea)
+		void EmitCPU(object _sender, System.Timers.ElapsedEventArgs _)
 		{
 			if (DisposedOrDisposing) return;
 			CPUPolling?.Invoke(this, new CPUSensorEventArgs(CPULoad));

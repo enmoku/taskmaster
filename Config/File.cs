@@ -36,7 +36,7 @@ namespace Taskmaster.Configuration
 
 		public string Filename { get; } = null;
 
-		string Path { get; } = null;
+		//string Path { get; } = null;
 
 		public int Shared { get; internal set; } = 0;
 
@@ -54,7 +54,7 @@ namespace Taskmaster.Configuration
 		{
 			System.Diagnostics.Debug.Assert(Config != null);
 
-			Logging.DebugMsg("ConfigFile.Save(" + Filename + ") - Forced: " + force + ", Changes: " + Config.Changes);
+			Logging.DebugMsg("ConfigFile.Save(" + Filename + ") - Forced: " + force + ", Changes: " + Config.Changes.ToString());
 
 			if (force || Config.Changes > 0)
 			{

@@ -87,7 +87,7 @@ namespace Taskmaster
 
 		int CallbackLimiter = 0;
 
-		async void MaintenanceTick(object _, EventArgs _ea)
+		async void MaintenanceTick(object _sender, System.Timers.ElapsedEventArgs _)
 		{
 			if (disposed) return;
 
@@ -107,7 +107,7 @@ namespace Taskmaster
 
 				long newmem = GC.GetTotalMemory(true);
 
-				Log.Debug("<Self-Maintenance> Done, saved " + ((oldmem - newmem) / 1_000) + " kB.");
+				Log.Debug("<Self-Maintenance> Done, saved " + ((oldmem - newmem) / 1_000).ToString() + " kB.");
 
 				if (Trace) Log.Verbose("Running periodic cleanup");
 

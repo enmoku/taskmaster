@@ -139,6 +139,7 @@ namespace Taskmaster
 		[System.Runtime.InteropServices.DllImport("user32.dll")]
 		public static extern bool UnregisterHotKey(IntPtr hWnd, int id);
 
+		[Flags]
 		public enum KeyModifier
 		{
 			None = 0,
@@ -202,10 +203,7 @@ namespace Taskmaster
 				// NOP
 			}
 
-			public override bool IsInvalid
-			{
-				get => handle.ToInt32() == -1;
-			}
+			public override bool IsInvalid => handle.ToInt32() == -1;
 
 			protected override bool ReleaseHandle() => CloseHandle(handle);
 		}

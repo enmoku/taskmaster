@@ -45,7 +45,7 @@ namespace Taskmaster
 			var values = key.GetValueNames();
 			foreach (var path in values)
 			{
-				if (path.Contains("/steamapps/common/") || path.Contains(SteamIdentifier.Replace("/", @"\")))
+				if (path.Contains("/steamapps/common/") || path.Contains(SteamIdentifier.Replace('/', '\\')))
 				{
 					Logging.DebugMsg("Steam games install path found");
 					var off = path.IndexOf("steamapps") + SteamIdentifier.Length;

@@ -83,14 +83,14 @@ namespace Taskmaster
 
 					file = file.Replace(projectdir, HumanReadable.Generic.Ellipsis + System.IO.Path.DirectorySeparatorChar);
 
-					var sbs = new StringBuilder();
-					sbs.Append("Datetime:     ").Append(now.ToLongDateString()).Append(" ").AppendLine(now.ToLongTimeString())
-						.Append("Caught at: ").Append(method).Append(":").Append(lineNo).Append(" [").Append(file).AppendLine("]")
+					var sbs = new StringBuilder(1024);
+					sbs.Append("Datetime:     ").Append(now.ToLongDateString()).Append(' ').AppendLine(now.ToLongTimeString())
+						.Append("Caught at: ").Append(method).Append(':').Append(lineNo).Append(" [").Append(file).AppendLine("]")
 						.AppendLine()
 						.Append("Command line: ").AppendLine(Environment.CommandLine);
 
 #if DEBUG
-					var exceptionsbs = new StringBuilder();
+					var exceptionsbs = new StringBuilder(512);
 #endif
 					AppendStacktace(ex, ref sbs);
 #if DEBUG

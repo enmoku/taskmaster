@@ -120,7 +120,7 @@ namespace Taskmaster.UI
 
 			// CenterToScreen();
 
-			Shown += onShown;
+			Shown += OnShown;
 
 			// TODO: WPF
 			/*
@@ -140,7 +140,7 @@ namespace Taskmaster.UI
 			Visible = true;
 		}
 
-		void onShown(object _, EventArgs _ea)
+		void OnShown(object _, EventArgs _ea)
 		{
 			Logging.DebugMsg("<Main Window> Showing");
 
@@ -347,7 +347,7 @@ namespace Taskmaster.UI
 
 		Audio.Manager audiomanager = null;
 
-		public void Hook(Audio.Manager manager)
+		public async Task Hook(Audio.Manager manager)
 		{
 			Debug.Assert(manager != null);
 
@@ -367,7 +367,7 @@ namespace Taskmaster.UI
 			}
 		}
 
-		public void Hook(Audio.MicManager manager)
+		public async Task Hook(Audio.MicManager manager)
 		{
 			Debug.Assert(manager != null);
 
@@ -590,16 +590,16 @@ namespace Taskmaster.UI
 			activePID.Text = windowchangeev.Id.ToString();
 		}
 
-		public event EventHandler rescanRequest;
+		public event EventHandler RescanRequest;
 
-		public void Hook(StorageManager manager)
+		public async Task Hook(StorageManager manager)
 		{
 			storagemanager = manager;
 			storagemanager.TempScan += TempScanStats;
 			storagemanager.OnDisposed += (_, _ea) => storagemanager = null;
 		}
 
-		public void Hook(Process.Manager manager)
+		public async Task Hook(Process.Manager manager)
 		{
 			Debug.Assert(manager != null);
 
@@ -610,7 +610,7 @@ namespace Taskmaster.UI
 			processmanager.ProcessStateChange += ExitWaitListHandler;
 			if (DebugCache) PathCacheUpdate(null, EventArgs.Empty);
 
-			ProcessNewInstanceCount(this, new Process.ProcessingCountEventArgs(0, 0));
+			ProcessNewInstanceCount(new Process.ProcessingCountEventArgs(0, 0));
 
 			WatchlistRules.VisibleChanged += (_, _ea) => { if (WatchlistRules.Visible) WatchlistColor(); };
 
@@ -631,9 +631,11 @@ namespace Taskmaster.UI
 
 			processmanager.WatchlistSorted += UpdateWatchlist;
 
-			rescanRequest += RescanRequestEvent;
+			RescanRequest += RescanRequestEvent;
 
 			processmanager.ProcessModified += ProcessTouchEvent;
+
+			await Task.Delay(0).ConfigureAwait(false);
 
 			foreach (var info in processmanager.GetExitWaitList())
 				ExitWaitListHandler(this, new ProcessModificationEventArgs(info));
@@ -666,9 +668,11 @@ namespace Taskmaster.UI
 
 		void RestartRequestEvent(object sender, EventArgs _ea) => ConfirmExit(restart: true, admin: sender == menu_action_restartadmin);
 
-		void ProcessNewInstanceCount(object _, Process.ProcessingCountEventArgs e)
+		void ProcessNewInstanceCount(Process.ProcessingCountEventArgs e)
 		{
 			if (!IsHandleCreated || DisposedOrDisposing) return;
+
+			// TODO: Don't update UI so much.
 
 			if (InvokeRequired)
 				BeginInvoke(new Action(() => ProcessNewInstanceCount_Invoke(e)));
@@ -779,7 +783,7 @@ namespace Taskmaster.UI
 			WatchlistItemColor(litem, prc);
 		}
 
-		void WatchlistUpdateTooltip(ListViewItem li, Process.Controller prc)
+		static void WatchlistUpdateTooltip(ListViewItem li, Process.Controller prc)
 		{
 			// BUG: Doens't work for some reason. Gets set but is never shown.
 			//li.ToolTipText = prc.ToDetailedString();
@@ -842,33 +846,29 @@ namespace Taskmaster.UI
 			WatchlistItemColor(litem, prc);
 		}
 
-		Label AudioInputDevice = null;
+		AlignedLabel AudioInputDevice = null;
 		Extensions.NumericUpDownEx AudioInputVolume = null;
-		ListView AudioInputs = null, WatchlistRules = null;
+		Extensions.ListViewEx AudioInputs = null, WatchlistRules = null;
 
 		readonly ConcurrentDictionary<Process.Controller, ListViewItem> WatchlistMap = new ConcurrentDictionary<Process.Controller, ListViewItem>();
 		readonly object watchlist_lock = new object();
 
-		Label corCountLabel = null;
+		AlignedLabel corCountLabel = null;
 		ComboBox AudioInputEnable = null;
 
-		ListView lastmodifylist = null, powerbalancerlog = null;
+		Extensions.ListViewEx lastmodifylist = null, powerbalancerlog = null;
 
-		Label powerbalancer_behaviour = null, powerbalancer_plan = null, powerbalancer_forcedcount = null;
+		AlignedLabel powerbalancer_behaviour = null, powerbalancer_plan = null, powerbalancer_forcedcount = null;
 
-		ListView ExitWaitList = null, ProcessingList = null;
+		Extensions.ListViewEx ExitWaitList = null, ProcessingList = null;
 		ConcurrentDictionary<int, ListViewItem> ExitWaitlistMap = null;
 
 		#region Foreground Monitor
-		Label activeLabel = null;
-		Label activeExec = null;
-		Label activeFullscreen = null;
-		Label activePID = null;
+		AlignedLabel activeLabel = null, activeExec = null, activeFullscreen = null, activePID = null;
 		#endregion
 
 		#region Path Cache
-		Label cacheObjects = null;
-		Label cacheRatio = null;
+		AlignedLabel cacheObjects = null, cacheRatio = null;
 		#endregion
 
 		int PathCacheUpdate_Lock = 0;
@@ -902,7 +902,7 @@ namespace Taskmaster.UI
 		}
 
 		// BackColor = System.Drawing.Color.LightGoldenrodYellow
-		Label netstatuslabel, inetstatuslabel, uptimestatuslabel, uptimeMeanLabel, netTransmit, netQueue;
+		AlignedLabel netstatuslabel, inetstatuslabel, uptimestatuslabel, uptimeMeanLabel, netTransmit, netQueue;
 
 		public static Serilog.Core.LoggingLevelSwitch LogIncludeLevel;
 
@@ -972,11 +972,11 @@ namespace Taskmaster.UI
 				uptimeMeanLabel.Text = HumanInterface.TimeString(TimeSpan.FromMinutes(mean));
 
 			var delta = netmonitor.GetTraffic;
-			float netTotal = delta.Input + delta.Output;
+			//float netTotal = delta.Input + delta.Output;
 			netTransmit.Text = $"{delta.Input / 1000:N1} kB In, {delta.Output / 1000:N1} kB Out [{delta.Packets:N0} packets; {delta.Queue:N0} queued]";
 		}
 
-		ListView NetworkDevices;
+		Extensions.ListViewEx NetworkDevices;
 
 		ContextMenuStrip ifacems, loglistms, watchlistms;
 		ToolStripMenuItem watchlistenable;
@@ -1031,14 +1031,14 @@ namespace Taskmaster.UI
 			Clipboard.SetText(sbs.ToString(), TextDataFormat.UnicodeText);
 		}
 
-		TabControl tabLayout = null;
+		Extensions.TabControl tabLayout = null;
 
 		// TODO: Easier column access somehow than this?
 		//int OrderColumn = 0;
 		const int PrefColumn = 1, NameColumn = 2, ExeColumn = 3, PrioColumn = 4, AffColumn = 5, PowerColumn = 6, AdjustColumn = 7, PathColumn = 8;
 
-		TabPage infoTab = null, watchTab = null, micTab = null;
-		TabPage powerDebugTab = null, ProcessDebugTab = null;
+		Extensions.TabPage infoTab = null, watchTab = null, micTab = null;
+		Extensions.TabPage powerDebugTab = null, ProcessDebugTab = null;
 
 		ToolStripMenuItem menu_debug_loglevel_info = null;
 		ToolStripMenuItem menu_debug_loglevel_debug = null;
@@ -1776,7 +1776,7 @@ namespace Taskmaster.UI
 			if (MicrophoneManagerEnabled) BuildMicrophonePanel(micwidths);
 
 			// Main Window row 4-5, internet status
-			TableLayoutPanel netstatus = null;
+			Extensions.TableLayoutPanel netstatus = null;
 			if (NetworkMonitorEnabled) netstatus = BuildNetworkStatusUI(infopanel, ifacewidths);
 			// End: Inet status
 
@@ -1819,9 +1819,9 @@ namespace Taskmaster.UI
 				menu_config_visuals_topmost_volume.Checked = cfg.Config.Get(Constants.VolumeMeter)?.Get(TopmostName)?.Bool ?? true;
 			}
 
-			TableLayoutPanel cachePanel = DebugCache ? BuildCachePanel() : null;
+			Extensions.TableLayoutPanel cachePanel = DebugCache ? BuildCachePanel() : null;
 
-			TableLayoutPanel tempmonitorpanel = TempMonitorEnabled ? BuildTempMonitorPanel() : null;
+			Extensions.TableLayoutPanel tempmonitorpanel = TempMonitorEnabled ? BuildTempMonitorPanel() : null;
 
 			var corepanel = new Extensions.TableLayoutPanel()
 			{
@@ -1844,7 +1844,7 @@ namespace Taskmaster.UI
 			ramload = new AlignedLabel() { Text = HumanReadable.Generic.Uninitialized };
 			corepanel.Controls.Add(ramload);
 
-			TableLayoutPanel gpupanel = null;
+			Extensions.TableLayoutPanel gpupanel = null;
 			if (HardwareMonitorEnabled)
 			{
 				gpupanel = new Extensions.TableLayoutPanel()
@@ -1879,7 +1879,7 @@ namespace Taskmaster.UI
 			TableLayoutPanel powerpanel = null;
 			if (PowerManagerEnabled) BuildPowerPanel(out powerpanel);
 
-			TableLayoutPanel lastmodifypanel = null;
+			Extensions.TableLayoutPanel lastmodifypanel = null;
 			if (LastModifiedList) lastmodifypanel = BuildLastModifiedPanel(appwidths);
 
 			var coresystems = new FlowLayoutPanel()
@@ -2304,9 +2304,9 @@ namespace Taskmaster.UI
 			int[] winpos = wincfg.Get(Constants.Main)?.IntArray ?? null;
 			if (winpos?.Length == 4)
 			{
-				var rectangle = new System.Drawing.Rectangle(winpos[0], winpos[1], winpos[2], winpos[3]);
 				if (Screen.AllScreens.Any(ø => ø.Bounds.IntersectsWith(Bounds))) // https://stackoverflow.com/q/495380
 				{
+					var rectangle = new System.Drawing.Rectangle(winpos[0], winpos[1], winpos[2], winpos[3]);
 					StartPosition = FormStartPosition.Manual;
 					Location = new System.Drawing.Point(rectangle.Left, rectangle.Top);
 					Bounds = rectangle;
@@ -2450,14 +2450,13 @@ namespace Taskmaster.UI
 			tabLayout.Controls.Add(micTab);
 		}
 
-		TableLayoutPanel BuildTempMonitorPanel()
+		Extensions.TableLayoutPanel BuildTempMonitorPanel()
 		{
-			TableLayoutPanel tempmonitorpanel;
 			tempObjectCount = new AlignedLabel() { Width = 40, Text = HumanReadable.Generic.Uninitialized };
 
 			tempObjectSize = new AlignedLabel() { Width = 40, Text = HumanReadable.Generic.Uninitialized };
 
-			tempmonitorpanel = new Extensions.TableLayoutPanel
+			var tempmonitorpanel = new Extensions.TableLayoutPanel
 			{
 				Dock = DockStyle.Top,
 				RowCount = 1,
@@ -2473,7 +2472,7 @@ namespace Taskmaster.UI
 			return tempmonitorpanel;
 		}
 
-		TableLayoutPanel BuildCachePanel()
+		Extensions.TableLayoutPanel BuildCachePanel()
 		{
 			var cachePanel = new Extensions.TableLayoutPanel()
 			{
@@ -2547,7 +2546,7 @@ namespace Taskmaster.UI
 			tabLayout.Controls.Add(powerDebugTab);
 		}
 
-		TableLayoutPanel BuildLastModifiedPanel(int[] appwidths)
+		Extensions.TableLayoutPanel BuildLastModifiedPanel(int[] appwidths)
 		{
 			var lastmodifypanel = new Extensions.TableLayoutPanel
 			{
@@ -2643,9 +2642,8 @@ namespace Taskmaster.UI
 			//nvmpanel.Controls.Add(hardfaults);
 		}
 
-		TableLayoutPanel BuildNetworkStatusUI(FlowLayoutPanel infopanel, int[] ifacewidths)
+		Extensions.TableLayoutPanel BuildNetworkStatusUI(FlowLayoutPanel infopanel, int[] ifacewidths)
 		{
-			TableLayoutPanel netstatus;
 			netstatuslabel = new AlignedLabel() { Text = HumanReadable.Generic.Uninitialized };
 			inetstatuslabel = new AlignedLabel() { Text = HumanReadable.Generic.Uninitialized };
 			uptimeMeanLabel = new AlignedLabel() { Text = HumanReadable.Generic.Uninitialized };
@@ -2653,7 +2651,7 @@ namespace Taskmaster.UI
 			netQueue = new AlignedLabel() { Text = HumanReadable.Generic.Uninitialized };
 			uptimestatuslabel = new AlignedLabel { Text = HumanReadable.Generic.Uninitialized };
 
-			netstatus = new Extensions.TableLayoutPanel
+			var netstatus = new Extensions.TableLayoutPanel
 			{
 				ColumnCount = 6,
 				RowCount = 1,
@@ -2724,7 +2722,7 @@ namespace Taskmaster.UI
 			return netstatus;
 		}
 
-		void ShowExperimentConfig(object sender, EventArgs ea) => Config.ExperimentConfig.Reveal();
+		static void ShowExperimentConfig(object sender, EventArgs ea) => Config.ExperimentConfig.Reveal();
 
 		void ShowAboutDialog(object sender, EventArgs ea)
 		{
@@ -2733,7 +2731,7 @@ namespace Taskmaster.UI
 			var now = DateTime.UtcNow;
 			var age = (now - builddate).TotalDays;
 
-			var sbs = new StringBuilder()
+			var sbs = new StringBuilder(1024)
 				.AppendLine(Taskmaster.Name)
 				.Append("Version: ").AppendLine(Version)
 				.Append("Built: ").Append(builddate.ToString("yyyy/MM/dd HH:mm")).Append(" [").AppendFormat("{0:N0}", age).AppendLine(" days old]")
@@ -2756,7 +2754,7 @@ namespace Taskmaster.UI
 
 		void WatchlistRulesKeyboardSearch(object _, KeyPressEventArgs ea)
 		{
-			bool ctrlchar = char.IsControl(ea.KeyChar);
+			//bool ctrlchar = char.IsControl(ea.KeyChar);
 
 			// RESET
 			if (WatchlistSearchInputTimer.ElapsedMilliseconds > 2_700) // previous input too long ago
@@ -2811,11 +2809,11 @@ namespace Taskmaster.UI
 				{
 					found = false;
 
-					if (item.SubItems[NameColumn].Text.ToLower().Contains(search))
+					if (item.SubItems[NameColumn].Text.IndexOf(search, StringComparison.InvariantCultureIgnoreCase) >= 0)
 						found = true;
-					else if (item.SubItems[ExeColumn].Text.ToLower().Contains(search))
+					else if (item.SubItems[ExeColumn].Text.IndexOf(search, StringComparison.InvariantCultureIgnoreCase) >= 0)
 						found = true;
-					else if (item.SubItems[PathColumn].Text.ToLower().Contains(search))
+					else if (item.SubItems[PathColumn].Text.IndexOf(search, StringComparison.InvariantCultureIgnoreCase) >= 0)
 						found = true;
 
 					if (found)
@@ -3392,7 +3390,8 @@ namespace Taskmaster.UI
 						return;
 					}
 
-					var sbs = new StringBuilder().Append("[").Append(prc.FriendlyName).AppendLine("]");
+					var sbs = new StringBuilder(1024)
+						.Append('[').Append(prc.FriendlyName).AppendLine("]");
 
 					if (prc.Executables?.Length > 0) sbs.Append("Executables = { ").Append(string.Join(", ", prc.Executables)).AppendLine(" }");
 					if (!string.IsNullOrEmpty(prc.Path)) sbs.Append("Path = ").AppendLine(prc.Path);
@@ -3462,11 +3461,11 @@ namespace Taskmaster.UI
 			}
 		}
 
-		Label tempObjectCount = null, tempObjectSize = null;
-		Label cpuload = null, ramload = null;
-		Label pwmode = null, pwcause = null, pwbehaviour = null;
-		Label nvmtransfers = null, nvmsplitio = null, nvmdelay = null, nvmqueued = null, hardfaults = null;
-		Label gpuvram = null, gpuload = null, gputemp = null, gpufan = null;
+		AlignedLabel tempObjectCount = null, tempObjectSize = null;
+		AlignedLabel cpuload = null, ramload = null;
+		AlignedLabel pwmode = null, pwcause = null, pwbehaviour = null;
+		AlignedLabel nvmtransfers = null, nvmsplitio = null, nvmdelay = null, nvmqueued = null, hardfaults = null;
+		AlignedLabel gpuvram = null, gpuload = null, gputemp = null, gpufan = null;
 
 		public void TempScanStats(object _, StorageEventArgs ea)
 		{
@@ -3486,12 +3485,12 @@ namespace Taskmaster.UI
 			tempObjectCount.Text = (ea.Stats.Dirs + ea.Stats.Files).ToString();
 		}
 
-		ListView LogList = null;
+		Extensions.ListViewEx LogList = null;
 		MenuStrip menu = null;
 
 		public void FillLog()
 		{
-			MemoryLog.MemorySink.onNewEvent += NewLogReceived;
+			MemoryLog.MemorySink.OnNewEvent += NewLogReceived;
 
 			// Log.Verbose("Filling GUI log.");
 			foreach (var evmsg in MemoryLog.MemorySink.ToArray())
@@ -3502,7 +3501,7 @@ namespace Taskmaster.UI
 			ResizeLogList(this, EventArgs.Empty);
 		}
 
-		public void Hook(Process.ForegroundManager manager)
+		public async Task Hook(Process.ForegroundManager manager)
 		{
 			if (manager is null) return;
 
@@ -3515,7 +3514,7 @@ namespace Taskmaster.UI
 				StartProcessDebug();
 		}
 
-		public void Hook(Power.Manager manager)
+		public async Task Hook(Power.Manager manager)
 		{
 			if (manager is null) return;
 
@@ -3608,7 +3607,7 @@ namespace Taskmaster.UI
 
 		HardwareMonitor hardwaremonitor = null;
 
-		public void Hook(HardwareMonitor monitor)
+		public async Task Hook(HardwareMonitor monitor)
 		{
 			hardwaremonitor = monitor;
 			hardwaremonitor.OnDisposed += (_, _ea) => hardwaremonitor = null;
@@ -3619,7 +3618,7 @@ namespace Taskmaster.UI
 			GPULoadPoller(this, EventArgs.Empty);
 		}
 
-		public void Hook(CPUMonitor monitor)
+		public async Task Hook(CPUMonitor monitor)
 		{
 			cpumonitor = monitor;
 			cpumonitor.Sampling += CPULoadHandler;
@@ -3630,7 +3629,7 @@ namespace Taskmaster.UI
 
 		HealthMonitor healthmonitor = null;
 
-		public void Hook(HealthMonitor monitor)
+		public async Task Hook(HealthMonitor monitor)
 		{
 			healthmonitor = monitor;
 			healthmonitor.OnDisposed += (_, _ea) => healthmonitor = null;
@@ -3745,7 +3744,7 @@ namespace Taskmaster.UI
 			}
 		}
 
-		string WarningLevelString(int value, int high, int vhigh, int extreme)
+		static string WarningLevelString(int value, int high, int vhigh, int extreme)
 		{
 			if (value >= extreme)
 				return "extreme";
@@ -3818,7 +3817,7 @@ namespace Taskmaster.UI
 
 			NetworkDevices.Items.Clear();
 
-			var niclist = new List<ListViewItem>();
+			var niclist = new List<ListViewItem>(2);
 
 			foreach (var dev in netmonitor.GetInterfaces())
 			{
@@ -3845,7 +3844,7 @@ namespace Taskmaster.UI
 			AlternateListviewRowColors(NetworkDevices, AlternateRowColorsDevices);
 		}
 
-		public void Hook(Network.Manager manager)
+		public async Task Hook(Network.Manager manager)
 		{
 			if (manager is null) return; // disabled
 
@@ -3887,8 +3886,8 @@ namespace Taskmaster.UI
 			try
 			{
 				var item = NetworkDevices.Items[ea.Traffic.Index];
-				item.SubItems[PacketDeltaColumn].Text = "+" + ea.Traffic.Delta.Unicast;
-				item.SubItems[ErrorDeltaColumn].Text = "+" + ea.Traffic.Delta.Errors;
+				item.SubItems[PacketDeltaColumn].Text = "+" + ea.Traffic.Delta.Unicast.ToString();
+				item.SubItems[ErrorDeltaColumn].Text = "+" + ea.Traffic.Delta.Errors.ToString();
 				item.SubItems[ErrorDeltaColumn].ForeColor = ea.Traffic.Delta.Errors > 0 ? System.Drawing.Color.OrangeRed : System.Drawing.SystemColors.ControlText;
 				item.SubItems[ErrorTotalColumn].Text = ea.Traffic.Total.Errors.ToString();
 			}
@@ -3955,7 +3954,7 @@ namespace Taskmaster.UI
 
 		// BUG: DO NOT LOG INSIDE THIS FOR FUCKS SAKE
 		// it creates an infinite log loop
-		public int MaxLogSize { get => MemoryLog.MemorySink.Max; private set => MemoryLog.MemorySink.Max = value; }
+		public static int MaxLogSize { get => MemoryLog.MemorySink.Max; private set => MemoryLog.MemorySink.Max = value; }
 
 		void ClearLog()
 		{
@@ -4088,9 +4087,9 @@ namespace Taskmaster.UI
 				if (Trace) Log.Verbose("Disposing main window...");
 
 				if (MemoryLog.MemorySink != null)
-					MemoryLog.MemorySink.onNewEvent -= NewLogReceived; // unnecessary?
+					MemoryLog.MemorySink.OnNewEvent -= NewLogReceived; // unnecessary?
 
-				rescanRequest = null;
+				RescanRequest = null;
 
 				try
 				{

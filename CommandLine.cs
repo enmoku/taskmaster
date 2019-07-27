@@ -44,7 +44,7 @@ namespace Taskmaster
 		{
 			for (int i = 0; i < args.Length; i++)
 			{
-				if (!args[i].StartsWith("--"))
+				if (!args[i].StartsWith("--", StringComparison.Ordinal))
 				{
 					Logging.DebugMsg("Unrecognized command-line parameter: " + args[i]);
 					continue;
@@ -56,12 +56,12 @@ namespace Taskmaster
 						NoLogging = true;
 						break;
 					case RestartArg:
-						if (args.Length > i + 1 && !args[i + 1].StartsWith("--"))
+						if (args.Length > i + 1 && !args[i + 1].StartsWith("--", StringComparison.Ordinal))
 							RestartCounter = Convert.ToInt32(args[++i]);
 						break;
 					case AdminArg:
 						// AdminCounter protects from restart loop from attempting to gain admin rights and constantly failing
-						if (args.Length > i + 1 && !args[i + 1].StartsWith("--"))
+						if (args.Length > i + 1 && !args[i + 1].StartsWith("--", StringComparison.Ordinal))
 						{
 							try
 							{
@@ -116,7 +116,7 @@ namespace Taskmaster
 			ti.WorkingDirectory = System.IO.Path.GetDirectoryName(cwd);
 			ti.FileName = System.IO.Path.GetFileName(cwd);
 
-			var nargs = new System.Collections.Generic.List<string> { RestartArg, (++RestartCounter).ToString() };
+			var nargs = new System.Collections.Generic.List<string>(5) { RestartArg, (++RestartCounter).ToString() };
 			if (admin)
 			{
 				nargs.Add(AdminArg);

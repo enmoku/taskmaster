@@ -227,8 +227,8 @@ namespace Taskmaster.Process
 		public int AffinityMask { get; set; } = -1;
 
 		public AffinityStrategy AffinityStrategy = AffinityStrategy.None;
-		int ScatterOffset = 0;
-		int ScatterChunk = 1; // should default to Cores/4 or Range/2 at max, 1 at minimum.
+		//int ScatterOffset = 0;
+		//int ScatterChunk = 1; // should default to Cores/4 or Range/2 at max, 1 at minimum.
 
 		int _affinityIdeal = -1;
 
@@ -249,7 +249,7 @@ namespace Taskmaster.Process
 
 		public Process.PathVisibilityOptions PathVisibility { get; set; } = Process.PathVisibilityOptions.Process;
 
-		string PathMask { get; } = string.Empty; // UNUSED
+		//string PathMask { get; } = string.Empty; // UNUSED
 
 		/// <summary>
 		/// Controls whether this particular controller allows itself to be logged.
@@ -459,11 +459,11 @@ namespace Taskmaster.Process
 			{
 				NeedsSaving = true;
 
-				var sbs = new StringBuilder();
+				var sbs = new StringBuilder(256);
 
-				sbs.Append("[").Append(FriendlyName).Append("]").Append(" Malconfigured. Following re-adjusted: ");
+				sbs.Append('[').Append(FriendlyName).Append(']').Append(" Malconfigured. Following re-adjusted: ");
 
-				var fixedList = new List<string>();
+				var fixedList = new List<string>(8);
 
 				if (PriorityMismatchFixed) fixedList.Add("priority mismatch");
 				if (AffinityMismatchFixed) fixedList.Add("affinity mismatch");
@@ -736,7 +736,7 @@ namespace Taskmaster.Process
 			else
 				app.TryRemove("Declare parent");
 
-			Logging.DebugMsg(cfg.Filename + " has gained " + cfg.Config.Changes + " total changes.");
+			Logging.DebugMsg(cfg.Filename + " has gained " + cfg.Config.Changes.ToString() + " total changes.");
 
 			// pass to config manager
 			NeedsSaving = false;
@@ -828,9 +828,7 @@ namespace Taskmaster.Process
 					AffinityOld = oldAffinity,
 				};
 
-				ev.User = new StringBuilder();
-
-				ev.User.Append(" – Background Mode");
+				ev.User = new StringBuilder(" – Background Mode", 128);
 
 				OnAdjust?.Invoke(this, ev);
 			}
@@ -927,9 +925,7 @@ namespace Taskmaster.Process
 					NewIO = nIO,
 				};
 
-				ev.User = new StringBuilder();
-
-				ev.User.Append(" – Foreground Mode");
+				ev.User = new StringBuilder(" – Foreground Mode", 128);
 
 				OnAdjust?.Invoke(this, ev);
 			}
@@ -973,32 +969,30 @@ namespace Taskmaster.Process
 			Debug.Assert(info.Controller != null, "No controller attached");
 
 			if (DebugPower || DebugForeground)
-				Log.Debug("[" + FriendlyName + "] " + info.Name + " #" + info.Id + " foreground power on");
-
-			bool rv = false;
+				Log.Debug("[" + FriendlyName + "] " + info.Name + " #" + info.Id.ToString() + " foreground power on");
 
 			try
 			{
 				info.PowerWait = true;
 
-				rv = powermanager.Force(PowerPlan, info.Id);
+				bool rv = powermanager.Force(PowerPlan, info.Id);
 
 				WaitForExit(info);
 
 				WaitingExit?.Invoke(this, new ProcessModificationEventArgs(info));
 
 				if (DebugPower) Log.Debug($"[{FriendlyName}] {FormatPathName(info)} #{info.Id.ToString()} power exit wait set");
+
+				return rv;
 			}
 			catch (Exception ex)
 			{
 				Logging.Stacktrace(ex);
 				throw;
 			}
-
-			return rv;
 		}
 
-		void UndoPower(ProcessEx info)
+		static void UndoPower(ProcessEx info)
 		{
 			if (info.PowerWait) powermanager?.Release(info);
 		}
@@ -1053,7 +1047,7 @@ namespace Taskmaster.Process
 							for (int i = 0; i < sparts.Count - 1; i++)
 							{
 								string cur = sparts[i].ToLowerInvariant();
-								if (SpecialCasePathBits.Any((x) => x.Equals(cur))) // steamapps
+								if (SpecialCasePathBits.Any(x => x.Equals(cur))) // e.g. steamapps
 								{
 									sparts[i] = HumanReadable.Generic.Ellipsis;
 									sparts.RemoveAt(++i); // common, i at app name, rolled over with loop
@@ -1061,7 +1055,7 @@ namespace Taskmaster.Process
 								}
 								else if ((i > 2 && i < sparts.Count - 3) // remove midpoint
 									|| UnwantedPathBits.Any((x) => x.Equals(cur)) // flat out unwanted
-									|| (info.Name.Length > 5 && cur.Any((x) => x.Equals(info.Name.ToLowerInvariant())))) // folder contains exe name
+									|| (info.Name.Length > 5 && cur.IndexOf(info.Name, StringComparison.InvariantCultureIgnoreCase) >= 0)) // folder contains exe name
 								{
 									if (replaced)
 										sparts.RemoveAt(i--); // remove current and roll back loop
@@ -1136,7 +1130,8 @@ namespace Taskmaster.Process
 
 		public bool Ignored(ProcessEx info)
 		{
-			if (IgnoreList?.Any(item => item.Equals(info.Name, StringComparison.InvariantCultureIgnoreCase)) == true)
+			string name = info.Name;
+			if (IgnoreList?.Any(item => item.Equals(name, StringComparison.InvariantCultureIgnoreCase)) == true)
 			{
 				info.State = HandlingState.Abandoned;
 				return true; // return ProcessState.Ignored;
@@ -1164,7 +1159,7 @@ namespace Taskmaster.Process
 				if (Foreground != ForegroundMode.Ignore && info.InBackground)
 				{
 					if (Trace && DebugForeground)
-						Log.Debug("<Foreground> " + FormatPathName(info) + " #" + info.Id + " in background, ignoring.");
+						Log.Debug("<Foreground> " + FormatPathName(info) + " #" + info.Id.ToString() + " in background, ignoring.");
 					info.State = HandlingState.Paused;
 					return; // don't touch paused item
 				}
@@ -1191,7 +1186,7 @@ namespace Taskmaster.Process
 					if (info.Process.HasExited)
 					{
 						if (Manager.DebugProcesses)
-							Log.Debug("[" + FriendlyName + "] " + info.Name + " #" + info.Id + " has already exited.");
+							Log.Debug("[" + FriendlyName + "] " + info.Name + " #" + info.Id.ToString() + " has already exited.");
 						info.State = HandlingState.Exited;
 						return; // return ProcessState.Invalid;
 					}
@@ -1272,7 +1267,7 @@ namespace Taskmaster.Process
 						if (ormt.LastIgnored.To(now) < Manager.IgnoreRecentlyModified
 							|| ormt.LastModified.To(now) < Manager.IgnoreRecentlyModified)
 						{
-							if (Manager.DebugProcesses && ShowInaction) Log.Debug(info.ToFullString() + " ignored due to recent modification. State " + (expected ? "un" : "") + "changed ×" + ormt.ExpectedState);
+							if (Manager.DebugProcesses && ShowInaction) Log.Debug(info.ToFullString() + " ignored due to recent modification. State " + (expected ? "un" : "") + "changed ×" + ormt.ExpectedState.ToString());
 
 							if (ormt.ExpectedState == -2) // 2-3 seems good number
 							{
@@ -1325,7 +1320,7 @@ namespace Taskmaster.Process
 					Log.Debug(info.ToFullString() + " in protected list, limiting tampering.");
 
 				ProcessPriorityClass? newPriority = null;
-				IntPtr? newAffinity = null;
+				IntPtr? newAffinity;
 
 				bool mAffinity = false, mPriority = false, mPower = false, modified = false, fAffinity = false, fPriority = false;
 
@@ -1514,9 +1509,9 @@ namespace Taskmaster.Process
 
 				if (logevent)
 				{
-					var sbs = new StringBuilder();
+					var sbs = new StringBuilder(256);
 
-					if (mPower) sbs.Append(" [Power Mode: ").Append(Power.Utility.GetModeName(PowerPlan)).Append("]");
+					if (mPower) sbs.Append(" [Power Mode: ").Append(Power.Utility.GetModeName(PowerPlan)).Append(']');
 
 					if (!modified && (ShowInaction && Manager.DebugProcesses)) sbs.Append(" – looks OK, not touched.");
 
@@ -1569,7 +1564,7 @@ namespace Taskmaster.Process
 			}
 		}
 
-		void LegacyTest(ProcessEx info)
+		static void LegacyTest(ProcessEx info)
 		{
 			try
 			{
@@ -1633,7 +1628,7 @@ namespace Taskmaster.Process
 				else if (original == target)
 				{
 					if (Trace && Manager.DebugProcesses && ShowInaction)
-						Log.Debug(info.ToFullString() + " – I/O priority ALREADY set to " + original + ", target: " + target);
+						Log.Debug(info.ToFullString() + " – I/O priority ALREADY set to " + original.ToString() + ", target: " + target.ToString());
 					nIO = -1;
 				}
 				else
@@ -1641,9 +1636,9 @@ namespace Taskmaster.Process
 					if (Manager.DebugProcesses && Trace)
 					{
 						if (nIO >= 0 && nIO != original)
-							Log.Debug(info.ToFullString() + " – I/O priority set from " + original + " to " + nIO + ", target: " + target);
+							Log.Debug(info.ToFullString() + " – I/O priority set from " + original.ToString() + " to " + nIO.ToString() + ", target: " + target.ToString());
 						else if (ShowInaction)
-							Log.Debug(info.ToFullString() + " – I/O priority NOT set from " + original + " to " + target);
+							Log.Debug(info.ToFullString() + " – I/O priority NOT set from " + original.ToString() + " to " + target.ToString());
 					}
 				}
 			}
@@ -1763,27 +1758,30 @@ namespace Taskmaster.Process
 					}
 				}
 
-				StringBuilder sbs = null;
+				StringBuilder sbs;
 				if (DebugResize)
 				{
-					sbs = new StringBuilder();
-					sbs.Append("<Resize> ").Append(info.Name).Append(" #").Append(info.Id);
+					sbs = new StringBuilder("<Resize> ", 256)
+						.Append(info.Name).Append(" #").Append(info.Id);
+
 					if (!gotCurrentSize)
 					{
 						sbs.Append(" Failed to get current size");
-						if (sizeChanging) sbs.Append(";");
+						if (sizeChanging) sbs.Append(';');
 					}
 					if (sizeChanging)
 					{
 						sbs.Append(" Changing");
-						if (gotCurrentSize) sbs.Append(" from ").Append(oldrect.Width).Append("×").Append(oldrect.Height);
-						sbs.Append(" to ").Append(newsize.Width).Append("×").Append(newsize.Height);
+						if (gotCurrentSize) sbs.Append(" from ").Append(oldrect.Width).Append('×').Append(oldrect.Height);
+						sbs.Append(" to ").Append(newsize.Width).Append('×').Append(newsize.Height);
 					}
 
 					if (ResizeStrategy == WindowResizeStrategy.None)
 						sbs.Append("; remembering size or pos not enabled.");
 					Log.Debug(sbs.ToString());
 				}
+				else
+					sbs = null;
 
 				if (ResizeStrategy == WindowResizeStrategy.None) return;
 
@@ -1791,7 +1789,7 @@ namespace Taskmaster.Process
 				ActiveWait.TryAdd(info.Id, info);
 
 				var re = new System.Threading.ManualResetEvent(false);
-				MonitorWindowResize(info, rect, oldrect, re).ConfigureAwait(false);
+				MonitorWindowResize(info, rect, re).ConfigureAwait(false);
 
 				if (!WaitForExit(info))
 				{
@@ -1816,7 +1814,7 @@ namespace Taskmaster.Process
 			}
 		}
 
-		async Task MonitorWindowResize(ProcessEx info, NativeMethods.RECT rect, System.Drawing.Rectangle oldrect, System.Threading.ManualResetEvent re)
+		async Task MonitorWindowResize(ProcessEx info, NativeMethods.RECT rect, System.Threading.ManualResetEvent re)
 		{
 			await Task.Delay(0).ConfigureAwait(false);
 
@@ -1867,7 +1865,7 @@ namespace Taskmaster.Process
 					|| (Bit.IsSet((int)ResizeStrategy, (int)WindowResizeStrategy.Position)
 					&& (oldrect.Left != Resize.Value.Left || oldrect.Top != Resize.Value.Top)))
 				{
-					if (DebugResize) Log.Debug("Saving " + info + " size to " + Resize.Value.Width + "×" + Resize.Value.Height);
+					if (DebugResize) Log.Debug("Saving " + info + " size to " + Resize.Value.Width.ToString() + "×" + Resize.Value.Height.ToString());
 
 					NeedsSaving = true;
 				}
@@ -1933,7 +1931,7 @@ namespace Taskmaster.Process
 
 		public string ToDetailedString()
 		{
-			var sbs = new StringBuilder();
+			var sbs = new StringBuilder(1024 * 2);
 
 			sbs.Append("[ ").Append(FriendlyName).AppendLine(" ]");
 			if (Description?.Length > 0)
@@ -1962,7 +1960,7 @@ namespace Taskmaster.Process
 
 			if (AffinityMask >= 0)
 			{
-				sbs.Append("Affinity: ").Append(HumanInterface.BitMask(AffinityMask, Utility.CPUCount)).Append(" [").Append(AffinityMask.ToString()).Append("]");
+				sbs.Append("Affinity: ").Append(HumanInterface.BitMask(AffinityMask, Utility.CPUCount)).Append(" [").Append(AffinityMask.ToString()).Append(']');
 				if (AffinityIdeal >= 0)
 					sbs.Append(" – ideal core: ").Append(AffinityIdeal);
 				sbs.Append(" – strategy: ").AppendLine(AffinityStrategy.ToString());

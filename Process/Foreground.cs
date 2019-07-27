@@ -32,11 +32,12 @@ using Serilog;
 namespace Taskmaster.Process
 {
 	using System.Text;
-	using static Taskmaster;
+    using System.Threading.Tasks;
+    using static Taskmaster;
 
 	public class WindowChangedArgs : EventArgs
 	{
-		public IntPtr hWnd { get; set; }
+		public IntPtr HWND { get; set; }
 		public int Id { get; set; }
 		public System.Diagnostics.Process Process { get; set; }
 		public string Title { get; set; }
@@ -89,19 +90,19 @@ namespace Taskmaster.Process
 
 			if (HangKillTick > 0 || HangReduceTick > 0 || HangMinimizeTick > 0)
 			{
-				var sbs = new StringBuilder().Append("<Foreground> Hang action timers: ");
+				var sbs = new StringBuilder("<Foreground> Hang action timers: ", 256);
 
 				if (HangMinimizeTick > 0)
 				{
-					sbs.Append("Minimize: ").Append(HangMinimizeTick).Append("s");
+					sbs.Append("Minimize: ").Append(HangMinimizeTick).Append('s');
 					if (HangReduceTick > 0 || HangKillTick > 0) sbs.Append(", ");
 				}
 				if (HangReduceTick > 0)
 				{
-					sbs.Append("Reduce: ").Append(HangReduceTick).Append("s");
+					sbs.Append("Reduce: ").Append(HangReduceTick).Append('s');
 					if (HangKillTick > 0) sbs.Append(", ");
 				}
-				if (HangKillTick > 0) sbs.Append("Kill: ").Append(HangKillTick).Append("s");
+				if (HangKillTick > 0) sbs.Append("Kill: ").Append(HangKillTick).Append('s');
 
 				Log.Information(sbs.ToString());
 			}
@@ -116,7 +117,7 @@ namespace Taskmaster.Process
 
 		Process.Manager processmanager = null;
 
-		public void Hook(Process.Manager procman)
+		public async Task Hook(Process.Manager procman)
 		{
 			processmanager = procman;
 			HangTimer.Start();
@@ -138,7 +139,7 @@ namespace Taskmaster.Process
 		/// </summary>
 		public bool SetupEventHooks()
 		{
-			uint flags = NativeMethods.WINEVENT_OUTOFCONTEXT; // NativeMethods.WINEVENT_SKIPOWNPROCESS
+			const uint flags = NativeMethods.WINEVENT_OUTOFCONTEXT; // NativeMethods.WINEVENT_SKIPOWNPROCESS
 			windowseventhook = global::Taskmaster.NativeMethods.SetWinEventHook(
 				NativeMethods.EVENT_SYSTEM_FOREGROUND, NativeMethods.EVENT_SYSTEM_FOREGROUND,
 				IntPtr.Zero, ForegroundEventDelegate, 0, 0, flags);
@@ -179,7 +180,7 @@ namespace Taskmaster.Process
 		/// </summary>
 		// TODO: Hang check should only take action if user fails to swap apps (e.g. ctrl-alt-esc for taskmanager)
 		// TODO: Hang check should potentially do the following: Minimize app, Reduce priority, Reduce cores, Kill it
-		void HangDetector(object _, EventArgs _ea)
+		void HangDetector(object _sender, System.Timers.ElapsedEventArgs _)
 		{
 			if (!Atomic.Lock(ref hangdetector_lock)) return;
 			if (DisposedOrDisposing) return; // kinda dumb, but apparently timer can fire off after being disposed...
@@ -218,12 +219,12 @@ namespace Taskmaster.Process
 						if (Utility.SystemProcessId(lfgpid)) name = "<OS>"; // this might also signify the desktop, for some reason
 					}
 
-					var sbs = new StringBuilder().Append("<Foreground> ");
+					var sbs = new StringBuilder("<Foreground> ", 128);
 
 					if (!string.IsNullOrEmpty(name))
 						sbs.Append(name).Append(" #").Append(lfgpid);
 					else
-						sbs.Append("#").Append(lfgpid);
+						sbs.Append('#').Append(lfgpid);
 
 					if (HangTick == 1)
 					{
@@ -374,21 +375,20 @@ namespace Taskmaster.Process
 		}
 		*/
 
-		string GetWindowTitle(IntPtr hwnd)
+		static string GetWindowTitle(IntPtr hwnd)
 		{
 			const int nChars = 256; // Why this limit?
 			var buff = new StringBuilder(nChars);
 
 			// Window title, we don't care tbh.
-			if (global::Taskmaster.NativeMethods.GetWindowText(hwnd, buff, nChars) > 0) // get title? not really useful for most things
-				return buff.ToString();
 
-			return string.Empty;
+			 // get title? not really useful for most things
+			return (global::Taskmaster.NativeMethods.GetWindowText(hwnd, buff, nChars) > 0) ? buff.ToString() : string.Empty;
 		}
 
-		System.Drawing.Rectangle windowrect;
+		System.Drawing.Rectangle WindowRectangle;
 
-		NativeMethods.RECT screenrect;
+		NativeMethods.RECT ScreenRectangle;
 
 		bool Fullscreen(IntPtr hwnd)
 		{
@@ -397,19 +397,19 @@ namespace Taskmaster.Process
 			// TODO: Is it possible to cache screen? multimonitor setup may make it hard... would that save anything?
 			var screen = System.Windows.Forms.Screen.FromHandle(hwnd); // passes
 
-			NativeMethods.GetWindowRect(hwnd, ref screenrect);
+			NativeMethods.GetWindowRect(hwnd, ref ScreenRectangle);
 			//var windowrect = new System.Drawing.Rectangle(rect.Left, rect.Top, rect.Right - rect.Left, rect.Bottom - rect.Top);
-			windowrect.Height = screenrect.Bottom - screenrect.Top;
-			windowrect.Width = screenrect.Right - screenrect.Left;
-			windowrect.X = screenrect.Left;
-			windowrect.Y = screenrect.Top;
+			WindowRectangle.Height = ScreenRectangle.Bottom - ScreenRectangle.Top;
+			WindowRectangle.Width = ScreenRectangle.Right - ScreenRectangle.Left;
+			WindowRectangle.X = ScreenRectangle.Left;
+			WindowRectangle.Y = ScreenRectangle.Top;
 
-			bool full = windowrect.Equals(screen.Bounds);
+			bool full = WindowRectangle.Equals(screen.Bounds);
 
 			return full;
 		}
 
-		MKAh.Lock.Monitor WinPrcLock = new MKAh.Lock.Monitor();
+		readonly MKAh.Lock.Monitor WinPrcLock = new MKAh.Lock.Monitor();
 
 		/// <summary>
 		/// SetWinEventHook sends messages to this. Don't call it on your own.
@@ -420,8 +420,9 @@ namespace Taskmaster.Process
 		{
 			if (eventType != NativeMethods.EVENT_SYSTEM_FOREGROUND) return; // does this ever trigger?
 
-			await System.Threading.Tasks.Task.Delay(Hysterisis).ConfigureAwait(false); // asyncify
 			if (DisposedOrDisposing) return;
+
+			await System.Threading.Tasks.Task.Delay(Hysterisis).ConfigureAwait(false); // asyncify
 
 			using var sl = WinPrcLock.ScopedLock();
 			if (sl.Waiting) return; // unlikely, but....
@@ -439,7 +440,7 @@ namespace Taskmaster.Process
 
 				var activewindowev = new WindowChangedArgs()
 				{
-					hWnd = hwnd,
+					HWND = hwnd,
 					Title = string.Empty,
 					Fullscreen = fs,
 				};
@@ -468,7 +469,7 @@ namespace Taskmaster.Process
 					}
 
 					if (DebugForeground && ShowInaction)
-						Log.Debug("<Foreground> Active #" + activewindowev.Id + ": " + activewindowev.Title);
+						Log.Debug("<Foreground> Active #" + activewindowev.Id.ToString() + ": " + activewindowev.Title);
 				}
 				else
 				{

@@ -87,7 +87,7 @@ namespace Taskmaster.Process
 
 		public float Load { get; private set; } = 0;
 
-		readonly ManagementObjectSearcher cpusearcher = new ManagementObjectSearcher("SELECT * from Win32_PerfFormattedData_PerfOS_Processor");
+		//readonly ManagementObjectSearcher cpusearcher = new ManagementObjectSearcher("SELECT * from Win32_PerfFormattedData_PerfOS_Processor");
 
 		public void Update()
 		{

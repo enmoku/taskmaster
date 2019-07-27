@@ -33,11 +33,6 @@ namespace Taskmaster.Process
 {
 	public class ProcessEx
 	{
-		public ProcessEx()
-		{
-			Loaders = new Lazy<LoaderInfo>(() => new LoaderInfo(Id, Name), false);
-		}
-
 		public bool Restricted { get; set; } = false;
 
 		/// <summary>
@@ -163,12 +158,13 @@ namespace Taskmaster.Process
 
 		public DateTime Found { get; set; } = DateTime.UtcNow;
 
-		public Lazy<LoaderInfo> Loaders;
+		// internal loaders
+		public ProcessLoad Loaders;
 
 		/// <summary>
 		/// Display: <code>Name #PID</code>
 		/// </summary>
-		public override string ToString() => Name + " #" + Id;
+		public override string ToString() => Name + " #" + Id.ToString();
 
 		/// <summary>
 		/// Same as ToString() but prepends controller name.
@@ -176,7 +172,7 @@ namespace Taskmaster.Process
 		public string ToFullString() => "[" + Controller.FriendlyName + "]" + ToString();
 	}
 
-	public class LoaderInfo : IDisposable
+	public class ProcessLoad : IDisposable
 	{
 		MKAh.Wrapper.Windows.PerformanceCounter CPUCounter;
 		MKAh.Wrapper.Windows.PerformanceCounter IOCounter;
@@ -189,7 +185,7 @@ namespace Taskmaster.Process
 
 		public float IO { get; private set; } = float.NaN;
 
-		public LoaderInfo(int pid, string instance)
+		public ProcessLoad(int pid, string instance)
 		{
 			Instance = instance;
 			Id = pid;
@@ -200,13 +196,20 @@ namespace Taskmaster.Process
 
 		public bool Update(bool noRecovery=false)
 		{
+			if (disposed) return false;
+
 			try
 			{
-				CPU = CPUCounter?.Value ?? float.NaN;
-				IO = IOCounter?.Value ?? float.NaN;
+				CPU = CPUCounter.Value / Environment.ProcessorCount;
+				IO = IOCounter.Value;
 				return true;
 			}
-			catch (Exception)
+			catch (NullReferenceException ex)
+			{
+				Logging.DebugMsg("LOAD NULL: " + Instance + " #" + Id.ToString());
+				Logging.Stacktrace(ex);
+			}
+			catch
 			{
 				if (!noRecovery)
 				{
@@ -231,9 +234,8 @@ namespace Taskmaster.Process
 			var processCategory = new PerformanceCounterCategory("Process");
 
 			char[] separator = { '#' };
-			string[] instances = processCategory.GetInstanceNames()
-				.Where(inst => inst.StartsWith(Instance, StringComparison.InvariantCultureIgnoreCase))
-				.ToArray();
+			var instances = processCategory.GetInstanceNames()
+				.Where(inst => inst.StartsWith(Instance, StringComparison.InvariantCultureIgnoreCase));
 
 			foreach (var name in instances)
 			{
@@ -267,7 +269,7 @@ namespace Taskmaster.Process
 			if (disposing) Scrap();
 		}
 
-		~LoaderInfo() => Dispose();
+		~ProcessLoad() => Dispose();
 
 		public void Dispose() => Dispose(true);
 		#endregion

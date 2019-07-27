@@ -95,9 +95,7 @@ namespace Taskmaster.Network
 		Uri DynamicDNSHost = null; // BUG: Insecure. Contains secrets.
 		TimeSpan DynamicDNSFrequency = TimeSpan.FromMinutes(15d);
 		DateTimeOffset DynamicDNSLastUpdate = DateTimeOffset.MinValue;
-		IPAddress DynamicDNSLastIP = IPAddress.Loopback;
-
-		readonly System.Threading.CancellationTokenSource cts = new System.Threading.CancellationTokenSource();
+		IPAddress DNSOldIPv4 = IPAddress.None, DNSOldIPv6 = IPAddress.IPv6None;
 
 		void LoadConfig()
 		{
@@ -120,7 +118,7 @@ namespace Taskmaster.Network
 
 				ErrorReports.Peak = ErrorReportLimit = pktsec.GetOrSet("Error report limit", 5).Int.Constrain(1, 60);
 
-				var dnssec = netcfg.Config["DNS Updating"];
+				var dnssec = netcfg.Config[Constants.DNSUpdating];
 				DynamicDNS = dnssec.GetOrSet("Enabled", false)
 					.Bool;
 				DynamicDNSFrequency = TimeSpan.FromMinutes(Convert.ToDouble(dnssec.GetOrSet("Frequency", 600)
@@ -176,7 +174,7 @@ namespace Taskmaster.Network
 				DebugNet = dbgsec.Get(Network.Constants.Network)?.Bool ?? false;
 				DebugDNS = dbgsec.Get(Network.Constants.DynDNS)?.Bool ?? false;
 
-				if (Trace) Log.Debug("<Network> Traffic sample frequency: " + PacketStatTimerInterval + "s");
+				if (Trace) Log.Debug("<Network> Traffic sample frequency: " + PacketStatTimerInterval.ToString() + "s");
 			}
 			catch (Exception ex)
 			{
@@ -247,7 +245,7 @@ namespace Taskmaster.Network
 			var dns = netcfg.Config[Constants.DNSUpdating];
 			IPAddress.TryParse(dns.Get(Constants.LastKnownIPv4)?.String ?? string.Empty, out DNSOldIPv4);
 			IPAddress.TryParse(dns.Get(Constants.LastKnownIPv6)?.String ?? string.Empty, out DNSOldIPv6);
-
+			
 			var TimerStartDelay = TimeSpan.FromSeconds(10d);
 			DateTimeOffset lastUpdate = DateTimeOffset.MinValue;
 			if (DateTimeOffset.TryParse(dns.Get(Constants.LastAttempt)?.String ?? string.Empty, out lastUpdate)
@@ -263,7 +261,6 @@ namespace Taskmaster.Network
 		}
 
 		int DynDNSFailures = 0;
-		IPAddress DNSOldIPv4 = IPAddress.None, DNSOldIPv6 = IPAddress.IPv6None;
 
 		async void DynDNSTimer_Elapsed(object _)
 		{
@@ -279,9 +276,6 @@ namespace Taskmaster.Network
 
 			try
 			{
-				using var netcfg = Config.Load(NetConfigFilename);
-				var dns = netcfg.Config["DNS Updating"];
-
 				bool updateIPs = false;
 				if (!DynamicDNSForcedUpdate)
 				{
@@ -297,6 +291,9 @@ namespace Taskmaster.Network
 						return;
 					}
 				}
+
+				using var netcfg = Config.Load(NetConfigFilename);
+				var dns = netcfg.Config[Constants.DNSUpdating];
 
 				bool success = await DynamicDNSUpdate().ConfigureAwait(false);
 				if (success)
@@ -342,10 +339,10 @@ namespace Taskmaster.Network
 				rq.ContentType = "json";
 				rq.UserAgent = "Taskmaster/DynDNS.alpha.1";
 				rq.Timeout = 30_000;
-				using var rs = rq.GetResponse();
+				using var rs = await rq.GetResponseAsync();
 				if (rs.ContentLength > 0)
 				{
-					var sbs = new StringBuilder();
+					var sbs = new StringBuilder(512);
 					using var dat = rs.GetResponseStream();
 					int len = Convert.ToInt32(rs.ContentLength);
 					byte[] buffer = new byte[len];
@@ -369,13 +366,15 @@ namespace Taskmaster.Network
 						// Assume user error
 						break;
 				}
+
+				return false;
 			}
 			catch (Exception ex)
 			{
 				Logging.Stacktrace(ex);
 			}
 
-			return false;
+			return true;
 		}
 
 		public TrafficDelta GetTraffic
@@ -396,8 +395,8 @@ namespace Taskmaster.Network
 				if (device.Name.Equals(devicename))
 				{
 					return devicename + " – " + device.IPv4Address.ToString() + " [" + IPv6Address.ToString() + "]" +
-						" – " + (device.Incoming.Bytes / 1_000_000) + " MB in, " + (device.Outgoing.Bytes / 1_000_000) + " MB out, " +
-						(device.Outgoing.Errors + device.Incoming.Errors) + " errors";
+						" – " + (device.Incoming.Bytes / 1_000_000).ToString() + " MB in, " + (device.Outgoing.Bytes / 1_000_000).ToString() + " MB out, " +
+						(device.Outgoing.Errors + device.Incoming.Errors).ToString() + " errors";
 				}
 			}
 
@@ -431,7 +430,7 @@ namespace Taskmaster.Network
 
 				if (!oldifaces.Count.Equals(ifaces.Count))
 				{
-					if (DebugNet) Log.Warning("<Network> Interface count mismatch (" + oldifaces.Count + " vs " + ifaces.Count + "), skipping analysis.");
+					if (DebugNet) Log.Warning("<Network> Interface count mismatch (" + oldifaces.Count.ToString() + " vs " + ifaces.Count.ToString() + "), skipping analysis.");
 					return;
 				}
 
@@ -453,8 +452,6 @@ namespace Taskmaster.Network
 
 					errorsSinceLastReport += errorsInSample;
 
-					bool reportErrors = false;
-
 					// TODO: Better error limiter.
 					// Goals:
 					// - Show initial error.
@@ -463,6 +460,7 @@ namespace Taskmaster.Network
 
 					//Logging.DebugMsg($"NETWORK - Errors: +{errorsInSample}, NotPeaked: {!ErrorReports.Peaked}, Level: {ErrorReports.Level}/{ErrorReports.Peak}");
 
+					bool reportErrors;
 					if (ShowNetworkErrors // user wants to see this
 						&& errorsInSample > 0 // only if errors
 						&& !ErrorReports.Peaked // we're not waiting for report counter to go down
@@ -483,15 +481,15 @@ namespace Taskmaster.Network
 
 					if (reportErrors)
 					{
-						var sbs = new StringBuilder().Append(ifaces[index].Name).Append(" is suffering from traffic errors! (");
+						var sbs = new StringBuilder(ifaces[index].Name, 256).Append(" is suffering from traffic errors! (");
 
 						bool longProblem = (errorsSinceLastReport > errorsInSample);
 
-						if (longProblem) sbs.Append("+").Append(errorsSinceLastReport).Append(" errors, ").Append(errorsInSample).Append(" in last sample");
-						else sbs.Append("+").Append(errorsInSample).Append(" errors in last sample");
+						if (longProblem) sbs.Append('+').Append(errorsSinceLastReport).Append(" errors, ").Append(errorsInSample).Append(" in last sample");
+						else sbs.Append('+').Append(errorsInSample).Append(" errors in last sample");
 
 						if (!double.IsNaN(pmins)) sbs.Append("; ").AppendFormat("{0:N1}", pmins).Append(" minutes since last report");
-						sbs.Append(")");
+						sbs.Append(')');
 
 						Log.Warning(sbs.ToString());
 
@@ -574,7 +572,7 @@ namespace Taskmaster.Network
 
 		void ReportUptime()
 		{
-			var sbs = new StringBuilder().Append("<Network> Average uptime: ");
+			var sbs = new StringBuilder("<Network> Average uptime: ", 128);
 
 			lock (uptime_lock)
 			{
@@ -589,7 +587,7 @@ namespace Taskmaster.Network
 
 			sbs.Append(" since: ").Append(UptimeRecordStart)
 			   .Append(" (").AppendFormat("{0:N2}", (DateTimeOffset.UtcNow - UptimeRecordStart).TotalHours).Append("h ago)")
-			   .Append(".");
+			   .Append('.');
 
 			Log.Information(sbs.ToString());
 		}
@@ -659,7 +657,7 @@ namespace Taskmaster.Network
 		int InetCheckLimiter; // = 0;
 
 		// TODO: Needs to call itself in case of failure but network connected to detect when internet works.
-		async Task<bool> CheckInet(bool address_changed = false)
+		async Task<bool> CheckInet()
 		{
 			if (disposed) throw new ObjectDisposedException(nameof(Manager), "CheckInet called after NetManager was disposed.");
 
@@ -762,15 +760,13 @@ namespace Taskmaster.Network
 			return InternetAvailable;
 		}
 
-		readonly List<IPAddress> AddressList = new List<IPAddress>(2);
+		//readonly List<IPAddress> AddressList = new List<IPAddress>(2);
 		// List<NetworkInterface> PublicInterfaceList = new List<NetworkInterface>(2);
 
 		readonly object address_lock = new object();
 
-		IPAddress IPv4Address = IPAddress.None;
-		NetworkInterface IPv4Interface;
-		IPAddress IPv6Address = IPAddress.IPv6None;
-		NetworkInterface IPv6Interface;
+		IPAddress IPv4Address = IPAddress.None, IPv6Address = IPAddress.IPv6None;
+		NetworkInterface IPv4Interface, IPv6Interface;
 
 		/// <summary>
 		/// Resets <see cref="CurrentInterfaceList"/>.
@@ -789,7 +785,7 @@ namespace Taskmaster.Network
 		{
 			if (disposed) throw new ObjectDisposedException(nameof(Manager), "UpdateInterfaces called after NetManager was disposed.");
 
-			var ifacelistt = new List<Device>();
+			var ifacelistt = new List<Device>(2);
 
 			try
 			{
@@ -887,7 +883,7 @@ namespace Taskmaster.Network
 
 			await Task.Delay(0).ConfigureAwait(false); // asyncify
 
-			await CheckInet(address_changed: true).ConfigureAwait(false);
+			await CheckInet(/*address_changed: true*/).ConfigureAwait(false);
 			AvailabilityChanged = AvailabilityChanged != InternetAvailable;
 
 			if (InternetAvailable)
@@ -901,7 +897,7 @@ namespace Taskmaster.Network
 				bool ipv4changed, ipv6changed, ipchanged = false;
 				ipchanged |= ipv4changed = !oldV4Address.Equals(newIPv4);
 
-				var sbs = new StringBuilder();
+				var sbs = new StringBuilder(128);
 
 				if (AvailabilityChanged)
 				{
@@ -969,7 +965,7 @@ namespace Taskmaster.Network
 			LastReportedInetAvailable = InternetAvailable;
 			LastReportedNetAvailable = NetworkAvailable;
 
-			var sbs = new StringBuilder()
+			var sbs = new StringBuilder(128)
 				.Append("<Network> Status: ")
 				.Append(NetworkAvailable ? HumanReadable.Hardware.Network.Connected : HumanReadable.Hardware.Network.Disconnected)
 				.Append(", Internet: ")

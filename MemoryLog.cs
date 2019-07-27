@@ -55,12 +55,12 @@ namespace Taskmaster
 
 	class MemorySink : Serilog.Core.ILogEventSink, IDisposable
 	{
-		public event EventHandler<LogEventArgs> onNewEvent;
+		public event EventHandler<LogEventArgs> OnNewEvent;
 
-		readonly TextWriter p_output;
+		readonly StringWriter p_output;
 		readonly object sinklock = new object();
-		readonly IFormatProvider p_formatProvider;
-		readonly ITextFormatter p_textFormatter;
+		//readonly IFormatProvider p_formatProvider;
+		readonly Serilog.Formatting.Display.MessageTemplateTextFormatter p_textFormatter;
 		public LoggingLevelSwitch LevelSwitch;
 		const string p_DefaultOutputTemplate = "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}";
 
@@ -68,10 +68,10 @@ namespace Taskmaster
 		{
 			Logs = new System.Collections.Generic.List<LogEventArgs>(Max);
 
-			p_formatProvider = formatProvider;
+			//p_formatProvider = formatProvider;
 			p_textFormatter = new Serilog.Formatting.Display.MessageTemplateTextFormatter(
 				outputTemplate ?? p_DefaultOutputTemplate,
-				p_formatProvider
+				formatProvider
 			);
 			p_output = new System.IO.StringWriter();
 			LevelSwitch = levelSwitch;
@@ -120,7 +120,7 @@ namespace Taskmaster
 			Emit(this, new LogEventArgs(formattedtext, e.Level, e));
 		}
 
-		void Emit(object _, LogEventArgs ea)
+		void Emit(MemorySink _, LogEventArgs ea)
 		{
 			lock (LogLock)
 			{
@@ -128,7 +128,7 @@ namespace Taskmaster
 				Logs.Add(ea);
 			}
 
-			onNewEvent?.Invoke(_, ea);
+			OnNewEvent?.Invoke(_, ea);
 		}
 
 		public LogEventArgs[] ToArray()
@@ -149,7 +149,7 @@ namespace Taskmaster
 				if (Taskmaster.Trace)
 					Log.Verbose("Disposing memory sink...");
 
-				onNewEvent = null;
+				OnNewEvent = null;
 
 				p_output?.Dispose();
 			}
