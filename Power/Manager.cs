@@ -430,7 +430,7 @@ namespace Taskmaster.Power
 
 		long AutoAdjustCounter = 0;
 
-		public AutoAdjustSettings AutoAdjust { get; private set; } = new AutoAdjustSettings();
+		public AutoAdjustSettings AutoAdjust { get; private set; }
 
 		public void SetAutoAdjust(AutoAdjustSettings settings)
 		{
@@ -443,9 +443,8 @@ namespace Taskmaster.Power
 			// TODO: Reset power?
 		}
 
-		int HighPressure = 0;
-		int LowPressure = 0;
-		float queuePressureAdjust = 0f;
+		int HighPressure = 0, LowPressure = 0;
+
 		Reaction PreviousReaction = Reaction.Average;
 
 		// TODO: Simplify this mess
@@ -466,6 +465,8 @@ namespace Taskmaster.Power
 
 			ev.Pressure = 0;
 			ev.Enacted = false;
+
+			float queuePressureAdjust = 0f;
 
 			//Logging.DebugMsg("AUTO-ADJUST: Previous Reaction: " + PreviousReaction.ToString());
 			//Logging.DebugMsg("AUTO-ADJUST: Queue Length: " + ev.Queue.ToString());
@@ -987,10 +988,9 @@ namespace Taskmaster.Power
 				switch (ev.Reason)
 				{
 					case SessionSwitchReason.SessionLogoff:
-						if (!SaverOnLogOff) return;
-						goto setpowersaver;
 					case SessionSwitchReason.SessionLock:
-					setpowersaver:
+						if (ev.Reason == SessionSwitchReason.SessionLogoff && !SaverOnLogOff) return;
+
 						// SET POWER SAVER
 						if (DebugSession) Log.Debug("<Session:Lock> Enforcing power plan: " + SessionLockPowerMode.ToString());
 
@@ -1090,11 +1090,11 @@ namespace Taskmaster.Power
 		}
 
 		Cause ExpectedCause = new Cause(OriginType.None);
-		Mode ExpectedMode = Mode.Undefined;
+		Mode ExpectedMode;
 		MonitorPowerMode ExpectedMonitorPower = MonitorPowerMode.On;
 		DateTimeOffset LastExternalWarning = DateTimeOffset.MinValue;
 
-		public Mode OriginalMode { get; } = Mode.Balanced;
+		public Mode OriginalMode { get; }
 
 		public Mode CurrentMode { get; private set; } = Mode.Balanced;
 
@@ -1224,7 +1224,6 @@ namespace Taskmaster.Power
 				if (Trace && DebugPower) Log.Debug("<Power> No power locks left.");
 
 				Restore(cause);
-				return;
 			}
 			else
 			{
@@ -1271,11 +1270,10 @@ namespace Taskmaster.Power
 		Mode GetPowerMode()
 		{
 			Guid plan;
-			var ptr = Marshal.AllocHGlobal(Marshal.SizeOf(typeof(IntPtr))); // is this actually necessary?
 
 			lock (power_lock)
 			{
-				if (NativeMethods.PowerGetActiveScheme((IntPtr)null, out ptr) == 0)
+				if (NativeMethods.PowerGetActiveScheme((IntPtr)null, out var ptr) == 0)
 				{
 					plan = (Guid)Marshal.PtrToStructure(ptr, typeof(Guid));
 					Marshal.FreeHGlobal(ptr);
@@ -1462,7 +1460,11 @@ namespace Taskmaster.Power
 			}
 		}
 
-		public void Dispose() => Dispose(true);
+		public void Dispose()
+		{
+			Dispose(true);
+			GC.SuppressFinalize(this);
+		}
 		#endregion
 
 		public void ShutdownEvent(object sender, EventArgs ea) => StopDisplayTimer();
@@ -1470,7 +1472,7 @@ namespace Taskmaster.Power
 
 	public class PowerBehaviourEventArgs : EventArgs
 	{
-		public PowerBehaviour Behaviour = PowerBehaviour.Undefined;
+		public PowerBehaviour Behaviour { get; }
 
 		public PowerBehaviourEventArgs(PowerBehaviour behaviour) => Behaviour = behaviour;
 	}

@@ -37,8 +37,8 @@ namespace Taskmaster.Power
 			Cause = cause;
 		}
 
-		public Mode OldMode { get; set; } = Mode.Undefined;
-		public Mode NewMode { get; set; } = Mode.Undefined;
-		public Cause Cause { get; set; } = null;
+		public Mode OldMode { get; set; }
+		public Mode NewMode { get; set; }
+		public Cause Cause { get; set; }
 	}
 }

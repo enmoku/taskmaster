@@ -30,8 +30,9 @@ namespace Taskmaster.Power
 {
 	public class RequestEventArgs : EventArgs
 	{
-		public Mode Mode { get; set; } = Mode.Undefined;
-		public Process.ProcessEx Info { get; set; } = null;
+		public Mode Mode { get; set; }
+
+		public Process.ProcessEx Info { get; set; }
 
 		public RequestEventArgs(Mode mode, Process.ProcessEx info)
 		{

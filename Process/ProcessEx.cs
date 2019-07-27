@@ -130,20 +130,18 @@ namespace Taskmaster.Process
 				switch (value)
 				{
 					case HandlingState.Exited:
-						Exited = true;
-						goto handled;
 					case HandlingState.Modified:
-						Modified = DateTimeOffset.UtcNow;
-						goto handled;
 					case HandlingState.Unmodified:
 					case HandlingState.AccessDenied:
 					case HandlingState.Finished:
 					case HandlingState.Abandoned:
 					case HandlingState.Invalid:
-					handled:
+						if (value == HandlingState.Exited) Exited = true;
+						else if (value == HandlingState.Modified) Modified = DateTimeOffset.UtcNow;
 						Handled = true;
 						Timer?.Stop();
 						break;
+					default: break;
 				}
 			}
 		}
@@ -174,11 +172,10 @@ namespace Taskmaster.Process
 
 	public class ProcessLoad : IDisposable
 	{
-		MKAh.Wrapper.Windows.PerformanceCounter CPUCounter;
-		MKAh.Wrapper.Windows.PerformanceCounter IOCounter;
+		MKAh.Wrapper.Windows.PerformanceCounter CPUCounter, IOCounter;
 
-		readonly string Instance = string.Empty;
-		readonly int Id = -1;
+		readonly string Instance;
+		readonly int Id;
 		string PFCInstance;
 
 		public float CPU { get; private set; } = float.NaN;
@@ -269,9 +266,13 @@ namespace Taskmaster.Process
 			if (disposing) Scrap();
 		}
 
-		~ProcessLoad() => Dispose();
+		~ProcessLoad() => Dispose(false);
 
-		public void Dispose() => Dispose(true);
+		public void Dispose()
+		{
+			Dispose(true);
+			GC.SuppressFinalize(this);
+		}
 		#endregion
 	}
 }

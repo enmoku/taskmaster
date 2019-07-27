@@ -56,7 +56,7 @@ namespace Taskmaster
 	/// Monitors for variety of problems and reports on them.
 	/// </summary>
 	[Component(RequireMainThread = false)]
-	public class HealthMonitor : Component, IDisposal, IDisposable // Auto-Doc
+	public class HealthMonitor : Component, IDisposal // Auto-Doc
 	{
 		bool DebugHealth = false;
 
@@ -436,8 +436,8 @@ namespace Taskmaster
 							cbSize = System.Runtime.InteropServices.Marshal.SizeOf(typeof(NativeMethods.ShQueryRecycleBinInfo))
 						};
 
-						uint hresult = NativeMethods.SHQueryRecycleBin(drive.Name, ref sqrbi);
-						int error = System.Runtime.InteropServices.Marshal.GetLastWin32Error();
+						NativeMethods.SHQueryRecycleBin(drive.Name, ref sqrbi);
+
 						long rbsize = sqrbi.i64Size;
 
 						Log.Warning("<Auto-Doc> Low free space on " + drive.Name
@@ -633,6 +633,12 @@ namespace Taskmaster
 			cancellationSource.Cancel();
 			HealthTimer?.Stop();
 			EmergencyTimer?.Stop();
+		}
+
+		public override void Dispose()
+		{
+			Dispose(true);
+			GC.SuppressFinalize(this);
 		}
 		#endregion
 	}

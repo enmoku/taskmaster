@@ -160,18 +160,14 @@ namespace Taskmaster.Process
 		readonly object FGLock = new object();
 
 		int PreviousFG = 0;
-		int HangTick = 0;
-		int HangMinimizeTick = 180;
-		int HangReduceTick = 240;
-		int HangKillTick = 300;
+		int HangTick = 0, HangMinimizeTick = 180, HangReduceTick = 240, HangKillTick = 300;
 
 		System.Diagnostics.Process Foreground = null;
 
-		bool Minimized = false;
-		bool Reduced = false;
+		bool Minimized = false, Reduced = false;
 		int IgnoreHung = -1;
 
-		int hangdetector_lock = 0;
+		int hangdetector_lock = Atomic.Unlocked;
 
 		int PreviouslyHung = -1;
 
@@ -298,7 +294,6 @@ namespace Taskmaster.Process
 									fgproc?.Dispose();
 									if (fgproc == Foreground)
 										Foreground = null;
-									fgproc = null;
 								}
 								if (acted) sbs.Append(", ");
 								sbs.Append("Terminated");

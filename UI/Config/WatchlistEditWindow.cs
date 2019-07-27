@@ -564,7 +564,7 @@ namespace Taskmaster.UI.Config
 
 			// FOREGROUND ONLY TOGGLE
 			bool fge = ForegroundModeSelect.SelectedIndex != 0;
-			bool pwe = powerPlan.SelectedIndex != 3;
+			//bool pwe = powerPlan.SelectedIndex != 3;
 
 			ForegroundModeSelect.SelectedIndexChanged += (_, _ea) =>
 			{
@@ -958,14 +958,11 @@ namespace Taskmaster.UI.Config
 				//e.Cancel = !ValidateName(box, System.IO.Path.GetInvalidFileNameChars());
 				if (box == execName)
 				{
-					if (box.TextLength > 0)
+					if (box.TextLength > 0 && box.Text.IndexOf('.') < 0)
 					{
-						if (!(box.Text.IndexOf('.') >= 0))
-						{
-							box.SelectionStart = box.TextLength;
-							e.Cancel = true;
-							FlashTextBox(box);
-						}
+						box.SelectionStart = box.TextLength;
+						e.Cancel = true;
+						FlashTextBox(box);
 					}
 				}
 				else
@@ -1008,7 +1005,7 @@ namespace Taskmaster.UI.Config
 						if (di != null && !string.IsNullOrEmpty(search))
 						{
 							var dirs = System.IO.Directory.EnumerateDirectories(di.FullName, search + "*", System.IO.SearchOption.TopDirectoryOnly);
-							foreach (var dir in dirs)
+							foreach (var dir in dirs) // alternate way to see if there was any results?
 							{
 								pfound = "Partial Match";
 								break;
@@ -1069,11 +1066,9 @@ namespace Taskmaster.UI.Config
 				}
 			}
 
-			if (affinityMask.Value >= 0 && idealAffinity.Value > 0)
-			{
-				if (!Bit.IsSet(Convert.ToInt32(affinityMask.Value).Replace(0, Process.Utility.FullCPUMask), Convert.ToInt32(idealAffinity.Value) - 1))
+			if (affinityMask.Value >= 0 && idealAffinity.Value > 0
+				&& !Bit.IsSet(Convert.ToInt32(affinityMask.Value).Replace(0, Process.Utility.FullCPUMask), Convert.ToInt32(idealAffinity.Value) - 1))
 					sbs.AppendLine("Affinity ideal is not within defined affinity.");
-			}
 
 			if (ioPriority != null && ioPriority.SelectedIndex != 0)
 			{

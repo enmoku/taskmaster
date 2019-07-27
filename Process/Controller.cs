@@ -215,9 +215,9 @@ namespace Taskmaster.Process
 		/// <summary>
 		/// Target priority class for the process.
 		/// </summary>
-		public System.Diagnostics.ProcessPriorityClass? Priority { get; set; } = null;
+		public System.Diagnostics.ProcessPriorityClass? Priority { get; set; }
 
-		public IOPriority IOPriority = IOPriority.Ignore; // Win7 only?
+		public IOPriority IOPriority { get; set; } // Win7 only?
 
 		public PriorityStrategy PriorityStrategy { get; set; } = PriorityStrategy.None;
 
@@ -226,8 +226,7 @@ namespace Taskmaster.Process
 		/// </summary>
 		public int AffinityMask { get; set; } = -1;
 
-		public AffinityStrategy AffinityStrategy = AffinityStrategy.None;
-		//int ScatterOffset = 0;
+		public AffinityStrategy AffinityStrategy;
 		//int ScatterChunk = 1; // should default to Cores/4 or Range/2 at max, 1 at minimum.
 
 		int _affinityIdeal = -1;
@@ -619,17 +618,17 @@ namespace Taskmaster.Process
 
 			switch (Foreground)
 			{
+				case ForegroundMode.PowerOnly:
 				case ForegroundMode.Ignore:
-					app.TryRemove("Background powerdown");
-				clearNonPower:
+					if (Foreground == ForegroundMode.Ignore) app.TryRemove("Background powerdown");
 					app.TryRemove("Foreground only");
 					app.TryRemove("Foreground mode");
 					app.TryRemove("Background priority");
 					app.TryRemove("Background affinity");
 					break;
+					case ForegroundMode.Full:
 				case ForegroundMode.Standard:
-					app.TryRemove("Background powerdown");
-				saveFgMode:
+					if (Foreground == ForegroundMode.Standard) app.TryRemove("Background powerdown");
 					app["Foreground mode"].Int = (int)Foreground;
 					if (BackgroundPriority.HasValue)
 						app["Background priority"].Int = Utility.PriorityToInt(BackgroundPriority.Value);
@@ -640,10 +639,6 @@ namespace Taskmaster.Process
 					else
 						app.TryRemove("Background affinity");
 					break;
-				case ForegroundMode.Full:
-					goto saveFgMode;
-				case ForegroundMode.PowerOnly:
-					goto clearNonPower;
 			}
 
 			if (AllowPaging)
@@ -1479,16 +1474,11 @@ namespace Taskmaster.Process
 					LastTouch = now;
 				}
 
-				if (Priority.HasValue)
-				{
-					if (fPriority && ShowInaction && Manager.DebugProcesses)
-						Log.Warning(info.ToFullString() + " failed to set process priority.");
-				}
-				if (AffinityMask >= 0)
-				{
-					if (fAffinity && ShowInaction && Manager.DebugProcesses)
-						Log.Warning(info.ToFullString() + " failed to set process affinity.");
-				}
+				if (Priority.HasValue && fPriority && ShowInaction && Manager.DebugProcesses)
+					Log.Warning(info.ToFullString() + " failed to set process priority.");
+
+				if (AffinityMask >= 0 && fAffinity && ShowInaction && Manager.DebugProcesses)
+					Log.Warning(info.ToFullString() + " failed to set process affinity.");
 
 				bool logevent = false;
 
@@ -1997,7 +1987,11 @@ namespace Taskmaster.Process
 		}
 
 		#region IDisposable Support
-		public void Dispose() => Dispose(true);
+		public void Dispose()
+		{
+			Dispose(true);
+			GC.SuppressFinalize(this);
+		}
 
 		bool DisposedOrDisposing; // = false;
 

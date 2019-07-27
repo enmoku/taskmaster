@@ -287,17 +287,6 @@ namespace Taskmaster
 				Log.Warning("Unclean shutdown.");
 		}
 
-		// static finalizer
-		static readonly Finalizer finalizer = new Finalizer();
-
-		sealed class Finalizer
-		{
-			~Finalizer()
-			{
-				// Logging.DebugMsg("Core static finalization");
-			}
-		}
-
 		static void CleanShutdown()
 		{
 			TempRunningDir?.Delete();

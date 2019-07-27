@@ -44,7 +44,7 @@ namespace Taskmaster
 
 		public int ComponentId;
 
-		public void Dispose() => Dispose(true);
+		public abstract void Dispose();
 
 		protected abstract void Dispose(bool disposing);
 	}

@@ -32,8 +32,8 @@ namespace Taskmaster.UI.Config
 {
 	public class ExperimentConfig : UniForm
 	{
-		Button uninstallButton, installButton;
-		AlignedLabel imageUptodateState;
+		readonly Button uninstallButton, installButton;
+		readonly AlignedLabel imageUptodateState;
 
 		public ExperimentConfig(bool center = false)
 			: base(centerOnScreen: center)

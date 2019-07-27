@@ -91,7 +91,7 @@ namespace Taskmaster.UI.Config
 			{
 				AutoSize = true,
 				Dock = DockStyle.Left,
-				Checked = initial ? false : AudioManagerEnabled,
+				Checked = !initial && AudioManagerEnabled,
 			};
 			tooltip.SetToolTip(audioman, "Automatically set application mixer volume.");
 
@@ -103,7 +103,7 @@ namespace Taskmaster.UI.Config
 				AutoSize = true,
 				//BackColor = System.Drawing.Color.Azure,
 				Dock = DockStyle.Left,
-				Checked = initial ? false : MicrophoneManagerEnabled,
+				Checked = !initial && MicrophoneManagerEnabled,
 			};
 			tooltip.SetToolTip(micmon, "Monitor default communications device and keep its volume.\nRequires audio manager to be enabled.");
 
@@ -211,7 +211,7 @@ namespace Taskmaster.UI.Config
 				//BackColor = System.Drawing.Color.Azure,
 				Dock = DockStyle.Left,
 				Enabled = true,
-				Checked = initial ? false : PowerManagerEnabled,
+				Checked = !initial && PowerManagerEnabled,
 			};
 			tooltip.SetToolTip(powmon, "Manage power mode.\nNot recommended if you already have a power manager.");
 
@@ -263,7 +263,7 @@ namespace Taskmaster.UI.Config
 			{
 				AutoSize = true,
 				Dock = DockStyle.Left,
-				Checked = initial ? false : StorageMonitorEnabled,
+				Checked = !initial && StorageMonitorEnabled,
 				Enabled = false,
 			};
 			tooltip.SetToolTip(nvmmon, "Monitor non-volatile memory (HDDs, SSDs, etc.)");
@@ -281,7 +281,7 @@ namespace Taskmaster.UI.Config
 			layout.Controls.Add(new AlignedLabel { Text = "TEMP monitor", Padding = BigPadding });
 			layout.Controls.Add(tempmon);
 			tempmon.Enabled = false;
-			tempmon.Checked = initial ? false : MaintenanceMonitorEnabled;
+			tempmon.Checked = !initial && MaintenanceMonitorEnabled;
 
 			// PAGING
 			var paging = new CheckBox()
@@ -293,7 +293,7 @@ namespace Taskmaster.UI.Config
 			tooltip.SetToolTip(tempmon, "Allow paging RAM to page/swap file.\nNOT YET FULLY IMPLEMENTED.");
 			layout.Controls.Add(new AlignedLabel { Text = "Allow paging", Padding = BigPadding });
 			layout.Controls.Add(paging);
-			paging.Checked = initial ? false : PagingEnabled;
+			paging.Checked = !initial && PagingEnabled;
 
 			// REGISTER GLOBAL HOTKEYS
 			var hotkeys = new CheckBox()
@@ -316,14 +316,14 @@ namespace Taskmaster.UI.Config
 			tooltip.SetToolTip(showonstart, "Show main window on start.");
 			layout.Controls.Add(new AlignedLabel { Text = Constants.ShowOnStart, Padding = BigPadding });
 			layout.Controls.Add(showonstart);
-			showonstart.Checked = initial ? false : ShowOnStart;
+			showonstart.Checked = !initial && ShowOnStart;
 
 			var autodoc = new CheckBox()
 			{
 				AutoSize = true,
 				//BackColor = System.Drawing.Color.Azure,
 				Dock = DockStyle.Left,
-				Checked = initial ? false : HealthMonitorEnabled,
+				Checked = !initial && HealthMonitorEnabled,
 			};
 			layout.Controls.Add(new AlignedLabel() { Text = "Health monitor", Padding = BigPadding });
 			tooltip.SetToolTip(autodoc, "Variety of other health & problem monitoring.\nCurrently includes low memory detection and attempting to page apps to free some of it.");

@@ -116,7 +116,7 @@ namespace Taskmaster
 
 				const uint size = 0; // Marshal.SizeOf(NativeMethods.SYSTEM_MEMORY_LIST_INFORMATION);
 
-				uint rv = NativeMethods.NtQuerySystemInformation(NativeMethods.SYSTEM_INFORMATION_CLASS.SystemMemoryListInformation, buffer, size, out uint length);
+				NativeMethods.NtQuerySystemInformation(NativeMethods.SYSTEM_INFORMATION_CLASS.SystemMemoryListInformation, buffer, size, out uint length);
 				info = (NativeMethods.SystemMemoryListInformation)Marshal.PtrToStructure(buffer, typeof(NativeMethods.SystemMemoryListInformation));
 			}
 			catch (Exception ex)

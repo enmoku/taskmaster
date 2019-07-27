@@ -71,7 +71,7 @@ namespace Taskmaster
 	}
 
 	[Component(RequireMainThread = false)]
-	public class HardwareMonitor : Component, IDisposal, IDisposable
+	public class HardwareMonitor : Component, IDisposal
 	{
 		OpenHardwareMonitor.Hardware.IHardware gpu = null;
 		OpenHardwareMonitor.Hardware.ISensor gpuFan = null; // Fan speed
@@ -322,6 +322,12 @@ namespace Taskmaster
 
 		bool DisposedOrDisposing = false; // To detect redundant calls
 
+		public override void Dispose()
+		{
+			Dispose(true);
+			GC.SuppressFinalize(this);
+		}
+
 		protected override void Dispose(bool disposing)
 		{
 			if (DisposedOrDisposing) return;
@@ -332,13 +338,13 @@ namespace Taskmaster
 				Stop();
 				GPUPolling = null;
 				CPUPolling = null;
+
+				computer?.Close();
+				computer = null;
+
+				OnDisposed?.Invoke(this, DisposedEventArgs.Empty);
+				OnDisposed = null;
 			}
-
-			computer?.Close();
-			computer = null;
-
-			OnDisposed?.Invoke(this, DisposedEventArgs.Empty);
-			OnDisposed = null;
 		}
 
 		~HardwareMonitor() => Dispose(false);

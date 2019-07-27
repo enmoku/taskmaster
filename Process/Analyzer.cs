@@ -248,7 +248,7 @@ namespace Taskmaster.Process
 				var file = $"{DateTime.Now.ToString("yyyyMMdd-HHmmss-fff")}-{info.Name}.analysis.yml";
 				var path = Path.Combine(DataPath, "Analysis");
 				var endpath = Path.Combine(path, file);
-				var di = Directory.CreateDirectory(path);
+				Directory.CreateDirectory(path);
 
 				const string ymlIndent = "  ";
 

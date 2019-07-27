@@ -126,7 +126,11 @@ namespace Taskmaster.Configuration
 			Disposed = true;
 		}
 
-		public void Dispose() => Dispose(true);
+		public void Dispose()
+		{
+			Dispose(true);
+			GC.SuppressFinalize(this);
+		}
 		#endregion
 	}
 

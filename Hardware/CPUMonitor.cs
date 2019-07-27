@@ -36,7 +36,7 @@ namespace Taskmaster
 	using static Taskmaster;
 
 	[Component(RequireMainThread = false)]
-	public class CPUMonitor : Component, IDisposal, IDisposable
+	public class CPUMonitor : Component, IDisposal
 	{
 		// Experimental feature
 		public bool CPULoaderMonitoring { get; set; } = false;
@@ -181,12 +181,12 @@ namespace Taskmaster
 
 		public ProcessorLoad GetLoad { get; private set; } = new ProcessorLoad();
 
-		Process.Manager processmanager = null;
+		//Process.Manager processmanager = null;
 
 		public async Task Hook(Process.Manager manager)
 		{
-			processmanager = manager;
-			processmanager.OnDisposed += (_, _ea) => processmanager = null;
+			//processmanager = manager;
+			//processmanager.OnDisposed += (_, _ea) => processmanager = null;
 
 			if (CPULoaderMonitoring)
 			{
@@ -290,6 +290,12 @@ namespace Taskmaster
 
 		bool disposed = false; // To detect redundant calls
 
+		public override void Dispose()
+		{
+			Dispose(true);
+			GC.SuppressFinalize(this);
+		}
+
 		protected override void Dispose(bool disposing)
 		{
 			if (disposed) return;
@@ -304,11 +310,8 @@ namespace Taskmaster
 				CPUload?.Dispose();
 				CPUqueue?.Dispose();
 
-				if (processmanager != null)
-				{
-					//prcman.ProcessDetectedEvent -= ProcessDetectedEvent;
-					processmanager = null;
-				}
+				// if (processmanager != null) prcman.ProcessDetectedEvent -= ProcessDetectedEvent;
+				//processmanager = null;
 
 				SaveConfig();
 			}

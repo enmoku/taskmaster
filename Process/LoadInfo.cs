@@ -47,7 +47,7 @@ namespace Taskmaster.Process
 
 		public LoadType Heaviest { get; private set; } = LoadType.None;
 
-		public DateTimeOffset First { get; } = DateTimeOffset.UtcNow;
+		public DateTimeOffset First { get; }
 
 		public DateTimeOffset Last { get; private set; } = DateTimeOffset.UtcNow;
 
@@ -273,7 +273,7 @@ namespace Taskmaster.Process
 		#region IDisposable Support
 		bool disposed = false;
 
-		~LoadInfo() => Dispose();
+		~LoadInfo() => Dispose(false);
 
 		protected virtual void Dispose(bool disposing)
 		{
@@ -286,7 +286,11 @@ namespace Taskmaster.Process
 			}
 		}
 
-		public void Dispose() => Dispose(true);
+		public void Dispose()
+		{
+			Dispose(true);
+			GC.SuppressFinalize(this);
+		}
 		#endregion
 	}
 
@@ -308,10 +312,10 @@ namespace Taskmaster.Process
 
 		public float Average { get; private set; } = 0f;
 
-		float[] Samples = { 0, 0, 0, 0, 0 };
+		readonly float[] Samples = { 0, 0, 0, 0, 0 };
 		int SampleIndex = 0;
 
-		public LoadType Type { get; set; } = LoadType.None;
+		public LoadType Type { get; set; }
 
 		float AverageThreshold, MaxThreshold, MinThreshold;
 

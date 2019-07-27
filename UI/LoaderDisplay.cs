@@ -40,7 +40,7 @@ namespace Taskmaster.UI
 
 	public class LoaderDisplay : UniForm
 	{
-		Process.Manager processmanager = null;
+		readonly Process.Manager processmanager = null;
 
 		public LoaderDisplay(Process.Manager manager)
 		{
@@ -184,7 +184,7 @@ namespace Taskmaster.UI
 			}
 			catch (InvalidOperationException)
 			{
-				return; // window closed
+				// window closed
 			}
 		}
 

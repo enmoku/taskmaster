@@ -34,7 +34,7 @@ namespace Taskmaster
 	using static Taskmaster;
 
 	[Component(RequireMainThread = false)]
-	public class SelfMaintenance : Component, IDisposable, IDisposal
+	public class SelfMaintenance : Component, IDisposal
 	{
 		public SelfMaintenance()
 		{
@@ -145,6 +145,12 @@ namespace Taskmaster
 
 		public event EventHandler<DisposedEventArgs> OnDisposed;
 
+		public override void Dispose()
+		{
+			Dispose(true);
+			GC.SuppressFinalize(this);
+		}
+
 		protected override void Dispose(bool disposing)
 		{
 			if (disposed) return;
@@ -152,10 +158,10 @@ namespace Taskmaster
 			if (disposing)
 			{
 				timer?.Dispose();
-			}
 
-			OnDisposed?.Invoke(this, DisposedEventArgs.Empty);
-			OnDisposed = null;
+				OnDisposed?.Invoke(this, DisposedEventArgs.Empty);
+				OnDisposed = null;
+			}
 
 			disposed = true;
 		}

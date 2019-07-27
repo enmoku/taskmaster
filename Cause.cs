@@ -44,8 +44,8 @@ namespace Taskmaster
 			Detail = detail;
 		}
 
-		readonly public OriginType Origin = OriginType.None;
-		readonly public string Detail = string.Empty;
+		readonly public OriginType Origin;
+		readonly public string Detail;
 
 		public override string ToString()
 			=> Origin switch

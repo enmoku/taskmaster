@@ -45,15 +45,15 @@ namespace Taskmaster.Audio
 			MMDevice = device;
 		}
 
-		public string Name { get; } = string.Empty;
-		public Guid GUID { get; } = Guid.Empty;
+		public string Name { get; }
+		public Guid GUID { get; }
 
 		public bool VolumeControl { get; set; } = false;
 		public float Volume { get; set; } = float.NaN;
 		public float Target { get; set; } = float.NaN;
 
-		public NAudio.CoreAudioApi.DeviceState State { get; set; } = NAudio.CoreAudioApi.DeviceState.NotPresent;
-		public NAudio.CoreAudioApi.DataFlow Flow { get; set; } = NAudio.CoreAudioApi.DataFlow.All;
+		public NAudio.CoreAudioApi.DeviceState State { get; set; }
+		public NAudio.CoreAudioApi.DataFlow Flow { get; set; }
 
 		public NAudio.CoreAudioApi.MMDevice MMDevice { get; private set; } = null;
 
@@ -64,7 +64,7 @@ namespace Taskmaster.Audio
 
 		~Device() => Dispose(false);
 
-		void Dispose(bool disposing)
+		protected virtual void Dispose(bool disposing)
 		{
 			if (DisposingOrDisposed) return;
 

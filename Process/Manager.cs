@@ -43,7 +43,7 @@ namespace Taskmaster.Process
 	using static Taskmaster;
 
 	[Component(RequireMainThread = false)]
-	public class Manager : Component, IDisposal, IDisposable
+	public class Manager : Component, IDisposal
 	{
 		Analyzer analyzer = null;
 
@@ -283,7 +283,7 @@ namespace Taskmaster.Process
 			if (sender is System.Diagnostics.Process proc)
 			{
 				RemoveRunning(proc.Id, out var info);
-				if (info is ProcessEx)
+				if (info != null)
 				{
 					info.State = HandlingState.Exited;
 					info.ExitWait = false;
@@ -875,7 +875,7 @@ namespace Taskmaster.Process
 
 		DateTimeOffset LastScan { get; set; } = DateTimeOffset.MinValue; // UNUSED
 
-		public DateTimeOffset NextScan { get; set; } = DateTimeOffset.MinValue;
+		public DateTimeOffset NextScan { get; set; }
 
 		// static bool ControlChildren = false; // = false;
 
@@ -1670,28 +1670,26 @@ namespace Taskmaster.Process
 				Log.Error("Unregistering foreground changed event");
 				activeappmonitor.ActiveChanged -= ForegroundAppChangedEvent;
 			}
-			finally
-			{
-				if (IOPriorityEnabled)
-				{
-					bool disposeLocal = false;
 
-					try
+			if (IOPriorityEnabled)
+			{
+				bool disposeLocal = false;
+
+				try
+				{
+					if (process is null)
 					{
-						if (process is null)
-						{
-							process = System.Diagnostics.Process.GetProcessById(ev.Id);
-							disposeLocal = true;
-						}
-						Utility.SetIO(process, 2, out _, decrease: false); // set foreground app I/O to highest possible
+						process = System.Diagnostics.Process.GetProcessById(ev.Id);
+						disposeLocal = true;
 					}
-					catch (Exception ex) when (ex is NullReferenceException || ex is OutOfMemoryException) { throw; }
-					catch (ArgumentException) { }
-					catch (InvalidOperationException) { }
-					finally
-					{
-						if (disposeLocal) process?.Dispose();
-					}
+					Utility.SetIO(process, 2, out _, decrease: false); // set foreground app I/O to highest possible
+				}
+				catch (Exception ex) when (ex is NullReferenceException || ex is OutOfMemoryException) { throw; }
+				catch (ArgumentException) { }
+				catch (InvalidOperationException) { }
+				finally
+				{
+					if (disposeLocal) process?.Dispose();
 				}
 			}
 		}
@@ -1743,7 +1741,7 @@ namespace Taskmaster.Process
 				return false;
 			}
 
-			List<Controller> lcache = null;
+			List<Controller> lcache;
 
 			lock (watchlist_lock) lcache = WatchlistCache.Value;
 
@@ -2466,7 +2464,8 @@ namespace Taskmaster.Process
 			}
 			catch (Exception ex)
 			{
-				state = info.State = HandlingState.Invalid;
+				state = HandlingState.Invalid;
+				if (info != null) info.State = state;
 				Logging.Stacktrace(ex);
 				Log.Error("Unregistering new instance triage");
 				StopWMIEventWatcher();
@@ -2704,6 +2703,12 @@ namespace Taskmaster.Process
 
 		bool disposed = false;
 
+		public override void Dispose()
+		{
+			Dispose(true);
+			GC.SuppressFinalize(this);
+		}
+
 		protected override void Dispose(bool disposing)
 		{
 			if (disposed) return;
@@ -2784,10 +2789,10 @@ namespace Taskmaster.Process
 				Services.Clear();
 
 				lock (Exclusive_lock) try { ExclusiveEnd(); } catch { }
-			}
 
-			OnDisposed?.Invoke(this, DisposedEventArgs.Empty);
-			OnDisposed = null;
+				OnDisposed?.Invoke(this, DisposedEventArgs.Empty);
+				OnDisposed = null;
+			}
 		}
 
 		public void ShutdownEvent(object sender, EventArgs ea)

@@ -42,11 +42,7 @@ namespace Taskmaster.UI
 
 		readonly Button exitButton = null;
 
-		int Loaded = 0;
-		int MaxLoad = 1;
-
-		int SubLoaded = 0;
-		int MaxSubLoad = 1;
+		int Loaded = 0, MaxLoad, SubLoaded = 0, MaxSubLoad = 1;
 
 		public Splash(int itemsToLoad)
 			: base(centerOnScreen: true)
@@ -265,12 +261,13 @@ namespace Taskmaster
 
 	internal class LoadEventArgs : EventArgs
 	{
-		internal string Message = string.Empty;
+		internal string Message { get; }
 
-		internal LoadEventType Type = LoadEventType.Info;
+		internal LoadEventType Type { get; }
 
-		internal int SubProgress = 0;
-		internal int MaxSubProgress = -1;
+		internal int SubProgress { get; }
+
+		internal int MaxSubProgress { get; }
 
 		internal LoadEventArgs(string message, LoadEventType type, int subItemsProgress = -1, int maxSubItems = -1)
 		{

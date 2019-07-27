@@ -88,12 +88,9 @@ namespace Taskmaster
 									var proc = System.Diagnostics.Process.Start(info);
 								}
 								catch (Exception ex) when (ex is NullReferenceException || ex is OutOfMemoryException) { throw; }
-								catch { } // without finally block might not execute
-								finally
-								{
-									UnifiedExit(restart: true);
-									throw new RunstateException("Quick exit to restart", Runstate.Restart);
-								}
+
+								UnifiedExit(restart: true);
+								throw new RunstateException("Quick exit to restart", Runstate.Restart);
 							}
 						}
 						else

@@ -430,17 +430,10 @@ namespace Taskmaster.UI.Config
 			{
 				//await Task.Delay(0);
 				// this is really horrifying mess
-				var power = Taskmaster.powermanager;
+				//var power = Taskmaster.powermanager;
 				using var acw = new AdvancedConfig(centerOnScreen);
-				var res = acw.ShowDialog();
-				if (acw.DialogOK)
-				{
-					// NOP
-				}
-				else
-				{
-					if (Trace) Log.Verbose("<<UI>> Advanced config cancelled.");
-				}
+				acw.ShowDialog();
+				if (!acw.DialogOK && Trace) Log.Verbose("<<UI>> Advanced config cancelled.");
 			}
 			catch (OutOfMemoryException) { throw; }
 			catch (Exception ex)

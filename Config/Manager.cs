@@ -34,7 +34,7 @@ namespace Taskmaster.Configuration
 
 	public class Manager : IDisposable
 	{
-		readonly string datapath = string.Empty;
+		readonly string datapath;
 
 		public Manager(string path) => datapath = path;
 
@@ -135,9 +135,14 @@ namespace Taskmaster.Configuration
 		}
 
 		bool disposed; // = false;
-		public void Dispose() => Dispose(true);
 
-		void Dispose(bool disposing)
+		public void Dispose()
+		{
+			Dispose(true);
+			GC.SuppressFinalize(this);
+		}
+
+		protected virtual void Dispose(bool disposing)
 		{
 			if (disposed) return;
 

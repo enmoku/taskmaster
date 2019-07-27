@@ -111,7 +111,8 @@ namespace Taskmaster
 				Service.Value.Refresh();
 
 				// TODO:
-				switch (Service.Value.Status)
+				var status = Service.Value.Status;
+				switch (status)
 				{
 					case ServiceControllerStatus.Running:
 					case ServiceControllerStatus.ContinuePending:
@@ -121,15 +122,12 @@ namespace Taskmaster
 					case ServiceControllerStatus.StopPending:
 						// TODO: Schedule restart
 						break;
+					case ServiceControllerStatus.Stopped:
 					case ServiceControllerStatus.Paused:
-						if (Service.Value.CanPauseAndContinue)
+						if (status == ServiceControllerStatus.Paused && Service.Value.CanPauseAndContinue)
 							Service.Value.Continue();
 						else
-							goto Restart;
-						break;
-					case ServiceControllerStatus.Stopped:
-					Restart:
-						Service.Value.Start();
+							Service.Value.Start();
 						break;
 				}
 

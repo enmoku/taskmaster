@@ -19,7 +19,7 @@ namespace External
 	{
 		#region File Header Structures
 
-		public struct IMAGE_DOS_HEADER
+		public struct DOSHeaderInfo
 		{      // DOS .EXE header
 			public UInt16 e_magic;              // Magic number
 			public UInt16 e_cblp;               // Bytes on last page of file
@@ -55,14 +55,14 @@ namespace External
 		}
 
 		[StructLayout(LayoutKind.Sequential)]
-		public struct IMAGE_DATA_DIRECTORY
+		public struct DataDirectory
 		{
 			public UInt32 VirtualAddress;
 			public UInt32 Size;
 		}
 
 		[StructLayout(LayoutKind.Sequential, Pack = 1)]
-		public struct IMAGE_OPTIONAL_HEADER32
+		public struct Optional32BitHeader
 		{
 			public UInt16 Magic;
 			public Byte MajorLinkerVersion;
@@ -95,26 +95,26 @@ namespace External
 			public UInt32 LoaderFlags;
 			public UInt32 NumberOfRvaAndSizes;
 
-			public IMAGE_DATA_DIRECTORY ExportTable;
-			public IMAGE_DATA_DIRECTORY ImportTable;
-			public IMAGE_DATA_DIRECTORY ResourceTable;
-			public IMAGE_DATA_DIRECTORY ExceptionTable;
-			public IMAGE_DATA_DIRECTORY CertificateTable;
-			public IMAGE_DATA_DIRECTORY BaseRelocationTable;
-			public IMAGE_DATA_DIRECTORY Debug;
-			public IMAGE_DATA_DIRECTORY Architecture;
-			public IMAGE_DATA_DIRECTORY GlobalPtr;
-			public IMAGE_DATA_DIRECTORY TLSTable;
-			public IMAGE_DATA_DIRECTORY LoadConfigTable;
-			public IMAGE_DATA_DIRECTORY BoundImport;
-			public IMAGE_DATA_DIRECTORY IAT;
-			public IMAGE_DATA_DIRECTORY DelayImportDescriptor;
-			public IMAGE_DATA_DIRECTORY CLRRuntimeHeader;
-			public IMAGE_DATA_DIRECTORY Reserved;
+			public DataDirectory ExportTable;
+			public DataDirectory ImportTable;
+			public DataDirectory ResourceTable;
+			public DataDirectory ExceptionTable;
+			public DataDirectory CertificateTable;
+			public DataDirectory BaseRelocationTable;
+			public DataDirectory Debug;
+			public DataDirectory Architecture;
+			public DataDirectory GlobalPtr;
+			public DataDirectory TLSTable;
+			public DataDirectory LoadConfigTable;
+			public DataDirectory BoundImport;
+			public DataDirectory IAT;
+			public DataDirectory DelayImportDescriptor;
+			public DataDirectory CLRRuntimeHeader;
+			public DataDirectory Reserved;
 		}
 
 		[StructLayout(LayoutKind.Sequential, Pack = 1)]
-		public struct IMAGE_OPTIONAL_HEADER64
+		public struct Optional64BitHeader
 		{
 			public UInt16 Magic;
 			public Byte MajorLinkerVersion;
@@ -146,26 +146,26 @@ namespace External
 			public UInt32 LoaderFlags;
 			public UInt32 NumberOfRvaAndSizes;
 
-			public IMAGE_DATA_DIRECTORY ExportTable;
-			public IMAGE_DATA_DIRECTORY ImportTable;
-			public IMAGE_DATA_DIRECTORY ResourceTable;
-			public IMAGE_DATA_DIRECTORY ExceptionTable;
-			public IMAGE_DATA_DIRECTORY CertificateTable;
-			public IMAGE_DATA_DIRECTORY BaseRelocationTable;
-			public IMAGE_DATA_DIRECTORY Debug;
-			public IMAGE_DATA_DIRECTORY Architecture;
-			public IMAGE_DATA_DIRECTORY GlobalPtr;
-			public IMAGE_DATA_DIRECTORY TLSTable;
-			public IMAGE_DATA_DIRECTORY LoadConfigTable;
-			public IMAGE_DATA_DIRECTORY BoundImport;
-			public IMAGE_DATA_DIRECTORY IAT;
-			public IMAGE_DATA_DIRECTORY DelayImportDescriptor;
-			public IMAGE_DATA_DIRECTORY CLRRuntimeHeader;
-			public IMAGE_DATA_DIRECTORY Reserved;
+			public DataDirectory ExportTable;
+			public DataDirectory ImportTable;
+			public DataDirectory ResourceTable;
+			public DataDirectory ExceptionTable;
+			public DataDirectory CertificateTable;
+			public DataDirectory BaseRelocationTable;
+			public DataDirectory Debug;
+			public DataDirectory Architecture;
+			public DataDirectory GlobalPtr;
+			public DataDirectory TLSTable;
+			public DataDirectory LoadConfigTable;
+			public DataDirectory BoundImport;
+			public DataDirectory IAT;
+			public DataDirectory DelayImportDescriptor;
+			public DataDirectory CLRRuntimeHeader;
+			public DataDirectory Reserved;
 		}
 
 		[StructLayout(LayoutKind.Sequential, Pack = 1)]
-		public struct IMAGE_FILE_HEADER
+		public struct FileHeaderInfo
 		{
 			public UInt16 Machine;
 			public UInt16 NumberOfSections;
@@ -179,7 +179,7 @@ namespace External
 		// Grabbed the following 2 definitions from http://www.pinvoke.net/default.aspx/Structures/IMAGE_SECTION_HEADER.html
 
 		[StructLayout(LayoutKind.Explicit)]
-		public struct IMAGE_SECTION_HEADER
+		public struct SectionHeader
 		{
 			[FieldOffset(0)]
 			[MarshalAs(UnmanagedType.ByValArray, SizeConst = 8)]
@@ -384,27 +384,27 @@ namespace External
 		/// <summary>
 		/// The DOS header
 		/// </summary>
-		public IMAGE_DOS_HEADER DOSHeader { get; private set; }
+		public DOSHeaderInfo DOSHeader { get; private set; }
 
 		/// <summary>
 		/// The file header
 		/// </summary>
-		public IMAGE_FILE_HEADER FileHeader { get; private set; }
+		public FileHeaderInfo FileHeader { get; private set; }
 
 		/// <summary>
 		/// Optional 32 bit file header 
 		/// </summary>
-		public IMAGE_OPTIONAL_HEADER32 OptionalHeader32 { get; private set; }
+		public Optional32BitHeader OptionalHeader32 { get; private set; }
 
 		/// <summary>
 		/// Optional 64 bit file header 
 		/// </summary>
-		public IMAGE_OPTIONAL_HEADER64 OptionalHeader64 { get; private set; }
+		public Optional64BitHeader OptionalHeader64 { get; private set; }
 
 		/// <summary>
 		/// Image Section headers. Number of sections is in the file header.
 		/// </summary>
-		public IMAGE_SECTION_HEADER[] ImageSectionHeaders { get; private set; }
+		public SectionHeader[] ImageSectionHeaders { get; private set; }
 
 		#endregion Private Fields
 
@@ -416,23 +416,23 @@ namespace External
 			using var stream = new FileStream(filePath, System.IO.FileMode.Open, System.IO.FileAccess.Read);
 			using var reader = new BinaryReader(stream);
 
-			DOSHeader = FromBinaryReader<IMAGE_DOS_HEADER>(reader);
+			DOSHeader = FromBinaryReader<DOSHeaderInfo>(reader);
 
 			// Add 4 bytes to the offset
 			stream.Seek(DOSHeader.e_lfanew, SeekOrigin.Begin);
 
 			reader.ReadUInt32(); // uint ntHeadersSignature
-			FileHeader = FromBinaryReader<IMAGE_FILE_HEADER>(reader);
+			FileHeader = FromBinaryReader<FileHeaderInfo>(reader);
 
 			if (Is32BitHeader)
-				OptionalHeader32 = FromBinaryReader<IMAGE_OPTIONAL_HEADER32>(reader);
+				OptionalHeader32 = FromBinaryReader<Optional32BitHeader>(reader);
 			else
-				OptionalHeader64 = FromBinaryReader<IMAGE_OPTIONAL_HEADER64>(reader);
+				OptionalHeader64 = FromBinaryReader<Optional64BitHeader>(reader);
 
-			ImageSectionHeaders = new IMAGE_SECTION_HEADER[FileHeader.NumberOfSections];
+			ImageSectionHeaders = new SectionHeader[FileHeader.NumberOfSections];
 
 			for (int headerNo = 0; headerNo < ImageSectionHeaders.Length; ++headerNo)
-				ImageSectionHeaders[headerNo] = FromBinaryReader<IMAGE_SECTION_HEADER>(reader);
+				ImageSectionHeaders[headerNo] = FromBinaryReader<SectionHeader>(reader);
 		}
 
 		/// <summary>

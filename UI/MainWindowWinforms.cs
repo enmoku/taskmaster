@@ -44,7 +44,7 @@ namespace Taskmaster.UI
 	{
 		readonly ToolTip tooltip = new ToolTip();
 
-		System.Drawing.Color WarningColor = System.Drawing.Color.Red;
+		System.Drawing.Color WarningColor;
 		System.Drawing.Color AlterColor = System.Drawing.Color.FromArgb(245, 245, 245); // ignores user styles
 
 		readonly System.Drawing.Color DefaultLIBGColor = new ListViewItem().BackColor; // HACK
@@ -53,7 +53,7 @@ namespace Taskmaster.UI
 		bool AlternateRowColorsWatchlist { get; set; } = true;
 		bool AlternateRowColorsDevices { get; set; } = true;
 
-		bool AutoOpenMenus { get; set; } = true;
+		bool AutoOpenMenus { get; set; }
 
 		// UI elements for non-lambda/constructor access.
 		ToolStripMenuItem menu_view_loaders = null;
@@ -984,7 +984,7 @@ namespace Taskmaster.UI
 
 		Extensions.ListViewEx NetworkDevices;
 
-		ContextMenuStrip ifacems, loglistms, watchlistms;
+		ContextMenuStrip ifacems, watchlistms;
 		ToolStripMenuItem watchlistenable;
 
 		void InterfaceContextMenuOpen(object _, EventArgs _ea)
@@ -1073,14 +1073,14 @@ namespace Taskmaster.UI
 		int MinimumHeight = 0;
 		//int MinimumWidth = 0;
 
-		ToolStripMenuItem menu_action_restart = null;
 		ToolStripMenuItem menu_action_restartadmin = null;
-		const string UpdateFrequencyName = "Update frequency";
-		const string TopmostName = "Topmost";
-		const string InfoName = "Info";
-		const string TraceName = "Trace";
-		const string ShowUnmodifiedPortionsName = "Unmodified portions";
-		const string WatchlistName = "Watchlist";
+
+		const string UpdateFrequencyName = "Update frequency",
+			TopmostName = "Topmost",
+			InfoName = "Info",
+			TraceName = "Trace",
+			ShowUnmodifiedPortionsName = "Unmodified portions",
+			WatchlistName = "Watchlist";
 
 		ToolStripMenuItem power_auto, power_highperf, power_balanced, power_saving, power_manual;
 
@@ -1146,7 +1146,7 @@ namespace Taskmaster.UI
 			{
 				Enabled = PagingEnabled,
 			};
-			menu_action_restart = new ToolStripMenuItem(HumanReadable.System.Process.Restart, null, RestartRequestEvent);
+			var menu_action_restart = new ToolStripMenuItem(HumanReadable.System.Process.Restart, null, RestartRequestEvent);
 			menu_action_restartadmin = new ToolStripMenuItem("Restart as admin", null, RestartRequestEvent)
 			{
 				Enabled = !MKAh.Execution.IsAdministrator
@@ -1812,7 +1812,7 @@ namespace Taskmaster.UI
 			SizeChanged += ResizeLogList;
 			Shown += ResizeLogList;
 
-			loglistms = new ContextMenuStrip();
+			var loglistms = new ContextMenuStrip();
 			var logcopy = new ToolStripMenuItem("Copy to clipboard", null, CopyLogToClipboard);
 			loglistms.Items.Add(logcopy);
 			LogList.ContextMenuStrip = loglistms;
@@ -2120,8 +2120,6 @@ namespace Taskmaster.UI
 			ExitWaitList = new Extensions.ListViewEx()
 			{
 				AutoSize = true,
-				//Height = 180,
-				//Width = tabLayout.Width - 12, // FIXME: 3 for the bevel, but how to do this "right"?
 				FullRowSelect = true,
 				View = View.Details,
 				MinimumSize = new System.Drawing.Size(-2, 80),
@@ -2207,8 +2205,6 @@ namespace Taskmaster.UI
 				View = View.Details,
 				Dock = DockStyle.Fill,
 				AutoSize = true,
-				//Width = tabLayout.Width - 52,
-				//Height = 260, // FIXME: Should use remaining space
 				FullRowSelect = true,
 				MinimumSize = new System.Drawing.Size(-2, -2),
 				AllowColumnReorder = true,
@@ -2316,15 +2312,13 @@ namespace Taskmaster.UI
 			}
 
 			int[] winpos = wincfg.Get(Constants.Main)?.IntArray ?? null;
-			if (winpos?.Length == 4)
+			if (winpos?.Length == 4
+				&& Screen.AllScreens.Any(ø => ø.Bounds.IntersectsWith(Bounds))) // https://stackoverflow.com/q/495380
 			{
-				if (Screen.AllScreens.Any(ø => ø.Bounds.IntersectsWith(Bounds))) // https://stackoverflow.com/q/495380
-				{
-					var rectangle = new System.Drawing.Rectangle(winpos[0], winpos[1], winpos[2], winpos[3]);
-					StartPosition = FormStartPosition.Manual;
-					Location = new System.Drawing.Point(rectangle.Left, rectangle.Top);
-					Bounds = rectangle;
-				}
+				var rectangle = new System.Drawing.Rectangle(winpos[0], winpos[1], winpos[2], winpos[3]);
+				StartPosition = FormStartPosition.Manual;
+				Location = new System.Drawing.Point(rectangle.Left, rectangle.Top);
+				Bounds = rectangle;
 			}
 
 			//var alternateRowColor = gencfg.GetSetDefault("Alternate row color", new[] { 1 }, out modified).IntArray;
@@ -2437,7 +2431,6 @@ namespace Taskmaster.UI
 			AudioInputs = new Extensions.ListViewEx
 			{
 				Dock = DockStyle.Top,
-				//Width = tabLayout.Width - 12, // FIXME: 3 for the bevel, but how to do this "right"?
 				Height = 120,
 				View = View.Details,
 				AutoSize = true,
@@ -2519,8 +2512,6 @@ namespace Taskmaster.UI
 				Parent = this,
 				Dock = DockStyle.Top,
 				AutoSize = true,
-				//Height = 80,
-				//Width = tabLayout.Width - 12, // FIXME: 3 for the bevel, but how to do this "right"?
 				MinimumSize = new System.Drawing.Size(-2, 180),
 				FullRowSelect = true,
 				View = View.Details,
@@ -3648,7 +3639,7 @@ namespace Taskmaster.UI
 			healthmonitor = monitor;
 			healthmonitor.OnDisposed += (_, _ea) => healthmonitor = null;
 
-			oldHealthReport = healthmonitor.Poll;
+			_ = healthmonitor.Poll;
 
 			UpdateMemoryStats(this, EventArgs.Empty);
 			UItimer.Tick += UpdateHealthMon;
@@ -3656,8 +3647,6 @@ namespace Taskmaster.UI
 
 			UpdateHealthMon(this, EventArgs.Empty);
 		}
-
-		HealthReport oldHealthReport = null;
 
 		int skipTransfers = 0, skipSplits = 0, skipDelays = 0, skipQueues = 0;
 
@@ -3744,7 +3733,7 @@ namespace Taskmaster.UI
 
 				//hardfaults.Text = !float.IsNaN(health.PageInputs) ? $"{health.PageInputs / health.PageFaults:N1} %" : HumanReadable.Generic.NotAvailable;
 
-				oldHealthReport = health;
+				//oldHealthReport = health;
 			}
 			catch (OutOfMemoryException) { throw; }
 			catch (ObjectDisposedException) { throw; }

@@ -47,7 +47,7 @@ namespace Taskmaster.UI
 
 		int _volumeinputcap = 10_000;
 		public int VolumeInputCap { get => _volumeinputcap; set => _volumeinputcap = value.Constrain(20, 100) * 100; }
-		public int Frequency { get; set; } = 100;
+		public int Frequency { get; set; }
 
 		readonly Audio.Manager audiomanager = null;
 

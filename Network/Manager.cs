@@ -54,7 +54,7 @@ namespace Taskmaster.Network
 	}
 
 	[Component(RequireMainThread = false)]
-	public class Manager : Component, IDisposal, IDisposable
+	public class Manager : Component, IDisposal
 	{
 		public static bool ShowNetworkErrors { get; set; } = false;
 
@@ -194,7 +194,7 @@ namespace Taskmaster.Network
 
 			LoadConfig();
 
-			var devs = CurrentInterfaceList.Value;
+			_ = CurrentInterfaceList.Value;
 
 			SampleTimer = new System.Timers.Timer(PacketStatTimerInterval * 1_000);
 			SampleTimer.Elapsed += AnalyzeTrafficBehaviour;
@@ -245,7 +245,7 @@ namespace Taskmaster.Network
 			var dns = netcfg.Config[Constants.DNSUpdating];
 			IPAddress.TryParse(dns.Get(Constants.LastKnownIPv4)?.String ?? string.Empty, out DNSOldIPv4);
 			IPAddress.TryParse(dns.Get(Constants.LastKnownIPv6)?.String ?? string.Empty, out DNSOldIPv6);
-			
+
 			var TimerStartDelay = TimeSpan.FromSeconds(10d);
 			if (DateTimeOffset.TryParse(dns.Get(Constants.LastAttempt)?.String ?? string.Empty, out DynamicDNSLastUpdate)
 				&& DynamicDNSLastUpdate.To(DateTimeOffset.UtcNow).TotalMinutes < 15d)
@@ -350,7 +350,7 @@ namespace Taskmaster.Network
 				using var rs = await rq.GetResponseAsync();
 				if (rs.ContentLength > 0)
 				{
-					var sbs = new StringBuilder(512);
+					//var sbs = new StringBuilder(512);
 					using var dat = rs.GetResponseStream();
 					int len = Convert.ToInt32(rs.ContentLength);
 					byte[] buffer = new byte[len];
@@ -417,10 +417,9 @@ namespace Taskmaster.Network
 		Lazy<List<Device>> CurrentInterfaceList = null;
 
 		int TrafficAnalysisLimiter = 0;
-		TrafficData nout, nin, oldout, oldin;
 
 		long errorsSinceLastReport = 0;
-		DateTimeOffset lastErrorReport = DateTimeOffset.MinValue;
+		DateTimeOffset lastErrorReport;
 
 		void AnalyzeTrafficBehaviour(object _, EventArgs _ea)
 		{
@@ -446,10 +445,10 @@ namespace Taskmaster.Network
 
 				for (int index = 0; index < ifaces.Count; index++)
 				{
-					nout = ifaces[index].Outgoing;
-					nin = ifaces[index].Incoming;
-					oldout = oldifaces[index].Outgoing;
-					oldin = oldifaces[index].Incoming;
+					var nout = ifaces[index].Outgoing;
+					var nin = ifaces[index].Incoming;
+					var oldout = oldifaces[index].Outgoing;
+					var oldin = oldifaces[index].Incoming;
 
 					long totalerrors = nout.Errors + nin.Errors,
 						totaldiscards = nout.Errors + nin.Errors,
@@ -703,7 +702,7 @@ namespace Taskmaster.Network
 								case System.Net.Sockets.SocketError.TryAgain:
 								case System.Net.Sockets.SocketError.TimedOut:
 								default:
-									timeout = true;
+									//timeout = true;
 									InternetAvailable = true;
 									return InternetAvailable;
 								case System.Net.Sockets.SocketError.SocketError:
@@ -774,7 +773,7 @@ namespace Taskmaster.Network
 		readonly object address_lock = new object();
 
 		IPAddress IPv4Address = IPAddress.None, IPv6Address = IPAddress.IPv6None;
-		NetworkInterface IPv4Interface, IPv6Interface;
+		//NetworkInterface IPv4Interface, IPv6Interface;
 
 		/// <summary>
 		/// Resets <see cref="CurrentInterfaceList"/>.
@@ -854,13 +853,13 @@ namespace Taskmaster.Network
 						if (_ipv4 != IPAddress.None)
 						{
 							IPv4Address = _ipv4;
-							IPv4Interface = dev;
+							//IPv4Interface = dev;
 						}
 
 						if (_ipv6 != IPAddress.IPv6None)
 						{
 							IPv6Address = _ipv6;
-							IPv6Interface = dev;
+							//IPv6Interface = dev;
 						}
 
 						devi.Incoming.From(stats, true);
@@ -885,13 +884,10 @@ namespace Taskmaster.Network
 		{
 			if (disposed) return;
 
-			var now = DateTimeOffset.UtcNow;
-
 			bool AvailabilityChanged = InternetAvailable;
 
-			await Task.Delay(0).ConfigureAwait(false); // asyncify
-
 			await CheckInet(/*address_changed: true*/).ConfigureAwait(false);
+
 			AvailabilityChanged = AvailabilityChanged != InternetAvailable;
 
 			if (InternetAvailable)
@@ -899,7 +895,7 @@ namespace Taskmaster.Network
 				IPAddress oldV6Address = IPv6Address;
 				IPAddress oldV4Address = IPv4Address;
 
-				var devs = GetInterfaces();
+				GetInterfaces();
 				IPAddress newIPv4 = IPv4Address, newIPv6 = IPv6Address;
 
 				bool ipv4changed, ipv6changed, ipchanged = false;
@@ -924,7 +920,7 @@ namespace Taskmaster.Network
 					}
 					if (ipv6changed)
 					{
-						sbs.AppendLine("IPv6 address changed.").AppendLine(oldV6Address .ToString());
+						sbs.AppendLine("IPv6 address changed.").AppendLine(oldV6Address.ToString());
 						Log.Information($"<Network> IPv6 address changed: {oldV6Address} → {newIPv6}");
 					}
 
@@ -1008,12 +1004,14 @@ namespace Taskmaster.Network
 		/// </summary>
 		int NetworkChangeCounter = 4; // 4 to force fast inet check on start
 
+		/*
 		/// <summary>
 		/// Last time NetworkChanged was triggered
 		/// </summary>
 		DateTimeOffset LastNetworkChange = DateTimeOffset.MinValue;
+		*/
 
-		object NetworkStatus_lock = new object();
+		readonly object NetworkStatus_lock = new object();
 		System.Threading.Timer NetworkStatusReport = null;
 
 		TimeSpan NetworkReportDelay = TimeSpan.FromSeconds(2.2d);
@@ -1074,7 +1072,7 @@ namespace Taskmaster.Network
 		{
 			if (disposed) return;
 
-			LastNetworkChange = DateTimeOffset.UtcNow;
+			//LastNetworkChange = DateTimeOffset.UtcNow;
 
 			var oldNetAvailable = NetworkAvailable;
 			bool available = NetworkAvailable = NetworkInterface.GetIsNetworkAvailable();
@@ -1094,6 +1092,12 @@ namespace Taskmaster.Network
 		public event EventHandler<DisposedEventArgs> OnDisposed;
 
 		bool disposed = false;
+
+		public override void Dispose()
+		{
+			Dispose(true);
+			GC.SuppressFinalize(this);
+		}
 
 		protected override void Dispose(bool disposing)
 		{
@@ -1119,10 +1123,10 @@ namespace Taskmaster.Network
 				NetOutTrans?.Dispose();
 				NetPackets?.Dispose();
 				NetQueue?.Dispose();
-			}
 
-			OnDisposed?.Invoke(this, DisposedEventArgs.Empty);
-			OnDisposed = null;
+				OnDisposed?.Invoke(this, DisposedEventArgs.Empty);
+				OnDisposed = null;
+			}
 		}
 
 		public void ShutdownEvent(object sender, EventArgs ea)

@@ -434,6 +434,12 @@ namespace Taskmaster.Audio
 
 		bool DisposedOrDisposing = false;
 
+		public override void Dispose()
+		{
+			Dispose(true);
+			GC.SuppressFinalize(this);
+		}
+
 		protected override void Dispose(bool disposing)
 		{
 			if (DisposedOrDisposing) return;
@@ -447,10 +453,10 @@ namespace Taskmaster.Audio
 
 				Device?.Dispose();
 				Device = null;
-			}
 
-			OnDisposed?.Invoke(this, DisposedEventArgs.Empty);
-			OnDisposed = null;
+				OnDisposed?.Invoke(this, DisposedEventArgs.Empty);
+				OnDisposed = null;
+			}
 		}
 
 		public void ShutdownEvent(object sender, EventArgs ea)

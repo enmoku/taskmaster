@@ -38,7 +38,7 @@ namespace Taskmaster
 	/// Manager for non-volatile memory (NVM).
 	/// </summary>
 	[Component(RequireMainThread = false)]
-	public class StorageManager : Component, IDisposal, IDisposable
+	public class StorageManager : Component, IDisposal
 	{
 		bool Verbose = false;
 
@@ -156,7 +156,7 @@ namespace Taskmaster
 				{
 					stats.Size += fi.Length;
 					stats.Files++;
-					if (i++ % 100 == 0) TempScan?.Invoke(null, dea);
+					if (i++ % 100 == 0) TempScan?.Invoke(this, dea);
 				}
 
 				foreach (System.IO.DirectoryInfo di in dinfo.GetDirectories())
@@ -164,7 +164,7 @@ namespace Taskmaster
 					DirectorySize(di, ref stats);
 					stats.Dirs++;
 
-					if (i++ % 100 == 0) TempScan?.Invoke(null, dea);
+					if (i++ % 100 == 0) TempScan?.Invoke(this, dea);
 				}
 			}
 			catch (OutOfMemoryException) { throw; }
@@ -191,15 +191,15 @@ namespace Taskmaster
 				ReScanBurden = 0;
 
 				Log.Information("Temp folders scanning initiated...");
-				TempScan?.Invoke(null, new StorageEventArgs { State = ScanState.Start, Stats = dst });
+				TempScan?.Invoke(this, new StorageEventArgs { State = ScanState.Start, Stats = dst });
 				DirectorySize(new System.IO.DirectoryInfo(systemTemp), ref dst);
 				if (systemTemp != UserTemp)
 				{
-					TempScan?.Invoke(null, new StorageEventArgs { State = ScanState.Segment, Stats = dst });
+					TempScan?.Invoke(this, new StorageEventArgs { State = ScanState.Segment, Stats = dst });
 					DirectorySize(new System.IO.DirectoryInfo(UserTemp), ref dst);
 				}
 
-				TempScan?.Invoke(null, new StorageEventArgs { State = ScanState.End, Stats = dst });
+				TempScan?.Invoke(this, new StorageEventArgs { State = ScanState.End, Stats = dst });
 				Log.Information($"Temp contents: {dst.Files} files, {dst.Dirs} dirs, {(dst.Size / 1_000_000f):N2} MBs");
 			}
 			finally
@@ -223,6 +223,12 @@ namespace Taskmaster
 		public event EventHandler<DisposedEventArgs> OnDisposed;
 
 		bool DisposedOrDisposing = false;
+
+		public override void Dispose()
+		{
+			Dispose(true);
+			GC.SuppressFinalize(this);
+		}
 
 		protected override void Dispose(bool disposing)
 		{

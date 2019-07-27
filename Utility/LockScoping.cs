@@ -132,7 +132,11 @@ namespace MKAh.Lock
 			Disposed = true;
 		}
 
-		public void Dispose() => Dispose(true);
+		public void Dispose()
+		{
+			Dispose(true);
+			GC.SuppressFinalize(this);
+		}
 		#endregion
 	}
 }

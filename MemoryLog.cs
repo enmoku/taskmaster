@@ -113,7 +113,7 @@ namespace Taskmaster
 				}
 				finally
 				{
-					((System.IO.StringWriter)p_output).GetStringBuilder().Clear(); // empty, weird results if not done.
+					p_output.GetStringBuilder().Clear(); // empty, weird results if not done.
 				}
 			}
 

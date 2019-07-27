@@ -35,12 +35,12 @@ namespace Taskmaster
 		public event EventHandler NewAlert;
 		public event EventHandler AlertCancelled;
 
-		public static AlertManager instance = null;
+		public static AlertManager Instance = null;
 
 		public AlertManager()
 		{
-			if (instance != null) throw new InvalidOperationException();
-			instance = this;
+			if (Instance != null) throw new InvalidOperationException();
+			Instance = this;
 		}
 
 		/// <summary>
@@ -57,7 +57,7 @@ namespace Taskmaster
 		public void Emit(object sender, object alert)
 		{
 			throw new NotImplementedException();
-			throw new ArgumentException();
+			throw new ArgumentException(nameof(alert));
 
 			NewAlert?.Invoke(sender, EventArgs.Empty);
 		}
@@ -90,6 +90,12 @@ namespace Taskmaster
 
 		bool disposed = false; // To detect redundant calls
 
+		public override void Dispose()
+		{
+			Dispose(true);
+			GC.SuppressFinalize(this);
+		}
+
 		protected override void Dispose(bool disposing)
 		{
 			if (!disposed)
@@ -102,7 +108,7 @@ namespace Taskmaster
 					ActiveKeys = null;
 					KeyToAlertMap.Clear();
 					KeyToAlertMap = null;
-					instance = null;
+					Instance = null;
 				}
 
 				disposed = true;

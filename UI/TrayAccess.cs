@@ -64,7 +64,7 @@ namespace Taskmaster.UI
 		public TrayAccess() : base()
 		{
 			#region Build UI
-			IconCache = System.Drawing.Icon.ExtractAssociatedIcon(System.Reflection.Assembly.GetExecutingAssembly().Location);
+			var IconCache = System.Drawing.Icon.ExtractAssociatedIcon(System.Reflection.Assembly.GetExecutingAssembly().Location);
 
 			Tray = new NotifyIcon
 			{
@@ -72,7 +72,7 @@ namespace Taskmaster.UI
 				Icon = IconCache,
 			}; // Tooltip so people know WTF I am.
 
-			IconCacheMap.Add(0, IconCache);
+			//IconCacheMap.Add(0, IconCache);
 
 			Tray.BalloonTipText = Tray.Text;
 			Tray.Disposed += (_, _ea) => Tray = null;
@@ -97,10 +97,10 @@ namespace Taskmaster.UI
 			Log.Information("<Core> Run-at-start scheduler: " + (runatstartsch ? "Found" : "Missing"));
 
 			menu_configuration.DropDownItems.Add(new ToolStripMenuItem(HumanReadable.Hardware.Power.Section, null, (_, _ea) => Config.PowerConfigWindow.Reveal(powermanager, centerOnScreen: true)));
-			menu_configuration.DropDownItems.Add(new ToolStripMenuItem("Advanced", null, (_, _ea) => Config.AdvancedConfig.Reveal(centerOnScreen: true))); // FIXME: MODAL
+			menu_configuration.DropDownItems.Add(new ToolStripMenuItem("Advanced", null, (_, _ea) => Config.AdvancedConfig.Reveal(centerOnScreen: true)));
 			menu_configuration.DropDownItems.Add(new ToolStripMenuItem("Components", null, (_, _ea) => Config.ComponentConfigurationWindow.Reveal(centerOnScreen: true))); // FIXME: MODAL
 			menu_configuration.DropDownItems.Add(new ToolStripSeparator());
-			menu_configuration.DropDownItems.Add(new ToolStripMenuItem("Experiments", null, (_, _ea) => Config.ExperimentConfig.Reveal(centerOnScreen: true))); // FIXME: MODAL
+			menu_configuration.DropDownItems.Add(new ToolStripMenuItem("Experiments", null, (_, _ea) => Config.ExperimentConfig.Reveal(centerOnScreen: true)));
 			menu_configuration.DropDownItems.Add(new ToolStripSeparator());
 			menu_configuration.DropDownItems.Add(menu_runatstart_sch);
 			menu_configuration.DropDownItems.Add(new ToolStripSeparator());
@@ -188,21 +188,22 @@ namespace Taskmaster.UI
 			}
 		}
 
+		/*
 		System.Drawing.Icon IconCache = null;
 		System.Drawing.Font IconFont = new System.Drawing.Font("Terminal", 8);
-		System.Drawing.SolidBrush IconBursh = new System.Drawing.SolidBrush(System.Drawing.Color.White);
+		System.Drawing.SolidBrush IconBrush = new System.Drawing.SolidBrush(System.Drawing.Color.White);
 
 		readonly SortedDictionary<int,System.Drawing.Icon> IconCacheMap = new SortedDictionary<int, System.Drawing.Icon>();
 
 		void UpdateIcon(int count = 0)
 		{
-			System.Drawing.Icon nicon = IconCacheMap[count] as System.Drawing.Icon;
+			System.Drawing.Icon nicon = IconCacheMap[count];
 			if (nicon is null)
 			{
 				using var bmp = new System.Drawing.Bitmap(32, 32);
 				using var graphics = System.Drawing.Graphics.FromImage(bmp);
 				graphics.DrawIcon(IconCache, 0, 0);
-				graphics.DrawString(count.ToString(), IconFont, IconBursh, 1, 2);
+				graphics.DrawString(count.ToString(), IconFont, IconBrush, 1, 2);
 
 				nicon = System.Drawing.Icon.FromHandle(bmp.GetHicon());
 
@@ -213,11 +214,12 @@ namespace Taskmaster.UI
 
 			Tray.Icon = nicon;
 		}
+		*/
 
 		void MenuVisibilityChangedEvent(object sender, EventArgs _ea)
 		{
 			if (sender is ContextMenuStrip ms)
-				TrayMenuShown?.Invoke(null, new TrayShownEventArgs() { Visible = ms.Visible });
+				TrayMenuShown?.Invoke(this, new TrayShownEventArgs() { Visible = ms.Visible });
 		}
 
 		static void SessionEndingEvent(object _, Microsoft.Win32.SessionEndingEventArgs ea)
@@ -515,12 +517,12 @@ namespace Taskmaster.UI
 			}
 		}
 
-		public event EventHandler TrayTooltipClicked;
+		//public event EventHandler TrayTooltipClicked;
 
 		public void Tooltip(int timeout, string message, string title, ToolTipIcon icon)
 		{
 			Tray.ShowBalloonTip(timeout, title, message, icon);
-			Tray.BalloonTipClicked += TrayTooltipClicked; // does this actually work for proxying?
+			//Tray.BalloonTipClicked += TrayTooltipClicked; // does this actually work for proxying?
 		}
 
 		// does this do anything really?
@@ -693,12 +695,7 @@ namespace Taskmaster.UI
 			}
 		}
 
-		~TrayAccess()
-		{
-			if (!disposed && Tray != null) Tray.Visible = false;
-			Tray?.Dispose();
-			Tray = null;
-		}
+		~TrayAccess() => Dispose(false);
 
 		// Vista or later required
 		[DllImport("user32.dll")]
@@ -713,7 +710,7 @@ namespace Taskmaster.UI
 
 		bool disposed = false;
 
-		void Dispose(bool disposing)
+		protected void Dispose(bool disposing)
 		{
 			if (disposed) return;
 
@@ -748,7 +745,11 @@ namespace Taskmaster.UI
 			}
 		}
 
-		public void Dispose() => Dispose(true);
+		public void Dispose()
+		{
+			Dispose(true);
+			GC.SuppressFinalize(this);
+		}
 
 		internal void RegisterGlobalHotkeys() => WndProcEventProxy?.RegisterGlobalHotkeys();
 		#endregion
