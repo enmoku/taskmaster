@@ -32,8 +32,8 @@ namespace Taskmaster
 	[Component(RequireMainThread = false)]
 	public class AlertManager : Component, IDisposable
 	{
-		public event EventHandler onNewAlert;
-		public event EventHandler onAlertCancel;
+		public event EventHandler NewAlert;
+		public event EventHandler AlertCancelled;
 
 		public static AlertManager instance = null;
 
@@ -59,7 +59,7 @@ namespace Taskmaster
 			throw new NotImplementedException();
 			throw new ArgumentException();
 
-			onNewAlert?.Invoke(sender, EventArgs.Empty);
+			NewAlert?.Invoke(sender, EventArgs.Empty);
 		}
 
 		List<object> AlertList = new List<object>();
@@ -74,13 +74,13 @@ namespace Taskmaster
 			throw new NotImplementedException();
 			throw new ArgumentException();
 
-			onAlertCancel?.Invoke(sender, EventArgs.Empty);
+			AlertCancelled?.Invoke(sender, EventArgs.Empty);
 		}
 
 		/// <summary>
 		/// Checks if the defined alert is already active.
 		/// </summary>
-		public bool isActive(object sender, object alert)
+		public bool IsActive(object sender, object alert)
 		{
 			throw new NotImplementedException();
 		}
