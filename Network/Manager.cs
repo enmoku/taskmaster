@@ -247,9 +247,8 @@ namespace Taskmaster.Network
 			IPAddress.TryParse(dns.Get(Constants.LastKnownIPv6)?.String ?? string.Empty, out DNSOldIPv6);
 			
 			var TimerStartDelay = TimeSpan.FromSeconds(10d);
-			DateTimeOffset lastUpdate = DateTimeOffset.MinValue;
-			if (DateTimeOffset.TryParse(dns.Get(Constants.LastAttempt)?.String ?? string.Empty, out lastUpdate)
-				&& lastUpdate.To(DateTimeOffset.UtcNow).TotalMinutes < 15d)
+			if (DateTimeOffset.TryParse(dns.Get(Constants.LastAttempt)?.String ?? string.Empty, out DynamicDNSLastUpdate)
+				&& DynamicDNSLastUpdate.To(DateTimeOffset.UtcNow).TotalMinutes < 15d)
 			{
 				Log.Debug("<Net:DynDNS> Delaying update timer.");
 				TimerStartDelay = TimeSpan.FromMinutes(15d);
@@ -301,11 +300,20 @@ namespace Taskmaster.Network
 					DynDNSFailures = 0;
 					try
 					{
-						dns["Last attempt"].String = DateTimeOffset.UtcNow.ToString("u");
+						DynamicDNSLastUpdate = DateTimeOffset.UtcNow;
+						dns[Constants.LastAttempt].String = DynamicDNSLastUpdate.ToString("u");
 						if (updateIPs)
 						{
-							dns["Last IPv4"].String = curIPv4.ToString();
-							dns["Last IPv6"].String = curIPv6.ToString();
+							if (!DNSOldIPv4.Equals(curIPv4))
+							{
+								dns[Constants.LastKnownIPv4].String = curIPv4.ToString();
+								DNSOldIPv4 = curIPv4;
+							}
+							if (!DNSOldIPv6.Equals(curIPv6))
+							{
+								dns["Last IPv6"].String = curIPv6.ToString();
+								DNSOldIPv6 = curIPv6;
+							}
 						}
 					}
 					catch { }
