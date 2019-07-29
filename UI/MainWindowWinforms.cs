@@ -1659,14 +1659,14 @@ namespace Taskmaster.UI
 				DebugPower = menu_debug_power.Checked;
 				if (DebugPower)
 				{
+					if (powerDebugTab is null) BuildPowerDebugPanel();
+					else tabLayout.Controls.Add(powerDebugTab);
+					EnsureVerbosityLevel();
+
 					var pev = new Power.ModeEventArgs(powermanager.CurrentMode);
 					PowerPlanDebugEvent(this, pev); // populates powerbalancer_plan
 					powermanager.PlanChange += PowerPlanDebugEvent;
 					powermanager.AutoAdjustAttempt += PowerLoadDebugHandler;
-
-					if (powerDebugTab is null) BuildPowerDebugPanel();
-					else tabLayout.Controls.Add(powerDebugTab);
-					EnsureVerbosityLevel();
 				}
 				else
 				{
@@ -1674,8 +1674,12 @@ namespace Taskmaster.UI
 					powermanager.PlanChange -= PowerPlanDebugEvent;
 					//powermanager.onAutoAdjustAttempt -= PowerLoadHandler;
 					bool refocus = tabLayout.SelectedTab.Equals(powerDebugTab);
+
 					tabLayout.Controls.Remove(powerDebugTab);
 					if (refocus) tabLayout.SelectedIndex = 1; // watchlist
+
+					powerDebugTab?.Dispose();
+					powerDebugTab = null;
 				}
 			};
 
@@ -2111,90 +2115,6 @@ namespace Taskmaster.UI
 				n.ShowDialog();
 			}
 			catch (Exception ex) { Logging.Stacktrace(ex); }
-		}
-
-		void BuildProcessDebug()
-		{
-			ExitWaitlistMap = new ConcurrentDictionary<int, ListViewItem>();
-
-			ExitWaitList = new Extensions.ListViewEx()
-			{
-				AutoSize = true,
-				FullRowSelect = true,
-				View = View.Details,
-				MinimumSize = new System.Drawing.Size(-2, 80),
-				Dock = DockStyle.Fill,
-			};
-
-			ExitWaitList.Columns.Add("Id", 50);
-			ExitWaitList.Columns.Add(HumanReadable.System.Process.Executable, 280);
-			ExitWaitList.Columns.Add("State", 160);
-			ExitWaitList.Columns.Add(HumanReadable.Hardware.Power.Section, 80);
-
-			var waitlist = processmanager?.GetExitWaitList();
-			if ((waitlist?.Length ?? 0) > 0)
-				foreach (var info in waitlist)
-					ExitWaitListHandler(null, new ProcessModificationEventArgs(info));
-
-			var processlayout = new Extensions.TableLayoutPanel()
-			{
-				ColumnCount = 1,
-				AutoSize = true,
-				Dock = DockStyle.Fill,
-			};
-
-			if (ActiveAppMonitorEnabled)
-			{
-				var foregroundapppanel = new FlowLayoutPanel
-				{
-					Dock = DockStyle.Fill,
-					FlowDirection = FlowDirection.LeftToRight,
-					WrapContents = false,
-					AutoSize = true,
-					//Width = tabLayout.Width - 3,
-				};
-
-				activeLabel = new AlignedLabel() { Text = "no active window found", AutoEllipsis = true };
-				activeExec = new AlignedLabel() { Text = HumanReadable.Generic.Uninitialized, Width = 100 };
-				activeFullscreen = new AlignedLabel() { Text = HumanReadable.Generic.Uninitialized, Width = 60 };
-				activePID = new AlignedLabel() { Text = HumanReadable.Generic.Uninitialized, Width = 60 };
-
-				foregroundapppanel.Controls.Add(new AlignedLabel() { Text = "Active window:", Width = 80 });
-				foregroundapppanel.Controls.Add(activeLabel);
-				foregroundapppanel.Controls.Add(activeExec);
-				foregroundapppanel.Controls.Add(activeFullscreen);
-				foregroundapppanel.Controls.Add(new AlignedLabel { Text = "Id:", Width = 20 });
-				foregroundapppanel.Controls.Add(activePID);
-
-				processlayout.Controls.Add(foregroundapppanel);
-			}
-
-			processlayout.Controls.Add(new AlignedLabel() { Text = "Exit wait list...", Padding = BigPadding });
-			processlayout.Controls.Add(ExitWaitList);
-
-			processlayout.Controls.Add(new AlignedLabel() { Text = "Processing list" });
-
-			ProcessingList = new Extensions.ListViewEx()
-			{
-				AutoSize = true,
-				FullRowSelect = true,
-				View = View.Details,
-				MinimumSize = new System.Drawing.Size(-2, 120),
-				Dock = DockStyle.Fill,
-			};
-
-			ProcessingList.Columns.Add("Id", 50);
-			ProcessingList.Columns.Add(HumanReadable.System.Process.Executable, 280);
-			ProcessingList.Columns.Add("State", 160);
-			ProcessingList.Columns.Add("Time", 80);
-
-			processlayout.Controls.Add(ProcessingList);
-
-			ProcessDebugTab = new Extensions.TabPage("Process Debug") { Padding = BigPadding };
-
-			ProcessDebugTab.Controls.Add(processlayout);
-
-			tabLayout.Controls.Add(ProcessDebugTab);
 		}
 
 		void BuildWatchlist(int[] appwidths, int[] apporder)
@@ -2915,15 +2835,128 @@ namespace Taskmaster.UI
 			bool enabled = Process.Manager.DebugProcesses || DebugForeground;
 			if (!enabled) return;
 
-			if (Process.Manager.DebugProcesses) processmanager.HandlingStateChange += ProcessHandlingStateChangeEvent;
+			if (ProcessDebugTab is null) BuildProcessDebug();
 
-			if (enabled && ProcessDebugTab is null)
-				BuildProcessDebug();
+			if (Process.Manager.DebugProcesses) processmanager.HandlingStateChange += ProcessHandlingStateChangeEvent;
 
 			if (activeappmonitor != null && DebugForeground)
 				activeappmonitor.ActiveChanged += OnActiveWindowChanged;
 
 			EnsureVerbosityLevel();
+		}
+
+		void StopProcessDebug()
+		{
+			if (!DebugForeground && activeappmonitor != null) activeappmonitor.ActiveChanged -= OnActiveWindowChanged;
+			if (!Process.Manager.DebugProcesses) processmanager.HandlingStateChange -= ProcessHandlingStateChangeEvent;
+
+			bool enabled = Process.Manager.DebugProcesses || DebugForeground;
+
+			if (activeappmonitor != null && DebugForeground)
+				activeappmonitor.ActiveChanged -= OnActiveWindowChanged;
+
+			bool refocus = tabLayout.SelectedTab.Equals(ProcessDebugTab);
+			if (!enabled)
+			{
+				activePID.Text = HumanReadable.Generic.Undefined;
+				activeFullscreen.Text = HumanReadable.Generic.Undefined;
+				activeFullscreen.Text = HumanReadable.Generic.Undefined;
+
+				tabLayout.Controls.Remove(ProcessDebugTab);
+				ProcessingList.Items.Clear();
+				ExitWaitList.Items.Clear();
+
+				ProcessDebugTab?.Dispose();
+				ProcessDebugTab = null;
+			}
+
+			// TODO: unlink events
+			if (refocus) tabLayout.SelectedIndex = 0; // info tab
+		}
+
+		void BuildProcessDebug()
+		{
+			ExitWaitlistMap = new ConcurrentDictionary<int, ListViewItem>();
+
+			ExitWaitList = new Extensions.ListViewEx()
+			{
+				AutoSize = true,
+				FullRowSelect = true,
+				View = View.Details,
+				MinimumSize = new System.Drawing.Size(-2, 80),
+				Dock = DockStyle.Fill,
+			};
+
+			ExitWaitList.Columns.Add("Id", 50);
+			ExitWaitList.Columns.Add(HumanReadable.System.Process.Executable, 280);
+			ExitWaitList.Columns.Add("State", 160);
+			ExitWaitList.Columns.Add(HumanReadable.Hardware.Power.Section, 80);
+			ExitWaitList.Columns.Add("Exclusive", 80);
+
+			var waitlist = processmanager?.GetExitWaitList();
+			if ((waitlist?.Length ?? 0) > 0)
+				foreach (var info in waitlist)
+					ExitWaitListHandler(null, new ProcessModificationEventArgs(info));
+
+			var processlayout = new Extensions.TableLayoutPanel()
+			{
+				ColumnCount = 1,
+				AutoSize = true,
+				Dock = DockStyle.Fill,
+			};
+
+			if (ActiveAppMonitorEnabled)
+			{
+				var foregroundapppanel = new FlowLayoutPanel
+				{
+					Dock = DockStyle.Fill,
+					FlowDirection = FlowDirection.LeftToRight,
+					WrapContents = false,
+					AutoSize = true,
+					//Width = tabLayout.Width - 3,
+				};
+
+				activeLabel = new AlignedLabel() { Text = "no active window found", AutoEllipsis = true };
+				activeExec = new AlignedLabel() { Text = HumanReadable.Generic.Uninitialized, Width = 100 };
+				activeFullscreen = new AlignedLabel() { Text = HumanReadable.Generic.Uninitialized, Width = 60 };
+				activePID = new AlignedLabel() { Text = HumanReadable.Generic.Uninitialized, Width = 60 };
+
+				foregroundapppanel.Controls.Add(new AlignedLabel() { Text = "Active window:", Width = 80 });
+				foregroundapppanel.Controls.Add(activeLabel);
+				foregroundapppanel.Controls.Add(activeExec);
+				foregroundapppanel.Controls.Add(activeFullscreen);
+				foregroundapppanel.Controls.Add(new AlignedLabel { Text = "Id:", Width = 20 });
+				foregroundapppanel.Controls.Add(activePID);
+
+				processlayout.Controls.Add(foregroundapppanel);
+			}
+
+			processlayout.Controls.Add(new AlignedLabel() { Text = "Exit wait list...", Padding = BigPadding });
+			processlayout.Controls.Add(ExitWaitList);
+
+			processlayout.Controls.Add(new AlignedLabel() { Text = "Processing list" });
+
+			ProcessingList = new Extensions.ListViewEx()
+			{
+				AutoSize = true,
+				FullRowSelect = true,
+				View = View.Details,
+				MinimumSize = new System.Drawing.Size(-2, 120),
+				Dock = DockStyle.Fill,
+			};
+
+			ProcessingList.Columns.Add("Id", 50);
+			ProcessingList.Columns.Add(HumanReadable.System.Process.Executable, 280);
+			ProcessingList.Columns.Add("State", 160);
+			ProcessingList.Columns.Add("Time", 80);
+
+			processlayout.Controls.Add(ProcessingList);
+
+			ProcessDebugTab = new Extensions.TabPage("Process Debug") { Padding = BigPadding };
+
+			ProcessDebugTab.Controls.Add(processlayout);
+
+			tabLayout.Controls.Add(ProcessDebugTab);
 		}
 
 		/// <summary>
@@ -3010,33 +3043,6 @@ namespace Taskmaster.UI
 			catch { }
 		}
 
-		void StopProcessDebug()
-		{
-			if (!DebugForeground && activeappmonitor != null) activeappmonitor.ActiveChanged -= OnActiveWindowChanged;
-			if (!Process.Manager.DebugProcesses) processmanager.HandlingStateChange -= ProcessHandlingStateChangeEvent;
-
-			bool enabled = Process.Manager.DebugProcesses || DebugForeground;
-			if (enabled) return;
-
-			if (activeappmonitor != null && DebugForeground)
-				activeappmonitor.ActiveChanged -= OnActiveWindowChanged;
-
-			bool refocus = tabLayout.SelectedTab.Equals(ProcessDebugTab);
-			if (!enabled)
-			{
-				activePID.Text = HumanReadable.Generic.Undefined;
-				activeFullscreen.Text = HumanReadable.Generic.Undefined;
-				activeFullscreen.Text = HumanReadable.Generic.Undefined;
-
-				tabLayout.Controls.Remove(ProcessDebugTab);
-				ProcessingList.Items.Clear();
-				ExitWaitList.Items.Clear();
-			}
-
-			// TODO: unlink events
-			if (refocus) tabLayout.SelectedIndex = 1; // watchlist
-		}
-
 		StatusStrip statusbar;
 		ToolStripStatusLabel processingcount, trackingcount, processingtimer, powermodestatusbar;
 
@@ -3105,11 +3111,15 @@ namespace Taskmaster.UI
 				bool fg = (ea.Info.Id == (activeappmonitor?.ForegroundId ?? ea.Info.Id));
 
 				ListViewItem li = null;
-				string text = fgonly ? (fg ? HumanReadable.System.Process.Foreground : HumanReadable.System.Process.Background) : "ACTIVE";
+				string fgonlytext = fgonly ? (fg ? HumanReadable.System.Process.Foreground : HumanReadable.System.Process.Background) : "ACTIVE";
+				string powertext = (ea.Info.PowerWait ? "FORCED" : HumanReadable.Generic.NotAvailable);
+				string extext = (ea.Info.Exclusive ? Constants.Yes : Constants.No);
 
 				if (ExitWaitlistMap?.TryGetValue(ea.Info.Id, out li) ?? false)
 				{
-					li.SubItems[2].Text = text;
+					li.SubItems[2].Text = fgonlytext;
+					li.SubItems[3].Text = powertext;
+					li.SubItems[4].Text = extext;
 
 					if (Trace && DebugForeground) Log.Debug($"WaitlistHandler: {ea.Info.Name} = {ea.Info.State.ToString()}");
 
@@ -3136,8 +3146,9 @@ namespace Taskmaster.UI
 					li = new ListViewItem(new string[] {
 							ea.Info.Id.ToString(),
 							ea.Info.Name,
-							text,
-							(ea.Info.PowerWait ? "FORCED" : HumanReadable.Generic.NotAvailable)
+							fgonlytext,
+							powertext,
+							extext,
 						});
 
 					ExitWaitlistMap?.TryAdd(ea.Info.Id, li);

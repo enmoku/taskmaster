@@ -2152,12 +2152,15 @@ namespace Taskmaster.Process
 								info.Process.Exited += (_, _ea) => EndExclusiveMode(info).ConfigureAwait(false);
 								info.Process.EnableRaisingEvents = true;
 								info.ExitWait = true;
+								info.Exclusive = true;
 
 								ExclusiveEnabled = true;
 
 								foreach (var service in Services)
 									service.Stop(service.FullDisable);
 							}
+
+							WaitForExit(info);
 
 							ensureExit = true;
 						}
