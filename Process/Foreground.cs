@@ -194,12 +194,12 @@ namespace Taskmaster.Process
 					if (fgproc?.Responding == false) PreviouslyHung = fgproc.Id;
 				}
 
-				DateTimeOffset now = DateTimeOffset.UtcNow;
-				TimeSpan since = now.Since(LastSwap); // since app was last changed
-				if (since.TotalSeconds < 5) return;
-
 				if (!previoushang.Equals(lfgpid)) // foreground changed since last test
 					HangTick = 0;
+
+				DateTimeOffset now = DateTimeOffset.UtcNow;
+				var since = now.Since(LastSwap); // since app was last changed
+				if (since.TotalSeconds < 5) return;
 
 				if (fgproc?.Responding == false)
 				{
@@ -323,13 +323,14 @@ namespace Taskmaster.Process
 					}
 
 					HangTick++;
-
-					return;
 				}
 				else
 				{
 					processmanager.Unignore(IgnoreHung);
 					IgnoreHung = -1;
+
+					Reduced = false;
+					Minimized = false;
 
 					HangTick = 0;
 					HangTime = DateTimeOffset.MaxValue;
@@ -342,7 +343,6 @@ namespace Taskmaster.Process
 				processmanager.Unignore(IgnoreHung);
 
 				Logging.Stacktrace(ex);
-				return;
 			}
 			finally
 			{
