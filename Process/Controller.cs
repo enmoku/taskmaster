@@ -296,35 +296,19 @@ namespace Taskmaster.Process
 			switch (mode)
 			{
 				case ForegroundMode.Ignore:
-					Refresh();
+					DisableTracking();
 					break;
 				case ForegroundMode.Standard:
-					// TODO: clear power
-					ClearPower();
+					foreach (var info in ActiveWait.Values)
+						if (info.PowerWait)
+							powermanager?.Release(info);
 					break;
 				case ForegroundMode.Full:
 					break;
 				case ForegroundMode.PowerOnly:
-					ClearActive();
+					foreach (var info in ActiveWait.Values)
+						info.ForegroundWait = info.InBackground = false;
 					break;
-			}
-		}
-
-		void ClearActive()
-		{
-			foreach (var info in ActiveWait.Values)
-				info.ForegroundWait = info.InBackground = false;
-		}
-
-		void ClearPower()
-		{
-			foreach (var info in ActiveWait.Values)
-			{
-				if (info.PowerWait)
-				{
-					powermanager?.Release(info);
-					info.PowerWait = false;
-				}
 			}
 		}
 
@@ -504,11 +488,11 @@ namespace Taskmaster.Process
 		{
 			var process = sender as System.Diagnostics.Process;
 
-			if (ActiveWait.TryGetValue(process.Id, out var info))
+			if (ActiveWait.TryRemove(process.Id, out var info))
 			{
 				info.State = HandlingState.Exited;
-				info.InBackground = false; // IRRELEVANT
-				info.ForegroundWait = false; // IRRELEVANT
+				//info.InBackground = false; // IRRELEVANT
+				//info.ForegroundWait = false; // IRRELEVANT
 
 				if (info.PowerWait && PowerPlan != Power.Mode.Undefined) UndoPower(info);
 				info.PowerWait = false;
@@ -516,14 +500,12 @@ namespace Taskmaster.Process
 		}
 
 		/// <summary>
-		/// Refresh the controller, freeing resources, locks, etc.
+		/// Disable tracking.
 		/// </summary>
-		public void Refresh()
+		void DisableTracking()
 		{
-			if (DebugPower || Manager.DebugProcesses) Log.Debug($"[{FriendlyName}] Refresh");
+			if (DebugPower || Manager.DebugProcesses) Log.Debug($"[{FriendlyName}] Disabling tracking");
 
-			ClearActive();
-			ClearPower();
 			foreach (var info in ActiveWait.Values)
 			{
 				info.Process.Refresh();
@@ -541,9 +523,32 @@ namespace Taskmaster.Process
 					info.State = HandlingState.Exited;
 			}
 
-			if (!Resize.HasValue) ActiveWait.Clear();
+			RecentlyModified.Clear();
+		}
+
+		/// <summary>
+		/// Refresh the controller, freeing resources, locks, etc.
+		/// </summary>
+		public void Refresh()
+		{
+			if (DebugPower || Manager.DebugProcesses) Log.Debug($"[{FriendlyName}] Refresh");
+
+			var cleanupList = new List<ProcessEx>(2);
+
+			foreach (var info in ActiveWait.Values)
+			{
+				info.Process.Refresh();
+				if (info.Process.HasExited)
+				{
+					info.State = HandlingState.Exited;
+					cleanupList.Add(info);
+				}
+			}
 
 			RecentlyModified.Clear();
+
+			foreach (var info in cleanupList)
+				End(info.Process, EventArgs.Empty);
 		}
 
 		public void SaveConfig()
@@ -738,6 +743,9 @@ namespace Taskmaster.Process
 		}
 
 		// The following should be combined somehow?
+		/// <summary>
+		/// List of processes actively waited on, such as things that need cleanup on exit.
+		/// </summary>
 		readonly ConcurrentDictionary<int, ProcessEx> ActiveWait = new ConcurrentDictionary<int, ProcessEx>();
 
 		readonly ConcurrentDictionary<int, RecentlyModifiedInfo> RecentlyModified = new ConcurrentDictionary<int, RecentlyModifiedInfo>();
@@ -746,7 +754,9 @@ namespace Taskmaster.Process
 		/// Caching from Foreground
 		/// </summary>
 		bool BackgroundPowerdown { get; set; } = false;
+
 		public ProcessPriorityClass? BackgroundPriority { get; set; } = null;
+
 		public int BackgroundAffinity { get; set; } = -1;
 
 		/// <summary>
@@ -1687,12 +1697,10 @@ namespace Taskmaster.Process
 			{
 				if (RecentlyModified.Count > 5)
 				{
-					foreach (var r in RecentlyModified)
-					{
-						if ((r.Value.LastIgnored.To(now) > Manager.IgnoreRecentlyModified)
-							|| (r.Value.LastModified.To(now) > Manager.IgnoreRecentlyModified))
-							RecentlyModified.TryRemove(r.Key, out _);
-					}
+					var ignrecent = Manager.IgnoreRecentlyModified;
+
+					foreach (var r in RecentlyModified.Where(x => x.Value.LastIgnored.To(now) > ignrecent || x.Value.LastModified.To(now) > ignrecent))
+						RecentlyModified.TryRemove(r.Key, out _);
 				}
 			}
 			finally

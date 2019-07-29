@@ -1200,6 +1200,8 @@ namespace Taskmaster.Power
 							Log.Information($"<Power> {info.Name} #{info.Id} quit, power forcing released.");
 					}
 
+					info.PowerWait = false;
+
 					if (Trace && DebugPower) Log.Debug($"<Power> Released {(sourcePid == -1 ? "All" : sourcePid.ToString())}");
 				}
 				catch (Exception ex)
