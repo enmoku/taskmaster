@@ -32,7 +32,7 @@ namespace Taskmaster
 	[Dependency(typeof(ComponentAttribute))]
 	public abstract class Component : IDisposable
 	{
-		public Component() => RequireAttribute();
+		protected Component() => RequireAttribute();
 
 		[Conditional("DEBUG")]
 		void RequireAttribute()
@@ -45,8 +45,6 @@ namespace Taskmaster
 		public int ComponentId;
 
 		public abstract void Dispose();
-
-		protected abstract void Dispose(bool disposing);
 	}
 
 	[System.AttributeUsage(AttributeTargets.Class, AllowMultiple = false, Inherited = true)]

@@ -158,18 +158,22 @@ namespace Taskmaster
 			ResumeLayout();
 		}
 
-		bool disposed = false;
+		#region IDisposable
+		private bool disposed = false;
 
 		protected override void Dispose(bool disposing)
 		{
 			if (disposed) return;
+			disposed = true;
 
-			RichMessage?.Dispose();
-			Message?.Dispose();
+			if (disposing)
+			{
+				RichMessage?.Dispose();
+				Message?.Dispose();
+			}
 
 			base.Dispose(disposing);
-
-			disposed = true;
 		}
+		#endregion
 	}
 }

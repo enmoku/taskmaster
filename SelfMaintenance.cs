@@ -141,7 +141,7 @@ namespace Taskmaster
 		}
 
 		#region IDisposable Support
-		bool disposed = false; // To detect redundant calls
+		private bool disposed = false; // To detect redundant calls
 
 		public event EventHandler<DisposedEventArgs> OnDisposed;
 
@@ -151,9 +151,10 @@ namespace Taskmaster
 			GC.SuppressFinalize(this);
 		}
 
-		protected override void Dispose(bool disposing)
+		protected void Dispose(bool disposing)
 		{
 			if (disposed) return;
+			disposed = true;
 
 			if (disposing)
 			{
@@ -162,14 +163,9 @@ namespace Taskmaster
 				OnDisposed?.Invoke(this, DisposedEventArgs.Empty);
 				OnDisposed = null;
 			}
-
-			disposed = true;
 		}
 
-		public void ShutdownEvent(object sender, EventArgs ea)
-		{
-			timer?.Stop();
-		}
+		public void ShutdownEvent(object sender, EventArgs ea) => timer?.Stop();
 		#endregion
 	}
 }

@@ -38,7 +38,7 @@ namespace Taskmaster.Audio
 	/// Must be created on persistent thread, such as the main thread.
 	/// </summary>
 	[Component(RequireMainThread = true)]
-	public class Manager : Component, IDisposal
+	public class Manager : Component, IDisposal, IDisposable
 	{
 		readonly System.Threading.Thread Context = null;
 
@@ -132,7 +132,7 @@ namespace Taskmaster.Audio
 
 		void StateChangeProxy(object sender, DeviceStateEventArgs ea)
 		{
-			if (DisposingOrDisposed) return;
+			if (disposed) return;
 
 			try
 			{
@@ -154,7 +154,7 @@ namespace Taskmaster.Audio
 
 		void DefaultDeviceProxy(object sender, DefaultDeviceEventArgs ea)
 		{
-			if (DisposingOrDisposed) return;
+			if (disposed) return;
 
 			try
 			{
@@ -169,7 +169,7 @@ namespace Taskmaster.Audio
 
 		void DeviceAddedProxy(object sender, DeviceEventArgs ea)
 		{
-			if (DisposingOrDisposed) return;
+			if (disposed) return;
 
 			try
 			{
@@ -195,7 +195,7 @@ namespace Taskmaster.Audio
 
 		void DeviceRemovedProxy(object sender, DeviceEventArgs ea)
 		{
-			if (DisposingOrDisposed) return;
+			if (disposed) return;
 
 			try
 			{
@@ -252,7 +252,7 @@ namespace Taskmaster.Audio
 
 		void GetDefaultDevice()
 		{
-			if (DisposingOrDisposed) return;
+			if (disposed) return;
 
 			try
 			{
@@ -291,7 +291,7 @@ namespace Taskmaster.Audio
 
 		async void OnSessionCreated(object _, NAudio.CoreAudioApi.Interfaces.IAudioSessionControl ea)
 		{
-			if (DisposingOrDisposed) return;
+			if (disposed) return;
 
 			Debug.Assert(System.Threading.Thread.CurrentThread != Context, "Must be called in same thread.");
 
@@ -382,39 +382,37 @@ namespace Taskmaster.Audio
 		#region IDisposable Support
 		public event EventHandler<DisposedEventArgs> OnDisposed;
 
-		bool DisposingOrDisposed = false;
+		bool disposed = false;
 
-		protected override void Dispose(bool disposing)
+		protected void Dispose(bool disposing)
 		{
-			if (!DisposingOrDisposed)
+			if (disposed) return;
+			disposed = true;
+
+			if (disposing)
 			{
-				DisposingOrDisposed = true;
+				volumeTimer?.Dispose();
+				volumeTimer = null;
 
-				if (disposing)
-				{
-					volumeTimer?.Dispose();
-					volumeTimer = null;
+				CloseNotificationClient(); // unnecessary? definitely hangs if any mmdevice has been disposed
+				Enumerator?.Dispose();
+				Enumerator = null;
 
-					CloseNotificationClient(); // unnecessary? definitely hangs if any mmdevice has been disposed
-					Enumerator?.Dispose();
-					Enumerator = null;
+				if (MultimediaDevice != null)
+					MultimediaDevice.MMDevice.AudioSessionManager.OnSessionCreated -= OnSessionCreated;
+				if (ConsoleDevice != null)
+					ConsoleDevice.MMDevice.AudioSessionManager.OnSessionCreated -= OnSessionCreated;
 
-					if (MultimediaDevice != null)
-						MultimediaDevice.MMDevice.AudioSessionManager.OnSessionCreated -= OnSessionCreated;
-					if (ConsoleDevice != null)
-						ConsoleDevice.MMDevice.AudioSessionManager.OnSessionCreated -= OnSessionCreated;
+				MultimediaDevice?.Dispose();
+				ConsoleDevice?.Dispose();
+				RecordingDevice?.Dispose();
 
-					MultimediaDevice?.Dispose();
-					ConsoleDevice?.Dispose();
-					RecordingDevice?.Dispose();
+				foreach (var dev in Devices.Values)
+					dev.Dispose();
 
-					foreach (var dev in Devices.Values)
-						dev.Dispose();
-				}
+				OnDisposed?.Invoke(this, DisposedEventArgs.Empty);
+				OnDisposed = null;
 			}
-
-			OnDisposed?.Invoke(this, DisposedEventArgs.Empty);
-			OnDisposed = null;
 		}
 
 		public override void Dispose()

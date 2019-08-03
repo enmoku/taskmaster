@@ -100,7 +100,7 @@ namespace Taskmaster
 
 		void ModifyTemp(object _, FileSystemEventArgs ev)
 		{
-			if (DisposedOrDisposing) return;
+			if (disposed) return;
 
 			try
 			{
@@ -127,7 +127,7 @@ namespace Taskmaster
 
 		async void ReScanTemp()
 		{
-			if (DisposedOrDisposing) return;
+			if (disposed) return;
 
 			var now = DateTimeOffset.UtcNow;
 			if (now.Since(LastTempScan).TotalMinutes <= 15) return; // too soon
@@ -146,7 +146,7 @@ namespace Taskmaster
 
 		void DirectorySize(DirectoryInfo dinfo, ref DirectoryStats stats)
 		{
-			if (DisposedOrDisposing) throw new ObjectDisposedException(nameof(StorageManager), "DirectorySize called after StorageManager was disposed.");
+			if (disposed) throw new ObjectDisposedException(nameof(StorageManager), "DirectorySize called after StorageManager was disposed.");
 
 			var i = 1;
 			var dea = new StorageEventArgs { State = ScanState.Segment, Stats = stats };
@@ -178,7 +178,7 @@ namespace Taskmaster
 
 		async void ScanTemp(object _, EventArgs _ea)
 		{
-			if (DisposedOrDisposing) return;
+			if (disposed) return;
 
 			if (!Atomic.Lock(ref scantemp_lock)) return;
 
@@ -222,7 +222,7 @@ namespace Taskmaster
 		#region IDisposable Support
 		public event EventHandler<DisposedEventArgs> OnDisposed;
 
-		bool DisposedOrDisposing = false;
+		bool disposed = false;
 
 		public override void Dispose()
 		{
@@ -230,10 +230,10 @@ namespace Taskmaster
 			GC.SuppressFinalize(this);
 		}
 
-		protected override void Dispose(bool disposing)
+		protected void Dispose(bool disposing)
 		{
-			if (DisposedOrDisposing) return;
-			DisposedOrDisposing = true;
+			if (disposed) return;
+			disposed = true;
 
 			if (disposing)
 			{
@@ -244,10 +244,10 @@ namespace Taskmaster
 				SysWatcher?.Dispose();
 				UserWatcher?.Dispose();
 				TempScanTimer?.Dispose();
-			}
 
-			OnDisposed?.Invoke(this, DisposedEventArgs.Empty);
-			OnDisposed = null;
+				OnDisposed?.Invoke(this, DisposedEventArgs.Empty);
+				OnDisposed = null;
+			}
 		}
 
 		public void ShutdownEvent(object sender, EventArgs ea)

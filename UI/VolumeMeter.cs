@@ -185,7 +185,7 @@ namespace Taskmaster.UI
 
 		void UpdateVolumeTick(object sender, EventArgs e)
 		{
-			if (DisposedOrDisposing) return;
+			if (disposed) return;
 			if (audiomanager is null) throw new NullReferenceException(nameof(audiomanager));
 
 			try
@@ -240,28 +240,27 @@ namespace Taskmaster.UI
 		#region IDispose
 		public event EventHandler<DisposedEventArgs> OnDisposed;
 
-		bool DisposedOrDisposing = false;
+		bool disposed = false;
 
 		protected override void Dispose(bool disposing)
 		{
-			if (DisposedOrDisposing) return;
-
-			base.Dispose(disposing);
+			if (disposed) return;
+			disposed = true;
 
 			if (disposing)
 			{
-				DisposedOrDisposing = true;
-
 				if (Trace) Log.Verbose("Disposing volume meter box...");
 
 				updateTimer.Dispose();
 
 				using var cfg = Taskmaster.Config.Load(UIConfigFilename);
 				cfg.Config[Constants.Windows][HumanReadable.Hardware.Audio.Volume].IntArray = new int[] { Bounds.Left, Bounds.Top };
+
+				OnDisposed?.Invoke(this, DisposedEventArgs.Empty);
+				OnDisposed = null;
 			}
 
-			OnDisposed?.Invoke(this, DisposedEventArgs.Empty);
-			OnDisposed = null;
+			base.Dispose(disposing);
 		}
 		#endregion Dispose
 	}

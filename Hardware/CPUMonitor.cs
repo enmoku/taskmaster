@@ -296,14 +296,13 @@ namespace Taskmaster
 			GC.SuppressFinalize(this);
 		}
 
-		protected override void Dispose(bool disposing)
+		protected void Dispose(bool disposing)
 		{
 			if (disposed) return;
+			disposed = true;
 
 			if (disposing)
 			{
-				disposed = true;
-
 				CPUSampleTimer?.Dispose();
 				CPUSampleTimer = null;
 
@@ -314,16 +313,14 @@ namespace Taskmaster
 				//processmanager = null;
 
 				SaveConfig();
-			}
 
-			OnDisposed?.Invoke(this, DisposedEventArgs.Empty);
-			OnDisposed = null;
+				OnDisposed?.Invoke(this, DisposedEventArgs.Empty);
+				OnDisposed = null;
+			}
 		}
 
 		public void ShutdownEvent(object sender, EventArgs ea)
-		{
-			CPUSampleTimer?.Stop();
-		}
+			=> CPUSampleTimer?.Stop();
 		#endregion
 	}
 

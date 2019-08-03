@@ -157,7 +157,8 @@ namespace Taskmaster.Audio
 
 		public void DeviceAdded(object sender, DeviceEventArgs ea)
 		{
-			if (DisposedOrDisposing) return;
+			if (disposed) return;
+
 			try
 			{
 				if (ea.Device.Flow == DataFlow.Capture)
@@ -172,7 +173,7 @@ namespace Taskmaster.Audio
 
 		public void DeviceRemoved(object sender, DeviceEventArgs ea)
 		{
-			if (DisposedOrDisposing) return;
+			if (disposed) return;
 
 			try
 			{
@@ -189,7 +190,7 @@ namespace Taskmaster.Audio
 
 		void ChangeDefaultDevice(object sender, DefaultDeviceEventArgs ea)
 		{
-			if (DisposedOrDisposing) return;
+			if (disposed) return;
 
 			try
 			{
@@ -214,7 +215,7 @@ namespace Taskmaster.Audio
 
 		void UnregisterDefaultDevice()
 		{
-			if (DisposedOrDisposing) throw new ObjectDisposedException(nameof(MicManager), "UnregisterDefaultDevice called after MicManager was disposed.");
+			if (disposed) throw new ObjectDisposedException(nameof(MicManager), "UnregisterDefaultDevice called after MicManager was disposed.");
 
 			try
 			{
@@ -234,7 +235,7 @@ namespace Taskmaster.Audio
 
 		void RegisterDefaultDevice()
 		{
-			if (DisposedOrDisposing) throw new ObjectDisposedException(nameof(MicManager), "RegisterDefaultDevice called after MicManager was disposed.");
+			if (disposed) throw new ObjectDisposedException(nameof(MicManager), "RegisterDefaultDevice called after MicManager was disposed.");
 
 			try
 			{
@@ -304,7 +305,7 @@ namespace Taskmaster.Audio
 
 		void EnumerateDevices()
 		{
-			if (DisposedOrDisposing) throw new ObjectDisposedException(nameof(MicManager), "EnumerateDevices called after MicManager was disposed.");
+			if (disposed) throw new ObjectDisposedException(nameof(MicManager), "EnumerateDevices called after MicManager was disposed.");
 
 			if (Trace) Log.Verbose("<Microphone> Enumerating devices...");
 
@@ -370,7 +371,7 @@ namespace Taskmaster.Audio
 
 		async void VolumeChangedHandler(NAudio.CoreAudioApi.AudioVolumeNotificationData data)
 		{
-			if (DisposedOrDisposing) return;
+			if (disposed) return;
 
 			var oldVol = Volume;
 			double newVol = data.MasterVolume * 100d;
@@ -432,7 +433,7 @@ namespace Taskmaster.Audio
 		#region IDisposable Support
 		public event EventHandler<DisposedEventArgs> OnDisposed;
 
-		bool DisposedOrDisposing = false;
+		bool disposed = false;
 
 		public override void Dispose()
 		{
@@ -440,10 +441,10 @@ namespace Taskmaster.Audio
 			GC.SuppressFinalize(this);
 		}
 
-		protected override void Dispose(bool disposing)
+		protected void Dispose(bool disposing)
 		{
-			if (DisposedOrDisposing) return;
-			DisposedOrDisposing = true;
+			if (disposed) return;
+			disposed = true;
 
 			if (disposing)
 			{

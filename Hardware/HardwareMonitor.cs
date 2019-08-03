@@ -241,14 +241,14 @@ namespace Taskmaster
 		{
 			get
 			{
-				if (DisposedOrDisposing) throw new ObjectDisposedException(nameof(HardwareMonitor), "CPULoad accessed after HardwareMonitor was disposed.");
+				if (disposed) throw new ObjectDisposedException(nameof(HardwareMonitor), "CPULoad accessed after HardwareMonitor was disposed.");
 				return cpuLoad.Value ?? float.NaN;
 			}
 		}
 
 		public GPUSensors GPUSensorData()
 		{
-			if (DisposedOrDisposing) throw new ObjectDisposedException(nameof(HardwareMonitor), "GPUSensorData accessed after HardwareMonitor was disposed.");
+			if (disposed) throw new ObjectDisposedException(nameof(HardwareMonitor), "GPUSensorData accessed after HardwareMonitor was disposed.");
 			if (!Initialized) throw new InvalidOperationException("GPUSensorData accesssed before HardwareMonitor was initialized");
 
 			try
@@ -281,7 +281,7 @@ namespace Taskmaster
 		public void Start()
 		{
 			if (SensorPoller != null) return;
-			if (DisposedOrDisposing) throw new ObjectDisposedException(nameof(HardwareMonitor), "Start accessed after HardwareMonitor was disposed.");
+			if (disposed) throw new ObjectDisposedException(nameof(HardwareMonitor), "Start accessed after HardwareMonitor was disposed.");
 
 			SensorPoller = new System.Timers.Timer(5000);
 			SensorPoller.Elapsed += EmitGPU;
@@ -297,13 +297,13 @@ namespace Taskmaster
 
 		void EmitGPU(object _sender, System.Timers.ElapsedEventArgs _)
 		{
-			if (DisposedOrDisposing) return;
+			if (disposed) return;
 			GPUPolling?.Invoke(this, new GPUSensorEventArgs(GPUSensorData()));
 		}
 
 		void EmitCPU(object _sender, System.Timers.ElapsedEventArgs _)
 		{
-			if (DisposedOrDisposing) return;
+			if (disposed) return;
 			CPUPolling?.Invoke(this, new CPUSensorEventArgs(CPULoad));
 		}
 
@@ -311,7 +311,7 @@ namespace Taskmaster
 
 		void Output(OpenHardwareMonitor.Hardware.ISensor sensor)
 		{
-			if (DisposedOrDisposing) return;
+			if (disposed) return;
 
 			float? tmp = sensor.Value;
 			Log.Verbose(sensor.Name + " : " + sensor.SensorType.ToString() + " = " + (tmp.HasValue ? $"{tmp.Value:N2}" : HumanReadable.Generic.NotAvailable));
@@ -320,7 +320,7 @@ namespace Taskmaster
 		#region IDisposable Support
 		public event EventHandler<DisposedEventArgs> OnDisposed;
 
-		bool DisposedOrDisposing = false; // To detect redundant calls
+		bool disposed = false; // To detect redundant calls
 
 		public override void Dispose()
 		{
@@ -328,10 +328,10 @@ namespace Taskmaster
 			GC.SuppressFinalize(this);
 		}
 
-		protected override void Dispose(bool disposing)
+		protected virtual void Dispose(bool disposing)
 		{
-			if (DisposedOrDisposing) return;
-			DisposedOrDisposing = true;
+			if (disposed) return;
+			disposed = true;
 
 			if (disposing)
 			{

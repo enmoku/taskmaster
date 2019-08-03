@@ -713,13 +713,12 @@ namespace Taskmaster.UI
 		protected void Dispose(bool disposing)
 		{
 			if (disposed) return;
+			disposed = true;
 
 			//Microsoft.Win32.SystemEvents.SessionEnding -= SessionEndingEvent; // leaks if not disposed
 
 			if (disposing)
 			{
-				disposed = true;
-
 				if (Trace) Log.Verbose("Disposing tray...");
 
 				WndProcEventProxy?.Dispose();

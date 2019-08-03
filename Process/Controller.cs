@@ -2001,11 +2001,11 @@ namespace Taskmaster.Process
 			GC.SuppressFinalize(this);
 		}
 
-		bool DisposedOrDisposing; // = false;
+		private bool disposed; // = false;
 
 		void Dispose(bool disposing)
 		{
-			if (DisposedOrDisposing) return;
+			if (disposed) return;
 
 			if (disposing)
 			{
@@ -2019,7 +2019,7 @@ namespace Taskmaster.Process
 				if (NeedsSaving) SaveConfig();
 			}
 
-			DisposedOrDisposing = true;
+			disposed = true;
 		}
 		#endregion
 	}

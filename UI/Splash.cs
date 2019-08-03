@@ -152,7 +152,7 @@ namespace Taskmaster.UI
 					Loaded++;
 					BeginInvoke(new Action(async () =>
 					{
-						if (DisposedOrDisposing) return;
+						if (disposed) return;
 
 						coreProgress.Value = Loaded;
 						PushLog(ea.Message);
@@ -165,7 +165,7 @@ namespace Taskmaster.UI
 
 							BeginInvoke(new Action(() =>
 							{
-								if (DisposedOrDisposing) return;
+								if (disposed) return;
 
 								Close();
 							}));
@@ -178,7 +178,7 @@ namespace Taskmaster.UI
 					SubLoaded++;
 					BeginInvoke(new Action(() =>
 					{
-						if (DisposedOrDisposing) return;
+						if (disposed) return;
 
 						subProgress.Value = SubLoaded;
 						PushLog(ea.Message);
@@ -188,7 +188,7 @@ namespace Taskmaster.UI
 				case LoadEventType.Info:
 					BeginInvoke(new Action(() =>
 					{
-						if (DisposedOrDisposing) return;
+						if (disposed) return;
 
 						loadMessage.Text = ea.Message;
 						coreProgress.Maximum = MaxLoad;
@@ -203,7 +203,7 @@ namespace Taskmaster.UI
 					MaxSubLoad = ea.MaxSubProgress;
 					BeginInvoke(new Action(() =>
 					{
-						if (DisposedOrDisposing) return;
+						if (disposed) return;
 
 						subProgress.Value = 0;
 						subProgress.Maximum = MaxSubLoad;
@@ -230,20 +230,19 @@ namespace Taskmaster.UI
 		}
 
 		#region IDispose
-		bool DisposedOrDisposing = false;
+		bool disposed = false;
 
 		protected override void Dispose(bool disposing)
 		{
-			if (DisposedOrDisposing) return;
-
-			base.Dispose(disposing);
+			if (disposed) return;
+			disposed = true;
 
 			if (disposing)
 			{
-				DisposedOrDisposing = true;
-
 				LoadEventLog?.Clear();
 			}
+
+			base.Dispose(disposing);
 		}
 		#endregion Dispose
 	}

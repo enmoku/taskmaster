@@ -217,12 +217,11 @@ namespace Taskmaster.UI
 		protected override void Dispose(bool disposing)
 		{
 			if (disposed) return;
+			disposed = true;
 
 			UnregisterGlobalHotkeys();
 
 			base.Dispose(disposing);
-
-			disposed = true;
 		}
 		#endregion
 	}

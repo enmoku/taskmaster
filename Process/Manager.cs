@@ -2712,14 +2712,13 @@ namespace Taskmaster.Process
 			GC.SuppressFinalize(this);
 		}
 
-		protected override void Dispose(bool disposing)
+		protected void Dispose(bool disposing)
 		{
 			if (disposed) return;
+			disposed = true;
 
 			if (disposing)
 			{
-				disposed = true;
-
 				if (Trace) Log.Verbose("Disposing process manager...");
 
 				cts.Cancel(true);

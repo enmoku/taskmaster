@@ -179,7 +179,7 @@ namespace Taskmaster.Process
 		void HangDetector(object _sender, System.Timers.ElapsedEventArgs _)
 		{
 			if (!Atomic.Lock(ref hangdetector_lock)) return;
-			if (DisposedOrDisposing) return; // kinda dumb, but apparently timer can fire off after being disposed...
+			if (disposed) return; // kinda dumb, but apparently timer can fire off after being disposed...
 
 			try
 			{
@@ -387,7 +387,7 @@ namespace Taskmaster.Process
 
 		bool Fullscreen(IntPtr hwnd)
 		{
-			if (DisposedOrDisposing) throw new ObjectDisposedException(nameof(ForegroundManager), "Fullscreen called after ActiveAppManager was disposed");
+			if (disposed) throw new ObjectDisposedException(nameof(ForegroundManager), "Fullscreen called after ActiveAppManager was disposed");
 
 			// TODO: Is it possible to cache screen? multimonitor setup may make it hard... would that save anything?
 			var screen = System.Windows.Forms.Screen.FromHandle(hwnd); // passes
@@ -415,7 +415,7 @@ namespace Taskmaster.Process
 		{
 			if (eventType != NativeMethods.EVENT_SYSTEM_FOREGROUND) return; // does this ever trigger?
 
-			if (DisposedOrDisposing) return;
+			if (disposed) return;
 
 			await System.Threading.Tasks.Task.Delay(Hysterisis).ConfigureAwait(false); // asyncify
 
@@ -502,11 +502,12 @@ namespace Taskmaster.Process
 			GC.SuppressFinalize(this);
 		}
 
-		bool DisposedOrDisposing = false;
+		bool disposed = false;
 
 		void Dispose(bool disposing)
 		{
-			if (DisposedOrDisposing) return;
+			if (disposed) return;
+			disposed = true;
 
 			global::Taskmaster.NativeMethods.UnhookWinEvent(windowseventhook); // Automatic
 
@@ -516,12 +517,10 @@ namespace Taskmaster.Process
 
 				ActiveChanged = null;
 				HangTimer?.Dispose();
+
+				OnDisposed?.Invoke(this, DisposedEventArgs.Empty);
+				OnDisposed = null;
 			}
-
-			DisposedOrDisposing = true;
-
-			OnDisposed?.Invoke(this, DisposedEventArgs.Empty);
-			OnDisposed = null;
 		}
 		#endregion
 

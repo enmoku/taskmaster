@@ -80,7 +80,7 @@ namespace Taskmaster
 
 		public void Enable()
 		{
-			if (DisposedOrDisposing || !NeedsEnable || !WMI.IsValueCreated) return;
+			if (disposed || !NeedsEnable || !WMI.IsValueCreated) return;
 
 			try
 			{
@@ -102,7 +102,7 @@ namespace Taskmaster
 		/// <exception cref="InvalidOperationException"></exception>
 		public void Start(bool enable = false)
 		{
-			if (DisposedOrDisposing || !NeedsRestart || !Service.IsValueCreated) return;
+			if (disposed || !NeedsRestart || !Service.IsValueCreated) return;
 
 			try
 			{
@@ -138,7 +138,7 @@ namespace Taskmaster
 
 		public void Stop(bool disable = false)
 		{
-			if (DisposedOrDisposing) return;
+			if (disposed) return;
 
 			if (!NeedsRestart) return;
 
@@ -183,20 +183,23 @@ namespace Taskmaster
 		#region IDisposable Support
 		~ServiceWrapper() => Dispose(false);
 
-		bool DisposedOrDisposing = false; // To detect redundant calls
+		bool disposed = false; // To detect redundant calls
 
 		void Dispose(bool disposing)
 		{
-			if (DisposedOrDisposing) return;
+			if (disposed) return;
 
-			// this is desired even on destructor
-			if (Service.IsValueCreated)
+			if (disposing)
 			{
-				if (NeedsRestart) Start();
-				Service.Value.Dispose();
+				// this is desired even on destructor
+				if (Service.IsValueCreated)
+				{
+					if (NeedsRestart) Start();
+					Service.Value.Dispose();
+				}
 			}
 
-			DisposedOrDisposing = true;
+			disposed = true;
 		}
 
 		public void Dispose()

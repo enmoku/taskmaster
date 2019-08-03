@@ -60,15 +60,15 @@ namespace Taskmaster.Audio
 		public override string ToString() => $"{Name ?? "n/a"} {{{GUID}}}";
 
 		#region IDisposable Support
-		bool DisposingOrDisposed { get; set; } = false; // To detect redundant calls
+		private bool disposed { get; set; } = false; // To detect redundant calls
 
 		~Device() => Dispose(false);
 
 		protected virtual void Dispose(bool disposing)
 		{
-			if (DisposingOrDisposed) return;
+			if (disposed) return;
 
-			DisposingOrDisposed = true;
+			disposed = true;
 
 			if (MKAh.Execution.IsMainThread)
 			{

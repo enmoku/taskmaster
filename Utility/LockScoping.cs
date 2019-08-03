@@ -52,7 +52,7 @@ namespace MKAh.Lock
 			Queue++;
 			System.Threading.Monitor.Enter(_Lock);
 			Queue--;
-			if (Disposed) throw new ObjectDisposedException(nameof(Monitor), "Lock entered after dispose");
+			if (disposed) throw new ObjectDisposedException(nameof(Monitor), "Lock entered after dispose");
 			return Queue;
 		}
 
@@ -82,21 +82,20 @@ namespace MKAh.Lock
 
 		public void Unlock()
 		{
-			if (Disposed) throw new ObjectDisposedException(nameof(Monitor), "Lock exited after dispose");
+			if (disposed) throw new ObjectDisposedException(nameof(Monitor), "Lock exited after dispose");
 
 			System.Threading.Monitor.Exit(_Lock);
 		}
 
 		#region IDisposable Support
-		bool Disposed = false;
+		private bool disposed = false;
 
 		protected virtual void Dispose(bool disposing)
 		{
-			if (Disposed) return;
+			if (disposed) return;
+			disposed = true;
 
 			Unlock();
-
-			Disposed = true;
 		}
 
 		public void Dispose() => Dispose(true);
@@ -120,16 +119,15 @@ namespace MKAh.Lock
 		public bool Waiting => Monitor.Waiting;
 
 		#region IDisposable Support
-		bool Disposed = false; // To detect redundant calls
+		bool disposed = false; // To detect redundant calls
 
 		void Dispose(bool disposing)
 		{
-			if (Disposed) return;
+			if (disposed) return;
+			disposed = true;
 
 			if (disposing)
 				Monitor.Unlock();
-
-			Disposed = true;
 		}
 
 		public void Dispose()

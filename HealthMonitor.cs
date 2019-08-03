@@ -90,7 +90,7 @@ namespace Taskmaster
 		{
 			get
 			{
-				if (DisposedOrDisposing) throw new ObjectDisposedException(nameof(HealthMonitor), "Poll called after HealthManager is disposed.");
+				if (disposed) throw new ObjectDisposedException(nameof(HealthMonitor), "Poll called after HealthManager is disposed.");
 
 				return new HealthReport()
 				{
@@ -319,7 +319,7 @@ namespace Taskmaster
 		//async void TimerCheck(object state)
 		async void TimerCheck(object _sender, System.Timers.ElapsedEventArgs _)
 		{
-			if (DisposedOrDisposing) return; // Dumbness with timers
+			if (disposed) return; // Dumbness with timers
 
 			// skip if already running...
 			// happens sometimes when the timer keeps running but not the code here
@@ -354,7 +354,7 @@ namespace Taskmaster
 
 		async Task CheckSystem()
 		{
-			if (DisposedOrDisposing) throw new ObjectDisposedException(nameof(HealthMonitor), "CheckSystem called after HealthMonitor was disposed.");
+			if (disposed) throw new ObjectDisposedException(nameof(HealthMonitor), "CheckSystem called after HealthMonitor was disposed.");
 
 			Logging.DebugMsg("<<Auto-Doc:System>> Checking...");
 
@@ -370,7 +370,7 @@ namespace Taskmaster
 
 		async Task CheckErrors()
 		{
-			if (DisposedOrDisposing) throw new ObjectDisposedException(nameof(HealthMonitor), "CheckErrors called after HealthMonitor was disposed.");
+			if (disposed) throw new ObjectDisposedException(nameof(HealthMonitor), "CheckErrors called after HealthMonitor was disposed.");
 
 			Logging.DebugMsg("<<Auto-Doc:Errrors>> Checking...");
 
@@ -386,7 +386,7 @@ namespace Taskmaster
 
 		async Task CheckLogs()
 		{
-			if (DisposedOrDisposing) throw new ObjectDisposedException(nameof(HealthMonitor), "CheckErrors called after HealthMonitor was disposed.");
+			if (disposed) throw new ObjectDisposedException(nameof(HealthMonitor), "CheckErrors called after HealthMonitor was disposed.");
 
 			await Task.Delay(0).ConfigureAwait(false);
 
@@ -411,7 +411,7 @@ namespace Taskmaster
 
 		async Task CheckNVM()
 		{
-			if (DisposedOrDisposing) throw new ObjectDisposedException(nameof(HealthMonitor), "CheckErrors called after HealthMonitor was disposed.");
+			if (disposed) throw new ObjectDisposedException(nameof(HealthMonitor), "CheckErrors called after HealthMonitor was disposed.");
 
 			Logging.DebugMsg("<<Auto-Doc:NVM>> Checking...");
 
@@ -470,7 +470,7 @@ namespace Taskmaster
 
 		async Task CheckMemory()
 		{
-			if (DisposedOrDisposing) throw new ObjectDisposedException(nameof(HealthMonitor), "CheckErrors called after HealthMonitor was disposed.");
+			if (disposed) throw new ObjectDisposedException(nameof(HealthMonitor), "CheckErrors called after HealthMonitor was disposed.");
 
 			await Task.Delay(0).ConfigureAwait(false);
 
@@ -591,16 +591,15 @@ namespace Taskmaster
 		#region IDisposable Support
 		public event EventHandler<DisposedEventArgs> OnDisposed;
 
-		bool DisposedOrDisposing = false;
+		bool disposed = false;
 
-		protected override void Dispose(bool disposing)
+		protected void Dispose(bool disposing)
 		{
-			if (DisposedOrDisposing) return;
+			if (disposed) return;
+			disposed = true;
 
 			if (disposing)
 			{
-				DisposedOrDisposing = true;
-
 				if (Trace) Log.Verbose("Disposing health monitor...");
 
 				cancellationSource.Cancel();
@@ -622,10 +621,10 @@ namespace Taskmaster
 				//commitlimit = null;
 				//commitpercentile?.Dispose();
 				//commitpercentile = null;
-			}
 
-			OnDisposed?.Invoke(this, DisposedEventArgs.Empty);
-			OnDisposed = null;
+				OnDisposed?.Invoke(this, DisposedEventArgs.Empty);
+				OnDisposed = null;
+			}
 		}
 
 		public void ShutdownEvent(object sender, EventArgs ea)

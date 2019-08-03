@@ -1099,7 +1099,7 @@ namespace Taskmaster.Network
 			GC.SuppressFinalize(this);
 		}
 
-		protected override void Dispose(bool disposing)
+		protected void Dispose(bool disposing)
 		{
 			if (disposed) return;
 			disposed = true;

@@ -69,13 +69,12 @@ namespace Taskmaster.UI
 		protected override void Dispose(bool disposing)
 		{
 			if (disposed) return;
+			disposed = true;
 
 			if (disposing)
 			{
 				Icon?.Dispose();
 				Icon = null;
-
-				disposed = true;
 			}
 
 			base.Dispose(disposing);
