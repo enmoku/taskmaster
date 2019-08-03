@@ -165,6 +165,10 @@ namespace Taskmaster.Process
 		System.Diagnostics.Process Foreground = null;
 
 		bool Minimized = false, Reduced = false;
+
+		/// <summary>
+		/// This is reported to process manager to be ignored for modifications.
+		/// </summary>
 		int IgnoreHung = -1;
 
 		int hangdetector_lock = Atomic.Unlocked;
@@ -174,8 +178,8 @@ namespace Taskmaster.Process
 		/// <summary>
 		/// Timer callback to occasionally detect if the foreground app is hung.
 		/// </summary>
-		// TODO: Hang check should only take action if user fails to swap apps (e.g. ctrl-alt-esc for taskmanager)
 		// TODO: Hang check should potentially do the following: Minimize app, Reduce priority, Reduce cores, Kill it
+		// TODO: Hang check might not be very useful if the user is AFK and/or the workstation is locked.
 		void HangDetector(object _sender, System.Timers.ElapsedEventArgs _)
 		{
 			if (!Atomic.Lock(ref hangdetector_lock)) return;

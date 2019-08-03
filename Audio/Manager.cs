@@ -50,8 +50,9 @@ namespace Taskmaster.Audio
 
 		public NAudio.CoreAudioApi.MMDeviceEnumerator Enumerator { get; private set; } = null;
 
-		public float OutVolume = 0.0f;
-		public float InVolume = 0.0f;
+		public float OutVolume { get; set; } = 0.0f;
+
+		public float InVolume { get; set; } = 0.0f;
 
 		/// <summary>
 		/// Games, voice communication, etc.
