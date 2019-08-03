@@ -29,6 +29,7 @@ using System.Collections.Generic;
 
 namespace Taskmaster
 {
+	/*
 	[Component(RequireMainThread = false)]
 	public class AlertManager : Component, IDisposable
 	{
@@ -125,4 +126,5 @@ namespace Taskmaster
 		public object Sender;
 		public int Alert;
 	}
+	*/
 }

@@ -46,7 +46,7 @@ namespace Taskmaster
 		public static Audio.Manager audiomanager = null;
 		public static CPUMonitor cpumonitor = null;
 		public static HardwareMonitor hardware = null;
-		public static AlertManager alerts = null;
+		//public static AlertManager alerts = null;
 
 		public static bool NoLogging { get; set; } = false;
 
