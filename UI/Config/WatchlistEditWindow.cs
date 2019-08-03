@@ -1004,12 +1004,18 @@ namespace Taskmaster.UI.Config
 						var di = System.IO.Directory.GetParent(pathName.Text);
 						if (di != null && !string.IsNullOrEmpty(search))
 						{
+							// is this better than enumerator?
+							var results = System.IO.Directory.GetDirectories(di.FullName, search + "*", System.IO.SearchOption.TopDirectoryOnly);
+							if (results.Length > 0) pfound = "Partial Match";
+							/*
 							var dirs = System.IO.Directory.EnumerateDirectories(di.FullName, search + "*", System.IO.SearchOption.TopDirectoryOnly);
+							
 							foreach (var dir in dirs) // alternate way to see if there was any results?
 							{
 								pfound = "Partial Match";
 								break;
 							}
+							*/
 						}
 					}
 				}
