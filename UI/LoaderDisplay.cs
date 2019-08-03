@@ -76,14 +76,11 @@ namespace Taskmaster.UI
 
 			if (winpos?.Length == 2)
 			{
-				if (Screen.AllScreens.Any(ø => ø.Bounds.IntersectsWith(Bounds)))
-				{
-					var rectangle = new System.Drawing.Rectangle(winpos[0], winpos[1], Bounds.Width, Bounds.Height);
-					StartPosition = FormStartPosition.Manual;
-					Location = new System.Drawing.Point(rectangle.Left, rectangle.Top);
-					Bounds = rectangle;
-				}
-				else
+				StartPosition = FormStartPosition.Manual;
+				Bounds = new System.Drawing.Rectangle(winpos[0], winpos[1], Bounds.Width, Bounds.Height);
+				//Location = new System.Drawing.Point(Bounds.Left, Bounds.Top);
+
+				if (!Screen.AllScreens.Any(screen => screen.Bounds.IntersectsWith(Bounds)))
 					CenterToParent();
 			}
 
@@ -289,7 +286,10 @@ namespace Taskmaster.UI
 
 				// 
 				using var cfg = Taskmaster.Config.Load(UIConfigFilename);
-				cfg.Config[Constants.Windows]["Loaders"].IntArray = new int[] { Bounds.Left, Bounds.Top };
+
+				var saveBounds = WindowState == FormWindowState.Normal ? Bounds : RestoreBounds;
+
+				cfg.Config[Constants.Windows]["Loaders"].IntArray = new int[] { saveBounds.Left, saveBounds.Top };
 
 				OnDisposed?.Invoke(this, DisposedEventArgs.Empty);
 				OnDisposed = null;

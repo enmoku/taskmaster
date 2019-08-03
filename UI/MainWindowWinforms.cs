@@ -2236,13 +2236,13 @@ namespace Taskmaster.UI
 			}
 
 			int[] winpos = wincfg.Get(Constants.Main)?.IntArray ?? null;
-			if (winpos?.Length == 4
-				&& Screen.AllScreens.Any(ø => ø.Bounds.IntersectsWith(Bounds))) // https://stackoverflow.com/q/495380
+			if (winpos?.Length == 4)
 			{
-				var rectangle = new System.Drawing.Rectangle(winpos[0], winpos[1], winpos[2], winpos[3]);
 				StartPosition = FormStartPosition.Manual;
-				Location = new System.Drawing.Point(rectangle.Left, rectangle.Top);
-				Bounds = rectangle;
+				Bounds = new System.Drawing.Rectangle(winpos[0], winpos[1], winpos[2], winpos[3]);
+
+				if (!Screen.AllScreens.Any(screen => screen.Bounds.IntersectsWith(Bounds)))
+					CenterToParent();
 			}
 
 			//var alternateRowColor = gencfg.GetSetDefault("Alternate row color", new[] { 1 }, out modified).IntArray;
@@ -4101,7 +4101,10 @@ namespace Taskmaster.UI
 				uistate["Open"].Int = tabLayout.SelectedIndex;
 
 				var windows = cfg.Config[Constants.Windows];
-				windows["Main"].IntArray = new int[] { Bounds.Left, Bounds.Top, Bounds.Width, Bounds.Height };
+
+				var saveBounds = WindowState == FormWindowState.Normal ? Bounds : RestoreBounds;
+
+				windows[Constants.Main].IntArray = new int[] { saveBounds.Left, saveBounds.Top, saveBounds.Width, saveBounds.Height };
 			}
 			catch (Exception ex)
 			{
