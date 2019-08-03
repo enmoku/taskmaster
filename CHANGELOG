@@ -3,6 +3,8 @@ Comprehensive changes can be found in Git change history:
 	https://github.com/mkahvi/taskmaster/commits/master
 
 ## [0.13...]
+### 2019-08-03
+	Fixed: NullReferenceException in …\Power\Manager.cs:1203
 ### 2019-07-29
 	Fixed: Power and Process debug were not available properly.
 	Added: Exclsuive mode is tracked in process debug.
