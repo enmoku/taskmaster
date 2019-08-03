@@ -244,7 +244,7 @@ namespace Taskmaster.UI
 
 			base.Dispose(disposing);
 		}
-		#endregion Dispose
+		#endregion IDispose
 	}
 }
 

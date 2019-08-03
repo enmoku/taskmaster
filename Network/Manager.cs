@@ -1124,6 +1124,8 @@ namespace Taskmaster.Network
 				NetPackets?.Dispose();
 				NetQueue?.Dispose();
 
+				//base.Dispose();
+
 				OnDisposed?.Invoke(this, DisposedEventArgs.Empty);
 				OnDisposed = null;
 			}

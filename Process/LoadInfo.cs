@@ -283,6 +283,8 @@ namespace Taskmaster.Process
 			if (disposing)
 			{
 				Processes?.Clear();
+
+				//base.Dispose();
 			}
 		}
 

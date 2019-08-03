@@ -263,7 +263,12 @@ namespace Taskmaster.Process
 			if (disposed) return;
 			disposed = true;
 
-			if (disposing) Scrap();
+			if (disposing)
+			{
+				Scrap();
+
+				//base.Dispose();
+			}
 		}
 
 		~ProcessLoad() => Dispose(false);

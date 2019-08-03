@@ -95,6 +95,11 @@ namespace MKAh.Lock
 			if (disposed) return;
 			disposed = true;
 
+			if (disposing)
+			{
+				//base.Dispose();
+			}
+
 			Unlock();
 		}
 
@@ -127,7 +132,11 @@ namespace MKAh.Lock
 			disposed = true;
 
 			if (disposing)
+			{
 				Monitor.Unlock();
+
+				//base.Dispose();
+			}
 		}
 
 		public void Dispose()

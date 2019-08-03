@@ -64,11 +64,11 @@ namespace Taskmaster.Configuration
 			}
 		}
 
-		bool UnloadRequested = false;
+		bool UnloadRequested { get; set; } = false;
 
 		public void Unload()
 		{
-			if (Disposed) throw new ObjectDisposedException(nameof(File), "Configuration.File.Unload after Dispose()");
+			if (disposed) throw new ObjectDisposedException(nameof(File), "Configuration.File.Unload after Dispose()");
 
 			System.Diagnostics.Debug.Assert(Config != null);
 
@@ -93,7 +93,11 @@ namespace Taskmaster.Configuration
 
 		internal void ScopeReturn()
 		{
-			if (--Shared == 0 && UnloadRequested) Unload();
+			if (--Shared == 0 && UnloadRequested)
+			{
+				Unload();
+				UnloadRequested = false;
+			}
 		}
 
 		internal void Stagnate()
@@ -111,19 +115,24 @@ namespace Taskmaster.Configuration
 		}
 
 		#region IDisposable Support
-		bool Disposed = false;
+		bool disposed = false;
 
 		protected virtual void Dispose(bool disposing)
 		{
-			if (Disposed) return;
+			if (disposed) return;
 
 			if (disposing)
 			{
-				if (Config.Changes > 0) Save();
-				Unload();
+				try
+				{
+					Unload(); // saves
+				}
+				catch (ObjectDisposedException) { /* NOP */ }
+
+				//base.Dispose();
 			}
 
-			Disposed = true;
+			disposed = true;
 		}
 
 		public void Dispose()
@@ -143,18 +152,19 @@ namespace Taskmaster.Configuration
 		internal ScopedFile(File file) => File = file;
 
 		#region IDisposable Support
-		bool Disposed = false;
+		bool disposed = false;
 
 		protected virtual void Dispose(bool disposing)
 		{
-			if (Disposed) return;
+			if (disposed) return;
+			disposed = true;
 
 			if (disposing)
 			{
 				File.ScopeReturn();
-			}
 
-			Disposed = true;
+				//base.Dispose();
+			}
 		}
 
 		~ScopedFile() => Dispose(false);

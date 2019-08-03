@@ -39,11 +39,11 @@ namespace Taskmaster.Audio
 		/// GUID is null if there's no default.
 		/// </summary>
 		public event EventHandler<DefaultDeviceEventArgs> DefaultDevice;
-		public event EventHandler Changed;
+		//public event EventHandler Changed;
 		public event EventHandler<DeviceEventArgs> Added;
 		public event EventHandler<DeviceEventArgs> Removed;
 		public event EventHandler<DeviceStateEventArgs> StateChanged;
-		public event EventHandler PropertyChanged;
+		//public event EventHandler PropertyChanged;
 
 		public void OnDefaultDeviceChanged(DataFlow flow, Role role, string defaultDeviceId)
 		{

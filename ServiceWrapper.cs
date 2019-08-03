@@ -197,6 +197,8 @@ namespace Taskmaster
 					if (NeedsRestart) Start();
 					Service.Value.Dispose();
 				}
+
+				//base.Dispose();
 			}
 
 			disposed = true;

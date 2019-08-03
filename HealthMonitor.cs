@@ -546,7 +546,7 @@ namespace Taskmaster
 						if (!WarnedAboutMemoryPressure && now.Since(LastPressureWarning).TotalSeconds > MemoryWarningCooldown)
 						{
 							double actualgoal = ((Memory.Total * (pressure - 1d)) / 1_048_576);
-							double freegoal = actualgoal + Math.Max(512d, (Memory.Total * 0.02 / 1_048_576)); // 512 MB or 2% extra to give space for disk cache
+							double freegoal = actualgoal + Math.Max(512d, (Memory.Total * (0.02d / 1_048_576d))); // 512 MB or 2% extra to give space for disk cache
 							Logging.DebugMsg($"Pressure:    {pressure * 100:N1} %{Environment.NewLine}Actual goal: {actualgoal:N2}{Environment.NewLine}Stated goal: {freegoal:N2}");
 							Log.Warning($"<Memory> High pressure ({pressure * 100:N1} %), please close applications to improve performance (suggested minimum goal: {freegoal:N0} MiB).");
 							// TODO: Could list like ~5 apps that are using most memory here
@@ -579,14 +579,15 @@ namespace Taskmaster
 			}
 		}
 
-		bool WarnedAboutMemoryPressure = false, PressureAlleviatedBlurp = true;
-		DateTimeOffset LastPressureWarning = DateTimeOffset.MinValue;
-		DateTimeOffset LastPressureEvent = DateTimeOffset.MinValue;
+		bool WarnedAboutMemoryPressure { get; set; } = false;
+		bool PressureAlleviatedBlurp { get; set; } = true;
+		DateTimeOffset LastPressureWarning { get; set; } = DateTimeOffset.MinValue;
+		DateTimeOffset LastPressureEvent { get; set; } = DateTimeOffset.MinValue;
 
-		float MemoryWarningThreshold = 1.5f;
-		bool WarnedAboutLowMemory = false;
-		DateTimeOffset LastMemoryWarning = DateTimeOffset.MinValue;
-		long MemoryWarningCooldown = 30;
+		float MemoryWarningThreshold { get; set; } = 1.5f;
+		bool WarnedAboutLowMemory { get; set; } = false;
+		DateTimeOffset LastMemoryWarning { get; set; } = DateTimeOffset.MinValue;
+		long MemoryWarningCooldown { get; set; } = 30;
 
 		#region IDisposable Support
 		public event EventHandler<DisposedEventArgs> OnDisposed;
@@ -625,6 +626,8 @@ namespace Taskmaster
 				OnDisposed?.Invoke(this, DisposedEventArgs.Empty);
 				OnDisposed = null;
 			}
+
+			//base.Dispose();
 		}
 
 		public void ShutdownEvent(object sender, EventArgs ea)

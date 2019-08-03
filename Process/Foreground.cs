@@ -518,6 +518,8 @@ namespace Taskmaster.Process
 				ActiveChanged = null;
 				HangTimer?.Dispose();
 
+				//base.Dispose();
+
 				OnDisposed?.Invoke(this, DisposedEventArgs.Empty);
 				OnDisposed = null;
 			}

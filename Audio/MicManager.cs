@@ -457,6 +457,8 @@ namespace Taskmaster.Audio
 
 				OnDisposed?.Invoke(this, DisposedEventArgs.Empty);
 				OnDisposed = null;
+
+				//base.Dispose();
 			}
 		}
 

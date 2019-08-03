@@ -49,7 +49,7 @@ namespace Taskmaster.Process
 		[System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
 		public static bool SystemProcessId(int pid) => pid <= 4;
 
-		internal class PathCacheObject
+		internal sealed class PathCacheObject
 		{
 			internal string Name;
 			internal string Path;
@@ -161,7 +161,7 @@ namespace Taskmaster.Process
 		public static bool GetPathViaC(ProcessEx info, out string path)
 		{
 			path = string.Empty;
-			System.Runtime.InteropServices.SafeHandle handle = null;
+			global::Taskmaster.NativeMethods.HANDLE handle = null;
 
 			if (info.Restricted)
 			{
@@ -180,7 +180,6 @@ namespace Taskmaster.Process
 
 				if (NativeMethods.GetModuleFileNameEx(info.Process.Handle, IntPtr.Zero, sb, lengthSb) > 0)
 				{
-					// result = Path.GetFileName(sb.ToString());
 					path = sb.ToString();
 					return true;
 				}
@@ -192,7 +191,7 @@ namespace Taskmaster.Process
 				if (Process.Manager.DebugProcesses)
 					Logging.DebugMsg("GetModuleFileNameEx - Access Denied - " + info.ToString());
 			}
-			catch (InvalidOperationException) { }// Already exited
+			catch (InvalidOperationException) { /* already exited */ }
 			catch (Exception ex)
 			{
 				Logging.Stacktrace(ex);
@@ -266,7 +265,7 @@ namespace Taskmaster.Process
 		/// <param name="target">0 = Background, 1 = Low, 2 = Normal, 3 = Elevated, 4 = High</param>
 		public static int SetIO(System.Diagnostics.Process process, int target, out int newIO, bool decrease = true)
 		{
-			System.Runtime.InteropServices.SafeHandle handle = null;
+			global::Taskmaster.NativeMethods.HANDLE handle = null;
 			int original = -1;
 			Debug.Assert(target >= 0 && target <= 2, "I/O target set to undefined value: " + target.ToString());
 
@@ -338,8 +337,8 @@ namespace Taskmaster.Process
 				var rv = NativeMethods.SetPriorityClass(process.Handle, (uint)priority);
 				return rv;
 			}
-			catch (InvalidOperationException) { } // Already exited
-			catch (ArgumentException) { } // already exited?
+			catch (InvalidOperationException) { /* already exited */ }
+			catch (ArgumentException) { /* already exited? */ }
 			catch (OutOfMemoryException) { throw; }
 			catch (Exception ex) { Logging.Stacktrace(ex); }
 
@@ -366,8 +365,8 @@ namespace Taskmaster.Process
 
 				return true;
 			}
-			catch (InvalidOperationException) { } // already exited
-			catch (ArgumentException) { } // already exited
+			catch (InvalidOperationException) { /* already exited */ }
+			catch (ArgumentException) { /* already exited */ }
 			catch (Exception ex)
 			{
 				Logging.Stacktrace(ex);
@@ -384,7 +383,7 @@ namespace Taskmaster.Process
 				if (GetInfo(info.Process.ParentProcessId(), out var parent, null, null, null, null, true))
 					return parent;
 			}
-			catch { }
+			catch { /* don't care */ }
 
 			return null;
 		}

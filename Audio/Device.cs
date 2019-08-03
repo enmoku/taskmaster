@@ -67,7 +67,6 @@ namespace Taskmaster.Audio
 		protected virtual void Dispose(bool disposing)
 		{
 			if (disposed) return;
-
 			disposed = true;
 
 			if (MKAh.Execution.IsMainThread)
@@ -75,6 +74,8 @@ namespace Taskmaster.Audio
 				MMDevice?.Dispose();  // HACK: must happen in same thread as created
 				MMDevice = null;
 			}
+
+			//base.Dispose();
 		}
 
 		public void Dispose()

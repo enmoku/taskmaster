@@ -42,7 +42,7 @@ namespace Taskmaster
 				throw new NotImplementedException(this.GetType().ToString());
 		}
 
-		public int ComponentId;
+		public int ComponentId { get; }
 
 		public abstract void Dispose();
 	}

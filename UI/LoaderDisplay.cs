@@ -290,12 +290,12 @@ namespace Taskmaster.UI
 				// 
 				using var cfg = Taskmaster.Config.Load(UIConfigFilename);
 				cfg.Config[Constants.Windows]["Loaders"].IntArray = new int[] { Bounds.Left, Bounds.Top };
+
+				OnDisposed?.Invoke(this, DisposedEventArgs.Empty);
+				OnDisposed = null;
 			}
 
 			base.Dispose(disposing);
-
-			OnDisposed?.Invoke(this, DisposedEventArgs.Empty);
-			OnDisposed = null;
 		}
 		#endregion Dispose
 	}

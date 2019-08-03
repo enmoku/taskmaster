@@ -48,7 +48,7 @@ namespace Taskmaster.Audio
 		public event EventHandler<DeviceEventArgs> Added;
 		public event EventHandler<DeviceEventArgs> Removed;
 
-		public NAudio.CoreAudioApi.MMDeviceEnumerator Enumerator = null;
+		public NAudio.CoreAudioApi.MMDeviceEnumerator Enumerator { get; private set; } = null;
 
 		public float OutVolume = 0.0f;
 		public float InVolume = 0.0f;
@@ -289,13 +289,11 @@ namespace Taskmaster.Audio
 			processmanager.OnDisposed += (_, _ea) => processmanager = null;
 		}
 
-		async void OnSessionCreated(object _, NAudio.CoreAudioApi.Interfaces.IAudioSessionControl ea)
+		void OnSessionCreated(object _, NAudio.CoreAudioApi.Interfaces.IAudioSessionControl ea)
 		{
 			if (disposed) return;
 
 			Debug.Assert(System.Threading.Thread.CurrentThread != Context, "Must be called in same thread.");
-
-			await Task.Delay(0).ConfigureAwait(false);
 
 			try
 			{
@@ -413,6 +411,8 @@ namespace Taskmaster.Audio
 				OnDisposed?.Invoke(this, DisposedEventArgs.Empty);
 				OnDisposed = null;
 			}
+
+			//base.Dispose();
 		}
 
 		public override void Dispose()
@@ -421,10 +421,7 @@ namespace Taskmaster.Audio
 			GC.SuppressFinalize(this);
 		}
 
-		public void ShutdownEvent(object sender, EventArgs ea)
-		{
-			volumeTimer?.Stop();
-		}
+		public void ShutdownEvent(object sender, EventArgs ea) => volumeTimer?.Stop();
 		#endregion
 	}
 

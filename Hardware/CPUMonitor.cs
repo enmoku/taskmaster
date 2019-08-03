@@ -314,6 +314,8 @@ namespace Taskmaster
 
 				SaveConfig();
 
+				//base.Dispose();
+
 				OnDisposed?.Invoke(this, DisposedEventArgs.Empty);
 				OnDisposed = null;
 			}

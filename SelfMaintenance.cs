@@ -160,6 +160,8 @@ namespace Taskmaster
 			{
 				timer?.Dispose();
 
+				//base.Dispose();
+
 				OnDisposed?.Invoke(this, DisposedEventArgs.Empty);
 				OnDisposed = null;
 			}

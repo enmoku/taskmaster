@@ -741,6 +741,8 @@ namespace Taskmaster.UI
 
 				// Free any other managed objects here.
 				//
+
+				//base.Dispose();
 			}
 		}
 

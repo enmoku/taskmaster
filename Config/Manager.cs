@@ -145,15 +145,16 @@ namespace Taskmaster.Configuration
 		protected virtual void Dispose(bool disposing)
 		{
 			if (disposed) return;
+			disposed = true;
 
 			if (disposing)
 			{
 				if (Trace) Log.Verbose("Disposing config manager...");
 
 				Flush();
-			}
 
-			disposed = true;
+				//base.Dispose();
+			}
 		}
 	}
 }

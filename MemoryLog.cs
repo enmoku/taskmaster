@@ -143,6 +143,7 @@ namespace Taskmaster
 		void Dispose(bool disposing)
 		{
 			if (disposed) return;
+			disposed = true;
 
 			if (disposing)
 			{
@@ -152,11 +153,11 @@ namespace Taskmaster
 				OnNewEvent = null;
 
 				p_output?.Dispose();
+
+				//base.Dispose();
 			}
 
 			MemoryLog.MemorySink = null;
-
-			disposed = true;
 		}
 	}
 

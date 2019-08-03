@@ -647,6 +647,14 @@ namespace Taskmaster.UI
 			menu_view_loaders.Enabled = processmanager?.LoaderTracking ?? false;
 		}
 
+		void UnhookProcessManager()
+		{
+			processmanager.ProcessModified -= ProcessTouchEvent;
+			//processmanager.HandlingCounter -= ProcessNewInstanceCount;
+			processmanager.ProcessStateChange -= ExitWaitListHandler;
+			processmanager.HandlingStateChange -= ProcessHandlingStateChangeEvent;
+		}
+
 		void UpdateWatchlist(object _, EventArgs _ea)
 		{
 			if (!IsHandleCreated || disposed) return;
@@ -1663,16 +1671,12 @@ namespace Taskmaster.UI
 					else tabLayout.Controls.Add(powerDebugTab);
 					EnsureVerbosityLevel();
 
-					var pev = new Power.ModeEventArgs(powermanager.CurrentMode);
-					PowerPlanDebugEvent(this, pev); // populates powerbalancer_plan
-					powermanager.PlanChange += PowerPlanDebugEvent;
-					powermanager.AutoAdjustAttempt += PowerLoadDebugHandler;
+					AttachPowerDebug();
 				}
 				else
 				{
-					powermanager.AutoAdjustAttempt -= PowerLoadDebugHandler;
-					powermanager.PlanChange -= PowerPlanDebugEvent;
-					//powermanager.onAutoAdjustAttempt -= PowerLoadHandler;
+					DetachPowerDebug();
+
 					bool refocus = tabLayout.SelectedTab.Equals(powerDebugTab);
 
 					tabLayout.Controls.Remove(powerDebugTab);
@@ -3547,18 +3551,28 @@ namespace Taskmaster.UI
 			var pev = new Power.ModeEventArgs(powermanager.CurrentMode);
 			PowerPlanEvent(this, pev); // populates pwplan and pwcause
 
-			if (DebugPower)
-			{
-				PowerBehaviourDebugEvent(this, bev); // populates powerbalancer_behaviour
-				PowerPlanDebugEvent(this, pev); // populates powerbalancer_plan
-				powermanager.PlanChange += PowerPlanDebugEvent;
-				powermanager.BehaviourChange += PowerBehaviourDebugEvent;
-				powermanager.AutoAdjustAttempt += PowerLoadDebugHandler;
-			}
+			if (DebugPower) AttachPowerDebug();
 
 			power_auto.Enabled = true;
 			UpdatePowerBehaviourHighlight(powermanager.Behaviour);
 			HighlightPowerMode();
+		}
+
+		void AttachPowerDebug()
+		{
+			PowerBehaviourDebugEvent(this, new Power.PowerBehaviourEventArgs(powermanager.Behaviour)); // populates powerbalancer_behaviour
+			PowerPlanDebugEvent(this, new Power.ModeEventArgs(powermanager.CurrentMode)); // populates powerbalancer_plan
+
+			powermanager.PlanChange += PowerPlanDebugEvent;
+			powermanager.BehaviourChange += PowerBehaviourDebugEvent;
+			powermanager.AutoAdjustAttempt += PowerLoadDebugHandler;
+		}
+
+		void DetachPowerDebug()
+		{
+			powermanager.PlanChange -= PowerPlanDebugEvent;
+			powermanager.BehaviourChange -= PowerBehaviourDebugEvent;
+			powermanager.AutoAdjustAttempt -= PowerLoadDebugHandler;
 		}
 
 		void UpdatePowerBehaviourHighlight(Power.PowerBehaviour behaviour)
@@ -3600,14 +3614,14 @@ namespace Taskmaster.UI
 
 		DateTimeOffset LastCauseTime = DateTimeOffset.MinValue;
 
-		void PowerPlanEvent(object sender, Power.ModeEventArgs e)
+		void PowerPlanEvent(object sender, Power.ModeEventArgs ea)
 		{
 			if (!IsHandleCreated || disposed) return;
 
 			if (InvokeRequired)
-				BeginInvoke(new Action(() => PowerPlanEvent_Invoke(e)));
+				BeginInvoke(new Action(() => PowerPlanEvent_Invoke(ea)));
 			else
-				PowerPlanEvent_Invoke(e);
+				PowerPlanEvent_Invoke(ea);
 		}
 
 		void PowerPlanEvent_Invoke(Power.ModeEventArgs e)
@@ -3883,6 +3897,16 @@ namespace Taskmaster.UI
 			UpdateNetwork(this, EventArgs.Empty);
 		}
 
+		void UnhookNetwork()
+		{
+			netmonitor.InternetStatusChange -= InetStatusChangeEvent;
+			netmonitor.IPChanged -= UpdateNetworkDevices;
+			netmonitor.NetworkStatusChange -= NetStatusChangeEvent;
+			netmonitor.DeviceSampling -= NetSampleHandler;
+			UItimer.Tick -= UpdateNetwork;
+			GotFocus -= UpdateNetwork;
+		}
+
 		void NetSampleHandler(object _, Network.DeviceTrafficEventArgs ea)
 		{
 			if (!IsHandleCreated || disposed) return;
@@ -4097,6 +4121,8 @@ namespace Taskmaster.UI
 			{
 				if (Trace) Log.Verbose("Disposing main window...");
 
+				UItimer.Stop();
+
 				if (MemoryLog.MemorySink != null)
 					MemoryLog.MemorySink.OnNewEvent -= NewLogReceived; // unnecessary?
 
@@ -4109,10 +4135,7 @@ namespace Taskmaster.UI
 						powermanager.BehaviourChange -= PowerBehaviourEvent;
 						powermanager.PlanChange -= PowerPlanEvent;
 
-						powermanager.AutoAdjustAttempt -= PowerLoadDebugHandler;
-
-						powermanager.BehaviourChange -= PowerBehaviourDebugEvent;
-						powermanager.PlanChange -= PowerPlanDebugEvent;
+						DetachPowerDebug();
 
 						powermanager = null;
 					}
@@ -4163,10 +4186,7 @@ namespace Taskmaster.UI
 				{
 					if (processmanager != null)
 					{
-						processmanager.ProcessModified -= ProcessTouchEvent;
-						//processmanager.HandlingCounter -= ProcessNewInstanceCount;
-						processmanager.ProcessStateChange -= ExitWaitListHandler;
-						processmanager.HandlingStateChange -= ProcessHandlingStateChangeEvent;
+						UnhookProcessManager();
 						processmanager = null;
 					}
 				}
@@ -4176,10 +4196,7 @@ namespace Taskmaster.UI
 				{
 					if (netmonitor != null)
 					{
-						netmonitor.InternetStatusChange -= InetStatusChangeEvent;
-						netmonitor.NetworkStatusChange -= NetStatusChangeEvent;
-						netmonitor.IPChanged -= UpdateNetworkDevices;
-						netmonitor.DeviceSampling -= NetSampleHandler;
+						UnhookNetwork();
 						netmonitor = null;
 					}
 				}

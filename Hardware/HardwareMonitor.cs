@@ -342,6 +342,8 @@ namespace Taskmaster
 				computer?.Close();
 				computer = null;
 
+				//base.Dispose();
+
 				OnDisposed?.Invoke(this, DisposedEventArgs.Empty);
 				OnDisposed = null;
 			}

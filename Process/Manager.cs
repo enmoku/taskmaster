@@ -2792,6 +2792,8 @@ namespace Taskmaster.Process
 
 				lock (Exclusive_lock) try { ExclusiveEnd(); } catch { }
 
+				//base.Dispose();
+
 				OnDisposed?.Invoke(this, DisposedEventArgs.Empty);
 				OnDisposed = null;
 			}

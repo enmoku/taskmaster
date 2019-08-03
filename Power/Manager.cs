@@ -1459,7 +1459,10 @@ namespace Taskmaster.Power
 
 				SaveConfig();
 
+				//base.Dispose();
+
 				OnDisposed?.Invoke(this, new DisposedEventArgs());
+				OnDisposed = null;
 			}
 		}
 

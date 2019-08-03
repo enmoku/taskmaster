@@ -2006,6 +2006,7 @@ namespace Taskmaster.Process
 		void Dispose(bool disposing)
 		{
 			if (disposed) return;
+			disposed = true;
 
 			if (disposing)
 			{
@@ -2017,9 +2018,9 @@ namespace Taskmaster.Process
 				Resumed = null;
 
 				if (NeedsSaving) SaveConfig();
-			}
 
-			disposed = true;
+				//base.Dispose();
+			}
 		}
 		#endregion
 	}

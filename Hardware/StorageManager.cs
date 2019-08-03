@@ -245,6 +245,8 @@ namespace Taskmaster
 				UserWatcher?.Dispose();
 				TempScanTimer?.Dispose();
 
+				//base.Dispose();
+
 				OnDisposed?.Invoke(this, DisposedEventArgs.Empty);
 				OnDisposed = null;
 			}
