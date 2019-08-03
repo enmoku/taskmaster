@@ -324,7 +324,7 @@ namespace Taskmaster
 				.InitComment("Log lack of action taken on processes.")
 				.Bool;
 
-			var showagency_t = logsec.GetOrSet("Show agency", false)
+			ShowAgency = logsec.GetOrSet("Show agency", false)
 				.InitComment("Log changes in agency, such as processes being left to decide their own fate.")
 				.Bool;
 
