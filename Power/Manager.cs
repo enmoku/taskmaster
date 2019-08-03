@@ -1190,7 +1190,7 @@ namespace Taskmaster.Power
 						if (DebugPower) Log.Debug("<Power> Restore mode called for object [" + sourcePid.ToString() + "] that has no forcing registered. Or waitlist was expunged.");
 					}
 
-					Forced = ForceModeSourcesMap.Count > 0;
+					Forced = ForceModeSourcesMap?.Count > 0;
 
 					if (!Forced)
 					{
@@ -1200,7 +1200,8 @@ namespace Taskmaster.Power
 							Log.Information($"<Power> {info.Name} #{info.Id} quit, power forcing released.");
 					}
 
-					info.PowerWait = false;
+					if (info != null)
+						info.PowerWait = false;
 
 					if (Trace && DebugPower) Log.Debug($"<Power> Released {(sourcePid == -1 ? "All" : sourcePid.ToString())}");
 				}
