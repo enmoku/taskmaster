@@ -13,8 +13,8 @@ namespace Processes
 		{
 			const int testSource = 192;
 			const int testTarget = 240;
-			Console.WriteLine("Source: " + testSource);
-			Console.WriteLine("Target: " + testTarget);
+			Console.WriteLine("Source: " + testSource.ToString());
+			Console.WriteLine("Target: " + testTarget.ToString());
 
 			Assert.AreEqual(2, Bit.Count(testSource));
 			Assert.AreEqual(4, Bit.Count(testTarget));
@@ -46,33 +46,51 @@ namespace Processes
 			Assert.AreEqual(expectedoffset, offset);
 		}
 
+		/// <summary>
+		/// Makes sure Limit affinity strategy does not increase number of assigned cores from source.
+		/// </summary>
+		/// <param name="cores"></param>
 		[Test]
 		[TestOf(nameof(Taskmaster.Process.Utility.ApplyAffinityStrategy))]
-		public void AffinityStrategyTests()
+		public void AffinityStrategyLimitActual()
 		{
-			int testSource = 192;
-			int testTarget = 240;
+			int testSource, testTarget;
 
-			switch (Taskmaster.Process.Utility.CPUCount)
+			switch (Environment.ProcessorCount)
 			{
+				case 8:
+					testSource = 0b11000000;
+					testTarget = 0b11110000;
+					break;
+				case 6:
+					testSource = 0b100000;
+					testTarget = 0b111000;
+					break;
 				case 4:
 					testSource = 0b0100;
 					testTarget = 0b1100;
 					break;
 				default:
-					return;
+					throw new NotImplementedException("Test not implemented for core count of " + Environment.ProcessorCount.ToString());
 			}
 
-			Console.WriteLine("Source: " + testSource);
-			Console.WriteLine("Target: " + testTarget);
+			Taskmaster.Process.Manager.DebugProcesses = true;
+			System.Diagnostics.Debug.AutoFlush = true;
+			System.Diagnostics.Debug.Listeners.Add(new System.Diagnostics.ConsoleTraceListener());
+
+			Console.WriteLine("Source: " + Convert.ToString(testSource, 2));
+			Console.WriteLine("Target: " + Convert.ToString(testTarget, 2));
 
 			int testProduct = Taskmaster.Process.Utility.ApplyAffinityStrategy(
 				testSource, testTarget, Taskmaster.Process.AffinityStrategy.Limit);
+
+			Console.WriteLine("Result: " + Convert.ToString(testProduct, 2));
 
 			Assert.AreEqual(Bit.Count(testSource), Bit.Count(testProduct));
 		}
 
 		[Test]
+		[TestOf(nameof(Bit))]
 		public void AffinityTests()
 		{
 			const int target = 240;
@@ -82,7 +100,7 @@ namespace Processes
 			const int testcpucount = 8;
 
 			int excesscores = Bit.Count(target) - Bit.Count(source);
-			TestContext.WriteLine("Excess: " + excesscores);
+			TestContext.WriteLine("Excess: " + excesscores.ToString());
 			if (excesscores > 0)
 			{
 				TestContext.WriteLine("Mask Base: " + Convert.ToString(testmask, 2));
@@ -95,7 +113,7 @@ namespace Processes
 						if (--excesscores <= 0) break;
 					}
 					else
-						TestContext.WriteLine("Bit not set: " + i);
+						TestContext.WriteLine("Bit not set: " + i.ToString());
 				}
 				TestContext.WriteLine("Mask Final: " + Convert.ToString(testmask, 2));
 			}
