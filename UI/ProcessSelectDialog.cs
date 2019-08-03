@@ -39,7 +39,7 @@ namespace Taskmaster.UI
 		public ProcessEx Info { get; private set; } = null;
 
 		readonly ComboBox selection = null;
-		readonly Button selectbutton = null, cancelbutton = null, refreshbutton = null;
+		readonly Extensions.Button selectbutton = null, cancelbutton = null, refreshbutton = null;
 
 		List<ProcessEx> InfoList = new List<ProcessEx>();
 
@@ -234,5 +234,26 @@ namespace Taskmaster.UI
 
 			Close();
 		}
+
+		#region IDisposable
+		bool disposed = false;
+
+		protected void Dispose(bool disposing)
+		{
+			if (disposed) return;
+			disposed = true;
+
+			if (disposing)
+			{
+
+				cancelbutton?.Dispose();
+				refreshbutton?.Dispose();
+				selectbutton?.Dispose();
+				selection?.Dispose();
+			}
+
+			base.Dispose(disposing);
+		}
+		#endregion
 	}
 }

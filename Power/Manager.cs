@@ -179,7 +179,7 @@ namespace Taskmaster.Power
 
 		void MonitorPowerEvent(object _, MonitorPowerEventArgs ev)
 		{
-			if (IsDisposed) return;
+			if (disposed) return;
 
 			try
 			{
@@ -236,7 +236,7 @@ namespace Taskmaster.Power
 
 		async Task DebugMonitorWake()
 		{
-			if (IsDisposed) throw new ObjectDisposedException(nameof(Manager), "DebugMonitorWake called after PowerManager was disposed.");
+			if (disposed) throw new ObjectDisposedException(nameof(Manager), "DebugMonitorWake called after PowerManager was disposed.");
 
 			await Task.Delay(0).ConfigureAwait(false);
 
@@ -296,7 +296,7 @@ namespace Taskmaster.Power
 
 		void StartDisplayTimer()
 		{
-			if (IsDisposed) throw new ObjectDisposedException(nameof(Manager), "StartDisplayTimer called after PowerManager was disposed.");
+			if (disposed) throw new ObjectDisposedException(nameof(Manager), "StartDisplayTimer called after PowerManager was disposed.");
 
 			if (SleepTickCount < 0) SleepTickCount = 0; // reset
 			MonitorSleepTimer?.Start();
@@ -310,7 +310,7 @@ namespace Taskmaster.Power
 
 		void MonitorSleepTimerTick(object _sender, System.Timers.ElapsedEventArgs _)
 		{
-			if (IsDisposed) return;
+			if (disposed) return;
 
 			var idle = User.IdleTime();
 
@@ -434,7 +434,7 @@ namespace Taskmaster.Power
 
 		public void SetAutoAdjust(AutoAdjustSettings settings)
 		{
-			if (IsDisposed) throw new ObjectDisposedException(nameof(Manager), "SetAutoAdjust called after PowerManager was disposed.");
+			if (disposed) throw new ObjectDisposedException(nameof(Manager), "SetAutoAdjust called after PowerManager was disposed.");
 
 			AutoAdjust = settings;
 
@@ -450,7 +450,7 @@ namespace Taskmaster.Power
 		// TODO: Simplify this mess
 		public void CPULoadHandler(object _, ProcessorLoadEventArgs pev)
 		{
-			if (IsDisposed) return;
+			if (disposed) return;
 
 			if (Behaviour != PowerBehaviour.Auto) return;
 
@@ -895,7 +895,7 @@ namespace Taskmaster.Power
 
 		public void LogBehaviourState()
 		{
-			if (IsDisposed) throw new ObjectDisposedException(nameof(Manager), "LogBehaviourState called after PowerManager was disposed.");
+			if (disposed) throw new ObjectDisposedException(nameof(Manager), "LogBehaviourState called after PowerManager was disposed.");
 
 			Log.Information("<Power> Behaviour: " + Utility.GetBehaviourName(Behaviour));
 		}
@@ -911,7 +911,7 @@ namespace Taskmaster.Power
 
 		async void SessionLockEvent(object _, SessionSwitchEventArgs ev)
 		{
-			if (IsDisposed) return;
+			if (disposed) return;
 
 			// BUG: ODD BEHAVIOUR ON ACCOUNT SWAP
 			switch (ev.Reason)
@@ -1069,7 +1069,7 @@ namespace Taskmaster.Power
 
 		void BatteryChargingEvent(object _, PowerModeChangedEventArgs ev)
 		{
-			if (IsDisposed) return;
+			if (disposed) return;
 
 			switch (ev.Mode)
 			{
@@ -1159,7 +1159,7 @@ namespace Taskmaster.Power
 		/// <param name="sourcePid">0 releases all locks.</param>
 		public async Task Release(Process.ProcessEx info)
 		{
-			if (IsDisposed) throw new ObjectDisposedException(nameof(Manager), "Release called after PowerManager was disposed.");
+			if (disposed) throw new ObjectDisposedException(nameof(Manager), "Release called after PowerManager was disposed.");
 
 			int sourcePid = info?.Id ?? -1;
 
@@ -1299,7 +1299,7 @@ namespace Taskmaster.Power
 
 		bool AutoAdjustSetMode(Mode mode, Cause cause)
 		{
-			if (IsDisposed) throw new ObjectDisposedException(nameof(Manager), "AutoAdjustSetMode called after PowerManager was disposed.");
+			if (disposed) throw new ObjectDisposedException(nameof(Manager), "AutoAdjustSetMode called after PowerManager was disposed.");
 
 			Debug.Assert(Behaviour == PowerBehaviour.Auto, "This is for auto adjusting only.");
 
@@ -1319,7 +1319,7 @@ namespace Taskmaster.Power
 		// BUG: If user forces disparate modes, only last forcing takes effect.
 		public bool Force(Mode mode, int sourcePid)
 		{
-			if (IsDisposed) throw new ObjectDisposedException(nameof(Manager), "Force called after PowerManager was disposed.");
+			if (disposed) throw new ObjectDisposedException(nameof(Manager), "Force called after PowerManager was disposed.");
 
 			if (Behaviour == PowerBehaviour.Manual || SessionLocked) return false;
 
@@ -1391,7 +1391,7 @@ namespace Taskmaster.Power
 
 		async void SetMonitorMode(MonitorPowerMode powermode)
 		{
-			if (IsDisposed) throw new ObjectDisposedException(nameof(Manager), "SetMonitorMode called after PowerManager was disposed.");
+			if (disposed) throw new ObjectDisposedException(nameof(Manager), "SetMonitorMode called after PowerManager was disposed.");
 
 			Debug.Assert(powermode != MonitorPowerMode.Invalid);
 			long NewPowerMode = (int)powermode; // -1 = Powering On, 1 = Low Power (low backlight, etc.), 2 = Power Off
@@ -1417,12 +1417,12 @@ namespace Taskmaster.Power
 		#region IDisposable Support
 		public event EventHandler<DisposedEventArgs> OnDisposed;
 
-		public bool IsDisposed { get; private set; } = false;
+		public bool disposed { get; private set; } = false;
 
 		void Dispose(bool disposing)
 		{
-			if (IsDisposed) return;
-			IsDisposed = true;
+			if (disposed) return;
+			disposed = true;
 
 			Behaviour = PowerBehaviour.Internal;
 

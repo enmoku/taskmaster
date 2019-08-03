@@ -739,10 +739,16 @@ namespace Taskmaster.UI
 					Tray = null;
 				}
 
-				// Free any other managed objects here.
-				//
+				power_auto?.Dispose();
+				power_highperf?.Dispose();
+				power_balanced?.Dispose();
+				power_saving?.Dispose();
+				power_manual?.Dispose();
 
 				//base.Dispose();
+
+				OnDisposed?.Invoke(this, new DisposedEventArgs());
+				OnDisposed = null;
 			}
 		}
 

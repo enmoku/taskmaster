@@ -2731,7 +2731,7 @@ namespace Taskmaster.Process
 				ProcessStateChange = null;
 				HandlingStateChange = null;
 
-				if (powermanager?.IsDisposed == true)
+				if (powermanager?.disposed == true)
 				{
 					powermanager.BehaviourChange -= PowerBehaviourEvent;
 					powermanager = null;

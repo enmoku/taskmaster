@@ -256,6 +256,11 @@ namespace Taskmaster.UI
 
 				cfg.Config[Constants.Windows][HumanReadable.Hardware.Audio.Volume].IntArray = new int[] { saveBounds.Left, saveBounds.Top };
 
+				OutputVolume?.Dispose();
+				InputVolume?.Dispose();
+				OutputVolumeLabel?.Dispose();
+				InputVolumeLabel?.Dispose();
+
 				OnDisposed?.Invoke(this, DisposedEventArgs.Empty);
 				OnDisposed = null;
 			}

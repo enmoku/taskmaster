@@ -40,7 +40,7 @@ namespace Taskmaster.UI
 
 		readonly ListView LoadEventLog = null;
 
-		readonly Button exitButton = null;
+		readonly Extensions.Button exitButton = null;
 
 		int Loaded = 0, MaxLoad, SubLoaded = 0, MaxSubLoad = 1;
 
@@ -240,6 +240,15 @@ namespace Taskmaster.UI
 			if (disposing)
 			{
 				LoadEventLog?.Clear();
+
+				Hide();
+
+				coreProgress?.Dispose();
+				subProgress?.Dispose();
+				loadMessage?.Dispose();
+				exitButton?.Dispose();
+
+				LoadEventLog?.Dispose();
 			}
 
 			base.Dispose(disposing);

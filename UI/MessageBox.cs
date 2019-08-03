@@ -67,6 +67,9 @@ namespace Taskmaster
 		readonly Label Message = null;
 		readonly RichTextBox RichMessage = null;
 
+		readonly UI.Extensions.TableLayoutPanel layout, buttonlayout;
+		readonly UI.Extensions.Button okbutton, cancelbutton, retrybutton, endbutton;
+
 		public MessageBox(string title, string message, Buttons buttons, Type type = Type.Auto, Control parent = null)
 			: base()
 		{
@@ -81,7 +84,7 @@ namespace Taskmaster
 
 			FormBorderStyle = FormBorderStyle.FixedDialog;
 
-			var layout = new UI.Extensions.TableLayoutPanel()
+			layout = new UI.Extensions.TableLayoutPanel()
 			{
 				ColumnCount = 1,
 				AutoSize = true,
@@ -89,7 +92,7 @@ namespace Taskmaster
 				Dock = DockStyle.Fill,
 			};
 
-			var buttonlayout = new UI.Extensions.TableLayoutPanel()
+			buttonlayout = new UI.Extensions.TableLayoutPanel()
 			{
 				RowCount = 1,
 				ColumnCount = 3,
@@ -101,16 +104,16 @@ namespace Taskmaster
 			buttonlayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 33f));
 			buttonlayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 33f));
 
-			var okbutton = new UI.Extensions.Button() { Text = "OK", Margin = BigPadding };
+			okbutton = new UI.Extensions.Button() { Text = "OK", Margin = BigPadding };
 			okbutton.Click += (_, _ea) => { Result = ResultType.OK; Close(); };
 
-			var cancelbutton = new UI.Extensions.Button() { Text = "Cancel", Margin = BigPadding };
+			cancelbutton = new UI.Extensions.Button() { Text = "Cancel", Margin = BigPadding };
 			cancelbutton.Click += (_, _ea) => { Result = ResultType.Cancel; Close(); };
 
-			var retrybutton = new UI.Extensions.Button() { Text = "Retry", Margin = BigPadding };
+			retrybutton = new UI.Extensions.Button() { Text = "Retry", Margin = BigPadding };
 			retrybutton.Click += (_, _ea) => { Result = ResultType.Retry; Close(); };
 
-			var endbutton = new UI.Extensions.Button() { Text = "End", Margin = BigPadding };
+			endbutton = new UI.Extensions.Button() { Text = "End", Margin = BigPadding };
 			endbutton.Click += (_, _ea) => { Result = ResultType.End; Close(); };
 
 			switch (buttons)
@@ -168,8 +171,17 @@ namespace Taskmaster
 
 			if (disposing)
 			{
+				Hide();
+
 				RichMessage?.Dispose();
 				Message?.Dispose();
+
+				endbutton?.Dispose();
+				okbutton?.Dispose();
+				retrybutton?.Dispose();
+				cancelbutton?.Dispose();
+				buttonlayout?.Dispose();
+				layout?.Dispose();
 			}
 
 			base.Dispose(disposing);

@@ -3035,6 +3035,8 @@ namespace Taskmaster.UI
 
 		async Task RemoveOldProcessingEntry_Invoke(int key)
 		{
+			if (!IsHandleCreated || disposed) return;
+
 			await Task.Delay(TimeSpan.FromSeconds(15)).ConfigureAwait(true);
 
 			if (!IsHandleCreated || disposed) return;
@@ -4129,91 +4131,57 @@ namespace Taskmaster.UI
 				if (MemoryLog.MemorySink != null)
 					MemoryLog.MemorySink.OnNewEvent -= NewLogReceived; // unnecessary?
 
-				RescanRequest = null;
-
-				try
+				if (powermanager != null)
 				{
-					if (powermanager != null)
-					{
-						powermanager.BehaviourChange -= PowerBehaviourEvent;
-						powermanager.PlanChange -= PowerPlanEvent;
+					powermanager.BehaviourChange -= PowerBehaviourEvent;
+					powermanager.PlanChange -= PowerPlanEvent;
 
-						DetachPowerDebug();
+					DetachPowerDebug();
 
-						powermanager = null;
-					}
+					powermanager = null;
 				}
-				catch { }
 
-				try
+				if (cpumonitor != null)
 				{
-					if (cpumonitor != null)
-					{
-						cpumonitor.Sampling -= CPULoadHandler;
-						cpumonitor = null;
-					}
+					cpumonitor.Sampling -= CPULoadHandler;
+					cpumonitor = null;
 				}
-				catch { }
 
-				try
+				if (hardwaremonitor != null)
 				{
-					if (hardwaremonitor != null)
-					{
-						hardwaremonitor.GPUPolling -= GPULoadEvent;
-						hardwaremonitor = null;
-					}
+					hardwaremonitor.GPUPolling -= GPULoadEvent;
+					hardwaremonitor = null;
 				}
-				catch { }
 
-				try
+				if (activeappmonitor != null)
 				{
-					if (activeappmonitor != null)
-					{
-						activeappmonitor.ActiveChanged -= OnActiveWindowChanged;
-						activeappmonitor = null;
-					}
+					activeappmonitor.ActiveChanged -= OnActiveWindowChanged;
+					activeappmonitor = null;
 				}
-				catch { }
 
-				try
+				if (storagemanager != null)
 				{
-					if (storagemanager != null)
-					{
-						storagemanager.TempScan -= TempScanStats;
-						storagemanager = null;
-					}
+					storagemanager.TempScan -= TempScanStats;
+					storagemanager = null;
 				}
-				catch { }
 
-				try
+				if (processmanager != null)
 				{
-					if (processmanager != null)
-					{
-						UnhookProcessManager();
-						processmanager = null;
-					}
+					UnhookProcessManager();
+					processmanager = null;
 				}
-				catch { }
 
-				try
+				if (netmonitor != null)
 				{
-					if (netmonitor != null)
-					{
-						UnhookNetwork();
-						netmonitor = null;
-					}
+					UnhookNetwork();
+					netmonitor = null;
 				}
-				catch { }
 
-				try
+				if (micmanager != null)
 				{
-					if (micmanager != null)
-					{
-						micmanager.VolumeChanged -= VolumeChangeDetected;
-						micmanager = null;
-					}
+					micmanager.VolumeChanged -= VolumeChangeDetected;
+					micmanager = null;
 				}
-				catch { }
 
 				WatchlistSearchTimer.Dispose();
 				UItimer.Dispose();

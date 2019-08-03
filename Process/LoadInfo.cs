@@ -130,14 +130,14 @@ namespace Taskmaster.Process
 
 			foreach (var info in Processes.Values)
 			{
+				if (info.Exited)
+				{
+					removeList.Add(info);
+					continue;
+				}
+
 				try
 				{
-					if (info.Process.HasExited)
-					{
-						removeList.Add(info);
-						continue;
-					}
-
 					info.Loaders.Update();
 
 					float tram = Convert.ToSingle(info.Process.PrivateMemorySize64) / 1_073_741_824f;
