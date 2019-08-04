@@ -204,34 +204,38 @@ namespace Taskmaster.Process
 			return false;
 		}
 
-		public static int ApplyAffinityStrategy(int source, int target, AffinityStrategy strategy)
+		public static int ApplyAffinityStrategy(int initialmask, int targetmask, AffinityStrategy strategy)
 		{
-			int newAffinityMask = target;
 			StringBuilder sbs = null;
+
+			Debug.Assert((initialmask & FullCPUMask) == initialmask, "Initial value has bits set outside of valid range.");
+			Debug.Assert((targetmask & FullCPUMask) == targetmask, "Target mask has bits set outside of valid range.");
 
 			if (Process.Manager.DebugProcesses)
 			{
 				sbs = new StringBuilder("Affinity Strategy(", 256)
-					.Append(Convert.ToString(source, 2)).Append(", ").Append(strategy.ToString()).Append(')');
+					.Append(Convert.ToString(initialmask, 2)).Append(", ").Append(strategy.ToString()).Append(')');
 			}
+
+			int excesscores = Bit.Count(targetmask) - Bit.Count(initialmask);
 
 			// Don't increase the number of cores
 			if (strategy == AffinityStrategy.Limit)
 			{
-				sbs?.Append(" Cores(").Append(Bit.Count(source)).Append("->").Append(Bit.Count(target)).Append(')');
+				sbs?.Append(" Cores(").Append(Bit.Count(initialmask)).Append("->").Append(Bit.Count(targetmask)).Append(')');
 
-				int excesscores = Bit.Count(target) - Bit.Count(source);
 				if (excesscores > 0)
 				{
-					for (int i = 0; i < Process.Utility.CPUCount; i++)
+					for (int i = 0; i < CPUCount && excesscores > 0; i++)
 					{
-						if (Bit.IsSet(newAffinityMask, i))
+						if (Bit.IsSet(targetmask, i))
 						{
-							newAffinityMask = Bit.Unset(newAffinityMask, i);
-							sbs?.Append(" -> ").Append(Convert.ToString(newAffinityMask, 2));
-							if (--excesscores <= 0) break;
+							targetmask = Bit.Unset(targetmask, i);
+							excesscores--;
 						}
 					}
+
+					sbs?.Append(" -> ").Append(Convert.ToString(targetmask, 2));
 				}
 			}
 			else if (strategy == AffinityStrategy.Scatter)
@@ -252,11 +256,11 @@ namespace Taskmaster.Process
 
 			if (sbs != null)
 			{
-				sbs.Append(" = ").Append(Convert.ToString(newAffinityMask, 2));
+				sbs.Append(" = ").Append(Convert.ToString(targetmask, 2));
 				Logging.DebugMsg(sbs.ToString());
 			}
 
-			return newAffinityMask;
+			return targetmask;
 		}
 
 		/// <summary>
