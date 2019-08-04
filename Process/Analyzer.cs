@@ -92,6 +92,7 @@ namespace Taskmaster.Process
 			{
 				await Task.Delay(RecordAnalysis.Value).ConfigureAwait(false);
 
+				info.Process.Refresh();
 				if (info.Process.HasExited)
 				{
 					info.State = HandlingState.Exited;
