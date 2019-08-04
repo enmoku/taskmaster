@@ -44,6 +44,7 @@
     <Prefer32Bit>false</Prefer32Bit>
     <LangVersion>preview</LangVersion>
     <OutputPath>bin\Release\</OutputPath>
+    <Optimize>true</Optimize>
   </PropertyGroup>
   <PropertyGroup>
     <BuildDate>$([System.DateTime]::UtcNow.ToString("yyyy/MM/dd HH:mm:ss K"))</BuildDate>
