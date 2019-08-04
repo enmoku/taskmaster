@@ -159,6 +159,20 @@ namespace Taskmaster.Audio
 
 			try
 			{
+				var dev = new Device(guid, id, flow, NAudio.CoreAudioApi.DeviceState.Active, Enumerator.GetDevice(id));
+				switch (role)
+				{
+					case NAudio.CoreAudioApi.Role.Console:
+						ConsoleDevice = dev;
+						break;
+					case NAudio.CoreAudioApi.Role.Multimedia:
+						MultimediaDevice = dev;
+						break;
+					case NAudio.CoreAudioApi.Role.Communications:
+						RecordingDevice = dev;
+						break;
+				}
+
 				DefaultChanged?.Invoke(this, new DefaultDeviceEventArgs(guid, id, role, flow));
 			}
 			catch (Exception ex)
