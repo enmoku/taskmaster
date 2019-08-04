@@ -46,8 +46,10 @@ namespace Taskmaster.Power
 
 		bool VerbosePowerRelease = false;
 
+		// TODO: Add configuration.
+		public TimeSpan UnexpectedPowerWarningCooldown { get; private set; } = TimeSpan.FromSeconds(30d);
+
 		public event EventHandler<SessionLockEventArgs> SessionLock;
-		public event EventHandler<MonitorPowerEventArgs> MonitorPower;
 
 		bool DebugAutoPower = false;
 
@@ -69,8 +71,6 @@ namespace Taskmaster.Power
 				var stopped = System.Threading.Timeout.InfiniteTimeSpan;
 				MonitorSleepTimer = new System.Timers.Timer(60_000);
 				MonitorSleepTimer.Elapsed += MonitorSleepTimerTick;
-
-				MonitorPower += MonitorPowerEvent;
 			}
 
 			RegisterForExit(this);
@@ -84,61 +84,42 @@ namespace Taskmaster.Power
 		{
 			WndProcProxy = new WndProcProxy();
 			WndProcProxy?.RegisterEventHooks();
-			WndProcProxy.MonitorPowerChange += WndProcProxy_MonitorPowerChange;
-			WndProcProxy.PowerModeChanged += WndProcProxy_PowerModeChanged;
+			WndProcProxy.MonitorPowerChange = MonitorPowerEvent;
+			WndProcProxy.PowerModeChanged = PowerModeChanged;
 
 			SystemEvents.SessionSwitch += SessionLockEvent; // BUG: this is wrong, TM should pause to not interfere with other users
 
 			// TODO: Check for session lock
 		}
 
-		void WndProcProxy_PowerModeChanged(object sender, PowerModeEventArgs ea)
+		void PowerModeChanged(Guid mode)
 		{
+			var lastexpectedmode = ExpectedMode;
+			ExpectedMode = CurrentMode;
+
 			try
 			{
 				var old = CurrentMode;
-				if (ea.Mode.Equals(Balanced)) { CurrentMode = Mode.Balanced; }
-				else if (ea.Mode.Equals(HighPerformance)) { CurrentMode = Mode.HighPerformance; }
-				else if (ea.Mode.Equals(PowerSaver)) { CurrentMode = Mode.PowerSaver; }
+				// if only structs could be const for switch statement
+				if (mode.Equals(Balanced)) { CurrentMode = Mode.Balanced; }
+				else if (mode.Equals(HighPerformance)) { CurrentMode = Mode.HighPerformance; }
+				else if (mode.Equals(PowerSaver)) { CurrentMode = Mode.PowerSaver; }
 				else { CurrentMode = Mode.Undefined; }
+				ExpectedMode = CurrentMode;
 
-				PlanChange?.Invoke(this, new ModeEventArgs(CurrentMode, old, CurrentMode == ExpectedMode ? ExpectedCause : new Cause(OriginType.None, "External")));
+				bool asexpected = CurrentMode == lastexpectedmode;
+
+				PlanChange?.Invoke(this, new ModeEventArgs(CurrentMode, old, asexpected ? ExpectedCause : new Cause(OriginType.None, "External")));
 				ExpectedCause = null;
 
-				if (DebugPower) Log.Information($"<Power/OS> Change detected: {CurrentMode.ToString()} ({ea.Mode.ToString()})");
+				if (DebugPower) Log.Information($"<Power> Change detected: {CurrentMode.ToString()} ({mode.ToString()})");
 
 				var now = DateTimeOffset.UtcNow;
-				if (CurrentMode != ExpectedMode && Behaviour == PowerBehaviour.Auto && LastExternalWarning.To(now).TotalSeconds > 30)
+				if (!asexpected && Behaviour == PowerBehaviour.Auto && LastExternalWarning.To(now) > UnexpectedPowerWarningCooldown)
 				{
 					LastExternalWarning = now;
-					Log.Warning("<Power/OS> Unexpected power mode change detected (" + Utility.GetModeName(CurrentMode) + ") while auto-adjust is enabled.");
+					Log.Warning("<Power> Unexpected power mode change detected: " + Utility.GetModeName(old) + " → " + Utility.GetModeName(CurrentMode));
 				}
-			}
-			catch (Exception ex)
-			{
-				Logging.Stacktrace(ex);
-			}
-		}
-
-		void WndProcProxy_MonitorPowerChange(object sender, MonitorPowerEventArgs ea)
-		{
-			try
-			{
-				switch (ea.Mode)
-				{
-					case MonitorPowerMode.Off:
-						if (ea.Mode == ExpectedMonitorPower)
-							MonitorPowerOffCounter.Start(); // only start the counter if we caused it
-						break;
-					case MonitorPowerMode.On:
-						MonitorPowerOffCounter.Stop();
-						break;
-					case MonitorPowerMode.Standby:
-						break;
-					default: break;
-				}
-
-				MonitorPower?.Invoke(this, ea);
 			}
 			catch (Exception ex)
 			{
@@ -158,14 +139,28 @@ namespace Taskmaster.Power
 			cpumonitor.Sampling += CPULoadHandler;
 		}
 
-		void MonitorPowerEvent(object _, MonitorPowerEventArgs ev)
+		void MonitorPowerEvent(MonitorPowerMode mode)
 		{
 			if (disposed) return;
 
+			var OldPowerState = CurrentMonitorState;
+			CurrentMonitorState = mode;
+
 			try
 			{
-				var OldPowerState = CurrentMonitorState;
-				CurrentMonitorState = ev.Mode;
+				switch (mode)
+				{
+					case MonitorPowerMode.Off:
+						if (mode == ExpectedMonitorPower)
+							MonitorPowerOffCounter.Start(); // only start the counter if we caused it
+						break;
+					case MonitorPowerMode.On:
+						MonitorPowerOffCounter.Stop();
+						break;
+					case MonitorPowerMode.Standby:
+						break;
+					default: break;
+				}
 
 				if (DebugMonitor)
 				{
@@ -177,16 +172,16 @@ namespace Taskmaster.Power
 					//var idle = User.LastActiveTimespan(lastact);
 					//if (lastact == uint.MinValue) idle = TimeSpan.Zero; // HACK
 
-					Log.Debug($"<Monitor> Power state: {ev.Mode.ToString()} (last user activity {sidletime:N1} {timename} ago)");
+					Log.Debug($"<Monitor> Power state: {mode.ToString()} (last user activity {sidletime:N1} {timename} ago)");
 				}
 
 				if (OldPowerState == CurrentMonitorState)
 				{
-					Log.Debug($"Received monitor power event: {OldPowerState.ToString()} → {ev.Mode.ToString()}");
+					Log.Debug($"Received monitor power event: {OldPowerState.ToString()} → {mode.ToString()}");
 					return; //
 				}
 
-				if (ev.Mode == MonitorPowerMode.On && SessionLocked)
+				if (mode == MonitorPowerMode.On && SessionLocked)
 				{
 					if (SessionLockPowerMode != Mode.Undefined)
 					{
@@ -202,7 +197,7 @@ namespace Taskmaster.Power
 
 					if (DebugMonitor) DebugMonitorWake().ConfigureAwait(false);
 				}
-				else if (ev.Mode == MonitorPowerMode.Off)
+				else if (mode == MonitorPowerMode.Off)
 				{
 					StopDisplayTimer();
 					if (SessionLocked) MonitorOffLastLock?.Start();
@@ -1418,19 +1413,15 @@ namespace Taskmaster.Power
 				WndProcProxy = null;
 
 				SessionLock = null;
-				MonitorPower = null;
 
 				if (cpumonitor != null)
 					cpumonitor.Sampling -= CPULoadHandler;
 
-				MonitorPower = null;
 				MonitorSleepTimer?.Dispose();
 
-				SessionLock = null;
 				AutoAdjustAttempt = null;
 				PlanChange = null;
 				BehaviourChange = null;
-				SuspendResume = null;
 
 				ForceModeSourcesMap?.Clear();
 				Forced = false;

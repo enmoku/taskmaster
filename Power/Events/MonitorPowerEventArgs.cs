@@ -28,6 +28,8 @@ using System;
 
 namespace Taskmaster.Power
 {
+	public delegate void MonitorPowerModeDelegate(MonitorPowerMode mode);
+
 	public class MonitorPowerEventArgs : EventArgs
 	{
 		public MonitorPowerMode Mode;

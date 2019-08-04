@@ -30,6 +30,8 @@ using System.Windows.Forms;
 
 namespace Taskmaster.Power
 {
+	public delegate void PowerModeDelegate(Guid guid);
+
 	public class PowerModeEventArgs : EventArgs
 	{
 		public Guid Mode { get; set; }
@@ -40,8 +42,8 @@ namespace Taskmaster.Power
 	// TODO: Merge all WndProc proxies, or make them partial definitions, make it extensible, or something.
 	class WndProcProxy : Form, IDisposable
 	{
-		public event EventHandler<PowerModeEventArgs> PowerModeChanged;
-		public event EventHandler<MonitorPowerEventArgs> MonitorPowerChange;
+		public PowerModeDelegate PowerModeChanged;
+		public MonitorPowerModeDelegate MonitorPowerChange;
 
 		public WndProcProxy() => _ = Handle; // HACK
 
@@ -68,7 +70,7 @@ namespace Taskmaster.Power
 					var pData = (IntPtr)(m.LParam.ToInt32() + Marshal.SizeOf(ps) - 4); // -4 is to align to the ps.Data
 					var newPersonality = (Guid)Marshal.PtrToStructure(pData, typeof(Guid));
 
-					PowerModeChanged?.Invoke(this, new PowerModeEventArgs(newPersonality));
+					PowerModeChanged?.Invoke(newPersonality);
 
 					m.Result = IntPtr.Zero;
 				}
@@ -83,7 +85,7 @@ namespace Taskmaster.Power
 						default: mode = MonitorPowerMode.Invalid; break;
 					}
 
-					MonitorPowerChange?.Invoke(this, new MonitorPowerEventArgs(mode));
+					MonitorPowerChange?.Invoke(mode);
 
 					m.Result = IntPtr.Zero;
 				}
