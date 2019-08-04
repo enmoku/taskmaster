@@ -64,7 +64,7 @@ namespace Taskmaster.Power
 			// SystemEvents.PowerModeChanged += BatteryChargingEvent; // Without laptop testing this feature is difficult
 
 			if (Behaviour == PowerBehaviour.RuleBased && !Forced)
-				Restore(new Cause(OriginType.Internal, InitialName));
+				Restore(new Cause(OriginType.Internal, Constants.InitialName));
 
 			if (SessionLockPowerOffIdleTimeout.HasValue)
 			{
@@ -394,7 +394,6 @@ namespace Taskmaster.Power
 		public event EventHandler<AutoAdjustReactionEventArgs> AutoAdjustAttempt;
 		public event EventHandler<ModeEventArgs> PlanChange;
 		public event EventHandler<PowerBehaviourEventArgs> BehaviourChange;
-		public event EventHandler SuspendResume;
 
 		bool Paused = false;
 		public bool SessionLocked { get; private set; } = false;
