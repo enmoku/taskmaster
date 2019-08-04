@@ -29,9 +29,9 @@ using System.Windows.Forms;
 
 namespace Taskmaster
 {
-	public class MessageBox : UI.UniForm, IDisposable
+	public class MessageBox : UI.UniForm
 	{
-		public enum Buttons : int
+		public enum Buttons
 		{
 			OK,
 			AcceptCancel,

@@ -48,13 +48,13 @@ namespace Taskmaster
 	}
 
 	[System.AttributeUsage(AttributeTargets.Class, AllowMultiple = false, Inherited = true)]
-	public class ComponentAttribute : Attribute
+	public sealed class ComponentAttribute : Attribute
 	{
 		public bool RequireMainThread { get; set; }
 	}
 
 	[AttributeUsage(AttributeTargets.Class, AllowMultiple = true, Inherited = false)]
-	public class DependencyAttribute : Attribute
+	public sealed class DependencyAttribute : Attribute
 	{
 		public Type Dependency { get; }
 

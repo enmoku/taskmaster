@@ -46,7 +46,7 @@ namespace Taskmaster.UI
 		const int ENDSESSION_LOGOFF = unchecked((int)0x80000000);
 		const int ENDSESSION_CLOSEAPP = 0x1;
 
-		int hotkeymodifiers = (int)NativeMethods.KeyModifier.Control | (int)NativeMethods.KeyModifier.Shift | (int)NativeMethods.KeyModifier.Alt;
+		readonly int hotkeymodifiers = (int)NativeMethods.KeyModifier.Control | (int)NativeMethods.KeyModifier.Shift | (int)NativeMethods.KeyModifier.Alt;
 
 		bool HotkeysRegistered = false;
 

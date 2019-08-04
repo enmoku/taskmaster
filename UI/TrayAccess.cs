@@ -352,6 +352,8 @@ namespace Taskmaster.UI
 				BuildMainWindow(reveal: true, top: true);
 		}
 
+		MainWindow mainwindow { get; set; } = null;
+
 		void UnloseWindow(object _, MouseEventArgs e)
 		{
 			if (e.Button == MouseButtons.Left)
@@ -381,8 +383,6 @@ namespace Taskmaster.UI
 
 			mainwindow = null;
 		}
-
-		MainWindow mainwindow = null;
 
 		public async Task Hook(MainWindow window)
 		{

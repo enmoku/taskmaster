@@ -103,12 +103,14 @@ namespace Taskmaster.Process
 
 				if (Trace) Logging.DebugMsg("Analyzing:" + info.ToString());
 
-				modFile = info.Process.MainModule.FileName;
-				version = info.Process.MainModule.FileVersionInfo;
-				modMemory = info.Process.MainModule.ModuleMemorySize;
+				var module = info.Process.MainModule;
+				modFile = module.FileName;
+				version = module.FileVersionInfo;
+				modMemory = module.ModuleMemorySize;
 
+				var modules = info.Process.Modules;
 				// Process.Modules unfortunately returned only ntdll.dll, wow64.dll, wow64win.dll, and wow64cpu.dll for a game and seems unusuable for what it was desired
-				foreach (ProcessModule mod in info.Process.Modules)
+				foreach (ProcessModule mod in modules)
 				{
 					if (mod.ModuleName.StartsWith("wow64.dll", StringComparison.InvariantCultureIgnoreCase))
 					{
