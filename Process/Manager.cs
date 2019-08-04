@@ -78,17 +78,18 @@ namespace Taskmaster.Process
 		{
 			if (disposed) return;
 
-			Running.TryAdd(info.Id, info);
-			info.Process.Exited += ProcessExit;
-			info.Process.EnableRaisingEvents = true;
-			info.ExitWait = true;
+			if (Running.TryAdd(info.Id, info))
+			{
+				info.Process.Exited += ProcessExit;
+				info.HookExit();
 
-			info.Process.Refresh();
-			if (info.Process.HasExited)
-				ProcessExit(info.Process, EventArgs.Empty);
+				info.Process.Refresh();
+				if (info.Process.HasExited)
+					ProcessExit(info.Process, EventArgs.Empty);
 
-			if (LoaderTracking)
-				StartLoadAnalysis(info).ConfigureAwait(false);
+				if (LoaderTracking)
+					StartLoadAnalysis(info).ConfigureAwait(false);
+			}
 		}
 
 		async Task StartLoadAnalysis(ProcessEx info)
@@ -730,8 +731,10 @@ namespace Taskmaster.Process
 					try
 					{
 						if (Trace && DebugProcesses) Logging.DebugMsg("<Process:Scan> Re-using old ProcessEx: " + info);
-						info.Process.Refresh();
-						if (info.Process.HasExited) // Stale, for some reason still kept
+
+						//info.Process.Refresh();
+						//if (info.Process.HasExited) // Stale, for some reason still kept
+						if (info.Exited)
 						{
 							if (Trace && DebugProcesses) Logging.DebugMsg("<Process:Scan> Re-using old ProcessEx - except not, stale");
 							stale = true;
@@ -1578,8 +1581,7 @@ namespace Taskmaster.Process
 				try
 				{
 					info.Process.Exited += (_, _ea) => WaitForExitTriggered(info);
-					info.Process.EnableRaisingEvents = true;
-					info.ExitWait = true;
+					info.HookExit();
 
 					// TODO: Just in case check if it exited while we were doing this.
 					exithooked = true;
@@ -2014,8 +2016,7 @@ namespace Taskmaster.Process
 					{
 						Log.Information(info.ToFullString() + " started.");
 						info.Process.Exited += (_, _ea) => Log.Information(info.ToFullString() + " exited.");
-						info.Process.EnableRaisingEvents = true;
-						info.ExitWait = true;
+						info.HookExit();
 						// TOOD: What if the process exited just before we enabled raising for the events?
 					}
 
@@ -2098,8 +2099,7 @@ namespace Taskmaster.Process
 			if (!WaitForExit(info))
 			{
 				info.Process.Exited += (_, _ea) => AttemptColorReset(info);
-				info.Process.EnableRaisingEvents = true;
-				info.ExitWait = true;
+				info.HookExit();
 
 				info.Process.Refresh();
 				if (info.Process.HasExited && info.ColorReset)
@@ -2150,12 +2150,10 @@ namespace Taskmaster.Process
 								ExclusiveLocks++;
 
 								info.Process.Exited += (_, _ea) => EndExclusiveMode(info).ConfigureAwait(false);
-								info.Process.EnableRaisingEvents = true;
-								info.ExitWait = true;
-								info.Exclusive = true;
+								info.HookExit();
 
-								ExclusiveEnabled = true;
-
+								ExclusiveEnabled = info.Exclusive = true;
+								
 								foreach (var service in Services)
 									service.Stop(service.FullDisable);
 							}
@@ -2677,10 +2675,11 @@ namespace Taskmaster.Process
 					{
 						try
 						{
-							info.Process.Refresh();
-							if (info.Process.HasExited)
+							//info.Process.Refresh();
+							//if (info.Process.HasExited)
+							if (info.Exited)
 							{
-								info.State = HandlingState.Exited;
+								//info.State = HandlingState.Exited;
 								EndExclusiveMode(info).ConfigureAwait(false);
 							}
 						}

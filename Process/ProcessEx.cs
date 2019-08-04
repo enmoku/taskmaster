@@ -150,6 +150,22 @@ namespace Taskmaster.Process
 
 		public bool Handled { get; set; } = false;
 
+		public void HookExit()
+		{
+			if (!ExitWait)
+			{
+				ExitWait = true;
+				Process.Exited += ExitedEvent;
+				Process.EnableRaisingEvents = true;
+			}
+		}
+
+		void ExitedEvent(object sender, EventArgs e)
+		{
+			Exited = true;
+			State = HandlingState.Exited;
+		}
+
 		public bool Exited { get; set; } = false;
 
 		public bool PathSearched { get; set; } = false;
