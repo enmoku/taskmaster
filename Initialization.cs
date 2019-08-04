@@ -579,7 +579,7 @@ namespace Taskmaster
 			// WinForms makes the following components not load nicely if not done here (main thread).
 			//hiddenwindow.BeginInvoke(new Action(() => { trayaccess = new UI.TrayAccess(); })); // is there a point to this?
 			trayaccess = new UI.TrayAccess();
-			trayaccess.TrayMenuShown += (_, ea) => OptimizeResponsiviness(ea.Visible);
+			trayaccess.TrayMenuShown = visible => OptimizeResponsiviness(visible);
 
 			ProcMon.ContinueWith((_, _discard) => trayaccess?.Hook(processmanager), TaskContinuationOptions.OnlyOnRanToCompletion, cts.Token);
 

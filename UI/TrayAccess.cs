@@ -38,6 +38,8 @@ namespace Taskmaster.UI
 {
 	using static Taskmaster;
 
+	public delegate void UIVisibleDelegate(bool visible);
+
 	public class TrayShownEventArgs : EventArgs
 	{
 		public bool Visible { get; set; } = false;
@@ -53,7 +55,8 @@ namespace Taskmaster.UI
 		TrayWndProcProxy WndProcEventProxy;
 
 		public event EventHandler<DisposedEventArgs> OnDisposed;
-		public event EventHandler<TrayShownEventArgs> TrayMenuShown;
+
+		public UIVisibleDelegate TrayMenuShown;
 
 		readonly ToolStripMenuItem power_auto;
 		readonly ToolStripMenuItem power_highperf;
@@ -219,7 +222,7 @@ namespace Taskmaster.UI
 		void MenuVisibilityChangedEvent(object sender, EventArgs _ea)
 		{
 			if (sender is ContextMenuStrip ms)
-				TrayMenuShown?.Invoke(this, new TrayShownEventArgs() { Visible = ms.Visible });
+				TrayMenuShown?.Invoke(ms.Visible);
 		}
 
 		static void SessionEndingEvent(object _, Microsoft.Win32.SessionEndingEventArgs ea)
