@@ -61,12 +61,6 @@ namespace Taskmaster
 
 		static Runstate State = Runstate.Normal;
 
-		public static void PowerSuspendEnd(object _, EventArgs _ea)
-		{
-			Log.Information("<Power> Suspend/hibernate ended. Restarting to avoid problems.");
-			UnifiedExit(restart: true);
-		}
-
 		public static void ConfirmExit(bool restart = false, bool admin = false, string message = null, bool alwaysconfirm = false)
 		{
 			var rv = MessageBox.ResultType.OK;

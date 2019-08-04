@@ -1063,8 +1063,9 @@ namespace Taskmaster.Power
 					Log.Information("Hibernation/Suspend start detected.");
 					break;
 				case Microsoft.Win32.PowerModes.Resume:
-					Log.Information("Hibernation/Suspend end detected.");
-					SuspendResume?.Invoke(this, EventArgs.Empty);
+					Log.Information("<Power> Suspend/hibernate ended. Restarting to avoid problems.");
+					UnifiedExit(restart: true); // HACK: No idea how the code behaves on power resume (untested).
+
 					// Invoke whatever is necessary to restore functionality after suspend breaking shit.
 					break;
 			}

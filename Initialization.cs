@@ -604,7 +604,6 @@ namespace Taskmaster
 						  {
 							  trayaccess.Hook(powermanager);
 							  processmanager.Hook(powermanager);
-							  powermanager.SuspendResume += PowerSuspendEnd; // HACK: No idea how the code behaves on power resume (untested).
 						  }
 					  }, TaskContinuationOptions.OnlyOnRanToCompletion, cts.Token);
 
