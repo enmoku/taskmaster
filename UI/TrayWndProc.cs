@@ -123,7 +123,7 @@ namespace Taskmaster.UI
 						case 1:
 							if (Trace) Log.Verbose("<Global> Hotkey ctrl-alt-shift-r detected!!!");
 							Log.Information("<Global> Hotkey detected; Hastening next scan.");
-							processmanager?.HastenScan(5);
+							processmanager?.HastenScan(TimeSpan.FromSeconds(5));
 							m.Result = IntPtr.Zero;
 							break;
 						default:

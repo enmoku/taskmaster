@@ -566,7 +566,7 @@ namespace Taskmaster.Process
 
 		int hastenscan = 0;
 
-		public async void HastenScan(int delay = 15, bool forceSort = false)
+		public async Task HastenScan(TimeSpan delay, bool forceSort = false)
 		{
 			// delay is unused but should be used somehow
 
@@ -574,7 +574,7 @@ namespace Taskmaster.Process
 
 			try
 			{
-				await Task.Delay(TimeSpan.FromSeconds(delay)).ConfigureAwait(false); // asyncify
+				await Task.Delay(delay).ConfigureAwait(false); // asyncify
 
 				double nextscan = Math.Max(0, DateTimeOffset.UtcNow.To(NextScan).TotalSeconds);
 				if (nextscan > 5) // skip if the next scan is to happen real soon

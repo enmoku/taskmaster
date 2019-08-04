@@ -242,7 +242,7 @@ namespace Taskmaster.UI
 		public async Task Hook(Process.Manager pman)
 		{
 			processmanager = pman;
-			RescanRequest += (_, _ea) => processmanager?.HastenScan();
+			RescanRequest += (_, _ea) => processmanager?.HastenScan(TimeSpan.FromSeconds(15));
 		}
 
 		Power.Manager powermanager = null;

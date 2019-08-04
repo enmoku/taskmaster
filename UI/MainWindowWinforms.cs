@@ -678,7 +678,7 @@ namespace Taskmaster.UI
 			// re-sort if user is not interacting?
 		}
 
-		void RescanRequestEvent(object _, EventArgs _ea) => processmanager?.HastenScan(0);
+		void RescanRequestEvent(object _, EventArgs _ea) => processmanager?.HastenScan(TimeSpan.Zero);
 
 		void RestartRequestEvent(object sender, EventArgs _ea) => ConfirmExit(restart: true, admin: sender == menu_action_restartadmin);
 
@@ -3313,7 +3313,7 @@ namespace Taskmaster.UI
 
 						WatchlistItemColor(li, prc);
 
-						processmanager?.HastenScan(20);
+						processmanager?.HastenScan(TimeSpan.FromSeconds(20));
 					}
 				}
 				else
@@ -3334,7 +3334,7 @@ namespace Taskmaster.UI
 					if (editdialog.ShowDialog() == DialogResult.OK)
 					{
 						UpdateWatchlistRule(prc);
-						processmanager?.HastenScan(60, forceSort: true);
+						processmanager?.HastenScan(TimeSpan.FromMinutes(1), forceSort: true);
 						prc.Refresh();
 					}
 				}
@@ -3356,7 +3356,7 @@ namespace Taskmaster.UI
 					{
 						AddToWatchlistList(prc);
 
-						processmanager?.HastenScan(60, forceSort: true);
+						processmanager?.HastenScan(TimeSpan.FromMinutes(1), forceSort: true);
 					}
 					else
 						prc.Dispose();
