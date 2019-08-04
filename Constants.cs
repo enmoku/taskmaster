@@ -71,7 +71,6 @@ namespace Taskmaster
 			public const string Maintenance = "Maintenance";
 			public const string Health = "Health";
 
-			public const string Behaviour = "Behaviour";
 			public const string Options = "Options";
 			public const string QualityOfLife = "Quality of Life";
 

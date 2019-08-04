@@ -361,7 +361,7 @@ namespace Taskmaster.UI.Config
 				compsec[Constants.Health].Bool = autodoc.Checked;
 
 				var powsec = cfg.Config[HumanReadable.Hardware.Power.Section];
-				if (powmon.Checked) powsec[Constants.Behaviour].Value = powbehaviour.Text.ToLower();
+				if (powmon.Checked) powsec[Power.Constants.Behaviour].Value = powbehaviour.Text.ToLower();
 
 				var uisec = cfg.Config[Constants.UserInterface];
 				uisec[Constants.ShowOnStart].Bool = showonstart.Checked;
