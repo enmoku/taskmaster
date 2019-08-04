@@ -281,7 +281,7 @@ namespace Taskmaster.UI
 			{
 				timer?.Dispose();
 
-				processmanager.SetLoaderAnalysis(false);
+				processmanager.LoaderTracking = false;
 				processmanager.LoaderDetection -= LoaderEvent;
 
 				// 

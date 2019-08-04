@@ -87,8 +87,7 @@ namespace Taskmaster.Process
 				if (info.Process.HasExited)
 					ProcessExit(info.Process, EventArgs.Empty);
 
-				if (LoaderTracking)
-					StartLoadAnalysis(info).ConfigureAwait(false);
+				if (LoaderTracking) StartLoadAnalysis(info).ConfigureAwait(false);
 			}
 		}
 
@@ -147,10 +146,6 @@ namespace Taskmaster.Process
 		}
 
 		MKAh.Lock.Monitor LoadLock = new MKAh.Lock.Monitor();
-
-		public bool LoaderAnalysis { get; private set; } = false;
-
-		public void SetLoaderAnalysis(bool toggle) => LoaderAnalysis = toggle;
 
 		public void Analyze() => InspectLoaders(null);
 
@@ -303,14 +298,14 @@ namespace Taskmaster.Process
 			Running.TryRemove(pid, out removed);
 			WaitForExitList.TryRemove(pid, out _);
 
-			EndLoadAnalysis(removed).ConfigureAwait(false);
+			if (LoaderTracking) EndLoadAnalysis(removed).ConfigureAwait(false);
 		}
 
 		public int RunningCount => Running.Count;
 
 		ProcessEx GetRunning(int pid) => Running.TryGetValue(pid, out var info) ? info : null;
 
-		public bool LoaderTracking { get; private set; } = false;
+		public bool LoaderTracking { get; set; } = false;
 
 		public static bool DebugLoaders { get; set; } = false;
 
