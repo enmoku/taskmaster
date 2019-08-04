@@ -1791,9 +1791,11 @@ namespace Taskmaster.Process
 
 				if (!WaitForExit(info))
 				{
-					info.Process.EnableRaisingEvents = true;
 					info.Process.Exited += (_, _ea) => ProcessEndResize(info, oldrect, re);
+					info.HookExit();
+
 					// TODO: ??? forgot to fill this in
+
 					info.Process.Refresh();
 					if (info.Process.HasExited && info.Resize)
 					{
