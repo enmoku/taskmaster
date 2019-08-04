@@ -28,6 +28,8 @@ using System;
 
 namespace Taskmaster.Configuration
 {
+	public delegate void FileEventDelegate(Configuration.File file);
+
 	public class FileEvent : EventArgs
 	{
 		public Configuration.File File;

@@ -40,8 +40,7 @@ namespace Taskmaster.Configuration
 
 		public int Shared { get; internal set; } = 0;
 
-		public event EventHandler<FileEvent> OnUnload;
-		public event EventHandler<FileEvent> OnSave;
+		public FileEventDelegate OnUnload, OnSave;
 
 		public File(Ini.Config config, string filename)
 		{
@@ -58,7 +57,7 @@ namespace Taskmaster.Configuration
 
 			if (force || Config.Changes > 0)
 			{
-				OnSave?.Invoke(this, new FileEvent(this));
+				OnSave?.Invoke(this);
 
 				Config.ResetChangeCount();
 			}
@@ -76,7 +75,7 @@ namespace Taskmaster.Configuration
 
 			if (Config.Changes > 0) Save();
 
-			OnUnload?.Invoke(this, new FileEvent(this));
+			OnUnload?.Invoke(this);
 
 			Config = null;
 		}

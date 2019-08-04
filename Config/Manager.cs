@@ -79,8 +79,8 @@ namespace Taskmaster.Configuration
 					var config = new File(mcfg, filename);
 					Loaded.Add(config);
 
-					config.OnUnload += (_, ea) => Loaded.Remove(ea.File);
-					config.OnSave += (_, ea) => Save(ea.File);
+					config.OnUnload += file => Loaded.Remove(file);
+					config.OnSave += file => Save(file);
 
 					return config.AutoUnloader();
 				}
