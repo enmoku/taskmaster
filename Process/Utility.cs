@@ -114,11 +114,32 @@ namespace Taskmaster.Process
 				return false;
 			}
 
-			string path = string.Empty;
+			string path;
+
+			if (!GetPathViaC(info, out path))
+			{
+				if (GetPathViaModule(info, out path))
+					Statistics.PathFindViaModule++;
+				else
+				{
+					Statistics.PathNotFound++;
+					return false;
+				}
+			}
+			else
+				Statistics.PathFindViaC++;
+
+			info.Path = path;
+			return true;
+		}
+
+		public static bool GetPathViaModule(ProcessEx info, out string path)
+		{
 			try
 			{
 				// this will cause win32exception of various types, we don't Really care which error it is
 				path = info.Process?.MainModule?.FileName ?? string.Empty;
+				return true;
 			}
 			catch (NullReferenceException) // .filename sometimes throws this even when mainmodule is not null
 			{
@@ -127,7 +148,6 @@ namespace Taskmaster.Process
 			catch (InvalidOperationException)
 			{
 				// already gone
-				return false;
 			}
 			catch (Win32Exception) // Access denied problems of varying sorts
 			{
@@ -139,42 +159,25 @@ namespace Taskmaster.Process
 				// NOP, don't care
 			}
 
-			if (string.IsNullOrEmpty(path))
-			{
-				if (!GetPathViaC(info, out path))
-				{
-					Statistics.PathNotFound++;
-					return false;
-				}
-				else
-					Statistics.PathFindViaC++;
-			}
-			else
-				Statistics.PathFindViaModule++;
-
-			info.Path = path;
-
-			return true;
+			path = string.Empty;
+			return false;
 		}
 
-		// https://stackoverflow.com/a/34991822
+		// Initial version gained from: https://stackoverflow.com/a/34991822
 		public static bool GetPathViaC(ProcessEx info, out string path)
 		{
-			path = string.Empty;
 			global::Taskmaster.NativeMethods.HANDLE handle = null;
-
-			if (info.Restricted)
-			{
-				if (Manager.DebugProcesses) Logging.DebugMsg($"<Process> {info} RESTRICTED - cancelling GetPathViaC");
-				return false;
-			}
 
 			try
 			{
 				handle = NativeMethods.OpenProcess(NativeMethods.PROCESS_ACCESS_RIGHTS.PROCESS_QUERY_INFORMATION | NativeMethods.PROCESS_ACCESS_RIGHTS.PROCESS_VM_READ, false, info.Id);
-				if (handle is null) return false; // failed to open process
+				if (handle is null) // failed to open process
+				{
+					path = string.Empty;
+					return false;
+				}
 
-				const int lengthSb = 32768; // this is the maximum path length NTFS supports
+				const int lengthSb = 32768 + 256; // this is the maximum path length NTFS supports. 256 is arbitrary space for expansion of \\?\
 
 				var sb = new System.Text.StringBuilder(lengthSb);
 
@@ -201,6 +204,7 @@ namespace Taskmaster.Process
 				handle?.Close();
 			}
 
+			path = string.Empty;
 			return false;
 		}
 
