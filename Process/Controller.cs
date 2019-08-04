@@ -1114,8 +1114,9 @@ namespace Taskmaster.Process
 			try
 			{
 				WaitingExit?.Invoke(this, new ProcessModificationEventArgs(info));
-				info.Process.EnableRaisingEvents = true;
 				info.Process.Exited += End;
+				info.HookExit();
+
 				info.Process.Refresh();
 				if (info.Process.HasExited)
 				{
