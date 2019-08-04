@@ -87,10 +87,10 @@ namespace Taskmaster.Audio
 			Enumerator = new NAudio.CoreAudioApi.MMDeviceEnumerator();
 
 			notificationClient = new DeviceNotificationClient();
-			notificationClient.StateChanged += StateChangeProxy;
-			notificationClient.DefaultDevice += DefaultDeviceProxy;
-			notificationClient.Added += DeviceAddedProxy;
-			notificationClient.Removed += DeviceRemovedProxy;
+			notificationClient.StateChanged = StateChangeProxy;
+			notificationClient.DefaultDevice = DefaultDeviceProxy;
+			notificationClient.Added = DeviceAddedProxy;
+			notificationClient.Removed = DeviceRemovedProxy;
 
 			GetDefaultDevice();
 			EnumerateDevices();
@@ -115,9 +115,7 @@ namespace Taskmaster.Audio
 		void EnumerateDevices()
 		{
 			foreach (var dev in Enumerator.EnumerateAudioEndPoints(NAudio.CoreAudioApi.DataFlow.All, NAudio.CoreAudioApi.DeviceState.All))
-			{
-				DeviceAddedProxy(this, new DeviceEventArgs(dev.ID));
-			}
+				DeviceAddedProxy(dev.ID);
 		}
 
 		void VolumeTimer_Elapsed(object sender, System.Timers.ElapsedEventArgs e)
@@ -131,17 +129,19 @@ namespace Taskmaster.Audio
 		public void StartVolumePolling() => volumeTimer.Start();
 		public void StopVolumePolling() => volumeTimer.Stop();
 
-		void StateChangeProxy(object sender, DeviceStateEventArgs ea)
+		void StateChangeProxy(string deviceId, NAudio.CoreAudioApi.DeviceState state, Guid? guid= null)
 		{
 			if (disposed) return;
 
 			try
 			{
+				var ea = new DeviceStateEventArgs(deviceId, state);
+
 				if (DebugAudio)
 				{
 					string name = Devices.TryGetValue(ea.GUID, out var device) ? device.Name : ea.GUID.ToString();
 
-					Log.Debug($"<Audio> Device {name} state changed to {ea.State.ToString()}");
+					Log.Debug($"<Audio> Device {name} state changed to {state.ToString()}");
 				}
 
 				StateChanged?.Invoke(this, ea);
@@ -153,13 +153,13 @@ namespace Taskmaster.Audio
 			}
 		}
 
-		void DefaultDeviceProxy(object sender, DefaultDeviceEventArgs ea)
+		void DefaultDeviceProxy(Guid guid, string id, NAudio.CoreAudioApi.Role role, NAudio.CoreAudioApi.DataFlow flow)
 		{
 			if (disposed) return;
 
 			try
 			{
-				DefaultChanged?.Invoke(sender, ea);
+				DefaultChanged?.Invoke(this, new DefaultDeviceEventArgs(guid, id, role, flow));
 			}
 			catch (Exception ex)
 			{
@@ -168,23 +168,21 @@ namespace Taskmaster.Audio
 			}
 		}
 
-		void DeviceAddedProxy(object sender, DeviceEventArgs ea)
+		void DeviceAddedProxy(string deviceId)
 		{
 			if (disposed) return;
 
 			try
 			{
-				var dev = Enumerator.GetDevice(ea.ID);
+				var dev = Enumerator.GetDevice(deviceId);
 				if (dev != null)
 				{
 					var adev = new Device(dev);
-					if (DebugAudio) Log.Debug("<Audio> Device added: " + (ea.Device?.Name ?? ea.GUID.ToString()));
+					if (DebugAudio) Log.Debug("<Audio> Device added: " + (adev.Name ?? adev.GUID.ToString()));
 
-					Devices.TryAdd(ea.GUID, adev);
+					Devices.TryAdd(adev.GUID, adev);
 
-					ea.Device = adev;
-
-					Added?.Invoke(sender, ea);
+					Added?.Invoke(this, new DeviceEventArgs(deviceId, adev.GUID, adev));
 				}
 			}
 			catch (Exception ex)
@@ -194,24 +192,34 @@ namespace Taskmaster.Audio
 			}
 		}
 
-		void DeviceRemovedProxy(object sender, DeviceEventArgs ea)
+		void DeviceRemovedProxy(string deviceId)
 		{
 			if (disposed) return;
 
+			var guid = Utility.DeviceIdToGuid(deviceId);
+
 			try
 			{
-				if (!DebugAudio) Log.Debug("<Audio> Device removed: " + (ea.Device?.Name ?? ea.GUID.ToString()));
+				if (DebugAudio)
+				{
+					var dev = GetDevice(guid);
+					Log.Debug("<Audio> Device removed: " + dev?.Name ?? deviceId);
+				}
 
-				if (MultimediaDevice != null && ea.GUID == MultimediaDevice.GUID)
+				if (MultimediaDevice != null && guid == MultimediaDevice.GUID)
 				{
 					UnregisterDevice(MultimediaDevice);
 					MultimediaDevice = null;
 				}
-
-				if (ConsoleDevice != null && ea.GUID == ConsoleDevice.GUID)
+				else if (ConsoleDevice != null && guid == ConsoleDevice.GUID)
 				{
 					UnregisterDevice(ConsoleDevice);
 					ConsoleDevice = null;
+				}
+				else if (RecordingDevice != null && guid == RecordingDevice.GUID)
+				{
+					UnregisterDevice(RecordingDevice);
+					RecordingDevice = null;
 				}
 			}
 			catch (Exception ex)
@@ -221,10 +229,10 @@ namespace Taskmaster.Audio
 			}
 			finally
 			{
-				if (Devices.TryRemove(ea.GUID, out var dev))
+				if (Devices.TryRemove(guid, out var dev))
 					dev.Dispose();
 
-				Removed?.Invoke(sender, ea);
+				Removed?.Invoke(this, new DeviceEventArgs(deviceId, guid, dev));
 			}
 		}
 

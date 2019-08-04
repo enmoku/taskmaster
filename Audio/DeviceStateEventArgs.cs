@@ -28,6 +28,8 @@ using System;
 
 namespace Taskmaster.Audio
 {
+	public delegate void DeviceStateDelegate(string id, NAudio.CoreAudioApi.DeviceState state, Guid? guid = null);
+
 	public class DeviceStateEventArgs : DeviceEventArgs
 	{
 		public DeviceStateEventArgs(string id, NAudio.CoreAudioApi.DeviceState state, Guid? guid = null)

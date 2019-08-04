@@ -38,11 +38,10 @@ namespace Taskmaster.Audio
 		/// Default device GUID, Role, and Flow.
 		/// GUID is null if there's no default.
 		/// </summary>
-		public event EventHandler<DefaultDeviceEventArgs> DefaultDevice;
+		public DeviceInfoDelegate DefaultDevice;
 		//public event EventHandler Changed;
-		public event EventHandler<DeviceEventArgs> Added;
-		public event EventHandler<DeviceEventArgs> Removed;
-		public event EventHandler<DeviceStateEventArgs> StateChanged;
+		public DeviceBasicInfoDelegate Added, Removed;
+		public DeviceStateDelegate StateChanged;
 		//public event EventHandler PropertyChanged;
 
 		public void OnDefaultDeviceChanged(DataFlow flow, Role role, string defaultDeviceId)
@@ -56,7 +55,7 @@ namespace Taskmaster.Audio
 				if (DebugAudio && Trace)
 					Log.Verbose($"<Audio> Default device changed for {role.ToString()} ({flow.ToString()}): {(HaveDefaultDevice ? guid.ToString() : HumanReadable.Generic.NotAvailable)}");
 
-				DefaultDevice?.Invoke(this, new DefaultDeviceEventArgs(guid, defaultDeviceId, role, flow));
+				DefaultDevice?.Invoke(guid, defaultDeviceId, role, flow);
 			}
 			catch (OutOfMemoryException) { throw; }
 			catch (Exception ex)
@@ -71,9 +70,8 @@ namespace Taskmaster.Audio
 		{
 			try
 			{
-				var ea = new DeviceEventArgs(pwstrDeviceId);
-				if (!DebugAudio) Logging.DebugMsg("Audio.DeviceNotificationClient.OnDeviceAdded: " + ea.ID);
-				Added?.Invoke(this, ea);
+				if (!DebugAudio) Logging.DebugMsg("Audio.DeviceNotificationClient.OnDeviceAdded: " + pwstrDeviceId);
+				Added?.Invoke(pwstrDeviceId);
 			}
 			catch (OutOfMemoryException) { throw; }
 			catch (Exception ex)
@@ -86,9 +84,8 @@ namespace Taskmaster.Audio
 		{
 			try
 			{
-				var ea = new DeviceEventArgs(deviceId);
-				if (!DebugAudio) Logging.DebugMsg("Audio.DeviceNotificationClient.OnDeviceRemoved: " + ea.ID);
-				Removed?.Invoke(this, ea);
+				if (!DebugAudio) Logging.DebugMsg("Audio.DeviceNotificationClient.OnDeviceRemoved: " + deviceId);
+				Removed?.Invoke(deviceId);
 			}
 			catch (OutOfMemoryException) { throw; }
 			catch (Exception ex)
@@ -117,8 +114,7 @@ namespace Taskmaster.Audio
 				}
 				*/
 
-				var ea = new DeviceStateEventArgs(deviceId, newState);
-				StateChanged?.Invoke(this, ea);
+				StateChanged?.Invoke(deviceId, newState, null);
 			}
 			catch (OutOfMemoryException) { throw; }
 			catch (Exception ex)
