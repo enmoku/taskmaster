@@ -125,7 +125,7 @@ namespace Taskmaster
 
 		DateTimeOffset LastTempScan = DateTimeOffset.MinValue;
 
-		async void ReScanTemp()
+		async Task ReScanTemp()
 		{
 			if (disposed) return;
 

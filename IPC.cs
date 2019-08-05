@@ -124,7 +124,7 @@ namespace Taskmaster
 		/// </summary>
 		/// <exception cref="IOException">Communication timeout</exception>
 		/// <exception cref="UnauthorizedAccessException">Running process has elevated privileges compared to our own.</exception>
-		internal static async void Transmit(string message)
+		internal static async Task Transmit(string message)
 		{
 			Logging.DebugMsg("Attempting to communicate with running instance of TM.");
 

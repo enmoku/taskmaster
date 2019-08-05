@@ -401,6 +401,8 @@ namespace Taskmaster.Audio
 					try
 					{
 						await System.Threading.Tasks.Task.Delay(AdjustDelay).ConfigureAwait(false); // actual hysterisis, this should be cancellable
+						if (disposed) return; // recheck
+
 						if (Control)
 						{
 							oldVol = VolumeControl.Percent;

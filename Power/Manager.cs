@@ -1365,7 +1365,7 @@ namespace Taskmaster.Power
 			NativeMethods.PowerSetActiveScheme((IntPtr)null, ref plan);
 		}
 
-		async void SetMonitorMode(MonitorPowerMode powermode)
+		async Task SetMonitorMode(MonitorPowerMode powermode)
 		{
 			if (disposed) throw new ObjectDisposedException(nameof(Manager), "SetMonitorMode called after PowerManager was disposed.");
 

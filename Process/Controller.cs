@@ -514,8 +514,6 @@ namespace Taskmaster.Process
 					info.InBackground = false;
 					info.ForegroundWait = false;
 					info.PowerWait = false;
-					if (!Resize.HasValue)
-						info.Process.EnableRaisingEvents = false;
 
 					// Re-apply the controller?
 				}

@@ -1548,7 +1548,7 @@ namespace Taskmaster.Process
 						{
 							info.Process.EnableRaisingEvents = false;
 						}
-						catch { } // nope, this throwing just verifies we're doing the right thing
+						catch { /* nope, this throwing just verifies we're doing the right thing */ }
 
 						clearList.Push(info);
 						cancelled++;
@@ -2104,7 +2104,7 @@ namespace Taskmaster.Process
 			}
 		}
 
-		async void AttemptColorReset(ProcessEx info)
+		async Task AttemptColorReset(ProcessEx info)
 		{
 			await Task.Delay(0).ConfigureAwait(false);
 
@@ -2606,7 +2606,7 @@ namespace Taskmaster.Process
 		/// <remarks>
 		/// Locks: waitforexit_lock
 		/// </remarks>
-		public async void Cleanup()
+		public async Task Cleanup()
 		{
 			if (disposed) throw new ObjectDisposedException(nameof(Manager), "Cleanup called when ProcessManager was already disposed");
 

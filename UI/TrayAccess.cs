@@ -537,7 +537,7 @@ namespace Taskmaster.UI
 
 		int ensuringvisibility = 0;
 
-		public async void EnsureVisible()
+		public async Task EnsureVisible()
 		{
 			if (!Atomic.Lock(ref ensuringvisibility)) return;
 

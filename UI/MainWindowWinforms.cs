@@ -3697,9 +3697,12 @@ namespace Taskmaster.UI
 
 			await Task.Delay(100).ConfigureAwait(true);
 
+			if (disposed) return; // recheck
+
 			try
 			{
-				var health = healthmonitor.Poll;
+				var health = healthmonitor?.Poll;
+				if (health is null) return;
 
 				float impact_transfers = (health.NVMTransfers / 500).Max(3); // expected to cause 0 to 2, and up to 4
 				float impact_splits = health.SplitIO / 125; // expected to cause 0 to 2
@@ -3771,6 +3774,7 @@ namespace Taskmaster.UI
 			}
 			catch (OutOfMemoryException) { throw; }
 			catch (ObjectDisposedException) { throw; }
+			catch (NullReferenceException) { /* happens only due to disposal elsewhere */ }
 			catch (Exception ex)
 			{
 				Logging.Stacktrace(ex);
