@@ -543,7 +543,8 @@ namespace Taskmaster.Process
 				Scan();
 				if (cts.IsCancellationRequested) return;
 			}
-			catch (Exception ex) when (ex is AggregateException || ex is OperationCanceledException) { throw; }
+			catch (OperationCanceledException) { /* NOP */ }
+			catch (AggregateException ex) { throw; }
 			catch (Exception ex)
 			{
 				Logging.Stacktrace(ex);
@@ -583,7 +584,8 @@ namespace Taskmaster.Process
 				}
 			}
 			catch (Exception ex) when (ex is NullReferenceException || ex is OutOfMemoryException) { throw; }
-			catch (TaskCanceledException) { } // NOP
+			catch (TaskCanceledException) { /* NOP */ }
+			catch (OperationCanceledException) { /* NOP */ }
 			catch (Exception ex)
 			{
 				Logging.Stacktrace(ex);
@@ -2678,7 +2680,7 @@ namespace Taskmaster.Process
 								EndExclusiveMode(info).ConfigureAwait(false);
 							}
 						}
-						catch { }
+						catch { /* don't care */ }
 					}
 				});
 			}
