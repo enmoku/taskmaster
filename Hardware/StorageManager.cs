@@ -156,7 +156,7 @@ namespace Taskmaster
 				{
 					stats.Size += fi.Length;
 					stats.Files++;
-					if (i++ % 100 == 0) TempScan?.Invoke(this, dea);
+					if (i++ % 100 == 0) TempScan?.Invoke(ScanState.Segment, stats);
 				}
 
 				foreach (System.IO.DirectoryInfo di in dinfo.GetDirectories())
@@ -164,7 +164,7 @@ namespace Taskmaster
 					DirectorySize(di, ref stats);
 					stats.Dirs++;
 
-					if (i++ % 100 == 0) TempScan?.Invoke(this, dea);
+					if (i++ % 100 == 0) TempScan?.Invoke(ScanState.Segment, stats);
 				}
 			}
 			catch (OutOfMemoryException) { throw; }
@@ -191,15 +191,15 @@ namespace Taskmaster
 				ReScanBurden = 0;
 
 				Log.Information("Temp folders scanning initiated...");
-				TempScan?.Invoke(this, new StorageEventArgs { State = ScanState.Start, Stats = dst });
+				TempScan?.Invoke(ScanState.Start, dst);
 				DirectorySize(new System.IO.DirectoryInfo(systemTemp), ref dst);
 				if (systemTemp != UserTemp)
 				{
-					TempScan?.Invoke(this, new StorageEventArgs { State = ScanState.Segment, Stats = dst });
+					TempScan?.Invoke(ScanState.Segment, dst);
 					DirectorySize(new System.IO.DirectoryInfo(UserTemp), ref dst);
 				}
 
-				TempScan?.Invoke(this, new StorageEventArgs { State = ScanState.End, Stats = dst });
+				TempScan?.Invoke(ScanState.End, dst);
 				Log.Information($"Temp contents: {dst.Files} files, {dst.Dirs} dirs, {(dst.Size / 1_000_000f):N2} MBs");
 			}
 			finally
@@ -217,7 +217,7 @@ namespace Taskmaster
 			End
 		};
 
-		public event EventHandler<StorageEventArgs> TempScan;
+		public StorageScanStateDelegate TempScan;
 
 		#region IDisposable Support
 		public event EventHandler<DisposedEventArgs> OnDisposed;
@@ -260,6 +260,8 @@ namespace Taskmaster
 		}
 		#endregion
 	}
+
+	public delegate void StorageScanStateDelegate(StorageManager.ScanState state, StorageManager.DirectoryStats stats);
 
 	public class StorageEventArgs : EventArgs
 	{

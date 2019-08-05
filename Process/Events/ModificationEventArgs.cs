@@ -27,27 +27,29 @@
 using System;
 using System.Diagnostics;
 
-namespace Taskmaster
+namespace Taskmaster.Process
 {
-	public class ProcessModificationEventArgs : EventArgs
+	public delegate void ModificationDelegate(ModificationInfo ea);
+
+	public class ModificationInfo
 	{
-		public ProcessModificationEventArgs(Process.ProcessEx info) => Info = info;
+		public ModificationInfo(Process.ProcessEx info) => Info = info;
 
-		public Process.ProcessEx Info = null;
+		public Process.ProcessEx Info { get; set; } = null;
 
-		public ProcessPriorityClass? PriorityNew = null;
-		public ProcessPriorityClass? PriorityOld = null;
-		public int AffinityNew = -1;
-		public int AffinityOld = -1;
+		public ProcessPriorityClass? PriorityNew { get; set; } = null;
+		public ProcessPriorityClass? PriorityOld { get; set; } = null;
+		public int AffinityNew { get; set; } = -1;
+		public int AffinityOld { get; set; } = -1;
 
-		public bool AffinityFail = false;
-		public bool PriorityFail = false;
+		public bool AffinityFail { get; set; } = false;
+		public bool PriorityFail { get; set; } = false;
 
-		public Process.IOPriority NewIO = Process.IOPriority.Ignore;
+		public Process.IOPriority NewIO { get; set; } = Process.IOPriority.Ignore;
 
 		/// <summary>
 		/// Text for end-users.
 		/// </summary>
-		public System.Text.StringBuilder User = null;
+		public System.Text.StringBuilder User { get; set; } = null;
 	}
 }

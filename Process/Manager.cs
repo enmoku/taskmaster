@@ -553,10 +553,9 @@ namespace Taskmaster.Process
 			}
 		}
 
-		public event EventHandler<ProcessModificationEventArgs> ProcessModified;
-
-		public event EventHandler<ProcessingCountEventArgs> HandlingCounter;
-		public event EventHandler<ProcessModificationEventArgs> ProcessStateChange;
+		public ModificationDelegate ProcessModified;
+		public ProcessingCountDelegate HandlingCounter;
+		public InfoDelegate ProcessStateChange;
 
 		public event EventHandler<HandlingStateChangeEventArgs> HandlingStateChange;
 
@@ -1259,98 +1258,97 @@ namespace Taskmaster.Process
 			Log.Information($"<Process> Watchlist items – Name-based: {(Watchlist.Count - withPath)}; Path-based: {withPath - hybrids}; Hybrid: {hybrids} – Total: {Watchlist.Count}");
 		}
 
-		async void OnControllerAdjust(object sender, ProcessModificationEventArgs ea)
+		async void OnControllerAdjust(ModificationInfo ea)
 		{
 			try
 			{
-				if (sender is Controller prc)
+				var prc = ea.Info.Controller;
+
+				if (!prc.LogAdjusts) return;
+
+				await Task.Delay(0).ConfigureAwait(false); // probably not necessary
+
+				bool onlyFinal = ShowOnlyFinalState;
+
+				var sbs = new StringBuilder(256)
+					.Append('[').Append(prc.FriendlyName).Append("] ").Append(prc.FormatPathName(ea.Info))
+					.Append(" #").Append(ea.Info.Id);
+
+				if (ShowUnmodifiedPortions || ea.PriorityNew.HasValue)
 				{
-					if (!prc.LogAdjusts) return;
-
-					await Task.Delay(0).ConfigureAwait(false); // probably not necessary
-
-					bool onlyFinal = ShowOnlyFinalState;
-
-					var sbs = new StringBuilder(256)
-						.Append('[').Append(prc.FriendlyName).Append("] ").Append(prc.FormatPathName(ea.Info))
-						.Append(" #").Append(ea.Info.Id);
-
-					if (ShowUnmodifiedPortions || ea.PriorityNew.HasValue)
+					sbs.Append("; Priority: ");
+					if (ea.PriorityOld.HasValue)
 					{
-						sbs.Append("; Priority: ");
-						if (ea.PriorityOld.HasValue)
+						if (!onlyFinal || !ea.PriorityNew.HasValue) sbs.Append(Readable.ProcessPriority(ea.PriorityOld.Value));
+
+						if (ea.PriorityNew.HasValue)
 						{
-							if (!onlyFinal || !ea.PriorityNew.HasValue) sbs.Append(Readable.ProcessPriority(ea.PriorityOld.Value));
-
-							if (ea.PriorityNew.HasValue)
-							{
-								if (!onlyFinal) sbs.Append(" → ");
-								sbs.Append(Readable.ProcessPriority(ea.PriorityNew.Value));
-							}
-
-							if (prc.Priority.HasValue && ea.Info.State == HandlingState.Paused && prc.Priority != ea.PriorityNew)
-								sbs.Append(" [").Append(Utility.PriorityToInt(prc.Priority.Value)).Append(']');
+							if (!onlyFinal) sbs.Append(" → ");
+							sbs.Append(Readable.ProcessPriority(ea.PriorityNew.Value));
 						}
-						else
-							sbs.Append(HumanReadable.Generic.NotAvailable);
 
-						if (ea.PriorityFail) sbs.Append(" [Failed]");
-						if (ea.Info.PriorityProtected) sbs.Append(" [Protected]");
+						if (prc.Priority.HasValue && ea.Info.State == HandlingState.Paused && prc.Priority != ea.PriorityNew)
+							sbs.Append(" [").Append(Utility.PriorityToInt(prc.Priority.Value)).Append(']');
 					}
+					else
+						sbs.Append(HumanReadable.Generic.NotAvailable);
 
-					if (ShowUnmodifiedPortions || ea.AffinityNew >= 0)
-					{
-						sbs.Append("; Affinity: ");
-						if (ea.AffinityOld >= 0)
-						{
-							if (!onlyFinal || ea.AffinityNew < 0) sbs.Append(ea.AffinityOld);
-
-							if (ea.AffinityNew >= 0)
-							{
-								if (!onlyFinal) sbs.Append(" → ");
-								sbs.Append(ea.AffinityNew);
-							}
-
-							if (prc.AffinityMask >= 0 && ea.Info.State == HandlingState.Paused && prc.AffinityMask != ea.AffinityNew)
-								sbs.Append(" [").Append(prc.AffinityMask).Append(']');
-						}
-						else
-							sbs.Append(HumanReadable.Generic.NotAvailable);
-
-						if (ea.AffinityFail) sbs.Append(" [Failed]");
-						if (ea.Info.AffinityProtected) sbs.Append(" [Protected]");
-						if (ea.Info.Legacy == LegacyLevel.Win95) sbs.Append(" [Legacy]");
-					}
-
-					if (DebugProcesses) sbs.Append(" [").Append(prc.AffinityStrategy.ToString()).Append(']');
-
-					if (ea.NewIO >= 0) sbs.Append(" – I/O: ").Append(ea.NewIO.ToString());
-
-					if (ea.User != null) sbs.Append(ea.User);
-
-					if (DebugAdjustDelay)
-					{
-						sbs.Append(" – ").AppendFormat("{0:N0}", ea.Info.Timer.ElapsedMilliseconds).Append(" ms");
-						if (ea.Info.WMIDelay > 0d) sbs.Append(" + ").AppendFormat("{0:N0}", ea.Info.WMIDelay).Append(" ms watcher delay");
-					}
-
-					if (EnableParentFinding && prc.DeclareParent)
-					{
-						var parent = Utility.GetParentProcess(ea.Info);
-						sbs.Append(" – Parent: ");
-						if (parent != null)
-							sbs.Append(parent.Name).Append(" #").Append(parent.Id);
-						else
-							sbs.Append("n/a");
-					}
-
-					// TODO: Add option to logging to file but still show in UI
-					if (!(ShowInaction && DebugProcesses)) Log.Information(sbs.ToString());
-					else Log.Debug(sbs.ToString());
-
-					ea.User?.Clear();
-					ea.User = null;
+					if (ea.PriorityFail) sbs.Append(" [Failed]");
+					if (ea.Info.PriorityProtected) sbs.Append(" [Protected]");
 				}
+
+				if (ShowUnmodifiedPortions || ea.AffinityNew >= 0)
+				{
+					sbs.Append("; Affinity: ");
+					if (ea.AffinityOld >= 0)
+					{
+						if (!onlyFinal || ea.AffinityNew < 0) sbs.Append(ea.AffinityOld);
+
+						if (ea.AffinityNew >= 0)
+						{
+							if (!onlyFinal) sbs.Append(" → ");
+							sbs.Append(ea.AffinityNew);
+						}
+
+						if (prc.AffinityMask >= 0 && ea.Info.State == HandlingState.Paused && prc.AffinityMask != ea.AffinityNew)
+							sbs.Append(" [").Append(prc.AffinityMask).Append(']');
+					}
+					else
+						sbs.Append(HumanReadable.Generic.NotAvailable);
+
+					if (ea.AffinityFail) sbs.Append(" [Failed]");
+					if (ea.Info.AffinityProtected) sbs.Append(" [Protected]");
+					if (ea.Info.Legacy == LegacyLevel.Win95) sbs.Append(" [Legacy]");
+				}
+
+				if (DebugProcesses) sbs.Append(" [").Append(prc.AffinityStrategy.ToString()).Append(']');
+
+				if (ea.NewIO >= 0) sbs.Append(" – I/O: ").Append(ea.NewIO.ToString());
+
+				if (ea.User != null) sbs.Append(ea.User);
+
+				if (DebugAdjustDelay)
+				{
+					sbs.Append(" – ").AppendFormat("{0:N0}", ea.Info.Timer.ElapsedMilliseconds).Append(" ms");
+					if (ea.Info.WMIDelay > 0d) sbs.Append(" + ").AppendFormat("{0:N0}", ea.Info.WMIDelay).Append(" ms watcher delay");
+				}
+
+				if (EnableParentFinding && prc.DeclareParent)
+				{
+					var parent = Utility.GetParentProcess(ea.Info);
+					sbs.Append(" – Parent: ");
+					if (parent != null)
+						sbs.Append(parent.Name).Append(" #").Append(parent.Id);
+					else
+						sbs.Append("n/a");
+				}
+
+				// TODO: Add option to logging to file but still show in UI
+				if (!(ShowInaction && DebugProcesses)) Log.Information(sbs.ToString());
+				else Log.Debug(sbs.ToString());
+
+				ea.User?.Clear();
+				ea.User = null;
 			}
 			catch (Exception ex)
 			{
@@ -1436,7 +1434,7 @@ namespace Taskmaster.Process
 
 				SaveController(prc);
 
-				prc.OnAdjust += OnControllerAdjust;
+				prc.OnAdjust = OnControllerAdjust;
 
 				return true;
 			}
@@ -1444,29 +1442,30 @@ namespace Taskmaster.Process
 			return false;
 		}
 
-		void ProcessModifiedProxy(object sender, ProcessModificationEventArgs ea) => ProcessModified?.Invoke(sender, ea);
+		void ProcessModifiedProxy(ModificationInfo mi) => ProcessModified?.Invoke(mi);
 
-		void ProcessWaitingExitProxy(object _, ProcessModificationEventArgs ea)
+		void ProcessWaitingExitProxy(ProcessEx info)
 		{
 			try
 			{
-				WaitForExit(ea.Info);
+				WaitForExit(info);
 			}
 			catch (Exception ex)
 			{
 				Logging.Stacktrace(ex);
-				Log.Error("Unregistering '" + ea.Info.Controller.FriendlyName + "' exit wait proxy");
-				ea.Info.Controller.Paused -= ProcessWaitingExitProxy;
-				ea.Info.Controller.WaitingExit -= ProcessWaitingExitProxy;
+				var prc = info.Controller;
+				Log.Error("Unregistering '" + prc.FriendlyName + "' exit wait proxy");
+				prc.Paused -= ProcessWaitingExitProxy;
+				prc.WaitingExit -= ProcessWaitingExitProxy;
 			}
 		}
 
-		void ProcessResumedProxy(object _, ProcessModificationEventArgs _ea)
+		void ProcessResumedProxy(ProcessEx info)
 		{
 			throw new NotImplementedException();
 		}
 
-		void ProcessPausedProxy(object _, ProcessModificationEventArgs _ea)
+		void ProcessPausedProxy(ProcessEx info)
 		{
 			throw new NotImplementedException();
 		}
@@ -1505,7 +1504,7 @@ namespace Taskmaster.Process
 
 				info.Controller?.End(info.Process, EventArgs.Empty);
 
-				ProcessStateChange?.Invoke(this, new ProcessModificationEventArgs(info));
+				ProcessStateChange?.Invoke(info);
 			}
 			catch (Exception ex)
 			{
@@ -1541,6 +1540,8 @@ namespace Taskmaster.Process
 			{
 				if (info.PowerWait)
 				{
+					info.PowerWait = false;
+
 					// don't clear if we're still waiting for foreground
 					if (!info.ForegroundWait)
 					{
@@ -1573,7 +1574,7 @@ namespace Taskmaster.Process
 
 			if (WaitForExitList.TryAdd(info.Id, info))
 			{
-				if (!info.ExitWait) AddRunning(info);
+				AddRunning(info);
 
 				try
 				{
@@ -1600,7 +1601,7 @@ namespace Taskmaster.Process
 					WaitForExitTriggered(info);
 				}
 
-				if (exithooked) ProcessStateChange?.Invoke(this, new ProcessModificationEventArgs(info));
+				if (exithooked) ProcessStateChange?.Invoke(info);
 			}
 
 			return exithooked;
@@ -1628,7 +1629,7 @@ namespace Taskmaster.Process
 							if (PreviousForegroundController.Foreground != ForegroundMode.Ignore)
 								PreviousForegroundController.SetBackground(PreviousForegroundInfo);
 
-							ProcessStateChange?.Invoke(this, new ProcessModificationEventArgs(PreviousForegroundInfo));
+							ProcessStateChange?.Invoke(PreviousForegroundInfo);
 						}
 					}
 					else
@@ -1649,7 +1650,7 @@ namespace Taskmaster.Process
 
 						if (prc.Foreground != ForegroundMode.Ignore) prc.SetForeground(info);
 
-						ProcessStateChange?.Invoke(this, new ProcessModificationEventArgs(info));
+						ProcessStateChange?.Invoke(info);
 
 						PreviousForegroundInfo = info;
 						PreviousForegroundController = prc;
@@ -1700,7 +1701,10 @@ namespace Taskmaster.Process
 			if (disposed) return (prc = null) != null; // silly shorthand
 
 			if (info.Controller != null)
-				return (prc = info.Controller) != null;
+			{
+				prc = info.Controller;
+				return true;
+			}
 
 			try
 			{
@@ -1942,7 +1946,7 @@ namespace Taskmaster.Process
 			if (Trace && DebugForeground)
 				Log.Debug(info.ToFullString() + " " + (!keyadded ? "already in" : "added to") + " foreground watchlist.");
 
-			ProcessStateChange?.Invoke(this, new ProcessModificationEventArgs(info));
+			ProcessStateChange?.Invoke(info);
 		}
 
 		/// <summary>
@@ -2257,7 +2261,7 @@ namespace Taskmaster.Process
 		void SignalProcessHandled(int adjust)
 		{
 			Handling += adjust;
-			HandlingCounter?.Invoke(this, new ProcessingCountEventArgs(delta: adjust, total: Handling));
+			HandlingCounter?.Invoke(adjust, Handling);
 		}
 
 		/*

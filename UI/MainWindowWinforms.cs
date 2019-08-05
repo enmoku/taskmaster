@@ -522,23 +522,23 @@ namespace Taskmaster.UI
 		}
 		#endregion // Microphone control code
 
-		public void ProcessTouchEvent(object _, ProcessModificationEventArgs ea)
+		public void ProcessTouchEvent(Process.ModificationInfo mi)
 		{
 			if (!IsHandleCreated || disposed) return;
 
 			if (InvokeRequired)
-				BeginInvoke(new Action(() => ProcessTouchEvent_Update(ea)));
+				BeginInvoke(new Action(() => ProcessTouchEvent_Update(mi)));
 			else
-				ProcessTouchEvent_Update(ea);
+				ProcessTouchEvent_Update(mi);
 		}
 
-		void ProcessTouchEvent_Update(ProcessModificationEventArgs ea)
+		void ProcessTouchEvent_Update(Process.ModificationInfo pmi)
 		{
 			if (!IsHandleCreated || disposed) return;
 
 			//adjustcounter.Text = Statistics.TouchCount.ToString();
 
-			var prc = ea.Info.Controller; // cache
+			var prc = pmi.Info.Controller; // cache
 
 			try
 			{
@@ -556,13 +556,14 @@ namespace Taskmaster.UI
 			{
 				try
 				{
+					var info = pmi.Info;
 					var mi = new ListViewItem(new string[] {
 							DateTime.Now.ToLongTimeString(),
-							ea.Info.Name,
+							info.Name,
 							prc.FriendlyName,
-							(ea.PriorityNew.HasValue ? MKAh.Readable.ProcessPriority(ea.PriorityNew.Value) : HumanReadable.Generic.NotAvailable),
-							(ea.AffinityNew >= 0 ? HumanInterface.BitMask(ea.AffinityNew, Process.Utility.CPUCount) : HumanReadable.Generic.NotAvailable),
-							ea.Info.Path
+							(pmi.PriorityNew.HasValue ? MKAh.Readable.ProcessPriority(pmi.PriorityNew.Value) : HumanReadable.Generic.NotAvailable),
+							(pmi.AffinityNew >= 0 ? HumanInterface.BitMask(pmi.AffinityNew, Process.Utility.CPUCount) : HumanReadable.Generic.NotAvailable),
+							info.Path
 						});
 					lastmodifylist.Items.Add(mi);
 					if (lastmodifylist.Items.Count > 5) lastmodifylist.Items.RemoveAt(0);
@@ -593,12 +594,10 @@ namespace Taskmaster.UI
 			activePID.Text = windowchangeev.Id.ToString();
 		}
 
-		public event EventHandler RescanRequest;
-
 		public async Task Hook(StorageManager manager)
 		{
 			storagemanager = manager;
-			storagemanager.TempScan += TempScanStats;
+			storagemanager.TempScan = TempScanStats;
 			storagemanager.OnDisposed += (_, _ea) => storagemanager = null;
 		}
 
@@ -634,14 +633,12 @@ namespace Taskmaster.UI
 
 			processmanager.WatchlistSorted += UpdateWatchlist;
 
-			RescanRequest += RescanRequestEvent;
-
 			processmanager.ProcessModified += ProcessTouchEvent;
 
 			await Task.Delay(0).ConfigureAwait(false);
 
 			foreach (var info in processmanager.GetExitWaitList())
-				ExitWaitListHandler(this, new ProcessModificationEventArgs(info));
+				ExitWaitListHandler(info);
 
 			// Enable UI features.
 			menu_view_loaders.Enabled = processmanager?.LoaderTracking ?? false;
@@ -1636,6 +1633,7 @@ namespace Taskmaster.UI
 					StopProcessDebug();
 			};
 
+			/*
 			var menu_debug_paths = new ToolStripMenuItem("Paths")
 			{
 				Checked = Process.Manager.DebugPaths,
@@ -1646,6 +1644,7 @@ namespace Taskmaster.UI
 				Process.Manager.DebugPaths = menu_debug_paths.Checked;
 				if (Process.Manager.DebugPaths) EnsureVerbosityLevel();
 			};
+			*/
 			var menu_debug_power = new ToolStripMenuItem(HumanReadable.Hardware.Power.Section)
 			{
 				Checked = DebugPower,
@@ -2907,7 +2906,7 @@ namespace Taskmaster.UI
 			var waitlist = processmanager?.GetExitWaitList();
 			if ((waitlist?.Length ?? 0) > 0)
 				foreach (var info in waitlist)
-					ExitWaitListHandler(null, new ProcessModificationEventArgs(info));
+					ExitWaitListHandler(info);
 
 			var processlayout = new Extensions.TableLayoutPanel()
 			{
@@ -3048,12 +3047,8 @@ namespace Taskmaster.UI
 
 			if (!IsHandleCreated || disposed) return;
 
-			try
-			{
-				if (ProcessEventMap.TryRemove(key, out ListViewItem item))
-					ProcessingList.Items.Remove(item);
-			}
-			catch { }
+			if (ProcessEventMap.TryRemove(key, out ListViewItem item))
+				ProcessingList.Items.Remove(item);
 		}
 
 		StatusStrip statusbar;
@@ -3103,7 +3098,7 @@ namespace Taskmaster.UI
 			catch (Exception ex) { Logging.Stacktrace(ex); }
 		}
 
-		public void ExitWaitListHandler(object _discard, ProcessModificationEventArgs ea)
+		public void ExitWaitListHandler(Process.ProcessEx ea)
 		{
 			if (activeappmonitor is null) return;
 			if (!IsHandleCreated || disposed) return;
@@ -3114,29 +3109,29 @@ namespace Taskmaster.UI
 				ExitWaitListHandler_Invoke(ea);
 		}
 
-		void ExitWaitListHandler_Invoke(ProcessModificationEventArgs ea)
+		void ExitWaitListHandler_Invoke(Process.ProcessEx info)
 		{
 			if (!IsHandleCreated || disposed) return;
 
 			try
 			{
-				bool fgonly = ea.Info.Controller.Foreground != ForegroundMode.Ignore;
-				bool fg = (ea.Info.Id == (activeappmonitor?.ForegroundId ?? ea.Info.Id));
+				bool fgonly = info.Controller.Foreground != ForegroundMode.Ignore;
+				bool fg = (info.Id == (activeappmonitor?.ForegroundId ?? info.Id));
 
 				ListViewItem li = null;
 				string fgonlytext = fgonly ? (fg ? HumanReadable.System.Process.Foreground : HumanReadable.System.Process.Background) : "ACTIVE";
-				string powertext = (ea.Info.PowerWait ? "FORCED" : HumanReadable.Generic.NotAvailable);
-				string extext = (ea.Info.Exclusive ? Constants.Yes : Constants.No);
+				string powertext = (info.PowerWait ? "FORCED" : HumanReadable.Generic.NotAvailable);
+				string extext = (info.Exclusive ? Constants.Yes : Constants.No);
 
-				if (ExitWaitlistMap?.TryGetValue(ea.Info.Id, out li) ?? false)
+				if (ExitWaitlistMap?.TryGetValue(info.Id, out li) ?? false)
 				{
 					li.SubItems[2].Text = fgonlytext;
 					li.SubItems[3].Text = powertext;
 					li.SubItems[4].Text = extext;
 
-					if (Trace && DebugForeground) Log.Debug($"WaitlistHandler: {ea.Info.Name} = {ea.Info.State.ToString()}");
+					if (Trace && DebugForeground) Log.Debug($"WaitlistHandler: {info.Name} = {info.State.ToString()}");
 
-					switch (ea.Info.State)
+					switch (info.State)
 					{
 						case Process.HandlingState.Paused:
 							break;
@@ -3148,7 +3143,7 @@ namespace Taskmaster.UI
 							break;
 						case Process.HandlingState.Exited:
 							ExitWaitList?.Items.Remove(li);
-							ExitWaitlistMap?.TryRemove(ea.Info.Id, out _);
+							ExitWaitlistMap?.TryRemove(info.Id, out _);
 							break;
 						default:
 							break;
@@ -3157,14 +3152,14 @@ namespace Taskmaster.UI
 				else
 				{
 					li = new ListViewItem(new string[] {
-							ea.Info.Id.ToString(),
-							ea.Info.Name,
+							info.Id.ToString(),
+							info.Name,
 							fgonlytext,
 							powertext,
 							extext,
 						});
 
-					ExitWaitlistMap?.TryAdd(ea.Info.Id, li);
+					ExitWaitlistMap?.TryAdd(info.Id, li);
 					ExitWaitList?.Items.Insert(0, li);
 					li.EnsureVisible();
 				}
@@ -3496,22 +3491,22 @@ namespace Taskmaster.UI
 		AlignedLabel nvmtransfers = null, nvmsplitio = null, nvmdelay = null, nvmqueued = null, hardfaults = null;
 		AlignedLabel gpuvram = null, gpuload = null, gputemp = null, gpufan = null;
 
-		public void TempScanStats(object _, StorageEventArgs ea)
+		public void TempScanStats(StorageManager.ScanState state, StorageManager.DirectoryStats stats)
 		{
 			if (!IsHandleCreated || disposed) return;
 
 			if (InvokeRequired)
-				BeginInvoke(new Action(() => TempScanStats_Invoke(ea)));
+				BeginInvoke(new Action(() => TempScanStats_Invoke(state, stats)));
 			else
-				TempScanStats_Invoke(ea);
+				TempScanStats_Invoke(state, stats);
 		}
 
-		void TempScanStats_Invoke(StorageEventArgs ea)
+		void TempScanStats_Invoke(StorageManager.ScanState state, StorageManager.DirectoryStats stats)
 		{
 			if (!IsHandleCreated || disposed) return;
 
-			tempObjectSize.Text = (ea.Stats.Size / 1_000_000).ToString();
-			tempObjectCount.Text = (ea.Stats.Dirs + ea.Stats.Files).ToString();
+			tempObjectSize.Text = (stats.Size / 1_000_000).ToString();
+			tempObjectCount.Text = (stats.Dirs + stats.Files).ToString();
 		}
 
 		Extensions.ListViewEx LogList = null;

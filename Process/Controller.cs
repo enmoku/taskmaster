@@ -53,22 +53,9 @@ namespace Taskmaster.Process
 		public bool Protected { get; set; } = false;
 
 		// EVENTS
-		public event EventHandler<ProcessModificationEventArgs> Modified;
 
-		/// <summary>
-		/// Process gone to background
-		/// </summary>
-		public event EventHandler<ProcessModificationEventArgs> Paused;
-
-		/// <summary>
-		/// Process back on foreground.
-		/// </summary>
-		public event EventHandler<ProcessModificationEventArgs> Resumed;
-
-		/// <summary>
-		/// Process is waiting for exit.
-		/// </summary>
-		public event EventHandler<ProcessModificationEventArgs> WaitingExit;
+		public ModificationDelegate Modified;
+		public InfoDelegate Paused, Resumed, WaitingExit;
 
 		// Core information
 		/// <summary>
@@ -823,7 +810,7 @@ namespace Taskmaster.Process
 
 			if (ShowProcessAdjusts && firsttime)
 			{
-				var ev = new ProcessModificationEventArgs(info)
+				var ev = new ModificationInfo(info)
 				{
 					PriorityNew = mPriority ? BackgroundPriority : null,
 					PriorityOld = oldPriority,
@@ -833,13 +820,13 @@ namespace Taskmaster.Process
 
 				ev.User = new StringBuilder(" – Background Mode", 128);
 
-				OnAdjust?.Invoke(this, ev);
+				OnAdjust?.Invoke(ev);
 			}
 
-			Paused?.Invoke(this, new ProcessModificationEventArgs(info));
+			Paused?.Invoke(info);
 		}
 
-		public event EventHandler<ProcessModificationEventArgs> OnAdjust;
+		public ModificationDelegate OnAdjust;
 
 		public void SetForeground(ProcessEx info)
 		{
@@ -919,7 +906,7 @@ namespace Taskmaster.Process
 
 			if (DebugForeground && ShowProcessAdjusts)
 			{
-				var ev = new ProcessModificationEventArgs(info)
+				var ev = new ModificationInfo(info)
 				{
 					PriorityNew = mPriority ? (ProcessPriorityClass?)Priority.Value : null,
 					PriorityOld = oldPriority,
@@ -930,10 +917,10 @@ namespace Taskmaster.Process
 
 				ev.User = new StringBuilder(" – Foreground Mode", 128);
 
-				OnAdjust?.Invoke(this, ev);
+				OnAdjust?.Invoke(ev);
 			}
 
-			Resumed?.Invoke(this, new ProcessModificationEventArgs(info));
+			Resumed?.Invoke(info);
 		}
 
 		/// <summary>
@@ -982,7 +969,7 @@ namespace Taskmaster.Process
 
 				WaitForExit(info);
 
-				WaitingExit?.Invoke(this, new ProcessModificationEventArgs(info));
+				WaitingExit?.Invoke(info);
 
 				if (DebugPower) Log.Debug($"[{FriendlyName}] {FormatPathName(info)} #{info.Id.ToString()} power exit wait set");
 
@@ -1111,7 +1098,7 @@ namespace Taskmaster.Process
 
 			try
 			{
-				WaitingExit?.Invoke(this, new ProcessModificationEventArgs(info));
+				WaitingExit?.Invoke(info);
 				info.Process.Exited += End;
 				info.HookExit();
 
@@ -1495,7 +1482,7 @@ namespace Taskmaster.Process
 				logevent |= (FirstTimeSeenForForeground && Foreground != ForegroundMode.Ignore);
 				logevent |= (ShowInaction && Manager.DebugProcesses);
 
-				var ev = new ProcessModificationEventArgs(info)
+				var ev = new ModificationInfo(info)
 				{
 					PriorityNew = newPriority,
 					PriorityOld = oldPriority,
@@ -1516,13 +1503,13 @@ namespace Taskmaster.Process
 
 					ev.User = sbs;
 
-					OnAdjust?.Invoke(this, ev);
+					OnAdjust?.Invoke(ev);
 				}
 
 				if (modified)
 				{
 					info.State = HandlingState.Modified;
-					Modified?.Invoke(this, ev);
+					Modified?.Invoke(ev);
 
 					if (Manager.IgnoreRecentlyModified.HasValue)
 					{

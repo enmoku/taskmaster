@@ -34,6 +34,8 @@ using Serilog.Formatting;
 
 namespace Taskmaster
 {
+	public delegate void LogEventDelegate(string message, LogEventLevel level, LogEvent ev);
+
 	public class LogEventArgs : EventArgs
 	{
 		public readonly string Message;

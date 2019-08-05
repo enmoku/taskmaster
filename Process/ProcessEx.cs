@@ -31,6 +31,8 @@ using System.Text;
 
 namespace Taskmaster.Process
 {
+	public delegate void InfoDelegate(ProcessEx info);
+
 	public class ProcessEx
 	{
 		public bool Restricted { get; set; } = false;

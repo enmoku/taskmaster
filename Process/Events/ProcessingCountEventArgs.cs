@@ -28,6 +28,8 @@ using System;
 
 namespace Taskmaster.Process
 {
+	public delegate void ProcessingCountDelegate(int delta, int total);
+
 	public class ProcessingCountEventArgs : EventArgs
 	{
 		/// <summary>
