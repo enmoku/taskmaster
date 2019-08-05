@@ -37,7 +37,8 @@
     <DefineConstants>DEBUG</DefineConstants>
     <GenerateSerializationAssemblies>Off</GenerateSerializationAssemblies>
     <LangVersion>preview</LangVersion>
-    <DebugType>pdbonly</DebugType>
+    <DebugType>full</DebugType>
+    <DebugSymbols>true</DebugSymbols>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|x64'">
     <PlatformTarget>x64</PlatformTarget>
