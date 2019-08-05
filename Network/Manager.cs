@@ -977,17 +977,9 @@ namespace Taskmaster.Network
 				.Append(" - ");
 
 			if (NetworkAvailable && !InternetAvailable)
-			{
 				sbs.Append("Route problems");
-				if (LastUptimeStart != DateTimeOffset.MinValue)
-					sbs.Append("– Downtime: ").Append(LastDowntimeStart.To(LastUptimeStart).ToString());
-			}
 			else if (!NetworkAvailable)
-			{
 				sbs.Append("Cable unplugged or router/modem down");
-				if (LastUptimeStart != DateTimeOffset.MinValue)
-					sbs.Append("– Downtime: ").Append(LastDowntimeStart.To(LastUptimeStart).ToString());
-			}
 			else
 			{
 				sbs.Append("All OK");
