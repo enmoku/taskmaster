@@ -1005,20 +1005,10 @@ namespace Taskmaster.UI
 			catch { } // discard
 		}
 
-		int IPv4Column = 4, IPv6Column = 5;
-
 		void CopyIPv4AddressToClipboard(object _, EventArgs _ea)
 		{
 			if (NetworkDevices.SelectedItems.Count == 1)
-			{
-				try
-				{
-					var li = NetworkDevices.SelectedItems[0];
-					var ipv4addr = li.SubItems[IPv4Column].Text;
-					Clipboard.SetText(ipv4addr, TextDataFormat.UnicodeText);
-				}
-				catch (Exception ex) { Logging.Stacktrace(ex); }
-			}
+					Clipboard.SetText(NetworkDevices.SelectedItems[0].SubItems[IPv4Column].Text, TextDataFormat.UnicodeText);
 		}
 
 		void CopyIPv6AddressToClipboard(object _, EventArgs _ea)
@@ -2665,8 +2655,6 @@ namespace Taskmaster.UI
 
 			netstatus.RowStyles.Add(new RowStyle(SizeType.AutoSize, 32));
 
-			IPv4Column = 4;
-			IPv6Column = 5;
 			return netstatus;
 		}
 
