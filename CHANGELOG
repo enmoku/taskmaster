@@ -3,6 +3,12 @@ Comprehensive changes can be found in Git change history:
 	https://github.com/mkahvi/taskmaster/commits/master
 
 ## [0.13...]
+### 2019-08-05
+	Changed: Process path extraction now uses PInvoke GetModuleFilenameEx instead of MainModule.FileName as benchmarking pointed the PInvoke approach to be almost 10 times faster.
+	Changed: Network link speed is no longer reported. Link state for IPv4 and IPv6 are reported separately, tho this may change.
+	Changed: How network state reporting works. Hopefully it's more reliable now and less spammy.
+	Fixed: Some bad cleanup code was fixed. Mostly affecting attempts to restart the app.
+	Internal: Several internal events use now simpler mechanism.
 ### 2019-08-03
 	Fixed: NullReferenceException in …\Power\Manager.cs:1203
 	Fixed: I/O priority defaulted to background for new rules instead of ignore.
