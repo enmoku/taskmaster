@@ -24,10 +24,14 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
+using System.Net.NetworkInformation;
+
 namespace Taskmaster.Network
 {
 	public class InternetStatus : Status
 	{
 		public bool IPChanged = false;
+
+		public OperationalStatus IPv4 = OperationalStatus.Unknown, IPv6 = OperationalStatus.Unknown;
 	}
 }

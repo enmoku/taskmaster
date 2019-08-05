@@ -1687,6 +1687,20 @@ namespace Taskmaster.UI
 				}
 			};
 
+			var menu_debug_network = new ToolStripMenuItem("Network")
+			{
+				Checked = netmonitor?.DebugNet ?? false,
+				CheckOnClick = true,
+				Enabled = NetworkMonitorEnabled,
+			};
+			menu_debug_network.Click += (_, _ea) =>
+			{
+				if (netmonitor != null)
+				{
+					netmonitor.DebugNet = menu_debug_network.Checked;
+				}
+			};
+
 			var menu_debug_session = new ToolStripMenuItem("Session")
 			{
 				Checked = DebugSession,
@@ -1736,6 +1750,7 @@ namespace Taskmaster.UI
 			menu_debug.DropDownItems.Add(menu_debug_foreground);
 			//menu_debug.DropDownItems.Add(menu_debug_paths);
 			menu_debug.DropDownItems.Add(menu_debug_power);
+			menu_debug.DropDownItems.Add(menu_debug_network);
 			menu_debug.DropDownItems.Add(menu_debug_session);
 			menu_debug.DropDownItems.Add(menu_debug_monitor);
 			menu_debug.DropDownItems.Add(menu_debug_audio);
@@ -2230,7 +2245,7 @@ namespace Taskmaster.UI
 			ifacewidths = null;
 			if (NetworkMonitorEnabled)
 			{
-				int[] ifacewidthsDefault = new int[] { 110, 60, 50, 70, 90, 192, 60, 60, 40 };
+				int[] ifacewidthsDefault = new int[] { 100, 60, 90, 72, 180, 72, 60, 60, 40 };
 				ifacewidths = colcfg.GetOrSet(Constants.Interfaces, ifacewidthsDefault).IntArray;
 				if (ifacewidths.Length != ifacewidthsDefault.Length) ifacewidths = ifacewidthsDefault;
 			}
@@ -2631,13 +2646,17 @@ namespace Taskmaster.UI
 
 			NetworkDevices.Columns.Add("Device", ifacewidths[0]); // 0
 			NetworkDevices.Columns.Add("Type", ifacewidths[1]); // 1
-			NetworkDevices.Columns.Add("Status", ifacewidths[2]); // 2
-			NetworkDevices.Columns.Add("Link speed", ifacewidths[3]); // 3
-			NetworkDevices.Columns.Add("IPv4", ifacewidths[4]); // 4
-			NetworkDevices.Columns.Add("IPv6", ifacewidths[5]); // 5
+			NetworkDevices.Columns.Add("IPv4", ifacewidths[2]); // 4
+			NetworkDevices.Columns.Add("IPv4 Status", ifacewidths[3]); // 2
+			NetworkDevices.Columns.Add("IPv6", ifacewidths[4]); // 5
+			NetworkDevices.Columns.Add("IPv6 Status", ifacewidths[5]); // 2
 			NetworkDevices.Columns.Add("Packet Δ", ifacewidths[6]); // 6
 			NetworkDevices.Columns.Add("Error Δ", ifacewidths[7]); // 7
 			NetworkDevices.Columns.Add("Errors", ifacewidths[8]); // 8
+
+			IPv4Column = 2;
+			IPv6Column = 4;
+
 			PacketDeltaColumn = 6;
 			ErrorDeltaColumn = 7;
 			ErrorTotalColumn = 8;
@@ -3847,17 +3866,20 @@ namespace Taskmaster.UI
 
 			NetworkDevices.Items.Clear();
 
-			var niclist = new List<ListViewItem>(2);
+			var interfaces = netmonitor.GetInterfaces();
 
-			foreach (var dev in netmonitor.GetInterfaces())
+			ListViewItem[] niclist = new ListViewItem[interfaces.Count];
+
+			int index = 0;
+			foreach (var dev in interfaces)
 			{
-				var li = new ListViewItem(new string[] {
+				niclist[index++] = new ListViewItem(new string[] {
 					dev.Name,
 					dev.Type.ToString(),
-					dev.Status.ToString(),
-					HumanInterface.ByteString(dev.Speed),
 					dev.IPv4Address?.ToString() ?? HumanReadable.Generic.NotAvailable,
+					dev.IPv4Status.ToString(),
 					dev.IPv6Address?.ToString() ?? HumanReadable.Generic.NotAvailable,
+					dev.IPv6Status.ToString(),
 					HumanReadable.Generic.NotAvailable, // traffic delta
 					HumanReadable.Generic.NotAvailable, // error delta
 					HumanReadable.Generic.NotAvailable, // total errors
@@ -3865,11 +3887,9 @@ namespace Taskmaster.UI
 				{
 					UseItemStyleForSubItems = false
 				};
-
-				niclist.Add(li);
 			}
 
-			NetworkDevices.Items.AddRange(niclist.ToArray());
+			NetworkDevices.Items.AddRange(niclist);
 
 			AlternateListviewRowColors(NetworkDevices, AlternateRowColorsDevices);
 		}
@@ -3937,7 +3957,7 @@ namespace Taskmaster.UI
 			}
 		}
 
-		int PacketDeltaColumn = 6, ErrorDeltaColumn = 7, ErrorTotalColumn = 8;
+		int IPv4Column = 2, IPv6Column = 4, PacketDeltaColumn = 6, ErrorDeltaColumn = 7, ErrorTotalColumn = 8;
 
 		void InetStatusLabel(bool available)
 		{
@@ -3960,6 +3980,8 @@ namespace Taskmaster.UI
 
 		public void InetStatusChangeEvent(object _, Network.InternetStatus ea)
 		{
+			Logging.DebugMsg("<Window/Net> Internet status - IPv4: " + ea.IPv4.ToString() + "; IPv6: " + ea.IPv6.ToString());
+
 			InetStatusLabel(ea.Available);
 		}
 

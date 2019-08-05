@@ -58,7 +58,7 @@ namespace Taskmaster.Network
 	{
 		public static bool ShowNetworkErrors { get; set; } = false;
 
-		bool DebugNet { get; set; } = false;
+		public bool DebugNet { get; set; } = false;
 
 		bool DebugDNS { get; set; } = false;
 
@@ -762,7 +762,7 @@ namespace Taskmaster.Network
 				}
 			}
 
-			InternetStatusChange?.Invoke(this, new InternetStatus { Available = InternetAvailable, Start = LastUptimeStart, Uptime = Uptime });
+			InternetStatusChange?.Invoke(this, new InternetStatus { Available = InternetAvailable, Start = LastUptimeStart, Uptime = Uptime, IPv4 = IPv4Status, IPv6 = IPv6Status });
 
 			return InternetAvailable;
 		}
@@ -772,7 +772,14 @@ namespace Taskmaster.Network
 
 		readonly object address_lock = new object();
 
-		IPAddress IPv4Address = IPAddress.None, IPv6Address = IPAddress.IPv6None;
+		public IPAddress IPv4Address { get; private set; } = IPAddress.None;
+
+		public IPAddress IPv6Address { get; private set; } = IPAddress.IPv6None;
+
+		public OperationalStatus IPv4Status { get; private set; } = OperationalStatus.Unknown;
+
+		public OperationalStatus IPv6Status { get; private set; } = OperationalStatus.Unknown;
+
 		//NetworkInterface IPv4Interface, IPv6Interface;
 
 		/// <summary>
@@ -812,6 +819,8 @@ namespace Taskmaster.Network
 
 						var stats = dev.GetIPStatistics();
 
+						OperationalStatus ipv4status = OperationalStatus.Unknown, ipv6status = OperationalStatus.Unknown;
+
 						bool found4 = false, found6 = false;
 						IPAddress _ipv4 = IPAddress.None, _ipv6 = IPAddress.IPv6None;
 						foreach (UnicastIPAddressInformation ip in dev.GetIPProperties().UnicastAddresses)
@@ -824,6 +833,7 @@ namespace Taskmaster.Network
 									{
 										_ipv4 = ip.Address;
 										found4 = true;
+										ipv4status = dev.OperationalStatus;
 									}
 									break;
 								case System.Net.Sockets.AddressFamily.InterNetworkV6:
@@ -831,6 +841,7 @@ namespace Taskmaster.Network
 									{
 										_ipv6 = ip.Address;
 										found6 = true;
+										ipv6status = dev.OperationalStatus;
 									}
 									break;
 							}
@@ -844,21 +855,24 @@ namespace Taskmaster.Network
 							Id = Guid.Parse(dev.Id),
 							Name = dev.Name,
 							Type = dev.NetworkInterfaceType,
-							Status = dev.OperationalStatus,
 							Speed = dev.Speed,
 							IPv4Address = _ipv4,
 							IPv6Address = _ipv6,
+							IPv4Status = ipv4status,
+							IPv6Status = ipv6status,
 						};
 
 						if (_ipv4 != IPAddress.None)
 						{
 							IPv4Address = _ipv4;
+							IPv4Status = ipv4status;
 							//IPv4Interface = dev;
 						}
 
 						if (_ipv6 != IPAddress.IPv6None)
 						{
 							IPv6Address = _ipv6;
+							IPv6Status = ipv6status;
 							//IPv6Interface = dev;
 						}
 
@@ -949,7 +963,13 @@ namespace Taskmaster.Network
 
 		public void SetupEventHooks()
 		{
-			NetworkChanged(this, EventArgs.Empty); // initialize event handler's initial values
+			// initialize event handler's initial values
+			lock (NetworkStatus_lock)
+			{
+				InternetAvailable = false;
+				NetworkAvailable = NetworkInterface.GetIsNetworkAvailable();
+			}
+			StartUpdateNetworkState();
 			CheckInet().ConfigureAwait(false); // initialize
 
 			NetworkChange.NetworkAvailabilityChanged += NetworkChanged;
@@ -959,15 +979,21 @@ namespace Taskmaster.Network
 		bool LastReportedNetAvailable = false;
 		bool LastReportedInetAvailable = false;
 
+		DateTimeOffset LastNetReport = DateTimeOffset.MinValue;
+
 		void ReportNetAvailability()
 		{
 			if (disposed) throw new ObjectDisposedException(nameof(Manager), "ReportNetAvailability called after NetManager was disposed.");
+
+			Logging.DebugMsg("<Network> ReportNetAvailability - Network: " + NetworkAvailable + "; Internet: " + InternetAvailable);
 
 			if (!((LastReportedInetAvailable != InternetAvailable) || (LastReportedNetAvailable != NetworkAvailable)))
 				return; // bail out if nothing has changed since last report
 
 			LastReportedInetAvailable = InternetAvailable;
 			LastReportedNetAvailable = NetworkAvailable;
+
+			bool problems = !NetworkAvailable || !InternetAvailable;
 
 			var sbs = new StringBuilder(128)
 				.Append("<Network> Status: ")
@@ -976,18 +1002,24 @@ namespace Taskmaster.Network
 				.Append(InternetAvailable ? HumanReadable.Hardware.Network.Connected : HumanReadable.Hardware.Network.Disconnected)
 				.Append(" - ");
 
-			if (NetworkAvailable && !InternetAvailable)
-				sbs.Append("Route problems");
-			else if (!NetworkAvailable)
+			if (!NetworkAvailable)
 				sbs.Append("Cable unplugged or router/modem down");
+			else if (!InternetAvailable)
+				sbs.Append("Route problems");
 			else
 			{
 				sbs.Append("All OK");
 				if (LastDowntimeStart != DateTimeOffset.MinValue)
-					sbs.Append("– Downtime: ").Append(LastDowntimeStart.To(LastUptimeStart).ToString());
+					sbs.Append(" – Downtime: ").Append(LastDowntimeStart.To(LastUptimeStart).ToString());
 			}
 
-			if (!NetworkAvailable || !InternetAvailable) Log.Warning(sbs.ToString());
+			if (DebugNet)
+			{
+				sbs.Append(" – ").Append("IPv4(").Append(IPv4Status.ToString()).Append(')')
+					.Append(", IPv6(").Append(IPv6Status.ToString()).Append(')');
+			}
+
+			if (problems) Log.Warning(sbs.ToString());
 			else Log.Information(sbs.ToString());
 		}
 
@@ -1019,11 +1051,22 @@ namespace Taskmaster.Network
 			{
 				var now = DateTimeOffset.UtcNow;
 
-				lock (NetworkStatus_lock)
-					if (LastNetworkReport.To(now).TotalSeconds < 5d) IncreaseReportDelay();
+				bool problems = !NetworkAvailable || !InternetAvailable;
+
+				if (problems)
+				{
+					lock (NetworkStatus_lock)
+					{
+						if (LastNetworkReport.To(now).TotalSeconds < 5d)
+						{
+							IncreaseReportDelay();
+						}
+					}
+				}
 
 				ReportOngoing = true;
 				LastNetworkReport = now;
+
 				ReportNetAvailability();
 			}
 			catch (Exception ex)
@@ -1039,7 +1082,7 @@ namespace Taskmaster.Network
 		/// <summary>
 		/// Don't use without <a cref="NetworkStatus_lock">locking</a>.
 		/// </summary>
-		void IncreaseReportDelay() => NetworkReportDelay = NetworkReportDelay.Add(TimeSpan.FromMilliseconds(220));
+		void IncreaseReportDelay() => NetworkReportDelay = NetworkReportDelay.Add(TimeSpan.FromSeconds(2)).Max(TimeSpan.FromMinutes(5d));
 
 		void StartUpdateNetworkState()
 		{
@@ -1060,21 +1103,27 @@ namespace Taskmaster.Network
 		}
 
 		// TODO: Make network status reporting more centralized
-		void NetworkChanged(object _, EventArgs _ea)
+		void NetworkChanged(object _, NetworkAvailabilityEventArgs ea)
 		{
 			if (disposed) return;
 
 			//LastNetworkChange = DateTimeOffset.UtcNow;
 
-			var oldNetAvailable = NetworkAvailable;
-			bool available = NetworkAvailable = NetworkInterface.GetIsNetworkAvailable();
+			Logging.DebugMsg("<Network> Change -- Available: " + ea.IsAvailable.ToString());
+
+			bool available, oldAvailable;
+			lock (NetworkStatus_lock)
+			{
+				oldAvailable = NetworkAvailable;
+				available = NetworkAvailable = ea.IsAvailable;
+			}
 
 			NetworkChangeCounter++;
 
 			NetworkStatusChange?.Invoke(this, new Status { Available = available });
 
 			// do stuff only if this is different from last time
-			if (oldNetAvailable != available)
+			if (oldAvailable != available)
 				StartUpdateNetworkState();
 			else if (DebugNet)
 				Log.Debug("<Net> Network changed but still as available as before.");

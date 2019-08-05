@@ -120,8 +120,13 @@ namespace Taskmaster.Network
 		public IPAddress IPv4Address { get; set; } = null;
 		public IPAddress IPv6Address { get; set; } = null;
 
+		public OperationalStatus IPv4Status { get; set; } = OperationalStatus.Unknown;
+
+		public OperationalStatus IPv6Status { get; set; } = OperationalStatus.Unknown;
+
 		// Stats
-		public TrafficData Outgoing = new TrafficData();
-		public TrafficData Incoming = new TrafficData();
+		public TrafficData Outgoing { get; set; } = new TrafficData();
+
+		public TrafficData Incoming { get; set; } = new TrafficData();
 	}
 }
