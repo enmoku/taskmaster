@@ -3,6 +3,8 @@ Comprehensive changes can be found in Git change history:
 	https://github.com/mkahvi/taskmaster/commits/master
 
 ## [0.13...]
+### 2019-08-06
+	Changed: Attempt to reduce CPU usage or at least shift it from blocking other more important things.
 ### 2019-08-05
 	Changed: Process path extraction now uses PInvoke GetModuleFilenameEx instead of MainModule.FileName as benchmarking pointed the PInvoke approach to be almost 10 times faster.
 	Changed: Network link speed is no longer reported. Link state for IPv4 and IPv6 are reported separately, tho this may change.
