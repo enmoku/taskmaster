@@ -302,11 +302,11 @@ namespace Taskmaster.UI
 
 	public class LoadListPair
 	{
-		public Process.LoadInfo Load { get; set; }
+		public Process.InstanceGroupLoad Load { get; set; }
 
 		public ListViewItem ListItem { get; set;  }
 
-		public LoadListPair(Process.LoadInfo info, ListViewItem item)
+		public LoadListPair(Process.InstanceGroupLoad info, ListViewItem item)
 		{
 			Load = info;
 			ListItem = item;

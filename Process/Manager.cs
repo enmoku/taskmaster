@@ -50,7 +50,7 @@ namespace Taskmaster.Process
 		readonly ConcurrentDictionary<int, ProcessEx> WaitForExitList = new ConcurrentDictionary<int, ProcessEx>();
 		readonly ConcurrentDictionary<int, ProcessEx> Running = new ConcurrentDictionary<int, ProcessEx>(Environment.ProcessorCount, 300);
 
-		readonly Dictionary<string, LoadInfo> Loaders = new Dictionary<string, LoadInfo>(40);
+		readonly Dictionary<string, InstanceGroupLoad> Loaders = new Dictionary<string, InstanceGroupLoad>(40);
 		readonly object Loader_lock = new object();
 
 		public event EventHandler<LoaderEvent> LoaderDetection;
@@ -102,7 +102,7 @@ namespace Taskmaster.Process
 				{
 					if (!Loaders.TryGetValue(info.Name, out var load))
 					{
-						load = new LoadInfo(info.Name, LoadType.All, info);
+						load = new InstanceGroupLoad(info.Name, LoadType.All, info);
 						load.Update();
 						Loaders.Add(info.Name, load);
 					}
@@ -120,7 +120,7 @@ namespace Taskmaster.Process
 
 		async Task EndLoadAnalysis(ProcessEx info)
 		{
-			LoadInfo load;
+			InstanceGroupLoad load;
 			lock (Loader_lock)
 			{
 				if (!Loaders.TryGetValue(info.Name, out load))
@@ -163,12 +163,12 @@ namespace Taskmaster.Process
 
 			try
 			{
-				var heavyLoaders = new List<LoadInfo>(4);
+				var heavyLoaders = new List<InstanceGroupLoad>(4);
 
 				int skipped = 0;
 
 				var loadlist = Loaders.Values.ToArray();
-				LoadInfo heaviest = loadlist[0];
+				InstanceGroupLoad heaviest = loadlist[0];
 
 				foreach (var loader in loadlist)
 				{
@@ -229,7 +229,7 @@ namespace Taskmaster.Process
 			}
 		}
 
-		int LoadInfoComparer(LoadInfo x, LoadInfo y)
+		int LoadInfoComparer(InstanceGroupLoad x, InstanceGroupLoad y)
 		{
 			const int XDown = 1, YDown = -1;
 

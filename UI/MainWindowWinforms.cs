@@ -2557,20 +2557,20 @@ namespace Taskmaster.UI
 				Dock = DockStyle.Fill,
 			};
 
-			nvmtransfers = new AlignedLabel { Text = HumanReadable.Generic.Uninitialized };
+			nvmtransferslabel = new AlignedLabel { Text = HumanReadable.Generic.Uninitialized };
 			nvmsplitio = new AlignedLabel { Text = HumanReadable.Generic.Uninitialized };
-			nvmdelay = new AlignedLabel { Text = HumanReadable.Generic.Uninitialized };
-			nvmqueued = new AlignedLabel { Text = HumanReadable.Generic.Uninitialized };
+			nvmdelaylabel = new AlignedLabel { Text = HumanReadable.Generic.Uninitialized };
+			nvmqueuelabel = new AlignedLabel { Text = HumanReadable.Generic.Uninitialized };
 			//hardfaults = new Label { Text = HumanReadable.Generic.Uninitialized, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left };
 
 			nvmpanel.Controls.Add(new AlignedLabel { Text = "Transfers" });
-			nvmpanel.Controls.Add(nvmtransfers);
+			nvmpanel.Controls.Add(nvmtransferslabel);
 			nvmpanel.Controls.Add(new AlignedLabel { Text = "Split I/O" });
 			nvmpanel.Controls.Add(nvmsplitio);
 			nvmpanel.Controls.Add(new AlignedLabel { Text = "Delay" });
-			nvmpanel.Controls.Add(nvmdelay);
+			nvmpanel.Controls.Add(nvmdelaylabel);
 			nvmpanel.Controls.Add(new AlignedLabel { Text = "Queued" });
-			nvmpanel.Controls.Add(nvmqueued);
+			nvmpanel.Controls.Add(nvmqueuelabel);
 			//nvmpanel.Controls.Add(new Label { Text = "Hard faults", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left });
 			//nvmpanel.Controls.Add(hardfaults);
 		}
@@ -3488,7 +3488,7 @@ namespace Taskmaster.UI
 		AlignedLabel tempObjectCount = null, tempObjectSize = null;
 		AlignedLabel cpuload = null, ramload = null;
 		AlignedLabel pwmode = null, pwcause = null, pwbehaviour = null;
-		AlignedLabel nvmtransfers = null, nvmsplitio = null, nvmdelay = null, nvmqueued = null, hardfaults = null;
+		AlignedLabel nvmtransferslabel = null, nvmsplitio = null, nvmdelaylabel = null, nvmqueuelabel = null, hardfaults = null;
 		AlignedLabel gpuvram = null, gpuload = null, gputemp = null, gpufan = null;
 
 		public void TempScanStats(StorageManager.ScanState state, StorageManager.DirectoryStats stats)
@@ -3674,7 +3674,24 @@ namespace Taskmaster.UI
 			UItimer.Tick += UpdateHealthMon;
 			GotFocus += UpdateHealthMon;
 
+			VisibleChanged += VisibleChangedEvent;
+
+			tabLayout.TabIndexChanged += VisibleTabChangedEvent;
+
 			UpdateHealthMon(this, EventArgs.Empty);
+		}
+
+		void VisibleTabChangedEvent(object sender, EventArgs e)
+		{
+
+		}
+
+		void VisibleChangedEvent(object sender, EventArgs e)
+		{
+			if (Visible)
+				UItimer.Start();
+			else
+				UItimer.Stop();
 		}
 
 		int skipTransfers = 0, skipSplits = 0, skipDelays = 0, skipQueues = 0;
@@ -3684,13 +3701,11 @@ namespace Taskmaster.UI
 		async void UpdateHealthMon(object sender, EventArgs e)
 		{
 			if (!IsHandleCreated || disposed) return;
-			if (healthmonitor is null) return;
-			if (!nvmtransfers.Visible) return;
 			if (powermanager?.SessionLocked ?? false) return;
 
 			if (!Atomic.Lock(ref updatehealthmon_lock)) return;
 
-			await Task.Delay(100).ConfigureAwait(true);
+			await Task.Delay(100).ConfigureAwait(false);
 
 			if (disposed) return; // recheck
 
@@ -3699,69 +3714,20 @@ namespace Taskmaster.UI
 				var health = healthmonitor?.Poll();
 				if (health is null) return;
 
-				float impact_transfers = (health.NVMTransfers / 500).Max(3); // expected to cause 0 to 2, and up to 4
-				float impact_splits = health.SplitIO / 125; // expected to cause 0 to 2
-				float impact_delay = health.NVMDelay / 12; // should cause 0 to 4 usually
-				float impact_queue = (health.NVMQueue / 2).Max(4);
+				float nvmtransfers = health.NVMTransfers, splitio = health.SplitIO, nvmdelayt = health.NVMDelay, nvmqueue = health.NVMQueue;
+
+				/*
+				float impact_transfers = (nvmtransfers / 500f).Max(3f); // expected to cause 0 to 2, and up to 4
+				float impact_splits = (splitio / 125f); // expected to cause 0 to 2
+				float impact_delay = (nvmdelayt / 12f); // should cause 0 to 4 usually
+				float impact_queue = (nvmqueue / 2f).Max(4f);
 				float impact = impact_transfers + impact_splits + impact_delay + impact_queue;
+				*/
+
 				//float impact_faults = health.PageFaults;
 
-				if (health.NVMTransfers >= float.Epsilon)
-				{
-					nvmtransfers.Text = $"{health.NVMTransfers:N1} {WarningLevelString((int)health.NVMTransfers, 200, 320, 480)}";
-					nvmtransfers.ForeColor = System.Drawing.SystemColors.WindowText;
-					skipTransfers = 0;
-				}
-				else
-				{
-					if (skipTransfers++ == 0)
-						nvmtransfers.ForeColor = System.Drawing.SystemColors.GrayText;
-					else
-						nvmtransfers.Text = "0.0";
-				}
 
-				if (health.SplitIO >= float.Epsilon)
-				{
-					nvmsplitio.Text = $"{health.SplitIO:N1} {WarningLevelString((int)health.SplitIO, 20, 80, Math.Max(120, (int)(health.NVMTransfers * 0.5)))}";
-					nvmsplitio.ForeColor = System.Drawing.SystemColors.WindowText;
-					skipSplits = 0;
-				}
-				else
-				{
-					if (skipSplits++ == 0)
-						nvmsplitio.ForeColor = System.Drawing.SystemColors.GrayText;
-					else
-						nvmsplitio.Text = "0.0";
-				}
-
-				if (health.NVMDelay >= float.Epsilon)
-				{
-					float delay = health.NVMDelay * 1000;
-					nvmdelay.Text = $"{delay:N1} ms {WarningLevelString((int)delay, 22, 52, 70)}";
-					nvmdelay.ForeColor = System.Drawing.SystemColors.WindowText;
-					skipDelays = 0;
-				}
-				else
-				{
-					if (skipDelays++ == 0)
-						nvmdelay.ForeColor = System.Drawing.SystemColors.GrayText;
-					else
-						nvmdelay.Text = "0 ms";
-				}
-
-				if (health.NVMQueue >= float.Epsilon)
-				{
-					nvmqueued.Text = $"{health.NVMQueue:N0} {WarningLevelString((int)health.NVMQueue, 2, 8, 22)}";
-					nvmqueued.ForeColor = System.Drawing.SystemColors.WindowText;
-					skipQueues = 0;
-				}
-				else
-				{
-					if (skipQueues++ == 0)
-						nvmqueued.ForeColor = System.Drawing.SystemColors.GrayText;
-					else
-						nvmqueued.Text = "0";
-				}
+				BeginInvoke(new Action(() => UpdateNVMLabels(nvmtransfers, splitio, nvmdelayt, nvmqueue)));
 
 				//hardfaults.Text = !float.IsNaN(health.PageInputs) ? $"{health.PageInputs / health.PageFaults:N1} %" : HumanReadable.Generic.NotAvailable;
 
@@ -3777,6 +3743,66 @@ namespace Taskmaster.UI
 			finally
 			{
 				Atomic.Unlock(ref updatehealthmon_lock);
+			}
+		}
+
+		void UpdateNVMLabels(float nvmtransfers, float splitio, float nvmdelayt, float nvmqueue)
+		{
+			if (nvmtransfers >= float.Epsilon)
+			{
+				this.nvmtransferslabel.Text = $"{nvmtransfers:N1} {WarningLevelString((int)nvmtransfers, 200, 320, 480)}";
+				this.nvmtransferslabel.ForeColor = System.Drawing.SystemColors.WindowText;
+				skipTransfers = 0;
+			}
+			else
+			{
+				if (skipTransfers++ == 0)
+					this.nvmtransferslabel.ForeColor = System.Drawing.SystemColors.GrayText;
+				else
+					this.nvmtransferslabel.Text = "0.0";
+			}
+
+			if (splitio >= float.Epsilon)
+			{
+				nvmsplitio.Text = $"{splitio:N1} {WarningLevelString((int)splitio, 20, 80, Math.Max(120, (int)(nvmtransfers * 0.5)))}";
+				nvmsplitio.ForeColor = System.Drawing.SystemColors.WindowText;
+				skipSplits = 0;
+			}
+			else
+			{
+				if (skipSplits++ == 0)
+					nvmsplitio.ForeColor = System.Drawing.SystemColors.GrayText;
+				else
+					nvmsplitio.Text = "0.0";
+			}
+
+			if (nvmdelayt >= float.Epsilon)
+			{
+				float delay = nvmdelayt * 1000f;
+				nvmdelaylabel.Text = $"{delay:N1} ms {WarningLevelString((int)delay, 22, 52, 70)}";
+				nvmdelaylabel.ForeColor = System.Drawing.SystemColors.WindowText;
+				skipDelays = 0;
+			}
+			else
+			{
+				if (skipDelays++ == 0)
+					nvmdelaylabel.ForeColor = System.Drawing.SystemColors.GrayText;
+				else
+					nvmdelaylabel.Text = "0 ms";
+			}
+
+			if (nvmqueue >= float.Epsilon)
+			{
+				nvmqueuelabel.Text = $"{nvmqueue:N0} {WarningLevelString((int)nvmqueue, 2, 8, 22)}";
+				nvmqueuelabel.ForeColor = System.Drawing.SystemColors.WindowText;
+				skipQueues = 0;
+			}
+			else
+			{
+				if (skipQueues++ == 0)
+					nvmqueuelabel.ForeColor = System.Drawing.SystemColors.GrayText;
+				else
+					nvmqueuelabel.Text = "0";
 			}
 		}
 

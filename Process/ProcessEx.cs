@@ -26,8 +26,6 @@
 
 using System;
 using System.Diagnostics;
-using System.Linq;
-using System.Text;
 
 namespace Taskmaster.Process
 {
@@ -175,7 +173,7 @@ namespace Taskmaster.Process
 		public DateTime Found { get; set; } = DateTime.UtcNow;
 
 		// internal loaders
-		public ProcessLoad Loaders;
+		public ProcessLoad Load;
 
 		/// <summary>
 		/// Display: <code>Name #PID</code>
@@ -185,117 +183,6 @@ namespace Taskmaster.Process
 		/// <summary>
 		/// Same as ToString() but prepends controller name.
 		/// </summary>
-		public string ToFullString() => "[" + Controller.FriendlyName + "]" + ToString();
-	}
-
-	public class ProcessLoad : IDisposable
-	{
-		MKAh.Wrapper.Windows.PerformanceCounter CPUCounter, IOCounter;
-
-		readonly string Instance;
-		readonly int Id;
-		string PFCInstance;
-
-		public float CPU { get; private set; } = float.NaN;
-
-		public float IO { get; private set; } = float.NaN;
-
-		public ProcessLoad(int pid, string instance)
-		{
-			Instance = instance;
-			Id = pid;
-
-			GetInstanceName();
-			Refresh();
-		}
-
-		public bool Update(bool noRecovery=false)
-		{
-			if (disposed) return false;
-
-			try
-			{
-				CPU = CPUCounter.Value / Environment.ProcessorCount;
-				IO = IOCounter.Value;
-				return true;
-			}
-			catch (NullReferenceException ex)
-			{
-				Logging.DebugMsg("LOAD NULL: " + Instance + " #" + Id.ToString());
-				Logging.Stacktrace(ex);
-			}
-			catch
-			{
-				if (!noRecovery)
-				{
-					Refresh();
-					return Update(noRecovery: true);
-				}
-			}
-
-			return false;
-		}
-
-		void Refresh()
-		{
-			Scrap();
-
-			CPUCounter = new MKAh.Wrapper.Windows.PerformanceCounter("Process", "% Processor Time", PFCInstance);
-			IOCounter = new MKAh.Wrapper.Windows.PerformanceCounter("Process", "IO Data Bytes/sec", PFCInstance);
-		}
-
-		bool GetInstanceName()
-		{
-			var processCategory = new PerformanceCounterCategory("Process");
-
-			char[] separator = { '#' };
-			var instances = processCategory.GetInstanceNames()
-				.Where(inst => inst.StartsWith(Instance, StringComparison.InvariantCultureIgnoreCase));
-
-			foreach (var name in instances)
-			{
-				using var idpc = new MKAh.Wrapper.Windows.PerformanceCounter("Process", "ID Process", name, false);
-				if (Id == idpc.Raw)
-				{
-					PFCInstance = name;
-					return true;
-				}
-			}
-
-			return false;
-		}
-
-		#region IDisposable Support
-		bool disposed = false;
-
-		void Scrap()
-		{
-			CPUCounter?.Dispose();
-			CPUCounter = null;
-			IOCounter?.Dispose();
-			IOCounter = null;
-		}
-
-		protected virtual void Dispose(bool disposing)
-		{
-			if (disposed) return;
-			disposed = true;
-
-			if (disposing)
-			{
-				Scrap();
-
-				//base.Dispose();
-			}
-		}
-
-		~ProcessLoad() => Dispose(false);
-
-		public void Dispose()
-		{
-			Dispose(true);
-			GC.SuppressFinalize(this);
-		}
-		#endregion
+		public string ToFullString() => "[" + Controller.FriendlyName + "] " + ToString();
 	}
 }
