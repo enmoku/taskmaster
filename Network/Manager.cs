@@ -829,7 +829,7 @@ namespace Taskmaster.Network
 							{
 								case System.Net.Sockets.AddressFamily.InterNetwork:
 									var address = ip.Address.GetAddressBytes();
-									if (!(address[0] == 169 && address[1] == 254)) // ignore link-local
+									if (!(address[0] == 169 && address[1] == 254) && !(address[0] == 198 && address[1] == 168)) // ignore link-local
 									{
 										_ipv4 = ip.Address;
 										found4 = true;

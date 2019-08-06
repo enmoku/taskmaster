@@ -3860,7 +3860,8 @@ namespace Taskmaster.UI
 			int index = 0;
 			foreach (var dev in interfaces)
 			{
-				niclist[index++] = new ListViewItem(new string[] {
+
+				var li = niclist[index++] = new ListViewItem(new string[] {
 					dev.Name,
 					dev.Type.ToString(),
 					dev.IPv4Address?.ToString() ?? HumanReadable.Generic.NotAvailable,
@@ -3874,6 +3875,13 @@ namespace Taskmaster.UI
 				{
 					UseItemStyleForSubItems = false
 				};
+
+				var address = dev.IPv4Address.GetAddressBytes();
+				if (!(address[0] == 169 && address[1] == 254) && !(address[0] == 198 && address[1] == 168))
+					li.SubItems[IPv4Column].ForeColor = System.Drawing.SystemColors.GrayText;
+
+				if (dev.IPv6Address.IsIPv6LinkLocal || dev.IPv6Address.IsIPv6SiteLocal)
+					li.SubItems[IPv6Column].ForeColor = System.Drawing.SystemColors.GrayText;
 			}
 
 			NetworkDevices.Items.AddRange(niclist);
