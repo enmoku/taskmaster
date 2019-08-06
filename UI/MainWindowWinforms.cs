@@ -3696,7 +3696,7 @@ namespace Taskmaster.UI
 
 			try
 			{
-				var health = healthmonitor?.Poll;
+				var health = healthmonitor?.Poll();
 				if (health is null) return;
 
 				float impact_transfers = (health.NVMTransfers / 500).Max(3); // expected to cause 0 to 2, and up to 4

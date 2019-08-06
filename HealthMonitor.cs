@@ -86,25 +86,22 @@ namespace Taskmaster
 		Windows.PerformanceCounter NetConnReset = new Windows.PerformanceCounter("TCP", "Connections Reset", "_Total");
 		*/
 
-		public HealthReport Poll
+		public HealthReport Poll()
 		{
-			get
+			if (disposed) throw new ObjectDisposedException(nameof(HealthMonitor), "Poll called after HealthManager is disposed.");
+
+			return new HealthReport()
 			{
-				if (disposed) throw new ObjectDisposedException(nameof(HealthMonitor), "Poll called after HealthManager is disposed.");
+				//PageFaults = PageFaults.Value,
+				//PageInputs = PageInputs?.Value ?? float.NaN,
+				SplitIO = SplitIO.Value,
+				NVMTransfers = NVMTransfers.Value,
+				NVMQueue = NVMQueue.Value,
+				NVMDelay = Math.Max(NVMReadDelay.Value, NVMWriteDelay.Value),
 
-				return new HealthReport()
-				{
-					//PageFaults = PageFaults.Value,
-					//PageInputs = PageInputs?.Value ?? float.NaN,
-					SplitIO = SplitIO.Value,
-					NVMTransfers = NVMTransfers.Value,
-					NVMQueue = NVMQueue.Value,
-					NVMDelay = Math.Max(NVMReadDelay.Value, NVMWriteDelay.Value),
-
-					//MemPressure = 0f,
-					//MemUsage = 0f,
-				};
-			}
+				//MemPressure = 0f,
+				//MemUsage = 0f,
+			};
 		}
 
 		public HealthMonitor()
