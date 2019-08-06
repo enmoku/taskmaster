@@ -3668,7 +3668,7 @@ namespace Taskmaster.UI
 			healthmonitor = monitor;
 			healthmonitor.OnDisposed += (_, _ea) => healthmonitor = null;
 
-			_ = healthmonitor.Poll;
+			healthmonitor.Poll();
 
 			UpdateMemoryStats(this, EventArgs.Empty);
 			UItimer.Tick += UpdateHealthMon;
