@@ -107,7 +107,7 @@ namespace Taskmaster.Process
 						Loaders.Add(info.Name, load);
 					}
 					else
-						load.Add(info);
+						load.TryAdd(info);
 				}
 			}
 			catch (Exception ex)
