@@ -126,6 +126,7 @@
     <Compile Include="MKAh\Data\Cache\CacheEventArgs.cs" />
     <Compile Include="MKAh\Data\Cache\CacheItem.cs" />
     <Compile Include="MKAh\Data\Cache\EvictStrategy.cs" />
+    <Compile Include="MKAh\Container\CircularBuffer.cs" />
     <Compile Include="MKAh\Data\Generic\Constants.cs" />
     <Compile Include="MKAh\Data\Generic\String.cs" />
     <Compile Include="MKAh\Data\Cache\SimpleCache.cs" />
