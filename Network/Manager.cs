@@ -825,6 +825,8 @@ namespace Taskmaster.Network
 						IPAddress _ipv4 = IPAddress.None, _ipv6 = IPAddress.IPv6None;
 						foreach (UnicastIPAddressInformation ip in dev.GetIPProperties().UnicastAddresses)
 						{
+							if (System.Net.IPAddress.IsLoopback(ip.Address)) continue;
+
 							switch (ip.Address.AddressFamily)
 							{
 								case System.Net.Sockets.AddressFamily.InterNetwork:

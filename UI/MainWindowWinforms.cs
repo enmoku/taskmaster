@@ -3903,11 +3903,15 @@ namespace Taskmaster.UI
 				};
 
 				var address = dev.IPv4Address.GetAddressBytes();
-				if (!(address[0] == 169 && address[1] == 254) && !(address[0] == 198 && address[1] == 168))
-					li.SubItems[IPv4Column].ForeColor = System.Drawing.SystemColors.GrayText;
 
+				var ip4li = li.SubItems[IPv4Column];
+				Logging.DebugMsg(address[0].ToString() + "." + address[1].ToString() + "." + address[2].ToString() + "." + address[3].ToString());
+				if ((address[0] == 169 && address[1] == 254) || (address[0] == 198 && address[1] == 168))
+					ip4li.ForeColor = System.Drawing.SystemColors.GrayText;
+
+				var ip6li = li.SubItems[IPv6Column];
 				if (dev.IPv6Address.IsIPv6LinkLocal || dev.IPv6Address.IsIPv6SiteLocal)
-					li.SubItems[IPv6Column].ForeColor = System.Drawing.SystemColors.GrayText;
+					ip6li.ForeColor = System.Drawing.SystemColors.GrayText;
 			}
 
 			NetworkDevices.Items.AddRange(niclist);
