@@ -929,12 +929,12 @@ namespace Taskmaster.Network
 				{
 					if (ipv4changed)
 					{
-						sbs.AppendLine("IPv4 address changed.").AppendLine(oldV4Address.ToString());
+						sbs.AppendLine("IPv4 address changed to...").AppendLine(newIPv4.ToString());
 						Log.Information($"<Network> IPv4 address changed: {oldV4Address} → {newIPv4}");
 					}
 					if (ipv6changed)
 					{
-						sbs.AppendLine("IPv6 address changed.").AppendLine(oldV6Address.ToString());
+						sbs.AppendLine("IPv6 address changed to...").AppendLine(newIPv4.ToString());
 						Log.Information($"<Network> IPv6 address changed: {oldV6Address} → {newIPv6}");
 					}
 
