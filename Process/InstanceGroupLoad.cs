@@ -146,6 +146,7 @@ namespace Taskmaster.Process
 				try
 				{
 					ref var load = ref info.Load;
+					if (load is null) continue;
 
 					load.Update();
 
@@ -263,7 +264,7 @@ namespace Taskmaster.Process
 				ProcessLoad loader = null;
 				try
 				{
-					loader = new ProcessLoad(pid, instance);
+					loader = new ProcessLoad(info.Process);
 					loader.Update();
 
 					info.Load = loader;

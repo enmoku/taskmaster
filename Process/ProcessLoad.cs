@@ -44,10 +44,12 @@ namespace Taskmaster.Process
 		/// </summary>
 		/// <param name="pid">Process identifier.</param>
 		/// <param name="executable">Executable name without extension.</param>
-		public ProcessLoad(int pid, string instanceName)
+		public ProcessLoad(System.Diagnostics.Process process)
 		{
-			Id = pid;
-			Instance = instanceName;
+			Id = process.Id;
+			Instance = process.ProcessName;
+
+			CpuLoad = new CpuUsage(process);
 
 			Refresh();
 
@@ -69,7 +71,10 @@ namespace Taskmaster.Process
 
 			try
 			{
-				CPU = CPUCounter.Value;
+				//CPU = CPUCounter.Value / Environment.ProcessorCount;
+				CPU = Convert.ToSingle(CpuLoad.Sample()) * 100f;
+				//if (CPU > 3f) Logging.DebugMsg($"ProcessLoad --- PFC: {CPU:N1}% --- TMS: {cpu*100d:N1}%");
+
 				IO = IOCounter.Value;
 
 				LoadHistory.Push(CPU);
@@ -115,17 +120,19 @@ namespace Taskmaster.Process
 		{
 			Scrap();
 
-			CPUCounter = new MKAh.Wrapper.Windows.PerformanceCounter("Process", "% Processor Time", Instance);
+			//CPUCounter = new MKAh.Wrapper.Windows.PerformanceCounter("Process", "% Processor Time", Instance);
 			IOCounter = new MKAh.Wrapper.Windows.PerformanceCounter("Process", "IO Data Bytes/sec", Instance);
 		}
+
+		CpuUsage CpuLoad;
 
 		#region IDisposable Support
 		bool disposed = false;
 
 		void Scrap()
 		{
-			CPUCounter?.Dispose();
-			CPUCounter = null;
+			//CPUCounter?.Dispose();
+			//CPUCounter = null;
 			IOCounter?.Dispose();
 			IOCounter = null;
 		}

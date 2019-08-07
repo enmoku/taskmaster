@@ -161,6 +161,7 @@
     <Compile Include="Process\Options.cs" />
     <Compile Include="Process\Events\ProcessingCountEventArgs.cs" />
     <Compile Include="Process\ProcessLoad.cs" />
+    <Compile Include="Process\ProcessorUsage.cs" />
     <Compile Include="Settings.Global.cs" />
     <Compile Include="Process\Foreground.cs" />
     <Compile Include="AlertManager.cs" />
