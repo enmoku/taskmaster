@@ -38,7 +38,7 @@ namespace Taskmaster.UI
 		readonly ProgressBar subProgress = null;
 		readonly AlignedLabel loadMessage = null;
 
-		readonly ListView LoadEventLog = null;
+		readonly Extensions.ListViewEx LoadEventLog = null;
 
 		readonly Extensions.Button exitButton = null;
 
@@ -100,7 +100,7 @@ namespace Taskmaster.UI
 				Anchor = AnchorStyles.Top,
 			};
 
-			LoadEventLog = new ListView()
+			LoadEventLog = new Extensions.ListViewEx()
 			{
 				View = View.Details,
 				HeaderStyle = ColumnHeaderStyle.None,
