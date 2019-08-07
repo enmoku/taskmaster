@@ -37,6 +37,7 @@ namespace Taskmaster.UI.Extensions
 		public ListViewEx()
 		{
 			DoubleBuffered = true;
+			UseCompatibleStateImageBehavior = false; // .NET 1.1 compatibility mode that's enabled by default for some stupid reason.
 
 			SetStyle(
 				ControlStyles.OptimizedDoubleBuffer | ControlStyles.AllPaintingInWmPaint | ControlStyles.EnableNotifyMessage,
