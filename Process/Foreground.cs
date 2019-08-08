@@ -488,6 +488,18 @@ namespace Taskmaster.Process
 				ActiveChanged?.Invoke(this, activewindowev);
 			}
 			catch (ObjectDisposedException) { Statistics.DisposedAccesses++; } // NOP
+			catch (InvalidOperationException)
+			{
+				// process exited most likely
+
+				lock (FGLock)
+				{
+					Foreground = null;
+					ForegroundId = -1;
+				}
+
+				ActiveChanged?.Invoke(this, new WindowChangedArgs { Id = -1 });
+			}
 			catch (Exception ex)
 			{
 				Logging.Stacktrace(ex);
