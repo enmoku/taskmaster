@@ -26,6 +26,7 @@
 
 using System;
 using System.Collections.Concurrent;
+using System.Diagnostics;
 using System.Threading.Tasks;
 using MKAh;
 using Serilog;
@@ -49,7 +50,7 @@ namespace Taskmaster
 		public TimeSpan SampleInterval { get; set; } = TimeSpan.FromSeconds(5);
 		public int SampleCount { get; set; } = 5;
 
-		readonly Windows.PerformanceCounter CPUload = new Windows.PerformanceCounter("Processor", "% Processor Time", "_Total");
+		//readonly Windows.PerformanceCounter CPUload = new Windows.PerformanceCounter("Processor", "% Processor Time", "_Total");
 		readonly Windows.PerformanceCounter CPUqueue = new Windows.PerformanceCounter("System", "Processor Queue Length", null);
 
 		//Windows.PerformanceCounter CPUIRQ = new Windows.PerformanceCounter("Processor", "% Interrupt Time", "_Total");
@@ -64,14 +65,17 @@ namespace Taskmaster
 		{
 			LoadConfig();
 
+			Idle(); // initialize
+
 			try
 			{
 				Samples = new float[SampleCount];
 
 				// prepopulate
+				var tload = UsageFromIdle(Idle());
 				for (int i = 0; i < SampleCount; i++)
 				{
-					Samples[i] = CPUload.Value;
+					Samples[i] = tload;
 					Mean += Samples[i];
 				}
 
@@ -142,6 +146,33 @@ namespace Taskmaster
 			Mean = tAverage / SampleCount;
 		}
 
+		Stopwatch stopwatch = Stopwatch.StartNew();
+		long oldIdleMs, oldUsedMs;
+
+		/// <summary>
+		/// Returns idle CPU (0.0 to 1.0).
+		/// </summary>
+		float Idle() // compared to PFC, performance is 6.2 us compared to 127.5 us
+		{
+			var period = stopwatch.ElapsedMilliseconds;
+			Process.NativeMethods.GetSystemTimes(out var idle, out var kernel, out var user);
+			stopwatch.Restart();
+			long newIdleMs = Process.NativeMethods.FiletimeToLong(idle);
+			long newUsedMs = (Process.NativeMethods.FiletimeToLong(user) + Process.NativeMethods.FiletimeToLong(kernel));
+
+			var usedMs = (newUsedMs - oldUsedMs) / (10_000 * Environment.ProcessorCount);
+			var idleMs = (newIdleMs - oldIdleMs) / (10_000 * Environment.ProcessorCount);
+			oldIdleMs = newIdleMs;
+			oldUsedMs = newUsedMs;
+
+			//Logging.DebugMsg("CPU --- idle: " + idleMs.ToString() + " --- used: " + usedMs.ToString() + " --- " + period.ToString() + " --- % = " + ((float)idleMs/period).ToString("N1"));
+
+			return (float)idleMs / period;
+		}
+
+		[System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
+		float UsageFromIdle(float idle) => (1f - idle) * 100f;
+
 		void Sampler(object _sender, System.Timers.ElapsedEventArgs _)
 		{
 			if (!Atomic.Lock(ref sampler_lock)) return; // uhhh... probably should ping warning if this return is triggered
@@ -149,7 +180,9 @@ namespace Taskmaster
 
 			try
 			{
-				float sample = CPUload.Value; // slowest part
+				//float sample = CPUload.Value; // slowest part
+				float sample = UsageFromIdle(Idle());
+
 				Samples[SampleLoop] = sample;
 				SampleLoop = (SampleLoop + 1) % SampleCount; // loop offset
 
@@ -306,7 +339,7 @@ namespace Taskmaster
 				CPUSampleTimer?.Dispose();
 				CPUSampleTimer = null;
 
-				CPUload?.Dispose();
+				//CPUload?.Dispose();
 				CPUqueue?.Dispose();
 
 				// if (processmanager != null) prcman.ProcessDetectedEvent -= ProcessDetectedEvent;
