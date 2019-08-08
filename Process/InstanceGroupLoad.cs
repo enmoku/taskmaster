@@ -305,7 +305,7 @@ namespace Taskmaster.Process
 				}
 
 				rv = IdToInstanceMap.TryGetValue(pid, out var cache);
-				instance = cache.Instance;
+				instance = cache?.Instance;
 			}
 			return rv;
 		}
