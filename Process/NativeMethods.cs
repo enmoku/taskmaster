@@ -260,5 +260,13 @@ namespace Taskmaster.Process
 		public const uint WINEVENT_OUTOFCONTEXT = 0x0000; // async
 		public const uint WINEVENT_SKIPOWNPROCESS = 0x0002; // skip self
 		public const uint EVENT_SYSTEM_FOREGROUND = 3;
+
+		[DllImport("kernel32.dll", SetLastError = true)]
+		internal static extern bool GetSystemTimes(out System.Runtime.InteropServices.ComTypes.FILETIME lpIdleTime, out System.Runtime.InteropServices.ComTypes.FILETIME lpKernelTime, out System.Runtime.InteropServices.ComTypes.FILETIME lpUserTime);
+
+		/// <summary>
+		/// 
+		/// </summary>
+		public static long FiletimeToLong(System.Runtime.InteropServices.ComTypes.FILETIME ft) => ((long)ft.dwHighDateTime << 32) | (uint)ft.dwLowDateTime;
 	}
 }
