@@ -4281,6 +4281,8 @@ namespace Taskmaster.UI
 			{
 				if (Trace) Log.Verbose("Disposing main window...");
 
+				Logging.DebugMsg("<Window> Log list cache - hits: " + LogListCache.Hits.ToString() + ", misses: " + LogListCache.Misses.ToString() + ", ratio: " + ((float)LogListCache.Hits/LogListCache.Misses).ToString("N1"));
+
 				UItimer.Stop();
 
 				if (MemoryLog.MemorySink != null)

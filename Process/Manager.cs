@@ -153,7 +153,7 @@ namespace Taskmaster.Process
 		{
 			if (LoaderDetection is null)
 			{
-				Logging.DebugMsg("<Process:Loaders> None subscribed.");
+				if (Trace) Logging.DebugMsg("<Process:Loaders> None subscribed.");
 				return; // don't process while no-one is subscribed
 			}
 			else
@@ -1610,6 +1610,7 @@ namespace Taskmaster.Process
 		Controller PreviousForegroundController = null;
 		ProcessEx PreviousForegroundInfo;
 
+		// BUG: This is a mess.
 		void ForegroundAppChangedEvent(object _sender, WindowChangedArgs ev)
 		{
 			if (disposed) return;
