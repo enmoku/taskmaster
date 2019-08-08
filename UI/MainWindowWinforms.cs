@@ -149,12 +149,7 @@ namespace Taskmaster.UI
 
 			if (!IsHandleCreated) return;
 
-			int count = LogList.Items.Count;
-			if (count > 0) // needed in case of bugs or clearlog
-			{
-				LogList.TopItem = LogList.Items[count - 1];
-				ShowLastLog();
-			}
+			ShowLastLog();
 		}
 
 		public void ExitRequest(object _, EventArgs _ea) => ConfirmExit(restart: false);
@@ -240,8 +235,20 @@ namespace Taskmaster.UI
 
 		public void ShowLastLog()
 		{
-			int count = LogList.Items.Count;
-			if (count > 0) LogList.EnsureVisible(count - 1);
+			if (disposed) return;
+
+			BeginInvoke(new Action(() =>
+			{
+				int count = LogList.Items.Count;
+				//if (count > 0) LogList.EnsureVisible(count - 1);
+
+				if (count > 0)
+				{
+					var li = LogList.Items[count - 1];
+					//li.Focused = true; // does nothing
+					LogList.TopItem = li;
+				}
+			}));
 		}
 
 		// HOOKS
@@ -1022,12 +1029,13 @@ namespace Taskmaster.UI
 
 		void CopyLogToClipboard(object _, EventArgs _ea)
 		{
-			if (LogList.SelectedItems.Count == 0) return;
+			var selected = LogList.SelectedIndices;
+			if (selected.Count == 0) return;
 
 			var sbs = new StringBuilder(256);
 
-			foreach (ListViewItem item in LogList.SelectedItems)
-				sbs.Append(item.SubItems[0].Text);
+			foreach (int item in selected)
+				sbs.Append(LogList.Items[item].SubItems[0].Text);
 
 			Clipboard.SetText(sbs.ToString(), TextDataFormat.UnicodeText);
 		}
@@ -1116,7 +1124,14 @@ namespace Taskmaster.UI
 				Scrollable = true,
 				MinimumSize = new System.Drawing.Size(-2, 140),
 				//MinimumSize = new System.Drawing.Size(-2, -2), // doesn't work
+				VirtualMode = true,
+				VirtualListSize = 0,
 			};
+
+			LogList.RetrieveVirtualItem += LogListRetrieveItem;
+			LogList.CacheVirtualItems += LogListCacheItem;
+			LogList.SearchForVirtualItem += LogListSearchItem;
+			LogList.VirtualItemsSelectionRangeChanged += LogListSelectionChanged;
 
 			var imglist = new ImageList();
 			imglist.Images.Add(Properties.Resources.OkayIcon);
@@ -2000,6 +2015,91 @@ namespace Taskmaster.UI
 				GotFocus += PathCacheUpdate;
 				PathCacheUpdate(this, EventArgs.Empty);
 			}
+		}
+
+		void LogListSelectionChanged(object sender, ListViewVirtualItemsSelectionRangeChangedEventArgs e)
+		{
+			/*
+			if (e.IsSelected)
+			{
+				// e.StartIndex to e.EndIndex
+			}
+			*/
+		}
+
+		void LogListSearchItem(object sender, SearchForVirtualItemEventArgs e)
+		{
+			// for
+			//LogList.FindItemWithText
+			//LogList.FindNearestItem
+			throw new NotImplementedException();
+		}
+
+		int LogListFirst = 0;
+
+		readonly List<LogEventArgs> LogListData = new List<LogEventArgs>(200);
+		readonly MKAh.Cache.SimpleCache<ulong, ListViewItem> LogListCache = new MKAh.Cache.SimpleCache<ulong, ListViewItem>(50, 10);
+
+		private void LogListCacheItem(object sender, CacheVirtualItemsEventArgs e)
+		{
+			// Confirm necessity of update
+			if (e.StartIndex >= LogListFirst && e.EndIndex <= LogListFirst + LogListData.Count)
+				return; // Subset of old cache
+
+			// Build cache
+			LogListFirst = e.StartIndex;
+			int newVisibleLength = e.EndIndex - e.StartIndex + 1; // inclusive range
+
+			//Fill the cache with the appropriate ListViewItems.
+			for (int i = 0; i < newVisibleLength; i++)
+			{
+				var item = LogListData[i];
+
+				if (!LogListCache.Get(item.ID, out _))
+					LogListGenerateItem(item);
+			}
+
+			//LogList.VirtualListSize = LogListData.Count;
+		}
+
+		private void LogListRetrieveItem(object sender, RetrieveVirtualItemEventArgs e)
+		{
+			var item = LogListData[e.ItemIndex - LogListFirst];
+
+			e.Item = LogListCache.Get(item.ID, out var li) ? li : LogListGenerateItem(item);
+		}
+
+		ListViewItem LogListGenerateItem(LogEventArgs ea)
+		{
+			var li = new ListViewItem(ea.Message);
+
+			switch (ea.Level)
+			{
+				case Serilog.Events.LogEventLevel.Verbose:
+				case Serilog.Events.LogEventLevel.Information:
+					li.ImageIndex = 0;
+					break;
+				case Serilog.Events.LogEventLevel.Debug:
+				case Serilog.Events.LogEventLevel.Warning:
+					li.ImageIndex = 1;
+					break;
+				case Serilog.Events.LogEventLevel.Error:
+				case Serilog.Events.LogEventLevel.Fatal:
+					li.ImageIndex = 2;
+					break;
+			}
+
+			// color errors and worse red
+			if ((int)ea.Level >= (int)Serilog.Events.LogEventLevel.Error)
+				li.ForeColor = System.Drawing.Color.Red;
+
+			// alternate back color
+			if (AlternateRowColorsLog && (alterStep = !alterStep))
+				li.BackColor = AlterColor;
+
+			LogListCache.Add(ea.ID, li);
+
+			return li;
 		}
 
 		void UpdateTrackingCounter(object sender, EventArgs e)
@@ -3517,8 +3617,11 @@ namespace Taskmaster.UI
 			MemoryLog.MemorySink.OnNewEvent += NewLogReceived;
 
 			// Log.Verbose("Filling GUI log.");
-			foreach (var evmsg in MemoryLog.MemorySink.ToArray())
-				AddLog(evmsg);
+			var logbuffer = MemoryLog.MemorySink.ToArray();
+			Logging.DebugMsg("Filling backlog of messages: " + logbuffer.Length.ToString());
+
+			foreach (var logmsg in logbuffer)
+				AddLog(logmsg);
 
 			ShowLastLog();
 
@@ -4046,22 +4149,34 @@ namespace Taskmaster.UI
 		void ClearLog()
 		{
 			//loglist.Clear();
-			LogList.Items.Clear();
+
+			LogListData.Clear();
+			LogListCache.Empty();
+			LogList.VirtualListSize = 0;
+
+			//LogList.Items.Clear();
 			MemoryLog.MemorySink.Clear();
 		}
 
-		void NewLogReceived(object _, LogEventArgs ea)
+		void NewLogReceived(object _, LogEventArgs logmsg)
 		{
 			if (!IsHandleCreated || disposed
-				|| (LogIncludeLevel.MinimumLevel > ea.Level)) return;
+				|| (LogIncludeLevel.MinimumLevel > logmsg.Level)) return;
 
+			AddLog(logmsg);
+
+			ShowLastLog();
+
+			/*
 			if (InvokeRequired)
 				BeginInvoke(new Action(() => NewLogReceived_Invoke(ea)));
 			else
 				NewLogReceived_Invoke(ea);
+			*/
 		}
 
-		void NewLogReceived_Invoke(LogEventArgs ea)
+		/*
+		void NewLogReceived_Invoke(LogEventArgs logmsg)
 		{
 			if (!IsHandleCreated || disposed) return;
 
@@ -4069,42 +4184,35 @@ namespace Taskmaster.UI
 			while (excessitems-- > 0)
 				LogList.Items.RemoveAt(0);
 
-			AddLog(ea);
+			AddLog(logmsg);
 		}
+		*/
 
 		bool alterStep = true;
 
 		void AddLog(LogEventArgs ea)
 		{
-			var msg = new ListViewItem(ea.Message);
-			switch (ea.Level)
+			int newSize = LogListData.Count + 1;
+			LogListData.Add(ea);
+
+			LogEventArgs first;
+			while (LogListData.Count > MaxLogSize)
 			{
-				case Serilog.Events.LogEventLevel.Verbose:
-				case Serilog.Events.LogEventLevel.Information:
-					msg.ImageIndex = 0;
-					break;
-				case Serilog.Events.LogEventLevel.Debug:
-				case Serilog.Events.LogEventLevel.Warning:
-					msg.ImageIndex = 1;
-					break;
-				case Serilog.Events.LogEventLevel.Error:
-				case Serilog.Events.LogEventLevel.Fatal:
-					msg.ImageIndex = 2;
-					break;
+				first = LogListData[0];
+				LogListData.Remove(first);
+				newSize--;
 			}
 
-			LogList.Items.Add(msg);
+			//Logging.DebugMsg("LogList new size: " + newSize.ToString());
+
+			BeginInvoke(new Action(() => LogList.VirtualListSize = newSize));
+
+			//var li = LogListGenerateItem(ea);
+
+			//LogList.Items.Add(li);
 			//LogList.Columns[0].Width = -2;
 
-			// color errors and worse red
-			if ((int)ea.Level >= (int)Serilog.Events.LogEventLevel.Error)
-				msg.ForeColor = System.Drawing.Color.Red;
-
-			// alternate back color
-			if (AlternateRowColorsLog && (alterStep = !alterStep))
-				msg.BackColor = AlterColor;
-
-			msg.EnsureVisible();
+			//li.EnsureVisible();
 		}
 
 		void SaveUIState()

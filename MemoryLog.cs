@@ -25,6 +25,7 @@
 // THE SOFTWARE.
 
 using System;
+using System.Collections.Concurrent;
 using System.IO;
 using Serilog;
 using Serilog.Configuration;
@@ -41,6 +42,9 @@ namespace Taskmaster
 		public readonly string Message;
 		public readonly LogEventLevel Level;
 		public readonly LogEvent Internal;
+		public readonly ulong ID = LastID++;
+
+		static ulong LastID = 0;
 
 		public LogEventArgs(string message, LogEventLevel level, LogEvent ev)
 		{
@@ -66,10 +70,15 @@ namespace Taskmaster
 		public LoggingLevelSwitch LevelSwitch;
 		const string p_DefaultOutputTemplate = "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}";
 
+		public int Max = 200;
+		readonly object LogLock = new object();
+
+		System.Collections.Generic.List<LogEventArgs> Logs { get; set; } = new System.Collections.Generic.List<LogEventArgs>(200);
+
+		ConcurrentDictionary<ulong, LogEventArgs> LogMap { get; set; } = new ConcurrentDictionary<ulong, LogEventArgs>(2, 200);
+
 		public MemorySink(IFormatProvider formatProvider, string outputTemplate = p_DefaultOutputTemplate, LoggingLevelSwitch levelSwitch = null)
 		{
-			Logs = new System.Collections.Generic.List<LogEventArgs>(Max);
-
 			//p_formatProvider = formatProvider;
 			p_textFormatter = new Serilog.Formatting.Display.MessageTemplateTextFormatter(
 				outputTemplate ?? p_DefaultOutputTemplate,
@@ -80,10 +89,6 @@ namespace Taskmaster
 
 			MemoryLog.MemorySink = this;
 		}
-
-		public int Max = 50;
-		readonly object LogLock = new object();
-		public System.Collections.Generic.List<LogEventArgs> Logs = null;
 
 		//public LoggingLevelSwitch LevelSwitch;
 
@@ -122,7 +127,7 @@ namespace Taskmaster
 			Emit(this, new LogEventArgs(formattedtext, e.Level, e));
 		}
 
-		void Emit(MemorySink _, LogEventArgs ea)
+		void Emit(MemorySink sender, LogEventArgs ea)
 		{
 			lock (LogLock)
 			{
@@ -130,7 +135,7 @@ namespace Taskmaster
 				Logs.Add(ea);
 			}
 
-			OnNewEvent?.Invoke(_, ea);
+			OnNewEvent?.Invoke(sender, ea);
 		}
 
 		public LogEventArgs[] ToArray()
