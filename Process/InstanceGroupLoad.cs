@@ -251,13 +251,6 @@ namespace Taskmaster.Process
 		public bool TryAdd(ProcessEx info)
 		{
 			int pid = info.Id;
-			string instance;
-
-			if (!GetInstance(pid, out instance))
-			{
-				Logging.DebugMsg("LoadInfo.TryAdd failed to locate instance for " + Instance + " #" + pid);
-				return false;
-			}
 
 			if (Processes.TryAdd(pid, info))
 			{
@@ -285,80 +278,6 @@ namespace Taskmaster.Process
 			}
 
 			return false;
-		}
-
-		char[] PCInstanceSeparator = { '#' };
-
-		readonly object instancelock = new object();
-
-		bool GetInstance(int pid, out string instance)
-		{
-			var now = DateTimeOffset.UtcNow;
-
-			bool rv;
-			lock (instancelock)
-			{
-				if (LastInstancePull.To(now).TotalSeconds > 5)
-				{
-					GetInstanceNames();
-					LastInstancePull = DateTimeOffset.UtcNow;
-				}
-
-				rv = IdToInstanceMap.TryGetValue(pid, out var cache);
-				instance = cache?.Instance;
-			}
-			return rv;
-		}
-
-		DateTimeOffset LastInstancePull = DateTimeOffset.MinValue;
-
-		/// <summary>
-		/// Searches for performance counter instance name when it has changed.
-		/// </summary>
-		void GetInstanceNames()
-		{
-			var processCategory = new PerformanceCounterCategory("Process");
-
-			var instances = processCategory.GetInstanceNames()
-				.Where(inst => inst.Equals(Instance, StringComparison.InvariantCultureIgnoreCase) || inst.StartsWith(SubInstance, StringComparison.InvariantCultureIgnoreCase));
-
-			var now = DateTimeOffset.UtcNow;
-
-			foreach (var name in instances)
-			{
-				using var idpc = new MKAh.Wrapper.Windows.PerformanceCounter("Process", "ID Process", name, false);
-
-				_ = idpc.Raw;
-
-				int pid = Convert.ToInt32(idpc.Raw);
-
-				//if (Trace) Logging.DebugMsg("PFInstance found: " + name + " for #" + pid.ToString());
-
-				var cache = new InstanceCachePair(name, now);
-
-				IdToInstanceMap.AddOrUpdate(pid, cache, (_, oldValue) => oldValue.Replace(name, now));
-			}
-		}
-
-		ConcurrentDictionary<int, InstanceCachePair> IdToInstanceMap = new ConcurrentDictionary<int, InstanceCachePair>(2, 128);
-
-		internal class InstanceCachePair
-		{
-			public string Instance;
-			public DateTimeOffset Seen;
-
-			internal InstanceCachePair(string instance, DateTimeOffset seen)
-			{
-				Instance = instance;
-				Seen = seen;
-			}
-
-			internal InstanceCachePair Replace(string instance, DateTimeOffset seen)
-			{
-				Instance = instance;
-				Seen = seen;
-				return this;
-			}
 		}
 
 		public bool LastHeavy { get; set; } = false;
