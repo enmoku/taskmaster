@@ -24,9 +24,9 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
+using Serilog;
 using System;
 using System.Windows.Forms;
-using Serilog;
 
 namespace Taskmaster.UI.Config
 {
@@ -106,7 +106,7 @@ namespace Taskmaster.UI.Config
 			layout.Controls.Add(iopriority);
 
 			// NGEN Native Image
-			
+
 			var process = System.Diagnostics.Process.GetCurrentProcess();
 			bool nativeImageLoaded = MKAh.Program.NativeImage.Exists(process);
 

@@ -87,7 +87,7 @@ namespace Taskmaster.UI.Extensions
 		public TextBox()
 		{
 			DoubleBuffered = true;
-			
+
 			SetStyle(
 				ControlStyles.OptimizedDoubleBuffer | ControlStyles.AllPaintingInWmPaint | ControlStyles.EnableNotifyMessage,
 				true);

@@ -24,6 +24,9 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
+using MKAh;
+using MKAh.Logic;
+using Serilog;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -33,9 +36,6 @@ using System.Management;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using MKAh;
-using MKAh.Logic;
-using Serilog;
 using Ini = MKAh.Ini;
 
 namespace Taskmaster.Process
@@ -238,9 +238,9 @@ namespace Taskmaster.Process
 			else if (!x.LastHeavy && y.LastHeavy)
 				return XDown;
 
-			if (x.Load-.2f > y.Load)
+			if (x.Load - .2f > y.Load)
 				return YDown;
-			if (x.Load < y.Load-.2f)
+			if (x.Load < y.Load - .2f)
 				return XDown;
 
 			if (x.Heavy > y.Heavy)
@@ -2155,7 +2155,7 @@ namespace Taskmaster.Process
 								info.HookExit();
 
 								ExclusiveEnabled = info.Exclusive = true;
-								
+
 								foreach (var service in Services)
 									service.Stop(service.FullDisable);
 							}

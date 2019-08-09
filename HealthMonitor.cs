@@ -24,12 +24,12 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
+using MKAh;
+using Serilog;
 using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
-using MKAh;
-using Serilog;
 using Windows = MKAh.Wrapper.Windows;
 
 namespace Taskmaster
@@ -563,7 +563,7 @@ namespace Taskmaster
 
 							if (!PressureAlleviatedBlurp && pressure <= 0.95d)
 							{
-								Log.Information($"<Memory> Pressure alleviated (remaining: {pressure * 100:N1} %) – {HumanInterface.ByteString(memfreeb, iec:true)} free.");
+								Log.Information($"<Memory> Pressure alleviated (remaining: {pressure * 100:N1} %) – {HumanInterface.ByteString(memfreeb, iec: true)} free.");
 								PressureAlleviatedBlurp = true;
 							}
 						}

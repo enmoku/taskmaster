@@ -24,11 +24,11 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
+using MKAh;
+using Serilog;
 using System;
 using System.IO;
 using System.Threading.Tasks;
-using MKAh;
-using Serilog;
 
 namespace Taskmaster
 {

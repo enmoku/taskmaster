@@ -24,16 +24,16 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-using System;
-using System.Diagnostics;
 using MKAh;
 using Serilog;
+using System;
+using System.Diagnostics;
 
 namespace Taskmaster.Process
 {
 	using System.Text;
-    using System.Threading.Tasks;
-    using static Taskmaster;
+	using System.Threading.Tasks;
+	using static Taskmaster;
 
 	public class WindowChangedArgs : EventArgs
 	{
@@ -381,7 +381,7 @@ namespace Taskmaster.Process
 
 			// Window title, we don't care tbh.
 
-			 // get title? not really useful for most things
+			// get title? not really useful for most things
 			return (global::Taskmaster.NativeMethods.GetWindowText(hwnd, buff, nChars) > 0) ? buff.ToString() : string.Empty;
 		}
 

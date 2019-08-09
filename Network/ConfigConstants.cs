@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace Taskmaster.Network
+﻿namespace Taskmaster.Network
 {
 	internal static partial class Constants
 	{
@@ -13,7 +7,7 @@ namespace Taskmaster.Network
 		public const string DNSUpdating = "DNS Updating";
 		public const string Host = "Host";
 
-		public const string LastKnownIPv4 =  "Last IPv4";
+		public const string LastKnownIPv4 = "Last IPv4";
 		public const string LastKnownIPv6 = "Last IPv6";
 
 		public const string LastAttempt = "Last attempt";

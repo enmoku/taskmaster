@@ -24,12 +24,12 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
+using MKAh;
+using Serilog;
 using System;
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Threading.Tasks;
-using MKAh;
-using Serilog;
 using Windows = MKAh.Wrapper.Windows;
 
 namespace Taskmaster
@@ -97,23 +97,23 @@ namespace Taskmaster
 		public void LoadConfig()
 		{
 			using var corecfg = Config.Load(CoreConfigFilename);
-				// SAMPLING
-				// this really should be elsewhere
-				var hwsec = corecfg.Config[HumanReadable.Hardware.Section];
+			// SAMPLING
+			// this really should be elsewhere
+			var hwsec = corecfg.Config[HumanReadable.Hardware.Section];
 
-				var sampleinterval_t = hwsec.GetOrSet(HumanReadable.Hardware.CPU.Settings.SampleInterval, 2)
-					.InitComment("1 to 15, in seconds. Frequency at which CPU usage is sampled. Recommended value: 1 to 5 seconds.")
-					.Int.Constrain(1, 15);
-				SampleInterval = TimeSpan.FromSeconds(sampleinterval_t);
+			var sampleinterval_t = hwsec.GetOrSet(HumanReadable.Hardware.CPU.Settings.SampleInterval, 2)
+				.InitComment("1 to 15, in seconds. Frequency at which CPU usage is sampled. Recommended value: 1 to 5 seconds.")
+				.Int.Constrain(1, 15);
+			SampleInterval = TimeSpan.FromSeconds(sampleinterval_t);
 
-				SampleCount = hwsec.GetOrSet(HumanReadable.Hardware.CPU.Settings.SampleCount, 5)
-					.InitComment("3 to 30. Number of CPU samples to keep. Recommended value is: Count * Interval <= 30 seconds")
-					.Int.Constrain(3, 30);
+			SampleCount = hwsec.GetOrSet(HumanReadable.Hardware.CPU.Settings.SampleCount, 5)
+				.InitComment("3 to 30. Number of CPU samples to keep. Recommended value is: Count * Interval <= 30 seconds")
+				.Int.Constrain(3, 30);
 
-				var exsec = corecfg.Config[Constants.Experimental];
-				CPULoaderMonitoring = exsec.Get("CPU loaders")?.Bool ?? false;
+			var exsec = corecfg.Config[Constants.Experimental];
+			CPULoaderMonitoring = exsec.Get("CPU loaders")?.Bool ?? false;
 
-				Log.Information($"<CPU> Sampler: { SampleInterval.TotalSeconds:N0}s × {SampleCount.ToString()} = {SampleCount * SampleInterval.TotalSeconds:N0}s observation period");
+			Log.Information($"<CPU> Sampler: { SampleInterval.TotalSeconds:N0}s × {SampleCount.ToString()} = {SampleCount * SampleInterval.TotalSeconds:N0}s observation period");
 		}
 
 		public void SaveConfig()

@@ -29,8 +29,6 @@ using System.Runtime.InteropServices;
 
 namespace Taskmaster.Process
 {
-	using static Taskmaster;
-
 	public static partial class NativeMethods
 	{
 		[DllImport("kernel32.dll", CharSet = CharSet.Auto)] // SetLastError = true
@@ -193,7 +191,7 @@ namespace Taskmaster.Process
 			WRITE_OWNER = 0x00080000L, // Right to change owner
 
 			// winnt.h additional standard rights defined as combinations of the above
-			STANDARD_RIGHTS_ALL = DELETE | READ_CONTROL | WRITE_DAC | WRITE_OWNER | SYNCHRONIZE,
+			STANDARD_RIGHTS_ALL = DELETE | READ_CONTROL | WRITE_DAC | WRITE_OWNER | SYNCHRONIZE,
 			STANDARD_RIGHTS_EXECUTE = READ_CONTROL,
 			STANDARD_RIGHTS_READ = READ_CONTROL,
 			STANDARD_RIGHTS_REQUIRED = DELETE | READ_CONTROL | WRITE_DAC | WRITE_OWNER,

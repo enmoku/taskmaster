@@ -8,8 +8,8 @@ namespace External
 	// Modified by MKAh, 2019
 
 	using System;
-	using System.Runtime.InteropServices;
 	using System.IO;
+	using System.Runtime.InteropServices;
 
 	/// <summary>
 	/// Reads in the header information of the Portable Executable format.

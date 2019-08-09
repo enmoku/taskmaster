@@ -24,14 +24,14 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
+using MKAh;
+using MKAh.Logic;
+using Serilog;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Threading.Tasks;
 using System.Windows.Forms;
-using MKAh;
-using MKAh.Logic;
-using Serilog;
 
 namespace Taskmaster.UI.Config
 {
@@ -1074,7 +1074,7 @@ namespace Taskmaster.UI.Config
 
 			if (affinityMask.Value >= 0 && idealAffinity.Value > 0
 				&& !Bit.IsSet(Convert.ToInt32(affinityMask.Value).Replace(0, Process.Utility.FullCPUMask), Convert.ToInt32(idealAffinity.Value) - 1))
-					sbs.AppendLine("Affinity ideal is not within defined affinity.");
+				sbs.AppendLine("Affinity ideal is not within defined affinity.");
 
 			if (ioPriority != null && ioPriority.SelectedIndex != 0)
 			{

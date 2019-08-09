@@ -24,6 +24,8 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
+using MKAh;
+using Serilog;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -32,8 +34,6 @@ using System.Net;
 using System.Net.NetworkInformation;
 using System.Text;
 using System.Threading.Tasks;
-using MKAh;
-using Serilog;
 using Windows = MKAh.Wrapper.Windows;
 
 namespace Taskmaster.Network
@@ -1078,7 +1078,7 @@ namespace Taskmaster.Network
 			{
 				if (ReportOngoing) IncreaseReportDelay();
 
-				NetworkStatusReport?.Change(NetworkReportDelay, System.Threading.Timeout.InfiniteTimeSpan);
+				NetworkStatusReport.Change(NetworkReportDelay, System.Threading.Timeout.InfiniteTimeSpan);
 			}
 		}
 

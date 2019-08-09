@@ -24,9 +24,9 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
+using Serilog;
 using System;
 using System.Threading.Tasks;
-using Serilog;
 
 namespace Taskmaster
 {
@@ -350,7 +350,7 @@ namespace Taskmaster
 		}
 
 		~HardwareMonitor() => Dispose(false);
-		
+
 		public void ShutdownEvent(object sender, EventArgs ea) => Stop();
 		#endregion
 	}

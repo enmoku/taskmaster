@@ -24,6 +24,9 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
+using MKAh;
+using MKAh.Logic;
+using Serilog;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -32,9 +35,6 @@ using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using MKAh;
-using MKAh.Logic;
-using Serilog;
 using Ini = MKAh.Ini;
 
 namespace Taskmaster.Process
@@ -616,7 +616,7 @@ namespace Taskmaster.Process
 					app.TryRemove("Background priority");
 					app.TryRemove("Background affinity");
 					break;
-					case ForegroundMode.Full:
+				case ForegroundMode.Full:
 				case ForegroundMode.Standard:
 					if (Foreground == ForegroundMode.Standard) app.TryRemove("Background powerdown");
 					app["Foreground mode"].Int = (int)Foreground;

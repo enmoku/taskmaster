@@ -24,9 +24,9 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
+using Serilog;
 using System;
 using System.Collections.Generic;
-using Serilog;
 
 namespace Taskmaster.Configuration
 {
@@ -110,7 +110,7 @@ namespace Taskmaster.Configuration
 			}
 		}
 
-		public void Unload(File config, bool save=true)
+		public void Unload(File config, bool save = true)
 		{
 			lock (config_lock)
 			{

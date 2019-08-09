@@ -24,15 +24,13 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
+using MKAh;
 using System;
 using System.Collections;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows.Forms;
-using MKAh;
 
 namespace Taskmaster.UI
 {
@@ -189,7 +187,7 @@ namespace Taskmaster.UI
 		bool DirtyList = false;
 
 		readonly System.Timers.Timer timer = new System.Timers.Timer();
-		
+
 		readonly ConcurrentDictionary<string, LoadListPair> LoaderInfos = new ConcurrentDictionary<string, LoadListPair>(1, 5);
 
 		public void LoaderEvent(object sender, Process.LoaderEvent ea)
@@ -304,7 +302,7 @@ namespace Taskmaster.UI
 	{
 		public Process.InstanceGroupLoad Load { get; set; }
 
-		public ListViewItem ListItem { get; set;  }
+		public ListViewItem ListItem { get; set; }
 
 		public LoadListPair(Process.InstanceGroupLoad info, ListViewItem item)
 		{

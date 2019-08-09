@@ -24,15 +24,15 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
+using Serilog;
+using Serilog.Core;
+using Serilog.Events;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Text;
 using System.Windows.Forms;
-using Serilog;
-using Serilog.Core;
-using Serilog.Events;
 
 namespace Taskmaster
 {

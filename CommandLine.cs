@@ -26,7 +26,6 @@
 
 using System;
 using System.Diagnostics;
-using Serilog;
 
 namespace Taskmaster
 {

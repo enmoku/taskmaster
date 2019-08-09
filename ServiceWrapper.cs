@@ -24,10 +24,10 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
+using Serilog;
 using System;
 using System.Management;
 using System.ServiceProcess;
-using Serilog;
 
 namespace Taskmaster
 {

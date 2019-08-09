@@ -24,14 +24,14 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
+using MKAh;
+using Serilog;
+using Serilog.Events;
 using System;
 using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using MKAh;
-using Serilog;
-using Serilog.Events;
 
 namespace Taskmaster
 {
@@ -492,9 +492,10 @@ namespace Taskmaster
 
 			// Reflection. Really silly way to find out how many components we have.
 			int componentsToLoad = (from asm in AppDomain.CurrentDomain.GetAssemblies().AsParallel()
-								 from t in GetTypes(asm)
-								 let len = t.GetCustomAttributes(typeof(ComponentAttribute), false).Length
-								 where len > 0 select len).Sum();
+									from t in GetTypes(asm)
+									let len = t.GetCustomAttributes(typeof(ComponentAttribute), false).Length
+									where len > 0
+									select len).Sum();
 
 			componentsToLoad++; // cache
 			// above should result in 11
@@ -533,9 +534,10 @@ namespace Taskmaster
 
 			Task[] init = new[] { PowMan, CpuMon, ProcMon, FgMon, NetMon, StorMon, HpMon, HwMon, /*AlMan,*/ SelfMaint };
 
-			Exception[] cex=null;
+			Exception[] cex = null;
 			if (cts.IsCancellationRequested) throw new InitFailure("Cancelled?", (cex?[0]), cex);
-			foreach (var t in init) t.ContinueWith(t => {
+			foreach (var t in init) t.ContinueWith(t =>
+			{
 				cex = t.Exception?.InnerExceptions.ToArray() ?? null;
 				Logging.DebugMsg("Module loading failed");
 				cts.Cancel();
@@ -621,7 +623,7 @@ namespace Taskmaster
 
 				NetMon.ContinueWith((_, _discard) => netmonitor.Tray = trayaccess, TaskContinuationOptions.OnlyOnRanToCompletion, cts.Token);
 
-				if (AudioManagerEnabled) ProcMon.ContinueWith((_,_discard) => audiomanager?.Hook(processmanager), TaskContinuationOptions.OnlyOnRanToCompletion, cts.Token);
+				if (AudioManagerEnabled) ProcMon.ContinueWith((_, _discard) => audiomanager?.Hook(processmanager), TaskContinuationOptions.OnlyOnRanToCompletion, cts.Token);
 
 				// WAIT for component initialization
 				if (!Task.WaitAll(init, 5_000))

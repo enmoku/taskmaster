@@ -24,11 +24,11 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
+using Serilog;
 using System;
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Threading.Tasks;
-using Serilog;
 
 namespace Taskmaster.Audio
 {
@@ -40,7 +40,7 @@ namespace Taskmaster.Audio
 	[Component(RequireMainThread = true)]
 	public class Manager : Component, IDisposal
 	{
-		readonly System.Threading.Thread Context = null;
+		readonly System.Threading.Thread Context;
 
 		public event EventHandler<DeviceStateEventArgs> StateChanged;
 		public event EventHandler<DefaultDeviceEventArgs> DefaultChanged;
@@ -69,7 +69,7 @@ namespace Taskmaster.Audio
 		/// </summary>
 		public Device RecordingDevice { get; private set; } = null;
 
-		DeviceNotificationClient notificationClient = null;
+		readonly DeviceNotificationClient notificationClient;
 
 		//public event EventHandler<ProcessEx> OnNewSession;
 
@@ -86,11 +86,13 @@ namespace Taskmaster.Audio
 
 			Enumerator = new NAudio.CoreAudioApi.MMDeviceEnumerator();
 
-			notificationClient = new DeviceNotificationClient();
-			notificationClient.StateChanged = StateChangeProxy;
-			notificationClient.DefaultDevice = DefaultDeviceProxy;
-			notificationClient.Added = DeviceAddedProxy;
-			notificationClient.Removed = DeviceRemovedProxy;
+			notificationClient = new DeviceNotificationClient
+			{
+				StateChanged = StateChangeProxy,
+				DefaultDevice = DefaultDeviceProxy,
+				Added = DeviceAddedProxy,
+				Removed = DeviceRemovedProxy
+			};
 
 			GetDefaultDevice();
 			EnumerateDevices();
@@ -129,7 +131,7 @@ namespace Taskmaster.Audio
 		public void StartVolumePolling() => volumeTimer.Start();
 		public void StopVolumePolling() => volumeTimer.Stop();
 
-		void StateChangeProxy(string deviceId, NAudio.CoreAudioApi.DeviceState state, Guid? guid= null)
+		void StateChangeProxy(string deviceId, NAudio.CoreAudioApi.DeviceState state, Guid? guid = null)
 		{
 			if (disposed) return;
 
@@ -149,7 +151,6 @@ namespace Taskmaster.Audio
 			catch (Exception ex)
 			{
 				Logging.Stacktrace(ex);
-				CloseNotificationClient();
 			}
 		}
 
@@ -178,7 +179,6 @@ namespace Taskmaster.Audio
 			catch (Exception ex)
 			{
 				Logging.Stacktrace(ex);
-				CloseNotificationClient();
 			}
 		}
 
@@ -202,7 +202,6 @@ namespace Taskmaster.Audio
 			catch (Exception ex)
 			{
 				Logging.Stacktrace(ex);
-				CloseNotificationClient();
 			}
 		}
 
@@ -239,7 +238,6 @@ namespace Taskmaster.Audio
 			catch (Exception ex)
 			{
 				Logging.Stacktrace(ex);
-				CloseNotificationClient();
 			}
 			finally
 			{
@@ -254,12 +252,9 @@ namespace Taskmaster.Audio
 		{
 			Logging.DebugMsg("CloseNotificationClient");
 
-			if (notificationClient is null) return;
-
 			ExecuteOnMainThread(new Action(() =>
 			{
 				Enumerator?.UnregisterEndpointNotificationCallback(notificationClient);
-				notificationClient = null;
 			}));
 		}
 

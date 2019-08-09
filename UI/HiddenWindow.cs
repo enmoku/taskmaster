@@ -24,11 +24,9 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-using System.Diagnostics;
-
 namespace Taskmaster
 {
-    using static Taskmaster;
+	using static Taskmaster;
 
 	/// <summary>
 	/// Core window for TM.

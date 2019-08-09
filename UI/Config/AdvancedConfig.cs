@@ -24,10 +24,10 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-using System;
-using System.Windows.Forms;
 using MKAh;
 using Serilog;
+using System;
+using System.Windows.Forms;
 
 namespace Taskmaster.UI.Config
 {

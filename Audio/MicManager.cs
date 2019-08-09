@@ -24,14 +24,14 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
+using MKAh;
+using NAudio.CoreAudioApi;
+using Serilog;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
-using MKAh;
-using NAudio.CoreAudioApi;
-using Serilog;
 
 namespace Taskmaster.Audio
 {

@@ -24,6 +24,8 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
+using MKAh;
+using Serilog;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -31,8 +33,6 @@ using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Forms;
-using MKAh;
-using Serilog;
 
 namespace Taskmaster.UI
 {
@@ -1012,7 +1012,7 @@ namespace Taskmaster.UI
 		void CopyIPv4AddressToClipboard(object _, EventArgs _ea)
 		{
 			if (NetworkDevices.SelectedItems.Count == 1)
-					Clipboard.SetText(NetworkDevices.SelectedItems[0].SubItems[IPv4Column].Text, TextDataFormat.UnicodeText);
+				Clipboard.SetText(NetworkDevices.SelectedItems[0].SubItems[IPv4Column].Text, TextDataFormat.UnicodeText);
 		}
 
 		void CopyIPv6AddressToClipboard(object _, EventArgs _ea)
@@ -3982,7 +3982,7 @@ namespace Taskmaster.UI
 
 			NetworkDevices.Items.Clear();
 
-			var interfaces = netmonitor.GetInterfaces();
+			var interfaces = netmonitor.InterfaceList;
 
 			ListViewItem[] niclist = new ListViewItem[interfaces.Count];
 
@@ -4013,7 +4013,7 @@ namespace Taskmaster.UI
 					ip4li.ForeColor = System.Drawing.SystemColors.GrayText;
 
 				var ip6li = li.SubItems[IPv6Column];
-				if (dev.IPv6Address.IsIPv6LinkLocal || dev.IPv6Address.IsIPv6SiteLocal)
+				if (dev.IPv6Address.IsIPv6LinkLocal || dev.IPv6Address.IsIPv6SiteLocal)
 					ip6li.ForeColor = System.Drawing.SystemColors.GrayText;
 			}
 
@@ -4281,7 +4281,7 @@ namespace Taskmaster.UI
 			{
 				if (Trace) Log.Verbose("Disposing main window...");
 
-				Logging.DebugMsg("<Window> Log list cache - hits: " + LogListCache.Hits.ToString() + ", misses: " + LogListCache.Misses.ToString() + ", ratio: " + ((float)LogListCache.Hits/LogListCache.Misses).ToString("N1"));
+				Logging.DebugMsg("<Window> Log list cache - hits: " + LogListCache.Hits.ToString() + ", misses: " + LogListCache.Misses.ToString() + ", ratio: " + ((float)LogListCache.Hits / LogListCache.Misses).ToString("N1"));
 
 				UItimer.Stop();
 

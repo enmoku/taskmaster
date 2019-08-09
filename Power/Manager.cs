@@ -24,16 +24,16 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
+using Microsoft.Win32;
+using MKAh;
+using MKAh.Human.Readable;
+using Serilog;
 using System;
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
-using Microsoft.Win32;
-using MKAh;
-using MKAh.Human.Readable;
-using Serilog;
 
 namespace Taskmaster.Power
 {
@@ -1081,7 +1081,7 @@ namespace Taskmaster.Power
 		static readonly Guid PowerSaver = new Guid("a1841308-3541-4fab-bc81-f71556f20b4a"); // SCHEME_MAX
 
 		public void SetRestoreMode(RestoreModeMethod method, Mode mode)
-			=> 	RestoreMode = (RestoreMethod = method) switch
+			=> RestoreMode = (RestoreMethod = method) switch
 			{
 				RestoreModeMethod.Original => OriginalMode,
 				RestoreModeMethod.Saved => Mode.Undefined,

@@ -30,7 +30,7 @@ namespace Taskmaster.Audio
 {
 	public class DeviceEventArgs
 	{
-		public DeviceEventArgs(string id, Guid? guid = null, Device device=null)
+		public DeviceEventArgs(string id, Guid? guid = null, Device device = null)
 		{
 			ID = id;
 			GUID = guid ?? Utility.DeviceIdToGuid(id);
