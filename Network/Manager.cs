@@ -42,15 +42,25 @@ namespace Taskmaster.Network
 
 	public class TrafficDelta
 	{
-		public float Input = float.NaN;
-		public float Output = float.NaN;
-		public float Queue = float.NaN;
-		public float Packets = float.NaN;
+		public readonly float Input;
+		public readonly float Output;
+		public readonly float Queue;
+		public readonly float Packets;
+
+		public TrafficDelta(float input = float.NaN, float output = float.NaN , float queue = float.NaN , float packets = float.NaN)
+		{
+			Input = input;
+			Output = output;
+			Queue = queue;
+			Packets = packets;
+		}
 	}
 
 	public class TrafficEventArgs : EventArgs
 	{
-		public TrafficDelta Delta = null;
+		public readonly TrafficDelta Delta;
+
+		public TrafficEventArgs(TrafficDelta delta) => Delta = delta;
 	}
 
 	[Component(RequireMainThread = false)]
@@ -193,8 +203,6 @@ namespace Taskmaster.Network
 
 			LoadConfig();
 
-			_ = CurrentInterfaceList.Value;
-
 			SampleTimer = new System.Timers.Timer(PacketStatTimerInterval * 1_000);
 			SampleTimer.Elapsed += AnalyzeTrafficBehaviour;
 			//SampleTimer.Elapsed += DeviceSampler;
@@ -224,7 +232,7 @@ namespace Taskmaster.Network
 
 			lastErrorReport = DateTimeOffset.UtcNow; // crude
 
-			StopUpdateNetworkState(); // initialize
+			NetworkStatusReport = new System.Threading.Timer(UpdateNetworkState, null, System.Threading.Timeout.Infinite, System.Threading.Timeout.Infinite);
 
 			if (DynamicDNS) StartDynDNSUpdates();
 
@@ -235,7 +243,6 @@ namespace Taskmaster.Network
 		}
 
 		readonly System.Threading.Timer DynDNSTimer;
-
 
 		async Task StartDynDNSUpdates()
 		{
@@ -387,20 +394,13 @@ namespace Taskmaster.Network
 			return true;
 		}
 
-		public TrafficDelta GetTraffic
-			=> new TrafficDelta()
-			{
-				Input = NetInTrans?.Value ?? float.NaN,
-				Output = NetOutTrans?.Value ?? float.NaN,
-				Queue = NetQueue?.Value ?? float.NaN,
-				Packets = NetPackets?.Value ?? float.NaN,
-			};
+		public TrafficDelta GetTraffic => new TrafficDelta(NetInTrans.Value, NetOutTrans.Value, NetQueue.Value, NetPackets.Value);
 
 		public string GetDeviceData(string devicename)
 		{
 			if (disposed) throw new ObjectDisposedException(nameof(Manager), "GetDeviceData called after NetManager was disposed.");
 
-			foreach (var device in CurrentInterfaceList.Value)
+			foreach (var device in InterfaceList)
 			{
 				if (device.Name.Equals(devicename))
 				{
@@ -416,9 +416,117 @@ namespace Taskmaster.Network
 		readonly LinearMeter PacketWarning = new LinearMeter(15); // UNUSED
 		readonly LinearMeter ErrorReports = new LinearMeter(5, 4);
 
-		Lazy<List<Device>> CurrentInterfaceList = null;
+		public List<Device> InterfaceList { get; private set; } = null;
+
+		/// <summary>
+		/// Resets <see cref="InterfaceList"/>.
+		/// </summary>
+		void InvalidateInterfaceList() => InterfaceList = RecreateInterfaceList();
+
+		public List<Device> GetInterfaces() => InterfaceList;
+
+		List<Device> RecreateInterfaceList()
+		{
+			if (disposed) throw new ObjectDisposedException(nameof(Manager), "UpdateInterfaces called after NetManager was disposed.");
+
+			var ifacelistt = new List<Device>(2);
+
+			try
+			{
+				if (DebugNet) Log.Verbose("<Network> Enumerating network interfaces...");
+
+				// var ifacelist = new List<string[]>();
+
+				lock (address_lock)
+				{
+					var index = 0;
+					var adapters = NetworkInterface.GetAllNetworkInterfaces();
+					foreach (NetworkInterface dev in adapters)
+					{
+						var ti = index++;
+						if (dev.NetworkInterfaceType == NetworkInterfaceType.Loopback || dev.NetworkInterfaceType == NetworkInterfaceType.Tunnel)
+							continue;
+
+						var stats = dev.GetIPStatistics();
+
+						OperationalStatus ipv4status = OperationalStatus.Unknown, ipv6status = OperationalStatus.Unknown;
+
+						bool found4 = false, found6 = false;
+						IPAddress _ipv4 = IPAddress.None, _ipv6 = IPAddress.IPv6None;
+						foreach (UnicastIPAddressInformation ip in dev.GetIPProperties().UnicastAddresses)
+						{
+							if (System.Net.IPAddress.IsLoopback(ip.Address)) continue;
+
+							switch (ip.Address.AddressFamily)
+							{
+								case System.Net.Sockets.AddressFamily.InterNetwork:
+									var address = ip.Address.GetAddressBytes();
+									if (!(address[0] == 169 && address[1] == 254) && !(address[0] == 198 && address[1] == 168)) // ignore link-local
+									{
+										_ipv4 = ip.Address;
+										found4 = true;
+										ipv4status = dev.OperationalStatus;
+									}
+									break;
+								case System.Net.Sockets.AddressFamily.InterNetworkV6:
+									if (!ip.Address.IsIPv6LinkLocal && !ip.Address.IsIPv6SiteLocal)
+									{
+										_ipv6 = ip.Address;
+										found6 = true;
+										ipv6status = dev.OperationalStatus;
+									}
+									break;
+							}
+
+							if (found4 && found6) break; // kinda bad, but meh
+						}
+
+						var devi = new Device
+						{
+							Index = ti,
+							Id = Guid.Parse(dev.Id),
+							Name = dev.Name,
+							Type = dev.NetworkInterfaceType,
+							Speed = dev.Speed,
+							IPv4Address = _ipv4,
+							IPv6Address = _ipv6,
+							IPv4Status = ipv4status,
+							IPv6Status = ipv6status,
+						};
+
+						if (_ipv4 != IPAddress.None)
+						{
+							IPv4Address = _ipv4;
+							IPv4Status = ipv4status;
+							//IPv4Interface = dev;
+						}
+
+						if (_ipv6 != IPAddress.IPv6None)
+						{
+							IPv6Address = _ipv6;
+							IPv6Status = ipv6status;
+							//IPv6Interface = dev;
+						}
+
+						devi.Incoming.From(stats, true);
+						devi.Outgoing.From(stats, false);
+						// devi.PrintStats();
+						ifacelistt.Add(devi);
+
+						if (DebugNet) Log.Verbose("<Network> Interface: " + dev.Name);
+					}
+				}
+			}
+			catch (Exception ex)
+			{
+				Logging.Stacktrace(ex);
+			}
+
+			return ifacelistt;
+		}
 
 		int TrafficAnalysisLimiter = 0;
+		MKAh.Lock.Monitor TrafficAnalysisLock = new MKAh.Lock.Monitor();
 
 		long errorsSinceLastReport = 0;
 		DateTimeOffset lastErrorReport;
@@ -427,15 +535,16 @@ namespace Taskmaster.Network
 		{
 			if (disposed) return;
 
-			if (!Atomic.Lock(ref TrafficAnalysisLimiter)) return;
+			if (!TrafficAnalysisLock.TryLock()) return;
+			using var sl = TrafficAnalysisLock.ScopedUnlock();
 
 			try
 			{
 				//PacketWarning.Drain();
 
-				var oldifaces = CurrentInterfaceList.Value;
+				var oldifaces = InterfaceList;
 				InvalidateInterfaceList(); // force refresh
-				var ifaces = CurrentInterfaceList.Value;
+				var ifaces = InterfaceList;
 
 				if (!oldifaces.Count.Equals(ifaces.Count))
 				{
@@ -447,10 +556,13 @@ namespace Taskmaster.Network
 
 				for (int index = 0; index < ifaces.Count; index++)
 				{
-					var nout = ifaces[index].Outgoing;
-					var nin = ifaces[index].Incoming;
-					var oldout = oldifaces[index].Outgoing;
-					var oldin = oldifaces[index].Incoming;
+					var ndev = ifaces[index];
+					var nname = ndev.Name;
+					var nout = ndev.Outgoing;
+					var nin = ndev.Incoming;
+					var olddev = oldifaces[index];
+					var oldout = olddev.Outgoing;
+					var oldin = olddev.Incoming;
 
 					long totalerrors = nout.Errors + nin.Errors,
 						totaldiscards = nout.Errors + nin.Errors,
@@ -490,7 +602,7 @@ namespace Taskmaster.Network
 
 					if (reportErrors)
 					{
-						var sbs = new StringBuilder(ifaces[index].Name, 256).Append(" is suffering from traffic errors! (");
+						var sbs = new StringBuilder(nname, 256).Append(" is suffering from traffic errors! (");
 
 						bool longProblem = (errorsSinceLastReport > errorsInSample);
 
@@ -513,7 +625,7 @@ namespace Taskmaster.Network
 					{
 						if (period.TotalMinutes > 5 && errorsSinceLastReport > 0) // report anyway
 						{
-							Log.Warning($"<Network> {ifaces[index].Name} had some traffic errors (+{errorsSinceLastReport}; period: {pmins:N1} minutes)");
+							Log.Warning($"<Network> {nname} had some traffic errors (+{errorsSinceLastReport}; period: {pmins:N1} minutes)");
 							errorsSinceLastReport = 0;
 							lastErrorReport = now;
 
@@ -536,10 +648,6 @@ namespace Taskmaster.Network
 			catch (Exception ex)
 			{
 				Logging.Stacktrace(ex);
-			}
-			finally
-			{
-				Atomic.Unlock(ref TrafficAnalysisLimiter);
 			}
 		}
 
@@ -564,7 +672,7 @@ namespace Taskmaster.Network
 		/// Current uptime in minutes.
 		/// </summary>
 		/// <value>The uptime.</value>
-		public TimeSpan Uptime => InternetAvailable ? (DateTimeOffset.UtcNow - LastUptimeStart) : TimeSpan.Zero;
+		public TimeSpan Uptime => InternetAvailable ? LastUptimeStart.To(DateTimeOffset.UtcNow) : TimeSpan.Zero;
 
 		/// <summary>
 		/// Returns uptime in minutes or positive infinite if no average is known
@@ -772,119 +880,6 @@ namespace Taskmaster.Network
 
 		//NetworkInterface IPv4Interface, IPv6Interface;
 
-		/// <summary>
-		/// Resets <see cref="CurrentInterfaceList"/>.
-		/// </summary>
-		void InvalidateInterfaceList() => CurrentInterfaceList = new Lazy<List<Device>>(RecreateInterfaceList, false);
-
-		public List<Device> GetInterfaces()
-		{
-			if (disposed) throw new ObjectDisposedException(nameof(Manager), "GetInterfaces called after NetManager was disposed.");
-
-			InvalidateInterfaceList();
-			return CurrentInterfaceList.Value;
-		}
-
-		List<Device> RecreateInterfaceList()
-		{
-			if (disposed) throw new ObjectDisposedException(nameof(Manager), "UpdateInterfaces called after NetManager was disposed.");
-
-			var ifacelistt = new List<Device>(2);
-
-			try
-			{
-				if (DebugNet) Log.Verbose("<Network> Enumerating network interfaces...");
-
-				// var ifacelist = new List<string[]>();
-
-				lock (address_lock)
-				{
-					var index = 0;
-					var adapters = NetworkInterface.GetAllNetworkInterfaces();
-					foreach (NetworkInterface dev in adapters)
-					{
-						var ti = index++;
-						if (dev.NetworkInterfaceType == NetworkInterfaceType.Loopback || dev.NetworkInterfaceType == NetworkInterfaceType.Tunnel)
-							continue;
-
-						var stats = dev.GetIPStatistics();
-
-						OperationalStatus ipv4status = OperationalStatus.Unknown, ipv6status = OperationalStatus.Unknown;
-
-						bool found4 = false, found6 = false;
-						IPAddress _ipv4 = IPAddress.None, _ipv6 = IPAddress.IPv6None;
-						foreach (UnicastIPAddressInformation ip in dev.GetIPProperties().UnicastAddresses)
-						{
-							if (System.Net.IPAddress.IsLoopback(ip.Address)) continue;
-
-							switch (ip.Address.AddressFamily)
-							{
-								case System.Net.Sockets.AddressFamily.InterNetwork:
-									var address = ip.Address.GetAddressBytes();
-									if (!(address[0] == 169 && address[1] == 254) && !(address[0] == 198 && address[1] == 168)) // ignore link-local
-									{
-										_ipv4 = ip.Address;
-										found4 = true;
-										ipv4status = dev.OperationalStatus;
-									}
-									break;
-								case System.Net.Sockets.AddressFamily.InterNetworkV6:
-									if (!ip.Address.IsIPv6LinkLocal && !ip.Address.IsIPv6SiteLocal)
-									{
-										_ipv6 = ip.Address;
-										found6 = true;
-										ipv6status = dev.OperationalStatus;
-									}
-									break;
-							}
-
-							if (found4 && found6) break; // kinda bad, but meh
-						}
-
-						var devi = new Device
-						{
-							Index = ti,
-							Id = Guid.Parse(dev.Id),
-							Name = dev.Name,
-							Type = dev.NetworkInterfaceType,
-							Speed = dev.Speed,
-							IPv4Address = _ipv4,
-							IPv6Address = _ipv6,
-							IPv4Status = ipv4status,
-							IPv6Status = ipv6status,
-						};
-
-						if (_ipv4 != IPAddress.None)
-						{
-							IPv4Address = _ipv4;
-							IPv4Status = ipv4status;
-							//IPv4Interface = dev;
-						}
-
-						if (_ipv6 != IPAddress.IPv6None)
-						{
-							IPv6Address = _ipv6;
-							IPv6Status = ipv6status;
-							//IPv6Interface = dev;
-						}
-
-						devi.Incoming.From(stats, true);
-						devi.Outgoing.From(stats, false);
-						// devi.PrintStats();
-						ifacelistt.Add(devi);
-
-						if (DebugNet) Log.Verbose("<Network> Interface: " + dev.Name);
-					}
-				}
-			}
-			catch (Exception ex)
-			{
-				Logging.Stacktrace(ex);
-			}
-
-			return ifacelistt;
-		}
-
 		// 
 		async void NetAddrChanged(object _, EventArgs _ea)
 		{
@@ -901,7 +896,7 @@ namespace Taskmaster.Network
 				IPAddress oldV6Address = IPv6Address;
 				IPAddress oldV4Address = IPv4Address;
 
-				GetInterfaces();
+				//InvalidateInterfaceList();
 				IPAddress newIPv4 = IPv4Address, newIPv6 = IPv6Address;
 
 				bool ipv4changed, ipv6changed, ipchanged = false;
@@ -956,64 +951,20 @@ namespace Taskmaster.Network
 		public void SetupEventHooks()
 		{
 			// initialize event handler's initial values
-			lock (NetworkStatus_lock)
-			{
-				InternetAvailable = false;
-				NetworkAvailable = NetworkInterface.GetIsNetworkAvailable();
-			}
-			StartUpdateNetworkState();
-			CheckInet().ConfigureAwait(false); // initialize
+			InternetAvailable = false;
+			NetworkAvailable = NetworkInterface.GetIsNetworkAvailable();
 
 			NetworkChange.NetworkAvailabilityChanged += NetworkChanged;
 			NetworkChange.NetworkAddressChanged += NetAddrChanged;
+
+			StartUpdateNetworkState();
+			CheckInet().ConfigureAwait(false); // initialize
 		}
 
 		bool LastReportedNetAvailable = false;
 		bool LastReportedInetAvailable = false;
 
 		DateTimeOffset LastNetReport = DateTimeOffset.MinValue;
-
-		void ReportNetAvailability()
-		{
-			if (disposed) throw new ObjectDisposedException(nameof(Manager), "ReportNetAvailability called after NetManager was disposed.");
-
-			Logging.DebugMsg("<Network> ReportNetAvailability - Network: " + NetworkAvailable + "; Internet: " + InternetAvailable);
-
-			if (!((LastReportedInetAvailable != InternetAvailable) || (LastReportedNetAvailable != NetworkAvailable)))
-				return; // bail out if nothing has changed since last report
-
-			LastReportedInetAvailable = InternetAvailable;
-			LastReportedNetAvailable = NetworkAvailable;
-
-			bool problems = !NetworkAvailable || !InternetAvailable;
-
-			var sbs = new StringBuilder(128)
-				.Append("<Network> Status: ")
-				.Append(NetworkAvailable ? HumanReadable.Hardware.Network.Connected : HumanReadable.Hardware.Network.Disconnected)
-				.Append(", Internet: ")
-				.Append(InternetAvailable ? HumanReadable.Hardware.Network.Connected : HumanReadable.Hardware.Network.Disconnected)
-				.Append(" - ");
-
-			if (!NetworkAvailable)
-				sbs.Append("Cable unplugged or router/modem down");
-			else if (!InternetAvailable)
-				sbs.Append("Route problems");
-			else
-			{
-				sbs.Append("All OK");
-				if (LastDowntimeStart != DateTimeOffset.MinValue)
-					sbs.Append(" – Downtime: ").Append(LastDowntimeStart.To(LastUptimeStart).ToString());
-			}
-
-			if (DebugNet)
-			{
-				sbs.Append(" – ").Append("IPv4(").Append(IPv4Status.ToString()).Append(')')
-					.Append(", IPv6(").Append(IPv6Status.ToString()).Append(')');
-			}
-
-			if (problems) Log.Warning(sbs.ToString());
-			else Log.Information(sbs.ToString());
-		}
 
 		/*
 		/// <summary>
@@ -1023,14 +974,14 @@ namespace Taskmaster.Network
 		*/
 
 		readonly object NetworkStatus_lock = new object();
-		System.Threading.Timer NetworkStatusReport = null;
+		System.Threading.Timer NetworkStatusReport;
 
 		TimeSpan NetworkReportDelay = TimeSpan.FromSeconds(2.2d);
 		DateTimeOffset LastNetworkReport = DateTimeOffset.MinValue;
 
 		bool ReportOngoing = false;
 
-		void UpdateNetworkState(object state)
+		void UpdateNetworkState(object _)
 		{
 			if (disposed) return;
 
@@ -1114,6 +1065,48 @@ namespace Taskmaster.Network
 				Log.Debug("<Net> Network changed but still as available as before.");
 		}
 
+		void ReportNetAvailability()
+		{
+			if (disposed) throw new ObjectDisposedException(nameof(Manager), "ReportNetAvailability called after NetManager was disposed.");
+
+			Logging.DebugMsg("<Network> ReportNetAvailability - Network: " + NetworkAvailable + "; Internet: " + InternetAvailable);
+
+			if (!((LastReportedInetAvailable != InternetAvailable) || (LastReportedNetAvailable != NetworkAvailable)))
+				return; // bail out if nothing has changed since last report
+
+			LastReportedInetAvailable = InternetAvailable;
+			LastReportedNetAvailable = NetworkAvailable;
+
+			bool problems = !NetworkAvailable || !InternetAvailable;
+
+			var sbs = new StringBuilder(128)
+				.Append("<Network> Status: ")
+				.Append(NetworkAvailable ? HumanReadable.Hardware.Network.Connected : HumanReadable.Hardware.Network.Disconnected)
+				.Append(", Internet: ")
+				.Append(InternetAvailable ? HumanReadable.Hardware.Network.Connected : HumanReadable.Hardware.Network.Disconnected)
+				.Append(" - ");
+
+			if (!NetworkAvailable)
+				sbs.Append("Cable unplugged or router/modem down");
+			else if (!InternetAvailable)
+				sbs.Append("Route problems");
+			else
+			{
+				sbs.Append("All OK");
+				if (LastDowntimeStart != DateTimeOffset.MinValue)
+					sbs.Append(" – Downtime: ").Append(LastDowntimeStart.To(LastUptimeStart).ToString());
+			}
+
+			if (DebugNet)
+			{
+				sbs.Append(" – ").Append("IPv4(").Append(IPv4Status.ToString()).Append(')')
+					.Append(", IPv6(").Append(IPv6Status.ToString()).Append(')');
+			}
+
+			if (problems) Log.Warning(sbs.ToString());
+			else Log.Information(sbs.ToString());
+		}
+
 		#region IDisposable Support
 		public event EventHandler<DisposedEventArgs> OnDisposed;
 
@@ -1135,6 +1128,10 @@ namespace Taskmaster.Network
 			if (disposing)
 			{
 				if (Trace) Log.Verbose("Disposing network monitor...");
+
+				StopDynDNSUpdates();
+
+				StopUpdateNetworkState();
 
 				DeviceSampling = null;
 				InternetStatusChange = null;
