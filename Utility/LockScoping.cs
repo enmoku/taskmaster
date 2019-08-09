@@ -65,12 +65,24 @@ namespace MKAh.Lock
 			Unlock();
 		}
 
+		/// <summary>
+		/// Waits for lock before returning a scoped lock that automatically unlocks on dispose.
+		/// <para>
+		/// Example: <code>using var scopedLock = lockMonitor.ScopedLock();</code>
+		/// </para>
+		/// </summary>
 		public MonitorScope ScopedLock()
 		{
 			Lock();
 
 			return new MonitorScope(this);
 		}
+
+		/// <summary>
+		/// Automatically unlocks when disposed.
+		/// </summary>
+		/// <returns></returns>
+		public MonitorScope ScopedUnlock() => new MonitorScope(this);
 
 		public MonitorScope TryScopedLock()
 		{
