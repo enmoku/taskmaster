@@ -77,7 +77,7 @@ namespace Taskmaster.Process
 
 				IO = IOCounter.Value;
 
-				LoadHistory.Push(CPU);
+				LoadHistory.Add(CPU);
 
 				if (CPU < 3f) Low++;
 				else if (CPU > 30f) High++;
