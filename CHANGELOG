@@ -3,6 +3,8 @@ Comprehensive changes can be found in Git change history:
 	https://github.com/mkahvi/taskmaster/commits/master
 
 ## [0.13...]
+### 2019-08-08
+	Changed: Event log now uses virtual mode which should make it much more responsive and less resource heavy under heavy load.
 ### 2019-08-06
 	Changed: Attempt to reduce CPU usage or at least shift it from blocking other more important things.
 ### 2019-08-05
