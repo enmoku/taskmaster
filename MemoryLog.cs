@@ -55,14 +55,14 @@ namespace Taskmaster
 
 	static class MemoryLog
 	{
-		public static MemorySink MemorySink = null;
+		public static MemorySink MemorySink;
 	}
 
 	class MemorySink : Serilog.Core.ILogEventSink, IDisposable
 	{
 		public event EventHandler<LogEventArgs> OnNewEvent;
 
-		readonly StringWriter p_output;
+		readonly StringWriter Output;
 		readonly object sinklock = new object();
 		//readonly IFormatProvider p_formatProvider;
 		readonly Serilog.Formatting.Display.MessageTemplateTextFormatter p_textFormatter;
@@ -74,7 +74,7 @@ namespace Taskmaster
 
 		System.Collections.Generic.List<LogEventArgs> Logs { get; set; } = new System.Collections.Generic.List<LogEventArgs>(200);
 
-		ConcurrentDictionary<ulong, LogEventArgs> LogMap { get; set; } = new ConcurrentDictionary<ulong, LogEventArgs>(2, 200);
+		//ConcurrentDictionary<ulong, LogEventArgs> LogMap { get; set; } = new ConcurrentDictionary<ulong, LogEventArgs>(2, 200);
 
 		public MemorySink(IFormatProvider formatProvider, string outputTemplate = p_DefaultOutputTemplate, LoggingLevelSwitch levelSwitch = null)
 		{
@@ -83,7 +83,7 @@ namespace Taskmaster
 				outputTemplate ?? p_DefaultOutputTemplate,
 				formatProvider
 			);
-			p_output = new System.IO.StringWriter();
+			Output = new System.IO.StringWriter();
 			LevelSwitch = levelSwitch;
 
 			MemoryLog.MemorySink = this;
@@ -109,8 +109,8 @@ namespace Taskmaster
 			{
 				try
 				{
-					p_textFormatter.Format(e, p_output);
-					formattedtext = p_output.ToString();
+					p_textFormatter.Format(e, Output);
+					formattedtext = Output.ToString();
 				}
 				catch (OutOfMemoryException) { throw; }
 				catch
@@ -119,7 +119,7 @@ namespace Taskmaster
 				}
 				finally
 				{
-					p_output.GetStringBuilder().Clear(); // empty, weird results if not done.
+					Output.GetStringBuilder().Clear(); // empty, weird results if not done.
 				}
 			}
 
@@ -158,7 +158,7 @@ namespace Taskmaster
 
 				OnNewEvent = null;
 
-				p_output?.Dispose();
+				Output?.Dispose();
 
 				//base.Dispose();
 			}

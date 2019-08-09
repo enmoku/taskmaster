@@ -34,13 +34,13 @@ namespace Taskmaster.UI
 
 	internal class Splash : UniForm
 	{
-		readonly ProgressBar coreProgress = null;
-		readonly ProgressBar subProgress = null;
-		readonly AlignedLabel loadMessage = null;
+		readonly ProgressBar coreProgress;
+		readonly ProgressBar subProgress;
+		readonly AlignedLabel loadMessage;
 
-		readonly Extensions.ListViewEx LoadEventLog = null;
+		readonly Extensions.ListViewEx LoadEventLog;
 
-		readonly Extensions.Button exitButton = null;
+		readonly Extensions.Button exitButton;
 
 		int Loaded = 0, MaxLoad, SubLoaded = 0, MaxSubLoad = 1;
 
@@ -239,16 +239,16 @@ namespace Taskmaster.UI
 
 			if (disposing)
 			{
-				LoadEventLog?.Clear();
+				LoadEventLog.Clear();
 
 				Hide();
 
-				coreProgress?.Dispose();
-				subProgress?.Dispose();
-				loadMessage?.Dispose();
-				exitButton?.Dispose();
+				coreProgress.Dispose();
+				subProgress.Dispose();
+				loadMessage.Dispose();
+				exitButton.Dispose();
 
-				LoadEventLog?.Dispose();
+				LoadEventLog.Dispose();
 			}
 
 			base.Dispose(disposing);

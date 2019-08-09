@@ -45,7 +45,7 @@ namespace Taskmaster.Process
 	[Component(RequireMainThread = false)]
 	public class Manager : Component, IDisposal
 	{
-		Analyzer analyzer = null;
+		Analyzer? analyzer = null;
 
 		readonly ConcurrentDictionary<int, ProcessEx> WaitForExitList = new ConcurrentDictionary<int, ProcessEx>();
 		readonly ConcurrentDictionary<int, ProcessEx> Running = new ConcurrentDictionary<int, ProcessEx>(Environment.ProcessorCount, 300);
@@ -57,7 +57,8 @@ namespace Taskmaster.Process
 
 		public ProcessEx[] GetExitWaitList() => WaitForExitList.Values.ToArray(); // copy is good here
 
-		System.Threading.Timer LoadTimer = null;
+		readonly System.Threading.Timer LoadTimer;
+		bool LoadTimerRunning = false;
 
 		void StartLoadAnalysisTimer()
 		{
@@ -65,8 +66,10 @@ namespace Taskmaster.Process
 
 			try
 			{
-				if (LoadTimer is null)
-					LoadTimer = new Timer(InspectLoaders, null, TimeSpan.FromMinutes(1d), TimeSpan.FromMinutes(1d));
+				if (LoadTimerRunning) return;
+
+				LoadTimerRunning = true;
+				LoadTimer.Change(TimeSpan.FromMinutes(1d), TimeSpan.FromMinutes(1d));
 			}
 			finally
 			{
@@ -115,7 +118,7 @@ namespace Taskmaster.Process
 				Logging.Stacktrace(ex);
 			}
 
-			if (LoadTimer is null) StartLoadAnalysisTimer();
+			if (!LoadTimerRunning) StartLoadAnalysisTimer();
 		}
 
 		async Task EndLoadAnalysis(ProcessEx info)
@@ -276,29 +279,31 @@ namespace Taskmaster.Process
 		{
 			if (disposed) return;
 
-			if (sender is System.Diagnostics.Process proc)
+			if (sender is System.Diagnostics.Process proc && RemoveRunning(proc.Id, out var info))
 			{
-				RemoveRunning(proc.Id, out var info);
-				if (info != null)
-				{
-					info.State = HandlingState.Exited;
-					info.ExitWait = false;
-				}
+				info.State = HandlingState.Exited;
+				info.ExitWait = false;
 			}
 		}
 
-		void RemoveRunning(int pid, out ProcessEx removed)
+		bool RemoveRunning(int pid, out ProcessEx removed)
 		{
 			if (disposed)
 			{
 				removed = null;
-				return;
+				return false;
 			}
 
-			Running.TryRemove(pid, out removed);
-			WaitForExitList.TryRemove(pid, out _);
+			if (Running.TryRemove(pid, out removed))
+			{
+				WaitForExitList.TryRemove(pid, out _);
 
-			if (LoaderTracking) EndLoadAnalysis(removed).ConfigureAwait(false);
+				if (LoaderTracking) EndLoadAnalysis(removed).ConfigureAwait(false);
+
+				return true;
+			}
+
+			return false;
 		}
 
 		public int RunningCount => Running.Count;
@@ -336,7 +341,7 @@ namespace Taskmaster.Process
 
 		readonly ConcurrentDictionary<int, DateTimeOffset> ScanBlockList = new ConcurrentDictionary<int, DateTimeOffset>();
 
-		Lazy<List<Controller>> WatchlistCache = null;
+		Lazy<List<Controller>> WatchlistCache;
 		bool NeedSort = true;
 
 		readonly object watchlist_lock = new object();
@@ -351,6 +356,10 @@ namespace Taskmaster.Process
 		{
 			RenewWatchlistCache();
 
+			LoadTimer = new Timer(InspectLoaders, null, System.Threading.Timeout.InfiniteTimeSpan, System.Threading.Timeout.InfiniteTimeSpan);
+			ScanTimer = new System.Timers.Timer(ScanFrequency.Value.TotalMilliseconds);
+			MaintenanceTimer = new System.Timers.Timer(1_000 * 60 * 60 * 3); // every 3 hours
+
 			if (RecordAnalysis.HasValue) analyzer = new Analyzer();
 
 			//allCPUsMask = 1;
@@ -363,17 +372,36 @@ namespace Taskmaster.Process
 
 			LoadWatchlist();
 
-			InitWMIEventWatcher();
+			if (WMIPolling)
+			{
+				try
+				{
+					// 'TargetInstance.Handle','TargetInstance.Name','TargetInstance.ExecutablePath','TargetInstance.CommandLine'
+					var query = new EventQuery("SELECT TargetInstance,TIME_CREATED FROM __InstanceCreationEvent WITHIN " + WMIPollDelay.ToString() + " WHERE TargetInstance ISA 'Win32_Process'");
+
+					// Avast cybersecurity causes this to throw an exception
+					NewProcessWatcher = new ManagementEventWatcher(new ManagementScope(WMIEventNamespace), query);
+
+
+					NewProcessWatcher.EventArrived += NewInstanceTriage;
+					//ProcessEndWatcher.EventArrived += ProcessEndTriage;
+
+					NewProcessWatcher.Start();
+					if (DebugWMI) Log.Debug("<<WMI>> New instance watcher initialized.");
+				}
+				catch (UnauthorizedAccessException) { throw; }
+				catch (Exception ex)
+				{
+					Logging.Stacktrace(ex);
+					throw new InitFailure("<<WMI>> Event watcher initialization failure", ex);
+				}
+			}
 
 			var InitialScanDelay = TimeSpan.FromSeconds(5);
 			NextScan = DateTimeOffset.UtcNow.Add(InitialScanDelay);
-			if (ScanFrequency.HasValue)
-			{
-				ScanTimer = new System.Timers.Timer(ScanFrequency.Value.TotalMilliseconds);
-				ScanTimer.Elapsed += TimedScan;
-			}
 
-			MaintenanceTimer = new System.Timers.Timer(1_000 * 60 * 60 * 3); // every 3 hours
+			ScanTimer.Elapsed += TimedScan;
+
 			MaintenanceTimer.Elapsed += CleanupTick;
 			MaintenanceTimer.Start();
 
@@ -409,10 +437,9 @@ namespace Taskmaster.Process
 		/// <summary>
 		/// Executable name to ProcessControl mapping.
 		/// </summary>
-		ConcurrentDictionary<string, List<Controller>> ExeToController = new ConcurrentDictionary<string, List<Controller>>();
+		ConcurrentDictionary<string, Controller[]> ExeToController = new ConcurrentDictionary<string, Controller[]>();
 
-		public int DefaultBackgroundPriority = 1;
-		public int DefaultBackgroundAffinity = 0;
+		public int DefaultBackgroundPriority = 1, DefaultBackgroundAffinity = 0;
 
 		ForegroundManager activeappmonitor = null;
 
@@ -500,7 +527,7 @@ namespace Taskmaster.Process
 
 			try
 			{
-				ScanTimer?.Stop(); // Pause Scan until we're done
+				ScanTimer.Stop(); // Pause Scan until we're done
 
 				ScanLock.Wait();
 
@@ -549,7 +576,7 @@ namespace Taskmaster.Process
 			{
 				Logging.Stacktrace(ex);
 				Log.Error("Stopping periodic scans");
-				ScanTimer?.Stop();
+				ScanTimer.Stop();
 			}
 		}
 
@@ -575,7 +602,7 @@ namespace Taskmaster.Process
 				if (nextscan > 5) // skip if the next scan is to happen real soon
 				{
 					NextScan = DateTimeOffset.UtcNow;
-					ScanTimer?.Stop();
+					ScanTimer.Stop();
 					if (forceSort) SortWatchlist();
 					if (cts.IsCancellationRequested) return;
 
@@ -604,8 +631,8 @@ namespace Taskmaster.Process
 			try
 			{
 				// restart just in case
-				ScanTimer?.Stop();
-				ScanTimer?.Start();
+				ScanTimer.Stop();
+				ScanTimer.Start();
 				NextScan = DateTimeOffset.UtcNow.AddMilliseconds(ScanTimer.Interval);
 			}
 			catch (ObjectDisposedException) { Statistics.DisposedAccesses++; }
@@ -752,7 +779,7 @@ namespace Taskmaster.Process
 
 				if (info != null || Utility.GetInfo(pid, out info, process, null, name, null, getPath: true))
 				{
-					info.Timer = Stopwatch.StartNew();
+					info.Timer.Restart();
 
 					// Protected files, expensive but necessary.
 					info.PriorityProtected = ProtectedProcess(info.Name, info.Path);
@@ -878,8 +905,8 @@ namespace Taskmaster.Process
 
 		// static bool ControlChildren = false; // = false;
 
-		readonly System.Timers.Timer ScanTimer = null;
-		readonly System.Timers.Timer MaintenanceTimer = null;
+		readonly System.Timers.Timer ScanTimer;
+		readonly System.Timers.Timer MaintenanceTimer;
 
 		// move all this to prc.Validate() or prc.SanityCheck();
 		bool ValidateController(Controller prc)
@@ -1476,7 +1503,14 @@ namespace Taskmaster.Process
 			{
 				// TODO: MULTIEXE ; What to do when multiple rules have same exe name?
 				foreach (var exe in prc.ExecutableFriendlyName)
-					ExeToController.TryRemove(exe, out _);
+				{
+					if (ExeToController.TryRemove(exe, out var list) && list.Length - 1 > 0)
+					{
+						var nlist = new List<Controller>(list);
+						nlist.Remove(prc);
+						ExeToController.TryAdd(exe, nlist.ToArray());
+					}
+				}
 			}
 
 			lock (watchlist_lock) RenewWatchlistCache();
@@ -1607,8 +1641,8 @@ namespace Taskmaster.Process
 			return exithooked;
 		}
 
-		Controller PreviousForegroundController = null;
-		ProcessEx PreviousForegroundInfo;
+		Controller? PreviousForegroundController = null;
+		ProcessEx? PreviousForegroundInfo = null;
 
 		// BUG: This is a mess.
 		void ForegroundAppChangedEvent(object _sender, WindowChangedArgs ev)
@@ -2489,99 +2523,20 @@ namespace Taskmaster.Process
 			=> new System.Collections.Specialized.StringCollection { "TargetInstance.SourceName", "ProcessID", "ParentProcessID", "ProcessName" };
 		*/
 
-		ManagementEventWatcher NewProcessWatcher = null;
+		readonly ManagementEventWatcher NewProcessWatcher;
 		//ManagementEventWatcher ProcessEndWatcher = null;
 
 		const string WMIEventNamespace = @"\\.\root\CIMV2";
 
-		void InitWMIEventWatcher()
-		{
-			if (!WMIPolling) return;
-
-			// FIXME: doesn't seem to work when lots of new processes start at the same time.
-			try
-			{
-				// Transition to permanent event listener?
-				// https://msdn.microsoft.com/en-us/library/windows/desktop/aa393014(v=vs.85).aspx
-
-				/*
-				// Win32_ProcessStartTrace  works poorly for some reason
-				try
-				{
-					// Win32_ProcessStartTrace requires Admin rights
-					if (MKAh.Execution.IsAdministrator)
-					{
-						var query = new EventQuery("SELECT ProcessID,ParentProcessID,ProcessName FROM Win32_ProcessStartTrace WITHIN " + WMIPollDelay);
-						//query.Condition = "TargetInstance ISA 'Win32_Process'";
-						//query.WithinInterval = TimeSpan.FromSeconds(WMIPollDelay);
-						NewProcessWatcher = new ManagementEventWatcher(new ManagementScope(WMIEventNamespace), query);
-						NewProcessWatcher.EventArrived += StartTraceTriage;
-					}
-				}
-				catch (Exception ex)
-				{
-					NewProcessWatcher = null;
-					Logging.Stacktrace(ex);
-				}
-				*/
-
-				if (NewProcessWatcher is null)
-				{
-					// 'TargetInstance.Handle','TargetInstance.Name','TargetInstance.ExecutablePath','TargetInstance.CommandLine'
-					var query = new EventQuery("SELECT TargetInstance,TIME_CREATED FROM __InstanceCreationEvent WITHIN " + WMIPollDelay.ToString() + " WHERE TargetInstance ISA 'Win32_Process'");
-
-					// Avast cybersecurity causes this to throw an exception
-					NewProcessWatcher = new ManagementEventWatcher(new ManagementScope(WMIEventNamespace), query);
-
-					/*
-					ProcessEndWatcher = new ManagementEventWatcher(
-						new ManagementScope(@"\\.\root\CIMV2"),
-						new EventQuery("SELECT * FROM __InstanceDeletionEvent WITHIN 10 WHERE TargetInstance ISA 'Win32_Process'")
-						);
-					*/
-
-					NewProcessWatcher.EventArrived += NewInstanceTriage;
-					//ProcessEndWatcher.EventArrived += ProcessEndTriage;
-				}
-
-				NewProcessWatcher.Start();
-				//ProcessEndWatcher.Start();
-
-				if (DebugWMI) Log.Debug("<<WMI>> New instance watcher initialized.");
-			}
-			catch (UnauthorizedAccessException) { throw; }
-			catch (Exception ex)
-			{
-				Logging.Stacktrace(ex);
-				throw new InitFailure("<<WMI>> Event watcher initialization failure", ex);
-			}
-		}
-
 		void StopWMIEventWatcher()
 		{
-			if (NewProcessWatcher != null) NewProcessWatcher.EventArrived -= NewInstanceTriage;
-
 			try
 			{
-				NewProcessWatcher?.Dispose(); // throws if WMI service is acting up
+				NewProcessWatcher.EventArrived -= NewInstanceTriage;
+				NewProcessWatcher.Stop();
+				NewProcessWatcher.Dispose(); // throws if WMI service is acting up
 			}
-			catch { } // // ignore rare COMException
-			finally
-			{
-				NewProcessWatcher = null;
-			}
-
-			/*
-			try
-			{
-				ProcessEndWatcher?.Dispose();
-			}
-			catch { } // ignore
-			finally
-			{
-				ProcessEndWatcher = null;
-			}
-			*/
+			catch { /* nop */ }
 		}
 
 		public const string WatchlistFile = "Watchlist.ini";
@@ -2749,8 +2704,8 @@ namespace Taskmaster.Process
 						activeappmonitor = null;
 					}
 
-					ScanTimer?.Dispose();
-					MaintenanceTimer?.Dispose();
+					ScanTimer.Dispose();
+					MaintenanceTimer.Dispose();
 				}
 				catch (Exception ex)
 				{
@@ -2760,8 +2715,7 @@ namespace Taskmaster.Process
 
 				try
 				{
-					ExeToController?.Clear();
-					ExeToController = null;
+					ExeToController.Clear();
 
 					using var wcfg = Config.Load(WatchlistFile);
 					foreach (var prc in Watchlist.Keys)
@@ -2772,10 +2726,9 @@ namespace Taskmaster.Process
 
 					lock (watchlist_lock)
 					{
-						Watchlist?.Clear();
+						Watchlist.Clear();
 
 						if (WatchlistCache.IsValueCreated) WatchlistCache.Value.Clear();
-						WatchlistCache = null;
 					}
 				}
 				catch (Exception ex)
@@ -2803,8 +2756,8 @@ namespace Taskmaster.Process
 		public void ShutdownEvent(object sender, EventArgs ea)
 		{
 			StopWMIEventWatcher();
-			ScanTimer?.Stop();
-			MaintenanceTimer?.Stop();
+			ScanTimer.Stop();
+			MaintenanceTimer.Stop();
 		}
 		#endregion
 	}

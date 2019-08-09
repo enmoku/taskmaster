@@ -207,7 +207,7 @@ namespace Taskmaster.Process
 		public static int ParentProcessId(int Id)
 		{
 			Debug.Assert(Id > -1);
-			global::Taskmaster.NativeMethods.HANDLE ptr = null;
+			global::Taskmaster.NativeMethods.HANDLE? ptr = null;
 			try
 			{
 				ptr = NativeMethods.CreateToolhelp32Snapshot(SnapshotFlags.Process, (uint)Id);

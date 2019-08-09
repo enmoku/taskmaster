@@ -31,21 +31,21 @@ namespace Taskmaster
 {
 	public static partial class Taskmaster
 	{
-		public static Audio.MicManager micmonitor = null;
-		public static UI.MainWindow mainwindow = null;
-		public static UI.VolumeMeter volumemeter = null;
-		public static UI.LoaderDisplay loaderdisplay = null;
-		public static Process.Manager processmanager = null;
-		public static UI.TrayAccess trayaccess = null;
-		public static Network.Manager netmonitor = null;
-		public static StorageManager storagemanager = null;
-		public static Power.Manager powermanager = null;
-		public static Process.ForegroundManager activeappmonitor = null;
-		public static HealthMonitor healthmonitor = null;
+		public static Audio.MicManager? micmonitor = null;
+		public static UI.MainWindow? mainwindow = null;
+		public static UI.VolumeMeter? volumemeter = null;
+		public static UI.LoaderDisplay? loaderdisplay = null;
+		public static Process.Manager? processmanager = null;
+		public static UI.TrayAccess trayaccess;
+		public static Network.Manager? netmonitor = null;
+		public static StorageManager? storagemanager = null;
+		public static Power.Manager? powermanager = null;
+		public static Process.ForegroundManager? activeappmonitor = null;
+		public static HealthMonitor? healthmonitor = null;
 		public static SelfMaintenance selfmaintenance = null;
-		public static Audio.Manager audiomanager = null;
-		public static CPUMonitor cpumonitor = null;
-		public static HardwareMonitor hardware = null;
+		public static Audio.Manager? audiomanager = null;
+		public static CPUMonitor? cpumonitor = null;
+		public static HardwareMonitor? hardware = null;
 		//public static AlertManager alerts = null;
 
 		public static bool NoLogging { get; set; } = false;

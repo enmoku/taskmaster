@@ -253,8 +253,8 @@ namespace Taskmaster
 			}
 		}
 
-		readonly System.Timers.Timer HealthTimer = null;
-		readonly System.Timers.Timer EmergencyTimer = null;
+		readonly System.Timers.Timer HealthTimer;
+		readonly System.Timers.Timer EmergencyTimer;
 
 		DateTimeOffset MemFreeLast = DateTimeOffset.MinValue;
 
@@ -338,7 +338,7 @@ namespace Taskmaster
 			}
 			catch (OperationCanceledException)
 			{
-				HealthTimer?.Stop();
+				HealthTimer.Stop();
 			}
 			catch (Exception ex) { Logging.Stacktrace(ex); }
 			finally
@@ -603,8 +603,8 @@ namespace Taskmaster
 				cancellationSource.Cancel();
 				cancellationSource?.Dispose();
 
-				HealthTimer?.Dispose();
-				EmergencyTimer?.Dispose();
+				HealthTimer.Dispose();
+				EmergencyTimer.Dispose();
 
 				// kinda pointless
 				NVMQueue?.Dispose();
@@ -630,8 +630,8 @@ namespace Taskmaster
 		public void ShutdownEvent(object sender, EventArgs ea)
 		{
 			cancellationSource.Cancel();
-			HealthTimer?.Stop();
-			EmergencyTimer?.Stop();
+			HealthTimer.Stop();
+			EmergencyTimer.Stop();
 		}
 
 		public override void Dispose()

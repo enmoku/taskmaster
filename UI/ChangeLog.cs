@@ -35,9 +35,7 @@ namespace Taskmaster.UI
 		readonly Extensions.Button OKButton = new Extensions.Button() { Text = "OK" };
 		readonly Extensions.TextBox LogBox = new Extensions.TextBox() { Dock = DockStyle.Fill };
 
-		readonly string LogData = null;
-
-		readonly AlignedLabel Title = null;
+		readonly string LogData;
 
 		public ChangeLog(string logdata)
 			: base(false)
@@ -58,7 +56,7 @@ namespace Taskmaster.UI
 				AutoSize = true,
 			};
 
-			Title = new AlignedLabel() { Text = "Changes since " };
+			var Title = new AlignedLabel() { Text = "Changes since " };
 
 			layout.Controls.Add(Title);
 			layout.SetColumnSpan(Title, 2);

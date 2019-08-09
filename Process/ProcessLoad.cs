@@ -30,7 +30,7 @@ namespace Taskmaster.Process
 {
 	public class ProcessLoad : IDisposable
 	{
-		MKAh.Wrapper.Windows.PerformanceCounter CPUCounter, IOCounter;
+		MKAh.Wrapper.Windows.PerformanceCounter IOCounter;
 
 		readonly string Instance;
 		readonly int Id;
@@ -120,7 +120,6 @@ namespace Taskmaster.Process
 		{
 			Scrap();
 
-			//CPUCounter = new MKAh.Wrapper.Windows.PerformanceCounter("Process", "% Processor Time", Instance);
 			IOCounter = new MKAh.Wrapper.Windows.PerformanceCounter("Process", "IO Data Bytes/sec", Instance);
 		}
 
@@ -131,8 +130,6 @@ namespace Taskmaster.Process
 
 		void Scrap()
 		{
-			//CPUCounter?.Dispose();
-			//CPUCounter = null;
 			IOCounter?.Dispose();
 			IOCounter = null;
 		}

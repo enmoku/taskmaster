@@ -32,7 +32,7 @@ namespace Taskmaster
 {
 	class AudioSession : NAudio.CoreAudioApi.Interfaces.IAudioSessionEventsHandler
 	{
-		readonly NAudio.CoreAudioApi.AudioSessionControl session = null;
+		readonly NAudio.CoreAudioApi.AudioSessionControl session;
 
 		public AudioSession(NAudio.CoreAudioApi.AudioSessionControl audiosession) => session = audiosession;
 

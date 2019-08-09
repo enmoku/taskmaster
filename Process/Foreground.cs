@@ -107,7 +107,6 @@ namespace Taskmaster.Process
 				Log.Information(sbs.ToString());
 			}
 
-			HangTimer = new System.Timers.Timer(60_000);
 			HangTimer.Elapsed += HangDetector;
 
 			if (DebugForeground) Log.Information("<Foreground> Component loaded.");
@@ -154,7 +153,8 @@ namespace Taskmaster.Process
 			return true;
 		}
 
-		readonly System.Timers.Timer HangTimer = null;
+		readonly System.Timers.Timer HangTimer = new System.Timers.Timer(60_000);
+
 		DateTimeOffset HangTime = DateTimeOffset.MaxValue;
 
 		readonly object FGLock = new object();
@@ -162,7 +162,7 @@ namespace Taskmaster.Process
 		int PreviousFG = 0;
 		int HangTick = 0, HangMinimizeTick = 180, HangReduceTick = 240, HangKillTick = 300;
 
-		System.Diagnostics.Process Foreground = null;
+		System.Diagnostics.Process? Foreground = null;
 
 		bool Minimized = false, Reduced = false;
 
@@ -188,7 +188,7 @@ namespace Taskmaster.Process
 			try
 			{
 				int lfgpid, previoushang;
-				System.Diagnostics.Process fgproc;
+				System.Diagnostics.Process? fgproc;
 				lock (FGLock)
 				{
 					lfgpid = ForegroundId;
@@ -532,7 +532,7 @@ namespace Taskmaster.Process
 				if (Trace) Log.Verbose("Disposing FG monitor...");
 
 				ActiveChanged = null;
-				HangTimer?.Dispose();
+				HangTimer.Dispose();
 
 				//base.Dispose();
 
@@ -545,7 +545,7 @@ namespace Taskmaster.Process
 		public void ShutdownEvent(object sender, EventArgs ea)
 		{
 			global::Taskmaster.NativeMethods.UnhookWinEvent(windowseventhook); // Automatic
-			HangTimer?.Stop();
+			HangTimer.Stop();
 		}
 	}
 }

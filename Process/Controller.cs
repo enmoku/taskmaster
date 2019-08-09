@@ -79,19 +79,19 @@ namespace Taskmaster.Process
 		/// </summary>
 		public string FriendlyName { get; private set; } = null;
 
-		internal string[] p_Executable = null;
+		internal string[] pExecutables = null;
 
 		/// <summary>
 		/// Executable filename related to this, with extension.
 		/// </summary>
 		public string[] Executables
 		{
-			get => p_Executable;
+			get => pExecutables;
 			set
 			{
 				if (value is null)
 				{
-					p_Executable = null;
+					pExecutables = null;
 					ExecutableFriendlyName = null;
 				}
 				else
@@ -99,11 +99,20 @@ namespace Taskmaster.Process
 					var t_exe = new string[value.Length];
 					var t_friendly = new string[value.Length];
 					for (int i = 0; i < value.Length; i++)
-						t_friendly[i] = System.IO.Path.GetFileNameWithoutExtension(t_exe[i] = value[i]).ToLowerInvariant();
-					p_Executable = t_exe;
+					{
+						t_exe[i] = value[i];
+						t_friendly[i] = System.IO.Path.GetFileNameWithoutExtension(value[i]).ToLowerInvariant();
+					}
+					pExecutables = t_exe;
 					ExecutableFriendlyName = t_friendly;
 				}
 			}
+		}
+
+		internal void NullExecutalbes()
+		{
+			pExecutables = null;
+			ExecutableFriendlyName = null;
 		}
 
 		/// <summary>
@@ -663,8 +672,8 @@ namespace Taskmaster.Process
 
 			if (Resize.HasValue)
 			{
-				int[] res = app.Get(Constants.Resize)?.IntArray ?? null;
-				if ((res?.Length ?? 0) != 4) res = new int[] { 0, 0, 0, 0 };
+				int[] res = app.Get(Constants.Resize)?.IntArray ?? System.Array.Empty<int>();
+				if (res.Length != 4) res = new int[] { 0, 0, 0, 0 };
 
 				if (Bit.IsSet((int)ResizeStrategy, (int)WindowResizeStrategy.Position))
 				{
@@ -826,7 +835,7 @@ namespace Taskmaster.Process
 			Paused?.Invoke(info);
 		}
 
-		public ModificationDelegate OnAdjust;
+		public ModificationDelegate? OnAdjust;
 
 		public void SetForeground(ProcessEx info)
 		{
@@ -1742,10 +1751,9 @@ namespace Taskmaster.Process
 					}
 				}
 
-				StringBuilder sbs;
 				if (DebugResize)
 				{
-					sbs = new StringBuilder("<Resize> ", 256)
+					var sbs = new StringBuilder("<Resize> ", 256)
 						.Append(info.Name).Append(" #").Append(info.Id);
 
 					if (!gotCurrentSize)
@@ -1764,8 +1772,6 @@ namespace Taskmaster.Process
 						sbs.Append("; remembering size or pos not enabled.");
 					Log.Debug(sbs.ToString());
 				}
-				else
-					sbs = null;
 
 				if (ResizeStrategy == WindowResizeStrategy.None) return;
 

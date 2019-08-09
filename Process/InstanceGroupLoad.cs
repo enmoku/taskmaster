@@ -245,6 +245,7 @@ namespace Taskmaster.Process
 		public void Remove(ProcessEx info)
 		{
 			Processes.TryRemove(info.Id, out _);
+			info.Load?.Dispose();
 			info.Load = null;
 		}
 
@@ -254,7 +255,7 @@ namespace Taskmaster.Process
 
 			if (Processes.TryAdd(pid, info))
 			{
-				ProcessLoad loader = null;
+				ProcessLoad? loader = null;
 				try
 				{
 					loader = new ProcessLoad(info.Process);
@@ -273,7 +274,7 @@ namespace Taskmaster.Process
 					Logging.Stacktrace(ex);
 				}
 
-				loader?.Dispose();
+				loader.Dispose();
 				Remove(info);
 			}
 
@@ -302,7 +303,7 @@ namespace Taskmaster.Process
 
 			if (disposing)
 			{
-				Processes?.Clear();
+				Processes.Clear();
 
 				//base.Dispose();
 			}

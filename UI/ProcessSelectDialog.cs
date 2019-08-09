@@ -36,10 +36,10 @@ namespace Taskmaster.UI
 	using static Taskmaster;
 	public class ProcessSelectDialog : UI.UniForm
 	{
-		public ProcessEx Info { get; private set; } = null;
+		public ProcessEx? Info { get; private set; } = null;
 
-		readonly ComboBox selection = null;
-		readonly Extensions.Button selectbutton = null, cancelbutton = null, refreshbutton = null;
+		readonly ComboBox selection;
+		readonly Extensions.Button selectbutton, cancelbutton, refreshbutton;
 
 		List<ProcessEx> InfoList = new List<ProcessEx>();
 
@@ -246,10 +246,10 @@ namespace Taskmaster.UI
 			if (disposing)
 			{
 
-				cancelbutton?.Dispose();
-				refreshbutton?.Dispose();
-				selectbutton?.Dispose();
-				selection?.Dispose();
+				cancelbutton.Dispose();
+				refreshbutton.Dispose();
+				selectbutton.Dispose();
+				selection.Dispose();
 			}
 
 			base.Dispose(disposing);

@@ -87,7 +87,7 @@ namespace Taskmaster
 			try
 			{
 				if (!mainwindow?.IsDisposed ?? false) mainwindow.Enabled = false;
-				if (!trayaccess?.IsDisposed ?? false) trayaccess.Close();
+				if (!trayaccess.IsDisposed) trayaccess.Close();
 
 				while (DisposalChute.Count > 0)
 				{
@@ -281,11 +281,7 @@ namespace Taskmaster
 				Log.Warning("Unclean shutdown.");
 		}
 
-		static void CleanShutdown()
-		{
-			TempRunningDir?.Delete();
-			TempRunningDir = null;
-		}
+		static void CleanShutdown() => TempRunningDir.Delete();
 
 		static void LicenseBoiler()
 		{
@@ -351,7 +347,7 @@ namespace Taskmaster
 					OnStart = null;
 
 					// UI
-					trayaccess?.RefreshVisibility();
+					trayaccess.RefreshVisibility();
 					//UIWaiter.WaitOne();
 
 					System.Windows.Forms.Application.Run(); // WinForms
@@ -375,8 +371,7 @@ namespace Taskmaster
 
 				CleanShutdown();
 
-				Config?.Dispose();
-				Config = null;
+				Config.Dispose();
 
 				Log.Information(Name + "! #" + System.Diagnostics.Process.GetCurrentProcess().Id.ToString() + " END! [Clean]");
 
@@ -452,7 +447,7 @@ namespace Taskmaster
 
 			try
 			{
-				trayaccess?.EnsureVisible();
+				trayaccess.EnsureVisible();
 				Config.Flush();
 			}
 			catch (Exception ex)
@@ -504,7 +499,7 @@ namespace Taskmaster
 			try
 			{
 				ExitCleanup();
-				Config?.Dispose();
+				Config.Dispose();
 				Log.CloseAndFlush();
 			}
 			catch (Exception ex) when (!(ex is OutOfMemoryException))
@@ -518,7 +513,7 @@ namespace Taskmaster
 			try
 			{
 				if (hiddenwindow?.InvokeRequired ?? false)
-					hiddenwindow?.BeginInvoke(action);
+					hiddenwindow.BeginInvoke(action);
 				else
 					action();
 			}

@@ -51,8 +51,7 @@ namespace Taskmaster
 			~Finalizer()
 			{
 				Logging.DebugMsg("HiddenWindow static finalizer");
-				hiddenwindow?.Dispose();
-				hiddenwindow = null;
+				hiddenwindow.Dispose();
 			}
 		};
 	}

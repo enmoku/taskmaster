@@ -38,7 +38,7 @@ namespace Taskmaster.UI
 
 	public class LoaderDisplay : UniForm
 	{
-		readonly Process.Manager processmanager = null;
+		readonly Process.Manager processmanager;
 
 		public LoaderDisplay(Process.Manager manager)
 		{
@@ -277,7 +277,7 @@ namespace Taskmaster.UI
 
 			if (disposing)
 			{
-				timer?.Dispose();
+				timer.Dispose();
 
 				processmanager.LoaderTracking = false;
 				processmanager.LoaderDetection -= LoaderEvent;

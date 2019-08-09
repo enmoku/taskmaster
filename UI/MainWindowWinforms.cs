@@ -56,7 +56,7 @@ namespace Taskmaster.UI
 		bool AutoOpenMenus { get; set; }
 
 		// UI elements for non-lambda/constructor access.
-		ToolStripMenuItem menu_view_loaders = null;
+		ToolStripMenuItem menu_view_loaders;
 
 		// constructor
 		public MainWindow()
@@ -105,7 +105,7 @@ namespace Taskmaster.UI
 			MaximizeBox = true;
 			MinimizeBox = true;
 
-			MinimumHeight += tabLayout.MinimumSize.Height
+			MinimumHeight += tabs.MinimumSize.Height
 				+ LogList.MinimumSize.Height
 				+ menu.Height
 				+ statusbar.Height
@@ -866,7 +866,7 @@ namespace Taskmaster.UI
 
 		AlignedLabel AudioInputDevice = null;
 		Extensions.NumericUpDownEx AudioInputVolume = null;
-		Extensions.ListViewEx AudioInputs = null, WatchlistRules = null;
+		Extensions.ListViewEx AudioInputs = null, WatchlistRules;
 
 		readonly ConcurrentDictionary<Process.Controller, ListViewItem> WatchlistMap = new ConcurrentDictionary<Process.Controller, ListViewItem>();
 		readonly object watchlist_lock = new object();
@@ -994,7 +994,7 @@ namespace Taskmaster.UI
 			netTransmit.Text = $"{delta.Input / 1000:N1} kB In, {delta.Output / 1000:N1} kB Out [{delta.Packets:N0} packets; {delta.Queue:N0} queued]";
 		}
 
-		Extensions.ListViewEx NetworkDevices;
+		Extensions.ListViewEx NetworkDevices = null;
 
 		ContextMenuStrip ifacems, watchlistms;
 		ToolStripMenuItem watchlistenable;
@@ -1040,20 +1040,20 @@ namespace Taskmaster.UI
 			Clipboard.SetText(sbs.ToString(), TextDataFormat.UnicodeText);
 		}
 
-		Extensions.TabControl tabLayout = null;
+		Extensions.TabControl tabs;
 
 		// TODO: Easier column access somehow than this?
 		//int OrderColumn = 0;
 		const int PrefColumn = 1, NameColumn = 2, ExeColumn = 3, PrioColumn = 4, AffColumn = 5, PowerColumn = 6, AdjustColumn = 7, PathColumn = 8;
 
-		Extensions.TabPage infoTab = null, watchTab = null, micTab = null;
-		Extensions.TabPage powerDebugTab = null, ProcessDebugTab = null;
+		Extensions.TabPage infoTab, watchTab, micTab = null, powerDebugTab = null, ProcessDebugTab = null;
 
-		ToolStripMenuItem menu_debug_loglevel_info = null;
-		ToolStripMenuItem menu_debug_loglevel_debug = null;
-#if DEBUG
-		ToolStripMenuItem menu_debug_loglevel_trace = null;
-#endif
+		ToolStripMenuItem
+			#if DEBUG
+			menu_debug_loglevel_trace,
+			#endif
+			menu_debug_loglevel_info,
+			menu_debug_loglevel_debug;
 
 		void EnsureVerbosityLevel()
 		{
@@ -1103,7 +1103,7 @@ namespace Taskmaster.UI
 
 			// CORE LAYOUT ITEMS
 
-			tabLayout = new Extensions.TabControl()
+			tabs = new Extensions.TabControl()
 			{
 				Parent = this,
 				//Height = 300,
@@ -1672,7 +1672,7 @@ namespace Taskmaster.UI
 				if (DebugPower)
 				{
 					if (powerDebugTab is null) BuildPowerDebugPanel();
-					else tabLayout.Controls.Add(powerDebugTab);
+					else tabs.Controls.Add(powerDebugTab);
 					EnsureVerbosityLevel();
 
 					AttachPowerDebug();
@@ -1681,10 +1681,10 @@ namespace Taskmaster.UI
 				{
 					DetachPowerDebug();
 
-					bool refocus = tabLayout.SelectedTab.Equals(powerDebugTab);
+					bool refocus = tabs.SelectedTab.Equals(powerDebugTab);
 
-					tabLayout.Controls.Remove(powerDebugTab);
-					if (refocus) tabLayout.SelectedIndex = 1; // watchlist
+					tabs.Controls.Remove(powerDebugTab);
+					if (refocus) tabs.SelectedIndex = 1; // watchlist
 
 					powerDebugTab?.Dispose();
 					powerDebugTab = null;
@@ -1795,10 +1795,10 @@ namespace Taskmaster.UI
 			menu_info.DropDown.AutoClose = true;
 
 			infoTab = new Extensions.TabPage(InfoName) { Padding = BigPadding };
-			tabLayout.Controls.Add(infoTab);
+			tabs.Controls.Add(infoTab);
 
 			watchTab = new Extensions.TabPage(WatchlistName) { Padding = BigPadding };
-			tabLayout.Controls.Add(watchTab);
+			tabs.Controls.Add(watchTab);
 
 			var infopanel = new FlowLayoutPanel
 			{
@@ -1997,7 +1997,7 @@ namespace Taskmaster.UI
 
 			// End Process Debug
 
-			tabLayout.SelectedIndex = opentab >= tabLayout.TabCount ? 0 : opentab;
+			tabs.SelectedIndex = opentab >= tabs.TabCount ? 0 : opentab;
 
 			// HANDLE TIMERS
 
@@ -2116,25 +2116,14 @@ namespace Taskmaster.UI
 
 			//loglist.Height = -2;
 			//loglist.Width = -2;
-			LogList.Height = ClientSize.Height - tabLayout.Height - statusbar.Height - menu.Height;
+			LogList.Height = ClientSize.Height - tabs.Height - statusbar.Height - menu.Height;
 			ShowLastLog();
 		}
 
-		ChangeLog changelog = null;
-
 		void OpenChangelog(object sender, EventArgs e)
 		{
-			if (changelog is null)
-			{
-				(changelog = new ChangeLog("test"))
-					.FormClosing += (_, _ea) => changelog = null;
-			}
-			else
-			{
-				// push window to top
-				changelog.Show();
-				// TODO: flash and make sure the window is actually not outside of display bounds?
-			}
+			var changelog = new ChangeLog("test");
+			changelog.ShowDialog();
 		}
 
 		void SetAutoPower(object _, EventArgs _ea)
@@ -2482,7 +2471,7 @@ namespace Taskmaster.UI
 
 			micTab.Controls.Add(micpanel);
 
-			tabLayout.Controls.Add(micTab);
+			tabs.Controls.Add(micTab);
 		}
 
 		Extensions.TableLayoutPanel BuildTempMonitorPanel()
@@ -2576,7 +2565,7 @@ namespace Taskmaster.UI
 
 			powerDebugTab = new Extensions.TabPage("Power Debug") { Padding = BigPadding };
 			powerDebugTab.Controls.Add(powerlayout);
-			tabLayout.Controls.Add(powerDebugTab);
+			tabs.Controls.Add(powerDebugTab);
 		}
 
 		Extensions.TableLayoutPanel BuildLastModifiedPanel(int[] appwidths)
@@ -2965,14 +2954,14 @@ namespace Taskmaster.UI
 			if (activeappmonitor != null && DebugForeground)
 				activeappmonitor.ActiveChanged -= OnActiveWindowChanged;
 
-			bool refocus = tabLayout.SelectedTab.Equals(ProcessDebugTab);
+			bool refocus = tabs.SelectedTab.Equals(ProcessDebugTab);
 			if (!enabled)
 			{
 				activePID.Text = HumanReadable.Generic.Undefined;
 				activeFullscreen.Text = HumanReadable.Generic.Undefined;
 				activeFullscreen.Text = HumanReadable.Generic.Undefined;
 
-				tabLayout.Controls.Remove(ProcessDebugTab);
+				tabs.Controls.Remove(ProcessDebugTab);
 				ProcessingList.Items.Clear();
 				ExitWaitList.Items.Clear();
 
@@ -2981,7 +2970,7 @@ namespace Taskmaster.UI
 			}
 
 			// TODO: unlink events
-			if (refocus) tabLayout.SelectedIndex = 0; // info tab
+			if (refocus) tabs.SelectedIndex = 0; // info tab
 		}
 
 		void BuildProcessDebug()
@@ -3066,7 +3055,7 @@ namespace Taskmaster.UI
 
 			ProcessDebugTab.Controls.Add(processlayout);
 
-			tabLayout.Controls.Add(ProcessDebugTab);
+			tabs.Controls.Add(ProcessDebugTab);
 		}
 
 		/// <summary>
@@ -3609,8 +3598,8 @@ namespace Taskmaster.UI
 			tempObjectCount.Text = (stats.Dirs + stats.Files).ToString();
 		}
 
-		Extensions.ListViewEx LogList = null;
-		MenuStrip menu = null;
+		Extensions.ListViewEx LogList;
+		MenuStrip menu;
 
 		public void FillLog()
 		{
@@ -3779,7 +3768,7 @@ namespace Taskmaster.UI
 
 			VisibleChanged += VisibleChangedEvent;
 
-			tabLayout.TabIndexChanged += VisibleTabChangedEvent;
+			tabs.TabIndexChanged += VisibleTabChangedEvent;
 
 			UpdateHealthMon(this, EventArgs.Empty);
 		}
@@ -4255,7 +4244,7 @@ namespace Taskmaster.UI
 				}
 
 				var uistate = cfg.Config[Constants.Tabs];
-				uistate["Open"].Int = tabLayout.SelectedIndex;
+				uistate["Open"].Int = tabs.SelectedIndex;
 
 				var windows = cfg.Config[Constants.Windows];
 
@@ -4344,6 +4333,12 @@ namespace Taskmaster.UI
 				UItimer.Dispose();
 				ExitWaitList?.Dispose();
 				ExitWaitlistMap?.Clear();
+				ExitWaitList = null;
+
+				infoTab?.Dispose();
+				micTab?.Dispose();
+				watchTab?.Dispose();
+				tabs?.Dispose();
 			}
 
 			base.Dispose(disposing);

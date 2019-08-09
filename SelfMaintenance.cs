@@ -38,20 +38,8 @@ namespace Taskmaster
 	{
 		public SelfMaintenance()
 		{
-			try
-			{
-				timer = new System.Timers.Timer(86_400_000) // once a day
-				{
-					AutoReset = false
-				};
-				timer.Elapsed += MaintenanceTick;
-				TimerReset();
-			}
-			catch (Exception ex)
-			{
-				Logging.Stacktrace(ex);
-				throw;
-			}
+			timer.Elapsed += MaintenanceTick;
+			TimerReset();
 
 			if (Trace) Log.Information("<Self-Maintenance> Initialized.");
 
@@ -75,7 +63,7 @@ namespace Taskmaster
 			timer.Start();
 		}
 
-		readonly System.Timers.Timer timer = null;
+		readonly System.Timers.Timer timer = new System.Timers.Timer(86_400_000) { AutoReset = false }; // once a day
 
 		Process.Manager processmanager = null;
 
@@ -158,7 +146,7 @@ namespace Taskmaster
 
 			if (disposing)
 			{
-				timer?.Dispose();
+				timer.Dispose();
 
 				//base.Dispose();
 

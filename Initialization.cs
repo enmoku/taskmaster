@@ -182,7 +182,6 @@ namespace Taskmaster
 			startTimer.Stop();
 
 			Log.Information($"<Core> Initialization complete ({startTimer.ElapsedMilliseconds} ms)...");
-			startTimer = null;
 
 			LoadEvent?.Invoke(null, new LoadEventArgs("Core loading finished", LoadEventType.Loaded));
 			LoadEvent = null;
@@ -534,7 +533,7 @@ namespace Taskmaster
 
 			Task[] init = new[] { PowMan, CpuMon, ProcMon, FgMon, NetMon, StorMon, HpMon, HwMon, /*AlMan,*/ SelfMaint };
 
-			Exception[] cex = null;
+			Exception[]? cex = null;
 			if (cts.IsCancellationRequested) throw new InitFailure("Cancelled?", (cex?[0]), cex);
 			foreach (var t in init) t.ContinueWith(t =>
 			{
@@ -583,7 +582,7 @@ namespace Taskmaster
 			trayaccess = new UI.TrayAccess();
 			trayaccess.TrayMenuShown = visible => OptimizeResponsiviness(visible);
 
-			ProcMon.ContinueWith((_, _discard) => trayaccess?.Hook(processmanager), TaskContinuationOptions.OnlyOnRanToCompletion, cts.Token);
+			ProcMon.ContinueWith((_, _discard) => trayaccess.Hook(processmanager), TaskContinuationOptions.OnlyOnRanToCompletion, cts.Token);
 
 			Task.WhenAll(ProcMon, FgMon).ContinueWith(_ => activeappmonitor?.Hook(processmanager), TaskContinuationOptions.OnlyOnRanToCompletion);
 			if (cts.IsCancellationRequested) throw new InitFailure("Cancelled at 565", (cex?[0]), cex);

@@ -53,6 +53,9 @@ namespace Taskmaster
 
 		public StorageManager()
 		{
+			TempScanTimer = new System.Timers.Timer(TimerDue.TotalMilliseconds);
+			TempScanTimer.Elapsed += ScanTemp;
+
 			if (TempMonitorEnabled)
 			{
 				UserWatcher = new FileSystemWatcher(UserTemp)
@@ -75,8 +78,6 @@ namespace Taskmaster
 					SysWatcher.Created += ModifyTemp;
 				}
 
-				TempScanTimer = new System.Timers.Timer(TimerDue.TotalMilliseconds);
-				TempScanTimer.Elapsed += ScanTemp;
 				TempScanTimer.Start();
 
 				Taskmaster.OnStart += OnStart;
@@ -133,7 +134,7 @@ namespace Taskmaster
 			if (now.Since(LastTempScan).TotalMinutes <= 15) return; // too soon
 			LastTempScan = now;
 
-			TempScanTimer?.Stop();
+			TempScanTimer.Stop();
 			await Task.Run(() => Task.Delay(5_000).ContinueWith((_x) => ScanTemp(this, EventArgs.Empty))).ConfigureAwait(false);
 		}
 
@@ -206,7 +207,7 @@ namespace Taskmaster
 			{
 				Atomic.Unlock(ref scantemp_lock);
 
-				TempScanTimer?.Start();
+				TempScanTimer.Start();
 			}
 		}
 
@@ -217,7 +218,7 @@ namespace Taskmaster
 			End
 		};
 
-		public StorageScanStateDelegate TempScan;
+		public StorageScanStateDelegate? TempScan;
 
 		#region IDisposable Support
 		public event EventHandler<DisposedEventArgs> OnDisposed;
@@ -241,9 +242,9 @@ namespace Taskmaster
 
 				TempScan = null;
 
-				SysWatcher?.Dispose();
-				UserWatcher?.Dispose();
-				TempScanTimer?.Dispose();
+				SysWatcher.Dispose();
+				UserWatcher.Dispose();
+				TempScanTimer.Dispose();
 
 				//base.Dispose();
 
@@ -254,9 +255,13 @@ namespace Taskmaster
 
 		public void ShutdownEvent(object sender, EventArgs ea)
 		{
-			TempScanTimer?.Dispose();
-			SysWatcher?.Dispose();
-			UserWatcher?.Dispose();
+			try
+			{
+				TempScanTimer.Dispose();
+				SysWatcher.Dispose();
+				UserWatcher.Dispose();
+			}
+			catch { /* don't care */ }
 		}
 		#endregion
 	}

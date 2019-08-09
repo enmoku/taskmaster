@@ -50,18 +50,14 @@ namespace Taskmaster.UI
 	// Form is used for catching some system events
 	public class TrayAccess : IDisposable
 	{
-		NotifyIcon Tray;
-		TrayWndProcProxy WndProcEventProxy;
+		readonly NotifyIcon Tray;
+		readonly TrayWndProcProxy WndProcEventProxy;
 
 		public event EventHandler<DisposedEventArgs> OnDisposed;
 
-		public UIVisibleDelegate TrayMenuShown;
+		public UIVisibleDelegate? TrayMenuShown;
 
-		readonly ToolStripMenuItem power_auto;
-		readonly ToolStripMenuItem power_highperf;
-		readonly ToolStripMenuItem power_balanced;
-		readonly ToolStripMenuItem power_saving;
-		readonly ToolStripMenuItem power_manual;
+		readonly ToolStripMenuItem power_auto, power_highperf, power_balanced, power_saving, power_manual;
 
 		public TrayAccess() : base()
 		{
@@ -77,7 +73,6 @@ namespace Taskmaster.UI
 			//IconCacheMap.Add(0, IconCache);
 
 			Tray.BalloonTipText = Tray.Text;
-			Tray.Disposed += (_, _ea) => Tray = null;
 
 			#region Build UI
 			if (Trace) Log.Verbose("Generating tray icon.");
@@ -723,8 +718,7 @@ namespace Taskmaster.UI
 			{
 				if (Trace) Log.Verbose("Disposing tray...");
 
-				WndProcEventProxy?.Dispose();
-				WndProcEventProxy = null;
+				WndProcEventProxy.Dispose();
 
 				RescanRequest = null;
 
@@ -734,18 +728,14 @@ namespace Taskmaster.UI
 					powermanager = null;
 				}
 
-				if (Tray != null)
-				{
 					Tray.Visible = false;
-					Tray?.Dispose();
-					Tray = null;
-				}
+					Tray.Dispose();
 
-				power_auto?.Dispose();
-				power_highperf?.Dispose();
-				power_balanced?.Dispose();
-				power_saving?.Dispose();
-				power_manual?.Dispose();
+				power_auto.Dispose();
+				power_highperf.Dispose();
+				power_balanced.Dispose();
+				power_saving.Dispose();
+				power_manual.Dispose();
 
 				//base.Dispose();
 

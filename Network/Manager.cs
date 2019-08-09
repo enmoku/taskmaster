@@ -68,10 +68,7 @@ namespace Taskmaster.Network
 
 		public event EventHandler<TrafficEventArgs> NetworkTraffic;
 
-		readonly Windows.PerformanceCounter NetInTrans = null;
-		readonly Windows.PerformanceCounter NetOutTrans = null;
-		readonly Windows.PerformanceCounter NetPackets = null;
-		readonly Windows.PerformanceCounter NetQueue = null;
+		readonly Windows.PerformanceCounter NetInTrans, NetOutTrans, NetPackets, NetQueue;
 
 		string dnstestaddress = "google.com"; // should be fine, www is omitted to avoid deeper DNS queries
 
@@ -131,7 +128,7 @@ namespace Taskmaster.Network
 
 				if (DynamicDNS)
 				{
-					string host = dnssec.Get(Constants.Host).String;
+					string? host = dnssec.Get(Constants.Host).String;
 					bool tooshort = (host?.Length ?? 0) < 10; // HACK: Arbitrary size limit
 					bool http = host?.StartsWith("http://") ?? false;
 					bool https = host?.StartsWith("https://") ?? false;
@@ -188,10 +185,11 @@ namespace Taskmaster.Network
 		{
 			var now = DateTimeOffset.UtcNow;
 
+			DynDNSTimer = new System.Threading.Timer(DynDNSTimer_Elapsed, null, System.Threading.Timeout.InfiniteTimeSpan, System.Threading.Timeout.InfiniteTimeSpan);
+
 			InvalidateInterfaceList();
 
-			UptimeRecordStart = now;
-			LastUptimeStart = now;
+			LastUptimeStart = UptimeRecordStart = now;
 
 			LoadConfig();
 
@@ -236,7 +234,8 @@ namespace Taskmaster.Network
 			DisposalChute.Push(this);
 		}
 
-		System.Threading.Timer DynDNSTimer = null;
+		readonly System.Threading.Timer DynDNSTimer;
+
 
 		async Task StartDynDNSUpdates()
 		{
@@ -255,14 +254,19 @@ namespace Taskmaster.Network
 			else
 				if (DebugDNS) Log.Debug("<Net:DynDNS> Starting update timer.");
 
-			DynDNSTimer = new System.Threading.Timer(DynDNSTimer_Elapsed, null, TimerStartDelay, DynamicDNSFrequency);
+			DynDNSTimer.Change(TimerStartDelay, DynamicDNSFrequency);
+		}
+
+		void StopDynDNSUpdates()
+		{
+			DynDNSTimer.Change(System.Threading.Timeout.InfiniteTimeSpan, System.Threading.Timeout.InfiniteTimeSpan);
+			DynDNSTimer.Dispose();
 		}
 
 		int DynDNSFailures = 0;
 
 		async void DynDNSTimer_Elapsed(object _)
 		{
-			if (DynDNSTimer is null) return;
 			if (!InternetAvailable) return;
 
 			IPAddress curIPv4, curIPv6;
@@ -320,8 +324,7 @@ namespace Taskmaster.Network
 				else if (DynDNSFailures++ > 3)
 				{
 					Log.Error("<Net:DynDNS> Update failed too many times, stopping updates.");
-					DynDNSTimer?.Dispose();
-					DynDNSTimer = null;
+					StopDynDNSUpdates();
 				}
 			}
 			catch (Exception ex)
@@ -571,8 +574,6 @@ namespace Taskmaster.Network
 			lock (uptime_lock) return UptimeSamples.Count > 0 ? UptimeSamples.Average() : double.PositiveInfinity;
 		}
 
-		Stopwatch Downtime = null;
-
 		void ReportUptime()
 		{
 			var sbs = new StringBuilder("<Network> Average uptime: ", 128);
@@ -584,7 +585,7 @@ namespace Taskmaster.Network
 				sbs.Append(" (").AppendFormat(((UptimeSamples.Get(-2) + UptimeSamples.Get(-1) + currentUptime) / 3f).ToString("N1")).Append(" minutes for last 3 samples");
 			}
 
-			sbs.Append(" since: ").Append(UptimeRecordStart)
+			sbs.Append(" since: ").Append(UptimeRecordStart.ToString("u"))
 			   .Append(" (").AppendFormat("{0:N2}", (DateTimeOffset.UtcNow - UptimeRecordStart).TotalHours).Append("h ago)")
 			   .Append('.');
 

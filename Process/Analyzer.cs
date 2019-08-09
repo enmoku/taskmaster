@@ -56,6 +56,8 @@ namespace Taskmaster.Process
 
 		readonly ConcurrentDictionary<byte[], int> cache = new ConcurrentDictionary<byte[], int>(new StructuralEqualityComparer<byte[]>());
 
+		void RemoveCached(byte[] hash) => cache.TryRemove(hash, out _);
+
 		public async Task Analyze(ProcessEx info)
 		{
 			if (string.IsNullOrEmpty(info.Path)) return;
@@ -66,9 +68,8 @@ namespace Taskmaster.Process
 				return;
 			}
 
-			byte[] hash;
 			using var crypt = new System.Security.Cryptography.SHA512Cng();
-			hash = crypt.ComputeHash(Encoding.UTF8.GetBytes(info.Path.ToLowerInvariant()));
+			byte[] hash = crypt.ComputeHash(Encoding.UTF8.GetBytes(info.Path.ToLowerInvariant()));
 
 			// TODO: Prevent bloating somehow.
 			if (!cache.TryAdd(hash, 0)) return; // already there
@@ -77,6 +78,7 @@ namespace Taskmaster.Process
 
 			var AllLinkedModules = new ConcurrentDictionary<string, ModuleInfo>();
 			var ImportantModules = new ConcurrentDictionary<string, ModuleInfo>();
+
 			long privMem = 0;
 			long threadCount = 0;
 			long workingSet = 0;
@@ -85,7 +87,7 @@ namespace Taskmaster.Process
 			bool x64 = true;
 
 			string modFile;
-			FileVersionInfo version = null;
+			FileVersionInfo version = default;
 			long modMemory;
 
 			try
@@ -97,7 +99,7 @@ namespace Taskmaster.Process
 				{
 					info.State = HandlingState.Exited;
 					Log.Debug($"<Analysis> {info} cancelled; already gone");
-					cache.TryRemove(hash, out _);
+					RemoveCached(hash);
 					return;
 				}
 
@@ -172,20 +174,20 @@ namespace Taskmaster.Process
 			catch (InvalidOperationException)
 			{
 				// already exited
-				cache.TryRemove(hash, out _);
+				RemoveCached(hash);
 				Log.Debug($"{info.ToFullString()} exited before analysis could begin.");
 			}
 			catch (Win32Exception)
 			{
 				info.Restricted = true;
 				// access denied
-				cache.TryRemove(hash, out _);
+				RemoveCached(hash);
 				Log.Debug($"{info.ToFullString()} was denied access for analysis.");
 			}
 			catch (OutOfMemoryException) { throw; }
 			catch (Exception ex)
 			{
-				cache.TryRemove(hash, out _);
+				RemoveCached(hash);
 				Logging.Stacktrace(ex);
 			}
 
@@ -352,9 +354,9 @@ namespace Taskmaster.Process
 						string name = section.Name;
 						if (KnownModules.ContainsKey(name)) continue;
 
-						var files = section.Get("files")?.Array ?? null;
+						string[] files = section.Get("files")?.Array ?? System.Array.Empty<string>();
 
-						if ((files?.Length ?? 0) == 0) continue;
+						if (files.Length == 0) continue;
 
 						string listeds = section.Get("listed")?.Value.ToLowerInvariant() ?? "no";
 						bool listed = yesvalues.Any((x) => x.Equals(listeds));
@@ -417,7 +419,7 @@ namespace Taskmaster.Process
 
 	public class ModuleInfo
 	{
-		public string[] Files = null;
+		public string[] Files = System.Array.Empty<string>();
 		public List<string> Detected = new List<string>();
 		public ModuleType Type = ModuleType.Unknown;
 		public string Identity = string.Empty;
@@ -456,7 +458,7 @@ namespace Taskmaster.Process
 
 		public ModuleInfo Clone()
 		{
-			string[] farr = null;
+			string[] farr = System.Array.Empty<string>();
 			if (Files.Length > 0)
 			{
 				farr = new string[Files.Length];

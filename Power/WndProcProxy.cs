@@ -42,8 +42,8 @@ namespace Taskmaster.Power
 	// TODO: Merge all WndProc proxies, or make them partial definitions, make it extensible, or something.
 	class WndProcProxy : Form, IDisposable
 	{
-		public PowerModeDelegate PowerModeChanged;
-		public MonitorPowerModeDelegate MonitorPowerChange;
+		public PowerModeDelegate? PowerModeChanged;
+		public MonitorPowerModeDelegate? MonitorPowerChange;
 
 		public WndProcProxy() => _ = Handle; // HACK
 
@@ -76,14 +76,13 @@ namespace Taskmaster.Power
 				}
 				else if (ps.PowerSetting == NativeMethods.GUID_CONSOLE_DISPLAY_STATE)
 				{
-					MonitorPowerMode mode;
-					switch (ps.Data)
+					MonitorPowerMode mode = ps.Data switch
 					{
-						case 0x0: mode = MonitorPowerMode.Off; break;
-						case 0x1: mode = MonitorPowerMode.On; break;
-						case 0x2: mode = MonitorPowerMode.Standby; break;
-						default: mode = MonitorPowerMode.Invalid; break;
-					}
+						0x0 => MonitorPowerMode.Off,
+						0x1 => MonitorPowerMode.On,
+						0x2 => MonitorPowerMode.Standby,
+						_ => MonitorPowerMode.Invalid
+					};
 
 					MonitorPowerChange?.Invoke(mode);
 

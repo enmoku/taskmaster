@@ -32,8 +32,12 @@ namespace Taskmaster.Audio
 {
 	using static Taskmaster;
 
-	class DeviceNotificationClient : NAudio.CoreAudioApi.Interfaces.IMMNotificationClient
+	public class DeviceNotificationClient : NAudio.CoreAudioApi.Interfaces.IMMNotificationClient
 	{
+		readonly Manager audiomanager;
+
+		public DeviceNotificationClient(Manager manager) => audiomanager = manager;
+
 		/// <summary>
 		/// Default device GUID, Role, and Flow.
 		/// GUID is null if there's no default.
@@ -131,7 +135,7 @@ namespace Taskmaster.Audio
 				{
 					var guid = Utility.DeviceIdToGuid(pwstrDeviceId);
 
-					var device = audiomanager?.GetDevice(guid);
+					var device = audiomanager.GetDevice(guid);
 
 					Log.Debug("<Audio> Device " + (device?.Name ?? guid.ToString()) + " property changed: " + key.formatId.ToString() + " [" + key.propertyId.ToString() + "]");
 				}

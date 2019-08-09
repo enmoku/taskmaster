@@ -175,12 +175,12 @@ namespace Taskmaster
 				RichMessage?.Dispose();
 				Message?.Dispose();
 
-				endbutton?.Dispose();
-				okbutton?.Dispose();
-				retrybutton?.Dispose();
-				cancelbutton?.Dispose();
-				buttonlayout?.Dispose();
-				layout?.Dispose();
+				endbutton.Dispose();
+				okbutton.Dispose();
+				retrybutton.Dispose();
+				cancelbutton.Dispose();
+				buttonlayout.Dispose();
+				layout.Dispose();
 			}
 
 			base.Dispose(disposing);

@@ -65,7 +65,7 @@ namespace Taskmaster.Audio
 		public const double SmallVolumeHysterisis = VolumeHysterisis / 4d;
 		TimeSpan AdjustDelay { get; } = TimeSpan.FromSeconds(5);
 
-		NAudio.Mixer.UnsignedMixerControl VolumeControl = null;
+		NAudio.Mixer.UnsignedMixerControl? VolumeControl = null;
 
 		double _volume;
 
@@ -130,7 +130,7 @@ namespace Taskmaster.Audio
 			DisposalChute.Push(this);
 		}
 
-		Manager audiomanager = null;
+		Manager? audiomanager = null;
 
 		public async Task Hook(Manager manager)
 		{

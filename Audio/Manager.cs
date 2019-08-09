@@ -86,7 +86,7 @@ namespace Taskmaster.Audio
 
 			Enumerator = new NAudio.CoreAudioApi.MMDeviceEnumerator();
 
-			notificationClient = new DeviceNotificationClient
+			notificationClient = new DeviceNotificationClient(this)
 			{
 				StateChanged = StateChangeProxy,
 				DefaultDevice = DefaultDeviceProxy,
@@ -125,7 +125,7 @@ namespace Taskmaster.Audio
 			throw new NotImplementedException();
 		}
 
-		System.Timers.Timer volumeTimer = new System.Timers.Timer(100);
+		readonly System.Timers.Timer volumeTimer = new System.Timers.Timer(100);
 		public double VolumePollInterval => volumeTimer.Interval;
 
 		public void StartVolumePolling() => volumeTimer.Start();
@@ -299,7 +299,7 @@ namespace Taskmaster.Audio
 			ConsoleDevice.MMDevice.AudioSessionManager.OnSessionCreated += OnSessionCreated;
 		}
 
-		Process.Manager processmanager = null;
+		Process.Manager? processmanager = null;
 
 		public async Task Hook(Process.Manager procman)
 		{
@@ -321,6 +321,8 @@ namespace Taskmaster.Audio
 
 				if (Process.Utility.GetInfo(pid, out var info, getPath: true, name: name))
 				{
+					//info.Path
+
 					float volume = session.SimpleAudioVolume.Volume;
 
 					//OnNewSession?.Invoke(this, info);
@@ -407,12 +409,10 @@ namespace Taskmaster.Audio
 
 			if (disposing)
 			{
-				volumeTimer?.Dispose();
-				volumeTimer = null;
+				volumeTimer.Dispose();
 
 				CloseNotificationClient(); // unnecessary? definitely hangs if any mmdevice has been disposed
-				Enumerator?.Dispose();
-				Enumerator = null;
+				Enumerator.Dispose();
 
 				if (MultimediaDevice != null)
 					MultimediaDevice.MMDevice.AudioSessionManager.OnSessionCreated -= OnSessionCreated;

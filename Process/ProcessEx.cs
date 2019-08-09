@@ -61,7 +61,7 @@ namespace Taskmaster.Process
 		/// </summary>
 		public string Description { get; set; } = null;
 
-		public Stopwatch Timer = null;
+		public Stopwatch Timer = new Stopwatch();
 		public double WMIDelay = 0;
 
 		public LegacyLevel Legacy { get; set; } = LegacyLevel.Undefined;
@@ -139,7 +139,7 @@ namespace Taskmaster.Process
 						if (value == HandlingState.Exited) Exited = true;
 						else if (value == HandlingState.Modified) Modified = DateTimeOffset.UtcNow;
 						Handled = true;
-						Timer?.Stop();
+						Timer.Stop();
 						break;
 					default: break;
 				}
@@ -173,7 +173,7 @@ namespace Taskmaster.Process
 		public DateTime Found { get; set; } = DateTime.UtcNow;
 
 		// internal loaders
-		public ProcessLoad Load;
+		public ProcessLoad? Load = null;
 
 		/// <summary>
 		/// Display: <code>Name #PID</code>

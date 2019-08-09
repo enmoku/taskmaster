@@ -36,11 +36,11 @@ namespace Taskmaster.UI
 
 	public class VolumeMeter : UniForm
 	{
-		readonly ProgressBar OutputVolume = null;
-		readonly ProgressBar InputVolume = null;
+		readonly ProgressBar OutputVolume, InputVolume;
 
-		readonly AlignedLabel OutputVolumeLabel = new AlignedLabel() { Text = "0.0 %", AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleRight, Dock = DockStyle.Right, };
-		readonly AlignedLabel InputVolumeLabel = new AlignedLabel() { Text = "0.0 %", AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleRight, Dock = DockStyle.Right, };
+		readonly AlignedLabel
+			OutputVolumeLabel = new AlignedLabel() { Text = "0.0 %", AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleRight, Dock = DockStyle.Right, },
+			InputVolumeLabel = new AlignedLabel() { Text = "0.0 %", AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleRight, Dock = DockStyle.Right, };
 
 		int _volumeoutputcap = 10_000;
 		public int VolumeOutputCap { get => _volumeoutputcap; set => _volumeoutputcap = value.Constrain(20, 100) * 100; }
@@ -49,7 +49,7 @@ namespace Taskmaster.UI
 		public int VolumeInputCap { get => _volumeinputcap; set => _volumeinputcap = value.Constrain(20, 100) * 100; }
 		public int Frequency { get; set; }
 
-		readonly Audio.Manager audiomanager = null;
+		readonly Audio.Manager audiomanager;
 
 		public VolumeMeter(Audio.Manager manager)
 			: base()
@@ -183,7 +183,6 @@ namespace Taskmaster.UI
 		void UpdateVolumeTick(object sender, EventArgs e)
 		{
 			if (disposed) return;
-			if (audiomanager is null) throw new NullReferenceException(nameof(audiomanager));
 
 			try
 			{
@@ -256,10 +255,10 @@ namespace Taskmaster.UI
 
 				cfg.Config[Constants.Windows][HumanReadable.Hardware.Audio.Volume].IntArray = new int[] { saveBounds.Left, saveBounds.Top };
 
-				OutputVolume?.Dispose();
-				InputVolume?.Dispose();
-				OutputVolumeLabel?.Dispose();
-				InputVolumeLabel?.Dispose();
+				OutputVolume.Dispose();
+				InputVolume.Dispose();
+				OutputVolumeLabel.Dispose();
+				InputVolumeLabel.Dispose();
 
 				OnDisposed?.Invoke(this, DisposedEventArgs.Empty);
 				OnDisposed = null;

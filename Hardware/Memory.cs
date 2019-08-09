@@ -71,7 +71,7 @@ namespace Taskmaster
 		/// </summary>
 		public static long FreeBytes { get; private set; } = 0;
 
-		static Windows.PerformanceCounter pfcprivate = new Windows.PerformanceCounter("Process", "Private Bytes", "_Total");
+		static readonly Windows.PerformanceCounter pfcprivate = new Windows.PerformanceCounter("Process", "Private Bytes", "_Total");
 		//static Windows.PerformanceCounter pfccommit = new Windows.PerformanceCounter("Memory", "% Committed Bytes In Use", null);
 		//static Windows.PerformanceCounter pfcfree = new Windows.PerformanceCounter("Memory", "Available MBytes", null);
 
@@ -165,8 +165,7 @@ namespace Taskmaster
 			~Finalizer()
 			{
 				Logging.DebugMsg("MemoryManager static finalization");
-				pfcprivate?.Dispose();
-				pfcprivate = null;
+				pfcprivate.Dispose();
 				//pfccommit?.Dispose();
 				//pfccommit = null;
 				//pfcfree?.Dispose();

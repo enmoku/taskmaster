@@ -40,7 +40,7 @@ namespace Taskmaster.Configuration
 
 		public int Shared { get; internal set; } = 0;
 
-		public FileEventDelegate OnUnload, OnSave;
+		public FileEventDelegate? OnUnload, OnSave;
 
 		public File(Ini.Config config, string filename)
 		{

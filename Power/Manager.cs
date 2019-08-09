@@ -66,12 +66,7 @@ namespace Taskmaster.Power
 			if (Behaviour == PowerBehaviour.RuleBased && !Forced)
 				Restore(new Cause(OriginType.Internal, Constants.InitialName));
 
-			if (SessionLockPowerOffIdleTimeout.HasValue)
-			{
-				var stopped = System.Threading.Timeout.InfiniteTimeSpan;
-				MonitorSleepTimer = new System.Timers.Timer(60_000);
-				MonitorSleepTimer.Elapsed += MonitorSleepTimerTick;
-			}
+			MonitorSleepTimer.Elapsed += MonitorSleepTimerTick;
 
 			RegisterForExit(this);
 			DisposalChute.Push(this);
@@ -83,7 +78,7 @@ namespace Taskmaster.Power
 		public void SetupEventHooks()
 		{
 			WndProcProxy = new WndProcProxy();
-			WndProcProxy?.RegisterEventHooks();
+			WndProcProxy.RegisterEventHooks();
 			WndProcProxy.MonitorPowerChange = MonitorPowerEvent;
 			WndProcProxy.PowerModeChanged = PowerModeChanged;
 
@@ -110,7 +105,7 @@ namespace Taskmaster.Power
 				bool asexpected = CurrentMode == lastexpectedmode;
 
 				PlanChange?.Invoke(this, new ModeEventArgs(CurrentMode, old, asexpected ? ExpectedCause : new Cause(OriginType.None, "External")));
-				ExpectedCause = null;
+				ExpectedCause = new Cause(OriginType.None);
 
 				if (DebugPower) Log.Information($"<Power> Change detected: {CurrentMode.ToString()} ({mode.ToString()})");
 
@@ -193,14 +188,14 @@ namespace Taskmaster.Power
 					}
 
 					StartDisplayTimer();
-					MonitorOffLastLock?.Stop();
+					MonitorOffLastLock.Stop();
 
 					if (DebugMonitor) DebugMonitorWake().ConfigureAwait(false);
 				}
 				else if (mode == MonitorPowerMode.Off)
 				{
 					StopDisplayTimer();
-					if (SessionLocked) MonitorOffLastLock?.Start();
+					if (SessionLocked) MonitorOffLastLock.Start();
 				}
 			}
 			catch (OutOfMemoryException) { throw; }
@@ -267,7 +262,7 @@ namespace Taskmaster.Power
 		void StopDisplayTimer(bool reset = false)
 		{
 			if (reset) SleepTickCount = -1;
-			MonitorSleepTimer?.Stop();
+			MonitorSleepTimer.Stop();
 		}
 
 		void StartDisplayTimer()
@@ -275,10 +270,10 @@ namespace Taskmaster.Power
 			if (disposed) throw new ObjectDisposedException(nameof(Manager), "StartDisplayTimer called after PowerManager was disposed.");
 
 			if (SleepTickCount < 0) SleepTickCount = 0; // reset
-			MonitorSleepTimer?.Start();
+			MonitorSleepTimer.Start();
 		}
 
-		readonly System.Timers.Timer MonitorSleepTimer = null;
+		readonly System.Timers.Timer MonitorSleepTimer = new System.Timers.Timer(60_000);
 
 		int SleepTickCount = -1;
 		int SleepGivenUp = 0;
@@ -880,9 +875,10 @@ namespace Taskmaster.Power
 		public RestoreModeMethod RestoreMethod { get; private set; } = RestoreModeMethod.Default;
 		public Mode RestoreMode { get; private set; } = Mode.Balanced;
 
-		Stopwatch SessionLockCounter = null;
-		Stopwatch MonitorOffLastLock = null;
-		readonly Stopwatch MonitorPowerOffCounter = new Stopwatch(); // unused?
+		readonly Stopwatch
+			SessionLockCounter = new Stopwatch(),
+			MonitorOffLastLock = new Stopwatch(),
+			MonitorPowerOffCounter = new Stopwatch(); // unused?
 
 		async void SessionLockEvent(object _, SessionSwitchEventArgs ev)
 		{
@@ -897,14 +893,14 @@ namespace Taskmaster.Power
 					return;
 				case SessionSwitchReason.SessionLock:
 					SessionLocked = true;
-					MonitorOffLastLock = Stopwatch.StartNew();
-					SessionLockCounter = Stopwatch.StartNew();
+					MonitorOffLastLock.Restart();
+					SessionLockCounter.Restart();
 					// TODO: Pause most of TM's functionality to avoid problems with account swapping
 					break;
 				case SessionSwitchReason.SessionUnlock:
 					SessionLocked = false;
-					MonitorOffLastLock?.Stop();
-					SessionLockCounter?.Stop();
+					MonitorOffLastLock.Stop();
+					SessionLockCounter.Stop();
 					break;
 			}
 
@@ -948,8 +944,8 @@ namespace Taskmaster.Power
 
 				if (SessionLockPowerOff)
 				{
-					var off = MonitorOffLastLock?.Elapsed ?? TimeSpan.Zero;
-					var total = SessionLockCounter?.Elapsed ?? TimeSpan.Zero;
+					var off = MonitorOffLastLock.Elapsed;
+					var total = SessionLockCounter.Elapsed;
 					double percentage = off.TotalMinutes / total.TotalMinutes;
 
 					Log.Information("<Session:Unlock> Monitor off time: " + $"{off.TotalMinutes:N1} / {total.TotalMinutes:N1} minutes ({percentage * 100d:N1} %)");
@@ -1416,7 +1412,7 @@ namespace Taskmaster.Power
 				if (cpumonitor != null)
 					cpumonitor.Sampling -= CPULoadHandler;
 
-				MonitorSleepTimer?.Dispose();
+				MonitorSleepTimer.Dispose();
 
 				AutoAdjustAttempt = null;
 				PlanChange = null;

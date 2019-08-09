@@ -34,29 +34,28 @@ namespace Taskmaster.UI.Config
 {
 	public class PowerConfigWindow : UniForm
 	{
-		public AutoAdjustSettings oldAutoAdjust = null;
-		public AutoAdjustSettings newAutoAdjust = null;
+		readonly public AutoAdjustSettings oldAutoAdjust;
 
 		public Power.PowerBehaviour NewLaunchBehaviour = Power.PowerBehaviour.Undefined;
 		public Power.RestoreModeMethod NewRestoreMethod = Power.RestoreModeMethod.Default;
 		public Mode NewRestoreMode = Mode.Undefined;
 		public Mode NewLockMode = Mode.Undefined;
 
-		readonly ComboBox behaviour = null, restore = null;
+		readonly ComboBox behaviour, restore;
 
-		readonly ComboBox defaultmode = null, highmode = null, lowmode = null;
-		readonly Extensions.NumericUpDownEx highcommitthreshold = null, highbackoffhigh = null, highbackoffmean = null, highbackofflow = null;
-		readonly NumericUpDown highcommitlevel = null, highbackofflevel = null;
-		readonly Extensions.NumericUpDownEx lowcommitthreshold = null, lowbackoffhigh = null, lowbackoffmean = null, lowbackofflow = null;
-		readonly NumericUpDown lowcommitlevel = null, lowbackofflevel = null;
+		readonly ComboBox defaultmode, highmode, lowmode;
+		readonly Extensions.NumericUpDownEx highcommitthreshold, highbackoffhigh, highbackoffmean, highbackofflow;
+		readonly NumericUpDown highcommitlevel, highbackofflevel;
+		readonly Extensions.NumericUpDownEx lowcommitthreshold, lowbackoffhigh, lowbackoffmean, lowbackofflow;
+		readonly NumericUpDown lowcommitlevel, lowbackofflevel;
 
-		readonly NumericUpDown loQueue = null, hiQueue = null;
+		readonly NumericUpDown loQueue, hiQueue;
 
 		bool MonitorPowerOff = false;
-		readonly ComboBox monitoroffmode = null;
-		readonly CheckBox monitorofftoggle = null;
+		readonly ComboBox monitoroffmode;
+		readonly CheckBox monitorofftoggle;
 
-		readonly Power.Manager manager = null;
+		readonly Power.Manager manager;
 
 		public PowerConfigWindow(Power.Manager powerManager, bool center = false)
 			: base(centerOnScreen: center)
@@ -354,7 +353,7 @@ namespace Taskmaster.UI.Config
 
 			// TODO: Sanity check the settings
 
-			newAutoAdjust = new AutoAdjustSettings
+			var newAutoAdjust = new AutoAdjustSettings
 			{
 				DefaultMode = Power.Utility.GetModeByName(defaultmode.Text),
 				Low =
@@ -398,21 +397,14 @@ namespace Taskmaster.UI.Config
 
 			// passing the new config is done elsewhere
 
-			switch (monitoroffmode.SelectedIndex)
+			NewLockMode = monitoroffmode.SelectedIndex switch
 			{
-				case 0: // ignore
-					NewLockMode = Mode.Undefined;
-					break;
-				case 1: // high
-					NewLockMode = Mode.HighPerformance;
-					break;
-				case 2: // balanced
-					NewLockMode = Mode.Balanced;
-					break;
-				case 3: // saver
-					NewLockMode = Mode.PowerSaver;
-					break;
-			}
+				//0 => Mode.Undefined,
+				1 => Mode.HighPerformance,
+				2 => Mode.Balanced,
+				3 => Mode.PowerSaver,
+				_ => Mode.Undefined,
+			};
 
 			MonitorPowerOff = monitorofftoggle.Checked;
 
@@ -501,21 +493,15 @@ namespace Taskmaster.UI.Config
 			}
 
 			var SessionLockPowerMode = manager.SessionLockPowerMode;
-			switch (SessionLockPowerMode)
+
+			monitoroffmode.SelectedIndex = SessionLockPowerMode switch
 			{
-				default:
-					monitoroffmode.SelectedIndex = 0;
-					break;
-				case Mode.HighPerformance:
-					monitoroffmode.SelectedIndex = 1;
-					break;
-				case Mode.Balanced:
-					monitoroffmode.SelectedIndex = 2;
-					break;
-				case Mode.PowerSaver:
-					monitoroffmode.SelectedIndex = 3;
-					break;
-			}
+				Mode.HighPerformance => 1,
+				Mode.Balanced => 2,
+				Mode.PowerSaver => 3,
+				_ => 0,
+			};
+
 			monitorofftoggle.Checked = MonitorPowerOff;
 
 			defaultmode.SelectedIndex = AutoAdjust.DefaultMode == Mode.Balanced ? 1 : AutoAdjust.DefaultMode == Mode.PowerSaver ? 2 : 0;

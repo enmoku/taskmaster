@@ -55,7 +55,7 @@ namespace Taskmaster
 
 		//Windows.PerformanceCounter CPUIRQ = new Windows.PerformanceCounter("Processor", "% Interrupt Time", "_Total");
 
-		System.Timers.Timer CPUSampleTimer = null;
+		readonly System.Timers.Timer CPUSampleTimer;
 
 		readonly float[] Samples;
 		int SampleLoop = 0;
@@ -86,7 +86,7 @@ namespace Taskmaster
 			catch (Exception ex)
 			{
 				Logging.Stacktrace(ex);
-				CPUSampleTimer?.Dispose();
+				CPUSampleTimer.Stop();
 				throw;
 			}
 
@@ -336,8 +336,7 @@ namespace Taskmaster
 
 			if (disposing)
 			{
-				CPUSampleTimer?.Dispose();
-				CPUSampleTimer = null;
+				CPUSampleTimer.Dispose();
 
 				//CPUload?.Dispose();
 				CPUqueue?.Dispose();
@@ -354,17 +353,7 @@ namespace Taskmaster
 			}
 		}
 
-		public void ShutdownEvent(object sender, EventArgs ea)
-			=> CPUSampleTimer?.Stop();
+		public void ShutdownEvent(object sender, EventArgs ea) => CPUSampleTimer.Stop();
 		#endregion
-	}
-
-	internal class CounterChunk
-	{
-		internal Windows.PerformanceCounter CPUCounter = null;
-		internal Windows.PerformanceCounter MEMCounter = null;
-		internal uint References = 0;
-		internal string Name = string.Empty;
-		internal ConcurrentDictionary<int, Process.ProcessEx> Processes = new ConcurrentDictionary<int, Process.ProcessEx>();
 	}
 }

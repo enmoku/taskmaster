@@ -303,12 +303,12 @@ namespace Taskmaster.UI.Config
 				SelectedIndex = 2,
 			};
 
-			switch (Controller.PriorityStrategy)
+			priorityClassMethod.SelectedIndex = Controller.PriorityStrategy switch
 			{
-				case Process.PriorityStrategy.Increase: priorityClassMethod.SelectedIndex = 0; break;
-				case Process.PriorityStrategy.Decrease: priorityClassMethod.SelectedIndex = 1; break;
-				default: priorityClassMethod.SelectedIndex = 2; break;
-			}
+				Process.PriorityStrategy.Increase => 0,
+				Process.PriorityStrategy.Decrease => 1,
+				_ => 2,
+			};
 
 			lt.Controls.Add(priorityClass);
 			lt.Controls.Add(priorityClassMethod);
@@ -569,12 +569,10 @@ namespace Taskmaster.UI.Config
 			ForegroundModeSelect.SelectedIndexChanged += (_, _ea) =>
 			{
 				fge = ForegroundModeSelect.SelectedIndex != 0;
-				bgPriorityClass.Enabled = fge && ForegroundModeSelect.SelectedIndex != 3;
-				bgAffinityMask.Enabled = fge && ForegroundModeSelect.SelectedIndex != 3;
+				bgAffinityMask.Enabled = bgPriorityClass.Enabled = fge && ForegroundModeSelect.SelectedIndex != 3;
 			};
 
-			bgPriorityClass.Enabled = fge && ForegroundModeSelect.SelectedIndex != 3;
-			bgAffinityMask.Enabled = fge && ForegroundModeSelect.SelectedIndex != 3;
+			bgAffinityMask.Enabled = bgPriorityClass.Enabled = fge && ForegroundModeSelect.SelectedIndex != 3;
 
 			// PAGING
 			lt.Controls.Add(new AlignedLabel { Text = "Allow paging" });
@@ -848,15 +846,15 @@ namespace Taskmaster.UI.Config
 
 			if (AudioManagerEnabled && volumeMethod.SelectedIndex != 5)
 			{
-				switch (volumeMethod.SelectedIndex)
+				Controller.VolumeStrategy = volumeMethod.SelectedIndex switch
 				{
-					case 0: Controller.VolumeStrategy = Audio.VolumeStrategy.Increase; break;
-					case 1: Controller.VolumeStrategy = Audio.VolumeStrategy.Decrease; break;
-					case 2: Controller.VolumeStrategy = Audio.VolumeStrategy.IncreaseFromMute; break;
-					case 3: Controller.VolumeStrategy = Audio.VolumeStrategy.DecreaseFromFull; break;
-					case 4: Controller.VolumeStrategy = Audio.VolumeStrategy.Force; break;
-					default: Controller.VolumeStrategy = Audio.VolumeStrategy.Ignore; break;
-				}
+					0 => Audio.VolumeStrategy.Increase,
+					1 => Audio.VolumeStrategy.Decrease,
+					2 => Audio.VolumeStrategy.IncreaseFromMute,
+					3 => Audio.VolumeStrategy.DecreaseFromFull,
+					4 => Audio.VolumeStrategy.Force,
+					_ => Audio.VolumeStrategy.Ignore,
+				};
 
 				Controller.Volume = Convert.ToSingle(volume.Value / 100M);
 			}
@@ -888,27 +886,24 @@ namespace Taskmaster.UI.Config
 			Close();
 		}
 
-		readonly Extensions.TextBox friendlyName = null, execName = null, pathName = null;
-		readonly ComboBox pathVisibility = null;
-		readonly Extensions.TextBox desc = null;
+		readonly Extensions.TextBox friendlyName, execName, pathName, desc;
+		readonly ComboBox pathVisibility, priorityClass, priorityClassMethod, bgPriorityClass;
 
-		readonly ComboBox priorityClass = null, priorityClassMethod = null, bgPriorityClass = null;
+		readonly ComboBox affstrategy;
+		readonly NumericUpDown affinityMask, bgAffinityMask, idealAffinity;
+		readonly ComboBox ioPriority;
 
-		readonly ComboBox affstrategy = null;
-		readonly NumericUpDown affinityMask = null, bgAffinityMask = null, idealAffinity = null;
-		readonly ComboBox ioPriority = null;
+		readonly ComboBox volumeMethod;
+		readonly Extensions.NumericUpDownEx volume;
 
-		readonly ComboBox volumeMethod = null;
-		readonly Extensions.NumericUpDownEx volume = null;
+		readonly Extensions.Button allbutton, clearbutton;
+		readonly Extensions.NumericUpDownEx modifyDelay;
+		readonly CheckBox allowPaging, FullscreenMode;
+		readonly ComboBox powerPlan, ForegroundModeSelect;
+		readonly Extensions.ListViewEx ignorelist;
+		readonly NumericUpDown preforder;
 
-		readonly Extensions.Button allbutton = null, clearbutton = null;
-		readonly Extensions.NumericUpDownEx modifyDelay = null;
-		readonly CheckBox allowPaging = null, FullscreenMode = null;
-		readonly ComboBox powerPlan = null, ForegroundModeSelect = null;
-		readonly Extensions.ListViewEx ignorelist = null;
-		readonly NumericUpDown preforder = null;
-
-		readonly CheckBox logAdjusts = null, logStartNExit = null, declareParent = null;
+		readonly CheckBox logAdjusts, logStartNExit, declareParent;
 
 		int cpumask = 0;
 
