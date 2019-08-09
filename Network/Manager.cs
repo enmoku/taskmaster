@@ -548,8 +548,7 @@ namespace Taskmaster.Network
 
 		public bool InternetAvailable { get; private set; } = false;
 
-		readonly int MaxSamples = 20;
-		readonly List<double> UptimeSamples = new List<double>(20);
+		readonly MKAh.Container.CircularBuffer<double> UptimeSamples = new MKAh.Container.CircularBuffer<double>(20);
 
 		DateTimeOffset UptimeRecordStart; // since we started recording anything
 
@@ -582,11 +581,7 @@ namespace Taskmaster.Network
 			{
 				var currentUptime = DateTimeOffset.UtcNow.Since(LastUptimeStart).TotalMinutes;
 
-				int cnt = UptimeSamples.Count;
-				sbs.AppendFormat("{0:N1}", (UptimeSamples.Sum() + currentUptime) / (cnt + 1)).Append(" minutes");
-
-				if (cnt >= 3)
-					sbs.Append(" (").AppendFormat("{0:N1}", UptimeSamples.GetRange(cnt - 3, 3).Sum() / 3f).Append(" minutes for last 3 samples");
+				sbs.Append(" (").AppendFormat(((UptimeSamples.Get(-2) + UptimeSamples.Get(-1) + currentUptime) / 3f).ToString("N1")).Append(" minutes for last 3 samples");
 			}
 
 			sbs.Append(" since: ").Append(UptimeRecordStart)
@@ -628,9 +623,6 @@ namespace Taskmaster.Network
 						{
 							var newUptime = (now - LastUptimeStart).TotalMinutes;
 							UptimeSamples.Add(newUptime);
-
-							if (UptimeSamples.Count > MaxSamples)
-								UptimeSamples.RemoveAt(0);
 						}
 
 						//ReportUptime();
