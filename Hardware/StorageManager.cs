@@ -45,8 +45,8 @@ namespace Taskmaster
 		static readonly string systemTemp = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows), "Temp");
 		static string UserTemp => Path.GetTempPath();
 
-		readonly FileSystemWatcher UserWatcher;
-		readonly FileSystemWatcher SysWatcher;
+		readonly FileSystemWatcher? UserWatcher = null;
+		readonly FileSystemWatcher? SysWatcher = null;
 
 		readonly System.Timers.Timer TempScanTimer = null;
 		TimeSpan TimerDue = TimeSpan.FromHours(24);
@@ -242,8 +242,8 @@ namespace Taskmaster
 
 				TempScan = null;
 
-				SysWatcher.Dispose();
-				UserWatcher.Dispose();
+				SysWatcher?.Dispose();
+				UserWatcher?.Dispose();
 				TempScanTimer.Dispose();
 
 				//base.Dispose();
@@ -258,8 +258,8 @@ namespace Taskmaster
 			try
 			{
 				TempScanTimer.Dispose();
-				SysWatcher.Dispose();
-				UserWatcher.Dispose();
+				SysWatcher?.Dispose();
+				UserWatcher?.Dispose();
 			}
 			catch { /* don't care */ }
 		}
