@@ -567,12 +567,9 @@ namespace Taskmaster.Network
 		/// <summary>
 		/// Returns uptime in minutes or positive infinite if no average is known
 		/// </summary>
-		public double UptimeMean
+		public double UptimeMean()
 		{
-			get
-			{
-				lock (uptime_lock) return UptimeSamples.Count > 0 ? UptimeSamples.Average() : double.PositiveInfinity;
-			}
+			lock (uptime_lock) return UptimeSamples.Count > 0 ? UptimeSamples.Average() : double.PositiveInfinity;
 		}
 
 		Stopwatch Downtime = null;

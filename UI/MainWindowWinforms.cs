@@ -983,7 +983,7 @@ namespace Taskmaster.UI
 			if (netmonitor is null) return;
 
 			uptimestatuslabel.Text = HumanInterface.TimeString(netmonitor.Uptime);
-			var mean = netmonitor.UptimeMean;
+			var mean = netmonitor.UptimeMean();
 			if (double.IsInfinity(mean))
 				uptimeMeanLabel.Text = "Infinite";
 			else
