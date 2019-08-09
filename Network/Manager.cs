@@ -518,16 +518,16 @@ namespace Taskmaster.Network
 						}
 					}
 
-					DeviceSampling?.Invoke(this, new DeviceTrafficEventArgs
+					var trfc = new DeviceTraffic
 					{
-						Traffic =
-						new DeviceTraffic
-						{
-							Index = index,
-							Delta = new TrafficData { Unicast = packets, Errors = errorsInSample, Discards = discards },
-							Total = new TrafficData { Unicast = totalunicast, Errors = totalerrors, Discards = totaldiscards, Bytes = nin.Bytes + nout.Bytes },
-						}
-					});
+						Index = index,
+						Delta = new TrafficData { Unicast = packets, Errors = errorsInSample, Discards = discards },
+						Total = new TrafficData { Unicast = totalunicast, Errors = totalerrors, Discards = totaldiscards, Bytes = nin.Bytes + nout.Bytes },
+					};
+
+					CurrentTraffic = trfc;
+
+					DeviceSampling?.Invoke(this, new DeviceTrafficEventArgs { Traffic = trfc });
 				}
 			}
 			catch (Exception ex)
@@ -540,7 +540,7 @@ namespace Taskmaster.Network
 			}
 		}
 
-		public DeviceTraffic GetCurrentTraffic { get; } = new DeviceTraffic();
+		public DeviceTraffic CurrentTraffic { get; private set; } = new DeviceTraffic();
 
 		public UI.TrayAccess Tray { get; set; } = null; // HACK: bad design
 

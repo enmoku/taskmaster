@@ -4038,7 +4038,7 @@ namespace Taskmaster.UI
 			netmonitor.NetworkStatusChange += NetStatusChangeEvent;
 			netmonitor.DeviceSampling += NetSampleHandler;
 
-			NetSampleHandler(this, new Network.DeviceTrafficEventArgs() { Traffic = new Network.DeviceTraffic(netmonitor.GetCurrentTraffic) });
+			NetSampleHandler(this, new Network.DeviceTrafficEventArgs() { Traffic = new Network.DeviceTraffic(netmonitor.CurrentTraffic) });
 			NetStatusChangeEvent(this, new Network.Status() { Available = netmonitor.NetworkAvailable });
 
 			UItimer.Tick += UpdateNetwork;
