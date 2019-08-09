@@ -1,336 +1,340 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
-  <PropertyGroup>
-    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
-    <Platform Condition=" '$(Platform)' == '' ">x86</Platform>
-    <ProjectGuid>{17F5325E-21DE-4434-836B-E12C2904E3E1}</ProjectGuid>
-    <OutputType>WinExe</OutputType>
-    <RootNamespace>Taskmaster</RootNamespace>
-    <AssemblyName>Taskmaster</AssemblyName>
-    <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
-    <ApplicationIcon>taskmaster-hammer.ico</ApplicationIcon>
-    <CodePage>65001</CodePage>
-    <IsWebBootstrapper>false</IsWebBootstrapper>
-    <AllowedReferenceRelatedFileExtensions>.pdb;.manifest</AllowedReferenceRelatedFileExtensions>
-    <NuGetPackageImportStamp>
-    </NuGetPackageImportStamp>
-    <TargetFrameworkProfile />
-    <PublishUrl>publish\</PublishUrl>
-    <Install>true</Install>
-    <InstallFrom>Disk</InstallFrom>
-    <UpdateEnabled>false</UpdateEnabled>
-    <UpdateMode>Foreground</UpdateMode>
-    <UpdateInterval>7</UpdateInterval>
-    <UpdateIntervalUnits>Days</UpdateIntervalUnits>
-    <UpdatePeriodically>false</UpdatePeriodically>
-    <UpdateRequired>false</UpdateRequired>
-    <MapFileExtensions>true</MapFileExtensions>
-    <ApplicationRevision>0</ApplicationRevision>
-    <ApplicationVersion>1.0.0.%2a</ApplicationVersion>
-    <UseApplicationTrust>false</UseApplicationTrust>
-    <BootstrapperEnabled>true</BootstrapperEnabled>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|x64'">
-    <PlatformTarget>x64</PlatformTarget>
-    <Prefer32Bit>false</Prefer32Bit>
-    <OutputPath>bin\Debug\</OutputPath>
-    <DefineConstants>DEBUG</DefineConstants>
-    <GenerateSerializationAssemblies>Off</GenerateSerializationAssemblies>
-    <LangVersion>preview</LangVersion>
-	<Nullable>enable</Nullable>
-    <DebugType>full</DebugType>
-    <DebugSymbols>true</DebugSymbols>
-    <CodeAnalysisRuleSet>ManagedMinimumRules.ruleset</CodeAnalysisRuleSet>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|x64'">
-    <PlatformTarget>x64</PlatformTarget>
-    <Prefer32Bit>false</Prefer32Bit>
-    <LangVersion>preview</LangVersion>
-	<Nullable>enable</Nullable>
-    <OutputPath>bin\Release\</OutputPath>
-    <Optimize>true</Optimize>
-  </PropertyGroup>
-  <PropertyGroup>
-    <BuildDate>$([System.DateTime]::UtcNow.ToString("yyyy/MM/dd HH:mm:ss K"))</BuildDate>
-  </PropertyGroup>
-  <PropertyGroup>
-    <ApplicationManifest>app.manifest</ApplicationManifest>
-  </PropertyGroup>
-  <PropertyGroup>
-    <AutoGenerateBindingRedirects>false</AutoGenerateBindingRedirects>
-  </PropertyGroup>
-  <ItemGroup>
-    <Reference Include="NAudio, Version=1.8.5.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\NAudio.1.8.5\lib\net35\NAudio.dll</HintPath>
-    </Reference>
-    <Reference Include="OpenHardwareMonitorLib, Version=0.8.0.2, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\OpenHardwareMonitorLibCore.1.0.2\lib\net452\OpenHardwareMonitorLib.dll</HintPath>
-    </Reference>
-    <Reference Include="Serilog, Version=2.0.0.0, Culture=neutral, PublicKeyToken=24c2f752a8e58a10, processorArchitecture=MSIL">
-      <HintPath>..\packages\Serilog.2.8.0\lib\net46\Serilog.dll</HintPath>
-    </Reference>
-    <Reference Include="System.ServiceProcess" />
-    <Reference Include="System.Windows.Forms" />
-    <Reference Include="System" />
-    <Reference Include="Serilog.Sinks.RollingFile">
-      <HintPath>..\packages\Serilog.Sinks.RollingFile.3.3.0\lib\net45\Serilog.Sinks.RollingFile.dll</HintPath>
-    </Reference>
-    <Reference Include="Serilog.Sinks.File">
-      <HintPath>..\packages\Serilog.Sinks.File.4.0.0\lib\net45\Serilog.Sinks.File.dll</HintPath>
-    </Reference>
-    <Reference Include="System.Core" />
-    <Reference Include="Serilog.Sinks.Console">
-      <HintPath>..\packages\Serilog.Sinks.Console.3.1.1\lib\net45\Serilog.Sinks.Console.dll</HintPath>
-    </Reference>
-    <Reference Include="System.Management" />
-    <Reference Include="System.Drawing" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include=".gitattributes" />
-    <None Include=".gitignore" />
-    <Content Include=".itch.toml">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
-    <None Include="app.config">
-      <SubType>Designer</SubType>
-    </None>
-    <None Include="app.manifest">
-      <SubType>Designer</SubType>
-    </None>
-    <None Include="Resources\BuildDate.restext" />
-    <None Include="Resources\ExternalLicenses.rtf" />
-    <None Include="Resources\KnownModules.ini" />
-    <None Include="Resources\ProjectDirectory.restext" />
-    <Content Include="Resources\cancel.png" />
-    <Content Include="Resources\checked.png" />
-    <Content Include="Resources\information.png" />
-    <Content Include="taskmaster-hammer.ico" />
-    <Content Include="LICENSE">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <None Include="packages.config" />
-    <None Include="README.md" />
-    <EmbeddedResource Include="Properties\Resources.resx">
-      <Generator>ResXFileCodeGenerator</Generator>
-      <LastGenOutput>Resources.Designer.cs</LastGenOutput>
-      <SubType>Designer</SubType>
-    </EmbeddedResource>
-    <None Include="Resources\Watchlist.ini" />
-  </ItemGroup>
-  <ItemGroup>
-    <Compile Include="Audio\ConfigConstants.cs" />
-    <Compile Include="Audio\Utility.cs" />
-    <Compile Include="Constants.cs" />
-    <Compile Include="Component.cs" />
-    <Compile Include="External\WinPEHeaderReader.cs" />
-    <Compile Include="Interface\ISetting.cs" />
-    <Compile Include="MKAh\Data\Cache\CacheEventArgs.cs" />
-    <Compile Include="MKAh\Data\Cache\CacheItem.cs" />
-    <Compile Include="MKAh\Data\Cache\EvictStrategy.cs" />
-    <Compile Include="MKAh\Container\CircularBuffer.cs" />
-    <Compile Include="MKAh\Data\Generic\Constants.cs" />
-    <Compile Include="MKAh\Data\Generic\String.cs" />
-    <Compile Include="MKAh\Data\Cache\SimpleCache.cs" />
-    <Compile Include="MKAh\Data\Cache\StoreStrategy.cs" />
-    <Compile Include="MKAh\File\Allocation.cs" />
-    <Compile Include="MKAh\Data\Ini\Config.cs" />
-    <Compile Include="MKAh\Data\Ini\Constant.cs" />
-    <Compile Include="MKAh\Data\Ini\Converter.cs" />
-    <Compile Include="MKAh\Data\Ini\Interface\IContainer.cs" />
-    <Compile Include="MKAh\Data\Ini\Interface\Value.cs" />
-    <Compile Include="MKAh\Data\Exceptions\ParseException.cs" />
-    <Compile Include="MKAh\Data\Ini\Section.cs" />
-    <Compile Include="MKAh\Data\Ini\Setting.cs" />
-    <Compile Include="MKAh\Data\Ini\SettingType.cs" />
-    <Compile Include="MKAh\File\NativeMethods.cs" />
-    <Compile Include="Network\ConfigConstants.cs" />
-    <Compile Include="Power\Constants.cs" />
-    <Compile Include="Power\Events\ModeEventArgs.cs" />
-    <Compile Include="Power\Events\MonitorPowerEventArgs.cs" />
-    <Compile Include="Power\Enums.cs" />
-    <Compile Include="Power\NativeMethods.cs" />
-    <Compile Include="Power\Events\RequestEventArgs.cs" />
-    <Compile Include="Power\Events\SessionLockEventArgs.cs" />
-    <Compile Include="Power\Utility.cs" />
-    <Compile Include="Power\WndProcProxy.cs" />
-    <Compile Include="Process\ConfigConstants.cs" />
-    <Compile Include="Process\Events\HandlingStateChangeEventArgs.cs" />
-    <Compile Include="Process\Events\LoaderEvent.cs" />
-    <Compile Include="Process\InstanceGroupLoad.cs" />
-    <Compile Include="Process\Legacy.cs" />
-    <Compile Include="Process\LoadInfo.cs" />
-    <Compile Include="Process\Options.cs" />
-    <Compile Include="Process\Events\ProcessingCountEventArgs.cs" />
-    <Compile Include="Process\ProcessLoad.cs" />
-    <Compile Include="Process\ProcessorUsage.cs" />
-    <Compile Include="Settings.Global.cs" />
-    <Compile Include="Process\Foreground.cs" />
-    <Compile Include="AlertManager.cs" />
-    <Compile Include="Audio\DeviceNotificationClient.cs" />
-    <Compile Include="Audio\Manager.cs" />
-    <Compile Include="Audio\Session.cs" />
-    <Compile Include="Cause.cs" />
-    <Compile Include="Config\FileEvent.cs" />
-    <Compile Include="Config\IFile.cs" />
-    <Compile Include="IDisposal.cs" />
-    <Compile Include="Config\Manager.cs" />
-    <Compile Include="Enums\ForegroundMode.cs" />
-    <Compile Include="Audio\DeviceEventArgs.cs" />
-    <Compile Include="Audio\DeviceStateEventArgs.cs" />
-    <Compile Include="Audio\DefaultDeviceEventArgs.cs" />
-    <Compile Include="Network\InternetStatus.cs" />
-    <Compile Include="Network\NetworkStatus.cs" />
-    <Compile Include="Power\AutoAdjustReaction.cs" />
-    <Compile Include="Process\Events\ModificationEventArgs.cs" />
-    <Compile Include="Hardware\ProcessorLoad.cs" />
-    <Compile Include="Audio\VolumeChanged.cs" />
-    <Compile Include="MKAh\Atomic\Lock.cs" />
-    <Compile Include="MKAh\Execution\User.cs" />
-    <Compile Include="MKAh\Execution\UserActivity.cs" />
-    <Compile Include="MKAh\Extensions\CoreExtensions.cs" />
-    <Compile Include="MKAh\Handling\DiscardException.cs" />
-    <Compile Include="MKAh\Human\Readable\Time.cs" />
-    <Compile Include="MKAh\Logic\BitOperations.cs" />
-    <Compile Include="MKAh\Native\Basic.cs" />
-    <Compile Include="MKAh\Program\NativeImage.cs" />
-    <Compile Include="MKAh\Wrapper\Windows\PerformanceCounter.cs" />
-    <Compile Include="Process\NativeMethods.cs" />
-    <Compile Include="ServiceWrapper.cs" />
-    <Compile Include="Settings\HealthMonitor.cs" />
-    <Compile Include="CommandLine.cs" />
-    <Compile Include="Initialization.cs" />
-    <Compile Include="IPC.cs" />
-    <Compile Include="UI\ChangeLog.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="UI\Config\AdvancedConfig.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="UI\DiagnosticDialog.cs" />
-    <Compile Include="UI\Extensions\AlignedLabel.cs">
-      <SubType>Component</SubType>
-    </Compile>
-    <Compile Include="UI\Extensions\Buffered.cs">
-      <SubType>Component</SubType>
-    </Compile>
-    <Compile Include="UI\Extensions\NumericUpDownEx.cs">
-      <SubType>Component</SubType>
-    </Compile>
-    <Compile Include="Hardware\CPUMonitor.cs" />
-    <Compile Include="Hardware\HardwareMonitor.cs" />
-    <Compile Include="UI\Config\ExperimentConfig.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="UI\LicenseDialog.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="LinearMeter.cs" />
-    <Compile Include="NativeMethods.cs" />
-    <Compile Include="UI\Config\PowerConfigWindow.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="Config\Presets\PowerPresets.cs" />
-    <Compile Include="Process\ProcessEx.cs" />
-    <Compile Include="Process\Utility.cs" />
-    <Compile Include="Process\Types.cs" />
-    <Compile Include="Properties\Resources.Designer.cs">
-      <AutoGen>True</AutoGen>
-      <DesignTime>True</DesignTime>
-      <DependentUpon>Resources.resx</DependentUpon>
-    </Compile>
-    <Compile Include="Events\RunstateException.cs" />
-    <Compile Include="SelfMaintenance.cs" />
-    <Compile Include="UI\LoaderDisplay.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="UI\MessageBox.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="UI\Splash.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="UI\Stubs\EmptySpace.cs">
-      <SubType>Component</SubType>
-    </Compile>
-    <Compile Include="UI\Utility.cs" />
-    <Compile Include="UI\VolumeMeter.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="UI\WatchlistSorter.cs" />
-    <Compile Include="UI\TrayWndProc.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="Utility\LockScoping.cs" />
-    <Compile Include="Utility\StructuralEqualityComparer.cs" />
-    <Compile Include="Utility\HumanReadable.cs" />
-    <Compile Include="UI\TextInputBox.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="UI\HiddenWindow.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="UI\Extensions\ListViewEx.cs">
-      <SubType>Component</SubType>
-    </Compile>
-    <Compile Include="UI\UniForm.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="Utility\DiscardException.cs" />
-    <Compile Include="Utility\LogAndDiscardException.cs" />
-    <Compile Include="Utility\ProcessPriorityClass.cs" />
-    <Compile Include="UI\Config\WatchlistEditWindow.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="Hardware\StorageManager.cs" />
-    <Compile Include="Utility\HumanInterface.cs" />
-    <Compile Include="Events\InitFailure.cs" />
-    <Compile Include="UI\Config\ComponentConfigurationWindow.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="UI\MainWindowWinforms.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="MemoryLog.cs" />
-    <Compile Include="Hardware\Memory.cs" />
-    <Compile Include="Audio\Device.cs" />
-    <Compile Include="Audio\MicManager.cs" />
-    <Compile Include="Network\Device.cs" />
-    <Compile Include="Network\Manager.cs" />
-    <Compile Include="Power\Manager.cs" />
-    <Compile Include="Process\Analyzer.cs" />
-    <Compile Include="Process\Controller.cs" />
-    <Compile Include="Process\Helpers.cs" />
-    <Compile Include="Process\Manager.cs" />
-    <Compile Include="UI\ProcessSelectDialog.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="Statistics.cs" />
-    <Compile Include="TaskMaster.cs" />
-    <Compile Include="UI\TrayAccess.cs" />
-    <Compile Include="Utility.cs" />
-    <Compile Include="Process\Extensions.cs" />
-    <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="HealthMonitor.cs" />
-    <Compile Include="Power\PowerInfo.cs" />
-    <Compile Include="UI\Config\HealthMonitorConfig.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="Config\Presets\WatchlistRuleGenerator.cs" />
-    <Compile Include="UI\Config\WatchlistRuleGeneratorWindow.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="Config\File.cs" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="CHANGELOG">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-  </ItemGroup>
-  <ItemGroup />
-  <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
-  <PropertyGroup>
-    <PreBuildEvent>echo $(BuildDate) &gt; "$(ProjectDir)\Resources\BuildDate.restext"
+	<PropertyGroup>
+		<Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+		<Platform Condition=" '$(Platform)' == '' ">x64</Platform>
+		<ProjectGuid>{17F5325E-21DE-4434-836B-E12C2904E3E1}</ProjectGuid>
+		<Nullable>enable</Nullable>
+		<OutputType>WinExe</OutputType>
+		<RootNamespace>Taskmaster</RootNamespace>
+		<AssemblyName>Taskmaster</AssemblyName>
+		<TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
+		<ApplicationIcon>taskmaster-hammer.ico</ApplicationIcon>
+		<CodePage>65001</CodePage>
+		<IsWebBootstrapper>false</IsWebBootstrapper>
+		<AllowedReferenceRelatedFileExtensions>.pdb;.manifest</AllowedReferenceRelatedFileExtensions>
+		<NuGetPackageImportStamp>
+		</NuGetPackageImportStamp>
+		<TargetFrameworkProfile />
+		<PublishUrl>publish\</PublishUrl>
+		<Install>true</Install>
+		<InstallFrom>Disk</InstallFrom>
+		<UpdateEnabled>false</UpdateEnabled>
+		<UpdateMode>Foreground</UpdateMode>
+		<UpdateInterval>7</UpdateInterval>
+		<UpdateIntervalUnits>Days</UpdateIntervalUnits>
+		<UpdatePeriodically>false</UpdatePeriodically>
+		<UpdateRequired>false</UpdateRequired>
+		<MapFileExtensions>true</MapFileExtensions>
+		<ApplicationRevision>0</ApplicationRevision>
+		<ApplicationVersion>1.0.0.%2a</ApplicationVersion>
+		<UseApplicationTrust>false</UseApplicationTrust>
+		<BootstrapperEnabled>true</BootstrapperEnabled>
+	</PropertyGroup>
+	<PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|x64'">
+		<PlatformTarget>x64</PlatformTarget>
+		<Prefer32Bit>false</Prefer32Bit>
+		<OutputPath>bin\Debug\</OutputPath>
+		<DefineConstants>DEBUG</DefineConstants>
+		<GenerateSerializationAssemblies>Off</GenerateSerializationAssemblies>
+		<LangVersion>8.0</LangVersion>
+		<Nullable>enable</Nullable>
+		<DebugType>full</DebugType>
+		<DebugSymbols>true</DebugSymbols>
+		<CodeAnalysisRuleSet>ManagedMinimumRules.ruleset</CodeAnalysisRuleSet>
+	</PropertyGroup>
+	<PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|x64'">
+		<PlatformTarget>x64</PlatformTarget>
+		<Prefer32Bit>false</Prefer32Bit>
+		<LangVersion>8.0</LangVersion>
+		<Nullable>enable</Nullable>
+		<OutputPath>bin\Release\</OutputPath>
+		<Optimize>true</Optimize>
+	</PropertyGroup>
+	<PropertyGroup>
+		<BuildDate>$([System.DateTime]::UtcNow.ToString("yyyy/MM/dd HH:mm:ss K"))</BuildDate>
+	</PropertyGroup>
+	<PropertyGroup>
+		<ApplicationManifest>app.manifest</ApplicationManifest>
+	</PropertyGroup>
+	<PropertyGroup>
+		<AutoGenerateBindingRedirects>false</AutoGenerateBindingRedirects>
+	</PropertyGroup>
+	<ItemGroup>
+		<Reference Include="NAudio, Version=1.8.5.0, Culture=neutral, processorArchitecture=MSIL">
+			<HintPath>..\packages\NAudio.1.8.5\lib\net35\NAudio.dll</HintPath>
+		</Reference>
+		<Reference Include="OpenHardwareMonitorLib, Version=0.8.0.2, Culture=neutral, processorArchitecture=MSIL">
+			<HintPath>..\packages\OpenHardwareMonitorLibCore.1.0.2\lib\net452\OpenHardwareMonitorLib.dll</HintPath>
+		</Reference>
+		<Reference Include="Serilog, Version=2.0.0.0, Culture=neutral, PublicKeyToken=24c2f752a8e58a10, processorArchitecture=MSIL">
+			<HintPath>..\packages\Serilog.2.8.0\lib\net46\Serilog.dll</HintPath>
+		</Reference>
+		<Reference Include="System.ServiceProcess" />
+		<Reference Include="System.Windows.Forms" />
+		<Reference Include="System" />
+		<Reference Include="Serilog.Sinks.RollingFile">
+			<HintPath>..\packages\Serilog.Sinks.RollingFile.3.3.0\lib\net45\Serilog.Sinks.RollingFile.dll</HintPath>
+		</Reference>
+		<Reference Include="Serilog.Sinks.File">
+			<HintPath>..\packages\Serilog.Sinks.File.4.0.0\lib\net45\Serilog.Sinks.File.dll</HintPath>
+		</Reference>
+		<Reference Include="System.Core" />
+		<Reference Include="Serilog.Sinks.Console">
+			<HintPath>..\packages\Serilog.Sinks.Console.3.1.1\lib\net45\Serilog.Sinks.Console.dll</HintPath>
+		</Reference>
+		<Reference Include="System.Management" />
+		<Reference Include="System.Drawing" />
+	</ItemGroup>
+	<ItemGroup>
+		<None Include=".gitattributes" />
+		<None Include=".gitignore" />
+		<Content Include=".itch.toml">
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+		</Content>
+		<None Include="app.config">
+			<SubType>Designer</SubType>
+		</None>
+		<None Include="app.manifest">
+			<SubType>Designer</SubType>
+		</None>
+		<None Include="Resources\BuildDate.restext" />
+		<None Include="Resources\ExternalLicenses.rtf" />
+		<None Include="Resources\KnownModules.ini" />
+		<None Include="Resources\ProjectDirectory.restext" />
+		<Content Include="Resources\cancel.png" />
+		<Content Include="Resources\checked.png" />
+		<Content Include="Resources\information.png" />
+		<Content Include="taskmaster-hammer.ico" />
+		<Content Include="LICENSE">
+			<CopyToOutputDirectory>Always</CopyToOutputDirectory>
+		</Content>
+		<None Include="packages.config" />
+		<None Include="README.md" />
+		<EmbeddedResource Include="Properties\Resources.resx">
+			<Generator>ResXFileCodeGenerator</Generator>
+			<LastGenOutput>Resources.Designer.cs</LastGenOutput>
+			<SubType>Designer</SubType>
+		</EmbeddedResource>
+		<None Include="Resources\Watchlist.ini" />
+	</ItemGroup>
+	<ItemGroup>
+		<Compile Include="Audio\ConfigConstants.cs" />
+		<Compile Include="Audio\Utility.cs" />
+		<Compile Include="Constants.cs" />
+		<Compile Include="Component.cs" />
+		<Compile Include="External\WinPEHeaderReader.cs" />
+		<Compile Include="GlobalSuppressions.cs" />
+		<Compile Include="Interface\ISetting.cs" />
+		<Compile Include="MKAh\Data\Cache\CacheEventArgs.cs" />
+		<Compile Include="MKAh\Data\Cache\CacheItem.cs" />
+		<Compile Include="MKAh\Data\Cache\EvictStrategy.cs" />
+		<Compile Include="MKAh\Container\CircularBuffer.cs" />
+		<Compile Include="MKAh\Data\Generic\Constants.cs" />
+		<Compile Include="MKAh\Data\Generic\String.cs" />
+		<Compile Include="MKAh\Data\Cache\SimpleCache.cs" />
+		<Compile Include="MKAh\Data\Cache\StoreStrategy.cs" />
+		<Compile Include="MKAh\File\Allocation.cs" />
+		<Compile Include="MKAh\Data\Ini\Config.cs" />
+		<Compile Include="MKAh\Data\Ini\Constant.cs" />
+		<Compile Include="MKAh\Data\Ini\Converter.cs" />
+		<Compile Include="MKAh\Data\Ini\Interface\IContainer.cs" />
+		<Compile Include="MKAh\Data\Ini\Interface\Value.cs" />
+		<Compile Include="MKAh\Data\Exceptions\ParseException.cs" />
+		<Compile Include="MKAh\Data\Ini\Section.cs" />
+		<Compile Include="MKAh\Data\Ini\Setting.cs" />
+		<Compile Include="MKAh\Data\Ini\SettingType.cs" />
+		<Compile Include="MKAh\File\NativeMethods.cs" />
+		<Compile Include="Network\ConfigConstants.cs" />
+		<Compile Include="Power\Constants.cs" />
+		<Compile Include="Power\Events\ModeEventArgs.cs" />
+		<Compile Include="Power\Events\MonitorPowerEventArgs.cs" />
+		<Compile Include="Power\Enums.cs" />
+		<Compile Include="Power\NativeMethods.cs" />
+		<Compile Include="Power\Events\RequestEventArgs.cs" />
+		<Compile Include="Power\Events\SessionLockEventArgs.cs" />
+		<Compile Include="Power\Utility.cs" />
+		<Compile Include="Power\WndProcProxy.cs" />
+		<Compile Include="Process\ConfigConstants.cs" />
+		<Compile Include="Process\Events\HandlingStateChangeEventArgs.cs" />
+		<Compile Include="Process\Events\LoaderEvent.cs" />
+		<Compile Include="Process\InstanceGroupLoad.cs" />
+		<Compile Include="Process\Legacy.cs" />
+		<Compile Include="Process\LoadInfo.cs" />
+		<Compile Include="Process\Options.cs" />
+		<Compile Include="Process\Events\ProcessingCountEventArgs.cs" />
+		<Compile Include="Process\ProcessLoad.cs" />
+		<Compile Include="Process\ProcessorUsage.cs" />
+		<Compile Include="Settings.Global.cs" />
+		<Compile Include="Process\Foreground.cs" />
+		<Compile Include="AlertManager.cs" />
+		<Compile Include="Audio\DeviceNotificationClient.cs" />
+		<Compile Include="Audio\Manager.cs" />
+		<Compile Include="Audio\Session.cs" />
+		<Compile Include="Cause.cs" />
+		<Compile Include="Config\FileEvent.cs" />
+		<Compile Include="Config\IFile.cs" />
+		<Compile Include="IDisposal.cs" />
+		<Compile Include="Config\Manager.cs" />
+		<Compile Include="Enums\ForegroundMode.cs" />
+		<Compile Include="Audio\DeviceEventArgs.cs" />
+		<Compile Include="Audio\DeviceStateEventArgs.cs" />
+		<Compile Include="Audio\DefaultDeviceEventArgs.cs" />
+		<Compile Include="Network\InternetStatus.cs" />
+		<Compile Include="Network\NetworkStatus.cs" />
+		<Compile Include="Power\AutoAdjustReaction.cs" />
+		<Compile Include="Process\Events\ModificationEventArgs.cs" />
+		<Compile Include="Hardware\ProcessorLoad.cs" />
+		<Compile Include="Audio\VolumeChanged.cs" />
+		<Compile Include="MKAh\Atomic\Lock.cs" />
+		<Compile Include="MKAh\Execution\User.cs" />
+		<Compile Include="MKAh\Execution\UserActivity.cs" />
+		<Compile Include="MKAh\Extensions\CoreExtensions.cs" />
+		<Compile Include="MKAh\Handling\DiscardException.cs" />
+		<Compile Include="MKAh\Human\Readable\Time.cs" />
+		<Compile Include="MKAh\Logic\BitOperations.cs" />
+		<Compile Include="MKAh\Native\Basic.cs" />
+		<Compile Include="MKAh\Program\NativeImage.cs" />
+		<Compile Include="MKAh\Wrapper\Windows\PerformanceCounter.cs" />
+		<Compile Include="Process\NativeMethods.cs" />
+		<Compile Include="ServiceWrapper.cs" />
+		<Compile Include="Settings\HealthMonitor.cs" />
+		<Compile Include="CommandLine.cs" />
+		<Compile Include="Initialization.cs" />
+		<Compile Include="IPC.cs" />
+		<Compile Include="UI\ChangeLog.cs">
+			<SubType>Form</SubType>
+		</Compile>
+		<Compile Include="UI\Config\AdvancedConfig.cs">
+			<SubType>Form</SubType>
+		</Compile>
+		<Compile Include="UI\DiagnosticDialog.cs" />
+		<Compile Include="UI\Extensions\AlignedLabel.cs">
+			<SubType>Component</SubType>
+		</Compile>
+		<Compile Include="UI\Extensions\Buffered.cs">
+			<SubType>Component</SubType>
+		</Compile>
+		<Compile Include="UI\Extensions\NumericUpDownEx.cs">
+			<SubType>Component</SubType>
+		</Compile>
+		<Compile Include="Hardware\CPUMonitor.cs" />
+		<Compile Include="Hardware\HardwareMonitor.cs" />
+		<Compile Include="UI\Config\ExperimentConfig.cs">
+			<SubType>Form</SubType>
+		</Compile>
+		<Compile Include="UI\LicenseDialog.cs">
+			<SubType>Form</SubType>
+		</Compile>
+		<Compile Include="LinearMeter.cs" />
+		<Compile Include="NativeMethods.cs" />
+		<Compile Include="UI\Config\PowerConfigWindow.cs">
+			<SubType>Form</SubType>
+		</Compile>
+		<Compile Include="Config\Presets\PowerPresets.cs" />
+		<Compile Include="Process\ProcessEx.cs" />
+		<Compile Include="Process\Utility.cs" />
+		<Compile Include="Process\Types.cs" />
+		<Compile Include="Properties\Resources.Designer.cs">
+			<AutoGen>True</AutoGen>
+			<DesignTime>True</DesignTime>
+			<DependentUpon>Resources.resx</DependentUpon>
+		</Compile>
+		<Compile Include="Events\RunstateException.cs" />
+		<Compile Include="SelfMaintenance.cs" />
+		<Compile Include="UI\LoaderDisplay.cs">
+			<SubType>Form</SubType>
+		</Compile>
+		<Compile Include="UI\MessageBox.cs">
+			<SubType>Form</SubType>
+		</Compile>
+		<Compile Include="UI\Splash.cs">
+			<SubType>Form</SubType>
+		</Compile>
+		<Compile Include="UI\Stubs\EmptySpace.cs">
+			<SubType>Component</SubType>
+		</Compile>
+		<Compile Include="UI\Utility.cs" />
+		<Compile Include="UI\VolumeMeter.cs">
+			<SubType>Form</SubType>
+		</Compile>
+		<Compile Include="UI\WatchlistSorter.cs" />
+		<Compile Include="UI\TrayWndProc.cs">
+			<SubType>Form</SubType>
+		</Compile>
+		<Compile Include="Utility\LockScoping.cs" />
+		<Compile Include="Utility\StructuralEqualityComparer.cs" />
+		<Compile Include="Utility\HumanReadable.cs" />
+		<Compile Include="UI\TextInputBox.cs">
+			<SubType>Form</SubType>
+		</Compile>
+		<Compile Include="UI\HiddenWindow.cs">
+			<SubType>Form</SubType>
+		</Compile>
+		<Compile Include="UI\Extensions\ListViewEx.cs">
+			<SubType>Component</SubType>
+		</Compile>
+		<Compile Include="UI\UniForm.cs">
+			<SubType>Form</SubType>
+		</Compile>
+		<Compile Include="Utility\DiscardException.cs" />
+		<Compile Include="Utility\LogAndDiscardException.cs" />
+		<Compile Include="Utility\ProcessPriorityClass.cs" />
+		<Compile Include="UI\Config\WatchlistEditWindow.cs">
+			<SubType>Form</SubType>
+		</Compile>
+		<Compile Include="Hardware\StorageManager.cs" />
+		<Compile Include="Utility\HumanInterface.cs" />
+		<Compile Include="Events\InitFailure.cs" />
+		<Compile Include="UI\Config\ComponentConfigurationWindow.cs">
+			<SubType>Form</SubType>
+		</Compile>
+		<Compile Include="UI\MainWindowWinforms.cs">
+			<SubType>Form</SubType>
+		</Compile>
+		<Compile Include="MemoryLog.cs" />
+		<Compile Include="Hardware\Memory.cs" />
+		<Compile Include="Audio\Device.cs" />
+		<Compile Include="Audio\MicManager.cs" />
+		<Compile Include="Network\Device.cs" />
+		<Compile Include="Network\Manager.cs" />
+		<Compile Include="Power\Manager.cs" />
+		<Compile Include="Process\Analyzer.cs" />
+		<Compile Include="Process\Controller.cs" />
+		<Compile Include="Process\Helpers.cs" />
+		<Compile Include="Process\Manager.cs" />
+		<Compile Include="UI\ProcessSelectDialog.cs">
+			<SubType>Form</SubType>
+		</Compile>
+		<Compile Include="Statistics.cs" />
+		<Compile Include="TaskMaster.cs" />
+		<Compile Include="UI\TrayAccess.cs" />
+		<Compile Include="Utility.cs" />
+		<Compile Include="Process\Extensions.cs" />
+		<Compile Include="Properties\AssemblyInfo.cs" />
+		<Compile Include="HealthMonitor.cs" />
+		<Compile Include="Power\PowerInfo.cs" />
+		<Compile Include="UI\Config\HealthMonitorConfig.cs">
+			<SubType>Form</SubType>
+		</Compile>
+		<Compile Include="Config\Presets\WatchlistRuleGenerator.cs" />
+		<Compile Include="UI\Config\WatchlistRuleGeneratorWindow.cs">
+			<SubType>Form</SubType>
+		</Compile>
+		<Compile Include="Config\File.cs" />
+	</ItemGroup>
+	<ItemGroup>
+		<None Include="CHANGELOG">
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+		</None>
+	</ItemGroup>
+	<ItemGroup />
+	<Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
+	<PropertyGroup>
+		<PreBuildEvent>
+			echo $(BuildDate) &gt; "$(ProjectDir)\Resources\BuildDate.restext"
 
-echo $(ProjectDir) &gt; "$(ProjectDir)\Resources\ProjectDirectory.restext"</PreBuildEvent>
-  </PropertyGroup>
+			echo $(ProjectDir) &gt; "$(ProjectDir)\Resources\ProjectDirectory.restext"
+		</PreBuildEvent>
+	</PropertyGroup>
 </Project>
