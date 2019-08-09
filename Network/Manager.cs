@@ -75,7 +75,7 @@ namespace Taskmaster.Network
 
 		string dnstestaddress = "google.com"; // should be fine, www is omitted to avoid deeper DNS queries
 
-		int DeviceTimerInterval = 15 * 60;
+		TimeSpan DeviceTimerInterval = TimeSpan.FromMinutes(15);
 
 		/// <summary>
 		/// Seconds.
@@ -106,9 +106,10 @@ namespace Taskmaster.Network
 				dnstestaddress = monsec.GetOrSet("DNS test", "www.google.com").Value;
 
 				var devsec = netcfg.Config["Devices"];
-				DeviceTimerInterval = devsec.GetOrSet("Check frequency", 15)
+				int devicetimerinterval_t = devsec.GetOrSet("Check frequency", 15)
 					.InitComment("Minutes")
-					.Int.Constrain(1, 30) * 60;
+					.Int.Constrain(1, 30);
+				DeviceTimerInterval = TimeSpan.FromMinutes(devicetimerinterval_t);
 
 				var pktsec = netcfg.Config["Traffic"];
 				PacketStatTimerInterval = pktsec.GetOrSet("Sample rate", 15)
@@ -227,7 +228,7 @@ namespace Taskmaster.Network
 
 			StopUpdateNetworkState(); // initialize
 
-			StartDynDNSUpdates();
+			if (DynamicDNS) StartDynDNSUpdates();
 
 			if (DebugNet) Log.Information("<Network> Component loaded.");
 
@@ -239,8 +240,6 @@ namespace Taskmaster.Network
 
 		async Task StartDynDNSUpdates()
 		{
-			if (!DynamicDNS) return;
-
 			using var netcfg = Config.Load(NetConfigFilename);
 			var dns = netcfg.Config[Constants.DNSUpdating];
 			IPAddress.TryParse(dns.Get(Constants.LastKnownIPv4)?.String ?? string.Empty, out DNSOldIPv4);
@@ -546,6 +545,7 @@ namespace Taskmaster.Network
 		public UI.TrayAccess Tray { get; set; } = null; // HACK: bad design
 
 		public bool NetworkAvailable { get; private set; } = false;
+
 		public bool InternetAvailable { get; private set; } = false;
 
 		readonly int MaxSamples = 20;
@@ -610,7 +610,7 @@ namespace Taskmaster.Network
 			try
 			{
 				var now = DateTimeOffset.UtcNow;
-				if (LastUptimeSample.To(now).TotalMinutes < DeviceTimerInterval)
+				if (LastUptimeSample.To(now) < DeviceTimerInterval)
 					return;
 
 				LastUptimeSample = now;
@@ -1022,11 +1022,6 @@ namespace Taskmaster.Network
 			else Log.Information(sbs.ToString());
 		}
 
-		/// <summary>
-		/// For tracking how many times NetworkChanged is triggered
-		/// </summary>
-		int NetworkChangeCounter = 4; // 4 to force fast inet check on start
-
 		/*
 		/// <summary>
 		/// Last time NetworkChanged was triggered
@@ -1098,7 +1093,7 @@ namespace Taskmaster.Network
 		void StopUpdateNetworkState()
 		{
 			lock (NetworkStatus_lock)
-				NetworkStatusReport = new System.Threading.Timer(UpdateNetworkState, null, System.Threading.Timeout.Infinite, System.Threading.Timeout.Infinite);
+				NetworkStatusReport.Change(System.Threading.Timeout.Infinite, System.Threading.Timeout.Infinite);
 		}
 
 		// TODO: Make network status reporting more centralized
@@ -1116,8 +1111,6 @@ namespace Taskmaster.Network
 				oldAvailable = NetworkAvailable;
 				available = NetworkAvailable = ea.IsAvailable;
 			}
-
-			NetworkChangeCounter++;
 
 			NetworkStatusChange?.Invoke(this, new Status { Available = available });
 
