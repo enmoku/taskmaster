@@ -339,7 +339,7 @@ namespace Taskmaster
 				CPUSampleTimer.Dispose();
 
 				//CPUload?.Dispose();
-				CPUqueue?.Dispose();
+				CPUqueue.Dispose();
 
 				// if (processmanager != null) prcman.ProcessDetectedEvent -= ProcessDetectedEvent;
 				//processmanager = null;

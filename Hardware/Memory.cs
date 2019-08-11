@@ -82,7 +82,7 @@ namespace Taskmaster
 		{
 			Update();
 
-			Logging.DebugMsg("Memory\n--- Total:   " + Total.ToString() + "\n--- Private: " + Private.ToString());
+			Logging.DebugMsg("<System> Memory --- Total: " + HumanInterface.ByteString(Convert.ToInt64(Total)) + " --- Private: " + HumanInterface.ByteString(Convert.ToInt64(Private)));
 
 			/*
 			// Win32_ComputerSystem -> TotalPhysicalMemory maps to MEMORYSTATUSEX.ullTotalPhys

@@ -639,7 +639,6 @@ namespace Taskmaster.UI
 			}
 
 			processmanager.WatchlistSorted += UpdateWatchlist;
-
 			processmanager.ProcessModified += ProcessTouchEvent;
 
 			await Task.Delay(0).ConfigureAwait(false);
@@ -3997,7 +3996,6 @@ namespace Taskmaster.UI
 				var address = dev.IPv4Address.GetAddressBytes();
 
 				var ip4li = li.SubItems[IPv4Column];
-				Logging.DebugMsg(address[0].ToString() + "." + address[1].ToString() + "." + address[2].ToString() + "." + address[3].ToString());
 				if ((address[0] == 169 && address[1] == 254) || (address[0] == 198 && address[1] == 168))
 					ip4li.ForeColor = System.Drawing.SystemColors.GrayText;
 
