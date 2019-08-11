@@ -1239,7 +1239,7 @@ namespace Taskmaster.Process
 				{
 					LastSeen = DateTimeOffset.UtcNow;
 
-					if (ormt.Info.Name.Equals(info.Name))
+					if (ormt.Info == info) // to make sure this isn't different process
 					{
 						if (ormt.FreeWill)
 						{
@@ -1249,18 +1249,28 @@ namespace Taskmaster.Process
 							return;
 						}
 
+						// Ignore well behaving apps.
+						if (ormt.Submitted && ormt.ExpectedState % 20 != 0)
+						{
+							ormt.ExpectedState++;
+							Logging.DebugMsg($"[{FriendlyName}] {FormatPathName(info)} #{info.Id.ToString()} Is behaving well ({ormt.ExpectedState.ToString()}), skipping a check.");
+							return;
+						}
+
 						bool expected = false;
 						if ((Priority.HasValue && info.Process.PriorityClass != Priority.Value)
 							|| (lAffinityMask >= 0 && info.Process.ProcessorAffinity.ToInt32() != lAffinityMask))
 						{
 							ormt.ExpectedState--;
-							Logging.DebugMsg($"[{FriendlyName}] {FormatPathName(info)} #{info.Id.ToString()} Recently Modified ({ormt.ExpectedState}) ---");
+							ormt.Submitted = false;
+							Logging.DebugMsg($"[{FriendlyName}] {FormatPathName(info)} #{info.Id.ToString()} Recently Modified ({ormt.ExpectedState}); Unexpected state.");
 						}
 						else
 						{
 							ormt.ExpectedState++;
 							// TODO: allow modification in case this happens too much?
-							Logging.DebugMsg($"[{FriendlyName}] {FormatPathName(info)} #{info.Id.ToString()} Recently Modified ({ormt.ExpectedState}) +++");
+							Logging.DebugMsg($"[{FriendlyName}] {FormatPathName(info)} #{info.Id.ToString()} Recently Modified ({ormt.ExpectedState}); Expected state.");
+							if (ormt.ExpectedState > 20) ormt.Submitted = true;
 							expected = true;
 						}
 
@@ -2023,11 +2033,13 @@ namespace Taskmaster.Process
 	{
 		public ProcessEx Info { get; set; } = null;
 
-		public bool FreeWill = false;
+		public bool FreeWill { get; set; } = false;
 
-		public int ExpectedState = 0;
+		public int ExpectedState { get; set; } = 0;
 
-		public DateTimeOffset LastModified = DateTimeOffset.MinValue;
-		public DateTimeOffset LastIgnored = DateTimeOffset.MinValue;
+		public bool Submitted { get; set; } = false;
+
+		public DateTimeOffset LastModified { get; set; } = DateTimeOffset.MinValue;
+		public DateTimeOffset LastIgnored { get; set; } = DateTimeOffset.MinValue;
 	}
 }
