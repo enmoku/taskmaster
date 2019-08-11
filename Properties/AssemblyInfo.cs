@@ -1,7 +1,5 @@
-using System.Reflection;
-// Information about this assembly is defined by the following attributes.
-// Change them to the values specific to your project.
-using System.Resources;
+﻿using System.Reflection;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
 [assembly: AssemblyTitle("Taskmaster!")]
@@ -9,21 +7,13 @@ using System.Runtime.InteropServices;
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("")]
 [assembly: AssemblyProduct("Taskmaster!")]
-[assembly: AssemblyCopyright("M.A., 2016�2019")]
+[assembly: AssemblyCopyright("Copyright © M.A., 2016–2019")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 
-// The assembly version has the format "{Major}.{Minor}.{Build}.{Revision}".
-// The form "{Major}.{Minor}.*" will automatically update the build and revision,
-// and "{Major}.{Minor}.{Build}.*" will update just the revision.
-
-[assembly: AssemblyVersion("0.13.*")] // FIXME: Get this somehow from the solution settings?
 [assembly: ComVisible(false)]
-[assembly: NeutralResourcesLanguage("en")]
+
+[assembly: AssemblyVersion("0.14.0.0")] // FIXME: Get this somehow from the solution settings?
+[assembly: AssemblyFileVersion("0.14.0.0")]
+[assembly: System.Resources.NeutralResourcesLanguage("en")]
 [assembly: Guid("088f7210-51b2-4e06-9bd4-93c27a973874")] // this is pointless, yes?
-
-// The following attributes are used to specify the signing key for the assembly,
-// if desired. See the Mono documentation for more information about signing.
-
-//[assembly: AssemblyDelaySign(false)]
-//[assembly: AssemblyKeyFile("")]

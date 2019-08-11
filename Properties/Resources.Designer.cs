@@ -61,7 +61,7 @@ namespace Taskmaster.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to 2019/04/27 16:26:03 Z 
+        ///   Looks up a localized string similar to 2019/08/11 07:30:34 Z 
         ///.
         /// </summary>
         internal static string BuildDate {
@@ -83,12 +83,12 @@ namespace Taskmaster.Properties {
         /// <summary>
         ///   Looks up a localized string similar to {\rtf1\ansi\ansicpg1252\deff0\deflang2057{\fonttbl{\f0\fnil\fcharset0 Consolas;}}
         ///{\colortbl ;\red0\green0\blue0;\red0\green0\blue255;}
-        ///{\*\generator Msftedit 5.41.21.2510;}\viewkind4\uc1\pard\cf1\lang1035\f0\fs32 Third party licenses used by Taskmaster\fs28\par
+        ///{\*\generator Msftedit 5.41.21.2510;}\viewkind4\uc1\pard\cf1\lang1035\f0\fs32 Third party licenses\fs28\par
         ///\par
         ///NAudio by Mark Heath (Ms-PL)\par
         ///\fs19\par
         ///\pard\li720 Microsoft Public License (Ms-PL)\par
-        ///This license governs use of the accompanying software. If you use the software, you accept this license. If you do not accept the license, do not [rest of string was truncated]&quot;;.
+        ///This license governs use of the accompanying software. If you use the software, you accept this license. If you do not accept the license, do not use the software.\ [rest of string was truncated]&quot;;.
         /// </summary>
         internal static string ExternalLicenses {
             get {
