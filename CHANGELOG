@@ -3,6 +3,9 @@ Comprehensive changes can be found in Git change history:
 	https://github.com/mkahvi/taskmaster/commits/master
 
 ## [0.13...]
+### 2019-08-11
+	Fixed: Internet upstate is now properly updated on the UI.
+	Internal: A lot of internal changes should improve performance.
 ### 2019-08-08
 	Changed: Event log now uses virtual mode which should make it much more responsive and less resource heavy under heavy load.
 ### 2019-08-06
