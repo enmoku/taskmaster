@@ -31,7 +31,7 @@ namespace Taskmaster.Process
 	public class ProcessLoad : IDisposable
 	{
 		readonly CpuUsage CpuLoad;
-		readonly MKAh.Wrapper.Windows.PerformanceCounter IOCounter;
+		readonly IOUsage IOLoad;
 
 		readonly string Instance;
 		readonly int Id;
@@ -51,8 +51,7 @@ namespace Taskmaster.Process
 			Instance = process.ProcessName;
 
 			CpuLoad = new CpuUsage(process);
-
-			IOCounter = new MKAh.Wrapper.Windows.PerformanceCounter("Process", "IO Data Bytes/sec", Instance);
+			IOLoad = new IOUsage(process);
 
 			Reset();
 		}
@@ -61,7 +60,7 @@ namespace Taskmaster.Process
 
 		public void Reset() => Start = DateTimeOffset.UtcNow;
 
-		public bool Update()
+		public bool Update(long elapsed = 0)
 		{
 			if (disposed) return false;
 
@@ -73,12 +72,14 @@ namespace Taskmaster.Process
 			try
 			{
 				//CPU = CPUCounter.Value / Environment.ProcessorCount;
-				CPU = Convert.ToSingle(CpuLoad.Sample()) * 100f;
+				CPU = Convert.ToSingle(CpuLoad.Sample(elapsed)) * 100f;
 				//if (CPU > 3f) Logging.DebugMsg($"ProcessLoad --- PFC: {CPU:N1}% --- TMS: {cpu*100d:N1}%");
 
-				IO = IOCounter.Value;
+				IO = IOLoad.Sample(elapsed);
 
-				LoadHistory.Add(CPU);
+				//IO = IOCounter.Value;
+
+				//LoadHistory.Add(CPU);
 
 				if (CPU < 3f) Low++;
 				else if (CPU > 30f) High++;
@@ -127,8 +128,6 @@ namespace Taskmaster.Process
 
 			if (disposing)
 			{
-				IOCounter.Dispose();
-
 				//base.Dispose();
 			}
 		}

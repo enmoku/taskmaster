@@ -97,6 +97,8 @@ namespace Taskmaster.Process
 
 		//readonly ManagementObjectSearcher cpusearcher = new ManagementObjectSearcher("SELECT * from Win32_PerfFormattedData_PerfOS_Processor");
 
+		Stopwatch updateTimer = Stopwatch.StartNew();
+
 		public void Update()
 		{
 			if (disposed) return;
@@ -129,12 +131,12 @@ namespace Taskmaster.Process
 
 			var now = DateTimeOffset.UtcNow;
 
-			float highRam = 0f, highCpu = 0f, highIo = 0f, cpu, io;
+			float highRam = 0f, highCpu = 0f, highIo = 0f, cput, iot;
 			int highPid = 0;
-			long mem;
+			long memt;
 
 			var removeList = new System.Collections.Generic.List<ProcessEx>(2);
-
+			var elapsed = updateTimer.ElapsedMilliseconds;
 			foreach (var info in Processes.Values)
 			{
 				if (info.Exited)
@@ -148,17 +150,17 @@ namespace Taskmaster.Process
 					ref var load = ref info.Load;
 					if (load is null) continue;
 
-					load.Update();
+					load.Update(elapsed);
 
 					// cache so we don't update only half if there's failures
-					cpu = load.CPU;
-					io = load.IO;
-					mem = info.Process.PrivateMemorySize64;
+					cput = load.CPU;
+					iot = load.IO;
+					memt = info.Process.PrivateMemorySize64;
 
 					// update
-					ramloadt += mem;
-					cpuloadraw += load.CPU;
-					ioload += load.IO;
+					ramloadt += memt;
+					cpuloadraw += cput;
+					ioload += iot;
 				}
 				catch
 				{
@@ -167,6 +169,7 @@ namespace Taskmaster.Process
 
 				// TODO: Add fake load for each failed thing to mimic knowing it?
 			}
+			updateTimer.Restart();
 
 			float ramload = Convert.ToSingle(Convert.ToDouble(ramloadt) / 1_073_741_824d);
 
@@ -179,7 +182,7 @@ namespace Taskmaster.Process
 
 			CPULoad.Update(cpuload); //CPU.Value
 			RAMLoad.Update(ramload);
-			IOLoad.Update(ioload / 1_048_576f); // MiB/s
+			IOLoad.Update(ioload / 1_024f); // MiB/s
 
 			Load = cpuload + ramload + IOLoad.Average.Max(10f);
 			if (cpuload < 20f && ramload < 4f) Load -= ramload / 3f; // reduce effect of ramload on low cpu load

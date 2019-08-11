@@ -1,5 +1,5 @@
 ﻿//
-// Process.ProcessorLoad.cs
+// Process.IOUsage.cs
 //
 // Author:
 //       M.A. (https://github.com/mkahvi)
@@ -25,53 +25,54 @@
 // THE SOFTWARE.
 
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
 
 namespace Taskmaster.Process
 {
-	public class CpuUsage
+	public class IOUsage
 	{
 		readonly System.Diagnostics.Process prc;
 
-		TimeSpan oldTime;
-
 		readonly Stopwatch timer = new Stopwatch();
 
-		public CpuUsage(System.Diagnostics.Process process)
-		{
-			prc = process;
-			timer.Start();
-			oldTime = prc.TotalProcessorTime;
-		}
+		float oldIO = 0f;
+
+		public IOUsage(System.Diagnostics.Process process) => prc = process;
+
+		NativeMethods.IO_COUNTERS counters = new NativeMethods.IO_COUNTERS();
 
 		/// <summary>
 		/// 
 		/// </summary>
-		/// <returns>CPU usage on scale of 0 to 1.</returns>
-		public double Sample()
+		/// <returns>IO kilobytes.</returns>
+		public float Sample()
 		{
 			var period = timer.ElapsedMilliseconds; // period
-			var newTime = prc.TotalProcessorTime;
+
+			NativeMethods.GetProcessIoCounters(prc.Handle, out counters);
 			timer.Restart();
 
-			var usedMs = (newTime - oldTime).TotalMilliseconds; // used ms in the sample period
-			oldTime = newTime; // 
-
-			return usedMs / (period * Environment.ProcessorCount);
+			float newIO = (counters.OtherTransferCount + counters.ReadTransferCount + counters.WriteTransferCount) / 1_024f; // kiB
+			float diff = (newIO - oldIO) / period;
+			oldIO = newIO;
+			return diff;
 		}
 
 		/// <summary>
 		/// 
 		/// </summary>
 		/// <param name="period">Observation period in milliseconds.</param>
-		public double Sample(long period)
+		public float Sample(long period)
 		{
-			var newSample = prc.TotalProcessorTime;
-
-			var diff = (newSample - oldTime).TotalMilliseconds;
-			oldTime = newSample; // 
-
-			return diff / period;
+			NativeMethods.GetProcessIoCounters(prc.Handle, out counters);
+			float newIO = (counters.OtherTransferCount + counters.ReadTransferCount + counters.WriteTransferCount) / 1_024f; // kiB
+			float diff = (newIO - oldIO) / period;
+			oldIO = newIO;
+			return diff;
 		}
 	}
 }

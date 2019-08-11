@@ -164,6 +164,7 @@
     <Compile Include="Process\Foreground.cs" />
     <Compile Include="Process\Helpers.cs" />
     <Compile Include="Process\InstanceGroupLoad.cs" />
+    <Compile Include="Process\IOUsage.cs" />
     <Compile Include="Process\Legacy.cs" />
     <Compile Include="Process\LoadInfo.cs" />
     <Compile Include="Process\Manager.cs" />
