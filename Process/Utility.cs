@@ -359,7 +359,7 @@ namespace Taskmaster.Process
 			return false;
 		}
 
-		public static bool GetInfo(int ProcessID, out ProcessEx info, System.Diagnostics.Process process = null, Process.Controller controller = null, string name = null, string path = null, bool getPath = false)
+		public static bool GetInfo(int ProcessID, out ProcessEx info, System.Diagnostics.Process? process = null, Process.Controller? controller = null, string name = null, string path = null, bool getPath = false)
 		{
 			try
 			{

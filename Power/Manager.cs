@@ -1005,7 +1005,7 @@ namespace Taskmaster.Power
 			}
 		}
 
-		void ResetPower(Cause cause = null, bool verbose = false)
+		void ResetPower(Cause? cause = null, bool verbose = false)
 		{
 			Mode mode = RestoreMode;
 			lock (power_lock)
@@ -1341,7 +1341,7 @@ namespace Taskmaster.Power
 		}
 
 		// BUG: ?? There might be odd behaviour if this is called while Paused==true
-		void InternalSetMode(Mode mode, Cause cause = null, bool verbose = true)
+		void InternalSetMode(Mode mode, Cause? cause = null, bool verbose = true)
 		{
 			Guid plan = mode switch
 			{

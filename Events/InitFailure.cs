@@ -32,11 +32,11 @@ namespace Taskmaster
 	{
 		public Exception[] InnerExceptions { get; }
 
-		public InitFailure(string description, Exception innerException = null)
+		public InitFailure(string description, Exception? innerException = null)
 			: base(description, innerException)
 			=> InnerExceptions = System.Array.Empty<Exception>();
 
-		public InitFailure(string description, Exception innerException, Exception[] innerExceptions)
+		public InitFailure(string description, Exception? innerException, Exception[] innerExceptions)
 			: base(description, innerException)
 			=> InnerExceptions = innerExceptions;
 	}

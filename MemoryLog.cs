@@ -99,6 +99,8 @@ namespace Taskmaster
 
 		public void Emit(LogEvent e)
 		{
+			if (e is null) throw new ArgumentNullException(nameof(e));
+
 			if (e.Level == LogEventLevel.Fatal) Statistics.FatalErrors++;
 
 			if ((int)e.Level < (int)LevelSwitch.MinimumLevel) return;
@@ -171,9 +173,9 @@ namespace Taskmaster
 	{
 		public static Serilog.LoggerConfiguration MemorySink(
 			this LoggerSinkConfiguration logConf,
-			IFormatProvider formatProvider = null,
-			string outputTemplate = null,
-			LoggingLevelSwitch levelSwitch = null)
+			IFormatProvider? formatProvider = null,
+			string? outputTemplate = null,
+			LoggingLevelSwitch? levelSwitch = null)
 			=> logConf.Sink(new MemorySink(formatProvider, outputTemplate, levelSwitch));
 	}
 }

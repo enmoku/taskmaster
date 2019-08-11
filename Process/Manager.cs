@@ -467,7 +467,7 @@ namespace Taskmaster.Process
 
 		readonly MKAh.Lock.Monitor FreeMemLock = new MKAh.Lock.Monitor();
 
-		public async Task FreeMemory(string executable = null, bool quiet = false, int ignorePid = -1)
+		public async Task FreeMemory(string executable = "", bool quiet = false, int ignorePid = -1)
 		{
 			if (!PagingEnabled) return;
 
