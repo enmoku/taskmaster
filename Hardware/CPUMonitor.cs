@@ -173,10 +173,12 @@ namespace Taskmaster
 		[System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
 		float UsageFromIdle(float idle) => (1f - idle) * 100f;
 
-		void Sampler(object _sender, System.Timers.ElapsedEventArgs _)
+		async void Sampler(object _sender, System.Timers.ElapsedEventArgs _)
 		{
 			if (!Atomic.Lock(ref sampler_lock)) return; // uhhh... probably should ping warning if this return is triggered
 			if (disposed) return; // Dumbness with timers
+
+			await Task.Delay(0).ConfigureAwait(false);
 
 			try
 			{
