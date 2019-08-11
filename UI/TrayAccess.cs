@@ -53,6 +53,8 @@ namespace Taskmaster.UI
 		readonly NotifyIcon Tray;
 		readonly TrayWndProcProxy WndProcEventProxy;
 
+		readonly ContextMenuStrip ms;
+
 		public event EventHandler<DisposedEventArgs> OnDisposed;
 
 		public UIVisibleDelegate? TrayMenuShown;
@@ -77,7 +79,9 @@ namespace Taskmaster.UI
 			#region Build UI
 			if (Trace) Log.Verbose("Generating tray icon.");
 
-			var ms = new ContextMenuStrip();
+			ms = new ContextMenuStrip();
+			_ = ms.Handle;
+
 			var menu_windowopen = new ToolStripMenuItem("Open main window", null, (_, _ea) => BuildMainWindow(reveal: true, top: true));
 			var menu_volumeopen = new ToolStripMenuItem("Open volume meter", null, (_, _ea) => BuildVolumeMeter())
 			{
@@ -250,9 +254,15 @@ namespace Taskmaster.UI
 			powermanager.PlanChange += HighlightPowerModeEvent;
 			powermanager.BehaviourChange += PowerBehaviourEvent;
 
-			power_auto.Checked = powermanager.Behaviour == Power.PowerBehaviour.Auto;
-			power_manual.Checked = powermanager.Behaviour == Power.PowerBehaviour.Manual;
-			power_auto.Enabled = true;
+			bool pwauto = powermanager.Behaviour == Power.PowerBehaviour.Auto;
+			bool pwmanual = powermanager.Behaviour == Power.PowerBehaviour.Manual;
+
+			ms.BeginInvoke(new Action(() =>
+			{
+				power_auto.Checked = pwauto;
+				power_manual.Checked = pwmanual;
+				power_auto.Enabled = true;
+			}));
 
 			HighlightPowerMode();
 		}
@@ -277,43 +287,48 @@ namespace Taskmaster.UI
 
 		void PowerBehaviourEvent(object sender, Power.PowerBehaviourEventArgs ea)
 		{
-			switch (ea.Behaviour)
-			{
-				case Power.PowerBehaviour.Auto:
-					power_auto.Checked = true;
-					power_manual.Checked = false;
-					break;
-				case Power.PowerBehaviour.Manual:
-					power_auto.Checked = false;
-					power_manual.Checked = true;
-					break;
-				default:
-					power_auto.Checked = false;
-					power_manual.Checked = false;
-					break;
-			}
+			ms.BeginInvoke(new Action(() => {
+				switch (ea.Behaviour)
+				{
+					case Power.PowerBehaviour.Auto:
+						power_auto.Checked = true;
+						power_manual.Checked = false;
+						break;
+					case Power.PowerBehaviour.Manual:
+						power_auto.Checked = false;
+						power_manual.Checked = true;
+						break;
+					default:
+						power_auto.Checked = false;
+						power_manual.Checked = false;
+						break;
+				}
+			}));
 		}
 
 		void HighlightPowerMode()
 		{
-			switch (powermanager.CurrentMode)
+			ms.BeginInvoke(new Action(() =>
 			{
-				case Power.Mode.Balanced:
-					power_saving.Checked = false;
-					power_balanced.Checked = true;
-					power_highperf.Checked = false;
-					break;
-				case Power.Mode.HighPerformance:
-					power_saving.Checked = false;
-					power_balanced.Checked = false;
-					power_highperf.Checked = true;
-					break;
-				case Power.Mode.PowerSaver:
-					power_saving.Checked = true;
-					power_balanced.Checked = false;
-					power_highperf.Checked = false;
-					break;
-			}
+				switch (powermanager.CurrentMode)
+				{
+					case Power.Mode.Balanced:
+						power_saving.Checked = false;
+						power_balanced.Checked = true;
+						power_highperf.Checked = false;
+						break;
+					case Power.Mode.HighPerformance:
+						power_saving.Checked = false;
+						power_balanced.Checked = false;
+						power_highperf.Checked = true;
+						break;
+					case Power.Mode.PowerSaver:
+						power_saving.Checked = true;
+						power_balanced.Checked = false;
+						power_highperf.Checked = false;
+						break;
+				}
+			}));
 		}
 
 		void SetPower(Power.Mode mode)
