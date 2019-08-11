@@ -47,7 +47,7 @@ namespace Taskmaster.Network
 		public readonly float Queue;
 		public readonly float Packets;
 
-		public TrafficDelta(float input = float.NaN, float output = float.NaN , float queue = float.NaN , float packets = float.NaN)
+		public TrafficDelta(float input = float.NaN, float output = float.NaN, float queue = float.NaN, float packets = float.NaN)
 		{
 			Input = input;
 			Output = output;
@@ -154,17 +154,22 @@ namespace Taskmaster.Network
 
 					try
 					{
-						if (tooshort || !http) throw new UriFormatException("Base qualifications failed");
+						if (tooshort || !http)
 						{
+							Logging.DebugMsg("<Net> Too short URL or not secure URL.");
 							DynamicDNS = false;
 							DynamicDNSHost = null;
+							throw new UriFormatException("Base qualifications failed");
 						}
+
 						DynamicDNSHost = new Uri(host, UriKind.Absolute);
 						if (!https) Log.Warning("<Net:DynDNS> Host string does not use secure HTTP.");
 						Log.Information($"<Net:DynDNS> Enabled (frequency: {DynamicDNSFrequency:g})");
 					}
 					catch (Exception ex) when (ex is ArgumentException || ex is UriFormatException)
 					{
+						Logging.Stacktrace(ex);
+						Logging.DebugMsg("<Net> Disabling dynamic DNS updates due to failure");
 						DynamicDNS = false;
 						DynamicDNSHost = null;
 					}
@@ -234,11 +239,7 @@ namespace Taskmaster.Network
 
 			NetworkStatusReport = new System.Threading.Timer(UpdateNetworkState, null, System.Threading.Timeout.Infinite, System.Threading.Timeout.Infinite);
 
-			if (DynamicDNS)
-			{
-				Log.Debug("<Net:DynDNS> Starting update timer.");
-				StartDynDNSUpdates();
-			}
+			if (DynamicDNS) StartDynDNSUpdates().ConfigureAwait(false);
 
 			if (DebugNet) Log.Information("<Network> Component loaded.");
 
@@ -254,24 +255,42 @@ namespace Taskmaster.Network
 
 			using var netcfg = Config.Load(NetConfigFilename);
 			var dns = netcfg.Config[Constants.DNSUpdating];
-			IPAddress.TryParse(dns.Get(Constants.LastKnownIPv4)?.String ?? string.Empty, out DNSOldIPv4);
-			IPAddress.TryParse(dns.Get(Constants.LastKnownIPv6)?.String ?? string.Empty, out DNSOldIPv6);
+
+			string? oldip4 = dns.Get(Constants.LastKnownIPv4)?.String;
+			string? oldip6 = dns.Get(Constants.LastKnownIPv6)?.String;
+			if (!string.IsNullOrEmpty(oldip4) && !IPAddress.TryParse(oldip4, out DNSOldIPv4))
+				DNSOldIPv4 = IPAddress.None;
+			if (!string.IsNullOrEmpty(oldip6) && !IPAddress.TryParse(oldip6, out DNSOldIPv6))
+				DNSOldIPv6 = IPAddress.IPv6None;
 
 			var TimerStartDelay = TimeSpan.FromSeconds(10d);
 			if (DateTimeOffset.TryParse(dns.Get(Constants.LastAttempt)?.String ?? string.Empty, out DynamicDNSLastUpdate)
 				&& DynamicDNSLastUpdate.To(DateTimeOffset.UtcNow).TotalMinutes < 15d)
 			{
-				Log.Debug("<Net:DynDNS> Delaying update timer.");
 				TimerStartDelay = TimeSpan.FromMinutes(15d);
+				Log.Debug("<Net:DynDNS> Delaying update timer (" + TimerStartDelay.ToString("g") + ")");
 			}
 			else
-				if (DebugDNS) Log.Debug("<Net:DynDNS> Starting update timer.");
+				if (DebugDNS) Log.Debug("<Net:DynDNS> Starting update timer (" + TimerStartDelay.ToString("g") + ").");
+
+
+			bool old4 = DNSOldIPv4 != IPAddress.None, old6 = DNSOldIPv6 != IPAddress.IPv6None;
+
+			var sbs = new StringBuilder(128);
+
+			sbs.Append("<Net:DynDNS> Previously reported ");
+			if (old4) sbs.Append(DNSOldIPv4.ToString());
+			if (old4 && old6) sbs.Append(" or ");
+			if (old6) sbs.Append('[').Append(DNSOldIPv6.ToString()).Append(']');
+			sbs.Append(" on ").Append(DynamicDNSLastUpdate.ToString("u")).Append(" (").Append(DynamicDNSLastUpdate.To(DateTimeOffset.UtcNow)).Append(')');
+			Log.Information(sbs.ToString());
 
 			DynDNSTimer.Change(TimerStartDelay, DynamicDNSFrequency);
 		}
 
 		void StopDynDNSUpdates()
 		{
+			Logging.DebugMsg("<Net:DynDNS> Stopping updates.");
 			DynDNSTimer.Change(System.Threading.Timeout.InfiniteTimeSpan, System.Threading.Timeout.InfiniteTimeSpan);
 			DynDNSTimer.Dispose();
 		}
@@ -282,6 +301,8 @@ namespace Taskmaster.Network
 		{
 			if (!InternetAvailable) return;
 
+			Logging.DebugMsg("<Net:DynDNS> Testing for update.");
+
 			IPAddress curIPv4, curIPv6;
 			lock (address_lock)
 			{
@@ -291,14 +312,27 @@ namespace Taskmaster.Network
 
 			try
 			{
-				bool updateIPs = false;
+				bool updateIPs = false, ip4Update = false, ip6Update = false;
 				if (!DynamicDNSForcedUpdate)
 				{
-					if (!DNSOldIPv4.Equals(curIPv4) || !DNSOldIPv6.Equals(curIPv6))
+					ip4Update = DNSOldIPv4 != IPAddress.None && curIPv4 != IPAddress.None && !DNSOldIPv4.Equals(curIPv4);
+					ip6Update = DNSOldIPv6 != IPAddress.IPv6None && curIPv6 != IPAddress.IPv6None && !DNSOldIPv6.Equals(curIPv6);
+
+
+					if (ip4Update || ip6Update)
 					{
 						updateIPs = true;
-						DNSOldIPv4 = curIPv4;
-						DNSOldIPv6 = curIPv6;
+
+						Logging.DebugMsg("<Net:DynDNS> " + DNSOldIPv4.ToString() + " is not same as " + curIPv4.ToString());
+
+						var sbs = new StringBuilder(128);
+
+						sbs.Append("<Net:DynDNS> Reporting ");
+						if (ip4Update) sbs.Append(curIPv4.ToString());
+						if (ip4Update && ip6Update) sbs.Append(" or ");
+						if (ip6Update) sbs.Append('[').Append(curIPv6.ToString()).Append(']');
+						sbs.Append(" on ").Append(DynamicDNSLastUpdate.ToString("u")).Append(" (").Append(DynamicDNSLastUpdate.To(DateTimeOffset.UtcNow)).Append(')');
+						Log.Debug(sbs.ToString());
 					}
 					else
 					{
@@ -307,37 +341,50 @@ namespace Taskmaster.Network
 					}
 				}
 
-				using var netcfg = Config.Load(NetConfigFilename);
-				var dns = netcfg.Config[Constants.DNSUpdating];
-
-				bool success = await DynamicDNSUpdate().ConfigureAwait(false);
-				if (success)
+				if (updateIPs)
 				{
-					DynDNSFailures = 0;
-					try
+					bool success = await DynamicDNSUpdate().ConfigureAwait(false);
+					if (success)
 					{
-						DynamicDNSLastUpdate = DateTimeOffset.UtcNow;
-						dns[Constants.LastAttempt].String = DynamicDNSLastUpdate.ToString("u");
-						if (updateIPs)
+						DynDNSFailures = 0;
+						try
 						{
-							if (!DNSOldIPv4.Equals(curIPv4))
+							using var netcfg = Config.Load(NetConfigFilename);
+							var dns = netcfg.Config[Constants.DNSUpdating];
+
+							DynamicDNSLastUpdate = DateTimeOffset.UtcNow;
+							dns[Constants.LastAttempt].String = DynamicDNSLastUpdate.ToString("u");
+							if (ip4Update)
 							{
 								dns[Constants.LastKnownIPv4].String = curIPv4.ToString();
 								DNSOldIPv4 = curIPv4;
 							}
-							if (!DNSOldIPv6.Equals(curIPv6))
+							if (ip6Update)
 							{
-								dns["Last IPv6"].String = curIPv6.ToString();
+								dns[Constants.LastKnownIPv6].String = "[" + curIPv6.ToString() + "]";
 								DNSOldIPv6 = curIPv6;
 							}
 						}
+						catch { }
+
+						var sbs = new StringBuilder(128);
+
+						sbs.Append("<Net:DynDNS> Reported ");
+						if (ip4Update) sbs.Append(DNSOldIPv4.ToString());
+						if (ip4Update && ip6Update) sbs.Append(" or ");
+						if (ip6Update) sbs.Append('[').Append(DNSOldIPv6.ToString()).Append(']');
+						sbs.Append(" on ").Append(DynamicDNSLastUpdate.ToString("u")).Append(" (").Append(DynamicDNSLastUpdate.To(DateTimeOffset.UtcNow)).Append(')');
+						Log.Information(sbs.ToString());
 					}
-					catch { }
-				}
-				else if (DynDNSFailures++ > 3)
-				{
-					Log.Error("<Net:DynDNS> Update failed too many times, stopping updates.");
-					StopDynDNSUpdates();
+					else if (DynDNSFailures++ > 3)
+					{
+						Log.Error("<Net:DynDNS> Update failed too many times, stopping updates.");
+						StopDynDNSUpdates();
+					}
+					else
+					{
+						Logging.DebugMsg("<Net:DynDNS> Update failed.");
+					}
 				}
 			}
 			catch (Exception ex)
@@ -362,10 +409,10 @@ namespace Taskmaster.Network
 				rq.ContentType = "json";
 				rq.UserAgent = "Taskmaster/DynDNS.alpha.1";
 				rq.Timeout = 30_000;
+
 				using var rs = await rq.GetResponseAsync();
 				if (rs.ContentLength > 0)
 				{
-					//var sbs = new StringBuilder(512);
 					using var dat = rs.GetResponseStream();
 					int len = Convert.ToInt32(rs.ContentLength);
 					byte[] buffer = new byte[len];
@@ -373,6 +420,10 @@ namespace Taskmaster.Network
 					Logging.DebugMsg(buffer.ToString());
 				}
 				rs.Close();
+
+				DynamicDNSLastUpdate = DateTimeOffset.UtcNow;
+				DNSOldIPv4 = IPv4Address;
+				DNSOldIPv6 = IPv6Address;
 			}
 			catch (WebException ex)
 			{
@@ -935,6 +986,8 @@ namespace Taskmaster.Network
 					// bad since if it's not clicked, we react to other tooltip clicks, too
 					// TODO: Need replaceable callback or something.
 					//Tray.TrayTooltipClicked += (_, _ea) => { /* something */ };
+
+					if (DynamicDNS) StartDynDNSUpdates().ConfigureAwait(false);
 
 					IPChanged?.Invoke(this, EventArgs.Empty);
 				}
