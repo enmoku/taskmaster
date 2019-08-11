@@ -76,7 +76,7 @@ namespace Taskmaster.Network
 		public event EventHandler IPChanged;
 		public event EventHandler<Status> NetworkStatusChange;
 
-		public event EventHandler<TrafficEventArgs> NetworkTraffic;
+		//public event EventHandler<TrafficEventArgs> NetworkTraffic;
 
 		readonly Windows.PerformanceCounter NetInTrans, NetOutTrans, NetPackets, NetQueue;
 
@@ -234,7 +234,11 @@ namespace Taskmaster.Network
 
 			NetworkStatusReport = new System.Threading.Timer(UpdateNetworkState, null, System.Threading.Timeout.Infinite, System.Threading.Timeout.Infinite);
 
-			if (DynamicDNS) StartDynDNSUpdates();
+			if (DynamicDNS)
+			{
+				Log.Debug("<Net:DynDNS> Starting update timer.");
+				StartDynDNSUpdates();
+			}
 
 			if (DebugNet) Log.Information("<Network> Component loaded.");
 
@@ -246,6 +250,8 @@ namespace Taskmaster.Network
 
 		async Task StartDynDNSUpdates()
 		{
+			Logging.DebugMsg("StartDynDNSUpdates()");
+
 			using var netcfg = Config.Load(NetConfigFilename);
 			var dns = netcfg.Config[Constants.DNSUpdating];
 			IPAddress.TryParse(dns.Get(Constants.LastKnownIPv4)?.String ?? string.Empty, out DNSOldIPv4);
@@ -525,7 +531,6 @@ namespace Taskmaster.Network
 			return ifacelistt;
 		}
 
-		int TrafficAnalysisLimiter = 0;
 		readonly MKAh.Lock.Monitor TrafficAnalysisLock = new MKAh.Lock.Monitor();
 
 		long errorsSinceLastReport = 0;

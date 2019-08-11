@@ -56,15 +56,12 @@ namespace Taskmaster
 			{
 				string trace = ex.StackTrace.Replace(projectdir, HumanReadable.Generic.Ellipsis + System.IO.Path.DirectorySeparatorChar);
 				Serilog.Log.Fatal($"Exception [{method}:{lineNo}]: {ex.GetType().Name} : {ex.Message}\n{trace}");
-				if (ex is InitFailure iex)
+				if (ex is InitFailure iex && (iex.InnerExceptions?.Length ?? 0) > 1)
 				{
-					if ((iex.InnerExceptions?.Length ?? 0) > 1)
+					for (int i = 1; i < iex.InnerExceptions.Length; i++)
 					{
-						for (int i = 1; i < iex.InnerExceptions.Length; i++)
-						{
-							trace = iex.InnerExceptions[i].StackTrace.Replace(projectdir, HumanReadable.Generic.Ellipsis + System.IO.Path.DirectorySeparatorChar);
-							Serilog.Log.Fatal($"Exception: {iex.InnerExceptions[i].GetType().Name} : {iex.InnerExceptions[i].Message}\n{trace}");
-						}
+						trace = iex.InnerExceptions[i].StackTrace.Replace(projectdir, HumanReadable.Generic.Ellipsis + System.IO.Path.DirectorySeparatorChar);
+						Serilog.Log.Fatal($"Exception: {iex.InnerExceptions[i].GetType().Name} : {iex.InnerExceptions[i].Message}\n{trace}");
 					}
 				}
 			}
