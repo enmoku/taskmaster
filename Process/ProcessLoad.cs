@@ -30,7 +30,8 @@ namespace Taskmaster.Process
 {
 	public class ProcessLoad : IDisposable
 	{
-		MKAh.Wrapper.Windows.PerformanceCounter IOCounter;
+		readonly CpuUsage CpuLoad;
+		readonly MKAh.Wrapper.Windows.PerformanceCounter IOCounter;
 
 		readonly string Instance;
 		readonly int Id;
@@ -51,7 +52,7 @@ namespace Taskmaster.Process
 
 			CpuLoad = new CpuUsage(process);
 
-			Refresh();
+			IOCounter = new MKAh.Wrapper.Windows.PerformanceCounter("Process", "IO Data Bytes/sec", Instance);
 
 			Reset();
 		}
@@ -116,23 +117,8 @@ namespace Taskmaster.Process
 
 		public MKAh.Container.CircularBuffer<float> LoadHistory { get; private set; } = new MKAh.Container.CircularBuffer<float>(10);
 
-		void Refresh()
-		{
-			Scrap();
-
-			IOCounter = new MKAh.Wrapper.Windows.PerformanceCounter("Process", "IO Data Bytes/sec", Instance);
-		}
-
-		CpuUsage CpuLoad;
-
 		#region IDisposable Support
 		bool disposed = false;
-
-		void Scrap()
-		{
-			IOCounter?.Dispose();
-			IOCounter = null;
-		}
 
 		protected virtual void Dispose(bool disposing)
 		{
@@ -141,7 +127,7 @@ namespace Taskmaster.Process
 
 			if (disposing)
 			{
-				Scrap();
+				IOCounter.Dispose();
 
 				//base.Dispose();
 			}

@@ -76,7 +76,7 @@ namespace Taskmaster
 
 		//ConcurrentDictionary<ulong, LogEventArgs> LogMap { get; set; } = new ConcurrentDictionary<ulong, LogEventArgs>(2, 200);
 
-		public MemorySink(IFormatProvider formatProvider, string outputTemplate = p_DefaultOutputTemplate, LoggingLevelSwitch levelSwitch = null)
+		public MemorySink(IFormatProvider formatProvider, string outputTemplate = p_DefaultOutputTemplate, LoggingLevelSwitch? levelSwitch = null)
 		{
 			//p_formatProvider = formatProvider;
 			p_textFormatter = new Serilog.Formatting.Display.MessageTemplateTextFormatter(

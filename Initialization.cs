@@ -100,7 +100,7 @@ namespace Taskmaster
 
 			LicenseBoiler();
 
-			UI.Splash splash = null;
+			UI.Splash? splash = null;
 
 			/*
 			Task.Run(() => {

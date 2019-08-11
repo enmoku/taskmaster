@@ -46,7 +46,7 @@ namespace Taskmaster
 		readonly int PriorityColumn = -1;
 		readonly int PowerColumn = -1;
 
-		public WatchlistSorter(int[] numberColumns = null, int priorityColumn = -1, int powerColumn = -1)
+		public WatchlistSorter(int[]? numberColumns = null, int priorityColumn = -1, int powerColumn = -1)
 		{
 			if (numberColumns != null)
 				NumberColumns = numberColumns;

@@ -146,7 +146,7 @@ namespace Taskmaster
 			Mean = tAverage / SampleCount;
 		}
 
-		Stopwatch stopwatch = Stopwatch.StartNew();
+		readonly Stopwatch stopwatch = Stopwatch.StartNew();
 		long oldIdleMs, oldUsedMs;
 
 		/// <summary>

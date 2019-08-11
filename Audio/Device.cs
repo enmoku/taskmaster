@@ -55,7 +55,7 @@ namespace Taskmaster.Audio
 		public NAudio.CoreAudioApi.DeviceState State { get; set; }
 		public NAudio.CoreAudioApi.DataFlow Flow { get; set; }
 
-		public NAudio.CoreAudioApi.MMDevice MMDevice { get; private set; } = null;
+		public NAudio.CoreAudioApi.MMDevice? MMDevice { get; private set; } = null;
 
 		public override string ToString() => $"{Name ?? "n/a"} {{{GUID}}}";
 

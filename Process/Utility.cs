@@ -53,6 +53,12 @@ namespace Taskmaster.Process
 		{
 			internal string Name;
 			internal string Path;
+
+			internal PathCacheObject(string name, string path)
+			{
+				Name = name;
+				Path = path;
+			}
 		}
 
 		static MKAh.Cache.SimpleCache<int, PathCacheObject> PathCache;
@@ -87,7 +93,7 @@ namespace Taskmaster.Process
 
 				if (!FindPathExtended(info)) return false;
 
-				PathCache.Add(info.Id, new PathCacheObject() { Name = info.Name, Path = info.Path });
+				PathCache.Add(info.Id, new PathCacheObject(info.Name, info.Path));
 
 				if (Statistics.PathCacheCurrent > Statistics.PathCachePeak) Statistics.PathCachePeak = Statistics.PathCacheCurrent;
 				Statistics.PathCacheCurrent = PathCache.Count;

@@ -84,7 +84,7 @@ namespace MKAh.Lock
 		/// <returns></returns>
 		public MonitorScope ScopedUnlock() => new MonitorScope(this);
 
-		public MonitorScope TryScopedLock()
+		public MonitorScope? TryScopedLock()
 		{
 			if (TryLock())
 				return new MonitorScope(this);

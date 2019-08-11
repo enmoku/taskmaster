@@ -48,7 +48,7 @@ namespace Taskmaster
 		readonly FileSystemWatcher? UserWatcher = null;
 		readonly FileSystemWatcher? SysWatcher = null;
 
-		readonly System.Timers.Timer TempScanTimer = null;
+		readonly System.Timers.Timer TempScanTimer;
 		TimeSpan TimerDue = TimeSpan.FromHours(24);
 
 		public StorageManager()

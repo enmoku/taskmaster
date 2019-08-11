@@ -48,7 +48,7 @@ namespace Taskmaster.Audio
 		public event EventHandler<DeviceEventArgs> Added;
 		public event EventHandler<DeviceEventArgs> Removed;
 
-		public NAudio.CoreAudioApi.MMDeviceEnumerator Enumerator { get; private set; } = null;
+		public NAudio.CoreAudioApi.MMDeviceEnumerator Enumerator { get; }
 
 		public float OutVolume { get; set; } = 0.0f;
 

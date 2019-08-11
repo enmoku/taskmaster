@@ -43,7 +43,7 @@ namespace Taskmaster.UI
 
 		List<ProcessEx> InfoList = new List<ProcessEx>();
 
-		public ProcessSelectDialog(string message = "", string title = null)
+		public ProcessSelectDialog(string message = "", string title = "")
 			: base()
 		{
 			SuspendLayout();

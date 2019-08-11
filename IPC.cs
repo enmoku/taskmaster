@@ -93,7 +93,7 @@ namespace Taskmaster
 			}
 		}
 
-		internal static System.IO.Pipes.NamedPipeServerStream Listen()
+		internal static System.IO.Pipes.NamedPipeServerStream? Listen()
 		{
 			try
 			{

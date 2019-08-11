@@ -39,7 +39,7 @@ namespace Taskmaster.Process
 	{
 		public IntPtr HWND { get; set; }
 		public int Id { get; set; }
-		public System.Diagnostics.Process Process { get; set; }
+		public System.Diagnostics.Process? Process { get; set; }
 		public string Title { get; set; }
 		public bool Fullscreen { get; set; }
 		public string Executable { get; set; }

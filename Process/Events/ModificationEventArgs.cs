@@ -49,6 +49,6 @@ namespace Taskmaster.Process
 		/// <summary>
 		/// Text for end-users.
 		/// </summary>
-		public System.Text.StringBuilder User { get; set; } = null;
+		public System.Text.StringBuilder? User { get; set; } = null;
 	}
 }

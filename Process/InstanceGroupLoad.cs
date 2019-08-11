@@ -64,7 +64,7 @@ namespace Taskmaster.Process
 	    ).ToArray();
 		*/
 
-		public InstanceGroupLoad(string instance, LoadType load, ProcessEx initial = null)
+		public InstanceGroupLoad(string instance, LoadType load, ProcessEx? initial = null)
 		{
 			Debug.Assert(load != LoadType.None, "Load can't be none");
 

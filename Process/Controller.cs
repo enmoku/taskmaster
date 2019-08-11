@@ -79,7 +79,7 @@ namespace Taskmaster.Process
 		/// </summary>
 		public string FriendlyName { get; private set; } = null;
 
-		internal string[] pExecutables = null;
+		internal string[]? pExecutables = null;
 
 		/// <summary>
 		/// Executable filename related to this, with extension.

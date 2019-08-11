@@ -526,7 +526,7 @@ namespace Taskmaster.Network
 		}
 
 		int TrafficAnalysisLimiter = 0;
-		MKAh.Lock.Monitor TrafficAnalysisLock = new MKAh.Lock.Monitor();
+		readonly MKAh.Lock.Monitor TrafficAnalysisLock = new MKAh.Lock.Monitor();
 
 		long errorsSinceLastReport = 0;
 		DateTimeOffset lastErrorReport;

@@ -86,7 +86,7 @@ namespace Taskmaster
 
 			try
 			{
-				if (!mainwindow?.IsDisposed ?? false) mainwindow.Enabled = false;
+				if (!(mainwindow?.IsDisposed ?? true)) mainwindow.Enabled = false;
 				if (!trayaccess.IsDisposed) trayaccess.Close();
 
 				while (DisposalChute.Count > 0)

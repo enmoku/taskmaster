@@ -54,7 +54,7 @@ namespace Taskmaster.Process
 		/// <summary>
 		/// For use by FormatPathName()
 		/// </summary>
-		public string FormattedPath { get; set; } = null;
+		public string FormattedPath { get; set; } = string.Empty;
 
 		/// <summary>
 		/// As seen in task manager.

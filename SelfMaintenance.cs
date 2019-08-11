@@ -65,7 +65,7 @@ namespace Taskmaster
 
 		readonly System.Timers.Timer timer = new System.Timers.Timer(86_400_000) { AutoReset = false }; // once a day
 
-		Process.Manager processmanager = null;
+		Process.Manager? processmanager = null;
 
 		void Hook(Process.Manager procman)
 		{

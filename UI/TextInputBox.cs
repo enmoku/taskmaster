@@ -30,12 +30,13 @@ namespace Taskmaster.UI
 {
 	public class TextInputBox : UI.UniForm
 	{
-		public string Value { get; private set; } = null;
+		public string Value { get; private set; }
 
 		public TextInputBox(string message, string title, string input = null)
 			: base()
 		{
 			Text = title;
+			Value = string.Empty;
 
 			DoubleBuffered = true;
 
@@ -94,7 +95,7 @@ namespace Taskmaster.UI
 			cancelbutton.Click += (_, _ea) =>
 			{
 				DialogResult = DialogResult.Cancel;
-				Value = null;
+				Value = string.Empty;
 				Close();
 			};
 

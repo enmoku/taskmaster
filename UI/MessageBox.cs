@@ -54,7 +54,7 @@ namespace Taskmaster
 
 		public ResultType Result { get; private set; } = ResultType.Cancel;
 
-		public static ResultType ShowModal(string title, string message, Buttons buttons, Type type = Type.Auto, Control parent = null)
+		public static ResultType ShowModal(string title, string message, Buttons buttons, Type type = Type.Auto, Control? parent = null)
 		{
 			using var msg = new MessageBox(title, message, buttons, type, parent);
 			//msg.CenterToParent();
@@ -63,8 +63,8 @@ namespace Taskmaster
 			return msg.Result;
 		}
 
-		readonly Label Message = null;
-		readonly RichTextBox RichMessage = null;
+		readonly Label? Message = null;
+		readonly RichTextBox? RichMessage = null;
 
 		readonly UI.Extensions.TableLayoutPanel layout, buttonlayout;
 		readonly UI.Extensions.Button okbutton, cancelbutton, retrybutton, endbutton;

@@ -140,7 +140,7 @@ namespace Taskmaster.UI
 		internal void LoadEvent(string message, LoadEventType type, int subItemsDone = -1, int subItemsTotal = -1)
 			=> LoadEvent(null, new LoadEventArgs(message, type, subItemsDone, subItemsTotal));
 
-		internal void LoadEvent(object sender, LoadEventArgs ea)
+		internal void LoadEvent(object? sender, LoadEventArgs ea)
 		{
 			Logging.DebugMsg("[" + Loaded.ToString() + "/" + MaxLoad.ToString() + "] " + ea.Message);
 

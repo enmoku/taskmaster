@@ -31,7 +31,7 @@ namespace Taskmaster.Process
 {
 	public class HandlingStateChangeEventArgs : EventArgs
 	{
-		public ProcessEx Info { get; set; } = null;
+		public ProcessEx Info { get; }
 
 		public HandlingStateChangeEventArgs(ProcessEx info)
 		{

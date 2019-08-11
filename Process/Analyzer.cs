@@ -87,7 +87,7 @@ namespace Taskmaster.Process
 			bool x64 = true;
 
 			string modFile;
-			FileVersionInfo version = default;
+			FileVersionInfo? version = default;
 			long modMemory;
 
 			try

@@ -68,7 +68,7 @@ namespace Taskmaster.UI.Config
 			{
 				WMIPolling = processmanager?.WMIPolling ?? false;
 				WMIPollDelay = processmanager?.WMIPollDelay ?? 5;
-				if (processmanager.ScanFrequency.HasValue)
+				if (processmanager?.ScanFrequency.HasValue ?? false)
 					ScanFrequency = Convert.ToInt32(processmanager.ScanFrequency.Value.TotalSeconds);
 				else
 					scan = false;

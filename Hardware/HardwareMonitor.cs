@@ -73,22 +73,22 @@ namespace Taskmaster
 	[Component(RequireMainThread = false)]
 	public class HardwareMonitor : Component, IDisposal
 	{
-		OpenHardwareMonitor.Hardware.IHardware gpu = null;
-		OpenHardwareMonitor.Hardware.ISensor gpuFan = null; // Fan speed
-		OpenHardwareMonitor.Hardware.ISensor gpuFanControl = null; // Fan speed controller. Value is % usage
-		OpenHardwareMonitor.Hardware.ISensor gpuTmp = null; // Temperature
-		OpenHardwareMonitor.Hardware.ISensor gpuMemLoad = null; // Free Memory
+		OpenHardwareMonitor.Hardware.IHardware? gpu = null;
+		OpenHardwareMonitor.Hardware.ISensor? gpuFan = null; // Fan speed
+		OpenHardwareMonitor.Hardware.ISensor? gpuFanControl = null; // Fan speed controller. Value is % usage
+		OpenHardwareMonitor.Hardware.ISensor? gpuTmp = null; // Temperature
+		OpenHardwareMonitor.Hardware.ISensor? gpuMemLoad = null; // Free Memory
 		float gpuTotalMemory = 0f;
-		OpenHardwareMonitor.Hardware.ISensor gpuClock = null; // Core clock speed
-		OpenHardwareMonitor.Hardware.ISensor gpuLoad = null; // Core % load
-		OpenHardwareMonitor.Hardware.ISensor gpuMemCtrl = null; // Memory Controller
+		OpenHardwareMonitor.Hardware.ISensor? gpuClock = null; // Core clock speed
+		OpenHardwareMonitor.Hardware.ISensor? gpuLoad = null; // Core % load
+		OpenHardwareMonitor.Hardware.ISensor? gpuMemCtrl = null; // Memory Controller
 
 		//OpenHardwareMonitor.Hardware.IHardware cpu = null;
-		OpenHardwareMonitor.Hardware.ISensor cpuLoad = null;
+		OpenHardwareMonitor.Hardware.ISensor? cpuLoad = null;
 		//OpenHardwareMonitor.Hardware.ISensor cpuFan = null;
 		//OpenHardwareMonitor.Hardware.ISensor cpuTmp = null;
 
-		OpenHardwareMonitor.Hardware.Computer computer = null;
+		OpenHardwareMonitor.Hardware.Computer? computer = null;
 
 		public HardwareMonitor()
 		{

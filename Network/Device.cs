@@ -117,8 +117,8 @@ namespace Taskmaster.Network
 		public NetworkInterfaceType Type { get; set; } = NetworkInterfaceType.Unknown;
 		public OperationalStatus Status { get; set; } = OperationalStatus.NotPresent;
 		public long Speed { get; set; } = 0;
-		public IPAddress IPv4Address { get; set; } = null;
-		public IPAddress IPv6Address { get; set; } = null;
+		public IPAddress? IPv4Address { get; set; } = null;
+		public IPAddress? IPv6Address { get; set; } = null;
 
 		public OperationalStatus IPv4Status { get; set; } = OperationalStatus.Unknown;
 

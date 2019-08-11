@@ -44,7 +44,7 @@ namespace Taskmaster.UI.Config
 		readonly bool newPrc = false;
 
 		// Editingg
-		public WatchlistEditWindow(Process.Controller controller = null)
+		public WatchlistEditWindow(Process.Controller? controller = null)
 			: base()
 		{
 			SuspendLayout();

@@ -302,7 +302,7 @@ namespace Taskmaster.UI
 	{
 		public Process.InstanceGroupLoad Load { get; set; }
 
-		public ListViewItem ListItem { get; set; }
+		public ListViewItem? ListItem { get; set; }
 
 		public LoadListPair(Process.InstanceGroupLoad info, ListViewItem item)
 		{

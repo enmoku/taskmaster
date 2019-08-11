@@ -30,7 +30,7 @@ namespace Taskmaster.Power
 {
 	public class ModeEventArgs : EventArgs
 	{
-		public ModeEventArgs(Mode newmode, Mode oldmode = Mode.Undefined, Cause cause = null)
+		public ModeEventArgs(Mode newmode, Mode oldmode = Mode.Undefined, Cause? cause = null)
 		{
 			NewMode = newmode;
 			OldMode = oldmode;
@@ -39,6 +39,6 @@ namespace Taskmaster.Power
 
 		public Mode OldMode { get; set; }
 		public Mode NewMode { get; set; }
-		public Cause Cause { get; set; }
+		public Cause? Cause { get; set; }
 	}
 }

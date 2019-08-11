@@ -32,7 +32,7 @@ namespace Taskmaster.Configuration
 {
 	public class File : IFile, IDisposable
 	{
-		public Ini.Config Config { get; private set; } = null;
+		public Ini.Config? Config { get; private set; } = null;
 
 		public string Filename { get; } = null;
 

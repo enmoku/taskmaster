@@ -234,7 +234,7 @@ namespace Taskmaster.UI
 		readonly Timer updateTimer = new Timer();
 
 		#region IDispose
-		public event EventHandler<DisposedEventArgs> OnDisposed;
+		public event EventHandler<DisposedEventArgs>? OnDisposed;
 
 		bool disposed = false;
 

@@ -42,7 +42,7 @@ namespace Taskmaster
 		public static Power.Manager? powermanager = null;
 		public static Process.ForegroundManager? activeappmonitor = null;
 		public static HealthMonitor? healthmonitor = null;
-		public static SelfMaintenance selfmaintenance = null;
+		public static SelfMaintenance selfmaintenance;
 		public static Audio.Manager? audiomanager = null;
 		public static CPUMonitor? cpumonitor = null;
 		public static HardwareMonitor? hardware = null;
