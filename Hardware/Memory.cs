@@ -137,15 +137,16 @@ namespace Taskmaster
 				Logging.DebugMsg("MEMORY CACHE - information unavailable");
 		}
 
+		static NativeMethods.MemoryStatusEx mem = new NativeMethods.MemoryStatusEx { dwLength = (uint)Marshal.SizeOf(typeof(NativeMethods.MemoryStatusEx)) };
+
 		public static void Update()
 		{
 			try
 			{
 				//GetCache();
 
-				var mem = new MemoryStatusEx { dwLength = (uint)Marshal.SizeOf(typeof(MemoryStatusEx)) };
-
 				NativeMethods.GlobalMemoryStatusEx(ref mem);
+
 				Total = mem.ullTotalPhys;
 				FreeBytes = Convert.ToInt64(mem.ullAvailPhys);
 				Used = Total - mem.ullAvailPhys;
@@ -176,6 +177,54 @@ namespace Taskmaster
 
 	static partial class NativeMethods
 	{
+		// https://docs.microsoft.com/en-us/windows/desktop/api/sysinfoapi/ns-sysinfoapi-_memorystatusex
+		[System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential, CharSet = System.Runtime.InteropServices.CharSet.Auto)]
+		internal struct MemoryStatusEx
+		{
+			// size of the structure in bytes. Used by C functions
+			public uint dwLength;
+
+			/// <summary>
+			/// 0 to 100, percentage of memory usage
+			/// </summary>
+			public uint dwMemoryLoad;
+
+			/// <summary>
+			/// Total size of physical memory, in bytes.
+			/// </summary>
+			public ulong ullTotalPhys;
+
+			/// <summary>
+			/// Size of physical memory available, in bytes.
+			/// </summary>
+			public ulong ullAvailPhys;
+
+			/// <summary>
+			/// Size of the committed memory limit, in bytes. This is physical memory plus the size of the page file, minus a small overhead.
+			/// </summary>
+			public ulong ullTotalPageFile;
+
+			/// <summary>
+			/// Size of available memory to commit, in bytes. The limit is ullTotalPageFile.
+			/// </summary>
+			public ulong ullAvailPageFile;
+
+			/// <summary>
+			/// Total size of the user mode portion of the virtual address space of the calling process, in bytes.
+			/// </summary>
+			public ulong ullTotalVirtual;
+
+			/// <summary>
+			/// Size of unreserved and uncommitted memory in the user mode portion of the virtual address space of the calling process, in bytes.
+			/// </summary>
+			public ulong ullAvailVirtual;
+
+			/// <summary>
+			/// Size of unreserved and uncommitted memory in the extended portion of the virtual address space of the calling process, in bytes.
+			/// </summary>
+			public ulong ullAvailExtendedVirtual;
+		}
+
 		// https://docs.microsoft.com/en-us/windows/desktop/api/sysinfoapi/nf-sysinfoapi-globalmemorystatusex
 		[return: System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.Bool)]
 		[System.Runtime.InteropServices.DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
@@ -225,52 +274,4 @@ namespace Taskmaster
 	{
 	}
 	*/
-
-	// https://docs.microsoft.com/en-us/windows/desktop/api/sysinfoapi/ns-sysinfoapi-_memorystatusex
-	[System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential, CharSet = System.Runtime.InteropServices.CharSet.Auto)]
-	internal struct MemoryStatusEx
-	{
-		// size of the structure in bytes. Used by C functions
-		public uint dwLength;
-
-		/// <summary>
-		/// 0 to 100, percentage of memory usage
-		/// </summary>
-		public uint dwMemoryLoad;
-
-		/// <summary>
-		/// Total size of physical memory, in bytes.
-		/// </summary>
-		public ulong ullTotalPhys;
-
-		/// <summary>
-		/// Size of physical memory available, in bytes.
-		/// </summary>
-		public ulong ullAvailPhys;
-
-		/// <summary>
-		/// Size of the committed memory limit, in bytes. This is physical memory plus the size of the page file, minus a small overhead.
-		/// </summary>
-		public ulong ullTotalPageFile;
-
-		/// <summary>
-		/// Size of available memory to commit, in bytes. The limit is ullTotalPageFile.
-		/// </summary>
-		public ulong ullAvailPageFile;
-
-		/// <summary>
-		/// Total size of the user mode portion of the virtual address space of the calling process, in bytes.
-		/// </summary>
-		public ulong ullTotalVirtual;
-
-		/// <summary>
-		/// Size of unreserved and uncommitted memory in the user mode portion of the virtual address space of the calling process, in bytes.
-		/// </summary>
-		public ulong ullAvailVirtual;
-
-		/// <summary>
-		/// Size of unreserved and uncommitted memory in the extended portion of the virtual address space of the calling process, in bytes.
-		/// </summary>
-		public ulong ullAvailExtendedVirtual;
-	}
 }
