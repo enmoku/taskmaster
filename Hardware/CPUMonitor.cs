@@ -51,7 +51,7 @@ namespace Taskmaster
 		public int SampleCount { get; set; } = 5;
 
 		//readonly Windows.PerformanceCounter CPUload = new Windows.PerformanceCounter("Processor", "% Processor Time", "_Total");
-		readonly Windows.PerformanceCounter CPUqueue = new Windows.PerformanceCounter("System", "Processor Queue Length", null);
+		readonly Windows.PerformanceCounter CPUqueue = new Windows.PerformanceCounter("System", "Processor Queue Length", null); // no p/invoke alternative?
 
 		//Windows.PerformanceCounter CPUIRQ = new Windows.PerformanceCounter("Processor", "% Interrupt Time", "_Total");
 

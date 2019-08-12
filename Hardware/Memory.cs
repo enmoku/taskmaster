@@ -71,7 +71,7 @@ namespace Taskmaster
 		/// </summary>
 		public static long FreeBytes { get; private set; } = 0;
 
-		static readonly Windows.PerformanceCounter pfcprivate = new Windows.PerformanceCounter("Process", "Private Bytes", "_Total");
+		static readonly Windows.PerformanceCounter pfcprivate = new Windows.PerformanceCounter("Process", "Private Bytes", "_Total"); // no p/invoke alternative?
 		//static Windows.PerformanceCounter pfccommit = new Windows.PerformanceCounter("Memory", "% Committed Bytes In Use", null);
 		//static Windows.PerformanceCounter pfcfree = new Windows.PerformanceCounter("Memory", "Available MBytes", null);
 
