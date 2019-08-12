@@ -996,7 +996,7 @@ namespace Taskmaster.UI
 		Extensions.ListViewEx NetworkDevices = null;
 
 		ContextMenuStrip ifacems, watchlistms;
-		ToolStripMenuItem watchlistenable;
+		ToolStripMenuItem watchlistenable, watchlistadd;
 
 		void InterfaceContextMenuOpen(object _, EventArgs _ea)
 		{
@@ -2256,7 +2256,7 @@ namespace Taskmaster.UI
 			watchlistms.Opened += WatchlistContextMenuOpen;
 			watchlistenable = new ToolStripMenuItem(HumanReadable.Generic.Enabled, null, EnableWatchlistRule);
 			var watchlistedit = new ToolStripMenuItem("Edit", null, EditWatchlistRule);
-			var watchlistadd = new ToolStripMenuItem("Create new", null, AddWatchlistRule);
+			watchlistadd = new ToolStripMenuItem("Create new", null, AddWatchlistRule);
 			var watchlistdel = new ToolStripMenuItem("Remove", null, DeleteWatchlistRule);
 			var watchlistclip = new ToolStripMenuItem("Copy to clipboard", null, CopyRuleToClipboard);
 
@@ -3365,7 +3365,7 @@ namespace Taskmaster.UI
 			{
 				foreach (ToolStripItem lsi in watchlistms.Items)
 				{
-					if (lsi.Text.Contains("Create")) continue;
+					if (lsi == watchlistadd) continue;
 					lsi.Enabled = oneitem;
 				}
 
