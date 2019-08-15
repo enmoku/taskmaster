@@ -49,7 +49,6 @@ namespace Processes
 		/// <summary>
 		/// Makes sure Limit affinity strategy does not increase number of assigned cores from source.
 		/// </summary>
-		/// <param name="cores"></param>
 		[Test]
 		[TestOf(nameof(Taskmaster.Process.Utility.ApplyAffinityStrategy))]
 		public void AffinityStrategyLimitActual()
@@ -87,6 +86,19 @@ namespace Processes
 			Console.WriteLine("Result: " + Convert.ToString(testProduct, 2));
 
 			Assert.AreEqual(Bit.Count(testSource), Bit.Count(testProduct));
+		}
+
+		[Test]
+		[TestOf(nameof(Taskmaster.Process.Utility.ApplyAffinityStrategy))]
+		[TestCase(1, 1, 1)]
+		[TestCase(1, 13, 1)]
+		public void AffinityLimit1(int source, int mask, int expected)
+		{
+			Taskmaster.Process.Manager.DebugProcesses = true;
+			System.Diagnostics.Debug.Listeners.Add(new System.Diagnostics.ConsoleTraceListener());
+			int product = Taskmaster.Process.Utility.ApplyAffinityStrategy(source, mask, Taskmaster.Process.AffinityStrategy.Limit);
+
+			Assert.AreEqual(expected, product);
 		}
 
 		[Test]
