@@ -103,6 +103,21 @@ namespace Processes
 		}
 
 		[Test]
+		[TestOf(nameof(Taskmaster.Process.Utility.ApplyAffinityStrategy))]
+		[TestCase(0b1101, 0b1001)]
+		[TestCase(0b1100, 0b0011)]
+		[TestCase(0b0110, 0b1001)]
+		public void AffinityForce1(int source, int mask)
+		{
+			Taskmaster.Process.Manager.DebugProcesses = true;
+			System.Diagnostics.Debug.Listeners.Add(new System.Diagnostics.ConsoleTraceListener());
+
+			int product = Taskmaster.Process.Utility.ApplyAffinityStrategy(source, mask, Taskmaster.Process.AffinityStrategy.Force);
+
+			Assert.AreEqual(mask, product);
+		}
+
+		[Test]
 		[TestOf(nameof(Bit))]
 		public void AffinityTests()
 		{
