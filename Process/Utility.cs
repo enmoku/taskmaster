@@ -229,11 +229,16 @@ namespace Taskmaster.Process
 
 			int excesscores = Bit.Count(initialmask) - Bit.Count(targetmask);
 
-			int result = initialmask;
+			int result;
 
-			// Don't increase the number of cores
-			if (strategy == AffinityStrategy.Limit)
+			if (strategy == AffinityStrategy.Force)
 			{
+				result = targetmask;
+			}
+			else if (strategy == AffinityStrategy.Limit) // Don't increase the number of cores
+			{
+				result = initialmask;
+
 				sbs?.Append(" Cores(").Append(Bit.Count(initialmask)).Append(" / ").Append(Bit.Count(targetmask)).Append(") old mask ").Append(Convert.ToString(initialmask, 2));
 
 				if (excesscores > 0)
@@ -254,6 +259,8 @@ namespace Taskmaster.Process
 			}
 			else if (strategy == AffinityStrategy.Scatter)
 			{
+				result = targetmask;
+
 				throw new NotImplementedException("Affinitry scatter strategy not implemented.");
 
 				// NOT IMPLEMENTED
@@ -266,6 +273,10 @@ namespace Taskmaster.Process
 					}
 				}
 				*/
+			}
+			else
+			{
+				result = targetmask;
 			}
 
 			if (sbs != null)
