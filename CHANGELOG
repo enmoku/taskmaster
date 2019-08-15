@@ -3,6 +3,8 @@ Comprehensive changes can be found in Git change history:
 	https://github.com/mkahvi/taskmaster/commits/master
 
 ## [0.13...]
+### 2019-08-15
+	Fixed: Limit affinity strategy was behaving incorrectly (e.g. 0001 was converted to 1000).
 ### 2019-08-11
 	Fixed: Internet upstate is now properly updated on the UI.
 	Internal: A lot of internal changes should improve performance.

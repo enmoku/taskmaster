@@ -227,25 +227,29 @@ namespace Taskmaster.Process
 					.Append(Convert.ToString(initialmask, 2)).Append(", ").Append(strategy.ToString()).Append(')');
 			}
 
-			int excesscores = Bit.Count(targetmask) - Bit.Count(initialmask);
+			int excesscores = Bit.Count(initialmask) - Bit.Count(targetmask);
+
+			int result = initialmask;
 
 			// Don't increase the number of cores
 			if (strategy == AffinityStrategy.Limit)
 			{
-				sbs?.Append(" Cores(").Append(Bit.Count(initialmask)).Append("->").Append(Bit.Count(targetmask)).Append(')');
+				sbs?.Append(" Cores(").Append(Bit.Count(initialmask)).Append(" / ").Append(Bit.Count(targetmask)).Append(") old mask ").Append(Convert.ToString(initialmask, 2));
 
 				if (excesscores > 0)
 				{
+					sbs?.Append("; excess: ").Append(excesscores.ToString());
+
 					for (int i = 0; i < CPUCount && excesscores > 0; i++)
 					{
-						if (Bit.IsSet(targetmask, i))
+						if (!Bit.IsSet(targetmask, i) && Bit.IsSet(result, i)) // not set in target but set in result
 						{
-							targetmask = Bit.Unset(targetmask, i);
+							result = Bit.Unset(result, i);
 							excesscores--;
 						}
 					}
 
-					sbs?.Append(" -> ").Append(Convert.ToString(targetmask, 2));
+					sbs?.Append("; corrected to ").Append(Convert.ToString(result, 2));
 				}
 			}
 			else if (strategy == AffinityStrategy.Scatter)
@@ -266,11 +270,11 @@ namespace Taskmaster.Process
 
 			if (sbs != null)
 			{
-				sbs.Append(" = ").Append(Convert.ToString(targetmask, 2));
+				sbs.Append("; new = ").Append(Convert.ToString(result, 2));
 				Logging.DebugMsg(sbs.ToString());
 			}
 
-			return targetmask;
+			return result;
 		}
 
 		/// <summary>
