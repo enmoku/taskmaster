@@ -175,6 +175,7 @@
     <Compile Include="Process\ProcessorUsage.cs" />
     <Compile Include="Process\Types.cs" />
     <Compile Include="Process\Utility.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="SelfMaintenance.cs" />
     <Compile Include="ServiceWrapper.cs" />
     <Compile Include="Settings.Global.cs" />
