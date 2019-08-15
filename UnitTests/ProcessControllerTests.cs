@@ -90,8 +90,9 @@ namespace Processes
 
 		[Test]
 		[TestOf(nameof(Taskmaster.Process.Utility.ApplyAffinityStrategy))]
-		[TestCase(1, 1, 1)]
-		[TestCase(1, 13, 1)]
+		[TestCase(0b1, 0b1, 0b1)]
+		[TestCase(0b0001, 0b1101, 0b0001)]
+		[TestCase(0b1101, 0b1100, 0b1100)] // this can fail if the core freeing method is changed
 		public void AffinityLimit1(int source, int mask, int expected)
 		{
 			Taskmaster.Process.Manager.DebugProcesses = true;
