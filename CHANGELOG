@@ -3,6 +3,8 @@ Comprehensive changes can be found in Git change history:
 	https://github.com/mkahvi/taskmaster/commits/master
 
 ## [0.14...]
+### 2019-08-16
+	Fixed: Some errors related to processes exiting before we finish with things.
 ### 2019-08-15
 	Fixed: Limit affinity strategy was behaving incorrectly (e.g. 0001 was converted to 1000).
 	Fixed: Force affinity strategy was broken with the above fix.
