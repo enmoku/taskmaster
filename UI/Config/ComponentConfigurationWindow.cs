@@ -30,7 +30,7 @@ using System.Windows.Forms;
 
 namespace Taskmaster.UI.Config
 {
-	using static Taskmaster;
+	using static Application;
 
 	public class ComponentConfigurationWindow : UniForm
 	{

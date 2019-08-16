@@ -30,7 +30,7 @@ using System.Windows.Forms;
 
 namespace Taskmaster.UI
 {
-	using static Taskmaster;
+	using static Application;
 
 	internal class Splash : UniForm
 	{
@@ -52,7 +52,7 @@ namespace Taskmaster.UI
 			Visible = false;
 			SuspendLayout();
 
-			Text = "Loading " + Taskmaster.Name + "!!";
+			Text = "Loading " + Application.Name + "!!";
 
 			StartPosition = FormStartPosition.CenterScreen;
 

@@ -29,7 +29,7 @@ using System.Diagnostics;
 
 namespace Taskmaster
 {
-	using static Taskmaster;
+	using static Application;
 
 	public static partial class CommandLine
 	{

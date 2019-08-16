@@ -33,7 +33,7 @@ using Taskmaster.Process;
 
 namespace Taskmaster.UI
 {
-	using static Taskmaster;
+	using static Application;
 	public class ProcessSelectDialog : UI.UniForm
 	{
 		public ProcessEx? Info { get; private set; } = null;
@@ -57,7 +57,7 @@ namespace Taskmaster.UI
 			AutoSizeMode = AutoSizeMode.GrowAndShrink;
 
 			if (string.IsNullOrEmpty(title))
-				Text = "Choose running process – " + Taskmaster.Name;
+				Text = "Choose running process – " + Application.Name;
 			else
 				Text = title;
 

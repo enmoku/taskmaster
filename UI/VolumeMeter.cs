@@ -32,7 +32,7 @@ using System.Windows.Forms;
 
 namespace Taskmaster.UI
 {
-	using static Taskmaster;
+	using static Application;
 
 	public class VolumeMeter : UniForm
 	{
@@ -61,7 +61,7 @@ namespace Taskmaster.UI
 
 			Text = "Volume Meter – Taskmaster!";
 
-			using var cfg = Taskmaster.Config.Load(CoreConfigFilename);
+			using var cfg = Application.Config.Load(CoreConfigFilename);
 			var volsec = cfg.Config["Volume Meter"];
 
 			TopMost = volsec.GetOrSet("Topmost", true).Bool;
@@ -149,7 +149,7 @@ namespace Taskmaster.UI
 			updateTimer.Tick += UpdateVolumeTick;
 			updateTimer.Start();
 
-			using var uicfg = Taskmaster.Config.Load(UIConfigFilename);
+			using var uicfg = Application.Config.Load(UIConfigFilename);
 			var winsec = uicfg.Config[Constants.Windows];
 			var winpos = winsec[HumanReadable.Hardware.Audio.Volume].IntArray;
 
@@ -249,7 +249,7 @@ namespace Taskmaster.UI
 
 				updateTimer.Dispose();
 
-				using var cfg = Taskmaster.Config.Load(UIConfigFilename);
+				using var cfg = Application.Config.Load(UIConfigFilename);
 
 				var saveBounds = WindowState == FormWindowState.Normal ? Bounds : RestoreBounds;
 

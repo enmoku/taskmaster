@@ -40,7 +40,7 @@ namespace Taskmaster.Process
 		[DllImport("psapi.dll", SetLastError = true, CharSet = CharSet.Unicode, BestFitMapping = false, ThrowOnUnmappableChar = true)]
 		internal static extern uint GetModuleFileNameEx(IntPtr hProcess, IntPtr hModule, [Out] System.Text.StringBuilder lpBaseName, [In] [MarshalAs(UnmanagedType.U4)] uint nSize);
 
-		internal static global::Taskmaster.NativeMethods.HANDLE? OpenProcessFully(System.Diagnostics.Process process)
+		internal static Taskmaster.NativeMethods.HANDLE? OpenProcessFully(System.Diagnostics.Process process)
 		{
 			try
 			{
@@ -232,7 +232,7 @@ namespace Taskmaster.Process
 		/// MUST CLOSE THE RETURNED HANDLE WITH CLOSEHANDLE!!!
 		/// </summary>
 		[DllImport("kernel32.dll", SetLastError = true)]
-		internal static extern global::Taskmaster.NativeMethods.HANDLE OpenProcess(PROCESS_ACCESS_RIGHTS dwDesiredAccess, bool bInheritHandle, int dwProcessId);
+		internal static extern Taskmaster.NativeMethods.HANDLE OpenProcess(PROCESS_ACCESS_RIGHTS dwDesiredAccess, bool bInheritHandle, int dwProcessId);
 
 		[StructLayout(LayoutKind.Sequential)]
 		public struct Rectangle

@@ -32,7 +32,7 @@ using System.Threading.Tasks;
 
 namespace Taskmaster
 {
-	using static Taskmaster;
+	using static Application;
 
 	/// <summary>
 	/// Manager for non-volatile memory (NVM).
@@ -80,7 +80,7 @@ namespace Taskmaster
 
 				TempScanTimer.Start();
 
-				Taskmaster.OnStart += OnStart;
+				Application.OnStart += OnStart;
 
 				Log.Information("<Maintenance> Temp folder scanner will be performed once per day.");
 			}

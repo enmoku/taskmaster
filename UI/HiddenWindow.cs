@@ -26,7 +26,7 @@
 
 namespace Taskmaster
 {
-	using static Taskmaster;
+	using static Application;
 
 	/// <summary>
 	/// Core window for TM.

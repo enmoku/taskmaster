@@ -31,7 +31,7 @@ using Windows = MKAh.Wrapper.Windows;
 
 namespace Taskmaster
 {
-	using static Taskmaster;
+	using static Application;
 
 	static class Memory
 	{
@@ -100,8 +100,7 @@ namespace Taskmaster
 		{
 			int length = Marshal.SizeOf(PurgeStandbyList);
 			var handle = GCHandle.Alloc(PurgeStandbyList, GCHandleType.Pinned);
-			global::Taskmaster.NativeMethods.NtSetSystemInformation(
-				global::Taskmaster.NativeMethods.SYSTEM_INFORMATION_CLASS.SystemMemoryListInformation, handle.AddrOfPinnedObject(), length);
+			NativeMethods.NtSetSystemInformation(NativeMethods.SYSTEM_INFORMATION_CLASS.SystemMemoryListInformation, handle.AddrOfPinnedObject(), length);
 			handle.Free();
 		}
 
@@ -131,7 +130,7 @@ namespace Taskmaster
 
 		public static void GetCache()
 		{
-			if (global::Taskmaster.NativeMethods.GetSystemFileCacheSize(out uint minCache, out uint maxCache, out _))
+			if (NativeMethods.GetSystemFileCacheSize(out uint minCache, out uint maxCache, out _))
 				Logging.DebugMsg("MEMORY CACHE - Min: " + minCache.ToString() + ", Max: " + maxCache.ToString());
 			else
 				Logging.DebugMsg("MEMORY CACHE - information unavailable");
@@ -175,7 +174,7 @@ namespace Taskmaster
 		}
 	}
 
-	static partial class NativeMethods
+	public static partial class NativeMethods
 	{
 		// https://docs.microsoft.com/en-us/windows/desktop/api/sysinfoapi/ns-sysinfoapi-_memorystatusex
 		[System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential, CharSet = System.Runtime.InteropServices.CharSet.Auto)]

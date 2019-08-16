@@ -35,7 +35,7 @@ using System.Threading.Tasks;
 
 namespace Taskmaster
 {
-	public static partial class Taskmaster
+	public static partial class Application
 	{
 		public const string CoreConfigFilename = "Core.ini";
 		public const string UIConfigFilename = "UI.ini";

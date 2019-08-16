@@ -35,7 +35,7 @@ using System.Windows.Forms;
 
 namespace Taskmaster.UI.Config
 {
-	using static Taskmaster;
+	using static Application;
 
 	public class WatchlistEditWindow : UI.UniForm
 	{
@@ -70,7 +70,7 @@ namespace Taskmaster.UI.Config
 			AutoSizeMode = AutoSizeMode.GrowOnly;
 			AutoSize = true;
 
-			Text = Controller.FriendlyName + " – " + Taskmaster.Name;
+			Text = Controller.FriendlyName + " – " + Application.Name;
 
 			Padding = new Padding(12);
 

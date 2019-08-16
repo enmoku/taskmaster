@@ -31,7 +31,7 @@ using System.Windows.Forms;
 
 namespace Taskmaster.UI.Config
 {
-	using static Taskmaster;
+	using static Application;
 
 	public class AdvancedConfig : UI.UniForm
 	{
@@ -305,7 +305,7 @@ namespace Taskmaster.UI.Config
 			layout.Controls.Add(memoryautopage);
 			tooltip.SetToolTip(memoryautopage, "Automatically try to page non-active apps when free memory goes below this threshold.\n0 disables.");
 
-			using var hmcfg = Taskmaster.Config.Load(HealthMonitor.HealthConfigFilename);
+			using var hmcfg = Application.Config.Load(HealthMonitor.HealthConfigFilename);
 			var hmgensec = hmcfg.Config["General"];
 			healthmonfrequency.Value = hmgensec.Get("Frequency")?.Int.Constrain(1, 1440) ?? 5;
 			var freememsec = hmcfg.Config["Free Memory"];
@@ -398,14 +398,14 @@ namespace Taskmaster.UI.Config
 				processmanager.EnableParentFinding = parentoption.Checked;
 
 				// Health Monitor
-				using var hmcfg = Taskmaster.Config.Load(HealthMonitor.HealthConfigFilename);
+				using var hmcfg = Application.Config.Load(HealthMonitor.HealthConfigFilename);
 				var hmgensec = hmcfg.Config["General"];
 				hmgensec["Frequency"].Int = Convert.ToInt32(healthmonfrequency.Value);
 				var freememsec = hmcfg.Config["Free Memory"];
 				freememsec["Threshold"].Int = Convert.ToInt32(memoryautopage.Value);
 
-				Taskmaster.healthmonitor?.SetCheckInterval(Convert.ToInt32(healthmonfrequency.Value));
-				Taskmaster.healthmonitor?.SetMemFreeThreshold(Convert.ToInt32(memoryautopage.Value));
+				Application.healthmonitor?.SetCheckInterval(Convert.ToInt32(healthmonfrequency.Value));
+				Application.healthmonitor?.SetMemFreeThreshold(Convert.ToInt32(memoryautopage.Value));
 
 				DialogResult = DialogResult.OK;
 				Close();

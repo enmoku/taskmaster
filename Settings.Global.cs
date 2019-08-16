@@ -29,7 +29,7 @@ using System.Diagnostics;
 
 namespace Taskmaster
 {
-	public static partial class Taskmaster
+	public static partial class Application
 	{
 		public static Audio.MicManager? micmonitor = null;
 		public static UI.MainWindow? mainwindow = null;

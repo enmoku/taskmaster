@@ -39,7 +39,7 @@ using Ini = MKAh.Ini;
 
 namespace Taskmaster.Process
 {
-	using static Taskmaster;
+	using static Application;
 
 	/// <summary>
 	/// Process controller.
@@ -1752,7 +1752,7 @@ namespace Taskmaster.Process
 
 					// TODO: Add option to monitor the app and save the new size so relaunching the app keeps the size.
 
-					global::Taskmaster.NativeMethods.MoveWindow(info.Handle, newsize.Left, newsize.Top, newsize.Width, newsize.Height, true);
+					Taskmaster.NativeMethods.MoveWindow(info.Handle, newsize.Left, newsize.Top, newsize.Width, newsize.Height, true);
 
 					if (ResizeStrategy != WindowResizeStrategy.None)
 					{

@@ -35,7 +35,7 @@ using System.Windows.Forms;
 
 namespace Taskmaster.UI
 {
-	using static Taskmaster;
+	using static Application;
 
 	public delegate void UIVisibleDelegate(bool visible);
 
@@ -68,7 +68,7 @@ namespace Taskmaster.UI
 
 			Tray = new NotifyIcon
 			{
-				Text = Taskmaster.Name + "!",
+				Text = Application.Name + "!",
 				Icon = IconCache,
 			}; // Tooltip so people know WTF I am.
 
@@ -154,7 +154,7 @@ namespace Taskmaster.UI
 			EnsureVisible();
 			#endregion // Build UI
 
-			using var cfg = Taskmaster.Config.Load(CoreConfigFilename);
+			using var cfg = Application.Config.Load(CoreConfigFilename);
 			int exdelay = cfg.Config[Constants.Experimental].Get("Explorer Restart")?.Int ?? 0;
 			ExplorerRestartHelpDelay = exdelay > 0 ? (TimeSpan?)TimeSpan.FromSeconds(exdelay.Min(5)) : null;
 
@@ -495,7 +495,7 @@ namespace Taskmaster.UI
 						{
 							if (!info.Path.StartsWith(Environment.GetFolderPath(Environment.SpecialFolder.Windows), StringComparison.InvariantCultureIgnoreCase))
 							{
-								if (Taskmaster.Trace) Log.Verbose($"<Tray> Explorer #{info.Id} not in system root.");
+								if (Application.Trace) Log.Verbose($"<Tray> Explorer #{info.Id} not in system root.");
 								continue;
 							}
 						}
@@ -588,13 +588,13 @@ namespace Taskmaster.UI
 				{
 					if (!MKAh.Execution.IsAdministrator)
 					{
-						MessageBox.ShowModal(Taskmaster.Name + "! – run at login", "Scheduler can not be modified without admin rights.", MessageBox.Buttons.OK);
+						MessageBox.ShowModal(Application.Name + "! – run at login", "Scheduler can not be modified without admin rights.", MessageBox.Buttons.OK);
 						return;
 					}
 
 					if (!menu_runatstart_sch.Checked)
 					{
-						if (MessageBox.ShowModal(Taskmaster.Name + "! – run at login", "This will add on-login scheduler to run TM as admin, is this right?", MessageBox.Buttons.AcceptCancel)
+						if (MessageBox.ShowModal(Application.Name + "! – run at login", "This will add on-login scheduler to run TM as admin, is this right?", MessageBox.Buttons.AcceptCancel)
 							== MessageBox.ResultType.Cancel) return;
 					}
 					// can't be disabled without admin rights?

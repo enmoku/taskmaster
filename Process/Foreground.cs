@@ -33,7 +33,7 @@ namespace Taskmaster.Process
 {
 	using System.Text;
 	using System.Threading.Tasks;
-	using static Taskmaster;
+	using static Application;
 
 	public class WindowChangedArgs : EventArgs
 	{
@@ -53,10 +53,10 @@ namespace Taskmaster.Process
 		/// <exception cref="InitFailure">Event hook creation failed.</exception>
 		public ForegroundManager()
 		{
-			ForegroundEventDelegate = new global::Taskmaster.NativeMethods.WinEventDelegate(WinEventProc);
+			ForegroundEventDelegate = new Taskmaster.NativeMethods.WinEventDelegate(WinEventProc);
 
 			// get current window, just in case it's something we're monitoring
-			var hwnd = global::Taskmaster.NativeMethods.GetForegroundWindow();
+			var hwnd = Taskmaster.NativeMethods.GetForegroundWindow();
 			global::Taskmaster.NativeMethods.GetWindowThreadProcessId(hwnd, out int pid);
 			lock (FGLock)
 			{
@@ -64,7 +64,7 @@ namespace Taskmaster.Process
 				ForegroundId = pid;
 			}
 
-			using var corecfg = Taskmaster.Config.Load(CoreConfigFilename);
+			using var corecfg = Application.Config.Load(CoreConfigFilename);
 			var perfsec = corecfg.Config["Performance"];
 			var hysterisisSetting = perfsec.GetOrSet("Foreground hysterisis", 1500)
 				.InitComment("In milliseconds, from 500 to 30000. Delay before we inspect foreground app, in case user rapidly swaps apps.")

@@ -37,7 +37,7 @@ using System.Threading.Tasks;
 
 namespace Taskmaster.Power
 {
-	using static Taskmaster;
+	using static Application;
 
 	// TODO: Decouple Form from Manager
 	public class Manager : IDisposable, IDisposal // form is required for receiving messages, no other reason

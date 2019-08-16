@@ -67,14 +67,14 @@ namespace Taskmaster
 			}
 			else
 			{
-				if (Taskmaster.NoLogging) return;
+				if (Application.NoLogging) return;
 
 				try
 				{
-					if (!System.IO.Directory.Exists(Taskmaster.LogPath)) System.IO.Directory.CreateDirectory(Taskmaster.LogPath);
+					if (!System.IO.Directory.Exists(Application.LogPath)) System.IO.Directory.CreateDirectory(Application.LogPath);
 
-					string logfilename = Taskmaster.UniqueCrashLogs ? $"crash-{DateTime.Now.ToString("yyyyMMdd-HHmmss-fff")}.log" : "crash.log";
-					var logfile = System.IO.Path.Combine(Taskmaster.LogPath, logfilename);
+					string logfilename = Application.UniqueCrashLogs ? $"crash-{DateTime.Now.ToString("yyyyMMdd-HHmmss-fff")}.log" : "crash.log";
+					var logfile = System.IO.Path.Combine(Application.LogPath, logfilename);
 
 					var now = DateTime.Now;
 

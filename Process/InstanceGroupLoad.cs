@@ -79,7 +79,7 @@ namespace Taskmaster.Process
 			//if ((load & LoadType.IO) != 0)
 			//	IO = new MKAh.Wrapper.Windows.PerformanceCounter("Process", "IO Data Bytes/sec", instance);
 
-			if (Taskmaster.Trace)
+			if (Application.Trace)
 				Logging.DebugMsg("LOADER CONFIG: " + instance + " - Types: " + load.ToString());
 
 			if (initial != null) TryAdd(initial);
@@ -255,7 +255,6 @@ namespace Taskmaster.Process
 		public bool TryAdd(ProcessEx info)
 		{
 			int pid = info.Id;
-
 			if (Processes.TryAdd(pid, info))
 			{
 				ProcessLoad? loader = null;
@@ -272,12 +271,20 @@ namespace Taskmaster.Process
 				{
 					Logging.DebugMsg("LoadInfo process ID not found: " + pid.ToString() + " for " + Instance);
 				}
+				catch (InvalidOperationException)
+				{
+					// exited
+					loader?.Dispose();
+					Remove(info);
+					throw;
+				}
 				catch (Exception ex)
 				{
 					Logging.Stacktrace(ex);
+					throw;
 				}
 
-				loader.Dispose();
+				loader?.Dispose();
 				Remove(info);
 			}
 

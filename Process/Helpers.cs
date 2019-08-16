@@ -28,10 +28,11 @@ using System;
 using System.ComponentModel; // Win32Exception
 using System.Diagnostics; // Process
 using System.Runtime.InteropServices; // Marshal
+using Taskmaster;
 
 namespace Taskmaster.Process
 {
-	using static Taskmaster;
+	using static Application;
 
 	public enum HandlingState
 	{
@@ -199,18 +200,21 @@ namespace Taskmaster.Process
 	///
 	public static partial class ProcessExtensions
 	{
+
 		/// <exception cref="Win32Exception">If system snapshot does not return anything.</exception>
 		public static int ParentProcessId(this System.Diagnostics.Process process) => ParentProcessId(process.Id);
 
 		/// <summary>Retrieves the ID of the parent process.</summary>
 		/// <exception cref="Win32Exception">If system snapshot does not return anything.</exception>
-		public static int ParentProcessId(int Id)
+		public static int ParentProcessId(int pid)
 		{
-			Debug.Assert(Id > -1);
-			global::Taskmaster.NativeMethods.HANDLE? ptr = null;
+			Debug.Assert(pid >= 0);
+
+			Taskmaster.NativeMethods.HANDLE? ptr = null;
+			uint upid = Convert.ToUInt32(pid);
 			try
 			{
-				ptr = NativeMethods.CreateToolhelp32Snapshot(SnapshotFlags.Process, (uint)Id);
+				ptr = NativeMethods.CreateToolhelp32Snapshot(SnapshotFlags.Process, upid);
 				if (ptr is null) return -1;
 
 				var pe32 = new ProcessEntry32 { dwSize = (uint)Marshal.SizeOf(typeof(ProcessEntry32)) };
@@ -225,11 +229,10 @@ namespace Taskmaster.Process
 
 				// Is the loop necessary here?
 				int i = 0;
-				uint pid = Convert.ToUInt32(Id);
 				do
 				{
 					i++;
-					if (pe32.th32ProcessID == pid)
+					if (pe32.th32ProcessID == upid)
 					{
 						if (Trace) Logging.DebugMsg("<Process:Parent> Found after " + i.ToString() + " iterations");
 						return Convert.ToInt32(pe32.th32ParentProcessID);
@@ -254,12 +257,12 @@ namespace Taskmaster.Process
 		public static System.Diagnostics.Process ParentProcess(int pid) => System.Diagnostics.Process.GetProcessById(ParentProcessId(pid));
 	}
 
-	static partial class NativeMethods
+	public static partial class NativeMethods
 	{
 		internal const int ERROR_NO_MORE_FILES = 0x12;
 
 		[DllImport("kernel32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
-		static internal extern global::Taskmaster.NativeMethods.HANDLE CreateToolhelp32Snapshot(SnapshotFlags dwFlags, uint th32ProcessID);
+		static internal extern Taskmaster.NativeMethods.HANDLE CreateToolhelp32Snapshot(SnapshotFlags dwFlags, uint th32ProcessID);
 
 		/// <summary>
 		/// Retrieves information about the first process encountered in a system snapshot.

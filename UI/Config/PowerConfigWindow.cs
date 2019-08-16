@@ -231,7 +231,7 @@ namespace Taskmaster.UI.Config
 			layout.Controls.Add(new EmptySpace());
 
 			layout.Controls.Add(new AlignedLabel() { Text = "Sample frequency (sec)" });
-			layout.Controls.Add(new AlignedLabel() { Text = $"{Taskmaster.cpumonitor.SampleInterval.TotalSeconds:N1}" });
+			layout.Controls.Add(new AlignedLabel() { Text = $"{Application.cpumonitor.SampleInterval.TotalSeconds:N1}" });
 
 			layout.Controls.Add(new AlignedLabel() { Text = "Default mode" });
 			layout.Controls.Add(defaultmode);
@@ -537,7 +537,7 @@ namespace Taskmaster.UI.Config
 				}
 				else
 				{
-					if (Taskmaster.Trace) Log.Verbose("<<UI>> Power config cancelled.");
+					if (Application.Trace) Log.Verbose("<<UI>> Power config cancelled.");
 				}
 			}
 			catch (OutOfMemoryException) { throw; }

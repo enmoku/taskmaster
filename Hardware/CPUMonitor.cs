@@ -34,7 +34,7 @@ using Windows = MKAh.Wrapper.Windows;
 
 namespace Taskmaster
 {
-	using static Taskmaster;
+	using static Application;
 
 	[Component(RequireMainThread = false)]
 	public class CPUMonitor : Component, IDisposal

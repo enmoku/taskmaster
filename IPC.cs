@@ -31,7 +31,7 @@ using System.Threading.Tasks;
 
 namespace Taskmaster
 {
-	using static Taskmaster;
+	using static Application;
 
 	internal static class IPC
 	{

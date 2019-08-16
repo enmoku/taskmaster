@@ -35,7 +35,7 @@ using Windows = MKAh.Wrapper.Windows;
 namespace Taskmaster
 {
 	using System.Text;
-	using static Taskmaster;
+	using static Application;
 
 	public class HealthReport
 	{
@@ -262,7 +262,7 @@ namespace Taskmaster
 
 		void LoadConfig()
 		{
-			using var cfg = Taskmaster.Config.Load(HealthConfigFilename);
+			using var cfg = Application.Config.Load(HealthConfigFilename);
 			var gensec = cfg.Config["General"];
 			var settingFreqSetting = gensec.GetOrSet("Frequency", 5)
 				.InitComment("How often we check for anything. In minutes.")
@@ -308,7 +308,7 @@ namespace Taskmaster
 				.InitComment("Warn about free space going below this. In megabytes. From 0 to 60000.")
 				.Int.Constrain(0, 60000);
 
-			using var corecfg = Taskmaster.Config.Load(CoreConfigFilename);
+			using var corecfg = Application.Config.Load(CoreConfigFilename);
 			DebugHealth = corecfg.Config[HumanReadable.Generic.Debug].Get(Constants.Health)?.Bool ?? false;
 		}
 

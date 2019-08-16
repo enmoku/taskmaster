@@ -47,7 +47,7 @@ namespace Taskmaster.UI
 
 			//TopMost = true;
 
-			Text = "Changelog for " + Taskmaster.Name;
+			Text = "Changelog for " + Application.Name;
 
 			var layout = new Extensions.TableLayoutPanel()
 			{

@@ -35,7 +35,7 @@ using System.Threading.Tasks;
 
 namespace Taskmaster.Audio
 {
-	using static Taskmaster;
+	using static Application;
 
 	[Component(RequireMainThread = true)]
 	[Dependency(typeof(Audio.Manager))]
@@ -285,7 +285,7 @@ namespace Taskmaster.Audio
 
 				double devvol = devsec.GetOrSet(HumanReadable.Hardware.Audio.Volume, DefaultVolume).Double;
 				bool devcontrol = devsec.GetOrSet(Constants.Control, false).Bool;
-				devsec.GetOrSet(Taskmaster.Constants.Name, Device.Name);
+				devsec.GetOrSet(Application.Constants.Name, Device.Name);
 
 				if (Control && !devcontrol) Control = false; // disable general control if device control is disabled
 
@@ -322,7 +322,7 @@ namespace Taskmaster.Audio
 					{
 						Guid guid = Utility.DeviceIdToGuid(dev.ID);
 						var devsec = devcfg.Config[guid.ToString()];
-						devsec.GetOrSet(Taskmaster.Constants.Name, dev.DeviceFriendlyName);
+						devsec.GetOrSet(Application.Constants.Name, dev.DeviceFriendlyName);
 						bool control = devsec.GetOrSet(Constants.Control, false).Bool;
 						float target = devsec.Get(HumanReadable.Hardware.Audio.Volume)?.Float ?? float.NaN;
 

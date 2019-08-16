@@ -26,7 +26,7 @@
 
 namespace Taskmaster
 {
-	public static partial class Taskmaster
+	public static partial class Application
 	{
 		internal static class Constants
 		{

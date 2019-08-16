@@ -59,13 +59,13 @@ namespace Taskmaster.UI.Config
 
 			// Load configuration
 
-			using var corecfg = Taskmaster.Config.Load(Taskmaster.CoreConfigFilename);
+			using var corecfg = Application.Config.Load(Application.CoreConfigFilename);
 			var cfg = corecfg.Config;
-			var exsec = cfg[Taskmaster.Constants.Experimental];
+			var exsec = cfg[Application.Constants.Experimental];
 
 			// EXPERIMENTS
 
-			bool loadertracking = exsec.Get(Taskmaster.Constants.LoaderTracking)?.Bool ?? false;
+			bool loadertracking = exsec.Get(Application.Constants.LoaderTracking)?.Bool ?? false;
 
 			var toggleLoaderTracking = new CheckBox() { Checked = loadertracking, };
 
@@ -80,7 +80,7 @@ namespace Taskmaster.UI.Config
 				Unit = "secs",
 				Width = 80,
 				DecimalPlaces = 0,
-				Value = Convert.ToDecimal(Taskmaster.RecordAnalysis.HasValue ? Taskmaster.RecordAnalysis.Value.TotalSeconds : 0),
+				Value = Convert.ToDecimal(Application.RecordAnalysis.HasValue ? Application.RecordAnalysis.Value.TotalSeconds : 0),
 				//Anchor = AnchorStyles.Left
 			};
 			tooltip.SetToolTip(RecordAnalysisDelay, "Values higher than 0 enable process analysis\nThis needs to be enabled per watchlist rule to function");
@@ -93,13 +93,13 @@ namespace Taskmaster.UI.Config
 					System.IO.Path.GetDirectoryName(System.Diagnostics.Process.GetCurrentProcess().MainModule.FileName),
 					"OpenHardwareMonitorLib.dll"));
 
-			var hwmon = new CheckBox() { Checked = Taskmaster.HardwareMonitorEnabled, Enabled = hwMonLibPresent, };
+			var hwmon = new CheckBox() { Checked = Application.HardwareMonitorEnabled, Enabled = hwMonLibPresent, };
 			tooltip.SetToolTip(hwmon, "Enables hardware (such as GPU) monitoring\nLimited usability currently.\nRequires OpenHardwareMonitorLib.dll to be present.");
 
 			layout.Controls.Add(new AlignedLabel { Text = "Hardware monitor" });
 			layout.Controls.Add(hwmon);
 
-			var iopriority = new CheckBox() { Checked = Taskmaster.IOPriorityEnabled, Enabled = MKAh.Execution.IsWin7, };
+			var iopriority = new CheckBox() { Checked = Application.IOPriorityEnabled, Enabled = MKAh.Execution.IsWin7, };
 			tooltip.SetToolTip(iopriority, "Enable I/O priority adjstment\nWARNING: This can be REALLY BAD\nTake care what you do.\nOnly supported on Windows 7.");
 
 			layout.Controls.Add(new AlignedLabel { Text = "I/O priority" });
@@ -181,7 +181,7 @@ namespace Taskmaster.UI.Config
 
 			var autoUpdateNgenLabel = new AlignedLabel { Text = "Auto-update native image", };
 
-			var autoUpdateNgen = new CheckBox { Checked = exsec.Get(Taskmaster.Constants.AutoNGEN)?.Bool ?? false, };
+			var autoUpdateNgen = new CheckBox { Checked = exsec.Get(Application.Constants.AutoNGEN)?.Bool ?? false, };
 
 			layout.Controls.Add(autoUpdateNgenLabel);
 			layout.Controls.Add(autoUpdateNgen);
@@ -212,18 +212,18 @@ namespace Taskmaster.UI.Config
 			{
 				// Set to current use
 
-				Taskmaster.RecordAnalysis = RecordAnalysisDelay.Value != decimal.Zero ? (TimeSpan?)TimeSpan.FromSeconds(Convert.ToDouble(RecordAnalysisDelay.Value)) : null;
+				Application.RecordAnalysis = RecordAnalysisDelay.Value != decimal.Zero ? (TimeSpan?)TimeSpan.FromSeconds(Convert.ToDouble(RecordAnalysisDelay.Value)) : null;
 
 				// Record for restarts
 
-				using var corecfg = Taskmaster.Config.Load(Taskmaster.CoreConfigFilename);
+				using var corecfg = Application.Config.Load(Application.CoreConfigFilename);
 				var cfg = corecfg.Config;
-				var exsec = cfg[Taskmaster.Constants.Experimental];
+				var exsec = cfg[Application.Constants.Experimental];
 
 				if (toggleLoaderTracking.Checked)
-					exsec[Taskmaster.Constants.LoaderTracking].Bool = true;
+					exsec[Application.Constants.LoaderTracking].Bool = true;
 				else
-					exsec.TryRemove(Taskmaster.Constants.LoaderTracking);
+					exsec.TryRemove(Application.Constants.LoaderTracking);
 
 				if (RecordAnalysisDelay.Value != decimal.Zero)
 					exsec["Record analysis"].Int = Convert.ToInt32(RecordAnalysisDelay.Value);
@@ -236,11 +236,11 @@ namespace Taskmaster.UI.Config
 					exsec.TryRemove("IO Priority");
 
 				if (autoUpdateNgen.Checked)
-					exsec[Taskmaster.Constants.AutoNGEN].Bool = true;
+					exsec[Application.Constants.AutoNGEN].Bool = true;
 				else
-					exsec.TryRemove(Taskmaster.Constants.AutoNGEN);
+					exsec.TryRemove(Application.Constants.AutoNGEN);
 
-				cfg[Taskmaster.Constants.Components][HumanReadable.Hardware.Section].Bool = hwmon.Checked;
+				cfg[Application.Constants.Components][HumanReadable.Hardware.Section].Bool = hwmon.Checked;
 
 				DialogResult = DialogResult.OK;
 				Close();
@@ -318,7 +318,7 @@ namespace Taskmaster.UI.Config
 				{
 					Log.Information("<Experiments> Settings changed");
 
-					Taskmaster.ConfirmExit(restart: true, message: "Restart required for experimental settings to take effect.", alwaysconfirm: true);
+					Application.ConfirmExit(restart: true, message: "Restart required for experimental settings to take effect.", alwaysconfirm: true);
 				}
 			}
 			catch (OutOfMemoryException) { throw; }

@@ -32,7 +32,7 @@ using System.Windows.Forms;
 
 namespace Taskmaster.UI
 {
-	using static Taskmaster;
+	using static Application;
 
 	public class TrayWndProcProxy : Form
 	{

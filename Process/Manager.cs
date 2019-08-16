@@ -40,7 +40,7 @@ using Ini = MKAh.Ini;
 
 namespace Taskmaster.Process
 {
-	using static Taskmaster;
+	using static Application;
 
 	[Component(RequireMainThread = false)]
 	public class Manager : Component, IDisposal
@@ -100,6 +100,7 @@ namespace Taskmaster.Process
 
 			try
 			{
+
 				// TODO: Do basic monitoring.
 				lock (Loader_lock)
 				{
@@ -113,9 +114,19 @@ namespace Taskmaster.Process
 						load.TryAdd(info);
 				}
 			}
+			catch (InvalidOperationException)
+			{
+				Loaders.Remove(info.Name);
+			}
+			catch (NullReferenceException)
+			{
+				Loaders.Remove(info.Name);
+				return;
+			}
 			catch (Exception ex)
 			{
 				Logging.Stacktrace(ex);
+				return;
 			}
 
 			if (!LoadTimerRunning) StartLoadAnalysisTimer();
@@ -405,7 +416,7 @@ namespace Taskmaster.Process
 			MaintenanceTimer.Elapsed += CleanupTick;
 			MaintenanceTimer.Start();
 
-			Taskmaster.OnStart += OnStart;
+			Application.OnStart += OnStart;
 
 			if (DebugProcesses) Log.Information("<Process> Component Loaded.");
 
@@ -1053,7 +1064,7 @@ namespace Taskmaster.Process
 			DebugPaging = dbgsec.Get("Paging")?.Bool ?? false;
 			DebugLoaders = dbgsec.Get("Loaders")?.Bool ?? false;
 
-			var logsec = corecfg.Config[Taskmaster.Constants.Logging];
+			var logsec = corecfg.Config[Application.Constants.Logging];
 
 			ShowUnmodifiedPortions = logsec.GetOrSet("Unmodified portions", ShowUnmodifiedPortions).Bool;
 			ShowOnlyFinalState = logsec.GetOrSet("Final state only", ShowOnlyFinalState).Bool;
@@ -1063,10 +1074,10 @@ namespace Taskmaster.Process
 
 			if (!IgnoreSystem32Path) Log.Warning($"<Process> System32 ignore disabled.");
 
-			var exsec = corecfg.Config[Taskmaster.Constants.Experimental];
-			WindowResizeEnabled = exsec.Get(Taskmaster.Constants.WindowResize)?.Bool ?? false;
-			ColorResetEnabled = exsec.Get(Taskmaster.Constants.ColorReset)?.Bool ?? false;
-			LoaderTracking = exsec.Get(Taskmaster.Constants.LoaderTracking)?.Bool ?? false;
+			var exsec = corecfg.Config[Application.Constants.Experimental];
+			WindowResizeEnabled = exsec.Get(Application.Constants.WindowResize)?.Bool ?? false;
+			ColorResetEnabled = exsec.Get(Application.Constants.ColorReset)?.Bool ?? false;
+			LoaderTracking = exsec.Get(Application.Constants.LoaderTracking)?.Bool ?? false;
 
 			var sbs = new StringBuilder("<Process> Scan ", 128);
 
@@ -1211,7 +1222,7 @@ namespace Taskmaster.Process
 					DeclareParent = (section.Get(Constants.DeclareParent)?.Bool ?? false),
 					OrderPreference = (section.Get(Constants.Preference)?.Int.Constrain(0, 100) ?? 10),
 					IOPriority = (IOPriority)(section.Get(Constants.IOPriority)?.Int.Constrain(-1, 2) ?? -1), // 0-1 background, 2 = normal, anything else seems to have no effect
-					LogAdjusts = (section.Get(Taskmaster.Constants.Logging)?.Bool ?? true),
+					LogAdjusts = (section.Get(Application.Constants.Logging)?.Bool ?? true),
 					LogStartAndExit = (section.Get(Constants.LogStartAndExit)?.Bool ?? false),
 					Volume = (section.Get(HumanReadable.Hardware.Audio.Volume)?.Float ?? 0.5f),
 					VolumeStrategy = (Audio.VolumeStrategy)(section.Get(Constants.VolumeStrategy)?.Int.Constrain(0, 5) ?? 0),
@@ -2154,7 +2165,7 @@ namespace Taskmaster.Process
 
 			IntPtr hdc = IntPtr.Zero; // hardware device context
 
-			bool got = global::Taskmaster.NativeMethods.GetICMProfile(hdc, Convert.ToUInt64(buffer.Capacity) + 1UL, buffer);
+			bool got = Taskmaster.NativeMethods.GetICMProfile(hdc, Convert.ToUInt64(buffer.Capacity) + 1UL, buffer);
 		}
 
 		readonly object Exclusive_lock = new object();
@@ -2383,7 +2394,7 @@ namespace Taskmaster.Process
 					//var tpid = targetInstance.Properties["Handle"].Value as int?; // doesn't work for some reason
 					pid = Convert.ToInt32(targetInstance.Properties["Handle"].Value as string);
 
-					string iname = targetInstance.Properties[Taskmaster.Constants.Name].Value as string;
+					string iname = targetInstance.Properties[Application.Constants.Name].Value as string;
 					path = targetInstance.Properties["ExecutablePath"].Value as string;
 					if (DebugAdjustDelay && targetInstance.Properties["CreationDate"].Value is string cdate && !string.IsNullOrEmpty(cdate))
 						creation = ManagementDateTimeConverter.ToDateTime(cdate);

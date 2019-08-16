@@ -34,7 +34,7 @@ using System.Text;
 
 namespace Taskmaster.Process
 {
-	using static Taskmaster;
+	using static Application;
 
 	public static partial class Utility
 	{
@@ -172,7 +172,7 @@ namespace Taskmaster.Process
 		// Initial version gained from: https://stackoverflow.com/a/34991822
 		public static bool GetPathViaC(ProcessEx info, out string path)
 		{
-			global::Taskmaster.NativeMethods.HANDLE handle = null;
+			Taskmaster.NativeMethods.HANDLE handle = null;
 
 			try
 			{
@@ -294,7 +294,7 @@ namespace Taskmaster.Process
 		/// <param name="target">0 = Background, 1 = Low, 2 = Normal, 3 = Elevated, 4 = High</param>
 		public static int SetIO(System.Diagnostics.Process process, int target, out int newIO, bool decrease = true)
 		{
-			global::Taskmaster.NativeMethods.HANDLE handle = null;
+			Taskmaster.NativeMethods.HANDLE handle = null;
 			int original = -1;
 			Debug.Assert(target >= 0 && target <= 2, "I/O target set to undefined value: " + target.ToString());
 

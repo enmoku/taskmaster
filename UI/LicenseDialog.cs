@@ -35,7 +35,7 @@ namespace Taskmaster
 		{
 			SuspendLayout();
 
-			Text = Taskmaster.Name + " License";
+			Text = Application.Name + " License";
 			AutoSizeMode = AutoSizeMode.GrowAndShrink;
 			FormBorderStyle = FormBorderStyle.FixedDialog;
 			if (initial)

@@ -34,7 +34,7 @@ using System.Windows.Forms;
 
 namespace Taskmaster.UI
 {
-	using static Taskmaster;
+	using static Application;
 
 	public class LoaderDisplay : UniForm
 	{
@@ -68,7 +68,7 @@ namespace Taskmaster.UI
 				new ColumnHeader() { Text = "IO" },
 			});
 
-			using var uicfg = Taskmaster.Config.Load(UIConfigFilename);
+			using var uicfg = Application.Config.Load(UIConfigFilename);
 			var winsec = uicfg.Config[Constants.Windows];
 			var winpos = winsec["Loaders"].IntArray;
 
@@ -283,7 +283,7 @@ namespace Taskmaster.UI
 				processmanager.LoaderDetection -= LoaderEvent;
 
 				// 
-				using var cfg = Taskmaster.Config.Load(UIConfigFilename);
+				using var cfg = Application.Config.Load(UIConfigFilename);
 
 				var saveBounds = WindowState == FormWindowState.Normal ? Bounds : RestoreBounds;
 

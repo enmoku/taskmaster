@@ -36,7 +36,7 @@ using System.Windows.Forms;
 
 namespace Taskmaster
 {
-	public static partial class Taskmaster
+	public static partial class Application
 	{
 		public static string GitURL => "https://github.com/mkahvi/taskmaster";
 		public static string ItchURL => "https://mkah.itch.io/taskmaster";

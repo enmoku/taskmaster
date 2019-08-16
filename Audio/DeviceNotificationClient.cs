@@ -30,7 +30,7 @@ using System;
 
 namespace Taskmaster.Audio
 {
-	using static Taskmaster;
+	using static Application;
 
 	public class DeviceNotificationClient : NAudio.CoreAudioApi.Interfaces.IMMNotificationClient
 	{

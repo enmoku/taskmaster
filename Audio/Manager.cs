@@ -32,7 +32,7 @@ using System.Threading.Tasks;
 
 namespace Taskmaster.Audio
 {
-	using static Taskmaster;
+	using static Application;
 
 	/// <summary>
 	/// Must be created on persistent thread, such as the main thread.

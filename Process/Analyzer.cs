@@ -38,7 +38,7 @@ using System.Threading.Tasks;
 
 namespace Taskmaster.Process
 {
-	using static Taskmaster;
+	using static Application;
 
 	public class Analyzer
 	{
@@ -506,14 +506,14 @@ namespace Taskmaster.Process
 		Change,
 	}
 
-	static partial class NativeMethods
+	public static partial class NativeMethods
 	{
 		[StructLayout(LayoutKind.Sequential)]
 		internal struct ModuleInformation
 		{
-			public IntPtr lpBaseOfDll;
-			public uint SizeOfImage;
-			public IntPtr EntryPoint;
+			internal IntPtr lpBaseOfDll;
+			internal uint SizeOfImage;
+			internal IntPtr EntryPoint;
 		}
 
 		internal enum ModuleFilter

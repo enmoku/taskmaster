@@ -31,7 +31,7 @@ using System.Threading.Tasks;
 
 namespace Taskmaster
 {
-	using static Taskmaster;
+	using static Application;
 
 	[Component(RequireMainThread = false)]
 	public class SelfMaintenance : Component, IDisposal

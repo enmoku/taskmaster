@@ -30,7 +30,7 @@ using System.Threading.Tasks;
 
 namespace Taskmaster
 {
-	using static Taskmaster;
+	using static Application;
 
 	public struct GPUSensors
 	{
@@ -109,7 +109,7 @@ namespace Taskmaster
 				throw new InitFailure("OHM failed to initialize.");
 			}
 
-			Taskmaster.OnStart += OnStart;
+			Application.OnStart += OnStart;
 
 			RegisterForExit(this);
 			DisposalChute.Push(this);

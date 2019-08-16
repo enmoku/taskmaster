@@ -38,7 +38,7 @@ using Windows = MKAh.Wrapper.Windows;
 
 namespace Taskmaster.Network
 {
-	using static Taskmaster;
+	using static Application;
 
 	public class TrafficDelta
 	{

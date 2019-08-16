@@ -42,7 +42,7 @@ namespace Taskmaster
 		[DllImport("user32.dll")] // SetLastError=true
 		internal static extern uint GetWindowThreadProcessId(IntPtr hWnd, out int lpdwProcessId);
 
-		public delegate void WinEventDelegate(IntPtr hWinEventHook, uint eventType, IntPtr hwnd, int idObject, int idChild, uint dwEventThread, uint dwmsEventTime);
+		internal delegate void WinEventDelegate(IntPtr hWinEventHook, uint eventType, IntPtr hwnd, int idObject, int idChild, uint dwEventThread, uint dwmsEventTime);
 
 		[DllImport("user32.dll")]
 		internal static extern IntPtr SetWinEventHook(uint eventMin, uint eventMax, IntPtr hmodWinEventProc, WinEventDelegate lpfnWinEventProc, uint idProcess, uint idThread, uint dwFlags);
@@ -61,15 +61,15 @@ namespace Taskmaster
 		// lParam = int or long
 		// wParam = uint or ulong
 
-		public const int WM_HOTKEY = 0x0312; // uMsg
-		public const int WM_COMPACTING = 0x0041; // uMsg
-		public const int WM_SYSCOMMAND = 0x0112; // uMsg
+		internal const int WM_HOTKEY = 0x0312; // uMsg
+		internal const int WM_COMPACTING = 0x0041; // uMsg
+		internal const int WM_SYSCOMMAND = 0x0112; // uMsg
 
-		public const int HWND_BROADCAST = 0xFFFF; // hWnd
-		public const int HWND_TOPMOST = -1; // hWnd
+		internal const int HWND_BROADCAST = 0xFFFF; // hWnd
+		internal const int HWND_TOPMOST = -1; // hWnd
 
 		[Flags]
-		public enum SendMessageTimeoutFlags : uint
+		internal enum SendMessageTimeoutFlags : uint
 		{
 			/// <summary>
 			/// The calling thread is not prevented from processing other requests while waiting for the function to return.
@@ -107,11 +107,11 @@ namespace Taskmaster
 		internal static extern bool CloseHandle(IntPtr Handle);
 
 		//     No dialog box confirming the deletion of the objects will be displayed.
-		public const int SHERB_NOCONFIRMATION = 0x00000001;
+		internal const int SHERB_NOCONFIRMATION = 0x00000001;
 		//     No dialog box indicating the progress will be displayed.
-		public const int SHERB_NOPROGRESSUI = 0x00000002;
+		internal const int SHERB_NOPROGRESSUI = 0x00000002;
 		//     No sound will be played when the operation is complete.
-		public const int SHERB_NOSOUND = 0x00000004;
+		internal const int SHERB_NOSOUND = 0x00000004;
 
 		/// <summary>
 		/// Empty recycle bin.
@@ -120,11 +120,11 @@ namespace Taskmaster
 		internal static extern int SHEmptyRecycleBin(IntPtr hWnd, string pszRootPath, uint dwFlags);
 
 		[StructLayout(LayoutKind.Sequential)] // , Pack = 4 causes shqueryrecyclebin to error with invalid args
-		public struct ShQueryRecycleBinInfo
+		internal struct ShQueryRecycleBinInfo
 		{
-			public int cbSize;
-			public long i64Size;
-			public long i64NumItems;
+			internal int cbSize;
+			internal long i64Size;
+			internal long i64NumItems;
 		}
 
 		[DllImport("shell32.dll", CharSet = CharSet.Unicode)] // SetLastError = true
@@ -140,7 +140,7 @@ namespace Taskmaster
 		internal static extern bool UnregisterHotKey(IntPtr hWnd, int id);
 
 		[Flags]
-		public enum KeyModifier
+		internal enum KeyModifier
 		{
 			None = 0,
 			Alt = 1,
@@ -152,15 +152,15 @@ namespace Taskmaster
 		[DllImport("user32.dll")]
 		internal static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
 
-		public const int SW_FORCEMINIMIZE = 11;
-		public const int SW_MINIMIZE = 6;
+		internal const int SW_FORCEMINIMIZE = 11;
+		internal const int SW_MINIMIZE = 6;
 
 		[DllImport("user32.dll")]
 		[return: MarshalAs(UnmanagedType.Bool)]
 		internal static extern bool IsWindowVisible(IntPtr hWnd);
 
 		[Flags]
-		public enum ErrorModes : uint
+		internal enum ErrorModes : uint
 		{
 			/// <summary>
 			/// Use the system default, which is to display all error dialog boxes.
@@ -215,7 +215,7 @@ namespace Taskmaster
 		internal static extern uint NtQuerySystemInformation(SYSTEM_INFORMATION_CLASS InfoClass, IntPtr Info, uint Size, out uint Length);
 
 		[Flags]
-		public enum FileCacheFlags : uint
+		internal enum FileCacheFlags : uint
 		{
 			NOT_PRESENT = 0x0,
 			MAX_HARD_ENABLE = 0x00000001,
@@ -228,7 +228,7 @@ namespace Taskmaster
 		[return: MarshalAs(UnmanagedType.Bool)]
 		internal static extern bool GetSystemFileCacheSize(out uint lpMinimumFileCacheSize, out uint lpMaximumFileCacheSize, out FileCacheFlags Flags);
 
-		public enum SYSTEM_INFORMATION_CLASS
+		internal enum SYSTEM_INFORMATION_CLASS
 		{
 			SystemBasicInformation = 0x0000,
 			SystemProcessorInformation = 0x0001,
@@ -383,25 +383,25 @@ namespace Taskmaster
 		}
 
 		[StructLayout(LayoutKind.Sequential, Pack = 1)]
-		public struct SystemMemoryListInformation
+		internal struct SystemMemoryListInformation
 		{
-			public uint ZeroPageCount; // Size=4 Offset=0
+			internal uint ZeroPageCount; // Size=4 Offset=0
 
-			public uint FreePageCount; // Size=4 Offset=4
+			internal uint FreePageCount; // Size=4 Offset=4
 
-			public uint ModifiedPageCount; // Size=4 Offset=8
+			internal uint ModifiedPageCount; // Size=4 Offset=8
 
-			public uint ModifiedNoWritePageCount; // Size=4 Offset=12
+			internal uint ModifiedNoWritePageCount; // Size=4 Offset=12
 
-			public uint BadPageCount; // Size=4 Offset=16
-
-			[MarshalAs(UnmanagedType.ByValArray, SizeConst = 8)] // 7 priority levels
-			public uint[] PageCountByPriority; // Size=32 Offset=20
+			internal uint BadPageCount; // Size=4 Offset=16
 
 			[MarshalAs(UnmanagedType.ByValArray, SizeConst = 8)] // 7 priority levels
-			public uint[] RepurposedPagesByPriority; // Size=32 Offset=52
+			internal uint[] PageCountByPriority; // Size=32 Offset=20
 
-			public uint ModifiedPageCountPageFile; // Size=4 Offset=84
+			[MarshalAs(UnmanagedType.ByValArray, SizeConst = 8)] // 7 priority levels
+			internal uint[] RepurposedPagesByPriority; // Size=32 Offset=52
+
+			internal uint ModifiedPageCountPageFile; // Size=4 Offset=84
 		}
 
 		[DllImport("gdi32.dll", CharSet = CharSet.Unicode, SetLastError = true)]

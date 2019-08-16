@@ -30,7 +30,7 @@ using System.Collections.Generic;
 
 namespace Taskmaster.Configuration
 {
-	using static Taskmaster;
+	using static Application;
 
 	public class Manager : IDisposable
 	{
