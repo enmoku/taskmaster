@@ -260,10 +260,12 @@ namespace Taskmaster.Process
 				ProcessLoad? loader = null;
 				try
 				{
-					loader = new ProcessLoad(info.Process);
+					loader = new ProcessLoad(info);
 					loader.Update();
 
 					info.Load = loader;
+
+					if (info.Exited) return false;
 
 					return true;
 				}

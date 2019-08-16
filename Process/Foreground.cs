@@ -419,9 +419,9 @@ namespace Taskmaster.Process
 		{
 			if (eventType != NativeMethods.EVENT_SYSTEM_FOREGROUND) return; // does this ever trigger?
 
-			if (disposed) return;
-
 			await System.Threading.Tasks.Task.Delay(Hysterisis).ConfigureAwait(false); // asyncify
+
+			if (disposed) return;
 
 			using var sl = WinPrcLock.ScopedLock();
 			if (sl.Waiting) return; // unlikely, but....

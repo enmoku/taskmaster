@@ -2900,6 +2900,7 @@ namespace Taskmaster.UI
 				var sensors = hardwaremonitor.GPUSensorData();
 				GPUSensorUpdate(sensors);
 			}
+			catch (InvalidOperationException) { /* happens on first polling */ }
 			catch (OutOfMemoryException) { throw; }
 			catch (Exception ex)
 			{
