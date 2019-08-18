@@ -1238,7 +1238,7 @@ namespace Taskmaster.Process
 
 				//prc.SetForegroundMode((ForegroundMode)(section.TryGet("Foreground mode")?.Int.Constrain(-1, 2) ?? -1)); // NEW
 
-				var ruleIdeal = section.Get(Constants.AffinityIdeal);
+				var ruleIdeal = section.Get(HumanReadable.System.Process.AffinityIdeal);
 				prc.AffinityIdeal = ruleIdeal?.Int ?? -1;
 				if (prc.AffinityIdeal >= 0 && !Bit.IsSet(prc.AffinityMask, prc.AffinityIdeal))
 				{

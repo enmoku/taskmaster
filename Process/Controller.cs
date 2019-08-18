@@ -612,11 +612,11 @@ namespace Taskmaster.Process
 
 			if (AffinityIdeal >= 0)
 			{
-				var affideal = app["Affinity ideal"];
+				var affideal = app[HumanReadable.System.Process.AffinityIdeal];
 				if (affideal.Int != AffinityIdeal) affideal.Int = AffinityIdeal;
 			}
 			else
-				app.TryRemove("Affinity ideal");
+				app.TryRemove(HumanReadable.System.Process.AffinityIdeal);
 
 			if (IOPriority != IOPriority.Ignore)
 			{

@@ -25,8 +25,6 @@
 
 		public const string ForegroundMode = "Foreground mode";
 
-		public const string AffinityIdeal = "Affinity ideal";
-
 		public const string ScanFrequency = "Scan frequency";
 		public const string WMIEventWatcher = "WMI event watcher";
 		public const string WMIPollDelay = "WMI poll delay";
