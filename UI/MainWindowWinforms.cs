@@ -3470,7 +3470,8 @@ namespace Taskmaster.UI
 							== MessageBox.ResultType.OK)
 						{
 							processmanager.RemoveController(prc);
-							prc.DeleteConfig();
+							processmanager.DeleteConfig(prc);
+
 							Log.Information("[" + prc.FriendlyName + "] Rule removed");
 
 							lock (watchlist_lock)
