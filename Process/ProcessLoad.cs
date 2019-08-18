@@ -45,13 +45,13 @@ namespace Taskmaster.Process
 		/// </summary>
 		/// <param name="pid">Process identifier.</param>
 		/// <param name="executable">Executable name without extension.</param>
-		public ProcessLoad(System.Diagnostics.Process process)
+		public ProcessLoad(ProcessEx info)
 		{
-			Id = process.Id;
-			Instance = process.ProcessName;
+			Id = info.Id;
+			Instance = info.Name;
 
-			CpuLoad = new CpuUsage(process);
-			IOLoad = new IOUsage(process);
+			CpuLoad = new CpuUsage(info.Process);
+			IOLoad = new IOUsage(info.Process);
 
 			Reset();
 		}

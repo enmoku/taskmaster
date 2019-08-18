@@ -132,7 +132,7 @@ namespace Taskmaster
 			ShuttingDown?.Invoke(null, new ShutDownEventArgs());
 
 			//if (System.Windows.Forms.Application.MessageLoop) // fails if called from another thread
-			Application.Exit();
+			System.Windows.Forms.Application.Exit();
 
 			// nothing else should be needed.
 		}
@@ -462,8 +462,8 @@ namespace Taskmaster
 
 			try
 			{
-				if (!System.IO.File.Exists(Application.ExecutablePath))
-					Log.Fatal("Executable missing: " + Application.ExecutablePath); // this should be "impossible"
+				if (!System.IO.File.Exists(System.Windows.Forms.Application.ExecutablePath))
+					Log.Fatal("Executable missing: " + System.Windows.Forms.Application.ExecutablePath); // this should be "impossible"
 
 				CommandLine.NewProcessInfo(out var info, RestartElevated);
 

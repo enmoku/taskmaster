@@ -33,6 +33,12 @@ namespace Taskmaster.Process
 
 	public class ProcessEx
 	{
+		public ProcessEx(int pid, DateTimeOffset startTime)
+		{
+			Start = startTime;
+			Id = pid;
+		}
+
 		public bool Restricted { get; set; } = false;
 
 		/// <summary>
@@ -62,7 +68,9 @@ namespace Taskmaster.Process
 		public string Description { get; set; } = null;
 
 		public Stopwatch Timer = new Stopwatch();
-		public double WMIDelay = 0;
+		public TimeSpan WMIDelay = TimeSpan.Zero;
+
+		public readonly DateTimeOffset Start;
 
 		public LegacyLevel Legacy { get; set; } = LegacyLevel.Undefined;
 

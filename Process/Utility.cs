@@ -380,9 +380,8 @@ namespace Taskmaster.Process
 			{
 				if (process is null) process = System.Diagnostics.Process.GetProcessById(ProcessID);
 
-				info = new ProcessEx()
+				info = new ProcessEx(ProcessID, DateTimeOffset.UtcNow)
 				{
-					Id = ProcessID,
 					Process = process,
 					Controller = controller,
 					Name = string.IsNullOrEmpty(name) ? process.ProcessName : name,

@@ -1368,7 +1368,7 @@ namespace Taskmaster.Process
 				if (DebugAdjustDelay)
 				{
 					sbs.Append(" – ").AppendFormat("{0:N0}", ea.Info.Timer.ElapsedMilliseconds).Append(" ms");
-					if (ea.Info.WMIDelay > 0d) sbs.Append(" + ").AppendFormat("{0:N0}", ea.Info.WMIDelay).Append(" ms watcher delay");
+					if (ea.Info.WMIDelay.TotalMilliseconds > 0d) sbs.Append(" + ").AppendFormat(ea.Info.WMIDelay.TotalMilliseconds.ToString("N0")).Append(" ms watcher delay");
 				}
 
 				if (EnableParentFinding && prc.DeclareParent)
@@ -1758,7 +1758,7 @@ namespace Taskmaster.Process
 				if (info.Process.HasExited) // can throw
 				{
 					info.State = HandlingState.Exited;
-					if (ShowInaction && DebugProcesses) Log.Verbose(info.Name + " #" + info.Id.ToString() + " has already exited.");
+					if (ShowInaction && DebugProcesses) Log.Verbose(info.ToString() + " has already exited.");
 					prc = null;
 					return false; // return ProcessState.Invalid;
 				}
@@ -2062,7 +2062,7 @@ namespace Taskmaster.Process
 					if (!old && prc.LogStartAndExit)
 					{
 						Log.Information(info.ToFullString() + " started.");
-						info.Process.Exited += (_, _ea) => Log.Information(info.ToFullString() + " exited.");
+						info.Process.Exited += (_, _ea) => Log.Information(info.ToFullString() + " exited (run time: "+ info.Start.To(DateTimeOffset.UtcNow).ToString("g") +").");
 						info.HookExit();
 						// TOOD: What if the process exited just before we enabled raising for the events?
 					}
@@ -2487,7 +2487,7 @@ namespace Taskmaster.Process
 					info.PriorityProtected = ProtectedProcess(info.Name, info.Path);
 					info.AffinityProtected = (info.PriorityProtected && ProtectionLevel >= 2);
 
-					info.WMIDelay = wmidelay.TotalMilliseconds;
+					info.WMIDelay = wmidelay;
 
 					if (cts.IsCancellationRequested) throw new ObjectDisposedException(nameof(Manager), "NewInstanceTriagePhaseTwo called when ProcessManager was already disposed");
 
@@ -2521,7 +2521,7 @@ namespace Taskmaster.Process
 			}
 			finally
 			{
-				if (info is null) info = new ProcessEx { Id = pid, Timer = timer, State = state, WMIDelay = wmidelay.TotalMilliseconds };
+				if (info is null) info = new ProcessEx(pid, now) { Timer = timer, State = state, WMIDelay = wmidelay };
 				HandlingStateChange?.Invoke(this, new HandlingStateChangeEventArgs(info));
 
 				SignalProcessHandled(-1); // done with it
