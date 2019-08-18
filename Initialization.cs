@@ -402,7 +402,7 @@ namespace Taskmaster
 			// PROTECT USERS FROM TOO HIGH PERMISSIONS
 			bool isadmin = MKAh.Execution.IsAdministrator;
 			const string Hell = "Hell";
-			var adminwarning = ((cfg[Constants.Core].Get(Hell)?.Value ?? null) != Constants.No);
+			bool adminwarning = !(cfg[Constants.Core].Get(Hell)?.String ?? string.Empty).Equals(Constants.No);
 			if (isadmin && adminwarning)
 			{
 				var rv = MessageBox.ShowModal(
