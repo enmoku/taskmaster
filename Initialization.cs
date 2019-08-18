@@ -407,7 +407,7 @@ namespace Taskmaster
 			{
 				var rv = MessageBox.ShowModal(
 					Name + "! – admin access!!??",
-					"You're starting TM with admin rights, is this right?\n\nYou can cause bad system operation, such as complete system hang, if you configure or configured TM incorrectly.",
+					"You're starting TM with admin rights, is this right?\n\nYou can cause bad system operation, such as complete system hang, if you configure or configured TM incorrectly.\n\nIf you accept, this won't be asked again.",
 					MessageBox.Buttons.AcceptCancel);
 
 				if (rv == MessageBox.ResultType.OK)
