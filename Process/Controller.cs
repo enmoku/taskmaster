@@ -554,32 +554,42 @@ namespace Taskmaster.Process
 
 		public void SaveConfig(Configuration.File cfg, Ini.Section app = null)
 		{
-			// TODO: Check if anything actually was changed?
-
 			Debug.Assert(cfg != null);
-
-			if (app is null)
-				app = cfg.Config[FriendlyName];
+			
+			if (app is null) app = cfg.Config[FriendlyName];
 
 			if (Executables?.Length > 0)
-				app["Executables"].StringArray = Executables;
+			{
+				var exarr = app["Executables"];
+				if (!exarr.StringArray.SequenceEqual(Executables)) exarr.StringArray = Executables;
+			}
 			else
 				app.TryRemove("Executables");
 
 			if (!string.IsNullOrEmpty(Path))
-				app[HumanReadable.System.Process.Path].Value = Path;
+			{
+				var path = app[HumanReadable.System.Process.Path];
+				if (!path.String.Equals(Path, StringComparison.InvariantCulture)) path.String = Path;
+			}
 			else
 				app.TryRemove(HumanReadable.System.Process.Path);
 
 			if (!string.IsNullOrEmpty(Description))
-				app[HumanReadable.Generic.Description].Value = Description;
+			{
+				var desc = app[HumanReadable.Generic.Description];
+				if (!desc.String.Equals(Description, StringComparison.InvariantCulture)) desc.String = Description;
+			}
 			else
 				app.TryRemove(HumanReadable.Generic.Description);
 
 			if (Priority.HasValue)
 			{
-				app[HumanReadable.System.Process.Priority].Int = Utility.PriorityToInt(Priority.Value);
-				app[HumanReadable.System.Process.PriorityStrategy].Int = (int)PriorityStrategy;
+				var prioset = app[HumanReadable.System.Process.Priority];
+				var priosetnew = Utility.PriorityToInt(Priority.Value);
+				if (prioset.Int != priosetnew) prioset.Int = priosetnew;
+
+				var priostrat = app[HumanReadable.System.Process.PriorityStrategy];
+				if (priostrat.Int != (int)PriorityStrategy) priostrat.Int = (int)PriorityStrategy;
 			}
 			else
 			{
@@ -591,8 +601,11 @@ namespace Taskmaster.Process
 			{
 				//if (affinity == ProcessManager.allCPUsMask) affinity = 0; // convert back
 
-				app[HumanReadable.System.Process.Affinity].Int = AffinityMask;
-				app[HumanReadable.System.Process.AffinityStrategy].Int = (int)AffinityStrategy;
+				var affset = app[HumanReadable.System.Process.Affinity];
+				if (affset.Int != AffinityMask) affset.Int = AffinityMask;
+
+				var affstrat = app[HumanReadable.System.Process.AffinityStrategy];
+				if (affstrat.Int != (int)AffinityStrategy) affstrat.Int = (int)AffinityStrategy;
 			}
 			else
 			{
@@ -601,17 +614,27 @@ namespace Taskmaster.Process
 			}
 
 			if (AffinityIdeal >= 0)
-				app["Affinity ideal"].Int = AffinityIdeal;
+			{
+				var affideal = app["Affinity ideal"];
+				if (affideal.Int != AffinityIdeal) affideal.Int = AffinityIdeal;
+			}
 			else
 				app.TryRemove("Affinity ideal");
 
 			if (IOPriority != IOPriority.Ignore)
-				app["IO priority"].Int = (int)IOPriority;
+			{
+				var ioprio = app["IO priority"];
+				if (ioprio.Int != (int)IOPriority) ioprio.Int = (int)IOPriority;
+			}
 			else
 				app.TryRemove("IO priority");
 
 			if (PowerPlan != Power.Mode.Undefined)
-				app[HumanReadable.Hardware.Power.Mode].Value = Power.Utility.GetModeName(PowerPlan);
+			{
+				var powmode = app[HumanReadable.Hardware.Power.Mode];
+				var powmodenew = Power.Utility.GetModeName(PowerPlan);
+				if (!powmode.String.Equals(powmodenew, StringComparison.InvariantCultureIgnoreCase)) powmode.String = powmodenew;
+			}
 			else
 				app.TryRemove(HumanReadable.Hardware.Power.Mode);
 
@@ -628,45 +651,77 @@ namespace Taskmaster.Process
 				case ForegroundMode.Full:
 				case ForegroundMode.Standard:
 					if (Foreground == ForegroundMode.Standard) app.TryRemove("Background powerdown");
-					app["Foreground mode"].Int = (int)Foreground;
+
+					var fgmode = app["Foreground mode"];
+					if (fgmode.Int != (int)Foreground) fgmode.Int = (int)Foreground;
+
 					if (BackgroundPriority.HasValue)
-						app["Background priority"].Int = Utility.PriorityToInt(BackgroundPriority.Value);
+					{
+						var bgprio = app["Background priority"];
+						var bgprionew = Utility.PriorityToInt(BackgroundPriority.Value);
+						if (bgprio.Int != bgprionew) bgprio.Int = bgprionew;
+					}
 					else
 						app.TryRemove("Background priority");
+
 					if (BackgroundAffinity >= 0)
-						app["Background affinity"].Int = BackgroundAffinity;
+					{
+						var bgaff = app["Background affinity"];
+						if (bgaff.Int != BackgroundAffinity) bgaff.Int = BackgroundAffinity;
+					}
 					else
 						app.TryRemove("Background affinity");
 					break;
 			}
 
 			if (AllowPaging)
-				app["Allow paging"].Bool = AllowPaging;
+			{
+				var paging = app["Allow paging"];
+				if (paging.Bool != AllowPaging) paging.Bool = AllowPaging;
+			}
 			else
 				app.TryRemove("Allow paging");
 
 			if (PathVisibility != PathVisibilityOptions.Invalid)
-				app["Path visibility"].Int = (int)PathVisibility;
+			{
+				var pathvis = app["Path visibility"];
+				if (pathvis.Int != (int)PathVisibility) pathvis.Int = (int)PathVisibility;
+			}
 			else
 				app.TryRemove("Path visibility");
 
 			if (Executables?.Length > 0 && Recheck > 0)
-				app["Recheck"].Int = Recheck;
+			{
+				var recheck = app["Recheck"];
+				if (recheck.Int != Recheck) recheck.Int = Recheck;
+			}
 			else
 				app.TryRemove("Recheck");
 
-			if (!Enabled) app[HumanReadable.Generic.Enabled].Bool = Enabled;
-			else app.TryRemove(HumanReadable.Generic.Enabled);
+			if (!Enabled)
+			{
+				var enabled = app[HumanReadable.Generic.Enabled];
+				if (enabled.Bool != Enabled) enabled.Bool = Enabled;
+			}
+			else
+				app.TryRemove(HumanReadable.Generic.Enabled);
 
-			app["Preference"].Int = OrderPreference;
+			var preforder = app["Preference"];
+			if (preforder.Int != OrderPreference) preforder.Int = OrderPreference;
 
 			if (IgnoreList?.Length > 0)
-				app[HumanReadable.Generic.Ignore].Array = IgnoreList;
+			{
+				var ignlist = app[HumanReadable.Generic.Ignore];
+				if (!ignlist.StringArray.SequenceEqual(IgnoreList)) ignlist.StringArray = IgnoreList;
+			}
 			else
 				app.TryRemove(HumanReadable.Generic.Ignore);
 
 			if (ModifyDelay > 0)
-				app[Constants.ModifyDelay].Int = ModifyDelay;
+			{
+				var modset = app[Constants.ModifyDelay];
+				if (modset.Int != ModifyDelay) modset.Int = ModifyDelay;
+			}
 			else
 				app.TryRemove(Constants.ModifyDelay);
 
@@ -687,9 +742,11 @@ namespace Taskmaster.Process
 					res[3] = Resize.Value.Height;
 				}
 
-				app[Constants.Resize].IntArray = res;
+				var resset = app[Constants.Resize];
+				if (!resset.IntArray.SequenceEqual(res)) resset.IntArray = res;
 
-				app[Constants.ResizeStrategy].Int = (int)ResizeStrategy;
+				var resstrat = app[Constants.ResizeStrategy];
+				if (resstrat.Int != (int)ResizeStrategy) resstrat.Int = (int)ResizeStrategy;
 			}
 			else
 			{
@@ -699,8 +756,11 @@ namespace Taskmaster.Process
 
 			if (VolumeStrategy != Audio.VolumeStrategy.Ignore)
 			{
-				app[HumanReadable.Hardware.Audio.Volume].Float = Volume;
-				app[Constants.VolumeStrategy].Int = (int)VolumeStrategy;
+				var volset = app[HumanReadable.Hardware.Audio.Volume];
+				if (volset.Float != Volume) volset.Float = Volume;
+
+				var volstrat = app[Constants.VolumeStrategy];
+				if (volstrat.Int != (int)VolumeStrategy) volstrat.Int = (int)VolumeStrategy;
 			}
 			else
 			{
@@ -708,25 +768,38 @@ namespace Taskmaster.Process
 				app.TryRemove(Constants.VolumeStrategy);
 			}
 
-			app[HumanReadable.Generic.Logging].Bool = LogAdjusts;
+			var logset = app[HumanReadable.Generic.Logging];
+			if (logset.Bool != LogAdjusts) logset.Bool = LogAdjusts;
 
 			if (LogStartAndExit)
-				app["Log start and exit"].Bool = true;
+			{
+				var logstartandexit = app["Log start and exit"];
+				if (logstartandexit.Bool != LogStartAndExit) logstartandexit.Bool = LogStartAndExit;
+			}
 			else
 				app.TryRemove("Log start and exit");
 
 			if (LogDescription)
-				app["Log description"].Bool = true;
+			{
+				var logdesc = app["Log description"];
+				if (logdesc.Bool != LogDescription) logdesc.Bool = LogDescription;
+			}
 			else
 				app.TryRemove("Log description");
 
 			if (ExclusiveMode)
-				app[Constants.Exclusive].Bool = true;
+			{
+				var exmode = app[Constants.Exclusive];
+				if (exmode.Bool != ExclusiveMode) exmode.Bool = ExclusiveMode;
+			}
 			else
 				app.TryRemove(Constants.Exclusive);
 
 			if (DeclareParent)
-				app["Declare parent"].Bool = true;
+			{
+				var decpar = app["Declare parent"];
+				if (decpar.Bool != DeclareParent) decpar.Bool = DeclareParent;
+			}
 			else
 				app.TryRemove("Declare parent");
 
