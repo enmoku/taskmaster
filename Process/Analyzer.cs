@@ -358,14 +358,14 @@ namespace Taskmaster.Process
 
 						if (files.Length == 0) continue;
 
-						string listeds = section.Get("listed")?.Value.ToLowerInvariant() ?? "no";
+						string listeds = section.Get("listed")?.String.ToLowerInvariant() ?? "no";
 						bool listed = yesvalues.Any((x) => x.Equals(listeds));
 						//string upgrade = section.TryGet("upgrade")?.Value ?? null;
 						//bool open = yesvalues.Contains(section.TryGet("open")?.Value.ToLowerInvariant() ?? "no");
 						//bool prop = yesvalues.Contains(section.TryGet("proprietary")?.Value.ToLowerInvariant() ?? "no");
-						string exts = section.Get("extension")?.Value.ToLowerInvariant() ?? "no";
+						string exts = section.Get("extension")?.String.ToLowerInvariant() ?? "no";
 						bool ext = yesvalues.Any((x) => x.Equals(exts));
-						string ttype = section.Get("type")?.Value.ToLowerInvariant() ?? "unknown"; // TODO
+						string ttype = section.Get("type")?.String.ToLowerInvariant() ?? "unknown"; // TODO
 
 						//string trec = section.TryGet("recommendation")?.Value.ToLowerInvariant() ?? null;
 						//string notes = section.TryGet("notes")?.Value ?? null;

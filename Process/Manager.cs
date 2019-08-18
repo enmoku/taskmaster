@@ -1203,11 +1203,11 @@ namespace Taskmaster.Process
 				{
 					Enabled = (section.Get(HumanReadable.Generic.Enabled)?.Bool ?? true),
 					Executables = (ruleExec?.StringArray ?? null),
-					Description = (section.Get(HumanReadable.Generic.Description)?.Value ?? null),
+					Description = (section.Get(HumanReadable.Generic.Description)?.String ?? null),
 					// friendly name is filled automatically
 					PriorityStrategy = priostrat,
 					AffinityStrategy = affStrat,
-					Path = (rulePath?.Value ?? null),
+					Path = (rulePath?.String ?? null),
 					ModifyDelay = (section.Get(Constants.ModifyDelay)?.Int ?? 0),
 					//BackgroundIO = (section.TryGet("Background I/O")?.Bool ?? false), // Doesn't work
 					Recheck = (section.Get(Constants.Recheck)?.Int ?? 0).Constrain(0, 300),

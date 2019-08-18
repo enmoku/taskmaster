@@ -110,7 +110,7 @@ namespace Taskmaster.Network
 			{
 				using var netcfg = Config.Load(NetConfigFilename);
 				var monsec = netcfg.Config["Monitor"];
-				dnstestaddress = monsec.GetOrSet("DNS test", "www.google.com").Value;
+				dnstestaddress = monsec.GetOrSet("DNS test", "www.google.com").String;
 
 				var devsec = netcfg.Config["Devices"];
 				int devicetimerinterval_t = devsec.GetOrSet("Check frequency", 15)

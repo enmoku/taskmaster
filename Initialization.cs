@@ -196,7 +196,7 @@ namespace Taskmaster
 		{
 			// INITIAL CONFIGURATIONN
 			using var tcfg = Config.Load(CoreConfigFilename);
-			var sec = tcfg.Config.Get(Constants.Core)?.Get(Constants.Version)?.Value ?? null;
+			var sec = tcfg.Config.Get(Constants.Core)?.Get(Constants.Version)?.String ?? null;
 			if (sec?.Equals(ConfigVersion) ?? false) return;
 
 			using var initialconfig = new UI.Config.ComponentConfigurationWindow();
@@ -216,14 +216,14 @@ namespace Taskmaster
 
 			const string Hello = "Hello", Hi = "Hi";
 
-			if (!cfg.TryGet(Constants.Core, out var core) || !core.TryGet(Hello, out var hello) || !hello.Value.Equals(Hi))
-				cfg[Constants.Core][Hello].Value = Hi;
+			if (!cfg.TryGet(Constants.Core, out var core) || !core.TryGet(Hello, out var hello) || !hello.String.Equals(Hi))
+				cfg[Constants.Core][Hello].String = Hi;
 
 			var compsec = cfg[Constants.Components];
 			var optsec = cfg[Constants.Options];
 			var perfsec = cfg[Constants.Performance];
 
-			cfg[Constants.Core].GetOrSet(Constants.License, Constants.Refused).Value = Constants.Accepted;
+			cfg[Constants.Core].GetOrSet(Constants.License, Constants.Refused).String = Constants.Accepted;
 
 			// [Components]
 			ProcessMonitorEnabled = compsec.GetOrSet(HumanReadable.System.Process.Section, true)
@@ -412,7 +412,7 @@ namespace Taskmaster
 
 				if (rv == MessageBox.ResultType.OK)
 				{
-					cfg[Constants.Core][Hell].Value = Constants.No;
+					cfg[Constants.Core][Hell].String = Constants.No;
 				}
 				else
 				{

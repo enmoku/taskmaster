@@ -286,7 +286,7 @@ namespace Taskmaster
 		static void LicenseBoiler()
 		{
 			using var cfg = Config.Load(CoreConfigFilename);
-			if (cfg.Config.Get(Constants.Core)?.Get(Constants.License)?.Value.Equals(Constants.Accepted) ?? false) return;
+			if (cfg.Config.Get(Constants.Core)?.Get(Constants.License)?.String.Equals(Constants.Accepted) ?? false) return;
 
 			using var license = new LicenseDialog();
 			license.ShowDialog();

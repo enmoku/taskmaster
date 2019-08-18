@@ -345,7 +345,7 @@ namespace Taskmaster.UI.Config
 				using var cfg = Config.Load(CoreConfigFilename);
 				var mainsec = cfg.Config[Constants.Core];
 				var opt = mainsec[Constants.Version];
-				opt.Value = ConfigVersion;
+				opt.String = ConfigVersion;
 				opt.Comment = "Magical";
 
 				var compsec = cfg.Config[Constants.Components];
@@ -361,7 +361,7 @@ namespace Taskmaster.UI.Config
 				compsec[Constants.Health].Bool = autodoc.Checked;
 
 				var powsec = cfg.Config[HumanReadable.Hardware.Power.Section];
-				if (powmon.Checked) powsec[Power.Constants.Behaviour].Value = powbehaviour.Text.ToLower();
+				if (powmon.Checked) powsec[Power.Constants.Behaviour].String = powbehaviour.Text.ToLower();
 
 				var uisec = cfg.Config[Constants.UserInterface];
 				uisec[Constants.ShowOnStart].Bool = showonstart.Checked;

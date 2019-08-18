@@ -640,7 +640,7 @@ namespace Taskmaster.Power
 
 			var behaviourstring = power.GetOrSet(Constants.Behaviour, HumanReadable.Hardware.Power.RuleBased)
 				.InitComment("auto, manual, or rule-based")
-				.Value;
+				.String;
 
 			if (behaviourstring.StartsWith("auto", StringComparison.InvariantCultureIgnoreCase))
 				LaunchBehaviour = PowerBehaviour.Auto;
@@ -652,7 +652,7 @@ namespace Taskmaster.Power
 
 			AutoAdjust.DefaultMode = Utility.GetModeByName(power.GetOrSet(Constants.DefaultModeSettingName, Utility.GetModeName(Mode.Balanced))
 				.InitComment("This is what power plan we fall back on when nothing else is considered.")
-				.Value);
+				.String);
 			if (AutoAdjust.DefaultMode == Mode.Undefined)
 			{
 				Log.Warning("<Power> Default mode malconfigured, defaulting to balanced.");
@@ -661,7 +661,7 @@ namespace Taskmaster.Power
 
 			var restoremode = power.GetOrSet(Constants.RestoreModeSettingName, "Default")
 				.InitComment("Default, Original, Saved, or specific power mode. Power mode to restore with rule-based behaviour.")
-				.Value.ToLowerInvariant();
+				.String.ToLowerInvariant();
 
 			RestoreModeMethod newmodemethod;
 			Mode newrestoremode;
@@ -750,8 +750,8 @@ namespace Taskmaster.Power
 			}
 
 			// POWER MODES
-			AutoAdjust.Low.Mode = Utility.GetModeByName(power.GetOrSet(Constants.LowModeName, Utility.GetModeName(Mode.PowerSaver)).Value);
-			AutoAdjust.High.Mode = Utility.GetModeByName(power.GetOrSet(Constants.HighModeName, Utility.GetModeName(Mode.HighPerformance)).Value);
+			AutoAdjust.Low.Mode = Utility.GetModeByName(power.GetOrSet(Constants.LowModeName, Utility.GetModeName(Mode.PowerSaver)).String);
+			AutoAdjust.High.Mode = Utility.GetModeByName(power.GetOrSet(Constants.HighModeName, Utility.GetModeName(Mode.HighPerformance)).String);
 
 			// QUEUE BARRIERS
 			AutoAdjust.Queue.High = autopower.GetOrSet(Constants.HighQueueBarrierName, AutoAdjust.Queue.High).Int.Constrain(0, 50);
@@ -763,7 +763,7 @@ namespace Taskmaster.Power
 
 			var sessionlockmodename = saver.GetOrSet(Constants.SessionLockName, Utility.GetModeName(Mode.PowerSaver))
 				.InitComment("Power mode to set when session is locked, such as by pressing winkey+L. Unrecognizable values disable this.")
-				.Value;
+				.String;
 			SessionLockPowerMode = Utility.GetModeByName(sessionlockmodename);
 
 			// SaverOnMonitorSleep = saver.GetSetDefault("Monitor sleep", true, out modified).Bool;
@@ -818,11 +818,11 @@ namespace Taskmaster.Power
 					_ => HumanReadable.Hardware.Power.RuleBased.ToLower(), // default to rule-based
 				};
 
-				power[Constants.Behaviour].Value = sbehaviour;
+				power[Constants.Behaviour].String = sbehaviour;
 
-				power[Constants.DefaultModeSettingName].Value = aa.DefaultMode.ToString();
+				power[Constants.DefaultModeSettingName].String = aa.DefaultMode.ToString();
 
-				power[Constants.RestoreModeSettingName].Value = (RestoreMethod == RestoreModeMethod.Custom ? RestoreMode.ToString() : RestoreMethod.ToString());
+				power[Constants.RestoreModeSettingName].String = (RestoreMethod == RestoreModeMethod.Custom ? RestoreMode.ToString() : RestoreMethod.ToString());
 				if (PowerdownDelay.HasValue)
 					power["Watchlist powerdown delay"].Int = Convert.ToInt32(PowerdownDelay.Value.TotalSeconds);
 				else
@@ -850,11 +850,11 @@ namespace Taskmaster.Power
 				autopower[Constants.LowQueueBarrierName].Int = aa.Queue.Low;
 
 				// POWER MODES
-				power[Constants.LowModeName].Value = Utility.GetModeName(aa.Low.Mode);
-				power[Constants.HighModeName].Value = Utility.GetModeName(aa.High.Mode);
+				power[Constants.LowModeName].String = Utility.GetModeName(aa.Low.Mode);
+				power[Constants.HighModeName].String = Utility.GetModeName(aa.High.Mode);
 
 				var saver = corecfg.Config[Constants.AFKPowerName];
-				saver[Constants.SessionLockName].Value = Utility.GetModeName(SessionLockPowerMode);
+				saver[Constants.SessionLockName].String = Utility.GetModeName(SessionLockPowerMode);
 
 				saver["Monitor power off idle timeout"].Int = Convert.ToInt32(SessionLockPowerOffIdleTimeout.Value.TotalSeconds);
 				saver["Monitor power off on lock"].Bool = SessionLockPowerOff;
