@@ -457,18 +457,15 @@ namespace Taskmaster.Process
 			}
 		}
 
-		public void SetName(string newName)
+		public void Rename(string newName)
 		{
 			using var cfg = Config.Load(Manager.WatchlistFile);
 			if (cfg.Config.TryGet(FriendlyName, out var section))
 				section.Name = newName;
-			FriendlyName = newName;
-		}
+			else
+				Log.Warning("[" + FriendlyName + "] Does not exist in configuration."); // probably only happens when you rename a rule before it has been saved to disk?
 
-		public void DeleteConfig()
-		{
-			using var cfg = Config.Load(Manager.WatchlistFile);
-			cfg.Config.TryRemove(FriendlyName); // remove the section, removes the items in the section
+			FriendlyName = newName;
 		}
 
 		void ProcessExitEvent(object sender, EventArgs _ea)
@@ -521,9 +518,9 @@ namespace Taskmaster.Process
 		}
 
 		/// <summary>
-		/// Refresh the controller, freeing resources, locks, etc.
+		/// Refresh the controller, freeing resources, locks, etc. Does not affect valid still active instances.
 		/// </summary>
-		public void Refresh()
+		public void ResetInvalid()
 		{
 			if (DebugPower || Manager.DebugProcesses) Log.Debug($"[{FriendlyName}] Refresh");
 

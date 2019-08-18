@@ -3400,7 +3400,7 @@ namespace Taskmaster.UI
 
 						prc.SaveConfig();
 
-						prc.Refresh();
+						prc.ResetInvalid();
 
 						WatchlistItemColor(li, prc);
 
@@ -3426,7 +3426,7 @@ namespace Taskmaster.UI
 					{
 						UpdateWatchlistRule(prc);
 						processmanager?.HastenScan(TimeSpan.FromMinutes(1), forceSort: true);
-						prc.Refresh();
+						prc.ResetInvalid();
 					}
 				}
 				catch (Exception ex) { Logging.Stacktrace(ex); }

@@ -1531,6 +1531,12 @@ namespace Taskmaster.Process
 			prc.Resumed -= ProcessResumedProxy;
 		}
 
+		public void DeleteConfig(Controller prc)
+		{
+			using var cfg = Config.Load(WatchlistFile);
+			cfg.Config.TryRemove(prc.FriendlyName); // remove the section, removes the items in the section
+		}
+
 		void WaitForExitTriggered(ProcessEx info)
 		{
 			Debug.Assert(info.Controller != null, "ProcessController not defined");
@@ -2634,7 +2640,7 @@ namespace Taskmaster.Process
 				if (User.IdleTime().TotalHours > 2d)
 				{
 					foreach (var prc in Watchlist.Keys)
-						prc.Refresh();
+						prc.ResetInvalid();
 				}
 
 				Parallel.ForEach(Running.Values, info =>

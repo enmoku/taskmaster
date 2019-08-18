@@ -711,7 +711,7 @@ namespace Taskmaster.UI.Config
 			var enOrig = Controller.Enabled;
 			Controller.Enabled = false;
 
-			if (!newPrc) Controller.Refresh(); // make sure we don't cling to things
+			if (!newPrc) Controller.ResetInvalid(); // make sure we don't cling to things
 
 			// TODO: VALIDATE FOR GRIMMY'S SAKE!
 
@@ -755,7 +755,7 @@ namespace Taskmaster.UI.Config
 
 			// -----------------------------------------------
 
-			Controller.SetName(newfriendlyname);
+			Controller.Rename(newfriendlyname);
 
 			if (execName.Text.Length > 0)
 			{
@@ -881,7 +881,7 @@ namespace Taskmaster.UI.Config
 
 			DialogResult = DialogResult.OK;
 
-			Controller.Refresh();
+			Controller.ResetInvalid();
 
 			Close();
 		}
