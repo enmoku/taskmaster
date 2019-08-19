@@ -224,10 +224,10 @@ namespace Taskmaster.Process
 			if (Process.Manager.DebugProcesses)
 			{
 				sbs = new StringBuilder("Affinity Strategy(", 256)
-					.Append(Convert.ToString(initialmask, 2)).Append(", ").Append(strategy.ToString()).Append(')');
+					.Append(Convert.ToString(initialmask, 2).PadLeft(CPUCount, '0')).Append(" -> ")
+					.Append(Convert.ToString(targetmask, 2).PadLeft(CPUCount, '0'))
+					.Append(", ").Append(strategy.ToString()).Append(')');
 			}
-
-			int excesscores = Bit.Count(initialmask) - Bit.Count(targetmask);
 
 			int result;
 
@@ -235,26 +235,44 @@ namespace Taskmaster.Process
 			{
 				result = targetmask;
 			}
-			else if (strategy == AffinityStrategy.Limit) // Don't increase the number of cores
+			else if (strategy == AffinityStrategy.Limit) // Don't increase the number of cores but move them around
 			{
+				int initialCores = Bit.Count(initialmask);
+				int targetCores = Bit.Count(targetmask);
+				int excesscores = initialCores - targetCores;
+				int deficitcores = targetCores - initialCores;
+				int availablecores = targetCores & ~initialmask;
+
 				result = initialmask;
 
-				sbs?.Append(" Cores(").Append(Bit.Count(initialmask)).Append(" / ").Append(Bit.Count(targetmask)).Append(") old mask ").Append(Convert.ToString(initialmask, 2));
+				sbs?.Append(" Cores(").Append(Bit.Count(initialmask)).Append(" / ").Append(Bit.Count(targetmask))
+					.Append(") old mask ").Append(Convert.ToString(initialmask, 2).PadLeft(CPUCount, '0'));
 
 				if (excesscores > 0)
 				{
-					sbs?.Append("; excess: ").Append(excesscores.ToString());
+					result = Bit.Unfill(result, targetmask, excesscores);
+					sbs?.Append("; excess: ").Append(excesscores.ToString())
+						.Append(" pruned to: ").Append(Convert.ToString(result, 2).PadLeft(CPUCount, '0'));
+				}
 
-					for (int i = 0; i < CPUCount && excesscores > 0; i++)
-					{
-						if (!Bit.IsSet(targetmask, i) && Bit.IsSet(result, i)) // not set in target but set in result
-						{
-							result = Bit.Unset(result, i);
-							excesscores--;
-						}
-					}
+				bool correctlySlotted = Bit.And(result, targetmask) == result;
+				int incorrectMask = result & ~targetmask;
+				int incorrectCount = Bit.Count(incorrectMask);
 
-					sbs?.Append("; corrected to ").Append(Convert.ToString(result, 2));
+				sbs?.Append("; misplaced: ").Append(!correctlySlotted);
+
+				if (incorrectCount > 0)
+				{
+					result = Bit.Move(result, targetmask);
+
+					//result = Bit.Unfill(result, targetmask, excesscores);
+					//int curCores = Bit.Count(result);
+
+					//if (curCores < targetCores)
+					//	result = Bit.Fill(result, targetmask, excesscores);
+
+					sbs?.Append(" ×").Append(incorrectCount.ToString())
+						.Append("; corrected to ").Append(Convert.ToString(result, 2).PadLeft(CPUCount, '0'));
 				}
 			}
 			else if (strategy == AffinityStrategy.Scatter)
@@ -281,7 +299,7 @@ namespace Taskmaster.Process
 
 			if (sbs != null)
 			{
-				sbs.Append("; new = ").Append(Convert.ToString(result, 2));
+				sbs.Append("; new = ").Append(Convert.ToString(result, 2).PadLeft(CPUCount, '0'));
 				Logging.DebugMsg(sbs.ToString());
 			}
 
