@@ -40,8 +40,9 @@ namespace Taskmaster.UI
 		public ChangeLog(string logdata)
 			: base(false)
 		{
-			Visible = false;
 			SuspendLayout();
+
+			Visible = false;
 
 			LogData = logdata;
 
@@ -75,7 +76,8 @@ namespace Taskmaster.UI
 
 			Controls.Add(layout);
 
-			ResumeLayout();
+			ResumeLayout(performLayout: false);
+
 			Visible = true;
 		}
 

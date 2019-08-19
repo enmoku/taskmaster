@@ -139,7 +139,7 @@ namespace Taskmaster.UI
 
 			if (Trace) Log.Verbose("MainWindow constructed");
 
-			ResumeLayout();
+			ResumeLayout(performLayout: false);
 			Visible = true;
 		}
 

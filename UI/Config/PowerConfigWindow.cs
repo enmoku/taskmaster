@@ -338,7 +338,7 @@ namespace Taskmaster.UI.Config
 
 			FillAutoAdjust(AutoAdjust);
 
-			ResumeLayout();
+			ResumeLayout(performLayout: false);
 		}
 
 		void Cancel(object _, EventArgs _ea)

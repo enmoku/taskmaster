@@ -251,7 +251,7 @@ namespace Taskmaster.UI.Config
 
 			Controls.Add(layout);
 
-			ResumeLayout();
+			ResumeLayout(performLayout: false);
 		}
 
 		void InstallButton_Click(object sender, EventArgs e)

@@ -157,7 +157,7 @@ namespace Taskmaster
 
 			StartPosition = parent != null ? FormStartPosition.CenterParent : FormStartPosition.CenterScreen;
 
-			ResumeLayout();
+			ResumeLayout(performLayout: false);
 		}
 
 		#region IDisposable

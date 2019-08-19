@@ -415,7 +415,7 @@ namespace Taskmaster.UI.Config
 			layout.Controls.Add(savebutton);
 			layout.Controls.Add(cancelbutton);
 
-			ResumeLayout();
+			ResumeLayout(performLayout: false);
 		}
 
 		void Cancelbutton_Click(object sender, EventArgs e)

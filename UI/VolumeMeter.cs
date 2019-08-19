@@ -153,9 +153,6 @@ namespace Taskmaster.UI
 			var winsec = uicfg.Config[Constants.Windows];
 			var winpos = winsec[HumanReadable.Hardware.Audio.Volume].IntArray;
 
-			ResumeLayout();
-			Visible = true;
-
 			if (winpos?.Length == 2)
 			{
 				StartPosition = FormStartPosition.Manual;
@@ -166,6 +163,9 @@ namespace Taskmaster.UI
 					CenterToParent();
 			}
 
+			ResumeLayout(performLayout: false);
+
+			Visible = true;
 			Show();
 
 			if (TopMost)

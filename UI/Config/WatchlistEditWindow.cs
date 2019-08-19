@@ -703,7 +703,7 @@ namespace Taskmaster.UI.Config
 			// ---
 			#endregion // BuildUI
 
-			ResumeLayout();
+			ResumeLayout(performLayout: false);
 		}
 
 		void SaveInfo(object _, System.EventArgs _ea)

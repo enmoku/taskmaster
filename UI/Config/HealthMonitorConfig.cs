@@ -38,7 +38,7 @@ namespace Taskmaster
 
 			var layout = new UI.Extensions.TableLayoutPanel();
 
-			ResumeLayout();
+			ResumeLayout(performLayout: false);
 			Visible = true;
 		}
 	}

@@ -153,7 +153,7 @@ namespace Taskmaster.UI
 
 			Shown += (_, _ea) => Populate().ConfigureAwait(false);
 
-			ResumeLayout();
+			ResumeLayout(performLayout: false);
 		}
 
 		async Task Populate()

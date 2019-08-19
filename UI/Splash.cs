@@ -128,7 +128,7 @@ namespace Taskmaster.UI
 			Controls.Add(layout);
 			#endregion // Build UI
 
-			ResumeLayout();
+			ResumeLayout(performLayout: false);
 			Visible = true;
 		}
 
