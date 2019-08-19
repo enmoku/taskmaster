@@ -90,16 +90,23 @@ namespace Processes
 
 		[Test]
 		[TestOf(nameof(Taskmaster.Process.Utility.ApplyAffinityStrategy))]
-		[TestCase(0b1, 0b1, 0b1)]
-		[TestCase(0b0001, 0b1101, 0b0001)]
-		[TestCase(0b1101, 0b1100, 0b1100)] // this can fail if the core freeing method is changed
-		public void AffinityLimit1(int source, int mask, int expected)
+		[TestCase(0b0001, 0b0001, 0b0001, ExpectedResult = 0b0001)] // nop
+		[TestCase(0b0001, 0b1101, 0b0001, ExpectedResult = 0b0001)] // unset
+		[TestCase(0b1101, 0b1100, 0b1100, ExpectedResult = 0b1100)] // unset; this can fail if the core freeing method is changed
+		[TestCase(0b1100, 0b0101, 0b0101, ExpectedResult = 0b0101)] // move 1
+		[TestCase(0b1110, 0b0001, 0b0001, ExpectedResult = 0b0001)] // move and reduce
+		public int AffinityLimit1(int source, int mask, int expected)
 		{
 			Taskmaster.Process.Manager.DebugProcesses = true;
 			System.Diagnostics.Debug.Listeners.Add(new System.Diagnostics.ConsoleTraceListener());
+
 			int product = Taskmaster.Process.Utility.ApplyAffinityStrategy(source, mask, Taskmaster.Process.AffinityStrategy.Limit);
 
-			Assert.AreEqual(expected, product);
+			Assert.AreEqual(expected, product,
+				"{0} does not match expected {1}",
+				Convert.ToString(product, 2).PadLeft(4, '0'), Convert.ToString(expected, 2).PadLeft(4, '0'));
+
+			return product;
 		}
 
 		[Test]
