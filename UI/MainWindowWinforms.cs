@@ -64,8 +64,8 @@ namespace Taskmaster.UI
 		{
 			_ = Handle; // HACK
 
-			Visible = false;
 			SuspendLayout();
+			Visible = false;
 
 			// InitializeComponent(); // TODO: WPF
 			FormClosing += WindowClose;
@@ -80,1014 +80,6 @@ namespace Taskmaster.UI
 			#endregion // Load Configuration
 
 			#region Build UI
-			BuildUI();
-			#endregion
-
-			tooltip.IsBalloon = true;
-			tooltip.InitialDelay = 2000;
-			tooltip.ShowAlways = true;
-
-			WatchlistSearchTimer.Interval = 250;
-			WatchlistSearchTimer.Tick += WatchlistSearchTimer_Tick;
-
-			// TODO: Detect mic device changes
-			// TODO: Delay fixing by 5 seconds to prevent fix diarrhea
-
-			// the form itself
-			WindowState = FormWindowState.Normal;
-
-			FormBorderStyle = FormBorderStyle.Sizable;
-			SizeGripStyle = SizeGripStyle.Auto;
-
-			AutoSizeMode = AutoSizeMode.GrowOnly;
-			AutoSize = false;
-
-			MaximizeBox = true;
-			MinimizeBox = true;
-
-			MinimumHeight += tabs.MinimumSize.Height
-				+ LogList.MinimumSize.Height
-				+ menu.Height
-				+ statusbar.Height
-				+ 40; // why is this required? window deco?
-
-			MinimumSize = new System.Drawing.Size(780, MinimumHeight);
-
-			// FormBorderStyle = FormBorderStyle.FixedDialog; // no min/max buttons as wanted
-
-			if (!ShowOnStart)
-			{
-				Logging.DebugMsg("<Main Window> Show on start disabled, hiding.");
-				Hide();
-			}
-
-			// CenterToScreen();
-
-			Shown += OnShown;
-
-			// TODO: WPF
-			/*
-			System.Windows.Shell.JumpList jumplist = System.Windows.Shell.JumpList.GetJumpList(System.Windows.Application.Current);
-			//System.Windows.Shell.JumpTask task = new System.Windows.Shell.JumpTask();
-			System.Windows.Shell.JumpPath jpath = new System.Windows.Shell.JumpPath();
-			jpath.Path = cfgpath;
-			jumplist.JumpItems.Add(jpath);
-			jumplist.Apply();
-			*/
-
-			FillLog();
-
-			if (Trace) Log.Verbose("MainWindow constructed");
-
-			ResumeLayout(performLayout: false);
-			Visible = true;
-		}
-
-		void OnShown(object _, EventArgs _ea)
-		{
-			Logging.DebugMsg("<Main Window> Showing");
-
-			if (!IsHandleCreated) return;
-
-			ShowLastLog();
-		}
-
-		public void ExitRequest(object _, EventArgs _ea) => ConfirmExit(restart: false);
-
-		void WindowClose(object _, FormClosingEventArgs ea)
-		{
-			try
-			{
-				SaveUIState();
-
-				if (!Trace) return;
-
-				Logging.DebugMsg("WindowClose = " + ea.CloseReason.ToString());
-				switch (ea.CloseReason)
-				{
-					case CloseReason.UserClosing:
-						// X was pressed or similar
-						break;
-					case CloseReason.WindowsShutDown:
-						Log.Debug("Exit: Windows shutting down.");
-						break;
-					case CloseReason.TaskManagerClosing:
-						Log.Debug("Exit: Task manager told us to close.");
-						break;
-					case CloseReason.ApplicationExitCall:
-						Log.Debug("Exit: User asked to close.");
-						break;
-					default:
-						Log.Debug("Exit: Unidentified close reason: " + ea.CloseReason.ToString());
-						break;
-				}
-				Logging.DebugMsg("WindowClose.Handled");
-			}
-			catch (Exception ex) { Logging.Stacktrace(ex); }
-		}
-
-		// this restores the main window to a place where it can be easily found if it's lost
-		/// <summary>
-		/// Restores the main window to the center of the screen.
-		/// </summary>
-		public void UnloseWindowRequest(object _, EventArgs e)
-		{
-			if (Trace) Log.Verbose("Making sure main window is not lost.");
-
-			if (!IsHandleCreated || disposed) return;
-
-			Reveal(activate: true);
-			CenterToScreen();
-		}
-
-		public void Reveal(bool activate = false)
-		{
-			if (!IsHandleCreated || disposed) return;
-
-			if (InvokeRequired)
-				BeginInvoke(new Action(() => Reveal_Invoke(activate)));
-			else
-				Reveal_Invoke(activate);
-		}
-
-		void Reveal_Invoke(bool activate)
-		{
-			if (!IsHandleCreated || disposed) return;
-
-			try
-			{
-				WindowState = FormWindowState.Normal;
-				// shuffle to top in the most hackish way possible, these are all unreliable
-				// does nothing without show(), unreliable even with it
-				if (activate)
-				{
-					//TopMost = true;
-					//TopMost = false;
-					Activate();
-				}
-				Show();
-			}
-			catch (Exception ex)
-			{
-				Logging.Stacktrace(ex);
-			}
-		}
-
-		public void ShowLastLog()
-		{
-			if (disposed) return;
-
-			BeginInvoke(new Action(() =>
-			{
-				int count = LogList.Items.Count;
-				//if (count > 0) LogList.EnsureVisible(count - 1);
-
-				if (count > 0)
-				{
-					var li = LogList.Items[count - 1];
-					//li.Focused = true; // does nothing
-					LogList.TopItem = li;
-				}
-			}));
-		}
-
-		// HOOKS
-		Audio.MicManager micmanager = null;
-		StorageManager storagemanager = null;
-		Process.Manager processmanager = null;
-		Process.ForegroundManager activeappmonitor = null;
-		Power.Manager powermanager = null;
-		CPUMonitor cpumonitor = null;
-		Network.Manager netmonitor = null;
-
-		#region Microphone control code
-		Audio.Device DefaultAudioInput = null;
-
-		void SetDefaultCommDevice()
-		{
-			if (!IsHandleCreated || disposed) return;
-
-			if (InvokeRequired)
-				BeginInvoke(new Action(SetDefaultCommDevice_Invoke));
-			else
-				SetDefaultCommDevice_Invoke();
-		}
-
-		void SetDefaultCommDevice_Invoke()
-		{
-			if (!IsHandleCreated || disposed) return;
-
-			try
-			{
-				// TODO: less direct access to mic manager
-
-				var devname = micmanager.Device.Name;
-
-				AudioInputDevice.Text = !string.IsNullOrEmpty(devname) ? devname : HumanReadable.Generic.NotAvailable;
-
-				corCountLabel.Text = micmanager.Corrections.ToString();
-
-				AudioInputVolume.Maximum = Convert.ToDecimal(Audio.MicManager.Maximum);
-				AudioInputVolume.Minimum = Convert.ToDecimal(Audio.MicManager.Minimum);
-				AudioInputVolume.Value = Convert.ToInt32(micmanager.Volume);
-
-				AudioInputEnable.SelectedIndex = micmanager.Control ? 0 : 1;
-			}
-			catch (OutOfMemoryException) { throw; }
-			catch (Exception ex)
-			{
-				Logging.Stacktrace(ex);
-			}
-		}
-
-		void AddAudioInput(Audio.Device device)
-		{
-			if (micmanager is null) return;
-
-			try
-			{
-				var li = new ListViewItem(new string[] {
-					device.Name,
-					device.GUID.ToString(),
-					$"{device.Volume * 100d:N1} %",
-					$"{device.Target:N1} %",
-					(device.VolumeControl ? HumanReadable.Generic.Enabled : HumanReadable.Generic.Disabled),
-					device.State.ToString(),
-				});
-
-				AudioInputs.Items.Add(li);
-				MicGuidToAudioInputs.TryAdd(device.GUID, li);
-			}
-			catch (OutOfMemoryException) { throw; }
-			catch (Exception ex)
-			{
-				Logging.Stacktrace(ex);
-			}
-		}
-
-		void AlternateListviewRowColors(ListView lv, bool alternate = false)
-		{
-			bool alter = true;
-			foreach (ListViewItem li in lv.Items)
-				li.BackColor = (alternate && (alter = !alter)) ? AlterColor : DefaultLIBGColor;
-		}
-
-		void RemoveAudioInput(Guid guid)
-		{
-			if (micmanager is null) return;
-
-			if (MicGuidToAudioInputs.TryRemove(guid, out var li))
-				AudioInputs.Items.Remove(li);
-		}
-
-		void UpdateAudioInputs()
-		{
-			if (!IsHandleCreated || disposed) return;
-
-			if (micmanager is null) return;
-
-			// TODO: mark default device in list
-			AudioInputs.Items.Clear();
-
-			foreach (var dev in micmanager.Devices)
-				AddAudioInput(dev);
-
-			AlternateListviewRowColors(AudioInputs, AlternateRowColorsDevices);
-		}
-
-		Audio.Manager audiomanager = null;
-
-		public async Task Hook(Audio.Manager manager)
-		{
-			Debug.Assert(manager != null);
-
-			try
-			{
-				audiomanager = manager;
-				audiomanager.StateChanged += AudioDeviceStateChanged;
-				audiomanager.Removed += AudioDeviceRemoved;
-				audiomanager.Added += AudioDeviceAdded;
-				audiomanager.OnDisposed += (_, _ea) => audiomanager = null;
-			}
-			catch (OutOfMemoryException) { throw; }
-			catch (Exception ex)
-			{
-				Logging.Stacktrace(ex);
-				throw;
-			}
-		}
-
-		public async Task Hook(Audio.MicManager manager)
-		{
-			Debug.Assert(manager != null);
-
-			try
-			{
-				micmanager = manager;
-				micmanager.OnDisposed += (_, _ea) => micmanager = null;
-
-				if (Trace) Log.Verbose("Hooking microphone monitor.");
-
-				BeginInvoke(new Action(() =>
-				{
-					if (IsDisposed || !IsHandleCreated) return;
-
-					try
-					{
-						SetDefaultCommDevice();
-						UpdateAudioInputs();
-					}
-					catch (OutOfMemoryException) { throw; }
-					catch (Exception ex)
-					{
-						Logging.Stacktrace(ex);
-					}
-				}));
-
-				// TODO: Hook all device changes
-				micmanager.VolumeChanged += VolumeChangeDetected;
-				micmanager.DefaultChanged += MicrophoneDefaultChanged;
-
-				FormClosing += (_, _ea) => micmanager.VolumeChanged -= VolumeChangeDetected;
-			}
-			catch (OutOfMemoryException) { throw; }
-			catch (Exception ex)
-			{
-				Logging.Stacktrace(ex);
-				throw;
-			}
-		}
-
-		void AudioDeviceAdded(object sender, Audio.DeviceEventArgs ea)
-		{
-			if (IsDisposed || !IsHandleCreated) return;
-
-			switch (ea.Device.Flow)
-			{
-				case NAudio.CoreAudioApi.DataFlow.Capture:
-					if (micmanager is null) return;
-					AddAudioInput(ea.Device);
-					AlternateListviewRowColors(AudioInputs, AlternateRowColorsDevices);
-					break;
-				case NAudio.CoreAudioApi.DataFlow.Render:
-					break;
-			}
-		}
-
-		void AudioDeviceRemoved(object sender, Audio.DeviceEventArgs ea)
-		{
-			if (IsDisposed || !IsHandleCreated) return;
-
-			if (micmanager is null) return;
-
-			RemoveAudioInput(ea.GUID);
-			AlternateListviewRowColors(AudioInputs, AlternateRowColorsDevices);
-		}
-
-		void MicrophoneDefaultChanged(object sender, Audio.DefaultDeviceEventArgs ea)
-		{
-			if (IsDisposed || !IsHandleCreated) return;
-
-			DefaultAudioInput = ea.Device;
-
-			if (InvokeRequired)
-				BeginInvoke(new Action(MicrophoneDefaultChanged_Update));
-			else
-				MicrophoneDefaultChanged_Update();
-		}
-
-		void MicrophoneDefaultChanged_Update()
-		{
-			if (IsDisposed || !IsHandleCreated) return;
-
-			try
-			{
-				if (DefaultAudioInput is null)
-				{
-					AudioInputEnable.Text = HumanReadable.Generic.Uninitialized;
-					AudioInputDevice.Text = HumanReadable.Generic.Uninitialized;
-				}
-				else
-				{
-					//AudioInputEnable.SelectedIndex = micmon.Control ? 0 : 1;
-					//AudioInputEnable.Text = HumanReadable.Generic.Ellipsis;
-					//AudioInputDevice.Text = HumanReadable.Generic.Ellipsis;
-					SetDefaultCommDevice();
-				}
-
-				UpdateAudioInputs();
-			}
-			catch (OutOfMemoryException) { throw; }
-			catch (Exception ex)
-			{
-				Logging.Stacktrace(ex);
-			}
-		}
-
-		readonly ConcurrentDictionary<Guid, ListViewItem> MicGuidToAudioInputs = new ConcurrentDictionary<Guid, ListViewItem>();
-
-		void AudioDeviceStateChanged(object sender, Audio.DeviceStateEventArgs ea)
-		{
-			if (IsDisposed || !IsHandleCreated) return;
-
-			if (InvokeRequired)
-				BeginInvoke(new Action(() => AudioDeviceStateChanged_Update(ea)));
-			else
-				AudioDeviceStateChanged_Update(ea);
-		}
-
-		void AudioDeviceStateChanged_Update(Audio.DeviceStateEventArgs ea)
-		{
-			if (IsDisposed || !IsHandleCreated) return;
-
-			if (MicGuidToAudioInputs.TryGetValue(ea.GUID, out ListViewItem li))
-				li.SubItems[5].Text = ea.State.ToString();
-		}
-
-		void UserMicVol(object _, EventArgs _ea)
-		{
-			// TODO: Handle volume changes. Not really needed. Give presets?
-			// micMonitor.setVolume(micVol.Value);
-		}
-
-		void VolumeChangeDetected(object _, VolumeChangedEventArgs ea)
-		{
-			if (!IsHandleCreated || disposed) return;
-
-			if (InvokeRequired)
-				BeginInvoke(new Action(() => VolumeChangeDetected_Update(ea)));
-			else
-				VolumeChangeDetected_Update(ea);
-		}
-
-		void VolumeChangeDetected_Update(VolumeChangedEventArgs ea)
-		{
-			if (!IsHandleCreated || disposed) return;
-
-			AudioInputVolume.Value = Convert.ToInt32(ea.New); // this could throw ArgumentOutOfRangeException, but we trust the source
-			corCountLabel.Text = ea.Corrections.ToString();
-		}
-		#endregion // Microphone control code
-
-		public void ProcessTouchEvent(Process.ModificationInfo mi)
-		{
-			if (!IsHandleCreated || disposed) return;
-
-			if (InvokeRequired)
-				BeginInvoke(new Action(() => ProcessTouchEvent_Update(mi)));
-			else
-				ProcessTouchEvent_Update(mi);
-		}
-
-		void ProcessTouchEvent_Update(Process.ModificationInfo pmi)
-		{
-			if (!IsHandleCreated || disposed) return;
-
-			//adjustcounter.Text = Statistics.TouchCount.ToString();
-
-			var prc = pmi.Info.Controller; // cache
-
-			try
-			{
-				if (WatchlistMap.TryGetValue(prc, out ListViewItem item))
-				{
-					item.SubItems[AdjustColumn].Text = prc.Adjusts.ToString();
-					// item.SubItems[SeenColumn].Text = prc.LastSeen.ToLocalTime().ToString();
-				}
-				else
-					Log.Error(prc.FriendlyName + " not found in UI watchlist list.");
-			}
-			catch (Exception ex) { Logging.Stacktrace(ex); }
-
-			if (LastModifiedList)
-			{
-				try
-				{
-					var info = pmi.Info;
-					var mi = new ListViewItem(new string[] {
-							DateTime.Now.ToLongTimeString(),
-							info.Name,
-							prc.FriendlyName,
-							(pmi.PriorityNew.HasValue ? MKAh.Readable.ProcessPriority(pmi.PriorityNew.Value) : HumanReadable.Generic.NotAvailable),
-							(pmi.AffinityNew >= 0 ? HumanInterface.BitMask(pmi.AffinityNew, Process.Utility.CPUCount) : HumanReadable.Generic.NotAvailable),
-							info.Path
-						});
-					lastmodifylist.Items.Add(mi);
-					if (lastmodifylist.Items.Count > 5) lastmodifylist.Items.RemoveAt(0);
-				}
-				catch (Exception ex) { Logging.Stacktrace(ex); }
-			}
-		}
-
-		public void OnActiveWindowChanged(object _, Process.WindowChangedArgs windowchangeev)
-		{
-			if (!IsHandleCreated || disposed) return;
-			if (windowchangeev.Process is null) return;
-
-			if (InvokeRequired)
-				BeginInvoke(new Action(() => OnActiveWindowChanged_Update(windowchangeev)));
-			else
-				OnActiveWindowChanged_Update(windowchangeev);
-		}
-
-		void OnActiveWindowChanged_Update(Process.WindowChangedArgs windowchangeev)
-		{
-			// int maxlength = 70;
-			// string cutstring = e.Title.Substring(0, Math.Min(maxlength, e.Title.Length)) + (e.Title.Length > maxlength ? "..." : "");
-			// activeLabel.Text = cutstring;
-			activeLabel.Text = windowchangeev.Title;
-			activeExec.Text = windowchangeev.Executable;
-			activeFullscreen.Text = windowchangeev.Fullscreen ? "Full" : "Window";
-			activePID.Text = windowchangeev.Id.ToString();
-		}
-
-		public async Task Hook(StorageManager manager)
-		{
-			storagemanager = manager;
-			storagemanager.TempScan = TempScanStats;
-			storagemanager.OnDisposed += (_, _ea) => storagemanager = null;
-		}
-
-		public async Task Hook(Process.Manager manager)
-		{
-			Debug.Assert(manager != null);
-
-			processmanager = manager;
-			processmanager.OnDisposed += (_, _ea) => processmanager = null;
-
-			//processmanager.HandlingCounter += ProcessNewInstanceCount;
-			processmanager.ProcessStateChange += ExitWaitListHandler;
-			if (DebugCache) PathCacheUpdate(null, EventArgs.Empty);
-
-			ProcessNewInstanceCount(new Process.ProcessingCountEventArgs(0, 0));
-
-			WatchlistRules.VisibleChanged += (_, _ea) => { if (WatchlistRules.Visible) WatchlistColor(); };
-
-			BeginInvoke(new Action(() =>
-			{
-				foreach (var prc in processmanager.GetWatchlist())
-					AddToWatchlistList(prc);
-
-				WatchlistColor();
-			}));
-
-			if (manager.ScanFrequency.HasValue)
-			{
-				UItimer.Tick += UpdateRescanCountdown;
-				GotFocus += UpdateRescanCountdown;
-				UpdateRescanCountdown(this, EventArgs.Empty);
-			}
-
-			processmanager.WatchlistSorted += UpdateWatchlist;
-			processmanager.ProcessModified += ProcessTouchEvent;
-
-			await Task.Delay(0).ConfigureAwait(false);
-
-			foreach (var info in processmanager.GetExitWaitList())
-				ExitWaitListHandler(info);
-
-			// Enable UI features.
-			menu_view_loaders.Enabled = processmanager?.LoaderTracking ?? false;
-		}
-
-		void UnhookProcessManager()
-		{
-			processmanager.ProcessModified -= ProcessTouchEvent;
-			//processmanager.HandlingCounter -= ProcessNewInstanceCount;
-			processmanager.ProcessStateChange -= ExitWaitListHandler;
-			processmanager.HandlingStateChange -= ProcessHandlingStateChangeEvent;
-		}
-
-		void UpdateWatchlist(object _, EventArgs _ea)
-		{
-			if (!IsHandleCreated || disposed) return;
-
-			if (InvokeRequired)
-				BeginInvoke(new Action(UpdateWatchlist_Invoke));
-			else
-				UpdateWatchlist_Invoke();
-		}
-
-		void UpdateWatchlist_Invoke()
-		{
-			if (!IsHandleCreated || disposed) return;
-
-			foreach (var li in WatchlistMap)
-			{
-				li.Value.SubItems[0].Text = (li.Key.ActualOrder + 1).ToString();
-				WatchlistItemColor(li.Value, li.Key);
-			}
-
-			// re-sort if user is not interacting?
-		}
-
-		void RescanRequestEvent(object _, EventArgs _ea) => processmanager?.HastenScan(TimeSpan.Zero);
-
-		void RestartRequestEvent(object sender, EventArgs _ea) => ConfirmExit(restart: true, admin: sender == menu_action_restartadmin);
-
-		void ProcessNewInstanceCount(Process.ProcessingCountEventArgs e)
-		{
-			if (!IsHandleCreated || disposed) return;
-
-			// TODO: Don't update UI so much.
-
-			if (InvokeRequired)
-				BeginInvoke(new Action(() => ProcessNewInstanceCount_Invoke(e)));
-			else
-				ProcessNewInstanceCount_Invoke(e);
-		}
-
-		void ProcessNewInstanceCount_Invoke(Process.ProcessingCountEventArgs e)
-		{
-			if (!IsHandleCreated || disposed) return;
-
-			processingcount.Text = e.Total.ToString();
-		}
-
-		/// <summary>
-		///
-		/// </summary>
-		/// <remarks>No locks</remarks>
-		void WatchlistItemColor(ListViewItem li, Process.Controller prc)
-		{
-			var alter = AlternateRowColorsWatchlist && (li.Index + 1) % 2 == 0; // every even line
-
-			try
-			{
-				li.UseItemStyleForSubItems = false;
-				foreach (ListViewItem.ListViewSubItem si in li.SubItems)
-				{
-					if (prc.Enabled)
-						si.ForeColor = System.Drawing.SystemColors.ControlText;
-					else
-						si.ForeColor = System.Drawing.SystemColors.GrayText;
-
-					if (alter) si.BackColor = AlterColor;
-					else si.BackColor = DefaultLIBGColor;
-				}
-
-				if (prc.PriorityStrategy == Process.PriorityStrategy.None)
-					li.SubItems[PrioColumn].ForeColor = System.Drawing.SystemColors.GrayText;
-				if (string.IsNullOrEmpty(prc.Path))
-					li.SubItems[PathColumn].ForeColor = System.Drawing.SystemColors.GrayText;
-				if (prc.PowerPlan == Power.Mode.Undefined)
-					li.SubItems[PowerColumn].ForeColor = System.Drawing.SystemColors.GrayText;
-				if (prc.AffinityMask < 0)
-					li.SubItems[AffColumn].ForeColor = System.Drawing.SystemColors.GrayText;
-			}
-			catch (Exception ex)
-			{
-				Logging.Stacktrace(ex);
-			}
-		}
-
-		int watchlistcolor_i = 0;
-
-		void WatchlistColor()
-		{
-			if (Trace) Logging.DebugMsg("COLORING LINES");
-
-			System.Threading.Interlocked.Increment(ref watchlistcolor_i);
-
-			lock (watchlist_lock)
-			{
-				try
-				{
-					int i = 0;
-					foreach (var item in WatchlistMap)
-					{
-						if (watchlistcolor_i > 1) return;
-
-						if (Trace) Logging.DebugMsg($"{i++:00} --- {item.Value.Index:00} : {(item.Value.Index + 1) % 2 == 0} --- {item.Key.FriendlyName}");
-						WatchlistItemColor(item.Value, item.Key);
-					}
-				}
-				finally
-				{
-					System.Threading.Interlocked.Decrement(ref watchlistcolor_i);
-				}
-			}
-		}
-
-		void AddToWatchlistList(Process.Controller prc)
-		{
-			string aff = string.Empty;
-			if (prc.AffinityMask > 0)
-			{
-				if (AffinityStyle == 0)
-					aff = HumanInterface.BitMask(prc.AffinityMask, Process.Utility.CPUCount);
-				else
-					aff = prc.AffinityMask.ToString();
-			}
-
-			var litem = new ListViewItem(new string[] {
-				(prc.ActualOrder+1).ToString(),
-				prc.OrderPreference.ToString(),
-				prc.FriendlyName,
-				prc.Executables?.Length > 0 ? string.Join(", ", prc.Executables) : string.Empty,
-				string.Empty,
-				aff,
-				string.Empty,
-				prc.Adjusts.ToString(),
-				string.Empty
-			});
-
-			WatchlistRules.Items.Add(litem);
-			WatchlistMap.TryAdd(prc, litem);
-
-			FormatWatchlist(litem, prc);
-			WatchlistUpdateTooltip(litem, prc);
-			WatchlistItemColor(litem, prc);
-		}
-
-		static void WatchlistUpdateTooltip(ListViewItem li, Process.Controller prc)
-		{
-			// BUG: Doens't work for some reason. Gets set but is never shown.
-			//li.ToolTipText = prc.ToDetailedString();
-		}
-
-		void FormatWatchlist(ListViewItem litem, Process.Controller prc)
-		{
-			if (!IsHandleCreated || disposed) return;
-
-			if (InvokeRequired)
-				BeginInvoke(new Action(() => FormatWatchlist_Invoke(litem, prc)));
-			else
-				FormatWatchlist_Invoke(litem, prc);
-		}
-
-		void FormatWatchlist_Invoke(ListViewItem litem, Process.Controller prc)
-		{
-			if (!IsHandleCreated || disposed) return;
-
-			litem.SubItems[PrefColumn].Text = prc.OrderPreference.ToString();
-			litem.SubItems[NameColumn].Text = prc.FriendlyName;
-			litem.SubItems[ExeColumn].Text = (prc.Executables?.Length > 0) ? string.Join(", ", prc.Executables) : string.Empty;
-			litem.SubItems[PrioColumn].Text = prc.Priority.HasValue ? MKAh.Readable.ProcessPriority(prc.Priority.Value) : string.Empty;
-			string aff = string.Empty;
-			if (prc.AffinityMask >= 0)
-			{
-				if (prc.AffinityMask == Process.Utility.FullCPUMask || prc.AffinityMask == 0)
-					aff = "Full/OS";
-				else if (AffinityStyle == 0)
-					aff = HumanInterface.BitMask(prc.AffinityMask, Process.Utility.CPUCount);
-				else
-					aff = prc.AffinityMask.ToString();
-			}
-			litem.SubItems[AffColumn].Text = aff;
-			litem.SubItems[PowerColumn].Text = (prc.PowerPlan != Power.Mode.Undefined ? Power.Utility.GetModeName(prc.PowerPlan) : string.Empty);
-			litem.SubItems[PathColumn].Text = (string.IsNullOrEmpty(prc.Path) ? string.Empty : prc.Path);
-		}
-
-		public void UpdateWatchlistRule(Process.Controller prc)
-		{
-			if (!IsHandleCreated || disposed) return;
-
-			if (WatchlistMap.TryGetValue(prc, out ListViewItem litem))
-			{
-				if (InvokeRequired)
-					BeginInvoke(new Action(() => UpdateWatchlistRule_Invoke(litem, prc)));
-				else
-					UpdateWatchlistRule_Invoke(litem, prc);
-			}
-		}
-
-		void UpdateWatchlistRule_Invoke(ListViewItem litem, Process.Controller prc)
-		{
-			if (!IsHandleCreated || disposed) return;
-
-			FormatWatchlist(litem, prc);
-
-			WatchlistUpdateTooltip(litem, prc);
-
-			WatchlistItemColor(litem, prc);
-		}
-
-		AlignedLabel AudioInputDevice = null;
-		Extensions.NumericUpDownEx AudioInputVolume = null;
-		Extensions.ListViewEx AudioInputs = null, WatchlistRules;
-
-		readonly ConcurrentDictionary<Process.Controller, ListViewItem> WatchlistMap = new ConcurrentDictionary<Process.Controller, ListViewItem>();
-		readonly object watchlist_lock = new object();
-
-		AlignedLabel corCountLabel = null;
-		ComboBox AudioInputEnable = null;
-
-		Extensions.ListViewEx lastmodifylist = null, powerbalancerlog = null;
-
-		AlignedLabel powerbalancer_behaviour = null, powerbalancer_plan = null, powerbalancer_forcedcount = null;
-
-		Extensions.ListViewEx ExitWaitList = null, ProcessingList = null;
-		ConcurrentDictionary<int, ListViewItem> ExitWaitlistMap = null;
-
-		#region Foreground Monitor
-		AlignedLabel activeLabel = null, activeExec = null, activeFullscreen = null, activePID = null;
-		#endregion
-
-		#region Path Cache
-		AlignedLabel cacheObjects = null, cacheRatio = null;
-		#endregion
-
-		int PathCacheUpdate_Lock = 0;
-
-		public async void PathCacheUpdate(object _, EventArgs _ea)
-		{
-			if (!IsHandleCreated || disposed) return;
-
-			if (!Atomic.Lock(ref PathCacheUpdate_Lock)) return;
-
-			try
-			{
-				await Task.Delay(5_000).ConfigureAwait(false);
-
-				if (InvokeRequired)
-					BeginInvoke(new Action(PathCacheUpdate_Invoke));
-				else
-					PathCacheUpdate_Invoke();
-			}
-			finally
-			{
-				Atomic.Unlock(ref PathCacheUpdate_Lock);
-			}
-		}
-
-		void PathCacheUpdate_Invoke()
-		{
-			cacheObjects.Text = Statistics.PathCacheCurrent.ToString();
-			double ratio = (Statistics.PathCacheMisses > 0 ? ((double)Statistics.PathCacheHits / (double)Statistics.PathCacheMisses) : 1d);
-			cacheRatio.Text = ratio <= 99.99f ? $"{ratio:N2}" : ">99.99"; // let's just not overflow the UI
-		}
-
-		// BackColor = System.Drawing.Color.LightGoldenrodYellow
-		AlignedLabel netstatuslabel, inetstatuslabel, uptimestatuslabel, uptimeMeanLabel, netTransmit, netQueue;
-
-		public static Serilog.Core.LoggingLevelSwitch LogIncludeLevel;
-
-		public int UIUpdateFrequency
-		{
-			get => UItimer.Interval;
-			set
-			{
-				int freq = value.Constrain(100, 5000);
-				UItimer.Interval = freq;
-			}
-		}
-
-		public void SetUIUpdateFrequency(int freq) => UIUpdateFrequency = freq;
-
-		readonly System.Windows.Forms.Timer UItimer = new System.Windows.Forms.Timer();
-
-		void StartUIUpdates(object sender, EventArgs _ea)
-		{
-			if (!IsHandleCreated) StopUIUpdates(this, EventArgs.Empty);
-			else if (!UItimer.Enabled)
-			{
-				UpdateMemoryStats(sender, EventArgs.Empty);
-				UpdateHealthMon(sender, EventArgs.Empty);
-				UpdateNetwork(sender, EventArgs.Empty);
-				UItimer.Start();
-			}
-		}
-
-		void StopUIUpdates(object _, EventArgs _ea)
-		{
-			if (UItimer.Enabled) UItimer.Stop();
-		}
-
-		void Cleanup(object _, EventArgs _ea)
-		{
-			if (!IsHandleCreated) return;
-
-			if (LastCauseTime.To(DateTimeOffset.UtcNow).TotalMinutes >= 3d)
-			{
-				pwcause.Text = HumanReadable.Generic.NotAvailable;
-			}
-		}
-
-		void UpdateRescanCountdown(object _, EventArgs _ea)
-		{
-			if (!IsHandleCreated) return;
-			if (processmanager is null) return; // not yet assigned
-
-			// Rescan Countdown
-			if (processmanager.ScanFrequency.HasValue)
-				processingtimer.Text = $"{DateTimeOffset.UtcNow.To(processmanager.NextScan).TotalSeconds:N0}s";
-			else
-				processingtimer.Text = HumanReadable.Generic.NotAvailable;
-		}
-
-		void UpdateNetwork(object _, EventArgs _ea)
-		{
-			if (!IsHandleCreated) return;
-			if (netmonitor is null) return;
-
-			uptimestatuslabel.Text = HumanInterface.TimeString(netmonitor.Uptime);
-			var mean = netmonitor.UptimeMean();
-			if (double.IsInfinity(mean))
-				uptimeMeanLabel.Text = "Infinite";
-			else
-				uptimeMeanLabel.Text = HumanInterface.TimeString(TimeSpan.FromMinutes(mean));
-
-			var delta = netmonitor.GetTraffic;
-			//float netTotal = delta.Input + delta.Output;
-			netTransmit.Text = $"{delta.Input / 1000:N1} kB In, {delta.Output / 1000:N1} kB Out [{delta.Packets:N0} packets; {delta.Queue:N0} queued]";
-		}
-
-		Extensions.ListViewEx NetworkDevices = null;
-
-		ContextMenuStrip ifacems, watchlistms;
-		ToolStripMenuItem watchlistenable, watchlistadd;
-
-		void InterfaceContextMenuOpen(object _, EventArgs _ea)
-		{
-			try
-			{
-				foreach (ToolStripItem msi in ifacems.Items)
-					msi.Enabled = (NetworkDevices.SelectedItems.Count == 1);
-			}
-			catch { } // discard
-		}
-
-		void CopyIPv4AddressToClipboard(object _, EventArgs _ea)
-		{
-			if (NetworkDevices.SelectedItems.Count == 1)
-				Clipboard.SetText(NetworkDevices.SelectedItems[0].SubItems[IPv4Column].Text, TextDataFormat.UnicodeText);
-		}
-
-		void CopyIPv6AddressToClipboard(object _, EventArgs _ea)
-		{
-			if (NetworkDevices.SelectedItems.Count == 1)
-				Clipboard.SetText($"[{NetworkDevices.SelectedItems[0].SubItems[IPv6Column].Text}]", TextDataFormat.UnicodeText);
-		}
-
-		void CopyIfaceToClipboard(object _, EventArgs _ea)
-		{
-			if (NetworkDevices.SelectedItems.Count == 1)
-				Clipboard.SetText(netmonitor.GetDeviceData(NetworkDevices.SelectedItems[0].SubItems[0].Text), TextDataFormat.UnicodeText);
-		}
-
-		void CopyLogToClipboard(object _, EventArgs _ea)
-		{
-			var selected = LogList.SelectedIndices;
-			if (selected.Count == 0) return;
-
-			var sbs = new StringBuilder(256);
-
-			foreach (int item in selected)
-				sbs.Append(LogList.Items[item].SubItems[0].Text);
-
-			Clipboard.SetText(sbs.ToString(), TextDataFormat.UnicodeText);
-		}
-
-		Extensions.TabControl tabs;
-
-		// TODO: Easier column access somehow than this?
-		//int OrderColumn = 0;
-		const int PrefColumn = 1, NameColumn = 2, ExeColumn = 3, PrioColumn = 4, AffColumn = 5, PowerColumn = 6, AdjustColumn = 7, PathColumn = 8;
-
-		Extensions.TabPage infoTab, watchTab, micTab = null, powerDebugTab = null, ProcessDebugTab = null;
-
-		ToolStripMenuItem
-			#if DEBUG
-			menu_debug_loglevel_trace,
-			#endif
-			menu_debug_loglevel_info,
-			menu_debug_loglevel_debug;
-
-		void EnsureVerbosityLevel()
-		{
-			if (LogIncludeLevel.MinimumLevel == Serilog.Events.LogEventLevel.Information)
-				LogIncludeLevel.MinimumLevel = Serilog.Events.LogEventLevel.Debug;
-			UpdateLogLevelSelection();
-		}
-
-		void UpdateLogLevelSelection()
-		{
-			var level = LogIncludeLevel.MinimumLevel;
-
-			menu_debug_loglevel_info.Checked = (level == Serilog.Events.LogEventLevel.Information);
-			menu_debug_loglevel_debug.Checked = (level == Serilog.Events.LogEventLevel.Debug);
-#if DEBUG
-			menu_debug_loglevel_trace.Checked = (level == Serilog.Events.LogEventLevel.Verbose);
-#endif
-		}
-
-		int MinimumHeight = 0;
-		//int MinimumWidth = 0;
-
-		ToolStripMenuItem menu_action_restartadmin = null;
-
-		const string UpdateFrequencyName = "Update frequency",
-			TopmostName = "Topmost",
-			InfoName = "Info",
-			TraceName = "Trace",
-			ShowUnmodifiedPortionsName = "Unmodified portions",
-			WatchlistName = "Watchlist";
-
-		ToolStripMenuItem power_auto, power_highperf, power_balanced, power_saving, power_manual;
-
-		void BuildUI()
-		{
 			Text = Application.Name
 				/*
 				+ " " + Version
@@ -2014,7 +1006,1019 @@ namespace Taskmaster.UI
 				GotFocus += PathCacheUpdate;
 				PathCacheUpdate(this, EventArgs.Empty);
 			}
+			#endregion
+
+			tooltip.IsBalloon = true;
+			tooltip.InitialDelay = 2000;
+			tooltip.ShowAlways = true;
+
+			WatchlistSearchTimer.Interval = 250;
+			WatchlistSearchTimer.Tick += WatchlistSearchTimer_Tick;
+
+			// TODO: Detect mic device changes
+			// TODO: Delay fixing by 5 seconds to prevent fix diarrhea
+
+			// the form itself
+			WindowState = FormWindowState.Normal;
+
+			FormBorderStyle = FormBorderStyle.Sizable;
+			SizeGripStyle = SizeGripStyle.Auto;
+
+			AutoSizeMode = AutoSizeMode.GrowOnly;
+			AutoSize = false;
+
+			MaximizeBox = true;
+			MinimizeBox = true;
+
+			MinimumHeight += tabs.MinimumSize.Height
+				+ LogList.MinimumSize.Height
+				+ menu.Height
+				+ statusbar.Height
+				+ 40; // why is this required? window deco?
+
+			MinimumSize = new System.Drawing.Size(780, MinimumHeight);
+
+			// FormBorderStyle = FormBorderStyle.FixedDialog; // no min/max buttons as wanted
+
+			if (!ShowOnStart)
+			{
+				Logging.DebugMsg("<Main Window> Show on start disabled, hiding.");
+				Hide();
+			}
+
+			// CenterToScreen();
+
+			Shown += OnShown;
+
+			// TODO: WPF
+			/*
+			System.Windows.Shell.JumpList jumplist = System.Windows.Shell.JumpList.GetJumpList(System.Windows.Application.Current);
+			//System.Windows.Shell.JumpTask task = new System.Windows.Shell.JumpTask();
+			System.Windows.Shell.JumpPath jpath = new System.Windows.Shell.JumpPath();
+			jpath.Path = cfgpath;
+			jumplist.JumpItems.Add(jpath);
+			jumplist.Apply();
+			*/
+
+			FillLog();
+
+			if (Trace) Log.Verbose("MainWindow constructed");
+
+			ResumeLayout(performLayout: false);
+			Visible = true;
 		}
+
+		void OnShown(object _, EventArgs _ea)
+		{
+			Logging.DebugMsg("<Main Window> Showing");
+
+			if (!IsHandleCreated) return;
+
+			ShowLastLog();
+		}
+
+		public void ExitRequest(object _, EventArgs _ea) => ConfirmExit(restart: false);
+
+		void WindowClose(object _, FormClosingEventArgs ea)
+		{
+			try
+			{
+				SaveUIState();
+
+				if (!Trace) return;
+
+				Logging.DebugMsg("WindowClose = " + ea.CloseReason.ToString());
+				switch (ea.CloseReason)
+				{
+					case CloseReason.UserClosing:
+						// X was pressed or similar
+						break;
+					case CloseReason.WindowsShutDown:
+						Log.Debug("Exit: Windows shutting down.");
+						break;
+					case CloseReason.TaskManagerClosing:
+						Log.Debug("Exit: Task manager told us to close.");
+						break;
+					case CloseReason.ApplicationExitCall:
+						Log.Debug("Exit: User asked to close.");
+						break;
+					default:
+						Log.Debug("Exit: Unidentified close reason: " + ea.CloseReason.ToString());
+						break;
+				}
+				Logging.DebugMsg("WindowClose.Handled");
+			}
+			catch (Exception ex) { Logging.Stacktrace(ex); }
+		}
+
+		// this restores the main window to a place where it can be easily found if it's lost
+		/// <summary>
+		/// Restores the main window to the center of the screen.
+		/// </summary>
+		public void UnloseWindowRequest(object _, EventArgs e)
+		{
+			if (Trace) Log.Verbose("Making sure main window is not lost.");
+
+			if (!IsHandleCreated || disposed) return;
+
+			Reveal(activate: true);
+			CenterToScreen();
+		}
+
+		public void Reveal(bool activate = false)
+		{
+			if (!IsHandleCreated || disposed) return;
+
+			if (InvokeRequired)
+				BeginInvoke(new Action(() => Reveal_Invoke(activate)));
+			else
+				Reveal_Invoke(activate);
+		}
+
+		void Reveal_Invoke(bool activate)
+		{
+			if (!IsHandleCreated || disposed) return;
+
+			try
+			{
+				WindowState = FormWindowState.Normal;
+				// shuffle to top in the most hackish way possible, these are all unreliable
+				// does nothing without show(), unreliable even with it
+				if (activate)
+				{
+					//TopMost = true;
+					//TopMost = false;
+					Activate();
+				}
+				Show();
+			}
+			catch (Exception ex)
+			{
+				Logging.Stacktrace(ex);
+			}
+		}
+
+		public void ShowLastLog()
+		{
+			if (!IsHandleCreated || disposed) return;
+
+			if (InvokeRequired)
+				BeginInvoke(new Action(ShowLastLog_Invoke));
+			else
+				ShowLastLog_Invoke();
+		}
+
+		void ShowLastLog_Invoke()
+		{
+			if (!IsHandleCreated || disposed) return;
+
+			LogList.VirtualListSize = LogListData.Count;
+
+			int count = LogList.Items.Count;
+			//if (count > 0) LogList.EnsureVisible(count - 1);
+
+			if (count > 0)
+			{
+				var li = LogList.Items[count - 1];
+				//li.Focused = true; // does nothing
+				LogList.TopItem = li;
+			}
+		}
+
+		// HOOKS
+		Audio.MicManager micmanager = null;
+		StorageManager storagemanager = null;
+		Process.Manager processmanager = null;
+		Process.ForegroundManager activeappmonitor = null;
+		Power.Manager powermanager = null;
+		CPUMonitor cpumonitor = null;
+		Network.Manager netmonitor = null;
+
+		#region Microphone control code
+		Audio.Device DefaultAudioInput = null;
+
+		void SetDefaultCommDevice()
+		{
+			if (!IsHandleCreated || disposed) return;
+
+			if (InvokeRequired)
+				BeginInvoke(new Action(SetDefaultCommDevice_Invoke));
+			else
+				SetDefaultCommDevice_Invoke();
+		}
+
+		void SetDefaultCommDevice_Invoke()
+		{
+			if (!IsHandleCreated || disposed) return;
+
+			try
+			{
+				// TODO: less direct access to mic manager
+
+				var devname = micmanager.Device.Name;
+
+				AudioInputDevice.Text = !string.IsNullOrEmpty(devname) ? devname : HumanReadable.Generic.NotAvailable;
+
+				corCountLabel.Text = micmanager.Corrections.ToString();
+
+				AudioInputVolume.Maximum = Convert.ToDecimal(Audio.MicManager.Maximum);
+				AudioInputVolume.Minimum = Convert.ToDecimal(Audio.MicManager.Minimum);
+				AudioInputVolume.Value = Convert.ToInt32(micmanager.Volume);
+
+				AudioInputEnable.SelectedIndex = micmanager.Control ? 0 : 1;
+			}
+			catch (OutOfMemoryException) { throw; }
+			catch (Exception ex)
+			{
+				Logging.Stacktrace(ex);
+			}
+		}
+
+		void AddAudioInput(Audio.Device device)
+		{
+			if (micmanager is null) return;
+
+			try
+			{
+				var li = new ListViewItem(new string[] {
+					device.Name,
+					device.GUID.ToString(),
+					$"{device.Volume * 100d:N1} %",
+					$"{device.Target:N1} %",
+					(device.VolumeControl ? HumanReadable.Generic.Enabled : HumanReadable.Generic.Disabled),
+					device.State.ToString(),
+				});
+
+				AudioInputs.Items.Add(li);
+				MicGuidToAudioInputs.TryAdd(device.GUID, li);
+			}
+			catch (OutOfMemoryException) { throw; }
+			catch (Exception ex)
+			{
+				Logging.Stacktrace(ex);
+			}
+		}
+
+		void AlternateListviewRowColors(ListView lv, bool alternate = false)
+		{
+			bool alter = true;
+			foreach (ListViewItem li in lv.Items)
+				li.BackColor = (alternate && (alter = !alter)) ? AlterColor : DefaultLIBGColor;
+		}
+
+		void RemoveAudioInput(Guid guid)
+		{
+			if (micmanager is null) return;
+
+			if (MicGuidToAudioInputs.TryRemove(guid, out var li))
+				AudioInputs.Items.Remove(li);
+		}
+
+		void UpdateAudioInputs()
+		{
+			if (!IsHandleCreated || disposed) return;
+
+			if (micmanager is null) return;
+
+			// TODO: mark default device in list
+			AudioInputs.Items.Clear();
+
+			foreach (var dev in micmanager.Devices)
+				AddAudioInput(dev);
+
+			AlternateListviewRowColors(AudioInputs, AlternateRowColorsDevices);
+		}
+
+		Audio.Manager audiomanager = null;
+
+		public async Task Hook(Audio.Manager manager)
+		{
+			Debug.Assert(manager != null);
+
+			try
+			{
+				audiomanager = manager;
+				audiomanager.StateChanged += AudioDeviceStateChanged;
+				audiomanager.Removed += AudioDeviceRemoved;
+				audiomanager.Added += AudioDeviceAdded;
+				audiomanager.OnDisposed += (_, _ea) => audiomanager = null;
+			}
+			catch (OutOfMemoryException) { throw; }
+			catch (Exception ex)
+			{
+				Logging.Stacktrace(ex);
+				throw;
+			}
+		}
+
+		public async Task Hook(Audio.MicManager manager)
+		{
+			Debug.Assert(manager != null);
+
+			try
+			{
+				micmanager = manager;
+				micmanager.OnDisposed += (_, _ea) => micmanager = null;
+
+				if (Trace) Log.Verbose("Hooking microphone monitor.");
+
+				BeginInvoke(new Action(() =>
+				{
+					if (IsDisposed || !IsHandleCreated) return;
+
+					try
+					{
+						SetDefaultCommDevice();
+						UpdateAudioInputs();
+					}
+					catch (OutOfMemoryException) { throw; }
+					catch (Exception ex)
+					{
+						Logging.Stacktrace(ex);
+					}
+				}));
+
+				// TODO: Hook all device changes
+				micmanager.VolumeChanged += VolumeChangeDetected;
+				micmanager.DefaultChanged += MicrophoneDefaultChanged;
+
+				FormClosing += (_, _ea) => micmanager.VolumeChanged -= VolumeChangeDetected;
+			}
+			catch (OutOfMemoryException) { throw; }
+			catch (Exception ex)
+			{
+				Logging.Stacktrace(ex);
+				throw;
+			}
+		}
+
+		void AudioDeviceAdded(object sender, Audio.DeviceEventArgs ea)
+		{
+			if (IsDisposed || !IsHandleCreated) return;
+
+			switch (ea.Device.Flow)
+			{
+				case NAudio.CoreAudioApi.DataFlow.Capture:
+					if (micmanager is null) return;
+					AddAudioInput(ea.Device);
+					AlternateListviewRowColors(AudioInputs, AlternateRowColorsDevices);
+					break;
+				case NAudio.CoreAudioApi.DataFlow.Render:
+					break;
+			}
+		}
+
+		void AudioDeviceRemoved(object sender, Audio.DeviceEventArgs ea)
+		{
+			if (IsDisposed || !IsHandleCreated) return;
+
+			if (micmanager is null) return;
+
+			RemoveAudioInput(ea.GUID);
+			AlternateListviewRowColors(AudioInputs, AlternateRowColorsDevices);
+		}
+
+		void MicrophoneDefaultChanged(object sender, Audio.DefaultDeviceEventArgs ea)
+		{
+			if (IsDisposed || !IsHandleCreated) return;
+
+			DefaultAudioInput = ea.Device;
+
+			if (InvokeRequired)
+				BeginInvoke(new Action(MicrophoneDefaultChanged_Update));
+			else
+				MicrophoneDefaultChanged_Update();
+		}
+
+		void MicrophoneDefaultChanged_Update()
+		{
+			if (IsDisposed || !IsHandleCreated) return;
+
+			try
+			{
+				if (DefaultAudioInput is null)
+				{
+					AudioInputEnable.Text = HumanReadable.Generic.Uninitialized;
+					AudioInputDevice.Text = HumanReadable.Generic.Uninitialized;
+				}
+				else
+				{
+					//AudioInputEnable.SelectedIndex = micmon.Control ? 0 : 1;
+					//AudioInputEnable.Text = HumanReadable.Generic.Ellipsis;
+					//AudioInputDevice.Text = HumanReadable.Generic.Ellipsis;
+					SetDefaultCommDevice();
+				}
+
+				UpdateAudioInputs();
+			}
+			catch (OutOfMemoryException) { throw; }
+			catch (Exception ex)
+			{
+				Logging.Stacktrace(ex);
+			}
+		}
+
+		readonly ConcurrentDictionary<Guid, ListViewItem> MicGuidToAudioInputs = new ConcurrentDictionary<Guid, ListViewItem>();
+
+		void AudioDeviceStateChanged(object sender, Audio.DeviceStateEventArgs ea)
+		{
+			if (IsDisposed || !IsHandleCreated) return;
+
+			if (InvokeRequired)
+				BeginInvoke(new Action(() => AudioDeviceStateChanged_Update(ea)));
+			else
+				AudioDeviceStateChanged_Update(ea);
+		}
+
+		void AudioDeviceStateChanged_Update(Audio.DeviceStateEventArgs ea)
+		{
+			if (IsDisposed || !IsHandleCreated) return;
+
+			if (MicGuidToAudioInputs.TryGetValue(ea.GUID, out ListViewItem li))
+				li.SubItems[5].Text = ea.State.ToString();
+		}
+
+		void UserMicVol(object _, EventArgs _ea)
+		{
+			// TODO: Handle volume changes. Not really needed. Give presets?
+			// micMonitor.setVolume(micVol.Value);
+		}
+
+		void VolumeChangeDetected(object _, VolumeChangedEventArgs ea)
+		{
+			if (!IsHandleCreated || disposed) return;
+
+			if (InvokeRequired)
+				BeginInvoke(new Action(() => VolumeChangeDetected_Update(ea)));
+			else
+				VolumeChangeDetected_Update(ea);
+		}
+
+		void VolumeChangeDetected_Update(VolumeChangedEventArgs ea)
+		{
+			if (!IsHandleCreated || disposed) return;
+
+			AudioInputVolume.Value = Convert.ToInt32(ea.New); // this could throw ArgumentOutOfRangeException, but we trust the source
+			corCountLabel.Text = ea.Corrections.ToString();
+		}
+		#endregion // Microphone control code
+
+		public void ProcessTouchEvent(Process.ModificationInfo mi)
+		{
+			if (!IsHandleCreated || disposed) return;
+
+			if (InvokeRequired)
+				BeginInvoke(new Action(() => ProcessTouchEvent_Update(mi)));
+			else
+				ProcessTouchEvent_Update(mi);
+		}
+
+		void ProcessTouchEvent_Update(Process.ModificationInfo pmi)
+		{
+			if (!IsHandleCreated || disposed) return;
+
+			//adjustcounter.Text = Statistics.TouchCount.ToString();
+
+			var prc = pmi.Info.Controller; // cache
+
+			try
+			{
+				if (WatchlistMap.TryGetValue(prc, out ListViewItem item))
+				{
+					item.SubItems[AdjustColumn].Text = prc.Adjusts.ToString();
+					// item.SubItems[SeenColumn].Text = prc.LastSeen.ToLocalTime().ToString();
+				}
+				else
+					Log.Error(prc.FriendlyName + " not found in UI watchlist list.");
+			}
+			catch (Exception ex) { Logging.Stacktrace(ex); }
+
+			if (LastModifiedList)
+			{
+				try
+				{
+					var info = pmi.Info;
+					var mi = new ListViewItem(new string[] {
+							DateTime.Now.ToLongTimeString(),
+							info.Name,
+							prc.FriendlyName,
+							(pmi.PriorityNew.HasValue ? MKAh.Readable.ProcessPriority(pmi.PriorityNew.Value) : HumanReadable.Generic.NotAvailable),
+							(pmi.AffinityNew >= 0 ? HumanInterface.BitMask(pmi.AffinityNew, Process.Utility.CPUCount) : HumanReadable.Generic.NotAvailable),
+							info.Path
+						});
+					lastmodifylist.Items.Add(mi);
+					if (lastmodifylist.Items.Count > 5) lastmodifylist.Items.RemoveAt(0);
+				}
+				catch (Exception ex) { Logging.Stacktrace(ex); }
+			}
+		}
+
+		public void OnActiveWindowChanged(object _, Process.WindowChangedArgs windowchangeev)
+		{
+			if (!IsHandleCreated || disposed) return;
+			if (windowchangeev.Process is null) return;
+
+			if (InvokeRequired)
+				BeginInvoke(new Action(() => OnActiveWindowChanged_Update(windowchangeev)));
+			else
+				OnActiveWindowChanged_Update(windowchangeev);
+		}
+
+		void OnActiveWindowChanged_Update(Process.WindowChangedArgs windowchangeev)
+		{
+			// int maxlength = 70;
+			// string cutstring = e.Title.Substring(0, Math.Min(maxlength, e.Title.Length)) + (e.Title.Length > maxlength ? "..." : "");
+			// activeLabel.Text = cutstring;
+			activeLabel.Text = windowchangeev.Title;
+			activeExec.Text = windowchangeev.Executable;
+			activeFullscreen.Text = windowchangeev.Fullscreen ? "Full" : "Window";
+			activePID.Text = windowchangeev.Id.ToString();
+		}
+
+		public async Task Hook(StorageManager manager)
+		{
+			storagemanager = manager;
+			storagemanager.TempScan = TempScanStats;
+			storagemanager.OnDisposed += (_, _ea) => storagemanager = null;
+		}
+
+		public async Task Hook(Process.Manager manager)
+		{
+			Debug.Assert(manager != null);
+
+			processmanager = manager;
+			processmanager.OnDisposed += (_, _ea) => processmanager = null;
+
+			//processmanager.HandlingCounter += ProcessNewInstanceCount;
+			processmanager.ProcessStateChange += ExitWaitListHandler;
+			if (DebugCache) PathCacheUpdate(null, EventArgs.Empty);
+
+			ProcessNewInstanceCount(new Process.ProcessingCountEventArgs(0, 0));
+
+			WatchlistRules.VisibleChanged += (_, _ea) => { if (WatchlistRules.Visible) WatchlistColor(); };
+
+			BeginInvoke(new Action(() =>
+			{
+				foreach (var prc in processmanager.GetWatchlist())
+					AddToWatchlistList(prc);
+
+				WatchlistColor();
+			}));
+
+			if (manager.ScanFrequency.HasValue)
+			{
+				UItimer.Tick += UpdateRescanCountdown;
+				GotFocus += UpdateRescanCountdown;
+				UpdateRescanCountdown(this, EventArgs.Empty);
+			}
+
+			processmanager.WatchlistSorted += UpdateWatchlist;
+			processmanager.ProcessModified += ProcessTouchEvent;
+
+			await Task.Delay(0).ConfigureAwait(false);
+
+			foreach (var info in processmanager.GetExitWaitList())
+				ExitWaitListHandler(info);
+
+			// Enable UI features.
+			menu_view_loaders.Enabled = processmanager?.LoaderTracking ?? false;
+		}
+
+		void UnhookProcessManager()
+		{
+			processmanager.ProcessModified -= ProcessTouchEvent;
+			//processmanager.HandlingCounter -= ProcessNewInstanceCount;
+			processmanager.ProcessStateChange -= ExitWaitListHandler;
+			processmanager.HandlingStateChange -= ProcessHandlingStateChangeEvent;
+		}
+
+		void UpdateWatchlist(object _, EventArgs _ea)
+		{
+			if (!IsHandleCreated || disposed) return;
+
+			if (InvokeRequired)
+				BeginInvoke(new Action(UpdateWatchlist_Invoke));
+			else
+				UpdateWatchlist_Invoke();
+		}
+
+		void UpdateWatchlist_Invoke()
+		{
+			if (!IsHandleCreated || disposed) return;
+
+			foreach (var li in WatchlistMap)
+			{
+				li.Value.SubItems[0].Text = (li.Key.ActualOrder + 1).ToString();
+				WatchlistItemColor(li.Value, li.Key);
+			}
+
+			// re-sort if user is not interacting?
+		}
+
+		void RescanRequestEvent(object _, EventArgs _ea) => processmanager?.HastenScan(TimeSpan.Zero);
+
+		void RestartRequestEvent(object sender, EventArgs _ea) => ConfirmExit(restart: true, admin: sender == menu_action_restartadmin);
+
+		void ProcessNewInstanceCount(Process.ProcessingCountEventArgs e)
+		{
+			if (!IsHandleCreated || disposed) return;
+
+			// TODO: Don't update UI so much.
+
+			if (InvokeRequired)
+				BeginInvoke(new Action(() => ProcessNewInstanceCount_Invoke(e)));
+			else
+				ProcessNewInstanceCount_Invoke(e);
+		}
+
+		void ProcessNewInstanceCount_Invoke(Process.ProcessingCountEventArgs e)
+		{
+			if (!IsHandleCreated || disposed) return;
+
+			processingcount.Text = e.Total.ToString();
+		}
+
+		/// <summary>
+		///
+		/// </summary>
+		/// <remarks>No locks</remarks>
+		void WatchlistItemColor(ListViewItem li, Process.Controller prc)
+		{
+			var alter = AlternateRowColorsWatchlist && (li.Index + 1) % 2 == 0; // every even line
+
+			try
+			{
+				li.UseItemStyleForSubItems = false;
+				foreach (ListViewItem.ListViewSubItem si in li.SubItems)
+				{
+					if (prc.Enabled)
+						si.ForeColor = System.Drawing.SystemColors.ControlText;
+					else
+						si.ForeColor = System.Drawing.SystemColors.GrayText;
+
+					if (alter) si.BackColor = AlterColor;
+					else si.BackColor = DefaultLIBGColor;
+				}
+
+				if (prc.PriorityStrategy == Process.PriorityStrategy.None)
+					li.SubItems[PrioColumn].ForeColor = System.Drawing.SystemColors.GrayText;
+				if (string.IsNullOrEmpty(prc.Path))
+					li.SubItems[PathColumn].ForeColor = System.Drawing.SystemColors.GrayText;
+				if (prc.PowerPlan == Power.Mode.Undefined)
+					li.SubItems[PowerColumn].ForeColor = System.Drawing.SystemColors.GrayText;
+				if (prc.AffinityMask < 0)
+					li.SubItems[AffColumn].ForeColor = System.Drawing.SystemColors.GrayText;
+			}
+			catch (Exception ex)
+			{
+				Logging.Stacktrace(ex);
+			}
+		}
+
+		int watchlistcolor_i = 0;
+
+		void WatchlistColor()
+		{
+			if (Trace) Logging.DebugMsg("COLORING LINES");
+
+			System.Threading.Interlocked.Increment(ref watchlistcolor_i);
+
+			lock (watchlist_lock)
+			{
+				try
+				{
+					int i = 0;
+					foreach (var item in WatchlistMap)
+					{
+						if (watchlistcolor_i > 1) return;
+
+						if (Trace) Logging.DebugMsg($"{i++:00} --- {item.Value.Index:00} : {(item.Value.Index + 1) % 2 == 0} --- {item.Key.FriendlyName}");
+						WatchlistItemColor(item.Value, item.Key);
+					}
+				}
+				finally
+				{
+					System.Threading.Interlocked.Decrement(ref watchlistcolor_i);
+				}
+			}
+		}
+
+		void AddToWatchlistList(Process.Controller prc)
+		{
+			string aff = string.Empty;
+			if (prc.AffinityMask > 0)
+			{
+				if (AffinityStyle == 0)
+					aff = HumanInterface.BitMask(prc.AffinityMask, Process.Utility.CPUCount);
+				else
+					aff = prc.AffinityMask.ToString();
+			}
+
+			var litem = new ListViewItem(new string[] {
+				(prc.ActualOrder+1).ToString(),
+				prc.OrderPreference.ToString(),
+				prc.FriendlyName,
+				prc.Executables?.Length > 0 ? string.Join(", ", prc.Executables) : string.Empty,
+				string.Empty,
+				aff,
+				string.Empty,
+				prc.Adjusts.ToString(),
+				string.Empty
+			});
+
+			WatchlistRules.Items.Add(litem);
+			WatchlistMap.TryAdd(prc, litem);
+
+			FormatWatchlist(litem, prc);
+			WatchlistUpdateTooltip(litem, prc);
+			WatchlistItemColor(litem, prc);
+		}
+
+		static void WatchlistUpdateTooltip(ListViewItem li, Process.Controller prc)
+		{
+			// BUG: Doens't work for some reason. Gets set but is never shown.
+			//li.ToolTipText = prc.ToDetailedString();
+		}
+
+		void FormatWatchlist(ListViewItem litem, Process.Controller prc)
+		{
+			if (!IsHandleCreated || disposed) return;
+
+			if (InvokeRequired)
+				BeginInvoke(new Action(() => FormatWatchlist_Invoke(litem, prc)));
+			else
+				FormatWatchlist_Invoke(litem, prc);
+		}
+
+		void FormatWatchlist_Invoke(ListViewItem litem, Process.Controller prc)
+		{
+			if (!IsHandleCreated || disposed) return;
+
+			litem.SubItems[PrefColumn].Text = prc.OrderPreference.ToString();
+			litem.SubItems[NameColumn].Text = prc.FriendlyName;
+			litem.SubItems[ExeColumn].Text = (prc.Executables?.Length > 0) ? string.Join(", ", prc.Executables) : string.Empty;
+			litem.SubItems[PrioColumn].Text = prc.Priority.HasValue ? MKAh.Readable.ProcessPriority(prc.Priority.Value) : string.Empty;
+			string aff = string.Empty;
+			if (prc.AffinityMask >= 0)
+			{
+				if (prc.AffinityMask == Process.Utility.FullCPUMask || prc.AffinityMask == 0)
+					aff = "Full/OS";
+				else if (AffinityStyle == 0)
+					aff = HumanInterface.BitMask(prc.AffinityMask, Process.Utility.CPUCount);
+				else
+					aff = prc.AffinityMask.ToString();
+			}
+			litem.SubItems[AffColumn].Text = aff;
+			litem.SubItems[PowerColumn].Text = (prc.PowerPlan != Power.Mode.Undefined ? Power.Utility.GetModeName(prc.PowerPlan) : string.Empty);
+			litem.SubItems[PathColumn].Text = (string.IsNullOrEmpty(prc.Path) ? string.Empty : prc.Path);
+		}
+
+		public void UpdateWatchlistRule(Process.Controller prc)
+		{
+			if (!IsHandleCreated || disposed) return;
+
+			if (WatchlistMap.TryGetValue(prc, out ListViewItem litem))
+			{
+				if (InvokeRequired)
+					BeginInvoke(new Action(() => UpdateWatchlistRule_Invoke(litem, prc)));
+				else
+					UpdateWatchlistRule_Invoke(litem, prc);
+			}
+		}
+
+		void UpdateWatchlistRule_Invoke(ListViewItem litem, Process.Controller prc)
+		{
+			if (!IsHandleCreated || disposed) return;
+
+			FormatWatchlist(litem, prc);
+
+			WatchlistUpdateTooltip(litem, prc);
+
+			WatchlistItemColor(litem, prc);
+		}
+
+		AlignedLabel AudioInputDevice = null;
+		Extensions.NumericUpDownEx AudioInputVolume = null;
+		Extensions.ListViewEx AudioInputs = null, WatchlistRules;
+
+		readonly ConcurrentDictionary<Process.Controller, ListViewItem> WatchlistMap = new ConcurrentDictionary<Process.Controller, ListViewItem>();
+		readonly object watchlist_lock = new object();
+
+		AlignedLabel corCountLabel = null;
+		ComboBox AudioInputEnable = null;
+
+		Extensions.ListViewEx lastmodifylist = null, powerbalancerlog = null;
+
+		AlignedLabel powerbalancer_behaviour = null, powerbalancer_plan = null, powerbalancer_forcedcount = null;
+
+		Extensions.ListViewEx ExitWaitList = null, ProcessingList = null;
+		ConcurrentDictionary<int, ListViewItem> ExitWaitlistMap = null;
+
+		#region Foreground Monitor
+		AlignedLabel activeLabel = null, activeExec = null, activeFullscreen = null, activePID = null;
+		#endregion
+
+		#region Path Cache
+		AlignedLabel cacheObjects = null, cacheRatio = null;
+		#endregion
+
+		int PathCacheUpdate_Lock = 0;
+
+		public async void PathCacheUpdate(object _, EventArgs _ea)
+		{
+			if (!IsHandleCreated || disposed) return;
+
+			if (!Atomic.Lock(ref PathCacheUpdate_Lock)) return;
+
+			try
+			{
+				await Task.Delay(5_000).ConfigureAwait(false);
+
+				if (InvokeRequired)
+					BeginInvoke(new Action(PathCacheUpdate_Invoke));
+				else
+					PathCacheUpdate_Invoke();
+			}
+			finally
+			{
+				Atomic.Unlock(ref PathCacheUpdate_Lock);
+			}
+		}
+
+		void PathCacheUpdate_Invoke()
+		{
+			cacheObjects.Text = Statistics.PathCacheCurrent.ToString();
+			double ratio = (Statistics.PathCacheMisses > 0 ? ((double)Statistics.PathCacheHits / (double)Statistics.PathCacheMisses) : 1d);
+			cacheRatio.Text = ratio <= 99.99f ? $"{ratio:N2}" : ">99.99"; // let's just not overflow the UI
+		}
+
+		// BackColor = System.Drawing.Color.LightGoldenrodYellow
+		AlignedLabel netstatuslabel, inetstatuslabel, uptimestatuslabel, uptimeMeanLabel, netTransmit, netQueue;
+
+		public static Serilog.Core.LoggingLevelSwitch LogIncludeLevel;
+
+		public int UIUpdateFrequency
+		{
+			get => UItimer.Interval;
+			set
+			{
+				int freq = value.Constrain(100, 5000);
+				UItimer.Interval = freq;
+			}
+		}
+
+		public void SetUIUpdateFrequency(int freq) => UIUpdateFrequency = freq;
+
+		readonly System.Windows.Forms.Timer UItimer = new System.Windows.Forms.Timer();
+
+		void StartUIUpdates(object sender, EventArgs _ea)
+		{
+			if (!IsHandleCreated) StopUIUpdates(this, EventArgs.Empty);
+			else if (!UItimer.Enabled)
+			{
+				UpdateMemoryStats(sender, EventArgs.Empty);
+				UpdateHealthMon(sender, EventArgs.Empty);
+				UpdateNetwork(sender, EventArgs.Empty);
+				UItimer.Start();
+			}
+		}
+
+		void StopUIUpdates(object _, EventArgs _ea)
+		{
+			if (UItimer.Enabled) UItimer.Stop();
+		}
+
+		void Cleanup(object _, EventArgs _ea)
+		{
+			if (!IsHandleCreated) return;
+
+			if (LastCauseTime.To(DateTimeOffset.UtcNow).TotalMinutes >= 3d)
+			{
+				pwcause.Text = HumanReadable.Generic.NotAvailable;
+			}
+		}
+
+		void UpdateRescanCountdown(object _, EventArgs _ea)
+		{
+			if (!IsHandleCreated) return;
+			if (processmanager is null) return; // not yet assigned
+
+			// Rescan Countdown
+			if (processmanager.ScanFrequency.HasValue)
+				processingtimer.Text = $"{DateTimeOffset.UtcNow.To(processmanager.NextScan).TotalSeconds:N0}s";
+			else
+				processingtimer.Text = HumanReadable.Generic.NotAvailable;
+		}
+
+		void UpdateNetwork(object _, EventArgs _ea)
+		{
+			if (!IsHandleCreated) return;
+			if (netmonitor is null) return;
+
+			uptimestatuslabel.Text = HumanInterface.TimeString(netmonitor.Uptime);
+			var mean = netmonitor.UptimeMean();
+			if (double.IsInfinity(mean))
+				uptimeMeanLabel.Text = "Infinite";
+			else
+				uptimeMeanLabel.Text = HumanInterface.TimeString(TimeSpan.FromMinutes(mean));
+
+			var delta = netmonitor.GetTraffic;
+			//float netTotal = delta.Input + delta.Output;
+			netTransmit.Text = $"{delta.Input / 1000:N1} kB In, {delta.Output / 1000:N1} kB Out [{delta.Packets:N0} packets; {delta.Queue:N0} queued]";
+		}
+
+		Extensions.ListViewEx NetworkDevices = null;
+
+		ContextMenuStrip ifacems, watchlistms;
+		ToolStripMenuItem watchlistenable, watchlistadd;
+
+		void InterfaceContextMenuOpen(object _, EventArgs _ea)
+		{
+			try
+			{
+				foreach (ToolStripItem msi in ifacems.Items)
+					msi.Enabled = (NetworkDevices.SelectedItems.Count == 1);
+			}
+			catch { } // discard
+		}
+
+		void CopyIPv4AddressToClipboard(object _, EventArgs _ea)
+		{
+			if (NetworkDevices.SelectedItems.Count == 1)
+				Clipboard.SetText(NetworkDevices.SelectedItems[0].SubItems[IPv4Column].Text, TextDataFormat.UnicodeText);
+		}
+
+		void CopyIPv6AddressToClipboard(object _, EventArgs _ea)
+		{
+			if (NetworkDevices.SelectedItems.Count == 1)
+				Clipboard.SetText($"[{NetworkDevices.SelectedItems[0].SubItems[IPv6Column].Text}]", TextDataFormat.UnicodeText);
+		}
+
+		void CopyIfaceToClipboard(object _, EventArgs _ea)
+		{
+			if (NetworkDevices.SelectedItems.Count == 1)
+				Clipboard.SetText(netmonitor.GetDeviceData(NetworkDevices.SelectedItems[0].SubItems[0].Text), TextDataFormat.UnicodeText);
+		}
+
+		void CopyLogToClipboard(object _, EventArgs _ea)
+		{
+			var selected = LogList.SelectedIndices;
+			if (selected.Count == 0) return;
+
+			var sbs = new StringBuilder(256);
+
+			foreach (int item in selected)
+				sbs.Append(LogList.Items[item].SubItems[0].Text);
+
+			Clipboard.SetText(sbs.ToString(), TextDataFormat.UnicodeText);
+		}
+
+		Extensions.TabControl tabs;
+
+		// TODO: Easier column access somehow than this?
+		//int OrderColumn = 0;
+		const int PrefColumn = 1, NameColumn = 2, ExeColumn = 3, PrioColumn = 4, AffColumn = 5, PowerColumn = 6, AdjustColumn = 7, PathColumn = 8;
+
+		Extensions.TabPage infoTab, watchTab, micTab = null, powerDebugTab = null, ProcessDebugTab = null;
+
+		ToolStripMenuItem
+			#if DEBUG
+			menu_debug_loglevel_trace,
+			#endif
+			menu_debug_loglevel_info,
+			menu_debug_loglevel_debug;
+
+		void EnsureVerbosityLevel()
+		{
+			if (LogIncludeLevel.MinimumLevel == Serilog.Events.LogEventLevel.Information)
+				LogIncludeLevel.MinimumLevel = Serilog.Events.LogEventLevel.Debug;
+			UpdateLogLevelSelection();
+		}
+
+		void UpdateLogLevelSelection()
+		{
+			var level = LogIncludeLevel.MinimumLevel;
+
+			menu_debug_loglevel_info.Checked = (level == Serilog.Events.LogEventLevel.Information);
+			menu_debug_loglevel_debug.Checked = (level == Serilog.Events.LogEventLevel.Debug);
+#if DEBUG
+			menu_debug_loglevel_trace.Checked = (level == Serilog.Events.LogEventLevel.Verbose);
+#endif
+		}
+
+		int MinimumHeight = 0;
+		//int MinimumWidth = 0;
+
+		ToolStripMenuItem menu_action_restartadmin = null;
+
+		const string UpdateFrequencyName = "Update frequency",
+			TopmostName = "Topmost",
+			InfoName = "Info",
+			TraceName = "Trace",
+			ShowUnmodifiedPortionsName = "Unmodified portions",
+			WatchlistName = "Watchlist";
+
+		ToolStripMenuItem power_auto, power_highperf, power_balanced, power_saving, power_manual;
 
 		void LogListSelectionChanged(object sender, ListViewVirtualItemsSelectionRangeChangedEventArgs e)
 		{
@@ -2116,6 +2120,7 @@ namespace Taskmaster.UI
 			//loglist.Height = -2;
 			//loglist.Width = -2;
 			LogList.Height = ClientSize.Height - tabs.Height - statusbar.Height - menu.Height;
+
 			ShowLastLog();
 		}
 
@@ -3611,9 +3616,9 @@ namespace Taskmaster.UI
 			Logging.DebugMsg("Filling backlog of messages: " + logbuffer.Length.ToString());
 
 			foreach (var logmsg in logbuffer)
-				AddLog(logmsg);
+				LogListData.Add(logmsg);
 
-			ShowLastLog();
+			//ShowLastLog(); // part of resizeloglist
 
 			ResizeLogList(this, EventArgs.Empty);
 		}
@@ -4147,21 +4152,39 @@ namespace Taskmaster.UI
 			MemoryLog.MemorySink.Clear();
 		}
 
-		void NewLogReceived(object _, LogEventArgs logmsg)
+		async void NewLogReceived(object _, LogEventArgs logmsg)
 		{
 			if (!IsHandleCreated || disposed
 				|| (LogIncludeLevel.MinimumLevel > logmsg.Level)) return;
 
-			AddLog(logmsg);
+			try
+			{
+				LogListData.Add(logmsg);
 
-			ShowLastLog();
+				await Task.Delay(0).ConfigureAwait(false);
 
-			/*
-			if (InvokeRequired)
-				BeginInvoke(new Action(() => NewLogReceived_Invoke(ea)));
-			else
-				NewLogReceived_Invoke(ea);
-			*/
+				LogEventArgs first;
+				while (LogListData.Count > MaxLogSize)
+				{
+					first = LogListData[0];
+					LogListData.Remove(first);
+				}
+
+				//Logging.DebugMsg("LogList new size: " + newSize.ToString());
+
+				BeginInvoke(new Action(ShowLastLog));
+
+				//var li = LogListGenerateItem(ea);
+
+				//LogList.Items.Add(li);
+				//LogList.Columns[0].Width = -2;
+
+				//li.EnsureVisible();
+			}
+			catch (Exception ex)
+			{
+				Logging.Stacktrace(ex);
+			}
 		}
 
 		/*
@@ -4181,7 +4204,6 @@ namespace Taskmaster.UI
 
 		void AddLog(LogEventArgs ea)
 		{
-			int newSize = LogListData.Count + 1;
 			LogListData.Add(ea);
 
 			LogEventArgs first;
@@ -4189,12 +4211,11 @@ namespace Taskmaster.UI
 			{
 				first = LogListData[0];
 				LogListData.Remove(first);
-				newSize--;
 			}
 
 			//Logging.DebugMsg("LogList new size: " + newSize.ToString());
 
-			BeginInvoke(new Action(() => LogList.VirtualListSize = newSize));
+			BeginInvoke(new Action(() => LogList.VirtualListSize = LogListData.Count));
 
 			//var li = LogListGenerateItem(ea);
 

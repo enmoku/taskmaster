@@ -63,7 +63,7 @@ namespace Taskmaster.UI
 
 			FormClosing += DialogClosing;
 
-			ResumeLayout();
+			ResumeLayout(performLayout: false);
 			Visible = true;
 		}
 
