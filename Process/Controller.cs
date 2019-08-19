@@ -800,6 +800,9 @@ namespace Taskmaster.Process
 			else
 				app.TryRemove("Declare parent");
 
+			var legacy = app["Legacy workaround"];
+			if (legacy.Bool != LegacyWorkaround) legacy.Bool = LegacyWorkaround;
+
 			Logging.DebugMsg(cfg.Filename + " has gained " + cfg.Config.Changes.ToString() + " total changes.");
 
 			// pass to config manager
