@@ -3,6 +3,11 @@ Comprehensive changes can be found in Git change history:
 	https://github.com/mkahvi/taskmaster/commits/master
 
 ## [0.14...]
+### 2019-08-19
+	Added: Legacy workaround setting is now saved if it's changed. UI configuration still missing.
+	Fixed: Affinity limit mode now properly moves cores besides limiting them, avoiding reduction in number of cores when not necessary.
+### 2019-08-18
+	Changed: Watchlist saving should now happen less and only when actual changes have been made.
 ### 2019-08-16
 	Fixed: Some errors related to processes exiting before we finish with things.
 ### 2019-08-15
