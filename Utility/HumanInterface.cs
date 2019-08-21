@@ -87,7 +87,7 @@ namespace Taskmaster
 			new System.Globalization.NumberFormatInfo() { NumberDecimalDigits = 0 },
 			new System.Globalization.NumberFormatInfo() { NumberDecimalDigits = 1 },
 			new System.Globalization.NumberFormatInfo() { NumberDecimalDigits = 2 },
-			new System.Globalization.NumberFormatInfo() { NumberDecimalDigits = 3 },
+			//new System.Globalization.NumberFormatInfo() { NumberDecimalDigits = 3 },
 		};
 
 		/// <summary>
@@ -99,10 +99,9 @@ namespace Taskmaster
 		/// <returns></returns>
 		public static string ByteString(long bytes, bool positivesign = false, bool iec = false)
 		{
-			int scale = Byte;
+			int scale;
 
 			var multiplier = iec ? MultiplierIEC : MultiplierSI;
-			var byteletter = iec ? ByteLetterIEC : ByteLetterSI;
 
 			long absbytes = Math.Abs(bytes);
 
@@ -112,17 +111,19 @@ namespace Taskmaster
 				scale = Mega;
 			else if (absbytes > (multiplier[Kilo] * SizeThreshold))
 				scale = Kilo;
+			else
+				scale = Byte;
 			// else = Byte/Default
 
 			double div = multiplier[scale];
 
 			double num = bytes / div;
-			int decimalSpot = div == 1 ? 0 : ((num < 10) ? 3 : ((num > 100) ? 1 : 2));
+			//int decimalSpot = div == 1 ? 0 : ((num < 10) ? 3 : ((num > 100) ? 1 : 2));
+			int decimalSpot = div == 1 ? 0 : ((num > 100) ? 1 : 2);
 
-			return string.Format(
-				DecimalFormatting[decimalSpot],
-				"{0}{1:N} {2}",
-				((positivesign && bytes > 0) ? "+" : ""), num, byteletter[scale]);
+			var format = DecimalFormatting[decimalSpot];
+
+			return (positivesign ? format.PositiveSign : string.Empty) + num.ToString("N", format) + " " + (iec ? ByteLetterIEC[scale] : ByteLetterSI[scale]);
 		}
 	}
 }
