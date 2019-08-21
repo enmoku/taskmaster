@@ -3,6 +3,8 @@ Comprehensive changes can be found in Git change history:
 	https://github.com/mkahvi/taskmaster/commits/master
 
 ## [0.14...]
+### 2019-08-21
+	Fixed: ArgumentNullException when saving a watchlist rule due to missing LegacyWorkaround value.
 ### 2019-08-19
 	Added: Legacy workaround setting is now saved if it's changed. UI configuration still missing.
 	Fixed: Affinity limit mode now properly moves cores besides limiting them, avoiding reduction in number of cores when not necessary.

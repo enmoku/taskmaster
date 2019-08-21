@@ -1230,7 +1230,18 @@ namespace Taskmaster.Process
 
 				//prc.MMPriority = section.TryGet("MEM priority")?.Int ?? int.MinValue; // unused
 
-				prc.LegacyWorkaround = section.Get("Legacy workaround")?.Bool ?? false;
+				// special case
+				var legacyworkaround = section.Get("Legacy workaround");
+
+				try
+				{
+					prc.LegacyWorkaround = legacyworkaround?.Bool ?? false;
+				}
+				catch
+				{
+					Log.Error("[" + prc.FriendlyName + "] Malformed setting: " + legacyworkaround.Name + " = " + legacyworkaround.Value);
+					section.Remove(legacyworkaround);
+				}
 
 				int? foregroundMode = section.Get(Constants.ForegroundMode)?.Int;
 				if (foregroundMode.HasValue)
