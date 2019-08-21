@@ -81,7 +81,7 @@ namespace Taskmaster
 		readonly static double[] MultiplierSI = { 1, 1_000, 1_000_000, 1_000_000_000 };
 		readonly static double[] MultiplierIEC = { 1, 1_024, 1_048_576, 1_073_741_824 };
 		readonly static string[] ByteLetterSI = { "B", "kB", "MB", "GB" };
-		readonly static string[] ByteLetterIEC = { "B", "KiB", "MiB", "GiB" };
+		readonly static string[] ByteLetterIEC = { "B", "kiB", "MiB", "GiB" };
 
 		readonly static System.Globalization.NumberFormatInfo[] DecimalFormatting = {
 			new System.Globalization.NumberFormatInfo() { NumberDecimalDigits = 0 },
