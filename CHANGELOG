@@ -4,7 +4,7 @@ Comprehensive changes can be found in Git change history:
 
 ## [0.14...]
 ### 2019-08-21
-	Fixed: ArgumentNullException when saving a watchlist rule due to missing LegacyWorkaround value.
+	Fixed: ArgumentNullException when saving a watchlist rule caused by update done on 2019-08-18.
 ### 2019-08-19
 	Added: Legacy workaround setting is now saved if it's changed. UI configuration still missing.
 	Fixed: Affinity limit mode now properly moves cores besides limiting them, avoiding reduction in number of cores when not necessary.

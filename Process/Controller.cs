@@ -462,8 +462,8 @@ namespace Taskmaster.Process
 			using var cfg = Config.Load(Manager.WatchlistFile);
 			if (cfg.Config.TryGet(FriendlyName, out var section))
 				section.Name = newName;
-			else
-				Log.Warning("[" + FriendlyName + "] Does not exist in configuration."); // probably only happens when you rename a rule before it has been saved to disk?
+			//else
+			//	Log.Warning("[" + FriendlyName + "] Does not exist in configuration."); // probably only happens when you rename a rule before it has been saved to disk?
 
 			FriendlyName = newName;
 		}
@@ -558,7 +558,7 @@ namespace Taskmaster.Process
 			if (Executables?.Length > 0)
 			{
 				var exarr = app["Executables"];
-				if (!exarr.StringArray.SequenceEqual(Executables)) exarr.StringArray = Executables;
+				if (!(exarr.StringArray?.SequenceEqual(Executables) ?? false)) exarr.StringArray = Executables;
 			}
 			else
 				app.TryRemove("Executables");
@@ -566,7 +566,7 @@ namespace Taskmaster.Process
 			if (!string.IsNullOrEmpty(Path))
 			{
 				var path = app[HumanReadable.System.Process.Path];
-				if (!path.String.Equals(Path, StringComparison.InvariantCulture)) path.String = Path;
+				if (!(path.String?.Equals(Path, StringComparison.InvariantCulture) ?? false)) path.String = Path;
 			}
 			else
 				app.TryRemove(HumanReadable.System.Process.Path);
@@ -574,7 +574,7 @@ namespace Taskmaster.Process
 			if (!string.IsNullOrEmpty(Description))
 			{
 				var desc = app[HumanReadable.Generic.Description];
-				if (!desc.String.Equals(Description, StringComparison.InvariantCulture)) desc.String = Description;
+				if (!(desc.String?.Equals(Description, StringComparison.InvariantCulture) ?? false)) desc.String = Description;
 			}
 			else
 				app.TryRemove(HumanReadable.Generic.Description);
@@ -583,10 +583,10 @@ namespace Taskmaster.Process
 			{
 				var prioset = app[HumanReadable.System.Process.Priority];
 				var priosetnew = Utility.PriorityToInt(Priority.Value);
-				if (prioset.Int != priosetnew) prioset.Int = priosetnew;
+				if (prioset.TryInt != priosetnew) prioset.Int = priosetnew;
 
 				var priostrat = app[HumanReadable.System.Process.PriorityStrategy];
-				if (priostrat.Int != (int)PriorityStrategy) priostrat.Int = (int)PriorityStrategy;
+				if (priostrat.TryInt != (int)PriorityStrategy) priostrat.Int = (int)PriorityStrategy;
 			}
 			else
 			{
@@ -599,10 +599,10 @@ namespace Taskmaster.Process
 				//if (affinity == ProcessManager.allCPUsMask) affinity = 0; // convert back
 
 				var affset = app[HumanReadable.System.Process.Affinity];
-				if (affset.Int != AffinityMask) affset.Int = AffinityMask;
+				if (affset.TryInt != AffinityMask) affset.Int = AffinityMask;
 
 				var affstrat = app[HumanReadable.System.Process.AffinityStrategy];
-				if (affstrat.Int != (int)AffinityStrategy) affstrat.Int = (int)AffinityStrategy;
+				if (affstrat.TryInt != (int)AffinityStrategy) affstrat.Int = (int)AffinityStrategy;
 			}
 			else
 			{
@@ -613,7 +613,7 @@ namespace Taskmaster.Process
 			if (AffinityIdeal >= 0)
 			{
 				var affideal = app[HumanReadable.System.Process.AffinityIdeal];
-				if (affideal.Int != AffinityIdeal) affideal.Int = AffinityIdeal;
+				if (affideal.TryInt != AffinityIdeal) affideal.Int = AffinityIdeal;
 			}
 			else
 				app.TryRemove(HumanReadable.System.Process.AffinityIdeal);
@@ -621,7 +621,7 @@ namespace Taskmaster.Process
 			if (IOPriority != IOPriority.Ignore)
 			{
 				var ioprio = app["IO priority"];
-				if (ioprio.Int != (int)IOPriority) ioprio.Int = (int)IOPriority;
+				if (ioprio.TryInt != (int)IOPriority) ioprio.Int = (int)IOPriority;
 			}
 			else
 				app.TryRemove("IO priority");
@@ -630,7 +630,7 @@ namespace Taskmaster.Process
 			{
 				var powmode = app[HumanReadable.Hardware.Power.Mode];
 				var powmodenew = Power.Utility.GetModeName(PowerPlan);
-				if (!powmode.String.Equals(powmodenew, StringComparison.InvariantCultureIgnoreCase)) powmode.String = powmodenew;
+				if (!(powmode.String?.Equals(powmodenew, StringComparison.InvariantCultureIgnoreCase) ?? false)) powmode.String = powmodenew;
 			}
 			else
 				app.TryRemove(HumanReadable.Hardware.Power.Mode);
@@ -650,13 +650,13 @@ namespace Taskmaster.Process
 					if (Foreground == ForegroundMode.Standard) app.TryRemove("Background powerdown");
 
 					var fgmode = app["Foreground mode"];
-					if (fgmode.Int != (int)Foreground) fgmode.Int = (int)Foreground;
+					if (fgmode.TryInt != (int)Foreground) fgmode.Int = (int)Foreground;
 
 					if (BackgroundPriority.HasValue)
 					{
 						var bgprio = app["Background priority"];
 						var bgprionew = Utility.PriorityToInt(BackgroundPriority.Value);
-						if (bgprio.Int != bgprionew) bgprio.Int = bgprionew;
+						if (bgprio.TryInt != bgprionew) bgprio.Int = bgprionew;
 					}
 					else
 						app.TryRemove("Background priority");
@@ -664,7 +664,7 @@ namespace Taskmaster.Process
 					if (BackgroundAffinity >= 0)
 					{
 						var bgaff = app["Background affinity"];
-						if (bgaff.Int != BackgroundAffinity) bgaff.Int = BackgroundAffinity;
+						if (bgaff.TryInt != BackgroundAffinity) bgaff.Int = BackgroundAffinity;
 					}
 					else
 						app.TryRemove("Background affinity");
@@ -674,7 +674,7 @@ namespace Taskmaster.Process
 			if (AllowPaging)
 			{
 				var paging = app["Allow paging"];
-				if (paging.Bool != AllowPaging) paging.Bool = AllowPaging;
+				if (paging.TryBool != AllowPaging) paging.Bool = AllowPaging;
 			}
 			else
 				app.TryRemove("Allow paging");
@@ -682,7 +682,7 @@ namespace Taskmaster.Process
 			if (PathVisibility != PathVisibilityOptions.Invalid)
 			{
 				var pathvis = app["Path visibility"];
-				if (pathvis.Int != (int)PathVisibility) pathvis.Int = (int)PathVisibility;
+				if (pathvis.TryInt != (int)PathVisibility) pathvis.Int = (int)PathVisibility;
 			}
 			else
 				app.TryRemove("Path visibility");
@@ -690,7 +690,7 @@ namespace Taskmaster.Process
 			if (Executables?.Length > 0 && Recheck > 0)
 			{
 				var recheck = app["Recheck"];
-				if (recheck.Int != Recheck) recheck.Int = Recheck;
+				if (recheck.TryInt != Recheck) recheck.Int = Recheck;
 			}
 			else
 				app.TryRemove("Recheck");
@@ -698,18 +698,18 @@ namespace Taskmaster.Process
 			if (!Enabled)
 			{
 				var enabled = app[HumanReadable.Generic.Enabled];
-				if (enabled.Bool != Enabled) enabled.Bool = Enabled;
+				if (enabled.TryBool != Enabled) enabled.Bool = Enabled;
 			}
 			else
 				app.TryRemove(HumanReadable.Generic.Enabled);
 
 			var preforder = app["Preference"];
-			if (preforder.Int != OrderPreference) preforder.Int = OrderPreference;
+			if (preforder.TryInt != OrderPreference) preforder.Int = OrderPreference;
 
 			if (IgnoreList?.Length > 0)
 			{
 				var ignlist = app[HumanReadable.Generic.Ignore];
-				if (!ignlist.StringArray.SequenceEqual(IgnoreList)) ignlist.StringArray = IgnoreList;
+				if (!(ignlist.StringArray?.SequenceEqual(IgnoreList) ?? false)) ignlist.StringArray = IgnoreList;
 			}
 			else
 				app.TryRemove(HumanReadable.Generic.Ignore);
@@ -717,7 +717,7 @@ namespace Taskmaster.Process
 			if (ModifyDelay > 0)
 			{
 				var modset = app[Constants.ModifyDelay];
-				if (modset.Int != ModifyDelay) modset.Int = ModifyDelay;
+				if (modset.TryInt != ModifyDelay) modset.Int = ModifyDelay;
 			}
 			else
 				app.TryRemove(Constants.ModifyDelay);
@@ -740,10 +740,10 @@ namespace Taskmaster.Process
 				}
 
 				var resset = app[Constants.Resize];
-				if (!resset.IntArray.SequenceEqual(res)) resset.IntArray = res;
+				if (!(resset.IntArray?.SequenceEqual(res) ?? false)) resset.IntArray = res;
 
 				var resstrat = app[Constants.ResizeStrategy];
-				if (resstrat.Int != (int)ResizeStrategy) resstrat.Int = (int)ResizeStrategy;
+				if (resstrat.TryInt != (int)ResizeStrategy) resstrat.Int = (int)ResizeStrategy;
 			}
 			else
 			{
@@ -754,10 +754,10 @@ namespace Taskmaster.Process
 			if (VolumeStrategy != Audio.VolumeStrategy.Ignore)
 			{
 				var volset = app[HumanReadable.Hardware.Audio.Volume];
-				if (volset.Float != Volume) volset.Float = Volume;
+				if (volset.TryFloat != Volume) volset.Float = Volume;
 
 				var volstrat = app[Constants.VolumeStrategy];
-				if (volstrat.Int != (int)VolumeStrategy) volstrat.Int = (int)VolumeStrategy;
+				if (volstrat.TryInt != (int)VolumeStrategy) volstrat.Int = (int)VolumeStrategy;
 			}
 			else
 			{
@@ -766,12 +766,12 @@ namespace Taskmaster.Process
 			}
 
 			var logset = app[HumanReadable.Generic.Logging];
-			if (logset.Bool != LogAdjusts) logset.Bool = LogAdjusts;
+			if (logset.TryBool != LogAdjusts) logset.Bool = LogAdjusts;
 
 			if (LogStartAndExit)
 			{
 				var logstartandexit = app["Log start and exit"];
-				if (logstartandexit.Bool != LogStartAndExit) logstartandexit.Bool = LogStartAndExit;
+				if (logstartandexit.TryBool != LogStartAndExit) logstartandexit.Bool = LogStartAndExit;
 			}
 			else
 				app.TryRemove("Log start and exit");
@@ -779,7 +779,7 @@ namespace Taskmaster.Process
 			if (LogDescription)
 			{
 				var logdesc = app["Log description"];
-				if (logdesc.Bool != LogDescription) logdesc.Bool = LogDescription;
+				if (logdesc.TryBool != LogDescription) logdesc.Bool = LogDescription;
 			}
 			else
 				app.TryRemove("Log description");
@@ -787,7 +787,7 @@ namespace Taskmaster.Process
 			if (ExclusiveMode)
 			{
 				var exmode = app[Constants.Exclusive];
-				if (exmode.Bool != ExclusiveMode) exmode.Bool = ExclusiveMode;
+				if (exmode.TryBool != ExclusiveMode) exmode.Bool = ExclusiveMode;
 			}
 			else
 				app.TryRemove(Constants.Exclusive);
@@ -795,7 +795,7 @@ namespace Taskmaster.Process
 			if (DeclareParent)
 			{
 				var decpar = app["Declare parent"];
-				if (decpar.Bool != DeclareParent) decpar.Bool = DeclareParent;
+				if (decpar.TryBool != DeclareParent) decpar.Bool = DeclareParent;
 			}
 			else
 				app.TryRemove("Declare parent");
@@ -2106,6 +2106,7 @@ namespace Taskmaster.Process
 				catch (Exception ex)
 				{
 					Logging.Stacktrace(ex);
+					throw;
 				}
 
 				//base.Dispose();
