@@ -2737,8 +2737,15 @@ namespace Taskmaster.Process
 					using var wcfg = Config.Load(WatchlistFile);
 					foreach (var prc in Watchlist.Keys)
 					{
-						if (prc.NeedsSaving) prc.SaveConfig(wcfg.File);
-						prc.Dispose();
+						try
+						{
+							if (prc.NeedsSaving) prc.SaveConfig(wcfg.File);
+							prc.Dispose();
+						}
+						catch (Exception ex)
+						{
+							Logging.Stacktrace(ex);
+						}
 					}
 
 					lock (watchlist_lock)

@@ -873,15 +873,24 @@ namespace Taskmaster.UI.Config
 
 			Controller.Enabled = newPrc || enOrig;
 
-			Controller.Repair();
+			try
+			{
 
-			Controller.SaveConfig();
+				Controller.Repair();
 
-			Log.Information("[" + Controller.FriendlyName + "] " + (newPrc ? "Created" : "Modified"));
+				Controller.SaveConfig();
 
-			DialogResult = DialogResult.OK;
+				Log.Information("[" + Controller.FriendlyName + "] " + (newPrc ? "Created" : "Modified"));
 
-			Controller.ResetInvalid();
+				DialogResult = DialogResult.OK;
+
+				Controller.ResetInvalid();
+			}
+			catch (Exception ex)
+			{
+				Logging.Stacktrace(ex);
+				throw;
+			}
 
 			Close();
 		}

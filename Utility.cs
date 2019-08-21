@@ -40,9 +40,15 @@ namespace Taskmaster
 				.Append("Message:      ").AppendLine(ex.Message).AppendLine();
 
 			var projectdir = Properties.Resources.ProjectDirectory.Trim();
-			var trace = ex.StackTrace.Replace(projectdir, HumanReadable.Generic.Ellipsis + System.IO.Path.DirectorySeparatorChar);
-			output.AppendLine("----- Stacktrace -----")
-				.AppendLine(trace);
+
+			//if (ex.StackTrace is null)
+				output.AppendLine("!!! Stacktrace missing !!!").AppendLine();
+			//else
+			{
+				var trace = ex.StackTrace.Replace(projectdir, HumanReadable.Generic.Ellipsis + System.IO.Path.DirectorySeparatorChar);
+				output.AppendLine("----- Stacktrace -----")
+					.AppendLine(trace);
+			}
 		}
 
 		[Conditional("DEBUG")]
@@ -55,7 +61,11 @@ namespace Taskmaster
 			if (!crashsafe)
 			{
 				string trace = ex.StackTrace.Replace(projectdir, HumanReadable.Generic.Ellipsis + System.IO.Path.DirectorySeparatorChar);
-				Serilog.Log.Fatal($"Exception [{method}:{lineNo}]: {ex.GetType().Name} : {ex.Message}\n{trace}");
+				var msg = $"Exception [{method}:{lineNo}]: {ex.GetType().Name} : {ex.Message}\n{trace}";
+
+				DebugMsg(msg);
+
+				Serilog.Log.Fatal(msg);
 				if (ex is InitFailure iex && (iex.InnerExceptions?.Length ?? 0) > 1)
 				{
 					for (int i = 1; i < iex.InnerExceptions.Length; i++)
@@ -89,6 +99,7 @@ namespace Taskmaster
 #if DEBUG
 					var exceptionsbs = new StringBuilder(512);
 #endif
+
 					AppendStacktace(ex, ref sbs);
 #if DEBUG
 					AppendStacktace(ex, ref exceptionsbs);
@@ -106,7 +117,10 @@ namespace Taskmaster
 					if (ex is InitFailure iex && (iex.InnerExceptions?.Length ?? 0) > 1)
 					{
 						for (int i = 1; i < iex.InnerExceptions.Length; i++)
-							AppendStacktace(iex.InnerExceptions[i], ref exceptionsbs);
+						{
+							if (iex.InnerExceptions[i] != null) // this is weird
+								AppendStacktace(iex.InnerExceptions[i], ref exceptionsbs);
+						}
 					}
 #endif
 

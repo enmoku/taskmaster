@@ -2094,7 +2094,14 @@ namespace Taskmaster.Process
 				Paused = null;
 				Resumed = null;
 
-				if (NeedsSaving) SaveConfig();
+				try
+				{
+					if (NeedsSaving) SaveConfig();
+				}
+				catch (Exception ex)
+				{
+					Logging.Stacktrace(ex);
+				}
 
 				//base.Dispose();
 			}
