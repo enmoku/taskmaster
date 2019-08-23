@@ -31,17 +31,6 @@ namespace Taskmaster
 {
 	public static partial class NativeMethods
 	{
-		// for ActiveAppManager.cs
-
-		/// <summary>
-		/// https://docs.microsoft.com/en-us/windows/desktop/api/winuser/nf-winuser-getwindowthreadprocessid
-		/// </summary>
-		/// <param name="hWnd">Window handle</param>
-		/// <param name="lpdwProcessId">Process ID of the hwnd's creator.</param>
-		/// <returns>Thread ID of the hwnd's creator</returns>
-		[DllImport("user32.dll")] // SetLastError=true
-		internal static extern uint GetWindowThreadProcessId(IntPtr hWnd, out int lpdwProcessId);
-
 		internal delegate void WinEventDelegate(IntPtr hWinEventHook, uint eventType, IntPtr hwnd, int idObject, int idChild, uint dwEventThread, uint dwmsEventTime);
 
 		[DllImport("user32.dll")]

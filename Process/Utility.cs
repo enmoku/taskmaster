@@ -42,6 +42,24 @@ namespace Taskmaster.Process
 
 		public static int FullCPUMask => (1 << CPUCount) - 1;
 
+		public static bool IsFullscreen(IntPtr hwnd)
+		{
+			// TODO: Is it possible to cache screen? multimonitor setup may make it hard... would that save anything?
+			var screen = System.Windows.Forms.Screen.FromHandle(hwnd); // passes
+
+			var WindowRectangle = new System.Drawing.Rectangle();
+			var ScreenRectangle = new NativeMethods.Rectangle();
+
+			NativeMethods.GetWindowRect(hwnd, ref ScreenRectangle);
+			//var windowrect = new System.Drawing.Rectangle(rect.Left, rect.Top, rect.Right - rect.Left, rect.Bottom - rect.Top);
+			WindowRectangle.Height = ScreenRectangle.Bottom - ScreenRectangle.Top;
+			WindowRectangle.Width = ScreenRectangle.Right - ScreenRectangle.Left;
+			WindowRectangle.X = ScreenRectangle.Left;
+			WindowRectangle.Y = ScreenRectangle.Top;
+
+			return WindowRectangle.Equals(screen.Bounds);
+		}
+
 		/// <summary>
 		/// Tests if the process ID is core system process (0[idle] or 4[system]) that can never be valid program.
 		/// </summary>
