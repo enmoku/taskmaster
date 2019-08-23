@@ -198,7 +198,7 @@ namespace Taskmaster.Process
 				int lfgpid, previoushang;
 				System.Diagnostics.Process? fgproc;
 
-				bool responding = true;
+				bool responding;
 
 				lock (FGLock)
 				{
@@ -208,7 +208,7 @@ namespace Taskmaster.Process
 
 					//fgproc?.Refresh();
 					//responding = fgproc?.Responding ?? true;
-					responding = NativeMethods.IsHungAppWindow(fgproc.MainWindowHandle);
+					responding = !NativeMethods.IsHungAppWindow(fgproc.MainWindowHandle);
 
 					if (!responding) PreviouslyHung = fgproc.Id;
 				}
