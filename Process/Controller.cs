@@ -1245,7 +1245,7 @@ namespace Taskmaster.Process
 				info.PowerWait = (PowerPlan != Power.Mode.Undefined);
 				info.ForegroundWait = Foreground != ForegroundMode.Ignore;
 
-				bool responding = true;
+				//bool responding = true;
 				ProcessPriorityClass? oldPriority = null;
 				IntPtr? oldAffinity = null;
 
@@ -1259,7 +1259,7 @@ namespace Taskmaster.Process
 				{
 					if (ModifyDelay > 0) info.Process.Refresh();
 
-					responding = info.Process.Responding;
+					//responding = info.Process.Responding;
 
 					if (info.Process.HasExited)
 					{
