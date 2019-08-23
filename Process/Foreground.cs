@@ -197,13 +197,20 @@ namespace Taskmaster.Process
 			{
 				int lfgpid, previoushang;
 				System.Diagnostics.Process? fgproc;
+
+				bool responding = true;
+
 				lock (FGLock)
 				{
 					lfgpid = ForegroundId;
 					previoushang = PreviouslyHung;
 					fgproc = Foreground;
 
-					if (!(fgproc?.Responding ?? true)) PreviouslyHung = fgproc.Id;
+					//fgproc?.Refresh();
+					//responding = fgproc?.Responding ?? true;
+					responding = NativeMethods.IsHungAppWindow(fgproc.MainWindowHandle);
+
+					if (!responding) PreviouslyHung = fgproc.Id;
 				}
 
 				if (!previoushang.Equals(lfgpid)) // foreground changed since last test
@@ -223,7 +230,7 @@ namespace Taskmaster.Process
 					return;
 				}
 
-				if (!fgproc.Responding)
+				if (!responding)
 				{
 					HangTick++;
 

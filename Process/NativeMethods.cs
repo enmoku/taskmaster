@@ -259,6 +259,14 @@ namespace Taskmaster.Process
 		public const uint WINEVENT_SKIPOWNPROCESS = 0x0002; // skip self
 		public const uint EVENT_SYSTEM_FOREGROUND = 3;
 
+		/// <summary>
+		/// 
+		/// </summary>
+		/// <param name="hWnd">Window handle.</param>
+		[DllImport("user32.dll")]
+		[return: MarshalAs(UnmanagedType.Bool)]
+		internal static extern bool IsHungAppWindow(IntPtr hWnd);
+
 		[DllImport("kernel32.dll", SetLastError = true)]
 		internal static extern bool GetSystemTimes(out System.Runtime.InteropServices.ComTypes.FILETIME lpIdleTime, out System.Runtime.InteropServices.ComTypes.FILETIME lpKernelTime, out System.Runtime.InteropServices.ComTypes.FILETIME lpUserTime);
 
