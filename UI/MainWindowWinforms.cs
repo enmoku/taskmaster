@@ -3191,7 +3191,7 @@ namespace Taskmaster.UI
 
 		public void ExitWaitListHandler(Process.ProcessEx ea)
 		{
-			if (activeappmonitor is null) return;
+			//if (activeappmonitor is null) return;
 			if (!IsHandleCreated || disposed) return;
 
 			if (InvokeRequired)
