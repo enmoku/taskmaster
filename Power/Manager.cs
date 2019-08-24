@@ -40,7 +40,7 @@ namespace Taskmaster.Power
 	using static Application;
 
 	// TODO: Decouple Form from Manager
-	public class Manager : IDisposable, IDisposal // form is required for receiving messages, no other reason
+	public class Manager : IComponent, IDisposable, IDisposal // form is required for receiving messages, no other reason
 	{
 		WndProcProxy WndProcProxy;
 
@@ -67,9 +67,6 @@ namespace Taskmaster.Power
 				Restore(new Cause(OriginType.Internal, Constants.InitialName));
 
 			MonitorSleepTimer.Elapsed += MonitorSleepTimerTick;
-
-			RegisterForExit(this);
-			DisposalChute.Push(this);
 		}
 
 		/// <summary>

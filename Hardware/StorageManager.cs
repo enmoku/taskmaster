@@ -37,8 +37,8 @@ namespace Taskmaster
 	/// <summary>
 	/// Manager for non-volatile memory (NVM).
 	/// </summary>
-	[Component(RequireMainThread = false)]
-	public class StorageManager : Component, IDisposal
+	[Context(RequireMainThread = false)]
+	public class StorageManager : IComponent, IDisposal
 	{
 		bool Verbose = false;
 
@@ -89,9 +89,6 @@ namespace Taskmaster
 			Verbose = corecfg.Config[HumanReadable.Generic.Debug].Get(Constants.Storage)?.Bool ?? false;
 
 			if (Verbose) Log.Information("<Maintenance> Component loaded.");
-
-			RegisterForExit(this);
-			DisposalChute.Push(this);
 		}
 
 		async void OnStart(object sender, EventArgs ea)
@@ -225,7 +222,7 @@ namespace Taskmaster
 
 		bool disposed = false;
 
-		public override void Dispose()
+		public void Dispose()
 		{
 			Dispose(true);
 			GC.SuppressFinalize(this);

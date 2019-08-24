@@ -37,10 +37,12 @@ namespace Taskmaster.Audio
 	/// <summary>
 	/// Must be created on persistent thread, such as the main thread.
 	/// </summary>
-	[Component(RequireMainThread = true)]
-	public class Manager : Component, IDisposal
+	[Context(RequireMainThread = true)]
+	public class Manager : IComponent, IDisposal
 	{
 		readonly System.Threading.Thread Context;
+
+		public event EventHandler<DisposedEventArgs> OnDisposed;
 
 		public event EventHandler<DeviceStateEventArgs> StateChanged;
 		public event EventHandler<DefaultDeviceEventArgs> DefaultChanged;
@@ -109,9 +111,6 @@ namespace Taskmaster.Audio
 			*/
 
 			volumeTimer.Elapsed += VolumeTimer_Elapsed;
-
-			RegisterForExit(this);
-			DisposalChute.Push(this);
 		}
 
 		void EnumerateDevices()
@@ -398,8 +397,6 @@ namespace Taskmaster.Audio
 		}
 
 		#region IDisposable Support
-		public event EventHandler<DisposedEventArgs> OnDisposed;
-
 		bool disposed = false;
 
 		protected void Dispose(bool disposing)
@@ -433,7 +430,7 @@ namespace Taskmaster.Audio
 			//base.Dispose();
 		}
 
-		public override void Dispose()
+		public void Dispose()
 		{
 			Dispose(true);
 			GC.SuppressFinalize(this);

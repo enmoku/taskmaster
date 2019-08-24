@@ -36,8 +36,8 @@ namespace Taskmaster
 {
 	using static Application;
 
-	[Component(RequireMainThread = false)]
-	public class CPUMonitor : Component, IDisposal
+	[Context(RequireMainThread = false)]
+	public class CPUMonitor : IComponent, IDisposal
 	{
 		// Experimental feature
 		public bool CPULoaderMonitoring { get; set; } = false;
@@ -325,7 +325,7 @@ namespace Taskmaster
 
 		bool disposed = false; // To detect redundant calls
 
-		public override void Dispose()
+		public void Dispose()
 		{
 			Dispose(true);
 			GC.SuppressFinalize(this);

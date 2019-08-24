@@ -37,12 +37,12 @@ namespace Taskmaster.Audio
 {
 	using static Application;
 
-	[Component(RequireMainThread = true)]
-	[Dependency(typeof(Audio.Manager))]
-	public class MicManager : Component, IDisposal
+	[Context(RequireMainThread = true)]
+	public class MicManager : IComponent, IDisposal
 	{
 		public event EventHandler<VolumeChangedEventArgs> VolumeChanged;
 		public event EventHandler<DefaultDeviceEventArgs> DefaultChanged;
+		public event EventHandler<DisposedEventArgs> OnDisposed;
 
 		bool DebugMic { get; } = false;
 
@@ -125,9 +125,6 @@ namespace Taskmaster.Audio
 			DebugMic = dbgsec.Get(HumanReadable.Hardware.Audio.Microphone)?.Bool ?? false;
 
 			if (DebugMic) Log.Information("<Microphone> Component loaded.");
-
-			RegisterForExit(this);
-			DisposalChute.Push(this);
 		}
 
 		Manager? audiomanager = null;
@@ -433,11 +430,9 @@ namespace Taskmaster.Audio
 		}
 
 		#region IDisposable Support
-		public event EventHandler<DisposedEventArgs> OnDisposed;
-
 		bool disposed = false;
 
-		public override void Dispose()
+		public void Dispose()
 		{
 			Dispose(true);
 			GC.SuppressFinalize(this);

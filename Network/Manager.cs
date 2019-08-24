@@ -63,8 +63,8 @@ namespace Taskmaster.Network
 		public TrafficEventArgs(TrafficDelta delta) => Delta = delta;
 	}
 
-	[Component(RequireMainThread = false)]
-	public class Manager : Component, IDisposal
+	[Context(RequireMainThread = false)]
+	public class Manager : IComponent, IDisposal
 	{
 		public static bool ShowNetworkErrors { get; set; } = false;
 
@@ -242,9 +242,6 @@ namespace Taskmaster.Network
 			if (DynamicDNS) StartDynDNSUpdates().ConfigureAwait(false);
 
 			if (DebugNet) Log.Information("<Network> Component loaded.");
-
-			RegisterForExit(this);
-			DisposalChute.Push(this);
 		}
 
 		readonly System.Threading.Timer DynDNSTimer;
@@ -1170,7 +1167,7 @@ namespace Taskmaster.Network
 
 		bool disposed = false;
 
-		public override void Dispose()
+		public void Dispose()
 		{
 			Dispose(true);
 			GC.SuppressFinalize(this);

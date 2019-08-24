@@ -42,8 +42,8 @@ namespace Taskmaster.Process
 {
 	using static Application;
 
-	[Component(RequireMainThread = false)]
-	public class Manager : Component, IDisposal
+	[Context(RequireMainThread = false)]
+	public class Manager : IComponent, IDisposal, IDisposable
 	{
 		Analyzer? analyzer = null;
 
@@ -419,9 +419,6 @@ namespace Taskmaster.Process
 			Application.OnStart += OnStart;
 
 			if (DebugProcesses) Log.Information("<Process> Component Loaded.");
-
-			RegisterForExit(this);
-			DisposalChute.Push(this);
 		}
 
 		async void OnStart(object sender, EventArgs ea)
@@ -2690,7 +2687,7 @@ namespace Taskmaster.Process
 
 		bool disposed = false;
 
-		public override void Dispose()
+		public void Dispose()
 		{
 			Dispose(true);
 			GC.SuppressFinalize(this);

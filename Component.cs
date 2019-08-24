@@ -29,35 +29,20 @@ using System.Diagnostics;
 
 namespace Taskmaster
 {
-	[Dependency(typeof(ComponentAttribute))]
-	public abstract class Component : IDisposable
+	using static Application;
+
+	public interface IComponent
 	{
-		protected Component() => RequireAttribute();
+		void Dispose();
 
-		[Conditional("DEBUG")]
-		void RequireAttribute()
-		{
-			// This should happen at compile time or even before.
-			if (this.GetType().GetCustomAttributes(typeof(ComponentAttribute), false).Length == 0)
-				throw new NotImplementedException(this.GetType().ToString());
-		}
+		void ShutdownEvent(object sender, EventArgs ea);
 
-		public int ComponentId { get; }
-
-		public abstract void Dispose();
+		//bool RequireMainThread { get; set; }
 	}
 
 	[System.AttributeUsage(AttributeTargets.Class, AllowMultiple = false, Inherited = true)]
-	public sealed class ComponentAttribute : Attribute
+	public sealed class ContextAttribute : Attribute
 	{
-		public bool RequireMainThread { get; set; }
-	}
-
-	[AttributeUsage(AttributeTargets.Class, AllowMultiple = true, Inherited = false)]
-	public sealed class DependencyAttribute : Attribute
-	{
-		public Type Dependency { get; }
-
-		public DependencyAttribute(Type type) => Dependency = type;
+		public bool RequireMainThread { get; set; } = false;
 	}
 }

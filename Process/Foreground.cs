@@ -45,7 +45,7 @@ namespace Taskmaster.Process
 		public string Executable { get; set; }
 	}
 
-	public class ForegroundManager : IDisposal, IDisposable
+	public class ForegroundManager : IComponent, IDisposal, IDisposable
 	{
 		public event EventHandler<WindowChangedArgs> ActiveChanged;
 
@@ -111,8 +111,6 @@ namespace Taskmaster.Process
 			HangTimer.Elapsed += HangDetector;
 
 			if (DebugForeground) Log.Information("<Foreground> Component loaded.");
-			RegisterForExit(this);
-			DisposalChute.Push(this);
 		}
 
 		Process.Manager processmanager = null;

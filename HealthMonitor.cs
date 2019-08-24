@@ -55,8 +55,8 @@ namespace Taskmaster
 	/// <summary>
 	/// Monitors for variety of problems and reports on them.
 	/// </summary>
-	[Component(RequireMainThread = false)]
-	public class HealthMonitor : Component, IDisposal // Auto-Doc
+	[Context(RequireMainThread = false)]
+	public class HealthMonitor : IComponent, IDisposal // Auto-Doc
 	{
 		bool DebugHealth = false;
 
@@ -187,9 +187,6 @@ namespace Taskmaster
 			EmergencyTimer.Elapsed += EmergencyTick;
 
 			if (DebugHealth) Log.Information("<Auto-Doc> Component loaded");
-
-			RegisterForExit(this);
-			DisposalChute.Push(this);
 		}
 
 		int EmergencyTick_lock = 0;
@@ -635,7 +632,7 @@ namespace Taskmaster
 			EmergencyTimer.Stop();
 		}
 
-		public override void Dispose()
+		public void Dispose()
 		{
 			Dispose(true);
 			GC.SuppressFinalize(this);

@@ -33,8 +33,8 @@ namespace Taskmaster
 {
 	using static Application;
 
-	[Component(RequireMainThread = false)]
-	public class SelfMaintenance : Component, IDisposal
+	[Context(RequireMainThread = false)]
+	public class SelfMaintenance : IComponent, IDisposal
 	{
 		public SelfMaintenance()
 		{
@@ -42,9 +42,6 @@ namespace Taskmaster
 			TimerReset();
 
 			if (Trace) Log.Information("<Self-Maintenance> Initialized.");
-
-			RegisterForExit(this);
-			DisposalChute.Push(this);
 		}
 
 		void TimerReset()
@@ -133,7 +130,7 @@ namespace Taskmaster
 
 		public event EventHandler<DisposedEventArgs> OnDisposed;
 
-		public override void Dispose()
+		public void Dispose()
 		{
 			Dispose(true);
 			GC.SuppressFinalize(this);
