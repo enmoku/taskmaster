@@ -53,7 +53,8 @@ namespace Taskmaster.Process
 		readonly Dictionary<string, InstanceGroupLoad> Loaders = new Dictionary<string, InstanceGroupLoad>(40);
 		readonly object Loader_lock = new object();
 
-		public event EventHandler<LoaderEvent> LoaderDetection;
+		public event EventHandler<LoaderEvent> LoaderActivity;
+		public event EventHandler<LoaderEndEvent> LoaderRemoval;
 
 		public ProcessEx[] GetExitWaitList() => WaitForExitList.Values.ToArray(); // copy is good here
 
@@ -115,11 +116,11 @@ namespace Taskmaster.Process
 			}
 			catch (InvalidOperationException)
 			{
-				Loaders.Remove(info.Name);
+				RemoveLoader(info.Name);
 			}
 			catch (NullReferenceException)
 			{
-				Loaders.Remove(info.Name);
+				RemoveLoader(info.Name);
 				return;
 			}
 			catch (Exception ex)
@@ -129,6 +130,13 @@ namespace Taskmaster.Process
 			}
 
 			if (!LoadTimerRunning) StartLoadAnalysisTimer();
+		}
+
+		void RemoveLoader(string name)
+		{
+			Loaders.Remove(name);
+
+			
 		}
 
 		async Task EndLoadAnalysis(ProcessEx info)
@@ -149,7 +157,7 @@ namespace Taskmaster.Process
 				lock (Loader_lock)
 				{
 					if (load.InstanceCount <= 0)
-						Loaders.Remove(info.Name);
+						RemoveLoader(info.Name);
 				}
 			}
 			catch (Exception ex)
@@ -164,7 +172,7 @@ namespace Taskmaster.Process
 
 		void InspectLoaders(object _)
 		{
-			if (LoaderDetection is null)
+			if (LoaderActivity is null)
 			{
 				if (Trace) Logging.DebugMsg("<Process:Loaders> None subscribed.");
 				return; // don't process while no-one is subscribed
@@ -173,72 +181,74 @@ namespace Taskmaster.Process
 				Logging.DebugMsg("<Process:Loaders> Inspecting.");
 
 			if (!LoadLock.TryLock()) return;
+			using var llock = LoadLock.ScopedUnlock();
 
-			try
+			var now = DateTimeOffset.UtcNow;
+
+			var heavyLoaders = new List<InstanceGroupLoad>(4);
+			var removeList = new List<InstanceGroupLoad>(2);
+
+			int skipped = 0;
+
+			InstanceGroupLoad[] loadlist;
+			lock (Loader_lock)
 			{
-				var heavyLoaders = new List<InstanceGroupLoad>(4);
+				loadlist = Loaders.Values.ToArray();
+			}
 
-				int skipped = 0;
+			var heaviest = loadlist[0];
 
-				var loadlist = Loaders.Values.ToArray();
-				InstanceGroupLoad heaviest = loadlist[0];
-
-				foreach (var loader in loadlist)
+			foreach (var loader in loadlist)
+			{
+				if (loader.InstanceCount > 0)
 				{
-					if (loader.InstanceCount > 0)
+					loader.Update();
+
+					if (heaviest.Load < loader.Load)
+						heaviest = loader;
+					else if (loader.Load < heaviest.Load / 2f) // skip lightweights
 					{
-						loader.Update();
-
-						if (heaviest.Load < loader.Load)
-							heaviest = loader;
-						else if (loader.Load < heaviest.Load / 2f) // skip lightweights
-						{
-							skipped++;
-							continue;
-						}
-
-						if (loader.Samples > 0)
-							heavyLoaders.Add(loader);
-						else
-							skipped++;
-
-						if (loader.LastHeavy && loader.Heavy > 5)
-							Logging.DebugMsg($"LOADER [{loader.Load:N1}]: {loader.Instance} [×{loader.InstanceCount}] - CPU: {loader.CPULoad.Average:N1}, RAM: {loader.RAMLoad.Current:N3} GiB, IO: {loader.IOLoad.Average:N1} MB/s");
+						skipped++;
+						continue;
 					}
+
+					if (loader.Samples > 0)
+						heavyLoaders.Add(loader);
 					else
 						skipped++;
+
+					if (loader.LastHeavy && loader.Heavy > 5)
+						Logging.DebugMsg($"LOADER [{loader.Load:N1}]: {loader.Instance} [×{loader.InstanceCount}] - CPU: {loader.CPULoad.Average:N1}, RAM: {loader.RAMLoad.Current:N3} GiB, IO: {loader.IOLoad.Average:N1} MB/s");
 				}
-
-				Logging.DebugMsg($"HEAVYWEIGHT [{heaviest.Load:N1}]: {heaviest.Instance} [×{heaviest.InstanceCount}] - CPU: {heaviest.CPULoad.Average:N1}, RAM: {heaviest.RAMLoad.Current:N3} GiB, IO: {heaviest.IOLoad.Average:N1} MB/s");
-
-				heavyLoaders.Sort(LoadInfoComparer);
-
-				int i = 0;
-				foreach (var loader in heavyLoaders)
+				else
 				{
-					if (i++ > 2) break;
-					loader.Order = i;
-					Logging.DebugMsg($"LOADER [{loader.Load:N1}]: {loader.Instance} [×{loader.InstanceCount}] - CPU: {loader.CPULoad.Average:N1} %, RAM: {loader.RAMLoad.Current:N3} GiB, IO: {loader.IOLoad.Average:N1} MB/s");
-					LoaderDetection?.Invoke(this, new LoaderEvent(loader));
+					skipped++;
+
+					if (now.Since(loader.Last).TotalMinutes > 3f)
+						removeList.Add(loader);
+
+					// TODO: Remove
 				}
-
-				/*
-				var searcher = new ManagementObjectSearcher("select * from Win32_PerfFormattedData_PerfOS_Processor");
-				var cpuTimes = searcher.Get()
-					.Cast<ManagementObject>()
-					.Select(mo => new
-					{
-						Name = mo["Name"],
-						Usage = mo["PercentProcessorTime"]
-					}
-					)
-					.ToList();
-				*/
-
 			}
-			finally
+
+			Logging.DebugMsg($"HEAVYWEIGHT [{heaviest.Load:N1}]: {heaviest.Instance} [×{heaviest.InstanceCount}] - CPU: {heaviest.CPULoad.Average:N1}, RAM: {heaviest.RAMLoad.Current:N3} GiB, IO: {heaviest.IOLoad.Average:N1} MB/s");
+
+			heavyLoaders.Sort(LoadInfoComparer);
+
+			int i = 0;
+			foreach (var loader in heavyLoaders)
 			{
-				LoadLock.Unlock();
+				loader.Order = i;
+				Logging.DebugMsg($"LOADER [{loader.Load:N1}]: {loader.Instance} [×{loader.InstanceCount}] - CPU: {loader.CPULoad.Average:N1} %, RAM: {loader.RAMLoad.Current:N3} GiB, IO: {loader.IOLoad.Average:N1} MB/s");
+			}
+
+			//LoaderActivity?.Invoke(this, new LoaderEvent(heavyLoaders.GetRange(0, Math.Min(heavyLoaders.Count, 3)).ToArray()));
+			LoaderActivity?.Invoke(this, new LoaderEvent(heavyLoaders.ToArray()));
+
+			foreach (var group in removeList)
+			{
+				Loaders.Remove(group.Instance);
+				LoaderRemoval?.Invoke(this, new LoaderEndEvent(group));
 			}
 		}
 
@@ -318,7 +328,17 @@ namespace Taskmaster.Process
 
 		public int RunningCount => Running.Count;
 
-		ProcessEx GetRunning(int pid) => Running.TryGetValue(pid, out var info) ? info : null;
+		public bool GetCachedProcess(int pid, out ProcessEx info)
+		{
+			if (Running.TryGetValue(pid, out info))
+				return true;
+
+			if (WaitForExitList.TryGetValue(pid, out info))
+				return true;
+
+			info = null;
+			return false;
+		}
 
 		public bool LoaderTracking { get; set; } = false;
 
@@ -437,9 +457,6 @@ namespace Taskmaster.Process
 		// TODO: Need an ID mapping
 		public bool GetControllerByName(string friendlyname, out Controller controller)
 			=> (controller = Watchlist.Keys.FirstOrDefault(prc => prc.FriendlyName.Equals(friendlyname, StringComparison.InvariantCultureIgnoreCase))) != null;
-
-		public bool GetProcess(int pid, out ProcessEx info)
-			=> (info = GetRunning(pid)) != null;
 
 		/// <summary>
 		/// Executable name to ProcessControl mapping.
@@ -754,7 +771,7 @@ namespace Taskmaster.Process
 
 				if (DebugScan) Log.Verbose($"<Process> Checking: {name} #{pid}");
 
-				if ((info = GetRunning(pid)) != null)
+				if (GetCachedProcess(pid, out info))
 				{
 					bool stale = false;
 
@@ -1189,7 +1206,7 @@ namespace Taskmaster.Process
 					{
 						ref var tig = ref tignorelist[i];
 						tig = tig.ToLowerInvariant(); // does this work correctly?
-						//tignorelist[i] = tignorelist[i].ToLowerInvariant();
+													  //tignorelist[i] = tignorelist[i].ToLowerInvariant();
 					}
 				}
 				else

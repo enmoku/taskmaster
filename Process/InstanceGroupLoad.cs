@@ -132,11 +132,12 @@ namespace Taskmaster.Process
 			var now = DateTimeOffset.UtcNow;
 
 			float highRam = 0f, highCpu = 0f, highIo = 0f, cput, iot;
-			int highPid = 0;
+			int highPid = LastPid;
 			long memt;
 
 			var removeList = new System.Collections.Generic.List<ProcessEx>(2);
 			var elapsed = updateTimer.ElapsedMilliseconds;
+
 			foreach (var info in Processes.Values)
 			{
 				if (info.Exited)
@@ -161,6 +162,12 @@ namespace Taskmaster.Process
 					ramloadt += memt;
 					cpuloadraw += cput;
 					ioload += iot;
+
+					if (highCpu < cput)
+					{
+						highCpu = cput;
+						highPid = info.Id;
+					}
 				}
 				catch
 				{

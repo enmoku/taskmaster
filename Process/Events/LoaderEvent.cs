@@ -30,8 +30,15 @@ namespace Taskmaster.Process
 {
 	public class LoaderEvent : EventArgs
 	{
-		public InstanceGroupLoad Load { get; }
+		public InstanceGroupLoad[] Loaders { get; }
 
-		public LoaderEvent(InstanceGroupLoad load) => Load = load;
+		public LoaderEvent(InstanceGroupLoad[] loaders) => Loaders = loaders;
+	}
+
+	public class LoaderEndEvent : EventArgs
+	{
+		public InstanceGroupLoad Loader { get; }
+
+		public LoaderEndEvent(InstanceGroupLoad loader) => Loader = loader;
 	}
 }

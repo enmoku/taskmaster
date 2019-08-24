@@ -114,7 +114,8 @@ namespace Taskmaster.UI
 			Show();
 			BringToFront();
 
-			processmanager.LoaderDetection += LoaderEvent;
+			processmanager.LoaderActivity += LoaderActivityEvent;
+			processmanager.LoaderRemoval += LoaderEndEvent;
 
 			timer.Interval = 0_500;
 			timer.Elapsed += UIUpdate;
@@ -191,61 +192,84 @@ namespace Taskmaster.UI
 
 		readonly ConcurrentDictionary<string, LoadListPair> LoaderInfos = new ConcurrentDictionary<string, LoadListPair>(1, 5);
 
-		public void LoaderEvent(object sender, Process.LoaderEvent ea)
+		public void LoaderEndEvent(object sender, Process.LoaderEndEvent ea)
+			=> BeginInvoke(new Action(() => RemoveLoader(ea.Loader.Instance)));
+
+		void RemoveLoader(string key)
 		{
-			if (!IsHandleCreated || disposed) return;
-
-			string key = ea.Load.Instance;
-
-			if (LoaderInfos.TryGetValue(key, out LoadListPair pair))
-				pair.Load = ea.Load; // unnecessary?
-			else
-				pair = new LoadListPair(ea.Load, null);
-
-			BeginInvoke(new Action(() => UpdateItem(pair)));
+			if (LoaderInfos.TryRemove(key, out var pair))
+				LoaderList.Items.Remove(pair.ListItem);
 		}
 
-		void UpdateItem(LoadListPair pair)
+		public async void LoaderActivityEvent(object sender, Process.LoaderEvent ea)
 		{
 			if (!IsHandleCreated || disposed) return;
 
-			if (pair.ListItem != null) // update
+			await Task.Delay(0).ConfigureAwait(false);
+
+			LoadListPair[] pairs = new LoadListPair[ea.Loaders.Length];
+
+			for (int i = 0; i < ea.Loaders.Length; i++)
 			{
-				var li = pair.ListItem;
+				var load = ea.Loaders[i];
 
-				BeginInvoke(new Action(() => UpdateListView(pair)));
+				string key = load.Instance;
 
-				lock (ListLock)
-				{
-					LoaderList.Items.Remove(li);
-					if (LoaderList.Items.Count > pair.Load.Order)
-						LoaderList.Items.Insert(pair.Load.Order, li);
-					else
-						LoaderList.Items.Add(li);
+				if (LoaderInfos.TryGetValue(key, out LoadListPair pair))
+					pair.Load = load; // unnecessary?
+				else
+					pair = new LoadListPair(load, null);
 
-					DirtyList = true;
-				}
+				pairs[i] = pair;
 			}
-			else
+
+			BeginInvoke(new Action(() => UpdateItems(pairs)));
+		}
+
+		void UpdateItems(LoadListPair[] pairs)
+		{
+			if (!IsHandleCreated || disposed) return;
+
+			foreach (var pair in pairs)
 			{
-				var load = pair.Load;
-				var instance = pair.Load.Instance;
-
-				pair.ListItem = new ListViewItem(new[] {
-					instance,
-					load.LastPid.ToString(),
-					$"{load.CPULoad.Average:N1} %",
-					$"{load.RAMLoad.Current:N2} GiB",
-					$"{load.IOLoad.Average:N1} MiB/s"
-				});
-
-				lock (ListLock)
+				if (pair.ListItem != null) // update
 				{
-					LoaderInfos.TryAdd(instance, pair);
+					var li = pair.ListItem;
 
-					LoaderList.Items.Add(pair.ListItem);
+					BeginInvoke(new Action(() => UpdateListView(pair)));
 
-					DirtyList = true;
+					lock (ListLock)
+					{
+						LoaderList.Items.Remove(li);
+						if (LoaderList.Items.Count > pair.Load.Order)
+							LoaderList.Items.Insert(pair.Load.Order, li);
+						else
+							LoaderList.Items.Add(li);
+
+						DirtyList = true;
+					}
+				}
+				else
+				{
+					var load = pair.Load;
+					var instance = load.Instance;
+
+					pair.ListItem = new ListViewItem(new[] {
+						instance,
+						load.LastPid.ToString(),
+						$"{load.CPULoad.Average:N1} %",
+						$"{load.RAMLoad.Current:N2} GiB",
+						$"{load.IOLoad.Average:N1} MiB/s"
+					});
+
+					lock (ListLock)
+					{
+						LoaderInfos.TryAdd(instance, pair);
+
+						LoaderList.Items.Add(pair.ListItem);
+
+						DirtyList = true;
+					}
 				}
 			}
 		}
@@ -281,7 +305,7 @@ namespace Taskmaster.UI
 				timer.Dispose();
 
 				processmanager.LoaderTracking = false;
-				processmanager.LoaderDetection -= LoaderEvent;
+				processmanager.LoaderActivity -= LoaderActivityEvent;
 
 				// 
 				using var cfg = Application.Config.Load(UIConfigFilename);

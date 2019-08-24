@@ -67,31 +67,19 @@ namespace Taskmaster
 
 			Idle(); // initialize
 
-			try
-			{
-				Samples = new float[SampleCount];
+			Samples = new float[SampleCount];
 
-				// prepopulate
-				var tload = UsageFromIdle(Idle());
-				for (int i = 0; i < SampleCount; i++)
-				{
-					Samples[i] = tload;
-					Mean += Samples[i];
-				}
-
-				CPUSampleTimer = new System.Timers.Timer(SampleInterval.TotalMilliseconds);
-				CPUSampleTimer.Elapsed += Sampler;
-				CPUSampleTimer.Start();
-			}
-			catch (Exception ex)
+			// prepopulate
+			var tload = UsageFromIdle(Idle());
+			for (int i = 0; i < SampleCount; i++)
 			{
-				Logging.Stacktrace(ex);
-				CPUSampleTimer.Stop();
-				throw;
+				Samples[i] = tload;
+				Mean += Samples[i];
 			}
 
-			RegisterForExit(this);
-			DisposalChute.Push(this);
+			CPUSampleTimer = new System.Timers.Timer(SampleInterval.TotalMilliseconds);
+			CPUSampleTimer.Elapsed += Sampler;
+			CPUSampleTimer.Start();
 		}
 
 		public void LoadConfig()
@@ -201,6 +189,7 @@ namespace Taskmaster
 					Period = SampleInterval,
 					Queue = queue
 				};
+
 				Sampling?.Invoke(this, new ProcessorLoadEventArgs() { Load = GetLoad });
 			}
 			catch (OutOfMemoryException) { throw; }

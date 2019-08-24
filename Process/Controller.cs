@@ -1632,6 +1632,8 @@ namespace Taskmaster.Process
 							}
 							return nrmt;
 						});
+
+						WaitForExit(info);
 					}
 
 					await InternalRefresh(now).ConfigureAwait(false);
