@@ -47,8 +47,8 @@ namespace Taskmaster.Process
 	{
 		Analyzer? analyzer = null;
 
-		readonly ConcurrentDictionary<int, ProcessEx> WaitForExitList = new ConcurrentDictionary<int, ProcessEx>();
-		readonly ConcurrentDictionary<int, ProcessEx> Running = new ConcurrentDictionary<int, ProcessEx>(Environment.ProcessorCount, 300);
+		readonly ConcurrentDictionary<int, ProcessEx> WaitForExitList = new ConcurrentDictionary<int, ProcessEx>(Environment.ProcessorCount, 60);
+		readonly ConcurrentDictionary<int, ProcessEx> Running = new ConcurrentDictionary<int, ProcessEx>(Environment.ProcessorCount, 60);
 
 		readonly Dictionary<string, InstanceGroupLoad> Loaders = new Dictionary<string, InstanceGroupLoad>(40);
 		readonly object Loader_lock = new object();
@@ -100,7 +100,6 @@ namespace Taskmaster.Process
 
 			try
 			{
-
 				// TODO: Do basic monitoring.
 				lock (Loader_lock)
 				{
@@ -2076,7 +2075,7 @@ namespace Taskmaster.Process
 					if (!old && prc.LogStartAndExit)
 					{
 						Log.Information(info.ToFullString() + " started.");
-						info.Process.Exited += (_, _ea) => Log.Information(info.ToFullString() + " exited (run time: "+ info.Start.To(DateTimeOffset.UtcNow).ToString("g") +").");
+						info.Process.Exited += (_, _ea) => Log.Information(info.ToFullString() + " exited (run time: " + info.Start.To(DateTimeOffset.UtcNow).ToString("g") + ").");
 						info.HookExit();
 						// TOOD: What if the process exited just before we enabled raising for the events?
 					}

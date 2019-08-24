@@ -126,7 +126,7 @@ namespace Taskmaster.Configuration
 				{
 					Unload(); // saves
 				}
-				catch (ObjectDisposedException) { /* NOP */ }
+				catch (ObjectDisposedException) { Statistics.DisposedAccesses++; }
 
 				//base.Dispose();
 			}

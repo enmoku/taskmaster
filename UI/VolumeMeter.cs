@@ -52,7 +52,6 @@ namespace Taskmaster.UI
 		readonly Audio.Manager audiomanager;
 
 		public VolumeMeter(Audio.Manager manager)
-			: base()
 		{
 			Visible = false;
 			SuspendLayout();

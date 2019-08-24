@@ -71,7 +71,6 @@ namespace Taskmaster.UI.Extensions
 	public class TableLayoutPanel : System.Windows.Forms.TableLayoutPanel
 	{
 		public TableLayoutPanel()
-			: base()
 		{
 			DoubleBuffered = true;
 

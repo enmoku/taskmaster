@@ -33,14 +33,13 @@ namespace Taskmaster.UI.Extensions
 	/// <summary>
 	/// Extension on NumericUpDown to show some form of unit of measure.
 	/// </summary>
-	class NumericUpDownEx : NumericUpDown
+	public class NumericUpDownEx : NumericUpDown
 	{
 		readonly NumberFormatInfo FormatInfo = new NumberFormatInfo();
 
-		public NumericUpDownEx() : base()
-		{
-			// nothing here
-		}
+		public NumericUpDownEx() { }
+
+		public NumericUpDownEx(string unit) => Unit = unit;
 
 		public string Unit { get; set; } = string.Empty; // BUG: this does not trigger UpdateEditText
 

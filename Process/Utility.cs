@@ -255,6 +255,13 @@ namespace Taskmaster.Process
 			}
 			else if (strategy == AffinityStrategy.Limit) // Don't increase the number of cores but move them around
 			{
+				if (targetmask == initialmask)
+				{
+					if (Process.Manager.DebugProcesses)
+						Logging.DebugMsg(sbs.Append(" – Direct Match").ToString());
+					return targetmask; // quick exit
+				}
+
 				int initialCores = Bit.Count(initialmask);
 				int targetCores = Bit.Count(targetmask);
 				int excesscores = initialCores - targetCores;

@@ -33,7 +33,6 @@ namespace Taskmaster.UI
 		public string Value { get; private set; }
 
 		public TextInputBox(string message, string title, string input = "")
-			: base()
 		{
 			Text = title;
 			Value = string.Empty;

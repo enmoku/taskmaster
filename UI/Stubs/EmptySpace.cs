@@ -28,6 +28,6 @@ namespace Taskmaster.UI
 {
 	public class EmptySpace : System.Windows.Forms.Control
 	{
-		public EmptySpace() : base() => Dock = System.Windows.Forms.DockStyle.Fill;
+		public EmptySpace() => Dock = System.Windows.Forms.DockStyle.Fill;
 	}
 }

@@ -34,7 +34,6 @@ namespace Taskmaster
 	public class HiddenWindow : System.Windows.Forms.Form
 	{
 		public HiddenWindow()
-			: base()
 		{
 			_ = Handle; // HACK
 			TopLevel = true;

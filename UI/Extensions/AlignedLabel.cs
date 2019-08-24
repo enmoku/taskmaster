@@ -28,7 +28,7 @@ namespace Taskmaster.UI
 {
 	public class AlignedLabel : Extensions.Label
 	{
-		public AlignedLabel() : base()
+		public AlignedLabel()
 		{
 			TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
 			Anchor = System.Windows.Forms.AnchorStyles.Left;

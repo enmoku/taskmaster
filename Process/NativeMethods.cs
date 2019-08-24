@@ -265,7 +265,7 @@ namespace Taskmaster.Process
 		/// <param name="hWnd">Window handle.</param>
 		[DllImport("user32.dll")]
 		[return: MarshalAs(UnmanagedType.Bool)]
-		internal static extern bool IsHungAppWindow(IntPtr hWnd);
+		internal static extern bool IsHungAppWindow(IntPtr hWnd); // HACK: MSDN recommends not to use this.
 
 		[DllImport("kernel32.dll", SetLastError = true)]
 		internal static extern bool GetSystemTimes(out System.Runtime.InteropServices.ComTypes.FILETIME lpIdleTime, out System.Runtime.InteropServices.ComTypes.FILETIME lpKernelTime, out System.Runtime.InteropServices.ComTypes.FILETIME lpUserTime);

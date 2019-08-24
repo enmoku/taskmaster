@@ -88,7 +88,7 @@ namespace Taskmaster
 		//OpenHardwareMonitor.Hardware.ISensor cpuFan = null;
 		//OpenHardwareMonitor.Hardware.ISensor cpuTmp = null;
 
-		OpenHardwareMonitor.Hardware.Computer? computer = null;
+		readonly OpenHardwareMonitor.Hardware.Computer computer;
 
 		public HardwareMonitor()
 		{
@@ -230,7 +230,6 @@ namespace Taskmaster
 			finally
 			{
 				computer?.Close(); // not needed?
-				computer = null;
 			}
 		}
 
@@ -337,7 +336,6 @@ namespace Taskmaster
 				CPUPolling = null;
 
 				computer?.Close();
-				computer = null;
 
 				//base.Dispose();
 

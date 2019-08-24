@@ -211,6 +211,9 @@ namespace Taskmaster.Process
 					if (!responding) PreviouslyHung = fgproc.Id;
 				}
 
+				if (DebugForeground)
+					Logging.DebugMsg("<Foreground::DEBUG> Foreground: " + fgproc.ProcessName + " #" + lfgpid.ToString() + " --- responding: " + responding.ToString());
+
 				if (!previoushang.Equals(lfgpid)) // foreground changed since last test
 					ResetHanging();
 

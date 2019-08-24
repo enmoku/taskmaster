@@ -39,7 +39,6 @@ namespace Taskmaster.UI
 		static protected System.Drawing.Font BoldFont => _BoldFont.Value;
 
 		public UniForm(bool centerOnScreen = false)
-			: base()
 		{
 			//_ = Handle; // forces handle creation
 

@@ -28,6 +28,9 @@ using System;
 
 namespace Taskmaster.Process
 {
+	/// <summary>
+	/// Load of a singular process.
+	/// </summary>
 	public class ProcessLoad : IDisposable
 	{
 		readonly CpuUsage CpuLoad;

@@ -70,7 +70,6 @@ namespace Taskmaster
 		readonly UI.Extensions.Button okbutton, cancelbutton, retrybutton, endbutton;
 
 		public MessageBox(string title, string message, Buttons buttons, Type type = Type.Auto, Control? parent = null)
-			: base()
 		{
 			SuspendLayout();
 

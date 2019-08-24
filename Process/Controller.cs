@@ -1391,7 +1391,7 @@ namespace Taskmaster.Process
 					}
 					else
 					{
-						if (Manager.DebugProcesses) Log.Debug($"[{FriendlyName}] #{info.Id.ToString()} passed because name does not match; new: {info.Name}, old: {ormt.Info.Name}");
+						if (Manager.DebugProcesses) Log.Debug($"[{FriendlyName}] #{info.Id.ToString()} passed because it does not match old #{ormt.Info.Id}");
 
 						RecentlyModified.TryRemove(info.Id, out _); // id does not match name
 					}

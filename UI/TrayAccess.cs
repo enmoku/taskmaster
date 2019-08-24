@@ -61,7 +61,7 @@ namespace Taskmaster.UI
 
 		readonly ToolStripMenuItem power_auto, power_highperf, power_balanced, power_saving, power_manual;
 
-		public TrayAccess() : base()
+		public TrayAccess()
 		{
 			#region Build UI
 			var IconCache = System.Drawing.Icon.ExtractAssociatedIcon(System.Reflection.Assembly.GetExecutingAssembly().Location);

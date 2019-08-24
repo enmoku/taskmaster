@@ -492,7 +492,7 @@ namespace Taskmaster
 			// Reflection. Really silly way to find out how many components we have.
 			int componentsToLoad = (from asm in AppDomain.CurrentDomain.GetAssemblies().AsParallel()
 									from t in GetTypes(asm)
-									let len = t.GetCustomAttributes(typeof(ComponentAttribute), false).Length
+									let len = t.GetCustomAttributes(typeof(ContextAttribute), false).Length
 									where len > 0
 									select len).Sum();
 
@@ -591,9 +591,9 @@ namespace Taskmaster
 			{
 				if (PowerManagerEnabled)
 				{
-					Task.WhenAll(PowMan, CpuMon, ProcMon).ContinueWith((_, _discard) =>
+					Task.WhenAll(PowMan, CpuMon, ProcMon).ContinueWith((task, _discard) =>
 					  {
-						  if (processmanager is null) throw new TaskCanceledException();
+						  if (task.IsFaulted || processmanager is null) throw new TaskCanceledException("task canceled", task.Exception);
 
 						  if (cpumonitor != null)
 						  {

@@ -45,7 +45,6 @@ namespace Taskmaster.UI.Config
 
 		// Editingg
 		public WatchlistEditWindow(Process.Controller? controller = null)
-			: base()
 		{
 			SuspendLayout();
 

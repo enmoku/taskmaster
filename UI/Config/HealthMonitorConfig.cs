@@ -29,7 +29,6 @@ namespace Taskmaster
 	public class HealthMonitorConfig : UI.UniForm
 	{
 		public HealthMonitorConfig()
-			: base()
 		{
 			Visible = false;
 			SuspendLayout();

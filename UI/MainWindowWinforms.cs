@@ -60,7 +60,6 @@ namespace Taskmaster.UI
 
 		// constructor
 		public MainWindow()
-			: base()
 		{
 			_ = Handle; // HACK
 
@@ -1531,7 +1530,8 @@ namespace Taskmaster.UI
 			// activeLabel.Text = cutstring;
 			activeLabel.Text = windowchangeev.Title;
 			activeExec.Text = windowchangeev.Executable;
-			activeFullscreen.Text = windowchangeev.Fullscreen ? "Full" : "Window";
+			//activeFullscreen.Text = windowchangeev.Fullscreen ? "Full" : "Window";
+			activeFullscreen.Text = "?";
 			activePID.Text = windowchangeev.Id.ToString();
 		}
 
@@ -3113,10 +3113,7 @@ namespace Taskmaster.UI
 
 				if (ea.Info.Handled) RemoveOldProcessingEntry(key);
 			}
-			catch (System.ObjectDisposedException)
-			{
-				// bah
-			}
+			catch (System.ObjectDisposedException) { Statistics.DisposedAccesses++; }
 			catch (Exception ex)
 			{
 				Logging.Stacktrace(ex);
@@ -3213,16 +3210,12 @@ namespace Taskmaster.UI
 				bool fg = (info.Id == (activeappmonitor?.ForegroundId ?? info.Id));
 
 				ListViewItem li = null;
-				string fgonlytext = fgonly ? (fg ? HumanReadable.System.Process.Foreground : HumanReadable.System.Process.Background) : "ACTIVE";
+				string fgonlytext = fgonly ? (fg ? HumanReadable.System.Process.Foreground : HumanReadable.System.Process.Background) : "Ignored";
 				string powertext = (info.PowerWait ? "FORCED" : HumanReadable.Generic.NotAvailable);
 				string extext = (info.Exclusive ? Constants.Yes : Constants.No);
 
 				if (ExitWaitlistMap?.TryGetValue(info.Id, out li) ?? false)
 				{
-					li.SubItems[2].Text = fgonlytext;
-					li.SubItems[3].Text = powertext;
-					li.SubItems[4].Text = extext;
-
 					if (Trace && DebugForeground) Log.Debug($"WaitlistHandler: {info.Name} = {info.State.ToString()}");
 
 					switch (info.State)
@@ -3238,10 +3231,14 @@ namespace Taskmaster.UI
 						case Process.HandlingState.Exited:
 							ExitWaitList?.Items.Remove(li);
 							ExitWaitlistMap?.TryRemove(info.Id, out _);
-							break;
+							return;
 						default:
 							break;
 					}
+
+					li.SubItems[2].Text = fgonlytext;
+					li.SubItems[3].Text = powertext;
+					li.SubItems[4].Text = extext;
 				}
 				else
 				{
@@ -3832,7 +3829,7 @@ namespace Taskmaster.UI
 				//oldHealthReport = health;
 			}
 			catch (OutOfMemoryException) { throw; }
-			catch (ObjectDisposedException) { throw; }
+			catch (ObjectDisposedException) { Statistics.DisposedAccesses++; throw; }
 			catch (NullReferenceException) { /* happens only due to disposal elsewhere */ }
 			catch (Exception ex)
 			{
