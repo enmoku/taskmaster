@@ -136,16 +136,17 @@ namespace Taskmaster.UI
 			{
 				foreach (var pair in LoaderInfos.Values)
 				{
-					var minutessince = now.Since(pair.Load.Last).TotalMinutes;
+					var load = pair.Load;
+					var minutessince = now.Since(load.Last).TotalMinutes;
 
-					if (Trace) Logging.DebugMsg("LOADER UI: " + pair.Load.Instance + " --- active last: " + $"{minutessince:N1} minutes ago");
+					if (Trace) Logging.DebugMsg("LOADER UI: " + load.Instance + " --- active last: " + $"{minutessince:N1} minutes ago");
 
 					if (minutessince > 3d)
 					{
-						LoaderInfos.TryRemove(pair.Load.Instance, out _);
+						LoaderInfos.TryRemove(load.Instance, out _);
 						removeList.Add(pair);
 					}
-					else if (minutessince > 1d)
+					else if (minutessince > 1d || load.InstanceCount == 0)
 					{
 						pair.ListItem.ForeColor = System.Drawing.SystemColors.GrayText;
 					}
@@ -153,7 +154,8 @@ namespace Taskmaster.UI
 					{
 						// restore color
 						pair.ListItem.ForeColor = FGColor;
-						pair.Load.Update();
+						load.Update();
+
 						BeginInvoke(new Action(() => UpdateListView(pair)));
 					}
 				}
