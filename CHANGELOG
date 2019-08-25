@@ -3,6 +3,9 @@ Comprehensive changes can be found in Git change history:
 	https://github.com/mkahvi/taskmaster/commits/master
 
 ## [0.14...]
+### 2019-08-25
+	Fixed: Process debug was not showing as much as it should've in exit wait list.
+	Internal: Improvements to loader display.
 ### 2019-08-23
 	Changed: Foreground hang detection. Apparent false positives are being detected for unknown reason, hopefully this fixes that. Effectiviness unconfirmed.
 	Changed: Use PInvoke for hang detection instead of native due to significantly better performance.
