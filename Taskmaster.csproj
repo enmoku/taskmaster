@@ -8,6 +8,7 @@
     <OutputType>WinExe</OutputType>
     <LangVersion>8.0</LangVersion>
     <Nullable>enable</Nullable>
+	<NullableContextOptions>enable</NullableContextOptions>
     <RootNamespace>Taskmaster</RootNamespace>
     <AssemblyName>Taskmaster</AssemblyName>
     <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
