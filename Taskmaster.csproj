@@ -345,10 +345,9 @@
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>
-    <PreBuildEvent>
-			echo $(BuildDate) &gt; "$(ProjectDir)\Resources\BuildDate.restext"
+    <PreBuildEvent>echo $(BuildDate)&gt; "$(ProjectDir)\Resources\BuildDate.restext"
 
-			echo $(ProjectDir) &gt; "$(ProjectDir)\Resources\ProjectDirectory.restext"
-		</PreBuildEvent>
+echo $(ProjectDir)&gt; "$(ProjectDir)\Resources\ProjectDirectory.restext"
+</PreBuildEvent>
   </PropertyGroup>
 </Project>
