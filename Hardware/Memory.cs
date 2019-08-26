@@ -42,7 +42,7 @@ namespace Taskmaster
 		public static ulong Total { get; private set; } = 0;
 
 		/// <summary>
-		/// Memory used.
+		/// Memory used in bytes.
 		/// </summary>
 		public static ulong Used { get; private set; } = 0;
 
@@ -79,23 +79,10 @@ namespace Taskmaster
 		const int PurgeStandbyList = 4;
 
 		// ctor
-		static Memory()
-		{
-			Update();
+		static Memory() => Update();
 
-			Logging.DebugMsg("<System> Memory --- Total: " + HumanInterface.ByteString(Convert.ToInt64(Total)) + " --- Private: " + HumanInterface.ByteString(Convert.ToInt64(Private)));
-
-			/*
-			// Win32_ComputerSystem -> TotalPhysicalMemory maps to MEMORYSTATUSEX.ullTotalPhys
-			using ManagementClass mc = new ManagementClass("Win32_ComputerSystem");
-			using var res = mc.GetInstances();
-				foreach (var item in res)
-				{
-					Total = Convert.ToUInt64(item.Properties["TotalPhysicalMemory"].Value);
-					break;
-				}
-			*/
-		}
+		[Conditional("DEBUG")]
+		static void PrintMemoryStats() => Logging.DebugMsg("<System> Memory --- Total: " + HumanInterface.ByteString(Convert.ToInt64(Total)) + " --- Private: " + HumanInterface.ByteString(Convert.ToInt64(Private)));
 
 		public static void PurgeStandby()
 		{
@@ -129,6 +116,7 @@ namespace Taskmaster
 			}
 		}
 
+		[Conditional("DEBUG")]
 		public static void GetCache()
 		{
 			if (NativeMethods.GetSystemFileCacheSize(out uint minCache, out uint maxCache, out _))
@@ -150,6 +138,7 @@ namespace Taskmaster
 				Total = mem.ullTotalPhys;
 				FreeBytes = Convert.ToInt64(mem.ullAvailPhys);
 				Used = Total - mem.ullAvailPhys;
+
 				if (Trace && DebugMemory) Logging.DebugMsg($"MEMORY - Total: {Total.ToString()}, Free: {FreeBytes.ToString()}, Used: {Used.ToString()}");
 			}
 			catch (Exception ex)
@@ -159,12 +148,14 @@ namespace Taskmaster
 		}
 
 		// weird hack
+		/*
 		static readonly Finalizer finalizer = new Finalizer();
 
 		sealed class Finalizer
 		{
 			~Finalizer()
 			{
+				// Nothing too important here
 				Logging.DebugMsg("MemoryManager static finalization");
 				pfcprivate.Dispose();
 				//pfccommit?.Dispose();
@@ -173,6 +164,7 @@ namespace Taskmaster
 				//pfcfree = null;
 			}
 		}
+		*/
 	}
 
 	public static partial class NativeMethods
