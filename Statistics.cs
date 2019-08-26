@@ -37,8 +37,8 @@ namespace Taskmaster
 		public static ulong MaintenanceCount { get; set; } = 0;
 		public static double MaintenanceTime { get; set; } = 0;
 
-		public static ulong PathCacheCurrent { get; set; } = 0;
-		public static ulong PathCachePeak { get; set; } = 0;
+		public static int PathCacheCurrent { get; set; } = 0;
+		public static int PathCachePeak { get; set; } = 0;
 		public static ulong PathCacheHits { get; set; } = 0;
 		public static ulong PathCacheMisses { get; set; } = 0;
 

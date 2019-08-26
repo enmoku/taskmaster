@@ -214,6 +214,7 @@ namespace Taskmaster.Process
 				if (DebugForeground)
 					Logging.DebugMsg("<Foreground::DEBUG> Foreground: " + fgproc.ProcessName + " #" + lfgpid.ToString() + " --- responding: " + responding.ToString());
 
+
 				if (!previoushang.Equals(lfgpid)) // foreground changed since last test
 					ResetHanging();
 
@@ -498,7 +499,7 @@ namespace Taskmaster.Process
 
 				if (Utility.SystemProcessId(pid))
 				{
-					Log.Debug("<Foreground> System process in foreground: " + pid.ToString());
+					if (DebugForeground) Log.Debug("<Foreground> System process in foreground: " + pid.ToString());
 
 					Reset();
 				}

@@ -180,6 +180,23 @@ namespace Taskmaster.Process
 		/// </summary>
 		public string Description { get; set; } = string.Empty; // TODO: somehow unload this from memory
 
+		/*
+		// Load only as necessary
+		public string Description
+		{
+			get
+			{
+				using var wcfg = Config.Load(Manager.WatchlistFile);
+				return wcfg.Config.Get(FriendlyName)?.Get(HumanReadable.Generic.Description)?.String ?? string.Empty;
+			}
+			set
+			{
+				using var wcfg = Config.Load(Manager.WatchlistFile);
+				wcfg.Config[FriendlyName][HumanReadable.Generic.Description].String = value;
+			}
+		}
+		*/
+
 		float _volume = 0.5f;
 
 		/// <summary>
@@ -552,7 +569,7 @@ namespace Taskmaster.Process
 		public void SaveConfig(Configuration.File cfg, Ini.Section app = null)
 		{
 			Debug.Assert(cfg != null);
-			
+
 			if (app is null) app = cfg.Config[FriendlyName];
 
 			if (Executables?.Length > 0)
@@ -1035,6 +1052,7 @@ namespace Taskmaster.Process
 
 		void ProcessEnd(object _, EventArgs _ea)
 		{
+
 		}
 
 		// -----------------------------------------------
@@ -1630,6 +1648,7 @@ namespace Taskmaster.Process
 								nrmt.LastModified = now;
 								nrmt.LastIgnored = DateTimeOffset.MinValue;
 							}
+
 							return nrmt;
 						});
 

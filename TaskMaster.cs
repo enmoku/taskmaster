@@ -486,6 +486,8 @@ namespace Taskmaster
 
 			if (ea.IsTerminating)
 			{
+				Log.Warning("Runtime terminating!");
+
 				try
 				{
 					Close();
