@@ -41,11 +41,16 @@ namespace Taskmaster.UI
 	{
 		readonly Process.Manager processmanager;
 
+		readonly System.Diagnostics.Process Self = System.Diagnostics.Process.GetCurrentProcess();
+		readonly Process.CpuUsage SelfCPU;
+
 		public LoaderDisplay(Process.Manager manager)
 		{
 			Text = "System loaders – " + ProductName;
 
 			processmanager = manager;
+
+			SelfCPU = new Process.CpuUsage(Self);
 
 			LoaderList = new Extensions.ListViewEx()
 			{
@@ -87,9 +92,15 @@ namespace Taskmaster.UI
 
 			totalSystem.BackColor = System.Drawing.SystemColors.Control;
 			freeSystem.BackColor = System.Drawing.SystemColors.Control;
+			selfLoad.BackColor = System.Drawing.SystemColors.Control;
+
+			selfLoad.SubItems[1].Text = Self.Id.ToString();
+			selfLoad.SubItems[2].Text = "? %";
+			selfLoad.SubItems[3].Text = "0 MiB";
 
 			LoaderList.Items.Add(totalSystem);
 			LoaderList.Items.Add(freeSystem);
+			LoaderList.Items.Add(selfLoad);
 
 			AutoSize = true;
 			AutoSizeMode = AutoSizeMode.GrowOnly;
@@ -166,8 +177,9 @@ namespace Taskmaster.UI
 
 		System.Drawing.Color FGColor = new ListViewItem().ForeColor; // dumb
 
-		readonly ListViewItem freeSystem = new ListViewItem(new[] { "Free", "~", "~", "~", "~" });
-		readonly ListViewItem totalSystem = new ListViewItem(new[] { "Total", "~", "~", "~", "~"});
+		readonly ListViewItem freeSystem = new ListViewItem(new[] { "[Free]", "~", "~", "~", "~" });
+		readonly ListViewItem totalSystem = new ListViewItem(new[] { "[Total]", "~", "~", "~", "~"});
+		readonly ListViewItem selfLoad = new ListViewItem(new[] { "[Self]", "~", "~", "~", "~" });
 		readonly ListViewItem.ListViewSubItem usedCpuCell;
 		readonly ListViewItem.ListViewSubItem usedMemCell;
 		readonly ListViewItem.ListViewSubItem freeCpuCell;
@@ -181,16 +193,7 @@ namespace Taskmaster.UI
 
 			var removeList = new List<LoadListPair>(5);
 
-			var idle = cpumonitor.LastIdle;
-			//var totalmem = Memory.Total;
-			var memfree = Memory.FreeBytes;
-			var memused = Memory.Used;
-
-			usedCpuCell.Text = $"{(1f - idle) * 100f:N1} %";
-			freeCpuCell.Text = $"{idle * 100f:N1} %";
-
-			freeMemCell.Text = $"{memfree / MKAh.Units.Binary.Giga:N2} GiB";
-			usedMemCell.Text = $"{memused / MKAh.Units.Binary.Giga:N2} GiB";
+			LoaderList.BeginUpdate();
 
 			try
 			{
@@ -232,6 +235,10 @@ namespace Taskmaster.UI
 			{
 				// window closed
 			}
+
+			UpdateSystemStats();
+
+			LoaderList.EndUpdate();
 		}
 
 		object ListLock = new object();
@@ -330,6 +337,26 @@ namespace Taskmaster.UI
 					LoaderList.Items.Add(pair.ListItem);
 				}
 			}
+
+			UpdateSystemStats();
+		}
+
+		private void UpdateSystemStats()
+		{
+			var idle = cpumonitor.LastIdle;
+			//var totalmem = Memory.Total;
+			var memfree = Memory.FreeBytes;
+			var memused = Memory.Used;
+
+			usedCpuCell.Text = $"{(1f - idle) * 100f:N1} %";
+			freeCpuCell.Text = $"{idle * 100f:N1} %";
+
+			freeMemCell.Text = $"{Convert.ToSingle(memfree) / MKAh.Units.Binary.Giga:N2} GiB";
+			usedMemCell.Text = $"{Convert.ToSingle(memused) / MKAh.Units.Binary.Giga:N2} GiB";
+
+			selfLoad.SubItems[2].Text = $"{SelfCPU.Sample() * 100f:N1} %";
+
+			selfLoad.SubItems[3].Text = $"{Convert.ToSingle(GC.GetTotalMemory(false)) / MKAh.Units.Binary.Mega:N1} MiB";
 		}
 
 		void UpdateListView(LoadListPair pair)
