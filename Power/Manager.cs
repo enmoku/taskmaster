@@ -122,9 +122,9 @@ namespace Taskmaster.Power
 		public int ForceCount => ForceModeSourcesMap.Count;
 		readonly ConcurrentDictionary<int, Mode> ForceModeSourcesMap = new ConcurrentDictionary<int, Mode>();
 
-		CPUMonitor cpumonitor = null;
+		Hardware.CPUMonitor cpumonitor = null;
 
-		public async Task Hook(CPUMonitor monitor)
+		public async Task Hook(Hardware.CPUMonitor monitor)
 		{
 			cpumonitor = monitor;
 			cpumonitor.OnDisposed += (_, _ea) => cpumonitor = null;
@@ -415,7 +415,7 @@ namespace Taskmaster.Power
 		Reaction PreviousReaction = Reaction.Average;
 
 		// TODO: Simplify this mess
-		public void CPULoadHandler(object _, ProcessorLoadEventArgs pev)
+		public void CPULoadHandler(object _, Hardware.ProcessorLoadEventArgs pev)
 		{
 			if (disposed) return;
 

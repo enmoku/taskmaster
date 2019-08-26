@@ -1190,7 +1190,7 @@ namespace Taskmaster.UI
 		Process.Manager processmanager = null;
 		Process.ForegroundManager activeappmonitor = null;
 		Power.Manager powermanager = null;
-		CPUMonitor cpumonitor = null;
+		Hardware.CPUMonitor cpumonitor = null;
 		Network.Manager netmonitor = null;
 
 		#region Microphone control code
@@ -2863,7 +2863,7 @@ namespace Taskmaster.UI
 				WatchlistSearchTimer.Stop();
 		}
 
-		public void CPULoadEvent(object _, CPUSensorEventArgs ea)
+		public void CPULoadEvent(object _, Hardware.CPUSensorEventArgs ea)
 		{
 			if (!IsHandleCreated) return;
 
@@ -2873,7 +2873,7 @@ namespace Taskmaster.UI
 			}));
 		}
 
-		public void GPULoadEvent(object _, GPUSensorEventArgs ea)
+		public void GPULoadEvent(object _, Hardware.GPUSensorEventArgs ea)
 		{
 			if (!IsHandleCreated || disposed) return;
 
@@ -2883,7 +2883,7 @@ namespace Taskmaster.UI
 				GPULoadEvent_Invoke(ea);
 		}
 
-		void GPULoadEvent_Invoke(GPUSensorEventArgs ea)
+		void GPULoadEvent_Invoke(Hardware.GPUSensorEventArgs ea)
 		{
 			if (!IsHandleCreated || disposed) return;
 
@@ -2913,7 +2913,7 @@ namespace Taskmaster.UI
 			}
 		}
 
-		void GPUSensorUpdate(GPUSensors sensors)
+		void GPUSensorUpdate(Hardware.GPUSensors sensors)
 		{
 			try
 			{
@@ -3278,7 +3278,7 @@ namespace Taskmaster.UI
 
 		// called by cpumonitor, not in UI thread by default
 		// TODO: Reverse this design, make the UI poll instead
-		void CPULoadHandler(object _, ProcessorLoadEventArgs ea)
+		void CPULoadHandler(object _, Hardware.ProcessorLoadEventArgs ea)
 		{
 			if (!IsHandleCreated || disposed) return;
 			if (!cpuload.Visible) return;
@@ -3289,7 +3289,7 @@ namespace Taskmaster.UI
 				CPULoadHandler_Invoke(ea);
 		}
 
-		void CPULoadHandler_Invoke(ProcessorLoadEventArgs ea)
+		void CPULoadHandler_Invoke(Hardware.ProcessorLoadEventArgs ea)
 		{
 			if (!IsHandleCreated || disposed) return;
 
@@ -3734,9 +3734,9 @@ namespace Taskmaster.UI
 			LastCauseTime = DateTimeOffset.UtcNow;
 		}
 
-		HardwareMonitor hardwaremonitor = null;
+		Hardware.Monitor hardwaremonitor = null;
 
-		public async Task Hook(HardwareMonitor monitor)
+		public async Task Hook(Hardware.Monitor monitor)
 		{
 			hardwaremonitor = monitor;
 			hardwaremonitor.OnDisposed += (_, _ea) => hardwaremonitor = null;
@@ -3747,13 +3747,13 @@ namespace Taskmaster.UI
 			GPULoadPoller(this, EventArgs.Empty);
 		}
 
-		public async Task Hook(CPUMonitor monitor)
+		public async Task Hook(Hardware.CPUMonitor monitor)
 		{
 			cpumonitor = monitor;
 			cpumonitor.Sampling += CPULoadHandler;
 			cpumonitor.OnDisposed += (_, _ea) => cpumonitor = null;
 
-			CPULoadHandler(this, new ProcessorLoadEventArgs() { Load = cpumonitor.GetLoad });
+			CPULoadHandler(this, new Hardware.ProcessorLoadEventArgs() { Load = cpumonitor.GetLoad });
 		}
 
 		HealthMonitor healthmonitor = null;

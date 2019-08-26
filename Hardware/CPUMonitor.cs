@@ -32,7 +32,7 @@ using System.Diagnostics;
 using System.Threading.Tasks;
 using Windows = MKAh.Wrapper.Windows;
 
-namespace Taskmaster
+namespace Taskmaster.Hardware
 {
 	using static Application;
 
@@ -170,6 +170,11 @@ namespace Taskmaster
 		/// <returns></returns>
 		[System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
 		float UsageFromIdle(float idle) => (1f - idle);
+
+		/// <summary>
+		/// Forces sampling.
+		/// </summary>
+		public void Sample() => Sampler(null, null);
 
 		async void Sampler(object _sender, System.Timers.ElapsedEventArgs _)
 		{

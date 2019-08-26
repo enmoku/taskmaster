@@ -44,8 +44,8 @@ namespace Taskmaster
 		public static HealthMonitor? healthmonitor = null;
 		public static SelfMaintenance selfmaintenance;
 		public static Audio.Manager? audiomanager = null;
-		public static CPUMonitor? cpumonitor = null;
-		public static HardwareMonitor? hardware = null;
+		public static Hardware.CPUMonitor? cpumonitor = null;
+		public static Hardware.Monitor? hardware = null;
 		//public static AlertManager alerts = null;
 
 		public static bool NoLogging { get; set; } = false;

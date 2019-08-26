@@ -26,7 +26,7 @@
 
 using System;
 
-namespace Taskmaster
+namespace Taskmaster.Hardware
 {
 	public class ProcessorLoad
 	{

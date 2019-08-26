@@ -512,7 +512,7 @@ namespace Taskmaster
 			Task
 				PowMan = (PowerManagerEnabled ? Task.Run(() => powermanager = new Power.Manager(), cts.Token) : Task.CompletedTask)
 					.ContinueWith(_ => LoadEvent?.Invoke(null, new LoadEventArgs("Power manager processed.", LoadEventType.SubLoaded)), TaskContinuationOptions.OnlyOnRanToCompletion),
-				CpuMon = (PowerManagerEnabled ? Task.Run(() => cpumonitor = new CPUMonitor(), cts.Token) : Task.CompletedTask)
+				CpuMon = (PowerManagerEnabled ? Task.Run(() => cpumonitor = new Hardware.CPUMonitor(), cts.Token) : Task.CompletedTask)
 					.ContinueWith(_ => LoadEvent?.Invoke(null, new LoadEventArgs("CPU monitor processed.", LoadEventType.SubLoaded)), TaskContinuationOptions.OnlyOnRanToCompletion),
 				ProcMon = (ProcessMonitorEnabled ? Task.Run(() => processmanager = new Process.Manager(), cts.Token) : Task.CompletedTask)
 					.ContinueWith(_ => LoadEvent?.Invoke(null, new LoadEventArgs("Process manager processed.", LoadEventType.SubLoaded)), TaskContinuationOptions.OnlyOnRanToCompletion),
@@ -524,7 +524,7 @@ namespace Taskmaster
 					.ContinueWith(_ => LoadEvent?.Invoke(null, new LoadEventArgs("Storage monitor processed.", LoadEventType.SubLoaded)), TaskContinuationOptions.OnlyOnRanToCompletion),
 				HpMon = (HealthMonitorEnabled ? Task.Run(() => healthmonitor = new HealthMonitor(), cts.Token) : Task.CompletedTask)
 					.ContinueWith(_ => LoadEvent?.Invoke(null, new LoadEventArgs("Health monitor processed.", LoadEventType.SubLoaded)), TaskContinuationOptions.OnlyOnRanToCompletion),
-				HwMon = (HardwareMonitorEnabled ? Task.Run(() => hardware = new HardwareMonitor(), cts.Token) : Task.CompletedTask)
+				HwMon = (HardwareMonitorEnabled ? Task.Run(() => hardware = new Hardware.Monitor(), cts.Token) : Task.CompletedTask)
 					.ContinueWith(_ => LoadEvent?.Invoke(null, new LoadEventArgs("Hardware monitor processed.", LoadEventType.SubLoaded)), TaskContinuationOptions.OnlyOnRanToCompletion),
 				//AlMan = (AlertManagerEnabled ? Task.Run(() => alerts = new AlertManager(), cts.Token) : Task.CompletedTask)
 				//	.ContinueWith(_ => LoadEvent?.Invoke(null, new LoadEventArgs("Alert manager processed.", LoadEventType.SubLoaded)), TaskContinuationOptions.OnlyOnRanToCompletion),

@@ -26,7 +26,7 @@
 
 namespace Taskmaster.Power
 {
-	public class AutoAdjustReactionEventArgs : ProcessorLoadEventArgs
+	public class AutoAdjustReactionEventArgs : Hardware.ProcessorLoadEventArgs
 	{
 		public Mode Mode = Mode.Undefined;
 		public Reaction Reaction = Reaction.Average;
@@ -42,11 +42,11 @@ namespace Taskmaster.Power
 		/// </summary>
 		public bool Enacted = false;
 
-		public static AutoAdjustReactionEventArgs From(ProcessorLoadEventArgs ea)
+		public static AutoAdjustReactionEventArgs From(Hardware.ProcessorLoadEventArgs ea)
 		{
 			return new AutoAdjustReactionEventArgs
 			{
-				Load = new ProcessorLoad
+				Load = new Hardware.ProcessorLoad
 				{
 					Current = ea.Load.Current,
 					Mean = ea.Load.Mean,

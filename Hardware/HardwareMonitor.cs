@@ -28,7 +28,7 @@ using Serilog;
 using System;
 using System.Threading.Tasks;
 
-namespace Taskmaster
+namespace Taskmaster.Hardware
 {
 	using static Application;
 
@@ -71,7 +71,7 @@ namespace Taskmaster
 	}
 
 	[Context(RequireMainThread = false)]
-	public class HardwareMonitor : IComponent, IDisposal
+	public class Monitor : IComponent, IDisposal
 	{
 		OpenHardwareMonitor.Hardware.IHardware? gpu = null;
 		OpenHardwareMonitor.Hardware.ISensor? gpuFan = null; // Fan speed
@@ -90,7 +90,7 @@ namespace Taskmaster
 
 		readonly OpenHardwareMonitor.Hardware.Computer computer;
 
-		public HardwareMonitor()
+		public Monitor()
 		{
 			Log.Verbose("<Hardware> Initializing...");
 
@@ -237,14 +237,14 @@ namespace Taskmaster
 		{
 			get
 			{
-				if (disposed) throw new ObjectDisposedException(nameof(HardwareMonitor), "CPULoad accessed after HardwareMonitor was disposed.");
+				if (disposed) throw new ObjectDisposedException(nameof(Monitor), "CPULoad accessed after HardwareMonitor was disposed.");
 				return cpuLoad.Value ?? float.NaN;
 			}
 		}
 
 		public GPUSensors GPUSensorData()
 		{
-			if (disposed) throw new ObjectDisposedException(nameof(HardwareMonitor), "GPUSensorData accessed after HardwareMonitor was disposed.");
+			if (disposed) throw new ObjectDisposedException(nameof(Monitor), "GPUSensorData accessed after HardwareMonitor was disposed.");
 			if (!Initialized) throw new InvalidOperationException("GPUSensorData accesssed before HardwareMonitor was initialized");
 
 			try
@@ -277,7 +277,7 @@ namespace Taskmaster
 		public void Start()
 		{
 			if (SensorPoller != null) return;
-			if (disposed) throw new ObjectDisposedException(nameof(HardwareMonitor), "Start accessed after HardwareMonitor was disposed.");
+			if (disposed) throw new ObjectDisposedException(nameof(Monitor), "Start accessed after HardwareMonitor was disposed.");
 
 			SensorPoller = new System.Timers.Timer(5000);
 			SensorPoller.Elapsed += EmitGPU;
@@ -344,7 +344,7 @@ namespace Taskmaster
 			}
 		}
 
-		~HardwareMonitor() => Dispose(false);
+		~Monitor() => Dispose(false);
 
 		public void ShutdownEvent(object sender, EventArgs ea) => Stop();
 		#endregion
