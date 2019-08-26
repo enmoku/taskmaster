@@ -105,23 +105,21 @@ namespace Taskmaster
 
 			long absbytes = Math.Abs(bytes);
 
-			if (absbytes > (multiplier[Giga] * SizeThreshold))
+			double div;
+			if (absbytes > ((div = multiplier[Giga]) * SizeThreshold))
 				scale = Giga;
-			else if (absbytes > (multiplier[Mega] * SizeThreshold))
+			else if (absbytes > ((div = multiplier[Mega]) * SizeThreshold))
 				scale = Mega;
-			else if (absbytes > (multiplier[Kilo] * SizeThreshold))
+			else if (absbytes > ((div = multiplier[Kilo]) * SizeThreshold))
 				scale = Kilo;
 			else
-				scale = Byte;
-			// else = Byte/Default
-
-			double div = multiplier[scale];
+				div = multiplier[scale = Byte];
 
 			double num = bytes / div;
 			//int decimalSpot = div == 1 ? 0 : ((num < 10) ? 3 : ((num > 100) ? 1 : 2));
-			int decimalSpot = div == 1 ? 0 : ((num > 100) ? 1 : 2);
+			//int decimalSpot = div == 1 ? 0 : ((num > 100) ? 1 : 2);
 
-			var format = DecimalFormatting[decimalSpot];
+			var format = DecimalFormatting[div == 1 ? 0 : ((num > 100) ? 1 : 2)];
 
 			return (positivesign ? format.PositiveSign : string.Empty) + num.ToString("N", format) + " " + (iec ? ByteLetterIEC[scale] : ByteLetterSI[scale]);
 		}
