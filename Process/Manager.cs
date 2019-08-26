@@ -50,7 +50,7 @@ namespace Taskmaster.Process
 		readonly ConcurrentDictionary<int, ProcessEx> WaitForExitList = new ConcurrentDictionary<int, ProcessEx>(Environment.ProcessorCount, 60);
 		readonly ConcurrentDictionary<int, ProcessEx> Running = new ConcurrentDictionary<int, ProcessEx>(Environment.ProcessorCount, 60);
 
-		readonly Dictionary<string, InstanceGroupLoad> Loaders = new Dictionary<string, InstanceGroupLoad>(40);
+		readonly ConcurrentDictionary<string, InstanceGroupLoad> Loaders = new ConcurrentDictionary<string, InstanceGroupLoad>(Environment.ProcessorCount, 40);
 		readonly object Loader_lock = new object();
 
 		public event EventHandler<LoaderEvent> LoaderActivity;
@@ -99,32 +99,33 @@ namespace Taskmaster.Process
 		{
 			await Task.Delay(0).ConfigureAwait(false);
 
+			bool added = false;
+
+			InstanceGroupLoad group = null;
+
 			try
 			{
 				// TODO: Do basic monitoring.
 				lock (Loader_lock)
 				{
-					if (!Loaders.TryGetValue(info.Name, out var load))
+					if (!Loaders.TryGetValue(info.Name, out group))
 					{
-						load = new InstanceGroupLoad(info.Name, LoadType.All, info);
-						load.Update();
-						Loaders.Add(info.Name, load);
+						group = new InstanceGroupLoad(info.Name, LoadType.All);
+						added = true;
+						Loaders.TryAdd(info.Name, group); // this failing doesn't matter too much
 					}
-					else
-						load.TryAdd(info);
+
+					group.TryAdd(info);
 				}
 			}
-			catch (InvalidOperationException)
+			catch (Exception ex) when (ex is InvalidOperationException || ex is NullReferenceException)
 			{
-				RemoveLoader(info.Name);
-			}
-			catch (NullReferenceException)
-			{
-				RemoveLoader(info.Name);
+				group?.Remove(info);
 				return;
 			}
 			catch (Exception ex)
 			{
+				group?.Remove(info);
 				Logging.Stacktrace(ex);
 				return;
 			}
@@ -132,11 +133,20 @@ namespace Taskmaster.Process
 			if (!LoadTimerRunning) StartLoadAnalysisTimer();
 		}
 
-		void RemoveLoader(string name)
+		void RemoveLoader(string name, InstanceGroupLoad group = null)
 		{
-			Loaders.Remove(name);
-
-			
+			try
+			{
+				if (group != null || Loaders.TryGetValue(name, out group))
+				{
+					Loaders.TryRemove(name, out _);
+					LoaderRemoval?.Invoke(this, new LoaderEndEvent(group));
+				}
+			}
+			catch (Exception ex)
+			{
+				Logging.Stacktrace(ex);
+			}
 		}
 
 		async Task EndLoadAnalysis(ProcessEx info)
@@ -157,7 +167,7 @@ namespace Taskmaster.Process
 				lock (Loader_lock)
 				{
 					if (load.InstanceCount <= 0)
-						RemoveLoader(info.Name);
+						RemoveLoader(info.Name, load);
 				}
 			}
 			catch (Exception ex)
@@ -247,8 +257,7 @@ namespace Taskmaster.Process
 
 			foreach (var group in removeList)
 			{
-				Loaders.Remove(group.Instance);
-				LoaderRemoval?.Invoke(this, new LoaderEndEvent(group));
+				RemoveLoader(group.Instance);
 			}
 		}
 

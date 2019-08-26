@@ -50,13 +50,46 @@ namespace Taskmaster.UI
 			LoaderList = new Extensions.ListViewEx()
 			{
 				View = View.Details,
-				HeaderStyle = ColumnHeaderStyle.Nonclickable,
+				HeaderStyle = ColumnHeaderStyle.Clickable,
 				Dock = DockStyle.Fill,
-				Width = 320,
+				Width = 360,
 				Height = 460,
+				FullRowSelect = true,
 			};
 
-			LoaderList.ListViewItemSorter = new LoaderSorter();
+			var sorter = new LoaderSorter();
+			sorter.TopItem = totalSystem;
+
+			LoaderList.ListViewItemSorter = sorter;
+
+			LoaderList.ColumnClick += (_, ea) =>
+			{
+				var sorter = LoaderList.ListViewItemSorter as LoaderSorter;
+
+				if(sorter.Column == ea.Column)
+				{
+					sorter.Order = sorter.Order == SortOrder.Ascending ? SortOrder.Descending : SortOrder.Ascending;
+				}
+				else
+				{
+					sorter.Order = SortOrder.Descending; // default
+					sorter.Column = ea.Column;
+				}
+
+				LoaderList.Sort();
+			};
+
+			usedCpuCell = totalSystem.SubItems[2];
+			usedMemCell = totalSystem.SubItems[3];
+
+			freeCpuCell = freeSystem.SubItems[2];
+			freeMemCell = freeSystem.SubItems[3];
+
+			totalSystem.BackColor = System.Drawing.SystemColors.Control;
+			freeSystem.BackColor = System.Drawing.SystemColors.Control;
+
+			LoaderList.Items.Add(totalSystem);
+			LoaderList.Items.Add(freeSystem);
 
 			AutoSize = true;
 			AutoSizeMode = AutoSizeMode.GrowOnly;
@@ -73,10 +106,17 @@ namespace Taskmaster.UI
 			var winsec = uicfg.Config[Constants.Windows];
 			var winpos = winsec["Loaders"].IntArray;
 
-			if (winpos?.Length == 2)
+			Width = 480;
+			Height = 180;
+
+			if (winpos?.Length == 4)
 			{
 				StartPosition = FormStartPosition.Manual;
-				Bounds = new System.Drawing.Rectangle(winpos[0], winpos[1], Bounds.Width, Bounds.Height);
+				Bounds = new System.Drawing.Rectangle(winpos[0], winpos[1], winpos[2], winpos[3]);
+
+				Width = Bounds.Width;
+				Height = Bounds.Height;
+
 				//Location = new System.Drawing.Point(Bounds.Left, Bounds.Top);
 
 				if (!Screen.AllScreens.Any(screen => screen.Bounds.IntersectsWith(Bounds)))
@@ -87,23 +127,25 @@ namespace Taskmaster.UI
 
 			var defaultCols = new int[] { 160, 60, 60, 80, 80 };
 			//var cols = colsec.GetOrSet("Loaders", defaultCols).IntArray;
-			var cols = defaultCols;
 			//if (cols.Length != defaultCols.Length) cols = defaultCols;
 
-			int width = 480;
-			if (cols?.Length == 5)
+			int[] cols = Array.Empty<int>();
+
+			try
 			{
-				LoaderList.Columns[0].Width = cols[0];
-				LoaderList.Columns[1].Width = cols[1];
-				LoaderList.Columns[2].Width = cols[2];
-				LoaderList.Columns[3].Width = cols[3];
-				LoaderList.Columns[4].Width = cols[4];
-
-				width = cols[0] + cols[1] + cols[2] + cols[3] + cols[4] + 20;
+				cols = colsec["Loaders"].IntArray;
 			}
+			catch { /* Ignore */ }
 
-			Width = width;
-			Height = 180;
+			if (cols?.Length != 5) cols = defaultCols;
+
+			LoaderList.Columns[0].Width = cols[0];
+			LoaderList.Columns[1].Width = cols[1];
+			LoaderList.Columns[2].Width = cols[2];
+			LoaderList.Columns[3].Width = cols[3];
+			LoaderList.Columns[4].Width = cols[4];
+
+			LoaderList.Width = cols[0] + cols[1] + cols[2] + cols[3] + cols[4];
 
 			Controls.Add(LoaderList);
 
@@ -118,19 +160,37 @@ namespace Taskmaster.UI
 			processmanager.LoaderRemoval += LoaderEndEvent;
 
 			timer.Interval = 0_500;
-			timer.Elapsed += UIUpdate;
+			timer.Tick += UIUpdate;
 			timer.Start();
 		}
 
 		System.Drawing.Color FGColor = new ListViewItem().ForeColor; // dumb
 
-		void UIUpdate(object _sender, System.Timers.ElapsedEventArgs _ea)
+		readonly ListViewItem freeSystem = new ListViewItem(new[] { "Free", "~", "~", "~", "~" });
+		readonly ListViewItem totalSystem = new ListViewItem(new[] { "Total", "~", "~", "~", "~"});
+		readonly ListViewItem.ListViewSubItem usedCpuCell;
+		readonly ListViewItem.ListViewSubItem usedMemCell;
+		readonly ListViewItem.ListViewSubItem freeCpuCell;
+		readonly ListViewItem.ListViewSubItem freeMemCell;
+
+		void UIUpdate(object _sender, EventArgs _ea)
 		{
 			if (!IsHandleCreated || disposed) return;
 
 			var now = DateTimeOffset.UtcNow;
 
 			var removeList = new List<LoadListPair>(5);
+
+			var idle = cpumonitor.LastIdle;
+			//var totalmem = Memory.Total;
+			var memfree = Memory.FreeBytes;
+			var memused = Memory.Used;
+
+			usedCpuCell.Text = $"{(1f - idle) * 100f:N1} %";
+			freeCpuCell.Text = $"{idle * 100f:N1} %";
+
+			freeMemCell.Text = $"{memfree / MKAh.Units.Binary.Giga:N2} GiB";
+			usedMemCell.Text = $"{memused / MKAh.Units.Binary.Giga:N2} GiB";
 
 			try
 			{
@@ -156,30 +216,17 @@ namespace Taskmaster.UI
 						pair.ListItem.ForeColor = FGColor;
 						load.Update();
 
-						BeginInvoke(new Action(() => UpdateListView(pair)));
+						UpdateListView(pair);
 					}
 				}
 
-				BeginInvoke(new Action(() =>
+				foreach (var loader in removeList)
 				{
-					if (!IsHandleCreated || disposed) return;
+					LoaderList.Items.Remove(loader.ListItem);
+					loader.ListItem = null;
+				}
 
-					lock (ListLock)
-					{
-						foreach (var loader in removeList)
-						{
-							LoaderList.Items.Remove(loader.ListItem);
-							loader.ListItem = null;
-						}
-
-						if (DirtyList)
-						{
-							LoaderList.Sort();
-
-							DirtyList = false;
-						}
-					}
-				}));
+				LoaderList.Sort();
 			}
 			catch (InvalidOperationException)
 			{
@@ -190,17 +237,35 @@ namespace Taskmaster.UI
 		object ListLock = new object();
 		bool DirtyList = false;
 
-		readonly System.Timers.Timer timer = new System.Timers.Timer();
+		readonly System.Windows.Forms.Timer timer = new Timer();
 
 		readonly ConcurrentDictionary<string, LoadListPair> LoaderInfos = new ConcurrentDictionary<string, LoadListPair>(1, 5);
 
 		public void LoaderEndEvent(object sender, Process.LoaderEndEvent ea)
-			=> BeginInvoke(new Action(() => RemoveLoader(ea.Loader.Instance)));
-
-		void RemoveLoader(string key)
 		{
-			if (LoaderInfos.TryRemove(key, out var pair))
-				LoaderList.Items.Remove(pair.ListItem);
+			if (disposed || !IsHandleCreated) return;
+
+			BeginInvoke(new Action(() => RemoveLoader(ea.Loader)));
+		}
+
+		void RemoveLoader(Process.InstanceGroupLoad group)
+		{
+			if (disposed || !IsHandleCreated) return;
+
+			try
+			{
+				var key = group.Instance;
+				if (LoaderInfos.TryRemove(key, out var pair))
+				{
+					var li = pair.ListItem;
+					if (li != null) // should only happen if this happens too early
+						LoaderList.Items.Remove(li);
+				}
+			}
+			catch (Exception ex)
+			{
+				Logging.Stacktrace(ex);
+			}
 		}
 
 		public async void LoaderActivityEvent(object sender, Process.LoaderEvent ea)
@@ -232,24 +297,20 @@ namespace Taskmaster.UI
 		{
 			if (!IsHandleCreated || disposed) return;
 
-			foreach (var pair in pairs)
+			for (int i = 0; i < pairs.Length; i++)
 			{
+				var pair = pairs[i];
 				if (pair.ListItem != null) // update
 				{
 					var li = pair.ListItem;
 
 					BeginInvoke(new Action(() => UpdateListView(pair)));
 
-					lock (ListLock)
-					{
-						LoaderList.Items.Remove(li);
-						if (LoaderList.Items.Count > pair.Load.Order)
-							LoaderList.Items.Insert(pair.Load.Order, li);
-						else
-							LoaderList.Items.Add(li);
-
-						DirtyList = true;
-					}
+					LoaderList.Items.Remove(li);
+					if (LoaderList.Items.Count > pair.Load.Order)
+						LoaderList.Items.Insert(pair.Load.Order, li);
+					else
+						LoaderList.Items.Add(li);
 				}
 				else
 				{
@@ -264,14 +325,9 @@ namespace Taskmaster.UI
 						$"{load.IOLoad.Average:N1} MiB/s"
 					});
 
-					lock (ListLock)
-					{
-						LoaderInfos.TryAdd(instance, pair);
+					LoaderInfos.TryAdd(instance, pair);
 
-						LoaderList.Items.Add(pair.ListItem);
-
-						DirtyList = true;
-					}
+					LoaderList.Items.Add(pair.ListItem);
 				}
 			}
 		}
@@ -314,7 +370,10 @@ namespace Taskmaster.UI
 
 				var saveBounds = WindowState == FormWindowState.Normal ? Bounds : RestoreBounds;
 
-				cfg.Config[Constants.Windows]["Loaders"].IntArray = new int[] { saveBounds.Left, saveBounds.Top };
+				cfg.Config[Constants.Windows]["Loaders"].IntArray = new int[] { saveBounds.Left, saveBounds.Top, saveBounds.Width, saveBounds.Height };
+
+				cfg.Config[Constants.Columns]["Loaders"].IntArray
+					= new [] { LoaderList.Columns[0].Width, LoaderList.Columns[1].Width, LoaderList.Columns[2].Width, LoaderList.Columns[3].Width, LoaderList.Columns[4].Width };
 
 				OnDisposed?.Invoke(this, DisposedEventArgs.Empty);
 				OnDisposed = null;
@@ -342,7 +401,12 @@ namespace Taskmaster.UI
 	{
 		public int Column { get; set; } = 2;
 
-		public SortOrder Order { get; set; } = SortOrder.Ascending;
+		/// <summary>
+		/// Always kept at top.
+		/// </summary>
+		public ListViewItem TopItem { get; set; } = null;
+
+		public SortOrder Order { get; set; } = SortOrder.Descending;
 
 		readonly CaseInsensitiveComparer Comparer = new CaseInsensitiveComparer();
 
@@ -350,6 +414,9 @@ namespace Taskmaster.UI
 		{
 			var lix = (ListViewItem)x;
 			var liy = (ListViewItem)y;
+
+			if (lix == TopItem) return -1;
+			else if (liy == TopItem) return 1;
 
 			int result;
 
@@ -365,7 +432,15 @@ namespace Taskmaster.UI
 
 				if (Trace) Logging.DebugMsg("SORTING: " + lixs + " // " + liys);
 
-				result = Comparer.Compare(Convert.ToSingle(lixs), Convert.ToSingle(liys));
+				float lixf, liyf;
+
+				try { lixf = Convert.ToSingle(lixs); }
+				catch { lixf = float.NaN; }
+
+				try { liyf = Convert.ToSingle(liys); }
+				catch { liyf = float.NaN; }
+
+				result = Comparer.Compare(lixf, liyf);
 			}
 			else
 				result = Comparer.Compare(lix.SubItems[Column].Text, liy.SubItems[Column].Text);
