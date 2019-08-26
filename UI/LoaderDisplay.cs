@@ -52,6 +52,8 @@ namespace Taskmaster.UI
 
 			SelfCPU = new Process.CpuUsage(Self);
 
+			MinimumSize = new System.Drawing.Size(420, 260);
+
 			LoaderList = new Extensions.ListViewEx()
 			{
 				View = View.Details,
