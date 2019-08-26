@@ -1,5 +1,5 @@
 ﻿//
-// HardwareMonitor.cs
+// Hardware.Monitor.cs
 //
 // Author:
 //       M.A. (https://github.com/mkahvi)
@@ -272,7 +272,7 @@ namespace Taskmaster.Hardware
 		public event EventHandler<GPUSensorEventArgs> GPUPolling;
 		public event EventHandler<CPUSensorEventArgs> CPUPolling;
 
-		System.Timers.Timer SensorPoller = null;
+		System.Timers.Timer? SensorPoller = null;
 
 		public void Start()
 		{
