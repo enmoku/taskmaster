@@ -247,7 +247,7 @@ namespace Taskmaster.Process
 		public int AffinityIdeal // EXPERIMENTAL
 		{
 			get => _affinityIdeal;
-			set => _affinityIdeal = value.Constrain(-1, Utility.CPUCount);
+			set => _affinityIdeal = value.Constrain(-1, Hardware.Utility.ProcessorCount);
 		}
 
 		/// <summary>
@@ -2061,7 +2061,7 @@ namespace Taskmaster.Process
 
 			if (AffinityMask >= 0)
 			{
-				sbs.Append("Affinity: ").Append(HumanInterface.BitMask(AffinityMask, Utility.CPUCount)).Append(" [").Append(AffinityMask.ToString()).Append(']');
+				sbs.Append("Affinity: ").Append(HumanInterface.BitMask(AffinityMask, Hardware.Utility.ProcessorCount)).Append(" [").Append(AffinityMask.ToString()).Append(']');
 				if (AffinityIdeal >= 0)
 					sbs.Append(" – ideal core: ").Append(AffinityIdeal);
 				sbs.Append(" – strategy: ").AppendLine(AffinityStrategy.ToString());

@@ -689,14 +689,14 @@ namespace Taskmaster
 				{
 					// mask self to the last core
 					int selfCPUmask = 1;
-					for (int i = 0; i < Environment.ProcessorCount - 1; i++)
+					for (int i = 0; i < Hardware.Utility.ProcessorCount - 1; i++)
 						selfCPUmask = (selfCPUmask << 1);
 					SelfAffinity = selfCPUmask;
 				}
 				*/
 
 				int selfAffMask = SelfAffinity.Replace(0, Process.Utility.FullCPUMask);
-				Log.Information($"<Core> Self-optimizing – Priority: {SelfPriority.ToString()}; Affinity: {HumanInterface.BitMask(selfAffMask, Process.Utility.CPUCount)}");
+				Log.Information($"<Core> Self-optimizing – Priority: {SelfPriority.ToString()}; Affinity: {HumanInterface.BitMask(selfAffMask, Hardware.Utility.ProcessorCount)}");
 
 				self.ProcessorAffinity = new IntPtr(selfAffMask); // this should never throw an exception
 				self.PriorityClass = SelfPriority;

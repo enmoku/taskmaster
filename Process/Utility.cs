@@ -38,9 +38,7 @@ namespace Taskmaster.Process
 
 	public static partial class Utility
 	{
-		public static int CPUCount => Environment.ProcessorCount; // pointless
-
-		public static int FullCPUMask => (1 << CPUCount) - 1;
+		public static int FullCPUMask => (1 << Hardware.Utility.ProcessorCount) - 1;
 
 		public static bool IsFullscreen(IntPtr hwnd)
 		{
@@ -236,14 +234,15 @@ namespace Taskmaster.Process
 		{
 			StringBuilder sbs = null;
 
+
 			Debug.Assert((initialmask & FullCPUMask) == initialmask, "Initial value has bits set outside of valid range.");
 			Debug.Assert((targetmask & FullCPUMask) == targetmask, "Target mask has bits set outside of valid range.");
 
 			if (Process.Manager.DebugProcesses)
 			{
 				sbs = new StringBuilder("Affinity Strategy(", 256)
-					.Append(Convert.ToString(initialmask, 2).PadLeft(CPUCount, '0')).Append(" -> ")
-					.Append(Convert.ToString(targetmask, 2).PadLeft(CPUCount, '0'))
+					.Append(Convert.ToString(initialmask, 2).PadLeft(cores, '0')).Append(" -> ")
+					.Append(Convert.ToString(targetmask, 2).PadLeft(cores, '0'))
 					.Append(", ").Append(strategy.ToString()).Append(')');
 			}
 
@@ -271,13 +270,13 @@ namespace Taskmaster.Process
 				result = initialmask;
 
 				sbs?.Append(" Cores(").Append(Bit.Count(initialmask)).Append(" / ").Append(Bit.Count(targetmask))
-					.Append(") old mask ").Append(Convert.ToString(initialmask, 2).PadLeft(CPUCount, '0'));
+					.Append(") old mask ").Append(Convert.ToString(initialmask, 2).PadLeft(cores, '0'));
 
 				if (excesscores > 0)
 				{
 					result = Bit.Unfill(result, targetmask, excesscores);
 					sbs?.Append("; excess: ").Append(excesscores.ToString())
-						.Append(" pruned to: ").Append(Convert.ToString(result, 2).PadLeft(CPUCount, '0'));
+						.Append(" pruned to: ").Append(Convert.ToString(result, 2).PadLeft(cores, '0'));
 				}
 
 				bool correctlySlotted = Bit.And(result, targetmask) == result;
@@ -297,7 +296,7 @@ namespace Taskmaster.Process
 					//	result = Bit.Fill(result, targetmask, excesscores);
 
 					sbs?.Append(" ×").Append(incorrectCount.ToString())
-						.Append("; corrected to ").Append(Convert.ToString(result, 2).PadLeft(CPUCount, '0'));
+						.Append("; corrected to ").Append(Convert.ToString(result, 2).PadLeft(cores, '0'));
 				}
 			}
 			else if (strategy == AffinityStrategy.Scatter)
@@ -324,7 +323,7 @@ namespace Taskmaster.Process
 
 			if (sbs != null)
 			{
-				sbs.Append("; new = ").Append(Convert.ToString(result, 2).PadLeft(CPUCount, '0'));
+				sbs.Append("; new = ").Append(Convert.ToString(result, 2).PadLeft(cores, '0'));
 				Logging.DebugMsg(sbs.ToString());
 			}
 

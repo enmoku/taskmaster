@@ -1502,7 +1502,7 @@ namespace Taskmaster.UI
 							info.Name,
 							prc.FriendlyName,
 							(pmi.PriorityNew.HasValue ? MKAh.Readable.ProcessPriority(pmi.PriorityNew.Value) : HumanReadable.Generic.NotAvailable),
-							(pmi.AffinityNew >= 0 ? HumanInterface.BitMask(pmi.AffinityNew, Process.Utility.CPUCount) : HumanReadable.Generic.NotAvailable),
+							(pmi.AffinityNew >= 0 ? HumanInterface.BitMask(pmi.AffinityNew, Hardware.Utility.ProcessorCount) : HumanReadable.Generic.NotAvailable),
 							info.Path
 						});
 					lastmodifylist.Items.Add(mi);
@@ -1709,7 +1709,7 @@ namespace Taskmaster.UI
 			if (prc.AffinityMask > 0)
 			{
 				if (AffinityStyle == 0)
-					aff = HumanInterface.BitMask(prc.AffinityMask, Process.Utility.CPUCount);
+					aff = HumanInterface.BitMask(prc.AffinityMask, Hardware.Utility.ProcessorCount);
 				else
 					aff = prc.AffinityMask.ToString();
 			}
@@ -1764,7 +1764,7 @@ namespace Taskmaster.UI
 				if (prc.AffinityMask == Process.Utility.FullCPUMask || prc.AffinityMask == 0)
 					aff = "Full/OS";
 				else if (AffinityStyle == 0)
-					aff = HumanInterface.BitMask(prc.AffinityMask, Process.Utility.CPUCount);
+					aff = HumanInterface.BitMask(prc.AffinityMask, Hardware.Utility.ProcessorCount);
 				else
 					aff = prc.AffinityMask.ToString();
 			}

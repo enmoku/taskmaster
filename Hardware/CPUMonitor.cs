@@ -147,14 +147,15 @@ namespace Taskmaster.Hardware
 		/// </summary>
 		float Idle() // compared to PFC, performance is 6.2 us compared to 127.5 us
 		{
+			int cores = Utility.ProcessorCount;
 			var period = stopwatch.ElapsedMilliseconds;
 			Process.NativeMethods.GetSystemTimes(out var idle, out var kernel, out var user);
 			stopwatch.Restart();
 			long newIdleMs = Process.NativeMethods.FiletimeToLong(idle);
 			long newUsedMs = (Process.NativeMethods.FiletimeToLong(user) + Process.NativeMethods.FiletimeToLong(kernel));
 
-			var usedMs = (newUsedMs - oldUsedMs) / (10_000 * Environment.ProcessorCount);
-			var idleMs = (newIdleMs - oldIdleMs) / (10_000 * Environment.ProcessorCount);
+			var usedMs = (newUsedMs - oldUsedMs) / (10_000 * cores);
+			var idleMs = (newIdleMs - oldIdleMs) / (10_000 * cores);
 			oldIdleMs = newIdleMs;
 			oldUsedMs = newUsedMs;
 

@@ -55,7 +55,9 @@ namespace Processes
 		{
 			int testSource, testTarget;
 
-			switch (Environment.ProcessorCount)
+			int cores = Taskmaster.Hardware.Utility.ProcessorCount;
+
+			switch (cores)
 			{
 				case 8:
 					testSource = 0b11000000;
@@ -70,7 +72,7 @@ namespace Processes
 					testTarget = 0b1100;
 					break;
 				default:
-					throw new NotImplementedException("Test not implemented for core count of " + Environment.ProcessorCount.ToString());
+					throw new NotImplementedException("Test not implemented for core count of " + cores.ToString());
 			}
 
 			Taskmaster.Process.Manager.DebugProcesses = true;

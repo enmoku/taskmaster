@@ -50,6 +50,8 @@ namespace Taskmaster.UI.Config
 
 			DialogResult = DialogResult.Abort;
 
+			int cores = Hardware.Utility.ProcessorCount;
+
 			newPrc = controller is null;
 
 			Controller = controller ?? new Process.Controller("Unnamed") { Enabled = true };
@@ -316,7 +318,7 @@ namespace Taskmaster.UI.Config
 
 			// AFFINITY
 
-			var corelist = new List<CheckBox>(Process.Utility.CPUCount);
+			var corelist = new List<CheckBox>(cores);
 
 			lt.Controls.Add(new AlignedLabel { Text = HumanReadable.System.Process.Affinity });
 			affstrategy = new ComboBox()
@@ -361,7 +363,7 @@ namespace Taskmaster.UI.Config
 			var corelayout = new Extensions.TableLayoutPanel() { ColumnCount = 8, AutoSize = true };
 
 			cpumask = Controller.AffinityMask;
-			for (int bit = 0; bit < Process.Utility.CPUCount; bit++)
+			for (int bit = 0; bit < cores; bit++)
 			{
 				int lbit = bit;
 				var box = new CheckBox
@@ -430,9 +432,9 @@ namespace Taskmaster.UI.Config
 			idealAffinity = new NumericUpDown()
 			{
 				Width = 80,
-				Maximum = Process.Utility.CPUCount,
+				Maximum = cores,
 				Minimum = 0,
-				Value = (Controller.AffinityIdeal + 1).Constrain(0, Process.Utility.CPUCount),
+				Value = (Controller.AffinityIdeal + 1).Constrain(0, cores),
 			};
 			tooltip.SetToolTip(idealAffinity, "EXPERIMENTAL\nTell the OS to favor this particular core for the primary thread.\nMay not have any perceivable effect.\n0 disables this feature.");
 

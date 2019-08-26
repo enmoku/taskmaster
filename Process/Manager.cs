@@ -405,7 +405,7 @@ namespace Taskmaster.Process
 			//for (int i = 0; i < CPUCount - 1; i++)
 			//	allCPUsMask = (allCPUsMask << 1) | 1;
 
-			if (DebugProcesses) Log.Debug($"<CPU> Logical cores: {Utility.CPUCount}, full mask: {Convert.ToString(Utility.FullCPUMask, 2)} ({Utility.FullCPUMask} = OS control)");
+			if (DebugProcesses) Log.Debug($"<CPU> Logical cores: {Hardware.Utility.ProcessorCount}, full mask: {Convert.ToString(Utility.FullCPUMask, 2)} ({Utility.FullCPUMask} = OS control)");
 
 			LoadConfig();
 
@@ -1275,7 +1275,7 @@ namespace Taskmaster.Process
 				prc.AffinityIdeal = ruleIdeal?.Int ?? -1;
 				if (prc.AffinityIdeal >= 0 && !Bit.IsSet(prc.AffinityMask, prc.AffinityIdeal))
 				{
-					Log.Debug($"<Watchlist:{ruleIdeal.Line}> [{prc.FriendlyName}] Affinity ideal to mask mismatch: {HumanInterface.BitMask(prc.AffinityMask, Utility.CPUCount)}, ideal core: {prc.AffinityIdeal}");
+					Log.Debug($"<Watchlist:{ruleIdeal.Line}> [{prc.FriendlyName}] Affinity ideal to mask mismatch: {HumanInterface.BitMask(prc.AffinityMask, Hardware.Utility.ProcessorCount)}, ideal core: {prc.AffinityIdeal}");
 					prc.AffinityIdeal = -1;
 				}
 

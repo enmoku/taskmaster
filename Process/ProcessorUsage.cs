@@ -57,7 +57,7 @@ namespace Taskmaster.Process
 			var usedMs = (newTime - oldTime).TotalMilliseconds; // used ms in the sample period
 			oldTime = newTime; // 
 
-			return usedMs / (period * Environment.ProcessorCount);
+			return usedMs / (period * Hardware.Utility.ProcessorCount);
 		}
 
 		/// <summary>
