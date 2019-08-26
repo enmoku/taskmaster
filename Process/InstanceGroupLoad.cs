@@ -124,14 +124,14 @@ namespace Taskmaster.Process
 			// 5 = heavy load, 10 = very heavy load, 15+ system should be having trouble
 
 			float cpuloadraw = 0f,
-				ioload = 0f;
+				io_op_load = 0f;
 
 			long ramloadt = 0L;
 
 
 			var now = DateTimeOffset.UtcNow;
 
-			float highRam = 0f, highCpu = 0f, highIo = 0f, cput, iot;
+			float highRam = 0f, highCpu = 0f, highIo = 0f, cput, io_ops_t;
 			int highPid = LastPid;
 			long memt;
 
@@ -155,13 +155,13 @@ namespace Taskmaster.Process
 
 					// cache so we don't update only half if there's failures
 					cput = load.CPU;
-					iot = load.IO;
+					io_ops_t = load.IO;
 					memt = info.Process.PrivateMemorySize64;
 
 					// update
 					ramloadt += memt;
 					cpuloadraw += cput;
-					ioload += iot;
+					io_op_load += io_ops_t;
 
 					if (highCpu < cput)
 					{
@@ -178,21 +178,25 @@ namespace Taskmaster.Process
 			}
 			updateTimer.Restart();
 
-			float ramload = Convert.ToSingle(Convert.ToDouble(ramloadt) / 1_073_741_824d);
+			float ramloadgb = Convert.ToSingle(Convert.ToDouble(ramloadt) / MKAh.Units.Binary.Giga);
 
 			foreach (var info in removeList)
 				Remove(info);
 
+			cpuloadraw /= Hardware.Utility.ProcessorCount;
+			cpuloadraw *= 100f;
+
 			CPULoad.Update(cpuloadraw);
 
-			float cpuload = CPULoad.Average / 10f;
+			//CPULoad.Update(cpuload); //CPU.Value
+			RAMLoad.Update(ramloadt);
+			IOLoad.Update(io_op_load);
 
-			CPULoad.Update(cpuload); //CPU.Value
-			RAMLoad.Update(ramload);
-			IOLoad.Update(ioload / 1_024f); // MiB/s
+			var ioaverage_ops = IOLoad.Average;
 
-			Load = cpuload + ramload + IOLoad.Average.Max(10f);
-			if (cpuload < 20f && ramload < 4f) Load -= ramload / 3f; // reduce effect of ramload on low cpu load
+			Load = (CPULoad.Average / 10f) + ramloadgb + (ioaverage_ops / 100f).Max(2f);
+
+			if (cpuloadraw < 20f && ramloadgb < 4f) Load -= ramloadgb / 3f; // reduce effect of ramload on low cpu load
 
 			if (CPULoad.Average > 60f)
 			{
@@ -225,14 +229,14 @@ namespace Taskmaster.Process
 				light = true;
 			}
 
-			if (IOLoad.Average > 1f)
+			if (ioaverage_ops > 100f)
 			{
 				IOLoad.HeavyCount++;
 				IOLoad.Heavy = true;
 				Heavy++;
 				heavy = true;
 			}
-			else if (IOLoad.Max < 1f)
+			else if (IOLoad.Max < 5f)
 			{
 				IOLoad.LightCount++;
 				IOLoad.Light = true;

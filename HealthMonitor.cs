@@ -477,7 +477,7 @@ namespace Taskmaster
 				if (Settings.MemLevel > 0)
 				{
 					Memory.Update();
-					long memfreeb = Memory.FreeBytes;
+					long memfreeb = Memory.Free;
 					var memfreemb = memfreeb / 1_048_576;
 
 					if (memfreemb <= Settings.MemLevel)
@@ -585,7 +585,7 @@ namespace Taskmaster
 		long MemoryWarningCooldown { get; set; } = 30;
 
 		#region IDisposable Support
-		public event EventHandler<DisposedEventArgs> OnDisposed;
+		public event EventHandler<DisposedEventArgs>? OnDisposed;
 
 		bool disposed = false;
 

@@ -8,7 +8,7 @@
     <OutputType>WinExe</OutputType>
     <LangVersion>8.0</LangVersion>
     <Nullable>enable</Nullable>
-	<NullableContextOptions>enable</NullableContextOptions>
+    <NullableContextOptions>enable</NullableContextOptions>
     <RootNamespace>Taskmaster</RootNamespace>
     <AssemblyName>Taskmaster</AssemblyName>
     <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
@@ -91,10 +91,11 @@
     <Compile Include="External\WinPEHeaderReader.cs" />
     <Compile Include="GlobalSuppressions.cs" />
     <Compile Include="Hardware\CPUMonitor.cs" />
-    <Compile Include="Hardware\HardwareMonitor.cs" />
+    <Compile Include="Hardware\Monitor.cs" />
     <Compile Include="Hardware\Memory.cs" />
     <Compile Include="Hardware\ProcessorLoad.cs" />
     <Compile Include="Hardware\StorageManager.cs" />
+    <Compile Include="Hardware\Utility.cs" />
     <Compile Include="HealthMonitor.cs" />
     <Compile Include="IDisposal.cs" />
     <Compile Include="Initialization.cs" />

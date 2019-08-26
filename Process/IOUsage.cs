@@ -54,9 +54,10 @@ namespace Taskmaster.Process
 			var period = timer.ElapsedMilliseconds; // period
 
 			NativeMethods.GetProcessIoCounters(prc.Handle, out counters);
+
 			timer.Restart();
 
-			float newIO = (counters.OtherTransferCount + counters.ReadTransferCount + counters.WriteTransferCount) / 1_024f; // kiB
+			float newIO = (counters.OtherTransferCount + counters.ReadTransferCount + counters.WriteTransferCount);
 			float diff = (newIO - oldIO) / period;
 			oldIO = newIO;
 			return diff;
@@ -69,7 +70,8 @@ namespace Taskmaster.Process
 		public float Sample(long period)
 		{
 			NativeMethods.GetProcessIoCounters(prc.Handle, out counters);
-			float newIO = (counters.OtherTransferCount + counters.ReadTransferCount + counters.WriteTransferCount) / 1_024f; // kiB
+
+			float newIO = (counters.OtherTransferCount + counters.ReadTransferCount + counters.WriteTransferCount);
 			float diff = (newIO - oldIO) / period;
 			oldIO = newIO;
 			return diff;

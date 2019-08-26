@@ -1,5 +1,5 @@
 ﻿//
-// Audio.DeviceEventArgs.cs
+// Hardwar.Utility.cs
 //
 // Author:
 //       M.A. (https://github.com/mkahvi)
@@ -26,21 +26,22 @@
 
 using System;
 
-namespace Taskmaster.Audio
+namespace Taskmaster.Hardware
 {
-	public class DeviceEventArgs
+	public static class Utility
 	{
-		public DeviceEventArgs(string id, Guid? guid = null, Device? device = null)
+		/// <summary>
+		/// Actual number of processor cores. You still want to use Environment.ProcessorCount when the accessible number (to .NET) matters.
+		/// </summary>
+		public static int ProcessorCount { get; private set; } = 0;
+
+		static Utility()
 		{
-			ID = id;
-			GUID = guid ?? Utility.DeviceIdToGuid(id);
-			Device = device;
+			// Because Environment.ProcessorCount sometimes gives random numbers less than the actual core count.
+			foreach (var processor in new System.Management.ManagementObjectSearcher("Select * from Win32_Processor").Get())
+				ProcessorCount += int.Parse(processor["NumberOfCores"].ToString());
+
+			Logging.DebugMsg("<Hardware> Processor count: " + ProcessorCount.ToString());
 		}
-
-		public Guid GUID { get; }
-
-		public string ID { get; }
-
-		public Device? Device { get; set; } = null;
 	}
 }

@@ -118,7 +118,7 @@ namespace Taskmaster.Process
 					group.TryAdd(info);
 				}
 			}
-			catch (Exception ex) when (ex is InvalidOperationException || ex is NullReferenceException)
+			catch (Exception ex) when (ex is InvalidOperationException || ex is NullReferenceException)
 			{
 				group?.Remove(info);
 				return;
@@ -228,7 +228,7 @@ namespace Taskmaster.Process
 						skipped++;
 
 					if (loader.LastHeavy && loader.Heavy > 5)
-						Logging.DebugMsg($"LOADER [{loader.Load:N1}]: {loader.Instance} [×{loader.InstanceCount}] - CPU: {loader.CPULoad.Average:N1}, RAM: {loader.RAMLoad.Current:N3} GiB, IO: {loader.IOLoad.Average:N1} MB/s");
+						Logging.DebugMsg($"LOADER [{loader.Load:N1}]: {loader.Instance} [×{loader.InstanceCount}] - CPU: {loader.CPULoad.Average:N1}, RAM: {loader.RAMLoad.Current / MKAh.Units.Binary.Giga:N3} GiB, IO: {loader.IOLoad.Average:N1}/s");
 				}
 				else
 				{
@@ -241,7 +241,7 @@ namespace Taskmaster.Process
 				}
 			}
 
-			Logging.DebugMsg($"HEAVYWEIGHT [{heaviest.Load:N1}]: {heaviest.Instance} [×{heaviest.InstanceCount}] - CPU: {heaviest.CPULoad.Average:N1}, RAM: {heaviest.RAMLoad.Current:N3} GiB, IO: {heaviest.IOLoad.Average:N1} MB/s");
+			Logging.DebugMsg($"HEAVYWEIGHT [{heaviest.Load:N1}]: {heaviest.Instance} [×{heaviest.InstanceCount}] - CPU: {heaviest.CPULoad.Average:N1}, RAM: {heaviest.RAMLoad.Current / MKAh.Units.Binary.Giga:N3} GiB, IO: {heaviest.IOLoad.Average:N1}/s");
 
 			heavyLoaders.Sort(LoadInfoComparer);
 
@@ -249,7 +249,7 @@ namespace Taskmaster.Process
 			foreach (var loader in heavyLoaders)
 			{
 				loader.Order = i;
-				Logging.DebugMsg($"LOADER [{loader.Load:N1}]: {loader.Instance} [×{loader.InstanceCount}] - CPU: {loader.CPULoad.Average:N1} %, RAM: {loader.RAMLoad.Current:N3} GiB, IO: {loader.IOLoad.Average:N1} MB/s");
+				Logging.DebugMsg($"LOADER [{loader.Load:N1}]: {loader.Instance} [×{loader.InstanceCount}] - CPU: {loader.CPULoad.Average:N1} %, RAM: {loader.RAMLoad.Current / MKAh.Units.Binary.Giga:N3} GiB, IO: {loader.IOLoad.Average:N1}/s");
 			}
 
 			//LoaderActivity?.Invoke(this, new LoaderEvent(heavyLoaders.GetRange(0, Math.Min(heavyLoaders.Count, 3)).ToArray()));
@@ -555,7 +555,7 @@ namespace Taskmaster.Process
 			if (disposed) throw new ObjectDisposedException(nameof(Manager), "FreeMemoryInterval called when ProcessManager was already disposed");
 
 			Memory.Update();
-			long memorybefore = Memory.FreeBytes;
+			long memorybefore = Memory.Free;
 			//var b1 = MemoryManager.Free;
 
 			try
@@ -570,7 +570,7 @@ namespace Taskmaster.Process
 				// TODO: Wait a little longer to allow OS to Actually page stuff. Might not matter?
 				//var b2 = MemoryManager.Free;
 				Memory.Update();
-				long memoryafter = Memory.FreeBytes;
+				long memoryafter = Memory.Free;
 
 				Log.Information("<Memory> Paging complete, observed memory change: " +
 					HumanInterface.ByteString(memorybefore - memoryafter, true, iec: true));

@@ -39,12 +39,12 @@ namespace Taskmaster
 		/// <summary>
 		/// Total physical system memory in bytes.
 		/// </summary>
-		public static ulong Total { get; private set; } = 0;
+		public static long Total { get; private set; } = 0;
 
 		/// <summary>
 		/// Memory used in bytes.
 		/// </summary>
-		public static ulong Used { get; private set; } = 0;
+		public static long Used { get; private set; } = 0;
 
 		/// <summary>
 		/// Private bytes.
@@ -70,7 +70,7 @@ namespace Taskmaster
 		/// Free memory in bytes.
 		/// Update() required to match current state.
 		/// </summary>
-		public static long FreeBytes { get; private set; } = 0;
+		public static long Free { get; private set; } = 0;
 
 		static readonly Windows.PerformanceCounter pfcprivate = new Windows.PerformanceCounter("Process", "Private Bytes", "_Total"); // no p/invoke alternative?
 		//static Windows.PerformanceCounter pfccommit = new Windows.PerformanceCounter("Memory", "% Committed Bytes In Use", null);
@@ -135,11 +135,11 @@ namespace Taskmaster
 
 				NativeMethods.GlobalMemoryStatusEx(ref mem);
 
-				Total = mem.ullTotalPhys;
-				FreeBytes = Convert.ToInt64(mem.ullAvailPhys);
-				Used = Total - mem.ullAvailPhys;
+				Total = Convert.ToInt64(mem.ullTotalPhys);
+				Free = Convert.ToInt64(mem.ullAvailPhys);
+				Used = Total - Convert.ToInt64(mem.ullAvailPhys);
 
-				if (Trace && DebugMemory) Logging.DebugMsg($"MEMORY - Total: {Total.ToString()}, Free: {FreeBytes.ToString()}, Used: {Used.ToString()}");
+				if (Trace && DebugMemory) Logging.DebugMsg($"MEMORY - Total: {Total.ToString()}, Free: {Free.ToString()}, Used: {Used.ToString()}");
 			}
 			catch (Exception ex)
 			{

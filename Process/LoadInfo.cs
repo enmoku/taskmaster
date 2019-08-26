@@ -51,7 +51,7 @@ namespace Taskmaster.Process
 
 		public LoadType Type { get; set; }
 
-		float AverageThreshold, MaxThreshold, MinThreshold;
+		readonly float AverageThreshold, MaxThreshold, MinThreshold;
 
 		public LoadValue(LoadType type, float average, float max, float min)
 		{

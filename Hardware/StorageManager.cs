@@ -111,7 +111,7 @@ namespace Taskmaster
 				{
 					Log.Warning("<Maintenance> Number of changes to temp folders exceeding tolerance.");
 
-					ReScanTemp();
+					ReScanTemp().ConfigureAwait(false);
 				}
 			}
 			catch (OutOfMemoryException) { throw; }

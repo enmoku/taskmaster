@@ -175,7 +175,7 @@ namespace Taskmaster.Hardware
 		/// <summary>
 		/// Forces sampling.
 		/// </summary>
-		public void Sample() => Sampler(null, null);
+		public void Sample() => Sampler(this, null);
 
 		async void Sampler(object _sender, System.Timers.ElapsedEventArgs _)
 		{

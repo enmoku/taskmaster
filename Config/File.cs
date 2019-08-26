@@ -144,7 +144,7 @@ namespace Taskmaster.Configuration
 
 	public class ScopedFile : IFile, IDisposable
 	{
-		public File File { get; } = null;
+		public File File { get; }
 
 		public Ini.Config Config => File.Config;
 

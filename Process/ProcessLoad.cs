@@ -39,6 +39,9 @@ namespace Taskmaster.Process
 		readonly string Instance;
 		readonly int Id;
 
+		/// <summary>
+		/// 0 to (100*CPU)
+		/// </summary>
 		public float CPU { get; private set; } = float.NaN;
 
 		public float IO { get; private set; } = float.NaN;
@@ -74,8 +77,11 @@ namespace Taskmaster.Process
 
 			try
 			{
-				//CPU = CPUCounter.Value / Environment.ProcessorCount;
-				CPU = Convert.ToSingle(CpuLoad.Sample(elapsed)) * 100f;
+				//CPU = CPUCounter.Value / Hardware.Utility.ProcessorCount;
+				var cpurawt = Convert.ToSingle(CpuLoad.Sample(elapsed));
+				CPU = cpurawt;
+				cpurawt *= 100f;
+				cpurawt /= Hardware.Utility.ProcessorCount;
 				//if (CPU > 3f) Logging.DebugMsg($"ProcessLoad --- PFC: {CPU:N1}% --- TMS: {cpu*100d:N1}%");
 
 				IO = IOLoad.Sample(elapsed);
@@ -84,8 +90,8 @@ namespace Taskmaster.Process
 
 				//LoadHistory.Add(CPU);
 
-				if (CPU < 3f) Low++;
-				else if (CPU > 30f) High++;
+				if (cpurawt < 3f) Low++;
+				else if (cpurawt > 30f) High++;
 				else Mid++;
 
 				if (Low > 30 && High == 0)

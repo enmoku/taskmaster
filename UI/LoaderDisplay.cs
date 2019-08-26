@@ -64,8 +64,8 @@ namespace Taskmaster.UI
 				FullRowSelect = true,
 			};
 
-			var sorter = new LoaderSorter();
-			sorter.TopItem = totalSystem;
+			var sorter = new LoaderSorter(ReverseMap);
+			sorter.TopItem = totalSystemLI;
 
 			LoaderList.ListViewItemSorter = sorter;
 
@@ -86,33 +86,41 @@ namespace Taskmaster.UI
 				LoaderList.Sort();
 			};
 
-			usedCpuCell = totalSystem.SubItems[2];
-			usedMemCell = totalSystem.SubItems[3];
+			usedCpuCell = totalSystemLI.SubItems[2];
+			usedMemCell = totalSystemLI.SubItems[3];
 
-			freeCpuCell = freeSystem.SubItems[2];
-			freeMemCell = freeSystem.SubItems[3];
+			freeCpuCell = freeSystemLI.SubItems[2];
+			freeMemCell = freeSystemLI.SubItems[3];
 
-			totalSystem.BackColor = System.Drawing.SystemColors.Control;
-			freeSystem.BackColor = System.Drawing.SystemColors.Control;
-			selfLoad.BackColor = System.Drawing.SystemColors.Control;
+			totalSystemLI.BackColor = System.Drawing.SystemColors.Control;
+			freeSystemLI.BackColor = System.Drawing.SystemColors.Control;
+			selfLoadLI.BackColor = System.Drawing.SystemColors.Control;
 
-			selfLoad.SubItems[1].Text = Self.Id.ToString();
-			selfLoad.SubItems[2].Text = "? %";
-			selfLoad.SubItems[3].Text = "0 MiB";
+			selfLoadLI.SubItems[1].Text = Self.Id.ToString();
+			selfLoadLI.SubItems[2].Text = "? %";
+			selfLoadLI.SubItems[3].Text = "0 MiB";
 
-			LoaderList.Items.Add(totalSystem);
-			LoaderList.Items.Add(freeSystem);
-			LoaderList.Items.Add(selfLoad);
+			LoaderList.Items.Add(totalSystemLI);
+			LoaderList.Items.Add(freeSystemLI);
+			LoaderList.Items.Add(selfLoadLI);
+
+			usedLoad = new Process.InstanceGroupLoad("[Used]", Process.LoadType.Volatile);
+			freeLoad = new Process.InstanceGroupLoad("[Free]", Process.LoadType.Volatile);
+			selfLoad = new Process.InstanceGroupLoad("[Self]", Process.LoadType.Volatile);
+
+			ReverseMap.TryAdd(totalSystemLI, usedLoad);
+			ReverseMap.TryAdd(freeSystemLI, freeLoad);
+			ReverseMap.TryAdd(selfLoadLI, selfLoad);
 
 			AutoSize = true;
 			AutoSizeMode = AutoSizeMode.GrowOnly;
 
 			LoaderList.Columns.AddRange(new[] {
 				new ColumnHeader() { Text = "Process" },
-				new ColumnHeader() { Text = "Id#" },
-				new ColumnHeader() { Text = "CPU" },
-				new ColumnHeader() { Text = "MEM" },
-				new ColumnHeader() { Text = "IO" },
+				new ColumnHeader() { Text = "Id#", TextAlign = HorizontalAlignment.Right },
+				new ColumnHeader() { Text = "CPU", TextAlign = HorizontalAlignment.Right },
+				new ColumnHeader() { Text = "MEM", TextAlign = HorizontalAlignment.Right },
+				new ColumnHeader() { Text = "IO", TextAlign = HorizontalAlignment.Right },
 			});
 
 			using var uicfg = Application.Config.Load(UIConfigFilename);
@@ -179,13 +187,15 @@ namespace Taskmaster.UI
 
 		System.Drawing.Color FGColor = new ListViewItem().ForeColor; // dumb
 
-		readonly ListViewItem freeSystem = new ListViewItem(new[] { "[Free]", "~", "~", "~", "~" });
-		readonly ListViewItem totalSystem = new ListViewItem(new[] { "[Total]", "~", "~", "~", "~"});
-		readonly ListViewItem selfLoad = new ListViewItem(new[] { "[Self]", "~", "~", "~", "~" });
+		readonly ListViewItem freeSystemLI = new ListViewItem(new[] { "[Free]", "~", "~", "~", "~" });
+		readonly ListViewItem totalSystemLI = new ListViewItem(new[] { "[Total]", "~", "~", "~", "~"});
+		readonly ListViewItem selfLoadLI = new ListViewItem(new[] { "[Self]", "~", "~", "~", "~" });
 		readonly ListViewItem.ListViewSubItem usedCpuCell;
 		readonly ListViewItem.ListViewSubItem usedMemCell;
 		readonly ListViewItem.ListViewSubItem freeCpuCell;
 		readonly ListViewItem.ListViewSubItem freeMemCell;
+
+		Process.InstanceGroupLoad freeLoad, usedLoad, selfLoad;
 
 		void UIUpdate(object _sender, EventArgs _ea)
 		{
@@ -227,7 +237,9 @@ namespace Taskmaster.UI
 
 				foreach (var loader in removeList)
 				{
-					LoaderList.Items.Remove(loader.ListItem);
+					var li = loader.ListItem;
+					LoaderList.Items.Remove(li);
+					ReverseMap.TryRemove(li, out _);
 					loader.ListItem = null;
 				}
 
@@ -268,7 +280,10 @@ namespace Taskmaster.UI
 				{
 					var li = pair.ListItem;
 					if (li != null) // should only happen if this happens too early
+					{
 						LoaderList.Items.Remove(li);
+						ReverseMap.TryRemove(li, out _);
+					}
 				}
 			}
 			catch (Exception ex)
@@ -302,6 +317,8 @@ namespace Taskmaster.UI
 			BeginInvoke(new Action(() => UpdateItems(pairs)));
 		}
 
+		ConcurrentDictionary<ListViewItem, Process.InstanceGroupLoad> ReverseMap = new ConcurrentDictionary<ListViewItem, Process.InstanceGroupLoad>();
+
 		void UpdateItems(LoadListPair[] pairs)
 		{
 			if (!IsHandleCreated || disposed) return;
@@ -326,17 +343,19 @@ namespace Taskmaster.UI
 					var load = pair.Load;
 					var instance = load.Instance;
 
-					pair.ListItem = new ListViewItem(new[] {
+					var li = pair.ListItem = new ListViewItem(new[] {
 						instance,
 						load.LastPid.ToString(),
 						$"{load.CPULoad.Average:N1} %",
-						$"{load.RAMLoad.Current:N2} GiB",
-						$"{load.IOLoad.Average:N1} MiB/s"
+						HumanInterface.ByteString(Convert.ToInt64(load.RAMLoad.Current * MKAh.Units.Binary.Giga), iec:true),
+						$"{load.IOLoad.Average:N0}/s"
 					});
 
 					LoaderInfos.TryAdd(instance, pair);
 
-					LoaderList.Items.Add(pair.ListItem);
+					LoaderList.Items.Add(li);
+
+					ReverseMap.TryAdd(li, pair.Load);
 				}
 			}
 
@@ -345,20 +364,33 @@ namespace Taskmaster.UI
 
 		private void UpdateSystemStats()
 		{
-			var idle = cpumonitor.LastIdle;
+			var idle = cpumonitor.LastIdle * 100f;
 			//var totalmem = Memory.Total;
-			var memfree = Memory.FreeBytes;
+			var memfree = Memory.Free;
 			var memused = Memory.Used;
 
-			usedCpuCell.Text = $"{(1f - idle) * 100f:N1} %";
-			freeCpuCell.Text = $"{idle * 100f:N1} %";
+			var curCpu = (100.0f - idle);
 
-			freeMemCell.Text = $"{Convert.ToSingle(memfree) / MKAh.Units.Binary.Giga:N2} GiB";
-			usedMemCell.Text = $"{Convert.ToSingle(memused) / MKAh.Units.Binary.Giga:N2} GiB";
+			usedLoad.CPULoad.Update(curCpu);
+			usedLoad.RAMLoad.Update(memused);
 
-			selfLoad.SubItems[2].Text = $"{SelfCPU.Sample() * 100f:N1} %";
+			freeLoad.CPULoad.Update(idle);
+			freeLoad.RAMLoad.Update(memfree);
 
-			selfLoad.SubItems[3].Text = $"{Convert.ToSingle(GC.GetTotalMemory(false)) / MKAh.Units.Binary.Mega:N1} MiB";
+			var selfcpu = 100f * SelfCPU.Sample();
+			selfLoad.CPULoad.Update(Convert.ToSingle(selfcpu));
+
+			var selfram = GC.GetTotalMemory(false);
+			selfLoad.RAMLoad.Update(selfram);
+
+			usedCpuCell.Text = $"{curCpu:N1} %";
+			freeCpuCell.Text = $"{idle:N1} %";
+
+			freeMemCell.Text = HumanInterface.ByteString(memfree, iec:true);
+			usedMemCell.Text = HumanInterface.ByteString(memused, iec:true);
+
+			selfLoadLI.SubItems[2].Text = $"{selfcpu:N1} %";
+			selfLoadLI.SubItems[3].Text = HumanInterface.ByteString(selfram, iec: true);
 		}
 
 		void UpdateListView(LoadListPair pair)
@@ -371,8 +403,8 @@ namespace Taskmaster.UI
 			//value.ListItem.SubItems[0] = key
 			li.SubItems[1].Text = load.LastPid.ToString();
 			li.SubItems[2].Text = $"{load.CPULoad.Average:N1} %";
-			li.SubItems[3].Text = $"{load.RAMLoad.Current:N2} GiB";
-			li.SubItems[4].Text = $"{load.IOLoad.Average:N1} MiB/s";
+			li.SubItems[3].Text = HumanInterface.ByteString(Convert.ToInt64(load.RAMLoad.Current), iec: true);
+			li.SubItems[4].Text = $"{load.IOLoad.Average:N0}/s";
 		}
 
 		readonly Extensions.ListViewEx LoaderList;
@@ -428,6 +460,13 @@ namespace Taskmaster.UI
 
 	public class LoaderSorter : IComparer
 	{
+		ConcurrentDictionary<ListViewItem, Process.InstanceGroupLoad> revMap;
+
+		public LoaderSorter(ConcurrentDictionary<ListViewItem, Process.InstanceGroupLoad> map)
+		{
+			revMap = map;
+		}
+
 		public int Column { get; set; } = 2;
 
 		/// <summary>
@@ -449,8 +488,37 @@ namespace Taskmaster.UI
 
 			int result;
 
-			if (Column != 0)
+			if (Column == 1)
 			{
+				result = 0;
+			}
+			else if (Column != 0)
+			{
+				Process.InstanceGroupLoad? xgroup = null, ygroup = null;
+				revMap.TryGetValue(lix, out xgroup);
+				revMap.TryGetValue(liy, out ygroup);
+
+				if (xgroup == ygroup) return 0;
+				else if (xgroup is null) return -1;
+				else if (ygroup is null) return 1;
+
+				switch (Column)
+				{
+					case 2: // CPU
+						result = xgroup.CPULoad.Average.CompareTo(ygroup.CPULoad.Average);
+						break;
+					case 3: // MEM
+						result = xgroup.RAMLoad.Current.CompareTo(ygroup.RAMLoad.Current);
+						break;
+					case 4: // IO
+						result = xgroup.IOLoad.Average.CompareTo(ygroup.IOLoad.Average);
+						break;
+					default:
+						result = 0;
+						break;
+				}
+
+				/*
 				string lixs = lix.SubItems[Column].Text;
 				int off = lixs.IndexOf(' ');
 				if (off > 0) lixs = lixs.Substring(0, off);
@@ -470,6 +538,7 @@ namespace Taskmaster.UI
 				catch { liyf = float.NaN; }
 
 				result = Comparer.Compare(lixf, liyf);
+				*/
 			}
 			else
 				result = Comparer.Compare(lix.SubItems[Column].Text, liy.SubItems[Column].Text);

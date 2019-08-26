@@ -324,7 +324,7 @@ namespace Taskmaster
 		public static LoggingLevelSwitch loglevelswitch = new LoggingLevelSwitch(LogEventLevel.Information),
 			uiloglevelswitch = new LoggingLevelSwitch(LogEventLevel.Information);
 
-		static internal event EventHandler<LoadEventArgs> LoadEvent;
+		static internal event EventHandler<LoadEventArgs>? LoadEvent;
 
 		//readonly static System.Threading.ManualResetEvent UIWaiter = new System.Threading.ManualResetEvent(false); // for splash
 

@@ -59,17 +59,17 @@ namespace Taskmaster.Audio
 		/// <summary>
 		/// Games, voice communication, etc.
 		/// </summary>
-		public Device ConsoleDevice { get; private set; } = null;
+		public Device? ConsoleDevice { get; private set; } = null;
 
 		/// <summary>
 		/// Multimedia, Movies, etc.
 		/// </summary>
-		public Device MultimediaDevice { get; private set; } = null;
+		public Device? MultimediaDevice { get; private set; } = null;
 
 		/// <summary>
 		/// Voice capture.
 		/// </summary>
-		public Device RecordingDevice { get; private set; } = null;
+		public Device? RecordingDevice { get; private set; } = null;
 
 		readonly DeviceNotificationClient notificationClient;
 

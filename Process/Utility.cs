@@ -234,6 +234,7 @@ namespace Taskmaster.Process
 		{
 			StringBuilder sbs = null;
 
+			int cores = Hardware.Utility.ProcessorCount;
 
 			Debug.Assert((initialmask & FullCPUMask) == initialmask, "Initial value has bits set outside of valid range.");
 			Debug.Assert((targetmask & FullCPUMask) == targetmask, "Target mask has bits set outside of valid range.");

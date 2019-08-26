@@ -60,7 +60,7 @@ namespace Taskmaster
 
 	class MemorySink : Serilog.Core.ILogEventSink, IDisposable
 	{
-		public event EventHandler<LogEventArgs> OnNewEvent;
+		public event EventHandler<LogEventArgs>? OnNewEvent;
 
 		readonly StringWriter Output;
 		readonly object sinklock = new object();

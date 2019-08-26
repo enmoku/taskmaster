@@ -3265,7 +3265,7 @@ namespace Taskmaster.UI
 			if (!ramload.Visible) return;
 
 			Memory.Update(); // TODO: this is kinda dumb way to do things
-			double freegb = (double)Memory.FreeBytes / 1_073_741_824d;
+			double freegb = (double)Memory.Free / 1_073_741_824d;
 			double totalgb = (double)Memory.Total / 1_073_741_824d;
 			double usage = 1 - (freegb / totalgb);
 			//ramload.Text = $"{freegb:N2} of {totalgb:N1} GiB free ({usage * 100d:N1} % usage), {MemoryManager.Pressure * 100:N1} % pressure";
