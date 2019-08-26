@@ -61,11 +61,16 @@ namespace Taskmaster
 		int SampleLoop = 0;
 		float Mean, Low, High;
 
+		/// <summary>
+		/// 0.0 to 1.0 range
+		/// </summary>
+		public float LastIdle { get; private set; }
+
 		public CPUMonitor()
 		{
 			LoadConfig();
 
-			Idle(); // initialize
+			LastIdle = Idle(); // initialize
 
 			Samples = new float[SampleCount];
 
@@ -158,23 +163,30 @@ namespace Taskmaster
 			return (float)idleMs / period;
 		}
 
+		/// <summary>
+		/// 0.0 to 1.0 range
+		/// /// </summary>
+		/// <param name="idle"></param>
+		/// <returns></returns>
 		[System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
-		float UsageFromIdle(float idle) => (1f - idle) * 100f;
+		float UsageFromIdle(float idle) => (1f - idle);
 
 		async void Sampler(object _sender, System.Timers.ElapsedEventArgs _)
 		{
 			if (!Atomic.Lock(ref sampler_lock)) return; // uhhh... probably should ping warning if this return is triggered
 			if (disposed) return; // Dumbness with timers
 
+			LastIdle = Idle(); // update
+			float sample = UsageFromIdle(LastIdle) * 100f;
+
+			Samples[SampleLoop] = sample;
+			SampleLoop = (SampleLoop + 1) % SampleCount; // loop offset
+
 			await Task.Delay(0).ConfigureAwait(false);
 
 			try
 			{
 				//float sample = CPUload.Value; // slowest part
-				float sample = UsageFromIdle(Idle());
-
-				Samples[SampleLoop] = sample;
-				SampleLoop = (SampleLoop + 1) % SampleCount; // loop offset
 
 				float queue = CPUqueue.Value;
 
