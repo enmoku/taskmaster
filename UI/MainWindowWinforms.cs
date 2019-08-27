@@ -1563,6 +1563,8 @@ namespace Taskmaster.UI
 					AddToWatchlistList(prc);
 
 				WatchlistColor();
+
+				menu_view_loaders.Enabled = processmanager?.LoaderTracking ?? false;
 			}));
 
 			if (manager.ScanFrequency.HasValue)
@@ -1579,9 +1581,6 @@ namespace Taskmaster.UI
 
 			foreach (var info in processmanager.GetExitWaitList())
 				ExitWaitListHandler(info);
-
-			// Enable UI features.
-			menu_view_loaders.Enabled = processmanager?.LoaderTracking ?? false;
 		}
 
 		void UnhookProcessManager()
