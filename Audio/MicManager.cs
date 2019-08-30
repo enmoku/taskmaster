@@ -93,7 +93,7 @@ namespace Taskmaster.Audio
 			}
 		}
 
-		public Device Device { get; private set; } = null;
+		public Device? Device { get; private set; } = null;
 
 		/// <summary>
 		/// Default device volume. From 0.0d to 100.0d
@@ -129,7 +129,7 @@ namespace Taskmaster.Audio
 
 		Manager? audiomanager = null;
 
-		public async Task Hook(Manager manager)
+		public void Hook(Manager manager)
 		{
 			Debug.Assert(manager != null, "AudioManager must not be null");
 

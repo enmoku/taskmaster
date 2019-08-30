@@ -24,6 +24,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
+using MKAh;
 using System;
 
 namespace Taskmaster.Process
@@ -70,16 +71,15 @@ namespace Taskmaster.Process
 		{
 			if (disposed) return false;
 
-			if (Slowed && SlowCount < 3)
+			if (Disinterested && DisinterestCount++ < DisinterestMax)
 				return false;
 			else
-				SlowCount = 0;
+				DisinterestCount = 0;
 
 			try
 			{
 				//CPU = CPUCounter.Value / Hardware.Utility.ProcessorCount;
-				var cpurawt = Convert.ToSingle(CpuLoad.Sample(elapsed));
-				CPU = cpurawt;
+				var cpurawt = CPU = Convert.ToSingle(CpuLoad.Sample(elapsed));
 				cpurawt *= 100f;
 				cpurawt /= Hardware.Utility.ProcessorCount;
 				//if (CPU > 3f) Logging.DebugMsg($"ProcessLoad --- PFC: {CPU:N1}% --- TMS: {cpu*100d:N1}%");
@@ -96,13 +96,13 @@ namespace Taskmaster.Process
 
 				if (Low > 30 && High == 0)
 				{
-					Slowed = true;
-					SlowCount = 0;
+					Disinterested = true;
+					DisinterestCount = 0;
 
 					High = Mid = Low = 0;
 				}
 				else if (Mid > 2 || High > 0)
-					Slowed = false;
+					Disinterested = false;
 
 				return true;
 			}
@@ -115,11 +115,19 @@ namespace Taskmaster.Process
 			return false;
 		}
 
-		public bool Slowed { get; set; } = false;
+		public bool Disinterested { get; set; } = false;
 
-		public void Resume() => Slowed = false;
+		public void Resume() => Disinterested = false;
 
-		int SlowCount { get; set; } = 0;
+		int DisinterestCount { get; set; } = 0;
+
+		public int DisinterestMax { get; set; } = 3;
+
+		public void ResetInterest() => DisinterestMax = 3;
+
+		public void LessenInterest() => DisinterestMax = (DisinterestMax + 1).Max(120);
+
+		public void IncreaseInterest() => DisinterestMax = Convert.ToInt32((DisinterestMax / (Mid + High)).Min(3));
 
 		public long Low { get; private set; } = 0;
 		public long Mid { get; private set; } = 0;

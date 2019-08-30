@@ -77,12 +77,12 @@ namespace Taskmaster.Process
 		/// <summary>
 		/// Process Id.
 		/// </summary>
-		public int Id { get; set; } = -1;
+		public int Id { get; set; }
 
 		/// <summary>
 		/// Process reference.
 		/// </summary>
-		public System.Diagnostics.Process Process { get; set; } = null;
+		public System.Diagnostics.Process? Process { get; set; } = null;
 
 		/// <summary>
 		/// Controller associated with this process.
@@ -126,7 +126,7 @@ namespace Taskmaster.Process
 
 		public DateTimeOffset Modified { get; set; } = DateTimeOffset.MinValue;
 
-		internal HandlingState _state { get; set; } = HandlingState.Invalid;
+		private HandlingState _state { get; set; } = HandlingState.Invalid;
 
 		public HandlingState State
 		{

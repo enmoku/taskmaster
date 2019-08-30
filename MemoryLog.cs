@@ -55,7 +55,7 @@ namespace Taskmaster
 
 	static class MemoryLog
 	{
-		public static MemorySink MemorySink;
+		public static MemorySink? MemorySink;
 	}
 
 	class MemorySink : Serilog.Core.ILogEventSink, IDisposable

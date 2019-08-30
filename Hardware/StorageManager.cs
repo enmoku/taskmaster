@@ -147,7 +147,7 @@ namespace Taskmaster
 			if (disposed) throw new ObjectDisposedException(nameof(StorageManager), "DirectorySize called after StorageManager was disposed.");
 
 			var i = 1;
-			var dea = new StorageEventArgs { State = ScanState.Segment, Stats = stats };
+			//var dea = new StorageEventArgs { State = ScanState.Segment, Stats = stats };
 			try
 			{
 				foreach (FileInfo fi in dinfo.GetFiles())
@@ -218,7 +218,7 @@ namespace Taskmaster
 		public StorageScanStateDelegate? TempScan;
 
 		#region IDisposable Support
-		public event EventHandler<DisposedEventArgs> OnDisposed;
+		public event EventHandler<DisposedEventArgs>? OnDisposed;
 
 		bool disposed = false;
 

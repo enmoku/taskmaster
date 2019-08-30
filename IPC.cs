@@ -40,7 +40,7 @@ namespace Taskmaster
 		internal const string TerminationMessage = "TM...TERMINATE";
 		internal const string RefreshMessage = "TM...REFRESH";
 
-		static System.IO.Pipes.NamedPipeServerStream pipe = null;
+		static System.IO.Pipes.NamedPipeServerStream? pipe = null;
 
 		internal static async void Receive(IAsyncResult result)
 		{
@@ -162,13 +162,13 @@ namespace Taskmaster
 			}
 			finally
 			{
-				try { pe?.Dispose(); } catch { } // this can throw useless things if the connection never happened
+				try { pe?.Dispose(); } catch { /* NOP */ } // this can throw useless things if the connection never happened
 			}
 		}
 
 		internal static void Close()
 		{
-			try { pipe?.Dispose(); } catch { }
+			try { pipe?.Dispose(); } catch { /* NOP */ }
 			pipe = null;
 		}
 

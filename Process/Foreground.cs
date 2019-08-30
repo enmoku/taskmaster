@@ -113,9 +113,9 @@ namespace Taskmaster.Process
 			if (DebugForeground) Log.Information("<Foreground> Component loaded.");
 		}
 
-		Process.Manager processmanager = null;
+		Process.Manager? processmanager = null;
 
-		public async Task Hook(Process.Manager procman)
+		public void Hook(Process.Manager procman)
 		{
 			processmanager = procman;
 			HangTimer.Start();

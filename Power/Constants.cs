@@ -26,7 +26,7 @@
 
 namespace Taskmaster.Power
 {
-	internal partial class Constants
+	internal static partial class Constants
 	{
 		// TODO: Move these to language resource.
 		public const string Behaviour = "Behaviour";

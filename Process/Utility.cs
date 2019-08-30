@@ -265,8 +265,8 @@ namespace Taskmaster.Process
 				int initialCores = Bit.Count(initialmask);
 				int targetCores = Bit.Count(targetmask);
 				int excesscores = initialCores - targetCores;
-				int deficitcores = targetCores - initialCores;
-				int availablecores = targetCores & ~initialmask;
+				//int deficitcores = targetCores - initialCores;
+				//int availablecores = targetCores & ~initialmask;
 
 				result = initialmask;
 
@@ -417,7 +417,7 @@ namespace Taskmaster.Process
 			return false;
 		}
 
-		public static bool GetInfo(int ProcessID, out ProcessEx info, System.Diagnostics.Process? process = null, Process.Controller? controller = null, string name = null, string path = null, bool getPath = false)
+		public static bool GetInfo(int ProcessID, out ProcessEx? info, System.Diagnostics.Process? process = null, Process.Controller? controller = null, string name = null, string path = null, bool getPath = false)
 		{
 			try
 			{
@@ -447,7 +447,7 @@ namespace Taskmaster.Process
 			return false;
 		}
 
-		public static ProcessEx GetParentProcess(ProcessEx info)
+		public static ProcessEx? GetParentProcess(ProcessEx info)
 		{
 			try
 			{

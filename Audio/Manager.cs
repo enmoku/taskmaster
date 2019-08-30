@@ -42,7 +42,7 @@ namespace Taskmaster.Audio
 	{
 		readonly System.Threading.Thread Context;
 
-		public event EventHandler<DisposedEventArgs> OnDisposed;
+		public event EventHandler<DisposedEventArgs>? OnDisposed;
 
 		public event EventHandler<DeviceStateEventArgs> StateChanged;
 		public event EventHandler<DefaultDeviceEventArgs> DefaultChanged;
@@ -300,7 +300,7 @@ namespace Taskmaster.Audio
 
 		Process.Manager? processmanager = null;
 
-		public async Task Hook(Process.Manager procman)
+		public void Hook(Process.Manager procman)
 		{
 			processmanager = procman;
 			processmanager.OnDisposed += (_, _ea) => processmanager = null;

@@ -72,13 +72,13 @@ namespace Taskmaster
 				switch (rv)
 				{
 					case MessageBox.ResultType.Retry:
-						IPC.Transmit(IPC.RestartMessage);
+						IPC.Transmit(IPC.RestartMessage).ConfigureAwait(false);
 						break;
 					case MessageBox.ResultType.End:
-						IPC.Transmit(IPC.TerminationMessage);
+						IPC.Transmit(IPC.TerminationMessage).ConfigureAwait(false);
 						break;
 					case MessageBox.ResultType.Cancel:
-						IPC.Transmit(IPC.RefreshMessage);
+						IPC.Transmit(IPC.RefreshMessage).ConfigureAwait(false);
 						break;
 				}
 
@@ -553,7 +553,7 @@ namespace Taskmaster
 					if (MicrophoneManagerEnabled)
 					{
 						micmonitor = new Audio.MicManager();
-						micmonitor.Hook(audiomanager).ConfigureAwait(true);
+						micmonitor.Hook(audiomanager);
 						micmonitor.OnDisposed += (_, _ea) => micmonitor = null;
 					}
 				}

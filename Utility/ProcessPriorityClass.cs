@@ -48,18 +48,17 @@ namespace MKAh
 	public static partial class Utility
 	{
 		public static ProcessPriorityClass ProcessPriority(string priority)
-		{
-			switch (priority.ToLowerInvariant())
+			=> priority.ToLowerInvariant() switch
 			{
-				case "real time": return ProcessPriorityClass.RealTime;
-				case "high": return ProcessPriorityClass.High;
-				case "above normal": return ProcessPriorityClass.AboveNormal;
-				default:
-				case "normal": return ProcessPriorityClass.Normal;
-				case "below normal": return ProcessPriorityClass.BelowNormal;
-				case "idle":
-				case "low": return ProcessPriorityClass.Idle;
-			}
-		}
+				"real time" => ProcessPriorityClass.RealTime,
+				"high" => ProcessPriorityClass.High,
+				"above normal" => ProcessPriorityClass.AboveNormal,
+				"below normal" => ProcessPriorityClass.BelowNormal,
+				//case "idle":
+				"idle" => ProcessPriorityClass.Idle, // backward compatibility
+				"low" => ProcessPriorityClass.Idle,
+				// "normal" => 
+				_ => ProcessPriorityClass.Normal
+			};
 	}
 }

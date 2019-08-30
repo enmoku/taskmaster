@@ -154,7 +154,7 @@ namespace Taskmaster.Hardware
 			long newIdleMs = Process.NativeMethods.FiletimeToLong(idle);
 			long newUsedMs = (Process.NativeMethods.FiletimeToLong(user) + Process.NativeMethods.FiletimeToLong(kernel));
 
-			var usedMs = (newUsedMs - oldUsedMs) / (10_000 * cores);
+			//var usedMs = (newUsedMs - oldUsedMs) / (10_000 * cores);
 			var idleMs = (newIdleMs - oldIdleMs) / (10_000 * cores);
 			oldIdleMs = newIdleMs;
 			oldUsedMs = newUsedMs;
@@ -225,7 +225,7 @@ namespace Taskmaster.Hardware
 
 		//Process.Manager processmanager = null;
 
-		public async Task Hook(Process.Manager manager)
+		public void Hook(Process.Manager manager)
 		{
 			//processmanager = manager;
 			//processmanager.OnDisposed += (_, _ea) => processmanager = null;
@@ -328,7 +328,7 @@ namespace Taskmaster.Hardware
 		*/
 
 		#region IDisposable Support
-		public event EventHandler<DisposedEventArgs> OnDisposed;
+		public event EventHandler<DisposedEventArgs>? OnDisposed;
 
 		bool disposed = false; // To detect redundant calls
 

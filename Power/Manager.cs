@@ -122,9 +122,9 @@ namespace Taskmaster.Power
 		public int ForceCount => ForceModeSourcesMap.Count;
 		readonly ConcurrentDictionary<int, Mode> ForceModeSourcesMap = new ConcurrentDictionary<int, Mode>();
 
-		Hardware.CPUMonitor cpumonitor = null;
+		Hardware.CPUMonitor? cpumonitor = null;
 
-		public async Task Hook(Hardware.CPUMonitor monitor)
+		public void Hook(Hardware.CPUMonitor monitor)
 		{
 			cpumonitor = monitor;
 			cpumonitor.OnDisposed += (_, _ea) => cpumonitor = null;
@@ -1097,6 +1097,9 @@ namespace Taskmaster.Power
 
 			switch (Behaviour)
 			{
+				default:
+				//case PowerBehaviour.RuleBased:
+					break;
 				case PowerBehaviour.Auto:
 					ResetAutoadjust();
 
@@ -1105,9 +1108,6 @@ namespace Taskmaster.Power
 						reset = true;
 						Log.Error("<Power> CPU monitor disabled, auto-adjust not possible. Resetting to rule-based behaviour.");
 					}
-					break;
-				default:
-				case PowerBehaviour.RuleBased:
 					break;
 				case PowerBehaviour.Manual:
 					processmanager.CancelPowerWait(); // need nicer way to do this
@@ -1358,7 +1358,7 @@ namespace Taskmaster.Power
 			NativeMethods.PowerSetActiveScheme((IntPtr)null, ref plan);
 		}
 
-		async Task SetMonitorMode(MonitorPowerMode powermode)
+		async void SetMonitorMode(MonitorPowerMode powermode)
 		{
 			if (disposed) throw new ObjectDisposedException(nameof(Manager), "SetMonitorMode called after PowerManager was disposed.");
 

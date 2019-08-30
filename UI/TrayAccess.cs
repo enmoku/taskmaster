@@ -61,6 +61,7 @@ namespace Taskmaster.UI
 
 		readonly ToolStripMenuItem power_auto, power_highperf, power_balanced, power_saving, power_manual;
 
+		// TODO: Remove phantom icons from previous crashed instances?
 		public TrayAccess()
 		{
 			#region Build UI
@@ -151,7 +152,7 @@ namespace Taskmaster.UI
 				Tray.Icon = System.Drawing.SystemIcons.Application;
 			}
 
-			EnsureVisible();
+			EnsureVisible().ConfigureAwait(true);
 			#endregion // Build UI
 
 			using var cfg = Application.Config.Load(CoreConfigFilename);
@@ -233,19 +234,19 @@ namespace Taskmaster.UI
 			ea.Cancel = false;
 		}
 
-		public event EventHandler RescanRequest;
+		public event EventHandler? RescanRequest;
 
-		Process.Manager processmanager = null;
+		Process.Manager? processmanager = null;
 
-		public async Task Hook(Process.Manager pman)
+		public void Hook(Process.Manager pman)
 		{
 			processmanager = pman;
 			RescanRequest += (_, _ea) => processmanager?.HastenScan(TimeSpan.FromSeconds(15));
 		}
 
-		Power.Manager powermanager = null;
+		Power.Manager? powermanager = null;
 
-		public async Task Hook(Power.Manager pman)
+		public void Hook(Power.Manager pman)
 		{
 			powermanager = pman;
 
@@ -393,7 +394,7 @@ namespace Taskmaster.UI
 			mainwindow = null;
 		}
 
-		public async Task Hook(MainWindow window)
+		public void Hook(MainWindow window)
 		{
 			Debug.Assert(window != null, "Hooking null main window");
 
@@ -464,7 +465,7 @@ namespace Taskmaster.UI
 					return;
 				}
 
-				EnsureVisible();
+				EnsureVisible().ConfigureAwait(false);
 			}
 			catch (Exception ex)
 			{
@@ -540,8 +541,12 @@ namespace Taskmaster.UI
 		// does this do anything really?
 		public void RefreshVisibility()
 		{
-			Tray.Visible = false;
-			Tray.Visible = true;
+			Logging.DebugMsg("<Tray:Icon> Refreshing visibility");
+			hiddenwindow?.Invoke(new Action(() =>
+			{
+				Tray.Visible = false;
+				Tray.Visible = true;
+			}));
 		}
 
 		int ensuringvisibility = 0;
@@ -552,23 +557,22 @@ namespace Taskmaster.UI
 
 			try
 			{
-				RefreshVisibility();
-
 				int attempts = 0;
-				while (!Tray.Visible)
+				do
 				{
 					Log.Debug("<Tray> Not visible, fixing...");
 
 					RefreshVisibility();
 
-					await Task.Delay(TimeSpan.FromSeconds(15)).ConfigureAwait(true);
-
-					if (++attempts >= 5)
+					if (attempts++ > 4)
 					{
 						Log.Fatal("<Tray> Failure to become visible after 5 attempts. Exiting to avoid ghost status.");
 						UnifiedExit();
 					}
+
+					await Task.Delay(TimeSpan.FromSeconds(15)).ConfigureAwait(true);
 				}
+				while (!Tray.Visible) ;
 			}
 			catch (Exception ex)
 			{

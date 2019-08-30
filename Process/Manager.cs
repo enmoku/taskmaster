@@ -45,7 +45,9 @@ namespace Taskmaster.Process
 	[Context(RequireMainThread = false)]
 	public class Manager : IComponent, IDisposal, IDisposable
 	{
-		Analyzer? analyzer = null;
+		readonly Analyzer? analyzer = null;
+
+		MKAh.Cache.SimpleCache<int, ProcessEx> LoaderCache = new MKAh.Cache.SimpleCache<int, ProcessEx>(limit: 260, retention: 80);
 
 		readonly ConcurrentDictionary<int, ProcessEx> WaitForExitList = new ConcurrentDictionary<int, ProcessEx>(Environment.ProcessorCount, 60);
 		readonly ConcurrentDictionary<int, ProcessEx> Running = new ConcurrentDictionary<int, ProcessEx>(Environment.ProcessorCount, 60);
@@ -111,26 +113,23 @@ namespace Taskmaster.Process
 					if (!Loaders.TryGetValue(info.Name, out group))
 					{
 						group = new InstanceGroupLoad(info.Name, LoadType.All);
-						added = true;
-						Loaders.TryAdd(info.Name, group); // this failing doesn't matter too much
+						added = Loaders.TryAdd(info.Name, group); // this failing doesn't matter too much
 					}
 
 					group.TryAdd(info);
 				}
+
+				if (added) LoaderActivity?.Invoke(this, new LoaderEvent(new[] { group }));
 			}
 			catch (Exception ex) when (ex is InvalidOperationException || ex is NullReferenceException)
 			{
 				group?.Remove(info);
-				return;
 			}
 			catch (Exception ex)
 			{
 				group?.Remove(info);
 				Logging.Stacktrace(ex);
-				return;
 			}
-
-			if (!LoadTimerRunning) StartLoadAnalysisTimer();
 		}
 
 		void RemoveLoader(string name, InstanceGroupLoad group = null)
@@ -178,7 +177,22 @@ namespace Taskmaster.Process
 
 		MKAh.Lock.Monitor LoadLock = new MKAh.Lock.Monitor();
 
-		public void Analyze() => InspectLoaders(null);
+		public void GenerateLoadTrackers()
+		{
+			InstanceGroupLoad[] loadlist;
+			lock (Loader_lock) loadlist = Loaders.Values.ToArray();
+
+			var now = DateTimeOffset.UtcNow;
+
+			// Initialize samples
+			foreach (var loader in loadlist)
+				if (now.Since(loader.Last).TotalSeconds > 30d) loader.Update();
+
+			LoaderActivity?.Invoke(this, new LoaderEvent(loadlist));
+		}
+
+		bool TrackEverything = false;
+		bool InstantLoaderSignaling = false;
 
 		void InspectLoaders(object _)
 		{
@@ -187,8 +201,8 @@ namespace Taskmaster.Process
 				if (Trace) Logging.DebugMsg("<Process:Loaders> None subscribed.");
 				return; // don't process while no-one is subscribed
 			}
-			else
-				Logging.DebugMsg("<Process:Loaders> Inspecting.");
+
+			Logging.DebugMsg("<Process:Loaders> Inspecting.");
 
 			if (!LoadLock.TryLock()) return;
 			using var llock = LoadLock.ScopedUnlock();
@@ -201,10 +215,7 @@ namespace Taskmaster.Process
 			int skipped = 0;
 
 			InstanceGroupLoad[] loadlist;
-			lock (Loader_lock)
-			{
-				loadlist = Loaders.Values.ToArray();
-			}
+			lock (Loader_lock) loadlist = Loaders.Values.ToArray();
 
 			var heaviest = loadlist[0];
 
@@ -212,23 +223,29 @@ namespace Taskmaster.Process
 			{
 				if (loader.InstanceCount > 0)
 				{
-					loader.Update();
-
-					if (heaviest.Load < loader.Load)
-						heaviest = loader;
-					else if (loader.Load < heaviest.Load / 2f) // skip lightweights
+					if (loader.Last.To(now).TotalSeconds < 5d)
 					{
-						skipped++;
-						continue;
+						loader.Update();
+
+						if (!TrackEverything && loader.Load < 0.5f)
+						{
+							skipped++;
+							continue; // skip lightweights
+						}
+
+						if (heaviest.Load < loader.Load)
+							heaviest = loader;
 					}
 
 					if (loader.Samples > 0)
+					{
 						heavyLoaders.Add(loader);
+
+						if (loader.LastHeavy && loader.Heavy > 5)
+							Logging.DebugMsg($"LOADER [{loader.Load:N1}]: {loader.Instance} [×{loader.InstanceCount}] - CPU: {loader.CPULoad.Average:N1}, RAM: {loader.RAMLoad.Current / MKAh.Units.Binary.Giga:N3} GiB, IO: {loader.IOLoad.Average:N1}/s");
+					}
 					else
 						skipped++;
-
-					if (loader.LastHeavy && loader.Heavy > 5)
-						Logging.DebugMsg($"LOADER [{loader.Load:N1}]: {loader.Instance} [×{loader.InstanceCount}] - CPU: {loader.CPULoad.Average:N1}, RAM: {loader.RAMLoad.Current / MKAh.Units.Binary.Giga:N3} GiB, IO: {loader.IOLoad.Average:N1}/s");
 				}
 				else
 				{
@@ -243,6 +260,7 @@ namespace Taskmaster.Process
 
 			Logging.DebugMsg($"HEAVYWEIGHT [{heaviest.Load:N1}]: {heaviest.Instance} [×{heaviest.InstanceCount}] - CPU: {heaviest.CPULoad.Average:N1}, RAM: {heaviest.RAMLoad.Current / MKAh.Units.Binary.Giga:N3} GiB, IO: {heaviest.IOLoad.Average:N1}/s");
 
+			/*
 			heavyLoaders.Sort(LoadInfoComparer);
 
 			int i = 0;
@@ -251,14 +269,12 @@ namespace Taskmaster.Process
 				loader.Order = i;
 				Logging.DebugMsg($"LOADER [{loader.Load:N1}]: {loader.Instance} [×{loader.InstanceCount}] - CPU: {loader.CPULoad.Average:N1} %, RAM: {loader.RAMLoad.Current / MKAh.Units.Binary.Giga:N3} GiB, IO: {loader.IOLoad.Average:N1}/s");
 			}
+			*/
 
-			//LoaderActivity?.Invoke(this, new LoaderEvent(heavyLoaders.GetRange(0, Math.Min(heavyLoaders.Count, 3)).ToArray()));
 			LoaderActivity?.Invoke(this, new LoaderEvent(heavyLoaders.ToArray()));
 
 			foreach (var group in removeList)
-			{
 				RemoveLoader(group.Instance);
-			}
 		}
 
 		int LoadInfoComparer(InstanceGroupLoad x, InstanceGroupLoad y)
@@ -395,7 +411,9 @@ namespace Taskmaster.Process
 		{
 			RenewWatchlistCache();
 
-			LoadTimer = new Timer(InspectLoaders, null, System.Threading.Timeout.InfiniteTimeSpan, System.Threading.Timeout.InfiniteTimeSpan);
+			// testing
+			if (false) LoadTimer = new Timer(InspectLoaders, null, System.Threading.Timeout.InfiniteTimeSpan, System.Threading.Timeout.InfiniteTimeSpan);
+
 			ScanTimer = new System.Timers.Timer(ScanFrequency.Value.TotalMilliseconds);
 			MaintenanceTimer = new System.Timers.Timer(1_000 * 60 * 60 * 3); // every 3 hours
 
@@ -470,13 +488,13 @@ namespace Taskmaster.Process
 		/// <summary>
 		/// Executable name to ProcessControl mapping.
 		/// </summary>
-		ConcurrentDictionary<string, Controller[]> ExeToController = new ConcurrentDictionary<string, Controller[]>();
+		readonly ConcurrentDictionary<string, Controller[]> ExeToController = new ConcurrentDictionary<string, Controller[]>();
 
 		public int DefaultBackgroundPriority = 1, DefaultBackgroundAffinity = 0;
 
 		ForegroundManager activeappmonitor = null;
 
-		public async Task Hook(ForegroundManager manager)
+		public void Hook(ForegroundManager manager)
 		{
 			activeappmonitor = manager;
 			activeappmonitor.ActiveChanged += ForegroundAppChangedEvent;
@@ -485,7 +503,7 @@ namespace Taskmaster.Process
 
 		Power.Manager powermanager = null;
 
-		public async Task Hook(Power.Manager manager)
+		public void Hook(Power.Manager manager)
 		{
 			powermanager = manager;
 			powermanager.BehaviourChange += PowerBehaviourEvent;
@@ -500,57 +518,31 @@ namespace Taskmaster.Process
 
 		readonly MKAh.Lock.Monitor FreeMemLock = new MKAh.Lock.Monitor();
 
-		public async Task FreeMemory(string executable = "", bool quiet = false, int ignorePid = -1)
+		public async Task FreeMemory(int ignorePid = -1, bool quiet = false)
 		{
 			if (!PagingEnabled) return;
 
 			if (!FreeMemLock.TryLock()) return;
+			using var fmlock = FreeMemLock.ScopedUnlock();
 
 			await Task.Delay(0).ConfigureAwait(false);
 
 			try
 			{
-				if (string.IsNullOrEmpty(executable))
-				{
-					if (DebugPaging && !quiet) Log.Debug("<Process> Paging applications to free memory...");
-				}
-				else
-				{
-					var procs = System.Diagnostics.Process.GetProcessesByName(executable); // unnecessary maybe?
-					if (procs.Length == 0)
-					{
-						Log.Error(executable + " not found, not freeing memory for it.");
-						return;
-					}
-
-					foreach (var prc in procs)
-					{
-						if (executable.Equals(prc.ProcessName, StringComparison.InvariantCultureIgnoreCase))
-						{
-							ignorePid = prc.Id;
-							break;
-						}
-					}
-
-					if (DebugPaging && !quiet) Log.Debug("<Process> Paging applications to free memory for: " + executable);
-				}
+				if (DebugPaging && !quiet) Log.Debug("<Process> Requesting OS to page applications to swap file...");
 
 				//await Task.Delay(0).ConfigureAwait(false);
 
-				FreeMemoryInternal(ignorePid, executable);
+				FreeMemoryInternal(ignorePid);
 			}
 			catch (Exception ex) when (ex is NullReferenceException || ex is OutOfMemoryException) { throw; }
 			catch (Exception ex)
 			{
 				Logging.Stacktrace(ex);
 			}
-			finally
-			{
-				FreeMemLock.Unlock();
-			}
 		}
 
-		void FreeMemoryInternal(int ignorePid = -1, string ignoreExe = null)
+		void FreeMemoryInternal(int ignorePid = -1)
 		{
 			if (disposed) throw new ObjectDisposedException(nameof(Manager), "FreeMemoryInterval called when ProcessManager was already disposed");
 
@@ -564,7 +556,7 @@ namespace Taskmaster.Process
 
 				ScanLock.Wait();
 
-				Scan(ignorePid, ignoreExe, PageToDisk: true); // TODO: Call for this to happen otherwise
+				Scan(ignorePid, PageToDisk: true); // TODO: Call for this to happen otherwise
 				if (cts.IsCancellationRequested) return;
 
 				// TODO: Wait a little longer to allow OS to Actually page stuff. Might not matter?
@@ -675,9 +667,10 @@ namespace Taskmaster.Process
 
 		readonly MKAh.Lock.Monitor ScanLock = new MKAh.Lock.Monitor();
 
-		public event EventHandler ScanStart, ScanEnd;
+		public event EventHandler ScanStart;
+		public event EventHandler<ScanEndEventArgs> ScanEnd;
 
-		bool Scan(int ignorePid = -1, string ignoreExe = null, bool PageToDisk = false)
+		bool Scan(int ignorePid = -1, bool PageToDisk = false)
 		{
 			if (disposed) throw new ObjectDisposedException(nameof(Manager), "Scan called when ProcessManager was already disposed");
 			if (cts.IsCancellationRequested) return false;
@@ -701,36 +694,29 @@ namespace Taskmaster.Process
 
 				//var loaderOffload = new List<ProcessEx>();
 
-				List<ProcessEx> pageList = PageToDisk ? new List<ProcessEx>(8) : null;
-
+				int modified = 0, ignored = 0;
 				foreach (var process in procs)
-					ScanTriage(process, PageToDisk);
+				{
+					var info = ScanTriage(process, PageToDisk);
+
+					if (info != null)
+					{
+						if (info.State == HandlingState.Modified)
+							modified++;
+						else if (info.State == HandlingState.Abandoned)
+							ignored++;
+					}
+					else
+						ignored++;
+				}
 
 				//SystemLoaderAnalysis(loaderOffload);
-
-				if ((pageList?.Count ?? 0) > 0)
-				{
-					Task.Run(() =>
-					{
-						foreach (var info in pageList)
-						{
-							try
-							{
-								info.Process.Refresh();
-								if (info.Process.HasExited) continue;
-								NativeMethods.EmptyWorkingSet(info.Process.Handle); // process.Handle may throw which we don't care about
-							}
-							catch { }
-						}
-						pageList.Clear();
-					}, cts.Token).ConfigureAwait(false);
-				}
 
 				if (DebugScan) Log.Debug("<Process> Full Scan: Complete");
 
 				SignalProcessHandled(-ScanFoundProcs); // scan done
 
-				ScanEnd?.Invoke(this, EventArgs.Empty);
+				ScanEnd?.Invoke(this, new ScanEndEventArgs() { Found = ScanFoundProcs, Ignored = ignored, Modified = modified });
 
 				if (!Utility.SystemProcessId(ignorePid)) Unignore(ignorePid);
 			}
@@ -952,7 +938,7 @@ namespace Taskmaster.Process
 				Log.Warning("[" + prc.FriendlyName + "] Background priority equal or higher than foreground priority, ignoring.");
 			}
 
-			if (!(prc.Executables?.Length > 0) && string.IsNullOrEmpty(prc.Path))
+			if (prc.Executables.Length <= 0 && string.IsNullOrEmpty(prc.Path))
 			{
 				Log.Warning("[" + prc.FriendlyName + "] Executable and Path missing; ignoring.");
 				rv = false;
@@ -1224,7 +1210,7 @@ namespace Taskmaster.Process
 				var prc = new Controller(section.Name, prioR, aff)
 				{
 					Enabled = (section.Get(HumanReadable.Generic.Enabled)?.Bool ?? true),
-					Executables = (ruleExec?.StringArray ?? null),
+					Executables = (ruleExec?.StringArray ?? Array.Empty<string>()),
 					Description = (section.Get(HumanReadable.Generic.Description)?.String ?? null),
 					// friendly name is filled automatically
 					PriorityStrategy = priostrat,
@@ -1308,8 +1294,7 @@ namespace Taskmaster.Process
 					{
 						withPath++;
 
-						if (prc.Executables?.Length > 0)
-							hybrids++;
+						if (prc.Executables.Length > 0) hybrids++;
 					}
 				}
 				else
@@ -1543,7 +1528,7 @@ namespace Taskmaster.Process
 
 		public void RemoveController(Controller prc)
 		{
-			if (prc.Executables?.Length > 0)
+			if (prc.Executables.Length > 0)
 			{
 				// TODO: MULTIEXE ; What to do when multiple rules have same exe name?
 				foreach (var exe in prc.ExecutableFriendlyName)
@@ -1770,8 +1755,8 @@ namespace Taskmaster.Process
 					Utility.SetIO(process, 2, out _, decrease: false); // set foreground app I/O to highest possible
 				}
 				catch (Exception ex) when (ex is NullReferenceException || ex is OutOfMemoryException) { throw; }
-				catch (ArgumentException) { }
-				catch (InvalidOperationException) { }
+				catch (ArgumentException) { /* NOP */ }
+				catch (InvalidOperationException) { /* NOP */ }
 				finally
 				{
 					if (disposeLocal) process?.Dispose();
@@ -2130,7 +2115,7 @@ namespace Taskmaster.Process
 						if (prc.ExclusiveMode) await ExclusiveMode(info).ConfigureAwait(false);
 
 						if (RecordAnalysis.HasValue && info.Controller.Analyze && info.Valid && info.State != HandlingState.Abandoned)
-							await analyzer.Analyze(info).ConfigureAwait(false);
+							analyzer?.Analyze(info).ConfigureAwait(false);
 
 						if (WindowResizeEnabled && prc.Resize.HasValue)
 							await prc.TryResize(info).ConfigureAwait(false);
@@ -2193,7 +2178,7 @@ namespace Taskmaster.Process
 			}
 		}
 
-		async Task AttemptColorReset(ProcessEx info)
+		async void AttemptColorReset(ProcessEx info)
 		{
 			await Task.Delay(0).ConfigureAwait(false);
 
@@ -2278,39 +2263,34 @@ namespace Taskmaster.Process
 
 			await Task.Delay(0).ConfigureAwait(false);
 
-			bool exclusiveEnd = false;
 			lock (info)
 			{
 				if (!info.Exclusive) return;
 
 				info.Exclusive = false;
-				exclusiveEnd = true;
 			}
 
-			if (exclusiveEnd)
+			lock (Exclusive_lock)
 			{
-				lock (Exclusive_lock)
-				{
-					ExclusiveLocks--;
+				ExclusiveLocks--;
 
-					if (DebugProcesses) Log.Debug(info.ToFullString() + " Exclusive mode ending.");
-					if (ExclusiveLocks == 0)
+				if (DebugProcesses) Log.Debug(info.ToFullString() + " Exclusive mode ending.");
+				if (ExclusiveLocks == 0)
+				{
+					if (DebugProcesses) Log.Debug("<Exclusive> Ended for all, restarting services.");
+					try
 					{
-						if (DebugProcesses) Log.Debug("<Exclusive> Ended for all, restarting services.");
-						try
-						{
-							ExclusiveEnd();
-						}
-						catch (InvalidOperationException)
-						{
-							Log.Warning("<Exclusive> Failure to restart services after " + info + " exited.");
-						}
+						ExclusiveEnd();
 					}
-					else
+					catch (InvalidOperationException)
 					{
-						if (DebugProcesses)
-							Log.Debug("<Exclusive> Still used by " + ExclusiveLocks.ToString() + " processes.");
+						Log.Warning("<Exclusive> Failure to restart services after " + info + " exited.");
 					}
+				}
+				else
+				{
+					if (DebugProcesses)
+						Log.Debug("<Exclusive> Still used by " + ExclusiveLocks.ToString() + " processes.");
 				}
 			}
 		}
@@ -2425,7 +2405,7 @@ namespace Taskmaster.Process
 			{
 				SignalProcessHandled(1); // wmi new instance
 
-				var wmiquerytime = Stopwatch.StartNew();
+				//var wmiquerytime = Stopwatch.StartNew(); // unused
 				// TODO: Instance groups?
 				try
 				{
@@ -2597,7 +2577,7 @@ namespace Taskmaster.Process
 
 			await Task.Delay(0).ConfigureAwait(false);
 
-			Cleanup();
+			Cleanup().ConfigureAwait(false);
 
 			SortWatchlist();
 

@@ -26,7 +26,7 @@
 
 namespace Taskmaster.Process
 {
-	public enum PathVisibilityOptions : int
+	public enum PathVisibilityOptions
 	{
 		/// <summary>
 		/// Process name. Usually executable name without extension.
@@ -54,7 +54,7 @@ namespace Taskmaster.Process
 		Invalid = 0,
 	}
 
-	public enum IOPriority : int
+	public enum IOPriority
 	{
 		Ignore = -1,
 		Background = 0,

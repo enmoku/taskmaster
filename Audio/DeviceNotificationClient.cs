@@ -42,10 +42,10 @@ namespace Taskmaster.Audio
 		/// Default device GUID, Role, and Flow.
 		/// GUID is null if there's no default.
 		/// </summary>
-		public DeviceInfoDelegate DefaultDevice;
+		public DeviceInfoDelegate? DefaultDevice;
 		//public event EventHandler Changed;
-		public DeviceBasicInfoDelegate Added, Removed;
-		public DeviceStateDelegate StateChanged;
+		public DeviceBasicInfoDelegate? Added, Removed;
+		public DeviceStateDelegate? StateChanged;
 		//public event EventHandler PropertyChanged;
 
 		public void OnDefaultDeviceChanged(DataFlow flow, Role role, string defaultDeviceId)

@@ -161,7 +161,7 @@ namespace Taskmaster
 					loaderdisplay = new UI.LoaderDisplay(processmanager);
 					loaderdisplay.OnDisposed += (_, _ea) => loaderdisplay = null;
 
-					processmanager?.Analyze();
+					processmanager?.GenerateLoadTrackers();
 				}
 			}
 		}
@@ -189,37 +189,37 @@ namespace Taskmaster
 					try
 					{
 						if (storagemanager != null)
-							mainwindow.Hook(storagemanager).ConfigureAwait(false);
+							mainwindow.Hook(storagemanager);
 
 						if (processmanager != null)
-							mainwindow.Hook(processmanager).ConfigureAwait(false);
+							mainwindow.Hook(processmanager);
 
 						if (audiomanager != null)
 						{
-							mainwindow.Hook(audiomanager).ConfigureAwait(false);
+							mainwindow.Hook(audiomanager);
 							if (micmonitor != null)
-								mainwindow.Hook(micmonitor).ConfigureAwait(false);
+								mainwindow.Hook(micmonitor);
 						}
 
 						if (netmonitor != null)
-							mainwindow.Hook(netmonitor).ConfigureAwait(false);
+							mainwindow.Hook(netmonitor);
 
 						if (activeappmonitor != null)
-							mainwindow.Hook(activeappmonitor).ConfigureAwait(false);
+							mainwindow.Hook(activeappmonitor);
 
 						if (powermanager != null)
-							mainwindow.Hook(powermanager).ConfigureAwait(false);
+							mainwindow.Hook(powermanager);
 
 						if (cpumonitor != null)
-							mainwindow.Hook(cpumonitor).ConfigureAwait(false);
+							mainwindow.Hook(cpumonitor);
 
 						if (hardware != null)
-							mainwindow.Hook(hardware).ConfigureAwait(false);
+							mainwindow.Hook(hardware);
 
 						if (healthmonitor != null)
-							mainwindow.Hook(healthmonitor).ConfigureAwait(false);
+							mainwindow.Hook(healthmonitor);
 
-						trayaccess.Hook(mainwindow).ConfigureAwait(false);
+						trayaccess.Hook(mainwindow);
 
 						// .GotFocus and .LostFocus are apparently unreliable as per the API
 						mainwindow.Activated += (_, _ea) => OptimizeResponsiviness(true);
@@ -447,7 +447,7 @@ namespace Taskmaster
 
 			try
 			{
-				trayaccess.EnsureVisible();
+				trayaccess.EnsureVisible().ConfigureAwait(false);
 				Config.Flush();
 			}
 			catch (Exception ex)

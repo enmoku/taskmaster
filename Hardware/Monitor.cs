@@ -269,8 +269,8 @@ namespace Taskmaster.Hardware
 			}
 		}
 
-		public event EventHandler<GPUSensorEventArgs> GPUPolling;
-		public event EventHandler<CPUSensorEventArgs> CPUPolling;
+		public event EventHandler<GPUSensorEventArgs>? GPUPolling;
+		public event EventHandler<CPUSensorEventArgs>? CPUPolling;
 
 		System.Timers.Timer? SensorPoller = null;
 

@@ -106,7 +106,7 @@ namespace Taskmaster.UI.Config
 			execName = new Extensions.TextBox()
 			{
 				ShortcutsEnabled = true,
-				Text = Controller.Executables?.Length > 0 ? string.Join("|", Controller.Executables) : string.Empty,
+				Text = Controller.Executables.Length > 0 ? string.Join("|", Controller.Executables) : string.Empty,
 				Width = 180,
 			};
 			execName.Validating += ValidateFilename;
@@ -416,13 +416,13 @@ namespace Taskmaster.UI.Config
 					bu.Checked = ((Math.Max(0, cpumask) & (1 << bitoff++)) != 0);
 			};
 
-			switch (Controller.AffinityStrategy)
+			affstrategy.SelectedIndex = Controller.AffinityStrategy switch
 			{
-				case Process.AffinityStrategy.Force: affstrategy.SelectedIndex = 2; break;
-				default:
-				case Process.AffinityStrategy.Limit: affstrategy.SelectedIndex = 1; break;
-				case Process.AffinityStrategy.None: affstrategy.SelectedIndex = 0; break;
-			}
+				Process.AffinityStrategy.Force => 2,
+				Process.AffinityStrategy.Limit => 1,
+				Process.AffinityStrategy.None => 0,
+				_ => 1,
+			};
 
 			lt.Controls.Add(afflayout);
 			lt.Controls.Add(affbuttonpanel);
@@ -764,10 +764,10 @@ namespace Taskmaster.UI.Config
 				var f_exes = new string[t_executables.Length];
 				for (int i = 0; i < t_executables.Length; i++)
 					f_exes[i] = t_executables[i].Trim();
-				Controller.Executables = (f_exes?.Length > 0) ? f_exes : null;
+				Controller.Executables = (f_exes?.Length > 0) ? f_exes : Array.Empty<string>();
 			}
 			else
-				Controller.Executables = null;
+				Controller.Executables = Array.Empty<string>();
 
 			Controller.Path = pathName.Text.Length > 0 ? pathName.Text.Trim() : null;
 			if (priorityClass.SelectedIndex == 5) // ignored

@@ -92,7 +92,7 @@ namespace Taskmaster.Process
 				if (value is null)
 				{
 					pExecutables = null;
-					ExecutableFriendlyName = null;
+					ExecutableFriendlyName = Array.Empty<string>();
 				}
 				else
 				{
@@ -112,7 +112,7 @@ namespace Taskmaster.Process
 		internal void NullExecutalbes()
 		{
 			pExecutables = null;
-			ExecutableFriendlyName = null;
+			ExecutableFriendlyName = Array.Empty<string>();
 		}
 
 		/// <summary>
@@ -441,7 +441,7 @@ namespace Taskmaster.Process
 
 			if (PathVisibility == PathVisibilityOptions.Invalid)
 			{
-				bool haveExe = Executables?.Length > 0;
+				bool haveExe = Executables.Length > 0;
 				bool havePath = !string.IsNullOrEmpty(Path);
 				if (haveExe && havePath) PathVisibility = PathVisibilityOptions.Process;
 				else if (havePath) PathVisibility = PathVisibilityOptions.Partial;
@@ -572,7 +572,7 @@ namespace Taskmaster.Process
 
 			if (app is null) app = cfg.Config[FriendlyName];
 
-			if (Executables?.Length > 0)
+			if (Executables.Length > 0)
 			{
 				var exarr = app["Executables"];
 				if (!(exarr.StringArray?.SequenceEqual(Executables) ?? false)) exarr.StringArray = Executables;
@@ -704,7 +704,7 @@ namespace Taskmaster.Process
 			else
 				app.TryRemove("Path visibility");
 
-			if (Executables?.Length > 0 && Recheck > 0)
+			if (Executables.Length > 0 && Recheck > 0)
 			{
 				var recheck = app["Recheck"];
 				if (recheck.TryInt != Recheck) recheck.Int = Recheck;
@@ -895,7 +895,7 @@ namespace Taskmaster.Process
 				}
 			}
 			catch (OutOfMemoryException) { throw; }
-			catch { }
+			catch { /* NOP */ }
 			// info.Process.ProcessorAffinity = OriginalState.Affinity;
 
 			if (PowerManagerEnabled && PowerPlan != Power.Mode.Undefined)
@@ -1195,7 +1195,7 @@ namespace Taskmaster.Process
 		}
 
 		[System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
-		bool IsForeground(int pid) => Foreground != ForegroundMode.Ignore ? activeappmonitor?.ForegroundId.Equals(pid) ?? true : true;
+		bool IsForeground(int pid) => Foreground == ForegroundMode.Ignore || (activeappmonitor?.ForegroundId.Equals(pid) ?? true);
 
 		bool WaitForExit(ProcessEx info)
 		{
@@ -1246,7 +1246,7 @@ namespace Taskmaster.Process
 
 			if (info.Restricted)
 			{
-				if (Manager.DebugProcesses) Logging.DebugMsg("<Process> " + info + " RESTRICTED - cancelling Touch");
+				if (Manager.DebugProcesses && ShowInaction) Logging.DebugMsg("<Process> " + info + " RESTRICTED - cancelling Touch");
 				return;
 			}
 
@@ -1254,7 +1254,7 @@ namespace Taskmaster.Process
 			{
 				if (Foreground != ForegroundMode.Ignore && info.InBackground)
 				{
-					if (Trace && DebugForeground)
+					if (Trace && DebugForeground && ShowInaction)
 						Log.Debug("<Foreground> " + FormatPathName(info) + " #" + info.Id.ToString() + " in background, ignoring.");
 					info.State = HandlingState.Paused;
 					return; // don't touch paused item
@@ -1263,7 +1263,6 @@ namespace Taskmaster.Process
 				info.PowerWait = (PowerPlan != Power.Mode.Undefined);
 				info.ForegroundWait = Foreground != ForegroundMode.Ignore;
 
-				//bool responding = true;
 				ProcessPriorityClass? oldPriority = null;
 				IntPtr? oldAffinity = null;
 
@@ -1277,11 +1276,9 @@ namespace Taskmaster.Process
 				{
 					if (ModifyDelay > 0) info.Process.Refresh();
 
-					//responding = info.Process.Responding;
-
 					if (info.Process.HasExited)
 					{
-						if (Manager.DebugProcesses)
+						if (Manager.DebugProcesses && ShowInaction)
 							Log.Debug("[" + FriendlyName + "] " + info.Name + " #" + info.Id.ToString() + " has already exited.");
 						info.State = HandlingState.Exited;
 						return; // return ProcessState.Invalid;
@@ -1333,87 +1330,95 @@ namespace Taskmaster.Process
 				// TEST FOR RECENTLY MODIFIED
 				if (RecentlyModified.TryGetValue(info.Id, out RecentlyModifiedInfo ormt))
 				{
-					LastSeen = DateTimeOffset.UtcNow;
-
-					if (ormt.Info == info) // to make sure this isn't different process
+					bool CheckForRecentlyModified(ProcessEx info, RecentlyModifiedInfo ormt)
 					{
-						if (ormt.FreeWill)
-						{
-							if (ShowInaction && Manager.DebugProcesses)
-								Log.Debug($"[{FriendlyName}] {FormatPathName(info)} #{info.Id.ToString()} has been granted agency, ignoring.");
-							info.State = HandlingState.Abandoned;
-							return;
-						}
+						LastSeen = now;
 
-						// Ignore well behaving apps.
-						if (ormt.Submitted && ormt.ExpectedState % 20 != 0)
+						if (ormt.Info == info) // to make sure this isn't different process
 						{
-							ormt.ExpectedState++;
-							Logging.DebugMsg($"[{FriendlyName}] {FormatPathName(info)} #{info.Id.ToString()} Is behaving well ({ormt.ExpectedState.ToString()}), skipping a check.");
-							return;
-						}
+							if (ormt.FreeWill)
+							{
+								if (ShowInaction && Manager.DebugProcesses)
+									Log.Debug($"[{FriendlyName}] {FormatPathName(info)} #{info.Id.ToString()} has been granted agency, ignoring.");
+								info.State = HandlingState.Abandoned;
+								return true;
+							}
 
-						bool expected = false;
-						if ((Priority.HasValue && info.Process.PriorityClass != Priority.Value)
-							|| (lAffinityMask >= 0 && info.Process.ProcessorAffinity.ToInt32() != lAffinityMask))
-						{
-							ormt.ExpectedState--;
-							ormt.Submitted = false;
-							Logging.DebugMsg($"[{FriendlyName}] {FormatPathName(info)} #{info.Id.ToString()} Recently Modified ({ormt.ExpectedState}); Unexpected state.");
+							// Ignore well behaving apps.
+							if (ormt.Submitted && ormt.ExpectedState % 20 != 0)
+							{
+								ormt.ExpectedState++;
+								if (Manager.DebugProcesses) Logging.DebugMsg($"[{FriendlyName}] {FormatPathName(info)} #{info.Id.ToString()} Is behaving well ({ormt.ExpectedState.ToString()}), skipping a check.");
+								return true;
+							}
+
+							bool expected = true;
+							// Branch-hint: False
+							if ((Priority.HasValue && info.Process.PriorityClass != Priority.Value)
+								|| (lAffinityMask >= 0 && info.Process.ProcessorAffinity.ToInt32() != lAffinityMask))
+							{
+								expected = false;
+								ormt.ExpectedState--;
+								ormt.Submitted = false;
+								if (Trace) Logging.DebugMsg($"[{FriendlyName}] {FormatPathName(info)} #{info.Id.ToString()} Recently Modified ({ormt.ExpectedState}); Unexpected state.");
+							}
+							else
+							{
+								ormt.ExpectedState++;
+								// MAYBE: Allow modification in case this happens too much?
+								if (Trace) Logging.DebugMsg($"[{FriendlyName}] {FormatPathName(info)} #{info.Id.ToString()} Recently Modified ({ormt.ExpectedState}); Expected state.");
+								if (ormt.ExpectedState > 20) ormt.Submitted = true;
+							}
+
+							if (ormt.LastIgnored.To(now) < Manager.IgnoreRecentlyModified
+								|| ormt.LastModified.To(now) < Manager.IgnoreRecentlyModified)
+							{
+								if (Manager.DebugProcesses && ShowInaction) Log.Debug(info.ToFullString() + " ignored due to recent modification. State " + (expected ? "un" : "") + "changed ×" + ormt.ExpectedState.ToString());
+
+								if (ormt.ExpectedState == -2) // 2-3 seems good number
+								{
+									ormt.FreeWill = true;
+
+									Logging.DebugMsg($"[{FriendlyName}] {FormatPathName(info)} #{info.Id.ToString()} agency granted");
+
+									if (ShowAgency)
+										Log.Debug($"[{FriendlyName}] {FormatPathName(info)} #{info.Id.ToString()} is resisting being modified: Agency granted.");
+
+									ormt.Info.Process.Exited += ProcessExitEvent;
+
+									// Agency granted, restore I/O priority to normal
+									if (IOPriority != IOPriority.Ignore && (int)IOPriority < (int)DefaultForegroundIOPriority)
+										SetIO(info, DefaultForegroundIOPriority); // restore normal I/O for these in case we messed around with it
+								}
+
+								ormt.LastIgnored = now;
+
+								Statistics.TouchIgnore++;
+
+								info.State = HandlingState.Unmodified;
+								return true;
+							}
+							else if (expected)
+							{
+								// this potentially ignores power modification
+								info.State = HandlingState.Unmodified;
+								return true;
+							}
+
+							Logging.DebugMsg($"[{FriendlyName}] {FormatPathName(info)} #{info.Id.ToString()} pass through");
 						}
 						else
 						{
-							ormt.ExpectedState++;
-							// TODO: allow modification in case this happens too much?
-							Logging.DebugMsg($"[{FriendlyName}] {FormatPathName(info)} #{info.Id.ToString()} Recently Modified ({ormt.ExpectedState}); Expected state.");
-							if (ormt.ExpectedState > 20) ormt.Submitted = true;
-							expected = true;
+							if (Manager.DebugProcesses) Log.Debug($"[{FriendlyName}] #{info.Id.ToString()} passed because it does not match old #{ormt.Info.Id}");
+
+							RecentlyModified.TryRemove(info.Id, out _); // id does not match name
 						}
+						//RecentlyModified.TryRemove(info.Id, out _);
 
-						if (ormt.LastIgnored.To(now) < Manager.IgnoreRecentlyModified
-							|| ormt.LastModified.To(now) < Manager.IgnoreRecentlyModified)
-						{
-							if (Manager.DebugProcesses && ShowInaction) Log.Debug(info.ToFullString() + " ignored due to recent modification. State " + (expected ? "un" : "") + "changed ×" + ormt.ExpectedState.ToString());
-
-							if (ormt.ExpectedState == -2) // 2-3 seems good number
-							{
-								ormt.FreeWill = true;
-
-								Logging.DebugMsg($"[{FriendlyName}] {FormatPathName(info)} #{info.Id.ToString()} agency granted");
-
-								if (ShowAgency)
-									Log.Debug($"[{FriendlyName}] {FormatPathName(info)} #{info.Id.ToString()} is resisting being modified: Agency granted.");
-
-								ormt.Info.Process.Exited += ProcessExitEvent;
-
-								// Agency granted, restore I/O priority to normal
-								if (IOPriority != IOPriority.Ignore && (int)IOPriority < (int)DefaultForegroundIOPriority)
-									SetIO(info, DefaultForegroundIOPriority); // restore normal I/O for these in case we messed around with it
-							}
-
-							ormt.LastIgnored = now;
-
-							Statistics.TouchIgnore++;
-
-							info.State = HandlingState.Unmodified;
-							return;
-						}
-						else if (expected)
-						{
-							// this potentially ignores power modification
-							info.State = HandlingState.Unmodified;
-							return;
-						}
-
-						Logging.DebugMsg($"[{FriendlyName}] {FormatPathName(info)} #{info.Id.ToString()} pass through");
+						return false;
 					}
-					else
-					{
-						if (Manager.DebugProcesses) Log.Debug($"[{FriendlyName}] #{info.Id.ToString()} passed because it does not match old #{ormt.Info.Id}");
 
-						RecentlyModified.TryRemove(info.Id, out _); // id does not match name
-					}
-					//RecentlyModified.TryRemove(info.Id, out _);
+					if (CheckForRecentlyModified(info, ormt)) return;
 				}
 
 				if (Trace) Log.Verbose(info.ToFullString() + " Touching...");
@@ -1428,7 +1433,7 @@ namespace Taskmaster.Process
 				ProcessPriorityClass? newPriority = null;
 				IntPtr? newAffinity;
 
-				bool mAffinity = false, mPriority = false, mPower = false, modified = false, fAffinity = false, fPriority = false;
+				bool mAffinity = false, mPriority = false, mPower = false, modified = false, failSetAffinity = false, failSetPriority = false;
 
 				IOPriority nIO = IOPriority.Ignore;
 
@@ -1476,7 +1481,7 @@ namespace Taskmaster.Process
 						}
 					}
 					catch (OutOfMemoryException) { throw; }
-					catch { fPriority = true; } // ignore errors, this is all we care of them
+					catch { failSetPriority = true; } // ignore errors, this is all we care of them
 
 					if (IOPriorityEnabled && IOPriority != IOPriority.Ignore)
 						nIO = (IOPriority)SetIO(info);
@@ -1486,8 +1491,6 @@ namespace Taskmaster.Process
 
 				if (lAffinityMask >= 0 && !info.AffinityProtected)
 				{
-					newAffinityMask = lAffinityMask.Replace(0, Utility.FullCPUMask);
-
 					if (EstablishNewAffinity(oldAffinityMask, out newAffinityMask))
 					{
 						newAffinity = new IntPtr(newAffinityMask.Replace(0, Utility.FullCPUMask));
@@ -1497,47 +1500,14 @@ namespace Taskmaster.Process
 							modified = mAffinity = true;
 						}
 						catch (OutOfMemoryException) { throw; }
-						catch { fAffinity = true; } // ignore errors, this is all we care of them
+						catch { failSetAffinity = true; } // ignore errors, this is all we care of them
 					}
 					else
 						newAffinityMask = -1;
-
-					/*
-					if (oldAffinityMask != newAffinityMask)
-					{
-						var taff = Affinity;
-						if (AllowedCores || !Increase)
-						{
-							var minaff = Bit.Or(newAffinityMask, oldAffinityMask);
-							var mincount = Bit.Count(minaff);
-							var bitsold = Bit.Count(oldAffinityMask);
-							var bitsnew = Bit.Count(newAffinityMask);
-							var minaff1 = minaff;
-							minaff = Bit.Fill(minaff, bitsnew, Math.Min(bitsold, bitsnew));
-							if (minaff1 != minaff)
-							{
-								Console.WriteLine("--- Affinity | Core Shift ---");
-								Console.WriteLine(Convert.ToString(minaff1, 2).PadLeft(ProcessManager.CPUCount));
-								Console.WriteLine(Convert.ToString(minaff, 2).PadLeft(ProcessManager.CPUCount));
-							}
-							else
-							{
-								Console.WriteLine("--- Affinity | Meh ---");
-								Console.WriteLine(Convert.ToString(Affinity.ToInt32(), 2).PadLeft(ProcessManager.CPUCount));
-								Console.WriteLine(Convert.ToString(minaff, 2).PadLeft(ProcessManager.CPUCount));
-							}
-
-							// shuffle cores from old to new
-							taff = new IntPtr(minaff);
-						}
-						// int bitsnew = Bit.Count(newAffinityMask);
-						// TODO: Somehow shift bits old to new if there's free spots
-					}
-					*/
 				}
 				else
 				{
-					if (Manager.DebugProcesses) Logging.DebugMsg($"{FormatPathName(info)} #{info.Id.ToString()} --- affinity not touched");
+					if (Manager.DebugProcesses && Trace && ShowInaction) Logging.DebugMsg($"{FormatPathName(info)} #{info.Id.ToString()} --- affinity not touched");
 				}
 
 				// TODO: Make sure the ideal matches set mask
@@ -1574,86 +1544,89 @@ namespace Taskmaster.Process
 
 				info.Timer.Stop();
 
-				if (modified)
+				if (ShowInaction && Manager.DebugProcesses && (failSetPriority || failSetAffinity))
 				{
-					if (mPriority || mAffinity)
-					{
-						Statistics.TouchCount++;
-						Adjusts++; // don't increment on power changes
-					}
+					var sbs = new StringBuilder(info.ToFullString()).Append(" failed to set process ");
 
-					LastTouch = now;
+					if (failSetPriority) sbs.Append("priority");
+					if (failSetAffinity)
+					{
+						if (failSetPriority) sbs.Append(", ");
+						sbs.Append("affinity");
+					}
+					Log.Warning(sbs.ToString());
 				}
 
-				if (Priority.HasValue && fPriority && ShowInaction && Manager.DebugProcesses)
-					Log.Warning(info.ToFullString() + " failed to set process priority.");
-
-				if (AffinityMask >= 0 && fAffinity && ShowInaction && Manager.DebugProcesses)
-					Log.Warning(info.ToFullString() + " failed to set process affinity.");
-
-				bool logevent = false;
-
-				if (modified) logevent = ShowProcessAdjusts && !(Foreground != ForegroundMode.Ignore && !Manager.ShowForegroundTransitions);
+				// such a mess
+				bool logevent = modified && (ShowProcessAdjusts && !(Foreground != ForegroundMode.Ignore && !Manager.ShowForegroundTransitions));
 				logevent |= (FirstTimeSeenForForeground && Foreground != ForegroundMode.Ignore);
 				logevent |= (ShowInaction && Manager.DebugProcesses);
 
-				var ev = new ModificationInfo(info)
+				if (logevent || modified)
 				{
-					PriorityNew = newPriority,
-					PriorityOld = oldPriority,
-					AffinityNew = newAffinityMask,
-					AffinityOld = oldAffinityMask,
-					PriorityFail = Priority.HasValue && fPriority,
-					AffinityFail = AffinityMask >= 0 && fAffinity,
-					NewIO = nIO,
-				};
-
-				if (logevent)
-				{
-					var sbs = new StringBuilder(256);
-
-					if (mPower) sbs.Append(" [Power Mode: ").Append(Power.Utility.GetModeName(PowerPlan)).Append(']');
-
-					if (!modified && (ShowInaction && Manager.DebugProcesses)) sbs.Append(" – looks OK, not touched.");
-
-					ev.User = sbs;
-
-					OnAdjust?.Invoke(ev);
-				}
-
-				if (modified)
-				{
-					info.State = HandlingState.Modified;
-					Modified?.Invoke(ev);
-
-					if (Manager.IgnoreRecentlyModified.HasValue)
+					var ev = new ModificationInfo(info)
 					{
-						var rmt = new RecentlyModifiedInfo()
-						{
-							Info = info,
-							LastModified = now,
-							LastIgnored = DateTimeOffset.MinValue,
-							FreeWill = false,
-							ExpectedState = 0,
-						};
+						PriorityNew = newPriority,
+						PriorityOld = oldPriority,
+						AffinityNew = newAffinityMask,
+						AffinityOld = oldAffinityMask,
+						PriorityFail = Priority.HasValue && failSetPriority,
+						AffinityFail = AffinityMask >= 0 && failSetAffinity,
+						NewIO = nIO,
+					};
 
-						RecentlyModified.AddOrUpdate(info.Id, rmt, (int key, RecentlyModifiedInfo nrmt) =>
-						{
-							if (!nrmt.Info.Name.Equals(info.Name))
-							{
-								// REPLACE. THIS SEEMS WRONG
-								nrmt.Info = info;
-								nrmt.FreeWill = false;
-								nrmt.ExpectedState = 0;
-								nrmt.LastModified = now;
-								nrmt.LastIgnored = DateTimeOffset.MinValue;
-							}
+					if (logevent)
+					{
+						var sbs = new StringBuilder(256);
 
-							return nrmt;
-						});
+						if (mPower) sbs.Append(" [Power Mode: ").Append(Power.Utility.GetModeName(PowerPlan)).Append(']');
 
-						WaitForExit(info);
+						if (!modified && (ShowInaction && Manager.DebugProcesses)) sbs.Append(" – looks OK, not touched.");
+
+						ev.User = sbs;
+
+						OnAdjust?.Invoke(ev);
 					}
+
+					if (modified)
+					{
+						if (mPriority || mAffinity)
+						{
+							Statistics.TouchCount++;
+							Adjusts++; // don't increment on power changes
+						}
+
+						LastTouch = now;
+
+						info.State = HandlingState.Modified;
+						Modified?.Invoke(ev);
+
+						if (Manager.IgnoreRecentlyModified.HasValue)
+						{
+							RecentlyModified.AddOrUpdate(
+								info.Id,
+								new RecentlyModifiedInfo(info, now),
+								(int key, RecentlyModifiedInfo nrmt) =>
+								{
+								// TODO: Match full path if available
+								if (!nrmt.Info.Name.Equals(info.Name, StringComparison.InvariantCultureIgnoreCase))
+									{
+									// REPLACE. THIS SEEMS WRONG
+									nrmt.Info = info;
+										nrmt.FreeWill = false;
+										nrmt.ExpectedState = 0;
+										nrmt.LastModified = now;
+										nrmt.LastIgnored = DateTimeOffset.MinValue;
+									}
+
+									return nrmt;
+								}
+							);
+
+							WaitForExit(info);
+						}
+					};
+
 
 					await InternalRefresh(now).ConfigureAwait(false);
 				}
@@ -2040,7 +2013,7 @@ namespace Taskmaster.Process
 
 			sbs.Append("Order preference: ").Append(OrderPreference.ToString()).Append(" – actual: ").AppendLine(ActualOrder.ToString());
 
-			if (Executables?.Length > 0)
+			if (Executables.Length > 0)
 				sbs.Append("Executable").Append(Executables.Length == 1 ? string.Empty : "s").Append(": ").AppendLine(string.Join(", ", Executables));
 
 			if (Path?.Length > 0)
@@ -2138,6 +2111,12 @@ namespace Taskmaster.Process
 
 	public class RecentlyModifiedInfo
 	{
+		public RecentlyModifiedInfo(ProcessEx info, DateTimeOffset lastModified)
+		{
+			Info = info;
+			LastModified = lastModified;
+		}
+
 		public ProcessEx Info { get; set; } = null;
 
 		public bool FreeWill { get; set; } = false;
@@ -2146,7 +2125,7 @@ namespace Taskmaster.Process
 
 		public bool Submitted { get; set; } = false;
 
-		public DateTimeOffset LastModified { get; set; } = DateTimeOffset.MinValue;
+		public DateTimeOffset LastModified { get; set; }
 		public DateTimeOffset LastIgnored { get; set; } = DateTimeOffset.MinValue;
 	}
 }

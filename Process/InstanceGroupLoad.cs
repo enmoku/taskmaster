@@ -36,6 +36,10 @@ namespace Taskmaster.Process
 	{
 		public ConcurrentDictionary<int, ProcessEx> Processes = new ConcurrentDictionary<int, ProcessEx>();
 
+		public enum InterestLevel { Active, Partial, Ignoring }
+
+		public InterestLevel InterestType { get; set; } = InterestLevel.Active;
+
 		public int Order { get; set; }
 
 		public string Instance { get; }
@@ -99,22 +103,23 @@ namespace Taskmaster.Process
 
 		Stopwatch updateTimer = Stopwatch.StartNew();
 
+		public int UninterestingInstances { get; private set; } = 0;
+
+		public bool Interesting { get; private set; } = true;
+
+		public long Interest { get; set; } = 0;
+
+		public int Disinterest { get; set; } = 0;
+
+		public int MaxDisinterest { get; set; } = 3;
+
 		public void Update()
 		{
-			if (disposed) return;
+			if (disposed || InstanceCount == 0) return;
 
 			Samples++;
 
 			Last = DateTimeOffset.UtcNow;
-
-			/*
-			float cpuTimes = cpusearcher.Get()
-				.Cast<ManagementObject>()
-				.Where(mo => (mo["Name"] as string)?.Equals(Instance, StringComparison.InvariantCultureIgnoreCase) ?? false)
-				.Select(mo => ulong.TryParse(mo["PercentProcessorTime"] as string, out ulong result) ? result : 0f)
-				.DefaultIfEmpty()
-				.Average();
-			*/
 
 			//RAMLoad.Update(RAM.Value / 1_048_576f); // MiB
 
@@ -123,26 +128,26 @@ namespace Taskmaster.Process
 			// 1/10 %CPU usage, Gigabytes, MB/s IO usage
 			// 5 = heavy load, 10 = very heavy load, 15+ system should be having trouble
 
-			float cpuloadraw = 0f,
-				io_op_load = 0f;
+			float cpuloadraw = 0f, io_op_load = 0f;
 
 			long ramloadt = 0L;
 
-
-			var now = DateTimeOffset.UtcNow;
+			//var now = DateTimeOffset.UtcNow;
 
 			float highRam = 0f, highCpu = 0f, highIo = 0f, cput, io_ops_t;
 			int highPid = LastPid;
-			long memt;
 
-			var removeList = new System.Collections.Generic.List<ProcessEx>(2);
+			//var removeList = new System.Collections.Generic.List<ProcessEx>(2);
 			var elapsed = updateTimer.ElapsedMilliseconds;
+
+			int newUninterestingInstances = 0;
 
 			foreach (var info in Processes.Values)
 			{
 				if (info.Exited)
 				{
-					removeList.Add(info);
+					//removeList.Add(info);
+					Remove(info);
 					continue;
 				}
 
@@ -151,15 +156,25 @@ namespace Taskmaster.Process
 					ref var load = ref info.Load;
 					if (load is null) continue;
 
-					load.Update(elapsed);
+					if (!load.Update(elapsed))
+					{
+						// Disinterest
+						newUninterestingInstances++;
+
+						if (load.Mid == 0 && load.High == 0)
+							load.LessenInterest();
+						else
+							load.ResetInterest();
+
+						continue;
+					}
 
 					// cache so we don't update only half if there's failures
 					cput = load.CPU;
 					io_ops_t = load.IO;
-					memt = info.Process.PrivateMemorySize64;
 
 					// update
-					ramloadt += memt;
+					ramloadt += info.Process.PrivateMemorySize64; // process needs to be refreshed for this somewhere
 					cpuloadraw += cput;
 					io_op_load += io_ops_t;
 
@@ -171,24 +186,26 @@ namespace Taskmaster.Process
 				}
 				catch
 				{
-					removeList.Add(info);
+					//removeList.Add(info);
+					Remove(info);
 				} // ignore
-
 				// TODO: Add fake load for each failed thing to mimic knowing it?
 			}
 			updateTimer.Restart();
 
+			UninterestingInstances = newUninterestingInstances;
+
+			Interesting = InstanceCount > UninterestingInstances;
+
 			float ramloadgb = Convert.ToSingle(Convert.ToDouble(ramloadt) / MKAh.Units.Binary.Giga);
 
-			foreach (var info in removeList)
-				Remove(info);
+			//foreach (var info in removeList)
+			//	Remove(info);
 
-			cpuloadraw /= Hardware.Utility.ProcessorCount;
-			cpuloadraw *= 100f;
+			cpuloadraw *= 100f / Hardware.Utility.ProcessorCount;
+			//cpuloadraw /= (Hardware.Utility.ProcessorCount * 100f); // turn load into human readable format
 
 			CPULoad.Update(cpuloadraw);
-
-			//CPULoad.Update(cpuload); //CPU.Value
 			RAMLoad.Update(ramloadt);
 			IOLoad.Update(io_op_load);
 
@@ -247,9 +264,11 @@ namespace Taskmaster.Process
 			LastHeavy = heavy;
 			LastLight = light;
 
+			/*
 			Heaviest = (CPULoad.Heavy ? LoadType.CPU : LoadType.None)
 				| (RAMLoad.Heavy ? LoadType.RAM : LoadType.None)
 				| (IOLoad.Heavy ? LoadType.IO : LoadType.None);
+			*/
 
 			LastPid = highPid;
 		}

@@ -476,19 +476,13 @@ namespace Taskmaster.UI.Config
 				case Power.RestoreModeMethod.Custom:
 					NewRestoreMethod = Power.RestoreModeMethod.Custom;
 					NewRestoreMode = manager.RestoreMode;
-					switch (manager.RestoreMode)
+					restore.SelectedIndex = manager.RestoreMode switch
 					{
-						case Mode.HighPerformance:
-							restore.SelectedIndex = 3;
-							break;
-						default:
-						case Mode.Balanced:
-							restore.SelectedIndex = 4;
-							break;
-						case Mode.PowerSaver:
-							restore.SelectedIndex = 5;
-							break;
-					}
+						Mode.HighPerformance => 3,
+						Mode.Balanced => 4,
+						Mode.PowerSaver => 5,
+						_ => 4,
+					};
 					break;
 			}
 
@@ -530,7 +524,7 @@ namespace Taskmaster.UI.Config
 			try
 			{
 				using var pcw = new PowerConfigWindow(powerManager, centerOnScreen);
-				var res = pcw.ShowDialog();
+				/* var res = */ pcw.ShowDialog();
 				if (pcw.DialogOK)
 				{
 					// NOP

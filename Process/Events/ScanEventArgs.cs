@@ -1,5 +1,5 @@
 ﻿//
-// Process.LoadInfo.cs
+// Process.ScanEventArgs.cs
 //
 // Author:
 //       M.A. (https://github.com/mkahvi)
@@ -25,56 +25,19 @@
 // THE SOFTWARE.
 
 using System;
+using System.Collections.Generic;
 using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
 
 namespace Taskmaster.Process
 {
-	public class LoadValue
+	public class ScanEndEventArgs
 	{
-		public bool Heavy { get; set; } = false;
+		public int Found { get; set; } = 0;
 
-		public uint HeavyCount { get; set; } = 0;
+		public int Ignored { get; set; } = 0;
 
-		public bool Light { get; set; } = false;
-
-		public uint LightCount { get; set; } = 0;
-
-		public float Min => Samples.Min();
-
-		public float Current => Samples[(SampleIndex-1) % 5];
-
-		public float Max => Samples.Max();
-
-		public float Average => (Samples[0] + Samples[1] + Samples[2] + Samples[3] + Samples[4]) / 5;
-
-		readonly float[] Samples = { 0, 0, 0, 0, 0 };
-		int SampleIndex = 1;
-
-		public LoadType Type { get; set; }
-
-		readonly float AverageThreshold, MaxThreshold, MinThreshold;
-
-		public LoadValue(LoadType type, float average, float max, float min)
-		{
-			Type = type;
-
-			AverageThreshold = average;
-			MaxThreshold = max;
-			MinThreshold = min;
-		}
-
-		public void Update(float value) => Samples[SampleIndex++ % 5] = value; // BUG: Does ++ wrap around or just break?
-	}
-
-	[Flags]
-	public enum LoadType
-	{
-		None = 0,
-		CPU = 1,
-		RAM = 2,
-		IO = 4,
-		Storage = RAM | IO,
-		Volatile = CPU | RAM,
-		All = CPU | RAM | IO,
+		public int Modified { get; set; } = 0;
 	}
 }

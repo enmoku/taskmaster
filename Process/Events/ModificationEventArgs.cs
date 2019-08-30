@@ -34,7 +34,7 @@ namespace Taskmaster.Process
 	{
 		public ModificationInfo(Process.ProcessEx info) => Info = info;
 
-		public Process.ProcessEx Info { get; set; } = null;
+		public Process.ProcessEx Info { get; set; }
 
 		public ProcessPriorityClass? PriorityNew { get; set; } = null;
 		public ProcessPriorityClass? PriorityOld { get; set; } = null;

@@ -111,7 +111,7 @@ namespace Taskmaster.Process
 		const int SystemMemoryListInformation = 0x0050;
 
 		// It seems the contents of this enum were changed with Windows 8
-		public enum PROCESS_INFORMATION_CLASS_WIN7 : int // PROCESS_INFORMATION_CLASS, for Win7
+		public enum PROCESS_INFORMATION_CLASS_WIN7 // PROCESS_INFORMATION_CLASS, for Win7
 		{
 			/*
 			ProcessBasicInformation = 0,
@@ -166,7 +166,7 @@ namespace Taskmaster.Process
 			*/
 		}
 
-		enum PROCESS_INFORMATION_CLASS_WIN8 : int // PROCESS_INFORMATION_CLASS, for Win8 and newer (Win10 compatible, too)
+		enum PROCESS_INFORMATION_CLASS_WIN8 // PROCESS_INFORMATION_CLASS, for Win8 and newer (Win10 compatible, too)
 		{
 			ProcessMemoryPriority = 0,
 			ProcessMemoryExhaustionInfo = 1,
@@ -180,7 +180,6 @@ namespace Taskmaster.Process
 			ProcessInformationClassMax = 9,
 		}
 
-		[Flags]
 		public enum STANDARD_ACCESS_RIGHTS : ulong
 		{
 			NONE = 0,
@@ -225,7 +224,7 @@ namespace Taskmaster.Process
 			PROCESS_VM_READ = 0x0010, // Required to read memory in a process using ReadProcessMemory.
 			PROCESS_VM_WRITE = 0x0020, // Required to write to memory in a process using WriteProcessMemory.
 			SYNCHRONIZE = 0x00100000L, // Required to wait for the process to terminate using the wait functions.
-			// PROCESS_SET_SESSIONID = 4,
+									   // PROCESS_SET_SESSIONID = 4,
 		}
 
 		/// <summary>

@@ -165,6 +165,7 @@ namespace Taskmaster
 
 			LoadConfig();
 
+			/*
 			try
 			{
 				//PageInputs = new Windows.PerformanceCounter("Memory", "Page Inputs/sec", null);
@@ -172,6 +173,7 @@ namespace Taskmaster
 			catch (InvalidOperationException) // counter not found... admin only?
 			{
 			}
+			*/
 
 			if (Settings.MemLevel > 0 && PagingEnabled)
 				Log.Information($"<Auto-Doc> Memory auto-paging level: {Settings.MemLevel.ToString()} MB");
@@ -350,7 +352,7 @@ namespace Taskmaster
 		{
 			if (disposed) throw new ObjectDisposedException(nameof(HealthMonitor), "CheckSystem called after HealthMonitor was disposed.");
 
-			Logging.DebugMsg("<<Auto-Doc:System>> Checking...");
+			if (Trace) Logging.DebugMsg("<<Auto-Doc:System>> Checking...");
 
 			await Task.Delay(0).ConfigureAwait(false);
 
@@ -366,7 +368,7 @@ namespace Taskmaster
 		{
 			if (disposed) throw new ObjectDisposedException(nameof(HealthMonitor), "CheckErrors called after HealthMonitor was disposed.");
 
-			Logging.DebugMsg("<<Auto-Doc:Errrors>> Checking...");
+			if (Trace) Logging.DebugMsg("<<Auto-Doc:Errrors>> Checking...");
 
 			await Task.Delay(0).ConfigureAwait(false);
 
@@ -407,7 +409,7 @@ namespace Taskmaster
 		{
 			if (disposed) throw new ObjectDisposedException(nameof(HealthMonitor), "CheckErrors called after HealthMonitor was disposed.");
 
-			Logging.DebugMsg("<<Auto-Doc:NVM>> Checking...");
+			if (Trace) Logging.DebugMsg("<<Auto-Doc:NVM>> Checking...");
 
 			await Task.Delay(0).ConfigureAwait(false);
 
@@ -468,7 +470,7 @@ namespace Taskmaster
 
 			await Task.Delay(0).ConfigureAwait(false);
 
-			Logging.DebugMsg("<<Auto-Doc:Memory>> Checking...");
+			if (Trace) Logging.DebugMsg("<<Auto-Doc:Memory>> Checking...");
 
 			var now = DateTimeOffset.UtcNow;
 
@@ -513,7 +515,7 @@ namespace Taskmaster
 
 							Log.Warning(sbs.ToString());
 
-							await (processmanager?.FreeMemory(null, quiet: true, ignorePid: ignorepid) ?? Task.CompletedTask).ConfigureAwait(false);
+							await (processmanager?.FreeMemory(ignorepid, quiet: true) ?? Task.CompletedTask).ConfigureAwait(false);
 						}
 
 						if (Memory.Pressure > 1.05d) // 105%

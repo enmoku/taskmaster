@@ -28,7 +28,7 @@ namespace Taskmaster
 {
 	namespace Power
 	{
-		public enum Mode : int
+		public enum Mode
 		{
 			PowerSaver = 0,
 			Balanced = 1,

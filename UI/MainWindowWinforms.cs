@@ -93,7 +93,7 @@ namespace Taskmaster.UI
 
 			// CORE LAYOUT ITEMS
 
-			tabs = new Extensions.TabControl()
+			TabPages = new Extensions.TabControl()
 			{
 				Parent = this,
 				//Height = 300,
@@ -662,7 +662,7 @@ namespace Taskmaster.UI
 				if (DebugPower)
 				{
 					if (powerDebugTab is null) BuildPowerDebugPanel();
-					else tabs.Controls.Add(powerDebugTab);
+					else TabPages.Controls.Add(powerDebugTab);
 					EnsureVerbosityLevel();
 
 					AttachPowerDebug();
@@ -671,10 +671,10 @@ namespace Taskmaster.UI
 				{
 					DetachPowerDebug();
 
-					bool refocus = tabs.SelectedTab.Equals(powerDebugTab);
+					bool refocus = TabPages.SelectedTab.Equals(powerDebugTab);
 
-					tabs.Controls.Remove(powerDebugTab);
-					if (refocus) tabs.SelectedIndex = 1; // watchlist
+					TabPages.Controls.Remove(powerDebugTab);
+					if (refocus) TabPages.SelectedIndex = 1; // watchlist
 
 					powerDebugTab?.Dispose();
 					powerDebugTab = null;
@@ -785,10 +785,10 @@ namespace Taskmaster.UI
 			menu_info.DropDown.AutoClose = true;
 
 			infoTab = new Extensions.TabPage(InfoName) { Padding = BigPadding };
-			tabs.Controls.Add(infoTab);
+			TabPages.Controls.Add(infoTab);
 
 			watchTab = new Extensions.TabPage(WatchlistName) { Padding = BigPadding };
-			tabs.Controls.Add(watchTab);
+			TabPages.Controls.Add(watchTab);
 
 			var infopanel = new FlowLayoutPanel
 			{
@@ -987,7 +987,7 @@ namespace Taskmaster.UI
 
 			// End Process Debug
 
-			tabs.SelectedIndex = opentab >= tabs.TabCount ? 0 : opentab;
+			TabPages.SelectedIndex = opentab >= TabPages.TabCount ? 0 : opentab;
 
 			// HANDLE TIMERS
 
@@ -1029,7 +1029,7 @@ namespace Taskmaster.UI
 			MaximizeBox = true;
 			MinimizeBox = true;
 
-			MinimumHeight += tabs.MinimumSize.Height
+			MinimumHeight += TabPages.MinimumSize.Height
 				+ LogList.MinimumSize.Height
 				+ menu.Height
 				+ statusbar.Height
@@ -1185,13 +1185,13 @@ namespace Taskmaster.UI
 		}
 
 		// HOOKS
-		Audio.MicManager micmanager = null;
-		StorageManager storagemanager = null;
+		Audio.MicManager? micmanager = null;
+		StorageManager? storagemanager = null;
 		Process.Manager processmanager = null;
-		Process.ForegroundManager activeappmonitor = null;
-		Power.Manager powermanager = null;
+		Process.ForegroundManager? activeappmonitor = null;
+		Power.Manager? powermanager = null;
 		Hardware.CPUMonitor cpumonitor = null;
-		Network.Manager netmonitor = null;
+		Network.Manager? netmonitor = null;
 
 		#region Microphone control code
 		Audio.Device DefaultAudioInput = null;
@@ -1290,7 +1290,7 @@ namespace Taskmaster.UI
 
 		Audio.Manager audiomanager = null;
 
-		public async Task Hook(Audio.Manager manager)
+		public void Hook(Audio.Manager manager)
 		{
 			Debug.Assert(manager != null);
 
@@ -1310,7 +1310,7 @@ namespace Taskmaster.UI
 			}
 		}
 
-		public async Task Hook(Audio.MicManager manager)
+		public void Hook(Audio.MicManager manager)
 		{
 			Debug.Assert(manager != null);
 
@@ -1535,14 +1535,14 @@ namespace Taskmaster.UI
 			activePID.Text = windowchangeev.Id.ToString();
 		}
 
-		public async Task Hook(StorageManager manager)
+		public void Hook(StorageManager manager)
 		{
 			storagemanager = manager;
 			storagemanager.TempScan = TempScanStats;
 			storagemanager.OnDisposed += (_, _ea) => storagemanager = null;
 		}
 
-		public async Task Hook(Process.Manager manager)
+		public void Hook(Process.Manager manager)
 		{
 			Debug.Assert(manager != null);
 
@@ -1577,10 +1577,10 @@ namespace Taskmaster.UI
 			processmanager.WatchlistSorted += UpdateWatchlist;
 			processmanager.ProcessModified += ProcessTouchEvent;
 
-			await Task.Delay(0).ConfigureAwait(false);
-
-			foreach (var info in processmanager.GetExitWaitList())
-				ExitWaitListHandler(info);
+			BeginInvoke(new Action(() => {
+				foreach (var info in processmanager.GetExitWaitList())
+					ExitWaitListHandler(info);
+			}));
 		}
 
 		void UnhookProcessManager()
@@ -1717,7 +1717,7 @@ namespace Taskmaster.UI
 				(prc.ActualOrder+1).ToString(),
 				prc.OrderPreference.ToString(),
 				prc.FriendlyName,
-				prc.Executables?.Length > 0 ? string.Join(", ", prc.Executables) : string.Empty,
+				prc.Executables.Length > 0 ? string.Join(", ", prc.Executables) : string.Empty,
 				string.Empty,
 				aff,
 				string.Empty,
@@ -1755,7 +1755,7 @@ namespace Taskmaster.UI
 
 			litem.SubItems[PrefColumn].Text = prc.OrderPreference.ToString();
 			litem.SubItems[NameColumn].Text = prc.FriendlyName;
-			litem.SubItems[ExeColumn].Text = (prc.Executables?.Length > 0) ? string.Join(", ", prc.Executables) : string.Empty;
+			litem.SubItems[ExeColumn].Text = (prc.Executables.Length > 0) ? string.Join(", ", prc.Executables) : string.Empty;
 			litem.SubItems[PrioColumn].Text = prc.Priority.HasValue ? MKAh.Readable.ProcessPriority(prc.Priority.Value) : string.Empty;
 			string aff = string.Empty;
 			if (prc.AffinityMask >= 0)
@@ -1972,15 +1972,17 @@ namespace Taskmaster.UI
 			Clipboard.SetText(sbs.ToString(), TextDataFormat.UnicodeText);
 		}
 
-		Extensions.TabControl tabs;
+		readonly Extensions.TabControl TabPages;
 
 		// TODO: Easier column access somehow than this?
 		//int OrderColumn = 0;
 		const int PrefColumn = 1, NameColumn = 2, ExeColumn = 3, PrioColumn = 4, AffColumn = 5, PowerColumn = 6, AdjustColumn = 7, PathColumn = 8;
 
-		Extensions.TabPage infoTab, watchTab, micTab = null, powerDebugTab = null, ProcessDebugTab = null;
+		readonly Extensions.TabPage infoTab, watchTab;
 
-		ToolStripMenuItem
+		Extensions.TabPage? micTab = null, powerDebugTab = null, ProcessDebugTab = null;
+
+		readonly ToolStripMenuItem
 			#if DEBUG
 			menu_debug_loglevel_trace,
 			#endif
@@ -2118,7 +2120,7 @@ namespace Taskmaster.UI
 
 			//loglist.Height = -2;
 			//loglist.Width = -2;
-			LogList.Height = ClientSize.Height - tabs.Height - statusbar.Height - menu.Height;
+			LogList.Height = ClientSize.Height - TabPages.Height - statusbar.Height - menu.Height;
 
 			ShowLastLog();
 		}
@@ -2474,7 +2476,7 @@ namespace Taskmaster.UI
 
 			micTab.Controls.Add(micpanel);
 
-			tabs.Controls.Add(micTab);
+			TabPages.Controls.Add(micTab);
 		}
 
 		Extensions.TableLayoutPanel BuildTempMonitorPanel()
@@ -2568,7 +2570,7 @@ namespace Taskmaster.UI
 
 			powerDebugTab = new Extensions.TabPage("Power Debug") { Padding = BigPadding };
 			powerDebugTab.Controls.Add(powerlayout);
-			tabs.Controls.Add(powerDebugTab);
+			TabPages.Controls.Add(powerDebugTab);
 		}
 
 		Extensions.TableLayoutPanel BuildLastModifiedPanel(int[] appwidths)
@@ -2958,14 +2960,14 @@ namespace Taskmaster.UI
 			if (activeappmonitor != null && DebugForeground)
 				activeappmonitor.ActiveChanged -= OnActiveWindowChanged;
 
-			bool refocus = tabs.SelectedTab.Equals(ProcessDebugTab);
+			bool refocus = TabPages.SelectedTab.Equals(ProcessDebugTab);
 			if (!enabled)
 			{
 				activePID.Text = HumanReadable.Generic.Undefined;
 				activeFullscreen.Text = HumanReadable.Generic.Undefined;
 				activeFullscreen.Text = HumanReadable.Generic.Undefined;
 
-				tabs.Controls.Remove(ProcessDebugTab);
+				TabPages.Controls.Remove(ProcessDebugTab);
 				ProcessingList.Items.Clear();
 				ExitWaitList.Items.Clear();
 
@@ -2974,7 +2976,7 @@ namespace Taskmaster.UI
 			}
 
 			// TODO: unlink events
-			if (refocus) tabs.SelectedIndex = 0; // info tab
+			if (refocus) TabPages.SelectedIndex = 0; // info tab
 		}
 
 		void BuildProcessDebug()
@@ -3059,7 +3061,7 @@ namespace Taskmaster.UI
 
 			ProcessDebugTab.Controls.Add(processlayout);
 
-			tabs.Controls.Add(ProcessDebugTab);
+			TabPages.Controls.Add(ProcessDebugTab);
 		}
 
 		/// <summary>
@@ -3183,7 +3185,7 @@ namespace Taskmaster.UI
 					"\n\nSelection omits chosen app from paging. Select nothing to try free memory in general.");
 
 				if (exsel.ShowDialog(this) == DialogResult.OK)
-					await processmanager?.FreeMemory(exsel.Info.Name);
+					await processmanager?.FreeMemory(exsel.Info.Id);
 			}
 			catch (Exception ex) { Logging.Stacktrace(ex); }
 		}
@@ -3508,7 +3510,7 @@ namespace Taskmaster.UI
 					var sbs = new StringBuilder(1024)
 						.Append('[').Append(prc.FriendlyName).AppendLine("]");
 
-					if (prc.Executables?.Length > 0) sbs.Append("Executables = { ").Append(string.Join(", ", prc.Executables)).AppendLine(" }");
+					if (prc.Executables.Length > 0) sbs.Append("Executables = { ").Append(string.Join(", ", prc.Executables)).AppendLine(" }");
 					if (!string.IsNullOrEmpty(prc.Path)) sbs.Append("Path = ").AppendLine(prc.Path);
 					if (!string.IsNullOrEmpty(prc.Description)) sbs.Append("Description = ").Append(prc.Description);
 					if (prc.IgnoreList != null) sbs.Append("Ignore = { ").Append(string.Join(", ", prc.IgnoreList)).AppendLine(" }");
@@ -3600,8 +3602,8 @@ namespace Taskmaster.UI
 			tempObjectCount.Text = (stats.Dirs + stats.Files).ToString();
 		}
 
-		Extensions.ListViewEx LogList;
-		MenuStrip menu;
+		readonly Extensions.ListViewEx LogList;
+		readonly MenuStrip menu;
 
 		public void FillLog()
 		{
@@ -3619,7 +3621,7 @@ namespace Taskmaster.UI
 			ResizeLogList(this, EventArgs.Empty);
 		}
 
-		public async Task Hook(Process.ForegroundManager manager)
+		public void Hook(Process.ForegroundManager manager)
 		{
 			if (manager is null) return;
 
@@ -3632,7 +3634,7 @@ namespace Taskmaster.UI
 				StartProcessDebug();
 		}
 
-		public async Task Hook(Power.Manager manager)
+		public void Hook(Power.Manager manager)
 		{
 			if (manager is null) return;
 
@@ -3735,7 +3737,7 @@ namespace Taskmaster.UI
 
 		Hardware.Monitor hardwaremonitor = null;
 
-		public async Task Hook(Hardware.Monitor monitor)
+		public void Hook(Hardware.Monitor monitor)
 		{
 			hardwaremonitor = monitor;
 			hardwaremonitor.OnDisposed += (_, _ea) => hardwaremonitor = null;
@@ -3746,7 +3748,7 @@ namespace Taskmaster.UI
 			GPULoadPoller(this, EventArgs.Empty);
 		}
 
-		public async Task Hook(Hardware.CPUMonitor monitor)
+		public void Hook(Hardware.CPUMonitor monitor)
 		{
 			cpumonitor = monitor;
 			cpumonitor.Sampling += CPULoadHandler;
@@ -3757,7 +3759,7 @@ namespace Taskmaster.UI
 
 		HealthMonitor healthmonitor = null;
 
-		public async Task Hook(HealthMonitor monitor)
+		public void Hook(HealthMonitor monitor)
 		{
 			healthmonitor = monitor;
 			healthmonitor.OnDisposed += (_, _ea) => healthmonitor = null;
@@ -3770,7 +3772,7 @@ namespace Taskmaster.UI
 
 			VisibleChanged += VisibleChangedEvent;
 
-			tabs.TabIndexChanged += VisibleTabChangedEvent;
+			TabPages.TabIndexChanged += VisibleTabChangedEvent;
 
 			UpdateHealthMon(this, EventArgs.Empty);
 		}
@@ -4012,7 +4014,7 @@ namespace Taskmaster.UI
 			AlternateListviewRowColors(NetworkDevices, AlternateRowColorsDevices);
 		}
 
-		public async Task Hook(Network.Manager manager)
+		public void Hook(Network.Manager manager)
 		{
 			if (manager is null) return; // disabled
 
@@ -4261,7 +4263,7 @@ namespace Taskmaster.UI
 				}
 
 				var uistate = cfg.Config[Constants.Tabs];
-				uistate["Open"].Int = tabs.SelectedIndex;
+				uistate["Open"].Int = TabPages.SelectedIndex;
 
 				var windows = cfg.Config[Constants.Windows];
 
@@ -4352,10 +4354,15 @@ namespace Taskmaster.UI
 				ExitWaitlistMap?.Clear();
 				ExitWaitList = null;
 
-				infoTab?.Dispose();
+				infoTab.Dispose();
+				watchTab.Dispose();
+
 				micTab?.Dispose();
-				watchTab?.Dispose();
-				tabs?.Dispose();
+				TabPages.Dispose();
+
+				// Pointless
+				LogList.Dispose();
+				menu.Dispose();
 			}
 
 			base.Dispose(disposing);

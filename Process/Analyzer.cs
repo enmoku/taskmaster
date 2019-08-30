@@ -94,8 +94,8 @@ namespace Taskmaster.Process
 			{
 				await Task.Delay(RecordAnalysis.Value).ConfigureAwait(false);
 
-				info.Process.Refresh();
-				if (info.Process.HasExited)
+				info.Process?.Refresh();
+				if (info.Process?.HasExited ?? true)
 				{
 					info.State = HandlingState.Exited;
 					Log.Debug($"<Analysis> {info} cancelled; already gone");
@@ -169,7 +169,7 @@ namespace Taskmaster.Process
 					virtualMem = info.Process.PeakVirtualMemorySize64 / 1_048_576;
 					threadCount = info.Process.Threads.Count;
 				}
-				catch { }
+				catch { /* NOP */ }
 			}
 			catch (InvalidOperationException)
 			{
@@ -364,7 +364,7 @@ namespace Taskmaster.Process
 						//bool open = yesvalues.Contains(section.TryGet("open")?.Value.ToLowerInvariant() ?? "no");
 						//bool prop = yesvalues.Contains(section.TryGet("proprietary")?.Value.ToLowerInvariant() ?? "no");
 						string exts = section.Get("extension")?.String.ToLowerInvariant() ?? "no";
-						bool ext = yesvalues.Any((x) => x.Equals(exts));
+						//bool ext = yesvalues.Any((x) => x.Equals(exts));
 						string ttype = section.Get("type")?.String.ToLowerInvariant() ?? "unknown"; // TODO
 
 						//string trec = section.TryGet("recommendation")?.Value.ToLowerInvariant() ?? null;

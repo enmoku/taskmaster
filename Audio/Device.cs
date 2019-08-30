@@ -55,7 +55,7 @@ namespace Taskmaster.Audio
 		public NAudio.CoreAudioApi.DeviceState State { get; set; }
 		public NAudio.CoreAudioApi.DataFlow Flow { get; set; }
 
-		public NAudio.CoreAudioApi.MMDevice? MMDevice { get; private set; } = null;
+		public NAudio.CoreAudioApi.MMDevice MMDevice { get; private set; }
 
 		public override string ToString() => $"{Name ?? "n/a"} {{{GUID}}}";
 
@@ -71,8 +71,7 @@ namespace Taskmaster.Audio
 
 			if (MKAh.Execution.IsMainThread)
 			{
-				MMDevice?.Dispose();  // HACK: must happen in same thread as created
-				MMDevice = null;
+				MMDevice.Dispose();  // HACK: must happen in same thread as created
 			}
 
 			//base.Dispose();

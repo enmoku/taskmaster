@@ -99,7 +99,7 @@ namespace Taskmaster.Network
 		bool DynamicDNS = false;
 		bool DynamicDNSForcedUpdate = false;
 
-		Uri DynamicDNSHost = null; // BUG: Insecure. Contains secrets.
+		Uri? DynamicDNSHost = null; // BUG: Insecure. Contains secrets.
 		TimeSpan DynamicDNSFrequency = TimeSpan.FromMinutes(15d);
 		DateTimeOffset DynamicDNSLastUpdate = DateTimeOffset.MinValue;
 		IPAddress DNSOldIPv4 = IPAddress.None, DNSOldIPv6 = IPAddress.IPv6None;
@@ -847,15 +847,15 @@ namespace Taskmaster.Network
 							InternetAvailable = false;
 							switch (ex.SocketErrorCode)
 							{
-								case System.Net.Sockets.SocketError.AccessDenied:
-								case System.Net.Sockets.SocketError.SystemNotReady:
-									break;
-								case System.Net.Sockets.SocketError.TryAgain:
-								case System.Net.Sockets.SocketError.TimedOut:
+								//case System.Net.Sockets.SocketError.TryAgain:
+								//case System.Net.Sockets.SocketError.TimedOut:
 								default:
 									//timeout = true;
 									InternetAvailable = true;
 									return InternetAvailable;
+								case System.Net.Sockets.SocketError.AccessDenied:
+								case System.Net.Sockets.SocketError.SystemNotReady:
+									break;
 								case System.Net.Sockets.SocketError.SocketError:
 								case System.Net.Sockets.SocketError.Interrupted:
 								case System.Net.Sockets.SocketError.Fault:

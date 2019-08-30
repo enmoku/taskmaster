@@ -164,6 +164,7 @@
     <Compile Include="Process\Events\LoaderEvent.cs" />
     <Compile Include="Process\Events\ModificationEventArgs.cs" />
     <Compile Include="Process\Events\ProcessingCountEventArgs.cs" />
+    <Compile Include="Process\Events\ScanEventArgs.cs" />
     <Compile Include="Process\Extensions.cs" />
     <Compile Include="Process\Foreground.cs" />
     <Compile Include="Process\Helpers.cs" />

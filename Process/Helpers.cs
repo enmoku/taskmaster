@@ -133,7 +133,7 @@ namespace Taskmaster.Process
 	}
 
 	[Flags]
-	public enum PriorityStrategy : int
+	public enum PriorityStrategy
 	{
 		None = 0,
 		Increase = 1,
@@ -146,7 +146,7 @@ namespace Taskmaster.Process
 	}
 
 	[Flags]
-	public enum WindowResizeStrategy : int
+	public enum WindowResizeStrategy
 	{
 		None = 0,
 		Size = 1,
