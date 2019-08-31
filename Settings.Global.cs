@@ -114,10 +114,17 @@ namespace Taskmaster
 		public static TimeSpan PathCacheMaxAge { get; set; } = new TimeSpan(30, 0, 0);
 
 		public static bool ExitConfirmation { get; set; } = true;
-		public static int AffinityStyle { get; set; } = 0;
+		public static BitMaskStyle AffinityStyle { get; set; } = BitMaskStyle.BitMask;
 		public static bool GlobalHotkeys { get; set; } = false;
 
 		internal static bool RestartElevated { get; set; } = false;
 		internal static int RestartCounter { get; set; } = 0;
+
+		public enum BitMaskStyle
+		{
+			BitMask = 0,
+			Decimal = 1,
+			Mixed = 2,
+		}
 	}
 }

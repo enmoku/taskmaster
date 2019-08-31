@@ -473,11 +473,11 @@ namespace Taskmaster.UI
 			};
 			var menu_config_bitmaskstyle_decimal = new ToolStripMenuItem("Decimal")
 			{
-				Checked = (AffinityStyle == 1),
+				Checked = (AffinityStyle == BitMaskStyle.Decimal),
 			};
 			menu_config_bitmaskstyle_bitmask.Click += (_, _ea) =>
 			{
-				AffinityStyle = 0;
+				AffinityStyle = BitMaskStyle.BitMask;
 				menu_config_bitmaskstyle_bitmask.Checked = true;
 				menu_config_bitmaskstyle_decimal.Checked = false;
 				// TODO: re-render watchlistRules
@@ -487,7 +487,7 @@ namespace Taskmaster.UI
 			};
 			menu_config_bitmaskstyle_decimal.Click += (_, _ea) =>
 			{
-				AffinityStyle = 1;
+				AffinityStyle = BitMaskStyle.Decimal;
 				menu_config_bitmaskstyle_bitmask.Checked = false;
 				menu_config_bitmaskstyle_decimal.Checked = true;
 				// TODO: re-render watchlistRules
@@ -1707,8 +1707,8 @@ namespace Taskmaster.UI
 			string aff = string.Empty;
 			if (prc.AffinityMask > 0)
 			{
-				if (AffinityStyle == 0)
-					aff = HumanInterface.BitMask(prc.AffinityMask, Hardware.Utility.ProcessorCount);
+				if (AffinityStyle == BitMaskStyle.BitMask)
+					aff = HumanInterface.BitMask(prc.AffinityMask, Hardware.Utility.ProcessorCount).PadLeft(Hardware.Utility.ProcessorCount, '0');
 				else
 					aff = prc.AffinityMask.ToString();
 			}
