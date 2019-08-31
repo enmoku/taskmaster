@@ -31,13 +31,7 @@ namespace Taskmaster
 {
 	public static class HumanInterface
 	{
-		public static string BitMask(long num, int padding)
-		{
-			var tmp = Convert.ToString(num, 2).PadLeft(padding, '0');
-			var arr = tmp.ToCharArray();
-			Array.Reverse(arr);
-			return new string(arr);
-		}
+		public static string BitMask(long num, int padding) => Convert.ToString(num, 2).PadLeft(padding, '0');
 
 		public static string PureTimeString(TimeSpan time)
 			=> $"{time.Days}:{time.Hours:00}:{time.Minutes:00}:{time.Seconds:00}.{time.Milliseconds:000}";
