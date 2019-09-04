@@ -24,9 +24,9 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-namespace Taskmaster
+namespace Taskmaster.UI
 {
-	public class HealthMonitorConfig : UI.UniForm
+	public class HealthMonitorConfig : UniForm
 	{
 		public HealthMonitorConfig()
 		{
@@ -35,7 +35,7 @@ namespace Taskmaster
 
 			Text = "Auto-Doc config";
 
-			var layout = new UI.Extensions.TableLayoutPanel();
+			var layout = new Extensions.TableLayoutPanel();
 
 			ResumeLayout(performLayout: false);
 			Visible = true;

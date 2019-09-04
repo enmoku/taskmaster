@@ -26,9 +26,9 @@
 
 using System.Windows.Forms;
 
-namespace Taskmaster
+namespace Taskmaster.UI
 {
-	public class MessageBox : UI.UniForm
+	public class MessageBox : UniForm
 	{
 		public enum Buttons
 		{
@@ -66,8 +66,8 @@ namespace Taskmaster
 		readonly Label? Message = null;
 		readonly RichTextBox? RichMessage = null;
 
-		readonly UI.Extensions.TableLayoutPanel layout, buttonlayout;
-		readonly UI.Extensions.Button okbutton, cancelbutton, retrybutton, endbutton;
+		readonly Extensions.TableLayoutPanel layout, buttonlayout;
+		readonly Extensions.Button okbutton, cancelbutton, retrybutton, endbutton;
 
 		public MessageBox(string title, string message, Buttons buttons, Type type = Type.Auto, Control? parent = null)
 		{
@@ -82,7 +82,7 @@ namespace Taskmaster
 
 			FormBorderStyle = FormBorderStyle.FixedDialog;
 
-			layout = new UI.Extensions.TableLayoutPanel()
+			layout = new Extensions.TableLayoutPanel()
 			{
 				ColumnCount = 1,
 				AutoSize = true,
@@ -90,7 +90,7 @@ namespace Taskmaster
 				Dock = DockStyle.Fill,
 			};
 
-			buttonlayout = new UI.Extensions.TableLayoutPanel()
+			buttonlayout = new Extensions.TableLayoutPanel()
 			{
 				RowCount = 1,
 				ColumnCount = 3,
@@ -102,16 +102,16 @@ namespace Taskmaster
 			buttonlayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 33f));
 			buttonlayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 33f));
 
-			okbutton = new UI.Extensions.Button() { Text = "OK", Margin = BigPadding };
+			okbutton = new Extensions.Button() { Text = "OK", Margin = BigPadding };
 			okbutton.Click += (_, _ea) => { Result = ResultType.OK; Close(); };
 
-			cancelbutton = new UI.Extensions.Button() { Text = "Cancel", Margin = BigPadding };
+			cancelbutton = new Extensions.Button() { Text = "Cancel", Margin = BigPadding };
 			cancelbutton.Click += (_, _ea) => { Result = ResultType.Cancel; Close(); };
 
-			retrybutton = new UI.Extensions.Button() { Text = "Retry", Margin = BigPadding };
+			retrybutton = new Extensions.Button() { Text = "Retry", Margin = BigPadding };
 			retrybutton.Click += (_, _ea) => { Result = ResultType.Retry; Close(); };
 
-			endbutton = new UI.Extensions.Button() { Text = "End", Margin = BigPadding };
+			endbutton = new Extensions.Button() { Text = "End", Margin = BigPadding };
 			endbutton.Click += (_, _ea) => { Result = ResultType.End; Close(); };
 
 			switch (buttons)

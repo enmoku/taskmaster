@@ -63,17 +63,17 @@ namespace Taskmaster
 
 		public static void ConfirmExit(bool restart = false, bool admin = false, string message = null, bool alwaysconfirm = false)
 		{
-			var rv = MessageBox.ResultType.OK;
+			var rv = UI.MessageBox.ResultType.OK;
 
 			if (alwaysconfirm || ExitConfirmation)
 			{
-				rv = MessageBox.ShowModal(
+				rv = UI.MessageBox.ShowModal(
 					(restart ? HumanReadable.System.Process.Restart : HumanReadable.System.Process.Exit) + Name + " ???",
 					(string.IsNullOrEmpty(message) ? "" : message + "\n\n") +
 					"Are you sure?",
-					MessageBox.Buttons.AcceptCancel);
+					UI.MessageBox.Buttons.AcceptCancel);
 			}
-			if (rv != MessageBox.ResultType.OK) return;
+			if (rv != UI.MessageBox.ResultType.OK) return;
 
 			UnifiedExit(restart, elevate: admin);
 		}
@@ -288,7 +288,7 @@ namespace Taskmaster
 			using var cfg = Config.Load(CoreConfigFilename);
 			if (cfg.Config.Get(Constants.Core)?.Get(Constants.License)?.String.Equals(Constants.Accepted) ?? false) return;
 
-			using var license = new LicenseDialog();
+			using var license = new UI.LicenseDialog();
 			license.ShowDialog();
 			if (!license.DialogOK)
 			{
@@ -309,8 +309,8 @@ namespace Taskmaster
 			}
 			else if (!File.Exists(Path.Combine(DataPath, CoreConfigFilename)))
 			{
-				if (MessageBox.ShowModal(Name + " setup", "Set up PORTABLE installation?", MessageBox.Buttons.AcceptCancel)
-					== MessageBox.ResultType.OK)
+				if (UI.MessageBox.ShowModal(Name + " setup", "Set up PORTABLE installation?", UI.MessageBox.Buttons.AcceptCancel)
+					== UI.MessageBox.ResultType.OK)
 				{
 					DataPath = portpath;
 					Portable = true;

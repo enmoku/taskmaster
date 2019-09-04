@@ -24,11 +24,12 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
+using System;
 using System.Windows.Forms;
 
-namespace Taskmaster
+namespace Taskmaster.UI
 {
-	class LicenseDialog : UI.UniForm
+	class LicenseDialog : UniForm, IDisposable
 	{
 		internal LicenseDialog(bool initial = true, bool center = false)
 			: base(centerOnScreen: initial || center)
@@ -56,7 +57,7 @@ namespace Taskmaster
 				AutoSize = true,
 			};
 
-			var licensebox = new UI.Extensions.TextBox()
+			var licensebox = new Extensions.TextBox()
 			{
 				ReadOnly = true,
 				Text = "NO WARRANTY",

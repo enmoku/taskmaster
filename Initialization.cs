@@ -65,19 +65,19 @@ namespace Taskmaster
 			if (!mutexgained)
 			{
 				// already running, signal original process
-				MessageBox.ResultType rv = MessageBox.ShowModal(Name + "!",
+				var rv = UI.MessageBox.ShowModal(Name + "!",
 					"Already operational.\n\nRetry to try to recover [restart] running instance.\nEnd to kill running instance and exit this.\nCancel to simply request refresh.",
-					MessageBox.Buttons.RetryEndCancel);
+					UI.MessageBox.Buttons.RetryEndCancel);
 
 				switch (rv)
 				{
-					case MessageBox.ResultType.Retry:
+					case UI.MessageBox.ResultType.Retry:
 						IPC.Transmit(IPC.RestartMessage).ConfigureAwait(false);
 						break;
-					case MessageBox.ResultType.End:
+					case UI.MessageBox.ResultType.End:
 						IPC.Transmit(IPC.TerminationMessage).ConfigureAwait(false);
 						break;
-					case MessageBox.ResultType.Cancel:
+					case UI.MessageBox.ResultType.Cancel:
 						IPC.Transmit(IPC.RefreshMessage).ConfigureAwait(false);
 						break;
 				}
@@ -405,12 +405,12 @@ namespace Taskmaster
 			bool adminwarning = !(cfg[Constants.Core].Get(Hell)?.String ?? string.Empty).Equals(Constants.No);
 			if (isadmin && adminwarning)
 			{
-				var rv = MessageBox.ShowModal(
+				var rv = UI.MessageBox.ShowModal(
 					Name + "! – admin access!!??",
 					"You're starting TM with admin rights, is this right?\n\nYou can cause bad system operation, such as complete system hang, if you configure or configured TM incorrectly.\n\nIf you accept, this won't be asked again.",
-					MessageBox.Buttons.AcceptCancel);
+					UI.MessageBox.Buttons.AcceptCancel);
 
-				if (rv == MessageBox.ResultType.OK)
+				if (rv == UI.MessageBox.ResultType.OK)
 				{
 					cfg[Constants.Core][Hell].String = Constants.No;
 				}
