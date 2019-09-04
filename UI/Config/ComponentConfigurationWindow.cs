@@ -95,7 +95,7 @@ namespace Taskmaster.UI.Config
 			};
 			tooltip.SetToolTip(audioman, "Automatically set application mixer volume.");
 
-			layout.Controls.Add(new AlignedLabel { Text = "Audio manager", Padding = BigPadding });
+			layout.Controls.Add(new Extensions.Label { Text = "Audio manager", Padding = BigPadding });
 			layout.Controls.Add(audioman);
 
 			var micmon = new CheckBox()
@@ -109,7 +109,7 @@ namespace Taskmaster.UI.Config
 
 			audioman.CheckedChanged += (_, _ea) => micmon.Enabled = audioman.Checked;
 
-			layout.Controls.Add(new AlignedLabel { Text = "Microphone manager", Padding = BigPadding });
+			layout.Controls.Add(new Extensions.Label { Text = "Microphone manager", Padding = BigPadding });
 			layout.Controls.Add(micmon);
 			micmon.Click += (_, _ea) =>
 			{
@@ -122,7 +122,7 @@ namespace Taskmaster.UI.Config
 				Dock = DockStyle.Left
 			};
 			tooltip.SetToolTip(netmon, "Monitor network interface status and report online status.");
-			layout.Controls.Add(new AlignedLabel { Text = "Network monitor", Padding = BigPadding });
+			layout.Controls.Add(new Extensions.Label { Text = "Network monitor", Padding = BigPadding });
 			layout.Controls.Add(netmon);
 			netmon.Checked = initial || NetworkMonitorEnabled;
 			netmon.Click += (_, _ea) =>
@@ -136,12 +136,12 @@ namespace Taskmaster.UI.Config
 				Dock = DockStyle.Left
 			};
 			tooltip.SetToolTip(procmon, "Manage processes based on their name. Default feature of Taskmaster and thus can not be disabled.");
-			layout.Controls.Add(new AlignedLabel { Text = "Process manager", Padding = BigPadding });
+			layout.Controls.Add(new Extensions.Label { Text = "Process manager", Padding = BigPadding });
 			layout.Controls.Add(procmon);
 			procmon.Enabled = false;
 			procmon.Checked = initial || ProcessMonitorEnabled;
 
-			layout.Controls.Add(new AlignedLabel() { Text = "Process detection", Padding = BigPadding });
+			layout.Controls.Add(new Extensions.Label() { Text = "Process detection", Padding = BigPadding });
 			var ScanOrWMI = new ComboBox()
 			{
 				DropDownStyle = ComboBoxStyle.DropDownList,
@@ -151,7 +151,7 @@ namespace Taskmaster.UI.Config
 			layout.Controls.Add(ScanOrWMI);
 			tooltip.SetToolTip(ScanOrWMI, "Scanning involves getting all procesess and going through the list, which can cause tiny CPU spiking.\nWMI polling sets up system WMI event listener.\nWMI is known to be slow and buggy, though when it performs well, it does it better than scanning in this case.\nSystem WmiPrvSE or similar process may be seen increasing in activity with WMI in use.");
 
-			layout.Controls.Add(new AlignedLabel() { Text = "Scan frequency", Padding = BigPadding });
+			layout.Controls.Add(new Extensions.Label() { Text = "Scan frequency", Padding = BigPadding });
 			var scanfrequency = new Extensions.NumericUpDownEx()
 			{
 				Unit = "s",
@@ -174,7 +174,7 @@ namespace Taskmaster.UI.Config
 			};
 			layout.Controls.Add(scanfrequency);
 			tooltip.SetToolTip(scanfrequency, "In seconds. 0 disables. 1-4 are considered invalid values.");
-			layout.Controls.Add(new AlignedLabel() { Text = "WMI poll rate", Padding = BigPadding });
+			layout.Controls.Add(new Extensions.Label() { Text = "WMI poll rate", Padding = BigPadding });
 			var wmipolling = new Extensions.NumericUpDownEx()
 			{
 				Minimum = 1,
@@ -215,7 +215,7 @@ namespace Taskmaster.UI.Config
 			};
 			tooltip.SetToolTip(powmon, "Manage power mode.\nNot recommended if you already have a power manager.");
 
-			layout.Controls.Add(new AlignedLabel { Text = "Power manager", Padding = BigPadding });
+			layout.Controls.Add(new Extensions.Label { Text = "Power manager", Padding = BigPadding });
 			layout.Controls.Add(powmon);
 
 			var powbehaviour = new ComboBox()
@@ -244,7 +244,7 @@ namespace Taskmaster.UI.Config
 				"Auto-adjust = Automatically adjust power mode based on system load or by watchlist rules\n" +
 				"Rule-based = Watchlist rules can affect it\n" +
 				"Manual = User control only");
-			layout.Controls.Add(new AlignedLabel { Text = "Power behaviour", Padding = BigPadding });
+			layout.Controls.Add(new Extensions.Label { Text = "Power behaviour", Padding = BigPadding });
 			layout.Controls.Add(powbehaviour);
 
 			var fgmon = new CheckBox()
@@ -255,7 +255,7 @@ namespace Taskmaster.UI.Config
 			};
 			fgmon.Checked = initial || ActiveAppMonitorEnabled;
 			tooltip.SetToolTip(fgmon, "Allow processes and power mode to be managed based on if a process is in the foreground.\nPOWER MODE SWITCHING NOT IMPLEMENTED.");
-			layout.Controls.Add(new AlignedLabel { Text = "Foreground manager", Padding = BigPadding });
+			layout.Controls.Add(new Extensions.Label { Text = "Foreground manager", Padding = BigPadding });
 			layout.Controls.Add(fgmon);
 
 			// NVM monitor
@@ -267,7 +267,7 @@ namespace Taskmaster.UI.Config
 				Enabled = false,
 			};
 			tooltip.SetToolTip(nvmmon, "Monitor non-volatile memory (HDDs, SSDs, etc.)");
-			layout.Controls.Add(new AlignedLabel { Text = "NVM monitor", Padding = BigPadding });
+			layout.Controls.Add(new Extensions.Label { Text = "NVM monitor", Padding = BigPadding });
 			layout.Controls.Add(nvmmon);
 
 			// TEMP monitor
@@ -278,7 +278,7 @@ namespace Taskmaster.UI.Config
 				Dock = DockStyle.Left
 			};
 			tooltip.SetToolTip(tempmon, "Monitor temp folder.\nNOT YET FULLY IMPLEMENTED.");
-			layout.Controls.Add(new AlignedLabel { Text = "TEMP monitor", Padding = BigPadding });
+			layout.Controls.Add(new Extensions.Label { Text = "TEMP monitor", Padding = BigPadding });
 			layout.Controls.Add(tempmon);
 			tempmon.Enabled = false;
 			tempmon.Checked = !initial && MaintenanceMonitorEnabled;
@@ -291,7 +291,7 @@ namespace Taskmaster.UI.Config
 				Dock = DockStyle.Left,
 			};
 			tooltip.SetToolTip(tempmon, "Allow paging RAM to page/swap file.\nNOT YET FULLY IMPLEMENTED.");
-			layout.Controls.Add(new AlignedLabel { Text = "Allow paging", Padding = BigPadding });
+			layout.Controls.Add(new Extensions.Label { Text = "Allow paging", Padding = BigPadding });
 			layout.Controls.Add(paging);
 			paging.Checked = !initial && PagingEnabled;
 
@@ -303,7 +303,7 @@ namespace Taskmaster.UI.Config
 				Checked = GlobalHotkeys,
 			};
 			tooltip.SetToolTip(hotkeys, "Register globally accessible hotkeys for certain actions.");
-			layout.Controls.Add(new AlignedLabel { Text = "Global hotkeys", Padding = BigPadding });
+			layout.Controls.Add(new Extensions.Label { Text = "Global hotkeys", Padding = BigPadding });
 			layout.Controls.Add(hotkeys);
 
 			// SHOW ON START
@@ -314,7 +314,7 @@ namespace Taskmaster.UI.Config
 				Dock = DockStyle.Left
 			};
 			tooltip.SetToolTip(showonstart, "Show main window on start.");
-			layout.Controls.Add(new AlignedLabel { Text = Constants.ShowOnStart, Padding = BigPadding });
+			layout.Controls.Add(new Extensions.Label { Text = Constants.ShowOnStart, Padding = BigPadding });
 			layout.Controls.Add(showonstart);
 			showonstart.Checked = !initial && ShowOnStart;
 
@@ -325,7 +325,7 @@ namespace Taskmaster.UI.Config
 				Dock = DockStyle.Left,
 				Checked = !initial && HealthMonitorEnabled,
 			};
-			layout.Controls.Add(new AlignedLabel() { Text = "Health monitor", Padding = BigPadding });
+			layout.Controls.Add(new Extensions.Label() { Text = "Health monitor", Padding = BigPadding });
 			tooltip.SetToolTip(autodoc, "Variety of other health & problem monitoring.\nCurrently includes low memory detection and attempting to page apps to free some of it.");
 			layout.Controls.Add(autodoc);
 

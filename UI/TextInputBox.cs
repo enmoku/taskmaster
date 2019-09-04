@@ -65,7 +65,7 @@ namespace Taskmaster.UI
 
 			textbox.Text = input ?? string.Empty;
 
-			layout.Controls.Add(new UI.AlignedLabel() { Text = message });
+			layout.Controls.Add(new Extensions.Label() { Text = message });
 			layout.Controls.Add(textbox);
 
 			var buttons = new Extensions.TableLayoutPanel()

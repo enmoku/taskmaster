@@ -33,7 +33,7 @@ namespace Taskmaster.UI.Config
 	public class ExperimentConfig : UniForm
 	{
 		readonly Button uninstallButton, installButton;
-		readonly AlignedLabel imageUptodateState;
+		readonly Extensions.Label imageUptodateState;
 
 		public ExperimentConfig(bool center = false)
 			: base(centerOnScreen: center)
@@ -53,7 +53,7 @@ namespace Taskmaster.UI.Config
 				AutoSize = true,
 				Parent = this,
 			};
-			var experimentWarning = new AlignedLabel { Text = "EXPERIMENTAL\nYou've been warned.", AutoSize = true, Font = BoldFont, ForeColor = System.Drawing.Color.Maroon, Padding = BigPadding };
+			var experimentWarning = new Extensions.Label { Text = "EXPERIMENTAL\nYou've been warned.", AutoSize = true, Font = BoldFont, ForeColor = System.Drawing.Color.Maroon, Padding = BigPadding };
 			layout.Controls.Add(experimentWarning);
 			layout.SetColumnSpan(experimentWarning, 2);
 
@@ -69,7 +69,7 @@ namespace Taskmaster.UI.Config
 
 			var toggleLoaderTracking = new CheckBox() { Checked = loadertracking, };
 
-			layout.Controls.Add(new AlignedLabel { Text = "Loader tracking" });
+			layout.Controls.Add(new Extensions.Label { Text = "Loader tracking" });
 			layout.Controls.Add(toggleLoaderTracking);
 			tooltip.SetToolTip(toggleLoaderTracking, "Try to track what processes are overloading the system.");
 
@@ -86,6 +86,7 @@ namespace Taskmaster.UI.Config
 			tooltip.SetToolTip(RecordAnalysisDelay, "Values higher than 0 enable process analysis\nThis needs to be enabled per watchlist rule to function");
 
 			layout.Controls.Add(new AlignedLabel { Text = "Record analysis delay" });
+			layout.Controls.Add(new Extensions.Label { Text = "Record analysis delay" });
 			layout.Controls.Add(RecordAnalysisDelay);
 
 			bool hwMonLibPresent = System.IO.File.Exists(
@@ -96,13 +97,13 @@ namespace Taskmaster.UI.Config
 			var hwmon = new CheckBox() { Checked = Application.HardwareMonitorEnabled, Enabled = hwMonLibPresent, };
 			tooltip.SetToolTip(hwmon, "Enables hardware (such as GPU) monitoring\nLimited usability currently.\nRequires OpenHardwareMonitorLib.dll to be present.");
 
-			layout.Controls.Add(new AlignedLabel { Text = "Hardware monitor" });
+			layout.Controls.Add(new Extensions.Label { Text = "Hardware monitor" });
 			layout.Controls.Add(hwmon);
 
 			var iopriority = new CheckBox() { Checked = Application.IOPriorityEnabled, Enabled = MKAh.Execution.IsWin7, };
 			tooltip.SetToolTip(iopriority, "Enable I/O priority adjstment\nWARNING: This can be REALLY BAD\nTake care what you do.\nOnly supported on Windows 7.");
 
-			layout.Controls.Add(new AlignedLabel { Text = "I/O priority" });
+			layout.Controls.Add(new Extensions.Label { Text = "I/O priority" });
 			layout.Controls.Add(iopriority);
 
 			// NGEN Native Image
@@ -110,7 +111,7 @@ namespace Taskmaster.UI.Config
 			var process = System.Diagnostics.Process.GetCurrentProcess();
 			bool nativeImageLoaded = MKAh.Program.NativeImage.Exists(process);
 
-			var ngenLabel = new AlignedLabel
+			var ngenLabel = new Extensions.Label
 			{
 				Text = "Native Image (NI)",
 				Font = BoldFont,
@@ -145,15 +146,15 @@ namespace Taskmaster.UI.Config
 
 			if (!MKAh.Execution.IsAdministrator)
 			{
-				var adminWarning = new AlignedLabel { Text = "Admin rights required!", Font = BoldFont, };
+				var adminWarning = new Extensions.Label { Text = "Admin rights required!", Font = BoldFont, };
 				layout.Controls.Add(adminWarning);
 				layout.SetColumnSpan(adminWarning, 2);
 			}
 
-			var imageUptodateLabel = new AlignedLabel { Text = "Image present && up-to-date", };
+			var imageUptodateLabel = new Extensions.Label { Text = "Image present && up-to-date", };
 			layout.Controls.Add(imageUptodateLabel);
 
-			imageUptodateState = new AlignedLabel();
+			imageUptodateState = new Extensions.Label();
 			UpdateNGenState(nativeImageLoaded);
 			layout.Controls.Add(imageUptodateState);
 
@@ -179,7 +180,7 @@ namespace Taskmaster.UI.Config
 			uninstallButton.Click += UninstallButton_Click;
 			layout.Controls.Add(uninstallButton);
 
-			var autoUpdateNgenLabel = new AlignedLabel { Text = "Auto-update native image", };
+			var autoUpdateNgenLabel = new Extensions.Label { Text = "Auto-update native image", };
 
 			var autoUpdateNgen = new CheckBox { Checked = exsec.Get(Application.Constants.AutoNGEN)?.Bool ?? false, };
 
@@ -198,7 +199,7 @@ namespace Taskmaster.UI.Config
 			layout.Controls.Add(hzLine);
 			layout.SetColumnSpan(hzLine, 2);
 
-			var restartWarning = new AlignedLabel { Text = "Experimental features require restart.", AutoSize = true, Font = BoldFont, ForeColor = System.Drawing.Color.Maroon, Padding = BigPadding };
+			var restartWarning = new Extensions.Label { Text = "Experimental features require restart.", AutoSize = true, Font = BoldFont, ForeColor = System.Drawing.Color.Maroon, Padding = BigPadding };
 			layout.Controls.Add(restartWarning);
 			layout.SetColumnSpan(restartWarning, 2);
 

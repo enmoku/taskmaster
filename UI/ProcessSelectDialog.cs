@@ -80,7 +80,7 @@ namespace Taskmaster.UI
 
 			if (!string.IsNullOrEmpty(message))
 			{
-				layout.Controls.Add(new UI.AlignedLabel() { Text = message, AutoSize = true, Dock = DockStyle.Fill, Padding = BigPadding });
+				layout.Controls.Add(new Extensions.Label() { Text = message, AutoSize = true, Dock = DockStyle.Fill, Padding = BigPadding });
 			}
 
 			layout.Controls.Add(selection);

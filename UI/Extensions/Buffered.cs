@@ -99,6 +99,7 @@ namespace Taskmaster.UI.Extensions
 		public Label()
 		{
 			DoubleBuffered = true;
+			AutoSize = true;
 
 			SetStyle(
 				ControlStyles.OptimizedDoubleBuffer | ControlStyles.AllPaintingInWmPaint | ControlStyles.EnableNotifyMessage,

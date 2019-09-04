@@ -863,14 +863,14 @@ namespace Taskmaster.UI
 
 			if (PowerManagerEnabled)
 			{
-				corepanel.Controls.Add(new AlignedLabel() { Text = "CPU" });
-				cpuload = new AlignedLabel() { Text = HumanReadable.Generic.Uninitialized };
+				corepanel.Controls.Add(new Extensions.Label() { Text = "CPU" });
+				cpuload = new Extensions.Label() { Text = HumanReadable.Generic.Uninitialized };
 				corepanel.Controls.Add(cpuload);
 			}
 			// TODO: Add high, low and average
 
-			corepanel.Controls.Add(new AlignedLabel() { Text = "RAM" });
-			ramload = new AlignedLabel() { Text = HumanReadable.Generic.Uninitialized };
+			corepanel.Controls.Add(new Extensions.Label() { Text = "RAM" });
+			ramload = new Extensions.Label() { Text = HumanReadable.Generic.Uninitialized };
 			corepanel.Controls.Add(ramload);
 
 			Extensions.TableLayoutPanel gpupanel = null;
@@ -885,20 +885,20 @@ namespace Taskmaster.UI
 					Dock = DockStyle.Fill,
 				};
 
-				gpupanel.Controls.Add(new AlignedLabel() { Text = "VRAM" });
-				gpuvram = new AlignedLabel() { Text = HumanReadable.Generic.Uninitialized };
+				gpupanel.Controls.Add(new Extensions.Label() { Text = "VRAM" });
+				gpuvram = new Extensions.Label() { Text = HumanReadable.Generic.Uninitialized };
 				gpupanel.Controls.Add(gpuvram);
 
-				gpupanel.Controls.Add(new AlignedLabel() { Text = "Load" });
-				gpuload = new AlignedLabel() { Text = HumanReadable.Generic.Uninitialized };
+				gpupanel.Controls.Add(new Extensions.Label() { Text = "Load" });
+				gpuload = new Extensions.Label() { Text = HumanReadable.Generic.Uninitialized };
 				gpupanel.Controls.Add(gpuload);
 
-				gpupanel.Controls.Add(new AlignedLabel() { Text = "Temp" });
-				gputemp = new AlignedLabel() { Text = HumanReadable.Generic.Uninitialized };
+				gpupanel.Controls.Add(new Extensions.Label() { Text = "Temp" });
+				gputemp = new Extensions.Label() { Text = HumanReadable.Generic.Uninitialized };
 				gpupanel.Controls.Add(gputemp);
 
-				gpupanel.Controls.Add(new AlignedLabel() { Text = "Fan" });
-				gpufan = new AlignedLabel() { Text = HumanReadable.Generic.Uninitialized };
+				gpupanel.Controls.Add(new Extensions.Label() { Text = "Fan" });
+				gpufan = new Extensions.Label() { Text = HumanReadable.Generic.Uninitialized };
 				gpupanel.Controls.Add(gpufan);
 			}
 
@@ -941,22 +941,22 @@ namespace Taskmaster.UI
 			// Insert info panel/tab contents
 			if (corepanel != null)
 			{
-				coresystems.Controls.Add(new AlignedLabel() { Text = Constants.Core, Font = BoldFont });
+				coresystems.Controls.Add(new Extensions.Label() { Text = Constants.Core, Font = BoldFont });
 				coresystems.Controls.Add(corepanel);
 			}
 			if (gpupanel != null)
 			{
-				coresystems.Controls.Add(new AlignedLabel() { Text = "GPU", Font = BoldFont });
+				coresystems.Controls.Add(new Extensions.Label() { Text = "GPU", Font = BoldFont });
 				coresystems.Controls.Add(gpupanel);
 			}
 			if (powerpanel != null)
 			{
-				additionalsystems.Controls.Add(new AlignedLabel { Text = HumanReadable.Hardware.Power.Section, Font = BoldFont });
+				additionalsystems.Controls.Add(new Extensions.Label { Text = HumanReadable.Hardware.Power.Section, Font = BoldFont });
 				additionalsystems.Controls.Add(powerpanel);
 			}
 			if (nvmpanel != null)
 			{
-				additionalsystems.Controls.Add(new AlignedLabel { Text = "Non-Volatile Memory", Font = BoldFont });
+				additionalsystems.Controls.Add(new Extensions.Label { Text = "Non-Volatile Memory", Font = BoldFont });
 				additionalsystems.Controls.Add(nvmpanel);
 			}
 			systemlayout.Controls.Add(coresystems);
@@ -1796,29 +1796,29 @@ namespace Taskmaster.UI
 			WatchlistItemColor(litem, prc);
 		}
 
-		AlignedLabel AudioInputDevice = null;
+		Extensions.Label AudioInputDevice = null;
 		Extensions.NumericUpDownEx AudioInputVolume = null;
 		Extensions.ListViewEx AudioInputs = null, WatchlistRules;
 
 		readonly ConcurrentDictionary<Process.Controller, ListViewItem> WatchlistMap = new ConcurrentDictionary<Process.Controller, ListViewItem>();
 		readonly object watchlist_lock = new object();
 
-		AlignedLabel corCountLabel = null;
+		Extensions.Label corCountLabel = null;
 		ComboBox AudioInputEnable = null;
 
 		Extensions.ListViewEx lastmodifylist = null, powerbalancerlog = null;
 
-		AlignedLabel powerbalancer_behaviour = null, powerbalancer_plan = null, powerbalancer_forcedcount = null;
+		Extensions.Label powerbalancer_behaviour = null, powerbalancer_plan = null, powerbalancer_forcedcount = null;
 
 		Extensions.ListViewEx ExitWaitList = null, ProcessingList = null;
 		ConcurrentDictionary<int, ListViewItem> ExitWaitlistMap = null;
 
 		#region Foreground Monitor
-		AlignedLabel activeLabel = null, activeExec = null, activeFullscreen = null, activePID = null;
+		Extensions.Label activeLabel = null, activeExec = null, activeFullscreen = null, activePID = null;
 		#endregion
 
 		#region Path Cache
-		AlignedLabel cacheObjects = null, cacheRatio = null;
+		Extensions.Label cacheObjects = null, cacheRatio = null;
 		#endregion
 
 		int PathCacheUpdate_Lock = 0;
@@ -1852,7 +1852,7 @@ namespace Taskmaster.UI
 		}
 
 		// BackColor = System.Drawing.Color.LightGoldenrodYellow
-		AlignedLabel netstatuslabel, inetstatuslabel, uptimestatuslabel, uptimeMeanLabel, netTransmit, netQueue;
+		Extensions.Label netstatuslabel, inetstatuslabel, uptimestatuslabel, uptimeMeanLabel, netTransmit, netQueue;
 
 		public static Serilog.Core.LoggingLevelSwitch LogIncludeLevel;
 
@@ -2396,7 +2396,7 @@ namespace Taskmaster.UI
 			};
 			micpanel.RowStyles.Add(new RowStyle(SizeType.Absolute, 20)); // this is dumb
 
-			AudioInputDevice = new AlignedLabel { Text = HumanReadable.Generic.Uninitialized, AutoEllipsis = true };
+			AudioInputDevice = new Extensions.Label { Text = HumanReadable.Generic.Uninitialized, AutoEllipsis = true };
 			var micNameRow = new Extensions.TableLayoutPanel
 			{
 				RowCount = 1,
@@ -2404,7 +2404,7 @@ namespace Taskmaster.UI
 				Dock = DockStyle.Top,
 				//AutoSize = true // why not?
 			};
-			micNameRow.Controls.Add(new AlignedLabel { Text = "Default communications device:" });
+			micNameRow.Controls.Add(new Extensions.Label { Text = "Default communications device:" });
 			micNameRow.Controls.Add(AudioInputDevice);
 
 			var miccntrl = new Extensions.TableLayoutPanel()
@@ -2428,12 +2428,12 @@ namespace Taskmaster.UI
 			};
 			AudioInputVolume.ValueChanged += UserMicVol;
 
-			miccntrl.Controls.Add(new AlignedLabel { Text = HumanReadable.Hardware.Audio.Volume });
+			miccntrl.Controls.Add(new Extensions.Label { Text = HumanReadable.Hardware.Audio.Volume });
 			miccntrl.Controls.Add(AudioInputVolume);
 
-			corCountLabel = new AlignedLabel { Text = "0" };
+			corCountLabel = new Extensions.Label { Text = "0" };
 
-			miccntrl.Controls.Add(new AlignedLabel { Text = "Correction count:" });
+			miccntrl.Controls.Add(new Extensions.Label { Text = "Correction count:" });
 			miccntrl.Controls.Add(corCountLabel);
 
 			AudioInputEnable = new ComboBox()
@@ -2444,7 +2444,7 @@ namespace Taskmaster.UI
 				Enabled = false,
 			};
 
-			miccntrl.Controls.Add(new AlignedLabel { Text = "Control:" });
+			miccntrl.Controls.Add(new Extensions.Label { Text = "Control:" });
 			miccntrl.Controls.Add(AudioInputEnable);
 
 			// End: Volume control
@@ -2481,9 +2481,9 @@ namespace Taskmaster.UI
 
 		Extensions.TableLayoutPanel BuildTempMonitorPanel()
 		{
-			tempObjectCount = new AlignedLabel() { Width = 40, Text = HumanReadable.Generic.Uninitialized };
+			tempObjectCount = new Extensions.Label() { Width = 40, Text = HumanReadable.Generic.Uninitialized };
 
-			tempObjectSize = new AlignedLabel() { Width = 40, Text = HumanReadable.Generic.Uninitialized };
+			tempObjectSize = new Extensions.Label() { Width = 40, Text = HumanReadable.Generic.Uninitialized };
 
 			var tempmonitorpanel = new Extensions.TableLayoutPanel
 			{
@@ -2493,10 +2493,10 @@ namespace Taskmaster.UI
 				Height = 40,
 				AutoSize = true
 			};
-			tempmonitorpanel.Controls.Add(new AlignedLabel { Text = "Temp" });
-			tempmonitorpanel.Controls.Add(new AlignedLabel { Text = "Objects" });
+			tempmonitorpanel.Controls.Add(new Extensions.Label { Text = "Temp" });
+			tempmonitorpanel.Controls.Add(new Extensions.Label { Text = "Objects" });
 			tempmonitorpanel.Controls.Add(tempObjectCount);
-			tempmonitorpanel.Controls.Add(new AlignedLabel { Text = "Size (MB)" });
+			tempmonitorpanel.Controls.Add(new Extensions.Label { Text = "Size (MB)" });
 			tempmonitorpanel.Controls.Add(tempObjectSize);
 			return tempmonitorpanel;
 		}
@@ -2509,12 +2509,12 @@ namespace Taskmaster.UI
 				AutoSize = true,
 				Dock = DockStyle.Fill,
 			};
-			cachePanel.Controls.Add(new AlignedLabel() { Text = "Path cache:" });
-			cachePanel.Controls.Add(new AlignedLabel() { Text = "Objects" });
-			cacheObjects = new AlignedLabel() { Width = 40, Text = HumanReadable.Generic.Uninitialized };
+			cachePanel.Controls.Add(new Extensions.Label() { Text = "Path cache:" });
+			cachePanel.Controls.Add(new Extensions.Label() { Text = "Objects" });
+			cacheObjects = new Extensions.Label() { Width = 40, Text = HumanReadable.Generic.Uninitialized };
 			cachePanel.Controls.Add(cacheObjects);
-			cachePanel.Controls.Add(new AlignedLabel() { Text = "Ratio" });
-			cacheRatio = new AlignedLabel() { Width = 40, Text = HumanReadable.Generic.Uninitialized };
+			cachePanel.Controls.Add(new Extensions.Label() { Text = "Ratio" });
+			cacheRatio = new Extensions.Label() { Width = 40, Text = HumanReadable.Generic.Uninitialized };
 			cachePanel.Controls.Add(cacheRatio);
 			return cachePanel;
 		}
@@ -2527,7 +2527,7 @@ namespace Taskmaster.UI
 				AutoSize = true,
 				Dock = DockStyle.Fill
 			};
-			powerlayout.Controls.Add(new AlignedLabel() { Text = "Power mode autobalancing tracker...", Padding = BigPadding });
+			powerlayout.Controls.Add(new Extensions.Label() { Text = "Power mode autobalancing tracker...", Padding = BigPadding });
 
 			powerbalancerlog = new Extensions.ListViewEx()
 			{
@@ -2556,14 +2556,14 @@ namespace Taskmaster.UI
 				AutoSize = true,
 				Dock = DockStyle.Top
 			};
-			powerbalancerstatus.Controls.Add(new AlignedLabel() { Text = "Behaviour:" });
-			powerbalancer_behaviour = new AlignedLabel() { Text = HumanReadable.Generic.Uninitialized };
+			powerbalancerstatus.Controls.Add(new Extensions.Label() { Text = "Behaviour:" });
+			powerbalancer_behaviour = new Extensions.Label() { Text = HumanReadable.Generic.Uninitialized };
 			powerbalancerstatus.Controls.Add(powerbalancer_behaviour);
-			powerbalancerstatus.Controls.Add(new AlignedLabel() { Text = "| Plan:" });
-			powerbalancer_plan = new AlignedLabel() { Text = HumanReadable.Generic.Uninitialized };
+			powerbalancerstatus.Controls.Add(new Extensions.Label() { Text = "| Plan:" });
+			powerbalancer_plan = new Extensions.Label() { Text = HumanReadable.Generic.Uninitialized };
 			powerbalancerstatus.Controls.Add(powerbalancer_plan);
-			powerbalancerstatus.Controls.Add(new AlignedLabel() { Text = "Forced by:" });
-			powerbalancer_forcedcount = new AlignedLabel() { Text = HumanReadable.Generic.Uninitialized };
+			powerbalancerstatus.Controls.Add(new Extensions.Label() { Text = "Forced by:" });
+			powerbalancer_forcedcount = new Extensions.Label() { Text = HumanReadable.Generic.Uninitialized };
 			powerbalancerstatus.Controls.Add(powerbalancer_forcedcount);
 
 			powerlayout.Controls.Add(powerbalancerstatus);
@@ -2582,7 +2582,7 @@ namespace Taskmaster.UI
 				Height = 40,
 				AutoSize = true
 			};
-			lastmodifypanel.Controls.Add(new AlignedLabel() { Text = "Last process modifications" });
+			lastmodifypanel.Controls.Add(new Extensions.Label() { Text = "Last process modifications" });
 			lastmodifylist = new Extensions.ListViewEx()
 			{
 				Parent = this,
@@ -2630,14 +2630,14 @@ namespace Taskmaster.UI
 				Dock = DockStyle.Fill,
 			};
 
-			pwmode = new AlignedLabel { Text = HumanReadable.Generic.Uninitialized };
-			pwcause = new AlignedLabel { Text = HumanReadable.Generic.Uninitialized };
-			pwbehaviour = new AlignedLabel { Text = HumanReadable.Generic.Uninitialized };
-			powerpanel.Controls.Add(new AlignedLabel { Text = "Behaviour:" });
+			pwmode = new Extensions.Label { Text = HumanReadable.Generic.Uninitialized };
+			pwcause = new Extensions.Label { Text = HumanReadable.Generic.Uninitialized };
+			pwbehaviour = new Extensions.Label { Text = HumanReadable.Generic.Uninitialized };
+			powerpanel.Controls.Add(new Extensions.Label { Text = "Behaviour:" });
 			powerpanel.Controls.Add(pwbehaviour);
-			powerpanel.Controls.Add(new AlignedLabel { Text = "Mode:" });
+			powerpanel.Controls.Add(new Extensions.Label { Text = "Mode:" });
 			powerpanel.Controls.Add(pwmode);
-			powerpanel.Controls.Add(new AlignedLabel { Text = "Cause:" });
+			powerpanel.Controls.Add(new Extensions.Label { Text = "Cause:" });
 			powerpanel.Controls.Add(pwcause);
 		}
 
@@ -2651,19 +2651,19 @@ namespace Taskmaster.UI
 				Dock = DockStyle.Fill,
 			};
 
-			nvmtransferslabel = new AlignedLabel { Text = HumanReadable.Generic.Uninitialized };
-			nvmsplitio = new AlignedLabel { Text = HumanReadable.Generic.Uninitialized };
-			nvmdelaylabel = new AlignedLabel { Text = HumanReadable.Generic.Uninitialized };
-			nvmqueuelabel = new AlignedLabel { Text = HumanReadable.Generic.Uninitialized };
+			nvmtransferslabel = new Extensions.Label { Text = HumanReadable.Generic.Uninitialized };
+			nvmsplitio = new Extensions.Label { Text = HumanReadable.Generic.Uninitialized };
+			nvmdelaylabel = new Extensions.Label { Text = HumanReadable.Generic.Uninitialized };
+			nvmqueuelabel = new Extensions.Label { Text = HumanReadable.Generic.Uninitialized };
 			//hardfaults = new Label { Text = HumanReadable.Generic.Uninitialized, TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left };
 
-			nvmpanel.Controls.Add(new AlignedLabel { Text = "Transfers" });
+			nvmpanel.Controls.Add(new Extensions.Label { Text = "Transfers" });
 			nvmpanel.Controls.Add(nvmtransferslabel);
-			nvmpanel.Controls.Add(new AlignedLabel { Text = "Split I/O" });
+			nvmpanel.Controls.Add(new Extensions.Label { Text = "Split I/O" });
 			nvmpanel.Controls.Add(nvmsplitio);
-			nvmpanel.Controls.Add(new AlignedLabel { Text = "Delay" });
+			nvmpanel.Controls.Add(new Extensions.Label { Text = "Delay" });
 			nvmpanel.Controls.Add(nvmdelaylabel);
-			nvmpanel.Controls.Add(new AlignedLabel { Text = "Queued" });
+			nvmpanel.Controls.Add(new Extensions.Label { Text = "Queued" });
 			nvmpanel.Controls.Add(nvmqueuelabel);
 			//nvmpanel.Controls.Add(new Label { Text = "Hard faults", TextAlign = System.Drawing.ContentAlignment.MiddleLeft, AutoSize = true, Dock = DockStyle.Left });
 			//nvmpanel.Controls.Add(hardfaults);
@@ -2671,12 +2671,12 @@ namespace Taskmaster.UI
 
 		Extensions.TableLayoutPanel BuildNetworkStatusUI(FlowLayoutPanel infopanel, int[] ifacewidths)
 		{
-			netstatuslabel = new AlignedLabel() { Text = HumanReadable.Generic.Uninitialized };
-			inetstatuslabel = new AlignedLabel() { Text = HumanReadable.Generic.Uninitialized };
-			uptimeMeanLabel = new AlignedLabel() { Text = HumanReadable.Generic.Uninitialized };
-			netTransmit = new AlignedLabel() { Text = HumanReadable.Generic.Uninitialized };
-			netQueue = new AlignedLabel() { Text = HumanReadable.Generic.Uninitialized };
-			uptimestatuslabel = new AlignedLabel { Text = HumanReadable.Generic.Uninitialized };
+			netstatuslabel = new Extensions.Label() { Text = HumanReadable.Generic.Uninitialized };
+			inetstatuslabel = new Extensions.Label() { Text = HumanReadable.Generic.Uninitialized };
+			uptimeMeanLabel = new Extensions.Label() { Text = HumanReadable.Generic.Uninitialized };
+			netTransmit = new Extensions.Label() { Text = HumanReadable.Generic.Uninitialized };
+			netQueue = new Extensions.Label() { Text = HumanReadable.Generic.Uninitialized };
+			uptimestatuslabel = new Extensions.Label { Text = HumanReadable.Generic.Uninitialized };
 
 			var netstatus = new Extensions.TableLayoutPanel
 			{
@@ -2687,20 +2687,20 @@ namespace Taskmaster.UI
 			};
 
 			// first row
-			netstatus.Controls.Add(new AlignedLabel() { Text = "Network" });
+			netstatus.Controls.Add(new Extensions.Label() { Text = "Network" });
 			netstatus.Controls.Add(netstatuslabel);
 
-			netstatus.Controls.Add(new AlignedLabel() { Text = "Uptime" });
+			netstatus.Controls.Add(new Extensions.Label() { Text = "Uptime" });
 			netstatus.Controls.Add(uptimestatuslabel);
 
-			netstatus.Controls.Add(new AlignedLabel() { Text = "Transmission" });
+			netstatus.Controls.Add(new Extensions.Label() { Text = "Transmission" });
 			netstatus.Controls.Add(netTransmit);
 
 			// second row
-			netstatus.Controls.Add(new AlignedLabel() { Text = "Internet" });
+			netstatus.Controls.Add(new Extensions.Label() { Text = "Internet" });
 			netstatus.Controls.Add(inetstatuslabel);
 
-			netstatus.Controls.Add(new AlignedLabel { Text = "Average" });
+			netstatus.Controls.Add(new Extensions.Label { Text = "Average" });
 			netstatus.Controls.Add(uptimeMeanLabel);
 
 			//netstatus.Controls.Add(new Label() { Text = "??", Dock = DockStyle.Left, AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleLeft });
@@ -3021,25 +3021,25 @@ namespace Taskmaster.UI
 					//Width = tabLayout.Width - 3,
 				};
 
-				activeLabel = new AlignedLabel() { Text = "no active window found", AutoEllipsis = true };
-				activeExec = new AlignedLabel() { Text = HumanReadable.Generic.Uninitialized, Width = 100 };
-				activeFullscreen = new AlignedLabel() { Text = HumanReadable.Generic.Uninitialized, Width = 60 };
-				activePID = new AlignedLabel() { Text = HumanReadable.Generic.Uninitialized, Width = 60 };
+				activeLabel = new Extensions.Label() { Text = "no active window found", AutoEllipsis = true };
+				activeExec = new Extensions.Label() { Text = HumanReadable.Generic.Uninitialized, Width = 100 };
+				activeFullscreen = new Extensions.Label() { Text = HumanReadable.Generic.Uninitialized, Width = 60 };
+				activePID = new Extensions.Label() { Text = HumanReadable.Generic.Uninitialized, Width = 60 };
 
-				foregroundapppanel.Controls.Add(new AlignedLabel() { Text = "Active window:", Width = 80 });
+				foregroundapppanel.Controls.Add(new Extensions.Label() { Text = "Active window:", Width = 80 });
 				foregroundapppanel.Controls.Add(activeLabel);
 				foregroundapppanel.Controls.Add(activeExec);
 				foregroundapppanel.Controls.Add(activeFullscreen);
-				foregroundapppanel.Controls.Add(new AlignedLabel { Text = "Id:", Width = 20 });
+				foregroundapppanel.Controls.Add(new Extensions.Label { Text = "Id:", Width = 20 });
 				foregroundapppanel.Controls.Add(activePID);
 
 				processlayout.Controls.Add(foregroundapppanel);
 			}
 
-			processlayout.Controls.Add(new AlignedLabel() { Text = "Exit wait list...", Padding = BigPadding });
+			processlayout.Controls.Add(new Extensions.Label() { Text = "Exit wait list...", Padding = BigPadding });
 			processlayout.Controls.Add(ExitWaitList);
 
-			processlayout.Controls.Add(new AlignedLabel() { Text = "Processing list" });
+			processlayout.Controls.Add(new Extensions.Label() { Text = "Processing list" });
 
 			ProcessingList = new Extensions.ListViewEx()
 			{
@@ -3578,11 +3578,11 @@ namespace Taskmaster.UI
 			}
 		}
 
-		AlignedLabel tempObjectCount = null, tempObjectSize = null;
-		AlignedLabel cpuload = null, ramload = null;
-		AlignedLabel pwmode = null, pwcause = null, pwbehaviour = null;
-		AlignedLabel nvmtransferslabel = null, nvmsplitio = null, nvmdelaylabel = null, nvmqueuelabel = null, hardfaults = null;
-		AlignedLabel gpuvram = null, gpuload = null, gputemp = null, gpufan = null;
+		Extensions.Label tempObjectCount = null, tempObjectSize = null;
+		Extensions.Label cpuload = null, ramload = null;
+		Extensions.Label pwmode = null, pwcause = null, pwbehaviour = null;
+		Extensions.Label nvmtransferslabel = null, nvmsplitio = null, nvmdelaylabel = null, nvmqueuelabel = null, hardfaults = null;
+		Extensions.Label gpuvram = null, gpuload = null, gputemp = null, gpufan = null;
 
 		public void TempScanStats(StorageManager.ScanState state, StorageManager.DirectoryStats stats)
 		{

@@ -94,7 +94,7 @@ namespace Taskmaster.UI.Config
 
 			// NORMAL POWER SETTINGS
 
-			layout.Controls.Add(new AlignedLabel() { Text = "Basic Settings", Font = BoldFont, Dock = DockStyle.Fill });
+			layout.Controls.Add(new Extensions.Label() { Text = "Basic Settings", Font = BoldFont, Dock = DockStyle.Fill });
 			layout.Controls.Add(new EmptySpace());
 
 			behaviour = new ComboBox()
@@ -127,7 +127,7 @@ namespace Taskmaster.UI.Config
 				}
 			};
 
-			layout.Controls.Add(new AlignedLabel() { Text = "Launch behaviour", Dock = DockStyle.Fill });
+			layout.Controls.Add(new Extensions.Label() { Text = "Launch behaviour", Dock = DockStyle.Fill });
 			layout.Controls.Add(behaviour);
 
 			restore = new ComboBox()
@@ -178,12 +178,12 @@ namespace Taskmaster.UI.Config
 				}
 			};
 
-			layout.Controls.Add(new AlignedLabel() { Text = "Restore method" });
+			layout.Controls.Add(new Extensions.Label() { Text = "Restore method" });
 			layout.Controls.Add(restore);
 
 			// SESSION / MONITOR stuff
 
-			layout.Controls.Add(new AlignedLabel() { Text = "Monitor off", Font = BoldFont });
+			layout.Controls.Add(new Extensions.Label() { Text = "Monitor off", Font = BoldFont });
 			layout.Controls.Add(new EmptySpace());
 
 			monitoroffmode = new ComboBox()
@@ -198,7 +198,7 @@ namespace Taskmaster.UI.Config
 			monitoroffmode.Items.Add(HumanReadable.Generic.Ignore);
 			monitoroffmode.Items.AddRange(powermodes);
 
-			layout.Controls.Add(new AlignedLabel() { Text = HumanReadable.Hardware.Power.Mode });
+			layout.Controls.Add(new Extensions.Label() { Text = HumanReadable.Hardware.Power.Mode });
 			layout.Controls.Add(monitoroffmode);
 
 			tooltip.SetToolTip(monitoroffmode, "Power mode to set when monitor is off.");
@@ -209,7 +209,7 @@ namespace Taskmaster.UI.Config
 				Dock = DockStyle.Left,
 			};
 
-			layout.Controls.Add(new AlignedLabel() { Text = "Session lock" });
+			layout.Controls.Add(new Extensions.Label() { Text = "Session lock" });
 			layout.Controls.Add(monitorofftoggle);
 
 			tooltip.SetToolTip(monitorofftoggle, "Power down monitor when session is locked (e.g. WinKey+L).\nNormal power is restored once lock is lifted.");
@@ -227,13 +227,13 @@ namespace Taskmaster.UI.Config
 
 			defaultmode.Items.AddRange(powermodes);
 
-			layout.Controls.Add(new AlignedLabel() { Text = HumanReadable.Hardware.Power.AutoAdjust, Font = BoldFont });
+			layout.Controls.Add(new Extensions.Label() { Text = HumanReadable.Hardware.Power.AutoAdjust, Font = BoldFont });
 			layout.Controls.Add(new EmptySpace());
 
-			layout.Controls.Add(new AlignedLabel() { Text = "Sample frequency (sec)" });
-			layout.Controls.Add(new AlignedLabel() { Text = $"{Application.cpumonitor.SampleInterval.TotalSeconds:N1}" });
+			layout.Controls.Add(new Extensions.Label() { Text = "Sample frequency (sec)" });
+			layout.Controls.Add(new Extensions.Label() { Text = $"{Application.cpumonitor.SampleInterval.TotalSeconds:N1}" });
 
-			layout.Controls.Add(new AlignedLabel() { Text = "Default mode" });
+			layout.Controls.Add(new Extensions.Label() { Text = "Default mode" });
 			layout.Controls.Add(defaultmode);
 			tooltip.SetToolTip(defaultmode, "The default power mode to use when neither high nor low mode match");
 
@@ -247,32 +247,32 @@ namespace Taskmaster.UI.Config
 			};
 			highmode.Items.AddRange(powermodes);
 
-			layout.Controls.Add(new AlignedLabel() { Text = "High mode", Font = BoldFont });
+			layout.Controls.Add(new Extensions.Label() { Text = "High mode", Font = BoldFont });
 			layout.Controls.Add(highmode);
 
-			layout.Controls.Add(new AlignedLabel() { Text = "Commit CPU% threshold" });
+			layout.Controls.Add(new Extensions.Label() { Text = "Commit CPU% threshold" });
 			highcommitthreshold = new Extensions.NumericUpDownEx() { Unit = "%", Maximum = 95, Minimum = 5, Value = 50 };
 			tooltip.SetToolTip(highcommitthreshold, "Low CPU use % that must be maintained for this operation mode to be enacted.");
 			layout.Controls.Add(highcommitthreshold);
-			layout.Controls.Add(new AlignedLabel() { Text = "Commit level" });
+			layout.Controls.Add(new Extensions.Label() { Text = "Commit level" });
 			highcommitlevel = new NumericUpDown() { Maximum = 15, Minimum = 0, Value = 3 };
 			tooltip.SetToolTip(highcommitlevel, "How many consequent samples must match threshold to commit to it.");
 			layout.Controls.Add(highcommitlevel);
-			layout.Controls.Add(new AlignedLabel() { Text = "Backoff high CPU%" });
+			layout.Controls.Add(new Extensions.Label() { Text = "Backoff high CPU%" });
 			highbackoffhigh = new Extensions.NumericUpDownEx() { Unit = "%", Maximum = 95, Minimum = 5, Value = 50 };
 			layout.Controls.Add(highbackoffhigh);
-			layout.Controls.Add(new AlignedLabel() { Text = "Backoff average CPU%" });
+			layout.Controls.Add(new Extensions.Label() { Text = "Backoff average CPU%" });
 			highbackoffmean = new Extensions.NumericUpDownEx() { Unit = "%", Maximum = 95, Minimum = 5, Value = 50 };
 			layout.Controls.Add(highbackoffmean);
-			layout.Controls.Add(new AlignedLabel() { Text = "Backoff low CPU%" });
+			layout.Controls.Add(new Extensions.Label() { Text = "Backoff low CPU%" });
 			highbackofflow = new Extensions.NumericUpDownEx() { Unit = "%", Maximum = 95, Minimum = 5, Value = 50 };
 			layout.Controls.Add(highbackofflow);
 
-			layout.Controls.Add(new AlignedLabel() { Text = "Backoff level" });
+			layout.Controls.Add(new Extensions.Label() { Text = "Backoff level" });
 			highbackofflevel = new NumericUpDown() { Maximum = 10, Minimum = 1, Value = 5 };
 			layout.Controls.Add(highbackofflevel);
 
-			layout.Controls.Add(new AlignedLabel() { Text = "Queue barrier" });
+			layout.Controls.Add(new Extensions.Label() { Text = "Queue barrier" });
 			hiQueue = new NumericUpDown() { Maximum = 100, Minimum = 0, Value = 12 };
 			layout.Controls.Add(hiQueue);
 			tooltip.SetToolTip(hiQueue, "If there are at least this many queued threads, lower power modes are disallowed.");
@@ -287,30 +287,30 @@ namespace Taskmaster.UI.Config
 			};
 			lowmode.Items.AddRange(powermodes);
 
-			layout.Controls.Add(new AlignedLabel() { Text = "Low mode", Font = BoldFont });
+			layout.Controls.Add(new Extensions.Label() { Text = "Low mode", Font = BoldFont });
 			layout.Controls.Add(lowmode);
-			layout.Controls.Add(new AlignedLabel() { Text = "Commit CPU% threshold" });
+			layout.Controls.Add(new Extensions.Label() { Text = "Commit CPU% threshold" });
 			lowcommitthreshold = new Extensions.NumericUpDownEx() { Unit = "%", Maximum = 95, Minimum = 5, Value = 50 };
 			tooltip.SetToolTip(lowcommitthreshold, "High CPU use % that must not be maintained for this operation mode to be enacted.");
 			layout.Controls.Add(lowcommitthreshold);
-			layout.Controls.Add(new AlignedLabel() { Text = "Commit level" });
+			layout.Controls.Add(new Extensions.Label() { Text = "Commit level" });
 			lowcommitlevel = new NumericUpDown() { Maximum = 15, Minimum = 0, Value = 3 };
 			tooltip.SetToolTip(lowcommitlevel, "How many consequent samples must match threshold to commit to it.");
 			layout.Controls.Add(lowcommitlevel);
-			layout.Controls.Add(new AlignedLabel() { Text = "Backoff high CPU%" });
+			layout.Controls.Add(new Extensions.Label() { Text = "Backoff high CPU%" });
 			lowbackoffhigh = new Extensions.NumericUpDownEx() { Unit = "%", Maximum = 95, Minimum = 5, Value = 50 };
 			layout.Controls.Add(lowbackoffhigh);
-			layout.Controls.Add(new AlignedLabel() { Text = "Backoff average CPU%" });
+			layout.Controls.Add(new Extensions.Label() { Text = "Backoff average CPU%" });
 			lowbackoffmean = new Extensions.NumericUpDownEx() { Unit = "%", Maximum = 95, Minimum = 5, Value = 50 };
 			layout.Controls.Add(lowbackoffmean);
-			layout.Controls.Add(new AlignedLabel() { Text = "Backoff low CPU%" });
+			layout.Controls.Add(new Extensions.Label() { Text = "Backoff low CPU%" });
 			lowbackofflow = new Extensions.NumericUpDownEx() { Unit = "%", Maximum = 95, Minimum = 5, Value = 50 };
 			layout.Controls.Add(lowbackofflow);
-			layout.Controls.Add(new AlignedLabel() { Text = "Backoff level" });
+			layout.Controls.Add(new Extensions.Label() { Text = "Backoff level" });
 			lowbackofflevel = new NumericUpDown() { Maximum = 10, Minimum = 1, Value = 5 };
 			layout.Controls.Add(lowbackofflevel);
 
-			layout.Controls.Add(new AlignedLabel() { Text = "Queue barrier" });
+			layout.Controls.Add(new Extensions.Label() { Text = "Queue barrier" });
 			loQueue = new NumericUpDown() { Maximum = 100, Minimum = 0, Value = 5 };
 			layout.Controls.Add(loQueue);
 			tooltip.SetToolTip(loQueue, "If there are at least this many queued threads, low mode is disallowed.");

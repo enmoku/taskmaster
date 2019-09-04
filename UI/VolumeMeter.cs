@@ -38,9 +38,9 @@ namespace Taskmaster.UI
 	{
 		readonly ProgressBar OutputVolume, InputVolume;
 
-		readonly AlignedLabel
-			OutputVolumeLabel = new AlignedLabel() { Text = "0.0 %", AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleRight, Dock = DockStyle.Right, },
-			InputVolumeLabel = new AlignedLabel() { Text = "0.0 %", AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleRight, Dock = DockStyle.Right, };
+		readonly Extensions.Label
+			OutputVolumeLabel = new Extensions.Label() { Text = "0.0 %", AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleRight, Dock = DockStyle.Right, },
+			InputVolumeLabel = new Extensions.Label() { Text = "0.0 %", AutoSize = true, TextAlign = System.Drawing.ContentAlignment.MiddleRight, Dock = DockStyle.Right, };
 
 		int _volumeoutputcap = 10_000;
 		public int VolumeOutputCap { get => _volumeoutputcap; set => _volumeoutputcap = value.Constrain(20, 100) * 100; }
@@ -131,11 +131,11 @@ namespace Taskmaster.UI
 				//ForeColor = System.Drawing.Color.LightGoldenrodYellow,
 			};
 
-			barlayout.Controls.Add(new AlignedLabel() { Text = "Output", TextAlign = System.Drawing.ContentAlignment.MiddleRight, AutoSize = true, Dock = DockStyle.Right });
+			barlayout.Controls.Add(new Extensions.Label() { Text = "Output", TextAlign = System.Drawing.ContentAlignment.MiddleRight, AutoSize = true, Dock = DockStyle.Right });
 			barlayout.Controls.Add(OutputVolume);
 			barlayout.Controls.Add(OutputVolumeLabel);
 
-			barlayout.Controls.Add(new AlignedLabel() { Text = "Input", TextAlign = System.Drawing.ContentAlignment.MiddleRight, AutoSize = true, Dock = DockStyle.Right });
+			barlayout.Controls.Add(new Extensions.Label() { Text = "Input", TextAlign = System.Drawing.ContentAlignment.MiddleRight, AutoSize = true, Dock = DockStyle.Right });
 			barlayout.Controls.Add(InputVolume);
 			barlayout.Controls.Add(InputVolumeLabel);
 

@@ -36,7 +36,7 @@ namespace Taskmaster.UI
 	{
 		readonly ProgressBar coreProgress;
 		readonly ProgressBar subProgress;
-		readonly AlignedLabel loadMessage;
+		readonly Extensions.Label loadMessage;
 
 		readonly Extensions.ListViewEx LoadEventLog;
 
@@ -70,7 +70,7 @@ namespace Taskmaster.UI
 				ColumnCount = 2,
 			};
 
-			loadMessage = new AlignedLabel()
+			loadMessage = new Extensions.Label()
 			{
 				Dock = DockStyle.Top,
 				Anchor = AnchorStyles.Top | AnchorStyles.Left,

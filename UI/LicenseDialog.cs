@@ -31,6 +31,9 @@ namespace Taskmaster.UI
 {
 	class LicenseDialog : UniForm, IDisposable
 	{
+		readonly Extensions.Button buttonAccept, buttonRefuse;
+		readonly Extensions.Label requiredLabel;
+
 		internal LicenseDialog(bool initial = true, bool center = false)
 			: base(centerOnScreen: initial || center)
 		{
@@ -72,13 +75,13 @@ namespace Taskmaster.UI
 			licensebox.SelectionStart = 0;
 			licensebox.SelectionLength = 0;
 
-			var buttonAccept = new UI.Extensions.Button()
+			buttonAccept = new Extensions.Button()
 			{
 				Text = "Accept",
 				Anchor = AnchorStyles.Right,
 			};
 
-			var buttonRefuse = new UI.Extensions.Button()
+			buttonRefuse = new Extensions.Button()
 			{
 				Text = "Refuse",
 				Anchor = AnchorStyles.Left,
@@ -90,7 +93,7 @@ namespace Taskmaster.UI
 
 			if (initial) buttonlayout.Controls.Add(buttonRefuse);
 
-			var required = new UI.AlignedLabel()
+			requiredLabel = new Extensions.Label()
 			{
 				Text = "You must accept the following license to use this application.",
 				AutoSize = true,
@@ -98,7 +101,7 @@ namespace Taskmaster.UI
 				Font = new System.Drawing.Font(System.Drawing.FontFamily.GenericSansSerif, DefaultFont.Size * 1.2f),
 			};
 
-			if (initial) layout.Controls.Add(required);
+			if (initial) layout.Controls.Add(requiredLabel);
 			layout.Controls.Add(licensebox);
 			layout.Controls.Add(buttonlayout);
 
@@ -121,5 +124,27 @@ namespace Taskmaster.UI
 
 			ResumeLayout(performLayout: false);
 		}
+
+		#region IDisposable Support
+		private bool disposed = false;
+
+		protected override void Dispose(bool disposing)
+		{
+			if (disposed) return;
+
+			disposed = true;
+
+			if (disposing)
+			{
+				buttonAccept.Dispose();
+				buttonRefuse.Dispose();
+				requiredLabel.Dispose();
+			}
+
+			base.Dispose(disposing);
+		}
+
+		public new void Dispose() => Dispose(true);
+		#endregion
 	}
 }

@@ -73,7 +73,7 @@ namespace Taskmaster.UI.Config
 			cancelbutton.Click += Cancelbutton_Click;
 
 			// IGNORE list
-			layout.Controls.Add(new AlignedLabel { Text = "Ignore list", Font = BoldFont, Padding = BigPadding });
+			layout.Controls.Add(new Extensions.Label { Text = "Ignore list", Font = BoldFont, Padding = BigPadding });
 			layout.Controls.Add(new EmptySpace());
 
 			var ignoreList = new Extensions.TextBox() { ReadOnly = true, Multiline = true, Dock = DockStyle.Top, Padding = LeftSubPadding, Anchor = AnchorStyles.Top | AnchorStyles.Left, ScrollBars = ScrollBars.Vertical, Height = Font.Height * 4 };
@@ -84,7 +84,7 @@ namespace Taskmaster.UI.Config
 			ignoreList.Font = Font;
 
 			// PROTECT list
-			layout.Controls.Add(new AlignedLabel { Text = "Protected list", Font = BoldFont, Padding = BigPadding });
+			layout.Controls.Add(new Extensions.Label { Text = "Protected list", Font = BoldFont, Padding = BigPadding });
 			layout.Controls.Add(new EmptySpace());
 
 			var protectList = new Extensions.TextBox() { ReadOnly = true, Multiline = true, Dock = DockStyle.Top, Padding = LeftSubPadding, Anchor = AnchorStyles.Top | AnchorStyles.Left, ScrollBars = ScrollBars.Vertical, Height = Font.Height * 4 };
@@ -94,7 +94,7 @@ namespace Taskmaster.UI.Config
 			layout.SetColumnSpan(protectList, 2);
 
 			// USER INTERFACE
-			layout.Controls.Add(new AlignedLabel { Text = "User Interface", Font = BoldFont, Padding = BigPadding });
+			layout.Controls.Add(new Extensions.Label { Text = "User Interface", Font = BoldFont, Padding = BigPadding });
 			layout.Controls.Add(new EmptySpace());
 
 			var UIUpdateFrequency = new Extensions.NumericUpDownEx()
@@ -115,17 +115,17 @@ namespace Taskmaster.UI.Config
 				uiupdatems = mainwindow?.UIUpdateFrequency ?? 2000;
 			UIUpdateFrequency.Value = uiupdatems;
 
-			layout.Controls.Add(new AlignedLabel { Text = "Refresh frequency", Padding = LeftSubPadding });
+			layout.Controls.Add(new Extensions.Label { Text = "Refresh frequency", Padding = LeftSubPadding });
 			layout.Controls.Add(UIUpdateFrequency);
 
 			// FOREGROUND
 
-			layout.Controls.Add(new AlignedLabel { Text = "Foreground", Font = BoldFont, Padding = BigPadding });
+			layout.Controls.Add(new Extensions.Label { Text = "Foreground", Font = BoldFont, Padding = BigPadding });
 
 			if (ActiveAppMonitorEnabled)
 				layout.Controls.Add(new EmptySpace());
 			else
-				layout.Controls.Add(new AlignedLabel() { Text = "Disabled", Font = BoldFont, Padding = BigPadding, ForeColor = System.Drawing.Color.Red });
+				layout.Controls.Add(new Extensions.Label() { Text = "Disabled", Font = BoldFont, Padding = BigPadding, ForeColor = System.Drawing.Color.Red });
 
 			var fgHysterisis = new Extensions.NumericUpDownEx()
 			{
@@ -147,12 +147,12 @@ namespace Taskmaster.UI.Config
 				fgHysterisis.Value = perfsec.Get(Process.Constants.ForegroundHysterisis)?.Int.Constrain(200, 30000) ?? 1500;
 			}
 
-			layout.Controls.Add(new AlignedLabel { Text = "Foreground hysterisis", Padding = LeftSubPadding });
+			layout.Controls.Add(new Extensions.Label { Text = "Foreground hysterisis", Padding = LeftSubPadding });
 			layout.Controls.Add(fgHysterisis);
 
 			// PROCESS MANAGEMENT
 
-			layout.Controls.Add(new AlignedLabel { Text = "Process management", Font = BoldFont, Padding = BigPadding });
+			layout.Controls.Add(new Extensions.Label { Text = "Process management", Font = BoldFont, Padding = BigPadding });
 			layout.Controls.Add(new EmptySpace());
 
 			var IgnoreRecentlyModifiedCooldown = new Extensions.NumericUpDownEx()
@@ -163,7 +163,7 @@ namespace Taskmaster.UI.Config
 				Value = Convert.ToDecimal(Process.Manager.IgnoreRecentlyModified.Value.TotalMinutes),
 			};
 
-			layout.Controls.Add(new AlignedLabel { Text = "Ignore recently modified", Padding = LeftSubPadding });
+			layout.Controls.Add(new Extensions.Label { Text = "Ignore recently modified", Padding = LeftSubPadding });
 			layout.Controls.Add(IgnoreRecentlyModifiedCooldown);
 
 			var watchlistPowerdown = new Extensions.NumericUpDownEx()
@@ -181,17 +181,17 @@ namespace Taskmaster.UI.Config
 			if (PowerManagerEnabled)
 				watchlistPowerdown.Value = Convert.ToDecimal(powermanager.PowerdownDelay.HasValue ? powermanager.PowerdownDelay.Value.TotalSeconds : 0);
 
-			layout.Controls.Add(new AlignedLabel { Text = "Powerdown delay", Padding = LeftSubPadding });
+			layout.Controls.Add(new Extensions.Label { Text = "Powerdown delay", Padding = LeftSubPadding });
 			layout.Controls.Add(watchlistPowerdown);
 
 			// VOLUME METER
 
-			layout.Controls.Add(new AlignedLabel { Text = Constants.VolumeMeter, Font = BoldFont, Padding = BigPadding });
+			layout.Controls.Add(new Extensions.Label { Text = Constants.VolumeMeter, Font = BoldFont, Padding = BigPadding });
 
 			if (AudioManagerEnabled)
 				layout.Controls.Add(new EmptySpace());
 			else
-				layout.Controls.Add(new AlignedLabel() { Text = "Disabled", Font = BoldFont, Padding = BigPadding, ForeColor = System.Drawing.Color.Red });
+				layout.Controls.Add(new Extensions.Label() { Text = "Disabled", Font = BoldFont, Padding = BigPadding, ForeColor = System.Drawing.Color.Red });
 
 			var volmeter_topmost = new CheckBox();
 			var volmeter_show = new CheckBox();
@@ -234,22 +234,22 @@ namespace Taskmaster.UI.Config
 			volmeter_capin.Value = t_volmeter_capinmax;
 			volmeter_show.Checked = t_volmeter_show;
 
-			layout.Controls.Add(new AlignedLabel { Text = "Refresh", Padding = LeftSubPadding });
+			layout.Controls.Add(new Extensions.Label { Text = "Refresh", Padding = LeftSubPadding });
 			layout.Controls.Add(volmeter_frequency);
 			tooltip.SetToolTip(volmeter_frequency, "Update frequency for the volume bars. Lower is faster.");
 
-			layout.Controls.Add(new AlignedLabel { Text = "Output cap", Padding = LeftSubPadding });
+			layout.Controls.Add(new Extensions.Label { Text = "Output cap", Padding = LeftSubPadding });
 			layout.Controls.Add(volmeter_capout);
 			tooltip.SetToolTip(volmeter_capout, "Maximum volume for the bars. Helps make the bars more descriptive in case your software volume is very low.");
-			layout.Controls.Add(new AlignedLabel { Text = "Input cap", Padding = LeftSubPadding });
+			layout.Controls.Add(new Extensions.Label { Text = "Input cap", Padding = LeftSubPadding });
 			layout.Controls.Add(volmeter_capin);
 			tooltip.SetToolTip(volmeter_capin, "Maximum volume for the bars. Helps make the bars more descriptive in case your software volume is very low.");
 
-			layout.Controls.Add(new AlignedLabel { Text = "Topmost", Padding = LeftSubPadding });
+			layout.Controls.Add(new Extensions.Label { Text = "Topmost", Padding = LeftSubPadding });
 			layout.Controls.Add(volmeter_topmost);
 			tooltip.SetToolTip(volmeter_topmost, "Keeps the volume meter over other windows.");
 
-			layout.Controls.Add(new AlignedLabel { Text = Constants.ShowOnStart, Padding = LeftSubPadding });
+			layout.Controls.Add(new Extensions.Label { Text = Constants.ShowOnStart, Padding = LeftSubPadding });
 			layout.Controls.Add(volmeter_show);
 			tooltip.SetToolTip(volmeter_show, "Show volume meter on start.");
 
@@ -277,11 +277,11 @@ namespace Taskmaster.UI.Config
 			tooltip.SetToolTip(netpoll_frequency, "Update frequency network device list.");
 			*/
 
-			var healthmonitor = new AlignedLabel { Text = "Health monitor", Font = BoldFont, Padding = BigPadding };
+			var healthmonitor = new Extensions.Label { Text = "Health monitor", Font = BoldFont, Padding = BigPadding };
 			layout.Controls.Add(healthmonitor);
 			layout.SetColumnSpan(healthmonitor, 2);
 
-			layout.Controls.Add(new AlignedLabel { Text = "Check frequency", Padding = LeftSubPadding });
+			layout.Controls.Add(new Extensions.Label { Text = "Check frequency", Padding = LeftSubPadding });
 			var healthmonfrequency = new Extensions.NumericUpDownEx()
 			{
 				Minimum = 1M,
@@ -293,7 +293,7 @@ namespace Taskmaster.UI.Config
 			layout.Controls.Add(healthmonfrequency);
 			tooltip.SetToolTip(healthmonfrequency, "How often to check for system health.");
 
-			layout.Controls.Add(new AlignedLabel { Text = "Memory auto-page threshold", Padding = LeftSubPadding });
+			layout.Controls.Add(new Extensions.Label { Text = "Memory auto-page threshold", Padding = LeftSubPadding });
 			var memoryautopage = new Extensions.NumericUpDownEx()
 			{
 				Minimum = 0M,
@@ -311,13 +311,13 @@ namespace Taskmaster.UI.Config
 			var freememsec = hmcfg.Config["Free Memory"];
 			memoryautopage.Value = freememsec.Get("Threshold")?.Int.Constrain(0, 8000) ?? 1000;
 
-			var extrafeatures = new AlignedLabel { Text = "Extra features", Font = BoldFont, Padding = BigPadding };
+			var extrafeatures = new Extensions.Label { Text = "Extra features", Font = BoldFont, Padding = BigPadding };
 			layout.Controls.Add(extrafeatures);
 			layout.SetColumnSpan(extrafeatures, 2);
 
 			var parentoption = new CheckBox() { Checked = processmanager.EnableParentFinding, };
 
-			layout.Controls.Add(new AlignedLabel { Text = "Enable parent declaration", Padding = LeftSubPadding });
+			layout.Controls.Add(new Extensions.Label { Text = "Enable parent declaration", Padding = LeftSubPadding });
 			layout.Controls.Add(parentoption);
 			tooltip.SetToolTip(parentoption, "Allows parent process declaration in logs. Enabled per-rule.\nThis slows down logging noticeably.");
 

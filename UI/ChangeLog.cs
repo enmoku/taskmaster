@@ -57,7 +57,7 @@ namespace Taskmaster.UI
 				AutoSize = true,
 			};
 
-			var Title = new AlignedLabel() { Text = "Changes since " };
+			var Title = new Extensions.Label() { Text = "Changes since " };
 
 			layout.Controls.Add(Title);
 			layout.SetColumnSpan(Title, 2);
