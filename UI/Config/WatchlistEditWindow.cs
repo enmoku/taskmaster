@@ -247,7 +247,7 @@ namespace Taskmaster.UI.Config
 			tooltip.SetToolTip(ignorelist, "Executables to ignore for matching with this rule.\nOnly exact matches work.\n\nRequires path to be defined.\nHas no effect if executable is defined.");
 			execName.TextChanged += (_, _ea) => ignorelist.Enabled = (execName.Text.Length == 0);
 
-			if (Controller.IgnoreList != null)
+			if (Controller.IgnoreList.Length > 0)
 			{
 				foreach (string item in Controller.IgnoreList)
 					ignorelist.Items.Add(item);
@@ -840,7 +840,7 @@ namespace Taskmaster.UI.Config
 				Controller.IgnoreList = ignlist.ToArray();
 			}
 			else
-				Controller.IgnoreList = null;
+				Controller.IgnoreList = Array.Empty<string>();
 
 			if (desc.Text.Length > 0)
 				Controller.Description = desc.Text;

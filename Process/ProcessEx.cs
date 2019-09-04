@@ -87,7 +87,7 @@ namespace Taskmaster.Process
 		/// <summary>
 		/// Controller associated with this process.
 		/// </summary>
-		public Process.Controller Controller { get; set; } = null;
+		public Process.Controller? Controller { get; set; } = null;
 
 		public bool PriorityProtected { get; set; } = false;
 		public bool AffinityProtected { get; set; } = false;

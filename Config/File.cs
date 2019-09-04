@@ -77,7 +77,7 @@ namespace Taskmaster.Configuration
 
 			OnUnload?.Invoke(this);
 
-			Config = null;
+			//Config = null; // above invokve should cause this instance to be unloaded
 		}
 
 		/// <summary>

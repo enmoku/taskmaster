@@ -148,7 +148,7 @@ namespace Taskmaster
 
 			LoadEvent?.Invoke(null, new LoadEventArgs("Logger initialized.", LoadEventType.Loaded));
 
-			args = null; // silly
+			args = Array.Empty<string>(); // silly
 
 			// STARTUP
 			var builddate = BuildDate();
@@ -287,7 +287,14 @@ namespace Taskmaster
 			var qol = cfg[HumanReadable.Generic.QualityOfLife];
 			ExitConfirmation = qol.GetOrSet("Exit confirmation", true).Bool;
 			GlobalHotkeys = qol.GetOrSet("Register global hotkeys", false).Bool;
-			AffinityStyle = qol.GetOrSet(HumanReadable.Hardware.CPU.Settings.AffinityStyle, 0).Int.Constrain(0, 1);
+			int affinitystylet = qol.GetOrSet(HumanReadable.Hardware.CPU.Settings.AffinityStyle, 0).Int.Constrain(0, 2);
+			AffinityStyle = affinitystylet switch
+			{
+				0 => BitMaskStyle.BitMask,
+				1 => BitMaskStyle.Decimal,
+				2 => BitMaskStyle.Mixed,
+				_ => BitMaskStyle.Decimal,
+			};
 
 			var logsec = cfg[HumanReadable.Generic.Logging];
 			var Verbosity = logsec.GetOrSet(Constants.Verbosity, 0)
@@ -696,7 +703,7 @@ namespace Taskmaster
 				*/
 
 				int selfAffMask = SelfAffinity.Replace(0, Process.Utility.FullCPUMask);
-				Log.Information($"<Core> Self-optimizing – Priority: {SelfPriority.ToString()}; Affinity: {HumanInterface.BitMask(selfAffMask, Hardware.Utility.ProcessorCount)}");
+				Log.Information($"<Core> Self-optimizing – Priority: {SelfPriority.ToString()}; Affinity: {HumanInterface.BitMask(selfAffMask, Hardware.Utility.ProcessorCount)} [{selfAffMask.ToString()}]");
 
 				self.ProcessorAffinity = new IntPtr(selfAffMask); // this should never throw an exception
 				self.PriorityClass = SelfPriority;

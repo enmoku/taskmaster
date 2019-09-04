@@ -242,8 +242,8 @@ namespace Taskmaster.Process
 			if (Process.Manager.DebugProcesses)
 			{
 				sbs = new StringBuilder("Affinity Strategy(", 256)
-					.Append(Convert.ToString(initialmask, 2).PadLeft(cores, '0')).Append(" -> ")
-					.Append(Convert.ToString(targetmask, 2).PadLeft(cores, '0'))
+					.Append(HumanInterface.BitMask(initialmask, cores)).Append(" -> ")
+					.Append(HumanInterface.BitMask(targetmask, cores))
 					.Append(", ").Append(strategy.ToString()).Append(')');
 			}
 
@@ -271,13 +271,15 @@ namespace Taskmaster.Process
 				result = initialmask;
 
 				sbs?.Append(" Cores(").Append(Bit.Count(initialmask)).Append(" / ").Append(Bit.Count(targetmask))
-					.Append(") old mask ").Append(Convert.ToString(initialmask, 2).PadLeft(cores, '0'));
+					.Append(") old mask ").Append(HumanInterface.BitMask(initialmask, cores))
+					.Append(" [").Append(initialmask).Append(']');
 
 				if (excesscores > 0)
 				{
 					result = Bit.Unfill(result, targetmask, excesscores);
 					sbs?.Append("; excess: ").Append(excesscores.ToString())
-						.Append(" pruned to: ").Append(Convert.ToString(result, 2).PadLeft(cores, '0'));
+						.Append(" pruned to: ").Append(HumanInterface.BitMask(result, cores))
+						.Append(" [").Append(result).Append(']');
 				}
 
 				bool correctlySlotted = Bit.And(result, targetmask) == result;
@@ -297,7 +299,8 @@ namespace Taskmaster.Process
 					//	result = Bit.Fill(result, targetmask, excesscores);
 
 					sbs?.Append(" ×").Append(incorrectCount.ToString())
-						.Append("; corrected to ").Append(Convert.ToString(result, 2).PadLeft(cores, '0'));
+						.Append("; corrected to ").Append(HumanInterface.BitMask(result, cores))
+						.Append(" [").Append(result).Append(']');
 				}
 			}
 			else if (strategy == AffinityStrategy.Scatter)
@@ -324,7 +327,7 @@ namespace Taskmaster.Process
 
 			if (sbs != null)
 			{
-				sbs.Append("; new = ").Append(Convert.ToString(result, 2).PadLeft(cores, '0'));
+				sbs.Append("; new = ").Append(HumanInterface.BitMask(result, cores));
 				Logging.DebugMsg(sbs.ToString());
 			}
 
@@ -417,7 +420,7 @@ namespace Taskmaster.Process
 			return false;
 		}
 
-		public static bool GetInfo(int ProcessID, out ProcessEx? info, System.Diagnostics.Process? process = null, Process.Controller? controller = null, string name = null, string path = null, bool getPath = false)
+		public static bool GetInfo(int ProcessID, out ProcessEx? info, System.Diagnostics.Process? process = null, Process.Controller? controller = null, string name = default, string path = default, bool getPath = false)
 		{
 			try
 			{

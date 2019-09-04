@@ -205,7 +205,7 @@ namespace Taskmaster.Process
 		public float Volume { get => _volume; set => _volume = value.Constrain(0.0f, 1.0f); }
 		public Audio.VolumeStrategy VolumeStrategy { get; set; } = Audio.VolumeStrategy.Ignore;
 
-		public string[] IgnoreList { get; set; } = null;
+		public string[] IgnoreList { get; set; } = Array.Empty<string>();
 
 		/// <summary>
 		/// Processes are viable for analysis.
@@ -723,7 +723,7 @@ namespace Taskmaster.Process
 			var preforder = app["Preference"];
 			if (preforder.TryInt != OrderPreference) preforder.Int = OrderPreference;
 
-			if (IgnoreList?.Length > 0)
+			if (IgnoreList.Length > 0)
 			{
 				var ignlist = app[HumanReadable.Generic.Ignore];
 				if (!(ignlist.StringArray?.SequenceEqual(IgnoreList) ?? false)) ignlist.StringArray = IgnoreList;
@@ -1227,7 +1227,7 @@ namespace Taskmaster.Process
 		public bool Ignored(ProcessEx info)
 		{
 			string name = info.Name;
-			if (IgnoreList?.Any(item => item.Equals(name, StringComparison.InvariantCultureIgnoreCase)) == true)
+			if (IgnoreList.Any(item => item.Equals(name, StringComparison.InvariantCultureIgnoreCase)) == true)
 			{
 				info.State = HandlingState.Abandoned;
 				return true; // return ProcessState.Ignored;
@@ -2034,7 +2034,9 @@ namespace Taskmaster.Process
 
 			if (AffinityMask >= 0)
 			{
-				sbs.Append("Affinity: ").Append(HumanInterface.BitMask(AffinityMask, Hardware.Utility.ProcessorCount)).Append(" [").Append(AffinityMask.ToString()).Append(']');
+				sbs.Append("Affinity: ")
+					.Append(HumanInterface.BitMask(AffinityMask, Hardware.Utility.ProcessorCount))
+					.Append(" [").Append(AffinityMask.ToString()).Append(']');
 				if (AffinityIdeal >= 0)
 					sbs.Append(" – ideal core: ").Append(AffinityIdeal);
 				sbs.Append(" – strategy: ").AppendLine(AffinityStrategy.ToString());
@@ -2046,7 +2048,7 @@ namespace Taskmaster.Process
 			if (IOPriority != IOPriority.Ignore)
 				sbs.Append("I/O priority: ").AppendLine(IOPriority.ToString());
 
-			if (IgnoreList?.Length > 0)
+			if (IgnoreList.Length > 0)
 				sbs.Append("Ignore: ").AppendLine(string.Join(", ", IgnoreList));
 
 			sbs.AppendLine();

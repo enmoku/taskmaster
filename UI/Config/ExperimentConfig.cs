@@ -85,7 +85,6 @@ namespace Taskmaster.UI.Config
 			};
 			tooltip.SetToolTip(RecordAnalysisDelay, "Values higher than 0 enable process analysis\nThis needs to be enabled per watchlist rule to function");
 
-			layout.Controls.Add(new AlignedLabel { Text = "Record analysis delay" });
 			layout.Controls.Add(new Extensions.Label { Text = "Record analysis delay" });
 			layout.Controls.Add(RecordAnalysisDelay);
 

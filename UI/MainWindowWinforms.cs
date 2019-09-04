@@ -413,6 +413,7 @@ namespace Taskmaster.UI
 				Checked = Network.Manager.ShowNetworkErrors,
 				CheckOnClick = true,
 			};
+
 			menu_config_logging_neterrors.Click += (_, _ea) =>
 			{
 				Network.Manager.ShowNetworkErrors = menu_config_logging_neterrors.Checked;
@@ -455,9 +456,15 @@ namespace Taskmaster.UI
 				loglevelswitch.MinimumLevel = Serilog.Events.LogEventLevel.Verbose;
 			};
 
+			var menu_config_logging_bitmask = new ToolStripMenuItem("Bitmask")
+			{
+				CheckOnClick = true,
+			};
+
 			menu_config_logging.DropDownItems.Add(menu_config_logging_adjusts);
 			menu_config_logging_adjusts.DropDownItems.Add(menu_config_logging_showunmodified);
 			menu_config_logging_adjusts.DropDownItems.Add(menu_config_logging_showonlyfinal);
+			menu_config_logging.DropDownItems.Add(menu_config_logging_bitmask);
 			menu_config_logging.DropDownItems.Add(menu_config_logging_session);
 			menu_config_logging.DropDownItems.Add(menu_config_logging_neterrors);
 			menu_config_logging.DropDownItems.Add(new ToolStripSeparator());
@@ -1708,7 +1715,7 @@ namespace Taskmaster.UI
 			if (prc.AffinityMask > 0)
 			{
 				if (AffinityStyle == BitMaskStyle.BitMask)
-					aff = HumanInterface.BitMask(prc.AffinityMask, Hardware.Utility.ProcessorCount).PadLeft(Hardware.Utility.ProcessorCount, '0');
+					aff = HumanInterface.BitMask(prc.AffinityMask, Hardware.Utility.ProcessorCount);
 				else
 					aff = prc.AffinityMask.ToString();
 			}
@@ -4363,6 +4370,13 @@ namespace Taskmaster.UI
 				// Pointless
 				LogList.Dispose();
 				menu.Dispose();
+
+				/*
+				activeLabel.Dispose();
+				activeExec.Dispose();
+				activeFullscreen.Dispose();
+				activePID.Dispose();
+				*/
 			}
 
 			base.Dispose(disposing);

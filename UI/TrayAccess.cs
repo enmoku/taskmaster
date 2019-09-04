@@ -55,7 +55,7 @@ namespace Taskmaster.UI
 
 		readonly ContextMenuStrip ms;
 
-		public event EventHandler<DisposedEventArgs> OnDisposed;
+		public event EventHandler<DisposedEventArgs>? OnDisposed;
 
 		public UIVisibleDelegate? TrayMenuShown;
 

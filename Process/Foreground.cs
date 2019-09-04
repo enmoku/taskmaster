@@ -73,37 +73,40 @@ namespace Taskmaster.Process
 			Hysterisis = TimeSpan.FromMilliseconds(hysterisisSetting);
 
 			var emsec = corecfg.Config["Emergency"];
-			HangKillTick = emsec.GetOrSet("Kill hung", 180 * 5)
+			int hangkilltimet = emsec.GetOrSet("Kill hung", 180 * 5)
 				.InitComment("Kill the application after this many seconds. 0 disables. Minimum actual kill time is minimize/reduce time + 60.")
 				.Int.Constrain(0, 60 * 60 * 4);
+			HangKillTime = hangkilltimet > 0 ? TimeSpan.FromSeconds(hangkilltimet) : TimeSpan.Zero;
 
-			HangMinimizeTick = emsec.GetOrSet("Hung minimize time", 180)
+			int hangminimizetimet = emsec.GetOrSet("Hung minimize time", 180)
 				.InitComment("Try to minimize hung app after this many seconds.")
 				.Int.Constrain(0, 60 * 60 * 2);
+			HangMinimizeTime = hangminimizetimet > 0 ? TimeSpan.FromSeconds(hangminimizetimet) : TimeSpan.Zero;
 
-			HangReduceTick = emsec.GetOrSet("Hung reduce time", 300)
+			int hangreducetimet = emsec.GetOrSet("Hung reduce time", 300)
 				.InitComment("Reduce affinity and priority of hung app after this many seconds.")
 				.Int.Constrain(0, 60 * 60 * 2);
+			HangReduceTime = hangreducetimet > 0 ? TimeSpan.FromSeconds(hangreducetimet) : TimeSpan.Zero;
 
-			int killtickmin = (Math.Max(HangReduceTick, HangMinimizeTick)) + 60;
-			if (HangKillTick > 0 && HangKillTick < killtickmin)
-				HangKillTick = killtickmin;
+			int killtickmin = Math.Max(hangreducetimet, hangminimizetimet) + 60;
+			if (!HangKillTime.IsZero() && HangKillTime.TotalSeconds < killtickmin)
+				HangKillTime = TimeSpan.FromSeconds(killtickmin);
 
-			if (HangKillTick > 0 || HangReduceTick > 0 || HangMinimizeTick > 0)
+			if (!HangKillTime.IsZero() || !HangReduceTime.IsZero() || !HangMinimizeTime.IsZero())
 			{
 				var sbs = new StringBuilder("<Foreground> Hang action timers: ", 256);
 
-				if (HangMinimizeTick > 0)
+				if (!HangMinimizeTime.IsZero())
 				{
-					sbs.Append("Minimize: ").Append(HangMinimizeTick).Append('s');
-					if (HangReduceTick > 0 || HangKillTick > 0) sbs.Append(", ");
+					sbs.Append("Minimize: ").Append(HangMinimizeTime.TotalSeconds.ToString("N0")).Append('s');
+					if (!HangReduceTime.IsZero() || !HangKillTime.IsZero()) sbs.Append(", ");
 				}
-				if (HangReduceTick > 0)
+				if (!HangReduceTime.IsZero())
 				{
-					sbs.Append("Reduce: ").Append(HangReduceTick).Append('s');
-					if (HangKillTick > 0) sbs.Append(", ");
+					sbs.Append("Reduce: ").Append(HangReduceTime.TotalSeconds.ToString("N0")).Append('s');
+					if (!HangKillTime.IsZero()) sbs.Append(", ");
 				}
-				if (HangKillTick > 0) sbs.Append("Kill: ").Append(HangKillTick).Append('s');
+				if (!HangKillTime.IsZero()) sbs.Append("Kill: ").Append(HangKillTime.TotalSeconds.ToString("N0")).Append('s');
 
 				Log.Information(sbs.ToString());
 			}
@@ -159,13 +162,24 @@ namespace Taskmaster.Process
 		readonly object FGLock = new object();
 
 		int PreviousFG = 0;
-		int HangTick = 0, HangMinimizeTick = 180, HangReduceTick = 240, HangKillTick = 300;
+		TimeSpan
+			HangMinimizeTime = TimeSpan.FromMinutes(3d),
+			HangReduceTime = TimeSpan.FromMinutes(4d),
+			HangKillTime = TimeSpan.FromMinutes(5d);
+
+		int HangTick = 0;
+
+		bool HangWarning = false;
 
 		void ResetHanging()
 		{
 			HangTick = 0;
 			ReduceTried = Reduced = false;
 			MinimizeTried = Minimized = false;
+
+			if (HangWarning) Log.Debug("<Foreground> Hung application status reset (observed hang time: " + HangTime.To(DateTimeOffset.UtcNow).TotalSeconds.ToString("N1") + " seconds).");
+
+			HangWarning = false;
 		}
 
 		System.Diagnostics.Process? Foreground = null;
@@ -271,15 +285,17 @@ namespace Taskmaster.Process
 
 					if (HangTick == 1)
 					{
-						sbs.Append(" is not responding!");
+						sbs.Append(" is not responding!")
+							.Append(" (Hung for ").Append(HangTime.To(now).TotalSeconds.ToString("N1")).Append(" seconds).");
 						Log.Warning(sbs.ToString());
+						HangWarning = true;
 					}
 					else if (HangTick > 1)
 					{
-						double hungSeconds = now.Since(HangTime).TotalSeconds;
+						var hungTime = now.Since(HangTime);
 
 						if (HangTick == 3)
-							trayaccess?.Tooltip(5000, name + " #" + lfgpid.ToString(), "Foreground HUNG!", System.Windows.Forms.ToolTipIcon.Warning);
+							trayaccess?.Tooltip(5000, name + " #" + lfgpid.ToString(), "Foreground HUNG!\nHung for " + HangTime.To(now).TotalSeconds.ToString("N1") + " seconds.", System.Windows.Forms.ToolTipIcon.Warning);
 
 						sbs.Append(" hung!");
 
@@ -291,10 +307,12 @@ namespace Taskmaster.Process
 
 						sbs.Append(" – ");
 						bool acted = false;
-						if (HangMinimizeTick > 0 && hungSeconds > HangMinimizeTick && !Minimized)
+						if (!HangMinimizeTime.IsZero() && hungTime >= HangMinimizeTime && !Minimized)
 						{
-							if (lfgpid == ForegroundId)
+							lock (FGLock)
 							{
+								if (lfgpid != ForegroundId) return;
+
 								bool rv = Taskmaster.NativeMethods.ShowWindow(fgproc.Handle, 11); // 6 = minimize, 11 = force minimize
 
 								if (rv)
@@ -307,13 +325,16 @@ namespace Taskmaster.Process
 								acted = true;
 							}
 						}
-						if (HangReduceTick > 0 && hungSeconds > HangReduceTick && !Reduced)
+
+						if (!HangReduceTime.IsZero() && hungTime >= HangReduceTime && !Reduced)
 						{
-							if (lfgpid == ForegroundId)
+							bool aff = false, prio = false;
+							try
 							{
-								bool aff = false, prio = false;
-								try
+								lock (FGLock)
 								{
+									if (lfgpid != ForegroundId) return;
+
 									if (fgproc.ProcessorAffinity.ToInt32() != 1)
 									{
 										fgproc.ProcessorAffinity = new IntPtr(1); // TODO: set this to something else than the first core
@@ -330,47 +351,48 @@ namespace Taskmaster.Process
 										prio = true;
 									}
 								}
-								catch (OutOfMemoryException) { throw; }
-								catch
-								{
-									sbs.Append("Affinity/Priority reduction failed");
-								}
+							}
+							catch (OutOfMemoryException) { throw; }
+							catch
+							{
+								sbs.Append("Affinity/Priority reduction failed");
+							}
 
-								if (aff || prio)
-								{
-									acted = true;
-									Reduced = true;
-								}
+							if (aff || prio)
+							{
+								acted = true;
+								Reduced = true;
 							}
 						}
-						if (HangKillTick > 0 && hungSeconds > HangKillTick)
-						{
-							if (lfgpid == ForegroundId)
-							{
-								try
-								{
-									lock (FGLock)
-									{
-										fgproc.Kill();
-										fgproc?.Dispose();
 
-										if (fgproc == Foreground)
-										{
-											Foreground = null;
-											ForegroundId = -1;
-										}
+						if (!HangKillTime.IsZero() && hungTime > HangKillTime)
+						{
+							try
+							{
+								lock (FGLock)
+								{
+									if (lfgpid != ForegroundId) return; // last chance to bail
+
+									fgproc.Kill();
+									fgproc?.Dispose();
+
+									if (fgproc == Foreground)
+									{
+										Foreground = null;
+										ForegroundId = -1;
 									}
 
-									if (acted) sbs.Append(", ");
-									sbs.Append("Terminated");
+									acted = true;
 								}
-								catch (OutOfMemoryException) { throw; }
-								catch
-								{
-									if (acted) sbs.Append(", ");
-									sbs.Append("Termination failed");
-								}
-								acted = true;
+
+								if (acted) sbs.Append(", ");
+								sbs.Append("Terminated");
+							}
+							catch (OutOfMemoryException) { throw; }
+							catch
+							{
+								if (acted) sbs.Append(", ");
+								sbs.Append("Termination failed");
 							}
 						}
 
@@ -538,7 +560,7 @@ namespace Taskmaster.Process
 		}
 
 		#region IDisposable
-		public event EventHandler<DisposedEventArgs> OnDisposed;
+		public event EventHandler<DisposedEventArgs>? OnDisposed;
 
 		~ForegroundManager() => Dispose(false);
 
