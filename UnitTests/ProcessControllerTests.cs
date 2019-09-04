@@ -79,13 +79,13 @@ namespace Processes
 			System.Diagnostics.Debug.AutoFlush = true;
 			System.Diagnostics.Debug.Listeners.Add(new System.Diagnostics.ConsoleTraceListener());
 
-			Console.WriteLine("Source: " + Convert.ToString(testSource, 2));
-			Console.WriteLine("Target: " + Convert.ToString(testTarget, 2));
+			Console.WriteLine("Source: " + Convert.ToString(testSource, 2).PadLeft(cores, '0'));
+			Console.WriteLine("Target: " + Convert.ToString(testTarget, 2).PadLeft(cores, '0'));
 
 			int testProduct = Taskmaster.Process.Utility.ApplyAffinityStrategy(
 				testSource, testTarget, Taskmaster.Process.AffinityStrategy.Limit);
 
-			Console.WriteLine("Result: " + Convert.ToString(testProduct, 2));
+			Console.WriteLine("Result: " + Convert.ToString(testProduct, 2).PadLeft(cores, '0'));
 
 			Assert.AreEqual(Bit.Count(testSource), Bit.Count(testProduct));
 		}
@@ -143,19 +143,19 @@ namespace Processes
 			TestContext.WriteLine("Excess: " + excesscores.ToString());
 			if (excesscores > 0)
 			{
-				TestContext.WriteLine("Mask Base: " + Convert.ToString(targetmask, 2));
+				TestContext.WriteLine("Mask Base: " + Convert.ToString(targetmask, 2).PadLeft(testcpus, '0'));
 				for (int i = 0; i < testcpus; i++)
 				{
 					if (Bit.IsSet(targetmask, i))
 					{
 						result = Bit.Unset(result, i);
-						TestContext.WriteLine("Mask Modified: " + Convert.ToString(targetmask, 2));
+						TestContext.WriteLine("Mask Modified: " + Convert.ToString(targetmask, 2).PadLeft(testcpus, '0'));
 						if (--excesscores <= 0) break;
 					}
 					else
 						TestContext.WriteLine("Bit not set: " + i.ToString());
 				}
-				TestContext.WriteLine("Mask Final: " + Convert.ToString(targetmask, 2));
+				TestContext.WriteLine("Mask Final: " + Convert.ToString(targetmask, 2).PadLeft(testcpus, '0'));
 			}
 
 			Assert.AreEqual(sourcemask, targetmask,
