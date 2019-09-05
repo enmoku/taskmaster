@@ -328,15 +328,18 @@ namespace Taskmaster.UI
 				foreach (var pair in LoaderInfos.Values)
 				{
 					var loader = pair.Load;
-					var minutessince = now.Since(loader.Last).TotalMinutes;
+					var timeSinceLastUpdate = now.Since(loader.Last).TotalSeconds;
 
-					if (Trace) Logging.DebugMsg("LOADER UI: " + loader.Instance + " --- active last: " + $"{minutessince:N1} minutes ago");
+					if (Trace) Logging.DebugMsg("LOADER UI: " + loader.Instance + " --- active last: " + $"{timeSinceLastUpdate:N1} seconds ago");
 
-					if (minutessince > 3d)
+					if (timeSinceLastUpdate > 120d)
 					{
 						removeList.Add(pair);
 						continue;
 					}
+
+					if (loader.InstanceCount == 0 && loader.Disinterest > 3)
+						continue;
 
 					int total = loader.InstanceCount, ignored = loader.UninterestingInstances;
 					nTotalInstances += total;
@@ -374,30 +377,20 @@ namespace Taskmaster.UI
 						{
 							pair.Displayed = false;
 							//LoaderList.Items.Remove(pair.ListItem);
-							LoaderListData.Remove(pair);
-							LoaderList.VirtualListSize--;
+							removeList.Add(pair);
 						}
 					}
 				}
 
 				foreach (var loader in removeList)
 				{
+					loader.Active = false;
+
 					Logging.DebugMsg("<Loader> Removing inactive item: " + loader.Load.Instance);
-					LoaderInfos.TryRemove(loader.Load.Instance, out _);
 
-					loader.Displayed = false;
-					var li = loader.ListItem;
-					try
-					{
-						//LoaderList.Items.Remove(li);
-						LoaderListData.Remove(loader);
-					}
-					catch (Exception ex) { Logging.Stacktrace(ex);  }
-					catch { /* NOP */ }
-
-					//ReverseMap.TryRemove(li, out _);
-					loader.ListItem = null;
+					RemoveLoader(loader);
 				}
+
 				LoaderList.VirtualListSize = LoaderListData.Count;
 
 				LoaderListData.Sort(sorter);
@@ -433,29 +426,31 @@ namespace Taskmaster.UI
 			BeginInvoke(new Action(() => RemoveLoader(ea.Loader)));
 		}
 
+		void RemoveLoader(LoadListPair pair)
+		{
+			pair.Active = pair.Displayed = false;
+			pair.ListItem = null;
+
+			LoaderListData.Remove(pair);
+			LoaderInfos.TryRemove(pair.Load.Instance, out _);
+			//LoaderListData.Add(pair);
+			//ReverseMap.TryRemove(li, out _);
+
+			//var li = loader.ListItem;
+			//LoaderList.Items.Remove(li);
+			LoaderListData.Remove(pair);
+
+			//ReverseMap.TryRemove(li, out _);
+
+			LoaderList.VirtualListSize--;
+		}
+
 		void RemoveLoader(Process.InstanceGroupLoad group)
 		{
 			if (disposed || !IsHandleCreated) return;
 
-			try
-			{
-				var key = group.Instance;
-				if (LoaderInfos.TryRemove(key, out var pair))
-				{
-					var li = pair.ListItem;
-					if (li != null) // should only happen if this happens too early
-					{
-						//LoaderList.Items.Remove(li);
-						LoaderListData.Add(pair);
-						//ReverseMap.TryRemove(li, out _);
-						LoaderList.VirtualListSize++;
-					}
-				}
-			}
-			catch (Exception ex)
-			{
-				Logging.Stacktrace(ex);
-			}
+			if (LoaderInfos.TryGetValue(group.Instance, out var pair))
+				RemoveLoader(pair);
 		}
 
 		public async void LoaderActivityEvent(object sender, Process.LoaderEvent ea)
@@ -496,12 +491,16 @@ namespace Taskmaster.UI
 				for (int i = 0; i < pairs.Length; i++)
 				{
 					var pair = pairs[i];
+
+					if (!pair.Active) continue;
+
 					if (pair.ListItem != null) // update
 					{
-						var li = pair.ListItem;
+						//var li = pair.ListItem;
 
 						UpdateListView(pair);
 
+						/*
 						LoaderListData.Remove(pair);
 						//LoaderList.Items.Remove(li);
 
@@ -515,6 +514,7 @@ namespace Taskmaster.UI
 							//LoaderList.Items.Add(li);
 							LoaderListData.Add(pair);
 						}
+						*/
 					}
 					else
 					{
@@ -713,6 +713,8 @@ namespace Taskmaster.UI
 		public Process.InstanceGroupLoad Load { get; set; }
 
 		public ListViewItem? ListItem { get; set; }
+
+		public bool Active { get; set; } = true;
 
 		public LoadListPair(Process.InstanceGroupLoad info, ListViewItem item)
 		{
