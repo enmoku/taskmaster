@@ -167,13 +167,13 @@ namespace Taskmaster.Process
 			HangReduceTime = TimeSpan.FromMinutes(4d),
 			HangKillTime = TimeSpan.FromMinutes(5d);
 
-		int HangTick = 0;
+		int HangTick = -1;
 
 		bool HangWarning = false;
 
 		void ResetHanging()
 		{
-			HangTick = 0;
+			HangTick = -1;
 			ReduceTried = Reduced = false;
 			MinimizeTried = Minimized = false;
 
@@ -225,12 +225,14 @@ namespace Taskmaster.Process
 					if (!responding) PreviouslyHung = fgproc.Id;
 				}
 
+				if (Utility.SystemProcessId(lfgpid))
+				{
+					ResetHanging();
+					return; // don't care
+				}
+
 				if (DebugForeground)
 					Logging.DebugMsg("<Foreground::DEBUG> Foreground: " + fgproc.ProcessName + " #" + lfgpid.ToString() + " --- responding: " + responding.ToString());
-
-
-				if (!previoushang.Equals(lfgpid)) // foreground changed since last test
-					ResetHanging();
 
 				DateTimeOffset now = DateTimeOffset.UtcNow;
 				var since = now.Since(LastSwap); // since app was last changed
@@ -248,6 +250,14 @@ namespace Taskmaster.Process
 
 				if (!responding)
 				{
+					if (previoushang != lfgpid) // foreground changed since last test
+					{
+						if (DebugForeground && ShowInaction)
+							Log.Debug("<Foreground> Hung app #" + previoushang.ToString() + " swapped away but #" + lfgpid.ToString() + " is hanging too!");
+
+						ResetHanging();
+					}
+
 					HangTick++;
 
 					string name = string.Empty;
@@ -269,12 +279,7 @@ namespace Taskmaster.Process
 						}
 
 						return;
-
-						// probably gone?
-						if (Utility.SystemProcessId(lfgpid)) name = "<OS>"; // this might also signify the desktop, for some reason
 					}
-
-					trayaccess.Tooltip(2000, name + " #" + lfgpid.ToString(), "Foreground not responding", System.Windows.Forms.ToolTipIcon.Warning);
 
 					var sbs = new StringBuilder("<Foreground> ", 128);
 
@@ -283,127 +288,7 @@ namespace Taskmaster.Process
 					else
 						sbs.Append('#').Append(lfgpid);
 
-					if (HangTick == 1)
-					{
-						sbs.Append(" is not responding!")
-							.Append(" (Hung for ").Append(HangTime.To(now).TotalSeconds.ToString("N1")).Append(" seconds).");
-						Log.Warning(sbs.ToString());
-						HangWarning = true;
-					}
-					else if (HangTick > 1)
-					{
-						var hungTime = now.Since(HangTime);
-
-						if (HangTick == 3)
-							trayaccess?.Tooltip(5000, name + " #" + lfgpid.ToString(), "Foreground HUNG!\nHung for " + HangTime.To(now).TotalSeconds.ToString("N1") + " seconds.", System.Windows.Forms.ToolTipIcon.Warning);
-
-						sbs.Append(" hung!");
-
-						if (Utility.SystemProcessId(lfgpid))
-						{
-							Log.Warning(sbs.ToString());
-							return; // Ignore system processes. We can do nothing useful for them.
-						}
-
-						sbs.Append(" – ");
-						bool acted = false;
-						if (!HangMinimizeTime.IsZero() && hungTime >= HangMinimizeTime && !Minimized)
-						{
-							lock (FGLock)
-							{
-								if (lfgpid != ForegroundId) return;
-
-								bool rv = Taskmaster.NativeMethods.ShowWindow(fgproc.Handle, 11); // 6 = minimize, 11 = force minimize
-
-								if (rv)
-								{
-									sbs.Append("Minimized");
-									Minimized = true;
-								}
-								else
-									sbs.Append("Minimize failed");
-								acted = true;
-							}
-						}
-
-						if (!HangReduceTime.IsZero() && hungTime >= HangReduceTime && !Reduced)
-						{
-							bool aff = false, prio = false;
-							try
-							{
-								lock (FGLock)
-								{
-									if (lfgpid != ForegroundId) return;
-
-									if (fgproc.ProcessorAffinity.ToInt32() != 1)
-									{
-										fgproc.ProcessorAffinity = new IntPtr(1); // TODO: set this to something else than the first core
-										if (acted) sbs.Append(", ");
-										sbs.Append("Affinity reduced");
-										aff = true;
-									}
-
-									if (fgproc.PriorityClass.ToInt32() > ProcessPriorityClass.Idle.ToInt32())
-									{
-										if (aff || acted) sbs.Append(", ");
-										fgproc.PriorityClass = ProcessPriorityClass.Idle;
-										sbs.Append("Priority reduced");
-										prio = true;
-									}
-								}
-							}
-							catch (OutOfMemoryException) { throw; }
-							catch
-							{
-								sbs.Append("Affinity/Priority reduction failed");
-							}
-
-							if (aff || prio)
-							{
-								acted = true;
-								Reduced = true;
-							}
-						}
-
-						if (!HangKillTime.IsZero() && hungTime > HangKillTime)
-						{
-							try
-							{
-								lock (FGLock)
-								{
-									if (lfgpid != ForegroundId) return; // last chance to bail
-
-									fgproc.Kill();
-									fgproc?.Dispose();
-
-									if (fgproc == Foreground)
-									{
-										Foreground = null;
-										ForegroundId = -1;
-									}
-
-									acted = true;
-								}
-
-								if (acted) sbs.Append(", ");
-								sbs.Append("Terminated");
-							}
-							catch (OutOfMemoryException) { throw; }
-							catch
-							{
-								if (acted) sbs.Append(", ");
-								sbs.Append("Termination failed");
-							}
-						}
-
-						if (acted) Log.Warning(sbs.ToString());
-						if (lfgpid != ForegroundId)
-						{
-							if (DebugForeground && ShowInaction)
-								Log.Debug("<Foreground> Hung app #" + lfgpid.ToString() + " swapped away.");
-						}
-					}
-					else
+					if (HangTick == 0)
 					{
 						HangTime = now;
 						Reduced = ReduceTried = false;
@@ -414,7 +299,118 @@ namespace Taskmaster.Process
 						processmanager.Unignore(IgnoreHung);
 						IgnoreHung = lfgpid;
 						processmanager.Ignore(IgnoreHung);
+						return;
 					}
+					else if (HangTick == 5)
+					{
+						sbs.Append(" is not responding!")
+							.Append(" (Hung for ").Append(HangTime.To(now).TotalSeconds.ToString("N1")).Append(" seconds).");
+						Log.Warning(sbs.ToString());
+						HangWarning = true;
+
+						// TODO: State how long to next actions.
+						trayaccess?.Tooltip(5000, name + " #" + lfgpid.ToString(), "Foreground HUNG!\nHung for " + HangTime.To(now).TotalSeconds.ToString("N1") + " seconds.", System.Windows.Forms.ToolTipIcon.Warning);
+
+						return;
+					}
+
+					var hungTime = HangTime.To(now);
+
+					trayaccess.Tooltip(2000, name + " #" + lfgpid.ToString(), "Foreground not responding\nHung for " + hungTime.TotalSeconds.ToString("N1") + " seconds.", System.Windows.Forms.ToolTipIcon.Warning);
+
+					sbs.Append(" hung!").Append(" – ");
+
+					bool acted = false;
+					if (!HangMinimizeTime.IsZero() && hungTime >= HangMinimizeTime && !Minimized)
+					{
+						lock (FGLock)
+						{
+							if (lfgpid != ForegroundId) return;
+
+							bool rv = Taskmaster.NativeMethods.ShowWindow(fgproc.Handle, 11); // 6 = minimize, 11 = force minimize
+
+							if (rv)
+							{
+								sbs.Append("Minimized");
+								Minimized = true;
+							}
+							else
+								sbs.Append("Minimize failed");
+							acted = true;
+						}
+					}
+
+					if (!HangReduceTime.IsZero() && hungTime >= HangReduceTime && !Reduced)
+					{
+						bool aff = false, prio = false;
+						try
+						{
+							lock (FGLock)
+							{
+								if (lfgpid != ForegroundId) return;
+
+								if (fgproc.ProcessorAffinity.ToInt32() != 1)
+								{
+									fgproc.ProcessorAffinity = new IntPtr(1); // TODO: set this to something else than the first core
+									if (acted) sbs.Append(", ");
+									sbs.Append("Affinity reduced");
+									aff = true;
+								}
+
+								if (fgproc.PriorityClass.ToInt32() > ProcessPriorityClass.Idle.ToInt32())
+								{
+									if (aff || acted) sbs.Append(", ");
+									fgproc.PriorityClass = ProcessPriorityClass.Idle;
+									sbs.Append("Priority reduced");
+									prio = true;
+								}
+							}
+						}
+						catch (OutOfMemoryException) { throw; }
+						catch
+						{
+							sbs.Append("Affinity/Priority reduction failed");
+						}
+
+						if (aff || prio)
+						{
+							acted = true;
+							Reduced = true;
+						}
+					}
+
+					if (!HangKillTime.IsZero() && hungTime > HangKillTime)
+					{
+						try
+						{
+							lock (FGLock)
+							{
+								if (lfgpid != ForegroundId) return; // last chance to bail
+
+								fgproc.Kill();
+								fgproc?.Dispose();
+
+								if (fgproc == Foreground)
+								{
+									Foreground = null;
+									ForegroundId = -1;
+								}
+
+								acted = true;
+							}
+
+							if (acted) sbs.Append(", ");
+							sbs.Append("Terminated");
+						}
+						catch (OutOfMemoryException) { throw; }
+						catch
+						{
+							if (acted) sbs.Append(", ");
+							sbs.Append("Termination failed");
+						}
+					}
+
+					if (acted) Log.Warning(sbs.ToString());
 				}
 				else
 				{
@@ -426,8 +422,12 @@ namespace Taskmaster.Process
 					HangTime = DateTimeOffset.MaxValue;
 				}
 			}
-			catch (InvalidOperationException) { } // NOP, already exited
-			catch (ArgumentException) { } // NOP, already exited
+			catch (Exception ex) when (ex is InvalidOperationException || ex is ArgumentException)
+			{
+				// NOP, already exited
+
+				ResetHanging();
+			}
 			catch (Exception ex)
 			{
 				processmanager.Unignore(IgnoreHung);
@@ -464,7 +464,7 @@ namespace Taskmaster.Process
 		{
 			const int nChars = 256; // Why this limit?
 			var buff = new StringBuilder(nChars);
-
+			
 			// Window title, we don't care tbh.
 
 			// get title? not really useful for most things
