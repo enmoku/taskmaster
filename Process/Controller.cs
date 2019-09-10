@@ -1229,7 +1229,7 @@ namespace Taskmaster.Process
 		public bool Ignored(ProcessEx info)
 		{
 			string name = info.Name;
-			if (IgnoreList.Any(item => item.Equals(name, StringComparison.InvariantCultureIgnoreCase)) == true)
+			if (IgnoreList.Any(item => item.Equals(name, StringComparison.InvariantCultureIgnoreCase)))
 			{
 				info.State = HandlingState.Abandoned;
 				return true; // return ProcessState.Ignored;

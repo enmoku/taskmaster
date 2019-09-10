@@ -288,6 +288,8 @@ namespace Taskmaster.Process
 					else
 						sbs.Append('#').Append(lfgpid);
 
+					var hungTime = HangTime.To(now);
+
 					if (HangTick == 0)
 					{
 						HangTime = now;
@@ -299,24 +301,25 @@ namespace Taskmaster.Process
 						processmanager.Unignore(IgnoreHung);
 						IgnoreHung = lfgpid;
 						processmanager.Ignore(IgnoreHung);
+
 						return;
 					}
 					else if (HangTick == 5)
 					{
 						sbs.Append(" is not responding!")
-							.Append(" (Hung for ").Append(HangTime.To(now).TotalSeconds.ToString("N1")).Append(" seconds).");
+							.Append(" (Hung for ").Append(hungTime.TotalSeconds.ToString("N1")).Append(" seconds).");
 						Log.Warning(sbs.ToString());
 						HangWarning = true;
 
 						// TODO: State how long to next actions.
-						trayaccess?.Tooltip(5000, name + " #" + lfgpid.ToString(), "Foreground HUNG!\nHung for " + HangTime.To(now).TotalSeconds.ToString("N1") + " seconds.", System.Windows.Forms.ToolTipIcon.Warning);
+						trayaccess?.Tooltip(5000, name + " #" + lfgpid.ToString(), "Foreground HUNG!\nHung for " + hungTime.TotalSeconds.ToString("N1") + " seconds.", System.Windows.Forms.ToolTipIcon.Warning);
 
 						return;
 					}
-
-					var hungTime = HangTime.To(now);
-
-					trayaccess.Tooltip(2000, name + " #" + lfgpid.ToString(), "Foreground not responding\nHung for " + hungTime.TotalSeconds.ToString("N1") + " seconds.", System.Windows.Forms.ToolTipIcon.Warning);
+					else if (HangTick >= 10)
+					{
+						trayaccess.Tooltip(2000, name + " #" + lfgpid.ToString(), "Foreground not responding\nHung for " + hungTime.TotalSeconds.ToString("N1") + " seconds.", System.Windows.Forms.ToolTipIcon.Warning);
+					}
 
 					sbs.Append(" hung!").Append(" – ");
 
