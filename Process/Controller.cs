@@ -79,7 +79,7 @@ namespace Taskmaster.Process
 		/// </summary>
 		public string FriendlyName { get; private set; } = null;
 
-		internal string[]? pExecutables = null;
+		internal string[] pExecutables = Array.Empty<string>();
 
 		/// <summary>
 		/// Executable filename related to this, with extension.
@@ -89,12 +89,9 @@ namespace Taskmaster.Process
 			get => pExecutables;
 			set
 			{
-				if (value is null)
-				{
-					pExecutables = null;
-					ExecutableFriendlyName = Array.Empty<string>();
-				}
-				else
+				if (value is null) throw new ArgumentNullException(nameof(value));
+
+				if (value.Length > 0)
 				{
 					var t_exe = new string[value.Length];
 					var t_friendly = new string[value.Length];
@@ -105,6 +102,11 @@ namespace Taskmaster.Process
 					}
 					pExecutables = t_exe;
 					ExecutableFriendlyName = t_friendly;
+				}
+				else
+				{
+					pExecutables = Array.Empty<string>();
+					ExecutableFriendlyName = Array.Empty<string>();
 				}
 			}
 		}
