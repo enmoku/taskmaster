@@ -177,7 +177,7 @@ namespace Taskmaster.Hardware
 		/// </summary>
 		public void Sample() => Sampler(this, null);
 
-		async void Sampler(object _sender, System.Timers.ElapsedEventArgs _)
+		async void Sampler(object _sender, System.Timers.ElapsedEventArgs? _)
 		{
 			if (!Atomic.Lock(ref sampler_lock)) return; // uhhh... probably should ping warning if this return is triggered
 			if (disposed) return; // Dumbness with timers

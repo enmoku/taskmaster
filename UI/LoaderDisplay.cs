@@ -668,7 +668,7 @@ namespace Taskmaster.UI
 		readonly Extensions.ListViewEx LoaderList;
 
 		#region IDispose
-		public event EventHandler<DisposedEventArgs> OnDisposed;
+		public event EventHandler<DisposedEventArgs>? OnDisposed;
 
 		bool disposed = false;
 

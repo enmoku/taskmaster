@@ -492,7 +492,7 @@ namespace Taskmaster.Process
 
 		public int DefaultBackgroundPriority = 1, DefaultBackgroundAffinity = 0;
 
-		ForegroundManager activeappmonitor = null;
+		ForegroundManager? activeappmonitor = null;
 
 		public void Hook(ForegroundManager manager)
 		{
@@ -2691,7 +2691,7 @@ namespace Taskmaster.Process
 		}
 
 		#region IDisposable Support
-		public event EventHandler<DisposedEventArgs> OnDisposed;
+		public event EventHandler<DisposedEventArgs>? OnDisposed;
 
 		readonly CancellationTokenSource cts = new CancellationTokenSource();
 

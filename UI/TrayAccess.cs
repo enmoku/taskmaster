@@ -362,7 +362,7 @@ namespace Taskmaster.UI
 				BuildMainWindow(reveal: true, top: true);
 		}
 
-		MainWindow mainwindow { get; set; } = null;
+		MainWindow? mainwindow { get; set; } = null;
 
 		void UnloseWindow(object _, MouseEventArgs e)
 		{

@@ -266,7 +266,7 @@ namespace Taskmaster
 
 		public static event EventHandler OnStart;
 
-		static DirectoryInfo TempRunningDir = null;
+		static DirectoryInfo? TempRunningDir = null;
 
 		static void MonitorCleanShutdown()
 		{

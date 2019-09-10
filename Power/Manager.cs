@@ -1329,7 +1329,7 @@ namespace Taskmaster.Power
 			return rv;
 		}
 
-		public void SetMode(Mode mode, Cause cause = null, bool verbose = true)
+		public void SetMode(Mode mode, Cause? cause = null, bool verbose = true)
 		{
 			lock (power_lock)
 			{
@@ -1384,7 +1384,7 @@ namespace Taskmaster.Power
 		}
 
 		#region IDisposable Support
-		public event EventHandler<DisposedEventArgs> OnDisposed;
+		public event EventHandler<DisposedEventArgs>? OnDisposed;
 
 		public bool disposed { get; private set; } = false;
 

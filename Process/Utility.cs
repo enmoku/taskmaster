@@ -454,7 +454,7 @@ namespace Taskmaster.Process
 		{
 			try
 			{
-				if (GetInfo(info.Process.ParentProcessId(), out var parent, null, null, null, null, true))
+				if (GetInfo(info.Process.ParentProcessId(), out var parent, getPath: true))
 					return parent;
 			}
 			catch { /* don't care */ }

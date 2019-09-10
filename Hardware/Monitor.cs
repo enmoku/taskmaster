@@ -314,7 +314,7 @@ namespace Taskmaster.Hardware
 		}
 
 		#region IDisposable Support
-		public event EventHandler<DisposedEventArgs> OnDisposed;
+		public event EventHandler<DisposedEventArgs>? OnDisposed;
 
 		bool disposed = false; // To detect redundant calls
 

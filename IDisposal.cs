@@ -30,7 +30,7 @@ namespace Taskmaster
 {
 	public interface IDisposal : IDisposable
 	{
-		event EventHandler<DisposedEventArgs> OnDisposed;
+		event EventHandler<DisposedEventArgs>? OnDisposed;
 
 		void ShutdownEvent(object sender, EventArgs ea);
 	}

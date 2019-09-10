@@ -40,9 +40,9 @@ namespace Taskmaster.Audio
 	[Context(RequireMainThread = true)]
 	public class MicManager : IComponent, IDisposal
 	{
-		public event EventHandler<VolumeChangedEventArgs> VolumeChanged;
-		public event EventHandler<DefaultDeviceEventArgs> DefaultChanged;
-		public event EventHandler<DisposedEventArgs> OnDisposed;
+		public event EventHandler<VolumeChangedEventArgs>? VolumeChanged;
+		public event EventHandler<DefaultDeviceEventArgs>? DefaultChanged;
+		public event EventHandler<DisposedEventArgs>? OnDisposed;
 
 		bool DebugMic { get; } = false;
 

@@ -1194,10 +1194,10 @@ namespace Taskmaster.UI
 		// HOOKS
 		Audio.MicManager? micmanager = null;
 		StorageManager? storagemanager = null;
-		Process.Manager processmanager = null;
+		Process.Manager? processmanager = null;
 		Process.ForegroundManager? activeappmonitor = null;
 		Power.Manager? powermanager = null;
-		Hardware.CPUMonitor cpumonitor = null;
+		Hardware.CPUMonitor? cpumonitor = null;
 		Network.Manager? netmonitor = null;
 
 		#region Microphone control code

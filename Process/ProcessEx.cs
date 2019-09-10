@@ -65,7 +65,7 @@ namespace Taskmaster.Process
 		/// <summary>
 		/// As seen in task manager.
 		/// </summary>
-		public string Description { get; set; } = null;
+		public string Description { get; set; } = string.Empty;
 
 		public Stopwatch Timer = new Stopwatch();
 		public TimeSpan WMIDelay = TimeSpan.Zero;
