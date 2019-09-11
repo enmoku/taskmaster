@@ -657,6 +657,13 @@ namespace Taskmaster.UI.Config
 			lt.Controls.Add(logStartNExit);
 			lt.Controls.Add(new EmptySpace());
 
+			warning = new CheckBox() { Checked = Controller.Warn };
+			tooltip.SetToolTip(warning, "Warn about this rule matching.\nSimilar to logging start and exit.");
+
+			lt.Controls.Add(new Extensions.Label() { Text = "Warn" });
+			lt.Controls.Add(warning);
+			lt.Controls.Add(new EmptySpace());
+
 			declareParent = new CheckBox() { Checked = Controller.DeclareParent };
 			lt.Controls.Add(new Extensions.Label() { Text = "Log parent" });
 			lt.Controls.Add(declareParent);
@@ -867,6 +874,7 @@ namespace Taskmaster.UI.Config
 
 			Controller.LogAdjusts = logAdjusts.Checked;
 			Controller.LogStartAndExit = logStartNExit.Checked;
+			Controller.Warn = warning.Checked;
 
 			Controller.DeclareParent = declareParent.Checked;
 
@@ -904,7 +912,7 @@ namespace Taskmaster.UI.Config
 		readonly Extensions.ListViewEx ignorelist;
 		readonly NumericUpDown preforder;
 
-		readonly CheckBox logAdjusts, logStartNExit, declareParent;
+		readonly CheckBox logAdjusts, logStartNExit, declareParent, warning;
 
 		int cpumask = 0;
 

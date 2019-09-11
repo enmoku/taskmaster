@@ -276,6 +276,11 @@ namespace Taskmaster.Process
 		public bool LogStartAndExit { get; set; } = false;
 
 		/// <summary>
+		/// Warn about this rule matching.
+		/// </summary>
+		public bool Warn { get; set; } = false;
+
+		/// <summary>
 		/// Log process description as seen on task manager description column.
 		/// </summary>
 		public bool LogDescription { get; set; } = false;
@@ -794,6 +799,14 @@ namespace Taskmaster.Process
 			}
 			else
 				app.TryRemove("Log start and exit");
+
+			if (Warn)
+			{
+				var warn = app["Warn"];
+				if (warn.TryBool != Warn) warn.Bool = Warn;
+			}
+			else
+				app.TryRemove("Warn");
 
 			if (LogDescription)
 			{
