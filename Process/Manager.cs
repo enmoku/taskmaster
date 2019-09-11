@@ -596,7 +596,7 @@ namespace Taskmaster.Process
 				if (cts.IsCancellationRequested) return;
 			}
 			catch (OperationCanceledException) { /* NOP */ }
-			catch (AggregateException ex) { throw; }
+			catch (AggregateException) { throw; }
 			catch (Exception ex)
 			{
 				Logging.Stacktrace(ex);
@@ -1129,181 +1129,189 @@ namespace Taskmaster.Process
 
 			foreach (Ini.Section section in appcfg.Config)
 			{
-				if (string.IsNullOrEmpty(section.Name))
-				{
-					Log.Warning($"<Watchlist:{section.Line}> Nameless section; Skipping.");
-					continue;
-				}
-
-				var rulePath = section.Get(HumanReadable.System.Process.Path);
-
-				Ini.Setting ruleExec = section.Get(Constants.Executables);
-
-				if (ruleExec is null && rulePath is null)
-				{
-					// TODO: Deal with incorrect configuration lacking image
-					Log.Warning($"<Watchlist:{section.Line}> [" + section.Name + "] No image nor path; Skipping.");
-					continue;
-				}
-
-				var rulePrio = section.Get(HumanReadable.System.Process.Priority);
-				var ruleAff = section.Get(HumanReadable.System.Process.Affinity);
-				var rulePow = section.Get(HumanReadable.Hardware.Power.Mode);
-
-				if (rulePrio is null && ruleAff is null && rulePow is null)
-				{
-					Log.Warning($"<Watchlist:{section.Line}> [{section.Name}] No priority, affinity, nor power plan.");
-					// This kind of rule is essentially more detailed ignore rule.
-				}
-
-				int prio = rulePrio?.Int ?? -1;
-				int aff = (ruleAff?.Int ?? -1);
-				var pmode_t = rulePow?.String;
-
-				if (aff > Utility.FullCPUMask || aff < -1)
-				{
-					Log.Warning($"<Watchlist:{ruleAff.Line}> [{section.Name}] Affinity({aff}) is malconfigured. Skipping.");
-					//aff = Bit.And(aff, allCPUsMask); // at worst case results in 1 core used
-					// TODO: Count bits, make 2^# assumption about intended cores but scale it to current core count.
-					//		Shift bits to allowed range. Assume at least one core must be assigned, and in case of holes at least one core must be unassigned.
-					aff = -1; // ignore
-				}
-
-				Power.Mode pmode = Power.Utility.GetModeByName(pmode_t);
-				if (pmode == Power.Mode.Custom)
-				{
-					Log.Warning($"<Watchlist:{rulePow.Line}> [{section.Name}] Unrecognized power plan: {pmode_t}");
-					pmode = Power.Mode.Undefined;
-				}
-
-				ProcessPriorityClass? prioR = Utility.IntToNullablePriority(prio);
-				PriorityStrategy priostrat = PriorityStrategy.None;
-				if (prioR.HasValue)
-				{
-					priostrat = (PriorityStrategy)(section.Get(HumanReadable.System.Process.PriorityStrategy)?.Int.Constrain(0, 3) ?? 0);
-					if (priostrat == PriorityStrategy.None) prioR = null; // invalid data
-				}
-
-				AffinityStrategy affStrat = (aff >= 0)
-					? (AffinityStrategy)(section.Get(HumanReadable.System.Process.AffinityStrategy)?.Int.Constrain(0, 3) ?? 2)
-					: AffinityStrategy.None;
-
-				int baff = section.Get(Constants.BackgroundAffinity)?.Int ?? -1;
-				int bpriot = section.Get(Constants.BackgroundPriority)?.Int ?? -1;
-				ProcessPriorityClass? bprio = (bpriot >= 0) ? (ProcessPriorityClass?)Utility.IntToPriority(bpriot) : null;
-
-				var pvis = (PathVisibilityOptions)(section.Get(Constants.PathVisibility)?.Int.Constrain(-1, 3) ?? -1);
-
-				string[] tignorelist = (section.Get(HumanReadable.Generic.Ignore)?.Array ?? null);
-				if (tignorelist?.Length > 0)
-				{
-					for (int i = 0; i < tignorelist.Length; i++)
-					{
-						ref var tig = ref tignorelist[i];
-						tig = tig.ToLowerInvariant(); // does this work correctly?
-													  //tignorelist[i] = tignorelist[i].ToLowerInvariant();
-					}
-				}
-				else
-					tignorelist = Array.Empty<string>();
-
-				var prc = new Controller(section.Name, prioR, aff)
-				{
-					Enabled = (section.Get(HumanReadable.Generic.Enabled)?.Bool ?? true),
-					Executables = (ruleExec?.StringArray ?? Array.Empty<string>()),
-					Description = (section.Get(HumanReadable.Generic.Description)?.String ?? null),
-					// friendly name is filled automatically
-					PriorityStrategy = priostrat,
-					AffinityStrategy = affStrat,
-					Path = (rulePath?.String ?? null),
-					ModifyDelay = (section.Get(Constants.ModifyDelay)?.Int ?? 0),
-					//BackgroundIO = (section.TryGet("Background I/O")?.Bool ?? false), // Doesn't work
-					Recheck = (section.Get(Constants.Recheck)?.Int ?? 0).Constrain(0, 300),
-					PowerPlan = pmode,
-					PathVisibility = pvis,
-					BackgroundPriority = bprio,
-					BackgroundAffinity = baff,
-					IgnoreList = tignorelist,
-					AllowPaging = (section.Get(Constants.AllowPaging)?.Bool ?? false),
-					Analyze = (section.Get(Constants.Analyze)?.Bool ?? false),
-					ExclusiveMode = (section.Get(Constants.Exclusive)?.Bool ?? false),
-					DeclareParent = (section.Get(Constants.DeclareParent)?.Bool ?? false),
-					OrderPreference = (section.Get(Constants.Preference)?.Int.Constrain(0, 100) ?? 10),
-					IOPriority = (IOPriority)(section.Get(Constants.IOPriority)?.Int.Constrain(-1, 2) ?? -1), // 0-1 background, 2 = normal, anything else seems to have no effect
-					LogAdjusts = (section.Get(Application.Constants.Logging)?.Bool ?? true),
-					LogStartAndExit = (section.Get(Constants.LogStartAndExit)?.Bool ?? false),
-					Volume = (section.Get(HumanReadable.Hardware.Audio.Volume)?.Float ?? 0.5f),
-					VolumeStrategy = (Audio.VolumeStrategy)(section.Get(Constants.VolumeStrategy)?.Int.Constrain(0, 5) ?? 0),
-				};
-
-				//prc.MMPriority = section.TryGet("MEM priority")?.Int ?? int.MinValue; // unused
-
-				// special case
-				var legacyworkaround = section.Get("Legacy workaround");
-
 				try
 				{
-					prc.LegacyWorkaround = legacyworkaround?.Bool ?? false;
-				}
-				catch
-				{
-					Log.Error("[" + prc.FriendlyName + "] Malformed setting: " + legacyworkaround.Name + " = " + legacyworkaround.Value);
-					section.Remove(legacyworkaround);
-				}
-
-				int? foregroundMode = section.Get(Constants.ForegroundMode)?.Int;
-				if (foregroundMode.HasValue)
-					prc.SetForegroundMode((ForegroundMode)foregroundMode.Value.Constrain(-1, 2));
-
-				//prc.SetForegroundMode((ForegroundMode)(section.TryGet("Foreground mode")?.Int.Constrain(-1, 2) ?? -1)); // NEW
-
-				var ruleIdeal = section.Get(HumanReadable.System.Process.AffinityIdeal);
-				prc.AffinityIdeal = ruleIdeal?.Int ?? -1;
-				if (prc.AffinityIdeal >= 0 && !Bit.IsSet(prc.AffinityMask, prc.AffinityIdeal))
-				{
-					Log.Debug($"<Watchlist:{ruleIdeal.Line}> [{prc.FriendlyName}] Affinity ideal to mask mismatch: {HumanInterface.BitMask(prc.AffinityMask, Hardware.Utility.ProcessorCount)} [{prc.AffinityMask.ToString()}], ideal core: {prc.AffinityIdeal}");
-					prc.AffinityIdeal = -1;
-				}
-
-				// TODO: Blurp about following configuration errors
-				if (prc.AffinityMask < 0) prc.AffinityStrategy = AffinityStrategy.None;
-				else if (prc.AffinityStrategy == AffinityStrategy.None) prc.AffinityMask = -1;
-
-				if (!prc.Priority.HasValue) prc.PriorityStrategy = PriorityStrategy.None;
-				else if (prc.PriorityStrategy == PriorityStrategy.None) prc.Priority = null;
-
-				int[] resize = section.Get(Constants.Resize)?.IntArray ?? null; // width,height
-				if (resize?.Length == 4)
-				{
-					int resstrat = section.Get(Constants.ResizeStrategy)?.Int.Constrain(0, 3) ?? -1;
-					if (resstrat < 0) resstrat = 0;
-
-					prc.ResizeStrategy = (WindowResizeStrategy)resstrat;
-
-					prc.Resize = new System.Drawing.Rectangle(resize[0], resize[1], resize[2], resize[3]);
-				}
-
-				if (ColorResetEnabled)
-					prc.ColorReset = section.Get(Constants.ColorReset)?.Bool ?? false;
-
-				prc.Repair();
-
-				if (AddController(prc))
-				{
-					if (!string.IsNullOrEmpty(prc.Path))
+					if (string.IsNullOrEmpty(section.Name))
 					{
-						withPath++;
-
-						if (prc.Executables.Length > 0) hybrids++;
+						Log.Warning($"<Watchlist:{section.Line}> Nameless section; Skipping.");
+						continue;
 					}
+
+					var rulePath = section.Get(HumanReadable.System.Process.Path);
+
+					Ini.Setting ruleExec = section.Get(Constants.Executables);
+
+					if (ruleExec is null && rulePath is null)
+					{
+						// TODO: Deal with incorrect configuration lacking image
+						Log.Warning($"<Watchlist:{section.Line}> [" + section.Name + "] No image nor path; Skipping.");
+						continue;
+					}
+
+					var rulePrio = section.Get(HumanReadable.System.Process.Priority);
+					var ruleAff = section.Get(HumanReadable.System.Process.Affinity);
+					var rulePow = section.Get(HumanReadable.Hardware.Power.Mode);
+
+					if (rulePrio is null && ruleAff is null && rulePow is null)
+					{
+						Log.Warning($"<Watchlist:{section.Line}> [{section.Name}] No priority, affinity, nor power plan.");
+						// This kind of rule is essentially more detailed ignore rule.
+					}
+
+					int prio = rulePrio?.Int ?? -1;
+					int aff = (ruleAff?.Int ?? -1);
+					var pmode_t = rulePow?.String;
+
+					if (aff > Utility.FullCPUMask || aff < -1)
+					{
+						Log.Warning($"<Watchlist:{ruleAff.Line}> [{section.Name}] Affinity({aff}) is malconfigured. Skipping.");
+						//aff = Bit.And(aff, allCPUsMask); // at worst case results in 1 core used
+						// TODO: Count bits, make 2^# assumption about intended cores but scale it to current core count.
+						//		Shift bits to allowed range. Assume at least one core must be assigned, and in case of holes at least one core must be unassigned.
+						aff = -1; // ignore
+					}
+
+					Power.Mode pmode = Power.Utility.GetModeByName(pmode_t);
+					if (pmode == Power.Mode.Custom)
+					{
+						Log.Warning($"<Watchlist:{rulePow.Line}> [{section.Name}] Unrecognized power plan: {pmode_t}");
+						pmode = Power.Mode.Undefined;
+					}
+
+					ProcessPriorityClass? prioR = Utility.IntToNullablePriority(prio);
+					PriorityStrategy priostrat = PriorityStrategy.None;
+					if (prioR.HasValue)
+					{
+						priostrat = (PriorityStrategy)(section.Get(HumanReadable.System.Process.PriorityStrategy)?.Int.Constrain(0, 3) ?? 0);
+						if (priostrat == PriorityStrategy.None) prioR = null; // invalid data
+					}
+
+					AffinityStrategy affStrat = (aff >= 0)
+						? (AffinityStrategy)(section.Get(HumanReadable.System.Process.AffinityStrategy)?.Int.Constrain(0, 3) ?? 2)
+						: AffinityStrategy.None;
+
+					int baff = section.Get(Constants.BackgroundAffinity)?.Int ?? -1;
+					int bpriot = section.Get(Constants.BackgroundPriority)?.Int ?? -1;
+					ProcessPriorityClass? bprio = (bpriot >= 0) ? (ProcessPriorityClass?)Utility.IntToPriority(bpriot) : null;
+
+					var pvis = (PathVisibilityOptions)(section.Get(Constants.PathVisibility)?.Int.Constrain(-1, 3) ?? -1);
+
+					string[] tignorelist = (section.Get(HumanReadable.Generic.Ignore)?.Array ?? null);
+					if (tignorelist?.Length > 0)
+					{
+						for (int i = 0; i < tignorelist.Length; i++)
+						{
+							ref var tig = ref tignorelist[i];
+							tig = tig.ToLowerInvariant(); // does this work correctly?
+														  //tignorelist[i] = tignorelist[i].ToLowerInvariant();
+						}
+					}
+					else
+						tignorelist = Array.Empty<string>();
+
+					var prc = new Controller(section.Name, prioR, aff)
+					{
+						Enabled = (section.Get(HumanReadable.Generic.Enabled)?.Bool ?? true),
+						Executables = (ruleExec?.StringArray ?? Array.Empty<string>()),
+						Description = (section.Get(HumanReadable.Generic.Description)?.String ?? null),
+						// friendly name is filled automatically
+						PriorityStrategy = priostrat,
+						AffinityStrategy = affStrat,
+						Path = (rulePath?.String ?? null),
+						ModifyDelay = (section.Get(Constants.ModifyDelay)?.Int ?? 0),
+						//BackgroundIO = (section.TryGet("Background I/O")?.Bool ?? false), // Doesn't work
+						Recheck = (section.Get(Constants.Recheck)?.Int ?? 0).Constrain(0, 300),
+						PowerPlan = pmode,
+						PathVisibility = pvis,
+						BackgroundPriority = bprio,
+						BackgroundAffinity = baff,
+						IgnoreList = tignorelist,
+						AllowPaging = (section.Get(Constants.AllowPaging)?.Bool ?? false),
+						Analyze = (section.Get(Constants.Analyze)?.Bool ?? false),
+						ExclusiveMode = (section.Get(Constants.Exclusive)?.Bool ?? false),
+						DeclareParent = (section.Get(Constants.DeclareParent)?.Bool ?? false),
+						OrderPreference = (section.Get(Constants.Preference)?.Int.Constrain(0, 100) ?? 10),
+						IOPriority = (IOPriority)(section.Get(Constants.IOPriority)?.Int.Constrain(-1, 2) ?? -1), // 0-1 background, 2 = normal, anything else seems to have no effect
+						LogAdjusts = (section.Get(Application.Constants.Logging)?.Bool ?? true),
+						LogStartAndExit = (section.Get(Constants.LogStartAndExit)?.Bool ?? false),
+						Warn = (section.Get("Warn")?.Bool ?? false),
+						Volume = (section.Get(HumanReadable.Hardware.Audio.Volume)?.Float ?? 0.5f),
+						VolumeStrategy = (Audio.VolumeStrategy)(section.Get(Constants.VolumeStrategy)?.Int.Constrain(0, 5) ?? 0),
+					};
+
+					//prc.MMPriority = section.TryGet("MEM priority")?.Int ?? int.MinValue; // unused
+
+					// special case
+					var legacyworkaround = section.Get("Legacy workaround");
+
+					try
+					{
+						prc.LegacyWorkaround = legacyworkaround?.Bool ?? false;
+					}
+					catch
+					{
+						Log.Error("[" + prc.FriendlyName + "] Malformed setting: " + legacyworkaround.Name + " = " + legacyworkaround.Value);
+						section.Remove(legacyworkaround);
+					}
+
+					int? foregroundMode = section.Get(Constants.ForegroundMode)?.Int;
+					if (foregroundMode.HasValue)
+						prc.SetForegroundMode((ForegroundMode)foregroundMode.Value.Constrain(-1, 2));
+
+					//prc.SetForegroundMode((ForegroundMode)(section.TryGet("Foreground mode")?.Int.Constrain(-1, 2) ?? -1)); // NEW
+
+					var ruleIdeal = section.Get(HumanReadable.System.Process.AffinityIdeal);
+					prc.AffinityIdeal = ruleIdeal?.Int ?? -1;
+					if (prc.AffinityIdeal >= 0 && !Bit.IsSet(prc.AffinityMask, prc.AffinityIdeal))
+					{
+						Log.Debug($"<Watchlist:{ruleIdeal.Line}> [{prc.FriendlyName}] Affinity ideal to mask mismatch: {HumanInterface.BitMask(prc.AffinityMask, Hardware.Utility.ProcessorCount)} [{prc.AffinityMask.ToString()}], ideal core: {prc.AffinityIdeal}");
+						prc.AffinityIdeal = -1;
+					}
+
+					// TODO: Blurp about following configuration errors
+					if (prc.AffinityMask < 0) prc.AffinityStrategy = AffinityStrategy.None;
+					else if (prc.AffinityStrategy == AffinityStrategy.None) prc.AffinityMask = -1;
+
+					if (!prc.Priority.HasValue) prc.PriorityStrategy = PriorityStrategy.None;
+					else if (prc.PriorityStrategy == PriorityStrategy.None) prc.Priority = null;
+
+					int[] resize = section.Get(Constants.Resize)?.IntArray ?? null; // width,height
+					if (resize?.Length == 4)
+					{
+						int resstrat = section.Get(Constants.ResizeStrategy)?.Int.Constrain(0, 3) ?? -1;
+						if (resstrat < 0) resstrat = 0;
+
+						prc.ResizeStrategy = (WindowResizeStrategy)resstrat;
+
+						prc.Resize = new System.Drawing.Rectangle(resize[0], resize[1], resize[2], resize[3]);
+					}
+
+					if (ColorResetEnabled)
+						prc.ColorReset = section.Get(Constants.ColorReset)?.Bool ?? false;
+
+					prc.Repair();
+
+					if (AddController(prc))
+					{
+						if (!string.IsNullOrEmpty(prc.Path))
+						{
+							withPath++;
+
+							if (prc.Executables.Length > 0) hybrids++;
+						}
+					}
+					else
+						prc.Dispose();
+
+					// cnt.Children &= ControlChildren;
+
+					// cnt.delay = section.Contains("delay") ? section["delay"].Int : 30; // TODO: Add centralized default delay
+					// cnt.delayIncrement = section.Contains("delay increment") ? section["delay increment"].Int : 15; // TODO: Add centralized default increment
 				}
-				else
-					prc.Dispose();
-
-				// cnt.Children &= ControlChildren;
-
-				// cnt.delay = section.Contains("delay") ? section["delay"].Int : 30; // TODO: Add centralized default delay
-				// cnt.delayIncrement = section.Contains("delay increment") ? section["delay increment"].Int : 15; // TODO: Add centralized default increment
+				catch (Exception ex)
+				{
+					Log.Error("<Watchlist> Error reading rule: " + section.Name);
+				}
 			}
 
 			lock (watchlist_lock) RenewWatchlistCache();
@@ -2090,10 +2098,27 @@ namespace Taskmaster.Process
 
 					if (!old && prc.LogStartAndExit)
 					{
-						Log.Information(info.ToFullString() + " started.");
-						info.Process.Exited += (_, _ea) => Log.Information(info.ToFullString() + " exited (run time: " + info.Start.To(DateTimeOffset.UtcNow).ToString("g") + ").");
+						var str = info.ToFullString() + " started.";
+
+						if (prc.Warn)
+							Log.Warning(str);
+						else
+							Log.Information(str);
+
+						info.Process.Exited += (_, _ea) =>
+						{
+							var str = info.ToFullString() + " exited (run time: " + info.Start.To(DateTimeOffset.UtcNow).ToString("g") + ").";
+							if (prc.Warn)
+								Log.Warning(str);
+							else
+								Log.Information(str);
+						};
 						info.HookExit();
 						// TOOD: What if the process exited just before we enabled raising for the events?
+					}
+					else if (prc.Warn)
+					{
+						Log.Warning(info.ToFullString() + " started.");
 					}
 
 					try
