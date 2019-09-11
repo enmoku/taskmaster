@@ -154,7 +154,12 @@ namespace Taskmaster.Process
 				try
 				{
 					ref var load = ref info.Load;
-					if (load is null) continue;
+					if (load is null)
+					{
+						// Why isn't this being tracked? Why is it Still here?
+
+						continue;
+					}
 
 					if (!load.Update(elapsed))
 					{
@@ -171,18 +176,22 @@ namespace Taskmaster.Process
 
 					// cache so we don't update only half if there's failures
 					cput = load.CPU;
-					io_ops_t = load.IO;
-
-					// update
-					ramloadt += info.Process.PrivateMemorySize64; // process needs to be refreshed for this somewhere
 					cpuloadraw += cput;
-					io_op_load += io_ops_t;
-
 					if (highCpu < cput)
 					{
 						highCpu = cput;
 						highPid = info.Id;
 					}
+
+					io_ops_t = load.IO;
+					io_op_load += io_ops_t;
+					if (highIo < io_ops_t) highIo = io_ops_t;
+
+					// update
+					var ram_t = info.Process.PrivateMemorySize64;
+					ramloadt += ram_t; // process needs to be refreshed for this somewhere
+
+					if (highRam < ram_t) highRam = ram_t;
 				}
 				catch
 				{
