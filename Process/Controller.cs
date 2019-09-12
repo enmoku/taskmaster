@@ -1648,6 +1648,10 @@ namespace Taskmaster.Process
 				else
 					info.State = HandlingState.Finished;
 			}
+			catch (InvalidOperationException)
+			{
+				info.State = HandlingState.Exited;
+			}
 			catch (OutOfMemoryException) { info.State = HandlingState.Abandoned; throw; }
 			catch (Exception ex)
 			{
@@ -1771,10 +1775,12 @@ namespace Taskmaster.Process
 			{
 				info.Restricted = true;
 			}
+			/*
 			catch (Exception ex)
 			{
 				Logging.Stacktrace(ex);
 			}
+			*/
 		}
 
 		int refresh_lock = 0;

@@ -3,6 +3,8 @@ Comprehensive changes can be found in Git change history:
 	https://github.com/mkahvi/taskmaster/commits/master
 
 ## [0.14...]
+### 2019-09-12
+	Changed: Don't log a useless error regarding process exit.
 ### 2019-09-11
 	Added: Warn option to watchlist rules so they appear as warnings in the log instead. Personal use case is logging things running from temp with parent also logged.
 ### 2019-08-25
