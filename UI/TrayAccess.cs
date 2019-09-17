@@ -541,9 +541,12 @@ namespace Taskmaster.UI
 		// does this do anything really?
 		public void RefreshVisibility()
 		{
-			Logging.DebugMsg("<Tray:Icon> Refreshing visibility");
 			hiddenwindow?.Invoke(new Action(() =>
 			{
+				if (disposed) return;
+
+				Logging.DebugMsg("<Tray:Icon> Refreshing visibility");
+
 				Tray.Visible = false;
 				Tray.Visible = true;
 			}));
