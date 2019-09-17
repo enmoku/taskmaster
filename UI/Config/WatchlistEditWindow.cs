@@ -641,6 +641,15 @@ namespace Taskmaster.UI.Config
 
 			if (!PowerManagerEnabled) powerPlan.Enabled = false;
 
+			// Exclusive mode
+
+			exMode = new CheckBox() { Checked = controller.ExclusiveMode };
+			tooltip.SetToolTip(exMode, "Disable Windows Update and Windows Search services while this rule is in effect.");
+
+			lt.Controls.Add(new Extensions.Label() { Text = "Exclusive mode" });
+			lt.Controls.Add(exMode);
+			lt.Controls.Add(new Extensions.Label() { Text = "EXPERIMENTAL", ForeColor = System.Drawing.Color.Red });
+
 			// LOG ADJUSTS
 
 			logAdjusts = new CheckBox() { Checked = Controller.LogAdjusts };
@@ -872,6 +881,8 @@ namespace Taskmaster.UI.Config
 			if (IOPriorityEnabled)
 				Controller.IOPriority = (Process.IOPriority)((ioPriority?.SelectedIndex ?? 0) - 1);
 
+			Controller.ExclusiveMode = exMode.Checked;
+
 			Controller.LogAdjusts = logAdjusts.Checked;
 			Controller.LogStartAndExit = logStartNExit.Checked;
 			Controller.Warn = warning.Checked;
@@ -912,7 +923,7 @@ namespace Taskmaster.UI.Config
 		readonly Extensions.ListViewEx ignorelist;
 		readonly NumericUpDown preforder;
 
-		readonly CheckBox logAdjusts, logStartNExit, declareParent, warning;
+		readonly CheckBox logAdjusts, logStartNExit, declareParent, warning, exMode;
 
 		int cpumask = 0;
 
