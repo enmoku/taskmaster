@@ -841,31 +841,45 @@ namespace Taskmaster.UI
 
 			int result;
 
+			var xload = xgroup.Load;
+			var yload = ygroup.Load;
+
 			if (Column == LoaderDisplay.InstanceStateColumn || Column == LoaderDisplay.InstancePidColumn)
 			{
-				result = 0;
+				result = 0; //  don't sort these
 			}
 			else if (Column != 0)
 			{
+				if (Column != LoaderDisplay.InstanceNameColumn)
+				{
+					// quick sorting for ignored rules when not sorting by name
+					if (xload.InterestType == Process.InstanceGroupLoad.InterestLevel.Ignoring && yload.InterestType == Process.InstanceGroupLoad.InterestLevel.Ignoring)
+						return 0; // both ignored
+					else if (xload.InterestType == Process.InstanceGroupLoad.InterestLevel.Ignoring)
+						return 1; // y not ignored
+					else if (yload.InterestType == Process.InstanceGroupLoad.InterestLevel.Ignoring)
+						return -1; // x not ignored
+				}
+
 				switch (Column)
 				{
 					case LoaderDisplay.InstanceNameColumn:
-						result = xgroup.Load.Instance.CompareTo(ygroup.Load.Instance);
+						result = xload.Instance.CompareTo(yload.Instance);
 						break;
 					case LoaderDisplay.InstanceCpuColumn: // CPU
-						result = xgroup.Load.CPULoad.Average.CompareTo(ygroup.Load.CPULoad.Average);
+						result = xload.CPULoad.Average.CompareTo(yload.CPULoad.Average);
 						break;
 					case LoaderDisplay.InstanceMemColumn: // MEM
-						result = xgroup.Load.RAMLoad.Current.CompareTo(ygroup.Load.RAMLoad.Current);
+						result = xload.RAMLoad.Current.CompareTo(yload.RAMLoad.Current);
 						break;
 					case LoaderDisplay.InstanceIOColumn: // IO
-						result = xgroup.Load.IOLoad.Average.CompareTo(ygroup.Load.IOLoad.Average);
+						result = xload.IOLoad.Average.CompareTo(yload.IOLoad.Average);
 						break;
 					case LoaderDisplay.InstanceCountColumn: // Instance count
-						result = xgroup.Load.InstanceCount.CompareTo(ygroup.Load.InstanceCount);
+						result = xload.InstanceCount.CompareTo(yload.InstanceCount);
 						break;
 					case LoaderDisplay.InstanceLoadColumn:
-						result = xgroup.Load.Load.CompareTo(ygroup.Load.Load);
+						result = xload.Load.CompareTo(yload.Load);
 						break;
 					default:
 						result = 0;
@@ -873,7 +887,7 @@ namespace Taskmaster.UI
 				}
 			}
 			else
-				result = Comparer.Compare(xgroup.Load.Instance, ygroup.Load.Instance);
+				result = Comparer.Compare(xload.Instance, yload.Instance);
 
 			return Order == SortOrder.Ascending ? result : -result;
 		}
