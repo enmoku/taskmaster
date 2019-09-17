@@ -3,6 +3,10 @@ Comprehensive changes can be found in Git change history:
 	https://github.com/mkahvi/taskmaster/commits/master
 
 ## [0.14...]
+### 2019-09-18
+	Fixed: Null reference when default audio device is lost.
+	Changed: Sorting of loaders. Now ignores ignored items.
+	Added: Exclusive mode can be enabled in the UI for watchlist rules.
 ### 2019-09-12
 	Changed: Don't log a useless error regarding process exit.
 ### 2019-09-11
