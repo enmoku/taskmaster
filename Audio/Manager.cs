@@ -159,18 +159,32 @@ namespace Taskmaster.Audio
 
 			try
 			{
-				var dev = new Device(guid, id, flow, NAudio.CoreAudioApi.DeviceState.Active, Enumerator.GetDevice(id));
-				switch (role)
+				if (string.IsNullOrEmpty(id))
 				{
-					case NAudio.CoreAudioApi.Role.Console:
-						ConsoleDevice = dev;
-						break;
-					case NAudio.CoreAudioApi.Role.Multimedia:
-						MultimediaDevice = dev;
-						break;
-					case NAudio.CoreAudioApi.Role.Communications:
-						RecordingDevice = dev;
-						break;
+					Log.Warning("<Audio> Default device lost for " + role.ToString());
+					switch (role)
+					{
+						case NAudio.CoreAudioApi.Role.Console: ConsoleDevice = null; break;
+						case NAudio.CoreAudioApi.Role.Multimedia: MultimediaDevice = null; break;
+						case NAudio.CoreAudioApi.Role.Communications: RecordingDevice = null; break;
+					}
+				}
+				else
+				{
+					var dev = new Device(guid, id, flow, NAudio.CoreAudioApi.DeviceState.Active, Enumerator.GetDevice(id));
+
+					switch (role)
+					{
+						case NAudio.CoreAudioApi.Role.Console:
+							ConsoleDevice = dev;
+							break;
+						case NAudio.CoreAudioApi.Role.Multimedia:
+							MultimediaDevice = dev;
+							break;
+						case NAudio.CoreAudioApi.Role.Communications:
+							RecordingDevice = dev;
+							break;
+					}
 				}
 
 				DefaultChanged?.Invoke(this, new DefaultDeviceEventArgs(guid, id, role, flow));
