@@ -377,7 +377,7 @@ namespace Taskmaster.Process
 
 		public static bool DebugPaging { get; set; } = false;
 
-		public static bool DebugProcesses { get; set; } = false;
+		public static bool DebugProcesses { get; private set; } = false;
 
 		public static bool ShowUnmodifiedPortions { get; set; } = true;
 
@@ -913,6 +913,14 @@ namespace Taskmaster.Process
 			}
 		}
 
+		internal void SetDebug(bool value)
+		{
+			DebugProcesses = value;
+			Utility.Debug = value;
+
+			foreach (Controller prc in Watchlist.Keys) prc.Debug = value;
+		}
+
 		/// <summary>
 		/// In seconds.
 		/// </summary>
@@ -1328,7 +1336,11 @@ namespace Taskmaster.Process
 			{
 				var prc = ea.Info.Controller;
 
-				if (!prc.LogAdjusts) return;
+				if (!prc.LogAdjusts && !DebugProcesses) return;
+
+				bool action = (ea.AffinityOld != ea.AffinityNew) || (ea.PriorityOld != ea.PriorityNew);
+
+				if (!ShowInaction && !action && !DebugProcesses) return;
 
 				await Task.Delay(0).ConfigureAwait(false); // probably not necessary
 
@@ -1413,7 +1425,8 @@ namespace Taskmaster.Process
 				}
 
 				// TODO: Add option to logging to file but still show in UI
-				if (!(ShowInaction && DebugProcesses)) Log.Information(sbs.ToString());
+				
+				if (prc.LogAdjusts && action) Log.Information(sbs.ToString());
 				else Log.Debug(sbs.ToString());
 
 				ea.User?.Clear();

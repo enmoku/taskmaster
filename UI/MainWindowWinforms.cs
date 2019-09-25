@@ -615,7 +615,7 @@ namespace Taskmaster.UI
 
 			menu_debug_procs.Click += (_, _ea) =>
 			{
-				Process.Manager.DebugProcesses = menu_debug_procs.Checked;
+				processmanager.SetDebug(menu_debug_procs.Checked);
 				if (Process.Manager.DebugProcesses)
 					StartProcessDebug();
 				else

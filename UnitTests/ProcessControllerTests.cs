@@ -75,7 +75,8 @@ namespace Processes
 					throw new NotImplementedException("Test not implemented for core count of " + cores.ToString());
 			}
 
-			Taskmaster.Process.Manager.DebugProcesses = true;
+			Taskmaster.Process.Utility.Debug = true;
+
 			System.Diagnostics.Debug.AutoFlush = true;
 			System.Diagnostics.Debug.Listeners.Add(new System.Diagnostics.ConsoleTraceListener());
 
@@ -99,7 +100,8 @@ namespace Processes
 		[TestCase(0b1110, 0b0001, 0b0001, ExpectedResult = 0b0001)] // move and reduce
 		public int AffinityLimit1(int source, int mask, int expected)
 		{
-			Taskmaster.Process.Manager.DebugProcesses = true;
+			Taskmaster.Process.Utility.Debug = true;
+
 			System.Diagnostics.Debug.Listeners.Add(new System.Diagnostics.ConsoleTraceListener());
 
 			int product = Taskmaster.Process.Utility.ApplyAffinityStrategy(source, mask, Taskmaster.Process.AffinityStrategy.Limit);
@@ -118,7 +120,8 @@ namespace Processes
 		[TestCase(0b0110, 0b1001, ExpectedResult = 0b1001)]
 		public int AffinityForce1(int source, int mask)
 		{
-			Taskmaster.Process.Manager.DebugProcesses = true;
+			Taskmaster.Process.Utility.Debug = true;
+
 			System.Diagnostics.Debug.Listeners.Add(new System.Diagnostics.ConsoleTraceListener());
 
 			int product = Taskmaster.Process.Utility.ApplyAffinityStrategy(source, mask, Taskmaster.Process.AffinityStrategy.Force);

@@ -125,8 +125,8 @@ namespace Taskmaster.Process
 		/// </summary>
 		public static bool FindPathExtended(ProcessEx info)
 		{
-			Debug.Assert(!(info is null), "FindPathExtended received null");
-			Debug.Assert(string.IsNullOrEmpty(info.Path), "FindPathExtended called even though path known.");
+			System.Diagnostics.Debug.Assert(!(info is null), "FindPathExtended received null");
+			System.Diagnostics.Debug.Assert(string.IsNullOrEmpty(info.Path), "FindPathExtended called even though path known.");
 
 			Statistics.PathFindAttempts++;
 
@@ -213,8 +213,7 @@ namespace Taskmaster.Process
 			{
 				info.Restricted = true;
 
-				if (Process.Manager.DebugProcesses)
-					Logging.DebugMsg("GetModuleFileNameEx - Access Denied - " + info.ToString());
+				if (Debug) Logging.DebugMsg("GetModuleFileNameEx - Access Denied - " + info.ToString());
 			}
 			catch (InvalidOperationException) { /* already exited */ }
 			catch (Exception ex)
@@ -230,16 +229,18 @@ namespace Taskmaster.Process
 			return false;
 		}
 
+		public static bool Debug = false;
+
 		public static int ApplyAffinityStrategy(int initialmask, int targetmask, AffinityStrategy strategy)
 		{
 			StringBuilder sbs = null;
 
 			int cores = Hardware.Utility.ProcessorCount;
 
-			Debug.Assert((initialmask & FullCPUMask) == initialmask, "Initial value has bits set outside of valid range.");
-			Debug.Assert((targetmask & FullCPUMask) == targetmask, "Target mask has bits set outside of valid range.");
+			System.Diagnostics.Debug.Assert((initialmask & FullCPUMask) == initialmask, "Initial value has bits set outside of valid range.");
+			System.Diagnostics.Debug.Assert((targetmask & FullCPUMask) == targetmask, "Target mask has bits set outside of valid range.");
 
-			if (Process.Manager.DebugProcesses)
+			if (Debug)
 			{
 				sbs = new StringBuilder("Affinity Strategy(", 256)
 					.Append(HumanInterface.BitMask(initialmask, cores)).Append(" -> ")
@@ -257,8 +258,7 @@ namespace Taskmaster.Process
 			{
 				if (targetmask == initialmask)
 				{
-					if (Process.Manager.DebugProcesses)
-						Logging.DebugMsg(sbs.Append(" – Direct Match").ToString());
+					if (Debug) Logging.DebugMsg(sbs.Append(" – Direct Match").ToString());
 					return targetmask; // quick exit
 				}
 
@@ -342,7 +342,7 @@ namespace Taskmaster.Process
 		{
 			Taskmaster.NativeMethods.HANDLE handle = null;
 			int original = -1;
-			Debug.Assert(target >= 0 && target <= 2, "I/O target set to undefined value: " + target.ToString());
+			System.Diagnostics.Debug.Assert(target >= 0 && target <= 2, "I/O target set to undefined value: " + target.ToString());
 
 			target = target.Constrain(0, 2); // ensure no invalid data is used.
 

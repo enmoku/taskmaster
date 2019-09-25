@@ -46,6 +46,8 @@ namespace Taskmaster.Process
 	/// </summary>
 	public class Controller : IDisposable
 	{
+		internal bool Debug { get; set; } = false;
+
 		/// <summary>
 		/// <para>Don't allow user to tamper.</para>
 		/// <para>Mostly for inbuilt rules that protect the system from bad configuration.</para>
@@ -521,7 +523,7 @@ namespace Taskmaster.Process
 		/// </summary>
 		void DisableTracking()
 		{
-			if (DebugPower || Manager.DebugProcesses) Log.Debug($"[{FriendlyName}] Disabling tracking");
+			if (DebugPower || Debug) Log.Debug($"[{FriendlyName}] Disabling tracking");
 
 			foreach (var info in ActiveWait.Values)
 			{
@@ -546,7 +548,7 @@ namespace Taskmaster.Process
 		/// </summary>
 		public void ResetInvalid()
 		{
-			if (DebugPower || Manager.DebugProcesses) Log.Debug($"[{FriendlyName}] Refresh");
+			if (DebugPower || Debug) Log.Debug($"[{FriendlyName}] Refresh");
 
 			var cleanupList = new List<ProcessEx>(2);
 
@@ -575,7 +577,7 @@ namespace Taskmaster.Process
 
 		public void SaveConfig(Configuration.File cfg, Ini.Section app = null)
 		{
-			Debug.Assert(cfg != null);
+			System.Diagnostics.Debug.Assert(cfg != null);
 
 			if (app is null) app = cfg.Config[FriendlyName];
 
@@ -868,8 +870,8 @@ namespace Taskmaster.Process
 		/// </summary>
 		public void SetBackground(ProcessEx info, bool firsttime = false)
 		{
-			Debug.Assert(Foreground != ForegroundMode.Ignore, "Pause called for non-foreground only rule");
-			Debug.Assert(info.Controller != null, "No controller attached");
+			System.Diagnostics.Debug.Assert(Foreground != ForegroundMode.Ignore, "Pause called for non-foreground only rule");
+			System.Diagnostics.Debug.Assert(info.Controller != null, "No controller attached");
 
 			//Debug.Assert(!PausedIds.ContainsKey(info.Id));
 
@@ -949,12 +951,12 @@ namespace Taskmaster.Process
 
 		public void SetForeground(ProcessEx info)
 		{
-			Debug.Assert(Foreground != ForegroundMode.Ignore, "Resume called for non-foreground rule");
-			Debug.Assert(info.Controller != null, "No controller attached");
+			System.Diagnostics.Debug.Assert(Foreground != ForegroundMode.Ignore, "Resume called for non-foreground rule");
+			System.Diagnostics.Debug.Assert(info.Controller != null, "No controller attached");
 
 			if (info.Restricted)
 			{
-				if (Manager.DebugProcesses) Logging.DebugMsg("<Process> " + info + " RESTRICTED - cancelling SetForeground");
+				if (Debug) Logging.DebugMsg("<Process> " + info + " RESTRICTED - cancelling SetForeground");
 				return;
 			}
 
@@ -1074,9 +1076,9 @@ namespace Taskmaster.Process
 
 		bool SetPower(ProcessEx info)
 		{
-			Debug.Assert(PowerManagerEnabled, "SetPower called despite power manager being disabled");
-			Debug.Assert(PowerPlan != Power.Mode.Undefined, "Powerplan is undefined");
-			Debug.Assert(info.Controller != null, "No controller attached");
+			System.Diagnostics.Debug.Assert(PowerManagerEnabled, "SetPower called despite power manager being disabled");
+			System.Diagnostics.Debug.Assert(PowerPlan != Power.Mode.Undefined, "Powerplan is undefined");
+			System.Diagnostics.Debug.Assert(info.Controller != null, "No controller attached");
 
 			if (DebugPower || DebugForeground)
 				Log.Debug("[" + FriendlyName + "] " + info.Name + " #" + info.Id.ToString() + " foreground power on");
@@ -1254,14 +1256,14 @@ namespace Taskmaster.Process
 		// TODO: Simplify this
 		async Task Touch(ProcessEx info, bool refresh = false)
 		{
-			Debug.Assert(info.Process != null, "ProcessController.Touch given null process.");
-			Debug.Assert(!Utility.SystemProcessId(info.Id), "ProcessController.Touch given invalid process ID");
-			Debug.Assert(!string.IsNullOrEmpty(info.Name), "ProcessController.Touch given empty process name.");
-			Debug.Assert(info.Controller != null, "No controller attached");
+			System.Diagnostics.Debug.Assert(info.Process != null, "ProcessController.Touch given null process.");
+			System.Diagnostics.Debug.Assert(!Utility.SystemProcessId(info.Id), "ProcessController.Touch given invalid process ID");
+			System.Diagnostics.Debug.Assert(!string.IsNullOrEmpty(info.Name), "ProcessController.Touch given empty process name.");
+			System.Diagnostics.Debug.Assert(info.Controller != null, "No controller attached");
 
 			if (info.Restricted)
 			{
-				if (Manager.DebugProcesses && ShowInaction) Logging.DebugMsg("<Process> " + info + " RESTRICTED - cancelling Touch");
+				if (Debug && ShowInaction) Logging.DebugMsg("<Process> " + info + " RESTRICTED - cancelling Touch");
 				return;
 			}
 
@@ -1293,8 +1295,7 @@ namespace Taskmaster.Process
 
 					if (info.Process.HasExited)
 					{
-						if (Manager.DebugProcesses && ShowInaction)
-							Log.Debug("[" + FriendlyName + "] " + info.Name + " #" + info.Id.ToString() + " has already exited.");
+						if (Debug && ShowInaction) Log.Debug("[" + FriendlyName + "] " + info.Name + " #" + info.Id.ToString() + " has already exited.");
 						info.State = HandlingState.Exited;
 						return; // return ProcessState.Invalid;
 					}
@@ -1353,7 +1354,7 @@ namespace Taskmaster.Process
 						{
 							if (ormt.FreeWill)
 							{
-								if (ShowInaction && Manager.DebugProcesses)
+								if (ShowInaction && Debug)
 									Log.Debug($"[{FriendlyName}] {FormatPathName(info)} #{info.Id.ToString()} has been granted agency, ignoring.");
 								info.State = HandlingState.Abandoned;
 								return true;
@@ -1363,7 +1364,7 @@ namespace Taskmaster.Process
 							if (ormt.Submitted && ormt.ExpectedState % 20 != 0)
 							{
 								ormt.ExpectedState++;
-								if (Manager.DebugProcesses) Logging.DebugMsg($"[{FriendlyName}] {FormatPathName(info)} #{info.Id.ToString()} Is behaving well ({ormt.ExpectedState.ToString()}), skipping a check.");
+								if (Debug) Logging.DebugMsg($"[{FriendlyName}] {FormatPathName(info)} #{info.Id.ToString()} Is behaving well ({ormt.ExpectedState.ToString()}), skipping a check.");
 								return true;
 							}
 
@@ -1388,7 +1389,7 @@ namespace Taskmaster.Process
 							if (ormt.LastIgnored.To(now) < Manager.IgnoreRecentlyModified
 								|| ormt.LastModified.To(now) < Manager.IgnoreRecentlyModified)
 							{
-								if (Manager.DebugProcesses && ShowInaction) Log.Debug(info.ToFullString() + " ignored due to recent modification. State " + (expected ? "un" : "") + "changed ×" + ormt.ExpectedState.ToString());
+								if (Debug && ShowInaction) Log.Debug(info.ToFullString() + " ignored due to recent modification. State " + (expected ? "un" : "") + "changed ×" + ormt.ExpectedState.ToString());
 
 								if (ormt.ExpectedState == -2) // 2-3 seems good number
 								{
@@ -1424,7 +1425,7 @@ namespace Taskmaster.Process
 						}
 						else
 						{
-							if (Manager.DebugProcesses) Log.Debug($"[{FriendlyName}] #{info.Id.ToString()} passed because it does not match old #{ormt.Info.Id}");
+							if (Debug) Log.Debug($"[{FriendlyName}] #{info.Id.ToString()} passed because it does not match old #{ormt.Info.Id}");
 
 							RecentlyModified.TryRemove(info.Id, out _); // id does not match name
 						}
@@ -1442,7 +1443,7 @@ namespace Taskmaster.Process
 
 				// TODO: IgnoreSystem32Path
 
-				if (Manager.DebugProcesses && info.PriorityProtected && ShowInaction)
+				if (Debug && info.PriorityProtected && ShowInaction)
 					Log.Debug(info.ToFullString() + " in protected list, limiting tampering.");
 
 				ProcessPriorityClass? newPriority = null;
@@ -1480,8 +1481,7 @@ namespace Taskmaster.Process
 				}
 				else
 				{
-					if (ShowInaction && Manager.DebugProcesses)
-						Log.Verbose(info.ToFullString() + " PROTECTED");
+					if (ShowInaction && Debug) Log.Verbose(info.ToFullString() + " PROTECTED");
 				}
 
 				// APPLY CHANGES HERE
@@ -1522,7 +1522,7 @@ namespace Taskmaster.Process
 				}
 				else
 				{
-					if (Manager.DebugProcesses && Trace && ShowInaction) Logging.DebugMsg($"{FormatPathName(info)} #{info.Id.ToString()} --- affinity not touched");
+					if (Debug && Trace && ShowInaction) Logging.DebugMsg($"{FormatPathName(info)} #{info.Id.ToString()} --- affinity not touched");
 				}
 
 				// TODO: Make sure the ideal matches set mask
@@ -1559,7 +1559,7 @@ namespace Taskmaster.Process
 
 				info.Timer.Stop();
 
-				if (ShowInaction && Manager.DebugProcesses && (failSetPriority || failSetAffinity))
+				if (ShowInaction && Debug && (failSetPriority || failSetAffinity))
 				{
 					var sbs = new StringBuilder(info.ToFullString()).Append(" failed to set process ");
 
@@ -1575,7 +1575,7 @@ namespace Taskmaster.Process
 				// such a mess
 				bool logevent = modified && (ShowProcessAdjusts && !(Foreground != ForegroundMode.Ignore && !Manager.ShowForegroundTransitions));
 				logevent |= (FirstTimeSeenForForeground && Foreground != ForegroundMode.Ignore);
-				logevent |= (ShowInaction && Manager.DebugProcesses);
+				logevent |= (ShowInaction && Debug);
 
 				if (logevent || modified)
 				{
@@ -1596,7 +1596,11 @@ namespace Taskmaster.Process
 
 						if (mPower) sbs.Append(" [Power Mode: ").Append(Power.Utility.GetModeName(PowerPlan)).Append(']');
 
-						if (!modified && (ShowInaction && Manager.DebugProcesses)) sbs.Append(" – looks OK, not touched.");
+						if (!modified && ShowInaction && Debug)
+						{
+							if (failSetAffinity || failSetPriority) sbs.Append(" – failed to modify.");
+							else sbs.Append(" – looks OK, not touched.");
+						}
 
 						ev.User = sbs;
 
@@ -1718,18 +1722,17 @@ namespace Taskmaster.Process
 
 				if (original < 0)
 				{
-					if (Manager.DebugProcesses && Trace)
-						Log.Debug(info.ToFullString() + " – I/O priority access error");
+					if (Debug && Trace) Log.Debug(info.ToFullString() + " – I/O priority access error");
 				}
 				else if (original == target)
 				{
-					if (Trace && Manager.DebugProcesses && ShowInaction)
+					if (Trace && Debug && ShowInaction)
 						Log.Debug(info.ToFullString() + " – I/O priority ALREADY set to " + original.ToString() + ", target: " + target.ToString());
 					nIO = -1;
 				}
 				else
 				{
-					if (Manager.DebugProcesses && Trace)
+					if (Debug && Trace)
 					{
 						if (nIO >= 0 && nIO != original)
 							Log.Debug(info.ToFullString() + " – I/O priority set from " + original.ToString() + " to " + nIO.ToString() + ", target: " + target.ToString());
@@ -1741,12 +1744,11 @@ namespace Taskmaster.Process
 			catch (OutOfMemoryException) { throw; }
 			catch (ArgumentException)
 			{
-				if (Manager.DebugProcesses && ShowInaction && Trace)
-					Log.Debug(info.ToFullString() + " – I/O priority not set, failed to open process.");
+				if (Debug && ShowInaction && Trace) Log.Debug(info.ToFullString() + " – I/O priority not set, failed to open process.");
 			}
 			catch (InvalidOperationException)
 			{
-				if (Manager.DebugProcesses && Trace)
+				if (Debug && Trace)
 					Log.Debug(info.ToFullString() + " – I/O priority access error");
 			}
 
@@ -1809,7 +1811,7 @@ namespace Taskmaster.Process
 
 		public async Task TryResize(ProcessEx info)
 		{
-			Debug.Assert(Resize.HasValue, "Trying to resize when resize is not defined");
+			System.Diagnostics.Debug.Assert(Resize.HasValue, "Trying to resize when resize is not defined");
 
 			await Task.Delay(0).ConfigureAwait(false); // asyncify
 
@@ -1992,7 +1994,7 @@ namespace Taskmaster.Process
 		{
 			await Task.Delay(Math.Max(Recheck, 5) * 1_000).ConfigureAwait(false);
 
-			if (Manager.DebugProcesses) Log.Debug(info.ToFullString() + " rechecking");
+			if (Debug) Log.Debug(info.ToFullString() + " rechecking");
 
 			try
 			{
