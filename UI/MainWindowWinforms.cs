@@ -2105,7 +2105,8 @@ namespace Taskmaster.UI
 				li.ForeColor = System.Drawing.Color.Red;
 
 			// alternate back color
-			if (AlternateRowColorsLog && (alterStep = !alterStep))
+
+			if (AlternateRowColorsLog && ea.ID % 2 == 0)
 				li.BackColor = AlterColor;
 
 			LogListCache.Add(ea.ID, li);
@@ -4204,8 +4205,6 @@ namespace Taskmaster.UI
 			AddLog(logmsg);
 		}
 		*/
-
-		bool alterStep = true;
 
 		void AddLog(LogEventArgs ea)
 		{
