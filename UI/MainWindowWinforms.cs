@@ -437,24 +437,18 @@ namespace Taskmaster.UI
 				Checked = loglevelswitch.MinimumLevel == Serilog.Events.LogEventLevel.Verbose,
 				CheckOnClick = true,
 			};
-			menu_config_logging_info.Click += (_, _ea) =>
+
+			void SetLogLevel(Serilog.Events.LogEventLevel level)
 			{
-				menu_config_logging_debug.Checked = false;
-				menu_config_logging_trace.Checked = false;
-				loglevelswitch.MinimumLevel = Serilog.Events.LogEventLevel.Information;
-			};
-			menu_config_logging_debug.Click += (_, _ea) =>
-			{
-				menu_config_logging_info.Checked = false;
-				menu_config_logging_trace.Checked = false;
-				loglevelswitch.MinimumLevel = Serilog.Events.LogEventLevel.Debug;
-			};
-			menu_config_logging_trace.Click += (_, _ea) =>
-			{
-				menu_config_logging_info.Checked = false;
-				menu_config_logging_debug.Checked = false;
-				loglevelswitch.MinimumLevel = Serilog.Events.LogEventLevel.Verbose;
-			};
+				menu_config_logging_debug.Checked = level == Serilog.Events.LogEventLevel.Debug;
+				menu_config_logging_trace.Checked = level == Serilog.Events.LogEventLevel.Verbose;
+				menu_config_logging_info.Checked = level == Serilog.Events.LogEventLevel.Information;
+				loglevelswitch.MinimumLevel = level;
+			}
+
+			menu_config_logging_info.Click += (_, _ea) => SetLogLevel(Serilog.Events.LogEventLevel.Information);
+			menu_config_logging_debug.Click += (_, _ea) => SetLogLevel(Serilog.Events.LogEventLevel.Debug);
+			menu_config_logging_trace.Click += (_, _ea) => SetLogLevel(Serilog.Events.LogEventLevel.Verbose);
 
 			var menu_config_logging_bitmask = new ToolStripMenuItem("Bitmask");
 
@@ -464,8 +458,23 @@ namespace Taskmaster.UI
 
 			void SetLogBitmask(BitmaskStyle style)
 			{
-				CheckOnClick = true,
-			};
+				menu_config_logging_bitmask_decimal.Checked = style == BitmaskStyle.Decimal;
+				menu_config_logging_bitmask_bits.Checked = style == BitmaskStyle.Bits;
+				menu_config_logging_bitmask_mixed.Checked = style == BitmaskStyle.Mixed;
+				LogBitmask = style;
+
+				// TODO: Move to on exit logic
+				using var corecfg = Application.Config.Load(CoreConfigFilename);
+				corecfg.Config[HumanReadable.Generic.Logging]["Bitmask style"].Int = (int)LogBitmask;
+			}
+
+			menu_config_logging_bitmask_decimal.Click += (_, _ea) => SetLogBitmask(BitmaskStyle.Decimal);
+			menu_config_logging_bitmask_bits.Click += (_, _ea) => SetLogBitmask(BitmaskStyle.Bits);
+			menu_config_logging_bitmask_mixed.Click += (_, _ea) => SetLogBitmask(BitmaskStyle.Mixed);
+
+			menu_config_logging_bitmask.DropDownItems.Add(menu_config_logging_bitmask_decimal);
+			menu_config_logging_bitmask.DropDownItems.Add(menu_config_logging_bitmask_bits);
+			menu_config_logging_bitmask.DropDownItems.Add(menu_config_logging_bitmask_mixed);
 
 			menu_config_logging.DropDownItems.Add(menu_config_logging_adjusts);
 			menu_config_logging_adjusts.DropDownItems.Add(menu_config_logging_showunmodified);
@@ -2076,9 +2085,19 @@ namespace Taskmaster.UI
 
 		private void LogListRetrieveItem(object sender, RetrieveVirtualItemEventArgs e)
 		{
-			var item = LogListData[e.ItemIndex - LogListFirst];
+			LogEventArgs ev;
 
-			e.Item = LogListCache.Get(item.ID, out var li) ? li : LogListGenerateItem(item);
+			try
+			{
+				ev = LogListData[e.ItemIndex - LogListFirst];
+			}
+			catch (ArgumentOutOfRangeException ex)
+			{
+				ev = LogListData.Last();
+				Logging.Stacktrace(ex);
+			}
+
+			e.Item = LogListCache.Get(ev.ID, out var li) ? li : LogListGenerateItem(ev);
 		}
 
 		ListViewItem LogListGenerateItem(LogEventArgs ea)
@@ -3438,7 +3457,6 @@ namespace Taskmaster.UI
 					{
 						UpdateWatchlistRule(prc);
 						processmanager?.HastenScan(TimeSpan.FromMinutes(1), forceSort: true);
-						prc.ResetInvalid();
 					}
 				}
 				catch (Exception ex) { Logging.Stacktrace(ex); }
@@ -3788,7 +3806,7 @@ namespace Taskmaster.UI
 
 		void VisibleTabChangedEvent(object sender, EventArgs e)
 		{
-
+			// TODO: Stop updating specific tabs?
 		}
 
 		void VisibleChangedEvent(object sender, EventArgs e)
