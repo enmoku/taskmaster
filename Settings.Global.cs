@@ -57,6 +57,8 @@ namespace Taskmaster
 		public static bool ShowProcessAdjusts { get; set; } = true;
 		public static bool ShowSessionActions { get; set; } = true;
 
+		public static BitmaskStyle LogBitmask { get; set; } = BitmaskStyle.Bits;
+
 		public static bool DebugAudio { get; set; } = false;
 
 		public static bool DebugForeground { get; set; } = false;
@@ -114,15 +116,15 @@ namespace Taskmaster
 		public static TimeSpan PathCacheMaxAge { get; set; } = new TimeSpan(30, 0, 0);
 
 		public static bool ExitConfirmation { get; set; } = true;
-		public static BitMaskStyle AffinityStyle { get; set; } = BitMaskStyle.BitMask;
+		public static BitmaskStyle AffinityStyle { get; set; } = BitmaskStyle.Bits;
 		public static bool GlobalHotkeys { get; set; } = false;
 
 		internal static bool RestartElevated { get; set; } = false;
 		internal static int RestartCounter { get; set; } = 0;
 
-		public enum BitMaskStyle
+		public enum BitmaskStyle
 		{
-			BitMask = 0,
+			Bits = 0,
 			Decimal = 1,
 			Mixed = 2,
 		}

@@ -423,7 +423,7 @@ namespace Taskmaster.Process
 			//for (int i = 0; i < CPUCount - 1; i++)
 			//	allCPUsMask = (allCPUsMask << 1) | 1;
 
-			if (DebugProcesses) Log.Debug($"<CPU> Logical cores: {Hardware.Utility.ProcessorCount}, full mask: {HumanInterface.BitMask(Utility.FullCPUMask, Hardware.Utility.ProcessorCount)} ({Utility.FullCPUMask} = OS control)");
+			if (DebugProcesses) Log.Debug($"<CPU> Logical cores: {Hardware.Utility.ProcessorCount}, full mask: {Process.Utility.FormatBitMask(Utility.FullCPUMask, Hardware.Utility.ProcessorCount, BitmaskStyle.Bits)} ({Utility.FullCPUMask} = OS control)");
 
 			LoadConfig();
 
@@ -1272,7 +1272,7 @@ namespace Taskmaster.Process
 					prc.AffinityIdeal = ruleIdeal?.Int ?? -1;
 					if (prc.AffinityIdeal >= 0 && !Bit.IsSet(prc.AffinityMask, prc.AffinityIdeal))
 					{
-						Log.Debug($"<Watchlist:{ruleIdeal.Line}> [{prc.FriendlyName}] Affinity ideal to mask mismatch: {HumanInterface.BitMask(prc.AffinityMask, Hardware.Utility.ProcessorCount)} [{prc.AffinityMask.ToString()}], ideal core: {prc.AffinityIdeal}");
+						Log.Debug($"<Watchlist:{ruleIdeal.Line}> [{prc.FriendlyName}] Affinity ideal to mask mismatch: {Process.Utility.FormatBitMask(prc.AffinityMask, Hardware.Utility.ProcessorCount, LogBitmask)}, ideal core: {prc.AffinityIdeal}");
 						prc.AffinityIdeal = -1;
 					}
 
@@ -1379,20 +1379,16 @@ namespace Taskmaster.Process
 					if (ea.AffinityOld >= 0)
 					{
 						if (!onlyFinal || ea.AffinityNew < 0)
-						{
-							sbs.Append(HumanInterface.BitMask(ea.AffinityOld, Hardware.Utility.ProcessorCount))
-								.Append(" [").Append(ea.AffinityOld).Append(']');
-						}
+							sbs.Append(Process.Utility.FormatBitMask(ea.AffinityOld, Hardware.Utility.ProcessorCount, LogBitmask));
 
 						if (ea.AffinityNew >= 0)
 						{
 							if (!onlyFinal) sbs.Append(" → ");
-							sbs.Append(HumanInterface.BitMask(ea.AffinityNew, Hardware.Utility.ProcessorCount))
-								.Append(" [").Append(ea.AffinityNew).Append(']');
+							sbs.Append(Process.Utility.FormatBitMask(ea.AffinityNew, Hardware.Utility.ProcessorCount, LogBitmask));
 						}
 
 						if (prc.AffinityMask >= 0 && ea.Info.State == HandlingState.Paused && prc.AffinityMask != ea.AffinityNew)
-							sbs.Append(" [").Append(prc.AffinityMask).Append(']');
+							sbs.Append(" [mask: ").Append(prc.AffinityMask).Append(']'); // what was this supposed to show?
 					}
 					else
 						sbs.Append(HumanReadable.Generic.NotAvailable);

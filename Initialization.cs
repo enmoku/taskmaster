@@ -290,10 +290,10 @@ namespace Taskmaster
 			int affinitystylet = qol.GetOrSet(HumanReadable.Hardware.CPU.Settings.AffinityStyle, 0).Int.Constrain(0, 2);
 			AffinityStyle = affinitystylet switch
 			{
-				0 => BitMaskStyle.BitMask,
-				1 => BitMaskStyle.Decimal,
-				2 => BitMaskStyle.Mixed,
-				_ => BitMaskStyle.Decimal,
+				0 => BitmaskStyle.Bits,
+				1 => BitmaskStyle.Decimal,
+				2 => BitmaskStyle.Mixed,
+				_ => BitmaskStyle.Decimal,
 			};
 
 			var logsec = cfg[HumanReadable.Generic.Logging];
@@ -341,6 +341,17 @@ namespace Taskmaster
 			ShowSessionActions = logsec.GetOrSet("Show session actions", true)
 				.InitComment("Show blurbs about actions taken relating to sessions.")
 				.Bool;
+
+			LogBitmask = logsec.GetOrSet("Bitmask style", 0)
+				.InitComment("0 = Bits, 1 = Decimal, 2 = Mixed")
+				.Int
+				switch
+			{
+				1 => BitmaskStyle.Decimal,
+				2 => BitmaskStyle.Mixed,
+				// 0 =>
+				_ => BitmaskStyle.Bits,
+			};
 
 			var uisec = cfg[Constants.UserInterface];
 			ShowOnStart = uisec.GetOrSet(Constants.ShowOnStart, ShowOnStart).Bool;
@@ -703,7 +714,7 @@ namespace Taskmaster
 				*/
 
 				int selfAffMask = SelfAffinity.Replace(0, Process.Utility.FullCPUMask);
-				Log.Information($"<Core> Self-optimizing – Priority: {SelfPriority.ToString()}; Affinity: {HumanInterface.BitMask(selfAffMask, Hardware.Utility.ProcessorCount)} [{selfAffMask.ToString()}]");
+				Log.Information($"<Core> Self-optimizing – Priority: {SelfPriority.ToString()}; Affinity: {Process.Utility.FormatBitMask(selfAffMask, Hardware.Utility.ProcessorCount, LogBitmask)}");
 
 				self.ProcessorAffinity = new IntPtr(selfAffMask); // this should never throw an exception
 				self.PriorityClass = SelfPriority;

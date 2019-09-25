@@ -2058,8 +2058,7 @@ namespace Taskmaster.Process
 			if (AffinityMask >= 0)
 			{
 				sbs.Append("Affinity: ")
-					.Append(HumanInterface.BitMask(AffinityMask, Hardware.Utility.ProcessorCount))
-					.Append(" [").Append(AffinityMask.ToString()).Append(']');
+					.Append(Process.Utility.FormatBitMask(AffinityMask, Hardware.Utility.ProcessorCount, LogBitmask));
 				if (AffinityIdeal >= 0)
 					sbs.Append(" – ideal core: ").Append(AffinityIdeal);
 				sbs.Append(" – strategy: ").AppendLine(AffinityStrategy.ToString());

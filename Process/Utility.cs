@@ -40,6 +40,18 @@ namespace Taskmaster.Process
 	{
 		public static int FullCPUMask => (1 << Hardware.Utility.ProcessorCount) - 1;
 
+		/// <summary>
+		/// Returns bitmask as either "1100", "12", or "1100 [12]"
+		/// </summary>
+		public static string FormatBitMask(int mask, int length, BitmaskStyle style)
+			=> style switch
+			{
+				BitmaskStyle.Bits => HumanInterface.BitMask(mask, length),
+				BitmaskStyle.Mixed => HumanInterface.BitMask(mask, length) + " [" + mask.ToString() + "]",
+				//BitmaskStyle.Decimal =>
+				_ => mask.ToString(),
+			};
+
 		public static bool IsFullscreen(IntPtr hwnd)
 		{
 			// TODO: Is it possible to cache screen? multimonitor setup may make it hard... would that save anything?

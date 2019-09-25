@@ -456,7 +456,13 @@ namespace Taskmaster.UI
 				loglevelswitch.MinimumLevel = Serilog.Events.LogEventLevel.Verbose;
 			};
 
-			var menu_config_logging_bitmask = new ToolStripMenuItem("Bitmask")
+			var menu_config_logging_bitmask = new ToolStripMenuItem("Bitmask");
+
+			var menu_config_logging_bitmask_decimal = new ToolStripMenuItem("Decimal") { Checked = LogBitmask == BitmaskStyle.Decimal };
+			var menu_config_logging_bitmask_bits = new ToolStripMenuItem("Bits") { Checked = LogBitmask == BitmaskStyle.Bits };
+			var menu_config_logging_bitmask_mixed = new ToolStripMenuItem("Mixed") { Checked = LogBitmask == BitmaskStyle.Mixed };
+
+			void SetLogBitmask(BitmaskStyle style)
 			{
 				CheckOnClick = true,
 			};
@@ -480,11 +486,11 @@ namespace Taskmaster.UI
 			};
 			var menu_config_bitmaskstyle_decimal = new ToolStripMenuItem("Decimal")
 			{
-				Checked = (AffinityStyle == BitMaskStyle.Decimal),
+				Checked = (AffinityStyle == BitmaskStyle.Decimal),
 			};
 			menu_config_bitmaskstyle_bitmask.Click += (_, _ea) =>
 			{
-				AffinityStyle = BitMaskStyle.BitMask;
+				AffinityStyle = BitmaskStyle.Bits;
 				menu_config_bitmaskstyle_bitmask.Checked = true;
 				menu_config_bitmaskstyle_decimal.Checked = false;
 				// TODO: re-render watchlistRules
@@ -494,7 +500,7 @@ namespace Taskmaster.UI
 			};
 			menu_config_bitmaskstyle_decimal.Click += (_, _ea) =>
 			{
-				AffinityStyle = BitMaskStyle.Decimal;
+				AffinityStyle = BitmaskStyle.Decimal;
 				menu_config_bitmaskstyle_bitmask.Checked = false;
 				menu_config_bitmaskstyle_decimal.Checked = true;
 				// TODO: re-render watchlistRules
@@ -1713,12 +1719,7 @@ namespace Taskmaster.UI
 		{
 			string aff = string.Empty;
 			if (prc.AffinityMask > 0)
-			{
-				if (AffinityStyle == BitMaskStyle.BitMask)
-					aff = HumanInterface.BitMask(prc.AffinityMask, Hardware.Utility.ProcessorCount);
-				else
-					aff = prc.AffinityMask.ToString();
-			}
+				aff = AffinityStyle == BitmaskStyle.Bits ? HumanInterface.BitMask(prc.AffinityMask, Hardware.Utility.ProcessorCount) : prc.AffinityMask.ToString();
 
 			var litem = new ListViewItem(new string[] {
 				(prc.ActualOrder+1).ToString(),
