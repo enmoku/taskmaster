@@ -2105,29 +2105,32 @@ namespace Taskmaster.Process
 						catch { } // ignore
 					}
 
-					if (!old && prc.LogStartAndExit)
+					if (!old)
 					{
-						var str = info.ToFullString() + " started.";
-
-						if (prc.Warn)
-							Log.Warning(str);
-						else
-							Log.Information(str);
-
-						info.Process.Exited += (_, _ea) =>
+						if (prc.LogStartAndExit)
 						{
-							var str = info.ToFullString() + " exited (run time: " + info.Start.To(DateTimeOffset.UtcNow).ToString("g") + ").";
+							var str = info.ToFullString() + " started.";
+
 							if (prc.Warn)
 								Log.Warning(str);
 							else
 								Log.Information(str);
-						};
-						info.HookExit();
-						// TOOD: What if the process exited just before we enabled raising for the events?
-					}
-					else if (prc.Warn)
-					{
-						Log.Warning(info.ToFullString() + " started.");
+
+							info.Process.Exited += (_, _ea) =>
+							{
+								var str = info.ToFullString() + " exited (run time: " + info.Start.To(DateTimeOffset.UtcNow).ToString("g") + ").";
+								if (prc.Warn)
+									Log.Warning(str);
+								else
+									Log.Information(str);
+							};
+							info.HookExit();
+							// TOOD: What if the process exited just before we enabled raising for the events?
+						}
+						else if (prc.Warn)
+						{
+							Log.Warning(info.ToFullString() + " started.");
+						}
 					}
 
 					try
