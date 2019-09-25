@@ -728,8 +728,6 @@ namespace Taskmaster.UI.Config
 			var enOrig = Controller.Enabled;
 			Controller.Enabled = false;
 
-			if (!newPrc) Controller.ResetInvalid(); // make sure we don't cling to things
-
 			// TODO: VALIDATE FOR GRIMMY'S SAKE!
 
 			// -----------------------------------------------
@@ -901,7 +899,7 @@ namespace Taskmaster.UI.Config
 
 			DialogResult = DialogResult.OK;
 
-			Controller.ResetInvalid();
+			if (!newPrc) Controller.ResetInvalid();
 
 			Close();
 		}
