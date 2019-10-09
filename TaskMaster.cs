@@ -447,7 +447,9 @@ namespace Taskmaster
 
 			try
 			{
-				trayaccess.EnsureVisible().ConfigureAwait(false);
+				hiddenwindow?.BeginInvoke(new Action(async () => {
+					await trayaccess.EnsureVisible().ConfigureAwait(true);
+				}));
 				Config.Flush();
 			}
 			catch (Exception ex)
