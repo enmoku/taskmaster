@@ -541,6 +541,12 @@ namespace Taskmaster.UI
 		// does this do anything really?
 		public void RefreshVisibility()
 		{
+			if (!hiddenwindow.IsHandleCreated)
+			{
+				Logging.DebugMsg("-- HiddenWindow handle not present for visibility refresh");
+				return;
+			}
+
 			hiddenwindow?.Invoke(new Action(() =>
 			{
 				if (disposed) return;
