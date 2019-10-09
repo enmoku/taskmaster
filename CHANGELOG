@@ -3,6 +3,12 @@ Comprehensive changes can be found in Git change history:
 	https://github.com/mkahvi/taskmaster/commits/master
 
 ## [0.14...]
+### 2019-10-09
+	Fixed: 2 potential errors when closing down.
+### 2019-09-25
+	Fixed: Process debug overrode some basic output, turning them all into debug messages. Messages that normally would appear are no longer labeled as debug.
+### 2019-09-23
+	Fixed: Watchlist warning option was causing it to trigger excessively.
 ### 2019-09-18
 	Fixed: Null reference when default audio device is lost.
 	Changed: Sorting of loaders. Now ignores ignored items.
