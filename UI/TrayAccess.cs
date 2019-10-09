@@ -561,9 +561,11 @@ namespace Taskmaster.UI
 			try
 			{
 				int attempts = 0;
+				Log.Debug("<Tray> Not visible, fixing...");
+
 				do
 				{
-					Log.Debug("<Tray> Not visible, fixing...");
+					Logging.DebugMsg("++ Tray visibility fix attempt #" + attempts.ToString());
 
 					RefreshVisibility();
 
