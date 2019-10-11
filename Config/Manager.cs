@@ -134,7 +134,7 @@ namespace Taskmaster.Configuration
 			}
 		}
 
-		bool disposed; // = false;
+		public bool IsDisposed { get; private set; } = false;
 
 		public void Dispose()
 		{
@@ -144,8 +144,8 @@ namespace Taskmaster.Configuration
 
 		protected virtual void Dispose(bool disposing)
 		{
-			if (disposed) return;
-			disposed = true;
+			if (IsDisposed) return;
+			IsDisposed = true;
 
 			if (disposing)
 			{

@@ -131,6 +131,8 @@ namespace Taskmaster
 
 			ShuttingDown?.Invoke(null, new ShutDownEventArgs());
 
+			// OPTIOANAL: Start a new thread that checks if this completes within a timeframe and if it does not, terminate the entire process.
+
 			//if (System.Windows.Forms.Application.MessageLoop) // fails if called from another thread
 			System.Windows.Forms.Application.Exit();
 
