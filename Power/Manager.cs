@@ -63,10 +63,48 @@ namespace Taskmaster.Power
 
 			// SystemEvents.PowerModeChanged += BatteryChargingEvent; // Without laptop testing this feature is difficult
 
-			if (Behaviour == PowerBehaviour.RuleBased && !Forced)
-				Restore(new Cause(OriginType.Internal, Constants.InitialName));
+			TimeSpan moderesettime = TimeSpan.Zero;
+			var sinceBoot = TimeSpan.FromMilliseconds(System.Environment.TickCount);
+
+			if (SessionStartHighMode > 0 && sinceBoot.TotalMinutes < (SessionStartHighMode-1))
+			{
+				Behaviour = PowerBehaviour.Internal;
+
+				moderesettime = sinceBoot - TimeSpan.FromMinutes(SessionStartHighMode);
+
+				Log.Information("<Power> High performance session start mode until " + (DateTime.Now+moderesettime).ToString("g"));
+
+				InternalSetMode(Mode.HighPerformance);
+			}
+
+			Task.Delay(moderesettime).ContinueWith(ResetPowerMode).ConfigureAwait(false);
 
 			MonitorSleepTimer.Elapsed += MonitorSleepTimerTick;
+
+			Microsoft.Win32.SystemEvents.SessionEnding += SessionEndingEvent;
+		}
+
+		async Task ResetPowerMode(Task t)
+		{
+			if (t.Status != TaskStatus.RanToCompletion) return;
+
+			if (SessionStartHighMode > 0) Log.Debug("<Power> Ending session start high performance mode");
+
+			Behaviour = LaunchBehaviour;
+
+			if (Behaviour == PowerBehaviour.RuleBased && !Forced)
+				Restore(new Cause(OriginType.Internal, Constants.InitialName));
+		}
+
+		private void SessionEndingEvent(object sender, SessionEndingEventArgs e)
+		{
+			if (SessionEndHighMode)
+			{
+				Log.Debug("<Power> Session ending: Enforcing high performance mode");
+
+				Behaviour = PowerBehaviour.Internal;
+				InternalSetMode(Mode.HighPerformance);
+			}
 		}
 
 		/// <summary>
@@ -646,6 +684,11 @@ namespace Taskmaster.Power
 			else
 				LaunchBehaviour = PowerBehaviour.RuleBased;
 			Behaviour = LaunchBehaviour;
+
+			SessionEndHighMode = power.GetOrSet("Session end high mode", false).InitComment("Set high performance mode when session end is detected; true/false").TryBool ?? false;
+
+			SessionStartHighMode = (power.GetOrSet("Session start high mode length", 0).InitComment("How many minutes from session start to maintain high performance mode; 0 disables").TryInt ?? 0)
+				.Constrain(0, 30);
 
 			AutoAdjust.DefaultMode = Utility.GetModeByName(power.GetOrSet(Constants.DefaultModeSettingName, Utility.GetModeName(Mode.Balanced))
 				.InitComment("This is what power plan we fall back on when nothing else is considered.")
@@ -1263,6 +1306,16 @@ namespace Taskmaster.Power
 
 		readonly object power_lock = new object();
 
+		/// <summary>
+		/// If to set high mode on session end detected.
+		/// </summary>
+		public bool SessionEndHighMode { get; set; } = false;
+
+		/// <summary>
+		/// Minutes for how long to keep high mode at session start.
+		/// </summary>
+		public int SessionStartHighMode { get; set; } = 0;
+
 		public PowerBehaviour LaunchBehaviour { get; set; } = PowerBehaviour.RuleBased;
 		public PowerBehaviour Behaviour { get; private set; } = PowerBehaviour.RuleBased;
 
@@ -1429,7 +1482,11 @@ namespace Taskmaster.Power
 				OnDisposed?.Invoke(this, new DisposedEventArgs());
 				OnDisposed = null;
 			}
+
+			Microsoft.Win32.SystemEvents.SessionEnding -= SessionEndingEvent;
 		}
+
+		~Manager() => Dispose(false);
 
 		public void Dispose()
 		{
