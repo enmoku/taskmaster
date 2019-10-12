@@ -5,7 +5,7 @@ Comprehensive changes can be found in Git change history:
 ## [0.14...]
 ### 2019-10-12
 	Fixed: NullReferenceException in the crash handler (reported by Chairkicker Nick)
-	Fixed: ArgumentOutOfRangeException in opening component configuration with unexpected WMI poll delay.
+	Fixed: ArgumentOutOfRangeException in opening component configuration with unexpected WMI poll delay. (reported by Chairkicker Nick)
 ### 2019-10-10
 	Added: Session start and session end power boosting. Disabled by default. (requested by Chairkicker Nick)
 ### 2019-10-09
