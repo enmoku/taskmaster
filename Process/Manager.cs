@@ -1021,8 +1021,8 @@ namespace Taskmaster.Process
 				.Bool;
 
 			WMIPollDelay = perfsec.GetOrSet(Constants.WMIPollDelay, 5)
-				.InitComment("WMI process watcher delay (in seconds).  Smaller gives better results but can inrease CPU usage. Accepted values: 1 to 30.")
-				.Int.Constrain(1, 30);
+				.InitComment("WMI process watcher delay (in seconds).  Smaller gives better results but can inrease CPU usage. Accepted values: 1 to 5.")
+				.Int.Constrain(1, 5);
 
 			// --------------------------------------------------------------------------------------------------------
 

@@ -24,6 +24,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
+using MKAh;
 using Serilog;
 using System;
 using System.Windows.Forms;
@@ -61,7 +62,7 @@ namespace Taskmaster.UI.Config
 				using var corecfg = Config.Load(CoreConfigFilename);
 				var perfsec = corecfg.Config[Constants.Performance];
 				WMIPolling = perfsec.Get(Constants.WMIWatcher)?.Bool ?? true;
-				WMIPollDelay = perfsec.Get(Constants.WMIDelay)?.Int ?? 2;
+				WMIPollDelay = (perfsec.Get(Constants.WMIDelay)?.Int ?? 2).Constrain(0, 5);
 				ScanFrequency = perfsec.Get(Constants.ScanFrequency)?.Int ?? 180;
 			}
 			else
@@ -180,7 +181,7 @@ namespace Taskmaster.UI.Config
 				Minimum = 1,
 				Maximum = 5,
 				Unit = "s",
-				Value = initial ? 5 : WMIPollDelay,
+				Value = initial ? 5 : WMIPollDelay.Constrain(1, 5),
 				Dock = DockStyle.Left,
 				Enabled = false,
 				Width = 60,
