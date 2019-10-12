@@ -41,9 +41,9 @@ namespace Taskmaster
 
 			var projectdir = Properties.Resources.ProjectDirectory.Trim();
 
-			//if (ex.StackTrace is null)
+			if (string.IsNullOrEmpty(ex.StackTrace))
 				output.AppendLine("!!! Stacktrace missing !!!").AppendLine();
-			//else
+			else
 			{
 				var trace = ex.StackTrace.Replace(projectdir, HumanReadable.Generic.Ellipsis + System.IO.Path.DirectorySeparatorChar);
 				output.AppendLine("----- Stacktrace -----")
