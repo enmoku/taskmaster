@@ -527,28 +527,41 @@ namespace Taskmaster
 			// Parallel loading, cuts down startup time some. C# ensures parallelism is not enforced.
 			// This is really bad if something fails
 
-			Task
-				PowMan = (PowerManagerEnabled ? Task.Run(() => powermanager = new Power.Manager(), cts.Token) : Task.CompletedTask)
-					.ContinueWith(_ => LoadEvent?.Invoke(null, new LoadEventArgs("Power manager processed.", LoadEventType.SubLoaded)), TaskContinuationOptions.OnlyOnRanToCompletion),
-				CpuMon = (PowerManagerEnabled ? Task.Run(() => cpumonitor = new Hardware.CPUMonitor(), cts.Token) : Task.CompletedTask)
-					.ContinueWith(_ => LoadEvent?.Invoke(null, new LoadEventArgs("CPU monitor processed.", LoadEventType.SubLoaded)), TaskContinuationOptions.OnlyOnRanToCompletion),
-				ProcMon = (ProcessMonitorEnabled ? Task.Run(() => processmanager = new Process.Manager(), cts.Token) : Task.CompletedTask)
-					.ContinueWith(_ => LoadEvent?.Invoke(null, new LoadEventArgs("Process manager processed.", LoadEventType.SubLoaded)), TaskContinuationOptions.OnlyOnRanToCompletion),
-				FgMon = (ActiveAppMonitorEnabled ? Task.Run(() => activeappmonitor = new Process.ForegroundManager(), cts.Token) : Task.CompletedTask)
-					.ContinueWith(_ => LoadEvent?.Invoke(null, new LoadEventArgs("Foreground manager processed.", LoadEventType.SubLoaded)), TaskContinuationOptions.OnlyOnRanToCompletion),
-				NetMon = (NetworkMonitorEnabled ? Task.Run(() => netmonitor = new Network.Manager(), cts.Token) : Task.CompletedTask)
-					.ContinueWith(_ => LoadEvent?.Invoke(null, new LoadEventArgs("Network monitor processed.", LoadEventType.SubLoaded)), TaskContinuationOptions.OnlyOnRanToCompletion),
-				StorMon = (StorageMonitorEnabled ? Task.Run(() => storagemanager = new StorageManager(), cts.Token) : Task.CompletedTask)
-					.ContinueWith(_ => LoadEvent?.Invoke(null, new LoadEventArgs("Storage monitor processed.", LoadEventType.SubLoaded)), TaskContinuationOptions.OnlyOnRanToCompletion),
-				HpMon = (HealthMonitorEnabled ? Task.Run(() => healthmonitor = new HealthMonitor(), cts.Token) : Task.CompletedTask)
-					.ContinueWith(_ => LoadEvent?.Invoke(null, new LoadEventArgs("Health monitor processed.", LoadEventType.SubLoaded)), TaskContinuationOptions.OnlyOnRanToCompletion),
-				HwMon = (HardwareMonitorEnabled ? Task.Run(() => hardware = new Hardware.Monitor(), cts.Token) : Task.CompletedTask)
-					.ContinueWith(_ => LoadEvent?.Invoke(null, new LoadEventArgs("Hardware monitor processed.", LoadEventType.SubLoaded)), TaskContinuationOptions.OnlyOnRanToCompletion),
-				//AlMan = (AlertManagerEnabled ? Task.Run(() => alerts = new AlertManager(), cts.Token) : Task.CompletedTask)
-				//	.ContinueWith(_ => LoadEvent?.Invoke(null, new LoadEventArgs("Alert manager processed.", LoadEventType.SubLoaded)), TaskContinuationOptions.OnlyOnRanToCompletion),
-				SelfMaint = (Task.Run(() => selfmaintenance = new SelfMaintenance(), cts.Token))
-					.ContinueWith(_ => LoadEvent?.Invoke(null, new LoadEventArgs("Self-maintenance manager processed.", LoadEventType.SubLoaded)), TaskContinuationOptions.OnlyOnRanToCompletion);
+			void LogException(Action action)
+			{
+				try
+				{
+					action();
+				}
+				catch (Exception ex)
+				{
+					Logging.Stacktrace(ex);
+					throw;
+				}
+			}
 
+			Task
+				PowMan = (PowerManagerEnabled ? Task.Run(() => LogException(() => powermanager = new Power.Manager()), cts.Token) : Task.CompletedTask)
+					.ContinueWith(_ => LoadEvent?.Invoke(null, new LoadEventArgs("Power manager processed.", LoadEventType.SubLoaded)), TaskContinuationOptions.OnlyOnRanToCompletion),
+				CpuMon = (PowerManagerEnabled ? Task.Run(() => LogException(() => cpumonitor = new Hardware.CPUMonitor()), cts.Token) : Task.CompletedTask)
+					.ContinueWith(_ => LoadEvent?.Invoke(null, new LoadEventArgs("CPU monitor processed.", LoadEventType.SubLoaded)), TaskContinuationOptions.OnlyOnRanToCompletion),
+				ProcMon = (ProcessMonitorEnabled ? Task.Run(() => LogException(() => processmanager = new Process.Manager()), cts.Token) : Task.CompletedTask)
+					.ContinueWith(_ => LoadEvent?.Invoke(null, new LoadEventArgs("Process manager processed.", LoadEventType.SubLoaded)), TaskContinuationOptions.OnlyOnRanToCompletion),
+				FgMon = (ActiveAppMonitorEnabled ? Task.Run(() => LogException(() => activeappmonitor = new Process.ForegroundManager()), cts.Token) : Task.CompletedTask)
+					.ContinueWith(_ => LoadEvent?.Invoke(null, new LoadEventArgs("Foreground manager processed.", LoadEventType.SubLoaded)), TaskContinuationOptions.OnlyOnRanToCompletion),
+				NetMon = (NetworkMonitorEnabled ? Task.Run(() => LogException(() => netmonitor = new Network.Manager()), cts.Token) : Task.CompletedTask)
+					.ContinueWith(_ => LoadEvent?.Invoke(null, new LoadEventArgs("Network monitor processed.", LoadEventType.SubLoaded)), TaskContinuationOptions.OnlyOnRanToCompletion),
+				StorMon = (StorageMonitorEnabled ? Task.Run(() => LogException(() => storagemanager = new StorageManager()), cts.Token) : Task.CompletedTask)
+					.ContinueWith(_ => LoadEvent?.Invoke(null, new LoadEventArgs("Storage monitor processed.", LoadEventType.SubLoaded)), TaskContinuationOptions.OnlyOnRanToCompletion),
+				HpMon = (HealthMonitorEnabled ? Task.Run(() => LogException(() => healthmonitor = new HealthMonitor()), cts.Token) : Task.CompletedTask)
+					.ContinueWith(_ => LoadEvent?.Invoke(null, new LoadEventArgs("Health monitor processed.", LoadEventType.SubLoaded)), TaskContinuationOptions.OnlyOnRanToCompletion),
+				HwMon = (HardwareMonitorEnabled ? Task.Run(() => LogException(() => hardware = new Hardware.Monitor()), cts.Token) : Task.CompletedTask)
+					.ContinueWith(_ => LoadEvent?.Invoke(null, new LoadEventArgs("Hardware monitor processed.", LoadEventType.SubLoaded)), TaskContinuationOptions.OnlyOnRanToCompletion),
+				//AlMan = (AlertManagerEnabled ? Task.Run(() => LogInit(() => alerts = new AlertManager()), cts.Token) : Task.CompletedTask)
+				//	.ContinueWith(_ => LoadEvent?.Invoke(null, new LoadEventArgs("Alert manager processed.", LoadEventType.SubLoaded)), TaskContinuationOptions.OnlyOnRanToCompletion),
+				SelfMaint = (Task.Run(() => LogException(() => selfmaintenance = new SelfMaintenance()), cts.Token))
+					.ContinueWith(_ => LoadEvent?.Invoke(null, new LoadEventArgs("Self-maintenance manager processed.", LoadEventType.SubLoaded)), TaskContinuationOptions.OnlyOnRanToCompletion);
+			
 			Task[] init = new[] { PowMan, CpuMon, ProcMon, FgMon, NetMon, StorMon, HpMon, HwMon, /*AlMan,*/ SelfMaint };
 
 			Exception[]? cex = null;
@@ -611,7 +624,11 @@ namespace Taskmaster
 				{
 					Task.WhenAll(PowMan, CpuMon, ProcMon).ContinueWith((task, _discard) =>
 					  {
-						  if (task.IsFaulted || processmanager is null) throw new TaskCanceledException("task canceled", task.Exception);
+						  if (task.IsFaulted || processmanager is null)
+						  {
+							  Log.Fatal("Process, CPU or Power manager failed to initialize.");
+							  throw new TaskCanceledException("task canceled", task.Exception);
+						  }
 
 						  if (cpumonitor != null)
 						  {
@@ -631,6 +648,8 @@ namespace Taskmaster
 					{
 						cex = tr.Exception?.InnerExceptions.ToArray() ?? null;
 						Logging.DebugMsg("Unknown initialization failed");
+
+						Log.Fatal("<Core> Initialization failure, cancelling start-up.");
 						cts.Cancel(true);
 					}
 				}
@@ -652,10 +671,22 @@ namespace Taskmaster
 			}
 			catch (AggregateException ex)
 			{
-				foreach (var iex in ex.InnerExceptions)
-					Logging.Stacktrace(iex, crashsafe: true);
+				// These only give TaskCanceledExceptions which are very unhelpful as they don't bundle the unhandled exception that caused them.
 
-				throw new InitFailure("Initialization failure", ex.InnerExceptions[0]);
+				var faulting = new System.Collections.Generic.List<string>();
+				if (PowMan.IsFaulted) faulting.Add("Power");
+				if (CpuMon.IsFaulted) faulting.Add("CPU");
+				if (ProcMon.IsFaulted) faulting.Add("Process");
+				if (FgMon.IsFaulted) faulting.Add("Foreground");
+				if (NetMon.IsFaulted) faulting.Add("Network");
+				if (StorMon.IsFaulted) faulting.Add("Storage");
+				if (HpMon.IsFaulted) faulting.Add("Health");
+				if (HwMon.IsFaulted) faulting.Add("Hardware");
+				if (SelfMaint.IsFaulted) faulting.Add("Self-maintenance");
+				string failed = string.Join(", ", faulting);
+				Log.Fatal("<Core> Failed to initialize one or more components: " + failed);
+
+				throw new InitFailure("Initialization failure: " + failed);
 				//System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(ex.InnerException).Throw();
 				//throw; // because compiler is dumb and doesn't understand the above
 			}

@@ -93,6 +93,7 @@ namespace Taskmaster
 					var sbs = new StringBuilder(1024);
 					sbs.Append("Datetime:     ").Append(now.ToLongDateString()).Append(' ').AppendLine(now.ToLongTimeString())
 						.Append("Caught at: ").Append(method).Append(':').Append(lineNo).Append(" [").Append(file).AppendLine("]")
+						.Append("Site: ").AppendLine(ex.TargetSite?.ToString() ?? string.Empty)
 						.AppendLine()
 						.Append("Command line: ").AppendLine(Environment.CommandLine);
 
