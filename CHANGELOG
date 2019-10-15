@@ -3,6 +3,11 @@ Comprehensive changes can be found in Git change history:
 	https://github.com/mkahvi/taskmaster/commits/master
 
 ## [0.14...]
+### 2019-10-15
+	Changed: Log some self-maintenance errors properly.
+	Fixed: Boot time high performance mode was doing math wrong and crashing. (reported by Chairkicker Nick)
+### 2019-10-13
+	Changed: Log initialization failures better.
 ### 2019-10-12
 	Fixed: NullReferenceException in the crash handler (reported by Chairkicker Nick)
 	Fixed: ArgumentOutOfRangeException in opening component configuration with unexpected WMI poll delay. (reported by Chairkicker Nick)
