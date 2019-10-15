@@ -339,7 +339,7 @@ namespace Taskmaster
 			{
 				HealthTimer.Stop();
 			}
-			catch (Exception ex) { Logging.Stacktrace(ex); }
+			catch (Exception ex) { throw; }
 			finally
 			{
 				Atomic.Unlock(ref HealthCheck_lock);
@@ -356,12 +356,21 @@ namespace Taskmaster
 
 			await Task.Delay(0).ConfigureAwait(false);
 
-			uint ntick = MKAh.Native.GetTickCount();
+			try
+			{
 
-			if (LastTick > ntick)
-				Log.Warning("<Health> kernel32.dll/GetTickCount() has wrapped around.");
+				uint ntick = MKAh.Native.GetTickCount();
 
-			LastTick = ntick;
+				if (LastTick > ntick)
+					Log.Warning("<Health> kernel32.dll/GetTickCount() has wrapped around.");
+
+				LastTick = ntick;
+			}
+			catch (Exception ex)
+			{
+				Logging.Stacktrace(ex);
+				throw;
+			}
 		}
 
 		async Task CheckErrors()
@@ -388,10 +397,18 @@ namespace Taskmaster
 
 			long size = 0;
 
-			var files = System.IO.Directory.GetFiles(LogPath, "*", System.IO.SearchOption.AllDirectories);
-			foreach (var filename in files)
+			try
 			{
-				size += (new System.IO.FileInfo(System.IO.Path.Combine(LogPath, filename))).Length;
+				var files = System.IO.Directory.GetFiles(LogPath, "*", System.IO.SearchOption.AllDirectories);
+				foreach (var filename in files)
+				{
+					size += (new System.IO.FileInfo(System.IO.Path.Combine(LogPath, filename))).Length;
+				}
+			}
+			catch (Exception ex)
+			{
+				Logging.Stacktrace(ex);
+				throw;
 			}
 
 			if (size >= Settings.FatalLogSizeThreshold * 1_000_000)
@@ -413,45 +430,53 @@ namespace Taskmaster
 
 			await Task.Delay(0).ConfigureAwait(false);
 
-			// TODO: Add defrag suggestion based on Windows.PerformanceCounter("LogicalDisk", "Split IO/sec", "_Total");
-
-			var now = DateTimeOffset.UtcNow;
-			if (now.Since(LastDriveWarning).TotalHours >= 24)
-				WarnedDrives.Clear();
-
-			foreach (var drive in System.IO.DriveInfo.GetDrives())
+			try
 			{
-				if (drive.IsReady)
+				// TODO: Add defrag suggestion based on Windows.PerformanceCounter("LogicalDisk", "Split IO/sec", "_Total");
+
+				var now = DateTimeOffset.UtcNow;
+				if (now.Since(LastDriveWarning).TotalHours >= 24)
+					WarnedDrives.Clear();
+
+				foreach (var drive in System.IO.DriveInfo.GetDrives())
 				{
-					if ((drive.AvailableFreeSpace / 1_000_000) < Settings.LowDriveSpaceThreshold)
+					if (drive.IsReady)
 					{
-						if (WarnedDrives.Contains(drive.Name)) continue;
-
-						var sqrbi = new NativeMethods.ShQueryRecycleBinInfo
+						if ((drive.AvailableFreeSpace / 1_000_000) < Settings.LowDriveSpaceThreshold)
 						{
-							cbSize = System.Runtime.InteropServices.Marshal.SizeOf(typeof(NativeMethods.ShQueryRecycleBinInfo))
-						};
+							if (WarnedDrives.Contains(drive.Name)) continue;
 
-						NativeMethods.SHQueryRecycleBin(drive.Name, ref sqrbi);
+							var sqrbi = new NativeMethods.ShQueryRecycleBinInfo
+							{
+								cbSize = System.Runtime.InteropServices.Marshal.SizeOf(typeof(NativeMethods.ShQueryRecycleBinInfo))
+							};
 
-						long rbsize = sqrbi.i64Size;
+							NativeMethods.SHQueryRecycleBin(drive.Name, ref sqrbi);
 
-						Log.Warning("<Auto-Doc> Low free space on " + drive.Name
-							+ " (" + HumanInterface.ByteString(drive.AvailableFreeSpace) + "); recycle bin has: " + HumanInterface.ByteString(rbsize));
+							long rbsize = sqrbi.i64Size;
 
-						WarnedDrives.Add(drive.Name);
-						LastDriveWarning = now;
-					}
-					else
-					{
-						WarnedDrives.Remove(drive.Name);
+							Log.Warning("<Auto-Doc> Low free space on " + drive.Name
+								+ " (" + HumanInterface.ByteString(drive.AvailableFreeSpace) + "); recycle bin has: " + HumanInterface.ByteString(rbsize));
+
+							WarnedDrives.Add(drive.Name);
+							LastDriveWarning = now;
+						}
+						else
+						{
+							WarnedDrives.Remove(drive.Name);
+						}
 					}
 				}
-			}
 
-			// Empty Recycle Bin
-			//uint flags = NativeMethods.SHERB_NOCONFIRMATION | NativeMethods.SHERB_NOPROGRESSUI | NativeMethods.SHERB_NOSOUND;
-			//NativeMethods.SHEmptyRecycleBin(IntPtr.Zero, path, flags);
+				// Empty Recycle Bin
+				//uint flags = NativeMethods.SHERB_NOCONFIRMATION | NativeMethods.SHERB_NOPROGRESSUI | NativeMethods.SHERB_NOSOUND;
+				//NativeMethods.SHEmptyRecycleBin(IntPtr.Zero, path, flags);
+			}
+			catch (Exception ex)
+			{
+				Logging.Stacktrace(ex);
+				throw;
+			}
 		}
 
 		public void SetMemFreeThreshold(int value)
