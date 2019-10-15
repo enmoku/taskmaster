@@ -66,15 +66,26 @@ namespace Taskmaster.Power
 			TimeSpan moderesettime = TimeSpan.Zero;
 			var sinceBoot = TimeSpan.FromMilliseconds(System.Environment.TickCount);
 
-			if (SessionStartHighMode > 0 && sinceBoot.TotalMinutes < (SessionStartHighMode-1))
+			if (SessionStartHighMode > 0)
 			{
-				Behaviour = PowerBehaviour.Internal;
+				if (sinceBoot.TotalMinutes < (SessionStartHighMode - 0.5d))
+				{
+					Behaviour = PowerBehaviour.Internal;
 
-				moderesettime = sinceBoot - TimeSpan.FromMinutes(SessionStartHighMode);
-
-				Log.Information("<Power> High performance session start mode until " + (DateTime.Now+moderesettime).ToString("g"));
-
-				InternalSetMode(Mode.HighPerformance);
+					moderesettime = TimeSpan.FromMinutes(SessionStartHighMode) - sinceBoot;
+					if (moderesettime.TotalSeconds > 5d)
+					{
+						Log.Information("<Power> High performance session start mode until " + (DateTime.Now + moderesettime).ToString("g"));
+						InternalSetMode(Mode.HighPerformance);
+					}
+					else
+					{
+						Log.Debug("<Power> High performance session start too short (would end at: " + (DateTime.Now + moderesettime).ToString("g") + ")");
+						moderesettime = TimeSpan.Zero;
+					}
+				}
+				else
+					Log.Debug("<Power> Time since session start exceeds session start boost time.");
 			}
 
 			Task.Delay(moderesettime).ContinueWith(ResetPowerMode).ConfigureAwait(false);
@@ -88,7 +99,15 @@ namespace Taskmaster.Power
 		{
 			if (t.Status != TaskStatus.RanToCompletion) return;
 
-			if (SessionStartHighMode > 0) Log.Debug("<Power> Ending session start high performance mode");
+			if (SessionStartHighMode > 0)
+			{
+				var sinceBoot = TimeSpan.FromMilliseconds(System.Environment.TickCount);
+				double sinceBootMins = sinceBoot.TotalMinutes;
+				if (sinceBootMins - 1d <= SessionStartHighMode)
+					Log.Debug("<Power> Ending session start high performance mode (start " + sinceBootMins.ToString("N1") + " mins ago)");
+				else
+					Log.Debug("<Power> Session start too old (" + sinceBootMins.ToString("N1") + " mins), resuming normal power.");
+			}
 
 			Behaviour = LaunchBehaviour;
 
