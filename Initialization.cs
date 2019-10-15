@@ -683,6 +683,8 @@ namespace Taskmaster
 				if (HpMon.IsFaulted) faulting.Add("Health");
 				if (HwMon.IsFaulted) faulting.Add("Hardware");
 				if (SelfMaint.IsFaulted) faulting.Add("Self-maintenance");
+				if (faulting.Count == 0) faulting.Add("[Unrecognized]");
+
 				string failed = string.Join(", ", faulting);
 				Log.Fatal("<Core> Failed to initialize one or more components: " + failed);
 
