@@ -1351,7 +1351,7 @@ namespace Taskmaster.UI
 
 				BeginInvoke(new Action(() =>
 				{
-					if (IsDisposed || !IsHandleCreated) return;
+					if (disposed || !IsHandleCreated) return;
 
 					try
 					{
@@ -1381,7 +1381,7 @@ namespace Taskmaster.UI
 
 		void AudioDeviceAdded(object sender, Audio.DeviceEventArgs ea)
 		{
-			if (IsDisposed || !IsHandleCreated) return;
+			if (disposed || !IsHandleCreated) return;
 
 			switch (ea.Device.Flow)
 			{
