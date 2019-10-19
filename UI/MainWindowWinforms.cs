@@ -1316,7 +1316,7 @@ namespace Taskmaster.UI
 			AlternateListviewRowColors(AudioInputs, AlternateRowColorsDevices);
 		}
 
-		Audio.Manager audiomanager = null;
+		Audio.Manager? audiomanager = null;
 
 		public void Hook(Audio.Manager manager)
 		{
