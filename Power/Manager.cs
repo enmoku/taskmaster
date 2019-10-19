@@ -1121,6 +1121,9 @@ namespace Taskmaster.Power
 		}
 
 		Cause ExpectedCause = new Cause(OriginType.None);
+
+		public Cause LastCause => ExpectedCause;
+
 		Mode ExpectedMode;
 		MonitorPowerMode ExpectedMonitorPower = MonitorPowerMode.On;
 		DateTimeOffset LastExternalWarning = DateTimeOffset.MinValue;
