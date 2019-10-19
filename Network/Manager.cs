@@ -706,7 +706,7 @@ namespace Taskmaster.Network
 
 		public DeviceTraffic CurrentTraffic { get; private set; } = new DeviceTraffic();
 
-		public UI.TrayAccess Tray { get; set; } = null; // HACK: bad design
+		public UI.TrayAccess? Tray { get; set; } = null; // HACK: bad design
 
 		public bool NetworkAvailable { get; private set; } = false;
 
