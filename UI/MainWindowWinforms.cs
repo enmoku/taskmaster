@@ -3683,6 +3683,10 @@ namespace Taskmaster.UI
 			power_auto.Enabled = true;
 			UpdatePowerBehaviourHighlight(powermanager.Behaviour);
 			HighlightPowerMode();
+
+			BeginInvoke(new Action(() => {
+				pwcause.Text = powermanager?.LastCause.ToString() ?? "n/a";
+			}));
 		}
 
 		void AttachPowerDebug()
