@@ -69,6 +69,8 @@ namespace Taskmaster.UI
 			// InitializeComponent(); // TODO: WPF
 			FormClosing += WindowClose;
 
+			FormClosed += SelfDispose;
+
 			ShowInTaskbar = true;
 
 			#region Load Configuration
@@ -1091,6 +1093,8 @@ namespace Taskmaster.UI
 
 		void OnShown(object _, EventArgs _ea)
 		{
+			if (!IsHandleCreated || disposed) return;
+
 			Logging.DebugMsg("<Main Window> Showing");
 
 			if (!IsHandleCreated) return;
@@ -1131,6 +1135,8 @@ namespace Taskmaster.UI
 			}
 			catch (Exception ex) { Logging.Stacktrace(ex); }
 		}
+
+		void SelfDispose(object _, EventArgs _ea) => Dispose(true);
 
 		// this restores the main window to a place where it can be easily found if it's lost
 		/// <summary>
@@ -1889,7 +1895,7 @@ namespace Taskmaster.UI
 
 		void StartUIUpdates(object sender, EventArgs _ea)
 		{
-			if (!IsHandleCreated) StopUIUpdates(this, EventArgs.Empty);
+			if (disposed || !IsHandleCreated) StopUIUpdates(this, EventArgs.Empty);
 			else if (!UItimer.Enabled)
 			{
 				UpdateMemoryStats(sender, EventArgs.Empty);
@@ -1916,7 +1922,8 @@ namespace Taskmaster.UI
 
 		void UpdateRescanCountdown(object _, EventArgs _ea)
 		{
-			if (!IsHandleCreated) return;
+			if (disposed || !IsHandleCreated) return;
+
 			if (processmanager is null) return; // not yet assigned
 
 			// Rescan Countdown
@@ -1928,7 +1935,8 @@ namespace Taskmaster.UI
 
 		void UpdateNetwork(object _, EventArgs _ea)
 		{
-			if (!IsHandleCreated) return;
+			if (disposed || !IsHandleCreated) return;
+
 			if (netmonitor is null) return;
 
 			uptimestatuslabel.Text = HumanInterface.TimeString(netmonitor.Uptime);
@@ -2136,6 +2144,8 @@ namespace Taskmaster.UI
 
 		void UpdateTrackingCounter(object sender, EventArgs e)
 		{
+			if (disposed || !IsHandleCreated) return;
+
 			processingcount.Text = processmanager?.Handling.ToString() ?? "n/a";
 			trackingcount.Text = processmanager?.RunningCount.ToString() ?? "n/a";
 		}
@@ -2856,6 +2866,8 @@ namespace Taskmaster.UI
 
 		void WatchlistSearchTimer_Tick(object sender, EventArgs e)
 		{
+			if (disposed || !IsHandleCreated) return;
+
 			bool foundprimary = false, found = false;
 
 			if (!string.IsNullOrEmpty(SearchString))
@@ -2894,7 +2906,7 @@ namespace Taskmaster.UI
 
 		public void CPULoadEvent(object _, Hardware.CPUSensorEventArgs ea)
 		{
-			if (!IsHandleCreated) return;
+			if (disposed || !IsHandleCreated) return;
 
 			BeginInvoke(new Action(() =>
 			{
