@@ -2929,10 +2929,19 @@ namespace Taskmaster.UI
 
 		void GPULoadPoller(object sender, EventArgs e)
 		{
+			if (disposed || !IsHandleCreated) return;
+
+			if (hardwaremonitor is null)
+			{
+				Log.Error("<Window> Hardware Monitor inaccessible, disabling GPU updates.");
+				UItimer.Tick -= GPULoadPoller;
+				return;
+			}
+
 			try
 			{
-				var sensors = hardwaremonitor.GPUSensorData();
-				GPUSensorUpdate(sensors);
+				var sensors = hardwaremonitor?.GPUSensorData();
+				if (sensors.HasValue) GPUSensorUpdate(sensors.Value);
 			}
 			catch (InvalidOperationException) { /* happens on first polling */ }
 			catch (OutOfMemoryException) { throw; }
