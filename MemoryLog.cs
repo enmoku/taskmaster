@@ -30,6 +30,8 @@ using Serilog.Core;
 using Serilog.Events;
 using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 
 namespace Taskmaster
@@ -89,6 +91,13 @@ namespace Taskmaster
 			MemoryLog.MemorySink = this;
 		}
 
+#if DEBUG
+		readonly List<TraceListener> listeners = new List<TraceListener>();
+#endif
+
+		[Conditional("DEBUG")]
+		public void SetListener(TraceListener trace) => listeners.Add(trace);
+
 		//public LoggingLevelSwitch LevelSwitch;
 
 		public void Clear() { lock (LogLock) Logs.Clear(); }
@@ -124,6 +133,11 @@ namespace Taskmaster
 					Output.GetStringBuilder().Clear(); // empty, weird results if not done.
 				}
 			}
+
+#if DEBUG
+			foreach (var listener in listeners)
+				listener.Write(formattedtext);
+#endif
 
 			Emit(this, new LogEventArgs(formattedtext, e.Level, e));
 		}

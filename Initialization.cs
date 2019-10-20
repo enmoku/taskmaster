@@ -40,11 +40,11 @@ namespace Taskmaster
 		public const string CoreConfigFilename = "Core.ini";
 		public const string UIConfigFilename = "UI.ini";
 
+		static TraceListener? tracelistener = null;
+
 		static System.Threading.Mutex Initialize(ref string[] args)
 		{
 			var startTimer = Stopwatch.StartNew();
-
-			//Debug.Listeners.Add(new TextWriterTraceListener(System.Console.Out));
 
 			NativeMethods.SetErrorMode(NativeMethods.SetErrorMode(NativeMethods.ErrorModes.SEM_SYSTEMDEFAULT) | NativeMethods.ErrorModes.SEM_NOGPFAULTERRORBOX | NativeMethods.ErrorModes.SEM_FAILCRITICALERRORS);
 
@@ -59,6 +59,21 @@ namespace Taskmaster
 
 			TryPortableMode();
 			LogPath = System.IO.Path.Combine(DataPath, LogFolder);
+
+			if (Array.Exists(args, arg => arg == "--trace"))
+			{
+				var lnow = DateTime.Now;
+				var tracefile = System.IO.Path.Combine(LogPath, string.Format("{0:0000}-{1:00}-{2:00}.trace", lnow.Year, lnow.Month, lnow.Day));
+				tracelistener = new TextWriterTraceListener(tracefile);
+				
+				Debug.Listeners.Add(tracelistener);
+
+				//Debug.Listeners.Add(new TextWriterTraceListener(System.Console.Out));
+
+				Logging.DebugMsg("<Init> Trace enabled: " + tracefile);
+			}
+			else
+				Logging.DebugMsg("No trace");
 
 			// Singleton
 			var singleton = new System.Threading.Mutex(true, SingletonID, out bool mutexgained);
@@ -143,6 +158,10 @@ namespace Taskmaster
 			}
 
 			Serilog.Log.Logger = logconf.CreateLogger();
+
+#if DEBUG
+			if (tracelistener != null) MemoryLog.MemorySink.SetListener(tracelistener);
+#endif
 
 			AppDomain.CurrentDomain.ProcessExit += (_, _ea) => Log.CloseAndFlush();
 
@@ -589,8 +608,10 @@ namespace Taskmaster
 					}
 				}
 			}
-			catch (InitFailure)
+			catch (InitFailure ex)
 			{
+				Log.Fatal("<Init> Error: " + ex.Message);
+
 				if (micmonitor != null)
 				{
 					micmonitor.Dispose();
@@ -601,7 +622,9 @@ namespace Taskmaster
 					audiomanager.Dispose();
 					audiomanager = null;
 				}
+
 				Logging.DebugMsg("AudioManager initialization failed");
+
 				cts.Cancel(throwOnFirstException: false);
 				throw;
 			}
@@ -793,5 +816,17 @@ namespace Taskmaster
 				})).ConfigureAwait(false);
 			}
 		}
+
+		private class StaticFinalizer
+		{
+			~StaticFinalizer()
+			{
+				tracelistener?.Flush();
+				tracelistener?.Dispose();
+				tracelistener = null;
+			}
+		}
+
+		static StaticFinalizer finalizer = new StaticFinalizer();
 	}
 }
