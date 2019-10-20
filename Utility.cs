@@ -95,7 +95,9 @@ namespace Taskmaster
 						.Append("Caught at: ").Append(method).Append(':').Append(lineNo).Append(" [").Append(file).AppendLine("]")
 						.Append("Site: ").AppendLine(ex.TargetSite?.ToString() ?? string.Empty)
 						.AppendLine()
-						.Append("Command line: ").AppendLine(Environment.CommandLine);
+						.Append("Command line: ").AppendLine(Environment.CommandLine)
+						.AppendLine()
+						.Append("Message: ").AppendLine(ex.Message);
 
 #if DEBUG
 					var exceptionsbs = new StringBuilder(512);

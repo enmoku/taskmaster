@@ -386,6 +386,7 @@ namespace Taskmaster
 			}
 			catch (InitFailure ex)
 			{
+				Log.Error("<Init> Error: " + ex.Message);
 				Logging.Stacktrace(ex, crashsafe: true);
 
 				return -1; // should trigger finally block
