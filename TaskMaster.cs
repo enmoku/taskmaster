@@ -392,17 +392,20 @@ namespace Taskmaster
 			}
 			catch (RunstateException ex)
 			{
+				Log.Debug("Exit trigger: " + ex.State.ToString());
+
 				switch (ex.State)
 				{
 					case Runstate.CriticalFailure:
 						Logging.Stacktrace(ex.InnerException ?? ex, crashsafe: true);
 						System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(ex.InnerException ?? ex).Throw();
-						throw;
+						// throw;
+						return -1;
 					case Runstate.Normal:
 					case Runstate.Exit:
 					case Runstate.QuickExit:
 					case Runstate.Restart:
-						break;
+						return 0;
 				}
 
 				return -1; // should trigger finally block
