@@ -50,7 +50,7 @@ namespace Taskmaster
 
 		public static string ConfigVersion = "alpha.3";
 
-		public static Configuration.Manager Config = null;
+		public static Configuration.Manager Config = new Configuration.Manager.Null();
 
 		/// <summary>
 		/// For making sure disposal happens and that it does so in main thread.
