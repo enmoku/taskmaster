@@ -50,7 +50,7 @@ namespace Taskmaster.Configuration
 		/// using var cfg = Config.Load(file);
 		/// </coode>
 		/// </example>
-		public ScopedFile Load(string filename)
+		public virtual ScopedFile Load(string filename)
 		{
 			try
 			{
@@ -110,7 +110,7 @@ namespace Taskmaster.Configuration
 			}
 		}
 
-		public void Unload(File config, bool save = true)
+		public virtual void Unload(File config, bool save = true)
 		{
 			lock (config_lock)
 			{
@@ -123,7 +123,7 @@ namespace Taskmaster.Configuration
 		/// <summary>
 		/// Save dirty configurations to disk and clear out loaded.
 		/// </summary>
-		public void Flush()
+		public virtual void Flush()
 		{
 			lock (config_lock)
 			{
@@ -155,6 +155,17 @@ namespace Taskmaster.Configuration
 
 				//base.Dispose();
 			}
+		}
+
+		public class Null : Manager
+		{
+			public Null() : base(string.Empty) { /* NOP */ }
+
+			public override void Flush() { /* NOP */ }
+
+			public override ScopedFile Load(string filename) => throw new NotSupportedException();
+
+			public override void Unload(File config, bool save = true) => throw new NotSupportedException();
 		}
 	}
 }
