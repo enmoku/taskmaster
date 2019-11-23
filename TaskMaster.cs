@@ -87,7 +87,7 @@ namespace Taskmaster
 			try
 			{
 				if (!(mainwindow?.IsDisposed ?? true)) mainwindow.Enabled = false;
-				if (!trayaccess.IsDisposed) trayaccess.Close();
+				if (!(trayaccess?.IsDisposed ?? true)) trayaccess?.Close();
 
 				while (DisposalChute.Count > 0)
 				{
@@ -104,10 +104,9 @@ namespace Taskmaster
 
 				IPC.Close();
 			}
-			catch (Exception ex)
+			catch
 			{
-				Logging.Stacktrace(ex, crashsafe: true);
-				if (ex is NullReferenceException) throw;
+				throw; // to make sure finally is run
 			}
 			finally
 			{
