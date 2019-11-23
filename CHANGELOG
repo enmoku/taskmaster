@@ -3,6 +3,12 @@ Comprehensive changes can be found in Git change history:
 	https://github.com/mkahvi/taskmaster/commits/master
 
 ## [0.14...]
+### 2019-11-23
+	Fixed: Processor count is fetched via P/Invoke to avoid a rare COM exception. (reported by Chairkicker Nick)
+	Fixed: Null reference error in exit cleanup. (reported by Chairkicker Nick)
+	Fixed: Double reporting of an error in exit cleanup. (reported by Chairkicker Nick)
+### 2019-11-11
+	Fixed: Assertation error in health monitor from poorly handled lock.
 ### 2019-10-15
 	Changed: Log some self-maintenance errors properly.
 	Fixed: Boot time high performance mode was doing math wrong and crashing. (reported by Chairkicker Nick)
