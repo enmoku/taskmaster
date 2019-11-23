@@ -37,11 +37,37 @@ namespace Taskmaster.Hardware
 
 		static Utility()
 		{
-			// Because Environment.ProcessorCount sometimes gives random numbers less than the actual core count.
-			foreach (var processor in new System.Management.ManagementObjectSearcher("Select * from Win32_Processor").Get())
-				ProcessorCount += int.Parse(processor["NumberOfCores"].ToString());
+			Process.NativeMethods.GetSystemInfo(out var sysinfo);
+			var pcores = Convert.ToInt32(sysinfo.dwNumberOfProcessors);
+			var ecores = Environment.ProcessorCount;
+
+			ProcessorCount = pcores;
+
+			/*
+			try
+			{
+				uint tCount = 0;
+				// Because Environment.ProcessorCount sometimes gives random numbers less than the actual core count.
+				foreach (var processor in new System.Management.ManagementObjectSearcher("Select * from Win32_Processor").Get())
+				{
+					tCount += (UInt32)processor["NumberOfCores"];
+					//ProcessorCount += int.Parse(processor["NumberOfCores"].ToString());
+				}
+				ProcessorCount = Convert.ToInt32(tCount);
+			}
+			catch (System.Runtime.InteropServices.COMException e)
+			{
+				Logging.DebugMsg("<Hardware> Utility initialization failed due to COM error: " + e.Message);
+				throw;
+			}
+			*/
 
 			Logging.DebugMsg("<Hardware> Processor count: " + ProcessorCount.ToString());
+
+			if (ecores != pcores)
+				Logging.DebugMsg(".NET and W32API disagree on number of cores: " + ecores.ToString() + " != " + pcores.ToString());
+			if (ecores != ProcessorCount)
+				Logging.DebugMsg(".NET and WMI disagree on number of cores: " + ecores.ToString() + " != " + ProcessorCount.ToString());
 		}
 	}
 }
