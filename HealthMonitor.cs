@@ -191,7 +191,8 @@ namespace Taskmaster
 			if (DebugHealth) Log.Information("<Auto-Doc> Component loaded");
 		}
 
-		int EmergencyTick_lock = 0;
+		readonly MKAh.Lock.Monitor EmergencyTickLock = new MKAh.Lock.Monitor();
+
 		int EmergencyPressure = -1;
 
 		bool CriticalMemoryWarning = false;
@@ -199,10 +200,11 @@ namespace Taskmaster
 
 		void EmergencyTick(object sender, System.Timers.ElapsedEventArgs e)
 		{
+			if (!EmergencyTickLock.TryLock()) return;
+			using var scopedunlock = EmergencyTickLock.ScopedUnlock();
+
 			try
 			{
-				if (!Atomic.Lock(ref EmergencyTick_lock)) return;
-
 				var now = DateTimeOffset.UtcNow;
 
 				double pressure = Memory.Pressure;
@@ -245,10 +247,6 @@ namespace Taskmaster
 			catch (Exception ex)
 			{
 				Logging.Stacktrace(ex);
-			}
-			finally
-			{
-				Atomic.Unlock(ref EmergencyTick_lock);
 			}
 		}
 
@@ -311,7 +309,8 @@ namespace Taskmaster
 			DebugHealth = corecfg.Config[HumanReadable.Generic.Debug].Get(Constants.Health)?.Bool ?? false;
 		}
 
-		int HealthCheck_lock = 0;
+		readonly MKAh.Lock.Monitor HealthCheckLock = new MKAh.Lock.Monitor();
+
 		//async void TimerCheck(object state)
 		async void TimerCheck(object _sender, System.Timers.ElapsedEventArgs _)
 		{
@@ -319,7 +318,8 @@ namespace Taskmaster
 
 			// skip if already running...
 			// happens sometimes when the timer keeps running but not the code here
-			if (!Atomic.Lock(ref HealthCheck_lock)) return;
+			if (!HealthCheckLock.TryLock()) return;
+			using var scopedlock = HealthCheckLock.ScopedUnlock();
 
 			await Task.Delay(0).ConfigureAwait(false);
 
@@ -338,11 +338,6 @@ namespace Taskmaster
 			catch (OperationCanceledException)
 			{
 				HealthTimer.Stop();
-			}
-			catch (Exception ex) { throw; }
-			finally
-			{
-				Atomic.Unlock(ref HealthCheck_lock);
 			}
 		}
 
