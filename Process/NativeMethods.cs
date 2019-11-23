@@ -296,5 +296,24 @@ namespace Taskmaster.Process
 		/// <returns>Thread ID of the hwnd's creator</returns>
 		[DllImport("user32.dll")] // SetLastError=true
 		internal static extern uint GetWindowThreadProcessId(IntPtr hWnd, out int lpdwProcessId);
+
+		[DllImport("kernel32.dll", CharSet = CharSet.Unicode)]
+		internal static extern void GetSystemInfo(out SYSTEM_INFO si);
+
+		[StructLayout(LayoutKind.Sequential, Pack = 1)]
+		internal struct SYSTEM_INFO
+		{
+			public ushort wProcessorArchitecture;
+			public ushort wReserved;
+			public uint dwPageSize;
+			public IntPtr lpMinimumApplicationAddress;
+			public IntPtr lpMaximumApplicationAddress;
+			public IntPtr dwActiveProcessorMask;
+			public uint dwNumberOfProcessors;
+			public uint dwProcessorType;
+			public uint dwAllocationGranularity;
+			public ushort wProcessorLevel;
+			public ushort wProcessorRevision;
+		}
 	}
 }
