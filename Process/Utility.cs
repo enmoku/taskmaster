@@ -75,7 +75,9 @@ namespace Taskmaster.Process
 		/// </summary>
 		/// <returns>true if the pid should not be used</returns>
 		[System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
-		public static bool SystemProcessId(int pid) => pid <= 4;
+		public static bool SystemProcessId(int pid) => pid < LowestValidId;
+
+		public const int LowestValidId = 8;
 
 		internal sealed class PathCacheObject
 		{

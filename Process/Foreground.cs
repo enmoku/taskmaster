@@ -217,6 +217,17 @@ namespace Taskmaster.Process
 					previoushang = PreviouslyHung;
 					fgproc = Foreground;
 
+					if (lfgpid < Process.Utility.LowestValidId)
+					{
+						Logging.DebugMsg("HangDetector received invalid PID");
+						return;
+					}
+					else if (fgproc is null)
+					{
+						Log.Fatal("<Foreground> Hang detector received invalid process instance.");
+						return;
+					}
+
 					//fgproc?.Refresh();
 					//responding = fgproc?.Responding ?? true;
 					responding = !NativeMethods.IsHungAppWindow(fgproc.MainWindowHandle);
@@ -535,8 +546,13 @@ namespace Taskmaster.Process
 			catch (ArgumentException)
 			{
 				// Process already gone probably
+				Reset();
 			}
-			catch (ObjectDisposedException) { Statistics.DisposedAccesses++; } // NOP
+			catch (ObjectDisposedException)
+			{
+				Reset();
+				Statistics.DisposedAccesses++;
+			}
 			catch (InvalidOperationException)
 			{
 				// process exited most likely
@@ -548,6 +564,7 @@ namespace Taskmaster.Process
 			catch (Exception ex)
 			{
 				Logging.Stacktrace(ex);
+				Reset();
 				return; // HACK, WndProc probably shouldn't throw
 			}
 		}

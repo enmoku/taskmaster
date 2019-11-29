@@ -3,6 +3,8 @@ Comprehensive changes can be found in Git change history:
 	https://github.com/mkahvi/taskmaster/commits/master
 
 ## [0.14...]
+### 2019-11-29
+	Fixed: Null reference exception in hang detector.
 ### 2019-11-23
 	Fixed: Processor count is fetched via P/Invoke to avoid a rare COM exception. (reported by Chairkicker Nick)
 	Fixed: Null reference error in exit cleanup. (reported by Chairkicker Nick)
