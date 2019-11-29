@@ -28,7 +28,6 @@ using System;
 using System.ComponentModel; // Win32Exception
 using System.Diagnostics; // Process
 using System.Runtime.InteropServices; // Marshal
-using Taskmaster;
 
 namespace Taskmaster.Process
 {

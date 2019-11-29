@@ -27,7 +27,6 @@
 using MKAh;
 using Serilog;
 using System;
-using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Threading.Tasks;
 using Windows = MKAh.Wrapper.Windows;

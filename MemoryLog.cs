@@ -29,7 +29,6 @@ using Serilog.Configuration;
 using Serilog.Core;
 using Serilog.Events;
 using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;

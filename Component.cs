@@ -25,12 +25,9 @@
 // THE SOFTWARE.
 
 using System;
-using System.Diagnostics;
 
 namespace Taskmaster
 {
-	using static Application;
-
 	public interface IComponent
 	{
 		void Dispose();

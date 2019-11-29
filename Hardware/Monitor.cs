@@ -30,8 +30,6 @@ using System.Threading.Tasks;
 
 namespace Taskmaster.Hardware
 {
-	using static Application;
-
 	public struct GPUSensors
 	{
 		public float Load;

@@ -32,7 +32,6 @@ using System.Diagnostics;
 namespace Taskmaster.Process
 {
 	using System.Text;
-	using System.Threading.Tasks;
 	using static Application;
 
 	public class WindowChangedArgs : EventArgs
