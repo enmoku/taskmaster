@@ -89,6 +89,13 @@ namespace Taskmaster.UI
 			}
 		}
 
+		async Task FreeMemory(int ignorePid)
+		{
+			Log.Information("<Global> Hotkey detected; Freeing memory while ignoring foreground" +
+				(ignorePid > 4 ? $" #{ignorePid}" : string.Empty) + " if possible.");
+			await processmanager.FreeMemory(ignorePid).ConfigureAwait(false);
+		}
+
 		protected override void WndProc(ref Message m)
 		{
 			if (disposed) return;
@@ -108,19 +115,16 @@ namespace Taskmaster.UI
 					{
 						case 0:
 							if (Trace) Log.Verbose("<Global> Hotkey ctrl-alt-shift-m detected!!!");
-							Task.Run(new Action(async () =>
-							{
-								int ignorepid = activeappmonitor?.ForegroundId ?? -1;
-								Log.Information("<Global> Hotkey detected; Freeing memory while ignoring foreground" +
-									(ignorepid > 4 ? $" #{ignorepid}" : string.Empty) + " if possible.");
-								await processmanager.FreeMemory(ignorepid).ConfigureAwait(false);
-							})).ConfigureAwait(false);
+
+							int ignorepid = activeappmonitor?.ForegroundId ?? -1;
+							FreeMemory(ignorepid).ConfigureAwait(false);
+
 							m.Result = IntPtr.Zero;
 							break;
 						case 1:
 							if (Trace) Log.Verbose("<Global> Hotkey ctrl-alt-shift-r detected!!!");
 							Log.Information("<Global> Hotkey detected; Hastening next scan.");
-							processmanager?.HastenScan(TimeSpan.FromSeconds(5));
+							processmanager?.HastenScan(TimeSpan.FromSeconds(5)).ConfigureAwait(false);
 							m.Result = IntPtr.Zero;
 							break;
 						default:
