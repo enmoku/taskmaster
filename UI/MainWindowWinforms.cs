@@ -1581,7 +1581,7 @@ namespace Taskmaster.UI
 			processmanager.ProcessStateChange += ExitWaitListHandler;
 			if (DebugCache) PathCacheUpdate(null, EventArgs.Empty);
 
-			ProcessNewInstanceCount(new Process.ProcessingCountEventArgs(0, 0));
+			UpdateTrackingCounter(this, EventArgs.Empty);
 
 			WatchlistRules.VisibleChanged += (_, _ea) => { if (WatchlistRules.Visible) WatchlistColor(); };
 
@@ -1605,7 +1605,8 @@ namespace Taskmaster.UI
 			processmanager.WatchlistSorted += UpdateWatchlist;
 			processmanager.ProcessModified += ProcessTouchEvent;
 
-			BeginInvoke(new Action(() => {
+			BeginInvoke(new Action(() =>
+			{
 				foreach (var info in processmanager.GetExitWaitList())
 					ExitWaitListHandler(info);
 			}));
@@ -1642,28 +1643,9 @@ namespace Taskmaster.UI
 			// re-sort if user is not interacting?
 		}
 
-		void RescanRequestEvent(object _, EventArgs _ea) => processmanager?.HastenScan(TimeSpan.Zero);
+		void RescanRequestEvent(object _, EventArgs _ea) => Task.Run(async() => processmanager?.HastenScan(TimeSpan.Zero).ConfigureAwait(false));
 
 		void RestartRequestEvent(object sender, EventArgs _ea) => ConfirmExit(restart: true, admin: sender == menu_action_restartadmin);
-
-		void ProcessNewInstanceCount(Process.ProcessingCountEventArgs e)
-		{
-			if (!IsHandleCreated || disposed) return;
-
-			// TODO: Don't update UI so much.
-
-			if (InvokeRequired)
-				BeginInvoke(new Action(() => ProcessNewInstanceCount_Invoke(e)));
-			else
-				ProcessNewInstanceCount_Invoke(e);
-		}
-
-		void ProcessNewInstanceCount_Invoke(Process.ProcessingCountEventArgs e)
-		{
-			if (!IsHandleCreated || disposed) return;
-
-			processingcount.Text = e.Total.ToString();
-		}
 
 		/// <summary>
 		///
@@ -2142,7 +2124,7 @@ namespace Taskmaster.UI
 			return li;
 		}
 
-		void UpdateTrackingCounter(object sender, EventArgs e)
+		void UpdateTrackingCounter(object _, EventArgs _ea)
 		{
 			if (disposed || !IsHandleCreated) return;
 
@@ -3456,7 +3438,7 @@ namespace Taskmaster.UI
 
 						WatchlistItemColor(li, prc);
 
-						processmanager?.HastenScan(TimeSpan.FromSeconds(20));
+						processmanager?.HastenScan(TimeSpan.FromSeconds(20)).ConfigureAwait(false);
 					}
 				}
 				else
@@ -3477,7 +3459,7 @@ namespace Taskmaster.UI
 					if (editdialog.ShowDialog() == DialogResult.OK)
 					{
 						UpdateWatchlistRule(prc);
-						processmanager?.HastenScan(TimeSpan.FromMinutes(1), forceSort: true);
+						processmanager?.HastenScan(TimeSpan.FromMinutes(1), forceSort: true).ConfigureAwait(false);
 					}
 				}
 				catch (Exception ex) { Logging.Stacktrace(ex); }
@@ -3498,7 +3480,7 @@ namespace Taskmaster.UI
 					{
 						AddToWatchlistList(prc);
 
-						processmanager?.HastenScan(TimeSpan.FromMinutes(1), forceSort: true);
+						processmanager?.HastenScan(TimeSpan.FromMinutes(1), forceSort: true).ConfigureAwait(false);
 					}
 					else
 						prc.Dispose();
@@ -3705,7 +3687,8 @@ namespace Taskmaster.UI
 			UpdatePowerBehaviourHighlight(powermanager.Behaviour);
 			HighlightPowerMode();
 
-			BeginInvoke(new Action(() => {
+			BeginInvoke(new Action(() =>
+			{
 				pwcause.Text = powermanager?.LastCause.ToString() ?? "n/a";
 			}));
 		}
