@@ -792,29 +792,28 @@ namespace Taskmaster
 			Log.Information($"<Core> Component loading finished ({timer.ElapsedMilliseconds} ms). {DisposalChute.Count.ToString()} initialized.");
 		}
 
+		static async Task CheckNGENAsync()
+		{
+			bool ngen = Config.Load(CoreConfigFilename).Config[Constants.Experimental].Get(Constants.AutoNGEN)?.Bool ?? false;
+			if (ngen)
+			{
+				if (MKAh.Execution.IsAdministrator)
+				{
+					using var proc = MKAh.Program.NativeImage.InstallOrUpdateCurrent();
+					proc?.WaitForExit(15_000);
+					if (proc?.ExitCode == 0)
+						Log.Warning("<NGen> Native Image re-generated; please restart.");
+				}
+				else
+					Log.Warning("<NGen> Native Image regeneration needed, unable to proceed without admin rights.");
+			}
+		}
+
 		public static void CheckNGEN()
 		{
 			bool ni = MKAh.Program.NativeImage.Exists();
 			Log.Information("<NGen> Native Image: " + (ni ? "Yes :D" : "No :("));
-			if (!ni)
-			{
-				System.Threading.Tasks.Task.Run(new Action(() =>
-				{
-					bool ngen = Config.Load(CoreConfigFilename).Config[Constants.Experimental].Get(Constants.AutoNGEN)?.Bool ?? false;
-					if (ngen)
-					{
-						if (MKAh.Execution.IsAdministrator)
-						{
-							using var proc = MKAh.Program.NativeImage.InstallOrUpdateCurrent();
-							proc?.WaitForExit(15_000);
-							if (proc?.ExitCode == 0)
-								Log.Warning("<NGen> Native Image re-generated; please restart.");
-						}
-						else
-							Log.Warning("<NGen> Native Image regeneration needed, unable to proceed without admin rights.");
-					}
-				})).ConfigureAwait(false);
-			}
+			if (!ni) CheckNGENAsync().ConfigureAwait(false);
 		}
 
 		private class StaticFinalizer
