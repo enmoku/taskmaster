@@ -387,6 +387,23 @@ namespace Taskmaster
 				Log.Error("<Init> Error: " + ex.Message);
 				Logging.Stacktrace(ex, crashsafe: true);
 
+				var sbs = new StringBuilder("Initialization failed!\n\nError: ");
+				sbs.AppendLine(ex.Message);
+				if (ex.InnerExceptions?.Length > 0)
+				{
+					sbs.AppendLine(ex.InnerExceptions[0].Message);
+					sbs.AppendLine(Logging.PruneStacktrace(ex.InnerExceptions[0].StackTrace));
+				}
+				sbs.Append("\nRetry?");
+
+				var msg = UI.MessageBox.ShowModal("Taskmaster � Initialization failed", sbs.ToString(), UI.MessageBox.Buttons.AcceptCancel, UI.MessageBox.Type.Plain);
+				if (msg == UI.MessageBox.ResultType.OK)
+				{
+					Log.Information("<Init> User requested restart.");
+					Close();
+					Application.Restart();
+				}
+
 				return -1; // should trigger finally block
 			}
 			catch (RunstateException ex)

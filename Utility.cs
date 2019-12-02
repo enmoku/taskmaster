@@ -49,7 +49,7 @@ namespace Taskmaster
 			}
 		}
 
-		static string PruneStacktrace(string trace) => trace.Replace(Properties.Resources.ProjectDirectory.Trim(), HumanReadable.Generic.Ellipsis + System.IO.Path.DirectorySeparatorChar);
+		public static string PruneStacktrace(string trace) => trace.Replace(Properties.Resources.ProjectDirectory.Trim(), HumanReadable.Generic.Ellipsis + System.IO.Path.DirectorySeparatorChar);
 
 		[Conditional("DEBUG")]
 		public static void DebugMsg(string message)

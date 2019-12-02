@@ -3,6 +3,8 @@ Comprehensive changes can be found in Git change history:
 	https://github.com/mkahvi/taskmaster/commits/master
 
 ## [0.14...]
+### 2019-12-02
+	Added: Dialog to attempt restart if there's an initialization failure with relevant errors.
 ### 2019-11-29
 	Fixed: Null reference exception in hang detector.
 ### 2019-11-23
