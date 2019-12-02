@@ -39,17 +39,17 @@ namespace Taskmaster
 				.Append("Exception:    ").AppendLine(ex.GetType().Name)
 				.Append("Message:      ").AppendLine(ex.Message).AppendLine();
 
-			var projectdir = Properties.Resources.ProjectDirectory.Trim();
-
 			if (string.IsNullOrEmpty(ex.StackTrace))
 				output.AppendLine("!!! Stacktrace missing !!!").AppendLine();
 			else
 			{
-				var trace = ex.StackTrace.Replace(projectdir, HumanReadable.Generic.Ellipsis + System.IO.Path.DirectorySeparatorChar);
+				var trace = PruneStacktrace(ex.StackTrace);
 				output.AppendLine("----- Stacktrace -----")
 					.AppendLine(trace);
 			}
 		}
+
+		static string PruneStacktrace(string trace) => trace.Replace(Properties.Resources.ProjectDirectory.Trim(), HumanReadable.Generic.Ellipsis + System.IO.Path.DirectorySeparatorChar);
 
 		[Conditional("DEBUG")]
 		public static void DebugMsg(string message)
@@ -57,10 +57,9 @@ namespace Taskmaster
 
 		public static void Stacktrace(Exception ex, bool crashsafe = false, [CallerMemberName] string method = "", [CallerLineNumber] int lineNo = -1, [CallerFilePath] string file = "")
 		{
-			var projectdir = Properties.Resources.ProjectDirectory.Trim();
 			if (!crashsafe)
 			{
-				string trace = ex.StackTrace.Replace(projectdir, HumanReadable.Generic.Ellipsis + System.IO.Path.DirectorySeparatorChar);
+				string trace = PruneStacktrace(ex.StackTrace);
 				var msg = $"Exception [{method}:{lineNo}]: {ex.GetType().Name} : {ex.Message}\n{trace}";
 
 				DebugMsg(msg);
@@ -70,7 +69,7 @@ namespace Taskmaster
 				{
 					for (int i = 1; i < iex.InnerExceptions.Length; i++)
 					{
-						trace = iex.InnerExceptions[i].StackTrace.Replace(projectdir, HumanReadable.Generic.Ellipsis + System.IO.Path.DirectorySeparatorChar);
+						trace = PruneStacktrace(iex.InnerExceptions[i].StackTrace);
 						Serilog.Log.Fatal($"Exception: {iex.InnerExceptions[i].GetType().Name} : {iex.InnerExceptions[i].Message}\n{trace}");
 					}
 				}
@@ -88,7 +87,7 @@ namespace Taskmaster
 
 					var now = DateTime.Now;
 
-					file = file.Replace(projectdir, HumanReadable.Generic.Ellipsis + System.IO.Path.DirectorySeparatorChar);
+					file = file.Replace(Properties.Resources.ProjectDirectory.Trim(), HumanReadable.Generic.Ellipsis + System.IO.Path.DirectorySeparatorChar);
 
 					var sbs = new StringBuilder(1024);
 					sbs.Append("Datetime:     ").Append(now.ToLongDateString()).Append(' ').AppendLine(now.ToLongTimeString())
