@@ -639,7 +639,7 @@ namespace Taskmaster
 			ProcMon.ContinueWith((_, _discard) => trayaccess.Hook(processmanager), TaskContinuationOptions.OnlyOnRanToCompletion, cts.Token);
 
 			Task.WhenAll(ProcMon, FgMon).ContinueWith(_ => activeappmonitor?.Hook(processmanager), TaskContinuationOptions.OnlyOnRanToCompletion);
-			if (cts.IsCancellationRequested) throw new InitFailure("Cancelled at 565", (cex?[0]), cex);
+			if (cts.IsCancellationRequested) throw new InitFailure("Initialization failed", (cex?[0]), cex);
 
 			try
 			{
