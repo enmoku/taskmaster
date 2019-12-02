@@ -447,9 +447,9 @@ namespace Taskmaster.Process
 					if (DebugWMI) Log.Debug("<<WMI>> New instance watcher initialized.");
 				}
 				catch (UnauthorizedAccessException) { throw; }
-				catch (Exception ex)
+				catch (System.Runtime.InteropServices.COMException ex)
 				{
-					Logging.Stacktrace(ex);
+					Log.Fatal("<<WMI>> Exception: " + ex.Message);
 					throw new InitFailure("<<WMI>> Event watcher initialization failure", ex);
 				}
 			}
