@@ -288,7 +288,8 @@ namespace Taskmaster.UI
 
 		void PowerBehaviourEvent(object sender, Power.PowerBehaviourEventArgs ea)
 		{
-			ms.BeginInvoke(new Action(() => {
+			ms.BeginInvoke(new Action(() =>
+			{
 				switch (ea.Behaviour)
 				{
 					case Power.PowerBehaviour.Auto:
@@ -583,7 +584,7 @@ namespace Taskmaster.UI
 
 					await Task.Delay(TimeSpan.FromSeconds(15)).ConfigureAwait(true);
 				}
-				while (!Tray.Visible) ;
+				while (!Tray.Visible);
 			}
 			catch (Exception ex)
 			{
@@ -758,8 +759,8 @@ namespace Taskmaster.UI
 					powermanager = null;
 				}
 
-					Tray.Visible = false;
-					Tray.Dispose();
+				Tray.Visible = false;
+				Tray.Dispose();
 
 				power_auto.Dispose();
 				power_highperf.Dispose();

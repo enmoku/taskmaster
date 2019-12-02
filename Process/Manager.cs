@@ -467,11 +467,19 @@ namespace Taskmaster.Process
 			if (DebugProcesses) Log.Information("<Process> Component Loaded.");
 		}
 
+		async Task ScanAsync()
+		{
+			await Task.Delay(0).ConfigureAwait(false);
+
+			Scan();
+			StartScanTimer();
+		}
+
 		async void OnStart(object sender, EventArgs ea)
 		{
 			try
 			{
-				await Task.Run(() => Scan(), cts.Token).ContinueWith((_) => StartScanTimer(), cts.Token).ConfigureAwait(false);
+				await Task.Run(async () => await ScanAsync().ConfigureAwait(false)).ConfigureAwait(false);
 			}
 			catch (TaskCanceledException)
 			{
@@ -611,13 +619,14 @@ namespace Taskmaster.Process
 
 		public event EventHandler<HandlingStateChangeEventArgs> HandlingStateChange;
 
-		int hastenscan = 0;
+		readonly MKAh.Lock.Monitor hastenScanLock = new MKAh.Lock.Monitor();
 
 		public async Task HastenScan(TimeSpan delay, bool forceSort = false)
 		{
 			// delay is unused but should be used somehow
 
-			if (!Atomic.Lock(ref hastenscan)) return;
+			if (!hastenScanLock.TryLock()) return;
+			using var hslock = hastenScanLock.ScopedUnlock();
 
 			try
 			{
@@ -631,7 +640,7 @@ namespace Taskmaster.Process
 					if (forceSort) SortWatchlist();
 					if (cts.IsCancellationRequested) return;
 
-					await Task.Run(() => Scan(), cts.Token).ContinueWith((_) => StartScanTimer(), cts.Token).ConfigureAwait(false);
+					await ScanAsync().ConfigureAwait(false);
 				}
 			}
 			catch (Exception ex) when (ex is NullReferenceException || ex is OutOfMemoryException) { throw; }
@@ -640,10 +649,6 @@ namespace Taskmaster.Process
 			catch (Exception ex)
 			{
 				Logging.Stacktrace(ex);
-			}
-			finally
-			{
-				Atomic.Unlock(ref hastenscan);
 			}
 		}
 
@@ -676,6 +681,9 @@ namespace Taskmaster.Process
 			if (cts.IsCancellationRequested) return false;
 
 			if (!ScanLock.TryLock()) return false;
+			using var scscoped = ScanLock.ScopedUnlock();
+
+			var timer = Stopwatch.StartNew();
 
 			try
 			{
@@ -688,35 +696,41 @@ namespace Taskmaster.Process
 				if (!Utility.SystemProcessId(ignorePid)) Ignore(ignorePid);
 
 				var procs = System.Diagnostics.Process.GetProcesses();
-				int ScanFoundProcs = procs.Length - 2; // -2 for Idle&System
-				Debug.Assert(ScanFoundProcs > 0, "System has no running processes"); // should be impossible to fail
-				SignalProcessHandled(ScanFoundProcs); // scan start
+				int found = procs.Length;
+				SignalProcessHandled(found, manage:true); // scan start
 
 				//var loaderOffload = new List<ProcessEx>();
 
 				int modified = 0, ignored = 0;
 				foreach (var process in procs)
 				{
-					var info = ScanTriage(process, PageToDisk);
-
-					if (info != null)
+					try
 					{
-						if (info.State == HandlingState.Modified)
-							modified++;
-						else if (info.State == HandlingState.Abandoned)
+						var info = ScanTriage(process, PageToDisk);
+
+						if (info != null)
+						{
+							if (info.State == HandlingState.Modified)
+								modified++;
+							else if (info.State == HandlingState.Abandoned)
+								ignored++;
+						}
+						else
 							ignored++;
 					}
-					else
-						ignored++;
+					finally
+					{
+						Handling -= 1;
+					}
 				}
 
 				//SystemLoaderAnalysis(loaderOffload);
 
 				if (DebugScan) Log.Debug("<Process> Full Scan: Complete");
 
-				SignalProcessHandled(-ScanFoundProcs); // scan done
+				SignalProcessHandled(0); // scan done
 
-				ScanEnd?.Invoke(this, new ScanEndEventArgs() { Found = ScanFoundProcs, Ignored = ignored, Modified = modified });
+				ScanEnd?.Invoke(this, new ScanEndEventArgs() { Found = found, Ignored = ignored, Modified = modified });
 
 				if (!Utility.SystemProcessId(ignorePid)) Unignore(ignorePid);
 			}
@@ -729,10 +743,6 @@ namespace Taskmaster.Process
 			catch (Exception ex)
 			{
 				Logging.Stacktrace(ex);
-			}
-			finally
-			{
-				ScanLock.Unlock();
 			}
 
 			return true;
@@ -1421,7 +1431,7 @@ namespace Taskmaster.Process
 				}
 
 				// TODO: Add option to logging to file but still show in UI
-				
+
 				if (prc.LogAdjusts && action) Log.Information(sbs.ToString());
 				else Log.Debug(sbs.ToString());
 
@@ -2365,9 +2375,12 @@ namespace Taskmaster.Process
 
 		public int Handling { get; private set; } = 0; // this isn't used for much...
 
-		void SignalProcessHandled(int adjust)
+		async Task SignalProcessHandled(int adjust, bool manage=false)
 		{
-			Handling += adjust;
+			if (manage) Handling += adjust;
+
+			await Task.Delay(0).ConfigureAwait(false);
+
 			HandlingCounter?.Invoke(adjust, Handling);
 		}
 
@@ -2445,7 +2458,7 @@ namespace Taskmaster.Process
 
 			try
 			{
-				SignalProcessHandled(1); // wmi new instance
+				SignalProcessHandled(1, manage:true); // wmi new instance
 
 				//var wmiquerytime = Stopwatch.StartNew(); // unused
 				// TODO: Instance groups?
@@ -2585,7 +2598,7 @@ namespace Taskmaster.Process
 				if (info is null) info = new ProcessEx(pid, now) { Timer = timer, State = state, WMIDelay = wmidelay };
 				HandlingStateChange?.Invoke(this, new HandlingStateChangeEventArgs(info));
 
-				SignalProcessHandled(-1); // done with it
+				SignalProcessHandled(-1, manage:true); // done with it
 			}
 		}
 

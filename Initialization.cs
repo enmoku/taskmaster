@@ -560,26 +560,44 @@ namespace Taskmaster
 			}
 
 			Task
-				PowMan = (PowerManagerEnabled ? Task.Run(() => LogException(() => powermanager = new Power.Manager()), cts.Token) : Task.CompletedTask)
-					.ContinueWith(_ => LoadEvent?.Invoke(null, new LoadEventArgs("Power manager processed.", LoadEventType.SubLoaded)), TaskContinuationOptions.OnlyOnRanToCompletion),
-				CpuMon = (PowerManagerEnabled ? Task.Run(() => LogException(() => cpumonitor = new Hardware.CPUMonitor()), cts.Token) : Task.CompletedTask)
-					.ContinueWith(_ => LoadEvent?.Invoke(null, new LoadEventArgs("CPU monitor processed.", LoadEventType.SubLoaded)), TaskContinuationOptions.OnlyOnRanToCompletion),
-				ProcMon = (ProcessMonitorEnabled ? Task.Run(() => LogException(() => processmanager = new Process.Manager()), cts.Token) : Task.CompletedTask)
-					.ContinueWith(_ => LoadEvent?.Invoke(null, new LoadEventArgs("Process manager processed.", LoadEventType.SubLoaded)), TaskContinuationOptions.OnlyOnRanToCompletion),
-				FgMon = (ActiveAppMonitorEnabled ? Task.Run(() => LogException(() => activeappmonitor = new Process.ForegroundManager()), cts.Token) : Task.CompletedTask)
-					.ContinueWith(_ => LoadEvent?.Invoke(null, new LoadEventArgs("Foreground manager processed.", LoadEventType.SubLoaded)), TaskContinuationOptions.OnlyOnRanToCompletion),
-				NetMon = (NetworkMonitorEnabled ? Task.Run(() => LogException(() => netmonitor = new Network.Manager()), cts.Token) : Task.CompletedTask)
-					.ContinueWith(_ => LoadEvent?.Invoke(null, new LoadEventArgs("Network monitor processed.", LoadEventType.SubLoaded)), TaskContinuationOptions.OnlyOnRanToCompletion),
-				StorMon = (StorageMonitorEnabled ? Task.Run(() => LogException(() => storagemanager = new StorageManager()), cts.Token) : Task.CompletedTask)
-					.ContinueWith(_ => LoadEvent?.Invoke(null, new LoadEventArgs("Storage monitor processed.", LoadEventType.SubLoaded)), TaskContinuationOptions.OnlyOnRanToCompletion),
-				HpMon = (HealthMonitorEnabled ? Task.Run(() => LogException(() => healthmonitor = new HealthMonitor()), cts.Token) : Task.CompletedTask)
-					.ContinueWith(_ => LoadEvent?.Invoke(null, new LoadEventArgs("Health monitor processed.", LoadEventType.SubLoaded)), TaskContinuationOptions.OnlyOnRanToCompletion),
-				HwMon = (HardwareMonitorEnabled ? Task.Run(() => LogException(() => hardware = new Hardware.Monitor()), cts.Token) : Task.CompletedTask)
-					.ContinueWith(_ => LoadEvent?.Invoke(null, new LoadEventArgs("Hardware monitor processed.", LoadEventType.SubLoaded)), TaskContinuationOptions.OnlyOnRanToCompletion),
+				PowMan = (PowerManagerEnabled ? Task.Run(() => {
+						LogException(() => powermanager = new Power.Manager());
+						LoadEvent?.Invoke(null, new LoadEventArgs("Power manager processed.", LoadEventType.SubLoaded));
+					}) : Task.CompletedTask),
+				CpuMon = (PowerManagerEnabled ? Task.Run(() => {
+						LogException(() => cpumonitor = new Hardware.CPUMonitor());
+						LoadEvent?.Invoke(null, new LoadEventArgs("CPU monitor processed.", LoadEventType.SubLoaded));
+					}, cts.Token) : Task.CompletedTask),
+				ProcMon = (ProcessMonitorEnabled ? Task.Run(() => {
+						LogException(() => processmanager = new Process.Manager());
+						LoadEvent?.Invoke(null, new LoadEventArgs("Process manager processed.", LoadEventType.SubLoaded));
+					}, cts.Token) : Task.CompletedTask),
+				FgMon = (ActiveAppMonitorEnabled ? Task.Run(() => {
+						LogException(() => activeappmonitor = new Process.ForegroundManager());
+						LoadEvent?.Invoke(null, new LoadEventArgs("Foreground manager processed.", LoadEventType.SubLoaded));
+					}, cts.Token) : Task.CompletedTask),
+				NetMon = (NetworkMonitorEnabled ? Task.Run(() => {
+						LogException(() => netmonitor = new Network.Manager());
+						LoadEvent?.Invoke(null, new LoadEventArgs("Network monitor processed.", LoadEventType.SubLoaded));
+					}, cts.Token) : Task.CompletedTask),
+				StorMon = (StorageMonitorEnabled ? Task.Run(() => {
+						LogException(() => storagemanager = new StorageManager());
+						LoadEvent?.Invoke(null, new LoadEventArgs("Storage monitor processed.", LoadEventType.SubLoaded));
+					}, cts.Token) : Task.CompletedTask),
+				HpMon = (HealthMonitorEnabled ? Task.Run(() => {
+						LogException(() => healthmonitor = new HealthMonitor());
+						LoadEvent?.Invoke(null, new LoadEventArgs("Health monitor processed.", LoadEventType.SubLoaded));
+					}, cts.Token) : Task.CompletedTask),
+				HwMon = (HardwareMonitorEnabled ? Task.Run(() => {
+						LogException(() => hardware = new Hardware.Monitor());
+						LoadEvent?.Invoke(null, new LoadEventArgs("Hardware monitor processed.", LoadEventType.SubLoaded));
+					}, cts.Token) : Task.CompletedTask),
 				//AlMan = (AlertManagerEnabled ? Task.Run(() => LogInit(() => alerts = new AlertManager()), cts.Token) : Task.CompletedTask)
 				//	.ContinueWith(_ => LoadEvent?.Invoke(null, new LoadEventArgs("Alert manager processed.", LoadEventType.SubLoaded)), TaskContinuationOptions.OnlyOnRanToCompletion),
-				SelfMaint = (Task.Run(() => LogException(() => selfmaintenance = new SelfMaintenance()), cts.Token))
-					.ContinueWith(_ => LoadEvent?.Invoke(null, new LoadEventArgs("Self-maintenance manager processed.", LoadEventType.SubLoaded)), TaskContinuationOptions.OnlyOnRanToCompletion);
+				SelfMaint = (Task.Run(() => {
+						LogException(() => selfmaintenance = new SelfMaintenance());
+						LoadEvent?.Invoke(null, new LoadEventArgs("Self-maintenance manager processed.", LoadEventType.SubLoaded));
+					}, cts.Token));
 			
 			Task[] init = new[] { PowMan, CpuMon, ProcMon, FgMon, NetMon, StorMon, HpMon, HwMon, /*AlMan,*/ SelfMaint };
 
@@ -697,15 +715,16 @@ namespace Taskmaster
 				// These only give TaskCanceledExceptions which are very unhelpful as they don't bundle the unhandled exception that caused them.
 
 				var faulting = new System.Collections.Generic.List<string>();
-				if (PowMan.IsFaulted) faulting.Add("Power");
-				if (CpuMon.IsFaulted) faulting.Add("CPU");
-				if (ProcMon.IsFaulted) faulting.Add("Process");
-				if (FgMon.IsFaulted) faulting.Add("Foreground");
-				if (NetMon.IsFaulted) faulting.Add("Network");
-				if (StorMon.IsFaulted) faulting.Add("Storage");
-				if (HpMon.IsFaulted) faulting.Add("Health");
-				if (HwMon.IsFaulted) faulting.Add("Hardware");
-				if (SelfMaint.IsFaulted) faulting.Add("Self-maintenance");
+
+				if (!PowMan.IsCompleted) faulting.Add("Power");
+				if (!CpuMon.IsCompleted) faulting.Add("CPU");
+				if (!ProcMon.IsCompleted) faulting.Add("Process");
+				if (!FgMon.IsCompleted) faulting.Add("Foreground");
+				if (!NetMon.IsCompleted) faulting.Add("Network");
+				if (!StorMon.IsCompleted) faulting.Add("Storage");
+				if (!HpMon.IsCompleted) faulting.Add("Health");
+				if (!HwMon.IsCompleted) faulting.Add("Hardware");
+				if (!SelfMaint.IsCompleted) faulting.Add("Self-maintenance");
 				if (faulting.Count == 0) faulting.Add("[Unrecognized]");
 
 				string failed = string.Join(", ", faulting);

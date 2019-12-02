@@ -396,7 +396,7 @@ namespace Taskmaster
 				}
 				sbs.Append("\nRetry?");
 
-				var msg = UI.MessageBox.ShowModal("Taskmaster ï¿½ Initialization failed", sbs.ToString(), UI.MessageBox.Buttons.AcceptCancel, UI.MessageBox.Type.Plain);
+				var msg = UI.MessageBox.ShowModal("Taskmaster – Initialization failed", sbs.ToString(), UI.MessageBox.Buttons.AcceptCancel, UI.MessageBox.Type.Plain);
 				if (msg == UI.MessageBox.ResultType.OK)
 				{
 					Log.Information("<Init> User requested restart.");
@@ -441,7 +441,7 @@ namespace Taskmaster
 				catch (Exception ex)
 				{
 					Logging.Stacktrace(ex, crashsafe: true);
-					if (ex is NullReferenceException) throw;
+					throw;
 				}
 			}
 
@@ -468,7 +468,8 @@ namespace Taskmaster
 
 			try
 			{
-				hiddenwindow?.BeginInvoke(new Action(async () => {
+				hiddenwindow?.BeginInvoke(new Action(async () =>
+				{
 					await trayaccess.EnsureVisible().ConfigureAwait(true);
 				}));
 				Config.Flush();
