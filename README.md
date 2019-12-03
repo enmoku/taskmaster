@@ -51,6 +51,7 @@ User configuration currently can not be changed during run-time.
 
 * [NAudio](https://github.com/naudio/NAudio) – for audio devices
 * [Serilog](https://github.com/serilog/serilog) – for logging
+### Optional
 * [OpenHardwareMonitorLib](https://github.com/Ashwinning/openhardwaremonitorlib) - for GPU monitoring (only Nvidia tested due to lack of access to hardware or testers), desiring better supported/updated alternatives
 
 ## License
