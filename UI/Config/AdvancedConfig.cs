@@ -303,7 +303,7 @@ namespace Taskmaster.UI.Config
 				Enabled = PagingEnabled,
 			};
 			layout.Controls.Add(memoryautopage);
-			tooltip.SetToolTip(memoryautopage, "Automatically try to page non-active apps when free memory goes below this threshold.\n0 disables.");
+			tooltip.SetToolTip(memoryautopage, "Automatically try to page non-active apps when free memory goes below this threshold.\nRequires paging is enabled in component configuration.\n0 disables.");
 
 			using var hmcfg = Application.Config.Load(HealthMonitor.HealthConfigFilename);
 			var hmgensec = hmcfg.Config["General"];
