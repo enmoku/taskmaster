@@ -99,7 +99,7 @@ namespace Taskmaster.Process
 
 		async Task StartLoadAnalysis(ProcessEx info)
 		{
-			await Task.Delay(0).ConfigureAwait(false);
+			await Task.Delay(10).ConfigureAwait(false);
 
 			bool added = false;
 
@@ -469,7 +469,7 @@ namespace Taskmaster.Process
 
 		async Task ScanAsync()
 		{
-			await Task.Delay(0).ConfigureAwait(false);
+			await Task.Delay(10).ConfigureAwait(false);
 
 			Scan();
 			StartScanTimer();
@@ -533,7 +533,7 @@ namespace Taskmaster.Process
 			if (!FreeMemLock.TryLock()) return;
 			using var fmlock = FreeMemLock.ScopedUnlock();
 
-			await Task.Delay(0).ConfigureAwait(false);
+			await Task.Delay(10).ConfigureAwait(false);
 
 			try
 			{
@@ -572,8 +572,8 @@ namespace Taskmaster.Process
 				Memory.Update();
 				long memoryafter = Memory.Free;
 
-				Log.Information("<Memory> Paging complete, observed memory change: " +
-					HumanInterface.ByteString(memorybefore - memoryafter, true, iec: true));
+				Log.Information("<Memory> Paging complete, observed change: " +
+					HumanInterface.ByteString(memorybefore - memoryafter, true, iec: true) + " – this may not be due to actions performed.");
 			}
 			catch (Exception ex) when (ex is AggregateException || ex is OperationCanceledException) { throw; }
 			catch (Exception ex)
@@ -597,7 +597,7 @@ namespace Taskmaster.Process
 			{
 				if (Trace) Log.Verbose("Rescan requested.");
 
-				await Task.Delay(0).ConfigureAwait(false); // asyncify
+				await Task.Delay(10).ConfigureAwait(false); // asyncify
 				if (cts.IsCancellationRequested) return;
 
 				Scan();
@@ -697,7 +697,7 @@ namespace Taskmaster.Process
 
 				var procs = System.Diagnostics.Process.GetProcesses();
 				int found = procs.Length;
-				SignalProcessHandled(found, manage:true); // scan start
+				SignalProcessHandled(found, manage:true).ConfigureAwait(false); // scan start
 
 				//var loaderOffload = new List<ProcessEx>();
 
@@ -728,7 +728,7 @@ namespace Taskmaster.Process
 
 				if (DebugScan) Log.Debug("<Process> Full Scan: Complete");
 
-				SignalProcessHandled(0); // scan done
+				SignalProcessHandled(0).ConfigureAwait(false); // scan done
 
 				ScanEnd?.Invoke(this, new ScanEndEventArgs() { Found = found, Ignored = ignored, Modified = modified });
 
@@ -1352,7 +1352,7 @@ namespace Taskmaster.Process
 
 				if (!ShowInaction && !action && !DebugProcesses) return;
 
-				await Task.Delay(0).ConfigureAwait(false); // probably not necessary
+				await Task.Delay(10).ConfigureAwait(false); // probably not necessary
 
 				bool onlyFinal = ShowOnlyFinalState;
 
@@ -2037,7 +2037,7 @@ namespace Taskmaster.Process
 
 			var prc = info.Controller;
 
-			await Task.Delay(0).ConfigureAwait(false);
+			await Task.Delay(10).ConfigureAwait(false);
 
 			Debug.Assert(prc.Foreground != ForegroundMode.Ignore);
 
@@ -2061,7 +2061,7 @@ namespace Taskmaster.Process
 		{
 			if (disposed) throw new ObjectDisposedException(nameof(Manager), "ProcessTriage called when ProcessManager was already disposed");
 
-			await Task.Delay(0, cts.Token).ConfigureAwait(false); // asyncify
+			await Task.Delay(10, cts.Token).ConfigureAwait(false); // asyncify
 			if (cts.IsCancellationRequested) return;
 
 			try
@@ -2103,7 +2103,7 @@ namespace Taskmaster.Process
 
 					info.State = HandlingState.Processing;
 
-					await Task.Delay(0, cts.Token).ConfigureAwait(false); // asyncify again
+					await Task.Delay(10, cts.Token).ConfigureAwait(false); // asyncify again
 					if (cts.IsCancellationRequested) return;
 
 					if (prc.LogDescription)
@@ -2217,7 +2217,7 @@ namespace Taskmaster.Process
 		{
 			Debug.Assert(ColorResetEnabled, "Trying to do color reset when it's disabled.");
 
-			await Task.Delay(0).ConfigureAwait(false); // asyncify
+			await Task.Delay(10).ConfigureAwait(false); // asyncify
 
 			if (!WaitForExit(info))
 			{
@@ -2232,7 +2232,7 @@ namespace Taskmaster.Process
 
 		async void AttemptColorReset(ProcessEx info)
 		{
-			await Task.Delay(0).ConfigureAwait(false);
+			await Task.Delay(10).ConfigureAwait(false);
 
 			Log.Information(info.ToFullString() + " exited, resetting color (NOT REALLY, SORRY!).");
 			return;
@@ -2257,7 +2257,7 @@ namespace Taskmaster.Process
 
 			if (DebugProcesses) Log.Debug(info.ToFullString() + " Exclusive mode initiating.");
 
-			await Task.Delay(0).ConfigureAwait(false);
+			await Task.Delay(10).ConfigureAwait(false);
 
 			try
 			{
@@ -2313,7 +2313,7 @@ namespace Taskmaster.Process
 		{
 			if (disposed) return;
 
-			await Task.Delay(0).ConfigureAwait(false);
+			await Task.Delay(10).ConfigureAwait(false);
 
 			lock (info)
 			{
@@ -2379,7 +2379,7 @@ namespace Taskmaster.Process
 		{
 			if (manage) Handling += adjust;
 
-			await Task.Delay(0).ConfigureAwait(false);
+			await Task.Delay(10).ConfigureAwait(false);
 
 			HandlingCounter?.Invoke(adjust, Handling);
 		}
@@ -2453,12 +2453,12 @@ namespace Taskmaster.Process
 
 			HandlingState state = HandlingState.Invalid;
 
-			await Task.Delay(0).ConfigureAwait(false);
+			await Task.Delay(10).ConfigureAwait(false);
 			if (cts.IsCancellationRequested) return;
 
 			try
 			{
-				SignalProcessHandled(1, manage:true); // wmi new instance
+				SignalProcessHandled(1, manage:true).ConfigureAwait(false); // wmi new instance
 
 				//var wmiquerytime = Stopwatch.StartNew(); // unused
 				// TODO: Instance groups?
@@ -2598,7 +2598,7 @@ namespace Taskmaster.Process
 				if (info is null) info = new ProcessEx(pid, now) { Timer = timer, State = state, WMIDelay = wmidelay };
 				HandlingStateChange?.Invoke(this, new HandlingStateChangeEventArgs(info));
 
-				SignalProcessHandled(-1, manage:true); // done with it
+				await SignalProcessHandled(-1, manage:true).ConfigureAwait(false); // done with it
 			}
 		}
 
@@ -2630,7 +2630,7 @@ namespace Taskmaster.Process
 		{
 			if (disposed) throw new ObjectDisposedException(nameof(Manager), "CleanupTick called when ProcessManager was already disposed");
 
-			await Task.Delay(0).ConfigureAwait(false);
+			await Task.Delay(10).ConfigureAwait(false);
 
 			Cleanup().ConfigureAwait(false);
 
