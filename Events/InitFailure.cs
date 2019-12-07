@@ -30,14 +30,22 @@ namespace Taskmaster
 {
 	public class InitFailure : Exception
 	{
+		public bool Voluntary { get; set; } = false;
+
 		public Exception[] InnerExceptions { get; }
 
-		public InitFailure(string description, Exception? innerException = null)
+		public InitFailure(string description, Exception? innerException = null, bool voluntary = false)
 			: base(description, innerException)
-			=> InnerExceptions = System.Array.Empty<Exception>();
+		{
+			InnerExceptions = System.Array.Empty<Exception>();
+			Voluntary = voluntary;
+		}
 
-		public InitFailure(string description, Exception? innerException, Exception[] innerExceptions)
+		public InitFailure(string description, Exception? innerException, Exception[] innerExceptions, bool voluntary = false)
 			: base(description, innerException)
-			=> InnerExceptions = innerExceptions;
+		{
+			InnerExceptions = innerExceptions;
+			Voluntary = voluntary;
+		}
 	}
 }

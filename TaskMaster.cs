@@ -385,7 +385,8 @@ namespace Taskmaster
 			catch (InitFailure ex)
 			{
 				Log.Error("<Init> Error: " + ex.Message);
-				Logging.Stacktrace(ex, crashsafe: true);
+
+				if (!ex.Voluntary) Logging.Stacktrace(ex, crashsafe: true);
 
 				var sbs = new StringBuilder("Initialization failed!\n\nError: ");
 				sbs.AppendLine(ex.Message);

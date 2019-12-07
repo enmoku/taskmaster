@@ -221,7 +221,7 @@ namespace Taskmaster
 			using var initialconfig = new UI.Config.ComponentConfigurationWindow();
 			initialconfig.ShowDialog();
 			if (!initialconfig.DialogOK)
-				throw new InitFailure("Component configuration cancelled");
+				throw new InitFailure("Component configuration cancelled", voluntary:true);
 
 			LoadEvent?.Invoke(null, new LoadEventArgs("Initial configuration confirmed.", LoadEventType.Loaded));
 		}
@@ -643,11 +643,9 @@ namespace Taskmaster
 
 				Logging.DebugMsg("AudioManager initialization failed");
 
-				cts.Cancel(throwOnFirstException: false);
+				cts.Cancel(throwOnFirstException: true);
 				throw;
 			}
-
-			if (cts.IsCancellationRequested) throw new InitFailure("Cancelled at 557", (cex?[0]), cex);
 
 			// WinForms makes the following components not load nicely if not done here (main thread).
 			//hiddenwindow.BeginInvoke(new Action(() => { trayaccess = new UI.TrayAccess(); })); // is there a point to this?
@@ -707,7 +705,7 @@ namespace Taskmaster
 				{
 					Log.Warning($"<Core> Components still loading ({timer.ElapsedMilliseconds} ms and ongoing)");
 					if (!Task.WaitAll(init, 115_000)) // total wait time of 120 seconds
-						throw new InitFailure($"Component initialization taking excessively long ({timer.ElapsedMilliseconds} ms), aborting.");
+						throw new InitFailure($"Component initialization taking excessively long ({timer.ElapsedMilliseconds} ms), aborting.", voluntary:true);
 				}
 			}
 			catch (AggregateException ex)
