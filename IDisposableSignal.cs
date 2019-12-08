@@ -1,5 +1,5 @@
 ﻿//
-// Component.cs
+// IDisposableSignal.cs
 //
 // Author:
 //       M.A. (https://github.com/mkahvi)
@@ -28,18 +28,8 @@ using System;
 
 namespace Taskmaster
 {
-	public interface IComponent
+	public interface IDisposableSignal : IDisposable
 	{
-		void Dispose();
-
-		void ShutdownEvent(object sender, EventArgs ea);
-
-		//bool RequireMainThread { get; set; }
-	}
-
-	[System.AttributeUsage(AttributeTargets.Class, AllowMultiple = false, Inherited = true)]
-	public sealed class ContextAttribute : Attribute
-	{
-		public bool RequireMainThread { get; set; } = false;
+		event EventHandler<DisposedEventArgs>? OnDisposed;
 	}
 }

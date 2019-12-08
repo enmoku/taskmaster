@@ -37,7 +37,7 @@ namespace Taskmaster.Audio
 	using static Application;
 
 	[Context(RequireMainThread = true)]
-	public class MicManager : IComponent, IDisposal
+	public class MicManager : IComponent
 	{
 		public event EventHandler<VolumeChangedEventArgs>? VolumeChanged;
 		public event EventHandler<DefaultDeviceEventArgs>? DefaultChanged;

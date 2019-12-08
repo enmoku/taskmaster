@@ -44,9 +44,9 @@ namespace Taskmaster.Process
 		public string Executable { get; set; }
 	}
 
-	public class ForegroundManager : IComponent, IDisposal, IDisposable
+	public class ForegroundManager : IComponent
 	{
-		public event EventHandler<WindowChangedArgs> ActiveChanged;
+		public event EventHandler<WindowChangedArgs>? ActiveChanged;
 
 		/// <summary>Manager for foreground/active process specific events.</summary>
 		/// <exception cref="InitFailure">Event hook creation failed.</exception>

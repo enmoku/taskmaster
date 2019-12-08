@@ -1,10 +1,10 @@
 ﻿//
-// HealthMonitorConfig.cs
+// IDisposal.cs
 //
 // Author:
 //       M.A. (https://github.com/mkahvi)
 //
-// Copyright (c) 2018 M.A.
+// Copyright (c) 2019 M.A.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -24,23 +24,13 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-namespace Taskmaster.UI
+using System;
+
+namespace Taskmaster
 {
-	public class HealthMonitorConfig : UniForm
+
+	public interface IShutdownEventReceiver
 	{
-		readonly Extensions.TableLayoutPanel layout;
-
-		public HealthMonitorConfig()
-		{
-			Visible = false;
-			SuspendLayout();
-
-			Text = "Auto-Doc config";
-
-			layout = new Extensions.TableLayoutPanel();
-
-			ResumeLayout(performLayout: false);
-			Visible = true;
-		}
+		void ShutdownEvent(object sender, EventArgs ea);
 	}
 }

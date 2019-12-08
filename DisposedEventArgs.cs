@@ -1,5 +1,5 @@
 ﻿//
-// IDisposal.cs
+// DisposedEventArgs.cs
 //
 // Author:
 //       M.A. (https://github.com/mkahvi)
@@ -28,13 +28,6 @@ using System;
 
 namespace Taskmaster
 {
-	public interface IDisposal : IDisposable
-	{
-		event EventHandler<DisposedEventArgs>? OnDisposed;
-
-		void ShutdownEvent(object sender, EventArgs ea);
-	}
-
 	public class DisposedEventArgs : EventArgs
 	{
 		public new static DisposedEventArgs Empty => new DisposedEventArgs();

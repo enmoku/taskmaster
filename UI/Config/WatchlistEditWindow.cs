@@ -43,8 +43,12 @@ namespace Taskmaster.UI.Config
 
 		readonly bool newPrc = false;
 
+		// UI elements
+		readonly ToolTip tooltip;
+		readonly Extensions.TableLayoutPanel layout;
+
 		// Editingg
-		public WatchlistEditWindow(Process.Controller? controller = null)
+		public WatchlistEditWindow(Process.Controller? prc = null)
 		{
 			SuspendLayout();
 
@@ -52,13 +56,10 @@ namespace Taskmaster.UI.Config
 
 			int cores = Hardware.Utility.ProcessorCount;
 
-			newPrc = controller is null;
-
-			Controller = controller ?? new Process.Controller("Unnamed") { Enabled = true };
+			newPrc = prc is null;
+			Controller = prc ?? new Process.Controller("Unnamed") { Enabled = true };
 
 			StartPosition = FormStartPosition.CenterParent;
-
-			if (Controller is null) throw new ArgumentException(Controller.FriendlyName + " not found in watchlist.");
 
 			WindowState = FormWindowState.Normal;
 			FormBorderStyle = FormBorderStyle.FixedDialog; // no min/max buttons as wanted
@@ -75,9 +76,9 @@ namespace Taskmaster.UI.Config
 
 			Padding = new Padding(12);
 
-			var tooltip = new ToolTip();
+			tooltip = new ToolTip();
 
-			var lt = new Extensions.TableLayoutPanel
+			layout = new Extensions.TableLayoutPanel
 			{
 				Parent = this,
 				ColumnCount = 3,
@@ -86,7 +87,7 @@ namespace Taskmaster.UI.Config
 				AutoSize = true,
 			};
 
-			lt.Controls.Add(new Extensions.Label { Text = "Friendly name" });
+			layout.Controls.Add(new Extensions.Label { Text = "Friendly name" });
 			friendlyName = new Extensions.TextBox()
 			{
 				ShortcutsEnabled = true,
@@ -97,12 +98,12 @@ namespace Taskmaster.UI.Config
 
 			friendlyName.Validating += (_, ea) => ea.Cancel = !ValidateName(friendlyName, InvalidCharacters);
 			tooltip.SetToolTip(friendlyName, "Human readable name, for user convenience.\nInvalid characters: ], #, and ;");
-			lt.Controls.Add(friendlyName);
+			layout.Controls.Add(friendlyName);
 
-			lt.Controls.Add(new EmptySpace());
+			layout.Controls.Add(new EmptySpace());
 
 			// EXECUTABLE
-			lt.Controls.Add(new Extensions.Label { Text = HumanReadable.System.Process.Executable });
+			layout.Controls.Add(new Extensions.Label { Text = HumanReadable.System.Process.Executable });
 			execName = new Extensions.TextBox()
 			{
 				ShortcutsEnabled = true,
@@ -142,11 +143,11 @@ namespace Taskmaster.UI.Config
 					Log.Fatal(ex.GetType().Name + " : " + ex.Message);
 				}
 			};
-			lt.Controls.Add(execName);
-			lt.Controls.Add(findexecbutton);
+			layout.Controls.Add(execName);
+			layout.Controls.Add(findexecbutton);
 
 			// PATH
-			lt.Controls.Add(new Extensions.Label { Text = HumanReadable.System.Process.Path });
+			layout.Controls.Add(new Extensions.Label { Text = HumanReadable.System.Process.Path });
 			pathName = new Extensions.TextBox()
 			{
 				ShortcutsEnabled = true,
@@ -181,8 +182,8 @@ namespace Taskmaster.UI.Config
 					Logging.Stacktrace(ex);
 				}
 			};
-			lt.Controls.Add(pathName);
-			lt.Controls.Add(findpathbutton);
+			layout.Controls.Add(pathName);
+			layout.Controls.Add(findpathbutton);
 
 			// PATH VISIBILITY
 			pathVisibility = new ComboBox()
@@ -209,13 +210,13 @@ namespace Taskmaster.UI.Config
 				case Process.PathVisibilityOptions.Full: pathVisibility.SelectedIndex = 3; break;
 				case Process.PathVisibilityOptions.Smart: pathVisibility.SelectedIndex = 4; break;
 			}
-			lt.Controls.Add(new Extensions.Label { Text = "Path visibility" });
-			lt.Controls.Add(pathVisibility);
-			lt.Controls.Add(new EmptySpace());
+			layout.Controls.Add(new Extensions.Label { Text = "Path visibility" });
+			layout.Controls.Add(pathVisibility);
+			layout.Controls.Add(new EmptySpace());
 			tooltip.SetToolTip(pathVisibility, "How the process is shown in logs.\nProcess name option is fastest but least descriptive.\nSmart is marginally slowest.\nAuto-select sets something depending on whether executable or path are defined.");
 
 			// DESCRIPTION
-			lt.Controls.Add(new Extensions.Label() { Text = HumanReadable.Generic.Description });
+			layout.Controls.Add(new Extensions.Label() { Text = HumanReadable.Generic.Description });
 			desc = new Extensions.TextBox()
 			{
 				Multiline = false,
@@ -224,8 +225,8 @@ namespace Taskmaster.UI.Config
 				ShortcutsEnabled = true,
 			};
 			desc.Text = Controller.Description;
-			lt.Controls.Add(desc);
-			lt.Controls.Add(new EmptySpace());
+			layout.Controls.Add(desc);
+			layout.Controls.Add(new EmptySpace());
 
 			// IGNORE
 
@@ -274,14 +275,14 @@ namespace Taskmaster.UI.Config
 					ignorelist.Items.Remove(ignorelist.SelectedItems[0]);
 			}));
 
-			lt.Controls.Add(new Extensions.Label() { Text = HumanReadable.Generic.Ignore });
-			lt.Controls.Add(ignorelist);
-			lt.Controls.Add(new EmptySpace());
+			layout.Controls.Add(new Extensions.Label() { Text = HumanReadable.Generic.Ignore });
+			layout.Controls.Add(ignorelist);
+			layout.Controls.Add(new EmptySpace());
 
 			var priorities = new string[] { "Low", "Below Normal", "Normal", "Above Normal", "High", HumanReadable.Generic.Ignore };
 
 			// PRIORITY
-			lt.Controls.Add(new Extensions.Label { Text = HumanReadable.System.Process.PriorityClass });
+			layout.Controls.Add(new Extensions.Label { Text = HumanReadable.System.Process.PriorityClass });
 			priorityClass = new ComboBox
 			{
 				//Dock = DockStyle.Left,
@@ -311,8 +312,8 @@ namespace Taskmaster.UI.Config
 				_ => 2,
 			};
 
-			lt.Controls.Add(priorityClass);
-			lt.Controls.Add(priorityClassMethod);
+			layout.Controls.Add(priorityClass);
+			layout.Controls.Add(priorityClassMethod);
 
 			priorityClass.SelectedIndexChanged += (_, _ea) => priorityClassMethod.Enabled = priorityClass.SelectedIndex != 5; // disable method selection
 
@@ -320,7 +321,7 @@ namespace Taskmaster.UI.Config
 
 			var corelist = new List<CheckBox>(cores);
 
-			lt.Controls.Add(new Extensions.Label { Text = HumanReadable.System.Process.Affinity });
+			layout.Controls.Add(new Extensions.Label { Text = HumanReadable.System.Process.Affinity });
 			affstrategy = new ComboBox()
 			{
 				//Dock = DockStyle.Left,
@@ -340,10 +341,10 @@ namespace Taskmaster.UI.Config
 				clearbutton.Enabled = enabled;
 			};
 
-			lt.Controls.Add(affstrategy);
-			lt.Controls.Add(new EmptySpace());
+			layout.Controls.Add(affstrategy);
+			layout.Controls.Add(new EmptySpace());
 
-			lt.Controls.Add(new Extensions.Label() { Text = "Affinity mask\n&& Cores" }); // left
+			layout.Controls.Add(new Extensions.Label() { Text = "Affinity mask\n&& Cores" }); // left
 			affinityMask = new NumericUpDown()
 			{
 				Width = 80,
@@ -424,8 +425,8 @@ namespace Taskmaster.UI.Config
 				_ => 1,
 			};
 
-			lt.Controls.Add(afflayout);
-			lt.Controls.Add(affbuttonpanel);
+			layout.Controls.Add(afflayout);
+			layout.Controls.Add(affbuttonpanel);
 
 			// EXPERIMENTS
 
@@ -438,9 +439,9 @@ namespace Taskmaster.UI.Config
 			};
 			tooltip.SetToolTip(idealAffinity, "EXPERIMENTAL\nTell the OS to favor this particular core for the primary thread.\nMay not have any perceivable effect.\n0 disables this feature.");
 
-			lt.Controls.Add(new Extensions.Label() { Text = "Ideal affinity", ForeColor = System.Drawing.Color.Red });
-			lt.Controls.Add(idealAffinity);
-			lt.Controls.Add(new Extensions.Label() { Text = "EXPERIMENTAL", ForeColor = System.Drawing.Color.Red });
+			layout.Controls.Add(new Extensions.Label() { Text = "Ideal affinity", ForeColor = System.Drawing.Color.Red });
+			layout.Controls.Add(idealAffinity);
+			layout.Controls.Add(new Extensions.Label() { Text = "EXPERIMENTAL", ForeColor = System.Drawing.Color.Red });
 
 			if (IOPriorityEnabled)
 			{
@@ -455,9 +456,9 @@ namespace Taskmaster.UI.Config
 
 				tooltip.SetToolTip(ioPriority, "EXPERIMENTAL\nDO NOT SET BACKGROUND FOR ANYTHING WITH USER INTERFACE\nBackground setting may delay I/O almost indefinitely.\nAffects HDD/SSD access and Networking\nNormal is the default.\nBackground is for things that do not interact with user.");
 
-				lt.Controls.Add(new Extensions.Label() { Text = "I/O priority", ForeColor = System.Drawing.Color.Red });
-				lt.Controls.Add(ioPriority);
-				lt.Controls.Add(new Extensions.Label() { Text = "EXPERIMENTAL", ForeColor = System.Drawing.Color.Red });
+				layout.Controls.Add(new Extensions.Label() { Text = "I/O priority", ForeColor = System.Drawing.Color.Red });
+				layout.Controls.Add(ioPriority);
+				layout.Controls.Add(new Extensions.Label() { Text = "EXPERIMENTAL", ForeColor = System.Drawing.Color.Red });
 			}
 
 			// ---------------------------------------------------------------------------------------------------------
@@ -476,13 +477,13 @@ namespace Taskmaster.UI.Config
 			ForegroundModeSelect.SelectedIndex = ((int)Controller.Foreground) + 1;
 			tooltip.SetToolTip(ForegroundModeSelect, "Select which factors are lowered when this app is not in focus.");
 
-			lt.Controls.Add(new Extensions.Label { Text = "Foreground mode" });
-			lt.Controls.Add(ForegroundModeSelect);
-			lt.Controls.Add(new EmptySpace());
+			layout.Controls.Add(new Extensions.Label { Text = "Foreground mode" });
+			layout.Controls.Add(ForegroundModeSelect);
+			layout.Controls.Add(new EmptySpace());
 
 			// BACKGROUND PRIORITY & AFFINITY
 
-			lt.Controls.Add(new Extensions.Label { Text = "Background priority" });
+			layout.Controls.Add(new Extensions.Label { Text = "Background priority" });
 
 			bgPriorityClass = new ComboBox
 			{
@@ -498,10 +499,10 @@ namespace Taskmaster.UI.Config
 				bgPriorityClass.SelectedIndex = Controller.BackgroundPriority.Value.ToInt32();
 			tooltip.SetToolTip(bgPriorityClass, "Same as normal priority.\nIgnored causes priority to be untouched.");
 
-			lt.Controls.Add(bgPriorityClass);
-			lt.Controls.Add(new EmptySpace());
+			layout.Controls.Add(bgPriorityClass);
+			layout.Controls.Add(new EmptySpace());
 
-			lt.Controls.Add(new Extensions.Label { Text = "Background affinity" });
+			layout.Controls.Add(new Extensions.Label { Text = "Background affinity" });
 
 			bgAffinityMask = new NumericUpDown()
 			{
@@ -512,8 +513,8 @@ namespace Taskmaster.UI.Config
 			};
 			tooltip.SetToolTip(bgAffinityMask, "Same as normal affinity.\nStrategy is 'force' only for this.\n-1 causes affinity to be untouched.");
 
-			lt.Controls.Add(bgAffinityMask);
-			lt.Controls.Add(new EmptySpace());
+			layout.Controls.Add(bgAffinityMask);
+			layout.Controls.Add(new EmptySpace());
 
 			// ---------------------------------------------------------------------------------------------------------
 
@@ -522,7 +523,7 @@ namespace Taskmaster.UI.Config
 
 			// MODIFY DELAY
 
-			lt.Controls.Add(new Extensions.Label() { Text = "Modify delay" });
+			layout.Controls.Add(new Extensions.Label() { Text = "Modify delay" });
 			modifyDelay = new Extensions.NumericUpDownEx()
 			{
 				Unit = "s",
@@ -533,11 +534,11 @@ namespace Taskmaster.UI.Config
 				Value = Controller.ModifyDelay / 1_000.0M,
 			};
 			tooltip.SetToolTip(modifyDelay, "Delay before the process is actually attempted modification.\nEither to keep original priority for a short while, or to counter early self-adjustment.\nThis is also applied to foreground only limited modifications.");
-			lt.Controls.Add(modifyDelay);
-			lt.Controls.Add(new EmptySpace());
+			layout.Controls.Add(modifyDelay);
+			layout.Controls.Add(new EmptySpace());
 
 			// POWER
-			lt.Controls.Add(new Extensions.Label { Text = HumanReadable.Hardware.Power.Plan });
+			layout.Controls.Add(new Extensions.Label { Text = HumanReadable.Hardware.Power.Plan });
 			powerPlan = new ComboBox()
 			{
 				DropDownStyle = ComboBoxStyle.DropDownList,
@@ -560,8 +561,8 @@ namespace Taskmaster.UI.Config
 			};
 			powerPlan.SelectedIndex = ppi;
 			tooltip.SetToolTip(powerPlan, "Power Mode to be used when this application is detected. Leaving this undefined disables it.");
-			lt.Controls.Add(powerPlan);
-			lt.Controls.Add(new EmptySpace());
+			layout.Controls.Add(powerPlan);
+			layout.Controls.Add(new EmptySpace());
 
 			// FOREGROUND ONLY TOGGLE
 			bool fge = ForegroundModeSelect.SelectedIndex != 0;
@@ -576,17 +577,17 @@ namespace Taskmaster.UI.Config
 			bgAffinityMask.Enabled = bgPriorityClass.Enabled = fge && ForegroundModeSelect.SelectedIndex != 3;
 
 			// PAGING
-			lt.Controls.Add(new Extensions.Label { Text = "Allow paging" });
+			layout.Controls.Add(new Extensions.Label { Text = "Allow paging" });
 			allowPaging = new CheckBox() { Checked = Controller.AllowPaging };
 			tooltip.SetToolTip(allowPaging, "Allow this application to be paged when it is requested.\nNOT FULLY IMPLEMENTED.");
-			lt.Controls.Add(allowPaging);
-			lt.Controls.Add(new EmptySpace());
+			layout.Controls.Add(allowPaging);
+			layout.Controls.Add(new EmptySpace());
 
 			// lt.Controls.Add(new Label { Text=""})
 
 			// AUDIO
 
-			lt.Controls.Add(new Extensions.Label { Text = "Mixer Volume" });
+			layout.Controls.Add(new Extensions.Label { Text = "Mixer Volume" });
 
 			volumeMethod = new ComboBox()
 			{
@@ -598,10 +599,10 @@ namespace Taskmaster.UI.Config
 				Width = 180,
 			};
 
-			lt.Controls.Add(volumeMethod);
-			lt.Controls.Add(new EmptySpace());
+			layout.Controls.Add(volumeMethod);
+			layout.Controls.Add(new EmptySpace());
 
-			lt.Controls.Add(new EmptySpace());
+			layout.Controls.Add(new EmptySpace());
 			volume = new Extensions.NumericUpDownEx()
 			{
 				Unit = "%",
@@ -613,8 +614,8 @@ namespace Taskmaster.UI.Config
 				Value = (Convert.ToDecimal(Controller.Volume) * 100M).Constrain(0M, 100M),
 			};
 			tooltip.SetToolTip(volume, "Percentage of device maximum volume.");
-			lt.Controls.Add(volume);
-			lt.Controls.Add(new EmptySpace());
+			layout.Controls.Add(volume);
+			layout.Controls.Add(new EmptySpace());
 
 			if (!AudioManagerEnabled)
 			{
@@ -646,40 +647,40 @@ namespace Taskmaster.UI.Config
 			exMode = new CheckBox() { Checked = Controller.ExclusiveMode };
 			tooltip.SetToolTip(exMode, "Disable Windows Update and Windows Search services while this rule is in effect.");
 
-			lt.Controls.Add(new Extensions.Label() { Text = "Exclusive mode" });
-			lt.Controls.Add(exMode);
-			lt.Controls.Add(new Extensions.Label() { Text = "EXPERIMENTAL", ForeColor = System.Drawing.Color.Red });
+			layout.Controls.Add(new Extensions.Label() { Text = "Exclusive mode" });
+			layout.Controls.Add(exMode);
+			layout.Controls.Add(new Extensions.Label() { Text = "EXPERIMENTAL", ForeColor = System.Drawing.Color.Red });
 
 			// LOG ADJUSTS
 
 			logAdjusts = new CheckBox() { Checked = Controller.LogAdjusts };
 			tooltip.SetToolTip(logAdjusts, "You can disable logging adjust events for this specific rule, from both UI and disk.\nUse Configuration > Logging > Process adjusts for all.");
 
-			lt.Controls.Add(new Extensions.Label() { Text = "Log adjusts" });
-			lt.Controls.Add(logAdjusts);
-			lt.Controls.Add(new EmptySpace());
+			layout.Controls.Add(new Extensions.Label() { Text = "Log adjusts" });
+			layout.Controls.Add(logAdjusts);
+			layout.Controls.Add(new EmptySpace());
 
 			logStartNExit = new CheckBox() { Checked = Controller.LogStartAndExit };
 			tooltip.SetToolTip(logStartNExit, "You can disable logging adjust events for this specific rule, from both UI and disk.\nUse Configuration > Logging > Process adjusts for all.");
 
-			lt.Controls.Add(new Extensions.Label() { Text = "Log start && exit" });
-			lt.Controls.Add(logStartNExit);
-			lt.Controls.Add(new EmptySpace());
+			layout.Controls.Add(new Extensions.Label() { Text = "Log start && exit" });
+			layout.Controls.Add(logStartNExit);
+			layout.Controls.Add(new EmptySpace());
 
 			warning = new CheckBox() { Checked = Controller.Warn };
 			tooltip.SetToolTip(warning, "Warn about this rule matching.\nSimilar to logging start and exit.");
 
-			lt.Controls.Add(new Extensions.Label() { Text = "Warn" });
-			lt.Controls.Add(warning);
-			lt.Controls.Add(new EmptySpace());
+			layout.Controls.Add(new Extensions.Label() { Text = "Warn" });
+			layout.Controls.Add(warning);
+			layout.Controls.Add(new EmptySpace());
 
 			declareParent = new CheckBox() { Checked = Controller.DeclareParent };
-			lt.Controls.Add(new Extensions.Label() { Text = "Log parent" });
-			lt.Controls.Add(declareParent);
+			layout.Controls.Add(new Extensions.Label() { Text = "Log parent" });
+			layout.Controls.Add(declareParent);
 			if (processmanager.EnableParentFinding)
-				lt.Controls.Add(new EmptySpace());
+				layout.Controls.Add(new EmptySpace());
 			else
-				lt.Controls.Add(new Extensions.Label() { Text = "Disabled" });
+				layout.Controls.Add(new Extensions.Label() { Text = "Disabled" });
 			tooltip.SetToolTip(declareParent, "Parent process logging slows log procedure significantly.\nMust be enabled in advanced settings also.");
 
 			preforder = new NumericUpDown()
@@ -690,9 +691,9 @@ namespace Taskmaster.UI.Config
 			};
 			tooltip.SetToolTip(preforder, "Rules with lower order are processed first.\nMost frequently modified apps should have lowest,\nbut this can also be used to control which rule is more likely to trigger.\n");
 
-			lt.Controls.Add(new Extensions.Label() { Text = "Order preference" });
-			lt.Controls.Add(preforder);
-			lt.Controls.Add(new EmptySpace());
+			layout.Controls.Add(new Extensions.Label() { Text = "Order preference" });
+			layout.Controls.Add(preforder);
+			layout.Controls.Add(new EmptySpace());
 
 			// BUTTONS
 
@@ -713,9 +714,9 @@ namespace Taskmaster.UI.Config
 			validatebutton.Click += ValidateWatchedItem;
 			validatebutton.Margin = BigPadding;
 
-			lt.Controls.Add(validatebutton);
+			layout.Controls.Add(validatebutton);
 
-			lt.Controls.Add(finalizebuttons);
+			layout.Controls.Add(finalizebuttons);
 
 			// ---
 			#endregion // BuildUI

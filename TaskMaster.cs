@@ -37,8 +37,8 @@ namespace Taskmaster
 {
 	public static partial class Application
 	{
-		public static string GitURL => "https://github.com/mkahvi/taskmaster";
-		public static string ItchURL => "https://mkah.itch.io/taskmaster";
+		public static System.Uri GitURL => new System.Uri("https://github.com/mkahvi/taskmaster", UriKind.Absolute);
+		public static System.Uri ItchURL => new System.Uri("https://mkah.itch.io/taskmaster", UriKind.Absolute);
 
 		public static readonly string Name = (System.Reflection.Assembly.GetExecutingAssembly()).GetName().Name;
 		public static readonly string Version = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version.ToString();
@@ -117,7 +117,7 @@ namespace Taskmaster
 
 		static event EventHandler<ShutDownEventArgs> ShuttingDown;
 
-		public static void RegisterForExit(IDisposal disposable)
+		public static void RegisterForExit(IShutdownEventReceiver disposable)
 		{
 			ShuttingDown += disposable.ShutdownEvent;
 		}

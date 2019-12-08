@@ -546,11 +546,13 @@ namespace Taskmaster
 			// Parallel loading, cuts down startup time some. C# ensures parallelism is not enforced.
 			// This is really bad if something fails
 
-			void LogException(Action action)
+			T Initialize<T>() where T : IComponent, new()
 			{
 				try
 				{
-					action();
+					var t = new T();
+					RegisterForExit(t);
+					return t;
 				}
 				catch (Exception ex)
 				{
@@ -560,46 +562,48 @@ namespace Taskmaster
 			}
 
 			Task
-				PowMan = (PowerManagerEnabled ? Task.Run(() => {
-						LogException(() => powermanager = new Power.Manager());
+				tPowMan = (PowerManagerEnabled ? Task.Run(() => {
+						powermanager = Initialize<Power.Manager>();
+						powermanager.OnDisposed += (_, _ea) => powermanager = null;
 						LoadEvent?.Invoke(null, new LoadEventArgs("Power manager processed.", LoadEventType.SubLoaded));
 					}) : Task.CompletedTask),
-				CpuMon = (PowerManagerEnabled ? Task.Run(() => {
-						LogException(() => cpumonitor = new Hardware.CPUMonitor());
+				tCpuMon = (PowerManagerEnabled ? Task.Run(() => {
+						cpumonitor = Initialize<Hardware.CPUMonitor>();
+						cpumonitor.OnDisposed += (_, _ea) => cpumonitor = null;
 						LoadEvent?.Invoke(null, new LoadEventArgs("CPU monitor processed.", LoadEventType.SubLoaded));
 					}, cts.Token) : Task.CompletedTask),
-				ProcMon = (ProcessMonitorEnabled ? Task.Run(() => {
-						LogException(() => processmanager = new Process.Manager());
+				tProcMon = (ProcessMonitorEnabled ? Task.Run(() => {
+						processmanager = Initialize<Process.Manager>();
 						LoadEvent?.Invoke(null, new LoadEventArgs("Process manager processed.", LoadEventType.SubLoaded));
 					}, cts.Token) : Task.CompletedTask),
-				FgMon = (ActiveAppMonitorEnabled ? Task.Run(() => {
-						LogException(() => activeappmonitor = new Process.ForegroundManager());
+				tFgMon = (ActiveAppMonitorEnabled ? Task.Run(() => {
+						activeappmonitor = Initialize<Process.ForegroundManager>();
 						LoadEvent?.Invoke(null, new LoadEventArgs("Foreground manager processed.", LoadEventType.SubLoaded));
 					}, cts.Token) : Task.CompletedTask),
-				NetMon = (NetworkMonitorEnabled ? Task.Run(() => {
-						LogException(() => netmonitor = new Network.Manager());
+				tNetMon = (NetworkMonitorEnabled ? Task.Run(() => {
+						netmonitor = Initialize<Network.Manager>();
 						LoadEvent?.Invoke(null, new LoadEventArgs("Network monitor processed.", LoadEventType.SubLoaded));
 					}, cts.Token) : Task.CompletedTask),
-				StorMon = (StorageMonitorEnabled ? Task.Run(() => {
-						LogException(() => storagemanager = new StorageManager());
+				tStorMon = (StorageMonitorEnabled ? Task.Run(() => {
+						storagemanager = Initialize<StorageManager>();
 						LoadEvent?.Invoke(null, new LoadEventArgs("Storage monitor processed.", LoadEventType.SubLoaded));
 					}, cts.Token) : Task.CompletedTask),
-				HpMon = (HealthMonitorEnabled ? Task.Run(() => {
-						LogException(() => healthmonitor = new HealthMonitor());
+				tHpMon = (HealthMonitorEnabled ? Task.Run(() => {
+						healthmonitor = Initialize<HealthMonitor>();
 						LoadEvent?.Invoke(null, new LoadEventArgs("Health monitor processed.", LoadEventType.SubLoaded));
 					}, cts.Token) : Task.CompletedTask),
-				HwMon = (HardwareMonitorEnabled ? Task.Run(() => {
-						LogException(() => hardware = new Hardware.Monitor());
+				tHwMon = (HardwareMonitorEnabled ? Task.Run(() => {
+						hardware = Initialize<Hardware.Monitor>();
 						LoadEvent?.Invoke(null, new LoadEventArgs("Hardware monitor processed.", LoadEventType.SubLoaded));
 					}, cts.Token) : Task.CompletedTask),
 				//AlMan = (AlertManagerEnabled ? Task.Run(() => LogInit(() => alerts = new AlertManager()), cts.Token) : Task.CompletedTask)
 				//	.ContinueWith(_ => LoadEvent?.Invoke(null, new LoadEventArgs("Alert manager processed.", LoadEventType.SubLoaded)), TaskContinuationOptions.OnlyOnRanToCompletion),
-				SelfMaint = (Task.Run(() => {
-						LogException(() => selfmaintenance = new SelfMaintenance());
+				tSelfMaint = (Task.Run(() => {
+						selfmaintenance = Initialize<SelfMaintenance>();
 						LoadEvent?.Invoke(null, new LoadEventArgs("Self-maintenance manager processed.", LoadEventType.SubLoaded));
 					}, cts.Token));
 			
-			Task[] init = new[] { PowMan, CpuMon, ProcMon, FgMon, NetMon, StorMon, HpMon, HwMon, /*AlMan,*/ SelfMaint };
+			Task[] init = new[] { tPowMan, tCpuMon, tProcMon, tFgMon, tNetMon, tStorMon, tHpMon, tHwMon, /*AlMan,*/ tSelfMaint };
 
 			Exception[]? cex = null;
 			if (cts.IsCancellationRequested) throw new InitFailure("Cancelled?", (cex?[0]), cex);
@@ -608,7 +612,7 @@ namespace Taskmaster
 				cex = t.Exception?.InnerExceptions.ToArray() ?? null;
 				Logging.DebugMsg("Module loading failed");
 				cts.Cancel();
-			}, TaskContinuationOptions.OnlyOnFaulted);
+			}, cts.Token, TaskContinuationOptions.OnlyOnFaulted, TaskScheduler.Default);
 
 			// MMDEV requires main thread
 			try
@@ -616,11 +620,13 @@ namespace Taskmaster
 				if (AudioManagerEnabled)
 				{
 					audiomanager = new Audio.Manager();
+					RegisterForExit(audiomanager);
 					audiomanager.OnDisposed += (_, _ea) => audiomanager = null;
 
 					if (MicrophoneManagerEnabled)
 					{
 						micmonitor = new Audio.MicManager();
+						RegisterForExit(micmonitor);
 						micmonitor.Hook(audiomanager);
 						micmonitor.OnDisposed += (_, _ea) => micmonitor = null;
 					}
@@ -652,16 +658,16 @@ namespace Taskmaster
 			trayaccess = new UI.TrayAccess();
 			trayaccess.TrayMenuShown = visible => OptimizeResponsiviness(visible);
 
-			ProcMon.ContinueWith((_, _discard) => trayaccess.Hook(processmanager), TaskContinuationOptions.OnlyOnRanToCompletion, cts.Token);
+			tProcMon.ContinueWith(_ => trayaccess.Hook(processmanager), cts.Token, TaskContinuationOptions.OnlyOnRanToCompletion, TaskScheduler.Default);
 
-			Task.WhenAll(ProcMon, FgMon).ContinueWith(_ => activeappmonitor?.Hook(processmanager), TaskContinuationOptions.OnlyOnRanToCompletion);
+			Task.WhenAll(tProcMon, tFgMon).ContinueWith(_ => activeappmonitor?.Hook(processmanager), cts.Token, TaskContinuationOptions.OnlyOnRanToCompletion, TaskScheduler.Default);
 			if (cts.IsCancellationRequested) throw new InitFailure("Initialization failed", (cex?[0]), cex);
 
 			try
 			{
 				if (PowerManagerEnabled)
 				{
-					Task.WhenAll(PowMan, CpuMon, ProcMon).ContinueWith((task, _discard) =>
+					Task.WhenAll(tPowMan, tCpuMon, tProcMon).ContinueWith((task) =>
 					  {
 						  if (task.IsFaulted || processmanager is null)
 						  {
@@ -680,7 +686,7 @@ namespace Taskmaster
 							  trayaccess.Hook(powermanager);
 							  processmanager.Hook(powermanager);
 						  }
-					  }, TaskContinuationOptions.OnlyOnRanToCompletion, cts.Token);
+					  }, cts.Token, TaskContinuationOptions.OnlyOnRanToCompletion, TaskScheduler.Default);
 
 					var tr = Task.WhenAny(init);
 					if (tr.IsFaulted)
@@ -696,9 +702,9 @@ namespace Taskmaster
 				//if (HardwareMonitorEnabled)
 				//	Task.WhenAll(HwMon).ContinueWith((x) => hardware.Start()); // this is slow
 
-				NetMon.ContinueWith((_, _discard) => netmonitor.Tray = trayaccess, TaskContinuationOptions.OnlyOnRanToCompletion, cts.Token);
+				tNetMon.ContinueWith(_ => netmonitor.Tray = trayaccess, cts.Token, TaskContinuationOptions.OnlyOnRanToCompletion, TaskScheduler.Default);
 
-				if (AudioManagerEnabled) ProcMon.ContinueWith((_, _discard) => audiomanager?.Hook(processmanager), TaskContinuationOptions.OnlyOnRanToCompletion, cts.Token);
+				if (AudioManagerEnabled) tProcMon.ContinueWith(_ => audiomanager?.Hook(processmanager), cts.Token, TaskContinuationOptions.OnlyOnRanToCompletion, TaskScheduler.Default);
 
 				// WAIT for component initialization
 				if (!Task.WaitAll(init, 5_000))
@@ -714,15 +720,15 @@ namespace Taskmaster
 
 				var faulting = new System.Collections.Generic.List<string>();
 
-				if (!PowMan.IsCompleted) faulting.Add("Power");
-				if (!CpuMon.IsCompleted) faulting.Add("CPU");
-				if (!ProcMon.IsCompleted) faulting.Add("Process");
-				if (!FgMon.IsCompleted) faulting.Add("Foreground");
-				if (!NetMon.IsCompleted) faulting.Add("Network");
-				if (!StorMon.IsCompleted) faulting.Add("Storage");
-				if (!HpMon.IsCompleted) faulting.Add("Health");
-				if (!HwMon.IsCompleted) faulting.Add("Hardware");
-				if (!SelfMaint.IsCompleted) faulting.Add("Self-maintenance");
+				if (!tPowMan.IsCompleted) faulting.Add("Power");
+				if (!tCpuMon.IsCompleted) faulting.Add("CPU");
+				if (!tProcMon.IsCompleted) faulting.Add("Process");
+				if (!tFgMon.IsCompleted) faulting.Add("Foreground");
+				if (!tNetMon.IsCompleted) faulting.Add("Network");
+				if (!tStorMon.IsCompleted) faulting.Add("Storage");
+				if (!tHpMon.IsCompleted) faulting.Add("Health");
+				if (!tHwMon.IsCompleted) faulting.Add("Hardware");
+				if (!tSelfMaint.IsCompleted) faulting.Add("Self-maintenance");
 				if (faulting.Count == 0) faulting.Add("[Unrecognized]");
 
 				string failed = string.Join(", ", faulting);
@@ -749,8 +755,6 @@ namespace Taskmaster
 				storagemanager.OnDisposed += (_, _ea) => storagemanager = null;
 			if (netmonitor != null)
 				netmonitor.OnDisposed += (_, _ea) => netmonitor = null;
-			if (processmanager != null)
-				processmanager.OnDisposed += (_, _ea) => processmanager = null;
 
 			// HOOKING
 			// Probably should transition to weak events
@@ -811,6 +815,8 @@ namespace Taskmaster
 
 		static async Task CheckNGENAsync()
 		{
+			await Task.Delay(5).ConfigureAwait(false);
+
 			bool ngen = Config.Load(CoreConfigFilename).Config[Constants.Experimental].Get(Constants.AutoNGEN)?.Bool ?? false;
 			if (ngen)
 			{

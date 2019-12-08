@@ -56,7 +56,7 @@ namespace Taskmaster
 	/// Monitors for variety of problems and reports on them.
 	/// </summary>
 	[Context(RequireMainThread = false)]
-	public class HealthMonitor : IComponent, IDisposal // Auto-Doc
+	public class HealthMonitor : IComponent // Auto-Doc
 	{
 		bool DebugHealth = false;
 
@@ -510,12 +510,12 @@ namespace Taskmaster
 						if (cooldown >= Settings.MemCooldown && PagingEnabled)
 						{
 							// The following should just call something in ProcessManager
-							int ignorepid = -1;
+							int fgPid = -1;
 
 							if (Settings.MemIgnoreFocus && activeappmonitor != null && User.IdleTime().TotalMinutes <= 3d)
 							{
-								ignorepid = activeappmonitor.ForegroundId;
-								Log.Verbose("<Auto-Doc> Protecting foreground app #" + ignorepid.ToString());
+								fgPid = activeappmonitor.ForegroundId;
+								Log.Verbose("<Auto-Doc> Protecting foreground app #" + fgPid.ToString());
 							}
 
 							var sbs = new StringBuilder(256)
@@ -523,19 +523,19 @@ namespace Taskmaster
 								.Append(HumanInterface.ByteString(memfreeb, iec: true))
 								.Append("], attempting to improve situation.");
 
-							if (!Process.Utility.SystemProcessId(ignorepid))
+							if (!Process.Utility.SystemProcessId(fgPid))
 							{
 								sbs.Append(" Ignoring foreground process ");
 								Process.ProcessEx? info = null;
-								if (processmanager?.GetCachedProcess(ignorepid, out info) ?? false)
+								if (processmanager?.GetCachedProcess(fgPid, out info) ?? false)
 									sbs.Append(info);
 								else
-									sbs.Append('#').Append(ignorepid).Append('.');
+									sbs.Append('#').Append(fgPid).Append('.');
 							}
 
 							Log.Warning(sbs.ToString());
 
-							await (processmanager?.FreeMemory(ignorepid, quiet: true) ?? Task.CompletedTask).ConfigureAwait(false);
+							await (processmanager?.FreeMemoryAsync(ignorePid: fgPid) ?? Task.CompletedTask).ConfigureAwait(false);
 						}
 
 						if (Memory.Pressure > 1.05d) // 105%

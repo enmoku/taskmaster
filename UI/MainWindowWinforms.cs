@@ -557,9 +557,9 @@ namespace Taskmaster.UI
 
 			// DEBUG menu item
 			#region Debug toolstrip menu
-			var menu_debug = new ToolStripMenuItem(HumanReadable.Generic.Debug);
+			menu_debug = new ToolStripMenuItem(HumanReadable.Generic.Debug);
 			// Sub Items
-			var menu_debug_loglevel = new ToolStripMenuItem("UI log level");
+			menu_debug_loglevel = new ToolStripMenuItem("UI log level");
 
 			LogIncludeLevel = MemoryLog.MemorySink.LevelSwitch; // HACK
 
@@ -607,11 +607,11 @@ namespace Taskmaster.UI
 
 			UpdateLogLevelSelection();
 
-			var menu_debug_inaction = new ToolStripMenuItem("Show inaction") { Checked = ShowInaction, CheckOnClick = true };
+			menu_debug_inaction = new ToolStripMenuItem("Show inaction") { Checked = ShowInaction, CheckOnClick = true };
 			menu_debug_inaction.Click += (_, _ea) => ShowInaction = menu_debug_inaction.Checked;
-			var menu_debug_agency = new ToolStripMenuItem("Show agency") { Checked = ShowAgency, CheckOnClick = true };
+			menu_debug_agency = new ToolStripMenuItem("Show agency") { Checked = ShowAgency, CheckOnClick = true };
 			menu_debug_agency.Click += (_, _ea) => ShowAgency = menu_debug_agency.Checked;
-			var menu_debug_scanning = new ToolStripMenuItem("Scanning")
+			menu_debug_scanning = new ToolStripMenuItem("Scanning")
 			{
 				Checked = Process.Manager.DebugScan,
 				CheckOnClick = true,
@@ -783,8 +783,8 @@ namespace Taskmaster.UI
 
 			//menu_info.DropDownItems.Add(new ToolStripMenuItem("Changelog", null, OpenChangelog));
 			//menu_info.DropDownItems.Add(new ToolStripSeparator());
-			menu_info.DropDownItems.Add(new ToolStripMenuItem("Github", null, (_, _ea) => System.Diagnostics.Process.Start(GitURL)));
-			menu_info.DropDownItems.Add(new ToolStripMenuItem("Itch.io", null, (_, _ea) => System.Diagnostics.Process.Start(ItchURL)));
+			menu_info.DropDownItems.Add(new ToolStripMenuItem("Github", null, (_, _ea) => System.Diagnostics.Process.Start(GitURL.ToString())));
+			menu_info.DropDownItems.Add(new ToolStripMenuItem("Itch.io", null, (_, _ea) => System.Diagnostics.Process.Start(ItchURL.ToString())));
 			menu_info.DropDownItems.Add(new ToolStripSeparator());
 			menu_info.DropDownItems.Add(new ToolStripMenuItem(Constants.License, null, (_, _ea) => OpenLicenseDialog()));
 			menu_info.DropDownItems.Add(new ToolStripMenuItem("3rd party licenses", null, ShowExternalLicenses));
@@ -826,7 +826,99 @@ namespace Taskmaster.UI
 
 			LoadUIConfiguration(out int opentab, out int[] appwidths, out int[] apporder, out int[] micwidths, out int[] ifacewidths);
 
-			if (MicrophoneManagerEnabled) BuildMicrophonePanel(micwidths);
+			if (MicrophoneManagerEnabled)
+			{
+				var micpanel = new Extensions.TableLayoutPanel
+				{
+					Dock = DockStyle.Fill,
+					ColumnCount = 1,
+					//Padding = DefaultPadding,
+					//Width = tabLayout.Width - 12
+				};
+				micpanel.RowStyles.Add(new RowStyle(SizeType.Absolute, 20)); // this is dumb
+
+				AudioInputDevice = new Extensions.Label { Text = HumanReadable.Generic.Uninitialized, AutoEllipsis = true };
+				var micNameRow = new Extensions.TableLayoutPanel
+				{
+					RowCount = 1,
+					ColumnCount = 2,
+					Dock = DockStyle.Top,
+					//AutoSize = true // why not?
+				};
+				micNameRow.Controls.Add(new Extensions.Label { Text = "Default communications device:" });
+				micNameRow.Controls.Add(AudioInputDevice);
+
+				var miccntrl = new Extensions.TableLayoutPanel()
+				{
+					RowCount = 1,
+					ColumnCount = 6,
+					Dock = DockStyle.Fill,
+					AutoSize = true,
+				};
+
+				AudioInputVolume = new Extensions.NumericUpDownEx
+				{
+					Unit = "%",
+					Increment = 1.0M,
+					Maximum = 100.0M,
+					Minimum = 0.0M,
+					Width = 60,
+					ReadOnly = true,
+					Enabled = false,
+					Dock = DockStyle.Top
+				};
+				AudioInputVolume.ValueChanged += UserMicVol;
+
+				miccntrl.Controls.Add(new Extensions.Label { Text = HumanReadable.Hardware.Audio.Volume });
+				miccntrl.Controls.Add(AudioInputVolume);
+
+				corCountLabel = new Extensions.Label { Text = "0" };
+
+				miccntrl.Controls.Add(new Extensions.Label { Text = "Correction count:" });
+				miccntrl.Controls.Add(corCountLabel);
+
+				AudioInputEnable = new ComboBox()
+				{
+					DropDownStyle = ComboBoxStyle.DropDownList,
+					Items = { HumanReadable.Generic.Enabled, HumanReadable.Generic.Disabled },
+					SelectedIndex = 1,
+					Enabled = false,
+				};
+
+				miccntrl.Controls.Add(new Extensions.Label { Text = "Control:" });
+				miccntrl.Controls.Add(AudioInputEnable);
+
+				// End: Volume control
+
+				// Main Window row 3, microphone device enumeration
+				AudioInputs = new Extensions.ListViewEx
+				{
+					Dock = DockStyle.Top,
+					Height = 120,
+					View = View.Details,
+					AutoSize = true,
+					MinimumSize = new System.Drawing.Size(-2, -2),
+					FullRowSelect = true
+				};
+				AudioInputs.Columns.Add(Constants.Name, micwidths[0]);
+				AudioInputs.Columns.Add(Constants.GUID, micwidths[1]);
+				AudioInputs.Columns.Add(HumanReadable.Hardware.Audio.Volume, micwidths[2]);
+				AudioInputs.Columns.Add("Target", micwidths[3]);
+				AudioInputs.Columns.Add("Control", micwidths[4]);
+				AudioInputs.Columns.Add("State", micwidths[5]);
+
+				micpanel.SizeChanged += (_, _ea) => AudioInputs.Width = micpanel.Width - micpanel.Margin.Horizontal - micpanel.Padding.Horizontal;
+
+				micpanel.Controls.Add(micNameRow);
+				micpanel.Controls.Add(miccntrl);
+				micpanel.Controls.Add(AudioInputs);
+
+				micTab = new Extensions.TabPage(HumanReadable.Hardware.Audio.Microphone) { Padding = BigPadding };
+
+				micTab.Controls.Add(micpanel);
+
+				TabPages.Controls.Add(micTab);
+			}
 
 			// Main Window row 4-5, internet status
 			Extensions.TableLayoutPanel netstatus = null;
@@ -872,9 +964,45 @@ namespace Taskmaster.UI
 				menu_config_visuals_topmost_volume.Checked = cfg.Config.Get(Constants.VolumeMeter)?.Get(TopmostName)?.Bool ?? true;
 			}
 
-			Extensions.TableLayoutPanel cachePanel = DebugCache ? BuildCachePanel() : null;
+			Extensions.TableLayoutPanel cachePanel = null;
+			if (DebugCache)
+			{
+				cachePanel = new Extensions.TableLayoutPanel()
+				{
+					ColumnCount = 5,
+					AutoSize = true,
+					Dock = DockStyle.Fill,
+				};
+				cachePanel.Controls.Add(new Extensions.Label() { Text = "Path cache:" });
+				cachePanel.Controls.Add(new Extensions.Label() { Text = "Objects" });
+				cacheObjects = new Extensions.Label() { Width = 40, Text = HumanReadable.Generic.Uninitialized };
+				cachePanel.Controls.Add(cacheObjects);
+				cachePanel.Controls.Add(new Extensions.Label() { Text = "Ratio" });
+				cacheRatio = new Extensions.Label() { Width = 40, Text = HumanReadable.Generic.Uninitialized };
+				cachePanel.Controls.Add(cacheRatio);
+			}
 
-			Extensions.TableLayoutPanel tempmonitorpanel = TempMonitorEnabled ? BuildTempMonitorPanel() : null;
+			Extensions.TableLayoutPanel tempmonitorpanel = null;
+			if (TempMonitorEnabled)
+			{
+				tempObjectCount = new Extensions.Label() { Width = 40, Text = HumanReadable.Generic.Uninitialized };
+
+				tempObjectSize = new Extensions.Label() { Width = 40, Text = HumanReadable.Generic.Uninitialized };
+
+				tempmonitorpanel = new Extensions.TableLayoutPanel
+				{
+					Dock = DockStyle.Top,
+					RowCount = 1,
+					ColumnCount = 5,
+					Height = 40,
+					AutoSize = true
+				};
+				tempmonitorpanel.Controls.Add(new Extensions.Label { Text = "Temp" });
+				tempmonitorpanel.Controls.Add(new Extensions.Label { Text = "Objects" });
+				tempmonitorpanel.Controls.Add(tempObjectCount);
+				tempmonitorpanel.Controls.Add(new Extensions.Label { Text = "Size (MB)" });
+				tempmonitorpanel.Controls.Add(tempObjectSize);
+			}
 
 			var corepanel = new Extensions.TableLayoutPanel()
 			{
@@ -1643,7 +1771,7 @@ namespace Taskmaster.UI
 			// re-sort if user is not interacting?
 		}
 
-		void RescanRequestEvent(object _, EventArgs _ea) => Task.Run(async() => processmanager?.HastenScan(TimeSpan.Zero).ConfigureAwait(false));
+		void RescanRequestEvent(object _, EventArgs _ea) => processmanager?.HastenScan(TimeSpan.Zero).ConfigureAwait(false);
 
 		void RestartRequestEvent(object sender, EventArgs _ea) => ConfirmExit(restart: true, admin: sender == menu_action_restartadmin);
 
@@ -1990,6 +2118,8 @@ namespace Taskmaster.UI
 		Extensions.TabPage? micTab = null, powerDebugTab = null, ProcessDebugTab = null;
 
 		readonly ToolStripMenuItem
+			menu_debug, menu_debug_loglevel,
+			menu_debug_inaction, menu_debug_agency, menu_debug_scanning,
 			#if DEBUG
 			menu_debug_loglevel_trace,
 			#endif
@@ -2043,6 +2173,14 @@ namespace Taskmaster.UI
 			// for
 			//LogList.FindItemWithText
 			//LogList.FindNearestItem
+			if (e.IsTextSearch)
+			{
+
+			}
+			else
+			{
+
+			}
 		}
 
 		int LogListFirst = 0;
@@ -2146,7 +2284,7 @@ namespace Taskmaster.UI
 
 		void OpenChangelog(object sender, EventArgs e)
 		{
-			var changelog = new ChangeLog("test");
+			using var changelog = new ChangeLog("test");
 			changelog.ShowDialog();
 		}
 
@@ -2404,140 +2542,6 @@ namespace Taskmaster.UI
 			Logging.DebugMsg($"ALTER COLOR: {AlterColor.R}, {AlterColor.G}, {AlterColor.B}");
 		}
 
-		void BuildMicrophonePanel(int[] micwidths)
-		{
-			var micpanel = new Extensions.TableLayoutPanel
-			{
-				Dock = DockStyle.Fill,
-				ColumnCount = 1,
-				//Padding = DefaultPadding,
-				//Width = tabLayout.Width - 12
-			};
-			micpanel.RowStyles.Add(new RowStyle(SizeType.Absolute, 20)); // this is dumb
-
-			AudioInputDevice = new Extensions.Label { Text = HumanReadable.Generic.Uninitialized, AutoEllipsis = true };
-			var micNameRow = new Extensions.TableLayoutPanel
-			{
-				RowCount = 1,
-				ColumnCount = 2,
-				Dock = DockStyle.Top,
-				//AutoSize = true // why not?
-			};
-			micNameRow.Controls.Add(new Extensions.Label { Text = "Default communications device:" });
-			micNameRow.Controls.Add(AudioInputDevice);
-
-			var miccntrl = new Extensions.TableLayoutPanel()
-			{
-				RowCount = 1,
-				ColumnCount = 6,
-				Dock = DockStyle.Fill,
-				AutoSize = true,
-			};
-
-			AudioInputVolume = new Extensions.NumericUpDownEx
-			{
-				Unit = "%",
-				Increment = 1.0M,
-				Maximum = 100.0M,
-				Minimum = 0.0M,
-				Width = 60,
-				ReadOnly = true,
-				Enabled = false,
-				Dock = DockStyle.Top
-			};
-			AudioInputVolume.ValueChanged += UserMicVol;
-
-			miccntrl.Controls.Add(new Extensions.Label { Text = HumanReadable.Hardware.Audio.Volume });
-			miccntrl.Controls.Add(AudioInputVolume);
-
-			corCountLabel = new Extensions.Label { Text = "0" };
-
-			miccntrl.Controls.Add(new Extensions.Label { Text = "Correction count:" });
-			miccntrl.Controls.Add(corCountLabel);
-
-			AudioInputEnable = new ComboBox()
-			{
-				DropDownStyle = ComboBoxStyle.DropDownList,
-				Items = { HumanReadable.Generic.Enabled, HumanReadable.Generic.Disabled },
-				SelectedIndex = 1,
-				Enabled = false,
-			};
-
-			miccntrl.Controls.Add(new Extensions.Label { Text = "Control:" });
-			miccntrl.Controls.Add(AudioInputEnable);
-
-			// End: Volume control
-
-			// Main Window row 3, microphone device enumeration
-			AudioInputs = new Extensions.ListViewEx
-			{
-				Dock = DockStyle.Top,
-				Height = 120,
-				View = View.Details,
-				AutoSize = true,
-				MinimumSize = new System.Drawing.Size(-2, -2),
-				FullRowSelect = true
-			};
-			AudioInputs.Columns.Add(Constants.Name, micwidths[0]);
-			AudioInputs.Columns.Add(Constants.GUID, micwidths[1]);
-			AudioInputs.Columns.Add(HumanReadable.Hardware.Audio.Volume, micwidths[2]);
-			AudioInputs.Columns.Add("Target", micwidths[3]);
-			AudioInputs.Columns.Add("Control", micwidths[4]);
-			AudioInputs.Columns.Add("State", micwidths[5]);
-
-			micpanel.SizeChanged += (_, _ea) => AudioInputs.Width = micpanel.Width - micpanel.Margin.Horizontal - micpanel.Padding.Horizontal;
-
-			micpanel.Controls.Add(micNameRow);
-			micpanel.Controls.Add(miccntrl);
-			micpanel.Controls.Add(AudioInputs);
-
-			micTab = new Extensions.TabPage(HumanReadable.Hardware.Audio.Microphone) { Padding = BigPadding };
-
-			micTab.Controls.Add(micpanel);
-
-			TabPages.Controls.Add(micTab);
-		}
-
-		Extensions.TableLayoutPanel BuildTempMonitorPanel()
-		{
-			tempObjectCount = new Extensions.Label() { Width = 40, Text = HumanReadable.Generic.Uninitialized };
-
-			tempObjectSize = new Extensions.Label() { Width = 40, Text = HumanReadable.Generic.Uninitialized };
-
-			var tempmonitorpanel = new Extensions.TableLayoutPanel
-			{
-				Dock = DockStyle.Top,
-				RowCount = 1,
-				ColumnCount = 5,
-				Height = 40,
-				AutoSize = true
-			};
-			tempmonitorpanel.Controls.Add(new Extensions.Label { Text = "Temp" });
-			tempmonitorpanel.Controls.Add(new Extensions.Label { Text = "Objects" });
-			tempmonitorpanel.Controls.Add(tempObjectCount);
-			tempmonitorpanel.Controls.Add(new Extensions.Label { Text = "Size (MB)" });
-			tempmonitorpanel.Controls.Add(tempObjectSize);
-			return tempmonitorpanel;
-		}
-
-		Extensions.TableLayoutPanel BuildCachePanel()
-		{
-			var cachePanel = new Extensions.TableLayoutPanel()
-			{
-				ColumnCount = 5,
-				AutoSize = true,
-				Dock = DockStyle.Fill,
-			};
-			cachePanel.Controls.Add(new Extensions.Label() { Text = "Path cache:" });
-			cachePanel.Controls.Add(new Extensions.Label() { Text = "Objects" });
-			cacheObjects = new Extensions.Label() { Width = 40, Text = HumanReadable.Generic.Uninitialized };
-			cachePanel.Controls.Add(cacheObjects);
-			cachePanel.Controls.Add(new Extensions.Label() { Text = "Ratio" });
-			cacheRatio = new Extensions.Label() { Width = 40, Text = HumanReadable.Generic.Uninitialized };
-			cachePanel.Controls.Add(cacheRatio);
-			return cachePanel;
-		}
-
 		void BuildPowerDebugPanel()
 		{
 			var powerlayout = new Extensions.TableLayoutPanel()
@@ -2786,8 +2790,8 @@ namespace Taskmaster.UI
 				.AppendLine()
 				.AppendLine("Created by M.A., 2016–2019")
 				.AppendLine()
-				.Append("At Github: ").AppendLine(GitURL)
-				.Append("At Itch.io: ").AppendLine(ItchURL)
+				.Append("At Github: ").AppendLine(GitURL.ToString())
+				.Append("At Itch.io: ").AppendLine(ItchURL.ToString())
 				.AppendLine()
 				.AppendLine("Free system maintenance and de-obnoxifying app.")
 				.AppendLine()
@@ -3204,7 +3208,7 @@ namespace Taskmaster.UI
 			statusbar.Items.Add(powermodestatusbar);
 		}
 
-		async void FreeMemoryRequest(object _, EventArgs _ea)
+		void FreeMemoryRequest(object _, EventArgs _ea)
 		{
 			try
 			{
@@ -3215,7 +3219,7 @@ namespace Taskmaster.UI
 					"\n\nSelection omits chosen app from paging. Select nothing to try free memory in general.");
 
 				if (exsel.ShowDialog(this) == DialogResult.OK)
-					await processmanager?.FreeMemory(exsel.Info.Id);
+					processmanager?.FreeMemoryAsync(exsel.Info.Id).ConfigureAwait(false);
 			}
 			catch (Exception ex) { Logging.Stacktrace(ex); }
 		}
@@ -3469,7 +3473,7 @@ namespace Taskmaster.UI
 		{
 			try
 			{
-				var ew = new Config.WatchlistEditWindow();
+				using var ew = new Config.WatchlistEditWindow();
 				var rv = ew.ShowDialog();
 				if (rv == DialogResult.OK)
 				{
@@ -3502,7 +3506,7 @@ namespace Taskmaster.UI
 							== MessageBox.ResultType.OK)
 						{
 							processmanager.RemoveController(prc);
-							processmanager.DeleteConfig(prc);
+							Process.Manager.DeleteConfig(prc);
 
 							Log.Information("[" + prc.FriendlyName + "] Rule removed");
 
@@ -3607,11 +3611,12 @@ namespace Taskmaster.UI
 			}
 		}
 
-		Extensions.Label tempObjectCount = null, tempObjectSize = null;
-		Extensions.Label cpuload = null, ramload = null;
-		Extensions.Label pwmode = null, pwcause = null, pwbehaviour = null;
-		Extensions.Label nvmtransferslabel = null, nvmsplitio = null, nvmdelaylabel = null, nvmqueuelabel = null, hardfaults = null;
-		Extensions.Label gpuvram = null, gpuload = null, gputemp = null, gpufan = null;
+		Extensions.Label?
+			tempObjectCount = null, tempObjectSize = null,
+			cpuload = null, ramload = null,
+			pwmode = null, pwcause = null, pwbehaviour = null,
+			nvmtransferslabel = null, nvmsplitio = null, nvmdelaylabel = null, nvmqueuelabel = null,
+			gpuvram = null, gpuload = null, gputemp = null, gpufan = null;
 
 		public void TempScanStats(StorageManager.ScanState state, StorageManager.DirectoryStats stats)
 		{

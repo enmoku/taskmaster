@@ -52,7 +52,7 @@ namespace Taskmaster
 			/// <summary>
 			/// Default mode when neither low or high is in effect
 			/// </summary>
-			public Mode DefaultMode = Mode.Balanced;
+			public Mode DefaultMode { get; set; } = Mode.Balanced;
 
 			/// <summary>
 			/// CPU queue adjustment
@@ -69,17 +69,17 @@ namespace Taskmaster
 
 		public struct BackoffThresholds
 		{
-			public int Level;
+			public int Level { get; set; }
 
-			public float Low;
-			public float Mean;
-			public float High;
+			public float Low { get; set; }
+			public float Mean { get; set; }
+			public float High { get; set; }
 		}
 
 		public struct CommitThreshold
 		{
-			public int Level;
-			public float Threshold;
+			public int Level { get; set; }
+			public float Threshold { get; set; }
 		}
 
 		public struct QueueBarriers
@@ -87,9 +87,9 @@ namespace Taskmaster
 			/// <summary>
 			/// Queue equal or above this will prevent low mode.
 			/// </summary>
-			public int Low;
+			public int Low { get; set; }
 			// Queue equal or above this will prevent non-high mode.
-			public int High;
+			public int High { get; set; }
 		}
 	}
 }

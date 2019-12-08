@@ -235,7 +235,6 @@ namespace Taskmaster.UI
 		int LoaderListFirst = 0;
 
 		readonly List<LoadListPair> LoaderListData = new List<LoadListPair>(80);
-		readonly MKAh.Cache.SimpleCache<Process.InstanceGroupLoad, ListViewItem> LoaderListCache = new MKAh.Cache.SimpleCache<Process.InstanceGroupLoad, ListViewItem>(80, 10);
 
 		void LoaderListSelectionChanged(object sender, ListViewVirtualItemsSelectionRangeChangedEventArgs e)
 		{
@@ -477,8 +476,6 @@ namespace Taskmaster.UI
 
 			BeginInvoke(new Action(() => UpdateItems(pairs)));
 		}
-
-		readonly ConcurrentDictionary<ListViewItem, Process.InstanceGroupLoad> ReverseMap = new ConcurrentDictionary<ListViewItem, Process.InstanceGroupLoad>();
 
 		void UpdateItems(LoadListPair[] pairs)
 		{
@@ -824,7 +821,7 @@ namespace Taskmaster.UI
 		/// <summary>
 		/// Always kept at top.
 		/// </summary>
-		public LoadListPair TopItem { get; set; } = null;
+		public LoadListPair? TopItem { get; set; } = null;
 
 		public SortOrder Order { get; set; } = SortOrder.Descending;
 

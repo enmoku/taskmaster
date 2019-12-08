@@ -36,10 +36,10 @@ namespace Taskmaster.UI.Config
 	{
 		readonly public AutoAdjustSettings oldAutoAdjust;
 
-		public Power.PowerBehaviour NewLaunchBehaviour = Power.PowerBehaviour.Undefined;
-		public Power.RestoreModeMethod NewRestoreMethod = Power.RestoreModeMethod.Default;
-		public Mode NewRestoreMode = Mode.Undefined;
-		public Mode NewLockMode = Mode.Undefined;
+		public Power.PowerBehaviour NewLaunchBehaviour { get; set; } = Power.PowerBehaviour.Undefined;
+		public Power.RestoreModeMethod NewRestoreMethod { get; set; } = Power.RestoreModeMethod.Default;
+		public Mode NewRestoreMode { get; set; } = Mode.Undefined;
+		public Mode NewLockMode { get; set; } = Mode.Undefined;
 
 		readonly ComboBox behaviour, restore;
 
@@ -56,6 +56,8 @@ namespace Taskmaster.UI.Config
 		readonly CheckBox monitorofftoggle;
 
 		readonly Power.Manager manager;
+
+		readonly ToolTip tooltip;
 
 		public PowerConfigWindow(Power.Manager powerManager, bool center = false)
 			: base(centerOnScreen: center)
@@ -74,7 +76,7 @@ namespace Taskmaster.UI.Config
 			FormBorderStyle = FormBorderStyle.FixedDialog; // no min/max buttons as wanted
 			AutoSizeMode = AutoSizeMode.GrowAndShrink;
 
-			var tooltip = new ToolTip();
+			tooltip = new ToolTip();
 
 			string[] powermodes = new string[] {
 				Power.Utility.GetModeName(Mode.HighPerformance), Power.Utility.GetModeName(Mode.Balanced), Power.Utility.GetModeName(Mode.PowerSaver)
@@ -111,21 +113,12 @@ namespace Taskmaster.UI.Config
 				"Manual = Fully user controlled");
 
 			behaviour.SelectedIndexChanged += (_, _ea) =>
-			{
-				switch (behaviour.SelectedIndex)
+				NewLaunchBehaviour = behaviour.SelectedIndex switch
 				{
-					case 0:
-						NewLaunchBehaviour = Power.PowerBehaviour.Auto;
-						break;
-					default:
-					case 1:
-						NewLaunchBehaviour = Power.PowerBehaviour.RuleBased;
-						break;
-					case 2:
-						NewLaunchBehaviour = Power.PowerBehaviour.Manual;
-						break;
-				}
-			};
+					0 => Power.PowerBehaviour.Auto,
+					2 => Power.PowerBehaviour.Manual,
+					_ => Power.PowerBehaviour.RuleBased
+				};
 
 			layout.Controls.Add(new Extensions.Label() { Text = "Launch behaviour", Dock = DockStyle.Fill });
 			layout.Controls.Add(behaviour);

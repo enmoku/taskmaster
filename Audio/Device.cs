@@ -62,12 +62,17 @@ namespace Taskmaster.Audio
 		#region IDisposable Support
 		private bool disposed { get; set; } = false; // To detect redundant calls
 
+		public event EventHandler? OnDisposed;
+
 		~Device() => Dispose(false);
 
 		protected virtual void Dispose(bool disposing)
 		{
 			if (disposed) return;
 			disposed = true;
+
+			OnDisposed?.Invoke(this, EventArgs.Empty);
+			OnDisposed = null;
 
 			if (MKAh.Execution.IsMainThread)
 			{

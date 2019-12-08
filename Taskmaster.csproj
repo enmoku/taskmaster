@@ -10,9 +10,7 @@
     <Nullable>enable</Nullable>
     <!-- Doesn't work for some reason -->
     <NullableContextOptions>enable</NullableContextOptions>
-    <!-- actually works despite everything telling to use the above -->
-    <!-- <NullableReferenceTypes>enable</NullableReferenceTypes> -->
-    <!-- outdated format for nullable? -->
+	<NullableReferenceTypes>true</NullableReferenceTypes> <!-- Needed anyway -->
     <RootNamespace>Taskmaster</RootNamespace>
     <AssemblyName>Taskmaster</AssemblyName>
     <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
@@ -83,7 +81,8 @@
     <Compile Include="Audio\VolumeChanged.cs" />
     <Compile Include="Cause.cs" />
     <Compile Include="CommandLine.cs" />
-    <Compile Include="Component.cs" />
+    <Compile Include="DisposedEventArgs.cs" />
+    <Compile Include="IComponent.cs" />
     <Compile Include="Config\File.cs" />
     <Compile Include="Config\FileEvent.cs" />
     <Compile Include="Config\IFile.cs" />
@@ -103,7 +102,8 @@
     <Compile Include="Hardware\StorageManager.cs" />
     <Compile Include="Hardware\Utility.cs" />
     <Compile Include="HealthMonitor.cs" />
-    <Compile Include="IDisposal.cs" />
+    <Compile Include="IDisposableSignal.cs" />
+    <Compile Include="IShutdownEventReceiver.cs" />
     <Compile Include="Initialization.cs" />
     <Compile Include="Interface\ISetting.cs" />
     <Compile Include="IPC.cs" />
@@ -165,7 +165,6 @@
     <Compile Include="Process\Analyzer.cs" />
     <Compile Include="Process\ConfigConstants.cs" />
     <Compile Include="Process\Controller.cs" />
-    <Compile Include="Process\ControllerSettings.cs" />
     <Compile Include="Process\Events\HandlingStateChangeEventArgs.cs" />
     <Compile Include="Process\Events\LoaderEvent.cs" />
     <Compile Include="Process\Events\ModificationEventArgs.cs" />
@@ -267,7 +266,6 @@
     <Compile Include="UI\UniForm.cs">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Include="UI\Utility.cs" />
     <Compile Include="UI\VolumeMeter.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -296,6 +294,9 @@
     <EmbeddedResource Include="UI\Config\FirstRunWizard.resx">
       <DependentUpon>FirstRunWizard.cs</DependentUpon>
     </EmbeddedResource>
+    <None Include="..\.editorconfig">
+      <Link>.editorconfig</Link>
+    </None>
     <None Include=".itch.toml">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
@@ -337,6 +338,16 @@
     <Content Include="Resources\taskmaster-hammer.ico" />
   </ItemGroup>
   <ItemGroup>
+    <PackageReference Include="Microsoft.CodeAnalysis.FxCopAnalyzers">
+      <Version>2.9.8</Version>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <PackageReference Include="Microsoft.CodeQuality.Analyzers">
+      <Version>2.9.8</Version>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
     <PackageReference Include="NAudio">
       <Version>1.9.0</Version>
     </PackageReference>

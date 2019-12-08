@@ -35,6 +35,8 @@ namespace Taskmaster.UI.Config
 
 	public class ComponentConfigurationWindow : UniForm
 	{
+		readonly ToolTip tooltip;
+
 		internal ComponentConfigurationWindow(bool initial = true, bool center = false)
 			: base(centerOnScreen: initial || center)
 		{
@@ -86,7 +88,7 @@ namespace Taskmaster.UI.Config
 				//BackColor = System.Drawing.Color.Aqua,
 			};
 
-			var tooltip = new ToolTip();
+			tooltip = new ToolTip();
 
 			var audioman = new CheckBox()
 			{
@@ -362,7 +364,7 @@ namespace Taskmaster.UI.Config
 				compsec[Constants.Health].Bool = autodoc.Checked;
 
 				var powsec = cfg.Config[HumanReadable.Hardware.Power.Section];
-				if (powmon.Checked) powsec[Power.Constants.Behaviour].String = powbehaviour.Text.ToLower();
+				if (powmon.Checked) powsec[Power.Constants.Behaviour].String = powbehaviour.Text.ToLowerInvariant();
 
 				var uisec = cfg.Config[Constants.UserInterface];
 				uisec[Constants.ShowOnStart].Bool = showonstart.Checked;

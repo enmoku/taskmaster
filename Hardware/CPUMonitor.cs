@@ -36,7 +36,7 @@ namespace Taskmaster.Hardware
 	using static Application;
 
 	[Context(RequireMainThread = false)]
-	public class CPUMonitor : IComponent, IDisposal
+	public class CPUMonitor : IComponent
 	{
 		// Experimental feature
 		public bool CPULoaderMonitoring { get; set; } = false;

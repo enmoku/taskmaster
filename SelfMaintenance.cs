@@ -34,7 +34,7 @@ namespace Taskmaster
 	using static Application;
 
 	[Context(RequireMainThread = false)]
-	public class SelfMaintenance : IComponent, IDisposal
+	public class SelfMaintenance : IComponent
 	{
 		public SelfMaintenance()
 		{

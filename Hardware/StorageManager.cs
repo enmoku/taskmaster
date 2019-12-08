@@ -38,7 +38,7 @@ namespace Taskmaster
 	/// Manager for non-volatile memory (NVM).
 	/// </summary>
 	[Context(RequireMainThread = false)]
-	public class StorageManager : IComponent, IDisposal
+	public class StorageManager : IComponent
 	{
 		bool Verbose = false;
 
@@ -54,7 +54,7 @@ namespace Taskmaster
 		public StorageManager()
 		{
 			TempScanTimer = new System.Timers.Timer(TimerDue.TotalMilliseconds);
-			TempScanTimer.Elapsed += ScanTemp;
+			TempScanTimer.Elapsed += ScanTempRequest;
 
 			if (TempMonitorEnabled)
 			{
@@ -91,8 +91,9 @@ namespace Taskmaster
 			if (Verbose) Log.Information("<Maintenance> Component loaded.");
 		}
 
-		async void OnStart(object sender, EventArgs ea)
-			=> await Task.Run(() => ScanTemp(this, EventArgs.Empty)).ConfigureAwait(false);
+		async void OnStart(object sender, EventArgs ea) => await ScanTempAsync().ConfigureAwait(false);
+
+		async Task ScanTempAsync() => await ScanTemp().ConfigureAwait(false);
 
 		static long ReScanBurden = 0;
 
@@ -132,7 +133,10 @@ namespace Taskmaster
 			LastTempScan = now;
 
 			TempScanTimer.Stop();
-			await Task.Run(() => Task.Delay(5_000).ContinueWith((_x) => ScanTemp(this, EventArgs.Empty))).ConfigureAwait(false);
+
+			await Task.Delay(5_000).ConfigureAwait(false);
+
+			await ScanTemp().ConfigureAwait(false);
 		}
 
 		public struct DirectoryStats
@@ -174,7 +178,9 @@ namespace Taskmaster
 
 		int scantemp_lock = 0;
 
-		async void ScanTemp(object _, EventArgs _ea)
+		async void ScanTempRequest(object _, EventArgs _ea) => await ScanTemp().ConfigureAwait(false);
+
+		async Task ScanTemp()
 		{
 			if (disposed) return;
 

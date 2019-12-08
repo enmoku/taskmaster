@@ -35,6 +35,9 @@ namespace Taskmaster.UI.Config
 
 	public class AdvancedConfig : UI.UniForm
 	{
+		readonly Extensions.TableLayoutPanel layout;
+		readonly ToolTip tooltip;
+
 		AdvancedConfig(bool center = false)
 			: base(centerOnScreen: center)
 		{
@@ -50,9 +53,9 @@ namespace Taskmaster.UI.Config
 			AutoSizeMode = AutoSizeMode.GrowAndShrink;
 			AutoSize = true;
 
-			var tooltip = new ToolTip();
+			tooltip = new ToolTip();
 
-			var layout = new Extensions.TableLayoutPanel()
+			layout = new Extensions.TableLayoutPanel()
 			{
 				ColumnCount = 2,
 				Dock = DockStyle.Fill,

@@ -43,7 +43,7 @@ namespace Taskmaster.Process
 	using static Application;
 
 	[Context(RequireMainThread = false)]
-	public class Manager : IComponent, IDisposal, IDisposable
+	public class Manager : IComponent
 	{
 		readonly Analyzer? analyzer = null;
 
@@ -479,7 +479,7 @@ namespace Taskmaster.Process
 		{
 			try
 			{
-				await Task.Run(async () => await ScanAsync().ConfigureAwait(false)).ConfigureAwait(false);
+				await Task.Factory.StartNew(ScanAsync, cts.Token, TaskCreationOptions.LongRunning | TaskCreationOptions.HideScheduler, TaskScheduler.Default).ConfigureAwait(false);
 			}
 			catch (TaskCanceledException)
 			{
@@ -509,7 +509,7 @@ namespace Taskmaster.Process
 			activeappmonitor.OnDisposed += (_, _ea) => activeappmonitor = null;
 		}
 
-		Power.Manager powermanager = null;
+		Power.Manager? powermanager = null;
 
 		public void Hook(Power.Manager manager)
 		{
@@ -526,22 +526,15 @@ namespace Taskmaster.Process
 
 		readonly MKAh.Lock.Monitor FreeMemLock = new MKAh.Lock.Monitor();
 
-		public async Task FreeMemory(int ignorePid = -1, bool quiet = false)
+		public async Task FreeMemoryAsync(int ignorePid = -1)
 		{
 			if (!PagingEnabled) return;
-
-			if (!FreeMemLock.TryLock()) return;
-			using var fmlock = FreeMemLock.ScopedUnlock();
-
-			await Task.Delay(10).ConfigureAwait(false);
-
+			
 			try
 			{
-				if (DebugPaging && !quiet) Log.Debug("<Process> Requesting OS to page applications to swap file...");
+				if (DebugPaging) Log.Debug("<Process> Requesting OS to page applications to swap file...");
 
-				//await Task.Delay(0).ConfigureAwait(false);
-
-				FreeMemoryInternal(ignorePid);
+				await FreeMemoryInternal(ignorePid).ConfigureAwait(false);
 			}
 			catch (Exception ex) when (ex is NullReferenceException || ex is OutOfMemoryException) { throw; }
 			catch (Exception ex)
@@ -550,9 +543,14 @@ namespace Taskmaster.Process
 			}
 		}
 
-		void FreeMemoryInternal(int ignorePid = -1)
+		internal async Task FreeMemoryInternal(int ignorePid = -1)
 		{
 			if (disposed) throw new ObjectDisposedException(nameof(Manager), "FreeMemoryInterval called when ProcessManager was already disposed");
+
+			if (!FreeMemLock.TryLock()) return;
+			using var fmlock = FreeMemLock.ScopedUnlock();
+
+			await Task.Delay(5).ConfigureAwait(false);
 
 			Memory.Update();
 			long memorybefore = Memory.Free;
@@ -640,7 +638,7 @@ namespace Taskmaster.Process
 					if (forceSort) SortWatchlist();
 					if (cts.IsCancellationRequested) return;
 
-					await ScanAsync().ConfigureAwait(false);
+					await Task.Factory.StartNew(ScanAsync, cts.Token, TaskCreationOptions.LongRunning | TaskCreationOptions.HideScheduler, TaskScheduler.Default).ConfigureAwait(false);
 				}
 			}
 			catch (Exception ex) when (ex is NullReferenceException || ex is OutOfMemoryException) { throw; }
@@ -1326,9 +1324,10 @@ namespace Taskmaster.Process
 					// cnt.delay = section.Contains("delay") ? section["delay"].Int : 30; // TODO: Add centralized default delay
 					// cnt.delayIncrement = section.Contains("delay increment") ? section["delay increment"].Int : 15; // TODO: Add centralized default increment
 				}
-				catch (Exception ex)
+				catch
 				{
 					Log.Error("<Watchlist> Error reading rule: " + section.Name);
+					// TODO: Should throw?
 				}
 			}
 
@@ -1581,7 +1580,7 @@ namespace Taskmaster.Process
 			prc.Resumed -= ProcessResumedProxy;
 		}
 
-		public void DeleteConfig(Controller prc)
+		public static void DeleteConfig(Controller prc)
 		{
 			using var cfg = Config.Load(WatchlistFile);
 			cfg.Config.TryRemove(prc.FriendlyName); // remove the section, removes the items in the section
@@ -1839,7 +1838,7 @@ namespace Taskmaster.Process
 
 			if (!hasPath) hasPath = Utility.FindPath(info);
 
-			if (hasPath && IgnoreSystem32Path && info.Path.StartsWith(Environment.GetFolderPath(Environment.SpecialFolder.System)))
+			if (hasPath && IgnoreSystem32Path && info.Path.StartsWith(Environment.GetFolderPath(Environment.SpecialFolder.System), StringComparison.InvariantCultureIgnoreCase))
 			{
 				if (ShowInaction && DebugProcesses) Log.Debug("<Process/Path> " + info + " in System32, ignoring");
 				prc = null;

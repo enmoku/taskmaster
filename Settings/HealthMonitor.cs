@@ -48,7 +48,7 @@ namespace Taskmaster.Settings
 		/// <summary>
 		/// Ignore applications.
 		/// </summary>
-		public string[] IgnoreList { get; set; } = { };
+		public string[] IgnoreList { get; set; } = Array.Empty<string>();
 
 		/// <summary>
 		/// Cooldown in minutes before we attempt to do anything about low memory again.

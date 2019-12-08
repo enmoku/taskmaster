@@ -282,8 +282,6 @@ namespace Taskmaster.Process
 			LastPid = highPid;
 		}
 
-		MKAh.Container.CircularBuffer<float> LoadHistory = new MKAh.Container.CircularBuffer<float>(10);
-
 		public void Remove(ProcessEx info)
 		{
 			Processes.TryRemove(info.Id, out _);

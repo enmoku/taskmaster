@@ -1,5 +1,5 @@
 ﻿//
-// UI.Utility.cs
+// Component.cs
 //
 // Author:
 //       M.A. (https://github.com/mkahvi)
@@ -24,15 +24,18 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-using System.Windows.Forms;
+using System;
 
-namespace Taskmaster.UI
+namespace Taskmaster
 {
-	class Utility
+	public interface IComponent : IDisposable, IShutdownEventReceiver, IDisposableSignal
 	{
-		public void BuildPowerMenu(ToolStripMenuItem menu)
-		{
-			// NOP
-		}
+		//bool RequireMainThread { get; set; }
+	}
+
+	[System.AttributeUsage(AttributeTargets.Class, AllowMultiple = false, Inherited = true)]
+	public sealed class ContextAttribute : Attribute
+	{
+		public bool RequireMainThread { get; set; } = false;
 	}
 }

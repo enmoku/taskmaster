@@ -30,46 +30,57 @@ using System.Threading.Tasks;
 
 namespace Taskmaster.Hardware
 {
-	public struct GPUSensors
+	public interface ILoadSensor
 	{
-		public float Load;
-		public float Clock;
+		public float Load { get; set; }
+	}
 
-		public float MemLoad;
-		public float MemTotal;
+	public interface IFanSensor
+	{
+		public float FanLoad { get; set; }
+		public float FanSpeed { get; set; }
+	}
 
-		public float MemCtrl;
+	public struct GPUSensors : ILoadSensor,IFanSensor
+	{
+		public float Load { get; set; }
+		public float Clock { get; set; }
 
-		public float FanLoad;
-		public float FanSpeed;
+		public float MemLoad { get; set; }
+		public float MemTotal { get; set; }
 
-		public float Temperature;
+		public float MemCtrl { get; set; }
+
+		public float FanLoad { get; set; }
+		public float FanSpeed { get; set; }
+
+		public float Temperature { get; set; }
 	}
 
 	public class GPUSensorEventArgs : EventArgs
 	{
-		public GPUSensors Data;
+		public GPUSensors Data { get; set; }
 
 		public GPUSensorEventArgs(GPUSensors data) => Data = data;
 	}
 
-	public struct CPUSensors
+	public struct CPUSensors : ILoadSensor,IFanSensor
 	{
-		public float Load;
+		public float Load { get; set; }
 
-		public float FanLoad;
-		public float FanSpeed;
+		public float FanLoad { get; set; }
+		public float FanSpeed { get; set; }
 	}
 
 	public class CPUSensorEventArgs : EventArgs
 	{
-		public float Load;
+		public float Load { get; set; }
 
 		public CPUSensorEventArgs(float load) => Load = load;
 	}
 
 	[Context(RequireMainThread = false)]
-	public class Monitor : IComponent, IDisposal
+	public class Monitor : IComponent
 	{
 		OpenHardwareMonitor.Hardware.IHardware? gpu = null;
 		OpenHardwareMonitor.Hardware.ISensor? gpuFan = null; // Fan speed

@@ -40,7 +40,7 @@ namespace Taskmaster.Power
 	using static Application;
 
 	// TODO: Decouple Form from Manager
-	public class Manager : IComponent, IDisposable, IDisposal // form is required for receiving messages, no other reason
+	public class Manager : IComponent // form is required for receiving messages, no other reason
 	{
 		WndProcProxy WndProcProxy;
 
@@ -63,7 +63,7 @@ namespace Taskmaster.Power
 
 			// SystemEvents.PowerModeChanged += BatteryChargingEvent; // Without laptop testing this feature is difficult
 
-			TimeSpan moderesettime = TimeSpan.Zero;
+			TimeSpan moderesettime = TimeSpan.FromSeconds(5);
 			var sinceBoot = TimeSpan.FromMilliseconds(System.Environment.TickCount);
 
 			if (SessionStartHighMode > 0)
@@ -80,25 +80,30 @@ namespace Taskmaster.Power
 					}
 					else
 					{
-						Log.Debug("<Power> High performance session start too short (would end at: " + (DateTime.Now + moderesettime).ToString("g") + ")");
-						moderesettime = TimeSpan.Zero;
+						if (DebugPower)
+							Log.Debug("<Power> High performance session start too short (would end at: " + (DateTime.Now + moderesettime).ToString("g") + ")");
 					}
 				}
 				else
 					Log.Debug("<Power> Time since session start exceeds session start boost time.");
 			}
 
-			Task.Delay(moderesettime).ContinueWith(ResetPowerMode).ConfigureAwait(false);
+			ResetPowerModeAsync(moderesettime).ConfigureAwait(false);
 
 			MonitorSleepTimer.Elapsed += MonitorSleepTimerTick;
 
 			Microsoft.Win32.SystemEvents.SessionEnding += SessionEndingEvent;
 		}
 
-		async Task ResetPowerMode(Task t)
+		async Task ResetPowerModeAsync(TimeSpan delay)
 		{
-			if (t.Status != TaskStatus.RanToCompletion) return;
+			await Task.Delay(delay).ConfigureAwait(false);
 
+			ResetPowerMode();
+		}
+
+		void ResetPowerMode()
+		{
 			if (SessionStartHighMode > 0)
 			{
 				var sinceBoot = TimeSpan.FromMilliseconds(System.Environment.TickCount);
@@ -177,6 +182,7 @@ namespace Taskmaster.Power
 		}
 
 		public int ForceCount => ForceModeSourcesMap.Count;
+
 		readonly ConcurrentDictionary<int, Mode> ForceModeSourcesMap = new ConcurrentDictionary<int, Mode>();
 
 		Hardware.CPUMonitor? cpumonitor = null;
@@ -184,8 +190,14 @@ namespace Taskmaster.Power
 		public void Hook(Hardware.CPUMonitor monitor)
 		{
 			cpumonitor = monitor;
-			cpumonitor.OnDisposed += (_, _ea) => cpumonitor = null;
+			cpumonitor.OnDisposed += Unhook;
 			cpumonitor.Sampling += CPULoadHandler;
+		}
+
+		void Unhook(object _, EventArgs _ea)
+		{
+			cpumonitor.Sampling -= CPULoadHandler;
+			cpumonitor = null;
 		}
 
 		void MonitorPowerEvent(MonitorPowerMode mode)
@@ -685,6 +697,7 @@ namespace Taskmaster.Power
 		}
 
 		public TimeSpan? PowerdownDelay { get; private set; } = null;
+
 		public void SetPowerdownDelay(TimeSpan? time) => PowerdownDelay = time;
 
 		void LoadConfig()
@@ -872,9 +885,9 @@ namespace Taskmaster.Power
 			{
 				string sbehaviour = LaunchBehaviour switch
 				{
-					PowerBehaviour.Auto => HumanReadable.Hardware.Power.AutoAdjust.ToLower(),
-					PowerBehaviour.Manual => HumanReadable.Hardware.Power.Manual.ToLower(),
-					_ => HumanReadable.Hardware.Power.RuleBased.ToLower(), // default to rule-based
+					PowerBehaviour.Auto => HumanReadable.Hardware.Power.AutoAdjust.ToLowerInvariant(),
+					PowerBehaviour.Manual => HumanReadable.Hardware.Power.Manual.ToLowerInvariant(),
+					_ => HumanReadable.Hardware.Power.RuleBased.ToLowerInvariant(), // default to rule-based
 				};
 
 				power[Constants.Behaviour].String = sbehaviour;
@@ -1191,7 +1204,7 @@ namespace Taskmaster.Power
 		/// Restores normal power mode and frees the associated source pid from holding it.
 		/// </summary>
 		/// <param name="sourcePid">0 releases all locks.</param>
-		public async Task Release(Process.ProcessEx info)
+		public async Task Release(Process.ProcessEx? info)
 		{
 			if (IsDisposed) throw new ObjectDisposedException(nameof(Manager), "Release called after PowerManager was disposed.");
 
@@ -1253,7 +1266,7 @@ namespace Taskmaster.Power
 			if (Behaviour != PowerBehaviour.Auto && PowerdownDelay.HasValue)
 				await Task.Delay(PowerdownDelay.Value).ConfigureAwait(false);
 
-			int lockCount = ForceCount;
+			int lockCount = ForceModeSourcesMap.Count;
 			if (lockCount == 0)
 			{
 				// TODO: Restore Powerdown delay functionality here.
@@ -1340,8 +1353,6 @@ namespace Taskmaster.Power
 
 		public PowerBehaviour LaunchBehaviour { get; set; } = PowerBehaviour.RuleBased;
 		public PowerBehaviour Behaviour { get; private set; } = PowerBehaviour.RuleBased;
-
-		readonly object behaviour_lock = new object();
 
 		bool AutoAdjustSetMode(Mode mode, Cause cause)
 		{

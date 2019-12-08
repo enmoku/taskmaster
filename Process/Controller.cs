@@ -56,14 +56,16 @@ namespace Taskmaster.Process
 
 		// EVENTS
 
-		public ModificationDelegate Modified;
-		public InfoDelegate Paused, Resumed, WaitingExit;
+		public ModificationDelegate? Modified { get; set; }
+		public InfoDelegate? Paused { get; set; }
+		public InfoDelegate? Resumed { get; set; }
+		public InfoDelegate? WaitingExit { get; set; }
 
 		// Core information
 		/// <summary>
 		///
 		/// </summary>
-		public ProcessType Type = ProcessType.Generic;
+		public ProcessType Type { get; set; } = ProcessType.Generic;
 
 		/// <summary>
 		/// Order of preference

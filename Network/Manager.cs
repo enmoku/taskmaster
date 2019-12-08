@@ -42,10 +42,10 @@ namespace Taskmaster.Network
 
 	public class TrafficDelta
 	{
-		public readonly float Input;
-		public readonly float Output;
-		public readonly float Queue;
-		public readonly float Packets;
+		public float Input { get; private set; }
+		public float Output { get; private set; }
+		public float Queue { get; private set; }
+		public float Packets { get; private set; }
 
 		public TrafficDelta(float input = float.NaN, float output = float.NaN, float queue = float.NaN, float packets = float.NaN)
 		{
@@ -64,7 +64,7 @@ namespace Taskmaster.Network
 	}
 
 	[Context(RequireMainThread = false)]
-	public class Manager : IComponent, IDisposal
+	public class Manager : IComponent
 	{
 		public static bool ShowNetworkErrors { get; set; } = false;
 
@@ -72,9 +72,9 @@ namespace Taskmaster.Network
 
 		bool DebugDNS { get; set; } = false;
 
-		public event EventHandler<InternetStatus> InternetStatusChange;
-		public event EventHandler IPChanged;
-		public event EventHandler<Status> NetworkStatusChange;
+		public event EventHandler<InternetStatus>? InternetStatusChange;
+		public event EventHandler? IPChanged;
+		public event EventHandler<Status>? NetworkStatusChange;
 
 		//public event EventHandler<TrafficEventArgs> NetworkTraffic;
 
@@ -250,6 +250,8 @@ namespace Taskmaster.Network
 		{
 			Logging.DebugMsg("StartDynDNSUpdates()");
 
+			await Task.Delay(5).ConfigureAwait(false);
+
 			using var netcfg = Config.Load(NetConfigFilename);
 			var dns = netcfg.Config[Constants.DNSUpdating];
 
@@ -269,7 +271,6 @@ namespace Taskmaster.Network
 			}
 			else
 				if (DebugDNS) Log.Debug("<Net:DynDNS> Starting update timer (" + TimerStartDelay.ToString("g") + ").");
-
 
 			bool old4 = DNSOldIPv4 != IPAddress.None, old6 = DNSOldIPv6 != IPAddress.IPv6None;
 
@@ -407,7 +408,7 @@ namespace Taskmaster.Network
 				rq.UserAgent = "Taskmaster/DynDNS.alpha.1";
 				rq.Timeout = 30_000;
 
-				using var rs = await rq.GetResponseAsync();
+				using var rs = await rq.GetResponseAsync().ConfigureAwait(false);
 				if (rs.ContentLength > 0)
 				{
 					using var dat = rs.GetResponseStream();

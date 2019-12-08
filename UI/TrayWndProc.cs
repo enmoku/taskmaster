@@ -93,7 +93,7 @@ namespace Taskmaster.UI
 		{
 			Log.Information("<Global> Hotkey detected; Freeing memory while ignoring foreground" +
 				(ignorePid > 4 ? $" #{ignorePid}" : string.Empty) + " if possible.");
-			await processmanager.FreeMemory(ignorePid).ConfigureAwait(false);
+			await processmanager.FreeMemoryAsync(ignorePid).ConfigureAwait(false);
 		}
 
 		protected override void WndProc(ref Message m)
