@@ -2043,7 +2043,6 @@ namespace Taskmaster.UI
 			// for
 			//LogList.FindItemWithText
 			//LogList.FindNearestItem
-			throw new NotImplementedException();
 		}
 
 		int LogListFirst = 0;
