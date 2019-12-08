@@ -221,10 +221,15 @@ namespace Taskmaster.UI
 			try
 			{
 				int off = selection.SelectedIndex;
-				var info = InfoList[off];
+				if (off > 0)
+				{
+					var info = InfoList[off];
 
-				Info = info;
-				DialogResult = DialogResult.OK;
+					Info = info;
+					DialogResult = DialogResult.OK;
+				}
+				else
+					DialogResult = DialogResult.Cancel;
 			}
 			catch (Exception ex)
 			{
