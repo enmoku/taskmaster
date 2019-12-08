@@ -3,6 +3,11 @@ Comprehensive changes can be found in Git change history:
 	https://github.com/mkahvi/taskmaster/commits/master
 
 ## [0.14...]
+### 2019-12-08
+	Fixed: ArgumentOutOfRangeException for process select dialog when nothing was selected.
+### 2019-12-07
+	Fixed: NotImplementedException for a feature not being intended to be implemented.
+	Fixed: NullReferenceException when attempting to create a new watchlist rule.
 ### 2019-12-03
 	Changed: Don't write crash log on some soft failures.
 ### 2019-12-02
