@@ -5,6 +5,7 @@ Comprehensive changes can be found in Git change history:
 ## [0.14...]
 ### 2019-12-16
 	Changed: Make internal code report power plan/behaviour changes more explicitly.
+	Changed: Session start high performance _reset_ should be skipped if anything else has changed the power behaviour.
 ### 2019-12-08
 	Fixed: ArgumentOutOfRangeException for process select dialog when nothing was selected.
 ### 2019-12-07

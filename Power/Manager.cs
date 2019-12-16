@@ -104,7 +104,8 @@ namespace Taskmaster.Power
 		{
 			await Task.Delay(delay).ConfigureAwait(false);
 
-			ResetPowerMode();
+			if (Behaviour == PowerBehaviour.Internal) ResetPowerMode();
+			else Log.Warning("<Power> Session start high performance mode reset cancelled due to behavior mismatch");
 		}
 
 		/// <summary>
