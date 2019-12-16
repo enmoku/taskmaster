@@ -76,7 +76,12 @@ namespace Taskmaster.Power
 					if (moderesettime.TotalSeconds > 5d)
 					{
 						Log.Information("<Power> High performance session start mode until " + (DateTime.Now + moderesettime).ToString("g"));
+
+						var oldPowerMode = CurrentMode;
+
 						InternalSetMode(Mode.HighPerformance);
+
+						PlanChange?.Invoke(this, new ModeEventArgs(Mode.HighPerformance, oldPowerMode, new Cause(OriginType.Internal, "Session start high performance mode.")));
 					}
 					else
 					{
@@ -102,6 +107,9 @@ namespace Taskmaster.Power
 			ResetPowerMode();
 		}
 
+		/// <summary>
+		/// Resets behaviour and power plan.
+		/// </summary>
 		void ResetPowerMode()
 		{
 			if (SessionStartHighMode > 0)
@@ -118,6 +126,8 @@ namespace Taskmaster.Power
 
 			if (Behaviour == PowerBehaviour.RuleBased && !Forced)
 				Restore(new Cause(OriginType.Internal, Constants.InitialName));
+
+			BehaviourChange?.Invoke(this, new PowerBehaviourEventArgs(Behaviour));
 		}
 
 		private void SessionEndingEvent(object sender, SessionEndingEventArgs e)
@@ -126,8 +136,15 @@ namespace Taskmaster.Power
 			{
 				Log.Debug("<Power> Session ending: Enforcing high performance mode");
 
+				var oldPowerMode = CurrentMode;
+
 				Behaviour = PowerBehaviour.Internal;
+
+				BehaviourChange?.Invoke(this, new PowerBehaviourEventArgs(PowerBehaviour.Internal));
+
 				InternalSetMode(Mode.HighPerformance);
+
+				PlanChange?.Invoke(this, new ModeEventArgs(Mode.HighPerformance, oldPowerMode, new Cause(OriginType.Internal, "Session end high performance mode.")));
 			}
 		}
 
@@ -249,7 +266,13 @@ namespace Taskmaster.Power
 						lock (power_lock)
 						{
 							if (CurrentMode == SessionLockPowerMode)
+							{
+								var oldPowerMode = CurrentMode;
+
 								InternalSetMode(Mode.Balanced, new Cause(OriginType.Session, "User activity"), verbose: false);
+
+								PlanChange?.Invoke(this, new ModeEventArgs(Mode.Balanced, oldPowerMode, new Cause(OriginType.Internal, "User activity reset during session lock")));
+							}
 						}
 					}
 
@@ -356,7 +379,13 @@ namespace Taskmaster.Power
 				lock (power_lock)
 				{
 					if (CurrentMode != SessionLockPowerMode && idle.TotalMinutes > 2d)
+					{
+						var oldPowerMode = CurrentMode;
+
 						InternalSetMode(SessionLockPowerMode, new Cause(OriginType.Session, "User inactivity"), verbose: false);
+
+						PlanChange?.Invoke(this, new ModeEventArgs(SessionLockPowerMode, oldPowerMode, new Cause(OriginType.Internal, "User inactivity during session lock")));
+					}
 				}
 			}
 
@@ -1042,7 +1071,13 @@ namespace Taskmaster.Power
 							lock (power_lock)
 							{
 								if (CurrentMode != SessionLockPowerMode)
+								{
+									var oldPowerMode = CurrentMode;
+
 									InternalSetMode(SessionLockPowerMode, new Cause(OriginType.Session, "Lock"), verbose: true);
+
+									PlanChange?.Invoke(this, new ModeEventArgs(SessionLockPowerMode, oldPowerMode, new Cause(OriginType.Internal, "Session locked")));
+								}
 							}
 						}
 						break;
@@ -1104,10 +1139,16 @@ namespace Taskmaster.Power
 						mode = Mode.Balanced;
 				}
 
+				var oldPowerMode = CurrentMode;
+
 				InternalSetMode(mode, cause, verbose: verbose);
+
+				PlanChange?.Invoke(this, new ModeEventArgs(mode, oldPowerMode, cause));
 			}
 
 			Behaviour = LaunchBehaviour;
+
+			BehaviourChange?.Invoke(this, new PowerBehaviourEventArgs(LaunchBehaviour));
 		}
 
 		void BatteryChargingEvent(object _, PowerModeChangedEventArgs ev)
@@ -1307,7 +1348,14 @@ namespace Taskmaster.Power
 
 					if (DebugPower) Log.Debug("<Power> Restoring power mode: " + SavedMode.ToString());
 
-					InternalSetMode(SavedMode, cause ?? new Cause(OriginType.None, "Restoration"), verbose: false);
+					if (cause is null) cause = new Cause(OriginType.None, "Restoration");
+
+					var oldPowerMode = CurrentMode;
+
+					InternalSetMode(SavedMode, cause, verbose: false);
+
+					PlanChange?.Invoke(this, new ModeEventArgs(SavedMode, oldPowerMode, cause));
+
 					SavedMode = Mode.Undefined;
 				}
 				else
@@ -1365,7 +1413,12 @@ namespace Taskmaster.Power
 				if (SessionLocked || mode == CurrentMode || Forced)
 					return false;
 
+				var oldPowerMode = CurrentMode;
+
 				InternalSetMode(mode, cause, verbose: false);
+
+				PlanChange?.Invoke(this, new ModeEventArgs(mode, oldPowerMode, cause));
+
 			}
 			return true;
 		}
@@ -1405,8 +1458,13 @@ namespace Taskmaster.Power
 				rv = mode != CurrentMode;
 				if (rv)
 				{
+					var oldPowerMode = CurrentMode;
+
 					SavedMode = RestoreMethod == RestoreModeMethod.Saved ? CurrentMode : RestoreMode;
-					InternalSetMode(mode, cause: new Cause(OriginType.Watchlist, $"PID:{sourcePid}"), verbose: false);
+					var cause = new Cause(OriginType.Watchlist, $"PID:{sourcePid}");
+					InternalSetMode(mode, cause, verbose: false);
+
+					PlanChange?.Invoke(this, new ModeEventArgs(mode, oldPowerMode, cause));
 				}
 				else
 				{
@@ -1421,11 +1479,18 @@ namespace Taskmaster.Power
 		{
 			lock (power_lock)
 			{
+				var oldPowerMode = CurrentMode;
+
 				InternalSetMode(mode, cause, verbose: verbose);
+
+				PlanChange?.Invoke(this, new ModeEventArgs(mode, oldPowerMode, cause));
 			}
 		}
 
 		// BUG: ?? There might be odd behaviour if this is called while Paused==true
+		/// <summary>
+		/// Invoke PlanChange after
+		/// </summary>
 		void InternalSetMode(Mode mode, Cause? cause = null, bool verbose = true)
 		{
 			Guid plan = mode switch
