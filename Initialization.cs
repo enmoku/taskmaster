@@ -556,7 +556,13 @@ namespace Taskmaster
 				}
 				catch (Exception ex)
 				{
-					Logging.Stacktrace(ex);
+					if (ex is InitFailure iex)
+					{
+						if (!iex.Voluntary) Logging.Stacktrace(ex);
+					}
+					else
+						Logging.Stacktrace(ex);
+
 					throw;
 				}
 			}
