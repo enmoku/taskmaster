@@ -1327,16 +1327,25 @@ namespace Taskmaster.UI
 		{
 			if (!IsHandleCreated || disposed) return;
 
-			LogList.VirtualListSize = LogListData.Count;
-
-			int count = LogList.Items.Count;
-			//if (count > 0) LogList.EnsureVisible(count - 1);
-
-			if (count > 0)
+			try
 			{
-				var li = LogList.Items[count - 1];
-				//li.Focused = true; // does nothing
-				LogList.TopItem = li;
+				LogList.VirtualListSize = LogListData.Count;
+
+				//int count = LogList.Items.Count;
+				//if (count > 0) LogList.EnsureVisible(count - 1);
+
+				var count = LogList.Items.Count;
+				if (count > 0)
+				{
+					//var li = LogList.Items[count - 1];
+					//li.Focused = true; // does nothing
+
+					LogList.TopItem = LogList.Items[count - 1]; // triggers RetrieveVirtualItem
+				}
+			}
+			catch (Exception)
+			{
+				// ignore, apparently virtualistsize and topitem can randomly throw errors?
 			}
 		}
 
@@ -2186,9 +2195,9 @@ namespace Taskmaster.UI
 		int LogListFirst = 0;
 
 		readonly List<LogEventArgs> LogListData = new List<LogEventArgs>(200);
-		readonly MKAh.Cache.SimpleCache<ulong, ListViewItem> LogListCache = new MKAh.Cache.SimpleCache<ulong, ListViewItem>(50, 10);
+		readonly MKAh.Cache.SimpleCache<ulong, ListViewItem> LogListCache = new MKAh.Cache.SimpleCache<ulong, ListViewItem>(200, 50);
 
-		private void LogListCacheItem(object sender, CacheVirtualItemsEventArgs e)
+		void LogListCacheItem(object sender, CacheVirtualItemsEventArgs e)
 		{
 			// Confirm necessity of update
 			if (e.StartIndex >= LogListFirst && e.EndIndex <= LogListFirst + LogListData.Count)
@@ -2210,21 +2219,32 @@ namespace Taskmaster.UI
 			//LogList.VirtualListSize = LogListData.Count;
 		}
 
-		private void LogListRetrieveItem(object sender, RetrieveVirtualItemEventArgs e)
+		void LogListRetrieveItem(object sender, RetrieveVirtualItemEventArgs e)
 		{
 			LogEventArgs ev;
 
 			try
 			{
-				ev = LogListData[e.ItemIndex - LogListFirst];
+				if (e.ItemIndex >= LogListFirst && e.ItemIndex <= LogListFirst + LogListData.Count)
+				{
+					ev = LogListData[e.ItemIndex - LogListFirst];
+
+					if (LogListCache.Get(ev.ID, out var li))
+					{
+						e.Item = li;
+						return;
+					}
+				}
+				else
+					ev = LogListData.Last();
+
+				if (e.Item is null)
+					e.Item = LogListGenerateItem(ev);
 			}
-			catch (ArgumentOutOfRangeException ex)
+			catch (Exception ex)
 			{
-				ev = LogListData.Last();
 				Logging.Stacktrace(ex);
 			}
-
-			e.Item = LogListCache.Get(ev.ID, out var li) ? li : LogListGenerateItem(ev);
 		}
 
 		ListViewItem LogListGenerateItem(LogEventArgs ea)
