@@ -5,6 +5,7 @@ Comprehensive changes can be found in Git change history:
 ## [0.14...]
 ### 2019-12-19
 	Fixed: Don't output IOException when failing to gain access to executable for legacy testing.
+	Added: Trace log status is shown in the normal log as well if enabled.
 ### 2019-12-17
 	Changed: Stop logging voluntary crashes.
 ### 2019-12-16

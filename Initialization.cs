@@ -46,6 +46,8 @@ namespace Taskmaster
 		{
 			var startTimer = Stopwatch.StartNew();
 
+			bool TraceLog = false;
+
 			NativeMethods.SetErrorMode(NativeMethods.SetErrorMode(NativeMethods.ErrorModes.SEM_SYSTEMDEFAULT) | NativeMethods.ErrorModes.SEM_NOGPFAULTERRORBOX | NativeMethods.ErrorModes.SEM_FAILCRITICALERRORS);
 
 			System.Windows.Forms.Application.SetUnhandledExceptionMode(System.Windows.Forms.UnhandledExceptionMode.Automatic);
@@ -71,6 +73,8 @@ namespace Taskmaster
 				//Debug.Listeners.Add(new TextWriterTraceListener(System.Console.Out));
 
 				Logging.DebugMsg("<Init> Trace enabled: " + tracefile);
+
+				TraceLog = true;
 			}
 			else
 				Logging.DebugMsg("No trace");
@@ -182,6 +186,8 @@ namespace Taskmaster
 				.Append(" – Built: ").Append(builddate.ToString("yyyy/MM/dd HH:mm"))
 				.Append(" [").AppendFormat("{0:N0}", age).Append(" days old]");
 			Log.Information(sbs.ToString());
+
+			if (TraceLog) Log.Warning("<Log> Trace log enabled!");
 
 			//PreallocLastLog();
 
