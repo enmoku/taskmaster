@@ -413,7 +413,7 @@ namespace External
 		public PeHeaderReader(string filePath)
 		{
 			// Read in the DLL or EXE and get the timestamp
-			using var stream = new FileStream(filePath, System.IO.FileMode.Open, System.IO.FileAccess.Read);
+			using var stream = new FileStream(filePath, System.IO.FileMode.Open, System.IO.FileAccess.Read, System.IO.FileShare.ReadWrite);
 			using var reader = new BinaryReader(stream);
 
 			DOSHeader = FromBinaryReader<DOSHeaderInfo>(reader);

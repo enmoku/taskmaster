@@ -3,6 +3,8 @@ Comprehensive changes can be found in Git change history:
 	https://github.com/mkahvi/taskmaster/commits/master
 
 ## [0.14...]
+### 2019-12-19
+	Fixed: Don't output IOException when failing to gain access to executable for legacy testing.
 ### 2019-12-17
 	Changed: Stop logging voluntary crashes.
 ### 2019-12-16

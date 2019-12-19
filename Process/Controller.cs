@@ -1704,6 +1704,12 @@ namespace Taskmaster.Process
 					*/
 				}
 			}
+			catch (System.IO.IOException)
+			{
+				Logging.DebugMsg("<Process> Legacy test failed due to access error: " + info.ToString());
+
+				// TODO: Retry after a bit?
+			}
 			catch (Exception ex)
 			{
 				Logging.Stacktrace(ex);
