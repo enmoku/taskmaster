@@ -191,7 +191,7 @@ namespace Taskmaster
 			if (DebugHealth) Log.Information("<Auto-Doc> Component loaded");
 		}
 
-		readonly MKAh.Lock.Monitor EmergencyTickLock = new MKAh.Lock.Monitor();
+		readonly MKAh.Synchronize.Atomic EmergencyTickLock = new MKAh.Synchronize.Atomic();
 
 		int EmergencyPressure = -1;
 
@@ -309,7 +309,7 @@ namespace Taskmaster
 			DebugHealth = corecfg.Config[HumanReadable.Generic.Debug].Get(Constants.Health)?.Bool ?? false;
 		}
 
-		readonly MKAh.Lock.Monitor HealthCheckLock = new MKAh.Lock.Monitor();
+		readonly MKAh.Synchronize.Atomic HealthCheckLock = new MKAh.Synchronize.Atomic();
 
 		//async void TimerCheck(object state)
 		async void TimerCheck(object _sender, System.Timers.ElapsedEventArgs _)

@@ -25,6 +25,7 @@
 // THE SOFTWARE.
 
 using MKAh;
+using MKAh.Synchronize;
 using Serilog;
 using System;
 using System.Collections.Concurrent;
@@ -1963,27 +1964,21 @@ namespace Taskmaster.UI
 		Extensions.Label cacheObjects = null, cacheRatio = null;
 		#endregion
 
-		int PathCacheUpdate_Lock = 0;
+		MKAh.Synchronize.Atomic PathCacheUpdateLock = new MKAh.Synchronize.Atomic();
 
 		public async void PathCacheUpdate(object _, EventArgs _ea)
 		{
 			if (!IsHandleCreated || disposed) return;
 
-			if (!Atomic.Lock(ref PathCacheUpdate_Lock)) return;
+			if (!PathCacheUpdateLock.TryLock()) return;
+			using var plock = PathCacheUpdateLock.ScopedUnlock();
 
-			try
-			{
-				await Task.Delay(5_000).ConfigureAwait(false);
+			await Task.Delay(5_000).ConfigureAwait(false);
 
-				if (InvokeRequired)
-					BeginInvoke(new Action(PathCacheUpdate_Invoke));
-				else
-					PathCacheUpdate_Invoke();
-			}
-			finally
-			{
-				Atomic.Unlock(ref PathCacheUpdate_Lock);
-			}
+			if (InvokeRequired)
+				BeginInvoke(new Action(PathCacheUpdate_Invoke));
+			else
+				PathCacheUpdate_Invoke();
 		}
 
 		void PathCacheUpdate_Invoke()

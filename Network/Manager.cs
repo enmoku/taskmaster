@@ -580,7 +580,7 @@ namespace Taskmaster.Network
 			return ifacelistt;
 		}
 
-		readonly MKAh.Lock.Monitor TrafficAnalysisLock = new MKAh.Lock.Monitor();
+		readonly MKAh.Synchronize.Atomic TrafficAnalysisLock = new MKAh.Synchronize.Atomic();
 
 		long errorsSinceLastReport = 0;
 		DateTimeOffset lastErrorReport;
@@ -763,7 +763,7 @@ namespace Taskmaster.Network
 		{
 			if (disposed) throw new ObjectDisposedException(nameof(Manager), "RecordUptimeState called after NetManager was disposed.");
 
-			if (!Atomic.Lock(ref DeviceStateRecordLimiter)) return;
+			if (!MKAh.Synchronize.Atomic.Lock(ref DeviceStateRecordLimiter)) return;
 
 			try
 			{
@@ -807,7 +807,7 @@ namespace Taskmaster.Network
 			}
 			finally
 			{
-				Atomic.Unlock(ref DeviceStateRecordLimiter);
+				MKAh.Synchronize.Atomic.Unlock(ref DeviceStateRecordLimiter);
 			}
 		}
 
@@ -823,7 +823,7 @@ namespace Taskmaster.Network
 			// TODO: Figure out how to get Actual start time of internet connectivity.
 			// Probably impossible.
 
-			if (Atomic.Lock(ref InetCheckLimiter))
+			if (MKAh.Synchronize.Atomic.Lock(ref InetCheckLimiter))
 			{
 				if (Trace) Log.Verbose("<Network> Checking internet connectivity...");
 
@@ -910,7 +910,7 @@ namespace Taskmaster.Network
 				}
 				finally
 				{
-					Atomic.Unlock(ref InetCheckLimiter);
+					MKAh.Synchronize.Atomic.Unlock(ref InetCheckLimiter);
 				}
 			}
 

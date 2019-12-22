@@ -61,23 +61,10 @@ namespace Taskmaster.Process
 		public ProcessEx[] GetExitWaitList() => WaitForExitList.Values.ToArray(); // copy is good here
 
 		readonly System.Threading.Timer LoadTimer;
-		bool LoadTimerRunning = false;
 
 		void StartLoadAnalysisTimer()
 		{
-			LoadLock.Lock();
-
-			try
-			{
-				if (LoadTimerRunning) return;
-
-				LoadTimerRunning = true;
-				LoadTimer.Change(TimeSpan.FromMinutes(1d), TimeSpan.FromMinutes(1d));
-			}
-			finally
-			{
-				LoadLock.Unlock();
-			}
+			LoadTimer.Change(TimeSpan.FromMinutes(1d), TimeSpan.FromMinutes(1d));
 		}
 
 		void AddRunning(ProcessEx info)
@@ -175,8 +162,6 @@ namespace Taskmaster.Process
 			}
 		}
 
-		MKAh.Lock.Monitor LoadLock = new MKAh.Lock.Monitor();
-
 		public void GenerateLoadTrackers()
 		{
 			InstanceGroupLoad[] loadlist;
@@ -203,9 +188,6 @@ namespace Taskmaster.Process
 			}
 
 			Logging.DebugMsg("<Process:Loaders> Inspecting.");
-
-			if (!LoadLock.TryLock()) return;
-			using var llock = LoadLock.ScopedUnlock();
 
 			var now = DateTimeOffset.UtcNow;
 
@@ -524,7 +506,7 @@ namespace Taskmaster.Process
 
 		public void Unignore(int pid) => IgnorePids.TryRemove(pid, out _);
 
-		readonly MKAh.Lock.Monitor FreeMemLock = new MKAh.Lock.Monitor();
+		readonly MKAh.Synchronize.Atomic FreeMemLock = new MKAh.Synchronize.Atomic();
 
 		public async Task FreeMemoryAsync(int ignorePid = -1)
 		{
@@ -560,7 +542,7 @@ namespace Taskmaster.Process
 			{
 				ScanTimer.Stop(); // Pause Scan until we're done
 
-				ScanLock.Wait();
+				while (ScanLock.IsLocked) await Task.Delay(200).ConfigureAwait(false);
 
 				Scan(ignorePid, PageToDisk: true); // TODO: Call for this to happen otherwise
 				if (cts.IsCancellationRequested) return;
@@ -617,7 +599,7 @@ namespace Taskmaster.Process
 
 		public event EventHandler<HandlingStateChangeEventArgs> HandlingStateChange;
 
-		readonly MKAh.Lock.Monitor hastenScanLock = new MKAh.Lock.Monitor();
+		readonly MKAh.Synchronize.Atomic hastenScanLock = new MKAh.Synchronize.Atomic();
 
 		public async Task HastenScan(TimeSpan delay, bool forceSort = false)
 		{
@@ -668,7 +650,7 @@ namespace Taskmaster.Process
 
 		readonly int SelfPID = System.Diagnostics.Process.GetCurrentProcess().Id;
 
-		readonly MKAh.Lock.Monitor ScanLock = new MKAh.Lock.Monitor();
+		readonly MKAh.Synchronize.Atomic ScanLock = new MKAh.Synchronize.Atomic();
 
 		public event EventHandler ScanStart;
 		public event EventHandler<ScanEndEventArgs> ScanEnd;
@@ -866,7 +848,7 @@ namespace Taskmaster.Process
 		{
 			var now = DateTimeOffset.UtcNow;
 
-			if (!Atomic.Lock(ref SystemLoader_lock)) return;
+			if (!MKAh.Synchronize.Atomic.Lock(ref SystemLoader_lock)) return;
 
 			// TODO: TEST IF ANY RESOURCE IS BEING DRAINED
 
@@ -917,7 +899,7 @@ namespace Taskmaster.Process
 			finally
 			{
 				LastLoaderAnalysis = DateTimeOffset.UtcNow;
-				Atomic.Unlock(ref SystemLoader_lock);
+				MKAh.Synchronize.Atomic.Unlock(ref SystemLoader_lock);
 			}
 		}
 
@@ -2654,7 +2636,7 @@ namespace Taskmaster.Process
 		{
 			if (disposed) throw new ObjectDisposedException(nameof(Manager), "Cleanup called when ProcessManager was already disposed");
 
-			if (!Atomic.Lock(ref cleanup_lock)) return; // already in progress
+			if (!MKAh.Synchronize.Atomic.Lock(ref cleanup_lock)) return; // already in progress
 
 			if (DebugPower || DebugProcesses) Log.Debug("<Process> Periodic cleanup");
 
@@ -2734,7 +2716,7 @@ namespace Taskmaster.Process
 			}
 			finally
 			{
-				Atomic.Unlock(ref cleanup_lock);
+				MKAh.Synchronize.Atomic.Unlock(ref cleanup_lock);
 				triggerList?.Clear();
 			}
 		}

@@ -110,6 +110,8 @@
     <Compile Include="LinearMeter.cs" />
     <Compile Include="MemoryLog.cs" />
     <Compile Include="MKAh\Atomic\Lock.cs" />
+    <Compile Include="MKAh\Sync\ScopedUnlock.cs" />
+    <Compile Include="MKAh\Sync\ThreadLock.cs" />
     <Compile Include="MKAh\Container\CircularBuffer.cs" />
     <Compile Include="MKAh\Data\Cache\CacheEventArgs.cs" />
     <Compile Include="MKAh\Data\Cache\CacheItem.cs" />
@@ -274,7 +276,7 @@
     <Compile Include="Utility\DiscardException.cs" />
     <Compile Include="Utility\HumanInterface.cs" />
     <Compile Include="Utility\HumanReadable.cs" />
-    <Compile Include="Utility\LockScoping.cs" />
+    <Compile Include="MKAh\Sync\ILock.cs" />
     <Compile Include="Utility\LogAndDiscardException.cs" />
     <Compile Include="Utility\ProcessPriorityClass.cs" />
     <Compile Include="Utility\StructuralEqualityComparer.cs" />
