@@ -25,6 +25,7 @@
 // THE SOFTWARE.
 
 using MKAh;
+using MKAh.Synchronize;
 using Serilog;
 using System;
 using System.Diagnostics;

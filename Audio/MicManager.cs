@@ -25,6 +25,7 @@
 // THE SOFTWARE.
 
 using MKAh;
+using MKAh.Synchronize;
 using NAudio.CoreAudioApi;
 using Serilog;
 using System;

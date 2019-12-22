@@ -109,7 +109,10 @@
     <Compile Include="IPC.cs" />
     <Compile Include="LinearMeter.cs" />
     <Compile Include="MemoryLog.cs" />
-    <Compile Include="MKAh\Atomic\Lock.cs" />
+    <Compile Include="MKAh\Sync\Atomic.cs" />
+    <Compile Include="MKAh\Sync\AtomicUnlock.cs" />
+    <Compile Include="MKAh\Sync\GenericLock.cs" />
+    <Compile Include="MKAh\Sync\IScopedUnlock.cs" />
     <Compile Include="MKAh\Sync\ScopedUnlock.cs" />
     <Compile Include="MKAh\Sync\ThreadLock.cs" />
     <Compile Include="MKAh\Container\CircularBuffer.cs" />
