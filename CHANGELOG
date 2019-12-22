@@ -3,6 +3,8 @@ Comprehensive changes can be found in Git change history:
 	https://github.com/mkahvi/taskmaster/commits/master
 
 ## [0.14...]
+### 2019-12-22
+	Fixed: SynchronizationLockException due to using thread locking when it made no sense.
 ### 2019-12-19
 	Fixed: Don't output IOException when failing to gain access to executable for legacy testing.
 	Fixed: Odd update issues with the log list.
