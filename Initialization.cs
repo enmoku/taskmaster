@@ -193,13 +193,13 @@ namespace Taskmaster
 
 			InitialConfiguration();
 
-			LoadCoreConfig();
+			LoadCoreConfig(out var transientsettings);
 
 			UpdateStyling();
 
 			//if (ShowSplash) splash.Invoke(new Action(() => splash.Show()));
 
-			InitializeComponents();
+			InitializeComponents(transientsettings);
 
 			Config.Flush(); // early save of configs
 
@@ -232,7 +232,15 @@ namespace Taskmaster
 			LoadEvent?.Invoke(null, new LoadEventArgs("Initial configuration confirmed.", LoadEventType.Loaded));
 		}
 
-		static void LoadCoreConfig()
+		/// <summary>
+		/// Settings only needed for startup.
+		/// </summary>
+		internal class StartupSettings
+		{
+			internal int MaxComponentLoadTime { get; set; } = 120;
+		}
+
+		static void LoadCoreConfig(out StartupSettings transientsettings)
 		{
 			if (Trace) Log.Debug("<Core> Loading configuration...");
 
@@ -510,10 +518,12 @@ namespace Taskmaster
 				Log.Debug($"<Core> Paging: {(PagingEnabled ? HumanReadable.Generic.Enabled : HumanReadable.Generic.Disabled)}");
 			}
 
+			transientsettings = new StartupSettings() { MaxComponentLoadTime = perfsec.GetOrSet("Max component load time", 120).InitComment("In seconds. Minimum 30, max 3600. Default 120.").Int.Constrain(30, 3_600) };
+
 			LoadEvent?.Invoke(null, new LoadEventArgs("Core configuration loaded.", LoadEventType.Loaded));
 		}
 
-		static void InitializeComponents()
+		static void InitializeComponents(StartupSettings transientsettings)
 		{
 			if (Trace) Log.Debug("<Core> Loading components...");
 
@@ -722,7 +732,7 @@ namespace Taskmaster
 				if (!Task.WaitAll(init, 5_000))
 				{
 					Log.Warning($"<Core> Components still loading ({timer.ElapsedMilliseconds} ms and ongoing)");
-					if (!Task.WaitAll(init, 115_000)) // total wait time of 120 seconds
+					if (!Task.WaitAll(init, (transientsettings.MaxComponentLoadTime-5) * 1_000))
 						throw new InitFailure($"Component initialization taking excessively long ({timer.ElapsedMilliseconds} ms), aborting.", voluntary:true);
 				}
 			}
