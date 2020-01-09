@@ -101,7 +101,7 @@ namespace Taskmaster
 						break;
 				}
 
-				throw new RunstateException("Already running", Runstate.CriticalFailure);
+				throw new RunstateException("Already running", Runstate.QuickExit);
 			}
 
 			IPC.Listen();
