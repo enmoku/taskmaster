@@ -665,6 +665,8 @@ namespace Taskmaster.Process
 
 			var timer = Stopwatch.StartNew();
 
+			int missed = 0;
+
 			try
 			{
 				NextScan = (LastScan = DateTimeOffset.UtcNow).Add(ScanFrequency.Value);
@@ -677,38 +679,51 @@ namespace Taskmaster.Process
 
 				var procs = System.Diagnostics.Process.GetProcesses();
 				int found = procs.Length;
-				SignalProcessHandled(found, manage:true).ConfigureAwait(false); // scan start
+
+				Handling += found;
+
+				SignalProcessHandled().ConfigureAwait(false); // scan start
 
 				//var loaderOffload = new List<ProcessEx>();
 
-				int modified = 0, ignored = 0;
+				int modified = 0, ignored = 0, unmodified=0;
 				foreach (var process in procs)
 				{
-					try
-					{
-						var info = ScanTriage(process, PageToDisk);
+					var info = ScanTriage(process, PageToDisk);
 
-						if (info != null)
-						{
-							if (info.State == HandlingState.Modified)
-								modified++;
-							else if (info.State == HandlingState.Abandoned)
-								ignored++;
-						}
-						else
-							ignored++;
-					}
-					finally
+					if (info != null)
 					{
-						Handling -= 1;
+						if (info.State == HandlingState.Modified)
+							modified++;
+						else if (info.State == HandlingState.Abandoned)
+							ignored++;
+						else
+						{
+							unmodified++;
+							Logging.DebugMsg("Ignored process in state: " + info.State.ToString());
+						}
 					}
+					else
+						ignored++;
+
+					Handling -= 1;
 				}
 
 				//SystemLoaderAnalysis(loaderOffload);
 
 				if (DebugScan) Log.Debug("<Process> Full Scan: Complete");
 
-				SignalProcessHandled(0).ConfigureAwait(false); // scan done
+				int totalManaged = modified + ignored + unmodified;
+				missed = found - totalManaged;
+				if (missed > 0)
+				{
+
+					Log.Error("<Process> Missed " + missed.ToString() + " items while scanning.");
+
+					Handling -= missed;
+				}
+
+				SignalProcessHandled().ConfigureAwait(false); // scan done
 
 				ScanEnd?.Invoke(this, new ScanEndEventArgs() { Found = found, Ignored = ignored, Modified = modified });
 
@@ -2082,10 +2097,15 @@ namespace Taskmaster.Process
 						return;
 					}
 
-					info.State = HandlingState.Processing;
-
 					await Task.Delay(10, cts.Token).ConfigureAwait(false); // asyncify again
-					if (cts.IsCancellationRequested) return;
+
+					if (cts.IsCancellationRequested)
+					{
+						info.State = HandlingState.Abandoned;
+						return;
+					}
+
+					info.State = HandlingState.Processing;
 
 					if (prc.LogDescription)
 					{
@@ -2130,12 +2150,14 @@ namespace Taskmaster.Process
 						{
 							if (ShowInaction && Manager.DebugProcesses)
 								Log.Debug(info.ToFullString() + " ignored due to user defined rule.");
+							info.State = HandlingState.Invalid;
 							return;
 						}
 
 						if (info.Restricted)
 						{
 							if (DebugProcesses) Logging.DebugMsg("<Process:Triage> " + info + " RESTRICTED; Cancelling");
+							info.State = HandlingState.Invalid;
 							return;
 						}
 
@@ -2356,13 +2378,15 @@ namespace Taskmaster.Process
 
 		public int Handling { get; private set; } = 0; // this isn't used for much...
 
-		async Task SignalProcessHandled(int adjust, bool manage=false)
+		/// <summary>
+		/// 
+		/// </summary>
+		/// <param name="adjust">Pass 0 to just signal current state.</param>
+		async Task SignalProcessHandled()
 		{
-			if (manage) Handling += adjust;
-
 			await Task.Delay(10).ConfigureAwait(false);
 
-			HandlingCounter?.Invoke(adjust, Handling);
+			HandlingCounter?.Invoke(Handling);
 		}
 
 		/*
@@ -2426,6 +2450,8 @@ namespace Taskmaster.Process
 			var now = DateTimeOffset.UtcNow;
 			var timer = Stopwatch.StartNew();
 
+			Handling += 1;
+
 			int pid = -1;
 			string name = string.Empty, path = string.Empty;
 			ProcessEx info = null;
@@ -2435,12 +2461,9 @@ namespace Taskmaster.Process
 			HandlingState state = HandlingState.Invalid;
 
 			await Task.Delay(10).ConfigureAwait(false);
-			if (cts.IsCancellationRequested) return;
 
 			try
 			{
-				SignalProcessHandled(1, manage:true).ConfigureAwait(false); // wmi new instance
-
 				//var wmiquerytime = Stopwatch.StartNew(); // unused
 				// TODO: Instance groups?
 				try
@@ -2563,7 +2586,6 @@ namespace Taskmaster.Process
 				state = HandlingState.Exited;
 				if (info != null) info.State = state;
 				if (ShowInaction && DebugProcesses) Log.Verbose("Caught #" + pid.ToString() + " but it vanished.");
-				return;
 			}
 			catch (Exception ex)
 			{
@@ -2576,10 +2598,10 @@ namespace Taskmaster.Process
 			}
 			finally
 			{
+				Handling -= 1;
+
 				if (info is null) info = new ProcessEx(pid, now) { Timer = timer, State = state, WMIDelay = wmidelay };
 				HandlingStateChange?.Invoke(this, new HandlingStateChangeEventArgs(info));
-
-				await SignalProcessHandled(-1, manage:true).ConfigureAwait(false); // done with it
 			}
 		}
 

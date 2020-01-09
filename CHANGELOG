@@ -3,6 +3,8 @@ Comprehensive changes can be found in Git change history:
 	https://github.com/mkahvi/taskmaster/commits/master
 
 ## [0.14...]
+### 2020-01-09
+	Changed: Altered some process handling logic to attempt to fix a handling counter leak. Uncertain if the problem is fixed as nothing observed seems to suggest the leak should happen under any conditions.
 ### 2020-01-03
 	Added: Configuration for maximum component load time (default 120s). No UI configuration yet.
 ### 2019-12-22
