@@ -347,6 +347,20 @@ namespace Taskmaster.Process
 			return false;
 		}
 
+		/// <summary>
+		/// Wrapper for both GetCachedProcess & GetInfo
+		/// </summary>
+		public bool GetProcessInfo(int pid, out ProcessEx info)
+		{
+			if (GetCachedProcess(pid, out info))
+				return true;
+
+			if (Utility.GetInfo(pid, out info, getPath: true))
+				return true;
+
+			return false;
+		}
+
 		public bool LoaderTracking { get; set; } = false;
 
 		public static bool DebugLoaders { get; set; } = false;

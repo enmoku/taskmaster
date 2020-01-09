@@ -331,7 +331,10 @@ namespace Taskmaster.Audio
 				int pid = (int)session.GetProcessID;
 				string name = session.DisplayName;
 
-				if (Process.Utility.GetInfo(pid, out var info, getPath: true, name: name))
+				// TODO: Fetch cached copy from manager?
+				Process.ProcessEx? info;
+
+				if (processmanager.GetCachedProcess(pid, out info) || Process.Utility.GetInfo(pid, out info, getPath: true, name: name))
 				{
 					//info.Path
 

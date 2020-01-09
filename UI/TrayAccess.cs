@@ -492,7 +492,13 @@ namespace Taskmaster.UI
 				{
 					foreach (var proc in procs)
 					{
-						if (!Process.Utility.GetInfo(proc.Id, out var info, process: proc, name: "explorer", getPath: true)) continue; // things failed, move on
+						Process.ProcessEx? info;
+						if (processmanager.GetCachedProcess(proc.Id, out info) || Process.Utility.GetInfo(proc.Id, out info, process: proc, name: "explorer", getPath: true))
+						{
+							// nop
+						}
+						else
+							continue; // things failed, move on
 
 						if (!string.IsNullOrEmpty(info.Path))
 						{

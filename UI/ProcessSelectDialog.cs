@@ -173,12 +173,17 @@ namespace Taskmaster.UI
 						if (Process.Utility.SystemProcessId(pid)) continue;
 						if (processmanager.IgnoreProcessName(name)) continue;
 
-						if (Process.Utility.GetInfo(pid, out var info, proc, name: proc.ProcessName, getPath: true))
+						ProcessEx? info;
+
+						if (processmanager.GetCachedProcess(pid, out info))
+						{ /* NOP */ }
+						else if (Process.Utility.GetInfo(pid, out info, proc, name: proc.ProcessName, getPath: true))
 						{
 							info.PriorityProtected = processmanager.ProtectedProcess(info.Name, info.Path);
 							info.AffinityProtected = (info.PriorityProtected && processmanager.ProtectionLevel >= 2);
-							InfoList.Add(info);
 						}
+
+						if (info != null) InfoList.Add(info);
 					}
 					catch (InvalidOperationException)
 					{
