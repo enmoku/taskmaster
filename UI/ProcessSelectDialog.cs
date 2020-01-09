@@ -175,9 +175,9 @@ namespace Taskmaster.UI
 
 						ProcessEx? info;
 
-						if (Utility.GetCachedInfo(pid, out info))
+						if (processmanager.GetCachedProcess(pid, out info))
 						{ /* NOP */ }
-						else if (Process.Utility.CollectInfo(pid, out info, proc, name: proc.ProcessName, getPath: true))
+						else if (Process.Utility.Construct(pid, out info, proc, name: proc.ProcessName, getPath: true))
 						{
 							info.PriorityProtected = processmanager.ProtectedProcess(info.Name, info.Path);
 							info.AffinityProtected = (info.PriorityProtected && processmanager.ProtectionLevel >= 2);

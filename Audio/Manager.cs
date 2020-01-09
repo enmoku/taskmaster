@@ -333,9 +333,10 @@ namespace Taskmaster.Audio
 
 				// TODO: Fetch cached copy from manager?
 				Process.ProcessEx? info;
-
-				if (Process.Utility.GetCachedInfo(pid, out info) || Process.Utility.CollectInfo(pid, out info, getPath: true, name: name))
+				if (processmanager.GetCachedProcess(pid, out info) || Process.Utility.Construct(pid, out info, getPath: true, name: name))
 				{
+					// TODO: check for staleness
+
 					//info.Path
 
 					float volume = session.SimpleAudioVolume.Volume;

@@ -434,7 +434,7 @@ namespace Taskmaster.Process
 			return false;
 		}
 
-		public static bool CollectInfo(int ProcessID, out ProcessEx? info, System.Diagnostics.Process? process = null, Process.Controller? controller = null, string name = default, string path = default, bool getPath = false)
+		public static bool Construct(int ProcessID, out ProcessEx? info, System.Diagnostics.Process? process = null, Process.Controller? controller = null, string name = default, string path = default, bool getPath = false)
 		{
 			try
 			{
@@ -451,8 +451,6 @@ namespace Taskmaster.Process
 
 				if (getPath && string.IsNullOrEmpty(path)) FindPath(info);
 
-				Cache.Add(ProcessID, info);
-
 				return true;
 			}
 			catch (InvalidOperationException) { /* already exited */ }
@@ -466,39 +464,10 @@ namespace Taskmaster.Process
 			return false;
 		}
 
-		readonly static MKAh.Cache.SimpleCache<int, ProcessEx> Cache = new MKAh.Cache.SimpleCache<int, ProcessEx>(260, 20, TimeSpan.FromMinutes(15d), MKAh.Cache.StoreStrategy.ReplaceNoMatch, MKAh.Cache.EvictStrategy.LeastRecent);
-
-		public static bool GetInfo(int pid, out ProcessEx info) => Cache.Get(pid, out info) || CollectInfo(pid, out info, getPath: true);
-
-		public static bool GetCachedInfo(int pid, out ProcessEx info) => Cache.Get(pid, out info);
-
-		public static bool GetParentProcess(ProcessEx info, out ProcessEx? parent)
-		{
-			try
-			{
-				return GetInfo(info.Process.ParentProcessId(), out parent);
-			}
-			catch { /* don't care */ }
-
-			parent = null;
-			return false;
-		}
-
 		[Conditional("DEBUG")]
 		public static void PathCacheStats()
 			=> Log.Debug("Path cache state: " + Statistics.PathCacheCurrent.ToString() + " items (Hits: " + Statistics.PathCacheHits.ToString() +
 				", Misses: " + Statistics.PathCacheMisses.ToString() +
 				", Ratio: " + $"{(Statistics.PathCacheMisses > 0 ? (Statistics.PathCacheHits / Statistics.PathCacheMisses) : 1):N2})");
-
-		internal class StaticFinalizer
-		{
-			~StaticFinalizer()
-			{
-				Cache.Dispose();
-				Cache.Clear();
-			}
-		}
-
-		internal static StaticFinalizer finalizer = new StaticFinalizer();
 	}
 }

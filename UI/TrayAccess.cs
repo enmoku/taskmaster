@@ -160,8 +160,6 @@ namespace Taskmaster.UI
 			int exdelay = cfg.Config[Constants.Experimental].Get("Explorer Restart")?.Int ?? 0;
 			ExplorerRestartHelpDelay = exdelay > 0 ? (TimeSpan?)TimeSpan.FromSeconds(exdelay.Min(5)) : null;
 
-			RegisterExplorerExit();
-
 			// Tray.Click += RestoreMainWindow;
 			Tray.MouseClick += ShowWindow;
 
@@ -243,6 +241,8 @@ namespace Taskmaster.UI
 		{
 			processmanager = pman;
 			RescanRequest += (_, _ea) => processmanager?.HastenScan(TimeSpan.FromSeconds(15));
+
+			RegisterExplorerExit();
 		}
 
 		Power.Manager? powermanager = null;
@@ -492,7 +492,14 @@ namespace Taskmaster.UI
 				{
 					foreach (var proc in procs)
 					{
-						if (!Process.Utility.GetInfo(proc.Id, out var info)) continue;
+						Process.ProcessEx? info;
+
+						if (processmanager.GetCachedProcess(proc.Id, out info) || Process.Utility.Construct(proc.Id, out info))
+						{
+							// NOP
+						}
+						else
+							continue;
 
 						if (!string.IsNullOrEmpty(info.Path))
 						{

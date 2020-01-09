@@ -675,13 +675,6 @@ namespace Taskmaster
 				throw;
 			}
 
-			// WinForms makes the following components not load nicely if not done here (main thread).
-			//hiddenwindow.BeginInvoke(new Action(() => { trayaccess = new UI.TrayAccess(); })); // is there a point to this?
-			trayaccess = new UI.TrayAccess();
-			trayaccess.TrayMenuShown = visible => OptimizeResponsiviness(visible);
-
-			tProcMon.ContinueWith(_ => trayaccess.Hook(processmanager), cts.Token, TaskContinuationOptions.OnlyOnRanToCompletion, TaskScheduler.Default);
-
 			Task.WhenAll(tProcMon, tFgMon).ContinueWith(_ => activeappmonitor?.Hook(processmanager), cts.Token, TaskContinuationOptions.OnlyOnRanToCompletion, TaskScheduler.Default);
 			if (cts.IsCancellationRequested) throw new InitFailure("Initialization failed", (cex?[0]), cex);
 
@@ -705,7 +698,6 @@ namespace Taskmaster
 
 						  if (powermanager != null)
 						  {
-							  trayaccess.Hook(powermanager);
 							  processmanager.Hook(powermanager);
 						  }
 					  }, cts.Token, TaskContinuationOptions.OnlyOnRanToCompletion, TaskScheduler.Default);
@@ -760,6 +752,13 @@ namespace Taskmaster
 				//System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(ex.InnerException).Throw();
 				//throw; // because compiler is dumb and doesn't understand the above
 			}
+
+			// WinForms makes the following components not load nicely if not done here (main thread).
+			//hiddenwindow.BeginInvoke(new Action(() => { trayaccess = new UI.TrayAccess(); })); // is there a point to this?
+			trayaccess = new UI.TrayAccess();
+			trayaccess.Hook(processmanager);
+			if (powermanager != null) trayaccess.Hook(powermanager);
+			trayaccess.TrayMenuShown = visible => OptimizeResponsiviness(visible);
 
 			LoadEvent?.Invoke(null, new LoadEventArgs("Components loaded.", LoadEventType.Loaded));
 

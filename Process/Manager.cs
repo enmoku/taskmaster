@@ -335,20 +335,16 @@ namespace Taskmaster.Process
 
 		public int RunningCount => Running.Count;
 
-		public bool GetCachedProcess(int pid, out ProcessEx info)
+		public bool GetCachedProcess(int pid, out ProcessEx? info)
 		{
 			if (Running.TryGetValue(pid, out info))
 				return true;
 
-			/*
-			// Not needed as this list is always also in Running
-			if (WaitForExitList.TryGetValue(pid, out info))
-				return true;
-			*/
-
 			info = null;
 			return false;
 		}
+
+		public bool GetProcessInfo(int pid, out ProcessEx info) => Utility.Construct(pid, out info, getPath: true);
 
 		public bool LoaderTracking { get; set; } = false;
 
@@ -770,8 +766,8 @@ namespace Taskmaster.Process
 				}
 
 				if (DebugScan) Log.Verbose($"<Process> Checking: {name} #{pid}");
-
-				if (Utility.GetCachedInfo(pid, out info))
+				
+				if (GetCachedProcess(pid, out info))
 				{
 					bool stale = false;
 
@@ -801,7 +797,7 @@ namespace Taskmaster.Process
 					}
 				}
 
-				if (info != null || Utility.CollectInfo(pid, out info, process, null, name, null, getPath: true))
+				if (info != null || Utility.Construct(pid, out info, process, null, name, null, getPath: true))
 				{
 					info.Timer.Restart();
 
@@ -1424,9 +1420,8 @@ namespace Taskmaster.Process
 
 				if (EnableParentFinding && prc.DeclareParent)
 				{
-
 					sbs.Append(" – Parent: ");
-					if (Utility.GetParentProcess(ea.Info, out var parent))
+					if (GetParent(ea.Info, out var parent))
 						sbs.Append(parent.Name).Append(" #").Append(parent.Id);
 					else
 						sbs.Append("n/a");
@@ -1444,6 +1439,21 @@ namespace Taskmaster.Process
 			{
 				Logging.Stacktrace(ex);
 			}
+		}
+
+		public bool GetParent(ProcessEx info, out ProcessEx? parent)
+		{
+			try
+			{
+				if (GetCachedProcess(info.Id, out parent))
+					return true;
+
+				return Utility.Construct(info.Process.ParentProcessId(), out parent);
+			}
+			catch { /* don't care */ }
+
+			parent = null;
+			return false;
 		}
 
 		void RenewWatchlistCache() => WatchlistCache = new Lazy<List<Controller>>(LazyRecacheWatchlist, false);
@@ -2571,8 +2581,10 @@ namespace Taskmaster.Process
 					return;
 				}
 
-				if (Utility.CollectInfo(pid, out info, process: proc, path: path, getPath: true, name: name))
+				if (Utility.Construct(pid, out info, process: proc, path: path, getPath: true, name: name))
 				{
+					RemoveRunning(pid, out var _);
+
 					info.Timer = timer;
 					info.PriorityProtected = ProtectedProcess(info.Name, info.Path);
 					info.AffinityProtected = (info.PriorityProtected && ProtectionLevel >= 2);
