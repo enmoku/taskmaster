@@ -222,7 +222,7 @@ namespace Taskmaster
 			// INITIAL CONFIGURATIONN
 			using var tcfg = Config.Load(CoreConfigFilename);
 			var sec = tcfg.Config.Get(Constants.Core)?.Get(Constants.Version)?.String ?? null;
-			if (sec?.Equals(ConfigVersion) ?? false) return;
+			if (sec?.Equals(ConfigVersion, StringComparison.InvariantCulture) ?? false) return;
 
 			using var initialconfig = new UI.Config.ComponentConfigurationWindow();
 			initialconfig.ShowDialog();
