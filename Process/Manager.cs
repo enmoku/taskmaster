@@ -712,10 +712,7 @@ namespace Taskmaster.Process
 						else if (info.State == HandlingState.Abandoned)
 							ignored++;
 						else
-						{
 							unmodified++;
-							Logging.DebugMsg("Ignored process in state: " + info.State.ToString());
-						}
 					}
 					else
 						ignored++;
@@ -825,7 +822,13 @@ namespace Taskmaster.Process
 
 					ProcessTriage(info, old: true).ConfigureAwait(false);
 
-					if (doPaging) PageToDisk(info).ConfigureAwait(false);
+					if (doPaging) PageToDisk(info).ConfigureAwait(false); // don't wait on this
+
+					if (info.State == HandlingState.Triage)
+					{
+						Logging.DebugMsg("Process still in Triage state, setting to Finished");
+						info.State = HandlingState.Finished; // HACK
+					}
 
 					HandlingStateChange?.Invoke(this, new HandlingStateChangeEventArgs(info));
 
@@ -2072,7 +2075,11 @@ namespace Taskmaster.Process
 			if (disposed) throw new ObjectDisposedException(nameof(Manager), "ProcessTriage called when ProcessManager was already disposed");
 
 			await Task.Delay(10, cts.Token).ConfigureAwait(false); // asyncify
-			if (cts.IsCancellationRequested) return;
+			if (cts.IsCancellationRequested)
+			{
+				info.State = HandlingState.Abandoned;
+				return;
+			}
 
 			try
 			{
@@ -2207,6 +2214,8 @@ namespace Taskmaster.Process
 					{
 						HandlingStateChange?.Invoke(this, new HandlingStateChangeEventArgs(info));
 					}
+
+					if (info.State == HandlingState.Triage) info.State = HandlingState.Finished;
 				}
 				else
 				{

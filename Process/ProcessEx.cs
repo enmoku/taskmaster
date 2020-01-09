@@ -138,16 +138,22 @@ namespace Taskmaster.Process
 				switch (value)
 				{
 					case HandlingState.Exited:
+						Exited = true;
+						goto doneHandling;
 					case HandlingState.Modified:
+						Modified = DateTimeOffset.UtcNow;
+						goto doneHandling;
 					case HandlingState.Unmodified:
 					case HandlingState.AccessDenied:
 					case HandlingState.Finished:
 					case HandlingState.Abandoned:
 					case HandlingState.Invalid:
-						if (value == HandlingState.Exited) Exited = true;
-						else if (value == HandlingState.Modified) Modified = DateTimeOffset.UtcNow;
+						doneHandling:
 						Handled = true;
 						Timer.Stop();
+						break;
+					case HandlingState.Triage:
+						Handled = false;
 						break;
 					default: break;
 				}

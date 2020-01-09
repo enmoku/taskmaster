@@ -1267,6 +1267,7 @@ namespace Taskmaster.Process
 			if (info.Restricted)
 			{
 				if (Debug && ShowInaction) Logging.DebugMsg("<Process> " + info + " RESTRICTED - cancelling Touch");
+				info.State = HandlingState.Invalid;
 				return;
 			}
 
@@ -1437,7 +1438,11 @@ namespace Taskmaster.Process
 						return false;
 					}
 
-					if (CheckForRecentlyModified(info, ormt)) return;
+					if (CheckForRecentlyModified(info, ormt))
+					{
+						info.State = HandlingState.Unmodified;
+						return;
+					}
 				}
 
 				if (Trace) Log.Verbose(info.ToFullString() + " Touching...");
@@ -1625,30 +1630,31 @@ namespace Taskmaster.Process
 
 						if (Manager.IgnoreRecentlyModified.HasValue)
 						{
+							RecentlyModifiedInfo updateValueFactory(int key, RecentlyModifiedInfo nrmt)
+							{
+								// TODO: Match full path if available
+								if (!nrmt.Info.Name.Equals(info.Name, StringComparison.InvariantCultureIgnoreCase))
+								{
+									// REPLACE. THIS SEEMS WRONG
+									nrmt.Info = info;
+									nrmt.FreeWill = false;
+									nrmt.ExpectedState = 0;
+									nrmt.LastModified = now;
+									nrmt.LastIgnored = DateTimeOffset.MinValue;
+								}
+
+								return nrmt;
+							}
+
 							RecentlyModified.AddOrUpdate(
 								info.Id,
 								new RecentlyModifiedInfo(info, now),
-								(int key, RecentlyModifiedInfo nrmt) =>
-								{
-								// TODO: Match full path if available
-								if (!nrmt.Info.Name.Equals(info.Name, StringComparison.InvariantCultureIgnoreCase))
-									{
-									// REPLACE. THIS SEEMS WRONG
-									nrmt.Info = info;
-										nrmt.FreeWill = false;
-										nrmt.ExpectedState = 0;
-										nrmt.LastModified = now;
-										nrmt.LastIgnored = DateTimeOffset.MinValue;
-									}
-
-									return nrmt;
-								}
+								updateValueFactory
 							);
 
 							WaitForExit(info);
 						}
 					};
-
 
 					await InternalRefresh(now).ConfigureAwait(false);
 				}
