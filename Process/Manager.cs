@@ -340,8 +340,11 @@ namespace Taskmaster.Process
 			if (Running.TryGetValue(pid, out info))
 				return true;
 
+			/*
+			// Not needed as this list is always also in Running
 			if (WaitForExitList.TryGetValue(pid, out info))
 				return true;
+			*/
 
 			info = null;
 			return false;
