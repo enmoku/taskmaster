@@ -636,6 +636,13 @@ namespace Taskmaster
 				cts.Cancel();
 			}, cts.Token, TaskContinuationOptions.OnlyOnFaulted, TaskScheduler.Default);
 
+			// WinForms makes the following components not load nicely if not done here (main thread).
+			//hiddenwindow.BeginInvoke(new Action(() => { trayaccess = new UI.TrayAccess(); })); // is there a point to this?
+			trayaccess = new UI.TrayAccess
+			{
+				TrayMenuShown = visible => OptimizeResponsiviness(visible)
+			};
+
 			// MMDEV requires main thread
 			try
 			{
@@ -753,12 +760,8 @@ namespace Taskmaster
 				//throw; // because compiler is dumb and doesn't understand the above
 			}
 
-			// WinForms makes the following components not load nicely if not done here (main thread).
-			//hiddenwindow.BeginInvoke(new Action(() => { trayaccess = new UI.TrayAccess(); })); // is there a point to this?
-			trayaccess = new UI.TrayAccess();
 			trayaccess.Hook(processmanager);
 			if (powermanager != null) trayaccess.Hook(powermanager);
-			trayaccess.TrayMenuShown = visible => OptimizeResponsiviness(visible);
 
 			LoadEvent?.Invoke(null, new LoadEventArgs("Components loaded.", LoadEventType.Loaded));
 
