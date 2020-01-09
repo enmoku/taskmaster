@@ -1211,7 +1211,7 @@ namespace Taskmaster.Process
 		public async Task Modify(ProcessEx info)
 		{
 			await Touch(info).ConfigureAwait(false);
-			if (Recheck > 0) await TouchReapply(info).ConfigureAwait(false); // this can go do its thing
+			if (Recheck > 0) TouchReapply(info).ConfigureAwait(false); // this can go do its thing
 		}
 
 		[System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
