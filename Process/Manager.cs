@@ -350,20 +350,6 @@ namespace Taskmaster.Process
 			return false;
 		}
 
-		/// <summary>
-		/// Wrapper for both GetCachedProcess & GetInfo
-		/// </summary>
-		public bool GetProcessInfo(int pid, out ProcessEx info)
-		{
-			if (GetCachedProcess(pid, out info))
-				return true;
-
-			if (Utility.GetInfo(pid, out info, getPath: true))
-				return true;
-
-			return false;
-		}
-
 		public bool LoaderTracking { get; set; } = false;
 
 		public static bool DebugLoaders { get; set; } = false;
@@ -785,7 +771,7 @@ namespace Taskmaster.Process
 
 				if (DebugScan) Log.Verbose($"<Process> Checking: {name} #{pid}");
 
-				if (GetCachedProcess(pid, out info))
+				if (Utility.GetCachedInfo(pid, out info))
 				{
 					bool stale = false;
 
@@ -815,7 +801,7 @@ namespace Taskmaster.Process
 					}
 				}
 
-				if (info != null || Utility.GetInfo(pid, out info, process, null, name, null, getPath: true))
+				if (info != null || Utility.CollectInfo(pid, out info, process, null, name, null, getPath: true))
 				{
 					info.Timer.Restart();
 
@@ -829,7 +815,7 @@ namespace Taskmaster.Process
 
 					if (info.State == HandlingState.Triage)
 					{
-						Logging.DebugMsg("Process still in Triage state, setting to Finished");
+						//Logging.DebugMsg("Process still in Triage state, setting to Finished");
 						info.State = HandlingState.Finished; // HACK
 					}
 
@@ -1438,9 +1424,9 @@ namespace Taskmaster.Process
 
 				if (EnableParentFinding && prc.DeclareParent)
 				{
-					var parent = Utility.GetParentProcess(ea.Info);
+
 					sbs.Append(" – Parent: ");
-					if (parent != null)
+					if (Utility.GetParentProcess(ea.Info, out var parent))
 						sbs.Append(parent.Name).Append(" #").Append(parent.Id);
 					else
 						sbs.Append("n/a");
@@ -2585,7 +2571,7 @@ namespace Taskmaster.Process
 					return;
 				}
 
-				if (Utility.GetInfo(pid, out info, process: proc, path: path, getPath: true, name: name))
+				if (Utility.CollectInfo(pid, out info, process: proc, path: path, getPath: true, name: name))
 				{
 					info.Timer = timer;
 					info.PriorityProtected = ProtectedProcess(info.Name, info.Path);

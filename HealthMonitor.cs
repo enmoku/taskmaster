@@ -527,7 +527,7 @@ namespace Taskmaster
 							{
 								sbs.Append(" Ignoring foreground process ");
 								Process.ProcessEx? info = null;
-								if (processmanager?.GetCachedProcess(fgPid, out info) ?? false)
+								if (Process.Utility.GetInfo(fgPid, out info))
 									sbs.Append(info);
 								else
 									sbs.Append('#').Append(fgPid).Append('.');

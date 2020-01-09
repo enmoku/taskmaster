@@ -492,19 +492,13 @@ namespace Taskmaster.UI
 				{
 					foreach (var proc in procs)
 					{
-						Process.ProcessEx? info;
-						if (processmanager.GetCachedProcess(proc.Id, out info) || Process.Utility.GetInfo(proc.Id, out info, process: proc, name: "explorer", getPath: true))
-						{
-							// nop
-						}
-						else
-							continue; // things failed, move on
+						if (!Process.Utility.GetInfo(proc.Id, out var info)) continue;
 
 						if (!string.IsNullOrEmpty(info.Path))
 						{
 							if (!info.Path.StartsWith(Environment.GetFolderPath(Environment.SpecialFolder.Windows), StringComparison.InvariantCultureIgnoreCase))
 							{
-								if (Application.Trace) Log.Verbose($"<Tray> Explorer #{info.Id} not in system root.");
+								if (Trace) Log.Verbose($"<Tray> Explorer #{info.Id} not in system root.");
 								continue;
 							}
 						}

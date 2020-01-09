@@ -6,7 +6,7 @@ Comprehensive changes can be found in Git change history:
 ### 2020-01-09
 	Changed: Altered some process handling logic to attempt to fix a handling counter leak. Uncertain if the problem is fixed as nothing observed seems to suggest the leak should happen under any conditions.
 	Changed: Recheck should not delay normal logic, it is no longer waited on.
-	Changed: Used cached process info more often.
+	Changed: Used cached process info more often and generally alter how processes are cached.
 	Changed: Add missing processing states.
 	Fixed: Detecting already running process would create crash log.
 ### 2020-01-03
