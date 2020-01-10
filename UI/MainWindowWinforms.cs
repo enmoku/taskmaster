@@ -106,10 +106,26 @@ namespace Taskmaster.UI
 				SizeMode = TabSizeMode.Normal,
 			};
 
-			LogList = new Extensions.ListViewEx
+			LogTabPages = new Extensions.TabControl()
 			{
 				Parent = this,
 				Dock = DockStyle.Bottom,
+				//Height = 300,
+				Padding = new System.Drawing.Point(6, 3),
+				MinimumSize = new System.Drawing.Size(-2, 160),
+				SizeMode = TabSizeMode.Normal,
+			};
+			
+			FullLogTab = new Extensions.TabPage("All") { Padding = BigPadding };
+			ErrorLogTab = new Extensions.TabPage("Warnings") { Padding = BigPadding };
+
+			LogTabPages.Controls.Add(FullLogTab);
+			LogTabPages.Controls.Add(ErrorLogTab);
+
+			FullLogList = new Extensions.ListViewEx
+			{
+				Parent = FullLogTab,
+				Dock = DockStyle.Fill,
 				AutoSize = true,
 				View = View.Details,
 				FullRowSelect = true,
@@ -121,18 +137,40 @@ namespace Taskmaster.UI
 				VirtualListSize = 0,
 			};
 
-			LogList.RetrieveVirtualItem += LogListRetrieveItem;
-			LogList.CacheVirtualItems += LogListCacheItem;
-			LogList.SearchForVirtualItem += LogListSearchItem;
-			LogList.VirtualItemsSelectionRangeChanged += LogListSelectionChanged;
+			FullLogList.RetrieveVirtualItem += LogListRetrieveItem;
+			FullLogList.CacheVirtualItems += LogListCacheItem;
+			FullLogList.SearchForVirtualItem += VirtualModeNoAction;
+			FullLogList.VirtualItemsSelectionRangeChanged += VirtualModeNoAction;
 
 			var imglist = new ImageList();
 			imglist.Images.Add(Properties.Resources.OkayIcon);
 			imglist.Images.Add(Properties.Resources.InfoIcon);
 			imglist.Images.Add(Properties.Resources.ErrorIcon);
-			LogList.SmallImageList = imglist;
+			FullLogList.SmallImageList = imglist;
 
-			menu = new MenuStrip() { Dock = DockStyle.Top, Parent = this };
+			ErrorLogList = new Extensions.ListViewEx()
+			{
+				Parent = ErrorLogTab,
+				Dock = DockStyle.Fill,
+				AutoSize = true,
+				View = View.Details,
+				FullRowSelect = true,
+				HeaderStyle = ColumnHeaderStyle.None,
+				Scrollable = true,
+				MinimumSize = new System.Drawing.Size(-2, 140),
+				//MinimumSize = new System.Drawing.Size(-2, -2), // doesn't work
+				VirtualMode = true,
+				VirtualListSize = 0,
+			};
+
+			ErrorLogList.RetrieveVirtualItem += ErrorListRetrieveItem;
+			ErrorLogList.CacheVirtualItems += ErrorListCacheItem;
+			ErrorLogList.SearchForVirtualItem += VirtualModeNoAction;
+			ErrorLogList.VirtualItemsSelectionRangeChanged += VirtualModeNoAction;
+
+			ErrorLogList.SmallImageList = imglist;
+
+			MenuToolbar = new MenuStrip() { Dock = DockStyle.Top, Parent = this };
 
 			BuildStatusbar();
 
@@ -291,7 +329,7 @@ namespace Taskmaster.UI
 				using var uicfg = Application.Config.Load(UIConfigFilename);
 				uicfg.Config[Constants.Visuals]["Alternate log row colors"].Bool = AlternateRowColorsLog;
 
-				AlternateListviewRowColors(LogList, AlternateRowColorsLog);
+				AlternateListviewRowColors(FullLogList, AlternateRowColorsLog);
 			};
 			menu_config_visuals_rowalternate_watchlist.Click += (_, _ea) =>
 			{
@@ -793,7 +831,7 @@ namespace Taskmaster.UI
 			menu_info.DropDownItems.Add(new ToolStripMenuItem("About", null, ShowAboutDialog));
 			#endregion
 
-			menu.Items.AddRange(new[] { menu_action, menu_view, menu_power, menu_config, menu_debug, menu_info });
+			MenuToolbar.Items.AddRange(new[] { menu_action, menu_view, menu_power, menu_config, menu_debug, menu_info });
 
 			// no simpler way?
 
@@ -938,7 +976,10 @@ namespace Taskmaster.UI
 
 			// UI Log
 			// -1 = contents, -2 = heading
-			LogList.Columns.Add("Event Log", -2, HorizontalAlignment.Left); // 2
+			FullLogList.Columns.Add("Full Log", -2, HorizontalAlignment.Left); // 2
+			ErrorLogList.Columns.Add("Error Log", -2, HorizontalAlignment.Left);
+			FullLogList.HeaderStyle = ColumnHeaderStyle.None;
+			ErrorLogList.HeaderStyle = ColumnHeaderStyle.None;
 
 			//ResizeEnd += ResizeLogList;
 			//Resize += ResizeLogList;
@@ -949,7 +990,7 @@ namespace Taskmaster.UI
 			var loglistms = new ContextMenuStrip();
 			var logcopy = new ToolStripMenuItem("Copy to clipboard", null, CopyLogToClipboard);
 			loglistms.Items.Add(logcopy);
-			LogList.ContextMenuStrip = loglistms;
+			FullLogList.ContextMenuStrip = loglistms;
 
 			using var cfg = Application.Config.Load(CoreConfigFilename);
 			MaxLogSize = cfg.Config[HumanReadable.Generic.Logging].GetOrSet("UI max items", 200)
@@ -1183,8 +1224,8 @@ namespace Taskmaster.UI
 			MinimizeBox = true;
 
 			MinimumHeight += TabPages.MinimumSize.Height
-				+ LogList.MinimumSize.Height
-				+ menu.Height
+				+ FullLogList.MinimumSize.Height
+				+ MenuToolbar.Height
 				+ statusbar.Height
 				+ 40; // why is this required? window deco?
 
@@ -1330,18 +1371,25 @@ namespace Taskmaster.UI
 
 			try
 			{
-				LogList.VirtualListSize = LogListData.Count;
+				FullLogList.VirtualListSize = LogListData.Count;
+				ErrorLogList.VirtualListSize = ErrorListData.Count;
 
 				//int count = LogList.Items.Count;
 				//if (count > 0) LogList.EnsureVisible(count - 1);
 
-				var count = LogList.Items.Count;
+				var count = FullLogList.Items.Count;
 				if (count > 0)
 				{
 					//var li = LogList.Items[count - 1];
 					//li.Focused = true; // does nothing
 
-					LogList.TopItem = LogList.Items[count - 1]; // triggers RetrieveVirtualItem
+					FullLogList.TopItem = FullLogList.Items[count - 1]; // triggers RetrieveVirtualItem
+				}
+
+				var ecount = ErrorLogList.Items.Count;
+				if (ecount > 0)
+				{
+					ErrorLogList.TopItem = ErrorLogList.Items[ecount - 1];
 				}
 			}
 			catch (Exception)
@@ -2100,26 +2148,28 @@ namespace Taskmaster.UI
 
 		void CopyLogToClipboard(object _, EventArgs _ea)
 		{
-			var selected = LogList.SelectedIndices;
+			var selected = FullLogList.SelectedIndices;
 			if (selected.Count == 0) return;
 
 			var sbs = new StringBuilder(256);
 
 			foreach (int item in selected)
-				sbs.Append(LogList.Items[item].SubItems[0].Text);
+				sbs.Append(FullLogList.Items[item].SubItems[0].Text);
 
 			Clipboard.SetText(sbs.ToString(), TextDataFormat.UnicodeText);
 		}
 
 		readonly Extensions.TabControl TabPages;
+		readonly Extensions.TabPage infoTab, watchTab;
+		// Optional tabs
+		Extensions.TabPage? micTab = null, powerDebugTab = null, ProcessDebugTab = null;
+
+		readonly Extensions.TabControl LogTabPages;
+		readonly Extensions.TabPage FullLogTab, ErrorLogTab;
 
 		// TODO: Easier column access somehow than this?
 		//int OrderColumn = 0;
 		const int PrefColumn = 1, NameColumn = 2, ExeColumn = 3, PrioColumn = 4, AffColumn = 5, PowerColumn = 6, AdjustColumn = 7, PathColumn = 8;
-
-		readonly Extensions.TabPage infoTab, watchTab;
-
-		Extensions.TabPage? micTab = null, powerDebugTab = null, ProcessDebugTab = null;
 
 		readonly ToolStripMenuItem
 			menu_debug, menu_debug_loglevel,
@@ -2187,9 +2237,14 @@ namespace Taskmaster.UI
 			}
 		}
 
-		int LogListFirst = 0;
+		void VirtualModeNoAction(object sender, EventArgs e)
+		{
 
-		readonly List<LogEventArgs> LogListData = new List<LogEventArgs>(200);
+		}
+
+		int LogListFirst = 0, ErrorListFirst = 0;
+
+		readonly List<LogEventArgs> LogListData = new List<LogEventArgs>(200), ErrorListData = new List<LogEventArgs>(50);
 		readonly MKAh.Cache.SimpleCache<ulong, ListViewItem> LogListCache = new MKAh.Cache.SimpleCache<ulong, ListViewItem>(200, 50);
 
 		void LogListCacheItem(object sender, CacheVirtualItemsEventArgs e)
@@ -2206,6 +2261,28 @@ namespace Taskmaster.UI
 			for (int i = 0; i < newVisibleLength; i++)
 			{
 				var item = LogListData[i];
+
+				if (!LogListCache.Get(item.ID, out _))
+					LogListGenerateItem(item);
+			}
+
+			//LogList.VirtualListSize = LogListData.Count;
+		}
+
+		void ErrorListCacheItem(object sender, CacheVirtualItemsEventArgs e)
+		{
+			// Confirm necessity of update
+			if (e.StartIndex >= ErrorListFirst && e.EndIndex <= ErrorListFirst + ErrorListData.Count)
+				return; // Subset of old cache
+
+			// Build cache
+			ErrorListFirst = e.StartIndex;
+			int newVisibleLength = e.EndIndex - e.StartIndex + 1; // inclusive range
+
+			//Fill the cache with the appropriate ListViewItems.
+			for (int i = 0; i < newVisibleLength; i++)
+			{
+				var item = ErrorListData[i];
 
 				if (!LogListCache.Get(item.ID, out _))
 					LogListGenerateItem(item);
@@ -2232,6 +2309,35 @@ namespace Taskmaster.UI
 				}
 				else
 					ev = LogListData.Last();
+
+				if (e.Item is null)
+					e.Item = LogListGenerateItem(ev);
+			}
+			catch (Exception ex)
+			{
+				Logging.Stacktrace(ex);
+			}
+		}
+
+		void ErrorListRetrieveItem(object sender, RetrieveVirtualItemEventArgs e)
+		{
+			LogEventArgs ev;
+
+			try
+			{
+				if (e.ItemIndex >= ErrorListFirst && e.ItemIndex <= ErrorListFirst + ErrorListData.Count)
+				{
+					ev = ErrorListData[e.ItemIndex - ErrorListFirst];
+
+					// can these share cache?
+					if (LogListCache.Get(ev.ID, out var li))
+					{
+						e.Item = li;
+						return;
+					}
+				}
+				else
+					ev = ErrorListData.Last();
 
 				if (e.Item is null)
 					e.Item = LogListGenerateItem(ev);
@@ -2286,13 +2392,19 @@ namespace Taskmaster.UI
 
 		void ResizeLogList(object sender, EventArgs ev)
 		{
-			LogList.Columns[0].Width = -2;
+			FullLogList.Columns[0].Width = -2;
+			ErrorLogList.Columns[0].Width = -2;
+
 			// HACK: Enable visual styles causes horizontal bar to always be present without the following.
-			LogList.Columns[0].Width -= 2;
+			FullLogList.Columns[0].Width -= 2;
+			ErrorLogList.Columns[0].Width -= 2;
 
 			//loglist.Height = -2;
 			//loglist.Width = -2;
-			LogList.Height = ClientSize.Height - TabPages.Height - statusbar.Height - menu.Height;
+			LogTabPages.Height = ClientSize.Height - TabPages.Height - statusbar.Height - MenuToolbar.Height;
+
+			//FullLogList.Height = LogTabPages.Size.Height;
+			//ErrorLogList.Height = LogTabPages.Size.Height;
 
 			ShowLastLog();
 		}
@@ -3651,8 +3763,8 @@ namespace Taskmaster.UI
 			tempObjectCount.Text = (stats.Dirs + stats.Files).ToString();
 		}
 
-		readonly Extensions.ListViewEx LogList;
-		readonly MenuStrip menu;
+		readonly Extensions.ListViewEx FullLogList, ErrorLogList;
+		readonly MenuStrip MenuToolbar;
 
 		public void FillLog()
 		{
@@ -3663,7 +3775,11 @@ namespace Taskmaster.UI
 			Logging.DebugMsg("Filling backlog of messages: " + logbuffer.Length.ToString());
 
 			foreach (var logmsg in logbuffer)
+			{
 				LogListData.Add(logmsg);
+				if ((int)logmsg.Level >= (int)Serilog.Events.LogEventLevel.Warning)
+					ErrorListData.Add(logmsg);
+			}
 
 			//ShowLastLog(); // part of resizeloglist
 
@@ -4197,8 +4313,10 @@ namespace Taskmaster.UI
 			//loglist.Clear();
 
 			LogListData.Clear();
+			ErrorListData.Clear();
 			LogListCache.Empty();
-			LogList.VirtualListSize = 0;
+			FullLogList.VirtualListSize = 0;
+			ErrorLogList.VirtualListSize = 0;
 
 			//LogList.Items.Clear();
 			MemoryLog.MemorySink.Clear();
@@ -4265,7 +4383,7 @@ namespace Taskmaster.UI
 
 			//Logging.DebugMsg("LogList new size: " + newSize.ToString());
 
-			BeginInvoke(new Action(() => LogList.VirtualListSize = LogListData.Count));
+			BeginInvoke(new Action(() => FullLogList.VirtualListSize = LogListData.Count));
 
 			//var li = LogListGenerateItem(ea);
 
@@ -4413,8 +4531,8 @@ namespace Taskmaster.UI
 				TabPages.Dispose();
 
 				// Pointless
-				LogList.Dispose();
-				menu.Dispose();
+				FullLogList.Dispose();
+				MenuToolbar.Dispose();
 
 				/*
 				activeLabel.Dispose();
